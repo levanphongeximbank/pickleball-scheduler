@@ -1,0 +1,49 @@
+{
+  "name": "pickleball-scheduler",
+  "private": true,
+  "version": "3.5.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "dev:lan": "vite --host",
+    "build": "vite build",
+    "deploy": "npm run build && npx vercel deploy --prod",
+    "deploy:preview": "npm run build && npx vercel deploy",
+    "lint": "eslint .",
+    "preview": "vite preview",
+    "test": "npm run test:unit",
+    "test:unit": "node --test tests/ai-core.test.js tests/scoring.test.js tests/waiting.test.js tests/policy.test.js tests/persist.test.js tests/engine.integration.test.js tests/debug-panel.test.js tests/club.test.js tests/club-v3.test.js tests/rbac.test.js tests/court-booking.test.js tests/tournament-booking.test.js tests/cloud-sync.test.js tests/competition.test.js tests/models.test.js tests/tournament-models.test.js tests/tournament-service.test.js tests/tournament-engines.test.js tests/tournament-daily-play.test.js tests/tournament-internal.test.js tests/tournament-bracket.test.js tests/tournament-open-random.test.js tests/tournament-ai-balance.test.js tests/tournament-director.test.js tests/referee-engine.test.js tests/referee-polish.test.js tests/referee-flow.integration.test.js tests/score-history.test.js tests/player-history.test.js tests/tournament-mobile.test.js tests/tournament-regression.test.js tests/season-standings.test.js tests/elo-engine.test.js tests/skill-level-engine.test.js tests/skill-level-service.test.js tests/league-rounds.test.js tests/statistics-season.test.js tests/season-export.test.js tests/dashboard-clubData.logic.test.js tests/tournament-results.logic.test.js tests/tournament-bracket.logic.test.js tests/tournament-standings.logic.test.js tests/tournament-seeding.logic.test.js tests/tournament-fixtures.logic.test.js tests/tournament-export.logic.test.js tests/select-players.logic.test.js tests/select-players.director.logic.test.js tests/select-players.director.manager.logic.test.js tests/select-players.data.test.js tests/select-players.selection.logic.test.js tests/select-players.messages.logic.test.js tests/tournament-animation.logic.test.js tests/prize-wheel.logic.test.js tests/daily-fair-match-animation.test.js",
+    "test:perf": "node --test tests/performance.test.js",
+    "test:ui": "vitest run tests/ui",
+    "test:supabase-referee": "node scripts/check-supabase-referee.mjs",
+    "test:quality": "npm run test:unit && npm run test:perf && npm run test:ui"
+  },
+  "dependencies": {
+    "@emotion/react": "^11.14.0",
+    "@emotion/styled": "^11.14.1",
+    "@mui/icons-material": "^9.1.1",
+    "@mui/material": "^9.1.2",
+    "@mui/x-data-grid": "^9.6.0",
+    "@supabase/supabase-js": "^2.108.2",
+    "qrcode": "^1.5.4",
+    "react": "^19.2.7",
+    "react-dom": "^19.2.7",
+    "react-router-dom": "^7.18.0"
+  },
+  "devDependencies": {
+    "@eslint/js": "^10.0.1",
+    "@testing-library/jest-dom": "^6.9.1",
+    "@testing-library/react": "^16.3.2",
+    "@testing-library/user-event": "^14.6.1",
+    "@types/react": "^19.2.17",
+    "@types/react-dom": "^19.2.3",
+    "@vitejs/plugin-react": "^6.0.2",
+    "eslint": "^10.5.0",
+    "eslint-plugin-react-hooks": "^7.1.1",
+    "eslint-plugin-react-refresh": "^0.5.3",
+    "globals": "^17.6.0",
+    "jsdom": "^29.1.1",
+    "vite": "^8.1.0",
+    "vitest": "^4.1.9"
+  }
+}

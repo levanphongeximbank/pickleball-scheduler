@@ -1,0 +1,334 @@
+.tournament-bracket-screen {
+  background:
+    radial-gradient(circle at 10% 0%, rgba(13, 71, 161, 0.06), transparent 42%),
+    radial-gradient(circle at 90% 8%, rgba(67, 160, 71, 0.05), transparent 36%),
+    linear-gradient(180deg, #f7faff 0%, #ffffff 58%, #f8fffa 100%);
+  min-height: 100%;
+  padding: 16px;
+}
+
+.tournament-bracket-screen--presentation {
+  position: fixed;
+  inset: 0;
+  z-index: 1400;
+  overflow: auto;
+}
+
+.tournament-bracket-header {
+  border-radius: 16px;
+  border: 1px solid rgba(13, 71, 161, 0.12);
+  background: #fff;
+  box-shadow: 0 8px 24px rgba(13, 71, 161, 0.08);
+  padding: 12px 16px;
+  margin-bottom: 12px;
+}
+
+.tournament-bracket-layout {
+  display: grid;
+  grid-template-columns: 220px minmax(70%, 1fr) 240px;
+  gap: 12px;
+  align-items: start;
+}
+
+.tournament-bracket-tree {
+  border-radius: 18px;
+  border: 1px solid rgba(13, 71, 161, 0.12);
+  background: #fff;
+  box-shadow: 0 12px 32px rgba(13, 71, 161, 0.08);
+  min-height: 520px;
+  padding: 12px;
+  min-width: 0;
+}
+
+.tournament-bracket-tree--empty {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #64748b;
+  padding: 48px 16px;
+}
+
+.tournament-bracket-tree__scroll {
+  overflow: auto;
+  max-width: 100%;
+}
+
+.tournament-bracket-tree__canvas {
+  position: relative;
+  min-width: max-content;
+}
+
+.tournament-bracket-tree__round-label {
+  position: absolute;
+  top: 0;
+  text-align: center;
+  opacity: 0.35;
+  transform: translateY(-4px);
+  transition: opacity 0.45s ease, transform 0.45s ease;
+  pointer-events: none;
+}
+
+.tournament-bracket-tree__round-label--visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.tournament-bracket-tree__round-label--active {
+  color: #1565c0;
+}
+
+.tournament-bracket-connectors {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 0;
+}
+
+.tournament-bracket-connectors__path {
+  fill: none;
+  stroke: #bbdefb;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-dasharray: 1;
+  stroke-dashoffset: 0;
+  transition: stroke 0.35s ease, stroke-dashoffset 0.6s ease;
+}
+
+.tournament-bracket-connectors__path--active {
+  stroke: #1565c0;
+  stroke-width: 2.5;
+}
+
+.tournament-bracket-connectors__path--dashed {
+  stroke: #90a4ae;
+  stroke-dasharray: 0.04 0.03;
+}
+
+.tournament-bracket-match {
+  border: 1px solid #e2e8f0;
+  border-radius: 14px;
+  background: #fff;
+  box-shadow: 0 6px 16px rgba(15, 23, 42, 0.05);
+  padding: 10px 12px;
+  opacity: 0.15;
+  transform: translateY(10px);
+  transition: opacity 0.4s ease, transform 0.45s ease, box-shadow 0.35s ease;
+  position: absolute;
+  z-index: 1;
+}
+
+.tournament-bracket-match--visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.tournament-bracket-match--highlight {
+  border-color: #64b5f6;
+  box-shadow: 0 0 0 2px rgba(33, 150, 243, 0.15);
+}
+
+.tournament-bracket-match--done {
+  border-color: #c8e6c9;
+}
+
+.tournament-bracket-match--third {
+  border-style: dashed;
+  border-color: #ffcc80;
+}
+
+.tournament-bracket-match__divider {
+  height: 1px;
+  background: #e2e8f0;
+  margin: 6px 0;
+}
+
+.tournament-bracket-team {
+  padding: 4px 2px;
+  min-height: 28px;
+}
+
+.tournament-bracket-team--winner {
+  background: #e8f5e9;
+  border-radius: 8px;
+  padding-inline: 6px !important;
+  box-shadow: 0 0 0 1px rgba(46, 125, 50, 0.12);
+}
+
+.tournament-bracket-team--loser {
+  opacity: 0.58;
+}
+
+.tournament-bracket-team--placeholder .MuiTypography-root {
+  font-style: italic;
+  color: #94a3b8;
+}
+
+.tournament-bracket-team__avatar {
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: #e3f2fd;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  color: #1565c0;
+}
+
+.tournament-bracket-team__score {
+  min-width: 20px;
+  text-align: right;
+}
+
+.tournament-bracket-champion {
+  text-align: center;
+  padding: 18px 14px;
+  border-color: #ffe082 !important;
+  background: linear-gradient(180deg, #fffde7 0%, #fff 60%);
+  opacity: 0.3;
+  transform: scale(0.94);
+  transition: opacity 0.5s ease, transform 0.55s ease;
+  z-index: 2;
+}
+
+.tournament-bracket-champion--visible {
+  opacity: 1;
+  transform: scale(1);
+}
+
+.tournament-bracket-champion--won {
+  border-color: #ffb74d !important;
+  background: linear-gradient(180deg, #fff8e1 0%, #fff 55%);
+}
+
+.tournament-bracket-champion__trophy {
+  font-size: 42px !important;
+  color: #cfd8dc;
+  margin-bottom: 4px;
+  transition: color 0.45s ease, transform 0.45s ease;
+}
+
+.tournament-bracket-champion__trophy--active {
+  color: #f9a825;
+}
+
+.tournament-bracket-champion--celebrate {
+  animation: tournament-bracket-champion-pop 0.9s ease-out;
+}
+
+@keyframes tournament-bracket-champion-pop {
+  0% {
+    box-shadow: 0 0 0 rgba(255, 193, 7, 0);
+    transform: scale(0.96);
+  }
+
+  45% {
+    box-shadow: 0 0 0 10px rgba(255, 193, 7, 0.16);
+    transform: scale(1.02);
+  }
+
+  100% {
+    box-shadow: none;
+    transform: scale(1);
+  }
+}
+
+.tournament-bracket-third {
+  text-align: center;
+  padding: 14px;
+  border-color: #ffcc80 !important;
+  background: #fffaf0;
+}
+
+.tournament-bracket-legend-dash {
+  border-top: 2px dashed #90a4ae;
+  padding-top: 8px;
+}
+
+.tournament-bracket-mobile-tabs {
+  display: none;
+}
+
+/* Mobile vertical timeline */
+.tournament-bracket-mobile {
+  display: none;
+}
+
+.tournament-bracket-mobile__round {
+  margin-bottom: 16px;
+}
+
+.tournament-bracket-mobile__round-title {
+  margin-bottom: 8px;
+  padding-bottom: 6px;
+  border-bottom: 2px solid #e3f2fd;
+}
+
+.tournament-bracket-mobile__connector {
+  width: 2px;
+  height: 20px;
+  background: #bbdefb;
+  margin: 0 auto 8px;
+}
+
+.tournament-bracket-mobile__connector--active {
+  background: #1565c0;
+}
+
+.tournament-bracket-mobile__match {
+  position: static !important;
+  width: 100% !important;
+  margin-bottom: 8px;
+}
+
+@media (max-width: 1100px) {
+  .tournament-bracket-layout {
+    grid-template-columns: 1fr;
+  }
+
+  .tournament-bracket-sidebar,
+  .tournament-bracket-right {
+    display: none;
+  }
+
+  .tournament-bracket-mobile-tabs {
+    display: block;
+    margin-bottom: 8px;
+  }
+}
+
+@media (max-width: 700px) {
+  .tournament-bracket-tree__scroll--desktop {
+    display: none;
+  }
+
+  .tournament-bracket-mobile {
+    display: block;
+  }
+
+  .tournament-bracket-tree {
+    min-height: auto;
+    padding: 10px;
+  }
+}
+
+@media (min-width: 701px) {
+  .tournament-bracket-mobile {
+    display: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .tournament-bracket-match,
+  .tournament-bracket-champion,
+  .tournament-bracket-tree__round-label,
+  .tournament-bracket-connectors__path {
+    transition-duration: 0.01ms !important;
+    animation: none !important;
+  }
+
+  .tournament-bracket-champion--celebrate {
+    animation: none !important;
+  }
+}
