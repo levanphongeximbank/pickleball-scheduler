@@ -1,9 +1,9 @@
-/*
+﻿/*
 ==========================================================
 AI Engine
 Version 1.2
 ----------------------------------------------------------
-Điều phối toàn bộ AI
+─Éiß╗üu phß╗æi to├án bß╗Ö AI
 
 1. Balance Engine
 2. Pairing Engine
@@ -22,15 +22,15 @@ import {
 
 export function runMensAI(players) {const history = loadHistory();
 
-  // Chỉ lấy người chơi Nam
+  // Chß╗ë lß║Ñy ng╞░ß╗¥i ch╞íi Nam
   const malePlayers = players.filter(
     (player) => player.gender === "Nam"
   );
 
-  // Bước 1
+  // B╞░ß╗¢c 1
   const balanceResult = balanceCourts(malePlayers);
 
-  // Bước 2
+  // B╞░ß╗¢c 2
   const courts = balanceResult.courts.map((court) => {
   const result = pairingCourt(court);
 
@@ -39,7 +39,7 @@ export function runMensAI(players) {const history = loadHistory();
   return result;
 });
 
-  // Bước 3
+  // B╞░ß╗¢c 3
 
   saveHistory(history);
 

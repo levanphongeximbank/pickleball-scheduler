@@ -4,6 +4,8 @@ import { can, canAccessClub, canAccessVenue, canAll, canAny } from "../auth/rbac
 import {
   enableRbac,
   getAuthState,
+  getCurrentUser,
+  isSupabaseAuthAvailable,
   restoreSupabaseSession,
   signInAs,
   signInDev,
@@ -17,6 +19,7 @@ const AuthContext = createContext(null);
 
 export function AuthProvider({ children }) {
   const [state, setState] = useState(() => getAuthState());
+  const [authLoading, setAuthLoading] = useState(() => isSupabaseAuthAvailable());
 
   const refresh = useCallback(() => {
     setState(getAuthState());
@@ -25,11 +28,22 @@ export function AuthProvider({ children }) {
   useEffect(() => {
     let cancelled = false;
 
-    restoreSupabaseSession().then(() => {
+    const bootstrap = async () => {
+      try {
+        if (isSupabaseAuthAvailable()) {
+          await restoreSupabaseSession();
+        }
+      } catch {
+        // Supabase env sai hoặc mạng lỗi — không văng app, dev fallback vẫn dùng được.
+      }
+
       if (!cancelled) {
         refresh();
+        setAuthLoading(false);
       }
-    });
+    };
+
+    bootstrap();
 
     const unsubscribe = subscribeToSupabaseAuth(() => {
       if (!cancelled) {
@@ -110,6 +124,8 @@ export function AuthProvider({ children }) {
   const value = useMemo(
     () => ({
       ...state,
+      authLoading,
+      getCurrentUser,
       refresh,
       signInDev: handleSignInDev,
       signInAs: handleSignInAs,
@@ -126,7 +142,7 @@ export function AuthProvider({ children }) {
       canAccessClub: (clubId, clubMeta = {}) =>
         canAccessClub(state.user, clubId, clubMeta, rbacOptions),
     }),
-    [state, refresh, handleSignInDev, handleSignInAs, handleSignInWithPassword, handleSignUpWithPassword, handleSignOut, handleEnableRbac, rbacOptions]
+    [state, authLoading, refresh, handleSignInDev, handleSignInAs, handleSignInWithPassword, handleSignUpWithPassword, handleSignOut, handleEnableRbac, rbacOptions]
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

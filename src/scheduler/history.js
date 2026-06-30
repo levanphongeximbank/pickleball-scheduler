@@ -1,8 +1,8 @@
-/*
+﻿/*
 ==========================================================
 History Engine
 Version 1.0
-Lưu và đọc lịch sử xếp sân
+L╞░u v├á ─æß╗ìc lß╗ïch sß╗¡ xß║┐p s├ón
 ==========================================================
 */
 
@@ -10,7 +10,7 @@ const STORAGE_KEY = "pickleball_history";
 
 /*
 ----------------------------------------------------------
-Đọc lịch sử
+─Éß╗ìc lß╗ïch sß╗¡
 ----------------------------------------------------------
 */
 export function loadHistory() {
@@ -28,7 +28,7 @@ export function loadHistory() {
 
 /*
 ----------------------------------------------------------
-Lưu lịch sử
+L╞░u lß╗ïch sß╗¡
 ----------------------------------------------------------
 */
 export function saveHistory(history) {
@@ -40,7 +40,7 @@ export function saveHistory(history) {
 
 /*
 ----------------------------------------------------------
-Xóa toàn bộ lịch sử
+X├│a to├án bß╗Ö lß╗ïch sß╗¡
 ----------------------------------------------------------
 */
 export function clearHistory() {
@@ -49,8 +49,8 @@ export function clearHistory() {
 
 /*
 ----------------------------------------------------------
-Tạo khóa cho 2 người chơi
-A-B và B-A sẽ giống nhau
+Tß║ío kh├│a cho 2 ng╞░ß╗¥i ch╞íi
+A-B v├á B-A sß║╜ giß╗æng nhau
 ----------------------------------------------------------
 */
 function createKey(id1, id2) {
@@ -59,7 +59,7 @@ function createKey(id1, id2) {
 
 /*
 ----------------------------------------------------------
-Tăng số lần ghép
+T─âng sß╗æ lß║ºn gh├⌐p
 ----------------------------------------------------------
 */
 function increaseCounter(object, key) {
@@ -72,7 +72,7 @@ function increaseCounter(object, key) {
 
 /*
 ----------------------------------------------------------
-Lưu lịch sử của 1 trận
+L╞░u lß╗ïch sß╗¡ cß╗ºa 1 trß║¡n
 ----------------------------------------------------------
 */
 export function addMatchHistory(history, court) {
@@ -80,19 +80,19 @@ export function addMatchHistory(history, court) {
   const A = court.teamA;
   const B = court.teamB;
 
-  // Đồng đội đội A
+  // ─Éß╗ông ─æß╗Öi ─æß╗Öi A
   increaseCounter(
     history.teammates,
     createKey(A[0].id, A[1].id)
   );
 
-  // Đồng đội đội B
+  // ─Éß╗ông ─æß╗Öi ─æß╗Öi B
   increaseCounter(
     history.teammates,
     createKey(B[0].id, B[1].id)
   );
 
-  // Đối thủ
+  // ─Éß╗æi thß╗º
   A.forEach(playerA => {
     B.forEach(playerB => {
       increaseCounter(

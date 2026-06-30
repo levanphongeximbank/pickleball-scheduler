@@ -1,4 +1,5 @@
 import { AUTH_SESSION_KEY, RBAC_STORAGE_KEY, isRbacEnabledFromEnv } from "./config.js";
+import { isSecureRuntime } from "./runtime.js";
 import { normalizeUser } from "../models/user.js";
 
 function readJson(key, fallback) {
@@ -16,13 +17,23 @@ function writeJson(key, value) {
 }
 
 export function loadRbacConfig() {
+  const fromEnv = isRbacEnabledFromEnv();
+
+  if (isSecureRuntime()) {
+    return { enabled: fromEnv };
+  }
+
   const stored = readJson(RBAC_STORAGE_KEY, {});
   return {
-    enabled: stored.enabled ?? isRbacEnabledFromEnv(),
+    enabled: stored.enabled ?? fromEnv,
   };
 }
 
 export function saveRbacConfig(config) {
+  if (isSecureRuntime()) {
+    return;
+  }
+
   writeJson(RBAC_STORAGE_KEY, {
     enabled: Boolean(config?.enabled),
     updatedAt: new Date().toISOString(),

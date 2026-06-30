@@ -1,6 +1,6 @@
-# Deploy Production — Pickleball Scheduler Pro v3.5.0
+# Deploy — Pickleball Scheduler Pro v3.5.7
 
-Hướng dẫn đưa app lên **Vercel** và bật **đồng bộ Supabase**.
+Hướng dẫn deploy **Vercel** + **Supabase**. Staging RLS: `docs/SUPABASE-STAGING-CHECKLIST.md`.
 
 ---
 
@@ -15,14 +15,38 @@ App vẫn chạy được **không có Supabase** — dữ liệu chỉ trong tr
 
 ---
 
-## Bước 1 — Supabase (5 phút)
+## Bước 1 — Supabase
 
-1. Vào [supabase.com](https://supabase.com) → **New project**.
-2. Mở **Project Settings → API**:
-   - Copy **Project URL** → `VITE_SUPABASE_URL`
-   - Copy **anon public** key → `VITE_SUPABASE_ANON_KEY`
-3. Mở **SQL Editor** → dán toàn bộ file `docs/supabase-club-v3.sql` → **Run**.
-4. (Trọng tài) Chạy thêm `docs/supabase-match-live.sql` → bật Realtime bảng `tournament_match_live` (xem `docs/REFEREE-E2E.md`).
+### Dev / local (không RLS)
+
+1. [supabase.com](https://supabase.com) → project.
+2. Copy **Project URL** → `VITE_SUPABASE_URL`, **anon key** → `VITE_SUPABASE_ANON_KEY`.
+3. SQL Editor → `docs/supabase-club-v3.sql` (đủ cho cloud sync dev).
+
+### Staging (RLS + RBAC)
+
+Chạy đủ checklist: **`docs/SUPABASE-STAGING-CHECKLIST.md`**
+
+Thứ tự SQL:
+
+1. `supabase-club-v3.sql`
+2. `supabase-rbac.sql`
+3. `supabase-club-v3-rls.sql`
+4. `supabase-match-live.sql`
+5. `supabase-match-live-rls.sql` — **bắt buộc v3.5.6+** (RPC referee, chặn anon select)
+6. `supabase-security-hardening-v357.sql` — **bắt buộc v3.5.7+** (PLAYER signup, profile guards)
+
+Referee staging: app gọi RPC; chạy lại file RLS nếu đã deploy v3.5.5 cũ.
+
+Preview/Production build: `RbacDevPanel` ẩn; dev login/RBAC toggle bị khóa; Director dùng JWT session.
+
+Test: `docs/RLS-TEST-PLAN.md`. Rollback khẩn: `docs/supabase-rls-rollback.sql`.
+
+Env staging: `VITE_RBAC_ENABLED=true`, `VITE_PAYMENT_MODE=dev`.
+
+### Trọng tài / Realtime
+
+Sau `supabase-match-live.sql` → bật Replication bảng `tournament_match_live` (`docs/REFEREE-E2E.md`).
 
 ---
 
@@ -51,10 +75,10 @@ Vercel Dashboard → Project → **Settings → Environment Variables**:
 | `VITE_SUPABASE_URL` | URL Supabase | Production |
 | `VITE_SUPABASE_ANON_KEY` | Anon key | Production |
 | `VITE_SEED_DEMO` | `false` | Production |
-| `VITE_RBAC_ENABLED` | `false` (hoặc `true` nếu bật phân quyền) | Production |
+| `VITE_RBAC_ENABLED` | `false` (dev) / `true` (staging sau RLS) | Production |
 | `VITE_PAYMENT_MODE` | `dev` hoặc `stripe` | Production |
 
-Sau khi bật RBAC, chạy thêm SQL: `docs/supabase-rbac.sql`, `docs/supabase-club-v3-rls.sql` (xem `docs/supabase-auth-setup.md`, `docs/RBAC-MATRIX.md`).
+Sau khi bật RBAC staging, chạy SQL theo `docs/SUPABASE-STAGING-CHECKLIST.md` (không chỉ `supabase-rbac.sql` đơn lẻ).
 
 Đăng nhập production: `/login` hoặc **Cài đặt → Đăng nhập & Phân quyền**.
 
@@ -110,8 +134,19 @@ npm run deploy:preview   # Deploy bản preview (không phải production)
 
 ---
 
+## Deploy preview (staging)
+
+```powershell
+npm run deploy:preview
+```
+
+Gắn env **staging** Supabase + `VITE_RBAC_ENABLED=true` cho môi trường Preview trên Vercel. **Không** dùng production URL cho đến khi `RLS-TEST-PLAN.md` pass.
+
+---
+
 ## Lưu ý bảo mật
 
 - **Không** commit file `.env` / `.env.production.local` (đã nằm trong `.gitignore`).
-- Anon key Supabase nằm trong app client — phù hợp CLB nhỏ; SQL đã bật RLS cơ bản.
-- Nếu cần bảo mật cao hơn: thêm Supabase Auth và policy theo user.
+- Anon key nằm trong client — RLS staging bảo vệ `profiles`, `club_data_v3`, `payment_events`, `tournament_match_live`.
+- Referee: anon không `select *` trực tiếp — chỉ RPC token-scoped (`referee_get_match_by_token`, `referee_update_match_score`).
+- Dev local không chạy RLS SQL vẫn dùng `supabase-match-live.sql` (anon-open) + fallback app.

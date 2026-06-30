@@ -559,3 +559,158 @@ test("staff — list venue staff", () => {
   assert.equal(staff.length, 1);
   assert.equal(staff[0].email, "cashier@test.local");
 });
+
+const SCOPE = { clubId: "club-1", venueId: "venue-a", playerId: "p-1" };
+
+function makeRouteChecker(roleUser) {
+  return (path) =>
+    canAccessRoute(
+      (perm, scope) => can(roleUser, perm, scope, RBAC_ON),
+      path,
+      SCOPE
+    );
+}
+
+function makeMenuAuth(roleUser) {
+  return {
+    can: (perm, scope) => can(roleUser, perm, scope, RBAC_ON),
+    rbacEnabled: true,
+    isAuthenticated: true,
+    user: roleUser,
+  };
+}
+
+test("permission matrix — mỗi role có ít nhất một permission", () => {
+  const roles = [
+    ROLES.SUPER_ADMIN,
+    ROLES.VENUE_OWNER,
+    ROLES.VENUE_MANAGER,
+    ROLES.CASHIER,
+    ROLES.ACCOUNTANT,
+    ROLES.CLUB_OWNER,
+    ROLES.PLAYER,
+  ];
+
+  for (const role of roles) {
+    const perms = getPermissionsForRole(role);
+    assert.ok(perms.length > 0, `${role} phải có permissions`);
+  }
+});
+
+test("route access — SUPER_ADMIN vào mọi route chính", () => {
+  const admin = user(ROLES.SUPER_ADMIN);
+  const check = makeRouteChecker(admin);
+
+  assert.equal(check("/"), true);
+  assert.equal(check("/players"), true);
+  assert.equal(check("/court-management"), true);
+  assert.equal(check("/select-players"), true);
+  assert.equal(check("/club"), true);
+  assert.equal(check("/settings"), true);
+});
+
+test("route access — VENUE_OWNER venue-a", () => {
+  const owner = user(ROLES.VENUE_OWNER, { venueId: "venue-a", clubId: "club-1" });
+  const check = makeRouteChecker(owner);
+
+  assert.equal(check("/"), true);
+  assert.equal(check("/players"), true);
+  assert.equal(check("/court-management"), true);
+  assert.equal(check("/select-players"), true);
+  assert.equal(check("/settings"), true);
+});
+
+test("route access — VENUE_MANAGER venue-a", () => {
+  const manager = user(ROLES.VENUE_MANAGER, { venueId: "venue-a", clubId: "club-1" });
+  const check = makeRouteChecker(manager);
+
+  assert.equal(check("/"), true);
+  assert.equal(check("/players"), true);
+  assert.equal(check("/court-management"), true);
+  assert.equal(check("/select-players"), true);
+});
+
+test("route access — CASHIER chỉ court-management/bookings", () => {
+  const cashier = user(ROLES.CASHIER, { venueId: "venue-a" });
+  const check = makeRouteChecker(cashier);
+
+  assert.equal(check("/court-management/bookings"), true);
+  assert.equal(check("/players"), false);
+  assert.equal(check("/select-players"), false);
+  assert.equal(check("/club"), false);
+});
+
+test("route access — CLUB_OWNER club-1", () => {
+  const clubOwner = user(ROLES.CLUB_OWNER, {
+    venueId: "venue-a",
+    clubId: "club-1",
+  });
+  const check = makeRouteChecker(clubOwner);
+
+  assert.equal(check("/club"), true);
+  assert.equal(check("/tournament"), true);
+  assert.equal(check("/select-players"), true);
+  assert.equal(check("/court-management/revenue"), false);
+});
+
+test("route access — ACCOUNTANT revenue, không players", () => {
+  const accountant = user(ROLES.ACCOUNTANT, { venueId: "venue-a" });
+  const check = makeRouteChecker(accountant);
+
+  assert.equal(check("/court-management/revenue"), true);
+  assert.equal(check("/players"), false);
+  assert.equal(check("/select-players"), false);
+});
+
+test("menuAccess — VENUE_OWNER thấy Người chơi, Xếp sân", () => {
+  const owner = user(ROLES.VENUE_OWNER, { venueId: "venue-a", clubId: "club-1" });
+  const visible = filterMenuGroups(SIDEBAR_MENU_GROUPS, makeMenuAuth(owner), SCOPE);
+  const labels = visible.flatMap((g) => g.items.map((i) => i.text));
+
+  assert.ok(labels.includes("Người chơi"));
+  assert.ok(labels.includes("Xếp sân"));
+  assert.ok(labels.includes("Cài đặt"));
+});
+
+test("menuAccess — VENUE_MANAGER thấy Xếp sân, không Cài đặt manage-only", () => {
+  const manager = user(ROLES.VENUE_MANAGER, { venueId: "venue-a", clubId: "club-1" });
+  const visible = filterMenuGroups(SIDEBAR_MENU_GROUPS, makeMenuAuth(manager), SCOPE);
+  const labels = visible.flatMap((g) => g.items.map((i) => i.text));
+
+  assert.ok(labels.includes("Xếp sân"));
+  assert.ok(labels.includes("Người chơi"));
+});
+
+test("menuAccess — CASHIER chỉ Live Courts / bookings area", () => {
+  const cashier = user(ROLES.CASHIER, { venueId: "venue-a" });
+  const visible = filterMenuGroups(SIDEBAR_MENU_GROUPS, makeMenuAuth(cashier), SCOPE);
+  const labels = visible.flatMap((g) => g.items.map((i) => i.text));
+
+  assert.ok(labels.includes("Live Courts"));
+  assert.equal(labels.includes("Người chơi"), false);
+  assert.equal(labels.includes("Xếp sân"), false);
+});
+
+test("menuAccess — CLUB_OWNER thấy CLB & Giải, không Live Courts", () => {
+  const clubOwner = user(ROLES.CLUB_OWNER, {
+    venueId: "venue-a",
+    clubId: "club-1",
+  });
+  const visible = filterMenuGroups(SIDEBAR_MENU_GROUPS, makeMenuAuth(clubOwner), SCOPE);
+  const labels = visible.flatMap((g) => g.items.map((i) => i.text));
+
+  assert.ok(labels.includes("CLB & Giải"));
+  assert.ok(labels.includes("Danh sách giải"));
+  assert.equal(labels.includes("Live Courts"), false);
+});
+
+test("menuAccess — RBAC bật, chưa đăng nhập chỉ Cài đặt", () => {
+  const visible = filterMenuGroups(
+    SIDEBAR_MENU_GROUPS,
+    { can: () => false, rbacEnabled: true, isAuthenticated: false, user: null },
+    SCOPE
+  );
+  const labels = visible.flatMap((g) => g.items.map((i) => i.text));
+
+  assert.deepEqual(labels, ["Cài đặt"]);
+});

@@ -1,5 +1,5 @@
--- Supabase schema: RBAC + multi-tenant venue (Pickleball Scheduler Pro)
--- Chạy SAU khi đã bật Supabase Auth. Không ảnh hưởng app local-first khi chưa migrate.
+-- Supabase schema: RBAC + multi-tenant venue (Pickleball Scheduler Pro v3.5.7)
+-- Chạy SAU docs/supabase-club-v3.sql. Xem docs/SUPABASE-STAGING-CHECKLIST.md.
 
 -- ─── Venues (tenant) ───────────────────────────────────────────────
 create table if not exists public.venues (
@@ -90,20 +90,55 @@ as $$
   limit 1;
 $$;
 
--- ─── RLS mẫu cho club_data_v3 (thay policy anon mở) ────────────────
--- alter table public.club_data_v3 enable row level security;
---
--- drop policy if exists "club_data_v3_member_select" on public.club_data_v3;
--- create policy "club_data_v3_member_select"
---   on public.club_data_v3 for select to authenticated
---   using (
---     public.is_super_admin()
---     or venue_id = public.user_venue_id()
---     or club_id in (
---       select club_id from public.profiles
---       where id = auth.uid() and status = 'active'
---     )
---   );
+create or replace function public.user_club_id()
+returns text
+language sql
+stable
+security definer
+set search_path = public
+as $$
+  select p.club_id from public.profiles p
+  where p.id = auth.uid() and p.status = 'active'
+  limit 1;
+$$;
+
+create or replace function public.user_role()
+returns text
+language sql
+stable
+security definer
+set search_path = public
+as $$
+  select p.role from public.profiles p
+  where p.id = auth.uid() and p.status = 'active'
+  limit 1;
+$$;
+
+create or replace function public.is_venue_staff()
+returns boolean
+language sql
+stable
+security definer
+set search_path = public
+as $$
+  select exists (
+    select 1 from public.profiles p
+    where p.id = auth.uid()
+      and p.status = 'active'
+      and p.role in ('VENUE_OWNER', 'VENUE_MANAGER', 'CASHIER', 'ACCOUNTANT')
+  );
+$$;
+
+create or replace function public.can_read_payment_events()
+returns boolean
+language sql
+stable
+security definer
+set search_path = public
+as $$
+  select public.is_super_admin()
+    or public.user_role() in ('VENUE_OWNER', 'ACCOUNTANT', 'CASHIER');
+$$;
 
 -- ─── RLS venues ────────────────────────────────────────────────────
 alter table public.venues enable row level security;
@@ -121,10 +156,60 @@ create policy "venues_owner_select"
   on public.venues for select to authenticated
   using (id = public.user_venue_id() or owner_id = auth.uid());
 
+drop policy if exists "subscriptions_venue_select" on public.subscriptions;
+create policy "subscriptions_venue_select"
+  on public.subscriptions for select to authenticated
+  using (venue_id = public.user_venue_id() or public.is_super_admin());
+
 drop policy if exists "profiles_self_select" on public.profiles;
 create policy "profiles_self_select"
   on public.profiles for select to authenticated
   using (id = auth.uid() or public.is_super_admin());
+
+drop policy if exists "profiles_venue_staff_select" on public.profiles;
+create policy "profiles_venue_staff_select"
+  on public.profiles for select to authenticated
+  using (
+    public.is_venue_staff()
+    and venue_id = public.user_venue_id()
+  );
+
+drop policy if exists "profiles_self_update" on public.profiles;
+create policy "profiles_self_update"
+  on public.profiles for update to authenticated
+  using (id = auth.uid())
+  with check (id = auth.uid());
+
+-- Trigger: user tự sửa chỉ display_name / player_id; role chỉ SUPER_ADMIN
+create or replace function public.profiles_guard_privileged_update()
+returns trigger
+language plpgsql
+security definer
+set search_path = public
+as $$
+begin
+  if new.role is distinct from old.role then
+    if not public.is_super_admin() then
+      raise exception 'Only SUPER_ADMIN can change profile role';
+    end if;
+  end if;
+
+  if auth.uid() = old.id and not public.is_super_admin() then
+    if new.venue_id is distinct from old.venue_id
+       or new.club_id is distinct from old.club_id
+       or new.status is distinct from old.status then
+      raise exception 'Cannot modify protected profile fields';
+    end if;
+  end if;
+
+  return new;
+end;
+$$;
+
+drop trigger if exists profiles_guard_privileged_update_trg on public.profiles;
+create trigger profiles_guard_privileged_update_trg
+  before update on public.profiles
+  for each row execute function public.profiles_guard_privileged_update();
 
 -- ─── Trigger: tự tạo profile khi user đăng ký ─────────────────────
 create or replace function public.handle_new_user()
@@ -142,7 +227,7 @@ begin
       new.raw_user_meta_data->>'display_name',
       split_part(coalesce(new.email, 'user'), '@', 1)
     ),
-    coalesce(new.raw_user_meta_data->>'role', 'PLAYER'),
+    'PLAYER',
     'active'
   )
   on conflict (id) do nothing;
@@ -200,4 +285,7 @@ create policy "payment_events_super_admin"
 drop policy if exists "payment_events_venue_select" on public.payment_events;
 create policy "payment_events_venue_select"
   on public.payment_events for select to authenticated
-  using (venue_id = public.user_venue_id() or public.is_super_admin());
+  using (
+    public.can_read_payment_events()
+    and (venue_id = public.user_venue_id() or public.is_super_admin())
+  );

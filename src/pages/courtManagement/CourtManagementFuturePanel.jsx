@@ -1,4 +1,4 @@
-import { Card, CardContent, Stack, Typography } from "@mui/material";
+﻿import { Card, CardContent, Stack, Typography } from "@mui/material";
 
 export default function CourtManagementFuturePanel({ title, description }) {
   return (
@@ -10,7 +10,7 @@ export default function CourtManagementFuturePanel({ title, description }) {
             {description}
           </Typography>
           <Typography variant="caption" color="text.secondary">
-            Module đang chuẩn bị — sẽ tích hợp sau khi nền booking ổn định.
+            Module ─æang chuß║⌐n bß╗ï ΓÇö sß║╜ t├¡ch hß╗úp sau khi nß╗ün booking ß╗òn ─æß╗ïnh.
           </Typography>
         </Stack>
       </CardContent>

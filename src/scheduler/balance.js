@@ -1,4 +1,4 @@
-/*
+﻿/*
 ==========================================================
 Balance Engine
 Version 2.0
@@ -8,28 +8,28 @@ Greedy Balance Algorithm
 
 export function balanceCourts(players) {
 
-  // Sắp xếp Level giảm dần
+  // Sß║»p xß║┐p Level giß║úm dß║ºn
   const sortedPlayers = [...players].sort(
     (a, b) => b.level - a.level
   );
 
-  // Tính số sân
+  // T├¡nh sß╗æ s├ón
   const courtCount = Math.floor(
     sortedPlayers.length / 4
   );
 
-  // Người chờ
+  // Ng╞░ß╗¥i chß╗¥
   const waitingPlayers = sortedPlayers.slice(
     courtCount * 4
   );
 
-  // Người được xếp sân
+  // Ng╞░ß╗¥i ─æ╞░ß╗úc xß║┐p s├ón
   const playingPlayers = sortedPlayers.slice(
     0,
     courtCount * 4
   );
 
-  // Khởi tạo sân
+  // Khß╗ƒi tß║ío s├ón
   const courts = [];
 
   for (let i = 0; i < courtCount; i++) {
@@ -50,19 +50,19 @@ export function balanceCourts(players) {
   ===================================================
   Greedy Balance
 
-  Luôn đưa người tiếp theo
-  vào sân có tổng Level thấp nhất
+  Lu├┤n ─æ╞░a ng╞░ß╗¥i tiß║┐p theo
+  v├áo s├ón c├│ tß╗òng Level thß║Ñp nhß║Ñt
   ===================================================
   */
 
   playingPlayers.forEach((player) => {
 
-    // Tìm sân yếu nhất
+    // T├¼m s├ón yß║┐u nhß║Ñt
     let targetCourt = courts[0];
 
     courts.forEach((court) => {
 
-      // Chỉ chọn sân chưa đủ 4 người
+      // Chß╗ë chß╗ìn s├ón ch╞░a ─æß╗º 4 ng╞░ß╗¥i
       if (
         court.players.length < 4 &&
         court.totalLevel < targetCourt.totalLevel
@@ -80,7 +80,7 @@ export function balanceCourts(players) {
 
   });
 
-  // Sắp xếp lại theo số sân
+  // Sß║»p xß║┐p lß║íi theo sß╗æ s├ón
   courts.sort((a, b) => a.court - b.court);
 
   return {

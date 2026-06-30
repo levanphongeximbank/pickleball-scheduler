@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+﻿import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Link as RouterLink, useNavigate, useParams, useSearchParams } from "react-router-dom";
 
 import {
@@ -241,7 +241,7 @@ export default function TournamentDirectorMode() {
         })
       ) {
         await markMatchLiveProcessed(row.id);
-        setMessage(`Trọng tài ${row.refereeName} đã chốt: ${row.scoreA}-${row.scoreB}.`);
+        setMessage(`Trß╗ìng t├ái ${row.refereeName} ─æ├ú chß╗æt: ${row.scoreA}-${row.scoreB}.`);
       }
       return;
     }
@@ -271,7 +271,7 @@ export default function TournamentDirectorMode() {
 
     if (persistEvent(eventWithAudit, { processMatchId: row.matchId })) {
       await markMatchLiveProcessed(row.id);
-      setMessage(`Trọng tài ${row.refereeName} đã chốt: ${row.scoreA}-${row.scoreB}.`);
+      setMessage(`Trß╗ìng t├ái ${row.refereeName} ─æ├ú chß╗æt: ${row.scoreA}-${row.scoreB}.`);
     }
   }, [activeClubId]);
 
@@ -302,13 +302,13 @@ export default function TournamentDirectorMode() {
     const currentTournament = tournamentRef.current;
     const currentEvent = activeEventRef.current;
     if (!currentTournament) {
-      return { ok: false, error: "Không tìm thấy giải." };
+      return { ok: false, error: "Kh├┤ng t├¼m thß║Ñy giß║úi." };
     }
 
     if (!hasSupabaseConfig()) {
       return {
         ok: false,
-        error: "Cần cấu hình Supabase (VITE_SUPABASE_URL) để dùng chế độ trọng tài.",
+        error: "Cß║ºn cß║Ñu h├¼nh Supabase (VITE_SUPABASE_URL) ─æß╗â d├╣ng chß║┐ ─æß╗Ö trß╗ìng t├ái.",
       };
     }
 
@@ -320,7 +320,7 @@ export default function TournamentDirectorMode() {
     });
 
     if (!patch) {
-      return { ok: false, error: "Không cập nhật được trận." };
+      return { ok: false, error: "Kh├┤ng cß║¡p nhß║¡t ─æ╞░ß╗úc trß║¡n." };
     }
 
     let persisted;
@@ -334,7 +334,7 @@ export default function TournamentDirectorMode() {
     }
 
     if (!persisted) {
-      return { ok: false, error: "Không lưu được thông tin trọng tài." };
+      return { ok: false, error: "Kh├┤ng l╞░u ─æ╞░ß╗úc th├┤ng tin trß╗ìng t├ái." };
     }
 
     const labels = resolveMatchLabels(assignedMatch, {
@@ -355,7 +355,7 @@ export default function TournamentDirectorMode() {
 
     const syncResult = await upsertMatchLive(liveRecord);
     if (!syncResult.ok) {
-      return { ok: false, error: syncResult.error || "Không đồng bộ được lên cloud." };
+      return { ok: false, error: syncResult.error || "Kh├┤ng ─æß╗ông bß╗Ö ─æ╞░ß╗úc l├¬n cloud." };
     }
 
     return { ok: true };
@@ -378,7 +378,7 @@ export default function TournamentDirectorMode() {
 
     const result = await handleRefereeAssign(assigned);
     if (result?.ok) {
-      setMessage(`Đã gán trọng tài ${rosterEntry.name} cho trận trên sân.`);
+      setMessage(`─É├ú g├ín trß╗ìng t├ái ${rosterEntry.name} cho trß║¡n tr├¬n s├ón.`);
     }
   };
 
@@ -388,7 +388,7 @@ export default function TournamentDirectorMode() {
     });
 
     if (persistTournament(patch)) {
-      setMessage(rosterId ? "Đã gán trọng tài cố định cho sân." : "Đã bỏ trọng tài cố định khỏi sân.");
+      setMessage(rosterId ? "─É├ú g├ín trß╗ìng t├ái cß╗æ ─æß╗ïnh cho s├ón." : "─É├ú bß╗Å trß╗ìng t├ái cß╗æ ─æß╗ïnh khß╗Åi s├ón.");
     }
   };
 
@@ -452,7 +452,7 @@ export default function TournamentDirectorMode() {
       }
 
       if (persistTournament(buildDailyPlayTournamentPatch(result.settings))) {
-        setMessage("Đã xếp trận vào sân trống.");
+        setMessage("─É├ú xß║┐p trß║¡n v├áo s├ón trß╗æng.");
         const assignedMatch = result.settings.matches.find(
           (item) => String(item.id) === String(result.matchId)
         );
@@ -474,7 +474,7 @@ export default function TournamentDirectorMode() {
     }
 
     if (persistEvent({ ...activeEvent, matches: result.matches })) {
-      setMessage("Đã xếp trận và bắt đầu trận đấu.");
+      setMessage("─É├ú xß║┐p trß║¡n v├á bß║»t ─æß║ºu trß║¡n ─æß║Ñu.");
       const assignedMatch = result.matches.find(
         (item) => String(item.id) === String(match.id)
       );
@@ -520,7 +520,7 @@ export default function TournamentDirectorMode() {
     const liveRow = liveByMatchId[String(match.id)];
 
     if (!liveRow) {
-      setError("Trận này chưa có điểm live từ trọng tài.");
+      setError("Trß║¡n n├áy ch╞░a c├│ ─æiß╗âm live tß╗½ trß╗ìng t├ái.");
       return;
     }
 
@@ -545,7 +545,7 @@ export default function TournamentDirectorMode() {
     });
 
     if (!logPatch) {
-      setError("Không ghi được lịch sử tranh chấp.");
+      setError("Kh├┤ng ghi ─æ╞░ß╗úc lß╗ïch sß╗¡ tranh chß║Ñp.");
       return;
     }
 
@@ -557,7 +557,7 @@ export default function TournamentDirectorMode() {
         );
 
     if (persisted) {
-      setMessage("Đã reset điểm live — trọng tài có thể nhập lại.");
+      setMessage("─É├ú reset ─æiß╗âm live ΓÇö trß╗ìng t├ái c├│ thß╗â nhß║¡p lß║íi.");
     }
   };
 
@@ -614,8 +614,8 @@ export default function TournamentDirectorMode() {
         setScoreDialog(null);
         setMessage(
           logEntry.action === "admin_override" || logEntry.source === "director_override"
-            ? "BTC đã ghi đè kết quả trọng tài."
-            : "Đã lưu kết quả Daily Play."
+            ? "BTC ─æ├ú ghi ─æ├¿ kß║┐t quß║ú trß╗ìng t├ái."
+            : "─É├ú l╞░u kß║┐t quß║ú Daily Play."
         );
       }
       return;
@@ -646,12 +646,12 @@ export default function TournamentDirectorMode() {
       setScoreDialog(null);
       setMessage(
         logEntry.action === "admin_override" || logEntry.source === "director_override"
-          ? "BTC đã ghi đè kết quả trọng tài."
+          ? "BTC ─æ├ú ghi ─æ├¿ kß║┐t quß║ú trß╗ìng t├ái."
           : scoreDialog.isKnockout
-            ? "Đã lưu kết quả knock-out và cập nhật bracket."
+            ? "─É├ú l╞░u kß║┐t quß║ú knock-out v├á cß║¡p nhß║¡t bracket."
             : result.bracketAutoGenerated
-              ? `Đã lưu kết quả vòng bảng. Tự động tạo bracket (${result.bracketKnockoutMatchCount} trận).`
-              : "Đã lưu kết quả vòng bảng."
+              ? `─É├ú l╞░u kß║┐t quß║ú v├▓ng bß║úng. Tß╗▒ ─æß╗Öng tß║ío bracket (${result.bracketKnockoutMatchCount} trß║¡n).`
+              : "─É├ú l╞░u kß║┐t quß║ú v├▓ng bß║úng."
       );
     }
   };
@@ -666,10 +666,10 @@ export default function TournamentDirectorMode() {
     return (
       <Box>
         <Alert severity="error" sx={{ mb: 2 }}>
-          Bạn không có quyền Director Mode cho giải này.
+          Bß║ín kh├┤ng c├│ quyß╗ün Director Mode cho giß║úi n├áy.
         </Alert>
         <Button component={RouterLink} to="/tournament">
-          Quay lại danh sách giải
+          Quay lß║íi danh s├ích giß║úi
         </Button>
       </Box>
     );
@@ -678,9 +678,9 @@ export default function TournamentDirectorMode() {
   if (rbacEnabled && isAuthenticated && !canUseDirector) {
     return (
       <Box>
-        <Alert severity="error">Không có quyền Director Mode.</Alert>
+        <Alert severity="error">Kh├┤ng c├│ quyß╗ün Director Mode.</Alert>
         <Button component={RouterLink} to="/tournament" sx={{ mt: 2 }}>
-          Quay lại danh sách giải
+          Quay lß║íi danh s├ích giß║úi
         </Button>
       </Box>
     );
@@ -708,16 +708,16 @@ export default function TournamentDirectorMode() {
       </Button>
 
       <Typography variant="h5" fontWeight="bold">
-        Director — {tournament.name}
+        Director ΓÇö {tournament.name}
       </Typography>
       <Typography color="text.secondary" sx={{ mb: 2 }}>
-        Điều hành sân, trận chờ/đang đánh/xong, BXH nhanh, bracket mini và trọng tài live
+        ─Éiß╗üu h├ánh s├ón, trß║¡n chß╗¥/─æang ─æ├ính/xong, BXH nhanh, bracket mini v├á trß╗ìng t├ái live
       </Typography>
 
       {!hasSupabaseConfig() && (
         <Alert severity="warning" sx={{ mb: 2 }}>
-          Chế độ trọng tài cần Supabase Realtime. Cấu hình VITE_SUPABASE_URL trong Settings / .env và
-          chạy script docs/supabase-match-live.sql.
+          Chß║┐ ─æß╗Ö trß╗ìng t├ái cß║ºn Supabase Realtime. Cß║Ñu h├¼nh VITE_SUPABASE_URL trong Settings / .env v├á
+          chß║íy script docs/supabase-match-live.sql.
         </Alert>
       )}
       {liveError && hasSupabaseConfig() && (
@@ -792,8 +792,8 @@ export default function TournamentDirectorMode() {
                           </Typography>
                           <Typography variant="caption" color="text.secondary">
                             {court.status}
-                            {court.currentMatchId ? ` • ${court.currentMatchId}` : ""}
-                            {courtRefereeName ? ` • TT: ${courtRefereeName}` : ""}
+                            {court.currentMatchId ? ` ΓÇó ${court.currentMatchId}` : ""}
+                            {courtRefereeName ? ` ΓÇó TT: ${courtRefereeName}` : ""}
                           </Typography>
                         </Box>
                         <Button
@@ -802,21 +802,21 @@ export default function TournamentDirectorMode() {
                           onClick={() => handleToggleCourt(court.id, locked)}
                           disabled={Boolean(court.currentMatchId) && !locked}
                         >
-                          {locked ? "Mở sân" : "Khóa sân"}
+                          {locked ? "Mß╗ƒ s├ón" : "Kh├│a s├ón"}
                         </Button>
                       </Stack>
                       {refereeSettings.roster.length > 0 && (
                         <FormControl fullWidth size="small">
-                          <InputLabel>Trọng tài sân</InputLabel>
+                          <InputLabel>Trß╗ìng t├ái s├ón</InputLabel>
                           <Select
-                            label="Trọng tài sân"
+                            label="Trß╗ìng t├ái s├ón"
                             value={courtRefereeId}
                             onChange={(event) =>
                               handleCourtRefereeChange(court.id, event.target.value)
                             }
                           >
                             <MenuItem value="">
-                              <em>Không gán cố định</em>
+                              <em>Kh├┤ng g├ín cß╗æ ─æß╗ïnh</em>
                             </MenuItem>
                             {refereeSettings.roster.map((entry) => (
                               <MenuItem key={entry.id} value={entry.id}>
@@ -843,7 +843,7 @@ export default function TournamentDirectorMode() {
                 emptyText="Khong co tran cho."
                 getCardProps={(match) =>
                   buildRefereeCardProps(match, {
-                    actionLabel: "Xếp sân",
+                    actionLabel: "Xß║┐p s├ón",
                     onAction: handleAssignCourt,
                   })
                 }
@@ -857,15 +857,15 @@ export default function TournamentDirectorMode() {
                 chipColor="success"
                 getCardProps={(match) =>
                   buildRefereeCardProps(match, {
-                    actionLabel: "Nhập điểm",
+                    actionLabel: "Nhß║¡p ─æiß╗âm",
                     onAction: handleOpenScore,
                     secondaryActionLabel: hasSupabaseConfig()
                       ? match.referee?.token
-                        ? "Link trọng tài"
-                        : "Gán trọng tài"
+                        ? "Link trß╗ìng t├ái"
+                        : "G├ín trß╗ìng t├ái"
                       : undefined,
                     onSecondaryAction: hasSupabaseConfig() ? handleOpenRefereeDialog : undefined,
-                    tertiaryActionLabel: "Lịch sử trận",
+                    tertiaryActionLabel: "Lß╗ïch sß╗¡ trß║¡n",
                     onTertiaryAction: handleOpenAuditHistory,
                   })
                 }
@@ -878,7 +878,7 @@ export default function TournamentDirectorMode() {
                 emptyText="Chua co tran hoan tat."
                 getCardProps={(match) =>
                   buildRefereeCardProps(match, {
-                    tertiaryActionLabel: "Lịch sử trận",
+                    tertiaryActionLabel: "Lß╗ïch sß╗¡ trß║¡n",
                     onTertiaryAction: handleOpenAuditHistory,
                   })
                 }
@@ -938,7 +938,7 @@ export default function TournamentDirectorMode() {
       />
 
       <Dialog open={Boolean(scoreDialog)} onClose={() => setScoreDialog(null)} fullWidth>
-        <DialogTitle>Nhập điểm</DialogTitle>
+        <DialogTitle>Nhß║¡p ─æiß╗âm</DialogTitle>
         <DialogContent>
           <Typography sx={{ mb: 2 }}>
             {(scoreDialog?.entryALabel || scoreDialog?.teamALabel)} vs{" "}
@@ -952,21 +952,21 @@ export default function TournamentDirectorMode() {
               liveByMatchId[String(scoreDialog.id)]
             ) === "director_override" && (
               <Alert severity="warning" sx={{ mb: 2 }}>
-                Trận có trọng tài ({scoreDialog.referee.name}). Lưu điểm ở đây sẽ được ghi là{" "}
-                <strong>BTC ghi đè</strong>.
+                Trß║¡n c├│ trß╗ìng t├ái ({scoreDialog.referee.name}). L╞░u ─æiß╗âm ß╗ƒ ─æ├óy sß║╜ ─æ╞░ß╗úc ghi l├á{" "}
+                <strong>BTC ghi ─æ├¿</strong>.
               </Alert>
             )}
 
           <Stack direction="row" spacing={2}>
             <TextField
-              label="Điểm A"
+              label="─Éiß╗âm A"
               type="number"
               value={scoreA}
               onChange={(event) => setScoreA(event.target.value)}
               fullWidth
             />
             <TextField
-              label="Điểm B"
+              label="─Éiß╗âm B"
               type="number"
               value={scoreB}
               onChange={(event) => setScoreB(event.target.value)}
@@ -975,19 +975,19 @@ export default function TournamentDirectorMode() {
           </Stack>
 
           <TextField
-            label="Ghi chú BTC (tuỳ chọn)"
+            label="Ghi ch├║ BTC (tuß╗│ chß╗ìn)"
             value={scoreNote}
             onChange={(event) => setScoreNote(event.target.value)}
             fullWidth
             size="small"
             sx={{ mt: 2 }}
-            placeholder="VD: Tranh chấp lưới, xác nhận lại điểm"
+            placeholder="VD: Tranh chß║Ñp l╞░ß╗¢i, x├íc nhß║¡n lß║íi ─æiß╗âm"
           />
 
           <ScoreLogHistory
             match={scoreDialog}
             liveRow={scoreDialog ? liveByMatchId[String(scoreDialog.id)] : null}
-            title="Lịch sử thay đổi điểm"
+            title="Lß╗ïch sß╗¡ thay ─æß╗òi ─æiß╗âm"
           />
         </DialogContent>
         <DialogActions sx={{ flexWrap: "wrap", gap: 1 }}>
@@ -997,9 +997,9 @@ export default function TournamentDirectorMode() {
             </Button>
           )}
           <Box sx={{ flex: 1 }} />
-          <Button onClick={() => setScoreDialog(null)}>Bỏ qua</Button>
+          <Button onClick={() => setScoreDialog(null)}>Bß╗Å qua</Button>
           <Button variant="contained" onClick={handleSubmitScore}>
-            Lưu điểm
+            L╞░u ─æiß╗âm
           </Button>
         </DialogActions>
       </Dialog>

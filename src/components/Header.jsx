@@ -109,7 +109,7 @@ function CommandChip({ label, color = "default", pulse = false, hideOnMobile = f
 export default function Header() {
 
   const { activeClubId, summary } = useClub();
-  const { rbacEnabled, isAuthenticated, user, signOut } = useAuth();
+  const { authProductionEnabled, rbacEnabled, isAuthenticated, user, signOut } = useAuth();
 
   const { activeSeason, activeLeague } = useSeasonLeague();
 
@@ -331,13 +331,13 @@ export default function Header() {
 
           />
 
-          {rbacEnabled && isAuthenticated && user && (
+          {(authProductionEnabled || rbacEnabled) && isAuthenticated && user && (
 
             <Chip
 
               size="small"
 
-              label={ROLE_LABELS[user.role] || user.role}
+              label={user.displayName || ROLE_LABELS[user.role] || user.role}
 
               sx={{
 
@@ -351,13 +351,15 @@ export default function Header() {
 
                 color: "#fff",
 
+                maxWidth: { xs: 100, sm: 160 },
+
               }}
 
             />
 
           )}
 
-          {rbacEnabled && isAuthenticated && (
+          {(authProductionEnabled || rbacEnabled) && isAuthenticated && (
 
             <Button
 

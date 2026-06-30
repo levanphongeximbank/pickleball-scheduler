@@ -17,6 +17,12 @@ export const SIDEBAR_MENU_GROUPS = [
         permissions: [PERMISSIONS.STATISTICS_VIEW, PERMISSIONS.PLAYER_SCHEDULE_VIEW],
       },
       {
+        key: "scheduling",
+        text: "Xếp sân",
+        path: "/select-players",
+        permissions: [PERMISSIONS.SCHEDULING_VIEW],
+      },
+      {
         key: "live-courts",
         text: "Live Courts",
         path: "/court-management",

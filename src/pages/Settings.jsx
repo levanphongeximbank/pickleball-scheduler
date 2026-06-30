@@ -269,7 +269,7 @@ export default function Settings() {
           <Alert severity={statusMessage.type}>{statusMessage.text}</Alert>
         )}
 
-        <RbacDevPanel />
+        {!isProductionBuild && <RbacDevPanel />}
 
         <VenueOnboardingPanel />
 

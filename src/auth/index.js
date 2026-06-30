@@ -16,6 +16,8 @@ export {
   isRbacEnabled,
   enableRbac,
   isSupabaseAuthAvailable,
+  isAuthProductionEnabled,
+  isDevAuthAllowed,
   getCurrentUser,
   getAuthState,
   signInDev,
@@ -27,8 +29,23 @@ export {
   subscribeToSupabaseAuth,
   listDevUsers,
 } from "./authService.js";
+export { formatAuthError } from "./authErrors.js";
+export {
+  isAuthRequired,
+  isPublicAuthPath,
+  shouldRedirectToLogin,
+} from "./authGuard.js";
 export { hasSupabaseConfig, getSupabaseAuthClient } from "./supabaseClient.js";
-export { mapProfileRowToUser, fetchProfileByUserId } from "./profileService.js";
+export {
+  mapProfileRowToUser,
+  mapUserToProfileRow,
+  mapUserToSelfProfilePatch,
+  mapAuthUserFallback,
+  fetchProfileByUserId,
+  resolveAuthUserFromProfile,
+  PROFILE_FIELD_MAP,
+  SELF_EDITABLE_PROFILE_FIELDS,
+} from "./profileService.js";
 export {
   guardPermission,
   guardClubAccess,

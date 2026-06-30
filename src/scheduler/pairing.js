@@ -1,4 +1,4 @@
-/*
+﻿/*
 ==========================================================
 Pairing Engine
 Version 2.0
@@ -15,14 +15,14 @@ function pairKey(id1, id2) {
 function getHistoryPenalty(history, teamA, teamB) {
   let penalty = 0;
 
-  // Đồng đội
+  // ─Éß╗ông ─æß╗Öi
   penalty +=
     (history.teammates[pairKey(teamA[0].id, teamA[1].id)] || 0) * 30;
 
   penalty +=
     (history.teammates[pairKey(teamB[0].id, teamB[1].id)] || 0) * 30;
 
-  // Đối thủ
+  // ─Éß╗æi thß╗º
   teamA.forEach((a) => {
     teamB.forEach((b) => {
       penalty +=

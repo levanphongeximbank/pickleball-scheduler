@@ -3,7 +3,7 @@ description:
 alwaysApply: true
 ---
 
-# Pickleball Scheduler Pro - Project Context (v3.5.0)
+# Pickleball Scheduler Pro - Project Context (v3.5.8)
 
 ## Vai trò của Codex
 
@@ -16,6 +16,38 @@ Người dùng không rành lập trình, nên khi hướng dẫn phải:
 - Mỗi lần chỉ sửa ít file.
 - Không giải thích dài nếu không cần.
 
+## Mục tiêu sản phẩm v3.5.8
+
+Staging Apply & Manual QA — apply Supabase staging sau Security Hardening v3.5.7, QA theo role, Go/No-Go Vercel Preview. Checklist: `docs/STAGING-APPLY-QA-v358.md`. **Không** deploy production.
+
+## Mục tiêu sản phẩm v3.5.7
+
+Security Hardening — khóa role signup, profile update, Director JWT, tắt dev fallback trên Preview/Production. SQL patch `docs/supabase-security-hardening-v357.sql`. **Chưa** deploy production.
+
+## Mục tiêu sản phẩm v3.5.6
+
+Referee Security Fix — RPC token-scoped (`referee_get_match_by_token`, `referee_update_match_score`); anon không select/update trực tiếp `tournament_match_live`. App referee qua RPC; dev fallback khi chưa RLS. **Chưa** deploy production.
+
+## Mục tiêu sản phẩm v3.5.5
+
+Supabase/RLS staging — SQL + checklist + test plan; RLS `profiles`, `club_data_v3`, `payment_events`, `tournament_match_live`. Referee RPC sẵn sàng.
+
+## Mục tiêu sản phẩm v3.5.4
+
+RBAC production — bật `VITE_RBAC_ENABLED=true`, profile bắt buộc từ `public.profiles`, route/menu/action guard. RLS SQL sẵn sàng trong `docs/`.
+
+## Mục tiêu sản phẩm v3.5.3
+
+Authentication production (Supabase Auth) — đăng nhập/đăng xuất, session restore, route guard. RBAC production tách sang v3.5.4. **Chưa** chạy RLS.
+
+## Mục tiêu sản phẩm v3.5.2
+
+UI/Quality fix sau refactor v3.5.1 — sidebar Xếp sân, UI test harness (AuthProvider), chuẩn bị Authentication production. Không bật RBAC production.
+
+## Mục tiêu sản phẩm v3.5.1
+
+Architecture freeze — chuẩn bị production (Auth, RBAC, Supabase, Deploy). Module mới ưu tiên `src/features/<module>/`.
+
 ## Mục tiêu sản phẩm v3.5.0
 
 Hệ quản lý CLB nhỏ + xếp sân AI:
@@ -25,6 +57,12 @@ Hệ quản lý CLB nhỏ + xếp sân AI:
 - Mỗi phiên xếp sân gắn `clubId`, `seasonId`, `leagueId` trong `session.meta`
 - Menu: Tổng quan, Xếp sân, Người chơi, Sân, CLB & Giải, Thống kê, Giải đấu, Cài đặt
 - Header: chuyển CLB / Mùa / Giải (single source of truth)
+
+## Kiến trúc v3.5.1 (song song)
+
+- Production: `src/pages/`, `src/router.jsx` (không đổi route).
+- Mới: `src/features/<module>/` — copy tách, chuyển import chỉ khi build + test pass và có approval.
+- `src/legacy/` — nháp tham chiếu, không thay file production.
 
 ## Kiến trúc v3.0
 

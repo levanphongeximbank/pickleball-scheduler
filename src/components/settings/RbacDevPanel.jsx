@@ -23,6 +23,7 @@ import { listDevUsers } from "../../auth/authService.js";
 
 export default function RbacDevPanel() {
   const {
+    authProductionEnabled,
     rbacEnabled,
     isAuthenticated,
     user,
@@ -135,8 +136,8 @@ export default function RbacDevPanel() {
             Đăng nhập & Phân quyền
           </Typography>
           <Chip size="small" label={rbacEnabled ? "RBAC bật" : "RBAC tắt"} color={rbacEnabled ? "warning" : "default"} />
-          {supabaseAvailable && (
-            <Chip size="small" icon={<CloudIcon />} label="Supabase Auth" color="info" variant="outlined" />
+          {authProductionEnabled && (
+            <Chip size="small" icon={<CloudIcon />} label="Auth production" color="info" variant="outlined" />
           )}
         </Stack>
 
@@ -147,8 +148,18 @@ export default function RbacDevPanel() {
         )}
 
         <FormControlLabel
-          control={<Switch checked={rbacEnabled} onChange={handleToggleRbac} />}
-          label="Bật kiểm tra phân quyền RBAC"
+          control={
+            <Switch
+              checked={rbacEnabled}
+              onChange={handleToggleRbac}
+              disabled={authProductionEnabled}
+            />
+          }
+          label={
+            authProductionEnabled
+              ? "RBAC dev (tắt trong auth production — bật qua VITE_RBAC_ENABLED sau)"
+              : "Bật kiểm tra phân quyền RBAC"
+          }
           sx={{ mb: 2, display: "block" }}
         />
 
@@ -166,12 +177,14 @@ export default function RbacDevPanel() {
           </Box>
         ) : (
           <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-            Chưa đăng nhập. RBAC tắt → full quyền; RBAC bật → cần đăng nhập.
+            {authProductionEnabled
+              ? "Auth production: cần đăng nhập Supabase. RBAC permission chưa enforce."
+              : "Chưa đăng nhập. RBAC tắt → full quyền; RBAC bật → cần đăng nhập."}
           </Typography>
         )}
 
         <Stack spacing={2}>
-          {!supabaseAvailable && (
+          {!supabaseAvailable && devUsers.length > 0 && (
             <>
               <TextField
                 select

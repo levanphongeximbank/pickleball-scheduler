@@ -1,8 +1,8 @@
-/*
+﻿/*
 ==========================================================
 Waiting Engine
 Version 1.0
-Luân phiên người chờ
+Lu├ón phi├¬n ng╞░ß╗¥i chß╗¥
 ==========================================================
 */
 
@@ -10,7 +10,7 @@ const STORAGE_KEY = "pickleball_waiting";
 
 /*
 ----------------------------------------
-Đọc dữ liệu
+─Éß╗ìc dß╗» liß╗çu
 ----------------------------------------
 */
 export function loadWaiting() {
@@ -21,7 +21,7 @@ export function loadWaiting() {
 
 /*
 ----------------------------------------
-Lưu dữ liệu
+L╞░u dß╗» liß╗çu
 ----------------------------------------
 */
 export function saveWaiting(waitingData) {
@@ -33,7 +33,7 @@ export function saveWaiting(waitingData) {
 
 /*
 ----------------------------------------
-Khởi tạo người mới
+Khß╗ƒi tß║ío ng╞░ß╗¥i mß╗¢i
 ----------------------------------------
 */
 function initPlayer(waitingData, playerId) {
@@ -54,7 +54,7 @@ function initPlayer(waitingData, playerId) {
 
 /*
 ----------------------------------------
-Chọn người được chơi
+Chß╗ìn ng╞░ß╗¥i ─æ╞░ß╗úc ch╞íi
 ----------------------------------------
 */
 export function selectPlayers(players) {
@@ -65,7 +65,7 @@ export function selectPlayers(players) {
     initPlayer(waitingData, player.id);
   });
 
-  // Người chờ nhiều sẽ được ưu tiên chơi
+  // Ng╞░ß╗¥i chß╗¥ nhiß╗üu sß║╜ ─æ╞░ß╗úc ╞░u ti├¬n ch╞íi
   const sorted = [...players].sort((a, b) => {
 
     const A = waitingData[a.id];
@@ -92,7 +92,7 @@ export function selectPlayers(players) {
 
 /*
 ----------------------------------------
-Cập nhật sau khi xếp sân
+Cß║¡p nhß║¡t sau khi xß║┐p s├ón
 ----------------------------------------
 */
 export function updateWaiting(

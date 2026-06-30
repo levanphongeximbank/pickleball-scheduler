@@ -7,6 +7,7 @@ import {
   act,
 } from "@testing-library/react";
 
+import { AuthProvider } from "../../src/context/AuthContext.jsx";
 import { ClubProvider } from "../../src/context/ClubContext.jsx";
 import { SeasonProvider } from "../../src/context/SeasonContext.jsx";
 import { DEFAULT_CLUB } from "../../src/data/club.js";
@@ -15,9 +16,11 @@ export const SCOPED_DIRECTOR_KEY = `pickleball-director::${DEFAULT_CLUB.id}`;
 
 function AppProviders({ children }) {
   return (
-    <ClubProvider>
-      <SeasonProvider>{children}</SeasonProvider>
-    </ClubProvider>
+    <AuthProvider>
+      <ClubProvider>
+        <SeasonProvider>{children}</SeasonProvider>
+      </ClubProvider>
+    </AuthProvider>
   );
 }
 

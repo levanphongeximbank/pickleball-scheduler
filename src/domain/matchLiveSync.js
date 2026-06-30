@@ -1,5 +1,8 @@
 import { createClient } from "@supabase/supabase-js";
 
+import { getSupabaseAuthClient } from "../auth/supabaseClient.js";
+import { isSecureRuntime } from "../auth/runtime.js";
+
 import {
   createScoreAdjustLogEntry,
   createScoreLogEntry,
@@ -30,24 +33,60 @@ const SUPABASE_KEY =
     ? import.meta.env.VITE_SUPABASE_ANON_KEY || ""
     : "";
 
-let client = null;
+let anonClient = null;
+let refereeRpcAvailable = null;
+
+function isRefereeDirectFallbackAllowed() {
+  return !isSecureRuntime();
+}
+
+/** @internal Chỉ dùng trong unit test — reset cache RPC/fallback */
+export function __resetRefereeRpcCacheForTests() {
+  refereeRpcAvailable = null;
+}
+
+const REFEREE_POLL_MS = 4000;
+
+export function isRpcNotFoundError(error) {
+  const msg = String(error?.message || "").toLowerCase();
+  const code = String(error?.code || "");
+  return code === "PGRST202" || (msg.includes("function") && msg.includes("not found"));
+}
+
+function isValidRefereeToken(token) {
+  return String(token || "").trim().length >= 16;
+}
 
 export function hasSupabaseConfig() {
   return SUPABASE_URL.trim() !== "" && SUPABASE_KEY.trim() !== "";
 }
 
-export function getSupabaseClient() {
+function getAnonSupabaseClient() {
   if (!hasSupabaseConfig()) {
     return null;
   }
 
-  if (!client) {
-    client = createClient(SUPABASE_URL, SUPABASE_KEY, {
+  if (!anonClient) {
+    anonClient = createClient(SUPABASE_URL, SUPABASE_KEY, {
       auth: { persistSession: false, autoRefreshToken: false },
     });
   }
 
-  return client;
+  return anonClient;
+}
+
+/** Director/staff — JWT session (đồng bộ cloudSync). Referee vẫn dùng anon + RPC. */
+export function getSupabaseClient() {
+  const authClient = getSupabaseAuthClient();
+  if (authClient) {
+    return authClient;
+  }
+
+  return getAnonSupabaseClient();
+}
+
+function getRefereeSupabaseClient() {
+  return getAnonSupabaseClient();
 }
 
 export function buildSupabaseHeaders(extra = {}) {
@@ -144,27 +183,76 @@ export async function upsertMatchLive(record) {
   return { ok: true, row: normalizeMatchLiveRow(data) };
 }
 
-export async function fetchMatchLiveByToken(token) {
-  const supabase = getSupabaseClient();
-  if (!supabase) {
-    return { ok: false, error: "Chua cau hinh Supabase." };
-  }
-
+async function fetchMatchLiveByTokenDirect(supabase, token) {
   const { data, error } = await supabase
     .from(MATCH_LIVE_TABLE)
     .select("*")
     .eq("referee_token", String(token))
     .maybeSingle();
 
-  if (error) {
+  if (error || !data) {
     return { ok: false, error: REFEREE_LINK_LOCKED_MESSAGE };
   }
+
+  return { ok: true, row: normalizeMatchLiveRow(data) };
+}
+
+async function fetchMatchLiveByTokenRpc(supabase, token) {
+  const { data, error } = await supabase.rpc("referee_get_match_by_token", {
+    p_token: String(token),
+  });
+
+  if (error) {
+    if (isRpcNotFoundError(error)) {
+      return { useFallback: true };
+    }
+    return { ok: false, error: REFEREE_LINK_LOCKED_MESSAGE };
+  }
+
+  refereeRpcAvailable = true;
 
   if (!data) {
     return { ok: false, error: REFEREE_LINK_LOCKED_MESSAGE };
   }
 
   return { ok: true, row: normalizeMatchLiveRow(data) };
+}
+
+export async function fetchMatchLiveByTokenWithClient(supabase, token) {
+  if (!supabase) {
+    return { ok: false, error: "Chua cau hinh Supabase." };
+  }
+
+  if (!isValidRefereeToken(token)) {
+    return { ok: false, error: REFEREE_LINK_LOCKED_MESSAGE };
+  }
+
+  if (refereeRpcAvailable === false) {
+    if (!isRefereeDirectFallbackAllowed()) {
+      return { ok: false, error: REFEREE_LINK_LOCKED_MESSAGE };
+    }
+    return fetchMatchLiveByTokenDirect(supabase, token);
+  }
+
+  const rpcResult = await fetchMatchLiveByTokenRpc(supabase, token);
+  if (rpcResult.useFallback) {
+    refereeRpcAvailable = false;
+    if (!isRefereeDirectFallbackAllowed()) {
+      return { ok: false, error: REFEREE_LINK_LOCKED_MESSAGE };
+    }
+    return fetchMatchLiveByTokenDirect(supabase, token);
+  }
+
+  return rpcResult;
+}
+
+export async function fetchMatchLiveByToken(token) {
+  const supabase = getRefereeSupabaseClient();
+  if (!supabase) {
+    return { ok: false, error: "Chua cau hinh Supabase." };
+  }
+
+  return fetchMatchLiveByTokenWithClient(supabase, token);
 }
 
 export async function fetchMatchLiveForTournament(clubId, tournamentId) {
@@ -189,7 +277,29 @@ export async function fetchMatchLiveForTournament(clubId, tournamentId) {
   };
 }
 
-export async function adjustMatchLiveScore(token, { team, delta, userAgent = "" } = {}) {
+async function refereeUpdateViaRpc(supabase, token, payload) {
+  const { data, error } = await supabase.rpc("referee_update_match_score", {
+    p_token: String(token),
+    p_payload: payload,
+  });
+
+  if (error) {
+    if (isRpcNotFoundError(error)) {
+      return { useFallback: true };
+    }
+    return { ok: false, error: REFEREE_LINK_LOCKED_MESSAGE, locked: true };
+  }
+
+  refereeRpcAvailable = true;
+
+  if (!data) {
+    return { ok: false, error: REFEREE_LINK_LOCKED_MESSAGE, locked: true };
+  }
+
+  return { ok: true, row: normalizeMatchLiveRow(data) };
+}
+
+async function adjustMatchLiveScoreDirect(token, { team, delta, userAgent = "" } = {}) {
   const currentResult = await fetchMatchLiveByToken(token);
   if (!currentResult.ok || !currentResult.row) {
     return { ok: false, error: REFEREE_LINK_LOCKED_MESSAGE, locked: true };
@@ -221,7 +331,11 @@ export async function adjustMatchLiveScore(token, { team, delta, userAgent = "" 
     userAgent,
   });
 
-  const supabase = getSupabaseClient();
+  const supabase = getRefereeSupabaseClient();
+  if (!supabase) {
+    return { ok: false, error: "Chua cau hinh Supabase." };
+  }
+
   const { data, error } = await supabase
     .from(MATCH_LIVE_TABLE)
     .update({
@@ -242,6 +356,40 @@ export async function adjustMatchLiveScore(token, { team, delta, userAgent = "" 
   return { ok: true, row: normalizeMatchLiveRow(data), auditEntry };
 }
 
+export async function adjustMatchLiveScore(token, { team, delta, userAgent = "" } = {}) {
+  if (!isValidRefereeToken(token)) {
+    return { ok: false, error: REFEREE_LINK_LOCKED_MESSAGE, locked: true };
+  }
+
+  const supabase = getRefereeSupabaseClient();
+  if (!supabase) {
+    return { ok: false, error: "Chua cau hinh Supabase." };
+  }
+
+  if (refereeRpcAvailable !== false) {
+    const rpcResult = await refereeUpdateViaRpc(supabase, token, {
+      action: "adjust",
+      team,
+      delta,
+      userAgent,
+    });
+
+    if (!rpcResult.useFallback) {
+      return rpcResult.ok
+        ? { ok: true, row: rpcResult.row }
+        : { ok: false, error: REFEREE_LINK_LOCKED_MESSAGE, locked: true };
+    }
+
+    refereeRpcAvailable = false;
+  }
+
+  if (!isRefereeDirectFallbackAllowed()) {
+    return { ok: false, error: REFEREE_LINK_LOCKED_MESSAGE, locked: true };
+  }
+
+  return adjustMatchLiveScoreDirect(token, { team, delta, userAgent });
+}
+
 export async function updateMatchLiveScores(token, scoreA, scoreB) {
   void scoreB;
   return adjustMatchLiveScore(token, {
@@ -250,7 +398,7 @@ export async function updateMatchLiveScores(token, scoreA, scoreB) {
   });
 }
 
-export async function requestMatchLiveFinalize(token, scoreA, scoreB, options = {}) {
+async function requestMatchLiveFinalizeDirect(token, scoreA, scoreB, options = {}) {
   const currentResult = await fetchMatchLiveByToken(token);
   if (!currentResult.ok || !currentResult.row) {
     return { ok: false, error: REFEREE_LINK_LOCKED_MESSAGE, locked: true };
@@ -278,7 +426,7 @@ export async function requestMatchLiveFinalize(token, scoreA, scoreB, options = 
     note: options.note || "",
   });
 
-  const supabase = getSupabaseClient();
+  const supabase = getRefereeSupabaseClient();
   if (!supabase) {
     return { ok: false, error: "Chua cau hinh Supabase." };
   }
@@ -302,6 +450,41 @@ export async function requestMatchLiveFinalize(token, scoreA, scoreB, options = 
   }
 
   return { ok: true, row: normalizeMatchLiveRow(data), finalizeEntry };
+}
+
+export async function requestMatchLiveFinalize(token, scoreA, scoreB, options = {}) {
+  if (!isValidRefereeToken(token)) {
+    return { ok: false, error: REFEREE_LINK_LOCKED_MESSAGE, locked: true };
+  }
+
+  const supabase = getRefereeSupabaseClient();
+  if (!supabase) {
+    return { ok: false, error: "Chua cau hinh Supabase." };
+  }
+
+  if (refereeRpcAvailable !== false) {
+    const rpcResult = await refereeUpdateViaRpc(supabase, token, {
+      action: "finalize",
+      scoreA: Math.max(0, Number(scoreA) || 0),
+      scoreB: Math.max(0, Number(scoreB) || 0),
+      userAgent: options.userAgent || "",
+      note: options.note || "",
+    });
+
+    if (!rpcResult.useFallback) {
+      return rpcResult.ok
+        ? { ok: true, row: rpcResult.row }
+        : { ok: false, error: REFEREE_LINK_LOCKED_MESSAGE, locked: true };
+    }
+
+    refereeRpcAvailable = false;
+  }
+
+  if (!isRefereeDirectFallbackAllowed()) {
+    return { ok: false, error: REFEREE_LINK_LOCKED_MESSAGE, locked: true };
+  }
+
+  return requestMatchLiveFinalizeDirect(token, scoreA, scoreB, options);
 }
 
 export async function markMatchLiveProcessed(id) {
@@ -407,31 +590,34 @@ export function subscribeTournamentMatchLive(clubId, tournamentId, onChange) {
 }
 
 export function subscribeMatchLiveByToken(token, onChange) {
-  const supabase = getSupabaseClient();
+  const supabase = getRefereeSupabaseClient();
   if (!supabase || !token) {
     return () => {};
   }
 
-  const channel = supabase
-    .channel(`referee-${token}`)
-    .on(
-      "postgres_changes",
-      {
-        event: "UPDATE",
-        schema: "public",
-        table: MATCH_LIVE_TABLE,
-        filter: `referee_token=eq.${token}`,
-      },
-      (payload) => {
-        const row = normalizeMatchLiveRow(payload.new);
-        if (row) {
-          onChange(row);
-        }
+  let cancelled = false;
+  let lastUpdatedAt = null;
+
+  const poll = async () => {
+    if (cancelled) {
+      return;
+    }
+
+    const result = await fetchMatchLiveByTokenWithClient(supabase, token);
+    if (result.ok && result.row) {
+      const stamp = result.row.updatedAt || "";
+      if (stamp !== lastUpdatedAt) {
+        lastUpdatedAt = stamp;
+        onChange(result.row);
       }
-    )
-    .subscribe();
+    }
+  };
+
+  poll();
+  const intervalId = setInterval(poll, REFEREE_POLL_MS);
 
   return () => {
-    supabase.removeChannel(channel);
+    cancelled = true;
+    clearInterval(intervalId);
   };
 }

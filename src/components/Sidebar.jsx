@@ -23,6 +23,7 @@ import GridViewIcon from "@mui/icons-material/GridView";
 import AccountTreeIcon from "@mui/icons-material/AccountTree";
 import LeaderboardIcon from "@mui/icons-material/Leaderboard";
 import PersonIcon from "@mui/icons-material/Person";
+import ShuffleIcon from "@mui/icons-material/Shuffle";
 
 import { SIDEBAR_MENU_GROUPS } from "../config/sidebarMenu.js";
 import { filterMenuGroups, resolveMenuItemPath } from "../auth/menuAccess.js";
@@ -33,6 +34,7 @@ const drawerWidth = 228;
 
 const ICONS = {
   dashboard: <DashboardIcon fontSize="small" />,
+  scheduling: <ShuffleIcon fontSize="small" />,
   "live-courts": <StadiumIcon fontSize="small" />,
   players: <PeopleIcon fontSize="small" />,
   seasons: <CalendarMonthIcon fontSize="small" />,

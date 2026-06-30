@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+﻿import { useEffect, useMemo, useState } from "react";
 import {
   Alert,
   Box,
@@ -286,7 +286,7 @@ export default function Tournament() {
     const groupCount = Math.max(2, Number(seedGroupCount) || 2);
 
     if (players.length < 8) {
-      setStatusMessage({ type: "error", text: "Cần ít nhất 8 người để seed đội vào bảng." });
+      setStatusMessage({ type: "error", text: "Cß║ºn ├¡t nhß║Ñt 8 ng╞░ß╗¥i ─æß╗â seed ─æß╗Öi v├áo bß║úng." });
       return;
     }
 
@@ -299,7 +299,7 @@ export default function Tournament() {
     if (seeded.teams.length < groupCount * 2) {
       setStatusMessage({
         type: "error",
-        text: `Không đủ đội cho ${groupCount} bảng. Cần tối thiểu ${groupCount * 4} người chơi (mỗi đội 2 người).`,
+        text: `Kh├┤ng ─æß╗º ─æß╗Öi cho ${groupCount} bß║úng. Cß║ºn tß╗æi thiß╗âu ${groupCount * 4} ng╞░ß╗¥i ch╞íi (mß╗ùi ─æß╗Öi 2 ng╞░ß╗¥i).`,
       });
       return;
     }
@@ -330,20 +330,20 @@ export default function Tournament() {
 
     setStatusMessage({
       type: "success",
-      text: `Đã seed ${seeded.teams.length} đội vào ${groupCount} bảng theo mode ${seedMode === "open" ? "open" : "skill_controlled"}.`,
+      text: `─É├ú seed ${seeded.teams.length} ─æß╗Öi v├áo ${groupCount} bß║úng theo mode ${seedMode === "open" ? "open" : "skill_controlled"}.`,
     });
   };
 
   const handleGenerateGroupFixtures = () => {
     if (seededRounds.length === 0) {
-      setStatusMessage({ type: "error", text: "Chưa có bảng seed để tạo lịch vòng bảng." });
+      setStatusMessage({ type: "error", text: "Ch╞░a c├│ bß║úng seed ─æß╗â tß║ío lß╗ïch v├▓ng bß║úng." });
       return;
     }
 
     if (selectedTournamentCourts.length === 0) {
       setStatusMessage({
         type: "error",
-        text: "Chưa chọn sân cho giải. Vui lòng tick ít nhất 1 sân đang hoạt động.",
+        text: "Ch╞░a chß╗ìn s├ón cho giß║úi. Vui l├▓ng tick ├¡t nhß║Ñt 1 s├ón ─æang hoß║ít ─æß╗Öng.",
       });
       return;
     }
@@ -361,7 +361,7 @@ export default function Tournament() {
     if (alreadyGenerated.length > 0) {
       setStatusMessage({
         type: "warning",
-        text: "Đã có lịch vòng bảng sinh tự động cho các bảng hiện tại. Hãy xóa sessions cũ nếu muốn tạo lại.",
+        text: "─É├ú c├│ lß╗ïch v├▓ng bß║úng sinh tß╗▒ ─æß╗Öng cho c├íc bß║úng hiß╗çn tß║íi. H├úy x├│a sessions c┼⌐ nß║┐u muß╗æn tß║ío lß║íi.",
       });
       return;
     }
@@ -373,7 +373,7 @@ export default function Tournament() {
     });
 
     if (generatedSessions.length === 0) {
-      setStatusMessage({ type: "error", text: "Không tạo được lịch từ dữ liệu seed hiện tại." });
+      setStatusMessage({ type: "error", text: "Kh├┤ng tß║ío ─æ╞░ß╗úc lß╗ïch tß╗½ dß╗» liß╗çu seed hiß╗çn tß║íi." });
       return;
     }
 
@@ -382,7 +382,7 @@ export default function Tournament() {
     setDataVersion((value) => value + 1);
     setStatusMessage({
       type: "success",
-      text: `Đã tạo ${generatedSessions.length} session vòng bảng từ dữ liệu seed.`,
+      text: `─É├ú tß║ío ${generatedSessions.length} session v├▓ng bß║úng tß╗½ dß╗» liß╗çu seed.`,
     });
   };
 
@@ -430,8 +430,8 @@ export default function Tournament() {
     setStatusMessage({
       type: "success",
       text: unlock
-        ? `Đã mở khóa chỉnh sửa winner cho vòng ${key}.`
-        : `Đã khóa lại chỉnh sửa winner cho vòng ${key}.`,
+        ? `─É├ú mß╗ƒ kh├│a chß╗ënh sß╗¡a winner cho v├▓ng ${key}.`
+        : `─É├ú kh├│a lß║íi chß╗ënh sß╗¡a winner cho v├▓ng ${key}.`,
     });
   };
 
@@ -440,11 +440,11 @@ export default function Tournament() {
     const hasUnlocks = Object.keys(bracketUnlockedRounds || {}).length > 0;
 
     if (!hasWinners && !hasUnlocks) {
-      setStatusMessage({ type: "info", text: "Bracket đang trống, không có dữ liệu để reset." });
+      setStatusMessage({ type: "info", text: "Bracket ─æang trß╗æng, kh├┤ng c├│ dß╗» liß╗çu ─æß╗â reset." });
       return;
     }
 
-    const confirmed = window.confirm("Reset toàn bộ bracket? Hành động này sẽ xóa winner và trạng thái mở khóa hiện tại.");
+    const confirmed = window.confirm("Reset to├án bß╗Ö bracket? H├ánh ─æß╗Öng n├áy sß║╜ x├│a winner v├á trß║íng th├íi mß╗ƒ kh├│a hiß╗çn tß║íi.");
     if (!confirmed) {
       return;
     }
@@ -462,12 +462,12 @@ export default function Tournament() {
     saveAIData(data);
 
     saveBracketWinners({});
-    setStatusMessage({ type: "success", text: "Đã reset toàn bộ bracket (winner + lock state)." });
+    setStatusMessage({ type: "success", text: "─É├ú reset to├án bß╗Ö bracket (winner + lock state)." });
   };
 
   const handleCreateRound = () => {
     if (!roundName.trim()) {
-      setStatusMessage({ type: "error", text: "Vui lòng nhập tên vòng hoặc ca chơi." });
+      setStatusMessage({ type: "error", text: "Vui l├▓ng nhß║¡p t├¬n v├▓ng hoß║╖c ca ch╞íi." });
       return;
     }
 
@@ -487,7 +487,7 @@ export default function Tournament() {
     setRoundName("");
     setShiftLabel("");
     setGroupLabel("");
-    setStatusMessage({ type: "success", text: "Đã tạo vòng thi/ca chơi mới." });
+    setStatusMessage({ type: "success", text: "─É├ú tß║ío v├▓ng thi/ca ch╞íi mß╗¢i." });
   };
 
   const handleDeleteRound = (roundId) => {
@@ -500,26 +500,26 @@ export default function Tournament() {
       saveActiveSlot(null);
     }
 
-    setStatusMessage({ type: "success", text: "Đã xóa vòng thi." });
+    setStatusMessage({ type: "success", text: "─É├ú x├│a v├▓ng thi." });
   };
 
   const handleActivateRound = (round) => {
     const slot = {
       roundId: round.id,
       roundName: round.name,
-      shiftLabel: round.defaultShift || "Ca mặc định",
+      shiftLabel: round.defaultShift || "Ca mß║╖c ─æß╗ïnh",
       activatedAt: new Date().toISOString(),
     };
 
     setActiveSlot(slot);
     saveActiveSlot(slot);
-    setStatusMessage({ type: "success", text: `Đã kích hoạt ${round.name}. Lần xếp sân tiếp theo sẽ gắn vào vòng này.` });
+    setStatusMessage({ type: "success", text: `─É├ú k├¡ch hoß║ít ${round.name}. Lß║ºn xß║┐p s├ón tiß║┐p theo sß║╜ gß║»n v├áo v├▓ng n├áy.` });
   };
 
   const handleDeactivateRound = () => {
     setActiveSlot(null);
     saveActiveSlot(null);
-    setStatusMessage({ type: "success", text: "Đã tắt chế độ gán vòng/ca tự động." });
+    setStatusMessage({ type: "success", text: "─É├ú tß║»t chß║┐ ─æß╗Ö g├ín v├▓ng/ca tß╗▒ ─æß╗Öng." });
   };
 
   const handleExportRounds = () => {
@@ -532,12 +532,12 @@ export default function Tournament() {
 
     const text = JSON.stringify(payload, null, 2);
     setExportText(text);
-    setStatusMessage({ type: "success", text: "Đã xuất cấu hình rounds/ca chơi." });
+    setStatusMessage({ type: "success", text: "─É├ú xuß║Ñt cß║Ñu h├¼nh rounds/ca ch╞íi." });
   };
 
   const handleDownloadRounds = () => {
     if (!exportText.trim()) {
-      setStatusMessage({ type: "error", text: "Vui lòng bấm Xuất cấu hình trước khi tải file." });
+      setStatusMessage({ type: "error", text: "Vui l├▓ng bß║Ñm Xuß║Ñt cß║Ñu h├¼nh tr╞░ß╗¢c khi tß║úi file." });
       return;
     }
 
@@ -550,7 +550,7 @@ export default function Tournament() {
     anchor.click();
     document.body.removeChild(anchor);
     URL.revokeObjectURL(url);
-    setStatusMessage({ type: "success", text: "Đã tải file rounds." });
+    setStatusMessage({ type: "success", text: "─É├ú tß║úi file rounds." });
   };
 
   const handleImportRounds = () => {
@@ -564,9 +564,9 @@ export default function Tournament() {
       setActiveSlot(importedActiveSlot);
       saveActiveSlot(importedActiveSlot);
       setImportText("");
-      setStatusMessage({ type: "success", text: "Đã nhập cấu hình rounds thành công." });
+      setStatusMessage({ type: "success", text: "─É├ú nhß║¡p cß║Ñu h├¼nh rounds th├ánh c├┤ng." });
     } catch {
-      setStatusMessage({ type: "error", text: "JSON import rounds không hợp lệ." });
+      setStatusMessage({ type: "error", text: "JSON import rounds kh├┤ng hß╗úp lß╗ç." });
     }
   };
 
@@ -582,12 +582,12 @@ export default function Tournament() {
 
     const text = JSON.stringify(payload, null, 2);
     setTournamentExportText(text);
-    setStatusMessage({ type: "success", text: "Đã xuất báo cáo kết quả giải." });
+    setStatusMessage({ type: "success", text: "─É├ú xuß║Ñt b├ío c├ío kß║┐t quß║ú giß║úi." });
   };
 
   const handleDownloadTournamentResults = () => {
     if (!tournamentExportText.trim()) {
-      setStatusMessage({ type: "error", text: "Vui lòng xuất báo cáo kết quả trước khi tải file." });
+      setStatusMessage({ type: "error", text: "Vui l├▓ng xuß║Ñt b├ío c├ío kß║┐t quß║ú tr╞░ß╗¢c khi tß║úi file." });
       return;
     }
 
@@ -601,7 +601,7 @@ export default function Tournament() {
     document.body.removeChild(anchor);
     URL.revokeObjectURL(url);
 
-    setStatusMessage({ type: "success", text: "Đã tải file kết quả giải." });
+    setStatusMessage({ type: "success", text: "─É├ú tß║úi file kß║┐t quß║ú giß║úi." });
   };
 
   const handleImportFile = (event) => {
@@ -613,10 +613,10 @@ export default function Tournament() {
     const reader = new FileReader();
     reader.onload = () => {
       setImportText(String(reader.result || ""));
-      setStatusMessage({ type: "success", text: "Đã nạp file rounds. Bấm Nhập cấu hình để áp dụng." });
+      setStatusMessage({ type: "success", text: "─É├ú nß║íp file rounds. Bß║Ñm Nhß║¡p cß║Ñu h├¼nh ─æß╗â ├íp dß╗Ñng." });
     };
     reader.onerror = () => {
-      setStatusMessage({ type: "error", text: "Không đọc được file rounds." });
+      setStatusMessage({ type: "error", text: "Kh├┤ng ─æß╗ìc ─æ╞░ß╗úc file rounds." });
     };
 
     reader.readAsText(file, "utf-8");
@@ -628,7 +628,7 @@ export default function Tournament() {
     const targetRound = rounds.find((round) => String(round.id) === String(selectedRoundId));
 
     if (!targetRound) {
-      setStatusMessage({ type: "error", text: "Vui lòng chọn round hợp lệ để gán session." });
+      setStatusMessage({ type: "error", text: "Vui l├▓ng chß╗ìn round hß╗úp lß╗ç ─æß╗â g├ín session." });
       return;
     }
 
@@ -651,7 +651,7 @@ export default function Tournament() {
 
     saveAIData(data);
     setDataVersion((value) => value + 1);
-    setStatusMessage({ type: "success", text: "Đã gán session vào round thành công." });
+    setStatusMessage({ type: "success", text: "─É├ú g├ín session v├áo round th├ánh c├┤ng." });
   };
 
   const handleUnassignSessionRound = (sessionId) => {
@@ -673,13 +673,13 @@ export default function Tournament() {
 
     saveAIData(data);
     setDataVersion((value) => value + 1);
-    setStatusMessage({ type: "success", text: "Đã bỏ gán round của session." });
+    setStatusMessage({ type: "success", text: "─É├ú bß╗Å g├ín round cß╗ºa session." });
   };
 
   const handleBulkAssignUnassigned = () => {
     const targetRound = rounds.find((round) => String(round.id) === String(bulkRoundId));
     if (!targetRound) {
-      setStatusMessage({ type: "error", text: "Vui lòng chọn round để gán hàng loạt." });
+      setStatusMessage({ type: "error", text: "Vui l├▓ng chß╗ìn round ─æß╗â g├ín h├áng loß║ít." });
       return;
     }
 
@@ -707,11 +707,11 @@ export default function Tournament() {
     setDataVersion((value) => value + 1);
 
     if (changedCount === 0) {
-      setStatusMessage({ type: "success", text: "Không có session nào cần gán hàng loạt." });
+      setStatusMessage({ type: "success", text: "Kh├┤ng c├│ session n├áo cß║ºn g├ín h├áng loß║ít." });
       return;
     }
 
-    setStatusMessage({ type: "success", text: `Đã gán ${changedCount} session chưa gán vào ${targetRound.name}.` });
+    setStatusMessage({ type: "success", text: `─É├ú g├ín ${changedCount} session ch╞░a g├ín v├áo ${targetRound.name}.` });
   };
 
   const ensureSessionResultDraft = (session) => {
@@ -779,7 +779,7 @@ export default function Tournament() {
 
     saveAIData(data);
     setDataVersion((value) => value + 1);
-    setStatusMessage({ type: "success", text: "Đã cập nhật kết quả vòng đấu cho session." });
+    setStatusMessage({ type: "success", text: "─É├ú cß║¡p nhß║¡t kß║┐t quß║ú v├▓ng ─æß║Ñu cho session." });
   };
 
   const handleToggleResultLock = (session) => {
@@ -813,15 +813,15 @@ export default function Tournament() {
     setStatusMessage({
       type: "success",
       text: nextDraft.locked
-        ? "Đã khóa kết quả session. Chỉ có thể xem đến khi mở khóa."
-        : "Đã mở khóa kết quả session.",
+        ? "─É├ú kh├│a kß║┐t quß║ú session. Chß╗ë c├│ thß╗â xem ─æß║┐n khi mß╗ƒ kh├│a."
+        : "─É├ú mß╗ƒ kh├│a kß║┐t quß║ú session.",
     });
   };
 
   return (
     <Box>
       <Typography variant="h4" fontWeight="bold" sx={{ mb: 3 }}>
-        🏆 Giải đấu & Ca chơi
+        ≡ƒÅå Giß║úi ─æß║Ñu & Ca ch╞íi
       </Typography>
 
       <Stack spacing={2}>
@@ -830,14 +830,14 @@ export default function Tournament() {
         <Card>
           <CardContent>
             <Typography variant="h6" fontWeight="bold" sx={{ mb: 2 }}>
-              Tạo vòng thi/ca chơi
+              Tß║ío v├▓ng thi/ca ch╞íi
             </Typography>
             <Grid container spacing={2}>
               <Grid size={{ xs: 12, md: 4 }}>
                 <TextField
                   fullWidth
-                  label="Tên vòng"
-                  placeholder="Ví dụ: Vòng 1"
+                  label="T├¬n v├▓ng"
+                  placeholder="V├¡ dß╗Ñ: V├▓ng 1"
                   value={roundName}
                   onChange={(event) => setRoundName(event.target.value)}
                 />
@@ -845,8 +845,8 @@ export default function Tournament() {
               <Grid size={{ xs: 12, md: 4 }}>
                 <TextField
                   fullWidth
-                  label="Nhãn ca chơi"
-                  placeholder="Ví dụ: Ca 18:00-19:30"
+                  label="Nh├ún ca ch╞íi"
+                  placeholder="V├¡ dß╗Ñ: Ca 18:00-19:30"
                   value={shiftLabel}
                   onChange={(event) => setShiftLabel(event.target.value)}
                 />
@@ -854,7 +854,7 @@ export default function Tournament() {
               <Grid size={{ xs: 12, md: 2 }}>
                 <TextField
                   fullWidth
-                  label="Bảng"
+                  label="Bß║úng"
                   placeholder="A/B/C..."
                   value={groupLabel}
                   onChange={(event) => setGroupLabel(event.target.value)}
@@ -862,18 +862,18 @@ export default function Tournament() {
               </Grid>
               <Grid size={{ xs: 12, md: 2 }}>
                 <Button fullWidth variant="contained" sx={{ height: "100%" }} onClick={handleCreateRound}>
-                  Thêm
+                  Th├¬m
                 </Button>
               </Grid>
             </Grid>
 
             <Typography variant="subtitle2" fontWeight="bold" sx={{ mt: 2, mb: 1 }}>
-              Sân dùng cho giải đấu
+              S├ón d├╣ng cho giß║úi ─æß║Ñu
             </Typography>
 
             {activeCourts.length === 0 ? (
               <Alert severity="warning" sx={{ mb: 1.5 }}>
-                Chưa có sân hoạt động. Hãy thêm sân ở trang Quản lý sân trước khi tạo lịch giải.
+                Ch╞░a c├│ s├ón hoß║ít ─æß╗Öng. H├úy th├¬m s├ón ß╗ƒ trang Quß║ún l├╜ s├ón tr╞░ß╗¢c khi tß║ío lß╗ïch giß║úi.
               </Alert>
             ) : (
               <Stack direction="row" spacing={1} sx={{ flexWrap: "wrap", mb: 1.5 }}>
@@ -896,7 +896,7 @@ export default function Tournament() {
             )}
 
             <Typography variant="subtitle2" fontWeight="bold" sx={{ mt: 2, mb: 1 }}>
-              Seed đội vào bảng (Open / Skill-Controlled)
+              Seed ─æß╗Öi v├áo bß║úng (Open / Skill-Controlled)
             </Typography>
 
             <Grid container spacing={1.5}>
@@ -908,8 +908,8 @@ export default function Tournament() {
                     value={seedMode}
                     onChange={(event) => setSeedMode(event.target.value)}
                   >
-                    <MenuItem value="open">Open (ngẫu nhiên)</MenuItem>
-                    <MenuItem value="skill_controlled">Skill controlled (cân bằng trình)</MenuItem>
+                    <MenuItem value="open">Open (ngß║½u nhi├¬n)</MenuItem>
+                    <MenuItem value="skill_controlled">Skill controlled (c├ón bß║▒ng tr├¼nh)</MenuItem>
                   </Select>
                 </FormControl>
               </Grid>
@@ -918,30 +918,30 @@ export default function Tournament() {
                   fullWidth
                   size="small"
                   type="number"
-                  label="Số bảng"
+                  label="Sß╗æ bß║úng"
                   value={seedGroupCount}
                   onChange={(event) => setSeedGroupCount(event.target.value)}
                   inputProps={{ min: 2, step: 2 }}
-                  helperText="Khuyến nghị số chẵn: 4/8/16..."
+                  helperText="Khuyß║┐n nghß╗ï sß╗æ chß║╡n: 4/8/16..."
                 />
               </Grid>
               <Grid size={{ xs: 12, md: 4 }}>
                 <Button fullWidth variant="outlined" sx={{ height: "100%" }} onClick={handleSeedGroups}>
-                  Tạo bảng từ danh sách người chơi
+                  Tß║ío bß║úng tß╗½ danh s├ích ng╞░ß╗¥i ch╞íi
                 </Button>
               </Grid>
             </Grid>
 
             <Stack direction={{ xs: "column", sm: "row" }} spacing={1} sx={{ mt: 1.5 }}>
               <Button variant="contained" color="secondary" onClick={handleGenerateGroupFixtures}>
-                Tạo lịch vòng bảng từ seed
+                Tß║ío lß╗ïch v├▓ng bß║úng tß╗½ seed
               </Button>
             </Stack>
 
             {seedPreview.length > 0 && (
               <Box sx={{ mt: 1.5 }}>
                 <Typography variant="caption" color="text.secondary">
-                  Preview seed gần nhất: {seedPreview.map((group) => `${group.group}(${group.teams.length})`).join(" • ")}
+                  Preview seed gß║ºn nhß║Ñt: {seedPreview.map((group) => `${group.group}(${group.teams.length})`).join(" ΓÇó ")}
                 </Typography>
               </Box>
             )}
@@ -951,17 +951,17 @@ export default function Tournament() {
         <Card>
           <CardContent>
             <Typography variant="h6" fontWeight="bold" sx={{ mb: 2 }}>
-              Vòng bảng & nhánh loại trực tiếp
+              V├▓ng bß║úng & nh├ính loß║íi trß╗▒c tiß║┐p
             </Typography>
 
             {groupStandings.length === 0 ? (
               <Stack spacing={1}>
                 <Typography color="text.secondary">
-                  Chưa có dữ liệu vòng bảng hoàn tất. Hãy chốt kết quả ở tab Sessions để hệ thống tính top 2 mỗi bảng.
+                  Ch╞░a c├│ dß╗» liß╗çu v├▓ng bß║úng ho├án tß║Ñt. H├úy chß╗æt kß║┐t quß║ú ß╗ƒ tab Sessions ─æß╗â hß╗ç thß╗æng t├¡nh top 2 mß╗ùi bß║úng.
                 </Typography>
                 {seededRounds.length > 0 && (
                   <Alert severity="info">
-                    Đã có bảng seed sẵn ({seededRounds.length} bảng), chờ cập nhật kết quả completed để hệ thống tự tính standings và knockout.
+                    ─É├ú c├│ bß║úng seed sß║╡n ({seededRounds.length} bß║úng), chß╗¥ cß║¡p nhß║¡t kß║┐t quß║ú completed ─æß╗â hß╗ç thß╗æng tß╗▒ t├¡nh standings v├á knockout.
                   </Alert>
                 )}
               </Stack>
@@ -973,10 +973,10 @@ export default function Tournament() {
                       <Card variant="outlined" sx={{ height: "100%" }}>
                         <CardContent>
                           <Typography fontWeight="bold" sx={{ mb: 0.5 }}>
-                            Bảng {group.group}
+                            Bß║úng {group.group}
                           </Typography>
                           <Typography variant="caption" color="text.secondary" sx={{ display: "block", mb: 1 }}>
-                            {group.roundName || "Round"} • Trận đã tính: {group.matchCount}
+                            {group.roundName || "Round"} ΓÇó Trß║¡n ─æ├ú t├¡nh: {group.matchCount}
                           </Typography>
 
                           <Stack spacing={0.75}>
@@ -993,7 +993,7 @@ export default function Tournament() {
                                   {index + 1}. {team.name}
                                 </Typography>
                                 <Typography variant="caption" color="text.secondary">
-                                  Điểm: {team.matchPoints} • Trận: {team.played} • W-D-L: {team.won}-{team.draw}-{team.lost} • HS: {team.pointsFor}/{team.pointsAgainst}
+                                  ─Éiß╗âm: {team.matchPoints} ΓÇó Trß║¡n: {team.played} ΓÇó W-D-L: {team.won}-{team.draw}-{team.lost} ΓÇó HS: {team.pointsFor}/{team.pointsAgainst}
                                 </Typography>
                               </Box>
                             ))}
@@ -1006,7 +1006,7 @@ export default function Tournament() {
 
                 {groupStandings.length % 2 !== 0 && (
                   <Alert severity="warning">
-                    Số bảng hiện tại là {groupStandings.length}, cần số chẵn (4/8/16...) để ghép cặp A1-B2, A2-B1 và sinh bracket đầy đủ.
+                    Sß╗æ bß║úng hiß╗çn tß║íi l├á {groupStandings.length}, cß║ºn sß╗æ chß║╡n (4/8/16...) ─æß╗â gh├⌐p cß║╖p A1-B2, A2-B1 v├á sinh bracket ─æß║ºy ─æß╗º.
                   </Alert>
                 )}
 
@@ -1014,7 +1014,7 @@ export default function Tournament() {
                   <Stack spacing={1.5}>
                     <Stack direction={{ xs: "column", sm: "row" }} spacing={1} sx={{ justifyContent: "space-between", alignItems: { xs: "stretch", sm: "center" } }}>
                       <Typography variant="subtitle1" fontWeight="bold">
-                        Bracket loại trực tiếp
+                        Bracket loß║íi trß╗▒c tiß║┐p
                       </Typography>
                       <Button
                         size="small"
@@ -1029,18 +1029,18 @@ export default function Tournament() {
 
                     <Stack direction="row" spacing={1} sx={{ flexWrap: "wrap" }}>
                       <Chip
-                        label={`Rounds hoàn tất: ${knockoutProgress.completedRounds}/${knockoutProgress.totalRounds}`}
+                        label={`Rounds ho├án tß║Ñt: ${knockoutProgress.completedRounds}/${knockoutProgress.totalRounds}`}
                         color={knockoutProgress.completedRounds === knockoutProgress.totalRounds ? "success" : "warning"}
                       />
                       <Chip
-                        label={knockoutProgress.champion ? `Champion: ${knockoutProgress.champion.name}` : "Chưa có champion"}
+                        label={knockoutProgress.champion ? `Champion: ${knockoutProgress.champion.name}` : "Ch╞░a c├│ champion"}
                         color={knockoutProgress.champion ? "success" : "default"}
                       />
                     </Stack>
 
                     {knockoutProgress.champion && (
                       <Alert severity="success">
-                        Nhà vô địch hiện tại: {knockoutProgress.champion.name}
+                        Nh├á v├┤ ─æß╗ïch hiß╗çn tß║íi: {knockoutProgress.champion.name}
                       </Alert>
                     )}
 
@@ -1076,7 +1076,7 @@ export default function Tournament() {
                                 sx={{ mb: 1 }}
                                 onClick={() => handleToggleRoundLock(round.name, roundLocked)}
                               >
-                                {roundLocked ? "Mở khóa chỉnh winner" : "Khóa lại round"}
+                                {roundLocked ? "Mß╗ƒ kh├│a chß╗ënh winner" : "Kh├│a lß║íi round"}
                               </Button>
                             )}
 
@@ -1100,7 +1100,7 @@ export default function Tournament() {
                                       onChange={(event) => handleSelectBracketWinner(match.id, event.target.value)}
                                       disabled={!match.canPickWinner || roundLocked}
                                     >
-                                      <MenuItem value="">Chưa chọn</MenuItem>
+                                      <MenuItem value="">Ch╞░a chß╗ìn</MenuItem>
                                       <MenuItem value="home">{formatBracketTeamName(match.home, match.homeSeed)}</MenuItem>
                                       <MenuItem value="away">{formatBracketTeamName(match.away, match.awaySeed)}</MenuItem>
                                     </Select>
@@ -1123,35 +1123,35 @@ export default function Tournament() {
         <Card>
           <CardContent>
             <Typography variant="h6" fontWeight="bold" sx={{ mb: 2 }}>
-              Trạng thái vận hành
+              Trß║íng th├íi vß║¡n h├ánh
             </Typography>
             <Stack direction="row" spacing={1} sx={{ flexWrap: "wrap" }}>
-              <Chip label={`Tổng rounds: ${rounds.length}`} color="primary" />
-              <Chip label={`Tổng sessions: ${sessions.length}`} color="success" />
-              <Chip label={`Sessions chưa gán vòng: ${unassignedSessions}`} color="warning" />
-              <Chip label={activeSlot ? `Đang chạy: ${activeSlot.roundName}` : "Chưa kích hoạt round"} color={activeSlot ? "info" : "default"} />
+              <Chip label={`Tß╗òng rounds: ${rounds.length}`} color="primary" />
+              <Chip label={`Tß╗òng sessions: ${sessions.length}`} color="success" />
+              <Chip label={`Sessions ch╞░a g├ín v├▓ng: ${unassignedSessions}`} color="warning" />
+              <Chip label={activeSlot ? `─Éang chß║íy: ${activeSlot.roundName}` : "Ch╞░a k├¡ch hoß║ít round"} color={activeSlot ? "info" : "default"} />
             </Stack>
 
             {activeSlot && (
               <Box sx={{ mt: 2 }}>
                 <Typography variant="body2" color="text.secondary">
-                  Ca hiện tại: {activeSlot.shiftLabel || "Ca mặc định"}
+                  Ca hiß╗çn tß║íi: {activeSlot.shiftLabel || "Ca mß║╖c ─æß╗ïnh"}
                 </Typography>
                 <Button size="small" variant="outlined" color="error" sx={{ mt: 1 }} onClick={handleDeactivateRound}>
-                  Tắt gán round tự động
+                  Tß║»t g├ín round tß╗▒ ─æß╗Öng
                 </Button>
               </Box>
             )}
 
             <Box sx={{ mt: 2 }}>
               <Typography variant="subtitle2" fontWeight="bold" sx={{ mb: 1 }}>
-                Gán hàng loạt session chưa gán
+                G├ín h├áng loß║ít session ch╞░a g├ín
               </Typography>
               <Stack direction={{ xs: "column", sm: "row" }} spacing={1}>
                 <FormControl size="small" sx={{ minWidth: 220 }}>
-                  <InputLabel>Round đích</InputLabel>
+                  <InputLabel>Round ─æ├¡ch</InputLabel>
                   <Select
-                    label="Round đích"
+                    label="Round ─æ├¡ch"
                     value={bulkRoundId}
                     onChange={(event) => setBulkRoundId(event.target.value)}
                   >
@@ -1164,7 +1164,7 @@ export default function Tournament() {
                 </FormControl>
 
                 <Button variant="contained" color="success" onClick={handleBulkAssignUnassigned}>
-                  Gán tất cả session chưa gán
+                  G├ín tß║Ñt cß║ú session ch╞░a g├ín
                 </Button>
               </Stack>
             </Box>
@@ -1179,17 +1179,17 @@ export default function Tournament() {
 
             <Stack direction={{ xs: "column", sm: "row" }} spacing={1} sx={{ mb: 1.5 }}>
               <Button variant="contained" onClick={handleExportRounds}>
-                Xuất cấu hình
+                Xuß║Ñt cß║Ñu h├¼nh
               </Button>
               <Button variant="outlined" onClick={handleDownloadRounds} disabled={!exportText.trim()}>
-                Tải file JSON
+                Tß║úi file JSON
               </Button>
               <Button variant="outlined" component="label">
-                Chọn file rounds
+                Chß╗ìn file rounds
                 <input type="file" hidden accept="application/json" onChange={handleImportFile} />
               </Button>
               <Button variant="contained" color="success" onClick={handleImportRounds} disabled={!importText.trim()}>
-                Nhập cấu hình
+                Nhß║¡p cß║Ñu h├¼nh
               </Button>
             </Stack>
 
@@ -1221,15 +1221,15 @@ export default function Tournament() {
         <Card>
           <CardContent>
             <Typography variant="h6" fontWeight="bold" sx={{ mb: 2 }}>
-              Export kết quả giải
+              Export kß║┐t quß║ú giß║úi
             </Typography>
 
             <Stack direction={{ xs: "column", sm: "row" }} spacing={1} sx={{ mb: 1.5 }}>
               <Button variant="contained" onClick={handleExportTournamentResults}>
-                Xuất kết quả giải
+                Xuß║Ñt kß║┐t quß║ú giß║úi
               </Button>
               <Button variant="outlined" onClick={handleDownloadTournamentResults} disabled={!tournamentExportText.trim()}>
-                Tải JSON kết quả
+                Tß║úi JSON kß║┐t quß║ú
               </Button>
             </Stack>
 
@@ -1249,11 +1249,11 @@ export default function Tournament() {
             <Card>
               <CardContent>
                 <Typography variant="h6" fontWeight="bold" sx={{ mb: 2 }}>
-                  Danh sách vòng thi
+                  Danh s├ích v├▓ng thi
                 </Typography>
 
                 {roundStats.length === 0 ? (
-                  <Typography color="text.secondary">Chưa có vòng nào. Tạo vòng mới để quản lý nhiều ca chơi.</Typography>
+                  <Typography color="text.secondary">Ch╞░a c├│ v├▓ng n├áo. Tß║ío v├▓ng mß╗¢i ─æß╗â quß║ún l├╜ nhiß╗üu ca ch╞íi.</Typography>
                 ) : (
                   <Stack spacing={1.5}>
                     {roundStats.map((round) => (
@@ -1263,24 +1263,24 @@ export default function Tournament() {
                             <Box>
                               <Typography fontWeight="bold">{round.name}</Typography>
                               <Typography variant="body2" color="text.secondary">
-                                {round.defaultShift || "Không có nhãn ca"} {round.groupLabel ? `• Bảng ${round.groupLabel}` : ""}
+                                {round.defaultShift || "Kh├┤ng c├│ nh├ún ca"} {round.groupLabel ? `ΓÇó Bß║úng ${round.groupLabel}` : ""}
                               </Typography>
                               <Typography variant="body2" color="text.secondary">
-                                Sessions: {round.sessionCount} • Hoàn tất: {round.completedCount} • AI TB: {round.avgAIScore}
+                                Sessions: {round.sessionCount} ΓÇó Ho├án tß║Ñt: {round.completedCount} ΓÇó AI TB: {round.avgAIScore}
                               </Typography>
                               {Array.isArray(round.seededTeams) && round.seededTeams.length > 0 && (
                                 <Typography variant="caption" color="text.secondary">
-                                  Seeded teams: {round.seededTeams.length} • Mode: {round.seedMode || "manual"}
+                                  Seeded teams: {round.seededTeams.length} ΓÇó Mode: {round.seedMode || "manual"}
                                 </Typography>
                               )}
                             </Box>
 
                             <Stack direction="row" spacing={1}>
                               <Button size="small" variant="contained" onClick={() => handleActivateRound(round)}>
-                                Kích hoạt
+                                K├¡ch hoß║ít
                               </Button>
                               <Button size="small" variant="outlined" color="error" onClick={() => handleDeleteRound(round.id)}>
-                                Xóa
+                                X├│a
                               </Button>
                             </Stack>
                           </Stack>
@@ -1297,11 +1297,11 @@ export default function Tournament() {
             <Card>
               <CardContent>
                 <Typography variant="h6" fontWeight="bold" sx={{ mb: 2 }}>
-                  Sessions gần nhất
+                  Sessions gß║ºn nhß║Ñt
                 </Typography>
 
                 {sessions.length === 0 ? (
-                  <Typography color="text.secondary">Chưa có session nào.</Typography>
+                  <Typography color="text.secondary">Ch╞░a c├│ session n├áo.</Typography>
                 ) : (
                   [...sessions]
                     .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
@@ -1319,21 +1319,21 @@ export default function Tournament() {
                           {new Date(session.date).toLocaleString("vi-VN")}
                         </Typography>
                         <Typography variant="body2" color="text.secondary">
-                          {session.meta?.roundName || "Round tự do"} {session.meta?.shiftLabel ? `• ${session.meta.shiftLabel}` : ""}
+                          {session.meta?.roundName || "Round tß╗▒ do"} {session.meta?.shiftLabel ? `ΓÇó ${session.meta.shiftLabel}` : ""}
                         </Typography>
                         <Typography variant="body2" color="text.secondary">
-                          Sân: {session.courts?.length || 0} • Chờ: {session.waiting?.length || 0} • AI: {session.aiScore?.total || 0}
+                          S├ón: {session.courts?.length || 0} ΓÇó Chß╗¥: {session.waiting?.length || 0} ΓÇó AI: {session.aiScore?.total || 0}
                         </Typography>
 
                         <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
-                          Kết quả: {session.result?.status === "completed" ? "Đã chốt" : "Chưa chốt"} • Tổng điểm A/B: {session.result?.summary?.teamATotal ?? summary.teamATotal}/{session.result?.summary?.teamBTotal ?? summary.teamBTotal} • {isLocked ? "Đã khóa" : "Đang mở"}
+                          Kß║┐t quß║ú: {session.result?.status === "completed" ? "─É├ú chß╗æt" : "Ch╞░a chß╗æt"} ΓÇó Tß╗òng ─æiß╗âm A/B: {session.result?.summary?.teamATotal ?? summary.teamATotal}/{session.result?.summary?.teamBTotal ?? summary.teamBTotal} ΓÇó {isLocked ? "─É├ú kh├│a" : "─Éang mß╗ƒ"}
                         </Typography>
 
                         <Stack direction={{ xs: "column", sm: "row" }} spacing={1} sx={{ mt: 1 }}>
                           <FormControl size="small" sx={{ minWidth: 180 }}>
-                            <InputLabel>Gán round</InputLabel>
+                            <InputLabel>G├ín round</InputLabel>
                             <Select
-                              label="Gán round"
+                              label="G├ín round"
                               value={sessionRoundDraft[session.id] || ""}
                               onChange={(event) => {
                                 setSessionRoundDraft({
@@ -1351,35 +1351,35 @@ export default function Tournament() {
                           </FormControl>
 
                           <Button size="small" variant="outlined" onClick={() => handleAssignSessionToRound(session.id)}>
-                            Gán session
+                            G├ín session
                           </Button>
                           <Button size="small" variant="text" color="warning" onClick={() => handleUnassignSessionRound(session.id)}>
-                            Bỏ gán
+                            Bß╗Å g├ín
                           </Button>
                         </Stack>
 
                         <Card variant="outlined" sx={{ mt: 1, p: 1.5 }}>
                           <Typography variant="subtitle2" fontWeight="bold" sx={{ mb: 1 }}>
-                            Cập nhật kết quả vòng
+                            Cß║¡p nhß║¡t kß║┐t quß║ú v├▓ng
                           </Typography>
 
                           <Stack direction={{ xs: "column", sm: "row" }} spacing={1} sx={{ mb: 1 }}>
                             <FormControl size="small" sx={{ minWidth: 180 }}>
-                              <InputLabel>Trạng thái</InputLabel>
+                              <InputLabel>Trß║íng th├íi</InputLabel>
                               <Select
-                                label="Trạng thái"
+                                label="Trß║íng th├íi"
                                 value={resultDraft.status}
                                 onChange={(event) => handleResultStatusChange(session, event.target.value)}
                                 disabled={isLocked}
                               >
-                                <MenuItem value="pending">Đang thi đấu</MenuItem>
-                                <MenuItem value="completed">Hoàn tất</MenuItem>
+                                <MenuItem value="pending">─Éang thi ─æß║Ñu</MenuItem>
+                                <MenuItem value="completed">Ho├án tß║Ñt</MenuItem>
                               </Select>
                             </FormControl>
                             <TextField
                               size="small"
                               fullWidth
-                              label="Ghi chú kết quả"
+                              label="Ghi ch├║ kß║┐t quß║ú"
                               value={resultDraft.note}
                               onChange={(event) => handleResultNoteChange(session, event.target.value)}
                               disabled={isLocked}
@@ -1398,7 +1398,7 @@ export default function Tournament() {
                                     <TextField
                                       size="small"
                                       type="number"
-                                      label="Điểm A"
+                                      label="─Éiß╗âm A"
                                       value={courtResult.teamAScore}
                                       onChange={(event) =>
                                         handleResultScoreChange(session, courtResult.courtId, "A", event.target.value)
@@ -1409,7 +1409,7 @@ export default function Tournament() {
                                     <TextField
                                       size="small"
                                       type="number"
-                                      label="Điểm B"
+                                      label="─Éiß╗âm B"
                                       value={courtResult.teamBScore}
                                       onChange={(event) =>
                                         handleResultScoreChange(session, courtResult.courtId, "B", event.target.value)
@@ -1420,7 +1420,7 @@ export default function Tournament() {
                                   </Stack>
 
                                   <Typography variant="caption" color="text.secondary" sx={{ mt: 0.5, display: "block" }}>
-                                    Thắng sân: {courtResult.winner === "draw" ? "Hòa" : courtResult.winner === "A" ? "Đội A" : "Đội B"}
+                                    Thß║»ng s├ón: {courtResult.winner === "draw" ? "H├▓a" : courtResult.winner === "A" ? "─Éß╗Öi A" : "─Éß╗Öi B"}
                                   </Typography>
                                 </Card>
                               </Grid>
@@ -1428,7 +1428,7 @@ export default function Tournament() {
                           </Grid>
 
                           <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
-                            Tổng điểm phiên: A {summary.teamATotal} - B {summary.teamBTotal} • Kết quả: {summary.winner === "draw" ? "Hòa" : summary.winner === "A" ? "Đội A thắng" : "Đội B thắng"}
+                            Tß╗òng ─æiß╗âm phi├¬n: A {summary.teamATotal} - B {summary.teamBTotal} ΓÇó Kß║┐t quß║ú: {summary.winner === "draw" ? "H├▓a" : summary.winner === "A" ? "─Éß╗Öi A thß║»ng" : "─Éß╗Öi B thß║»ng"}
                           </Typography>
 
                           <Button
@@ -1439,7 +1439,7 @@ export default function Tournament() {
                             onClick={() => handleSaveSessionResult(session)}
                             disabled={isLocked}
                           >
-                            Lưu kết quả vòng
+                            L╞░u kß║┐t quß║ú v├▓ng
                           </Button>
                           <Button
                             size="small"
@@ -1448,7 +1448,7 @@ export default function Tournament() {
                             sx={{ mt: 1, ml: 1 }}
                             onClick={() => handleToggleResultLock(session)}
                           >
-                            {isLocked ? "Mở khóa kết quả" : "Khóa kết quả"}
+                            {isLocked ? "Mß╗ƒ kh├│a kß║┐t quß║ú" : "Kh├│a kß║┐t quß║ú"}
                           </Button>
                         </Card>
                             </>

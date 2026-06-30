@@ -14,8 +14,11 @@ File `.env`:
 ```env
 VITE_SUPABASE_URL=https://xxxx.supabase.co
 VITE_SUPABASE_ANON_KEY=eyJ...
-VITE_RBAC_ENABLED=true
+# Auth production tự bật khi có 2 biến trên → bắt buộc đăng nhập
+VITE_RBAC_ENABLED=false
 ```
+
+Bật RBAC permission (bước sau): `VITE_RBAC_ENABLED=true`
 
 ## 3. Tạo user + profile
 
@@ -46,9 +49,12 @@ values (
 
 ## 5. Lưu ý
 
-- `matchLiveSync` vẫn dùng anon client riêng (không session) — không ảnh hưởng referee token
-- Auth client (`src/auth/supabaseClient.js`) persist session trong trình duyệt
-- Chưa có payment gateway — nâng cấp gói chỉ lưu local (`upgradeSubscription`)
+- Referee: anon client + RPC token-scoped (`matchLiveSync` referee path).
+- Director/staff: JWT session qua `getSupabaseAuthClient()` (giống `cloudSync`).
+- Auth client (`src/auth/supabaseClient.js`) persist session trong trình duyệt.
+- Đăng ký luôn tạo profile `PLAYER` — không gửi role trong metadata.
+- Chỉ SUPER_ADMIN đổi role (trigger SQL); user tự sửa chỉ `display_name`, `player_id`.
+- Chưa có payment gateway — nâng cấp gói chỉ lưu local (`upgradeSubscription`).
 
 ## 6. Nhân sự venue
 

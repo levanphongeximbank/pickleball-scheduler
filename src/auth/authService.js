@@ -10,10 +10,12 @@ import {
 import { hasSupabaseConfig, getSupabaseAuthClient } from "./supabaseClient.js";
 import {
   fetchProfileByUserId,
-  mapAuthUserFallback,
+  resolveAuthUserFromProfile,
 } from "./profileService.js";
+import { formatAuthError } from "./authErrors.js";
+import { isSecureRuntime } from "./runtime.js";
 
-/** Dev registry — dùng khi chưa cấu hình Supabase hoặc dev local. */
+/** Dev registry — chỉ dùng khi chưa cấu hình Supabase (dev local). */
 const DEV_USERS = [
   createUserRecord({
     id: "dev-super-admin",
@@ -78,11 +80,30 @@ export function isSupabaseAuthAvailable() {
   return hasSupabaseConfig();
 }
 
+/** Auth production = có Supabase env → bắt buộc đăng nhập (tách khỏi RBAC). */
+export function isAuthProductionEnabled() {
+  return hasSupabaseConfig();
+}
+
+export function isDevAuthAllowed() {
+  return !isSecureRuntime();
+}
+
 export function isRbacEnabled() {
   return loadRbacConfig().enabled;
 }
 
 export function enableRbac(enabled = true) {
+  if (isSecureRuntime()) {
+    const locked = isRbacEnabled();
+    return {
+      ok: false,
+      enabled: locked,
+      error: "RBAC bị khóa trên Preview/Production — chỉ đổi qua VITE_RBAC_ENABLED.",
+      code: "RBAC_LOCKED",
+    };
+  }
+
   saveRbacConfig({ enabled });
   return { ok: true, enabled };
 }
@@ -95,38 +116,41 @@ export function getCurrentUser() {
 export function getAuthState() {
   const rbacEnabled = isRbacEnabled();
   const session = loadAuthSession();
+  const authProductionEnabled = isAuthProductionEnabled();
 
   return {
     rbacEnabled,
+    authProductionEnabled,
     user: session?.user || null,
     isAuthenticated: Boolean(session?.user),
     loggedInAt: session?.loggedInAt || null,
     authProvider: session?.provider || null,
-    supabaseAvailable: isSupabaseAuthAvailable(),
+    supabaseAvailable: authProductionEnabled,
   };
 }
 
 async function syncSupabaseUser(authUser) {
   const profileResult = await fetchProfileByUserId(authUser.id);
+  const resolved = resolveAuthUserFromProfile(authUser, profileResult, {
+    rbacEnabled: isRbacEnabled(),
+  });
 
-  if (profileResult.ok) {
-    saveAuthSession(profileResult.user, { provider: "supabase" });
-    return { ok: true, user: profileResult.user, provider: "supabase" };
+  if (!resolved.ok) {
+    clearAuthSession();
+    const client = getSupabaseAuthClient();
+    if (client) {
+      await client.auth.signOut();
+    }
+    return resolved;
   }
 
-  const fallback = mapAuthUserFallback(authUser, authUser.user_metadata || {});
-  if (!fallback.role) {
-    return {
-      ok: false,
-      error:
-        profileResult.error ||
-        "Chưa có profile RBAC trên Supabase. Chạy docs/supabase-rbac.sql và tạo bản ghi profiles.",
-      code: profileResult.code || "PROFILE_NOT_FOUND",
-    };
-  }
-
-  saveAuthSession(fallback, { provider: "supabase" });
-  return { ok: true, user: fallback, provider: "supabase", warning: "Dùng metadata fallback" };
+  saveAuthSession(resolved.user, { provider: "supabase" });
+  return {
+    ok: true,
+    user: resolved.user,
+    provider: "supabase",
+    warning: resolved.warning || null,
+  };
 }
 
 export async function restoreSupabaseSession() {
@@ -159,7 +183,11 @@ export async function signInWithPassword(email, password) {
   });
 
   if (error) {
-    return { ok: false, error: error.message, code: "AUTH_FAILED" };
+    return {
+      ok: false,
+      error: formatAuthError(error.message, "AUTH_FAILED"),
+      code: "AUTH_FAILED",
+    };
   }
 
   return syncSupabaseUser(data.user);
@@ -175,12 +203,21 @@ export async function signUpWithPassword(email, password, profileMeta = {}) {
     email: String(email || "").trim().toLowerCase(),
     password: String(password || ""),
     options: {
-      data: profileMeta,
+      data: {
+        display_name:
+          profileMeta.display_name ||
+          profileMeta.displayName ||
+          String(email || "").split("@")[0],
+      },
     },
   });
 
   if (error) {
-    return { ok: false, error: error.message, code: "SIGNUP_FAILED" };
+    return {
+      ok: false,
+      error: formatAuthError(error.message, "SIGNUP_FAILED"),
+      code: "SIGNUP_FAILED",
+    };
   }
 
   if (!data.user) {
@@ -199,9 +236,17 @@ export async function signUpWithPassword(email, password, profileMeta = {}) {
 }
 
 /**
- * Đăng nhập dev — tìm user theo email trong DEV_USERS.
+ * Đăng nhập dev — chỉ khi chưa có Supabase env (không dùng production).
  */
 export function signInDev(email) {
+  if (!isDevAuthAllowed()) {
+    return {
+      ok: false,
+      error: "Dev login không khả dụng khi Supabase Auth đã bật.",
+      code: "DEV_AUTH_DISABLED",
+    };
+  }
+
   const normalizedEmail = String(email || "").trim().toLowerCase();
   const found = DEV_USERS.find((user) => user.email === normalizedEmail);
 
@@ -214,6 +259,14 @@ export function signInDev(email) {
 }
 
 export function signInAs(userLike, meta = {}) {
+  if (!isDevAuthAllowed()) {
+    return {
+      ok: false,
+      error: "Dev sign-in không khả dụng trên Preview/Production.",
+      code: "DEV_AUTH_DISABLED",
+    };
+  }
+
   const user = normalizeUser(userLike);
   if (!user.id || !user.role) {
     return { ok: false, error: "User không hợp lệ", code: "INVALID_USER" };
@@ -261,5 +314,9 @@ export function subscribeToSupabaseAuth(onChange) {
 }
 
 export function listDevUsers() {
+  if (!isDevAuthAllowed()) {
+    return [];
+  }
+
   return DEV_USERS.map((user) => normalizeUser(user));
 }

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+﻿import { useEffect, useMemo, useState } from "react";
 import {
   Alert,
   Box,
@@ -597,24 +597,24 @@ export default function Statistics() {
       compareRoundAMetrics.sessionCount === 0 ||
       compareRoundBMetrics.sessionCount === 0
     ) {
-      return { winner: null, reason: "Chọn đủ dữ liệu cho cả 2 rounds để so sánh." };
+      return { winner: null, reason: "Chß╗ìn ─æß╗º dß╗» liß╗çu cho cß║ú 2 rounds ─æß╗â so s├ính." };
     }
 
     const scoreA = compareRoundAMetrics.avgAIScore - compareRoundAMetrics.avgWaiting * 5;
     const scoreB = compareRoundBMetrics.avgAIScore - compareRoundBMetrics.avgWaiting * 5;
 
     if (scoreA === scoreB) {
-      return { winner: "tie", reason: "Hai rounds đang ngang nhau theo tiêu chí hiện tại." };
+      return { winner: "tie", reason: "Hai rounds ─æang ngang nhau theo ti├¬u ch├¡ hiß╗çn tß║íi." };
     }
 
     return scoreA > scoreB
       ? {
           winner: "A",
-          reason: `${compareRoundAName} tốt hơn: AI cao hơn và/hoặc ít người chờ hơn.`,
+          reason: `${compareRoundAName} tß╗æt h╞ín: AI cao h╞ín v├á/hoß║╖c ├¡t ng╞░ß╗¥i chß╗¥ h╞ín.`,
         }
       : {
           winner: "B",
-          reason: `${compareRoundBName} tốt hơn: AI cao hơn và/hoặc ít người chờ hơn.`,
+          reason: `${compareRoundBName} tß╗æt h╞ín: AI cao h╞ín v├á/hoß║╖c ├¡t ng╞░ß╗¥i chß╗¥ h╞ín.`,
         };
   }, [compareRoundAMetrics, compareRoundBMetrics, compareRoundAName, compareRoundBName]);
 
@@ -647,9 +647,9 @@ export default function Statistics() {
   );
 
   const fairnessLevel = useMemo(() => {
-    if (fairnessMetrics.fairnessScore >= 70) return "Tốt";
-    if (fairnessMetrics.fairnessScore >= 40) return "Trung bình";
-    return "Cần cải thiện";
+    if (fairnessMetrics.fairnessScore >= 70) return "Tß╗æt";
+    if (fairnessMetrics.fairnessScore >= 40) return "Trung b├¼nh";
+    return "Cß║ºn cß║úi thiß╗çn";
   }, [fairnessMetrics.fairnessScore]);
 
   const escapeCsvCell = (value) => {
@@ -662,7 +662,7 @@ export default function Statistics() {
 
   const assertExportAllowed = () => {
     if (!can(PERMISSIONS.STATISTICS_EXPORT, { clubId: activeClubId })) {
-      setStatusMessage({ type: "error", text: "Không có quyền xuất thống kê." });
+      setStatusMessage({ type: "error", text: "Kh├┤ng c├│ quyß╗ün xuß║Ñt thß╗æng k├¬." });
       return false;
     }
 
@@ -681,7 +681,7 @@ export default function Statistics() {
     }
 
     if (filteredSessions.length === 0) {
-      setStatusMessage({ type: "error", text: "Không có dữ liệu sau lọc để xuất CSV." });
+      setStatusMessage({ type: "error", text: "Kh├┤ng c├│ dß╗» liß╗çu sau lß╗ìc ─æß╗â xuß║Ñt CSV." });
       return;
     }
 
@@ -698,7 +698,7 @@ export default function Statistics() {
     const rows = filteredSessions.map((session) => ([
       session.id,
       session.date,
-      session.meta?.roundName || "Round tự do",
+      session.meta?.roundName || "Round tß╗▒ do",
       session.meta?.shiftLabel || "",
       session.courts?.length || 0,
       session.waiting?.length || 0,
@@ -720,7 +720,7 @@ export default function Statistics() {
     document.body.removeChild(anchor);
     URL.revokeObjectURL(url);
 
-    setStatusMessage({ type: "success", text: "Đã xuất CSV theo bộ lọc hiện tại." });
+    setStatusMessage({ type: "success", text: "─É├ú xuß║Ñt CSV theo bß╗Ö lß╗ìc hiß╗çn tß║íi." });
   };
 
   const handleExportCompareCsv = () => {
@@ -732,7 +732,7 @@ export default function Statistics() {
       compareRoundAMetrics.sessionCount === 0 &&
       compareRoundBMetrics.sessionCount === 0
     ) {
-      setStatusMessage({ type: "error", text: "Không có dữ liệu so sánh để xuất CSV." });
+      setStatusMessage({ type: "error", text: "Kh├┤ng c├│ dß╗» liß╗çu so s├ính ─æß╗â xuß║Ñt CSV." });
       return;
     }
 
@@ -782,7 +782,7 @@ export default function Statistics() {
     document.body.removeChild(anchor);
     URL.revokeObjectURL(url);
 
-    setStatusMessage({ type: "success", text: "Đã xuất CSV phần so sánh Round A/B." });
+    setStatusMessage({ type: "success", text: "─É├ú xuß║Ñt CSV phß║ºn so s├ính Round A/B." });
   };
 
   const handleStandingsSeasonChange = (seasonId) => {
@@ -797,7 +797,7 @@ export default function Statistics() {
     }
 
     if (!seasonStandingsRows.length) {
-      setStatusMessage({ type: "warning", text: "Chưa có dữ liệu BXH mùa giải để xuất." });
+      setStatusMessage({ type: "warning", text: "Ch╞░a c├│ dß╗» liß╗çu BXH m├╣a giß║úi ─æß╗â xuß║Ñt." });
       return;
     }
 
@@ -815,17 +815,17 @@ export default function Statistics() {
     document.body.removeChild(anchor);
     URL.revokeObjectURL(url);
 
-    setStatusMessage({ type: "success", text: "Đã xuất CSV BXH mùa giải." });
+    setStatusMessage({ type: "success", text: "─É├ú xuß║Ñt CSV BXH m├╣a giß║úi." });
   };
 
   return (
     <Box>
       <Typography variant="h4" fontWeight="bold" sx={{ mb: 1 }}>
-        Thống kê
+        Thß╗æng k├¬
       </Typography>
       <Typography color="text.secondary" sx={{ mb: 3 }}>
-        {activeSeason?.name || "Mùa hiện tại"}
-        {activeLeague ? ` • ${activeLeague.name}` : ""}
+        {activeSeason?.name || "M├╣a hiß╗çn tß║íi"}
+        {activeLeague ? ` ΓÇó ${activeLeague.name}` : ""}
       </Typography>
 
       {statusMessage && (
@@ -839,7 +839,7 @@ export default function Statistics() {
           <Card>
             <CardContent>
               <Typography variant="h6" fontWeight="bold" sx={{ mb: 2 }}>
-                BXH mùa giải (Giải đấu V3.3)
+                BXH m├╣a giß║úi (Giß║úi ─æß║Ñu V3.3)
               </Typography>
 
               <Stack
@@ -848,9 +848,9 @@ export default function Statistics() {
                 sx={{ mb: 2, alignItems: { md: "center" } }}
               >
                 <FormControl size="small" sx={{ minWidth: 220 }}>
-                  <InputLabel>Mùa giải</InputLabel>
+                  <InputLabel>M├╣a giß║úi</InputLabel>
                   <Select
-                    label="Mùa giải"
+                    label="M├╣a giß║úi"
                     value={standingsSeasonId || ""}
                     onChange={(event) => handleStandingsSeasonChange(event.target.value)}
                   >
@@ -863,9 +863,9 @@ export default function Statistics() {
                 </FormControl>
 
                 <FormControl size="small" sx={{ minWidth: 220 }}>
-                  <InputLabel>Giải / League</InputLabel>
+                  <InputLabel>Giß║úi / League</InputLabel>
                   <Select
-                    label="Giải / League"
+                    label="Giß║úi / League"
                     value={standingsLeagueId || ""}
                     onChange={(event) => setStandingsLeagueId(event.target.value)}
                   >
@@ -879,7 +879,7 @@ export default function Statistics() {
 
                 <PermissionGate permission={PERMISSIONS.STATISTICS_EXPORT}>
                   <Button variant="outlined" onClick={handleExportSeasonStandingsCsv}>
-                    Xuất CSV BXH
+                    Xuß║Ñt CSV BXH
                   </Button>
                 </PermissionGate>
 
@@ -903,7 +903,7 @@ export default function Statistics() {
           <Card>
             <CardContent>
               <Typography variant="h6" fontWeight="bold" sx={{ mb: 2 }}>
-                Bộ lọc thống kê
+                Bß╗Ö lß╗ìc thß╗æng k├¬
               </Typography>
 
               <Stack direction={{ xs: "column", md: "row" }} spacing={2}>
@@ -914,7 +914,7 @@ export default function Statistics() {
                     value={selectedRound}
                     onChange={(event) => setSelectedRound(event.target.value)}
                   >
-                    <MenuItem value="all">Tất cả round</MenuItem>
+                    <MenuItem value="all">Tß║Ñt cß║ú round</MenuItem>
                     {rounds.map((round) => (
                       <MenuItem key={round.id} value={String(round.id)}>
                         {round.name}
@@ -924,13 +924,13 @@ export default function Statistics() {
                 </FormControl>
 
                 <FormControl size="small" sx={{ minWidth: 220 }}>
-                  <InputLabel>Ca chơi</InputLabel>
+                  <InputLabel>Ca ch╞íi</InputLabel>
                   <Select
-                    label="Ca chơi"
+                    label="Ca ch╞íi"
                     value={selectedShift}
                     onChange={(event) => setSelectedShift(event.target.value)}
                   >
-                    <MenuItem value="all">Tất cả ca</MenuItem>
+                    <MenuItem value="all">Tß║Ñt cß║ú ca</MenuItem>
                     {shiftOptions.map((shift) => (
                       <MenuItem key={shift} value={shift}>
                         {shift}
@@ -939,10 +939,10 @@ export default function Statistics() {
                   </Select>
                 </FormControl>
 
-                <Chip label={`Sessions sau lọc: ${filteredSessions.length}`} color="info" />
+                <Chip label={`Sessions sau lß╗ìc: ${filteredSessions.length}`} color="info" />
                 <PermissionGate permission={PERMISSIONS.STATISTICS_EXPORT}>
                   <Button variant="outlined" onClick={handleExportFilteredCsv}>
-                    Xuất CSV theo bộ lọc
+                    Xuß║Ñt CSV theo bß╗Ö lß╗ìc
                   </Button>
                 </PermissionGate>
               </Stack>
@@ -954,27 +954,27 @@ export default function Statistics() {
           <Card>
             <CardContent>
               <Typography variant="h6" fontWeight="bold" sx={{ mb: 2 }}>
-                🏅 Bảng thắng/thua theo kết quả vòng
+                ≡ƒÅà Bß║úng thß║»ng/thua theo kß║┐t quß║ú v├▓ng
               </Typography>
 
               <Stack direction="row" spacing={1} sx={{ mb: 2, flexWrap: "wrap" }}>
-                <Chip label={`Phiên hoàn tất: ${completedResultSessions}`} color="success" />
-                <Chip label={`Người có dữ liệu kết quả: ${matchOutcomeStats.length}`} color="info" />
+                <Chip label={`Phi├¬n ho├án tß║Ñt: ${completedResultSessions}`} color="success" />
+                <Chip label={`Ng╞░ß╗¥i c├│ dß╗» liß╗çu kß║┐t quß║ú: ${matchOutcomeStats.length}`} color="info" />
               </Stack>
 
               {matchOutcomeStats.length === 0 ? (
                 <Typography color="text.secondary">
-                  Chưa có dữ liệu kết quả vòng hoàn tất để tính thắng/thua.
+                  Ch╞░a c├│ dß╗» liß╗çu kß║┐t quß║ú v├▓ng ho├án tß║Ñt ─æß╗â t├¡nh thß║»ng/thua.
                 </Typography>
               ) : (
                 matchOutcomeStats.slice(0, 16).map((item, index) => (
                   <Box key={item.id} sx={{ py: 0.8 }}>
                     <Stack direction="row" spacing={1} sx={{ justifyContent: "space-between", alignItems: "center" }}>
                       <Typography fontWeight="bold">#{index + 1} {item.name}</Typography>
-                      <Chip label={`${item.winRate}% thắng`} color={item.winRate >= 60 ? "success" : item.winRate >= 40 ? "warning" : "default"} size="small" />
+                      <Chip label={`${item.winRate}% thß║»ng`} color={item.winRate >= 60 ? "success" : item.winRate >= 40 ? "warning" : "default"} size="small" />
                     </Stack>
                     <Typography variant="body2" color="text.secondary">
-                      W-L-D: {item.wins}-{item.losses}-{item.draws} • Trận: {item.totalMatches} • Điểm: {item.pointsFor}/{item.pointsAgainst} (diff {item.pointDiff >= 0 ? "+" : ""}{item.pointDiff})
+                      W-L-D: {item.wins}-{item.losses}-{item.draws} ΓÇó Trß║¡n: {item.totalMatches} ΓÇó ─Éiß╗âm: {item.pointsFor}/{item.pointsAgainst} (diff {item.pointDiff >= 0 ? "+" : ""}{item.pointDiff})
                     </Typography>
                     <Divider sx={{ mt: 1 }} />
                   </Box>
@@ -988,11 +988,11 @@ export default function Statistics() {
           <Card>
             <CardContent>
               <Typography variant="h6" fontWeight="bold" sx={{ mb: 2 }}>
-                📌 Dashboard vận hành
+                ≡ƒôî Dashboard vß║¡n h├ánh
               </Typography>
               <Grid container spacing={2}>
                 <Grid size={{ xs: 6, md: 3 }}>
-                  <Typography variant="subtitle2" color="text.secondary">Tổng phiên</Typography>
+                  <Typography variant="subtitle2" color="text.secondary">Tß╗òng phi├¬n</Typography>
                   <Typography variant="h5" fontWeight="bold">{operationalMetrics.totalSessions}</Typography>
                 </Grid>
                 <Grid size={{ xs: 6, md: 3 }}>
@@ -1000,11 +1000,11 @@ export default function Statistics() {
                   <Typography variant="h5" fontWeight="bold" color="primary.main">{operationalMetrics.avgAIScore}</Typography>
                 </Grid>
                 <Grid size={{ xs: 6, md: 3 }}>
-                  <Typography variant="subtitle2" color="text.secondary">Người chờ TB</Typography>
+                  <Typography variant="subtitle2" color="text.secondary">Ng╞░ß╗¥i chß╗¥ TB</Typography>
                   <Typography variant="h5" fontWeight="bold" color="warning.main">{operationalMetrics.avgWaiting}</Typography>
                 </Grid>
                 <Grid size={{ xs: 6, md: 3 }}>
-                  <Typography variant="subtitle2" color="text.secondary">Tổng lượt sân</Typography>
+                  <Typography variant="subtitle2" color="text.secondary">Tß╗òng l╞░ß╗út s├ón</Typography>
                   <Typography variant="h5" fontWeight="bold" color="success.main">{operationalMetrics.totalCourtsUsed}</Typography>
                 </Grid>
               </Grid>
@@ -1016,14 +1016,14 @@ export default function Statistics() {
           <Card>
             <CardContent>
               <Typography variant="h6" fontWeight="bold" sx={{ mb: 1 }}>
-                📈 Xu hướng AI score theo thời gian
+                ≡ƒôê Xu h╞░ß╗¢ng AI score theo thß╗¥i gian
               </Typography>
               <Typography variant="body2" color="text.secondary" sx={{ mb: 1.5 }}>
-                Dựa trên {trendPoints.length} phiên gần nhất sau lọc. Trục dọc là điểm AI từ 0 đến 100.
+                Dß╗▒a tr├¬n {trendPoints.length} phi├¬n gß║ºn nhß║Ñt sau lß╗ìc. Trß╗Ñc dß╗ìc l├á ─æiß╗âm AI tß╗½ 0 ─æß║┐n 100.
               </Typography>
 
               {trendPoints.length === 0 ? (
-                <Typography color="text.secondary">Không có phiên nào để vẽ biểu đồ.</Typography>
+                <Typography color="text.secondary">Kh├┤ng c├│ phi├¬n n├áo ─æß╗â vß║╜ biß╗âu ─æß╗ô.</Typography>
               ) : (
                 <>
                   <Box sx={{ width: "100%", overflowX: "auto", border: "1px solid", borderColor: "grey.300", borderRadius: 2, p: 1, mb: 1.5 }}>
@@ -1054,7 +1054,7 @@ export default function Statistics() {
 
                   <Stack direction="row" spacing={1} sx={{ flexWrap: "wrap" }}>
                     <Chip
-                      label={`Xu hướng: ${trendSummary.delta > 0 ? "+" : ""}${trendSummary.delta}`}
+                      label={`Xu h╞░ß╗¢ng: ${trendSummary.delta > 0 ? "+" : ""}${trendSummary.delta}`}
                       color={trendSummary.delta >= 0 ? "success" : "error"}
                     />
                     <Chip label={`Best: ${trendSummary.best}`} color="primary" />
@@ -1070,14 +1070,14 @@ export default function Statistics() {
           <Card>
             <CardContent>
               <Typography variant="h6" fontWeight="bold" sx={{ mb: 1 }}>
-                👥 Xu hướng số người chờ theo thời gian
+                ≡ƒæÑ Xu h╞░ß╗¢ng sß╗æ ng╞░ß╗¥i chß╗¥ theo thß╗¥i gian
               </Typography>
               <Typography variant="body2" color="text.secondary" sx={{ mb: 1.5 }}>
-                Dựa trên {waitingTrendPoints.length} phiên gần nhất sau lọc.
+                Dß╗▒a tr├¬n {waitingTrendPoints.length} phi├¬n gß║ºn nhß║Ñt sau lß╗ìc.
               </Typography>
 
               {waitingTrendPoints.length === 0 ? (
-                <Typography color="text.secondary">Không có phiên nào để vẽ biểu đồ người chờ.</Typography>
+                <Typography color="text.secondary">Kh├┤ng c├│ phi├¬n n├áo ─æß╗â vß║╜ biß╗âu ─æß╗ô ng╞░ß╗¥i chß╗¥.</Typography>
               ) : (
                 <Box sx={{ width: "100%", overflowX: "auto", border: "1px solid", borderColor: "grey.300", borderRadius: 2, p: 1, mb: 1.5 }}>
                   <svg width="100%" viewBox="0 0 720 220" role="img" aria-label="Waiting trend">
@@ -1105,7 +1105,7 @@ export default function Statistics() {
           <Card>
             <CardContent>
               <Typography variant="h6" fontWeight="bold" sx={{ mb: 2 }}>
-                ⚖️ So sánh 2 round
+                ΓÜû∩╕Å So s├ính 2 round
               </Typography>
 
               <Stack direction={{ xs: "column", md: "row" }} spacing={2} sx={{ mb: 2 }}>
@@ -1116,7 +1116,7 @@ export default function Statistics() {
                     value={selectedCompareRoundA}
                     onChange={(event) => setSelectedCompareRoundA(event.target.value)}
                   >
-                    <MenuItem value="all">Chọn Round A</MenuItem>
+                    <MenuItem value="all">Chß╗ìn Round A</MenuItem>
                     {rounds.map((round) => (
                       <MenuItem key={`A-${round.id}`} value={String(round.id)}>
                         {round.name}
@@ -1132,7 +1132,7 @@ export default function Statistics() {
                     value={selectedCompareRoundB}
                     onChange={(event) => setSelectedCompareRoundB(event.target.value)}
                   >
-                    <MenuItem value="all">Chọn Round B</MenuItem>
+                    <MenuItem value="all">Chß╗ìn Round B</MenuItem>
                     {rounds.map((round) => (
                       <MenuItem key={`B-${round.id}`} value={String(round.id)}>
                         {round.name}
@@ -1144,7 +1144,7 @@ export default function Statistics() {
                 <TextField
                   size="small"
                   type="number"
-                  label="Ngưỡng cảnh báo chờ"
+                  label="Ng╞░ß╗íng cß║únh b├ío chß╗¥"
                   value={waitingAlertThreshold}
                   onChange={(event) => {
                     const nextValue = Number(event.target.value);
@@ -1158,16 +1158,16 @@ export default function Statistics() {
 
                 <PermissionGate permission={PERMISSIONS.STATISTICS_EXPORT}>
                   <Button variant="outlined" onClick={handleExportCompareCsv}>
-                    Xuất CSV so sánh
+                    Xuß║Ñt CSV so s├ính
                   </Button>
                 </PermissionGate>
               </Stack>
 
               <Stack direction="row" spacing={1} sx={{ mb: 2, flexWrap: "wrap" }}>
-                {compareWinner.winner === "A" && <Chip color="success" label={`Round tốt hơn: ${compareRoundAName}`} />}
-                {compareWinner.winner === "B" && <Chip color="success" label={`Round tốt hơn: ${compareRoundBName}`} />}
-                {compareWinner.winner === "tie" && <Chip color="info" label="Kết quả: hòa" />}
-                {compareWinner.winner === null && <Chip color="default" label="Cần thêm dữ liệu" />}
+                {compareWinner.winner === "A" && <Chip color="success" label={`Round tß╗æt h╞ín: ${compareRoundAName}`} />}
+                {compareWinner.winner === "B" && <Chip color="success" label={`Round tß╗æt h╞ín: ${compareRoundBName}`} />}
+                {compareWinner.winner === "tie" && <Chip color="info" label="Kß║┐t quß║ú: h├▓a" />}
+                {compareWinner.winner === null && <Chip color="default" label="Cß║ºn th├¬m dß╗» liß╗çu" />}
                 <Chip color="default" label={compareWinner.reason} />
               </Stack>
 
@@ -1178,11 +1178,11 @@ export default function Statistics() {
                       <Typography fontWeight="bold">{compareRoundAName}</Typography>
                       <Typography variant="body2" color="text.secondary">Sessions: {compareRoundAMetrics.sessionCount}</Typography>
                       <Typography variant="body2" color="text.secondary">AI TB: {compareRoundAMetrics.avgAIScore}</Typography>
-                      <Typography variant="body2" color="text.secondary">Chờ TB: {compareRoundAMetrics.avgWaiting}</Typography>
+                      <Typography variant="body2" color="text.secondary">Chß╗¥ TB: {compareRoundAMetrics.avgWaiting}</Typography>
                       <Stack direction="row" spacing={1} sx={{ mt: 1, flexWrap: "wrap" }}>
                         <Chip label={`Grade: ${compareRoundAGrade}`} color={compareRoundAGrade === "A" || compareRoundAGrade === "B" ? "success" : compareRoundAGrade === "C" ? "warning" : "error"} size="small" />
                         {compareRoundAMetrics.avgWaiting > waitingAlertThreshold && (
-                          <Chip label="Cảnh báo chờ cao" color="error" size="small" />
+                          <Chip label="Cß║únh b├ío chß╗¥ cao" color="error" size="small" />
                         )}
                       </Stack>
                     </CardContent>
@@ -1195,11 +1195,11 @@ export default function Statistics() {
                       <Typography fontWeight="bold">{compareRoundBName}</Typography>
                       <Typography variant="body2" color="text.secondary">Sessions: {compareRoundBMetrics.sessionCount}</Typography>
                       <Typography variant="body2" color="text.secondary">AI TB: {compareRoundBMetrics.avgAIScore}</Typography>
-                      <Typography variant="body2" color="text.secondary">Chờ TB: {compareRoundBMetrics.avgWaiting}</Typography>
+                      <Typography variant="body2" color="text.secondary">Chß╗¥ TB: {compareRoundBMetrics.avgWaiting}</Typography>
                       <Stack direction="row" spacing={1} sx={{ mt: 1, flexWrap: "wrap" }}>
                         <Chip label={`Grade: ${compareRoundBGrade}`} color={compareRoundBGrade === "A" || compareRoundBGrade === "B" ? "success" : compareRoundBGrade === "C" ? "warning" : "error"} size="small" />
                         {compareRoundBMetrics.avgWaiting > waitingAlertThreshold && (
-                          <Chip label="Cảnh báo chờ cao" color="error" size="small" />
+                          <Chip label="Cß║únh b├ío chß╗¥ cao" color="error" size="small" />
                         )}
                       </Stack>
                     </CardContent>
@@ -1214,13 +1214,13 @@ export default function Statistics() {
           <Card>
             <CardContent>
               <Typography variant="h6" fontWeight="bold" sx={{ mb: 1 }}>
-                🧠 Fairness Score
+                ≡ƒºá Fairness Score
               </Typography>
               <Typography variant="h3" color={fairnessMetrics.fairnessScore >= 70 ? "success.main" : fairnessMetrics.fairnessScore >= 40 ? "warning.main" : "error.main"} fontWeight="bold">
                 {fairnessMetrics.fairnessScore}/100
               </Typography>
               <Typography variant="subtitle2" color="text.secondary" sx={{ mt: 1, mb: 2 }}>
-                {fairnessLevel} — phản ánh mức độ cân bằng và đa dạng lịch sử ghép trận.
+                {fairnessLevel} ΓÇö phß║ún ├ính mß╗⌐c ─æß╗Ö c├ón bß║▒ng v├á ─æa dß║íng lß╗ïch sß╗¡ gh├⌐p trß║¡n.
               </Typography>
 
               <Box sx={{ mb: 2 }}>
@@ -1232,22 +1232,22 @@ export default function Statistics() {
               </Box>
 
               <Stack direction="row" spacing={1} flexWrap="wrap" sx={{ mb: 2 }}>
-                <Chip label={`Cân bằng ${fairnessMetrics.balanceScore}`} color="primary" size="small" />
-                <Chip label={`Đồng đội ${fairnessMetrics.partnerScore}`} color="success" size="small" />
-                <Chip label={`Đối thủ ${fairnessMetrics.opponentScore}`} color="warning" size="small" />
+                <Chip label={`C├ón bß║▒ng ${fairnessMetrics.balanceScore}`} color="primary" size="small" />
+                <Chip label={`─Éß╗ông ─æß╗Öi ${fairnessMetrics.partnerScore}`} color="success" size="small" />
+                <Chip label={`─Éß╗æi thß╗º ${fairnessMetrics.opponentScore}`} color="warning" size="small" />
               </Stack>
 
               <Grid container spacing={2}>
                 <Grid size={{ xs: 12, sm: 4 }}>
-                  <Typography variant="subtitle2" color="text.secondary">Tổng trận</Typography>
+                  <Typography variant="subtitle2" color="text.secondary">Tß╗òng trß║¡n</Typography>
                   <Typography fontWeight="bold">{fairnessMetrics.totalGames}</Typography>
                 </Grid>
                 <Grid size={{ xs: 12, sm: 4 }}>
-                  <Typography variant="subtitle2" color="text.secondary">Đã lặp đồng đội</Typography>
+                  <Typography variant="subtitle2" color="text.secondary">─É├ú lß║╖p ─æß╗ông ─æß╗Öi</Typography>
                   <Typography fontWeight="bold">{fairnessMetrics.repeatedPartnerCount}</Typography>
                 </Grid>
                 <Grid size={{ xs: 12, sm: 4 }}>
-                  <Typography variant="subtitle2" color="text.secondary">Đã lặp đối thủ</Typography>
+                  <Typography variant="subtitle2" color="text.secondary">─É├ú lß║╖p ─æß╗æi thß╗º</Typography>
                   <Typography fontWeight="bold">{fairnessMetrics.repeatedOpponentCount}</Typography>
                 </Grid>
               </Grid>
@@ -1259,10 +1259,10 @@ export default function Statistics() {
           <Card>
             <CardContent>
               <Typography variant="h6" fontWeight="bold" sx={{ mb: 2 }}>
-                🏓 Thống kê người chơi
+                ≡ƒÅô Thß╗æng k├¬ ng╞░ß╗¥i ch╞íi
               </Typography>
               {playerStats.length === 0 ? (
-                <Typography color="text.secondary">Chưa có dữ liệu lịch sử.</Typography>
+                <Typography color="text.secondary">Ch╞░a c├│ dß╗» liß╗çu lß╗ïch sß╗¡.</Typography>
               ) : (
                 playerStats.map((player) => {
                   const topPartner = [...player.partners].sort((a, b) => b[1] - a[1])[0];
@@ -1272,13 +1272,13 @@ export default function Statistics() {
                     <Box key={player.id} sx={{ py: 1 }}>
                       <Stack direction="row" spacing={1} sx={{ justifyContent: "space-between", alignItems: "center" }}>
                         <Typography fontWeight="bold">{player.name}</Typography>
-                        <Chip label={`${player.games} trận`} color="primary" size="small" />
+                        <Chip label={`${player.games} trß║¡n`} color="primary" size="small" />
                       </Stack>
                       <Typography variant="body2" color="text.secondary">
-                        Đồng đội nhiều nhất: {topPartner ? `${playerNameById[topPartner[0]] || topPartner[0]} (${topPartner[1]})` : "-"}
+                        ─Éß╗ông ─æß╗Öi nhiß╗üu nhß║Ñt: {topPartner ? `${playerNameById[topPartner[0]] || topPartner[0]} (${topPartner[1]})` : "-"}
                       </Typography>
                       <Typography variant="body2" color="text.secondary">
-                        Đối thủ nhiều nhất: {topOpponent ? `${playerNameById[topOpponent[0]] || topOpponent[0]} (${topOpponent[1]})` : "-"}
+                        ─Éß╗æi thß╗º nhiß╗üu nhß║Ñt: {topOpponent ? `${playerNameById[topOpponent[0]] || topOpponent[0]} (${topOpponent[1]})` : "-"}
                       </Typography>
                       <Divider sx={{ mt: 1 }} />
                     </Box>
@@ -1293,11 +1293,11 @@ export default function Statistics() {
           <Card>
             <CardContent>
               <Typography variant="h6" fontWeight="bold" sx={{ mb: 2 }}>
-                🗂️ Phiên gần nhất
+                ≡ƒùé∩╕Å Phi├¬n gß║ºn nhß║Ñt
               </Typography>
 
               {recentSessions.length === 0 ? (
-                <Typography color="text.secondary">Chưa có session nào.</Typography>
+                <Typography color="text.secondary">Ch╞░a c├│ session n├áo.</Typography>
               ) : (
                 recentSessions.map((session) => (
                   <Box key={session.id} sx={{ py: 0.8 }}>
@@ -1305,10 +1305,10 @@ export default function Statistics() {
                       {new Date(session.date).toLocaleString("vi-VN")}
                     </Typography>
                     <Typography variant="body2" color="text.secondary">
-                      {session.meta?.roundName || "Round tự do"} {session.meta?.shiftLabel ? `• ${session.meta.shiftLabel}` : ""}
+                      {session.meta?.roundName || "Round tß╗▒ do"} {session.meta?.shiftLabel ? `ΓÇó ${session.meta.shiftLabel}` : ""}
                     </Typography>
                     <Typography variant="body2" color="text.secondary">
-                      Sân: {session.courts?.length || 0} • Chờ: {session.waiting?.length || 0} • AI: {session.aiScore?.total || 0}
+                      S├ón: {session.courts?.length || 0} ΓÇó Chß╗¥: {session.waiting?.length || 0} ΓÇó AI: {session.aiScore?.total || 0}
                     </Typography>
                     <Divider sx={{ mt: 1 }} />
                   </Box>
@@ -1322,20 +1322,20 @@ export default function Statistics() {
           <Card>
             <CardContent>
               <Typography variant="h6" fontWeight="bold" sx={{ mb: 2 }}>
-                🔁 Top đồng đội & đối thủ
+                ≡ƒöü Top ─æß╗ông ─æß╗Öi & ─æß╗æi thß╗º
               </Typography>
 
               <Grid container spacing={2}>
                 <Grid size={{ xs: 12, md: 6 }}>
                   <Typography fontWeight="bold" sx={{ mb: 1 }}>
-                    Đồng đội thường gặp
+                    ─Éß╗ông ─æß╗Öi th╞░ß╗¥ng gß║╖p
                   </Typography>
                   {topPartners.length === 0 ? (
-                    <Typography color="text.secondary">Chưa có dữ liệu đồng đội.</Typography>
+                    <Typography color="text.secondary">Ch╞░a c├│ dß╗» liß╗çu ─æß╗ông ─æß╗Öi.</Typography>
                   ) : (
                     topPartners.map((item) => (
                       <Box key={`${item.playerName}-${item.partnerId}`} sx={{ display: "flex", justifyContent: "space-between", py: 0.4 }}>
-                        <Typography>{item.playerName} → {item.partnerName}</Typography>
+                        <Typography>{item.playerName} ΓåÆ {item.partnerName}</Typography>
                         <Typography color="primary.main" fontWeight="bold">{item.count}</Typography>
                       </Box>
                     ))
@@ -1344,10 +1344,10 @@ export default function Statistics() {
 
                 <Grid size={{ xs: 12, md: 6 }}>
                   <Typography fontWeight="bold" sx={{ mb: 1 }}>
-                    Đối thủ thường gặp
+                    ─Éß╗æi thß╗º th╞░ß╗¥ng gß║╖p
                   </Typography>
                   {topOpponents.length === 0 ? (
-                    <Typography color="text.secondary">Chưa có dữ liệu đối thủ.</Typography>
+                    <Typography color="text.secondary">Ch╞░a c├│ dß╗» liß╗çu ─æß╗æi thß╗º.</Typography>
                   ) : (
                     topOpponents.map((item) => (
                       <Box key={`${item.playerName}-${item.opponentId}`} sx={{ display: "flex", justifyContent: "space-between", py: 0.4 }}>

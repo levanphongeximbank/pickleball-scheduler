@@ -15,6 +15,7 @@ import {
 } from "@mui/material";
 import SportsTennisIcon from "@mui/icons-material/SportsTennis";
 import SecurityIcon from "@mui/icons-material/Security";
+import CloudIcon from "@mui/icons-material/Cloud";
 
 import { useAuth } from "../context/AuthContext.jsx";
 import { ROLE_LABELS } from "../auth/roles.js";
@@ -24,6 +25,8 @@ import { getDefaultHomePath } from "../auth/menuAccess.js";
 export default function LoginPage() {
   const location = useLocation();
   const {
+    authLoading,
+    authProductionEnabled,
     rbacEnabled,
     isAuthenticated,
     user,
@@ -42,9 +45,25 @@ export default function LoginPage() {
 
   const devUsers = listDevUsers();
   const redirectTo = location.state?.from?.pathname || getDefaultHomePath(user, rbacEnabled);
+  const authRequired = authProductionEnabled || rbacEnabled;
 
-  if (!rbacEnabled) {
+  if (!authRequired) {
     return <Navigate to="/" replace />;
+  }
+
+  if (authLoading) {
+    return (
+      <Box
+        sx={{
+          minHeight: "100vh",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+        }}
+      >
+        <Typography color="text.secondary">Đang tải phiên đăng nhập…</Typography>
+      </Box>
+    );
   }
 
   if (isAuthenticated && user) {
@@ -65,6 +84,7 @@ export default function LoginPage() {
 
   const handleSignInSupabase = async () => {
     setLoading(true);
+    setMessage(null);
     const result = await signInWithPassword(email, password);
     setLoading(false);
 
@@ -81,6 +101,7 @@ export default function LoginPage() {
 
   const handleSignUpSupabase = async () => {
     setLoading(true);
+    setMessage(null);
     const result = await signUpWithPassword(email, password, {
       display_name: displayName.trim() || email.split("@")[0],
       role: "PLAYER",
@@ -106,26 +127,34 @@ export default function LoginPage() {
   return (
     <Box
       sx={{
-        minHeight: "100vh",
+        minHeight: "100dvh",
         display: "flex",
         alignItems: "center",
         bgcolor: "background.default",
-        py: 4,
+        py: { xs: 3, sm: 4 },
+        px: { xs: 1.5, sm: 0 },
       }}
     >
       <Container maxWidth="sm">
         <Stack spacing={2} alignItems="center" sx={{ mb: 3 }}>
-          <SportsTennisIcon color="primary" sx={{ fontSize: 48 }} />
-          <Typography variant="h4" fontWeight={900} textAlign="center">
+          <SportsTennisIcon color="primary" sx={{ fontSize: { xs: 40, sm: 48 } }} />
+          <Typography variant="h4" fontWeight={900} textAlign="center" sx={{ fontSize: { xs: 24, sm: 34 } }}>
             Pickleball Scheduler Pro
           </Typography>
-          <Typography color="text.secondary" textAlign="center">
-            Đăng nhập để tiếp tục — v3.5.0
+          <Typography color="text.secondary" textAlign="center" variant="body2">
+            {supabaseAvailable ? (
+              <Stack direction="row" spacing={0.5} alignItems="center" justifyContent="center">
+                <CloudIcon fontSize="small" />
+                <span>Đăng nhập bảo mật — v3.5.3</span>
+              </Stack>
+            ) : (
+              "Đăng nhập dev — v3.5.3"
+            )}
           </Typography>
         </Stack>
 
-        <Card>
-          <CardContent>
+        <Card elevation={2}>
+          <CardContent sx={{ p: { xs: 2, sm: 3 } }}>
             <Stack direction="row" spacing={1} alignItems="center" sx={{ mb: 2 }}>
               <SecurityIcon color="primary" />
               <Typography variant="h6" fontWeight="bold">
@@ -140,7 +169,7 @@ export default function LoginPage() {
             )}
 
             <Stack spacing={2}>
-              {!supabaseAvailable && (
+              {!supabaseAvailable && devUsers.length > 0 && (
                 <>
                   <TextField
                     select
@@ -148,7 +177,8 @@ export default function LoginPage() {
                     label="Tài khoản dev nhanh"
                     value=""
                     onChange={(e) => handleSignInDev(e.target.value)}
-                    helperText="Dùng khi chưa cấu hình Supabase"
+                    helperText="Chỉ dùng khi chưa cấu hình Supabase"
+                    fullWidth
                   >
                     <MenuItem value="" disabled>
                       Chọn vai trò…
@@ -168,8 +198,15 @@ export default function LoginPage() {
                       onChange={(e) => setEmail(e.target.value)}
                       placeholder="owner@venue.local"
                       fullWidth
+                      autoComplete="username"
                     />
-                    <Button variant="contained" onClick={() => handleSignInDev()} disabled={!email.trim()}>
+                    <Button
+                      variant="contained"
+                      onClick={() => handleSignInDev()}
+                      disabled={!email.trim()}
+                      fullWidth
+                      sx={{ minWidth: { sm: 140 }, flexShrink: 0 }}
+                    >
                       Đăng nhập
                     </Button>
                   </Stack>
@@ -178,13 +215,13 @@ export default function LoginPage() {
 
               {supabaseAvailable && (
                 <>
-                  <Divider />
                   <TextField
                     select
                     size="small"
                     label="Chế độ"
                     value={authMode}
                     onChange={(e) => setAuthMode(e.target.value)}
+                    fullWidth
                   >
                     <MenuItem value="signin">Đăng nhập</MenuItem>
                     <MenuItem value="signup">Đăng ký mới</MenuItem>
@@ -196,39 +233,48 @@ export default function LoginPage() {
                       value={displayName}
                       onChange={(e) => setDisplayName(e.target.value)}
                       fullWidth
+                      autoComplete="name"
                     />
                   )}
-                  <Stack direction={{ xs: "column", sm: "row" }} spacing={1}>
-                    <TextField
-                      size="small"
-                      label="Email"
-                      type="email"
-                      value={email}
-                      onChange={(e) => setEmail(e.target.value)}
-                      fullWidth
-                    />
-                    <TextField
-                      size="small"
-                      label="Mật khẩu"
-                      type="password"
-                      value={password}
-                      onChange={(e) => setPassword(e.target.value)}
-                      fullWidth
-                    />
-                    <Button
-                      variant="contained"
-                      onClick={authMode === "signup" ? handleSignUpSupabase : handleSignInSupabase}
-                      disabled={!email.trim() || !password || loading}
-                    >
-                      {loading ? "Đang xử lý…" : authMode === "signup" ? "Đăng ký" : "Đăng nhập"}
-                    </Button>
-                  </Stack>
+                  <TextField
+                    size="small"
+                    label="Email"
+                    type="email"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    fullWidth
+                    autoComplete="username"
+                    inputMode="email"
+                  />
+                  <TextField
+                    size="small"
+                    label="Mật khẩu"
+                    type="password"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    fullWidth
+                    autoComplete={authMode === "signup" ? "new-password" : "current-password"}
+                  />
+                  <Button
+                    variant="contained"
+                    size="large"
+                    onClick={authMode === "signup" ? handleSignUpSupabase : handleSignInSupabase}
+                    disabled={!email.trim() || !password || loading}
+                    fullWidth
+                  >
+                    {loading ? "Đang xử lý…" : authMode === "signup" ? "Đăng ký" : "Đăng nhập"}
+                  </Button>
                 </>
               )}
 
-              <Button component={RouterLink} to="/settings" variant="text" size="small">
-                Cài đặt & RBAC
-              </Button>
+              {!authProductionEnabled && (
+                <>
+                  <Divider />
+                  <Button component={RouterLink} to="/settings" variant="text" size="small">
+                    Cài đặt & RBAC dev
+                  </Button>
+                </>
+              )}
             </Stack>
           </CardContent>
         </Card>

@@ -1,18 +1,34 @@
-# RBAC Permission Matrix — v3.5.0
+# RBAC Permission Matrix — v3.5.4
 
 Ma trận quyền production. Nguồn code: `src/auth/rolePermissions.js`, `src/auth/permissions.js`.
 
 ## Roles
 
-| Role | Phạm vi |
-|------|---------|
-| `SUPER_ADMIN` | Toàn hệ thống |
-| `VENUE_OWNER` | Chủ sân / tenant |
-| `VENUE_MANAGER` | Quản lý vận hành sân |
-| `CASHIER` | Thu ngân |
-| `ACCOUNTANT` | Kế toán |
-| `CLUB_OWNER` | Chủ CLB trong venue |
-| `PLAYER` | VĐV (self-service) |
+| Role DB (`profiles.role`) | Tên hiển thị | Phạm vi |
+|---------------------------|--------------|---------|
+| `SUPER_ADMIN` | Quản trị hệ thống (admin) | Toàn hệ thống |
+| `VENUE_OWNER` | Chủ sân | Tenant / venue |
+| `VENUE_MANAGER` | Quản lý sân (manager) | Vận hành venue |
+| `CASHIER` | Thu ngân | Thu ngân venue |
+| `ACCOUNTANT` | Kế toán | Kế toán venue |
+| `CLUB_OWNER` | Chủ CLB | CLB trong venue |
+| `PLAYER` | VĐV | Self-service |
+
+**Trọng tài (referee):** không phải RBAC role — dùng link token `/referee/:token` (không đăng nhập). Gán trọng tài trong Director Mode.
+
+## Profile mapping (`public.profiles`)
+
+| Cột DB | App field | Ghi chú |
+|--------|-----------|---------|
+| `id` | `userId` | = `auth.users.id` |
+| `email` | `email` | |
+| `display_name` | `displayName` | |
+| `role` | `role` | Một trong các role trên |
+| `club_id` | `clubId` | Bắt buộc cho CLUB_OWNER, PLAYER |
+| `venue_id` | `venueId` | Bắt buộc cho role venue-scoped |
+| `status` | `status` | `active` / `suspended` / `invited` |
+
+Khi `VITE_RBAC_ENABLED=true`, app **bắt buộc** profile hợp lệ — không fallback `PLAYER` từ metadata.
 
 ## Permission groups
 
@@ -42,12 +58,45 @@ Ma trận quyền production. Nguồn code: `src/auth/rolePermissions.js`, `src/
 | `club` | `user.clubId === scope.clubId` hoặc venue staff |
 | `player` | `user.playerId === scope.playerId` |
 
-## Bật RBAC
+## Enforcement points (client)
+
+| Layer | File |
+|-------|------|
+| Route | `RouteAccessGate.jsx` + `menuAccess.js` |
+| Sidebar | `Sidebar.jsx` + `filterMenuGroups()` |
+| UI action | `PermissionGate.jsx` |
+| Domain | `guardAction.js` (club, booking, tournament, director, cloud sync) |
+
+## Bật RBAC production
+
+### 1. Env
 
 ```env
+VITE_SUPABASE_URL=https://xxx.supabase.co
+VITE_SUPABASE_ANON_KEY=eyJ...
 VITE_RBAC_ENABLED=true
 ```
 
-Chạy SQL: `docs/supabase-rbac.sql` + `docs/supabase-club-v3-rls.sql`
+### 2. SQL (Supabase SQL Editor)
 
-Đăng nhập: `/login` hoặc **Cài đặt → Đăng nhập & Phân quyền**
+Chạy theo thứ tự:
+
+1. `docs/supabase-club-v3.sql` (nếu chưa có `club_data_v3`)
+2. `docs/supabase-rbac.sql` — venues, subscriptions, profiles, trigger `handle_new_user`
+3. `docs/supabase-club-v3-rls.sql` — RLS `club_data_v3` (staging)
+4. `docs/supabase-match-live.sql` + `docs/supabase-match-live-rls.sql` (referee)
+5. Checklist đầy đủ: `docs/SUPABASE-STAGING-CHECKLIST.md`
+
+### 3. Tạo admin đầu tiên
+
+Sau khi user đăng ký, cập nhật role trong SQL:
+
+```sql
+update public.profiles
+set role = 'SUPER_ADMIN', status = 'active'
+where email = 'admin@yourdomain.com';
+```
+
+### 4. Đăng nhập
+
+`/login` — session restore đọc `profiles`; thiếu profile → từ chối đăng nhập khi RBAC bật.
