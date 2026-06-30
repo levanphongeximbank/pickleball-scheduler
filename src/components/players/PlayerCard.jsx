@@ -25,7 +25,6 @@ import LocalPhoneIcon from "@mui/icons-material/LocalPhone";
 import MaleIcon from "@mui/icons-material/Male";
 import MoreVertIcon from "@mui/icons-material/MoreVert";
 import PersonIcon from "@mui/icons-material/Person";
-import SportsScoreIcon from "@mui/icons-material/SportsScore";
 import BlockIcon from "@mui/icons-material/Block";
 import DeleteIcon from "@mui/icons-material/Delete";
 import EmojiEventsIcon from "@mui/icons-material/EmojiEvents";
@@ -307,15 +306,6 @@ export default function PlayerCard({
           >
             <EmojiEventsIcon fontSize="small" sx={{ mr: 1 }} />
             Đăng ký vào giải
-          </MenuItem>
-          <MenuItem
-            onClick={() => {
-              setMenuAnchor(null);
-              navigate("/select-players");
-            }}
-          >
-            <SportsScoreIcon fontSize="small" sx={{ mr: 1 }} />
-            Xếp sân nhanh
           </MenuItem>
         </Menu>
       </CardActions>

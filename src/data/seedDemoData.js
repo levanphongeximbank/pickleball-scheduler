@@ -17,10 +17,10 @@ function buildDemoCourts(count = 8) {
   });
 }
 
-function readPlayerCount() {
+function readStoredArrayLength(storageKey) {
   const raw =
-    localStorage.getItem(getScopedStorageKey(PLAYERS_KEY)) ||
-    localStorage.getItem(PLAYERS_KEY);
+    localStorage.getItem(getScopedStorageKey(storageKey)) ||
+    localStorage.getItem(storageKey);
 
   if (!raw) {
     return 0;
@@ -34,8 +34,23 @@ function readPlayerCount() {
   }
 }
 
-function shouldSeedDemoData() {
-  if (!import.meta.env.DEV) {
+export function isDemoStorageEmpty() {
+  return (
+    readStoredArrayLength(PLAYERS_KEY) === 0 &&
+    readStoredArrayLength(COURTS_KEY) === 0
+  );
+}
+
+function isSeedDemoExplicitlyEnabled() {
+  return import.meta.env.VITE_SEED_DEMO === "true";
+}
+
+function isSeedDemoForceInTest() {
+  return import.meta.env.MODE === "test" && import.meta.env.VITE_SEED_DEMO === "force";
+}
+
+function shouldAutoSeedDemoData() {
+  if (!import.meta.env.DEV && !isSeedDemoForceInTest()) {
     return false;
   }
 
@@ -43,25 +58,18 @@ function shouldSeedDemoData() {
     return false;
   }
 
-  if (import.meta.env.VITE_SEED_DEMO === "force") {
+  if (isSeedDemoForceInTest()) {
     return true;
   }
 
-  if (typeof window !== "undefined") {
-    const params = new URLSearchParams(window.location.search);
-    if (params.get("seed") === "demo") {
-      return true;
-    }
-  }
-
-  return readPlayerCount() < DEMO_PLAYER_COUNT;
-}
-
-export function seedDemoDataForDev() {
-  if (!shouldSeedDemoData()) {
+  if (!isSeedDemoExplicitlyEnabled()) {
     return false;
   }
 
+  return isDemoStorageEmpty();
+}
+
+function applyDemoSeed() {
   loadClubs();
 
   const players = buildDemoPlayers(DEMO_PLAYER_COUNT);
@@ -74,4 +82,36 @@ export function seedDemoDataForDev() {
   localStorage.setItem(DEMO_SEED_MARKER, String(Date.now()));
 
   return true;
+}
+
+export function seedDemoDataForDev() {
+  if (!shouldAutoSeedDemoData()) {
+    return false;
+  }
+
+  if (!isSeedDemoForceInTest() && !isDemoStorageEmpty()) {
+    return false;
+  }
+
+  return applyDemoSeed();
+}
+
+export function seedDemoDataManually({ force = false } = {}) {
+  if (!import.meta.env.DEV) {
+    return { ok: false, error: "Chỉ dùng trong môi trường dev." };
+  }
+
+  if (!force && !isDemoStorageEmpty()) {
+    return {
+      ok: false,
+      error:
+        "Đã có người chơi hoặc sân. Chỉ seed khi dữ liệu trống, hoặc chọn ghi đè trong hộp thoại xác nhận.",
+    };
+  }
+
+  applyDemoSeed();
+  return {
+    ok: true,
+    message: `Đã tạo ${DEMO_PLAYER_COUNT} người chơi demo và 8 sân.`,
+  };
 }

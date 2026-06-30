@@ -162,7 +162,8 @@ test("menuAccess — PLAYER chỉ thấy menu giải đấu", () => {
   });
 
   const labels = visible.flatMap((g) => g.items.map((i) => i.text));
-  assert.ok(labels.includes("Danh sách giải"));
+  assert.ok(labels.includes("Tạo giải đấu"));
+  assert.ok(labels.includes("Vui chơi mỗi ngày"));
   assert.ok(labels.includes("Hồ sơ cá nhân"));
   assert.equal(labels.includes("Người chơi"), false);
   assert.equal(labels.includes("Cài đặt"), false);
@@ -662,22 +663,22 @@ test("route access — ACCOUNTANT revenue, không players", () => {
   assert.equal(check("/select-players"), false);
 });
 
-test("menuAccess — VENUE_OWNER thấy Người chơi, Xếp sân", () => {
+test("menuAccess — VENUE_OWNER thấy Người chơi, không Xếp sân", () => {
   const owner = user(ROLES.VENUE_OWNER, { venueId: "venue-a", clubId: "club-1" });
   const visible = filterMenuGroups(SIDEBAR_MENU_GROUPS, makeMenuAuth(owner), SCOPE);
   const labels = visible.flatMap((g) => g.items.map((i) => i.text));
 
   assert.ok(labels.includes("Người chơi"));
-  assert.ok(labels.includes("Xếp sân"));
+  assert.equal(labels.includes("Xếp sân"), false);
   assert.ok(labels.includes("Cài đặt"));
 });
 
-test("menuAccess — VENUE_MANAGER thấy Xếp sân, không Cài đặt manage-only", () => {
+test("menuAccess — VENUE_MANAGER thấy Người chơi, không Xếp sân", () => {
   const manager = user(ROLES.VENUE_MANAGER, { venueId: "venue-a", clubId: "club-1" });
   const visible = filterMenuGroups(SIDEBAR_MENU_GROUPS, makeMenuAuth(manager), SCOPE);
   const labels = visible.flatMap((g) => g.items.map((i) => i.text));
 
-  assert.ok(labels.includes("Xếp sân"));
+  assert.equal(labels.includes("Xếp sân"), false);
   assert.ok(labels.includes("Người chơi"));
 });
 
@@ -700,7 +701,8 @@ test("menuAccess — CLUB_OWNER thấy CLB & Giải, không Live Courts", () => 
   const labels = visible.flatMap((g) => g.items.map((i) => i.text));
 
   assert.ok(labels.includes("CLB & Giải"));
-  assert.ok(labels.includes("Danh sách giải"));
+  assert.ok(labels.includes("Tạo giải đấu"));
+  assert.ok(labels.includes("Vui chơi mỗi ngày"));
   assert.equal(labels.includes("Live Courts"), false);
 });
 

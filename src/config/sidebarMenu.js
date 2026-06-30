@@ -17,12 +17,6 @@ export const SIDEBAR_MENU_GROUPS = [
         permissions: [PERMISSIONS.STATISTICS_VIEW, PERMISSIONS.PLAYER_SCHEDULE_VIEW],
       },
       {
-        key: "scheduling",
-        text: "Xếp sân",
-        path: "/select-players",
-        permissions: [PERMISSIONS.SCHEDULING_VIEW],
-      },
-      {
         key: "live-courts",
         text: "Live Courts",
         path: "/court-management",
@@ -41,6 +35,13 @@ export const SIDEBAR_MENU_GROUPS = [
         permissions: [PERMISSIONS.PLAYERS_VIEW],
       },
       {
+        key: "daily-play",
+        text: "Vui chơi mỗi ngày",
+        path: "/daily-play",
+        match: "daily-play",
+        permissions: [PERMISSIONS.TOURNAMENT_VIEW, PERMISSIONS.PLAYER_SCHEDULE_VIEW],
+      },
+      {
         key: "seasons",
         text: "Mùa giải",
         path: "/club",
@@ -53,17 +54,11 @@ export const SIDEBAR_MENU_GROUPS = [
     label: "Giải đấu",
     items: [
       {
-        key: "tournament-list",
-        text: "Danh sách giải",
-        path: "/tournament",
-        permissions: [PERMISSIONS.TOURNAMENT_VIEW, PERMISSIONS.PLAYER_SCHEDULE_VIEW],
-      },
-      {
         key: "tournament-create",
-        text: "Tạo Giải đấu",
+        text: "Tạo giải đấu",
         path: "/tournament",
-        match: "tournament",
-        permissions: [PERMISSIONS.TOURNAMENT_MANAGE],
+        match: "tournament-home",
+        permissions: [PERMISSIONS.TOURNAMENT_VIEW, PERMISSIONS.PLAYER_SCHEDULE_VIEW],
       },
       {
         key: "bracket",

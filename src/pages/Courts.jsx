@@ -25,7 +25,6 @@ import {
 import SportsTennisIcon from "@mui/icons-material/SportsTennis";
 import AddIcon from "@mui/icons-material/Add";
 
-import sampleCourts from "../data/sampleCourts";
 import { useClub } from "../context/ClubContext.jsx";
 import {
   getCourtDisplayName,
@@ -43,10 +42,10 @@ import ClubDataTransferPanel from "./ClubDataTransferPanel";
 
 export default function Courts() {
   const { activeClubId, revision } = useClub();
-  const [courts, setCourts] = useState(() => loadCourts(sampleCourts, activeClubId));
+  const [courts, setCourts] = useState(() => loadCourts([], activeClubId));
 
   useEffect(() => {
-    setCourts(loadCourts(sampleCourts, activeClubId));
+    setCourts(loadCourts([], activeClubId));
   }, [activeClubId, revision]);
   const [open, setOpen] = useState(false);
   const [deleteCourt, setDeleteCourt] = useState(null);

@@ -41,7 +41,6 @@ import { buildSeededGroupSessions } from "./tournament.fixtures.logic";
 import { buildTournamentResultExport } from "./tournament.export.logic";
 import { buildSeededGroups } from "./tournament.seeding.logic";
 import { buildGroupStandingsForRounds } from "./tournament.standings.logic";
-import sampleCourts from "../data/sampleCourts";
 import { getCourtDisplayName, loadCourts } from "./courts.logic";
 import { loadInitialSelectedCourts } from "./selectPlayers.data";
 
@@ -179,9 +178,9 @@ export default function Tournament() {
   const [bracketWinners, setBracketWinners] = useState(() => loadBracketWinners());
   const [bracketUnlockedRounds, setBracketUnlockedRounds] = useState(() => loadBracketUnlockedRounds());
   const [tournamentExportText, setTournamentExportText] = useState("");
-  const [courts] = useState(() => loadCourts(sampleCourts));
+  const [courts] = useState(() => loadCourts([]));
   const [selectedTournamentCourtIds, setSelectedTournamentCourtIds] = useState(() =>
-    loadInitialSelectedCourts(loadCourts(sampleCourts))
+    loadInitialSelectedCourts(loadCourts([]))
   );
 
   const sessions = useMemo(

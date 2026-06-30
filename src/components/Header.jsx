@@ -28,8 +28,6 @@ import { loadCourtManagementData } from "../domain/bookingService.js";
 
 import { loadCourts } from "../pages/courts.logic.js";
 
-import sampleCourts from "../data/sampleCourts";
-
 
 
 function CommandChip({ label, color = "default", pulse = false, hideOnMobile = false }) {
@@ -117,7 +115,7 @@ export default function Header() {
 
   const opsMeta = useMemo(() => {
 
-    const courts = loadCourts(sampleCourts, activeClubId);
+    const courts = loadCourts([], activeClubId);
 
     const bookings = loadCourtManagementData(activeClubId).bookings;
 

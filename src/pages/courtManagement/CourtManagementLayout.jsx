@@ -8,8 +8,6 @@ import { Box, Alert, Stack, Tab, Tabs, Typography } from "@mui/material";
 
 
 
-import sampleCourts from "../../data/sampleCourts";
-
 import { useClub } from "../../context/ClubContext.jsx";
 
 import { useAuth } from "../../context/AuthContext.jsx";
@@ -94,7 +92,7 @@ export default function CourtManagementLayout() {
 
   const courts = useMemo(
 
-    () => loadCourts(sampleCourts, activeClubId),
+    () => loadCourts([], activeClubId),
 
     [activeClubId, revision, dataVersion]
 

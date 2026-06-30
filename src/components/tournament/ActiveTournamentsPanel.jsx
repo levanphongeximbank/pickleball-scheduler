@@ -76,7 +76,7 @@ export default function ActiveTournamentsPanel({
 
       {activeTournaments.length === 0 ? (
         <Typography variant="body2" color="text.secondary">
-          Chưa có giải active/ready. Tạo giải mới tại menu Giải đấu.
+          Chưa có giải active/ready. Dùng menu &quot;Vui chơi mỗi ngày&quot; (mục CLB) hoặc &quot;Tạo giải đấu&quot;.
         </Typography>
       ) : (
         <Stack spacing={1}>

@@ -150,7 +150,7 @@ export default function Dashboard() {
 
               {summary.recentSessions.length === 0 ? (
                 <Typography color="text.secondary">
-                  Chưa có phiên xếp sân. Hãy bắt đầu từ trang Xếp sân.
+                  Chưa có phiên xếp sân lưu trong lịch sử AI.
                 </Typography>
               ) : (
                 <Stack spacing={1.25}>
@@ -237,8 +237,8 @@ export default function Dashboard() {
                 Đi tới nhanh
               </Typography>
               <Stack direction="row" spacing={1} sx={{ flexWrap: "wrap" }}>
-                <Button component={RouterLink} to="/select-players" variant="contained">
-                  Xếp sân
+                <Button component={RouterLink} to="/tournament" variant="contained">
+                  Tạo giải đấu
                 </Button>
                 <Button component={RouterLink} to="/club" variant="outlined">
                   CLB & Giải
@@ -251,9 +251,6 @@ export default function Dashboard() {
                 </Button>
                 <Button component={RouterLink} to="/statistics" variant="outlined">
                   Thống kê
-                </Button>
-                <Button component={RouterLink} to="/tournament" variant="outlined">
-                  Giải đấu
                 </Button>
               </Stack>
               <Typography variant="caption" color="text.secondary" sx={{ display: "block", mt: 1.5 }}>

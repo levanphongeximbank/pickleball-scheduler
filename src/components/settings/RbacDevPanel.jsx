@@ -6,6 +6,11 @@ import {
   Card,
   CardContent,
   Chip,
+  Dialog,
+  DialogActions,
+  DialogContent,
+  DialogContentText,
+  DialogTitle,
   Divider,
   FormControlLabel,
   MenuItem,
@@ -16,10 +21,13 @@ import {
 } from "@mui/material";
 import SecurityIcon from "@mui/icons-material/Security";
 import CloudIcon from "@mui/icons-material/Cloud";
+import GroupAddIcon from "@mui/icons-material/GroupAdd";
 
 import { useAuth } from "../../context/AuthContext.jsx";
 import { ROLE_LABELS } from "../../auth/roles.js";
-import { listDevUsers } from "../../auth/authService.js";
+import { isDevAuthAllowed, listDevUsers } from "../../auth/authService.js";
+import { seedDemoDataManually, isDemoStorageEmpty } from "../../data/seedDemoData.js";
+import { DEMO_PLAYER_COUNT } from "../../data/samplePlayers.js";
 
 export default function RbacDevPanel() {
   const {
@@ -42,8 +50,11 @@ export default function RbacDevPanel() {
   const [authMode, setAuthMode] = useState("signin");
   const [message, setMessage] = useState(null);
   const [loading, setLoading] = useState(false);
+  const [seedDialogOpen, setSeedDialogOpen] = useState(false);
+  const [seedForceOverwrite, setSeedForceOverwrite] = useState(false);
 
-  const devUsers = listDevUsers();
+  const devAuthAllowed = isDevAuthAllowed();
+  const devUsers = devAuthAllowed ? listDevUsers() : [];
 
   const handleToggleRbac = (event) => {
     enableRbac(event.target.checked);
@@ -127,6 +138,26 @@ export default function RbacDevPanel() {
     setMessage({ type: "info", text: "Đã đăng xuất." });
   };
 
+  const handleOpenSeedDialog = () => {
+    setSeedForceOverwrite(false);
+    setSeedDialogOpen(true);
+  };
+
+  const handleConfirmSeedDemo = () => {
+    const result = seedDemoDataManually({ force: seedForceOverwrite });
+    setSeedDialogOpen(false);
+
+    if (!result.ok) {
+      setMessage({ type: "error", text: result.error });
+      return;
+    }
+
+    setMessage({
+      type: "success",
+      text: result.message || "Đã tạo dữ liệu demo. Tải lại trang để đồng bộ UI.",
+    });
+  };
+
   return (
     <Card>
       <CardContent>
@@ -184,7 +215,7 @@ export default function RbacDevPanel() {
         )}
 
         <Stack spacing={2}>
-          {!supabaseAvailable && devUsers.length > 0 && (
+          {devAuthAllowed && devUsers.length > 0 && (
             <>
               <TextField
                 select
@@ -285,7 +316,60 @@ export default function RbacDevPanel() {
               Đăng xuất
             </Button>
           )}
+
+          <Divider />
+          <Typography variant="subtitle2" fontWeight={700}>
+            Dữ liệu demo (dev)
+          </Typography>
+          <Typography variant="caption" color="text.secondary">
+            Tạo {DEMO_PLAYER_COUNT} người chơi và 8 sân mẫu. Không tự chạy khi{" "}
+            <code>VITE_SEED_DEMO=false</code>.
+          </Typography>
+          <Button
+            variant="outlined"
+            color="warning"
+            startIcon={<GroupAddIcon />}
+            onClick={handleOpenSeedDialog}
+            sx={{ alignSelf: "flex-start" }}
+          >
+            Tạo dữ liệu demo
+          </Button>
         </Stack>
+
+        <Dialog open={seedDialogOpen} onClose={() => setSeedDialogOpen(false)}>
+          <DialogTitle sx={{ fontWeight: 900 }}>Tạo dữ liệu demo?</DialogTitle>
+          <DialogContent>
+            <DialogContentText sx={{ mb: 2 }}>
+              Thao tác này sẽ ghi vào localStorage: {DEMO_PLAYER_COUNT} người chơi demo và 8
+              sân. Dùng cho thử nghiệm xếp sân / giải đấu — không dùng khi đã nhập roster thật.
+            </DialogContentText>
+            {!isDemoStorageEmpty() && (
+              <Alert severity="warning" sx={{ mb: 2 }}>
+                Đã có người chơi hoặc sân. Bật ghi đè bên dưới nếu bạn chắc chắn muốn thay thế.
+              </Alert>
+            )}
+            <FormControlLabel
+              control={
+                <Switch
+                  checked={seedForceOverwrite}
+                  onChange={(event) => setSeedForceOverwrite(event.target.checked)}
+                />
+              }
+              label="Ghi đè dữ liệu hiện có"
+            />
+          </DialogContent>
+          <DialogActions sx={{ px: 3, pb: 2 }}>
+            <Button onClick={() => setSeedDialogOpen(false)}>Hủy</Button>
+            <Button
+              variant="contained"
+              color="warning"
+              onClick={handleConfirmSeedDemo}
+              disabled={!isDemoStorageEmpty() && !seedForceOverwrite}
+            >
+              Tạo demo
+            </Button>
+          </DialogActions>
+        </Dialog>
       </CardContent>
     </Card>
   );

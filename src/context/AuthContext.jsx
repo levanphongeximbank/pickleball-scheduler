@@ -1,6 +1,7 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
 
 import { can, canAccessClub, canAccessVenue, canAll, canAny } from "../auth/rbac.js";
+import { clearAuthSession, loadAuthSession } from "../auth/authStorage.js";
 import {
   enableRbac,
   getAuthState,
@@ -31,10 +32,14 @@ export function AuthProvider({ children }) {
     const bootstrap = async () => {
       try {
         if (isSupabaseAuthAvailable()) {
+          const existing = loadAuthSession();
+          if (existing?.provider === "dev") {
+            clearAuthSession();
+          }
           await restoreSupabaseSession();
         }
       } catch {
-        // Supabase env sai hoặc mạng lỗi — không văng app, dev fallback vẫn dùng được.
+        // Supabase env sai hoặc mạng lỗi — không văng app khi chưa cấu hình Supabase.
       }
 
       if (!cancelled) {

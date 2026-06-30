@@ -13,6 +13,7 @@ const PlayerProfile = lazy(() => import("./pages/PlayerProfile"));
 const SelectPlayers = lazy(() => import("./pages/SelectPlayers"));
 const ClubManagement = lazy(() => import("./pages/ClubManagement"));
 const Tournament = lazy(() => import("./pages/tournament/TournamentShell"));
+const DailyPlayLauncher = lazy(() => import("./pages/tournament/DailyPlayLauncher"));
 const DailyPlaySetup = lazy(() => import("./pages/tournament/DailyPlaySetup"));
 const InternalTournamentSetup = lazy(() => import("./pages/tournament/InternalTournamentSetup"));
 const OfficialTournamentSetup = lazy(() => import("./pages/tournament/OfficialTournamentSetup"));
@@ -20,7 +21,7 @@ const TournamentBracketPage = lazy(() => import("./pages/tournament/TournamentBr
 const TournamentBracketHub = lazy(() => import("./pages/tournament/TournamentBracketHub"));
 const TournamentDirectorMode = lazy(() => import("./pages/tournament/TournamentDirectorMode"));
 const RefereeScoreboard = lazy(() => import("./pages/referee/RefereeScoreboard"));
-const Statistics = lazy(() => import("./pages/Statistics"));
+const Statistics = lazy(() => import("./features/statistics"));
 const Settings = lazy(() => import("./pages/Settings"));
 const CourtManagementLayout = lazy(() => import("./pages/courtManagement/CourtManagementLayout"));
 const CourtManagementHome = lazy(() => import("./pages/courtManagement/CourtManagementHome"));
@@ -84,6 +85,7 @@ export default function Router() {
             <Route path="/club" element={<ClubManagement />} />
             <Route path="/tournament" element={<Tournament />} />
             <Route path="/tournament/bracket" element={<TournamentBracketHub />} />
+            <Route path="/daily-play" element={<DailyPlayLauncher />} />
             <Route path="/tournament/daily/:tournamentId" element={<DailyPlaySetup />} />
             <Route
               path="/tournament/internal/:tournamentId"

@@ -21,7 +21,6 @@ import {
   Typography,
 } from "@mui/material";
 
-import SportsTennisIcon from "@mui/icons-material/SportsTennis";
 import GroupsIcon from "@mui/icons-material/Groups";
 import EmojiEventsIcon from "@mui/icons-material/EmojiEvents";
 
@@ -38,16 +37,7 @@ import ModeCard from "../../components/tournament/ModeCard.jsx";
 import PermissionGate from "../../components/auth/PermissionGate.jsx";
 import { PERMISSIONS } from "../../auth/permissions.js";
 
-const MODE_OPTIONS = [
-  {
-    mode: TOURNAMENT_MODE.DAILY_PLAY,
-    title: "Chơi vui mỗi ngày",
-    description:
-      "Check-in VĐV có mặt, ghép trận công bằng theo rating và xếp sân nhanh cho CLB chơi hằng ngày.",
-    icon: <SportsTennisIcon />,
-    color: "#0284c7",
-    badge: "Daily Play",
-  },
+const CREATE_TOURNAMENT_MODE_OPTIONS = [
   {
     mode: TOURNAMENT_MODE.INTERNAL_TOURNAMENT,
     title: "Giải nội bộ CLB",
@@ -244,8 +234,8 @@ export default function TournamentHome() {
 
       <PermissionGate permission={PERMISSIONS.TOURNAMENT_MANAGE}>
         <Grid container spacing={2} sx={{ mb: 3 }}>
-          {MODE_OPTIONS.map((option) => (
-            <Grid key={option.mode} size={{ xs: 12, md: 4 }}>
+          {CREATE_TOURNAMENT_MODE_OPTIONS.map((option) => (
+            <Grid key={option.mode} size={{ xs: 12, md: 6 }}>
               <ModeCard
                 title={option.title}
                 description={option.description}
@@ -279,7 +269,7 @@ export default function TournamentHome() {
 
         {tournaments.length === 0 ? (
           <Typography variant="body2" color="text.secondary">
-            Chưa có giải V3.3. Chọn một chế độ ở trên để tạo giải nháp.
+            Chưa có giải V3.3. Chọn Giải nội bộ hoặc Giải chính thức ở trên để tạo giải nháp.
           </Typography>
         ) : (
           <>

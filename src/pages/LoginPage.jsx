@@ -19,7 +19,7 @@ import CloudIcon from "@mui/icons-material/Cloud";
 
 import { useAuth } from "../context/AuthContext.jsx";
 import { ROLE_LABELS } from "../auth/roles.js";
-import { listDevUsers } from "../auth/authService.js";
+import { isDevAuthAllowed, listDevUsers } from "../auth/authService.js";
 import { getDefaultHomePath } from "../auth/menuAccess.js";
 
 export default function LoginPage() {
@@ -43,7 +43,8 @@ export default function LoginPage() {
   const [message, setMessage] = useState(null);
   const [loading, setLoading] = useState(false);
 
-  const devUsers = listDevUsers();
+  const devAuthAllowed = isDevAuthAllowed();
+  const devUsers = devAuthAllowed ? listDevUsers() : [];
   const redirectTo = location.state?.from?.pathname || getDefaultHomePath(user, rbacEnabled);
   const authRequired = authProductionEnabled || rbacEnabled;
 
@@ -169,7 +170,7 @@ export default function LoginPage() {
             )}
 
             <Stack spacing={2}>
-              {!supabaseAvailable && devUsers.length > 0 && (
+              {devAuthAllowed && devUsers.length > 0 && (
                 <>
                   <TextField
                     select

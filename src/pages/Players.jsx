@@ -12,7 +12,6 @@ import {
   Grid,
   MenuItem,
   Paper,
-  Skeleton,
   Slider,
   Stack,
   TextField,
@@ -22,7 +21,6 @@ import {
 import AddIcon from "@mui/icons-material/Add";
 import SportsTennisIcon from "@mui/icons-material/SportsTennis";
 
-import samplePlayers from "../data/samplePlayers";
 import { useClub } from "../context/ClubContext.jsx";
 import { useAuth } from "../context/AuthContext.jsx";
 import PermissionGate from "../components/auth/PermissionGate.jsx";
@@ -69,42 +67,7 @@ export default function Players() {
       clubId: activeClubId,
       venueId: activeClub?.venueId || null,
     });
-  const [players, setPlayers] = useState(() => loadPlayersFromStorage());
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    setLoading(true);
-    const nextPlayers = loadPlayersFromStorage(activeClubId);
-    setPlayers(
-      nextPlayers.length > 0 ? nextPlayers : normalizePlayers(samplePlayers)
-    );
-    setLoading(false);
-  }, [activeClubId, revision]);
-
-  useEffect(() => {
-    if (!activeClubId) {
-      return;
-    }
-
-    const result = ensureMonthlySkillLevelProposals(activeClubId);
-    if (!result.ok || result.skipped) {
-      return;
-    }
-
-    if (result.proposalCount > 0) {
-      setReviewMessage({
-        type: "info",
-        text: `Hệ thống đã tự tạo ${result.proposalCount} đề xuất đổi trình. Admin duyệt để áp dụng.`,
-      });
-      refreshClubs();
-      return;
-    }
-
-    if (result.holds > 0) {
-      refreshClubs();
-    }
-  }, [activeClubId, refreshClubs]);
-
+  const [players, setPlayers] = useState(() => normalizePlayers(loadPlayersFromStorage()));
   const [form, setForm] = useState(defaultPlayerForm);
   const [open, setOpen] = useState(false);
   const [importOpen, setImportOpen] = useState(false);
@@ -116,6 +79,27 @@ export default function Players() {
   const [statusFilter, setStatusFilter] = useState("all");
   const [formError, setFormError] = useState(null);
   const [reviewMessage, setReviewMessage] = useState(null);
+
+  useEffect(() => {
+    const nextPlayers = loadPlayersFromStorage(activeClubId);
+    setPlayers(normalizePlayers(nextPlayers));
+  }, [activeClubId, revision]);
+
+  useEffect(() => {
+    if (!activeClubId) {
+      return;
+    }
+
+    const result = ensureMonthlySkillLevelProposals(activeClubId);
+    if (!result.ok || result.skipped || result.proposalCount <= 0) {
+      return;
+    }
+
+    setReviewMessage({
+      type: "info",
+      text: `Hệ thống đã tự tạo ${result.proposalCount} đề xuất đổi trình. Admin duyệt để áp dụng.`,
+    });
+  }, [activeClubId]);
 
   const pendingProposals = useMemo(() => {
     void revision;
@@ -391,17 +375,7 @@ export default function Players() {
         </Paper>
       )}
 
-      {loading ? (
-        <Grid container spacing={2} sx={{ mb: 3 }}>
-          {[1, 2, 3, 4, 5].map((i) => (
-            <Grid key={i} size={{ xs: 6, sm: 4, md: 2 }}>
-              <Skeleton variant="rounded" height={80} />
-            </Grid>
-          ))}
-        </Grid>
-      ) : (
-        <PlayerStats stats={stats} />
-      )}
+      <PlayerStats stats={stats} />
 
       <PlayerFilters
         search={search}
@@ -417,33 +391,23 @@ export default function Players() {
         onClearFilters={clearFilters}
       />
 
-      {loading ? (
-        <Grid container spacing={2}>
-          {[1, 2, 3, 4, 5, 6].map((i) => (
-            <Grid key={i} size={{ xs: 12, sm: 6, lg: 4 }}>
-              <Skeleton variant="rounded" height={280} />
-            </Grid>
-          ))}
-        </Grid>
-      ) : (
-        <Grid container spacing={2}>
-          {filteredPlayers.map((player) => (
-            <Grid key={player.id} size={{ xs: 12, sm: 6, lg: 4, xl: 3 }}>
-              <PlayerCard
-                player={player}
-                clubId={activeClubId}
-                players={players}
-                checkedInIds={checkedInIds}
-                onEdit={canManagePlayers ? openEditDialog : undefined}
-                onDelete={canManagePlayers ? setDeletePlayer : undefined}
-                onLock={canManagePlayers ? handleLockPlayer : undefined}
-              />
-            </Grid>
-          ))}
-        </Grid>
-      )}
+      <Grid container spacing={2}>
+        {filteredPlayers.map((player) => (
+          <Grid key={player.id} size={{ xs: 12, sm: 6, lg: 4, xl: 3 }}>
+            <PlayerCard
+              player={player}
+              clubId={activeClubId}
+              players={players}
+              checkedInIds={checkedInIds}
+              onEdit={canManagePlayers ? openEditDialog : undefined}
+              onDelete={canManagePlayers ? setDeletePlayer : undefined}
+              onLock={canManagePlayers ? handleLockPlayer : undefined}
+            />
+          </Grid>
+        ))}
+      </Grid>
 
-      {!loading && filteredPlayers.length === 0 && (
+      {filteredPlayers.length === 0 && (
         <Paper
           elevation={0}
           sx={{

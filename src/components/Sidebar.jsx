@@ -18,13 +18,11 @@ import SettingsIcon from "@mui/icons-material/Settings";
 import GroupsIcon from "@mui/icons-material/Groups";
 import StadiumIcon from "@mui/icons-material/Stadium";
 import CalendarMonthIcon from "@mui/icons-material/CalendarMonth";
-import ViewListIcon from "@mui/icons-material/ViewList";
+import SportsTennisIcon from "@mui/icons-material/SportsTennis";
 import GridViewIcon from "@mui/icons-material/GridView";
 import AccountTreeIcon from "@mui/icons-material/AccountTree";
 import LeaderboardIcon from "@mui/icons-material/Leaderboard";
 import PersonIcon from "@mui/icons-material/Person";
-import ShuffleIcon from "@mui/icons-material/Shuffle";
-
 import { SIDEBAR_MENU_GROUPS } from "../config/sidebarMenu.js";
 import { filterMenuGroups, resolveMenuItemPath } from "../auth/menuAccess.js";
 import { useAuth } from "../context/AuthContext.jsx";
@@ -34,11 +32,10 @@ const drawerWidth = 228;
 
 const ICONS = {
   dashboard: <DashboardIcon fontSize="small" />,
-  scheduling: <ShuffleIcon fontSize="small" />,
+  "daily-play": <SportsTennisIcon fontSize="small" />,
   "live-courts": <StadiumIcon fontSize="small" />,
   players: <PeopleIcon fontSize="small" />,
   seasons: <CalendarMonthIcon fontSize="small" />,
-  "tournament-list": <ViewListIcon fontSize="small" />,
   "tournament-create": <GridViewIcon fontSize="small" />,
   bracket: <AccountTreeIcon fontSize="small" />,
   statistics: <LeaderboardIcon fontSize="small" />,
@@ -74,10 +71,13 @@ function isActivePath(currentPath, item) {
     return currentPath.includes("/bracket");
   }
 
-  if (item.match === "tournament") {
+  if (item.match === "tournament-home") {
+    return currentPath === "/tournament";
+  }
+
+  if (item.match === "daily-play") {
     return (
-      currentPath === "/tournament" ||
-      (currentPath.startsWith("/tournament/") && !currentPath.includes("/bracket"))
+      currentPath === "/daily-play" || currentPath.startsWith("/tournament/daily/")
     );
   }
 

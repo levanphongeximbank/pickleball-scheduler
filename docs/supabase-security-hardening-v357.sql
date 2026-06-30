@@ -27,6 +27,7 @@ end;
 $$;
 
 -- 2. Khóa cập nhật profile: role chỉ SUPER_ADMIN; user tự sửa không đổi venue/club/status
+-- Bypass cho bootstrap (SQL Editor / service_role); authenticated vẫn bị chặn.
 create or replace function public.profiles_guard_privileged_update()
 returns trigger
 language plpgsql
@@ -34,6 +35,10 @@ security definer
 set search_path = public
 as $$
 begin
+  if current_user = 'postgres' or auth.role() = 'service_role' then
+    return new;
+  end if;
+
   if new.role is distinct from old.role then
     if not public.is_super_admin() then
       raise exception 'Only SUPER_ADMIN can change profile role';
