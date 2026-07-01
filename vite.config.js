@@ -1,12 +1,19 @@
+import process from "node:process";
 import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
 import { VitePWA } from "vite-plugin-pwa";
 
+const isVercelPreview = process.env.VERCEL_ENV === "preview";
+
 // https://vite.dev/config/
 export default defineConfig({
+  define: {
+    "import.meta.env.VITE_VERCEL_PREVIEW": JSON.stringify(isVercelPreview ? "true" : "false"),
+  },
   plugins: [
     react(),
     VitePWA({
+      disable: isVercelPreview,
       registerType: "autoUpdate",
       includeAssets: ["favicon.svg", "pwa-icon.svg", "icon-192.png", "icon-512.png", "apple-touch-icon.png"],
       manifest: {

@@ -31,6 +31,7 @@ export function AuthProvider({ children }) {
   useEffect(() => {
     let cancelled = false;
     let timeoutId = null;
+    let unsubscribe = () => {};
 
     const bootstrap = async () => {
       const env = typeof import.meta !== "undefined" && import.meta.env ? import.meta.env : {};
@@ -96,13 +97,18 @@ export function AuthProvider({ children }) {
       }
     };
 
-    bootstrap();
-
-    const unsubscribe = subscribeToSupabaseAuth(() => {
+    const start = async () => {
+      await bootstrap();
       if (!cancelled) {
-        refresh();
+        unsubscribe = subscribeToSupabaseAuth(() => {
+          if (!cancelled) {
+            refresh();
+          }
+        });
       }
-    });
+    };
+
+    void start();
 
     return () => {
       cancelled = true;

@@ -1,5 +1,4 @@
 import ReactDOM from "react-dom/client";
-import { registerSW } from "virtual:pwa-register";
 
 import App from "./App";
 
@@ -13,13 +12,26 @@ import { flushOfflineQueue } from "./features/mobile/services/offlineQueue.js";
 
 seedDemoDataForDev();
 
-const updateSW = registerSW({
-  onNeedRefresh() {
-    if (window.confirm("Có phiên bản mới. Tải lại?")) {
-      updateSW(true);
-    }
-  },
-});
+async function registerServiceWorker() {
+  if (import.meta.env.VITE_VERCEL_PREVIEW === "true") {
+    return;
+  }
+
+  try {
+    const { registerSW } = await import("virtual:pwa-register");
+    const updateSW = registerSW({
+      onNeedRefresh() {
+        if (window.confirm("Có phiên bản mới. Tải lại?")) {
+          updateSW(true);
+        }
+      },
+    });
+  } catch {
+    // PWA plugin disabled for this build (e.g. Vercel Preview + Deployment Protection).
+  }
+}
+
+void registerServiceWorker();
 
 window.addEventListener("online", () => {
   flushOfflineQueue().catch(() => {});

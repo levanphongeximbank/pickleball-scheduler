@@ -65,18 +65,21 @@ export function TenantProvider({ children }) {
     setRevision((value) => value + 1);
   }, []);
 
+  const userId = user?.id || null;
+  const userClubId = user?.clubId || null;
+
   useEffect(() => {
-    if (!rbacEnabled || !isAuthenticated || !user || !currentTenantId) {
+    if (!rbacEnabled || !isAuthenticated || !userId || !currentTenantId) {
       return;
     }
 
     const clubId = isSuperAdmin
       ? getPrimaryClubIdForTenant(currentTenantId)
-      : user.clubId || getPrimaryClubIdForTenant(currentTenantId);
+      : userClubId || getPrimaryClubIdForTenant(currentTenantId);
     if (clubId) {
       switchActiveClub(clubId);
     }
-  }, [currentTenantId, isAuthenticated, isSuperAdmin, rbacEnabled, user]);
+  }, [currentTenantId, isAuthenticated, isSuperAdmin, rbacEnabled, userClubId, userId]);
 
   useEffect(() => {
     if (!isSuperAdmin || adminTenantId || !listTenants().length) {

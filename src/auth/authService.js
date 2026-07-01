@@ -386,21 +386,24 @@ export function subscribeToSupabaseAuth(onChange) {
     return () => {};
   }
 
-  const { data } = client.auth.onAuthStateChange(async (event, session) => {
-    if (event === "SIGNED_OUT") {
-      clearAuthSession();
-      onChange({ event, user: null });
-      return;
-    }
+  const { data } = client.auth.onAuthStateChange((event, session) => {
+    // Never await inside onAuthStateChange — it deadlocks client.auth.getSession().
+    queueMicrotask(async () => {
+      if (event === "SIGNED_OUT") {
+        clearAuthSession();
+        onChange({ event, user: null });
+        return;
+      }
 
-    if (session?.user) {
-      const synced = await syncSupabaseUser(session.user);
-      onChange({
-        event,
-        user: synced.ok ? synced.user : null,
-        error: synced.ok ? null : synced.error,
-      });
-    }
+      if (session?.user) {
+        const synced = await syncSupabaseUser(session.user);
+        onChange({
+          event,
+          user: synced.ok ? synced.user : null,
+          error: synced.ok ? null : synced.error,
+        });
+      }
+    });
   });
 
   return () => data.subscription.unsubscribe();
