@@ -7,17 +7,44 @@ Tạo **8 user test** (đăng ký → gán role qua SQL hoặc User Management).
 **Matrix quyền:** `docs/RBAC-MATRIX.md`  
 **RBAC chi tiết:** `docs/RBAC-RC-QA.md`
 
+## Tiến độ QA Production
+
+| Mục | Trạng thái | Ngày |
+|-----|------------|------|
+| **F. Court Engine** | ✅ PASS | 2026-07-01 |
+| **A. Authentication** | ✅ PASS | 2026-07-01 |
+| B. RBAC (8 roles) | ⏸️ Chưa tick | — |
+| C. Players | ⏸️ Chưa tick | — |
+| D. Courts | ⏸️ Chưa tick | — |
+| E. Tournament | ⏸️ Chưa tick | — |
+| G. Director Mode | ⏸️ Chưa tick | — |
+| H. Dashboard | ⏸️ Chưa tick | — |
+| I. Subscription | ⏸️ Chưa tick | — |
+| J. Tenant Isolation | ⏸️ Chưa tick | — |
+| K. API (flag OFF) | ⏸️ Chưa tick | — |
+| L. Mobile / PWA | ⏸️ Chưa tick | — |
+| M. Preview flags OFF | ⏸️ Chưa tick | — |
+
+**Bug đã RESOLVED:**
+
+- `/court-engine` white screen khi reload trực tiếp hoặc session/context null — fix `courtEngineContextGuard` + `CourtEnginePage`; Production QA xác nhận 2026-07-01.
+- **P0 auto-assign trùng sân bận** — ghép sân lần 2 vẫn gán vào sân đang có assignment/trận active; fix `courtStateService` + đồng bộ `courtStates` khi confirm/start/pause/resume/end; fallback `activeAssignments` cho session localStorage; Production QA đóng 2026-07-01.
+
 ---
 
-## A. Authentication
+## A. Authentication — ✅ PASS (2026-07-01)
 
-- [ ] `/login` — đăng nhập email/password
-- [ ] Session restore sau refresh trang
-- [ ] `/logout` — đăng xuất, redirect login
-- [ ] `/forgot-password` → email reset (nếu SMTP/Supabase email bật)
-- [ ] `/reset-password` — đổi mật khẩu
-- [ ] User chưa có profile hợp lệ → thông báo rõ, không crash
-- [ ] Signup mới → role **PLAYER** (trigger v3.5.7)
+**Ghi chú:** Production manual QA passed, no blocker found.
+
+- [x] `/login` — trang load bình thường; đăng nhập email/password hợp lệ OK
+- [x] Đăng nhập sai — thông báo lỗi rõ, không treo
+- [x] Session restore sau refresh trang
+- [x] Reload trực tiếp trên protected routes — OK
+- [x] `/logout` — đăng xuất; protected routes redirect về login
+- [ ] `/forgot-password` → email reset (nếu SMTP/Supabase email bật) — chưa test trên Production
+- [ ] `/reset-password` — đổi mật khẩu — chưa test trên Production
+- [ ] User chưa có profile hợp lệ → thông báo rõ, không crash — chưa test trên Production
+- [ ] Signup mới → role **PLAYER** (trigger v3.5.7) — chưa test trên Production
 
 ---
 
@@ -110,12 +137,43 @@ Tạo **8 user test** (đăng ký → gán role qua SQL hoặc User Management).
 
 ---
 
-## F. Court Engine
+## F. Court Engine — ✅ PASS (2026-07-01, đóng QA sau P0 fix)
 
-- [ ] `/court-engine` — Check-in, Queue, Live Courts
-- [ ] Auto assignment, timer, transfer sân
-- [ ] Activity log
-- [ ] Không phá Director Mode cũ
+| Hạng mục | Trạng thái | Ghi chú |
+|----------|------------|---------|
+| Check-in | ✅ PASS | Check-in, cancel, no-show |
+| Live Courts | ✅ PASS | Timer start/pause/resume/end, trạng thái sân |
+| Court Assignment | ✅ PASS | Auto-assign preview/confirm; **P0 trùng sân bận đã fix** |
+| Session Persistence | ✅ PASS | Reload giữ session localStorage hợp lý |
+| Mobile responsive | ⚠️ PARTIAL | Chưa QA đầy đủ trên thiết bị thật |
+
+### P0 fix — auto-assign không ghi đè sân bận (2026-07-01)
+
+- [x] Không cho auto-assign vào sân đang có assignment/trận active
+- [x] Sân bận gồm trạng thái: `assigned`, `playing`, `paused`, `overrun`
+- [x] `courtStates` đồng bộ khi confirm / start / pause / resume / end match
+- [x] `activeAssignments` dùng làm fallback khi `courtStates` lệch (localStorage cũ)
+- [x] Ghép lần 2 → sân bận bị loại; dùng sân trống khác hoặc cảnh báo *Không có sân trống*
+- [x] Test tự động: `occupied court skipped on second auto-assign` (`tests/court-engine.test.js`)
+
+### Checklist QA đã tick
+
+- [x] `/court-engine` — vào được; reload trực tiếp không trắng màn hình
+- [x] Check-in, Queue, Live Courts
+- [x] Gán người chơi vào sân (2/4 người)
+- [x] Auto assignment preview → confirm → không gán trùng sân đang bận
+- [x] Bắt đầu / kết thúc lượt chơi (timer); `courtStates` cập nhật đúng
+- [x] Reload giữ trạng thái hợp lý; không mất dữ liệu bất thường
+- [x] Thiếu season/league → thông báo hướng dẫn (không crash)
+- [x] Không phát hiện lỗi nghiêm trọng trong scope test
+- [x] Không phá Director Mode cũ (không regress trong scope test)
+
+### Chưa tick / ngoài scope đóng QA
+
+- [ ] Transfer sân, Activity log, Referee dispatch — chưa test đầy đủ trên Production
+- [ ] Mobile layout `/court-engine` trên thiết bị thật — PARTIAL (responsive cơ bản OK)
+
+**Kết luận mục F:** Court Engine Production QA **có thể đóng** — P0 đã fix + test pass; mobile real-device là follow-up không chặn GA scope Court Engine core.
 
 ---
 

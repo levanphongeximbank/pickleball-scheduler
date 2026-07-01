@@ -159,6 +159,155 @@ test("auto assignment: locked court skipped", () => {
   assert.equal(String(result.assignments[0].courtId), "2");
 });
 
+test("occupied court skipped on second auto-assign", () => {
+  let session = buildSessionWithQueue(["p1", "p2", "p3", "p4"]);
+  const firstPreview = generateCourtAssignments({
+    sessionId: session.id,
+    courts,
+    queueEntries: getActiveQueueEntries(session),
+    players,
+    activeAssignments: session.assignments || [],
+    courtStates: session.courtStates || {},
+    config: { playMode: PLAY_MODE.DOUBLES },
+  });
+
+  assert.equal(firstPreview.assignments.length, 1);
+  const firstCourtId = String(firstPreview.assignments[0].courtId);
+
+  const confirmed = confirmAssignments(session, firstPreview.assignments);
+  assert.ok(confirmed.ok);
+  session = confirmed.session;
+  assert.equal(session.courtStates[firstCourtId]?.status, COURT_RUNTIME_STATUS.ASSIGNED);
+
+  ["p5", "p6", "p7", "p8"].forEach((playerId) => {
+    session = checkInPlayer(session, playerId).session;
+    session = addToQueue(session, playerId).session;
+  });
+
+  const secondPreview = generateCourtAssignments({
+    sessionId: session.id,
+    courts,
+    queueEntries: getActiveQueueEntries(session),
+    players,
+    activeAssignments: session.assignments || [],
+    courtStates: session.courtStates || {},
+    config: { playMode: PLAY_MODE.DOUBLES },
+  });
+
+  assert.equal(secondPreview.assignments.length, 1);
+  assert.notEqual(String(secondPreview.assignments[0].courtId), firstCourtId);
+  const freeCourtId = firstCourtId === "1" ? "2" : "1";
+  assert.equal(String(secondPreview.assignments[0].courtId), freeCourtId);
+
+  const assignedPlayerIds = secondPreview.assignments[0].players.map(String);
+  const firstMatchPlayers = firstPreview.assignments[0].players.map(String);
+  assignedPlayerIds.forEach((id) => {
+    assert.ok(!firstMatchPlayers.includes(id), `player ${id} should not overlap first match`);
+  });
+  assert.equal(assignedPlayerIds.length, 4);
+
+  const allCourtIds = secondPreview.assignments.map((item) => String(item.courtId));
+  assert.equal(new Set(allCourtIds).size, allCourtIds.length, "no duplicate court assignments");
+});
+
+test("occupied court skipped when only one court busy and one free", () => {
+  let session = buildSessionWithQueue(["p1", "p2", "p3", "p4"]);
+  const preview = generateCourtAssignments({
+    courts: [courts[0]],
+    queueEntries: getActiveQueueEntries(session),
+    players,
+    config: { playMode: PLAY_MODE.DOUBLES },
+  });
+  session = confirmAssignments(session, preview.assignments).session;
+
+  ["p5", "p6", "p7", "p8"].forEach((playerId) => {
+    session = checkInPlayer(session, playerId).session;
+    session = addToQueue(session, playerId).session;
+  });
+
+  const second = generateCourtAssignments({
+    courts,
+    queueEntries: getActiveQueueEntries(session),
+    players,
+    activeAssignments: session.assignments || [],
+    courtStates: session.courtStates || {},
+    config: { playMode: PLAY_MODE.DOUBLES },
+  });
+
+  assert.equal(second.assignments.length, 1);
+  assert.equal(String(second.assignments[0].courtId), "2");
+});
+
+test("occupied court blocks assign when all courts busy", () => {
+  let session = buildSessionWithQueue(["p1", "p2", "p3", "p4"]);
+  const first = generateCourtAssignments({
+    courts: [courts[0]],
+    queueEntries: getActiveQueueEntries(session),
+    players,
+    config: { playMode: PLAY_MODE.DOUBLES },
+  });
+  session = confirmAssignments(session, first.assignments).session;
+
+  ["p5", "p6", "p7", "p8"].forEach((playerId) => {
+    session = checkInPlayer(session, playerId).session;
+    session = addToQueue(session, playerId).session;
+  });
+
+  const second = generateCourtAssignments({
+    courts: [courts[0]],
+    queueEntries: getActiveQueueEntries(session),
+    players,
+    activeAssignments: session.assignments || [],
+    courtStates: session.courtStates || {},
+    config: { playMode: PLAY_MODE.DOUBLES },
+  });
+
+  assert.equal(second.assignments.length, 0);
+  assert.ok(second.warnings.some((item) => item.includes("Không có sân trống")));
+});
+
+test("start match syncs courtStates to playing", () => {
+  let session = buildSessionWithQueue(["p1", "p2", "p3", "p4"]);
+  const preview = generateCourtAssignments({
+    courts: [courts[0]],
+    queueEntries: getActiveQueueEntries(session),
+    players,
+    config: { playMode: PLAY_MODE.DOUBLES },
+  });
+  session = confirmAssignments(session, preview.assignments).session;
+  const assignmentId = session.assignments[0].id;
+
+  const started = startMatchTimer(session, assignmentId);
+  assert.equal(started.ok, true);
+  assert.equal(started.session.courtStates["1"]?.status, COURT_RUNTIME_STATUS.PLAYING);
+
+  const blocked = generateCourtAssignments({
+    courts: [courts[0]],
+    queueEntries: getActiveQueueEntries(session),
+    players,
+    activeAssignments: started.session.assignments || [],
+    courtStates: started.session.courtStates || {},
+    config: { playMode: PLAY_MODE.DOUBLES },
+  });
+  assert.equal(blocked.assignments.length, 0);
+});
+
+test("end match restores courtStates to empty", () => {
+  let session = buildSessionWithQueue(["p1", "p2", "p3", "p4"]);
+  const preview = generateCourtAssignments({
+    courts: [courts[0]],
+    queueEntries: getActiveQueueEntries(session),
+    players,
+    config: { playMode: PLAY_MODE.DOUBLES },
+  });
+  session = confirmAssignments(session, preview.assignments).session;
+  session = startMatchTimer(session, session.assignments[0].id).session;
+
+  const ended = endMatchTimer(session, session.assignments[0].id);
+  assert.equal(ended.session.courtStates["1"]?.status, COURT_RUNTIME_STATUS.EMPTY);
+  assert.equal(ended.session.courtStates["1"]?.currentMatchId, null);
+});
+
 test("auto assignment: locked player excluded", () => {
   let session = buildSessionWithQueue(["p1", "p2", "p3", "p4"]);
   session = setQueueLocked(session, "p1", true).session;

@@ -24,6 +24,11 @@ All notable changes to Pickleball Scheduler Pro are documented in this file.
 | 11 | Release Candidate hardening |
 | 12 | GA — production env, SQL/QA checklists, release docs |
 
+### Fixed (post-GA production QA)
+
+- **Court Engine P0 — auto-assign trùng sân bận** — Ghép sân lần 2 vẫn gán vào sân đang có assignment/trận active (`assigned` / `playing` / `paused` / `overrun`). Fix trong `src/features/court-engine/`: `courtStateService.js` (mới), `autoCourtAssignmentEngine.js`, `courtTimerService.js`. `courtStates` đồng bộ khi confirm/start/pause/resume/end match; `activeAssignments` fallback khi localStorage lệch. Test: `occupied court skipped on second auto-assign`. Production QA đóng 2026-07-01.
+- **Court Engine** — `/court-engine` white screen khi reload trực tiếp hoặc session/context null; hiển thị thông báo hướng dẫn khi thiếu season/league (`courtEngineContextGuard`, `CourtEnginePage`). Production QA xác nhận RESOLVED 2026-07-01.
+
 ### Added (Sprint 12 — release only)
 
 - `docs/GA-PRODUCTION-ENV-CHECKLIST.md` — Phase 1 Vercel/Supabase/GitHub/domain/RBAC/flags

@@ -1,26 +1,28 @@
 import { getPlayerGenderKey } from "../../../models/player.js";
 import { PLAYERS_PER_MATCH, PLAY_MODE } from "../constants/playModes.js";
 import { ASSIGNMENT_STATUS, COURT_RUNTIME_STATUS } from "../constants/statuses.js";
+import {
+  assignmentStatusToCourtRuntime,
+  collectBusyCourtIds,
+  normalizeCourtId,
+  patchCourtState,
+} from "../services/courtStateService.js";
 import { computePriorityScore } from "../services/queueService.js";
 
 function playerRating(player) {
   return Number(player?.rating ?? player?.level ?? 3.5);
 }
 
-function normalizeCourtId(value) {
-  return value === null || value === undefined ? "" : String(value);
-}
-
-function isCourtAvailable(court, courtStates = {}) {
+function isCourtAvailable(court, courtStates = {}, busyCourtIds = new Set()) {
   const id = normalizeCourtId(court.id);
+  if (busyCourtIds.has(id)) {
+    return false;
+  }
   const state = courtStates[id] || {};
   if (court.locked || state.locked) {
     return false;
   }
   if (state.status === COURT_RUNTIME_STATUS.MAINTENANCE || state.status === COURT_RUNTIME_STATUS.LOCKED) {
-    return false;
-  }
-  if (state.status === COURT_RUNTIME_STATUS.PLAYING || state.status === COURT_RUNTIME_STATUS.ASSIGNED) {
     return false;
   }
   return court.active !== false;
@@ -250,7 +252,10 @@ export function generateCourtAssignments(input = {}) {
   const playersById = new Map((players || []).map((player) => [String(player.id), player]));
   const lockedIds = new Set((lockedPlayerIds || []).map(String));
 
-  const availableCourts = (courts || []).filter((court) => isCourtAvailable(court, courtStates));
+  const busyCourtIds = collectBusyCourtIds(courtStates, activeAssignments);
+  const availableCourts = (courts || []).filter((court) =>
+    isCourtAvailable(court, courtStates, busyCourtIds)
+  );
 
   if (!availableCourts.length) {
     warnings.push("Không có sân trống.");
@@ -396,14 +401,21 @@ export function generateCourtAssignments(input = {}) {
 export function confirmAssignments(session, proposedAssignments = [], options = {}) {
   const now = new Date().toISOString();
   const assignments = [...(session.assignments || [])];
+  let courtStates = { ...(session.courtStates || {}) };
 
   proposedAssignments.forEach((proposal) => {
-    assignments.push({
+    const confirmed = {
       ...proposal,
       status: ASSIGNMENT_STATUS.ASSIGNED,
       assignmentType: proposal.assignmentType || "auto",
       confirmedAt: now,
       confirmedBy: options.actor || null,
+    };
+    assignments.push(confirmed);
+    courtStates = patchCourtState(courtStates, confirmed.courtId, {
+      status: assignmentStatusToCourtRuntime(ASSIGNMENT_STATUS.ASSIGNED),
+      currentMatchId: confirmed.id,
+      locked: courtStates[normalizeCourtId(confirmed.courtId)]?.locked || false,
     });
   });
 
@@ -425,6 +437,7 @@ export function confirmAssignments(session, proposedAssignments = [], options = 
       assignments,
       queue,
       checkIns,
+      courtStates,
       updatedAt: now,
     },
     playerIds,

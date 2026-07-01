@@ -1,4 +1,9 @@
 import { ASSIGNMENT_STATUS, COURT_RUNTIME_STATUS, EVENT_TYPE } from "../constants/statuses.js";
+import {
+  assignmentStatusToCourtRuntime,
+  normalizeCourtId,
+  patchCourtState,
+} from "./courtStateService.js";
 
 export function getMatchElapsedMinutes(assignment, now = Date.now()) {
   if (!assignment?.startedAt) {
@@ -70,9 +75,15 @@ export function startMatchTimer(session, assignmentId, options = {}) {
       : item
   );
 
+  const courtStates = patchCourtState(session.courtStates || {}, assignment.courtId, {
+    status: assignmentStatusToCourtRuntime(ASSIGNMENT_STATUS.PLAYING),
+    currentMatchId: assignmentId,
+    locked: session.courtStates?.[normalizeCourtId(assignment.courtId)]?.locked || false,
+  });
+
   return {
     ok: true,
-    session: { ...session, assignments, updatedAt: now },
+    session: { ...session, assignments, courtStates, updatedAt: now },
     event: {
       eventType: EVENT_TYPE.MATCH_START,
       message: `Bắt đầu trận sân ${assignment.courtId}`,
@@ -103,9 +114,15 @@ export function pauseMatchTimer(session, assignmentId, options = {}) {
       : item
   );
 
+  const courtStates = patchCourtState(session.courtStates || {}, assignment.courtId, {
+    status: assignmentStatusToCourtRuntime(ASSIGNMENT_STATUS.PAUSED),
+    currentMatchId: assignmentId,
+    locked: session.courtStates?.[normalizeCourtId(assignment.courtId)]?.locked || false,
+  });
+
   return {
     ok: true,
-    session: { ...session, assignments, updatedAt: now },
+    session: { ...session, assignments, courtStates, updatedAt: now },
     event: {
       eventType: EVENT_TYPE.MATCH_PAUSE,
       message: `Pause trận sân ${assignment.courtId}`,
@@ -142,9 +159,15 @@ export function resumeMatchTimer(session, assignmentId, options = {}) {
       : item
   );
 
+  const courtStates = patchCourtState(session.courtStates || {}, assignment.courtId, {
+    status: assignmentStatusToCourtRuntime(ASSIGNMENT_STATUS.PLAYING),
+    currentMatchId: assignmentId,
+    locked: session.courtStates?.[normalizeCourtId(assignment.courtId)]?.locked || false,
+  });
+
   return {
     ok: true,
-    session: { ...session, assignments, updatedAt: now },
+    session: { ...session, assignments, courtStates, updatedAt: now },
     event: {
       eventType: EVENT_TYPE.MATCH_RESUME,
       message: `Resume trận sân ${assignment.courtId}`,
@@ -189,11 +212,11 @@ export function endMatchTimer(session, assignmentId, options = {}) {
       : item
   );
 
-  const courtStates = { ...(session.courtStates || {}) };
-  courtStates[String(assignment.courtId)] = {
+  const courtStates = patchCourtState(session.courtStates || {}, assignment.courtId, {
     status: COURT_RUNTIME_STATUS.EMPTY,
-    locked: courtStates[String(assignment.courtId)]?.locked || false,
-  };
+    currentMatchId: null,
+    locked: session.courtStates?.[normalizeCourtId(assignment.courtId)]?.locked || false,
+  });
 
   return {
     ok: true,
