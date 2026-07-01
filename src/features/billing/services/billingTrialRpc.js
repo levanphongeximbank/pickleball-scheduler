@@ -18,9 +18,16 @@ export async function ensureTrialSubscriptionRpc(store, { tenantId } = {}) {
 
   if (error) {
     const message = error.message || String(error);
-    const code = message.includes("billing_create_trial_subscription")
-      ? "RPC_NOT_APPLIED"
-      : error.code || "RPC_ERROR";
+    let code = error.code || "RPC_ERROR";
+    if (message.includes("billing_create_trial_subscription")) {
+      code = "RPC_NOT_APPLIED";
+    } else if (message.includes("tenant_not_found")) {
+      code = "TENANT_NOT_FOUND";
+    } else if (message.includes("tenant_required")) {
+      code = "TENANT_REQUIRED";
+    } else if (message.includes("access_denied")) {
+      code = "ACCESS_DENIED";
+    }
     return { ok: false, error: message, code };
   }
 

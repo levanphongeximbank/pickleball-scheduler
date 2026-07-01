@@ -215,6 +215,18 @@ async function main() {
 
   await verifyAnonRlsBlocks(url, anonKey);
 
+  console.log("\n--- Trial RPC probe (anon) ---\n");
+  const { error: rpcProbeError } = await anon.rpc("billing_create_trial_subscription");
+  if (rpcProbeError?.message?.includes("billing_create_trial_subscription")) {
+    warn("RPC billing_create_trial_subscription CHƯA apply — apply docs/supabase-billing-phase9-trial-rpc.sql");
+  } else if (rpcProbeError?.message?.includes("not_authenticated")) {
+    ok("RPC billing_create_trial_subscription tồn tại (chặn anon — đúng kỳ vọng)");
+  } else if (rpcProbeError) {
+    info(`RPC probe: ${rpcProbeError.message}`);
+  } else {
+    warn("RPC billing_create_trial_subscription trả về không lỗi với anon — kiểm tra security");
+  }
+
   console.log("\n--- SQL pre-apply review ---\n");
   ok("Migration idempotent: create table if not exists + on conflict do nothing");
   ok("Rollback khả thi: drop 8 billing tables cascade");

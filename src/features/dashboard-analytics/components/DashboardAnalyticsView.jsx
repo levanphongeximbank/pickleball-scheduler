@@ -1,3 +1,4 @@
+import { useMemo } from "react";
 import { Navigate } from "react-router-dom";
 
 import { Alert, Box, Grid, Stack, Typography } from "@mui/material";
@@ -24,11 +25,20 @@ export default function DashboardAnalyticsView() {
   const { user, can } = useAuth();
   const { activeClubId, activeClub } = useClub();
 
-  const scope = {
-    clubId: activeClubId,
-    venueId: activeClub?.venueId || activeClub?.tenantId || user?.venueId || user?.tenantId || null,
-    tenantId: activeClub?.tenantId || activeClub?.venueId || user?.tenantId || user?.venueId || null,
-  };
+  const scopeClubId = activeClubId;
+  const scopeVenueId =
+    activeClub?.venueId || activeClub?.tenantId || user?.venueId || user?.tenantId || null;
+  const scopeTenantId =
+    activeClub?.tenantId || activeClub?.venueId || user?.tenantId || user?.venueId || null;
+
+  const scope = useMemo(
+    () => ({
+      clubId: scopeClubId,
+      venueId: scopeVenueId,
+      tenantId: scopeTenantId,
+    }),
+    [scopeClubId, scopeVenueId, scopeTenantId]
+  );
 
   const analytics = useDashboardAnalytics({ clubId: activeClubId, user, can, scope });
   const { access, data, loading, error, reload } = analytics;

@@ -50,8 +50,9 @@
 - ALL: super_admin
 
 ### tenant_subscriptions
-- SELECT: own tenant OR super_admin
+- SELECT: own tenant OR super_admin (`tenant_id` = `profiles.venue_id`)
 - ALL: super_admin (owner không sửa status)
+- INSERT trial: RPC `billing_create_trial_subscription` (security definer) — không insert trực tiếp
 
 ### invoices
 - SELECT: own tenant OR super_admin
@@ -103,9 +104,11 @@
 
 **Vercel:** `VITE_BILLING_SUPABASE=true` ✅ — repository init Supabase mode + hydrate/persist.
 
-**Trial RPC:** `billing_create_trial_subscription` — owner-safe; apply SQL patch staging.
+**Trial RPC:** `billing_create_trial_subscription` — ✅ applied staging; validates `venues.id`, uses `user_venue_id()` for owners.
 
-**Gate status:** Anon RLS pass ✅. Authenticated cross-tenant + browser QA **pending manual**.
+**App tenant resolution (2026-07-01):** `resolveBillingTenantId()` — `profiles.venue_id` / TenantContext; **không** `tenant-demo`.
+
+**Gate status:** Anon RLS pass ✅. RPC probe pass ✅. Authenticated cross-tenant + browser QA **pending manual**.
 
 ## Expired tenant access
 

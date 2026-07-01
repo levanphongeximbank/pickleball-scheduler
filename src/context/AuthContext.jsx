@@ -183,6 +183,28 @@ export function AuthProvider({ children }) {
     [state.rbacEnabled]
   );
 
+  const user = state.user;
+  const checkCan = useCallback(
+    (permission, scope = {}) => can(user, permission, scope, rbacOptions),
+    [user, rbacOptions]
+  );
+  const checkCanAll = useCallback(
+    (permissions, scope = {}) => canAll(user, permissions, scope, rbacOptions),
+    [user, rbacOptions]
+  );
+  const checkCanAny = useCallback(
+    (permissions, scope = {}) => canAny(user, permissions, scope, rbacOptions),
+    [user, rbacOptions]
+  );
+  const checkCanAccessVenue = useCallback(
+    (venueId) => canAccessVenue(user, venueId, rbacOptions),
+    [user, rbacOptions]
+  );
+  const checkCanAccessClub = useCallback(
+    (clubId, clubMeta = {}) => canAccessClub(user, clubId, clubMeta, rbacOptions),
+    [user, rbacOptions]
+  );
+
   const value = useMemo(
     () => ({
       ...state,
@@ -196,16 +218,29 @@ export function AuthProvider({ children }) {
       signUpWithPassword: handleSignUpWithPassword,
       signOut: handleSignOut,
       enableRbac: handleEnableRbac,
-      can: (permission, scope = {}) => can(state.user, permission, scope, rbacOptions),
-      canAll: (permissions, scope = {}) =>
-        canAll(state.user, permissions, scope, rbacOptions),
-      canAny: (permissions, scope = {}) =>
-        canAny(state.user, permissions, scope, rbacOptions),
-      canAccessVenue: (venueId) => canAccessVenue(state.user, venueId, rbacOptions),
-      canAccessClub: (clubId, clubMeta = {}) =>
-        canAccessClub(state.user, clubId, clubMeta, rbacOptions),
+      can: checkCan,
+      canAll: checkCanAll,
+      canAny: checkCanAny,
+      canAccessVenue: checkCanAccessVenue,
+      canAccessClub: checkCanAccessClub,
     }),
-    [state, authLoading, authError, refresh, handleSignInDev, handleSignInAs, handleSignInWithPassword, handleSignUpWithPassword, handleSignOut, handleEnableRbac, rbacOptions]
+    [
+      state,
+      authLoading,
+      authError,
+      refresh,
+      handleSignInDev,
+      handleSignInAs,
+      handleSignInWithPassword,
+      handleSignUpWithPassword,
+      handleSignOut,
+      handleEnableRbac,
+      checkCan,
+      checkCanAll,
+      checkCanAny,
+      checkCanAccessVenue,
+      checkCanAccessClub,
+    ]
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

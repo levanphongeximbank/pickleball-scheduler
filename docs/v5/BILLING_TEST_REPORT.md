@@ -1,6 +1,6 @@
 # Billing Test Report — Phase 9
 
-**Date:** 2026-07-01
+**Date:** 2026-07-01 (updated — tenant resolver fix)
 
 ## Billing-specific tests
 
@@ -34,6 +34,19 @@ npm run lint    # 0 errors, 126 warnings (pre-existing)
 npm test        # 606/606 pass
 npm run build   # ✅ PASS
 ```
+
+npm test        # 618/618 pass
+npm run build   # ✅ PASS
+```
+
+## Tenant resolver fix (2026-07-01)
+
+| Test / check | Status |
+|--------------|--------|
+| `resolveBillingTenantId` never returns `tenant-demo` | ✅ `billing-repository-runtime.test.js` |
+| `formatBillingTenantError` for TENANT_MISSING / tenant_not_found | ✅ |
+| RPC probe staging | ✅ `verify-billing-phase9-staging.mjs` |
+| Admin list venues from Supabase | ✅ `AdminBillingPage` + `billingVenueService.js` |
 
 ## Phase 9 Final Hardening Result (2026-07-01)
 
@@ -100,8 +113,8 @@ node scripts/verify-billing-phase9-staging.mjs
 | `billingRowMap.js` plan_id mapping | ✅ |
 | `BillingEngine.seedDefaults()` skip supabase | ✅ |
 | Error state (hydrate/persist) không crash | ✅ |
-| Tests `billing-repository-runtime.test.js` | ✅ 10/10 (incl. trial RPC) |
-| Trial RPC `billing_create_trial_subscription` | ✅ Code + SQL patch |
+| Tests `billing-repository-runtime.test.js` | ✅ 12/12 (incl. tenant resolver + trial RPC) |
+| Trial RPC `billing_create_trial_subscription` | ✅ Applied staging (RPC probe) |
 
 ## Phase 9 Final Browser QA Result (2026-07-01)
 
@@ -111,16 +124,19 @@ node scripts/verify-billing-phase9-staging.mjs
 | Owner `/billing/*` browser | ⏳ Manual |
 | Admin `/admin/billing/*` browser | ⏳ Manual |
 | Cross-tenant JWT | ⏳ `verify-billing-cross-tenant-staging.mjs` + creds |
-| Trial RPC SQL apply staging | ⏳ `supabase-billing-phase9-trial-rpc.sql` |
+| Trial RPC SQL apply staging | ✅ RPC probe pass |
+| `profiles.venue_id` alignment | ⏳ SQL verify per user |
+| Owner browser QA | ⏳ Re-QA sau tenant fix |
+| Admin browser QA | ⏳ Re-QA sau tenant fix |
 
 ### Re-run local verification (gate)
 
 | Command | Result |
 |---------|--------|
 | `node --test tests/billing-phase9.test.js` | ✅ 14/14 |
-| `node --test tests/billing-repository-runtime.test.js` | ✅ 10/10 |
-| `node scripts/verify-billing-cross-tenant-staging.mjs` | ⏳ Cần staging user creds |
-| `npm test` | ✅ 616/616 |
+| `node --test tests/billing-repository-runtime.test.js` | ✅ 12/12 |
+| `node scripts/verify-billing-phase9-staging.mjs` | ✅ 8/8 + RPC probe |
+| `npm test` | ✅ 618/618 |
 | `npm run lint` | ✅ 0 errors, 121 warnings |
 | `npm run build` | ✅ PASS |
 
@@ -142,5 +158,5 @@ node scripts/verify-billing-phase9-staging.mjs
 
 ### Phase 10 ready?
 
-**Code / automated gate:** ✅ Pass (616 tests)  
-**Final browser gate:** ⏳ Pending — redeploy + trial RPC apply + manual QA
+**Code / automated gate:** ✅ Pass (618 tests)  
+**Final browser gate:** ⏳ Pending — redeploy tenant fix + `profiles.venue_id` alignment + manual QA

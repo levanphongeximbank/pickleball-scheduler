@@ -11,6 +11,10 @@ import {
   persistBillingCollections,
 } from "../repositories/billingStoreRuntime.js";
 import { getBillingStore } from "../repositories/billingRepository.js";
+import {
+  formatBillingTenantError,
+  resolveBillingTenantId,
+} from "../services/billingTenantResolver.js";
 import { ensureTrialSubscriptionRpc } from "../services/billingTrialRpc.js";
 import { BillingEngine } from "../services/billingEngine.js";
 import { InvoiceService } from "../services/invoiceService.js";
@@ -45,7 +49,11 @@ function buildServices(store) {
 export function useBilling({ tenantId: tenantIdOverride } = {}) {
   const { user } = useAuth();
   const { currentTenantId } = useTenant();
-  const tenantId = tenantIdOverride || currentTenantId || user?.tenant_id || user?.tenantId || "tenant-demo";
+  const tenantId = resolveBillingTenantId({
+    user,
+    tenantIdOverride,
+    currentTenantId,
+  });
   const [refreshKey, setRefreshKey] = useState(0);
   const [hydrateState, setHydrateState] = useState({
     loading: false,
@@ -126,16 +134,29 @@ export function useBilling({ tenantId: tenantIdOverride } = {}) {
         return;
       }
 
+      if (!tenantId) {
+        if (!cancelled) {
+          setHydrateState({
+            loading: false,
+            ready: true,
+            error: formatBillingTenantError({ code: "TENANT_MISSING" }),
+          });
+        }
+        return;
+      }
+
       const existing = runtime.subscriptionService.getByTenant(tenantId);
       if (!existing) {
         if (isSupabaseBillingStore(store)) {
           const trial = await ensureTrialSubscriptionRpc(store, { tenantId });
-          if (!trial.ok && !cancelled) {
-            setPersistError(
-              trial.code === "RPC_NOT_APPLIED"
-                ? "Trial RPC chưa apply trên staging — apply docs/supabase-billing-phase9-trial-rpc.sql"
-                : trial.error || "Không thể tạo trial subscription qua RPC."
-            );
+          if (trial.ok) {
+            try {
+              await store.hydrate("subscriptions");
+            } catch {
+              // subscription row already merged from RPC response
+            }
+          } else if (!cancelled) {
+            setPersistError(formatBillingTenantError({ code: trial.code, message: trial.error }));
           }
         } else {
           runtime.engine.createTrialSubscription({ tenantId, ownerUserId: user?.id || null });
@@ -146,7 +167,11 @@ export function useBilling({ tenantId: tenantIdOverride } = {}) {
         return;
       }
 
-      setHydrateState({ loading: false, ready: true, error: null });
+      setHydrateState((current) =>
+        current.ready && !current.loading && !current.error
+          ? current
+          : { loading: false, ready: true, error: null }
+      );
     }
 
     bootstrap();
@@ -269,5 +294,38 @@ export function useBilling({ tenantId: tenantIdOverride } = {}) {
         () => engine.changePlan(subscriptionId, planCode, { actorUserId: user?.id }),
         BILLING_PERSIST_SETS.PLAN_CHANGE
       ),
+    createTrialSubscription: async (targetTenantId) => {
+      const resolvedTenantId = String(targetTenantId || tenantId || "").trim();
+      if (!resolvedTenantId) {
+        return {
+          ok: false,
+          code: "TENANT_MISSING",
+          error: formatBillingTenantError({ code: "TENANT_MISSING" }),
+        };
+      }
+
+      if (isSupabaseBillingStore(store)) {
+        const trial = await ensureTrialSubscriptionRpc(store, { tenantId: resolvedTenantId });
+        if (trial.ok) {
+          try {
+            await store.hydrate("subscriptions");
+          } catch {
+            // non-fatal
+          }
+          refresh();
+          setPersistError(null);
+        } else {
+          setPersistError(formatBillingTenantError({ code: trial.code, message: trial.error }));
+        }
+        return trial;
+      }
+
+      const created = engine.createTrialSubscription({
+        tenantId: resolvedTenantId,
+        ownerUserId: user?.id || null,
+      });
+      refresh();
+      return { ok: true, subscription: created };
+    },
   };
 }

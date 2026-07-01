@@ -10,6 +10,7 @@ import {
 import { useAuth } from "./AuthContext.jsx";
 import { isGlobalRole } from "../auth/roles.js";
 import { loadActiveTenantId, saveActiveTenantId } from "../data/tenantSession.js";
+import { getActiveClubId } from "../data/club.js";
 import { switchActiveClub } from "../domain/clubService.js";
 import {
   assertTenantOperational,
@@ -76,7 +77,7 @@ export function TenantProvider({ children }) {
     const clubId = isSuperAdmin
       ? getPrimaryClubIdForTenant(currentTenantId)
       : userClubId || getPrimaryClubIdForTenant(currentTenantId);
-    if (clubId) {
+    if (clubId && getActiveClubId() !== clubId) {
       switchActiveClub(clubId);
     }
   }, [currentTenantId, isAuthenticated, isSuperAdmin, rbacEnabled, userClubId, userId]);
@@ -157,7 +158,7 @@ export function TenantProvider({ children }) {
       setAdminTenantId(trimmed);
 
       const clubId = getPrimaryClubIdForTenant(trimmed);
-      if (clubId) {
+      if (clubId && getActiveClubId() !== clubId) {
         switchActiveClub(clubId);
       }
 

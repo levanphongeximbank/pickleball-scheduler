@@ -15,6 +15,10 @@ import {
 import { serializeBillingRow } from "../src/features/billing/repositories/billingRowMap.js";
 import { BillingEngine } from "../src/features/billing/services/billingEngine.js";
 import { ensureTrialSubscriptionRpc } from "../src/features/billing/services/billingTrialRpc.js";
+import {
+  formatBillingTenantError,
+  resolveBillingTenantId,
+} from "../src/features/billing/services/billingTenantResolver.js";
 
 function createMockSupabaseClient(tables = {}) {
   return {
@@ -205,4 +209,27 @@ test("memory store fallback still seeds defaults and creates trial subscription"
   const subscription = engine.createTrialSubscription({ tenantId: "tenant-local", ownerUserId: "u1" });
   assert.equal(store.read("plans").length, 4);
   assert.equal(subscription.tenant_id, "tenant-local");
+});
+
+test("resolveBillingTenantId prefers override and never returns tenant-demo", () => {
+  const user = { role: "COURT_OWNER", tenantId: "venue-real", venueId: "venue-real" };
+  assert.equal(
+    resolveBillingTenantId({ user, tenantIdOverride: "venue-override", currentTenantId: "venue-context" }),
+    "venue-override"
+  );
+  assert.equal(resolveBillingTenantId({ user, currentTenantId: "venue-context" }), "venue-context");
+  assert.equal(resolveBillingTenantId({ user }), "venue-real");
+  assert.equal(resolveBillingTenantId({ user: { role: "PLAYER" } }), null);
+  assert.notEqual(resolveBillingTenantId({ user: { role: "PLAYER" } }), "tenant-demo");
+});
+
+test("formatBillingTenantError maps tenant_not_found and TENANT_MISSING", () => {
+  assert.match(
+    formatBillingTenantError({ code: "TENANT_MISSING" }),
+    /Không tìm thấy tenant\/venue hợp lệ/
+  );
+  assert.match(
+    formatBillingTenantError({ message: "tenant_not_found" }),
+    /profiles\.venue_id khớp venues\.id/
+  );
 });

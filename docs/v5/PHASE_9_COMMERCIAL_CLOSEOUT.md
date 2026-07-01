@@ -95,8 +95,9 @@ Indexes: tenant_id, status, created_at on subscriptions/invoices/payments/audit
 | Command | Result |
 |---------|--------|
 | `npm run lint` | ✅ 0 errors |
-| `npm test` | ✅ 606/606 |
+| `npm test` | ✅ 618/618 |
 | `billing-phase9.test.js` | ✅ 14/14 |
+| `billing-repository-runtime.test.js` | ✅ 12/12 |
 | `npm run build` | ✅ PASS |
 | Mobile Phase 8 | ✅ Pass |
 
@@ -117,12 +118,13 @@ Indexes: tenant_id, status, created_at on subscriptions/invoices/payments/audit
 | Vercel `VITE_BILLING_SUPABASE=true` | ✅ User bật + redeploy |
 | Repository Supabase mode | ✅ `store.mode === "supabase"` khi flag + Supabase env |
 | Hydrate/persist runtime | ✅ `billingStoreRuntime.js` + `useBilling` wired |
-| Trial RPC (Option B) | ✅ SQL + `billingTrialRpc.js` — apply staging pending |
+| Trial RPC (Option B) | ✅ SQL applied staging + `billingTrialRpc.js` |
+| Tenant ID resolver | ✅ `billingTenantResolver.js` — bỏ `tenant-demo` hard-code |
 | RLS anon | ✅ 8/8 blocked |
 | RLS cross-tenant (authenticated) | ⏳ Manual 2-user smoke |
 | Browser QA Owner/Admin | ⏳ Manual sau redeploy |
 | Lint / Build | ✅ 0 errors / PASS |
-| **Chuyển Phase 10** | ⏳ **Chưa** — browser QA + trial RPC apply + cross-tenant |
+| **Chuyển Phase 10** | ⏳ **Chưa** — browser re-QA sau tenant fix + profile.venue_id alignment |
 
 ---
 
@@ -142,10 +144,17 @@ Indexes: tenant_id, status, created_at on subscriptions/invoices/payments/audit
 | Owner/Admin browser QA | ⏳ Manual trên preview |
 | Repository Supabase mode | ✅ Init supabase store |
 | Hydrate/persist | ✅ Wired |
-| Trial RPC | ✅ Code + SQL patch; ⏳ apply staging |
+| Trial RPC | ✅ Applied staging (RPC probe pass) |
+| Tenant resolver fix | ✅ 2026-07-01 — `resolveBillingTenantId`, Admin list `venues` |
 | Local full test | ✅ 616/616 |
 | Browser QA | ⏳ User manual |
-| **Phase 10** | ⏳ Browser + cross-tenant + trial RPC apply |
+| **Phase 10** | ⏳ Browser re-QA + `profiles.venue_id` alignment |
+
+### Tenant mapping fix (2026-07-01)
+
+- **DB:** `tenant_subscriptions.tenant_id` = `venues.id` = `profiles.venue_id`
+- **Bug:** UI fallback `tenant-demo` → RPC `tenant_not_found`, `no_subscription`
+- **Fix:** `resolveBillingTenantId()`; Admin load `venues` từ Supabase; nút tạo trial cho SUPER_ADMIN
 
 ---
 
@@ -158,10 +167,10 @@ Indexes: tenant_id, status, created_at on subscriptions/invoices/payments/audit
 | Owner `/billing/*` | ✅ RBAC/hydrate | ⏳ |
 | Admin `/admin/billing/*` | ✅ RBAC/persist | ⏳ |
 | Cross-tenant JWT | ⏳ Script + creds | ⏳ |
-| Trial onboarding | ✅ Option B RPC | ⏳ Apply SQL |
+| Trial onboarding | ✅ Option B RPC applied | ⏳ Re-QA browser |
 | npm test 616/616 | ✅ | — |
 
-**Kết luận Phase 9:** Code + automated gate **PASS**. Final gate **chưa đóng** — cần browser QA + trial RPC apply staging.
+**Kết luận Phase 9:** Code + automated gate **PASS**. Final gate **chưa đóng** — cần browser re-QA sau fix tenant + xác nhận `profiles.venue_id`.
 
 ---
 
@@ -171,9 +180,10 @@ Indexes: tenant_id, status, created_at on subscriptions/invoices/payments/audit
 2. ~~Legacy subscriptionLifecycleService song song~~ → TenantContext dùng bridge; legacy chỉ cho subscriptionGuard + Sprint 4 tests
 3. ~~RLS SQL chưa apply staging~~ → ✅ applied 8/8
 4. Authenticated cross-tenant RLS chưa smoke test (2 user JWT)
-5. Trial RPC SQL chưa apply staging (`supabase-billing-phase9-trial-rpc.sql`)
-6. Browser QA Owner/Admin chưa chạy trên Vercel preview
-7. VNPay/MoMo/Stripe chưa có staging credential
+5. ~~Trial RPC SQL chưa apply staging~~ → ✅ applied
+6. Browser QA Owner/Admin — **re-run** sau tenant resolver fix
+7. `profiles.venue_id` phải khớp `venues.id` (staging data)
+8. VNPay/MoMo/Stripe chưa có staging credential
 
 ---
 
@@ -181,9 +191,10 @@ Indexes: tenant_id, status, created_at on subscriptions/invoices/payments/audit
 
 1. ~~Apply `supabase-billing-phase9.sql` staging~~ ✅
 2. ~~Wire `hydrateAll` / `persistCollection` trong billing runtime~~ ✅
-3. Apply `supabase-billing-phase9-trial-rpc.sql` staging
-4. QA owner + admin billing flows trên Vercel preview (sau redeploy)
-5. Security/RLS verification cross-tenant (authenticated)
+3. ~~Apply `supabase-billing-phase9-trial-rpc.sql` staging~~ ✅
+4. QA owner + admin billing flows trên preview (sau redeploy tenant fix)
+5. Verify `profiles.venue_id` ↔ `venues.id` (SQL)
+6. Security/RLS verification cross-tenant (authenticated)
 
 ---
 
@@ -191,11 +202,12 @@ Indexes: tenant_id, status, created_at on subscriptions/invoices/payments/audit
 
 **Phase 9 code complete** — automated gate pass (616 tests, lint, build, staging SQL, anon RLS, hydrate/persist, trial RPC code). Không deploy production.
 
-**Chuyển Phase 10:** ⏳ **Chưa** — redeploy preview, apply trial RPC SQL, browser QA, authenticated cross-tenant.
+**Chuyển Phase 10:** ⏳ **Chưa** — redeploy + browser re-QA + `venue_id` alignment + cross-tenant.
 
 **Bước tiếp theo:**
 
-1. Redeploy Vercel Preview + apply `supabase-billing-phase9-trial-rpc.sql`
-2. Browser QA Owner + Admin (checklist `PHASE_9_STAGING_BILLING_APPLY.md`)
-3. Cross-tenant smoke (`verify-billing-cross-tenant-staging.mjs` + creds)
-4. Phase 10 — QA & Release
+1. Redeploy / restart dev với code tenant resolver
+2. SQL: `profiles.venue_id` khớp `venues.id` (`supabase-billing-phase9-staging-seed-minimal.sql`)
+3. Browser QA Owner + Admin (checklist `PHASE_9_STAGING_BILLING_APPLY.md`)
+4. Cross-tenant smoke (`verify-billing-cross-tenant-staging.mjs` + creds)
+5. Phase 10 — QA & Release

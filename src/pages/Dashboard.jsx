@@ -292,12 +292,15 @@ export default function Dashboard() {
     };
   }, [runtime]);
 
+  const scopeVenueId =
+    activeClub?.venueId || activeClub?.tenantId || user?.venueId || user?.tenantId || null;
+
   const scope = useMemo(
     () => ({
       clubId: activeClubId,
-      venueId: activeClub?.venueId || activeClub?.tenantId || user?.venueId || user?.tenantId || null,
+      venueId: scopeVenueId,
     }),
-    [activeClubId, activeClub, user]
+    [activeClubId, scopeVenueId]
   );
 
   const showClubOperations = useMemo(() => {

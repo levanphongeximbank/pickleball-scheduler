@@ -47,11 +47,12 @@ export function ClubProvider({ children }) {
       return;
     }
 
+    const nextClubId = tenantClubs[0].id;
     const activeInTenant = tenantClubs.some((club) => club.id === activeClubId);
-    if (!activeInTenant) {
-      const result = switchActiveClub(tenantClubs[0].id);
+    if (!activeInTenant && nextClubId !== activeClubId) {
+      const result = switchActiveClub(nextClubId);
       if (result.ok) {
-        setActiveClubId(tenantClubs[0].id);
+        setActiveClubId((current) => (current === nextClubId ? current : nextClubId));
         setRevision((value) => value + 1);
       }
     }

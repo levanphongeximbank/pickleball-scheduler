@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Link as RouterLink } from "react-router-dom";
 import {
   Alert,
@@ -17,10 +17,21 @@ import {
 
 import BillingAccessGate from "../../features/billing/components/BillingAccessGate.jsx";
 import { useBilling } from "../../features/billing/hooks/useBilling.js";
+import { fetchSupabaseVenues } from "../../features/billing/services/billingVenueService.js";
 import { PERMISSIONS } from "../../features/identity/constants/permissions.js";
+import { useTenant } from "../../context/TenantContext.jsx";
+import { isSupabaseBillingStore } from "../../features/billing/repositories/billingStoreRuntime.js";
 
 export default function AdminBillingPage({ view = "overview" }) {
+  const { currentTenantId } = useTenant();
+  const [selectedTenantId, setSelectedTenantId] = useState(null);
+  const [venueTenants, setVenueTenants] = useState([]);
+  const [venuesError, setVenuesError] = useState(null);
+
+  const effectiveTenantId = selectedTenantId || currentTenantId || null;
+
   const {
+    tenantId,
     subscriptionService,
     invoiceService,
     paymentService,
@@ -33,12 +44,75 @@ export default function AdminBillingPage({ view = "overview" }) {
     unlockTenant,
     markInvoicePaid,
     adminChangePlan,
-  } = useBilling();
-  const [selectedTenantId, setSelectedTenantId] = useState(null);
+    createTrialSubscription,
+  } = useBilling({ tenantId: effectiveTenantId });
+
+  useEffect(() => {
+    if (!isSupabaseBillingStore(store)) {
+      return;
+    }
+
+    let cancelled = false;
+
+    async function loadVenues() {
+      const result = await fetchSupabaseVenues(store.client);
+      if (cancelled) {
+        return;
+      }
+      if (result.ok) {
+        setVenueTenants(result.venues);
+        setVenuesError(null);
+      } else {
+        setVenuesError(result.error || "Không thể tải danh sách venue.");
+      }
+    }
+
+    void loadVenues();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [store]);
 
   const subscriptions = useMemo(() => subscriptionService.listAll(), [subscriptionService, store]);
-  const tenantId = selectedTenantId || subscriptions[0]?.tenant_id || "tenant-demo";
-  const subscription = subscriptionService.getByTenant(tenantId);
+  const subscriptionByTenant = useMemo(
+    () => new Map(subscriptions.map((item) => [item.tenant_id, item])),
+    [subscriptions]
+  );
+
+  const tenantOptions = useMemo(() => {
+    const map = new Map();
+
+    for (const venue of venueTenants) {
+      map.set(venue.id, {
+        id: venue.id,
+        name: venue.name || venue.id,
+        hasSubscription: subscriptionByTenant.has(venue.id),
+      });
+    }
+
+    for (const sub of subscriptions) {
+      if (!map.has(sub.tenant_id)) {
+        map.set(sub.tenant_id, {
+          id: sub.tenant_id,
+          name: sub.tenant_id,
+          hasSubscription: true,
+        });
+      }
+    }
+
+    return [...map.values()].sort((a, b) => a.name.localeCompare(b.name, "vi"));
+  }, [venueTenants, subscriptions, subscriptionByTenant]);
+
+  useEffect(() => {
+    if (selectedTenantId || !tenantOptions.length) {
+      return;
+    }
+    setSelectedTenantId(tenantOptions[0].id);
+  }, [selectedTenantId, tenantOptions]);
+
+  const activeTenantId = tenantId || effectiveTenantId || tenantOptions[0]?.id || null;
+  const subscription = activeTenantId ? subscriptionService.getByTenant(activeTenantId) : null;
   const invoices = invoiceService.listAll();
   const payments = paymentService.listAll();
   const auditLogs = store.read("billingAuditLogs") || [];
@@ -49,13 +123,14 @@ export default function AdminBillingPage({ view = "overview" }) {
   };
 
   const handleUnlock = () => {
-    void unlockTenant(tenantId);
+    if (!activeTenantId) return;
+    void unlockTenant(activeTenantId);
   };
 
   const handleMarkPaid = () => {
-    const tenantInvoice = invoices.find((item) => item.tenant_id === tenantId && item.status !== "paid");
+    const tenantInvoice = invoices.find((item) => item.tenant_id === activeTenantId && item.status !== "paid");
     if (!tenantInvoice) return;
-    void markInvoicePaid(tenantInvoice.id, tenantId);
+    void markInvoicePaid(tenantInvoice.id, activeTenantId);
   };
 
   const handleChangePlan = (planCode) => {
@@ -63,10 +138,16 @@ export default function AdminBillingPage({ view = "overview" }) {
     void adminChangePlan(subscription.id, planCode);
   };
 
+  const handleCreateTrial = () => {
+    if (!activeTenantId) return;
+    void createTrialSubscription(activeTenantId);
+  };
+
   return (
     <BillingAccessGate requiredPermission={PERMISSIONS.BILLING_MANAGE}>
       <Box sx={{ p: 3 }}>
         {billingError && <Alert severity="error" sx={{ mb: 2 }}>{billingError}</Alert>}
+        {venuesError && <Alert severity="warning" sx={{ mb: 2 }}>{venuesError}</Alert>}
         {persistError && <Alert severity="warning" sx={{ mb: 2 }}>{persistError}</Alert>}
         {billingLoading && <Alert severity="info" sx={{ mb: 2 }}>Đang tải dữ liệu billing…</Alert>}
         <Typography variant="h5">Admin Billing</Typography>
@@ -88,12 +169,25 @@ export default function AdminBillingPage({ view = "overview" }) {
                 <CardContent>
                   <Typography variant="h6">Tenants</Typography>
                   <List dense>
-                    {subscriptions.length === 0 ? (
-                      <ListItem><ListItemText primary="Chưa có subscription" /></ListItem>
+                    {tenantOptions.length === 0 ? (
+                      <ListItem><ListItemText primary="Chưa có venue/tenant trên Supabase" /></ListItem>
                     ) : (
-                      subscriptions.map((item) => (
-                        <ListItem key={item.id} divider button onClick={() => setSelectedTenantId(item.tenant_id)} selected={item.tenant_id === tenantId}>
-                          <ListItemText primary={item.tenant_id} secondary={`${item.status} · ${item.plan_code}`} />
+                      tenantOptions.map((item) => (
+                        <ListItem
+                          key={item.id}
+                          divider
+                          button
+                          onClick={() => setSelectedTenantId(item.id)}
+                          selected={item.id === activeTenantId}
+                        >
+                          <ListItemText
+                            primary={item.name}
+                            secondary={
+                              subscriptionByTenant.get(item.id)
+                                ? `${subscriptionByTenant.get(item.id).status} · ${subscriptionByTenant.get(item.id).plan_code}`
+                                : "Chưa có subscription"
+                            }
+                          />
                         </ListItem>
                       ))
                     )}
@@ -105,21 +199,35 @@ export default function AdminBillingPage({ view = "overview" }) {
               <Card>
                 <CardContent>
                   <Typography variant="h6">Tenant Detail</Typography>
-                  <Chip label={tenantId} sx={{ mt: 1 }} />
+                  {activeTenantId ? (
+                    <Chip label={activeTenantId} sx={{ mt: 1 }} />
+                  ) : (
+                    <Alert severity="info" sx={{ mt: 2 }}>Chọn tenant để quản lý.</Alert>
+                  )}
                   {subscription ? (
                     <Box sx={{ mt: 2 }}>
                       <Typography variant="body2">Status: {subscription.status}</Typography>
                       <Typography variant="body2">Plan: {subscription.plan_code}</Typography>
+                      <Typography variant="body2">
+                        Trial: {subscription.trial_start_date ? new Date(subscription.trial_start_date).toLocaleDateString("vi-VN") : "—"}
+                        {" → "}
+                        {subscription.trial_end_date ? new Date(subscription.trial_end_date).toLocaleDateString("vi-VN") : "—"}
+                      </Typography>
                       <Typography variant="body2">Auto renew: {subscription.auto_renew ? "Có" : "Không"}</Typography>
-                      <Stack direction="row" spacing={1} sx={{ mt: 2 }}>
+                      <Stack direction="row" spacing={1} sx={{ mt: 2 }} flexWrap="wrap" useFlexGap>
                         <Button variant="outlined" color="warning" onClick={handleSuspend}>Suspend</Button>
                         <Button variant="contained" onClick={handleUnlock}>Unlock</Button>
                         <Button variant="outlined" onClick={handleMarkPaid}>Mark invoice paid</Button>
                       </Stack>
                     </Box>
-                  ) : (
-                    <Alert severity="info" sx={{ mt: 2 }}>Chọn tenant để quản lý.</Alert>
-                  )}
+                  ) : activeTenantId ? (
+                    <Box sx={{ mt: 2 }}>
+                      <Alert severity="info">Tenant chưa có subscription Phase 9.</Alert>
+                      <Button variant="contained" sx={{ mt: 2 }} onClick={handleCreateTrial}>
+                        Tạo trial subscription
+                      </Button>
+                    </Box>
+                  ) : null}
                 </CardContent>
               </Card>
             </Grid>
@@ -134,8 +242,10 @@ export default function AdminBillingPage({ view = "overview" }) {
                 <Box key={plan.code} sx={{ py: 1, borderBottom: "1px solid", borderColor: "divider" }}>
                   <Typography variant="subtitle2">{plan.name} ({plan.code})</Typography>
                   <Typography variant="body2" color="text.secondary">{plan.description}</Typography>
-                  {subscription && (
-                    <Button size="small" sx={{ mt: 1 }} onClick={() => handleChangePlan(plan.code)}>Gán cho {tenantId}</Button>
+                  {subscription && activeTenantId && (
+                    <Button size="small" sx={{ mt: 1 }} onClick={() => handleChangePlan(plan.code)}>
+                      Gán cho {activeTenantId}
+                    </Button>
                   )}
                 </Box>
               ))}
@@ -147,9 +257,13 @@ export default function AdminBillingPage({ view = "overview" }) {
           <Card sx={{ mt: 2 }}>
             <CardContent>
               <Typography variant="h6">All Invoices</Typography>
-              {invoices.map((item) => (
-                <Typography key={item.id} variant="body2">{item.invoice_number} · {item.tenant_id} · {item.status}</Typography>
-              ))}
+              {invoices.length === 0 ? (
+                <Typography variant="body2" color="text.secondary">Chưa có invoice</Typography>
+              ) : (
+                invoices.map((item) => (
+                  <Typography key={item.id} variant="body2">{item.invoice_number} · {item.tenant_id} · {item.status}</Typography>
+                ))
+              )}
             </CardContent>
           </Card>
         )}
@@ -158,9 +272,13 @@ export default function AdminBillingPage({ view = "overview" }) {
           <Card sx={{ mt: 2 }}>
             <CardContent>
               <Typography variant="h6">All Payments</Typography>
-              {payments.map((item) => (
-                <Typography key={item.id} variant="body2">{item.provider} · {item.tenant_id} · {item.status}</Typography>
-              ))}
+              {payments.length === 0 ? (
+                <Typography variant="body2" color="text.secondary">Chưa có payment</Typography>
+              ) : (
+                payments.map((item) => (
+                  <Typography key={item.id} variant="body2">{item.provider} · {item.tenant_id} · {item.status}</Typography>
+                ))
+              )}
             </CardContent>
           </Card>
         )}
@@ -170,14 +288,18 @@ export default function AdminBillingPage({ view = "overview" }) {
             <CardContent>
               <Typography variant="h6">Billing Audit</Typography>
               <List dense>
-                {auditLogs.slice(-20).reverse().map((entry) => (
-                  <ListItem key={entry.id} divider>
-                    <ListItemText
-                      primary={entry.event_type}
-                      secondary={`${entry.tenant_id} · ${entry.entity_type} · ${new Date(entry.created_at).toLocaleString("vi-VN")}`}
-                    />
-                  </ListItem>
-                ))}
+                {auditLogs.length === 0 ? (
+                  <ListItem><ListItemText primary="Chưa có audit log" /></ListItem>
+                ) : (
+                  auditLogs.slice(-20).reverse().map((entry) => (
+                    <ListItem key={entry.id} divider>
+                      <ListItemText
+                        primary={entry.event_type}
+                        secondary={`${entry.tenant_id} · ${entry.entity_type} · ${new Date(entry.created_at).toLocaleString("vi-VN")}`}
+                      />
+                    </ListItem>
+                  ))
+                )}
               </List>
             </CardContent>
           </Card>

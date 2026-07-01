@@ -19,7 +19,7 @@ import {
   isDevAuthAllowed,
   isAuthProductionEnabled,
 } from "../src/auth/authService.js";
-import { getSupabaseConfigError, hasSupabaseConfig } from "../src/auth/supabaseClient.js";
+import { getSupabaseConfigError, hasSupabaseConfig, getSupabaseAnonKeyPrefix, isValidSupabaseAnonKey } from "../src/auth/supabaseClient.js";
 import {
   mapProfileRowToUser,
   mapUserToProfileRow,
@@ -60,6 +60,14 @@ test("getSupabaseConfigError — trả thông báo rõ khi thiếu env", () => {
   if (error) {
     assert.match(error, /Supabase/i);
   }
+});
+
+test("isValidSupabaseAnonKey — chấp nhận JWT và publishable key", () => {
+  assert.equal(isValidSupabaseAnonKey("eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.test"), true);
+  assert.equal(isValidSupabaseAnonKey("sb_publishable_abc123"), true);
+  assert.equal(isValidSupabaseAnonKey(""), false);
+  assert.equal(getSupabaseAnonKeyPrefix("sb_publishable_x"), "sb_publishable");
+  assert.equal(getSupabaseAnonKeyPrefix("eyJabc"), "eyJ");
 });
 
 test("authGuard — auth production bắt login, dev RBAC cho /settings", () => {

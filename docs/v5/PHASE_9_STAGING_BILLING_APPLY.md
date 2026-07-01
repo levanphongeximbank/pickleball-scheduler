@@ -258,13 +258,33 @@ RPC rules:
 | `VITE_SUPABASE_URL` / `ANON_KEY` staging | ✅ `.env.local` → project `qyewbxjsiiyufanzcjcq` |
 | Preview URL | ⏳ Lấy từ Vercel Dashboard → Deployments → Preview |
 | Supabase mode trên preview | ⏳ Xác nhận sau redeploy: DevTools → `store.mode === "supabase"` |
-| Trial RPC SQL applied | ⏳ Apply `supabase-billing-phase9-trial-rpc.sql` trên Supabase staging |
+| Trial RPC SQL applied | ✅ `verify-billing-phase9-staging.mjs` — RPC tồn tại (anon → `not_authenticated`) |
+
+### Root cause browser QA fail (2026-07-01 — tenant-demo)
+
+| Triệu chứng | Nguyên nhân | Fix code |
+|-------------|-------------|----------|
+| Owner: `no_subscription`, dates `—`, persist `tenant_not_found` | `useBilling` fallback `tenant-demo` không tồn tại trong `venues` | ✅ `resolveBillingTenantId()` — không hard-code |
+| Admin: `tenant_not_found`, Tenant Detail `tenant-demo` | `AdminBillingPage` fallback `tenant-demo`; list chỉ từ subscriptions rỗng | ✅ List `venues` từ Supabase + nút **Tạo trial** |
+| RPC fail dù SQL đã apply | `p_tenant_id = 'tenant-demo'` ≠ `profiles.venue_id` | ✅ Dùng `venue_id` thật từ profile / TenantContext |
+
+**Mapping chuẩn Phase 9:** `tenant_subscriptions.tenant_id` = `venues.id` = `profiles.venue_id` (RLS so sánh `profiles.venue_id`).
+
+**Verify alignment (SQL Editor):**
+
+```sql
+select p.email, p.role, p.venue_id, v.name
+from public.profiles p
+left join public.venues v on v.id = p.venue_id;
+```
+
+Nếu `venue_id` null hoặc không khớp `venues.id` → owner không tạo được trial. Tham chiếu seed: `docs/supabase-billing-phase9-staging-seed-minimal.sql`.
 
 ### Owner `/billing/*` (COURT_OWNER)
 
 | Route | Automated code gate | Browser QA |
 |-------|---------------------|------------|
-| `/billing` | ✅ RBAC + hydrate | ⏳ Manual |
+| `/billing` | ✅ RBAC + hydrate + tenant resolver | ⏳ Re-QA sau redeploy |
 | `/billing/current-plan` | ✅ | ⏳ Manual |
 | `/billing/usage` | ✅ | ⏳ Manual |
 | `/billing/invoices` | ✅ tenant filter | ⏳ Manual |
@@ -278,7 +298,7 @@ RPC rules:
 
 | Route / action | Code gate | Browser QA |
 |----------------|-----------|------------|
-| Overview / tenants / plans / invoices / payments / audit | ✅ 6 routes | ⏳ Manual |
+| Overview / tenants / plans / invoices / payments / audit | ✅ 6 routes + venues list | ⏳ Re-QA sau redeploy |
 | Suspend / unlock / mark paid / change plan | ✅ `useBilling` persist | ⏳ Manual |
 | Audit log | ✅ service writes | ⏳ Manual |
 | Refresh persist | ✅ | ⏳ Manual |
@@ -295,13 +315,22 @@ RPC rules:
 
 ### Có thể chuyển Phase 10?
 
-**⏳ Chưa** — automated gate ✅; còn: (1) redeploy preview + apply trial RPC SQL, (2) browser QA Owner + Admin, (3) authenticated cross-tenant smoke.
+**⏳ Chưa pass final gate** — automated ✅; browser QA còn pending sau fix tenant resolver.
+
+**Blocker còn lại:**
+
+1. **Redeploy** preview/local với code mới (bỏ `tenant-demo`)
+2. **Profile alignment** — `profiles.venue_id` phải trỏ `venues.id` hợp lệ (SQL trên)
+3. **Browser re-QA** Owner + Admin (checklist dưới)
+4. **Authenticated cross-tenant** — `verify-billing-cross-tenant-staging.mjs` + creds hoặc manual
 
 **Checklist browser QA (user):**
 
-1. Redeploy Vercel Preview
-2. Apply `docs/supabase-billing-phase9-trial-rpc.sql` trên Supabase staging
-3. COURT_OWNER → 7 routes `/billing/*` → refresh → data còn
-4. SUPER_ADMIN → `/admin/billing/*` → suspend/unlock/mark paid → refresh
-5. Owner A không thấy data tenant B (Network tab / SQL)
-6. Ghi pass/fail vào bảng trên → chuyển Phase 10 nếu all pass
+1. Redeploy Vercel Preview / restart `npm run dev`
+2. ~~Apply trial RPC SQL~~ ✅ đã có trên staging
+3. SQL: xác nhận `profiles.venue_id` khớp `venues.id` cho COURT_OWNER
+4. COURT_OWNER → `/billing` → thấy trial start/end, không còn `no_subscription` / `tenant_not_found`
+5. SUPER_ADMIN → `/admin/billing/tenants` → thấy venue thật, **Tạo trial** nếu chưa có sub
+6. Refresh cả hai flow → data còn
+7. Owner A không thấy data tenant B
+8. Ghi pass/fail → chuyển Phase 10 nếu all pass

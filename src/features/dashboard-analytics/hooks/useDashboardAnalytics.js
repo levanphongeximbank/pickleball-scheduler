@@ -8,9 +8,25 @@ import { resolveDashboardAccess } from "../services/dashboardScope.js";
 import { getDashboardAnalytics } from "../services/dashboardService.js";
 
 export function useDashboardAnalytics({ clubId, user, can, scope }) {
+  const userId = user?.id || null;
+  const userRole = user?.role || null;
+  const scopeClubId = scope?.clubId || null;
+  const scopeVenueId = scope?.venueId || null;
+  const scopeTenantId = scope?.tenantId || null;
+
   const access = useMemo(
-    () => resolveDashboardAccess(user, can, scope),
-    [user, can, scope]
+    () =>
+      resolveDashboardAccess(user, can, {
+        clubId: scopeClubId,
+        venueId: scopeVenueId,
+        tenantId: scopeTenantId,
+      }),
+    [user, userId, userRole, can, scopeClubId, scopeVenueId, scopeTenantId]
+  );
+
+  const sectionsKey = useMemo(
+    () => JSON.stringify(access.sections),
+    [access.sections]
   );
 
   const [preset, setPreset] = useState(TIME_RANGE_PRESETS.LAST_30_DAYS);
@@ -27,7 +43,7 @@ export function useDashboardAnalytics({ clubId, user, can, scope }) {
 
   const loadData = useCallback(() => {
     if (!access.allowed || !clubId) {
-      setLoading(false);
+      setLoading((current) => (current ? false : current));
       return;
     }
 
@@ -48,7 +64,7 @@ export function useDashboardAnalytics({ clubId, user, can, scope }) {
     } finally {
       setLoading(false);
     }
-  }, [access.allowed, access.sections, clubId, timeRange.from, timeRange.to]);
+  }, [access.allowed, sectionsKey, clubId, timeRange.from, timeRange.to]);
 
   useEffect(() => {
     loadData();

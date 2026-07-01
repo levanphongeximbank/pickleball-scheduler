@@ -57,6 +57,7 @@ export default function BillingPage({ title = "Billing", description = "Quản l
     billingLoading,
     billingError,
     persistError,
+    tenantId,
     changePlan,
     createInvoice,
     recordManualPayment,
@@ -64,7 +65,7 @@ export default function BillingPage({ title = "Billing", description = "Quản l
   } = useBilling();
 
   const providers = listEnabledPaymentProviders();
-  const loading = billingLoading || !subscription;
+  const loading = billingLoading || (!subscription && !billingError && Boolean(tenantId));
 
   return (
     <BillingAccessGate requiredPermission={PERMISSIONS.BILLING_VIEW}>
