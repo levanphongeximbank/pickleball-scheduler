@@ -11,6 +11,9 @@ import { getPaymentProvider, listEnabledPaymentProviders } from "../src/features
 import { getPermissionsForRole, roleHasPermission } from "../src/features/identity/matrix/rolePermissions.js";
 import { ROLES } from "../src/features/identity/constants/roles.js";
 import { PERMISSIONS } from "../src/features/identity/constants/permissions.js";
+import { can } from "../src/auth/rbac.js";
+import { canAccessRoute } from "../src/auth/menuAccess.js";
+import { normalizeUser } from "../src/models/user.js";
 
 function createStore() {
   const state = {
@@ -165,6 +168,36 @@ test("RBAC: SUPER_ADMIN has full billing, COURT_OWNER view only", () => {
   assert.equal(roleHasPermission(ROLES.COURT_MANAGER, PERMISSIONS.BILLING_VIEW), false);
   assert.equal(roleHasPermission(ROLES.REFEREE, PERMISSIONS.BILLING_VIEW), false);
   assert.equal(roleHasPermission(ROLES.PLAYER, PERMISSIONS.BILLING_VIEW), false);
+});
+
+test("RBAC: COURT_OWNER can access /billing route when RBAC enforced", () => {
+  const owner = normalizeUser({
+    id: "owner-1",
+    email: "owner@staging.local",
+    role: ROLES.VENUE_OWNER,
+    venueId: "venue-staging-a",
+    status: "active",
+  });
+  const rbac = { rbacEnabled: true };
+  const scope = { venueId: "venue-staging-a", tenantId: "venue-staging-a" };
+
+  assert.equal(can(owner, PERMISSIONS.BILLING_VIEW, scope, rbac), true);
+  assert.equal(
+    canAccessRoute((perm, routeScope) => can(owner, perm, routeScope, rbac), "/billing", scope),
+    true
+  );
+  assert.equal(
+    canAccessRoute((perm, routeScope) => can(owner, perm, routeScope, rbac), "/admin/billing", scope),
+    false
+  );
+  assert.equal(
+    canAccessRoute(
+      (perm, routeScope) => can(normalizeUser({ role: ROLES.PLAYER, status: "active", playerId: "p1", clubId: "c1" }), perm, routeScope, rbac),
+      "/billing",
+      scope
+    ),
+    false
+  );
 });
 
 test("RBAC: CASHIER cannot manage subscription", () => {
