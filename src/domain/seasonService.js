@@ -25,7 +25,7 @@ export function createSeason(clubId, name, options = {}) {
     return { ok: false, error: "Ten mua khong duoc de trong." };
   }
 
-  const check = guardClubAction(clubId, PERMISSIONS.SEASONS_MANAGE);
+  const check = guardClubAction(clubId, PERMISSIONS.SEASON_UPDATE);
   if (!check.ok) {
     return check;
   }
@@ -43,7 +43,7 @@ export function createSeason(clubId, name, options = {}) {
 }
 
 export function updateSeason(clubId, seasonId, patch = {}) {
-  const check = guardClubAction(clubId, PERMISSIONS.SEASONS_MANAGE);
+  const check = guardClubAction(clubId, PERMISSIONS.SEASON_UPDATE);
   if (!check.ok) {
     return check;
   }
@@ -99,7 +99,7 @@ export function archiveSeason(clubId, seasonId) {
 }
 
 export function deleteSeason(clubId, seasonId) {
-  const check = guardClubAction(clubId, PERMISSIONS.SEASONS_MANAGE);
+  const check = guardClubAction(clubId, PERMISSIONS.SEASON_UPDATE);
   if (!check.ok) {
     return check;
   }

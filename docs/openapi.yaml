@@ -1,0 +1,98 @@
+openapi: 3.0.3
+info:
+  title: Pickleball Scheduler Pro API
+  version: 1.0.0
+  description: Sprint 10 — Public/Partner API (client-side router; deploy Edge Functions later)
+servers:
+  - url: /api/v1
+paths:
+  /health:
+    get:
+      summary: Health check
+      responses:
+        "200":
+          description: OK
+  /players:
+    get:
+      summary: List players
+      security:
+        - ApiKeyAuth: []
+      parameters:
+        - in: query
+          name: clubId
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Player list
+  /clubs:
+    get:
+      summary: List clubs
+      security:
+        - ApiKeyAuth: []
+      responses:
+        "200":
+          description: Club list
+  /courts:
+    get:
+      summary: List courts
+      security:
+        - ApiKeyAuth: []
+      responses:
+        "200":
+          description: Court list
+  /marketplace/products:
+    get:
+      summary: List marketplace products
+      security:
+        - ApiKeyAuth: []
+  /marketplace/orders:
+    get:
+      summary: List marketplace orders
+      security:
+        - ApiKeyAuth: []
+    post:
+      summary: Create marketplace order
+      security:
+        - ApiKeyAuth: []
+  /payments/create:
+    post:
+      summary: Create payment transaction
+      security:
+        - ApiKeyAuth: []
+  /payments/{provider}/callback:
+    post:
+      summary: Payment provider callback
+      parameters:
+        - in: path
+          name: provider
+          required: true
+          schema:
+            type: string
+            enum: [mock, vnpay, momo, stripe]
+  /payments/{transactionId}/status:
+    get:
+      summary: Payment status
+      security:
+        - ApiKeyAuth: []
+  /payments/{transactionId}/refund:
+    post:
+      summary: Refund payment (stub)
+      security:
+        - ApiKeyAuth: []
+  /notifications/logs:
+    get:
+      summary: Notification logs
+      security:
+        - ApiKeyAuth: []
+  /notifications/send:
+    post:
+      summary: Send notification
+      security:
+        - ApiKeyAuth: []
+components:
+  securitySchemes:
+    ApiKeyAuth:
+      type: apiKey
+      in: header
+      name: X-API-Key

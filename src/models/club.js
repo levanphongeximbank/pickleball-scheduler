@@ -12,14 +12,28 @@ function slugify(name) {
 export function normalizeClub(club) {
   const name = String(club?.name || "").trim();
   const id = String(club?.id || "").trim();
+  const status = club?.status === "inactive" ? "inactive" : "active";
 
   return {
     id,
     name,
+    code: club?.code ? String(club.code).trim() : null,
+    description: club?.description ? String(club.description).trim() : "",
+    status,
     slug: String(club?.slug || "").trim() || slugify(name || id),
     note: String(club?.note || "").trim(),
-    /** Tenant venue — optional, dùng khi bật RBAC multi-tenant. */
-    venueId: club?.venueId ? String(club.venueId).trim() : null,
+    /** Tenant — optional, dùng khi bật RBAC multi-tenant. tenantId === venueId. */
+    tenantId: club?.tenantId
+      ? String(club.tenantId).trim()
+      : club?.venueId
+        ? String(club.venueId).trim()
+        : null,
+    venueId: club?.venueId
+      ? String(club.venueId).trim()
+      : club?.tenantId
+        ? String(club.tenantId).trim()
+        : null,
+    createdByUserId: club?.createdByUserId ? String(club.createdByUserId).trim() : null,
     timezone: club?.timezone || DEFAULT_TIMEZONE,
     createdAt: club?.createdAt || new Date().toISOString(),
     updatedAt: club?.updatedAt || new Date().toISOString(),
@@ -38,8 +52,13 @@ export function createClubRecord(name, options = {}) {
     id,
     name: trimmed,
     slug,
+    code: options.code || null,
+    description: options.description || "",
+    status: options.status || "active",
     note: options.note || "",
-    venueId: options.venueId || null,
+    venueId: options.venueId || options.tenantId || null,
+    tenantId: options.tenantId || options.venueId || null,
+    createdByUserId: options.createdByUserId || null,
     timezone: options.timezone || DEFAULT_TIMEZONE,
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString(),

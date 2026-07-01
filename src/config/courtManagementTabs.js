@@ -2,45 +2,45 @@ import { PERMISSIONS } from "../auth/permissions.js";
 
 export const COURT_MANAGEMENT_TABS = [
   {
-    key: "status",
-    label: "Trạng thái sân",
+    key: "home",
+    label: "Tổng quan",
     path: "/court-management",
-    permissions: [PERMISSIONS.COURTS_VIEW],
+    permissions: [PERMISSIONS.COURT_VIEW],
   },
   {
     key: "calendar",
-    label: "Lịch sân",
+    label: "Lịch",
     path: "/court-management/calendar",
-    permissions: [PERMISSIONS.BOOKINGS_VIEW],
+    permissions: [PERMISSIONS.BOOKING_VIEW],
   },
   {
     key: "bookings",
-    label: "Booking",
+    label: "Đặt sân",
     path: "/court-management/bookings",
-    permissions: [PERMISSIONS.BOOKINGS_VIEW],
+    permissions: [PERMISSIONS.BOOKING_VIEW],
   },
   {
     key: "revenue",
     label: "Doanh thu",
     path: "/court-management/revenue",
-    permissions: [PERMISSIONS.REVENUE_VIEW, PERMISSIONS.ACCOUNTING_VIEW],
+    permissions: [PERMISSIONS.FINANCE_VIEW],
   },
   {
     key: "customers",
     label: "Khách hàng",
     path: "/court-management/customers",
-    permissions: [PERMISSIONS.CUSTOMERS_VIEW],
+    permissions: [PERMISSIONS.CUSTOMER_VIEW],
   },
   {
     key: "courts",
-    label: "Danh sách sân",
+    label: "Sân",
     path: "/court-management/courts",
-    permissions: [PERMISSIONS.COURTS_VIEW],
+    permissions: [PERMISSIONS.COURT_VIEW],
   },
   {
     key: "future",
-    label: "Cài đặt & Mở rộng",
+    label: "Tính năng tương lai",
     path: "/court-management/future",
-    permissions: [PERMISSIONS.COURTS_MANAGE, PERMISSIONS.VENUE_MANAGE],
+    permissions: [PERMISSIONS.COURT_UPDATE, PERMISSIONS.VENUE_UPDATE],
   },
 ];

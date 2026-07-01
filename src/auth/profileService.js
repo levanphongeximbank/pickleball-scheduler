@@ -1,5 +1,5 @@
 import { normalizeUser, USER_STATUS } from "../models/user.js";
-import { ROLES } from "./roles.js";
+import { ROLES, denormalizeRoleForDb, normalizeRole } from "./roles.js";
 import { formatAuthError } from "./authErrors.js";
 import { getSupabaseAuthClient, PROFILES_TABLE } from "./supabaseClient.js";
 import { isSecureRuntime } from "./runtime.js";
@@ -23,14 +23,19 @@ export function mapProfileRowToUser(row) {
     return null;
   }
 
+  const venueId = row.venue_id || row.venueId || row.tenant_id || row.tenantId || null;
+
   return normalizeUser({
     id: row.id,
     email: row.email,
     displayName: row.display_name || row.displayName || "",
-    role: row.role,
-    venueId: row.venue_id || row.venueId || null,
+    role: normalizeRole(row.role),
+    tenantId: venueId,
+    venueId,
     clubId: row.club_id || row.clubId || null,
     playerId: row.player_id || row.playerId || null,
+    phone: row.phone || "",
+    avatarUrl: row.avatar_url || row.avatarUrl || "",
     status: row.status || "active",
     createdAt: row.created_at,
     updatedAt: row.updated_at,
@@ -54,6 +59,8 @@ export function mapAuthUserFallback(authUser, metadata = {}) {
 export const SELF_EDITABLE_PROFILE_FIELDS = Object.freeze([
   "display_name",
   "player_id",
+  "phone",
+  "avatar_url",
 ]);
 
 export function mapUserToSelfProfilePatch(user) {
@@ -65,6 +72,8 @@ export function mapUserToSelfProfilePatch(user) {
   return {
     display_name: normalized.displayName,
     player_id: normalized.playerId,
+    phone: normalized.phone || "",
+    avatar_url: normalized.avatarUrl || "",
     updated_at: new Date().toISOString(),
   };
 }
@@ -80,7 +89,7 @@ export function mapUserToProfileRow(user) {
     id: normalized.id,
     email: normalized.email,
     display_name: normalized.displayName,
-    role: normalized.role || "PLAYER",
+    role: denormalizeRoleForDb(normalized.role || ROLES.PLAYER),
     venue_id: normalized.venueId,
     club_id: normalized.clubId,
     player_id: normalized.playerId,

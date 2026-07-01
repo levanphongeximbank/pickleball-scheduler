@@ -4,6 +4,7 @@ import { guardClubAction } from "../auth/guardAction.js";
 import { guardSubscriptionForClub } from "../auth/subscriptionGuard.js";
 import { getSupabaseAuthClient, hasSupabaseConfig } from "../auth/supabaseClient.js";
 import { getClubById } from "../domain/clubService.js";
+import { getExplicitTenantIdForClub } from "../features/tenant/guards/tenantGuard.js";
 import {
   buildFullClubExport,
   loadClubData,
@@ -122,7 +123,7 @@ async function syncToSupabase(clubId) {
 async function pullFromSupabase(clubId) {
   const headers = await buildSupabaseHeaders();
   const response = await fetch(
-    `${SUPABASE_URL}/rest/v1/${SUPABASE_CLUB_TABLE}?select=data,synced_at&club_id=eq.${encodeURIComponent(clubId)}&limit=1`,
+    `${SUPABASE_URL}/rest/v1/${SUPABASE_CLUB_TABLE}?select=data,synced_at,venue_id&club_id=eq.${encodeURIComponent(clubId)}&limit=1`,
     {
       method: "GET",
       headers,
@@ -139,6 +140,21 @@ async function pullFromSupabase(clubId) {
 
   if (!row?.data) {
     return pullLegacyFromSupabase(clubId);
+  }
+
+  const expectedVenueId = getExplicitTenantIdForClub(clubId);
+  if (
+    row.venue_id &&
+    expectedVenueId &&
+    row.venue_id !== expectedVenueId
+  ) {
+    return {
+      ok: false,
+      provider: "supabase",
+      clubId,
+      error: "Từ chối pull cloud: dữ liệu thuộc tenant khác.",
+      code: "TENANT_FORBIDDEN",
+    };
   }
 
   const clubPayload = row.data?.data || row.data;
@@ -219,7 +235,7 @@ function saveCloudDatabase(database) {
 
 export async function syncClubToCloud() {
   const clubId = getActiveClubId();
-  const check = guardClubAction(clubId, PERMISSIONS.SETTINGS_CLOUD_SYNC);
+  const check = guardClubAction(clubId, PERMISSIONS.SYSTEM_SETTING);
   if (!check.ok) {
     return check;
   }
@@ -252,7 +268,7 @@ export async function syncClubToCloud() {
 
 export async function pullClubFromCloud() {
   const clubId = getActiveClubId();
-  const check = guardClubAction(clubId, PERMISSIONS.SETTINGS_CLOUD_SYNC);
+  const check = guardClubAction(clubId, PERMISSIONS.SYSTEM_SETTING);
   if (!check.ok) {
     return check;
   }

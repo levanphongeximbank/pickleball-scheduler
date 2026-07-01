@@ -60,6 +60,7 @@ export function normalizeTournament(tournament, index = 0) {
     courtSchedule: normalizeCourtSchedule(tournament.courtSchedule),
     createdAt: tournament.createdAt || new Date().toISOString(),
     updatedAt: tournament.updatedAt || new Date().toISOString(),
+    ...(tournament.tenantId ? { tenantId: String(tournament.tenantId).trim() } : {}),
   };
 }
 
@@ -79,6 +80,7 @@ export function createTournamentRecord(clubId, options = {}) {
   return normalizeTournament({
     id: options.id || `tournament-${Date.now()}`,
     clubId,
+    ...(options.tenantId ? { tenantId: options.tenantId } : {}),
     seasonId: options.seasonId || "",
     leagueId: options.leagueId || "",
     roundId: options.roundId || "",

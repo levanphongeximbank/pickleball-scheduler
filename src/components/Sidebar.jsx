@@ -27,6 +27,7 @@ import { SIDEBAR_MENU_GROUPS } from "../config/sidebarMenu.js";
 import { filterMenuGroups, resolveMenuItemPath } from "../auth/menuAccess.js";
 import { useAuth } from "../context/AuthContext.jsx";
 import { useClub } from "../context/ClubContext.jsx";
+import { useIsMobile } from "../features/mobile/hooks/useIsMobile.js";
 
 const drawerWidth = 228;
 
@@ -88,6 +89,11 @@ export default function Sidebar() {
   const location = useLocation();
   const auth = useAuth();
   const { activeClubId, activeClub } = useClub();
+  const isMobile = useIsMobile();
+
+  if (isMobile) {
+    return null;
+  }
 
   const scope = {
     clubId: activeClubId,

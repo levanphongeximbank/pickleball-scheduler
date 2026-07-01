@@ -7,6 +7,7 @@ import {
   Card,
   CardContent,
   Chip,
+  Divider,
   Grid,
   Stack,
   Typography,
@@ -16,6 +17,7 @@ import { loadAIData } from "../ai/storage";
 import ActiveTournamentsPanel from "../components/tournament/ActiveTournamentsPanel.jsx";
 import LeagueRoundsPanel from "../components/tournament/LeagueRoundsPanel.jsx";
 import SeasonStandingsPanel from "../components/tournament/SeasonStandingsPanel.jsx";
+import { useAuth } from "../context/AuthContext.jsx";
 import { useClub } from "../context/ClubContext.jsx";
 import { useSeasonLeague } from "../context/SeasonContext.jsx";
 import { loadRoundsForClub } from "../domain/clubStorage.js";
@@ -23,6 +25,11 @@ import { listLeagueRounds } from "../domain/leagueRoundService.js";
 import { getLeagueStandingsBoard } from "../domain/seasonStandingsService.js";
 import { listTournaments } from "../domain/tournamentService.js";
 import CourtOperationsPanel from "../components/courtManagement/CourtOperationsPanel.jsx";
+import { usePlatformRuntime } from "../core/platform/app/usePlatformRuntime.js";
+import {
+  DashboardAnalyticsView,
+  resolveDashboardAccess,
+} from "../features/dashboard-analytics/index.js";
 import { buildDashboardSummary } from "./dashboard.logic";
 import { loadCourtsFromStorage, loadPlayersFromStorage } from "./selectPlayers.data";
 
@@ -46,7 +53,7 @@ function StatCard({ label, value, hint }) {
   );
 }
 
-export default function Dashboard() {
+function ClubOperationsSection() {
   const { activeClub, activeClubId, revision } = useClub();
   const { activeSeason, activeLeague } = useSeasonLeague();
 
@@ -88,8 +95,8 @@ export default function Dashboard() {
 
   return (
     <Box>
-      <Typography variant="h4" fontWeight="bold" sx={{ mb: 1 }}>
-        Tổng quan
+      <Typography variant="h5" fontWeight="bold" sx={{ mb: 1 }}>
+        Vận hành CLB
       </Typography>
       <Typography color="text.secondary" sx={{ mb: 3 }}>
         CLB {activeClub?.name || "hiện tại"}
@@ -260,6 +267,71 @@ export default function Dashboard() {
           </Card>
         </Grid>
       </Grid>
+    </Box>
+  );
+}
+
+export default function Dashboard() {
+  const { user, can } = useAuth();
+  const { activeClubId, activeClub } = useClub();
+  const runtime = usePlatformRuntime();
+  const platformPreview = useMemo(() => {
+    const existingTenant = runtime.tenantService.list()[0];
+    if (!existingTenant) {
+      return null;
+    }
+
+    const subscription = runtime.subscriptionService.getByTenant(existingTenant.tenant_id);
+    return {
+      tenantName: existingTenant.name,
+      tenantId: existingTenant.tenant_id,
+      plan: existingTenant.plan,
+      mobileEnabled: runtime.subscriptionService.hasFeature(existingTenant.tenant_id, "mobile"),
+      aiEnabled: runtime.subscriptionService.hasFeature(existingTenant.tenant_id, "ai"),
+      subscriptionStatus: subscription?.status || "unknown",
+    };
+  }, [runtime]);
+
+  const scope = useMemo(
+    () => ({
+      clubId: activeClubId,
+      venueId: activeClub?.venueId || activeClub?.tenantId || user?.venueId || user?.tenantId || null,
+    }),
+    [activeClubId, activeClub, user]
+  );
+
+  const showClubOperations = useMemo(() => {
+    const access = resolveDashboardAccess(user, can, scope);
+    return access.sections?.clubOperations !== false;
+  }, [user, can, scope]);
+
+  return (
+    <Box>
+      <DashboardAnalyticsView />
+
+      {platformPreview && (
+        <Card variant="outlined" sx={{ mb: 3 }}>
+          <CardContent>
+            <Typography variant="h6" fontWeight="bold" sx={{ mb: 1 }}>
+              🧩 Platform v5 preview
+            </Typography>
+            <Stack direction={{ xs: "column", sm: "row" }} spacing={1} sx={{ flexWrap: "wrap" }}>
+              <Chip size="small" label={`Tenant: ${platformPreview.tenantName}`} color="primary" />
+              <Chip size="small" label={`Plan: ${platformPreview.plan}`} />
+              <Chip size="small" label={`Mobile: ${platformPreview.mobileEnabled ? "on" : "off"}`} color={platformPreview.mobileEnabled ? "success" : "default"} />
+              <Chip size="small" label={`AI: ${platformPreview.aiEnabled ? "on" : "off"}`} color={platformPreview.aiEnabled ? "info" : "default"} />
+              <Chip size="small" label={`Subscription: ${platformPreview.subscriptionStatus}`} />
+            </Stack>
+          </CardContent>
+        </Card>
+      )}
+
+      {showClubOperations && (
+        <>
+          <Divider sx={{ my: 4 }} />
+          <ClubOperationsSection />
+        </>
+      )}
     </Box>
   );
 }

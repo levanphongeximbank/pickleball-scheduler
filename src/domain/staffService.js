@@ -9,9 +9,11 @@ import { upsertProfileRow } from "../auth/profileService.js";
 import { hasSupabaseConfig } from "../auth/supabaseClient.js";
 
 const INVITABLE_ROLES = Object.freeze([
+  ROLES.COURT_MANAGER,
   ROLES.VENUE_MANAGER,
   ROLES.CASHIER,
   ROLES.ACCOUNTANT,
+  ROLES.REFEREE,
   ROLES.CLUB_OWNER,
 ]);
 
@@ -38,7 +40,7 @@ export function countVenueStaff(venueId, { includeInvited = true } = {}) {
 
 export function inviteVenueStaff(venueId, { email, displayName, role, clubId = null }) {
   if (isRbacEnabled()) {
-    const check = guardPermission(PERMISSIONS.VENUE_STAFF_MANAGE, { venueId });
+    const check = guardPermission(PERMISSIONS.USER_MANAGE, { venueId });
     if (!check.ok) {
       return check;
     }
@@ -102,7 +104,7 @@ export async function syncStaffInviteToSupabase(member) {
 
 export function activateVenueStaff(venueId, memberId) {
   if (isRbacEnabled()) {
-    const check = guardPermission(PERMISSIONS.VENUE_STAFF_MANAGE, { venueId });
+    const check = guardPermission(PERMISSIONS.USER_MANAGE, { venueId });
     if (!check.ok) {
       return check;
     }
@@ -131,7 +133,7 @@ export function activateVenueStaff(venueId, memberId) {
 
 export function removeVenueStaff(venueId, memberId) {
   if (isRbacEnabled()) {
-    const check = guardPermission(PERMISSIONS.VENUE_STAFF_MANAGE, { venueId });
+    const check = guardPermission(PERMISSIONS.USER_MANAGE, { venueId });
     if (!check.ok) {
       return check;
     }

@@ -28,6 +28,8 @@ import {
 } from "../ai/cloudSync";
 import { getScopedSnapshotsKey } from "../domain/clubStorage.js";
 import { SNAPSHOT_CAP } from "../ai/config.js";
+import { usePlatformRuntime } from "../core/platform/app/usePlatformRuntime.js";
+import { buildRuntimeAccessState } from "../core/platform/app/runtimeAccess.js";
 import RbacDevPanel from "../components/settings/RbacDevPanel.jsx";
 import VenueOnboardingPanel from "../components/settings/VenueOnboardingPanel.jsx";
 import VenueStaffPanel from "../components/settings/VenueStaffPanel.jsx";
@@ -54,17 +56,79 @@ function saveSnapshots(clubId, snapshots) {
 
 export default function Settings() {
   const { activeClub, activeClubId, revision } = useClub();
+  const runtime = usePlatformRuntime();
   const [exportText, setExportText] = useState("");
   const [importText, setImportText] = useState("");
   const [statusMessage, setStatusMessage] = useState(null);
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [snapshots, setSnapshots] = useState(() => loadSnapshots(activeClubId));
   const [dataVersion, setDataVersion] = useState(0);
+  const [platformPreview, setPlatformPreview] = useState(null);
+  const [accessAllowed, setAccessAllowed] = useState(true);
 
   useEffect(() => {
     setSnapshots(loadSnapshots(activeClubId));
     setDataVersion((value) => value + 1);
   }, [activeClubId, revision]);
+
+  useEffect(() => {
+    try {
+      const existingTenant = runtime.tenantService.list()[0];
+
+      if (!existingTenant) {
+        const tenantId = `tenant-preview-${Date.now()}`;
+        const seed = runtime.initializeSeed({
+          tenantInput: {
+            name: activeClub?.name || "Preview Tenant",
+            tenant_id: tenantId,
+            plan: "trial",
+          },
+          subscriptionInput: {
+            tenant_id: tenantId,
+            plan: "trial",
+            feature_flags: { mobile: true, ai: false },
+          },
+        });
+
+        setPlatformPreview({
+          status: "initialized",
+          tenantName: seed.tenant.name,
+          tenantId: seed.tenant.tenant_id,
+          plan: seed.tenant.plan,
+          mobileEnabled: runtime.subscriptionService.hasFeature(seed.tenant.tenant_id, "mobile"),
+          aiEnabled: runtime.subscriptionService.hasFeature(seed.tenant.tenant_id, "ai"),
+        });
+        return;
+      }
+
+      const accessState = buildRuntimeAccessState(
+        runtime,
+        {
+          user_id: "demo-admin",
+          tenant_id: existingTenant.tenant_id,
+          role: "SUPER_ADMIN",
+        },
+        "system.setting",
+        existingTenant.tenant_id,
+        { source: "settings.page" }
+      );
+
+      setAccessAllowed(accessState.allowed);
+      const subscription = runtime.subscriptionService.getByTenant(existingTenant.tenant_id);
+      setPlatformPreview({
+        status: "ready",
+        tenantName: existingTenant.name,
+        tenantId: existingTenant.tenant_id,
+        plan: existingTenant.plan,
+        mobileEnabled: runtime.subscriptionService.hasFeature(existingTenant.tenant_id, "mobile"),
+        aiEnabled: runtime.subscriptionService.hasFeature(existingTenant.tenant_id, "ai"),
+        subscriptionStatus: subscription?.status || "unknown",
+        access: accessState.allowed ? "allowed" : "denied",
+      });
+    } catch (error) {
+      setPlatformPreview({ status: "error", message: error.message });
+    }
+  }, [activeClub?.name, runtime]);
 
   const aiData = useMemo(
     () => loadAIData(activeClubId),
@@ -91,6 +155,11 @@ export default function Settings() {
   }, [aiData]);
 
   const handleExport = () => {
+    if (!accessAllowed) {
+      setStatusMessage({ type: "error", text: "Runtime platform chặn thao tác cài đặt hệ thống." });
+      return;
+    }
+
     const data = loadAIData(activeClubId);
     const backup = {
       version: 1,
@@ -103,6 +172,11 @@ export default function Settings() {
   };
 
   const handleDownloadBackup = () => {
+    if (!accessAllowed) {
+      setStatusMessage({ type: "error", text: "Runtime platform chặn thao tác cài đặt hệ thống." });
+      return;
+    }
+
     if (!backupAvailable) {
       setStatusMessage({ type: "error", text: "Vui lòng tạo backup trước khi tải xuống." });
       return;
@@ -121,6 +195,11 @@ export default function Settings() {
   };
 
   const handleCopyExport = async () => {
+    if (!accessAllowed) {
+      setStatusMessage({ type: "error", text: "Runtime platform chặn thao tác cài đặt hệ thống." });
+      return;
+    }
+
     if (!backupAvailable) {
       setStatusMessage({ type: "error", text: "Không có dữ liệu để sao chép." });
       return;
@@ -135,6 +214,11 @@ export default function Settings() {
   };
 
   const handleImport = () => {
+    if (!accessAllowed) {
+      setStatusMessage({ type: "error", text: "Runtime platform chặn thao tác cài đặt hệ thống." });
+      return;
+    }
+
     try {
       const parsed = JSON.parse(importText);
       const payload = parsed.data || parsed;
@@ -168,6 +252,11 @@ export default function Settings() {
   };
 
   const handleCreateSnapshot = () => {
+    if (!accessAllowed) {
+      setStatusMessage({ type: "error", text: "Runtime platform chặn thao tác cài đặt hệ thống." });
+      return;
+    }
+
     const data = loadAIData(activeClubId);
     const nextSnapshots = [
       {
@@ -194,6 +283,11 @@ export default function Settings() {
   };
 
   const handleRestoreSnapshot = (snapshotId) => {
+    if (!accessAllowed) {
+      setStatusMessage({ type: "error", text: "Runtime platform chặn thao tác cài đặt hệ thống." });
+      return;
+    }
+
     const target = snapshots.find((item) => item.id === snapshotId);
     if (!target) {
       setStatusMessage({ type: "error", text: "Không tìm thấy snapshot để restore." });
@@ -206,6 +300,11 @@ export default function Settings() {
   };
 
   const handleDeleteSnapshot = (snapshotId) => {
+    if (!accessAllowed) {
+      setStatusMessage({ type: "error", text: "Runtime platform chặn thao tác cài đặt hệ thống." });
+      return;
+    }
+
     const nextSnapshots = snapshots.filter((item) => item.id !== snapshotId);
     setSnapshots(nextSnapshots);
     saveSnapshots(activeClubId, nextSnapshots);
@@ -217,6 +316,12 @@ export default function Settings() {
   };
 
   const handleConfirmReset = () => {
+    if (!accessAllowed) {
+      setStatusMessage({ type: "error", text: "Runtime platform chặn thao tác cài đặt hệ thống." });
+      setConfirmOpen(false);
+      return;
+    }
+
     setConfirmOpen(false);
     const result = resetAIData(activeClubId);
     if (!result.ok) {
@@ -230,6 +335,11 @@ export default function Settings() {
   };
 
   const handleSyncCloud = async () => {
+    if (!accessAllowed) {
+      setStatusMessage({ type: "error", text: "Runtime platform chặn thao tác cài đặt hệ thống." });
+      return;
+    }
+
     const result = await syncAIDataToCloud();
 
     if (!result.ok) {
@@ -244,6 +354,11 @@ export default function Settings() {
   };
 
   const handlePullCloud = async () => {
+    if (!accessAllowed) {
+      setStatusMessage({ type: "error", text: "Runtime platform chặn thao tác cài đặt hệ thống." });
+      return;
+    }
+
     const result = await pullAIDataFromCloud();
 
     if (!result.ok) {
@@ -278,6 +393,39 @@ export default function Settings() {
         <Card>
           <CardContent>
             <Typography variant="h6" fontWeight="bold" sx={{ mb: 2 }}>
+              🧩 Core platform preview
+            </Typography>
+            {platformPreview ? (
+              <>
+                <Typography variant="body2" color="text.secondary">
+                  Trạng thái: {platformPreview.status === "error" ? "Lỗi" : platformPreview.status === "initialized" ? "Đã khởi tạo" : "Sẵn sàng"}
+                </Typography>
+                {platformPreview.message ? (
+                  <Typography variant="body2" color="error.main" sx={{ mt: 1 }}>
+                    {platformPreview.message}
+                  </Typography>
+                ) : (
+                  <Stack direction={{ xs: "column", sm: "row" }} spacing={1} sx={{ mt: 1.5, flexWrap: "wrap" }}>
+                    <Chip size="small" label={`Tenant: ${platformPreview.tenantName || "—"}`} color="primary" />
+                    <Chip size="small" label={`Plan: ${platformPreview.plan || "—"}`} />
+                    <Chip size="small" label={`Mobile: ${platformPreview.mobileEnabled ? "on" : "off"}`} color={platformPreview.mobileEnabled ? "success" : "default"} />
+                    <Chip size="small" label={`AI: ${platformPreview.aiEnabled ? "on" : "off"}`} color={platformPreview.aiEnabled ? "info" : "default"} />
+                    <Chip size="small" label={`Access: ${platformPreview.access || "unknown"}`} color={platformPreview.access === "allowed" ? "success" : "warning"} />
+                    {platformPreview.subscriptionStatus && (
+                      <Chip size="small" label={`Subscription: ${platformPreview.subscriptionStatus}`} />
+                    )}
+                  </Stack>
+                )}
+              </>
+            ) : (
+              <Typography color="text.secondary">Đang khởi tạo preview platform v5…</Typography>
+            )}
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardContent>
+            <Typography variant="h6" fontWeight="bold" sx={{ mb: 2 }}>
               Đồng bộ cloud
             </Typography>
             <Stack direction="row" spacing={1} sx={{ mb: 1.5, flexWrap: "wrap" }}>
@@ -302,7 +450,7 @@ export default function Settings() {
             </Typography>
 
             <Stack direction={{ xs: "column", sm: "row" }} spacing={2}>
-              <PermissionGate permission={PERMISSIONS.SETTINGS_CLOUD_SYNC}>
+              <PermissionGate permission={PERMISSIONS.SYSTEM_SETTING}>
                 <Stack direction={{ xs: "column", sm: "row" }} spacing={2}>
                   <Button variant="contained" onClick={handleSyncCloud}>
                     Đồng bộ lên cloud
@@ -346,7 +494,7 @@ export default function Settings() {
             <Typography variant="h6" fontWeight="bold" sx={{ mb: 2 }}>
               📤 Xuất dữ liệu AI (Backup)
             </Typography>
-            <PermissionGate permission={PERMISSIONS.SETTINGS_MANAGE}>
+            <PermissionGate permission={PERMISSIONS.SYSTEM_SETTING}>
               <Stack direction={{ xs: "column", sm: "row" }} spacing={2} sx={{ mb: 2 }}>
                 <Button variant="contained" onClick={handleExport}>
                   Tạo backup
@@ -384,7 +532,7 @@ export default function Settings() {
             <Typography variant="h6" fontWeight="bold" sx={{ mb: 2 }}>
               📥 Nhập dữ liệu AI (Restore)
             </Typography>
-            <PermissionGate permission={PERMISSIONS.SETTINGS_MANAGE}>
+            <PermissionGate permission={PERMISSIONS.SYSTEM_SETTING}>
               <Stack direction={{ xs: "column", sm: "row" }} spacing={2} sx={{ mb: 2 }}>
                 <Button variant="outlined" component="label">
                   Chọn file backup JSON
@@ -412,7 +560,7 @@ export default function Settings() {
               💾 Snapshot backup/restore
             </Typography>
 
-            <PermissionGate permission={PERMISSIONS.SETTINGS_MANAGE}>
+            <PermissionGate permission={PERMISSIONS.SYSTEM_SETTING}>
               <Button variant="contained" onClick={handleCreateSnapshot} sx={{ mb: 2 }}>
                 Tạo snapshot nhanh
               </Button>
@@ -434,7 +582,7 @@ export default function Settings() {
                         Sessions: {snapshot.summary?.sessions || 0} • Players: {snapshot.summary?.players || 0} • Policies: {snapshot.summary?.policies || 0} • Rules: {snapshot.summary?.rules || 0}
                       </Typography>
                       <Stack direction="row" spacing={1}>
-                        <PermissionGate permission={PERMISSIONS.SETTINGS_MANAGE}>
+                        <PermissionGate permission={PERMISSIONS.SYSTEM_SETTING}>
                           <Button size="small" variant="contained" color="success" onClick={() => handleRestoreSnapshot(snapshot.id)}>
                             Restore
                           </Button>
@@ -456,7 +604,7 @@ export default function Settings() {
             <Typography variant="h6" fontWeight="bold" sx={{ mb: 2 }}>
               🧹 Xóa dữ liệu AI
             </Typography>
-            <PermissionGate permission={PERMISSIONS.SETTINGS_MANAGE}>
+            <PermissionGate permission={PERMISSIONS.SYSTEM_SETTING}>
               <Button variant="outlined" color="error" onClick={handleReset}>
                 Xóa toàn bộ dữ liệu AI
               </Button>

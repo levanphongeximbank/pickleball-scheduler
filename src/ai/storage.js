@@ -116,7 +116,7 @@ export function saveAIData(data, clubId = getActiveClubId()) {
 }
 
 export function resetAIData(clubId = getActiveClubId()) {
-  const check = guardClubAction(clubId, PERMISSIONS.SETTINGS_MANAGE);
+  const check = guardClubAction(clubId, PERMISSIONS.SYSTEM_SETTING);
   if (!check.ok) {
     return check;
   }

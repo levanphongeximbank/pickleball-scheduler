@@ -17,6 +17,7 @@ import {
   createSubscriptionRecord,
   isSubscriptionActive,
   planIncludesFeature,
+  normalizePlanId,
 } from "../src/models/subscription.js";
 import {
   canAccessRoute,
@@ -57,12 +58,12 @@ test("RBAC tắt → mọi permission được phép (không phá app cũ)", () 
   const player = user(ROLES.PLAYER, { clubId: "c1", playerId: "p1" });
   assert.equal(isRbacEnforced({ rbacEnabled: false, user: player }), false);
   assert.equal(can(player, PERMISSIONS.CLUB_DELETE, { clubId: "other" }, { rbacEnabled: false }), true);
-  assert.equal(can(null, PERMISSIONS.SYSTEM_MANAGE, {}, { rbacEnabled: false }), true);
+  assert.equal(can(null, PERMISSIONS.SYSTEM_SETTING, {}, { rbacEnabled: false }), true);
 });
 
 test("SUPER_ADMIN có toàn quyền khi RBAC bật", () => {
   const admin = user(ROLES.SUPER_ADMIN);
-  assert.equal(can(admin, PERMISSIONS.SYSTEM_MANAGE, {}, RBAC_ON), true);
+  assert.equal(can(admin, PERMISSIONS.SYSTEM_SETTING, {}, RBAC_ON), true);
   assert.equal(can(admin, PERMISSIONS.CLUB_DELETE, { clubId: "any" }, RBAC_ON), true);
   assert.equal(canAccessVenue(admin, "venue-x", RBAC_ON), true);
 });
@@ -70,9 +71,9 @@ test("SUPER_ADMIN có toàn quyền khi RBAC bật", () => {
 test("VENUE_OWNER chỉ truy cập venue của mình", () => {
   const owner = user(ROLES.VENUE_OWNER, { venueId: "venue-a" });
 
-  assert.equal(can(owner, PERMISSIONS.VENUE_MANAGE, { venueId: "venue-a" }, RBAC_ON), true);
-  assert.equal(can(owner, PERMISSIONS.VENUE_MANAGE, { venueId: "venue-b" }, RBAC_ON), false);
-  assert.equal(can(owner, PERMISSIONS.SYSTEM_MANAGE, {}, RBAC_ON), false);
+  assert.equal(can(owner, PERMISSIONS.VENUE_UPDATE, { venueId: "venue-a" }, RBAC_ON), true);
+  assert.equal(can(owner, PERMISSIONS.VENUE_UPDATE, { venueId: "venue-b" }, RBAC_ON), false);
+  assert.equal(can(owner, PERMISSIONS.SYSTEM_SETTING, {}, RBAC_ON), false);
   assert.equal(canAccessVenue(owner, "venue-a", RBAC_ON), true);
   assert.equal(canAccessVenue(owner, "venue-b", RBAC_ON), false);
 });
@@ -83,9 +84,9 @@ test("CLUB_OWNER chỉ quản lý CLB được gán", () => {
     clubId: "club-1",
   });
 
-  assert.equal(can(clubOwner, PERMISSIONS.PLAYERS_MANAGE, { clubId: "club-1", venueId: "venue-a" }, RBAC_ON), true);
-  assert.equal(can(clubOwner, PERMISSIONS.PLAYERS_MANAGE, { clubId: "club-2" }, RBAC_ON), false);
-  assert.equal(can(clubOwner, PERMISSIONS.COURTS_MANAGE, { venueId: "venue-a" }, RBAC_ON), false);
+  assert.equal(can(clubOwner, PERMISSIONS.PLAYER_UPDATE, { clubId: "club-1", venueId: "venue-a" }, RBAC_ON), true);
+  assert.equal(can(clubOwner, PERMISSIONS.PLAYER_UPDATE, { clubId: "club-2" }, RBAC_ON), false);
+  assert.equal(can(clubOwner, PERMISSIONS.COURT_UPDATE, { venueId: "venue-a" }, RBAC_ON), false);
   assert.equal(canAccessClub(clubOwner, "club-1", { venueId: "venue-a" }, RBAC_ON), true);
   assert.equal(canAccessClub(clubOwner, "club-2", { venueId: "venue-a" }, RBAC_ON), false);
 });
@@ -97,37 +98,52 @@ test("PLAYER chỉ xem lịch / đăng ký / kết quả / hồ sơ", () => {
     playerId: "p-1",
   });
 
-  assert.equal(can(player, PERMISSIONS.PLAYER_SCHEDULE_VIEW, { clubId: "club-1", playerId: "p-1" }, RBAC_ON), true);
-  assert.equal(can(player, PERMISSIONS.PLAYER_PROFILE_EDIT, { clubId: "club-1", playerId: "p-1" }, RBAC_ON), true);
-  assert.equal(can(player, PERMISSIONS.PLAYERS_MANAGE, { clubId: "club-1" }, RBAC_ON), false);
-  assert.equal(can(player, PERMISSIONS.CLUB_MANAGE, { clubId: "club-1" }, RBAC_ON), false);
-  assert.equal(can(player, PERMISSIONS.PLAYER_PROFILE_VIEW, { clubId: "club-1", playerId: "p-2" }, RBAC_ON), false);
+  assert.equal(can(player, PERMISSIONS.TOURNAMENT_VIEW, { clubId: "club-1", playerId: "p-1" }, RBAC_ON), true);
+  assert.equal(can(player, PERMISSIONS.PLAYER_UPDATE, { clubId: "club-1", playerId: "p-1" }, RBAC_ON), true);
+  assert.equal(can(player, PERMISSIONS.PLAYER_UPDATE, { clubId: "club-1" }, RBAC_ON), false);
+  assert.equal(can(player, PERMISSIONS.CLUB_UPDATE, { clubId: "club-1" }, RBAC_ON), false);
+  assert.equal(can(player, PERMISSIONS.PLAYER_VIEW, { clubId: "club-1", playerId: "p-2" }, RBAC_ON), false);
 });
 
 test("CASHIER và ACCOUNTANT có quyền phù hợp", () => {
   const cashier = user(ROLES.CASHIER, { venueId: "venue-a" });
   const accountant = user(ROLES.ACCOUNTANT, { venueId: "venue-a" });
 
-  assert.equal(can(cashier, PERMISSIONS.PAYMENTS_COLLECT, { venueId: "venue-a" }, RBAC_ON), true);
-  assert.equal(can(cashier, PERMISSIONS.ACCOUNTING_EXPORT, { venueId: "venue-a" }, RBAC_ON), false);
-  assert.equal(can(accountant, PERMISSIONS.ACCOUNTING_EXPORT, { venueId: "venue-a" }, RBAC_ON), true);
-  assert.equal(can(accountant, PERMISSIONS.BOOKINGS_CREATE, { venueId: "venue-a" }, RBAC_ON), false);
+  assert.equal(can(cashier, PERMISSIONS.FINANCE_EDIT, { venueId: "venue-a" }, RBAC_ON), true);
+  assert.equal(can(cashier, PERMISSIONS.STATISTICS_EXPORT, { venueId: "venue-a" }, RBAC_ON), false);
+  assert.equal(can(accountant, PERMISSIONS.FINANCE_EDIT, { venueId: "venue-a" }, RBAC_ON), true);
+  assert.equal(can(accountant, PERMISSIONS.BOOKING_CREATE, { venueId: "venue-a" }, RBAC_ON), false);
 });
 
 test("assertCan trả về { ok, error } theo pattern domain service", () => {
   const manager = user(ROLES.VENUE_MANAGER, { venueId: "v1" });
-  const denied = assertCan(manager, PERMISSIONS.SYSTEM_MANAGE, {}, RBAC_ON);
+  const denied = assertCan(manager, PERMISSIONS.SYSTEM_SETTING, {}, RBAC_ON);
   assert.equal(denied.ok, false);
   assert.equal(denied.code, "FORBIDDEN");
 
-  const allowed = assertCan(manager, PERMISSIONS.COURTS_MANAGE, { venueId: "v1" }, RBAC_ON);
+  const allowed = assertCan(manager, PERMISSIONS.COURT_UPDATE, { venueId: "v1" }, RBAC_ON);
   assert.equal(allowed.ok, true);
+});
+
+test("REFEREE — xem giải và cập nhật điểm trong venue", () => {
+  const referee = user(ROLES.REFEREE, { venueId: "venue-a", clubId: "club-1" });
+
+  assert.equal(can(referee, PERMISSIONS.TOURNAMENT_VIEW, { venueId: "venue-a" }, RBAC_ON), true);
+  assert.equal(can(referee, PERMISSIONS.MATCH_UPDATE, { venueId: "venue-a", clubId: "club-1" }, RBAC_ON), true);
+  assert.equal(can(referee, PERMISSIONS.TOURNAMENT_UPDATE, { clubId: "club-1" }, RBAC_ON), false);
+  assert.equal(can(referee, PERMISSIONS.PLAYER_UPDATE, { clubId: "club-1" }, RBAC_ON), false);
+});
+
+test("legacy VENUE_OWNER alias → COURT_OWNER permissions", () => {
+  const owner = user(ROLES.VENUE_OWNER, { venueId: "venue-a" });
+  assert.equal(owner.role, ROLES.COURT_OWNER);
+  assert.equal(can(owner, PERMISSIONS.VENUE_UPDATE, { venueId: "venue-a" }, RBAC_ON), true);
 });
 
 test("role permissions map đầy đủ cho SUPER_ADMIN", () => {
   const perms = getPermissionsForRole(ROLES.SUPER_ADMIN);
   assert.ok(perms.length >= Object.keys(PERMISSIONS).length);
-  assert.equal(roleHasPermission(ROLES.SUPER_ADMIN, PERMISSIONS.SYSTEM_VENUES_MANAGE), true);
+  assert.equal(roleHasPermission(ROLES.SUPER_ADMIN, PERMISSIONS.VENUE_UPDATE), true);
 });
 
 test("venue và subscription models", () => {
@@ -135,11 +151,12 @@ test("venue và subscription models", () => {
   assert.equal(venue.name, "Sân ABC");
   assert.equal(venue.id, "venue-abc");
 
-  const sub = createSubscriptionRecord("venue-abc", "pro");
-  assert.equal(sub.planId, "pro");
+  const sub = createSubscriptionRecord("venue-abc", "professional");
+  assert.equal(sub.planId, "professional");
   assert.equal(isSubscriptionActive(sub), true);
-  assert.equal(planIncludesFeature("pro", "director_mode"), true);
+  assert.equal(planIncludesFeature("professional", "director_mode"), true);
   assert.equal(planIncludesFeature("trial", "director_mode"), false);
+  assert.equal(normalizePlanId("pro"), "professional");
 });
 
 test("menuAccess — PLAYER chỉ thấy menu giải đấu", () => {
@@ -159,6 +176,7 @@ test("menuAccess — PLAYER chỉ thấy menu giải đấu", () => {
   const visible = filterMenuGroups(SIDEBAR_MENU_GROUPS, auth, {
     clubId: "club-1",
     venueId: "venue-a",
+    playerId: "p-1",
   });
 
   const labels = visible.flatMap((g) => g.items.map((i) => i.text));
@@ -243,10 +261,14 @@ test("CASHIER tạo booking được, xóa booking bị chặn", () => {
   ];
   saveClubData(DEFAULT_CLUB.id, clubData);
 
+  enableRbac(false);
+  ensureDemoVenue();
+  assignClubToVenue(DEFAULT_CLUB.id, "venue-demo");
+
   enableRbac(true);
   signInAs(
     user(ROLES.CASHIER, {
-      venueId: "venue-a",
+      venueId: "venue-demo",
       clubId: "default-club",
     })
   );
@@ -361,14 +383,14 @@ test("upgradeSubscription — đổi gói venue", () => {
   enableRbac(false);
   ensureDemoVenue();
 
-  const result = upgradeSubscription("venue-demo", "pro");
+  const result = upgradeSubscription("venue-demo", "professional");
   assert.equal(result.ok, true);
-  assert.equal(result.subscription.planId, "pro");
+  assert.equal(result.subscription.planId, "professional");
   assert.equal(result.hasDirectorMode, true);
 
-  const basic = upgradeSubscription("venue-demo", "basic");
-  assert.equal(basic.ok, true);
-  assert.equal(basic.hasDirectorMode, false);
+  const starter = upgradeSubscription("venue-demo", "starter");
+  assert.equal(starter.ok, true);
+  assert.equal(starter.hasDirectorMode, false);
 });
 
 test("mapProfileRowToUser — map từ Supabase profiles", () => {
@@ -384,9 +406,9 @@ test("mapProfileRowToUser — map từ Supabase profiles", () => {
   });
 
   assert.equal(mapped.email, "owner@test.com");
-  assert.equal(mapped.role, "VENUE_OWNER");
+  assert.equal(mapped.role, ROLES.COURT_OWNER);
   assert.equal(mapped.venueId, "venue-demo");
-  assert.equal(SUBSCRIPTION_PLANS.pro.features.includes("director_mode"), true);
+  assert.equal(SUBSCRIPTION_PLANS.professional.features.includes("director_mode"), true);
 });
 
 test("subscription — trial không có director_mode", () => {
@@ -408,7 +430,7 @@ test("subscription — pro có director_mode sau upgrade", () => {
   enableRbac(true);
   ensureDemoVenue();
   assignClubToVenue(DEFAULT_CLUB.id, "venue-demo");
-  upgradeSubscription("venue-demo", "pro");
+  upgradeSubscription("venue-demo", "professional");
 
   signInAs(
     user(ROLES.VENUE_OWNER, {
@@ -444,7 +466,7 @@ test("subscription — cloud_sync bị chặn trên gói trial", async () => {
   assert.equal(blocked.ok, false);
   assert.equal(blocked.code, "PLAN_FEATURE_LOCKED");
 
-  upgradeSubscription("venue-demo", "pro");
+  upgradeSubscription("venue-demo", "professional");
   const allowed = await syncClubToCloud();
   assert.equal(allowed.ok, true);
 
@@ -520,30 +542,30 @@ test("staff invite — maxUsers chặn khi đủ quota trial", () => {
   enableRbac(false);
 });
 
-test("payment — dev mode nâng cấp gói basic", () => {
+test("payment — dev mode nâng cấp gói starter", () => {
   globalThis.localStorage = createLocalStorageMock();
   enableRbac(false);
   ensureDemoVenue();
 
-  const result = requestPlanUpgrade("venue-demo", "basic");
+  const result = requestPlanUpgrade("venue-demo", "starter");
   assert.equal(result.ok, true);
-  assert.equal(result.subscription.planId, "basic");
+  assert.equal(result.subscription.planId, "starter");
 });
 
-test("payment — webhook áp dụng gói pro", () => {
+test("payment — webhook áp dụng gói professional", () => {
   globalThis.localStorage = createLocalStorageMock();
   enableRbac(false);
   ensureDemoVenue();
 
   const applied = applyPaymentWebhook({
     venueId: "venue-demo",
-    planId: "pro",
+    planId: "professional",
     status: "completed",
     provider: "stripe",
   });
   assert.equal(applied.ok, true);
   assert.equal(applied.applied, true);
-  assert.equal(applied.subscription.planId, "pro");
+  assert.equal(applied.subscription.planId, "professional");
 });
 
 test("staff — list venue staff", () => {

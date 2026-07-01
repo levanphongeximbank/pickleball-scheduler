@@ -12,7 +12,9 @@ import {
   isSubscriptionActive,
   SUBSCRIPTION_PLANS,
   planIncludesFeature,
+  normalizePlanId,
 } from "../models/subscription.js";
+import { renewSubscriptionPeriod } from "../features/subscription/index.js";
 import { updateClubMeta, getClubById } from "./clubService.js";
 import { guardMaxClubs } from "../auth/subscriptionGuard.js";
 
@@ -59,8 +61,8 @@ export function ensureDemoVenue() {
 
 export function createVenue(name, options = {}) {
   if (isRbacEnabled()) {
-    const sysCheck = guardPermission(PERMISSIONS.SYSTEM_VENUES_MANAGE);
-    const ownerCheck = guardPermission(PERMISSIONS.VENUE_MANAGE, {
+    const sysCheck = guardPermission(PERMISSIONS.VENUE_UPDATE);
+    const ownerCheck = guardPermission(PERMISSIONS.VENUE_UPDATE, {
       venueId: getCurrentUser()?.venueId || null,
     });
 
@@ -94,14 +96,14 @@ export function createVenue(name, options = {}) {
 }
 
 export function assignClubToVenue(clubId, venueId) {
-  const clubCheck = guardClubAction(clubId, PERMISSIONS.CLUB_MANAGE);
+  const clubCheck = guardClubAction(clubId, PERMISSIONS.CLUB_UPDATE);
   if (!clubCheck.ok) {
     return clubCheck;
   }
 
   if (isRbacEnabled()) {
-    const sysCheck = guardPermission(PERMISSIONS.SYSTEM_VENUES_MANAGE);
-    const venueCheck = guardPermission(PERMISSIONS.VENUE_MANAGE, { venueId });
+    const sysCheck = guardPermission(PERMISSIONS.VENUE_UPDATE);
+    const venueCheck = guardPermission(PERMISSIONS.VENUE_UPDATE, { venueId });
 
     if (!sysCheck.ok && !venueCheck.ok) {
       return {
@@ -147,9 +149,9 @@ export function getSubscriptionPlans() {
 
 export function upgradeSubscription(venueId, planId) {
   if (isRbacEnabled()) {
-    const sysCheck = guardPermission(PERMISSIONS.SYSTEM_SUBSCRIPTIONS_MANAGE);
-    const ownerCheck = guardPermission(PERMISSIONS.VENUE_SUBSCRIPTION_VIEW, { venueId });
-    const manageCheck = guardPermission(PERMISSIONS.VENUE_MANAGE, { venueId });
+    const sysCheck = guardPermission(PERMISSIONS.SUBSCRIPTION_UPDATE);
+    const ownerCheck = guardPermission(PERMISSIONS.SUBSCRIPTION_VIEW, { venueId });
+    const manageCheck = guardPermission(PERMISSIONS.VENUE_UPDATE, { venueId });
 
     if (!sysCheck.ok && !ownerCheck.ok && !manageCheck.ok) {
       return {
@@ -160,7 +162,8 @@ export function upgradeSubscription(venueId, planId) {
     }
   }
 
-  const plan = SUBSCRIPTION_PLANS[planId];
+  const canonical = normalizePlanId(planId);
+  const plan = SUBSCRIPTION_PLANS[canonical];
   if (!plan) {
     return { ok: false, error: "Gói không hợp lệ." };
   }
@@ -170,21 +173,24 @@ export function upgradeSubscription(venueId, planId) {
     return { ok: false, error: "Không tìm thấy venue." };
   }
 
+  const renewed = renewSubscriptionPeriod(venueId, { planId: canonical });
+  if (!renewed.ok) {
+    return renewed;
+  }
+
   const subscriptions = loadSubscriptions();
   const existing = subscriptions[venueId];
-  const subscription = createSubscriptionRecord(venueId, planId, {
-    id: existing?.id || `sub-${venueId}`,
-  });
-
-  subscriptions[venueId] = subscription;
-  saveSubscriptions(subscriptions);
+  if (existing && !existing.id) {
+    subscriptions[venueId] = { ...renewed.subscription, id: `sub-${venueId}` };
+    saveSubscriptions(subscriptions);
+  }
 
   const venues = loadVenues().map((item) =>
     item.id === venueId
       ? normalizeVenue({
           ...item,
-          subscriptionId: subscription.id,
-          status: planId === "trial" ? "trial" : "active",
+          subscriptionId: renewed.subscription.id,
+          status: canonical === "trial" ? "trial" : "active",
           updatedAt: new Date().toISOString(),
         })
       : item
@@ -193,9 +199,9 @@ export function upgradeSubscription(venueId, planId) {
 
   return {
     ok: true,
-    subscription,
+    subscription: renewed.subscription,
     plan,
     features: plan.features,
-    hasDirectorMode: planIncludesFeature(planId, "director_mode"),
+    hasDirectorMode: planIncludesFeature(canonical, "director_mode"),
   };
 }

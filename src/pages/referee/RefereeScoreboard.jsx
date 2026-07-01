@@ -33,6 +33,12 @@ import {
   resolveRefereeMatchStatus,
   resolveRefereeStatusLabel,
 } from "../../tournament/engines/refereeStatusEngine.js";
+import {
+  guardRefereeMatchAction,
+  REFEREE_MATCH_ACTIONS,
+} from "../../features/mobile/services/refereeMatchGuard.js";
+import { useAuth } from "../../context/AuthContext.jsx";
+import { useClub } from "../../context/ClubContext.jsx";
 
 function TeamScoreControls({
   label,
@@ -88,9 +94,16 @@ function TeamScoreControls({
   );
 }
 
-export default function RefereeScoreboard() {
+export default function RefereeScoreboard({ sessionToken = null, sessionMode = false } = {}) {
   const { token: rawToken } = useParams();
-  const token = decodeURIComponent(rawToken || "");
+  const token = sessionToken || decodeURIComponent(rawToken || "");
+  const { user } = useAuth();
+  const { activeClubId, activeClub } = useClub();
+
+  const refereeScope = {
+    clubId: activeClubId,
+    venueId: activeClub?.venueId,
+  };
 
   const [row, setRow] = useState(null);
   const [scoreA, setScoreA] = useState(0);
@@ -158,6 +171,26 @@ export default function RefereeScoreboard() {
       return;
     }
 
+    const action =
+      delta > 0
+        ? REFEREE_MATCH_ACTIONS.SCORE_INCREMENT
+        : REFEREE_MATCH_ACTIONS.SCORE_DECREMENT;
+    const guard = guardRefereeMatchAction({
+      user,
+      matchRow: row,
+      action,
+      scope: refereeScope,
+      sessionToken: sessionMode ? token : null,
+    });
+
+    if (!guard.ok) {
+      setError(guard.error || REFEREE_LINK_LOCKED_MESSAGE);
+      if (guard.locked) {
+        setLocked(true);
+      }
+      return;
+    }
+
     setSubmitting(true);
     setError(null);
 
@@ -191,6 +224,23 @@ export default function RefereeScoreboard() {
 
   const handleConfirmFinalize = async () => {
     setConfirmFinalizeOpen(false);
+
+    const guard = guardRefereeMatchAction({
+      user,
+      matchRow: row,
+      action: REFEREE_MATCH_ACTIONS.FINALIZE,
+      scope: refereeScope,
+      sessionToken: sessionMode ? token : null,
+    });
+
+    if (!guard.ok) {
+      setError(guard.error || REFEREE_LINK_LOCKED_MESSAGE);
+      if (guard.locked) {
+        setLocked(true);
+      }
+      return;
+    }
+
     setSubmitting(true);
     setError(null);
 
@@ -240,6 +290,15 @@ export default function RefereeScoreboard() {
 
   return (
     <Box sx={{ minHeight: "100dvh", bgcolor: "background.default", pb: 4 }}>
+      {!sessionMode && (
+        <Container maxWidth="sm" sx={{ pt: 2 }}>
+          <Alert severity="info" sx={{ mb: 1 }}>
+            Link token legacy. Khuyến nghị{" "}
+            <a href="/login">đăng nhập REFEREE</a> và dùng{" "}
+            <a href="/referee">phiên chấm mới</a>.
+          </Alert>
+        </Container>
+      )}
       <Box sx={{ bgcolor: "primary.main", color: "primary.contrastText", py: 2.5, px: 2 }}>
         <Stack direction="row" spacing={1.25} alignItems="flex-start">
           <SportsIcon sx={{ mt: 0.25 }} />

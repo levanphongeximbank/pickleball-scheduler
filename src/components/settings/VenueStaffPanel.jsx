@@ -139,7 +139,7 @@ export default function VenueStaffPanel() {
           </Alert>
         )}
 
-        <PermissionGate permission={PERMISSIONS.VENUE_STAFF_MANAGE} scope={{ venueId: summary.venue.id }}>
+        <PermissionGate permission={PERMISSIONS.USER_MANAGE} scope={{ venueId: summary.venue.id }}>
           <Stack spacing={1.5} sx={{ mb: 2 }}>
             <Stack direction={{ xs: "column", sm: "row" }} spacing={1}>
               <TextField
@@ -208,7 +208,7 @@ export default function VenueStaffPanel() {
                       />
                     </TableCell>
                     <TableCell align="right">
-                      <PermissionGate permission={PERMISSIONS.VENUE_STAFF_MANAGE} scope={{ venueId: summary.venue.id }}>
+                      <PermissionGate permission={PERMISSIONS.USER_MANAGE} scope={{ venueId: summary.venue.id }}>
                         {member.status === USER_STATUS.INVITED && (
                           <IconButton size="small" onClick={() => handleActivate(member.id)} title="Kích hoạt">
                             <CheckCircleOutlinedIcon fontSize="small" />

@@ -2,6 +2,7 @@ import { loadClubs } from "../data/club.js";
 import { loadCourtsForClub } from "../domain/clubStorage.js";
 import { getClubById } from "../domain/clubService.js";
 import { getSubscriptionForVenue } from "../domain/venueService.js";
+import { GRACE_PERIOD_DAYS } from "../features/subscription/constants/subscriptionPolicy.js";
 import {
   SUBSCRIPTION_PLANS,
   isSubscriptionActive,
@@ -49,7 +50,7 @@ export function getVenuePlanContext(venueId) {
     subscription,
     planId,
     plan,
-    active: subscription ? isSubscriptionActive(subscription) : true,
+    active: subscription ? isSubscriptionActive(subscription, { graceDays: GRACE_PERIOD_DAYS }) : true,
   };
 }
 

@@ -1,4 +1,4 @@
-import { isValidRole } from "../auth/roles.js";
+import { isValidRole, normalizeRole } from "../auth/roles.js";
 
 export const USER_STATUS = Object.freeze({
   ACTIVE: "active",
@@ -14,13 +14,24 @@ export function normalizeUser(user) {
     id,
     email: String(user?.email || "").trim().toLowerCase(),
     displayName: String(user?.displayName || user?.name || "").trim(),
-    role: isValidRole(role) ? role : "",
-    /** Tenant — bắt buộc với mọi role trừ SUPER_ADMIN. */
-    venueId: user?.venueId ? String(user.venueId).trim() : null,
+    role: isValidRole(role) ? normalizeRole(role) : "",
+  /** Tenant — bắt buộc với mọi role trừ SUPER_ADMIN. venueId giữ tương thích ngược. */
+  tenantId: user?.tenantId
+    ? String(user.tenantId).trim()
+    : user?.venueId
+      ? String(user.venueId).trim()
+      : null,
+  venueId: user?.venueId
+    ? String(user.venueId).trim()
+    : user?.tenantId
+      ? String(user.tenantId).trim()
+      : null,
     /** CLB được gán — CLUB_OWNER, PLAYER. */
     clubId: user?.clubId ? String(user.clubId).trim() : null,
     /** Liên kết bản ghi player — PLAYER. */
     playerId: user?.playerId ? String(user.playerId).trim() : null,
+    phone: user?.phone ? String(user.phone).trim() : "",
+    avatarUrl: user?.avatarUrl ? String(user.avatarUrl).trim() : "",
     status: user?.status || USER_STATUS.ACTIVE,
     createdAt: user?.createdAt || new Date().toISOString(),
     updatedAt: user?.updatedAt || new Date().toISOString(),

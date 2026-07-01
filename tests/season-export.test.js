@@ -86,6 +86,27 @@ test("summarizeTournamentForExport counts completed matches", () => {
   assert.equal(summary.entryCount, 1);
 });
 
+test("summarizeTournamentForExport normalizes playing and forfeited statuses", () => {
+  const summary = summarizeTournamentForExport({
+    id: "t2",
+    name: "Giai dau",
+    mode: "internal_tournament",
+    status: "active",
+    matches: [
+      { id: "m1", status: "playing" },
+      { id: "m2", status: "in_progress" },
+      { id: "m3", status: "forfeit" },
+      { id: "m4", status: "scheduled" },
+    ],
+    entries: [{ id: "e1" }],
+  });
+
+  assert.equal(summary.matchCount, 4);
+  assert.equal(summary.completedMatchCount, 1);
+  assert.equal(summary.activeMatchCount, 2);
+  assert.equal(summary.progressPercent, 25);
+});
+
 test("buildSeasonFullCsv exports one section per league", () => {
   const csv = buildSeasonFullCsv({
     season: { name: "Mua 2026" },

@@ -12,8 +12,18 @@ const SUPABASE_KEY =
 
 let authClient = null;
 
+export const SUPABASE_CONFIG_ERROR =
+  "Thiếu cấu hình Supabase. Vui lòng kiểm tra VITE_SUPABASE_URL và VITE_SUPABASE_ANON_KEY trên Vercel.";
+
+export function getSupabaseConfigError() {
+  if (SUPABASE_URL.trim() !== "" && SUPABASE_KEY.trim() !== "") {
+    return null;
+  }
+  return SUPABASE_CONFIG_ERROR;
+}
+
 export function hasSupabaseConfig() {
-  return SUPABASE_URL.trim() !== "" && SUPABASE_KEY.trim() !== "";
+  return getSupabaseConfigError() === null;
 }
 
 /** Client dùng Supabase Auth (session persist). Tách khỏi matchLiveSync. */

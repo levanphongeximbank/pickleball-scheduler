@@ -7,6 +7,7 @@ import {
 } from "../models/subscription.js";
 import { loadSubscriptions } from "../data/venue.js";
 import { upgradeSubscription } from "./venueService.js";
+import { renewSubscriptionPeriod } from "../features/subscription/index.js";
 
 const PAYMENTS_KEY = "pickleball-payments-v1";
 
@@ -16,13 +17,33 @@ const PAYMENT_MODE =
     : "dev";
 
 const STRIPE_LINKS = {
+  starter:
+    typeof import.meta !== "undefined" && import.meta.env
+      ? import.meta.env.VITE_STRIPE_LINK_STARTER ||
+        import.meta.env.VITE_STRIPE_LINK_BASIC ||
+        ""
+      : "",
+  professional:
+    typeof import.meta !== "undefined" && import.meta.env
+      ? import.meta.env.VITE_STRIPE_LINK_PROFESSIONAL ||
+        import.meta.env.VITE_STRIPE_LINK_PRO ||
+        ""
+      : "",
+  enterprise:
+    typeof import.meta !== "undefined" && import.meta.env
+      ? import.meta.env.VITE_STRIPE_LINK_ENTERPRISE || ""
+      : "",
   basic:
     typeof import.meta !== "undefined" && import.meta.env
-      ? import.meta.env.VITE_STRIPE_LINK_BASIC || ""
+      ? import.meta.env.VITE_STRIPE_LINK_STARTER ||
+        import.meta.env.VITE_STRIPE_LINK_BASIC ||
+        ""
       : "",
   pro:
     typeof import.meta !== "undefined" && import.meta.env
-      ? import.meta.env.VITE_STRIPE_LINK_PRO || ""
+      ? import.meta.env.VITE_STRIPE_LINK_PROFESSIONAL ||
+        import.meta.env.VITE_STRIPE_LINK_PRO ||
+        ""
       : "",
 };
 
@@ -45,7 +66,10 @@ export function getPaymentMode() {
 }
 
 export function isStripePaymentConfigured() {
-  return PAYMENT_MODE === "stripe" && (STRIPE_LINKS.basic || STRIPE_LINKS.pro);
+  return (
+    PAYMENT_MODE === "stripe" &&
+    (STRIPE_LINKS.starter || STRIPE_LINKS.professional || STRIPE_LINKS.enterprise)
+  );
 }
 
 function canManageSubscription(venueId) {
@@ -53,9 +77,9 @@ function canManageSubscription(venueId) {
     return { ok: true };
   }
 
-  const sysCheck = guardPermission(PERMISSIONS.SYSTEM_SUBSCRIPTIONS_MANAGE);
-  const ownerCheck = guardPermission(PERMISSIONS.VENUE_SUBSCRIPTION_VIEW, { venueId });
-  const manageCheck = guardPermission(PERMISSIONS.VENUE_MANAGE, { venueId });
+  const sysCheck = guardPermission(PERMISSIONS.SUBSCRIPTION_UPDATE);
+  const ownerCheck = guardPermission(PERMISSIONS.SUBSCRIPTION_VIEW, { venueId });
+  const manageCheck = guardPermission(PERMISSIONS.VENUE_UPDATE, { venueId });
 
   if (!sysCheck.ok && !ownerCheck.ok && !manageCheck.ok) {
     return {
@@ -155,7 +179,7 @@ export function applyPaymentWebhook(payload = {}) {
     return { ok: true, applied: false, status };
   }
 
-  const upgraded = upgradeSubscription(venueId, planId, { skipPayment: true });
+  const upgraded = renewSubscriptionPeriod(venueId, { planId });
   if (!upgraded.ok) {
     return upgraded;
   }

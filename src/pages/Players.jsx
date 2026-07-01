@@ -63,7 +63,7 @@ export default function Players() {
   const canManagePlayers =
     !rbacEnabled ||
     !isAuthenticated ||
-    can(PERMISSIONS.PLAYERS_MANAGE, {
+    can(PERMISSIONS.PLAYER_UPDATE, {
       clubId: activeClubId,
       venueId: activeClub?.venueId || null,
     });
@@ -292,7 +292,7 @@ export default function Players() {
           </Box>
 
           <Stack direction={{ xs: "column", sm: "row" }} spacing={1}>
-            <PermissionGate permission={PERMISSIONS.PLAYERS_MANAGE}>
+            <PermissionGate permission={PERMISSIONS.PLAYER_UPDATE}>
               <Button
                 variant="contained"
                 size="large"

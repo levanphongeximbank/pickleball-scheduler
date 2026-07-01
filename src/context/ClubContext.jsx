@@ -9,13 +9,53 @@ import {
   switchActiveClub,
 } from "../domain/clubService.js";
 import { ensureMonthlySkillLevelProposals } from "../domain/skillLevelService.js";
+import { useAuth } from "./AuthContext.jsx";
+import { useTenant } from "./TenantContext.jsx";
+import {
+  listClubsForTenant,
+} from "../features/tenant/guards/tenantGuard.js";
 
 const ClubContext = createContext(null);
 
 export function ClubProvider({ children }) {
+  const { rbacEnabled, isAuthenticated } = useAuth();
+  const { currentTenantId } = useTenant();
   const [clubs, setClubs] = useState(() => loadClubs());
   const [activeClubId, setActiveClubId] = useState(() => getActiveClubId());
   const [revision, setRevision] = useState(0);
+
+  const visibleClubs = useMemo(() => {
+    if (!rbacEnabled || !isAuthenticated || !currentTenantId) {
+      return clubs;
+    }
+
+    const tenantClubs = listClubsForTenant(currentTenantId);
+    if (tenantClubs.length === 0) {
+      return clubs;
+    }
+
+    return tenantClubs;
+  }, [clubs, currentTenantId, isAuthenticated, rbacEnabled]);
+
+  useEffect(() => {
+    if (!rbacEnabled || !isAuthenticated || !currentTenantId) {
+      return;
+    }
+
+    const tenantClubs = listClubsForTenant(currentTenantId);
+    if (tenantClubs.length === 0) {
+      return;
+    }
+
+    const activeInTenant = tenantClubs.some((club) => club.id === activeClubId);
+    if (!activeInTenant) {
+      const result = switchActiveClub(tenantClubs[0].id);
+      if (result.ok) {
+        setActiveClubId(tenantClubs[0].id);
+        setRevision((value) => value + 1);
+      }
+    }
+  }, [activeClubId, currentTenantId, isAuthenticated, rbacEnabled]);
 
   useEffect(() => {
     if (!activeClubId) {
@@ -39,8 +79,8 @@ export function ClubProvider({ children }) {
   }, []);
 
   const activeClub = useMemo(
-    () => clubs.find((club) => club.id === activeClubId) || getActiveClub(),
-    [clubs, activeClubId]
+    () => visibleClubs.find((club) => club.id === activeClubId) || getActiveClub(),
+    [visibleClubs, activeClubId]
   );
 
   const summary = useMemo(
@@ -106,7 +146,8 @@ export function ClubProvider({ children }) {
 
   const value = useMemo(
     () => ({
-      clubs,
+      clubs: visibleClubs,
+      allClubs: clubs,
       activeClub,
       activeClubId,
       revision,
@@ -119,6 +160,7 @@ export function ClubProvider({ children }) {
     }),
     [
       clubs,
+      visibleClubs,
       activeClub,
       activeClubId,
       revision,

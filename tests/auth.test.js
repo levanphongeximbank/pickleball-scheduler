@@ -19,7 +19,7 @@ import {
   isDevAuthAllowed,
   isAuthProductionEnabled,
 } from "../src/auth/authService.js";
-import { hasSupabaseConfig } from "../src/auth/supabaseClient.js";
+import { getSupabaseConfigError, hasSupabaseConfig } from "../src/auth/supabaseClient.js";
 import {
   mapProfileRowToUser,
   mapUserToProfileRow,
@@ -52,6 +52,14 @@ test("formatAuthError — map lỗi Supabase sang tiếng Việt", () => {
     "Email hoặc mật khẩu không đúng."
   );
   assert.match(formatAuthError("", "AUTH_FAILED"), /email/i);
+});
+
+test("getSupabaseConfigError — trả thông báo rõ khi thiếu env", () => {
+  const error = getSupabaseConfigError();
+  assert.ok(error === null || typeof error === "string");
+  if (error) {
+    assert.match(error, /Supabase/i);
+  }
 });
 
 test("authGuard — auth production bắt login, dev RBAC cho /settings", () => {
@@ -107,7 +115,7 @@ test("signInDev / signOut / getCurrentUser — dev fallback", () => {
 
   const result = signInDev("owner@venue.local");
   assert.equal(result.ok, true);
-  assert.equal(result.user.role, ROLES.VENUE_OWNER);
+  assert.equal(result.user.role, ROLES.COURT_OWNER);
 
   const current = getCurrentUser();
   assert.equal(current.email, "owner@venue.local");
@@ -212,7 +220,7 @@ test("resolveAuthUserFromProfile — RBAC bật, profile hợp lệ → dùng pr
 
   const allowed = resolveAuthUserFromProfile(authUser, profileResult, { rbacEnabled: true });
   assert.equal(allowed.ok, true);
-  assert.equal(allowed.user.role, "VENUE_OWNER");
+  assert.equal(allowed.user.role, ROLES.COURT_OWNER);
   assert.equal(allowed.user.venueId, "venue-demo");
 });
 

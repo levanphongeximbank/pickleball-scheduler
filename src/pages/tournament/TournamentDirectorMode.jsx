@@ -29,10 +29,12 @@ import LockOpenIcon from "@mui/icons-material/LockOpen";
 import { getDirectorState, lockCourt, unlockCourt } from "../../ai/director.js";
 import { useClub } from "../../context/ClubContext.jsx";
 import { useAuth } from "../../context/AuthContext.jsx";
+import { useTenant } from "../../context/TenantContext.jsx";
 import { PERMISSIONS } from "../../auth/permissions.js";
 import { loadCourtsForClub, loadPlayersForClub } from "../../domain/clubStorage.js";
 import {
   getTournament,
+  assertTournamentAccess,
   setTournamentStatus,
   updateTournament,
 } from "../../domain/tournamentService.js";
@@ -117,15 +119,26 @@ export default function TournamentDirectorMode() {
   const navigate = useNavigate();
   const { activeClubId, activeClub, refreshClubs } = useClub();
   const { can, rbacEnabled, isAuthenticated } = useAuth();
+  const { currentTenantId } = useTenant();
+
+  const tournamentAccess = useMemo(() => {
+    if (!rbacEnabled || !isAuthenticated) {
+      return { ok: true };
+    }
+
+    return assertTournamentAccess(activeClubId, tournamentId, {
+      tenantId: currentTenantId,
+    });
+  }, [activeClubId, currentTenantId, isAuthenticated, rbacEnabled, tournamentId]);
 
   const canUseDirector =
     !rbacEnabled ||
     !isAuthenticated ||
-    can(PERMISSIONS.TOURNAMENT_DIRECTOR, {
+    can(PERMISSIONS.DIRECTOR_USE, {
       clubId: activeClubId,
       venueId: activeClub?.venueId || null,
     }) ||
-    can(PERMISSIONS.TOURNAMENT_MANAGE, {
+    can(PERMISSIONS.TOURNAMENT_UPDATE, {
       clubId: activeClubId,
       venueId: activeClub?.venueId || null,
     });
@@ -661,6 +674,19 @@ export default function TournamentDirectorMode() {
     : tournament?.mode === TOURNAMENT_MODE.INTERNAL_TOURNAMENT
       ? `/tournament/internal/${tournamentId}`
       : `/tournament/official/${tournamentId}`;
+
+  if (tournamentId && !tournamentAccess.ok) {
+    return (
+      <Box>
+        <Alert severity="error" sx={{ mb: 2 }}>
+          {tournamentAccess.error || "Không có quyền truy cập giải này."}
+        </Alert>
+        <Button component={RouterLink} to="/tournament">
+          Quay lai danh sach giai
+        </Button>
+      </Box>
+    );
+  }
 
   if (!canUseDirector) {
     return (

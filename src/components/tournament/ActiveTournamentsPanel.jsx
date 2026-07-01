@@ -118,14 +118,8 @@ export default function ActiveTournamentsPanel({
                   </Button>
                   <PermissionGate
                     permissions={[
-                      PERMISSIONS.TOURNAMENT_DIRECTOR,
-                      PERMISSIONS.TOURNAMENT_MANAGE,
-                    ]}
-                  >
-                  <PermissionGate
-                    permissions={[
-                      PERMISSIONS.TOURNAMENT_DIRECTOR,
-                      PERMISSIONS.TOURNAMENT_MANAGE,
+                      PERMISSIONS.DIRECTOR_USE,
+                      PERMISSIONS.TOURNAMENT_UPDATE,
                     ]}
                   >
                     {onOpenDirector ? (
@@ -152,7 +146,21 @@ export default function ActiveTournamentsPanel({
                       </Button>
                     )}
                   </PermissionGate>
-                  </PermissionGate>
+                  {(tournament.mode === TOURNAMENT_MODE.INTERNAL_TOURNAMENT ||
+                    tournament.mode === TOURNAMENT_MODE.OFFICIAL_TOURNAMENT) && (
+                    <PermissionGate permission={PERMISSIONS.TOURNAMENT_UPDATE}>
+                      <Button
+                        fullWidth
+                        size="large"
+                        variant="outlined"
+                        color="secondary"
+                        sx={touchButtonSx}
+                        onClick={() => navigate(`/tournaments/${tournament.id}/engine`)}
+                      >
+                        Engine 4.0
+                      </Button>
+                    </PermissionGate>
+                  )}
                 </Stack>
               </Stack>
             </Paper>

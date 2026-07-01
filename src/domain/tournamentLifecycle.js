@@ -6,6 +6,8 @@ import {
 import { applyEloFromMatchRecord } from "./eloService.js";
 import { applySeasonPointsFromMatchRecord } from "./seasonStandingsService.js";
 import { loadClubData } from "./clubStorage.js";
+import { processClubInternalMatchCompletion } from "../features/club/services/clubTournamentBridge.js";
+import { resolveTenantIdForClub } from "../features/tenant/guards/tenantGuard.js";
 
 function getTournamentFromClub(clubId, tournamentId) {
   const data = loadClubData(clubId);
@@ -58,13 +60,34 @@ function findMatchInTournament(tournament, matchId, eventId = null) {
 }
 
 export function processCompletedMatch(clubId, { tournament, match, event = null }) {
+  const isClubInternal =
+    tournament?.type === "club_internal" ||
+    (tournament?.clubId && tournament.clubId === clubId);
+
+  let clubEloResult = null;
+  if (isClubInternal) {
+    const tenantId = tournament.tenantId || resolveTenantIdForClub(clubId);
+    clubEloResult = processClubInternalMatchCompletion(
+      clubId,
+      tournament,
+      match,
+      event,
+      tenantId
+    );
+  }
+
   if (!tournament?.leagueId) {
-    return { ok: true, skipped: true, reason: "missing-league" };
+    return {
+      ok: clubEloResult?.ok !== false,
+      skipped: !isClubInternal,
+      reason: isClubInternal ? "club-internal-only" : "missing-league",
+      clubEloResult,
+    };
   }
 
   const record = resolveMatchRecord({ tournament, match, event });
   if (!record) {
-    return { ok: true, skipped: true, reason: "no-record" };
+    return { ok: true, skipped: true, reason: "no-record", clubEloResult };
   }
 
   const seasonResult = applySeasonPointsFromMatchRecord(
@@ -72,12 +95,16 @@ export function processCompletedMatch(clubId, { tournament, match, event = null 
     tournament.leagueId,
     record
   );
-  const eloResult = applyEloFromMatchRecord(clubId, record);
+
+  const eloResult = isClubInternal
+    ? { ok: true, skipped: true, reason: "club-scoped-elo" }
+    : applyEloFromMatchRecord(clubId, record);
 
   return {
-    ok: seasonResult.ok !== false && eloResult.ok !== false,
+    ok: seasonResult.ok !== false && eloResult.ok !== false && clubEloResult?.ok !== false,
     seasonResult,
     eloResult,
+    clubEloResult,
     record,
   };
 }

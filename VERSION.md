@@ -1,107 +1,58 @@
 # Pickleball Scheduler Pro
 
-**Version hiện tại:** v3.5.8
+**Version hiện tại:** v4.0.0 GA  
+**Release Date:** 2026-07-01  
+**Trạng thái:** General Availability — Sprint 1–12 hoàn tất
 
-**Trạng thái:** Staging Apply & Manual QA (Preview-ready, chưa production)
+---
 
-## v3.5.8 — Staging Apply & Manual QA
+## v4.0.0 GA — General Availability (Sprint 12)
 
-- Checklist apply Supabase staging sau v3.5.7: `docs/STAGING-APPLY-QA-v358.md`.
-- Bộ user test 6 role, QA theo role, Go/No-Go Vercel Preview.
-- Không thêm tính năng; không deploy production.
+Sprint phát hành cuối Version 4. Không thêm tính năng mới.
 
-## v3.5.7 — Security Hardening
+- Production env checklist: `docs/GA-PRODUCTION-ENV-CHECKLIST.md`
+- SQL production (15 bước, chạy thủ công): `docs/SUPABASE-PRODUCTION-CHECKLIST.md`
+- QA production 8 roles: `docs/GA-PRODUCTION-QA.md`
+- Final audit: `docs/GA-FINAL-AUDIT.md`
+- Release notes: `RELEASE_NOTES_v4.0.md`
+- Deploy: `DEPLOYMENT_GUIDE.md`
 
-- Signup trigger: role luôn `PLAYER` (không đọc metadata).
-- Profile update trigger: user không đổi role/venue/club/status; role chỉ SUPER_ADMIN.
-- Director match live: JWT session (đồng bộ cloudSync), không anon client.
-- Preview/Production: khóa dev login, RBAC toggle, RbacDevPanel, referee direct fallback.
-- Tests: `tests/security-hardening.test.js`.
+**RBAC production:** `VITE_RBAC_ENABLED=true` (bắt buộc trên Vercel Production)
 
-## v3.5.6 — Referee Security Fix
+---
 
-- RPC referee: `referee_get_match_by_token`, `referee_update_match_score`.
-- Anon không select/update trực tiếp `tournament_match_live` (staging RLS).
-- App referee flow qua RPC; dev fallback khi chưa chạy RLS SQL.
-- Tests: `tests/referee-rpc-security.test.js`.
+## v4.0.0-rc.1 — Release Candidate (Sprint 11)
 
-## v3.5.5 — Supabase/RLS Staging
+- Lint 0 errors, 551+ unit tests pass
+- RBAC default true trên production build
+- `docs/RELEASE-4.0-RC.md`, `docs/RBAC-RC-QA.md`
 
-- SQL staging: `supabase-rbac.sql`, `supabase-club-v3-rls.sql`, `supabase-match-live-rls.sql`, `supabase-rls-rollback.sql`.
-- Checklist: `docs/SUPABASE-STAGING-CHECKLIST.md`, test plan `docs/RLS-TEST-PLAN.md`.
-- Unit tests: `tests/rls-access.test.js` (mock client RBAC ↔ RLS intent).
+---
 
-## v3.5.4 — RBAC Production
+## v4.0.0-beta — Sprints 1–10
 
-- `VITE_RBAC_ENABLED=true` — enforce permission client-side.
-- Profile bắt buộc từ `public.profiles` (không fallback PLAYER khi RBAC bật).
-- Route/menu/action guard theo role matrix.
-- SQL docs: `supabase-rbac.sql`, `supabase-club-v3-rls.sql` (RLS tùy chọn, chưa bật trong app).
+| Sprint | Module |
+|--------|--------|
+| 1 | Identity Phase A |
+| 2 | Multi-tenant |
+| 3 | Club Management |
+| 4 | Subscription |
+| 5 | Tournament Engine |
+| 6 | Court Engine |
+| 7 | AI Assistant |
+| 8 | Dashboard Analytics |
+| 9 | Mobile / PWA / QR |
+| 10 | API / Marketplace preview |
 
-## v3.5.3 — Authentication Production
+---
 
-- Supabase Auth: `signInWithPassword`, `signOut`, session restore, profile sync.
-- Auth production tự bật khi có Supabase env (bắt đăng nhập).
+## v3.5.x (legacy)
 
-## Lý do nâng version từ 3.0.0 lên 3.5.0
+v3.5.3–v3.5.8: Auth, RBAC, RLS staging, security hardening, referee RPC.  
+Xem lịch sử chi tiết trong `CHANGELOG.md`.
 
-`package.json` vẫn ghi `3.0.0` trong khi source code đã vượt xa mốc v3.0 — tương đương khoảng v3.4.0 theo đánh giá nội bộ. Phiên bản **v3.5.0** đánh dấu giai đoạn hoàn thiện SaaS: RBAC, authentication, multi-tenant, court management, tournament/league production.
+---
 
-## Các module đã có
+## Roadmap sau GA
 
-- Tournament Engine
-- League Engine
-- AI Scheduling
-- Court Management
-- Director Mode
-- Ranking
-- Statistics
-- Export / Import
-- Mobile-friendly UI
-
-## Các module cần hoàn thiện để production
-
-- Authentication
-- RBAC Production
-- Multi-tenant
-- SaaS Subscription
-- Finance
-- Notification
-- Audit Log
-- Backup / Restore
-- Deploy Production
-
-## Roadmap
-
-### v3.5.0
-- Stabilize Tournament Engine.
-- Stabilize League Engine.
-- Complete Court Management.
-- Complete Authentication.
-- Complete RBAC Production.
-- Prepare SaaS architecture.
-
-### v3.6.0
-- Finance module.
-- Notification module.
-- Dashboard and analytics.
-- Export reports.
-
-### v3.7.0
-- Mobile-first UI.
-- Android/iOS preparation.
-- PWA support.
-
-### v3.8.0
-- AI Director Mode.
-- AI Pairing.
-- AI Ranking.
-- Smart court assignment.
-
-### v4.0.0
-- Full SaaS version.
-- Multi-tenant production.
-- Subscription billing.
-- Production deployment.
-- Backup and restore.
-- Audit log.
+Xem `ROADMAP.md` — v4.1 stabilization, v4.2 preview→prod, v5.0 platform.

@@ -26,6 +26,7 @@ export default function LoginPage() {
   const location = useLocation();
   const {
     authLoading,
+    authError,
     authProductionEnabled,
     rbacEnabled,
     isAuthenticated,
@@ -52,7 +53,7 @@ export default function LoginPage() {
     return <Navigate to="/" replace />;
   }
 
-  if (authLoading) {
+  if (authLoading && !authError && !isAuthenticated) {
     return (
       <Box
         sx={{
@@ -163,13 +164,18 @@ export default function LoginPage() {
               </Typography>
             </Stack>
 
-            {message && (
-              <Alert severity={message.type} sx={{ mb: 2 }} onClose={() => setMessage(null)}>
-                {message.text}
+            {(message || authError) && (
+              <Alert severity={message?.type || "error"} sx={{ mb: 2 }} onClose={() => setMessage(null)}>
+                {message?.text || authError}
               </Alert>
             )}
 
             <Stack spacing={2}>
+              {supabaseAvailable && authMode === "signin" && (
+                <Button component={RouterLink} to="/forgot-password" size="small">
+                  Quên mật khẩu?
+                </Button>
+              )}
               {devAuthAllowed && devUsers.length > 0 && (
                 <>
                   <TextField

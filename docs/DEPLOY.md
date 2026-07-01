@@ -1,6 +1,12 @@
-# Deploy — Pickleball Scheduler Pro v3.5.7
+# Deploy — Pickleball Scheduler Pro v4.0 GA
 
-Hướng dẫn deploy **Vercel** + **Supabase**. Staging RLS: `docs/SUPABASE-STAGING-CHECKLIST.md`.
+Hướng dẫn deploy **Vercel** + **Supabase**.  
+**GA (Sprint 12):** `DEPLOYMENT_GUIDE.md`  
+**Staging/RC:** `docs/SUPABASE-STAGING-CHECKLIST.md`
+
+**Kiến trúc:** `docs/ARCHITECTURE.md`  
+**Go/No-Go RC:** `docs/RELEASE-4.0-RC.md`  
+**QA RBAC:** `docs/RBAC-RC-QA.md`
 
 ---
 
@@ -27,22 +33,16 @@ App vẫn chạy được **không có Supabase** — dữ liệu chỉ trong tr
 
 Chạy đủ checklist: **`docs/SUPABASE-STAGING-CHECKLIST.md`**
 
-Thứ tự SQL:
+Thứ tự SQL (đầy đủ Sprint 1–10): **`docs/SUPABASE-STAGING-CHECKLIST.md`**
 
-1. `supabase-club-v3.sql`
-2. `supabase-rbac.sql`
-3. `supabase-club-v3-rls.sql`
-4. `supabase-match-live.sql`
-5. `supabase-match-live-rls.sql` — **bắt buộc v3.5.6+** (RPC referee, chặn anon select)
-6. `supabase-security-hardening-v357.sql` — **bắt buộc v3.5.7+** (PLAYER signup, profile guards)
+Tóm tắt:
 
-Referee staging: app gọi RPC; chạy lại file RLS nếu đã deploy v3.5.5 cũ.
+1. `supabase-club-v3.sql` → `supabase-rbac.sql` → `supabase-club-v3-rls.sql`
+2. Match live + security hardening + identity sprint1/phaseB/phaseC
+3. `supabase-multi-tenant-sprint2.sql` → `supabase-subscription-sprint4.sql`
+4. (Tuỳ chọn) `supabase-ai-assistant-sprint7.sql`, `supabase-mobile-sprint9.sql`, `supabase-sprint10.sql`
 
-Preview/Production build: `RbacDevPanel` ẩn; dev login/RBAC toggle bị khóa; Director dùng JWT session.
-
-Test: `docs/RLS-TEST-PLAN.md`. Rollback khẩn: `docs/supabase-rls-rollback.sql`.
-
-Env staging: `VITE_RBAC_ENABLED=true`, `VITE_PAYMENT_MODE=dev`.
+Env staging/production RC: `VITE_RBAC_ENABLED=true`, `VITE_PAYMENT_MODE=dev`.
 
 ### Trọng tài / Realtime
 
@@ -75,10 +75,22 @@ Vercel Dashboard → Project → **Settings → Environment Variables**:
 | `VITE_SUPABASE_URL` | URL Supabase | Production |
 | `VITE_SUPABASE_ANON_KEY` | Anon key | Production |
 | `VITE_SEED_DEMO` | `false` | Production |
-| `VITE_RBAC_ENABLED` | `false` (dev) / `true` (staging sau RLS) | Production |
-| `VITE_PAYMENT_MODE` | `dev` hoặc `stripe` | Production |
+| `VITE_RBAC_ENABLED` | `false` (local dev) / **`true`** (staging & production RC) | Production |
+| `VITE_PAYMENT_MODE` | `dev` (RC) hoặc `stripe` khi có Payment Links | Production |
+| `VITE_ENABLE_AI_ENGINE` | `false` (bật sau QA + SQL sprint7) | Optional |
+| `VITE_API_ENABLED` | `false` (preview) | Optional |
+| `VITE_MARKETPLACE_ENABLED` | `false` (preview) | Optional |
 
-Sau khi bật RBAC staging, chạy SQL theo `docs/SUPABASE-STAGING-CHECKLIST.md` (không chỉ `supabase-rbac.sql` đơn lẻ).
+### Feature flag readiness (RC)
+
+| Flag | Trạng thái |
+|------|------------|
+| RBAC, Supabase Auth | Production-ready |
+| Subscription (`dev` mode) | Beta |
+| AI Assistant | Beta (opt-in) |
+| API / Marketplace / VNPay / MoMo / Zalo / Email / SMS | Preview hoặc mock — menu ẩn khi tắt |
+
+Sau khi bật RBAC production, chạy SQL theo `docs/SUPABASE-STAGING-CHECKLIST.md` (15 bước).
 
 Đăng nhập production: `/login` hoặc **Cài đặt → Đăng nhập & Phân quyền**.
 

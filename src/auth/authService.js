@@ -7,13 +7,14 @@ import {
   saveAuthSession,
   saveRbacConfig,
 } from "./authStorage.js";
-import { hasSupabaseConfig, getSupabaseAuthClient } from "./supabaseClient.js";
+import { getSupabaseConfigError, hasSupabaseConfig, getSupabaseAuthClient } from "./supabaseClient.js";
 import {
   fetchProfileByUserId,
   resolveAuthUserFromProfile,
 } from "./profileService.js";
 import { formatAuthError } from "./authErrors.js";
 import { isSecureRuntime } from "./runtime.js";
+import { writeAuditLog, AUDIT_ACTIONS } from "../features/identity/services/auditService.js";
 
 /** Dev registry — chỉ dùng khi chưa cấu hình Supabase (dev local). */
 const DEV_USERS = [
@@ -22,8 +23,45 @@ const DEV_USERS = [
     email: "admin@pickleball.local",
     displayName: "Super Admin",
     role: ROLES.SUPER_ADMIN,
+    tenantId: null,
     venueId: null,
     clubId: null,
+  }),
+  createUserRecord({
+    id: "dev-future-owner",
+    email: "owner@futurearena.local",
+    displayName: "Future Arena Owner",
+    role: "TENANT_OWNER",
+    tenantId: "tenant-future-arena",
+    venueId: "tenant-future-arena",
+    clubId: "club-future-arena",
+  }),
+  createUserRecord({
+    id: "dev-abc-owner",
+    email: "owner@abc.local",
+    displayName: "ABC Pickleball Owner",
+    role: "TENANT_OWNER",
+    tenantId: "tenant-abc-pickleball",
+    venueId: "tenant-abc-pickleball",
+    clubId: "club-abc-pickleball",
+  }),
+  createUserRecord({
+    id: "dev-elite-owner",
+    email: "owner@elite.local",
+    displayName: "Elite Club Owner",
+    role: "TENANT_OWNER",
+    tenantId: "tenant-elite-club",
+    venueId: "tenant-elite-club",
+    clubId: "club-elite-club",
+  }),
+  createUserRecord({
+    id: "dev-future-manager",
+    email: "manager@futurearena.local",
+    displayName: "Future Arena Manager",
+    role: "CLUB_MANAGER",
+    tenantId: "tenant-future-arena",
+    venueId: "tenant-future-arena",
+    clubId: "club-future-arena",
   }),
   createUserRecord({
     id: "dev-venue-owner",
@@ -62,6 +100,14 @@ const DEV_USERS = [
     email: "club@club.local",
     displayName: "Chủ CLB Demo",
     role: ROLES.CLUB_OWNER,
+    venueId: "venue-demo",
+    clubId: "default-club",
+  }),
+  createUserRecord({
+    id: "dev-referee",
+    email: "referee@venue.local",
+    displayName: "Trọng tài Demo",
+    role: ROLES.REFEREE,
     venueId: "venue-demo",
     clubId: "default-club",
   }),
@@ -156,7 +202,7 @@ async function syncSupabaseUser(authUser) {
 export async function restoreSupabaseSession() {
   const client = getSupabaseAuthClient();
   if (!client) {
-    return { ok: false, code: "NO_SUPABASE" };
+    return { ok: false, error: getSupabaseConfigError(), code: "NO_SUPABASE" };
   }
 
   const { data, error } = await client.auth.getSession();
@@ -174,7 +220,7 @@ export async function restoreSupabaseSession() {
 export async function signInWithPassword(email, password) {
   const client = getSupabaseAuthClient();
   if (!client) {
-    return { ok: false, error: "Supabase chưa cấu hình.", code: "NO_SUPABASE" };
+    return { ok: false, error: getSupabaseConfigError(), code: "NO_SUPABASE" };
   }
 
   const { data, error } = await client.auth.signInWithPassword({
@@ -183,6 +229,12 @@ export async function signInWithPassword(email, password) {
   });
 
   if (error) {
+    await writeAuditLog({
+      action: AUDIT_ACTIONS.LOGIN_FAILED,
+      resourceType: "auth",
+      metadata: { email: String(email || "").trim().toLowerCase() },
+      actor: { email: String(email || "").trim().toLowerCase() },
+    });
     return {
       ok: false,
       error: formatAuthError(error.message, "AUTH_FAILED"),
@@ -190,13 +242,21 @@ export async function signInWithPassword(email, password) {
     };
   }
 
-  return syncSupabaseUser(data.user);
+  const synced = await syncSupabaseUser(data.user);
+  if (synced.ok) {
+    await writeAuditLog({
+      action: AUDIT_ACTIONS.LOGIN,
+      resourceType: "auth",
+      resourceId: synced.user?.id || "",
+    });
+  }
+  return synced;
 }
 
 export async function signUpWithPassword(email, password, profileMeta = {}) {
   const client = getSupabaseAuthClient();
   if (!client) {
-    return { ok: false, error: "Supabase chưa cấu hình.", code: "NO_SUPABASE" };
+    return { ok: false, error: getSupabaseConfigError(), code: "NO_SUPABASE" };
   }
 
   const { data, error } = await client.auth.signUp({
@@ -255,7 +315,13 @@ export function signInDev(email) {
   }
 
   saveAuthSession(found, { provider: "dev" });
-  return { ok: true, user: normalizeUser(found), provider: "dev" };
+  const user = normalizeUser(found);
+  writeAuditLog({
+    action: AUDIT_ACTIONS.LOGIN,
+    resourceType: "auth",
+    resourceId: user.id,
+  });
+  return { ok: true, user, provider: "dev" };
 }
 
 export function signInAs(userLike, meta = {}) {
@@ -277,11 +343,38 @@ export function signInAs(userLike, meta = {}) {
 }
 
 export async function signOut() {
+  const current = getCurrentUser();
   clearAuthSession();
+
+  try {
+    const { cleanupPushTokensOnLogout } = await import(
+      "../features/mobile/services/notificationService.js"
+    );
+    await cleanupPushTokensOnLogout();
+  } catch {
+    // push cleanup optional
+  }
 
   const client = getSupabaseAuthClient();
   if (client) {
-    await client.auth.signOut();
+    try {
+      await client.auth.signOut();
+    } catch {
+      // session may already be cleared
+    }
+  }
+
+  if (current?.id) {
+    try {
+      await writeAuditLog({
+        action: AUDIT_ACTIONS.LOGOUT,
+        resourceType: "auth",
+        resourceId: current.id,
+        actor: current,
+      });
+    } catch {
+      // audit optional when storage unavailable (tests)
+    }
   }
 
   return { ok: true };

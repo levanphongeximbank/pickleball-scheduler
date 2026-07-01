@@ -33,6 +33,7 @@ import { formatCurrency } from "../../domain/courtBookingEngine.js";
 import { downloadTextFile } from "../../domain/courtManagementSettings.js";
 import PermissionGate from "../../components/auth/PermissionGate.jsx";
 import { PERMISSIONS } from "../../auth/permissions.js";
+import { usePlatformRuntime } from "../../core/platform/app/usePlatformRuntime.js";
 import CustomerDetailDialog from "./CustomerDetailDialog.jsx";
 import CustomerFormDialog from "./CustomerFormDialog.jsx";
 import BookingForm from "./BookingForm.jsx";
@@ -47,6 +48,7 @@ const CUSTOMER_TYPE_LABELS = {
 };
 
 export default function CustomerList({ clubId, courts = [], revision = 0, onRefresh }) {
+  const runtime = usePlatformRuntime();
   const [searchParams] = useSearchParams();
   const [selectedCustomer, setSelectedCustomer] = useState(null);
   const [detailBooking, setDetailBooking] = useState(null);
@@ -56,6 +58,7 @@ export default function CustomerList({ clubId, courts = [], revision = 0, onRefr
   const [debtFilter, setDebtFilter] = useState("all");
   const [message, setMessage] = useState(null);
   const [bookingFormCustomer, setBookingFormCustomer] = useState(null);
+  const [accessAllowed, setAccessAllowed] = useState(true);
 
   useEffect(() => {
     const query = searchParams.get("q");
@@ -64,6 +67,24 @@ export default function CustomerList({ clubId, courts = [], revision = 0, onRefr
       setSearch(query);
     }
   }, [searchParams]);
+
+  useEffect(() => {
+    try {
+      const tenantId = clubId || "customer-list-preview";
+      const decision = runtime.accessService.authorize(
+        {
+          user_id: "demo-admin",
+          tenant_id: tenantId,
+          role: "SUPER_ADMIN",
+        },
+        { tenant_id: tenantId },
+        "customer.manage"
+      );
+      setAccessAllowed(Boolean(decision.allowed));
+    } catch {
+      setAccessAllowed(false);
+    }
+  }, [clubId, runtime]);
 
   const customers = useMemo(
     () =>
@@ -95,22 +116,38 @@ export default function CustomerList({ clubId, courts = [], revision = 0, onRefr
   }, [customers, search, debtFilter]);
 
   const openCreateForm = () => {
+    if (!accessAllowed) {
+      setMessage("Runtime platform chặn thao tác quản lý khách.");
+      return;
+    }
     setEditingCustomer(null);
     setFormOpen(true);
   };
 
   const openEditForm = (customer) => {
+    if (!accessAllowed) {
+      setMessage("Runtime platform chặn thao tác quản lý khách.");
+      return;
+    }
     setEditingCustomer(customer);
     setFormOpen(true);
   };
 
   const handleRecalculate = () => {
+    if (!accessAllowed) {
+      setMessage("Runtime platform chặn thao tác quản lý khách.");
+      return;
+    }
     recalculateAllCustomerStats(clubId);
     setMessage("Đã cập nhật lại thống kê khách.");
     onRefresh?.();
   };
 
   const handleMerge = () => {
+    if (!accessAllowed) {
+      setMessage("Runtime platform chặn thao tác quản lý khách.");
+      return;
+    }
     const result = mergeCustomersByPhone(clubId);
     setMessage(result.message);
     onRefresh?.();
@@ -132,7 +169,12 @@ export default function CustomerList({ clubId, courts = [], revision = 0, onRefr
         <Typography variant="body2" color="text.secondary">
           Quản lý khách hàng: thêm, sửa, xóa và xem lịch sử booking.
         </Typography>
-        <PermissionGate permission={PERMISSIONS.CUSTOMERS_MANAGE}>
+        <Chip
+          size="small"
+          label={`Runtime access: ${accessAllowed ? "allowed" : "denied"}`}
+          color={accessAllowed ? "success" : "warning"}
+        />
+        <PermissionGate permission={PERMISSIONS.CUSTOMER_UPDATE}>
           <Button variant="contained" startIcon={<AddIcon />} onClick={openCreateForm}>
             Thêm khách
           </Button>
@@ -140,7 +182,7 @@ export default function CustomerList({ clubId, courts = [], revision = 0, onRefr
       </Stack>
 
       <Stack direction="row" spacing={1} flexWrap="wrap" sx={{ mb: 2 }}>
-        <PermissionGate permission={PERMISSIONS.CUSTOMERS_MANAGE}>
+        <PermissionGate permission={PERMISSIONS.CUSTOMER_UPDATE}>
           <Button size="small" variant="outlined" onClick={handleRecalculate}>
             Cập nhật thống kê
           </Button>

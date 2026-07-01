@@ -14,6 +14,9 @@ import {
 import ArrowBackIcon from "@mui/icons-material/ArrowBack";
 
 import { useClub } from "../context/ClubContext.jsx";
+import { useTenant } from "../context/TenantContext.jsx";
+import { useAuth } from "../context/AuthContext.jsx";
+import { guardRecordTenant } from "../features/tenant/index.js";
 import { loadPlayerHistoryProfileForClub } from "../tournament/engines/playerHistoryEngine.js";
 
 function StatCard({ label, value, helper }) {
@@ -67,11 +70,34 @@ export default function PlayerProfile() {
   const { playerId } = useParams();
   const navigate = useNavigate();
   const { activeClubId, activeClub, revision } = useClub();
+  const { currentTenantId } = useTenant();
+  const { rbacEnabled, isAuthenticated } = useAuth();
 
   const profile = useMemo(() => {
     void revision;
     return loadPlayerHistoryProfileForClub(activeClubId, playerId, { recentLimit: 12 });
   }, [activeClubId, playerId, revision]);
+
+  const tenantDenied = useMemo(() => {
+    if (!rbacEnabled || !isAuthenticated || !currentTenantId || !profile.ok) {
+      return null;
+    }
+
+    return guardRecordTenant(profile.player, currentTenantId);
+  }, [currentTenantId, isAuthenticated, profile, rbacEnabled]);
+
+  if (tenantDenied && !tenantDenied.ok) {
+    return (
+      <Box>
+        <Alert severity="error">
+          {tenantDenied.error || "Không có quyền xem hồ sơ người chơi này."}
+        </Alert>
+        <Button component={RouterLink} to="/players" sx={{ mt: 2 }}>
+          Quay lai danh sach
+        </Button>
+      </Box>
+    );
+  }
 
   if (!profile.ok) {
     return (

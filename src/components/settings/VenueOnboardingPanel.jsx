@@ -118,7 +118,7 @@ export default function VenueOnboardingPanel() {
   };
 
   return (
-    <Card>
+    <Card id="tenant-subscription">
       <CardContent>
         <Stack direction="row" spacing={1} alignItems="center" sx={{ mb: 2 }}>
           <BusinessIcon color="primary" />
@@ -167,14 +167,14 @@ export default function VenueOnboardingPanel() {
 
         <Stack spacing={2}>
           <PermissionGate
-            permissions={[PERMISSIONS.SYSTEM_VENUES_MANAGE, PERMISSIONS.VENUE_MANAGE]}
+            permissions={[PERMISSIONS.VENUE_UPDATE, PERMISSIONS.VENUE_UPDATE]}
           >
             <Button variant="outlined" onClick={handleAssignDemo}>
               Gán CLB vào venue demo ({DEMO_VENUE_ID})
             </Button>
           </PermissionGate>
 
-          <PermissionGate permission={PERMISSIONS.SYSTEM_VENUES_MANAGE}>
+          <PermissionGate permission={PERMISSIONS.VENUE_UPDATE}>
             <Stack direction={{ xs: "column", sm: "row" }} spacing={1}>
               <TextField
                 size="small"
@@ -190,7 +190,7 @@ export default function VenueOnboardingPanel() {
           </PermissionGate>
 
           <PermissionGate
-            permissions={[PERMISSIONS.SYSTEM_VENUES_MANAGE, PERMISSIONS.VENUE_MANAGE, PERMISSIONS.CLUB_MANAGE]}
+            permissions={[PERMISSIONS.VENUE_UPDATE, PERMISSIONS.VENUE_UPDATE, PERMISSIONS.CLUB_UPDATE]}
           >
             <Stack direction={{ xs: "column", sm: "row" }} spacing={1}>
               <TextField
@@ -217,9 +217,9 @@ export default function VenueOnboardingPanel() {
           {summary.venue && (
             <PermissionGate
               permissions={[
-                PERMISSIONS.VENUE_SUBSCRIPTION_VIEW,
-                PERMISSIONS.VENUE_MANAGE,
-                PERMISSIONS.SYSTEM_SUBSCRIPTIONS_MANAGE,
+                PERMISSIONS.SUBSCRIPTION_VIEW,
+                PERMISSIONS.VENUE_UPDATE,
+                PERMISSIONS.SUBSCRIPTION_UPDATE,
               ]}
             >
               <Box>

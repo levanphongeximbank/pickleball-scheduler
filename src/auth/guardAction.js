@@ -1,8 +1,15 @@
 import { loadClubs } from "../data/club.js";
+import { loadActiveTenantId } from "../data/tenantSession.js";
 import { PERMISSIONS } from "./permissions.js";
 import { getCurrentUser, isRbacEnabled } from "./authService.js";
 import { assertCan, can, canAccessClub, isRbacEnforced } from "./rbac.js";
 import { guardSubscriptionForClub } from "./subscriptionGuard.js";
+import { isGlobalRole } from "./roles.js";
+import {
+  guardClubTenant,
+  resolveTenantIdForClub,
+} from "../features/tenant/guards/tenantGuard.js";
+import { resolveEffectiveTenantId } from "../features/tenant/services/tenantService.js";
 
 export function getAuthOptions() {
   return {
@@ -13,10 +20,24 @@ export function getAuthOptions() {
 
 export function scopeForClubId(clubId) {
   const club = loadClubs().find((item) => item.id === clubId);
+  const tenantId = resolveTenantIdForClub(clubId);
   return {
     clubId: clubId || null,
-    venueId: club?.venueId || null,
+    venueId: club?.venueId || tenantId || null,
+    tenantId,
   };
+}
+
+function resolveCurrentTenantId(user) {
+  if (!user) {
+    return null;
+  }
+
+  if (isGlobalRole(user.role)) {
+    return loadActiveTenantId() || resolveEffectiveTenantId(user);
+  }
+
+  return resolveEffectiveTenantId(user);
 }
 
 export function guardPermission(permission, scope = {}, options = {}) {
@@ -39,6 +60,14 @@ export function guardClubAccess(clubId, options = {}) {
       error: "Không có quyền truy cập CLB này.",
       code: "FORBIDDEN",
     };
+  }
+
+  const currentTenantId = resolveCurrentTenantId(user);
+  if (currentTenantId) {
+    const tenantCheck = guardClubTenant(clubId, currentTenantId, { user, rbacEnabled });
+    if (!tenantCheck.ok) {
+      return tenantCheck;
+    }
   }
 
   return { ok: true };
@@ -92,20 +121,20 @@ export function guardAnyClubAction(clubId, permissions = [], extraScope = {}, op
 
 export function guardBookingSave(clubId, { isNew = false } = {}, options = {}) {
   if (isNew) {
-    const createCheck = guardClubAction(clubId, PERMISSIONS.BOOKINGS_CREATE, {}, options);
+    const createCheck = guardClubAction(clubId, PERMISSIONS.BOOKING_CREATE, {}, options);
     if (createCheck.ok) {
       return createCheck;
     }
-    return guardClubAction(clubId, PERMISSIONS.BOOKINGS_MANAGE, {}, options);
+    return guardClubAction(clubId, PERMISSIONS.BOOKING_UPDATE, {}, options);
   }
 
-  return guardClubAction(clubId, PERMISSIONS.BOOKINGS_MANAGE, {}, options);
+  return guardClubAction(clubId, PERMISSIONS.BOOKING_UPDATE, {}, options);
 }
 
 export function guardBookingPayment(clubId, options = {}) {
   return guardAnyClubAction(
     clubId,
-    [PERMISSIONS.PAYMENTS_COLLECT, PERMISSIONS.BOOKINGS_MANAGE, PERMISSIONS.REVENUE_MANAGE],
+    [PERMISSIONS.FINANCE_EDIT, PERMISSIONS.BOOKING_UPDATE],
     {},
     options
   );
@@ -114,11 +143,7 @@ export function guardBookingPayment(clubId, options = {}) {
 export function guardDirectorAction(clubId, options = {}) {
   const permCheck = guardAnyClubAction(
     clubId,
-    [
-      PERMISSIONS.TOURNAMENT_DIRECTOR,
-      PERMISSIONS.TOURNAMENT_MANAGE,
-      PERMISSIONS.TOURNAMENT_SCORE,
-    ],
+    [PERMISSIONS.DIRECTOR_USE, PERMISSIONS.TOURNAMENT_UPDATE, PERMISSIONS.MATCH_UPDATE],
     {},
     options
   );
@@ -134,11 +159,7 @@ export function guardDirectorAction(clubId, options = {}) {
 export function guardCourtLockAction(clubId, options = {}) {
   return guardAnyClubAction(
     clubId,
-    [
-      PERMISSIONS.TOURNAMENT_DIRECTOR,
-      PERMISSIONS.TOURNAMENT_MANAGE,
-      PERMISSIONS.SCHEDULING_RUN,
-    ],
+    [PERMISSIONS.DIRECTOR_USE, PERMISSIONS.TOURNAMENT_UPDATE, PERMISSIONS.SCHEDULING_RUN],
     {},
     options
   );

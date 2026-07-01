@@ -113,6 +113,10 @@ export function normalizePlayer(player) {
     normalized.skillMeta = normalizeSkillMeta(player.skillMeta);
   }
 
+  if (player.tenantId) {
+    normalized.tenantId = String(player.tenantId).trim();
+  }
+
   return normalized;
 }
 

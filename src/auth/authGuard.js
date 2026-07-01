@@ -1,24 +1,56 @@
 /**
  * Route guard helpers — auth production (Supabase env) tách khỏi RBAC.
- * RBAC tắt + auth production bật → chỉ cần đăng nhập, không lọc permission.
  */
+import { canAccessRoute } from "./menuAccess.js";
 
 export function isAuthRequired({ authProductionEnabled, rbacEnabled }) {
   return Boolean(authProductionEnabled || rbacEnabled);
 }
 
+const PUBLIC_PATH_PREFIXES = [
+  "/login",
+  "/forgot-password",
+  "/reset-password",
+];
+
 /** Path được phép khi chưa đăng nhập. */
 export function isPublicAuthPath(pathname, { authProductionEnabled, rbacEnabled }) {
-  if (pathname === "/login") {
+  if (!pathname) {
+    return false;
+  }
+
+  if (PUBLIC_PATH_PREFIXES.some((path) => pathname === path || pathname.startsWith(`${path}/`))) {
     return true;
   }
 
-  // Dev RBAC: cho vào Settings để bật/tắt RBAC và đăng nhập dev
+  if (pathname.startsWith("/referee/") && pathname !== "/referee" && !pathname.startsWith("/referee/match/")) {
+    return true;
+  }
+
   if (rbacEnabled && !authProductionEnabled && pathname === "/settings") {
     return true;
   }
 
   return false;
+}
+
+/** Route chỉ cần đăng nhập, không kiểm permission RBAC. */
+export function isAuthenticatedOnlyRoute(pathname) {
+  if (!pathname) {
+    return false;
+  }
+
+  return (
+    pathname === "/profile" ||
+    pathname.startsWith("/profile/") ||
+    pathname === "/referee" ||
+    pathname.startsWith("/referee/match/")
+  );
+}
+
+/** Route miễn kiểm permission (tránh loop /403). */
+export function isPermissionExemptPath(pathname) {
+  return pathname === "/403";
 }
 
 export function shouldRedirectToLogin(
@@ -33,5 +65,28 @@ export function shouldRedirectToLogin(
     return false;
   }
 
+  if (isPermissionExemptPath(pathname)) {
+    return true;
+  }
+
   return !isPublicAuthPath(pathname, { authProductionEnabled, rbacEnabled });
+}
+
+export function shouldRedirectToForbidden(
+  pathname,
+  { rbacEnabled, isAuthenticated, can, scope }
+) {
+  if (!rbacEnabled || !isAuthenticated) {
+    return false;
+  }
+
+  if (isPermissionExemptPath(pathname)) {
+    return false;
+  }
+
+  if (isAuthenticatedOnlyRoute(pathname)) {
+    return false;
+  }
+
+  return !canAccessRoute(can, pathname, scope);
 }

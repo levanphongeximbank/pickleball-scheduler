@@ -1,4 +1,4 @@
-export { ROLES, ROLE_LABELS, isValidRole, isGlobalRole, isVenueScopedRole, isClubScopedRole } from "./roles.js";
+export { ROLES, ROLE_LABELS, isValidRole, isGlobalRole, isVenueScopedRole, isClubScopedRole, normalizeRole, denormalizeRoleForDb, rolesEqual, isRefereeRole, LEGACY_ROLE_ALIASES, CANONICAL_ROLES } from "./roles.js";
 export { PERMISSIONS, PERMISSION_SCOPE, isValidPermission, getPermissionScope } from "./permissions.js";
 export { ROLE_PERMISSIONS, getPermissionsForRole, roleHasPermission } from "./rolePermissions.js";
 export {
@@ -34,6 +34,9 @@ export {
   isAuthRequired,
   isPublicAuthPath,
   shouldRedirectToLogin,
+  isAuthenticatedOnlyRoute,
+  isPermissionExemptPath,
+  shouldRedirectToForbidden,
 } from "./authGuard.js";
 export { hasSupabaseConfig, getSupabaseAuthClient } from "./supabaseClient.js";
 export {

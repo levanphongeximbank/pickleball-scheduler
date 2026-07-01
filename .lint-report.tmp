@@ -1,0 +1,409 @@
+﻿node.exe : npm warn Unknown env config "devdir". This will stop working in the next major version of npm. See `npm 
+help npmrc` for supported config options.
+At line:1 char:1
++ & "C:\Program Files\nodejs/node.exe" "C:\Program Files\nodejs/node_mo ...
++ ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (npm warn Unknow...config options.:String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 
+
+> pickleball-scheduler@4.0.0-beta lint
+> eslint .
+
+
+C:\Users\LePhong\pickleball-scheduler\src\ai\cloudSync.js
+  145:9  error  'club' is assigned a value but never used  no-unused-vars
+
+C:\Users\LePhong\pickleball-scheduler\src\auth\authService.js
+  3:10  error  'saveActiveTenantId' is defined but never used  no-unused-vars
+
+C:\Users\LePhong\pickleball-scheduler\src\components\auth\RouteAccessGate.jsx
+  93:9  error  'checkAccess' is assigned a value but never used  no-unused-vars
+
+C:\Users\LePhong\pickleball-scheduler\src\components\courtManagement\CourtOperationsPanel.jsx
+  38:41  warning  React Hook useMemo has unnecessary dependencies: 'revision' and 'today'. Either exclude them or remove the dependency array  react-hooks/exhaustive-deps
+  47:6   warning  React Hook useMemo has an unnecessary dependency: 'revision'. Either exclude it or remove the dependency array               react-hooks/exhaustive-deps
+
+C:\Users\LePhong\pickleball-scheduler\src\components\settings\VenueOnboardingPanel.jsx
+  47:5   warning  React Hook useMemo has unnecessary dependencies: 'activeClub.venueId' and 'revision'. Either exclude them or remove the dependency array  react-hooks/exhaustive-deps
+  50:46  warning  React Hook useMemo has an unnecessary dependency: 'revision'. Either exclude it or remove the dependency array                            react-hooks/exhaustive-deps
+  51:55  warning  React Hook useMemo has an unnecessary dependency: 'revision'. Either exclude it or remove the dependency array                            react-hooks/exhaustive-deps
+
+C:\Users\LePhong\pickleball-scheduler\src\components\settings\VenueStaffPanel.jsx
+  57:5  warning  React Hook useMemo has an unnecessary dependency: 'revision'. Either exclude it or remove the dependency array  react-hooks/exhaustive-deps
+  65:6  warning  React Hook useMemo has an unnecessary dependency: 'revision'. Either exclude it or remove the dependency array  react-hooks/exhaustive-deps
+
+C:\Users\LePhong\pickleball-scheduler\src\components\tournament\LeagueRoundManager.jsx
+  205:5  warning  React Hook useMemo has an unnecessary dependency: 'revision'. Either exclude it or remove the dependency array  react-hooks/exhaustive-deps
+  215:5  warning  React Hook useMemo has an unnecessary dependency: 'revision'. Either exclude it or remove the dependency array  react-hooks/exhaustive-deps
+  220:5  warning  React Hook useMemo has an unnecessary dependency: 'revision'. Either exclude it or remove the dependency array  react-hooks/exhaustive-deps
+
+C:\Users\LePhong\pickleball-scheduler\src\components\tournament\TournamentCourtScheduleManager.jsx
+  16:6  warning  React Hook useMemo has an unnecessary dependency: 'revision'. Either exclude it or remove the dependency array  react-hooks/exhaustive-deps
+
+C:\Users\LePhong\pickleball-scheduler\src\components\tournament\TournamentCourtSchedulePanel.jsx
+  54:6  warning  React Hook useEffect has missing dependencies: 'schedule?.courtIds', 'schedule?.date', 'schedule?.endTime', 'schedule?.startTime', and 'tournament'. Either include them or remove the dependency array  react-hooks/exhaustive-deps
+
+C:\Users\LePhong\pickleball-scheduler\src\components\tournament\ai\TournamentAiAssistantPanel.jsx
+  81:6  warning  React Hook useCallback has a missing dependency: 'baseOptions'. Either include it or remove the dependency array  react-hooks/exhaustive-deps
+
+C:\Users\LePhong\pickleball-scheduler\src\components\tournament\animation\daily\useFairMatchSequence.js
+  37:16  warning  React Hook useCallback received a function whose dependencies are unknown. Pass an inline function instead                                                                                                                                                                                                                                                                                                                                                                                                                                                         react-hooks/exhaustive-deps
+  37:28  warning  Error: Expected the first argument to be an inline function expression
+
+Expected the first argument to be an inline function expression.
+
+  35 |   const clearTimer = () => clearAnimationTimer(timerRef);
+  36 |
+> 37 |   const wait = useCallback(createAnimationWait(timerRef, pausedRef), []);
+     |                            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ Expected the first argument to be an inline function expression
+  38 |
+  39 |   const finishIfDone = useCallback(() => {
+  40 |     if (revealedCountRef.current >= steps.length) {  react-hooks/use-memo
+
+C:\Users\LePhong\pickleball-scheduler\src\components\tournament\animation\pairing\usePairingSequence.js
+  51:16  warning  React Hook useCallback received a function whose dependencies are unknown. Pass an inline function instead                                                                                                                                                                                                                                                                                                                                                                                                                                                         react-hooks/exhaustive-deps
+  51:28  warning  Error: Expected the first argument to be an inline function expression
+
+Expected the first argument to be an inline function expression.
+
+  49 |   const clearTimer = () => clearAnimationTimer(timerRef);
+  50 |
+> 51 |   const wait = useCallback(createAnimationWait(timerRef, pausedRef), []);
+     |                            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ Expected the first argument to be an inline function expression
+  52 |
+  53 |   const finishIfDone = useCallback(() => {
+  54 |     if (revealedCountRef.current >= steps.length) {  react-hooks/use-memo
+
+C:\Users\LePhong\pickleball-scheduler\src\components\tournament\animation\useDrawSequence.js
+   45:16  warning  React Hook useCallback received a function whose dependencies are unknown. Pass an inline function instead                                                                                                                                                                                                                                                                                                                                                                                                       react-hooks/exhaustive-deps
+   45:28  warning  Error: Expected the first argument to be an inline function expression
+
+Expected the first argument to be an inline function expression.
+
+  43 |   const clearTimer = () => clearAnimationTimer(timerRef);
+  44 |
+> 45 |   const wait = useCallback(createAnimationWait(timerRef, pausedRef), []);
+     |                            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ Expected the first argument to be an inline function expression
+  46 |
+  47 |   const getState = useCallback(
+  48 |     () => ({  react-hooks/use-memo
+  238:6   warning  React Hook useEffect has missing dependencies: 'autoStart' and 'startAuto'. Either include them or remove the dependency array                                                                                                                                                                                                                                                                                                                                                                                   react-hooks/exhaustive-deps
+
+C:\Users\LePhong\pickleball-scheduler\src\components\tournament\bracket\useBracketSequence.js
+  43:16  warning  React Hook useCallback received a function whose dependencies are unknown. Pass an inline function instead                                                                                                                                                                                                                                                                                                                                                                                                                              react-hooks/exhaustive-deps
+  43:28  warning  Error: Expected the first argument to be an inline function expression
+
+Expected the first argument to be an inline function expression.
+
+  41 |   const clearTimer = () => clearAnimationTimer(timerRef);
+  42 |
+> 43 |   const wait = useCallback(createAnimationWait(timerRef, pausedRef), []);
+     |                            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ Expected the first argument to be an inline function expression
+  44 |
+  45 |   const finish = useCallback(() => {
+  46 |     setPhase(PHASES.COMPLETE);  react-hooks/use-memo
+
+C:\Users\LePhong\pickleball-scheduler\src\context\ClubContext.jsx
+  88:5  warning  React Hook useMemo has an unnecessary dependency: 'revision'. Either exclude it or remove the dependency array  react-hooks/exhaustive-deps
+
+C:\Users\LePhong\pickleball-scheduler\src\context\SeasonContext.jsx
+  23:5  warning  React Hook useMemo has an unnecessary dependency: 'revision'. Either exclude it or remove the dependency array  react-hooks/exhaustive-deps
+
+C:\Users\LePhong\pickleball-scheduler\src\context\TenantContext.jsx
+  60:6  warning  React Hook useMemo has an unnecessary dependency: 'revision'. Either exclude it or remove the dependency array  react-hooks/exhaustive-deps
+
+C:\Users\LePhong\pickleball-scheduler\src\features\ai-assistant\engines\pairingSuggestion.js
+  186:7  error  The value assigned to 'teams' is not used in subsequent statements  no-useless-assignment
+
+C:\Users\LePhong\pickleball-scheduler\src\features\ai-assistant\engines\scheduleValidator.js
+  40:9  error  'courts' is assigned a value but never used  no-unused-vars
+
+C:\Users\LePhong\pickleball-scheduler\src\features\ai-assistant\services\aiSuggestionStorage.js
+  17:7  error  React Hook "useMemoryStore" is called in function "loadAll" that is neither a React function component nor a custom React Hook function. React component names must start with an uppercase letter. React Hook names must start with the word "use"  react-hooks/rules-of-hooks
+  31:7  error  React Hook "useMemoryStore" is called in function "saveAll" that is neither a React function component nor a custom React Hook function. React component names must start with an uppercase letter. React Hook names must start with the word "use"  react-hooks/rules-of-hooks
+
+C:\Users\LePhong\pickleball-scheduler\src\features\api\services\apiKeyService.js
+  134:22  error  'hashedKey' is defined but never used  no-unused-vars
+
+C:\Users\LePhong\pickleball-scheduler\src\features\club\seed\clubManagementSeed.js
+  8:10  error  'loadClubExtension' is defined but never used  no-unused-vars
+
+C:\Users\LePhong\pickleball-scheduler\src\features\court-engine\engines\autoCourtAssignmentEngine.js
+  93:11  error  'pairs' is assigned a value but never used  no-unused-vars
+
+C:\Users\LePhong\pickleball-scheduler\src\features\court-engine\services\refereeDispatchService.js
+  130:82  error  'courtId' is defined but never used  no-unused-vars
+
+C:\Users\LePhong\pickleball-scheduler\src\features\dashboard-analytics\components\DashboardKpiPanels.jsx
+  3:3  error  'Card' is defined but never used         no-unused-vars
+  4:3  error  'CardContent' is defined but never used  no-unused-vars
+  6:3  error  'Typography' is defined but never used   no-unused-vars
+
+C:\Users\LePhong\pickleball-scheduler\src\features\dashboard-analytics\components\KpiCard.jsx
+  88:10  error  Fast refresh only works when a file only exports components. Use a new file to share constants or functions between components  react-refresh/only-export-components
+
+C:\Users\LePhong\pickleball-scheduler\src\features\dashboard-analytics\components\TopCourtsTable.jsx
+  2:3  error  'Box' is defined but never used  no-unused-vars
+
+C:\Users\LePhong\pickleball-scheduler\src\features\dashboard-analytics\components\TopPlayersTable.jsx
+  5:3  error  'Box' is defined but never used  no-unused-vars
+
+C:\Users\LePhong\pickleball-scheduler\src\features\identity\services\userManagementService.js
+  63:7  error  The value assigned to 'users' is not used in subsequent statements  no-useless-assignment
+
+C:\Users\LePhong\pickleball-scheduler\src\features\integrations\config\integrationFlags.js
+  5:41  error  'process' is not defined  no-undef
+  6:12  error  'process' is not defined  no-undef
+
+C:\Users\LePhong\pickleball-scheduler\src\features\mobile\layout\MobileBottomNav.jsx
+  30:9  warning  The 'scope' object makes the dependencies of useMemo Hook (at line 47) change on every render. Move it inside the useMemo callback. Alternatively, wrap the initialization of 'scope' in its own useMemo() Hook  react-hooks/exhaustive-deps
+
+C:\Users\LePhong\pickleball-scheduler\src\features\mobile\services\checkInService.js
+   5:10  error  'writeAuditLog' is defined but never used                  no-unused-vars
+  87:3   error  'lateThresholdMinutes' is assigned a value but never used  no-unused-vars
+
+C:\Users\LePhong\pickleball-scheduler\src\features\mobile\services\qrTokenService.js
+  218:37  error  'rawToken' is defined but never used  no-unused-vars
+
+C:\Users\LePhong\pickleball-scheduler\src\features\notifications\providers\NotificationProvider.js
+  6:14  error  '_input' is defined but never used  no-unused-vars
+
+C:\Users\LePhong\pickleball-scheduler\src\features\payments\providers\PaymentProvider.js
+  26:23  error  '_input' is defined but never used  no-unused-vars
+  31:24  error  '_input' is defined but never used  no-unused-vars
+  36:16  error  '_input' is defined but never used  no-unused-vars
+
+C:\Users\LePhong\pickleball-scheduler\src\features\statistics\hooks\useStatisticsData.js
+   36:58  warning  React Hook useMemo has an unnecessary dependency: 'revision'. Either exclude it or remove the dependency array  react-hooks/exhaustive-deps
+   67:65  warning  React Hook useMemo has an unnecessary dependency: 'revision'. Either exclude it or remove the dependency array  react-hooks/exhaustive-deps
+   68:71  warning  React Hook useMemo has an unnecessary dependency: 'revision'. Either exclude it or remove the dependency array  react-hooks/exhaustive-deps
+  100:6   warning  React Hook useMemo has an unnecessary dependency: 'revision'. Either exclude it or remove the dependency array  react-hooks/exhaustive-deps
+
+C:\Users\LePhong\pickleball-scheduler\src\features\subscription\services\subscriptionLifecycleService.js
+    7:3  error  'createSubscriptionRecord' is defined but never used  no-unused-vars
+  213:9  error  'graceDays' is assigned a value but never used        no-unused-vars
+
+C:\Users\LePhong\pickleball-scheduler\src\features\tenant\services\tenantService.js
+   6:10  error  'loadClubs' is defined but never used      no-unused-vars
+  13:3   error  'TENANT_STATUS' is defined but never used  no-unused-vars
+
+C:\Users\LePhong\pickleball-scheduler\src\features\tournament-engine\engines\drawEngine.js
+  7:7  error  't' is assigned a value but never used  no-unused-vars
+
+C:\Users\LePhong\pickleball-scheduler\src\features\tournament-engine\engines\scheduleEngine.js
+  56:9   error  'existingCompleted' is assigned a value but never used  no-unused-vars
+  75:15  error  'scheduledStart' is assigned a value but never used     no-unused-vars
+  75:31  error  'scheduledEnd' is assigned a value but never used       no-unused-vars
+  75:45  error  'slot' is assigned a value but never used               no-unused-vars
+  75:51  error  'courtId' is assigned a value but never used            no-unused-vars
+
+C:\Users\LePhong\pickleball-scheduler\src\features\tournament-engine\hooks\useTournamentEngine.js
+  29:5  warning  React Hook useMemo has an unnecessary dependency: 'engineState'. Either exclude it or remove the dependency array  react-hooks/exhaustive-deps
+
+C:\Users\LePhong\pickleball-scheduler\src\features\tournament-engine\orchestrator\tournamentEngine.js
+  65:56  error  'options' is assigned a value but never used  no-unused-vars
+  73:9   error  'errors' is assigned a value but never used   no-unused-vars
+
+C:\Users\LePhong\pickleball-scheduler\src\features\tournament-engine\services\tournamentEngineAdapter.js
+  118:7  error  The value assigned to 'participants' is not used in subsequent statements  no-useless-assignment
+
+C:\Users\LePhong\pickleball-scheduler\src\features\tournament\director\hooks\useDirectorState.js
+  53:5  warning  React Hook useMemo has an unnecessary dependency: 'localRevision'. Either exclude it or remove the dependency array  react-hooks/exhaustive-deps
+  58:5  warning  React Hook useMemo has an unnecessary dependency: 'localRevision'. Either exclude it or remove the dependency array  react-hooks/exhaustive-deps
+  63:5  warning  React Hook useMemo has an unnecessary dependency: 'localRevision'. Either exclude it or remove the dependency array  react-hooks/exhaustive-deps
+  76:5  warning  React Hook useMemo has an unnecessary dependency: 'localRevision'. Either exclude it or remove the dependency array  react-hooks/exhaustive-deps
+
+C:\Users\LePhong\pickleball-scheduler\src\legacy\Tournament.jsx
+  198:5  warning  React Hook useMemo has an unnecessary dependency: 'dataVersion'. Either exclude it or remove the dependency array  react-hooks/exhaustive-deps
+
+C:\Users\LePhong\pickleball-scheduler\src\pages\Dashboard.jsx
+  74:6  warning  React Hook useMemo has an unnecessary dependency: 'revision'. Either exclude it or remove the dependency array  react-hooks/exhaustive-deps
+  78:5  warning  React Hook useMemo has an unnecessary dependency: 'revision'. Either exclude it or remove the dependency array  react-hooks/exhaustive-deps
+  86:6  warning  React Hook useMemo has an unnecessary dependency: 'revision'. Either exclude it or remove the dependency array  react-hooks/exhaustive-deps
+  93:6  warning  React Hook useMemo has an unnecessary dependency: 'revision'. Either exclude it or remove the dependency array  react-hooks/exhaustive-deps
+
+C:\Users\LePhong\pickleball-scheduler\src\pages\MyProfilePage.jsx
+  9:3  error  'Divider' is defined but never used  no-unused-vars
+
+C:\Users\LePhong\pickleball-scheduler\src\pages\Players.jsx
+  111:5  warning  React Hook useMemo has unnecessary dependencies: 'players' and 'revision'. Either exclude them or remove the dependency array  react-hooks/exhaustive-deps
+
+C:\Users\LePhong\pickleball-scheduler\src\pages\Settings.jsx
+  71:5  warning  React Hook useMemo has an unnecessary dependency: 'dataVersion'. Either exclude it or remove the dependency array  react-hooks/exhaustive-deps
+  75:5  warning  React Hook useMemo has an unnecessary dependency: 'dataVersion'. Either exclude it or remove the dependency array  react-hooks/exhaustive-deps
+
+C:\Users\LePhong\pickleball-scheduler\src\pages\Statistics.jsx
+  240:5  warning  React Hook useMemo has an unnecessary dependency: 'revision'. Either exclude it or remove the dependency array   react-hooks/exhaustive-deps
+  273:5  warning  React Hook useMemo has an unnecessary dependency: 'revision'. Either exclude it or remove the dependency array   react-hooks/exhaustive-deps
+  278:5  warning  React Hook useMemo has an unnecessary dependency: 'revision'. Either exclude it or remove the dependency array   react-hooks/exhaustive-deps
+  312:6  warning  React Hook useMemo has an unnecessary dependency: 'revision'. Either exclude it or remove the dependency array   react-hooks/exhaustive-deps
+  577:5  warning  React Hook useMemo has a missing dependency: 'getRoundMetric'. Either include it or remove the dependency array  react-hooks/exhaustive-deps
+  582:5  warning  React Hook useMemo has a missing dependency: 'getRoundMetric'. Either include it or remove the dependency array  react-hooks/exhaustive-deps
+
+C:\Users\LePhong\pickleball-scheduler\src\pages\Tournament.jsx
+  197:5  warning  React Hook useMemo has an unnecessary dependency: 'dataVersion'. Either exclude it or remove the dependency array  react-hooks/exhaustive-deps
+
+C:\Users\LePhong\pickleball-scheduler\src\pages\admin\AdminIntegrationMonitoringPage.jsx
+  42:5   warning  React Hook useMemo has an unnecessary dependency: 'refreshKey'. Either exclude it or remove the dependency array  react-hooks/exhaustive-deps
+  46:5   warning  React Hook useMemo has an unnecessary dependency: 'refreshKey'. Either exclude it or remove the dependency array  react-hooks/exhaustive-deps
+  50:5   warning  React Hook useMemo has an unnecessary dependency: 'refreshKey'. Either exclude it or remove the dependency array  react-hooks/exhaustive-deps
+  54:5   warning  React Hook useMemo has an unnecessary dependency: 'refreshKey'. Either exclude it or remove the dependency array  react-hooks/exhaustive-deps
+  56:72  warning  React Hook useMemo has an unnecessary dependency: 'refreshKey'. Either exclude it or remove the dependency array  react-hooks/exhaustive-deps
+  59:5   warning  React Hook useMemo has an unnecessary dependency: 'refreshKey'. Either exclude it or remove the dependency array  react-hooks/exhaustive-deps
+  63:5   warning  React Hook useMemo has an unnecessary dependency: 'refreshKey'. Either exclude it or remove the dependency array  react-hooks/exhaustive-deps
+
+C:\Users\LePhong\pickleball-scheduler\src\pages\admin\AdminMarketplacePage.jsx
+  41:6  warning  React Hook useMemo has an unnecessary dependency: 'refreshKey'. Either exclude it or remove the dependency array  react-hooks/exhaustive-deps
+  45:5  warning  React Hook useMemo has an unnecessary dependency: 'refreshKey'. Either exclude it or remove the dependency array  react-hooks/exhaustive-deps
+
+C:\Users\LePhong\pickleball-scheduler\src\pages\admin\TenantManagement.jsx
+  57:57  warning  React Hook useMemo has an unnecessary dependency: 'message'. Either exclude it or remove the dependency array  react-hooks/exhaustive-deps
+
+C:\Users\LePhong\pickleball-scheduler\src\pages\clubs\ClubDetailPage.jsx
+  46:5  warning  React Hook useMemo has unnecessary dependencies: 'localRevision' and 'revision'. Either exclude them or remove the dependency array  react-hooks/exhaustive-deps
+
+C:\Users\LePhong\pickleball-scheduler\src\pages\clubs\ClubListPage.jsx
+  82:6  warning  React Hook useMemo has unnecessary dependencies: 'localRevision' and 'revision'. Either exclude them or remove the dependency array  react-hooks/exhaustive-deps
+
+C:\Users\LePhong\pickleball-scheduler\src\pages\clubs\tabs\ClubMatchHistoryTab.jsx
+  63:5  warning  React Hook useMemo has an unnecessary dependency: 'revision'. Either exclude it or remove the dependency array  react-hooks/exhaustive-deps
+  69:6  warning  React Hook useMemo has an unnecessary dependency: 'revision'. Either exclude it or remove the dependency array  react-hooks/exhaustive-deps
+  75:6  warning  React Hook useMemo has an unnecessary dependency: 'revision'. Either exclude it or remove the dependency array  react-hooks/exhaustive-deps
+
+C:\Users\LePhong\pickleball-scheduler\src\pages\clubs\tabs\ClubMembersTab.jsx
+  32:3  error    'CLUB_MEMBER_ROLES' is defined but never used                                                                   no-unused-vars
+  58:5  warning  React Hook useMemo has an unnecessary dependency: 'revision'. Either exclude it or remove the dependency array  react-hooks/exhaustive-deps
+  63:5  warning  React Hook useMemo has an unnecessary dependency: 'revision'. Either exclude it or remove the dependency array  react-hooks/exhaustive-deps
+  69:6  warning  React Hook useMemo has an unnecessary dependency: 'revision'. Either exclude it or remove the dependency array  react-hooks/exhaustive-deps
+  83:5  warning  React Hook useMemo has an unnecessary dependency: 'revision'. Either exclude it or remove the dependency array  react-hooks/exhaustive-deps
+
+C:\Users\LePhong\pickleball-scheduler\src\pages\clubs\tabs\ClubRatingsTab.jsx
+  52:6  warning  React Hook useMemo has an unnecessary dependency: 'revision'. Either exclude it or remove the dependency array  react-hooks/exhaustive-deps
+  89:6  warning  React Hook useMemo has an unnecessary dependency: 'revision'. Either exclude it or remove the dependency array  react-hooks/exhaustive-deps
+
+C:\Users\LePhong\pickleball-scheduler\src\pages\clubs\tabs\ClubTournamentsTab.jsx
+  49:5  warning  React Hook useMemo has an unnecessary dependency: 'revision'. Either exclude it or remove the dependency array  react-hooks/exhaustive-deps
+
+C:\Users\LePhong\pickleball-scheduler\src\pages\courtManagement\CourtCalendarDayView.jsx
+  59:6  warning  React Hook useMemo has an unnecessary dependency: 'revision'. Either exclude it or remove the dependency array  react-hooks/exhaustive-deps
+
+C:\Users\LePhong\pickleball-scheduler\src\pages\courtManagement\CourtManagementHome.jsx
+  18:41  warning  React Hook useMemo has unnecessary dependencies: 'bookings' and 'courts'. Either exclude them or remove the dependency array  react-hooks/exhaustive-deps
+
+C:\Users\LePhong\pickleball-scheduler\src\pages\courtManagement\CourtManagementLayout.jsx
+   97:5  warning  React Hook useMemo has unnecessary dependencies: 'dataVersion' and 'revision'. Either exclude them or remove the dependency array  react-hooks/exhaustive-deps
+  107:6  warning  React Hook useMemo has unnecessary dependencies: 'dataVersion' and 'revision'. Either exclude them or remove the dependency array  react-hooks/exhaustive-deps
+
+C:\Users\LePhong\pickleball-scheduler\src\pages\courtManagement\CourtManagementSearchBar.jsx
+  24:65  warning  React Hook useMemo has an unnecessary dependency: 'bookings'. Either exclude it or remove the dependency array  react-hooks/exhaustive-deps
+
+C:\Users\LePhong\pickleball-scheduler\src\pages\courtManagement\CourtStatusBoard.jsx
+  21:41  warning  React Hook useMemo has unnecessary dependencies: 'bookings' and 'courts'. Either exclude them or remove the dependency array  react-hooks/exhaustive-deps
+
+C:\Users\LePhong\pickleball-scheduler\src\pages\courtManagement\CourtUtilizationPanel.jsx
+  36:6  warning  React Hook useMemo has an unnecessary dependency: 'revision'. Either exclude it or remove the dependency array  react-hooks/exhaustive-deps
+
+C:\Users\LePhong\pickleball-scheduler\src\pages\courtManagement\CustomerList.jsx
+  73:5   warning  React Hook useMemo has an unnecessary dependency: 'revision'. Either exclude it or remove the dependency array  react-hooks/exhaustive-deps
+  76:63  warning  React Hook useMemo has an unnecessary dependency: 'revision'. Either exclude it or remove the dependency array  react-hooks/exhaustive-deps
+
+C:\Users\LePhong\pickleball-scheduler\src\pages\marketplace\MarketplacePage.jsx
+  38:6  warning  React Hook useMemo has an unnecessary dependency: 'refreshKey'. Either exclude it or remove the dependency array  react-hooks/exhaustive-deps
+
+C:\Users\LePhong\pickleball-scheduler\src\pages\marketplace\MarketplaceProductPage.jsx
+   8:3  error  'Table' is defined but never used           no-unused-vars
+   9:3  error  'TableBody' is defined but never used       no-unused-vars
+  10:3  error  'TableCell' is defined but never used       no-unused-vars
+  11:3  error  'TableContainer' is defined but never used  no-unused-vars
+  12:3  error  'TableHead' is defined but never used       no-unused-vars
+  13:3  error  'TableRow' is defined but never used        no-unused-vars
+
+C:\Users\LePhong\pickleball-scheduler\src\pages\referee\RefereeSessionScoreboard.jsx
+  2:22  error  'CircularProgress' is defined but never used  no-unused-vars
+
+C:\Users\LePhong\pickleball-scheduler\src\pages\settings\IntegrationPaymentsPage.jsx
+  30:5  warning  React Hook useMemo has an unnecessary dependency: 'refreshKey'. Either exclude it or remove the dependency array  react-hooks/exhaustive-deps
+
+C:\Users\LePhong\pickleball-scheduler\src\pages\settings\IntegrationSettingsPage.jsx
+  47:5  warning  React Hook useMemo has an unnecessary dependency: 'refreshKey'. Either exclude it or remove the dependency array  react-hooks/exhaustive-deps
+
+C:\Users\LePhong\pickleball-scheduler\src\pages\settings\ZaloIntegrationPage.jsx
+  32:5  warning  React Hook useMemo has an unnecessary dependency: 'refreshKey'. Either exclude it or remove the dependency array  react-hooks/exhaustive-deps
+  38:5  warning  React Hook useMemo has an unnecessary dependency: 'refreshKey'. Either exclude it or remove the dependency array  react-hooks/exhaustive-deps
+
+C:\Users\LePhong\pickleball-scheduler\src\pages\tournament\DailyPlaySetup.jsx
+   90:5  warning  React Hook useMemo has an unnecessary dependency: 'localRevision'. Either exclude it or remove the dependency array  react-hooks/exhaustive-deps
+   95:5  warning  React Hook useMemo has an unnecessary dependency: 'localRevision'. Either exclude it or remove the dependency array  react-hooks/exhaustive-deps
+  100:5  warning  React Hook useMemo has an unnecessary dependency: 'localRevision'. Either exclude it or remove the dependency array  react-hooks/exhaustive-deps
+  108:5  warning  React Hook useMemo has an unnecessary dependency: 'localRevision'. Either exclude it or remove the dependency array  react-hooks/exhaustive-deps
+  113:5  warning  React Hook useMemo has an unnecessary dependency: 'localRevision'. Either exclude it or remove the dependency array  react-hooks/exhaustive-deps
+  118:5  warning  React Hook useMemo has an unnecessary dependency: 'localRevision'. Either exclude it or remove the dependency array  react-hooks/exhaustive-deps
+
+C:\Users\LePhong\pickleball-scheduler\src\pages\tournament\InternalTournamentSetup.jsx
+  120:5  warning  React Hook useMemo has an unnecessary dependency: 'localRevision'. Either exclude it or remove the dependency array  react-hooks/exhaustive-deps
+  131:6  warning  React Hook useMemo has an unnecessary dependency: 'localRevision'. Either exclude it or remove the dependency array  react-hooks/exhaustive-deps
+  135:5  warning  React Hook useMemo has an unnecessary dependency: 'localRevision'. Either exclude it or remove the dependency array  react-hooks/exhaustive-deps
+  140:5  warning  React Hook useMemo has an unnecessary dependency: 'localRevision'. Either exclude it or remove the dependency array  react-hooks/exhaustive-deps
+
+C:\Users\LePhong\pickleball-scheduler\src\pages\tournament\OfficialTournamentSetup.jsx
+  131:5  warning  React Hook useMemo has an unnecessary dependency: 'localRevision'. Either exclude it or remove the dependency array                                                                                       react-hooks/exhaustive-deps
+  136:5  warning  React Hook useMemo has an unnecessary dependency: 'localRevision'. Either exclude it or remove the dependency array                                                                                       react-hooks/exhaustive-deps
+  141:5  warning  React Hook useMemo has an unnecessary dependency: 'localRevision'. Either exclude it or remove the dependency array                                                                                       react-hooks/exhaustive-deps
+  146:5  warning  React Hook useMemo has an unnecessary dependency: 'localRevision'. Either exclude it or remove the dependency array                                                                                       react-hooks/exhaustive-deps
+  149:9  warning  The 'savedEvents' logical expression could make the dependencies of useEffect Hook (at line 203) change on every render. To fix this, wrap the initialization of 'savedEvents' in its own useMemo() Hook  react-hooks/exhaustive-deps
+
+C:\Users\LePhong\pickleball-scheduler\src\pages\tournament\TournamentBracketHub.jsx
+  47:5  warning  React Hook useMemo has an unnecessary dependency: 'revision'. Either exclude it or remove the dependency array  react-hooks/exhaustive-deps
+
+C:\Users\LePhong\pickleball-scheduler\src\pages\tournament\TournamentBracketPage.jsx
+  50:5   warning  React Hook useMemo has unnecessary dependencies: 'liveTick' and 'revision'. Either exclude them or remove the dependency array  react-hooks/exhaustive-deps
+  53:65  warning  React Hook useMemo has an unnecessary dependency: 'revision'. Either exclude it or remove the dependency array                  react-hooks/exhaustive-deps
+
+C:\Users\LePhong\pickleball-scheduler\src\pages\tournament\TournamentDirectorMode.jsx
+  164:5  warning  React Hook useMemo has an unnecessary dependency: 'localRevision'. Either exclude it or remove the dependency array                          react-hooks/exhaustive-deps
+  169:5  warning  React Hook useMemo has an unnecessary dependency: 'localRevision'. Either exclude it or remove the dependency array                          react-hooks/exhaustive-deps
+  174:5  warning  React Hook useMemo has an unnecessary dependency: 'localRevision'. Either exclude it or remove the dependency array                          react-hooks/exhaustive-deps
+  187:5  warning  React Hook useMemo has an unnecessary dependency: 'localRevision'. Either exclude it or remove the dependency array                          react-hooks/exhaustive-deps
+  289:6  warning  React Hook useCallback has missing dependencies: 'persistEvent' and 'persistTournament'. Either include them or remove the dependency array  react-hooks/exhaustive-deps
+
+C:\Users\LePhong\pickleball-scheduler\src\pages\tournament\TournamentEnginePage.jsx
+  78:7  error  The value assigned to 'tabContent' is not used in subsequent statements  no-useless-assignment
+
+C:\Users\LePhong\pickleball-scheduler\src\pages\tournament\TournamentHome.jsx
+  100:5  warning  React Hook useMemo has an unnecessary dependency: 'revision'. Either exclude it or remove the dependency array  react-hooks/exhaustive-deps
+
+C:\Users\LePhong\pickleball-scheduler\src\pages\tournament\engine\tabs\EngineSetupTab.jsx
+  3:3  error  'Box' is defined but never used  no-unused-vars
+
+C:\Users\LePhong\pickleball-scheduler\src\tournament\useScoreDrafts.js
+  16:6  warning  React Hook useMemo has a missing dependency: 'draftScope'. Either include it or remove the dependency array  react-hooks/exhaustive-deps
+
+C:\Users\LePhong\pickleball-scheduler\tests\ai-assistant-sprint7.test.js
+  26:3  error  'applyAiSuggestion' is defined but never used  no-unused-vars
+
+C:\Users\LePhong\pickleball-scheduler\tests\club-management.test.js
+  5:10  error  'loadVenues' is defined but never used  no-unused-vars
+
+C:\Users\LePhong\pickleball-scheduler\tests\identity-phaseB.test.js
+  14:10  error  'PERMISSIONS' is defined but never used        no-unused-vars
+  24:3   error  'createManagedUser' is defined but never used  no-unused-vars
+
+C:\Users\LePhong\pickleball-scheduler\tests\identity-phaseC.test.js
+  5:10  error  'PERMISSIONS' is defined but never used  no-unused-vars
+
+C:\Users\LePhong\pickleball-scheduler\tests\sprint10-integrations.test.js
+   21:3   error  'markOrderPaid' is defined but never used  no-unused-vars
+   43:32  error  'signOut' is defined but never used        no-unused-vars
+   77:3   error  'process' is not defined                   no-undef
+   78:3   error  'process' is not defined                   no-undef
+   79:3   error  'process' is not defined                   no-undef
+   85:10  error  'process' is not defined                   no-undef
+   86:10  error  'process' is not defined                   no-undef
+  144:5   error  'process' is not defined                   no-undef
+
+C:\Users\LePhong\pickleball-scheduler\tests\subscription-sprint4.test.js
+  117:11  error  'sub' is assigned a value but never used  no-unused-vars
+
+Γ£û 176 problems (65 errors, 111 warnings)
+

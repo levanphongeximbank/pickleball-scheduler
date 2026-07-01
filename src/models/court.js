@@ -48,6 +48,7 @@ export function normalizeCourt(court, index = 0) {
     defaultHourlyRate: toNonNegativeNumber(court?.defaultHourlyRate),
     peakHourlyRate: toNonNegativeNumber(court?.peakHourlyRate),
     note: court?.note ? String(court.note).trim() : "",
+    ...(court?.tenantId ? { tenantId: String(court.tenantId).trim() } : {}),
   };
 }
 

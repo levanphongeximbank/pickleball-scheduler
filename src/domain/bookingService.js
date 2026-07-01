@@ -114,7 +114,7 @@ export function createBooking(input, clubId) {
 }
 
 export function updateBookingStatus(bookingId, nextStatus, clubId) {
-  const check = guardClubAction(clubId, PERMISSIONS.BOOKINGS_MANAGE);
+  const check = guardClubAction(clubId, PERMISSIONS.BOOKING_UPDATE);
   if (!check.ok) {
     return { ok: false, message: check.error };
   }
@@ -176,7 +176,7 @@ export function updateBookingPayment(bookingId, paymentUpdate, clubId) {
 }
 
 export function deleteBooking(bookingId, clubId) {
-  const check = guardClubAction(clubId, PERMISSIONS.BOOKINGS_MANAGE);
+  const check = guardClubAction(clubId, PERMISSIONS.BOOKING_UPDATE);
   if (!check.ok) {
     return { ok: false, message: check.error };
   }
@@ -188,7 +188,7 @@ export function deleteBooking(bookingId, clubId) {
 }
 
 export function setCourtOperationalStatus(courtId, status, clubId) {
-  const check = guardClubAction(clubId, PERMISSIONS.COURTS_MANAGE);
+  const check = guardClubAction(clubId, PERMISSIONS.COURT_UPDATE);
   if (!check.ok) {
     return { ok: false, message: check.error };
   }

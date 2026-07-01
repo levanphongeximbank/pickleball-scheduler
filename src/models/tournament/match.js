@@ -20,7 +20,25 @@ function normalizeStage(value) {
 
 function normalizeStatus(value) {
   const raw = String(value || "").trim().toLowerCase();
-  return VALID_STATUSES.has(raw) ? raw : MATCH_STATUS.WAITING;
+  const synonyms = {
+    in_progress: MATCH_STATUS.PLAYING,
+    inprogress: MATCH_STATUS.PLAYING,
+    active: MATCH_STATUS.PLAYING,
+    running: MATCH_STATUS.PLAYING,
+    ongoing: MATCH_STATUS.PLAYING,
+    started: MATCH_STATUS.PLAYING,
+    playing: MATCH_STATUS.PLAYING,
+    pending: MATCH_STATUS.WAITING,
+    scheduled: MATCH_STATUS.WAITING,
+    ready: MATCH_STATUS.WAITING,
+    done: MATCH_STATUS.COMPLETED,
+    finished: MATCH_STATUS.COMPLETED,
+    played: MATCH_STATUS.COMPLETED,
+    closed: MATCH_STATUS.COMPLETED,
+    cancelled: MATCH_STATUS.POSTPONED,
+  };
+
+  return VALID_STATUSES.has(raw) ? raw : synonyms[raw] || MATCH_STATUS.WAITING;
 }
 
 export function normalizeMatch(match) {

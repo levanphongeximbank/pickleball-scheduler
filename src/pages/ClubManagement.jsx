@@ -42,6 +42,8 @@ import {
 import { stringifyClubDataExport } from "./clubData.logic.js";
 import PermissionGate from "../components/auth/PermissionGate.jsx";
 import { PERMISSIONS } from "../auth/permissions.js";
+import { usePlatformRuntime } from "../core/platform/app/usePlatformRuntime.js";
+import { buildRuntimeAccessState } from "../core/platform/app/runtimeAccess.js";
 
 function TabPanel({ children, value, index }) {
   if (value !== index) {
@@ -62,6 +64,7 @@ export default function ClubManagement() {
     deleteClub,
     refreshClubs,
   } = useClub();
+  const runtime = usePlatformRuntime();
   const {
     seasons,
     leagues,
@@ -87,11 +90,32 @@ export default function ClubManagement() {
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [importText, setImportText] = useState("");
   const [exportText, setExportText] = useState("");
+  const [accessAllowed, setAccessAllowed] = useState(true);
 
   useEffect(() => {
     setRenameValue(activeClub?.name || "");
     setNoteValue(activeClub?.note || "");
   }, [activeClub]);
+
+  useEffect(() => {
+    try {
+      const tenantId = activeClub?.tenantId || activeClubId || "club-management-preview";
+      const accessState = buildRuntimeAccessState(
+        runtime,
+        {
+          user_id: "demo-admin",
+          tenant_id: tenantId,
+          role: "SUPER_ADMIN",
+        },
+        "club.manage",
+        tenantId,
+        { source: "club.management" }
+      );
+      setAccessAllowed(accessState.allowed);
+    } catch {
+      setAccessAllowed(false);
+    }
+  }, [activeClub?.tenantId, activeClubId, runtime]);
 
   const view = useMemo(
     () =>
@@ -111,6 +135,11 @@ export default function ClubManagement() {
   );
 
   const handleCreateClub = () => {
+    if (!accessAllowed) {
+      setMessage({ type: "error", text: "Runtime platform chặn thao tác quản lý CLB." });
+      return;
+    }
+
     const result = createClub(newClubName);
 
     if (!result.ok) {
@@ -123,6 +152,11 @@ export default function ClubManagement() {
   };
 
   const handleSaveClubMeta = () => {
+    if (!accessAllowed) {
+      setMessage({ type: "error", text: "Runtime platform chặn thao tác quản lý CLB." });
+      return;
+    }
+
     const result = renameClub(activeClubId, renameValue);
 
     if (!result.ok) {
@@ -136,6 +170,11 @@ export default function ClubManagement() {
   };
 
   const handleDeleteClub = () => {
+    if (!accessAllowed) {
+      setMessage({ type: "error", text: "Runtime platform chặn thao tác quản lý CLB." });
+      return;
+    }
+
     const result = deleteClub(activeClubId);
 
     if (!result.ok) {
@@ -177,6 +216,11 @@ export default function ClubManagement() {
   };
 
   const handleExportClub = () => {
+    if (!accessAllowed) {
+      setMessage({ type: "error", text: "Runtime platform chặn thao tác quản lý CLB." });
+      return;
+    }
+
     const payload = buildFullClubExport(activeClubId);
     const text = stringifyClubDataExport({
       ...payload,
@@ -188,6 +232,11 @@ export default function ClubManagement() {
   };
 
   const handleImportClub = () => {
+    if (!accessAllowed) {
+      setMessage({ type: "error", text: "Runtime platform chặn thao tác quản lý CLB." });
+      return;
+    }
+
     try {
       const parsed = JSON.parse(importText);
       const result = importFullClubData(activeClubId, parsed);
@@ -219,6 +268,13 @@ export default function ClubManagement() {
           {message.text}
         </Alert>
       )}
+
+      <Chip
+        size="small"
+        label={`Runtime access: ${accessAllowed ? "allowed" : "denied"}`}
+        color={accessAllowed ? "success" : "warning"}
+        sx={{ mb: 2 }}
+      />
 
       <Grid container spacing={2} sx={{ mb: 3 }}>
         <Grid size={{ xs: 12, sm: 6, md: 3 }}>
@@ -296,7 +352,7 @@ export default function ClubManagement() {
                   value={noteValue}
                   onChange={(event) => setNoteValue(event.target.value)}
                 />
-                <PermissionGate permission={PERMISSIONS.CLUB_MANAGE}>
+                <PermissionGate permission={PERMISSIONS.CLUB_UPDATE}>
                   <Button variant="contained" onClick={handleSaveClubMeta}>
                     Lưu CLB
                   </Button>
@@ -310,7 +366,7 @@ export default function ClubManagement() {
                   value={newClubName}
                   onChange={(event) => setNewClubName(event.target.value)}
                 />
-                <PermissionGate permission={PERMISSIONS.CLUB_MANAGE}>
+                <PermissionGate permission={PERMISSIONS.CLUB_UPDATE}>
                   <Button variant="outlined" onClick={handleCreateClub}>
                     Thêm CLB
                   </Button>
@@ -347,7 +403,7 @@ export default function ClubManagement() {
                   value={newSeasonName}
                   onChange={(event) => setNewSeasonName(event.target.value)}
                 />
-                <PermissionGate permission={PERMISSIONS.SEASONS_MANAGE}>
+                <PermissionGate permission={PERMISSIONS.SEASON_UPDATE}>
                   <Button variant="contained" onClick={handleCreateSeason}>
                     Thêm mùa
                   </Button>
@@ -381,7 +437,7 @@ export default function ClubManagement() {
                         >
                           Chọn active
                         </Button>
-                        <PermissionGate permission={PERMISSIONS.SEASONS_MANAGE}>
+                        <PermissionGate permission={PERMISSIONS.SEASON_UPDATE}>
                           <Button
                             size="small"
                             onClick={() =>
@@ -416,7 +472,7 @@ export default function ClubManagement() {
               </Stack>
 
               <PermissionGate
-                permissions={[PERMISSIONS.SEASONS_MANAGE, PERMISSIONS.STATISTICS_EXPORT]}
+                permissions={[PERMISSIONS.SEASON_UPDATE, PERMISSIONS.STATISTICS_EXPORT]}
               >
                 <SeasonClosePanel onMessage={setMessage} />
               </PermissionGate>
@@ -483,7 +539,7 @@ export default function ClubManagement() {
                   </Select>
                 </FormControl>
 
-                <PermissionGate permission={PERMISSIONS.LEAGUES_MANAGE}>
+                <PermissionGate permission={PERMISSIONS.LEAGUE_UPDATE}>
                   <Button variant="contained" onClick={handleCreateLeague}>
                     Thêm giải
                   </Button>
@@ -516,7 +572,7 @@ export default function ClubManagement() {
                         >
                           Chọn active
                         </Button>
-                        <PermissionGate permission={PERMISSIONS.LEAGUES_MANAGE}>
+                        <PermissionGate permission={PERMISSIONS.LEAGUE_UPDATE}>
                           <Button
                             size="small"
                             onClick={() =>
@@ -558,7 +614,7 @@ export default function ClubManagement() {
 
           <TabPanel value={tab} index={4}>
             <Stack spacing={2}>
-              <PermissionGate permission={PERMISSIONS.SETTINGS_MANAGE}>
+              <PermissionGate permission={PERMISSIONS.SYSTEM_SETTING}>
                 <Stack direction="row" spacing={1}>
                   <Button variant="contained" onClick={handleExportClub}>
                     Export toàn CLB

@@ -22,11 +22,11 @@ export function useDirectorState(tournamentId) {
   const canUseDirector =
     !rbacEnabled ||
     !isAuthenticated ||
-    can(PERMISSIONS.TOURNAMENT_DIRECTOR, {
+    can(PERMISSIONS.DIRECTOR_USE, {
       clubId: activeClubId,
       venueId: activeClub?.venueId || null,
     }) ||
-    can(PERMISSIONS.TOURNAMENT_MANAGE, {
+    can(PERMISSIONS.TOURNAMENT_UPDATE, {
       clubId: activeClubId,
       venueId: activeClub?.venueId || null,
     });

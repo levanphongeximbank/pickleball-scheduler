@@ -347,7 +347,7 @@ export default function DailyPlaySetup() {
   }
 
   return (
-    <TournamentManageGate>
+    <TournamentManageGate tournamentId={tournamentId}>
     <Box>
       <Button
         startIcon={<ArrowBackIcon />}

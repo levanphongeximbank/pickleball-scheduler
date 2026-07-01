@@ -60,7 +60,7 @@ export default function SeasonExportActions({
         </Button>
       </PermissionGate>
       {showCloseLink && (
-        <PermissionGate permission={PERMISSIONS.SEASONS_MANAGE}>
+        <PermissionGate permission={PERMISSIONS.SEASON_UPDATE}>
           <Button
             size="small"
             variant="text"

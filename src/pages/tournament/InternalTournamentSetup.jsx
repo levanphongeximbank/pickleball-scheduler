@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Link as RouterLink, useNavigate, useParams } from "react-router-dom";
 
 import {
@@ -13,6 +13,8 @@ import {
   Paper,
   Select,
   Stack,
+  Tab,
+  Tabs,
   TextField,
   Typography,
 } from "@mui/material";
@@ -63,6 +65,15 @@ import {
   getRefereeSettings,
 } from "../../tournament/engines/refereeEngine.js";
 import TournamentManageGate from "../../components/tournament/TournamentManageGate.jsx";
+import {
+  findTournamentClubId,
+  getClubInternalTournamentPlayers,
+} from "../../features/club/index.js";
+import { resolveTenantIdForClub } from "../../features/tenant/guards/tenantGuard.js";
+import { isAiEngineEnabled } from "../../features/ai-assistant/index.js";
+import TournamentAiAssistantPanel from "../../components/tournament/ai/TournamentAiAssistantPanel.jsx";
+import { useAuth } from "../../context/AuthContext.jsx";
+import { useTenant } from "../../context/TenantContext.jsx";
 
 const EVENT_OPTIONS = [
   { value: EVENT_TYPE.MEN_SINGLE, label: "Đơn nam" },
@@ -75,7 +86,11 @@ const EVENT_OPTIONS = [
 export default function InternalTournamentSetup() {
   const { tournamentId } = useParams();
   const navigate = useNavigate();
-  const { activeClubId, refreshClubs } = useClub();
+  const { activeClubId, refreshClubs, switchClub } = useClub();
+  const { user } = useAuth();
+  const { currentTenantId } = useTenant();
+  const aiEnabled = isAiEngineEnabled();
+  const [setupTab, setSetupTab] = useState(0);
   const [localRevision, setLocalRevision] = useState(0);
   const [message, setMessage] = useState(null);
   const [error, setError] = useState(null);
@@ -89,19 +104,35 @@ export default function InternalTournamentSetup() {
   const anim = useTournamentAnimation();
   const pendingPlanRef = useRef(null);
 
-  const tournament = useMemo(
-    () => getTournament(activeClubId, tournamentId),
-    [activeClubId, tournamentId, localRevision]
+  const tournamentClubId = useMemo(
+    () => findTournamentClubId(tournamentId) || activeClubId,
+    [tournamentId, activeClubId]
   );
 
-  const players = useMemo(
-    () => loadPlayersForClub(activeClubId),
-    [activeClubId, localRevision]
+  useEffect(() => {
+    if (tournamentClubId && tournamentClubId !== activeClubId) {
+      switchClub(tournamentClubId);
+    }
+  }, [tournamentClubId, activeClubId, switchClub]);
+
+  const tournament = useMemo(
+    () => getTournament(tournamentClubId, tournamentId),
+    [tournamentClubId, tournamentId, localRevision]
   );
+
+  const isClubInternal = tournament?.type === "club_internal";
+
+  const players = useMemo(() => {
+    if (isClubInternal) {
+      const tenantId = tournament?.tenantId || resolveTenantIdForClub(tournamentClubId);
+      return getClubInternalTournamentPlayers(tournamentClubId, tenantId);
+    }
+    return loadPlayersForClub(tournamentClubId);
+  }, [isClubInternal, tournament, tournamentClubId, localRevision]);
 
   const courts = useMemo(
-    () => loadCourtsForClub(activeClubId),
-    [activeClubId, localRevision]
+    () => loadCourtsForClub(tournamentClubId),
+    [tournamentClubId, localRevision]
   );
 
   const refereeRoster = useMemo(
@@ -140,16 +171,16 @@ export default function InternalTournamentSetup() {
 
   const scoreDraftScope = useMemo(
     () => ({
-      clubId: activeClubId,
+      clubId: tournamentClubId,
       tournamentId,
       eventId: savedEvent?.id,
     }),
-    [activeClubId, tournamentId, savedEvent?.id]
+    [tournamentClubId, tournamentId, savedEvent?.id]
   );
 
   const persistEvent = (nextEvent, options = {}) => {
     const result = updateTournament(
-      activeClubId,
+      tournamentClubId,
       tournamentId,
       {
         events: [{ ...savedEvent, ...nextEvent }],
@@ -172,7 +203,7 @@ export default function InternalTournamentSetup() {
 
   const handleRefereeRosterChange = (nextRoster) => {
     const result = updateTournament(
-      activeClubId,
+      tournamentClubId,
       tournamentId,
       buildRefereeSettingsPatch(tournament, { roster: nextRoster })
     );
@@ -438,7 +469,7 @@ export default function InternalTournamentSetup() {
         }
 
         const eventWithoutMatches = stripMatchesFromEvent(patch.events[0]);
-        const result = advanceTournamentStatus(activeClubId, tournamentId, TOURNAMENT_STATUS.READY, {
+        const result = advanceTournamentStatus(tournamentClubId, tournamentId, TOURNAMENT_STATUS.READY, {
           events: [eventWithoutMatches],
         });
 
@@ -466,7 +497,7 @@ export default function InternalTournamentSetup() {
       return false;
     }
 
-    const result = advanceTournamentStatus(activeClubId, tournamentId, TOURNAMENT_STATUS.READY, {
+    const result = advanceTournamentStatus(tournamentClubId, tournamentId, TOURNAMENT_STATUS.READY, {
       events: patch.events,
     });
 
@@ -542,7 +573,7 @@ export default function InternalTournamentSetup() {
   }
 
   return (
-    <TournamentManageGate>
+    <TournamentManageGate tournamentId={tournamentId}>
     <Box>
       <Button
         startIcon={<ArrowBackIcon />}
@@ -585,6 +616,29 @@ export default function InternalTournamentSetup() {
         </Alert>
       )}
 
+      {aiEnabled && (
+        <Tabs value={setupTab} onChange={(_, v) => setSetupTab(v)} sx={{ mb: 2 }}>
+          <Tab label="Thiết lập" />
+          <Tab label="AI Assistant" />
+        </Tabs>
+      )}
+
+      {aiEnabled && setupTab === 1 ? (
+        <TournamentAiAssistantPanel
+          tournamentId={tournamentId}
+          clubId={tournamentClubId}
+          tenantId={currentTenantId || tournament?.tenantId || resolveTenantIdForClub(tournamentClubId)}
+          players={players}
+          courts={courts}
+          userId={user?.id || ""}
+          onApplied={() => {
+            setLocalRevision((v) => v + 1);
+            refreshClubs();
+            setMessage("Đã áp dụng đề xuất AI.");
+          }}
+        />
+      ) : (
+      <>
       <Grid container spacing={2} sx={{ mb: 2 }}>
         <Grid size={{ xs: 12 }}>
           <RefereeRosterPanel roster={refereeRoster} onChange={handleRefereeRosterChange} />
@@ -853,7 +907,7 @@ export default function InternalTournamentSetup() {
       {tournament && (
         <Box sx={{ mt: 3 }}>
           <TournamentCourtSchedulePanel
-            clubId={activeClubId}
+            clubId={tournamentClubId}
             tournament={tournament}
             courts={courts}
             onSaved={() => {
@@ -862,6 +916,8 @@ export default function InternalTournamentSetup() {
             }}
           />
         </Box>
+      )}
+      </>
       )}
     </Box>
     </TournamentManageGate>

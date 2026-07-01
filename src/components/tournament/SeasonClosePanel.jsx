@@ -209,7 +209,7 @@ export default function SeasonClosePanel({ onMessage }) {
               Tải CSV BXH
             </Button>
           </PermissionGate>
-          <PermissionGate permission={PERMISSIONS.SEASONS_MANAGE}>
+          <PermissionGate permission={PERMISSIONS.SEASON_UPDATE}>
             <Button
               variant="contained"
               color="success"
@@ -235,11 +235,17 @@ export default function SeasonClosePanel({ onMessage }) {
 
         {exportPackage && (
           <Stack spacing={2}>
-            <Typography variant="subtitle2" color="text.secondary">
-              {exportPackage.summary?.leagueCount || 0} giải •{" "}
-              {exportPackage.summary?.roundCount || 0} vòng •{" "}
-              {exportPackage.summary?.tournamentCount || 0} giải đấu
-            </Typography>
+            <Stack direction="row" spacing={1} sx={{ flexWrap: "wrap", mb: 1.5 }} useFlexGap>
+              <Chip size="small" label={`${exportPackage.summary?.leagueCount || 0} giải`} />
+              <Chip size="small" label={`${exportPackage.summary?.roundCount || 0} vòng`} />
+              <Chip size="small" label={`${exportPackage.summary?.tournamentCount || 0} giải đấu`} />
+              <Chip size="small" label={`${exportPackage.summary?.matchCount || 0} trận`} />
+              <Chip size="small" color="success" label={`${exportPackage.summary?.completedMatchCount || 0} hoàn tất`} />
+              {(exportPackage.summary?.activeMatchCount || 0) > 0 && (
+                <Chip size="small" color="warning" label={`${exportPackage.summary?.activeMatchCount || 0} đang diễn ra`} />
+              )}
+              <Chip size="small" variant="outlined" label={`${exportPackage.summary?.progressPercent || 0}% hoàn tất`} />
+            </Stack>
 
             {(exportPackage.leagues || []).map((leagueSection) => (
               <Box key={leagueSection.league.id}>
@@ -254,7 +260,9 @@ export default function SeasonClosePanel({ onMessage }) {
                 />
                 {leagueSection.tournaments?.length > 0 && (
                   <Typography variant="caption" color="text.secondary" sx={{ mt: 0.5, display: "block" }}>
-                    {leagueSection.tournaments.length} giải đấu trong giải này
+                    {leagueSection.summary?.tournamentCount || leagueSection.tournaments.length} giải đấu •{" "}
+                    {leagueSection.summary?.matchCount || 0} trận •{" "}
+                    {leagueSection.summary?.completedMatchCount || 0}/{leagueSection.summary?.matchCount || 0} hoàn tất
                   </Typography>
                 )}
               </Box>

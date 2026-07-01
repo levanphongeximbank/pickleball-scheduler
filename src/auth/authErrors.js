@@ -12,12 +12,14 @@ export function formatAuthError(message, code = "") {
   const raw = String(message || "").trim();
   if (!raw) {
     if (code === "AUTH_FAILED") return "Đăng nhập thất bại. Kiểm tra email và mật khẩu.";
-    if (code === "NO_SUPABASE") return "Supabase chưa cấu hình.";
+    if (code === "NO_SUPABASE") {
+      return "Thiếu cấu hình Supabase. Vui lòng kiểm tra VITE_SUPABASE_URL và VITE_SUPABASE_ANON_KEY trên Vercel.";
+    }
     if (code === "PROFILE_NOT_FOUND") {
       return "Chưa có profile. Liên hệ quản trị viên hoặc chạy docs/supabase-rbac.sql.";
     }
     if (code === "PROFILE_INVALID") {
-      return "Profile thiếu role. Liên hệ quản trị viên.";
+      return "Tài khoản chưa được gán vai trò. Vui lòng liên hệ quản trị viên.";
     }
     if (code === "PROFILE_SUSPENDED") {
       return "Tài khoản chưa được kích hoạt hoặc đã bị khóa.";

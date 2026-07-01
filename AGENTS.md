@@ -3,7 +3,35 @@ description:
 alwaysApply: true
 ---
 
-# Pickleball Scheduler Pro - Project Context (v3.5.8)
+# Pickleball Scheduler Pro v4.0 — General Availability (GA) ✅
+
+Sprint 12 hoàn tất phát hành chính thức Version 4.0. Không thêm tính năng mới.
+
+**GA docs:** `RELEASE_NOTES_v4.0.md`, `DEPLOYMENT_GUIDE.md`, `docs/GA-PRODUCTION-ENV-CHECKLIST.md`, `docs/SUPABASE-PRODUCTION-CHECKLIST.md`, `docs/GA-PRODUCTION-QA.md`, `docs/GA-FINAL-AUDIT.md`
+
+## Mục tiêu sản phẩm v4.0 — Sprint 12 GA Release ✅
+
+PWA (`vite-plugin-pwa`), mobile shell (bottom nav + drawer), offline cache/queue, QR check-in, push notification nền tảng, dashboard check-in, player/referee mobile mode. Module: `src/features/mobile/`. SQL: `docs/supabase-mobile-sprint9.sql`. QA: `docs/MOBILE-SPRINT9-CHECKLIST.md`. **Chưa** deploy production.
+
+## Mục tiêu sản phẩm v4.0 — AI Assistant Sprint 7 ✅
+
+Lớp tư vấn giải đấu (seed, ghép cặp, chia bảng, dự đoán thời gian, validator lịch, gợi ý luật). Module: `src/features/ai-assistant/`. Feature flag: `VITE_ENABLE_AI_ENGINE=false`. SQL: `docs/supabase-ai-assistant-sprint7.sql`. Tab **AI Assistant** trong Internal/Official setup khi flag bật. **Chưa** deploy production.
+
+## Mục tiêu sản phẩm v4.0 — Identity Phase C ✅
+
+Server RLS/RPC: `identity_list_users`, `identity_admin_update_user`, `identity_list_audit_logs`. UI `/audit`. SQL: `docs/supabase-identity-v40-phaseC.sql`. **Chưa** deploy production.
+
+## Mục tiêu sản phẩm v4.0 — Subscription Sprint 4 ✅
+
+Gói Trial / Starter / Professional / Enterprise. Tự động: gia hạn, khóa khi hết hạn (grace 3 ngày), nhắc thanh toán (7/3/1 ngày). Module: `src/features/subscription/`. SQL: `docs/supabase-subscription-sprint4.sql`. QA: `docs/SUBSCRIPTION-SPRINT4-CHECKLIST.md`. **Chưa** deploy production.
+
+## Mục tiêu sản phẩm v4.0 — Identity Phase B ✅
+
+Auth flows, User Management, My Profile, `/403`, Audit service, Referee session login. Module: `src/features/identity/`. RBAC mặc định **tắt** (`VITE_RBAC_ENABLED`). SQL: sprint1 + `docs/supabase-identity-v40-phaseB.sql`. QA staging: `docs/STAGING-APPLY-QA-v40-phaseB.md`. **Chưa** deploy production.
+
+## Mục tiêu sản phẩm v4.0 — Identity Phase A ✅
+
+Foundation roles/permissions CRUD, `normalizeRole` VENUE_* ↔ COURT_*, `audit_logs`. SQL: `docs/supabase-identity-v40-sprint1.sql`. Kiến trúc: `src/features/identity/ARCHITECTURE.md`.
 
 ## Vai trò của Codex
 

@@ -37,10 +37,13 @@ import {
 import { buildBookingsCsv, downloadTextFile } from "../../domain/courtManagementSettings.js";
 import PermissionGate from "../../components/auth/PermissionGate.jsx";
 import { PERMISSIONS } from "../../auth/permissions.js";
+import { usePlatformRuntime } from "../../core/platform/app/usePlatformRuntime.js";
+import { buildRuntimeAccessState } from "../../core/platform/app/runtimeAccess.js";
 import BookingForm from "./BookingForm.jsx";
 import BookingDetail from "./BookingDetail.jsx";
 
 export default function BookingList({ clubId, courts = [], bookings = [], onRefresh }) {
+  const runtime = usePlatformRuntime();
   const [searchParams] = useSearchParams();
   const [dateFilter, setDateFilter] = useState(todayIsoDate());
   const [showAllDates, setShowAllDates] = useState(false);
@@ -51,6 +54,7 @@ export default function BookingList({ clubId, courts = [], bookings = [], onRefr
   const [sortBy, setSortBy] = useState("date_asc");
   const [formOpen, setFormOpen] = useState(false);
   const [detailBooking, setDetailBooking] = useState(null);
+  const [accessAllowed, setAccessAllowed] = useState(true);
 
   useEffect(() => {
     const query = searchParams.get("q");
@@ -60,6 +64,26 @@ export default function BookingList({ clubId, courts = [], bookings = [], onRefr
       setShowAllDates(true);
     }
   }, [searchParams]);
+
+  useEffect(() => {
+    try {
+      const tenantId = clubId || "booking-list-preview";
+      const accessState = buildRuntimeAccessState(
+        runtime,
+        {
+          user_id: "demo-admin",
+          tenant_id: tenantId,
+          role: "SUPER_ADMIN",
+        },
+        "booking.manage",
+        tenantId,
+        { source: "booking.list" }
+      );
+      setAccessAllowed(accessState.allowed);
+    } catch {
+      setAccessAllowed(false);
+    }
+  }, [clubId, runtime]);
 
   const filtered = useMemo(() => {
     const keyword = search.trim().toLowerCase();
@@ -233,10 +257,15 @@ export default function BookingList({ clubId, courts = [], bookings = [], onRefr
           <Button variant="outlined" onClick={() => downloadTextFile(`booking-${dateFilter || "all"}.csv`, buildBookingsCsv(filtered))}>
             Xuất CSV
           </Button>
+          <Chip
+            size="small"
+            label={`Runtime access: ${accessAllowed ? "allowed" : "denied"}`}
+            color={accessAllowed ? "success" : "warning"}
+          />
           <PermissionGate
-            permissions={[PERMISSIONS.BOOKINGS_CREATE, PERMISSIONS.BOOKINGS_MANAGE]}
+            permissions={[PERMISSIONS.BOOKING_CREATE, PERMISSIONS.BOOKING_UPDATE]}
           >
-            <Button variant="contained" startIcon={<AddIcon />} onClick={() => setFormOpen(true)}>
+            <Button variant="contained" startIcon={<AddIcon />} onClick={() => { if (!accessAllowed) { return; } setFormOpen(true); }}>
               Tạo booking
             </Button>
           </PermissionGate>

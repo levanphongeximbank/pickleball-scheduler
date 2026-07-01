@@ -2,11 +2,11 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useState } 
 
 import { can, canAccessClub, canAccessVenue, canAll, canAny } from "../auth/rbac.js";
 import { clearAuthSession, loadAuthSession } from "../auth/authStorage.js";
+import { formatAuthError } from "../auth/authErrors.js";
 import {
   enableRbac,
   getAuthState,
   getCurrentUser,
-  isSupabaseAuthAvailable,
   restoreSupabaseSession,
   signInAs,
   signInDev,
@@ -15,12 +15,14 @@ import {
   signOut,
   subscribeToSupabaseAuth,
 } from "../auth/authService.js";
+import { getSupabaseConfigError, hasSupabaseConfig } from "../auth/supabaseClient.js";
 
 const AuthContext = createContext(null);
 
 export function AuthProvider({ children }) {
   const [state, setState] = useState(() => getAuthState());
-  const [authLoading, setAuthLoading] = useState(() => isSupabaseAuthAvailable());
+  const [authLoading, setAuthLoading] = useState(() => hasSupabaseConfig());
+  const [authError, setAuthError] = useState(() => getSupabaseConfigError());
 
   const refresh = useCallback(() => {
     setState(getAuthState());
@@ -28,23 +30,69 @@ export function AuthProvider({ children }) {
 
   useEffect(() => {
     let cancelled = false;
+    let timeoutId = null;
 
     const bootstrap = async () => {
-      try {
-        if (isSupabaseAuthAvailable()) {
-          const existing = loadAuthSession();
-          if (existing?.provider === "dev") {
-            clearAuthSession();
-          }
-          await restoreSupabaseSession();
+      const env = typeof import.meta !== "undefined" && import.meta.env ? import.meta.env : {};
+      const shouldLogAuthDebug = env.DEV || env.VITE_ENABLE_AUTH_DEBUG === "true";
+      const configError = getSupabaseConfigError();
+
+      if (configError) {
+        clearAuthSession();
+        if (!cancelled) {
+          setAuthError(configError);
+          setState(getAuthState());
+          setAuthLoading(false);
         }
-      } catch {
-        // Supabase env sai hoặc mạng lỗi — không văng app khi chưa cấu hình Supabase.
+        return;
       }
 
-      if (!cancelled) {
-        refresh();
-        setAuthLoading(false);
+      try {
+        setAuthError(null);
+        setAuthLoading(true);
+
+        const existing = loadAuthSession();
+        if (existing?.provider === "dev") {
+          clearAuthSession();
+        }
+
+        const result = await Promise.race([
+          restoreSupabaseSession(),
+          new Promise((_, reject) => {
+            timeoutId = window.setTimeout(() => reject(new Error("AUTH_INIT_TIMEOUT")), 5000);
+          }),
+        ]);
+
+        if (!cancelled) {
+          if (result?.ok) {
+            setAuthError(null);
+          } else if (result?.code === "PROFILE_INVALID" || result?.code === "PROFILE_NOT_FOUND" || result?.code === "PROFILE_REQUIRED" || result?.code === "PROFILE_SUSPENDED") {
+            clearAuthSession();
+            setAuthError(formatAuthError(result.error, result.code));
+          } else if (result?.code === "NO_SUPABASE") {
+            clearAuthSession();
+            setAuthError(getSupabaseConfigError());
+          } else {
+            clearAuthSession();
+          }
+          refresh();
+        }
+      } catch (error) {
+        if (shouldLogAuthDebug) {
+          console.error("[auth] initialization failed", error);
+        }
+        if (!cancelled) {
+          clearAuthSession();
+          setAuthError(error?.message || "Không thể khởi tạo phiên đăng nhập.");
+          refresh();
+        }
+      } finally {
+        if (!cancelled) {
+          setAuthLoading(false);
+        }
+        if (timeoutId) {
+          window.clearTimeout(timeoutId);
+        }
       }
     };
 
@@ -58,6 +106,9 @@ export function AuthProvider({ children }) {
 
     return () => {
       cancelled = true;
+      if (timeoutId) {
+        window.clearTimeout(timeoutId);
+      }
       unsubscribe();
     };
   }, [refresh]);
@@ -130,6 +181,7 @@ export function AuthProvider({ children }) {
     () => ({
       ...state,
       authLoading,
+      authError,
       getCurrentUser,
       refresh,
       signInDev: handleSignInDev,
@@ -147,7 +199,7 @@ export function AuthProvider({ children }) {
       canAccessClub: (clubId, clubMeta = {}) =>
         canAccessClub(state.user, clubId, clubMeta, rbacOptions),
     }),
-    [state, authLoading, refresh, handleSignInDev, handleSignInAs, handleSignInWithPassword, handleSignUpWithPassword, handleSignOut, handleEnableRbac, rbacOptions]
+    [state, authLoading, authError, refresh, handleSignInDev, handleSignInAs, handleSignInWithPassword, handleSignUpWithPassword, handleSignOut, handleEnableRbac, rbacOptions]
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

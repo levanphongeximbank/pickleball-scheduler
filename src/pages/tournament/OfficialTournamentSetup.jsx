@@ -79,6 +79,11 @@ import {
 import { useTournamentAnimation } from "../../components/tournament/animation/useTournamentAnimation.js";
 import { PAIRING_CONTROL_MODES } from "../../components/tournament/animation/pairing/usePairingSequence.js";
 import TournamentManageGate from "../../components/tournament/TournamentManageGate.jsx";
+import { isAiEngineEnabled } from "../../features/ai-assistant/index.js";
+import TournamentAiAssistantPanel from "../../components/tournament/ai/TournamentAiAssistantPanel.jsx";
+import { useAuth } from "../../context/AuthContext.jsx";
+import { useTenant } from "../../context/TenantContext.jsx";
+import { resolveTenantIdForClub } from "../../features/tenant/guards/tenantGuard.js";
 
 const EVENT_OPTIONS = [
   { value: EVENT_TYPE.MEN_SINGLE, label: "Đơn nam" },
@@ -97,6 +102,10 @@ export default function OfficialTournamentSetup() {
   const { tournamentId } = useParams();
   const navigate = useNavigate();
   const { activeClub, activeClubId, refreshClubs } = useClub();
+  const { user } = useAuth();
+  const { currentTenantId } = useTenant();
+  const aiEnabled = isAiEngineEnabled();
+  const [setupTab, setSetupTab] = useState(0);
   const [localRevision, setLocalRevision] = useState(0);
   const [message, setMessage] = useState(null);
   const [error, setError] = useState(null);
@@ -795,7 +804,7 @@ export default function OfficialTournamentSetup() {
     : "Random có điều kiện, không dùng rating/seed";
 
   return (
-    <TournamentManageGate>
+    <TournamentManageGate tournamentId={tournamentId}>
     <Box>
       <Button
         startIcon={<ArrowBackIcon />}
@@ -885,6 +894,29 @@ export default function OfficialTournamentSetup() {
         </Alert>
       )}
 
+      {aiEnabled && (
+        <Tabs value={setupTab} onChange={(_, v) => setSetupTab(v)} sx={{ mb: 2 }}>
+          <Tab label="Thiết lập" />
+          <Tab label="AI Assistant" />
+        </Tabs>
+      )}
+
+      {aiEnabled && setupTab === 1 ? (
+        <TournamentAiAssistantPanel
+          tournamentId={tournamentId}
+          clubId={activeClubId}
+          tenantId={currentTenantId || tournament?.tenantId || resolveTenantIdForClub(activeClubId)}
+          players={players}
+          courts={courts}
+          userId={user?.id || ""}
+          onApplied={() => {
+            setLocalRevision((v) => v + 1);
+            refreshClubs();
+            setMessage("Đã áp dụng đề xuất AI.");
+          }}
+        />
+      ) : (
+      <>
       <Grid container spacing={2} sx={{ mb: 2 }}>
         <Grid size={{ xs: 12 }}>
           <RefereeRosterPanel roster={refereeRoster} onChange={handleRefereeRosterChange} />
@@ -1318,6 +1350,8 @@ export default function OfficialTournamentSetup() {
             }}
           />
         </Box>
+      )}
+      </>
       )}
     </Box>
     </TournamentManageGate>

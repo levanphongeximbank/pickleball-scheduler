@@ -1,5 +1,13 @@
-import { ROLES, isGlobalRole, isClubScopedRole, isVenueScopedRole } from "./roles.js";
-import { getPermissionScope, PERMISSION_SCOPE } from "./permissions.js";
+import {
+  ROLES,
+  isGlobalRole,
+  isClubScopedRole,
+  isVenueScopedRole,
+  isRefereeRole,
+  rolesEqual,
+  normalizeRole,
+} from "./roles.js";
+import { getPermissionScopes, PERMISSION_SCOPE, PERMISSIONS } from "./permissions.js";
 import { roleHasPermission } from "./rolePermissions.js";
 import { isUserActive } from "../models/user.js";
 
@@ -13,12 +21,12 @@ export function isRbacEnforced({ rbacEnabled = false, user = null } = {}) {
 
 export function hasRole(user, role) {
   if (!user?.role) return false;
-  return user.role === role;
+  return rolesEqual(user.role, role);
 }
 
 export function hasAnyRole(user, roles = []) {
   if (!user?.role) return false;
-  return roles.includes(user.role);
+  return roles.some((role) => rolesEqual(user.role, role));
 }
 
 /**
@@ -57,7 +65,7 @@ export function canAny(user, permissions = [], scope = {}, options = {}) {
 
 export function assertCan(user, permission, scope = {}, options = {}) {
   if (!can(user, permission, scope, options)) {
-    const role = user?.role || "anonymous";
+    const role = normalizeRole(user?.role) || user?.role || "anonymous";
     return {
       ok: false,
       error: `Không có quyền: ${permission} (role: ${role})`,
@@ -136,6 +144,13 @@ export function canAccessClub(user, clubId, clubMeta = {}, options = {}) {
     return true;
   }
 
+  if (isRefereeRole(user.role)) {
+    if (clubVenueId && user.venueId && user.venueId !== clubVenueId) {
+      return false;
+    }
+    return Boolean(user.venueId);
+  }
+
   return false;
 }
 
@@ -144,27 +159,41 @@ function matchesScope(user, permission, scope) {
     return true;
   }
 
-  const permissionScope = getPermissionScope(permission);
+  const scopes = getPermissionScopes(permission);
 
+  if (hasRole(user, ROLES.PLAYER) && scopes.includes(PERMISSION_SCOPE.SELF)) {
+    return matchesSelfScope(user, scope, permission);
+  }
+
+  return scopes.some((permissionScope) =>
+    matchesScopeType(user, permissionScope, scope, permission)
+  );
+}
+
+function matchesScopeType(user, permissionScope, scope, permission) {
   switch (permissionScope) {
     case PERMISSION_SCOPE.GLOBAL:
       return isGlobalRole(user.role);
 
     case PERMISSION_SCOPE.VENUE:
-      return matchesVenueScope(user, scope.venueId);
+      return matchesVenueScope(user, scope.venueId, permission);
 
     case PERMISSION_SCOPE.CLUB:
       return matchesClubScope(user, scope);
 
     case PERMISSION_SCOPE.SELF:
-      return matchesSelfScope(user, scope);
+      return matchesSelfScope(user, scope, permission);
 
     default:
       return false;
   }
 }
 
-function matchesVenueScope(user, venueId) {
+function matchesVenueScope(user, venueId, permission) {
+  if (permission === PERMISSIONS.SYSTEM_SETTING && !venueId) {
+    return false;
+  }
+
   if (!venueId) {
     return isVenueScopedRole(user.role) && Boolean(user.venueId);
   }
@@ -190,6 +219,13 @@ function matchesClubScope(user, scope) {
     return !venueId || user.venueId === venueId;
   }
 
+  if (isRefereeRole(user.role)) {
+    if (venueId && user.venueId !== venueId) {
+      return false;
+    }
+    return Boolean(user.venueId);
+  }
+
   if (isClubScopedRole(user.role)) {
     if (clubId && user.clubId !== clubId) {
       return false;
@@ -203,7 +239,7 @@ function matchesClubScope(user, scope) {
   return false;
 }
 
-function matchesSelfScope(user, scope) {
+function matchesSelfScope(user, scope, permission) {
   if (!hasRole(user, ROLES.PLAYER)) {
     return false;
   }
@@ -212,8 +248,19 @@ function matchesSelfScope(user, scope) {
     return false;
   }
 
-  if (scope.playerId && user.playerId !== scope.playerId) {
-    return false;
+  if (permission === PERMISSIONS.PLAYER_VIEW || permission === PERMISSIONS.PLAYER_UPDATE) {
+    if (!scope.playerId) {
+      return false;
+    }
+    return user.playerId === scope.playerId;
+  }
+
+  if (
+    permission === PERMISSIONS.TOURNAMENT_VIEW ||
+    permission === PERMISSIONS.STATISTICS_VIEW ||
+    permission === PERMISSIONS.TOURNAMENT_CREATE
+  ) {
+    return Boolean(user.clubId);
   }
 
   return Boolean(user.playerId || user.clubId);

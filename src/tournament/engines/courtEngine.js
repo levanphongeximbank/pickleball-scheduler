@@ -53,7 +53,7 @@ export function buildCourtRuntimeStates(courts = [], matches = [], options = {})
     );
 }
 
-export function canAssignMatchToCourt(courtState, match) {
+export function canAssignMatchToCourt(courtState, match, options = {}) {
   if (!courtState) {
     return { ok: false, error: "Khong tim thay san." };
   }
@@ -67,10 +67,12 @@ export function canAssignMatchToCourt(courtState, match) {
   }
 
   if (
+    !options.allowPlaying &&
     match?.status &&
     match.status !== MATCH_STATUS.WAITING &&
     match.status !== MATCH_STATUS.ASSIGNED &&
-    match.status !== MATCH_STATUS.POSTPONED
+    match.status !== MATCH_STATUS.POSTPONED &&
+    match.status !== MATCH_STATUS.PLAYING
   ) {
     return { ok: false, error: "Tran khong o trang thai cho gan san." };
   }
@@ -111,6 +113,60 @@ export function assignMatchToCourt(courtStates, match, courtId) {
     ok: true,
     courtStates: nextStates,
     match: nextMatch,
+  };
+}
+
+export function transferMatchToCourt(courtStates, match, fromCourtId, toCourtId) {
+  const states = [...(courtStates || [])];
+  const fromId = normalizeCourtId(fromCourtId);
+  const toId = normalizeCourtId(toCourtId);
+
+  if (fromId === toId) {
+    return { ok: false, error: "Sân đích trùng sân hiện tại.", courtStates: states, match };
+  }
+
+  const targetState = states.find((item) => normalizeCourtId(item.id) === toId);
+  const validation = canAssignMatchToCourt(targetState, match, { allowPlaying: true });
+  if (!validation.ok) {
+    return { ok: false, error: validation.error, courtStates: states, match };
+  }
+
+  const released = releaseCourt(states, fromId, null);
+  if (!released.ok) {
+    return { ok: false, error: released.error, courtStates: states, match };
+  }
+
+  const assignResult = assignMatchToCourt(released.courtStates, match, toId);
+  if (!assignResult.ok) {
+    return assignResult;
+  }
+
+  const nextStates = assignResult.courtStates.map((item) => {
+    if (normalizeCourtId(item.id) !== toId) {
+      return item;
+    }
+    return {
+      ...item,
+      status: match.status === MATCH_STATUS.PLAYING ? COURT_STATUS.PLAYING : item.status,
+      currentMatchId: match.id,
+    };
+  });
+
+  const preservedMatch = {
+    ...assignResult.match,
+    courtId: toId,
+    startedAt: match.startedAt,
+    status: match.status,
+    scoreA: match.scoreA,
+    scoreB: match.scoreB,
+  };
+
+  return {
+    ok: true,
+    courtStates: nextStates,
+    match: preservedMatch,
+    fromCourtId: fromId,
+    toCourtId: toId,
   };
 }
 

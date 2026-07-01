@@ -16,7 +16,7 @@ export default function DailyPlayLauncher() {
   const { can } = useAuth();
   const [error, setError] = useState(null);
 
-  const canCreate = can(PERMISSIONS.TOURNAMENT_MANAGE, {
+  const canCreate = can(PERMISSIONS.TOURNAMENT_UPDATE, {
     clubId: activeClubId,
   });
 

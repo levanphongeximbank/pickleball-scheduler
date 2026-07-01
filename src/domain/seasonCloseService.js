@@ -49,7 +49,7 @@ export function buildSeasonExport(clubId, seasonId) {
 }
 
 export function closeSeason(clubId, seasonId, options = {}) {
-  const check = guardClubAction(clubId, PERMISSIONS.SEASONS_MANAGE);
+  const check = guardClubAction(clubId, PERMISSIONS.SEASON_UPDATE);
   if (!check.ok) {
     return check;
   }

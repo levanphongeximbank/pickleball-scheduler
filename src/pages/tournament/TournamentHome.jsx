@@ -21,6 +21,7 @@ import {
   Typography,
 } from "@mui/material";
 
+import AutoAwesomeIcon from "@mui/icons-material/AutoAwesome";
 import GroupsIcon from "@mui/icons-material/Groups";
 import EmojiEventsIcon from "@mui/icons-material/EmojiEvents";
 
@@ -36,6 +37,8 @@ import { TOURNAMENT_MODE, TOURNAMENT_STATUS, OFFICIAL_MODE } from "../../models/
 import ModeCard from "../../components/tournament/ModeCard.jsx";
 import PermissionGate from "../../components/auth/PermissionGate.jsx";
 import { PERMISSIONS } from "../../auth/permissions.js";
+import { usePlatformRuntime } from "../../core/platform/app/usePlatformRuntime.js";
+import { buildRuntimeAccessState } from "../../core/platform/app/runtimeAccess.js";
 
 const CREATE_TOURNAMENT_MODE_OPTIONS = [
   {
@@ -89,15 +92,37 @@ export default function TournamentHome() {
   const navigate = useNavigate();
   const { activeClub, activeClubId, revision, refreshClubs } = useClub();
   const { activeSeason, activeLeague } = useSeasonLeague();
+  const runtime = usePlatformRuntime();
   const [message, setMessage] = useState(null);
   const [error, setError] = useState(null);
   const [selectedIds, setSelectedIds] = useState([]);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [accessAllowed, setAccessAllowed] = useState(true);
 
   const tournaments = useMemo(
     () => listTournaments(activeClubId),
     [activeClubId, revision]
   );
+
+  useMemo(() => {
+    try {
+      const tenantId = activeClub?.tenantId || activeClubId || "tournament-home-preview";
+      const accessState = buildRuntimeAccessState(
+        runtime,
+        {
+          user_id: "demo-admin",
+          tenant_id: tenantId,
+          role: "SUPER_ADMIN",
+        },
+        "tournament.manage",
+        tenantId,
+        { source: "tournament.home" }
+      );
+      setAccessAllowed(accessState.allowed);
+    } catch {
+      setAccessAllowed(false);
+    }
+  }, [activeClub?.tenantId, activeClubId, runtime]);
 
   const deletableSelectedCount = useMemo(
     () =>
@@ -125,6 +150,11 @@ export default function TournamentHome() {
   };
 
   const handleConfirmDelete = () => {
+    if (!accessAllowed) {
+      setError("Runtime platform chặn thao tác quản lý giải đấu.");
+      return;
+    }
+
     setError(null);
     setMessage(null);
 
@@ -164,6 +194,11 @@ export default function TournamentHome() {
   };
 
   const handleStartMode = (option) => {
+    if (!accessAllowed) {
+      setError("Runtime platform chặn thao tác quản lý giải đấu.");
+      return;
+    }
+
     setError(null);
     setMessage(null);
 
@@ -232,7 +267,14 @@ export default function TournamentHome() {
         </Alert>
       )}
 
-      <PermissionGate permission={PERMISSIONS.TOURNAMENT_MANAGE}>
+      <Chip
+        size="small"
+        label={`Runtime access: ${accessAllowed ? "allowed" : "denied"}`}
+        color={accessAllowed ? "success" : "warning"}
+        sx={{ mb: 2 }}
+      />
+
+      <PermissionGate permission={PERMISSIONS.TOURNAMENT_UPDATE}>
         <Grid container spacing={2} sx={{ mb: 3 }}>
           {CREATE_TOURNAMENT_MODE_OPTIONS.map((option) => (
             <Grid key={option.mode} size={{ xs: 12, md: 6 }}>
@@ -290,7 +332,7 @@ export default function TournamentHome() {
               >
                 Bỏ chọn tất cả
               </Button>
-              <PermissionGate permission={PERMISSIONS.TOURNAMENT_MANAGE}>
+              <PermissionGate permission={PERMISSIONS.TOURNAMENT_UPDATE}>
                 <Button
                   color="error"
                   variant="outlined"
@@ -368,6 +410,20 @@ export default function TournamentHome() {
                   }
                 />
                 </ListItemButton>
+                {(tournament.mode === TOURNAMENT_MODE.INTERNAL_TOURNAMENT ||
+                  tournament.mode === TOURNAMENT_MODE.OFFICIAL_TOURNAMENT) && (
+                  <PermissionGate permission={PERMISSIONS.TOURNAMENT_UPDATE}>
+                    <Button
+                      size="small"
+                      variant="text"
+                      startIcon={<AutoAwesomeIcon />}
+                      onClick={() => navigate(`/tournaments/${tournament.id}/engine`)}
+                      sx={{ mt: 0.5, flexShrink: 0 }}
+                    >
+                      Engine
+                    </Button>
+                  </PermissionGate>
+                )}
               </ListItem>
             ))}
           </List>

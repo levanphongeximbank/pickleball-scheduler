@@ -8,13 +8,33 @@ const MODE_LABELS = {
   official_tournament: "Chinh thuc",
 };
 
+const COMPLETED_MATCH_STATUSES = new Set(["completed", "forfeit", "forfeited", "finished", "closed"]);
+const ACTIVE_MATCH_STATUSES = new Set(["playing", "in_progress", "in progress", "live", "active"]);
+
+function normalizeMatchStatus(status) {
+  const normalized = String(status || "").trim().toLowerCase();
+
+  if (COMPLETED_MATCH_STATUSES.has(normalized)) {
+    return "completed";
+  }
+
+  if (ACTIVE_MATCH_STATUSES.has(normalized)) {
+    return "active";
+  }
+
+  return "pending";
+}
+
 export function summarizeTournamentForExport(tournament) {
   if (!tournament) {
     return null;
   }
 
   const matches = tournament.matches || [];
-  const completed = matches.filter((match) => match.status === "completed").length;
+  const completed = matches.filter((match) => normalizeMatchStatus(match.status) === "completed").length;
+  const active = matches.filter((match) => normalizeMatchStatus(match.status) === "active").length;
+  const total = matches.length;
+  const progressPercent = total > 0 ? Math.round((completed / total) * 100) : 0;
 
   return {
     id: tournament.id,
@@ -26,8 +46,10 @@ export function summarizeTournamentForExport(tournament) {
     leagueId: tournament.leagueId || null,
     roundId: tournament.roundId || null,
     entryCount: (tournament.entries || []).length,
-    matchCount: matches.length,
+    matchCount: total,
     completedMatchCount: completed,
+    activeMatchCount: active,
+    progressPercent,
     createdAt: tournament.createdAt || null,
     updatedAt: tournament.updatedAt || null,
   };
@@ -54,6 +76,15 @@ export function buildLeagueExportSection(
   league,
   { standingsRows = [], rounds = [], tournaments = [] } = {}
 ) {
+  const tournamentSummaries = tournaments.map(summarizeTournamentForExport).filter(Boolean);
+  const matchCount = tournamentSummaries.reduce((sum, item) => sum + (item.matchCount || 0), 0);
+  const completedMatchCount = tournamentSummaries.reduce(
+    (sum, item) => sum + (item.completedMatchCount || 0),
+    0
+  );
+  const activeMatchCount = tournamentSummaries.reduce((sum, item) => sum + (item.activeMatchCount || 0), 0);
+  const progressPercent = matchCount > 0 ? Math.round((completedMatchCount / matchCount) * 100) : 0;
+
   return {
     league: {
       id: league.id,
@@ -68,7 +99,15 @@ export function buildLeagueExportSection(
       ...row,
     })),
     rounds: rounds.map((round) => summarizeRoundForExport(round, tournaments)),
-    tournaments: tournaments.map(summarizeTournamentForExport).filter(Boolean),
+    tournaments: tournamentSummaries,
+    summary: {
+      tournamentCount: tournamentSummaries.length,
+      roundCount: rounds.length,
+      matchCount,
+      completedMatchCount,
+      activeMatchCount,
+      progressPercent,
+    },
   };
 }
 
@@ -101,6 +140,17 @@ export function buildSeasonExportPackage({
   });
 
   const leagueIds = new Set(leagues.map((league) => league.id));
+  const summarizedTournaments = (tournaments || []).map(summarizeTournamentForExport).filter(Boolean);
+  const totalMatches = summarizedTournaments.reduce((sum, item) => sum + (item.matchCount || 0), 0);
+  const totalCompletedMatches = summarizedTournaments.reduce(
+    (sum, item) => sum + (item.completedMatchCount || 0),
+    0
+  );
+  const totalActiveMatches = summarizedTournaments.reduce(
+    (sum, item) => sum + (item.activeMatchCount || 0),
+    0
+  );
+  const overallProgressPercent = totalMatches > 0 ? Math.round((totalCompletedMatches / totalMatches) * 100) : 0;
   const unassignedTournaments = tournaments.filter(
     (tournament) => !tournament.leagueId || !leagueIds.has(tournament.leagueId)
   );
@@ -124,6 +174,10 @@ export function buildSeasonExportPackage({
       roundCount: rounds.length,
       tournamentCount: tournaments.length,
       playerCount: players.length,
+      matchCount: totalMatches,
+      completedMatchCount: totalCompletedMatches,
+      activeMatchCount: totalActiveMatches,
+      progressPercent: overallProgressPercent,
     },
     leagues: leagueSections,
     unassignedTournaments: unassignedTournaments

@@ -34,7 +34,7 @@ export function createLeague(clubId, seasonId, name, options = {}) {
     return { ok: false, error: "Ten giai khong duoc de trong." };
   }
 
-  const check = guardClubAction(clubId, PERMISSIONS.LEAGUES_MANAGE);
+  const check = guardClubAction(clubId, PERMISSIONS.LEAGUE_UPDATE);
   if (!check.ok) {
     return check;
   }
@@ -58,7 +58,7 @@ export function createLeague(clubId, seasonId, name, options = {}) {
 }
 
 export function updateLeague(clubId, leagueId, patch = {}) {
-  const check = guardClubAction(clubId, PERMISSIONS.LEAGUES_MANAGE);
+  const check = guardClubAction(clubId, PERMISSIONS.LEAGUE_UPDATE);
   if (!check.ok) {
     return check;
   }
@@ -102,7 +102,7 @@ export function completeLeague(clubId, leagueId) {
 }
 
 export function deleteLeague(clubId, leagueId) {
-  const check = guardClubAction(clubId, PERMISSIONS.LEAGUES_MANAGE);
+  const check = guardClubAction(clubId, PERMISSIONS.LEAGUE_UPDATE);
   if (!check.ok) {
     return check;
   }

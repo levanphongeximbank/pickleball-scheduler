@@ -1,6 +1,10 @@
 import { getActiveClubId } from "../data/club.js";
 import { PERMISSIONS } from "../auth/permissions.js";
-import { guardClubAction, guardDirectorAction } from "../auth/guardAction.js";
+import { guardClubAccess, guardClubAction, guardDirectorAction } from "../auth/guardAction.js";
+import {
+  guardRecordTenant,
+  resolveTenantIdForClub,
+} from "../features/tenant/guards/tenantGuard.js";
 import {
   TOURNAMENT_MODE,
   TOURNAMENT_STATUS,
@@ -192,6 +196,11 @@ export function validateTournamentStatusChange(tournament, nextStatus, options =
 }
 
 export function listTournaments(clubId = getActiveClubId(), filters = {}) {
+  const access = guardClubAccess(clubId);
+  if (!access.ok) {
+    return [];
+  }
+
   const data = loadClubData(clubId);
   let tournaments = data.tournaments || [];
 
@@ -219,6 +228,39 @@ export function getTournament(clubId, tournamentId) {
   return data.tournaments.find((item) => item.id === tournamentId) || null;
 }
 
+/** Kiểm tra quyền CLB + tenant trước khi trả tournament (Sprint 2). */
+export function assertTournamentAccess(clubId, tournamentId, options = {}) {
+  const { tenantId = null } = options;
+  const access = guardClubAccess(clubId, options);
+  if (!access.ok) {
+    return {
+      ok: false,
+      error: access.error,
+      code: access.code || "FORBIDDEN",
+      tournament: null,
+    };
+  }
+
+  const tournament = getTournament(clubId, tournamentId);
+  if (!tournament) {
+    return {
+      ok: false,
+      error: "Không tìm thấy giải.",
+      code: "NOT_FOUND",
+      tournament: null,
+    };
+  }
+
+  if (tenantId) {
+    const tenantCheck = guardRecordTenant(tournament, tenantId, options);
+    if (!tenantCheck.ok) {
+      return { ...tenantCheck, tournament: null };
+    }
+  }
+
+  return { ok: true, tournament };
+}
+
 export function createTournament(clubId, options = {}) {
   const trimmed = String(options.name || "").trim();
 
@@ -226,7 +268,7 @@ export function createTournament(clubId, options = {}) {
     return { ok: false, error: "Ten giai khong duoc de trong." };
   }
 
-  const check = guardClubAction(clubId, PERMISSIONS.TOURNAMENT_MANAGE);
+  const check = guardClubAction(clubId, PERMISSIONS.TOURNAMENT_UPDATE);
   if (!check.ok) {
     return check;
   }
@@ -240,6 +282,7 @@ export function createTournament(clubId, options = {}) {
     name: trimmed,
     seasonId,
     leagueId,
+    tenantId: resolveTenantIdForClub(clubId),
   });
 
   data.tournaments = [...(data.tournaments || []), tournament];
@@ -260,7 +303,7 @@ function findTournamentInData(data, tournamentId) {
 export function updateTournament(clubId, tournamentId, patch = {}, options = {}) {
   const check = options.directorMode
     ? guardDirectorAction(clubId, options)
-    : guardClubAction(clubId, PERMISSIONS.TOURNAMENT_MANAGE, {}, options);
+    : guardClubAction(clubId, PERMISSIONS.TOURNAMENT_UPDATE, {}, options);
   if (!check.ok) {
     return check;
   }
@@ -317,7 +360,7 @@ export function setTournamentStatus(clubId, tournamentId, status, options = {}) 
 }
 
 export function deleteTournament(clubId, tournamentId) {
-  const check = guardClubAction(clubId, PERMISSIONS.TOURNAMENT_MANAGE);
+  const check = guardClubAction(clubId, PERMISSIONS.TOURNAMENT_UPDATE);
   if (!check.ok) {
     return check;
   }

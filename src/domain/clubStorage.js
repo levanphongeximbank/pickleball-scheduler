@@ -10,6 +10,10 @@ import { normalizeCustomers } from "../models/customer.js";
 import { normalizeTournaments } from "../models/tournament/index.js";
 import { migrateV2ToV3 } from "./migrateV2ToV3.js";
 import { normalizeCourtManagementSettings } from "./courtManagementSettings.js";
+import {
+  resolveTenantIdForClub,
+  stampWithTenantId,
+} from "../features/tenant/guards/tenantGuard.js";
 
 export const CLUB_DATA_KEY = "pickleball-club-data-v3";
 export const CLUB_SCHEMA_VERSION = 3.5;
@@ -264,9 +268,14 @@ export function loadPlayersForClub(clubId = getActiveClubId()) {
   return loadClubData(clubId).players;
 }
 
+function stampCollectionWithTenant(items, clubId) {
+  const tenantId = resolveTenantIdForClub(clubId);
+  return (items || []).map((item) => stampWithTenantId(item, tenantId));
+}
+
 export function savePlayersForClub(players, clubId = getActiveClubId()) {
   const data = loadClubData(clubId);
-  data.players = normalizePlayers(players);
+  data.players = normalizePlayers(stampCollectionWithTenant(players, clubId));
   return saveClubData(clubId, data);
 }
 
@@ -276,7 +285,7 @@ export function loadCourtsForClub(clubId = getActiveClubId()) {
 
 export function saveCourtsForClub(courts, clubId = getActiveClubId()) {
   const data = loadClubData(clubId);
-  data.courts = normalizeCourts(courts);
+  data.courts = normalizeCourts(stampCollectionWithTenant(courts, clubId));
   return saveClubData(clubId, data);
 }
 
@@ -286,7 +295,7 @@ export function loadBookingsForClub(clubId = getActiveClubId()) {
 
 export function saveBookingsForClub(bookings, clubId = getActiveClubId()) {
   const data = loadClubData(clubId);
-  data.bookings = normalizeBookings(bookings);
+  data.bookings = normalizeBookings(stampCollectionWithTenant(bookings, clubId));
   return saveClubData(clubId, data);
 }
 
@@ -296,7 +305,7 @@ export function loadCustomersForClub(clubId = getActiveClubId()) {
 
 export function saveCustomersForClub(customers, clubId = getActiveClubId()) {
   const data = loadClubData(clubId);
-  data.customers = normalizeCustomers(customers);
+  data.customers = normalizeCustomers(stampCollectionWithTenant(customers, clubId));
   return saveClubData(clubId, data);
 }
 
@@ -336,7 +345,7 @@ export function loadTournamentsForClub(clubId = getActiveClubId()) {
 
 export function saveTournamentsForClub(tournaments, clubId = getActiveClubId()) {
   const data = loadClubData(clubId);
-  data.tournaments = normalizeTournaments(tournaments);
+  data.tournaments = normalizeTournaments(stampCollectionWithTenant(tournaments, clubId));
   return saveClubData(clubId, data);
 }
 

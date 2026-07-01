@@ -3,8 +3,10 @@ import { useLocation, useNavigate, useParams } from "react-router-dom";
 import { Alert, Box, Typography } from "@mui/material";
 
 import { useClub } from "../../context/ClubContext.jsx";
+import { useAuth } from "../../context/AuthContext.jsx";
+import { useTenant } from "../../context/TenantContext.jsx";
 import { loadCourtsForClub } from "../../domain/clubStorage.js";
-import { getTournament } from "../../domain/tournamentService.js";
+import { assertTournamentAccess, getTournament } from "../../domain/tournamentService.js";
 import { resolveBracketProgress } from "../../tournament/engines/index.js";
 import TournamentBracketScreen from "../../components/tournament/bracket/TournamentBracketScreen.jsx";
 
@@ -21,6 +23,8 @@ export default function TournamentBracketPage() {
   const navigate = useNavigate();
   const mode = location.pathname.includes("/official/") ? "official" : "internal";
   const { activeClubId, revision } = useClub();
+  const { rbacEnabled, isAuthenticated } = useAuth();
+  const { currentTenantId } = useTenant();
   const [liveTick, setLiveTick] = useState(0);
 
   useEffect(() => {
@@ -30,6 +34,16 @@ export default function TournamentBracketPage() {
 
     return () => window.clearInterval(timer);
   }, []);
+
+  const tournamentAccess = useMemo(() => {
+    if (!rbacEnabled || !isAuthenticated) {
+      return { ok: true };
+    }
+
+    return assertTournamentAccess(activeClubId, tournamentId, {
+      tenantId: currentTenantId,
+    });
+  }, [activeClubId, currentTenantId, isAuthenticated, rbacEnabled, tournamentId]);
 
   const tournament = useMemo(
     () => getTournament(activeClubId, tournamentId),
@@ -58,6 +72,16 @@ export default function TournamentBracketPage() {
     mode === "official"
       ? `/tournament/official/${tournamentId}`
       : `/tournament/internal/${tournamentId}`;
+
+  if (tournamentId && !tournamentAccess.ok) {
+    return (
+      <Box sx={{ p: 2 }}>
+        <Alert severity="error">
+          {tournamentAccess.error || "Không có quyền xem giải đấu này."}
+        </Alert>
+      </Box>
+    );
+  }
 
   if (!tournament) {
     return (

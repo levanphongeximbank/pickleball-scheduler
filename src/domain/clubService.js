@@ -5,10 +5,12 @@ import {
   saveClubs,
   setActiveClubId,
 } from "../data/club.js";
+import { loadActiveTenantId } from "../data/tenantSession.js";
 import { PERMISSIONS } from "../auth/permissions.js";
 import { guardClubAction, guardClubAccess, guardPermission } from "../auth/guardAction.js";
 import { getCurrentUser, isRbacEnabled } from "../auth/authService.js";
-import { ROLES, isVenueScopedRole } from "../auth/roles.js";
+import { ROLES, isGlobalRole, isVenueScopedRole } from "../auth/roles.js";
+import { resolveEffectiveTenantId } from "../features/tenant/services/tenantService.js";
 import { guardMaxClubs } from "../auth/subscriptionGuard.js";
 import { createClubRecord, normalizeClub } from "../models/club.js";
 import { loadClubData, purgeClubData, saveClubData } from "./clubStorage.js";
@@ -28,25 +30,37 @@ export function createClub(name) {
     return { ok: false, error: "Ten CLB khong duoc de trong." };
   }
 
-  const check = guardPermission(PERMISSIONS.CLUB_MANAGE, {});
-  if (!check.ok) {
-    return check;
-  }
-
   let venueId = null;
 
   if (isRbacEnabled()) {
     const currentUser = getCurrentUser();
-    if (
-      currentUser?.venueId &&
-      (isVenueScopedRole(currentUser.role) || currentUser.role === ROLES.SUPER_ADMIN)
-    ) {
-      venueId = currentUser.venueId;
-      const limitCheck = guardMaxClubs(venueId);
-      if (!limitCheck.ok) {
-        return limitCheck;
+    if (currentUser) {
+      if (isGlobalRole(currentUser.role)) {
+        venueId = loadActiveTenantId() || resolveEffectiveTenantId(currentUser);
+      } else if (
+        currentUser.venueId ||
+        currentUser.tenantId ||
+        isVenueScopedRole(currentUser.role) ||
+        currentUser.role === ROLES.SUPER_ADMIN
+      ) {
+        venueId = resolveEffectiveTenantId(currentUser);
+      }
+
+      if (venueId) {
+        const limitCheck = guardMaxClubs(venueId);
+        if (!limitCheck.ok) {
+          return limitCheck;
+        }
       }
     }
+  }
+
+  const check = guardPermission(
+    PERMISSIONS.CLUB_CREATE,
+    venueId ? { venueId } : {}
+  );
+  if (!check.ok) {
+    return check;
   }
 
   const clubs = loadClubs();
@@ -66,7 +80,7 @@ export function renameClub(clubId, name) {
     return { ok: false, error: "Ten CLB khong duoc de trong." };
   }
 
-  const check = guardClubAction(clubId, PERMISSIONS.CLUB_MANAGE);
+  const check = guardClubAction(clubId, PERMISSIONS.CLUB_UPDATE);
   if (!check.ok) {
     return check;
   }
@@ -93,7 +107,7 @@ export function renameClub(clubId, name) {
 }
 
 export function updateClubMeta(clubId, patch = {}) {
-  const check = guardClubAction(clubId, PERMISSIONS.CLUB_MANAGE);
+  const check = guardClubAction(clubId, PERMISSIONS.CLUB_UPDATE);
   if (!check.ok) {
     return check;
   }
@@ -191,7 +205,7 @@ export function getClubSummary(clubId = getActiveClubId()) {
 }
 
 export function importFullClubData(clubId, payload) {
-  const check = guardClubAction(clubId, PERMISSIONS.SETTINGS_MANAGE);
+  const check = guardClubAction(clubId, PERMISSIONS.SYSTEM_SETTING);
   if (!check.ok) {
     return check;
   }

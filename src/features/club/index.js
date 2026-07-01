@@ -1,0 +1,55 @@
+export { CLUB_MEMBER_ROLES, CLUB_MEMBER_ROLE_LABELS, CLUB_MEMBER_STATUSES } from "./constants/clubMemberRoles.js";
+export { CLUB_STATUSES, CLUB_STATUS_LABELS, DEFAULT_CLUB_ELO } from "./constants/clubStatus.js";
+
+export {
+  getClubsByTenant,
+  getClubById,
+  getClubStats,
+  createClub,
+  updateClub,
+  deactivateClub,
+  deleteClubSoft,
+  getTenantPlayers,
+} from "./services/clubTenantService.js";
+
+export {
+  getClubsVisibleToUser,
+  canUserViewClub,
+  filterClubsForUser,
+} from "./services/clubAccessService.js";
+
+export {
+  getClubMembers,
+  addMemberToClub,
+  removeMemberFromClub,
+  updateClubMemberRole,
+  updateClubMemberStatus,
+} from "./services/clubMemberService.js";
+
+export {
+  getClubRatings,
+  getPlayerClubRating,
+  updateClubRating,
+  createDefaultClubRatingForPlayer,
+  getClubRatingHistory,
+} from "./services/clubRatingService.js";
+
+export { getClubMatches, addClubMatch } from "./services/clubMatchService.js";
+
+export { createFriendlyClubMatch, getRecentClubActivity } from "./services/clubActivityService.js";
+
+export {
+  processClubInternalMatchCompletion,
+  findTournamentClubId,
+} from "./services/clubTournamentBridge.js";
+
+export {
+  getClubTournaments,
+  createClubInternalTournament,
+  getClubInternalTournamentPlayerPool,
+  getClubInternalTournamentPlayers,
+} from "./services/clubTournamentService.js";
+
+export { applyClubMatchElo, applyClubMatchEloById } from "./services/clubEloService.js";
+
+export { ensureClubManagementSeed } from "./seed/clubManagementSeed.js";

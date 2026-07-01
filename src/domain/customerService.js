@@ -56,7 +56,7 @@ function findDuplicatePhone(customers, phone, excludeId = null) {
 }
 
 export function createCustomer(input, clubId) {
-  const check = guardClubAction(clubId, PERMISSIONS.CUSTOMERS_MANAGE);
+  const check = guardClubAction(clubId, PERMISSIONS.CUSTOMER_UPDATE);
   if (!check.ok) {
     return { ok: false, message: check.error };
   }
@@ -95,7 +95,7 @@ export function createCustomer(input, clubId) {
 }
 
 export function updateCustomer(customerId, input, clubId) {
-  const check = guardClubAction(clubId, PERMISSIONS.CUSTOMERS_MANAGE);
+  const check = guardClubAction(clubId, PERMISSIONS.CUSTOMER_UPDATE);
   if (!check.ok) {
     return { ok: false, message: check.error };
   }
@@ -142,7 +142,7 @@ export function updateCustomer(customerId, input, clubId) {
 }
 
 export function deleteCustomer(customerId, clubId) {
-  const check = guardClubAction(clubId, PERMISSIONS.CUSTOMERS_MANAGE);
+  const check = guardClubAction(clubId, PERMISSIONS.CUSTOMER_UPDATE);
   if (!check.ok) {
     return { ok: false, message: check.error };
   }

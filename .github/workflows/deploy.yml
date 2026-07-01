@@ -34,7 +34,7 @@ jobs:
           VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
           VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY }}
           VITE_SEED_DEMO: false
-          VITE_RBAC_ENABLED: ${{ vars.VITE_RBAC_ENABLED || 'false' }}
+          VITE_RBAC_ENABLED: ${{ vars.VITE_RBAC_ENABLED || 'true' }}
           VITE_PAYMENT_MODE: ${{ vars.VITE_PAYMENT_MODE || 'dev' }}
 
       - name: Deploy to Vercel

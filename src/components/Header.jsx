@@ -1,24 +1,30 @@
-import { useMemo } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 
 
 
-import { AppBar, Button, Chip, Stack, Toolbar, Typography } from "@mui/material";
+import { Link as RouterLink, useNavigate } from "react-router-dom";
+import { AppBar, Badge, Box, Button, Chip, Divider, IconButton, Menu, MenuItem, Stack, Toolbar, Typography } from "@mui/material";
+
+import MenuIcon from "@mui/icons-material/Menu";
 
 import AutoAwesomeIcon from "@mui/icons-material/AutoAwesome";
+import NotificationsIcon from "@mui/icons-material/Notifications";
 
 import FiberManualRecordIcon from "@mui/icons-material/FiberManualRecord";
 
 
 
 import ClubSwitcher from "./ClubSwitcher";
-
+import TenantSwitcher, { TenantBadge } from "./TenantSwitcher";
 import SeasonLeagueSwitcher from "./SeasonLeagueSwitcher";
 
 import { useClub } from "../context/ClubContext.jsx";
 import { useAuth } from "../context/AuthContext.jsx";
 import { ROLE_LABELS } from "../auth/roles.js";
+import { PERMISSIONS } from "../auth/permissions.js";
 
 import { useSeasonLeague } from "../context/SeasonContext.jsx";
+import { usePlatformRuntime } from "../core/platform/app/usePlatformRuntime.js";
 
 import { getTodayCheckedInPlayerIds } from "../utils/playerHelpers.js";
 
@@ -27,6 +33,7 @@ import { computeCourtDashboardStats } from "../utils/courtHelpers.js";
 import { loadCourtManagementData } from "../domain/bookingService.js";
 
 import { loadCourts } from "../pages/courts.logic.js";
+import { useIsMobile } from "../features/mobile/hooks/useIsMobile.js";
 
 
 
@@ -104,10 +111,15 @@ function CommandChip({ label, color = "default", pulse = false, hideOnMobile = f
 
 
 
-export default function Header() {
+export default function Header({ onMenuClick }) {
 
   const { activeClubId, summary } = useClub();
-  const { authProductionEnabled, rbacEnabled, isAuthenticated, user, signOut } = useAuth();
+  const { authProductionEnabled, rbacEnabled, isAuthenticated, user, signOut, can } = useAuth();
+  const isMobile = useIsMobile();
+  const runtime = usePlatformRuntime();
+  const navigate = useNavigate();
+  const [unreadNotificationCount, setUnreadNotificationCount] = useState(0);
+  const [notificationAnchorEl, setNotificationAnchorEl] = useState(null);
 
   const { activeSeason, activeLeague } = useSeasonLeague();
 
@@ -142,6 +154,46 @@ export default function Header() {
   }, [activeClubId, summary]);
 
 
+
+  const syncNotificationCount = useCallback(() => {
+    const notifications = runtime?.notificationService?.list?.() || [];
+    const unread = notifications.filter((notification) => !(notification?.read || notification?.status === "read")).length;
+    setUnreadNotificationCount(unread);
+  }, [runtime?.notificationService]);
+
+  useEffect(() => {
+    syncNotificationCount();
+    const intervalId = window.setInterval(syncNotificationCount, 2000);
+    return () => window.clearInterval(intervalId);
+  }, [syncNotificationCount]);
+
+  const notificationItems = useMemo(() => {
+    const notifications = runtime?.notificationService?.list?.() || [];
+    return notifications.slice().reverse().slice(0, 6);
+  }, [runtime?.notificationService, unreadNotificationCount]);
+
+  const handleNotificationOpen = (event) => {
+    setNotificationAnchorEl(event.currentTarget);
+  };
+
+  const handleNotificationClose = () => {
+    setNotificationAnchorEl(null);
+  };
+
+  const handleNotificationClick = (notification) => {
+    if (!(notification?.read || notification?.status === "read")) {
+      runtime?.notificationService?.markAsRead?.(notification.id);
+      syncNotificationCount();
+    }
+    handleNotificationClose();
+    navigate("/tournament");
+  };
+
+  const handleMarkAllNotificationsAsRead = () => {
+    runtime?.notificationService?.markAllAsRead?.();
+    syncNotificationCount();
+    handleNotificationClose();
+  };
 
   return (
 
@@ -181,6 +233,12 @@ export default function Header() {
 
       >
 
+        {isMobile && onMenuClick && (
+          <IconButton color="inherit" edge="start" onClick={onMenuClick} aria-label="Mở menu">
+            <MenuIcon />
+          </IconButton>
+        )}
+
         <Typography
 
           variant="subtitle1"
@@ -204,6 +262,20 @@ export default function Header() {
           Pickleball Scheduler Pro
 
         </Typography>
+
+        {isMobile && (
+          <Typography
+            variant="caption"
+            sx={{
+              display: { xs: "block", sm: "none" },
+              fontWeight: 700,
+              color: "rgba(255,255,255,0.86)",
+              ml: 0.25,
+            }}
+          >
+            {opsMeta.isLive ? "LIVE" : "Sẵn sàng"}
+          </Typography>
+        )}
 
 
 
@@ -229,9 +301,10 @@ export default function Header() {
 
         >
 
+          {!isMobile && <TenantSwitcher />}
           <ClubSwitcher />
-
-          <SeasonLeagueSwitcher />
+          {!isMobile && <SeasonLeagueSwitcher />}
+          {!isMobile && <TenantBadge />}
 
         </Stack>
 
@@ -303,6 +376,88 @@ export default function Header() {
 
           )}
 
+          <IconButton
+            color="inherit"
+            aria-label="Thông báo workflow"
+            onClick={handleNotificationOpen}
+            sx={{
+              border: "1px solid rgba(255,255,255,0.2)",
+              borderRadius: 999,
+              p: 0.75,
+              ml: 0.25,
+            }}
+          >
+            <Badge badgeContent={unreadNotificationCount} color="error" max={99} invisible={unreadNotificationCount === 0}>
+              <NotificationsIcon fontSize="small" />
+            </Badge>
+          </IconButton>
+
+          <Menu
+            anchorEl={notificationAnchorEl}
+            open={Boolean(notificationAnchorEl)}
+            onClose={handleNotificationClose}
+            transformOrigin={{ horizontal: "right", vertical: "top" }}
+            anchorOrigin={{ horizontal: "right", vertical: "bottom" }}
+            slotProps={{
+              paper: {
+                sx: {
+                  mt: 1,
+                  minWidth: 320,
+                  maxWidth: 360,
+                },
+              },
+            }}
+          >
+            <Box sx={{ px: 2, py: 1.25 }}>
+              <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 1, mb: 0.5 }}>
+                <Typography variant="subtitle2" fontWeight={700}>
+                  Workflow notifications
+                </Typography>
+                <Chip size="small" label={`${unreadNotificationCount} unread`} color={unreadNotificationCount > 0 ? "primary" : "default"} variant="outlined" />
+              </Box>
+              {unreadNotificationCount > 0 && (
+                <Button size="small" variant="text" onClick={handleMarkAllNotificationsAsRead} sx={{ px: 0, mt: 0.25 }}>
+                  Đánh dấu tất cả đã đọc
+                </Button>
+              )}
+            </Box>
+            <Divider />
+            {notificationItems.length > 0 ? (
+              notificationItems.map((notification) => {
+                const isUnread = !(notification?.read || notification?.status === "read");
+                return (
+                  <MenuItem
+                    key={notification.id || `${notification.title}-${notification.created_at}`}
+                    onClick={() => handleNotificationClick(notification)}
+                    sx={{
+                      alignItems: "flex-start",
+                      py: 1.2,
+                      bgcolor: isUnread ? "primary.50" : "transparent",
+                    }}
+                  >
+                    <Box sx={{ minWidth: 0 }}>
+                      <Typography variant="body2" fontWeight={600} sx={{ mb: 0.25 }}>
+                        {notification.title || "Workflow notification"}
+                      </Typography>
+                      <Typography variant="caption" color="text.secondary" sx={{ display: "block", mb: 0.25 }}>
+                        {notification.body || notification.detail || "No details"}
+                      </Typography>
+                      <Typography variant="caption" color="text.secondary">
+                        {new Date(notification.created_at || notification.createdAt || new Date().toISOString()).toLocaleString("vi-VN")}
+                      </Typography>
+                    </Box>
+                  </MenuItem>
+                );
+              })
+            ) : (
+              <Box sx={{ px: 2, py: 2 }}>
+                <Typography variant="body2" color="text.secondary">
+                  Chưa có thông báo nào.
+                </Typography>
+              </Box>
+            )}
+          </Menu>
+
           <Chip
 
             size="small"
@@ -358,23 +513,36 @@ export default function Header() {
           )}
 
           {(authProductionEnabled || rbacEnabled) && isAuthenticated && (
-
-            <Button
-
-              size="small"
-
-              color="inherit"
-
-              onClick={() => signOut()}
-
-              sx={{ minWidth: 0, fontSize: 11, fontWeight: 700, px: 1 }}
-
-            >
-
-              Đăng xuất
-
-            </Button>
-
+            <>
+              <Button
+                component={RouterLink}
+                to="/profile"
+                size="small"
+                color="inherit"
+                sx={{ minWidth: 0, fontSize: 11, fontWeight: 700, px: 1 }}
+              >
+                Hồ sơ
+              </Button>
+              {can(PERMISSIONS.USER_MANAGE) && (
+                <Button
+                  component={RouterLink}
+                  to="/users"
+                  size="small"
+                  color="inherit"
+                  sx={{ minWidth: 0, fontSize: 11, fontWeight: 700, px: 1 }}
+                >
+                  Users
+                </Button>
+              )}
+              <Button
+                size="small"
+                color="inherit"
+                onClick={() => signOut()}
+                sx={{ minWidth: 0, fontSize: 11, fontWeight: 700, px: 1 }}
+              >
+                Đăng xuất
+              </Button>
+            </>
           )}
 
         </Stack>
