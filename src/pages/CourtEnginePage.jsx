@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { Link as RouterLink } from "react-router-dom";
 
 import {
   Alert,
@@ -7,6 +8,7 @@ import {
   Card,
   CardContent,
   Chip,
+  CircularProgress,
   Dialog,
   DialogActions,
   DialogContent,
@@ -34,8 +36,11 @@ import SwapHorizIcon from "@mui/icons-material/SwapHoriz";
 
 import { useAuth } from "../context/AuthContext.jsx";
 import { useClub } from "../context/ClubContext.jsx";
+import { useSeasonLeague } from "../context/SeasonContext.jsx";
+import { useTenant } from "../context/TenantContext.jsx";
 import { getCourtDisplayName } from "../models/court.js";
 import { canUseCourtEngine, canTransferCourt } from "../features/court-engine/guards/courtEngineGuard.js";
+import { resolveCourtEngineContextState } from "../features/court-engine/guards/courtEngineContextGuard.js";
 import { useCourtEngine } from "../features/court-engine/hooks/useCourtEngine.js";
 import { ASSIGNMENT_STATUS, COURT_RUNTIME_STATUS, SESSION_STATUS } from "../features/court-engine/constants/statuses.js";
 import { buildPlatformEngineSummary } from "../core/platform/engines/index.js";
@@ -69,9 +74,69 @@ function CourtEngineAccessGate({ children }) {
   return children;
 }
 
-export default function CourtEnginePage() {
+function CourtEngineContextGate({ children }) {
+  const { rbacEnabled, isAuthenticated } = useAuth();
+  const { activeClubId } = useClub();
+  const {
+    seasons,
+    activeSeason,
+    activeLeague,
+    leaguesForActiveSeason,
+  } = useSeasonLeague();
+  const { tenantCheck } = useTenant();
+
+  const contextState = useMemo(
+    () =>
+      resolveCourtEngineContextState({
+        activeClubId,
+        seasons,
+        activeSeason,
+        leaguesForActiveSeason,
+        activeLeague,
+        tenantCheck,
+        rbacEnabled,
+        isAuthenticated,
+      }),
+    [
+      activeClubId,
+      seasons,
+      activeSeason,
+      leaguesForActiveSeason,
+      activeLeague,
+      tenantCheck,
+      rbacEnabled,
+      isAuthenticated,
+    ]
+  );
+
+  if (!contextState.ready) {
+    const isTenantError = contextState.code === "TENANT_ERROR";
+    return (
+      <Box sx={{ py: 6, px: 2, maxWidth: 560, mx: "auto" }}>
+        <Alert severity={isTenantError ? "error" : "info"} sx={{ mb: 2 }}>
+          {contextState.message}
+        </Alert>
+        {!isTenantError && (
+          <Button
+            component={RouterLink}
+            to="/club-management"
+            variant="contained"
+            sx={{ mr: 1 }}
+          >
+            Tạo mùa giải / chọn mùa giải
+          </Button>
+        )}
+      </Box>
+    );
+  }
+
+  return children;
+}
+
+function CourtEnginePageContent() {
   const { can, rbacEnabled, isAuthenticated } = useAuth();
   const { activeClubId, activeClub } = useClub();
+  const { activeLeague } = useSeasonLeague();
   const engine = useCourtEngine();
   const {
     session,
@@ -102,8 +167,12 @@ export default function CourtEnginePage() {
         session,
         players,
         courts,
+        tournament: {
+          leagueId: activeLeague?.id || null,
+          clubId: activeClubId || null,
+        },
       }),
-    [session, players, courts]
+    [session, players, courts, activeLeague?.id, activeClubId]
   );
 
   useEffect(() => {
@@ -128,9 +197,22 @@ export default function CourtEnginePage() {
 
   const checkedInIds = new Set((session?.checkIns || []).map((item) => String(item.playerId)));
 
+  if (!session) {
+    return (
+      <Box sx={{ display: "flex", justifyContent: "center", alignItems: "center", py: 8 }}>
+        <CircularProgress size={32} />
+        <Typography sx={{ ml: 2 }} color="text.secondary">
+          Đang khởi tạo phiên điều phối sân...
+        </Typography>
+      </Box>
+    );
+  }
+
+  const leagueLabel = platformSummary?.league?.standing?.leagueId || activeLeague?.id || "—";
+  const courtLabel = platformSummary?.court?.schedule?.courtId || "—";
+
   return (
-    <CourtEngineAccessGate>
-      <Box sx={{ pb: 4 }}>
+    <Box sx={{ pb: 4 }}>
         <Stack
           direction={{ xs: "column", md: "row" }}
           spacing={2}
@@ -172,10 +254,11 @@ export default function CourtEnginePage() {
             Platform v5 Court Preview
           </Typography>
           <Typography variant="body2" color="text.secondary">
-            Court schedule: {platformSummary.court.schedule.courtId} · League: {platformSummary.league.standing.leagueId}
+            Court schedule: {courtLabel} · League: {leagueLabel}
           </Typography>
           <Typography variant="body2" color="text.secondary">
-            Ranking entries: {platformSummary.ranking.result.entries.length} · Billing: {platformSummary.billing.invoice.amount} đ
+            Ranking entries: {platformSummary?.ranking?.result?.entries?.length ?? 0} · Billing:{" "}
+            {platformSummary?.billing?.invoice?.amount ?? 0} đ
           </Typography>
         </Box>
 
@@ -546,6 +629,15 @@ export default function CourtEnginePage() {
           </Alert>
         </Snackbar>
       </Box>
+  );
+}
+
+export default function CourtEnginePage() {
+  return (
+    <CourtEngineAccessGate>
+      <CourtEngineContextGate>
+        <CourtEnginePageContent />
+      </CourtEngineContextGate>
     </CourtEngineAccessGate>
   );
 }

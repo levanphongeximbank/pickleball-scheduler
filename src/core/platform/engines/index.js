@@ -42,7 +42,7 @@ export function createLeagueEngine() {
       const entries = Array.isArray(input.entries) ? input.entries : [];
       return {
         id: input.id || `league-standing-${Date.now()}`,
-        leagueId: input.leagueId || "league-1",
+        leagueId: input.leagueId || null,
         entries,
         summary: {
           entryCount: entries.length,
@@ -77,7 +77,7 @@ export function createBillingEngine() {
       const amount = Number(input.amount || 0);
       return {
         id: input.id || `invoice-${Date.now()}`,
-        tenantId: input.tenantId || "tenant-1",
+        tenantId: input.tenantId || null,
         amount,
         currency: input.currency || "VND",
         status: amount > 0 ? "draft" : "empty",
@@ -126,7 +126,7 @@ export function buildPlatformEngineSummary({ tournament = {}, session = {}, play
     },
     league: {
       standing: leagueEngine.createStanding({
-        leagueId: tournament.leagueId || session.leagueId || "league-1",
+        leagueId: tournament.leagueId || session?.leagueId || null,
         entries: players.slice(0, 6).map((player, index) => ({
           id: player.id || `player-${index + 1}`,
           name: player.name || `Player ${index + 1}`,
@@ -143,7 +143,7 @@ export function buildPlatformEngineSummary({ tournament = {}, session = {}, play
     },
     billing: {
       invoice: billingEngine.buildInvoice({
-        tenantId: tournament.clubId || session.clubId || "tenant-1",
+        tenantId: tournament.clubId || session?.clubId || null,
         amount: Math.max(players.length * 100, 0),
       }),
     },

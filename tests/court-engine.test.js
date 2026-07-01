@@ -36,6 +36,8 @@ import {
 } from "../src/features/court-engine/services/refereeDispatchService.js";
 import { transferAssignment } from "../src/features/court-engine/services/courtTransferService.js";
 import { ASSIGNMENT_STATUS, COURT_RUNTIME_STATUS } from "../src/features/court-engine/constants/statuses.js";
+import { buildPlatformEngineSummary } from "../src/core/platform/engines/index.js";
+import { resolveCourtEngineContextState } from "../src/features/court-engine/guards/courtEngineContextGuard.js";
 
 const players = [
   { id: "p1", name: "A", rating: 4.0, gender: "Nam" },
@@ -332,4 +334,85 @@ test("tournament transferMatchToCourt preserves startedAt", () => {
   assert.equal(result.ok, true);
   assert.equal(result.match.startedAt, "2026-01-01T10:00:00.000Z");
   assert.equal(result.match.courtId, "2");
+});
+
+test("buildPlatformEngineSummary does not crash when session is null", () => {
+  assert.doesNotThrow(() => {
+    const summary = buildPlatformEngineSummary({
+      session: null,
+      players: [{ id: "p1", name: "A" }],
+      courts: [{ id: "c1", name: "Sân 1" }],
+      tournament: { leagueId: null, clubId: null },
+    });
+    assert.equal(summary.league.standing.leagueId, null);
+    assert.equal(summary.billing.invoice.tenantId, null);
+    assert.equal(summary.court.schedule.courtId, "c1");
+  });
+});
+
+test("buildPlatformEngineSummary uses tournament leagueId when session is null", () => {
+  const summary = buildPlatformEngineSummary({
+    session: null,
+    players: [],
+    courts: [],
+    tournament: { leagueId: "league-abc", clubId: "club-xyz" },
+  });
+  assert.equal(summary.league.standing.leagueId, "league-abc");
+  assert.equal(summary.billing.invoice.tenantId, "club-xyz");
+});
+
+test("resolveCourtEngineContextState blocks when season is missing", () => {
+  const state = resolveCourtEngineContextState({
+    activeClubId: "club-1",
+    seasons: [],
+    activeSeason: null,
+    leaguesForActiveSeason: [],
+    activeLeague: null,
+  });
+  assert.equal(state.ready, false);
+  assert.equal(state.code, "NO_SEASON");
+});
+
+test("resolveCourtEngineContextState blocks when league is missing", () => {
+  const season = { id: "season-1", name: "Mùa 1" };
+  const state = resolveCourtEngineContextState({
+    activeClubId: "club-1",
+    seasons: [season],
+    activeSeason: season,
+    leaguesForActiveSeason: [],
+    activeLeague: null,
+  });
+  assert.equal(state.ready, false);
+  assert.equal(state.code, "NO_LEAGUE");
+});
+
+test("resolveCourtEngineContextState allows ready tenant without season when rbac off", () => {
+  const season = { id: "season-1", name: "Mùa 1" };
+  const league = { id: "league-1", seasonId: "season-1", name: "Giải 1" };
+  const state = resolveCourtEngineContextState({
+    activeClubId: "club-1",
+    seasons: [season],
+    activeSeason: season,
+    leaguesForActiveSeason: [league],
+    activeLeague: league,
+    tenantCheck: { ok: false, error: "missing" },
+    rbacEnabled: false,
+    isAuthenticated: true,
+  });
+  assert.equal(state.ready, true);
+});
+
+test("resolveCourtEngineContextState blocks tenant error when rbac on", () => {
+  const state = resolveCourtEngineContextState({
+    activeClubId: "club-1",
+    seasons: [{ id: "s1" }],
+    activeSeason: { id: "s1" },
+    leaguesForActiveSeason: [{ id: "l1" }],
+    activeLeague: { id: "l1" },
+    tenantCheck: { ok: false, error: "Tài khoản chưa được gán tenant." },
+    rbacEnabled: true,
+    isAuthenticated: true,
+  });
+  assert.equal(state.ready, false);
+  assert.equal(state.code, "TENANT_ERROR");
 });
