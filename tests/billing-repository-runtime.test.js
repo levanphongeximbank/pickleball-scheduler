@@ -221,6 +221,7 @@ test("resolveBillingTenantId prefers override and never returns tenant-demo", ()
   assert.equal(resolveBillingTenantId({ user }), "venue-real");
   assert.equal(resolveBillingTenantId({ user: { role: "PLAYER" } }), null);
   assert.notEqual(resolveBillingTenantId({ user: { role: "PLAYER" } }), "tenant-demo");
+  assert.equal(resolveBillingTenantId({ user, tenantIdOverride: "tenant-demo" }), "venue-real");
 });
 
 test("formatBillingTenantError maps tenant_not_found and TENANT_MISSING", () => {

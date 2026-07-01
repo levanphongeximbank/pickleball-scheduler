@@ -2,6 +2,30 @@ import { isGlobalRole } from "../../../auth/roles.js";
 import { loadActiveTenantId } from "../../../data/tenantSession.js";
 import { resolveEffectiveTenantId } from "../../tenant/services/tenantService.js";
 
+/** Legacy/demo ids that must never be used for Supabase billing (venues.id). */
+export const INVALID_BILLING_TENANT_IDS = Object.freeze([
+  "tenant-demo",
+  "tenant_demo",
+  "demo-tenant",
+]);
+
+/**
+ * Normalize tenant/venue id for billing. Returns null if empty or blocklisted.
+ */
+export function sanitizeBillingTenantId(value) {
+  const id = String(value || "").trim();
+  if (!id) {
+    return null;
+  }
+
+  const lower = id.toLowerCase();
+  if (INVALID_BILLING_TENANT_IDS.some((blocked) => blocked.toLowerCase() === lower)) {
+    return null;
+  }
+
+  return id;
+}
+
 /**
  * Resolve the venue/tenant id used for Phase 9 billing (tenant_id === venues.id).
  * Never returns demo placeholders — null means caller must show a clear error.
@@ -11,23 +35,23 @@ export function resolveBillingTenantId({
   tenantIdOverride,
   currentTenantId,
 } = {}) {
-  const override = String(tenantIdOverride || "").trim();
+  const override = sanitizeBillingTenantId(tenantIdOverride);
   if (override) {
     return override;
   }
 
-  const fromContext = String(currentTenantId || "").trim();
+  const fromContext = sanitizeBillingTenantId(currentTenantId);
   if (fromContext) {
     return fromContext;
   }
 
-  const fromUser = resolveEffectiveTenantId(user);
+  const fromUser = sanitizeBillingTenantId(resolveEffectiveTenantId(user));
   if (fromUser) {
     return fromUser;
   }
 
   if (user && isGlobalRole(user.role)) {
-    const adminTenant = String(loadActiveTenantId() || "").trim();
+    const adminTenant = sanitizeBillingTenantId(loadActiveTenantId());
     if (adminTenant) {
       return adminTenant;
     }

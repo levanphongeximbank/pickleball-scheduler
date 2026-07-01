@@ -14,7 +14,9 @@ import { getBillingStore } from "../repositories/billingRepository.js";
 import {
   formatBillingTenantError,
   resolveBillingTenantId,
+  sanitizeBillingTenantId,
 } from "../services/billingTenantResolver.js";
+import { validateBillingTenantOnSupabase } from "../services/billingVenueService.js";
 import { ensureTrialSubscriptionRpc } from "../services/billingTrialRpc.js";
 import { BillingEngine } from "../services/billingEngine.js";
 import { InvoiceService } from "../services/invoiceService.js";
@@ -143,6 +145,22 @@ export function useBilling({ tenantId: tenantIdOverride } = {}) {
           });
         }
         return;
+      }
+
+      if (isSupabaseBillingStore(store)) {
+        const tenantValidation = await validateBillingTenantOnSupabase(store.client, tenantId);
+        if (cancelled) {
+          return;
+        }
+        if (!tenantValidation.ok) {
+          setHydrateState({
+            loading: false,
+            ready: true,
+            error: tenantValidation.error,
+          });
+          setPersistError(tenantValidation.error);
+          return;
+        }
       }
 
       const existing = runtime.subscriptionService.getByTenant(tenantId);
@@ -295,13 +313,25 @@ export function useBilling({ tenantId: tenantIdOverride } = {}) {
         BILLING_PERSIST_SETS.PLAN_CHANGE
       ),
     createTrialSubscription: async (targetTenantId) => {
-      const resolvedTenantId = String(targetTenantId || tenantId || "").trim();
+      const resolvedTenantId = sanitizeBillingTenantId(targetTenantId || tenantId);
       if (!resolvedTenantId) {
         return {
           ok: false,
           code: "TENANT_MISSING",
           error: formatBillingTenantError({ code: "TENANT_MISSING" }),
         };
+      }
+
+      if (isSupabaseBillingStore(store)) {
+        const tenantValidation = await validateBillingTenantOnSupabase(store.client, resolvedTenantId);
+        if (!tenantValidation.ok) {
+          setPersistError(tenantValidation.error);
+          return {
+            ok: false,
+            code: tenantValidation.code,
+            error: tenantValidation.error,
+          };
+        }
       }
 
       if (isSupabaseBillingStore(store)) {

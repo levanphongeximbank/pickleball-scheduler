@@ -4,6 +4,9 @@
  */
 import { GRACE_PERIOD_DAYS } from "../constants/billingConstants.js";
 import { BillingEngine } from "../services/billingEngine.js";
+import { InvoiceService } from "../services/invoiceService.js";
+import { PaymentService } from "../services/paymentService.js";
+import { SubscriptionService } from "../services/subscriptionService.js";
 import { ensureCollection } from "../services/billingStoreUtils.js";
 import { getBillingStore } from "../repositories/billingRepository.js";
 import {
@@ -42,7 +45,15 @@ const ACCESS_REASON_CODES = Object.freeze({
 });
 
 function createEngine(store = getBillingStore()) {
-  const engine = new BillingEngine({ store });
+  const subscriptionService = new SubscriptionService({ store });
+  const invoiceService = new InvoiceService({ store });
+  const paymentService = new PaymentService({ store, subscriptionService, invoiceService });
+  const engine = new BillingEngine({
+    store,
+    subscriptionService,
+    invoiceService,
+    paymentService,
+  });
   if (shouldSeedBillingDefaults(store)) {
     engine.seedDefaults();
   }
@@ -100,14 +111,14 @@ function buildBlockedMessage(access) {
  */
 export function assertSubscriptionOperational(tenantId, options = {}) {
   if (!tenantId) {
-    return { ok: true };
+    return { ok: true, code: "NO_TENANT" };
   }
 
   const engine = createEngine(options.store);
   const existing = engine.subscriptionService?.getByTenant?.(tenantId);
 
   if (!existing) {
-    return { ok: true };
+    return { ok: true, code: "NO_SUBSCRIPTION" };
   }
 
   const access = engine.evaluateTenantAccess({ tenantId, now: options.now });
@@ -115,7 +126,8 @@ export function assertSubscriptionOperational(tenantId, options = {}) {
   if (access.allowed) {
     return {
       ok: true,
-      subscription: phase9SubscriptionToLegacy(access.subscription),
+      code: "SUBSCRIPTION_OK",
+      subscription: phase9SubscriptionToLegacy(access.subscription || existing),
     };
   }
 
