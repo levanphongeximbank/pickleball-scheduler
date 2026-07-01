@@ -23,10 +23,10 @@ export function SeasonProvider({ children }) {
     [activeClubId, revision]
   );
 
-  const seasons = clubData.seasons;
-  const leagues = clubData.leagues;
-  const activeSeasonId = clubData.active.seasonId;
-  const activeLeagueId = clubData.active.leagueId;
+  const seasons = clubData.seasons || [];
+  const leagues = clubData.leagues || [];
+  const activeSeasonId = clubData?.active?.seasonId ?? null;
+  const activeLeagueId = clubData?.active?.leagueId ?? null;
 
   const activeSeason = useMemo(
     () => seasons.find((season) => season.id === activeSeasonId) || seasons[0] || null,

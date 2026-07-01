@@ -510,6 +510,19 @@ test("buildPlatformEngineSummary uses tournament leagueId when session is null",
   assert.equal(summary.billing.invoice.tenantId, "club-xyz");
 });
 
+test("buildPlatformEngineSummary does not crash when tournament is null", () => {
+  assert.doesNotThrow(() => {
+    const summary = buildPlatformEngineSummary({
+      session: null,
+      players: [{ id: "p1", name: "A" }],
+      courts: [{ id: "c1", name: "Sân 1" }],
+      tournament: null,
+    });
+    assert.equal(summary.league.standing.leagueId, null);
+    assert.equal(summary.billing.invoice.tenantId, null);
+  });
+});
+
 test("resolveCourtEngineContextState blocks when season is missing", () => {
   const state = resolveCourtEngineContextState({
     activeClubId: "club-1",

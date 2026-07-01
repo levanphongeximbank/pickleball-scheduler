@@ -3,7 +3,7 @@ import { MemoryRouter } from "react-router-dom";
 import { render as rtlRender, screen, waitFor } from "@testing-library/react";
 
 import CourtEnginePage from "../../src/pages/CourtEnginePage.jsx";
-import { saveClubData, CLUB_SCHEMA_VERSION } from "../../src/domain/clubStorage.js";
+import { saveClubData, CLUB_SCHEMA_VERSION, getClubDataKey } from "../../src/domain/clubStorage.js";
 import { DEFAULT_CLUB, setActiveClubId } from "../../src/data/club.js";
 import * as courtEngineContextGuard from "../../src/features/court-engine/guards/courtEngineContextGuard.js";
 import { AuthProvider } from "../../src/context/AuthContext.jsx";
@@ -116,5 +116,32 @@ describe("CourtEnginePage", () => {
       expect(screen.getByRole("heading", { name: "Check-in" })).toBeInTheDocument();
     });
     expect(screen.getByText("Live Courts (1)")).toBeInTheDocument();
+  });
+
+  it("renders without crash when club active context is null in storage", async () => {
+    localStorage.setItem(
+      getClubDataKey(DEFAULT_CLUB.id),
+      JSON.stringify({
+        schemaVersion: CLUB_SCHEMA_VERSION,
+        clubId: DEFAULT_CLUB.id,
+        players: [{ id: "p1", name: "An", level: 3.0, active: true }],
+        courts: [{ id: "1", name: "Sân 1", number: 1, active: true }],
+        seasons: [{ id: "season-1", name: "Mùa 2026", status: "active" }],
+        leagues: [{ id: "league-1", seasonId: "season-1", name: "Giải nội bộ", status: "active" }],
+        active: null,
+        sessions: [],
+        tournaments: [],
+        history: {},
+        policies: [],
+        rules: [],
+        waiting: {},
+      })
+    );
+
+    renderCourtEnginePage();
+
+    await waitFor(() => {
+      expect(screen.getByText("Court Engine")).toBeInTheDocument();
+    });
   });
 });

@@ -100,6 +100,8 @@ export function createAiEngine() {
 }
 
 export function buildPlatformEngineSummary({ tournament = {}, session = {}, players = [], courts = [] } = {}) {
+  const safeTournament = tournament && typeof tournament === "object" ? tournament : {};
+  const safeSession = session && typeof session === "object" ? session : null;
   const tournamentEngine = createTournamentEngine();
   const courtEngine = createCourtEngine();
   const leagueEngine = createLeagueEngine();
@@ -110,9 +112,9 @@ export function buildPlatformEngineSummary({ tournament = {}, session = {}, play
   return {
     tournament: {
       plan: tournamentEngine.createPlan({
-        id: tournament.id,
-        name: tournament.name || "Tournament plan",
-        mode: tournament.mode || "internal",
+        id: safeTournament.id,
+        name: safeTournament.name || "Tournament plan",
+        mode: safeTournament.mode || "internal",
       }),
     },
     court: {
@@ -126,7 +128,7 @@ export function buildPlatformEngineSummary({ tournament = {}, session = {}, play
     },
     league: {
       standing: leagueEngine.createStanding({
-        leagueId: tournament.leagueId || session?.leagueId || null,
+        leagueId: safeTournament.leagueId || safeSession?.leagueId || null,
         entries: players.slice(0, 6).map((player, index) => ({
           id: player.id || `player-${index + 1}`,
           name: player.name || `Player ${index + 1}`,
@@ -143,7 +145,7 @@ export function buildPlatformEngineSummary({ tournament = {}, session = {}, play
     },
     billing: {
       invoice: billingEngine.buildInvoice({
-        tenantId: tournament.clubId || session?.clubId || null,
+        tenantId: safeTournament.clubId || safeSession?.clubId || null,
         amount: Math.max(players.length * 100, 0),
       }),
     },

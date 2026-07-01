@@ -228,18 +228,19 @@ function normalizeClubData(data, clubId) {
 }
 
 export function loadClubData(clubId = getActiveClubId()) {
-  const key = getClubDataKey(clubId);
+  const resolvedClubId = clubId || getActiveClubId();
+  const key = getClubDataKey(resolvedClubId);
   const raw = localStorage.getItem(key);
 
   if (raw) {
     const parsed = safeParse(raw, null);
     if (parsed) {
-      return normalizeClubData(parsed, clubId);
+      return normalizeClubData(parsed, resolvedClubId);
     }
   }
 
-  const migrated = migrateV2ToV3(clubId);
-  return saveClubData(clubId, migrated);
+  const migrated = migrateV2ToV3(resolvedClubId);
+  return saveClubData(resolvedClubId, migrated);
 }
 
 export function saveClubData(clubId, data) {
