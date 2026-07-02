@@ -95,6 +95,38 @@ begin
   end if;
 end $backfill$;
 
+-- Phase 11E inserts use event_type/metadata only — legacy action/meta must be nullable.
+do $legacy_nullable$
+begin
+  if exists (
+    select 1 from information_schema.columns
+    where table_schema = 'public'
+      and table_name = 'integration_audit_logs'
+      and column_name = 'action'
+  ) then
+    update public.integration_audit_logs
+    set action = coalesce(action, event_type, 'unknown')
+    where action is null;
+
+    alter table public.integration_audit_logs
+      alter column action drop not null;
+  end if;
+
+  if exists (
+    select 1 from information_schema.columns
+    where table_schema = 'public'
+      and table_name = 'integration_audit_logs'
+      and column_name = 'meta'
+  ) then
+    update public.integration_audit_logs
+    set meta = coalesce(meta, metadata, '{}'::jsonb)
+    where meta is null;
+
+    alter table public.integration_audit_logs
+      alter column meta drop not null;
+  end if;
+end $legacy_nullable$;
+
 update public.integration_audit_logs
 set event_type = coalesce(event_type, 'unknown')
 where event_type is null;

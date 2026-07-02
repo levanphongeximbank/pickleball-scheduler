@@ -95,6 +95,67 @@ function createAdminClient() {
   });
 }
 
+async function legacyColumnExists(admin, columnName) {
+  const { error } = await admin
+    .from("integration_audit_logs")
+    .select(`id, ${columnName}`)
+    .limit(0);
+
+  if (!error) {
+    return true;
+  }
+
+  const message = String(error.message || "").toLowerCase();
+  if (message.includes("does not exist") || error.code === "42703") {
+    return false;
+  }
+
+  return false;
+}
+
+async function probeLegacyColumnNullability(admin) {
+  const actionExists = await legacyColumnExists(admin, "action");
+  const metaExists = await legacyColumnExists(admin, "meta");
+
+  if (!actionExists && !metaExists) {
+    record("schema:legacy columns", "none (11E-only table)", "skipped", "PASS");
+    return true;
+  }
+
+  const probeRow = {
+    event_type: INTEGRATION_AUDIT_EVENTS.API_KEY_DENIED,
+    metadata: { probeTag: PROBE_TAG, schemaProbe: true },
+    request_id: `phase11e_schema_probe_${Date.now()}`,
+  };
+
+  const { data, error } = await admin
+    .from("integration_audit_logs")
+    .insert(probeRow)
+    .select("id")
+    .single();
+
+  if (error) {
+    if (actionExists) {
+      record("schema:legacy action nullable", "nullable", error.message, "FAIL");
+    }
+    if (metaExists) {
+      record("schema:legacy meta nullable", "nullable", error.message, "FAIL");
+    }
+    return false;
+  }
+
+  await admin.from("integration_audit_logs").delete().eq("id", data.id);
+
+  if (actionExists) {
+    record("schema:legacy action nullable", "nullable", "ok", "PASS");
+  }
+  if (metaExists) {
+    record("schema:legacy meta nullable", "nullable", "ok", "PASS");
+  }
+
+  return true;
+}
+
 async function probeIntegrationAuditSchema(admin) {
   const { data, error } = await admin
     .from("integration_audit_logs")
@@ -110,7 +171,9 @@ async function probeIntegrationAuditSchema(admin) {
 
   record("schema:integration_audit_logs", "table + 11E columns", "ok", "PASS");
   void data;
-  return true;
+
+  const legacyOk = await probeLegacyColumnNullability(admin);
+  return legacyOk;
 }
 
 async function clearProbeAuditRows(admin) {

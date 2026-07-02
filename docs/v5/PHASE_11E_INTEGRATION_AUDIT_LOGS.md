@@ -108,6 +108,7 @@ Bảng cũ có `action`, `actor_id`, `meta`. Migration 11E:
 - Backfill `event_type` ← `action`
 - Backfill `metadata` ← `meta`
 - Giữ cột legacy (không drop P0)
+- `action` / `meta` → **nullable** (Phase 11E code không ghi legacy columns)
 - `tenant_id` → nullable
 
 ### Trạng thái apply staging
