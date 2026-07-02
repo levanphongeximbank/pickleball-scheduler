@@ -313,6 +313,36 @@ async function runPreviewHttpTests(baseUrl, fixtures) {
     expectedCode: EDGE_API_ERROR_CODES.INVALID_API_KEY,
   });
 
+  const webhookRead = await callPreview(baseUrl, {
+    path: "/api/v1/webhooks/test",
+    apiKey: fixtures.tenantAWebhookRo.plainKey,
+  });
+  assertPreviewJson("webhook read", webhookRead, { expectedStatus: 200, expectedCode: "ok" });
+
+  const webhookWriteDenied = await callPreview(baseUrl, {
+    method: "POST",
+    path: "/api/v1/webhooks/test",
+    apiKey: fixtures.tenantAWebhookRo.plainKey,
+    body: { eventType: "test.ping" },
+  });
+  assertPreviewJson("webhook write denied", webhookWriteDenied, {
+    expectedStatus: 403,
+    expectedCode: EDGE_API_ERROR_CODES.SCOPE_DENIED,
+  });
+
+  const webhookWriteOk = await callPreview(baseUrl, {
+    method: "POST",
+    path: "/api/v1/webhooks/test",
+    apiKey: fixtures.tenantAWebhookRw.plainKey,
+    body: { eventType: "test.ping", payload: { probe: true } },
+  });
+  assertPreviewJson("webhook write ok", webhookWriteOk, {
+    expectedStatus: 200,
+    expectedCode: "ok",
+    extraCheck: (r) => r.json?.data?.accepted === true,
+  });
+
+  // Rate limit last — dedicated key/client; must not run before webhook write (same RW key = 2nd hit → 429).
   const rateKey = fixtures.tenantARateLimit.plainKey;
   const rateFirst = await callPreview(baseUrl, { path: "/api/v1/tenant", apiKey: rateKey });
   const rateSecond = await callPreview(baseUrl, { path: "/api/v1/tenant", apiKey: rateKey });
@@ -369,35 +399,6 @@ async function runPreviewHttpTests(baseUrl, fixtures) {
       }
     }
   }
-
-  const webhookRead = await callPreview(baseUrl, {
-    path: "/api/v1/webhooks/test",
-    apiKey: fixtures.tenantAWebhookRw.plainKey,
-  });
-  assertPreviewJson("webhook read", webhookRead, { expectedStatus: 200, expectedCode: "ok" });
-
-  const webhookWriteDenied = await callPreview(baseUrl, {
-    method: "POST",
-    path: "/api/v1/webhooks/test",
-    apiKey: fixtures.tenantAWebhookRo.plainKey,
-    body: { eventType: "test.ping" },
-  });
-  assertPreviewJson("webhook write denied", webhookWriteDenied, {
-    expectedStatus: 403,
-    expectedCode: EDGE_API_ERROR_CODES.SCOPE_DENIED,
-  });
-
-  const webhookWriteOk = await callPreview(baseUrl, {
-    method: "POST",
-    path: "/api/v1/webhooks/test",
-    apiKey: fixtures.tenantAWebhookRw.plainKey,
-    body: { eventType: "test.ping", payload: { probe: true } },
-  });
-  assertPreviewJson("webhook write ok", webhookWriteOk, {
-    expectedStatus: 200,
-    expectedCode: "ok",
-    extraCheck: (r) => r.json?.data?.accepted === true,
-  });
 }
 
 function printResultsTable() {
