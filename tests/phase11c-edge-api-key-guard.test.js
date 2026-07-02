@@ -213,6 +213,14 @@ describe("Phase 11C — edge API router", () => {
     assert.equal(result.body.data.status, "ok");
   });
 
+  it("health stays public when VITE_API_ENABLED is false", async () => {
+    delete process.env.VITE_API_ENABLED;
+    const result = await invokeEdgeApi({ method: "GET", path: "/api/v1/health" });
+    assert.equal(result.statusCode, 200);
+    assert.equal(result.body.ok, true);
+    process.env.VITE_API_ENABLED = "true";
+  });
+
   it("missing key on protected route returns 401", async () => {
     const result = await invokeEdgeApi({ method: "GET", path: "/api/v1/tenant" });
     assert.equal(result.statusCode, 401);

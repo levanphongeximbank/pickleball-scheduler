@@ -97,15 +97,6 @@ export async function invokeEdgeApi({
     return { statusCode, body: response, headers: rateHeaders };
   };
 
-  if (!isApiEnabled()) {
-    return finish(
-      edgeErrorStatus(EDGE_API_ERROR_CODES.FEATURE_DISABLED),
-      edgeError(EDGE_API_ERROR_CODES.FEATURE_DISABLED, "API layer chưa được bật (VITE_API_ENABLED).", {
-        requestId,
-      })
-    );
-  }
-
   const matched = matchEdgeRoute(method, path);
   if (!matched) {
     return finish(
@@ -118,6 +109,16 @@ export async function invokeEdgeApi({
   }
 
   const { route, params } = matched;
+
+  if (!route.public && !isApiEnabled()) {
+    return finish(
+      edgeErrorStatus(EDGE_API_ERROR_CODES.FEATURE_DISABLED),
+      edgeError(EDGE_API_ERROR_CODES.FEATURE_DISABLED, "API layer chưa được bật (VITE_API_ENABLED).", {
+        requestId,
+      })
+    );
+  }
+
   let auth = { ok: true, mode: "public" };
 
   if (!route.public) {
