@@ -6,6 +6,7 @@ import { guardApiKey, assertEdgeTenant } from "../guards/apiKeyGuard.js";
 import { checkRateLimit } from "../guards/rateLimitGuard.js";
 import { logApiRequest } from "../services/apiLogService.js";
 import { recordIntegrationAuditFromRequest } from "../services/integrationAuditService.js";
+import { getAuditInsertTimeoutMs } from "../config/auditStoreConfig.js";
 import { tenantRoutes } from "./handlers/tenantHandler.js";
 import { integrationsRoutes } from "./handlers/integrationsHandler.js";
 import { webhooksRoutes } from "./handlers/webhooksHandler.js";
@@ -88,7 +89,7 @@ export async function invokeEdgeApi({
   let matchedRoute = null;
   let finishAuth = null;
 
-  const finish = (statusCode, response, { auditAuth = null } = {}) => {
+  const finish = async (statusCode, response, { auditAuth = null } = {}) => {
     logApiRequest({
       requestId,
       tenantId: response?.data?.tenantId || null,
@@ -100,16 +101,26 @@ export async function invokeEdgeApi({
     });
 
     if (matchedRoute && !matchedRoute.public) {
-      recordIntegrationAuditFromRequest({
-        requestId,
-        route: normalizedPath,
-        method,
-        statusCode,
-        resultCode: response?.code || null,
-        scopeRequired: matchedRoute.scope,
-        routePath: matchedRoute.path,
-        auth: auditAuth ?? finishAuth,
-      });
+      try {
+        await recordIntegrationAuditFromRequest(
+          {
+            requestId,
+            route: normalizedPath,
+            method,
+            statusCode,
+            resultCode: response?.code || null,
+            scopeRequired: matchedRoute.scope,
+            routePath: matchedRoute.path,
+            auth: auditAuth ?? finishAuth,
+          },
+          { timeoutMs: getAuditInsertTimeoutMs() }
+        );
+      } catch (error) {
+        console.warn(
+          "[integrationAudit] finish audit failed:",
+          error?.message || String(error)
+        );
+      }
     }
 
     return { statusCode, body: response, headers: rateHeaders };
@@ -117,7 +128,7 @@ export async function invokeEdgeApi({
 
   const matched = matchEdgeRoute(method, path);
   if (!matched) {
-    return finish(
+    return await finish(
       edgeErrorStatus(EDGE_API_ERROR_CODES.NOT_FOUND),
       edgeError(EDGE_API_ERROR_CODES.NOT_FOUND, "Route không tồn tại.", {
         requestId,
@@ -130,7 +141,7 @@ export async function invokeEdgeApi({
   matchedRoute = route;
 
   if (!route.public && !isApiEnabled()) {
-    return finish(
+    return await finish(
       edgeErrorStatus(EDGE_API_ERROR_CODES.FEATURE_DISABLED),
       edgeError(EDGE_API_ERROR_CODES.FEATURE_DISABLED, "API layer chưa được bật (VITE_API_ENABLED).", {
         requestId,
@@ -151,7 +162,7 @@ export async function invokeEdgeApi({
     finishAuth = auth;
 
     if (!auth.ok) {
-      return finish(
+      return await finish(
         auth.statusCode || edgeErrorStatus(auth.code),
         edgeError(auth.code, auth.message, { requestId }),
         { auditAuth: auth }
@@ -161,7 +172,7 @@ export async function invokeEdgeApi({
     const tenantCheck = assertEdgeTenant(auth, requestedTenant);
     if (!tenantCheck.ok) {
       finishAuth = { ...auth, ...tenantCheck };
-      return finish(
+      return await finish(
         tenantCheck.statusCode || edgeErrorStatus(tenantCheck.code),
         edgeError(tenantCheck.code, tenantCheck.message, { requestId }),
         { auditAuth: finishAuth }
@@ -180,7 +191,7 @@ export async function invokeEdgeApi({
 
     if (!rate.ok) {
       rateHeaders = rate.headers || {};
-      return finish(
+      return await finish(
         rate.statusCode || 429,
         edgeError(rate.code || EDGE_API_ERROR_CODES.RATE_LIMITED, rate.message, { requestId }),
         { auditAuth: finishAuth }
@@ -199,12 +210,12 @@ export async function invokeEdgeApi({
       requestId,
     };
     const data = await route.handler(ctx);
-    return finish(
+    return await finish(
       200,
       edgeSuccess(data, { requestId })
     );
   } catch (error) {
-    return finish(
+    return await finish(
       error.statusCode || 500,
       edgeError(EDGE_API_ERROR_CODES.INTERNAL_ERROR, error.message || "Internal error", {
         requestId,

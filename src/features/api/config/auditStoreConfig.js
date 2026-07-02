@@ -30,23 +30,66 @@ function assertSupabaseAuditEnv() {
   }
 }
 
+let auditConfigWarned = false;
+
+export function isAuditDebugEnabled() {
+  return String(readEnv("AUDIT_DEBUG", "")).toLowerCase() === "true";
+}
+
+/**
+ * When API_KEY_STORE=supabase, audit must not silently use memory on Preview/serverless.
+ */
+export function warnIfAuditStoreMisconfigured() {
+  if (auditConfigWarned) {
+    return;
+  }
+
+  let apiKeyMode;
+  try {
+    apiKeyMode = resolveApiKeyStoreMode();
+  } catch {
+    return;
+  }
+
+  const auditMode = getEffectiveAuditStoreMode();
+  const explicitAuditStore = String(readEnv("AUDIT_STORE", "")).toLowerCase();
+
+  if (apiKeyMode === "supabase" && auditMode === "memory" && explicitAuditStore !== "memory") {
+    auditConfigWarned = true;
+    console.warn(
+      "[integrationAudit] API_KEY_STORE=supabase but audit store resolved to memory. Set AUDIT_STORE=supabase and verify SUPABASE_URL + SUPABASE_SERVICE_ROLE_KEY on the server."
+    );
+  }
+
+  if (apiKeyMode === "supabase" && !explicitAuditStore && auditMode === "supabase") {
+    auditConfigWarned = true;
+    console.warn(
+      "[integrationAudit] AUDIT_STORE unset — following API_KEY_STORE=supabase for audit persistence."
+    );
+  }
+}
+
 export function resolveAuditStoreMode() {
-  const raw = String(readEnv("AUDIT_STORE", "")).toLowerCase();
-  if (raw === "memory") {
+  const explicit = String(readEnv("AUDIT_STORE", "")).toLowerCase();
+
+  if (explicit === "memory") {
     return "memory";
   }
-  if (raw === "supabase") {
+
+  if (explicit === "supabase") {
     assertSupabaseAuditEnv();
     return "supabase";
   }
 
-  try {
-    if (resolveApiKeyStoreMode() === "supabase") {
-      assertSupabaseAuditEnv();
-      return "supabase";
-    }
-  } catch {
+  if (explicit && explicit !== "supabase" && explicit !== "memory") {
+    console.warn(`[integrationAudit] Unknown AUDIT_STORE="${explicit}" — using memory.`);
     return "memory";
+  }
+
+  // AUDIT_STORE unset — follow API_KEY_STORE (no silent catch fallback).
+  if (resolveApiKeyStoreMode() === "supabase") {
+    assertSupabaseAuditEnv();
+    return "supabase";
   }
 
   return "memory";
@@ -67,6 +110,7 @@ export function setAuditStoreModeForTests(mode) {
 /** @internal test hook */
 export function resetAuditStoreModeForTests() {
   auditStoreModeOverride = null;
+  auditConfigWarned = false;
 }
 
 export function getEffectiveAuditStoreMode() {

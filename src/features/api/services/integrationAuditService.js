@@ -7,6 +7,8 @@ import {
 import {
   getAuditInsertTimeoutMs,
   getEffectiveAuditStoreMode,
+  isAuditDebugEnabled,
+  warnIfAuditStoreMisconfigured,
 } from "../config/auditStoreConfig.js";
 import { insertIntegrationAuditRow } from "../repositories/supabaseIntegrationAuditRepository.js";
 
@@ -41,6 +43,19 @@ function buildMetadataFromAuditContext(auditContext = {}) {
   return meta;
 }
 
+function writeMemoryAuditRow(row) {
+  const events = readJson(AUDIT_KEY, []);
+  events.unshift({ id: `ial_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`, ...row });
+  writeJson(AUDIT_KEY, events.slice(0, AUDIT_CAP));
+}
+
+function logAuditDebug(fields) {
+  if (!isAuditDebugEnabled()) {
+    return;
+  }
+  console.log("[integrationAudit:debug]", JSON.stringify(fields));
+}
+
 export function listIntegrationAuditEvents({ tenantId = null, requestId = null, limit = 100 } = {}) {
   let events = readJson(AUDIT_KEY, []);
   if (tenantId) {
@@ -52,45 +67,76 @@ export function listIntegrationAuditEvents({ tenantId = null, requestId = null, 
   return events.slice(0, limit);
 }
 
-export async function recordIntegrationAudit(entry) {
-  const row = buildIntegrationAuditEntry(entry);
-  const events = readJson(AUDIT_KEY, []);
-  events.unshift({ id: `ial_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`, ...row });
-  writeJson(AUDIT_KEY, events.slice(0, AUDIT_CAP));
+/**
+ * Persist one audit row — memory always; Supabase when AUDIT_STORE resolves to supabase.
+ * Never throws — returns insert outcome for debug/telemetry.
+ */
+export async function recordIntegrationAudit(entry, { timeoutMs } = {}) {
+  warnIfAuditStoreMisconfigured();
 
-  if (getEffectiveAuditStoreMode() === "supabase") {
-    try {
-      await Promise.race([
-        insertIntegrationAuditRow(serializeIntegrationAuditRow(row)),
-        sleep(getAuditInsertTimeoutMs()).then(() => {
-          throw new Error("audit insert timeout");
-        }),
-      ]);
-    } catch (error) {
-      console.warn(
-        "[integrationAudit] best-effort insert failed:",
-        error?.message || String(error)
-      );
-    }
+  const row = buildIntegrationAuditEntry(entry);
+  const auditStore = getEffectiveAuditStoreMode();
+
+  try {
+    writeMemoryAuditRow(row);
+  } catch (error) {
+    console.warn(
+      "[integrationAudit] memory write failed:",
+      error?.message || String(error)
+    );
   }
 
-  return row;
+  const outcome = {
+    row,
+    auditStore,
+    insertAttempted: false,
+    insertSuccess: false,
+    error: null,
+  };
+
+  if (auditStore !== "supabase") {
+    outcome.insertSuccess = true;
+    return outcome;
+  }
+
+  outcome.insertAttempted = true;
+  const limitMs = timeoutMs ?? getAuditInsertTimeoutMs();
+
+  try {
+    await Promise.race([
+      insertIntegrationAuditRow(serializeIntegrationAuditRow(row)),
+      sleep(limitMs).then(() => {
+        throw new Error("audit insert timeout");
+      }),
+    ]);
+    outcome.insertSuccess = true;
+  } catch (error) {
+    outcome.error = error?.message || String(error);
+    console.warn("[integrationAudit] best-effort insert failed:", outcome.error);
+  }
+
+  return outcome;
 }
 
 /**
  * Record one audit row per edge request at router finish().
- * Fire-and-forget — never throws to caller.
+ * Bounded await — serverless must not return before insert completes.
  */
-export function recordIntegrationAuditFromRequest({
-  requestId,
-  route,
-  method,
-  statusCode,
-  resultCode,
-  scopeRequired,
-  routePath,
-  auth = null,
-} = {}) {
+export async function recordIntegrationAuditFromRequest(
+  {
+    requestId,
+    route,
+    method,
+    statusCode,
+    resultCode,
+    scopeRequired,
+    routePath,
+    auth = null,
+  } = {},
+  { timeoutMs } = {}
+) {
+  warnIfAuditStoreMisconfigured();
+
   const authOk = Boolean(auth?.ok);
   const auditContext = auth?.auditContext || {};
   const eventType = resolveIntegrationAuditEventType({
@@ -120,14 +166,20 @@ export function recordIntegrationAuditFromRequest({
     metadata: buildMetadataFromAuditContext(auditContext),
   };
 
-  void recordIntegrationAudit(payload).catch((error) => {
-    console.warn(
-      "[integrationAudit] recordIntegrationAuditFromRequest failed:",
-      error?.message || String(error)
-    );
+  const outcome = await recordIntegrationAudit(payload, { timeoutMs });
+
+  logAuditDebug({
+    requestId,
+    auditStore: outcome.auditStore,
+    eventType,
+    resultCode,
+    statusCode,
+    insertAttempted: outcome.insertAttempted,
+    insertSuccess: outcome.insertSuccess,
+    error: outcome.error,
   });
 
-  return payload;
+  return { payload, ...outcome };
 }
 
 export function clearIntegrationAuditStorage() {

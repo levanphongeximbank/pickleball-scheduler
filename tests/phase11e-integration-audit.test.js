@@ -24,6 +24,7 @@ import {
 import { INTEGRATION_AUDIT_EVENTS } from "../src/features/api/constants/integrationAudit.js";
 import {
   resetAuditStoreModeForTests,
+  resolveAuditStoreMode,
   setAuditStoreModeForTests,
 } from "../src/features/api/config/auditStoreConfig.js";
 import { resetRuntimeStorage } from "../src/utils/runtimeStorage.js";
@@ -162,6 +163,31 @@ describe("Phase 11E — event_type mapping", () => {
       }),
       INTEGRATION_AUDIT_EVENTS.API_KEY_DENIED
     );
+  });
+});
+
+describe("Phase 11E — audit store resolution", () => {
+  it("follows API_KEY_STORE=supabase when AUDIT_STORE is unset", () => {
+    resetAuditStoreModeForTests();
+    delete process.env.AUDIT_STORE;
+    process.env.API_KEY_STORE = "supabase";
+    process.env.SUPABASE_URL = "https://example.supabase.co";
+    process.env.SUPABASE_SERVICE_ROLE_KEY = "test-service-role-key";
+
+    assert.equal(resolveAuditStoreMode(), "supabase");
+
+    delete process.env.API_KEY_STORE;
+    delete process.env.SUPABASE_URL;
+    delete process.env.SUPABASE_SERVICE_ROLE_KEY;
+  });
+
+  it("does not silently use memory when AUDIT_STORE=supabase is explicit", () => {
+    resetAuditStoreModeForTests();
+    process.env.AUDIT_STORE = "supabase";
+    delete process.env.SUPABASE_URL;
+    delete process.env.SUPABASE_SERVICE_ROLE_KEY;
+
+    assert.throws(() => resolveAuditStoreMode(), /SUPABASE_SERVICE_ROLE_KEY/);
   });
 });
 
