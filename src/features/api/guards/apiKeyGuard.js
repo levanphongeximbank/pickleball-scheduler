@@ -1,16 +1,17 @@
 import { EDGE_API_ERROR_CODES } from "../constants/edgeApiErrors.js";
 import { hasApiScope } from "../constants/apiScopes.js";
 import { API_CLIENT_STATUS, API_KEY_STATUS } from "../models/apiModels.js";
-import {
-  getApiClient,
-  listApiKeys,
-} from "../services/apiKeyService.js";
-import { loadApiKeys } from "../storage/apiStorage.js";
+import { listApiKeys } from "../services/apiKeyService.js";
 import { hashApiKey, parseApiKeyPrefix, verifyApiKey } from "../utils/hashKey.js";
 import {
   API_KEY_AUDIT_ACTIONS,
   recordApiKeyAudit,
 } from "../services/apiKeyAuditService.js";
+import {
+  ApiKeyStoreConfigError,
+  findApiKeyByPlain,
+  scheduleApiKeyLastUsedUpdate,
+} from "../storage/apiKeyStore.js";
 
 function isKeyExpired(keyRecord, now = Date.now()) {
   if (keyRecord.status === API_KEY_STATUS.EXPIRED) return true;
@@ -18,23 +19,15 @@ function isKeyExpired(keyRecord, now = Date.now()) {
   return new Date(keyRecord.expiresAt).getTime() <= now;
 }
 
-async function findKeyByPlain(plainKey) {
-  const prefix = parseApiKeyPrefix(plainKey);
-  if (!prefix) return null;
-
-  const hashed = await hashApiKey(plainKey);
-  const candidates = loadApiKeys().filter((k) => k.keyPrefix === prefix);
-  for (const candidate of candidates) {
-    const match = await verifyApiKey(plainKey, candidate.hashedKey);
-    if (match) {
-      return { keyRecord: candidate, hashed };
-    }
-  }
-  return null;
+function sanitizeKeyForAuth(keyRecord) {
+  if (!keyRecord) return null;
+  const { hashedKey: _hash, ...safe } = keyRecord;
+  void _hash;
+  return safe;
 }
 
 /**
- * Phase 11C — API key guard for Edge router.
+ * Phase 11C/11D — API key guard for Edge router.
  * Never persists or logs raw API keys.
  */
 export async function guardApiKey(plainKey, { requiredScope = null, tenantId = null } = {}) {
@@ -50,10 +43,24 @@ export async function guardApiKey(plainKey, { requiredScope = null, tenantId = n
     };
   }
 
-  const found = await findKeyByPlain(plainKey);
+  let found;
+  try {
+    found = await findApiKeyByPlain(plainKey);
+  } catch (error) {
+    if (error instanceof ApiKeyStoreConfigError) {
+      return {
+        ok: false,
+        code: EDGE_API_ERROR_CODES.INTERNAL_ERROR,
+        message: error.message,
+        statusCode: 503,
+      };
+    }
+    throw error;
+  }
+
   if (!found) {
     recordApiKeyAudit(API_KEY_AUDIT_ACTIONS.DENIED, {
-      meta: { reason: "invalid_key" },
+      meta: { reason: "invalid_key", keyPrefix: parseApiKeyPrefix(plainKey) || null },
     });
     return {
       ok: false,
@@ -63,14 +70,14 @@ export async function guardApiKey(plainKey, { requiredScope = null, tenantId = n
     };
   }
 
-  const { keyRecord } = found;
+  const { keyRecord, client: resolvedClient } = found;
 
   if (keyRecord.status === API_KEY_STATUS.REVOKED) {
     recordApiKeyAudit(API_KEY_AUDIT_ACTIONS.DENIED, {
       tenantId: keyRecord.tenantId,
       keyId: keyRecord.id,
       clientId: keyRecord.clientId,
-      meta: { reason: "revoked" },
+      meta: { reason: "revoked", keyPrefix: keyRecord.keyPrefix },
     });
     return {
       ok: false,
@@ -85,7 +92,7 @@ export async function guardApiKey(plainKey, { requiredScope = null, tenantId = n
       tenantId: keyRecord.tenantId,
       keyId: keyRecord.id,
       clientId: keyRecord.clientId,
-      meta: { reason: "expired" },
+      meta: { reason: "expired", keyPrefix: keyRecord.keyPrefix },
     });
     return {
       ok: false,
@@ -100,7 +107,7 @@ export async function guardApiKey(plainKey, { requiredScope = null, tenantId = n
       tenantId: keyRecord.tenantId,
       keyId: keyRecord.id,
       clientId: keyRecord.clientId,
-      meta: { reason: "inactive", status: keyRecord.status },
+      meta: { reason: "inactive", status: keyRecord.status, keyPrefix: keyRecord.keyPrefix },
     });
     return {
       ok: false,
@@ -110,13 +117,13 @@ export async function guardApiKey(plainKey, { requiredScope = null, tenantId = n
     };
   }
 
-  const client = getApiClient(keyRecord.clientId);
+  const client = resolvedClient;
   if (!client || client.status !== API_CLIENT_STATUS.ACTIVE) {
     recordApiKeyAudit(API_KEY_AUDIT_ACTIONS.DENIED, {
       tenantId: keyRecord.tenantId,
       keyId: keyRecord.id,
       clientId: keyRecord.clientId,
-      meta: { reason: "client_inactive" },
+      meta: { reason: "client_inactive", keyPrefix: keyRecord.keyPrefix },
     });
     return {
       ok: false,
@@ -131,7 +138,7 @@ export async function guardApiKey(plainKey, { requiredScope = null, tenantId = n
       tenantId: keyRecord.tenantId,
       keyId: keyRecord.id,
       clientId: keyRecord.clientId,
-      meta: { reason: "tenant_mismatch", requestedTenant: tenantId },
+      meta: { reason: "tenant_mismatch", requestedTenant: tenantId, keyPrefix: keyRecord.keyPrefix },
     });
     return {
       ok: false,
@@ -146,7 +153,7 @@ export async function guardApiKey(plainKey, { requiredScope = null, tenantId = n
       tenantId: keyRecord.tenantId,
       keyId: keyRecord.id,
       clientId: keyRecord.clientId,
-      meta: { requiredScope },
+      meta: { requiredScope, keyPrefix: keyRecord.keyPrefix },
     });
     return {
       ok: false,
@@ -160,14 +167,16 @@ export async function guardApiKey(plainKey, { requiredScope = null, tenantId = n
     tenantId: keyRecord.tenantId,
     keyId: keyRecord.id,
     clientId: keyRecord.clientId,
-    meta: { scope: requiredScope || null },
+    meta: { scope: requiredScope || null, keyPrefix: keyRecord.keyPrefix },
   });
+
+  scheduleApiKeyLastUsedUpdate(keyRecord.id);
 
   return {
     ok: true,
     tenantId: keyRecord.tenantId,
     scopes: keyRecord.scopes,
-    apiKey: keyRecord,
+    apiKey: sanitizeKeyForAuth(keyRecord),
     client,
     mode: "api_key",
   };
@@ -197,3 +206,6 @@ export function assertEdgeTenant(auth, requestedTenantId) {
 export function listSanitizedApiKeys(options) {
   return listApiKeys(options);
 }
+
+// Re-export for tests that assert hash behavior on guard path.
+export { hashApiKey, verifyApiKey, parseApiKeyPrefix };

@@ -44,7 +44,15 @@ export function checkRateLimit(
     RATE_LIMIT_WINDOWS.MINUTE,
     minuteBucket
   );
-  const minuteLimit = limits.requestsPerMinute ?? DEFAULT_API_RATE_LIMITS.requestsPerMinute;
+  const envMinute = parseInt(
+    String(globalThis.process?.env?.API_RATE_LIMIT_REQUESTS_PER_MINUTE || ""),
+    10
+  );
+  const minuteLimit =
+    limits.requestsPerMinute ??
+    (Number.isFinite(envMinute) && envMinute > 0
+      ? envMinute
+      : DEFAULT_API_RATE_LIMITS.requestsPerMinute);
   const current = getCount(minuteKey);
 
   if (current >= minuteLimit) {
