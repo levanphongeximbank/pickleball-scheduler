@@ -12,7 +12,13 @@ import {
   saveApiClients,
   saveApiKeys,
 } from "../storage/apiStorage.js";
-import { generateApiKey, hashApiKey } from "../utils/hashKey.js";
+import { generateApiKey, hashApiKey, parseApiKeyPrefix, verifyApiKey } from "../utils/hashKey.js";
+import {
+  API_KEY_AUDIT_ACTIONS,
+  recordApiKeyAudit,
+} from "./apiKeyAuditService.js";
+
+export { verifyApiKey, hashApiKey, parseApiKeyPrefix };
 
 export function listApiClients({ tenantId = null } = {}) {
   const clients = loadApiClients();
@@ -75,6 +81,14 @@ export async function createApiKeyForClient(clientId, input = {}) {
   keys.push(keyRecord);
   saveApiKeys(keys);
 
+  recordApiKeyAudit(API_KEY_AUDIT_ACTIONS.CREATED, {
+    tenantId: keyRecord.tenantId,
+    clientId: keyRecord.clientId,
+    keyId: keyRecord.id,
+    actorId: input.createdBy || null,
+    meta: { scopes: keyRecord.scopes, prefix: keyRecord.keyPrefix },
+  });
+
   return {
     ok: true,
     client,
@@ -109,6 +123,11 @@ export function revokeApiKey(keyId) {
     status: API_KEY_STATUS.REVOKED,
   };
   saveApiKeys(keys);
+  recordApiKeyAudit(API_KEY_AUDIT_ACTIONS.REVOKED, {
+    tenantId: keys[index].tenantId,
+    clientId: keys[index].clientId,
+    keyId: keys[index].id,
+  });
   return { ok: true, apiKey: keys[index] };
 }
 
@@ -138,6 +157,12 @@ export function listApiKeys({ tenantId = null, clientId = null } = {}) {
   });
 }
 
+function isKeyExpired(keyRecord, now = Date.now()) {
+  if (keyRecord.status === API_KEY_STATUS.EXPIRED) return true;
+  if (!keyRecord.expiresAt) return false;
+  return new Date(keyRecord.expiresAt).getTime() <= now;
+}
+
 export async function authenticateApiKey(plainKey) {
   if (!plainKey || typeof plainKey !== "string") {
     return {
@@ -147,14 +172,29 @@ export async function authenticateApiKey(plainKey) {
     };
   }
 
-  const hashed = await hashApiKey(plainKey);
-  const prefix = plainKey.split(".")[0] || "";
+  const prefix = parseApiKeyPrefix(plainKey);
+  if (!prefix) {
+    return {
+      ok: false,
+      code: API_ERROR_CODES.UNAUTHORIZED,
+      message: "API key không hợp lệ.",
+    };
+  }
+
   const keys = loadApiKeys();
-  const keyRecord = keys.find(
-    (k) => k.hashedKey === hashed || k.keyPrefix === prefix
-  );
+  const candidates = keys.filter((k) => k.keyPrefix === prefix);
+  let keyRecord = null;
+  for (const candidate of candidates) {
+    if (await verifyApiKey(plainKey, candidate.hashedKey)) {
+      keyRecord = candidate;
+      break;
+    }
+  }
 
   if (!keyRecord) {
+    recordApiKeyAudit(API_KEY_AUDIT_ACTIONS.AUTH_FAILED, {
+      meta: { reason: "not_found" },
+    });
     return {
       ok: false,
       code: API_ERROR_CODES.UNAUTHORIZED,
@@ -162,19 +202,31 @@ export async function authenticateApiKey(plainKey) {
     };
   }
 
-  if (keyRecord.hashedKey !== hashed) {
-    return {
-      ok: false,
-      code: API_ERROR_CODES.UNAUTHORIZED,
-      message: "API key không đúng.",
-    };
-  }
-
   if (keyRecord.status === API_KEY_STATUS.REVOKED) {
+    recordApiKeyAudit(API_KEY_AUDIT_ACTIONS.AUTH_FAILED, {
+      tenantId: keyRecord.tenantId,
+      keyId: keyRecord.id,
+      clientId: keyRecord.clientId,
+      meta: { reason: "revoked" },
+    });
     return {
       ok: false,
       code: API_ERROR_CODES.UNAUTHORIZED,
       message: "API key đã bị thu hồi.",
+    };
+  }
+
+  if (isKeyExpired(keyRecord)) {
+    recordApiKeyAudit(API_KEY_AUDIT_ACTIONS.AUTH_FAILED, {
+      tenantId: keyRecord.tenantId,
+      keyId: keyRecord.id,
+      clientId: keyRecord.clientId,
+      meta: { reason: "expired" },
+    });
+    return {
+      ok: false,
+      code: API_ERROR_CODES.UNAUTHORIZED,
+      message: "API key đã hết hạn.",
     };
   }
 
@@ -201,6 +253,12 @@ export async function authenticateApiKey(plainKey) {
       : k
   );
   saveApiKeys(updatedKeys);
+
+  recordApiKeyAudit(API_KEY_AUDIT_ACTIONS.AUTH_SUCCESS, {
+    tenantId: keyRecord.tenantId,
+    keyId: keyRecord.id,
+    clientId: keyRecord.clientId,
+  });
 
   return {
     ok: true,

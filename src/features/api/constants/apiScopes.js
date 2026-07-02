@@ -13,7 +13,21 @@ export const API_SCOPES = Object.freeze({
   CLUBS_READ: "clubs:read",
   NOTIFICATIONS_READ: "notifications:read",
   NOTIFICATIONS_WRITE: "notifications:write",
+  INTEGRATIONS_READ: "integrations:read",
+  INTEGRATIONS_WRITE: "integrations:write",
+  WEBHOOKS_READ: "webhooks:read",
+  WEBHOOKS_WRITE: "webhooks:write",
+  TENANT_READ: "tenant:read",
 });
+
+/** Phase 11C edge foundation scopes. */
+export const EDGE_FOUNDATION_SCOPES = Object.freeze([
+  API_SCOPES.INTEGRATIONS_READ,
+  API_SCOPES.INTEGRATIONS_WRITE,
+  API_SCOPES.WEBHOOKS_READ,
+  API_SCOPES.WEBHOOKS_WRITE,
+  API_SCOPES.TENANT_READ,
+]);
 
 export const ALL_API_SCOPES = Object.freeze(Object.values(API_SCOPES));
 

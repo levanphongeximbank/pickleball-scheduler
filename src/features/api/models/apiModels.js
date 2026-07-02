@@ -8,6 +8,7 @@ export const API_KEY_STATUS = Object.freeze({
   ACTIVE: "active",
   INACTIVE: "inactive",
   REVOKED: "revoked",
+  EXPIRED: "expired",
 });
 
 export function createApiClient(input = {}) {
@@ -33,6 +34,7 @@ export function createApiKeyRecord(input = {}) {
     hashedKey: input.hashedKey,
     scopes: Array.isArray(input.scopes) ? input.scopes : [],
     status: input.status || API_KEY_STATUS.ACTIVE,
+    expiresAt: input.expiresAt || null,
     createdBy: input.createdBy || null,
     createdAt: input.createdAt || now,
     lastUsedAt: input.lastUsedAt || null,

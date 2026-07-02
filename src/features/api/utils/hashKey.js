@@ -15,6 +15,29 @@ export async function hashApiKey(plainKey) {
   return digestSha256(String(plainKey || ""));
 }
 
+/** Constant-time-ish compare for SHA-256 hex digests. */
+export function verifyApiKey(plainKey, storedHash) {
+  if (!plainKey || !storedHash) return false;
+  const a = String(storedHash);
+  let b = "";
+  return hashApiKey(plainKey).then((computed) => {
+    b = computed;
+    if (a.length !== b.length) return false;
+    let mismatch = 0;
+    for (let i = 0; i < a.length; i += 1) {
+      mismatch |= a.charCodeAt(i) ^ b.charCodeAt(i);
+    }
+    return mismatch === 0;
+  });
+}
+
+export function parseApiKeyPrefix(plainKey) {
+  const value = String(plainKey || "");
+  const dot = value.indexOf(".");
+  if (dot <= 0) return "";
+  return value.slice(0, dot);
+}
+
 export function generateApiKeyPrefix() {
   const rand =
     typeof crypto !== "undefined" && crypto.randomUUID

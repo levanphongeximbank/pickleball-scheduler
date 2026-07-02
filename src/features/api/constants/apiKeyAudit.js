@@ -3,6 +3,8 @@ export const API_KEY_AUDIT_ACTIONS = Object.freeze({
   CREATED: "api_key.created",
   ROTATED: "api_key.rotated",
   REVOKED: "api_key.revoked",
+  USED: "api_key.used",
+  DENIED: "api_key.denied",
   AUTH_SUCCESS: "api_key.auth_success",
   AUTH_FAILED: "api_key.auth_failed",
   SCOPE_DENIED: "api_key.scope_denied",
