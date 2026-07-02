@@ -1,6 +1,6 @@
 # Phase 11C — Edge API Router + API Key Guard
 
-**Trạng thái:** Foundation staging/internal — chưa mở public API production.
+**Trạng thái:** Staging QA **PASS** (2026-07-02) — xem `docs/v5/PHASE_11C_EDGE_API_KEY_GUARD_STAGING_QA.md`
 
 ## 1. Mục tiêu Phase 11C
 
@@ -123,20 +123,22 @@ Success:
 
 ## 9. Staging QA checklist
 
-- [ ] Apply SQL: `docs/supabase-sprint10-phase11c-api-key-guard.sql` (staging only)
-- [ ] `VITE_API_ENABLED=true` trên Preview
-- [ ] `node scripts/verify-phase11c-api-key-guard-staging.mjs`
-- [ ] Owner A key → Tenant A OK, Tenant B blocked
-- [ ] Owner B key → Tenant B OK, Tenant A blocked
-- [ ] Revoked key blocked
-- [ ] Scope denied blocked
-- [ ] PLAYER không `api.manage`
-- [ ] GET `/api/v1/health` public 200
-- [ ] Protected routes 401 without key
-- [ ] Rate limit 429 khi vượt ngưỡng (test với limit thấp)
+- [x] Apply SQL: `docs/supabase-sprint10-phase11c-api-key-guard.sql` (staging only)
+- [x] `VITE_API_ENABLED=true` trên Preview
+- [x] `node scripts/verify-phase11c-api-key-guard-staging.mjs` — **PASS** `31/0/0/0` (2026-07-02, cần `VERCEL_AUTOMATION_BYPASS_SECRET`)
+- [x] Owner A key → Tenant A OK, Tenant B blocked *(in-memory §D)*
+- [x] Owner B key → Tenant B OK, Tenant A blocked *(in-memory §D)*
+- [x] Revoked key blocked *(in-memory §D)*
+- [x] Scope denied blocked *(in-memory §D)*
+- [x] PLAYER không `api.manage`
+- [x] GET `/api/v1/health` public 200 *(manual + automation Preview 2026-07-02)*
+- [x] Protected routes **401** without key *(manual + automation Preview — gate bắt buộc)*
+- [x] Rate limit 429 khi vượt ngưỡng *(in-memory §D)*
 - [ ] `npm test` pass
 - [ ] `npm run build` pass
 - [ ] `npm run lint` pass
+
+**Staging QA report:** `docs/v5/PHASE_11C_EDGE_API_KEY_GUARD_STAGING_QA.md`
 
 ## 10. Rollback plan
 
@@ -172,9 +174,56 @@ Success:
 | `api/v1/[...path].js` | Vercel entry |
 | `tests/phase11c-edge-api-key-guard.test.js` | Unit tests |
 | `scripts/verify-phase11c-api-key-guard-staging.mjs` | Staging verify |
+| `scripts/phase11c-preview-http.mjs` | Preview HTTP helpers (fetch isolation, URL build) |
 
 ## SQL
 
 - **Apply:** `docs/supabase-sprint10-phase11c-api-key-guard.sql` (adds `expires_at`, indexes)
 - **Rollback:** `docs/supabase-sprint10-phase11c-rollback.sql`
 - **Không tạo bảng mới** — dùng `api_clients`, `api_keys` có sẵn
+
+## 12. Staging Preview verify (2026-07-02)
+
+| Mục | Giá trị |
+|-----|---------|
+| Preview URL | https://pickleball-scheduler-git-v5-platfor-47ef4a-pickleball-scheduler.vercel.app |
+| Deployment | `dpl_91SmVoF3sDBp4tia5SWJ3HEp7R5a` |
+| Commit | `f028503` (`470faef` P0 localStorage fix + `f028503` health public khi flag off) |
+| Env | `VITE_API_ENABLED=true` (Preview) |
+| Thời gian test | 2026-07-02 ~16:33 ICT (manual) · automation final cùng ngày |
+| Verdict | **PASS** — manual gate + automation `PASS:31 FAIL:0 BLOCKED:0` |
+
+### Automated verify (final)
+
+```bash
+VERCEL_AUTOMATION_BYPASS_SECRET=<from Vercel Project Settings → Deployment Protection> \
+STAGING_PREVIEW_URL=https://pickleball-scheduler-git-v5-platfor-47ef4a-pickleball-scheduler.vercel.app \
+node scripts/verify-phase11c-api-key-guard-staging.mjs
+```
+
+| Counter | Giá trị |
+|---------|---------|
+| PASS | 31 |
+| FAIL | 0 |
+| BLOCKED | 0 |
+| PARTIAL | 0 |
+| NOT_APPLICABLE | 11 (valid-key HTTP — Phase 11D) |
+
+Preview HTTP helpers tách sang `scripts/phase11c-preview-http.mjs` — capture native `fetch` trước app imports (fetch isolation), `normalizePreviewBaseUrl` + `buildPreviewUrl` sửa lỗi `/api//v1/*`.
+
+### Preview HTTP (manual `vercel curl` + automation §C)
+
+| Endpoint | HTTP | `code` | Ghi chú |
+|----------|------|--------|---------|
+| `GET /api/v1/health` | 200 | `ok` | JSON envelope; không cần API key |
+| `GET /api/v1/does-not-exist-route` | 404 | `not_found` | Automation route |
+| `GET /api/v1/tenant` (no key) | **401** | `unauthorized` | Không còn `503 feature_disabled` |
+| `GET /api/v1/tenant` (invalid key) | 401 | `invalid_api_key` | |
+
+Không có `500`, `FUNCTION_INVOCATION_FAILED`, hay `localStorage is not defined` trong responses.
+
+**Lưu ý:** Preview có Vercel Deployment Protection — `fetch` thường trả HTML login. Dùng browser đã đăng nhập Vercel, `npx vercel curl`, hoặc `VERCEL_AUTOMATION_BYPASS_SECRET` (header `x-vercel-protection-bypass`) khi chạy script tự động.
+
+## 13. Handoff Phase 11D
+
+Phase 11C **đóng**. Tiếp theo: Supabase-backed API key runtime trên serverless, valid-key HTTP scenarios (11 `NOT_APPLICABLE`), `integration_audit_logs`, `integrations:write`, Redis rate limit. Chi tiết: `docs/v5/PHASE_11C_EDGE_API_KEY_GUARD_STAGING_QA.md` §E.
