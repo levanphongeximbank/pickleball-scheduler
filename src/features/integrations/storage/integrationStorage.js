@@ -46,7 +46,7 @@ export function createDefaultTenantSettings(tenantId) {
     vnpayEnabled: false,
     momoEnabled: false,
     stripeEnabled: false,
-    mockPaymentEnabled: true,
+    mockPaymentEnabled: false,
     zaloEnabled: false,
     emailEnabled: false,
     smsEnabled: false,

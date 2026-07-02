@@ -22,6 +22,7 @@ import { PERMISSIONS } from "../../auth/permissions.js";
 import {
   canManageIntegrations,
   getIntegrationOverview,
+  isIntegrationOperational,
   toggleIntegrationProvider,
 } from "../../features/integrations/index.js";
 import { sendTestNotification } from "../../features/notifications/index.js";
@@ -29,10 +30,12 @@ import { isMarketplaceEnabled } from "../../features/integrations/config/integra
 import { usePlatformRuntime } from "../../core/platform/app/usePlatformRuntime.js";
 
 const STATUS_COLOR = {
-  active: "success",
-  configured: "info",
-  not_configured: "default",
+  disabled: "default",
+  configured: "success",
+  mock_only: "info",
   error: "error",
+  active: "success",
+  not_configured: "default",
   inactive: "warning",
 };
 
@@ -177,11 +180,11 @@ export default function IntegrationSettingsPage() {
                           onClick={() =>
                             handleToggle(
                               row.key === "mockPayment" ? "mock" : row.key,
-                              row.status !== "active"
+                              !isIntegrationOperational(row.status)
                             )
                           }
                         >
-                          {row.status === "active" ? "Tắt" : "Bật"}
+                          {isIntegrationOperational(row.status) ? "Tắt" : "Bật"}
                         </Button>
                       )}
                       {row.key === "email" && (

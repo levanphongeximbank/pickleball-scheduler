@@ -7,10 +7,8 @@ import {
   getTenantIntegrationSettings,
   saveTenantIntegrationSettings,
 } from "../storage/integrationStorage.js";
-import {
-  getIntegrationEnvConfig,
-  getProviderStatus,
-} from "../config/integrationFlags.js";
+import { getIntegrationEnvConfig } from "../config/integrationFlags.js";
+import { buildProviderStatusMap } from "./integrationStatusService.js";
 
 const INTEGRATION_ROLES = new Set([
   ROLES.SUPER_ADMIN,
@@ -43,40 +41,7 @@ export function getIntegrationOverview(tenantId) {
   return {
     tenantId,
     settings: tenantSettings,
-    providers: {
-      zalo: {
-        status: tenantSettings.zaloEnabled ? "active" : "not_configured",
-        configured: Boolean(tenantSettings.zaloConfig?.appId),
-      },
-      vnpay: {
-        status: tenantSettings.vnpayEnabled
-          ? getProviderStatus(env.vnpay)
-          : "not_configured",
-      },
-      momo: {
-        status: tenantSettings.momoEnabled
-          ? getProviderStatus(env.momo)
-          : "not_configured",
-      },
-      stripe: {
-        status: tenantSettings.stripeEnabled
-          ? getProviderStatus(env.stripe)
-          : "not_configured",
-      },
-      email: {
-        status: tenantSettings.emailEnabled
-          ? getProviderStatus(env.email)
-          : "not_configured",
-      },
-      sms: {
-        status: tenantSettings.smsEnabled
-          ? getProviderStatus(env.sms)
-          : "not_configured",
-      },
-      mockPayment: {
-        status: tenantSettings.mockPaymentEnabled ? "active" : "inactive",
-      },
-    },
+    providers: buildProviderStatusMap(tenantSettings, env),
     callbackUrls: {
       vnpay: env.vnpay.callbackUrl || "/api/v1/payments/vnpay/callback",
       momo: env.momo.callbackUrl || "/api/v1/payments/momo/callback",

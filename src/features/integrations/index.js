@@ -16,6 +16,23 @@ export {
   toggleIntegrationProvider,
   canManageIntegrations,
 } from "./services/integrationSettingsService.js";
+export { INTEGRATION_STATUS, isIntegrationOperational } from "./constants/integrationStatus.js";
+export {
+  INTEGRATION_PROVIDERS,
+  INTEGRATION_PROVIDER_IDS,
+  listIntegrationProviders,
+  getIntegrationProvider,
+} from "./constants/integrationRegistry.js";
+export {
+  resolveProviderIntegrationStatus,
+  buildProviderStatusMap,
+} from "./services/integrationStatusService.js";
+export {
+  WEBHOOK_EVENT_TYPES,
+  WEBHOOK_RETRY_POLICY,
+  WEBHOOK_SIGNATURE_MODES,
+  buildWebhookIdempotencyKey,
+} from "./constants/webhookFoundation.js";
 export {
   recordWebhookEvent,
   listWebhookEvents,
