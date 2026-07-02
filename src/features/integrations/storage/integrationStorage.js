@@ -1,3 +1,6 @@
+import { createDefaultTenantSettings } from "../models/integrationDefaults.js";
+import { getIntegrationStore } from "../repositories/integrationStoreRuntime.js";
+
 const SETTINGS_KEY = "pickleball-integration-settings-v1";
 
 function readJson(key, fallback) {
@@ -13,6 +16,7 @@ function writeJson(key, value) {
   localStorage.setItem(key, JSON.stringify(value));
 }
 
+/** Legacy localStorage bulk read — used by local store mode only. */
 export function loadIntegrationSettings() {
   return readJson(SETTINGS_KEY, {});
 }
@@ -22,44 +26,28 @@ export function saveIntegrationSettings(settings) {
 }
 
 export function getTenantIntegrationSettings(tenantId) {
-  const all = loadIntegrationSettings();
-  return all[tenantId] || createDefaultTenantSettings(tenantId);
+  const store = getIntegrationStore();
+  return store.readTenantSettings(tenantId);
 }
 
 export function saveTenantIntegrationSettings(tenantId, patch) {
-  const all = loadIntegrationSettings();
-  const current = all[tenantId] || createDefaultTenantSettings(tenantId);
-  all[tenantId] = {
+  const store = getIntegrationStore();
+  const current = store.readTenantSettings(tenantId);
+  const next = {
     ...current,
     ...patch,
     tenantId,
     updatedAt: new Date().toISOString(),
   };
-  saveIntegrationSettings(all);
-  return all[tenantId];
+  return store.writeTenantSettings(tenantId, next);
 }
 
-export function createDefaultTenantSettings(tenantId) {
-  return {
-    tenantId,
-    defaultPaymentProvider: "mock",
-    vnpayEnabled: false,
-    momoEnabled: false,
-    stripeEnabled: false,
-    mockPaymentEnabled: false,
-    zaloEnabled: false,
-    emailEnabled: false,
-    smsEnabled: false,
-    zaloConfig: {
-      oaId: "",
-      appId: "",
-      status: "inactive",
-      lastConnectedAt: null,
-    },
-    updatedAt: new Date().toISOString(),
-  };
-}
+export { createDefaultTenantSettings };
 
 export function clearIntegrationStorage() {
+  const store = getIntegrationStore();
+  if (typeof store.clear === "function") {
+    store.clear();
+  }
   localStorage.removeItem(SETTINGS_KEY);
 }

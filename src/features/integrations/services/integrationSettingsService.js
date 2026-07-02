@@ -1,7 +1,6 @@
 import { guardPermission } from "../../../auth/guardAction.js";
 import { PERMISSIONS } from "../../identity/constants/permissions.js";
 import { isRbacEnabled } from "../../../auth/authService.js";
-import { ROLES, normalizeRole } from "../../identity/constants/roles.js";
 import { getCurrentUser } from "../../../auth/authService.js";
 import {
   getTenantIntegrationSettings,
@@ -9,12 +8,11 @@ import {
 } from "../storage/integrationStorage.js";
 import { getIntegrationEnvConfig } from "../config/integrationFlags.js";
 import { buildProviderStatusMap } from "./integrationStatusService.js";
-
-const INTEGRATION_ROLES = new Set([
-  ROLES.SUPER_ADMIN,
-  ROLES.COURT_OWNER,
-  ROLES.CLUB_OWNER,
-]);
+import {
+  ensureIntegrationStoreHydrated,
+  getIntegrationStore,
+  persistIntegrationTenantSettings,
+} from "../repositories/integrationStoreRuntime.js";
 
 export function canManageIntegrations(user = getCurrentUser()) {
   if (!isRbacEnabled()) return { ok: true };
@@ -22,16 +20,20 @@ export function canManageIntegrations(user = getCurrentUser()) {
     return { ok: false, error: "Cần đăng nhập." };
   }
 
-  const role = normalizeRole(user.role);
-  if (INTEGRATION_ROLES.has(role)) {
-    return { ok: true };
-  }
+  const tenantId = user.venueId || user.tenantId || null;
+  return guardPermission(
+    PERMISSIONS.INTEGRATION_MANAGE,
+    { venueId: tenantId, tenantId },
+    { user }
+  );
+}
 
-  const permCheck = guardPermission(PERMISSIONS.INTEGRATION_MANAGE);
-  if (!permCheck.ok) {
-    return { ok: false, error: "Không có quyền cấu hình tích hợp." };
+export async function hydrateIntegrationSettings(tenantId) {
+  if (!tenantId) {
+    return { ok: false, error: "tenantId required" };
   }
-  return { ok: true };
+  const store = getIntegrationStore();
+  return ensureIntegrationStoreHydrated(store, { tenantId });
 }
 
 export function getIntegrationOverview(tenantId) {
@@ -54,6 +56,10 @@ export function updateIntegrationSettings(tenantId, patch) {
   const access = canManageIntegrations();
   if (!access.ok) return access;
   const settings = saveTenantIntegrationSettings(tenantId, patch);
+  const user = getCurrentUser();
+  void persistIntegrationTenantSettings(getIntegrationStore(), tenantId, {
+    updatedBy: user?.id || null,
+  });
   return { ok: true, settings };
 }
 

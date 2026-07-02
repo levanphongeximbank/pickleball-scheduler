@@ -28,6 +28,19 @@ export {
   buildProviderStatusMap,
 } from "./services/integrationStatusService.js";
 export {
+  INTEGRATION_STORE_MODES,
+  resolveIntegrationStoreMode,
+} from "./repositories/integrationRepository.js";
+export {
+  getIntegrationStore,
+  resetIntegrationStore,
+  createIntegrationStore,
+  ensureIntegrationStoreHydrated,
+  persistIntegrationTenantSettings,
+  isSupabaseIntegrationStore,
+} from "./repositories/integrationStoreRuntime.js";
+export { hydrateIntegrationSettings } from "./services/integrationSettingsService.js";
+export {
   WEBHOOK_EVENT_TYPES,
   WEBHOOK_RETRY_POLICY,
   WEBHOOK_SIGNATURE_MODES,

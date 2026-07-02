@@ -35,7 +35,7 @@ function parseEnvFile(content) {
 }
 
 export function loadProjectEnv() {
-  const files = [".env", ".env.development", ".env.local", ".env.development.local"];
+  const files = [".env", ".env.development", ".env.local", ".env.development.local", ".env.staging-qa.local"];
   const merged = {};
 
   for (const fileName of files) {

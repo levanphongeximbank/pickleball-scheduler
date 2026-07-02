@@ -22,6 +22,7 @@ import { PERMISSIONS } from "../../auth/permissions.js";
 import {
   canManageIntegrations,
   getIntegrationOverview,
+  hydrateIntegrationSettings,
   isIntegrationOperational,
   toggleIntegrationProvider,
 } from "../../features/integrations/index.js";
@@ -52,6 +53,19 @@ export default function IntegrationSettingsPage() {
     () => (tenantId ? getIntegrationOverview(tenantId) : null),
     [tenantId, refreshKey]
   );
+
+  useEffect(() => {
+    if (!tenantId) return;
+    let cancelled = false;
+    void hydrateIntegrationSettings(tenantId).then((result) => {
+      if (!cancelled && result?.ok) {
+        setRefreshKey((v) => v + 1);
+      }
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [tenantId]);
 
   useEffect(() => {
     try {
