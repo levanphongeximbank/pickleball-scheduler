@@ -1,6 +1,6 @@
 # Phase 11D — Supabase-backed API Key Runtime Verification
 
-**Trạng thái:** P0 implemented — Preview HTTP verify pending (Vercel env + redeploy + bypass secret)  
+**Trạng thái:** ✅ **PASS** — P0 closed (staging verify 2026-07-02)
 **Tiền đề:** Phase 11C **PASS** hoàn toàn (commit script fix `25a1779` trên `origin/v5-platform-edition`)  
 **Branch:** `v5-platform-edition`  
 **Supabase staging:** `qyewbxjsiiyufanzcjcq`  
@@ -413,7 +413,7 @@ Hoặc mở rộng script 11C với section §G — tùy implement (ưu tiên sc
 
 ---
 
-*Document version: 2026-07-02 — P0 implemented.*
+*Document version: 2026-07-02 — P0 closed (staging verify PASS).*
 
 ---
 
@@ -451,4 +451,72 @@ node scripts/verify-phase11d-api-key-runtime-staging.mjs
 ```
 
 **Staging QA:** `docs/v5/PHASE_11D_SUPABASE_API_KEY_RUNTIME_STAGING_QA.md`
+
+---
+
+## 15. Staging closeout (2026-07-02) — **PASS**
+
+### Commits
+
+| Commit | Mô tả |
+|--------|-------|
+| `ac98479` | `feat(api): add Phase 11D Supabase API key runtime` |
+| `00ee490` | `fix(api): apply Phase 11D rate limit env override` |
+| `091e289` | `fix(api): isolate Phase 11D webhook rate-limit verification` |
+
+### Vercel Preview env (đã apply)
+
+| Variable | Giá trị |
+|----------|---------|
+| `API_KEY_STORE` | `supabase` |
+| `SUPABASE_SERVICE_ROLE_KEY` | set (server only — không ghi secret vào docs) |
+| `SUPABASE_URL` | set |
+| `VITE_API_ENABLED` | `true` |
+| `API_RATE_LIMIT_REQUESTS_PER_MINUTE` | `1` (staging verify rate limit) |
+
+### Verify result (final automation)
+
+```
+PASS: 16
+FAIL: 0
+BLOCKED: 0
+PARTIAL: 0
+Phase 11D staging verify: PASS
+```
+
+| Scenario | Verdict |
+|----------|---------|
+| seed fixtures | **PASS** |
+| health | **PASS** |
+| missing key | **PASS** |
+| invalid key | **PASS** |
+| valid key | **PASS** |
+| missing scope | **PASS** |
+| valid scope | **PASS** |
+| wrong tenant A→B | **PASS** |
+| wrong tenant B→A | **PASS** |
+| revoked key | **PASS** |
+| expired key | **PASS** |
+| rate limit | **PASS** |
+| webhook read | **PASS** |
+| webhook write denied | **PASS** |
+| webhook write ok | **PASS** |
+| output safety | **PASS** |
+
+**Production:** không deploy.
+
+Chi tiết QA: `docs/v5/PHASE_11D_SUPABASE_API_KEY_RUNTIME_STAGING_QA.md`
+
+---
+
+## 16. Handoff Phase 11E
+
+Phase 11D **đóng**. Tiếp theo (P1 từ §8):
+
+| Hạng mục | Mô tả |
+|----------|-------|
+| `integration_audit_logs` persist | `apiKeyAuditService` → Supabase insert thay localStorage test |
+| `integrations:write` scope | Route POST/PATCH placeholder khi cần |
+| Distributed rate limit (P2) | Redis hoặc Supabase counter — thay in-memory per-instance |
+| API key management UI (P2) | `IntegrationSettingsPage` + `canManageApiKeys` RBAC gate |
 

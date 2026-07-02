@@ -4,7 +4,7 @@ All notable changes to Pickleball Scheduler Pro are documented in this file.
 
 ## [Unreleased] — v5 Platform Edition
 
-### Added (Phase 11D P0 — implemented, staging verify pending)
+### Added (Phase 11D P0 — staging verify PASS 2026-07-02)
 - Supabase-backed API key runtime for Vercel serverless (`API_KEY_STORE=supabase`)
 - `src/features/api/repositories/supabaseApiKeyRepository.js` — service-role key lookup
 - `src/features/api/storage/apiKeyStore.js` — memory/supabase store selector (fail-fast, no silent fallback)
@@ -16,6 +16,11 @@ All notable changes to Pickleball Scheduler Pro are documented in this file.
 ### Changed (Phase 11D P0)
 - `apiKeyGuard` uses store adapter; best-effort `last_used_at` update on success
 - `rateLimitGuard` honors `API_RATE_LIMIT_REQUESTS_PER_MINUTE` env override for staging
+
+### Verified (Phase 11D staging — PASS 16/16)
+- Preview HTTP matrix via `scripts/verify-phase11d-api-key-runtime-staging.mjs` — `FAIL=0` `BLOCKED=0` `PARTIAL=0`
+- Commits: `ac98479`, `00ee490`, `091e289` on `v5-platform-edition`
+- QA: `docs/v5/PHASE_11D_SUPABASE_API_KEY_RUNTIME_STAGING_QA.md`
 
 ## [4.0.0] - 2026-07-01 — General Availability (Sprint 12)
 
