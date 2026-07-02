@@ -25,12 +25,27 @@ export function resetRateLimitCounters() {
   counters.clear();
 }
 
+/** Resolve per-minute limit: explicit limits > env override > default. */
+export function resolveMinuteRateLimit(limits = {}) {
+  if (limits.requestsPerMinute != null) {
+    return limits.requestsPerMinute;
+  }
+  const envMinute = parseInt(
+    String(globalThis.process?.env?.API_RATE_LIMIT_REQUESTS_PER_MINUTE || ""),
+    10
+  );
+  if (Number.isFinite(envMinute) && envMinute > 0) {
+    return envMinute;
+  }
+  return DEFAULT_API_RATE_LIMITS.requestsPerMinute;
+}
+
 /**
  * Phase 11C — in-memory rate limit guard (staging/test foundation).
  * Production-scale enforcement deferred to Redis/Supabase counter store.
  */
 export function checkRateLimit(
-  { tenantId, clientId, limits = DEFAULT_API_RATE_LIMITS } = {},
+  { tenantId, clientId, limits = {} } = {},
   now = Date.now()
 ) {
   if (!tenantId || !clientId) {
@@ -44,15 +59,7 @@ export function checkRateLimit(
     RATE_LIMIT_WINDOWS.MINUTE,
     minuteBucket
   );
-  const envMinute = parseInt(
-    String(globalThis.process?.env?.API_RATE_LIMIT_REQUESTS_PER_MINUTE || ""),
-    10
-  );
-  const minuteLimit =
-    limits.requestsPerMinute ??
-    (Number.isFinite(envMinute) && envMinute > 0
-      ? envMinute
-      : DEFAULT_API_RATE_LIMITS.requestsPerMinute);
+  const minuteLimit = resolveMinuteRateLimit(limits);
   const current = getCount(minuteKey);
 
   if (current >= minuteLimit) {

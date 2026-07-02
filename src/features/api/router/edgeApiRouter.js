@@ -149,7 +149,7 @@ export async function invokeEdgeApi({
       {
         tenantId: auth.tenantId,
         clientId: auth.client?.id,
-        limits: rateLimits || undefined,
+        limits: rateLimits ?? {},
       },
       Date.now()
     );

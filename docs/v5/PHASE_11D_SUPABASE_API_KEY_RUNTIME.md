@@ -329,7 +329,9 @@ Hoặc mở rộng script 11C với section §G — tùy implement (ưu tiên sc
 | 11 | Staging QA doc | `docs/v5/PHASE_11D_SUPABASE_API_KEY_RUNTIME_STAGING_QA.md` (sau verify PASS) |
 | 12 | Vercel Preview env | Dashboard: `API_KEY_STORE`, `SUPABASE_SERVICE_ROLE_KEY` |
 
-**Rate limit P0:** Giữ in-memory `checkRateLimit()` trên serverless (per-instance). Đủ cho staging verify (2 request burst). Document limitation: multi-instance Preview có thể không trigger 429 deterministic — acceptable P0 nếu test gửi 2 request nhanh cùng instance.
+**Production-scale enforcement:** in-memory per-instance on Vercel Preview. Preview HTTP rate limit may be `NOT_APPLICABLE` when requests hit different serverless instances (distributed limit → P2).
+
+**Env override (fixed P0):** `resolveMinuteRateLimit()` — explicit `limits` > `API_RATE_LIMIT_REQUESTS_PER_MINUTE` > default 120. Router passes `limits: {}` (not `DEFAULT_API_RATE_LIMITS`) so env applies on serverless.
 
 ### P1 — Audit + write scope
 

@@ -19,7 +19,7 @@ import { resetSupabaseAdminClientForTests } from "../src/features/api/repositori
 import { resolveApiKeyStoreMode } from "../src/features/api/config/apiKeyStoreConfig.js";
 import { hashApiKey, verifyApiKey } from "../src/features/api/utils/hashKey.js";
 import { clearApiKeyAuditStorage } from "../src/features/api/services/apiKeyAuditService.js";
-import { resetRateLimitCounters } from "../src/features/api/guards/rateLimitGuard.js";
+import { resetRateLimitCounters, resolveMinuteRateLimit } from "../src/features/api/guards/rateLimitGuard.js";
 
 const TENANT_A = "tenant-a-phase11d";
 const TENANT_B = "tenant-b-phase11d";
@@ -195,6 +195,27 @@ describe("Phase 11D — hash utilities", () => {
     const hashed = await hashApiKey(plain);
     assert.equal(await verifyApiKey(plain, hashed), true);
     assert.equal(await verifyApiKey("pk_other.secret", hashed), false);
+  });
+});
+
+describe("Phase 11D — rate limit env override", () => {
+  it("applies API_RATE_LIMIT_REQUESTS_PER_MINUTE when limits empty", () => {
+    globalThis.process = globalThis.process || {};
+    globalThis.process.env = { ...globalThis.process.env, API_RATE_LIMIT_REQUESTS_PER_MINUTE: "1" };
+    assert.equal(resolveMinuteRateLimit({}), 1);
+    delete globalThis.process.env.API_RATE_LIMIT_REQUESTS_PER_MINUTE;
+  });
+
+  it("explicit limits override env", () => {
+    globalThis.process = globalThis.process || {};
+    globalThis.process.env = { ...globalThis.process.env, API_RATE_LIMIT_REQUESTS_PER_MINUTE: "1" };
+    assert.equal(resolveMinuteRateLimit({ requestsPerMinute: 5 }), 5);
+    delete globalThis.process.env.API_RATE_LIMIT_REQUESTS_PER_MINUTE;
+  });
+
+  it("defaults to 120 when no env and empty limits", () => {
+    delete globalThis.process?.env?.API_RATE_LIMIT_REQUESTS_PER_MINUTE;
+    assert.equal(resolveMinuteRateLimit({}), 120);
   });
 });
 
