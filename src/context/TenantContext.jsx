@@ -17,10 +17,15 @@ import {
   canUserAccessTenant,
   ensureTenantBootstrap,
   getPrimaryClubIdForTenant,
-  getTenantById,
   listTenants,
   resolveEffectiveTenantId,
 } from "../features/tenant/index.js";
+import {
+  hydrateProfileVenueToLocalRegistry,
+  resolveTenantRecord,
+} from "../features/tenant/services/profileVenueService.js";
+import { getTenantById } from "../features/tenant/index.js";
+import { hasSupabaseConfig } from "../auth/supabaseClient.js";
 import {
   assertSubscriptionOperational,
   runSubscriptionMaintenance,
@@ -57,8 +62,8 @@ export function TenantProvider({ children }) {
       return null;
     }
 
-    return getTenantById(currentTenantId);
-  }, [currentTenantId, revision]);
+    return resolveTenantRecord(currentTenantId, user);
+  }, [currentTenantId, revision, user]);
 
   useEffect(() => {
     ensureTenantBootstrap();
@@ -68,6 +73,24 @@ export function TenantProvider({ children }) {
 
   const userId = user?.id || null;
   const userClubId = user?.clubId || null;
+
+  useEffect(() => {
+    if (!rbacEnabled || !isAuthenticated || !userId || !currentTenantId || !hasSupabaseConfig()) {
+      return;
+    }
+
+    let cancelled = false;
+
+    void hydrateProfileVenueToLocalRegistry(currentTenantId).then((result) => {
+      if (!cancelled && result?.ok && result.hydrated) {
+        setRevision((value) => value + 1);
+      }
+    });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [currentTenantId, isAuthenticated, rbacEnabled, userId]);
 
   useEffect(() => {
     if (!rbacEnabled || !isAuthenticated || !userId || !currentTenantId) {
@@ -99,7 +122,7 @@ export function TenantProvider({ children }) {
 
     if (isSuperAdmin) {
       return currentTenantId
-        ? assertTenantOperational(currentTenantId)
+        ? assertTenantOperational(currentTenantId, { user })
         : { ok: true };
     }
 
@@ -119,7 +142,7 @@ export function TenantProvider({ children }) {
       };
     }
 
-    return assertTenantOperational(currentTenantId);
+    return assertTenantOperational(currentTenantId, { user });
   }, [currentTenantId, isAuthenticated, isSuperAdmin, rbacEnabled, user]);
 
   const subscriptionCheck = useMemo(() => {

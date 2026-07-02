@@ -3,6 +3,10 @@ import { getCurrentUser, isRbacEnabled } from "../../../auth/authService.js";
 import { isGlobalRole } from "../../../auth/roles.js";
 import { DEFAULT_TENANT_ID, tenantIdFromRecord } from "../../../models/tenant.js";
 import { getTenantById } from "../services/tenantService.js";
+import {
+  buildProfileBackedTenant,
+  canTrustProfileVenue,
+} from "../services/profileVenueService.js";
 
 export function resolveTenantIdFromUser(user) {
   if (!user) {
@@ -109,27 +113,33 @@ export function listClubsForTenant(tenantId) {
   return loadClubs().filter((club) => getExplicitTenantIdForClub(club.id) === tenantId);
 }
 
-export function assertTenantOperational(tenantId) {
+export function assertTenantOperational(tenantId, options = {}) {
+  const { user = null } = options;
   const tenant = getTenantById(tenantId);
 
-  if (!tenant) {
-    return {
-      ok: false,
-      error: "Không tìm thấy tenant.",
-      code: "TENANT_NOT_FOUND",
-    };
+  if (tenant) {
+    if (tenant.status === "inactive" || tenant.status === "suspended") {
+      return {
+        ok: false,
+        error: "Tenant đang bị khóa hoặc tạm ngưng.",
+        code: "TENANT_INACTIVE",
+        tenant,
+      };
+    }
+
+    return { ok: true, tenant };
   }
 
-  if (tenant.status === "inactive" || tenant.status === "suspended") {
-    return {
-      ok: false,
-      error: "Tenant đang bị khóa hoặc tạm ngưng.",
-      code: "TENANT_INACTIVE",
-      tenant,
-    };
+  if (canTrustProfileVenue(user, tenantId)) {
+    const profileTenant = buildProfileBackedTenant(tenantId, user);
+    return { ok: true, tenant: profileTenant, source: "profile" };
   }
 
-  return { ok: true, tenant };
+  return {
+    ok: false,
+    error: "Không tìm thấy tenant.",
+    code: "TENANT_NOT_FOUND",
+  };
 }
 
 export function stampWithTenantId(entity, tenantId) {

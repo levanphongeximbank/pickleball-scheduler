@@ -19,6 +19,14 @@ export {
 } from "./services/tenantService.js";
 
 export {
+  canTrustProfileVenue,
+  buildProfileBackedTenant,
+  resolveTenantRecord,
+  hydrateProfileVenueToLocalRegistry,
+  resolveRouteAccessScope,
+} from "./services/profileVenueService.js";
+
+export {
   resolveTenantIdFromUser,
   getExplicitTenantIdForClub,
   resolveTenantIdForClub,

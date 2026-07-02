@@ -234,3 +234,5 @@ export function getDefaultHomePath(user, rbacEnabled = false) {
       return "/";
   }
 }
+
+export { resolveRouteAccessScope } from "../features/tenant/services/profileVenueService.js";

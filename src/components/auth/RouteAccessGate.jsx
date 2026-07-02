@@ -9,7 +9,7 @@ import {
   shouldRedirectToLogin,
   shouldRedirectToForbidden,
 } from "../../auth/authGuard.js";
-import { getDefaultHomePath } from "../../auth/menuAccess.js";
+import { getDefaultHomePath, resolveRouteAccessScope } from "../../auth/menuAccess.js";
 
 function AuthLoading() {
   return (
@@ -65,12 +65,11 @@ export default function RouteAccessGate({ children }) {
     return children;
   }
 
-  const scope = {
-    clubId: activeClubId,
-    venueId: activeClub?.venueId || activeClub?.tenantId || user?.venueId || user?.tenantId || null,
-    tenantId: activeClub?.tenantId || activeClub?.venueId || user?.tenantId || user?.venueId || null,
-    playerId: user?.playerId || null,
-  };
+  const scope = resolveRouteAccessScope({
+    user,
+    activeClubId,
+    activeClub,
+  });
 
   const homePath = getDefaultHomePath(user, rbacEnabled);
 
