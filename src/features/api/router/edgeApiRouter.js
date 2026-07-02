@@ -5,6 +5,7 @@ import { createRequestId } from "../utils/requestId.js";
 import { guardApiKey, assertEdgeTenant } from "../guards/apiKeyGuard.js";
 import { checkRateLimit } from "../guards/rateLimitGuard.js";
 import { logApiRequest } from "../services/apiLogService.js";
+import { recordIntegrationAuditFromRequest } from "../services/integrationAuditService.js";
 import { tenantRoutes } from "./handlers/tenantHandler.js";
 import { integrationsRoutes } from "./handlers/integrationsHandler.js";
 import { webhooksRoutes } from "./handlers/webhooksHandler.js";
@@ -84,7 +85,10 @@ export async function invokeEdgeApi({
   const normalizedPath = normalizePath(path);
   let rateHeaders = {};
 
-  const finish = (statusCode, response) => {
+  let matchedRoute = null;
+  let finishAuth = null;
+
+  const finish = (statusCode, response, { auditAuth = null } = {}) => {
     logApiRequest({
       requestId,
       tenantId: response?.data?.tenantId || null,
@@ -94,6 +98,20 @@ export async function invokeEdgeApi({
       durationMs: Date.now() - started,
       userAgent: headers["user-agent"],
     });
+
+    if (matchedRoute && !matchedRoute.public) {
+      recordIntegrationAuditFromRequest({
+        requestId,
+        route: normalizedPath,
+        method,
+        statusCode,
+        resultCode: response?.code || null,
+        scopeRequired: matchedRoute.scope,
+        routePath: matchedRoute.path,
+        auth: auditAuth ?? finishAuth,
+      });
+    }
+
     return { statusCode, body: response, headers: rateHeaders };
   };
 
@@ -109,6 +127,7 @@ export async function invokeEdgeApi({
   }
 
   const { route, params } = matched;
+  matchedRoute = route;
 
   if (!route.public && !isApiEnabled()) {
     return finish(
@@ -129,21 +148,26 @@ export async function invokeEdgeApi({
       requiredScope: route.scope,
       tenantId: requestedTenant || null,
     });
+    finishAuth = auth;
 
     if (!auth.ok) {
       return finish(
         auth.statusCode || edgeErrorStatus(auth.code),
-        edgeError(auth.code, auth.message, { requestId })
+        edgeError(auth.code, auth.message, { requestId }),
+        { auditAuth: auth }
       );
     }
 
     const tenantCheck = assertEdgeTenant(auth, requestedTenant);
     if (!tenantCheck.ok) {
+      finishAuth = { ...auth, ...tenantCheck };
       return finish(
         tenantCheck.statusCode || edgeErrorStatus(tenantCheck.code),
-        edgeError(tenantCheck.code, tenantCheck.message, { requestId })
+        edgeError(tenantCheck.code, tenantCheck.message, { requestId }),
+        { auditAuth: finishAuth }
       );
     }
+    finishAuth = tenantCheck;
 
     const rate = checkRateLimit(
       {
@@ -158,7 +182,8 @@ export async function invokeEdgeApi({
       rateHeaders = rate.headers || {};
       return finish(
         rate.statusCode || 429,
-        edgeError(rate.code || EDGE_API_ERROR_CODES.RATE_LIMITED, rate.message, { requestId })
+        edgeError(rate.code || EDGE_API_ERROR_CODES.RATE_LIMITED, rate.message, { requestId }),
+        { auditAuth: finishAuth }
       );
     }
     rateHeaders = rate.headers || {};

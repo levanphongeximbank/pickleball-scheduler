@@ -50,6 +50,14 @@ const FIXTURE_DEFS = [
     expiresAt: null,
   },
   {
+    id: "tenantAIntegrationsWrite",
+    label: "TenantA-IntegrationsWrite",
+    tenantId: TENANT_A,
+    scopes: [API_SCOPES.INTEGRATIONS_READ, API_SCOPES.INTEGRATIONS_WRITE],
+    status: "active",
+    expiresAt: null,
+  },
+  {
     id: "tenantARevoked",
     label: "TenantA-Revoked",
     tenantId: TENANT_A,

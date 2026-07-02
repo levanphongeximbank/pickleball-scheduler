@@ -4,10 +4,6 @@ import { API_CLIENT_STATUS, API_KEY_STATUS } from "../models/apiModels.js";
 import { listApiKeys } from "../services/apiKeyService.js";
 import { hashApiKey, parseApiKeyPrefix, verifyApiKey } from "../utils/hashKey.js";
 import {
-  API_KEY_AUDIT_ACTIONS,
-  recordApiKeyAudit,
-} from "../services/apiKeyAuditService.js";
-import {
   ApiKeyStoreConfigError,
   findApiKeyByPlain,
   scheduleApiKeyLastUsedUpdate,
@@ -26,20 +22,43 @@ function sanitizeKeyForAuth(keyRecord) {
   return safe;
 }
 
+function buildAuditContext({
+  tenantId = null,
+  clientId = null,
+  keyId = null,
+  keyPrefix = null,
+  scopesGranted = [],
+  scopeRequired = null,
+  denyReason = null,
+  metadata = {},
+} = {}) {
+  return {
+    tenantId,
+    apiClientId: clientId,
+    apiKeyId: keyId,
+    keyPrefix,
+    scopesGranted: Array.isArray(scopesGranted) ? scopesGranted : [],
+    scopeRequired,
+    denyReason,
+    metadata,
+  };
+}
+
 /**
- * Phase 11C/11D — API key guard for Edge router.
- * Never persists or logs raw API keys.
+ * Phase 11C/11D/11E — API key guard for Edge router.
+ * Never persists or logs raw API keys. Audit context only — insert at router finish().
  */
 export async function guardApiKey(plainKey, { requiredScope = null, tenantId = null } = {}) {
   if (!plainKey || typeof plainKey !== "string") {
-    recordApiKeyAudit(API_KEY_AUDIT_ACTIONS.DENIED, {
-      meta: { reason: "missing_key" },
-    });
     return {
       ok: false,
       code: EDGE_API_ERROR_CODES.UNAUTHORIZED,
       message: "Thiếu API key.",
       statusCode: 401,
+      auditContext: buildAuditContext({
+        scopeRequired: requiredScope,
+        denyReason: "missing_key",
+      }),
     };
   }
 
@@ -59,116 +78,131 @@ export async function guardApiKey(plainKey, { requiredScope = null, tenantId = n
   }
 
   if (!found) {
-    recordApiKeyAudit(API_KEY_AUDIT_ACTIONS.DENIED, {
-      meta: { reason: "invalid_key", keyPrefix: parseApiKeyPrefix(plainKey) || null },
-    });
     return {
       ok: false,
       code: EDGE_API_ERROR_CODES.INVALID_API_KEY,
       message: "API key không hợp lệ.",
       statusCode: 401,
+      auditContext: buildAuditContext({
+        scopeRequired: requiredScope,
+        keyPrefix: parseApiKeyPrefix(plainKey) || null,
+        denyReason: "invalid_key",
+      }),
     };
   }
 
   const { keyRecord, client: resolvedClient } = found;
 
   if (keyRecord.status === API_KEY_STATUS.REVOKED) {
-    recordApiKeyAudit(API_KEY_AUDIT_ACTIONS.DENIED, {
-      tenantId: keyRecord.tenantId,
-      keyId: keyRecord.id,
-      clientId: keyRecord.clientId,
-      meta: { reason: "revoked", keyPrefix: keyRecord.keyPrefix },
-    });
     return {
       ok: false,
       code: EDGE_API_ERROR_CODES.INVALID_API_KEY,
       message: "API key đã bị thu hồi.",
       statusCode: 401,
+      auditContext: buildAuditContext({
+        tenantId: keyRecord.tenantId,
+        clientId: keyRecord.clientId,
+        keyId: keyRecord.id,
+        keyPrefix: keyRecord.keyPrefix,
+        scopesGranted: keyRecord.scopes,
+        scopeRequired: requiredScope,
+        denyReason: "revoked",
+      }),
     };
   }
 
   if (isKeyExpired(keyRecord)) {
-    recordApiKeyAudit(API_KEY_AUDIT_ACTIONS.DENIED, {
-      tenantId: keyRecord.tenantId,
-      keyId: keyRecord.id,
-      clientId: keyRecord.clientId,
-      meta: { reason: "expired", keyPrefix: keyRecord.keyPrefix },
-    });
     return {
       ok: false,
       code: EDGE_API_ERROR_CODES.INVALID_API_KEY,
       message: "API key đã hết hạn.",
       statusCode: 401,
+      auditContext: buildAuditContext({
+        tenantId: keyRecord.tenantId,
+        clientId: keyRecord.clientId,
+        keyId: keyRecord.id,
+        keyPrefix: keyRecord.keyPrefix,
+        scopesGranted: keyRecord.scopes,
+        scopeRequired: requiredScope,
+        denyReason: "expired",
+      }),
     };
   }
 
   if (keyRecord.status !== API_KEY_STATUS.ACTIVE) {
-    recordApiKeyAudit(API_KEY_AUDIT_ACTIONS.DENIED, {
-      tenantId: keyRecord.tenantId,
-      keyId: keyRecord.id,
-      clientId: keyRecord.clientId,
-      meta: { reason: "inactive", status: keyRecord.status, keyPrefix: keyRecord.keyPrefix },
-    });
     return {
       ok: false,
       code: EDGE_API_ERROR_CODES.INVALID_API_KEY,
       message: "API key không hoạt động.",
       statusCode: 401,
+      auditContext: buildAuditContext({
+        tenantId: keyRecord.tenantId,
+        clientId: keyRecord.clientId,
+        keyId: keyRecord.id,
+        keyPrefix: keyRecord.keyPrefix,
+        scopesGranted: keyRecord.scopes,
+        scopeRequired: requiredScope,
+        denyReason: "inactive",
+        metadata: { status: keyRecord.status },
+      }),
     };
   }
 
   const client = resolvedClient;
   if (!client || client.status !== API_CLIENT_STATUS.ACTIVE) {
-    recordApiKeyAudit(API_KEY_AUDIT_ACTIONS.DENIED, {
-      tenantId: keyRecord.tenantId,
-      keyId: keyRecord.id,
-      clientId: keyRecord.clientId,
-      meta: { reason: "client_inactive", keyPrefix: keyRecord.keyPrefix },
-    });
     return {
       ok: false,
       code: EDGE_API_ERROR_CODES.INVALID_API_KEY,
       message: "API client không hoạt động.",
       statusCode: 401,
+      auditContext: buildAuditContext({
+        tenantId: keyRecord.tenantId,
+        clientId: keyRecord.clientId,
+        keyId: keyRecord.id,
+        keyPrefix: keyRecord.keyPrefix,
+        scopesGranted: keyRecord.scopes,
+        scopeRequired: requiredScope,
+        denyReason: "client_inactive",
+      }),
     };
   }
 
   if (tenantId && keyRecord.tenantId !== tenantId) {
-    recordApiKeyAudit(API_KEY_AUDIT_ACTIONS.DENIED, {
-      tenantId: keyRecord.tenantId,
-      keyId: keyRecord.id,
-      clientId: keyRecord.clientId,
-      meta: { reason: "tenant_mismatch", requestedTenant: tenantId, keyPrefix: keyRecord.keyPrefix },
-    });
     return {
       ok: false,
       code: EDGE_API_ERROR_CODES.TENANT_NOT_FOUND,
       message: "API key không thuộc tenant này.",
       statusCode: 403,
+      auditContext: buildAuditContext({
+        tenantId: keyRecord.tenantId,
+        clientId: keyRecord.clientId,
+        keyId: keyRecord.id,
+        keyPrefix: keyRecord.keyPrefix,
+        scopesGranted: keyRecord.scopes,
+        scopeRequired: requiredScope,
+        denyReason: "tenant_mismatch",
+        metadata: { requestedTenant: tenantId },
+      }),
     };
   }
 
   if (requiredScope && !hasApiScope(keyRecord.scopes, requiredScope)) {
-    recordApiKeyAudit(API_KEY_AUDIT_ACTIONS.SCOPE_DENIED, {
-      tenantId: keyRecord.tenantId,
-      keyId: keyRecord.id,
-      clientId: keyRecord.clientId,
-      meta: { requiredScope, keyPrefix: keyRecord.keyPrefix },
-    });
     return {
       ok: false,
       code: EDGE_API_ERROR_CODES.SCOPE_DENIED,
       message: `Thiếu scope: ${requiredScope}`,
       statusCode: 403,
+      auditContext: buildAuditContext({
+        tenantId: keyRecord.tenantId,
+        clientId: keyRecord.clientId,
+        keyId: keyRecord.id,
+        keyPrefix: keyRecord.keyPrefix,
+        scopesGranted: keyRecord.scopes,
+        scopeRequired: requiredScope,
+        denyReason: "scope_denied",
+      }),
     };
   }
-
-  recordApiKeyAudit(API_KEY_AUDIT_ACTIONS.USED, {
-    tenantId: keyRecord.tenantId,
-    keyId: keyRecord.id,
-    clientId: keyRecord.clientId,
-    meta: { scope: requiredScope || null, keyPrefix: keyRecord.keyPrefix },
-  });
 
   scheduleApiKeyLastUsedUpdate(keyRecord.id);
 
@@ -179,6 +213,14 @@ export async function guardApiKey(plainKey, { requiredScope = null, tenantId = n
     apiKey: sanitizeKeyForAuth(keyRecord),
     client,
     mode: "api_key",
+    auditContext: buildAuditContext({
+      tenantId: keyRecord.tenantId,
+      clientId: keyRecord.clientId,
+      keyId: keyRecord.id,
+      keyPrefix: keyRecord.keyPrefix,
+      scopesGranted: keyRecord.scopes,
+      scopeRequired: requiredScope,
+    }),
   };
 }
 
@@ -187,17 +229,19 @@ export function assertEdgeTenant(auth, requestedTenantId) {
   if (!auth?.ok) return auth;
   if (!requestedTenantId) return auth;
   if (auth.tenantId !== requestedTenantId) {
-    recordApiKeyAudit(API_KEY_AUDIT_ACTIONS.DENIED, {
-      tenantId: auth.tenantId,
-      keyId: auth.apiKey?.id,
-      clientId: auth.client?.id,
-      meta: { reason: "cross_tenant_access", requestedTenant: requestedTenantId },
-    });
     return {
       ok: false,
       code: EDGE_API_ERROR_CODES.FORBIDDEN,
       message: "Không được truy cập tenant khác.",
       statusCode: 403,
+      auditContext: {
+        ...(auth.auditContext || {}),
+        denyReason: "cross_tenant_access",
+        metadata: {
+          ...(auth.auditContext?.metadata || {}),
+          requestedTenant: requestedTenantId,
+        },
+      },
     };
   }
   return auth;

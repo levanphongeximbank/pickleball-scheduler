@@ -25,4 +25,18 @@ export const integrationsRoutes = [
       };
     },
   },
+  {
+    method: "POST",
+    path: "/integrations/:provider/test-write",
+    scope: API_SCOPES.INTEGRATIONS_WRITE,
+    handler: ({ auth, params, body, requestId }) => ({
+      accepted: true,
+      mode: "placeholder",
+      tenantId: auth.tenantId,
+      provider: params.provider || "unknown",
+      received: body ?? null,
+      requestId,
+      note: "Không ghi settings thật — chỉ verify scope write.",
+    }),
+  },
 ];

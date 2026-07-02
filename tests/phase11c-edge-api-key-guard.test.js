@@ -20,6 +20,11 @@ import {
   listApiKeyAuditEvents,
   API_KEY_AUDIT_ACTIONS,
 } from "../src/features/api/services/apiKeyAuditService.js";
+import {
+  clearIntegrationAuditStorage,
+  listIntegrationAuditEvents,
+} from "../src/features/api/services/integrationAuditService.js";
+import { INTEGRATION_AUDIT_EVENTS } from "../src/features/api/constants/integrationAudit.js";
 import { enableRbac } from "../src/auth/authService.js";
 import { ROLES } from "../src/auth/roles.js";
 import { normalizeUser } from "../src/models/user.js";
@@ -55,6 +60,7 @@ beforeEach(() => {
   process.env.VITE_API_ENABLED = "true";
   clearApiStorage();
   clearApiKeyAuditStorage();
+  clearIntegrationAuditStorage();
   resetRateLimitCounters();
 });
 
@@ -290,10 +296,11 @@ describe("Phase 11C — edge API router", () => {
       path: "/api/v1/tenant",
       headers: { "x-api-key": created.plainKey },
     });
-    const events = listApiKeyAuditEvents({ tenantId: TENANT_A });
-    assert.ok(events.some((e) => e.action === API_KEY_AUDIT_ACTIONS.CREATED));
-    assert.ok(events.some((e) => e.action === API_KEY_AUDIT_ACTIONS.USED));
-    const blob = JSON.stringify(events);
+    const lifecycleEvents = listApiKeyAuditEvents({ tenantId: TENANT_A });
+    assert.ok(lifecycleEvents.some((e) => e.action === API_KEY_AUDIT_ACTIONS.CREATED));
+    const integrationEvents = listIntegrationAuditEvents({ tenantId: TENANT_A });
+    assert.ok(integrationEvents.some((e) => e.eventType === INTEGRATION_AUDIT_EVENTS.API_KEY_USED));
+    const blob = JSON.stringify([...lifecycleEvents, ...integrationEvents]);
     assert.equal(blob.includes(created.plainKey), false);
   });
 
@@ -397,6 +404,7 @@ describe("Phase 11C — Vercel serverless entry (no localStorage)", () => {
     process.env.VITE_API_ENABLED = "true";
     clearApiStorage();
     clearApiKeyAuditStorage();
+  clearIntegrationAuditStorage();
     resetRateLimitCounters();
     ({ default: serverlessHandler } = await import("../api/v1/[...path].js"));
   });
