@@ -1,4 +1,5 @@
 import { hasSupabaseConfig } from "../../../auth/supabaseClient.js";
+import { getRuntimeStorage } from "../../../utils/runtimeStorage.js";
 
 export const INTEGRATION_STORE_MODES = Object.freeze({
   MEMORY: "memory",
@@ -25,6 +26,15 @@ export function resolveIntegrationStoreMode() {
 
   if (hasSupabaseConfig() && readEnvFlag("VITE_INTEGRATIONS_SUPABASE") !== "false") {
     return INTEGRATION_STORE_MODES.SUPABASE;
+  }
+
+  try {
+    if (typeof localStorage === "undefined") {
+      return INTEGRATION_STORE_MODES.MEMORY;
+    }
+    getRuntimeStorage();
+  } catch {
+    return INTEGRATION_STORE_MODES.MEMORY;
   }
 
   return INTEGRATION_STORE_MODES.LOCAL;

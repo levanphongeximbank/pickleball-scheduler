@@ -1,11 +1,12 @@
 import { createDefaultTenantSettings } from "../models/integrationDefaults.js";
 import { getIntegrationStore } from "../repositories/integrationStoreRuntime.js";
+import { getRuntimeStorage } from "../../../utils/runtimeStorage.js";
 
 const SETTINGS_KEY = "pickleball-integration-settings-v1";
 
 function readJson(key, fallback) {
   try {
-    const raw = localStorage.getItem(key);
+    const raw = getRuntimeStorage().getItem(key);
     return raw ? JSON.parse(raw) : fallback;
   } catch {
     return fallback;
@@ -13,7 +14,7 @@ function readJson(key, fallback) {
 }
 
 function writeJson(key, value) {
-  localStorage.setItem(key, JSON.stringify(value));
+  getRuntimeStorage().setItem(key, JSON.stringify(value));
 }
 
 /** Legacy localStorage bulk read — used by local store mode only. */
@@ -49,5 +50,5 @@ export function clearIntegrationStorage() {
   if (typeof store.clear === "function") {
     store.clear();
   }
-  localStorage.removeItem(SETTINGS_KEY);
+  getRuntimeStorage().removeItem(SETTINGS_KEY);
 }

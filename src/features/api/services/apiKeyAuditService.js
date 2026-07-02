@@ -1,11 +1,12 @@
 import { API_KEY_AUDIT_ACTIONS, buildApiKeyAuditEntry } from "../constants/apiKeyAudit.js";
+import { getRuntimeStorage } from "../../../utils/runtimeStorage.js";
 
 const AUDIT_KEY = "pickleball-api-key-audit-v1";
 const AUDIT_CAP = 500;
 
 function readJson(key, fallback) {
   try {
-    const raw = localStorage.getItem(key);
+    const raw = getRuntimeStorage().getItem(key);
     return raw ? JSON.parse(raw) : fallback;
   } catch {
     return fallback;
@@ -13,7 +14,7 @@ function readJson(key, fallback) {
 }
 
 function writeJson(key, value) {
-  localStorage.setItem(key, JSON.stringify(value));
+  getRuntimeStorage().setItem(key, JSON.stringify(value));
 }
 
 export function listApiKeyAuditEvents({ tenantId = null, limit = 100 } = {}) {
@@ -33,7 +34,7 @@ export function recordApiKeyAudit(action, meta = {}) {
 }
 
 export function clearApiKeyAuditStorage() {
-  localStorage.removeItem(AUDIT_KEY);
+  getRuntimeStorage().removeItem(AUDIT_KEY);
 }
 
 export { API_KEY_AUDIT_ACTIONS };

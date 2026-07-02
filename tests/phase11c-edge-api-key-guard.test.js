@@ -26,6 +26,7 @@ import { normalizeUser } from "../src/models/user.js";
 import { can } from "../src/auth/rbac.js";
 import { PERMISSIONS } from "../src/auth/permissions.js";
 import { invokeApi } from "../src/features/api/router/apiRouter.js";
+import { resetRuntimeStorage } from "../src/utils/runtimeStorage.js";
 
 const TENANT_A = "tenant-a-phase11c";
 const TENANT_B = "tenant-b-phase11c";
@@ -287,6 +288,24 @@ describe("Phase 11C — edge API router", () => {
     const blob = JSON.stringify(events);
     assert.equal(blob.includes(created.plainKey), false);
   });
+
+  it("route handler exception returns internal_error JSON envelope", async () => {
+    const { EDGE_ROUTES } = await import("../src/features/api/router/edgeApiRouter.js");
+    const health = EDGE_ROUTES.find((route) => route.path === "/health");
+    const originalHandler = health.handler;
+    health.handler = async () => {
+      throw new Error("simulated handler crash");
+    };
+
+    try {
+      const result = await invokeEdgeApi({ method: "GET", path: "/api/v1/health" });
+      assert.equal(result.statusCode, 500);
+      assert.equal(result.body.ok, false);
+      assert.equal(result.body.code, EDGE_API_ERROR_CODES.INTERNAL_ERROR);
+    } finally {
+      health.handler = originalHandler;
+    }
+  });
 });
 
 describe("Phase 11C — RBAC API key management", () => {
@@ -338,5 +357,126 @@ describe("Phase 11C — legacy router compatibility", () => {
     const keys = listApiKeys({ tenantId: TENANT_A });
     assert.equal(keys.length, 1);
     assert.equal(keys[0].hashedKey, undefined);
+  });
+});
+
+function createMockRes() {
+  const res = {
+    statusCode: 0,
+    headers: {},
+    body: null,
+    setHeader(name, value) {
+      this.headers[name] = value;
+    },
+    status(code) {
+      this.statusCode = code;
+      return this;
+    },
+    json(payload) {
+      this.body = payload;
+      return this;
+    },
+  };
+  return res;
+}
+
+describe("Phase 11C — Vercel serverless entry (no localStorage)", () => {
+  let serverlessHandler;
+
+  beforeEach(async () => {
+    delete globalThis.localStorage;
+    resetRuntimeStorage();
+    process.env.VITE_API_ENABLED = "true";
+    clearApiStorage();
+    clearApiKeyAuditStorage();
+    resetRateLimitCounters();
+    ({ default: serverlessHandler } = await import("../api/v1/[...path].js"));
+  });
+
+  afterEach(() => {
+    delete process.env.VITE_API_ENABLED;
+    resetRuntimeStorage();
+  });
+
+  it("GET /api/v1/health returns 200 JSON without API key", async () => {
+    const res = createMockRes();
+    await serverlessHandler(
+      {
+        method: "GET",
+        url: "/api/v1/health",
+        query: { path: ["health"] },
+        headers: {},
+      },
+      res
+    );
+    assert.equal(res.statusCode, 200);
+    assert.equal(res.body.ok, true);
+    assert.equal(res.body.code, "ok");
+    assert.equal(res.body.data.status, "ok");
+  });
+
+  it("GET /api/v1/tenant without API key returns 401 JSON", async () => {
+    const res = createMockRes();
+    await serverlessHandler(
+      {
+        method: "GET",
+        url: "/api/v1/tenant",
+        query: { path: ["tenant"] },
+        headers: {},
+      },
+      res
+    );
+    assert.equal(res.statusCode, 401);
+    assert.equal(res.body.ok, false);
+    assert.equal(res.body.code, EDGE_API_ERROR_CODES.UNAUTHORIZED);
+  });
+
+  it("invalid route returns 404 JSON", async () => {
+    const res = createMockRes();
+    await serverlessHandler(
+      {
+        method: "GET",
+        url: "/api/v1/does-not-exist",
+        query: { path: ["does-not-exist"] },
+        headers: {},
+      },
+      res
+    );
+    assert.equal(res.statusCode, 404);
+    assert.equal(res.body.ok, false);
+    assert.equal(res.body.code, EDGE_API_ERROR_CODES.NOT_FOUND);
+  });
+
+  it("serverless entry catches response errors and returns internal_error JSON", async () => {
+    let jsonCalls = 0;
+    const res = {
+      statusCode: 0,
+      body: null,
+      setHeader() {},
+      status(code) {
+        this.statusCode = code;
+        return this;
+      },
+      json(payload) {
+        jsonCalls += 1;
+        if (jsonCalls === 1) {
+          throw new Error("response serialization failed");
+        }
+        this.body = payload;
+      },
+    };
+
+    await serverlessHandler(
+      {
+        method: "GET",
+        url: "/api/v1/health",
+        query: { path: ["health"] },
+        headers: {},
+      },
+      res
+    );
+    assert.equal(res.statusCode, 500);
+    assert.equal(res.body.ok, false);
+    assert.equal(res.body.code, EDGE_API_ERROR_CODES.INTERNAL_ERROR);
   });
 });

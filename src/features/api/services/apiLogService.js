@@ -20,19 +20,23 @@ export function sanitizeHeaders(headers = {}) {
 }
 
 export function logApiRequest(input = {}) {
-  const log = createApiLogRecord({
-    requestId: input.requestId,
-    tenantId: input.tenantId || null,
-    apiClientId: input.apiClientId || null,
-    method: input.method,
-    path: input.path,
-    statusCode: input.statusCode,
-    durationMs: input.durationMs,
-    ipAddress: input.ipAddress || null,
-    userAgent: input.userAgent ? String(input.userAgent).slice(0, 512) : null,
-  });
-  appendApiLog(log);
-  return log;
+  try {
+    const log = createApiLogRecord({
+      requestId: input.requestId,
+      tenantId: input.tenantId || null,
+      apiClientId: input.apiClientId || null,
+      method: input.method,
+      path: input.path,
+      statusCode: input.statusCode,
+      durationMs: input.durationMs,
+      ipAddress: input.ipAddress || null,
+      userAgent: input.userAgent ? String(input.userAgent).slice(0, 512) : null,
+    });
+    appendApiLog(log);
+    return log;
+  } catch {
+    return null;
+  }
 }
 
 export function listApiLogs({ tenantId = null, limit = 100 } = {}) {

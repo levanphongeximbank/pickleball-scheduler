@@ -1,3 +1,5 @@
+import { getRuntimeStorage } from "../../../utils/runtimeStorage.js";
+
 const CLIENTS_KEY = "pickleball-api-clients-v1";
 const KEYS_KEY = "pickleball-api-keys-v1";
 const LOGS_KEY = "pickleball-api-logs-v1";
@@ -5,7 +7,7 @@ const LOG_CAP = 1000;
 
 function readJson(key, fallback) {
   try {
-    const raw = localStorage.getItem(key);
+    const raw = getRuntimeStorage().getItem(key);
     const parsed = raw ? JSON.parse(raw) : fallback;
     return parsed ?? fallback;
   } catch {
@@ -14,7 +16,7 @@ function readJson(key, fallback) {
 }
 
 function writeJson(key, value) {
-  localStorage.setItem(key, JSON.stringify(value));
+  getRuntimeStorage().setItem(key, JSON.stringify(value));
 }
 
 export function loadApiClients() {
@@ -48,7 +50,8 @@ export function appendApiLog(log) {
 }
 
 export function clearApiStorage() {
-  localStorage.removeItem(CLIENTS_KEY);
-  localStorage.removeItem(KEYS_KEY);
-  localStorage.removeItem(LOGS_KEY);
+  const storage = getRuntimeStorage();
+  storage.removeItem(CLIENTS_KEY);
+  storage.removeItem(KEYS_KEY);
+  storage.removeItem(LOGS_KEY);
 }

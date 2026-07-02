@@ -1,8 +1,10 @@
+import { getRuntimeStorage } from "../../../utils/runtimeStorage.js";
+
 const WEBHOOK_KEY = "pickleball-webhook-events-v1";
 
 function readJson(key, fallback) {
   try {
-    const raw = localStorage.getItem(key);
+    const raw = getRuntimeStorage().getItem(key);
     return raw ? JSON.parse(raw) : fallback;
   } catch {
     return fallback;
@@ -10,7 +12,7 @@ function readJson(key, fallback) {
 }
 
 function writeJson(key, value) {
-  localStorage.setItem(key, JSON.stringify(value));
+  getRuntimeStorage().setItem(key, JSON.stringify(value));
 }
 
 export function createWebhookEvent(input = {}) {
@@ -97,5 +99,5 @@ export function reprocessWebhookEvent(eventId, handler) {
 }
 
 export function clearWebhookStorage() {
-  localStorage.removeItem(WEBHOOK_KEY);
+  getRuntimeStorage().removeItem(WEBHOOK_KEY);
 }
