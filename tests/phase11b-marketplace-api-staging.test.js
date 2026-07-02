@@ -23,7 +23,11 @@ import { normalizeUser } from "../src/models/user.js";
 import {
   canManageIntegrations,
   toggleIntegrationProvider,
+  getIntegrationOverview,
+  buildIntegrationProviderRows,
 } from "../src/features/integrations/services/integrationSettingsService.js";
+import { INTEGRATION_STATUS } from "../src/features/integrations/constants/integrationStatus.js";
+import { resolveRouteAccessScope } from "../src/features/tenant/services/profileVenueService.js";
 import { enableRbac, signInAs } from "../src/auth/authService.js";
 
 const TENANT_A = "tenant-a-phase11b";
@@ -166,5 +170,51 @@ describe("Phase 11B — integration RBAC", () => {
     assert.equal(result.ok, true);
     assert.equal(result.settings.mockPaymentEnabled, true);
     assert.equal(getTenantIntegrationSettings(TENANT_A).mockPaymentEnabled, true);
+  });
+});
+
+describe("Phase 11B — integrations page data", () => {
+  const rbac = { rbacEnabled: true };
+
+  it("registry providers render when settings table has no rows", () => {
+    const overview = getIntegrationOverview(TENANT_A);
+    const rows = buildIntegrationProviderRows(overview);
+
+    assert.equal(rows.length, 7);
+    assert.deepEqual(
+      rows.map((row) => row.key),
+      ["zalo", "vnpay", "momo", "stripe", "email", "sms", "mockPayment"]
+    );
+    assert.ok(rows.every((row) => row.status === INTEGRATION_STATUS.DISABLED));
+  });
+
+  it("owner INTEGRATION_VIEW passes with profile venue despite stale default club scope", () => {
+    const owner = normalizeUser({
+      id: "owner-a",
+      role: ROLES.VENUE_OWNER,
+      venueId: "venue-staging-a",
+      status: "active",
+    });
+    const scope = resolveRouteAccessScope({
+      user: owner,
+      activeClubId: "default-club",
+      activeClub: { id: "default-club", name: "CLB Mặc định" },
+    });
+
+    assert.equal(scope.venueId, "venue-staging-a");
+    assert.equal(can(owner, PERMISSIONS.INTEGRATION_VIEW, scope, rbac), true);
+
+    const staleClubScope = {
+      clubId: "default-club",
+      venueId: "default-tenant",
+      tenantId: "default-tenant",
+    };
+    assert.equal(can(owner, PERMISSIONS.INTEGRATION_VIEW, staleClubScope, rbac), false);
+  });
+
+  it("buildIntegrationProviderRows never returns blank page data", () => {
+    const rows = buildIntegrationProviderRows(getIntegrationOverview(TENANT_B));
+    assert.ok(rows.length > 0);
+    assert.equal(rows.find((row) => row.key === "zalo")?.label, "Zalo OA");
   });
 });

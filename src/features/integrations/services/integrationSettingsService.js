@@ -6,7 +6,7 @@ import {
   getTenantIntegrationSettings,
   saveTenantIntegrationSettings,
 } from "../storage/integrationStorage.js";
-import { getIntegrationEnvConfig } from "../config/integrationFlags.js";
+import { getIntegrationEnvConfig, isApiEnabled, isMarketplaceEnabled } from "../config/integrationFlags.js";
 import { buildProviderStatusMap } from "./integrationStatusService.js";
 import {
   ensureIntegrationStoreHydrated,
@@ -34,6 +34,33 @@ export async function hydrateIntegrationSettings(tenantId) {
   }
   const store = getIntegrationStore();
   return ensureIntegrationStoreHydrated(store, { tenantId });
+}
+
+export function isIntegrationsFeatureEnabled() {
+  return isApiEnabled() || isMarketplaceEnabled();
+}
+
+export function buildIntegrationProviderRows(overview) {
+  if (!overview?.providers) {
+    return [];
+  }
+
+  const { providers } = overview;
+
+  return [
+    { key: "zalo", label: "Zalo OA", ...providers.zalo, link: "/settings/integrations/zalo-oa" },
+    { key: "vnpay", label: "VNPay", ...providers.vnpay, link: "/settings/integrations/payments" },
+    { key: "momo", label: "MoMo", ...providers.momo, link: "/settings/integrations/payments" },
+    { key: "stripe", label: "Stripe", ...providers.stripe, link: "/settings/integrations/payments" },
+    { key: "email", label: "Email", ...providers.email, link: null },
+    { key: "sms", label: "SMS", ...providers.sms, link: null },
+    {
+      key: "mockPayment",
+      label: "Mock Payment",
+      ...providers.mockPayment,
+      link: "/settings/integrations/payments",
+    },
+  ];
 }
 
 export function getIntegrationOverview(tenantId) {

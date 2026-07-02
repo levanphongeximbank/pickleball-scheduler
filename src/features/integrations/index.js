@@ -15,6 +15,8 @@ export {
   updateIntegrationSettings,
   toggleIntegrationProvider,
   canManageIntegrations,
+  buildIntegrationProviderRows,
+  isIntegrationsFeatureEnabled,
 } from "./services/integrationSettingsService.js";
 export { INTEGRATION_STATUS, isIntegrationOperational } from "./constants/integrationStatus.js";
 export {

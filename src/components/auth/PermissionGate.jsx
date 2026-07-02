@@ -2,6 +2,7 @@ import { useMemo } from "react";
 
 import { useAuth } from "../../context/AuthContext.jsx";
 import { useClub } from "../../context/ClubContext.jsx";
+import { resolveRouteAccessScope } from "../../features/tenant/services/profileVenueService.js";
 
 /**
  * Ẩn UI khi không đủ quyền. RBAC tắt hoặc chưa đăng nhập → luôn hiện.
@@ -14,17 +15,32 @@ export default function PermissionGate({
   children,
   fallback = null,
 }) {
-  const { can, canAll, canAny, rbacEnabled, isAuthenticated } = useAuth();
+  const { can, canAll, canAny, rbacEnabled, isAuthenticated, user } = useAuth();
   const { activeClubId, activeClub } = useClub();
 
-  const resolvedScope = useMemo(
-    () => ({
-      clubId: scope.clubId ?? activeClubId,
-      venueId: scope.venueId ?? activeClub?.venueId ?? null,
-      playerId: scope.playerId ?? null,
-    }),
-    [scope.clubId, scope.venueId, scope.playerId, activeClubId, activeClub?.venueId]
-  );
+  const resolvedScope = useMemo(() => {
+    const base = resolveRouteAccessScope({
+      user,
+      activeClubId,
+      activeClub,
+    });
+
+    return {
+      ...base,
+      clubId: scope.clubId ?? base.clubId,
+      venueId: scope.venueId ?? base.venueId,
+      tenantId: scope.tenantId ?? base.tenantId,
+      playerId: scope.playerId ?? user?.playerId ?? null,
+    };
+  }, [
+    user,
+    activeClubId,
+    activeClub,
+    scope.clubId,
+    scope.venueId,
+    scope.tenantId,
+    scope.playerId,
+  ]);
 
   if (!rbacEnabled || !isAuthenticated) {
     return children;
