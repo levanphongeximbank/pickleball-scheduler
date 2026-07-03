@@ -3,7 +3,7 @@
 **Ngày:** 2026-07-03  
 **QA session:** 2026-07-03 14:48–14:57 ICT (gates re-run trước Preview sign-off)  
 **Branch:** `v5-platform-edition`  
-**Commit:** `55eedc3893c4ae445000c2894459ea2d84097fe2`  
+**Commit:** `b956971e634c813a513bcf3bfb255d5c6ba7b91a`  
 **Phạm vi:** Menu V5 tập trung (`navigationConfig.js`), sidebar/desktop, mobile drawer + bottom nav, RBAC/menu guards  
 **Môi trường:** Local gates + Vercel Preview — **không** Production, **không** tag `v5.0.0-rc1`  
 **Ràng buộc:** Không pop stash `IntegrationSettingsPage.jsx`; không ghi secret.
@@ -293,7 +293,7 @@ Chỉ khai báo trong `navigationConfig.js` — `navStatus: future` → **không
 | Field | Value |
 |-------|-------|
 | Branch | `v5-platform-edition` |
-| Commit | `55eedc3893c4ae445000c2894459ea2d84097fe2` |
+| Commit | `b956971e634c813a513bcf3bfb255d5c6ba7b91a` |
 | Vercel Preview (latest) | https://pickleball-scheduler-n314vpmjb-pickleball-scheduler.vercel.app |
 | Branch alias | https://pickleball-scheduler-git-v5-platfor-47ef4a-pickleball-scheduler.vercel.app |
 | Production | ⛔ **NO-GO** — không deploy |
