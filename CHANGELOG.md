@@ -4,6 +4,14 @@ All notable changes to Pickleball Scheduler Pro are documented in this file.
 
 ## [Unreleased] — v5 Platform Edition
 
+### Audited (Phase 13 — full software audit 2026-07-03)
+- Phase 13 full software audit — `docs/v5/PHASE_13_V5_FULL_SOFTWARE_AUDIT.md`
+- Local gates re-confirmed: `npm test` 723/723, `build`, `lint` (0 errors), `git diff --check` clean
+- Cross-tenant RLS re-run: **PASS 31/4/0/0** (`verify-cross-tenant-rls-staging.mjs`)
+- **P0 bugs:** none new; **P1:** manual P0 QA pending, KN-6 mobile RLS (`qr_tokens`/`checkins`)
+- **RC1 technical:** GO (Phase 12); **RC1 full sign-off:** NO-GO; **Production GA:** NO-GO
+- V5.0 overall progress toward GA: **~38%**
+
 ### Verified (Phase 12 RC1 — staging technical verify PASS 2026-07-03)
 - V5.0 RC1 staging technical verify via `scripts/verify-v5-rc1-staging.mjs` — **PASS: 19 · FAIL: 0 · BLOCKED: 0**
 - Hardened staging URL resolution (`scripts/preview-url-utils.mjs`) — env-sourced `STAGING_PREVIEW_URL`, consistent hostname across verify scripts
