@@ -3,8 +3,8 @@
 **Ngày cập nhật:** 2026-07-03  
 **Phiên bản mục tiêu:** Pickleball Scheduler Pro **v5.0** — Platform / SaaS Edition  
 **Branch:** `v5-platform-edition`  
-**Commit navigation (latest):** `5a455e4` — fix(shell): prevent V5 app shell preview white screen
-**Commit menu + docs:** `150da3a` — menu V5 + docs Phase 14  
+**Commit (latest):** `b88af90` — Phase 16 KN-6 staging RLS verify PASS evidence  
+**Commit navigation fix:** `5a455e4` — fix(shell): prevent V5 app shell preview white screen  
 **Môi trường:** Staging Supabase + Vercel Preview — **không** Production  
 **Ràng buộc:** Không tag `v5.0.0-rc1`; không deploy Production; không pop stash `IntegrationSettingsPage.jsx`; không ghi secret hoặc env value vào tài liệu/log.
 
@@ -12,20 +12,22 @@
 
 ## Executive summary
 
-Navigation V5.0 đã triển khai kỹ thuật (config tập trung, sidebar, topbar, mobile nav theo role), **automated gates PASS**, **Phase 14A + 14B browser QA PASS**, và **Phase 15 P0 Preview QA PASS** (2026-07-03). RC1 tag và Production deploy **vẫn NO-GO** — chờ owner approve Phase 17 + Production readiness.
+Navigation V5.0 đã triển khai kỹ thuật (config tập trung, sidebar, topbar, mobile nav theo role), **automated gates PASS**, **Phase 14A + 14B browser QA PASS**, **Phase 15 P0 Preview QA PASS**, **Phase 16 KN-6 CLOSED**, và **Phase 17 RC1 pre-tag sanity check PASS** (2026-07-03, commit `b88af90`). **Sẵn sàng owner approve tag `v5.0.0-rc1`** — chưa tag. Production deploy **vẫn NO-GO** (Phase 18–19).
 
 | Hạng mục | Verdict |
 |----------|---------|
 | Platform Core (code) | ✅ **PASS** |
 | API key guard / runtime / audit | ✅ **PASS** |
 | RC1 automated technical | ✅ **PASS** |
-| Cross-tenant RLS | ✅ **PASS** (KN-6 partial) |
+| Cross-tenant RLS | ✅ **PASS** (35/35 — KN-6 closed) |
 | Menu V5 code | ✅ **PASS** |
 | Phase 14A Preview Environment | ✅ **PASS** |
 | Phase 14B Menu browser QA | ✅ **PASS** |
 | P0 white screen (Preview) | ✅ **RESOLVED** — `5a455e4` |
 | Manual P0 QA (Phase 15) | ✅ **PASS** — 38/38 P0, 0 FAIL (2026-07-03) |
-| RC1 tag | ⛔ **Not allowed yet** |
+| Phase 16 KN-6 RLS | ✅ **CLOSED** |
+| Phase 17 pre-tag sanity | ✅ **PASS** (2026-07-03) |
+| RC1 tag | ⏳ **Ready — owner approval only** |
 | Production | ⛔ **NO-GO** |
 
 ---
@@ -37,13 +39,15 @@ Navigation V5.0 đã triển khai kỹ thuật (config tập trung, sidebar, top
 | **Platform Core** | ✅ PASS | Kiến trúc SaaS multi-tenant, billing, court engine, API 11C–11E, mobile/PWA shell |
 | **API key guard / runtime / audit** | ✅ PASS | Phase 11C–11E staging QA đóng |
 | **RC1 automated technical** | ✅ PASS | `npm test` / `build` / `lint` + `verify-v5-rc1-staging.mjs` (documented 2026-07-03) |
-| **Cross-tenant RLS** | ✅ PASS with KN-6 partial | 31 PASS / 4 PARTIAL — `qr_tokens`, `checkins` policy `USING (true)` |
+| **Cross-tenant RLS** | ✅ PASS | 35 PASS / 0 PARTIAL — KN-6 `qr_tokens`/`checkins` tenant-scoped (Phase 16) |
+| **Phase 16 KN-6 RLS** | ✅ CLOSED | Staging SQL applied + verify 18/18 + cross-tenant 35/35 |
+| **Phase 17 pre-tag sanity** | ✅ PASS | All gates re-run @ `b88af90` — 2026-07-03 |
 | **Menu V5 code** | ✅ PASS | `navigationConfig.js`; sidebar + mobile drawer + topbar |
 | **Phase 14A Preview Environment** | ✅ PASS | `/login` OK, V5.0 SaaS Preview — 2026-07-03 |
 | **Phase 14B Menu browser QA** | ✅ PASS | Owner sidebar/topbar/context bar/dashboard — commit `5a455e4` |
 | **P0 white screen** | ✅ RESOLVED | `5a455e4` — `GlobalSearch` guard + `main.jsx` error boundary |
 | **Manual P0 QA (Phase 15)** | ✅ PASS | 38/38 P0 — `PHASE_15_V5_PREVIEW_P0_QA.md` (2026-07-03) |
-| **RC1 tag** | ⛔ Not allowed yet | Chờ owner approve + tất cả gate trước Phase 17 |
+| **RC1 tag** | ⏳ Ready for owner approval | Phase 17 pre-tag PASS — **chưa tag** |
 | **Production** | ⛔ NO-GO | Chưa Production readiness, chưa GA deploy |
 
 ### Navigation V5.0 — triển khai kỹ thuật (đã xong)
@@ -68,13 +72,16 @@ Chi tiết QA navigation: `docs/v5/PHASE_14_V5_SAAS_NAVIGATION_QA.md` — Phase 
 
 | Gate | Verdict |
 |------|---------|
-| **RC1 hiện tại** | ⛔ **NO-GO** |
+| **RC1 pre-tag technical** | ✅ **GO** — Phase 17 sanity check PASS |
+| **RC1 tag (owner action)** | ⏳ **Pending owner explicit approve** |
 
-**Lý do:**
+**Lý do chờ tag (không phải blocker kỹ thuật):**
 
-1. ~~Manual P0 QA chưa PASS~~ ✅ Phase 15 PASS (2026-07-03)
-2. KN-6 chưa closed for Production — `qr_tokens` / `checkins` RLS `USING (true)`
-3. Owner chưa explicit approve RC1 tag
+1. Owner chưa explicit approve tag `v5.0.0-rc1`
+2. ~~Manual P0 QA~~ ✅ Phase 15 PASS
+3. ~~KN-6~~ ✅ Phase 16 CLOSED
+
+**Sau owner approve:** chạy lệnh tag trong § Phase 17 (không tự tag trong session QA).
 
 ### Production GA
 
@@ -96,10 +103,13 @@ Phase 14B (Menu manual) ──► ✅ PASS
 Phase 15 (Manual P0 QA) ──► ✅ PASS
          │
          ▼
-Phase 17 (RC1 tag)
+Phase 16 (KN-6 RLS) ──► ✅ CLOSED
          │
          ▼
-Phase 16 (KN-6 RLS) ──► Phase 18 (Prod readiness) ──► Phase 19 (GA deploy)
+Phase 17 (RC1 pre-tag sanity) ──► ✅ PASS — ready for owner tag approve
+         │
+         ▼
+Phase 18 (Prod readiness) ──► Phase 19 (GA deploy)
 ```
 
 ---
@@ -167,34 +177,57 @@ Phase 16 (KN-6 RLS) ──► Phase 18 (Prod readiness) ──► Phase 19 (GA d
 
 **Mục tiêu:** Đóng KN-6 — harden RLS `qr_tokens` và `checkins` trước Production mobile traffic.
 
-**Trạng thái:** ✅ **Code complete** — ⏳ staging SQL apply + verify re-run
+**Trạng thái:** ✅ **CLOSED** — staging SQL applied + verify PASS (2026-07-03, commit `b88af90`)
 
 | # | Task | Kỳ vọng |
 |---|------|---------|
 | 16-1 | SQL patch RLS `qr_tokens` — không còn `USING (true)` | ✅ `docs/supabase-phase16-kn6-qr-checkins-rls.sql` |
 | 16-2 | SQL patch RLS `checkins` — không còn `USING (true)` | ✅ cùng patch |
-| 16-3 | Cross-tenant verify — Owner A không đọc/ghi QR/checkins Owner B | ⏳ apply SQL staging → `verify-cross-tenant-rls-staging.mjs` |
+| 16-3 | Cross-tenant verify — Owner A không đọc/ghi QR/checkins Owner B | ✅ `verify-cross-tenant-rls-staging.mjs` — 35/35 PASS |
 | 16-4 | Mobile QR flow vẫn hoạt động đúng tenant | ✅ unit + app-layer tests |
 
 **Docs:** `docs/v5/PHASE_16_KN6_RLS_QA.md`
 
-**Kết quả mong muốn:** ✅ **KN-6 CLOSED** — RLS hardened + cross-tenant verify PASS (sau staging apply)
+**Kết quả:** ✅ **KN-6 CLOSED** — RLS hardened + cross-tenant verify PASS
 
 ---
 
-### Phase 17 — RC1 Tag
+### Phase 17 — RC1 Pre-tag Sanity Check
 
-**Mục tiêu:** Tag `v5.0.0-rc1` khi owner approve và tất cả gate đạt.
+**Mục tiêu:** Re-run tất cả gate trước tag `v5.0.0-rc1`; xác nhận Preview @ `b88af90`; báo cáo readiness — **không tag** cho đến owner approve.
 
-**Trạng thái:** ⛔ **NOT ALLOWED YET**
+**Trạng thái:** ✅ **PASS** — 2026-07-03, commit `b88af90`
+
+| Gate | Kết quả |
+|------|---------|
+| `git diff --check` | ✅ Clean |
+| `npm test` | ✅ 752/752 PASS |
+| `npm run build` | ✅ PASS |
+| `npm run lint` | ✅ 0 errors (128 warnings pre-existing) |
+| `verify-phase15-preview-p0-qa.mjs` | ✅ PASS 54 · FAIL 0 · P0 FAIL 0 |
+| `verify-phase16-kn6-rls-staging.mjs` | ✅ PASS 18/18 |
+| `verify-cross-tenant-rls-staging.mjs` | ✅ PASS 35/35 |
+| Preview @ `b88af90` | ✅ Deployment `jecxqw6f0` — alias branch Preview Ready |
+| Stash `IntegrationSettingsPage.jsx` | ✅ Intact |
+
+**Verdict:** ✅ **RC1 pre-tag sanity check PASS** — **Ready for owner approval to tag `v5.0.0-rc1`**
+
+---
+
+### Phase 17 — RC1 Tag (owner action)
+
+**Mục tiêu:** Tag `v5.0.0-rc1` khi owner explicit approve.
+
+**Trạng thái:** ⏳ **Pending owner approval** (technical gates PASS)
 
 | Điều kiện | Required |
 |-----------|----------|
 | Preview Environment PASS (Phase 14A) | ✅ Bắt buộc |
 | Menu Manual QA PASS (Phase 14B) | ✅ Bắt buộc |
 | Manual P0 QA PASS (Phase 15) | ✅ Bắt buộc |
-| Owner explicit approve | ✅ Bắt buộc |
-| KN-6 closed (Phase 16) | ⚠️ Bắt buộc cho Production; khuyến nghị trước RC1 tag |
+| KN-6 closed (Phase 16) | ✅ Bắt buộc |
+| Phase 17 pre-tag sanity PASS | ✅ Bắt buộc |
+| Owner explicit approve | ✅ Bắt buộc — **chỉ còn bước này** |
 
 **Không tag nếu:**
 
@@ -268,10 +301,10 @@ git push origin v5.0.0-rc1
 
 ## Next action (immediate)
 
-1. **Phase 15** — Manual P0 QA trên Preview: tick 38 P0 cases trong `PHASE_12_V5_RC1_FULL_QA.md` (Auth, RBAC, Billing, Court Engine, Mobile, UX).
-2. **Phase 14B follow-up** (không chặn Phase 15): PLAYER / REFEREE mobile nav, Global search, Venue switcher.
-3. **Phase 16** (song song được): KN-6 RLS harden `qr_tokens` / `checkins`.
-4. Sau Phase 15 PASS + owner approve → cân nhắc **Phase 17** RC1 tag.
+1. **Owner approve** tag `v5.0.0-rc1` — technical gates PASS (Phase 17).
+2. **Phase 18** — Production readiness (backup, SQL, env, smoke, rollback).
+3. **Phase 14B follow-up** (không chặn RC1): PLAYER / REFEREE mobile nav, Global search, Venue switcher.
+4. **P1 manual** (không chặn RC1): VENUE_MANAGER browser, expired billing fixture, mobile device QR/drawer.
 
 ---
 

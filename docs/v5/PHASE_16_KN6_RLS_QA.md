@@ -159,6 +159,22 @@ node scripts/verify-cross-tenant-rls-staging.mjs
 
 ---
 
+## Phase 17 re-run (2026-07-03, commit `b88af90`)
+
+| Gate | Command | Kết quả |
+|------|---------|---------|
+| diff check | `git diff --check` | ✅ PASS |
+| unit | `npm test` | ✅ PASS — 752/752 |
+| build | `npm run build` | ✅ PASS |
+| lint | `npm run lint` | ✅ 0 errors |
+| KN-6 dedicated | `node scripts/verify-phase16-kn6-rls-staging.mjs` | ✅ **PASS** — 18/18 |
+| cross-tenant RLS | `node scripts/verify-cross-tenant-rls-staging.mjs` | ✅ **PASS** — 35/35 |
+| Preview P0 | `node scripts/verify-phase15-preview-p0-qa.mjs` | ✅ PASS 54 · FAIL 0 · P0 FAIL 0 |
+
+**Verdict:** ✅ Phase 17 pre-tag sanity confirms KN-6 remains CLOSED; RC1 technical gates PASS.
+
+---
+
 ## QR check-in flow (post-hardening)
 
 ```mermaid

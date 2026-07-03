@@ -40,11 +40,13 @@
 | Trạng thái | Số mục | Ghi chú |
 |------------|--------|---------|
 | ✅ PASS (automated RC1) | 19 | `verify-v5-rc1-staging.mjs` — 2026-07-03 |
-| ✅ PASS (cross-tenant RLS refresh) | 31 | `verify-cross-tenant-rls-staging.mjs` — 2026-07-03 |
-| ✅ PASS (Phase 15 P0 Preview) | 38 | `verify-phase15-preview-p0-qa.mjs` — 2026-07-03 |
+| ✅ PASS (cross-tenant RLS refresh) | 35 | `verify-cross-tenant-rls-staging.mjs` — Phase 17 re-run 2026-07-03 |
+| ✅ PASS (Phase 15 P0 Preview) | 38 | `verify-phase15-preview-p0-qa.mjs` — Phase 17 re-run 2026-07-03 |
+| ✅ PASS (Phase 16 KN-6) | 18 | `verify-phase16-kn6-rls-staging.mjs` — Phase 17 re-run 2026-07-03 |
+| ✅ PASS (Phase 17 pre-tag sanity) | 7 gates | All automated gates @ `b88af90` — 2026-07-03 |
 | ✅ PASS (P1 partial downgraded) | 5 | B3, D3, D4, F3, mobile drawer — xem Phase 15 |
 | ⏳ Pending (manual P1–P2) | 31 | Device/install, grace period, v.v. |
-| ⚠️ PARTIAL | 4 | RLS refresh — `qr_tokens`, `checkins` (KN-6) |
+| ⚠️ PARTIAL | 0 | KN-6 closed Phase 16 |
 | ❌ FAIL | 0 | |
 | 🔒 BLOCKED | 0 | |
 
@@ -355,7 +357,7 @@ Tham chiếu đầy đủ: `docs/SUPABASE-PRODUCTION-CHECKLIST.md`
 | KN-3 | SUPER_ADMIN staging password docs mismatch | P2 | Không ảnh hưởng tenant isolation (Phase 10D) |
 | KN-4 | Mobile device QA một phần PARTIAL | P1 | Manual device pass trước Production mobile traffic |
 | KN-5 | `IntegrationSettingsPage.jsx` in stash | P2 | Không pop trừ khi owner yêu cầu |
-| KN-6 | `qr_tokens` / `checkins` RLS policy open (`USING true`) | P1 | Cần seed cross-tenant verification **hoặc** tighten policy trước Production mobile/QR/check-in traffic |
+| KN-6 | ~~`qr_tokens` / `checkins` RLS policy open~~ | ✅ **CLOSED** | Phase 16 — tenant-scoped RLS + 35/35 cross-tenant PASS |
 
 ---
 
@@ -372,13 +374,17 @@ Tham chiếu đầy đủ: `docs/SUPABASE-PRODUCTION-CHECKLIST.md`
 | Integration audit RC1 subset | ✅ Pass | ✅ |
 | PWA manifest Preview | ✅ Pass | ✅ `/manifest.webmanifest` |
 | SPA `/login` + `/` | ✅ Pass | ✅ 200 shell |
-| Cross-tenant RLS re-run | ✅ Pass (or Phase 10D still valid) | ✅ **PASS 31/4/0/0** (2026-07-03) |
+| Cross-tenant RLS re-run | ✅ Pass (or Phase 10D still valid) | ✅ **PASS 35/0/0/0** (Phase 17 re-run 2026-07-03) |
+| Phase 16 KN-6 closed | ✅ Pass | ✅ **PASS 18/18** (Phase 17 re-run 2026-07-03) |
+| Phase 17 pre-tag sanity | ✅ Pass | ✅ **PASS** — all gates @ `b88af90` |
 | Manual P0 Auth + Court + Billing browser | ✅ Tick | ✅ **Phase 15 PASS** — 2026-07-03 |
 | No open P0 bugs | ✅ | ✅ (chưa ghi nhận mới) |
 
-**RC1 Staging technical verify:** ✅ PASS — automated gates xong; **Phase 15 P0 Preview QA PASS** (2026-07-03).
+**RC1 Staging technical verify:** ✅ PASS — automated gates xong; **Phase 15 P0 Preview QA PASS**; **Phase 17 pre-tag sanity PASS** (2026-07-03, `b88af90`).
 
-**Production:** ⛔ **NO-GO** — chờ Production SQL/env checklist + KN-6 + Phase 18.
+**RC1 tag `v5.0.0-rc1`:** ⏳ **Ready for owner approval** — chưa tag.
+
+**Production:** ⛔ **NO-GO** — chờ Phase 18 Production readiness.
 
 ### Production Go (separate decision)
 
@@ -407,16 +413,37 @@ Tham chiếu đầy đủ: `docs/SUPABASE-PRODUCTION-CHECKLIST.md`
 
 ---
 
+## Phase 17 — RC1 pre-tag sanity (2026-07-03)
+
+**Commit:** `b88af90`  
+**Preview deployment:** `pickleball-scheduler-jecxqw6f0` → alias branch Preview Ready (created 22:26:49 +07, ~21s after commit)
+
+| Gate | Result |
+|------|--------|
+| `git diff --check` | ✅ Clean |
+| `npm test` | ✅ 752/752 PASS |
+| `npm run build` | ✅ PASS |
+| `npm run lint` | ✅ 0 errors |
+| `verify-phase15-preview-p0-qa.mjs` | ✅ PASS 54 · FAIL 0 · P0 FAIL 0 |
+| `verify-phase16-kn6-rls-staging.mjs` | ✅ PASS 18/18 |
+| `verify-cross-tenant-rls-staging.mjs` | ✅ PASS 35/35 |
+
+**Verdict:** ✅ **RC1 pre-tag sanity check PASS** — ready for owner approval to tag `v5.0.0-rc1`.
+
+---
+
 ## Kết luận Phase 12
 
 | Quyết định | Trạng thái |
 |------------|------------|
 | **RC1 Staging QA framework** | ✅ Delivered (doc + script) |
 | **RC1 automated technical verify** | ✅ **PASS** — PASS: 19, FAIL: 0, BLOCKED: 0 (2026-07-03) |
-| **Cross-tenant RLS refresh** | ✅ **PASS** — PASS: 31, PARTIAL: 4, FAIL: 0, BLOCKED: 0 (2026-07-03) |
-| **RC1 Staging Go (full)** | ✅ **PASS** — Phase 15 P0 Preview QA (2026-07-03) |
-| **Production deploy** | ⛔ **NO-GO** — Phase 18–19 + KN-6 + owner approve |
-| **Đề xuất tiếp theo** | Phase 17 RC1 tag (owner approve) → Phase 16 KN-6 → Phase 18 Production readiness |
+| **Cross-tenant RLS refresh** | ✅ **PASS** — PASS: 35, PARTIAL: 0, FAIL: 0 (Phase 17 re-run) |
+| **Phase 16 KN-6** | ✅ **CLOSED** — PASS: 18/18 (Phase 17 re-run) |
+| **RC1 Staging Go (full)** | ✅ **PASS** — Phase 15 + Phase 17 pre-tag sanity |
+| **RC1 tag `v5.0.0-rc1`** | ⏳ **Ready — owner approval only** |
+| **Production deploy** | ⛔ **NO-GO** — Phase 18–19 |
+| **Đề xuất tiếp theo** | Owner approve tag → Phase 18 Production readiness |
 
 ---
 

@@ -3,6 +3,7 @@
 **Ngày:** 2026-07-03  
 **Branch:** `v5-platform-edition`  
 **Commit QA:** `752c887` + Phase 15 scripts/docs  
+**Phase 17 re-run:** `b88af90` — 2026-07-03 (all gates PASS)
 **Preview URL:** https://pickleball-scheduler-git-v5-platfor-47ef4a-pickleball-scheduler.vercel.app  
 **Môi trường:** Staging Supabase + Vercel Preview — **không** Production, **không** tag `v5.0.0-rc1`  
 **Tiền đề:** Phase 14A ✅ · Phase 14B ✅ · P0 white screen fix `5a455e4`
@@ -93,7 +94,7 @@ node scripts/verify-cross-tenant-rls-staging.mjs
 
 | ID | Case | Verdict | Evidence |
 |----|------|---------|----------|
-| F3 | QR check-in | ⚠️ **P1 PARTIAL** | KN-6 RLS open; unit PASS; device QA Phase 16 |
+| F3 | QR check-in | ⚠️ **P1 PARTIAL** | KN-6 RLS closed Phase 16; device QA deferred P1 |
 | F7 | Bottom nav RBAC | ✅ | `mobile-phase8-hardening` REFEREE no billing |
 | — | PLAYER `Trang của tôi` @375px | ✅ | `/mobile/player` bottom nav |
 | — | Owner mobile drawer | ⚠️ **P1 PARTIAL** | Drawer mở OK; bottom `navigation` timeout sau re-login mobile |
@@ -129,7 +130,7 @@ node scripts/verify-cross-tenant-rls-staging.mjs
 | B3 | **P1** | VENUE_MANAGER browser | Không staging manager password trong `.env.staging-qa.local`; matrix unit PASS |
 | D3 | **P1** | Expired subscription lock browser | Không expired tenant fixture staging; logic unit PASS |
 | D4 | **P1** | Locked feature UI browser | Cùng D3 — SubscriptionGate unit PASS |
-| F3 | **P1** | QR check-in device | KN-6 `qr_tokens`/`checkins` RLS open; mobile hardening unit PASS |
+| F3 | **P1** | QR check-in device | KN-6 RLS closed Phase 16; physical device QA deferred P1 |
 | MOBILE-DRAWER | **P1** | Owner bottom nav re-login mobile | Drawer nhóm menu OK; bottom nav timeout sau viewport switch |
 
 ---
@@ -144,14 +145,15 @@ node scripts/verify-cross-tenant-rls-staging.mjs
 
 ## Gates (2026-07-03)
 
-| Gate | Result |
-|------|--------|
-| `git diff --check` | ✅ Clean |
-| `npm test` | ✅ 745/745 PASS |
-| `npm run build` | ✅ PASS |
-| `npm run lint` | ✅ 0 errors |
-| `verify-phase15-preview-p0-qa.mjs` | ✅ PASS 54 · FAIL 0 · PARTIAL 5 · N/A 11 |
-| `verify-cross-tenant-rls-staging.mjs` | ✅ PASS 31 · PARTIAL 4 · FAIL 0 |
+| Gate | Result (Phase 15) | Result (Phase 17 re-run @ `b88af90`) |
+|------|---------------------|--------------------------------------|
+| `git diff --check` | ✅ Clean | ✅ Clean |
+| `npm test` | ✅ 745/745 PASS | ✅ 752/752 PASS |
+| `npm run build` | ✅ PASS | ✅ PASS |
+| `npm run lint` | ✅ 0 errors | ✅ 0 errors |
+| `verify-phase15-preview-p0-qa.mjs` | ✅ PASS 54 · FAIL 0 | ✅ PASS 54 · FAIL 0 · P0 FAIL 0 |
+| `verify-cross-tenant-rls-staging.mjs` | ✅ PASS 31 · PARTIAL 4 | ✅ PASS 35 · PARTIAL 0 |
+| `verify-phase16-kn6-rls-staging.mjs` | — | ✅ PASS 18/18 |
 
 ---
 
@@ -160,7 +162,8 @@ node scripts/verify-cross-tenant-rls-staging.mjs
 | Decision | Verdict |
 |----------|---------|
 | **Phase 15 P0 Preview QA** | ✅ **PASS** |
-| **RC1 tag `v5.0.0-rc1`** | ⛔ **NO-GO** — owner approval + Phase 17 |
+| **Phase 17 re-run** | ✅ **PASS** — script + gates @ `b88af90` |
+| **RC1 tag `v5.0.0-rc1`** | ⏳ **Ready — owner approval only** |
 | **Production deploy** | ⛔ **NO-GO** — Phase 18–19 |
 
 ---
