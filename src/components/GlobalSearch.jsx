@@ -77,13 +77,16 @@ export default function GlobalSearch({ size = "small", maxWidth = 420, variant =
           </Box>
         </Box>
       )}
-      renderInput={(params) => (
+      renderInput={(params) => {
+        const autocompleteInputProps = params.InputProps ?? {};
+
+        return (
         <TextField
           {...params}
           inputRef={inputRef}
           placeholder="Tìm kiếm nhanh..."
           InputProps={{
-            ...params.InputProps,
+            ...autocompleteInputProps,
             startAdornment: (
               <InputAdornment position="start">
                 <SearchIcon
@@ -96,7 +99,7 @@ export default function GlobalSearch({ size = "small", maxWidth = 420, variant =
             ),
             endAdornment: (
               <>
-                {params.InputProps.endAdornment}
+                {autocompleteInputProps.endAdornment}
                 {!isLight ? null : (
                   <InputAdornment position="end">
                     <Chip
@@ -139,7 +142,8 @@ export default function GlobalSearch({ size = "small", maxWidth = 420, variant =
             },
           }}
         />
-      )}
+        );
+      }}
       sx={{
         display: { xs: "block", lg: "block" },
         width: "100%",

@@ -10,6 +10,7 @@ import {
 import { AuthProvider } from "../../src/context/AuthContext.jsx";
 import { ClubProvider } from "../../src/context/ClubContext.jsx";
 import { SeasonProvider } from "../../src/context/SeasonContext.jsx";
+import { TenantProvider } from "../../src/context/TenantContext.jsx";
 import { DEFAULT_CLUB } from "../../src/data/club.js";
 
 export const SCOPED_DIRECTOR_KEY = `pickleball-director::${DEFAULT_CLUB.id}`;
@@ -17,9 +18,11 @@ export const SCOPED_DIRECTOR_KEY = `pickleball-director::${DEFAULT_CLUB.id}`;
 function AppProviders({ children }) {
   return (
     <AuthProvider>
-      <ClubProvider>
-        <SeasonProvider>{children}</SeasonProvider>
-      </ClubProvider>
+      <TenantProvider>
+        <ClubProvider>
+          <SeasonProvider>{children}</SeasonProvider>
+        </ClubProvider>
+      </TenantProvider>
     </AuthProvider>
   );
 }

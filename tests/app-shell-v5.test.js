@@ -58,6 +58,13 @@ test("app shell — global search Ctrl K shortcut", () => {
   assert.ok(search.includes('event.key.toLowerCase() === "k"'));
 });
 
+test("app shell — global search không crash khi InputProps undefined (MUI v9)", () => {
+  const search = readSrc("src/components/GlobalSearch.jsx");
+
+  assert.equal(/params\.InputProps\.endAdornment/.test(search), false);
+  assert.ok(search.includes("params.InputProps ?? {}"));
+});
+
 test("app shell — không còn label legacy trong navigation config", () => {
   const nav = readSrc("src/config/navigationConfig.js");
 

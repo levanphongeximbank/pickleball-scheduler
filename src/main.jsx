@@ -12,8 +12,22 @@ import { flushOfflineQueue } from "./features/mobile/services/offlineQueue.js";
 
 seedDemoDataForDev();
 
+async function unregisterPreviewServiceWorkers() {
+  if (!("serviceWorker" in navigator)) {
+    return;
+  }
+
+  try {
+    const registrations = await navigator.serviceWorker.getRegistrations();
+    await Promise.all(registrations.map((registration) => registration.unregister()));
+  } catch {
+    // Best-effort: stale SW from prior preview builds can serve broken chunks.
+  }
+}
+
 async function registerServiceWorker() {
   if (import.meta.env.VITE_VERCEL_PREVIEW === "true") {
+    await unregisterPreviewServiceWorkers();
     return;
   }
 
