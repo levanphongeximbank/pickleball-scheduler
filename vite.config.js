@@ -1,9 +1,16 @@
 import process from "node:process";
+import fs from "node:fs";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
 import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
 import { VitePWA } from "vite-plugin-pwa";
 
 const isVercelPreview = process.env.VERCEL_ENV === "preview";
+const projectRoot = path.dirname(fileURLToPath(import.meta.url));
+const pwaManifest = JSON.parse(
+  fs.readFileSync(path.join(projectRoot, "public/manifest.webmanifest"), "utf8")
+);
 
 // https://vite.dev/config/
 export default defineConfig({
@@ -16,47 +23,7 @@ export default defineConfig({
       disable: isVercelPreview,
       registerType: "autoUpdate",
       includeAssets: ["favicon.svg", "pwa-icon.svg", "icon-192.png", "icon-512.png", "apple-touch-icon.png"],
-      manifest: {
-        name: "Pickleball Scheduler Pro",
-        short_name: "PB Scheduler",
-        description: "Quản lý sân, CLB, giải đấu pickleball",
-        theme_color: "#0f3f2e",
-        background_color: "#0f3f2e",
-        display: "standalone",
-        orientation: "portrait-primary",
-        start_url: "/",
-        scope: "/",
-        icons: [
-          {
-            src: "icon-192.png",
-            sizes: "192x192",
-            type: "image/png",
-            purpose: "any",
-          },
-          {
-            src: "icon-512.png",
-            sizes: "512x512",
-            type: "image/png",
-            purpose: "any",
-          },
-          {
-            src: "icon-512.png",
-            sizes: "512x512",
-            type: "image/png",
-            purpose: "maskable",
-          },
-          {
-            src: "pwa-icon.svg",
-            sizes: "512x512",
-            type: "image/svg+xml",
-          },
-          {
-            src: "favicon.svg",
-            sizes: "48x48",
-            type: "image/svg+xml",
-          },
-        ],
-      },
+      manifest: pwaManifest,
       workbox: {
         globPatterns: ["**/*.{js,css,html,ico,svg,png,woff2}"],
         runtimeCaching: [

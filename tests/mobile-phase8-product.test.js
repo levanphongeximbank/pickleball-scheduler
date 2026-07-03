@@ -293,4 +293,30 @@ describe("mobile phase 8 product — PWA assets", () => {
     assert.match(config, /192x192/);
     assert.match(config, /512x512/);
   });
+
+  it("public manifest.webmanifest là JSON hợp lệ với trường PWA tối thiểu", () => {
+    const manifestPath = path.join(__dirname, "..", "public", "manifest.webmanifest");
+    assert.ok(fs.existsSync(manifestPath), "public/manifest.webmanifest phải tồn tại");
+    const manifest = JSON.parse(fs.readFileSync(manifestPath, "utf8"));
+    const hasName =
+      (typeof manifest.name === "string" && manifest.name.trim()) ||
+      (typeof manifest.short_name === "string" && manifest.short_name.trim());
+    assert.ok(hasName, "manifest cần name hoặc short_name");
+    assert.equal(typeof manifest.start_url, "string");
+    assert.equal(typeof manifest.display, "string");
+    assert.ok(Array.isArray(manifest.icons) && manifest.icons.length > 0, "manifest cần icons");
+  });
+
+  it("dist build chứa manifest.webmanifest khi dist tồn tại", () => {
+    const distManifest = path.join(__dirname, "..", "dist", "manifest.webmanifest");
+    if (!fs.existsSync(distManifest)) {
+      return;
+    }
+    const manifest = JSON.parse(fs.readFileSync(distManifest, "utf8"));
+    assert.equal(typeof manifest.start_url, "string");
+    assert.equal(typeof manifest.display, "string");
+    assert.ok(
+      (manifest.name && manifest.name.trim()) || (manifest.short_name && manifest.short_name.trim())
+    );
+  });
 });
