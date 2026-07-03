@@ -168,7 +168,7 @@ export default function PlayerHomePage() {
       <Stack direction="row" alignItems="center" spacing={1} sx={{ mb: 2 }}>
         <PersonIcon color="primary" />
         <Typography variant="h5" fontWeight={900}>
-          Của tôi
+          Trang của tôi
         </Typography>
       </Stack>
 

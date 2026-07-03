@@ -8,7 +8,7 @@ export const PLATFORM_MODULES = [
   },
   {
     id: "users",
-    title: "Users",
+    title: "Người dùng",
     path: "/users",
     requiredPermission: "user.manage",
     component: "UserManagementPage",

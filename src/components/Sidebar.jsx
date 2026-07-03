@@ -7,6 +7,7 @@ import { useAuth } from "../context/AuthContext.jsx";
 import { useClub } from "../context/ClubContext.jsx";
 import { useIsMobile } from "../features/mobile/hooks/useIsMobile.js";
 import NavMenuList from "./nav/NavMenuList.jsx";
+import { getProductVersionLine } from "../config/appVersion.js";
 
 const drawerWidth = 260;
 
@@ -56,7 +57,7 @@ export default function Sidebar() {
           color="text.disabled"
           sx={{ display: "block", textAlign: "center", mt: 2, px: 1 }}
         >
-          Pickleball Scheduler Pro v5
+          {getProductVersionLine()}
         </Typography>
       </Box>
     </Drawer>

@@ -21,6 +21,7 @@ import { useAuth } from "../context/AuthContext.jsx";
 import { ROLE_LABELS } from "../auth/roles.js";
 import { isDevAuthAllowed, listDevUsers } from "../auth/authService.js";
 import { getDefaultHomePath } from "../auth/menuAccess.js";
+import { APP_PRODUCT_NAME, getLoginSubtitle } from "../config/appVersion.js";
 
 export default function LoginPage() {
   const location = useLocation();
@@ -141,16 +142,16 @@ export default function LoginPage() {
         <Stack spacing={2} alignItems="center" sx={{ mb: 3 }}>
           <SportsTennisIcon color="primary" sx={{ fontSize: { xs: 40, sm: 48 } }} />
           <Typography variant="h4" fontWeight={900} textAlign="center" sx={{ fontSize: { xs: 24, sm: 34 } }}>
-            Pickleball Scheduler Pro
+            {APP_PRODUCT_NAME}
           </Typography>
           <Typography color="text.secondary" textAlign="center" variant="body2">
             {supabaseAvailable ? (
               <Stack direction="row" spacing={0.5} alignItems="center" justifyContent="center">
                 <CloudIcon fontSize="small" />
-                <span>Đăng nhập bảo mật — v3.5.3</span>
+                <span>{getLoginSubtitle({ supabaseAvailable: true })}</span>
               </Stack>
             ) : (
-              "Đăng nhập dev — v3.5.3"
+              getLoginSubtitle({ supabaseAvailable: false })
             )}
           </Typography>
         </Stack>

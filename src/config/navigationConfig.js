@@ -758,7 +758,7 @@ export const MENU_GROUPS = [
       {
         key: "mobile-player-owner",
         icon: NAV_ICON_KEYS["mobile-player"],
-        text: "Của tôi (Mobile)",
+        text: "Trang của tôi",
         path: "/mobile/player",
         roles: [ROLES.COURT_OWNER, ROLES.COURT_MANAGER, ROLES.SUPER_ADMIN],
       },
@@ -795,7 +795,7 @@ export const MENU_GROUPS = [
       {
         key: "player-home",
         icon: NAV_ICON_KEYS["mobile-player"],
-        text: "Của tôi (Mobile)",
+        text: "Trang của tôi",
         path: "/mobile/player",
         roles: [ROLES.PLAYER],
       },

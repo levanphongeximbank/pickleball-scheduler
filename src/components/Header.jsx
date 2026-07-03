@@ -529,7 +529,7 @@ export default function Header({ onMenuClick }) {
                   color="inherit"
                   sx={{ minWidth: 0, fontSize: 11, fontWeight: 700, px: 1 }}
                 >
-                  Users
+                  Người dùng
                 </Button>
               )}
               <Button

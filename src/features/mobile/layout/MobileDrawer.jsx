@@ -20,6 +20,7 @@ import { filterMobileQuickLinks } from "../services/mobileNavAccess.js";
 import { useAuth } from "../../../context/AuthContext.jsx";
 import { useClub } from "../../../context/ClubContext.jsx";
 import NavMenuList from "../../../components/nav/NavMenuList.jsx";
+import { APP_VERSION_LABEL } from "../../../config/appVersion.js";
 
 export default function MobileDrawer({ open, onClose }) {
   const location = useLocation();
@@ -95,6 +96,13 @@ export default function MobileDrawer({ open, onClose }) {
             </ListItemButton>
           ))}
         </List>
+        <Typography
+          variant="caption"
+          color="text.disabled"
+          sx={{ display: "block", textAlign: "center", mt: 2, px: 1 }}
+        >
+          {APP_VERSION_LABEL}
+        </Typography>
       </Box>
     </Drawer>
   );

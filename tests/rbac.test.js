@@ -784,12 +784,12 @@ test("menuAccess — VENUE_OWNER legacy DB vẫn thấy menu đầy đủ", () =
   assert.ok(labels.includes("Lịch sân") || labels.includes("Đặt sân"));
 });
 
-test("menuAccess — VENUE_OWNER thấy Của tôi (Mobile)", () => {
+test("menuAccess — VENUE_OWNER thấy Trang của tôi", () => {
   const owner = user(ROLES.VENUE_OWNER, { venueId: "venue-a", clubId: "club-1" });
   const visible = filterMenuGroups(SIDEBAR_MENU_GROUPS, makeMenuAuth(owner), SCOPE);
   const labels = visible.flatMap((g) => g.items.map((i) => i.text));
 
-  assert.ok(labels.includes("Của tôi (Mobile)"));
+  assert.ok(labels.includes("Trang của tôi"));
 });
 
 test("menuAccess — không còn label USERS trong sidebar", () => {
