@@ -1,10 +1,10 @@
 import { useState } from "react";
 import Box from "@mui/material/Box";
-import Toolbar from "@mui/material/Toolbar";
 import { Outlet } from "react-router-dom";
 
 import Sidebar from "../components/Sidebar";
 import Header from "../components/Header";
+import AppContextBar from "../components/shell/AppContextBar.jsx";
 import RouteAccessGate from "../components/auth/RouteAccessGate.jsx";
 import TenantGate from "../components/TenantGate.jsx";
 import SubscriptionBanner from "../components/SubscriptionBanner.jsx";
@@ -18,6 +18,7 @@ import MobileBottomNav from "../features/mobile/layout/MobileBottomNav.jsx";
 import MobileDrawer from "../features/mobile/layout/MobileDrawer.jsx";
 import { MobileNavProvider } from "../features/mobile/context/MobileNavProvider.jsx";
 import { useIsMobile } from "../features/mobile/hooks/useIsMobile.js";
+import { SHELL_COLORS } from "../components/shell/shellTokens.js";
 
 function MainLayoutContent() {
   const isMobile = useIsMobile();
@@ -25,34 +26,45 @@ function MainLayoutContent() {
 
   return (
     <MobileNavProvider openDrawer={() => setDrawerOpen(true)}>
-      <Box sx={{ display: "flex", minHeight: "100dvh" }}>
-        <Header onMenuClick={() => setDrawerOpen(true)} />
-        <Sidebar />
-        <MobileDrawer open={drawerOpen} onClose={() => setDrawerOpen(false)} />
+      <Box sx={{ display: "flex", minHeight: "100dvh", bgcolor: SHELL_COLORS.pageBg }}>
+        {!isMobile && <Sidebar />}
 
         <Box
-          component="main"
           sx={{
             flexGrow: 1,
-            p: { xs: 1.5, sm: 2, md: 3 },
-            pb: { xs: 9, md: 3 },
             minWidth: 0,
+            display: "flex",
+            flexDirection: "column",
+            minHeight: "100dvh",
           }}
         >
-          <Toolbar />
-          <RouteAccessGate>
-            <TenantGate>
-              <OfflineBanner />
-              <PwaInstallPrompt />
-              <SubscriptionBanner />
-              <SubscriptionGate>
-                <Outlet />
-              </SubscriptionGate>
-            </TenantGate>
-          </RouteAccessGate>
-        </Box>
+          <Header onMenuClick={() => setDrawerOpen(true)} />
+          <AppContextBar />
+          <MobileDrawer open={drawerOpen} onClose={() => setDrawerOpen(false)} />
 
-        {isMobile && <MobileBottomNav />}
+          <Box
+            component="main"
+            sx={{
+              flexGrow: 1,
+              p: { xs: 1.5, sm: 2, md: 3 },
+              pb: { xs: 9, md: 3 },
+              minWidth: 0,
+            }}
+          >
+            <RouteAccessGate>
+              <TenantGate>
+                <OfflineBanner />
+                <PwaInstallPrompt />
+                <SubscriptionBanner />
+                <SubscriptionGate>
+                  <Outlet />
+                </SubscriptionGate>
+              </TenantGate>
+            </RouteAccessGate>
+          </Box>
+
+          {isMobile && <MobileBottomNav />}
+        </Box>
       </Box>
     </MobileNavProvider>
   );

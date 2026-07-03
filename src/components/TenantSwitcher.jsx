@@ -2,9 +2,26 @@ import { FormControl, InputLabel, MenuItem, Select, Typography } from "@mui/mate
 
 import { useTenant } from "../context/TenantContext.jsx";
 import { listTenants } from "../features/tenant/index.js";
+import { SHELL_COLORS } from "./shell/shellTokens.js";
 
-export default function TenantSwitcher({ size = "small", minWidth = 200 }) {
+const VARIANT_STYLES = {
+  dark: {
+    bgcolor: "rgba(255,255,255,0.12)",
+    color: "common.white",
+    outline: "rgba(255,255,255,0.3)",
+    icon: "common.white",
+  },
+  context: {
+    bgcolor: "#FFFFFF",
+    color: SHELL_COLORS.textPrimary,
+    outline: SHELL_COLORS.border,
+    icon: SHELL_COLORS.textSecondary,
+  },
+};
+
+export default function TenantSwitcher({ size = "small", minWidth = 180, variant = "dark" }) {
   const { currentTenantId, isSuperAdmin, switchTenant } = useTenant();
+  const styles = VARIANT_STYLES[variant] || VARIANT_STYLES.dark;
 
   if (!isSuperAdmin) {
     return null;
@@ -17,17 +34,20 @@ export default function TenantSwitcher({ size = "small", minWidth = 200 }) {
 
   return (
     <FormControl size={size} sx={{ minWidth }}>
-      <InputLabel id="header-tenant-label">Đang quản trị</InputLabel>
+      <InputLabel id="header-tenant-label" sx={variant !== "dark" ? { color: SHELL_COLORS.textSecondary } : undefined}>
+        Đang quản trị
+      </InputLabel>
       <Select
         labelId="header-tenant-label"
         value={value}
         label="Đang quản trị"
         onChange={(event) => switchTenant(event.target.value)}
         sx={{
-          bgcolor: "rgba(255,255,255,0.12)",
-          color: "common.white",
-          ".MuiOutlinedInput-notchedOutline": { borderColor: "rgba(255,255,255,0.3)" },
-          ".MuiSvgIcon-root": { color: "common.white" },
+          bgcolor: styles.bgcolor,
+          color: styles.color,
+          borderRadius: 1.5,
+          ".MuiOutlinedInput-notchedOutline": { borderColor: styles.outline },
+          ".MuiSvgIcon-root": { color: styles.icon },
         }}
       >
         {tenants.map((tenant) => (

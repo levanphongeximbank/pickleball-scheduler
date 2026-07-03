@@ -29,12 +29,15 @@ function TrendBadge({ trendPercent }) {
 export default function KpiCard({ label, value, hint, trendPercent, icon: Icon, accent = "primary.main" }) {
   return (
     <Card
-      variant="outlined"
+      elevation={0}
       sx={{
         height: "100%",
-        borderRadius: 2,
+        borderRadius: 2.5,
+        bgcolor: "#FFFFFF",
+        border: "1px solid #E5E7EB",
+        boxShadow: "0 1px 2px rgba(15, 23, 42, 0.04)",
         transition: "box-shadow 0.2s",
-        "&:hover": { boxShadow: 2 },
+        "&:hover": { boxShadow: "0 8px 24px rgba(15, 23, 42, 0.06)" },
       }}
     >
       <CardContent>
@@ -42,12 +45,12 @@ export default function KpiCard({ label, value, hint, trendPercent, icon: Icon, 
           {Icon && (
             <Box
               sx={{
-                width: 40,
-                height: 40,
+                width: 44,
+                height: 44,
                 borderRadius: 2,
                 display: "grid",
                 placeItems: "center",
-                bgcolor: `${accent}14`,
+                bgcolor: "#ECFDF5",
                 color: accent,
               }}
             >
@@ -58,7 +61,7 @@ export default function KpiCard({ label, value, hint, trendPercent, icon: Icon, 
             <Typography variant="body2" color="text.secondary">
               {label}
             </Typography>
-            <Typography variant="h5" fontWeight="bold" sx={{ mt: 0.25 }}>
+            <Typography variant="h5" fontWeight={800} sx={{ mt: 0.25 }}>
               {value}
             </Typography>
           </Box>

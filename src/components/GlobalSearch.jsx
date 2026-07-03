@@ -1,8 +1,9 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   Autocomplete,
   Box,
+  Chip,
   InputAdornment,
   TextField,
   Typography,
@@ -13,12 +14,15 @@ import { MENU_GROUPS, buildSearchableNavItems } from "../config/navigationConfig
 import { filterMenuGroups, resolveRouteAccessScope } from "../auth/menuAccess.js";
 import { useAuth } from "../context/AuthContext.jsx";
 import { useClub } from "../context/ClubContext.jsx";
+import { SHELL_COLORS } from "./shell/shellTokens.js";
 
-export default function GlobalSearch({ size = "small", maxWidth = 220 }) {
+export default function GlobalSearch({ size = "small", maxWidth = 420, variant = "dark" }) {
   const navigate = useNavigate();
   const auth = useAuth();
   const { activeClubId, activeClub } = useClub();
   const [inputValue, setInputValue] = useState("");
+  const inputRef = useRef(null);
+  const isLight = variant === "light";
 
   const scope = useMemo(
     () =>
@@ -32,13 +36,20 @@ export default function GlobalSearch({ size = "small", maxWidth = 220 }) {
 
   const options = useMemo(() => {
     const visibleGroups = filterMenuGroups(MENU_GROUPS, auth, scope);
-    const visibleKeys = new Set(
-      visibleGroups.flatMap((g) => g.items.map((i) => i.key))
-    );
-    return buildSearchableNavItems(visibleGroups).filter((item) =>
-      visibleKeys.has(item.key)
-    );
+    const visibleKeys = new Set(visibleGroups.flatMap((g) => g.items.map((i) => i.key)));
+    return buildSearchableNavItems(visibleGroups).filter((item) => visibleKeys.has(item.key));
   }, [auth, scope]);
+
+  useEffect(() => {
+    const handleKeyDown = (event) => {
+      if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === "k") {
+        event.preventDefault();
+        inputRef.current?.focus();
+      }
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, []);
 
   return (
     <Autocomplete
@@ -69,32 +80,72 @@ export default function GlobalSearch({ size = "small", maxWidth = 220 }) {
       renderInput={(params) => (
         <TextField
           {...params}
-          placeholder="Tìm menu..."
+          inputRef={inputRef}
+          placeholder="Tìm kiếm nhanh..."
           InputProps={{
             ...params.InputProps,
             startAdornment: (
               <InputAdornment position="start">
-                <SearchIcon sx={{ color: "rgba(255,255,255,0.7)", fontSize: 18 }} />
+                <SearchIcon
+                  sx={{
+                    color: isLight ? SHELL_COLORS.textSecondary : "rgba(255,255,255,0.7)",
+                    fontSize: 18,
+                  }}
+                />
               </InputAdornment>
+            ),
+            endAdornment: (
+              <>
+                {params.InputProps.endAdornment}
+                {!isLight ? null : (
+                  <InputAdornment position="end">
+                    <Chip
+                      label="Ctrl K"
+                      size="small"
+                      sx={{
+                        height: 22,
+                        fontSize: 11,
+                        fontWeight: 700,
+                        bgcolor: SHELL_COLORS.mintBg,
+                        color: SHELL_COLORS.textSecondary,
+                      }}
+                    />
+                  </InputAdornment>
+                )}
+              </>
             ),
           }}
           sx={{
+            width: "100%",
             maxWidth,
-            "& .MuiOutlinedInput-root": {
-              bgcolor: "rgba(255,255,255,0.12)",
-              color: "common.white",
-              "& fieldset": { borderColor: "rgba(255,255,255,0.25)" },
-              "&:hover fieldset": { borderColor: "rgba(255,255,255,0.4)" },
-              "&.Mui-focused fieldset": { borderColor: "rgba(255,255,255,0.55)" },
-            },
+            "& .MuiOutlinedInput-root": isLight
+              ? {
+                  bgcolor: SHELL_COLORS.pageBg,
+                  borderRadius: 2,
+                  "& fieldset": { borderColor: SHELL_COLORS.border },
+                  "&:hover fieldset": { borderColor: "#D1D5DB" },
+                  "&.Mui-focused fieldset": { borderColor: SHELL_COLORS.primaryGreen },
+                }
+              : {
+                  bgcolor: "rgba(255,255,255,0.12)",
+                  color: "common.white",
+                  "& fieldset": { borderColor: "rgba(255,255,255,0.25)" },
+                  "&:hover fieldset": { borderColor: "rgba(255,255,255,0.4)" },
+                  "&.Mui-focused fieldset": { borderColor: "rgba(255,255,255,0.55)" },
+                },
             "& .MuiInputBase-input::placeholder": {
-              color: "rgba(255,255,255,0.65)",
+              color: isLight ? SHELL_COLORS.textSecondary : "rgba(255,255,255,0.65)",
               opacity: 1,
             },
           }}
         />
       )}
-      sx={{ display: { xs: "none", lg: "block" }, minWidth: maxWidth }}
+      sx={{
+        display: { xs: "block", lg: "block" },
+        width: "100%",
+        maxWidth,
+        minWidth: { xs: 120, sm: 180, lg: 280 },
+      }}
       noOptionsText="Không tìm thấy"
       clearOnBlur
       blurOnSelect

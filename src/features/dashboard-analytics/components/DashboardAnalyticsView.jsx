@@ -2,7 +2,6 @@ import { useMemo } from "react";
 import { Navigate } from "react-router-dom";
 
 import { Alert, Box, Grid, Stack, Typography } from "@mui/material";
-import AnalyticsOutlinedIcon from "@mui/icons-material/AnalyticsOutlined";
 
 import { useAuth } from "../../../context/AuthContext.jsx";
 import { useClub } from "../../../context/ClubContext.jsx";
@@ -16,6 +15,7 @@ import TopCourtsTable from "./TopCourtsTable.jsx";
 import CourtHeatmap from "./CourtHeatmap.jsx";
 import PeakHoursPanel from "./PeakHoursPanel.jsx";
 import OperationalInsightsPanel from "./OperationalInsightsPanel.jsx";
+import DashboardTodayKpis from "./DashboardTodayKpis.jsx";
 import {
   DashboardErrorState,
   DashboardLoadingState,
@@ -50,6 +50,10 @@ export default function DashboardAnalyticsView() {
   return (
     <Box sx={{ mb: 4 }}>
       <StackHeader activeClub={activeClub} scopeLabel={access.scopeLabel} />
+
+      {!loading && !error && data && (
+        <DashboardTodayKpis summary={data.summary} isMock={data.isMock} />
+      )}
 
       <DashboardTimeFilter
         preset={analytics.preset}
@@ -131,16 +135,20 @@ export default function DashboardAnalyticsView() {
 
 function StackHeader({ activeClub, scopeLabel }) {
   return (
-    <Box sx={{ mb: 3 }}>
-      <Stack direction="row" spacing={1} sx={{ alignItems: "center", mb: 0.5 }}>
-        <AnalyticsOutlinedIcon color="primary" />
-        <Typography variant="h4" fontWeight="bold">
-          Dashboard Analytics
+    <Stack
+      direction={{ xs: "column", md: "row" }}
+      spacing={2}
+      sx={{ mb: 3, alignItems: { md: "flex-start" }, justifyContent: "space-between" }}
+    >
+      <Box>
+        <Typography variant="h4" fontWeight={800} sx={{ mb: 0.5 }}>
+          Tổng quan
         </Typography>
-      </Stack>
-      <Typography color="text.secondary">
-        {activeClub?.name || "Hệ thống"} • {scopeLabel}
-      </Typography>
-    </Box>
+        <Typography color="text.secondary">
+          Cập nhật nhanh tình hình hoạt động của sân.
+          {activeClub?.name ? ` ${activeClub.name}` : ""} • {scopeLabel}
+        </Typography>
+      </Box>
+    </Stack>
   );
 }

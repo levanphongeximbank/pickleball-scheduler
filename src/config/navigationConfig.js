@@ -229,7 +229,7 @@ export const NAV_ICON_KEYS = Object.freeze({
 export const MENU_GROUPS = [
   {
     id: MENU_GROUP_IDS.DASHBOARD,
-    label: "Dashboard",
+    label: "Tổng quan",
     items: [
       {
         key: "dashboard",
@@ -306,7 +306,7 @@ export const MENU_GROUPS = [
       {
         key: "customers",
         icon: NAV_ICON_KEYS.customers,
-        text: "Danh sách khách hàng",
+        text: "Khách hàng",
         path: "/court-management/customers",
         match: "court-customers",
         permissions: [PERMISSIONS.CUSTOMER_VIEW],
@@ -314,7 +314,7 @@ export const MENU_GROUPS = [
       {
         key: "players",
         icon: NAV_ICON_KEYS.players,
-        text: "Danh sách VĐV",
+        text: "Vận động viên",
         path: "/players",
         permissions: [PERMISSIONS.PLAYER_VIEW],
         excludeRoles: [ROLES.PLAYER, ROLES.REFEREE],
@@ -566,7 +566,7 @@ export const MENU_GROUPS = [
   },
   {
     id: MENU_GROUP_IDS.AI,
-    label: "AI Assistant",
+    label: "Trợ lý AI",
     requiresFeature: "ai",
     items: [
       {

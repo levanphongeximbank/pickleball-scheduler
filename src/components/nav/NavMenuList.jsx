@@ -46,7 +46,9 @@ function NavGroupSection({
   user,
   onItemClick,
   compact = false,
+  variant = "light",
 }) {
+  const isDark = variant === "dark";
   const hasMultipleItems = group.items.length > 1;
   const initiallyOpen = useMemo(
     () => groupHasActiveItem(currentPath, group, user, resolveMenuItemPath),
@@ -76,7 +78,9 @@ function NavGroupSection({
             mx: 0.5,
             py: 0.5,
             minHeight: 36,
-            "&:hover": { bgcolor: "rgba(15, 23, 42, 0.04)" },
+            "&:hover": {
+              bgcolor: isDark ? "rgba(255,255,255,0.06)" : "rgba(15, 23, 42, 0.04)",
+            },
           }}
         >
           <ListItemText
@@ -86,14 +90,14 @@ function NavGroupSection({
               fontWeight: 800,
               letterSpacing: 0.6,
               textTransform: "uppercase",
-              color: "text.secondary",
+              color: isDark ? "rgba(255,255,255,0.55)" : "text.secondary",
             }}
           />
           {hasMultipleItems ? (
             open ? (
-              <ExpandLessIcon sx={{ fontSize: 18, color: "text.secondary" }} />
+              <ExpandLessIcon sx={{ fontSize: 18, color: isDark ? "rgba(255,255,255,0.55)" : "text.secondary" }} />
             ) : (
-              <ExpandMoreIcon sx={{ fontSize: 18, color: "text.secondary" }} />
+              <ExpandMoreIcon sx={{ fontSize: 18, color: isDark ? "rgba(255,255,255,0.55)" : "text.secondary" }} />
             )
           ) : null}
         </ListItemButton>
@@ -117,20 +121,31 @@ function NavGroupSection({
                   mx: 0.5,
                   mb: 0.25,
                   py: compact ? 0.65 : 0.75,
+                  color: isDark ? "rgba(255,255,255,0.88)" : "inherit",
                   "&.Mui-selected": {
-                    bgcolor: "rgba(15, 118, 110, 0.12)",
-                    color: "#0f766e",
+                    bgcolor: isDark ? "rgba(255,255,255,0.12)" : "rgba(15, 118, 110, 0.12)",
+                    color: isDark ? "#FFFFFF" : "#0f766e",
                     fontWeight: 800,
-                    "&:hover": { bgcolor: "rgba(15, 118, 110, 0.18)" },
-                    "& .MuiListItemIcon-root": { color: "#0f766e" },
+                    "&:hover": {
+                      bgcolor: isDark ? "rgba(255,255,255,0.16)" : "rgba(15, 118, 110, 0.18)",
+                    },
+                    "& .MuiListItemIcon-root": { color: isDark ? "#6EE7B7" : "#0f766e" },
                   },
-                  "&:hover": { bgcolor: "rgba(15, 23, 42, 0.04)" },
+                  "&:hover": {
+                    bgcolor: isDark ? "rgba(255,255,255,0.06)" : "rgba(15, 23, 42, 0.04)",
+                  },
                 }}
               >
                 <ListItemIcon
                   sx={{
                     minWidth: compact ? 32 : 36,
-                    color: selected ? "#0f766e" : "text.secondary",
+                    color: selected
+                      ? isDark
+                        ? "#6EE7B7"
+                        : "#0f766e"
+                      : isDark
+                        ? "rgba(255,255,255,0.65)"
+                        : "text.secondary",
                   }}
                 >
                   {getNavIcon(item.icon || item.key)}
@@ -157,13 +172,13 @@ function NavGroupSection({
       </Collapse>
 
       {groupIndex < totalGroups - 1 && (
-        <Divider sx={{ my: 1, mx: 1.5, borderColor: "rgba(15,23,42,0.06)" }} />
+        <Divider sx={{ my: 1, mx: 1.5, borderColor: isDark ? "rgba(255,255,255,0.08)" : "rgba(15,23,42,0.06)" }} />
       )}
     </Box>
   );
 }
 
-export default function NavMenuList({ groups, user, currentPath, onItemClick, compact = false }) {
+export default function NavMenuList({ groups, user, currentPath, onItemClick, compact = false, variant = "light" }) {
   if (!groups?.length) {
     return null;
   }
@@ -180,6 +195,7 @@ export default function NavMenuList({ groups, user, currentPath, onItemClick, co
           user={user}
           onItemClick={onItemClick}
           compact={compact}
+          variant={variant}
         />
       ))}
     </List>
