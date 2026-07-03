@@ -1,10 +1,39 @@
 # Phase 11E — Persistent Integration Audit Logs & Write Scope Verification
 
-**Trạng thái:** ✅ **P0 implemented** — local gates PASS; staging Preview HTTP verify **pending** (deploy 11E + `VERCEL_AUTOMATION_BYPASS_SECRET`)  
+**Trạng thái:** ✅ **PASS** — staging verify 2026-07-03 (commit closeout sau `cd21ba1`)  
 **Tiền đề:** Phase 11D **PASS** (staging verify 2026-07-02, commit `7e5017f`)  
 **Branch:** `v5-platform-edition`  
 **Supabase staging:** `qyewbxjsiiyufanzcjcq`  
-**Production:** không apply
+**Production:** không apply  
+**Staging QA:** `docs/v5/PHASE_11E_INTEGRATION_AUDIT_LOGS_STAGING_QA.md`
+
+---
+
+## 0. Closeout Phase 11E (staging)
+
+| Gate | Kết quả |
+|------|---------|
+| Staging verify | **PASS** — `PASS: 21` `FAIL: 0` `BLOCKED: 0` `PARTIAL: 0` |
+| Audit persistence Supabase | **PASS** — rows asserted via `request_id` trên staging |
+| Preview HTTP matrix | **PASS** — integrations read/write, scope deny, missing/invalid/revoked key, webhook read/write |
+| `npm test` | 723 pass, 0 fail |
+| `npm run build` | PASS |
+| `npm run lint` | 0 errors |
+
+### Commits liên quan
+
+| Commit | Mô tả |
+|--------|-------|
+| `4c36469` | `feat(api): add Phase 11E integration audit logs` |
+| `d463ce5` | `fix(api): await integration audit insert on serverless` — bounded `await` trong `finish()` (fire-and-forget bị Vercel terminate trước insert) |
+| `cd21ba1` | `fix(api): make legacy audit columns nullable` — `action`/`meta` Phase 11B `NOT NULL` gây insert reject |
+
+### Fix staging (đã xác nhận)
+
+| Issue | Root cause | Fix |
+|-------|------------|-----|
+| Audit rows không xuất hiện | Insert fire-and-forget; serverless kết thúc trước Supabase insert | `d463ce5` — `await recordIntegrationAuditFromRequest` trong `finish()` (timeout ≤500ms) |
+| `null value in column "action"` | Bảng upgrade 11B: `action NOT NULL`; code 11E chỉ ghi `event_type` | `cd21ba1` — migration làm `action`/`meta` nullable; re-apply `phase11e-integration-audit.sql` |
 
 ---
 
@@ -433,9 +462,10 @@ VITE_API_ENABLED=true
 
 | Rủi ro | Mức | Mitigation |
 |--------|-----|------------|
-| `integration_audit_logs` chưa apply staging (11B PENDING) | **Cao** | Pre-flight probe trong verify script; apply `phase11b-persistence.sql` trước |
-| Duplicate audit rows (guard + router) | Trung bình | Single write tại `finish()` hoặc idempotency `request_id` + `event_type` |
-| Async insert race — verify query quá sớm | Trung bình | Poll 1–2s; hoặc `await` có timeout trong serverless (≤500ms) |
+| `integration_audit_logs` chưa apply staging (11B PENDING) | ~~Cao~~ **Đóng** | Schema + legacy nullable applied staging |
+| Duplicate audit rows (guard + router) | ~~Trung bình~~ **Đóng** | Single write tại `finish()` |
+| Async insert race — verify query quá sớm | ~~Trung bình~~ **Đóng** | `d463ce5` bounded await + poll 1–2s trong verify |
+| `action NOT NULL` (11B legacy) | **Đã fix** | `cd21ba1` — `action`/`meta` nullable |
 | `tenant_id NOT NULL` vs missing-key deny | Trung bình | Migration nullable `tenant_id` |
 | In-memory audit tests vs Supabase path | Thấp | `AUDIT_STORE=memory` trong unit tests; mock repository |
 | Audit insert chậm làm timeout function | Thấp | Best-effort + timeout; không block response |
@@ -470,4 +500,4 @@ VITE_API_ENABLED=true
 
 ---
 
-*Document version: 2026-07-03 — P0 implemented; staging Preview verify pending.*
+*Document version: 2026-07-03 — Phase 11E staging verify PASS.*

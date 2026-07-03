@@ -4,6 +4,33 @@ All notable changes to Pickleball Scheduler Pro are documented in this file.
 
 ## [Unreleased] — v5 Platform Edition
 
+### Added (Phase 11E P0 — staging verify PASS 2026-07-03)
+- Persistent `integration_audit_logs` on Supabase (`AUDIT_STORE=supabase`, service-role insert)
+- `src/features/api/services/integrationAuditService.js` — single audit row per request at router `finish()`
+- `src/features/api/repositories/supabaseIntegrationAuditRepository.js` — server-side insert
+- `src/features/api/config/auditStoreConfig.js` — audit store mode resolution
+- `POST /api/v1/integrations/:provider/test-write` — `integrations:write` scope verification
+- Event types: `integration.read`, `integration.write`, `webhook.read`, `webhook.write`, `api_key.*`
+- `scripts/verify-phase11e-integration-audit-staging.mjs` — HTTP + Supabase audit row assert
+- `tests/phase11e-integration-audit.test.js`
+- `docs/supabase-sprint10-phase11e-integration-audit.sql`, rollback SQL
+- `docs/v5/PHASE_11E_INTEGRATION_AUDIT_LOGS.md`, `PHASE_11E_INTEGRATION_AUDIT_LOGS_STAGING_QA.md`
+
+### Changed (Phase 11E P0)
+- `apiKeyGuard` enriches audit context only — no duplicate audit insert
+- `edgeApiRouter.finish()` awaits audit insert with bounded timeout (≤500ms); errors `console.warn` only
+- Legacy Phase 11B columns `action`/`meta` made nullable for 11E inserts (canonical: `event_type`/`metadata`)
+
+### Fixed (Phase 11E staging)
+- `d463ce5` — await audit insert on serverless (Vercel terminated fire-and-forget before Supabase write)
+- `cd21ba1` — legacy `action`/`meta` NOT NULL constraint blocked 11E inserts
+
+### Verified (Phase 11E staging — PASS 21/21)
+- Preview HTTP + audit rows via `scripts/verify-phase11e-integration-audit-staging.mjs` — `FAIL=0` `BLOCKED=0` `PARTIAL=0`
+- Audit persistence Supabase PASS (`request_id`, `event_type`, `result_code`, `scope_required`)
+- Commits: `4c36469`, `d463ce5`, `cd21ba1` on `v5-platform-edition`
+- QA: `docs/v5/PHASE_11E_INTEGRATION_AUDIT_LOGS_STAGING_QA.md`
+
 ### Added (Phase 11D P0 — staging verify PASS 2026-07-02)
 - Supabase-backed API key runtime for Vercel serverless (`API_KEY_STORE=supabase`)
 - `src/features/api/repositories/supabaseApiKeyRepository.js` — service-role key lookup
