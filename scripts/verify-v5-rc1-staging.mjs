@@ -23,9 +23,9 @@ import {
   getBypassSecret,
   isPreviewFetchNetworkError,
   logPreviewFetchError,
-  normalizePreviewBaseUrl,
   previewHttpRequest,
 } from "./phase11c-preview-http.mjs";
+import { logPreviewUrlResolution, resolveStagingPreviewUrl } from "./preview-url-utils.mjs";
 import {
   cleanupPhase11dSeed,
   seedPhase11dFixtures,
@@ -41,11 +41,16 @@ const DEFAULT_PREVIEW_URL =
 
 const PROBE_TAG = "phase12-rc1";
 const AUDIT_POLL_MS = 1500;
+const MANIFEST_PATHS = ["/manifest.webmanifest", "/manifest.json", "/site.webmanifest"];
+const VALID_MANIFEST_CONTENT_TYPES = [
+  "application/manifest+json",
+  "application/json",
+  "text/json",
+];
 
 const SPA_ROUTES = [
   { path: "/login", name: "login", expectHtml: true },
   { path: "/", name: "home", expectHtml: true },
-  { path: "/manifest.webmanifest", name: "manifest", expectJson: true },
 ];
 
 const results = [];
@@ -218,7 +223,7 @@ function assertPreviewJson(testName, result, { expectedStatus, expectedCode, ext
   if (pass) {
     logOk(`Preview ${testName}: PASS`);
   }
-  return { ok: pass, requestId: result.json?.requestId || null };
+  return { ok: pass, requestId: extractRequestId(result) };
 }
 
 function assertApiEnvelope(testName, result) {
@@ -250,6 +255,48 @@ function assertApiEnvelope(testName, result) {
   return pass;
 }
 
+function extractRequestId(result) {
+  const json = result?.json;
+  if (typeof json?.requestId === "string" && json.requestId.trim()) {
+    return json.requestId.trim();
+  }
+  if (typeof json?.meta?.requestId === "string" && json.meta.requestId.trim()) {
+    return json.meta.requestId.trim();
+  }
+  if (typeof json?.data?.requestId === "string" && json.data.requestId.trim()) {
+    return json.data.requestId.trim();
+  }
+  const headerId = result?.res?.headers?.get?.("x-request-id");
+  if (headerId && String(headerId).trim()) {
+    return String(headerId).trim();
+  }
+  return null;
+}
+
+function isManifestContentType(contentType) {
+  const ct = String(contentType || "").toLowerCase();
+  return VALID_MANIFEST_CONTENT_TYPES.some((value) => ct.includes(value));
+}
+
+function isHtmlBody(body) {
+  const text = String(body || "").trim();
+  return (
+    text.startsWith("<!DOCTYPE") ||
+    text.startsWith("<html") ||
+    text.includes("<!DOCTYPE html>")
+  );
+}
+
+function isValidManifestJson(value) {
+  if (!value || typeof value !== "object") return false;
+  const hasName =
+    (typeof value.name === "string" && value.name.trim()) ||
+    (typeof value.short_name === "string" && value.short_name.trim());
+  const hasStartUrl = typeof value.start_url === "string";
+  const hasDisplay = typeof value.display === "string";
+  return Boolean(hasName && hasStartUrl && hasDisplay);
+}
+
 async function fetchAuditByRequestId(admin, requestId, { retries = 3, delayMs = AUDIT_POLL_MS } = {}) {
   for (let attempt = 0; attempt < retries; attempt += 1) {
     const { data, error } = await admin
@@ -271,19 +318,48 @@ async function fetchAuditByRequestId(admin, requestId, { retries = 3, delayMs = 
   return [];
 }
 
-async function assertAuditRow(admin, testName, requestId, expected) {
-  if (!requestId) {
-    record(`audit:${testName}`, expected.summary, "no requestId", "BLOCKED");
-    return false;
-  }
+async function fetchAuditByFallback(
+  admin,
+  {
+    eventType,
+    resultCode,
+    statusCode,
+    keyPrefix = null,
+    sinceIso = null,
+    probeTag = null,
+    probeId = null,
+  },
+  { retries = 3, delayMs = AUDIT_POLL_MS } = {}
+) {
+  for (let attempt = 0; attempt < retries; attempt += 1) {
+    let query = admin.from("integration_audit_logs").select("*");
 
-  const rows = await fetchAuditByRequestId(admin, requestId);
-  if (!rows.length) {
-    record(`audit:${testName}`, expected.summary, "no audit row", "FAIL");
-    return false;
-  }
+    if (eventType) query = query.eq("event_type", eventType);
+    if (resultCode != null) query = query.eq("result_code", resultCode);
+    if (statusCode != null) query = query.eq("status_code", statusCode);
+    if (keyPrefix) query = query.eq("key_prefix", keyPrefix);
+    if (sinceIso) query = query.gte("created_at", sinceIso);
+    if (probeTag) query = query.eq("metadata->>probeTag", probeTag);
+    if (probeId) query = query.eq("metadata->>probeId", probeId);
 
-  const row = rows[0];
+    const { data, error } = await query
+      .order("created_at", { ascending: false })
+      .limit(5);
+
+    if (error) {
+      throw new Error(error.message);
+    }
+    if (data?.length) {
+      return data;
+    }
+    if (attempt < retries - 1) {
+      await sleep(delayMs);
+    }
+  }
+  return [];
+}
+
+function verifyAuditRow(testName, row, expected, requestIdLabel) {
   const pass =
     row.event_type === expected.eventType &&
     (expected.resultCode == null || row.result_code === expected.resultCode) &&
@@ -292,7 +368,9 @@ async function assertAuditRow(admin, testName, requestId, expected) {
   record(
     `audit:${testName}`,
     expected.summary,
-    pass ? row.event_type : `event=${row.event_type} result=${row.result_code}`,
+    pass
+      ? `${row.event_type}${requestIdLabel ? ` (${requestIdLabel})` : ""}`
+      : `event=${row.event_type} result=${row.result_code}`,
     pass ? "PASS" : "FAIL"
   );
 
@@ -300,6 +378,38 @@ async function assertAuditRow(admin, testName, requestId, expected) {
     logOk(`Audit ${testName}: PASS`);
   }
   return pass;
+}
+
+async function assertAuditRow(admin, testName, requestId, expected, fallbackCriteria = null) {
+  if (requestId) {
+    const rows = await fetchAuditByRequestId(admin, requestId);
+    if (rows.length) {
+      return verifyAuditRow(testName, rows[0], expected, "requestId");
+    }
+  }
+
+  if (fallbackCriteria) {
+    const rows = await fetchAuditByFallback(admin, fallbackCriteria);
+    if (rows.length) {
+      const matchLabel = requestId ? "fallback" : "fallback-no-requestId";
+      return verifyAuditRow(testName, rows[0], expected, matchLabel);
+    }
+    record(
+      `audit:${testName}`,
+      expected.summary,
+      requestId ? "no audit row (fallback)" : "no requestId and no fallback row",
+      "FAIL"
+    );
+    return false;
+  }
+
+  if (!requestId) {
+    record(`audit:${testName}`, expected.summary, "no requestId", "BLOCKED");
+    return false;
+  }
+
+  record(`audit:${testName}`, expected.summary, "no audit row", "FAIL");
+  return false;
 }
 
 async function clearProbeAuditRows(admin) {
@@ -313,8 +423,84 @@ async function clearProbeAuditRows(admin) {
   return { ok: true };
 }
 
+async function probeManifest(baseUrl) {
+  logInfo("\n--- SPA manifest probe ---\n");
+
+  for (const path of MANIFEST_PATHS) {
+    const url = buildPreviewUrl(baseUrl, path);
+    try {
+      const { res, text } = await previewHttpRequest(url, buildPreviewFetchInit({ method: "GET" }));
+      const contentType = res.headers.get("content-type") || "";
+
+      if (isVercelProtectionHtml(text)) {
+        record("spa:manifest", "valid PWA manifest", `${path} protection HTML`, "BLOCKED", res.status);
+        logWarn(`SPA manifest ${path}: BLOCKED (deployment protection)`);
+        continue;
+      }
+
+      if (isHtmlBody(text)) {
+        const preview = String(text).replace(/\s+/g, " ").slice(0, 120);
+        record(
+          "spa:manifest",
+          "valid PWA manifest",
+          `${path} HTML ct=${contentType} preview=${preview}`,
+          "FAIL",
+          res.status
+        );
+        continue;
+      }
+
+      let manifest;
+      try {
+        manifest = JSON.parse(String(text).trim());
+      } catch {
+        record(
+          "spa:manifest",
+          "valid PWA manifest",
+          `${path} invalid JSON ct=${contentType}`,
+          "FAIL",
+          res.status
+        );
+        continue;
+      }
+
+      const manifestOk = isValidManifestJson(manifest);
+      const pass = res.status >= 200 && res.status < 400 && manifestOk;
+
+      record(
+        "spa:manifest",
+        "valid PWA manifest",
+        pass ? `${path} ${res.status}` : `${path} missing fields ct=${contentType}`,
+        pass ? "PASS" : "FAIL",
+        res.status
+      );
+      if (pass) {
+        logOk(`SPA manifest ${path}: PASS (${res.status})`);
+        return;
+      }
+    } catch (error) {
+      const networkError = isPreviewFetchNetworkError(error);
+      logPreviewFetchError(error, { method: "GET", url });
+      record(
+        "spa:manifest",
+        "valid PWA manifest",
+        `${path} ${error?.message || "fetch error"}`,
+        networkError ? "FAIL" : "BLOCKED"
+      );
+    }
+  }
+
+  record("spa:manifest", "valid PWA manifest", "no valid manifest path", "FAIL");
+}
+
 async function probeSpaRoutes(baseUrl) {
   logInfo("\n--- SPA route availability (non-500) ---\n");
+
+  if (!baseUrl) {
+    record("spa:routes", "valid preview URL", "missing or invalid", "BLOCKED");
+    record("spa:manifest", "valid PWA manifest", "missing preview URL", "BLOCKED");
+    return;
+  }
 
   for (const route of SPA_ROUTES) {
     const url = buildPreviewUrl(baseUrl, route.path);
@@ -329,9 +515,7 @@ async function probeSpaRoutes(baseUrl) {
 
       const statusOk = res.status >= 200 && res.status < 400;
       let contentOk = false;
-      if (route.expectJson) {
-        contentOk = isJsonApiResponse(res.headers.get("content-type"), text);
-      } else if (route.expectHtml) {
+      if (route.expectHtml) {
         contentOk =
           String(text).includes("<!DOCTYPE html>") ||
           String(text).includes("<html") ||
@@ -341,7 +525,7 @@ async function probeSpaRoutes(baseUrl) {
       const pass = statusOk && contentOk;
       record(
         `spa:${route.name}`,
-        route.expectJson ? "200 JSON manifest" : "200 HTML shell",
+        "200 HTML shell",
         pass ? `${res.status}` : `status=${res.status} content mismatch`,
         pass ? "PASS" : "FAIL",
         res.status
@@ -360,10 +544,17 @@ async function probeSpaRoutes(baseUrl) {
       );
     }
   }
+
+  await probeManifest(baseUrl);
 }
 
 async function runApiKeyMatrix(baseUrl, fixtures) {
   logInfo("\n--- API key runtime (RC1 subset) ---\n");
+
+  if (!baseUrl) {
+    record("preview:matrix", "valid preview URL", "missing or invalid", "BLOCKED");
+    return null;
+  }
 
   for (const fx of Object.values(fixtures)) {
     trackSecret(fx.plainKey);
@@ -412,7 +603,7 @@ async function runApiKeyMatrix(baseUrl, fixtures) {
     path: "/api/v1/integrations",
     apiKey: fixtures.tenantAIntegrations.plainKey,
   });
-  assertPreviewJson("integrations read", integrationsRead, {
+  const integrationsReadResult = assertPreviewJson("integrations read", integrationsRead, {
     expectedStatus: 200,
     expectedCode: "ok",
   });
@@ -423,10 +614,14 @@ async function runApiKeyMatrix(baseUrl, fixtures) {
     apiKey: fixtures.tenantAIntegrations.plainKey,
     body: { probeTag: PROBE_TAG },
   });
-  assertPreviewJson("integrations write denied", integrationsWriteDenied, {
-    expectedStatus: 403,
-    expectedCode: EDGE_API_ERROR_CODES.SCOPE_DENIED,
-  });
+  const integrationsWriteDeniedResult = assertPreviewJson(
+    "integrations write denied",
+    integrationsWriteDenied,
+    {
+      expectedStatus: 403,
+      expectedCode: EDGE_API_ERROR_CODES.SCOPE_DENIED,
+    }
+  );
 
   const integrationsWrite = await callPreview(baseUrl, {
     method: "POST",
@@ -445,7 +640,15 @@ async function runApiKeyMatrix(baseUrl, fixtures) {
   });
   assertPreviewJson("webhook read", webhookRead, { expectedStatus: 200, expectedCode: "ok" });
 
-  return { integrationsRead, integrationsWriteDenied, writeResult };
+  return {
+    integrationsRead: integrationsReadResult,
+    integrationsWriteDenied: integrationsWriteDeniedResult,
+    writeResult,
+    auditSinceIso: new Date(Date.now() - 120_000).toISOString(),
+    keyPrefixIntegrationsRead: fixtures.tenantAIntegrations.prefix,
+    keyPrefixIntegrationsWriteDenied: fixtures.tenantAIntegrations.prefix,
+    keyPrefixIntegrationsWrite: fixtures.tenantAIntegrationsWrite.prefix,
+  };
 }
 
 async function runAuditChecks(admin, httpResults) {
@@ -465,28 +668,67 @@ async function runAuditChecks(admin, httpResults) {
   void schemaProbe;
 
   const readReqId = httpResults.integrationsRead?.requestId;
-  await assertAuditRow(admin, "integrations read", readReqId, {
-    summary: "integration.read",
-    eventType: INTEGRATION_AUDIT_EVENTS.INTEGRATION_READ,
-    resultCode: "ok",
-    statusCode: 200,
-  });
+  await assertAuditRow(
+    admin,
+    "integrations read",
+    readReqId,
+    {
+      summary: "integration.read",
+      eventType: INTEGRATION_AUDIT_EVENTS.INTEGRATION_READ,
+      resultCode: "ok",
+      statusCode: 200,
+    },
+    {
+      eventType: INTEGRATION_AUDIT_EVENTS.INTEGRATION_READ,
+      resultCode: "ok",
+      statusCode: 200,
+      keyPrefix: httpResults.keyPrefixIntegrationsRead,
+      sinceIso: httpResults.auditSinceIso,
+      probeTag: PROBE_TAG,
+    }
+  );
 
   const deniedReqId = httpResults.integrationsWriteDenied?.requestId;
-  await assertAuditRow(admin, "integrations write denied", deniedReqId, {
-    summary: "api_key.scope_denied",
-    eventType: INTEGRATION_AUDIT_EVENTS.API_KEY_SCOPE_DENIED,
-    resultCode: EDGE_API_ERROR_CODES.SCOPE_DENIED,
-    statusCode: 403,
-  });
+  await assertAuditRow(
+    admin,
+    "integrations write denied",
+    deniedReqId,
+    {
+      summary: "api_key.scope_denied",
+      eventType: INTEGRATION_AUDIT_EVENTS.API_KEY_SCOPE_DENIED,
+      resultCode: EDGE_API_ERROR_CODES.SCOPE_DENIED,
+      statusCode: 403,
+    },
+    {
+      eventType: INTEGRATION_AUDIT_EVENTS.API_KEY_SCOPE_DENIED,
+      resultCode: EDGE_API_ERROR_CODES.SCOPE_DENIED,
+      statusCode: 403,
+      keyPrefix: httpResults.keyPrefixIntegrationsWriteDenied,
+      sinceIso: httpResults.auditSinceIso,
+      probeTag: PROBE_TAG,
+    }
+  );
 
   const writeReqId = httpResults.writeResult?.requestId;
-  await assertAuditRow(admin, "integrations write", writeReqId, {
-    summary: "integration.write",
-    eventType: INTEGRATION_AUDIT_EVENTS.INTEGRATION_WRITE,
-    resultCode: "ok",
-    statusCode: 200,
-  });
+  await assertAuditRow(
+    admin,
+    "integrations write",
+    writeReqId,
+    {
+      summary: "integration.write",
+      eventType: INTEGRATION_AUDIT_EVENTS.INTEGRATION_WRITE,
+      resultCode: "ok",
+      statusCode: 200,
+    },
+    {
+      eventType: INTEGRATION_AUDIT_EVENTS.INTEGRATION_WRITE,
+      resultCode: "ok",
+      statusCode: 200,
+      keyPrefix: httpResults.keyPrefixIntegrationsWrite,
+      sinceIso: httpResults.auditSinceIso,
+      probeTag: PROBE_TAG,
+    }
+  );
 }
 
 function printResultsTable() {
@@ -534,9 +776,12 @@ function runOutputSafetyCheck() {
 
 async function main() {
   loadProjectEnv();
-  const previewBaseUrl = normalizePreviewBaseUrl(
-    process.env.STAGING_PREVIEW_URL || DEFAULT_PREVIEW_URL
-  );
+  const urlResolution = resolveStagingPreviewUrl(DEFAULT_PREVIEW_URL);
+  logPreviewUrlResolution(urlResolution, logInfo);
+  const previewBaseUrl = urlResolution.ok ? urlResolution.baseUrl : null;
+  if (urlResolution.blocked) {
+    record("preview:url", "valid preview URL", urlResolution.reason || "invalid", "BLOCKED");
+  }
 
   const serviceKey = String(process.env.SUPABASE_SERVICE_ROLE_KEY || "").trim();
   if (!serviceKey) {
@@ -551,7 +796,9 @@ async function main() {
   };
 
   logInfo("Phase 12 — V5.0 RC1 staging technical verify");
-  logInfo(`Preview URL: ${previewBaseUrl}`);
+  if (previewBaseUrl) {
+    logInfo(`Preview URL: ${previewBaseUrl}`);
+  }
   if (!getBypassSecret()) {
     logWarn("VERCEL_AUTOMATION_BYPASS_SECRET unset — Preview may BLOCK on Deployment Protection");
   }
@@ -577,12 +824,18 @@ async function main() {
       }
     }
 
-    if (seeded?.ok) {
+    if (seeded?.ok && previewBaseUrl) {
       httpResults = await runApiKeyMatrix(previewBaseUrl, seeded.fixtures);
-      await runAuditChecks(admin, httpResults);
+      if (httpResults) {
+        await runAuditChecks(admin, httpResults);
+      }
     }
 
-    await probeSpaRoutes(previewBaseUrl);
+    if (previewBaseUrl) {
+      await probeSpaRoutes(previewBaseUrl);
+    } else {
+      await probeSpaRoutes(null);
+    }
   } finally {
     logInfo("\n--- Cleanup fixtures + probe audit ---\n");
     await clearProbeAuditRows(admin);

@@ -14,9 +14,9 @@ import {
   getBypassSecret,
   isPreviewFetchNetworkError,
   logPreviewFetchError,
-  normalizePreviewBaseUrl,
   previewHttpRequest,
 } from "./phase11c-preview-http.mjs";
+import { logPreviewUrlResolution, resolveStagingPreviewUrl } from "./preview-url-utils.mjs";
 import {
   cleanupPhase11dSeed,
   seedPhase11dFixtures,
@@ -578,9 +578,12 @@ function runOutputSafetyCheck() {
 async function main() {
   loadProjectEnv();
   runStartIso = new Date().toISOString();
-  const previewBaseUrl = normalizePreviewBaseUrl(
-    process.env.STAGING_PREVIEW_URL || DEFAULT_PREVIEW_URL
-  );
+  const urlResolution = resolveStagingPreviewUrl(DEFAULT_PREVIEW_URL);
+  logPreviewUrlResolution(urlResolution, logInfo);
+  const previewBaseUrl = urlResolution.ok ? urlResolution.baseUrl : null;
+  if (urlResolution.blocked) {
+    record("preview:url", "valid preview URL", urlResolution.reason || "invalid", "BLOCKED");
+  }
 
   const serviceKey = String(process.env.SUPABASE_SERVICE_ROLE_KEY || "").trim();
   if (!serviceKey) {
@@ -595,7 +598,9 @@ async function main() {
   };
 
   logInfo("Phase 11E — Integration audit staging verify");
-  logInfo(`Preview URL: ${previewBaseUrl}`);
+  if (previewBaseUrl) {
+    logInfo(`Preview URL: ${previewBaseUrl}`);
+  }
   if (!getBypassSecret()) {
     logWarn("VERCEL_AUTOMATION_BYPASS_SECRET unset — Preview may BLOCK on Deployment Protection");
   }

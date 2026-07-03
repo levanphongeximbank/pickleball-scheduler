@@ -19,9 +19,9 @@ import {
   httpFetch,
   isPreviewFetchNetworkError,
   logPreviewFetchError,
-  normalizePreviewBaseUrl,
   previewHttpRequest,
 } from "./phase11c-preview-http.mjs";
+import { logPreviewUrlResolution, resolveStagingPreviewUrl } from "./preview-url-utils.mjs";
 import { createClient } from "@supabase/supabase-js";
 import { can } from "../src/auth/rbac.js";
 import { normalizeUser } from "../src/models/user.js";
@@ -79,15 +79,6 @@ function logWarn(msg) {
 
 function logInfo(msg) {
   console.log(`ℹ️  ${msg}`);
-}
-
-function resolvePreviewBaseUrl() {
-  const rawEnv = process.env.STAGING_PREVIEW_URL;
-  const previewBaseUrl = normalizePreviewBaseUrl(rawEnv || DEFAULT_PREVIEW_URL);
-  logInfo(`[debug] raw STAGING_PREVIEW_URL: ${rawEnv ?? "(unset)"}`);
-  logInfo(`[debug] DEFAULT_PREVIEW_URL: ${DEFAULT_PREVIEW_URL}`);
-  logInfo(`[debug] normalized previewBaseUrl: ${previewBaseUrl}`);
-  return previewBaseUrl;
 }
 
 function trackSecret(plainKey) {
@@ -337,12 +328,6 @@ async function probePreviewDeployment(previewBaseUrl) {
   }
 
   record("preview:url", "configured", previewBaseUrl, "PASS");
-  logInfo(`Preview URL: ${previewBaseUrl}`);
-  if (previewBaseUrl.endsWith(".vercel.appp")) {
-    logWarn(
-      "Preview base URL ends with .vercel.appp — kiểm tra STAGING_PREVIEW_URL (hostname không được sửa trong script)"
-    );
-  }
 
   const bypass = getBypassSecret();
   if (!bypass) {
@@ -1121,7 +1106,12 @@ async function main() {
   console.log("=== Phase 11C — Edge API Key Guard Staging Verify ===\n");
 
   loadProjectEnv();
-  const previewBaseUrl = resolvePreviewBaseUrl();
+  const urlResolution = resolveStagingPreviewUrl(DEFAULT_PREVIEW_URL);
+  logPreviewUrlResolution(urlResolution, logInfo);
+  const previewBaseUrl = urlResolution.ok ? urlResolution.baseUrl : null;
+  if (urlResolution.blocked) {
+    record("preview:url", "valid preview URL", urlResolution.reason || "invalid", "BLOCKED");
+  }
   const { url, anonKey } = getSupabaseEnv();
 
   let previewMeta = { baseUrl: previewBaseUrl, apiReady: false, commitHint: null, protectionBlocked: false };
