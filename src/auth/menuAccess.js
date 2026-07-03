@@ -7,6 +7,7 @@ import {
 import {
   isNavFeatureEnabled,
   NAV_ITEM_STATUS,
+  MENU_GROUP_IDS,
   resolveRoleMenuAccess,
   ROUTE_PERMISSIONS,
 } from "../config/navigationConfig.js";
@@ -73,6 +74,10 @@ export function getRouteAccessPermissions(pathname) {
 
   if (pathname.startsWith("/marketplace")) {
     return [PERMISSIONS.MARKETPLACE_VIEW];
+  }
+
+  if (pathname.startsWith("/coming-soon")) {
+    return [];
   }
 
   if (pathname.startsWith("/mobile/")) {
@@ -145,13 +150,21 @@ export function resolveMenuItemPath(item, user) {
 }
 
 function isGroupAllowedForRole(group, user, rbacEnabled) {
-  if (!rbacEnabled || !user?.role) {
+  if (!rbacEnabled) {
     return true;
+  }
+
+  if (!user?.role) {
+    return group.id === MENU_GROUP_IDS.SUPPORT;
   }
 
   const allowed = resolveRoleMenuAccess(user.role);
   if (allowed === "*") {
     return true;
+  }
+
+  if (!Array.isArray(allowed) || allowed.length === 0) {
+    return group.id === MENU_GROUP_IDS.SUPPORT;
   }
 
   if (group.id && !allowed.includes(group.id)) {

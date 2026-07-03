@@ -19,6 +19,7 @@ const ForgotPasswordPage = lazy(() => import("./pages/ForgotPasswordPage"));
 const ResetPasswordPage = lazy(() => import("./pages/ResetPasswordPage"));
 
 const ForbiddenPage = lazy(() => import("./pages/ForbiddenPage"));
+const ComingSoonPage = lazy(() => import("./pages/ComingSoonPage"));
 
 
 
@@ -183,6 +184,7 @@ export default function Router() {
             <Route path="/reset-password" element={<ResetPasswordPage />} />
 
             <Route path="/403" element={<ForbiddenPage />} />
+            <Route path="/coming-soon/:moduleKey" element={<ComingSoonPage />} />
 
             <Route path="/referee/:token" element={<RefereeScoreboard />} />
 

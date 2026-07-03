@@ -3,7 +3,7 @@
  * Sidebar, mobile drawer, bottom nav và route guards đều derive từ file này.
  */
 import { PERMISSIONS } from "../auth/permissions.js";
-import { ROLES } from "../auth/roles.js";
+import { ROLES, normalizeRole } from "../auth/roles.js";
 import { isAiEngineEnabled } from "../features/ai-assistant/constants/aiConfig.js";
 
 /** V5 role aliases → canonical ROLES (identity/constants/roles.js). */
@@ -126,10 +126,37 @@ export const NAV_ROUTE_ALIASES = Object.freeze({
   "/statistics": { label: "Kết quả & Xếp hạng", group: MENU_GROUP_IDS.TOURNAMENT },
 });
 
-/** RC1: `future` = chưa có route riêng — không render menu. */
+/** `future` = ẩn hoàn toàn; `coming-soon` = hiện menu + badge, route placeholder. */
 export const NAV_ITEM_STATUS = Object.freeze({
   ACTIVE: "active",
   FUTURE: "future",
+  COMING_SOON: "coming-soon",
+});
+
+/** Path placeholder cho module chưa có route riêng. */
+export function buildComingSoonPath(moduleKey) {
+  const key = String(moduleKey || "module").trim() || "module";
+  return `/coming-soon/${encodeURIComponent(key)}`;
+}
+
+/** Metadata hiển thị trên ComingSoonPage. */
+export const COMING_SOON_MODULES = Object.freeze({
+  "customer-groups": {
+    title: "Nhóm khách hàng",
+    description: "Quản lý nhóm khách hàng theo hạng, gói hoặc chiến dịch.",
+  },
+  debt: {
+    title: "Công nợ",
+    description: "Theo dõi công nợ khách hàng và nhắc thanh toán.",
+  },
+  "report-peak": {
+    title: "Giờ cao điểm",
+    description: "Báo cáo khung giờ cao điểm theo sân và doanh thu.",
+  },
+  "ai-validation": {
+    title: "Cảnh báo bất hợp lý",
+    description: "AI phát hiện lịch thi đấu hoặc ghép cặp bất thường.",
+  },
 });
 
 /** Icon key — map sang MUI icon trong Sidebar / MobileDrawer. */
@@ -312,7 +339,9 @@ export const MENU_GROUPS = [
         key: "customer-groups",
         icon: NAV_ICON_KEYS.groups,
         text: "Nhóm khách hàng",
-        navStatus: NAV_ITEM_STATUS.FUTURE,
+        path: buildComingSoonPath("customer-groups"),
+        navStatus: NAV_ITEM_STATUS.COMING_SOON,
+        badge: "Sắp ra mắt",
         futureNote: "V5.1 — chưa có route /court-management/customer-groups",
         permissions: [PERMISSIONS.CUSTOMER_VIEW],
       },
@@ -458,7 +487,9 @@ export const MENU_GROUPS = [
         key: "debt",
         icon: NAV_ICON_KEYS.debt,
         text: "Công nợ",
-        navStatus: NAV_ITEM_STATUS.FUTURE,
+        path: buildComingSoonPath("debt"),
+        navStatus: NAV_ITEM_STATUS.COMING_SOON,
+        badge: "Sắp ra mắt",
         futureNote: "V5.1 — chưa có route công nợ riêng (không trỏ revenue)",
         permissions: [PERMISSIONS.FINANCE_VIEW],
       },
@@ -525,7 +556,9 @@ export const MENU_GROUPS = [
         key: "report-peak",
         icon: NAV_ICON_KEYS["report-peak"],
         text: "Giờ cao điểm",
-        navStatus: NAV_ITEM_STATUS.FUTURE,
+        path: buildComingSoonPath("report-peak"),
+        navStatus: NAV_ITEM_STATUS.COMING_SOON,
+        badge: "Sắp ra mắt",
         futureNote: "V5.1 — chưa có báo cáo giờ cao điểm riêng",
         permissions: [PERMISSIONS.FINANCE_VIEW, PERMISSIONS.STATISTICS_VIEW],
       },
@@ -573,7 +606,9 @@ export const MENU_GROUPS = [
         key: "ai-validation",
         icon: NAV_ICON_KEYS["ai-validation"],
         text: "Cảnh báo bất hợp lý",
-        navStatus: NAV_ITEM_STATUS.FUTURE,
+        path: buildComingSoonPath("ai-validation"),
+        navStatus: NAV_ITEM_STATUS.COMING_SOON,
+        badge: "Beta",
         futureNote: "V5.1 — chưa có màn AI validation riêng",
         permissions: [PERMISSIONS.TOURNAMENT_VIEW],
         requiresFeature: "ai",
@@ -851,7 +886,16 @@ export const ROUTE_PERMISSIONS = Object.freeze({
     PERMISSIONS.COURT_VIEW,
     PERMISSIONS.FINANCE_VIEW,
   ],
+  "/coming-soon": [],
 });
+
+export function resolveComingSoonModule(moduleKey) {
+  const key = decodeURIComponent(String(moduleKey || "").trim());
+  return COMING_SOON_MODULES[key] || {
+    title: key || "Tính năng mới",
+    description: "Tính năng đang được phát triển cho phiên bản V5.1.",
+  };
+}
 
 /**
  * Mobile bottom-nav theo persona V5.
@@ -1043,14 +1087,20 @@ export function buildSearchableNavItems(groups = MENU_GROUPS) {
 export function resolveNavRole(role) {
   const value = String(role || "").trim();
   if (!value) return "";
-  return NAV_ROLE_ALIASES[value] || value;
+  if (NAV_ROLE_ALIASES[value]) {
+    return NAV_ROLE_ALIASES[value];
+  }
+  return normalizeRole(value) || value;
 }
 
 export function resolveRoleMenuAccess(role) {
   const normalized = resolveNavRole(role);
-  const direct = ROLE_MENU_MAP[role] ?? ROLE_MENU_MAP[normalized];
+  const direct =
+    ROLE_MENU_MAP[role] ??
+    ROLE_MENU_MAP[normalized] ??
+    ROLE_MENU_MAP[normalizeRole(role)];
   if (direct) return direct;
-  return ROLE_MENU_MAP[normalized] ?? [];
+  return [];
 }
 
 export function resolveMobileNavProfile(role) {
@@ -1066,7 +1116,7 @@ export function isNavFeatureEnabled(featureKey) {
   return true;
 }
 
-/** Danh sách mục V5.1/future — chỉ khai báo tại navigationConfig. */
+/** Danh sách mục V5.1/future — chỉ khai báo tại navigationConfig (ẩn hoàn toàn). */
 export function listFutureNavItems(groups = MENU_GROUPS) {
   const items = [];
   for (const group of groups) {
@@ -1077,6 +1127,25 @@ export function listFutureNavItems(groups = MENU_GROUPS) {
           label: item.text,
           group: group.label,
           note: item.futureNote || "",
+        });
+      }
+    }
+  }
+  return items;
+}
+
+/** Mục coming-soon — hiển thị menu + badge, route placeholder. */
+export function listComingSoonNavItems(groups = MENU_GROUPS) {
+  const items = [];
+  for (const group of groups) {
+    for (const item of group.items || []) {
+      if (item.navStatus === NAV_ITEM_STATUS.COMING_SOON) {
+        items.push({
+          key: item.key,
+          label: item.text,
+          path: item.path,
+          group: group.label,
+          badge: item.badge || "Sắp ra mắt",
         });
       }
     }

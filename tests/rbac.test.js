@@ -27,6 +27,7 @@ import {
 import { SIDEBAR_MENU_GROUPS } from "../src/config/sidebarMenu.js";
 import {
   listFutureNavItems,
+  listComingSoonNavItems,
 } from "../src/config/navigationConfig.js";
 import { filterMobileBottomNav } from "../src/features/mobile/services/mobileNavAccess.js";
 import { resolveMenuItemPath } from "../src/auth/menuAccess.js";
@@ -744,7 +745,7 @@ test("menuAccess — RBAC bật, chưa đăng nhập chỉ Cài đặt", () => {
   assert.deepEqual(labels, ["Cài đặt"]);
 });
 
-test("menuAccess — RC1 không render mục future (V5.1)", () => {
+test("menuAccess — RC1 không render mục future (ẩn hoàn toàn)", () => {
   const owner = user(ROLES.VENUE_OWNER, { venueId: "venue-a", clubId: "club-1" });
   const visible = filterMenuGroups(SIDEBAR_MENU_GROUPS, makeMenuAuth(owner), SCOPE);
   const labels = visible.flatMap((g) => g.items.map((i) => i.text));
@@ -753,6 +754,34 @@ test("menuAccess — RC1 không render mục future (V5.1)", () => {
   for (const label of futureLabels) {
     assert.equal(labels.includes(label), false, `future item "${label}" không được render`);
   }
+});
+
+test("menuAccess — owner thấy mục coming-soon với route placeholder", () => {
+  const owner = user(ROLES.VENUE_OWNER, { venueId: "venue-a", clubId: "club-1" });
+  const visible = filterMenuGroups(SIDEBAR_MENU_GROUPS, makeMenuAuth(owner), SCOPE);
+  const labels = visible.flatMap((g) => g.items.map((i) => i.text));
+  const comingSoonLabels = listComingSoonNavItems().map((item) => item.label);
+
+  assert.ok(comingSoonLabels.length > 0);
+  for (const label of comingSoonLabels) {
+    if (label === "Cảnh báo bất hợp lý") continue;
+    assert.ok(labels.includes(label), `coming-soon item "${label}" phải hiển thị`);
+  }
+});
+
+test("menuAccess — VENUE_OWNER legacy DB vẫn thấy menu đầy đủ", () => {
+  const legacyOwner = {
+    id: "u-legacy",
+    role: ROLES.VENUE_OWNER,
+    venueId: "venue-a",
+    clubId: "club-1",
+    status: "active",
+  };
+  const visible = filterMenuGroups(SIDEBAR_MENU_GROUPS, makeMenuAuth(legacyOwner), SCOPE);
+  const labels = visible.flatMap((g) => g.items.map((i) => i.text));
+
+  assert.ok(labels.includes("Tổng quan"));
+  assert.ok(labels.includes("Lịch sân") || labels.includes("Đặt sân"));
 });
 
 test("menuAccess — VENUE_OWNER thấy Của tôi (Mobile)", () => {
