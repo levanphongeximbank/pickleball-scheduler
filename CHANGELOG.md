@@ -4,6 +4,14 @@ All notable changes to Pickleball Scheduler Pro are documented in this file.
 
 ## [Unreleased] — v5 Platform Edition
 
+### Verified (Phase 12 RC1 — staging technical verify PASS 2026-07-03)
+- V5.0 RC1 staging technical verify via `scripts/verify-v5-rc1-staging.mjs` — **PASS: 19 · FAIL: 0 · BLOCKED: 0**
+- Hardened staging URL resolution (`scripts/preview-url-utils.mjs`) — env-sourced `STAGING_PREVIEW_URL`, consistent hostname across verify scripts
+- Static PWA manifest served correctly on Preview — `/manifest.webmanifest` 200 `application/manifest+json`
+- RC1 verifier stabilized — API key runtime subset, integration audit subset, SPA `/login` + `/`, output safety
+- QA: `docs/v5/PHASE_12_V5_RC1_FULL_QA.md`
+- **Production:** still NO-GO until manual P0 QA complete
+
 ### Added (Phase 11E P0 — staging verify PASS 2026-07-03)
 - Persistent `integration_audit_logs` on Supabase (`AUDIT_STORE=supabase`, service-role insert)
 - `src/features/api/services/integrationAuditService.js` — single audit row per request at router `finish()`

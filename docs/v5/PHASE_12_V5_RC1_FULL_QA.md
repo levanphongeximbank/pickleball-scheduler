@@ -39,11 +39,11 @@
 
 | Trạng thái | Số mục | Ghi chú |
 |------------|--------|---------|
-| ✅ PASS | — | Điền sau QA |
+| ✅ PASS (automated RC1) | 19 | `verify-v5-rc1-staging.mjs` — 2026-07-03 |
+| ⏳ Pending (manual) | 66 | Browser/device P0–P2 |
 | ⚠️ PARTIAL | — | |
-| ❌ FAIL | — | |
-| 🔒 BLOCKED | — | |
-| ⏳ Pending | 94 | Khởi tạo Phase 12 |
+| ❌ FAIL | 0 | |
+| 🔒 BLOCKED | 0 | |
 
 ---
 
@@ -68,6 +68,23 @@ SUPABASE_SERVICE_ROLE_KEY=<staging-service-role> \
 ```
 
 Script kiểm tra: health, API envelope, API key runtime subset, integration audit subset, SPA route shell, output safety. **Không** thay thế manual browser QA.
+
+### RC1 automated technical verify — ✅ PASS (2026-07-03)
+
+| Hạng mục | Kết quả |
+|----------|---------|
+| **Tổng kết script** | **PASS: 19 · FAIL: 0 · BLOCKED: 0** |
+| **V5.0 RC1 staging technical verify** | ✅ **PASS** |
+| URL resolution hardening (`preview-url-utils.mjs`) | ✅ PASS — `STAGING_PREVIEW_URL` từ env, hostname hợp lệ |
+| API key runtime (RC1 subset) | ✅ PASS — health, envelope, missing/invalid key, cross-tenant, integrations, webhook |
+| Integration audit logs (RC1 subset) | ✅ PASS — `integration.read`, `integration.write`, `api_key.scope_denied` |
+| PWA manifest Preview | ✅ PASS — `/manifest.webmanifest` 200, JSON hợp lệ |
+| SPA shell | ✅ PASS — `/login` 200, `/` 200 |
+| Output safety | ✅ PASS — không leak secret trong stdout |
+
+**Lệnh:** `node scripts/verify-v5-rc1-staging.mjs` (env: `STAGING_PREVIEW_URL`, `VERCEL_AUTOMATION_BYPASS_SECRET`, `SUPABASE_SERVICE_ROLE_KEY` — không commit).
+
+**Chưa tick:** manual P0 browser QA (Auth, Court Engine, Billing, mobile device). **Production vẫn NO-GO** cho đến khi manual P0 QA xong.
 
 ---
 
@@ -163,7 +180,7 @@ Script kiểm tra: health, API envelope, API key runtime subset, integration aud
 | F6 | Mobile | Reload sau offline→online | App recover, queue flush | ⏳ | | manual | P1 |
 | F7 | Mobile | Bottom nav RBAC | REFEREE không thấy billing | ⏳ | mobile-phase8 tests | auto | P0 |
 | F8 | Mobile | `/mobile/player` PLAYER mode | Render profile/matches | ⏳ | | manual | P1 |
-| F9 | PWA | `manifest.webmanifest` load | 200 JSON, icons OK | ⏳ | RC1 script `spa:manifest` | auto | P1 |
+| F9 | PWA | `manifest.webmanifest` load | 200 JSON, icons OK | ✅ | RC1 script `spa:manifest` PASS 2026-07-03 | auto | P1 |
 | F10 | PWA | Service worker registered | `sw.js` không 404 | ⏳ | build output | auto+manual | P1 |
 | F11 | Mobile | QR generate — manager+ only | PLAYER blocked | ⏳ | route guards | auto+manual | P1 |
 | F12 | Mobile | Expired tenant mobile nav lock | Redirect/gate billing routes | ⏳ | hardening tests | auto | P1 |
@@ -172,16 +189,16 @@ Script kiểm tra: health, API envelope, API key runtime subset, integration aud
 
 | ID | Area | Test case | Expected result | Status | Evidence | Owner | Priority |
 |----|------|-----------|-----------------|--------|----------|-------|----------|
-| G1 | API | `GET /api/v1/health` | 200 `{ ok:true, code:"ok" }` | ⏳ | Phase 11D/RC1 script | auto | P0 |
-| G2 | API | API envelope — `ok`, `code`, `requestId` | Consistent shape | ⏳ | RC1 script | auto | P0 |
-| G3 | API | Missing API key | 401 `unauthorized` | ⏳ | Phase 11D PASS | auto | P0 |
-| G4 | API | Invalid / revoked / expired key | 401 `invalid_api_key` | ⏳ | Phase 11D PASS | auto | P0 |
-| G5 | API | Valid key + wrong tenant | 403 `tenant_not_found` | ⏳ | Phase 11D PASS | auto | P0 |
-| G6 | API | `integrations:read` | 200 integrations list | ⏳ | Phase 11E PASS | auto | P0 |
-| G7 | API | `integrations:write` scope | 200 write / 403 denied | ⏳ | Phase 11E PASS | auto | P0 |
-| G8 | API | Webhook read/write | Scope enforced | ⏳ | Phase 11D PASS | auto | P1 |
-| G9 | API | `integration_audit_logs` row per request | event_type + request_id match | ⏳ | Phase 11E PASS | auto | P0 |
-| G10 | API | Output safety — no secret in stdout | Redaction PASS | ⏳ | Phase 11E PASS | auto | P0 |
+| G1 | API | `GET /api/v1/health` | 200 `{ ok:true, code:"ok" }` | ✅ | RC1 script PASS 2026-07-03 | auto | P0 |
+| G2 | API | API envelope — `ok`, `code`, `requestId` | Consistent shape | ✅ | RC1 script PASS 2026-07-03 | auto | P0 |
+| G3 | API | Missing API key | 401 `unauthorized` | ✅ | RC1 script PASS 2026-07-03 | auto | P0 |
+| G4 | API | Invalid / revoked / expired key | 401 `invalid_api_key` | ✅ | RC1 subset PASS 2026-07-03 | auto | P0 |
+| G5 | API | Valid key + wrong tenant | 403 `tenant_not_found` | ✅ | RC1 script PASS 2026-07-03 | auto | P0 |
+| G6 | API | `integrations:read` | 200 integrations list | ✅ | RC1 script PASS 2026-07-03 | auto | P0 |
+| G7 | API | `integrations:write` scope | 200 write / 403 denied | ✅ | RC1 script PASS 2026-07-03 | auto | P0 |
+| G8 | API | Webhook read/write | Scope enforced | ✅ | RC1 webhook read PASS 2026-07-03 | auto | P1 |
+| G9 | API | `integration_audit_logs` row per request | event_type + request_id match | ✅ | RC1 audit subset PASS 2026-07-03 | auto | P0 |
+| G10 | API | Output safety — no secret in stdout | Redaction PASS | ✅ | RC1 script PASS 2026-07-03 | auto | P0 |
 | G11 | API | Rate limit (Preview env=1) | 429 or NOT_APPLICABLE multi-instance | ⏳ | Phase 11D | auto | P2 |
 | G12 | API | `API_KEY_STORE=supabase` Preview | Runtime uses Supabase not localStorage | ⏳ | Phase 11D | auto | P0 |
 | G13 | API | `AUDIT_STORE=supabase` Preview | Audit persisted server-side | ⏳ | Phase 11E | auto | P0 |
@@ -317,15 +334,22 @@ Tham chiếu đầy đủ: `docs/SUPABASE-PRODUCTION-CHECKLIST.md`
 
 ### RC1 Staging sign-off (Preview QA complete)
 
-| Gate | Required |
-|------|----------|
-| `npm test` + `build` + `lint` | ✅ Pass |
-| `verify-v5-rc1-staging.mjs` | ✅ Pass |
-| Cross-tenant RLS re-run | ✅ Pass (or Phase 10D still valid) |
-| Manual P0 Auth + Court + Billing browser | ✅ Tick |
-| No open P0 bugs | ✅ |
+| Gate | Required | Trạng thái |
+|------|----------|------------|
+| `npm test` + `build` + `lint` | ✅ Pass | ✅ Pass (2026-07-03) |
+| `verify-v5-rc1-staging.mjs` | ✅ Pass | ✅ **PASS 19/0/0** (2026-07-03) |
+| URL resolution hardening | ✅ Pass | ✅ `preview-url-utils.mjs` |
+| API key runtime RC1 subset | ✅ Pass | ✅ |
+| Integration audit RC1 subset | ✅ Pass | ✅ |
+| PWA manifest Preview | ✅ Pass | ✅ `/manifest.webmanifest` |
+| SPA `/login` + `/` | ✅ Pass | ✅ 200 shell |
+| Cross-tenant RLS re-run | ✅ Pass (or Phase 10D still valid) | ⏳ Optional re-run |
+| Manual P0 Auth + Court + Billing browser | ✅ Tick | ⏳ **Pending** |
+| No open P0 bugs | ✅ | ✅ (chưa ghi nhận mới) |
 
-**RC1 Staging Go:** Có thể tag `v5.0.0-rc1` trên branch và tiếp tục Production prep — **chưa deploy Production**.
+**RC1 Staging technical verify:** ✅ PASS — automated gates xong; **chưa** RC1 Staging Go đầy đủ (thiếu manual P0).
+
+**Production:** ⛔ **NO-GO** — chờ manual P0 QA + Production SQL/env checklist.
 
 ### Production Go (separate decision)
 
@@ -341,13 +365,15 @@ Tham chiếu đầy đủ: `docs/SUPABASE-PRODUCTION-CHECKLIST.md`
 
 ---
 
-## Kết luận Phase 12 (khởi tạo)
+## Kết luận Phase 12
 
 | Quyết định | Trạng thái |
 |------------|------------|
 | **RC1 Staging QA framework** | ✅ Delivered (doc + script) |
-| **Production deploy** | ⛔ **NO-GO** — chưa tick manual + Production SQL/env |
-| **Đề xuất tiếp theo** | Chạy automated gates → manual tick master checklist → cập nhật Status/Evidence → họp Go/No-Go RC1 |
+| **RC1 automated technical verify** | ✅ **PASS** — PASS: 19, FAIL: 0, BLOCKED: 0 (2026-07-03) |
+| **RC1 Staging Go (full)** | ⏳ Pending — manual P0 browser QA |
+| **Production deploy** | ⛔ **NO-GO** — chờ manual P0 QA xong + Production SQL/env |
+| **Đề xuất tiếp theo** | Manual tick P0 master checklist → optional cross-tenant RLS re-run → họp Go/No-Go RC1 |
 
 ---
 
