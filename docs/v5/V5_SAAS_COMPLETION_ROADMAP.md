@@ -3,16 +3,17 @@
 **Ngày cập nhật:** 2026-07-03  
 **Phiên bản mục tiêu:** Pickleball Scheduler Pro **v5.0** — Platform / SaaS Edition  
 **Branch:** `v5-platform-edition`  
-**Commit (latest):** `b88af90` — Phase 16 KN-6 staging RLS verify PASS evidence  
+**Commit (latest):** `b0942be` — Phase 17 RC1 pre-tag sanity PASS  
+**RC1 tag:** `v5.0.0-rc1` → `b0942be` (pushed)  
 **Commit navigation fix:** `5a455e4` — fix(shell): prevent V5 app shell preview white screen  
-**Môi trường:** Staging Supabase + Vercel Preview — **không** Production  
-**Ràng buộc:** Không tag `v5.0.0-rc1`; không deploy Production; không pop stash `IntegrationSettingsPage.jsx`; không ghi secret hoặc env value vào tài liệu/log.
+**Môi trường:** Staging Supabase + Vercel Preview — **không** Production deploy  
+**Ràng buộc:** Không deploy Production (Phase 19); không pop stash `IntegrationSettingsPage.jsx`; không ghi secret hoặc env value vào tài liệu/log.
 
 ---
 
 ## Executive summary
 
-Navigation V5.0 đã triển khai kỹ thuật (config tập trung, sidebar, topbar, mobile nav theo role), **automated gates PASS**, **Phase 14A + 14B browser QA PASS**, **Phase 15 P0 Preview QA PASS**, **Phase 16 KN-6 CLOSED**, và **Phase 17 RC1 pre-tag sanity check PASS** (2026-07-03, commit `b88af90`). **Sẵn sàng owner approve tag `v5.0.0-rc1`** — chưa tag. Production deploy **vẫn NO-GO** (Phase 18–19).
+Navigation V5.0 đã triển khai kỹ thuật (config tập trung, sidebar, topbar, mobile nav theo role), **automated gates PASS**, **Phase 14A + 14B browser QA PASS**, **Phase 15 P0 Preview QA PASS**, **Phase 16 KN-6 CLOSED**, **Phase 17 RC1 pre-tag sanity PASS**, **RC1 tag `v5.0.0-rc1` pushed** (`b0942be`), và **Phase 18 Production Readiness COMPLETE** (2026-07-03). Production deploy **vẫn NO-GO** — chờ owner tick env/SQL/backup (Phase 19).
 
 | Hạng mục | Verdict |
 |----------|---------|
@@ -27,8 +28,9 @@ Navigation V5.0 đã triển khai kỹ thuật (config tập trung, sidebar, top
 | Manual P0 QA (Phase 15) | ✅ **PASS** — 38/38 P0, 0 FAIL (2026-07-03) |
 | Phase 16 KN-6 RLS | ✅ **CLOSED** |
 | Phase 17 pre-tag sanity | ✅ **PASS** (2026-07-03) |
-| RC1 tag | ⏳ **Ready — owner approval only** |
-| Production | ⛔ **NO-GO** |
+| RC1 tag | ✅ **`v5.0.0-rc1`** @ `b0942be` |
+| Phase 18 Production readiness | ✅ **COMPLETE** — docs + gates (2026-07-03) |
+| Production deploy | ⛔ **NO-GO** — owner env/SQL/backup pending |
 
 ---
 
@@ -41,14 +43,15 @@ Navigation V5.0 đã triển khai kỹ thuật (config tập trung, sidebar, top
 | **RC1 automated technical** | ✅ PASS | `npm test` / `build` / `lint` + `verify-v5-rc1-staging.mjs` (documented 2026-07-03) |
 | **Cross-tenant RLS** | ✅ PASS | 35 PASS / 0 PARTIAL — KN-6 `qr_tokens`/`checkins` tenant-scoped (Phase 16) |
 | **Phase 16 KN-6 RLS** | ✅ CLOSED | Staging SQL applied + verify 18/18 + cross-tenant 35/35 |
-| **Phase 17 pre-tag sanity** | ✅ PASS | All gates re-run @ `b88af90` — 2026-07-03 |
+| **Phase 17 pre-tag sanity** | ✅ PASS | All gates re-run @ `b0942be` — 2026-07-03 |
 | **Menu V5 code** | ✅ PASS | `navigationConfig.js`; sidebar + mobile drawer + topbar |
 | **Phase 14A Preview Environment** | ✅ PASS | `/login` OK, V5.0 SaaS Preview — 2026-07-03 |
 | **Phase 14B Menu browser QA** | ✅ PASS | Owner sidebar/topbar/context bar/dashboard — commit `5a455e4` |
 | **P0 white screen** | ✅ RESOLVED | `5a455e4` — `GlobalSearch` guard + `main.jsx` error boundary |
 | **Manual P0 QA (Phase 15)** | ✅ PASS | 38/38 P0 — `PHASE_15_V5_PREVIEW_P0_QA.md` (2026-07-03) |
-| **RC1 tag** | ⏳ Ready for owner approval | Phase 17 pre-tag PASS — **chưa tag** |
-| **Production** | ⛔ NO-GO | Chưa Production readiness, chưa GA deploy |
+| **RC1 tag** | ✅ **`v5.0.0-rc1`** | @ `b0942be` — pushed |
+| **Phase 18 Production readiness** | ✅ **COMPLETE** | `PHASE_18_PRODUCTION_READINESS.md` — 2026-07-03 |
+| **Production deploy** | ⛔ NO-GO | Owner env/SQL/backup pending — Phase 19 |
 
 ### Navigation V5.0 — triển khai kỹ thuật (đã xong)
 
@@ -73,23 +76,16 @@ Chi tiết QA navigation: `docs/v5/PHASE_14_V5_SAAS_NAVIGATION_QA.md` — Phase 
 | Gate | Verdict |
 |------|---------|
 | **RC1 pre-tag technical** | ✅ **GO** — Phase 17 sanity check PASS |
-| **RC1 tag (owner action)** | ⏳ **Pending owner explicit approve** |
-
-**Lý do chờ tag (không phải blocker kỹ thuật):**
-
-1. Owner chưa explicit approve tag `v5.0.0-rc1`
-2. ~~Manual P0 QA~~ ✅ Phase 15 PASS
-3. ~~KN-6~~ ✅ Phase 16 CLOSED
-
-**Sau owner approve:** chạy lệnh tag trong § Phase 17 (không tự tag trong session QA).
+| **RC1 tag** | ✅ **`v5.0.0-rc1`** @ `b0942be` |
 
 ### Production GA
 
 | Gate | Verdict |
 |------|---------|
-| **Production hiện tại** | ⛔ **NO-GO** |
+| **Phase 18 readiness docs** | ✅ **GO** — checklist + rollback + smoke plan |
+| **Production deploy (Phase 19)** | ⛔ **NO-GO** |
 
-**Lý do:** RC1 chưa GO; Production SQL/env/backup/smoke chưa tick; KN-6 chưa harden; Phase 18–19 chưa thực hiện.
+**Lý do NO-GO deploy:** Owner chưa tick Production env (§1.7); V5 SQL Tier A+B chưa xác nhận trên Production; backup chưa thực hiện; P0 risks R6–R8, R10–R11 mở.
 
 ---
 
@@ -106,10 +102,13 @@ Phase 15 (Manual P0 QA) ──► ✅ PASS
 Phase 16 (KN-6 RLS) ──► ✅ CLOSED
          │
          ▼
-Phase 17 (RC1 pre-tag sanity) ──► ✅ PASS — ready for owner tag approve
+Phase 17 (RC1 pre-tag sanity) ──► ✅ PASS — tag v5.0.0-rc1 @ b0942be
          │
          ▼
-Phase 18 (Prod readiness) ──► Phase 19 (GA deploy)
+Phase 18 (Prod readiness) ──► ✅ COMPLETE — owner env/SQL/backup pending
+         │
+         ▼
+Phase 19 (GA deploy) ──► ⛔ NO-GO
 ```
 
 ---
@@ -214,11 +213,11 @@ Phase 18 (Prod readiness) ──► Phase 19 (GA deploy)
 
 ---
 
-### Phase 17 — RC1 Tag (owner action)
+### Phase 17 — RC1 Tag
 
 **Mục tiêu:** Tag `v5.0.0-rc1` khi owner explicit approve.
 
-**Trạng thái:** ⏳ **Pending owner approval** (technical gates PASS)
+**Trạng thái:** ✅ **DONE** — `v5.0.0-rc1` @ `b0942be` (pushed)
 
 | Điều kiện | Required |
 |-----------|----------|
@@ -251,17 +250,22 @@ git push origin v5.0.0-rc1
 
 **Mục tiêu:** Chuẩn bị Production trước deploy — backup, SQL, env, smoke, rollback plan.
 
-**Trạng thái:** ⏳ **Not started** — chờ Phase 17 GO.
+**Trạng thái:** ✅ **COMPLETE** — 2026-07-03
 
-| # | Task | Tài liệu |
-|---|------|----------|
-| 18-1 | Supabase Production backup / snapshot | `docs/SUPABASE-PRODUCTION-CHECKLIST.md` |
-| 18-2 | Apply Production SQL (15+ steps) | `docs/supabase-*.sql` theo checklist |
-| 18-3 | Production env checklist tick | `docs/GA-PRODUCTION-ENV-CHECKLIST.md` |
-| 18-4 | Smoke test plan sẵn sàng | `docs/GA-PRODUCTION-QA.md` |
-| 18-5 | Rollback plan documented | Deployment ID + DB snapshot reference |
+| # | Task | Tài liệu | Status |
+|---|------|----------|--------|
+| 18-1 | Production env audit checklist | `PHASE_18_PRODUCTION_READINESS.md` §1 | ✅ Doc |
+| 18-2 | Production SQL inventory (Tier A+B) | §2 + `SUPABASE-PRODUCTION-CHECKLIST.md` | ✅ Doc |
+| 18-3 | Backup + rollback plan | §3 | ✅ Doc |
+| 18-4 | Production smoke test plan | §4 | ✅ Doc |
+| 18-5 | Risk register P0/P1/P2 | §5 | ✅ Doc |
+| 18-6 | Automated gates | `npm test/build/lint`, `git diff --check` | ✅ PASS |
+| 18-7 | Owner tick env on Vercel Production | §1.7 | ⏳ Pending |
+| 18-8 | Owner apply SQL + backup | §2–§3 | ⏳ Pending |
 
-**Kết quả mong muốn:** ✅ **Production Readiness GO**
+**Kết quả:** ✅ **Phase 18 preparation GO** — ⛔ **Production deploy NO-GO** until 18-7/18-8.
+
+**Tài liệu:** `docs/v5/PHASE_18_PRODUCTION_READINESS.md`
 
 ---
 
@@ -301,10 +305,11 @@ git push origin v5.0.0-rc1
 
 ## Next action (immediate)
 
-1. **Owner approve** tag `v5.0.0-rc1` — technical gates PASS (Phase 17).
-2. **Phase 18** — Production readiness (backup, SQL, env, smoke, rollback).
-3. **Phase 14B follow-up** (không chặn RC1): PLAYER / REFEREE mobile nav, Global search, Venue switcher.
-4. **P1 manual** (không chặn RC1): VENUE_MANAGER browser, expired billing fixture, mobile device QR/drawer.
+1. **Owner:** Tick Production env checklist — `PHASE_18_PRODUCTION_READINESS.md` §1.7
+2. **Owner:** Backup Production Supabase + note Vercel deployment ID — §3.1
+3. **Owner:** Apply Tier A + Tier B SQL on Production — §2.1 (maintenance window)
+4. **Phase 19:** Deploy `v5.0.0-rc1` → Production smoke §4 → monitor 24h
+5. **P1 follow-up** (không chặn deploy): mobile: 14B PLAYER/REFEREE mobile nav; real device QR/PWA QA
 
 ---
 
@@ -312,8 +317,8 @@ git push origin v5.0.0-rc1
 
 | Ràng buộc | Status |
 |-----------|--------|
-| Không tag `v5.0.0-rc1` | ⛔ Enforced |
-| Không deploy Production | ⛔ Enforced |
+| RC1 tag `v5.0.0-rc1` | ✅ @ `b0942be` |
+| Không deploy Production | ⛔ Enforced — Phase 19 only after owner checklist |
 | Không pop stash `IntegrationSettingsPage.jsx` | ✅ Stash intact |
 | Không ghi secret / env value vào docs hoặc log | ⛔ Enforced |
 
@@ -327,6 +332,7 @@ git push origin v5.0.0-rc1
 | `docs/v5/PHASE_13_V5_FULL_SOFTWARE_AUDIT.md` | Full audit + KN-6 |
 | `docs/v5/PHASE_14_V5_SAAS_NAVIGATION_QA.md` | Navigation technical + manual QA |
 | `docs/v5/PHASE_10D_CROSS_TENANT_RLS_QA.md` | RLS baseline |
+| `docs/v5/PHASE_18_PRODUCTION_READINESS.md` | Production env/SQL/backup/smoke/risk |
 | `docs/v5/V5_ARCHITECTURE_BLUEPRINT.md` | Kiến trúc V5 |
 | `scripts/verify-v5-rc1-staging.mjs` | RC1 technical gate |
 | `scripts/verify-cross-tenant-rls-staging.mjs` | RLS JWT probe |
