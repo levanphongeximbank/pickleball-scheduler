@@ -1,7 +1,9 @@
 # Phase 14 — V5.0 SaaS Navigation QA
 
 **Ngày:** 2026-07-03  
+**QA session:** 2026-07-03 14:48–14:57 ICT (gates re-run trước Preview sign-off)  
 **Branch:** `v5-platform-edition`  
+**Commit:** `60d50563f8d1d0c40cf3f9076c6db8377195f7d9`  
 **Phạm vi:** Menu V5 tập trung (`navigationConfig.js`), sidebar/desktop, mobile drawer + bottom nav, RBAC/menu guards  
 **Môi trường:** Local gates + Vercel Preview — **không** Production, **không** tag `v5.0.0-rc1`  
 **Ràng buộc:** Không pop stash `IntegrationSettingsPage.jsx`; không ghi secret.
@@ -33,15 +35,25 @@
 | Có đổi test runner/filter không? | **Không** — vẫn `node --test` + danh sách file tường minh |
 | File test nào thay đổi? | `tests/rbac.test.js`, `tests/mobile-phase8-hardening.test.js` — **cập nhật assertion nhãn menu** (legacy → V5 labels); Phase 14 **thêm** 7 test navigation |
 
-### Số test chính xác (Phase 14 session)
+### Số test chính xác (đã xác minh bằng worktree)
 
-| Run | Tests | Suites | Skipped |
-|-----|-------|--------|---------|
-| Phase 13 baseline | **723** | 56 | 0 |
-| Phase 14 (trước thêm nav tests) | **723** | 56 | 0 |
-| Phase 14 (sau QA nav tests) | **730** | 56 | 0 |
+| Run | Commit | Tests | Suites | Skipped |
+|-----|--------|-------|--------|---------|
+| Phase 13 baseline | `cd33b65` (worktree `npm test`) | **723** | 56 | 0 |
+| Phase 14 hiện tại | `60d5056` (`npm test`) | **730** | 56 | 0 |
+| Chênh lệch | +7 test mới navigation QA | +7 | 0 | 0 |
 
-**Giải thích “700”:** Không tái hiện được trong session QA này. Khả năng cao là **đọc nhầm output** (ví dụ subset file, log cũ, hoặc nhầm với `test:ui` 30 tests). `npm test` = `npm run test:unit` only — **không** gồm `test:ui` / `test:perf`.
+**Phase 14 không xóa test:** `git diff cd33b65..HEAD -- tests/ package.json` chỉ đổi 2 file (`rbac.test.js` +98/−21 dòng, `mobile-phase8-hardening.test.js` +21/−2). `package.json` `test:unit` **không đổi** — vẫn 78 file test.
+
+**Giải thích “700” (root cause):**
+
+| Khả năng | Phân tích |
+|----------|-----------|
+| **Nhầm 730 → 700** | Output hiện tại: `ℹ pass 730` — typo khi đọc log |
+| **Trừ nhầm `test:ui`** | `npm run test:ui` = **30** vitest tests (suite riêng, **không** nằm trong `npm test`). 730 − 30 = **700** — khớp con số báo cáo |
+| Xóa / skip / đổi filter | **Loại trừ** — `skipped: 0`, không file test bị gỡ khỏi `test:unit` |
+
+`npm test` = `npm run test:unit` only. `npm run test:quality` = unit + perf (3) + ui (30) — **không** dùng làm baseline Phase 13.
 
 ### Thay đổi assertion (không giảm số test)
 
@@ -236,14 +248,16 @@ Chỉ khai báo trong `navigationConfig.js` — `navStatus: future` → **không
 
 ---
 
-## 10. Full gates result
+## 10. Full gates result (2026-07-03 14:48–14:57 ICT)
 
 | Gate | Kết quả | Evidence |
 |------|---------|----------|
-| `git diff --check` | ✅ **Clean** | Không whitespace conflict |
-| `npm test` | ✅ **730/730 PASS** | 56 suites, skipped 0 |
-| `npm run build` | ✅ **PASS** | PWA precache 179 entries |
+| `git diff --check` | ✅ **Clean** | Exit 0, không whitespace conflict |
+| `npm test` | ✅ **730/730 PASS** | 56 suites, fail 0, skipped 0, duration ~6.8s |
+| `npm run build` | ✅ **PASS** | Vite build OK, PWA precache 179 entries (~2953 KiB) |
 | `npm run lint` | ✅ **0 errors** | 129 warnings `react-hooks/exhaustive-deps` (pre-existing) |
+
+**Không chạy cho RC1 nav sign-off:** `npm run test:ui` (30 tests, 24 fail local — suite UI tách biệt, pre-existing).
 
 ---
 
@@ -279,8 +293,9 @@ Chỉ khai báo trong `navigationConfig.js` — `navStatus: future` → **không
 | Field | Value |
 |-------|-------|
 | Branch | `v5-platform-edition` |
-| Commit | `8ebeac5` |
-| Vercel Preview | _(see below after deploy)_ |
-| Production | ⛔ **NO-GO** |
+| Commit | `60d50563f8d1d0c40cf3f9076c6db8377195f7d9` |
+| Vercel Preview (latest) | https://pickleball-scheduler-lbcrkzewe-pickleball-scheduler.vercel.app |
+| Branch alias | https://pickleball-scheduler-git-v5-platfor-47ef4a-pickleball-scheduler.vercel.app |
+| Production | ⛔ **NO-GO** — không deploy |
 | Tag `v5.0.0-rc1` | ⛔ **NOT created** |
-| Stash `IntegrationSettingsPage` | ✅ Intact |
+| Stash `IntegrationSettingsPage` | ✅ Intact — `stash@{0}: wip: IntegrationSettingsPage mockPayment toggle key fix` |
