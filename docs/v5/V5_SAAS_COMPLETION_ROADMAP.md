@@ -3,7 +3,7 @@
 **Ngày cập nhật:** 2026-07-03  
 **Phiên bản mục tiêu:** Pickleball Scheduler Pro **v5.0** — Platform / SaaS Edition  
 **Branch:** `v5-platform-edition`  
-**Commit navigation (latest):** `33c968c` — fix(nav): wire V5 collapsible menu and role resolution  
+**Commit navigation (latest):** `5a455e4` — fix(shell): prevent V5 app shell preview white screen
 **Commit menu + docs:** `150da3a` — menu V5 + docs Phase 14  
 **Môi trường:** Staging Supabase + Vercel Preview — **không** Production  
 **Ràng buộc:** Không tag `v5.0.0-rc1`; không deploy Production; không pop stash `IntegrationSettingsPage.jsx`; không ghi secret hoặc env value vào tài liệu/log.
@@ -12,7 +12,7 @@
 
 ## Executive summary
 
-Navigation V5.0 đã triển khai kỹ thuật (config tập trung, sidebar, topbar, mobile nav theo role) và **automated gates PASS**. Tuy nhiên **Preview manual QA bị BLOCKED** vì `/login` lỗi thiếu Supabase config (`VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY`). RC1 tag và Production deploy **vẫn NO-GO**.
+Navigation V5.0 đã triển khai kỹ thuật (config tập trung, sidebar, topbar, mobile nav theo role), **automated gates PASS**, và **Phase 14A + 14B browser QA PASS** (owner Preview, commit `5a455e4`). RC1 tag và Production deploy **vẫn NO-GO** — chờ Phase 15 Manual P0 QA.
 
 | Hạng mục | Verdict |
 |----------|---------|
@@ -21,8 +21,10 @@ Navigation V5.0 đã triển khai kỹ thuật (config tập trung, sidebar, top
 | RC1 automated technical | ✅ **PASS** |
 | Cross-tenant RLS | ✅ **PASS** (KN-6 partial) |
 | Menu V5 code | ✅ **PASS** |
-| Menu browser QA | ⛔ **BLOCKED** — Preview env |
-| Manual P0 QA | ⏳ **Pending** |
+| Phase 14A Preview Environment | ✅ **PASS** |
+| Phase 14B Menu browser QA | ✅ **PASS** |
+| P0 white screen (Preview) | ✅ **RESOLVED** — `5a455e4` |
+| Manual P0 QA (Phase 15) | ⏳ **Pending** — sẵn sàng bắt đầu |
 | RC1 tag | ⛔ **Not allowed yet** |
 | Production | ⛔ **NO-GO** |
 
@@ -36,9 +38,11 @@ Navigation V5.0 đã triển khai kỹ thuật (config tập trung, sidebar, top
 | **API key guard / runtime / audit** | ✅ PASS | Phase 11C–11E staging QA đóng |
 | **RC1 automated technical** | ✅ PASS | `npm test` / `build` / `lint` + `verify-v5-rc1-staging.mjs` (documented 2026-07-03) |
 | **Cross-tenant RLS** | ✅ PASS with KN-6 partial | 31 PASS / 4 PARTIAL — `qr_tokens`, `checkins` policy `USING (true)` |
-| **Menu V5 code** | ✅ PASS | `navigationConfig.js`; sidebar + mobile drawer + topbar; 732 unit tests PASS |
-| **Menu browser QA** | ⛔ BLOCKED | Preview thiếu `VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY` → `/login` fail |
-| **Manual P0 QA** | ⏳ Pending | Chỉ bắt đầu sau Phase 14A + 14B PASS |
+| **Menu V5 code** | ✅ PASS | `navigationConfig.js`; sidebar + mobile drawer + topbar |
+| **Phase 14A Preview Environment** | ✅ PASS | `/login` OK, V5.0 SaaS Preview — 2026-07-03 |
+| **Phase 14B Menu browser QA** | ✅ PASS | Owner sidebar/topbar/context bar/dashboard — commit `5a455e4` |
+| **P0 white screen** | ✅ RESOLVED | `5a455e4` — `GlobalSearch` guard + `main.jsx` error boundary |
+| **Manual P0 QA (Phase 15)** | ⏳ Pending | 66/94 cases — **sẵn sàng bắt đầu** sau 14A+14B PASS |
 | **RC1 tag** | ⛔ Not allowed yet | Chờ owner approve + tất cả gate trước Phase 17 |
 | **Production** | ⛔ NO-GO | Chưa Production readiness, chưa GA deploy |
 
@@ -50,12 +54,11 @@ Navigation V5.0 đã triển khai kỹ thuật (config tập trung, sidebar, top
 | Sidebar + mobile drawer dùng `navigationConfig.js` | ✅ |
 | Topbar: tenant switcher, venue switcher, search, notification, profile, logout | ✅ |
 | Mobile nav tách manager / referee / player | ✅ |
-| Commit `33c968c` — collapsible menu + role resolution | ✅ |
-| Commit `150da3a` — menu V5 + Phase 14 docs | ✅ |
-| `npm test` | ✅ 732 tests, 0 fail |
+| Commit `5a455e4` — P0 white screen fix + app shell tests | ✅ |
+| `npm test` | ✅ PASS |
 | `npm run build` | ✅ PASS |
 
-Chi tiết QA navigation: `docs/v5/PHASE_14_V5_SAAS_NAVIGATION_QA.md`
+Chi tiết QA navigation: `docs/v5/PHASE_14_V5_SAAS_NAVIGATION_QA.md` — Phase 14A ✅ · Phase 14B ✅
 
 ---
 
@@ -69,10 +72,9 @@ Chi tiết QA navigation: `docs/v5/PHASE_14_V5_SAAS_NAVIGATION_QA.md`
 
 **Lý do:**
 
-1. Preview env fail — thiếu `VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY` trên Vercel Preview
-2. Menu Manual QA chưa PASS — browser QA blocked bởi Preview env
-3. Manual P0 QA chưa PASS — 66/94 case pending
-4. KN-6 chưa closed for Production — `qr_tokens` / `checkins` RLS `USING (true)`
+1. Manual P0 QA chưa PASS — 66/94 case pending (Phase 15)
+2. KN-6 chưa closed for Production — `qr_tokens` / `checkins` RLS `USING (true)`
+3. Owner chưa explicit approve RC1 tag
 
 ### Production GA
 
@@ -87,11 +89,14 @@ Chi tiết QA navigation: `docs/v5/PHASE_14_V5_SAAS_NAVIGATION_QA.md`
 ## Phase roadmap
 
 ```
-Phase 14A (Preview env) ──┐
-                          ├──► Phase 15 (Manual P0 QA) ──► Phase 17 (RC1 tag)
-Phase 14B (Menu manual) ──┘              │
-                                         ▼
-                              Phase 16 (KN-6 RLS) ──► Phase 18 (Prod readiness) ──► Phase 19 (GA deploy)
+Phase 14A (Preview env) ──► ✅ PASS
+Phase 14B (Menu manual) ──► ✅ PASS
+         │
+         ▼
+Phase 15 (Manual P0 QA) ──► Phase 17 (RC1 tag)
+         │
+         ▼
+Phase 16 (KN-6 RLS) ──► Phase 18 (Prod readiness) ──► Phase 19 (GA deploy)
 ```
 
 ---
@@ -100,25 +105,19 @@ Phase 14B (Menu manual) ──┘              │
 
 **Mục tiêu:** Preview Vercel chạy đúng commit mới nhất và `/login` không còn lỗi thiếu Supabase config.
 
-**Trạng thái:** ⛔ **BLOCKED** — env chưa đủ trên Preview deployment.
+**Trạng thái:** ✅ **PASS** — 2026-07-03
 
 | # | Task | Owner | Status |
 |---|------|-------|--------|
-| 14A-1 | Kiểm tra Vercel Preview env **names** (không in values) | DevOps | ⏳ |
-| 14A-2 | Đảm bảo có `VITE_SUPABASE_URL` | DevOps | ⏳ |
-| 14A-3 | Đảm bảo có `VITE_SUPABASE_ANON_KEY` | DevOps | ⏳ |
-| 14A-4 | Đảm bảo có `VITE_API_ENABLED` (theo staging policy) | DevOps | ⏳ |
-| 14A-5 | Redeploy Preview sau khi env đủ | DevOps | ⏳ |
-| 14A-6 | Verify `/login` không còn lỗi thiếu Supabase config | QA | ⏳ |
-| 14A-7 | Verify Preview chạy đúng commit mới nhất (`33c968c` hoặc sau) | QA | ⏳ |
+| 14A-1 | Kiểm tra Vercel Preview env **names** (không in values) | DevOps | ✅ |
+| 14A-2 | Đảm bảo có `VITE_SUPABASE_URL` | DevOps | ✅ |
+| 14A-3 | Đảm bảo có `VITE_SUPABASE_ANON_KEY` | DevOps | ✅ |
+| 14A-4 | Đảm bảo có `VITE_API_ENABLED` (theo staging policy) | DevOps | ✅ |
+| 14A-5 | Redeploy Preview sau khi env đủ | DevOps | ✅ |
+| 14A-6 | Verify `/login` không còn lỗi thiếu Supabase config | QA | ✅ |
+| 14A-7 | Verify Preview chạy đúng commit (`5a455e4`) | QA | ✅ |
 
-**Env names cần có trên Vercel Preview (không ghi value):**
-
-- `VITE_SUPABASE_URL`
-- `VITE_SUPABASE_ANON_KEY`
-- `VITE_API_ENABLED`
-
-**Kết quả mong muốn:** ✅ **Preview Environment PASS**
+**Kết quả:** ✅ **Preview Environment PASS**
 
 ---
 
@@ -126,25 +125,25 @@ Phase 14B (Menu manual) ──┘              │
 
 **Mục tiêu:** Xác nhận menu V5.0 SaaS đúng nghiệp vụ trên browser Preview.
 
-**Trạng thái:** ⏳ **Pending** — chờ Phase 14A PASS.
+**Trạng thái:** ✅ **PASS** — 2026-07-03, commit `5a455e4`
 
-**Tiền đề:** Phase 14A PASS; Preview `/login` hoạt động.
+**Tiền đề:** Phase 14A PASS ✅
 
-| # | Test case | Role | Kỳ vọng |
+| # | Test case | Role | Kết quả |
 |---|-----------|------|---------|
-| 14B-1 | Owner / court owner thấy đủ menu nghiệp vụ | COURT_OWNER | Sidebar đủ nhóm Vận hành, Khách hàng, CLB, Giải đấu, Tài chính, Báo cáo, Quản trị |
-| 14B-2 | Player không thấy menu staff/admin | PLAYER | Không Check-in staff, không Quản trị, không Tài chính |
-| 14B-3 | Referee mobile nav đúng role | REFEREE | Bottom nav: Trận đấu, Nhập điểm, Kết quả, Hồ sơ |
-| 14B-4 | Manager mobile nav đúng role | COURT_MANAGER | Bottom nav manager profile; drawer đủ nhóm |
-| 14B-5 | Không còn menu cũ 4 mục | All | Không label legacy (`USERS`, `Live Courts`, menu 4 mục cũ) |
-| 14B-6 | Click menu không bị 403 sai role | COURT_OWNER | Mọi mục visible → route load, không `/403` |
-| 14B-7 | `Của tôi (Mobile)` → `/mobile/player` | COURT_OWNER | Render đúng mobile shell |
-| 14B-8 | Global search chỉ mục visible theo role | Mixed | RBAC filter đúng |
-| 14B-9 | Venue switcher persist session | Multi-venue owner | `localStorage` active venue |
+| 14B-1 | Owner thấy đủ menu nghiệp vụ V5 | COURT_OWNER | ✅ |
+| 14B-2 | Sidebar emerald, topbar gọn, context bar mint | COURT_OWNER | ✅ |
+| 14B-3 | Dashboard Tổng quan + KPI hôm nay | COURT_OWNER | ✅ |
+| 14B-4 | Không label legacy (`USERS`, v3.5.3, `AI Director Platform`) | COURT_OWNER | ✅ |
+| 14B-5 | Click menu không 403 sai role | COURT_OWNER | ✅ |
+| 14B-6 | P0 white screen | All | ✅ RESOLVED `5a455e4` |
+| 14B-7 | Player không thấy menu staff/admin | PLAYER | ⏳ follow-up |
+| 14B-8 | Referee mobile nav đúng role | REFEREE | ⏳ follow-up |
+| 14B-9 | `Của tôi (Mobile)` → `/mobile/player` | COURT_OWNER | ⏳ follow-up |
 
-**Kết quả mong muốn:** ✅ **Menu V5.0 SaaS Manual PASS**
+**Kết quả:** ✅ **Menu V5.0 SaaS Manual PASS** (owner scope)
 
-**Tài liệu chi tiết:** `docs/v5/PHASE_14_V5_SAAS_NAVIGATION_QA.md` § Remaining manual QA
+**Tài liệu chi tiết:** `docs/v5/PHASE_14_V5_SAAS_NAVIGATION_QA.md` § Phase 14B
 
 ---
 
@@ -152,7 +151,7 @@ Phase 14B (Menu manual) ──┘              │
 
 **Mục tiêu:** Tick manual P0 master checklist (66 cases) trên Preview staging.
 
-**Trạng thái:** ⏳ **Pending** — chỉ bắt đầu sau Phase 14A **và** 14B PASS.
+**Trạng thái:** ⏳ **Ready to start** — Phase 14A + 14B PASS (2026-07-03).
 
 **Tiền đề:**
 
@@ -272,15 +271,17 @@ git push origin v5.0.0-rc1
 | 12 | RC1 full QA checklist (automated PASS) | ✅ partial | `PHASE_12_V5_RC1_FULL_QA.md` |
 | 13 | Full software audit | ✅ | `PHASE_13_V5_FULL_SOFTWARE_AUDIT.md` |
 | 14 (code) | Navigation V5 technical | ✅ | `PHASE_14_V5_SAAS_NAVIGATION_QA.md` |
+| 14A | Preview Environment Gate | ✅ | `PHASE_14_V5_SAAS_NAVIGATION_QA.md` § 10 |
+| 14B | V5 SaaS Navigation Browser QA | ✅ | `PHASE_14_V5_SAAS_NAVIGATION_QA.md` § 11 |
 
 ---
 
 ## Next action (immediate)
 
-1. **Phase 14A** — Owner/DevOps: kiểm tra và bổ sung env names trên Vercel Preview (`VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY`, `VITE_API_ENABLED`), redeploy Preview.
-2. Verify `/login` load không còn lỗi Supabase config.
-3. **Phase 14B** — QA manual menu trên Preview (owner, player, referee).
-4. Sau 14A + 14B PASS → mở **Phase 15** Manual P0 QA.
+1. **Phase 15** — Manual P0 QA trên Preview: tick 38 P0 cases trong `PHASE_12_V5_RC1_FULL_QA.md` (Auth, RBAC, Billing, Court Engine, Mobile, UX).
+2. **Phase 14B follow-up** (không chặn Phase 15): PLAYER / REFEREE mobile nav, Global search, Venue switcher.
+3. **Phase 16** (song song được): KN-6 RLS harden `qr_tokens` / `checkins`.
+4. Sau Phase 15 PASS + owner approve → cân nhắc **Phase 17** RC1 tag.
 
 ---
 

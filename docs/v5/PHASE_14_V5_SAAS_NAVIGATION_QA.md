@@ -1,9 +1,9 @@
 # Phase 14 — V5.0 SaaS Navigation QA
 
-**Ngày:** 2026-07-03  
-**QA session:** 2026-07-03 14:48–14:57 ICT (gates re-run trước Preview sign-off)  
-**Branch:** `v5-platform-edition`  
-**Commit:** `b956971e634c813a513bcf3bfb255d5c6ba7b91a`  
+**Ngày:** 2026-07-03
+**QA session:** 2026-07-03 14:48–14:57 ICT (automated gates) · 18:21 ICT (Phase 14B browser sign-off)
+**Branch:** `v5-platform-edition`
+**Commit:** `5a455e472afc8a498fb5c09a91fe2e33e7d0e936` (P0 white screen fix)
 **Phạm vi:** Menu V5 tập trung (`navigationConfig.js`), sidebar/desktop, mobile drawer + bottom nav, RBAC/menu guards  
 **Môi trường:** Local gates + Vercel Preview — **không** Production, **không** tag `v5.0.0-rc1`  
 **Ràng buộc:** Không pop stash `IntegrationSettingsPage.jsx`; không ghi secret.
@@ -18,7 +18,10 @@
 | **Future/V5.1 items** | ✅ **HIDDEN** — chỉ khai báo `navStatus: future` trong `navigationConfig.js` |
 | **Regression fixes (owner/player/mobile)** | ✅ **PASS** (automated) |
 | **Automated gates** | ✅ **PASS** |
-| **RC1 browser sign-off** | ⏳ **PENDING** — manual QA Preview (mục § Remaining manual QA) |
+| **Phase 14A Preview Environment** | ✅ **PASS** — `/login` render OK, V5.0 SaaS Preview |
+| **Phase 14B V5 SaaS Navigation Browser QA** | ✅ **PASS** — owner dashboard, sidebar, topbar, context bar (2026-07-03) |
+| **P0 white screen** | ✅ **RESOLVED** — commit `5a455e4` (`fix(shell): prevent V5 app shell preview white screen`) |
+| **RC1 browser sign-off** | ✅ **PASS** — owner COURT_OWNER manual Preview (mục § Phase 14B) |
 
 ---
 
@@ -244,11 +247,55 @@ Chỉ khai báo trong `navigationConfig.js` — `navStatus: future` → **không
 | NAV-2 | P1 | Owner thiếu `/mobile/player` | ✅ Fixed |
 | NAV-3 | P2 | Player bottom nav `Trang chủ` thay vì `Trang của tôi` | ✅ Fixed |
 | NAV-4 | P2 | `MobileNavContext.jsx` lint `react-refresh/only-export-components` | ✅ Fixed — tách provider/hook |
-| — | — | Không phát hiện P0 mới | — |
+| NAV-5 | **P0** | Preview `/login` → white screen sau env fix | ✅ **RESOLVED** — `5a455e4` (`GlobalSearch` guard + `main.jsx` error boundary) |
+| — | — | Không phát hiện P0 mới sau 14B | — |
 
 ---
 
-## 10. Full gates result (2026-07-03 14:48–14:57 ICT)
+## 10. Phase 14A — Preview Environment Gate
+
+**Trạng thái:** ✅ **PASS** (2026-07-03)
+
+| # | Task | Kết quả |
+|---|------|---------|
+| 14A-1 | Vercel Preview env names đủ (`VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY`, `VITE_API_ENABLED`) | ✅ |
+| 14A-2 | Redeploy Preview sau env | ✅ |
+| 14A-3 | `/login` render — không lỗi thiếu Supabase config | ✅ |
+| 14A-4 | Hiển thị **V5.0 SaaS Preview** | ✅ |
+| 14A-5 | Không white screen (trước fix: P0; sau `5a455e4`: OK) | ✅ |
+
+---
+
+## 11. Phase 14B — V5 SaaS Navigation Browser QA
+
+**Trạng thái:** ✅ **PASS** (2026-07-03, commit `5a455e4`)
+
+**Role đã verify:** COURT_OWNER (owner) — Preview browser manual.
+
+| # | Test case | Kết quả |
+|---|-----------|---------|
+| 14B-1 | `/login` render OK, V5.0 SaaS Preview | ✅ |
+| 14B-2 | Sau login owner → dashboard OK | ✅ |
+| 14B-3 | Sidebar emerald — đủ nhóm menu nghiệp vụ V5 | ✅ |
+| 14B-4 | Topbar trắng gọn — không còn chip lộn xộn | ✅ |
+| 14B-5 | Context bar mint — Sân/Mùa/Giải/AI/người chơi | ✅ |
+| 14B-6 | Dashboard — Tổng quan + KPI hôm nay | ✅ |
+| 14B-7 | Không còn v3.5.3, `USERS`, `AI Director Platform`, `Của tôi` (legacy) | ✅ |
+| 14B-8 | Click nhanh menu chính — không 403 sai role | ✅ |
+
+**Chưa tick trong session này (không chặn 14B owner sign-off):**
+
+| # | Test case | Role | Status |
+|---|-----------|------|--------|
+| 14B-9 | `Của tôi (Mobile)` → `/mobile/player` | COURT_OWNER | ⏳ |
+| 14B-10 | Player bottom nav `Trang của tôi` | PLAYER | ⏳ |
+| 14B-11 | Referee mobile nav | REFEREE | ⏳ |
+| 14B-12 | Global search RBAC filter | Mixed | ⏳ |
+| 14B-13 | Venue switcher persist | Multi-venue | ⏳ |
+
+---
+
+## 12. Full gates result (2026-07-03 14:48–14:57 ICT + docs sign-off)
 
 | Gate | Kết quả | Evidence |
 |------|---------|----------|
@@ -261,39 +308,48 @@ Chỉ khai báo trong `navigationConfig.js` — `navStatus: future` → **không
 
 ---
 
-## 11. RC1 menu verdict
+## 13. RC1 menu verdict
 
 | Tiêu chí | Verdict |
 |----------|---------|
-| Cấu trúc menu V5 SaaS | ✅ **GO** cho Preview test |
+| Cấu trúc menu V5 SaaS | ✅ **GO** |
 | Không route gây hiểu nhầm | ✅ **GO** |
 | RBAC/automated regression | ✅ **GO** |
-| Staging manual 66/94 cases | ⏳ Chưa thay thế bằng nav QA — vẫn cần browser |
+| Phase 14A Preview Environment | ✅ **PASS** |
+| Phase 14B owner browser QA | ✅ **PASS** |
+| Staging manual P0 (66/94 cases) | ⏳ Phase 15 — chưa tick |
 
-**RC1 Navigation:** ✅ **CONDITIONAL GO** — sẵn sàng Preview manual; chưa đủ cho Production tag.
+**RC1 Navigation:** ✅ **GO** cho RC1 staging path — owner Preview sign-off xong; **chưa** đủ cho Production tag (chờ Phase 15 P0 + KN-6).
 
 ---
 
-## 12. Remaining manual QA (Preview)
+## 14. Remaining manual QA (Preview)
 
-- [ ] Login **COURT_OWNER** Preview — sidebar đủ nhóm, không mục future
-- [ ] Click từng mục owner — không `/403`
+**Owner (14B — đã tick):**
+
+- [x] Login **COURT_OWNER** Preview — sidebar đủ nhóm, không mục future
+- [x] Click từng mục owner — không `/403`
+- [x] `VITE_ENABLE_AI_ENGINE=false` — không nhóm AI sidebar (không thấy `AI Director Platform`)
+- [x] Không label legacy (`USERS`, v3.5.3)
+
+**Còn lại (Phase 15 hoặc 14B follow-up):**
+
 - [ ] `Của tôi (Mobile)` → `/mobile/player` render đúng
 - [ ] Login **PLAYER** — bottom nav `Trang của tôi`, không thấy Check-in staff
 - [ ] Mobile drawer `Thêm` — nhóm menu khớp desktop
 - [ ] Global search — chỉ mục visible theo role
 - [ ] Venue switcher (nếu multi-venue) — session persist
-- [ ] `VITE_ENABLE_AI_ENGINE=false` — không nhóm AI sidebar
 - [ ] Marketplace/API flags off — không menu marketplace/admin integration
 
 ---
 
-## 13. Deploy metadata
+## 15. Deploy metadata
 
 | Field | Value |
 |-------|-------|
 | Branch | `v5-platform-edition` |
-| Commit | `b956971e634c813a513bcf3bfb255d5c6ba7b91a` |
+| Commit | `5a455e472afc8a498fb5c09a91fe2e33e7d0e936` |
+| P0 white screen fix | `5a455e4` — `fix(shell): prevent V5 app shell preview white screen` |
 | Vercel Preview (latest) | https://pickleball-scheduler-n314vpmjb-pickleball-scheduler.vercel.app |
 | Branch alias | https://pickleball-scheduler-git-v5-platfor-47ef4a-pickleball-scheduler.vercel.app |
 | Production | ⛔ **NO-GO** — không deploy |
