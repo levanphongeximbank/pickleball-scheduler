@@ -41,8 +41,10 @@
 |------------|--------|---------|
 | ✅ PASS (automated RC1) | 19 | `verify-v5-rc1-staging.mjs` — 2026-07-03 |
 | ✅ PASS (cross-tenant RLS refresh) | 31 | `verify-cross-tenant-rls-staging.mjs` — 2026-07-03 |
-| ⏳ Pending (manual) | 66 | Browser/device P0–P2 |
-| ⚠️ PARTIAL | 4 | RLS refresh — `qr_tokens`, `checkins` (policy open, 0 rows; không phải FAIL) |
+| ✅ PASS (Phase 15 P0 Preview) | 38 | `verify-phase15-preview-p0-qa.mjs` — 2026-07-03 |
+| ✅ PASS (P1 partial downgraded) | 5 | B3, D3, D4, F3, mobile drawer — xem Phase 15 |
+| ⏳ Pending (manual P1–P2) | 31 | Device/install, grace period, v.v. |
+| ⚠️ PARTIAL | 4 | RLS refresh — `qr_tokens`, `checkins` (KN-6) |
 | ❌ FAIL | 0 | |
 | 🔒 BLOCKED | 0 | |
 
@@ -371,12 +373,12 @@ Tham chiếu đầy đủ: `docs/SUPABASE-PRODUCTION-CHECKLIST.md`
 | PWA manifest Preview | ✅ Pass | ✅ `/manifest.webmanifest` |
 | SPA `/login` + `/` | ✅ Pass | ✅ 200 shell |
 | Cross-tenant RLS re-run | ✅ Pass (or Phase 10D still valid) | ✅ **PASS 31/4/0/0** (2026-07-03) |
-| Manual P0 Auth + Court + Billing browser | ✅ Tick | ⏳ **Pending** |
+| Manual P0 Auth + Court + Billing browser | ✅ Tick | ✅ **Phase 15 PASS** — 2026-07-03 |
 | No open P0 bugs | ✅ | ✅ (chưa ghi nhận mới) |
 
-**RC1 Staging technical verify:** ✅ PASS — automated gates xong; **chưa** RC1 Staging Go đầy đủ (thiếu manual P0).
+**RC1 Staging technical verify:** ✅ PASS — automated gates xong; **Phase 15 P0 Preview QA PASS** (2026-07-03).
 
-**Production:** ⛔ **NO-GO** — chờ manual P0 QA + Production SQL/env checklist.
+**Production:** ⛔ **NO-GO** — chờ Production SQL/env checklist + KN-6 + Phase 18.
 
 ### Production Go (separate decision)
 
@@ -392,6 +394,19 @@ Tham chiếu đầy đủ: `docs/SUPABASE-PRODUCTION-CHECKLIST.md`
 
 ---
 
+## Phase 15 — Preview P0 QA sign-off (2026-07-03)
+
+**Doc:** `docs/v5/PHASE_15_V5_PREVIEW_P0_QA.md`  
+**Script:** `node scripts/verify-phase15-preview-p0-qa.mjs`
+
+| Metric | Value |
+|--------|-------|
+| P0 PASS | **38/38** (0 P0 FAIL) |
+| Script | PASS 54 · FAIL 0 · PARTIAL 5 (P1) · N/A 11 |
+| P1 partial | B3, D3, D4, F3, mobile drawer — justified in Phase 15 doc |
+
+---
+
 ## Kết luận Phase 12
 
 | Quyết định | Trạng thái |
@@ -399,9 +414,9 @@ Tham chiếu đầy đủ: `docs/SUPABASE-PRODUCTION-CHECKLIST.md`
 | **RC1 Staging QA framework** | ✅ Delivered (doc + script) |
 | **RC1 automated technical verify** | ✅ **PASS** — PASS: 19, FAIL: 0, BLOCKED: 0 (2026-07-03) |
 | **Cross-tenant RLS refresh** | ✅ **PASS** — PASS: 31, PARTIAL: 4, FAIL: 0, BLOCKED: 0 (2026-07-03) |
-| **RC1 Staging Go (full)** | ⏳ Pending — manual P0 browser QA |
-| **Production deploy** | ⛔ **NO-GO** — chờ manual P0 QA xong + Production SQL/env + KN-6 mobile RLS |
-| **Đề xuất tiếp theo** | Manual tick P0 master checklist → seed/tighten `qr_tokens`/`checkins` (KN-6) → họp Go/No-Go RC1 |
+| **RC1 Staging Go (full)** | ✅ **PASS** — Phase 15 P0 Preview QA (2026-07-03) |
+| **Production deploy** | ⛔ **NO-GO** — Phase 18–19 + KN-6 + owner approve |
+| **Đề xuất tiếp theo** | Phase 17 RC1 tag (owner approve) → Phase 16 KN-6 → Phase 18 Production readiness |
 
 ---
 
@@ -418,3 +433,5 @@ Tham chiếu đầy đủ: `docs/SUPABASE-PRODUCTION-CHECKLIST.md`
 | `scripts/verify-phase11e-integration-audit-staging.mjs` | Full 11E matrix |
 | `scripts/verify-v5-rc1-staging.mjs` | **RC1 condensed technical gate** |
 | `scripts/verify-cross-tenant-rls-staging.mjs` | **Cross-tenant RLS JWT probe** |
+| `scripts/verify-phase15-preview-p0-qa.mjs` | **Phase 15 P0 Preview browser + probes** |
+| `docs/v5/PHASE_15_V5_PREVIEW_P0_QA.md` | **Phase 15 sign-off report** |

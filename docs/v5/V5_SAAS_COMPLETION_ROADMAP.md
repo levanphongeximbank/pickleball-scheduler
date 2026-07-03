@@ -12,7 +12,7 @@
 
 ## Executive summary
 
-Navigation V5.0 đã triển khai kỹ thuật (config tập trung, sidebar, topbar, mobile nav theo role), **automated gates PASS**, và **Phase 14A + 14B browser QA PASS** (owner Preview, commit `5a455e4`). RC1 tag và Production deploy **vẫn NO-GO** — chờ Phase 15 Manual P0 QA.
+Navigation V5.0 đã triển khai kỹ thuật (config tập trung, sidebar, topbar, mobile nav theo role), **automated gates PASS**, **Phase 14A + 14B browser QA PASS**, và **Phase 15 P0 Preview QA PASS** (2026-07-03). RC1 tag và Production deploy **vẫn NO-GO** — chờ owner approve Phase 17 + Production readiness.
 
 | Hạng mục | Verdict |
 |----------|---------|
@@ -24,7 +24,7 @@ Navigation V5.0 đã triển khai kỹ thuật (config tập trung, sidebar, top
 | Phase 14A Preview Environment | ✅ **PASS** |
 | Phase 14B Menu browser QA | ✅ **PASS** |
 | P0 white screen (Preview) | ✅ **RESOLVED** — `5a455e4` |
-| Manual P0 QA (Phase 15) | ⏳ **Pending** — sẵn sàng bắt đầu |
+| Manual P0 QA (Phase 15) | ✅ **PASS** — 38/38 P0, 0 FAIL (2026-07-03) |
 | RC1 tag | ⛔ **Not allowed yet** |
 | Production | ⛔ **NO-GO** |
 
@@ -42,7 +42,7 @@ Navigation V5.0 đã triển khai kỹ thuật (config tập trung, sidebar, top
 | **Phase 14A Preview Environment** | ✅ PASS | `/login` OK, V5.0 SaaS Preview — 2026-07-03 |
 | **Phase 14B Menu browser QA** | ✅ PASS | Owner sidebar/topbar/context bar/dashboard — commit `5a455e4` |
 | **P0 white screen** | ✅ RESOLVED | `5a455e4` — `GlobalSearch` guard + `main.jsx` error boundary |
-| **Manual P0 QA (Phase 15)** | ⏳ Pending | 66/94 cases — **sẵn sàng bắt đầu** sau 14A+14B PASS |
+| **Manual P0 QA (Phase 15)** | ✅ PASS | 38/38 P0 — `PHASE_15_V5_PREVIEW_P0_QA.md` (2026-07-03) |
 | **RC1 tag** | ⛔ Not allowed yet | Chờ owner approve + tất cả gate trước Phase 17 |
 | **Production** | ⛔ NO-GO | Chưa Production readiness, chưa GA deploy |
 
@@ -72,7 +72,7 @@ Chi tiết QA navigation: `docs/v5/PHASE_14_V5_SAAS_NAVIGATION_QA.md` — Phase 
 
 **Lý do:**
 
-1. Manual P0 QA chưa PASS — 66/94 case pending (Phase 15)
+1. ~~Manual P0 QA chưa PASS~~ ✅ Phase 15 PASS (2026-07-03)
 2. KN-6 chưa closed for Production — `qr_tokens` / `checkins` RLS `USING (true)`
 3. Owner chưa explicit approve RC1 tag
 
@@ -93,7 +93,10 @@ Phase 14A (Preview env) ──► ✅ PASS
 Phase 14B (Menu manual) ──► ✅ PASS
          │
          ▼
-Phase 15 (Manual P0 QA) ──► Phase 17 (RC1 tag)
+Phase 15 (Manual P0 QA) ──► ✅ PASS
+         │
+         ▼
+Phase 17 (RC1 tag)
          │
          ▼
 Phase 16 (KN-6 RLS) ──► Phase 18 (Prod readiness) ──► Phase 19 (GA deploy)
@@ -149,27 +152,14 @@ Phase 16 (KN-6 RLS) ──► Phase 18 (Prod readiness) ──► Phase 19 (GA d
 
 ### Phase 15 — Manual P0 QA
 
-**Mục tiêu:** Tick manual P0 master checklist (66 cases) trên Preview staging.
+**Mục tiêu:** Tick manual P0 master checklist (38 P0) trên Preview staging.
 
-**Trạng thái:** ⏳ **Ready to start** — Phase 14A + 14B PASS (2026-07-03).
+**Trạng thái:** ✅ **PASS** (2026-07-03).
 
-**Tiền đề:**
+**Tài liệu:** `docs/v5/PHASE_15_V5_PREVIEW_P0_QA.md`  
+**Script:** `node scripts/verify-phase15-preview-p0-qa.mjs` — PASS 54 · FAIL 0
 
-- Phase 14A — Preview Environment PASS
-- Phase 14B — Menu V5.0 SaaS Manual PASS
-
-| Domain | Phạm vi | Tài liệu |
-|--------|---------|----------|
-| Auth | Login, logout, session restore, route guard | `PHASE_12` § A1–A8 |
-| RBAC | Role menu, 403 guard, cross-tenant | `PHASE_12` § B* |
-| Billing | Plan, payment, invoices, grace lock | `PHASE_12` § D* |
-| Court Engine | Calendar, bookings, court-engine ops | `PHASE_12` § E* |
-| Mobile / PWA | QR, check-in, bottom nav, offline shell | `PHASE_12` § F* |
-| Menu / UX | Topbar, search, tenant/venue switcher | `PHASE_12` § H* |
-
-**Master checklist:** `docs/v5/PHASE_12_V5_RC1_FULL_QA.md` — 94 cases (38 P0, 36 P1, 20 P2).
-
-**Kết quả mong muốn:** ✅ **Manual P0 PASS** (tick đủ P0 cases trên Preview)
+**Kết quả:** ✅ **38/38 P0 PASS** — 5 P1 partial downgraded (B3, D3, D4, F3, mobile drawer)
 
 ---
 
