@@ -2,7 +2,7 @@ import { Box, Drawer, Toolbar, Typography } from "@mui/material";
 import { useLocation } from "react-router-dom";
 
 import { MENU_GROUPS } from "../config/navigationConfig.js";
-import { filterMenuGroups } from "../auth/menuAccess.js";
+import { filterMenuGroups, resolveRouteAccessScope } from "../auth/menuAccess.js";
 import { useAuth } from "../context/AuthContext.jsx";
 import { useClub } from "../context/ClubContext.jsx";
 import { useIsMobile } from "../features/mobile/hooks/useIsMobile.js";
@@ -21,11 +21,11 @@ export default function Sidebar() {
     return null;
   }
 
-  const scope = {
-    clubId: activeClubId,
-    venueId: activeClub?.venueId || auth.user?.venueId || null,
-    playerId: auth.user?.playerId || null,
-  };
+  const scope = resolveRouteAccessScope({
+    user: auth.user,
+    activeClubId,
+    activeClub,
+  });
 
   const visibleGroups = filterMenuGroups(MENU_GROUPS, auth, scope);
 
@@ -40,12 +40,14 @@ export default function Sidebar() {
           boxSizing: "border-box",
           borderRight: "1px solid rgba(15, 23, 42, 0.08)",
           bgcolor: "#fafbfc",
+          display: "flex",
+          flexDirection: "column",
         },
       }}
     >
-      <Toolbar sx={{ minHeight: { xs: 56, sm: 64 } }} />
+      <Toolbar sx={{ minHeight: { xs: 56, sm: 64 }, flexShrink: 0 }} />
 
-      <Box sx={{ px: 1, pb: 2, overflowY: "auto" }}>
+      <Box sx={{ flex: 1, minHeight: 0, px: 1, pb: 2, overflowY: "auto" }}>
         <NavMenuList
           groups={visibleGroups}
           user={auth.user}

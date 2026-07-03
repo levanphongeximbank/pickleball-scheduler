@@ -8,6 +8,7 @@ import {
   isNavFeatureEnabled,
   NAV_ITEM_STATUS,
   MENU_GROUP_IDS,
+  resolveNavRole,
   resolveRoleMenuAccess,
   ROUTE_PERMISSIONS,
 } from "../config/navigationConfig.js";
@@ -154,11 +155,12 @@ function isGroupAllowedForRole(group, user, rbacEnabled) {
     return true;
   }
 
-  if (!user?.role) {
+  const navRole = resolveNavRole(user?.role);
+  if (!navRole) {
     return group.id === MENU_GROUP_IDS.SUPPORT;
   }
 
-  const allowed = resolveRoleMenuAccess(user.role);
+  const allowed = resolveRoleMenuAccess(navRole);
   if (allowed === "*") {
     return true;
   }

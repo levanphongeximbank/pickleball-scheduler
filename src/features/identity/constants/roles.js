@@ -22,6 +22,10 @@ export const LEGACY_ROLE_ALIASES = Object.freeze({
   [ROLES.VENUE_MANAGER]: ROLES.COURT_MANAGER,
   TENANT_OWNER: ROLES.COURT_OWNER,
   CLUB_MANAGER: ROLES.COURT_MANAGER,
+  PLATFORM_ADMIN: ROLES.SUPER_ADMIN,
+  ADMIN: ROLES.SUPER_ADMIN,
+  owner: ROLES.COURT_OWNER,
+  OWNER: ROLES.COURT_OWNER,
 });
 
 export const CANONICAL_ROLES = Object.freeze([
@@ -67,7 +71,17 @@ export function normalizeRole(role) {
   if (!value) {
     return "";
   }
-  return LEGACY_ROLE_ALIASES[value] || value;
+  if (LEGACY_ROLE_ALIASES[value]) {
+    return LEGACY_ROLE_ALIASES[value];
+  }
+  const upper = value.toUpperCase();
+  if (LEGACY_ROLE_ALIASES[upper]) {
+    return LEGACY_ROLE_ALIASES[upper];
+  }
+  if (CANONICAL_ROLES.includes(upper)) {
+    return upper;
+  }
+  return value;
 }
 
 /** Ghi DB: giữ legacy nếu staging chưa migrate role string (additive Sprint 1). */

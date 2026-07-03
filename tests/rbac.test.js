@@ -28,9 +28,11 @@ import { SIDEBAR_MENU_GROUPS } from "../src/config/sidebarMenu.js";
 import {
   listFutureNavItems,
   listComingSoonNavItems,
+  resolveNavRole,
+  resolveRoleMenuAccess,
 } from "../src/config/navigationConfig.js";
 import { filterMobileBottomNav } from "../src/features/mobile/services/mobileNavAccess.js";
-import { resolveMenuItemPath } from "../src/auth/menuAccess.js";
+import { resolveMenuItemPath, resolveRouteAccessScope } from "../src/auth/menuAccess.js";
 import { enableRbac, signInAs, signOut } from "../src/auth/authService.js";
 import { createClub } from "../src/domain/clubService.js";
 import { guardClubAction, guardDirectorAction } from "../src/auth/guardAction.js";
@@ -830,4 +832,87 @@ test("mobile nav — PLAYER thấy Trang của tôi", () => {
   const labels = items.map((item) => item.label);
 
   assert.ok(labels.includes("Trang của tôi"));
+});
+
+const OWNER_V5_GROUPS = [
+  "Dashboard",
+  "Vận hành sân",
+  "Khách hàng & VĐV",
+  "CLB",
+  "Giải đấu",
+  "Tài chính",
+  "Báo cáo",
+  "Quản trị",
+  "Hỗ trợ",
+];
+
+function assertOwnerSidebarGroups(visible, contextLabel) {
+  const groupLabels = visible.map((group) => group.label);
+  assert.notDeepEqual(
+    groupLabels,
+    ["Hỗ trợ"],
+    `${contextLabel}: sidebar không được chỉ còn Hỗ trợ`
+  );
+  for (const label of OWNER_V5_GROUPS) {
+    assert.ok(groupLabels.includes(label), `${contextLabel}: thiếu nhóm ${label}`);
+  }
+}
+
+test("menuAccess — owner thấy đủ nhóm V5 khi CLB local có venueId lệch profile", () => {
+  const owner = user(ROLES.VENUE_OWNER, {
+    venueId: "venue-staging-a",
+    clubId: "club-1",
+  });
+  const staleClub = {
+    id: "default-club",
+    venueId: "venue-demo-stale",
+    tenantId: "venue-demo-stale",
+  };
+  const scope = resolveRouteAccessScope({
+    user: owner,
+    activeClubId: staleClub.id,
+    activeClub: staleClub,
+  });
+
+  assert.equal(scope.venueId, "venue-staging-a");
+
+  const visible = filterMenuGroups(SIDEBAR_MENU_GROUPS, makeMenuAuth(owner), scope);
+  assertOwnerSidebarGroups(visible, "stale club venue");
+});
+
+test("menuAccess — lowercase owner alias map COURT_OWNER và thấy đủ nhóm V5", () => {
+  const owner = createUserRecord({
+    role: "owner",
+    venueId: "venue-staging-a",
+    clubId: "club-1",
+  });
+
+  assert.equal(owner.role, ROLES.COURT_OWNER);
+  assert.equal(resolveNavRole("owner"), ROLES.COURT_OWNER);
+  assert.ok(resolveRoleMenuAccess("owner").includes("dashboard"));
+
+  const scope = resolveRouteAccessScope({
+    user: owner,
+    activeClubId: "club-1",
+    activeClub: { id: "club-1", venueId: "venue-demo-stale" },
+  });
+  const visible = filterMenuGroups(SIDEBAR_MENU_GROUPS, makeMenuAuth(owner), scope);
+  assertOwnerSidebarGroups(visible, "lowercase owner");
+});
+
+test("menuAccess — PLAYER/REFEREE không thấy menu admin owner", () => {
+  const player = user(ROLES.PLAYER, { venueId: "venue-a", clubId: "club-1", playerId: "p-1" });
+  const referee = user(ROLES.REFEREE, { venueId: "venue-a", clubId: "club-1" });
+
+  const playerGroups = filterMenuGroups(SIDEBAR_MENU_GROUPS, makeMenuAuth(player), SCOPE).map(
+    (group) => group.label
+  );
+  const refereeGroups = filterMenuGroups(SIDEBAR_MENU_GROUPS, makeMenuAuth(referee), SCOPE).map(
+    (group) => group.label
+  );
+
+  assert.equal(playerGroups.includes("Quản trị"), false);
+  assert.equal(playerGroups.includes("Tài chính"), false);
+  assert.equal(refereeGroups.includes("Quản trị"), false);
+  assert.equal(refereeGroups.includes("Tài chính"), false);
 });

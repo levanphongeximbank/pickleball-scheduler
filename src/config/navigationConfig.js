@@ -1094,11 +1094,17 @@ export function resolveNavRole(role) {
 }
 
 export function resolveRoleMenuAccess(role) {
-  const normalized = resolveNavRole(role);
+  const raw = String(role || "").trim();
+  if (!raw) return [];
+
+  const normalized = resolveNavRole(raw);
+  const upper = raw.toUpperCase();
+
   const direct =
-    ROLE_MENU_MAP[role] ??
+    ROLE_MENU_MAP[raw] ??
     ROLE_MENU_MAP[normalized] ??
-    ROLE_MENU_MAP[normalizeRole(role)];
+    ROLE_MENU_MAP[upper] ??
+    ROLE_MENU_MAP[normalizeRole(raw)];
   if (direct) return direct;
   return [];
 }

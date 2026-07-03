@@ -8,6 +8,7 @@ import { useIsMobile } from "../hooks/useIsMobile.js";
 import { useAuth } from "../../../context/AuthContext.jsx";
 import { useClub } from "../../../context/ClubContext.jsx";
 import { filterMobileBottomNav } from "../services/mobileNavAccess.js";
+import { resolveRouteAccessScope } from "../../../auth/menuAccess.js";
 import { useMobileNav } from "../context/mobileNavContext.js";
 
 function isNavActive(currentPath, item) {
@@ -40,16 +41,19 @@ export default function MobileBottomNav() {
   const { activeClubId, activeClub } = useClub();
   const { openDrawer } = useMobileNav();
 
-  const scope = {
-    clubId: activeClubId,
-    venueId: activeClub?.venueId || auth.user?.venueId || null,
-    tenantId: activeClub?.tenantId || activeClub?.venueId || auth.user?.tenantId || null,
-    playerId: auth.user?.playerId || null,
-  };
+  const scope = useMemo(
+    () =>
+      resolveRouteAccessScope({
+        user: auth.user,
+        activeClubId,
+        activeClub,
+      }),
+    [auth.user, activeClubId, activeClub]
+  );
 
   const navItems = useMemo(
     () => filterMobileBottomNav(auth, scope),
-    [auth, scope.clubId, scope.venueId, scope.tenantId, scope.playerId]
+    [auth, scope]
   );
 
   if (!isMobile) {

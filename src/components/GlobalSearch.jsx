@@ -10,7 +10,7 @@ import {
 import SearchIcon from "@mui/icons-material/Search";
 
 import { MENU_GROUPS, buildSearchableNavItems } from "../config/navigationConfig.js";
-import { filterMenuGroups } from "../auth/menuAccess.js";
+import { filterMenuGroups, resolveRouteAccessScope } from "../auth/menuAccess.js";
 import { useAuth } from "../context/AuthContext.jsx";
 import { useClub } from "../context/ClubContext.jsx";
 
@@ -21,12 +21,13 @@ export default function GlobalSearch({ size = "small", maxWidth = 220 }) {
   const [inputValue, setInputValue] = useState("");
 
   const scope = useMemo(
-    () => ({
-      clubId: activeClubId,
-      venueId: activeClub?.venueId || auth.user?.venueId || null,
-      playerId: auth.user?.playerId || null,
-    }),
-    [activeClubId, activeClub?.venueId, auth.user?.venueId, auth.user?.playerId]
+    () =>
+      resolveRouteAccessScope({
+        user: auth.user,
+        activeClubId,
+        activeClub,
+      }),
+    [activeClubId, activeClub, auth.user]
   );
 
   const options = useMemo(() => {
