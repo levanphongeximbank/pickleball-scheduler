@@ -2,11 +2,24 @@ import { ROLES, normalizeRole, rolesEqual } from "../../../auth/roles.js";
 import { PERMISSIONS } from "../../identity/constants/permissions.js";
 import { canAccessRoute, isMenuItemVisible } from "../../../auth/menuAccess.js";
 import {
-  MOBILE_BOTTOM_NAV,
-  MOBILE_REFEREE_NAV,
+  MOBILE_BOTTOM_NAV_PROFILES,
   MOBILE_QUICK_LINKS,
-} from "../constants/mobileNav.js";
+  resolveMobileNavProfile,
+} from "../../../config/navigationConfig.js";
+import { getNavIconComponent } from "../../../config/navIcons.js";
 import { canAccessOperationsDashboard } from "./operationsDashboardService.js";
+
+/** @deprecated Dùng navigationConfig — giữ export tương thích tests. */
+export const MOBILE_BOTTOM_NAV = MOBILE_BOTTOM_NAV_PROFILES.manager.map((item) => ({
+  ...item,
+  icon: getNavIconComponent(item.iconKey),
+}));
+
+/** @deprecated */
+export const MOBILE_REFEREE_NAV = MOBILE_BOTTOM_NAV_PROFILES.referee.map((item) => ({
+  ...item,
+  icon: getNavIconComponent(item.iconKey),
+}));
 
 /** Mobile route → minimum permissions (OR). Empty = authenticated only with role rules. */
 export const MOBILE_ROUTE_ACCESS = Object.freeze({
@@ -26,6 +39,9 @@ const PLAYER_SHELL_ROLES = new Set([
   ROLES.PLAYER,
   ROLES.CLUB_OWNER,
   ROLES.REFEREE,
+  ROLES.COURT_OWNER,
+  ROLES.COURT_MANAGER,
+  ROLES.SUPER_ADMIN,
 ]);
 
 const MOBILE_ROUTE_ROLE_RULES = Object.freeze({
@@ -47,9 +63,20 @@ function resolveScope(auth, scope = {}) {
   };
 }
 
+function resolveNavItemPath(item, user) {
+  if (typeof item.resolvePath === "function") {
+    return item.resolvePath(user);
+  }
+  return item.path;
+}
+
 function isNavItemAllowed(item, auth, scope) {
   const { can, rbacEnabled, isAuthenticated, user } = auth;
   const resolvedScope = resolveScope(auth, scope);
+
+  if (item.action === "open-drawer") {
+    return true;
+  }
 
   if (!rbacEnabled || !isAuthenticated) {
     return true;
@@ -70,7 +97,7 @@ function isNavItemAllowed(item, auth, scope) {
   }
 
   if (!item.permissions?.length) {
-    if (item.key === "player-home") {
+    if (item.key === "player-home" || item.key === "player-home-main") {
       return (
         PLAYER_SHELL_ROLES.has(normalizeRole(user?.role)) ||
         Boolean(user?.playerId)
@@ -82,26 +109,45 @@ function isNavItemAllowed(item, auth, scope) {
   return item.permissions.some((permission) => can(permission, resolvedScope));
 }
 
+function hydrateMobileNavItem(item, auth) {
+  const path = resolveNavItemPath(item, auth.user);
+  return {
+    ...item,
+    path,
+    icon: getNavIconComponent(item.iconKey),
+  };
+}
+
 export function filterMobileBottomNav(auth, scope = {}) {
   const { user, rbacEnabled } = auth;
+  const profileKey = rbacEnabled && user?.role
+    ? resolveMobileNavProfile(user.role)
+    : "manager";
 
-  if (rbacEnabled && user?.role && normalizeRole(user.role) === ROLES.REFEREE) {
-    return MOBILE_REFEREE_NAV.filter((item) => isNavItemAllowed(item, auth, scope));
-  }
+  const baseItems = MOBILE_BOTTOM_NAV_PROFILES[profileKey] || MOBILE_BOTTOM_NAV_PROFILES.manager;
 
-  return MOBILE_BOTTOM_NAV.filter((item) => isNavItemAllowed(item, auth, scope)).map((item) => {
-    if (
-      item.key === "dashboard" &&
-      canAccessOperationsDashboard(user, resolveScope(auth, scope))
-    ) {
-      return { ...item, path: "/mobile/operations", label: "Vận hành" };
-    }
-    return item;
-  });
+  return baseItems
+    .filter((item) => isNavItemAllowed(item, auth, scope))
+    .map((item) => {
+      const hydrated = hydrateMobileNavItem(item, auth);
+
+      if (
+        profileKey === "manager" &&
+        item.key === "dashboard" &&
+        canAccessOperationsDashboard(user, resolveScope(auth, scope))
+      ) {
+        return { ...hydrated, path: "/mobile/operations", label: "Vận hành" };
+      }
+
+      return hydrated;
+    })
+    .filter((item) => item.action || item.path);
 }
 
 export function filterMobileQuickLinks(auth, scope = {}) {
-  return MOBILE_QUICK_LINKS.filter((item) => isNavItemAllowed(item, auth, scope));
+  return MOBILE_QUICK_LINKS.filter((item) => isNavItemAllowed(item, auth, scope)).map(
+    (item) => hydrateMobileNavItem(item, auth)
+  );
 }
 
 function passesMobileRouteRoleRules(pathname, user) {

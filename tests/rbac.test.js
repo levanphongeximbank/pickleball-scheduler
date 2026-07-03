@@ -25,6 +25,11 @@ import {
   getDefaultHomePath,
 } from "../src/auth/menuAccess.js";
 import { SIDEBAR_MENU_GROUPS } from "../src/config/sidebarMenu.js";
+import {
+  listFutureNavItems,
+} from "../src/config/navigationConfig.js";
+import { filterMobileBottomNav } from "../src/features/mobile/services/mobileNavAccess.js";
+import { resolveMenuItemPath } from "../src/auth/menuAccess.js";
 import { enableRbac, signInAs, signOut } from "../src/auth/authService.js";
 import { createClub } from "../src/domain/clubService.js";
 import { guardClubAction, guardDirectorAction } from "../src/auth/guardAction.js";
@@ -180,10 +185,10 @@ test("menuAccess — PLAYER chỉ thấy menu giải đấu", () => {
   });
 
   const labels = visible.flatMap((g) => g.items.map((i) => i.text));
-  assert.ok(labels.includes("Tạo giải đấu"));
-  assert.ok(labels.includes("Vui chơi mỗi ngày"));
+  assert.ok(labels.includes("Danh sách giải"));
+  assert.ok(labels.includes("Giải nội bộ CLB"));
   assert.ok(labels.includes("Hồ sơ cá nhân"));
-  assert.equal(labels.includes("Người chơi"), false);
+  assert.equal(labels.includes("Danh sách VĐV"), false);
   assert.equal(labels.includes("Cài đặt"), false);
 });
 
@@ -685,33 +690,33 @@ test("route access — ACCOUNTANT revenue, không players", () => {
   assert.equal(check("/select-players"), false);
 });
 
-test("menuAccess — VENUE_OWNER thấy Người chơi, không Xếp sân", () => {
+test("menuAccess — VENUE_OWNER thấy VĐV và vận hành sân", () => {
   const owner = user(ROLES.VENUE_OWNER, { venueId: "venue-a", clubId: "club-1" });
   const visible = filterMenuGroups(SIDEBAR_MENU_GROUPS, makeMenuAuth(owner), SCOPE);
   const labels = visible.flatMap((g) => g.items.map((i) => i.text));
 
-  assert.ok(labels.includes("Người chơi"));
-  assert.equal(labels.includes("Xếp sân"), false);
+  assert.ok(labels.includes("Danh sách VĐV"));
+  assert.ok(labels.includes("Đặt sân") || labels.includes("Trạng thái sân"));
   assert.ok(labels.includes("Cài đặt"));
 });
 
-test("menuAccess — VENUE_MANAGER thấy Người chơi, không Xếp sân", () => {
+test("menuAccess — VENUE_MANAGER thấy VĐV và lịch sân", () => {
   const manager = user(ROLES.VENUE_MANAGER, { venueId: "venue-a", clubId: "club-1" });
   const visible = filterMenuGroups(SIDEBAR_MENU_GROUPS, makeMenuAuth(manager), SCOPE);
   const labels = visible.flatMap((g) => g.items.map((i) => i.text));
 
-  assert.equal(labels.includes("Xếp sân"), false);
-  assert.ok(labels.includes("Người chơi"));
+  assert.ok(labels.includes("Danh sách VĐV"));
+  assert.ok(labels.includes("Lịch sân") || labels.includes("Đặt sân"));
 });
 
-test("menuAccess — CASHIER chỉ Live Courts / bookings area", () => {
+test("menuAccess — CASHIER chỉ vận hành sân / đặt sân", () => {
   const cashier = user(ROLES.CASHIER, { venueId: "venue-a" });
   const visible = filterMenuGroups(SIDEBAR_MENU_GROUPS, makeMenuAuth(cashier), SCOPE);
   const labels = visible.flatMap((g) => g.items.map((i) => i.text));
 
-  assert.ok(labels.includes("Live Courts"));
-  assert.equal(labels.includes("Người chơi"), false);
-  assert.equal(labels.includes("Xếp sân"), false);
+  assert.ok(labels.includes("Đặt sân") || labels.includes("Trạng thái sân"));
+  assert.equal(labels.includes("Danh sách VĐV"), false);
+  assert.equal(labels.includes("Danh sách chờ"), false);
 });
 
 test("menuAccess — CLUB_OWNER thấy CLB & Giải, không Live Courts", () => {
@@ -722,10 +727,10 @@ test("menuAccess — CLUB_OWNER thấy CLB & Giải, không Live Courts", () => 
   const visible = filterMenuGroups(SIDEBAR_MENU_GROUPS, makeMenuAuth(clubOwner), SCOPE);
   const labels = visible.flatMap((g) => g.items.map((i) => i.text));
 
-  assert.ok(labels.includes("CLB & Giải"));
-  assert.ok(labels.includes("Tạo giải đấu"));
-  assert.ok(labels.includes("Vui chơi mỗi ngày"));
-  assert.equal(labels.includes("Live Courts"), false);
+  assert.ok(labels.includes("Lịch sinh hoạt") || labels.includes("Danh sách CLB"));
+  assert.ok(labels.includes("Danh sách giải"));
+  assert.ok(labels.includes("Giải nội bộ CLB"));
+  assert.equal(labels.includes("Trạng thái sân"), false);
 });
 
 test("menuAccess — RBAC bật, chưa đăng nhập chỉ Cài đặt", () => {
@@ -737,4 +742,63 @@ test("menuAccess — RBAC bật, chưa đăng nhập chỉ Cài đặt", () => {
   const labels = visible.flatMap((g) => g.items.map((i) => i.text));
 
   assert.deepEqual(labels, ["Cài đặt"]);
+});
+
+test("menuAccess — RC1 không render mục future (V5.1)", () => {
+  const owner = user(ROLES.VENUE_OWNER, { venueId: "venue-a", clubId: "club-1" });
+  const visible = filterMenuGroups(SIDEBAR_MENU_GROUPS, makeMenuAuth(owner), SCOPE);
+  const labels = visible.flatMap((g) => g.items.map((i) => i.text));
+  const futureLabels = listFutureNavItems().map((item) => item.label);
+
+  for (const label of futureLabels) {
+    assert.equal(labels.includes(label), false, `future item "${label}" không được render`);
+  }
+});
+
+test("menuAccess — VENUE_OWNER thấy Của tôi (Mobile)", () => {
+  const owner = user(ROLES.VENUE_OWNER, { venueId: "venue-a", clubId: "club-1" });
+  const visible = filterMenuGroups(SIDEBAR_MENU_GROUPS, makeMenuAuth(owner), SCOPE);
+  const labels = visible.flatMap((g) => g.items.map((i) => i.text));
+
+  assert.ok(labels.includes("Của tôi (Mobile)"));
+});
+
+test("menuAccess — không còn label USERS trong sidebar", () => {
+  const owner = user(ROLES.VENUE_OWNER, { venueId: "venue-a", clubId: "club-1" });
+  const visible = filterMenuGroups(SIDEBAR_MENU_GROUPS, makeMenuAuth(owner), SCOPE);
+  const labels = visible.flatMap((g) => [g.label, ...g.items.map((i) => i.text)]);
+
+  assert.equal(labels.some((label) => String(label).toUpperCase() === "USERS"), false);
+  assert.ok(labels.includes("Người dùng"));
+});
+
+test("menuAccess — owner RC1 không thấy nhóm AI Assistant khi flag tắt", () => {
+  const owner = user(ROLES.VENUE_OWNER, { venueId: "venue-a", clubId: "club-1" });
+  const visible = filterMenuGroups(SIDEBAR_MENU_GROUPS, makeMenuAuth(owner), SCOPE);
+  const groupLabels = visible.map((g) => g.label);
+
+  assert.equal(groupLabels.includes("AI Assistant"), false);
+  assert.equal(groupLabels.some((label) => /AI Director Platform/i.test(label)), false);
+});
+
+test("route access — VENUE_OWNER vào mọi path menu RC1 visible", () => {
+  const owner = user(ROLES.VENUE_OWNER, { venueId: "venue-a", clubId: "club-1" });
+  const check = makeRouteChecker(owner);
+  const visible = filterMenuGroups(SIDEBAR_MENU_GROUPS, makeMenuAuth(owner), SCOPE);
+
+  for (const group of visible) {
+    for (const item of group.items) {
+      const path = resolveMenuItemPath(item, owner);
+      if (!path || path.includes("?")) continue;
+      assert.equal(check(path.split("?")[0]), true, `owner phải vào được ${path}`);
+    }
+  }
+});
+
+test("mobile nav — PLAYER thấy Trang của tôi", () => {
+  const player = user(ROLES.PLAYER, { venueId: "venue-a", clubId: "club-1", playerId: "p-1" });
+  const items = filterMobileBottomNav(makeMenuAuth(player), SCOPE);
+  const labels = items.map((item) => item.label);
+
+  assert.ok(labels.includes("Trang của tôi"));
 });

@@ -16,6 +16,8 @@ import FiberManualRecordIcon from "@mui/icons-material/FiberManualRecord";
 
 import ClubSwitcher from "./ClubSwitcher";
 import TenantSwitcher, { TenantBadge } from "./TenantSwitcher";
+import VenueSwitcher from "./VenueSwitcher";
+import GlobalSearch from "./GlobalSearch";
 import SeasonLeagueSwitcher from "./SeasonLeagueSwitcher";
 
 import { useClub } from "../context/ClubContext.jsx";
@@ -240,27 +242,21 @@ export default function Header({ onMenuClick }) {
         )}
 
         <Typography
-
+          component={RouterLink}
+          to="/"
           variant="subtitle1"
-
           noWrap
-
           sx={{
-
             fontWeight: 900,
-
             flexShrink: 0,
-
             display: { xs: "none", sm: "block" },
-
             fontSize: { sm: 15, md: 16 },
-
+            color: "inherit",
+            textDecoration: "none",
+            "&:hover": { opacity: 0.92 },
           }}
-
         >
-
           Pickleball Scheduler Pro
-
         </Typography>
 
         {isMobile && (
@@ -302,9 +298,11 @@ export default function Header({ onMenuClick }) {
         >
 
           {!isMobile && <TenantSwitcher />}
+          {!isMobile && <VenueSwitcher />}
           <ClubSwitcher />
           {!isMobile && <SeasonLeagueSwitcher />}
           {!isMobile && <TenantBadge />}
+          {!isMobile && <GlobalSearch />}
 
         </Stack>
 

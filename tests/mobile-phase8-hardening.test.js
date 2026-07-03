@@ -95,10 +95,10 @@ describe("mobile phase 8 — permission navigation", () => {
     });
     const items = filterMobileBottomNav(authContext(player), { clubId: "c1", playerId: "p1" });
     const keys = items.map((item) => item.key);
-    assert.ok(keys.includes("tournament"));
-    assert.ok(keys.includes("player-home"));
+    assert.ok(keys.includes("player-tournament") || keys.includes("player-home-main"));
+    assert.ok(keys.includes("player-profile") || keys.includes("player-home-main"));
     assert.equal(keys.includes("dashboard"), false);
-    assert.equal(keys.includes("checkin"), false);
+    assert.equal(keys.includes("venue-checkin"), false);
   });
 
   it("REFEREE thấy nav chấm trận, không thấy billing/admin", () => {
@@ -109,7 +109,7 @@ describe("mobile phase 8 — permission navigation", () => {
     });
     const items = filterMobileBottomNav(authContext(referee), { clubId: "c1", venueId: "venue-a" });
     const keys = items.map((item) => item.key);
-    assert.ok(keys.includes("referee"));
+    assert.ok(keys.includes("referee-matches") || keys.includes("referee-score"));
     assert.equal(keys.includes("dashboard"), false);
     assert.equal(keys.includes("players"), false);
   });
@@ -137,6 +137,19 @@ describe("mobile phase 8 — permission navigation", () => {
       playerId: "p1",
     });
     assert.equal(allowed, false);
+  });
+
+  it("VENUE_OWNER vào /mobile/player", () => {
+    const owner = createUserRecord({
+      role: ROLES.COURT_OWNER,
+      clubId: "c1",
+      venueId: "venue-a",
+    });
+    const allowed = canAccessMobileRoute("/mobile/player", authContext(owner), {
+      clubId: "c1",
+      venueId: "venue-a",
+    });
+    assert.equal(allowed, true);
   });
 
   it("tenant expired khóa check-in nhưng vẫn cho /mobile/player", () => {

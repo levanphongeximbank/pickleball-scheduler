@@ -12,41 +12,21 @@ import {
 } from "@mui/material";
 import { Link, useLocation } from "react-router-dom";
 
-import DashboardIcon from "@mui/icons-material/Dashboard";
-import PeopleIcon from "@mui/icons-material/People";
-import SettingsIcon from "@mui/icons-material/Settings";
-import GroupsIcon from "@mui/icons-material/Groups";
-import StadiumIcon from "@mui/icons-material/Stadium";
-import CalendarMonthIcon from "@mui/icons-material/CalendarMonth";
-import SportsTennisIcon from "@mui/icons-material/SportsTennis";
-import GridViewIcon from "@mui/icons-material/GridView";
-import AccountTreeIcon from "@mui/icons-material/AccountTree";
-import LeaderboardIcon from "@mui/icons-material/Leaderboard";
-import PersonIcon from "@mui/icons-material/Person";
-import { SIDEBAR_MENU_GROUPS } from "../config/sidebarMenu.js";
+import { MENU_GROUPS } from "../config/navigationConfig.js";
+import { getNavIcon } from "../config/navIcons.js";
 import { filterMenuGroups, resolveMenuItemPath } from "../auth/menuAccess.js";
 import { useAuth } from "../context/AuthContext.jsx";
 import { useClub } from "../context/ClubContext.jsx";
 import { useIsMobile } from "../features/mobile/hooks/useIsMobile.js";
 
-const drawerWidth = 228;
+const drawerWidth = 248;
 
-const ICONS = {
-  dashboard: <DashboardIcon fontSize="small" />,
-  "daily-play": <SportsTennisIcon fontSize="small" />,
-  "live-courts": <StadiumIcon fontSize="small" />,
-  players: <PeopleIcon fontSize="small" />,
-  seasons: <CalendarMonthIcon fontSize="small" />,
-  "tournament-create": <GridViewIcon fontSize="small" />,
-  bracket: <AccountTreeIcon fontSize="small" />,
-  statistics: <LeaderboardIcon fontSize="small" />,
-  "player-profile": <PersonIcon fontSize="small" />,
-  "club-settings": <GroupsIcon fontSize="small" />,
-  settings: <SettingsIcon fontSize="small" />,
-};
+function stripQuery(path = "") {
+  return String(path).split("?")[0];
+}
 
 function isActivePath(currentPath, item) {
-  const itemPath = resolveMenuItemPath(item) || item.path;
+  const itemPath = stripQuery(resolveMenuItemPath(item) || item.path);
 
   if (item.match === "exact" || itemPath === "/") {
     return currentPath === "/";
@@ -56,8 +36,32 @@ function isActivePath(currentPath, item) {
     return (
       currentPath === "/court-management" ||
       (currentPath.startsWith("/court-management/") &&
-        !currentPath.startsWith("/court-management/courts"))
+        !currentPath.startsWith("/court-management/courts") &&
+        !currentPath.startsWith("/court-management/calendar") &&
+        !currentPath.startsWith("/court-management/bookings") &&
+        !currentPath.startsWith("/court-management/revenue") &&
+        !currentPath.startsWith("/court-management/customers"))
     );
+  }
+
+  if (item.match === "court-calendar") {
+    return currentPath.startsWith("/court-management/calendar");
+  }
+
+  if (item.match === "court-bookings") {
+    return currentPath.startsWith("/court-management/bookings");
+  }
+
+  if (item.match === "court-revenue" || item.match === "court-revenue-debt" || item.match === "court-revenue-peak") {
+    return currentPath.startsWith("/court-management/revenue");
+  }
+
+  if (item.match === "court-customers" || item.match === "court-customers-groups") {
+    return currentPath.startsWith("/court-management/customers");
+  }
+
+  if (item.match === "court-courts") {
+    return currentPath.startsWith("/court-management/courts");
   }
 
   if (item.match === "club-settings") {
@@ -76,10 +80,38 @@ function isActivePath(currentPath, item) {
     return currentPath === "/tournament";
   }
 
+  if (item.match === "tournament-create" || item.match === "tournament-register") {
+    return currentPath === "/tournament";
+  }
+
+  if (item.match === "tournament-schedule" || item.match === "court-engine") {
+    return currentPath.startsWith("/court-engine");
+  }
+
   if (item.match === "daily-play") {
     return (
       currentPath === "/daily-play" || currentPath.startsWith("/tournament/daily/")
     );
+  }
+
+  if (item.match === "clubs" || item.match === "clubs-create") {
+    return currentPath === "/clubs" || currentPath.startsWith("/clubs/");
+  }
+
+  if (item.match === "club-members") {
+    return currentPath === "/players" || currentPath.startsWith("/players/");
+  }
+
+  if (item.match === "statistics-skill" || item.match === "statistics-history") {
+    return currentPath === "/statistics" || currentPath.startsWith("/statistics/");
+  }
+
+  if (item.match === "users-roles") {
+    return currentPath === "/users";
+  }
+
+  if (item.match === "referee-hub") {
+    return currentPath === "/referee" || currentPath.startsWith("/referee/");
   }
 
   return currentPath === itemPath || currentPath.startsWith(`${itemPath}/`);
@@ -101,7 +133,7 @@ export default function Sidebar() {
     playerId: auth.user?.playerId || null,
   };
 
-  const visibleGroups = filterMenuGroups(SIDEBAR_MENU_GROUPS, auth, scope);
+  const visibleGroups = filterMenuGroups(MENU_GROUPS, auth, scope);
 
   return (
     <Drawer
@@ -119,10 +151,10 @@ export default function Sidebar() {
     >
       <Toolbar sx={{ minHeight: { xs: 56, sm: 64 } }} />
 
-      <Box sx={{ px: 1, pb: 2 }}>
+      <Box sx={{ px: 1, pb: 2, overflowY: "auto" }}>
         <List dense disablePadding>
           {visibleGroups.map((group, groupIndex) => (
-            <Box key={group.label || `group-${groupIndex}`} sx={{ mb: 0.5 }}>
+            <Box key={group.id || group.label || `group-${groupIndex}`} sx={{ mb: 0.5 }}>
               {group.label && (
                 <ListSubheader
                   component="div"
@@ -173,7 +205,7 @@ export default function Sidebar() {
                         color: selected ? "#0f766e" : "text.secondary",
                       }}
                     >
-                      {ICONS[item.key] || <DashboardIcon fontSize="small" />}
+                      {getNavIcon(item.icon || item.key)}
                     </ListItemIcon>
                     <ListItemText
                       primary={item.text}
@@ -199,7 +231,7 @@ export default function Sidebar() {
           color="text.disabled"
           sx={{ display: "block", textAlign: "center", mt: 2, px: 1 }}
         >
-          AI Director Platform
+          Pickleball Scheduler Pro v5
         </Typography>
       </Box>
     </Drawer>

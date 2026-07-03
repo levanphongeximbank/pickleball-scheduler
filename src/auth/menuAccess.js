@@ -4,73 +4,22 @@ import {
   isApiEnabled,
   isMarketplaceEnabled,
 } from "../features/integrations/config/integrationFlags.js";
+import {
+  isNavFeatureEnabled,
+  NAV_ITEM_STATUS,
+  resolveRoleMenuAccess,
+  ROUTE_PERMISSIONS,
+} from "../config/navigationConfig.js";
 
 const FEATURE_FLAG_CHECKERS = Object.freeze({
   marketplace: isMarketplaceEnabled,
   api: isApiEnabled,
   integrations: () => isApiEnabled() || isMarketplaceEnabled(),
+  ai: isNavFeatureEnabled.bind(null, "ai"),
 });
 
-/**
- * Permission tối thiểu cho mỗi route — có thể nhiều lựa chọn (OR).
- */
-export const ROUTE_ACCESS_PERMISSIONS = Object.freeze({
-  "/": [PERMISSIONS.STATISTICS_VIEW, PERMISSIONS.TOURNAMENT_VIEW, PERMISSIONS.FINANCE_VIEW, PERMISSIONS.BOOKING_VIEW],
-  "/dashboard": [PERMISSIONS.STATISTICS_VIEW, PERMISSIONS.TOURNAMENT_VIEW, PERMISSIONS.FINANCE_VIEW, PERMISSIONS.BOOKING_VIEW],
-  "/players": [PERMISSIONS.PLAYER_VIEW],
-  "/court-management": [PERMISSIONS.COURT_VIEW],
-  "/court-management/calendar": [PERMISSIONS.BOOKING_VIEW],
-  "/court-management/bookings": [PERMISSIONS.BOOKING_VIEW],
-  "/court-management/revenue": [PERMISSIONS.FINANCE_VIEW],
-  "/court-management/customers": [PERMISSIONS.CUSTOMER_VIEW],
-  "/court-management/courts": [PERMISSIONS.COURT_VIEW],
-  "/select-players": [PERMISSIONS.SCHEDULING_VIEW],
-  "/daily-play": [PERMISSIONS.TOURNAMENT_VIEW],
-  "/club": [PERMISSIONS.CLUB_VIEW],
-  "/clubs": [PERMISSIONS.CLUB_VIEW],
-  "/tournament": [PERMISSIONS.TOURNAMENT_VIEW],
-  "/tournament/bracket": [PERMISSIONS.TOURNAMENT_VIEW],
-  "/court-engine": [PERMISSIONS.DIRECTOR_USE, PERMISSIONS.SCHEDULING_RUN],
-  "/statistics": [PERMISSIONS.STATISTICS_VIEW],
-  "/court-management/future": [
-    PERMISSIONS.COURT_UPDATE,
-    PERMISSIONS.VENUE_UPDATE,
-    PERMISSIONS.COURT_VIEW,
-  ],
-  "/settings": [PERMISSIONS.SETTINGS_VIEW],
-  "/settings/integrations": [PERMISSIONS.INTEGRATION_VIEW, PERMISSIONS.SETTINGS_VIEW],
-  "/settings/integrations/payments": [PERMISSIONS.INTEGRATION_MANAGE],
-  "/settings/integrations/zalo-oa": [PERMISSIONS.INTEGRATION_MANAGE],
-  "/billing": [PERMISSIONS.BILLING_VIEW],
-  "/billing/current-plan": [PERMISSIONS.BILLING_VIEW],
-  "/billing/usage": [PERMISSIONS.BILLING_VIEW],
-  "/billing/invoices": [PERMISSIONS.BILLING_INVOICE_VIEW],
-  "/billing/payment": [PERMISSIONS.BILLING_PAYMENT_VIEW],
-  "/billing/upgrade": [PERMISSIONS.BILLING_SUBSCRIPTION_VIEW],
-  "/billing/support": [PERMISSIONS.BILLING_VIEW],
-  "/admin/billing": [PERMISSIONS.BILLING_MANAGE],
-  "/admin/billing/tenants": [PERMISSIONS.BILLING_MANAGE],
-  "/admin/billing/plans": [PERMISSIONS.BILLING_PLAN_VIEW],
-  "/admin/billing/invoices": [PERMISSIONS.BILLING_INVOICE_VIEW],
-  "/admin/billing/payments": [PERMISSIONS.BILLING_PAYMENT_VIEW],
-  "/admin/billing/audit": [PERMISSIONS.BILLING_AUDIT_VIEW],
-  "/users": [PERMISSIONS.USER_MANAGE],
-  "/audit": [PERMISSIONS.USER_MANAGE],
-  "/profile": [],
-  "/referee": [PERMISSIONS.TOURNAMENT_VIEW, PERMISSIONS.MATCH_UPDATE],
-  "/403": [],
-  "/admin/tenants": [PERMISSIONS.ROLE_MANAGE, PERMISSIONS.VENUE_UPDATE],
-  "/mobile/check-in": [PERMISSIONS.TOURNAMENT_VIEW],
-  "/mobile/qr-scan": [PERMISSIONS.TOURNAMENT_VIEW, PERMISSIONS.TOURNAMENT_UPDATE],
-  "/mobile/qr-generate": [PERMISSIONS.TOURNAMENT_UPDATE],
-  "/mobile/notifications": [],
-  "/mobile/player": [],
-  "/mobile/operations": [
-    PERMISSIONS.BOOKING_VIEW,
-    PERMISSIONS.COURT_VIEW,
-    PERMISSIONS.FINANCE_VIEW,
-  ],
-});
+/** Permission tối thiểu cho mỗi route — derive từ navigationConfig. */
+export const ROUTE_ACCESS_PERMISSIONS = ROUTE_PERMISSIONS;
 
 export function getRouteAccessPermissions(pathname) {
   if (!pathname) return [];
@@ -122,6 +71,10 @@ export function getRouteAccessPermissions(pathname) {
     return [PERMISSIONS.COURT_VIEW, PERMISSIONS.BOOKING_VIEW];
   }
 
+  if (pathname.startsWith("/marketplace")) {
+    return [PERMISSIONS.MARKETPLACE_VIEW];
+  }
+
   if (pathname.startsWith("/mobile/")) {
     const mobilePerms = ROUTE_ACCESS_PERMISSIONS[pathname];
     if (mobilePerms) {
@@ -146,6 +99,10 @@ export function canAccessRoute(can, pathname, scope = {}) {
 }
 
 export function isMenuItemVisible(item, { can, rbacEnabled, isAuthenticated, user, scope }) {
+  if (item.navStatus === NAV_ITEM_STATUS.FUTURE) {
+    return false;
+  }
+
   if (item.requiresFeature) {
     const checker = FEATURE_FLAG_CHECKERS[item.requiresFeature];
     if (checker && !checker()) {
@@ -187,6 +144,31 @@ export function resolveMenuItemPath(item, user) {
   return item.path;
 }
 
+function isGroupAllowedForRole(group, user, rbacEnabled) {
+  if (!rbacEnabled || !user?.role) {
+    return true;
+  }
+
+  const allowed = resolveRoleMenuAccess(user.role);
+  if (allowed === "*") {
+    return true;
+  }
+
+  if (group.id && !allowed.includes(group.id)) {
+    return false;
+  }
+
+  return true;
+}
+
+function isGroupFeatureVisible(group) {
+  if (!group.requiresFeature) {
+    return true;
+  }
+  const checker = FEATURE_FLAG_CHECKERS[group.requiresFeature];
+  return !checker || checker();
+}
+
 export function filterMenuGroups(groups, authContext, scope = {}) {
   const { can, rbacEnabled, isAuthenticated, user } = authContext;
 
@@ -194,12 +176,14 @@ export function filterMenuGroups(groups, authContext, scope = {}) {
     return groups
       .map((group) => ({
         ...group,
-        items: group.items.filter((item) => item.path === "/settings"),
+        items: group.items.filter((item) => item.key === "support-settings"),
       }))
       .filter((group) => group.items.length > 0);
   }
 
   return groups
+    .filter((group) => isGroupFeatureVisible(group))
+    .filter((group) => isGroupAllowedForRole(group, user, rbacEnabled))
     .filter((group) => {
       if (!group.roles?.length) return true;
       if (!rbacEnabled || !isAuthenticated) return true;

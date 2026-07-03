@@ -16,6 +16,7 @@ import OfflineBanner from "../features/mobile/components/OfflineBanner.jsx";
 import PwaInstallPrompt from "../features/mobile/components/PwaInstallPrompt.jsx";
 import MobileBottomNav from "../features/mobile/layout/MobileBottomNav.jsx";
 import MobileDrawer from "../features/mobile/layout/MobileDrawer.jsx";
+import { MobileNavProvider } from "../features/mobile/context/MobileNavProvider.jsx";
 import { useIsMobile } from "../features/mobile/hooks/useIsMobile.js";
 
 function MainLayoutContent() {
@@ -23,35 +24,37 @@ function MainLayoutContent() {
   const [drawerOpen, setDrawerOpen] = useState(false);
 
   return (
-    <Box sx={{ display: "flex", minHeight: "100dvh" }}>
-      <Header onMenuClick={() => setDrawerOpen(true)} />
-      <Sidebar />
-      <MobileDrawer open={drawerOpen} onClose={() => setDrawerOpen(false)} />
+    <MobileNavProvider openDrawer={() => setDrawerOpen(true)}>
+      <Box sx={{ display: "flex", minHeight: "100dvh" }}>
+        <Header onMenuClick={() => setDrawerOpen(true)} />
+        <Sidebar />
+        <MobileDrawer open={drawerOpen} onClose={() => setDrawerOpen(false)} />
 
-      <Box
-        component="main"
-        sx={{
-          flexGrow: 1,
-          p: { xs: 1.5, sm: 2, md: 3 },
-          pb: { xs: 9, md: 3 },
-          minWidth: 0,
-        }}
-      >
-        <Toolbar />
-        <RouteAccessGate>
-          <TenantGate>
-            <OfflineBanner />
-            <PwaInstallPrompt />
-            <SubscriptionBanner />
-            <SubscriptionGate>
-              <Outlet />
-            </SubscriptionGate>
-          </TenantGate>
-        </RouteAccessGate>
+        <Box
+          component="main"
+          sx={{
+            flexGrow: 1,
+            p: { xs: 1.5, sm: 2, md: 3 },
+            pb: { xs: 9, md: 3 },
+            minWidth: 0,
+          }}
+        >
+          <Toolbar />
+          <RouteAccessGate>
+            <TenantGate>
+              <OfflineBanner />
+              <PwaInstallPrompt />
+              <SubscriptionBanner />
+              <SubscriptionGate>
+                <Outlet />
+              </SubscriptionGate>
+            </TenantGate>
+          </RouteAccessGate>
+        </Box>
+
+        {isMobile && <MobileBottomNav />}
       </Box>
-
-      {isMobile && <MobileBottomNav />}
-    </Box>
+    </MobileNavProvider>
   );
 }
 
