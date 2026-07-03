@@ -3,7 +3,7 @@
 **Ngày:** 2026-07-03  
 **QA session:** 2026-07-03 14:48–14:57 ICT (gates re-run trước Preview sign-off)  
 **Branch:** `v5-platform-edition`  
-**Commit:** `60d50563f8d1d0c40cf3f9076c6db8377195f7d9`  
+**Commit:** `55eedc3893c4ae445000c2894459ea2d84097fe2`  
 **Phạm vi:** Menu V5 tập trung (`navigationConfig.js`), sidebar/desktop, mobile drawer + bottom nav, RBAC/menu guards  
 **Môi trường:** Local gates + Vercel Preview — **không** Production, **không** tag `v5.0.0-rc1`  
 **Ràng buộc:** Không pop stash `IntegrationSettingsPage.jsx`; không ghi secret.
@@ -40,7 +40,7 @@
 | Run | Commit | Tests | Suites | Skipped |
 |-----|--------|-------|--------|---------|
 | Phase 13 baseline | `cd33b65` (worktree `npm test`) | **723** | 56 | 0 |
-| Phase 14 hiện tại | `60d5056` (`npm test`) | **730** | 56 | 0 |
+| Phase 14 hiện tại | `55eedc3` (`npm test`) | **730** | 56 | 0 |
 | Chênh lệch | +7 test mới navigation QA | +7 | 0 | 0 |
 
 **Phase 14 không xóa test:** `git diff cd33b65..HEAD -- tests/ package.json` chỉ đổi 2 file (`rbac.test.js` +98/−21 dòng, `mobile-phase8-hardening.test.js` +21/−2). `package.json` `test:unit` **không đổi** — vẫn 78 file test.
@@ -293,8 +293,8 @@ Chỉ khai báo trong `navigationConfig.js` — `navStatus: future` → **không
 | Field | Value |
 |-------|-------|
 | Branch | `v5-platform-edition` |
-| Commit | `60d50563f8d1d0c40cf3f9076c6db8377195f7d9` |
-| Vercel Preview (latest) | https://pickleball-scheduler-lbcrkzewe-pickleball-scheduler.vercel.app |
+| Commit | `55eedc3893c4ae445000c2894459ea2d84097fe2` |
+| Vercel Preview (latest) | https://pickleball-scheduler-n314vpmjb-pickleball-scheduler.vercel.app |
 | Branch alias | https://pickleball-scheduler-git-v5-platfor-47ef4a-pickleball-scheduler.vercel.app |
 | Production | ⛔ **NO-GO** — không deploy |
 | Tag `v5.0.0-rc1` | ⛔ **NOT created** |
