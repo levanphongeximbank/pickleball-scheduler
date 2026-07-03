@@ -40,8 +40,9 @@
 | Trạng thái | Số mục | Ghi chú |
 |------------|--------|---------|
 | ✅ PASS (automated RC1) | 19 | `verify-v5-rc1-staging.mjs` — 2026-07-03 |
+| ✅ PASS (cross-tenant RLS refresh) | 31 | `verify-cross-tenant-rls-staging.mjs` — 2026-07-03 |
 | ⏳ Pending (manual) | 66 | Browser/device P0–P2 |
-| ⚠️ PARTIAL | — | |
+| ⚠️ PARTIAL | 4 | RLS refresh — `qr_tokens`, `checkins` (policy open, 0 rows; không phải FAIL) |
 | ❌ FAIL | 0 | |
 | 🔒 BLOCKED | 0 | |
 
@@ -56,7 +57,7 @@
 | `npm run lint` | ESLint | 0 errors |
 | `git diff --check` | Whitespace conflict | Clean |
 | `node scripts/verify-v5-rc1-staging.mjs` | Preview API + audit + SPA shell | PASS |
-| `node scripts/verify-cross-tenant-rls-staging.mjs` | JWT RLS isolation | PASS (optional re-run) |
+| `node scripts/verify-cross-tenant-rls-staging.mjs` | JWT RLS isolation | ✅ PASS 31/4/0/0 (2026-07-03) |
 
 ### Verify RC1 staging (technical)
 
@@ -85,6 +86,31 @@ Script kiểm tra: health, API envelope, API key runtime subset, integration aud
 **Lệnh:** `node scripts/verify-v5-rc1-staging.mjs` (env: `STAGING_PREVIEW_URL`, `VERCEL_AUTOMATION_BYPASS_SECRET`, `SUPABASE_SERVICE_ROLE_KEY` — không commit).
 
 **Chưa tick:** manual P0 browser QA (Auth, Court Engine, Billing, mobile device). **Production vẫn NO-GO** cho đến khi manual P0 QA xong.
+
+### Cross-tenant RLS refresh — ✅ PASS (2026-07-03)
+
+| Hạng mục | Kết quả |
+|----------|---------|
+| **Tổng kết script** | **PASS=31 · PARTIAL=4 · FAIL=0 · BLOCKED=0 · N/A=0** |
+| **Verdict** | ✅ **Cross-tenant RLS authenticated probe: PASS** (no FAIL rows) |
+| Owner A isolated | ✅ PASS |
+| Owner B isolated | ✅ PASS |
+| `tenant_subscriptions` cross-tenant read | ✅ Blocked |
+| `tenant_subscriptions` cross-tenant insert | ✅ Blocked by RLS |
+| PLAYER billing/admin/court-engine routes | ✅ Blocked |
+| `plans` / `plan_limits` global catalog | ✅ OK |
+| SUPER_ADMIN login | ⏳ Skipped — `missing_credentials` (không ảnh hưởng tenant isolation) |
+
+**PARTIAL warnings (không phải FAIL):**
+
+| Bảng | Cảnh báo | Ghi chú |
+|------|----------|---------|
+| `qr_tokens` | POLICY OPEN (`USING true`), 0 rows | Cần seed cross-tenant để xác nhận không leak |
+| `checkins` | POLICY OPEN (`USING true`), 0 rows | Cần seed cross-tenant để xác nhận không leak |
+
+**Action item (trước Production mobile/QR/check-in):** seed dữ liệu cross-tenant trên staging **hoặc** tighten RLS policy cho `qr_tokens` / `checkins` — xem KN-6.
+
+**Lệnh:** `node scripts/verify-cross-tenant-rls-staging.mjs` (env staging passwords — không commit).
 
 ---
 
@@ -131,10 +157,10 @@ Script kiểm tra: health, API envelope, API key runtime subset, integration aud
 | C2 | RLS | Owner B không SELECT billing Tenant A | 0 rows | ⏳ | Phase 10D PASS | auto | P0 |
 | C3 | RLS | PLAYER không đọc admin tables | Blocked | ⏳ | Phase 10D | auto | P0 |
 | C4 | RLS | API key Tenant A không truy cập Tenant B | 403 `tenant_not_found` | ⏳ | Phase 11D PASS | auto | P0 |
-| C5 | RLS | Cross-tenant JWT probe re-run | PASS=31 FAIL=0 | ⏳ | `verify-cross-tenant-rls-staging.mjs` | auto | P0 |
+| C5 | RLS | Cross-tenant JWT probe re-run | PASS=31 PARTIAL=4 FAIL=0 | ✅ | RLS refresh PASS 2026-07-03 | auto | P0 |
 | C6 | RLS | Không hard-code `tenant-demo` runtime | Resolver trả null/blocklist | ⏳ | `billing-tenant-mapping.test.js` | auto | P0 |
 | C7 | RLS | SUPER_ADMIN global read (nếu bật) | Chỉ khi role đúng | ⏳ | | manual | P2 |
-| C8 | RLS | Mobile tables (qr_tokens, checkins) tenant scope | Không leak cross-tenant | ⏳ | Phase 8 hardening tests | auto+manual | P1 |
+| C8 | RLS | Mobile tables (qr_tokens, checkins) tenant scope | Không leak cross-tenant | ⚠️ | PARTIAL — policy open, 0 rows; seed hoặc tighten trước Production mobile | auto+manual | P1 |
 
 ### 4. Billing / Subscription
 
@@ -327,6 +353,7 @@ Tham chiếu đầy đủ: `docs/SUPABASE-PRODUCTION-CHECKLIST.md`
 | KN-3 | SUPER_ADMIN staging password docs mismatch | P2 | Không ảnh hưởng tenant isolation (Phase 10D) |
 | KN-4 | Mobile device QA một phần PARTIAL | P1 | Manual device pass trước Production mobile traffic |
 | KN-5 | `IntegrationSettingsPage.jsx` in stash | P2 | Không pop trừ khi owner yêu cầu |
+| KN-6 | `qr_tokens` / `checkins` RLS policy open (`USING true`) | P1 | Cần seed cross-tenant verification **hoặc** tighten policy trước Production mobile/QR/check-in traffic |
 
 ---
 
@@ -343,7 +370,7 @@ Tham chiếu đầy đủ: `docs/SUPABASE-PRODUCTION-CHECKLIST.md`
 | Integration audit RC1 subset | ✅ Pass | ✅ |
 | PWA manifest Preview | ✅ Pass | ✅ `/manifest.webmanifest` |
 | SPA `/login` + `/` | ✅ Pass | ✅ 200 shell |
-| Cross-tenant RLS re-run | ✅ Pass (or Phase 10D still valid) | ⏳ Optional re-run |
+| Cross-tenant RLS re-run | ✅ Pass (or Phase 10D still valid) | ✅ **PASS 31/4/0/0** (2026-07-03) |
 | Manual P0 Auth + Court + Billing browser | ✅ Tick | ⏳ **Pending** |
 | No open P0 bugs | ✅ | ✅ (chưa ghi nhận mới) |
 
@@ -371,9 +398,10 @@ Tham chiếu đầy đủ: `docs/SUPABASE-PRODUCTION-CHECKLIST.md`
 |------------|------------|
 | **RC1 Staging QA framework** | ✅ Delivered (doc + script) |
 | **RC1 automated technical verify** | ✅ **PASS** — PASS: 19, FAIL: 0, BLOCKED: 0 (2026-07-03) |
+| **Cross-tenant RLS refresh** | ✅ **PASS** — PASS: 31, PARTIAL: 4, FAIL: 0, BLOCKED: 0 (2026-07-03) |
 | **RC1 Staging Go (full)** | ⏳ Pending — manual P0 browser QA |
-| **Production deploy** | ⛔ **NO-GO** — chờ manual P0 QA xong + Production SQL/env |
-| **Đề xuất tiếp theo** | Manual tick P0 master checklist → optional cross-tenant RLS re-run → họp Go/No-Go RC1 |
+| **Production deploy** | ⛔ **NO-GO** — chờ manual P0 QA xong + Production SQL/env + KN-6 mobile RLS |
+| **Đề xuất tiếp theo** | Manual tick P0 master checklist → seed/tighten `qr_tokens`/`checkins` (KN-6) → họp Go/No-Go RC1 |
 
 ---
 
@@ -389,3 +417,4 @@ Tham chiếu đầy đủ: `docs/SUPABASE-PRODUCTION-CHECKLIST.md`
 | `scripts/verify-phase11d-api-key-runtime-staging.mjs` | Full 11D matrix |
 | `scripts/verify-phase11e-integration-audit-staging.mjs` | Full 11E matrix |
 | `scripts/verify-v5-rc1-staging.mjs` | **RC1 condensed technical gate** |
+| `scripts/verify-cross-tenant-rls-staging.mjs` | **Cross-tenant RLS JWT probe** |
