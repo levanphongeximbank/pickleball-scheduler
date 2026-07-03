@@ -114,23 +114,48 @@ node scripts/verify-cross-tenant-rls-staging.mjs
 
 ## Gate evidence
 
+**Verified:** 2026-07-03 (post manual SQL apply on staging `qyewbxjsiiyufanzcjcq`)
+
 | Gate | Command | Kết quả |
 |------|---------|---------|
 | diff check | `git diff --check` | ✅ PASS |
-| unit | `npm test` | ✅ PASS (incl. `phase16-kn6-rls.test.js`) |
+| unit | `npm test` | ✅ PASS — 752 pass / 0 fail (incl. `phase16-kn6-rls.test.js`) |
 | build | `npm run build` | ✅ PASS |
 | lint | `npm run lint` | ✅ 0 errors (128 warnings pre-existing) |
-| cross-tenant RLS | `node scripts/verify-cross-tenant-rls-staging.mjs` | ⏳ **PENDING** — apply SQL patch on staging trước (hiện FAIL 12 do policy open + probe rows) |
-| KN-6 dedicated | `node scripts/verify-phase16-kn6-rls-staging.mjs` | ⏳ **PENDING** — apply SQL + seed trên staging |
+| KN-6 dedicated | `node scripts/verify-phase16-kn6-rls-staging.mjs` | ✅ **PASS** — 18/18 probes (Owner A/B + anon) |
+| cross-tenant RLS | `node scripts/verify-cross-tenant-rls-staging.mjs` | ✅ **PASS** — 35/35 probes (`qr_tokens`/`checkins` mode `tenant`) |
 | Preview P0 | `node scripts/verify-phase15-preview-p0-qa.mjs` | ⏭️ Skipped — không đổi route; prior 38/38 P0 PASS (ccac434) |
 
-**Staging apply (bắt buộc trước khi verify PASS):**
+### Staging apply (completed)
 
 ```text
-1. SQL Editor → docs/supabase-phase16-kn6-qr-checkins-rls.sql
-2. SQL Editor → docs/supabase-staging-phase16-kn6-seed.sql
-3. Re-run cả hai verify scripts
+1. SQL Editor → docs/supabase-phase16-kn6-qr-checkins-rls.sql ✅
+2. SQL Editor → docs/supabase-staging-phase16-kn6-seed.sql ✅
+3. Re-run verify scripts ✅
 ```
+
+### KN-6 staging probe summary (`verify-phase16-kn6-rls-staging.mjs`)
+
+| Probe group | Result |
+|-------------|--------|
+| Anon `qr_tokens` / `checkins` | 0 rows |
+| Owner A own-tenant read | `qr_tokens` 3, `checkins` 3 |
+| Owner A cross-tenant filter | 0 rows |
+| Owner A cross-tenant INSERT | RLS blocked |
+| Owner A token_hash own / other | visible / not visible |
+| Owner B (mirror) | same pattern — all PASS |
+| **Summary** | `PASS=18 PARTIAL=0 FAIL=0` |
+
+### Cross-tenant matrix (`verify-cross-tenant-rls-staging.mjs`)
+
+| Table / probe | Owner A | Owner B |
+|---------------|---------|---------|
+| `qr_tokens` isolated read | 3 rows | 3 rows |
+| `checkins` isolated read | 3 rows | 3 rows |
+| filter other tenant | 0 rows | 0 rows |
+| INSERT other tenant | RLS blocked | RLS blocked |
+| PLAYER billing/admin routes | blocked | — |
+| **Summary** | `PASS=35 PARTIAL=0 FAIL=0` (SUPER_ADMIN skipped — no creds) |
 
 ---
 
@@ -161,7 +186,7 @@ sequenceDiagram
 | Before | After |
 |--------|-------|
 | `USING (true)` — PARTIAL | `tenant_id = user_venue_id()` — **CLOSED** |
-| 0 rows staging, policy open | Seed + bidirectional verify |
+| Policy open, no seed rows | Seed applied + 18/18 KN-6 + 35/35 cross-tenant probes PASS |
 
 **Production:** vẫn ⛔ NO-GO — chờ Phase 18–19; KN-6 không còn blocker cho RC1 path (khuyến nghị closed trước tag).
 
