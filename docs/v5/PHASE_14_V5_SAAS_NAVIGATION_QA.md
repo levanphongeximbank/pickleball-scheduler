@@ -279,7 +279,7 @@ Chỉ khai báo trong `navigationConfig.js` — `navStatus: future` → **không
 | Field | Value |
 |-------|-------|
 | Branch | `v5-platform-edition` |
-| Commit | `0c80e3d` |
+| Commit | `8ebeac5` |
 | Vercel Preview | _(see below after deploy)_ |
 | Production | ⛔ **NO-GO** |
 | Tag `v5.0.0-rc1` | ⛔ **NOT created** |
