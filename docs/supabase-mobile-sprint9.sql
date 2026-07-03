@@ -78,20 +78,37 @@ ALTER TABLE public.qr_tokens ENABLE ROW LEVEL SECURITY;
 DROP POLICY IF EXISTS qr_tokens_select_authenticated ON public.qr_tokens;
 DROP POLICY IF EXISTS qr_tokens_insert_authenticated ON public.qr_tokens;
 DROP POLICY IF EXISTS qr_tokens_update_authenticated ON public.qr_tokens;
-CREATE POLICY qr_tokens_select_authenticated ON public.qr_tokens
+DROP POLICY IF EXISTS qr_tokens_select ON public.qr_tokens;
+DROP POLICY IF EXISTS qr_tokens_insert ON public.qr_tokens;
+DROP POLICY IF EXISTS qr_tokens_update ON public.qr_tokens;
+
+CREATE POLICY qr_tokens_select ON public.qr_tokens
   FOR SELECT
   TO authenticated
-  USING (true);
+  USING (
+    public.is_super_admin()
+    OR tenant_id = public.user_venue_id()
+  );
 
-CREATE POLICY qr_tokens_insert_authenticated ON public.qr_tokens
+CREATE POLICY qr_tokens_insert ON public.qr_tokens
   FOR INSERT
   TO authenticated
-  WITH CHECK (true);
+  WITH CHECK (
+    public.is_super_admin()
+    OR tenant_id = public.user_venue_id()
+  );
 
-CREATE POLICY qr_tokens_update_authenticated ON public.qr_tokens
+CREATE POLICY qr_tokens_update ON public.qr_tokens
   FOR UPDATE
   TO authenticated
-  USING (true);
+  USING (
+    public.is_super_admin()
+    OR tenant_id = public.user_venue_id()
+  )
+  WITH CHECK (
+    public.is_super_admin()
+    OR tenant_id = public.user_venue_id()
+  );
 
 -- ─── checkins ─────────────────────────────────────────────────────
 CREATE TABLE IF NOT EXISTS public.checkins (
@@ -116,15 +133,24 @@ ALTER TABLE public.checkins ENABLE ROW LEVEL SECURITY;
 
 DROP POLICY IF EXISTS checkins_select_authenticated ON public.checkins;
 DROP POLICY IF EXISTS checkins_insert_authenticated ON public.checkins;
-CREATE POLICY checkins_select_authenticated ON public.checkins
+DROP POLICY IF EXISTS checkins_select ON public.checkins;
+DROP POLICY IF EXISTS checkins_insert ON public.checkins;
+
+CREATE POLICY checkins_select ON public.checkins
   FOR SELECT
   TO authenticated
-  USING (true);
+  USING (
+    public.is_super_admin()
+    OR tenant_id = public.user_venue_id()
+  );
 
-CREATE POLICY checkins_insert_authenticated ON public.checkins
+CREATE POLICY checkins_insert ON public.checkins
   FOR INSERT
   TO authenticated
-  WITH CHECK (true);
+  WITH CHECK (
+    public.is_super_admin()
+    OR tenant_id = public.user_venue_id()
+  );
 
 -- Extend audit_logs actions (if using enum, skip; text column accepts new values)
 COMMENT ON TABLE public.checkins IS 'Sprint 9 QR check-in records';

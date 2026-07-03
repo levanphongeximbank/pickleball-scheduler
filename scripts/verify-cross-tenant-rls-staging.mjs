@@ -45,8 +45,8 @@ const TABLE_PROBES = [
   { table: "tournament_match_live", mode: "blocked-empty", tenantColumn: "club_id" },
   { table: "notifications", mode: "own-user", tenantColumn: "user_id" },
   { table: "push_subscriptions", mode: "own-user", tenantColumn: "user_id" },
-  { table: "qr_tokens", mode: "policy-open", tenantColumn: "tenant_id" },
-  { table: "checkins", mode: "policy-open", tenantColumn: "tenant_id" },
+  { table: "qr_tokens", mode: "tenant", tenantColumn: "tenant_id" },
+  { table: "checkins", mode: "tenant", tenantColumn: "tenant_id" },
   { table: "audit_logs", mode: "venue-id", tenantColumn: "venue_id" },
   { table: "ai_suggestions", mode: "tenant", tenantColumn: "tenant_id" },
   { table: "plans", mode: "global-catalog" },
@@ -231,6 +231,45 @@ async function runTenantActorProbes({ label, client, profile, ownTenantId, other
     } else {
       record("tenant_subscriptions(insert)", label, "FAIL", "insert thành công");
       warn(`insert tenant_subscriptions ${otherTenantId}: FAIL — insert không bị chặn`);
+    }
+
+    for (const mobileTable of ["qr_tokens", "checkins"]) {
+      const mobileInsert =
+        mobileTable === "qr_tokens"
+          ? await client.from(mobileTable).insert({
+              tenant_id: otherTenantId,
+              entity_type: "player",
+              entity_id: `xtenant-probe-${Date.now()}`,
+              token_hash: `xtenant-${label}-${Date.now()}-${Math.random().toString(16).slice(2)}`,
+              expires_at: new Date(Date.now() + 86400000).toISOString(),
+            })
+          : await client.from(mobileTable).insert({
+              tenant_id: otherTenantId,
+              tournament_id: `xtenant-t-${Date.now()}`,
+              entity_type: "player",
+              entity_id: `xtenant-player-${Date.now()}`,
+              source: "probe",
+              status: "pending",
+            });
+
+      if (mobileInsert.error?.message?.includes("row-level security")) {
+        ok(`insert ${mobileTable} ${otherTenantId}: blocked by RLS`);
+      } else if (mobileInsert.error) {
+        warn(`insert ${mobileTable} ${otherTenantId}: ${mobileInsert.error.message}`);
+      } else {
+        record(`${mobileTable}(insert)`, label, "FAIL", "insert thành công");
+        warn(`insert ${mobileTable} ${otherTenantId}: FAIL — insert không bị chặn`);
+      }
+
+      const filtered = await probeSelectOtherTenant(client, mobileTable, "tenant_id", otherTenantId);
+      if (filtered.error) {
+        warn(`filter ${mobileTable} ${otherTenantId}: ${filtered.error.message}`);
+      } else if ((filtered.data || []).length > 0) {
+        record(`${mobileTable}(filter)`, label, "FAIL", `đọc được ${otherTenantId}`);
+        warn(`filter ${mobileTable} ${otherTenantId}: LEAK`);
+      } else {
+        ok(`filter ${mobileTable} ${otherTenantId}: 0 rows`);
+      }
     }
   }
 }

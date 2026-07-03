@@ -167,18 +167,18 @@ Phase 16 (KN-6 RLS) ──► Phase 18 (Prod readiness) ──► Phase 19 (GA d
 
 **Mục tiêu:** Đóng KN-6 — harden RLS `qr_tokens` và `checkins` trước Production mobile traffic.
 
-**Trạng thái:** ⏳ **Pending** — có thể song song Phase 15 nhưng **bắt buộc** trước Production.
+**Trạng thái:** ✅ **Code complete** — ⏳ staging SQL apply + verify re-run
 
 | # | Task | Kỳ vọng |
 |---|------|---------|
-| 16-1 | SQL patch RLS `qr_tokens` — không còn `USING (true)` | Policy `tenant_id = user_venue_id()` hoặc tương đương |
-| 16-2 | SQL patch RLS `checkins` — không còn `USING (true)` | Policy tenant-scoped |
-| 16-3 | Cross-tenant verify — Owner A không đọc/ghi QR/checkins Owner B | `verify-cross-tenant-rls-staging.mjs` → 0 PARTIAL cho 2 bảng |
-| 16-4 | Mobile QR flow vẫn hoạt động đúng tenant | Manual F3 + staging smoke |
+| 16-1 | SQL patch RLS `qr_tokens` — không còn `USING (true)` | ✅ `docs/supabase-phase16-kn6-qr-checkins-rls.sql` |
+| 16-2 | SQL patch RLS `checkins` — không còn `USING (true)` | ✅ cùng patch |
+| 16-3 | Cross-tenant verify — Owner A không đọc/ghi QR/checkins Owner B | ⏳ apply SQL staging → `verify-cross-tenant-rls-staging.mjs` |
+| 16-4 | Mobile QR flow vẫn hoạt động đúng tenant | ✅ unit + app-layer tests |
 
-**Known issue:** KN-6 — `qr_tokens` / `checkins` policy open, 0 rows staging, chưa leak thực tế nhưng **không chấp nhận cho Production**.
+**Docs:** `docs/v5/PHASE_16_KN6_RLS_QA.md`
 
-**Kết quả mong muốn:** ✅ **KN-6 CLOSED** — RLS hardened + cross-tenant verify PASS
+**Kết quả mong muốn:** ✅ **KN-6 CLOSED** — RLS hardened + cross-tenant verify PASS (sau staging apply)
 
 ---
 
