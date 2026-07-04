@@ -1,11 +1,34 @@
 # Phase 19A — Production Preflight (V5.0 RC1)
 
-**Ngày:** 2026-07-03  
+**Ngày:** 2026-07-03 (cập nhật trạng thái 2026-07-04)  
 **Branch:** `v5-platform-edition`  
 **RC1 tag:** `v5.0.0-rc1` → commit `b0942be`  
 **Phase 18 complete:** commit `2a8ea60`  
-**Môi trường:** Preflight only — **không deploy Production trong Phase 19A**  
-**Ràng buộc:** Không pop stash `IntegrationSettingsPage.jsx`; không ghi secret/env value vào tài liệu; không apply SQL trừ khi owner phê duyệt rõ ràng.
+**Môi trường:** Preflight + owner SQL apply — **không deploy Production app (Phase 19B)**  
+**Ràng buộc:** Không pop stash `IntegrationSettingsPage.jsx`; không ghi secret/env value vào tài liệu; không apply SQL trừ khi owner phê duyệt rõ ràng; **không tag release mới**.
+
+---
+
+## Supabase project registry
+
+| Môi trường | Tên project | Project ref | Supabase URL |
+|------------|-------------|-------------|--------------|
+| **Staging** | `pickleball-scheduler-stagin` | `qyewbxjsiiyufanzcjcq` | `https://qyewbxjsiiyufanzcjcq.supabase.co` |
+| **Production** (mới tạo 2026-07-04) | `pickleball-scheduler-production` | `expuvcohlcjzvrrauvud` | `https://expuvcohlcjzvrrauvud.supabase.co` |
+
+**Owner confirmed (2026-07-04):** Production ref `expuvcohlcjzvrrauvud` **khác** staging `qyewbxjsiiyufanzcjcq`. Chỉ chạy SQL trên project **Production**.
+
+### Backup status (owner confirmed 2026-07-04)
+
+| Hạng mục | Trạng thái |
+|----------|------------|
+| Supabase plan | **Free / Nano** |
+| Dashboard → Database → Backups | **Không có backup hiển thị** |
+| Production DB | **Trống** — project mới tạo, chưa apply migration |
+| Baseline trước Migration #1 | Empty schema (không có dữ liệu production cần restore) |
+| PITR / scheduled snapshot | **Không có** trên Free/Nano — không ghi timestamp backup |
+
+> **Lịch sử:** Trước 2026-07-04 chỉ có **một** Supabase project (staging). Mọi QA trên `qyewbxjsiiyufanzcjcq` **không** được coi là Production SQL đã apply. Production DB mới = **trống** — Batch A bắt đầu lại từ Migration **#1**.
 
 ---
 
@@ -15,13 +38,14 @@
 |----------|---------|
 | Phase 19A documentation | ✅ **COMPLETE** |
 | Automated gates (Phase 19A session) | ✅ **PASS** |
-| Production ENV verification | ⏳ **OWNER VERIFY** |
-| Production SQL (22 migrations) | ⛔ **NOT READY** — owner xác nhận / apply |
-| Backup preflight | ⏳ **OWNER VERIFY** |
+| Production Supabase project | ✅ **CONFIRMED** (2026-07-04) — `pickleball-scheduler-production` / `expuvcohlcjzvrrauvud` |
+| Production ENV verification | ⏳ **OWNER VERIFY** (trỏ env sang project Production mới) |
+| Production SQL (22 migrations) | ⏳ **NOT STARTED** — Batch A **#1–15 NEEDS APPLY** trên project mới |
+| Backup preflight | ✅ **CONFIRMED** (2026-07-04) — Free/Nano; không backup hiển thị; DB trống = baseline empty trước #1 |
 | Stash `IntegrationSettingsPage.jsx` | ✅ **Intact** |
 | **Production deploy (Phase 19B)** | ⛔ **NO-GO** |
 
-**Go/No-Go recommendation:** ⛔ **NO-GO for Production deployment** until owner completes §1 ENV + §2 SQL + §3 Backup + §5 manual confirmations. Phase 19A **preflight GO** — proceed to owner checklist, then Phase 19B deploy.
+**Go/No-Go recommendation:** ⛔ **NO-GO for Production deployment** until owner completes §1 ENV + §2 SQL + §3 Backup B4–B6 + §5 manual confirmations. Phase 19A preflight **backup + project confirmed**; SQL apply **NOT STARTED** — owner chạy Batch A từ #1 khi sẵn sàng; **không deploy app**.
 
 ---
 
@@ -111,27 +135,27 @@
 | **NEEDS APPLY** | Chưa xác nhận trên Production; bắt buộc trước V5 deploy |
 | **UNKNOWN** | Agent không có quyền kiểm tra DB — owner phải verify |
 
-**Ghi chú lịch sử:** `docs/GA-FINAL-AUDIT.md` (2026-07-01) ghi Production SQL 15 bước = PENDING. `docs/GA-PRODUCTION-QA.md` ghi Auth + Court Engine PASS trên Production (2026-07-01) — gợi ý một phần Tier A có thể đã tồn tại, nhưng **không assume** đủ 22 bước.
+**Ghi chú lịch sử:** Trước 2026-07-04 không có Supabase Production riêng — chỉ staging `qyewbxjsiiyufanzcjcq`. `docs/GA-PRODUCTION-QA.md` (2026-07-01) **không** chứng minh SQL trên Production DB mới. **Coi Production DB = trống;** apply đủ 22 migration theo thứ tự.
 
-### Tier A — GA core (15 bước)
+### Tier A — GA core (15 bước) — Batch A restart trên Production mới
 
 | # | File | Mục đích | Rollback | Status | Owner tick | Ngày |
 |---|------|----------|----------|--------|------------|------|
-| 1 | `docs/supabase-club-v3.sql` | `club_data_v3` | — | **UNKNOWN** | ☐ | |
-| 2 | `docs/supabase-rbac.sql` | venues, profiles, subscriptions | — | **UNKNOWN** | ☐ | |
-| 3 | `docs/supabase-club-v3-rls.sql` | RLS club_data_v3 | `supabase-rls-rollback.sql` | **UNKNOWN** | ☐ | |
-| 4 | `docs/supabase-match-live.sql` | tournament_match_live | — | **UNKNOWN** | ☐ | |
-| 5 | `docs/supabase-match-live-rls.sql` | RLS + referee RPC | — | **UNKNOWN** | ☐ | |
-| 6 | `docs/supabase-security-hardening-v357.sql` | Signup/profile guards | — | **UNKNOWN** | ☐ | |
-| 7 | `docs/supabase-match-live-v2.sql` | Status columns (nếu áp dụng) | — | **UNKNOWN** | ☐ | |
-| 8 | `docs/supabase-identity-v40-sprint1.sql` | roles/permissions/audit | `supabase-identity-v40-sprint1-rollback.sql` | **UNKNOWN** | ☐ | |
-| 9 | `docs/supabase-identity-v40-phaseB.sql` | Phase B identity | `supabase-identity-v40-phaseB-rollback.sql` | **UNKNOWN** | ☐ | |
-| 10 | `docs/supabase-identity-v40-phaseC.sql` | Phase C RPC | `supabase-identity-v40-phaseC-rollback.sql` | **UNKNOWN** | ☐ | |
-| 11 | `docs/supabase-multi-tenant-sprint2.sql` | tenants view, venue status | `supabase-multi-tenant-sprint2-rollback.sql` | **UNKNOWN** | ☐ | |
-| 12 | `docs/supabase-subscription-sprint4.sql` | Subscription plans | — | **UNKNOWN** | ☐ | |
-| 13 | `docs/supabase-ai-assistant-sprint7.sql` | ai_suggestions (schema ready) | — | **UNKNOWN** | ☐ | |
-| 14 | `docs/supabase-mobile-sprint9.sql` | push, qr_tokens, checkins | `supabase-mobile-sprint9-rollback.sql` | **UNKNOWN** | ☐ | |
-| 15 | `docs/supabase-sprint10.sql` | API/marketplace tables | `supabase-sprint10-rollback.sql` | **UNKNOWN** | ☐ | |
+| 1 | `docs/supabase-club-v3.sql` | `club_data_v3` | — | **NEEDS APPLY** | ☐ | |
+| 2 | `docs/supabase-rbac.sql` | venues, profiles, subscriptions | — | **NEEDS APPLY** | ☐ | |
+| 3 | `docs/supabase-club-v3-rls.sql` | RLS club_data_v3 | `supabase-rls-rollback.sql` | **NEEDS APPLY** | ☐ | |
+| 4 | `docs/supabase-match-live.sql` | tournament_match_live | — | **NEEDS APPLY** | ☐ | |
+| 5 | `docs/supabase-match-live-rls.sql` | RLS + referee RPC | — | **NEEDS APPLY** | ☐ | |
+| 6 | `docs/supabase-security-hardening-v357.sql` | Signup/profile guards | — | **NEEDS APPLY** | ☐ | |
+| 7 | `docs/supabase-match-live-v2.sql` | Status columns (nếu áp dụng) | — | **NEEDS APPLY** | ☐ | |
+| 8 | `docs/supabase-identity-v40-sprint1.sql` | roles/permissions/audit | `supabase-identity-v40-sprint1-rollback.sql` | **NEEDS APPLY** | ☐ | |
+| 9 | `docs/supabase-identity-v40-phaseB.sql` | Phase B identity | `supabase-identity-v40-phaseB-rollback.sql` | **NEEDS APPLY** | ☐ | |
+| 10 | `docs/supabase-identity-v40-phaseC.sql` | Phase C RPC | `supabase-identity-v40-phaseC-rollback.sql` | **NEEDS APPLY** | ☐ | |
+| 11 | `docs/supabase-multi-tenant-sprint2.sql` | tenants view, venue status | `supabase-multi-tenant-sprint2-rollback.sql` | **NEEDS APPLY** | ☐ | |
+| 12 | `docs/supabase-subscription-sprint4.sql` | Subscription plans | — | **NEEDS APPLY** | ☐ | |
+| 13 | `docs/supabase-ai-assistant-sprint7.sql` | ai_suggestions (schema ready) | — | **NEEDS APPLY** | ☐ | |
+| 14 | `docs/supabase-mobile-sprint9.sql` | push, qr_tokens, checkins | `supabase-mobile-sprint9-rollback.sql` | **NEEDS APPLY** | ☐ | |
+| 15 | `docs/supabase-sprint10.sql` | API/marketplace tables | `supabase-sprint10-rollback.sql` | **NEEDS APPLY** | ☐ | |
 
 ### Tier B — V5 commercial / platform (sau Tier A)
 
@@ -173,13 +197,15 @@
 **Nguồn:** `docs/v5/PHASE_18_PRODUCTION_READINESS.md` §3.1–§3.5  
 **Thực hiện trước** Phase 19B deploy hoặc SQL apply.
 
+**Owner confirmed (2026-07-04):** Project `pickleball-scheduler-production` (`expuvcohlcjzvrrauvud`) trên plan **Free/Nano**. Dashboard **Backups** không hiển thị backup nào. DB **trống** — baseline trước Migration #1 = empty schema. PITR/snapshot **không khả dụng** trên plan hiện tại; rollback dựa vào scoped SQL files §3.2 (không drop toàn DB).
+
 ### 3.1 Pre-deploy backup
 
 | # | Action | Owner | Tick | Ghi chú / timestamp |
 |---|--------|-------|------|------------------------|
-| B1 | Supabase Production **snapshot / PITR** confirm enabled | DevOps | ☐ | |
-| B2 | **Backup timestamp** recorded | DevOps | ☐ | Ghi: `________________` |
-| B3 | Supabase **project ref** recorded | DevOps | ☐ | Ghi: `________________` |
+| B1 | Supabase Production **snapshot / PITR** confirm enabled | DevOps | ☑ | **N/A** — Free/Nano; không backup/PITR hiển thị (2026-07-04) |
+| B2 | **Backup timestamp** recorded | DevOps | ☑ | **N/A** — DB trống; baseline = empty project trước #1 (2026-07-04) |
+| B3 | Supabase **project ref** recorded — **khác** staging `qyewbxjsiiyufanzcjcq` | DevOps | ☑ | Production ref: `expuvcohlcjzvrrauvud` (2026-07-04) |
 | B4 | Optional: export sample `profiles`, `venues`, `club_data_v3` | DevOps | ☐ | |
 | B5 | Vercel **current Production deployment ID** recorded | DevOps | ☐ | Ghi: `________________` |
 | B6 | Git deploy target **`v5.0.0-rc1`** (`b0942be`) confirmed | DevOps | ☐ | |
@@ -235,8 +261,9 @@
 | Phase 15 P0 Preview QA | ✅ | ✅ PASS |
 | Phase 16 KN-6 staging | ✅ | ✅ CLOSED |
 | §1 ENV E1–E21 owner tick | ✅ | ⏳ **Pending** |
-| §2 SQL 1–22 owner CONFIRMED | ✅ | ⛔ **Not ready** (UNKNOWN + NEEDS APPLY) |
-| §3 Backup B1–B6 | ✅ | ⏳ **Pending** |
+| §2 SQL 1–22 owner CONFIRMED | ✅ | ⏳ **Not started** — Batch A #1–15 NEEDS APPLY (Production DB mới) |
+| §3 Backup B1–B3 | ✅ | ✅ **Confirmed** (Free/Nano; empty DB baseline) |
+| §3 Backup B4–B6 | ✅ | ⏳ **Pending** |
 | §4 P0 smoke plan ready | ✅ | ✅ (`PHASE_18` §4) |
 | P0 risks R6–R8, R10–R11 closed | ✅ | ⛔ **Open** |
 
@@ -270,7 +297,8 @@ Owner phải **tick và ký xác nhận** (tên + ngày) trước khi agent/team
 
 ### 5.3 Backup (bắt buộc)
 
-- [ ] **B1–B2:** Supabase backup/PITR + timestamp ghi nhận
+- [x] **B1–B2:** Supabase backup/PITR + timestamp — **N/A** Free/Nano; không backup hiển thị; DB trống = baseline empty (2026-07-04)
+- [x] **B3:** Production ref `expuvcohlcjzvrrauvud` ≠ staging `qyewbxjsiiyufanzcjcq` (2026-07-04)
 - [ ] **B5:** Vercel Production deployment ID hiện tại ghi nhận (rollback target)
 - [ ] **B6:** Deploy target = tag `v5.0.0-rc1` (`b0942be`)
 - [ ] Rollback files §3.2 đã review
@@ -301,11 +329,14 @@ Owner phải **tick và ký xác nhận** (tên + ngày) trước khi agent/team
 
 ## 6. Next actions
 
-1. **Owner:** Hoàn thành §1 ENV checklist trên Vercel Production
-2. **Owner:** Backup Production Supabase + ghi timestamp (§3)
-3. **Owner:** Verify/apply SQL §2 — maintenance window nếu cần
-4. **Owner:** Ký §5 manual confirmations
-5. **Phase 19B:** Deploy `v5.0.0-rc1` → smoke `PHASE_18` §4 → monitor 24h
+1. ~~**Owner:** Điền Supabase project registry~~ ✅ **Done** (2026-07-04)
+2. ~~**Owner:** Xác nhận backup status Production~~ ✅ **Done** (2026-07-04) — Free/Nano; không backup hiển thị; DB trống
+3. **Owner:** Apply Batch A §2 — **một migration mỗi lần** #1 → #15 trên project Production (không staging) — **chưa apply**
+4. **Owner:** Sau Batch A: verify queries `PHASE_19A_PRODUCTION_SQL_APPLY_PACK.md` § A1–A5
+5. **Owner:** Hoàn thành §1 ENV checklist trên Vercel (trỏ sang Production Supabase mới) — **chưa redeploy app**
+6. **Owner:** Batch B (#16–21) + Batch C (#22) sau khi Batch A **CONFIRMED**
+7. **Owner:** Ký §5 manual confirmations
+8. **Phase 19B (sau):** Deploy `v5.0.0-rc1` → smoke `PHASE_18` §4 → monitor 24h — **⛔ chưa thực hiện**
 
 ---
 

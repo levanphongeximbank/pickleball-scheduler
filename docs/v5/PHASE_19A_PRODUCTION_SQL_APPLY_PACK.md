@@ -1,11 +1,34 @@
 # Phase 19A — Production SQL Apply Pack (V5.0 RC1)
 
-**Ngày:** 2026-07-03  
+**Ngày:** 2026-07-03 (cập nhật trạng thái 2026-07-04)  
 **Branch:** `v5-platform-edition`  
 **Preflight complete:** commit `5881f1e`  
 **RC1 tag:** `v5.0.0-rc1` → commit `b0942be`  
-**Môi trường:** Owner-review pack only — **không apply SQL trong Phase 19A**  
-**Ràng buộc:** Không deploy Production; không pop stash `IntegrationSettingsPage.jsx`; không ghi secret/env value vào repo.
+**Môi trường:** Owner SQL apply on **new Production Supabase** — **không deploy Production app**  
+**Ràng buộc:** Không deploy Production; không tag release mới; không pop stash `IntegrationSettingsPage.jsx`; không ghi secret/env value vào repo.
+
+---
+
+## Supabase project registry
+
+| Môi trường | Tên project | Project ref | Supabase URL |
+|------------|-------------|-------------|--------------|
+| **Staging** | `pickleball-scheduler-stagin` | `qyewbxjsiiyufanzcjcq` | `https://qyewbxjsiiyufanzcjcq.supabase.co` |
+| **Production** (mới 2026-07-04) | `pickleball-scheduler-production` | `expuvcohlcjzvrrauvud` | `https://expuvcohlcjzvrrauvud.supabase.co` |
+
+**So sánh:** Production ref `expuvcohlcjzvrrauvud` **≠** staging `qyewbxjsiiyufanzcjcq` (owner confirmed 2026-07-04). Mọi migration chạy trên **Production** — không copy/paste nhầm staging SQL Editor tab.
+
+### Backup status (owner confirmed 2026-07-04)
+
+| Hạng mục | Trạng thái |
+|----------|------------|
+| Supabase plan | **Free / Nano** |
+| Dashboard → Database → Backups | **Không có backup hiển thị** |
+| Production DB | **Trống** — chưa apply migration |
+| Baseline trước Migration #1 | Empty schema |
+| PITR / scheduled snapshot | **Không có** trên Free/Nano |
+
+**Hệ quả apply:** Không có snapshot restore trước #1. Rollback = scoped SQL files § Rollback inventory. Sau khi có dữ liệu production, cân nhắc nâng plan hoặc export thủ công trước migration lớn.
 
 ---
 
@@ -13,8 +36,10 @@
 
 | Hạng mục | Verdict |
 |----------|---------|
-| Apply pack document | ✅ **READY for owner review** |
-| Production SQL applied | ⛔ **NONE** — owner must apply manually |
+| Apply pack document | ✅ **READY for owner apply** |
+| Production Supabase project | ✅ **CONFIRMED** — `pickleball-scheduler-production` / `expuvcohlcjzvrrauvud` |
+| Backup preflight | ✅ **CONFIRMED** (2026-07-04) — Free/Nano; không backup hiển thị; DB trống |
+| Production SQL applied | ⏳ **NOT STARTED** — Batch A #1–15 chưa apply |
 | Production deploy (Phase 19B) | ⛔ **NO-GO** until §Owner checklist complete |
 | Stash `IntegrationSettingsPage.jsx` | ✅ **Intact** |
 
@@ -28,24 +53,27 @@
 
 | Batch | Migrations | Trạng thái hiện tại | Blocker? |
 |-------|------------|---------------------|----------|
-| **A** — GA baseline | #1–15 | **UNKNOWN** (owner verify từng bước) | **P0** nếu thiếu |
-| **B** — Billing / platform | #16–21 | **NEEDS APPLY** | **P0** (#16–17 billing); P1 (#18–21 API OFF) |
-| **C** — KN-6 RLS | #22 | **NEEDS APPLY** | **P0** (mobile QR) |
+| **A** — GA baseline | #1–15 | **NEEDS APPLY** — Production DB mới, restart từ #1 | **P0** |
+| **B** — Billing / platform | #16–21 | **NEEDS APPLY** (sau Batch A) | **P0** (#16–17 billing); P1 (#18–21 API OFF) |
+| **C** — KN-6 RLS | #22 | **NEEDS APPLY** (sau Batch B) | **P0** (mobile QR) |
 
-> **Lưu ý lịch sử:** `docs/GA-PRODUCTION-QA.md` (2026-07-01) ghi Auth + Court Engine PASS trên Production — một phần Tier A có thể đã tồn tại. **Không assume** đủ 15 bước; owner verify từng migration trước khi skip.
+> **Lịch sử (2026-07-04):** Trước đây chỉ có staging `qyewbxjsiiyufanzcjcq`. Production project mới = schema trống. **Không skip** migration dù file idempotent — chạy đủ #1 → #22 theo thứ tự.
 
 ---
 
 ## Quy trình apply (owner)
 
-1. Hoàn thành **Owner checklist** (cuối tài liệu) — backup + project ID trước khi chạy SQL đầu tiên.
-2. Mở Supabase Dashboard → **Production project** → **SQL Editor**.
-3. Chạy **một file mỗi lần**, đúng thứ tự #1 → #22.
-4. Sau mỗi **batch** (A / B / C): chạy verify queries § tương ứng.
-5. Tick migration trong bảng; đổi status → **CONFIRMED** + ghi ngày.
-6. **Không** chạy `docs/supabase-staging-phase16-kn6-seed.sql` trên Production.
+1. ~~**Điền** Supabase project registry~~ ✅ **Done** (2026-07-04).
+2. ~~**Xác nhận** backup status~~ ✅ **Done** (2026-07-04) — Free/Nano; không backup hiển thị; DB trống = baseline empty.
+3. Mở Supabase Dashboard → chọn **`pickleball-scheduler-production`** (ref `expuvcohlcjzvrrauvud`) → **SQL Editor**.
+4. **Backup (pre-#1):** N/A trên Free/Nano — không snapshot/PITR. Baseline = empty DB. Rollback = scoped files § Rollback inventory.
+5. Chạy **một file mỗi lần**, đúng thứ tự #1 → #22 — **không** chạy nhiều file trong một lần Run — **chưa apply**.
+6. Sau mỗi migration: tick bảng Batch A/B/C; ghi ngày; đổi status → **CONFIRMED** khi success.
+7. Sau **Batch A** hoàn tất (#15): chạy verify queries § A1–A5 (không cần chờ Batch B).
+8. **Không** chạy `docs/supabase-staging-phase16-kn6-seed.sql` trên Production.
+9. **Không** deploy Vercel Production cho đến Phase 19B Go/No-Go.
 
-**Thời gian ước tính:** 45–90 phút (tùy partial apply Tier A).
+**Thời gian ước tính Batch A:** 30–45 phút (DB trống).
 
 ---
 
@@ -77,21 +105,21 @@
 
 | # | Status | Owner tick | Ngày |
 |---|--------|------------|------|
-| 1 | UNKNOWN | ☐ | |
-| 2 | UNKNOWN | ☐ | |
-| 3 | UNKNOWN | ☐ | |
-| 4 | UNKNOWN | ☐ | |
-| 5 | UNKNOWN | ☐ | |
-| 6 | UNKNOWN | ☐ | |
-| 7 | UNKNOWN | ☐ | |
-| 8 | UNKNOWN | ☐ | |
-| 9 | UNKNOWN | ☐ | |
-| 10 | UNKNOWN | ☐ | |
-| 11 | UNKNOWN | ☐ | |
-| 12 | UNKNOWN | ☐ | |
-| 13 | UNKNOWN | ☐ | |
-| 14 | UNKNOWN | ☐ | |
-| 15 | UNKNOWN | ☐ | |
+| 1 | NEEDS APPLY | ☐ | |
+| 2 | NEEDS APPLY | ☐ | |
+| 3 | NEEDS APPLY | ☐ | |
+| 4 | NEEDS APPLY | ☐ | |
+| 5 | NEEDS APPLY | ☐ | |
+| 6 | NEEDS APPLY | ☐ | |
+| 7 | NEEDS APPLY | ☐ | |
+| 8 | NEEDS APPLY | ☐ | |
+| 9 | NEEDS APPLY | ☐ | |
+| 10 | NEEDS APPLY | ☐ | |
+| 11 | NEEDS APPLY | ☐ | |
+| 12 | NEEDS APPLY | ☐ | |
+| 13 | NEEDS APPLY | ☐ | |
+| 14 | NEEDS APPLY | ☐ | |
+| 15 | NEEDS APPLY | ☐ | |
 
 ### Batch A — Post-apply verification
 
@@ -199,6 +227,8 @@ and column_name in ('auto_renew', 'locked_at', 'last_renewed_at');
 | 20 | `docs/supabase-sprint10-phase11c-api-key-guard.sql` | `api_keys.expires_at` + indexes | ✅ **Có** — `ADD COLUMN IF NOT EXISTS` | `docs/supabase-sprint10-phase11c-rollback.sql` |
 | 21 | `docs/supabase-sprint10-phase11e-integration-audit.sql` | Integration audit persistence columns + RLS | ✅ **Có** — header "Idempotent migration" | `docs/supabase-sprint10-phase11e-rollback.sql` |
 
+> **Phase 21 gate:** Migration **#21 phải owner-confirm PASS** (V21-1 → V21-8) trước khi apply **#22**. Xem `docs/v5/PHASE_21_PRODUCTION_SQL_RECONCILIATION.md`.
+
 ### Batch B — Owner tick
 
 | # | Status | Owner tick | Ngày |
@@ -295,7 +325,7 @@ order by column_name;
 
 ## Batch C — Phase 16 KN-6 RLS SQL (#22)
 
-**Khi nào chạy:** Sau Batch B. **Bắt buộc** trước mobile QR traffic trên Production.
+**Khi nào chạy:** Sau Batch B **và sau khi Migration #21 owner-confirm PASS**. **Bắt buộc** trước mobile QR traffic trên Production.
 
 **Cách chạy:** Supabase **Production** SQL Editor — `docs/supabase-phase16-kn6-qr-checkins-rls.sql`
 
@@ -308,6 +338,8 @@ order by column_name;
 | # | Status | Owner tick | Ngày |
 |---|--------|------------|------|
 | 22 | NEEDS APPLY | ☐ | |
+
+> **Sau #21/#22:** Production env flags (`VITE_API_ENABLED`, `API_KEY_STORE=supabase`, `AUDIT_STORE=supabase`) vẫn **OFF** cho đến Phase 21 Production Preflight owner approval — xem `PHASE_21_PRODUCTION_PREFLIGHT_PLAN.md`.
 
 ### Batch C — Post-apply verification
 
@@ -338,7 +370,12 @@ group by tablename
 order by tablename;
 ```
 
-**Kỳ vọng:** 3 policies mỗi bảng (SELECT, INSERT, UPDATE).
+**Kỳ vọng:**
+
+- `qr_tokens`: **3** policies (SELECT, INSERT, UPDATE)
+- `checkins`: **2** policies (SELECT, INSERT — không có UPDATE policy trong KN-6 patch)
+
+> **Phase 21 reconcile:** Migration **#22 chỉ PASS sau #21 PASS**. Không đánh dấu Batch C ready nếu #21 chưa owner-confirm.
 
 ### Batch C — Script verification (optional)
 
@@ -368,7 +405,7 @@ order by tablename;
 
 ## Rollback inventory (Production)
 
-Chỉ rollback **theo phạm vi lỗi** — không drop toàn DB. PITR restore là last resort.
+Chỉ rollback **theo phạm vi lỗi** — không drop toàn DB. Production hiện trên **Free/Nano** (không PITR/snapshot) — scoped rollback files là phương án chính; nâng plan + backup sau khi có dữ liệu production.
 
 | Phạm vi | Rollback file | Điều kiện |
 |---------|---------------|-----------|
@@ -393,8 +430,8 @@ Chỉ rollback **theo phạm vi lỗi** — không drop toàn DB. PITR restore l
 
 | # | Action | Owner | Tick | Ghi chú / timestamp |
 |---|--------|-------|------|---------------------|
-| P1 | **Backup completed** — Supabase Production snapshot / PITR confirmed | DevOps | ☐ | Timestamp: `________________` |
-| P2 | **Production project ID confirmed** — khác staging | DevOps | ☐ | Project ref: `________________` |
+| P1 | **Backup baseline confirmed** — Free/Nano; không backup hiển thị; DB trống | DevOps | ☑ | N/A snapshot/PITR (2026-07-04); baseline = empty |
+| P2 | **Production project ID confirmed** — khác staging `qyewbxjsiiyufanzcjcq` | DevOps | ☑ | Production ref: `expuvcohlcjzvrrauvud` (2026-07-04) |
 | P3 | Maintenance window communicated (nếu live users) | Owner | ☐ | N/A nếu không có user |
 | P4 | Rollback files § trên đã review | Owner | ☐ | |
 | P5 | Git deploy target `v5.0.0-rc1` (`b0942be`) confirmed | DevOps | ☐ | |
@@ -443,6 +480,7 @@ Hầu hết migration dùng pattern additive (`IF NOT EXISTS`, `DROP POLICY IF E
 | Lỗi giữa chừng (partial apply) | Ghi lỗi + bước #; **không** skip — fix root cause rồi re-run cùng file |
 | Bảng tồn tại nhưng thiếu policy/RPC | Re-run file tương ứng (idempotent) |
 | Tier A UNKNOWN | Owner verify từng bước #1–15; skip chỉ khi query confirm đủ schema |
+| Production DB mới (2026-07-04) | **Không skip** — chạy đủ #1–15 dù idempotent |
 
 ---
 

@@ -8,7 +8,7 @@ import AppContextBar from "../components/shell/AppContextBar.jsx";
 import RouteAccessGate from "../components/auth/RouteAccessGate.jsx";
 import TenantGate from "../components/TenantGate.jsx";
 import SubscriptionBanner from "../components/SubscriptionBanner.jsx";
-import SubscriptionGate from "../components/SubscriptionGate.jsx";
+import OperationalRouteGate from "../features/billing/components/OperationalRouteGate.jsx";
 import { TenantProvider } from "../context/TenantContext.jsx";
 import { ClubProvider } from "../context/ClubContext.jsx";
 import { SeasonProvider } from "../context/SeasonContext.jsx";
@@ -56,9 +56,9 @@ function MainLayoutContent() {
                 <OfflineBanner />
                 <PwaInstallPrompt />
                 <SubscriptionBanner />
-                <SubscriptionGate>
+                <OperationalRouteGate>
                   <Outlet />
-                </SubscriptionGate>
+                </OperationalRouteGate>
               </TenantGate>
             </RouteAccessGate>
           </Box>

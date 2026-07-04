@@ -12,28 +12,37 @@ import {
   saveCourtEngineStore,
   upsertSessionInStore,
 } from "../storage/courtEngineStorage.js";
+import { resolveTenantIdForClub } from "../../tenant/guards/tenantGuard.js";
 import { appendEvent } from "./eventLogService.js";
 
-export function listSessions(clubId) {
-  const store = loadCourtEngineStore(clubId);
+function resolveStorageOptions(clubId, options = {}) {
+  return {
+    tenantId: options.tenantId || resolveTenantIdForClub(clubId),
+  };
+}
+
+export function listSessions(clubId, options = {}) {
+  const store = loadCourtEngineStore(clubId, resolveStorageOptions(clubId, options));
   return store.sessions || [];
 }
 
-export function getActiveSession(clubId) {
-  const sessionId = loadActiveSessionId(clubId);
+export function getActiveSession(clubId, options = {}) {
+  const storageOptions = resolveStorageOptions(clubId, options);
+  const sessionId = loadActiveSessionId(clubId, storageOptions);
   if (!sessionId) {
     return null;
   }
-  const store = loadCourtEngineStore(clubId);
+  const store = loadCourtEngineStore(clubId, storageOptions);
   return getSessionFromStore(store, sessionId);
 }
 
 export function createSession(clubId, options = {}) {
+  const storageOptions = resolveStorageOptions(clubId, options);
   const session = createCourtSession({ clubId, ...options });
-  const store = loadCourtEngineStore(clubId);
+  const store = loadCourtEngineStore(clubId, storageOptions);
   const nextStore = upsertSessionInStore(store, session);
-  saveCourtEngineStore(clubId, nextStore);
-  saveActiveSessionId(clubId, session.id);
+  saveCourtEngineStore(clubId, nextStore, storageOptions);
+  saveActiveSessionId(clubId, session.id, storageOptions);
 
   const withEvent = appendEvent(session, {
     eventType: EVENT_TYPE.SESSION_CREATE,
@@ -85,26 +94,27 @@ function updateSessionStatus(clubId, sessionId, status, meta = {}) {
   return persistSession(clubId, next);
 }
 
-export function getSessionById(clubId, sessionId) {
-  const store = loadCourtEngineStore(clubId);
+export function getSessionById(clubId, sessionId, options = {}) {
+  const store = loadCourtEngineStore(clubId, resolveStorageOptions(clubId, options));
   return getSessionFromStore(store, sessionId);
 }
 
-export function persistSession(clubId, session) {
+export function persistSession(clubId, session, options = {}) {
+  const storageOptions = resolveStorageOptions(clubId, options);
   const normalized = normalizeCourtSession(session);
-  const store = loadCourtEngineStore(clubId);
+  const store = loadCourtEngineStore(clubId, storageOptions);
   const nextStore = upsertSessionInStore(store, normalized);
-  saveCourtEngineStore(clubId, nextStore);
-  saveActiveSessionId(clubId, normalized.id);
+  saveCourtEngineStore(clubId, nextStore, storageOptions);
+  saveActiveSessionId(clubId, normalized.id, storageOptions);
   return { ok: true, session: normalized };
 }
 
-export function setActiveSession(clubId, sessionId) {
-  const session = getSessionById(clubId, sessionId);
+export function setActiveSession(clubId, sessionId, options = {}) {
+  const session = getSessionById(clubId, sessionId, options);
   if (!session) {
     return { ok: false, error: "Không tìm thấy session." };
   }
-  saveActiveSessionId(clubId, sessionId);
+  saveActiveSessionId(clubId, sessionId, resolveStorageOptions(clubId, options));
   return { ok: true, session };
 }
 

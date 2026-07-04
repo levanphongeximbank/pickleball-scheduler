@@ -96,6 +96,18 @@ test("InvoiceService and PaymentService update invoice and subscription on payme
   assert.equal(subscriptionService.getById(subscription.id).status, "active");
 });
 
+test("TenantAccessService blocks no_subscription for operational actions", () => {
+  const store = createStore();
+  const tenantAccess = new TenantAccessService({ store });
+
+  const access = tenantAccess.evaluateAccess({ tenantId: "tenant-none" });
+  assert.equal(access.allowed, false);
+  assert.equal(access.reason, "no_subscription");
+
+  const billing = tenantAccess.canPerformAction({ tenantId: "tenant-none", action: "view_billing" });
+  assert.equal(billing.allowed, true);
+});
+
 test("TenantAccessService blocks operational actions when expired but allows billing", () => {
   const store = createStore();
   const subscriptionService = new SubscriptionService({ store });

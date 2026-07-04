@@ -45,7 +45,7 @@ export class TenantAccessService {
     const resolvedNow = resolveNow(now || this.now());
 
     if (!subscription) {
-      return { allowed: true, reason: "no_subscription", lockLevel: "none", subscription: null };
+      return { allowed: false, reason: "no_subscription", lockLevel: "none", subscription: null };
     }
 
     if (subscription.status === SUBSCRIPTION_STATUS.SUSPENDED) {

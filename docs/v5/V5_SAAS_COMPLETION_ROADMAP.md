@@ -1,6 +1,6 @@
 # V5.0 SaaS Completion Roadmap
 
-**Ngày cập nhật:** 2026-07-03  
+**Ngày cập nhật:** 2026-07-04  
 **Phiên bản mục tiêu:** Pickleball Scheduler Pro **v5.0** — Platform / SaaS Edition  
 **Branch:** `v5-platform-edition`  
 **Commit (latest):** `b0942be` — Phase 17 RC1 pre-tag sanity PASS  
@@ -13,7 +13,7 @@
 
 ## Executive summary
 
-Navigation V5.0 đã triển khai kỹ thuật (config tập trung, sidebar, topbar, mobile nav theo role), **automated gates PASS**, **Phase 14A + 14B browser QA PASS**, **Phase 15 P0 Preview QA PASS**, **Phase 16 KN-6 CLOSED**, **Phase 17 RC1 pre-tag sanity PASS**, **RC1 tag `v5.0.0-rc1` pushed** (`b0942be`), và **Phase 18 Production Readiness COMPLETE** (2026-07-03). Production deploy **vẫn NO-GO** — chờ owner tick env/SQL/backup (Phase 19).
+Navigation V5.0 đã triển khai kỹ thuật (config tập trung, sidebar, topbar, mobile nav theo role), **automated gates PASS**, **Phase 14A + 14B browser QA PASS**, **Phase 15 P0 Preview QA PASS**, **Phase 16 KN-6 CLOSED**, **Phase 17 RC1 pre-tag sanity PASS**, **RC1 tag `v5.0.0-rc1` pushed** (`b0942be`), và **Phase 18 Production Readiness COMPLETE** (2026-07-03). **Phase 19A:** Supabase **Production project mới** tạo 2026-07-04 — Batch A SQL restart #1–15 **IN PROGRESS**. Production **app deploy vẫn NO-GO** (Phase 19B).
 
 | Hạng mục | Verdict |
 |----------|---------|
@@ -30,7 +30,8 @@ Navigation V5.0 đã triển khai kỹ thuật (config tập trung, sidebar, top
 | Phase 17 pre-tag sanity | ✅ **PASS** (2026-07-03) |
 | RC1 tag | ✅ **`v5.0.0-rc1`** @ `b0942be` |
 | Phase 18 Production readiness | ✅ **COMPLETE** — docs + gates (2026-07-03) |
-| Production deploy | ⛔ **NO-GO** — owner env/SQL/backup pending |
+| Phase 19A Production Supabase | ⏳ **IN PROGRESS** — project mới; Batch A #1–15 NEEDS APPLY |
+| Production deploy (Phase 19B) | ⛔ **NO-GO** — SQL + env + backup pending |
 
 ---
 
@@ -51,7 +52,8 @@ Navigation V5.0 đã triển khai kỹ thuật (config tập trung, sidebar, top
 | **Manual P0 QA (Phase 15)** | ✅ PASS | 38/38 P0 — `PHASE_15_V5_PREVIEW_P0_QA.md` (2026-07-03) |
 | **RC1 tag** | ✅ **`v5.0.0-rc1`** | @ `b0942be` — pushed |
 | **Phase 18 Production readiness** | ✅ **COMPLETE** | `PHASE_18_PRODUCTION_READINESS.md` — 2026-07-03 |
-| **Production deploy** | ⛔ NO-GO | Owner env/SQL/backup pending — Phase 19 |
+| **Phase 19A SQL apply** | ⏳ **IN PROGRESS** | Production Supabase mới — `PHASE_19A_PRODUCTION_SQL_APPLY_PACK.md` |
+| **Production deploy (19B)** | ⛔ NO-GO | Chưa deploy app; không tag mới |
 
 ### Navigation V5.0 — triển khai kỹ thuật (đã xong)
 
@@ -85,7 +87,9 @@ Chi tiết QA navigation: `docs/v5/PHASE_14_V5_SAAS_NAVIGATION_QA.md` — Phase 
 | **Phase 18 readiness docs** | ✅ **GO** — checklist + rollback + smoke plan |
 | **Production deploy (Phase 19)** | ⛔ **NO-GO** |
 
-**Lý do NO-GO deploy:** Owner chưa tick Production env (§1.7); V5 SQL Tier A+B chưa xác nhận trên Production; backup chưa thực hiện; P0 risks R6–R8, R10–R11 mở.
+**Lý do NO-GO deploy:** Production Supabase project mới — Batch A–C SQL chưa apply; owner chưa tick Production env trên Vercel (trỏ sang project mới); backup chưa thực hiện; P0 risks R6–R8, R10–R11 mở.
+
+**Supabase topology (2026-07-04):** Staging = `pickleball-scheduler-stagin` / `qyewbxjsiiyufanzcjcq`. Production = `pickleball-scheduler-production` / `expuvcohlcjzvrrauvud`.
 
 ---
 
@@ -108,7 +112,10 @@ Phase 17 (RC1 pre-tag sanity) ──► ✅ PASS — tag v5.0.0-rc1 @ b0942be
 Phase 18 (Prod readiness) ──► ✅ COMPLETE — owner env/SQL/backup pending
          │
          ▼
-Phase 19 (GA deploy) ──► ⛔ NO-GO
+Phase 19A (Prod SQL apply) ──► ⏳ IN PROGRESS — Batch A #1–15
+         │
+         ▼
+Phase 19B (GA deploy) ──► ⛔ NO-GO
 ```
 
 ---
@@ -271,19 +278,25 @@ git push origin v5.0.0-rc1
 
 ### Phase 19 — GA Deploy
 
-**Mục tiêu:** Deploy Production và xác nhận GA.
+**Mục tiêu:** Apply SQL trên Production Supabase mới → deploy app Production → xác nhận GA.
 
-**Trạng thái:** ⛔ **NO-GO** — chỉ sau Phase 18 GO.
+**Trạng thái:** ⏳ **Phase 19A IN PROGRESS** · ⛔ **Phase 19B NO-GO**
 
-| # | Task |
-|---|------|
-| 19-1 | Deploy Vercel Production (owner trigger) |
-| 19-2 | Production smoke test — auth, billing, court-engine, mobile |
-| 19-3 | Monitor 24h — error rate, RLS, API audit |
-| 19-4 | Publish `RELEASE_NOTES_v5.0.md` |
-| 19-5 | Update `AGENTS.md` — GA status |
+| # | Task | Status |
+|---|------|--------|
+| 19-0 | Tạo Supabase Production project (ref ≠ staging) | ✅ 2026-07-04 |
+| 19-0a | Owner điền project registry + backup trước SQL #1 | ⏳ Registry ✅ — backup pending |
+| 19-0b | Apply Batch A SQL #1–15 (một file/lần) | ⏳ **Restart #1** |
+| 19-0c | Apply Batch B #16–21 + Batch C #22 | ⏳ After Batch A |
+| 19-1 | Deploy Vercel Production (owner trigger) | ⛔ Phase 19B |
+| 19-2 | Production smoke test — auth, billing, court-engine, mobile | ⛔ |
+| 19-3 | Monitor 24h — error rate, RLS, API audit | ⛔ |
+| 19-4 | Publish `RELEASE_NOTES_v5.0.md` | ⛔ |
+| 19-5 | Update `AGENTS.md` — GA status | ⛔ |
 
-**Kết quả mong muốn:** ✅ **V5.0 GA LIVE**
+**Tài liệu:** `PHASE_19A_PRODUCTION_PREFLIGHT.md`, `PHASE_19A_PRODUCTION_SQL_APPLY_PACK.md`
+
+**Kết quả mong muốn:** ✅ **V5.0 GA LIVE** (sau 19B Go/No-Go)
 
 ---
 
@@ -305,11 +318,13 @@ git push origin v5.0.0-rc1
 
 ## Next action (immediate)
 
-1. **Owner:** Tick Production env checklist — `PHASE_18_PRODUCTION_READINESS.md` §1.7
-2. **Owner:** Backup Production Supabase + note Vercel deployment ID — §3.1
-3. **Owner:** Apply Tier A + Tier B SQL on Production — §2.1 (maintenance window)
-4. **Phase 19:** Deploy `v5.0.0-rc1` → Production smoke §4 → monitor 24h
-5. **P1 follow-up** (không chặn deploy): mobile: 14B PLAYER/REFEREE mobile nav; real device QR/PWA QA
+1. ~~**Owner:** Điền Production name / ref / URL~~ ✅ **Done** (2026-07-04)
+2. **Owner:** Backup Supabase Production mới — **trước Migration #1**
+3. **Owner:** Apply **Migration #1** `docs/supabase-club-v3.sql` trên Production SQL Editor — xem hướng dẫn bên dưới pack
+4. **Owner:** Tiếp tục #2 → #15 (một file/lần); verify § A1–A5 sau #15
+5. **Owner:** Batch B (#16–21) + Batch C (#22)
+6. **Owner:** Tick Vercel Production env trỏ Supabase mới — **chưa redeploy app**
+7. **Phase 19B (sau):** Deploy `v5.0.0-rc1` → smoke → monitor — **⛔ chưa thực hiện**
 
 ---
 

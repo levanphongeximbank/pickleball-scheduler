@@ -111,14 +111,22 @@ function buildBlockedMessage(access) {
  */
 export function assertSubscriptionOperational(tenantId, options = {}) {
   if (!tenantId) {
-    return { ok: true, code: "NO_TENANT" };
+    return {
+      ok: false,
+      error: "Không tìm thấy tenant/venue hợp lệ cho user.",
+      code: "TENANT_NOT_FOUND",
+    };
   }
 
   const engine = createEngine(options.store);
   const existing = engine.subscriptionService?.getByTenant?.(tenantId);
 
   if (!existing) {
-    return { ok: true, code: "NO_SUBSCRIPTION" };
+    return {
+      ok: false,
+      error: "Chưa có gói sử dụng. Vui lòng vào trang Thanh toán hoặc liên hệ hỗ trợ.",
+      code: "NO_SUBSCRIPTION",
+    };
   }
 
   const access = engine.evaluateTenantAccess({ tenantId, now: options.now });
@@ -128,6 +136,14 @@ export function assertSubscriptionOperational(tenantId, options = {}) {
       ok: true,
       code: "SUBSCRIPTION_OK",
       subscription: phase9SubscriptionToLegacy(access.subscription || existing),
+    };
+  }
+
+  if (access.reason === "no_subscription") {
+    return {
+      ok: false,
+      error: "Chưa có gói sử dụng. Vui lòng vào trang Thanh toán hoặc liên hệ hỗ trợ.",
+      code: "NO_SUBSCRIPTION",
     };
   }
 

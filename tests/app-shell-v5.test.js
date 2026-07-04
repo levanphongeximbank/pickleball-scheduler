@@ -13,8 +13,8 @@ function readSrc(relativePath) {
   return readFileSync(path.join(root, relativePath), "utf8");
 }
 
-test("app shell — version label V5.0 SaaS Preview", () => {
-  assert.equal(APP_VERSION_LABEL, "V5.0 SaaS Preview");
+test("app shell — version label V5.0 SaaS Preview RC1", () => {
+  assert.equal(APP_VERSION_LABEL, "V5.0 SaaS Preview RC1");
 });
 
 test("app shell — header không còn legacy chips tiếng Anh", () => {
@@ -41,6 +41,13 @@ test("app shell — sidebar emerald + subscription card", () => {
   assert.ok(sidebar.includes("SidebarSubscriptionCard"));
   assert.ok(sidebar.includes('variant="dark"'));
   assert.ok(sidebar.includes("shellTokens"));
+});
+
+test("app shell — main layout wires OperationalRouteGate", () => {
+  const layout = readSrc("src/layouts/MainLayout.jsx");
+
+  assert.ok(layout.includes("OperationalRouteGate"));
+  assert.equal(/SubscriptionGate/.test(layout), false);
 });
 
 test("app shell — main layout có context bar và page background", () => {

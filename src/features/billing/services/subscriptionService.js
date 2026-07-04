@@ -125,7 +125,7 @@ export class SubscriptionService {
   checkTenantAccess(tenantId, { now } = {}) {
     const subscription = this.getByTenant(tenantId);
     if (!subscription) {
-      return { allowed: true, reason: "no_subscription" };
+      return { allowed: false, reason: "no_subscription" };
     }
     if ([SUBSCRIPTION_STATUS.EXPIRED, SUBSCRIPTION_STATUS.SUSPENDED, SUBSCRIPTION_STATUS.CANCELLED].includes(subscription.status)) {
       return { allowed: false, reason: subscription.status };

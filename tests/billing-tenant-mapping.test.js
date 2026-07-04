@@ -100,13 +100,13 @@ test("validateBillingTenantOnSupabase rejects blocklisted tenant id", async () =
   assert.equal(result.code, "TENANT_MISSING");
 });
 
-test("assertSubscriptionOperational allows app when subscription missing", () => {
+test("assertSubscriptionOperational blocks when subscription missing (no_subscription)", () => {
   const store = createMemoryBillingStore();
   const engine = new BillingEngine({ store });
   engine.seedDefaults();
 
   const result = assertSubscriptionOperational("venue-no-sub", { store });
-  assert.equal(result.ok, true);
+  assert.equal(result.ok, false);
   assert.equal(result.code, "NO_SUBSCRIPTION");
 });
 
