@@ -1,4 +1,4 @@
-import { Box, Card, CardContent, Stack, Typography } from "@mui/material";
+import { Box, Card, CardContent, Stack, Typography, useTheme } from "@mui/material";
 import TrendingDownIcon from "@mui/icons-material/TrendingDown";
 import TrendingFlatIcon from "@mui/icons-material/TrendingFlat";
 import TrendingUpIcon from "@mui/icons-material/TrendingUp";
@@ -27,17 +27,23 @@ function TrendBadge({ trendPercent }) {
 }
 
 export default function KpiCard({ label, value, hint, trendPercent, icon: Icon, accent = "primary.main" }) {
+  const theme = useTheme();
+
   return (
     <Card
       elevation={0}
       sx={{
         height: "100%",
         borderRadius: 2.5,
-        bgcolor: "#FFFFFF",
-        border: "1px solid #E5E7EB",
-        boxShadow: "0 1px 2px rgba(15, 23, 42, 0.04)",
-        transition: "box-shadow 0.2s",
-        "&:hover": { boxShadow: "0 8px 24px rgba(15, 23, 42, 0.06)" },
+        bgcolor: "background.paper",
+        border: "1px solid",
+        borderColor: "divider",
+        boxShadow: theme.shell?.cardShadow || 1,
+        transition: "box-shadow 0.2s, transform 0.2s",
+        "&:hover": {
+          boxShadow: theme.shell?.cardShadowHover || 3,
+          transform: "translateY(-1px)",
+        },
       }}
     >
       <CardContent>
@@ -45,13 +51,14 @@ export default function KpiCard({ label, value, hint, trendPercent, icon: Icon, 
           {Icon && (
             <Box
               sx={{
-                width: 44,
-                height: 44,
-                borderRadius: 2,
+                width: 40,
+                height: 40,
+                borderRadius: 1.5,
                 display: "grid",
                 placeItems: "center",
-                bgcolor: "#ECFDF5",
+                bgcolor: theme.shell?.accentLight || "action.hover",
                 color: accent,
+                flexShrink: 0,
               }}
             >
               <Icon fontSize="small" />
@@ -61,7 +68,7 @@ export default function KpiCard({ label, value, hint, trendPercent, icon: Icon, 
             <Typography variant="body2" color="text.secondary">
               {label}
             </Typography>
-            <Typography variant="h5" fontWeight={800} sx={{ mt: 0.25 }}>
+            <Typography variant="h5" fontWeight={700} sx={{ mt: 0.25 }}>
               {value}
             </Typography>
           </Box>
@@ -80,7 +87,7 @@ export default function KpiCard({ label, value, hint, trendPercent, icon: Icon, 
 export function KpiSection({ title, children }) {
   return (
     <Box sx={{ mb: 3 }}>
-      <Typography variant="h6" fontWeight="bold" sx={{ mb: 1.5 }}>
+      <Typography variant="h6" fontWeight={700} sx={{ mb: 1.5 }}>
         {title}
       </Typography>
       {children}

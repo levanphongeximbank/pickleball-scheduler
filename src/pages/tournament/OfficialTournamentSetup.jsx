@@ -35,6 +35,7 @@ import {
   OFFICIAL_MODE,
   TOURNAMENT_MODE,
   TOURNAMENT_STATUS,
+  EVENT_TYPE_OPTIONS,
 } from "../../models/tournament/index.js";
 import {
   buildAllGroupStandings,
@@ -85,13 +86,7 @@ import { useAuth } from "../../context/AuthContext.jsx";
 import { useTenant } from "../../context/TenantContext.jsx";
 import { resolveTenantIdForClub } from "../../features/tenant/guards/tenantGuard.js";
 
-const EVENT_OPTIONS = [
-  { value: EVENT_TYPE.MEN_SINGLE, label: "Đơn nam" },
-  { value: EVENT_TYPE.MEN_DOUBLE, label: "Đôi nam" },
-  { value: EVENT_TYPE.WOMEN_SINGLE, label: "Đơn nữ" },
-  { value: EVENT_TYPE.WOMEN_DOUBLE, label: "Đôi nữ" },
-  { value: EVENT_TYPE.MIXED_DOUBLE, label: "Đôi nam nữ" },
-];
+const EVENT_OPTIONS = EVENT_TYPE_OPTIONS;
 
 const OFFICIAL_MODE_OPTIONS = [
   { value: OFFICIAL_MODE.OPEN, label: "Open Mode" },

@@ -17,7 +17,6 @@ import MenuIcon from "@mui/icons-material/Menu";
 import NotificationsIcon from "@mui/icons-material/Notifications";
 import HelpOutlineOutlinedIcon from "@mui/icons-material/HelpOutlineOutlined";
 
-import VenueSwitcher from "./VenueSwitcher.jsx";
 import GlobalSearch from "./GlobalSearch.jsx";
 import AccountMenu from "./shell/AccountMenu.jsx";
 import { usePlatformRuntime } from "../core/platform/app/usePlatformRuntime.js";
@@ -82,6 +81,7 @@ export default function Header({ onMenuClick }) {
         bgcolor: SHELL_COLORS.cardBg,
         color: SHELL_COLORS.textPrimary,
         borderBottom: `1px solid ${SHELL_COLORS.border}`,
+        boxShadow: "0 1px 3px rgba(15, 23, 42, 0.06)",
       }}
     >
       <Toolbar
@@ -101,23 +101,6 @@ export default function Header({ onMenuClick }) {
           </IconButton>
         )}
 
-        <Box
-          sx={{
-            display: "flex",
-            alignItems: "center",
-            gap: 1.5,
-            flexShrink: 0,
-            minWidth: { md: 180, lg: 220 },
-          }}
-        >
-          {!isMobile && <VenueSwitcher variant="light" />}
-          {isMobile && (
-            <Typography variant="subtitle2" fontWeight={800} noWrap>
-              Pickleball Pro
-            </Typography>
-          )}
-        </Box>
-
         {!isMobile && (
           <Box
             sx={{
@@ -125,11 +108,17 @@ export default function Header({ onMenuClick }) {
               display: "flex",
               justifyContent: "center",
               minWidth: 0,
-              px: 1,
+              px: { md: 2, lg: 3 },
             }}
           >
-            <GlobalSearch variant="light" maxWidth={420} />
+            <GlobalSearch variant="light" maxWidth={480} />
           </Box>
+        )}
+
+        {isMobile && (
+          <Typography variant="subtitle2" fontWeight={700} noWrap sx={{ flex: 1, minWidth: 0 }}>
+            Pickleball Pro
+          </Typography>
         )}
 
         <Stack

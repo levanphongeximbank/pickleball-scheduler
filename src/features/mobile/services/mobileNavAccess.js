@@ -24,7 +24,7 @@ export const MOBILE_REFEREE_NAV = MOBILE_BOTTOM_NAV_PROFILES.referee.map((item) 
 /** Mobile route → minimum permissions (OR). Empty = authenticated only with role rules. */
 export const MOBILE_ROUTE_ACCESS = Object.freeze({
   "/mobile/check-in": [PERMISSIONS.TOURNAMENT_VIEW],
-  "/mobile/qr-scan": [PERMISSIONS.TOURNAMENT_VIEW, PERMISSIONS.TOURNAMENT_UPDATE],
+  "/mobile/qr-scan": [PERMISSIONS.TOURNAMENT_VIEW, PERMISSIONS.TOURNAMENT_UPDATE, PERMISSIONS.MATCH_UPDATE],
   "/mobile/qr-generate": [PERMISSIONS.TOURNAMENT_UPDATE],
   "/mobile/notifications": [],
   "/mobile/player": [],

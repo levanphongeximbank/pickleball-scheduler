@@ -1,4 +1,4 @@
-import { EVENT_TYPE } from "./constants.js";
+import { EVENT_TYPE, EVENT_TYPE_ALIASES } from "./constants.js";
 import { normalizeEntries } from "./entry.js";
 import { normalizeGroups } from "./group.js";
 import { normalizeMatches } from "./match.js";
@@ -7,7 +7,13 @@ const VALID_EVENT_TYPES = new Set(Object.values(EVENT_TYPE));
 
 function normalizeEventType(value) {
   const raw = String(value || "").trim().toLowerCase();
-  return VALID_EVENT_TYPES.has(raw) ? raw : EVENT_TYPE.MIXED_DOUBLE;
+  if (VALID_EVENT_TYPES.has(raw)) {
+    return raw;
+  }
+  if (EVENT_TYPE_ALIASES[raw]) {
+    return EVENT_TYPE_ALIASES[raw];
+  }
+  return EVENT_TYPE.MIXED_DOUBLE;
 }
 
 export function normalizeEvent(event, index = 0) {

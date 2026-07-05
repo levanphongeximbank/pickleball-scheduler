@@ -8,7 +8,10 @@ import {
   CardContent,
   Container,
   Divider,
+  FormControlLabel,
   MenuItem,
+  Radio,
+  RadioGroup,
   Stack,
   TextField,
   Typography,
@@ -21,7 +24,13 @@ import { useAuth } from "../context/AuthContext.jsx";
 import { ROLE_LABELS } from "../auth/roles.js";
 import { isDevAuthAllowed, listDevUsers } from "../auth/authService.js";
 import { getDefaultHomePath } from "../auth/menuAccess.js";
-import { APP_PRODUCT_NAME, getLoginSubtitle } from "../config/appVersion.js";
+import { APP_PRODUCT_NAME, APP_VERSION_LABEL, getLoginSubtitle } from "../config/appVersion.js";
+import { SHELL_COLORS } from "../components/shell/shellTokens.js";
+import { isAuthSignupEnabled } from "../config/authConfig.js";
+import {
+  SIGNUP_INTENT,
+  validateSignupForm,
+} from "../features/identity/services/signupService.js";
 
 export default function LoginPage() {
   const location = useLocation();
@@ -38,9 +47,13 @@ export default function LoginPage() {
     signUpWithPassword,
   } = useAuth();
 
+  const signupEnabled = isAuthSignupEnabled();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
   const [displayName, setDisplayName] = useState("");
+  const [venueName, setVenueName] = useState("");
+  const [signupType, setSignupType] = useState(SIGNUP_INTENT.PLAYER);
   const [authMode, setAuthMode] = useState("signin");
   const [message, setMessage] = useState(null);
   const [loading, setLoading] = useState(false);
@@ -49,6 +62,7 @@ export default function LoginPage() {
   const devUsers = devAuthAllowed ? listDevUsers() : [];
   const redirectTo = location.state?.from?.pathname || getDefaultHomePath(user, rbacEnabled);
   const authRequired = authProductionEnabled || rbacEnabled;
+  const isSignupMode = authMode === "signup" && signupEnabled;
 
   if (!authRequired) {
     return <Navigate to="/" replace />;
@@ -73,6 +87,18 @@ export default function LoginPage() {
     return <Navigate to={redirectTo} replace />;
   }
 
+  const switchToSignIn = () => {
+    setAuthMode("signin");
+    setMessage(null);
+    setConfirmPassword("");
+    setVenueName("");
+  };
+
+  const switchToSignUp = () => {
+    setAuthMode("signup");
+    setMessage(null);
+  };
+
   const handleSignInDev = (devEmail = email) => {
     const result = signInDev(devEmail);
     if (!result.ok) {
@@ -86,6 +112,11 @@ export default function LoginPage() {
   };
 
   const handleSignInSupabase = async () => {
+    if (!email.trim() || !password) {
+      setMessage({ type: "error", text: "Nhập email và mật khẩu." });
+      return;
+    }
+
     setLoading(true);
     setMessage(null);
     const result = await signInWithPassword(email, password);
@@ -103,11 +134,25 @@ export default function LoginPage() {
   };
 
   const handleSignUpSupabase = async () => {
+    const validation = validateSignupForm({
+      email,
+      password,
+      confirmPassword,
+      signupType,
+      venueName,
+    });
+
+    if (!validation.ok) {
+      setMessage({ type: "error", text: validation.error });
+      return;
+    }
+
     setLoading(true);
     setMessage(null);
-    const result = await signUpWithPassword(email, password, {
-      display_name: displayName.trim() || email.split("@")[0],
-      role: "PLAYER",
+    const result = await signUpWithPassword(validation.normalizedEmail, password, {
+      display_name: displayName.trim() || validation.normalizedEmail.split("@")[0],
+      signupIntent: signupType,
+      venueName: signupType === SIGNUP_INTENT.COURT_OWNER ? venueName : "",
     });
     setLoading(false);
 
@@ -127,56 +172,109 @@ export default function LoginPage() {
     });
   };
 
+  const signupSubmitDisabled =
+    loading ||
+    !email.trim() ||
+    !password ||
+    !confirmPassword ||
+    (signupType === SIGNUP_INTENT.COURT_OWNER && !venueName.trim());
+
   return (
     <Box
       sx={{
         minHeight: "100dvh",
         display: "flex",
-        alignItems: "center",
+        flexDirection: { xs: "column", md: "row" },
         bgcolor: "background.default",
-        py: { xs: 3, sm: 4 },
-        px: { xs: 1.5, sm: 0 },
       }}
     >
-      <Container maxWidth="sm">
-        <Stack spacing={2} alignItems="center" sx={{ mb: 3 }}>
-          <SportsTennisIcon color="primary" sx={{ fontSize: { xs: 40, sm: 48 } }} />
-          <Typography variant="h4" fontWeight={900} textAlign="center" sx={{ fontSize: { xs: 24, sm: 34 } }}>
-            {APP_PRODUCT_NAME}
-          </Typography>
-          <Typography color="text.secondary" textAlign="center" variant="body2">
-            {supabaseAvailable ? (
-              <Stack direction="row" spacing={0.5} alignItems="center" justifyContent="center">
-                <CloudIcon fontSize="small" />
-                <span>{getLoginSubtitle({ supabaseAvailable: true })}</span>
-              </Stack>
-            ) : (
-              getLoginSubtitle({ supabaseAvailable: false })
-            )}
-          </Typography>
+      <Box
+        sx={{
+          flex: { md: "0 0 42%" },
+          display: "flex",
+          flexDirection: "column",
+          justifyContent: "center",
+          px: { xs: 3, md: 5, lg: 6 },
+          py: { xs: 4, md: 6 },
+          bgcolor: SHELL_COLORS.sidebarBg,
+          color: SHELL_COLORS.sidebarText,
+        }}
+      >
+        <Box
+          sx={{
+            width: 48,
+            height: 48,
+            borderRadius: 2,
+            bgcolor: "rgba(255,255,255,0.12)",
+            display: "grid",
+            placeItems: "center",
+            mb: 2,
+          }}
+        >
+          <SportsTennisIcon sx={{ color: SHELL_COLORS.sidebarAccent, fontSize: 28 }} />
+        </Box>
+        <Typography variant="h4" fontWeight={700} sx={{ mb: 1, fontSize: { xs: 24, md: 28 } }}>
+          {APP_PRODUCT_NAME}
+        </Typography>
+        <Typography
+          variant="caption"
+          sx={{
+            display: "inline-block",
+            mb: 2,
+            px: 1.25,
+            py: 0.35,
+            borderRadius: 1,
+            bgcolor: "rgba(255,255,255,0.12)",
+            color: SHELL_COLORS.sidebarAccent,
+            fontWeight: 700,
+            letterSpacing: 0.4,
+          }}
+        >
+          {APP_VERSION_LABEL.replace(" Preview", "")}
+        </Typography>
+        <Typography sx={{ color: SHELL_COLORS.sidebarTextMuted, mb: 3, maxWidth: 360 }}>
+          {getLoginSubtitle({ supabaseAvailable })}
+        </Typography>
+        <Stack spacing={1.5} sx={{ display: { xs: "none", md: "flex" } }}>
+          <FeatureBullet icon={SportsTennisIcon} text="Quản lý sân & đặt lịch thông minh" />
+          <FeatureBullet icon={CloudIcon} text="Giải đấu & CLB trên một nền tảng" />
+          <FeatureBullet icon={SecurityIcon} text="Bảo mật đa tenant cho SaaS V5.0" />
         </Stack>
+      </Box>
 
-        <Card elevation={2}>
-          <CardContent sx={{ p: { xs: 2, sm: 3 } }}>
-            <Stack direction="row" spacing={1} alignItems="center" sx={{ mb: 2 }}>
-              <SecurityIcon color="primary" />
-              <Typography variant="h6" fontWeight="bold">
-                Đăng nhập
-              </Typography>
-            </Stack>
+      <Box
+        sx={{
+          flex: 1,
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          px: { xs: 2, sm: 3 },
+          py: { xs: 3, md: 4 },
+        }}
+      >
+        <Container maxWidth="sm" disableGutters sx={{ width: "100%" }}>
+          <Card elevation={0} sx={{ border: "1px solid", borderColor: "divider", boxShadow: 2 }}>
+            <CardContent sx={{ p: { xs: 2.5, sm: 3.5 } }}>
+              <Stack direction="row" spacing={1} alignItems="center" sx={{ mb: 2 }}>
+                <SecurityIcon color="primary" />
+                <Typography variant="h6" fontWeight={700}>
+                  {isSignupMode ? "Đăng ký tài khoản" : "Đăng nhập"}
+                </Typography>
+              </Stack>
 
-            {(message || authError) && (
-              <Alert severity={message?.type || "error"} sx={{ mb: 2 }} onClose={() => setMessage(null)}>
-                {message?.text || authError}
-              </Alert>
-            )}
+              {(message || authError) && (
+                <Alert severity={message?.type || "error"} sx={{ mb: 2 }} onClose={() => setMessage(null)}>
+                  {message?.text || authError}
+                </Alert>
+              )}
 
-            <Stack spacing={2}>
-              {supabaseAvailable && authMode === "signin" && (
-                <Button component={RouterLink} to="/forgot-password" size="small">
+              <Stack spacing={2}>
+              {supabaseAvailable && !isSignupMode && (
+                <Button component={RouterLink} to="/forgot-password" size="small" sx={{ alignSelf: "flex-start" }}>
                   Quên mật khẩu?
                 </Button>
               )}
+
               {devAuthAllowed && devUsers.length > 0 && (
                 <>
                   <TextField
@@ -223,27 +321,45 @@ export default function LoginPage() {
 
               {supabaseAvailable && (
                 <>
-                  <TextField
-                    select
-                    size="small"
-                    label="Chế độ"
-                    value={authMode}
-                    onChange={(e) => setAuthMode(e.target.value)}
-                    fullWidth
-                  >
-                    <MenuItem value="signin">Đăng nhập</MenuItem>
-                    <MenuItem value="signup">Đăng ký mới</MenuItem>
-                  </TextField>
-                  {authMode === "signup" && (
-                    <TextField
-                      size="small"
-                      label="Tên hiển thị"
-                      value={displayName}
-                      onChange={(e) => setDisplayName(e.target.value)}
-                      fullWidth
-                      autoComplete="name"
-                    />
+                  {isSignupMode && (
+                    <>
+                      <TextField
+                        size="small"
+                        label="Tên hiển thị"
+                        value={displayName}
+                        onChange={(e) => setDisplayName(e.target.value)}
+                        fullWidth
+                        autoComplete="name"
+                      />
+                      <RadioGroup
+                        row
+                        value={signupType}
+                        onChange={(e) => setSignupType(e.target.value)}
+                      >
+                        <FormControlLabel
+                          value={SIGNUP_INTENT.PLAYER}
+                          control={<Radio size="small" />}
+                          label="Người chơi"
+                        />
+                        <FormControlLabel
+                          value={SIGNUP_INTENT.COURT_OWNER}
+                          control={<Radio size="small" />}
+                          label="Chủ sân"
+                        />
+                      </RadioGroup>
+                      {signupType === SIGNUP_INTENT.COURT_OWNER && (
+                        <TextField
+                          size="small"
+                          label="Tên sân / CLB"
+                          value={venueName}
+                          onChange={(e) => setVenueName(e.target.value)}
+                          fullWidth
+                          helperText="Tạo venue mới và gói dùng thử sau khi đăng ký"
+                        />
+                      )}
+                    </>
                   )}
+
                   <TextField
                     size="small"
                     label="Email"
@@ -253,6 +369,7 @@ export default function LoginPage() {
                     fullWidth
                     autoComplete="username"
                     inputMode="email"
+                    placeholder="email@example.com"
                   />
                   <TextField
                     size="small"
@@ -261,17 +378,40 @@ export default function LoginPage() {
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     fullWidth
-                    autoComplete={authMode === "signup" ? "new-password" : "current-password"}
+                    autoComplete={isSignupMode ? "new-password" : "current-password"}
                   />
+                  {isSignupMode && (
+                    <TextField
+                      size="small"
+                      label="Xác nhận mật khẩu"
+                      type="password"
+                      value={confirmPassword}
+                      onChange={(e) => setConfirmPassword(e.target.value)}
+                      fullWidth
+                      autoComplete="new-password"
+                    />
+                  )}
+
                   <Button
                     variant="contained"
                     size="large"
-                    onClick={authMode === "signup" ? handleSignUpSupabase : handleSignInSupabase}
-                    disabled={!email.trim() || !password || loading}
+                    onClick={isSignupMode ? handleSignUpSupabase : handleSignInSupabase}
+                    disabled={isSignupMode ? signupSubmitDisabled : !email.trim() || !password || loading}
                     fullWidth
                   >
-                    {loading ? "Đang xử lý…" : authMode === "signup" ? "Đăng ký" : "Đăng nhập"}
+                    {loading ? "Đang xử lý…" : isSignupMode ? "Đăng ký" : "Đăng nhập"}
                   </Button>
+
+                  {signupEnabled && (
+                    <Button
+                      variant="text"
+                      size="small"
+                      onClick={isSignupMode ? switchToSignIn : switchToSignUp}
+                      sx={{ alignSelf: "center" }}
+                    >
+                      {isSignupMode ? "Quay lại đăng nhập" : "Đăng ký tài khoản"}
+                    </Button>
+                  )}
                 </>
               )}
 
@@ -286,7 +426,19 @@ export default function LoginPage() {
             </Stack>
           </CardContent>
         </Card>
-      </Container>
+        </Container>
+      </Box>
     </Box>
+  );
+}
+
+function FeatureBullet({ icon: Icon, text }) {
+  return (
+    <Stack direction="row" spacing={1.25} alignItems="center">
+      <Icon sx={{ fontSize: 20, color: SHELL_COLORS.sidebarAccent }} />
+      <Typography variant="body2" sx={{ color: SHELL_COLORS.sidebarText }}>
+        {text}
+      </Typography>
+    </Stack>
   );
 }

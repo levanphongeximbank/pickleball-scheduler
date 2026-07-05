@@ -4,6 +4,7 @@ import { Navigate } from "react-router-dom";
 import { Alert, Box, Grid, Stack, Typography } from "@mui/material";
 
 import { useAuth } from "../../../context/AuthContext.jsx";
+import { ROLE_LABELS } from "../../../auth/roles.js";
 import { useClub } from "../../../context/ClubContext.jsx";
 import { useDashboardAnalytics } from "../hooks/useDashboardAnalytics.js";
 import DashboardTimeFilter from "./DashboardTimeFilter.jsx";
@@ -49,7 +50,7 @@ export default function DashboardAnalyticsView() {
 
   return (
     <Box sx={{ mb: 4 }}>
-      <StackHeader activeClub={activeClub} scopeLabel={access.scopeLabel} />
+      <StackHeader activeClub={activeClub} scopeLabel={access.scopeLabel} user={user} />
 
       {!loading && !error && data && (
         <DashboardTodayKpis summary={data.summary} isMock={data.isMock} />
@@ -133,7 +134,9 @@ export default function DashboardAnalyticsView() {
   );
 }
 
-function StackHeader({ activeClub, scopeLabel }) {
+function StackHeader({ activeClub, scopeLabel, user }) {
+  const displayName = user?.displayName || ROLE_LABELS[user?.role] || "bạn";
+
   return (
     <Stack
       direction={{ xs: "column", md: "row" }}
@@ -141,12 +144,12 @@ function StackHeader({ activeClub, scopeLabel }) {
       sx={{ mb: 3, alignItems: { md: "flex-start" }, justifyContent: "space-between" }}
     >
       <Box>
-        <Typography variant="h4" fontWeight={800} sx={{ mb: 0.5 }}>
+        <Typography variant="h4" fontWeight={700} sx={{ mb: 0.5 }}>
           Tổng quan
         </Typography>
         <Typography color="text.secondary">
-          Cập nhật nhanh tình hình hoạt động của sân.
-          {activeClub?.name ? ` ${activeClub.name}` : ""} • {scopeLabel}
+          Chào mừng trở lại, {displayName}! Cập nhật nhanh tình hình hoạt động
+          {activeClub?.name ? ` — ${activeClub.name}` : ""} • {scopeLabel}
         </Typography>
       </Box>
     </Stack>

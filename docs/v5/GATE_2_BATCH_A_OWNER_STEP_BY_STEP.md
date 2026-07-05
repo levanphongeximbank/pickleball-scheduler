@@ -787,20 +787,14 @@ and column_name in ('auto_renew', 'locked_at', 'last_renewed_at');
 
 ### Batch A PASS khi:
 
-- ☐ #1 → #15 đều **Success** (không ERROR)
-- ☐ A1, A2, A3, A4, A5 đều **PASS**
-
-### Nếu A1–A5 có bất kỳ FAIL nào:
-
-1. **DỪNG** — không chạy #16–#22
-2. Ghi query nào FAIL + kết quả thực tế
-3. Báo engineering
+- ✅ #1 → #15 đều **Success** (không ERROR)
+- ✅ A1, A2, A3, A4, A5 đều **PASS**
 
 ### Sau Batch A PASS — việc tiếp theo
 
 | Việc | Làm ngay? |
 |------|-----------|
-| Apply #16–#22 (Batch B + C) | ⛔ **Chưa** — chờ tài liệu/hướng dẫn riêng |
+| Apply #16–#21 (Batch B) | ✅ **Tiếp theo** — xem `GATE_2_BATCH_B_OWNER_STEP_BY_STEP.md` |
 | Deploy Production app | ⛔ **Không** |
 | Bật env flags Production | ⛔ **Không** |
 | Bật payment live | ⛔ **Không** |
@@ -835,15 +829,15 @@ Engineering sẽ cập nhật:
 
 | Verify cuối Batch A | PASS | Ngày |
 |---------------------|------|------|
-| A1 RLS | ☐ | |
-| A2 Tables | ☐ | |
-| A3 tenant_id text | ☐ | |
-| A4 RPC | ☐ | |
-| A5 tenants + subs | ☐ | |
+| A1 RLS | ✅ | 2026-07-04 |
+| A2 Tables | ✅ | 2026-07-04 |
+| A3 tenant_id text | ✅ | 2026-07-04 |
+| A4 RPC | ✅ | 2026-07-04 |
+| A5 tenants + subs | ✅ | 2026-07-04 |
 
-**Batch A verdict:** ☐ PASS · ☐ FAIL · ☐ PENDING
+**Batch A verdict:** ✅ **PASS** — Owner evidence 2026-07-04
 
-**Owner signature:** ________________ **Date:** __________
+**Owner signature:** ________________ **Date:** 2026-07-04
 
 ---
 
@@ -862,7 +856,7 @@ Trả lời: Nếu **không** có `ERROR:` đỏ → thường OK. Ghi lại war
 Trả lời: **DỪNG**. Ghi rõ đã chạy migration nào trên project nào. Báo engineering ngay — không tự sửa Production.
 
 **Hỏi: Khi nào làm #16–#22?**  
-Trả lời: **Sau khi Batch A PASS** (A1–A5). Engineering sẽ cung cấp hướng dẫn Batch B/C riêng.
+Trả lời: Batch A đã PASS. Làm **#16–#21** theo `GATE_2_BATCH_B_OWNER_STEP_BY_STEP.md`. **#22** chỉ sau V21-1→V21-8 PASS.
 
 ---
 
@@ -870,6 +864,7 @@ Trả lời: **Sau khi Batch A PASS** (A1–A5). Engineering sẽ cung cấp hư
 
 | File | Vai trò |
 |------|---------|
+| `GATE_2_BATCH_B_OWNER_STEP_BY_STEP.md` | **Bước tiếp theo** — Batch B #16–#21 |
 | `GATE_2_OWNER_SQL_APPLY_CHECKLIST.md` | Checklist tổng Gate 2 (#1–#22) |
 | `GATE_2_SQL_VERIFICATION_QUERIES.md` | Copy-paste verify đầy đủ |
 | `GATE_2_PRODUCTION_SQL_READY_RUNBOOK.md` | Runbook trạng thái migration |

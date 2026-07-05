@@ -28,17 +28,18 @@ test("app shell — header không còn legacy chips tiếng Anh", () => {
   assert.ok(header.includes('variant="light"'));
 });
 
-test("app shell — context bar hiển thị AI sẵn sàng tiếng Việt", () => {
+test("app shell — context bar chỉ hiển thị switchers gọn trên desktop", () => {
   const contextBar = readSrc("src/components/shell/AppContextBar.jsx");
 
-  assert.ok(contextBar.includes("AI sẵn sàng"));
-  assert.equal(/AI Ready/.test(contextBar), false);
+  assert.ok(contextBar.includes("ClubSwitcher"));
+  assert.ok(contextBar.includes("SeasonLeagueSwitcher"));
+  assert.equal(/AI sẵn sàng/.test(contextBar), false);
 });
 
-test("app shell — sidebar emerald + subscription card", () => {
+test("app shell — sidebar slate + footer cơ sở", () => {
   const sidebar = readSrc("src/components/Sidebar.jsx");
 
-  assert.ok(sidebar.includes("SidebarSubscriptionCard"));
+  assert.ok(sidebar.includes("SidebarFooter"));
   assert.ok(sidebar.includes('variant="dark"'));
   assert.ok(sidebar.includes("shellTokens"));
 });
@@ -89,6 +90,30 @@ test("app shell — account menu dùng ROLE_LABELS tiếng Việt", () => {
   assert.ok(account.includes("ROLE_LABELS"));
   assert.ok(account.includes("Chủ sân") || account.includes("ROLE_SUBTITLES"));
   assert.equal(/label=\{user\.role\}/.test(account), false);
+});
+
+test("app shell — design tokens V5 slate enterprise", () => {
+  const tokens = readSrc("src/theme/designTokens.js");
+
+  assert.ok(tokens.includes('DESIGN_DIRECTION = "slate-enterprise"'));
+  assert.ok(tokens.includes("#0F172A"));
+  assert.ok(tokens.includes("#10B981"));
+  assert.ok(tokens.includes("DM Sans"));
+});
+
+test("app shell — MUI theme aligned with design tokens", () => {
+  const theme = readSrc("src/theme/theme.js");
+
+  assert.ok(theme.includes("designTokens"));
+  assert.ok(theme.includes("PALETTE.primary"));
+  assert.equal(/#1976d2/.test(theme), false);
+});
+
+test("app shell — login split layout V5", () => {
+  const login = readSrc("src/pages/LoginPage.jsx");
+
+  assert.ok(login.includes("SHELL_COLORS.sidebarBg"));
+  assert.ok(login.includes("FeatureBullet"));
 });
 
 test("app shell — dashboard header Tổng quan", () => {

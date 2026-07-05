@@ -1,0 +1,134 @@
+{
+  "club_id": "club-staging-demo",
+  "venue_id": "venue-staging-a",
+  "data": {
+    "tournaments": [
+      {
+        "id": "phase23d-probe-tournament",
+        "clubId": "club-staging-demo",
+        "tenantId": "venue-staging-a",
+        "name": "Phase 23D Probe — Giải đồng đội",
+        "mode": "team_tournament",
+        "status": "ready",
+        "teamData": {
+          "settings": {
+            "missingLineupPolicy": "random",
+            "allowPlayerReusePerMatchup": false,
+            "allowPlayerCrossTeam": false,
+            "tiebreakOrder": ["wins", "subMatchDiff", "pointsScored", "headToHead", "manual"]
+          },
+          "disciplines": [
+            {
+              "id": "disc-men",
+              "name": "Đôi nam",
+              "categoryType": "doubles",
+              "genderRequirement": "male",
+              "playerCount": 2,
+              "sortOrder": 1,
+              "scoringFormat": { "winPoints": 1, "matchFormat": "best_of_1" },
+              "countsTowardResult": true
+            },
+            {
+              "id": "disc-women",
+              "name": "Đôi nữ",
+              "categoryType": "doubles",
+              "genderRequirement": "female",
+              "playerCount": 2,
+              "sortOrder": 2,
+              "scoringFormat": { "winPoints": 1, "matchFormat": "best_of_1" },
+              "countsTowardResult": true
+            },
+            {
+              "id": "disc-mixed-1",
+              "name": "Mixed 1",
+              "categoryType": "mixed",
+              "genderRequirement": "mixed_pair",
+              "playerCount": 2,
+              "sortOrder": 3,
+              "scoringFormat": { "winPoints": 1, "matchFormat": "best_of_1" },
+              "countsTowardResult": true
+            },
+            {
+              "id": "disc-mixed-2",
+              "name": "Mixed 2",
+              "categoryType": "mixed",
+              "genderRequirement": "mixed_pair",
+              "playerCount": 2,
+              "sortOrder": 4,
+              "scoringFormat": { "winPoints": 1, "matchFormat": "best_of_1" },
+              "countsTowardResult": true
+            }
+          ],
+          "teams": [
+            {
+              "id": "phase23d-team-a",
+              "name": "Probe Team A",
+              "color": "#1976d2",
+              "playerIds": ["player-staging-a-1", "player-staging-a-2", "player-staging-a-3", "player-staging-a-4", "player-staging-a-5", "player-staging-a-6", "player-staging-a-7", "player-staging-a-8"],
+              "captainPlayerId": "player-staging-a-1",
+              "deputyPlayerIds": ["player-staging-a-2"]
+            },
+            {
+              "id": "phase23d-team-b",
+              "name": "Probe Team B",
+              "color": "#d32f2f",
+              "playerIds": ["player-staging-b-1", "player-staging-b-2", "player-staging-b-3", "player-staging-b-4", "player-staging-b-5", "player-staging-b-6", "player-staging-b-7", "player-staging-b-8"],
+              "captainPlayerId": "player-staging-b-1",
+              "deputyPlayerIds": ["player-staging-b-2"]
+            }
+          ],
+          "matchups": [
+            {
+              "id": "phase23d-matchup-1",
+              "teamAId": "phase23d-team-a",
+              "teamBId": "phase23d-team-b",
+              "scheduledAt": "2099-06-01T08:00:00.000Z",
+              "lineupLockAt": "2099-06-01T08:30:00.000Z",
+              "courtLabel": "Sân 1",
+              "status": "lineup_open",
+              "subMatches": [
+                { "id": "phase23d-sub-1", "disciplineId": "disc-men", "sortOrder": 1, "status": "waiting", "score": { "teamA": 0, "teamB": 0, "games": [] } },
+                { "id": "phase23d-sub-2", "disciplineId": "disc-women", "sortOrder": 2, "status": "waiting", "score": { "teamA": 0, "teamB": 0, "games": [] } },
+                { "id": "phase23d-sub-3", "disciplineId": "disc-mixed-1", "sortOrder": 3, "status": "waiting", "score": { "teamA": 0, "teamB": 0, "games": [] } },
+                { "id": "phase23d-sub-4", "disciplineId": "disc-mixed-2", "sortOrder": 4, "status": "waiting", "score": { "teamA": 0, "teamB": 0, "games": [] } }
+              ],
+              "result": null
+            }
+          ],
+          "lineups": {
+            "phase23d-matchup-1::phase23d-team-a": {
+              "matchupId": "phase23d-matchup-1",
+              "teamId": "phase23d-team-a",
+              "status": "submitted",
+              "selections": {
+                "disc-men": ["player-staging-a-1", "player-staging-a-3"],
+                "disc-women": ["player-staging-a-4", "player-staging-a-5"],
+                "disc-mixed-1": ["player-staging-a-1", "player-staging-a-4"],
+                "disc-mixed-2": ["player-staging-a-6", "player-staging-a-7"]
+              },
+              "submittedAt": "2099-05-01T10:00:00.000Z",
+              "source": "captain"
+            },
+            "phase23d-matchup-1::phase23d-team-b": {
+              "matchupId": "phase23d-matchup-1",
+              "teamId": "phase23d-team-b",
+              "status": "submitted",
+              "selections": {
+                "disc-men": ["player-staging-b-1", "player-staging-b-3"],
+                "disc-women": ["player-staging-b-4", "player-staging-b-5"],
+                "disc-mixed-1": ["player-staging-b-1", "player-staging-b-4"],
+                "disc-mixed-2": ["player-staging-b-6", "player-staging-b-7"]
+              },
+              "submittedAt": "2099-05-01T10:05:00.000Z",
+              "source": "captain"
+            }
+          },
+          "standings": [
+            { "teamId": "phase23d-team-a", "rank": 1, "played": 0, "wins": 0, "losses": 0, "subMatchWins": 0, "subMatchLosses": 0, "subMatchDiff": 0, "pointsScored": 0, "pointsConceded": 0, "rankingPoints": 0 },
+            { "teamId": "phase23d-team-b", "rank": 2, "played": 0, "wins": 0, "losses": 0, "subMatchWins": 0, "subMatchLosses": 0, "subMatchDiff": 0, "pointsScored": 0, "pointsConceded": 0, "rankingPoints": 0 }
+          ]
+        }
+      }
+    ]
+  }
+}

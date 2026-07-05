@@ -84,7 +84,7 @@ export default function GlobalSearch({ size = "small", maxWidth = 420, variant =
         <TextField
           {...params}
           inputRef={inputRef}
-          placeholder="Tìm kiếm nhanh..."
+          placeholder="Tìm kiếm..."
           InputProps={{
             ...autocompleteInputProps,
             startAdornment: (

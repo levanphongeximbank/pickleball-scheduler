@@ -21,13 +21,16 @@
 
 | Hạng mục | Giá trị | Nguồn |
 |----------|---------|-------|
-| Production DB | **Trống** — chưa apply migration nào | `PHASE_19A_PRODUCTION_SQL_APPLY_PACK.md` owner confirmed |
-| Migration đã apply | **0 / 22** | Không có owner tick CONFIRMED |
+| Production DB | Batch A schema applied | Owner apply #1–#15 2026-07-04 |
+| Migration đã apply | **15 / 22** | Batch A ✅ PASS |
+| Batch A verify A1–A5 | ✅ PASS | Owner verification 2026-07-04 |
+| Batch B #16–#21 | ⏳ NEEDS APPLY | `GATE_2_BATCH_B_OWNER_STEP_BY_STEP.md` |
+| Batch C #22 | ⛔ BLOCKED | Chờ V21-1→V21-8 PASS |
 | Backup/PITR | Free/Nano — không snapshot | Owner confirmed 2026-07-04 |
 | Staging Gate 1 | ✅ PASS | `PHASE_21B_GATE1_STAGING_CLOSURE_REPORT.md` |
 | Staging #21 / #22 | ✅ PASS (staging only) | Không override Production |
 
-**Gate 2 verdict hiện tại:** ⏳ **PENDING** — chờ owner apply + verify. Xem `GATE_2_PRODUCTION_SQL_READY_REPORT.md`.
+**Gate 2 verdict hiện tại:** ⏳ **PENDING** — Batch A ✅; chờ Batch B/C. Xem `GATE_2_PRODUCTION_SQL_READY_REPORT.md`.
 
 ---
 
@@ -67,21 +70,21 @@
 
 | # | File SQL | Batch | Đã apply? | Verification | PASS/FAIL/PENDING | Rollback | Rủi ro |
 |---|----------|-------|-----------|--------------|-------------------|----------|--------|
-| 1 | `docs/supabase-club-v3.sql` | A | ❌ Chưa | Spot A2 (club_data_v3) | **PENDING** | — | Thấp — DB trống |
-| 2 | `docs/supabase-rbac.sql` | A | ❌ Chưa | Spot A1 (profiles, venues RLS) | **PENDING** | — | Thấp |
-| 3 | `docs/supabase-club-v3-rls.sql` | A | ❌ Chưa | Spot A1 | **PENDING** | `docs/supabase-rls-rollback.sql` | Trung bình — RLS club |
-| 4 | `docs/supabase-match-live.sql` | A | ❌ Chưa | Spot A1 | **PENDING** | — | Thấp |
-| 5 | `docs/supabase-match-live-rls.sql` | A | ❌ Chưa | Spot A4 (referee RPC) | **PENDING** | — | Trung bình |
-| 6 | `docs/supabase-security-hardening-v357.sql` | A | ❌ Chưa | — | **PENDING** | — | Thấp |
-| 7 | `docs/supabase-match-live-v2.sql` | A | ❌ Chưa | — | **PENDING** | — | Thấp |
-| 8 | `docs/supabase-identity-v40-sprint1.sql` | A | ❌ Chưa | Spot A4 | **PENDING** | `docs/supabase-identity-v40-sprint1-rollback.sql` | Trung bình |
-| 9 | `docs/supabase-identity-v40-phaseB.sql` | A | ❌ Chưa | — | **PENDING** | `docs/supabase-identity-v40-phaseB-rollback.sql` | Trung bình |
-| 10 | `docs/supabase-identity-v40-phaseC.sql` | A | ❌ Chưa | Spot A4 | **PENDING** | `docs/supabase-identity-v40-phaseC-rollback.sql` | Trung bình |
-| 11 | `docs/supabase-multi-tenant-sprint2.sql` | A | ❌ Chưa | Spot A5 (tenants view) | **PENDING** | `docs/supabase-multi-tenant-sprint2-rollback.sql` | Trung bình |
-| 12 | `docs/supabase-subscription-sprint4.sql` | A | ❌ Chưa | Spot A5 | **PENDING** | — | Thấp |
-| 13 | `docs/supabase-ai-assistant-sprint7.sql` | A | ❌ Chưa | Spot A2 | **PENDING** | — | Thấp — flag OFF |
-| 14 | `docs/supabase-mobile-sprint9.sql` | A | ❌ Chưa | Spot A2 (qr_tokens, checkins) | **PENDING** | `docs/supabase-mobile-sprint9-rollback.sql` | Trung bình — prerequisite #22 |
-| 15 | `docs/supabase-sprint10.sql` | A | ❌ Chưa | A1–A5 full batch | **PENDING** | `docs/supabase-sprint10-rollback.sql` | Cao — nhiều bảng API |
+| 1 | `docs/supabase-club-v3.sql` | A | ✅ Applied | Spot A2 (club_data_v3) | **PASS** | — | Thấp |
+| 2 | `docs/supabase-rbac.sql` | A | ✅ Applied | Spot A1 (profiles, venues RLS) | **PASS** | — | Thấp |
+| 3 | `docs/supabase-club-v3-rls.sql` | A | ✅ Applied | Spot A1 | **PASS** | `docs/supabase-rls-rollback.sql` | Trung bình — RLS club |
+| 4 | `docs/supabase-match-live.sql` | A | ✅ Applied | Spot A1 | **PASS** | — | Thấp |
+| 5 | `docs/supabase-match-live-rls.sql` | A | ✅ Applied | Spot A4 (referee RPC) | **PASS** | — | Trung bình |
+| 6 | `docs/supabase-security-hardening-v357.sql` | A | ✅ Applied | — | **PASS** | — | Thấp |
+| 7 | `docs/supabase-match-live-v2.sql` | A | ✅ Applied | — | **PASS** | — | Thấp |
+| 8 | `docs/supabase-identity-v40-sprint1.sql` | A | ✅ Applied | Spot A4 | **PASS** | `docs/supabase-identity-v40-sprint1-rollback.sql` | Trung bình |
+| 9 | `docs/supabase-identity-v40-phaseB.sql` | A | ✅ Applied | — | **PASS** | `docs/supabase-identity-v40-phaseB-rollback.sql` | Trung bình |
+| 10 | `docs/supabase-identity-v40-phaseC.sql` | A | ✅ Applied | Spot A4 | **PASS** | `docs/supabase-identity-v40-phaseC-rollback.sql` | Trung bình |
+| 11 | `docs/supabase-multi-tenant-sprint2.sql` | A | ✅ Applied | Spot A5 (tenants view) | **PASS** | `docs/supabase-multi-tenant-sprint2-rollback.sql` | Trung bình |
+| 12 | `docs/supabase-subscription-sprint4.sql` | A | ✅ Applied | Spot A5 | **PASS** | — | Thấp |
+| 13 | `docs/supabase-ai-assistant-sprint7.sql` | A | ✅ Applied | Spot A2 | **PASS** | — | Thấp — flag OFF |
+| 14 | `docs/supabase-mobile-sprint9.sql` | A | ✅ Applied | Spot A2 (qr_tokens, checkins) | **PASS** | `docs/supabase-mobile-sprint9-rollback.sql` | Trung bình — prerequisite #22 |
+| 15 | `docs/supabase-sprint10.sql` | A | ✅ Applied | A1–A5 full batch | **PASS** | `docs/supabase-sprint10-rollback.sql` | Cao — nhiều bảng API |
 | 16 | `docs/supabase-billing-phase9.sql` | B | ❌ Chưa | B1, B2 | **PENDING** | `docs/supabase-billing-phase9-rollback.sql` | Cao — billing core |
 | 17 | `docs/supabase-billing-phase9-trial-rpc.sql` | B | ❌ Chưa | B3 | **PENDING** | `docs/supabase-billing-phase9-trial-rpc-rollback.sql` | Trung bình |
 | 18 | `docs/supabase-sprint10-phase11a-rls.sql` | B | ❌ Chưa | B4 | **PENDING** | `docs/supabase-sprint10-phase11a-rollback.sql` | Trung bình |
@@ -100,7 +103,7 @@ Gate 2 **PASS** khi **tất cả** điều kiện sau có owner evidence:
 
 | # | Điều kiện | Hiện tại |
 |---|-----------|----------|
-| G2-1 | Batch A #1–#15 CONFIRMED + verify A1–A5 PASS | ⏳ PENDING |
+| G2-1 | Batch A #1–#15 CONFIRMED + verify A1–A5 PASS | ✅ **PASS** (2026-07-04) |
 | G2-2 | Batch B #16–#20 CONFIRMED + verify B1–B4 PASS | ⏳ PENDING |
 | G2-3 | #21 CONFIRMED + **V21-1 → V21-8 PASS** | ⏳ PENDING |
 | G2-4 | #22 CONFIRMED + **C0 → C7 PASS** | ⛔ BLOCKED (chờ #21) |
@@ -126,6 +129,7 @@ Gate 2 **PASS** khi **tất cả** điều kiện sau có owner evidence:
 
 | File | Vai trò |
 |------|---------|
+| `GATE_2_BATCH_B_OWNER_STEP_BY_STEP.md` | **Bước tiếp theo** — #16–#21 cho owner |
 | `GATE_2_OWNER_SQL_APPLY_CHECKLIST.md` | Hướng dẫn từng bước cho owner |
 | `GATE_2_SQL_VERIFICATION_QUERIES.md` | Copy-paste SQL verify |
 | `GATE_2_PRODUCTION_SQL_READY_REPORT.md` | Verdict Gate 2 |

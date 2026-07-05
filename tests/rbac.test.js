@@ -839,7 +839,7 @@ test("mobile nav — PLAYER thấy Trang của tôi", () => {
 
 const OWNER_V5_GROUPS = [
   "Tổng quan",
-  "Vận hành sân",
+  "Vận hành cụm sân",
   "Khách hàng & VĐV",
   "CLB",
   "Giải đấu",
@@ -918,4 +918,104 @@ test("menuAccess — PLAYER/REFEREE không thấy menu admin owner", () => {
   assert.equal(playerGroups.includes("Tài chính"), false);
   assert.equal(refereeGroups.includes("Quản trị"), false);
   assert.equal(refereeGroups.includes("Tài chính"), false);
+});
+
+test("Phase 19B — SUPER_ADMIN route access platform/admin paths", () => {
+  const admin = user(ROLES.SUPER_ADMIN);
+  const check = makeRouteChecker(admin);
+
+  assert.equal(check("/admin/tenants"), true);
+  assert.equal(check("/admin/billing"), true);
+  assert.equal(check("/tournament"), true);
+  assert.equal(check("/court-engine"), true);
+  assert.equal(check("/audit"), true);
+});
+
+test("Phase 19B — COURT_OWNER venue-scoped dashboard, billing, court-engine, tournament", () => {
+  const owner = user(ROLES.COURT_OWNER, { venueId: "venue-prod-main", clubId: "club-1" });
+  const scope = { venueId: "venue-prod-main", clubId: "club-1" };
+  const check = (path) =>
+    canAccessRoute((perm, s) => can(owner, perm, s, RBAC_ON), path, scope);
+
+  assert.equal(check("/"), true);
+  assert.equal(check("/billing"), true);
+  assert.equal(check("/court-engine"), true);
+  assert.equal(check("/tournament"), true);
+  assert.equal(check("/court-management/courts"), true);
+});
+
+test("Phase 19B — COURT_OWNER không truy cập venue khác", () => {
+  const owner = user(ROLES.COURT_OWNER, { venueId: "venue-prod-main", clubId: "club-1" });
+  assert.equal(can(owner, PERMISSIONS.VENUE_UPDATE, { venueId: "venue-other" }, RBAC_ON), false);
+  assert.equal(canAccessVenue(owner, "venue-other", RBAC_ON), false);
+});
+
+test("Phase 19B — CLUB_OWNER vào /club không 403", () => {
+  const clubOwner = user(ROLES.CLUB_OWNER, { venueId: "venue-a", clubId: "club-1" });
+  const scope = { clubId: "club-1", venueId: "venue-a" };
+  const check = (path) =>
+    canAccessRoute((perm, s) => can(clubOwner, perm, s, RBAC_ON), path, scope);
+
+  assert.equal(check("/club"), true);
+  assert.equal(check("/clubs"), true);
+  assert.equal(check("/daily-play"), true);
+  assert.equal(getDefaultHomePath(clubOwner, true), "/club");
+});
+
+test("Phase 19B — CLUB_OWNER bootstrap clubId từ activeClub", () => {
+  const clubOwner = user(ROLES.CLUB_OWNER, { venueId: "venue-a" });
+  const scope = resolveRouteAccessScope({
+    user: clubOwner,
+    activeClubId: "club-bootstrap",
+    activeClub: { id: "club-bootstrap", venueId: "venue-a" },
+  });
+
+  assert.equal(scope.clubId, "club-bootstrap");
+  assert.equal(
+    can(clubOwner, PERMISSIONS.CLUB_VIEW, scope, RBAC_ON),
+    true
+  );
+});
+
+test("Phase 19B — REFEREE menu tối giản", () => {
+  const referee = user(ROLES.REFEREE, { venueId: "venue-a", clubId: "club-1" });
+  const visible = filterMenuGroups(SIDEBAR_MENU_GROUPS, makeMenuAuth(referee), SCOPE);
+  const groupLabels = visible.map((group) => group.label);
+  const itemLabels = visible.flatMap((group) => group.items.map((item) => item.text));
+
+  assert.equal(groupLabels.includes("Giải đấu"), false);
+  assert.equal(groupLabels.includes("Vận hành cụm sân"), false);
+  assert.equal(groupLabels.includes("Tài chính"), false);
+  assert.equal(groupLabels.includes("CLB"), false);
+  assert.ok(groupLabels.includes("Trọng tài"));
+  assert.ok(itemLabels.includes("Chấm trận"));
+  assert.ok(itemLabels.includes("Quét QR"));
+});
+
+test("Phase 19B — CASHIER menu vẫn pass", () => {
+  const cashier = user(ROLES.CASHIER, { venueId: "venue-a" });
+  const visible = filterMenuGroups(SIDEBAR_MENU_GROUPS, makeMenuAuth(cashier), SCOPE);
+  const labels = visible.flatMap((group) => group.items.map((item) => item.text));
+
+  assert.ok(labels.includes("Đặt sân") || labels.includes("Trạng thái sân"));
+  assert.equal(labels.includes("Người dùng"), false);
+});
+
+test("Phase 19B — venue/court labels trong navigation config", () => {
+  const owner = user(ROLES.COURT_OWNER, { venueId: "venue-a", clubId: "club-1" });
+  const visible = filterMenuGroups(SIDEBAR_MENU_GROUPS, makeMenuAuth(owner), SCOPE);
+  const groupLabels = visible.map((group) => group.label);
+  const itemLabels = visible.flatMap((group) => group.items.map((item) => item.text));
+
+  assert.ok(groupLabels.includes("Vận hành cụm sân"));
+  assert.ok(itemLabels.includes("Sân thi đấu"));
+});
+
+test("Phase 19B — PLAYER không thấy admin routes", () => {
+  const player = user(ROLES.PLAYER, { venueId: "venue-a", clubId: "club-1", playerId: "p-1" });
+  const check = makeRouteChecker(player);
+
+  assert.equal(check("/admin/tenants"), false);
+  assert.equal(check("/users"), false);
+  assert.equal(check("/audit"), false);
 });

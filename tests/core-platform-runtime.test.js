@@ -2,7 +2,13 @@ import test from "node:test";
 import assert from "node:assert/strict";
 
 import { createPlatformRuntime } from "../src/core/platform/app/index.js";
-import { resolveRuntimeAccess } from "../src/core/platform/app/runtimeAccess.js";
+import {
+  buildPageRuntimeAccessState,
+  resolveRuntimeAccess,
+} from "../src/core/platform/app/runtimeAccess.js";
+import { ROLES } from "../src/auth/roles.js";
+import { can } from "../src/auth/rbac.js";
+import { createUserRecord } from "../src/models/user.js";
 
 test("platform runtime can initialize a seed tenant and persist it", () => {
   const runtime = createPlatformRuntime({ namespace: "core-platform-runtime-tests" });
@@ -98,4 +104,54 @@ test("resolveRuntimeAccess returns a normalized decision object", () => {
   assert.equal(decision.allowed, true);
   assert.equal(decision.permission, "tenant.manage");
   assert.equal(decision.code, undefined);
+});
+
+test("buildPageRuntimeAccessState — identity SUPER_ADMIN bypasses tournament.manage", () => {
+  const runtime = createPlatformRuntime({ namespace: "core-platform-runtime-tests-identity" });
+  const admin = createUserRecord({ role: ROLES.SUPER_ADMIN, id: "founder-1" });
+  const RBAC_ON = { rbacEnabled: true };
+
+  const state = buildPageRuntimeAccessState(
+    runtime,
+    { user_id: "founder-1", tenant_id: "venue-prod-main", role: "SUPER_ADMIN" },
+    "tournament.manage",
+    "venue-prod-main",
+    {},
+    {
+      user: admin,
+      rbacEnabled: true,
+      can: (perm, scope) => can(admin, perm, scope, RBAC_ON),
+      scope: { venueId: "venue-prod-main" },
+    }
+  );
+
+  assert.equal(state.allowed, true);
+});
+
+test("buildPageRuntimeAccessState — COURT_OWNER tournament.manage via identity RBAC", () => {
+  const runtime = createPlatformRuntime({ namespace: "core-platform-runtime-tests-owner" });
+  const owner = createUserRecord({
+    role: ROLES.COURT_OWNER,
+    id: "owner-1",
+    venueId: "venue-prod-main",
+    clubId: "club-1",
+  });
+  const RBAC_ON = { rbacEnabled: true };
+  const scope = { venueId: "venue-prod-main", clubId: "club-1" };
+
+  const state = buildPageRuntimeAccessState(
+    runtime,
+    { user_id: "owner-1", tenant_id: "venue-other", role: "TENANT_OWNER" },
+    "tournament.manage",
+    "venue-other",
+    {},
+    {
+      user: owner,
+      rbacEnabled: true,
+      can: (perm, s) => can(owner, perm, s, RBAC_ON),
+      scope,
+    }
+  );
+
+  assert.equal(state.allowed, true);
 });

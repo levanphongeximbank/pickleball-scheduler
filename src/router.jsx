@@ -45,6 +45,10 @@ const InternalTournamentSetup = lazy(() => import("./pages/tournament/InternalTo
 
 const OfficialTournamentSetup = lazy(() => import("./pages/tournament/OfficialTournamentSetup"));
 
+const TeamTournamentSetup = lazy(() => import("./pages/tournament/TeamTournamentSetup"));
+const TeamPortal = lazy(() => import("./pages/tournament/TeamPortal"));
+const TeamRefereePortal = lazy(() => import("./pages/tournament/TeamRefereePortal"));
+
 const TournamentBracketPage = lazy(() => import("./pages/tournament/TournamentBracketPage"));
 
 const TournamentBracketHub = lazy(() => import("./pages/tournament/TournamentBracketHub"));
@@ -270,6 +274,30 @@ export default function Router() {
               path="/tournament/official/:tournamentId"
 
               element={<OfficialTournamentSetup />}
+
+            />
+
+            <Route
+
+              path="/tournament/team/:tournamentId"
+
+              element={<TeamTournamentSetup />}
+
+            />
+
+            <Route
+
+              path="/team-portal/:tournamentId"
+
+              element={<TeamPortal />}
+
+            />
+
+            <Route
+
+              path="/team-referee/:tournamentId"
+
+              element={<TeamRefereePortal />}
 
             />
 

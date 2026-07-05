@@ -1,0 +1,297 @@
+import {
+  LINEUP_SOURCE,
+  LINEUP_STATUS,
+  MATCHUP_STATUS,
+  MISSING_LINEUP_POLICY,
+} from "../constants.js";
+import {
+  findMatchup,
+  findTeam,
+  getLineup,
+  lineupKey,
+  normalizeLineup,
+  normalizeTeamData,
+} from "../models/index.js";
+import { validateLineupSelections } from "./lineupValidationEngine.js";
+import { randomizeMissingLineups } from "./lineupRandomEngine.js";
+
+function isBeforeLock(matchup, now = new Date()) {
+  if (!matchup?.lineupLockAt) {
+    return true;
+  }
+  return new Date(now).getTime() < new Date(matchup.lineupLockAt).getTime();
+}
+
+function canEditLineup(lineup) {
+  if (!lineup) {
+    return true;
+  }
+  return (
+    lineup.status === LINEUP_STATUS.NOT_SUBMITTED ||
+    lineup.status === LINEUP_STATUS.DRAFT ||
+    lineup.status === LINEUP_STATUS.SUBMITTED
+  );
+}
+
+export function saveLineupDraft(teamData, { matchupId, teamId, selections, players = [] }) {
+  const matchup = findMatchup(teamData, matchupId);
+  if (!matchup) {
+    return { ok: false, error: "Không tìm thấy lượt đối đầu." };
+  }
+
+  if (!isBeforeLock(matchup)) {
+    return { ok: false, error: "Đã quá giờ khóa đội hình." };
+  }
+
+  const key = lineupKey(matchupId, teamId);
+  const existing = getLineup(teamData, matchupId, teamId);
+  if (existing && !canEditLineup(existing)) {
+    return { ok: false, error: "Đội hình đã khóa, không thể sửa." };
+  }
+
+  const validation = validateLineupSelections({
+    teamData,
+    teamId,
+    selections,
+    players,
+    partial: true,
+  });
+
+  if (!validation.ok) {
+    return { ok: false, error: validation.errors.join(" ") };
+  }
+
+  const hasSelections = Object.values(validation.selections).some(
+    (playerIds) => playerIds.length > 0
+  );
+
+  const lineup = normalizeLineup({
+    matchupId,
+    teamId,
+    status: hasSelections ? LINEUP_STATUS.DRAFT : LINEUP_STATUS.NOT_SUBMITTED,
+    selections: validation.selections,
+    source: LINEUP_SOURCE.CAPTAIN,
+  });
+
+  return {
+    ok: true,
+    teamData: normalizeTeamData({
+      ...teamData,
+      lineups: {
+        ...teamData.lineups,
+        [key]: lineup,
+      },
+    }),
+    lineup,
+  };
+}
+
+export function submitLineup(teamData, { matchupId, teamId, selections, players = [], now = new Date() }) {
+  const matchup = findMatchup(teamData, matchupId);
+  if (!matchup) {
+    return { ok: false, error: "Không tìm thấy lượt đối đầu." };
+  }
+
+  if (!isBeforeLock(matchup, now)) {
+    return { ok: false, error: "Đã quá giờ khóa đội hình." };
+  }
+
+  const key = lineupKey(matchupId, teamId);
+  const existing = getLineup(teamData, matchupId, teamId);
+  if (existing && !canEditLineup(existing)) {
+    return { ok: false, error: "Đội hình đã khóa, không thể nộp." };
+  }
+
+  const validation = validateLineupSelections({
+    teamData,
+    teamId,
+    selections,
+    players,
+  });
+
+  if (!validation.ok) {
+    return { ok: false, error: validation.errors.join(" ") };
+  }
+
+  const lineup = normalizeLineup({
+    matchupId,
+    teamId,
+    status: LINEUP_STATUS.SUBMITTED,
+    selections: validation.selections,
+    submittedAt: new Date(now).toISOString(),
+    source: LINEUP_SOURCE.CAPTAIN,
+  });
+
+  return {
+    ok: true,
+    teamData: normalizeTeamData({
+      ...teamData,
+      lineups: {
+        ...teamData.lineups,
+        [key]: lineup,
+      },
+    }),
+    lineup,
+  };
+}
+
+export function lockMatchupLineups(teamData, { matchupId, players = [], now = new Date() }) {
+  const matchup = findMatchup(teamData, matchupId);
+  if (!matchup) {
+    return { ok: false, error: "Không tìm thấy lượt đối đầu." };
+  }
+
+  let nextData = normalizeTeamData({ ...teamData });
+  const logs = [];
+  const lockTime = new Date(now).toISOString();
+
+  for (const teamId of [matchup.teamAId, matchup.teamBId]) {
+    const key = lineupKey(matchupId, teamId);
+    const lineup = getLineup(nextData, matchupId, teamId);
+    const team = findTeam(nextData, teamId);
+
+    if (
+      !lineup ||
+      lineup.status === LINEUP_STATUS.NOT_SUBMITTED ||
+      lineup.status === LINEUP_STATUS.DRAFT
+    ) {
+      const policy = nextData.settings?.missingLineupPolicy || MISSING_LINEUP_POLICY.RANDOM;
+
+      if (policy === MISSING_LINEUP_POLICY.RANDOM) {
+        const randomResult = randomizeMissingLineups(nextData, {
+          matchupId,
+          teamId,
+          players,
+          now,
+        });
+
+        if (!randomResult.ok) {
+          return randomResult;
+        }
+
+        nextData = randomResult.teamData;
+        logs.push(
+          randomResult.auditNote ||
+            `Đội ${team?.name || teamId} không nộp đội hình trước hạn. Hệ thống đã tự động chọn đội hình lúc ${new Date(now).toLocaleTimeString("vi-VN", { hour: "2-digit", minute: "2-digit" })}.`
+        );
+        continue;
+      }
+
+      if (policy === MISSING_LINEUP_POLICY.FORFEIT) {
+        return { ok: false, error: `Đội ${team?.name || teamId} không nộp đội hình.` };
+      }
+    }
+
+    const current = getLineup(nextData, matchupId, teamId);
+    if (!current) {
+      continue;
+    }
+
+    nextData.lineups[key] = normalizeLineup({
+      ...current,
+      status: LINEUP_STATUS.LOCKED,
+      lockedAt: lockTime,
+    });
+    logs.push(`Hệ thống khóa đội hình đội ${team?.name || teamId}.`);
+  }
+
+  nextData.matchups = nextData.matchups.map((item) =>
+    item.id === matchupId
+      ? { ...item, status: MATCHUP_STATUS.LOCKED }
+      : item
+  );
+
+  return { ok: true, teamData: nextData, logs };
+}
+
+export function publishMatchupLineups(teamData, { matchupId }) {
+  const matchup = findMatchup(teamData, matchupId);
+  if (!matchup) {
+    return { ok: false, error: "Không tìm thấy lượt đối đầu." };
+  }
+
+  const publishTime = new Date().toISOString();
+  const nextLineups = { ...teamData.lineups };
+
+  for (const teamId of [matchup.teamAId, matchup.teamBId]) {
+    const key = lineupKey(matchupId, teamId);
+    const lineup = nextLineups[key];
+    if (!lineup) {
+      return { ok: false, error: `Đội ${teamId} chưa có đội hình để công bố.` };
+    }
+
+    nextLineups[key] = normalizeLineup({
+      ...lineup,
+      status: LINEUP_STATUS.PUBLISHED,
+      publishedAt: publishTime,
+    });
+  }
+
+  const nextData = normalizeTeamData({
+    ...teamData,
+    lineups: nextLineups,
+    matchups: teamData.matchups.map((item) =>
+      item.id === matchupId
+        ? { ...item, status: MATCHUP_STATUS.PUBLISHED }
+        : item
+    ),
+  });
+
+  return { ok: true, teamData: nextData };
+}
+
+export function getVisibleLineup(teamData, { matchupId, viewerTeamId, isOrganizer = false }) {
+  const matchup = findMatchup(teamData, matchupId);
+  if (!matchup) {
+    return { ok: false, error: "Không tìm thấy lượt đối đầu." };
+  }
+
+  const ownLineup = getLineup(teamData, matchupId, viewerTeamId);
+  const opponentTeamId =
+    viewerTeamId === matchup.teamAId ? matchup.teamBId : matchup.teamAId;
+  const opponentLineup = getLineup(teamData, matchupId, opponentTeamId);
+
+  const canSeeOpponent =
+    isOrganizer ||
+    matchup.status === MATCHUP_STATUS.PUBLISHED ||
+    opponentLineup?.status === LINEUP_STATUS.PUBLISHED;
+
+  return {
+    ok: true,
+    ownLineup,
+    opponentLineup: canSeeOpponent ? opponentLineup : null,
+    submissionStatus: {
+      teamA: getLineup(teamData, matchupId, matchup.teamAId)?.status || LINEUP_STATUS.NOT_SUBMITTED,
+      teamB: getLineup(teamData, matchupId, matchup.teamBId)?.status || LINEUP_STATUS.NOT_SUBMITTED,
+    },
+  };
+}
+
+export function buildOfficialPairings(teamData, matchupId) {
+  const matchup = findMatchup(teamData, matchupId);
+  if (!matchup) {
+    return { ok: false, error: "Không tìm thấy lượt đối đầu." };
+  }
+
+  if (matchup.status !== MATCHUP_STATUS.PUBLISHED) {
+    return { ok: false, error: "Lượt đối đầu chưa được công bố." };
+  }
+
+  const pairings = matchup.subMatches.map((subMatch) => {
+    const discipline = teamData.disciplines.find((item) => item.id === subMatch.disciplineId);
+    const lineupA = getLineup(teamData, matchupId, matchup.teamAId);
+    const lineupB = getLineup(teamData, matchupId, matchup.teamBId);
+
+    return {
+      subMatchId: subMatch.id,
+      disciplineId: subMatch.disciplineId,
+      disciplineName: discipline?.name || subMatch.disciplineId,
+      teamAPlayerIds: lineupA?.selections?.[subMatch.disciplineId] || [],
+      teamBPlayerIds: lineupB?.selections?.[subMatch.disciplineId] || [],
+      status: subMatch.status,
+      score: subMatch.score,
+    };
+  });
+
+  return { ok: true, pairings };
+}

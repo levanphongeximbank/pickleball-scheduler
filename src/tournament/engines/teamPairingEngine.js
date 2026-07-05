@@ -35,6 +35,10 @@ export function filterPlayersForEventType(players = [], eventType) {
     });
   }
 
+  if (eventType === EVENT_TYPE.OPEN_DOUBLE) {
+    return players;
+  }
+
   return players;
 }
 

@@ -272,7 +272,7 @@ export default function BookingList({ clubId, courts = [], bookings = [], onRefr
         </Stack>
       </Stack>
 
-      <TableContainer component={Paper}>
+      <TableContainer component={Paper} elevation={0} sx={{ border: "1px solid", borderColor: "divider", borderRadius: 2 }}>
         <Table size="small">
           <TableHead>
             <TableRow>

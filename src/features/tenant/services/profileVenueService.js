@@ -107,7 +107,7 @@ export function resolveRouteAccessScope({ user, activeClubId, activeClub }) {
   const venueId = profileVenueId || clubVenueId || null;
 
   return {
-    clubId,
+    clubId: clubId || activeClubId || null,
     venueId,
     tenantId: venueId,
     playerId: user?.playerId || null,

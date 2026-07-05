@@ -16,7 +16,7 @@
 | Apply pack tick | Batch B #21 — NEEDS APPLY |
 | Verdict | **KHÔNG PASS Production** cho đến khi owner chạy SQL + verify queries |
 
-**Ghi chú:** Staging PASS **không** tự động chuyển thành Production PASS. Production project `expuvcohlcjzvrrauvud` hiện **trống** — Batch A #1–15 chưa apply.
+**Ghi chú:** Staging PASS **không** tự động chuyển thành Production PASS. Production project `expuvcohlcjzvrrauvud` — Batch A ✅ PASS (2026-07-04); #21 Production vẫn NEEDS APPLY.
 
 ---
 

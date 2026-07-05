@@ -8,7 +8,6 @@ import {
   ToggleButtonGroup,
   Typography,
 } from "@mui/material";
-import CalendarMonthIcon from "@mui/icons-material/CalendarMonth";
 import RefreshIcon from "@mui/icons-material/Refresh";
 
 import { TIME_RANGE_OPTIONS, TIME_RANGE_PRESETS } from "../constants/timeRangePresets.js";
@@ -26,35 +25,23 @@ export default function DashboardTimeFilter({
   onRefresh,
 }) {
   return (
-    <Box
-      sx={{
-        p: 2,
-        borderRadius: 2,
-        bgcolor: "background.paper",
-        border: "1px solid",
-        borderColor: "divider",
-        mb: 3,
-      }}
-    >
+    <Box sx={{ mb: 3 }}>
       <Stack
-        direction={{ xs: "column", md: "row" }}
-        spacing={2}
-        sx={{ alignItems: { md: "center" }, justifyContent: "space-between" }}
+        direction={{ xs: "column", sm: "row" }}
+        spacing={1.5}
+        sx={{ alignItems: { sm: "center" }, justifyContent: "space-between", mb: 1.5 }}
       >
-        <Box>
-          <Stack direction="row" spacing={1} sx={{ alignItems: "center", mb: 0.5 }}>
-            <CalendarMonthIcon color="primary" fontSize="small" />
-            <Typography variant="h6" fontWeight="bold">
-              Bộ lọc thời gian
-            </Typography>
-            {isMock && <Chip size="small" label="Demo" color="warning" variant="outlined" />}
-          </Stack>
+        <Stack direction="row" spacing={1} alignItems="center" flexWrap="wrap" useFlexGap>
           <Typography variant="body2" color="text.secondary">
-            {timeRange.from} → {timeRange.to} • {scopeLabel}
+            {timeRange.from} → {timeRange.to}
           </Typography>
-        </Box>
+          <Typography variant="body2" color="text.secondary">
+            • {scopeLabel}
+          </Typography>
+          {isMock && <Chip size="small" label="Demo" color="warning" variant="outlined" />}
+        </Stack>
 
-        <Button startIcon={<RefreshIcon />} variant="outlined" size="small" onClick={onRefresh}>
+        <Button startIcon={<RefreshIcon />} variant="text" size="small" onClick={onRefresh} sx={{ alignSelf: { xs: "flex-start", sm: "center" } }}>
           Làm mới
         </Button>
       </Stack>
@@ -65,14 +52,16 @@ export default function DashboardTimeFilter({
         onChange={(_, value) => value && onPresetChange(value)}
         size="small"
         sx={{
-          mt: 2,
           flexWrap: "wrap",
-          gap: 1,
+          gap: 0.75,
           "& .MuiToggleButtonGroup-grouped": {
             border: "1px solid",
             borderColor: "divider",
             borderRadius: "8px !important",
             mx: 0,
+            px: 1.5,
+            py: 0.5,
+            fontSize: 13,
           },
         }}
       >
@@ -84,7 +73,7 @@ export default function DashboardTimeFilter({
       </ToggleButtonGroup>
 
       {preset === TIME_RANGE_PRESETS.CUSTOM && (
-        <Stack direction={{ xs: "column", sm: "row" }} spacing={2} sx={{ mt: 2 }}>
+        <Stack direction={{ xs: "column", sm: "row" }} spacing={2} sx={{ mt: 1.5 }}>
           <TextField
             label="Từ ngày"
             type="date"

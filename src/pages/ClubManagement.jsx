@@ -42,8 +42,7 @@ import {
 import { stringifyClubDataExport } from "./clubData.logic.js";
 import PermissionGate from "../components/auth/PermissionGate.jsx";
 import { PERMISSIONS } from "../auth/permissions.js";
-import { usePlatformRuntime } from "../core/platform/app/usePlatformRuntime.js";
-import { buildRuntimeAccessState } from "../core/platform/app/runtimeAccess.js";
+import { usePageRuntimeAccess } from "../core/platform/app/usePageRuntimeAccess.js";
 
 function TabPanel({ children, value, index }) {
   if (value !== index) {
@@ -64,7 +63,9 @@ export default function ClubManagement() {
     deleteClub,
     refreshClubs,
   } = useClub();
-  const runtime = usePlatformRuntime();
+  const { accessAllowed } = usePageRuntimeAccess("club.manage", activeClub?.tenantId || activeClubId, {
+    source: "club.management",
+  });
   const {
     seasons,
     leagues,
@@ -90,32 +91,11 @@ export default function ClubManagement() {
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [importText, setImportText] = useState("");
   const [exportText, setExportText] = useState("");
-  const [accessAllowed, setAccessAllowed] = useState(true);
 
   useEffect(() => {
     setRenameValue(activeClub?.name || "");
     setNoteValue(activeClub?.note || "");
   }, [activeClub]);
-
-  useEffect(() => {
-    try {
-      const tenantId = activeClub?.tenantId || activeClubId || "club-management-preview";
-      const accessState = buildRuntimeAccessState(
-        runtime,
-        {
-          user_id: "demo-admin",
-          tenant_id: tenantId,
-          role: "SUPER_ADMIN",
-        },
-        "club.manage",
-        tenantId,
-        { source: "club.management" }
-      );
-      setAccessAllowed(accessState.allowed);
-    } catch {
-      setAccessAllowed(false);
-    }
-  }, [activeClub?.tenantId, activeClubId, runtime]);
 
   const view = useMemo(
     () =>

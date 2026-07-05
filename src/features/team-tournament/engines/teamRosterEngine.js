@@ -1,0 +1,313 @@
+import { getPlayerGenderKey } from "../../../models/player.js";
+import { GENDER_REQUIREMENT } from "../constants.js";
+import {
+  findTeam,
+} from "../models/index.js";
+import { updateTeamInTournament } from "./teamTournamentEngine.js";
+
+function normalizePlayerId(value) {
+  return value ? String(value).trim() : "";
+}
+
+export function findPlayerTeam(teamData, playerId) {
+  const normalized = normalizePlayerId(playerId);
+  if (!normalized) {
+    return null;
+  }
+
+  return (
+    (teamData?.teams || []).find((team) =>
+      team.playerIds.includes(normalized)
+    ) || null
+  );
+}
+
+export function computeTeamRosterStats(team, players = []) {
+  const playerMap = new Map(players.map((player) => [String(player.id), player]));
+  let males = 0;
+  let females = 0;
+
+  (team?.playerIds || []).forEach((playerId) => {
+    const player = playerMap.get(String(playerId));
+    if (!player) {
+      return;
+    }
+
+    const gender = getPlayerGenderKey(player.gender);
+    if (gender === "male") {
+      males += 1;
+    } else if (gender === "female") {
+      females += 1;
+    }
+  });
+
+  return {
+    total: team?.playerIds?.length || 0,
+    males,
+    females,
+  };
+}
+
+export function getTeamRosterWarnings(team, teamData, players = []) {
+  const stats = computeTeamRosterStats(team, players);
+  const disciplines = teamData?.disciplines || [];
+  const allowReuse = teamData?.settings?.allowPlayerReusePerMatchup === true;
+
+  const maleDisciplines = disciplines.filter(
+    (discipline) => discipline.genderRequirement === GENDER_REQUIREMENT.MALE
+  );
+  const femaleDisciplines = disciplines.filter(
+    (discipline) => discipline.genderRequirement === GENDER_REQUIREMENT.FEMALE
+  );
+  const mixedDisciplines = disciplines.filter(
+    (discipline) => discipline.genderRequirement === GENDER_REQUIREMENT.MIXED_PAIR
+  );
+
+  const requiredMales = allowReuse
+    ? Math.max(
+        0,
+        ...maleDisciplines.map((discipline) => discipline.playerCount),
+        mixedDisciplines.length > 0 ? 1 : 0
+      )
+    : maleDisciplines.reduce((sum, discipline) => sum + discipline.playerCount, 0) +
+      mixedDisciplines.length;
+
+  const requiredFemales = allowReuse
+    ? Math.max(
+        0,
+        ...femaleDisciplines.map((discipline) => discipline.playerCount),
+        mixedDisciplines.length > 0 ? 1 : 0
+      )
+    : femaleDisciplines.reduce((sum, discipline) => sum + discipline.playerCount, 0) +
+      mixedDisciplines.length;
+
+  const warnings = [];
+
+  if (requiredMales > 0 && stats.males < requiredMales) {
+    warnings.push(
+      `Thiếu VĐV nam: cần tối thiểu ${requiredMales}, hiện có ${stats.males}.`
+    );
+  }
+
+  if (requiredFemales > 0 && stats.females < requiredFemales) {
+    warnings.push(
+      `Thiếu VĐV nữ: cần tối thiểu ${requiredFemales}, hiện có ${stats.females}.`
+    );
+  }
+
+  return warnings;
+}
+
+export function validateAddPlayerToTeam(teamData, teamId, playerId) {
+  const team = findTeam(teamData, teamId);
+  if (!team) {
+    return { ok: false, error: "Không tìm thấy đội." };
+  }
+
+  const normalized = normalizePlayerId(playerId);
+  if (!normalized) {
+    return { ok: false, error: "Thiếu VĐV." };
+  }
+
+  if (team.playerIds.includes(normalized)) {
+    return { ok: false, error: "VĐV đã có trong đội." };
+  }
+
+  const allowCrossTeam = teamData.settings?.allowPlayerCrossTeam === true;
+  const existingTeam = findPlayerTeam(teamData, normalized);
+  if (existingTeam && existingTeam.id !== team.id && !allowCrossTeam) {
+    return {
+      ok: false,
+      error: `VĐV đã thuộc đội ${existingTeam.name}.`,
+    };
+  }
+
+  return { ok: true, team, playerId: normalized };
+}
+
+export function validateRemovePlayerFromTeam(team, playerId) {
+  const normalized = normalizePlayerId(playerId);
+  if (!team) {
+    return { ok: false, error: "Không tìm thấy đội." };
+  }
+
+  if (!team.playerIds.includes(normalized)) {
+    return { ok: false, error: "VĐV không thuộc đội." };
+  }
+
+  if (team.captainPlayerId === normalized) {
+    return {
+      ok: false,
+      error: "Không thể xóa đội trưởng. Hãy chỉ định đội trưởng mới trước.",
+    };
+  }
+
+  return { ok: true, playerId: normalized };
+}
+
+export function validateAssignCaptain(team, playerId) {
+  const normalized = normalizePlayerId(playerId);
+  if (!team) {
+    return { ok: false, error: "Không tìm thấy đội." };
+  }
+
+  if (!normalized) {
+    return { ok: false, error: "Chọn đội trưởng." };
+  }
+
+  if (!team.playerIds.includes(normalized)) {
+    return {
+      ok: false,
+      error: "Đội trưởng phải là thành viên của đội.",
+    };
+  }
+
+  return { ok: true, playerId: normalized };
+}
+
+export function validateAssignDeputies(team, deputyPlayerIds = []) {
+  if (!team) {
+    return { ok: false, error: "Không tìm thấy đội." };
+  }
+
+  const normalized = [...new Set(deputyPlayerIds.map(normalizePlayerId).filter(Boolean))];
+  const invalid = normalized.filter((playerId) => !team.playerIds.includes(playerId));
+
+  if (invalid.length > 0) {
+    return { ok: false, error: "Đội phó phải là thành viên của đội." };
+  }
+
+  if (normalized.includes(team.captainPlayerId)) {
+    return { ok: false, error: "Đội trưởng không thể là đội phó." };
+  }
+
+  return { ok: true, deputyPlayerIds: normalized };
+}
+
+export function addPlayerToTeam(teamData, teamId, playerId) {
+  const validation = validateAddPlayerToTeam(teamData, teamId, playerId);
+  if (!validation.ok) {
+    return validation;
+  }
+
+  const team = validation.team;
+
+  return {
+    ok: true,
+    teamData: updateTeamInTournament(teamData, teamId, {
+      playerIds: [...team.playerIds, validation.playerId],
+    }),
+    playerId: validation.playerId,
+    teamId,
+  };
+}
+
+export function removePlayerFromTeam(teamData, teamId, playerId) {
+  const team = findTeam(teamData, teamId);
+  const validation = validateRemovePlayerFromTeam(team, playerId);
+  if (!validation.ok) {
+    return validation;
+  }
+
+  const nextPlayerIds = team.playerIds.filter(
+    (id) => id !== validation.playerId
+  );
+  const nextDeputies = (team.deputyPlayerIds || []).filter(
+    (id) => id !== validation.playerId
+  );
+
+  return {
+    ok: true,
+    teamData: updateTeamInTournament(teamData, teamId, {
+      playerIds: nextPlayerIds,
+      deputyPlayerIds: nextDeputies,
+    }),
+    playerId: validation.playerId,
+    teamId,
+  };
+}
+
+export function assignTeamCaptain(teamData, teamId, playerId) {
+  const team = findTeam(teamData, teamId);
+  const validation = validateAssignCaptain(team, playerId);
+  if (!validation.ok) {
+    return validation;
+  }
+
+  const previousCaptainId = team.captainPlayerId || "";
+  const nextDeputies = (team.deputyPlayerIds || []).filter(
+    (id) => id !== validation.playerId
+  );
+
+  return {
+    ok: true,
+    teamData: updateTeamInTournament(teamData, teamId, {
+      captainPlayerId: validation.playerId,
+      deputyPlayerIds: nextDeputies,
+    }),
+    playerId: validation.playerId,
+    previousCaptainId,
+    teamId,
+    changed: previousCaptainId !== validation.playerId,
+  };
+}
+
+export function assignTeamDeputies(teamData, teamId, deputyPlayerIds = []) {
+  const team = findTeam(teamData, teamId);
+  const validation = validateAssignDeputies(team, deputyPlayerIds);
+  if (!validation.ok) {
+    return validation;
+  }
+
+  return {
+    ok: true,
+    teamData: updateTeamInTournament(teamData, teamId, {
+      deputyPlayerIds: validation.deputyPlayerIds,
+    }),
+    deputyPlayerIds: validation.deputyPlayerIds,
+    teamId,
+  };
+}
+
+export function updateTeamProfile(teamData, teamId, patch = {}) {
+  const team = findTeam(teamData, teamId);
+  if (!team) {
+    return { ok: false, error: "Không tìm thấy đội." };
+  }
+
+  const nextPatch = { ...patch };
+  if (nextPatch.name != null) {
+    const trimmed = String(nextPatch.name).trim();
+    if (!trimmed) {
+      return { ok: false, error: "Tên đội không được để trống." };
+    }
+    nextPatch.name = trimmed;
+  }
+
+  return {
+    ok: true,
+    teamData: updateTeamInTournament(teamData, teamId, nextPatch),
+    teamId,
+  };
+}
+
+export function getVisibleTeams(
+  teamData,
+  { canManage = false, canViewAll = false, viewerPlayerId = null } = {}
+) {
+  const teams = teamData?.teams || [];
+  if (canManage || canViewAll) {
+    return teams;
+  }
+
+  if (!viewerPlayerId) {
+    return [];
+  }
+
+  return teams.filter((team) => {
+    if (team.captainPlayerId === String(viewerPlayerId)) {
+      return true;
+    }
+    return (team.deputyPlayerIds || []).includes(String(viewerPlayerId));
+  });
+}

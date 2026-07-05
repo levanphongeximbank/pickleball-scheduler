@@ -39,7 +39,7 @@
 | Apply pack document | ✅ **READY for owner apply** |
 | Production Supabase project | ✅ **CONFIRMED** — `pickleball-scheduler-production` / `expuvcohlcjzvrrauvud` |
 | Backup preflight | ✅ **CONFIRMED** (2026-07-04) — Free/Nano; không backup hiển thị; DB trống |
-| Production SQL applied | ⏳ **NOT STARTED** — Batch A #1–15 chưa apply |
+| Production SQL applied | **15 / 22** — Batch A ✅ PASS (2026-07-04) |
 | Production deploy (Phase 19B) | ⛔ **NO-GO** until §Owner checklist complete |
 | Stash `IntegrationSettingsPage.jsx` | ✅ **Intact** |
 
@@ -105,21 +105,23 @@
 
 | # | Status | Owner tick | Ngày |
 |---|--------|------------|------|
-| 1 | NEEDS APPLY | ☐ | |
-| 2 | NEEDS APPLY | ☐ | |
-| 3 | NEEDS APPLY | ☐ | |
-| 4 | NEEDS APPLY | ☐ | |
-| 5 | NEEDS APPLY | ☐ | |
-| 6 | NEEDS APPLY | ☐ | |
-| 7 | NEEDS APPLY | ☐ | |
-| 8 | NEEDS APPLY | ☐ | |
-| 9 | NEEDS APPLY | ☐ | |
-| 10 | NEEDS APPLY | ☐ | |
-| 11 | NEEDS APPLY | ☐ | |
-| 12 | NEEDS APPLY | ☐ | |
-| 13 | NEEDS APPLY | ☐ | |
-| 14 | NEEDS APPLY | ☐ | |
-| 15 | NEEDS APPLY | ☐ | |
+| 1 | CONFIRMED | ✅ | 2026-07-04 |
+| 2 | CONFIRMED | ✅ | 2026-07-04 |
+| 3 | CONFIRMED | ✅ | 2026-07-04 |
+| 4 | CONFIRMED | ✅ | 2026-07-04 |
+| 5 | CONFIRMED | ✅ | 2026-07-04 |
+| 6 | CONFIRMED | ✅ | 2026-07-04 |
+| 7 | CONFIRMED | ✅ | 2026-07-04 |
+| 8 | CONFIRMED | ✅ | 2026-07-04 |
+| 9 | CONFIRMED | ✅ | 2026-07-04 |
+| 10 | CONFIRMED | ✅ | 2026-07-04 |
+| 11 | CONFIRMED | ✅ | 2026-07-04 |
+| 12 | CONFIRMED | ✅ | 2026-07-04 |
+| 13 | CONFIRMED | ✅ | 2026-07-04 |
+| 14 | CONFIRMED | ✅ | 2026-07-04 |
+| 15 | CONFIRMED | ✅ | 2026-07-04 |
+
+**Batch A verify A1–A5:** ✅ PASS (2026-07-04)
 
 ### Batch A — Post-apply verification
 

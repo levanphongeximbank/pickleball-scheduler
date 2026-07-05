@@ -14,6 +14,13 @@ import {
 } from "./profileService.js";
 import { formatAuthError } from "./authErrors.js";
 import { isSecureRuntime } from "./runtime.js";
+import { getLoginRedirectUrl } from "../config/authConfig.js";
+import {
+  buildSignupUserMetadata,
+  completeCourtOwnerRegistration,
+  maybeCompletePendingCourtOwnerRegistration,
+  SIGNUP_INTENT,
+} from "../features/identity/services/signupService.js";
 import { writeAuditLog, AUDIT_ACTIONS } from "../features/identity/services/auditService.js";
 
 /** Dev registry — chỉ dùng khi chưa cấu hình Supabase (dev local). */
@@ -176,7 +183,15 @@ export function getAuthState() {
 }
 
 async function syncSupabaseUser(authUser) {
-  const profileResult = await fetchProfileByUserId(authUser.id);
+  let profileResult = await fetchProfileByUserId(authUser.id);
+
+  if (profileResult.ok && !profileResult.user.venueId) {
+    const pending = await maybeCompletePendingCourtOwnerRegistration(authUser);
+    if (pending.ok && !pending.skipped) {
+      profileResult = await fetchProfileByUserId(authUser.id);
+    }
+  }
+
   const resolved = resolveAuthUserFromProfile(authUser, profileResult, {
     rbacEnabled: isRbacEnabled(),
   });
@@ -259,16 +274,26 @@ export async function signUpWithPassword(email, password, profileMeta = {}) {
     return { ok: false, error: getSupabaseConfigError(), code: "NO_SUPABASE" };
   }
 
+  const normalizedEmail = String(email || "").trim().toLowerCase();
+  const signupIntent =
+    profileMeta.signupIntent === SIGNUP_INTENT.COURT_OWNER
+      ? SIGNUP_INTENT.COURT_OWNER
+      : SIGNUP_INTENT.PLAYER;
+  const displayName =
+    profileMeta.display_name ||
+    profileMeta.displayName ||
+    normalizedEmail.split("@")[0];
+
   const { data, error } = await client.auth.signUp({
-    email: String(email || "").trim().toLowerCase(),
+    email: normalizedEmail,
     password: String(password || ""),
     options: {
-      data: {
-        display_name:
-          profileMeta.display_name ||
-          profileMeta.displayName ||
-          String(email || "").split("@")[0],
-      },
+      emailRedirectTo: getLoginRedirectUrl(),
+      data: buildSignupUserMetadata({
+        displayName,
+        signupIntent,
+        venueName: profileMeta.venueName,
+      }),
     },
   });
 
@@ -285,11 +310,21 @@ export async function signUpWithPassword(email, password, profileMeta = {}) {
   }
 
   if (!data.session) {
+    const pendingCourtOwner = signupIntent === SIGNUP_INTENT.COURT_OWNER;
     return {
       ok: true,
       needsEmailConfirmation: true,
-      message: "Kiểm tra email để xác nhận tài khoản.",
+      message: pendingCourtOwner
+        ? "Kiểm tra email để xác nhận tài khoản. Sau khi xác nhận, đăng nhập để hoàn tất thiết lập sân."
+        : "Kiểm tra email để xác nhận tài khoản.",
     };
+  }
+
+  if (signupIntent === SIGNUP_INTENT.COURT_OWNER) {
+    const courtOwnerResult = await completeCourtOwnerRegistration(profileMeta.venueName);
+    if (!courtOwnerResult.ok) {
+      return courtOwnerResult;
+    }
   }
 
   return syncSupabaseUser(data.user);

@@ -11,6 +11,7 @@ const EVENT_PLAYER_COUNTS = {
   [EVENT_TYPE.MEN_DOUBLE]: 2,
   [EVENT_TYPE.WOMEN_DOUBLE]: 2,
   [EVENT_TYPE.MIXED_DOUBLE]: 2,
+  [EVENT_TYPE.OPEN_DOUBLE]: 2,
 };
 
 function playerMap(players = []) {
@@ -58,6 +59,10 @@ function validateEntryGender(entry, playersById, eventType) {
     return members.length === 2 && males.length === 1 && females.length === 1
       ? null
       : "Doi nam nu can 1 nam + 1 nu.";
+  }
+
+  if (eventType === EVENT_TYPE.OPEN_DOUBLE) {
+    return members.length === 2 ? null : "Doi tu do can dung 2 VDV.";
   }
 
   return null;

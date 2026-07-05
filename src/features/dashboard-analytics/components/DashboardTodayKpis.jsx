@@ -69,7 +69,6 @@ export default function DashboardTodayKpis({ summary, isMock = false }) {
       label: "Người đang chờ",
       value: metrics.waiting,
       icon: HourglassTopIcon,
-      accent: "#EA580C",
     },
     {
       label: "Doanh thu hôm nay",

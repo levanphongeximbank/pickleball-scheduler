@@ -227,13 +227,13 @@ function matchesClubScope(user, scope) {
   }
 
   if (isClubScopedRole(user.role)) {
-    if (clubId && user.clubId !== clubId) {
+    if (clubId && user.clubId && user.clubId !== clubId) {
       return false;
     }
     if (venueId && user.venueId && user.venueId !== venueId) {
       return false;
     }
-    return Boolean(user.clubId);
+    return Boolean(user.clubId || clubId);
   }
 
   return false;

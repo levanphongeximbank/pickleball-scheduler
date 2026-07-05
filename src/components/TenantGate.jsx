@@ -28,7 +28,7 @@ export default function TenantGate({ children }) {
       </Typography>
       {isSuperAdmin && (
         <Button component={RouterLink} to="/admin/tenants" variant="outlined">
-          Quản lý Tenant
+          Quản lý cụm sân
         </Button>
       )}
     </Box>

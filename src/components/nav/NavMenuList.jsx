@@ -17,6 +17,7 @@ import { NAV_ITEM_STATUS } from "../../config/navigationConfig.js";
 import { getNavIcon } from "../../config/navIcons.js";
 import { resolveMenuItemPath } from "../../auth/menuAccess.js";
 import { groupHasActiveItem, isNavItemActive } from "./navPathMatchers.js";
+import { SHELL_COLORS } from "../shell/shellTokens.js";
 
 function NavItemBadge({ item }) {
   if (item.navStatus === NAV_ITEM_STATUS.COMING_SOON || item.badge) {
@@ -69,42 +70,45 @@ function NavGroupSection({
   };
 
   return (
-    <Box sx={{ mb: 0.5 }}>
-      {group.label && (
+    <Box sx={{ mb: 0.25 }}>
+      {group.label && hasMultipleItems && (
         <ListItemButton
           onClick={toggleOpen}
           sx={{
-            borderRadius: 1.5,
-            mx: 0.5,
-            py: 0.5,
-            minHeight: 36,
+            borderRadius: 1,
+            mx: 1,
+            py: 0.35,
+            minHeight: 32,
+            color: isDark ? SHELL_COLORS.sidebarTextMuted : SHELL_COLORS.textSecondary,
             "&:hover": {
-              bgcolor: isDark ? "rgba(255,255,255,0.06)" : "rgba(15, 23, 42, 0.04)",
+              bgcolor: isDark ? "rgba(255,255,255,0.04)" : "rgba(15, 23, 42, 0.04)",
             },
           }}
         >
           <ListItemText
             primary={group.label}
-            primaryTypographyProps={{
-              fontSize: 11,
-              fontWeight: 800,
-              letterSpacing: 0.6,
-              textTransform: "uppercase",
-              color: isDark ? "rgba(255,255,255,0.55)" : "text.secondary",
+            slotProps={{
+              primary: {
+                sx: {
+                  fontSize: 10.5,
+                  fontWeight: 700,
+                  letterSpacing: 0.8,
+                  textTransform: "uppercase",
+                  color: "inherit",
+                },
+              },
             }}
           />
-          {hasMultipleItems ? (
-            open ? (
-              <ExpandLessIcon sx={{ fontSize: 18, color: isDark ? "rgba(255,255,255,0.55)" : "text.secondary" }} />
-            ) : (
-              <ExpandMoreIcon sx={{ fontSize: 18, color: isDark ? "rgba(255,255,255,0.55)" : "text.secondary" }} />
-            )
-          ) : null}
+          {open ? (
+            <ExpandLessIcon sx={{ fontSize: 16, color: SHELL_COLORS.sidebarTextMuted }} />
+          ) : (
+            <ExpandMoreIcon sx={{ fontSize: 16, color: SHELL_COLORS.sidebarTextMuted }} />
+          )}
         </ListItemButton>
       )}
 
       <Collapse in={!hasMultipleItems || open} timeout="auto" unmountOnExit={false}>
-        <List dense disablePadding sx={{ pl: compact ? 0 : 0.5 }}>
+        <List dense disablePadding sx={{ px: 0.5 }}>
           {group.items.map((item) => {
             const path = resolveMenuItemPath(item, user);
             const selected = isNavItemActive(currentPath, item, path);
@@ -117,34 +121,50 @@ function NavGroupSection({
                 selected={selected}
                 onClick={onItemClick}
                 sx={{
-                  borderRadius: 1.5,
-                  mx: 0.5,
-                  mb: 0.25,
-                  py: compact ? 0.65 : 0.75,
-                  color: isDark ? "rgba(255,255,255,0.88)" : "inherit",
+                  position: "relative",
+                  borderRadius: 1,
+                  mx: 0.75,
+                  mb: 0.2,
+                  py: compact ? 0.6 : 0.7,
+                  pl: 1.5,
+                  color: isDark ? "rgba(255,255,255,0.78)" : "inherit",
                   "&.Mui-selected": {
-                    bgcolor: isDark ? "rgba(255,255,255,0.12)" : "rgba(15, 118, 110, 0.12)",
-                    color: isDark ? "#FFFFFF" : "#0f766e",
-                    fontWeight: 800,
+                    bgcolor: isDark ? SHELL_COLORS.sidebarSelectedBg : "rgba(16, 185, 129, 0.1)",
+                    color: isDark ? "#FFFFFF" : SHELL_COLORS.primaryGreen,
+                    fontWeight: 600,
+                    "&::before": isDark
+                      ? {
+                          content: '""',
+                          position: "absolute",
+                          left: 0,
+                          top: 6,
+                          bottom: 6,
+                          width: 3,
+                          borderRadius: "0 2px 2px 0",
+                          bgcolor: SHELL_COLORS.sidebarAccentBar,
+                        }
+                      : undefined,
                     "&:hover": {
-                      bgcolor: isDark ? "rgba(255,255,255,0.16)" : "rgba(15, 118, 110, 0.18)",
+                      bgcolor: isDark ? SHELL_COLORS.sidebarSelectedHover : "rgba(16, 185, 129, 0.14)",
                     },
-                    "& .MuiListItemIcon-root": { color: isDark ? "#6EE7B7" : "#0f766e" },
+                    "& .MuiListItemIcon-root": {
+                      color: isDark ? SHELL_COLORS.sidebarAccent : SHELL_COLORS.primaryGreen,
+                    },
                   },
                   "&:hover": {
-                    bgcolor: isDark ? "rgba(255,255,255,0.06)" : "rgba(15, 23, 42, 0.04)",
+                    bgcolor: isDark ? "rgba(255,255,255,0.04)" : "rgba(15, 23, 42, 0.04)",
                   },
                 }}
               >
                 <ListItemIcon
                   sx={{
-                    minWidth: compact ? 32 : 36,
+                    minWidth: compact ? 30 : 34,
                     color: selected
                       ? isDark
-                        ? "#6EE7B7"
-                        : "#0f766e"
+                        ? SHELL_COLORS.sidebarAccent
+                        : SHELL_COLORS.primaryGreen
                       : isDark
-                        ? "rgba(255,255,255,0.65)"
+                        ? "rgba(255,255,255,0.55)"
                         : "text.secondary",
                   }}
                 >
@@ -152,17 +172,30 @@ function NavGroupSection({
                 </ListItemIcon>
                 <ListItemText
                   primary={
-                    <Box sx={{ display: "flex", alignItems: "center", minWidth: 0 }}>
-                      <Box component="span" sx={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                    <Box sx={{ display: "flex", alignItems: "center", minWidth: 0, color: "inherit" }}>
+                      <Box
+                        component="span"
+                        sx={{
+                          overflow: "hidden",
+                          textOverflow: "ellipsis",
+                          whiteSpace: "nowrap",
+                          color: "inherit",
+                        }}
+                      >
                         {item.text}
                       </Box>
                       <NavItemBadge item={item} />
                     </Box>
                   }
-                  primaryTypographyProps={{
-                    component: "div",
-                    fontSize: compact ? 13.5 : 13.5,
-                    fontWeight: selected ? 800 : 600,
+                  slotProps={{
+                    primary: {
+                      component: "div",
+                      sx: {
+                        fontSize: 13.5,
+                        fontWeight: selected ? 600 : 500,
+                        color: "inherit",
+                      },
+                    },
                   }}
                 />
               </ListItemButton>
@@ -172,7 +205,7 @@ function NavGroupSection({
       </Collapse>
 
       {groupIndex < totalGroups - 1 && (
-        <Divider sx={{ my: 1, mx: 1.5, borderColor: isDark ? "rgba(255,255,255,0.08)" : "rgba(15,23,42,0.06)" }} />
+        <Divider sx={{ my: 0.75, mx: 1.5, borderColor: isDark ? "rgba(255,255,255,0.06)" : "rgba(15,23,42,0.06)" }} />
       )}
     </Box>
   );

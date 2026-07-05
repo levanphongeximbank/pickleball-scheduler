@@ -223,6 +223,8 @@ export function getDefaultHomePath(user, rbacEnabled = false) {
   switch (normalizeRole(user.role)) {
     case ROLES.PLAYER:
       return "/tournament";
+    case ROLES.CLUB_OWNER:
+      return "/club";
     case ROLES.CASHIER:
       return "/court-management/bookings";
     case ROLES.ACCOUNTANT:

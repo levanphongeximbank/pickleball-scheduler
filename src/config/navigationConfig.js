@@ -102,7 +102,6 @@ export const ROLE_MENU_MAP = Object.freeze({
   ],
   [ROLES.REFEREE]: [
     MENU_GROUP_IDS.REFEREE_ZONE,
-    MENU_GROUP_IDS.TOURNAMENT,
     MENU_GROUP_IDS.SUPPORT,
   ],
   [ROLES.PLAYER]: [
@@ -248,7 +247,7 @@ export const MENU_GROUPS = [
   },
   {
     id: MENU_GROUP_IDS.VENUE_OPS,
-    label: "Vận hành sân",
+    label: "Vận hành cụm sân",
     items: [
       {
         key: "venue-calendar",
@@ -622,7 +621,7 @@ export const MENU_GROUPS = [
       {
         key: "admin-tenants",
         icon: NAV_ICON_KEYS.tenants,
-        text: "Cụm sân",
+        text: "Cụm sân / Cơ sở",
         path: "/admin/tenants",
         permissions: [PERMISSIONS.ROLE_MANAGE, PERMISSIONS.VENUE_UPDATE],
         roles: [ROLES.SUPER_ADMIN],
@@ -645,7 +644,7 @@ export const MENU_GROUPS = [
       {
         key: "courts",
         icon: NAV_ICON_KEYS.courts,
-        text: "Sân",
+        text: "Sân thi đấu",
         path: "/court-management/courts",
         match: "court-courts",
         permissions: [PERMISSIONS.COURT_VIEW],
@@ -718,6 +717,7 @@ export const MENU_GROUPS = [
         text: "Trung tâm trợ giúp",
         path: "/billing/support",
         permissions: [PERMISSIONS.BILLING_VIEW],
+        excludeRoles: [ROLES.REFEREE],
       },
       {
         key: "profile",
@@ -730,6 +730,7 @@ export const MENU_GROUPS = [
         icon: NAV_ICON_KEYS.notifications,
         text: "Thông báo",
         path: "/mobile/notifications",
+        excludeRoles: [ROLES.REFEREE],
       },
       {
         key: "qr-scan",
@@ -768,6 +769,7 @@ export const MENU_GROUPS = [
         text: "Gói & Thanh toán",
         path: "/billing",
         permissions: [PERMISSIONS.BILLING_VIEW],
+        excludeRoles: [ROLES.REFEREE],
       },
       {
         key: "support-settings",
@@ -775,6 +777,7 @@ export const MENU_GROUPS = [
         text: "Cài đặt",
         path: "/settings",
         permissions: [PERMISSIONS.SETTINGS_VIEW],
+        excludeRoles: [ROLES.REFEREE],
       },
     ],
   },
@@ -815,12 +818,19 @@ export const MENU_GROUPS = [
         roles: [ROLES.REFEREE],
       },
       {
-        key: "referee-tournaments",
-        icon: NAV_ICON_KEYS["referee-tournaments"],
-        text: "Giải đấu",
-        path: "/tournament",
-        match: "tournament-home",
-        permissions: [PERMISSIONS.TOURNAMENT_VIEW],
+        key: "referee-qr",
+        icon: NAV_ICON_KEYS["venue-checkin"],
+        text: "Quét QR",
+        path: "/mobile/qr-scan",
+        permissions: [PERMISSIONS.TOURNAMENT_VIEW, PERMISSIONS.MATCH_UPDATE],
+        roles: [ROLES.REFEREE],
+      },
+      {
+        key: "referee-results",
+        icon: NAV_ICON_KEYS.statistics,
+        text: "Kết quả & Xếp hạng",
+        path: "/statistics",
+        permissions: [PERMISSIONS.TOURNAMENT_VIEW, PERMISSIONS.TEAM_STANDINGS_VIEW],
         roles: [ROLES.REFEREE],
       },
     ],
@@ -877,7 +887,7 @@ export const ROUTE_PERMISSIONS = Object.freeze({
   "/marketplace": [PERMISSIONS.MARKETPLACE_VIEW],
   "/marketplace/orders": [PERMISSIONS.MARKETPLACE_VIEW],
   "/mobile/check-in": [PERMISSIONS.TOURNAMENT_VIEW],
-  "/mobile/qr-scan": [PERMISSIONS.TOURNAMENT_VIEW, PERMISSIONS.TOURNAMENT_UPDATE],
+  "/mobile/qr-scan": [PERMISSIONS.TOURNAMENT_VIEW, PERMISSIONS.TOURNAMENT_UPDATE, PERMISSIONS.MATCH_UPDATE],
   "/mobile/qr-generate": [PERMISSIONS.TOURNAMENT_UPDATE],
   "/mobile/notifications": [],
   "/mobile/player": [],

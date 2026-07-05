@@ -7,7 +7,7 @@ import {
   TOURNAMENT_MODE,
 } from "../../models/tournament/constants.js";
 import { getPlayerGenderKey } from "../../models/player.js";
-import { validateGroupDrawInput } from "./validationEngine.js";
+import { validateEntryForEvent, validateGroupDrawInput } from "./validationEngine.js";
 import { assignEntriesOpenConditional } from "./openConditionalRandomEngine.js";
 import { assignEntriesToGroupsSnake, summarizeGroupBalance } from "./seededGroupEngine.js";
 import { buildGroupStageSchedule, countGroupStageMatches } from "./scheduleEngine.js";
@@ -26,6 +26,7 @@ const DOUBLE_EVENT_TYPES = new Set([
   EVENT_TYPE.MEN_DOUBLE,
   EVENT_TYPE.WOMEN_DOUBLE,
   EVENT_TYPE.MIXED_DOUBLE,
+  EVENT_TYPE.OPEN_DOUBLE,
 ]);
 
 function inferPairType(playerA, playerB) {
@@ -149,6 +150,7 @@ const EVENT_OPTIONS_LABELS = {
   [EVENT_TYPE.MEN_DOUBLE]: "Doi nam",
   [EVENT_TYPE.WOMEN_DOUBLE]: "Doi nu",
   [EVENT_TYPE.MIXED_DOUBLE]: "Doi nam nu",
+  [EVENT_TYPE.OPEN_DOUBLE]: "Doi tu do",
 };
 
 export function upsertOfficialEvent(events = [], event) {
@@ -194,6 +196,20 @@ export function validateOpenRegistrationPlayers(players = [], eventType) {
       }
     }
   });
+
+  if (isDoubleEventType(eventType) && players.length === 2) {
+    const entryCheck = validateEntryForEvent(
+      {
+        name: `${players[0].name} / ${players[1].name}`,
+        playerIds: players.map((player) => String(player.id)),
+      },
+      players,
+      eventType
+    );
+    if (!entryCheck.ok) {
+      errors.push(...entryCheck.errors);
+    }
+  }
 
   return {
     ok: errors.length === 0,

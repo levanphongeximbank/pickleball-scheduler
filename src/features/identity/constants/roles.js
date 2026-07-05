@@ -41,16 +41,16 @@ export const CANONICAL_ROLES = Object.freeze([
 
 export const ROLE_LABELS = Object.freeze({
   [ROLES.SUPER_ADMIN]: "Quản trị hệ thống",
-  [ROLES.COURT_OWNER]: "Chủ sân",
-  [ROLES.COURT_MANAGER]: "Quản lý sân",
+  [ROLES.COURT_OWNER]: "Chủ cụm sân",
+  [ROLES.COURT_MANAGER]: "Quản lý cụm sân",
   [ROLES.CASHIER]: "Thu ngân",
   [ROLES.ACCOUNTANT]: "Kế toán",
   [ROLES.REFEREE]: "Trọng tài",
   [ROLES.CLUB_OWNER]: "Chủ CLB",
   [ROLES.PLAYER]: "Vận động viên",
-  [ROLES.VENUE_OWNER]: "Chủ sân",
-  [ROLES.VENUE_MANAGER]: "Quản lý sân",
-  TENANT_OWNER: "Chủ tenant",
+  [ROLES.VENUE_OWNER]: "Chủ cụm sân",
+  [ROLES.VENUE_MANAGER]: "Quản lý cụm sân",
+  TENANT_OWNER: "Chủ cụm sân",
   CLUB_MANAGER: "Quản lý CLB",
 });
 

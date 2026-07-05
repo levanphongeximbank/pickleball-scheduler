@@ -1,8 +1,9 @@
 # Gate 2 — Owner SQL Apply Checklist
 
 **Dành cho:** Owner / DevOps — không cần biết lập trình  
-**Ngày:** 2026-07-04  
-**Mục tiêu:** Apply 22 file SQL lên Supabase **Production** theo đúng thứ tự
+**Ngày:** 2026-07-04 (cập nhật sau Batch A PASS)  
+**Mục tiêu:** Apply 22 file SQL lên Supabase **Production** theo đúng thứ tự  
+**Tiến độ:** Batch A ✅ PASS · Batch B ⏳ tiếp theo (#16)
 
 ---
 
@@ -65,46 +66,43 @@
 
 ---
 
-### Batch A — #1 đến #15 (chạy trước)
+### Batch A — #1 đến #15 ✅ PASS (2026-07-04)
 
 | # | Mở file này trong repo | Tick khi Success | Ngày |
 |---|------------------------|------------------|------|
-| 1 | `docs/supabase-club-v3.sql` | ☐ | |
-| 2 | `docs/supabase-rbac.sql` | ☐ | |
-| 3 | `docs/supabase-club-v3-rls.sql` | ☐ | |
-| 4 | `docs/supabase-match-live.sql` | ☐ | |
-| 5 | `docs/supabase-match-live-rls.sql` | ☐ | |
-| 6 | `docs/supabase-security-hardening-v357.sql` | ☐ | |
-| 7 | `docs/supabase-match-live-v2.sql` | ☐ | |
-| 8 | `docs/supabase-identity-v40-sprint1.sql` | ☐ | |
-| 9 | `docs/supabase-identity-v40-phaseB.sql` | ☐ | |
-| 10 | `docs/supabase-identity-v40-phaseC.sql` | ☐ | |
-| 11 | `docs/supabase-multi-tenant-sprint2.sql` | ☐ | |
-| 12 | `docs/supabase-subscription-sprint4.sql` | ☐ | |
-| 13 | `docs/supabase-ai-assistant-sprint7.sql` | ☐ | |
-| 14 | `docs/supabase-mobile-sprint9.sql` | ☐ | |
-| 15 | `docs/supabase-sprint10.sql` | ☐ | |
+| 1 | `docs/supabase-club-v3.sql` | ✅ | 2026-07-04 |
+| 2 | `docs/supabase-rbac.sql` | ✅ | 2026-07-04 |
+| 3 | `docs/supabase-club-v3-rls.sql` | ✅ | 2026-07-04 |
+| 4 | `docs/supabase-match-live.sql` | ✅ | 2026-07-04 |
+| 5 | `docs/supabase-match-live-rls.sql` | ✅ | 2026-07-04 |
+| 6 | `docs/supabase-security-hardening-v357.sql` | ✅ | 2026-07-04 |
+| 7 | `docs/supabase-match-live-v2.sql` | ✅ | 2026-07-04 |
+| 8 | `docs/supabase-identity-v40-sprint1.sql` | ✅ | 2026-07-04 |
+| 9 | `docs/supabase-identity-v40-phaseB.sql` | ✅ | 2026-07-04 |
+| 10 | `docs/supabase-identity-v40-phaseC.sql` | ✅ | 2026-07-04 |
+| 11 | `docs/supabase-multi-tenant-sprint2.sql` | ✅ | 2026-07-04 |
+| 12 | `docs/supabase-subscription-sprint4.sql` | ✅ | 2026-07-04 |
+| 13 | `docs/supabase-ai-assistant-sprint7.sql` | ✅ | 2026-07-04 |
+| 14 | `docs/supabase-mobile-sprint9.sql` | ✅ | 2026-07-04 |
+| 15 | `docs/supabase-sprint10.sql` | ✅ | 2026-07-04 |
 
-**Sau #15 — bắt buộc verify Batch A:**
-
-1. Mở `docs/v5/GATE_2_SQL_VERIFICATION_QUERIES.md`
-2. Chạy lần lượt **A1, A2, A3, A4, A5** trong SQL Editor (Production)
-3. So sánh kết quả với cột "Kỳ vọng" trong file đó
-4. Nếu A1–A5 đều đúng → tick bảng dưới
+**Verify Batch A — PASS:**
 
 | Verify | Tick PASS | Ngày |
 |--------|-----------|------|
-| A1 RLS enabled | ☐ | |
-| A2 Sprint 7–10 tables | ☐ | |
-| A3 tenant_id = text | ☐ | |
-| A4 RPC Identity + Referee | ☐ | |
-| A5 tenants view + subscription cols | ☐ | |
+| A1 RLS enabled | ✅ | 2026-07-04 |
+| A2 Sprint 7–10 tables | ✅ | 2026-07-04 |
+| A3 tenant_id = text | ✅ | 2026-07-04 |
+| A4 RPC Identity + Referee | ✅ | 2026-07-04 |
+| A5 tenants view + subscription cols | ✅ | 2026-07-04 |
 
-**Ghi PASS vào:** tick ở bảng trên + cập nhật `GATE_2_PRODUCTION_SQL_READY_RUNBOOK.md` (cột PASS/FAIL/PENDING) nếu engineering hướng dẫn.
+**Batch A verdict:** ✅ **PASS**
+
+> Chi tiết từng bước Batch A: `GATE_2_BATCH_A_OWNER_STEP_BY_STEP.md`
 
 ---
 
-### Batch B — #16 đến #21 (chỉ sau Batch A PASS)
+### Batch B — #16 đến #21 (tiếp theo — đọc `GATE_2_BATCH_B_OWNER_STEP_BY_STEP.md`)
 
 | # | Mở file này | Tick khi Success | Ngày |
 |---|-------------|------------------|------|
@@ -205,7 +203,7 @@ Sau khi hoàn tất (hoặc dừng giữa chừng), báo engineering cập nhậ
 | Câu hỏi | Trả lời |
 |---------|---------|
 | Apply trên project nào? | Production `expuvcohlcjzvrrauvud` |
-| Bắt đầu từ migration nào? | **#1** (Production chưa apply gì) |
+| Bắt đầu từ migration nào? | **#16** — Batch B (`GATE_2_BATCH_B_OWNER_STEP_BY_STEP.md`) |
 | #21 apply được chưa? | Chỉ sau #1–#20 PASS |
 | #22 apply được chưa? | Chỉ sau V21-1→V21-8 PASS |
 | SQL verify ở đâu? | `GATE_2_SQL_VERIFICATION_QUERIES.md` |

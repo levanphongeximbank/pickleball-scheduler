@@ -24,6 +24,10 @@ import {
 import AutoAwesomeIcon from "@mui/icons-material/AutoAwesome";
 import GroupsIcon from "@mui/icons-material/Groups";
 import EmojiEventsIcon from "@mui/icons-material/EmojiEvents";
+import Diversity3Icon from "@mui/icons-material/Diversity3";
+import SportsIcon from "@mui/icons-material/Sports";
+
+import { useAuth } from "../../context/AuthContext.jsx";
 
 import { useClub } from "../../context/ClubContext.jsx";
 import { useSeasonLeague } from "../../context/SeasonContext.jsx";
@@ -37,8 +41,10 @@ import { TOURNAMENT_MODE, TOURNAMENT_STATUS, OFFICIAL_MODE } from "../../models/
 import ModeCard from "../../components/tournament/ModeCard.jsx";
 import PermissionGate from "../../components/auth/PermissionGate.jsx";
 import { PERMISSIONS } from "../../auth/permissions.js";
-import { usePlatformRuntime } from "../../core/platform/app/usePlatformRuntime.js";
-import { buildRuntimeAccessState } from "../../core/platform/app/runtimeAccess.js";
+import { usePageRuntimeAccess } from "../../core/platform/app/usePageRuntimeAccess.js";
+import { createTeamTournament } from "../../features/team-tournament/services/teamTournamentService.js";
+import { getTeamData } from "../../features/team-tournament/engines/teamTournamentEngine.js";
+import { findTeamForCaptain } from "../../features/team-tournament/engines/teamPermissionEngine.js";
 
 const CREATE_TOURNAMENT_MODE_OPTIONS = [
   {
@@ -59,6 +65,15 @@ const CREATE_TOURNAMENT_MODE_OPTIONS = [
     color: "#dc2626",
     badge: "Official",
   },
+  {
+    mode: TOURNAMENT_MODE.TEAM_TOURNAMENT,
+    title: "Giải đồng đội",
+    description:
+      "Đội vs đội, nộp đội hình theo lượt, khóa/công bố cặp đấu, BXH đồng đội.",
+    icon: <Diversity3Icon />,
+    color: "#7c3aed",
+    badge: "Team",
+  },
 ];
 
 const STATUS_LABELS = {
@@ -74,6 +89,7 @@ const MODE_LABELS = {
   [TOURNAMENT_MODE.DAILY_PLAY]: "Chơi vui",
   [TOURNAMENT_MODE.INTERNAL_TOURNAMENT]: "Nội bộ",
   [TOURNAMENT_MODE.OFFICIAL_TOURNAMENT]: "Chính thức",
+  [TOURNAMENT_MODE.TEAM_TOURNAMENT]: "Đồng đội",
 };
 
 function buildDefaultName(modeLabel) {
@@ -88,41 +104,32 @@ function canDeleteTournament(tournament) {
   );
 }
 
+function isCaptainForTeamTournament(tournament, playerId) {
+  if (!playerId || tournament?.mode !== TOURNAMENT_MODE.TEAM_TOURNAMENT) {
+    return false;
+  }
+
+  const teamData = getTeamData(tournament);
+  return Boolean(findTeamForCaptain(teamData, playerId));
+}
+
 export default function TournamentHome() {
   const navigate = useNavigate();
+  const { user } = useAuth();
   const { activeClub, activeClubId, revision, refreshClubs } = useClub();
   const { activeSeason, activeLeague } = useSeasonLeague();
-  const runtime = usePlatformRuntime();
+  const { accessAllowed } = usePageRuntimeAccess("tournament.manage", activeClub?.tenantId || activeClubId, {
+    source: "tournament.home",
+  });
   const [message, setMessage] = useState(null);
   const [error, setError] = useState(null);
   const [selectedIds, setSelectedIds] = useState([]);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
-  const [accessAllowed, setAccessAllowed] = useState(true);
 
   const tournaments = useMemo(
     () => listTournaments(activeClubId),
     [activeClubId, revision]
   );
-
-  useMemo(() => {
-    try {
-      const tenantId = activeClub?.tenantId || activeClubId || "tournament-home-preview";
-      const accessState = buildRuntimeAccessState(
-        runtime,
-        {
-          user_id: "demo-admin",
-          tenant_id: tenantId,
-          role: "SUPER_ADMIN",
-        },
-        "tournament.manage",
-        tenantId,
-        { source: "tournament.home" }
-      );
-      setAccessAllowed(accessState.allowed);
-    } catch {
-      setAccessAllowed(false);
-    }
-  }, [activeClub?.tenantId, activeClubId, runtime]);
 
   const deletableSelectedCount = useMemo(
     () =>
@@ -202,20 +209,27 @@ export default function TournamentHome() {
     setError(null);
     setMessage(null);
 
-    const result = createTournament(activeClubId, {
-      name: buildDefaultName(option.title),
-      mode: option.mode,
-      officialMode:
-        option.mode === TOURNAMENT_MODE.OFFICIAL_TOURNAMENT
-          ? OFFICIAL_MODE.OPEN
-          : undefined,
-      hostClubName:
-        option.mode === TOURNAMENT_MODE.OFFICIAL_TOURNAMENT
-          ? activeClub?.name || ""
-          : undefined,
-      seasonId: activeSeason?.id,
-      leagueId: activeLeague?.id,
-    });
+    const result =
+      option.mode === TOURNAMENT_MODE.TEAM_TOURNAMENT
+        ? createTeamTournament(activeClubId, {
+            name: buildDefaultName(option.title),
+            seasonId: activeSeason?.id,
+            leagueId: activeLeague?.id,
+          })
+        : createTournament(activeClubId, {
+            name: buildDefaultName(option.title),
+            mode: option.mode,
+            officialMode:
+              option.mode === TOURNAMENT_MODE.OFFICIAL_TOURNAMENT
+                ? OFFICIAL_MODE.OPEN
+                : undefined,
+            hostClubName:
+              option.mode === TOURNAMENT_MODE.OFFICIAL_TOURNAMENT
+                ? activeClub?.name || ""
+                : undefined,
+            seasonId: activeSeason?.id,
+            leagueId: activeLeague?.id,
+          });
 
     if (!result.ok) {
       setError(result.error || "Không thể tạo giải.");
@@ -236,6 +250,11 @@ export default function TournamentHome() {
 
     if (option.mode === TOURNAMENT_MODE.OFFICIAL_TOURNAMENT) {
       navigate(`/tournament/official/${result.tournament.id}`);
+      return;
+    }
+
+    if (option.mode === TOURNAMENT_MODE.TEAM_TOURNAMENT) {
+      navigate(`/tournament/team/${result.tournament.id}`);
       return;
     }
 
@@ -371,12 +390,17 @@ export default function TournamentHome() {
                     }
                     if (tournament.mode === TOURNAMENT_MODE.OFFICIAL_TOURNAMENT) {
                       navigate(`/tournament/official/${tournament.id}`);
+                      return;
+                    }
+                    if (tournament.mode === TOURNAMENT_MODE.TEAM_TOURNAMENT) {
+                      navigate(`/tournament/team/${tournament.id}`);
                     }
                   }}
                   disabled={
                     tournament.mode !== TOURNAMENT_MODE.DAILY_PLAY &&
                     tournament.mode !== TOURNAMENT_MODE.INTERNAL_TOURNAMENT &&
-                    tournament.mode !== TOURNAMENT_MODE.OFFICIAL_TOURNAMENT
+                    tournament.mode !== TOURNAMENT_MODE.OFFICIAL_TOURNAMENT &&
+                    tournament.mode !== TOURNAMENT_MODE.TEAM_TOURNAMENT
                   }
                   sx={{ px: 0, flex: 1, alignItems: "flex-start" }}
                 >
@@ -424,6 +448,18 @@ export default function TournamentHome() {
                     </Button>
                   </PermissionGate>
                 )}
+                {tournament.mode === TOURNAMENT_MODE.TEAM_TOURNAMENT &&
+                isCaptainForTeamTournament(tournament, user?.playerId) ? (
+                  <Button
+                    size="small"
+                    variant="text"
+                    startIcon={<SportsIcon />}
+                    onClick={() => navigate(`/team-portal/${tournament.id}`)}
+                    sx={{ mt: 0.5, flexShrink: 0 }}
+                  >
+                    Portal
+                  </Button>
+                ) : null}
               </ListItem>
             ))}
           </List>

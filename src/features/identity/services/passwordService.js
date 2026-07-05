@@ -1,6 +1,7 @@
 import { getSupabaseAuthClient, hasSupabaseConfig } from "../../../auth/supabaseClient.js";
 import { formatAuthError } from "../../../auth/authErrors.js";
 import { getCurrentUser, isDevAuthAllowed } from "../../../auth/authService.js";
+import { getResetPasswordRedirectUrl } from "../../../config/authConfig.js";
 import { writeAuditLog, AUDIT_ACTIONS } from "./auditService.js";
 
 const DEV_RESET_KEY = "pickleball-dev-password-reset-v1";
@@ -39,7 +40,7 @@ export async function requestPasswordReset(email) {
       return { ok: false, error: "Supabase chưa cấu hình.", code: "NO_SUPABASE" };
     }
 
-    const redirectTo = `${window.location.origin}/reset-password`;
+    const redirectTo = getResetPasswordRedirectUrl();
     const { error } = await client.auth.resetPasswordForEmail(normalizedEmail, {
       redirectTo,
     });

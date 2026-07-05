@@ -73,6 +73,8 @@ export default function MobileBottomNav() {
         zIndex: (theme) => theme.zIndex.drawer + 2,
         borderTop: "1px solid",
         borderColor: "divider",
+        bgcolor: "background.paper",
+        boxShadow: "0 -2px 12px rgba(15, 23, 42, 0.06)",
         pb: "env(safe-area-inset-bottom, 0px)",
       }}
     >
@@ -114,8 +116,12 @@ export default function MobileBottomNav() {
                 color: "text.secondary",
                 "&.Mui-selected": {
                   color: "primary.main",
+                  "& .MuiBottomNavigationAction-label": {
+                    fontSize: 10.5,
+                    fontWeight: 700,
+                  },
                 },
-                "& .MuiBottomNavigationAction-label": { fontSize: 10.5, fontWeight: 700 },
+                "& .MuiBottomNavigationAction-label": { fontSize: 10.5, fontWeight: 600 },
               }}
             />
           );

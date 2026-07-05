@@ -84,6 +84,16 @@ export const PERMISSIONS = Object.freeze({
   MARKETPLACE_MANAGE: "marketplace.manage",
 
   API_MANAGE: "api.manage",
+
+  // ─── Team tournament (v5) ─────────────────────────────────────────
+  TEAM_MANAGE: "team.manage",
+  TEAM_VIEW: "team.view",
+  TEAM_LINEUP_SUBMIT: "team.lineup.submit",
+  TEAM_LINEUP_LOCK: "team.lineup.lock",
+  TEAM_LINEUP_PUBLISH: "team.lineup.publish",
+  TEAM_LINEUP_RANDOMIZE: "team.lineup.randomize",
+  TEAM_MATCH_RESULT_MANAGE: "team.match.result.manage",
+  TEAM_STANDINGS_VIEW: "team.standings.view",
 });
 
 export function isValidPermission(permission) {

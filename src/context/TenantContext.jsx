@@ -121,9 +121,14 @@ export function TenantProvider({ children }) {
     }
 
     if (isSuperAdmin) {
-      return currentTenantId
-        ? assertTenantOperational(currentTenantId, { user })
-        : { ok: true };
+      if (!currentTenantId) {
+        return { ok: true };
+      }
+      const operational = assertTenantOperational(currentTenantId, { user });
+      if (!operational.ok) {
+        return { ok: true, warning: operational.error, code: operational.code };
+      }
+      return operational;
     }
 
     if (!currentTenantId) {

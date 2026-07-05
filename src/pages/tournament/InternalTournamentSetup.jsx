@@ -28,7 +28,12 @@ import {
   advanceTournamentStatus,
   updateTournament,
 } from "../../domain/tournamentService.js";
-import { EVENT_TYPE, TOURNAMENT_MODE, TOURNAMENT_STATUS } from "../../models/tournament/index.js";
+import {
+  EVENT_TYPE,
+  TOURNAMENT_MODE,
+  TOURNAMENT_STATUS,
+  EVENT_TYPE_OPTIONS,
+} from "../../models/tournament/index.js";
 import {
   buildInternalTournamentPatch,
   buildInternalTournamentPlan,
@@ -75,13 +80,7 @@ import TournamentAiAssistantPanel from "../../components/tournament/ai/Tournamen
 import { useAuth } from "../../context/AuthContext.jsx";
 import { useTenant } from "../../context/TenantContext.jsx";
 
-const EVENT_OPTIONS = [
-  { value: EVENT_TYPE.MEN_SINGLE, label: "Đơn nam" },
-  { value: EVENT_TYPE.WOMEN_SINGLE, label: "Đơn nữ" },
-  { value: EVENT_TYPE.MEN_DOUBLE, label: "Đôi nam" },
-  { value: EVENT_TYPE.WOMEN_DOUBLE, label: "Đôi nữ" },
-  { value: EVENT_TYPE.MIXED_DOUBLE, label: "Đôi nam nữ" },
-];
+const EVENT_OPTIONS = EVENT_TYPE_OPTIONS;
 
 export default function InternalTournamentSetup() {
   const { tournamentId } = useParams();

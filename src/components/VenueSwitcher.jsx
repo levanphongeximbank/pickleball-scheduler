@@ -29,7 +29,7 @@ const VARIANT_STYLES = {
   },
 };
 
-export default function VenueSwitcher({ size = "small", minWidth = 180, variant = "dark" }) {
+export default function VenueSwitcher({ size = "small", minWidth = 180, variant = "dark", hideLabel = false }) {
   const { user, rbacEnabled, isAuthenticated } = useAuth();
   const { currentTenantId } = useTenant();
   const styles = VARIANT_STYLES[variant] || VARIANT_STYLES.dark;
@@ -55,21 +55,27 @@ export default function VenueSwitcher({ size = "small", minWidth = 180, variant 
     window.dispatchEvent(new CustomEvent("venue-switched", { detail: event.target.value }));
   };
 
+  const fieldLabel = hideLabel ? "" : "Cụm sân";
+
   return (
-    <FormControl size={size} sx={{ minWidth }}>
-      <InputLabel id="header-venue-label" sx={variant !== "dark" ? { color: SHELL_COLORS.textSecondary } : undefined}>
-        Cụm sân
-      </InputLabel>
+    <FormControl size={size} sx={{ minWidth, width: hideLabel ? "100%" : undefined }}>
+      {!hideLabel && (
+        <InputLabel id="header-venue-label" sx={variant !== "dark" ? { color: SHELL_COLORS.textSecondary } : undefined}>
+          Cụm sân
+        </InputLabel>
+      )}
       <Select
         labelId="header-venue-label"
         value={value}
-        label="Cụm sân"
+        label={fieldLabel}
         onChange={handleChange}
+        displayEmpty={hideLabel}
         sx={{
           bgcolor: styles.bgcolor,
           color: styles.color,
           borderRadius: variant === "light" ? 2 : 1,
-          fontWeight: variant === "light" ? 700 : 400,
+          fontWeight: variant === "light" ? 700 : 500,
+          fontSize: hideLabel ? 13 : undefined,
           ".MuiOutlinedInput-notchedOutline": { borderColor: styles.outline },
           ".MuiSvgIcon-root": { color: styles.icon },
         }}

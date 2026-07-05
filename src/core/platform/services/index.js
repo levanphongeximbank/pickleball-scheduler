@@ -93,6 +93,10 @@ export function createUserService({ persistence, collection = "users" } = {}) {
 export function createAccessService({ permissionService } = {}) {
   return {
     authorize(user, scope = {}, permission) {
+      if (user?.role === "SUPER_ADMIN" || user?.role === "PLATFORM_ADMIN") {
+        return { ok: true, allowed: true, permission };
+      }
+
       const tenantCheck = assertTenantAccess(user, scope);
       if (!tenantCheck.ok) {
         return { ok: false, allowed: false, code: tenantCheck.code };
@@ -231,24 +235,50 @@ export function createSubscriptionService() {
   };
 }
 
-export function createPermissionService() {
-  const matrix = {
-    SUPER_ADMIN: ["tenant.manage", "user.manage", "subscription.manage", "audit.read"],
-    TENANT_OWNER: ["tenant.manage", "user.manage", "subscription.manage", "audit.read"],
-    VENUE_MANAGER: ["booking.manage", "court.manage", "player.manage"],
-    CLUB_OWNER: ["booking.manage", "court.manage", "player.manage"],
-    STAFF: ["booking.manage", "checkin.manage"],
-    CASHIER: ["payment.manage"],
-    REFEREE: ["match.update", "match.view"],
-    PLAYER: ["player.view.self", "booking.view.self"],
-  };
+const PLATFORM_ROLE_ALIASES = {
+  COURT_OWNER: "TENANT_OWNER",
+  VENUE_OWNER: "TENANT_OWNER",
+  COURT_MANAGER: "VENUE_MANAGER",
+  VENUE_MANAGER: "VENUE_MANAGER",
+  PLATFORM_ADMIN: "SUPER_ADMIN",
+};
 
+const PLATFORM_PERMISSION_MATRIX = {
+  SUPER_ADMIN: [
+    "tenant.manage", "user.manage", "subscription.manage", "audit.read",
+    "tournament.manage", "club.manage", "booking.manage", "court.manage",
+    "player.manage", "customer.manage", "checkin.manage", "payment.manage",
+    "system.setting", "match.update", "match.view", "marketplace.manage",
+    "player.view.self", "booking.view.self",
+  ],
+  TENANT_OWNER: [
+    "tenant.manage", "user.manage", "subscription.manage", "audit.read",
+    "tournament.manage", "club.manage", "booking.manage", "court.manage",
+    "player.manage", "customer.manage", "checkin.manage", "payment.manage",
+    "system.setting", "match.update", "match.view", "marketplace.manage",
+  ],
+  VENUE_MANAGER: [
+    "booking.manage", "court.manage", "player.manage", "customer.manage",
+    "tournament.manage", "checkin.manage", "match.update", "match.view",
+  ],
+  CLUB_OWNER: ["club.manage", "tournament.manage", "player.manage", "match.update", "match.view"],
+  STAFF: ["booking.manage", "checkin.manage", "court.manage"],
+  CASHIER: ["payment.manage", "booking.manage", "checkin.manage"],
+  REFEREE: ["match.update", "match.view", "checkin.manage"],
+  PLAYER: ["player.view.self", "booking.view.self", "match.view"],
+};
+
+export function createPermissionService() {
   return {
     hasPermission(role, permission) {
-      return Boolean(matrix[role]?.includes(permission));
+      if (role === "SUPER_ADMIN" || role === "PLATFORM_ADMIN") {
+        return true;
+      }
+      const resolved = PLATFORM_ROLE_ALIASES[role] || role;
+      return Boolean(PLATFORM_PERMISSION_MATRIX[resolved]?.includes(permission));
     },
     listMatrix() {
-      return { ...matrix };
+      return { ...PLATFORM_PERMISSION_MATRIX };
     },
   };
 }

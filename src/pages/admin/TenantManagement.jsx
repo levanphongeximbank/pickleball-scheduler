@@ -205,7 +205,7 @@ export default function TenantManagement() {
             Tenant Management
           </Typography>
           <Typography color="text.secondary">
-            Quản lý sân / đơn vị thuê phần mềm (multi-tenant).
+            Quản lý cụm sân / cơ sở pickleball (multi-tenant).
           </Typography>
         </Box>
         <Button startIcon={<AddIcon />} variant="contained" onClick={() => setCreateOpen(true)} disabled={!accessAllowed}>

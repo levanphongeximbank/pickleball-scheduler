@@ -23,7 +23,15 @@ export function createUserRecord({ email, role, tenant_id, user_id } = {}) {
 }
 
 export function assertTenantAccess(user, { tenant_id } = {}) {
-  if (!user || !tenant_id) {
+  if (!user) {
+    return { ok: false, allowed: false, code: "TENANT_REQUIRED" };
+  }
+
+  if (user.role === "SUPER_ADMIN" || user.role === "PLATFORM_ADMIN") {
+    return { ok: true, allowed: true };
+  }
+
+  if (!tenant_id) {
     return { ok: false, allowed: false, code: "TENANT_REQUIRED" };
   }
 
@@ -43,16 +51,69 @@ export function canPerformAction(user, scope = {}, permission) {
   return { ok: true, allowed: true, permission };
 }
 
+const PLATFORM_PERMISSIONS = Object.freeze([
+  "tenant.manage",
+  "user.manage",
+  "subscription.manage",
+  "audit.read",
+  "tournament.manage",
+  "club.manage",
+  "booking.manage",
+  "court.manage",
+  "player.manage",
+  "customer.manage",
+  "checkin.manage",
+  "payment.manage",
+  "system.setting",
+  "match.update",
+  "match.view",
+  "marketplace.manage",
+  "player.view.self",
+  "booking.view.self",
+]);
+
 export function getPermissionMatrix() {
   return {
-    SUPER_ADMIN: ["tenant.manage", "user.manage", "subscription.manage", "audit.read"],
-    TENANT_OWNER: ["tenant.manage", "user.manage", "subscription.manage", "audit.read"],
-    VENUE_MANAGER: ["booking.manage", "court.manage", "player.manage"],
-    CLUB_OWNER: ["booking.manage", "court.manage", "player.manage"],
-    STAFF: ["booking.manage", "checkin.manage"],
-    CASHIER: ["payment.manage"],
-    REFEREE: ["match.update", "match.view"],
-    PLAYER: ["player.view.self", "booking.view.self"],
+    SUPER_ADMIN: [...PLATFORM_PERMISSIONS],
+    TENANT_OWNER: [
+      "tenant.manage",
+      "user.manage",
+      "subscription.manage",
+      "audit.read",
+      "tournament.manage",
+      "club.manage",
+      "booking.manage",
+      "court.manage",
+      "player.manage",
+      "customer.manage",
+      "checkin.manage",
+      "payment.manage",
+      "system.setting",
+      "match.update",
+      "match.view",
+      "marketplace.manage",
+    ],
+    VENUE_MANAGER: [
+      "booking.manage",
+      "court.manage",
+      "player.manage",
+      "customer.manage",
+      "tournament.manage",
+      "checkin.manage",
+      "match.update",
+      "match.view",
+    ],
+    CLUB_OWNER: [
+      "club.manage",
+      "tournament.manage",
+      "player.manage",
+      "match.update",
+      "match.view",
+    ],
+    STAFF: ["booking.manage", "checkin.manage", "court.manage"],
+    CASHIER: ["payment.manage", "booking.manage", "checkin.manage"],
+    REFEREE: ["match.update", "match.view", "checkin.manage"],
+    PLAYER: ["player.view.self", "booking.view.self", "match.view"],
   };
 }
 

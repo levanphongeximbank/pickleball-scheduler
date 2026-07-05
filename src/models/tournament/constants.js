@@ -2,6 +2,7 @@ export const TOURNAMENT_MODE = {
   DAILY_PLAY: "daily_play",
   INTERNAL_TOURNAMENT: "internal_tournament",
   OFFICIAL_TOURNAMENT: "official_tournament",
+  TEAM_TOURNAMENT: "team_tournament",
 };
 
 export const OFFICIAL_MODE = {
@@ -24,7 +25,39 @@ export const EVENT_TYPE = {
   MEN_DOUBLE: "men_double",
   WOMEN_DOUBLE: "women_double",
   MIXED_DOUBLE: "mixed_double",
+  OPEN_DOUBLE: "open_double",
 };
+
+/** Accept legacy/alternate keys without breaking stored tournaments. */
+export const EVENT_TYPE_ALIASES = {
+  open_doubles: EVENT_TYPE.OPEN_DOUBLE,
+};
+
+export const EVENT_TYPE_LABELS = {
+  [EVENT_TYPE.MEN_SINGLE]: "Đơn nam",
+  [EVENT_TYPE.WOMEN_SINGLE]: "Đơn nữ",
+  [EVENT_TYPE.MEN_DOUBLE]: "Đôi nam",
+  [EVENT_TYPE.WOMEN_DOUBLE]: "Đôi nữ",
+  [EVENT_TYPE.MIXED_DOUBLE]: "Đôi nam nữ",
+  [EVENT_TYPE.OPEN_DOUBLE]: "Đôi tự do",
+};
+
+export const EVENT_TYPE_DESCRIPTIONS = {
+  [EVENT_TYPE.OPEN_DOUBLE]: "Không phân biệt giới tính, chỉ cần đủ 2 người.",
+};
+
+export const EVENT_TYPE_OPTIONS = [
+  { value: EVENT_TYPE.MEN_SINGLE, label: EVENT_TYPE_LABELS[EVENT_TYPE.MEN_SINGLE] },
+  { value: EVENT_TYPE.WOMEN_SINGLE, label: EVENT_TYPE_LABELS[EVENT_TYPE.WOMEN_SINGLE] },
+  { value: EVENT_TYPE.MEN_DOUBLE, label: EVENT_TYPE_LABELS[EVENT_TYPE.MEN_DOUBLE] },
+  { value: EVENT_TYPE.WOMEN_DOUBLE, label: EVENT_TYPE_LABELS[EVENT_TYPE.WOMEN_DOUBLE] },
+  { value: EVENT_TYPE.MIXED_DOUBLE, label: EVENT_TYPE_LABELS[EVENT_TYPE.MIXED_DOUBLE] },
+  {
+    value: EVENT_TYPE.OPEN_DOUBLE,
+    label: EVENT_TYPE_LABELS[EVENT_TYPE.OPEN_DOUBLE],
+    description: EVENT_TYPE_DESCRIPTIONS[EVENT_TYPE.OPEN_DOUBLE],
+  },
+];
 
 export const MATCH_STAGE = {
   GROUP: "group",
