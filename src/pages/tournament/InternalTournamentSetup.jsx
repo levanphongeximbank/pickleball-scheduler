@@ -64,6 +64,8 @@ import {
   stripMatchesFromEvent,
 } from "../../components/tournament/animation/animationUtils.js";
 import { useTournamentAnimation } from "../../components/tournament/animation/useTournamentAnimation.js";
+import { useTournamentFlowOrchestrator } from "../../components/tournament/animation/useTournamentFlowOrchestrator.js";
+import { createInternalFlowAdapters } from "../../components/tournament/animation/tournamentFlowAdapters.js";
 import { PAIRING_CONTROL_MODES } from "../../components/tournament/animation/pairing/usePairingSequence.js";
 import {
   buildRefereeSettingsPatch,
@@ -199,6 +201,42 @@ export default function InternalTournamentSetup() {
     refreshClubs();
     return true;
   };
+
+  const flowAdapters = useMemo(
+    () =>
+      createInternalFlowAdapters({
+        tournament,
+        tournamentClubId,
+        tournamentId,
+        players,
+        courts,
+        selectedPlayerIds,
+        eventType,
+        groupCount,
+        isSingleEvent,
+        setPreviewEntries,
+        setWarnings,
+        setMessage,
+        setError,
+        setLocalRevision,
+        refreshClubs,
+        persistEvent,
+      }),
+    [
+      tournament,
+      tournamentClubId,
+      tournamentId,
+      players,
+      courts,
+      selectedPlayerIds,
+      eventType,
+      groupCount,
+      isSingleEvent,
+      refreshClubs,
+    ]
+  );
+
+  const flow = useTournamentFlowOrchestrator(anim, flowAdapters);
 
   const handleRefereeRosterChange = (nextRoster) => {
     const result = updateTournament(
@@ -357,6 +395,17 @@ export default function InternalTournamentSetup() {
 
   const handleClearAllPlayers = () => {
     setSelectedPlayerIds([]);
+  };
+
+  const handleStartGuidedFlow = () => {
+    setError(null);
+    setWarnings([]);
+    setMessage(null);
+
+    const result = flow.startFlow({});
+    if (result?.ok === false) {
+      setError(result.error || "Không thể bắt đầu trình chiếu.");
+    }
   };
 
   const handleSuggestPairs = () => {
@@ -674,6 +723,15 @@ export default function InternalTournamentSetup() {
         </Grid>
         <Grid size={{ xs: 12, md: 4 }}>
           <Stack spacing={1}>
+            <Button
+              fullWidth
+              variant="contained"
+              color="secondary"
+              onClick={handleStartGuidedFlow}
+              disabled={selectedPlayerIds.length === 0}
+            >
+              Bắt đầu trình chiếu
+            </Button>
             <Stack direction={{ xs: "column", sm: "row" }} spacing={1}>
               <Button fullWidth variant="outlined" onClick={handleSuggestPairs}>
                 {isSingleEvent ? "Đề xuất danh sách" : "Đề xuất ghép cặp"}
@@ -879,7 +937,7 @@ export default function InternalTournamentSetup() {
         </Stack>
       )}
 
-      <TournamentAnimationDialog {...anim.dialogProps} />
+      <TournamentAnimationDialog {...flow.dialogProps} />
 
       {bracketAdvanceAnim && (
         <Box

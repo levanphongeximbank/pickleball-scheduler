@@ -173,7 +173,7 @@ export function normalizeSubMatches(subMatches = []) {
     .sort((a, b) => a.sortOrder - b.sortOrder);
 }
 
-export function normalizeMatchup(matchup, index = 0) {
+export function normalizeMatchup(matchup) {
   if (!matchup?.id) {
     return null;
   }

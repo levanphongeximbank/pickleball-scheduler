@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useOutletContext } from "react-router-dom";
+import { useOutletContext, useSearchParams } from "react-router-dom";
 
 import { Box, Tab, Tabs } from "@mui/material";
 
@@ -9,7 +9,9 @@ import CourtCalendarMonthView from "./CourtCalendarMonthView.jsx";
 
 export default function CourtManagementCalendarPage() {
   const { clubId, courts, bookings, revision, onRefresh } = useOutletContext();
+  const [searchParams] = useSearchParams();
   const [view, setView] = useState("day");
+  const focusToday = searchParams.get("date") === "today";
 
   return (
     <Box>

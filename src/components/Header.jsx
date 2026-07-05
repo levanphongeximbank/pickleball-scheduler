@@ -111,7 +111,7 @@ export default function Header({ onMenuClick }) {
               px: { md: 2, lg: 3 },
             }}
           >
-            <GlobalSearch variant="light" maxWidth={480} />
+            <GlobalSearch variant="light" maxWidth={520} />
           </Box>
         )}
 

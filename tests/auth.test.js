@@ -123,7 +123,7 @@ test("signInDev / signOut / getCurrentUser — dev fallback", () => {
 
   const result = signInDev("owner@venue.local");
   assert.equal(result.ok, true);
-  assert.equal(result.user.role, ROLES.COURT_OWNER);
+  assert.equal(result.user.role, ROLES.TENANT_OWNER);
 
   const current = getCurrentUser();
   assert.equal(current.email, "owner@venue.local");
@@ -228,7 +228,7 @@ test("resolveAuthUserFromProfile — RBAC bật, profile hợp lệ → dùng pr
 
   const allowed = resolveAuthUserFromProfile(authUser, profileResult, { rbacEnabled: true });
   assert.equal(allowed.ok, true);
-  assert.equal(allowed.user.role, ROLES.COURT_OWNER);
+  assert.equal(allowed.user.role, ROLES.TENANT_OWNER);
   assert.equal(allowed.user.venueId, "venue-demo");
 });
 

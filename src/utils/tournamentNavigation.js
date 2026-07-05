@@ -86,5 +86,13 @@ export function getTournamentSetupPath(tournament) {
     return `/tournament/official/${tournament.id}`;
   }
 
+  if (tournament.mode === TOURNAMENT_MODE.TEAM_TOURNAMENT) {
+    return `/tournament/team/${tournament.id}`;
+  }
+
+  if (tournament.mode === TOURNAMENT_MODE.DAILY_PLAY) {
+    return `/tournament/daily/${tournament.id}`;
+  }
+
   return "/tournament";
 }

@@ -1,6 +1,10 @@
 import { normalizeCourtSession } from "../models/courtSession.js";
 import { resolveTenantIdForClub } from "../../tenant/guards/tenantGuard.js";
 import { isRbacEnabled } from "../../../auth/authService.js";
+import {
+  createSupabaseCourtEngineStore,
+  isSupabaseCourtEngineStoreEnabled,
+} from "./SupabaseCourtEngineStore.js";
 
 const STORAGE_KEY_PREFIX = "pickleball-court-engine-v1";
 const ACTIVE_KEY_PREFIX = "pickleball-court-engine-active-v1";
@@ -188,3 +192,25 @@ export function importCourtEngineStore(clubId, payload, options = {}) {
   }
   return saveCourtEngineStore(clubId, payload.store, options);
 }
+
+export function getCourtEngineStoreMode() {
+  return String(import.meta.env?.VITE_COURT_ENGINE_STORE || "local").toLowerCase();
+}
+
+/** Factory — local by default; supabase stub when VITE_COURT_ENGINE_STORE=supabase */
+export function resolveCourtEngineStore(client, options = {}) {
+  if (getCourtEngineStoreMode() === "supabase") {
+    return createSupabaseCourtEngineStore(client, options);
+  }
+  return {
+    mode: "local",
+    loadCourtEngineStore: (clubId) => loadCourtEngineStore(clubId, options),
+    saveCourtEngineStore: (clubId, store) => saveCourtEngineStore(clubId, store, options),
+    loadActiveSessionId: (clubId) => loadActiveSessionId(clubId, options),
+    saveActiveSessionId: (clubId, sessionId) => saveActiveSessionId(clubId, sessionId, options),
+    getSessionFromStore,
+    upsertSessionInStore,
+  };
+}
+
+export { createSupabaseCourtEngineStore, isSupabaseCourtEngineStoreEnabled };

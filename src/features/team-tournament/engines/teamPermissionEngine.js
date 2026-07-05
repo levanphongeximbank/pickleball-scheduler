@@ -19,7 +19,7 @@ export function isTeamCaptain(team, playerId) {
   return (team.deputyPlayerIds || []).includes(normalized);
 }
 
-export function canManageTeam({ permissions = [], role = "" } = {}) {
+export function canManageTeam({ permissions = [] } = {}) {
   if (permissions.includes(PERMISSIONS.TEAM_MANAGE)) {
     return true;
   }

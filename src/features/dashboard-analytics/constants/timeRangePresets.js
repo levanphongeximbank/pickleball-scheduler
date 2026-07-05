@@ -18,6 +18,14 @@ export const TIME_RANGE_OPTIONS = Object.freeze([
   { value: TIME_RANGE_PRESETS.CUSTOM, label: "Tùy chọn ngày" },
 ]);
 
+/** Chip lọc trên dashboard — khớp mockup (4 nút chính). */
+export const DASHBOARD_TIME_FILTER_OPTIONS = Object.freeze([
+  { value: TIME_RANGE_PRESETS.TODAY, label: "Hôm nay" },
+  { value: TIME_RANGE_PRESETS.LAST_7_DAYS, label: "Tuần này" },
+  { value: TIME_RANGE_PRESETS.THIS_MONTH, label: "Tháng này" },
+  { value: TIME_RANGE_PRESETS.CUSTOM, label: "Tùy chọn" },
+]);
+
 function pad(value) {
   return String(value).padStart(2, "0");
 }

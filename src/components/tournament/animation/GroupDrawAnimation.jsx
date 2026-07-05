@@ -18,7 +18,11 @@ import RevealStage from "./shared/RevealStage.jsx";
 import TeamCard from "./shared/TeamCard.jsx";
 import TournamentAnimationShell from "./shared/TournamentAnimationShell.jsx";
 import WaitingListPanel from "./shared/WaitingListPanel.jsx";
-import { FLOW_STEP_KEYS } from "./shared/tournamentFlowConfig.js";
+import { FLOW_STEP_KEYS, isGuidedFlow } from "./shared/tournamentFlowConfig.js";
+import {
+  completeAnimationStep,
+  resolveAnimationCompleteHandler,
+} from "./shared/tournamentFlowHelpers.js";
 import {
   playDingSound,
   playTickSound,
@@ -228,8 +232,11 @@ export default function GroupDrawAnimation({
   subtitle = "Thứ tự snake từ engine — animation chỉ trình chiếu",
   visualMode: initialVisualMode = VISUAL_MODES.PROFESSIONAL,
   speed: initialSpeed = "normal",
+  autoStart = false,
+  flowMode,
   onAnimationComplete,
   onSkip,
+  onStepComplete,
   onStartMatchPairing,
   matchCount = 0,
 }) {
@@ -242,6 +249,15 @@ export default function GroupDrawAnimation({
   const [classicActiveIndex, setClassicActiveIndex] = useState(-1);
   const [queueOrder, setQueueOrder] = useState([]);
   const { presentationMode, togglePresentationMode } = usePresentationMode();
+  const autoStartedRef = useRef(false);
+  const guidedFlow = isGuidedFlow(flowMode);
+  const showMatchPairingCta = onStartMatchPairing && !guidedFlow;
+
+  const handleFlowComplete = resolveAnimationCompleteHandler({
+    flowMode,
+    onStepComplete,
+    onAnimationComplete,
+  });
 
   const groupCount = groups.length || [...new Set(steps.map((s) => s.groupLabel))].length || 4;
 
@@ -249,8 +265,20 @@ export default function GroupDrawAnimation({
     steps,
     speed,
     controlMode: DRAW_CONTROL_MODES.AUTO,
-    onComplete: onAnimationComplete,
+    onComplete: handleFlowComplete,
   });
+
+  const startAutoRef = useRef(sequence.startAuto);
+  startAutoRef.current = sequence.startAuto;
+
+  useEffect(() => {
+    if (!autoStart || autoStartedRef.current || !steps.length || visualMode === VISUAL_MODES.CLASSIC) {
+      return;
+    }
+
+    autoStartedRef.current = true;
+    startAutoRef.current();
+  }, [autoStart, steps.length, visualMode]);
 
   const placedCount = visualMode === VISUAL_MODES.CLASSIC ? classicPlaced : sequence.placedCount;
   const totalCount = steps.length;
@@ -388,11 +416,11 @@ export default function GroupDrawAnimation({
     stopSpinTicks();
     if (visualMode === VISUAL_MODES.CLASSIC) {
       setClassicPlaced(steps.length);
-      onSkip?.();
+      completeAnimationStep({ flowMode, onStepComplete, onSkip, onAnimationComplete });
       return;
     }
     sequence.skip();
-    onSkip?.();
+    completeAnimationStep({ flowMode, onStepComplete, onSkip, onAnimationComplete });
   };
 
   const handleViewResults = () => {
@@ -456,12 +484,12 @@ export default function GroupDrawAnimation({
             groups={groups}
             showSummary
             matchCount={matchCount}
-            onStartMatchPairing={onStartMatchPairing}
+            onStartMatchPairing={showMatchPairingCta ? onStartMatchPairing : undefined}
           />
         }
         rightPanel={null}
         footer={
-          onStartMatchPairing ? (
+          showMatchPairingCta ? (
             <Typography variant="caption" color="text.secondary" align="center" display="block" sx={{ mt: 2 }}>
               Bấm &quot;Ghép cặp thi đấu&quot; để tiếp tục • Bấm ra ngoài để thoát
             </Typography>
@@ -541,7 +569,7 @@ export default function GroupDrawAnimation({
               speed={speed}
               started={classicStarted}
               onStepPlaced={setClassicPlaced}
-              onAllComplete={onAnimationComplete}
+              onAllComplete={handleFlowComplete}
               onActiveIndexChange={setClassicActiveIndex}
             />
           </RevealStage>

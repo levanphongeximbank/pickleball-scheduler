@@ -50,6 +50,7 @@ const CUSTOMER_TYPE_LABELS = {
 export default function CustomerList({ clubId, courts = [], revision = 0, onRefresh }) {
   const runtime = usePlatformRuntime();
   const [searchParams] = useSearchParams();
+  const typeFilter = searchParams.get("type") || "all";
   const [selectedCustomer, setSelectedCustomer] = useState(null);
   const [detailBooking, setDetailBooking] = useState(null);
   const [formOpen, setFormOpen] = useState(false);
@@ -100,6 +101,9 @@ export default function CustomerList({ clubId, courts = [], revision = 0, onRefr
     const query = search.trim().toLowerCase();
 
     return customers.filter((customer) => {
+      if (typeFilter === "member" && customer.type !== "member") {
+        return false;
+      }
       if (debtFilter === "debt" && (customer.debtAmount || 0) <= 0) {
         return false;
       }
@@ -113,7 +117,7 @@ export default function CustomerList({ clubId, courts = [], revision = 0, onRefr
         (customer.phone && customer.phone.includes(query))
       );
     });
-  }, [customers, search, debtFilter]);
+  }, [customers, search, debtFilter, typeFilter]);
 
   const openCreateForm = () => {
     if (!accessAllowed) {

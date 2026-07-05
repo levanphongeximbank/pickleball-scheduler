@@ -36,6 +36,108 @@ const ClubListPage = lazy(() => import("./pages/clubs/ClubListPage"));
 const ClubDetailPage = lazy(() => import("./pages/clubs/ClubDetailPage"));
 
 const Tournament = lazy(() => import("./pages/tournament/TournamentShell"));
+const TournamentListPage = lazy(() => import("./pages/tournament/TournamentListPage"));
+const TournamentCreatePage = lazy(() => import("./pages/tournament/TournamentCreatePage"));
+const TournamentTypePage = lazy(() =>
+  import("./pages/tournament/hubs/TournamentSectionPages.jsx").then((m) => ({
+    default: m.TournamentTypePage,
+  }))
+);
+const TournamentRegisterHub = lazy(() =>
+  import("./pages/tournament/hubs/TournamentHubPages.jsx").then((m) => ({
+    default: m.TournamentRegisterHub,
+  }))
+);
+const TournamentTeamsHub = lazy(() =>
+  import("./pages/tournament/hubs/TournamentHubPages.jsx").then((m) => ({
+    default: m.TournamentTeamsHub,
+  }))
+);
+const TournamentTeamPresetsHub = lazy(() =>
+  import("./pages/tournament/hubs/TournamentHubPages.jsx").then((m) => ({
+    default: m.TournamentTeamPresetsHub,
+  }))
+);
+const TournamentTeamBuildManualHub = lazy(() =>
+  import("./pages/tournament/hubs/TournamentHubPages.jsx").then((m) => ({
+    default: m.TournamentTeamBuildManualHub,
+  }))
+);
+const TournamentTeamBuildRandomHub = lazy(() =>
+  import("./pages/tournament/hubs/TournamentHubPages.jsx").then((m) => ({
+    default: m.TournamentTeamBuildRandomHub,
+  }))
+);
+const TournamentTeamBuildDraftHub = lazy(() =>
+  import("./pages/tournament/hubs/TournamentHubPages.jsx").then((m) => ({
+    default: m.TournamentTeamBuildDraftHub,
+  }))
+);
+const TournamentScheduleHub = lazy(() =>
+  import("./pages/tournament/hubs/TournamentHubPages.jsx").then((m) => ({
+    default: m.TournamentScheduleHub,
+  }))
+);
+const TournamentMatchReportsHub = lazy(() =>
+  import("./pages/tournament/hubs/TournamentHubPages.jsx").then((m) => ({
+    default: m.TournamentMatchReportsHub,
+  }))
+);
+const TournamentConfigFormatHub = lazy(() =>
+  import("./pages/tournament/hubs/TournamentHubPages.jsx").then((m) => ({
+    default: m.TournamentConfigFormatHub,
+  }))
+);
+const TournamentConfigSettingsHub = lazy(() =>
+  import("./pages/tournament/hubs/TournamentHubPages.jsx").then((m) => ({
+    default: m.TournamentConfigSettingsHub,
+  }))
+);
+const TournamentTypesHubPage = lazy(() =>
+  import("./pages/tournament/hubs/TournamentNavHubPages.jsx").then((m) => ({
+    default: m.TournamentTypesHubPage,
+  }))
+);
+const TournamentRosterHubPage = lazy(() =>
+  import("./pages/tournament/hubs/TournamentNavHubPages.jsx").then((m) => ({
+    default: m.TournamentRosterHubPage,
+  }))
+);
+const TournamentOrganizeHubPage = lazy(() =>
+  import("./pages/tournament/hubs/TournamentNavHubPages.jsx").then((m) => ({
+    default: m.TournamentOrganizeHubPage,
+  }))
+);
+const TournamentOperationsHubPage = lazy(() =>
+  import("./pages/tournament/hubs/TournamentNavHubPages.jsx").then((m) => ({
+    default: m.TournamentOperationsHubPage,
+  }))
+);
+const TournamentResultsHubPage = lazy(() =>
+  import("./pages/tournament/hubs/TournamentNavHubPages.jsx").then((m) => ({
+    default: m.TournamentResultsHubPage,
+  }))
+);
+const TournamentConfigHubPage = lazy(() =>
+  import("./pages/tournament/hubs/TournamentNavHubPages.jsx").then((m) => ({
+    default: m.TournamentConfigHubPage,
+  }))
+);
+const ReportsHubPage = lazy(() =>
+  import("./pages/tournament/hubs/TournamentNavHubPages.jsx").then((m) => ({
+    default: m.ReportsHubPage,
+  }))
+);
+const AiHubPage = lazy(() =>
+  import("./pages/tournament/hubs/TournamentNavHubPages.jsx").then((m) => ({
+    default: m.AiHubPage,
+  }))
+);
+const SupportHubPage = lazy(() =>
+  import("./pages/tournament/hubs/TournamentNavHubPages.jsx").then((m) => ({
+    default: m.SupportHubPage,
+  }))
+);
 
 const DailyPlayLauncher = lazy(() => import("./pages/tournament/DailyPlayLauncher"));
 
@@ -48,6 +150,30 @@ const OfficialTournamentSetup = lazy(() => import("./pages/tournament/OfficialTo
 const TeamTournamentSetup = lazy(() => import("./pages/tournament/TeamTournamentSetup"));
 const TeamPortal = lazy(() => import("./pages/tournament/TeamPortal"));
 const TeamRefereePortal = lazy(() => import("./pages/tournament/TeamRefereePortal"));
+
+const TournamentEligibilityPage = lazy(() =>
+  import("./pages/tournament/config/TournamentEligibilityPage.jsx")
+);
+const TournamentAgeRulesPage = lazy(() =>
+  import("./pages/tournament/config/TournamentAgeRulesPage.jsx")
+);
+const TournamentGenderRulesPage = lazy(() =>
+  import("./pages/tournament/config/TournamentGenderRulesPage.jsx")
+);
+const TournamentFeePage = lazy(() => import("./pages/tournament/config/TournamentFeePage.jsx"));
+const TournamentRegulationsPage = lazy(() =>
+  import("./pages/tournament/config/TournamentRegulationsPage.jsx")
+);
+const TournamentRefereeAssignPage = lazy(() =>
+  import("./pages/tournament/TournamentRefereeAssignPage.jsx")
+);
+const TournamentAwardsPage = lazy(() => import("./pages/tournament/TournamentAwardsPage.jsx"));
+const TournamentWithdrawalPage = lazy(() =>
+  import("./pages/tournament/TournamentWithdrawalPage.jsx")
+);
+const TournamentPublishSchedulePage = lazy(() =>
+  import("./pages/tournament/TournamentPublishSchedulePage.jsx")
+);
 
 const TournamentBracketPage = lazy(() => import("./pages/tournament/TournamentBracketPage"));
 
@@ -96,6 +222,29 @@ const AdminIntegrationMonitoringPage = lazy(() =>
 );
 const BillingPage = lazy(() => import("./pages/billing/BillingPage"));
 const AdminBillingPage = lazy(() => import("./pages/admin/AdminBillingPage"));
+const VenueHoursPage = lazy(() => import("./pages/admin/VenueHoursPage"));
+const StaffListPage = lazy(() => import("./pages/admin/StaffListPage"));
+
+const CoachesPage = lazy(() => import("./pages/coaching/CoachesPage"));
+const StudentsPage = lazy(() => import("./pages/coaching/StudentsPage"));
+const ClassesPage = lazy(() => import("./pages/coaching/ClassesPage"));
+const CoachSchedulePage = lazy(() => import("./pages/coaching/CoachSchedulePage"));
+const CoachPackagesPage = lazy(() => import("./pages/coaching/CoachPackagesPage"));
+const CoachAttendancePage = lazy(() => import("./pages/coaching/CoachAttendancePage"));
+const CoachEvaluationPage = lazy(() => import("./pages/coaching/CoachEvaluationPage"));
+
+const SupportGuidePage = lazy(() => import("./pages/support/SupportGuidePage"));
+const SupportFaqPage = lazy(() => import("./pages/support/SupportFaqPage"));
+
+const FinanceDebtPage = lazy(() => import("./features/finance-ledger/pages/FinanceDebtPage.jsx"));
+const FinanceReceiptsPage = lazy(() => import("./features/finance-ledger/pages/FinanceReceiptsPage.jsx"));
+const FinanceRefundsPage = lazy(() => import("./features/finance-ledger/pages/FinanceRefundsPage.jsx"));
+
+const CrmMessagesPage = lazy(() => import("./features/crm/pages/CrmMessagesPage.jsx"));
+const CrmTemplatesPage = lazy(() => import("./features/crm/pages/CrmTemplatesPage.jsx"));
+const CrmCampaignsPage = lazy(() => import("./features/crm/pages/CrmCampaignsPage.jsx"));
+const CrmContactHistoryPage = lazy(() => import("./features/crm/pages/CrmContactHistoryPage.jsx"));
+const CrmBookingReminderPage = lazy(() => import("./features/crm/pages/CrmBookingReminderPage.jsx"));
 
 const CourtManagementLayout = lazy(() => import("./pages/courtManagement/CourtManagementLayout"));
 
@@ -136,6 +285,10 @@ const CourtManagementFuturePage = lazy(() =>
   import("./pages/courtManagement/CourtManagementFuturePage")
 
 );
+
+const CustomerGroupsPage = lazy(() => import("./pages/courtManagement/CustomerGroupsPage.jsx"));
+
+const CourtOpsLogPage = lazy(() => import("./pages/courtManagement/CourtOpsLogPage.jsx"));
 
 
 
@@ -225,6 +378,10 @@ export default function Router() {
 
               <Route path="customers" element={<CourtManagementCustomersPage />} />
 
+              <Route path="customer-groups" element={<CustomerGroupsPage />} />
+
+              <Route path="ops-log" element={<CourtOpsLogPage />} />
+
               <Route path="courts" element={<CourtManagementCourtsPage />} />
 
               <Route path="future" element={<CourtManagementFuturePage />} />
@@ -236,6 +393,36 @@ export default function Router() {
             <Route path="/clubs" element={<ClubListPage />} />
             <Route path="/clubs/:clubId" element={<ClubDetailPage />} />
             <Route path="/club" element={<ClubManagement />} />
+
+            <Route path="/tournament/list" element={<TournamentListPage />} />
+            <Route path="/tournament/create" element={<TournamentCreatePage />} />
+            <Route path="/tournament/types" element={<TournamentTypesHubPage />} />
+            <Route path="/tournament/types/:category" element={<TournamentTypePage />} />
+            <Route path="/tournament/roster" element={<TournamentRosterHubPage />} />
+            <Route path="/tournament/organize" element={<TournamentOrganizeHubPage />} />
+            <Route path="/tournament/operations" element={<TournamentOperationsHubPage />} />
+            <Route path="/tournament/results" element={<TournamentResultsHubPage />} />
+            <Route path="/tournament/register" element={<TournamentRegisterHub />} />
+            <Route path="/tournament/teams/presets" element={<TournamentTeamPresetsHub />} />
+            <Route path="/tournament/teams/build/manual" element={<TournamentTeamBuildManualHub />} />
+            <Route path="/tournament/teams/build/random" element={<TournamentTeamBuildRandomHub />} />
+            <Route path="/tournament/teams/build/draft" element={<TournamentTeamBuildDraftHub />} />
+            <Route path="/tournament/teams" element={<TournamentTeamsHub />} />
+            <Route path="/tournament/schedule" element={<TournamentScheduleHub />} />
+            <Route path="/tournament/match-reports" element={<TournamentMatchReportsHub />} />
+            <Route path="/tournament/config" element={<TournamentConfigHubPage />} />
+            <Route path="/tournament/config/format" element={<TournamentConfigFormatHub />} />
+            <Route path="/tournament/config/settings" element={<TournamentConfigSettingsHub />} />
+            <Route path="/tournament/config/age-rules" element={<TournamentAgeRulesPage />} />
+            <Route path="/tournament/config/gender-rules" element={<TournamentGenderRulesPage />} />
+            <Route path="/tournament/config/fee" element={<TournamentFeePage />} />
+            <Route path="/tournament/config/regulations" element={<TournamentRegulationsPage />} />
+            <Route path="/tournament/eligibility" element={<TournamentEligibilityPage />} />
+            <Route path="/tournament/entry-fee" element={<TournamentFeePage />} />
+            <Route path="/tournament/publish-schedule" element={<TournamentPublishSchedulePage />} />
+            <Route path="/tournament/referee-assign" element={<TournamentRefereeAssignPage />} />
+            <Route path="/tournament/awards" element={<TournamentAwardsPage />} />
+            <Route path="/tournament/withdrawal" element={<TournamentWithdrawalPage />} />
 
             <Route path="/tournament" element={<Tournament />} />
 
@@ -320,6 +507,19 @@ export default function Router() {
             <Route path="/court-engine" element={<CourtEnginePage />} />
 
             <Route path="/statistics" element={<Statistics />} />
+            <Route path="/reports" element={<ReportsHubPage />} />
+            <Route path="/ai" element={<AiHubPage />} />
+            <Route path="/support" element={<SupportHubPage />} />
+            <Route path="/support/guide" element={<SupportGuidePage />} />
+            <Route path="/support/faq" element={<SupportFaqPage />} />
+
+            <Route path="/coaching/coaches" element={<CoachesPage />} />
+            <Route path="/coaching/students" element={<StudentsPage />} />
+            <Route path="/coaching/classes" element={<ClassesPage />} />
+            <Route path="/coaching/schedule" element={<CoachSchedulePage />} />
+            <Route path="/coaching/packages" element={<CoachPackagesPage />} />
+            <Route path="/coaching/attendance" element={<CoachAttendancePage />} />
+            <Route path="/coaching/evaluations" element={<CoachEvaluationPage />} />
 
             <Route path="/settings" element={<Settings />} />
             <Route path="/settings/integrations" element={<IntegrationSettingsPage />} />
@@ -331,6 +531,8 @@ export default function Router() {
             <Route path="/marketplace/:productId" element={<MarketplaceProductPage />} />
 
             <Route path="/admin/tenants" element={<TenantManagement />} />
+            <Route path="/admin/hours" element={<VenueHoursPage />} />
+            <Route path="/admin/staff" element={<StaffListPage />} />
             <Route path="/admin/marketplace" element={<AdminMarketplacePage />} />
             <Route path="/admin/marketplace/products" element={<AdminMarketplacePage />} />
             <Route path="/admin/marketplace/orders" element={<AdminMarketplacePage />} />
@@ -347,6 +549,16 @@ export default function Router() {
             <Route path="/billing/payment" element={<BillingPage title="Payment" view="payment" />} />
             <Route path="/billing/upgrade" element={<BillingPage title="Upgrade" view="upgrade" />} />
             <Route path="/billing/support" element={<BillingPage title="Support" view="support" />} />
+
+            <Route path="/finance/debt" element={<FinanceDebtPage />} />
+            <Route path="/finance/receipts" element={<FinanceReceiptsPage />} />
+            <Route path="/finance/refunds" element={<FinanceRefundsPage />} />
+
+            <Route path="/crm/messages" element={<CrmMessagesPage />} />
+            <Route path="/crm/templates" element={<CrmTemplatesPage />} />
+            <Route path="/crm/campaigns" element={<CrmCampaignsPage />} />
+            <Route path="/crm/history" element={<CrmContactHistoryPage />} />
+            <Route path="/crm/reminders/booking" element={<CrmBookingReminderPage />} />
 
             <Route path="/admin/billing" element={<AdminBillingPage />} />
             <Route path="/admin/billing/tenants" element={<AdminBillingPage view="tenants" />} />

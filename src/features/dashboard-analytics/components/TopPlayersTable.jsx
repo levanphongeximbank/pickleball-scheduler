@@ -37,14 +37,14 @@ function initials(name) {
     .toUpperCase();
 }
 
-export default function TopPlayersTable({ rows = [] }) {
+export default function TopPlayersTable({ rows = [], title = "Top người chơi", compact = false }) {
   return (
-    <Card variant="outlined" sx={{ borderRadius: 2, height: "100%" }}>
+    <Card variant="outlined" sx={{ borderRadius: 2.5, height: "100%" }}>
       <CardContent>
         <Stack direction="row" spacing={1} sx={{ alignItems: "center", mb: 2 }}>
-          <EmojiEventsIcon color="warning" />
-          <Typography variant="h6" fontWeight="bold">
-            Top Players
+          <EmojiEventsIcon color="primary" fontSize="small" />
+          <Typography variant="h6" fontWeight={700}>
+            {title}
           </Typography>
         </Stack>
 
@@ -54,72 +54,78 @@ export default function TopPlayersTable({ rows = [] }) {
             description="Tổ chức giải hoặc phiên xếp sân để xếp hạng."
           />
         ) : (
-          <TableContainer sx={{ maxHeight: 420 }}>
+          <TableContainer sx={{ maxHeight: compact ? 320 : 420 }}>
             <Table size="small" stickyHeader>
               <TableHead>
                 <TableRow>
-                  <TableCell>Hạng</TableCell>
+                  {!compact && <TableCell>Hạng</TableCell>}
                   <TableCell>Người chơi</TableCell>
-                  <TableCell>CLB</TableCell>
-                  <TableCell align="right">Trình độ</TableCell>
+                  {!compact && <TableCell>CLB</TableCell>}
                   <TableCell align="right">Trận</TableCell>
-                  <TableCell align="right">Thắng</TableCell>
                   <TableCell align="right">Tỷ lệ</TableCell>
-                  <TableCell align="right">Điểm</TableCell>
-                  <TableCell align="center">Xu hướng</TableCell>
-                  <TableCell />
+                  {!compact && (
+                    <>
+                      <TableCell align="right">Điểm</TableCell>
+                      <TableCell align="center">Xu hướng</TableCell>
+                      <TableCell />
+                    </>
+                  )}
                 </TableRow>
               </TableHead>
               <TableBody>
-                {rows.map((player) => {
-                  const badge = rankBadge(player.rank);
+                {rows.slice(0, compact ? 5 : rows.length).map((player) => {
+                  const badge = !compact ? rankBadge(player.rank) : null;
                   return (
                     <TableRow
                       key={player.id}
                       hover
                       sx={{ bgcolor: player.rank <= 3 ? "action.hover" : undefined }}
                     >
-                      <TableCell>
-                        <Stack direction="row" spacing={0.5} sx={{ alignItems: "center" }}>
-                          <Typography fontWeight="bold">#{player.rank}</Typography>
-                          {badge && <Chip size="small" label={badge.label} color={badge.color} />}
-                        </Stack>
-                      </TableCell>
+                      {!compact && (
+                        <TableCell>
+                          <Stack direction="row" spacing={0.5} sx={{ alignItems: "center" }}>
+                            <Typography fontWeight="bold">#{player.rank}</Typography>
+                            {badge && <Chip size="small" label={badge.label} color={badge.color} />}
+                          </Stack>
+                        </TableCell>
+                      )}
                       <TableCell>
                         <Stack direction="row" spacing={1} sx={{ alignItems: "center" }}>
                           <Avatar sx={{ width: 28, height: 28, fontSize: 12 }}>
                             {initials(player.name)}
                           </Avatar>
-                          <Typography variant="body2" fontWeight={player.rank <= 3 ? "bold" : "medium"}>
+                          <Typography variant="body2" fontWeight={player.rank <= 3 ? 700 : 500}>
                             {player.name}
                           </Typography>
                         </Stack>
                       </TableCell>
-                      <TableCell>{player.club}</TableCell>
-                      <TableCell align="right">{player.level}</TableCell>
+                      {!compact && <TableCell>{player.club}</TableCell>}
                       <TableCell align="right">{player.matches}</TableCell>
-                      <TableCell align="right">{player.wins}</TableCell>
                       <TableCell align="right">{player.winRate}%</TableCell>
-                      <TableCell align="right">{player.points}</TableCell>
-                      <TableCell align="center">
-                        {player.trend > 0 ? (
-                          <TrendingUpIcon fontSize="small" color="success" />
-                        ) : player.trend < 0 ? (
-                          <TrendingDownIcon fontSize="small" color="error" />
-                        ) : (
-                          "—"
-                        )}
-                      </TableCell>
-                      <TableCell>
-                        <Button
-                          component={RouterLink}
-                          to={`/players/profile/${player.id}`}
-                          size="small"
-                          variant="text"
-                        >
-                          Chi tiết
-                        </Button>
-                      </TableCell>
+                      {!compact && (
+                        <>
+                          <TableCell align="right">{player.points}</TableCell>
+                          <TableCell align="center">
+                            {player.trend > 0 ? (
+                              <TrendingUpIcon fontSize="small" color="success" />
+                            ) : player.trend < 0 ? (
+                              <TrendingDownIcon fontSize="small" color="error" />
+                            ) : (
+                              "—"
+                            )}
+                          </TableCell>
+                          <TableCell>
+                            <Button
+                              component={RouterLink}
+                              to={`/players/profile/${player.id}`}
+                              size="small"
+                              variant="text"
+                            >
+                              Chi tiết
+                            </Button>
+                          </TableCell>
+                        </>
+                      )}
                     </TableRow>
                   );
                 })}

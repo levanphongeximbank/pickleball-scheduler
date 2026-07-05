@@ -19,7 +19,7 @@ import { filterMenuGroups, resolveRouteAccessScope } from "../../../auth/menuAcc
 import { filterMobileQuickLinks } from "../services/mobileNavAccess.js";
 import { useAuth } from "../../../context/AuthContext.jsx";
 import { useClub } from "../../../context/ClubContext.jsx";
-import NavMenuList from "../../../components/nav/NavMenuList.jsx";
+import NavMenuShell from "../../../components/nav/NavMenuShell.jsx";
 import { APP_VERSION_LABEL } from "../../../config/appVersion.js";
 
 export default function MobileDrawer({ open, onClose }) {
@@ -64,12 +64,12 @@ export default function MobileDrawer({ open, onClose }) {
           Chuyển nhanh giữa các nhóm nghiệp vụ.
         </Typography>
 
-        <NavMenuList
+        <NavMenuShell
           groups={visibleGroups}
           user={auth.user}
-          currentPath={location.pathname}
+          currentPath={`${location.pathname}${location.search}`}
           onItemClick={onClose}
-          compact
+          variant="light"
         />
 
         <Divider sx={{ my: 1 }} />

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Box, Paper, Stack, Typography } from "@mui/material";
 
 import { VISUAL_MODES } from "./animationConfig.js";
@@ -15,6 +15,10 @@ import TeamCard from "./shared/TeamCard.jsx";
 import TournamentAnimationShell from "./shared/TournamentAnimationShell.jsx";
 import WaitingListPanel from "./shared/WaitingListPanel.jsx";
 import { FLOW_STEP_KEYS } from "./shared/tournamentFlowConfig.js";
+import {
+  completeAnimationStep,
+  resolveAnimationCompleteHandler,
+} from "./shared/tournamentFlowHelpers.js";
 import {
   playDingSound,
   playTickSound,
@@ -97,13 +101,23 @@ export default function PairSuggestionAnimation({
   revealItemLabel = "Cặp",
   visualMode: initialVisualMode = VISUAL_MODES.PROFESSIONAL,
   speed: initialSpeed = "normal",
+  autoStart = false,
+  flowMode,
   onAnimationComplete,
   onSkip,
+  onStepComplete,
 }) {
   const [speed, setSpeed] = useState(initialSpeed);
   const [soundEnabled, setSoundEnabled] = useState(false);
   const [queueOrder, setQueueOrder] = useState([]);
   const { presentationMode, togglePresentationMode } = usePresentationMode();
+  const autoStartedRef = useRef(false);
+
+  const handleFlowComplete = resolveAnimationCompleteHandler({
+    flowMode,
+    onStepComplete,
+    onAnimationComplete,
+  });
 
   const normalizedSteps = useMemo(
     () =>
@@ -119,8 +133,20 @@ export default function PairSuggestionAnimation({
     steps: normalizedSteps,
     speed,
     controlMode: DRAW_CONTROL_MODES.AUTO,
-    onComplete: onAnimationComplete,
+    onComplete: handleFlowComplete,
   });
+
+  const startAutoRef = useRef(sequence.start);
+  startAutoRef.current = sequence.start;
+
+  useEffect(() => {
+    if (!autoStart || autoStartedRef.current || !normalizedSteps.length) {
+      return;
+    }
+
+    autoStartedRef.current = true;
+    startAutoRef.current();
+  }, [autoStart, normalizedSteps.length]);
 
   const placedCount = sequence.placedCount;
   const totalCount = normalizedSteps.length;
@@ -219,12 +245,12 @@ export default function PairSuggestionAnimation({
 
   const handleSkip = () => {
     sequence.skip();
-    onSkip?.();
+    completeAnimationStep({ flowMode, onStepComplete, onSkip, onAnimationComplete });
   };
 
   const handleViewResults = () => {
     sequence.viewResultsNow();
-    onSkip?.();
+    completeAnimationStep({ flowMode, onStepComplete, onSkip, onAnimationComplete });
   };
 
   const controlMode =

@@ -8,6 +8,10 @@ import {
   buildBracketRevealSteps,
   prefersReducedMotion,
 } from "./animationUtils.js";
+import {
+  completeAnimationStep,
+  resolveAnimationCompleteHandler,
+} from "./shared/tournamentFlowHelpers.js";
 import "./tournamentAnimation.css";
 
 const ROUND_MS = ANIMATION_TIMING.bracketRoundMs;
@@ -24,13 +28,27 @@ export default function BracketRevealAnimation({
   bracket,
   animationMode = ANIMATION_MODES.BRACKET_REVEAL,
   advanceHint = null,
+  autoStart = false,
+  flowMode,
   onAnimationComplete,
   onSkip,
+  onStepComplete,
 }) {
   const steps = useMemo(() => buildBracketRevealSteps(bracket), [bracket]);
   const [phase, setPhase] = useState({ round: -1, match: -1 });
   const [playing, setPlaying] = useState(false);
   const timerRef = useRef(null);
+  const autoStartedRef = useRef(false);
+
+  const handleFlowComplete = resolveAnimationCompleteHandler({
+    flowMode,
+    onStepComplete,
+    onAnimationComplete,
+  });
+
+  const finishAnimation = useCallback(() => {
+    completeAnimationStep({ flowMode, onStepComplete, onSkip, onAnimationComplete });
+  }, [flowMode, onStepComplete, onSkip, onAnimationComplete]);
 
   const clearTimer = () => {
     if (timerRef.current) {
@@ -45,20 +63,20 @@ export default function BracketRevealAnimation({
     }
 
     if (prefersReducedMotion()) {
-      onAnimationComplete?.();
+      handleFlowComplete?.();
       return undefined;
     }
 
-    timerRef.current = setTimeout(() => onAnimationComplete?.(), ADVANCE_MS);
+    timerRef.current = setTimeout(() => handleFlowComplete?.(), ADVANCE_MS);
     return clearTimer;
-  }, [animationMode, advanceHint, onAnimationComplete]);
+  }, [animationMode, advanceHint, handleFlowComplete]);
 
   const run = useCallback(() => {
     clearTimer();
     setPhase({ round: -1, match: -1 });
 
     if (steps.length === 0) {
-      onAnimationComplete?.();
+      handleFlowComplete?.();
       return;
     }
 
@@ -69,7 +87,7 @@ export default function BracketRevealAnimation({
     const tick = () => {
       if (roundIndex >= steps.length) {
         setPlaying(false);
-        onAnimationComplete?.();
+        handleFlowComplete?.();
         return;
       }
 
@@ -88,7 +106,7 @@ export default function BracketRevealAnimation({
     };
 
     timerRef.current = setTimeout(tick, MATCH_MS);
-  }, [steps, onAnimationComplete]);
+  }, [steps, handleFlowComplete]);
 
   useEffect(() => {
     if (animationMode === ANIMATION_MODES.BRACKET_ADVANCE) {
@@ -96,11 +114,20 @@ export default function BracketRevealAnimation({
     }
 
     if (prefersReducedMotion()) {
-      onAnimationComplete?.();
+      handleFlowComplete?.();
     }
 
     return clearTimer;
-  }, [animationMode, onAnimationComplete]);
+  }, [animationMode, handleFlowComplete]);
+
+  useEffect(() => {
+    if (!autoStart || autoStartedRef.current || animationMode === ANIMATION_MODES.BRACKET_ADVANCE) {
+      return;
+    }
+
+    autoStartedRef.current = true;
+    run();
+  }, [autoStart, animationMode, run]);
 
   if (animationMode === ANIMATION_MODES.BRACKET_ADVANCE && advanceHint) {
     return (
@@ -160,8 +187,8 @@ export default function BracketRevealAnimation({
       <TournamentAnimationControls
         playing={playing}
         onStart={run}
-        onSkip={onSkip}
-        onShowNow={onSkip}
+        onSkip={finishAnimation}
+        onShowNow={finishAnimation}
         onReplay={run}
         canReplay={steps.length > 0}
       />

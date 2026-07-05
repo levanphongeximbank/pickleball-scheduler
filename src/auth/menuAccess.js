@@ -12,6 +12,7 @@ import {
   resolveRoleMenuAccess,
   ROUTE_PERMISSIONS,
 } from "../config/navigationConfig.js";
+import { getNavigationPermissions } from "../config/navigationPermissions.js";
 
 const FEATURE_FLAG_CHECKERS = Object.freeze({
   marketplace: isMarketplaceEnabled,
@@ -19,6 +20,16 @@ const FEATURE_FLAG_CHECKERS = Object.freeze({
   integrations: () => isApiEnabled() || isMarketplaceEnabled(),
   ai: isNavFeatureEnabled.bind(null, "ai"),
 });
+
+/** Route không cần permission khi RBAC bật (hồ sơ, thông báo, placeholder). */
+const PUBLIC_MENU_PATHS = new Set(["/profile", "/mobile/notifications", "/403"]);
+
+function isPublicMenuPath(pathname) {
+  if (!pathname) return false;
+  const path = String(pathname).split("?")[0];
+  if (PUBLIC_MENU_PATHS.has(path)) return true;
+  return path.startsWith("/coming-soon");
+}
 
 /** Permission tối thiểu cho mỗi route — derive từ navigationConfig. */
 export const ROUTE_ACCESS_PERMISSIONS = ROUTE_PERMISSIONS;
@@ -53,6 +64,10 @@ export function getRouteAccessPermissions(pathname) {
     return [PERMISSIONS.TOURNAMENT_VIEW, PERMISSIONS.MATCH_UPDATE];
   }
 
+  if (pathname.startsWith("/team-portal/")) {
+    return [PERMISSIONS.TEAM_VIEW, PERMISSIONS.TEAM_MEMBER_VIEW];
+  }
+
   if (pathname.startsWith("/tournament/")) {
     return [PERMISSIONS.TOURNAMENT_VIEW];
   }
@@ -63,6 +78,22 @@ export function getRouteAccessPermissions(pathname) {
 
   if (pathname.startsWith("/court-management/revenue")) {
     return [PERMISSIONS.FINANCE_VIEW];
+  }
+
+  if (pathname.startsWith("/finance/")) {
+    return [PERMISSIONS.FINANCE_VIEW];
+  }
+
+  if (pathname.startsWith("/crm/reminders/booking")) {
+    return [PERMISSIONS.BOOKING_VIEW, PERMISSIONS.CUSTOMER_VIEW];
+  }
+
+  if (pathname.startsWith("/crm/messages")) {
+    return [PERMISSIONS.BOOKING_VIEW, PERMISSIONS.CUSTOMER_VIEW];
+  }
+
+  if (pathname.startsWith("/crm/")) {
+    return [PERMISSIONS.CUSTOMER_VIEW];
   }
 
   if (pathname.startsWith("/court-management/customers")) {
@@ -104,6 +135,65 @@ export function canAccessRoute(can, pathname, scope = {}) {
   return permissions.some((permission) => can(permission, routeScope));
 }
 
+export function resolveMenuItemPath(item, user) {
+  if (typeof item.resolvePath === "function") {
+    return item.resolvePath(user);
+  }
+  return item.path;
+}
+
+/**
+ * Resolve permission cho menu item — item.permissions → navigationPermissions → route.
+ */
+export function resolveMenuItemPermissions(item, user) {
+  if (item?.permissions?.length) {
+    return item.permissions;
+  }
+
+  if (item?.key) {
+    const keyed = getNavigationPermissions(item.key);
+    if (keyed.length) {
+      return keyed;
+    }
+  }
+
+  const path = resolveMenuItemPath(item, user);
+  if (path) {
+    return getRouteAccessPermissions(String(path).split("?")[0]);
+  }
+
+  return [];
+}
+
+function passesMenuPermissionCheck(item, { can, user, scope }, { allowEmpty = false } = {}) {
+  const permissions = resolveMenuItemPermissions(item, user);
+
+  if (!permissions.length) {
+    if (allowEmpty) return true;
+    if (item?.roles?.length) return true;
+    const path = resolveMenuItemPath(item, user);
+    return isPublicMenuPath(path);
+  }
+
+  const resolvedScope = {
+    ...scope,
+    playerId: scope.playerId ?? user?.playerId ?? null,
+    tournamentId: scope.tournamentId ?? user?.tournamentId ?? user?.tournament_id ?? null,
+    teamId: scope.teamId ?? user?.teamId ?? user?.team_id ?? null,
+  };
+
+  if (!permissions.some((permission) => can(permission, resolvedScope))) {
+    return false;
+  }
+
+  const path = resolveMenuItemPath(item, user);
+  if (path) {
+    return canAccessRoute(can, String(path).split("?")[0], resolvedScope);
+  }
+
+  return true;
+}
+
 export function isMenuItemVisible(item, { can, rbacEnabled, isAuthenticated, user, scope }) {
   if (item.navStatus === NAV_ITEM_STATUS.FUTURE) {
     return false;
@@ -130,24 +220,10 @@ export function isMenuItemVisible(item, { can, rbacEnabled, isAuthenticated, use
     if (excluded) return false;
   }
 
-  if (!item.permissions?.length) {
-    return true;
-  }
-
-  const resolvedScope = {
-    ...scope,
-    playerId: scope.playerId ?? user?.playerId ?? null,
-  };
-
-  return item.permissions.some((permission) => can(permission, resolvedScope));
-}
-
-
-export function resolveMenuItemPath(item, user) {
-  if (typeof item.resolvePath === "function") {
-    return item.resolvePath(user);
-  }
-  return item.path;
+  const isFolder = Boolean(item.children?.length);
+  const permissions = resolveMenuItemPermissions(item, user);
+  const allowEmpty = isFolder && !permissions.length;
+  return passesMenuPermissionCheck(item, { can, user, scope }, { allowEmpty });
 }
 
 function isGroupAllowedForRole(group, user, rbacEnabled) {
@@ -184,6 +260,49 @@ function isGroupFeatureVisible(group) {
   return !checker || checker();
 }
 
+function filterNavTreeItems(items, ctx) {
+  const { can, rbacEnabled, isAuthenticated, user, scope } = ctx;
+  const filtered = [];
+
+  for (const item of items || []) {
+    if (item.children?.length) {
+      if (
+        rbacEnabled &&
+        isAuthenticated &&
+        !isMenuItemVisible(item, { can, rbacEnabled, isAuthenticated, user, scope })
+      ) {
+        continue;
+      }
+
+      const children = filterNavTreeItems(item.children, ctx);
+      if (!children.length) continue;
+      filtered.push({ ...item, children });
+      continue;
+    }
+
+    const path = resolveMenuItemPath(item, user);
+    if (!path) continue;
+    if (!isMenuItemVisible(item, { can, rbacEnabled, isAuthenticated, user, scope })) {
+      continue;
+    }
+    filtered.push(item);
+  }
+
+  return filtered;
+}
+
+function findMenuItemsByKey(items, key, bucket = []) {
+  for (const item of items || []) {
+    if (item.key === key) {
+      bucket.push(item);
+    }
+    if (item.children?.length) {
+      findMenuItemsByKey(item.children, key, bucket);
+    }
+  }
+  return bucket;
+}
+
 export function filterMenuGroups(groups, authContext, scope = {}) {
   const { can, rbacEnabled, isAuthenticated, user } = authContext;
 
@@ -191,10 +310,12 @@ export function filterMenuGroups(groups, authContext, scope = {}) {
     return groups
       .map((group) => ({
         ...group,
-        items: group.items.filter((item) => item.key === "support-settings"),
+        items: findMenuItemsByKey(group.items, "support-settings"),
       }))
       .filter((group) => group.items.length > 0);
   }
+
+  const ctx = { can, rbacEnabled, isAuthenticated, user, scope };
 
   return groups
     .filter((group) => isGroupFeatureVisible(group))
@@ -206,13 +327,36 @@ export function filterMenuGroups(groups, authContext, scope = {}) {
     })
     .map((group) => ({
       ...group,
-      items: group.items.filter((item) => {
-        const path = resolveMenuItemPath(item, user);
-        if (!path) return false;
-        return isMenuItemVisible(item, { can, rbacEnabled, isAuthenticated, user, scope });
-      }),
+      items: filterNavTreeItems(group.items, ctx),
     }))
     .filter((group) => group.items.length > 0);
+}
+
+/**
+ * Lọc hub điều hướng trong màn hình (tab + thẻ) theo RBAC.
+ */
+export function filterInPageNavHub(hub, authContext, scope = {}) {
+  if (!hub?.sections?.length) {
+    return hub;
+  }
+
+  const { can, rbacEnabled, isAuthenticated, user } = authContext;
+  const ctx = { can, rbacEnabled, isAuthenticated, user, scope };
+  const sections = [];
+
+  for (const section of hub.sections) {
+    const items = (section.items || []).filter((item) =>
+      isMenuItemVisible(item, ctx)
+    );
+    if (!items.length) continue;
+    sections.push({ ...section, items });
+  }
+
+  if (!sections.length) {
+    return null;
+  }
+
+  return { ...hub, sections };
 }
 
 export function getDefaultHomePath(user, rbacEnabled = false) {
@@ -223,7 +367,7 @@ export function getDefaultHomePath(user, rbacEnabled = false) {
   switch (normalizeRole(user.role)) {
     case ROLES.PLAYER:
       return "/tournament";
-    case ROLES.CLUB_OWNER:
+    case ROLES.CLUB_MANAGER:
       return "/club";
     case ROLES.CASHIER:
       return "/court-management/bookings";
@@ -231,6 +375,12 @@ export function getDefaultHomePath(user, rbacEnabled = false) {
       return "/court-management/revenue";
     case ROLES.REFEREE:
       return "/referee";
+    case ROLES.SYSTEM_TECHNICIAN:
+      return "/dashboard";
+    case ROLES.TEAM_CAPTAIN: {
+      const tournamentId = user.tournamentId || user.tournament_id;
+      return tournamentId ? `/team-portal/${tournamentId}` : "/tournament";
+    }
     default:
       return "/";
   }

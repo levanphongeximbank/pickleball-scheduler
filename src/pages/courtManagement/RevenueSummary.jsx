@@ -1,4 +1,5 @@
-import { useMemo, useState } from "react";
+import { useMemo, useState, useEffect } from "react";
+import { useSearchParams } from "react-router-dom";
 
 import {
   Alert,
@@ -63,12 +64,20 @@ function StatCard({ label, value, hint }) {
 
 export default function RevenueSummary({ bookings = [], clubId, courts = [], onRefresh, revision = 0 }) {
   const { rbacEnabled } = useAuth();
-  const [mode, setMode] = useState("day");
+  const [searchParams] = useSearchParams();
+  const [mode, setMode] = useState(searchParams.get("range") === "today" ? "day" : "day");
   const [selectedDate, setSelectedDate] = useState(todayIsoDate());
   const [fromDate, setFromDate] = useState(todayIsoDate());
   const [toDate, setToDate] = useState(todayIsoDate());
   const [detailBooking, setDetailBooking] = useState(null);
   const [exportError, setExportError] = useState(null);
+
+  useEffect(() => {
+    if (searchParams.get("range") === "today") {
+      setMode("day");
+      setSelectedDate(todayIsoDate());
+    }
+  }, [searchParams]);
 
   const daySummary = useMemo(
     () => computeDailyRevenue(bookings, selectedDate),

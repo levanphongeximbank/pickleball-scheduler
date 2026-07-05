@@ -28,7 +28,7 @@ export const PALETTE = Object.freeze({
     light: "#FEE2E2",
   },
   background: {
-    default: "#F1F5F9",
+    default: "#F9FAFB",
     paper: "#FFFFFF",
   },
   text: {
@@ -61,9 +61,11 @@ export const SHELL = Object.freeze({
 });
 
 export const LAYOUT = Object.freeze({
-  sidebarWidth: 260,
-  topbarHeight: 72,
+  sidebarWidth: 240,
+  topbarHeight: 64,
   contextBarHeight: 40,
+  contentPadding: 24,
+  dashboardGridSpacing: 20,
 });
 
 export const TYPOGRAPHY = Object.freeze({

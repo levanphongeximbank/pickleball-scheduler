@@ -261,6 +261,21 @@ export function buildMockDashboardPayload(from, to, previousFrom, previousTo) {
     { label: "Khác / chưa rõ", count: seededValue("other", 2, 12) },
   ];
 
+  const recentBookings = [
+    { id: "PBG-02489", member: "Nguyễn Văn An", court: "Sân 1", time: "14:00 - 15:00", status: "confirmed" },
+    { id: "PBG-02488", member: "Trần Thị Bình", court: "Sân 3", time: "15:00 - 16:00", status: "pending" },
+    { id: "PBG-02487", member: "Lê Hoàng Cường", court: "Sân VIP", time: "16:00 - 17:00", status: "confirmed" },
+    { id: "PBG-02486", member: "Phạm Minh Đức", court: "Sân 2", time: "17:00 - 18:00", status: "confirmed" },
+    { id: "PBG-02485", member: "Hoàng Thị Em", court: "Sân 4", time: "18:00 - 19:00", status: "pending" },
+  ];
+
+  const upcomingTournaments = [
+    { id: "t1", name: "Giải Đôi Nam Nữ Mở 2026", date: "15/06/2026", teams: 16, status: "upcoming" },
+    { id: "t2", name: "Giải Nội Bộ CLB Pickle Pro", date: "22/06/2026", teams: 8, status: "registration" },
+    { id: "t3", name: "Summer Open Championship", date: "05/07/2026", teams: 24, status: "registration" },
+    { id: "t4", name: "Giải Trẻ U23", date: "12/07/2026", teams: 12, status: "upcoming" },
+  ];
+
   return {
     isMock: true,
     summary: {
@@ -319,5 +334,7 @@ export function buildMockDashboardPayload(from, to, previousFrom, previousTo) {
       busiestWeekday: weekdayRevenue[0],
       quietestWeekday: weekdayRevenue[weekdayRevenue.length - 1],
     },
+    recentBookings,
+    upcomingTournaments,
   };
 }

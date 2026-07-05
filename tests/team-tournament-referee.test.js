@@ -5,7 +5,6 @@ import { PERMISSIONS } from "../src/features/identity/constants/permissions.js";
 import { getPermissionsForRole } from "../src/features/identity/matrix/rolePermissions.js";
 import { ROLES } from "../src/features/identity/constants/roles.js";
 import {
-  LINEUP_STATUS,
   MATCHUP_STATUS,
   SUB_MATCH_STATUS,
   TEAM_AUDIT_ACTIONS,

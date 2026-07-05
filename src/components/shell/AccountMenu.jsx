@@ -13,32 +13,17 @@ import {
 import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
 
 import { useAuth } from "../../context/AuthContext.jsx";
-import { ROLE_LABELS } from "../../auth/roles.js";
+import { getRoleLabel } from "../../auth/roles.js";
 import { PERMISSIONS } from "../../auth/permissions.js";
 import { SHELL_COLORS } from "./shellTokens.js";
 
-const ROLE_SUBTITLES = Object.freeze({
-  COURT_OWNER: "Quản trị sân",
-  COURT_MANAGER: "Vận hành sân",
-  CASHIER: "Thu ngân sân",
-  ACCOUNTANT: "Kế toán sân",
-  SUPER_ADMIN: "Quản trị hệ thống",
-  REFEREE: "Trọng tài giải",
-  CLUB_OWNER: "Quản lý CLB",
-  PLAYER: "Vận động viên",
-});
-
 function getInitials(user) {
-  const name = String(user?.displayName || ROLE_LABELS[user?.role] || "U").trim();
+  const name = String(user?.displayName || getRoleLabel(user?.role) || "U").trim();
   const parts = name.split(/\s+/).filter(Boolean);
   if (parts.length >= 2) {
     return `${parts[0][0]}${parts[parts.length - 1][0]}`.toUpperCase();
   }
   return name.slice(0, 2).toUpperCase();
-}
-
-function getRoleSubtitle(role) {
-  return ROLE_SUBTITLES[role] || "Người dùng sân";
 }
 
 export default function AccountMenu() {
@@ -49,8 +34,9 @@ export default function AccountMenu() {
     return null;
   }
 
-  const displayName = user.displayName || ROLE_LABELS[user.role] || "Người dùng";
-  const subtitle = getRoleSubtitle(user.role);
+  const roleLabel = getRoleLabel(user.role);
+  const displayName = user.displayName || roleLabel || "Người dùng";
+  const subtitle = roleLabel || "Người dùng";
   const open = Boolean(anchorEl);
 
   return (
@@ -124,7 +110,7 @@ export default function AccountMenu() {
         <MenuItem component={RouterLink} to="/profile" onClick={() => setAnchorEl(null)}>
           Hồ sơ
         </MenuItem>
-        {can(PERMISSIONS.USER_MANAGE) && (
+        {(can(PERMISSIONS.USER_MANAGE) || can(PERMISSIONS.USER_VIEW)) && (
           <MenuItem component={RouterLink} to="/users" onClick={() => setAnchorEl(null)}>
             Người dùng
           </MenuItem>

@@ -16,14 +16,14 @@ import StadiumIcon from "@mui/icons-material/Stadium";
 import { formatCurrency } from "../services/dashboardService.js";
 import DashboardEmptyState from "./DashboardEmptyState.jsx";
 
-export default function TopCourtsTable({ rows = [] }) {
+export default function TopCourtsTable({ rows = [], title = "Top sân", compact = false }) {
   return (
-    <Card variant="outlined" sx={{ borderRadius: 2, height: "100%" }}>
+    <Card variant="outlined" sx={{ borderRadius: 2.5, height: "100%" }}>
       <CardContent>
         <Stack direction="row" spacing={1} sx={{ alignItems: "center", mb: 2 }}>
-          <StadiumIcon color="primary" />
-          <Typography variant="h6" fontWeight="bold">
-            Top Courts
+          <StadiumIcon color="primary" fontSize="small" />
+          <Typography variant="h6" fontWeight={700}>
+            {title}
           </Typography>
         </Stack>
 
@@ -33,52 +33,38 @@ export default function TopCourtsTable({ rows = [] }) {
             description="Thêm sân và booking để phân tích hiệu suất."
           />
         ) : (
-          <TableContainer sx={{ maxHeight: 420 }}>
+          <TableContainer sx={{ maxHeight: compact ? 320 : 420 }}>
             <Table size="small" stickyHeader>
               <TableHead>
                 <TableRow>
-                  <TableCell>Hạng</TableCell>
+                  {!compact && <TableCell>Hạng</TableCell>}
                   <TableCell>Sân</TableCell>
                   <TableCell align="right">Lượt đặt</TableCell>
-                  <TableCell align="right">Giờ SD</TableCell>
+                  {!compact && <TableCell align="right">Giờ SD</TableCell>}
                   <TableCell align="right">Doanh thu</TableCell>
                   <TableCell align="right">Lấp đầy</TableCell>
-                  <TableCell>Giờ đông</TableCell>
-                  <TableCell>Trạng thái</TableCell>
                 </TableRow>
               </TableHead>
               <TableBody>
-                {rows.map((court) => (
-                  <TableRow
-                    key={court.courtId || court.name}
-                    hover
-                    sx={{
-                      bgcolor: court.isTopPerformer
-                        ? "success.50"
-                        : court.isUnderused
-                          ? "warning.50"
-                          : undefined,
-                    }}
-                  >
+                {rows.slice(0, compact ? 5 : rows.length).map((court) => (
+                  <TableRow key={court.courtId || court.name} hover>
+                    {!compact && (
+                      <TableCell>
+                        <Typography fontWeight="bold">#{court.rank}</Typography>
+                      </TableCell>
+                    )}
                     <TableCell>
-                      <Typography fontWeight="bold">#{court.rank}</Typography>
-                    </TableCell>
-                    <TableCell>
-                      <Typography fontWeight={court.isTopPerformer ? "bold" : "medium"}>
+                      <Typography fontWeight={court.isTopPerformer ? 700 : 500}>
                         {court.name}
                       </Typography>
                     </TableCell>
                     <TableCell align="right">{court.bookings}</TableCell>
-                    <TableCell align="right">{court.hours}h</TableCell>
+                    {!compact && <TableCell align="right">{court.hours}h</TableCell>}
                     <TableCell align="right">{formatCurrency(court.revenue)}</TableCell>
-                    <TableCell align="right">{court.utilization}%</TableCell>
-                    <TableCell>{court.peakHour}</TableCell>
-                    <TableCell>
+                    <TableCell align="right">
+                      {court.utilization}%
                       {court.isTopPerformer && (
-                        <Chip size="small" color="success" label="Tốt nhất" />
-                      )}
-                      {!court.isTopPerformer && court.isUnderused && (
-                        <Chip size="small" color="warning" label="Ít dùng" />
+                        <Chip size="small" color="success" label="Tốt" sx={{ ml: 0.5 }} />
                       )}
                     </TableCell>
                   </TableRow>

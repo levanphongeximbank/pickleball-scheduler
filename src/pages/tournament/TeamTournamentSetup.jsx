@@ -1,6 +1,6 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 
-import { Link as RouterLink, useParams } from "react-router-dom";
+import { Link as RouterLink, useParams, useSearchParams } from "react-router-dom";
 
 import {
 
@@ -77,6 +77,7 @@ import {
 import TeamRosterPanel from "../../components/tournament/TeamRosterPanel.jsx";
 
 import { getPermissionsForRole } from "../../features/identity/matrix/rolePermissions.js";
+import { TEAM_TAB_QUERY } from "../../config/tournamentRoutes.js";
 
 
 
@@ -90,6 +91,13 @@ const TAB = {
 
   STANDINGS: 3,
 
+};
+
+const TAB_FROM_QUERY = {
+  [TEAM_TAB_QUERY.teams]: TAB.TEAMS,
+  [TEAM_TAB_QUERY.disciplines]: TAB.DISCIPLINES,
+  [TEAM_TAB_QUERY.matchups]: TAB.MATCHUPS,
+  [TEAM_TAB_QUERY.standings]: TAB.STANDINGS,
 };
 
 
@@ -246,9 +254,7 @@ function useTeamTournamentAccess({ tournament, activeClubId, tournamentId }) {
 
     tournamentId,
 
-    user?.playerId,
-
-    user?.role,
+    user,
 
   ]);
 
@@ -260,15 +266,44 @@ export default function TeamTournamentSetup() {
 
   const { tournamentId } = useParams();
 
+  const [searchParams, setSearchParams] = useSearchParams();
+
   const { activeClubId, revision, refreshClubs } = useClub();
 
-  const [tab, setTab] = useState(TAB.TEAMS);
+  const initialTab = TAB_FROM_QUERY[searchParams.get("tab")] ?? TAB.TEAMS;
+
+  const [tab, setTab] = useState(initialTab);
 
   const [message, setMessage] = useState("");
 
   const [error, setError] = useState("");
 
   const [disciplineName, setDisciplineName] = useState("");
+
+
+
+  useEffect(() => {
+    const qTab = searchParams.get("tab");
+    if (qTab && TAB_FROM_QUERY[qTab] !== undefined) {
+      setTab(TAB_FROM_QUERY[qTab]);
+    }
+  }, [searchParams]);
+
+
+
+  const handleTabChange = (_, value) => {
+    setTab(value);
+    const entry = Object.entries(TAB_FROM_QUERY).find(([, tabValue]) => tabValue === value);
+    if (!entry) return;
+    setSearchParams(
+      (prev) => {
+        const next = new URLSearchParams(prev);
+        next.set("tab", entry[0]);
+        return next;
+      },
+      { replace: true }
+    );
+  };
 
 
 
@@ -640,7 +675,7 @@ export default function TeamTournamentSetup() {
 
 
 
-        <Tabs value={tab} onChange={(_, value) => setTab(value)}>
+        <Tabs value={tab} onChange={handleTabChange}>
 
           <Tab label="Đội" />
 

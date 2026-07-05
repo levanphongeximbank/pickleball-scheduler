@@ -4,6 +4,8 @@ import {
   isClubScopedRole,
   isVenueScopedRole,
   isRefereeRole,
+  isPlatformScopedRole,
+  isTournamentTeamScopedRole,
   rolesEqual,
   normalizeRole,
 } from "./roles.js";
@@ -88,7 +90,7 @@ export function canAccessVenue(user, venueId, options = {}) {
     return false;
   }
 
-  if (hasRole(user, ROLES.SUPER_ADMIN)) {
+  if (hasRole(user, ROLES.PLATFORM_ADMIN) || hasRole(user, ROLES.SUPER_ADMIN)) {
     return true;
   }
 
@@ -119,7 +121,7 @@ export function canAccessClub(user, clubId, clubMeta = {}, options = {}) {
     return false;
   }
 
-  if (hasRole(user, ROLES.SUPER_ADMIN)) {
+  if (hasRole(user, ROLES.PLATFORM_ADMIN) || hasRole(user, ROLES.SUPER_ADMIN)) {
     return true;
   }
 
@@ -155,7 +157,7 @@ export function canAccessClub(user, clubId, clubMeta = {}, options = {}) {
 }
 
 function matchesScope(user, permission, scope) {
-  if (hasRole(user, ROLES.SUPER_ADMIN)) {
+  if (hasRole(user, ROLES.PLATFORM_ADMIN) || hasRole(user, ROLES.SUPER_ADMIN)) {
     return true;
   }
 
@@ -163,6 +165,10 @@ function matchesScope(user, permission, scope) {
 
   if (hasRole(user, ROLES.PLAYER) && scopes.includes(PERMISSION_SCOPE.SELF)) {
     return matchesSelfScope(user, scope, permission);
+  }
+
+  if (isTournamentTeamScopedRole(user.role) && scopes.includes(PERMISSION_SCOPE.TEAM)) {
+    return matchesTeamScope(user, scope);
   }
 
   return scopes.some((permissionScope) =>
@@ -175,11 +181,20 @@ function matchesScopeType(user, permissionScope, scope, permission) {
     case PERMISSION_SCOPE.GLOBAL:
       return isGlobalRole(user.role);
 
+    case PERMISSION_SCOPE.PLATFORM:
+      return matchesPlatformScope(user, scope);
+
     case PERMISSION_SCOPE.VENUE:
       return matchesVenueScope(user, scope.venueId, permission);
 
     case PERMISSION_SCOPE.CLUB:
       return matchesClubScope(user, scope);
+
+    case PERMISSION_SCOPE.TOURNAMENT:
+      return matchesTournamentScope(user, scope);
+
+    case PERMISSION_SCOPE.TEAM:
+      return matchesTeamScope(user, scope);
 
     case PERMISSION_SCOPE.SELF:
       return matchesSelfScope(user, scope, permission);
@@ -189,13 +204,82 @@ function matchesScopeType(user, permissionScope, scope, permission) {
   }
 }
 
+function matchesPlatformScope(user, scope) {
+  if (!isPlatformScopedRole(user.role)) {
+    return false;
+  }
+
+  if (scope.tenantId && user.tenantId && user.tenantId !== scope.tenantId) {
+    return false;
+  }
+
+  return true;
+}
+
+function matchesTournamentScope(user, scope) {
+  const tournamentId = scope.tournamentId || scope.tournament_id;
+  if (!tournamentId) {
+    return isVenueScopedRole(user.role) || isClubScopedRole(user.role);
+  }
+
+  if (isVenueScopedRole(user.role)) {
+    if (scope.venueId && user.venueId && user.venueId !== scope.venueId) {
+      return false;
+    }
+    return true;
+  }
+
+  if (isClubScopedRole(user.role)) {
+    if (scope.clubId && user.clubId && user.clubId !== scope.clubId) {
+      return false;
+    }
+    return true;
+  }
+
+  if (isTournamentTeamScopedRole(user.role)) {
+    const userTournamentId = user.tournamentId || user.tournament_id;
+    return Boolean(userTournamentId && userTournamentId === tournamentId);
+  }
+
+  return false;
+}
+
+function matchesTeamScope(user, scope) {
+  const tournamentId = scope.tournamentId || scope.tournament_id;
+  const teamId = scope.teamId || scope.team_id;
+
+  if (!isTournamentTeamScopedRole(user.role)) {
+    return false;
+  }
+
+  const userTournamentId = user.tournamentId || user.tournament_id;
+  const userTeamId = user.teamId || user.team_id;
+
+  if (!userTournamentId || !userTeamId) {
+    return false;
+  }
+
+  if (!tournamentId || !teamId) {
+    return false;
+  }
+
+  return userTournamentId === tournamentId && userTeamId === teamId;
+}
+
 function matchesVenueScope(user, venueId, permission) {
   if (permission === PERMISSIONS.SYSTEM_SETTING && !venueId) {
     return false;
   }
 
   if (!venueId) {
-    return isVenueScopedRole(user.role) && Boolean(user.venueId);
+    return (
+      (isVenueScopedRole(user.role) && Boolean(user.venueId)) ||
+      isPlatformScopedRole(user.role)
+    );
+  }
+
+  if (isPlatformScopedRole(user.role)) {
+    return true;
   }
 
   if (isVenueScopedRole(user.role)) {

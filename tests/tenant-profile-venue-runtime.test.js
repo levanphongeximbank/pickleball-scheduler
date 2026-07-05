@@ -78,9 +78,9 @@ afterEach(() => {
 });
 
 describe("Profile venue runtime", () => {
-  it("VENUE_OWNER normalizes to COURT_OWNER with venue_id from profile row", () => {
+  it("VENUE_OWNER normalizes to TENANT_OWNER with venue_id from profile row", () => {
     const user = ownerUser();
-    assert.equal(user.role, ROLES.COURT_OWNER);
+    assert.equal(user.role, ROLES.TENANT_OWNER);
     assert.equal(user.venueId, STAGING_VENUE);
     assert.equal(user.tenantId, STAGING_VENUE);
   });

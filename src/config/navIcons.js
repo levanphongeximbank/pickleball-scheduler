@@ -96,6 +96,8 @@ export const NAV_ICON_COMPONENTS = Object.freeze({
   support: SupportAgentIcon,
   profile: PersonIcon,
   notifications: NotificationsIcon,
+  coaches: PeopleIcon,
+  messages: SupportAgentIcon,
   marketplace: StorefrontIcon,
   billing: CardMembershipIcon,
   "player-profile": PersonIcon,
@@ -108,6 +110,9 @@ export const NAV_ICON_COMPONENTS = Object.freeze({
 
 export function getNavIcon(iconKey, fontSize = "small") {
   const Icon = NAV_ICON_COMPONENTS[iconKey] || DashboardIcon;
+  if (typeof fontSize === "number") {
+    return createElement(Icon, { sx: { fontSize } });
+  }
   return createElement(Icon, { fontSize });
 }
 

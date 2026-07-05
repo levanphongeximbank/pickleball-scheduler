@@ -6,7 +6,6 @@ import { PERMISSIONS } from "../src/features/identity/constants/permissions.js";
 import {
   LINEUP_SOURCE,
   LINEUP_STATUS,
-  MATCHUP_STATUS,
 } from "../src/features/team-tournament/constants.js";
 import {
   addDisciplineToTournament,

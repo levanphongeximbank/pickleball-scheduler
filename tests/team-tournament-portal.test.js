@@ -181,7 +181,6 @@ test("captain can submit valid full lineup", () => {
 
 test("portal blocks invalid gender lineup submission", () => {
   const teamData = buildFixture();
-  const matchup = teamData.matchups[0];
   const [menDouble, womenDouble, mixed1, mixed2] = teamData.disciplines;
 
   const invalid = validateLineupSelections({

@@ -46,7 +46,6 @@ function playerLabel(player) {
 function TeamCard({
   team,
   teamData,
-  players,
   clubPlayers,
   canManage,
   clubId,
@@ -411,7 +410,6 @@ export default function TeamRosterPanel({
             key={team.id}
             team={team}
             teamData={teamData}
-            players={clubPlayers}
             clubPlayers={clubPlayers}
             canManage={canManage}
             clubId={clubId}

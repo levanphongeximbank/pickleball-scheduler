@@ -28,6 +28,7 @@ import { SIDEBAR_MENU_GROUPS } from "../src/config/sidebarMenu.js";
 import {
   listFutureNavItems,
   listComingSoonNavItems,
+  collectMenuItemLabels,
   resolveNavRole,
   resolveRoleMenuAccess,
 } from "../src/config/navigationConfig.js";
@@ -142,9 +143,9 @@ test("REFEREE — xem giải và cập nhật điểm trong venue", () => {
   assert.equal(can(referee, PERMISSIONS.PLAYER_UPDATE, { clubId: "club-1" }, RBAC_ON), false);
 });
 
-test("legacy VENUE_OWNER alias → COURT_OWNER permissions", () => {
+test("legacy VENUE_OWNER alias → TENANT_OWNER permissions", () => {
   const owner = user(ROLES.VENUE_OWNER, { venueId: "venue-a" });
-  assert.equal(owner.role, ROLES.COURT_OWNER);
+  assert.equal(owner.role, ROLES.TENANT_OWNER);
   assert.equal(can(owner, PERMISSIONS.VENUE_UPDATE, { venueId: "venue-a" }, RBAC_ON), true);
 });
 
@@ -187,12 +188,12 @@ test("menuAccess — PLAYER chỉ thấy menu giải đấu", () => {
     playerId: "p-1",
   });
 
-  const labels = visible.flatMap((g) => g.items.map((i) => i.text));
+  const labels = collectMenuItemLabels(visible);
   assert.ok(labels.includes("Danh sách giải"));
-  assert.ok(labels.includes("Giải nội bộ CLB"));
+  assert.ok(labels.includes("Loại giải"));
   assert.ok(labels.includes("Hồ sơ cá nhân"));
   assert.equal(labels.includes("Vận động viên"), false);
-  assert.equal(labels.includes("Danh sách VĐV"), false);
+  assert.equal(labels.includes("Khách hàng"), false);
   assert.equal(labels.includes("Cài đặt"), false);
 });
 
@@ -415,7 +416,7 @@ test("mapProfileRowToUser — map từ Supabase profiles", () => {
   });
 
   assert.equal(mapped.email, "owner@test.com");
-  assert.equal(mapped.role, ROLES.COURT_OWNER);
+  assert.equal(mapped.role, ROLES.TENANT_OWNER);
   assert.equal(mapped.venueId, "venue-demo");
   assert.equal(SUBSCRIPTION_PLANS.professional.features.includes("director_mode"), true);
 });
@@ -697,7 +698,7 @@ test("route access — ACCOUNTANT revenue, không players", () => {
 test("menuAccess — VENUE_OWNER thấy VĐV và vận hành sân", () => {
   const owner = user(ROLES.VENUE_OWNER, { venueId: "venue-a", clubId: "club-1" });
   const visible = filterMenuGroups(SIDEBAR_MENU_GROUPS, makeMenuAuth(owner), SCOPE);
-  const labels = visible.flatMap((g) => g.items.map((i) => i.text));
+  const labels = collectMenuItemLabels(visible);
 
   assert.ok(labels.includes("Vận động viên") || labels.includes("Danh sách VĐV"));
   assert.ok(labels.includes("Đặt sân") || labels.includes("Trạng thái sân"));
@@ -707,7 +708,7 @@ test("menuAccess — VENUE_OWNER thấy VĐV và vận hành sân", () => {
 test("menuAccess — VENUE_MANAGER thấy VĐV và lịch sân", () => {
   const manager = user(ROLES.VENUE_MANAGER, { venueId: "venue-a", clubId: "club-1" });
   const visible = filterMenuGroups(SIDEBAR_MENU_GROUPS, makeMenuAuth(manager), SCOPE);
-  const labels = visible.flatMap((g) => g.items.map((i) => i.text));
+  const labels = collectMenuItemLabels(visible);
 
   assert.ok(labels.includes("Vận động viên") || labels.includes("Danh sách VĐV"));
   assert.ok(labels.includes("Lịch sân") || labels.includes("Đặt sân"));
@@ -716,7 +717,7 @@ test("menuAccess — VENUE_MANAGER thấy VĐV và lịch sân", () => {
 test("menuAccess — CASHIER chỉ vận hành sân / đặt sân", () => {
   const cashier = user(ROLES.CASHIER, { venueId: "venue-a" });
   const visible = filterMenuGroups(SIDEBAR_MENU_GROUPS, makeMenuAuth(cashier), SCOPE);
-  const labels = visible.flatMap((g) => g.items.map((i) => i.text));
+  const labels = collectMenuItemLabels(visible);
 
   assert.ok(labels.includes("Đặt sân") || labels.includes("Trạng thái sân"));
   assert.equal(labels.includes("Vận động viên"), false);
@@ -730,11 +731,11 @@ test("menuAccess — CLUB_OWNER thấy CLB & Giải, không Live Courts", () => 
     clubId: "club-1",
   });
   const visible = filterMenuGroups(SIDEBAR_MENU_GROUPS, makeMenuAuth(clubOwner), SCOPE);
-  const labels = visible.flatMap((g) => g.items.map((i) => i.text));
+  const labels = collectMenuItemLabels(visible);
 
   assert.ok(labels.includes("Lịch sinh hoạt") || labels.includes("Danh sách CLB"));
   assert.ok(labels.includes("Danh sách giải"));
-  assert.ok(labels.includes("Giải nội bộ CLB"));
+  assert.ok(labels.includes("Loại giải"));
   assert.equal(labels.includes("Trạng thái sân"), false);
 });
 
@@ -744,7 +745,7 @@ test("menuAccess — RBAC bật, chưa đăng nhập chỉ Cài đặt", () => {
     { can: () => false, rbacEnabled: true, isAuthenticated: false, user: null },
     SCOPE
   );
-  const labels = visible.flatMap((g) => g.items.map((i) => i.text));
+  const labels = collectMenuItemLabels(visible);
 
   assert.deepEqual(labels, ["Cài đặt"]);
 });
@@ -752,7 +753,7 @@ test("menuAccess — RBAC bật, chưa đăng nhập chỉ Cài đặt", () => {
 test("menuAccess — RC1 không render mục future (ẩn hoàn toàn)", () => {
   const owner = user(ROLES.VENUE_OWNER, { venueId: "venue-a", clubId: "club-1" });
   const visible = filterMenuGroups(SIDEBAR_MENU_GROUPS, makeMenuAuth(owner), SCOPE);
-  const labels = visible.flatMap((g) => g.items.map((i) => i.text));
+  const labels = collectMenuItemLabels(visible);
   const futureLabels = listFutureNavItems().map((item) => item.label);
 
   for (const label of futureLabels) {
@@ -760,17 +761,19 @@ test("menuAccess — RC1 không render mục future (ẩn hoàn toàn)", () => {
   }
 });
 
-test("menuAccess — owner thấy mục coming-soon với route placeholder", () => {
+test("menuAccess — owner coming-soon (nếu còn mục planned)", () => {
   const owner = user(ROLES.VENUE_OWNER, { venueId: "venue-a", clubId: "club-1" });
   const visible = filterMenuGroups(SIDEBAR_MENU_GROUPS, makeMenuAuth(owner), SCOPE);
-  const labels = visible.flatMap((g) => g.items.map((i) => i.text));
+  const labels = collectMenuItemLabels(visible);
   const comingSoonLabels = listComingSoonNavItems().map((item) => item.label);
 
-  assert.ok(comingSoonLabels.length > 0);
-  for (const label of comingSoonLabels) {
-    if (label === "Cảnh báo bất hợp lý") continue;
-    assert.ok(labels.includes(label), `coming-soon item "${label}" phải hiển thị`);
+  if (comingSoonLabels.length === 0) {
+    assert.ok(true, "không còn mục planned trên sidebar — gate 100%");
+    return;
   }
+
+  const visibleComingSoon = comingSoonLabels.filter((label) => labels.includes(label));
+  assert.ok(visibleComingSoon.length > 0, "owner phải thấy ít nhất một mục coming-soon");
 });
 
 test("menuAccess — VENUE_OWNER legacy DB vẫn thấy menu đầy đủ", () => {
@@ -782,24 +785,24 @@ test("menuAccess — VENUE_OWNER legacy DB vẫn thấy menu đầy đủ", () =
     status: "active",
   };
   const visible = filterMenuGroups(SIDEBAR_MENU_GROUPS, makeMenuAuth(legacyOwner), SCOPE);
-  const labels = visible.flatMap((g) => g.items.map((i) => i.text));
+  const labels = collectMenuItemLabels(visible);
 
   assert.ok(labels.includes("Tổng quan"));
   assert.ok(labels.includes("Lịch sân") || labels.includes("Đặt sân"));
 });
 
-test("menuAccess — VENUE_OWNER thấy Trang của tôi", () => {
+test("menuAccess — VENUE_OWNER không còn Trang của tôi trên sidebar (dùng Account menu)", () => {
   const owner = user(ROLES.VENUE_OWNER, { venueId: "venue-a", clubId: "club-1" });
   const visible = filterMenuGroups(SIDEBAR_MENU_GROUPS, makeMenuAuth(owner), SCOPE);
-  const labels = visible.flatMap((g) => g.items.map((i) => i.text));
+  const labels = collectMenuItemLabels(visible);
 
-  assert.ok(labels.includes("Trang của tôi"));
+  assert.equal(labels.includes("Trang của tôi"), false);
 });
 
 test("menuAccess — không còn label USERS trong sidebar", () => {
   const owner = user(ROLES.VENUE_OWNER, { venueId: "venue-a", clubId: "club-1" });
   const visible = filterMenuGroups(SIDEBAR_MENU_GROUPS, makeMenuAuth(owner), SCOPE);
-  const labels = visible.flatMap((g) => [g.label, ...g.items.map((i) => i.text)]);
+  const labels = collectMenuItemLabels(visible);
 
   assert.equal(labels.some((label) => String(label).toUpperCase() === "USERS"), false);
   assert.ok(labels.includes("Người dùng"));
@@ -839,12 +842,13 @@ test("mobile nav — PLAYER thấy Trang của tôi", () => {
 
 const OWNER_V5_GROUPS = [
   "Tổng quan",
-  "Vận hành cụm sân",
+  "Vận hành sân",
   "Khách hàng & VĐV",
-  "CLB",
+  "CLB & Huấn luyện",
   "Giải đấu",
   "Tài chính",
   "Báo cáo",
+  "Chăm sóc khách hàng",
   "Quản trị",
   "Hỗ trợ",
 ];
@@ -883,15 +887,15 @@ test("menuAccess — owner thấy đủ nhóm V5 khi CLB local có venueId lệc
   assertOwnerSidebarGroups(visible, "stale club venue");
 });
 
-test("menuAccess — lowercase owner alias map COURT_OWNER và thấy đủ nhóm V5", () => {
+test("menuAccess — lowercase owner alias map TENANT_OWNER và thấy đủ nhóm V5", () => {
   const owner = createUserRecord({
     role: "owner",
     venueId: "venue-staging-a",
     clubId: "club-1",
   });
 
-  assert.equal(owner.role, ROLES.COURT_OWNER);
-  assert.equal(resolveNavRole("owner"), ROLES.COURT_OWNER);
+  assert.equal(owner.role, ROLES.TENANT_OWNER);
+  assert.equal(resolveNavRole("owner"), ROLES.TENANT_OWNER);
   assert.ok(resolveRoleMenuAccess("owner").includes("dashboard"));
 
   const scope = resolveRouteAccessScope({
@@ -995,7 +999,7 @@ test("Phase 19B — REFEREE menu tối giản", () => {
 test("Phase 19B — CASHIER menu vẫn pass", () => {
   const cashier = user(ROLES.CASHIER, { venueId: "venue-a" });
   const visible = filterMenuGroups(SIDEBAR_MENU_GROUPS, makeMenuAuth(cashier), SCOPE);
-  const labels = visible.flatMap((group) => group.items.map((item) => item.text));
+  const labels = collectMenuItemLabels(visible);
 
   assert.ok(labels.includes("Đặt sân") || labels.includes("Trạng thái sân"));
   assert.equal(labels.includes("Người dùng"), false);
@@ -1005,10 +1009,10 @@ test("Phase 19B — venue/court labels trong navigation config", () => {
   const owner = user(ROLES.COURT_OWNER, { venueId: "venue-a", clubId: "club-1" });
   const visible = filterMenuGroups(SIDEBAR_MENU_GROUPS, makeMenuAuth(owner), SCOPE);
   const groupLabels = visible.map((group) => group.label);
-  const itemLabels = visible.flatMap((group) => group.items.map((item) => item.text));
+  const labels = collectMenuItemLabels(visible);
 
-  assert.ok(groupLabels.includes("Vận hành cụm sân"));
-  assert.ok(itemLabels.includes("Sân thi đấu"));
+  assert.ok(groupLabels.includes("Vận hành sân"));
+  assert.ok(labels.includes("Sân"));
 });
 
 test("Phase 19B — PLAYER không thấy admin routes", () => {

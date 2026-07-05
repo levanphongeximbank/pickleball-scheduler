@@ -37,11 +37,13 @@ export const MOBILE_ROUTE_ACCESS = Object.freeze({
 
 const PLAYER_SHELL_ROLES = new Set([
   ROLES.PLAYER,
-  ROLES.CLUB_OWNER,
+  ROLES.CLUB_MANAGER,
   ROLES.REFEREE,
-  ROLES.COURT_OWNER,
-  ROLES.COURT_MANAGER,
-  ROLES.SUPER_ADMIN,
+  ROLES.TENANT_OWNER,
+  ROLES.VENUE_MANAGER,
+  ROLES.PLATFORM_ADMIN,
+  ROLES.TEAM_CAPTAIN,
+  ROLES.CUSTOMER,
 ]);
 
 const MOBILE_ROUTE_ROLE_RULES = Object.freeze({
@@ -167,6 +169,7 @@ function passesMobileRouteRoleRules(pathname, user) {
     return (
       PLAYER_SHELL_ROLES.has(normalizeRole(user.role)) ||
       Boolean(user.playerId) ||
+      normalizeRole(user.role) === ROLES.PLATFORM_ADMIN ||
       normalizeRole(user.role) === ROLES.SUPER_ADMIN
     );
   }

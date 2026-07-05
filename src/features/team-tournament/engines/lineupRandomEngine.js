@@ -2,7 +2,6 @@ import { LINEUP_SOURCE, LINEUP_STATUS, GENDER_REQUIREMENT } from "../constants.j
 import { getPlayerGenderKey } from "../../../models/player.js";
 import {
   findTeam,
-  getLineup,
   lineupKey,
   normalizeLineup,
   normalizeTeamData,

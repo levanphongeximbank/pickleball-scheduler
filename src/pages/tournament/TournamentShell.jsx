@@ -2,7 +2,7 @@ import { Box, Typography } from "@mui/material";
 
 import TournamentHome from "./TournamentHome.jsx";
 
-export default function TournamentShell() {
+export default function TournamentShell({ section = "overview" }) {
   return (
     <Box>
       <Typography variant="h4" fontWeight="bold" sx={{ mb: 1 }}>
@@ -12,7 +12,7 @@ export default function TournamentShell() {
         Quản lý giải nội bộ, giải mở và Daily Play.
       </Typography>
 
-      <TournamentHome />
+      <TournamentHome section={section} />
     </Box>
   );
 }

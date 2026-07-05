@@ -148,7 +148,7 @@ function useCaptainPortalAccess({ tournament, activeClubId, tournamentId }) {
     rbacEnabled,
     tournament,
     tournamentId,
-    user?.playerId,
+    user,
   ]);
 }
 

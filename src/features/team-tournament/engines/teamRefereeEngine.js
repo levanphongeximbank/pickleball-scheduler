@@ -289,7 +289,7 @@ export function saveSubMatchDraft(teamData, payload = {}) {
     return validation;
   }
 
-  const { matchup, subMatch, score, games, format } = validation;
+  const { subMatch, score, games, format } = validation;
   const winnerTeamId = "";
 
   let nextData = applySubMatchUpdate(teamData, payload.matchupId, payload.subMatchId, () => ({

@@ -78,6 +78,9 @@ import {
   getRefereeSettings,
 } from "../../tournament/engines/refereeEngine.js";
 import { useTournamentAnimation } from "../../components/tournament/animation/useTournamentAnimation.js";
+import { useTournamentFlowOrchestrator } from "../../components/tournament/animation/useTournamentFlowOrchestrator.js";
+import { createOfficialFlowAdapters } from "../../components/tournament/animation/tournamentFlowAdapters.js";
+import { resolveOfficialOpenPipeline } from "../../components/tournament/animation/shared/tournamentFlowConfig.js";
 import { PAIRING_CONTROL_MODES } from "../../components/tournament/animation/pairing/usePairingSequence.js";
 import TournamentManageGate from "../../components/tournament/TournamentManageGate.jsx";
 import { isAiEngineEnabled } from "../../features/ai-assistant/index.js";
@@ -230,6 +233,108 @@ export default function OfficialTournamentSetup() {
         processEventId: savedEvent?.id || null,
       }
     );
+  };
+
+  const flowAdapters = useMemo(() => {
+    const shared = {
+      tournament,
+      players,
+      courts,
+      selectedPlayerIds,
+      eventType,
+      groupCount,
+      isAiBalance,
+      displayEntries,
+      persistTournament,
+      persistEvent,
+      setPreviewEntries,
+      setWarnings,
+      setMessage,
+      setError,
+      setLocalRevision,
+      refreshClubs,
+      getSavedEvent: () => savedEvent,
+    };
+
+    if (isAiBalance) {
+      return createOfficialFlowAdapters({
+        ...shared,
+        variant: "ai_balance",
+        suggestEntries: (selected, et) =>
+          suggestBalancedEntriesFromIndividuals(selected, et, {
+            tournamentId,
+            eventId: savedEvent?.id || `event-${tournamentId}`,
+          }),
+        buildPlan: ({ manualEntries }) =>
+          buildOfficialAiBalancePlan({
+            tournament,
+            eventId: savedEvent?.id,
+            players,
+            selectedPlayerIds,
+            eventType,
+            groupCount,
+            manualEntries,
+            individualRegistration: true,
+          }),
+        buildPatch: buildOfficialAiBalancePatch,
+      });
+    }
+
+    return createOfficialFlowAdapters({
+      ...shared,
+      variant: "open",
+      isAiBalance: false,
+      suggestEntries: () => displayEntries,
+      buildPlan: () =>
+        buildOfficialOpenPlan({
+          tournament: {
+            ...tournament,
+            hostClubName: tournament.hostClubName || activeClub?.name || "",
+          },
+          entries: displayEntries,
+          eventType,
+          eventId: savedEvent?.id,
+          groupCount,
+          players,
+          splitUnits,
+        }),
+      buildPatch: buildOfficialOpenPatch,
+    });
+  }, [
+    isAiBalance,
+    tournament,
+    players,
+    courts,
+    selectedPlayerIds,
+    eventType,
+    groupCount,
+    displayEntries,
+    savedEvent,
+    splitUnits,
+    activeClub,
+    tournamentId,
+    refreshClubs,
+    persistTournament,
+    persistEvent,
+  ]);
+
+  const flow = useTournamentFlowOrchestrator(anim, flowAdapters);
+
+  const handleStartGuidedFlow = () => {
+    setError(null);
+    setWarnings([]);
+    setMessage(null);
+
+    const pipeline = isAiBalance
+      ? undefined
+      : resolveOfficialOpenPipeline({
+          includeBracket: savedEvent ? canGenerateBracket(savedEvent).ok : true,
+        });
+
+    const result = flow.startFlow({}, { pipeline });
+    if (result?.ok === false) {
+      setError(result.error || "Không thể bắt đầu trình chiếu.");
+    }
   };
 
   const handleRefereeRosterChange = (nextRoster) => {
@@ -1014,6 +1119,15 @@ export default function OfficialTournamentSetup() {
               </Stack>
             </Paper>
             <Stack spacing={1}>
+              <Button
+                fullWidth
+                variant="contained"
+                color="secondary"
+                onClick={handleStartGuidedFlow}
+                disabled={selectedPlayerIds.length === 0}
+              >
+                Bắt đầu trình chiếu
+              </Button>
               <Stack direction="row" spacing={1}>
                 <Button fullWidth variant="outlined" onClick={handleSuggestAiPairs}>
                   Đề xuất ghép cặp
@@ -1134,15 +1248,26 @@ export default function OfficialTournamentSetup() {
             )}
           </Paper>
 
-          <Stack direction="row" spacing={1}>
-            <Button fullWidth variant="contained" onClick={() => handleDrawGroups(false)}>
-              Chia bảng random
+          <Stack spacing={1}>
+            <Button
+              fullWidth
+              variant="contained"
+              color="secondary"
+              onClick={handleStartGuidedFlow}
+              disabled={displayEntries.length < 2}
+            >
+              Bắt đầu trình chiếu
             </Button>
-            {savedEvent?.groups?.length > 0 && (
-              <Button fullWidth variant="outlined" onClick={() => handleDrawGroups(true)}>
-                Random lại
+            <Stack direction="row" spacing={1}>
+              <Button fullWidth variant="contained" onClick={() => handleDrawGroups(false)}>
+                Chia bảng random
               </Button>
-            )}
+              {savedEvent?.groups?.length > 0 && (
+                <Button fullWidth variant="outlined" onClick={() => handleDrawGroups(true)}>
+                  Random lại
+                </Button>
+              )}
+            </Stack>
           </Stack>
         </Grid>
 
@@ -1309,7 +1434,7 @@ export default function OfficialTournamentSetup() {
         </Stack>
       )}
 
-      <TournamentAnimationDialog {...anim.dialogProps} />
+      <TournamentAnimationDialog {...flow.dialogProps} />
 
       {bracketAdvanceAnim && (
         <Box

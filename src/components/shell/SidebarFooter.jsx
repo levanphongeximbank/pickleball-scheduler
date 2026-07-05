@@ -5,61 +5,66 @@ import { Link as RouterLink } from "react-router-dom";
 import VenueSwitcher from "../VenueSwitcher.jsx";
 import { useAuth } from "../../context/AuthContext.jsx";
 import { PERMISSIONS } from "../../auth/permissions.js";
-import { getSubscriptionForVenue } from "../../domain/venueService.js";
-import { SUBSCRIPTION_PLANS } from "../../models/subscription.js";
-import { loadActiveVenueId } from "../../data/venueSession.js";
 import { SHELL_COLORS } from "./shellTokens.js";
 
 export default function SidebarFooter() {
-  const { user, can } = useAuth();
-  const venueId = user?.venueId || loadActiveVenueId();
-  const subscription = venueId ? getSubscriptionForVenue(venueId) : null;
-  const planId = subscription?.planId || "trial";
-  const plan = SUBSCRIPTION_PLANS[planId] || SUBSCRIPTION_PLANS.trial;
-  const canViewBilling = can(PERMISSIONS.BILLING_VIEW);
+  const { can } = useAuth();
+  const canSwitchVenue =
+    can(PERMISSIONS.VENUE_UPDATE) || can(PERMISSIONS.ROLE_MANAGE) || can(PERMISSIONS.USER_MANAGE);
 
   return (
     <Box
       sx={{
-        px: 1.5,
-        pb: 1.5,
-        pt: 1,
+        px: 1,
+        pb: 1.1,
+        pt: 0.75,
         borderTop: `1px solid ${SHELL_COLORS.sidebarBorder}`,
         flexShrink: 0,
       }}
     >
       <Box
         sx={{
-          p: 1.25,
-          borderRadius: 1.5,
+          p: 1,
+          borderRadius: 1.25,
           bgcolor: "rgba(255,255,255,0.04)",
           border: `1px solid ${SHELL_COLORS.sidebarBorder}`,
-          mb: 1,
+          mb: 0.75,
         }}
       >
-        <Typography variant="caption" sx={{ color: SHELL_COLORS.sidebarTextMuted, fontWeight: 600, display: "block", mb: 0.75 }}>
+        <Typography
+          variant="caption"
+          sx={{
+            color: SHELL_COLORS.sidebarTextMuted,
+            fontWeight: 600,
+            display: "block",
+            mb: 0.5,
+            fontSize: 10,
+          }}
+        >
           Cơ sở hiện tại
         </Typography>
         <VenueSwitcher variant="dark" minWidth="100%" size="small" hideLabel />
-        {canViewBilling && (
+        {canSwitchVenue && (
           <Button
             component={RouterLink}
-            to="/billing/current-plan"
+            to="/admin/tenants"
             size="small"
-            startIcon={<SwapHorizIcon sx={{ fontSize: 16 }} />}
+            startIcon={<SwapHorizIcon sx={{ fontSize: 14 }} />}
             fullWidth
             sx={{
-              mt: 1,
+              mt: 0.75,
               justifyContent: "flex-start",
               color: SHELL_COLORS.sidebarTextMuted,
               fontWeight: 600,
-              fontSize: 12,
+              fontSize: 11,
               textTransform: "none",
-              px: 0.5,
+              px: 0.25,
+              py: 0.25,
+              minHeight: 28,
               "&:hover": { bgcolor: "rgba(255,255,255,0.04)", color: SHELL_COLORS.sidebarText },
             }}
           >
-            Gói {plan.name} — Quản lý
+            Switch cơ sở
           </Button>
         )}
       </Box>
@@ -70,8 +75,9 @@ export default function SidebarFooter() {
           display: "block",
           textAlign: "center",
           color: SHELL_COLORS.sidebarTextMuted,
-          fontSize: 10,
+          fontSize: 9,
           opacity: 0.7,
+          lineHeight: 1.3,
         }}
       >
         © {new Date().getFullYear()} Pickleball Scheduler Pro V5.0

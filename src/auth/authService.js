@@ -29,7 +29,7 @@ const DEV_USERS = [
     id: "dev-super-admin",
     email: "admin@pickleball.local",
     displayName: "Super Admin",
-    role: ROLES.SUPER_ADMIN,
+    role: ROLES.PLATFORM_ADMIN,
     tenantId: null,
     venueId: null,
     clubId: null,

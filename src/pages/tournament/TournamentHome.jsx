@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 
 import {
@@ -113,8 +113,10 @@ function isCaptainForTeamTournament(tournament, playerId) {
   return Boolean(findTeamForCaptain(teamData, playerId));
 }
 
-export default function TournamentHome() {
+export default function TournamentHome({ section = "overview" }) {
   const navigate = useNavigate();
+  const createRef = useRef(null);
+  const listRef = useRef(null);
   const { user } = useAuth();
   const { activeClub, activeClubId, revision, refreshClubs } = useClub();
   const { activeSeason, activeLeague } = useSeasonLeague();
@@ -130,6 +132,17 @@ export default function TournamentHome() {
     () => listTournaments(activeClubId),
     [activeClubId, revision]
   );
+
+  const showCreateSection = section === "overview" || section === "create";
+  const showActiveSection = section === "overview";
+  const showListSection = section === "overview" || section === "list";
+
+  useEffect(() => {
+    const target = section === "create" ? createRef : section === "list" ? listRef : null;
+    if (target?.current) {
+      target.current.scrollIntoView({ behavior: "smooth", block: "start" });
+    }
+  }, [section]);
 
   const deletableSelectedCount = useMemo(
     () =>
@@ -266,7 +279,7 @@ export default function TournamentHome() {
   return (
     <Box>
       <Typography variant="h5" fontWeight="bold" sx={{ mb: 0.5 }}>
-        Giải đấu V3.3
+        Giải đấu
       </Typography>
       <Typography color="text.secondary" sx={{ mb: 2 }}>
         CLB {activeClub?.name || "hiện tại"}
@@ -293,28 +306,35 @@ export default function TournamentHome() {
         sx={{ mb: 2 }}
       />
 
-      <PermissionGate permission={PERMISSIONS.TOURNAMENT_UPDATE}>
-        <Grid container spacing={2} sx={{ mb: 3 }}>
-          {CREATE_TOURNAMENT_MODE_OPTIONS.map((option) => (
-            <Grid key={option.mode} size={{ xs: 12, md: 6 }}>
-              <ModeCard
-                title={option.title}
-                description={option.description}
-                icon={option.icon}
-                color={option.color}
-                badge={option.badge}
-                onStart={() => handleStartMode(option)}
-              />
+      {showCreateSection ? (
+        <Box ref={createRef}>
+          <PermissionGate permission={PERMISSIONS.TOURNAMENT_UPDATE}>
+            <Grid container spacing={2} sx={{ mb: 3 }}>
+              {CREATE_TOURNAMENT_MODE_OPTIONS.map((option) => (
+                <Grid key={option.mode} size={{ xs: 12, md: 6 }}>
+                  <ModeCard
+                    title={option.title}
+                    description={option.description}
+                    icon={option.icon}
+                    color={option.color}
+                    badge={option.badge}
+                    onStart={() => handleStartMode(option)}
+                  />
+                </Grid>
+              ))}
             </Grid>
-          ))}
-        </Grid>
-      </PermissionGate>
+          </PermissionGate>
+        </Box>
+      ) : null}
 
-      <Paper variant="outlined" sx={{ p: { xs: 1.5, sm: 2 }, mb: 3 }}>
-        <ActiveTournamentsPanel tournaments={tournaments} title="Giải đang mở" />
-      </Paper>
+      {showActiveSection ? (
+        <Paper variant="outlined" sx={{ p: { xs: 1.5, sm: 2 }, mb: 3 }}>
+          <ActiveTournamentsPanel tournaments={tournaments} title="Giải đang mở" />
+        </Paper>
+      ) : null}
 
-      <Paper variant="outlined" sx={{ p: { xs: 1.5, sm: 2 } }}>
+      {showListSection ? (
+      <Paper ref={listRef} variant="outlined" sx={{ p: { xs: 1.5, sm: 2 } }}>
         <Stack
           direction={{ xs: "column", sm: "row" }}
           justifyContent="space-between"
@@ -323,14 +343,14 @@ export default function TournamentHome() {
           sx={{ mb: 1 }}
         >
           <Typography variant="h6" fontWeight="bold">
-            Giải V3.3 đã tạo
+            Danh sách giải
           </Typography>
           <Chip size="small" label={`${tournaments.length} giải`} />
         </Stack>
 
         {tournaments.length === 0 ? (
           <Typography variant="body2" color="text.secondary">
-            Chưa có giải V3.3. Chọn Giải nội bộ hoặc Giải chính thức ở trên để tạo giải nháp.
+            Chưa có giải. Chọn loại giải ở trên để tạo giải nháp.
           </Typography>
         ) : (
           <>
@@ -466,6 +486,7 @@ export default function TournamentHome() {
           </>
         )}
       </Paper>
+      ) : null}
 
       <Dialog open={deleteDialogOpen} onClose={() => setDeleteDialogOpen(false)}>
         <DialogTitle>Xác nhận xóa giải</DialogTitle>

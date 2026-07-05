@@ -5,12 +5,17 @@
 import { PERMISSIONS } from "../auth/permissions.js";
 import { ROLES, normalizeRole } from "../auth/roles.js";
 import { isAiEngineEnabled } from "../features/ai-assistant/constants/aiConfig.js";
+import { V5_MENU_GROUPS } from "./v5Menu/index.js";
+import { SYSTEM_TECHNICIAN_MENU_ROOT } from "./v5Menu/systemTechnicianMenu.js";
+import { TEAM_CAPTAIN_MENU_ROOT } from "./v5Menu/teamCaptainMenu.js";
 
 /** V5 role aliases → canonical ROLES (identity/constants/roles.js). */
 export const NAV_ROLE_ALIASES = Object.freeze({
-  PLATFORM_ADMIN: ROLES.SUPER_ADMIN,
-  TENANT_OWNER: ROLES.COURT_OWNER,
-  VENUE_MANAGER: ROLES.COURT_MANAGER,
+  SUPER_ADMIN: ROLES.PLATFORM_ADMIN,
+  COURT_OWNER: ROLES.TENANT_OWNER,
+  COURT_MANAGER: ROLES.VENUE_MANAGER,
+  CLUB_OWNER: ROLES.CLUB_MANAGER,
+  VENUE_OWNER: ROLES.TENANT_OWNER,
 });
 
 /** Nhóm nghiệp vụ — id dùng trong ROLE_MENU_MAP. */
@@ -22,9 +27,12 @@ export const MENU_GROUP_IDS = Object.freeze({
   TOURNAMENT: "tournament",
   FINANCE: "finance",
   REPORTS: "reports",
+  CRM: "crm",
   AI: "ai",
   ADMIN: "admin",
   SUPPORT: "support",
+  SYSTEM_TECH_ZONE: "system-tech-zone",
+  TEAM_CAPTAIN_ZONE: "team-captain-zone",
   PLAYER_ZONE: "player-zone",
   REFEREE_ZONE: "referee-zone",
 });
@@ -34,9 +42,18 @@ export const MENU_GROUP_IDS = Object.freeze({
  * '*' = tất cả nhóm (SUPER_ADMIN / PLATFORM_ADMIN).
  */
 export const ROLE_MENU_MAP = Object.freeze({
-  [ROLES.SUPER_ADMIN]: "*",
+  [ROLES.PLATFORM_ADMIN]: "*",
   PLATFORM_ADMIN: "*",
-  [ROLES.COURT_OWNER]: [
+  SUPER_ADMIN: "*",
+  [ROLES.SYSTEM_TECHNICIAN]: [
+    MENU_GROUP_IDS.SYSTEM_TECH_ZONE,
+    MENU_GROUP_IDS.SUPPORT,
+  ],
+  SYSTEM_TECHNICIAN: [
+    MENU_GROUP_IDS.SYSTEM_TECH_ZONE,
+    MENU_GROUP_IDS.SUPPORT,
+  ],
+  [ROLES.TENANT_OWNER]: [
     MENU_GROUP_IDS.DASHBOARD,
     MENU_GROUP_IDS.VENUE_OPS,
     MENU_GROUP_IDS.CUSTOMERS,
@@ -44,6 +61,7 @@ export const ROLE_MENU_MAP = Object.freeze({
     MENU_GROUP_IDS.TOURNAMENT,
     MENU_GROUP_IDS.FINANCE,
     MENU_GROUP_IDS.REPORTS,
+    MENU_GROUP_IDS.CRM,
     MENU_GROUP_IDS.AI,
     MENU_GROUP_IDS.ADMIN,
     MENU_GROUP_IDS.SUPPORT,
@@ -56,17 +74,32 @@ export const ROLE_MENU_MAP = Object.freeze({
     MENU_GROUP_IDS.TOURNAMENT,
     MENU_GROUP_IDS.FINANCE,
     MENU_GROUP_IDS.REPORTS,
+    MENU_GROUP_IDS.CRM,
     MENU_GROUP_IDS.AI,
     MENU_GROUP_IDS.ADMIN,
     MENU_GROUP_IDS.SUPPORT,
   ],
-  [ROLES.COURT_MANAGER]: [
+  COURT_OWNER: [
+    MENU_GROUP_IDS.DASHBOARD,
+    MENU_GROUP_IDS.VENUE_OPS,
+    MENU_GROUP_IDS.CUSTOMERS,
+    MENU_GROUP_IDS.CLUB,
+    MENU_GROUP_IDS.TOURNAMENT,
+    MENU_GROUP_IDS.FINANCE,
+    MENU_GROUP_IDS.REPORTS,
+    MENU_GROUP_IDS.CRM,
+    MENU_GROUP_IDS.AI,
+    MENU_GROUP_IDS.ADMIN,
+    MENU_GROUP_IDS.SUPPORT,
+  ],
+  [ROLES.VENUE_MANAGER]: [
     MENU_GROUP_IDS.DASHBOARD,
     MENU_GROUP_IDS.VENUE_OPS,
     MENU_GROUP_IDS.CUSTOMERS,
     MENU_GROUP_IDS.CLUB,
     MENU_GROUP_IDS.TOURNAMENT,
     MENU_GROUP_IDS.REPORTS,
+    MENU_GROUP_IDS.CRM,
     MENU_GROUP_IDS.AI,
     MENU_GROUP_IDS.SUPPORT,
   ],
@@ -77,7 +110,39 @@ export const ROLE_MENU_MAP = Object.freeze({
     MENU_GROUP_IDS.CLUB,
     MENU_GROUP_IDS.TOURNAMENT,
     MENU_GROUP_IDS.REPORTS,
+    MENU_GROUP_IDS.CRM,
     MENU_GROUP_IDS.AI,
+    MENU_GROUP_IDS.SUPPORT,
+  ],
+  COURT_MANAGER: [
+    MENU_GROUP_IDS.DASHBOARD,
+    MENU_GROUP_IDS.VENUE_OPS,
+    MENU_GROUP_IDS.CUSTOMERS,
+    MENU_GROUP_IDS.CLUB,
+    MENU_GROUP_IDS.TOURNAMENT,
+    MENU_GROUP_IDS.REPORTS,
+    MENU_GROUP_IDS.CRM,
+    MENU_GROUP_IDS.AI,
+    MENU_GROUP_IDS.SUPPORT,
+  ],
+  [ROLES.TOURNAMENT_MANAGER]: [
+    MENU_GROUP_IDS.DASHBOARD,
+    MENU_GROUP_IDS.TOURNAMENT,
+    MENU_GROUP_IDS.REPORTS,
+    MENU_GROUP_IDS.SUPPORT,
+  ],
+  TOURNAMENT_MANAGER: [
+    MENU_GROUP_IDS.DASHBOARD,
+    MENU_GROUP_IDS.TOURNAMENT,
+    MENU_GROUP_IDS.REPORTS,
+    MENU_GROUP_IDS.SUPPORT,
+  ],
+  [ROLES.TEAM_CAPTAIN]: [
+    MENU_GROUP_IDS.TEAM_CAPTAIN_ZONE,
+    MENU_GROUP_IDS.SUPPORT,
+  ],
+  TEAM_CAPTAIN: [
+    MENU_GROUP_IDS.TEAM_CAPTAIN_ZONE,
     MENU_GROUP_IDS.SUPPORT,
   ],
   [ROLES.CASHIER]: [
@@ -92,13 +157,53 @@ export const ROLE_MENU_MAP = Object.freeze({
     MENU_GROUP_IDS.REPORTS,
     MENU_GROUP_IDS.SUPPORT,
   ],
-  [ROLES.CLUB_OWNER]: [
+  ACCOUNTANT: [
+    MENU_GROUP_IDS.DASHBOARD,
+    MENU_GROUP_IDS.FINANCE,
+    MENU_GROUP_IDS.REPORTS,
+    MENU_GROUP_IDS.SUPPORT,
+  ],
+  [ROLES.CLUB_MANAGER]: [
     MENU_GROUP_IDS.DASHBOARD,
     MENU_GROUP_IDS.CUSTOMERS,
     MENU_GROUP_IDS.CLUB,
     MENU_GROUP_IDS.TOURNAMENT,
     MENU_GROUP_IDS.SUPPORT,
     MENU_GROUP_IDS.PLAYER_ZONE,
+  ],
+  CLUB_MANAGER: [
+    MENU_GROUP_IDS.DASHBOARD,
+    MENU_GROUP_IDS.CUSTOMERS,
+    MENU_GROUP_IDS.CLUB,
+    MENU_GROUP_IDS.TOURNAMENT,
+    MENU_GROUP_IDS.SUPPORT,
+    MENU_GROUP_IDS.PLAYER_ZONE,
+  ],
+  CLUB_OWNER: [
+    MENU_GROUP_IDS.DASHBOARD,
+    MENU_GROUP_IDS.CUSTOMERS,
+    MENU_GROUP_IDS.CLUB,
+    MENU_GROUP_IDS.TOURNAMENT,
+    MENU_GROUP_IDS.SUPPORT,
+    MENU_GROUP_IDS.PLAYER_ZONE,
+  ],
+  [ROLES.COACH]: [
+    MENU_GROUP_IDS.CLUB,
+    MENU_GROUP_IDS.SUPPORT,
+  ],
+  COACH: [
+    MENU_GROUP_IDS.CLUB,
+    MENU_GROUP_IDS.SUPPORT,
+  ],
+  [ROLES.STAFF]: [
+    MENU_GROUP_IDS.DASHBOARD,
+    MENU_GROUP_IDS.VENUE_OPS,
+    MENU_GROUP_IDS.SUPPORT,
+  ],
+  STAFF: [
+    MENU_GROUP_IDS.DASHBOARD,
+    MENU_GROUP_IDS.VENUE_OPS,
+    MENU_GROUP_IDS.SUPPORT,
   ],
   [ROLES.REFEREE]: [
     MENU_GROUP_IDS.REFEREE_ZONE,
@@ -109,6 +214,22 @@ export const ROLE_MENU_MAP = Object.freeze({
     MENU_GROUP_IDS.TOURNAMENT,
     MENU_GROUP_IDS.SUPPORT,
     MENU_GROUP_IDS.PLAYER_ZONE,
+  ],
+  [ROLES.CUSTOMER]: [
+    MENU_GROUP_IDS.SUPPORT,
+    MENU_GROUP_IDS.PLAYER_ZONE,
+  ],
+  CUSTOMER: [
+    MENU_GROUP_IDS.SUPPORT,
+    MENU_GROUP_IDS.PLAYER_ZONE,
+  ],
+  [ROLES.SUPPORT]: [
+    MENU_GROUP_IDS.SYSTEM_TECH_ZONE,
+    MENU_GROUP_IDS.SUPPORT,
+  ],
+  SUPPORT: [
+    MENU_GROUP_IDS.SYSTEM_TECH_ZONE,
+    MENU_GROUP_IDS.SUPPORT,
   ],
 });
 
@@ -121,7 +242,7 @@ export const NAV_ROUTE_ALIASES = Object.freeze({
   "/select-players": { label: "Danh sách chờ / Ghép cặp", group: MENU_GROUP_IDS.VENUE_OPS },
   "/players": { label: "Danh sách VĐV", group: MENU_GROUP_IDS.CUSTOMERS },
   "/club": { label: "Lịch sinh hoạt / Mùa giải", group: MENU_GROUP_IDS.CLUB },
-  "/daily-play": { label: "Giải nội bộ CLB", group: MENU_GROUP_IDS.CLUB },
+  "/daily-play": { label: "Vui chơi mỗi ngày", group: MENU_GROUP_IDS.CLUB },
   "/statistics": { label: "Kết quả & Xếp hạng", group: MENU_GROUP_IDS.TOURNAMENT },
 });
 
@@ -211,6 +332,8 @@ export const NAV_ICON_KEYS = Object.freeze({
   support: "support",
   profile: "profile",
   notifications: "notifications",
+  coaches: "coaches",
+  messages: "messages",
   marketplace: "marketplace",
   billing: "billing",
   "player-profile": "player-profile",
@@ -226,562 +349,20 @@ export const NAV_ICON_KEYS = Object.freeze({
  * @property {object[]} items
  */
 export const MENU_GROUPS = [
+  ...V5_MENU_GROUPS,
   {
-    id: MENU_GROUP_IDS.DASHBOARD,
-    label: "Tổng quan",
-    items: [
-      {
-        key: "dashboard",
-        icon: NAV_ICON_KEYS.dashboard,
-        text: "Tổng quan",
-        path: "/",
-        match: "exact",
-        permissions: [
-          PERMISSIONS.STATISTICS_VIEW,
-          PERMISSIONS.TOURNAMENT_VIEW,
-          PERMISSIONS.FINANCE_VIEW,
-          PERMISSIONS.BOOKING_VIEW,
-        ],
-      },
-    ],
+    id: MENU_GROUP_IDS.SYSTEM_TECH_ZONE,
+    label: "Kỹ thuật hệ thống",
+    roles: [ROLES.SYSTEM_TECHNICIAN, ROLES.SUPPORT],
+    items: [SYSTEM_TECHNICIAN_MENU_ROOT],
   },
   {
-    id: MENU_GROUP_IDS.VENUE_OPS,
-    label: "Vận hành cụm sân",
-    items: [
-      {
-        key: "venue-calendar",
-        icon: NAV_ICON_KEYS["venue-calendar"],
-        text: "Lịch sân",
-        path: "/court-management/calendar",
-        match: "court-calendar",
-        permissions: [PERMISSIONS.BOOKING_VIEW],
-      },
-      {
-        key: "venue-bookings",
-        icon: NAV_ICON_KEYS["venue-bookings"],
-        text: "Đặt sân",
-        path: "/court-management/bookings",
-        match: "court-bookings",
-        permissions: [PERMISSIONS.BOOKING_VIEW],
-      },
-      {
-        key: "venue-checkin",
-        icon: NAV_ICON_KEYS["venue-checkin"],
-        text: "Check-in",
-        path: "/mobile/check-in",
-        permissions: [PERMISSIONS.TOURNAMENT_VIEW],
-        excludeRoles: [ROLES.PLAYER],
-      },
-      {
-        key: "venue-waiting",
-        icon: NAV_ICON_KEYS["venue-waiting"],
-        text: "Danh sách chờ",
-        path: "/select-players",
-        permissions: [PERMISSIONS.SCHEDULING_VIEW, PERMISSIONS.SCHEDULING_RUN],
-      },
-      {
-        key: "venue-director",
-        icon: NAV_ICON_KEYS["venue-director"],
-        text: "Điều phối sân",
-        path: "/court-engine",
-        match: "court-engine",
-        permissions: [PERMISSIONS.DIRECTOR_USE, PERMISSIONS.SCHEDULING_RUN],
-      },
-      {
-        key: "venue-status",
-        icon: NAV_ICON_KEYS["venue-status"],
-        text: "Trạng thái sân",
-        path: "/court-management",
-        match: "live-courts",
-        permissions: [PERMISSIONS.COURT_VIEW],
-      },
-    ],
+    id: MENU_GROUP_IDS.TEAM_CAPTAIN_ZONE,
+    label: "Đội trưởng",
+    roles: [ROLES.TEAM_CAPTAIN],
+    items: [TEAM_CAPTAIN_MENU_ROOT],
   },
-  {
-    id: MENU_GROUP_IDS.CUSTOMERS,
-    label: "Khách hàng & VĐV",
-    items: [
-      {
-        key: "customers",
-        icon: NAV_ICON_KEYS.customers,
-        text: "Khách hàng",
-        path: "/court-management/customers",
-        match: "court-customers",
-        permissions: [PERMISSIONS.CUSTOMER_VIEW],
-      },
-      {
-        key: "players",
-        icon: NAV_ICON_KEYS.players,
-        text: "Vận động viên",
-        path: "/players",
-        permissions: [PERMISSIONS.PLAYER_VIEW],
-        excludeRoles: [ROLES.PLAYER, ROLES.REFEREE],
-      },
-      {
-        key: "skill",
-        icon: NAV_ICON_KEYS.skill,
-        text: "Điểm trình độ",
-        path: "/statistics",
-        match: "statistics-skill",
-        permissions: [PERMISSIONS.STATISTICS_VIEW],
-      },
-      {
-        key: "history",
-        icon: NAV_ICON_KEYS.history,
-        text: "Lịch sử thi đấu",
-        path: "/statistics",
-        match: "statistics-history",
-        permissions: [PERMISSIONS.STATISTICS_VIEW],
-      },
-      {
-        key: "customer-groups",
-        icon: NAV_ICON_KEYS.groups,
-        text: "Nhóm khách hàng",
-        path: buildComingSoonPath("customer-groups"),
-        navStatus: NAV_ITEM_STATUS.COMING_SOON,
-        badge: "Sắp ra mắt",
-        futureNote: "V5.1 — chưa có route /court-management/customer-groups",
-        permissions: [PERMISSIONS.CUSTOMER_VIEW],
-      },
-    ],
-  },
-  {
-    id: MENU_GROUP_IDS.CLUB,
-    label: "CLB",
-    items: [
-      {
-        key: "club-list",
-        icon: NAV_ICON_KEYS["club-list"],
-        text: "Danh sách CLB",
-        path: "/clubs",
-        match: "clubs",
-        permissions: [PERMISSIONS.CLUB_VIEW],
-      },
-      {
-        key: "club-members",
-        icon: NAV_ICON_KEYS["club-members"],
-        text: "Thành viên CLB",
-        path: "/players",
-        match: "club-members",
-        permissions: [PERMISSIONS.PLAYER_VIEW, PERMISSIONS.CLUB_VIEW],
-        excludeRoles: [ROLES.PLAYER, ROLES.REFEREE, ROLES.CASHIER],
-      },
-      {
-        key: "club-schedule",
-        icon: NAV_ICON_KEYS["club-schedule"],
-        text: "Lịch sinh hoạt",
-        path: "/club",
-        match: "seasons-only",
-        permissions: [PERMISSIONS.CLUB_VIEW, PERMISSIONS.SEASON_UPDATE],
-      },
-      {
-        key: "club-internal",
-        icon: NAV_ICON_KEYS["club-internal"],
-        text: "Giải nội bộ CLB",
-        path: "/daily-play",
-        match: "daily-play",
-        permissions: [PERMISSIONS.TOURNAMENT_VIEW],
-      },
-    ],
-  },
-  {
-    id: MENU_GROUP_IDS.TOURNAMENT,
-    label: "Giải đấu",
-    items: [
-      {
-        key: "tournament-list",
-        icon: NAV_ICON_KEYS["tournament-list"],
-        text: "Danh sách giải",
-        path: "/tournament",
-        match: "tournament-home",
-        permissions: [PERMISSIONS.TOURNAMENT_VIEW],
-      },
-      {
-        key: "tournament-create",
-        icon: NAV_ICON_KEYS["tournament-create"],
-        text: "Tạo giải",
-        path: "/tournament",
-        match: "tournament-create",
-        permissions: [PERMISSIONS.TOURNAMENT_CREATE, PERMISSIONS.TOURNAMENT_VIEW],
-      },
-      {
-        key: "tournament-register",
-        icon: NAV_ICON_KEYS["tournament-register"],
-        text: "Đăng ký VĐV",
-        path: "/tournament",
-        match: "tournament-register",
-        permissions: [PERMISSIONS.TOURNAMENT_UPDATE, PERMISSIONS.TOURNAMENT_VIEW],
-        excludeRoles: [ROLES.PLAYER, ROLES.REFEREE],
-      },
-      {
-        key: "tournament-pairing",
-        icon: NAV_ICON_KEYS["tournament-pairing"],
-        text: "Ghép cặp",
-        path: "/select-players",
-        permissions: [PERMISSIONS.SCHEDULING_RUN, PERMISSIONS.TOURNAMENT_UPDATE],
-        excludeRoles: [ROLES.PLAYER, ROLES.REFEREE, ROLES.CASHIER],
-      },
-      {
-        key: "tournament-draw",
-        icon: NAV_ICON_KEYS["tournament-draw"],
-        text: "Chia bảng",
-        path: "/tournament/bracket",
-        match: "bracket",
-        permissions: [PERMISSIONS.TOURNAMENT_VIEW, PERMISSIONS.TOURNAMENT_UPDATE],
-      },
-      {
-        key: "tournament-schedule",
-        icon: NAV_ICON_KEYS["tournament-schedule"],
-        text: "Lịch thi đấu",
-        path: "/court-engine",
-        match: "tournament-schedule",
-        permissions: [PERMISSIONS.DIRECTOR_USE, PERMISSIONS.TOURNAMENT_VIEW],
-      },
-      {
-        key: "bracket",
-        icon: NAV_ICON_KEYS.bracket,
-        text: "Sơ đồ thi đấu",
-        path: "/tournament/bracket",
-        match: "bracket",
-        permissions: [PERMISSIONS.TOURNAMENT_VIEW],
-      },
-      {
-        key: "referee",
-        icon: NAV_ICON_KEYS.referee,
-        text: "Trọng tài",
-        path: "/referee",
-        permissions: [PERMISSIONS.TOURNAMENT_VIEW, PERMISSIONS.MATCH_UPDATE],
-        roles: [ROLES.REFEREE, ROLES.COURT_OWNER, ROLES.COURT_MANAGER, ROLES.SUPER_ADMIN],
-      },
-      {
-        key: "statistics",
-        icon: NAV_ICON_KEYS.statistics,
-        text: "Kết quả & Xếp hạng",
-        path: "/statistics",
-        permissions: [PERMISSIONS.STATISTICS_VIEW],
-      },
-    ],
-  },
-  {
-    id: MENU_GROUP_IDS.FINANCE,
-    label: "Tài chính",
-    items: [
-      {
-        key: "orders",
-        icon: NAV_ICON_KEYS.orders,
-        text: "Đơn hàng",
-        path: "/marketplace/orders",
-        permissions: [PERMISSIONS.MARKETPLACE_VIEW],
-        requiresFeature: "marketplace",
-      },
-      {
-        key: "payments",
-        icon: NAV_ICON_KEYS.payments,
-        text: "Thanh toán",
-        path: "/billing/payment",
-        permissions: [PERMISSIONS.BILLING_PAYMENT_VIEW, PERMISSIONS.BILLING_VIEW],
-      },
-      {
-        key: "debt",
-        icon: NAV_ICON_KEYS.debt,
-        text: "Công nợ",
-        path: buildComingSoonPath("debt"),
-        navStatus: NAV_ITEM_STATUS.COMING_SOON,
-        badge: "Sắp ra mắt",
-        futureNote: "V5.1 — chưa có route công nợ riêng (không trỏ revenue)",
-        permissions: [PERMISSIONS.FINANCE_VIEW],
-      },
-      {
-        key: "subscription",
-        icon: NAV_ICON_KEYS.subscription,
-        text: "Gói thuê bao",
-        path: "/billing/current-plan",
-        permissions: [PERMISSIONS.BILLING_VIEW, PERMISSIONS.BILLING_SUBSCRIPTION_VIEW],
-      },
-      {
-        key: "transactions",
-        icon: NAV_ICON_KEYS.transactions,
-        text: "Lịch sử giao dịch",
-        path: "/billing/invoices",
-        permissions: [PERMISSIONS.BILLING_INVOICE_VIEW, PERMISSIONS.BILLING_VIEW],
-      },
-    ],
-  },
-  {
-    id: MENU_GROUP_IDS.REPORTS,
-    label: "Báo cáo",
-    items: [
-      {
-        key: "report-overview",
-        icon: NAV_ICON_KEYS["report-overview"],
-        text: "Tổng quan kinh doanh",
-        path: "/",
-        match: "exact",
-        permissions: [PERMISSIONS.STATISTICS_VIEW, PERMISSIONS.FINANCE_VIEW],
-      },
-      {
-        key: "report-revenue",
-        icon: NAV_ICON_KEYS["report-revenue"],
-        text: "Doanh thu sân",
-        path: "/court-management/revenue",
-        match: "court-revenue",
-        permissions: [PERMISSIONS.FINANCE_VIEW],
-      },
-      {
-        key: "report-performance",
-        icon: NAV_ICON_KEYS["report-performance"],
-        text: "Hiệu suất sân",
-        path: "/court-management",
-        match: "live-courts",
-        permissions: [PERMISSIONS.COURT_VIEW, PERMISSIONS.STATISTICS_VIEW],
-      },
-      {
-        key: "report-customers",
-        icon: NAV_ICON_KEYS["report-customers"],
-        text: "Khách hàng",
-        path: "/court-management/customers",
-        match: "court-customers",
-        permissions: [PERMISSIONS.CUSTOMER_VIEW],
-      },
-      {
-        key: "report-tournament",
-        icon: NAV_ICON_KEYS["report-tournament"],
-        text: "Giải đấu",
-        path: "/statistics",
-        permissions: [PERMISSIONS.STATISTICS_VIEW],
-      },
-      {
-        key: "report-peak",
-        icon: NAV_ICON_KEYS["report-peak"],
-        text: "Giờ cao điểm",
-        path: buildComingSoonPath("report-peak"),
-        navStatus: NAV_ITEM_STATUS.COMING_SOON,
-        badge: "Sắp ra mắt",
-        futureNote: "V5.1 — chưa có báo cáo giờ cao điểm riêng",
-        permissions: [PERMISSIONS.FINANCE_VIEW, PERMISSIONS.STATISTICS_VIEW],
-      },
-    ],
-  },
-  {
-    id: MENU_GROUP_IDS.AI,
-    label: "Trợ lý AI",
-    requiresFeature: "ai",
-    items: [
-      {
-        key: "ai-group",
-        icon: NAV_ICON_KEYS["ai-group"],
-        text: "Đề xuất chia bảng",
-        path: "/tournament?ai=group",
-        permissions: [PERMISSIONS.TOURNAMENT_UPDATE, PERMISSIONS.TOURNAMENT_VIEW],
-        requiresFeature: "ai",
-      },
-      {
-        key: "ai-pairing",
-        icon: NAV_ICON_KEYS["ai-pairing"],
-        text: "Đề xuất ghép cặp",
-        path: "/tournament?ai=pairing",
-        permissions: [PERMISSIONS.TOURNAMENT_UPDATE, PERMISSIONS.SCHEDULING_RUN],
-        requiresFeature: "ai",
-      },
-      {
-        key: "ai-scheduling",
-        icon: NAV_ICON_KEYS["ai-scheduling"],
-        text: "Đề xuất xếp sân",
-        path: "/court-engine?ai=scheduling",
-        match: "court-engine",
-        permissions: [PERMISSIONS.SCHEDULING_RUN, PERMISSIONS.DIRECTOR_USE],
-        requiresFeature: "ai",
-      },
-      {
-        key: "ai-time",
-        icon: NAV_ICON_KEYS["ai-time"],
-        text: "Dự đoán thời gian",
-        path: "/tournament?ai=time",
-        permissions: [PERMISSIONS.TOURNAMENT_VIEW],
-        requiresFeature: "ai",
-      },
-      {
-        key: "ai-validation",
-        icon: NAV_ICON_KEYS["ai-validation"],
-        text: "Cảnh báo bất hợp lý",
-        path: buildComingSoonPath("ai-validation"),
-        navStatus: NAV_ITEM_STATUS.COMING_SOON,
-        badge: "Beta",
-        futureNote: "V5.1 — chưa có màn AI validation riêng",
-        permissions: [PERMISSIONS.TOURNAMENT_VIEW],
-        requiresFeature: "ai",
-      },
-    ],
-  },
-  {
-    id: MENU_GROUP_IDS.ADMIN,
-    label: "Quản trị",
-    items: [
-      {
-        key: "admin-tenants",
-        icon: NAV_ICON_KEYS.tenants,
-        text: "Cụm sân / Cơ sở",
-        path: "/admin/tenants",
-        permissions: [PERMISSIONS.ROLE_MANAGE, PERMISSIONS.VENUE_UPDATE],
-        roles: [ROLES.SUPER_ADMIN],
-      },
-      {
-        key: "users",
-        icon: NAV_ICON_KEYS.users,
-        text: "Người dùng",
-        path: "/users",
-        permissions: [PERMISSIONS.USER_MANAGE],
-      },
-      {
-        key: "roles",
-        icon: NAV_ICON_KEYS.roles,
-        text: "Vai trò & Quyền",
-        path: "/users",
-        match: "users-roles",
-        permissions: [PERMISSIONS.USER_MANAGE, PERMISSIONS.ROLE_MANAGE],
-      },
-      {
-        key: "courts",
-        icon: NAV_ICON_KEYS.courts,
-        text: "Sân thi đấu",
-        path: "/court-management/courts",
-        match: "court-courts",
-        permissions: [PERMISSIONS.COURT_VIEW],
-      },
-      {
-        key: "settings",
-        icon: NAV_ICON_KEYS.settings,
-        text: "Cấu hình",
-        path: "/settings",
-        permissions: [PERMISSIONS.SETTINGS_VIEW],
-      },
-      {
-        key: "audit",
-        icon: NAV_ICON_KEYS.audit,
-        text: "Nhật ký hoạt động",
-        path: "/audit",
-        permissions: [PERMISSIONS.USER_MANAGE],
-      },
-      {
-        key: "integrations",
-        icon: NAV_ICON_KEYS.integrations,
-        text: "Tích hợp",
-        path: "/settings/integrations",
-        permissions: [PERMISSIONS.INTEGRATION_VIEW, PERMISSIONS.SETTINGS_VIEW],
-        requiresFeature: "integrations",
-      },
-      {
-        key: "admin-marketplace",
-        icon: NAV_ICON_KEYS.marketplace,
-        text: "Admin Marketplace",
-        path: "/admin/marketplace",
-        permissions: [PERMISSIONS.MARKETPLACE_MANAGE],
-        roles: [ROLES.SUPER_ADMIN, ROLES.COURT_OWNER],
-        requiresFeature: "marketplace",
-      },
-      {
-        key: "admin-integrations",
-        icon: NAV_ICON_KEYS.integrations,
-        text: "Integration Logs",
-        path: "/admin/integration-logs",
-        permissions: [PERMISSIONS.API_MANAGE, PERMISSIONS.INTEGRATION_MANAGE],
-        roles: [ROLES.SUPER_ADMIN, ROLES.COURT_OWNER],
-        requiresFeature: "integrations",
-      },
-      {
-        key: "admin-billing",
-        icon: NAV_ICON_KEYS.billing,
-        text: "Admin Billing",
-        path: "/admin/billing",
-        permissions: [PERMISSIONS.BILLING_MANAGE],
-        roles: [ROLES.SUPER_ADMIN],
-      },
-      {
-        key: "club-settings",
-        icon: NAV_ICON_KEYS["club-list"],
-        text: "CLB & Giải",
-        path: "/club",
-        match: "club-settings",
-        permissions: [PERMISSIONS.CLUB_VIEW, PERMISSIONS.CLUB_UPDATE],
-      },
-    ],
-  },
-  {
-    id: MENU_GROUP_IDS.SUPPORT,
-    label: "Hỗ trợ",
-    items: [
-      {
-        key: "support",
-        icon: NAV_ICON_KEYS.support,
-        text: "Trung tâm trợ giúp",
-        path: "/billing/support",
-        permissions: [PERMISSIONS.BILLING_VIEW],
-        excludeRoles: [ROLES.REFEREE],
-      },
-      {
-        key: "profile",
-        icon: NAV_ICON_KEYS.profile,
-        text: "Hồ sơ của tôi",
-        path: "/profile",
-      },
-      {
-        key: "mobile-notifications",
-        icon: NAV_ICON_KEYS.notifications,
-        text: "Thông báo",
-        path: "/mobile/notifications",
-        excludeRoles: [ROLES.REFEREE],
-      },
-      {
-        key: "qr-scan",
-        icon: NAV_ICON_KEYS["venue-checkin"],
-        text: "Quét QR",
-        path: "/mobile/qr-scan",
-        permissions: [PERMISSIONS.TOURNAMENT_UPDATE, PERMISSIONS.TOURNAMENT_VIEW],
-        excludeRoles: [ROLES.PLAYER],
-      },
-      {
-        key: "qr-generate",
-        icon: NAV_ICON_KEYS["venue-checkin"],
-        text: "Tạo QR",
-        path: "/mobile/qr-generate",
-        permissions: [PERMISSIONS.TOURNAMENT_UPDATE],
-        excludeRoles: [ROLES.PLAYER, ROLES.REFEREE],
-      },
-      {
-        key: "marketplace",
-        icon: NAV_ICON_KEYS.marketplace,
-        text: "Marketplace",
-        path: "/marketplace",
-        permissions: [PERMISSIONS.MARKETPLACE_VIEW],
-        requiresFeature: "marketplace",
-      },
-      {
-        key: "mobile-player-owner",
-        icon: NAV_ICON_KEYS["mobile-player"],
-        text: "Trang của tôi",
-        path: "/mobile/player",
-        roles: [ROLES.COURT_OWNER, ROLES.COURT_MANAGER, ROLES.SUPER_ADMIN],
-      },
-      {
-        key: "billing",
-        icon: NAV_ICON_KEYS.billing,
-        text: "Gói & Thanh toán",
-        path: "/billing",
-        permissions: [PERMISSIONS.BILLING_VIEW],
-        excludeRoles: [ROLES.REFEREE],
-      },
-      {
-        key: "support-settings",
-        icon: NAV_ICON_KEYS.settings,
-        text: "Cài đặt",
-        path: "/settings",
-        permissions: [PERMISSIONS.SETTINGS_VIEW],
-        excludeRoles: [ROLES.REFEREE],
-      },
-    ],
-  },
-  {
+    {
     id: MENU_GROUP_IDS.PLAYER_ZONE,
     label: "VĐV",
     roles: [ROLES.PLAYER],
@@ -853,6 +434,14 @@ export const ROUTE_PERMISSIONS = Object.freeze({
   "/club": [PERMISSIONS.CLUB_VIEW],
   "/clubs": [PERMISSIONS.CLUB_VIEW],
   "/tournament": [PERMISSIONS.TOURNAMENT_VIEW],
+  "/tournament/list": [PERMISSIONS.TOURNAMENT_VIEW],
+  "/tournament/create": [PERMISSIONS.TOURNAMENT_CREATE, PERMISSIONS.TOURNAMENT_VIEW],
+  "/tournament/register": [PERMISSIONS.TOURNAMENT_UPDATE, PERMISSIONS.TOURNAMENT_VIEW],
+  "/tournament/teams": [PERMISSIONS.TOURNAMENT_VIEW],
+  "/tournament/schedule": [PERMISSIONS.TOURNAMENT_VIEW, PERMISSIONS.DIRECTOR_USE],
+  "/tournament/match-reports": [PERMISSIONS.TOURNAMENT_VIEW],
+  "/tournament/config/format": [PERMISSIONS.TOURNAMENT_UPDATE, PERMISSIONS.TOURNAMENT_VIEW],
+  "/tournament/config/settings": [PERMISSIONS.TOURNAMENT_UPDATE, PERMISSIONS.TOURNAMENT_VIEW],
   "/tournament/bracket": [PERMISSIONS.TOURNAMENT_VIEW],
   "/court-engine": [PERMISSIONS.DIRECTOR_USE, PERMISSIONS.SCHEDULING_RUN],
   "/statistics": [PERMISSIONS.STATISTICS_VIEW],
@@ -872,18 +461,28 @@ export const ROUTE_PERMISSIONS = Object.freeze({
   "/billing/payment": [PERMISSIONS.BILLING_PAYMENT_VIEW],
   "/billing/upgrade": [PERMISSIONS.BILLING_SUBSCRIPTION_VIEW],
   "/billing/support": [PERMISSIONS.BILLING_VIEW],
+  "/finance/debt": [PERMISSIONS.FINANCE_VIEW],
+  "/finance/receipts": [PERMISSIONS.FINANCE_VIEW],
+  "/finance/refunds": [PERMISSIONS.FINANCE_VIEW],
+  "/crm/messages": [PERMISSIONS.BOOKING_VIEW, PERMISSIONS.CUSTOMER_VIEW],
+  "/crm/templates": [PERMISSIONS.CUSTOMER_VIEW],
+  "/crm/campaigns": [PERMISSIONS.CUSTOMER_VIEW],
+  "/crm/history": [PERMISSIONS.CUSTOMER_VIEW],
+  "/crm/reminders/booking": [PERMISSIONS.BOOKING_VIEW, PERMISSIONS.CUSTOMER_VIEW],
+  "/reports": [PERMISSIONS.STATISTICS_VIEW, PERMISSIONS.FINANCE_VIEW],
   "/admin/billing": [PERMISSIONS.BILLING_MANAGE],
   "/admin/billing/tenants": [PERMISSIONS.BILLING_MANAGE],
   "/admin/billing/plans": [PERMISSIONS.BILLING_PLAN_VIEW],
   "/admin/billing/invoices": [PERMISSIONS.BILLING_INVOICE_VIEW],
   "/admin/billing/payments": [PERMISSIONS.BILLING_PAYMENT_VIEW],
   "/admin/billing/audit": [PERMISSIONS.BILLING_AUDIT_VIEW],
-  "/users": [PERMISSIONS.USER_MANAGE],
-  "/audit": [PERMISSIONS.USER_MANAGE],
+  "/users": [PERMISSIONS.USER_MANAGE, PERMISSIONS.USER_VIEW],
+  "/audit": [PERMISSIONS.USER_MANAGE, PERMISSIONS.ACTIVITY_LOG_VIEW, PERMISSIONS.ROLE_VIEW],
   "/profile": [],
   "/referee": [PERMISSIONS.TOURNAMENT_VIEW, PERMISSIONS.MATCH_UPDATE],
   "/403": [],
-  "/admin/tenants": [PERMISSIONS.ROLE_MANAGE, PERMISSIONS.VENUE_UPDATE],
+  "/admin/tenants": [PERMISSIONS.ROLE_MANAGE, PERMISSIONS.VENUE_UPDATE, PERMISSIONS.TENANT_VIEW],
+  "/support": [PERMISSIONS.SUPPORT_TICKET_MANAGE, PERMISSIONS.BILLING_VIEW],
   "/marketplace": [PERMISSIONS.MARKETPLACE_VIEW],
   "/marketplace/orders": [PERMISSIONS.MARKETPLACE_VIEW],
   "/mobile/check-in": [PERMISSIONS.TOURNAMENT_VIEW],
@@ -897,6 +496,7 @@ export const ROUTE_PERMISSIONS = Object.freeze({
     PERMISSIONS.FINANCE_VIEW,
   ],
   "/coming-soon": [],
+  "/team-portal": [PERMISSIONS.TEAM_VIEW, PERMISSIONS.TEAM_MEMBER_VIEW],
 });
 
 export function resolveComingSoonModule(moduleKey) {
@@ -1074,23 +674,54 @@ export const MOBILE_DRAWER_WIDTH = 280;
 export const MOBILE_BREAKPOINT = "md";
 
 /** Flat list cho Global Search. */
-export function buildSearchableNavItems(groups = MENU_GROUPS) {
-  const items = [];
-  for (const group of groups) {
-    for (const item of group.items || []) {
-      if (!item.path && !item.resolvePath) continue;
-      items.push({
-        key: item.key,
-        label: item.text,
-        path: item.path,
-        group: group.label,
-        permissions: item.permissions,
-        roles: item.roles,
-        excludeRoles: item.excludeRoles,
-        requiresFeature: item.requiresFeature,
-      });
+export function collectMenuItemLabels(groups) {
+  const labels = [];
+
+  function walkItems(items) {
+    for (const item of items || []) {
+      if (item.text) {
+        labels.push(item.text);
+      }
+      if (item.children?.length) {
+        walkItems(item.children);
+      }
     }
   }
+
+  for (const group of groups || []) {
+    walkItems(group.items);
+  }
+
+  return labels;
+}
+
+export function buildSearchableNavItems(groups = MENU_GROUPS) {
+  const items = [];
+
+  function walk(group, groupItems) {
+    for (const item of groupItems || []) {
+      if (item.path || item.resolvePath) {
+        items.push({
+          key: item.key,
+          label: item.text,
+          path: item.path,
+          group: group.label,
+          permissions: item.permissions,
+          roles: item.roles,
+          excludeRoles: item.excludeRoles,
+          requiresFeature: item.requiresFeature,
+        });
+      }
+      if (item.children?.length) {
+        walk(group, item.children);
+      }
+    }
+  }
+
+  for (const group of groups) {
+    walk(group, group.items);
+  }
+
   return items;
 }
 
@@ -1122,8 +753,10 @@ export function resolveRoleMenuAccess(role) {
 export function resolveMobileNavProfile(role) {
   const normalized = resolveNavRole(role);
   if (normalized === ROLES.REFEREE) return "referee";
-  if (normalized === ROLES.PLAYER) return "player";
-  if (normalized === ROLES.CLUB_OWNER) return "player";
+  if (normalized === ROLES.PLAYER || normalized === ROLES.CUSTOMER) return "player";
+  if (normalized === ROLES.CLUB_MANAGER) return "player";
+  if (normalized === ROLES.TEAM_CAPTAIN) return "player";
+  if (normalized === ROLES.SYSTEM_TECHNICIAN) return "manager";
   return "manager";
 }
 
@@ -1153,8 +786,9 @@ export function listFutureNavItems(groups = MENU_GROUPS) {
 /** Mục coming-soon — hiển thị menu + badge, route placeholder. */
 export function listComingSoonNavItems(groups = MENU_GROUPS) {
   const items = [];
-  for (const group of groups) {
-    for (const item of group.items || []) {
+
+  function walk(group, groupItems) {
+    for (const item of groupItems || []) {
       if (item.navStatus === NAV_ITEM_STATUS.COMING_SOON) {
         items.push({
           key: item.key,
@@ -1164,7 +798,120 @@ export function listComingSoonNavItems(groups = MENU_GROUPS) {
           badge: item.badge || "Sắp ra mắt",
         });
       }
+      if (item.children?.length) {
+        walk(group, item.children);
+      }
     }
   }
+
+  for (const group of groups) {
+    walk(group, group.items);
+  }
+
   return items;
+}
+
+/** Sidebar phẳng — thứ tự menu theo mockup Slate Enterprise (Direction C). */
+export const SHELL_FLAT_MENU_KEYS = Object.freeze([
+  "dashboard",
+  "venue-calendar",
+  "venue-bookings",
+  "tournament-root",
+  "customers",
+  "coaches",
+  "report-revenue",
+  "report-overview",
+  "messages",
+  "mobile-notifications",
+  "support-settings",
+]);
+
+export const SHELL_FLAT_MENU_LABELS = Object.freeze({
+  customers: "Hội viên",
+  "report-revenue": "Doanh thu",
+  "report-overview": "Báo cáo",
+  "mobile-notifications": "Thông báo",
+  "support-settings": "Cài đặt",
+});
+
+const SHELL_FLAT_MENU_KEYS_BY_ROLE = Object.freeze({
+  [ROLES.PLAYER]: [
+    "club-list",
+    "club-daily-play",
+    "tournament-root",
+    "player-profile",
+    "mobile-notifications",
+    "support-settings",
+  ],
+  [ROLES.TEAM_CAPTAIN]: ["captain-home", "captain-schedule", "captain-lineup", "captain-results", "captain-support"],
+  [ROLES.REFEREE]: ["referee-hub", "profile", "mobile-notifications"],
+  [ROLES.SYSTEM_TECHNICIAN]: ["tech-overview", "tech-tenants", "tech-users", "tech-integrations", "tech-support-tickets"],
+});
+
+export function resolveShellFlatMenuKeys(user) {
+  const role = normalizeRole(user?.role);
+  if (SHELL_FLAT_MENU_KEYS_BY_ROLE[role]) {
+    return SHELL_FLAT_MENU_KEYS_BY_ROLE[role];
+  }
+  if (role === ROLES.PLATFORM_ADMIN || role === ROLES.SUPER_ADMIN) {
+    return [...SHELL_FLAT_MENU_KEYS, "admin-tenants", "users"];
+  }
+  return SHELL_FLAT_MENU_KEYS;
+}
+
+export function flattenMenuGroupsForShell(groups, user) {
+  const itemMap = new Map();
+
+  function indexItems(items) {
+    for (const item of items || []) {
+      if (item.key && !itemMap.has(item.key)) {
+        itemMap.set(item.key, item);
+      }
+      if (item.children?.length) {
+        indexItems(item.children);
+      }
+    }
+  }
+
+  for (const group of groups || []) {
+    indexItems(group.items);
+  }
+
+  const keys = resolveShellFlatMenuKeys(user);
+  const items = [];
+
+  for (const key of keys) {
+    if (key === "tournament-root") {
+      items.push({ key: "tournament-root", type: "tournament-tree" });
+      continue;
+    }
+
+    const item = itemMap.get(key);
+    if (!item) continue;
+    const label = SHELL_FLAT_MENU_LABELS[key];
+    items.push(label ? { ...item, text: label } : item);
+  }
+
+  if (items.length) {
+    return items;
+  }
+
+  for (const group of groups || []) {
+    for (const item of group.items || []) {
+      const mapKey = item.key || item.path;
+      if (!mapKey || items.some((row) => (row.key || row.path) === mapKey)) continue;
+      items.push(item);
+    }
+  }
+
+  return items;
+}
+
+export function resolveTournamentMenuRoot(groups) {
+  const tournamentGroup = (groups || []).find((group) => group.id === MENU_GROUP_IDS.TOURNAMENT);
+  const root = tournamentGroup?.items?.[0];
+  if (!root?.children?.length) {
+    return null;
+  }
+  return root;
 }

@@ -75,7 +75,11 @@ export default function VenueSwitcher({ size = "small", minWidth = 180, variant 
           color: styles.color,
           borderRadius: variant === "light" ? 2 : 1,
           fontWeight: variant === "light" ? 700 : 500,
-          fontSize: hideLabel ? 13 : undefined,
+          fontSize: hideLabel ? 11.5 : undefined,
+          ...(hideLabel && {
+            height: 30,
+            "& .MuiSelect-select": { py: 0.5 },
+          }),
           ".MuiOutlinedInput-notchedOutline": { borderColor: styles.outline },
           ".MuiSvgIcon-root": { color: styles.icon },
         }}

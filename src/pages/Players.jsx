@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { useNavigate, useSearchParams } from "react-router-dom";
 
 import {
   Alert,
@@ -77,7 +78,8 @@ export default function Players() {
   const [genderFilter, setGenderFilter] = useState("all");
   const [levelRange, setLevelRange] = useState([1.5, 6]);
   const [statusFilter, setStatusFilter] = useState("all");
-  const [formError, setFormError] = useState(null);
+  const [searchParams] = useSearchParams();
+  const skillTab = searchParams.get("tab") === "skill";
   const [reviewMessage, setReviewMessage] = useState(null);
 
   useEffect(() => {
@@ -376,6 +378,12 @@ export default function Players() {
       )}
 
       <PlayerStats stats={stats} />
+
+      {skillTab && (
+        <Alert severity="info" sx={{ mb: 2 }}>
+          Chế độ Điểm trình độ — xem đề xuất đổi hạng và phân bố level VĐV.
+        </Alert>
+      )}
 
       <PlayerFilters
         search={search}

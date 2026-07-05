@@ -94,6 +94,8 @@ export function resolveRouteAccessScope({ user, activeClubId, activeClub }) {
     activeClub?.venueId || activeClub?.tenantId
   );
   const clubId = user?.clubId || activeClubId || null;
+  const tournamentId = user?.tournamentId || user?.tournament_id || null;
+  const teamId = user?.teamId || user?.team_id || null;
 
   if (user?.role && isVenueScopedRole(user.role) && profileVenueId) {
     return {
@@ -101,6 +103,8 @@ export function resolveRouteAccessScope({ user, activeClubId, activeClub }) {
       venueId: profileVenueId,
       tenantId: profileVenueId,
       playerId: user?.playerId || null,
+      tournamentId,
+      teamId,
     };
   }
 
@@ -111,5 +115,7 @@ export function resolveRouteAccessScope({ user, activeClubId, activeClub }) {
     venueId,
     tenantId: venueId,
     playerId: user?.playerId || null,
+    tournamentId,
+    teamId,
   };
 }

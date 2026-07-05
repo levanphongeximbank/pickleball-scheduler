@@ -110,8 +110,11 @@ test("dev registry — không có admin@staging.local", () => {
     devUsers.some((user) => user.email === "admin@staging.local"),
     false
   );
-  assert.equal(
-    devUsers.some((user) => user.role === ROLES.SUPER_ADMIN),
+  assert.ok(
+    devUsers.some(
+      (user) =>
+        user.role === ROLES.PLATFORM_ADMIN || user.role === ROLES.SUPER_ADMIN
+    ),
     true
   );
 });

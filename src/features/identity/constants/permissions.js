@@ -1,6 +1,6 @@
 /**
- * v4.0 CRUD permission catalog — source of truth.
- * Format: resource.action (view | create | update | delete | run | use).
+ * V5.2 permission catalog — source of truth.
+ * Format: resource.action (view | create | update | delete | run | use | manage).
  */
 export const PERMISSIONS = Object.freeze({
   // ─── Core Sprint 1 (spec) ───────────────────────────────────────
@@ -85,7 +85,7 @@ export const PERMISSIONS = Object.freeze({
 
   API_MANAGE: "api.manage",
 
-  // ─── Team tournament (v5) ─────────────────────────────────────────
+  // ─── Team tournament (v5 legacy keys) ─────────────────────────────
   TEAM_MANAGE: "team.manage",
   TEAM_VIEW: "team.view",
   TEAM_LINEUP_SUBMIT: "team.lineup.submit",
@@ -94,6 +94,59 @@ export const PERMISSIONS = Object.freeze({
   TEAM_LINEUP_RANDOMIZE: "team.lineup.randomize",
   TEAM_MATCH_RESULT_MANAGE: "team.match.result.manage",
   TEAM_STANDINGS_VIEW: "team.standings.view",
+
+  // ─── V5.1 — Kỹ thuật viên hệ thống ──────────────────────────────
+  SYSTEM_HEALTH_VIEW: "system.health.view",
+  SYSTEM_LOG_VIEW: "system.log.view",
+  SYSTEM_CONFIG_VIEW: "system.config.view",
+  SYSTEM_CONFIG_UPDATE_LIMITED: "system.config.update_limited",
+  TENANT_VIEW: "tenant.view",
+  USER_VIEW: "user.view",
+  ROLE_VIEW: "role.view",
+  PERMISSION_VIEW: "permission.view",
+  ACTIVITY_LOG_VIEW: "activity_log.view",
+  INTEGRATION_TEST: "integration.test",
+  SUPPORT_TICKET_MANAGE: "support_ticket.manage",
+  DATA_DIAGNOSTIC_VIEW: "data_diagnostic.view",
+  MIGRATION_STATUS_VIEW: "migration_status.view",
+
+  // ─── V5.2 — Trưởng nhóm / Đội trưởng ────────────────────────────
+  TEAM_MEMBER_VIEW: "team_member.view",
+  TEAM_MEMBER_PROPOSE: "team_member.propose",
+  TEAM_MEMBER_MANAGE_LIMITED: "team_member.manage_limited",
+  TEAM_LINEUP_VIEW: "team_lineup.view",
+  TEAM_LINEUP_SUBMIT_V5: "team_lineup.submit",
+  TEAM_LINEUP_UPDATE_BEFORE_LOCK: "team_lineup.update_before_lock",
+  TEAM_SCHEDULE_VIEW: "team_schedule.view",
+  TEAM_RESULT_VIEW: "team_result.view",
+  TEAM_MESSAGE_SEND: "team_message.send",
+  TEAM_CHECKIN_VIEW: "team_checkin.view",
+  TEAM_CHECKIN_CONFIRM: "team_checkin.confirm",
+  TEAM_ATTENDANCE_CONFIRM: "team_attendance.confirm",
+  TEAM_SUBSTITUTION_REQUEST: "team_substitution.request",
+
+  // ─── V5.2 — Giải đồng đội (BTC / quản lý giải) ──────────────────
+  TEAM_EVENT_VIEW: "team_event.view",
+  TEAM_EVENT_MANAGE: "team_event.manage",
+  EXISTING_TEAM_VIEW: "existing_team.view",
+  EXISTING_TEAM_SELECT: "existing_team.select",
+  EXISTING_TEAM_MANAGE: "existing_team.manage",
+  IN_TOURNAMENT_TEAM_VIEW: "in_tournament_team.view",
+  IN_TOURNAMENT_TEAM_CREATE: "in_tournament_team.create",
+  IN_TOURNAMENT_TEAM_UPDATE: "in_tournament_team.update",
+  IN_TOURNAMENT_TEAM_DELETE: "in_tournament_team.delete",
+  TEAM_MANUAL_SPLIT_VIEW: "team_manual_split.view",
+  TEAM_MANUAL_SPLIT_MANAGE: "team_manual_split.manage",
+  TEAM_AUTO_DRAW_VIEW: "team_auto_draw.view",
+  TEAM_AUTO_DRAW_MANAGE: "team_auto_draw.manage",
+  TEAM_DRAFT_VIEW: "team_draft.view",
+  TEAM_DRAFT_MANAGE: "team_draft.manage",
+  TEAM_CAPTAIN_ASSIGN: "team_captain.assign",
+  TEAM_CAPTAIN_REMOVE: "team_captain.remove",
+  TEAM_CAPTAIN_VIEW: "team_captain.view",
+  TEAM_LINEUP_APPROVE: "team_lineup.approve",
+  TEAM_LINEUP_LOCK_V5: "team_lineup.lock",
+  TEAM_SUBSTITUTION_APPROVE: "team_substitution.approve",
 });
 
 export function isValidPermission(permission) {

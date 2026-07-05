@@ -39,15 +39,15 @@ function MainLayoutContent() {
           }}
         >
           <Header onMenuClick={() => setDrawerOpen(true)} />
-          <AppContextBar />
+          {isMobile && <AppContextBar />}
           <MobileDrawer open={drawerOpen} onClose={() => setDrawerOpen(false)} />
 
           <Box
             component="main"
             sx={{
               flexGrow: 1,
-              p: { xs: 1.5, sm: 2, md: 3 },
-              pb: { xs: 9, md: 3 },
+              p: { xs: 1.5, sm: 2, md: "24px" },
+              pb: { xs: 9, md: "24px" },
               minWidth: 0,
             }}
           >

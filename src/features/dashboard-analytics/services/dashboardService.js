@@ -377,6 +377,8 @@ function assembleDashboardPayload(realPayload, from, to) {
     topCourts: buildTopCourtsFromReal(realPayload.utilization, realPayload.revenue),
     heatmap,
     peakHours: buildPeakHoursFromHeatmap(heatmap),
+    recentBookings: [],
+    upcomingTournaments: [],
   };
 }
 

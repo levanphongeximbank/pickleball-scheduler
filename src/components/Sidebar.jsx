@@ -7,7 +7,7 @@ import { filterMenuGroups, resolveRouteAccessScope } from "../auth/menuAccess.js
 import { useAuth } from "../context/AuthContext.jsx";
 import { useClub } from "../context/ClubContext.jsx";
 import { useIsMobile } from "../features/mobile/hooks/useIsMobile.js";
-import NavMenuList from "./nav/NavMenuList.jsx";
+import NavMenuShell from "./nav/NavMenuShell.jsx";
 import SidebarFooter from "./shell/SidebarFooter.jsx";
 import { APP_PRODUCT_NAME } from "../config/appVersion.js";
 import { SHELL_COLORS, SHELL_LAYOUT } from "./shell/shellTokens.js";
@@ -48,9 +48,9 @@ export default function Sidebar() {
     >
       <Box
         sx={{
-          px: 2,
-          pt: 2,
-          pb: 1.5,
+          px: 1.25,
+          pt: 1.5,
+          pb: 1.1,
           borderBottom: `1px solid ${SHELL_COLORS.sidebarBorder}`,
           flexShrink: 0,
         }}
@@ -58,11 +58,11 @@ export default function Sidebar() {
         <StackBrand />
       </Box>
 
-      <Box sx={{ flex: 1, minHeight: 0, py: 1, overflowY: "auto" }}>
-        <NavMenuList
+      <Box sx={{ flex: 1, minHeight: 0, py: 0.5, overflowY: "auto" }}>
+        <NavMenuShell
           groups={visibleGroups}
           user={auth.user}
-          currentPath={location.pathname}
+          currentPath={`${location.pathname}${location.search}`}
           variant="dark"
         />
       </Box>
@@ -74,11 +74,11 @@ export default function Sidebar() {
 
 function StackBrand() {
   return (
-    <Box sx={{ display: "flex", alignItems: "center", gap: 1.25 }}>
+    <Box sx={{ display: "flex", alignItems: "center", gap: 0.85 }}>
       <Box
         sx={{
-          width: 38,
-          height: 38,
+          width: 32,
+          height: 32,
           borderRadius: "50%",
           bgcolor: SHELL_COLORS.sidebarAccent,
           display: "grid",
@@ -86,17 +86,17 @@ function StackBrand() {
           flexShrink: 0,
         }}
       >
-        <SportsTennisIcon sx={{ color: "#FFFFFF", fontSize: 20 }} />
+        <SportsTennisIcon sx={{ color: "#FFFFFF", fontSize: 17 }} />
       </Box>
       <Box sx={{ minWidth: 0, flex: 1 }}>
-        <Box sx={{ display: "flex", alignItems: "center", gap: 0.75, flexWrap: "wrap" }}>
+        <Box sx={{ display: "flex", alignItems: "center", gap: 0.5, flexWrap: "wrap" }}>
           <Typography
             variant="subtitle2"
             sx={{
               color: SHELL_COLORS.sidebarText,
               fontWeight: 700,
-              lineHeight: 1.25,
-              fontSize: 13,
+              lineHeight: 1.2,
+              fontSize: 11.5,
             }}
           >
             {APP_PRODUCT_NAME}
@@ -105,13 +105,13 @@ function StackBrand() {
             label="V5.0"
             size="small"
             sx={{
-              height: 18,
-              fontSize: 10,
+              height: 16,
+              fontSize: 9,
               fontWeight: 700,
               bgcolor: "rgba(16, 185, 129, 0.2)",
               color: SHELL_COLORS.sidebarAccent,
               border: `1px solid rgba(16, 185, 129, 0.35)`,
-              "& .MuiChip-label": { px: 0.75 },
+              "& .MuiChip-label": { px: 0.5 },
             }}
           />
         </Box>

@@ -10,7 +10,11 @@ import ResultPanel from "./shared/ResultPanel.jsx";
 import RevealStage, { VsHub } from "./shared/RevealStage.jsx";
 import TeamCard from "./shared/TeamCard.jsx";
 import TournamentAnimationShell from "./shared/TournamentAnimationShell.jsx";
-import { FLOW_STEP_KEYS } from "./shared/tournamentFlowConfig.js";
+import { FLOW_STEP_KEYS, isGuidedFlow } from "./shared/tournamentFlowConfig.js";
+import {
+  completeAnimationStep,
+  resolveAnimationCompleteHandler,
+} from "./shared/tournamentFlowHelpers.js";
 import {
   playDingSound,
   playWhooshSound,
@@ -36,7 +40,7 @@ function GroupCompleteBanner({ completedGroup, nextGroup, onNextGroup, totalMatc
   );
 }
 
-function FinalSummary({ totalMatches, onViewSchedule }) {
+function FinalSummary({ totalMatches, onViewSchedule, onContinue, guidedFlow }) {
   return (
     <Paper variant="outlined" sx={{ p: 2, mb: 1.5, borderRadius: 3 }}>
       <Typography variant="h6" fontWeight="bold" gutterBottom>
@@ -45,8 +49,8 @@ function FinalSummary({ totalMatches, onViewSchedule }) {
       <Typography variant="body2" color="text.secondary" sx={{ mb: 1.5 }}>
         Đã tạo {totalMatches} trận vòng bảng theo kết quả engine.
       </Typography>
-      <Button variant="contained" color="success" onClick={onViewSchedule}>
-        Xem lịch thi đấu
+      <Button variant="contained" color="success" onClick={guidedFlow ? onContinue : onViewSchedule}>
+        {guidedFlow ? "Tiếp tục trình chiếu" : "Xem lịch thi đấu"}
       </Button>
     </Paper>
   );
@@ -85,8 +89,10 @@ export default function MatchPairingAnimation({
   controlMode: initialControlMode = PAIRING_CONTROL_MODES.AUTO,
   autoNextGroup: initialAutoNextGroup = true,
   autoStart = true,
+  flowMode,
   onAnimationComplete,
   onSkip,
+  onStepComplete,
   onViewSchedule,
 }) {
   const [speed, setSpeed] = useState(initialSpeed);
@@ -94,13 +100,20 @@ export default function MatchPairingAnimation({
   const [soundEnabled, setSoundEnabled] = useState(false);
   const { presentationMode, togglePresentationMode } = usePresentationMode();
   const autoStartedRef = useRef(false);
+  const guidedFlow = isGuidedFlow(flowMode);
+
+  const handleFlowComplete = resolveAnimationCompleteHandler({
+    flowMode,
+    onStepComplete,
+    onAnimationComplete,
+  });
 
   const sequence = usePairingSequence({
     steps,
     speed,
     controlMode: initialControlMode,
     autoNextGroup: initialAutoNextGroup,
-    onComplete: onAnimationComplete,
+    onComplete: handleFlowComplete,
   });
 
   const startAutoRef = useRef(sequence.startAuto);
@@ -218,15 +231,23 @@ export default function MatchPairingAnimation({
 
   const handleSkip = () => {
     sequence.skip();
-    onSkip?.();
+    completeAnimationStep({ flowMode, onStepComplete, onSkip, onAnimationComplete });
   };
 
   const handleViewResults = () => {
     sequence.viewResultsNow();
-    onSkip?.();
+    completeAnimationStep({ flowMode, onStepComplete, onSkip, onAnimationComplete });
+  };
+
+  const handleContinueFlow = () => {
+    completeAnimationStep({ flowMode, onStepComplete, onSkip, onAnimationComplete });
   };
 
   const handleViewSchedule = () => {
+    if (guidedFlow) {
+      handleContinueFlow();
+      return;
+    }
     onViewSchedule?.();
   };
 
@@ -273,7 +294,12 @@ export default function MatchPairingAnimation({
               />
             ) : null}
             {sequence.isComplete ? (
-              <FinalSummary totalMatches={sequence.totalCount} onViewSchedule={handleViewSchedule} />
+              <FinalSummary
+                totalMatches={sequence.totalCount}
+                onViewSchedule={handleViewSchedule}
+                onContinue={handleContinueFlow}
+                guidedFlow={guidedFlow}
+              />
             ) : null}
           </>
         }

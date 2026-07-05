@@ -7,6 +7,7 @@ import PairingRevealBoard from "./PairingRevealBoard.jsx";
 import MatchPairingAnimation from "./MatchPairingAnimation.jsx";
 import DailyFairMatchScreen from "./daily/DailyFairMatchScreen.jsx";
 import BracketRevealAnimation from "./BracketRevealAnimation.jsx";
+import FlowStepHandoff from "./shared/FlowStepHandoff.jsx";
 import { VISUAL_MODES } from "./animationConfig.js";
 
 const COMPONENTS = {
@@ -49,15 +50,52 @@ export default function TournamentAnimationDialog({
   onAnimationComplete,
   onSkip,
   onDismiss,
+  handoff,
+  onFlowContinue,
+  onFlowExit,
+  onStepComplete,
+  flowMode,
+  bracketReviewMode = false,
   ...payload
 }) {
+  if (handoff) {
+    return (
+      <Dialog
+        open={Boolean(open)}
+        onClose={onFlowExit || onDismiss}
+        disableEscapeKeyDown
+        fullWidth
+        maxWidth="md"
+        scroll="paper"
+        PaperProps={{
+          sx: { bgcolor: "#f8fafc" },
+        }}
+      >
+        <DialogContent sx={{ p: { xs: 1, sm: 2 } }}>
+          <FlowStepHandoff
+            completedStepKey={handoff.completedStepKey}
+            nextStepKey={handoff.nextStepKey}
+            summary={handoff.summary}
+            preparationMessage={handoff.preparationMessage}
+            countdownSeconds={handoff.countdownSeconds}
+            onContinue={onFlowContinue}
+            onExit={onFlowExit || onDismiss}
+          />
+        </DialogContent>
+      </Dialog>
+    );
+  }
+
   const Component = COMPONENTS[animationMode];
   const boardProps = resolveBoardProps(animationMode, payload);
+  const guidedBracketReview =
+    bracketReviewMode && isGuidedFlow(flowMode) && animationMode === ANIMATION_MODES.BRACKET_REVEAL;
 
   return (
     <Dialog
       open={Boolean(open && Component)}
-      onClose={onDismiss}
+      onClose={guidedBracketReview ? undefined : onDismiss}
+      disableEscapeKeyDown={guidedBracketReview}
       fullWidth
       maxWidth={
         animationMode === ANIMATION_MODES.GROUP_MATCH_PAIRING ||
@@ -78,8 +116,12 @@ export default function TournamentAnimationDialog({
         {Component ? (
           <Component
             animationMode={animationMode}
+            flowMode={flowMode}
+            bracketReviewMode={bracketReviewMode}
             onAnimationComplete={onAnimationComplete}
             onSkip={onSkip}
+            onStepComplete={onStepComplete}
+            onFlowExit={onFlowExit || onDismiss}
             onViewSchedule={onDismiss}
             {...payload}
             {...boardProps}

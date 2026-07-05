@@ -28,20 +28,22 @@ test("app shell — header không còn legacy chips tiếng Anh", () => {
   assert.ok(header.includes('variant="light"'));
 });
 
-test("app shell — context bar chỉ hiển thị switchers gọn trên desktop", () => {
+test("app shell — context bar chỉ hiển thị trên mobile", () => {
   const contextBar = readSrc("src/components/shell/AppContextBar.jsx");
 
-  assert.ok(contextBar.includes("ClubSwitcher"));
-  assert.ok(contextBar.includes("SeasonLeagueSwitcher"));
-  assert.equal(/AI sẵn sàng/.test(contextBar), false);
+  assert.ok(contextBar.includes("if (!isMobile)"));
+  assert.ok(contextBar.includes("return null"));
 });
 
-test("app shell — sidebar slate + footer cơ sở", () => {
+test("app shell — sidebar full menu shell + v5 menu groups", () => {
   const sidebar = readSrc("src/components/Sidebar.jsx");
+  const nav = readSrc("src/config/navigationConfig.js");
+  const v5Menu = readSrc("src/config/v5Menu/index.js");
 
-  assert.ok(sidebar.includes("SidebarFooter"));
-  assert.ok(sidebar.includes('variant="dark"'));
-  assert.ok(sidebar.includes("shellTokens"));
+  assert.ok(sidebar.includes("NavMenuShell"));
+  assert.ok(nav.includes("V5_MENU_GROUPS"));
+  assert.ok(v5Menu.includes("V5_MENU_GROUPS"));
+  assert.ok(v5Menu.includes("crm"));
 });
 
 test("app shell — main layout wires OperationalRouteGate", () => {
@@ -84,11 +86,20 @@ test("app shell — không còn label legacy trong navigation config", () => {
   assert.equal(/v3\.5\.3/.test(nav), false);
 });
 
-test("app shell — account menu dùng ROLE_LABELS tiếng Việt", () => {
+test("app shell — sidebar accordion cấp 1 xổ/thu cấp 2", () => {
+  const shell = readSrc("src/components/nav/NavMenuShell.jsx");
+  const tree = readSrc("src/components/nav/NavMenuTree.jsx");
+
+  assert.ok(shell.includes("NavMenuGroupAccordion"));
+  assert.ok(shell.includes("skipRootLabel={false}"));
+  assert.ok(tree.includes("aria-expanded"));
+});
+
+test("app shell — account menu dùng nhãn vai trò tiếng Việt tập trung", () => {
   const account = readSrc("src/components/shell/AccountMenu.jsx");
 
-  assert.ok(account.includes("ROLE_LABELS"));
-  assert.ok(account.includes("Chủ sân") || account.includes("ROLE_SUBTITLES"));
+  assert.ok(account.includes("getRoleLabel"));
+  assert.equal(/Người dùng sân/.test(account), false);
   assert.equal(/label=\{user\.role\}/.test(account), false);
 });
 
@@ -116,10 +127,22 @@ test("app shell — login split layout V5", () => {
   assert.ok(login.includes("FeatureBullet"));
 });
 
+test("app shell — dashboard layout mockup overview", () => {
+  const dashboard = readSrc("src/features/dashboard-analytics/components/DashboardAnalyticsView.jsx");
+
+  assert.ok(dashboard.includes("DashboardOverviewKpis"));
+  assert.ok(dashboard.includes("DashboardRevenueBreakdown"));
+  assert.ok(dashboard.includes("DashboardRecentBookingsTable"));
+  assert.ok(dashboard.includes("DashboardUpcomingTournamentsTable"));
+  assert.ok(dashboard.includes("CourtHeatmap"));
+  assert.equal(/DashboardTodayKpis/.test(dashboard), false);
+  assert.equal(/DashboardKpiPanels/.test(dashboard), false);
+});
+
 test("app shell — dashboard header Tổng quan", () => {
   const dashboard = readSrc("src/features/dashboard-analytics/components/DashboardAnalyticsView.jsx");
 
   assert.ok(dashboard.includes("Tổng quan"));
   assert.equal(/Dashboard Analytics/.test(dashboard), false);
-  assert.ok(dashboard.includes("DashboardTodayKpis"));
+  assert.ok(dashboard.includes("DashboardOverviewKpis"));
 });
