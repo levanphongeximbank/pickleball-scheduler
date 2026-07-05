@@ -119,13 +119,14 @@ test("dev registry — không có admin@staging.local", () => {
   );
 });
 
-test("LoginPage source — signup gated by isAuthSignupEnabled", () => {
+test("LoginPage source — signup khi Supabase, form đầy đủ", () => {
   const loginPage = readSource("src/pages/LoginPage.jsx");
-  assert.match(loginPage, /isAuthSignupEnabled/);
   assert.match(loginPage, /validateSignupForm/);
   assert.match(loginPage, /Xác nhận mật khẩu/);
   assert.match(loginPage, /Đăng ký tài khoản/);
+  assert.match(loginPage, /Chưa có tài khoản/);
   assert.match(loginPage, /Quay lại đăng nhập/);
+  assert.doesNotMatch(loginPage, /isAuthSignupEnabled/);
 });
 
 test("signUpWithPassword source — dùng emailRedirectTo và không gửi role metadata", () => {

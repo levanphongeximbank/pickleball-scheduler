@@ -26,7 +26,6 @@ import { isDevAuthAllowed, listDevUsers } from "../auth/authService.js";
 import { getDefaultHomePath } from "../auth/menuAccess.js";
 import { APP_PRODUCT_NAME, APP_VERSION_LABEL, getLoginSubtitle } from "../config/appVersion.js";
 import { SHELL_COLORS } from "../components/shell/shellTokens.js";
-import { isAuthSignupEnabled } from "../config/authConfig.js";
 import {
   SIGNUP_INTENT,
   validateSignupForm,
@@ -47,7 +46,6 @@ export default function LoginPage() {
     signUpWithPassword,
   } = useAuth();
 
-  const signupEnabled = isAuthSignupEnabled();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
@@ -62,7 +60,7 @@ export default function LoginPage() {
   const devUsers = devAuthAllowed ? listDevUsers() : [];
   const redirectTo = location.state?.from?.pathname || getDefaultHomePath(user, rbacEnabled);
   const authRequired = authProductionEnabled || rbacEnabled;
-  const isSignupMode = authMode === "signup" && signupEnabled;
+  const isSignupMode = authMode === "signup";
 
   if (!authRequired) {
     return <Navigate to="/" replace />;
@@ -402,16 +400,27 @@ export default function LoginPage() {
                     {loading ? "Đang xử lý…" : isSignupMode ? "Đăng ký" : "Đăng nhập"}
                   </Button>
 
-                  {signupEnabled && (
+                  {!isSignupMode && <Divider />}
+                  <Stack
+                    direction="row"
+                    spacing={0.5}
+                    justifyContent="center"
+                    alignItems="center"
+                    flexWrap="wrap"
+                  >
+                    {!isSignupMode && (
+                      <Typography variant="body2" color="text.secondary">
+                        Chưa có tài khoản?
+                      </Typography>
+                    )}
                     <Button
                       variant="text"
                       size="small"
                       onClick={isSignupMode ? switchToSignIn : switchToSignUp}
-                      sx={{ alignSelf: "center" }}
                     >
                       {isSignupMode ? "Quay lại đăng nhập" : "Đăng ký tài khoản"}
                     </Button>
-                  )}
+                  </Stack>
                 </>
               )}
 
