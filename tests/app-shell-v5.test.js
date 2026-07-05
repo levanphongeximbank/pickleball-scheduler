@@ -13,8 +13,8 @@ function readSrc(relativePath) {
   return readFileSync(path.join(root, relativePath), "utf8");
 }
 
-test("app shell — version label V5.0 SaaS Preview RC1", () => {
-  assert.equal(APP_VERSION_LABEL, "V5.0 SaaS Preview RC1");
+test("app shell — version label V5.2 Production Pilot", () => {
+  assert.equal(APP_VERSION_LABEL, "V5.2 Production Pilot");
 });
 
 test("app shell — header không còn legacy chips tiếng Anh", () => {

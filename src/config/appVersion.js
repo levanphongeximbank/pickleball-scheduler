@@ -1,6 +1,6 @@
-/** Nhãn phiên bản sản phẩm — đồng bộ login, sidebar, mobile (không tag RC1). */
+/** Nhãn phiên bản sản phẩm — đồng bộ login, sidebar, mobile. */
 export const APP_PRODUCT_NAME = "Pickleball Scheduler Pro";
-export const APP_VERSION_LABEL = "V5.0 SaaS Preview RC1";
+export const APP_VERSION_LABEL = "V5.2 Production Pilot";
 
 export function getLoginSubtitle({ supabaseAvailable = false } = {}) {
   if (supabaseAvailable) {

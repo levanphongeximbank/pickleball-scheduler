@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Box, Paper, Stack, Typography } from "@mui/material";
+import { Box, Button, Paper, Stack, Typography } from "@mui/material";
+import ExitToAppIcon from "@mui/icons-material/ExitToApp";
 
 import TournamentAnimationControls from "./TournamentAnimationControls.jsx";
 import {
@@ -10,6 +11,7 @@ import {
 } from "./animationUtils.js";
 import {
   completeAnimationStep,
+  isGuidedFlowMode,
   resolveAnimationCompleteHandler,
 } from "./shared/tournamentFlowHelpers.js";
 import "./tournamentAnimation.css";
@@ -30,9 +32,11 @@ export default function BracketRevealAnimation({
   advanceHint = null,
   autoStart = false,
   flowMode,
+  bracketReviewMode = false,
   onAnimationComplete,
   onSkip,
   onStepComplete,
+  onFlowExit,
 }) {
   const steps = useMemo(() => buildBracketRevealSteps(bracket), [bracket]);
   const [phase, setPhase] = useState({ round: -1, match: -1 });
@@ -109,6 +113,19 @@ export default function BracketRevealAnimation({
   }, [steps, handleFlowComplete]);
 
   useEffect(() => {
+    if (!bracketReviewMode || !steps.length) {
+      return;
+    }
+
+    clearTimer();
+    setPlaying(false);
+    setPhase({
+      round: steps.length - 1,
+      match: steps[steps.length - 1].matches.length - 1,
+    });
+  }, [bracketReviewMode, steps]);
+
+  useEffect(() => {
     if (animationMode === ANIMATION_MODES.BRACKET_ADVANCE) {
       return undefined;
     }
@@ -142,14 +159,18 @@ export default function BracketRevealAnimation({
     );
   }
 
-  const isRoundVisible = (roundIndex) => phase.round >= roundIndex;
+  const isRoundVisible = (roundIndex) =>
+    bracketReviewMode || phase.round >= roundIndex;
   const isMatchVisible = (roundIndex, matchIndex) =>
-    phase.round > roundIndex || (phase.round === roundIndex && phase.match >= matchIndex);
+    bracketReviewMode ||
+    phase.round > roundIndex ||
+    (phase.round === roundIndex && phase.match >= matchIndex);
+  const guidedReview = bracketReviewMode && isGuidedFlowMode(flowMode);
 
   return (
     <Box className="tournament-anim" sx={{ p: 2 }}>
       <Typography variant="h6" fontWeight="bold" gutterBottom>
-        Sơ đồ knock-out
+        {guidedReview ? "Sơ đồ knock-out — xem và thoát khi sẵn sàng" : "Sơ đồ knock-out"}
       </Typography>
 
       <Stack direction="row" spacing={2} sx={{ overflowX: "auto", pb: 1 }}>
@@ -184,14 +205,28 @@ export default function BracketRevealAnimation({
         ))}
       </Stack>
 
-      <TournamentAnimationControls
-        playing={playing}
-        onStart={run}
-        onSkip={finishAnimation}
-        onShowNow={finishAnimation}
-        onReplay={run}
-        canReplay={steps.length > 0}
-      />
+      {!guidedReview ? (
+        <TournamentAnimationControls
+          playing={playing}
+          onStart={run}
+          onSkip={finishAnimation}
+          onShowNow={finishAnimation}
+          onReplay={run}
+          canReplay={steps.length > 0}
+        />
+      ) : (
+        <Stack direction="row" justifyContent="flex-end" sx={{ mt: 2 }}>
+          <Button
+            variant="contained"
+            color="primary"
+            size="large"
+            startIcon={<ExitToAppIcon />}
+            onClick={onFlowExit}
+          >
+            Thoát trình chiếu
+          </Button>
+        </Stack>
+      )}
     </Box>
   );
 }

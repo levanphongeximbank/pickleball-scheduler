@@ -33,7 +33,11 @@ export function useTournamentFlowOrchestrator(anim, adapters) {
     const isLast = state.stepIndex >= state.pipeline.length - 1;
     if (isLast) {
       adapters.onFlowComplete?.(state.ctx);
-      anim.enterBracketReview();
+      if (mode === ANIMATION_MODES.BRACKET_REVEAL) {
+        anim.enterBracketReview();
+      } else {
+        anim.dismiss();
+      }
       return;
     }
 

@@ -1,10 +1,10 @@
 # V5.2 — Production Deploy Checklist (Owner + Engineering)
 
-**Ngày:** 2026-07-05  
-**Target version:** `5.2.0`  
+**Ngày cập nhật:** 2026-07-05  
+**Target version:** `5.2.0` — ✅ tagged  
 **Production URL:** https://pickleball-scheduler-eight.vercel.app  
 **Production Supabase:** `expuvcohlcjzvrrauvud`  
-**Rollback deployment (ghi trước deploy):** `dpl_93AzPgp1oRQQGcnmLJSYHnCyAHGz` (hoặc deployment hiện tại trên Vercel)
+**Rollback deployment:** `dpl_93AzPgp1oRQQGcnmLJSYHnCyAHGz`
 
 **Phạm vi:** Controlled Production pilot — **không** Commercial GA · **không** payment live
 
@@ -14,12 +14,12 @@
 
 | # | Việc | Tick | Ghi chú |
 |---|------|------|---------|
-| A1 | `npm test` PASS (gồm `rbac-v52.test.js`) | ☐ | Kỳ vọng ≥880 tests |
-| A2 | `npm run build` PASS | ☐ | |
-| A3 | Menu **Vui chơi mỗi ngày** dưới CLB & Huấn luyện | ☐ | `clubCoachingMenu.js` |
-| A4 | Trang tạo giải bỏ nhãn V3.3 | ☐ | `TournamentHome.jsx` |
-| A5 | RBAC V5.2 in-page nav đội trưởng | ☐ | `tournamentInPageNav.js` MANAGE |
-| A6 | SQL V5.2 sẵn sàng | ☐ | `PHASE_V52_PRODUCTION_RBAC_ROLES.sql` |
+| A1 | `npm test` PASS (gồm `rbac-v52.test.js`) | ✅ | 902/902 |
+| A2 | `npm run build` PASS | ✅ | |
+| A3 | Menu **Vui chơi mỗi ngày** dưới CLB & Huấn luyện | ✅ | `clubCoachingMenu.js` |
+| A4 | Trang tạo giải bỏ nhãn V3.3 | ✅ | `TournamentHome.jsx` |
+| A5 | RBAC V5.2 in-page nav đội trưởng | ✅ | `tournamentInPageNav.js` |
+| A6 | SQL V5.2 sẵn sàng | ✅ | `PHASE_V52_PRODUCTION_RBAC_ROLES.sql` |
 
 ---
 
@@ -45,10 +45,10 @@ git tag -a v5.2.0 -m "Pickleball Scheduler Pro V5.2 — RBAC + menu"
 
 | # | Việc | Tick |
 |---|------|------|
-| B1 | Commit trên branch `v5-platform-edition` | ☐ |
-| B2 | `package.json` version `5.2.0` | ☐ |
-| B3 | Tag `v5.2.0` | ☐ |
-| B4 | Push branch + tag | ☐ |
+| B1 | Commit trên branch `v5-platform-edition` | ✅ `338b383` |
+| B2 | `package.json` version `5.2.0` | ✅ |
+| B3 | Tag `v5.2.0` | ✅ |
+| B4 | Push branch + tag | ⏳ |
 
 ---
 

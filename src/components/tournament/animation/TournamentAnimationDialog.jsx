@@ -9,6 +9,7 @@ import DailyFairMatchScreen from "./daily/DailyFairMatchScreen.jsx";
 import BracketRevealAnimation from "./BracketRevealAnimation.jsx";
 import FlowStepHandoff from "./shared/FlowStepHandoff.jsx";
 import { VISUAL_MODES } from "./animationConfig.js";
+import { FLOW_MODES, isGuidedFlow } from "./shared/tournamentFlowConfig.js";
 
 const COMPONENTS = {
   [ANIMATION_MODES.RANDOM_DRAW]: TournamentDrawBoard,

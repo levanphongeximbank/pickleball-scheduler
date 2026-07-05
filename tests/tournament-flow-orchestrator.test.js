@@ -5,6 +5,7 @@ import { ANIMATION_MODES } from "../src/components/tournament/animation/animatio
 import {
   ANIMATION_TO_FLOW_KEY,
   FLOW_MODES,
+  getFlowPreparationMessage,
   getFlowStepLabel,
   getFlowStepState,
   isGuidedFlow,
@@ -54,4 +55,10 @@ test("guided flow helpers", () => {
   assert.equal(isGuidedFlowMode(FLOW_MODES.GUIDED), true);
   assert.equal(isGuidedFlow(FLOW_MODES.STANDALONE), false);
   assert.equal(getFlowStepLabel("bracket"), "Sơ đồ thi đấu");
+});
+
+test("flow handoff preparation messages", () => {
+  assert.equal(getFlowPreparationMessage("draw"), "Chuẩn bị ghép bảng");
+  assert.equal(getFlowPreparationMessage("match_pairing"), "Chuẩn bị ghép trận đấu");
+  assert.equal(getFlowPreparationMessage("bracket"), "Tính toán sơ đồ thi đấu");
 });
