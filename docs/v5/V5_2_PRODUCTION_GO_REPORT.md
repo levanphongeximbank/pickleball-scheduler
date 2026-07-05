@@ -2,7 +2,7 @@
 
 **Ngày:** 2026-07-05  
 **Version:** `5.2.0` / tag `v5.2.0`  
-**Commit:** `338b383` (+ release polish commits)  
+**Commit:** `03ff308`  
 **Production URL:** https://pickleball-scheduler-eight.vercel.app  
 **Production Supabase:** `expuvcohlcjzvrrauvud`  
 **Phạm vi:** Controlled Production Pilot — **không** Commercial GA
@@ -14,8 +14,9 @@
 | Hạng mục | Verdict |
 |----------|---------|
 | Engineering gates (test/build) | ✅ **PASS** |
-| Git tag `v5.2.0` | ✅ **READY** |
-| Vercel Production deploy | ⏳ **Engineering execute** |
+| Git tag `v5.2.0` | ✅ **READY** (local tag `03ff308`) |
+| Vercel Production deploy | ✅ **DONE** — `dpl_Ey7v7gSCu21aqiGA7SR25AyppmZX` |
+| `/login` HTTP 200 | ✅ **PASS** |
 | SQL V5.2 RBAC (`PHASE_V52_PRODUCTION_RBAC_ROLES.sql`) | ⏳ **Owner apply** |
 | Manual smoke T+0 / T+24h | ⏳ **Owner** |
 | Commercial GA | ⛔ **NO-GO** |
@@ -65,7 +66,10 @@
 | Field | Value |
 |-------|-------|
 | Rollback deployment ID | `dpl_93AzPgp1oRQQGcnmLJSYHnCyAHGz` |
-| V5.2 deployment ID | _ghi sau `vercel deploy --prod`_ |
+| V5.2 deployment ID | **`dpl_Ey7v7gSCu21aqiGA7SR25AyppmZX`** |
+| Deploy URL | https://pickleball-scheduler-go6gp8qlc-pickleball-scheduler.vercel.app |
+| Alias | https://pickleball-scheduler-eight.vercel.app |
+| Deploy time | 2026-07-05 |
 | Branch | `v5-platform-edition` |
 | Tag | `v5.2.0` |
 | Payment live | ⛔ OFF |

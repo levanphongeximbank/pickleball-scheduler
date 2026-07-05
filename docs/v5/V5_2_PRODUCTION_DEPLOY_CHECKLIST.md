@@ -48,7 +48,7 @@ git tag -a v5.2.0 -m "Pickleball Scheduler Pro V5.2 — RBAC + menu"
 | B1 | Commit trên branch `v5-platform-edition` | ✅ `338b383` |
 | B2 | `package.json` version `5.2.0` | ✅ |
 | B3 | Tag `v5.2.0` | ✅ |
-| B4 | Push branch + tag | ⏳ |
+| B4 | Push branch + tag | ✅ branch · ⏳ `git push origin v5.2.0` |
 
 ---
 
@@ -94,11 +94,11 @@ npx vercel deploy --prod
 
 | # | Việc | Tick | Ghi chú |
 |---|------|------|---------|
-| E1 | Ghi deployment ID **trước** deploy | ☐ | Rollback reference |
-| E2 | Deploy Production | ☐ | |
-| E3 | Ghi deployment ID **sau** deploy | ☐ | |
-| E4 | Bundle scan — không staging ref | ☐ | |
-| E5 | `/login` HTTP 200 | ☐ | |
+| E1 | Ghi deployment ID **trước** deploy | ✅ `dpl_93AzPgp1oRQQGcnmLJSYHnCyAHGz` |
+| E2 | Deploy Production | ✅ `dpl_Ey7v7gSCu21aqiGA7SR25AyppmZX` |
+| E3 | Ghi deployment ID **sau** deploy | ✅ |
+| E4 | Bundle scan — không staging ref | ☐ owner |
+| E5 | `/login` HTTP 200 | ✅ |
 
 ---
 
