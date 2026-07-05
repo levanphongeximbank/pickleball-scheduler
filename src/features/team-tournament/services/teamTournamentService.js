@@ -36,7 +36,6 @@ import {
   canManageTeam,
 } from "../engines/teamPermissionEngine.js";
 import { normalizeTeamData, getLineup, createTeamRecord } from "../models/index.js";
-import { resolveTenantIdForClub } from "../../tenant/guards/tenantGuard.js";
 import { appendTeamAuditLog } from "./teamAuditService.js";
 import {
   cloudAssignMember,
@@ -63,7 +62,7 @@ async function mirrorMutationToCloud(cloudCall, tournament) {
   if (shouldUseTeamTournamentCloud() && tournament?.id) {
     const header = await cloudEnsureTournamentHeader({
       ...tournament,
-      tenantId: tournament.tenantId || resolveTenantIdForClub(tournament.clubId),
+      clubId: tournament.clubId,
     });
     if (!header.ok) {
       return {
@@ -571,7 +570,8 @@ export async function createTeamInTournament(clubId, tournamentId, options = {})
     () => cloudSaveTeam(tournamentId, teamRecord),
     {
       ...tournament,
-      tenantId: tournament.tenantId || resolveTenantIdForClub(clubId),
+      clubId,
+      tenantId: tournament.tenantId,
     }
   );
   if (!cloudCheck.ok && cloudCheck.usedCloud) {

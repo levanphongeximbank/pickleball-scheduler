@@ -50,10 +50,17 @@ async function callTeamTournamentRpc(rpcName, args = {}) {
 
   const payload = parseRpcJson(data);
   if (!payload.ok) {
+    const code = payload.code || "FORBIDDEN";
+    const errorByCode = {
+      NOT_FOUND: "Giải chưa có trên cloud. Kiểm tra venue ở header rồi thử lại.",
+      FORBIDDEN: "Không có quyền quản lý giải đồng đội.",
+      NOT_AUTHENTICATED: "Phiên đăng nhập hết hạn — đăng nhập lại.",
+      VALIDATION: payload.error || "Dữ liệu đội không hợp lệ.",
+    };
     return {
       ok: false,
-      code: payload.code || "FORBIDDEN",
-      error: payload.error || "Không có quyền.",
+      code,
+      error: payload.error || errorByCode[code] || "Không có quyền.",
     };
   }
 

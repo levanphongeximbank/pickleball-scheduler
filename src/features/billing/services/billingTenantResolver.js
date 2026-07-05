@@ -7,6 +7,7 @@ export const INVALID_BILLING_TENANT_IDS = Object.freeze([
   "tenant-demo",
   "tenant_demo",
   "demo-tenant",
+  "default-tenant",
 ]);
 
 /**

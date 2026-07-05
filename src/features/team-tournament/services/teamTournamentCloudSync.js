@@ -1,6 +1,12 @@
-import { getSupabaseAuthClient } from "../../../auth/supabaseClient.js";
+import { getSupabaseAuthClient, hasSupabaseConfig } from "../../../auth/supabaseClient.js";
 import { getAuthOptions } from "../../../auth/guardAction.js";
-import { resolveTenantIdForClub } from "../../tenant/guards/tenantGuard.js";
+import { isGlobalRole } from "../../../auth/roles.js";
+import { loadActiveTenantId } from "../../../data/tenantSession.js";
+import { getExplicitTenantIdForClub } from "../../tenant/guards/tenantGuard.js";
+import {
+  resolveBillingTenantId,
+  sanitizeBillingTenantId,
+} from "../../billing/services/billingTenantResolver.js";
 import { TOURNAMENT_MODE } from "../../../models/tournament/constants.js";
 import { normalizeTeamData } from "../models/index.js";
 import { computeTeamStandings } from "../engines/teamStandingsEngine.js";
@@ -71,6 +77,54 @@ function mapCloudTournamentToLocal(cloudTournament) {
   };
 }
 
+function formatCloudHeaderError(error) {
+  const message = String(error?.message || error || "").trim();
+  if (message.includes("team_tournaments_tenant_id_fkey")) {
+    return "Venue/tenant chưa tồn tại trên Supabase. Đổi tenant ở header sang venue production (ví dụ venue-prod-main).";
+  }
+  return message || "Không đồng bộ được giải lên cloud.";
+}
+
+export async function resolveTeamTournamentCloudTenantId({
+  tournament,
+  clubId,
+  client = null,
+} = {}) {
+  const user = getAuthOptions()?.user;
+  let tenantId =
+    resolveBillingTenantId({
+      user,
+      tenantIdOverride: tournament?.tenantId,
+      currentTenantId: loadActiveTenantId(),
+    }) || sanitizeBillingTenantId(getExplicitTenantIdForClub(clubId));
+
+  if (!tenantId && user && isGlobalRole(user.role) && hasSupabaseConfig()) {
+    const supabase = client || getSupabaseAuthClient();
+    if (supabase) {
+      const { data, error } = await supabase
+        .from("venues")
+        .select("id")
+        .order("id", { ascending: true })
+        .limit(1)
+        .maybeSingle();
+      if (!error && data?.id) {
+        tenantId = sanitizeBillingTenantId(data.id);
+      }
+    }
+  }
+
+  if (!tenantId) {
+    return {
+      ok: false,
+      code: "TENANT_MISSING",
+      error:
+        "Chưa có venue hợp lệ trên Supabase. Super Admin: chọn venue ở góc header (không dùng Default Tenant demo).",
+    };
+  }
+
+  return { ok: true, tenantId };
+}
+
 export async function cloudEnsureTournamentHeader(tournament) {
   if (!shouldUseTeamTournamentCloud()) {
     return { ok: true, skipped: true };
@@ -83,21 +137,23 @@ export async function cloudEnsureTournamentHeader(tournament) {
 
   const clubId = String(tournament?.clubId || "").trim();
   const tournamentId = String(tournament?.id || "").trim();
-  let tenantId = String(tournament?.tenantId || "").trim();
+  const tenantResolution = await resolveTeamTournamentCloudTenantId({
+    tournament,
+    clubId,
+    client,
+  });
 
-  if (!tenantId) {
-    const user = getAuthOptions()?.user;
-    tenantId = String(user?.venueId || user?.venue_id || "").trim();
-  }
-  if (!tenantId) {
-    tenantId = String(resolveTenantIdForClub(clubId) || "").trim();
+  if (!tenantResolution.ok) {
+    return tenantResolution;
   }
 
-  if (!clubId || !tournamentId || !tenantId) {
+  const tenantId = tenantResolution.tenantId;
+
+  if (!clubId || !tournamentId) {
     return {
       ok: false,
       code: "VALIDATION",
-      error: "Thiếu tenant/club/tournament để đồng bộ cloud.",
+      error: "Thiếu club/tournament để đồng bộ cloud.",
     };
   }
 
@@ -125,11 +181,11 @@ export async function cloudEnsureTournamentHeader(tournament) {
     return {
       ok: false,
       code: "CLOUD_HEADER_FAILED",
-      error: error.message,
+      error: formatCloudHeaderError(error),
     };
   }
 
-  return { ok: true, headerId: data?.id || null };
+  return { ok: true, headerId: data?.id || null, tenantId };
 }
 
 export async function cloudGetTeamTournamentSetup(tournamentId, viewerTeamId = null) {
