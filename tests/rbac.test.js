@@ -198,7 +198,11 @@ test("menuAccess — PLAYER chỉ thấy menu giải đấu", () => {
 });
 
 test("menuAccess — getDefaultHomePath theo role", () => {
-  assert.equal(getDefaultHomePath(user(ROLES.PLAYER), true), "/tournament");
+  assert.equal(getDefaultHomePath(user(ROLES.PLAYER), true), "/profile");
+  assert.equal(
+    getDefaultHomePath(user(ROLES.PLAYER, { clubId: "c1", playerId: "p1" }), true),
+    "/tournament"
+  );
   assert.equal(getDefaultHomePath(user(ROLES.CASHIER), true), "/court-management/bookings");
   assert.equal(getDefaultHomePath(user(ROLES.VENUE_OWNER), true), "/");
 });

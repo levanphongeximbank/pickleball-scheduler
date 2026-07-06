@@ -100,6 +100,10 @@ export function getRouteAccessPermissions(pathname) {
     return [PERMISSIONS.CUSTOMER_VIEW];
   }
 
+  if (pathname.startsWith("/court-management/members")) {
+    return [PERMISSIONS.CUSTOMER_VIEW];
+  }
+
   if (pathname.startsWith("/court-management/")) {
     return [PERMISSIONS.COURT_VIEW, PERMISSIONS.BOOKING_VIEW];
   }
@@ -366,6 +370,10 @@ export function getDefaultHomePath(user, rbacEnabled = false) {
 
   switch (normalizeRole(user.role)) {
     case ROLES.PLAYER:
+      // Người chơi mới đăng ký chưa gắn CLB — /tournament cần tournament.view (SELF + clubId).
+      if (!user.clubId && !user.club_id) {
+        return "/profile";
+      }
       return "/tournament";
     case ROLES.CLUB_MANAGER:
       return "/club";
