@@ -8,7 +8,7 @@ import {
 } from "react";
 
 import { useAuth } from "./AuthContext.jsx";
-import { isGlobalRole } from "../auth/roles.js";
+import { isGlobalRole, isPlatformScopedRole, normalizeRole, ROLES } from "../auth/roles.js";
 import { loadActiveTenantId, saveActiveTenantId } from "../data/tenantSession.js";
 import { getActiveClubId } from "../data/club.js";
 import { switchActiveClub } from "../domain/clubService.js";
@@ -39,13 +39,15 @@ export function TenantProvider({ children }) {
   const [revision, setRevision] = useState(0);
 
   const isSuperAdmin = Boolean(user && isGlobalRole(user.role));
+  const isPlatformTech = Boolean(user && isPlatformScopedRole(user.role));
+  const canPickTenant = isSuperAdmin || isPlatformTech;
 
   const currentTenantId = useMemo(() => {
     if (!rbacEnabled || !isAuthenticated || !user) {
       return null;
     }
 
-    if (isSuperAdmin) {
+    if (canPickTenant) {
       return (
         adminTenantId ||
         loadActiveTenantId() ||
@@ -55,7 +57,7 @@ export function TenantProvider({ children }) {
     }
 
     return resolveEffectiveTenantId(user);
-  }, [adminTenantId, isAuthenticated, isSuperAdmin, rbacEnabled, user]);
+  }, [adminTenantId, canPickTenant, isAuthenticated, rbacEnabled, user]);
 
   const currentTenant = useMemo(() => {
     if (!currentTenantId) {
@@ -106,21 +108,21 @@ export function TenantProvider({ children }) {
   }, [currentTenantId, isAuthenticated, isSuperAdmin, rbacEnabled, userClubId, userId]);
 
   useEffect(() => {
-    if (!isSuperAdmin || adminTenantId || !listTenants().length) {
+    if (!canPickTenant || adminTenantId || !listTenants().length) {
       return;
     }
 
     const firstTenantId = listTenants()[0].id;
     saveActiveTenantId(firstTenantId);
     setAdminTenantId(firstTenantId);
-  }, [adminTenantId, isSuperAdmin]);
+  }, [adminTenantId, canPickTenant]);
 
   const tenantCheck = useMemo(() => {
     if (!rbacEnabled || !isAuthenticated || !user) {
       return { ok: true };
     }
 
-    if (isSuperAdmin) {
+    if (canPickTenant) {
       if (!currentTenantId) {
         return { ok: true };
       }
@@ -132,6 +134,16 @@ export function TenantProvider({ children }) {
     }
 
     if (!currentTenantId) {
+      const role = normalizeRole(user.role);
+      if (
+        (role === ROLES.PLAYER || role === ROLES.CUSTOMER) &&
+        !user.venueId &&
+        !user.tenantId &&
+        !user.clubId
+      ) {
+        return { ok: true, code: "TENANT_UNASSIGNED" };
+      }
+
       return {
         ok: false,
         error: "Tài khoản chưa được gán tenant.",
@@ -148,19 +160,19 @@ export function TenantProvider({ children }) {
     }
 
     return assertTenantOperational(currentTenantId, { user });
-  }, [currentTenantId, isAuthenticated, isSuperAdmin, rbacEnabled, user]);
+  }, [canPickTenant, currentTenantId, isAuthenticated, rbacEnabled, user]);
 
   const subscriptionCheck = useMemo(() => {
     if (!rbacEnabled || !isAuthenticated || !user || !currentTenantId) {
       return { ok: true };
     }
 
-    if (isSuperAdmin) {
+    if (isSuperAdmin || isPlatformTech) {
       return { ok: true };
     }
 
     return assertSubscriptionOperational(currentTenantId);
-  }, [currentTenantId, isAuthenticated, isSuperAdmin, rbacEnabled, user]);
+  }, [currentTenantId, isAuthenticated, isPlatformTech, isSuperAdmin, rbacEnabled, user]);
 
   const switchTenant = useCallback(
     (tenantId) => {
