@@ -23,6 +23,7 @@ export default function TournamentDirectorMode() {
 
   const {
     canUseDirector,
+    tournamentAccess,
     tournament,
     players,
     courts,
@@ -70,6 +71,15 @@ export default function TournamentDirectorMode() {
     handleOpenAuditHistory,
   } = actions;
 
+  if (tournamentId && !tournamentAccess.ok) {
+    return (
+      <DirectorAccessDenied
+        reason="tenant-access"
+        message={tournamentAccess.error || "Không có quyền truy cập giải này."}
+      />
+    );
+  }
+
   if (!canUseDirector) {
     return <DirectorAccessDenied />;
   }
@@ -105,19 +115,19 @@ export default function TournamentDirectorMode() {
           onToggleCourt={handleToggleCourt}
           onCourtRefereeChange={handleCourtRefereeChange}
         />
-
-        <DirectorMatchBoard
-          waitingMatches={waitingMatches}
-          onCourtMatches={onCourtMatches}
-          completedMatches={completedMatches}
-          buildRefereeCardProps={buildRefereeCardProps}
-          onAssignCourt={handleAssignCourt}
-          onOpenScore={handleOpenScore}
-          onOpenRefereeDialog={handleOpenRefereeDialog}
-          onOpenAuditHistory={handleOpenAuditHistory}
-          hasSupabaseConfig={hasSupabaseConfig}
-        />
       </Grid>
+
+      <DirectorMatchBoard
+        waitingMatches={waitingMatches}
+        onCourtMatches={onCourtMatches}
+        completedMatches={completedMatches}
+        buildRefereeCardProps={buildRefereeCardProps}
+        onAssignCourt={handleAssignCourt}
+        onOpenScore={handleOpenScore}
+        onOpenRefereeDialog={handleOpenRefereeDialog}
+        onOpenAuditHistory={handleOpenAuditHistory}
+        hasSupabaseConfig={hasSupabaseConfig()}
+      />
 
       {!isDaily && <DirectorBracketSync snapshot={snapshot} />}
 

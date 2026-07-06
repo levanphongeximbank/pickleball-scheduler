@@ -1,8 +1,10 @@
-import { MATCHUP_STATUS, SUB_MATCH_STATUS } from "../constants.js";
+import { ACTIVATION_RULE, MATCHUP_STATUS, SUB_MATCH_STATUS } from "../constants.js";
 import {
   findMatchup,
   normalizeTeamData,
 } from "../models/index.js";
+import { maybeActivateDreambreaker } from "./dreambreakerEngine.js";
+import { isMlpFormat } from "./mlpPresetEngine.js";
 
 function resolveWinner(score, teamAId, teamBId) {
   if (!score) {
@@ -18,6 +20,11 @@ function resolveWinner(score, teamAId, teamBId) {
   }
 
   return "";
+}
+
+function isMainDiscipline(teamData, disciplineId) {
+  const discipline = teamData.disciplines.find((item) => item.id === disciplineId);
+  return discipline?.activationRule === ACTIVATION_RULE.ALWAYS;
 }
 
 export function recordSubMatchResult(teamData, {
@@ -84,7 +91,14 @@ export function computeMatchupResult(teamData, matchupId) {
   let teamAPoints = 0;
   let teamBPoints = 0;
 
-  matchup.subMatches.forEach((subMatch) => {
+  const mainSubMatches = matchup.subMatches.filter((subMatch) =>
+    isMainDiscipline(teamData, subMatch.disciplineId)
+  );
+  const dreambreakerSubMatch = matchup.subMatches.find(
+    (subMatch) => !isMainDiscipline(teamData, subMatch.disciplineId)
+  );
+
+  mainSubMatches.forEach((subMatch) => {
     const discipline = teamData.disciplines.find((item) => item.id === subMatch.disciplineId);
     if (discipline && discipline.countsTowardResult === false) {
       return;
@@ -108,18 +122,69 @@ export function computeMatchupResult(teamData, matchupId) {
     }
   });
 
-  const winnerTeamId =
-    teamAWins > teamBWins
-      ? matchup.teamAId
-      : teamBWins > teamAWins
-        ? matchup.teamBId
-        : "";
+  if (dreambreakerSubMatch) {
+    const isFinalized =
+      dreambreakerSubMatch.status === SUB_MATCH_STATUS.COMPLETED ||
+      dreambreakerSubMatch.status === SUB_MATCH_STATUS.FORFEIT;
 
-  const allCompleted = matchup.subMatches.every(
+    if (isFinalized) {
+      teamAPoints += Number(dreambreakerSubMatch.score?.teamA) || 0;
+      teamBPoints += Number(dreambreakerSubMatch.score?.teamB) || 0;
+
+      if (dreambreakerSubMatch.winnerTeamId === matchup.teamAId) {
+        teamAWins += 1;
+      } else if (dreambreakerSubMatch.winnerTeamId === matchup.teamBId) {
+        teamBWins += 1;
+      }
+    }
+  }
+
+  const allMainCompleted = mainSubMatches.every(
     (subMatch) =>
       subMatch.status === SUB_MATCH_STATUS.COMPLETED ||
       subMatch.status === SUB_MATCH_STATUS.FORFEIT
   );
+
+  const remainingMain = mainSubMatches.filter(
+    (subMatch) =>
+      subMatch.status !== SUB_MATCH_STATUS.COMPLETED &&
+      subMatch.status !== SUB_MATCH_STATUS.FORFEIT
+  ).length;
+
+  const dreambreakerRequired =
+    isMlpFormat(teamData) &&
+    teamData.settings?.dreambreakerEnabled !== false &&
+    allMainCompleted &&
+    teamAWins === 2 &&
+    teamBWins === 2;
+
+  const dreambreakerFinished =
+    dreambreakerSubMatch?.status === SUB_MATCH_STATUS.COMPLETED ||
+    dreambreakerSubMatch?.status === SUB_MATCH_STATUS.FORFEIT ||
+    matchup.dreambreaker?.status === "completed";
+
+  const needsDreambreaker = dreambreakerRequired && !dreambreakerFinished;
+
+  let winnerTeamId = "";
+  if (dreambreakerFinished && dreambreakerSubMatch?.winnerTeamId) {
+    winnerTeamId = dreambreakerSubMatch.winnerTeamId;
+  } else if (teamAWins > teamBWins + remainingMain) {
+    winnerTeamId = matchup.teamAId;
+  } else if (teamBWins > teamAWins + remainingMain) {
+    winnerTeamId = matchup.teamBId;
+  } else if (allMainCompleted && !needsDreambreaker) {
+    winnerTeamId =
+      teamAWins > teamBWins
+        ? matchup.teamAId
+        : teamBWins > teamAWins
+          ? matchup.teamBId
+          : "";
+  }
+
+  const allCompleted =
+    allMainCompleted &&
+    (!dreambreakerRequired || dreambreakerFinished) &&
+    Boolean(winnerTeamId);
 
   const nextMatchups = teamData.matchups.map((item) => {
     if (item.id !== matchupId) {
@@ -139,18 +204,28 @@ export function computeMatchupResult(teamData, matchupId) {
     };
   });
 
+  let nextData = normalizeTeamData({
+    ...teamData,
+    matchups: nextMatchups,
+  });
+
+  if (needsDreambreaker) {
+    const activation = maybeActivateDreambreaker(nextData, matchupId);
+    nextData = activation.teamData;
+  }
+
+  const finalMatchup = findMatchup(nextData, matchupId);
+
   return {
     ok: true,
-    teamData: normalizeTeamData({
-      ...teamData,
-      matchups: nextMatchups,
-    }),
-    result: {
+    teamData: nextData,
+    result: finalMatchup?.result || {
       teamAWins,
       teamBWins,
       teamAPoints,
       teamBPoints,
       winnerTeamId,
     },
+    needsDreambreaker,
   };
 }

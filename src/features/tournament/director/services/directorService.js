@@ -13,5 +13,9 @@ export function buildDirectorBackPath(tournament, tournamentId) {
     return `/tournament/internal/${tournamentId}`;
   }
 
+  if (tournament.mode === TOURNAMENT_MODE.TEAM_TOURNAMENT) {
+    return `/tournament/team/${tournamentId}`;
+  }
+
   return `/tournament/official/${tournamentId}`;
 }

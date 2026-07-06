@@ -1,5 +1,5 @@
 import { useMemo } from "react";
-import { Box, Typography } from "@mui/material";
+import { Box } from "@mui/material";
 
 import BracketConnector from "./BracketConnector.jsx";
 import BracketMatchCard from "./BracketMatchCard.jsx";
@@ -17,6 +17,7 @@ export default function BracketTree({
   connectorReveal = 1,
   onViewSummary,
   treeScrollRef,
+  className = "",
 }) {
   const { rounds = [], champion, thirdPlace, thirdPlaceTeam } = viewModel || {};
 
@@ -34,7 +35,7 @@ export default function BracketTree({
   const finalCompleted = rounds[rounds.length - 1]?.matches?.[0]?.completed;
 
   return (
-    <Box className="tournament-bracket-tree">
+    <Box className={`tournament-bracket-tree${className ? ` ${className}` : ""}`}>
       <Box
         className="tournament-bracket-tree__scroll tournament-bracket-tree__scroll--desktop"
         ref={treeScrollRef}
@@ -62,12 +63,9 @@ export default function BracketTree({
               }}
               ref={(node) => onRoundRef?.(round.key, node)}
             >
-              <Typography variant="subtitle2" fontWeight={800}>
-                {round.displayName}
-              </Typography>
-              <Typography variant="caption" color="text.secondary">
-                {round.matches.length} trận
-              </Typography>
+              <Box className="tournament-bracket-round-pill">
+                {round.displayName.toUpperCase()} • {round.matches.length} TRẬN
+              </Box>
             </Box>
           ))}
 

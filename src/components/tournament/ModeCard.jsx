@@ -7,64 +7,76 @@ import {
   Chip,
   Stack,
   Typography,
+  useTheme,
 } from "@mui/material";
 import ChevronRightIcon from "@mui/icons-material/ChevronRight";
 
 import { touchButtonSx } from "./mobileUi.js";
+import {
+  tournamentCardContentSx,
+  tournamentCardHoverSx,
+  tournamentCardSx,
+  tournamentModeAccent,
+} from "./tournamentLayout.js";
 
 export default function ModeCard({
   title,
   description,
   icon,
-  color = "primary.main",
+  color,
+  mode,
   badge,
   onStart,
   disabled = false,
 }) {
+  const theme = useTheme();
+  const accent = mode ? tournamentModeAccent(mode) : { color: color || "primary.main", bg: theme.shell?.accentLight || "#ECFDF5" };
+  const accentColor = color || accent.color;
+  const accentBg = mode ? accent.bg : `${accentColor}14`;
+
   return (
     <Card
       variant="outlined"
+      elevation={0}
       sx={{
+        ...tournamentCardSx,
+        ...(!disabled ? tournamentCardHoverSx : {}),
         height: "100%",
         display: "flex",
         flexDirection: "column",
-        borderColor: "divider",
-        transition: "border-color 0.2s, box-shadow 0.2s",
         "&:hover": disabled
           ? undefined
           : {
-              borderColor: color,
-              boxShadow: 2,
+              ...tournamentCardHoverSx["&:hover"],
+              borderColor: accentColor,
             },
       }}
     >
-      <CardContent sx={{ flexGrow: 1, p: { xs: 2, sm: 2.5 } }}>
+      <CardContent sx={{ ...tournamentCardContentSx, flexGrow: 1 }}>
         <Stack direction="row" spacing={1.5} alignItems="flex-start" sx={{ mb: 1.5 }}>
           <Box
             sx={{
-              width: { xs: 44, sm: 48 },
-              height: { xs: 44, sm: 48 },
-              borderRadius: 2,
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              bgcolor: `${color}14`,
-              color,
+              width: 36,
+              height: 36,
+              borderRadius: "50%",
+              display: "grid",
+              placeItems: "center",
+              bgcolor: accentBg,
+              color: accentColor,
               flexShrink: 0,
             }}
           >
             {icon}
           </Box>
           <Box sx={{ minWidth: 0, flex: 1 }}>
-            <Stack direction="row" spacing={1} alignItems="center" flexWrap="wrap">
+            <Stack direction="row" spacing={1} alignItems="center" flexWrap="wrap" useFlexGap>
               <Typography
-                variant="h6"
-                fontWeight="bold"
-                sx={{ lineHeight: 1.3, fontSize: { xs: "1.05rem", sm: "1.25rem" } }}
+                fontWeight={700}
+                sx={{ lineHeight: 1.3, fontSize: { xs: "1.05rem", sm: "1.15rem" } }}
               >
                 {title}
               </Typography>
-              {badge && <Chip size="small" label={badge} color="default" />}
+              {badge ? <Chip size="small" label={badge} variant="outlined" /> : null}
             </Stack>
           </Box>
         </Stack>
@@ -72,7 +84,7 @@ export default function ModeCard({
           {description}
         </Typography>
       </CardContent>
-      <CardActions sx={{ p: { xs: 2, sm: 2.5 }, pt: 0 }}>
+      <CardActions sx={{ ...tournamentCardContentSx, pt: 0 }}>
         <Button
           fullWidth
           variant="contained"

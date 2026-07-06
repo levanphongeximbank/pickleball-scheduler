@@ -1,5 +1,5 @@
 import { useMemo, useState, useEffect } from "react";
-import { useSearchParams } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 
 import {
   Alert,
@@ -49,6 +49,7 @@ const CUSTOMER_TYPE_LABELS = {
 
 export default function CustomerList({ clubId, courts = [], revision = 0, onRefresh }) {
   const runtime = usePlatformRuntime();
+  const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const typeFilter = searchParams.get("type") || "all";
   const [selectedCustomer, setSelectedCustomer] = useState(null);
@@ -60,6 +61,12 @@ export default function CustomerList({ clubId, courts = [], revision = 0, onRefr
   const [message, setMessage] = useState(null);
   const [bookingFormCustomer, setBookingFormCustomer] = useState(null);
   const [accessAllowed, setAccessAllowed] = useState(true);
+
+  useEffect(() => {
+    if (searchParams.get("type") === "member") {
+      navigate("/court-management/members", { replace: true });
+    }
+  }, [searchParams, navigate]);
 
   useEffect(() => {
     const query = searchParams.get("q");
@@ -101,7 +108,7 @@ export default function CustomerList({ clubId, courts = [], revision = 0, onRefr
     const query = search.trim().toLowerCase();
 
     return customers.filter((customer) => {
-      if (typeFilter === "member" && customer.type !== "member") {
+      if (typeFilter === "member" && customer.customerType !== "member") {
         return false;
       }
       if (debtFilter === "debt" && (customer.debtAmount || 0) <= 0) {

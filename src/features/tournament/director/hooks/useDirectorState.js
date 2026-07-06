@@ -6,7 +6,8 @@ import { PERMISSIONS } from "../../../../auth/permissions.js";
 import { useClub } from "../../../../context/ClubContext.jsx";
 import { useAuth } from "../../../../context/AuthContext.jsx";
 import { loadCourtsForClub, loadPlayersForClub } from "../../../../domain/clubStorage.js";
-import { getTournament } from "../../../../domain/tournamentService.js";
+import { getTournament, assertTournamentAccess } from "../../../../domain/tournamentService.js";
+import { useTenant } from "../../../../context/TenantContext.jsx";
 import { TOURNAMENT_MODE } from "../../../../models/tournament/index.js";
 import { buildTournamentDirectorSnapshot } from "../../../../tournament/engines/index.js";
 import { hasSupabaseConfig } from "../../../../domain/matchLiveSync.js";
@@ -18,6 +19,17 @@ export function useDirectorState(tournamentId) {
   const [searchParams] = useSearchParams();
   const { activeClubId, activeClub, refreshClubs } = useClub();
   const { can, rbacEnabled, isAuthenticated } = useAuth();
+  const { currentTenantId } = useTenant();
+
+  const tournamentAccess = useMemo(() => {
+    if (!rbacEnabled || !isAuthenticated) {
+      return { ok: true };
+    }
+
+    return assertTournamentAccess(activeClubId, tournamentId, {
+      tenantId: currentTenantId,
+    });
+  }, [activeClubId, currentTenantId, isAuthenticated, rbacEnabled, tournamentId]);
 
   const canUseDirector =
     !rbacEnabled ||
@@ -113,6 +125,7 @@ export function useDirectorState(tournamentId) {
     activeClubId,
     refreshClubs,
     canUseDirector,
+    tournamentAccess,
     tournament,
     players,
     courts,

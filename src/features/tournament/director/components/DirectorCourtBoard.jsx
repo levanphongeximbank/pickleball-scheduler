@@ -15,6 +15,8 @@ import LockOpenIcon from "@mui/icons-material/LockOpen";
 
 import { getCourtDisplayName } from "../../../../models/court.js";
 import { resolveCourtRefereeName } from "../../../../tournament/engines/refereeEngine.js";
+import TournamentSectionCard from "../../../../components/tournament/TournamentSectionCard.jsx";
+import { tournamentCardSx } from "../../../../components/tournament/tournamentLayout.js";
 
 export default function DirectorCourtBoard({
   snapshot,
@@ -25,11 +27,8 @@ export default function DirectorCourtBoard({
   onCourtRefereeChange,
 }) {
   return (
-    <Grid size={{ xs: 12, lg: 4 }}>
-      <Paper variant="outlined" sx={{ p: 1.5 }}>
-        <Typography variant="subtitle1" fontWeight="bold" sx={{ mb: 1 }}>
-          San
-        </Typography>
+    <Grid size={{ xs: 12, lg: 5 }}>
+      <TournamentSectionCard title="Sân" noPadding contentSx={{ pt: 1.5 }}>
         <Stack spacing={1}>
           {snapshot.courtStates.map((court, index) => {
             const locked = court.locked || lockedCourtIds.includes(String(court.id));
@@ -41,7 +40,7 @@ export default function DirectorCourtBoard({
             const courtRefereeId = refereeSettings.courtReferees[String(court.id)] || "";
 
             return (
-              <Paper key={court.id} variant="outlined" sx={{ p: 1.25 }}>
+              <Paper key={court.id} variant="outlined" elevation={0} sx={{ ...tournamentCardSx, p: 1.25 }}>
                 <Stack spacing={1}>
                   <Stack
                     direction={{ xs: "column", sm: "row" }}
@@ -94,7 +93,7 @@ export default function DirectorCourtBoard({
             );
           })}
         </Stack>
-      </Paper>
+      </TournamentSectionCard>
     </Grid>
   );
 }

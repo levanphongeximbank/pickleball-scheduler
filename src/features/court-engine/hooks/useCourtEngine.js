@@ -5,6 +5,13 @@ import { useTenant } from "../../../context/TenantContext.jsx";
 import { loadCourtsForClub, loadPlayersForClub } from "../../../domain/clubStorage.js";
 import { loadStaffForVenue } from "../../../data/staff.js";
 import {
+  isCourtEngineCloudEnabled,
+  isCourtEngineMigrated,
+  migrateLocalCourtEngineToCloud,
+  pullCourtEngineFromCloud,
+} from "../storage/courtEngineCloudStore.js";
+import { subscribeCourtEngineCloud } from "../storage/courtEngineRealtime.js";
+import {
   createSession,
   getActiveSession,
   openSession,
@@ -43,14 +50,21 @@ export function useCourtEngine() {
   const [message, setMessage] = useState(null);
   const [error, setError] = useState(null);
   const [preview, setPreview] = useState(null);
+  const [cloudHydrated, setCloudHydrated] = useState(false);
+
+  const storageOptions = useMemo(
+    () => ({ tenantId: currentTenantId }),
+    [currentTenantId]
+  );
 
   const bump = useCallback(() => setLocalRevision((v) => v + 1), []);
 
   const session = useMemo(() => {
     void revision;
     void localRevision;
-    return getActiveSession(activeClubId);
-  }, [activeClubId, revision, localRevision]);
+    void cloudHydrated;
+    return getActiveSession(activeClubId, storageOptions);
+  }, [activeClubId, revision, localRevision, cloudHydrated, storageOptions]);
 
   const players = useMemo(() => {
     void revision;
@@ -88,14 +102,96 @@ export function useCourtEngine() {
   );
 
   useEffect(() => {
-    if (!session && activeClubId) {
+    if (!activeClubId || !currentTenantId || !isCourtEngineCloudEnabled()) {
+      setCloudHydrated(true);
+      return;
+    }
+
+    let cancelled = false;
+
+    async function hydrate() {
+      if (!isCourtEngineMigrated(activeClubId, currentTenantId)) {
+        void migrateLocalCourtEngineToCloud(activeClubId, currentTenantId).then((result) => {
+          if (!cancelled && result.ok && result.migrated) {
+            setMessage("Đã đồng bộ dữ liệu Court Engine lên cloud.");
+          }
+        });
+      }
+
+      const pull = await pullCourtEngineFromCloud(activeClubId, currentTenantId);
+      if (!cancelled) {
+        if (pull.ok && pull.found) {
+          bump();
+        }
+        setCloudHydrated(true);
+      }
+    }
+
+    void hydrate();
+
+    const unsubscribeRealtime = subscribeCourtEngineCloud(activeClubId, currentTenantId, () => {
+      bump();
+    });
+
+    const pollMs = () => (document.hidden ? 30000 : 15000);
+
+    let pollTimer = null;
+    const schedulePoll = () => {
+      window.clearTimeout(pollTimer);
+      pollTimer = window.setTimeout(async () => {
+        const pull = await pullCourtEngineFromCloud(activeClubId, currentTenantId);
+        if (pull.ok && pull.found) {
+          bump();
+        }
+        schedulePoll();
+      }, pollMs());
+    };
+
+    schedulePoll();
+
+    const onVisibility = () => {
+      if (!document.hidden) {
+        void pullCourtEngineFromCloud(activeClubId, currentTenantId).then((pull) => {
+          if (pull.ok && pull.found) {
+            bump();
+          }
+        });
+      }
+      schedulePoll();
+    };
+
+    document.addEventListener("visibilitychange", onVisibility);
+
+    const onConflict = () => {
+      setError("Dữ liệu đã được cập nhật bởi người khác — đang tải lại...");
+      void pullCourtEngineFromCloud(activeClubId, currentTenantId).then((pull) => {
+        if (pull.ok) {
+          bump();
+          setError(null);
+        }
+      });
+    };
+
+    window.addEventListener("court-engine:version-conflict", onConflict);
+
+    return () => {
+      cancelled = true;
+      unsubscribeRealtime();
+      window.clearTimeout(pollTimer);
+      document.removeEventListener("visibilitychange", onVisibility);
+      window.removeEventListener("court-engine:version-conflict", onConflict);
+    };
+  }, [activeClubId, currentTenantId, bump]);
+
+  useEffect(() => {
+    if (!session && activeClubId && cloudHydrated) {
       createSession(activeClubId, {
         tenantId: currentTenantId,
         name: `Phiên ${new Date().toLocaleDateString("vi-VN")}`,
       });
       bump();
     }
-  }, [session, activeClubId, currentTenantId, bump]);
+  }, [session, activeClubId, currentTenantId, cloudHydrated, bump]);
 
   const handleResult = useCallback(
     (result, successMessage) => {

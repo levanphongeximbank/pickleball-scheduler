@@ -76,12 +76,16 @@ export function createCustomer(input, clubId) {
   }
 
   const now = new Date().toISOString();
+  const customerType = input.customerType || "walk_in";
   const created = normalizeCustomer({
     id: `customer-${Date.now()}`,
     name,
     phone,
-    customerType: input.customerType || "walk_in",
+    customerType,
     note: input.note?.trim() || "",
+    memberSince: customerType === "member" ? input.memberSince || now : "",
+    membershipPlan: customerType === "member" ? input.membershipPlan || "" : "",
+    membershipExpiresAt: customerType === "member" ? input.membershipExpiresAt || "" : "",
     totalBookings: 0,
     totalSpent: 0,
     debtAmount: 0,
@@ -121,12 +125,31 @@ export function updateCustomer(customerId, input, clubId) {
     bookings
   );
 
+  const nextType = input.customerType || existing.customerType;
   const updated = normalizeCustomer({
     ...existing,
     name,
     phone,
-    customerType: input.customerType || existing.customerType,
+    customerType: nextType,
     note: input.note !== undefined ? input.note.trim() : existing.note,
+    memberSince:
+      input.memberSince !== undefined
+        ? input.memberSince
+        : nextType === "member"
+          ? existing.memberSince || existing.createdAt
+          : "",
+    membershipPlan:
+      input.membershipPlan !== undefined
+        ? input.membershipPlan
+        : nextType === "member"
+          ? existing.membershipPlan
+          : "",
+    membershipExpiresAt:
+      input.membershipExpiresAt !== undefined
+        ? input.membershipExpiresAt
+        : nextType === "member"
+          ? existing.membershipExpiresAt
+          : "",
     totalBookings: stats.totalBookings,
     totalSpent: stats.totalSpent,
     debtAmount: stats.debtAmount,

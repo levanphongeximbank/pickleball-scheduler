@@ -6,9 +6,13 @@ import { loadClubData, saveClubData } from "../src/domain/clubStorage.js";
 import {
   approveSkillLevelProposal,
   generateMonthlySkillLevelProposals,
+  getSkillLevelOverview,
   listPendingSkillLevelProposals,
+  listSkillLevelProposals,
   rejectSkillLevelProposal,
+  updateSkillLevelRules,
 } from "../src/domain/skillLevelService.js";
+import { PROPOSAL_STATUS } from "../src/tournament/engines/skillLevelEngine.js";
 import { applyEloFromMatchRecord } from "../src/domain/eloService.js";
 
 function createLocalStorageMock(seed = {}) {
@@ -126,4 +130,66 @@ test("applyEloFromMatchRecord does not change public level after match", () => {
   assert.ok(winner.ratingInternal > 3.5);
   assert.equal(winner.level, 3.5);
   assert.equal(winner.rating, 3.5);
+});
+
+test("listSkillLevelProposals filters by status", () => {
+  generateMonthlySkillLevelProposals(DEFAULT_CLUB.id, {
+    now: new Date("2026-06-05T10:00:00.000Z"),
+  });
+
+  assert.equal(listSkillLevelProposals(DEFAULT_CLUB.id).length, 1);
+  assert.equal(
+    listSkillLevelProposals(DEFAULT_CLUB.id, { status: PROPOSAL_STATUS.PENDING }).length,
+    1
+  );
+
+  const proposalId = listPendingSkillLevelProposals(DEFAULT_CLUB.id)[0].id;
+  approveSkillLevelProposal(DEFAULT_CLUB.id, proposalId, {
+    now: new Date("2026-06-06T10:00:00.000Z"),
+  });
+
+  assert.equal(
+    listSkillLevelProposals(DEFAULT_CLUB.id, { status: PROPOSAL_STATUS.PENDING }).length,
+    0
+  );
+  assert.equal(
+    listSkillLevelProposals(DEFAULT_CLUB.id, { status: PROPOSAL_STATUS.APPROVED }).length,
+    1
+  );
+});
+
+test("updateSkillLevelRules persists club configuration", () => {
+  const result = updateSkillLevelRules(DEFAULT_CLUB.id, {
+    step: 1,
+    promoteThreshold: 0.5,
+    demoteThreshold: 0.4,
+    autoGenerateProposals: false,
+  });
+
+  assert.equal(result.ok, true);
+  assert.equal(result.rules.step, 1);
+  assert.equal(result.rules.promoteThreshold, 0.5);
+  assert.equal(result.rules.autoGenerateProposals, false);
+
+  const data = loadClubData(DEFAULT_CLUB.id);
+  assert.equal(data.skillLevel.step, 1);
+});
+
+test("getSkillLevelOverview returns distribution and player rows", () => {
+  saveClubData(DEFAULT_CLUB.id, {
+    ...loadClubData(DEFAULT_CLUB.id),
+    players: [
+      { id: 1, name: "An", level: 3.5, rating: 3.5, ratingInternal: 4.1 },
+      { id: 2, name: "Binh", level: 2.5, rating: 2.5, ratingInternal: 2.6 },
+    ],
+  });
+
+  const overview = getSkillLevelOverview(DEFAULT_CLUB.id, new Date("2026-06-05T10:00:00.000Z"));
+
+  assert.equal(overview.totalPlayers, 2);
+  assert.equal(overview.reviewMonth, "2026-06");
+  assert.ok(overview.distribution.length > 0);
+  assert.equal(overview.players.length, 2);
+  assert.equal(overview.players[0].name, "An");
+  assert.ok(overview.players[0].delta > 0);
 });

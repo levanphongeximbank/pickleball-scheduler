@@ -245,6 +245,11 @@ export function useDirectorActions(state) {
         return;
       }
 
+      if (!activeEvent?.matches?.length) {
+        setError("Giải chưa có lịch trận. Quay lại setup để tạo bảng đấu.");
+        return;
+      }
+
       const result = assignTournamentMatchToAvailableCourt({
         matches: activeEvent.matches,
         courts,
@@ -493,13 +498,18 @@ export function useDirectorActions(state) {
   const buildRefereeCardProps = useCallback(
     (match, options = {}) => {
       const liveRow = liveByMatchId[String(match.id)];
+      const { showRefereeStatus = true, ...cardOptions } = options;
+
       return buildDirectorMatchCardProps(match, {
-        ...options,
+        ...cardOptions,
+        courts,
         liveRow,
-        refereeStatus: hasSupabaseConfig() ? { match, liveRow } : null,
+        showRefereeStatus,
+        refereeStatus:
+          showRefereeStatus && hasSupabaseConfig() ? { match, liveRow } : null,
       });
     },
-    [liveByMatchId]
+    [courts, liveByMatchId]
   );
 
   return {

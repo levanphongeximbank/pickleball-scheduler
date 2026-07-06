@@ -1,0 +1,13 @@
+/* Slate Enterprise — in-page nav hub (Direction C) */
+.in-page-nav-hub--slate .in-page-nav-hub__grid .MuiCard-root {
+  min-height: var(--hub-card-min-height, 88px);
+}
+
+.in-page-nav-hub--slate .MuiCardActionArea-root:hover .MuiCardActionArea-focusHighlight {
+  opacity: 0;
+}
+
+.in-page-nav-hub--slate .MuiCardActionArea-root:focus-visible {
+  outline: 2px solid var(--hub-accent-lime, #84cc16);
+  outline-offset: 2px;
+}

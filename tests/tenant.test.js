@@ -6,6 +6,7 @@ import {
   assertTenantOperational,
   filterByTenant,
   guardClubTenant,
+  guardRecordTenant,
   resolveTenantIdForClub,
   stampWithTenantId,
 } from "../src/features/tenant/guards/tenantGuard.js";
@@ -108,6 +109,25 @@ describe("tenant sprint 2", () => {
     assert.equal(check.code, "TENANT_FORBIDDEN");
   });
 
+  it("allows platform admin cross-tenant club access", async () => {
+    ensureMultiTenantSeed();
+    enableRbac(true);
+    signInAs({
+      id: "dev-platform-admin",
+      email: "admin@platform.local",
+      role: ROLES.PLATFORM_ADMIN,
+    });
+
+    const check = guardClubTenant("club-future-arena", "tenant-abc-pickleball");
+    assert.equal(check.ok, true);
+
+    const created = createTournament("club-future-arena", { name: "Giải admin test" });
+    assert.equal(created.ok, true);
+
+    await signOut();
+    enableRbac(false);
+  });
+
   it("stamps tenantId when saving players", () => {
     ensureMultiTenantSeed();
 
@@ -173,6 +193,33 @@ describe("tenant sprint 2", () => {
       { tenantId: "tenant-abc-pickleball" }
     );
     assert.equal(denied.ok, false);
+
+    await signOut();
+    enableRbac(false);
+  });
+
+  it("assertTournamentAccess allows platform admin cross-tenant tournament", async () => {
+    ensureMultiTenantSeed();
+    enableRbac(true);
+    signInAs({
+      id: "dev-platform-admin",
+      email: "admin@platform.local",
+      role: ROLES.PLATFORM_ADMIN,
+    });
+
+    const allowed = assertTournamentAccess(
+      "club-future-arena",
+      "future_arena-tournament-1",
+      { tenantId: "tenant-abc-pickleball" }
+    );
+    assert.equal(allowed.ok, true);
+    assert.ok(allowed.tournament);
+
+    const recordCheck = guardRecordTenant(
+      allowed.tournament,
+      "tenant-abc-pickleball"
+    );
+    assert.equal(recordCheck.ok, true);
 
     await signOut();
     enableRbac(false);

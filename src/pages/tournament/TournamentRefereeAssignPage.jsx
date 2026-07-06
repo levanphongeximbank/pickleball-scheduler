@@ -26,6 +26,7 @@ import {
   assignReferee,
   buildRefereeAssignmentTable,
 } from "../../features/team-tournament/engines/refereeAssignEngine.js";
+import TournamentConfigPageShell from "../../components/tournament/TournamentConfigPageShell.jsx";
 
 function buildDemoTeamData() {
   let teamData = initializeTeamTournamentData();
@@ -55,14 +56,10 @@ export default function TournamentRefereeAssignPage() {
   };
 
   return (
-    <Box>
-      <Typography variant="h5" fontWeight={700} sx={{ mb: 0.5 }}>
-        Phân công trọng tài
-      </Typography>
-      <Typography color="text.secondary" sx={{ mb: 2 }}>
-        Gán trọng tài cho từng lượt đối đầu.
-      </Typography>
-
+    <TournamentConfigPageShell
+      title="Phân công trọng tài"
+      description="Gán trọng tài cho từng lượt đối đầu."
+    >
       {message ? (
         <Alert severity={message.type} sx={{ mb: 2 }} onClose={() => setMessage(null)}>
           {message.text}
@@ -123,6 +120,6 @@ export default function TournamentRefereeAssignPage() {
           </TableBody>
         </Table>
       </Paper>
-    </Box>
+    </TournamentConfigPageShell>
   );
 }

@@ -7,34 +7,38 @@ import {
 } from "../../../features/ai-assistant/services/aiSuggestionStorage.js";
 import { useEffect, useMemo, useState } from "react";
 
-export default function AiSummaryCard({ summary }) {
+export default function AiSummaryCard({ summary, tenantId = "", tournamentId = "" }) {
+  const checklistScope = useMemo(
+    () => (tenantId && tournamentId ? { tenantId, tournamentId } : null),
+    [tenantId, tournamentId]
+  );
   const checklistItems = useMemo(() => summary?.workflowChecklist || [], [summary?.workflowChecklist]);
   const [checkedItems, setCheckedItems] = useState(() => {
     const initial = {};
     if (summary?.workflowChecklist?.length) {
       summary.workflowChecklist.forEach((item) => {
-        initial[item.title] = getChecklistState(item.title);
+        initial[item.title] = getChecklistState(item.title, checklistScope);
       });
     }
     return initial;
   });
 
   const checklistProgress = useMemo(
-    () => getChecklistProgress(checklistItems),
-    [checklistItems, checkedItems]
+    () => getChecklistProgress(checklistItems, checklistScope),
+    [checklistItems, checkedItems, checklistScope]
   );
 
   useEffect(() => {
     const initial = {};
     checklistItems.forEach((item) => {
-      const nextValue = Boolean(item.completed || getChecklistState(item.title));
+      const nextValue = Boolean(item.completed || getChecklistState(item.title, checklistScope));
       initial[item.title] = nextValue;
-      if (nextValue && !getChecklistState(item.title)) {
-        setChecklistState(item.title, true);
+      if (nextValue && !getChecklistState(item.title, checklistScope)) {
+        setChecklistState(item.title, true, checklistScope);
       }
     });
     setCheckedItems(initial);
-  }, [checklistItems]);
+  }, [checklistItems, checklistScope]);
 
   if (!summary) {
     return null;
@@ -46,7 +50,7 @@ export default function AiSummaryCard({ summary }) {
   const handleChecklistToggle = (title) => {
     const nextValue = !checkedItems[title];
     setCheckedItems((prev) => ({ ...prev, [title]: nextValue }));
-    setChecklistState(title, nextValue);
+    setChecklistState(title, nextValue, checklistScope);
   };
 
   return (

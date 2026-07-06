@@ -24,6 +24,7 @@ import {
   predictTournamentTime,
   validateTournamentSchedule,
 } from "../../../features/ai-assistant/index.js";
+import { hydrateSuggestionsFromCloud, hydrateChecklistFromCloud } from "../../../features/ai-assistant/services/aiSuggestionStorage.js";
 import AiSummaryCard from "./AiSummaryCard.jsx";
 import AiSuggestionCard from "./AiSuggestionCard.jsx";
 
@@ -69,6 +70,8 @@ export default function TournamentAiAssistantPanel({
   const baseOptions = { clubId, players, courts };
 
   const refreshSummary = useCallback(async () => {
+    await hydrateSuggestionsFromCloud(tournamentId, tenantId);
+    await hydrateChecklistFromCloud(tournamentId, tenantId);
     const result = await getAiTournamentSummary(tournamentId, tenantId, baseOptions);
     if (!result.ok) {
       setError(result.error || "Không thể tải tổng quan AI.");
@@ -83,6 +86,14 @@ export default function TournamentAiAssistantPanel({
   useEffect(() => {
     void refreshSummary();
   }, [refreshSummary]);
+
+  useEffect(() => {
+    const onCloudError = (event) => {
+      setError(event?.detail?.error || "Lưu gợi ý cloud thất bại.");
+    };
+    window.addEventListener("ai-suggestion:cloud-error", onCloudError);
+    return () => window.removeEventListener("ai-suggestion:cloud-error", onCloudError);
+  }, []);
 
   const runAction = async (fn, setter) => {
     setLoading(true);
@@ -142,7 +153,7 @@ export default function TournamentAiAssistantPanel({
 
       {error && <Alert severity="error">{error}</Alert>}
 
-      <AiSummaryCard summary={summary} />
+      <AiSummaryCard summary={summary} tenantId={tenantId} tournamentId={tournamentId} />
 
       <Section title="Đề xuất hạt giống">
         <AiSuggestionCard

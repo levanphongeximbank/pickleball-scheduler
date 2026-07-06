@@ -21,6 +21,7 @@ import {
 } from "../../features/team-tournament/engines/teamTournamentEngine.js";
 import { recordSubMatchResult } from "../../features/team-tournament/engines/teamResultEngine.js";
 import { getAwardsPreview } from "../../features/team-tournament/engines/awardsEngine.js";
+import TournamentConfigPageShell from "../../components/tournament/TournamentConfigPageShell.jsx";
 
 function buildDemoTeamData() {
   let teamData = initializeTeamTournamentData();
@@ -49,14 +50,11 @@ export default function TournamentAwardsPage() {
   const preview = useMemo(() => getAwardsPreview(teamData), [teamData]);
 
   return (
-    <Box>
-      <Typography variant="h5" fontWeight={700} sx={{ mb: 0.5 }}>
-        Trao giải
-      </Typography>
-      <Typography color="text.secondary" sx={{ mb: 2 }}>
-        Bảng trao giải tự động từ BXH đồng đội.
-      </Typography>
-
+    <TournamentConfigPageShell
+      title="Trao giải"
+      description="Bảng trao giải tự động từ BXH đồng đội."
+      noCard
+    >
       <Stack spacing={2}>
         {preview.awards.map((award) => (
           <Paper key={award.key} sx={{ p: 2 }}>
@@ -97,6 +95,6 @@ export default function TournamentAwardsPage() {
           </TableBody>
         </Table>
       </Paper>
-    </Box>
+    </TournamentConfigPageShell>
   );
 }

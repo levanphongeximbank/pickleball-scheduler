@@ -17,7 +17,7 @@
 | Git tag `v5.2.0` | ✅ **READY** (local tag `03ff308`) |
 | Vercel Production deploy | ✅ **DONE** — `dpl_Ey7v7gSCu21aqiGA7SR25AyppmZX` |
 | `/login` HTTP 200 | ✅ **PASS** |
-| SQL V5.2 RBAC (`PHASE_V52_PRODUCTION_RBAC_ROLES.sql`) | ⏳ **Owner apply** |
+| SQL V5.2 RBAC (`PHASE_V52_PRODUCTION_RBAC_ROLES.sql`) | ✅ **PASS** — MCP `v52_production_rbac_roles` 2026-07-05 |
 | Manual smoke T+0 / T+24h | ⏳ **Owner** |
 | Commercial GA | ⛔ **NO-GO** |
 
@@ -83,9 +83,9 @@
 
 | # | Bước | Tick |
 |---|------|------|
-| 1 | SQL Editor Production — chạy file | ☐ |
-| 2 | V52-1 → V52-8 verification PASS | ☐ |
-| 3 | Sửa `REPLACE_ME_*` cho TEAM_CAPTAIN test | ☐ |
+| 1 | SQL Editor Production — chạy file | ✅ MCP migration |
+| 2 | V52-1 → V52-8 verification PASS | ✅ |
+| 3 | Sửa `REPLACE_ME_*` cho TEAM_CAPTAIN test | ⏳ Sau giải đồng đội thật |
 
 ---
 

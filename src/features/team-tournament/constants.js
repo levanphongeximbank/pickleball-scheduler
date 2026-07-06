@@ -25,6 +25,11 @@ export const LINEUP_SOURCE = {
   BTC_OVERRIDE: "btc_override",
 };
 
+export const DREAMBREAKER_ORDER_SOURCE = {
+  CAPTAIN: "captain",
+  RANDOM: "random",
+};
+
 export const MISSING_LINEUP_POLICY = {
   RANDOM: "random",
   BTC_OVERRIDE: "btc_override",
@@ -47,19 +52,58 @@ export const SUB_MATCH_STATUS = {
   FORFEIT: "forfeit",
 };
 
+export const FORMAT_PRESET = {
+  MLP_4: "mlp_4",
+  CUSTOM: "custom",
+};
+
+export const DISCIPLINE_KIND = {
+  DOUBLES: "doubles",
+  DREAMBREAKER: "dreambreaker",
+};
+
+export const ACTIVATION_RULE = {
+  ALWAYS: "always",
+  TIE_AT_2_2: "tie_at_2_2",
+};
+
+export const SCORING_SYSTEM = {
+  RALLY: "rally",
+  SIDE_OUT: "side_out",
+};
+
+export const DREAMBREAKER_STATUS = {
+  PENDING: "pending",
+  LINEUP_OPEN: "lineup_open",
+  READY: "ready",
+  IN_PROGRESS: "in_progress",
+  COMPLETED: "completed",
+};
+
+export const DEFAULT_MLP_ROSTER_RULES = {
+  minPlayers: 4,
+  maxPlayers: 4,
+  requiredMales: 2,
+  requiredFemales: 2,
+};
+
 export const DEFAULT_TIE_BREAK_ORDER = [
   "wins",
   "subMatchDiff",
   "pointsScored",
-  "headToHead",
   "manual",
 ];
 
 export const DEFAULT_TEAM_TOURNAMENT_SETTINGS = {
+  formatPreset: FORMAT_PRESET.CUSTOM,
   missingLineupPolicy: MISSING_LINEUP_POLICY.RANDOM,
   allowPlayerReusePerMatchup: false,
   allowPlayerCrossTeam: false,
+  dreambreakerEnabled: false,
+  lineupLockLeadMinutes: 15,
+  rosterRules: null,
   tiebreakOrder: [...DEFAULT_TIE_BREAK_ORDER],
+  regulations: null,
 };
 
 export const TEAM_AUDIT_ACTIONS = {
@@ -80,4 +124,8 @@ export const TEAM_AUDIT_ACTIONS = {
   SUB_MATCH_RESULT_DRAFT: "team.match.result.draft",
   SUB_MATCH_RESULT_CONFIRM: "team.match.result.confirm",
   SUB_MATCH_RESULT_OVERRIDE: "team.match.result.override",
+  SUB_MATCH_FORFEIT: "team.match.forfeit",
+  DREAMBREAKER_ORDER_SUBMIT: "team.dreambreaker.order_submit",
+  DREAMBREAKER_ORDER_LOCK: "team.dreambreaker.order_lock",
+  DREAMBREAKER_POINT: "team.dreambreaker.point",
 };

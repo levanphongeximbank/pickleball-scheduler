@@ -12,6 +12,9 @@ import {
 import SearchIcon from "@mui/icons-material/Search";
 import FilterAltOffIcon from "@mui/icons-material/FilterAltOff";
 
+import { SHELL } from "../../theme/designTokens.js";
+import { TOURNAMENT_LAYOUT } from "../tournament/tournamentLayout.js";
+
 export default function PlayerFilters({
   search,
   onSearchChange,
@@ -27,13 +30,15 @@ export default function PlayerFilters({
 }) {
   return (
     <Paper
+      variant="outlined"
       elevation={0}
       sx={{
         p: { xs: 1.5, md: 2 },
-        mb: 2.5,
-        borderRadius: 2,
-        border: "1px solid rgba(15, 23, 42, 0.08)",
-        bgcolor: "#ffffff",
+        mb: TOURNAMENT_LAYOUT.sectionGap,
+        borderRadius: TOURNAMENT_LAYOUT.cardRadius,
+        borderColor: SHELL.border,
+        bgcolor: SHELL.cardBg,
+        boxShadow: SHELL.cardShadow,
       }}
     >
       <Stack
@@ -47,12 +52,14 @@ export default function PlayerFilters({
           placeholder="Tìm tên, SĐT, nickname..."
           size="small"
           sx={{ flex: 1, minWidth: { lg: 200 } }}
-          InputProps={{
-            startAdornment: (
-              <InputAdornment position="start">
-                <SearchIcon fontSize="small" />
-              </InputAdornment>
-            ),
+          slotProps={{
+            input: {
+              startAdornment: (
+                <InputAdornment position="start">
+                  <SearchIcon fontSize="small" color="action" />
+                </InputAdornment>
+              ),
+            },
           }}
         />
 
@@ -94,6 +101,7 @@ export default function PlayerFilters({
             max={6}
             step={0.1}
             size="small"
+            color="primary"
             onChange={(_, value) => onLevelRangeChange(value)}
             valueLabelDisplay="auto"
           />
@@ -104,13 +112,13 @@ export default function PlayerFilters({
           size="small"
           startIcon={<FilterAltOffIcon />}
           onClick={onClearFilters}
-          sx={{ whiteSpace: "nowrap", flexShrink: 0 }}
+          sx={{ whiteSpace: "nowrap", flexShrink: 0, alignSelf: { lg: "center" } }}
         >
           Xóa bộ lọc
         </Button>
       </Stack>
 
-      <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
+      <Typography variant="body2" color="text.secondary" sx={{ mt: 1.25 }}>
         <strong>{filteredCount}</strong>/{totalCount} người chơi đang hiển thị
       </Typography>
     </Paper>

@@ -1,4 +1,4 @@
-import { Box, Typography } from "@mui/material";
+import { Box } from "@mui/material";
 
 import BracketMatchCard from "./BracketMatchCard.jsx";
 import ChampionCard from "./ChampionCard.jsx";
@@ -39,12 +39,9 @@ export default function BracketMobileTimeline({
                 active ? " tournament-bracket-tree__round-label--active" : ""
               }`}
             >
-              <Typography variant="subtitle1" fontWeight={800} color="primary.dark">
-                {round.displayName}
-              </Typography>
-              <Typography variant="caption" color="text.secondary">
-                {round.matches.length} trận
-              </Typography>
+              <Box className="tournament-bracket-round-pill">
+                {round.displayName.toUpperCase()} • {round.matches.length} TRẬN
+              </Box>
             </Box>
 
             {round.matches.map((match, matchIndex) => (

@@ -54,7 +54,7 @@ test("enrichMatchForDirector resolves entry labels", () => {
 
   const enriched = enrichMatchForDirector(match, entries, []);
   assert.equal(enriched.entryALabel, "Doi A");
-  assert.equal(enriched.stageLabel, "Vong bang");
+  assert.equal(enriched.stageLabel, "Vòng bảng");
 });
 
 test("assignTournamentMatchToAvailableCourt assigns and starts match", () => {

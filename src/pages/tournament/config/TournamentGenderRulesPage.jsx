@@ -17,6 +17,7 @@ import {
   updateEligibilityRules,
 } from "../../../features/team-tournament/engines/eligibilityEngine.js";
 import { initializeTeamTournamentData } from "../../../features/team-tournament/engines/teamTournamentEngine.js";
+import TournamentConfigPageShell from "../../../components/tournament/TournamentConfigPageShell.jsx";
 
 const GENDER_OPTIONS = [
   { key: "male", label: "Nam" },
@@ -50,14 +51,10 @@ export default function TournamentGenderRulesPage() {
   };
 
   return (
-    <Box>
-      <Typography variant="h5" fontWeight={700} sx={{ mb: 0.5 }}>
-        Giới tính
-      </Typography>
-      <Typography color="text.secondary" sx={{ mb: 2 }}>
-        Chọn giới tính được phép đăng ký tham gia giải.
-      </Typography>
-
+    <TournamentConfigPageShell
+      title="Giới tính"
+      description="Chọn giới tính được phép đăng ký tham gia giải."
+    >
       {message ? (
         <Alert severity={message.type} sx={{ mb: 2 }} onClose={() => setMessage(null)}>
           {message.text}
@@ -93,6 +90,6 @@ export default function TournamentGenderRulesPage() {
           Lưu
         </Button>
       </Stack>
-    </Box>
+    </TournamentConfigPageShell>
   );
 }

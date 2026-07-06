@@ -1,11 +1,12 @@
 import { DEFAULT_SKILL_LEVEL_RULES } from "../ai/config.js";
-import { normalizePlayers } from "../models/player.js";
+import { getPlayerRatingInternal, normalizePlayers } from "../models/player.js";
 import { loadClubData, saveClubData } from "./clubStorage.js";
 import {
   applyApprovedPublicLevel,
   applyMonthlyHoldReview,
   assessMonthlyPublicLevel,
   createSkillLevelProposal,
+  getMonthKey,
   isMonthlyReviewDue,
   normalizeSkillLevelProposals,
   normalizeSkillLevelRules,
@@ -29,8 +30,97 @@ export function getSkillLevelRules(clubId) {
 }
 
 export function listPendingSkillLevelProposals(clubId) {
+  return listSkillLevelProposals(clubId, { status: PROPOSAL_STATUS.PENDING });
+}
+
+export function listSkillLevelProposals(clubId, options = {}) {
   const data = loadClubData(clubId);
-  return getClubProposals(data).filter((item) => item.status === PROPOSAL_STATUS.PENDING);
+  const proposals = getClubProposals(data);
+  const status = options.status ? String(options.status) : null;
+
+  if (!status) {
+    return proposals;
+  }
+
+  return proposals.filter((item) => item.status === status);
+}
+
+export function updateSkillLevelRules(clubId, partialRules = {}) {
+  const data = loadClubData(clubId);
+  const nextRules = normalizeSkillLevelRules({
+    ...getClubSkillLevelRules(data),
+    ...partialRules,
+  });
+
+  data.skillLevel = nextRules;
+  data.updatedAt = new Date().toISOString();
+  saveClubData(clubId, data);
+
+  return { ok: true, rules: nextRules };
+}
+
+function buildLevelDistribution(players = [], rules = DEFAULT_SKILL_LEVEL_RULES) {
+  const step = Number(rules.step) || 0.5;
+  const min = Number(rules.minLevel) || 1.5;
+  const max = Number(rules.maxLevel) || 6;
+  const buckets = [];
+
+  for (let level = min; level < max; level += step) {
+    const upper = Math.min(max, Math.round((level + step) * 10) / 10);
+    const label = `${level.toFixed(1)}–${upper.toFixed(1)}`;
+    const count = players.filter((player) => {
+      const value = Number(player.level ?? player.rating);
+      if (!Number.isFinite(value)) {
+        return false;
+      }
+      return value >= level && (upper >= max ? value <= max : value < upper);
+    }).length;
+
+    buckets.push({ label, level, count });
+  }
+
+  return buckets;
+}
+
+export function getSkillLevelOverview(clubId, now = new Date()) {
+  const data = loadClubData(clubId);
+  const rules = getClubSkillLevelRules(data);
+  const players = normalizePlayers(data.players || []);
+  const proposals = getClubProposals(data);
+  const activePlayers = players.filter(
+    (player) => player.status !== "archived" && player.active !== false
+  );
+
+  const levelSum = activePlayers.reduce(
+    (sum, player) => sum + Number(player.level ?? player.rating ?? 0),
+    0
+  );
+  const averageLevel = activePlayers.length ? levelSum / activePlayers.length : 0;
+
+  const playerRows = activePlayers.map((player) => {
+    const publicLevel = Number(player.level ?? player.rating) || 0;
+    const ratingInternal = getPlayerRatingInternal(player, publicLevel);
+
+    return {
+      id: player.id,
+      name: player.name,
+      publicLevel,
+      ratingInternal,
+      delta: Math.round((ratingInternal - publicLevel) * 100) / 100,
+      lastReviewAt: player.skillMeta?.lastPublicLevelReviewAt || null,
+    };
+  });
+
+  return {
+    rules,
+    reviewMonth: getMonthKey(now),
+    totalPlayers: activePlayers.length,
+    averageLevel: Math.round(averageLevel * 10) / 10,
+    pendingCount: proposals.filter((item) => item.status === PROPOSAL_STATUS.PENDING).length,
+    distribution: buildLevelDistribution(activePlayers, rules),
+    players: playerRows,
+    proposals,
+  };
 }
 
 export function isClubMonthlySkillReviewDue(clubId, now = new Date()) {

@@ -1,3 +1,5 @@
+import { useEffect } from "react";
+import Box from "@mui/material/Box";
 import Dialog from "@mui/material/Dialog";
 import DialogContent from "@mui/material/DialogContent";
 
@@ -8,8 +10,10 @@ import MatchPairingAnimation from "./MatchPairingAnimation.jsx";
 import DailyFairMatchScreen from "./daily/DailyFairMatchScreen.jsx";
 import BracketRevealAnimation from "./BracketRevealAnimation.jsx";
 import FlowStepHandoff from "./shared/FlowStepHandoff.jsx";
+import { exitAppFullscreen } from "./shared/browserFullscreen.js";
 import { VISUAL_MODES } from "./animationConfig.js";
 import { FLOW_MODES, isGuidedFlow } from "./shared/tournamentFlowConfig.js";
+import BroadcastLiveIndicator from "../../../features/tournament-broadcast/components/BroadcastLiveIndicator.jsx";
 
 const COMPONENTS = {
   [ANIMATION_MODES.RANDOM_DRAW]: TournamentDrawBoard,
@@ -21,6 +25,8 @@ const COMPONENTS = {
   [ANIMATION_MODES.BRACKET_REVEAL]: BracketRevealAnimation,
   [ANIMATION_MODES.BRACKET_ADVANCE]: BracketRevealAnimation,
 };
+
+const GUIDED_FULLSCREEN_MODES = null;
 
 function resolveBoardProps(animationMode, payload) {
   if (animationMode === ANIMATION_MODES.SNAKE_GROUP) {
@@ -57,16 +63,27 @@ export default function TournamentAnimationDialog({
   onStepComplete,
   flowMode,
   bracketReviewMode = false,
+  broadcastStatus,
+  broadcastError,
   ...payload
 }) {
+  const guided = isGuidedFlow(flowMode);
+
+  useEffect(() => {
+    if (!open) {
+      exitAppFullscreen();
+    }
+  }, [open]);
+
   if (handoff) {
     return (
       <Dialog
         open={Boolean(open)}
         onClose={onFlowExit || onDismiss}
         disableEscapeKeyDown
+        fullScreen={guided}
         fullWidth
-        maxWidth="md"
+        maxWidth={guided ? false : "md"}
         scroll="paper"
         PaperProps={{
           sx: { bgcolor: "#f8fafc" },
@@ -90,30 +107,33 @@ export default function TournamentAnimationDialog({
   const Component = COMPONENTS[animationMode];
   const boardProps = resolveBoardProps(animationMode, payload);
   const guidedBracketReview =
-    bracketReviewMode && isGuidedFlow(flowMode) && animationMode === ANIMATION_MODES.BRACKET_REVEAL;
+    bracketReviewMode && guided && animationMode === ANIMATION_MODES.BRACKET_REVEAL;
+  const useGuidedFullscreen = guided;
 
   return (
     <Dialog
       open={Boolean(open && Component)}
       onClose={guidedBracketReview ? undefined : onDismiss}
       disableEscapeKeyDown={guidedBracketReview}
+      fullScreen={useGuidedFullscreen}
       fullWidth
-      maxWidth={
-        animationMode === ANIMATION_MODES.GROUP_MATCH_PAIRING ||
-        animationMode === ANIMATION_MODES.DAILY_FAIR_MATCH ||
-        animationMode === ANIMATION_MODES.PAIRING_REVEAL ||
-        animationMode === ANIMATION_MODES.MATCH_REVEAL ||
-        animationMode === ANIMATION_MODES.SNAKE_GROUP ||
-        animationMode === ANIMATION_MODES.RANDOM_DRAW
-          ? false
-          : "lg"
-      }
+      maxWidth={useGuidedFullscreen ? false : "lg"}
       scroll="paper"
       PaperProps={{
         sx: { bgcolor: "#f8fafc" },
       }}
     >
-      <DialogContent sx={{ p: { xs: 1, sm: 2 } }}>
+      <DialogContent
+        sx={{
+          p: { xs: 1, sm: 2 },
+          ...(guidedBracketReview ? { p: 0, height: "100%" } : {}),
+        }}
+      >
+        {broadcastStatus ? (
+          <Box sx={{ display: "flex", justifyContent: "flex-end", mb: 1 }}>
+            <BroadcastLiveIndicator status={broadcastStatus} error={broadcastError} />
+          </Box>
+        ) : null}
         {Component ? (
           <Component
             animationMode={animationMode}
@@ -132,4 +152,3 @@ export default function TournamentAnimationDialog({
     </Dialog>
   );
 }
-

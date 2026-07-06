@@ -2,6 +2,10 @@ import { normalizeCourtSession } from "../models/courtSession.js";
 import { resolveTenantIdForClub } from "../../tenant/guards/tenantGuard.js";
 import { isRbacEnabled } from "../../../auth/authService.js";
 import {
+  isCourtEngineCloudEnabled,
+  pushCourtEngineToCloud,
+} from "./courtEngineCloudStore.js";
+import {
   createSupabaseCourtEngineStore,
   isSupabaseCourtEngineStoreEnabled,
 } from "./SupabaseCourtEngineStore.js";
@@ -73,6 +77,7 @@ function emptyStore(clubId, tenantId = null) {
     tenantId: resolveStorageTenantId(clubId, tenantId) || null,
     sessions: [],
     updatedAt: new Date().toISOString(),
+    cloudVersion: 0,
   };
 }
 
@@ -99,6 +104,7 @@ export function loadCourtEngineStore(clubId, options = {}) {
     tenantId: resolveStorageTenantId(id, options.tenantId) || parsed.tenantId || null,
     sessions: (parsed.sessions || []).map(normalizeCourtSession),
     updatedAt: parsed.updatedAt || new Date().toISOString(),
+    cloudVersion: parsed.cloudVersion ?? 0,
   };
 }
 
@@ -114,9 +120,27 @@ export function saveCourtEngineStore(clubId, store, options = {}) {
     tenantId: tenantId || null,
     sessions: (store.sessions || []).map(normalizeCourtSession),
     updatedAt: new Date().toISOString(),
+    cloudVersion: store.cloudVersion ?? 0,
   };
 
   localStorage.setItem(buildCourtEngineStorageKey(id, tenantId), JSON.stringify(payload));
+
+  if (typeof options.skipCloudPush !== "boolean" || !options.skipCloudPush) {
+    if (isCourtEngineCloudEnabled()) {
+      void pushCourtEngineToCloud(id, tenantId, {
+        expectedVersion: payload.cloudVersion ?? store?.cloudVersion ?? 0,
+      }).then((result) => {
+        if (result?.code === "VERSION_CONFLICT" && typeof window !== "undefined") {
+          window.dispatchEvent(
+            new CustomEvent("court-engine:version-conflict", {
+              detail: { clubId: id, tenantId, remoteVersion: result.remoteVersion },
+            })
+          );
+        }
+      });
+    }
+  }
+
   return { ok: true, store: payload };
 }
 

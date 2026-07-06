@@ -27,6 +27,8 @@ const Dashboard = lazy(() => import("./pages/Dashboard"));
 
 const Players = lazy(() => import("./pages/Players"));
 
+const SkillLevelsPage = lazy(() => import("./pages/SkillLevelsPage"));
+
 const PlayerProfile = lazy(() => import("./pages/PlayerProfile"));
 
 const SelectPlayers = lazy(() => import("./pages/SelectPlayers"));
@@ -71,6 +73,11 @@ const TournamentTeamBuildRandomHub = lazy(() =>
 const TournamentTeamBuildDraftHub = lazy(() =>
   import("./pages/tournament/hubs/TournamentHubPages.jsx").then((m) => ({
     default: m.TournamentTeamBuildDraftHub,
+  }))
+);
+const TournamentTeamEligibilityHub = lazy(() =>
+  import("./pages/tournament/hubs/TournamentHubPages.jsx").then((m) => ({
+    default: m.TournamentTeamEligibilityHub,
   }))
 );
 const TournamentScheduleHub = lazy(() =>
@@ -274,6 +281,12 @@ const CourtManagementCustomersPage = lazy(() =>
 
 );
 
+const CourtManagementMembersPage = lazy(() =>
+
+  import("./pages/courtManagement/CourtManagementMembersPage")
+
+);
+
 const CourtManagementCourtsPage = lazy(() =>
 
   import("./pages/courtManagement/CourtManagementCourtsPage")
@@ -351,6 +364,8 @@ export default function Router() {
 
             <Route path="/dashboard" element={<Dashboard />} />
 
+            <Route path="/players/skill" element={<SkillLevelsPage />} />
+
             <Route path="/players" element={<Players />} />
 
             <Route path="/players/profile/:playerId" element={<PlayerProfile />} />
@@ -377,6 +392,8 @@ export default function Router() {
               <Route path="revenue" element={<CourtManagementRevenuePage />} />
 
               <Route path="customers" element={<CourtManagementCustomersPage />} />
+
+              <Route path="members" element={<CourtManagementMembersPage />} />
 
               <Route path="customer-groups" element={<CustomerGroupsPage />} />
 
@@ -417,7 +434,8 @@ export default function Router() {
             <Route path="/tournament/config/gender-rules" element={<TournamentGenderRulesPage />} />
             <Route path="/tournament/config/fee" element={<TournamentFeePage />} />
             <Route path="/tournament/config/regulations" element={<TournamentRegulationsPage />} />
-            <Route path="/tournament/eligibility" element={<TournamentEligibilityPage />} />
+            <Route path="/tournament/eligibility" element={<TournamentTeamEligibilityHub />} />
+            <Route path="/tournament/eligibility/check" element={<TournamentEligibilityPage />} />
             <Route path="/tournament/entry-fee" element={<TournamentFeePage />} />
             <Route path="/tournament/publish-schedule" element={<TournamentPublishSchedulePage />} />
             <Route path="/tournament/referee-assign" element={<TournamentRefereeAssignPage />} />

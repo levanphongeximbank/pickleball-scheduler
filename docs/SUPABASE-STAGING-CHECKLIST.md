@@ -37,8 +37,12 @@ Chạy từng file trong **SQL Editor** → **Run** theo thứ tự. Mọi file 
 | 13 | `docs/supabase-ai-assistant-sprint7.sql` | Bảng `ai_suggestions` + RLS tenant | — |
 | 14 | `docs/supabase-mobile-sprint9.sql` | push_subscriptions, notifications, qr_tokens, checkins | `supabase-mobile-sprint9-rollback.sql` |
 | 15 | `docs/supabase-sprint10.sql` | api_clients/keys/logs, marketplace, payments, webhooks | `supabase-sprint10-rollback.sql` |
+| 16 | `docs/v5/PHASE_V52_PRODUCTION_RBAC_ROLES.sql` | V5.2: `SYSTEM_TECHNICIAN`, `TEAM_CAPTAIN`, permissions, `profiles_role_check` | — |
+| 17 | `docs/v5/PHASE_V52_STAGING_RBAC_SEED.sql` | Gán account staging `tech@` + `player@` → đội trưởng probe | — |
 
 **Không** chạy `docs/supabase-rls-rollback.sql` trừ khi cần khôi phục khẩn cấp.
+
+> **Lưu ý V5.2:** File #16 dùng **cùng nội dung** cho staging (`qyewbxjsiiyufanzcjcq`) và production (`expuvcohlcjzvrrauvud`). Chỉ chạy trên **đúng project** — không copy nhầm ref.
 
 ### Chi tiết Sprint 2–10
 
@@ -140,6 +144,40 @@ set role = 'REFEREE', venue_id = 'venue-staging', status = 'active'
 where email = 'referee@staging.local';
 ```
 
+### V5.2 — Kỹ thuật viên hệ thống + Đội trưởng (sau bước SQL #16–17)
+
+**Tiên quyết:** Đã chạy `docs/v5/PHASE_V52_PRODUCTION_RBAC_ROLES.sql` trên staging.
+
+1. Đăng ký qua app `/login` (nếu chưa có):
+   - `tech@staging.local` — Kỹ thuật viên hệ thống
+   - `player@staging.local` — đã có từ Phase 10D (sẽ nâng lên `TEAM_CAPTAIN`)
+2. Chạy `docs/v5/PHASE_V52_STAGING_RBAC_SEED.sql` trong SQL Editor staging.
+3. (Tuỳ chọn captain portal) Seed giải đồng đội probe:
+
+```bash
+npm run seed:team-tournament-cloud -- --blob-path=tests/fixtures/team-tournament-blob-probe.json
+```
+
+4. Kiểm tra trên app (đăng nhập `admin@staging.local`):
+   - **Quản lý người dùng** → dropdown Role có **Kỹ thuật viên hệ thống** và **Trưởng nhóm / Đội trưởng**
+   - Bảng user có `tech@staging.local` và `player@staging.local` (role đội trưởng)
+
+**Verify SQL nhanh (staging):**
+
+```sql
+-- Constraint V5.2
+select pg_get_constraintdef(oid)
+from pg_constraint
+where conrelid = 'public.profiles'::regclass and conname = 'profiles_role_check';
+
+-- Account V5.2
+select email, role, venue_id, tournament_id, team_id
+from public.profiles
+where email in ('tech@staging.local', 'player@staging.local');
+```
+
+Kỳ vọng: `tech@` → `SYSTEM_TECHNICIAN` (venue null); `player@` → `TEAM_CAPTAIN` + `phase23d-probe-tournament` / `phase23d-team-a`.
+
 ### Đồng bộ `venue_id` trên club_data_v3
 
 Sau khi sync CLB lên cloud, cập nhật:
@@ -202,6 +240,7 @@ Sau rollback: `VITE_RBAC_ENABLED=false` tạm để dev local không bị chặn
 
 ## Bước tiếp theo
 
+- Chạy V5.2 RBAC seed: `docs/v5/PHASE_V52_STAGING_RBAC_SEED.sql` (sau `PHASE_V52_PRODUCTION_RBAC_ROLES.sql`)
 - Chạy `docs/STAGING-APPLY-QA-v358.md`
 - Chạy `docs/STAGING-APPLY-QA-v40-phaseB.md`
 - Chạy `docs/RBAC-RC-QA.md` (role-based QA RC)

@@ -1,7 +1,7 @@
 import { useMemo } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 
-import { Alert, Box, Button, Grid, Typography } from "@mui/material";
+import { Alert, Box, Button, Grid } from "@mui/material";
 import GroupsIcon from "@mui/icons-material/Groups";
 import EmojiEventsIcon from "@mui/icons-material/EmojiEvents";
 import Diversity3Icon from "@mui/icons-material/Diversity3";
@@ -11,6 +11,8 @@ import { TOURNAMENT_MODE } from "../../../models/tournament/index.js";
 import { listTournaments } from "../../../domain/tournamentService.js";
 import { useClub } from "../../../context/ClubContext.jsx";
 import ModeCard from "../../../components/tournament/ModeCard.jsx";
+import TournamentPageHeader from "../../../components/tournament/TournamentPageHeader.jsx";
+import { TOURNAMENT_LAYOUT } from "../../../components/tournament/tournamentLayout.js";
 import { TOURNAMENT_ROUTES, isIndividualTournament, isTeamTournament } from "../../../config/tournamentRoutes.js";
 
 const CREATE_OPTIONS = {
@@ -19,16 +21,14 @@ const CREATE_OPTIONS = {
       mode: TOURNAMENT_MODE.INTERNAL_TOURNAMENT,
       title: "Giải nội bộ CLB",
       description: "Giải cá nhân/đôi trong CLB — chia bảng, bracket nội bộ.",
-      icon: <GroupsIcon />,
-      color: "#16a34a",
+      icon: <GroupsIcon sx={{ fontSize: 18 }} />,
       badge: "Cá nhân",
     },
     {
       mode: TOURNAMENT_MODE.OFFICIAL_TOURNAMENT,
       title: "Giải chính thức / mở rộng",
       description: "Giải nhiều CLB, nhiều nội dung — Open hoặc AI Balance.",
-      icon: <EmojiEventsIcon />,
-      color: "#dc2626",
+      icon: <EmojiEventsIcon sx={{ fontSize: 18 }} />,
       badge: "Cá nhân",
     },
   ],
@@ -37,8 +37,7 @@ const CREATE_OPTIONS = {
       mode: TOURNAMENT_MODE.TEAM_TOURNAMENT,
       title: "Giải đồng đội",
       description: "Đội vs đội, đội hình, BXH đồng đội.",
-      icon: <Diversity3Icon />,
-      color: "#7c3aed",
+      icon: <Diversity3Icon sx={{ fontSize: 18 }} />,
       badge: "Đồng đội",
     },
   ],
@@ -71,21 +70,16 @@ export function TournamentTypePage() {
 
   return (
     <Box>
-      <Typography variant="h5" fontWeight={700} sx={{ mb: 0.5 }}>
-        {title}
-      </Typography>
-      <Typography color="text.secondary" sx={{ mb: 2 }}>
-        {description}
-      </Typography>
+      <TournamentPageHeader title={title} description={description} />
 
-      <Grid container spacing={2} sx={{ mb: 3 }}>
+      <Grid container spacing={TOURNAMENT_LAYOUT.gridSpacing} sx={{ mb: 3 }}>
         {createOptions.map((option) => (
           <Grid key={option.mode} size={{ xs: 12, md: 6 }}>
             <ModeCard
               title={option.title}
               description={option.description}
               icon={option.icon}
-              color={option.color}
+              mode={option.mode}
               badge={option.badge}
               onStart={() => navigate(TOURNAMENT_ROUTES.create)}
             />

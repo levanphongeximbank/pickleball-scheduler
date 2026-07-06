@@ -18,7 +18,7 @@ export default function DirectorMiniStandings({ standings = [] }) {
               Bang {groupStanding.group}
             </Typography>
             {groupStanding.standing.slice(0, 3).map((team, index) => (
-              <Typography key={team.id} variant="caption" display="block">
+              <Typography key={team.id} variant="caption" sx={{ display: "block" }}>
                 {index + 1}. {team.name} ({team.matchPoints}d)
               </Typography>
             ))}

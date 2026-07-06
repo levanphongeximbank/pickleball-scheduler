@@ -2,6 +2,7 @@ import { Box, Button, Chip, Paper, Stack, Typography } from "@mui/material";
 
 import { touchButtonSx } from "./mobileUi.js";
 import MatchRefereeStatusChip from "./MatchRefereeStatusChip.jsx";
+import { matchCardSx, matchStatusBorderColor } from "./tournamentLayout.js";
 
 export { buildDailyMatchCardProps, buildDirectorMatchCardProps } from "./matchCardProps.js";
 
@@ -10,6 +11,7 @@ export default function MatchCard({
   subtitle,
   badge,
   statusChip,
+  matchStatus,
   actionLabel,
   onAction,
   actionColor = "primary",
@@ -19,40 +21,43 @@ export default function MatchCard({
   tertiaryActionLabel,
   onTertiaryAction,
 }) {
+  const borderAccent = matchStatus ? matchStatusBorderColor(matchStatus) : undefined;
+
   return (
     <Paper
       variant="outlined"
+      elevation={0}
       sx={{
+        ...matchCardSx,
         p: { xs: 1.5, sm: 1.25 },
-        borderRadius: 1.5,
+        borderLeft: borderAccent ? `3px solid ${borderAccent}` : undefined,
       }}
     >
-        <Stack direction="row" justifyContent="space-between" spacing={1} alignItems="flex-start">
+      <Stack direction="row" justifyContent="space-between" spacing={1} alignItems="flex-start">
         <Typography
           variant="body2"
-          fontWeight="bold"
+          fontWeight={700}
           sx={{ lineHeight: 1.45, wordBreak: "break-word", flex: 1 }}
         >
           {title}
         </Typography>
-        <Stack direction="row" spacing={0.5} sx={{ flexShrink: 0 }}>
+        <Stack direction="row" spacing={0.5} sx={{ flexShrink: 0, flexWrap: "wrap", justifyContent: "flex-end" }}>
           {statusChip && (
             <MatchRefereeStatusChip match={statusChip.match} liveRow={statusChip.liveRow} />
           )}
-          {badge && <Chip size="small" label={badge} />}
+          {badge ? <Chip size="small" label={badge} variant="outlined" /> : null}
         </Stack>
       </Stack>
 
-      {subtitle && (
+      {subtitle ? (
         <Typography
           variant="caption"
           color="text.secondary"
-          display="block"
-          sx={{ mt: 0.75, wordBreak: "break-word" }}
+          sx={{ mt: 0.75, wordBreak: "break-word", display: "block" }}
         >
           {subtitle}
         </Typography>
-      )}
+      ) : null}
 
       {actionLabel && onAction && (
         <Box sx={{ mt: 1.25 }}>

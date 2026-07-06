@@ -86,6 +86,20 @@ export function TournamentTeamBuildDraftHub() {
   );
 }
 
+export function TournamentTeamEligibilityHub() {
+  return (
+    <TournamentPickerHub
+      title="Kiểm tra điều kiện tham gia"
+      description="Chọn giải đồng đội để đối chiếu roster với quy tắc tuổi, giới tính và trình độ."
+      filter={isTeamTournament}
+      resolvePath={(tournament) =>
+        `/tournament/eligibility/check?tournamentId=${encodeURIComponent(tournament.id)}`
+      }
+      emptyHint="Chưa có giải đồng đội. Tạo giải từ Loại giải → Đồng đội."
+    />
+  );
+}
+
 export function TournamentScheduleHub() {
   return (
     <TournamentPickerHub

@@ -14,6 +14,7 @@ import {
   isGuidedFlowMode,
   resolveAnimationCompleteHandler,
 } from "./shared/tournamentFlowHelpers.js";
+import BracketPresentationSurface from "./bracket/BracketPresentationSurface.jsx";
 import "./tournamentAnimation.css";
 
 const ROUND_MS = ANIMATION_TIMING.bracketRoundMs;
@@ -28,6 +29,9 @@ function formatMatchLabel(match) {
 
 export default function BracketRevealAnimation({
   bracket,
+  event = null,
+  courts = [],
+  knockoutMatchesByBracketId = {},
   animationMode = ANIMATION_MODES.BRACKET_REVEAL,
   advanceHint = null,
   autoStart = false,
@@ -38,6 +42,9 @@ export default function BracketRevealAnimation({
   onStepComplete,
   onFlowExit,
 }) {
+  const useGuidedTree =
+    animationMode === ANIMATION_MODES.BRACKET_REVEAL && isGuidedFlowMode(flowMode);
+
   const steps = useMemo(() => buildBracketRevealSteps(bracket), [bracket]);
   const [phase, setPhase] = useState({ round: -1, match: -1 });
   const [playing, setPlaying] = useState(false);
@@ -62,6 +69,10 @@ export default function BracketRevealAnimation({
   };
 
   useEffect(() => {
+    if (useGuidedTree) {
+      return undefined;
+    }
+
     if (animationMode !== ANIMATION_MODES.BRACKET_ADVANCE || !advanceHint) {
       return undefined;
     }
@@ -73,9 +84,13 @@ export default function BracketRevealAnimation({
 
     timerRef.current = setTimeout(() => handleFlowComplete?.(), ADVANCE_MS);
     return clearTimer;
-  }, [animationMode, advanceHint, handleFlowComplete]);
+  }, [animationMode, advanceHint, handleFlowComplete, useGuidedTree]);
 
   const run = useCallback(() => {
+    if (useGuidedTree) {
+      return;
+    }
+
     clearTimer();
     setPhase({ round: -1, match: -1 });
 
@@ -110,9 +125,13 @@ export default function BracketRevealAnimation({
     };
 
     timerRef.current = setTimeout(tick, MATCH_MS);
-  }, [steps, handleFlowComplete]);
+  }, [steps, handleFlowComplete, useGuidedTree]);
 
   useEffect(() => {
+    if (useGuidedTree) {
+      return;
+    }
+
     if (!bracketReviewMode || !steps.length) {
       return;
     }
@@ -123,9 +142,13 @@ export default function BracketRevealAnimation({
       round: steps.length - 1,
       match: steps[steps.length - 1].matches.length - 1,
     });
-  }, [bracketReviewMode, steps]);
+  }, [bracketReviewMode, steps, useGuidedTree]);
 
   useEffect(() => {
+    if (useGuidedTree) {
+      return undefined;
+    }
+
     if (animationMode === ANIMATION_MODES.BRACKET_ADVANCE) {
       return undefined;
     }
@@ -135,16 +158,38 @@ export default function BracketRevealAnimation({
     }
 
     return clearTimer;
-  }, [animationMode, handleFlowComplete]);
+  }, [animationMode, handleFlowComplete, useGuidedTree]);
 
   useEffect(() => {
+    if (useGuidedTree) {
+      return;
+    }
+
     if (!autoStart || autoStartedRef.current || animationMode === ANIMATION_MODES.BRACKET_ADVANCE) {
       return;
     }
 
     autoStartedRef.current = true;
     run();
-  }, [autoStart, animationMode, run]);
+  }, [autoStart, animationMode, run, useGuidedTree]);
+
+  if (useGuidedTree) {
+    return (
+      <BracketPresentationSurface
+        bracket={bracket}
+        event={event}
+        courts={courts}
+        knockoutMatchesByBracketId={knockoutMatchesByBracketId}
+        autoStart={autoStart}
+        bracketReviewMode={bracketReviewMode}
+        flowMode={flowMode}
+        onAnimationComplete={onAnimationComplete}
+        onSkip={onSkip}
+        onStepComplete={onStepComplete}
+        onFlowExit={onFlowExit}
+      />
+    );
+  }
 
   if (animationMode === ANIMATION_MODES.BRACKET_ADVANCE && advanceHint) {
     return (

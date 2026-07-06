@@ -19,21 +19,37 @@ import {
 import DeleteOutlinedIcon from "@mui/icons-material/DeleteOutlined";
 import SaveIcon from "@mui/icons-material/Save";
 import PersonAddIcon from "@mui/icons-material/PersonAdd";
+import AddIcon from "@mui/icons-material/Add";
 
+import { loadPlayersForClub } from "../../domain/clubStorage.js";
+import { getPlayerGenderKey } from "../../models/player.js";
 import {
   computeTeamRosterStats,
   findPlayerTeam,
   getTeamRosterWarnings,
   getVisibleTeams,
 } from "../../features/team-tournament/engines/teamRosterEngine.js";
+import { isMlpFormat } from "../../features/team-tournament/engines/mlpPresetEngine.js";
 import {
   addPlayerToTeamRoster,
   assignCaptainToTeam,
   assignDeputiesToTeam,
   createTeamInTournament,
+  patchTeamTournament,
   removePlayerFromTeamRoster,
   updateTeamDetails,
 } from "../../features/team-tournament/services/teamTournamentService.js";
+import TeamAiPairingDialog from "../tournament/team/TeamAiPairingDialog.jsx";
+import TournamentPlayerQuickAddDialog from "./TournamentPlayerQuickAddDialog.jsx";
+import { FORMAT_PRESET } from "../../features/team-tournament/constants.js";
+
+const ALL_CLUBS_FILTER = "__all__";
+
+const GENDER_FILTER_OPTIONS = [
+  { value: "all", label: "Tất cả giới tính" },
+  { value: "male", label: "Nam" },
+  { value: "female", label: "Nữ" },
+];
 
 function playerLabel(player) {
   if (!player) {
@@ -47,9 +63,12 @@ function TeamCard({
   team,
   teamData,
   clubPlayers,
+  allTenantPlayers = [],
+  clubs = [],
   canManage,
   clubId,
   tournamentId,
+  defaultClubName = "",
   onUpdated,
   onError,
   onMessage,
@@ -60,26 +79,59 @@ function TeamCard({
   const [selectedPlayer, setSelectedPlayer] = useState(null);
   const [captainId, setCaptainId] = useState(team.captainPlayerId || "");
   const [deputyIds, setDeputyIds] = useState(team.deputyPlayerIds || []);
+  const [sourceClubFilter, setSourceClubFilter] = useState(ALL_CLUBS_FILTER);
+  const [genderFilter, setGenderFilter] = useState("all");
+  const [quickAddOpen, setQuickAddOpen] = useState(false);
+
+  const playerById = useMemo(() => {
+    const map = new Map();
+    [...allTenantPlayers, ...clubPlayers].forEach((player) => {
+      map.set(String(player.id), player);
+    });
+    return map;
+  }, [allTenantPlayers, clubPlayers]);
+
+  const rosterPlayers = useMemo(
+    () => [...playerById.values()],
+    [playerById]
+  );
 
   const teamPlayers = useMemo(
     () =>
       team.playerIds
-        .map((playerId) => clubPlayers.find((player) => String(player.id) === String(playerId)))
+        .map((playerId) => playerById.get(String(playerId)))
         .filter(Boolean),
-    [clubPlayers, team.playerIds]
+    [playerById, team.playerIds]
   );
 
-  const stats = useMemo(() => computeTeamRosterStats(team, clubPlayers), [team, clubPlayers]);
-  const warnings = useMemo(
-    () => getTeamRosterWarnings(team, teamData, clubPlayers),
-    [team, teamData, clubPlayers]
+  const pickerPlayers = useMemo(() => {
+    if (sourceClubFilter === ALL_CLUBS_FILTER) {
+      return allTenantPlayers.length > 0 ? allTenantPlayers : clubPlayers;
+    }
+    return loadPlayersForClub(sourceClubFilter);
+  }, [sourceClubFilter, allTenantPlayers, clubPlayers]);
+
+  const stats = useMemo(
+    () => computeTeamRosterStats(team, rosterPlayers),
+    [team, rosterPlayers]
   );
+  const warnings = useMemo(
+    () => getTeamRosterWarnings(team, teamData, rosterPlayers),
+    [team, teamData, rosterPlayers]
+  );
+  const mlpRoster = isMlpFormat(teamData);
 
   const availablePlayers = useMemo(() => {
     const allowCrossTeam = teamData.settings?.allowPlayerCrossTeam === true;
-    return clubPlayers.filter((player) => {
+    return pickerPlayers.filter((player) => {
       const playerId = String(player.id);
       if (team.playerIds.includes(playerId)) {
+        return false;
+      }
+      if (genderFilter === "male" && getPlayerGenderKey(player.gender) !== "male") {
+        return false;
+      }
+      if (genderFilter === "female" && getPlayerGenderKey(player.gender) !== "female") {
         return false;
       }
       if (allowCrossTeam) {
@@ -87,7 +139,7 @@ function TeamCard({
       }
       return !findPlayerTeam(teamData, playerId);
     });
-  }, [clubPlayers, team.playerIds, teamData]);
+  }, [pickerPlayers, team.playerIds, teamData, genderFilter]);
 
   async function handleResult(action, successMessage) {
     const result = await action;
@@ -122,6 +174,27 @@ function TeamCard({
       `Đã thêm ${selectedPlayer.name} vào ${team.name}.`
     );
     setSelectedPlayer(null);
+  }
+
+  async function handleQuickAddSaved(player) {
+    if (!player?.id) {
+      return;
+    }
+
+    onUpdated();
+
+    const result = await addPlayerToTeamRoster(clubId, tournamentId, {
+      teamId: team.id,
+      playerId: player.id,
+    });
+
+    if (!result?.ok) {
+      onError(result?.error || "Không thêm được VĐV vào đội.");
+      return;
+    }
+
+    onMessage(`Đã thêm ${player.name} vào ${team.name}.`);
+    onUpdated();
   }
 
   function handleRemovePlayer(playerId) {
@@ -164,7 +237,16 @@ function TeamCard({
           <Chip size="small" label={`${stats.total} VĐV`} />
           <Chip size="small" color="info" label={`${stats.males} nam`} />
           <Chip size="small" color="secondary" label={`${stats.females} nữ`} />
+          {mlpRoster ? (
+            <Chip size="small" color="success" label="MLP 4 người" variant="outlined" />
+          ) : null}
         </Stack>
+
+        {mlpRoster ? (
+          <Alert severity="info">
+            MLP: tối đa 4 VĐV (2 nam + 2 nữ). Mỗi VĐV đánh 2 trận/tie.
+          </Alert>
+        ) : null}
 
         {warnings.map((warning) => (
           <Alert key={warning} severity="warning">
@@ -213,6 +295,46 @@ function TeamCard({
 
             <Divider />
 
+            <Stack direction={{ xs: "column", sm: "row" }} spacing={1}>
+              <FormControl fullWidth size="small">
+                <InputLabel id={`club-filter-${team.id}`}>Câu lạc bộ</InputLabel>
+                <Select
+                  labelId={`club-filter-${team.id}`}
+                  label="Câu lạc bộ"
+                  value={sourceClubFilter}
+                  onChange={(event) => {
+                    setSourceClubFilter(event.target.value);
+                    setSelectedPlayer(null);
+                  }}
+                >
+                  <MenuItem value={ALL_CLUBS_FILTER}>Toàn bộ CLB</MenuItem>
+                  {clubs.map((club) => (
+                    <MenuItem key={club.id} value={club.id}>
+                      {club.name}
+                    </MenuItem>
+                  ))}
+                </Select>
+              </FormControl>
+              <FormControl fullWidth size="small">
+                <InputLabel id={`gender-filter-${team.id}`}>Giới tính</InputLabel>
+                <Select
+                  labelId={`gender-filter-${team.id}`}
+                  label="Giới tính"
+                  value={genderFilter}
+                  onChange={(event) => {
+                    setGenderFilter(event.target.value);
+                    setSelectedPlayer(null);
+                  }}
+                >
+                  {GENDER_FILTER_OPTIONS.map((option) => (
+                    <MenuItem key={option.value} value={option.value}>
+                      {option.label}
+                    </MenuItem>
+                  ))}
+                </Select>
+              </FormControl>
+            </Stack>
+
             <Stack direction={{ xs: "column", sm: "row" }} spacing={1} alignItems={{ sm: "center" }}>
               <Autocomplete
                 options={availablePlayers}
@@ -221,11 +343,33 @@ function TeamCard({
                 getOptionLabel={(option) => playerLabel(option)}
                 renderInput={(params) => <TextField {...params} label="Thêm VĐV vào đội" />}
                 sx={{ flex: 1 }}
+                noOptionsText="Không có VĐV phù hợp"
               />
-              <Button startIcon={<PersonAddIcon />} variant="contained" onClick={handleAddPlayer}>
+              <Button
+                startIcon={<PersonAddIcon />}
+                variant="contained"
+                onClick={handleAddPlayer}
+                disabled={!selectedPlayer}
+              >
                 Thêm
               </Button>
+              <Button
+                startIcon={<AddIcon />}
+                variant="outlined"
+                onClick={() => setQuickAddOpen(true)}
+                disabled={!clubId}
+              >
+                Thêm mới
+              </Button>
             </Stack>
+
+            <TournamentPlayerQuickAddDialog
+              open={quickAddOpen}
+              onClose={() => setQuickAddOpen(false)}
+              hostClubId={clubId}
+              defaultClubName={defaultClubName}
+              onSaved={handleQuickAddSaved}
+            />
 
             <Stack direction={{ xs: "column", sm: "row" }} spacing={1}>
               <FormControl fullWidth>
@@ -333,6 +477,8 @@ export default function TeamRosterPanel({
   tournamentId,
   teamData,
   clubPlayers = [],
+  allTenantPlayers = [],
+  clubs = [],
   canManage = false,
   canViewAll = false,
   viewerPlayerId = null,
@@ -341,6 +487,24 @@ export default function TeamRosterPanel({
   onMessage,
 }) {
   const [teamName, setTeamName] = useState("");
+  const [aiPairingOpen, setAiPairingOpen] = useState(false);
+
+  const drawPlayerPool = useMemo(() => {
+    const pool = new Map();
+    [...allTenantPlayers, ...clubPlayers].forEach((player) => {
+      if (player?.id) {
+        pool.set(String(player.id), player);
+      }
+    });
+    return [...pool.values()];
+  }, [allTenantPlayers, clubPlayers]);
+
+  const hostClubName = useMemo(
+    () => clubs.find((club) => String(club.id) === String(clubId))?.name || "",
+    [clubs, clubId]
+  );
+
+  const isMlp = teamData?.settings?.formatPreset === FORMAT_PRESET.MLP_4;
 
   const visibleTeams = useMemo(
     () =>
@@ -389,16 +553,22 @@ export default function TeamRosterPanel({
       ) : null}
 
       {canManage ? (
-        <Stack direction={{ xs: "column", sm: "row" }} spacing={1}>
+        <Stack direction={{ xs: "column", sm: "row" }} spacing={1} flexWrap="wrap" useFlexGap>
           <TextField
             label="Tên đội mới"
             value={teamName}
             onChange={(event) => setTeamName(event.target.value)}
             fullWidth
+            sx={{ flex: 1, minWidth: 200 }}
           />
           <Button variant="contained" onClick={handleCreateTeam}>
             Tạo đội
           </Button>
+          {isMlp ? (
+            <Button variant="outlined" onClick={() => setAiPairingOpen(true)}>
+              AI ghép đội
+            </Button>
+          ) : null}
         </Stack>
       ) : null}
 
@@ -411,15 +581,42 @@ export default function TeamRosterPanel({
             team={team}
             teamData={teamData}
             clubPlayers={clubPlayers}
+            allTenantPlayers={allTenantPlayers}
+            clubs={clubs}
             canManage={canManage}
             clubId={clubId}
             tournamentId={tournamentId}
+            defaultClubName={hostClubName}
             onUpdated={onUpdated}
             onError={onError}
             onMessage={onMessage}
           />
         ))
       )}
+
+      <TeamAiPairingDialog
+        open={aiPairingOpen}
+        onClose={() => setAiPairingOpen(false)}
+        teamData={teamData}
+        players={drawPlayerPool}
+        clubs={clubs}
+        clubId={clubId}
+        defaultClubName={hostClubName}
+        onPlayersRefresh={onUpdated}
+        onMessage={onMessage}
+        onError={onError}
+        onApply={async (nextTeamData) => {
+          const result = await patchTeamTournament(clubId, tournamentId, {
+            teamData: nextTeamData,
+          });
+          if (!result.ok) {
+            onError(result.error || "Không áp dụng được ghép đội.");
+            return;
+          }
+          onMessage?.("Đã AI ghép đội và lưu danh sách đội.");
+          onUpdated?.();
+        }}
+      />
     </Stack>
   );
 }

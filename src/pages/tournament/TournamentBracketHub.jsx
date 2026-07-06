@@ -17,12 +17,13 @@ import { useClub } from "../../context/ClubContext.jsx";
 import { useSeasonLeague } from "../../context/SeasonContext.jsx";
 import { listTournaments } from "../../domain/tournamentService.js";
 import { TOURNAMENT_MODE, TOURNAMENT_STATUS } from "../../models/tournament/index.js";
-import {
-  getTournamentBracketPath,
+import { getTournamentBracketPath,
   getTournamentSetupPath,
   isBracketTournament,
   rankTournamentsForBracket,
 } from "../../utils/tournamentNavigation.js";
+import TournamentPageHeader from "../../components/tournament/TournamentPageHeader.jsx";
+import { tournamentCardHoverSx, tournamentCardSx } from "../../components/tournament/tournamentLayout.js";
 
 const MODE_LABELS = {
   [TOURNAMENT_MODE.INTERNAL_TOURNAMENT]: "Nội bộ",
@@ -82,16 +83,10 @@ export default function TournamentBracketHub() {
 
   return (
     <Box>
-      <Stack direction="row" spacing={1} alignItems="center" sx={{ mb: 1 }}>
-        <AccountTreeIcon color="primary" />
-        <Typography variant="h5" fontWeight={900}>
-          Sơ đồ thi đấu
-        </Typography>
-      </Stack>
-      <Typography color="text.secondary" sx={{ mb: 3 }}>
-        Chọn giải để xem bracket knock-out của{" "}
-        {activeLeague?.name || "giải hiện tại"}.
-      </Typography>
+      <TournamentPageHeader
+        title="Sơ đồ thi đấu"
+        description={`Chọn giải để xem bracket knock-out của ${activeLeague?.name || "giải hiện tại"}.`}
+      />
 
       {bracketTournaments.length > 0 ? (
         <Stack spacing={1.5}>
@@ -99,12 +94,14 @@ export default function TournamentBracketHub() {
             <Paper
               key={tournament.id}
               variant="outlined"
+              elevation={0}
               sx={{
+                ...tournamentCardSx,
+                ...tournamentCardHoverSx,
                 p: 2,
                 cursor: "pointer",
-                transition: "box-shadow 0.2s ease, transform 0.2s ease",
                 "&:hover": {
-                  boxShadow: 2,
+                  ...tournamentCardHoverSx["&:hover"],
                   transform: "translateY(-1px)",
                 },
               }}

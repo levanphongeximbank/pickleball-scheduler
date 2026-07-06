@@ -1,9 +1,11 @@
 import { getPlayerGenderKey } from "../../../models/player.js";
 import {
+  ACTIVATION_RULE,
   DISCIPLINE_CATEGORY,
   GENDER_REQUIREMENT,
 } from "../constants.js";
 import { findTeam } from "../models/index.js";
+import { isMlpFormat } from "./mlpPresetEngine.js";
 
 function playerMap(players = []) {
   return new Map(players.map((player) => [String(player.id), player]));
@@ -143,6 +145,83 @@ export function validateDisciplineSelection({
   return { ok: true, playerIds: normalizedIds };
 }
 
+export function validateMlpLineupParticipation(teamData, teamId, selections = {}) {
+  if (!isMlpFormat(teamData)) {
+    return { ok: true };
+  }
+
+  const team = findTeam(teamData, teamId);
+  if (!team) {
+    return { ok: false, error: "Không tìm thấy đội." };
+  }
+
+  const mainDisciplines = teamData.disciplines.filter(
+    (discipline) => discipline.activationRule === ACTIVATION_RULE.ALWAYS
+  );
+
+  const playCount = new Map();
+  team.playerIds.forEach((playerId) => playCount.set(String(playerId), 0));
+
+  for (const discipline of mainDisciplines) {
+    const playerIds = selections[discipline.id] || [];
+    for (const playerId of playerIds) {
+      const key = String(playerId);
+      playCount.set(key, (playCount.get(key) || 0) + 1);
+    }
+  }
+
+  const errors = [];
+  for (const playerId of team.playerIds) {
+    const count = playCount.get(String(playerId)) || 0;
+    if (count !== 2) {
+      errors.push(
+        `VĐV phải tham gia đúng 2 trận trong tie (1 đồng giới + 1 mixed). Hiện tại: ${count} trận.`
+      );
+      break;
+    }
+  }
+
+  const femaleDiscipline = mainDisciplines.find(
+    (discipline) => discipline.genderRequirement === GENDER_REQUIREMENT.FEMALE
+  );
+  const maleDiscipline = mainDisciplines.find(
+    (discipline) => discipline.genderRequirement === GENDER_REQUIREMENT.MALE
+  );
+  const mixedDisciplines = mainDisciplines.filter(
+    (discipline) => discipline.genderRequirement === GENDER_REQUIREMENT.MIXED_PAIR
+  );
+
+  if (femaleDiscipline) {
+    const femaleIds = new Set(selections[femaleDiscipline.id] || []);
+    for (const mixed of mixedDisciplines) {
+      const mixedIds = selections[mixed.id] || [];
+      const femaleInMixed = mixedIds.find((id) => femaleIds.has(String(id)));
+      if (femaleInMixed) {
+        const maleInMixed = mixedIds.find((id) => !femaleIds.has(String(id)));
+        if (!maleInMixed) {
+          errors.push("Mỗi VĐV nữ: 1 trận đôi nữ + 1 trận mixed.");
+        }
+      }
+    }
+  }
+
+  if (maleDiscipline) {
+    const maleIds = new Set(selections[maleDiscipline.id] || []);
+    for (const mixed of mixedDisciplines) {
+      const mixedIds = selections[mixed.id] || [];
+      const maleInMixed = mixedIds.find((id) => maleIds.has(String(id)));
+      if (maleInMixed) {
+        const femaleInMixed = mixedIds.find((id) => !maleIds.has(String(id)));
+        if (!femaleInMixed) {
+          errors.push("Mỗi VĐV nam: 1 trận đôi nam + 1 trận mixed.");
+        }
+      }
+    }
+  }
+
+  return errors.length > 0 ? { ok: false, errors } : { ok: true };
+}
+
 export function validateLineupSelections({
   teamData,
   teamId,
@@ -179,6 +258,13 @@ export function validateLineupSelections({
 
     result.playerIds.forEach((playerId) => usedPlayerIds.add(playerId));
     normalizedSelections[discipline.id] = result.playerIds;
+  }
+
+  if (!partial) {
+    const mlpCheck = validateMlpLineupParticipation(teamData, teamId, normalizedSelections);
+    if (!mlpCheck.ok) {
+      errors.push(...(mlpCheck.errors || [mlpCheck.error].filter(Boolean)));
+    }
   }
 
   return {

@@ -47,6 +47,7 @@ import {
   buildDailyPlayTournamentPatch,
 } from "../../tournament/engines/dailyPlayEngine.js";
 import TournamentManageGate from "../../components/tournament/TournamentManageGate.jsx";
+import TournamentSetupShell from "../../components/tournament/TournamentSetupShell.jsx";
 import { buildCourtRuntimeStates } from "../../tournament/engines/courtEngine.js";
 import MatchListPanel from "../../components/tournament/MatchListPanel.jsx";
 import RefereeRosterPanel from "../../components/tournament/RefereeRosterPanel.jsx";
@@ -348,41 +349,33 @@ export default function DailyPlaySetup() {
 
   return (
     <TournamentManageGate tournamentId={tournamentId}>
-    <Box>
-      <Button
-        startIcon={<ArrowBackIcon />}
-        onClick={() => navigate("/tournament")}
-        sx={{ mb: 2 }}
-      >
-        Quay lai Giải đấu
-      </Button>
-
-      <Typography variant="h5" fontWeight="bold">
-        {tournament.name}
-      </Typography>
-      <Stack direction={{ xs: "column", sm: "row" }} spacing={1} sx={{ mb: 2 }}>
-        <Typography color="text.secondary" sx={{ flexGrow: 1 }}>
-          Daily Play — check-in, ghép trận công bằng, xếp sân
-        </Typography>
+    <TournamentSetupShell
+      tournament={tournament}
+      description="Daily Play — check-in, ghép trận công bằng, xếp sân"
+      onBack={() => navigate("/tournament")}
+      headerActions={
         <Button
           variant="outlined"
           onClick={() => navigate(`/tournament/director/${tournamentId}`)}
         >
           Mở Director Mode
         </Button>
-      </Stack>
-
-      {message && (
-        <Alert severity="success" sx={{ mb: 2 }} onClose={() => setMessage(null)}>
-          {message}
-        </Alert>
-      )}
-      {error && (
-        <Alert severity="error" sx={{ mb: 2 }} onClose={() => setError(null)}>
-          {error}
-        </Alert>
-      )}
-
+      }
+      alerts={
+        <>
+          {message && (
+            <Alert severity="success" sx={{ mb: 2 }} onClose={() => setMessage(null)}>
+              {message}
+            </Alert>
+          )}
+          {error && (
+            <Alert severity="error" sx={{ mb: 2 }} onClose={() => setError(null)}>
+              {error}
+            </Alert>
+          )}
+        </>
+      }
+    >
       <Grid container spacing={2} sx={{ mb: 2 }}>
         <Grid size={{ xs: 12 }}>
           <RefereeRosterPanel roster={refereeRoster} onChange={handleRefereeRosterChange} />
@@ -604,7 +597,7 @@ export default function DailyPlaySetup() {
           />
         </Box>
       )}
-    </Box>
+    </TournamentSetupShell>
     </TournamentManageGate>
   );
 }

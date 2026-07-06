@@ -1,7 +1,32 @@
 import { Link as RouterLink } from "react-router-dom";
 
-import { Alert, Box, Button, Chip, Paper, Stack, Tab, Tabs, Typography } from "@mui/material";
+import { Alert, Box, Button, Grid, Paper, Stack, Tab, Tabs, Typography } from "@mui/material";
 import ArrowBackIcon from "@mui/icons-material/ArrowBack";
+
+import TournamentPageHeader from "../../../../components/tournament/TournamentPageHeader.jsx";
+import { TournamentStatusChip } from "../../../../components/tournament/TournamentStatusChip.jsx";
+import { tournamentCardSx } from "../../../../components/tournament/tournamentLayout.js";
+
+function DirectorKpiChip({ label, value }) {
+  return (
+    <Box
+      sx={{
+        ...tournamentCardSx,
+        px: 1.5,
+        py: 1,
+        minWidth: 100,
+        flex: "1 1 auto",
+      }}
+    >
+      <Typography variant="caption" color="text.secondary" display="block">
+        {label}
+      </Typography>
+      <Typography fontWeight={700} sx={{ fontSize: 20, lineHeight: 1.2 }}>
+        {value}
+      </Typography>
+    </Box>
+  );
+}
 
 export default function DirectorHeader({
   tournament,
@@ -21,15 +46,14 @@ export default function DirectorHeader({
   return (
     <Box>
       <Button startIcon={<ArrowBackIcon />} onClick={onBack} sx={{ mb: 2 }}>
-        Quay lai setup
+        Quay lại setup
       </Button>
 
-      <Typography variant="h5" fontWeight="bold">
-        Director — {tournament.name}
-      </Typography>
-      <Typography color="text.secondary" sx={{ mb: 2 }}>
-        Điều hành sân, trận chờ/đang đánh/xong, BXH nhanh, bracket mini và trọng tài live
-      </Typography>
+      <TournamentPageHeader
+        title={`Director — ${tournament.name}`}
+        description="Điều hành sân, trận chờ/đang đánh/xong, BXH nhanh, bracket mini và trọng tài live"
+        badge={tournament?.status ? <TournamentStatusChip status={tournament.status} /> : null}
+      />
 
       {!hasSupabaseConfig && (
         <Alert severity="warning" sx={{ mb: 2 }}>
@@ -55,7 +79,7 @@ export default function DirectorHeader({
       )}
 
       {!isDaily && savedEvents.length > 1 && (
-        <Paper variant="outlined" sx={{ p: 1, mb: 2 }}>
+        <Paper variant="outlined" sx={{ p: 1, mb: 2, ...tournamentCardSx }}>
           <Tabs
             value={activeEvent?.id || false}
             onChange={(_, value) => onEventChange(value)}
@@ -69,23 +93,44 @@ export default function DirectorHeader({
         </Paper>
       )}
 
-      <Stack direction="row" spacing={1} flexWrap="wrap" sx={{ mb: 2 }}>
-        <Chip label={`Cho: ${snapshot.summary.waiting}`} color="warning" />
-        <Chip label={`Dang danh: ${snapshot.summary.onCourt}`} color="success" />
-        <Chip label={`Xong: ${snapshot.summary.completed}`} />
-        <Chip label={`San ban: ${snapshot.summary.courtsBusy}`} variant="outlined" />
-      </Stack>
+      <Grid container spacing={1.5} sx={{ mb: 2 }}>
+        <Grid size={{ xs: 6, sm: 3 }}>
+          <DirectorKpiChip label="Chờ" value={snapshot.summary.waiting} />
+        </Grid>
+        <Grid size={{ xs: 6, sm: 3 }}>
+          <DirectorKpiChip label="Đang đánh" value={snapshot.summary.onCourt} />
+        </Grid>
+        <Grid size={{ xs: 6, sm: 3 }}>
+          <DirectorKpiChip label="Xong" value={snapshot.summary.completed} />
+        </Grid>
+        <Grid size={{ xs: 6, sm: 3 }}>
+          <DirectorKpiChip label="Sân bận" value={snapshot.summary.courtsBusy} />
+        </Grid>
+      </Grid>
     </Box>
   );
 }
 
-export function DirectorAccessDenied({ reason = "default" }) {
+export function DirectorAccessDenied({ reason = "default", message }) {
   if (reason === "not-found") {
     return (
       <Box>
-        <Alert severity="error">Khong tim thay giai.</Alert>
+        <Alert severity="error">Không tìm thấy giải.</Alert>
         <Button component={RouterLink} to="/tournament" sx={{ mt: 2 }}>
-          Quay lai
+          Quay lại
+        </Button>
+      </Box>
+    );
+  }
+
+  if (reason === "tenant-access") {
+    return (
+      <Box>
+        <Alert severity="error" sx={{ mb: 2 }}>
+          {message || "Không có quyền truy cập giải này."}
+        </Alert>
+        <Button component={RouterLink} to="/tournament">
+          Quay lại danh sách giải
         </Button>
       </Box>
     );

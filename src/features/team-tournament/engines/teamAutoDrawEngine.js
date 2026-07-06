@@ -1,0 +1,554 @@
+import { seedTeamsIntoGroups } from "../../../pages/tournament.seeding.logic.js";
+import { getPlayerGenderKey, getPlayerRatingInternal } from "../../../models/player.js";
+import { createId } from "../../../utils/id.js";
+import { FORMAT_PRESET } from "../constants.js";
+import {
+  createTeamRecord,
+  normalizeTeamData,
+} from "../models/index.js";
+import {
+  recommendGroupSizes,
+} from "./teamRoundRobinScheduleEngine.js";
+
+const MLP_MEMBERS_PER_TEAM = 4;
+const MLP_MALES_PER_TEAM = 2;
+const MLP_FEMALES_PER_TEAM = 2;
+const TEAM_SPREAD_WARNING_THRESHOLD = 0.25;
+const WITHIN_TEAM_MALE_GAP_SOFT_LIMIT = 0.5;
+const WITHIN_TEAM_MALE_GAP_PENALTY_WEIGHT = 0.5;
+
+function defaultTeamNames(count) {
+  return Array.from({ length: count }, (_, index) => `Đội ${index + 1}`);
+}
+
+function resolveTeamNames(teamNames = [], teamCount) {
+  const count = Math.max(1, Number(teamCount) || 1);
+  const names = Array.isArray(teamNames) ? teamNames.map((name) => String(name || "").trim()) : [];
+  const defaults = defaultTeamNames(count);
+
+  return defaults.map((fallback, index) => names[index] || fallback);
+}
+
+function isMlpFormatPreset(formatPreset) {
+  return formatPreset === FORMAT_PRESET.MLP_4;
+}
+
+function playerRating(player) {
+  return getPlayerRatingInternal(player);
+}
+
+function sortByRatingDesc(players = []) {
+  return [...players].sort((left, right) => playerRating(right) - playerRating(left));
+}
+
+function shuffleIndices(count, randomFn = Math.random) {
+  const indices = Array.from({ length: count }, (_, index) => index);
+
+  for (let index = indices.length - 1; index > 0; index -= 1) {
+    const swapIndex = Math.floor(randomFn() * (index + 1));
+    const temp = indices[index];
+    indices[index] = indices[swapIndex];
+    indices[swapIndex] = temp;
+  }
+
+  return indices;
+}
+
+function spreadOf(values = []) {
+  if (!values.length) {
+    return 0;
+  }
+  return Math.max(...values) - Math.min(...values);
+}
+
+function rosterAvg(roster = []) {
+  if (!roster.length) {
+    return 0;
+  }
+  const total = roster.reduce((sum, player) => sum + playerRating(player), 0);
+  return Math.round((total / roster.length) * 100) / 100;
+}
+
+function malesInRoster(roster = []) {
+  return roster.filter((player) => getPlayerGenderKey(player.gender) === "male");
+}
+
+function malePairAvg(roster = []) {
+  const males = malesInRoster(roster);
+  if (!males.length) {
+    return 0;
+  }
+  const total = males.reduce((sum, player) => sum + playerRating(player), 0);
+  return Math.round((total / males.length) * 100) / 100;
+}
+
+function cloneBuckets(buckets) {
+  return buckets.map((roster) => [...roster]);
+}
+
+function pickBestTeamIndex(candidates = []) {
+  let bestIndex = candidates[0]?.teamIndex ?? 0;
+  let bestScore = candidates[0]?.score ?? Infinity;
+  let bestTieBreak = candidates[0]?.tieBreak ?? Infinity;
+
+  for (const candidate of candidates.slice(1)) {
+    if (
+      candidate.score < bestScore ||
+      (candidate.score === bestScore && candidate.tieBreak < bestTieBreak)
+    ) {
+      bestIndex = candidate.teamIndex;
+      bestScore = candidate.score;
+      bestTieBreak = candidate.tieBreak;
+    }
+  }
+
+  return bestIndex;
+}
+
+function scoreStep2Assignment(buckets, teamIndex, male) {
+  const trial = cloneBuckets(buckets);
+  trial[teamIndex] = [...trial[teamIndex], male];
+
+  const maleAvgs = trial.map((roster) => malePairAvg(roster));
+  const spread = spreadOf(maleAvgs);
+
+  const teamMales = malesInRoster(trial[teamIndex]);
+  let withinGapPenalty = 0;
+  if (teamMales.length === 2) {
+    const gap = Math.abs(playerRating(teamMales[0]) - playerRating(teamMales[1]));
+    if (gap > WITHIN_TEAM_MALE_GAP_SOFT_LIMIT) {
+      withinGapPenalty =
+        WITHIN_TEAM_MALE_GAP_PENALTY_WEIGHT * (gap - WITHIN_TEAM_MALE_GAP_SOFT_LIMIT);
+    }
+  }
+
+  return {
+    teamIndex,
+    score: spread + withinGapPenalty,
+    tieBreak: rosterAvg(trial[teamIndex]),
+  };
+}
+
+function scoreRosterSpreadAssignment(buckets, teamIndex, player) {
+  const trial = cloneBuckets(buckets);
+  trial[teamIndex] = [...trial[teamIndex], player];
+
+  const avgs = trial.map((roster) => rosterAvg(roster));
+
+  return {
+    teamIndex,
+    score: spreadOf(avgs),
+    tieBreak: rosterAvg(trial[teamIndex]),
+  };
+}
+
+function assignGreedy(buckets, player, eligibleTeamIndexes, scoreFn) {
+  const candidates = eligibleTeamIndexes.map((teamIndex) =>
+    scoreFn(buckets, teamIndex, player)
+  );
+  const bestTeamIndex = pickBestTeamIndex(candidates);
+  buckets[bestTeamIndex].push(player);
+}
+
+/**
+ * MLP four-step pairing:
+ * 1) Top male per team (shuffled)
+ * 2) Second male per team (balanced male pair averages)
+ * 3) First female per team (balanced roster average)
+ * 4) Second female per team (balanced roster average)
+ */
+function buildMlpTeamsFourStep({
+  males = [],
+  females = [],
+  teamCount = 0,
+  randomFn = Math.random,
+}) {
+  const buckets = Array.from({ length: teamCount }, () => []);
+
+  const topMales = males.slice(0, teamCount);
+  const shuffledOrder = shuffleIndices(teamCount, randomFn);
+  topMales.forEach((male, index) => {
+    buckets[shuffledOrder[index]].push(male);
+  });
+
+  const secondMales = sortByRatingDesc(males.slice(teamCount, teamCount * 2));
+  secondMales.forEach((male) => {
+    const eligibleTeamIndexes = buckets
+      .map((roster, teamIndex) => ({ roster, teamIndex }))
+      .filter(({ roster }) => malesInRoster(roster).length < MLP_MALES_PER_TEAM)
+      .map(({ teamIndex }) => teamIndex);
+
+    assignGreedy(buckets, male, eligibleTeamIndexes, scoreStep2Assignment);
+  });
+
+  const firstFemales = sortByRatingDesc(females.slice(0, teamCount));
+  firstFemales.forEach((female) => {
+    const eligibleTeamIndexes = buckets
+      .map((roster, teamIndex) => ({ roster, teamIndex }))
+      .filter(
+        ({ roster }) =>
+          malesInRoster(roster).length === MLP_MALES_PER_TEAM &&
+          roster.length - malesInRoster(roster).length < 1
+      )
+      .map(({ teamIndex }) => teamIndex);
+
+    assignGreedy(buckets, female, eligibleTeamIndexes, scoreRosterSpreadAssignment);
+  });
+
+  const secondFemales = sortByRatingDesc(females.slice(teamCount, teamCount * 2));
+  secondFemales.forEach((female) => {
+    const eligibleTeamIndexes = buckets
+      .map((roster, teamIndex) => ({ roster, teamIndex }))
+      .filter(({ roster }) => roster.length < MLP_MEMBERS_PER_TEAM)
+      .map(({ teamIndex }) => teamIndex);
+
+    assignGreedy(buckets, female, eligibleTeamIndexes, scoreRosterSpreadAssignment);
+  });
+
+  return buckets;
+}
+
+function buildTeamRecordsFromBuckets(buckets, teamNames = [], options = {}) {
+  const { assignCaptain = false } = options;
+
+  return buckets.map((roster, index) => {
+    const avgLevel = computeTeamAvgLevel(roster);
+
+    return createTeamRecord({
+      id: createId("team"),
+      name: teamNames[index] || `Đội ${index + 1}`,
+      playerIds: roster.map((player) => player.id),
+      captainPlayerId: assignCaptain ? pickCaptainPlayerId(roster) : "",
+      seed: index + 1,
+      avgLevel,
+    });
+  });
+}
+
+function assignSeedsByAvgLevel(teams = []) {
+  teams.sort((left, right) => (right.avgLevel || 0) - (left.avgLevel || 0));
+  teams.forEach((team, index) => {
+    team.seed = index + 1;
+  });
+  return teams;
+}
+
+function buildTeamSpreadWarning(teams = []) {
+  const levels = teams.map((team) => team.avgLevel || 0);
+  const spread = levels.length ? spreadOf(levels) : 0;
+  if (spread > TEAM_SPREAD_WARNING_THRESHOLD) {
+    return `Chênh lệch trình độ đội: ${spread.toFixed(2)} (đã cân bằng 4 bước).`;
+  }
+  return null;
+}
+
+function computeTeamAvgLevel(players = []) {
+  if (!players.length) {
+    return 0;
+  }
+  const total = players.reduce((sum, player) => sum + playerRating(player), 0);
+  return Math.round((total / players.length) * 100) / 100;
+}
+
+function pickCaptainPlayerId(players = []) {
+  if (!players.length) {
+    return "";
+  }
+  const sorted = sortByRatingDesc(players);
+  return String(sorted[0].id);
+}
+
+/**
+ * Suggest balanced MLP teams (2 male + 2 female) from a player pool.
+ */
+export function suggestMlpTeamsFromPlayers(players = [], options = {}) {
+  const pool = Array.isArray(players) ? players : [];
+  const males = sortByRatingDesc(
+    pool.filter((player) => getPlayerGenderKey(player.gender) === "male")
+  );
+  const females = sortByRatingDesc(
+    pool.filter((player) => getPlayerGenderKey(player.gender) === "female")
+  );
+
+  const teamCount = Math.min(Math.floor(males.length / 2), Math.floor(females.length / 2));
+  const warnings = [];
+
+  if (teamCount < 1) {
+    return {
+      teams: [],
+      warnings: ["Cần ít nhất 2 nam và 2 nữ để ghép 1 đội MLP."],
+      leftover: {
+        males: males.map((player) => player.id),
+        females: females.map((player) => player.id),
+      },
+    };
+  }
+
+  const prefix = options.teamNamePrefix || "Đội";
+  const teamNames = Array.from({ length: teamCount }, (_, index) => `${prefix} ${index + 1}`);
+
+  const buckets = buildMlpTeamsFourStep({
+    males,
+    females,
+    teamCount,
+    randomFn: options.randomFn,
+  });
+
+  let teams = buildTeamRecordsFromBuckets(buckets, teamNames, { assignCaptain: true });
+  teams = assignSeedsByAvgLevel(teams);
+
+  const usedMaleIds = new Set(teams.flatMap((team) => team.playerIds).filter((id) =>
+    males.some((player) => player.id === id)
+  ));
+  const usedFemaleIds = new Set(teams.flatMap((team) => team.playerIds).filter((id) =>
+    females.some((player) => player.id === id)
+  ));
+
+  const leftoverMales = males.filter((player) => !usedMaleIds.has(player.id));
+  const leftoverFemales = females.filter((player) => !usedFemaleIds.has(player.id));
+
+  if (leftoverMales.length || leftoverFemales.length) {
+    warnings.push(
+      `${leftoverMales.length} nam và ${leftoverFemales.length} nữ không được xếp vào đội (thiếu cặp 2M+2F).`
+    );
+  }
+
+  const spreadWarning = buildTeamSpreadWarning(teams);
+  if (spreadWarning) {
+    warnings.push(spreadWarning);
+  }
+
+  return {
+    teams,
+    warnings,
+    leftover: {
+      males: leftoverMales.map((player) => player.id),
+      females: leftoverFemales.map((player) => player.id),
+    },
+  };
+}
+
+export function summarizeSeededGroupBalance(groups = [], teams = []) {
+  const teamById = new Map(teams.map((team) => [team.id, team]));
+
+  const groupStats = groups.map((group) => {
+    const groupTeams = (group.teamIds || [])
+      .map((teamId) => teamById.get(teamId))
+      .filter(Boolean);
+    const levels = groupTeams.map((team) => team.avgLevel || 0);
+    const avgLevel = levels.length
+      ? Math.round((levels.reduce((sum, level) => sum + level, 0) / levels.length) * 100) / 100
+      : 0;
+
+    return {
+      groupId: group.id,
+      groupName: group.name,
+      teamCount: groupTeams.length,
+      avgLevel,
+      minLevel: levels.length ? Math.min(...levels) : 0,
+      maxLevel: levels.length ? Math.max(...levels) : 0,
+    };
+  });
+
+  const avgs = groupStats.map((stat) => stat.avgLevel);
+  const spread = avgs.length ? Math.max(...avgs) - Math.min(...avgs) : 0;
+
+  return {
+    groups: groupStats,
+    balanced: spread <= 0.35,
+    spread: Math.round(spread * 100) / 100,
+  };
+}
+
+/**
+ * Assign existing teams to groups using skill-controlled snake seeding.
+ */
+export function assignSeededTeamsToGroups(teamData, options = {}) {
+  const teams = teamData?.teams || [];
+  if (teams.length < 2) {
+    return { teamData, balance: null };
+  }
+
+  const teamsForSeed = teams.map((team) => ({
+    id: team.id,
+    name: team.name,
+    avgLevel: Number(team.avgLevel) > 0 ? Number(team.avgLevel) : 0,
+  }));
+
+  const recommendedSizes = recommendGroupSizes(teams.length);
+  const groupCount =
+    Number(options.groupCount) ||
+    (recommendedSizes ? recommendedSizes.length : Math.min(2, teams.length));
+
+  const seeded = seedTeamsIntoGroups(teamsForSeed, groupCount, {
+    mode: "skill_controlled",
+  });
+
+  const groups = seeded.map((group, index) => ({
+    id: createId("grp"),
+    name: `Bảng ${group.group || String.fromCharCode(65 + index)}`,
+    teamIds: group.teams.map((team) => team.id),
+  }));
+
+  const nextTeamData = normalizeTeamData({
+    ...teamData,
+    groups,
+  });
+
+  return {
+    teamData: nextTeamData,
+    balance: summarizeSeededGroupBalance(groups, teams),
+  };
+}
+
+/**
+ * Pair balanced teams from a selected player pool (wizard step 1).
+ * MLP: fixed 4 VĐV/đội (2 nam + 2 nữ); does not assign group placement.
+ */
+export function pairTeamsFromSelectedPlayers({
+  players = [],
+  selectedPlayerIds = [],
+  teamCount = 2,
+  teamNames = [],
+  formatPreset,
+  randomFn,
+} = {}) {
+  const selectedSet = new Set((selectedPlayerIds || []).map((id) => String(id)));
+  const pool = (Array.isArray(players) ? players : []).filter((player) =>
+    selectedSet.has(String(player.id))
+  );
+  const warnings = [];
+  const requestedCount = Math.max(2, Number(teamCount) || 2);
+  const names = resolveTeamNames(teamNames, requestedCount);
+
+  if (!pool.length) {
+    return {
+      teams: [],
+      waitingPlayerIds: [],
+      warnings: ["Chọn ít nhất một VĐV để ghép đội."],
+    };
+  }
+
+  if (!isMlpFormatPreset(formatPreset)) {
+    return {
+      teams: [],
+      waitingPlayerIds: pool.map((player) => player.id),
+      warnings: ["AI ghép đội hiện chỉ hỗ trợ preset MLP 4 người."],
+    };
+  }
+
+  const males = sortByRatingDesc(
+    pool.filter((player) => getPlayerGenderKey(player.gender) === "male")
+  );
+  const females = sortByRatingDesc(
+    pool.filter((player) => getPlayerGenderKey(player.gender) === "female")
+  );
+
+  const maxPossibleTeams = Math.min(
+    Math.floor(males.length / MLP_MALES_PER_TEAM),
+    Math.floor(females.length / MLP_FEMALES_PER_TEAM)
+  );
+  const effectiveTeamCount = Math.min(requestedCount, maxPossibleTeams);
+
+  if (effectiveTeamCount < 1) {
+    return {
+      teams: [],
+      waitingPlayerIds: pool.map((player) => player.id),
+      warnings: ["Cần ít nhất 2 nam và 2 nữ để ghép 1 đội MLP."],
+    };
+  }
+
+  if (effectiveTeamCount < requestedCount) {
+    warnings.push(
+      `Chỉ ghép được ${effectiveTeamCount}/${requestedCount} đội (thiếu nam/nữ hoặc VĐV).`
+    );
+  }
+
+  const requiredMales = effectiveTeamCount * MLP_MALES_PER_TEAM;
+  const requiredFemales = effectiveTeamCount * MLP_FEMALES_PER_TEAM;
+  const buckets = buildMlpTeamsFourStep({
+    males: males.slice(0, requiredMales),
+    females: females.slice(0, requiredFemales),
+    teamCount: effectiveTeamCount,
+    randomFn,
+  });
+
+  let teams = buildTeamRecordsFromBuckets(buckets, names.slice(0, effectiveTeamCount));
+  teams = assignSeedsByAvgLevel(teams);
+
+  const usedIds = new Set(teams.flatMap((team) => team.playerIds));
+  const waitingPlayerIds = pool
+    .filter((player) => !usedIds.has(player.id))
+    .map((player) => player.id);
+
+  if (waitingPlayerIds.length) {
+    warnings.push(`${waitingPlayerIds.length} VĐV sẽ ở trạng thái chờ.`);
+  }
+
+  const spreadWarning = buildTeamSpreadWarning(teams);
+  if (spreadWarning) {
+    warnings.push(spreadWarning);
+  }
+
+  return {
+    teams,
+    waitingPlayerIds,
+    warnings,
+  };
+}
+
+/**
+ * Persist paired teams without auto group assignment.
+ */
+export function applyTeamPairing(teamData, { teams = [] } = {}) {
+  if (!teams.length) {
+    return {
+      ok: false,
+      error: "Không có đội để áp dụng.",
+    };
+  }
+
+  const next = normalizeTeamData({
+    ...teamData,
+    teams,
+    groups: [],
+    matchups: [],
+  });
+
+  return {
+    ok: true,
+    teamData: next,
+    teamCount: teams.length,
+  };
+}
+
+/**
+ * Full auto-draw: form MLP teams then seed into groups.
+ */
+export function applyMlpAutoDraw(teamData, players = [], options = {}) {
+  const suggestion = suggestMlpTeamsFromPlayers(players, options);
+  if (!suggestion.teams.length) {
+    return {
+      ok: false,
+      error: suggestion.warnings[0] || "Không ghép được đội MLP.",
+      warnings: suggestion.warnings,
+    };
+  }
+
+  let next = normalizeTeamData({
+    ...teamData,
+    teams: suggestion.teams,
+    groups: [],
+    matchups: [],
+  });
+
+  const { teamData: grouped, balance } = assignSeededTeamsToGroups(next, options);
+
+  return {
+    ok: true,
+    teamData: grouped,
+    balance,
+    warnings: suggestion.warnings,
+    teamCount: suggestion.teams.length,
+  };
+}

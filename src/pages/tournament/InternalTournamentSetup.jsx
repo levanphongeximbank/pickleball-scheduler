@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Link as RouterLink, useNavigate, useParams } from "react-router-dom";
 
 import {
@@ -9,6 +9,7 @@ import {
   FormControl,
   Grid,
   InputLabel,
+  Link,
   MenuItem,
   Paper,
   Select,
@@ -66,15 +67,25 @@ import {
 import { useTournamentAnimation } from "../../components/tournament/animation/useTournamentAnimation.js";
 import { useTournamentFlowOrchestrator } from "../../components/tournament/animation/useTournamentFlowOrchestrator.js";
 import { createInternalFlowAdapters } from "../../components/tournament/animation/tournamentFlowAdapters.js";
+import {
+  BroadcastLiveIndicator,
+  BroadcastSetupDialog,
+  isTournamentBroadcastEnabled,
+  useTournamentBroadcast,
+  BroadcastVodResultAlert,
+} from "../../features/tournament-broadcast/index.js";
 import { PAIRING_CONTROL_MODES } from "../../components/tournament/animation/pairing/usePairingSequence.js";
 import {
   buildRefereeSettingsPatch,
   getRefereeSettings,
 } from "../../tournament/engines/refereeEngine.js";
 import TournamentManageGate from "../../components/tournament/TournamentManageGate.jsx";
+import TournamentSetupShell from "../../components/tournament/TournamentSetupShell.jsx";
+import TournamentSelectedPlayersPanel from "../../components/tournament/TournamentSelectedPlayersPanel.jsx";
 import {
   findTournamentClubId,
   getClubInternalTournamentPlayers,
+  getTenantPlayers,
 } from "../../features/club/index.js";
 import { resolveTenantIdForClub } from "../../features/tenant/guards/tenantGuard.js";
 import { isAiEngineEnabled } from "../../features/ai-assistant/index.js";
@@ -87,7 +98,7 @@ const EVENT_OPTIONS = EVENT_TYPE_OPTIONS;
 export default function InternalTournamentSetup() {
   const { tournamentId } = useParams();
   const navigate = useNavigate();
-  const { activeClubId, refreshClubs, switchClub } = useClub();
+  const { activeClubId, clubs, refreshClubs, switchClub } = useClub();
   const { user } = useAuth();
   const { currentTenantId } = useTenant();
   const aiEnabled = isAiEngineEnabled();
@@ -99,6 +110,7 @@ export default function InternalTournamentSetup() {
 
   const [eventType, setEventType] = useState(EVENT_TYPE.MIXED_DOUBLE);
   const [groupCount, setGroupCount] = useState(4);
+  const [sourceClubId, setSourceClubId] = useState("");
   const [selectedPlayerIds, setSelectedPlayerIds] = useState([]);
   const [previewEntries, setPreviewEntries] = useState([]);
   const [bracketAdvanceAnim, setBracketAdvanceAnim] = useState(null);
@@ -116,6 +128,12 @@ export default function InternalTournamentSetup() {
     }
   }, [tournamentClubId, activeClubId, switchClub]);
 
+  useEffect(() => {
+    if (tournamentClubId) {
+      setSourceClubId(tournamentClubId);
+    }
+  }, [tournamentClubId]);
+
   const tournament = useMemo(
     () => getTournament(tournamentClubId, tournamentId),
     [tournamentClubId, tournamentId, localRevision]
@@ -124,12 +142,15 @@ export default function InternalTournamentSetup() {
   const isClubInternal = tournament?.type === "club_internal";
 
   const players = useMemo(() => {
-    if (isClubInternal) {
-      const tenantId = tournament?.tenantId || resolveTenantIdForClub(tournamentClubId);
-      return getClubInternalTournamentPlayers(tournamentClubId, tenantId);
+    if (!sourceClubId) {
+      return [];
     }
-    return loadPlayersForClub(tournamentClubId);
-  }, [isClubInternal, tournament, tournamentClubId, localRevision]);
+    if (isClubInternal) {
+      const tenantId = tournament?.tenantId || resolveTenantIdForClub(sourceClubId);
+      return getClubInternalTournamentPlayers(sourceClubId, tenantId);
+    }
+    return loadPlayersForClub(sourceClubId);
+  }, [isClubInternal, tournament, sourceClubId, localRevision]);
 
   const courts = useMemo(
     () => loadCourtsForClub(tournamentClubId),
@@ -147,6 +168,15 @@ export default function InternalTournamentSetup() {
     () => filterPlayersForEventType(players, eventType),
     [players, eventType]
   );
+
+  const selectedPlayers = useMemo(() => {
+    const tenantId =
+      tournament?.tenantId || resolveTenantIdForClub(sourceClubId || tournamentClubId);
+    const pool = new Map(getTenantPlayers(tenantId).map((player) => [String(player.id), player]));
+    return selectedPlayerIds
+      .map((id) => pool.get(String(id)))
+      .filter(Boolean);
+  }, [selectedPlayerIds, sourceClubId, tournamentClubId, tournament?.tenantId, localRevision]);
 
   const savedEvent = tournament?.events?.[0] || null;
 
@@ -237,6 +267,24 @@ export default function InternalTournamentSetup() {
   );
 
   const flow = useTournamentFlowOrchestrator(anim, flowAdapters);
+
+  const broadcastFeatureEnabled = isTournamentBroadcastEnabled();
+  const broadcast = useTournamentBroadcast({
+    tournamentId,
+    tournamentName: tournament?.name || "Giải đấu",
+    clubId: tournamentClubId,
+  });
+  const [broadcastDialogOpen, setBroadcastDialogOpen] = useState(false);
+
+  const handleFlowExit = useCallback(async () => {
+    if (broadcastFeatureEnabled) {
+      const stopResult = await broadcast.stopBroadcast();
+      if (stopResult?.ok === false && stopResult?.error) {
+        setError(stopResult.error);
+      }
+    }
+    flow.exitFlow();
+  }, [broadcast, broadcastFeatureEnabled, flow]);
 
   const handleRefereeRosterChange = (nextRoster) => {
     const result = updateTournament(
@@ -397,13 +445,35 @@ export default function InternalTournamentSetup() {
     setSelectedPlayerIds([]);
   };
 
-  const handleStartGuidedFlow = () => {
+  const handleRemoveSelectedPlayer = (playerId) => {
+    const key = String(playerId);
+    setSelectedPlayerIds((current) => current.filter((id) => id !== key));
+  };
+
+  const handleSourceClubChange = (clubId) => {
+    setSourceClubId(clubId);
+    setSelectedPlayerIds([]);
+    setPreviewEntries([]);
+  };
+
+  const handleStartGuidedFlow = async () => {
     setError(null);
     setWarnings([]);
     setMessage(null);
 
+    if (broadcastFeatureEnabled && broadcast.shouldBroadcastWithFlow) {
+      const broadcastResult = await broadcast.startBroadcast();
+      if (broadcastResult?.ok === false) {
+        setError(broadcastResult.error || "Không thể bắt đầu phát live.");
+        return;
+      }
+    }
+
     const result = flow.startFlow({});
     if (result?.ok === false) {
+      if (broadcastFeatureEnabled && broadcast.isLive) {
+        await broadcast.stopBroadcast();
+      }
       setError(result.error || "Không thể bắt đầu trình chiếu.");
     }
   };
@@ -622,55 +692,49 @@ export default function InternalTournamentSetup() {
 
   return (
     <TournamentManageGate tournamentId={tournamentId}>
-    <Box>
-      <Button
-        startIcon={<ArrowBackIcon />}
-        onClick={() => navigate("/tournament")}
-        sx={{ mb: 2 }}
-      >
-        Quay lai Giải đấu
-      </Button>
-
-      <Typography variant="h5" fontWeight="bold">
-        {tournament.name}
-      </Typography>
-      <Stack direction={{ xs: "column", sm: "row" }} spacing={1} sx={{ mb: 2 }}>
-        <Typography color="text.secondary" sx={{ flexGrow: 1 }}>
-          Giải nội bộ — đơn/đôi, chia bảng snake seeding, tạo lịch vòng bảng
-        </Typography>
-        {savedEvent?.matches?.length > 0 && (
+    <TournamentSetupShell
+      tournament={tournament}
+      description="Giải nội bộ — đơn/đôi, chia bảng snake seeding, tạo lịch vòng bảng"
+      onBack={() => navigate("/tournament")}
+      headerActions={
+        savedEvent?.matches?.length > 0 ? (
           <Button
             variant="outlined"
             onClick={() => navigate(`/tournament/director/${tournamentId}`)}
           >
             Mở Director Mode
           </Button>
-        )}
-      </Stack>
-
-      {message && (
-        <Alert severity="success" sx={{ mb: 2 }} onClose={() => setMessage(null)}>
-          {message}
-        </Alert>
-      )}
-      {error && (
-        <Alert severity="error" sx={{ mb: 2 }} onClose={() => setError(null)}>
-          {error}
-        </Alert>
-      )}
-      {warnings.length > 0 && (
-        <Alert severity="warning" sx={{ mb: 2 }}>
-          {warnings.join(" ")}
-        </Alert>
-      )}
-
-      {aiEnabled && (
-        <Tabs value={setupTab} onChange={(_, v) => setSetupTab(v)} sx={{ mb: 2 }}>
-          <Tab label="Thiết lập" />
-          <Tab label="AI Assistant" />
-        </Tabs>
-      )}
-
+        ) : null
+      }
+      alerts={
+        <>
+          {broadcastFeatureEnabled && broadcast.lastVodUpload ? (
+            <BroadcastVodResultAlert
+              result={broadcast.lastVodUpload}
+              onClose={broadcast.clearLastVodUpload}
+            />
+          ) : null}
+          {message && (
+            <Alert severity="success" sx={{ mb: 2 }} onClose={() => setMessage(null)}>
+              {message}
+            </Alert>
+          )}
+          {error && (
+            <Alert severity="error" sx={{ mb: 2 }} onClose={() => setError(null)}>
+              {error}
+            </Alert>
+          )}
+          {warnings.length > 0 && (
+            <Alert severity="warning" sx={{ mb: 2 }}>
+              {warnings.join(" ")}
+            </Alert>
+          )}
+        </>
+      }
+      setupTab={setupTab}
+      onSetupTabChange={(_, value) => setSetupTab(value)}
+      showAiTab={aiEnabled}
+    >
       {aiEnabled && setupTab === 1 ? (
         <TournamentAiAssistantPanel
           tournamentId={tournamentId}
@@ -732,6 +796,18 @@ export default function InternalTournamentSetup() {
             >
               Bắt đầu trình chiếu
             </Button>
+            {broadcastFeatureEnabled ? (
+              <Button
+                fullWidth
+                variant="outlined"
+                onClick={() => setBroadcastDialogOpen(true)}
+              >
+                Cài đặt phát live
+              </Button>
+            ) : null}
+            {broadcastFeatureEnabled && broadcast.isLive ? (
+              <BroadcastLiveIndicator status={broadcast.status} error={broadcast.error} />
+            ) : null}
             <Stack direction={{ xs: "column", sm: "row" }} spacing={1}>
               <Button fullWidth variant="outlined" onClick={handleSuggestPairs}>
                 {isSingleEvent ? "Đề xuất danh sách" : "Đề xuất ghép cặp"}
@@ -745,14 +821,34 @@ export default function InternalTournamentSetup() {
       </Grid>
 
       <Grid container spacing={2}>
-        <Grid size={{ xs: 12, lg: 6 }}>
+        <Grid size={{ xs: 12, lg: 4 }}>
           <Paper variant="outlined" sx={{ p: 1.5 }}>
             <Typography variant="subtitle1" fontWeight="bold" sx={{ mb: 1 }}>
               Chọn VĐV tham gia ({selectedPlayerIds.length}
               {isSingleEvent ? ` / ${eligiblePlayers.length} đủ điều kiện` : ""})
             </Typography>
+            <FormControl fullWidth size="small" sx={{ mb: 1.5 }}>
+              <InputLabel id="source-club-label">Câu lạc bộ</InputLabel>
+              <Select
+                labelId="source-club-label"
+                label="Câu lạc bộ"
+                value={sourceClubId}
+                onChange={(event) => handleSourceClubChange(event.target.value)}
+              >
+                {clubs.map((club) => (
+                  <MenuItem key={club.id} value={club.id}>
+                    {club.name}
+                  </MenuItem>
+                ))}
+              </Select>
+            </FormControl>
             <Stack direction="row" spacing={1} sx={{ mb: 1 }}>
-              <Button size="small" variant="contained" onClick={handleSelectAllPlayers}>
+              <Button
+                size="small"
+                variant="contained"
+                onClick={handleSelectAllPlayers}
+                disabled={!sourceClubId || eligiblePlayers.length === 0}
+              >
                 Chọn tất cả
               </Button>
               <Button
@@ -765,28 +861,55 @@ export default function InternalTournamentSetup() {
               </Button>
             </Stack>
             <Stack spacing={1} sx={{ maxHeight: 360, overflow: "auto" }}>
-              {eligiblePlayers.map((player) => {
-                const checked = selectedPlayerIds.includes(String(player.id));
-                return (
-                  <Button
-                    key={player.id}
-                    fullWidth
-                    variant={checked ? "contained" : "outlined"}
-                    onClick={() => togglePlayer(player.id)}
-                    sx={{ justifyContent: "space-between", minHeight: 44 }}
+              {!sourceClubId ? (
+                <Typography variant="body2" color="text.secondary">
+                  Chọn câu lạc bộ để xem danh sách thành viên.
+                </Typography>
+              ) : eligiblePlayers.length === 0 ? (
+                <Typography variant="body2" color="text.secondary">
+                  CLB này chưa có thành viên. Thêm tại{" "}
+                  <Link
+                    component={RouterLink}
+                    to={`/clubs/${sourceClubId}?tab=members`}
+                    underline="hover"
                   >
-                    <span>{player.name}</span>
-                    <span>
-                      {player.gender || "?"} • {player.rating ?? player.level}
-                    </span>
-                  </Button>
-                );
-              })}
+                    Quản lý CLB → Thành viên
+                  </Link>
+                  .
+                </Typography>
+              ) : (
+                eligiblePlayers.map((player) => {
+                  const checked = selectedPlayerIds.includes(String(player.id));
+                  return (
+                    <Button
+                      key={player.id}
+                      fullWidth
+                      variant={checked ? "contained" : "outlined"}
+                      onClick={() => togglePlayer(player.id)}
+                      sx={{ justifyContent: "space-between", minHeight: 44 }}
+                    >
+                      <span>{player.name}</span>
+                      <span>
+                        {player.gender || "?"} • {player.rating ?? player.level}
+                      </span>
+                    </Button>
+                  );
+                })
+              )}
             </Stack>
           </Paper>
         </Grid>
 
-        <Grid size={{ xs: 12, lg: 6 }}>
+        <Grid size={{ xs: 12, lg: 4 }}>
+          <TournamentSelectedPlayersPanel
+            title="VĐV đã chọn"
+            players={selectedPlayers}
+            onRemove={handleRemoveSelectedPlayer}
+            emptyMessage="Chưa chọn VĐV nào. Bấm tên VĐV bên trái để thêm."
+          />
+        </Grid>
+
+        <Grid size={{ xs: 12, lg: 4 }}>
           <Paper variant="outlined" sx={{ p: 1.5, mb: 2 }}>
             <Typography variant="subtitle1" fontWeight="bold" sx={{ mb: 1 }}>
               {isSingleEvent ? "VĐV đăng ký" : "Cặp / đội đề xuất"} (
@@ -937,7 +1060,22 @@ export default function InternalTournamentSetup() {
         </Stack>
       )}
 
-      <TournamentAnimationDialog {...flow.dialogProps} />
+      <TournamentAnimationDialog
+        {...flow.dialogProps}
+        onFlowExit={handleFlowExit}
+        broadcastStatus={broadcastFeatureEnabled ? broadcast.status : undefined}
+        broadcastError={broadcastFeatureEnabled ? broadcast.error : undefined}
+      />
+
+      {broadcastFeatureEnabled ? (
+        <BroadcastSetupDialog
+          open={broadcastDialogOpen}
+          tournamentId={tournamentId}
+          config={broadcast.config}
+          onChange={broadcast.updateConfig}
+          onClose={() => setBroadcastDialogOpen(false)}
+        />
+      ) : null}
 
       {bracketAdvanceAnim && (
         <Box
@@ -976,7 +1114,7 @@ export default function InternalTournamentSetup() {
       )}
       </>
       )}
-    </Box>
+    </TournamentSetupShell>
     </TournamentManageGate>
   );
 }

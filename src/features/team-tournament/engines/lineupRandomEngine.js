@@ -6,6 +6,7 @@ import {
   normalizeLineup,
   normalizeTeamData,
 } from "../models/index.js";
+import { computeTeamRosterStats } from "./teamRosterEngine.js";
 import { validateDisciplineSelection } from "./lineupValidationEngine.js";
 
 function shuffle(array = []) {
@@ -64,6 +65,13 @@ function eligiblePlayersForDiscipline(team, discipline, players, usedPlayerIds, 
       return false;
     }
 
+    if (discipline.genderRequirement === GENDER_REQUIREMENT.MIXED_PAIR) {
+      const genderKey = getPlayerGenderKey(player.gender);
+      if (genderKey !== "male" && genderKey !== "female") {
+        return false;
+      }
+    }
+
     if (discipline.playerCount === 1) {
       return validateDisciplineSelection({
         team,
@@ -102,6 +110,64 @@ function combinations(values, size) {
   return results;
 }
 
+function pickMixedPair({
+  team,
+  discipline,
+  players,
+  usedPlayerIds,
+  appearanceCounts,
+  allowReuse,
+}) {
+  const playersById = new Map(players.map((player) => [String(player.id), player]));
+  const maleIds = [];
+  const femaleIds = [];
+
+  const eligible = new Set(
+    eligiblePlayersForDiscipline(team, discipline, players, usedPlayerIds, allowReuse).map(String)
+  );
+
+  team.playerIds.forEach((playerId) => {
+    if (!eligible.has(String(playerId))) {
+      return;
+    }
+    const player = playersById.get(String(playerId));
+    if (!player) {
+      return;
+    }
+    const genderKey = getPlayerGenderKey(player.gender);
+    if (genderKey === "male") {
+      maleIds.push(String(playerId));
+    } else if (genderKey === "female") {
+      femaleIds.push(String(playerId));
+    }
+  });
+
+  const rankedMales = sortByAppearanceCount(shuffle(maleIds), appearanceCounts);
+  const rankedFemales = sortByAppearanceCount(shuffle(femaleIds), appearanceCounts);
+
+  for (const maleId of rankedMales) {
+    for (const femaleId of rankedFemales) {
+      const validation = validateDisciplineSelection({
+        team,
+        discipline,
+        playerIds: [maleId, femaleId],
+        players,
+        usedPlayerIds,
+        allowReuse,
+      });
+
+      if (validation.ok) {
+        return { ok: true, playerIds: validation.playerIds };
+      }
+    }
+  }
+
+  return {
+    ok: false,
+    error: `${discipline.name}: không đủ cặp nam/nữ để random.`,
+  };
+}
+
 function pickPlayersForDiscipline({
   team,
   discipline,
@@ -110,6 +176,20 @@ function pickPlayersForDiscipline({
   appearanceCounts,
   allowReuse,
 }) {
+  if (
+    discipline.genderRequirement === GENDER_REQUIREMENT.MIXED_PAIR &&
+    discipline.playerCount === 2
+  ) {
+    return pickMixedPair({
+      team,
+      discipline,
+      players,
+      usedPlayerIds,
+      appearanceCounts,
+      allowReuse,
+    });
+  }
+
   const candidates = eligiblePlayersForDiscipline(
     team,
     discipline,
@@ -142,13 +222,7 @@ function pickPlayersForDiscipline({
   };
 }
 
-export function randomizeMissingLineups(teamData, { matchupId, teamId, players = [], now = new Date() }) {
-  const team = findTeam(teamData, teamId);
-  if (!team) {
-    return { ok: false, error: "Không tìm thấy đội." };
-  }
-
-  const allowReuse = teamData.settings?.allowPlayerReusePerMatchup === true;
+function buildRandomSelections(team, teamData, players, allowReuse) {
   const usedPlayerIds = new Set();
   const appearanceCounts = new Map();
   const selections = {};
@@ -174,7 +248,9 @@ export function randomizeMissingLineups(teamData, { matchupId, teamId, players =
     }
 
     result.playerIds.forEach((playerId) => {
-      usedPlayerIds.add(String(playerId));
+      if (!allowReuse) {
+        usedPlayerIds.add(String(playerId));
+      }
       appearanceCounts.set(
         String(playerId),
         (appearanceCounts.get(String(playerId)) || 0) + 1
@@ -183,40 +259,93 @@ export function randomizeMissingLineups(teamData, { matchupId, teamId, players =
     selections[discipline.id] = result.playerIds;
   }
 
-  if (errors.length > 0) {
-    return { ok: false, error: errors.join(" ") };
+  return {
+    ok: errors.length === 0,
+    selections,
+    errors,
+    usedReuse: allowReuse,
+  };
+}
+
+function formatRandomLineupFailure(team, players, errors) {
+  const stats = computeTeamRosterStats(team, players);
+  const playersById = new Map(players.map((player) => [String(player.id), player]));
+  const missingCount = team.playerIds.filter((playerId) => !playersById.has(String(playerId))).length;
+
+  const parts = [
+    `${team.name}: ${errors.join(" ")}`,
+    `Đội có ${stats.males} nam, ${stats.females} nữ (${stats.total} VĐV).`,
+  ];
+
+  if (missingCount > 0) {
+    parts.push(`${missingCount} VĐV trên đội không khớp dữ liệu hệ thống — kiểm tra CLB/giới tính.`);
   }
 
-  const lockTime = new Date(now).toISOString();
-  const timeLabel = new Date(now).toLocaleTimeString("vi-VN", {
-    hour: "2-digit",
-    minute: "2-digit",
-  });
-  const auditNote = `Đội ${team.name} không nộp đội hình trước hạn. Hệ thống đã tự động chọn đội hình lúc ${timeLabel}.`;
+  parts.push(
+    "Gợi ý: thêm đủ VĐV nam/nữ theo nội dung giải, hoặc bật «Cho phép VĐV đá nhiều nội dung»."
+  );
 
-  const lineup = normalizeLineup({
-    matchupId,
-    teamId,
-    status: LINEUP_STATUS.LOCKED,
-    selections,
-    lockedAt: lockTime,
-    source: LINEUP_SOURCE.RANDOM,
-    auditNote,
-  });
+  return parts.join(" ");
+}
 
-  const key = lineupKey(matchupId, teamId);
+export function randomizeMissingLineups(teamData, { matchupId, teamId, players = [], now = new Date() }) {
+  const team = findTeam(teamData, teamId);
+  if (!team) {
+    return { ok: false, error: "Không tìm thấy đội." };
+  }
+
+  const configuredReuse = teamData.settings?.allowPlayerReusePerMatchup === true;
+  const attempts = configuredReuse ? [true] : [false, true];
+
+  let lastErrors = [];
+  let usedReuseFallback = false;
+
+  for (const allowReuse of attempts) {
+    const built = buildRandomSelections(team, teamData, players, allowReuse);
+    if (built.ok) {
+      usedReuseFallback = allowReuse && !configuredReuse;
+      const lockTime = new Date(now).toISOString();
+      const timeLabel = new Date(now).toLocaleTimeString("vi-VN", {
+        hour: "2-digit",
+        minute: "2-digit",
+      });
+      const reuseNote = usedReuseFallback
+        ? " Một số VĐV được xếp cho nhiều nội dung vì đội thiếu người."
+        : "";
+      const auditNote = `Đội ${team.name} không nộp đội hình trước hạn. Hệ thống đã tự động chọn đội hình lúc ${timeLabel}.${reuseNote}`;
+
+      const lineup = normalizeLineup({
+        matchupId,
+        teamId,
+        status: LINEUP_STATUS.LOCKED,
+        selections: built.selections,
+        lockedAt: lockTime,
+        source: LINEUP_SOURCE.RANDOM,
+        auditNote,
+      });
+
+      const key = lineupKey(matchupId, teamId);
+
+      return {
+        ok: true,
+        teamData: normalizeTeamData({
+          ...teamData,
+          lineups: {
+            ...teamData.lineups,
+            [key]: lineup,
+          },
+        }),
+        lineup,
+        auditNote,
+      };
+    }
+
+    lastErrors = built.errors;
+  }
 
   return {
-    ok: true,
-    teamData: normalizeTeamData({
-      ...teamData,
-      lineups: {
-        ...teamData.lineups,
-        [key]: lineup,
-      },
-    }),
-    lineup,
-    auditNote,
+    ok: false,
+    error: formatRandomLineupFailure(team, players, lastErrors),
   };
 }
 

@@ -144,19 +144,9 @@ export function PlayerImportExportButton({ onClick }) {
   return (
     <Button
       variant="outlined"
-      size="large"
       startIcon={<ImportExportIcon />}
       onClick={onClick}
-      sx={{
-        borderRadius: 1.5,
-        fontWeight: 700,
-        borderColor: "rgba(255,255,255,0.5)",
-        color: "#ffffff",
-        "&:hover": {
-          borderColor: "#ffffff",
-          bgcolor: "rgba(255,255,255,0.1)",
-        },
-      }}
+      sx={{ fontWeight: 600, whiteSpace: "nowrap" }}
     >
       Import / Export
     </Button>

@@ -14,6 +14,7 @@ import { useTenant } from "./TenantContext.jsx";
 import {
   listClubsForTenant,
 } from "../features/tenant/guards/tenantGuard.js";
+import { autoPullOnClubActivate, isAiAutoCloudSyncEnabled } from "../ai/autoCloudSync.js";
 
 const ClubContext = createContext(null);
 
@@ -57,6 +58,35 @@ export function ClubProvider({ children }) {
       }
     }
   }, [activeClubId, currentTenantId, isAuthenticated, rbacEnabled]);
+
+  useEffect(() => {
+    if (!activeClubId || !isAuthenticated || !isAiAutoCloudSyncEnabled()) {
+      return;
+    }
+
+    let cancelled = false;
+
+    void autoPullOnClubActivate(activeClubId).then((result) => {
+      if (!cancelled && result?.ok && !result.skipped && !result.error) {
+        setRevision((value) => value + 1);
+      }
+    });
+
+    const onClubConflict = () => {
+      void autoPullOnClubActivate(activeClubId).then((result) => {
+        if (!cancelled && result?.ok) {
+          setRevision((value) => value + 1);
+        }
+      });
+    };
+
+    window.addEventListener("club-data:version-conflict", onClubConflict);
+
+    return () => {
+      cancelled = true;
+      window.removeEventListener("club-data:version-conflict", onClubConflict);
+    };
+  }, [activeClubId, isAuthenticated]);
 
   useEffect(() => {
     if (!activeClubId) {

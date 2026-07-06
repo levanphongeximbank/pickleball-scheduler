@@ -2,6 +2,28 @@ export function stripQuery(path = "") {
   return String(path).split("?")[0];
 }
 
+function pathIncludesQueryParam(path, key, value) {
+  const query = String(path).split("?")[1] || "";
+  if (!query) return false;
+  return new URLSearchParams(query).get(key) === value;
+}
+
+/** Phân biệt các mục lá cùng path base nhưng khác query (?type=member, ?tab=skill). */
+function matchPathWithOptionalQuery(currentPath, item, resolvedPath) {
+  const targetPath = resolvedPath || item.path || "";
+  const wantsMember = pathIncludesQueryParam(targetPath, "type", "member");
+  const hasMember = pathIncludesQueryParam(currentPath, "type", "member");
+  if (wantsMember) return hasMember;
+  if (hasMember) return false;
+
+  const wantsSkill = pathIncludesQueryParam(targetPath, "tab", "skill");
+  const hasSkill = pathIncludesQueryParam(currentPath, "tab", "skill");
+  if (wantsSkill) return hasSkill;
+  if (hasSkill) return false;
+
+  return true;
+}
+
 export function isNavItemActive(currentPath, item, resolvedPath) {
   const pathOnly = stripQuery(currentPath);
   const itemPath = stripQuery(resolvedPath || item.path);
@@ -18,7 +40,8 @@ export function isNavItemActive(currentPath, item, resolvedPath) {
         !pathOnly.startsWith("/court-management/calendar") &&
         !pathOnly.startsWith("/court-management/bookings") &&
         !pathOnly.startsWith("/court-management/revenue") &&
-        !pathOnly.startsWith("/court-management/customers"))
+        !pathOnly.startsWith("/court-management/customers") &&
+        !pathOnly.startsWith("/court-management/members"))
     );
   }
 
@@ -66,8 +89,15 @@ export function isNavItemActive(currentPath, item, resolvedPath) {
     return pathOnly.startsWith("/crm/reminders/booking");
   }
 
+  if (item.match === "court-members") {
+    return pathOnly.startsWith("/court-management/members");
+  }
+
   if (item.match === "court-customers" || item.match === "court-customers-groups") {
-    return pathOnly.startsWith("/court-management/customers");
+    return (
+      pathOnly.startsWith("/court-management/customers") &&
+      matchPathWithOptionalQuery(currentPath, item, resolvedPath)
+    );
   }
 
   if (item.match === "court-courts") {
@@ -261,6 +291,20 @@ export function isNavItemActive(currentPath, item, resolvedPath) {
   }
 
   if (item.match === "club-members") {
+    return (
+      (pathOnly === "/players" || pathOnly.startsWith("/players/")) &&
+      matchPathWithOptionalQuery(currentPath, item, resolvedPath)
+    );
+  }
+
+  if (item.match === "players-skill") {
+    return pathOnly === "/players/skill";
+  }
+
+  if (item.match === "players-roster") {
+    if (pathOnly === "/players/skill") {
+      return false;
+    }
     return pathOnly === "/players" || pathOnly.startsWith("/players/");
   }
 

@@ -11,6 +11,7 @@ import { DEFAULT_COMPETITION_TYPE } from "./competition.js";
 import { SESSION_CAP } from "./config.js";
 import {
   loadClubData,
+  purgeLegacyAiScopedKeys,
   saveClubData,
 } from "../domain/clubStorage.js";
 
@@ -110,9 +111,7 @@ export function saveAIData(data, clubId = getActiveClubId()) {
   const clubData = loadClubData(clubId);
   const next = applyAiViewToClubData(clubData, data);
   saveClubData(clubId, next);
-
-  const scopedKey = `${KEY}::${clubId}`;
-  localStorage.setItem(scopedKey, JSON.stringify(clubDataToAiView(next)));
+  purgeLegacyAiScopedKeys(clubId);
 }
 
 export function resetAIData(clubId = getActiveClubId()) {
@@ -124,6 +123,7 @@ export function resetAIData(clubId = getActiveClubId()) {
   const clubData = loadClubData(clubId);
   const next = applyAiViewToClubData(clubData, getDefaultAIData());
   saveClubData(clubId, next);
+  purgeLegacyAiScopedKeys(clubId);
   localStorage.removeItem(`${KEY}::${clubId}`);
   return { ok: true };
 }

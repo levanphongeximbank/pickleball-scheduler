@@ -156,7 +156,7 @@ test("build referee matchup view shows published sub matches and players", () =>
 
   assert.equal(view.ok, true);
   assert.equal(view.matchup.subMatches.length, teamData.disciplines.length);
-  assert.equal(view.matchup.courtLabel, "1");
+  assert.equal(view.matchup.courtLabel, "1 Sân 1");
   assert.ok(view.matchup.subMatches[0].teamAPlayerNames.length > 0);
   assert.ok(view.matchup.subMatches[0].teamBPlayerNames.length > 0);
 });
@@ -229,6 +229,15 @@ test("confirm sub match determines winner and aggregate score", () => {
   assert.equal(confirmed.subMatch.winnerTeamId, "team-a");
   assert.equal(confirmed.matchupResult.teamAWins, 1);
   assert.equal(confirmed.matchupResult.teamBWins, 0);
+  assert.equal(confirmed.matchupResult.winnerTeamId, "");
+
+  const standings = getStandingsTable(confirmed.teamData);
+  const teamAStanding = standings.find((row) => row.teamId === "team-a");
+  const teamBStanding = standings.find((row) => row.teamId === "team-b");
+  assert.equal(teamAStanding.played, 0);
+  assert.equal(teamBStanding.played, 0);
+  assert.equal(teamAStanding.subMatchDiff, 1);
+  assert.equal(teamBStanding.subMatchDiff, -1);
 });
 
 test("reject tied score on confirm", () => {

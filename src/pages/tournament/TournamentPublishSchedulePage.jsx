@@ -21,6 +21,7 @@ import {
   publishSchedule,
   SCHEDULE_PUBLISH_STATUS,
 } from "../../features/team-tournament/engines/publishScheduleEngine.js";
+import TournamentConfigPageShell from "../../components/tournament/TournamentConfigPageShell.jsx";
 
 const STATUS_LABEL = {
   [SCHEDULE_PUBLISH_STATUS.DRAFT]: "Nháp",
@@ -65,14 +66,10 @@ export default function TournamentPublishSchedulePage() {
   const readiness = canPublishSchedule(teamData);
 
   return (
-    <Box>
-      <Typography variant="h5" fontWeight={700} sx={{ mb: 0.5 }}>
-        Công bố lịch
-      </Typography>
-      <Typography color="text.secondary" sx={{ mb: 2 }}>
-        Công bố và khóa lịch thi đấu cho BTC.
-      </Typography>
-
+    <TournamentConfigPageShell
+      title="Công bố lịch"
+      description="Công bố và khóa lịch thi đấu cho BTC."
+    >
       {message ? (
         <Alert severity={message.type} sx={{ mb: 2 }} onClose={() => setMessage(null)}>
           {message.text}
@@ -106,6 +103,6 @@ export default function TournamentPublishSchedulePage() {
           Khóa lịch
         </Button>
       </Stack>
-    </Box>
+    </TournamentConfigPageShell>
   );
 }

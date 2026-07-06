@@ -1,4 +1,4 @@
-import { DEFAULT_TIE_BREAK_ORDER } from "../constants.js";
+import { DEFAULT_TIE_BREAK_ORDER, MATCHUP_STATUS } from "../constants.js";
 import {
   findTeam,
   normalizeStandings,
@@ -64,40 +64,52 @@ export function computeTeamStandings(teamData) {
   });
 
   teamData.matchups.forEach((matchup) => {
-    if (!matchup.result?.winnerTeamId) {
+    const result = matchup.result;
+    if (!result) {
+      return;
+    }
+
+    const hasSubMatchResults = (result.teamAWins || 0) + (result.teamBWins || 0) > 0;
+    const isCompleted = matchup.status === MATCHUP_STATUS.COMPLETED && result.winnerTeamId;
+
+    if (!hasSubMatchResults && !isCompleted) {
       return;
     }
 
     const teamA = standingsMap.get(matchup.teamAId) || emptyStanding(matchup.teamAId);
     const teamB = standingsMap.get(matchup.teamBId) || emptyStanding(matchup.teamBId);
 
-    teamA.played += 1;
-    teamB.played += 1;
+    if (hasSubMatchResults) {
+      teamA.subMatchWins += result.teamAWins;
+      teamA.subMatchLosses += result.teamBWins;
+      teamB.subMatchWins += result.teamBWins;
+      teamB.subMatchLosses += result.teamAWins;
 
-    teamA.subMatchWins += matchup.result.teamAWins;
-    teamA.subMatchLosses += matchup.result.teamBWins;
-    teamB.subMatchWins += matchup.result.teamBWins;
-    teamB.subMatchLosses += matchup.result.teamAWins;
+      teamA.pointsScored += result.teamAPoints;
+      teamA.pointsConceded += result.teamBPoints;
+      teamB.pointsScored += result.teamBPoints;
+      teamB.pointsConceded += result.teamAPoints;
 
-    teamA.pointsScored += matchup.result.teamAPoints;
-    teamA.pointsConceded += matchup.result.teamBPoints;
-    teamB.pointsScored += matchup.result.teamBPoints;
-    teamB.pointsConceded += matchup.result.teamAPoints;
-
-    if (matchup.result.winnerTeamId === matchup.teamAId) {
-      teamA.wins += 1;
-      teamB.losses += 1;
-      teamA.rankingPoints += 2;
-      teamB.rankingPoints += 1;
-    } else if (matchup.result.winnerTeamId === matchup.teamBId) {
-      teamB.wins += 1;
-      teamA.losses += 1;
-      teamB.rankingPoints += 2;
-      teamA.rankingPoints += 1;
+      teamA.subMatchDiff = teamA.subMatchWins - teamA.subMatchLosses;
+      teamB.subMatchDiff = teamB.subMatchWins - teamB.subMatchLosses;
     }
 
-    teamA.subMatchDiff = teamA.subMatchWins - teamA.subMatchLosses;
-    teamB.subMatchDiff = teamB.subMatchWins - teamB.subMatchLosses;
+    if (isCompleted) {
+      teamA.played += 1;
+      teamB.played += 1;
+
+      if (result.winnerTeamId === matchup.teamAId) {
+        teamA.wins += 1;
+        teamB.losses += 1;
+        teamA.rankingPoints += 2;
+        teamB.rankingPoints += 1;
+      } else if (result.winnerTeamId === matchup.teamBId) {
+        teamB.wins += 1;
+        teamA.losses += 1;
+        teamB.rankingPoints += 2;
+        teamA.rankingPoints += 1;
+      }
+    }
 
     standingsMap.set(matchup.teamAId, teamA);
     standingsMap.set(matchup.teamBId, teamB);
@@ -127,9 +139,7 @@ export function computeTeamStandings(teamData) {
 }
 
 export function getStandingsTable(teamData) {
-  const data = teamData.standings?.length
-    ? teamData
-    : computeTeamStandings(teamData);
+  const data = computeTeamStandings(teamData);
 
   return data.standings.map((standing) => ({
     ...standing,

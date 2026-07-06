@@ -29,7 +29,7 @@ export const TOURNAMENT_ROUTES = Object.freeze({
   resultsPlayers: "/statistics?view=players",
   configFormat: "/tournament/config/format",
   configScoring: "/settings",
-  configSkill: "/players",
+  configSkill: "/players/skill",
   configSettings: "/tournament/config/settings",
   typesHub: "/tournament/types",
   rosterHub: "/tournament/roster",
@@ -57,6 +57,7 @@ export const TEAM_TAB_QUERY = Object.freeze({
   disciplines: "disciplines",
   matchups: "matchups",
   standings: "standings",
+  diagram: "diagram",
 });
 
 export function teamTournamentPath(tournamentId, tab = TEAM_TAB_QUERY.teams) {

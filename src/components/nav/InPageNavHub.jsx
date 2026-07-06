@@ -11,18 +11,32 @@ import {
   Tabs,
   Typography,
 } from "@mui/material";
+import ChevronRightIcon from "@mui/icons-material/ChevronRight";
 
 import { FEATURE_STATUS } from "../../config/v5Menu/menuBuilders.js";
 import { useAuth } from "../../context/AuthContext.jsx";
 import { useClub } from "../../context/ClubContext.jsx";
 import { filterInPageNavHub, resolveRouteAccessScope } from "../../auth/menuAccess.js";
+import TournamentPageHeader from "../tournament/TournamentPageHeader.jsx";
+import {
+  TOURNAMENT_HUB,
+  tournamentCardContentSx,
+  tournamentCardHoverSx,
+  tournamentCardSx,
+  tournamentHubTabSx,
+} from "../tournament/tournamentLayout.js";
+import "./inPageNavHubSlate.css";
 
 function ItemBadge({ item }) {
   if (item.featureStatus === FEATURE_STATUS.PLANNED) {
-    return <Chip size="small" label="Sắp ra mắt" sx={{ ml: 1, height: 20, fontSize: 10 }} />;
+    return (
+      <Chip size="small" label="Sắp ra mắt" variant="outlined" sx={{ ml: 1, height: 20, fontSize: 10 }} />
+    );
   }
   if (item.featureStatus === FEATURE_STATUS.PARTIAL) {
-    return <Chip size="small" label="Một phần" sx={{ ml: 1, height: 20, fontSize: 10 }} />;
+    return (
+      <Chip size="small" label="Một phần" variant="outlined" color="warning" sx={{ ml: 1, height: 20, fontSize: 10 }} />
+    );
   }
   return null;
 }
@@ -90,18 +104,20 @@ export default function InPageNavHub({ hub }) {
   }
 
   return (
-    <Box>
-      <Typography variant="h5" fontWeight={700} sx={{ mb: 0.5 }}>
-        {filteredHub.title}
-      </Typography>
-      {filteredHub.description ? (
-        <Typography color="text.secondary" sx={{ mb: 2 }}>
-          {filteredHub.description}
-        </Typography>
-      ) : null}
+    <Box
+      className="in-page-nav-hub in-page-nav-hub--slate"
+      sx={{
+        "--hub-accent-lime": TOURNAMENT_HUB.accent,
+        "--hub-card-min-height": `${TOURNAMENT_HUB.cardMinHeight}px`,
+      }}
+    >
+      <TournamentPageHeader
+        title={filteredHub.title}
+        description={filteredHub.description}
+      />
 
       {sections.length > 1 ? (
-        <Tabs value={tab} onChange={handleTabChange} sx={{ mb: 2 }}>
+        <Tabs value={tab} onChange={handleTabChange} sx={tournamentHubTabSx}>
           {sections.map((section) => (
             <Tab key={section.id} value={section.id} label={section.label} />
           ))}
@@ -109,30 +125,65 @@ export default function InPageNavHub({ hub }) {
       ) : null}
 
       <Box
+        className="in-page-nav-hub__grid"
         sx={{
           display: "grid",
           gridTemplateColumns: { xs: "1fr", sm: "1fr 1fr", md: "1fr 1fr 1fr" },
-          gap: 1.5,
+          gap: TOURNAMENT_HUB.gridGap,
         }}
       >
         {(activeSection?.items || []).map((item) => {
           const plannedNoPath =
             !item.path && item.featureStatus === FEATURE_STATUS.PLANNED;
           return (
-            <Card key={item.key} variant="outlined">
+            <Card
+              key={item.key}
+              variant="outlined"
+              elevation={0}
+              sx={{
+                ...tournamentCardSx,
+                ...tournamentCardHoverSx,
+              }}
+            >
               <CardActionArea
                 onClick={() => handleItemClick(item)}
                 disabled={!item.path && !plannedNoPath}
+                sx={{
+                  height: "100%",
+                  borderRadius: "inherit",
+                  "&.Mui-disabled": { opacity: 0.55 },
+                }}
               >
-                <CardContent sx={{ py: 1.5 }}>
+                <CardContent
+                  sx={{
+                    ...tournamentCardContentSx,
+                    position: "relative",
+                    minHeight: 72,
+                    pr: 5,
+                  }}
+                >
                   <Box sx={{ display: "flex", alignItems: "center", flexWrap: "wrap" }}>
-                    <Typography fontWeight={600}>{item.text}</Typography>
+                    <Typography fontWeight={700} color="text.primary">
+                      {item.text}
+                    </Typography>
                     <ItemBadge item={item} />
                   </Box>
                   {item.featureNote ? (
                     <Typography variant="caption" color="text.secondary" display="block" sx={{ mt: 0.5 }}>
                       {item.featureNote}
                     </Typography>
+                  ) : null}
+                  {item.path ? (
+                    <ChevronRightIcon
+                      fontSize="small"
+                      sx={{
+                        position: "absolute",
+                        right: 16,
+                        top: "50%",
+                        transform: "translateY(-50%)",
+                        color: "text.secondary",
+                      }}
+                    />
                   ) : null}
                 </CardContent>
               </CardActionArea>

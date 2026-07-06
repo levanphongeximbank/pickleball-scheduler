@@ -28,7 +28,7 @@ export const PALETTE = Object.freeze({
     light: "#FEE2E2",
   },
   background: {
-    default: "#F9FAFB",
+    default: "#F8FAFC",
     paper: "#FFFFFF",
   },
   text: {
@@ -48,6 +48,8 @@ export const SHELL = Object.freeze({
   sidebarSelectedBg: "rgba(16, 185, 129, 0.12)",
   sidebarSelectedHover: "rgba(16, 185, 129, 0.18)",
   sidebarAccentBar: "#10B981",
+  /** Hub / presentation accent — mockup Direction C */
+  accentLime: "#84CC16",
   primaryGreen: PALETTE.primary.main,
   accentLight: "#ECFDF5",
   pageBg: PALETTE.background.default,
@@ -76,5 +78,5 @@ export const TYPOGRAPHY = Object.freeze({
 
 export const SHAPE = Object.freeze({
   borderRadius: 10,
-  borderRadiusLg: 12,
+  borderRadiusLg: 16,
 });

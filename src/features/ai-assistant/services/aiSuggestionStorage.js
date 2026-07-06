@@ -3,11 +3,32 @@ import {
   AI_SUGGESTION_TTL_HOURS,
   AI_SUGGESTION_TYPE,
 } from "../constants/aiConfig.js";
+import {
+  buildSuggestionRecord,
+  cloudGetSuggestionById,
+  cloudInsertSuggestion,
+  cloudListSuggestions,
+  cloudUpdateSuggestion,
+  isAiSuggestionCloudEnabled,
+} from "./supabaseSuggestionStorage.js";
+import {
+  cloudGetChecklistItem,
+  cloudHydrateChecklist,
+  cloudSetChecklistItem,
+  isAiChecklistCloudEnabled,
+} from "./supabaseChecklistStorage.js";
 
 const STORAGE_KEY = "pickleball-ai-suggestions-v1";
 
 /** @type {Array<Object>|null} */
 let memoryStore = null;
+
+/** @type {Map<string, Object>} */
+const cloudMemoryIndex = new Map();
+
+function memoryKey(tenantId, id) {
+  return `${tenantId}::${id}`;
+}
 
 function getMemoryStore() {
   return typeof localStorage === "undefined";
@@ -35,6 +56,13 @@ function saveAll(records) {
   localStorage.setItem(STORAGE_KEY, JSON.stringify(slice));
 }
 
+function upsertMemoryRecord(record) {
+  cloudMemoryIndex.set(memoryKey(record.tenantId, record.id), record);
+  const all = loadAll().filter((item) => item.id !== record.id);
+  all.push(record);
+  saveAll(all);
+}
+
 function createId() {
   return `ai-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
 }
@@ -55,6 +83,29 @@ export function saveSuggestion({
   confidence,
   createdBy,
 }) {
+  if (isAiSuggestionCloudEnabled()) {
+    const record = buildSuggestionRecord({
+      tenantId,
+      tournamentId,
+      type,
+      inputSnapshot,
+      outputPayload,
+      confidence,
+      createdBy,
+    });
+    upsertMemoryRecord(record);
+    void cloudInsertSuggestion(record).then((result) => {
+      if (!result?.ok && typeof window !== "undefined") {
+        window.dispatchEvent(
+          new CustomEvent("ai-suggestion:cloud-error", {
+            detail: { error: result.error || "Lưu gợi ý cloud thất bại." },
+          })
+        );
+      }
+    });
+    return record;
+  }
+
   const expiresAt = new Date(
     Date.now() + AI_SUGGESTION_TTL_HOURS * 60 * 60 * 1000
   ).toISOString();
@@ -83,17 +134,49 @@ export function saveSuggestion({
   return record;
 }
 
+export async function hydrateSuggestionsFromCloud(tournamentId, tenantId) {
+  if (!isAiSuggestionCloudEnabled()) {
+    return { ok: true, skipped: true };
+  }
+
+  const result = await cloudListSuggestions(tournamentId, tenantId);
+  if (!result.ok) {
+    return result;
+  }
+
+  for (const record of result.suggestions) {
+    upsertMemoryRecord(record);
+  }
+
+  return { ok: true, count: result.suggestions.length };
+}
+
 export function getSuggestionById(suggestionId, tenantId) {
+  const cached = cloudMemoryIndex.get(memoryKey(tenantId, suggestionId));
+  if (cached) {
+    return cached;
+  }
+
   const all = loadAll();
   const record = all.find(
     (item) => item.id === suggestionId && item.tenantId === String(tenantId)
   );
   if (!record) {
+    if (isAiSuggestionCloudEnabled()) {
+      void cloudGetSuggestionById(suggestionId, tenantId).then((result) => {
+        if (result.ok && result.record) {
+          upsertMemoryRecord(result.record);
+        }
+      });
+    }
     return null;
   }
   if (isExpired(record) && record.status === AI_SUGGESTION_STATUS.PENDING) {
     record.status = AI_SUGGESTION_STATUS.EXPIRED;
     saveAll(all.map((item) => (item.id === record.id ? record : item)));
+    if (isAiSuggestionCloudEnabled()) {
+      void cloudUpdateSuggestion(suggestionId, tenantId, { status: AI_SUGGESTION_STATUS.EXPIRED });
+    }
   }
   return record;
 }
@@ -147,6 +230,20 @@ export function updateSuggestionStatus(suggestionId, tenantId, patch) {
   const next = { ...current, ...patch };
   all[index] = next;
   saveAll(all);
+  upsertMemoryRecord(next);
+
+  if (isAiSuggestionCloudEnabled()) {
+    void cloudUpdateSuggestion(suggestionId, tenantId, patch).then((result) => {
+      if (!result?.ok && typeof window !== "undefined") {
+        window.dispatchEvent(
+          new CustomEvent("ai-suggestion:cloud-error", {
+            detail: { error: result.error || "Cập nhật gợi ý cloud thất bại." },
+          })
+        );
+      }
+    });
+  }
+
   return { ok: true, suggestion: next };
 }
 
@@ -161,6 +258,10 @@ export function clearTournamentSuggestions(tournamentId, tenantId) {
 export { AI_SUGGESTION_TYPE, AI_SUGGESTION_STATUS };
 
 const CHECKLIST_STORAGE_KEY = "pickleball-ai-workflow-checklist-v1";
+
+function hasChecklistScope(scope) {
+  return Boolean(scope?.tenantId && scope?.tournamentId);
+}
 
 function loadChecklistState() {
   if (typeof localStorage === "undefined") {
@@ -182,19 +283,33 @@ function saveChecklistState(state) {
   localStorage.setItem(CHECKLIST_STORAGE_KEY, JSON.stringify(state));
 }
 
-export function getChecklistState(key) {
+export function getChecklistState(key, scope = null) {
+  if (isAiChecklistCloudEnabled() && hasChecklistScope(scope)) {
+    return cloudGetChecklistItem(scope.tenantId, scope.tournamentId, key);
+  }
   const state = loadChecklistState();
   return state[key] || false;
 }
 
-export function setChecklistState(key, value) {
+export function setChecklistState(key, value, scope = null) {
+  if (isAiChecklistCloudEnabled() && hasChecklistScope(scope)) {
+    void cloudSetChecklistItem(scope.tenantId, scope.tournamentId, key, value);
+    return Boolean(value);
+  }
   const state = loadChecklistState();
   state[key] = Boolean(value);
   saveChecklistState(state);
   return state[key];
 }
 
-export function getChecklistProgress(items = []) {
+export async function hydrateChecklistFromCloud(tournamentId, tenantId) {
+  if (!isAiChecklistCloudEnabled()) {
+    return { ok: true, skipped: true };
+  }
+  return cloudHydrateChecklist(tournamentId, tenantId);
+}
+
+export function getChecklistProgress(items = [], scope = null) {
   const entries = (Array.isArray(items) ? items : [])
     .map((item) => (typeof item === "string" ? { title: item, completed: false } : item))
     .filter((item) => item?.title);
@@ -202,7 +317,9 @@ export function getChecklistProgress(items = []) {
   if (!total) {
     return { total: 0, completed: 0, percent: 0, isComplete: false };
   }
-  const completed = entries.filter((item) => Boolean(item.completed) || getChecklistState(item.title)).length;
+  const completed = entries.filter(
+    (item) => Boolean(item.completed) || getChecklistState(item.title, scope)
+  ).length;
   return {
     total,
     completed,

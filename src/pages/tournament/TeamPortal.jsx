@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { Link as RouterLink, useParams } from "react-router-dom";
+import { Link as RouterLink, useNavigate, useParams } from "react-router-dom";
 import {
   Alert,
   Box,
@@ -25,10 +25,18 @@ import { useClub } from "../../context/ClubContext.jsx";
 import { useTenant } from "../../context/TenantContext.jsx";
 import { loadPlayersForClub } from "../../domain/clubStorage.js";
 import { assertTournamentAccess, getTournament } from "../../domain/tournamentService.js";
+import { LINEUP_STATUS, MATCHUP_STATUS } from "../../features/team-tournament/constants.js";
+import { CaptainDreambreakerPanel } from "../../components/tournament/team/DreambreakerPanel.jsx";
 import {
-  LINEUP_STATUS,
-  MATCHUP_STATUS,
-} from "../../features/team-tournament/constants.js";
+  listDreambreakerMatchups,
+  syncDreambreakerForAllMatchups,
+} from "../../features/team-tournament/engines/dreambreakerEngine.js";
+import { isMlpFormat } from "../../features/team-tournament/engines/mlpPresetEngine.js";
+import CaptainPortalSummary from "../../components/tournament/team/CaptainPortalSummary.jsx";
+import {
+  formatTeamTournamentDateTime,
+  getLineupStatusMeta,
+} from "../../components/tournament/team/teamTournamentLabels.js";
 import {
   buildOfficialPairings,
   getVisibleLineup,
@@ -48,33 +56,14 @@ import {
   getTeamData,
   isTeamTournament,
 } from "../../features/team-tournament/engines/teamTournamentEngine.js";
+import TournamentSetupShell from "../../components/tournament/TournamentSetupShell.jsx";
 import { findTeam, getLineup } from "../../features/team-tournament/models/index.js";
 import {
   captainSaveLineup,
   captainSubmitLineup,
+  captainSubmitDreambreakerOrder,
 } from "../../features/team-tournament/services/teamTournamentService.js";
 
-const LINEUP_STATUS_LABEL = {
-  [LINEUP_STATUS.NOT_SUBMITTED]: { label: "Chưa nộp", color: "default" },
-  [LINEUP_STATUS.DRAFT]: { label: "Nháp", color: "warning" },
-  [LINEUP_STATUS.SUBMITTED]: { label: "Đã nộp", color: "info" },
-  [LINEUP_STATUS.LOCKED]: { label: "Đã khóa", color: "secondary" },
-  [LINEUP_STATUS.PUBLISHED]: { label: "Đã công bố", color: "success" },
-};
-
-function formatDateTime(value) {
-  if (!value) {
-    return "—";
-  }
-
-  return new Date(value).toLocaleString("vi-VN", {
-    weekday: "short",
-    day: "2-digit",
-    month: "2-digit",
-    hour: "2-digit",
-    minute: "2-digit",
-  });
-}
 
 function isBeforeLock(matchup, now = new Date()) {
   if (!matchup?.lineupLockAt) {
@@ -182,7 +171,7 @@ function MatchupLineupCard({
   const opponent = findTeam(teamData, opponentId);
   const ownLineup = getLineup(teamData, matchup.id, team.id);
   const lineupStatus = ownLineup?.status || LINEUP_STATUS.NOT_SUBMITTED;
-  const statusMeta = LINEUP_STATUS_LABEL[lineupStatus] || LINEUP_STATUS_LABEL[LINEUP_STATUS.NOT_SUBMITTED];
+  const statusMeta = getLineupStatusMeta(lineupStatus);
   const editable = isBeforeLock(matchup) && canEditLineup(ownLineup);
   const isPublished = matchup.status === MATCHUP_STATUS.PUBLISHED;
 
@@ -301,7 +290,7 @@ function MatchupLineupCard({
       return;
     }
 
-    setMessage("Đã nộp đội hình.");
+    setMessage("Đã nộp đội hình. BTC sẽ khóa và công bố — bạn sẽ thấy cặp đấu chính thức sau khi công bố.");
     onSaved();
   }
 
@@ -319,10 +308,10 @@ function MatchupLineupCard({
               vs {opponent?.name || "Đối thủ"}
             </Typography>
             <Typography variant="body2" color="text.secondary">
-              Giờ thi đấu: {formatDateTime(matchup.scheduledAt)}
+              Giờ thi đấu: {formatTeamTournamentDateTime(matchup.scheduledAt)}
             </Typography>
             <Typography variant="body2" color="text.secondary">
-              Hạn nộp: {formatDateTime(matchup.lineupLockAt)}
+              Hạn nộp: {formatTeamTournamentDateTime(matchup.lineupLockAt)}
             </Typography>
           </Box>
           <Chip label={statusMeta.label} color={statusMeta.color} />
@@ -468,6 +457,7 @@ function MatchupLineupCard({
 
 export default function TeamPortal() {
   const { tournamentId } = useParams();
+  const navigate = useNavigate();
   const { activeClubId, revision, refreshClubs } = useClub();
 
   const tournament = useMemo(() => {
@@ -479,10 +469,15 @@ export default function TeamPortal() {
 
   const access = useCaptainPortalAccess({ tournament, activeClubId, tournamentId });
 
-  const teamData = useMemo(
-    () => getTeamData(tournament) || { teams: [], disciplines: [], matchups: [], lineups: {} },
-    [tournament]
-  );
+  const teamData = useMemo(() => {
+    const raw = getTeamData(tournament) || {
+      teams: [],
+      disciplines: [],
+      matchups: [],
+      lineups: {},
+    };
+    return syncDreambreakerForAllMatchups(raw).teamData;
+  }, [tournament]);
 
   const players = useMemo(
     () => (activeClubId ? loadPlayersForClub(activeClubId) : []),
@@ -491,12 +486,56 @@ export default function TeamPortal() {
 
   const matchups = useMemo(() => {
     if (!access.captainTeam) {
-      return { upcoming: [], past: [] };
+      return { upcoming: [], past: [], pending: [], done: [] };
     }
 
     const teamMatchups = listMatchupsForTeam(teamData, access.captainTeam.id);
-    return partitionMatchupsForPortal(teamMatchups);
+    const partitioned = partitionMatchupsForPortal(teamMatchups);
+    const teamId = access.captainTeam.id;
+
+    const needsAction = (matchup) => {
+      const lineup = getLineup(teamData, matchup.id, teamId);
+      const status = lineup?.status || LINEUP_STATUS.NOT_SUBMITTED;
+      return (
+        status === LINEUP_STATUS.NOT_SUBMITTED ||
+        status === LINEUP_STATUS.DRAFT ||
+        (status === LINEUP_STATUS.SUBMITTED && isBeforeLock(matchup))
+      );
+    };
+
+    return {
+      ...partitioned,
+      pending: partitioned.upcoming.filter(needsAction),
+      done: partitioned.upcoming.filter((matchup) => !needsAction(matchup)),
+    };
   }, [access.captainTeam, teamData]);
+
+  const dreambreakerMatchups = useMemo(() => {
+    if (!access.captainTeam) {
+      return [];
+    }
+    return listDreambreakerMatchups(teamData, { teamId: access.captainTeam.id });
+  }, [access.captainTeam, teamData]);
+
+  const [dbBusy, setDbBusy] = useState(false);
+  const [dbMessage, setDbMessage] = useState(null);
+
+  async function handleDreambreakerSubmit(matchupId, order) {
+    setDbBusy(true);
+    setDbMessage(null);
+    const result = captainSubmitDreambreakerOrder(activeClubId, tournamentId, {
+      matchupId,
+      teamId: access.captainTeam.id,
+      order,
+    });
+    setDbBusy(false);
+    if (!result.ok) {
+      setDbMessage({ type: "error", text: result.error });
+      return;
+    }
+    refreshClubs();
+    setDbMessage({ type: "success", text: "Đã nộp thứ tự Dreambreaker." });
+  }
 
   if (!tournament || !isTeamTournament(tournament)) {
     return (
@@ -532,42 +571,77 @@ export default function TeamPortal() {
     : "";
 
   return (
-    <Box sx={{ p: { xs: 2, md: 3 }, maxWidth: 960, mx: "auto" }}>
+    <Box sx={{ maxWidth: 960, mx: "auto" }}>
+      <TournamentSetupShell
+        tournament={tournament}
+        description="Chọn VĐV cho từng nội dung (MLP: mỗi VĐV 2 trận/tie). Lưu nháp hoặc nộp trước giờ khóa."
+        onBack={() => navigate("/tournament")}
+        backLabel="Quay lại"
+        headerActions={
+          <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
+            <Chip label="Portal đội trưởng" color="primary" size="small" />
+            {access.captainTeam ? (
+              <Chip label={access.captainTeam.name} variant="outlined" size="small" />
+            ) : null}
+            {captainRoleLabel ? <Chip label={captainRoleLabel} size="small" /> : null}
+          </Stack>
+        }
+      >
       <Stack spacing={2}>
-        <Button
-          startIcon={<ArrowBackIcon />}
-          component={RouterLink}
-          to="/tournament"
-          sx={{ alignSelf: "flex-start" }}
-        >
-          Quay lại
-        </Button>
+        <CaptainPortalSummary
+          teamData={teamData}
+          teamId={access.captainTeam?.id}
+          upcomingMatchups={matchups.upcoming}
+        />
 
-        <Typography variant="h5">{tournament.name}</Typography>
-        <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
-          <Chip label="Portal đội trưởng" color="primary" />
-          {access.captainTeam ? (
-            <Chip label={access.captainTeam.name} variant="outlined" />
-          ) : null}
-          {captainRoleLabel ? <Chip label={captainRoleLabel} size="small" /> : null}
-        </Stack>
+        {dbMessage ? (
+          <Alert severity={dbMessage.type} onClose={() => setDbMessage(null)}>
+            {dbMessage.text}
+          </Alert>
+        ) : null}
 
-        <Typography variant="body2" color="text.secondary">
-          Chọn VĐV cho từng nội dung thi đấu, lưu nháp hoặc xác nhận nộp trước giờ khóa.
-        </Typography>
+        {dreambreakerMatchups.length > 0 ? (
+          <Stack spacing={2}>
+            <Typography variant="subtitle1" fontWeight={700}>
+              Dreambreaker (2–2) — nộp thứ tự VĐV
+            </Typography>
+            {dreambreakerMatchups.map((matchup) => {
+              const opponentId = getOpponentTeamId(matchup, access.captainTeam.id);
+              const opponentName = findTeam(teamData, opponentId)?.name || "";
+              return (
+                <CaptainDreambreakerPanel
+                  key={`db-${matchup.id}`}
+                  matchup={matchup}
+                  teamData={teamData}
+                  teamId={access.captainTeam.id}
+                  players={players}
+                  opponentName={opponentName}
+                  onSubmit={(order) => handleDreambreakerSubmit(matchup.id, order)}
+                  busy={dbBusy}
+                />
+              );
+            })}
+          </Stack>
+        ) : null}
+
+        {isMlpFormat(teamData) ? (
+          <Alert severity="info">
+            MLP: mỗi VĐV tham gia 1 trận đồng giới + 1 trận mixed trong mỗi lượt đối đầu.
+          </Alert>
+        ) : null}
 
         {matchups.upcoming.length === 0 && matchups.past.length === 0 ? (
           <Alert severity="info">Chưa có lịch đối đầu cho đội của bạn.</Alert>
         ) : (
           <>
-            {matchups.upcoming.length > 0 ? (
+            {matchups.pending.length > 0 ? (
               <Stack spacing={2}>
                 <Typography variant="subtitle1" fontWeight={700}>
-                  Lịch sắp tới ({matchups.upcoming.length})
+                  Cần nộp đội hình ({matchups.pending.length})
                 </Typography>
-                {matchups.upcoming.map((matchup) => (
+                {matchups.pending.map((matchup) => (
                   <MatchupLineupCard
-                    key={`${matchup.id}-${getLineup(teamData, matchup.id, access.captainTeam.id)?.status || "none"}`}
+                    key={`pending-${matchup.id}-${getLineup(teamData, matchup.id, access.captainTeam.id)?.status || "none"}`}
                     matchup={matchup}
                     team={access.captainTeam}
                     teamData={teamData}
@@ -579,9 +653,32 @@ export default function TeamPortal() {
                   />
                 ))}
               </Stack>
-            ) : (
-              <Alert severity="info">Không còn lượt đối đầu sắp tới.</Alert>
-            )}
+            ) : null}
+
+            {matchups.done.length > 0 ? (
+              <Stack spacing={2}>
+                <Typography variant="subtitle1" fontWeight={700} color="text.secondary">
+                  Đã nộp — chờ BTC ({matchups.done.length})
+                </Typography>
+                {matchups.done.map((matchup) => (
+                  <MatchupLineupCard
+                    key={`done-${matchup.id}-${getLineup(teamData, matchup.id, access.captainTeam.id)?.status || "none"}`}
+                    matchup={matchup}
+                    team={access.captainTeam}
+                    teamData={teamData}
+                    players={players}
+                    clubId={activeClubId}
+                    tournamentId={tournamentId}
+                    dataVersion={revision}
+                    onSaved={refreshClubs}
+                  />
+                ))}
+              </Stack>
+            ) : null}
+
+            {matchups.pending.length === 0 && matchups.done.length === 0 && matchups.upcoming.length > 0 ? (
+              <Alert severity="info">Không còn lượt đối đầu sắp tới cần thao tác.</Alert>
+            ) : null}
 
             {matchups.past.length > 0 ? (
               <Stack spacing={2}>
@@ -606,6 +703,7 @@ export default function TeamPortal() {
           </>
         )}
       </Stack>
+      </TournamentSetupShell>
     </Box>
   );
 }

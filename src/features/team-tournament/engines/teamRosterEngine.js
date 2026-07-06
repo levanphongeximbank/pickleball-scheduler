@@ -3,6 +3,7 @@ import { GENDER_REQUIREMENT } from "../constants.js";
 import {
   findTeam,
 } from "../models/index.js";
+import { isMlpFormat } from "./mlpPresetEngine.js";
 import { updateTeamInTournament } from "./teamTournamentEngine.js";
 
 function normalizePlayerId(value) {
@@ -98,7 +99,45 @@ export function getTeamRosterWarnings(team, teamData, players = []) {
   return warnings;
 }
 
-export function validateAddPlayerToTeam(teamData, teamId, playerId) {
+export function validateMlpRoster(team, players = [], teamData) {
+  if (!isMlpFormat(teamData)) {
+    return { ok: true };
+  }
+
+  const rules = teamData.settings?.rosterRules || {
+    minPlayers: 4,
+    maxPlayers: 4,
+    requiredMales: 2,
+    requiredFemales: 2,
+  };
+
+  const stats = computeTeamRosterStats(team, players);
+  const errors = [];
+
+  if (stats.total > rules.maxPlayers) {
+    errors.push(`MLP cho phép tối đa ${rules.maxPlayers} VĐV/đội.`);
+  }
+
+  if (stats.males > rules.requiredMales) {
+    errors.push(`MLP chỉ cho phép ${rules.requiredMales} VĐV nam.`);
+  }
+
+  if (stats.females > rules.requiredFemales) {
+    errors.push(`MLP chỉ cho phép ${rules.requiredFemales} VĐV nữ.`);
+  }
+
+  if (stats.total === rules.maxPlayers) {
+    if (stats.males !== rules.requiredMales || stats.females !== rules.requiredFemales) {
+      errors.push(
+        `MLP yêu cầu đúng ${rules.requiredMales} nam + ${rules.requiredFemales} nữ (hiện ${stats.males} nam, ${stats.females} nữ).`
+      );
+    }
+  }
+
+  return errors.length > 0 ? { ok: false, error: errors[0], errors } : { ok: true };
+}
+
+export function validateAddPlayerToTeam(teamData, teamId, playerId, players = []) {
   const team = findTeam(teamData, teamId);
   if (!team) {
     return { ok: false, error: "Không tìm thấy đội." };
@@ -120,6 +159,12 @@ export function validateAddPlayerToTeam(teamData, teamId, playerId) {
       ok: false,
       error: `VĐV đã thuộc đội ${existingTeam.name}.`,
     };
+  }
+
+  const nextTeam = { ...team, playerIds: [...team.playerIds, normalized] };
+  const mlpCheck = validateMlpRoster(nextTeam, players, teamData);
+  if (!mlpCheck.ok) {
+    return mlpCheck;
   }
 
   return { ok: true, team, playerId: normalized };
@@ -184,8 +229,8 @@ export function validateAssignDeputies(team, deputyPlayerIds = []) {
   return { ok: true, deputyPlayerIds: normalized };
 }
 
-export function addPlayerToTeam(teamData, teamId, playerId) {
-  const validation = validateAddPlayerToTeam(teamData, teamId, playerId);
+export function addPlayerToTeam(teamData, teamId, playerId, players = []) {
+  const validation = validateAddPlayerToTeam(teamData, teamId, playerId, players);
   if (!validation.ok) {
     return validation;
   }

@@ -42,12 +42,6 @@ export function sidebarNavItemSx({ isDark, pl }) {
   };
 }
 
-export function sidebarFolderActiveSx({ isDark, childActive, depth }) {
-  if (!childActive || depth !== 0 || !isDark) return {};
-  return {
-    bgcolor: "#10B981",
-    color: "#FFFFFF",
-    "& .MuiListItemIcon-root": { color: "#FFFFFF" },
-    "&:hover": { bgcolor: "#0D9668" },
-  };
+export function sidebarFolderActiveSx() {
+  return {};
 }

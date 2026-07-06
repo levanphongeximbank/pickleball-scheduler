@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Link as RouterLink, useNavigate, useParams } from "react-router-dom";
 
 import {
@@ -80,9 +80,26 @@ import {
 import { useTournamentAnimation } from "../../components/tournament/animation/useTournamentAnimation.js";
 import { useTournamentFlowOrchestrator } from "../../components/tournament/animation/useTournamentFlowOrchestrator.js";
 import { createOfficialFlowAdapters } from "../../components/tournament/animation/tournamentFlowAdapters.js";
+import {
+  BroadcastLiveIndicator,
+  BroadcastSetupDialog,
+  BroadcastVodResultAlert,
+  isTournamentBroadcastEnabled,
+  useTournamentBroadcast,
+} from "../../features/tournament-broadcast/index.js";
 import { resolveOfficialOpenPipeline } from "../../components/tournament/animation/shared/tournamentFlowConfig.js";
 import { PAIRING_CONTROL_MODES } from "../../components/tournament/animation/pairing/usePairingSequence.js";
 import TournamentManageGate from "../../components/tournament/TournamentManageGate.jsx";
+import TournamentSetupShell from "../../components/tournament/TournamentSetupShell.jsx";
+import TournamentSelectedPlayersPanel from "../../components/tournament/TournamentSelectedPlayersPanel.jsx";
+import TournamentPlayerPickerPanel from "../../components/tournament/TournamentPlayerPickerPanel.jsx";
+import TournamentPlayerQuickAddDialog from "../../components/tournament/TournamentPlayerQuickAddDialog.jsx";
+import { getTenantPlayers } from "../../features/club/index.js";
+import {
+  ALL_CLUBS_FILTER,
+  filterTournamentPickerPlayers,
+  formatPlayerPickerMeta,
+} from "../../utils/tournamentPlayerPicker.js";
 import { isAiEngineEnabled } from "../../features/ai-assistant/index.js";
 import TournamentAiAssistantPanel from "../../components/tournament/ai/TournamentAiAssistantPanel.jsx";
 import { useAuth } from "../../context/AuthContext.jsx";
@@ -99,7 +116,7 @@ const OFFICIAL_MODE_OPTIONS = [
 export default function OfficialTournamentSetup() {
   const { tournamentId } = useParams();
   const navigate = useNavigate();
-  const { activeClub, activeClubId, refreshClubs } = useClub();
+  const { activeClub, activeClubId, clubs, refreshClubs } = useClub();
   const { user } = useAuth();
   const { currentTenantId } = useTenant();
   const aiEnabled = isAiEngineEnabled();
@@ -116,10 +133,16 @@ export default function OfficialTournamentSetup() {
   const [splitUnits, setSplitUnits] = useState(true);
   const [registeredEntries, setRegisteredEntries] = useState([]);
   const [selectedPlayerIds, setSelectedPlayerIds] = useState([]);
+  const [sourceClubFilter, setSourceClubFilter] = useState(ALL_CLUBS_FILTER);
   const [previewEntries, setPreviewEntries] = useState([]);
   const [pairPlayerAId, setPairPlayerAId] = useState("");
   const [pairPlayerBId, setPairPlayerBId] = useState("");
   const [entryClubName, setEntryClubName] = useState("");
+  const [pickerGenderFilter, setPickerGenderFilter] = useState("all");
+  const [pickerSearch, setPickerSearch] = useState("");
+  const [openClubFilter, setOpenClubFilter] = useState(ALL_CLUBS_FILTER);
+  const [openRegistrationTab, setOpenRegistrationTab] = useState(0);
+  const [quickAddOpen, setQuickAddOpen] = useState(false);
   const [bracketAdvanceAnim, setBracketAdvanceAnim] = useState(null);
   const anim = useTournamentAnimation();
   const pendingPlanRef = useRef(null);
@@ -129,10 +152,31 @@ export default function OfficialTournamentSetup() {
     [activeClubId, tournamentId, localRevision]
   );
 
+  const tenantId = useMemo(
+    () => tournament?.tenantId || resolveTenantIdForClub(activeClubId) || currentTenantId || "",
+    [tournament?.tenantId, activeClubId, currentTenantId]
+  );
+
+  const allTenantPlayers = useMemo(
+    () => (tenantId ? getTenantPlayers(tenantId) : []),
+    [tenantId, localRevision]
+  );
+
   const players = useMemo(
     () => loadPlayersForClub(activeClubId),
     [activeClubId, localRevision]
   );
+
+  const isAiBalance = officialMode === OFFICIAL_MODE.AI_BALANCE;
+
+  const selectedPlayers = useMemo(() => {
+    const pool = new Map(allTenantPlayers.map((player) => [String(player.id), player]));
+    return selectedPlayerIds
+      .map((id) => pool.get(String(id)))
+      .filter(Boolean);
+  }, [selectedPlayerIds, allTenantPlayers]);
+
+  const flowPlayers = allTenantPlayers;
 
   const courts = useMemo(
     () => loadCourtsForClub(activeClubId),
@@ -150,7 +194,6 @@ export default function OfficialTournamentSetup() {
     savedEvents[0] ||
     null;
 
-  const isAiBalance = officialMode === OFFICIAL_MODE.AI_BALANCE;
   const displayEntries = isAiBalance
     ? previewEntries.length > 0
       ? previewEntries
@@ -158,6 +201,26 @@ export default function OfficialTournamentSetup() {
     : registeredEntries.length > 0
       ? registeredEntries
       : savedEvent?.entries || [];
+
+  const registeredPlayerIds = useMemo(() => {
+    const ids = new Set();
+    displayEntries.forEach((entry) => {
+      (entry.playerIds || []).forEach((id) => ids.add(String(id)));
+    });
+    return Array.from(ids);
+  }, [displayEntries]);
+
+  const openFilteredPlayers = useMemo(
+    () =>
+      filterTournamentPickerPlayers(allTenantPlayers, {
+        clubFilter: openClubFilter,
+        genderFilter: pickerGenderFilter,
+        search: pickerSearch,
+        eventType,
+        excludePlayerIds: registeredPlayerIds,
+      }),
+    [allTenantPlayers, openClubFilter, pickerGenderFilter, pickerSearch, eventType, registeredPlayerIds]
+  );
 
   const groupStandings = useMemo(
     () => (savedEvent ? buildAllGroupStandings(savedEvent) : []),
@@ -238,7 +301,7 @@ export default function OfficialTournamentSetup() {
   const flowAdapters = useMemo(() => {
     const shared = {
       tournament,
-      players,
+      players: flowPlayers,
       courts,
       selectedPlayerIds,
       eventType,
@@ -269,7 +332,7 @@ export default function OfficialTournamentSetup() {
           buildOfficialAiBalancePlan({
             tournament,
             eventId: savedEvent?.id,
-            players,
+            players: flowPlayers,
             selectedPlayerIds,
             eventType,
             groupCount,
@@ -295,7 +358,7 @@ export default function OfficialTournamentSetup() {
           eventType,
           eventId: savedEvent?.id,
           groupCount,
-          players,
+          players: flowPlayers,
           splitUnits,
         }),
       buildPatch: buildOfficialOpenPatch,
@@ -303,7 +366,7 @@ export default function OfficialTournamentSetup() {
   }, [
     isAiBalance,
     tournament,
-    players,
+    flowPlayers,
     courts,
     selectedPlayerIds,
     eventType,
@@ -320,10 +383,36 @@ export default function OfficialTournamentSetup() {
 
   const flow = useTournamentFlowOrchestrator(anim, flowAdapters);
 
-  const handleStartGuidedFlow = () => {
+  const broadcastFeatureEnabled = isTournamentBroadcastEnabled();
+  const broadcast = useTournamentBroadcast({
+    tournamentId,
+    tournamentName: tournament?.name || "Giải đấu",
+    clubId: activeClubId,
+  });
+  const [broadcastDialogOpen, setBroadcastDialogOpen] = useState(false);
+
+  const handleFlowExit = useCallback(async () => {
+    if (broadcastFeatureEnabled) {
+      const stopResult = await broadcast.stopBroadcast();
+      if (stopResult?.ok === false && stopResult?.error) {
+        setError(stopResult.error);
+      }
+    }
+    flow.exitFlow();
+  }, [broadcast, broadcastFeatureEnabled, flow]);
+
+  const handleStartGuidedFlow = async () => {
     setError(null);
     setWarnings([]);
     setMessage(null);
+
+    if (broadcastFeatureEnabled && broadcast.shouldBroadcastWithFlow) {
+      const broadcastResult = await broadcast.startBroadcast();
+      if (broadcastResult?.ok === false) {
+        setError(broadcastResult.error || "Không thể bắt đầu phát live.");
+        return;
+      }
+    }
 
     const pipeline = isAiBalance
       ? undefined
@@ -333,6 +422,9 @@ export default function OfficialTournamentSetup() {
 
     const result = flow.startFlow({}, { pipeline });
     if (result?.ok === false) {
+      if (broadcastFeatureEnabled && broadcast.isLive) {
+        await broadcast.stopBroadcast();
+      }
       setError(result.error || "Không thể bắt đầu trình chiếu.");
     }
   };
@@ -378,19 +470,73 @@ export default function OfficialTournamentSetup() {
     );
   };
 
-  const handleSelectAllAiPlayers = () => {
-    setSelectedPlayerIds(players.map((player) => String(player.id)));
+  const handleSelectAllAiPlayers = (playerIds = []) => {
+    setSelectedPlayerIds((current) => {
+      const merged = new Set([...current, ...playerIds.map(String)]);
+      return Array.from(merged);
+    });
   };
 
   const handleClearAllAiPlayers = () => {
     setSelectedPlayerIds([]);
   };
 
+  const handleQuickAddSaved = (player) => {
+    refreshClubs();
+    setLocalRevision((value) => value + 1);
+
+    if (isAiBalance) {
+      setSelectedPlayerIds((current) =>
+        current.includes(String(player.id)) ? current : [...current, String(player.id)]
+      );
+      setMessage(`Đã thêm và chọn ${player.name}.`);
+      return;
+    }
+
+    if (!isAiBalance && isSingleEventType(eventType)) {
+      registerPlayerEntry(player);
+      return;
+    }
+
+    setMessage(`Đã thêm ${player.name}. Chọn VĐV trong dropdown để đăng ký cặp.`);
+  };
+
+  const registerPlayerEntry = (player) => {
+    const validation = validateOpenRegistrationPlayers([player], eventType);
+    if (!validation.ok) {
+      setError(validation.errors.join(" "));
+      return false;
+    }
+
+    const entry = createOpenEntryFromPlayer(player, {
+      tournamentId,
+      eventId: savedEvent?.id || `event-${tournamentId}`,
+      clubName: entryClubName || player.clubName || activeClub?.name || "",
+    });
+
+    if (displayEntries.some((item) => item.id === entry.id)) {
+      setError("VDV da dang ky.");
+      return false;
+    }
+
+    setRegisteredEntries([...displayEntries, entry]);
+    setMessage(`Da dang ky ${player.name}.`);
+    return true;
+  };
+
+  const handleRemoveSelectedAiPlayer = (playerId) => {
+    const key = String(playerId);
+    setSelectedPlayerIds((current) => current.filter((id) => id !== key));
+  };
+
+  const handleSourceClubFilterChange = (value) => {
+    setSourceClubFilter(value);
+    setSelectedPlayerIds([]);
+    setPreviewEntries([]);
+  };
+
   const handleSuggestAiPairs = () => {
     setError(null);
-    const selectedPlayers = players.filter((player) =>
-      selectedPlayerIds.includes(String(player.id))
-    );
 
     const entries = suggestBalancedEntriesFromIndividuals(selectedPlayers, eventType, {
       tournamentId,
@@ -427,19 +573,15 @@ export default function OfficialTournamentSetup() {
     const entries =
       previewEntries.length > 0
         ? previewEntries
-        : suggestBalancedEntriesFromIndividuals(
-            players.filter((player) => selectedPlayerIds.includes(String(player.id))),
-            eventType,
-            {
-              tournamentId,
-              eventId: savedEvent?.id || `event-${tournamentId}`,
-            }
-          );
+        : suggestBalancedEntriesFromIndividuals(selectedPlayers, eventType, {
+            tournamentId,
+            eventId: savedEvent?.id || `event-${tournamentId}`,
+          });
 
     const plan = buildOfficialAiBalancePlan({
       tournament,
       eventId: savedEvent?.id,
-      players,
+      players: flowPlayers,
       selectedPlayerIds,
       eventType,
       groupCount,
@@ -452,10 +594,6 @@ export default function OfficialTournamentSetup() {
       setWarnings(plan.warnings || []);
       return;
     }
-
-    const selectedPlayers = players.filter((player) =>
-      selectedPlayerIds.includes(String(player.id))
-    );
 
     const steps = buildSnakeSteps({
       entries: plan.event.entries,
@@ -511,38 +649,22 @@ export default function OfficialTournamentSetup() {
     );
   };
 
-  const handleRegisterSingle = (playerId) => {
+  const handleRegisterSingle = (playerId, playerOverride = null) => {
     setError(null);
-    const player = players.find((item) => String(item.id) === String(playerId));
+    const player =
+      playerOverride ||
+      allTenantPlayers.find((item) => String(item.id) === String(playerId));
     if (!player) {
       return;
     }
 
-    const validation = validateOpenRegistrationPlayers([player], eventType);
-    if (!validation.ok) {
-      setError(validation.errors.join(" "));
-      return;
-    }
-
-    const entry = createOpenEntryFromPlayer(player, {
-      tournamentId,
-      eventId: savedEvent?.id || `event-${tournamentId}`,
-      clubName: entryClubName || player.clubName || activeClub?.name || "",
-    });
-
-    if (displayEntries.some((item) => item.id === entry.id)) {
-      setError("VDV da dang ky.");
-      return;
-    }
-
-    setRegisteredEntries([...displayEntries, entry]);
-    setMessage(`Da dang ky ${player.name}.`);
+    registerPlayerEntry(player);
   };
 
   const handleRegisterPair = () => {
     setError(null);
-    const playerA = players.find((item) => String(item.id) === String(pairPlayerAId));
-    const playerB = players.find((item) => String(item.id) === String(pairPlayerBId));
+    const playerA = allTenantPlayers.find((item) => String(item.id) === String(pairPlayerAId));
+    const playerB = allTenantPlayers.find((item) => String(item.id) === String(pairPlayerBId));
 
     if (!playerA || !playerB) {
       setError("Chon du 2 VDV de dang ky cap.");
@@ -604,7 +726,7 @@ export default function OfficialTournamentSetup() {
       eventType,
       eventId: savedEvent?.id,
       groupCount,
-      players,
+      players: flowPlayers,
       splitUnits,
     });
 
@@ -905,23 +1027,12 @@ export default function OfficialTournamentSetup() {
 
   return (
     <TournamentManageGate tournamentId={tournamentId}>
-    <Box>
-      <Button
-        startIcon={<ArrowBackIcon />}
-        onClick={() => navigate("/tournament")}
-        sx={{ mb: 2 }}
-      >
-        Quay lai Giải đấu
-      </Button>
-
-      <Typography variant="h5" fontWeight="bold">
-        {tournament.name}
-      </Typography>
-      <Stack direction={{ xs: "column", sm: "row" }} spacing={1} sx={{ mb: 2 }}>
-        <Typography color="text.secondary" sx={{ flexGrow: 1 }}>
-          Giải chính thức — {modeLabel} ({modeDescription})
-        </Typography>
-        {savedEvent?.matches?.length > 0 && (
+    <TournamentSetupShell
+      tournament={tournament}
+      description={`Giải chính thức — ${modeLabel} (${modeDescription})`}
+      onBack={() => navigate("/tournament")}
+      headerActions={
+        savedEvent?.matches?.length > 0 ? (
           <Button
             variant="outlined"
             onClick={() =>
@@ -932,9 +1043,37 @@ export default function OfficialTournamentSetup() {
           >
             Mở Director Mode
           </Button>
-        )}
-      </Stack>
-
+        ) : null
+      }
+      alerts={
+        <>
+          {broadcastFeatureEnabled && broadcast.lastVodUpload ? (
+            <BroadcastVodResultAlert
+              result={broadcast.lastVodUpload}
+              onClose={broadcast.clearLastVodUpload}
+            />
+          ) : null}
+          {message && (
+            <Alert severity="success" sx={{ mb: 2 }} onClose={() => setMessage(null)}>
+              {message}
+            </Alert>
+          )}
+          {error && (
+            <Alert severity="error" sx={{ mb: 2 }} onClose={() => setError(null)}>
+              {error}
+            </Alert>
+          )}
+          {warnings.length > 0 && (
+            <Alert severity="warning" sx={{ mb: 2 }}>
+              {warnings.join(" ")}
+            </Alert>
+          )}
+        </>
+      }
+      setupTab={setupTab}
+      onSetupTabChange={(_, value) => setSetupTab(value)}
+      showAiTab={aiEnabled}
+    >
       <Paper variant="outlined" sx={{ p: 1.5, mb: 2 }}>
         <Grid container spacing={2} alignItems="center">
           <Grid size={{ xs: 12, md: 4 }}>
@@ -977,29 +1116,6 @@ export default function OfficialTournamentSetup() {
           </Grid>
         </Grid>
       </Paper>
-
-      {message && (
-        <Alert severity="success" sx={{ mb: 2 }} onClose={() => setMessage(null)}>
-          {message}
-        </Alert>
-      )}
-      {error && (
-        <Alert severity="error" sx={{ mb: 2 }} onClose={() => setError(null)}>
-          {error}
-        </Alert>
-      )}
-      {warnings.length > 0 && (
-        <Alert severity="warning" sx={{ mb: 2 }}>
-          {warnings.join(" ")}
-        </Alert>
-      )}
-
-      {aiEnabled && (
-        <Tabs value={setupTab} onChange={(_, v) => setSetupTab(v)} sx={{ mb: 2 }}>
-          <Tab label="Thiết lập" />
-          <Tab label="AI Assistant" />
-        </Tabs>
-      )}
 
       {aiEnabled && setupTab === 1 ? (
         <TournamentAiAssistantPanel
@@ -1082,41 +1198,30 @@ export default function OfficialTournamentSetup() {
 
       {isAiBalance ? (
         <Grid container spacing={2}>
-          <Grid size={{ xs: 12, lg: 5 }}>
+          <Grid size={{ xs: 12, lg: 4 }}>
             <Paper variant="outlined" sx={{ p: 1.5, mb: 2 }}>
-              <Typography variant="subtitle1" fontWeight="bold" sx={{ mb: 1 }}>
-                Chọn VĐV đăng ký cá nhân ({selectedPlayerIds.length})
-              </Typography>
-              <Stack direction="row" spacing={1} sx={{ mb: 1 }}>
-                <Button size="small" variant="contained" onClick={handleSelectAllAiPlayers}>
-                  Chọn tất cả
-                </Button>
-                <Button
-                  size="small"
-                  variant="outlined"
-                  onClick={handleClearAllAiPlayers}
-                  disabled={selectedPlayerIds.length === 0}
-                >
-                  Bỏ chọn tất cả
-                </Button>
-              </Stack>
-              <Stack spacing={1} sx={{ maxHeight: 320, overflow: "auto" }}>
-                {players.map((player) => {
-                  const checked = selectedPlayerIds.includes(String(player.id));
-                  return (
-                    <Button
-                      key={player.id}
-                      fullWidth
-                      variant={checked ? "contained" : "outlined"}
-                      onClick={() => toggleAiPlayer(player.id)}
-                      sx={{ justifyContent: "space-between", minHeight: 44 }}
-                    >
-                      <span>{player.name}</span>
-                      <span>{player.rating ?? player.level}</span>
-                    </Button>
-                  );
-                })}
-              </Stack>
+              <TournamentPlayerPickerPanel
+                title="Chọn VĐV đăng ký cá nhân"
+                players={allTenantPlayers}
+                selectedIds={selectedPlayerIds}
+                onToggle={toggleAiPlayer}
+                onSelectAll={handleSelectAllAiPlayers}
+                onClearAll={handleClearAllAiPlayers}
+                clubFilter={sourceClubFilter}
+                onClubFilterChange={handleSourceClubFilterChange}
+                clubs={clubs}
+                genderFilter={pickerGenderFilter}
+                onGenderFilterChange={setPickerGenderFilter}
+                search={pickerSearch}
+                onSearchChange={setPickerSearch}
+                eventType={eventType}
+                onAddNew={() => setQuickAddOpen(true)}
+                emptyMessage={
+                  sourceClubFilter === ALL_CLUBS_FILTER
+                    ? "Chưa có VĐV trong tenant."
+                    : "CLB này chưa có VĐV."
+                }
+              />
             </Paper>
             <Stack spacing={1}>
               <Button
@@ -1128,6 +1233,20 @@ export default function OfficialTournamentSetup() {
               >
                 Bắt đầu trình chiếu
               </Button>
+              {broadcastFeatureEnabled ? (
+                <>
+                  <Button
+                    fullWidth
+                    variant="outlined"
+                    onClick={() => setBroadcastDialogOpen(true)}
+                  >
+                    Cài đặt phát live
+                  </Button>
+                  {broadcast.isLive ? (
+                    <BroadcastLiveIndicator status={broadcast.status} error={broadcast.error} />
+                  ) : null}
+                </>
+              ) : null}
               <Stack direction="row" spacing={1}>
                 <Button fullWidth variant="outlined" onClick={handleSuggestAiPairs}>
                   Đề xuất ghép cặp
@@ -1138,7 +1257,16 @@ export default function OfficialTournamentSetup() {
               </Stack>
             </Stack>
           </Grid>
-          <Grid size={{ xs: 12, lg: 7 }}>
+          <Grid size={{ xs: 12, lg: 3 }}>
+            <TournamentSelectedPlayersPanel
+              title="VĐV đã chọn"
+              players={selectedPlayers}
+              onRemove={handleRemoveSelectedAiPlayer}
+              showClubName
+              emptyMessage="Chưa chọn VĐV nào. Bấm tên VĐV bên trái để thêm."
+            />
+          </Grid>
+          <Grid size={{ xs: 12, lg: 5 }}>
             <Paper variant="outlined" sx={{ p: 1.5, mb: 2 }}>
               <Typography variant="subtitle1" fontWeight="bold" sx={{ mb: 1 }}>
                 Cặp / VĐV theo rating ({displayEntries.length})
@@ -1196,53 +1324,95 @@ export default function OfficialTournamentSetup() {
               Đăng ký VĐV / cặp ({displayEntries.length})
             </Typography>
 
-            {isSingleEventType(eventType) ? (
-              <Stack spacing={1} sx={{ maxHeight: 320, overflow: "auto" }}>
-                {players.map((player) => (
-                  <Button
-                    key={player.id}
-                    fullWidth
-                    variant="outlined"
-                    onClick={() => handleRegisterSingle(player.id)}
-                    sx={{ justifyContent: "space-between", minHeight: 44 }}
-                  >
-                    <span>{player.name}</span>
-                    <span>{player.clubName || player.gender || "?"}</span>
+            <Tabs
+              value={openRegistrationTab}
+              onChange={(_, value) => setOpenRegistrationTab(value)}
+              sx={{ mb: 1.5, borderBottom: 1, borderColor: "divider" }}
+            >
+              <Tab label="Trong hệ thống" />
+              <Tab label="Thêm VĐV mới" />
+            </Tabs>
+
+            {openRegistrationTab === 0 ? (
+              isSingleEventType(eventType) ? (
+                <TournamentPlayerPickerPanel
+                  title=""
+                  players={allTenantPlayers}
+                  mode="register"
+                  onRegister={handleRegisterSingle}
+                  clubFilter={openClubFilter}
+                  onClubFilterChange={setOpenClubFilter}
+                  clubs={clubs}
+                  genderFilter={pickerGenderFilter}
+                  onGenderFilterChange={setPickerGenderFilter}
+                  search={pickerSearch}
+                  onSearchChange={setPickerSearch}
+                  eventType={eventType}
+                  excludePlayerIds={registeredPlayerIds}
+                  onAddNew={() => setQuickAddOpen(true)}
+                  showSelectActions={false}
+                  emptyMessage="Không có VĐV phù hợp hoặc tất cả đã đăng ký."
+                />
+              ) : (
+                <Stack spacing={1.5}>
+                  <TournamentPlayerPickerPanel
+                    title=""
+                    players={allTenantPlayers}
+                    clubFilter={openClubFilter}
+                    onClubFilterChange={setOpenClubFilter}
+                    clubs={clubs}
+                    genderFilter={pickerGenderFilter}
+                    onGenderFilterChange={setPickerGenderFilter}
+                    search={pickerSearch}
+                    onSearchChange={setPickerSearch}
+                    eventType={eventType}
+                    excludePlayerIds={registeredPlayerIds}
+                    onAddNew={() => setQuickAddOpen(true)}
+                    showSelectActions={false}
+                    showPlayerList={false}
+                    emptyMessage="Không có VĐV phù hợp."
+                  />
+                  <FormControl fullWidth size="small">
+                    <InputLabel>VDV 1</InputLabel>
+                    <Select
+                      label="VDV 1"
+                      value={pairPlayerAId}
+                      onChange={(event) => setPairPlayerAId(event.target.value)}
+                    >
+                      {openFilteredPlayers.map((player) => (
+                        <MenuItem key={player.id} value={String(player.id)}>
+                          {player.name} — {formatPlayerPickerMeta(player)}
+                        </MenuItem>
+                      ))}
+                    </Select>
+                  </FormControl>
+                  <FormControl fullWidth size="small">
+                    <InputLabel>VDV 2</InputLabel>
+                    <Select
+                      label="VDV 2"
+                      value={pairPlayerBId}
+                      onChange={(event) => setPairPlayerBId(event.target.value)}
+                    >
+                      {openFilteredPlayers.map((player) => (
+                        <MenuItem key={player.id} value={String(player.id)}>
+                          {player.name} — {formatPlayerPickerMeta(player)}
+                        </MenuItem>
+                      ))}
+                    </Select>
+                  </FormControl>
+                  <Button variant="contained" onClick={handleRegisterPair}>
+                    Đăng ký cặp
                   </Button>
-                ))}
-              </Stack>
+                </Stack>
+              )
             ) : (
               <Stack spacing={1.5}>
-                <FormControl fullWidth size="small">
-                  <InputLabel>VDV 1</InputLabel>
-                  <Select
-                    label="VDV 1"
-                    value={pairPlayerAId}
-                    onChange={(event) => setPairPlayerAId(event.target.value)}
-                  >
-                    {players.map((player) => (
-                      <MenuItem key={player.id} value={String(player.id)}>
-                        {player.name}
-                      </MenuItem>
-                    ))}
-                  </Select>
-                </FormControl>
-                <FormControl fullWidth size="small">
-                  <InputLabel>VDV 2</InputLabel>
-                  <Select
-                    label="VDV 2"
-                    value={pairPlayerBId}
-                    onChange={(event) => setPairPlayerBId(event.target.value)}
-                  >
-                    {players.map((player) => (
-                      <MenuItem key={player.id} value={String(player.id)}>
-                        {player.name}
-                      </MenuItem>
-                    ))}
-                  </Select>
-                </FormControl>
-                <Button variant="contained" onClick={handleRegisterPair}>
-                  Đăng ký cặp
+                <Typography variant="body2" color="text.secondary">
+                  Thêm VĐV chưa có trong hệ thống. VĐV sẽ được lưu vào CLB chủ nhà giải dưới dạng
+                  khách (guest) và có thể đăng ký ngay sau khi tạo.
+                </Typography>
+                <Button variant="contained" onClick={() => setQuickAddOpen(true)}>
+                  Thêm VĐV mới
                 </Button>
               </Stack>
             )}
@@ -1258,6 +1428,20 @@ export default function OfficialTournamentSetup() {
             >
               Bắt đầu trình chiếu
             </Button>
+            {broadcastFeatureEnabled ? (
+              <>
+                <Button
+                  fullWidth
+                  variant="outlined"
+                  onClick={() => setBroadcastDialogOpen(true)}
+                >
+                  Cài đặt phát live
+                </Button>
+                {broadcast.isLive ? (
+                  <BroadcastLiveIndicator status={broadcast.status} error={broadcast.error} />
+                ) : null}
+              </>
+            ) : null}
             <Stack direction="row" spacing={1}>
               <Button fullWidth variant="contained" onClick={() => handleDrawGroups(false)}>
                 Chia bảng random
@@ -1344,7 +1528,7 @@ export default function OfficialTournamentSetup() {
         <Stack spacing={2} sx={{ mt: 2 }}>
           <GroupStagePanel
             event={savedEvent}
-            players={players}
+            players={flowPlayers}
             onSubmitScore={handleSubmitGroupScore}
             draftScope={scoreDraftScope}
           />
@@ -1434,7 +1618,30 @@ export default function OfficialTournamentSetup() {
         </Stack>
       )}
 
-      <TournamentAnimationDialog {...flow.dialogProps} />
+      <TournamentAnimationDialog
+        {...flow.dialogProps}
+        onFlowExit={handleFlowExit}
+        broadcastStatus={broadcastFeatureEnabled ? broadcast.status : undefined}
+        broadcastError={broadcastFeatureEnabled ? broadcast.error : undefined}
+      />
+
+      {broadcastFeatureEnabled ? (
+        <BroadcastSetupDialog
+          open={broadcastDialogOpen}
+          tournamentId={tournamentId}
+          config={broadcast.config}
+          onChange={broadcast.updateConfig}
+          onClose={() => setBroadcastDialogOpen(false)}
+        />
+      ) : null}
+
+      <TournamentPlayerQuickAddDialog
+        open={quickAddOpen}
+        onClose={() => setQuickAddOpen(false)}
+        hostClubId={activeClubId}
+        defaultClubName={entryClubName || activeClub?.name || ""}
+        onSaved={handleQuickAddSaved}
+      />
 
       {bracketAdvanceAnim && (
         <Box
@@ -1473,7 +1680,7 @@ export default function OfficialTournamentSetup() {
       )}
       </>
       )}
-    </Box>
+    </TournamentSetupShell>
     </TournamentManageGate>
   );
 }

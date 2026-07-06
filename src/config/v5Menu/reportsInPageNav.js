@@ -52,7 +52,7 @@ export const REPORTS_IN_PAGE_NAV = Object.freeze({
         {
           key: "report-members",
           text: "Hội viên",
-          path: "/court-management/customers?type=member",
+          path: "/court-management/members",
           featureStatus: FEATURE_STATUS.LIVE,
         },
         {

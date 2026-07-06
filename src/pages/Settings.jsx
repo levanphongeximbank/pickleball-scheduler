@@ -35,6 +35,7 @@ import VenueOnboardingPanel from "../components/settings/VenueOnboardingPanel.js
 import VenueStaffPanel from "../components/settings/VenueStaffPanel.jsx";
 import PermissionGate from "../components/auth/PermissionGate.jsx";
 import { PERMISSIONS } from "../auth/permissions.js";
+import { seedDemoClubsRoster } from "../demo/seed/demoClubsRosterSeed.js";
 
 function loadSnapshots(clubId) {
   try {
@@ -55,12 +56,13 @@ function saveSnapshots(clubId, snapshots) {
 }
 
 export default function Settings() {
-  const { activeClub, activeClubId, revision } = useClub();
+  const { activeClub, activeClubId, revision, refreshClubs } = useClub();
   const runtime = usePlatformRuntime();
   const [exportText, setExportText] = useState("");
   const [importText, setImportText] = useState("");
   const [statusMessage, setStatusMessage] = useState(null);
   const [confirmOpen, setConfirmOpen] = useState(false);
+  const [demoSeedOpen, setDemoSeedOpen] = useState(false);
   const [snapshots, setSnapshots] = useState(() => loadSnapshots(activeClubId));
   const [dataVersion, setDataVersion] = useState(0);
   const [platformPreview, setPlatformPreview] = useState(null);
@@ -169,6 +171,23 @@ export default function Settings() {
     const text = JSON.stringify(backup, null, 2);
     setExportText(text);
     setStatusMessage({ type: "success", text: "Dữ liệu đã được xuất thành công." });
+  };
+
+  const handleSeedDemoRoster = () => {
+    const result = seedDemoClubsRoster({ playersPerClub: 60 });
+    setDemoSeedOpen(false);
+
+    if (!result.ok) {
+      setStatusMessage({ type: "error", text: result.error || "Không thể tạo dữ liệu demo." });
+      return;
+    }
+
+    refreshClubs();
+    setDataVersion((value) => value + 1);
+    setStatusMessage({
+      type: "success",
+      text: `Đã tạo ${result.clubs.length} CLB với tổng ${result.totalPlayers} VĐV (mỗi CLB 60 người).`,
+    });
   };
 
   const handleDownloadBackup = () => {
@@ -486,6 +505,16 @@ export default function Settings() {
                 <Chip label={`Rules: ${aiData.rules?.length || 0}`} color="warning" />
               </Grid>
             </Grid>
+            {import.meta.env.DEV && (
+              <Stack spacing={1.5} sx={{ mt: 2 }}>
+                <Typography variant="body2" color="text.secondary">
+                  Tạo nhanh 4 CLB demo, mỗi CLB 60 vận động viên (tổng 240 VĐV).
+                </Typography>
+                <Button variant="outlined" onClick={() => setDemoSeedOpen(true)}>
+                  Tạo demo: 4 CLB × 60 VĐV
+                </Button>
+              </Stack>
+            )}
           </CardContent>
         </Card>
 
@@ -622,6 +651,21 @@ export default function Settings() {
             <Button onClick={() => setConfirmOpen(false)}>Hủy</Button>
             <Button color="error" variant="contained" onClick={handleConfirmReset}>
               Xóa
+            </Button>
+          </DialogActions>
+        </Dialog>
+        <Dialog open={demoSeedOpen} onClose={() => setDemoSeedOpen(false)}>
+          <DialogTitle>Tạo dữ liệu demo CLB & VĐV</DialogTitle>
+          <DialogContent>
+            <DialogContentText>
+              Hệ thống sẽ tạo 4 câu lạc bộ, mỗi CLB 60 vận động viên (tổng 240 VĐV). Nếu CLB demo
+              đã có, danh sách VĐV sẽ được thay mới.
+            </DialogContentText>
+          </DialogContent>
+          <DialogActions>
+            <Button onClick={() => setDemoSeedOpen(false)}>Hủy</Button>
+            <Button variant="contained" onClick={handleSeedDemoRoster}>
+              Tạo dữ liệu
             </Button>
           </DialogActions>
         </Dialog>

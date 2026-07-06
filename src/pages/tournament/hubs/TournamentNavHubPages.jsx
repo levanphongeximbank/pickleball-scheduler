@@ -3,6 +3,7 @@ import { useSearchParams } from "react-router-dom";
 import { Alert, Box, Tab, Tabs } from "@mui/material";
 
 import InPageNavHub from "../../../components/nav/InPageNavHub.jsx";
+import AiAlertsPanel from "../../../components/tournament/ai/AiAlertsPanel.jsx";
 import { TOURNAMENT_IN_PAGE_NAV } from "../../../config/v5Menu/tournamentInPageNav.js";
 import { REPORTS_IN_PAGE_NAV } from "../../../config/v5Menu/reportsInPageNav.js";
 import { AI_IN_PAGE_NAV } from "../../../config/v5Menu/aiInPageNav.js";
@@ -44,7 +45,44 @@ export function ReportsHubPage() {
 }
 
 export function AiHubPage() {
-  return <InPageNavHub hub={AI_IN_PAGE_NAV} />;
+  const [searchParams, setSearchParams] = useSearchParams();
+  const tabParam = searchParams.get("tab") || "hub";
+  const focus = searchParams.get("focus") || "";
+  const [tab, setTab] = useState(tabParam);
+
+  useEffect(() => {
+    if (tabParam) {
+      setTab(tabParam);
+    }
+  }, [tabParam]);
+
+  const handleTabChange = (_event, nextTab) => {
+    setTab(nextTab);
+    if (nextTab === "hub") {
+      setSearchParams({}, { replace: true });
+    } else {
+      setSearchParams({ tab: nextTab }, { replace: true });
+    }
+  };
+
+  return (
+    <Box>
+      <Tabs value={tab} onChange={handleTabChange} sx={{ mb: 2 }}>
+        <Tab value="hub" label="Tổng quan" />
+        <Tab value="alerts" label="Cảnh báo" />
+      </Tabs>
+      {tab === "alerts" ? (
+        <AiAlertsPanel focus={focus} />
+      ) : (
+        <InPageNavHub hub={AI_IN_PAGE_NAV} />
+      )}
+      {tab === "hub" && (
+        <Alert severity="info" sx={{ mt: 2 }}>
+          Gợi ý giải đấu chi tiết nằm trong màn hình tạo giải (Internal/Official) khi bật Trợ lý thông minh.
+        </Alert>
+      )}
+    </Box>
+  );
 }
 
 export function SupportHubPage() {

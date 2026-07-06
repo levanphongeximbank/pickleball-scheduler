@@ -67,7 +67,7 @@ export function enrichMatchForDirector(match, entries = [], players = []) {
     entryALabel: resolveEntryLabel(match.entryAId, entries, players),
     entryBLabel: resolveEntryLabel(match.entryBId, entries, players),
     isKnockout: Boolean(match.bracketMatchId),
-    stageLabel: match.bracketMatchId ? "Knock-out" : match.groupId ? "Vong bang" : "Tran",
+    stageLabel: match.bracketMatchId ? "Knock-out" : match.groupId ? "Vòng bảng" : "Trận",
   };
 }
 

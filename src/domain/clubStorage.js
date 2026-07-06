@@ -235,6 +235,7 @@ export function loadClubData(clubId = getActiveClubId()) {
   if (raw) {
     const parsed = safeParse(raw, null);
     if (parsed) {
+      purgeLegacyAiScopedKeys(resolvedClubId);
       return normalizeClubData(parsed, resolvedClubId);
     }
   }
@@ -363,17 +364,6 @@ export function setActivePointers(pointers, clubId = getActiveClubId()) {
   return saveClubData(clubId, data);
 }
 
-export function buildFullClubExport(clubId = getActiveClubId()) {
-  const data = loadClubData(clubId);
-  return {
-    schemaVersion: CLUB_SCHEMA_VERSION,
-    type: "club-full",
-    exportedAt: new Date().toISOString(),
-    clubId,
-    data,
-  };
-}
-
 export function validateClubPayloadForSync(rawData, clubId) {
   const warnings = [];
 
@@ -404,5 +394,46 @@ export function validateClubPayloadForSync(rawData, clubId) {
     ok: true,
     data,
     warnings,
+  };
+}
+
+const CLUB_CLOUD_VERSION_KEY = "pickleball-club-cloud-version-v1";
+
+export function getClubCloudVersionKey(clubId) {
+  return `${CLUB_CLOUD_VERSION_KEY}::${clubId}`;
+}
+
+export function getClubCloudVersion(clubId) {
+  if (typeof localStorage === "undefined") {
+    return 0;
+  }
+  const raw = localStorage.getItem(getClubCloudVersionKey(clubId));
+  const version = Number(raw);
+  return Number.isFinite(version) ? version : 0;
+}
+
+export function setClubCloudVersion(clubId, version) {
+  if (typeof localStorage === "undefined") {
+    return;
+  }
+  localStorage.setItem(getClubCloudVersionKey(clubId), String(Number(version) || 0));
+}
+
+/** Xóa bản duplicate `pickleball-ai::{clubId}` sau khi đã có club blob v3. */
+export function purgeLegacyAiScopedKeys(clubId) {
+  if (typeof localStorage === "undefined") {
+    return;
+  }
+  localStorage.removeItem(getScopedStorageKey("pickleball-ai", clubId));
+}
+
+export function buildFullClubExport(clubId = getActiveClubId()) {
+  const data = loadClubData(clubId);
+  return {
+    schemaVersion: CLUB_SCHEMA_VERSION,
+    type: "club-full",
+    exportedAt: new Date().toISOString(),
+    clubId,
+    data,
   };
 }

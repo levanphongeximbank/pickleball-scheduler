@@ -1,6 +1,7 @@
-import { List, ListItem, ListItemText, Typography } from "@mui/material";
+import { Box, List, ListItem, ListItemText, Typography } from "@mui/material";
 
 import { summarizeCombinedAudit } from "../../tournament/engines/scoreHistoryEngine.js";
+import { tournamentSectionTitleSx } from "./tournamentLayout.js";
 
 export default function ScoreLogHistory({
   match,
@@ -19,20 +20,20 @@ export default function ScoreLogHistory({
   }
 
   return (
-    <>
-      <Typography variant="subtitle2" sx={{ mt: 2, mb: 0.5 }}>
-        {title}
-      </Typography>
+    <Box sx={{ mt: 2 }}>
+      <Typography sx={{ ...tournamentSectionTitleSx, mb: 0.75 }}>{title}</Typography>
       <List dense disablePadding>
         {lines.map((line, index) => (
           <ListItem key={`${line}-${index}`} disableGutters sx={{ py: 0.25 }}>
             <ListItemText
               primary={line}
-              primaryTypographyProps={{ variant: "caption", color: "text.secondary" }}
+              slotProps={{
+                primary: { variant: "caption", sx: { color: "text.secondary" } },
+              }}
             />
           </ListItem>
         ))}
       </List>
-    </>
+    </Box>
   );
 }

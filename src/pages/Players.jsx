@@ -1,5 +1,4 @@
 import { useEffect, useMemo, useState } from "react";
-import { useNavigate, useSearchParams } from "react-router-dom";
 
 import {
   Alert,
@@ -12,7 +11,6 @@ import {
   DialogTitle,
   Grid,
   MenuItem,
-  Paper,
   Slider,
   Stack,
   TextField,
@@ -20,19 +18,13 @@ import {
 } from "@mui/material";
 
 import AddIcon from "@mui/icons-material/Add";
-import SportsTennisIcon from "@mui/icons-material/SportsTennis";
+import GroupsOutlinedIcon from "@mui/icons-material/GroupsOutlined";
 
 import { useClub } from "../context/ClubContext.jsx";
 import { useAuth } from "../context/AuthContext.jsx";
 import PermissionGate from "../components/auth/PermissionGate.jsx";
 import { PERMISSIONS } from "../auth/permissions.js";
 import { savePlayersForClub } from "../domain/clubStorage.js";
-import {
-  approveSkillLevelProposal,
-  ensureMonthlySkillLevelProposals,
-  listPendingSkillLevelProposals,
-  rejectSkillLevelProposal,
-} from "../domain/skillLevelService.js";
 import { loadPlayersFromStorage } from "./selectPlayers.data";
 import { normalizePlayers } from "../models/player.js";
 import PlayerStats from "../components/players/PlayerStats.jsx";
@@ -41,6 +33,9 @@ import PlayerCard from "../components/players/PlayerCard.jsx";
 import PlayerImportExportDialog, {
   PlayerImportExportButton,
 } from "../components/players/PlayerImportExport.jsx";
+import TournamentPageHeader from "../components/tournament/TournamentPageHeader.jsx";
+import TournamentEmptyState from "../components/tournament/TournamentEmptyState.jsx";
+import { TOURNAMENT_LAYOUT } from "../components/tournament/tournamentLayout.js";
 import {
   computePlayerDashboardStats,
   filterPlayers,
@@ -58,7 +53,7 @@ const defaultPlayerForm = {
 };
 
 export default function Players() {
-  const { activeClubId, activeClub, revision, refreshClubs } = useClub();
+  const { activeClubId, activeClub, revision } = useClub();
   const { can, rbacEnabled, isAuthenticated } = useAuth();
 
   const canManagePlayers =
@@ -78,35 +73,11 @@ export default function Players() {
   const [genderFilter, setGenderFilter] = useState("all");
   const [levelRange, setLevelRange] = useState([1.5, 6]);
   const [statusFilter, setStatusFilter] = useState("all");
-  const [searchParams] = useSearchParams();
-  const skillTab = searchParams.get("tab") === "skill";
-  const [reviewMessage, setReviewMessage] = useState(null);
   const [formError, setFormError] = useState(null);
 
   useEffect(() => {
     const nextPlayers = loadPlayersFromStorage(activeClubId);
     setPlayers(normalizePlayers(nextPlayers));
-  }, [activeClubId, revision]);
-
-  useEffect(() => {
-    if (!activeClubId) {
-      return;
-    }
-
-    const result = ensureMonthlySkillLevelProposals(activeClubId);
-    if (!result.ok || result.skipped || result.proposalCount <= 0) {
-      return;
-    }
-
-    setReviewMessage({
-      type: "info",
-      text: `Hệ thống đã tự tạo ${result.proposalCount} đề xuất đổi trình. Admin duyệt để áp dụng.`,
-    });
-  }, [activeClubId]);
-
-  const pendingProposals = useMemo(() => {
-    void revision;
-    return listPendingSkillLevelProposals(activeClubId);
   }, [activeClubId, revision]);
 
   const checkedInIds = useMemo(
@@ -201,26 +172,6 @@ export default function Players() {
     savePlayers(updated);
   };
 
-  const handleApproveProposal = (proposalId) => {
-    const result = approveSkillLevelProposal(activeClubId, proposalId);
-    if (!result.ok) {
-      setReviewMessage({ type: "error", text: result.error || "Không thể duyệt." });
-      return;
-    }
-    refreshClubs();
-    setReviewMessage({ type: "success", text: "Đã duyệt và cập nhật trình công khai." });
-  };
-
-  const handleRejectProposal = (proposalId) => {
-    const result = rejectSkillLevelProposal(activeClubId, proposalId);
-    if (!result.ok) {
-      setReviewMessage({ type: "error", text: result.error || "Không thể từ chối." });
-      return;
-    }
-    refreshClubs();
-    setReviewMessage({ type: "info", text: "Đã từ chối đề xuất. Trình công khai giữ nguyên." });
-  };
-
   const clearFilters = () => {
     setGenderFilter("all");
     setLevelRange([1.5, 6]);
@@ -228,163 +179,29 @@ export default function Players() {
     setSearch("");
   };
 
+  const contextLine = activeClub?.name ? `CLB ${activeClub.name}` : undefined;
+
+  const headerActions = (
+    <Stack direction={{ xs: "column", sm: "row" }} spacing={1} useFlexGap>
+      <PermissionGate permission={PERMISSIONS.PLAYER_UPDATE}>
+        <Button variant="contained" startIcon={<AddIcon />} onClick={openCreateDialog}>
+          Thêm người chơi
+        </Button>
+        <PlayerImportExportButton onClick={() => setImportOpen(true)} />
+      </PermissionGate>
+    </Stack>
+  );
+
   return (
-    <Box
-      sx={{
-        minHeight: "100%",
-        mx: -3,
-        my: -3,
-        px: { xs: 2, md: 3 },
-        py: { xs: 2, md: 3 },
-        background: "linear-gradient(135deg, #f8fafc 0%, #eef6f1 48%, #f7fbff 100%)",
-      }}
-    >
-      <Paper
-        elevation={0}
-        sx={{
-          position: "relative",
-          overflow: "hidden",
-          borderRadius: 2,
-          p: { xs: 2.5, md: 3.5 },
-          mb: 3,
-          color: "#ffffff",
-          background: "linear-gradient(135deg, #0f3f2e 0%, #157347 52%, #0f766e 100%)",
-        }}
-      >
-        <Box
-          sx={{
-            position: "absolute",
-            inset: 0,
-            opacity: 0.18,
-            backgroundImage:
-              "linear-gradient(90deg, transparent 49%, #ffffff 49%, #ffffff 51%, transparent 51%), linear-gradient(0deg, transparent 49%, #ffffff 49%, #ffffff 51%, transparent 51%)",
-            backgroundSize: "140px 90px",
-          }}
-        />
-
-        <Stack
-          direction={{ xs: "column", md: "row" }}
-          spacing={2}
-          alignItems={{ xs: "flex-start", md: "center" }}
-          justifyContent="space-between"
-          sx={{ position: "relative" }}
-        >
-          <Box>
-            <Stack direction="row" spacing={1} alignItems="center" mb={0.75}>
-              <SportsTennisIcon fontSize="small" />
-              <Typography variant="overline" sx={{ fontWeight: 800, letterSpacing: 0.5 }}>
-                AI Director · Roster
-              </Typography>
-            </Stack>
-            <Typography
-              variant="h4"
-              sx={{ fontWeight: 900, fontSize: { xs: 28, md: 36 }, lineHeight: 1.1 }}
-            >
-              Quản lý người chơi
-            </Typography>
-            <Typography
-              sx={{
-                mt: 1,
-                maxWidth: 620,
-                color: "rgba(255,255,255,0.85)",
-                fontSize: { xs: 14, md: 15 },
-              }}
-            >
-              Theo dõi trình độ, giới tính, trạng thái tham gia và dữ liệu để AI xếp sân cân bằng.
-            </Typography>
-          </Box>
-
-          <Stack direction={{ xs: "column", sm: "row" }} spacing={1}>
-            <PermissionGate permission={PERMISSIONS.PLAYER_UPDATE}>
-              <Button
-                variant="contained"
-                size="large"
-                startIcon={<AddIcon />}
-                onClick={openCreateDialog}
-                sx={{
-                  minWidth: 170,
-                  borderRadius: 1.5,
-                  bgcolor: "#ffffff",
-                  color: "#0f3f2e",
-                  fontWeight: 800,
-                  boxShadow: "0 12px 28px rgba(15, 23, 42, 0.2)",
-                  "&:hover": { bgcolor: "#f8fafc" },
-                }}
-              >
-                Thêm người chơi
-              </Button>
-              <PlayerImportExportButton onClick={() => setImportOpen(true)} />
-            </PermissionGate>
-          </Stack>
-        </Stack>
-      </Paper>
-
-      {reviewMessage && (
-        <Alert
-          severity={reviewMessage.type}
-          onClose={() => setReviewMessage(null)}
-          sx={{ mb: 2 }}
-        >
-          {reviewMessage.text}
-        </Alert>
-      )}
-
-      {pendingProposals.length > 0 && (
-        <Paper variant="outlined" sx={{ p: 2, mb: 2 }}>
-          <Typography variant="subtitle1" fontWeight={800} sx={{ mb: 1 }}>
-            Đề xuất đổi trình ({pendingProposals.length})
-          </Typography>
-          <Stack spacing={1}>
-            {pendingProposals.map((proposal) => (
-              <Stack
-                key={proposal.id}
-                direction={{ xs: "column", sm: "row" }}
-                spacing={1}
-                alignItems={{ xs: "flex-start", sm: "center" }}
-                justifyContent="space-between"
-                sx={{ py: 0.5 }}
-              >
-                <Box>
-                  <Typography fontWeight={700}>
-                    {proposal.playerName || `VĐV #${proposal.playerId}`}
-                  </Typography>
-                  <Typography variant="body2" color="text.secondary">
-                    {Number(proposal.currentLevel).toFixed(1)} →{" "}
-                    {Number(proposal.proposedLevel).toFixed(1)} • Rating nội bộ{" "}
-                    {Number(proposal.ratingInternal).toFixed(2)} • Tháng {proposal.reviewMonth}
-                  </Typography>
-                </Box>
-                {canManagePlayers && (
-                  <Stack direction="row" spacing={1}>
-                    <Button
-                      size="small"
-                      variant="contained"
-                      onClick={() => handleApproveProposal(proposal.id)}
-                    >
-                      Duyệt
-                    </Button>
-                    <Button
-                      size="small"
-                      variant="outlined"
-                      onClick={() => handleRejectProposal(proposal.id)}
-                    >
-                      Từ chối
-                    </Button>
-                  </Stack>
-                )}
-              </Stack>
-            ))}
-          </Stack>
-        </Paper>
-      )}
+    <Box>
+      <TournamentPageHeader
+        title="Quản lý người chơi"
+        description="Theo dõi trình độ, giới tính, trạng thái tham gia và dữ liệu để AI xếp sân cân bằng."
+        contextLine={contextLine}
+        action={headerActions}
+      />
 
       <PlayerStats stats={stats} />
-
-      {skillTab && (
-        <Alert severity="info" sx={{ mb: 2 }}>
-          Chế độ Điểm trình độ — xem đề xuất đổi hạng và phân bố level VĐV.
-        </Alert>
-      )}
 
       <PlayerFilters
         search={search}
@@ -400,7 +217,7 @@ export default function Players() {
         onClearFilters={clearFilters}
       />
 
-      <Grid container spacing={2}>
+      <Grid container spacing={TOURNAMENT_LAYOUT.gridSpacing}>
         {filteredPlayers.map((player) => (
           <Grid key={player.id} size={{ xs: 12, sm: 6, lg: 4, xl: 3 }}>
             <PlayerCard
@@ -417,23 +234,13 @@ export default function Players() {
       </Grid>
 
       {filteredPlayers.length === 0 && (
-        <Paper
-          elevation={0}
-          sx={{
-            mt: 2,
-            p: 4,
-            textAlign: "center",
-            borderRadius: 2,
-            border: "1px dashed rgba(15, 23, 42, 0.18)",
-          }}
-        >
-          <Typography variant="h6" fontWeight={900}>
-            Không tìm thấy người chơi
-          </Typography>
-          <Typography color="text.secondary" sx={{ mt: 0.5 }}>
-            Thử đổi bộ lọc hoặc thêm người chơi mới.
-          </Typography>
-        </Paper>
+        <Box sx={{ mt: TOURNAMENT_LAYOUT.sectionGap }}>
+          <TournamentEmptyState
+            icon={GroupsOutlinedIcon}
+            title="Không tìm thấy người chơi"
+            description="Thử đổi bộ lọc hoặc thêm người chơi mới."
+          />
+        </Box>
       )}
 
       <PlayerImportExportDialog

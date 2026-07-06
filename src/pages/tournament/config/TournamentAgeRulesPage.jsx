@@ -16,6 +16,7 @@ import {
   updateEligibilityRules,
 } from "../../../features/team-tournament/engines/eligibilityEngine.js";
 import { initializeTeamTournamentData } from "../../../features/team-tournament/engines/teamTournamentEngine.js";
+import TournamentConfigPageShell from "../../../components/tournament/TournamentConfigPageShell.jsx";
 
 export default function TournamentAgeRulesPage() {
   const [teamData, setTeamData] = useState(() => initializeTeamTournamentData());
@@ -33,14 +34,10 @@ export default function TournamentAgeRulesPage() {
   };
 
   return (
-    <Box>
-      <Typography variant="h5" fontWeight={700} sx={{ mb: 0.5 }}>
-        Độ tuổi
-      </Typography>
-      <Typography color="text.secondary" sx={{ mb: 2 }}>
-        Thiết lập giới hạn tuổi tham gia giải đồng đội.
-      </Typography>
-
+    <TournamentConfigPageShell
+      title="Độ tuổi"
+      description="Thiết lập giới hạn tuổi tham gia giải đồng đội."
+    >
       {message ? (
         <Alert severity={message.type} sx={{ mb: 2 }} onClose={() => setMessage(null)}>
           {message.text}
@@ -87,6 +84,6 @@ export default function TournamentAgeRulesPage() {
           Lưu
         </Button>
       </Stack>
-    </Box>
+    </TournamentConfigPageShell>
   );
 }

@@ -34,6 +34,8 @@ export function mapProfileRowToUser(row) {
     venueId,
     clubId: row.club_id || row.clubId || null,
     playerId: row.player_id || row.playerId || null,
+    tournamentId: row.tournament_id || row.tournamentId || null,
+    teamId: row.team_id || row.teamId || null,
     phone: row.phone || "",
     avatarUrl: row.avatar_url || row.avatarUrl || "",
     status: row.status || "active",

@@ -12,8 +12,15 @@ import {
 
 import { normalizeTeamData } from "../../../features/team-tournament/models/index.js";
 import { initializeTeamTournamentData } from "../../../features/team-tournament/engines/teamTournamentEngine.js";
+import { MLP_REGULATIONS_BODY } from "../../../features/team-tournament/engines/mlpPresetEngine.js";
+import TournamentConfigPageShell from "../../../components/tournament/TournamentConfigPageShell.jsx";
 
 const TEMPLATES = [
+  {
+    id: "mlp_4",
+    label: "MLP 4 người (Major League Pickleball)",
+    body: MLP_REGULATIONS_BODY,
+  },
   {
     id: "standard",
     label: "Điều lệ chuẩn CLB",
@@ -60,14 +67,10 @@ export default function TournamentRegulationsPage() {
   };
 
   return (
-    <Box>
-      <Typography variant="h5" fontWeight={700} sx={{ mb: 0.5 }}>
-        Mẫu điều lệ
-      </Typography>
-      <Typography color="text.secondary" sx={{ mb: 2 }}>
-        Chọn mẫu và chỉnh sửa điều lệ giải đấu.
-      </Typography>
-
+    <TournamentConfigPageShell
+      title="Mẫu điều lệ"
+      description="Chọn mẫu và chỉnh sửa điều lệ giải đấu."
+    >
       {message ? (
         <Alert severity={message.type} sx={{ mb: 2 }} onClose={() => setMessage(null)}>
           {message.text}
@@ -103,6 +106,6 @@ export default function TournamentRegulationsPage() {
           Lưu
         </Button>
       </Stack>
-    </Box>
+    </TournamentConfigPageShell>
   );
 }

@@ -11,6 +11,7 @@ import {
 } from "../models/index.js";
 import { canManageTeam } from "./teamPermissionEngine.js";
 import { computeMatchupResult } from "./teamResultEngine.js";
+import { isRallyScoring, validateRallyScore } from "./rallyScoringEngine.js";
 
 export const MATCH_FORMAT = {
   BEST_OF_1: "best_of_1",
@@ -224,6 +225,17 @@ export function validateSubMatchScoreInput({
       ok: false,
       error: "Hai bên không được bằng điểm khi xác nhận kết quả.",
     };
+  }
+
+  if (confirm && discipline && isRallyScoring(discipline)) {
+    const rallyCheck = validateRallyScore({
+      scoreA: normalizedScore.teamA,
+      scoreB: normalizedScore.teamB,
+      rules: discipline.scoringFormat,
+    });
+    if (!rallyCheck.ok) {
+      return rallyCheck;
+    }
   }
 
   return {

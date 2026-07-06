@@ -232,6 +232,7 @@ export function getTenantPlayers(tenantId) {
         byId.set(player.id, {
           ...player,
           sourceClubId: club.id,
+          clubName: player.clubName || club.name,
         });
       }
     }

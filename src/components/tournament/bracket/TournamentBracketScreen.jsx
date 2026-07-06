@@ -11,13 +11,20 @@ import {
 import "../animation/shared/tournamentAnimationTheme.css";
 import BracketControlBar from "./BracketControlBar.jsx";
 import BracketHeader from "./BracketHeader.jsx";
+import BracketResultsView from "./BracketResultsView.jsx";
 import BracketRightPanel from "./BracketRightPanel.jsx";
 import BracketSidebar from "./BracketSidebar.jsx";
 import BracketTree from "./BracketTree.jsx";
 import { buildBracketRevealPlan, buildBracketViewModel } from "./bracketScreenUtils.js";
 import { getColumnScrollLeft } from "./bracketLayoutEngine.js";
 import { useBracketSequence } from "./useBracketSequence.js";
+import { tournamentHubTabSx } from "../tournamentLayout.js";
 import "./tournamentBracket.css";
+
+const PAGE_TAB = {
+  BRACKET: 0,
+  RESULTS: 1,
+};
 
 export default function TournamentBracketScreen({
   tournament,
@@ -34,7 +41,8 @@ export default function TournamentBracketScreen({
   const [speed, setSpeed] = useState("normal");
   const [soundEnabled, setSoundEnabled] = useState(false);
   const [activeRoundKey, setActiveRoundKey] = useState("");
-  const [mobileTab, setMobileTab] = useState(0);
+  const [pageViewTab, setPageViewTab] = useState(PAGE_TAB.BRACKET);
+  const [roundTab, setRoundTab] = useState(0);
   const treeScrollRef = useRef(null);
   const roundRefs = useRef({});
   const { presentationMode, togglePresentationMode } = usePresentationMode();
@@ -93,7 +101,7 @@ export default function TournamentBracketScreen({
       const roundIndex = viewModel.rounds.findIndex((round) => round.key === roundKey);
 
       if (roundIndex >= 0) {
-        setMobileTab(roundIndex);
+        setRoundTab(roundIndex);
         const scrollNode = treeScrollRef.current;
         if (scrollNode) {
           scrollNode.scrollTo({
@@ -128,25 +136,45 @@ export default function TournamentBracketScreen({
 
       <TournamentFlowProgress activeStepKey={FLOW_STEP_KEYS.BRACKET} />
 
-      <Box className="tournament-bracket-mobile-tabs">
-        <Tabs
-          value={mobileTab}
-          onChange={(_, value) => {
-            setMobileTab(value);
-            const round = viewModel.rounds[value];
-            if (round) {
-              handleSelectRound(round.key);
-            }
-          }}
-          variant="scrollable"
-          scrollButtons="auto"
-        >
-          {viewModel.rounds.map((round) => (
-            <Tab key={round.key} label={round.shortLabel || round.displayName} />
-          ))}
-        </Tabs>
-      </Box>
+      {!presentationMode ? (
+        <Box className="tournament-bracket-page-tabs">
+          <Tabs
+            value={pageViewTab}
+            onChange={(_, value) => setPageViewTab(value)}
+            sx={tournamentHubTabSx}
+          >
+            <Tab label="Sơ đồ" />
+            <Tab label="Kết quả" />
+          </Tabs>
+        </Box>
+      ) : null}
 
+      {pageViewTab === PAGE_TAB.BRACKET ? (
+        <Box className="tournament-bracket-mobile-tabs">
+          <Tabs
+            value={roundTab}
+            onChange={(_, value) => {
+              setRoundTab(value);
+              const round = viewModel.rounds[value];
+              if (round) {
+                handleSelectRound(round.key);
+              }
+            }}
+            variant="scrollable"
+            scrollButtons="auto"
+          >
+            {viewModel.rounds.map((round) => (
+              <Tab key={round.key} label={round.shortLabel || round.displayName} />
+            ))}
+          </Tabs>
+        </Box>
+      ) : null}
+
+      {pageViewTab === PAGE_TAB.RESULTS && !presentationMode ? (
+        <Box className="tournament-bracket-results-layout">
+          <BracketResultsView event={event} courts={courts} viewModel={viewModel} />
+        </Box>
+      ) : (
       <Box className="tournament-bracket-layout">
         <Box sx={{ display: { xs: "none", lg: "block" } }}>
           <BracketSidebar
@@ -181,7 +209,9 @@ export default function TournamentBracketScreen({
           />
         </Box>
       </Box>
+      )}
 
+      {pageViewTab === PAGE_TAB.BRACKET ? (
       <BracketControlBar
         playing={sequence.playing}
         paused={sequence.paused}
@@ -197,6 +227,7 @@ export default function TournamentBracketScreen({
         onSpeedChange={setSpeed}
         onControlModeChange={sequence.setMode}
       />
+      ) : null}
     </Box>
   );
 

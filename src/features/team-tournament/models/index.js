@@ -1,11 +1,16 @@
 import { createId } from "../../../utils/id.js";
 import {
+  ACTIVATION_RULE,
   DEFAULT_TEAM_TOURNAMENT_SETTINGS,
   DISCIPLINE_CATEGORY,
+  DISCIPLINE_KIND,
+  DREAMBREAKER_STATUS,
+  FORMAT_PRESET,
   GENDER_REQUIREMENT,
   LINEUP_SOURCE,
   LINEUP_STATUS,
   MATCHUP_STATUS,
+  SCORING_SYSTEM,
   SUB_MATCH_STATUS,
 } from "../constants.js";
 
@@ -13,6 +18,9 @@ const VALID_CATEGORIES = new Set(Object.values(DISCIPLINE_CATEGORY));
 const VALID_GENDERS = new Set(Object.values(GENDER_REQUIREMENT));
 const VALID_LINEUP_STATUSES = new Set(Object.values(LINEUP_STATUS));
 const VALID_MATCHUP_STATUSES = new Set(Object.values(MATCHUP_STATUS));
+const VALID_DISCIPLINE_KINDS = new Set(Object.values(DISCIPLINE_KIND));
+const VALID_ACTIVATION_RULES = new Set(Object.values(ACTIVATION_RULE));
+const VALID_DREAMBREAKER_STATUSES = new Set(Object.values(DREAMBREAKER_STATUS));
 
 function uniqueStringIds(values = []) {
   return [...new Set(values.map((value) => String(value).trim()).filter(Boolean))];
@@ -30,11 +38,40 @@ export function normalizeDiscipline(discipline, index = 0) {
   const defaultCount =
     categoryType === DISCIPLINE_CATEGORY.SINGLES ? 1 : 2;
 
+  const defaultScoring = {
+    winPoints: 1,
+    matchFormat: "best_of_1",
+    scoringSystem: SCORING_SYSTEM.SIDE_OUT,
+    targetScore: 21,
+    winBy: 2,
+    freezeAt: 20,
+    sideSwitchAt: 11,
+  };
+
+  const scoringFormat =
+    discipline.scoringFormat && typeof discipline.scoringFormat === "object"
+      ? { ...defaultScoring, ...discipline.scoringFormat }
+      : defaultScoring;
+
+  const disciplineKind = VALID_DISCIPLINE_KINDS.has(discipline.disciplineKind)
+    ? discipline.disciplineKind
+    : categoryType === DISCIPLINE_CATEGORY.SINGLES
+      ? DISCIPLINE_KIND.DREAMBREAKER
+      : DISCIPLINE_KIND.DOUBLES;
+
+  const activationRule = VALID_ACTIVATION_RULES.has(discipline.activationRule)
+    ? discipline.activationRule
+    : disciplineKind === DISCIPLINE_KIND.DREAMBREAKER
+      ? ACTIVATION_RULE.TIE_AT_2_2
+      : ACTIVATION_RULE.ALWAYS;
+
   return {
     ...discipline,
     id: String(discipline.id).trim(),
     name: String(discipline.name || `Nội dung ${index + 1}`).trim(),
     categoryType,
+    disciplineKind,
+    activationRule,
     genderRequirement: VALID_GENDERS.has(discipline.genderRequirement)
       ? discipline.genderRequirement
       : GENDER_REQUIREMENT.ANY,
@@ -44,10 +81,7 @@ export function normalizeDiscipline(discipline, index = 0) {
     sortOrder: Number.isFinite(Number(discipline.sortOrder))
       ? Number(discipline.sortOrder)
       : index + 1,
-    scoringFormat:
-      discipline.scoringFormat && typeof discipline.scoringFormat === "object"
-        ? discipline.scoringFormat
-        : { winPoints: 1, matchFormat: "best_of_1" },
+    scoringFormat,
     countsTowardResult: discipline.countsTowardResult !== false,
   };
 }
@@ -68,12 +102,65 @@ export function createDisciplineRecord(options = {}) {
     id: options.id || createId("disc"),
     name: options.name || "Nội dung mới",
     categoryType: options.categoryType || DISCIPLINE_CATEGORY.DOUBLES,
+    disciplineKind: options.disciplineKind,
+    activationRule: options.activationRule,
     genderRequirement: options.genderRequirement || GENDER_REQUIREMENT.ANY,
     playerCount: options.playerCount,
     sortOrder: options.sortOrder,
     scoringFormat: options.scoringFormat,
     countsTowardResult: options.countsTowardResult,
   });
+}
+
+function normalizeDreambreakerState(dreambreaker) {
+  if (!dreambreaker || typeof dreambreaker !== "object") {
+    return null;
+  }
+
+  const status = VALID_DREAMBREAKER_STATUSES.has(dreambreaker.status)
+    ? dreambreaker.status
+    : DREAMBREAKER_STATUS.PENDING;
+
+  const rotation = dreambreaker.rotation || {};
+
+  return {
+    status,
+    teamAOrder: uniqueStringIds(dreambreaker.teamAOrder || []),
+    teamBOrder: uniqueStringIds(dreambreaker.teamBOrder || []),
+    teamAScore: Number(dreambreaker.teamAScore) || 0,
+    teamBScore: Number(dreambreaker.teamBScore) || 0,
+    winnerTeamId: dreambreaker.winnerTeamId
+      ? String(dreambreaker.winnerTeamId).trim()
+      : "",
+    rotation: {
+      segmentIndex: Number(rotation.segmentIndex) || 0,
+      pointsInSegment: Number(rotation.pointsInSegment) || 0,
+      pointHistory: Array.isArray(rotation.pointHistory)
+        ? rotation.pointHistory.map((entry) => ({
+            teamId: String(entry?.teamId || "").trim(),
+            segmentIndex: Number(entry?.segmentIndex) || 0,
+            teamAScore: Number(entry?.teamAScore) || 0,
+            teamBScore: Number(entry?.teamBScore) || 0,
+          }))
+        : [],
+      injurySkips: Array.isArray(rotation.injurySkips)
+        ? rotation.injurySkips.map((entry) => ({
+            teamId: String(entry?.teamId || "").trim(),
+            skippedPlayerId: String(entry?.skippedPlayerId || "").trim(),
+            atSegment: Number(entry?.atSegment) || 0,
+          }))
+        : [],
+    },
+    subMatchId: dreambreaker.subMatchId ? String(dreambreaker.subMatchId).trim() : "",
+    orderLockAt: dreambreaker.orderLockAt || null,
+    ordersLockedAt: dreambreaker.ordersLockedAt || null,
+    orderSourceA: dreambreaker.orderSourceA
+      ? String(dreambreaker.orderSourceA).trim()
+      : "",
+    orderSourceB: dreambreaker.orderSourceB
+      ? String(dreambreaker.orderSourceB).trim()
+      : "",
+  };
 }
 
 export function normalizeTeam(team, index = 0) {
@@ -98,6 +185,8 @@ export function normalizeTeam(team, index = 0) {
     deputyPlayerIds,
     absentPlayerIds: uniqueStringIds(team.absentPlayerIds || []),
     lockedPlayerIds: uniqueStringIds(team.lockedPlayerIds || []),
+    seed: Number(team.seed) > 0 ? Number(team.seed) : 0,
+    avgLevel: Number(team.avgLevel) > 0 ? Number(team.avgLevel) : 0,
   };
 }
 
@@ -122,6 +211,8 @@ export function createTeamRecord(options = {}) {
     deputyPlayerIds: options.deputyPlayerIds || [],
     absentPlayerIds: options.absentPlayerIds || [],
     lockedPlayerIds: options.lockedPlayerIds || [],
+    seed: options.seed,
+    avgLevel: options.avgLevel,
   });
 }
 
@@ -190,6 +281,10 @@ export function normalizeMatchup(matchup) {
     scheduledAt: matchup.scheduledAt || null,
     lineupLockAt: matchup.lineupLockAt || null,
     courtLabel: matchup.courtLabel ? String(matchup.courtLabel).trim() : "",
+    groupId: matchup.groupId ? String(matchup.groupId).trim() : "",
+    roundNumber: Number(matchup.roundNumber) > 0 ? Number(matchup.roundNumber) : 0,
+    matchNumberInRound:
+      Number(matchup.matchNumberInRound) > 0 ? Number(matchup.matchNumberInRound) : 0,
     status,
     subMatches: normalizeSubMatches(matchup.subMatches || []),
     result:
@@ -204,6 +299,7 @@ export function normalizeMatchup(matchup) {
               : "",
           }
         : null,
+    dreambreaker: normalizeDreambreakerState(matchup.dreambreaker),
   };
 }
 
@@ -218,7 +314,9 @@ export function normalizeMatchups(matchups = []) {
 }
 
 export function createMatchupRecord(teamAId, teamBId, options = {}) {
-  const disciplines = options.disciplines || [];
+  const disciplines = (options.disciplines || []).filter(
+    (discipline) => discipline.activationRule !== ACTIVATION_RULE.TIE_AT_2_2
+  );
   const subMatches = disciplines.map((discipline, index) => ({
     id: createId("sub"),
     disciplineId: discipline.id,
@@ -232,9 +330,13 @@ export function createMatchupRecord(teamAId, teamBId, options = {}) {
     id: options.id || createId("matchup"),
     teamAId,
     teamBId,
+    groupId: options.groupId || "",
     scheduledAt: options.scheduledAt || null,
     lineupLockAt: options.lineupLockAt || null,
     courtLabel: options.courtLabel || "",
+    roundNumber: Number(options.roundNumber) > 0 ? Number(options.roundNumber) : 0,
+    matchNumberInRound:
+      Number(options.matchNumberInRound) > 0 ? Number(options.matchNumberInRound) : 0,
     status: options.status || MATCHUP_STATUS.LINEUP_OPEN,
     subMatches,
     result: null,
@@ -321,17 +423,47 @@ export function normalizeStandings(standings = []) {
     .filter(Boolean);
 }
 
+export function normalizeGroup(group, index = 0) {
+  if (!group?.id) {
+    return null;
+  }
+
+  return {
+    id: String(group.id).trim(),
+    name: String(group.name || `Bảng ${String.fromCharCode(65 + index)}`).trim(),
+    teamIds: uniqueStringIds(group.teamIds || []),
+  };
+}
+
+export function normalizeGroups(groups = []) {
+  if (!Array.isArray(groups)) {
+    return [];
+  }
+
+  return groups
+    .map((group, index) => normalizeGroup(group, index))
+    .filter(Boolean);
+}
+
 export function normalizeTeamData(teamData = {}) {
+  const rawSettings =
+    teamData.settings && typeof teamData.settings === "object" ? teamData.settings : {};
+
   const settings = {
     ...DEFAULT_TEAM_TOURNAMENT_SETTINGS,
-    ...(teamData.settings && typeof teamData.settings === "object"
-      ? teamData.settings
-      : {}),
+    ...rawSettings,
+    formatPreset: rawSettings.formatPreset || FORMAT_PRESET.CUSTOM,
+    rosterRules: {
+      ...DEFAULT_TEAM_TOURNAMENT_SETTINGS.rosterRules,
+      ...(rawSettings.rosterRules || {}),
+    },
+    regulations: rawSettings.regulations || null,
   };
 
   return {
     disciplines: normalizeDisciplines(teamData.disciplines || []),
     teams: normalizeTeams(teamData.teams || []),
+    groups: normalizeGroups(teamData.groups || []),
     matchups: normalizeMatchups(teamData.matchups || []),
     lineups: normalizeLineups(teamData.lineups || {}),
     standings: normalizeStandings(teamData.standings || []),

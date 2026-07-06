@@ -22,6 +22,27 @@ import {
 } from "./animationUtils.js";
 import { PAIRING_CONTROL_MODES } from "./pairing/usePairingSequence.js";
 
+function buildKnockoutMatchMap(event) {
+  const map = {};
+  (event?.matches || []).forEach((match) => {
+    if (match.bracketMatchId) {
+      map[match.bracketMatchId] = match;
+    }
+  });
+  return map;
+}
+
+function buildBracketRevealPayload(ctx, courts = []) {
+  return {
+    animationMode: ANIMATION_MODES.BRACKET_REVEAL,
+    bracket: ctx.bracketProgress,
+    event: ctx.bracketEvent,
+    courts: ctx.courts || courts || [],
+    knockoutMatchesByBracketId: buildKnockoutMatchMap(ctx.bracketEvent),
+    autoStart: true,
+  };
+}
+
 function buildPairingPayload({ entries, selectedPlayers, isSingleEvent }) {
   return {
     animationMode: ANIMATION_MODES.PAIRING_REVEAL,
@@ -168,6 +189,7 @@ export function createInternalFlowAdapters(deps) {
         selectedPlayerIds.includes(String(player.id))
       );
       ctx.includeBracket = canGenerateBracket(plan.event).ok;
+      ctx.courts = courts;
 
       return { ok: true };
     },
@@ -193,11 +215,7 @@ export function createInternalFlowAdapters(deps) {
           });
         case ANIMATION_MODES.BRACKET_REVEAL:
           refreshBracketContext(ctx);
-          return {
-            animationMode: ANIMATION_MODES.BRACKET_REVEAL,
-            bracket: ctx.bracketProgress,
-            autoStart: true,
-          };
+          return buildBracketRevealPayload(ctx, courts);
         default:
           return { animationMode };
       }
@@ -417,6 +435,7 @@ export function createOfficialFlowAdapters(deps) {
           ? players
           : players.filter((player) => selectedPlayerIds.includes(String(player.id)));
       ctx.includeBracket = canGenerateBracket(plan.event).ok;
+      ctx.courts = courts;
 
       return { ok: true };
     },
@@ -453,11 +472,7 @@ export function createOfficialFlowAdapters(deps) {
           });
         case ANIMATION_MODES.BRACKET_REVEAL:
           refreshBracketContext(ctx);
-          return {
-            animationMode: ANIMATION_MODES.BRACKET_REVEAL,
-            bracket: ctx.bracketProgress,
-            autoStart: true,
-          };
+          return buildBracketRevealPayload(ctx, courts);
         default:
           return { animationMode };
       }

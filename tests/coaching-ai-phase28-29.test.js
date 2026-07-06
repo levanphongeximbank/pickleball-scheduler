@@ -158,13 +158,18 @@ test("Phase 30 — court engine store factory defaults to local", () => {
   assert.equal(loaded.sessions.length, 0);
 });
 
-test("Phase 30 — supabase court engine store stub exposes interface", () => {
+test("Phase 30 — supabase court engine store exposes cloud interface", () => {
   global.localStorage = memoryStorage();
+  if (typeof import.meta !== "undefined" && import.meta.env) {
+    import.meta.env.VITE_COURT_ENGINE_STORE = "local";
+    import.meta.env.VITE_SUPABASE_URL = "";
+  }
   const stub = createSupabaseCourtEngineStore(null, { tenantId: "venue-2" });
-  assert.equal(stub.mode, "supabase-stub");
+  assert.equal(stub.mode, "supabase");
   assert.equal(typeof stub.loadCourtEngineStore, "function");
   assert.equal(typeof stub.saveCourtEngineStore, "function");
   assert.equal(typeof stub.syncToCloud, "function");
+  assert.equal(typeof stub.hydrate, "function");
 
   stub.saveCourtEngineStore("club-stub", { sessions: [] });
   const loaded = stub.loadCourtEngineStore("club-stub");

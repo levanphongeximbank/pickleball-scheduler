@@ -11,6 +11,7 @@ import {
   cloudRefereeConfirmSubMatch,
   cloudRefereeSaveSubMatchDraft,
   cloudSyncStandingsAfterMutation,
+  resolveTeamTournamentCloudTenantId,
   tryCloudMutation,
 } from "../src/features/team-tournament/services/teamTournamentCloudSync.js";
 import { TEAM_TOURNAMENT_STORE_MODES } from "../src/features/team-tournament/repositories/teamTournamentRepository.js";
@@ -34,6 +35,25 @@ import { findTeam } from "../src/features/team-tournament/models/index.js";
 
 const TOURNAMENT_ID = "tour-team-1";
 const MATCHUP_ID = "matchup-1";
+
+function createLocalStorageMock(seed = {}) {
+  const store = new Map(Object.entries(seed));
+
+  return {
+    getItem(key) {
+      return store.has(key) ? store.get(key) : null;
+    },
+    setItem(key, value) {
+      store.set(key, String(value));
+    },
+    removeItem(key) {
+      store.delete(key);
+    },
+    clear() {
+      store.clear();
+    },
+  };
+}
 
 const players = [
   { id: "p1", name: "Nam A", gender: "Nam" },
@@ -63,12 +83,14 @@ function createMockSupabase() {
 }
 
 test.beforeEach(() => {
+  globalThis.localStorage = createLocalStorageMock();
   rpcHandlers = {};
   __setTeamTournamentStoreModeForTests(TEAM_TOURNAMENT_STORE_MODES.SUPABASE);
   __setTeamTournamentRpcClientForTests(createMockSupabase());
 });
 
 test.afterEach(() => {
+  delete globalThis.localStorage;
   __resetTeamTournamentStoreModeForTests();
   __resetTeamTournamentRpcClientForTests();
 });
@@ -372,6 +394,45 @@ test("confirm sub-match cloud — thành công", async () => {
 
   assert.equal(result.ok, true);
   assert.equal(result.usedCloud, true);
+});
+
+test("resolveTeamTournamentCloudTenantId — bỏ tenant local, dùng venue profile Supabase", async () => {
+  const mockClient = {
+    from(table) {
+      assert.equal(table, "venues");
+      return {
+        select() {
+          return this;
+        },
+        eq(_column, id) {
+          this._id = id;
+          return this;
+        },
+        order() {
+          return this;
+        },
+        maybeSingle() {
+          if (this._id === "venue-prod-main") {
+            return Promise.resolve({
+              data: { id: "venue-prod-main", name: "Production", status: "active" },
+              error: null,
+            });
+          }
+          return Promise.resolve({ data: null, error: null });
+        },
+      };
+    },
+  };
+
+  const result = await resolveTeamTournamentCloudTenantId({
+    tournament: { tenantId: "tenant-future-arena" },
+    clubId: "club-future-arena",
+    client: mockClient,
+    user: { role: "SUPER_ADMIN", venueId: "venue-prod-main" },
+  });
+
+  assert.equal(result.ok, true);
+  assert.equal(result.tenantId, "venue-prod-main");
 });
 
 test("isTeamTournamentRpcNotFoundError nhận diện PGRST202", () => {

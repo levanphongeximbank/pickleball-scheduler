@@ -61,6 +61,59 @@ function resolveMatchSchedule(linkedMatch) {
   return parts.join(" • ");
 }
 
+function resolveMatchScheduleShort(linkedMatch) {
+  if (!linkedMatch) {
+    return "Chưa xếp";
+  }
+
+  if (linkedMatch.scheduledAt) {
+    const date = new Date(linkedMatch.scheduledAt);
+    const day = date.toLocaleDateString("vi-VN", { day: "2-digit", month: "2-digit" });
+    const time = date.toLocaleTimeString("vi-VN", { hour: "2-digit", minute: "2-digit" });
+    return `${day} ${time}`;
+  }
+
+  if (linkedMatch.date) {
+    return linkedMatch.date;
+  }
+
+  return "Chưa xếp";
+}
+
+export function resolveMatchResultLabel(match) {
+  if (match?.status === "done") {
+    if (match.winnerSide === "home") {
+      return "Thắng A";
+    }
+    if (match.winnerSide === "away") {
+      return "Thắng B";
+    }
+    return "Đã xong";
+  }
+
+  if (match?.status === "live") {
+    return "Đang đấu";
+  }
+
+  if (match?.status === "waiting") {
+    return "Chờ đội";
+  }
+
+  return "Chưa đấu";
+}
+
+export function resolveMatchResultTone(match) {
+  if (match?.status === "done") {
+    return "success";
+  }
+
+  if (match?.status === "live") {
+    return "warning";
+  }
+
+  return "default";
+}
+
 export function resolveBracketMatchStatus(bracketMatch, linkedMatch) {
   if (bracketMatch?.completed) {
     return "done";
@@ -100,10 +153,14 @@ function mapMatchCard(bracketMatch, linkedMatch, roundName, matchIndex, courts) 
   const status = resolveBracketMatchStatus(bracketMatch, linkedMatch);
   const scoreA = linkedMatch?.scoreA ?? "";
   const scoreB = linkedMatch?.scoreB ?? "";
+  const code = getMatchDisplayCode(roundName, matchIndex);
+  const courtLabel = formatCourtLabel(linkedMatch, courts);
+  const scheduleShort = resolveMatchScheduleShort(linkedMatch);
 
   return {
     id: bracketMatch.id,
-    code: getMatchDisplayCode(roundName, matchIndex),
+    code,
+    metaLine: `${code} · ${courtLabel} · ${scheduleShort}`,
     roundName,
     roundDisplay: getRoundDisplayName(roundName),
     home: {

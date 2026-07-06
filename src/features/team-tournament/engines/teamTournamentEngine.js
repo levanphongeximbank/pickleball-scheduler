@@ -1,14 +1,28 @@
 import { TOURNAMENT_MODE } from "../../../models/tournament/constants.js";
 import { createId } from "../../../utils/id.js";
-import { GENDER_REQUIREMENT, MATCHUP_STATUS } from "../constants.js";
+import { ACTIVATION_RULE, FORMAT_PRESET, GENDER_REQUIREMENT } from "../constants.js";
 import {
   createDisciplineRecord,
   createEmptyTeamData,
-  createMatchupRecord,
   createTeamRecord,
   normalizeTeamData,
 } from "../models/index.js";
 import { computeTeamStandings } from "./teamStandingsEngine.js";
+import { createMlpPreset } from "./mlpPresetEngine.js";
+import { buildStructuredRoundRobinMatchups } from "./teamRoundRobinScheduleEngine.js";
+
+export {
+  assignTeamsToGroupsBySizes,
+  describeGroupSplit,
+  describeSchedulePreview,
+  recommendGroupSizes,
+} from "./teamRoundRobinScheduleEngine.js";
+export {
+  applyMlpAutoDraw,
+  assignSeededTeamsToGroups,
+  suggestMlpTeamsFromPlayers,
+  summarizeSeededGroupBalance,
+} from "./teamAutoDrawEngine.js";
 
 export function createDefaultDisciplines() {
   return [
@@ -20,11 +34,26 @@ export function createDefaultDisciplines() {
 }
 
 export function initializeTeamTournamentData(options = {}) {
+  const formatPreset =
+    options.formatPreset ||
+    options.settings?.formatPreset ||
+    FORMAT_PRESET.CUSTOM;
+  const useMlp = formatPreset === FORMAT_PRESET.MLP_4;
+
+  if (useMlp) {
+    const preset = createMlpPreset({
+      teams: options.teams || [],
+      matchups: options.matchups || [],
+      settings: options.settings || {},
+    });
+    return createEmptyTeamData(preset);
+  }
+
   return createEmptyTeamData({
     disciplines: options.disciplines || createDefaultDisciplines(),
     teams: options.teams || [],
     matchups: options.matchups || [],
-    settings: options.settings || {},
+    settings: { formatPreset: FORMAT_PRESET.CUSTOM, ...(options.settings || {}) },
   });
 }
 
@@ -61,27 +90,75 @@ export function addDisciplineToTournament(teamData, options = {}) {
   });
 }
 
-export function buildRoundRobinMatchups(teamData, options = {}) {
-  const teams = teamData.teams;
-  const matchups = [];
+export function updateDisciplineInTournament(teamData, disciplineId, patch = {}) {
+  const disciplines = teamData.disciplines.map((discipline) =>
+    discipline.id === String(disciplineId)
+      ? createDisciplineRecord({ ...discipline, ...patch, id: discipline.id })
+      : discipline
+  );
 
-  for (let indexA = 0; indexA < teams.length; indexA += 1) {
-    for (let indexB = indexA + 1; indexB < teams.length; indexB += 1) {
-      matchups.push(
-        createMatchupRecord(teams[indexA].id, teams[indexB].id, {
-          disciplines: teamData.disciplines,
-          lineupLockAt: options.lineupLockAt || null,
-          scheduledAt: options.scheduledAt || null,
-          courtLabel: options.courtLabel || "",
-          status: MATCHUP_STATUS.LINEUP_OPEN,
-        })
-      );
-    }
-  }
+  return normalizeTeamData({
+    ...teamData,
+    disciplines,
+  });
+}
+
+export function removeDisciplineFromTournament(teamData, disciplineId) {
+  return normalizeTeamData({
+    ...teamData,
+    disciplines: teamData.disciplines.filter(
+      (discipline) => discipline.id !== String(disciplineId)
+    ),
+  });
+}
+
+export function updateMatchupInTournament(teamData, matchupId, patch = {}) {
+  const matchups = teamData.matchups.map((matchup) =>
+    matchup.id === String(matchupId)
+      ? {
+          ...matchup,
+          ...patch,
+          id: matchup.id,
+        }
+      : matchup
+  );
 
   return normalizeTeamData({
     ...teamData,
     matchups,
+  });
+}
+
+export function buildRoundRobinMatchups(teamData, options = {}) {
+  return buildStructuredRoundRobinMatchups(teamData, options);
+}
+
+export function assignTeamsToGroupsSnake(teamData, groupCount) {
+  const teams = teamData.teams || [];
+  const count = Math.max(1, Math.min(Number(groupCount) || 1, teams.length));
+  const groups = Array.from({ length: count }, (_, index) => ({
+    id: createId("grp"),
+    name: `Bảng ${String.fromCharCode(65 + index)}`,
+    teamIds: [],
+  }));
+
+  teams.forEach((team, index) => {
+    const round = Math.floor(index / count);
+    const position = index % count;
+    const groupIndex = round % 2 === 0 ? position : count - 1 - position;
+    groups[groupIndex].teamIds.push(team.id);
+  });
+
+  return normalizeTeamData({
+    ...teamData,
+    groups,
+  });
+}
+
+export function clearTeamGroups(teamData) {
+  return normalizeTeamData({
+    ...teamData,
+    groups: [],
   });
 }
 
@@ -95,7 +172,14 @@ export function attachTeamDataToTournament(tournament, teamData) {
 }
 
 export function createTeamTournamentShell(clubId, options = {}) {
-  const teamData = initializeTeamTournamentData(options.teamData || {});
+  const formatPreset = options.formatPreset || FORMAT_PRESET.MLP_4;
+  const teamData = initializeTeamTournamentData({
+    ...options.teamData,
+    formatPreset,
+    settings: options.settings,
+    teams: options.teams,
+    matchups: options.matchups,
+  });
 
   return {
     id: options.id || createId("team-tournament"),

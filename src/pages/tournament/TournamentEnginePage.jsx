@@ -37,6 +37,8 @@ import EngineCourtsTab from "./engine/tabs/EngineCourtsTab.jsx";
 import EngineRankingTab from "./engine/tabs/EngineRankingTab.jsx";
 import EngineLogsTab from "./engine/tabs/EngineLogsTab.jsx";
 import PermissionGate from "../../components/auth/PermissionGate.jsx";
+import TournamentPageHeader from "../../components/tournament/TournamentPageHeader.jsx";
+import { tournamentCardSx } from "../../components/tournament/tournamentLayout.js";
 import { PERMISSIONS } from "../../auth/permissions.js";
 import { runPlatformEngineWorkflow } from "../../core/platform/engines/orchestrator.js";
 import {
@@ -245,15 +247,11 @@ export default function TournamentEnginePage() {
           <Typography color="text.secondary">Engine 4.0</Typography>
         </Breadcrumbs>
 
-        <Box sx={{ display: "flex", alignItems: "center", gap: 1, mb: 2 }}>
-          <AutoAwesomeIcon color="primary" />
-          <Typography variant="h5" fontWeight="bold">
-            Tournament Engine 4.0
-          </Typography>
-          <Typography variant="body2" color="text.secondary" sx={{ ml: 1 }}>
-            {engine.tournament.name}
-          </Typography>
-        </Box>
+        <TournamentPageHeader
+          title="Tournament Engine 4.0"
+          description={engine.tournament.name}
+          action={<AutoAwesomeIcon color="primary" />}
+        />
 
         <Box sx={{ mb: 2, p: 1.25, border: 1, borderColor: "divider", borderRadius: 1, bgcolor: "background.paper" }}>
           <Box sx={{ display: "flex", flexWrap: "wrap", alignItems: "flex-start", justifyContent: "space-between", gap: 1.25 }}>

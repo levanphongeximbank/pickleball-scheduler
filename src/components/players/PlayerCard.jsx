@@ -30,6 +30,7 @@ import DeleteIcon from "@mui/icons-material/Delete";
 import EmojiEventsIcon from "@mui/icons-material/EmojiEvents";
 
 import PlayerInsight from "./PlayerInsight.jsx";
+import { tournamentCardSx, tournamentCardHoverSx } from "../tournament/tournamentLayout.js";
 import {
   generatePlayerInsight,
   getLevelColor,
@@ -97,21 +98,14 @@ export default function PlayerCard({
 
   return (
     <Card
+      variant="outlined"
       elevation={0}
       sx={{
+        ...tournamentCardSx,
+        ...tournamentCardHoverSx,
         height: "100%",
         display: "flex",
         flexDirection: "column",
-        borderRadius: 2,
-        border: "1px solid rgba(15, 23, 42, 0.08)",
-        bgcolor: "rgba(255,255,255,0.95)",
-        backdropFilter: "blur(6px)",
-        boxShadow: "0 8px 24px rgba(15, 23, 42, 0.05)",
-        transition: "transform 0.2s ease, box-shadow 0.2s ease",
-        "&:hover": {
-          transform: "translateY(-3px)",
-          boxShadow: "0 16px 36px rgba(15, 23, 42, 0.1)",
-        },
       }}
     >
       <CardContent sx={{ p: 2, flex: 1 }}>

@@ -16,6 +16,7 @@ import {
   setEntryFee,
 } from "../../../features/team-tournament/engines/entryFeeEngine.js";
 import { initializeTeamTournamentData } from "../../../features/team-tournament/engines/teamTournamentEngine.js";
+import TournamentConfigPageShell from "../../../components/tournament/TournamentConfigPageShell.jsx";
 
 export default function TournamentFeePage() {
   const [teamData, setTeamData] = useState(() => initializeTeamTournamentData());
@@ -33,14 +34,10 @@ export default function TournamentFeePage() {
   };
 
   return (
-    <Box>
-      <Typography variant="h5" fontWeight={700} sx={{ mb: 0.5 }}>
-        Lệ phí tham gia
-      </Typography>
-      <Typography color="text.secondary" sx={{ mb: 2 }}>
-        Cấu hình mức phí và hạn thanh toán cho đội/VĐV.
-      </Typography>
-
+    <TournamentConfigPageShell
+      title="Lệ phí tham gia"
+      description="Cấu hình mức phí và hạn thanh toán cho đội/VĐV."
+    >
       {message ? (
         <Alert severity={message.type} sx={{ mb: 2 }} onClose={() => setMessage(null)}>
           {message.text}
@@ -100,6 +97,6 @@ export default function TournamentFeePage() {
           Lưu
         </Button>
       </Stack>
-    </Box>
+    </TournamentConfigPageShell>
   );
 }

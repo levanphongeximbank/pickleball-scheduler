@@ -26,6 +26,7 @@ import {
   rejectWithdrawal,
   requestWithdrawal,
 } from "../../features/team-tournament/engines/withdrawalEngine.js";
+import TournamentConfigPageShell from "../../components/tournament/TournamentConfigPageShell.jsx";
 
 function buildDemoTeamData() {
   let teamData = initializeTeamTournamentData();
@@ -78,14 +79,11 @@ export default function TournamentWithdrawalPage() {
   };
 
   return (
-    <Box>
-      <Typography variant="h5" fontWeight={700} sx={{ mb: 0.5 }}>
-        Xử lý rút lui / bỏ cuộc
-      </Typography>
-      <Typography color="text.secondary" sx={{ mb: 2 }}>
-        Tiếp nhận và duyệt yêu cầu rút lui của đội.
-      </Typography>
-
+    <TournamentConfigPageShell
+      title="Xử lý rút lui / bỏ cuộc"
+      description="Tiếp nhận và duyệt yêu cầu rút lui của đội."
+      noCard
+    >
       {message ? (
         <Alert severity={message.type} sx={{ mb: 2 }} onClose={() => setMessage(null)}>
           {message.text}
@@ -182,6 +180,6 @@ export default function TournamentWithdrawalPage() {
           </TableBody>
         </Table>
       </Paper>
-    </Box>
+    </TournamentConfigPageShell>
   );
 }

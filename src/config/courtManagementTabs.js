@@ -32,6 +32,12 @@ export const COURT_MANAGEMENT_TABS = [
     permissions: [PERMISSIONS.CUSTOMER_VIEW],
   },
   {
+    key: "members",
+    label: "Hội viên",
+    path: "/court-management/members",
+    permissions: [PERMISSIONS.CUSTOMER_VIEW],
+  },
+  {
     key: "courts",
     label: "Sân",
     path: "/court-management/courts",

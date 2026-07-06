@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { Link as RouterLink, useParams } from "react-router-dom";
+import { Link as RouterLink, useParams, useSearchParams } from "react-router-dom";
 import {
   Alert,
   Box,
@@ -51,27 +51,50 @@ import {
 import {
   refereeConfirmSubMatch,
   refereeSaveSubMatchDraft,
+  refereeRecordDreambreakerPoint,
+  refereeStartDreambreaker,
+  refereeUndoDreambreakerPoint,
+  refereeForfeitSubMatch,
+  refereeDreambreakerInjury,
+  refereeLockDreambreakerOrders,
 } from "../../features/team-tournament/services/teamTournamentService.js";
+import { getRallyScoringHints } from "../../features/team-tournament/engines/rallyScoringEngine.js";
+import { RefereeDreambreakerPanel } from "../../components/tournament/team/DreambreakerPanel.jsx";
+import { syncDreambreakerForAllMatchups } from "../../features/team-tournament/engines/dreambreakerEngine.js";
+import {
+  computeMatchupTieProgress,
+  countDreambreakerPendingMatchups,
+} from "../../features/team-tournament/engines/matchupTieEngine.js";
+import { findTeam } from "../../features/team-tournament/models/index.js";
+import {
+  formatTeamTournamentDateTime,
+  getMatchupStatusMeta,
+  getSubMatchStatusMeta,
+} from "../../components/tournament/team/teamTournamentLabels.js";
+import TeamStandingsTable from "../../components/tournament/team/TeamStandingsTable.jsx";
+import { countMatchupsWithSubResults } from "../../components/tournament/team/teamStandingsLabels.js";
 
-const SUB_MATCH_STATUS_LABEL = {
-  [SUB_MATCH_STATUS.WAITING]: { label: "Chờ", color: "default" },
-  [SUB_MATCH_STATUS.PLAYING]: { label: "Nháp", color: "warning" },
-  [SUB_MATCH_STATUS.COMPLETED]: { label: "Xong", color: "success" },
-  [SUB_MATCH_STATUS.FORFEIT]: { label: "Bỏ cuộc", color: "error" },
+const REFEREE_FILTER = {
+  ALL: "all",
+  WAITING: "waiting",
+  READY: "ready",
+  DONE: "done",
 };
 
-function formatDateTime(value) {
-  if (!value) {
-    return "—";
-  }
+const WAITING_MATCHUP_STATUSES = new Set([
+  MATCHUP_STATUS.SCHEDULED,
+  MATCHUP_STATUS.LINEUP_OPEN,
+  MATCHUP_STATUS.LOCKED,
+]);
 
-  return new Date(value).toLocaleString("vi-VN", {
-    weekday: "short",
-    day: "2-digit",
-    month: "2-digit",
-    hour: "2-digit",
-    minute: "2-digit",
-  });
+function getRefereeBucket(status) {
+  if (WAITING_MATCHUP_STATUSES.has(status)) {
+    return REFEREE_FILTER.WAITING;
+  }
+  if (status === MATCHUP_STATUS.COMPLETED) {
+    return REFEREE_FILTER.DONE;
+  }
+  return REFEREE_FILTER.READY;
 }
 
 function ScoreStepper({ label, value, disabled, onChange }) {
@@ -115,9 +138,13 @@ function SubMatchScorePanel({
   subMatch,
   teamAName,
   teamBName,
+  teamAId,
+  teamBId,
+  discipline,
   canEdit,
   onSaveDraft,
   onConfirm,
+  onForfeit,
   busy,
 }) {
   const isBestOf3 = subMatch.format === MATCH_FORMAT.BEST_OF_3;
@@ -163,8 +190,13 @@ function SubMatchScorePanel({
     ? { score: { teamA: 0, teamB: 0 }, games }
     : { score: { teamA: scoreA, teamB: scoreB }, games: [] };
 
+  const rallyHints = discipline ? getRallyScoringHints(discipline) : "";
+
   return (
     <Box sx={{ mt: 1.5, p: 1.5, bgcolor: "action.hover", borderRadius: 2 }}>
+      {rallyHints ? (
+        <Chip size="small" label={rallyHints} sx={{ mb: 1.5 }} />
+      ) : null}
       {!subMatch.hasOfficialLineup && (
         <Alert severity="warning" sx={{ mb: 1.5 }}>
           Thiếu đội hình chính thức — không thể nhập tỷ số.
@@ -253,6 +285,18 @@ function SubMatchScorePanel({
           >
             Xác nhận KQ
           </Button>
+          {onForfeit ? (
+            <Button
+              fullWidth
+              variant="outlined"
+              color="warning"
+              disabled={busy}
+              onClick={() => onForfeit(subMatch.subMatchId, payload)}
+              sx={{ minHeight: 48 }}
+            >
+              Forfeit / Chấn thương
+            </Button>
+          ) : null}
         </Stack>
       )}
 
@@ -266,6 +310,32 @@ function SubMatchScorePanel({
   );
 }
 
+function WaitingMatchupCard({ matchup }) {
+  const statusMeta = getMatchupStatusMeta(matchup.status);
+
+  return (
+    <Paper variant="outlined" sx={{ p: 2, borderRadius: 2 }}>
+      <Stack spacing={1}>
+        <Stack direction="row" justifyContent="space-between" alignItems="flex-start">
+          <Box>
+            <Typography variant="subtitle1" fontWeight={700}>
+              {matchup.teamAName} vs {matchup.teamBName}
+            </Typography>
+            <Typography variant="body2" color="text.secondary">
+              {formatTeamTournamentDateTime(matchup.scheduledAt)}
+              {matchup.courtLabel ? ` · Sân ${matchup.courtLabel}` : ""}
+            </Typography>
+          </Box>
+          <Chip size="small" label={statusMeta.label} color={statusMeta.color} />
+        </Stack>
+        <Alert severity="info" sx={{ py: 0.5 }}>
+          Chờ BTC công bố đội hình trước khi nhập điểm.
+        </Alert>
+      </Stack>
+    </Paper>
+  );
+}
+
 function MatchupCard({
   matchup,
   expanded,
@@ -275,14 +345,24 @@ function MatchupCard({
   permissions,
   onSaveDraft,
   onConfirm,
+  onForfeit,
   busy,
+  teamData,
+  players = [],
+  canManageDreambreaker = false,
+  onDreambreakerStart,
+  onDreambreakerLock,
+  onDreambreakerPoint,
+  onDreambreakerUndo,
+  onDreambreakerInjury,
 }) {
-  const statusChip =
-    matchup.status === MATCHUP_STATUS.COMPLETED
-      ? { label: "Hoàn tất", color: "success" }
-      : matchup.status === MATCHUP_STATUS.IN_PROGRESS
-        ? { label: "Đang đấu", color: "warning" }
-        : { label: "Đã công bố", color: "info" };
+  const statusChip = getMatchupStatusMeta(matchup.status);
+  const rawMatchup = teamData?.matchups?.find((item) => item.id === matchup.id);
+  const tieProgress = rawMatchup
+    ? computeMatchupTieProgress(teamData, rawMatchup)
+    : null;
+  const showDreambreaker =
+    Boolean(rawMatchup?.dreambreaker) || Boolean(tieProgress?.needsDreambreaker);
 
   return (
     <Paper variant="outlined" sx={{ borderRadius: 2, overflow: "hidden" }}>
@@ -300,7 +380,7 @@ function MatchupCard({
               {matchup.teamAName} vs {matchup.teamBName}
             </Typography>
             <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
-              {formatDateTime(matchup.scheduledAt)}
+              {formatTeamTournamentDateTime(matchup.scheduledAt)}
               {matchup.courtLabel ? ` · Sân ${matchup.courtLabel}` : ""}
             </Typography>
             {matchup.result && (
@@ -323,9 +403,7 @@ function MatchupCard({
         <Divider />
         <Box sx={{ p: 2 }}>
           {matchup.subMatches.map((subMatch) => {
-            const statusMeta =
-              SUB_MATCH_STATUS_LABEL[subMatch.status] ||
-              SUB_MATCH_STATUS_LABEL[SUB_MATCH_STATUS.WAITING];
+            const statusMeta = getSubMatchStatusMeta(subMatch.status);
             const isOpen = selectedSubMatchId === subMatch.subMatchId;
 
             return (
@@ -374,6 +452,11 @@ function MatchupCard({
                       }}
                       teamAName={matchup.teamAName}
                       teamBName={matchup.teamBName}
+                      teamAId={matchup.teamAId}
+                      teamBId={matchup.teamBId}
+                      discipline={teamData?.disciplines?.find(
+                        (item) => item.id === subMatch.disciplineId
+                      )}
                       canEdit={
                         canManageTeamMatchResult({ permissions }) &&
                         canEditSubMatchResult(
@@ -383,6 +466,7 @@ function MatchupCard({
                       }
                       onSaveDraft={onSaveDraft}
                       onConfirm={onConfirm}
+                      onForfeit={onForfeit}
                       busy={busy}
                     />
                   )}
@@ -390,6 +474,39 @@ function MatchupCard({
               </Box>
             );
           })}
+          {showDreambreaker && rawMatchup ? (
+            <RefereeDreambreakerPanel
+              matchup={rawMatchup}
+              teamData={teamData}
+              players={players}
+              busy={busy}
+              onPoint={
+                canManageDreambreaker && onDreambreakerPoint
+                  ? (scoringTeamId) => onDreambreakerPoint(rawMatchup.id, scoringTeamId)
+                  : undefined
+              }
+              onUndo={
+                canManageDreambreaker && onDreambreakerUndo
+                  ? () => onDreambreakerUndo(rawMatchup.id)
+                  : undefined
+              }
+              onStart={
+                canManageDreambreaker && onDreambreakerStart
+                  ? () => onDreambreakerStart(rawMatchup.id)
+                  : undefined
+              }
+              onLock={
+                canManageDreambreaker && onDreambreakerLock
+                  ? () => onDreambreakerLock(rawMatchup.id)
+                  : undefined
+              }
+              onInjury={
+                canManageDreambreaker && onDreambreakerInjury
+                  ? (payload) => onDreambreakerInjury(rawMatchup.id, payload)
+                  : undefined
+              }
+            />
+          ) : null}
         </Box>
       </Collapse>
     </Paper>
@@ -398,6 +515,7 @@ function MatchupCard({
 
 export default function TeamRefereePortal() {
   const { tournamentId } = useParams();
+  const [searchParams] = useSearchParams();
   const { activeClubId } = useClub();
   const { rbacEnabled, isAuthenticated, user } = useAuth();
   const { currentTenantId } = useTenant();
@@ -408,6 +526,7 @@ export default function TeamRefereePortal() {
   const [busy, setBusy] = useState(false);
   const [expandedMatchupId, setExpandedMatchupId] = useState("");
   const [selectedSubMatchId, setSelectedSubMatchId] = useState("");
+  const [statusFilter, setStatusFilter] = useState(REFEREE_FILTER.ALL);
 
   const permissions = useMemo(
     () => getPermissionsForRole(user?.role || ""),
@@ -476,15 +595,74 @@ export default function TeamRefereePortal() {
     [activeClubId]
   );
 
-  const teamData = useMemo(
-    () => (tournament ? getTeamData(tournament) : null),
-    [tournament]
+  const teamData = useMemo(() => {
+    if (!tournament) {
+      return null;
+    }
+    const raw = getTeamData(tournament);
+    return syncDreambreakerForAllMatchups(raw).teamData;
+  }, [tournament]);
+
+  const dreambreakerPendingCount = useMemo(
+    () => (teamData ? countDreambreakerPendingMatchups(teamData) : 0),
+    [teamData]
   );
 
-  const matchups = useMemo(
+  const scoredMatchups = useMemo(
     () => (teamData ? listRefereeMatchupSummaries(teamData, players) : []),
     [teamData, players]
   );
+
+  const waitingMatchups = useMemo(() => {
+    if (!teamData) {
+      return [];
+    }
+    return (teamData.matchups || [])
+      .filter((matchup) => WAITING_MATCHUP_STATUSES.has(matchup.status))
+      .map((matchup) => ({
+        id: matchup.id,
+        status: matchup.status,
+        scheduledAt: matchup.scheduledAt,
+        courtLabel: matchup.courtLabel,
+        teamAName: findTeam(teamData, matchup.teamAId)?.name || matchup.teamAId,
+        teamBName: findTeam(teamData, matchup.teamBId)?.name || matchup.teamBId,
+      }));
+  }, [teamData]);
+
+  const filteredItems = useMemo(() => {
+    const scored = scoredMatchups.map((matchup) => ({
+      type: "scored",
+      bucket: getRefereeBucket(matchup.status),
+      matchup,
+    }));
+    const waiting = waitingMatchups.map((matchup) => ({
+      type: "waiting",
+      bucket: REFEREE_FILTER.WAITING,
+      matchup,
+    }));
+    const all = [...waiting, ...scored];
+
+    if (statusFilter === REFEREE_FILTER.ALL) {
+      return all;
+    }
+    return all.filter((item) => item.bucket === statusFilter);
+  }, [scoredMatchups, waitingMatchups, statusFilter]);
+
+  useEffect(() => {
+    const matchupId = searchParams.get("matchup");
+    if (!matchupId) {
+      return;
+    }
+    const exists =
+      scoredMatchups.some((item) => item.id === matchupId) ||
+      waitingMatchups.some((item) => item.id === matchupId);
+    if (exists) {
+      setExpandedMatchupId(matchupId);
+      if (scoredMatchups.some((item) => item.id === matchupId)) {
+        setStatusFilter(REFEREE_FILTER.ALL);
+      }
+    }
+  }, [searchParams, scoredMatchups, waitingMatchups]);
 
   const standings = useMemo(
     () => (teamData ? getStandingsTable(teamData) : []),
@@ -504,7 +682,7 @@ export default function TeamRefereePortal() {
     setError(null);
     setMessage(null);
 
-    const result = refereeSaveSubMatchDraft(activeClubId, tournamentId, {
+    const result = await refereeSaveSubMatchDraft(activeClubId, tournamentId, {
       matchupId,
       subMatchId,
       ...payload,
@@ -518,7 +696,11 @@ export default function TeamRefereePortal() {
     }
 
     setTournament(result.tournament);
-    setMessage("Đã lưu nháp tỷ số.");
+    setMessage(
+      result.warning
+        ? `Đã lưu nháp tỷ số trên máy. ${result.warning}`
+        : "Đã lưu nháp tỷ số."
+    );
   }
 
   async function handleConfirm(matchupId, subMatchId, payload) {
@@ -526,7 +708,7 @@ export default function TeamRefereePortal() {
     setError(null);
     setMessage(null);
 
-    const result = refereeConfirmSubMatch(activeClubId, tournamentId, {
+    const result = await refereeConfirmSubMatch(activeClubId, tournamentId, {
       matchupId,
       subMatchId,
       ...payload,
@@ -541,17 +723,106 @@ export default function TeamRefereePortal() {
 
     setTournament(result.tournament);
 
+    let nextMessage = "Đã xác nhận kết quả trận con.";
     if (result.matchupResult?.winnerTeamId) {
       const winnerName =
         result.matchupResult.winnerTeamId === activeMatchup?.teamAId
           ? activeMatchup?.teamAName
           : activeMatchup?.teamBName;
-      setMessage(
-        `Đã xác nhận. Chung cuộc: ${activeMatchup?.teamAName} ${result.matchupResult.teamAWins}–${result.matchupResult.teamBWins} ${activeMatchup?.teamBName}${winnerName ? ` (${winnerName} thắng)` : ""}`
-      );
-    } else {
-      setMessage("Đã xác nhận kết quả trận con.");
+      nextMessage = `Đã xác nhận. Chung cuộc: ${activeMatchup?.teamAName} ${result.matchupResult.teamAWins}–${result.matchupResult.teamBWins} ${activeMatchup?.teamBName}${winnerName ? ` (${winnerName} thắng)` : ""}`;
     }
+    if (result.warning) {
+      nextMessage = `${nextMessage} (${result.warning})`;
+    }
+    setMessage(nextMessage);
+  }
+
+  async function handleForfeit(matchupId, subMatchId, payload, forfeitingTeamId) {
+    setBusy(true);
+    setError(null);
+    const result = await refereeForfeitSubMatch(activeClubId, tournamentId, {
+      matchupId,
+      subMatchId,
+      forfeitingTeamId,
+      currentScoreA: payload.score?.teamA,
+      currentScoreB: payload.score?.teamB,
+    });
+    setBusy(false);
+    if (!result.ok) {
+      setError(result.error);
+      return;
+    }
+    setTournament(result.tournament);
+    setMessage("Đã ghi nhận forfeit/chấn thương.");
+  }
+
+  async function handleDreambreakerPoint(matchupId, scoringTeamId) {
+    setBusy(true);
+    const result = await refereeRecordDreambreakerPoint(activeClubId, tournamentId, {
+      matchupId,
+      scoringTeamId,
+    });
+    setBusy(false);
+    if (!result.ok) {
+      setError(result.error);
+      return;
+    }
+    setTournament(result.tournament);
+    if (result.completed) {
+      setMessage("Dreambreaker kết thúc.");
+    }
+  }
+
+  async function handleDreambreakerStart(matchupId) {
+    setBusy(true);
+    const result = refereeStartDreambreaker(activeClubId, tournamentId, { matchupId });
+    setBusy(false);
+    if (!result.ok) {
+      setError(result.error);
+      return;
+    }
+    setTournament(result.tournament);
+  }
+
+  async function handleDreambreakerLock(matchupId) {
+    setBusy(true);
+    setError(null);
+    const result = refereeLockDreambreakerOrders(activeClubId, tournamentId, { matchupId });
+    setBusy(false);
+    if (result.tournament) {
+      setTournament(result.tournament);
+    }
+    const detail = (result.logs || []).join(" ") || "Đã khóa thứ tự Dreambreaker.";
+    if (result.warning) {
+      setError(result.warning);
+    }
+    setMessage(detail);
+  }
+
+  async function handleDreambreakerUndo(matchupId) {
+    setBusy(true);
+    const result = refereeUndoDreambreakerPoint(activeClubId, tournamentId, { matchupId });
+    setBusy(false);
+    if (!result.ok) {
+      setError(result.error);
+      return;
+    }
+    setTournament(result.tournament);
+  }
+
+  async function handleDreambreakerInjury(matchupId, payload) {
+    setBusy(true);
+    const result = refereeDreambreakerInjury(activeClubId, tournamentId, {
+      matchupId,
+      ...payload,
+    });
+    setBusy(false);
+    if (!result.ok) {
+      setError(result.error);
+      return;
+    }
+    setTournament(result.tournament);
+    setMessage("Đã ghi nhận chấn thương Dreambreaker.");
   }
 
   if (!access.allowed) {
@@ -608,66 +879,112 @@ export default function TeamRefereePortal() {
         </Alert>
       )}
 
-      {matchups.length === 0 ? (
+      <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap sx={{ mb: 2 }}>
+        {[
+          { key: REFEREE_FILTER.ALL, label: "Tất cả" },
+          { key: REFEREE_FILTER.WAITING, label: "Chờ công bố" },
+          { key: REFEREE_FILTER.READY, label: "Sẵn sàng" },
+          { key: REFEREE_FILTER.DONE, label: "Hoàn tất" },
+        ].map((filter) => (
+          <Chip
+            key={filter.key}
+            label={filter.label}
+            color={statusFilter === filter.key ? "primary" : "default"}
+            variant={statusFilter === filter.key ? "filled" : "outlined"}
+            onClick={() => setStatusFilter(filter.key)}
+            sx={{ cursor: "pointer" }}
+          />
+        ))}
+      </Stack>
+
+      {dreambreakerPendingCount > 0 ? (
+        <Alert severity="warning" sx={{ mb: 2 }}>
+          {dreambreakerPendingCount} tie hòa 2–2 chờ Dreambreaker — mở lượt đối đầu bên dưới để
+          nộp thứ tự / bắt đầu trận quyết định.
+        </Alert>
+      ) : null}
+
+      {filteredItems.length === 0 ? (
         <Alert severity="info">
-          Chưa có lượt đối đầu nào được công bố. BTC cần khóa và công bố đội hình trước.
+          {statusFilter === REFEREE_FILTER.WAITING
+            ? "Không có trận đang chờ công bố đội hình."
+            : statusFilter === REFEREE_FILTER.READY
+              ? "Chưa có trận sẵn sàng nhập điểm. BTC cần khóa và công bố đội hình trước."
+              : "Chưa có lượt đối đầu phù hợp bộ lọc."}
         </Alert>
       ) : (
         <Stack spacing={1.5}>
-          {matchups.map((matchup) => (
-            <MatchupCard
-              key={matchup.id}
-              matchup={
-                expandedMatchupId === matchup.id && activeMatchup
-                  ? activeMatchup
-                  : matchup
-              }
-              expanded={expandedMatchupId === matchup.id}
-              onToggle={() => {
-                setExpandedMatchupId((current) =>
-                  current === matchup.id ? "" : matchup.id
-                );
-                setSelectedSubMatchId("");
-              }}
-              selectedSubMatchId={selectedSubMatchId}
-              onSelectSubMatch={setSelectedSubMatchId}
-              permissions={permissions}
-              onSaveDraft={(subMatchId, payload) =>
-                handleSaveDraft(matchup.id, subMatchId, payload)
-              }
-              onConfirm={(subMatchId, payload) =>
-                handleConfirm(matchup.id, subMatchId, payload)
-              }
-              busy={busy}
-            />
-          ))}
+          {filteredItems.map((item) =>
+            item.type === "waiting" ? (
+              <WaitingMatchupCard key={item.matchup.id} matchup={item.matchup} />
+            ) : (
+              <MatchupCard
+                key={item.matchup.id}
+                matchup={
+                  expandedMatchupId === item.matchup.id && activeMatchup
+                    ? activeMatchup
+                    : item.matchup
+                }
+                expanded={expandedMatchupId === item.matchup.id}
+                onToggle={() => {
+                  setExpandedMatchupId((current) =>
+                    current === item.matchup.id ? "" : item.matchup.id
+                  );
+                  setSelectedSubMatchId("");
+                }}
+                selectedSubMatchId={selectedSubMatchId}
+                onSelectSubMatch={setSelectedSubMatchId}
+                permissions={permissions}
+                onSaveDraft={(subMatchId, payload) =>
+                  handleSaveDraft(item.matchup.id, subMatchId, payload)
+                }
+                onConfirm={(subMatchId, payload) =>
+                  handleConfirm(item.matchup.id, subMatchId, payload)
+                }
+                onForfeit={
+                  canManage
+                    ? (subMatchId, payload) => {
+                        const forfeitingTeamA = window.confirm(
+                          `Đội forfeit: OK = ${item.matchup.teamAName}, Cancel = ${item.matchup.teamBName}`
+                        );
+                        handleForfeit(
+                          item.matchup.id,
+                          subMatchId,
+                          payload,
+                          forfeitingTeamA ? item.matchup.teamAId : item.matchup.teamBId
+                        );
+                      }
+                    : null
+                }
+                teamData={teamData}
+                players={players}
+                canManageDreambreaker={canManage}
+                onDreambreakerStart={handleDreambreakerStart}
+                onDreambreakerLock={handleDreambreakerLock}
+                onDreambreakerPoint={handleDreambreakerPoint}
+                onDreambreakerUndo={handleDreambreakerUndo}
+                onDreambreakerInjury={handleDreambreakerInjury}
+                busy={busy}
+              />
+            )
+          )}
         </Stack>
       )}
 
-      {standings.length > 0 && (
-        <Paper variant="outlined" sx={{ mt: 3, p: 2, borderRadius: 2 }}>
-          <Typography variant="subtitle1" fontWeight={700} sx={{ mb: 1.5 }}>
-            Bảng xếp hạng
-          </Typography>
-          <Stack spacing={1}>
-            {standings.map((row) => (
-              <Stack
-                key={row.teamId}
-                direction="row"
-                justifyContent="space-between"
-                alignItems="center"
-              >
-                <Typography variant="body2">
-                  #{row.rank} {row.teamName}
-                </Typography>
-                <Typography variant="body2" color="text.secondary">
-                  {row.wins}T–{row.losses}B · {row.rankingPoints}đ
-                </Typography>
-              </Stack>
-            ))}
-          </Stack>
-        </Paper>
-      )}
+      {teamData ? (
+        <Box sx={{ mt: 3 }}>
+          <TeamStandingsTable
+            standings={standings}
+            tournamentName={tournament?.name || ""}
+            formatPreset={teamData.settings?.formatPreset}
+            tiebreakOrder={teamData.settings?.tiebreakOrder}
+            matchupsDone={countMatchupsWithSubResults(teamData.matchups)}
+            matchupsTotal={teamData.matchups.length}
+            dreambreakerPending={countDreambreakerPendingMatchups(teamData)}
+            scheduleLabel={teamData.groups?.length > 0 ? "Vòng tròn theo bảng" : "Vòng tròn"}
+          />
+        </Box>
+      ) : null}
     </Box>
   );
 }

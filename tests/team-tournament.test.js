@@ -10,6 +10,7 @@ import {
 import {
   addDisciplineToTournament,
   addTeamToTournament,
+  assignTeamsToGroupsSnake,
   buildRoundRobinMatchups,
   createTeamTournamentShell,
   initializeTeamTournamentData,
@@ -86,7 +87,8 @@ function lineupSelectionsForTeam(teamData, teamId) {
 test("create team tournament shell uses team_tournament mode", () => {
   const tournament = createTeamTournamentShell("club-1", { name: "Giải đồng đội mùa hè" });
   assert.equal(tournament.mode, TOURNAMENT_MODE.TEAM_TOURNAMENT);
-  assert.equal(tournament.teamData.disciplines.length, 4);
+  assert.equal(tournament.teamData.disciplines.length, 5);
+  assert.equal(tournament.teamData.settings.formatPreset, "mlp_4");
 });
 
 test("custom disciplines are not hard-coded to four categories", () => {
@@ -141,6 +143,36 @@ test("lineup lock auto-randomizes missing team lineup", () => {
   assert.equal(randomLineup.status, LINEUP_STATUS.LOCKED);
   assert.equal(randomLineup.source, LINEUP_SOURCE.RANDOM);
   assert.match(randomLineup.auditNote, /không nộp đội hình trước hạn/);
+});
+
+test("lineup lock auto-random retries with player reuse when roster is small", () => {
+  let teamData = initializeTeamTournamentData();
+  teamData = addTeamToTournament(teamData, {
+    id: "team-small",
+    name: "Đội nhỏ",
+    playerIds: ["p1", "p2", "p4", "p5"],
+    captainPlayerId: "p1",
+  });
+  teamData = addTeamToTournament(teamData, {
+    id: "team-b",
+    name: "Đội B",
+    playerIds: players.map((player) => player.id),
+    captainPlayerId: "p3",
+  });
+  teamData = buildRoundRobinMatchups(teamData);
+  const matchup = teamData.matchups[0];
+
+  const locked = lockMatchupLineups(teamData, {
+    matchupId: matchup.id,
+    players,
+    now: "2026-01-01T09:00:00.000Z",
+  });
+
+  assert.equal(locked.ok, true, locked.error);
+  const randomLineup = getLineup(locked.teamData, matchup.id, "team-small");
+  assert.equal(randomLineup.status, LINEUP_STATUS.LOCKED);
+  assert.equal(randomLineup.source, LINEUP_SOURCE.RANDOM);
+  assert.match(randomLineup.auditNote, /nhiều nội dung/);
 });
 
 test("opponent lineup hidden before publish", () => {
@@ -337,6 +369,31 @@ test("referee sees official pairings only after publish", () => {
   const afterPublish = buildOfficialPairings(teamData, matchup.id);
   assert.equal(afterPublish.ok, true);
   assert.equal(afterPublish.pairings.length, teamData.disciplines.length);
+});
+
+test("assignTeamsToGroupsSnake and grouped round robin only pair teams in same group", () => {
+  let teamData = initializeTeamTournamentData();
+  ["A", "B", "C", "D"].forEach((label, index) => {
+    teamData = addTeamToTournament(teamData, {
+      id: `team-${label.toLowerCase()}`,
+      name: `Đội ${label}`,
+      sortOrder: index + 1,
+    });
+  });
+
+  teamData = assignTeamsToGroupsSnake(teamData, 2);
+  assert.equal(teamData.groups.length, 2);
+  assert.equal(teamData.groups[0].teamIds.length, 2);
+  assert.equal(teamData.groups[1].teamIds.length, 2);
+
+  teamData = buildRoundRobinMatchups(teamData);
+  assert.equal(teamData.matchups.length, 2);
+  teamData.matchups.forEach((matchup) => {
+    assert.ok(matchup.groupId);
+    const group = teamData.groups.find((item) => item.id === matchup.groupId);
+    assert.ok(group.teamIds.includes(matchup.teamAId));
+    assert.ok(group.teamIds.includes(matchup.teamBId));
+  });
 });
 
 test("individual/double tournament mode remains unchanged", () => {

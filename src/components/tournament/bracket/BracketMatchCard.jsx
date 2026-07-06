@@ -1,8 +1,4 @@
-import CheckCircleIcon from "@mui/icons-material/CheckCircle";
-import GroupsIcon from "@mui/icons-material/Groups";
 import { Box, Stack, Typography } from "@mui/material";
-
-import StatusBadge from "../animation/shared/StatusBadge.jsx";
 
 export default function BracketMatchCard({
   match,
@@ -14,37 +10,23 @@ export default function BracketMatchCard({
     return null;
   }
 
+  const isFinal = match.roundName === "Chung ket";
+
   return (
     <Box
       className={`tournament-bracket-match${
         visible ? " tournament-bracket-match--visible" : ""
       }${highlighted ? " tournament-bracket-match--highlight" : ""}${
         match.completed ? " tournament-bracket-match--done" : ""
-      }${match.isThirdPlace ? " tournament-bracket-match--third" : ""}`}
+      }${match.status === "live" ? " tournament-bracket-match--live" : ""}${
+        match.isThirdPlace ? " tournament-bracket-match--third" : ""
+      }${isFinal ? " tournament-bracket-match--final" : ""}`}
       data-round={match.roundName}
       data-match-id={match.id}
       style={style}
     >
-      <Stack direction="row" justifyContent="space-between" alignItems="flex-start" spacing={0.5}>
-        <Box>
-          <Typography variant="caption" fontWeight={800} color="primary.main" display="block">
-            {match.code}
-          </Typography>
-          <Typography variant="caption" color="text.secondary" display="block">
-            {match.roundDisplay}
-          </Typography>
-        </Box>
-        <StatusBadge
-          label={match.statusLabel}
-          tone={
-            match.status === "done" ? "success" : match.status === "live" ? "active" : "default"
-          }
-        />
-      </Stack>
-
-      <Typography variant="caption" color="text.secondary" display="block" sx={{ mt: 0.5, mb: 0.5 }}>
-        {match.scheduleText || "Chưa xếp lịch"}
-        {match.courtLabel ? ` • ${match.courtLabel}` : ""}
+      <Typography variant="caption" className="tournament-bracket-match__meta" display="block">
+        {match.metaLine || match.code}
       </Typography>
 
       <TeamRow team={match.home} />
@@ -55,7 +37,8 @@ export default function BracketMatchCard({
 }
 
 function TeamRow({ team }) {
-  const showScore = team.score !== "" && team.score != null;
+  const seedBadge = formatSeedBadge(team.seed);
+  const hasScore = team.score !== "" && team.score != null;
 
   return (
     <Stack
@@ -68,28 +51,38 @@ function TeamRow({ team }) {
         team.isPlaceholder ? " tournament-bracket-team--placeholder" : ""
       }`}
     >
-      <Box className="tournament-bracket-team__avatar">
-        <GroupsIcon sx={{ fontSize: 15 }} />
-      </Box>
+      {seedBadge ? (
+        <Box className="tournament-bracket-team__seed" title={`Hạt giống ${seedBadge}`}>
+          {seedBadge}
+        </Box>
+      ) : (
+        <Box className="tournament-bracket-team__seed tournament-bracket-team__seed--empty" />
+      )}
       <Typography
         variant="body2"
-        fontWeight={team.isWinner ? 800 : 500}
+        fontWeight={team.isWinner ? 700 : 500}
+        className="tournament-bracket-team__name"
         sx={{ flex: 1, wordBreak: "break-word", lineHeight: 1.25 }}
       >
         {team.name}
       </Typography>
-      {showScore ? (
-        <Typography
-          variant="body2"
-          fontWeight={team.isWinner ? 900 : 600}
-          className="tournament-bracket-team__score"
-        >
-          {team.score}
-        </Typography>
-      ) : null}
-      {team.isWinner ? (
-        <CheckCircleIcon sx={{ fontSize: 17, color: "#2e7d32", flexShrink: 0 }} />
-      ) : null}
+      <Box
+        className={`tournament-bracket-team__score-box${
+          team.isWinner ? " tournament-bracket-team__score-box--winner" : ""
+        }${hasScore && !team.isWinner ? " tournament-bracket-team__score-box--loser" : ""}${
+          !hasScore ? " tournament-bracket-team__score-box--empty" : ""
+        }`}
+      >
+        {hasScore ? team.score : ""}
+      </Box>
     </Stack>
   );
+}
+
+function formatSeedBadge(seed) {
+  const text = String(seed || "").trim();
+  if (!text || text.startsWith("W(")) {
+    return "";
+  }
+  return text;
 }

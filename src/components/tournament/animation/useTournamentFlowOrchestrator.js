@@ -2,6 +2,10 @@ import { useCallback, useRef } from "react";
 
 import { ANIMATION_MODES } from "./animationUtils.js";
 import {
+  exitAppFullscreen,
+  requestAppFullscreen,
+} from "./shared/browserFullscreen.js";
+import {
   ANIMATION_TO_FLOW_KEY,
   FLOW_MODES,
   getFlowPreparationMessage,
@@ -94,6 +98,8 @@ export function useTournamentFlowOrchestrator(anim, adapters) {
       const firstMode = pipeline[0];
       const payload = adapters.buildPayload(firstMode, ctx);
 
+      requestAppFullscreen();
+
       anim.showAnimation(
         {
           ...payload,
@@ -110,6 +116,7 @@ export function useTournamentFlowOrchestrator(anim, adapters) {
 
   const exitFlow = useCallback(() => {
     flowRef.current = { ctx: null, stepIndex: 0, pipeline: [] };
+    exitAppFullscreen();
     anim.dismiss();
   }, [anim]);
 

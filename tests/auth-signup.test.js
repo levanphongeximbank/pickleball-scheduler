@@ -126,7 +126,7 @@ test("LoginPage source — signup khi Supabase, form đầy đủ", () => {
   assert.match(loginPage, /Đăng ký tài khoản/);
   assert.match(loginPage, /Chưa có tài khoản/);
   assert.match(loginPage, /Quay lại đăng nhập/);
-  assert.doesNotMatch(loginPage, /isAuthSignupEnabled/);
+  assert.match(loginPage, /isAuthSignupEnabled/);
 });
 
 test("signUpWithPassword source — dùng emailRedirectTo và không gửi role metadata", () => {

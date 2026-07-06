@@ -373,5 +373,7 @@ test("regression legacy: Tournament.jsx and legacy bracket logic remain availabl
 
   const shellSource = readFileSync(legacyShell, "utf8");
   assert.match(shellSource, /TournamentHome/);
-  assert.match(shellSource, /Giải đấu/);
+
+  const homeSource = readFileSync(join(rootDir, "src/pages/tournament/TournamentHome.jsx"), "utf8");
+  assert.match(homeSource, /Tổng quan/);
 });

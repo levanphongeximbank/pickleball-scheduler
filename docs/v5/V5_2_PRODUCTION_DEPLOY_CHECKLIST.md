@@ -62,7 +62,7 @@ git tag -a v5.2.0 -m "Pickleball Scheduler Pro V5.2 — RBAC + menu"
 | C2 | Chạy toàn file SQL Editor | ☐ |
 | C3 | V52-1 → V52-8 verification PASS | ☐ |
 | C4 | Sửa `REPLACE_ME_TOURNAMENT_ID` / `REPLACE_ME_TEAM_EXTERNAL_ID` cho `doitruong@gmail.com` sau khi có giải đồng đội thật | ☐ |
-| C5 | (Tuỳ chọn) Tạo auth user + profile `SYSTEM_TECHNICIAN` test | ☐ |
+| C5 | (Tuỳ chọn) Tạo auth `kythuat@gmail.com` + chạy `PHASE_V52_PRODUCTION_RBAC_SEED.sql` | ☐ |
 
 ---
 

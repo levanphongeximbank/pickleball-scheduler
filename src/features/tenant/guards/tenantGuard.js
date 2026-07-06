@@ -58,6 +58,12 @@ export function guardTenantAccess(tenantId, options = {}) {
 }
 
 export function guardClubTenant(clubId, currentTenantId, options = {}) {
+  const { user = getCurrentUser(), rbacEnabled = isRbacEnabled() } = options;
+
+  if (rbacEnabled && user && isGlobalRole(user.role)) {
+    return { ok: true };
+  }
+
   const clubTenantId = getExplicitTenantIdForClub(clubId);
 
   if (!clubTenantId || !currentTenantId) {
@@ -73,10 +79,16 @@ export function guardClubTenant(clubId, currentTenantId, options = {}) {
     };
   }
 
-  return guardTenantAccess(clubTenantId, options);
+  return guardTenantAccess(clubTenantId, { user, rbacEnabled });
 }
 
 export function guardRecordTenant(record, currentTenantId, options = {}) {
+  const { user = getCurrentUser(), rbacEnabled = isRbacEnabled() } = options;
+
+  if (rbacEnabled && user && isGlobalRole(user.role)) {
+    return { ok: true };
+  }
+
   const recordTenantId = tenantIdFromRecord(record);
 
   if (!recordTenantId) {
@@ -91,7 +103,7 @@ export function guardRecordTenant(record, currentTenantId, options = {}) {
     };
   }
 
-  return guardTenantAccess(recordTenantId, options);
+  return guardTenantAccess(recordTenantId, { user, rbacEnabled });
 }
 
 export function filterByTenant(items = [], tenantId) {

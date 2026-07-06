@@ -34,7 +34,9 @@ export default function MatchAuditHistoryDialog({ open, match, liveRow, onClose 
               <ListItem key={`${line}-${index}`} disableGutters sx={{ py: 0.5 }}>
                 <ListItemText
                   primary={line}
-                  primaryTypographyProps={{ variant: "body2", color: "text.secondary" }}
+                  slotProps={{
+                    primary: { variant: "body2", sx: { color: "text.secondary" } },
+                  }}
                 />
               </ListItem>
             ))}
