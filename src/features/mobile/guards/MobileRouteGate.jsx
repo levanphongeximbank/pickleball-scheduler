@@ -5,6 +5,7 @@ import LockIcon from "@mui/icons-material/Lock";
 import { useAuth } from "../../../context/AuthContext.jsx";
 import { useClub } from "../../../context/ClubContext.jsx";
 import { useTenant } from "../../../context/TenantContext.jsx";
+import { isSubscriptionOperationalExemptRole } from "../../billing/guards/operationalRoutePolicy.js";
 import {
   canAccessMobileRoute,
   getMobileRouteForbiddenMessage,
@@ -46,7 +47,9 @@ export default function MobileRouteGate() {
     playerId: auth.user?.playerId || null,
   };
 
-  const subscriptionOk = subscriptionCheck.ok || isSuperAdmin;
+  const subscriptionExempt =
+    isSuperAdmin || isSubscriptionOperationalExemptRole(auth.user);
+  const subscriptionOk = subscriptionCheck.ok || subscriptionExempt;
   const allowed = canAccessMobileRoute(location.pathname, auth, scope, {
     subscriptionOk,
     isSuperAdmin,

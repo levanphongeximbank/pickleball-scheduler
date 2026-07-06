@@ -30,6 +30,7 @@ import {
   assertSubscriptionOperational,
   runSubscriptionMaintenance,
 } from "../features/billing/bridges/subscriptionAccessBridge.js";
+import { isSubscriptionOperationalExemptRole } from "../features/billing/guards/operationalRoutePolicy.js";
 
 const TenantContext = createContext(null);
 
@@ -168,6 +169,10 @@ export function TenantProvider({ children }) {
     }
 
     if (isSuperAdmin || isPlatformTech) {
+      return { ok: true };
+    }
+
+    if (isSubscriptionOperationalExemptRole(user)) {
       return { ok: true };
     }
 

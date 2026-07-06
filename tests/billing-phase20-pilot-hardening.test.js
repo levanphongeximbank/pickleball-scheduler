@@ -13,7 +13,10 @@ import { assertSubscriptionOperational } from "../src/features/billing/bridges/s
 import {
   DEFAULT_OPERATIONAL_ACTION,
   isBillingExemptPath,
+  isSubscriptionOperationalExemptRole,
 } from "../src/features/billing/guards/operationalRoutePolicy.js";
+import { ROLES } from "../src/auth/roles.js";
+import { createUserRecord } from "../src/models/user.js";
 
 function createStore() {
   const state = {
@@ -125,8 +128,20 @@ test("Phase 20 — billing routes exempt from operational lock", () => {
   assert.equal(isBillingExemptPath("/billing/support"), true);
   assert.equal(isBillingExemptPath("/profile"), true);
   assert.equal(isBillingExemptPath("/403"), true);
+  assert.equal(isBillingExemptPath("/mobile/player"), true);
+  assert.equal(isBillingExemptPath("/mobile/notifications"), true);
   assert.equal(isBillingExemptPath("/court-engine"), false);
   assert.equal(isBillingExemptPath("/court-management"), false);
+});
+
+test("Phase 20 — PLAYER/CUSTOMER exempt from subscription operational lock", () => {
+  const player = createUserRecord({ role: ROLES.PLAYER });
+  const cashier = createUserRecord({ role: ROLES.CASHIER, venueId: "venue-a" });
+
+  assert.equal(isSubscriptionOperationalExemptRole(player), true);
+  assert.equal(isSubscriptionOperationalExemptRole(createUserRecord({ role: ROLES.CUSTOMER })), true);
+  assert.equal(isSubscriptionOperationalExemptRole(createUserRecord({ role: ROLES.TEAM_CAPTAIN })), true);
+  assert.equal(isSubscriptionOperationalExemptRole(cashier), false);
 });
 
 test("Phase 20 — past_due grace allows then blocks after grace", () => {
