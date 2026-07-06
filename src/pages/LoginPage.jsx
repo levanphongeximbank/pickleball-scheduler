@@ -23,8 +23,9 @@ import CloudIcon from "@mui/icons-material/Cloud";
 import { useAuth } from "../context/AuthContext.jsx";
 import { ROLE_LABELS } from "../auth/roles.js";
 import { isDevAuthAllowed, listDevUsers } from "../auth/authService.js";
-import { getDefaultHomePath } from "../auth/menuAccess.js";
+import { resolvePostAuthRedirectPath } from "../auth/menuAccess.js";
 import { APP_PRODUCT_NAME, APP_VERSION_LABEL, getLoginSubtitle } from "../config/appVersion.js";
+import { isAuthSignupEnabled } from "../config/authConfig.js";
 import { SHELL_COLORS } from "../components/shell/shellTokens.js";
 import {
   SIGNUP_INTENT,
@@ -58,9 +59,10 @@ export default function LoginPage() {
 
   const devAuthAllowed = isDevAuthAllowed();
   const devUsers = devAuthAllowed ? listDevUsers() : [];
-  const redirectTo = location.state?.from?.pathname || getDefaultHomePath(user, rbacEnabled);
+  const redirectTo = resolvePostAuthRedirectPath(location.state?.from?.pathname, user, rbacEnabled);
   const authRequired = authProductionEnabled || rbacEnabled;
   const isSignupMode = authMode === "signup";
+  const signupEnabled = isAuthSignupEnabled();
 
   if (!authRequired) {
     return <Navigate to="/" replace />;
@@ -319,7 +321,7 @@ export default function LoginPage() {
 
               {supabaseAvailable && (
                 <>
-                  {isSignupMode && (
+                  {isSignupMode && signupEnabled && (
                     <>
                       <TextField
                         size="small"
@@ -378,7 +380,7 @@ export default function LoginPage() {
                     fullWidth
                     autoComplete={isSignupMode ? "new-password" : "current-password"}
                   />
-                  {isSignupMode && (
+                  {isSignupMode && signupEnabled && (
                     <TextField
                       size="small"
                       label="Xác nhận mật khẩu"
@@ -393,14 +395,19 @@ export default function LoginPage() {
                   <Button
                     variant="contained"
                     size="large"
-                    onClick={isSignupMode ? handleSignUpSupabase : handleSignInSupabase}
-                    disabled={isSignupMode ? signupSubmitDisabled : !email.trim() || !password || loading}
+                    onClick={isSignupMode && signupEnabled ? handleSignUpSupabase : handleSignInSupabase}
+                    disabled={
+                      isSignupMode && signupEnabled
+                        ? signupSubmitDisabled
+                        : !email.trim() || !password || loading
+                    }
                     fullWidth
                   >
-                    {loading ? "Đang xử lý…" : isSignupMode ? "Đăng ký" : "Đăng nhập"}
+                    {loading ? "Đang xử lý…" : isSignupMode && signupEnabled ? "Đăng ký" : "Đăng nhập"}
                   </Button>
 
                   {!isSignupMode && <Divider />}
+                  {(signupEnabled || isSignupMode) && (
                   <Stack
                     direction="row"
                     spacing={0.5}
@@ -408,11 +415,12 @@ export default function LoginPage() {
                     alignItems="center"
                     flexWrap="wrap"
                   >
-                    {!isSignupMode && (
+                    {!isSignupMode && signupEnabled && (
                       <Typography variant="body2" color="text.secondary">
                         Chưa có tài khoản?
                       </Typography>
                     )}
+                    {signupEnabled && (
                     <Button
                       variant="text"
                       size="small"
@@ -420,7 +428,14 @@ export default function LoginPage() {
                     >
                       {isSignupMode ? "Quay lại đăng nhập" : "Đăng ký tài khoản"}
                     </Button>
+                    )}
                   </Stack>
+                  )}
+                  {!signupEnabled && !isSignupMode && (
+                    <Typography variant="body2" color="text.secondary" textAlign="center">
+                      Đăng ký tài khoản mới do quản trị viên tạo hoặc liên hệ BTC giải.
+                    </Typography>
+                  )}
                 </>
               )}
 

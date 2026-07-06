@@ -98,6 +98,18 @@ export default function RouteAccessGate({ children }) {
     })
   ) {
     if (location.pathname !== "/403") {
+      if (
+        homePath &&
+        homePath !== location.pathname &&
+        !shouldRedirectToForbidden(homePath, {
+          rbacEnabled,
+          isAuthenticated,
+          can,
+          scope,
+        })
+      ) {
+        return <Navigate to={homePath} replace />;
+      }
       return <Navigate to="/403" replace state={{ from: location }} />;
     }
   }

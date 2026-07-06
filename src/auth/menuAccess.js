@@ -387,11 +387,40 @@ export function getDefaultHomePath(user, rbacEnabled = false) {
       return "/dashboard";
     case ROLES.TEAM_CAPTAIN: {
       const tournamentId = user.tournamentId || user.tournament_id;
-      return tournamentId ? `/team-portal/${tournamentId}` : "/tournament";
+      return tournamentId ? `/team-portal/${tournamentId}` : "/profile";
     }
     default:
       return "/";
   }
+}
+
+/** Sau đăng nhập — không quay lại route bị cấm (vd. PLAYER chưa CLB → /tournament). */
+export function resolvePostAuthRedirectPath(requestedPath, user, rbacEnabled = false) {
+  const homePath = getDefaultHomePath(user, rbacEnabled);
+  const path = String(requestedPath || "").split("?")[0];
+
+  if (!path || path === "/login" || path === "/403") {
+    return homePath;
+  }
+
+  if (path === "/" && homePath !== "/") {
+    return homePath;
+  }
+
+  if (rbacEnabled && normalizeRole(user?.role) === ROLES.PLAYER) {
+    if (!user?.clubId && !user?.club_id) {
+      if (
+        path === "/tournament" ||
+        path.startsWith("/tournament/") ||
+        path === "/dashboard" ||
+        path === "/"
+      ) {
+        return "/profile";
+      }
+    }
+  }
+
+  return path;
 }
 
 export { resolveRouteAccessScope } from "../features/tenant/services/profileVenueService.js";

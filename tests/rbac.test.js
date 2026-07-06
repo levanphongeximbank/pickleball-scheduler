@@ -23,6 +23,7 @@ import {
   canAccessRoute,
   filterMenuGroups,
   getDefaultHomePath,
+  resolvePostAuthRedirectPath,
 } from "../src/auth/menuAccess.js";
 import { SIDEBAR_MENU_GROUPS } from "../src/config/sidebarMenu.js";
 import {
@@ -205,6 +206,17 @@ test("menuAccess — getDefaultHomePath theo role", () => {
   );
   assert.equal(getDefaultHomePath(user(ROLES.CASHIER), true), "/court-management/bookings");
   assert.equal(getDefaultHomePath(user(ROLES.VENUE_OWNER), true), "/");
+});
+
+test("menuAccess — resolvePostAuthRedirectPath PLAYER chưa CLB", () => {
+  const player = user(ROLES.PLAYER);
+  assert.equal(resolvePostAuthRedirectPath("/tournament", player, true), "/profile");
+  assert.equal(resolvePostAuthRedirectPath("/", player, true), "/profile");
+  assert.equal(resolvePostAuthRedirectPath("/403", player, true), "/profile");
+  assert.equal(
+    resolvePostAuthRedirectPath("/tournament", user(ROLES.PLAYER, { clubId: "c1" }), true),
+    "/tournament"
+  );
 });
 
 test("canAccessRoute — PLAYER vào statistics", () => {
