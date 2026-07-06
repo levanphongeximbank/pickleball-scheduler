@@ -81,6 +81,7 @@ export default function Players() {
   const [searchParams] = useSearchParams();
   const skillTab = searchParams.get("tab") === "skill";
   const [reviewMessage, setReviewMessage] = useState(null);
+  const [formError, setFormError] = useState(null);
 
   useEffect(() => {
     const nextPlayers = loadPlayersFromStorage(activeClubId);
