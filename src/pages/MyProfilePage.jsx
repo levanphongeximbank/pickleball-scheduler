@@ -20,6 +20,7 @@ import {
   updateSelfProfile,
 } from "../features/identity/services/selfProfileService.js";
 import { changePassword } from "../features/identity/services/passwordService.js";
+import AvatarPicker from "../features/identity/components/AvatarPicker.jsx";
 
 const STATUS_LABELS = {
   [USER_STATUS.ACTIVE]: "Đang hoạt động",
@@ -120,6 +121,16 @@ export default function MyProfilePage() {
                 Thông tin cá nhân
               </Typography>
               <Stack spacing={2}>
+                <AvatarPicker
+                  user={user}
+                  avatarUrl={avatarUrl}
+                  onAvatarUrlChange={setAvatarUrl}
+                  onAvatarUpdated={() => {
+                    refresh();
+                    setMessage({ type: "success", text: "Đã cập nhật hình đại diện." });
+                  }}
+                  disabled={loading}
+                />
                 <TextField label="Email" value={user.email} disabled fullWidth />
                 <TextField
                   label="Họ tên"
@@ -132,13 +143,6 @@ export default function MyProfilePage() {
                   value={phone}
                   onChange={(e) => setPhone(e.target.value)}
                   fullWidth
-                />
-                <TextField
-                  label="Avatar URL"
-                  value={avatarUrl}
-                  onChange={(e) => setAvatarUrl(e.target.value)}
-                  fullWidth
-                  helperText="Tùy chọn — URL ảnh đại diện"
                 />
                 <Stack direction="row" spacing={1} alignItems="center">
                   <Typography variant="body2" color="text.secondary">

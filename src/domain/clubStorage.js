@@ -92,6 +92,7 @@ export function getDefaultClubData(clubId) {
     seasonStandings: {},
     skillLevel: { ...DEFAULT_SKILL_LEVEL_RULES },
     skillLevelProposals: [],
+    skillLevelChangeRequests: [],
     ai: getDefaultAiSection(),
     active: {
       seasonId: null,
@@ -210,6 +211,9 @@ function normalizeClubData(data, clubId) {
     },
     skillLevelProposals: Array.isArray(upgraded.skillLevelProposals)
       ? upgraded.skillLevelProposals
+      : [],
+    skillLevelChangeRequests: Array.isArray(upgraded.skillLevelChangeRequests)
+      ? upgraded.skillLevelChangeRequests
       : [],
     ai: {
       ...getDefaultAiSection(),

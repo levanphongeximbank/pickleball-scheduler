@@ -27,6 +27,7 @@ export default function PlayerFilters({
   filteredCount,
   totalCount,
   onClearFilters,
+  showLevelFilter = true,
 }) {
   return (
     <Paper
@@ -91,21 +92,23 @@ export default function PlayerFilters({
           <MenuItem value="locked">Bị khóa</MenuItem>
         </TextField>
 
-        <Box sx={{ width: { xs: "100%", lg: 180 }, px: 0.5 }}>
-          <Typography variant="caption" color="text.secondary">
-            Level {levelRange[0].toFixed(1)}–{levelRange[1].toFixed(1)}
-          </Typography>
-          <Slider
-            value={levelRange}
-            min={1.5}
-            max={6}
-            step={0.1}
-            size="small"
-            color="primary"
-            onChange={(_, value) => onLevelRangeChange(value)}
-            valueLabelDisplay="auto"
-          />
-        </Box>
+        {showLevelFilter && (
+          <Box sx={{ width: { xs: "100%", lg: 180 }, px: 0.5 }}>
+            <Typography variant="caption" color="text.secondary">
+              Level {levelRange[0].toFixed(1)}–{levelRange[1].toFixed(1)}
+            </Typography>
+            <Slider
+              value={levelRange}
+              min={1.5}
+              max={6}
+              step={0.1}
+              size="small"
+              color="primary"
+              onChange={(_, value) => onLevelRangeChange(value)}
+              valueLabelDisplay="auto"
+            />
+          </Box>
+        )}
 
         <Button
           variant="text"

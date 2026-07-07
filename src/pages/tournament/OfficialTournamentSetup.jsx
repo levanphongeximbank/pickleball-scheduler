@@ -103,6 +103,7 @@ import {
 import { isAiEngineEnabled } from "../../features/ai-assistant/index.js";
 import TournamentAiAssistantPanel from "../../components/tournament/ai/TournamentAiAssistantPanel.jsx";
 import { useAuth } from "../../context/AuthContext.jsx";
+import { canViewPlayerSkillLevel } from "../../auth/rbac.js";
 import { useTenant } from "../../context/TenantContext.jsx";
 import { resolveTenantIdForClub } from "../../features/tenant/guards/tenantGuard.js";
 
@@ -117,7 +118,7 @@ export default function OfficialTournamentSetup() {
   const { tournamentId } = useParams();
   const navigate = useNavigate();
   const { activeClub, activeClubId, clubs, refreshClubs } = useClub();
-  const { user } = useAuth();
+  const { user, rbacEnabled } = useAuth();
   const { currentTenantId } = useTenant();
   const aiEnabled = isAiEngineEnabled();
   const [setupTab, setSetupTab] = useState(0);
@@ -146,6 +147,16 @@ export default function OfficialTournamentSetup() {
   const [bracketAdvanceAnim, setBracketAdvanceAnim] = useState(null);
   const anim = useTournamentAnimation();
   const pendingPlanRef = useRef(null);
+
+  const canViewSkillInSetup = useMemo(
+    () =>
+      canViewPlayerSkillLevel(
+        user,
+        { clubId: activeClubId, tournamentId, tournamentContext: true },
+        { rbacEnabled }
+      ),
+    [user, activeClubId, tournamentId, rbacEnabled]
+  );
 
   const tournament = useMemo(
     () => getTournament(activeClubId, tournamentId),
@@ -1216,6 +1227,7 @@ export default function OfficialTournamentSetup() {
                 onSearchChange={setPickerSearch}
                 eventType={eventType}
                 onAddNew={() => setQuickAddOpen(true)}
+                showSkillLevel={canViewSkillInSetup}
                 emptyMessage={
                   sourceClubFilter === ALL_CLUBS_FILTER
                     ? "Chưa có VĐV trong tenant."
@@ -1350,6 +1362,7 @@ export default function OfficialTournamentSetup() {
                   eventType={eventType}
                   excludePlayerIds={registeredPlayerIds}
                   onAddNew={() => setQuickAddOpen(true)}
+                  showSkillLevel={canViewSkillInSetup}
                   showSelectActions={false}
                   emptyMessage="Không có VĐV phù hợp hoặc tất cả đã đăng ký."
                 />

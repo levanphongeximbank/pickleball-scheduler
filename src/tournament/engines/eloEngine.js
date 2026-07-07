@@ -7,6 +7,10 @@ function toRating(value) {
 }
 
 function resolveInternalRating(player) {
+  if (player?.skillLevel !== undefined && player?.skillLevel !== null && player?.skillLevel !== "") {
+    return toRating(player.skillLevel);
+  }
+
   if (
     player?.ratingInternal !== undefined &&
     player?.ratingInternal !== null &&
@@ -108,9 +112,13 @@ export function applyEloUpdatesToPlayers(players = [], updates = [], options = {
       return player;
     }
 
+    const nextRating = update.nextRating;
     return {
       ...player,
-      ratingInternal: update.nextRating,
+      skillLevel: nextRating,
+      level: nextRating,
+      rating: nextRating,
+      ratingInternal: nextRating,
       skillMeta: {
         ...(player.skillMeta || {}),
         lastRatingInternalUpdateAt: updatedAt,

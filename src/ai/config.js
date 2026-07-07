@@ -11,8 +11,8 @@ export const DEFAULT_TIMEZONE = "Asia/Ho_Chi_Minh";
 
 /** Quy tắc chốt trình công khai hàng tháng (tách khỏi ratingInternal). */
 export const DEFAULT_SKILL_LEVEL_RULES = {
-  enabled: true,
-  autoGenerateProposals: true,
+  enabled: false,
+  autoGenerateProposals: false,
   step: 0.5,
   promoteThreshold: 0.35,
   demoteThreshold: 0.35,

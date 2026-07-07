@@ -46,6 +46,15 @@ export const SYSTEM_TECHNICIAN_MENU_ROOT = menuFolder({
       featureStatus: FEATURE_STATUS.LIVE,
     }),
     menuLeaf({
+      key: "tech-skill-level-requests",
+      icon: "users",
+      text: "Duyệt trình độ VĐV",
+      path: "/admin/skill-level-requests",
+      permissions: [PERMISSIONS.SKILL_LEVEL_APPROVE],
+      roles: [ROLES.SYSTEM_TECHNICIAN],
+      featureStatus: FEATURE_STATUS.LIVE,
+    }),
+    menuLeaf({
       key: "tech-roles",
       icon: "users",
       text: "Vai trò & Quyền",

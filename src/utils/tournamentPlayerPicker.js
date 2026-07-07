@@ -1,4 +1,5 @@
 import { filterPlayersForEventType } from "../tournament/engines/teamPairingEngine.js";
+import { getPlayerSkillLevel } from "../models/player.js";
 import { filterPlayers } from "./playerHelpers.js";
 
 export const ALL_CLUBS_FILTER = "__all__";
@@ -33,9 +34,14 @@ export function filterTournamentPickerPlayers(players = [], filters = {}) {
   return result;
 }
 
-export function formatPlayerPickerMeta(player) {
+export function formatPlayerPickerMeta(player, showSkillLevel = false) {
   const gender = player?.gender || "?";
-  const rating = player?.rating ?? player?.level ?? "-";
   const club = player?.clubName || "";
+
+  if (!showSkillLevel) {
+    return club ? `${gender} • ${club}` : gender;
+  }
+
+  const rating = Number(getPlayerSkillLevel(player)).toFixed(1);
   return club ? `${gender} • ${rating} • ${club}` : `${gender} • ${rating}`;
 }

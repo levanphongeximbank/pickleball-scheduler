@@ -91,7 +91,9 @@ import { resolveTenantIdForClub } from "../../features/tenant/guards/tenantGuard
 import { isAiEngineEnabled } from "../../features/ai-assistant/index.js";
 import TournamentAiAssistantPanel from "../../components/tournament/ai/TournamentAiAssistantPanel.jsx";
 import { useAuth } from "../../context/AuthContext.jsx";
+import { canViewPlayerSkillLevel } from "../../auth/rbac.js";
 import { useTenant } from "../../context/TenantContext.jsx";
+import { formatOrganizerPlayerMeta } from "../../utils/skillLevelVisibility.js";
 
 const EVENT_OPTIONS = EVENT_TYPE_OPTIONS;
 
@@ -99,7 +101,7 @@ export default function InternalTournamentSetup() {
   const { tournamentId } = useParams();
   const navigate = useNavigate();
   const { activeClubId, clubs, refreshClubs, switchClub } = useClub();
-  const { user } = useAuth();
+  const { user, rbacEnabled } = useAuth();
   const { currentTenantId } = useTenant();
   const aiEnabled = isAiEngineEnabled();
   const [setupTab, setSetupTab] = useState(0);
@@ -116,6 +118,16 @@ export default function InternalTournamentSetup() {
   const [bracketAdvanceAnim, setBracketAdvanceAnim] = useState(null);
   const anim = useTournamentAnimation();
   const pendingPlanRef = useRef(null);
+
+  const canViewSkillInSetup = useMemo(
+    () =>
+      canViewPlayerSkillLevel(
+        user,
+        { clubId: activeClubId, tournamentId, tournamentContext: true },
+        { rbacEnabled }
+      ),
+    [user, activeClubId, tournamentId, rbacEnabled]
+  );
 
   const tournamentClubId = useMemo(
     () => findTournamentClubId(tournamentId) || activeClubId,
@@ -890,7 +902,7 @@ export default function InternalTournamentSetup() {
                     >
                       <span>{player.name}</span>
                       <span>
-                        {player.gender || "?"} • {player.rating ?? player.level}
+                        {formatOrganizerPlayerMeta(player, canViewSkillInSetup)}
                       </span>
                     </Button>
                   );

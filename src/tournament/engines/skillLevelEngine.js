@@ -14,8 +14,8 @@ function toRating(value, fallback = 3.5) {
 
 export function normalizeSkillLevelRules(rules = {}) {
   return {
-    enabled: rules.enabled !== false,
-    autoGenerateProposals: rules.autoGenerateProposals !== false,
+    enabled: rules.enabled === true,
+    autoGenerateProposals: rules.autoGenerateProposals === true,
     step: toRating(rules.step, DEFAULT_SKILL_LEVEL_RULES.step),
     promoteThreshold: toRating(
       rules.promoteThreshold,
@@ -222,6 +222,7 @@ export function buildApprovedSkillMeta(player, assessment, now = new Date()) {
 export function applyApprovedPublicLevel(player, assessment, now = new Date()) {
   return {
     ...player,
+    skillLevel: assessment.nextLevel,
     level: assessment.nextLevel,
     rating: assessment.nextLevel,
     skillMeta: buildApprovedSkillMeta(player, assessment, now),

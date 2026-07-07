@@ -67,6 +67,7 @@ export default function PlayerCard({
   clubId,
   players = [],
   checkedInIds = new Set(),
+  canViewSkillLevel = false,
   onEdit,
   onDelete,
   onLock,
@@ -152,36 +153,40 @@ export default function PlayerCard({
           </Box>
         </Stack>
 
-        <Stack direction="row" alignItems="center" justifyContent="space-between" sx={{ mt: 1.5 }}>
-          <Typography variant="caption" color="text.secondary">
-            Trình độ
-          </Typography>
-          <Chip
-            size="small"
-            label={`${Number(player.level).toFixed(1)} · ${levelLabel}`}
-            sx={{
-              bgcolor: `${levelColor}18`,
-              color: levelColor,
-              fontWeight: 800,
-              fontSize: 11,
-            }}
-          />
-        </Stack>
+        {canViewSkillLevel && (
+          <>
+            <Stack direction="row" alignItems="center" justifyContent="space-between" sx={{ mt: 1.5 }}>
+              <Typography variant="caption" color="text.secondary">
+                Trình độ
+              </Typography>
+              <Chip
+                size="small"
+                label={`${Number(player.level).toFixed(1)} · ${levelLabel}`}
+                sx={{
+                  bgcolor: `${levelColor}18`,
+                  color: levelColor,
+                  fontWeight: 800,
+                  fontSize: 11,
+                }}
+              />
+            </Stack>
 
-        <LinearProgress
-          variant="determinate"
-          value={progress}
-          sx={{
-            mt: 0.75,
-            height: 6,
-            borderRadius: 999,
-            bgcolor: "rgba(15, 23, 42, 0.06)",
-            "& .MuiLinearProgress-bar": {
-              borderRadius: 999,
-              bgcolor: levelColor,
-            },
-          }}
-        />
+            <LinearProgress
+              variant="determinate"
+              value={progress}
+              sx={{
+                mt: 0.75,
+                height: 6,
+                borderRadius: 999,
+                bgcolor: "rgba(15, 23, 42, 0.06)",
+                "& .MuiLinearProgress-bar": {
+                  borderRadius: 999,
+                  bgcolor: levelColor,
+                },
+              }}
+            />
+          </>
+        )}
 
         <Stack direction="row" spacing={0.5} alignItems="center" sx={{ mt: 1.25 }}>
           <LocalPhoneIcon sx={{ fontSize: 15, color: "text.disabled" }} />

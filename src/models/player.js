@@ -65,6 +65,21 @@ function normalizeSkillMeta(skillMeta) {
 }
 
 /**
+ * Điểm trình độ chính thức (riêng tư) — fallback dữ liệu cũ.
+ */
+export function getPlayerSkillLevel(player, fallback = 3.5) {
+  if (!player) {
+    return fallback;
+  }
+
+  if (player.skillLevel !== undefined && player.skillLevel !== null && player.skillLevel !== "") {
+    return toNumber(player.skillLevel, fallback);
+  }
+
+  return toNumber(player.level ?? player.rating, fallback);
+}
+
+/**
  * Rating nội bộ dùng cho Elo — fallback dữ liệu cũ chưa có ratingInternal.
  */
 export function getPlayerRatingInternal(player, fallback = 3.5) {
@@ -79,14 +94,23 @@ export function getPlayerRatingInternal(player, fallback = 3.5) {
   return toNumber(player.rating ?? player.level, fallback);
 }
 
+export function syncSkillLevelMirrors(player, skillLevel) {
+  const value = toNumber(skillLevel, 3.5);
+  return {
+    skillLevel: value,
+    level: value,
+    rating: value,
+    ratingInternal: value,
+  };
+}
+
 export function normalizePlayer(player) {
   if (!player || player.id === undefined || player.id === null) {
     return null;
   }
 
-  const level = toNumber(player.level ?? player.rating, 3.5);
-  const rating = toNumber(player.rating ?? player.level, level);
-  const ratingInternal = getPlayerRatingInternal(player, level);
+  const skillLevel = getPlayerSkillLevel(player, toNumber(player.level ?? player.rating, 3.5));
+  const ratingInternal = getPlayerRatingInternal(player, skillLevel);
 
   const normalized = {
     ...player,
@@ -95,12 +119,24 @@ export function normalizePlayer(player) {
     gender: player.gender ?? null,
     genderKey: getPlayerGenderKey(player.gender),
     playerType: normalizePlayerType(player.playerType),
-    level,
-    rating,
+    skillLevel,
+    level: skillLevel,
+    rating: skillLevel,
     ratingInternal,
     status: normalizeStatus(player.status),
     active: player.active !== false,
   };
+
+  if (player.skillLevelLockedAt) {
+    normalized.skillLevelLockedAt = String(player.skillLevelLockedAt);
+  } else if (
+    player.level !== undefined ||
+    player.rating !== undefined ||
+    player.skillLevel !== undefined
+  ) {
+    normalized.skillLevelLockedAt =
+      player.createdAt || new Date(0).toISOString();
+  }
 
   const optionalFields = ["phone", "clubName", "unitName", "levelLabel", "note"];
   for (const field of optionalFields) {

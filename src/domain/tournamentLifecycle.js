@@ -96,9 +96,15 @@ export function processCompletedMatch(clubId, { tournament, match, event = null 
     record
   );
 
-  const eloResult = isClubInternal
-    ? { ok: true, skipped: true, reason: "club-scoped-elo" }
-    : applyEloFromMatchRecord(clubId, record);
+  const skipEloForDailyPlay = tournament.mode === TOURNAMENT_MODE.DAILY_PLAY;
+  const eloResult =
+    isClubInternal || skipEloForDailyPlay
+      ? {
+          ok: true,
+          skipped: true,
+          reason: skipEloForDailyPlay ? "daily-play-excluded" : "club-scoped-elo",
+        }
+      : applyEloFromMatchRecord(clubId, record);
 
   return {
     ok: seasonResult.ok !== false && eloResult.ok !== false && clubEloResult?.ok !== false,

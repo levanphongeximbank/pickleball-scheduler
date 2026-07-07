@@ -20,7 +20,7 @@ test("eloEngine shifts ratings after match result", () => {
   assert.equal(Math.round((deltaA + deltaB) * 1000) / 1000, 0);
 });
 
-test("eloEngine updates ratingInternal without changing public level", () => {
+test("eloEngine updates skillLevel mirrors after match result", () => {
   const record = {
     id: "m1",
     teamAPlayerIds: ["1", "2"],
@@ -42,11 +42,11 @@ test("eloEngine updates ratingInternal without changing public level", () => {
   const winner = nextPlayers.find((player) => player.id === 1);
   const loser = nextPlayers.find((player) => player.id === 3);
 
-  assert.ok(winner.ratingInternal > 4);
-  assert.ok(loser.ratingInternal < 3.5);
-  assert.equal(winner.level, 4);
-  assert.equal(winner.rating, 4);
-  assert.equal(loser.level, 3.5);
+  assert.ok(winner.skillLevel > 4);
+  assert.ok(loser.skillLevel < 3.5);
+  assert.equal(winner.level, winner.skillLevel);
+  assert.equal(winner.rating, winner.skillLevel);
+  assert.equal(loser.level, loser.skillLevel);
   assert.ok(winner.skillMeta?.lastRatingInternalUpdateAt);
 });
 

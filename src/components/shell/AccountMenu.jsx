@@ -1,7 +1,6 @@
 import { useState } from "react";
 import { Link as RouterLink } from "react-router-dom";
 import {
-  Avatar,
   Box,
   Button,
   Divider,
@@ -16,15 +15,7 @@ import { useAuth } from "../../context/AuthContext.jsx";
 import { getRoleLabel } from "../../auth/roles.js";
 import { PERMISSIONS } from "../../auth/permissions.js";
 import { SHELL_COLORS } from "./shellTokens.js";
-
-function getInitials(user) {
-  const name = String(user?.displayName || getRoleLabel(user?.role) || "U").trim();
-  const parts = name.split(/\s+/).filter(Boolean);
-  if (parts.length >= 2) {
-    return `${parts[0][0]}${parts[parts.length - 1][0]}`.toUpperCase();
-  }
-  return name.slice(0, 2).toUpperCase();
-}
+import UserAvatar from "../identity/UserAvatar.jsx";
 
 export default function AccountMenu() {
   const { authProductionEnabled, rbacEnabled, isAuthenticated, user, signOut, can } = useAuth();
@@ -56,18 +47,7 @@ export default function AccountMenu() {
           "&:hover": { bgcolor: SHELL_COLORS.mintBg },
         }}
       >
-        <Avatar
-          sx={{
-            width: 32,
-            height: 32,
-            fontSize: 13,
-            fontWeight: 800,
-            bgcolor: SHELL_COLORS.primaryGreen,
-            mr: 1,
-          }}
-        >
-          {getInitials(user)}
-        </Avatar>
+        <UserAvatar user={user} size={32} sx={{ mr: 1 }} />
         <Box sx={{ textAlign: "left", minWidth: 0, display: { xs: "none", sm: "block" } }}>
           <Typography variant="body2" fontWeight={700} noWrap>
             {displayName}
@@ -93,9 +73,7 @@ export default function AccountMenu() {
       >
         <Box sx={{ px: 2, py: 1.25 }}>
           <Stack direction="row" spacing={1.25} alignItems="center">
-            <Avatar sx={{ width: 36, height: 36, bgcolor: SHELL_COLORS.primaryGreen, fontWeight: 800 }}>
-              {getInitials(user)}
-            </Avatar>
+            <UserAvatar user={user} size={36} />
             <Box sx={{ minWidth: 0 }}>
               <Typography variant="subtitle2" fontWeight={700} noWrap>
                 {displayName}

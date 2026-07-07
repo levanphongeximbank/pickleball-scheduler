@@ -57,7 +57,7 @@ test("assessment does not include applied public level", () => {
 
   const assessment = assessMonthlyPublicLevel(
     player,
-    { promoteThreshold: 0.35, demoteThreshold: 0.35 },
+    { enabled: true, promoteThreshold: 0.35, demoteThreshold: 0.35 },
     new Date("2026-06-01T10:00:00.000Z")
   );
 
@@ -107,7 +107,7 @@ test("approve path updates only public level", () => {
   assert.equal(next.ratingInternal, 4.1);
 });
 
-test("elo after match does not change public level", () => {
+test("elo after match updates skillLevel mirrors", () => {
   const record = {
     id: "m1",
     teamAPlayerIds: ["1"],
@@ -124,7 +124,7 @@ test("elo after match does not change public level", () => {
   const nextPlayers = applyEloUpdatesToPlayers(players, updates);
   const winner = nextPlayers.find((item) => item.id === 1);
 
-  assert.ok(winner.ratingInternal > 3.5);
-  assert.equal(winner.level, 3.5);
-  assert.equal(winner.rating, 3.5);
+  assert.ok(winner.skillLevel > 3.5);
+  assert.equal(winner.level, winner.skillLevel);
+  assert.equal(winner.rating, winner.skillLevel);
 });

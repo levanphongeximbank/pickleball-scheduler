@@ -23,6 +23,11 @@ import {
   updateSelfProfile,
 } from "../src/features/identity/services/selfProfileService.js";
 import {
+  validateAvatarFile,
+  AVATAR_MAX_BYTES,
+} from "../src/features/identity/services/avatarUploadService.js";
+import { getUserInitials } from "../src/components/identity/userAvatarUtils.js";
+import {
   canAccessRefereeSession,
 } from "../src/features/identity/services/refereeSessionService.js";
 import {
@@ -187,6 +192,52 @@ test("selfProfile — dev update", async () => {
   assert.equal(result.user.phone, "0901234567");
 
   signOut();
+});
+
+test("selfProfile — dev update avatarUrl", async () => {
+  globalThis.localStorage = createLocalStorageMock();
+  signInAs(createUserRecord({
+    id: "dev-player",
+    email: "player@club.local",
+    role: ROLES.PLAYER,
+    clubId: "c1",
+    playerId: "p1",
+    displayName: "Player One",
+  }));
+
+  const result = await updateSelfProfile({
+    avatarUrl: "https://example.com/avatar.png",
+  });
+
+  assert.equal(result.ok, true);
+  assert.equal(result.user.avatarUrl, "https://example.com/avatar.png");
+
+  signOut();
+});
+
+test("avatarUploadService — validateAvatarFile rejects invalid type and size", () => {
+  const invalidType = validateAvatarFile({ type: "application/pdf", size: 100 });
+  assert.equal(invalidType.ok, false);
+  assert.equal(invalidType.code, "INVALID_TYPE");
+
+  const tooLarge = validateAvatarFile({
+    type: "image/png",
+    size: AVATAR_MAX_BYTES + 1,
+  });
+  assert.equal(tooLarge.ok, false);
+  assert.equal(tooLarge.code, "FILE_TOO_LARGE");
+
+  const valid = validateAvatarFile({ type: "image/jpeg", size: 1024 });
+  assert.equal(valid.ok, true);
+});
+
+test("UserAvatar — getUserInitials fallback", () => {
+  assert.equal(
+    getUserInitials({ displayName: "Nguyen Van A", role: ROLES.PLAYER }),
+    "NA"
+  );
+  assert.equal(getUserInitials({ displayName: "Admin", role: ROLES.SUPER_ADMIN }), "AD");
+  assert.equal(getUserInitials({ role: ROLES.PLAYER }), "VV");
 });
 
 test("referee session — REFEREE role can access match update", () => {

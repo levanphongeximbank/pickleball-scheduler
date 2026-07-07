@@ -9,6 +9,10 @@ export const PERMISSIONS = Object.freeze({
   PLAYER_UPDATE: "player.update",
   PLAYER_DELETE: "player.delete",
 
+  SKILL_LEVEL_VIEW_PRIVATE: "skill_level.view_private",
+  SKILL_LEVEL_REQUEST_CHANGE: "skill_level.request_change",
+  SKILL_LEVEL_APPROVE: "skill_level.approve",
+
   COURT_VIEW: "court.view",
   COURT_CREATE: "court.create",
   COURT_UPDATE: "court.update",

@@ -340,6 +340,16 @@ function matchesSelfScope(user, scope, permission) {
   }
 
   if (
+    permission === PERMISSIONS.SKILL_LEVEL_VIEW_PRIVATE ||
+    permission === PERMISSIONS.SKILL_LEVEL_REQUEST_CHANGE
+  ) {
+    if (!scope.playerId) {
+      return false;
+    }
+    return user.playerId === scope.playerId;
+  }
+
+  if (
     permission === PERMISSIONS.TOURNAMENT_VIEW ||
     permission === PERMISSIONS.STATISTICS_VIEW ||
     permission === PERMISSIONS.TOURNAMENT_CREATE
@@ -348,4 +358,48 @@ function matchesSelfScope(user, scope, permission) {
   }
 
   return Boolean(user.playerId || user.clubId);
+}
+
+/**
+ * Kiểm tra viewer có được xem điểm trình độ riêng tư của VĐV không.
+ */
+export function canViewPlayerSkillLevel(user, scope = {}, options = {}) {
+  const { clubId, playerId, tournamentContext = false } = scope;
+
+  if (!isRbacEnforced({ rbacEnabled: options.rbacEnabled, user })) {
+    return true;
+  }
+
+  if (!isUserActive(user)) {
+    return false;
+  }
+
+  if (playerId && user.playerId && user.playerId === playerId) {
+    return can(
+      user,
+      PERMISSIONS.SKILL_LEVEL_VIEW_PRIVATE,
+      { clubId, playerId },
+      options
+    );
+  }
+
+  if (
+    can(user, PERMISSIONS.SKILL_LEVEL_VIEW_PRIVATE, { clubId, playerId }, options)
+  ) {
+    return true;
+  }
+
+  if (
+    tournamentContext &&
+    can(
+      user,
+      PERMISSIONS.SKILL_LEVEL_VIEW_PRIVATE,
+      { clubId, tournamentId: scope.tournamentId },
+      options
+    )
+  ) {
+    return true;
+  }
+
+  return false;
 }

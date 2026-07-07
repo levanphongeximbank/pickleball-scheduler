@@ -226,6 +226,15 @@ export default function SkillLevelsPage() {
         </Alert>
       )}
 
+      <Alert severity="info" sx={{ mb: 2 }}>
+        Luồng mới: VĐV gửi yêu cầu đổi trình độ qua hồ sơ cá nhân; kỹ thuật viên duyệt tại{" "}
+        <Button component={RouterLink} to="/admin/skill-level-requests" size="small">
+          Duyệt trình độ VĐV
+        </Button>
+        . Elo tự cập nhật chỉ từ trận giải đấu (không Daily Play). Đề xuất tháng tự động đã tắt
+        mặc định.
+      </Alert>
+
       <Grid container spacing={TOURNAMENT_LAYOUT.gridSpacing} sx={{ mb: TOURNAMENT_LAYOUT.sectionGap }}>
         <Grid size={{ xs: 6, sm: 3 }}>
           <KpiCard label="Tổng VĐV" value={overview.totalPlayers} />

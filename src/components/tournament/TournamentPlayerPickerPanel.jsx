@@ -44,6 +44,7 @@ export default function TournamentPlayerPickerPanel({
   showClubFilter = true,
   showSelectActions = true,
   showPlayerList = true,
+  showSkillLevel = false,
 }) {
   const filteredPlayers = useMemo(
     () =>
@@ -185,7 +186,7 @@ export default function TournamentPlayerPickerPanel({
               >
                 <span>{player.name}</span>
                 <span style={{ opacity: 0.85, marginLeft: 8, whiteSpace: "nowrap" }}>
-                  {formatPlayerPickerMeta(player)}
+                  {formatPlayerPickerMeta(player, showSkillLevel)}
                 </span>
               </Button>
             );

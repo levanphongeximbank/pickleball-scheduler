@@ -58,6 +58,11 @@ afterEach(() => {
 });
 
 test("generateMonthlySkillLevelProposals creates pending proposal without changing level", () => {
+  updateSkillLevelRules(DEFAULT_CLUB.id, {
+    enabled: true,
+    autoGenerateProposals: true,
+  });
+
   const result = generateMonthlySkillLevelProposals(DEFAULT_CLUB.id, {
     now: new Date("2026-06-05T10:00:00.000Z"),
   });
@@ -71,6 +76,11 @@ test("generateMonthlySkillLevelProposals creates pending proposal without changi
 });
 
 test("approveSkillLevelProposal updates public level only after admin approval", () => {
+  updateSkillLevelRules(DEFAULT_CLUB.id, {
+    enabled: true,
+    autoGenerateProposals: true,
+  });
+
   const generated = generateMonthlySkillLevelProposals(DEFAULT_CLUB.id, {
     now: new Date("2026-06-05T10:00:00.000Z"),
   });
@@ -90,6 +100,11 @@ test("approveSkillLevelProposal updates public level only after admin approval",
 });
 
 test("rejectSkillLevelProposal keeps public level unchanged", () => {
+  updateSkillLevelRules(DEFAULT_CLUB.id, {
+    enabled: true,
+    autoGenerateProposals: true,
+  });
+
   const generated = generateMonthlySkillLevelProposals(DEFAULT_CLUB.id, {
     now: new Date("2026-06-05T10:00:00.000Z"),
   });
@@ -106,7 +121,7 @@ test("rejectSkillLevelProposal keeps public level unchanged", () => {
   assert.equal(data.players[0].rating, 3.5);
 });
 
-test("applyEloFromMatchRecord does not change public level after match", () => {
+test("applyEloFromMatchRecord updates skillLevel mirrors after tournament match", () => {
   const record = {
     id: "m1",
     teamAPlayerIds: ["1"],
@@ -127,12 +142,18 @@ test("applyEloFromMatchRecord does not change public level after match", () => {
   const data = loadClubData(DEFAULT_CLUB.id);
   const winner = data.players.find((player) => String(player.id) === "1");
 
-  assert.ok(winner.ratingInternal > 3.5);
-  assert.equal(winner.level, 3.5);
-  assert.equal(winner.rating, 3.5);
+  assert.ok(winner.skillLevel > 3.5);
+  assert.equal(winner.level, winner.skillLevel);
+  assert.equal(winner.rating, winner.skillLevel);
+  assert.equal(winner.ratingInternal, winner.skillLevel);
 });
 
 test("listSkillLevelProposals filters by status", () => {
+  updateSkillLevelRules(DEFAULT_CLUB.id, {
+    enabled: true,
+    autoGenerateProposals: true,
+  });
+
   generateMonthlySkillLevelProposals(DEFAULT_CLUB.id, {
     now: new Date("2026-06-05T10:00:00.000Z"),
   });

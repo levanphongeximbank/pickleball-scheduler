@@ -25,6 +25,8 @@ import LockOpenIcon from "@mui/icons-material/LockOpen";
 
 import { getDirectorState, lockCourt, unlockCourt } from "../../ai/director.js";
 import { useClub } from "../../context/ClubContext.jsx";
+import { useAuth } from "../../context/AuthContext.jsx";
+import { canViewPlayerSkillLevel } from "../../auth/rbac.js";
 import { loadCourtsForClub, loadPlayersForClub } from "../../domain/clubStorage.js";
 import {
   getTournament,
@@ -33,7 +35,7 @@ import {
 } from "../../domain/tournamentService.js";
 import { getCourtDisplayName } from "../../models/court.js";
 import TournamentCourtSchedulePanel from "../../components/tournament/TournamentCourtSchedulePanel.jsx";
-import { TOURNAMENT_MODE, TOURNAMENT_STATUS } from "../../models/tournament/index.js";
+import { formatOrganizerPlayerMeta } from "../../utils/skillLevelVisibility.js";
 import {
   assignDailyMatchToCourt,
   createFairDailyMatches,
@@ -78,6 +80,7 @@ export default function DailyPlaySetup() {
   const { tournamentId } = useParams();
   const navigate = useNavigate();
   const { activeClubId, activeClub, refreshClubs } = useClub();
+  const { user, rbacEnabled } = useAuth();
   const [message, setMessage] = useState(null);
   const [error, setError] = useState(null);
   const [scoreDialog, setScoreDialog] = useState(null);
@@ -85,6 +88,16 @@ export default function DailyPlaySetup() {
   const [scoreB, setScoreB] = useState("");
   const [localRevision, setLocalRevision] = useState(0);
   const anim = useTournamentAnimation();
+
+  const canViewSkillInSetup = useMemo(
+    () =>
+      canViewPlayerSkillLevel(
+        user,
+        { clubId: activeClubId, tournamentId, tournamentContext: true },
+        { rbacEnabled }
+      ),
+    [user, activeClubId, tournamentId, rbacEnabled]
+  );
 
   const tournament = useMemo(
     () => getTournament(activeClubId, tournamentId),
@@ -461,7 +474,7 @@ export default function DailyPlaySetup() {
                     sx={{ justifyContent: "space-between", minHeight: 44 }}
                   >
                     <span>{player.name}</span>
-                    <span>{player.gender || "?"} • {player.rating ?? player.level}</span>
+                    <span>{formatOrganizerPlayerMeta(player, canViewSkillInSetup)}</span>
                   </Button>
                 );
               })}

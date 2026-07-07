@@ -230,6 +230,7 @@ const AdminIntegrationMonitoringPage = lazy(() =>
 const BillingPage = lazy(() => import("./pages/billing/BillingPage"));
 const AdminBillingPage = lazy(() => import("./pages/admin/AdminBillingPage"));
 const VenueHoursPage = lazy(() => import("./pages/admin/VenueHoursPage"));
+const SkillLevelRequestsPage = lazy(() => import("./pages/admin/SkillLevelRequestsPage"));
 const StaffListPage = lazy(() => import("./pages/admin/StaffListPage"));
 
 const CoachesPage = lazy(() => import("./pages/coaching/CoachesPage"));
@@ -550,6 +551,7 @@ export default function Router() {
 
             <Route path="/admin/tenants" element={<TenantManagement />} />
             <Route path="/admin/hours" element={<VenueHoursPage />} />
+            <Route path="/admin/skill-level-requests" element={<SkillLevelRequestsPage />} />
             <Route path="/admin/staff" element={<StaffListPage />} />
             <Route path="/admin/marketplace" element={<AdminMarketplacePage />} />
             <Route path="/admin/marketplace/products" element={<AdminMarketplacePage />} />

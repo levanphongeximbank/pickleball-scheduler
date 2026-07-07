@@ -25,6 +25,8 @@ import { useAuth } from "../context/AuthContext.jsx";
 import PermissionGate from "../components/auth/PermissionGate.jsx";
 import { PERMISSIONS } from "../auth/permissions.js";
 import { savePlayersForClub } from "../domain/clubStorage.js";
+import { setInitialSkillLevel } from "../domain/skillLevelChangeService.js";
+import { canViewPlayerSkillLevel } from "../auth/rbac.js";
 import { loadPlayersFromStorage } from "./selectPlayers.data";
 import { normalizePlayers } from "../models/player.js";
 import PlayerStats from "../components/players/PlayerStats.jsx";
@@ -54,7 +56,22 @@ const defaultPlayerForm = {
 
 export default function Players() {
   const { activeClubId, activeClub, revision } = useClub();
-  const { can, rbacEnabled, isAuthenticated } = useAuth();
+  const { can, rbacEnabled, isAuthenticated, user } = useAuth();
+
+  const canViewClubSkillLevels =
+    !rbacEnabled ||
+    !isAuthenticated ||
+    can(PERMISSIONS.SKILL_LEVEL_VIEW_PRIVATE, {
+      clubId: activeClubId,
+      venueId: activeClub?.venueId || null,
+    });
+
+  const canViewPlayerSkill = (playerId) =>
+    canViewPlayerSkillLevel(
+      user,
+      { clubId: activeClubId, playerId },
+      { rbacEnabled }
+    );
 
   const canManagePlayers =
     !rbacEnabled ||
@@ -137,19 +154,25 @@ export default function Players() {
     }
 
     setFormError(null);
-    const playerData = {
+    const level = Number(form.level);
+    const baseData = {
       name,
       gender: form.gender,
       phone: form.phone.trim(),
-      level: Number(form.level),
-      rating: Number(form.level),
     };
 
     const updatedPlayers = editingPlayer
       ? players.map((player) =>
-          player.id === editingPlayer.id ? { ...player, ...playerData } : player
+          player.id === editingPlayer.id ? { ...player, ...baseData } : player
         )
-      : [...players, { id: Date.now(), ...playerData }];
+      : [
+          ...players,
+          setInitialSkillLevel(
+            { id: Date.now(), ...baseData },
+            level,
+            new Date().toISOString()
+          ),
+        ];
 
     savePlayers(updatedPlayers);
     setEditingPlayer(null);
@@ -210,6 +233,7 @@ export default function Players() {
         onGenderFilterChange={setGenderFilter}
         levelRange={levelRange}
         onLevelRangeChange={setLevelRange}
+        showLevelFilter={canViewClubSkillLevels}
         statusFilter={statusFilter}
         onStatusFilterChange={setStatusFilter}
         filteredCount={filteredPlayers.length}
@@ -225,6 +249,7 @@ export default function Players() {
               clubId={activeClubId}
               players={players}
               checkedInIds={checkedInIds}
+              canViewSkillLevel={canViewPlayerSkill(player.id)}
               onEdit={canManagePlayers ? openEditDialog : undefined}
               onDelete={canManagePlayers ? setDeletePlayer : undefined}
               onLock={canManagePlayers ? handleLockPlayer : undefined}
@@ -279,27 +304,36 @@ export default function Players() {
             <MenuItem value="Nữ">Nữ</MenuItem>
           </TextField>
           <Box sx={{ mt: 2 }}>
-            <Stack direction="row" alignItems="center" justifyContent="space-between" mb={1}>
-              <Typography variant="subtitle2" fontWeight={900}>
-                Level
-              </Typography>
-              <Chip
-                label={`${Number(form.level).toFixed(1)} · ${getLevelLabel(Number(form.level))}`}
-                sx={{
-                  bgcolor: `${getLevelColor(Number(form.level))}18`,
-                  color: getLevelColor(Number(form.level)),
-                  fontWeight: 800,
-                }}
-              />
-            </Stack>
-            <Slider
-              value={form.level}
-              min={1.5}
-              max={6}
-              step={0.1}
-              valueLabelDisplay="auto"
-              onChange={(_, v) => updateForm("level", v)}
-            />
+            {editingPlayer ? (
+              <Alert severity="info">
+                Điểm trình độ đã khóa sau lần tạo. VĐV có thể gửi yêu cầu thay đổi qua hồ sơ cá
+                nhân; kỹ thuật viên hệ thống sẽ duyệt.
+              </Alert>
+            ) : (
+              <>
+                <Stack direction="row" alignItems="center" justifyContent="space-between" mb={1}>
+                  <Typography variant="subtitle2" fontWeight={900}>
+                    Điểm trình độ (chỉ nhập một lần)
+                  </Typography>
+                  <Chip
+                    label={`${Number(form.level).toFixed(1)} · ${getLevelLabel(Number(form.level))}`}
+                    sx={{
+                      bgcolor: `${getLevelColor(Number(form.level))}18`,
+                      color: getLevelColor(Number(form.level)),
+                      fontWeight: 800,
+                    }}
+                  />
+                </Stack>
+                <Slider
+                  value={form.level}
+                  min={1.5}
+                  max={6}
+                  step={0.1}
+                  valueLabelDisplay="auto"
+                  onChange={(_, v) => updateForm("level", v)}
+                />
+              </>
+            )}
           </Box>
           <TextField
             label="Số điện thoại"

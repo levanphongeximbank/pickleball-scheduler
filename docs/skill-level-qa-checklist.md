@@ -1,130 +1,71 @@
-# Checklist test — Trình công khai & Rating nội bộ
+# Checklist test — Điểm trình độ riêng tư & Elo giải đấu
 
-Dùng checklist này sau mỗi lần sửa liên quan `level`, `rating`, `ratingInternal`, giải đấu hoặc xếp sân.
+Dùng checklist này sau mỗi lần sửa liên quan `skillLevel`, `level`, `rating`, `ratingInternal`, giải đấu hoặc xếp sân.
 
 **Chuẩn bị**
 
 - [ ] Chạy `npm run dev`, mở CLB có sẵn VĐV và giải cũ (nếu có).
 - [ ] (Tuỳ chọn) Chạy test tự động:  
-  `node --test tests/skill-level-engine.test.js tests/skill-level-service.test.js tests/elo-engine.test.js`
+  `node --test tests/skill-level-change-service.test.js tests/skill-level-engine.test.js tests/skill-level-service.test.js tests/elo-engine.test.js`
 
 **Vai trò test**
 
 | Vai trò | Tài khoản dev gợi ý |
 |---------|----------------------|
-| Admin / Chủ CLB | `club@club.local` (bật RBAC trong Cài đặt nếu cần) |
+| Chủ CLB | `club@club.local` |
 | VĐV | `player@club.local` |
+| Kỹ thuật viên | `kythuat@gmail.com` (V5.2 seed) |
 
 ---
 
-## 1. Người chơi cũ vẫn hiển thị đúng điểm trình
+## 1. Tạo VĐV — nhập trình độ một lần
 
 | Bước | Thao tác | Kết quả mong đợi | Pass |
 |------|----------|------------------|------|
-| 1.1 | Vào **Người chơi**, xem VĐV đã có từ trước khi nâng cấp | Cột/thẻ hiển thị `level` như cũ (vd. 3.5) | ☐ |
-| 1.2 | Mở **Hồ sơ VĐV** | Dòng **Trình công khai** = `level` cũ | ☐ |
-| 1.3 | DevTools → Application → Local Storage → `pickleball-club-data-v3::{clubId}` | `players[].level` không bị đổi ngẫu nhiên | ☐ |
+| 1.1 | Chủ CLB → **Người chơi** → **Thêm** → chọn điểm trình độ | Slider hiện nhãn "chỉ nhập một lần" | ☐ |
+| 1.2 | Lưu VĐV mới | `skillLevel` + `skillLevelLockedAt` có trong blob | ☐ |
+| 1.3 | **Sửa** VĐV vừa tạo | Không thấy slider trình độ; có thông báo đã khóa | ☐ |
 
 ---
 
-## 2. Tạo trận mới không lỗi
+## 2. Quyền xem điểm trình độ
 
 | Bước | Thao tác | Kết quả mong đợi | Pass |
 |------|----------|------------------|------|
-| 2.1 | **Giải đấu** → Daily Play / Nội bộ / Mở → tạo hoặc mở giải ACTIVE | Không crash, không toast lỗi | ☐ |
-| 2.2 | Tạo trận / xếp lịch sân (Director hoặc Setup) | Trận xuất hiện, status `waiting`/`assigned` | ☐ |
-| 2.3 | **Xếp sân** → chạy AI xếp 1 lượt | Lưu session thành công | ☐ |
+| 2.1 | VĐV khác / HLV xem **Người chơi** | Thẻ VĐV **không** hiện block Trình độ | ☐ |
+| 2.2 | VĐV xem **hồ sơ của mình** | Thấy điểm trình độ | ☐ |
+| 2.3 | Chủ CLB xem hồ sơ VĐV thuộc CLB | Thấy điểm trình độ | ☐ |
+| 2.4 | BTC mở **setup giải** (Internal/Official/Daily) | Thấy trình độ khi chọn VĐV (nếu có quyền organizer) | ☐ |
 
 ---
 
-## 3. Nhập kết quả không lỗi
+## 3. Elo chỉ từ giải đấu (không Daily Play)
 
 | Bước | Thao tác | Kết quả mong đợi | Pass |
 |------|----------|------------------|------|
-| 3.1 | Nhập điểm trận (Setup hoặc Director Mode) | Lưu OK, trận `completed` | ☐ |
-| 3.2 | Daily Play: nhập score A/B | Sân được giải phóng (nếu có court) | ☐ |
-| 3.3 | Knockout / vòng bảng: nhập score | BXH/bracket cập nhật bình thường | ☐ |
+| 3.1 | Ghi nhận `skillLevel` VĐV trước trận | — | ☐ |
+| 3.2 | Nhập kết quả trận **giải nội bộ / bracket** có `leagueId` | `skillLevel` có thể tăng/giảm | ☐ |
+| 3.3 | Nhập kết quả trận **Daily Play** | `skillLevel` **không đổi** | ☐ |
+| 3.4 | Test tự động | `tests/skill-level-change-service.test.js` (daily skip) pass | ☐ |
 
 ---
 
-## 4. Giải đấu cũ không lỗi
+## 4. VĐV yêu cầu thay đổi — kỹ thuật viên duyệt
 
 | Bước | Thao tác | Kết quả mong đợi | Pass |
 |------|----------|------------------|------|
-| 4.1 | Mở giải đã tạo trước khi có `ratingInternal` | Load được, danh sách trận/events hiển thị | ☐ |
-| 4.2 | Xem kết quả trận đã hoàn tất | Score/winner hiển thị đúng | ☐ |
-| 4.3 | Director Mode trên giải cũ | Không lỗi console | ☐ |
+| 4.1 | VĐV → **Hồ sơ** → form **Yêu cầu thay đổi trình độ** | Gửi thành công khi có lý do | ☐ |
+| 4.2 | Gửi lần 2 khi còn pending | Bị chặn | ☐ |
+| 4.3 | Kỹ thuật viên → `/admin/skill-level-requests` | Thấy hàng chờ | ☐ |
+| 4.4 | Bấm **Duyệt** | `skillLevel` cập nhật; request `approved` | ☐ |
+| 4.5 | Tạo request khác → **Từ chối** | `skillLevel` không đổi | ☐ |
 
 ---
 
-## 5. Ghép cặp không lỗi
-
-| Bước | Thao tác | Kết quả mong đợi | Pass |
-|------|----------|------------------|------|
-| 5.1 | Giải nội bộ: chọn VĐV → **Đề xuất ghép cặp** | Animation / danh sách cặp chạy | ☐ |
-| 5.2 | **Xếp sân**: chọn VĐV + sân → Xếp | Cặp/sân hợp lệ, dùng `level` công khai | ☐ |
-| 5.3 | Kiểm tra không đọc `ratingInternal` cho ghép cặp UI | Ghép theo trình công khai, không crash | ☐ |
-
----
-
-## 6. Chia bảng không lỗi
-
-| Bước | Thao tác | Kết quả mong đợi | Pass |
-|------|----------|------------------|------|
-| 6.1 | Internal/Official: **Chia bảng** / seed | Bảng A/B… tạo thành công | ☐ |
-| 6.2 | Xem danh sách trận vòng bảng | Matches gắn đúng group | ☐ |
-| 6.3 | Giải cũ đã có bảng | Mở lại không mất dữ liệu bảng | ☐ |
-
----
-
-## 7. Không VĐV nào đổi trình công khai ngay sau trận
-
-| Bước | Thao tác | Kết quả mong đợi | Pass |
-|------|----------|------------------|------|
-| 7.1 | Ghi nhận `level` VĐV tham gia trận (vd. 3.5) | — | ☐ |
-| 7.2 | Nhập kết quả trận giải **có gắn league** | Lưu thành công | ☐ |
-| 7.3 | Kiểm tra lại **Người chơi** / localStorage | `level` và `rating` **không đổi** | ☐ |
-| 7.4 | Kiểm tra `ratingInternal` | Có thể tăng/giảm (Elo nội bộ) | ☐ |
-| 7.5 | Test tự động | `node --test tests/skill-level-service.test.js` (case elo) pass | ☐ |
-
----
-
-## 8. Cuối tháng mới tạo bản đề xuất cập nhật trình
-
-| Bước | Thao tác | Kết quả mong đợi | Pass |
-|------|----------|------------------|------|
-| 8.1 | Đặt `skillMeta.lastPublicLevelReviewAt` tháng trước (hoặc đợi sang tháng mới) | — | ☐ |
-| 8.2 | Đảm bảo `ratingInternal` lệch đủ ngưỡng (≥ +0.35 hoặc ≤ −0.35 so với `level`) | — | ☐ |
-| 8.3 | Sang tháng mới (hoặc mở app / vào **Người chơi**) | Hệ thống **tự tạo** đề xuất, không cần bấm nút | ☐ |
-| 8.4 | Kiểm tra localStorage `skillLevelProposals[]` | Có bản ghi `status: "pending"` | ☐ |
-| 8.5 | Kiểm tra `players[].level` | **Chưa đổi** sau bước tạo đề xuất | ☐ |
-| 8.6 | VĐV không đủ điều kiện đổi trình | Chốt hold tháng, không có đề xuất pending | ☐ |
-
----
-
-## 9. Admin duyệt thì trình mới thay đổi
-
-| Bước | Thao tác | Kết quả mong đợi | Pass |
-|------|----------|------------------|------|
-| 9.1 | Đăng nhập Admin/Chủ CLB (`PLAYERS_MANAGE`) | Thấy nút **Duyệt** / **Từ chối** | ☐ |
-| 9.2 | Bấm **Duyệt** trên 1 đề xuất | `level` + `rating` = `proposedLevel`; `ratingInternal` giữ nguyên | ☐ |
-| 9.3 | Đề xuất chuyển `status: "approved"` | Không còn trong danh sách pending | ☐ |
-| 9.4 | Tạo đề xuất khác → bấm **Từ chối** | `level` không đổi; proposal `rejected` | ☐ |
-| 9.5 | VĐV (`PLAYER`) | Không thấy nút duyệt (PermissionGate) | ☐ |
-| 9.6 | Test tự động | `node --test tests/skill-level-service.test.js` (approve/reject) pass | ☐ |
-
----
-
-## Regression nhanh (smoke)
+## 5. Regression nhanh (smoke)
 
 ```bash
-npm run test:unit
-```
-
-Hoặc tối thiểu:
-
-```bash
-node --test tests/skill-level-engine.test.js tests/skill-level-service.test.js tests/elo-engine.test.js tests/tournament-engines.test.js tests/tournament-service.test.js
+node --test tests/skill-level-change-service.test.js tests/skill-level-engine.test.js tests/skill-level-service.test.js tests/elo-engine.test.js
 ```
 
 ---
@@ -133,12 +74,15 @@ node --test tests/skill-level-engine.test.js tests/skill-level-service.test.js t
 
 | Field | Ý nghĩa |
 |-------|---------|
-| `level` | Trình **công khai** — chỉ đổi khi admin **Duyệt** đề xuất tháng |
-| `rating` | Mirror `level` (tương thích code cũ) |
-| `ratingInternal` | Elo nội bộ — cập nhật sau trận giải có `leagueId` |
-| `skillLevelProposals[]` | Đề xuất chờ duyệt (blob CLB) |
+| `skillLevel` | Điểm trình độ chính thức (riêng tư) |
+| `skillLevelLockedAt` | Thời điểm khóa sau lần nhập đầu |
+| `skillLevelChangeRequests[]` | Hàng chờ duyệt thay đổi thủ công (VĐV → kỹ thuật viên) |
+| `level` / `rating` | Mirror của `skillLevel` (engine cũ) |
+| `ratingInternal` | Theo dõi Elo; sau trận giải sync với `skillLevel` |
 
-**Ngoài phạm vi checklist:** Module **Xếp sân** không cộng Elo / không tạo đề xuất trình (theo thiết kế v3).
+**Đề xuất tháng cũ** (`skillLevelProposals[]`): tắt mặc định (`enabled: false`). Luồng mới dùng `skillLevelChangeRequests`.
+
+**Ngoài phạm vi:** Module **Xếp sân** không cộng Elo.
 
 ---
 
@@ -150,12 +94,6 @@ node --test tests/skill-level-engine.test.js tests/skill-level-service.test.js t
 | 2 | | | |
 | 3 | | | |
 | 4 | | | |
-| 5 | | | |
-| 6 | | | |
-| 7 | | | |
-| 8 | | | |
-| 9 | | | |
 
 **Tester:** _______________  
-**Phiên bản app:** _______________  
-**Ghi chú lỗi:** _______________
+**Phiên bản app:** _______________
