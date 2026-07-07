@@ -19,7 +19,27 @@ export {
 } from "./services/clubAccessService.js";
 
 export {
+  isClubOwner,
+  isClubPresident,
+  isClubVicePresident,
+  canViewFullClubMembers,
+  canViewClubMemberSummary,
+  canAssignClubOwner,
+  canDeleteClubMembers,
+  canManageClubGovernance,
+  assignClubOwner,
+  updateClubGovernance,
+  getGovernanceDisplayLabels,
+  getRegisteredCourtsLabels,
+  canApproveClubRegistration,
+  approveClubRegistration,
+  rejectClubRegistration,
+  resolveGovernanceForCreate,
+} from "./services/clubGovernanceService.js";
+
+export {
   getClubMembers,
+  getClubMembersForTournamentInvite,
   addMemberToClub,
   removeMemberFromClub,
   updateClubMemberRole,

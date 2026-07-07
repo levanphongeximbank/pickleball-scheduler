@@ -38,6 +38,11 @@ import { transferAssignment } from "../src/features/court-engine/services/courtT
 import { ASSIGNMENT_STATUS, COURT_RUNTIME_STATUS } from "../src/features/court-engine/constants/statuses.js";
 import { buildPlatformEngineSummary } from "../src/core/platform/engines/index.js";
 import { resolveCourtEngineContextState } from "../src/features/court-engine/guards/courtEngineContextGuard.js";
+import { performCheckIn } from "../src/features/court-engine/services/courtEngineService.js";
+import { ROLES } from "../src/auth/roles.js";
+import { createUserRecord } from "../src/models/user.js";
+import { COURT_ENGINE_PERMISSIONS } from "../src/features/court-engine/guards/courtEngineGuard.js";
+import { roleHasPermission } from "../src/auth/rolePermissions.js";
 
 const players = [
   { id: "p1", name: "A", rating: 4.0, gender: "Nam" },
@@ -577,4 +582,30 @@ test("resolveCourtEngineContextState blocks tenant error when rbac on", () => {
   });
   assert.equal(state.ready, false);
   assert.equal(state.code, "TENANT_ERROR");
+});
+
+test("performCheckIn blocked for PLAYER when RBAC on", () => {
+  globalThis.localStorage = {
+    getItem: () => null,
+    setItem: () => {},
+    removeItem: () => {},
+  };
+
+  const player = createUserRecord({
+    role: ROLES.PLAYER,
+    venueId: "venue-a",
+    clubId: "club-test",
+  });
+  const session = createCourtSession({ clubId: "club-test" });
+  const result = performCheckIn("club-test", session, "p1", {
+    user: player,
+    rbacEnabled: true,
+  });
+  assert.equal(result.ok, false);
+});
+
+test("COURT_OWNER has court_engine permissions", () => {
+  assert.equal(roleHasPermission(ROLES.COURT_OWNER, COURT_ENGINE_PERMISSIONS.USE), true);
+  assert.equal(roleHasPermission(ROLES.COURT_OWNER, COURT_ENGINE_PERMISSIONS.MANAGE), true);
+  assert.equal(roleHasPermission(ROLES.COURT_OWNER, COURT_ENGINE_PERMISSIONS.TRANSFER), true);
 });

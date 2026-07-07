@@ -1,8 +1,11 @@
 import { guardClubAction } from "../../../auth/guardAction.js";
 import { PERMISSIONS } from "../../../auth/permissions.js";
+import { getCurrentUser } from "../../../auth/authService.js";
+import { getClubById as getRegistryClubById } from "../../../domain/clubService.js";
 import { loadPlayersForClub } from "../../../domain/clubStorage.js";
 import { guardClubTenant } from "../../tenant/guards/tenantGuard.js";
 import { CLUB_MEMBER_STATUSES } from "../constants/clubMemberRoles.js";
+import { canViewFullClubMembers, canDeleteClubMembers } from "./clubGovernanceService.js";
 import {
   createClubMemberRecord,
   normalizeClubMember,
@@ -55,9 +58,20 @@ function syncMembersFromBlob(clubId, tenantId) {
   return loadClubExtension(clubId);
 }
 
-export function getClubMembers(clubId, tenantId) {
+export function getClubMembers(clubId, tenantId, options = {}) {
+  const { skipGovernanceGuard = false, user = getCurrentUser() } = options;
+  const club = getRegistryClubById(clubId);
+
+  if (!skipGovernanceGuard && club && user && !canViewFullClubMembers(user, club)) {
+    return [];
+  }
+
   const ext = syncMembersFromBlob(clubId, tenantId);
   return ext.members;
+}
+
+export function getClubMembersForTournamentInvite(clubId, tenantId) {
+  return getClubMembers(clubId, tenantId, { skipGovernanceGuard: true });
 }
 
 export function addMemberToClub(clubId, playerId, tenantId, options = {}) {
@@ -128,6 +142,12 @@ export function addMemberToClub(clubId, playerId, tenantId, options = {}) {
 }
 
 export function removeMemberFromClub(clubId, playerId, tenantId) {
+  const club = getRegistryClubById(clubId);
+  const user = getCurrentUser();
+  if (club && user && !canDeleteClubMembers(user, club)) {
+    return { ok: false, error: "Không có quyền xóa thành viên CLB." };
+  }
+
   const check = guardClubMemberAccess(clubId, tenantId, PERMISSIONS.PLAYER_UPDATE);
   if (!check.ok) {
     return check;

@@ -18,6 +18,42 @@ export function canUseCourtEngine(canFn, context = {}) {
   );
 }
 
+export function canRunScheduling(canFn, context = {}) {
+  if (typeof canFn !== "function") {
+    return true;
+  }
+  return (
+    canFn(PERMISSIONS.SCHEDULING_RUN, context) ||
+    canFn(PERMISSIONS.DIRECTOR_USE, context) ||
+    canFn(COURT_ENGINE_PERMISSIONS.USE, context) ||
+    canFn(COURT_ENGINE_PERMISSIONS.MANAGE, context)
+  );
+}
+
+export function canViewCourts(canFn, context = {}) {
+  if (typeof canFn !== "function") {
+    return true;
+  }
+  return canFn(PERMISSIONS.COURT_VIEW, context);
+}
+
+export function canCreateCourt(canFn, context = {}) {
+  if (typeof canFn !== "function") {
+    return true;
+  }
+  return canFn(PERMISSIONS.COURT_CREATE, context);
+}
+
+export function canUpdateCourt(canFn, context = {}) {
+  if (typeof canFn !== "function") {
+    return true;
+  }
+  return (
+    canFn(PERMISSIONS.COURT_UPDATE, context) ||
+    canFn(COURT_ENGINE_PERMISSIONS.MANAGE, context)
+  );
+}
+
 export function canManageCourtEngine(canFn, context = {}) {
   if (typeof canFn !== "function") {
     return true;
@@ -35,6 +71,7 @@ export function canTransferCourt(canFn, context = {}) {
   }
   return (
     canFn(COURT_ENGINE_PERMISSIONS.TRANSFER, context) ||
+    canFn(PERMISSIONS.COURT_UPDATE, context) ||
     canManageCourtEngine(canFn, context)
   );
 }

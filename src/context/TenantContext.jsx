@@ -8,7 +8,7 @@ import {
 } from "react";
 
 import { useAuth } from "./AuthContext.jsx";
-import { isGlobalRole, isPlatformScopedRole, normalizeRole, ROLES } from "../auth/roles.js";
+import { isGlobalRole, isClubScopedRole, isPlatformScopedRole, normalizeRole, ROLES } from "../auth/roles.js";
 import { loadActiveTenantId, saveActiveTenantId } from "../data/tenantSession.js";
 import { getActiveClubId } from "../data/club.js";
 import { switchActiveClub } from "../domain/clubService.js";
@@ -100,13 +100,17 @@ export function TenantProvider({ children }) {
       return;
     }
 
+    const clubScoped = Boolean(user?.role && isClubScopedRole(user.role));
     const clubId = isSuperAdmin
       ? getPrimaryClubIdForTenant(currentTenantId)
-      : userClubId || getPrimaryClubIdForTenant(currentTenantId);
+      : clubScoped
+        ? userClubId
+        : userClubId || getPrimaryClubIdForTenant(currentTenantId);
+
     if (clubId && getActiveClubId() !== clubId) {
       switchActiveClub(clubId);
     }
-  }, [currentTenantId, isAuthenticated, isSuperAdmin, rbacEnabled, userClubId, userId]);
+  }, [currentTenantId, isAuthenticated, isSuperAdmin, rbacEnabled, user, userClubId, userId]);
 
   useEffect(() => {
     if (!canPickTenant || adminTenantId || !listTenants().length) {

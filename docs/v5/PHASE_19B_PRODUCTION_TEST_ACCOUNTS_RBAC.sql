@@ -62,17 +62,18 @@ create temp table _phase19b_test_accounts (
   email text primary key,
   role text not null,
   venue_id text,
+  club_id text,
   display_name_default text not null
 ) on commit drop;
 
-insert into _phase19b_test_accounts (email, role, venue_id, display_name_default)
+insert into _phase19b_test_accounts (email, role, venue_id, club_id, display_name_default)
 values
-  ('lephong.eximbank@gmail.com', 'SUPER_ADMIN', null, 'Platform Founder'),
-  ('chusantest@gmail.com',       'COURT_OWNER', 'venue-prod-main', 'Production Test Owner'),
-  ('ketoan@gmail.com',           'CASHIER',     'venue-prod-main', 'Thu ngân Test'),
-  ('chutichclb@gmail.com',       'CLUB_OWNER',  'venue-prod-main', 'Chủ tịch CLB Test'),
-  ('trongtai@gmail.com',         'REFEREE',     'venue-prod-main', 'Trọng tài Test'),
-  ('doitruong@gmail.com',        'PLAYER',      'venue-prod-main', 'Đội trưởng Test');
+  ('lephong.eximbank@gmail.com', 'SUPER_ADMIN', null, null, 'Platform Founder'),
+  ('chusantest@gmail.com',       'COURT_OWNER', 'venue-prod-main', null, 'Production Test Owner'),
+  ('ketoan@gmail.com',           'CASHIER',     'venue-prod-main', null, 'Thu ngân Test'),
+  ('chutichclb@gmail.com',       'CLUB_OWNER',  'venue-prod-main', 'default-club', 'Chủ tịch CLB Test'),
+  ('trongtai@gmail.com',         'REFEREE',     'venue-prod-main', null, 'Trọng tài Test'),
+  ('doitruong@gmail.com',        'PLAYER',      'venue-prod-main', 'default-club', 'Đội trưởng Test');
 
 -- Fail-fast: venue tenant phải tồn tại (không tạo mới ở script này)
 do $$
@@ -116,7 +117,7 @@ select
   ),
   t.role,
   t.venue_id,
-  null,
+  t.club_id,
   'active'
 from auth.users u
 join _phase19b_test_accounts t on t.email = u.email
@@ -127,7 +128,11 @@ update public.profiles p
 set
   role = t.role,
   venue_id = t.venue_id,
-  club_id = case when t.role = 'SUPER_ADMIN' then null else p.club_id end,
+  club_id = case
+    when t.role = 'SUPER_ADMIN' then null
+    when t.club_id is not null then coalesce(p.club_id, t.club_id)
+    else p.club_id
+  end,
   status = 'active',
   display_name = coalesce(
     nullif(trim(p.display_name), ''),
@@ -315,3 +320,19 @@ from public.tenant_subscriptions ts
 join public.profiles p on p.venue_id = ts.tenant_id
 where p.email = 'lephong.eximbank@gmail.com';
 -- expect: 0 rows
+
+-- V9 — CLUB_OWNER / PLAYER test phải có club_id (default-club)
+select
+  p.email,
+  p.role,
+  p.club_id,
+  case
+    when p.role in ('CLUB_OWNER', 'CLUB_MANAGER', 'PLAYER')
+      and p.club_id = 'default-club' then 'ok'
+    when p.role in ('CLUB_OWNER', 'CLUB_MANAGER', 'PLAYER')
+      and p.club_id is null then 'MISSING_CLUB_ID'
+    else 'skip'
+  end as club_scope_check
+from public.profiles p
+where p.email in ('chutichclb@gmail.com', 'doitruong@gmail.com')
+order by p.email;

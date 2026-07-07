@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 import {
   Alert,
@@ -26,6 +26,9 @@ import SportsTennisIcon from "@mui/icons-material/SportsTennis";
 import AddIcon from "@mui/icons-material/Add";
 
 import { useClub } from "../context/ClubContext.jsx";
+import { useAuth } from "../context/AuthContext.jsx";
+import { PERMISSIONS } from "../auth/permissions.js";
+import { resolveRouteAccessScope } from "../auth/menuAccess.js";
 import {
   getCourtDisplayName,
   loadCourts,
@@ -41,8 +44,20 @@ import { COURT_STATUS_LABELS } from "./courtManagement/courtManagement.constants
 import ClubDataTransferPanel from "./ClubDataTransferPanel";
 
 export default function Courts() {
-  const { activeClubId, revision } = useClub();
+  const { activeClubId, activeClub, revision } = useClub();
+  const { can, rbacEnabled, isAuthenticated, user } = useAuth();
+  const scope = useMemo(
+    () => resolveRouteAccessScope({ user, activeClubId, activeClub }),
+    [user, activeClubId, activeClub]
+  );
+  const canCreate =
+    !rbacEnabled || !isAuthenticated || can(PERMISSIONS.COURT_CREATE, scope);
+  const canUpdate =
+    !rbacEnabled || !isAuthenticated || can(PERMISSIONS.COURT_UPDATE, scope);
+  const canDelete =
+    !rbacEnabled || !isAuthenticated || can(PERMISSIONS.COURT_DELETE, scope);
   const [courts, setCourts] = useState(() => loadCourts([], activeClubId));
+  const [permissionError, setPermissionError] = useState(null);
 
   useEffect(() => {
     setCourts(loadCourts([], activeClubId));
@@ -72,9 +87,15 @@ export default function Courts() {
     setFormError(null);
   };
 
-  const updateCourts = (nextCourts) => {
+  const updateCourts = (nextCourts, permission = PERMISSIONS.COURT_UPDATE) => {
+    const result = saveCourts(nextCourts, activeClubId, { permission });
+    if (!result.ok) {
+      setPermissionError(result.error || "Không có quyền thực hiện thao tác này.");
+      return false;
+    }
+    setPermissionError(null);
     setCourts(nextCourts);
-    saveCourts(nextCourts, activeClubId);
+    return true;
   };
 
   const handleSave = () => {
@@ -109,7 +130,12 @@ export default function Courts() {
       },
     });
 
-    updateCourts(updatedCourts);
+    const permission = editingCourt ? PERMISSIONS.COURT_UPDATE : PERMISSIONS.COURT_CREATE;
+    const saved = updateCourts(updatedCourts, permission);
+    if (!saved) {
+      return;
+    }
+
     resetCourtForm();
     setOpen(false);
   };
@@ -132,6 +158,7 @@ export default function Courts() {
           variant="contained"
           size="large"
           startIcon={<AddIcon />}
+          disabled={!canCreate}
           onClick={() => {
             resetCourtForm();
             setOpen(true);
@@ -141,6 +168,12 @@ export default function Courts() {
         </Button>
       </Box>
 
+      {permissionError && (
+        <Alert severity="error" sx={{ mb: 2 }} onClose={() => setPermissionError(null)}>
+          {permissionError}
+        </Alert>
+      )}
+
       <ClubDataTransferPanel
         type="courts"
         items={courts}
@@ -149,6 +182,13 @@ export default function Courts() {
       />
 
       <Grid container spacing={3}>
+        {courts.length === 0 && (
+          <Grid size={{ xs: 12 }}>
+            <Alert severity="info">
+              Chưa có sân nào trong CLB hiện tại. Bấm <strong>THÊM SÂN</strong> để tạo sân đầu tiên.
+            </Alert>
+          </Grid>
+        )}
         {courts.map((court, index) => (
           <Grid
             key={court.id}
@@ -200,6 +240,7 @@ export default function Courts() {
                     <Stack direction="row" spacing={1}>
                       <Button
                         variant="outlined"
+                        disabled={!canUpdate}
                         onClick={() => {
                           setEditingCourt(court);
                           setCourtName(court.name || "");
@@ -217,6 +258,7 @@ export default function Courts() {
                       <Button
                         variant="outlined"
                         color={court.active ? "error" : "success"}
+                        disabled={!canUpdate}
                         onClick={() => {
                           const updatedCourts = toggleCourtStatus(courts, court.id);
                           updateCourts(updatedCourts);
@@ -227,6 +269,7 @@ export default function Courts() {
                       <Button
                         variant="outlined"
                         color="error"
+                        disabled={!canDelete}
                         onClick={() => setDeleteCourt(court)}
                       >
                         Xóa
@@ -372,7 +415,7 @@ export default function Courts() {
               }
 
               const updatedCourts = removeCourt(courts, deleteCourt.id);
-              updateCourts(updatedCourts);
+              updateCourts(updatedCourts, PERMISSIONS.COURT_DELETE);
               setDeleteCourt(null);
             }}
           >

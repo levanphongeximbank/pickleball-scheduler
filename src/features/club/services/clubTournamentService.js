@@ -5,9 +5,11 @@ import { loadClubData, saveClubData } from "../../../domain/clubStorage.js";
 import { guardClubTenant } from "../../tenant/guards/tenantGuard.js";
 import { TOURNAMENT_MODE, TOURNAMENT_STATUS } from "../../../models/tournament/constants.js";
 import { normalizeTournaments } from "../../../models/tournament/index.js";
-import { getClubMembers } from "./clubMemberService.js";
+import { getClubMembers, getClubMembersForTournamentInvite } from "./clubMemberService.js";
+import { getClubById as getRegistryClubById } from "../../../domain/clubService.js";
 import { getTenantPlayers } from "./clubTenantService.js";
 import { CLUB_MEMBER_STATUSES } from "../constants/clubMemberRoles.js";
+import { CLUB_STATUSES } from "../constants/clubStatus.js";
 
 export function getClubTournaments(clubId, tenantId) {
   if (tenantId) {
@@ -26,6 +28,14 @@ export function getClubTournaments(clubId, tenantId) {
 }
 
 export function createClubInternalTournament(clubId, data = {}, tenantId) {
+  const club = getRegistryClubById(clubId);
+  if (club?.status === CLUB_STATUSES.PENDING_SETUP) {
+    return { ok: false, error: "CLB chưa có Chủ tịch — không thể tạo giải nội bộ." };
+  }
+  if (club?.status === CLUB_STATUSES.PENDING_APPROVAL) {
+    return { ok: false, error: "CLB chưa được chủ sân duyệt — không thể tạo giải nội bộ." };
+  }
+
   const check = guardClubAction(clubId, PERMISSIONS.TOURNAMENT_CREATE);
   if (!check.ok) {
     return check;
@@ -71,14 +81,16 @@ export function createClubInternalTournament(clubId, data = {}, tenantId) {
   return { ok: true, tournament };
 }
 
-export function getClubInternalTournamentPlayerPool(clubId, tenantId) {
-  const members = getClubMembers(clubId, tenantId).filter(
-    (m) => m.status === CLUB_MEMBER_STATUSES.ACTIVE
-  );
+export function getClubInternalTournamentPlayerPool(clubId, tenantId, options = {}) {
+  const useInviteBypass = options.forTournamentInvite === true;
+  const members = (useInviteBypass
+    ? getClubMembersForTournamentInvite(clubId, tenantId)
+    : getClubMembers(clubId, tenantId)
+  ).filter((m) => m.status === CLUB_MEMBER_STATUSES.ACTIVE);
   return members.map((m) => m.playerId);
 }
 
-export function getClubInternalTournamentPlayers(clubId, tenantId) {
-  const poolIds = new Set(getClubInternalTournamentPlayerPool(clubId, tenantId));
+export function getClubInternalTournamentPlayers(clubId, tenantId, options = {}) {
+  const poolIds = new Set(getClubInternalTournamentPlayerPool(clubId, tenantId, options));
   return getTenantPlayers(tenantId).filter((p) => poolIds.has(p.id));
 }

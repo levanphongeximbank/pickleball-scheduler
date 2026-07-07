@@ -4,10 +4,11 @@ import { PERMISSIONS } from "./permissions.js";
 import { getCurrentUser, isRbacEnabled } from "./authService.js";
 import { assertCan, can, canAccessClub, isRbacEnforced } from "./rbac.js";
 import { guardSubscriptionForClub } from "./subscriptionGuard.js";
-import { isGlobalRole } from "./roles.js";
+import { isClubScopedRole, isGlobalRole, isVenueScopedRole } from "./roles.js";
 import {
   guardClubTenant,
   resolveTenantIdForClub,
+  getExplicitTenantIdForClub,
 } from "../features/tenant/guards/tenantGuard.js";
 import { resolveEffectiveTenantId } from "../features/tenant/services/tenantService.js";
 
@@ -55,6 +56,14 @@ export function guardClubAccess(clubId, options = {}) {
   const scope = scopeForClubId(clubId);
 
   if (!canAccessClub(user, clubId, { venueId: scope.venueId }, { rbacEnabled })) {
+    if (isClubScopedRole(user?.role) && !user?.clubId) {
+      return {
+        ok: false,
+        error: "Tài khoản chưa được gán CLB. Liên hệ quản trị viên.",
+        code: "CLUB_UNASSIGNED",
+      };
+    }
+
     return {
       ok: false,
       error: "Không có quyền truy cập CLB này.",
@@ -84,6 +93,15 @@ export function guardClubAction(clubId, permission, extraScope = {}, options = {
     ...scopeForClubId(clubId),
     ...extraScope,
   };
+
+  const authUser = options.user ?? getAuthOptions().user;
+  if (authUser && isVenueScopedRole(authUser.role)) {
+    const profileVenueId = authUser.venueId || authUser.tenantId;
+    if (profileVenueId) {
+      scope.venueId = profileVenueId;
+      scope.tenantId = profileVenueId;
+    }
+  }
 
   return guardPermission(permission, scope, options);
 }

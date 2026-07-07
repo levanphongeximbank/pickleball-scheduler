@@ -34,7 +34,7 @@ export function canUserViewClub(user, clubId, tenantId) {
     return false;
   }
 
-  const members = getClubMembers(clubId, tenantId);
+  const members = getClubMembers(clubId, tenantId, { skipGovernanceGuard: true });
   return members.some(
     (m) =>
       m.playerId === user.playerId && m.status === CLUB_MEMBER_STATUSES.ACTIVE

@@ -2,6 +2,8 @@
 
 Ma trận quyền production. Nguồn code: `src/auth/rolePermissions.js`, `src/auth/permissions.js`.
 
+> **Club governance vs Auth roles (V5):** RBAC roles (`CLUB_OWNER`, `COURT_OWNER`, …) kiểm soát đăng nhập và route. Quy tắc nghiệp vụ CLB (Chủ sở hữu, Chủ tịch, Phó chủ tịch, quyền xem thành viên theo mối quan hệ chủ sân–chủ sở hữu CLB) — **spec v1.1** tại [`docs/v5/CLUB_GOVERNANCE_SPEC.md`](v5/CLUB_GOVERNANCE_SPEC.md). Enforced trong `src/features/club/` (local + SQL `docs/supabase-club-governance-v52.sql`).
+
 ## Roles
 
 | Role DB (`profiles.role`) | Tên hiển thị | Phạm vi |

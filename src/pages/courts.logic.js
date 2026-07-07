@@ -9,6 +9,9 @@ import {
   normalizeCourts,
 } from "../models/court.js";
 import { guardMaxCourtsForClub } from "../auth/subscriptionGuard.js";
+import { guardClubAction } from "../auth/guardAction.js";
+import { PERMISSIONS } from "../auth/permissions.js";
+import { isRbacEnabled } from "../auth/authService.js";
 
 const COURTS_STORAGE_KEY = "courts";
 
@@ -21,9 +24,10 @@ export function loadCourts(fallbackCourts = [], clubId) {
     return courts;
   }
 
+  const scopedKey = getScopedStorageKey(COURTS_STORAGE_KEY, clubId);
   const raw =
-    localStorage.getItem(getScopedStorageKey(COURTS_STORAGE_KEY, clubId)) ||
-    localStorage.getItem(COURTS_STORAGE_KEY);
+    localStorage.getItem(scopedKey) ||
+    (!isRbacEnabled() ? localStorage.getItem(COURTS_STORAGE_KEY) : null);
 
   if (!raw) {
     return normalizeCourts(fallbackCourts);
@@ -42,12 +46,19 @@ export function loadCourts(fallbackCourts = [], clubId) {
   }
 }
 
-export function saveCourts(courts, clubId) {
+export function saveCourts(courts, clubId, options = {}) {
+  const permission = options.permission || PERMISSIONS.COURT_UPDATE;
+  const check = guardClubAction(clubId, permission, {}, options);
+  if (!check.ok) {
+    return check;
+  }
+
   saveCourtsForClub(courts, clubId);
   localStorage.setItem(
     getScopedStorageKey(COURTS_STORAGE_KEY, clubId),
     JSON.stringify(normalizeCourts(courts))
   );
+  return { ok: true };
 }
 
 export function validateCourtName(name) {

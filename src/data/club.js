@@ -29,7 +29,26 @@ function migrateClubRecord(club) {
     return { ...normalized, isDefault: true };
   }
 
-  return normalized;
+  const governance = { ...normalized.governance };
+  if (!governance.presidentUserId && normalized.createdByUserId) {
+    governance.presidentUserId = normalized.createdByUserId;
+  }
+  if (!Array.isArray(governance.registeredCourtIds)) {
+    governance.registeredCourtIds = [];
+  }
+
+  return {
+    ...normalized,
+    governance,
+    status:
+      normalized.status === "inactive"
+        ? "inactive"
+        : normalized.status === "pending_approval"
+          ? "pending_approval"
+        : normalized.status === "pending_setup" && governance.presidentUserId
+          ? "active"
+          : normalized.status,
+  };
 }
 
 export function loadClubs() {

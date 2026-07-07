@@ -26,6 +26,8 @@ import {
   Typography,
 } from "@mui/material";
 import AutoFixHighIcon from "@mui/icons-material/AutoFixHigh";
+import AddIcon from "@mui/icons-material/Add";
+import EditIcon from "@mui/icons-material/Edit";
 import LockIcon from "@mui/icons-material/Lock";
 import LockOpenIcon from "@mui/icons-material/LockOpen";
 import PauseIcon from "@mui/icons-material/Pause";
@@ -39,7 +41,16 @@ import { useClub } from "../context/ClubContext.jsx";
 import { useSeasonLeague } from "../context/SeasonContext.jsx";
 import { useTenant } from "../context/TenantContext.jsx";
 import { getCourtDisplayName } from "../models/court.js";
-import { canUseCourtEngine, canTransferCourt } from "../features/court-engine/guards/courtEngineGuard.js";
+import {
+  canUseCourtEngine,
+  canTransferCourt,
+  canRunScheduling,
+  canViewCourts,
+  canCreateCourt,
+  canUpdateCourt,
+} from "../features/court-engine/guards/courtEngineGuard.js";
+import { resolveRouteAccessScope } from "../auth/menuAccess.js";
+import CourtQuickManageDialog from "../features/court-engine/components/CourtQuickManageDialog.jsx";
 import { resolveCourtEngineContextState } from "../features/court-engine/guards/courtEngineContextGuard.js";
 import { useCourtEngine } from "../features/court-engine/hooks/useCourtEngine.js";
 import { ASSIGNMENT_STATUS, COURT_RUNTIME_STATUS, SESSION_STATUS } from "../features/court-engine/constants/statuses.js";
@@ -60,12 +71,10 @@ function StatusChip({ status }) {
 }
 
 function CourtEngineAccessGate({ children }) {
-  const { can, rbacEnabled, isAuthenticated } = useAuth();
+  const { can, rbacEnabled, isAuthenticated, user } = useAuth();
   const { activeClubId, activeClub } = useClub();
-  const allowed = canUseCourtEngine(can, {
-    clubId: activeClubId,
-    venueId: activeClub?.venueId || null,
-  });
+  const scope = resolveRouteAccessScope({ user, activeClubId, activeClub });
+  const allowed = canUseCourtEngine(can, scope);
 
   if (rbacEnabled && isAuthenticated && !allowed) {
     return <ForbiddenPage />;
@@ -134,9 +143,13 @@ function CourtEngineContextGate({ children }) {
 }
 
 function CourtEnginePageContent() {
-  const { can, rbacEnabled, isAuthenticated } = useAuth();
-  const { activeClubId, activeClub } = useClub();
+  const { can, rbacEnabled, isAuthenticated, user } = useAuth();
+  const { activeClubId, activeClub, refreshClubs } = useClub();
   const { activeLeague } = useSeasonLeague();
+  const scope = useMemo(
+    () => resolveRouteAccessScope({ user, activeClubId, activeClub }),
+    [user, activeClubId, activeClub]
+  );
   const engine = useCourtEngine();
   const {
     session,
@@ -160,6 +173,7 @@ function CourtEnginePageContent() {
   const [transferDialog, setTransferDialog] = useState(null);
   const [transferReason, setTransferReason] = useState("");
   const [transferTargetCourt, setTransferTargetCourt] = useState("");
+  const [courtDialog, setCourtDialog] = useState(null);
   const [, tick] = useState(0);
   const platformSummary = useMemo(
     () =>
@@ -183,7 +197,27 @@ function CourtEnginePageContent() {
   const canTransfer =
     !rbacEnabled ||
     !isAuthenticated ||
-    canTransferCourt(can, { clubId: activeClubId, venueId: activeClub?.venueId });
+    canTransferCourt(can, scope);
+
+  const canSchedule =
+    !rbacEnabled ||
+    !isAuthenticated ||
+    canRunScheduling(can, scope);
+
+  const canManageCourtsLink =
+    !rbacEnabled ||
+    !isAuthenticated ||
+    canViewCourts(can, scope);
+
+  const canAddCourt =
+    !rbacEnabled ||
+    !isAuthenticated ||
+    canCreateCourt(can, scope);
+
+  const canEditCourt =
+    !rbacEnabled ||
+    !isAuthenticated ||
+    canUpdateCourt(can, scope);
 
   const filteredPlayers = useMemo(() => {
     const q = search.trim().toLowerCase();
@@ -229,12 +263,26 @@ function CourtEnginePageContent() {
             </Typography>
           </Box>
           <Stack direction="row" spacing={1} flexWrap="wrap">
+            {canManageCourtsLink && (
+              <Button component={RouterLink} to="/court-management/courts" variant="outlined">
+                Quản lý sân
+              </Button>
+            )}
+            {canAddCourt && (
+              <Button
+                variant="outlined"
+                startIcon={<AddIcon />}
+                onClick={() => setCourtDialog({ mode: "create" })}
+              >
+                Thêm sân
+              </Button>
+            )}
             {session?.status !== SESSION_STATUS.OPEN ? (
-              <Button variant="contained" onClick={actions.openSession}>
+              <Button variant="contained" onClick={actions.openSession} disabled={!canSchedule}>
                 Mở session
               </Button>
             ) : (
-              <Button color="warning" variant="outlined" onClick={actions.closeSession}>
+              <Button color="warning" variant="outlined" onClick={actions.closeSession} disabled={!canSchedule}>
                 Đóng session
               </Button>
             )}
@@ -243,6 +291,7 @@ function CourtEnginePageContent() {
               color="secondary"
               startIcon={<AutoFixHighIcon />}
               onClick={actions.previewAutoAssign}
+              disabled={!canSchedule}
             >
               Ghép sân tự động
             </Button>
@@ -322,15 +371,15 @@ function CourtEnginePageContent() {
                         <ListItemSecondaryAction>
                           {checked ? (
                             <Stack direction="row" spacing={0.5}>
-                              <Button size="small" onClick={() => actions.addToQueue(player.id)}>
+                              <Button size="small" disabled={!canSchedule} onClick={() => actions.addToQueue(player.id)}>
                                 Queue
                               </Button>
-                              <Button size="small" color="warning" onClick={() => actions.cancelCheckIn(player.id)}>
+                              <Button size="small" color="warning" disabled={!canSchedule} onClick={() => actions.cancelCheckIn(player.id)}>
                                 Hủy
                               </Button>
                             </Stack>
                           ) : (
-                            <Button size="small" variant="contained" onClick={() => actions.checkIn(player.id)}>
+                            <Button size="small" variant="contained" disabled={!canSchedule} onClick={() => actions.checkIn(player.id)}>
                               Check-in
                             </Button>
                           )}
@@ -361,17 +410,18 @@ function CourtEnginePageContent() {
                           />
                           <ListItemSecondaryAction>
                             <Stack direction="row" spacing={0.5}>
-                              <IconButton size="small" onClick={() => actions.setPriority(entry.playerId, 1)} title="Ưu tiên">
+                              <IconButton size="small" disabled={!canSchedule} onClick={() => actions.setPriority(entry.playerId, 1)} title="Ưu tiên">
                                 ↑
                               </IconButton>
                               <IconButton
                                 size="small"
+                                disabled={!canSchedule}
                                 onClick={() => actions.setQueueLocked(entry.playerId, !entry.locked)}
                                 title={entry.locked ? "Mở khóa" : "Khóa auto"}
                               >
                                 {entry.locked ? <LockIcon fontSize="small" /> : <LockOpenIcon fontSize="small" />}
                               </IconButton>
-                              <Button size="small" color="error" onClick={() => actions.removeFromQueue(entry.playerId)}>
+                              <Button size="small" color="error" disabled={!canSchedule} onClick={() => actions.removeFromQueue(entry.playerId)}>
                                 Xóa
                               </Button>
                             </Stack>
@@ -386,9 +436,16 @@ function CourtEnginePageContent() {
           </Grid>
 
           <Grid item xs={12} lg={5}>
-            <Typography variant="h6" sx={{ mb: 1 }}>
-              Live Courts ({courts.length})
-            </Typography>
+            <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mb: 1 }}>
+              <Typography variant="h6">
+                Live Courts ({courts.length})
+              </Typography>
+              {canAddCourt && (
+                <Button size="small" startIcon={<AddIcon />} onClick={() => setCourtDialog({ mode: "create" })}>
+                  Thêm sân
+                </Button>
+              )}
+            </Stack>
             <Grid container spacing={1.5}>
               {courts.map((court, index) => {
                 const assignment = activeAssignments.find(
@@ -418,6 +475,11 @@ function CourtEnginePageContent() {
                           <Typography fontWeight="bold">{getCourtDisplayName(court, index)}</Typography>
                           <StatusChip status={timerStatus} />
                         </Stack>
+                        {court.clubName && (
+                          <Typography variant="caption" color="text.secondary">
+                            CLB: {court.clubName}
+                          </Typography>
+                        )}
                         {assignment ? (
                           <>
                             <Typography variant="body2" sx={{ mt: 1 }}>
@@ -429,21 +491,21 @@ function CourtEnginePageContent() {
                             </Typography>
                             <Stack direction="row" spacing={0.5} sx={{ mt: 1 }} flexWrap="wrap">
                               {assignment.status === ASSIGNMENT_STATUS.ASSIGNED && (
-                                <Button size="small" startIcon={<PlayArrowIcon />} onClick={() => actions.startMatch(assignment.id)}>
+                                <Button size="small" disabled={!canSchedule} startIcon={<PlayArrowIcon />} onClick={() => actions.startMatch(assignment.id)}>
                                   Bắt đầu
                                 </Button>
                               )}
                               {assignment.status === ASSIGNMENT_STATUS.PLAYING && (
-                                <Button size="small" startIcon={<PauseIcon />} onClick={() => actions.pauseMatch(assignment.id)}>
+                                <Button size="small" disabled={!canSchedule} startIcon={<PauseIcon />} onClick={() => actions.pauseMatch(assignment.id)}>
                                   Pause
                                 </Button>
                               )}
                               {assignment.status === ASSIGNMENT_STATUS.PAUSED && (
-                                <Button size="small" startIcon={<PlayArrowIcon />} onClick={() => actions.resumeMatch(assignment.id)}>
+                                <Button size="small" disabled={!canSchedule} startIcon={<PlayArrowIcon />} onClick={() => actions.resumeMatch(assignment.id)}>
                                   Resume
                                 </Button>
                               )}
-                              <Button size="small" color="error" startIcon={<StopIcon />} onClick={() => actions.endMatch(assignment.id)}>
+                              <Button size="small" color="error" disabled={!canSchedule} startIcon={<StopIcon />} onClick={() => actions.endMatch(assignment.id)}>
                                 Kết thúc
                               </Button>
                               {canTransfer && (
@@ -469,12 +531,14 @@ function CourtEnginePageContent() {
                         <Stack direction="row" spacing={0.5} sx={{ mt: 1 }}>
                           <Button
                             size="small"
+                            disabled={!canSchedule}
                             onClick={() => actions.lockCourt(court.id, !courtState.locked)}
                           >
                             {courtState.locked ? "Mở khóa" : "Khóa sân"}
                           </Button>
                           <Button
                             size="small"
+                            disabled={!canSchedule}
                             onClick={() =>
                               actions.maintenanceCourt(
                                 court.id,
@@ -484,6 +548,15 @@ function CourtEnginePageContent() {
                           >
                             Bảo trì
                           </Button>
+                          {canEditCourt && (
+                            <Button
+                              size="small"
+                              startIcon={<EditIcon />}
+                              onClick={() => setCourtDialog({ mode: "edit", court })}
+                            >
+                              Sửa
+                            </Button>
+                          )}
                         </Stack>
                       </CardContent>
                     </Card>
@@ -565,7 +638,7 @@ function CourtEnginePageContent() {
           </DialogContent>
           <DialogActions>
             <Button onClick={() => setPreview(null)}>Hủy</Button>
-            <Button variant="contained" onClick={actions.confirmAutoAssign} disabled={!preview?.assignments?.length}>
+            <Button variant="contained" onClick={actions.confirmAutoAssign} disabled={!canSchedule || !preview?.assignments?.length}>
               Xác nhận
             </Button>
           </DialogActions>
@@ -617,6 +690,17 @@ function CourtEnginePageContent() {
             </Button>
           </DialogActions>
         </Dialog>
+
+        <CourtQuickManageDialog
+          open={Boolean(courtDialog)}
+          editingCourt={courtDialog?.mode === "edit" ? courtDialog.court : null}
+          clubId={courtDialog?.court?.clubId || activeClubId}
+          onClose={() => setCourtDialog(null)}
+          onSaved={() => {
+            refreshClubs();
+            engine.bump();
+          }}
+        />
 
         <Snackbar open={Boolean(message)} autoHideDuration={4000} onClose={() => setMessage(null)}>
           <Alert severity="success" onClose={() => setMessage(null)}>

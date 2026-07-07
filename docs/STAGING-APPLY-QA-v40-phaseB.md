@@ -4,7 +4,7 @@
 
 **Phạm vi:** Identity Phase B. Tournament Engine / Scheduler không đổi.
 
-**Tham chiếu:** `docs/SUPABASE-STAGING-CHECKLIST.md`, `docs/STAGING-APPLY-QA-v358.md`, `src/features/identity/ARCHITECTURE.md`
+**Tham chiếu:** `docs/SUPABASE-STAGING-CHECKLIST.md`, `docs/STAGING-APPLY-QA-v358.md`, `src/features/identity/ARCHITECTURE.md`, `docs/v5/CLUB_GOVERNANCE_SPEC.md` (quy tắc CLB V5 — apply `docs/supabase-club-governance-v52.sql` trên staging), `docs/v5/PHASE_TENANT_ISOLATION_BROWSER_QA.md` (QA cô lập Owner A / Owner B)
 
 ---
 
@@ -18,6 +18,7 @@ Chạy **sau** các bước 1–7 trong `docs/SUPABASE-STAGING-CHECKLIST.md`:
 |---|------|----------|
 | 8 | `docs/supabase-identity-v40-sprint1.sql` | `profiles` phone/avatar, `roles`/`permissions`/`audit_logs`, RLS |
 | 9 | `docs/supabase-identity-v40-phaseB.sql` | Mở rộng `audit_logs`, bảng `password_reset_tokens` |
+| 10 | `docs/supabase-identity-avatars-storage.sql` | Bucket `user-avatars` + RLS upload theo `auth.uid()` |
 
 **Rollback (khẩn cấp):** `phaseB-rollback` → `sprint1-rollback` (theo thứ tự ngược).
 
@@ -110,6 +111,11 @@ where email = 'referee@staging.local';
 | 3 | Đổi mật khẩu — sai mật khẩu cũ | Bị chặn |
 | 4 | Đổi mật khẩu — đúng | Thành công |
 | 5 | Không có field sửa role | Role chỉ hiển thị |
+| 6 | Apply `docs/supabase-identity-avatars-storage.sql` | Bucket `user-avatars` + policies OK |
+| 7 | Upload JPG/PNG trên `/profile` | Preview + menu header cập nhật |
+| 8 | Dán URL ảnh → Lưu hồ sơ | Hiển thị đúng |
+| 9 | Xóa ảnh | Quay về chữ cái (initials) |
+| 10 | URL ảnh lỗi | Fallback initials, không crash |
 
 ### 4.4 User Management (`/users`)
 

@@ -1,4 +1,5 @@
 import { DEFAULT_TIMEZONE } from "../ai/config.js";
+import { normalizeClubGovernance } from "../features/club/models/clubGovernance.js";
 
 function slugify(name) {
   const slug = String(name || "")
@@ -12,7 +13,16 @@ function slugify(name) {
 export function normalizeClub(club) {
   const name = String(club?.name || "").trim();
   const id = String(club?.id || "").trim();
-  const status = club?.status === "inactive" ? "inactive" : "active";
+  const status =
+    club?.status === "inactive"
+      ? "inactive"
+      : club?.status === "pending_approval"
+        ? "pending_approval"
+      : club?.status === "pending_setup"
+        ? "pending_setup"
+        : "active";
+
+  const governance = normalizeClubGovernance(club);
 
   return {
     id,
@@ -20,6 +30,7 @@ export function normalizeClub(club) {
     code: club?.code ? String(club.code).trim() : null,
     description: club?.description ? String(club.description).trim() : "",
     status,
+    governance,
     slug: String(club?.slug || "").trim() || slugify(name || id),
     note: String(club?.note || "").trim(),
     /** Tenant — optional, dùng khi bật RBAC multi-tenant. tenantId === venueId. */
@@ -55,6 +66,7 @@ export function createClubRecord(name, options = {}) {
     code: options.code || null,
     description: options.description || "",
     status: options.status || "active",
+    governance: options.governance,
     note: options.note || "",
     venueId: options.venueId || options.tenantId || null,
     tenantId: options.tenantId || options.venueId || null,

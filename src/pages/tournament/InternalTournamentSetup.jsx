@@ -84,8 +84,10 @@ import TournamentSetupShell from "../../components/tournament/TournamentSetupShe
 import TournamentSelectedPlayersPanel from "../../components/tournament/TournamentSelectedPlayersPanel.jsx";
 import {
   findTournamentClubId,
+  getClubById,
   getClubInternalTournamentPlayers,
   getTenantPlayers,
+  canViewFullClubMembers,
 } from "../../features/club/index.js";
 import { resolveTenantIdForClub } from "../../features/tenant/guards/tenantGuard.js";
 import { isAiEngineEnabled } from "../../features/ai-assistant/index.js";
@@ -159,10 +161,16 @@ export default function InternalTournamentSetup() {
     }
     if (isClubInternal) {
       const tenantId = tournament?.tenantId || resolveTenantIdForClub(sourceClubId);
-      return getClubInternalTournamentPlayers(sourceClubId, tenantId);
+      const club = getClubById(sourceClubId, tenantId);
+      const forTournamentInvite = Boolean(
+        club && user && !canViewFullClubMembers(user, club)
+      );
+      return getClubInternalTournamentPlayers(sourceClubId, tenantId, {
+        forTournamentInvite,
+      });
     }
     return loadPlayersForClub(sourceClubId);
-  }, [isClubInternal, tournament, sourceClubId, localRevision]);
+  }, [isClubInternal, tournament, sourceClubId, localRevision, user]);
 
   const courts = useMemo(
     () => loadCourtsForClub(tournamentClubId),

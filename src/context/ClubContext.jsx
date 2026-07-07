@@ -11,6 +11,7 @@ import {
 import { ensureMonthlySkillLevelProposals } from "../domain/skillLevelService.js";
 import { useAuth } from "./AuthContext.jsx";
 import { useTenant } from "./TenantContext.jsx";
+import { canAccessClub } from "../auth/rbac.js";
 import {
   listClubsForTenant,
 } from "../features/tenant/guards/tenantGuard.js";
@@ -19,7 +20,7 @@ import { autoPullOnClubActivate, isAiAutoCloudSyncEnabled } from "../ai/autoClou
 const ClubContext = createContext(null);
 
 export function ClubProvider({ children }) {
-  const { rbacEnabled, isAuthenticated } = useAuth();
+  const { user, rbacEnabled, isAuthenticated } = useAuth();
   const { currentTenantId } = useTenant();
   const [clubs, setClubs] = useState(() => loadClubs());
   const [activeClubId, setActiveClubId] = useState(() => getActiveClubId());
@@ -31,12 +32,10 @@ export function ClubProvider({ children }) {
     }
 
     const tenantClubs = listClubsForTenant(currentTenantId);
-    if (tenantClubs.length === 0) {
-      return clubs;
-    }
-
-    return tenantClubs;
-  }, [clubs, currentTenantId, isAuthenticated, rbacEnabled]);
+    return tenantClubs.filter((club) =>
+      canAccessClub(user, club.id, { venueId: club.venueId || null }, { rbacEnabled })
+    );
+  }, [clubs, currentTenantId, isAuthenticated, rbacEnabled, user]);
 
   useEffect(() => {
     if (!rbacEnabled || !isAuthenticated || !currentTenantId) {

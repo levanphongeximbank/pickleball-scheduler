@@ -136,7 +136,11 @@ describe("club management sprint 3", () => {
   });
 
   it("createClub validates duplicate name in tenant", () => {
-    const result = createClub({ name: "CLB Test A", tenantId: TENANT_A });
+    const result = createClub({
+      name: "CLB Test A",
+      tenantId: TENANT_A,
+      governance: { presidentUserId: "president-a" },
+    });
     assert.equal(result.ok, false);
     assert.match(result.error, /tồn tại/i);
   });

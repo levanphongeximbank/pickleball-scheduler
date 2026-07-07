@@ -34,6 +34,9 @@ import {
   deactivateClub,
   getClubStats,
   getClubsVisibleToUser,
+  canApproveClubRegistration,
+  approveClubRegistration,
+  rejectClubRegistration,
 } from "../../features/club/index.js";
 import ClubFormDialog from "./ClubFormDialog.jsx";
 import ClubDeactivateDialog from "./ClubDeactivateDialog.jsx";
@@ -140,6 +143,26 @@ export default function ClubListPage() {
     refreshTenant();
   };
 
+  const handleApprove = (club) => {
+    const result = approveClubRegistration(club.id, currentTenantId);
+    if (!result.ok) {
+      setError(result.error);
+      return;
+    }
+    setLocalRevision((v) => v + 1);
+    refreshTenant();
+  };
+
+  const handleReject = (club) => {
+    const result = rejectClubRegistration(club.id, currentTenantId);
+    if (!result.ok) {
+      setError(result.error);
+      return;
+    }
+    setLocalRevision((v) => v + 1);
+    refreshTenant();
+  };
+
   if (!currentTenantId) {
     return (
       <Alert severity="warning">
@@ -199,6 +222,8 @@ export default function ClubListPage() {
           >
             <MenuItem value="all">Tất cả</MenuItem>
             <MenuItem value={CLUB_STATUSES.ACTIVE}>Đang hoạt động</MenuItem>
+            <MenuItem value={CLUB_STATUSES.PENDING_SETUP}>Chờ thiết lập</MenuItem>
+            <MenuItem value={CLUB_STATUSES.PENDING_APPROVAL}>Chờ chủ sân duyệt</MenuItem>
             <MenuItem value={CLUB_STATUSES.INACTIVE}>Vô hiệu hóa</MenuItem>
           </TextField>
           <TextField
@@ -256,7 +281,15 @@ export default function ClubListPage() {
                     <Chip
                       size="small"
                       label={CLUB_STATUS_LABELS[club.status] || club.status}
-                      color={club.status === CLUB_STATUSES.ACTIVE ? "success" : "default"}
+                      color={
+                        club.status === CLUB_STATUSES.ACTIVE
+                          ? "success"
+                          : club.status === CLUB_STATUSES.PENDING_SETUP
+                            ? "warning"
+                            : club.status === CLUB_STATUSES.PENDING_APPROVAL
+                              ? "warning"
+                              : "default"
+                      }
                     />
                   </TableCell>
                   <TableCell>
@@ -268,6 +301,30 @@ export default function ClubListPage() {
                         <VisibilityIcon fontSize="small" />
                       </IconButton>
                     </Tooltip>
+                    {canApproveClubRegistration(user, club) && (
+                      <>
+                        <Tooltip title="Duyệt CLB">
+                          <Button
+                            size="small"
+                            variant="outlined"
+                            sx={{ ml: 0.5 }}
+                            onClick={() => handleApprove(club)}
+                          >
+                            Duyệt
+                          </Button>
+                        </Tooltip>
+                        <Tooltip title="Từ chối">
+                          <Button
+                            size="small"
+                            color="inherit"
+                            sx={{ ml: 0.5 }}
+                            onClick={() => handleReject(club)}
+                          >
+                            Từ chối
+                          </Button>
+                        </Tooltip>
+                      </>
+                    )}
                     {canUpdate && (
                       <>
                         <Tooltip title="Chỉnh sửa">

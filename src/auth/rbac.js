@@ -12,6 +12,7 @@ import {
 import { getPermissionScopes, PERMISSION_SCOPE, PERMISSIONS } from "./permissions.js";
 import { roleHasPermission } from "./rolePermissions.js";
 import { isUserActive } from "../models/user.js";
+import { getExplicitTenantIdForClub } from "../features/tenant/guards/tenantGuard.js";
 
 /**
  * RBAC có được áp dụng không.
@@ -130,10 +131,20 @@ export function canAccessClub(user, clubId, clubMeta = {}, options = {}) {
   }
 
   if (isVenueScopedRole(user.role)) {
+    if (!user.venueId) {
+      return false;
+    }
+
+    const explicitTenant = getExplicitTenantIdForClub(clubId);
+    if (explicitTenant) {
+      return user.venueId === explicitTenant;
+    }
+
     if (clubVenueId && user.venueId !== clubVenueId) {
       return false;
     }
-    return !clubVenueId || user.venueId === clubVenueId;
+
+    return true;
   }
 
   if (isClubScopedRole(user.role)) {
@@ -311,13 +322,16 @@ function matchesClubScope(user, scope) {
   }
 
   if (isClubScopedRole(user.role)) {
-    if (clubId && user.clubId && user.clubId !== clubId) {
+    if (!user.clubId) {
+      return false;
+    }
+    if (clubId && user.clubId !== clubId) {
       return false;
     }
     if (venueId && user.venueId && user.venueId !== venueId) {
       return false;
     }
-    return Boolean(user.clubId || clubId);
+    return true;
   }
 
   return false;

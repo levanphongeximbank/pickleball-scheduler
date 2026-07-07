@@ -81,7 +81,31 @@
 - ✅ Trợ lý thông minh + gợi ý + checklist cloud
 - ✅ Cảnh báo vận hành tại `/ai?tab=alerts`
 
-Chi tiết: `PHASE_AI_V52_GA_REPORT.md`
+Chi tiết: `PHASE_AI_V52_GA_REPORT.md` · Manual QA: `PHASE_AI_V52_MANUAL_QA.md`
+
+---
+
+## Staging (Preview / QA)
+
+| Bước | Lệnh |
+|------|------|
+| Apply SQL | `npm run apply:ai-v52-staging-sql` (cần `SUPABASE_ACCESS_TOKEN` hoặc `STAGING_SUPABASE_DB_URL`) |
+| Smoke | `npm run verify:ai-v52-staging-smoke` (URL staging + `STAGING_SUPABASE_SERVICE_ROLE_KEY`) |
+| Manual | `PHASE_AI_V52_MANUAL_QA.md` |
+
+**Staging ref:** `qyewbxjsiiyufanzcjcq` — SQL chưa auto-apply nếu thiếu token (chạy manual trong SQL Editor).
+
+---
+
+## Deploy code mới (owner)
+
+Sau thay đổi UI/error handling:
+
+```bash
+npm run deploy
+```
+
+Hoặc Vercel Dashboard → **Deployments** → **Redeploy** deployment mới nhất.
 
 ---
 

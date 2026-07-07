@@ -31,6 +31,7 @@ import {
 import { TOURNAMENT_MODE, TOURNAMENT_STATUS, OFFICIAL_MODE } from "../../models/tournament/index.js";
 import ModeCard from "../../components/tournament/ModeCard.jsx";
 import PermissionGate from "../../components/auth/PermissionGate.jsx";
+import ClubAssignmentBanner from "../../components/auth/ClubAssignmentBanner.jsx";
 import { PERMISSIONS } from "../../auth/permissions.js";
 import { usePageRuntimeAccess } from "../../core/platform/app/usePageRuntimeAccess.js";
 import { createTeamTournament } from "../../features/team-tournament/services/teamTournamentService.js";
@@ -273,6 +274,8 @@ export default function TournamentHome({ section = "overview" }) {
         description={sectionMeta.description}
         contextLine={contextLine || undefined}
       />
+
+      <ClubAssignmentBanner />
 
       {message && (
         <Alert severity="success" sx={{ mb: 2 }} onClose={() => setMessage(null)}>

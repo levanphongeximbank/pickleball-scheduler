@@ -35,9 +35,10 @@ import {
 } from "../src/config/navigationConfig.js";
 import { filterMobileBottomNav } from "../src/features/mobile/services/mobileNavAccess.js";
 import { resolveMenuItemPath, resolveRouteAccessScope } from "../src/auth/menuAccess.js";
+import { resolveRouteAccessScope as resolveProfileRouteAccessScope } from "../src/features/tenant/services/profileVenueService.js";
 import { enableRbac, signInAs, signOut } from "../src/auth/authService.js";
 import { createClub } from "../src/domain/clubService.js";
-import { guardClubAction, guardDirectorAction } from "../src/auth/guardAction.js";
+import { guardClubAction, guardClubAccess, guardDirectorAction } from "../src/auth/guardAction.js";
 import { createBooking, deleteBooking } from "../src/domain/bookingService.js";
 import { createTournament, updateTournament } from "../src/domain/tournamentService.js";
 import {
@@ -249,6 +250,43 @@ function createLocalStorageMock(seed = {}) {
     },
   };
 }
+
+test("CLUB_MANAGER thiếu clubId — không truy cập CLB và không có quyền CLB scope", () => {
+  const chairman = user(ROLES.CLUB_MANAGER, {
+    venueId: "venue-prod-main",
+    clubId: null,
+  });
+
+  assert.equal(canAccessClub(chairman, "default-club", { venueId: "venue-prod-main" }, RBAC_ON), false);
+  assert.equal(
+    can(chairman, PERMISSIONS.CLUB_UPDATE, { clubId: "default-club", venueId: "venue-prod-main" }, RBAC_ON),
+    false
+  );
+
+  globalThis.localStorage = createLocalStorageMock();
+  const access = guardClubAccess("default-club", { user: chairman, rbacEnabled: true });
+  assert.equal(access.ok, false);
+  assert.equal(access.code, "CLUB_UNASSIGNED");
+});
+
+test("resolveRouteAccessScope — club-scoped user không fallback activeClubId", () => {
+  const chairman = user(ROLES.CLUB_MANAGER, {
+    venueId: "venue-prod-main",
+    clubId: null,
+  });
+
+  const scope = resolveProfileRouteAccessScope({
+    user: chairman,
+    activeClubId: "default-club",
+    activeClub: { id: "default-club", venueId: "venue-prod-main" },
+  });
+
+  assert.equal(scope.clubId, null);
+  assert.equal(
+    can(chairman, PERMISSIONS.CLUB_UPDATE, scope, RBAC_ON),
+    false
+  );
+});
 
 test("guardClubAction — chặn PLAYER xóa CLB khi RBAC bật", () => {
   globalThis.localStorage = createLocalStorageMock();
@@ -964,6 +1002,24 @@ test("Phase 19B — COURT_OWNER venue-scoped dashboard, billing, court-engine, t
   assert.equal(check("/court-management/courts"), true);
 });
 
+test("Phase 19B — STAFF blocked from court-engine", () => {
+  const staff = user(ROLES.STAFF, { venueId: "venue-a", clubId: "club-1" });
+  const scope = { venueId: "venue-a", clubId: "club-1" };
+  const check = (path) =>
+    canAccessRoute((perm, s) => can(staff, perm, s, RBAC_ON), path, scope);
+
+  assert.equal(check("/court-engine"), false);
+  assert.equal(check("/court-management/courts"), true);
+});
+
+test("Phase 19B — CASHIER cannot delete courts via permission matrix", () => {
+  const cashier = user(ROLES.CASHIER, { venueId: "venue-a", clubId: "club-1" });
+  const scope = { venueId: "venue-a", clubId: "club-1" };
+
+  assert.equal(can(cashier, PERMISSIONS.COURT_VIEW, scope, RBAC_ON), true);
+  assert.equal(can(cashier, PERMISSIONS.COURT_DELETE, scope, RBAC_ON), false);
+});
+
 test("Phase 19B — COURT_OWNER không truy cập venue khác", () => {
   const owner = user(ROLES.COURT_OWNER, { venueId: "venue-prod-main", clubId: "club-1" });
   assert.equal(can(owner, PERMISSIONS.VENUE_UPDATE, { venueId: "venue-other" }, RBAC_ON), false);
@@ -982,18 +1038,18 @@ test("Phase 19B — CLUB_OWNER vào /club không 403", () => {
   assert.equal(getDefaultHomePath(clubOwner, true), "/club");
 });
 
-test("Phase 19B — CLUB_OWNER bootstrap clubId từ activeClub", () => {
+test("Phase 19B — CLUB_OWNER thiếu clubId không bootstrap từ activeClub", () => {
   const clubOwner = user(ROLES.CLUB_OWNER, { venueId: "venue-a" });
-  const scope = resolveRouteAccessScope({
+  const scope = resolveProfileRouteAccessScope({
     user: clubOwner,
     activeClubId: "club-bootstrap",
     activeClub: { id: "club-bootstrap", venueId: "venue-a" },
   });
 
-  assert.equal(scope.clubId, "club-bootstrap");
+  assert.equal(scope.clubId, null);
   assert.equal(
     can(clubOwner, PERMISSIONS.CLUB_VIEW, scope, RBAC_ON),
-    true
+    false
   );
 });
 

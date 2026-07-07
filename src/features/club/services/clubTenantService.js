@@ -13,6 +13,7 @@ import { createClubRecord } from "../../../models/club.js";
 import { loadClubExtension, purgeClubExtension } from "../storage/clubExtensionStorage.js";
 import { CLUB_STATUSES } from "../constants/clubStatus.js";
 import { canUserViewClub } from "./clubAccessService.js";
+import { resolveGovernanceForCreate } from "./clubGovernanceService.js";
 
 function resolveTenantIdForCreate(user) {
   if (!isRbacEnabled() || !user) {
@@ -165,11 +166,18 @@ export function createClub(data = {}) {
   }
 
   const clubs = loadClubs();
+  const { governance, status } = resolveGovernanceForCreate(data, user);
+
+  if (!governance.presidentUserId) {
+    return { ok: false, error: "Chủ tịch CLB bắt buộc (presidentUserId)." };
+  }
+
   const club = createClubRecord(name, {
     id: data.id,
     code: data.code,
     description: data.description,
-    status: data.status || CLUB_STATUSES.ACTIVE,
+    status: data.status || status,
+    governance,
     venueId: tenantId,
     tenantId,
     createdByUserId: user?.id || null,
@@ -209,6 +217,7 @@ export function updateClub(clubId, data = {}, tenantId) {
   if (data.code !== undefined) patch.code = data.code;
   if (data.description !== undefined) patch.description = data.description;
   if (data.status !== undefined) patch.status = data.status;
+  if (data.governance !== undefined) patch.governance = data.governance;
 
   return updateClubMeta(clubId, patch);
 }

@@ -37,20 +37,27 @@ import {
   removeMemberFromClub,
   updateClubMemberRole,
   updateClubMemberStatus,
+  canViewFullClubMembers,
+  canDeleteClubMembers,
 } from "../../../features/club/index.js";
 
 export default function ClubMembersTab({ club, tenantId, onRefresh }) {
-  const { can, rbacEnabled, isAuthenticated } = useAuth();
+  const { can, rbacEnabled, isAuthenticated, user } = useAuth();
   const [addOpen, setAddOpen] = useState(false);
   const [selectedPlayerId, setSelectedPlayerId] = useState("");
   const [error, setError] = useState(null);
   const [removeTarget, setRemoveTarget] = useState(null);
   const [revision, setRevision] = useState(0);
 
+  const fullAccess = canViewFullClubMembers(user, club);
+
   const canManage =
-    !rbacEnabled ||
-    !isAuthenticated ||
-    can(PERMISSIONS.PLAYER_UPDATE, { clubId: club.id, venueId: tenantId });
+    fullAccess &&
+    (!rbacEnabled ||
+      !isAuthenticated ||
+      can(PERMISSIONS.PLAYER_UPDATE, { clubId: club.id, venueId: tenantId }));
+
+  const canRemoveMembers = canDeleteClubMembers(user, club) && canManage;
 
   const members = useMemo(
     () => getClubMembers(club.id, tenantId),
@@ -132,12 +139,21 @@ export default function ClubMembersTab({ club, tenantId, onRefresh }) {
 
   return (
     <Box>
-      {error && (
+      {!fullAccess && (
+        <Alert severity="info" sx={{ mb: 2 }}>
+          Bạn không có quyền xem danh sách thành viên CLB này. Chỉ Chủ tịch / Chủ sở hữu CLB mới
+          xem được chi tiết.
+        </Alert>
+      )}
+
+      {fullAccess && error && (
         <Alert severity="error" sx={{ mb: 2 }} onClose={() => setError(null)}>
           {error}
         </Alert>
       )}
 
+      {fullAccess && (
+        <>
       <Stack direction="row" justifyContent="space-between" mb={2}>
         <Typography variant="subtitle1" fontWeight={600}>
           {members.length} thành viên
@@ -166,7 +182,9 @@ export default function ClubMembersTab({ club, tenantId, onRefresh }) {
                 <TableCell>Vai trò</TableCell>
                 <TableCell>Ngày tham gia</TableCell>
                 <TableCell>Trạng thái</TableCell>
-                {canManage && <TableCell align="right">Thao tác</TableCell>}
+                    {canRemoveMembers && (
+                      <TableCell align="right">Thao tác</TableCell>
+                    )}
               </TableRow>
             </TableHead>
             <TableBody>
@@ -210,7 +228,7 @@ export default function ClubMembersTab({ club, tenantId, onRefresh }) {
                         onClick={canManage ? () => handleStatusToggle(member) : undefined}
                       />
                     </TableCell>
-                    {canManage && (
+                    {canRemoveMembers && (
                       <TableCell align="right">
                         {member.status === CLUB_MEMBER_STATUSES.ACTIVE && (
                           <Tooltip title="Xóa khỏi CLB">
@@ -274,6 +292,8 @@ export default function ClubMembersTab({ club, tenantId, onRefresh }) {
           </Button>
         </DialogActions>
       </Dialog>
+        </>
+      )}
     </Box>
   );
 }

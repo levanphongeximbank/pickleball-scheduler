@@ -44,6 +44,15 @@ export const VENUE_OPS_MENU_ROOT = menuFolder({
       featureStatus: FEATURE_STATUS.LIVE,
     }),
     menuLeaf({
+      key: "venue-courts",
+      icon: "courts",
+      text: "Quản lý sân",
+      path: "/court-management/courts",
+      match: "court-courts",
+      permissions: [PERMISSIONS.COURT_VIEW],
+      featureStatus: FEATURE_STATUS.LIVE,
+    }),
+    menuLeaf({
       key: "venue-director",
       icon: "director",
       text: "Điều phối sân",

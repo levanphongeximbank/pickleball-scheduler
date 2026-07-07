@@ -1,5 +1,5 @@
 import { hasSupabaseConfig } from "../../../auth/supabaseClient.js";
-import { isVenueScopedRole } from "../../../auth/roles.js";
+import { isClubScopedRole, isVenueScopedRole } from "../../../auth/roles.js";
 import { loadVenues, saveVenues } from "../../../data/venue.js";
 import { normalizeTenant, TENANT_STATUS } from "../../../models/tenant.js";
 import { sanitizeBillingTenantId } from "../../billing/services/billingTenantResolver.js";
@@ -93,7 +93,10 @@ export function resolveRouteAccessScope({ user, activeClubId, activeClub }) {
   const clubVenueId = sanitizeBillingTenantId(
     activeClub?.venueId || activeClub?.tenantId
   );
-  const clubId = user?.clubId || activeClubId || null;
+  const clubScoped = Boolean(user?.role && isClubScopedRole(user.role));
+  const clubId = clubScoped
+    ? user?.clubId || null
+    : user?.clubId || activeClubId || null;
   const tournamentId = user?.tournamentId || user?.tournament_id || null;
   const teamId = user?.teamId || user?.team_id || null;
 
@@ -111,7 +114,7 @@ export function resolveRouteAccessScope({ user, activeClubId, activeClub }) {
   const venueId = profileVenueId || clubVenueId || null;
 
   return {
-    clubId: clubId || activeClubId || null,
+    clubId: clubScoped ? clubId : clubId || activeClubId || null,
     venueId,
     tenantId: venueId,
     playerId: user?.playerId || null,

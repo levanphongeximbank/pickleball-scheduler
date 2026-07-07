@@ -51,7 +51,7 @@ The app mixes several business representations for the same concepts:
 
 - tenant vs venue
 - club vs venue
-- court ownership and club ownership
+- ~~court ownership and club ownership~~ → **resolved in** [`CLUB_GOVERNANCE_SPEC.md`](./CLUB_GOVERNANCE_SPEC.md) (Chủ sở hữu / Chủ tịch / Phó chủ tịch CLB; quyền chủ sân theo `ownerUserId`)
 - role names and aliases
 - tournament models in legacy and modern folders
 
