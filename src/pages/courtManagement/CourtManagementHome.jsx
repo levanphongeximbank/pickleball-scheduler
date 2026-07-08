@@ -7,6 +7,8 @@ import LiveCourtsHero from "../../components/courts/LiveCourtsHero.jsx";
 import CourtStats from "../../components/courts/CourtStats.jsx";
 import DirectorSuggestionPanel from "../../components/courts/DirectorSuggestionPanel.jsx";
 import CourtStatusBoard from "./CourtStatusBoard.jsx";
+import MyFacilityPanel from "../../features/court-cluster/components/MyFacilityPanel.jsx";
+import { isCourtClustersEnabled } from "../../features/court-cluster/config/clusterFlags.js";
 import {
   computeCourtDashboardStats,
   generateDirectorSuggestions,
@@ -31,6 +33,7 @@ export default function CourtManagementHome() {
 
   return (
     <Box>
+      {isCourtClustersEnabled() && <MyFacilityPanel />}
       <LiveCourtsHero />
       <CourtStats stats={stats} />
 

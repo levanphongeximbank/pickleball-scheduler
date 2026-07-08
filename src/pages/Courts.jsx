@@ -25,6 +25,7 @@ import {
 import SportsTennisIcon from "@mui/icons-material/SportsTennis";
 import AddIcon from "@mui/icons-material/Add";
 import DirectionsIcon from "@mui/icons-material/Directions";
+import { Link as RouterLink } from "react-router-dom";
 
 import { useClub } from "../context/ClubContext.jsx";
 import { useCluster } from "../context/ClusterContext.jsx";
@@ -319,16 +320,26 @@ export default function Courts() {
           severity="info"
           sx={{ mb: 2 }}
           action={
-            activeCluster.googleMapsUrl ? (
+            <Stack direction="row" spacing={1}>
               <Button
                 color="inherit"
                 size="small"
-                startIcon={<DirectionsIcon />}
-                onClick={() => openClusterInGoogleMaps(activeCluster)}
+                component={RouterLink}
+                to="/court-management"
               >
-                Chỉ đường
+                Cơ sở của tôi
               </Button>
-            ) : null
+              {activeCluster.googleMapsUrl ? (
+                <Button
+                  color="inherit"
+                  size="small"
+                  startIcon={<DirectionsIcon />}
+                  onClick={() => openClusterInGoogleMaps(activeCluster)}
+                >
+                  Chỉ đường
+                </Button>
+              ) : null}
+            </Stack>
           }
         >
           <strong>Cụm:</strong> {activeCluster.name}

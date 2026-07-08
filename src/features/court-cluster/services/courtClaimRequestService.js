@@ -29,6 +29,7 @@ import {
   rpcReviewCourtClaimRequest,
   rpcSubmitCourtClaimRequest,
 } from "./courtClaimRequestRpcService.js";
+import { pullClusterContextForUser } from "./courtClusterCloudSync.js";
 
 function isClusterUnassignedLocal(clusterId) {
   const cluster = getClusterById(clusterId);
@@ -60,14 +61,28 @@ function listUnassignedClustersLocal({ search = "" } = {}) {
   });
 }
 
-function validateClusterSelection(clusterIds) {
+function validateClusterSelection(clusterIds, { userId = getCurrentUser()?.id } = {}) {
   const ids = [...new Set((clusterIds || []).map((id) => String(id).trim()).filter(Boolean))];
   if (ids.length === 0) {
     return { ok: false, error: "Chọn ít nhất một cụm sân.", code: "CLUSTER_IDS_REQUIRED" };
   }
 
+  const ownedIds = new Set(
+    listAssignmentsForUser(userId)
+      .filter((item) => item.role === "CLUSTER_OWNER")
+      .map((item) => item.clusterId)
+  );
+
   const venues = new Set();
   for (const clusterId of ids) {
+    if (ownedIds.has(clusterId)) {
+      return {
+        ok: false,
+        error: `Bạn đã sở hữu cụm: ${clusterId}`,
+        code: "ALREADY_OWNED",
+      };
+    }
+
     const cluster = getClusterById(clusterId);
     if (!cluster) {
       return { ok: false, error: `Không tìm thấy cụm: ${clusterId}`, code: "CLUSTER_NOT_FOUND" };
@@ -162,11 +177,7 @@ export async function submitCourtClaimRequest({ clusterIds = [], message = "" } 
     return { ok: false, error: "Chưa đăng nhập.", code: "NOT_AUTHENTICATED" };
   }
 
-  if (userHasApprovedClusterAssignments(user)) {
-    return { ok: false, error: "Tài khoản đã có cụm sân.", code: "ALREADY_ASSIGNED" };
-  }
-
-  const selection = validateClusterSelection(clusterIds);
+  const selection = validateClusterSelection(clusterIds, { userId: user.id });
   if (!selection.ok) {
     return selection;
   }
@@ -288,6 +299,12 @@ export async function reviewCourtClaimRequest({
       reviewNote,
     });
     if (rpcResult.ok) {
+      if (actor?.id) {
+        await pullClusterContextForUser(actor);
+      }
+      if (normalizedAction === "approve" && rpcResult.request?.userId) {
+        await pullClusterContextForUser({ id: rpcResult.request.userId });
+      }
       return rpcResult;
     }
     if (rpcResult.code !== "RPC_NOT_DEPLOYED") {

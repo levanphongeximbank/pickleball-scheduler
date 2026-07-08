@@ -3,6 +3,7 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useState } 
 import { useAuth } from "./AuthContext.jsx";
 import { useTenant } from "./TenantContext.jsx";
 import { isCourtClustersEnabled } from "../features/court-cluster/config/clusterFlags.js";
+import { pullClusterContextForUser } from "../features/court-cluster/services/courtClusterCloudSync.js";
 import {
   ensureDefaultClusterForVenue,
   isOrgWideClusterRole,
@@ -40,6 +41,41 @@ export function ClusterProvider({ children }) {
     [activeClusterId, clusters]
   );
 
+  const refreshClusters = useCallback(() => {
+    setRevision((value) => value + 1);
+  }, []);
+
+  const syncClustersFromCloud = useCallback(async () => {
+    if (!user?.id || !isCourtClustersEnabled()) {
+      return { ok: false, code: "SKIPPED" };
+    }
+
+    const result = await pullClusterContextForUser(user);
+    if (result.ok) {
+      setRevision((value) => value + 1);
+    }
+    return result;
+  }, [user]);
+
+  useEffect(() => {
+    if (!user?.id || !isCourtClustersEnabled()) {
+      return undefined;
+    }
+
+    let cancelled = false;
+    const run = async () => {
+      const result = await pullClusterContextForUser(user);
+      if (!cancelled && result.ok) {
+        setRevision((value) => value + 1);
+      }
+    };
+
+    void run();
+    return () => {
+      cancelled = true;
+    };
+  }, [user, currentTenantId]);
+
   useEffect(() => {
     const assigned = listClustersForAssignedUser(user);
     const shouldBootstrapDefault =
@@ -60,7 +96,7 @@ export function ClusterProvider({ children }) {
       setActiveClusterIdState(null);
       setActiveClusterId(null);
     }
-  }, [activeClusterId, currentTenantId, user]);
+  }, [activeClusterId, currentTenantId, revision, user]);
 
   const switchCluster = useCallback(
     (clusterId) => {
@@ -82,10 +118,6 @@ export function ClusterProvider({ children }) {
     [clusters, currentTenantId, user]
   );
 
-  const refreshClusters = useCallback(() => {
-    setRevision((value) => value + 1);
-  }, []);
-
   const value = useMemo(
     () => ({
       clusters,
@@ -94,9 +126,10 @@ export function ClusterProvider({ children }) {
       clustersEnabled: isCourtClustersEnabled(),
       switchCluster,
       refreshClusters,
+      syncClustersFromCloud,
       revision,
     }),
-    [activeCluster, clusters, refreshClusters, revision, switchCluster]
+    [activeCluster, clusters, refreshClusters, revision, switchCluster, syncClustersFromCloud]
   );
 
   return <ClusterContext.Provider value={value}>{children}</ClusterContext.Provider>;

@@ -143,4 +143,24 @@ describe("court claim request", () => {
     assert.equal(second.ok, false);
     assert.equal(second.code, "DUPLICATE_PENDING");
   });
+
+  it("allows additional claim when user already owns a cluster", async () => {
+    const owned = createCourtCluster({ venueId: VENUE_A, name: "Owned", user: ADMIN });
+    const extra = createCourtCluster({ venueId: VENUE_A, name: "Extra", user: ADMIN });
+    assignUserToCluster(OWNER.id, owned.cluster.id, { user: ADMIN, role: "CLUSTER_OWNER" });
+
+    const result = await submitCourtClaimRequest({ clusterIds: [extra.cluster.id] });
+    assert.equal(result.ok, true);
+    assert.equal(result.request.status, "pending");
+    assert.deepEqual(result.request.clusterIds, [extra.cluster.id]);
+  });
+
+  it("blocks claiming a cluster the user already owns", async () => {
+    const owned = createCourtCluster({ venueId: VENUE_A, name: "Owned again", user: ADMIN });
+    assignUserToCluster(OWNER.id, owned.cluster.id, { user: ADMIN, role: "CLUSTER_OWNER" });
+
+    const result = await submitCourtClaimRequest({ clusterIds: [owned.cluster.id] });
+    assert.equal(result.ok, false);
+    assert.equal(result.code, "ALREADY_OWNED");
+  });
 });

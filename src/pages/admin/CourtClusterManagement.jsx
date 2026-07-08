@@ -31,6 +31,7 @@ import {
 } from "@mui/material";
 import AddIcon from "@mui/icons-material/Add";
 import DirectionsIcon from "@mui/icons-material/Directions";
+import InfoOutlinedIcon from "@mui/icons-material/InfoOutlined";
 import EditIcon from "@mui/icons-material/Edit";
 
 import { useTenant } from "../../context/TenantContext.jsx";
@@ -56,6 +57,7 @@ import {
   listPendingCourtClaimRequests,
   reviewCourtClaimRequest,
 } from "../../features/court-cluster/services/courtClaimRequestService.js";
+import { fetchProfileByUserId } from "../../auth/profileService.js";
 
 const EMPTY_FORM = {
   name: "",
@@ -87,6 +89,13 @@ export default function CourtClusterManagement() {
   const [pendingClaims, setPendingClaims] = useState([]);
   const [reviewNote, setReviewNote] = useState("");
   const [reviewingId, setReviewingId] = useState(null);
+
+  const [infoOpen, setInfoOpen] = useState(false);
+  const [infoCluster, setInfoCluster] = useState(null);
+  const [ownerUserId, setOwnerUserId] = useState(null);
+  const [ownerLoading, setOwnerLoading] = useState(false);
+  const [ownerError, setOwnerError] = useState(null);
+  const [ownerProfile, setOwnerProfile] = useState(null);
 
   const canPickTenant = isSuperAdmin || isPlatformScopedRole(user?.role);
   const tenants = useMemo(() => listTenants(), [message]);
@@ -221,6 +230,35 @@ export default function CourtClusterManagement() {
     }
     setMessage("Đã xóa cụm sân");
     refreshClusters();
+  };
+
+  const openClusterInfoDialog = async (cluster) => {
+    setInfoOpen(true);
+    setInfoCluster(cluster);
+    setOwnerUserId(null);
+    setOwnerLoading(false);
+    setOwnerError(null);
+    setOwnerProfile(null);
+
+    const assignments = listAssignmentsForCluster(cluster.id) || [];
+    const ownerAssignment = assignments.find((a) => a.role === "CLUSTER_OWNER");
+    const nextOwnerUserId = ownerAssignment?.userId || cluster?.ownerUserId || null;
+    setOwnerUserId(nextOwnerUserId);
+
+    if (!nextOwnerUserId) {
+      return;
+    }
+
+    setOwnerLoading(true);
+    const result = await fetchProfileByUserId(nextOwnerUserId);
+    setOwnerLoading(false);
+
+    if (!result.ok) {
+      setOwnerError(result.error || "Không tải được thông tin chủ sở hữu.");
+      return;
+    }
+
+    setOwnerProfile(result.user);
   };
 
   const openAssignDialog = (clusterId = null) => {
@@ -492,6 +530,13 @@ export default function CourtClusterManagement() {
                             </IconButton>
                           </span>
                         </Tooltip>
+                        <Tooltip title="Thông tin cụm sân">
+                          <span>
+                            <IconButton size="small" color="primary" onClick={() => void openClusterInfoDialog(cluster)}>
+                              <InfoOutlinedIcon fontSize="small" />
+                            </IconButton>
+                          </span>
+                        </Tooltip>
                         <Button size="small" startIcon={<EditIcon />} onClick={() => openEditDialog(cluster)}>
                           Sửa
                         </Button>
@@ -590,6 +635,126 @@ export default function CourtClusterManagement() {
           <Button onClick={() => setAssignOpen(false)}>Huỷ</Button>
           <Button variant="contained" onClick={handleAssign}>
             Lưu gán
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      <Dialog
+        open={infoOpen}
+        onClose={() => {
+          setInfoOpen(false);
+          setInfoCluster(null);
+          setOwnerUserId(null);
+          setOwnerLoading(false);
+          setOwnerError(null);
+          setOwnerProfile(null);
+        }}
+        fullWidth
+        maxWidth="sm"
+      >
+        <DialogTitle>Thông tin cụm sân</DialogTitle>
+        <DialogContent>
+          {!infoCluster ? (
+            <Typography variant="body2" color="text.secondary">
+              — 
+            </Typography>
+          ) : (
+            <Stack spacing={1.5} sx={{ pt: 1 }}>
+              <Box>
+                <Typography variant="subtitle1" fontWeight={700}>
+                  {infoCluster.name}
+                </Typography>
+                <Typography variant="caption" color="text.secondary">
+                  ID: {infoCluster.id}
+                </Typography>
+              </Box>
+
+              <Box>
+                <Typography variant="body2" fontWeight={600}>
+                  Địa chỉ
+                </Typography>
+                <Typography variant="body2" color="text.secondary">
+                  {infoCluster.address || "—"}
+                </Typography>
+              </Box>
+
+              <Stack direction="row" spacing={1.25} alignItems="center" flexWrap="wrap">
+                <Typography variant="body2" color="text.secondary">
+                  Số sân: <b>{infoCluster.courtCount || 0}</b>
+                </Typography>
+                <Chip
+                  size="small"
+                  label={infoCluster.status === "active" ? "Hoạt động" : "Tạm dừng"}
+                  color={infoCluster.status === "active" ? "success" : "default"}
+                />
+              </Stack>
+
+              <Box>
+                <Typography variant="body2" fontWeight={600}>
+                  Google Maps
+                </Typography>
+                <Typography variant="body2" color="text.secondary" sx={{ wordBreak: "break-word" }}>
+                  {infoCluster.googleMapsUrl || "—"}
+                </Typography>
+                <Box sx={{ mt: 1 }}>
+                  <Button
+                    size="small"
+                    variant="outlined"
+                    startIcon={<DirectionsIcon fontSize="small" />}
+                    disabled={!infoCluster.googleMapsUrl}
+                    onClick={() => openClusterInGoogleMaps(infoCluster)}
+                    sx={{ textTransform: "none" }}
+                  >
+                    Chỉ đường
+                  </Button>
+                </Box>
+              </Box>
+
+              <Box>
+                <Typography variant="body2" fontWeight={600}>
+                  Chủ sở hữu (CLUSTER_OWNER)
+                </Typography>
+                {ownerLoading ? (
+                  <Typography variant="body2" color="text.secondary">
+                    Đang tải...
+                  </Typography>
+                ) : (
+                  <Stack spacing={0.5} sx={{ mt: 0.5 }}>
+                    <Typography variant="body2" color="text.secondary">
+                      User ID: <b>{ownerUserId || "—"}</b>
+                    </Typography>
+                    <Typography variant="body2" color="text.secondary">
+                      Tên hiển thị: <b>{ownerProfile?.displayName || "—"}</b>
+                    </Typography>
+                    <Typography variant="body2" color="text.secondary">
+                      SĐT: <b>{ownerProfile?.phone || "—"}</b>
+                    </Typography>
+                    <Typography variant="body2" color="text.secondary">
+                      Email: <b>{ownerProfile?.email || "—"}</b>
+                    </Typography>
+                  </Stack>
+                )}
+                {ownerError && (
+                  <Typography variant="caption" color="error" sx={{ display: "block", mt: 0.75 }}>
+                    {ownerError}
+                  </Typography>
+                )}
+              </Box>
+            </Stack>
+          )}
+        </DialogContent>
+        <DialogActions>
+          <Button
+            onClick={() => {
+              setInfoOpen(false);
+              setInfoCluster(null);
+              setOwnerUserId(null);
+              setOwnerLoading(false);
+              setOwnerError(null);
+              setOwnerProfile(null);
+            }}
+          >
+            Đóng
           </Button>
         </DialogActions>
       </Dialog>

@@ -26,7 +26,10 @@ import {
   listMyCourtClaimRequests,
   listUnassignedClusters,
   submitCourtClaimRequest,
+  userHasApprovedClusterAssignments,
 } from "../../features/court-cluster/services/courtClaimRequestService.js";
+import { listAssignmentsForUser } from "../../features/court-cluster/services/courtClusterService.js";
+import { getCurrentUser } from "../../auth/authService.js";
 
 export default function FacilityClaimDialog({ open, onClose, onSubmitted }) {
   const [clusters, setClusters] = useState([]);
@@ -58,7 +61,14 @@ export default function FacilityClaimDialog({ open, onClose, onSubmitted }) {
       setError(clusterResult.error);
       setClusters([]);
     } else {
-      setClusters(clusterResult.clusters || []);
+      const user = getCurrentUser();
+      const ownedIds = new Set(
+        listAssignmentsForUser(user?.id)
+          .filter((item) => item.role === "CLUSTER_OWNER")
+          .map((item) => item.clusterId)
+      );
+      const available = (clusterResult.clusters || []).filter((cluster) => !ownedIds.has(cluster.id));
+      setClusters(available);
     }
 
     if (requestResult.ok) {
@@ -129,8 +139,9 @@ export default function FacilityClaimDialog({ open, onClose, onSubmitted }) {
       <DialogContent>
         <Stack spacing={2} sx={{ mt: 1 }}>
           <Typography variant="body2" color="text.secondary">
-            Chọn cụm sân chưa có chủ trên hệ thống. Admin hoặc người được phân quyền sẽ duyệt
-            trước khi bạn vận hành.
+            {userHasApprovedClusterAssignments()
+              ? "Chọn cụm sân chưa có chủ để gửi yêu cầu gắn thêm. Admin hoặc người được phân quyền sẽ duyệt."
+              : "Chọn cụm sân chưa có chủ trên hệ thống. Admin hoặc người được phân quyền sẽ duyệt trước khi bạn vận hành."}
           </Typography>
 
           {pendingRequest && (

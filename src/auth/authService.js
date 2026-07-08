@@ -22,6 +22,7 @@ import {
   SIGNUP_INTENT,
 } from "../features/identity/services/signupService.js";
 import { writeAuditLog, AUDIT_ACTIONS } from "../features/identity/services/auditService.js";
+import { pullClusterContextForUser } from "../features/court-cluster/services/courtClusterCloudSync.js";
 
 /** Dev registry — chỉ dùng khi chưa cấu hình Supabase (dev local). */
 const DEV_USERS = [
@@ -206,12 +207,37 @@ async function syncSupabaseUser(authUser) {
   }
 
   saveAuthSession(resolved.user, { provider: "supabase" });
+  await pullClusterContextForUser(resolved.user);
+  const refreshed = await fetchProfileByUserId(resolved.user.id);
+  if (refreshed.ok) {
+    saveAuthSession(refreshed.user, { provider: "supabase" });
+  }
+
   return {
     ok: true,
-    user: resolved.user,
+    user: refreshed.ok ? refreshed.user : resolved.user,
     provider: "supabase",
     warning: resolved.warning || null,
   };
+}
+
+export async function refreshAuthProfileFromSupabase(userId = getCurrentUser()?.id) {
+  const targetId = String(userId || "").trim();
+  if (!targetId || !hasSupabaseConfig()) {
+    return { ok: false, code: "SKIPPED" };
+  }
+
+  const profileResult = await fetchProfileByUserId(targetId);
+  if (!profileResult.ok) {
+    return profileResult;
+  }
+
+  const session = loadAuthSession();
+  if (session?.user?.id === targetId) {
+    saveAuthSession(profileResult.user, { provider: session.provider || "supabase" });
+  }
+
+  return { ok: true, user: profileResult.user };
 }
 
 export async function restoreSupabaseSession() {
