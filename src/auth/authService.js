@@ -315,7 +315,7 @@ export async function signUpWithPassword(email, password, profileMeta = {}) {
       ok: true,
       needsEmailConfirmation: true,
       message: pendingCourtOwner
-        ? "Kiểm tra email để xác nhận tài khoản. Sau khi xác nhận, đăng nhập để hoàn tất thiết lập sân."
+        ? "Kiểm tra email để xác nhận tài khoản. Sau khi xác nhận, đăng nhập và chọn cụm sân tại Cơ sở hiện tại (sidebar)."
         : "Kiểm tra email để xác nhận tài khoản.",
     };
   }
@@ -325,9 +325,16 @@ export async function signUpWithPassword(email, password, profileMeta = {}) {
     if (!courtOwnerResult.ok) {
       return courtOwnerResult;
     }
+    const synced = await syncSupabaseUser(data.user);
+    if (synced.ok) {
+      return {
+        ...synced,
+        courtOwnerNextStep: courtOwnerResult.nextStep || "claim_cluster",
+        message: courtOwnerResult.message,
+      };
+    }
+    return synced;
   }
-
-  return syncSupabaseUser(data.user);
 }
 
 /**

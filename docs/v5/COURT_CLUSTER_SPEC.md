@@ -113,6 +113,33 @@ QA: [`PHASE_32_QA_CHECKLIST.md`](./PHASE_32_QA_CHECKLIST.md) · Staging verify: 
 
 ---
 
+## 8. Onboarding chủ sân — Phase 33 (claim + duyệt)
+
+**SQL:** [`PHASE_33_COURT_CLAIM_REQUESTS.sql`](./PHASE_33_COURT_CLAIM_REQUESTS.sql), [`PHASE_33_COURT_OWNER_SIGNUP_DEFER.sql`](./PHASE_33_COURT_OWNER_SIGNUP_DEFER.sql)
+
+### Flow mới (signup chủ sân)
+
+1. Đăng ký chọn **Chủ sân** → RPC `auth_register_court_owner_intent` (không tạo venue ngay).
+2. Sidebar **Cơ sở hiện tại** → **Yêu cầu gắn cụm sân** → chọn cụm chưa có chủ (toàn hệ thống).
+3. Admin / role `cluster.manage` duyệt → `user_cluster_assignments` + `profiles.venue_id` + trial subscription.
+4. Sau duyệt, **Cơ sở hiện tại** hiển thị các cụm đã sở hữu (dropdown).
+
+### Quy tắc V1
+
+- Một yêu cầu chỉ chọn cụm **cùng venue** (`MIXED_VENUE_NOT_ALLOWED`).
+- Chủ sân **không vận hành sân** cho đến khi được duyệt.
+- Tài khoản chủ sân **cũ** (đã có venue + Cụm chính) không đổi.
+
+### UI
+
+| Thành phần | File |
+|------------|------|
+| Claim dialog | `src/components/shell/FacilityClaimDialog.jsx` |
+| Sidebar switcher | `src/components/shell/CurrentFacilitySwitcher.jsx` |
+| Admin duyệt | `src/pages/admin/CourtClusterManagement.jsx` |
+
+---
+
 ## 7. Rollback
 
 ```sql

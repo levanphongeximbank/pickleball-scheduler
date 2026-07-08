@@ -40,7 +40,7 @@ export function validateSignupForm({
   }
 
   if (signupType === SIGNUP_INTENT.COURT_OWNER && !String(venueName || "").trim()) {
-    errors.venueName = "Nhập tên sân hoặc CLB.";
+    errors.venueName = "Nhập ghi chú hoặc tên gợi ý cho cụm sân.";
   }
 
   const firstError = errors.email || errors.password || errors.confirmPassword || errors.venueName || null;
@@ -60,30 +60,31 @@ export function buildSignupUserMetadata({ displayName, signupIntent, venueName }
   };
 
   if (metadata.signup_intent === SIGNUP_INTENT.COURT_OWNER) {
+    metadata.claim_note = String(venueName || "").trim();
     metadata.venue_name = String(venueName || "").trim();
   }
 
   return metadata;
 }
 
-export async function completeCourtOwnerRegistration(venueName) {
-  const trimmedVenueName = String(venueName || "").trim();
-  if (!trimmedVenueName) {
-    return { ok: false, error: "Nhập tên sân hoặc CLB.", code: "VENUE_NAME_REQUIRED" };
-  }
+export async function completeCourtOwnerRegistration(note = "") {
+  const trimmedNote = String(note || "").trim();
 
   const client = getSupabaseAuthClient();
   if (!client) {
     return { ok: false, error: "Supabase chưa cấu hình.", code: "NO_SUPABASE" };
   }
 
-  const { data, error } = await client.rpc("auth_register_court_owner", {
-    p_venue_name: trimmedVenueName,
+  const { data, error } = await client.rpc("auth_register_court_owner_intent", {
+    p_note: trimmedNote,
   });
 
   if (error) {
     const message = String(error.message || "");
-    if (message.includes("auth_register_court_owner")) {
+    if (
+      message.includes("auth_register_court_owner_intent") ||
+      message.includes("auth_register_court_owner")
+    ) {
       return {
         ok: false,
         error: "Chức năng đăng ký chủ sân chưa sẵn sàng trên server. Liên hệ quản trị viên.",
@@ -92,6 +93,9 @@ export async function completeCourtOwnerRegistration(venueName) {
     }
     if (message.includes("already_has_venue")) {
       return { ok: false, error: "Tài khoản đã gắn sân.", code: "ALREADY_HAS_VENUE" };
+    }
+    if (message.includes("already_assigned")) {
+      return { ok: false, error: "Tài khoản đã có cụm sân.", code: "ALREADY_ASSIGNED" };
     }
     return {
       ok: false,
@@ -102,19 +106,18 @@ export async function completeCourtOwnerRegistration(venueName) {
 
   return {
     ok: true,
-    venueId: data?.venue_id || null,
-    subscriptionId: data?.subscription_id || null,
+    intent: data?.intent || "court_owner",
+    nextStep: data?.next_step || "claim_cluster",
+    message:
+      "Đăng ký chủ sân thành công. Chọn cụm sân tại mục Cơ sở hiện tại (sidebar) và gửi yêu cầu xác nhận.",
   };
 }
 
-/**
- * Hoàn tất đăng ký chủ sân sau xác nhận email (metadata signup_intent + venue_name).
- */
 export async function maybeCompletePendingCourtOwnerRegistration(authUser) {
   const metadata = authUser?.user_metadata || {};
-  const venueName = String(metadata.venue_name || "").trim();
+  const claimNote = String(metadata.claim_note || metadata.venue_name || "").trim();
 
-  if (metadata.signup_intent !== SIGNUP_INTENT.COURT_OWNER || !venueName) {
+  if (metadata.signup_intent !== SIGNUP_INTENT.COURT_OWNER) {
     return { ok: true, skipped: true };
   }
 
@@ -127,9 +130,9 @@ export async function maybeCompletePendingCourtOwnerRegistration(authUser) {
     return { ok: true, skipped: true, reason: "already_has_venue" };
   }
 
-  if (profileResult.user.role !== ROLES.PLAYER) {
+  if (profileResult.user.role !== ROLES.PLAYER && profileResult.user.role !== ROLES.COURT_OWNER) {
     return { ok: true, skipped: true, reason: "not_player" };
   }
 
-  return completeCourtOwnerRegistration(venueName);
+  return completeCourtOwnerRegistration(claimNote);
 }

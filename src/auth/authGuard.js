@@ -25,10 +25,6 @@ export function isPublicAuthPath(pathname, { authProductionEnabled, rbacEnabled 
     return false;
   }
 
-  if (pathname === "/") {
-    return true;
-  }
-
   if (PUBLIC_PATH_PREFIXES.some((path) => pathname === path || pathname.startsWith(`${path}/`))) {
     return true;
   }

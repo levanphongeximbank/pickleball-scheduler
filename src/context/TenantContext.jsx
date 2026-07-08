@@ -35,7 +35,10 @@ import {
   getBillingStore,
   resolveBillingStoreMode,
 } from "../features/billing/repositories/billingRepository.js";
-import { ensureBillingStoreHydrated } from "../features/billing/repositories/billingStoreRuntime.js";
+import {
+  ensureBillingStoreHydrated,
+  resetBillingStoreHydration,
+} from "../features/billing/repositories/billingStoreRuntime.js";
 import { syncLegacySubscriptionsFromBilling } from "../domain/venueService.js";
 import { isSubscriptionOperationalExemptRole } from "../features/billing/guards/operationalRoutePolicy.js";
 
@@ -75,14 +78,24 @@ export function TenantProvider({ children }) {
     return resolveTenantRecord(currentTenantId, user);
   }, [currentTenantId, revision, user]);
 
+  const userId = user?.id || null;
+  const userClubId = user?.clubId || null;
+
   useEffect(() => {
     let cancelled = false;
 
     void (async () => {
       ensureTenantBootstrap();
 
-      if (resolveBillingStoreMode() === BILLING_STORE_MODES.SUPABASE) {
-        await ensureBillingStoreHydrated(getBillingStore());
+      if (
+        resolveBillingStoreMode() === BILLING_STORE_MODES.SUPABASE &&
+        rbacEnabled &&
+        isAuthenticated &&
+        userId
+      ) {
+        const store = getBillingStore();
+        resetBillingStoreHydration(store);
+        await ensureBillingStoreHydrated(store);
         syncLegacySubscriptionsFromBilling();
       }
 
@@ -97,10 +110,7 @@ export function TenantProvider({ children }) {
     return () => {
       cancelled = true;
     };
-  }, []);
-
-  const userId = user?.id || null;
-  const userClubId = user?.clubId || null;
+  }, [isAuthenticated, rbacEnabled, userId]);
 
   useEffect(() => {
     if (!rbacEnabled || !isAuthenticated || !userId || !currentTenantId || !hasSupabaseConfig()) {
@@ -206,7 +216,7 @@ export function TenantProvider({ children }) {
     }
 
     return assertSubscriptionOperational(currentTenantId);
-  }, [currentTenantId, isAuthenticated, isPlatformTech, isSuperAdmin, rbacEnabled, user]);
+  }, [currentTenantId, isAuthenticated, isPlatformTech, isSuperAdmin, rbacEnabled, revision, user]);
 
   const switchTenant = useCallback(
     (tenantId) => {

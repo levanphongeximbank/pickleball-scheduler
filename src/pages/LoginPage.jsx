@@ -168,7 +168,11 @@ export default function LoginPage() {
 
     setMessage({
       type: "success",
-      text: `Đăng ký thành công: ${ROLE_LABELS[result.user.role] || result.user.role}`,
+      text:
+        result.message ||
+        (signupType === SIGNUP_INTENT.COURT_OWNER
+          ? "Đăng ký chủ sân thành công. Chọn cụm sân tại Cơ sở hiện tại trong sidebar."
+          : `Đăng ký thành công: ${ROLE_LABELS[result.user?.role] || result.user?.role || "Người chơi"}`),
     });
   };
 
@@ -350,11 +354,11 @@ export default function LoginPage() {
                       {signupType === SIGNUP_INTENT.COURT_OWNER && (
                         <TextField
                           size="small"
-                          label="Tên sân / CLB"
+                          label="Ghi chú / tên gợi ý cụm sân"
                           value={venueName}
                           onChange={(e) => setVenueName(e.target.value)}
                           fullWidth
-                          helperText="Tạo venue mới và gói dùng thử sau khi đăng ký"
+                          helperText="Sau đăng ký, chọn cụm sân tại Cơ sở hiện tại và gửi yêu cầu admin duyệt"
                         />
                       )}
                     </>

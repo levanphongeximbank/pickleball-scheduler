@@ -35,6 +35,9 @@ import { resolveRouteAccessScope } from "../auth/menuAccess.js";
 import { isVenueScopedRole } from "../auth/roles.js";
 import { isCourtClustersEnabled } from "../features/court-cluster/config/clusterFlags.js";
 import { openClusterInGoogleMaps } from "../features/court-cluster/utils/clusterMapsUtils.js";
+import {
+  isCourtOwnerAwaitingClaim,
+} from "../features/court-cluster/services/courtClaimRequestService.js";
 import { ensureWritableClubForVenueOwner } from "../features/club/services/venueOwnerClubService.js";
 import {
   getCourtDisplayName,
@@ -75,6 +78,9 @@ export default function Courts() {
     !rbacEnabled || !isAuthenticated || can(PERMISSIONS.COURT_UPDATE, scope);
   const canDelete =
     !rbacEnabled || !isAuthenticated || can(PERMISSIONS.COURT_DELETE, scope);
+  const awaitingClusterClaim =
+    isCourtClustersEnabled() && isCourtOwnerAwaitingClaim(user);
+  const operationsBlocked = awaitingClusterClaim;
   const [courts, setCourts] = useState(() => loadCourts([], activeClubId));
   const [permissionError, setPermissionError] = useState(null);
   const [clubBootstrapError, setClubBootstrapError] = useState(null);
@@ -258,7 +264,7 @@ export default function Courts() {
           <Button
             variant="outlined"
             size="large"
-            disabled={!canCreate}
+            disabled={!canCreate || operationsBlocked}
             onClick={() => {
               setBulkCourtCount(String(courtCapacity?.remaining ?? 3));
               setBulkFormError(null);
@@ -271,7 +277,7 @@ export default function Courts() {
             variant="contained"
             size="large"
             startIcon={<AddIcon />}
-            disabled={!canCreate}
+            disabled={!canCreate || operationsBlocked}
             onClick={() => {
               resetCourtForm();
               setOpen(true);
@@ -287,6 +293,13 @@ export default function Courts() {
           Đã có {courtCapacity.current} / tối đa {courtCapacity.maxCourts} sân
           {courtCapacity.planName ? ` (gói ${courtCapacity.planName})` : ""}
         </Typography>
+      )}
+
+      {awaitingClusterClaim && (
+        <Alert severity="warning" sx={{ mb: 2 }}>
+          Tài khoản chủ sân chưa được gắn cụm sân. Mở sidebar → <strong>Cơ sở hiện tại</strong> →{" "}
+          <strong>Yêu cầu gắn cụm sân</strong> và chờ admin duyệt trước khi vận hành.
+        </Alert>
       )}
 
       {clubBootstrapError && (
@@ -337,8 +350,17 @@ export default function Courts() {
         {courts.length === 0 && (
           <Grid size={{ xs: 12 }}>
             <Alert severity="info">
-              Chưa có sân nào tại cơ sở hiện tại. Bấm <strong>THIẾT LẬP NHANH</strong> để tạo
-              nhiều sân cùng lúc, hoặc <strong>THÊM SÂN</strong> để thêm từng sân.
+              {awaitingClusterClaim ? (
+                <>
+                  Chưa có cụm sân được duyệt. Vào sidebar → <strong>Cơ sở hiện tại</strong> để
+                  gửi yêu cầu gắn cụm sân.
+                </>
+              ) : (
+                <>
+                  Chưa có sân nào tại cơ sở hiện tại. Bấm <strong>THIẾT LẬP NHANH</strong> để tạo
+                  nhiều sân cùng lúc, hoặc <strong>THÊM SÂN</strong> để thêm từng sân.
+                </>
+              )}
             </Alert>
           </Grid>
         )}

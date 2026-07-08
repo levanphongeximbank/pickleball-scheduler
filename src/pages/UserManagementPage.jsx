@@ -43,7 +43,6 @@ const STATUS_LABELS = {
 
 const EMPTY_FORM = {
   email: "",
-  password: "",
   displayName: "",
   role: "",
   phone: "",
@@ -124,7 +123,6 @@ export default function UserManagementPage() {
     setEditingUser(user);
     setForm({
       email: user.email,
-      password: "",
       displayName: user.displayName,
       role: user.role,
       phone: user.phone || "",
@@ -183,7 +181,12 @@ export default function UserManagementPage() {
     setDialogOpen(false);
     setMessage({
       type: "success",
-      text: editingUser ? "Đã cập nhật user." : "Đã tạo user.",
+      text: editingUser
+        ? "Đã cập nhật user."
+        : result.passwordSetupMessage ||
+          (result.passwordSetupSent
+            ? "Đã tạo user và gửi email đặt mật khẩu."
+            : "Đã tạo user (email đã xác nhận, không cần xác nhận thêm)."),
     });
     loadUsers();
   };
@@ -390,13 +393,10 @@ export default function UserManagementPage() {
                 fullWidth
               />
               {!editingUser && (
-                <TextField
-                  label="Mật khẩu tạm"
-                  type="password"
-                  value={form.password}
-                  onChange={(e) => setForm((prev) => ({ ...prev, password: e.target.value }))}
-                  fullWidth
-                />
+                <Alert severity="info">
+                  Tài khoản do Admin tạo sẽ được xác nhận email tự động. Hệ thống gửi email đặt
+                  mật khẩu để người dùng tự thiết lập.
+                </Alert>
               )}
               <TextField
                 label="Họ tên"

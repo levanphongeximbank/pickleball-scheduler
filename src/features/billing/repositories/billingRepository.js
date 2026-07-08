@@ -3,7 +3,7 @@ import { createLocalStorageBillingStore } from "../services/billingStorage.js";
 import { ensureCollection, writeCollection } from "../services/billingStoreUtils.js";
 import { createMemoryBillingStore } from "./memoryBillingStore.js";
 import { createSupabaseBillingStore } from "./supabaseBillingStore.js";
-import { ensureBillingStoreHydrated, isSupabaseBillingStore } from "./billingStoreRuntime.js";
+import { isSupabaseBillingStore } from "./billingStoreRuntime.js";
 
 export const BILLING_STORE_MODES = Object.freeze({
   MEMORY: "memory",
@@ -61,9 +61,6 @@ export function createBillingStore({ mode, storage, client, seed } = {}) {
 export function getBillingStore(options = {}) {
   if (!sharedStore || options.forceNew) {
     sharedStore = createBillingStore(options);
-    if (isSupabaseBillingStore(sharedStore)) {
-      void ensureBillingStoreHydrated(sharedStore);
-    }
   }
   return sharedStore;
 }

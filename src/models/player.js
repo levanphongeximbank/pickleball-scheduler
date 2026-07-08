@@ -1,5 +1,9 @@
 import { PLAYER_TYPE } from "./tournament/constants.js";
-import { migrateLegacyRating, snapPickVnRating } from "../features/pick-vn-rating/constants/pickVnRatingScale.js";
+import {
+  PICK_VN_MIN,
+  parsePickVnRating,
+  snapPickVnRating,
+} from "../features/pick-vn-rating/constants/pickVnRatingScale.js";
 import {
   migratePlayerRatingFields,
 } from "../features/pick-vn-rating/models/pickVnRating.js";
@@ -96,11 +100,14 @@ export function getPlayerSkillLevel(player, fallback = 3.5) {
     return fallback;
   }
 
-  if (player.skillLevel !== undefined && player.skillLevel !== null && player.skillLevel !== "") {
-    return migrateLegacyRating(toNumber(player.skillLevel, fallback));
-  }
+  const raw =
+    player.skillLevel !== undefined && player.skillLevel !== null && player.skillLevel !== ""
+      ? player.skillLevel
+      : player.level ?? player.rating;
 
-  return migrateLegacyRating(toNumber(player.level ?? player.rating, fallback));
+  // NOTE: normalizePlayer expects to preserve fractional levels already on the accepted scale.
+  // We only clamp the minimum; we do not snap here (snap is handled elsewhere for UI/slider).
+  return Math.max(PICK_VN_MIN, parsePickVnRating(raw, fallback));
 }
 
 /**
@@ -143,7 +150,7 @@ export function normalizePlayer(player) {
 
   const skillLevel = getPlayerCurrentRating(
     player,
-    migrateLegacyRating(toNumber(player.level ?? player.rating, 3.5))
+    Math.max(PICK_VN_MIN, parsePickVnRating(player.level ?? player.rating, 3.5))
   );
   const ratingInternal = getPlayerRatingInternal(player, skillLevel);
 

@@ -3,10 +3,14 @@
 export const MIN_PASSWORD_LENGTH = 6;
 
 function readViteEnv(key) {
-  if (typeof import.meta === "undefined" || !import.meta.env) {
-    return undefined;
+  const nodeEnv = typeof globalThis.process !== "undefined" ? globalThis.process.env : {};
+  if (nodeEnv?.[key] !== undefined && String(nodeEnv[key]).trim()) {
+    return String(nodeEnv[key]).trim();
   }
-  return import.meta.env[key];
+  if (typeof import.meta !== "undefined" && import.meta.env?.[key] !== undefined) {
+    return import.meta.env[key];
+  }
+  return undefined;
 }
 
 /** Public self-service signup — default OFF until owner approves. */

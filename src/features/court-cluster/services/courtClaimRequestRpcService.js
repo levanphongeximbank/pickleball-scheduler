@@ -1,0 +1,216 @@
+import { getSupabaseAuthClient } from "../../../auth/supabaseClient.js";
+import { normalizeCourtClaimRequest } from "../models/courtClaimRequest.js";
+import { normalizeCourtCluster } from "../../../models/courtCluster.js";
+
+function isMissingRpcError(error) {
+  const message = String(error?.message || error?.code || "").toLowerCase();
+  return (
+    message.includes("could not find the function") ||
+    (message.includes("function") && message.includes("does not exist")) ||
+    error?.code === "PGRST202"
+  );
+}
+
+function parseRpcJson(data) {
+  if (!data) {
+    return { ok: false, code: "EMPTY_RESPONSE", error: "RPC trả về rỗng." };
+  }
+  if (typeof data === "object" && "ok" in data) {
+    return data;
+  }
+  return { ok: true, ...data };
+}
+
+export async function rpcListUnassignedClusters({ search = "", limit = 100 } = {}) {
+  const client = getSupabaseAuthClient();
+  if (!client) {
+    return { ok: false, code: "NO_SUPABASE", error: "Supabase chưa sẵn sàng." };
+  }
+
+  const { data, error } = await client.rpc("court_list_unassigned_clusters", {
+    p_search: search || "",
+    p_limit: limit,
+  });
+
+  if (error) {
+    if (isMissingRpcError(error)) {
+      return { ok: false, code: "RPC_NOT_DEPLOYED", error: error.message };
+    }
+    return { ok: false, code: "RPC_FAILED", error: error.message };
+  }
+
+  const payload = parseRpcJson(data);
+  if (!payload.ok) {
+    return payload;
+  }
+
+  const clusters = (payload.clusters || []).map((row) => ({
+    ...normalizeCourtCluster(row),
+    venueName: row.venue_name || "",
+  }));
+  return { ok: true, clusters, provider: "rpc" };
+}
+
+export async function rpcSubmitCourtClaimRequest({ clusterIds = [], message = "" } = {}) {
+  const client = getSupabaseAuthClient();
+  if (!client) {
+    return { ok: false, code: "NO_SUPABASE", error: "Supabase chưa sẵn sàng." };
+  }
+
+  const { data, error } = await client.rpc("court_submit_claim_request", {
+    p_cluster_ids: clusterIds,
+    p_message: message || "",
+  });
+
+  if (error) {
+    if (isMissingRpcError(error)) {
+      return { ok: false, code: "RPC_NOT_DEPLOYED", error: error.message };
+    }
+    return { ok: false, code: "RPC_FAILED", error: error.message };
+  }
+
+  const payload = parseRpcJson(data);
+  if (!payload.ok) {
+    return payload;
+  }
+
+  return {
+    ok: true,
+    request: normalizeCourtClaimRequest(payload.request),
+    provider: "rpc",
+  };
+}
+
+export async function rpcListMyCourtClaimRequests() {
+  const client = getSupabaseAuthClient();
+  if (!client) {
+    return { ok: false, code: "NO_SUPABASE", error: "Supabase chưa sẵn sàng." };
+  }
+
+  const { data, error } = await client.rpc("court_list_my_claim_requests");
+
+  if (error) {
+    if (isMissingRpcError(error)) {
+      return { ok: false, code: "RPC_NOT_DEPLOYED", error: error.message };
+    }
+    return { ok: false, code: "RPC_FAILED", error: error.message };
+  }
+
+  const payload = parseRpcJson(data);
+  if (!payload.ok) {
+    return payload;
+  }
+
+  const requests = (payload.requests || []).map((row) => normalizeCourtClaimRequest(row));
+  return { ok: true, requests, provider: "rpc" };
+}
+
+export async function rpcListPendingCourtClaimRequests({ limit = 50 } = {}) {
+  const client = getSupabaseAuthClient();
+  if (!client) {
+    return { ok: false, code: "NO_SUPABASE", error: "Supabase chưa sẵn sàng." };
+  }
+
+  const { data, error } = await client.rpc("court_list_pending_claim_requests", {
+    p_limit: limit,
+  });
+
+  if (error) {
+    if (isMissingRpcError(error)) {
+      return { ok: false, code: "RPC_NOT_DEPLOYED", error: error.message };
+    }
+    return { ok: false, code: "RPC_FAILED", error: error.message };
+  }
+
+  const payload = parseRpcJson(data);
+  if (!payload.ok) {
+    return payload;
+  }
+
+  const requests = (payload.requests || []).map((row) => normalizeCourtClaimRequest(row));
+  return { ok: true, requests, provider: "rpc" };
+}
+
+export async function rpcReviewCourtClaimRequest({
+  requestId,
+  action,
+  reviewNote = "",
+} = {}) {
+  const client = getSupabaseAuthClient();
+  if (!client) {
+    return { ok: false, code: "NO_SUPABASE", error: "Supabase chưa sẵn sàng." };
+  }
+
+  const { data, error } = await client.rpc("court_review_claim_request", {
+    p_request_id: requestId,
+    p_action: action,
+    p_review_note: reviewNote || "",
+  });
+
+  if (error) {
+    if (isMissingRpcError(error)) {
+      return { ok: false, code: "RPC_NOT_DEPLOYED", error: error.message };
+    }
+    return { ok: false, code: "RPC_FAILED", error: error.message };
+  }
+
+  const payload = parseRpcJson(data);
+  if (!payload.ok) {
+    return payload;
+  }
+
+  return {
+    ok: true,
+    request: normalizeCourtClaimRequest(payload.request),
+    provider: "rpc",
+  };
+}
+
+export async function rpcCancelCourtClaimRequest(requestId) {
+  const client = getSupabaseAuthClient();
+  if (!client) {
+    return { ok: false, code: "NO_SUPABASE", error: "Supabase chưa sẵn sàng." };
+  }
+
+  const { data, error } = await client.rpc("court_cancel_claim_request", {
+    p_request_id: requestId,
+  });
+
+  if (error) {
+    if (isMissingRpcError(error)) {
+      return { ok: false, code: "RPC_NOT_DEPLOYED", error: error.message };
+    }
+    return { ok: false, code: "RPC_FAILED", error: error.message };
+  }
+
+  const payload = parseRpcJson(data);
+  if (!payload.ok) {
+    return payload;
+  }
+
+  return {
+    ok: true,
+    request: normalizeCourtClaimRequest(payload.request),
+    provider: "rpc",
+  };
+}
+
+export async function rpcRegisterCourtOwnerIntent(note = "") {
+  const client = getSupabaseAuthClient();
+  if (!client) {
+    return { ok: false, code: "NO_SUPABASE", error: "Supabase chưa sẵn sàng." };
+  }
+
+  const { data, error } = await client.rpc("auth_register_court_owner_intent", {
+    p_note: note || "",
+  });
+
+  if (error) {
+    if (isMissingRpcError(error)) {
+      return { ok: false, code: "RPC_NOT_DEPLOYED", error: error.message };
+    }
+    return { ok: false, code: "RPC_FAILED", error: error.message };
+  }
+
+  return { ok: true, data, provider: "rpc" };
+}

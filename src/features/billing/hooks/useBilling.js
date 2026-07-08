@@ -9,6 +9,7 @@ import {
   flushBillingStoreDirty,
   isSupabaseBillingStore,
   persistBillingCollections,
+  resetBillingStoreHydration,
 } from "../repositories/billingStoreRuntime.js";
 import { getBillingStore } from "../repositories/billingRepository.js";
 import {
@@ -116,6 +117,10 @@ export function useBilling({ tenantId: tenantIdOverride } = {}) {
 
       if (isSupabaseBillingStore(store)) {
         setHydrateState({ loading: true, ready: false, error: null });
+        // Auth/session may finish after first layout mount — refetch billing once user+tenant exist.
+        if (user?.id && tenantId) {
+          resetBillingStoreHydration(store);
+        }
         const hydrated = await ensureBillingStoreHydrated(store);
         if (cancelled) {
           return;

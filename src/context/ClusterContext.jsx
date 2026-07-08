@@ -5,11 +5,13 @@ import { useTenant } from "./TenantContext.jsx";
 import { isCourtClustersEnabled } from "../features/court-cluster/config/clusterFlags.js";
 import {
   ensureDefaultClusterForVenue,
+  isOrgWideClusterRole,
   listAccessibleClustersForUser,
+  listClustersForAssignedUser,
   resolveActiveClusterForUser,
   switchActiveCluster,
 } from "../features/court-cluster/services/courtClusterService.js";
-import { getActiveClusterIdForVenue, setActiveClusterId } from "../data/courtCluster.js";
+import { getActiveClusterId, getActiveClusterIdForVenue, setActiveClusterId } from "../data/courtCluster.js";
 
 const ClusterContext = createContext(null);
 
@@ -17,14 +19,14 @@ export function ClusterProvider({ children }) {
   const { user } = useAuth();
   const { currentTenantId } = useTenant();
   const [activeClusterId, setActiveClusterIdState] = useState(() =>
-    getActiveClusterIdForVenue(currentTenantId)
+    currentTenantId ? getActiveClusterIdForVenue(currentTenantId) : getActiveClusterId()
   );
   const [revision, setRevision] = useState(0);
 
   const clusters = useMemo(() => {
     if (!isCourtClustersEnabled()) {
       if (!currentTenantId) {
-        return [];
+        return listClustersForAssignedUser(user);
       }
       const ensured = ensureDefaultClusterForVenue(currentTenantId);
       return ensured.cluster ? [ensured.cluster] : [];
@@ -39,13 +41,16 @@ export function ClusterProvider({ children }) {
   );
 
   useEffect(() => {
-    if (!currentTenantId) {
-      return;
-    }
+    const assigned = listClustersForAssignedUser(user);
+    const shouldBootstrapDefault =
+      currentTenantId &&
+      user?.venueId &&
+      assigned.length === 0 &&
+      isOrgWideClusterRole(user);
 
-    ensureDefaultClusterForVenue(currentTenantId, {
-      ownerUserId: user?.id || null,
-    });
+    if (shouldBootstrapDefault) {
+      ensureDefaultClusterForVenue(currentTenantId);
+    }
 
     const resolved = resolveActiveClusterForUser(user, currentTenantId);
     if (resolved?.id && resolved.id !== activeClusterId) {
@@ -59,9 +64,11 @@ export function ClusterProvider({ children }) {
 
   const switchCluster = useCallback(
     (clusterId) => {
+      const clusterVenueId =
+        clusters.find((cluster) => cluster.id === clusterId)?.venueId || currentTenantId;
       const result = switchActiveCluster(clusterId, {
         user,
-        venueId: currentTenantId,
+        venueId: clusterVenueId,
       });
 
       if (!result.ok) {
@@ -72,7 +79,7 @@ export function ClusterProvider({ children }) {
       setRevision((value) => value + 1);
       return result;
     },
-    [currentTenantId, user]
+    [clusters, currentTenantId, user]
   );
 
   const refreshClusters = useCallback(() => {

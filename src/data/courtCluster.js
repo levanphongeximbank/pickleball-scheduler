@@ -7,6 +7,13 @@ const CLUSTERS_KEY = "pickleball-court-clusters-v1";
 const ASSIGNMENTS_KEY = "pickleball-user-cluster-assignments-v1";
 const ACTIVE_CLUSTER_KEY = "pickleball-active-cluster-v1";
 
+function getLocalStorage() {
+  // Node test environment: `localStorage` may be undefined.
+  if (typeof localStorage !== "undefined") return localStorage;
+  if (typeof globalThis !== "undefined" && globalThis.localStorage) return globalThis.localStorage;
+  return null;
+}
+
 function safeParseArray(raw, fallback = []) {
   if (!raw) {
     return fallback;
@@ -21,40 +28,47 @@ function safeParseArray(raw, fallback = []) {
 }
 
 export function loadCourtClusters() {
-  return safeParseArray(localStorage.getItem(CLUSTERS_KEY), []).map(normalizeCourtCluster);
+  const ls = getLocalStorage();
+  if (!ls) return [];
+  return safeParseArray(ls.getItem(CLUSTERS_KEY), []).map(normalizeCourtCluster);
 }
 
 export function saveCourtClusters(clusters) {
-  localStorage.setItem(
-    CLUSTERS_KEY,
-    JSON.stringify((clusters || []).map(normalizeCourtCluster))
-  );
+  const ls = getLocalStorage();
+  if (!ls) return;
+  ls.setItem(CLUSTERS_KEY, JSON.stringify((clusters || []).map(normalizeCourtCluster)));
 }
 
 export function loadClusterAssignments() {
-  return safeParseArray(localStorage.getItem(ASSIGNMENTS_KEY), []).map(
-    normalizeClusterAssignment
-  );
+  const ls = getLocalStorage();
+  if (!ls) return [];
+  return safeParseArray(ls.getItem(ASSIGNMENTS_KEY), []).map(normalizeClusterAssignment);
 }
 
 export function saveClusterAssignments(assignments) {
-  localStorage.setItem(
+  const ls = getLocalStorage();
+  if (!ls) return;
+  ls.setItem(
     ASSIGNMENTS_KEY,
     JSON.stringify((assignments || []).map(normalizeClusterAssignment))
   );
 }
 
 export function getActiveClusterId() {
-  return String(localStorage.getItem(ACTIVE_CLUSTER_KEY) || "").trim() || null;
+  const ls = getLocalStorage();
+  if (!ls) return null;
+  return String(ls.getItem(ACTIVE_CLUSTER_KEY) || "").trim() || null;
 }
 
 export function setActiveClusterId(clusterId) {
+  const ls = getLocalStorage();
   if (!clusterId) {
-    localStorage.removeItem(ACTIVE_CLUSTER_KEY);
+    if (ls) ls.removeItem(ACTIVE_CLUSTER_KEY);
     return;
   }
 
-  localStorage.setItem(ACTIVE_CLUSTER_KEY, String(clusterId).trim());
+  if (!ls) return;
+  ls.setItem(ACTIVE_CLUSTER_KEY, String(clusterId).trim());
 }
 
 export function getActiveClusterIdForVenue(venueId) {

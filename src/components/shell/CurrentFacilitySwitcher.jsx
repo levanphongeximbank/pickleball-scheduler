@@ -1,13 +1,51 @@
-import { FormControl, MenuItem, Select, Typography } from "@mui/material";
+import { useEffect, useMemo, useState } from "react";
+import { Button, Chip, FormControl, MenuItem, Select, Stack, Typography } from "@mui/material";
 
 import { useCluster } from "../../context/ClusterContext.jsx";
 import { useAuth } from "../../context/AuthContext.jsx";
 import { canAccessCluster } from "../../auth/rbac.js";
+import { ROLES, normalizeRole } from "../../auth/roles.js";
+import {
+  COURT_CLAIM_REQUEST_STATUS_LABELS,
+} from "../../features/court-cluster/constants/courtClaimRequestStatuses.js";
+import {
+  getPendingCourtClaimRequestForUser,
+  listMyCourtClaimRequests,
+  userHasApprovedClusterAssignments,
+} from "../../features/court-cluster/services/courtClaimRequestService.js";
+import FacilityClaimDialog from "./FacilityClaimDialog.jsx";
 import { SHELL_COLORS } from "./shellTokens.js";
 
+function isCourtOwnerCandidate(user) {
+  const role = normalizeRole(user?.role);
+  return [ROLES.PLAYER, ROLES.COURT_OWNER, ROLES.TENANT_OWNER].includes(role);
+}
+
 export default function CurrentFacilitySwitcher({ size = "small" }) {
-  const { clusters, activeClusterId, activeCluster, switchCluster } = useCluster();
+  const { clusters, activeClusterId, activeCluster, switchCluster, refreshClusters } = useCluster();
   const { user, rbacEnabled, isAuthenticated } = useAuth();
+  const [claimOpen, setClaimOpen] = useState(false);
+  const [pendingRequest, setPendingRequest] = useState(null);
+
+  const hasApprovedClusters = userHasApprovedClusterAssignments(user);
+  const showClaimFlow = isAuthenticated && isCourtOwnerCandidate(user) && !hasApprovedClusters;
+
+  useEffect(() => {
+    if (!showClaimFlow) {
+      setPendingRequest(null);
+      return;
+    }
+
+    const localPending = getPendingCourtClaimRequestForUser(user);
+    setPendingRequest(localPending);
+
+    void listMyCourtClaimRequests().then((result) => {
+      if (result.ok) {
+        const pending = (result.requests || []).find((item) => item.status === "pending") || null;
+        setPendingRequest(pending);
+      }
+    });
+  }, [showClaimFlow, user, claimOpen]);
 
   const visibleClusters =
     rbacEnabled && isAuthenticated
@@ -16,14 +54,77 @@ export default function CurrentFacilitySwitcher({ size = "small" }) {
         )
       : clusters;
 
+  const handleClaimSubmitted = () => {
+    refreshClusters();
+    setClaimOpen(false);
+  };
+
+  if (showClaimFlow && visibleClusters.length === 0) {
+    return (
+      <>
+        <Stack spacing={0.75}>
+          {pendingRequest ? (
+            <Chip
+              size="small"
+              label={`Đang chờ duyệt (${pendingRequest.clusterIds.length} cụm)`}
+              sx={{ alignSelf: "flex-start", maxWidth: "100%" }}
+            />
+          ) : (
+            <Button
+              size="small"
+              variant="outlined"
+              onClick={() => setClaimOpen(true)}
+              sx={{
+                color: SHELL_COLORS.sidebarText,
+                borderColor: "rgba(255,255,255,0.35)",
+                textTransform: "none",
+                fontSize: 11,
+                py: 0.35,
+              }}
+            >
+              Yêu cầu gắn cụm sân
+            </Button>
+          )}
+          {pendingRequest && (
+            <Typography variant="caption" sx={{ color: SHELL_COLORS.sidebarTextMuted, fontSize: 10.5 }}>
+              {COURT_CLAIM_REQUEST_STATUS_LABELS.pending}
+            </Typography>
+          )}
+        </Stack>
+        <FacilityClaimDialog
+          open={claimOpen}
+          onClose={() => setClaimOpen(false)}
+          onSubmitted={handleClaimSubmitted}
+        />
+      </>
+    );
+  }
+
   if (visibleClusters.length === 0) {
     return (
-      <Typography
-        variant="caption"
-        sx={{ color: SHELL_COLORS.sidebarTextMuted, fontSize: 11.5, display: "block", py: 0.5 }}
-      >
-        Chưa có cụm sân
-      </Typography>
+      <>
+        <Typography
+          variant="caption"
+          sx={{ color: SHELL_COLORS.sidebarTextMuted, fontSize: 11.5, display: "block", py: 0.5 }}
+        >
+          Chưa có cụm sân
+        </Typography>
+        {showClaimFlow && (
+          <Button
+            size="small"
+            variant="text"
+            onClick={() => setClaimOpen(true)}
+            sx={{ color: SHELL_COLORS.sidebarAccent, textTransform: "none", fontSize: 11, px: 0 }}
+          >
+            Yêu cầu gắn cụm
+          </Button>
+        )}
+        <FacilityClaimDialog
+          open={claimOpen}
+          onClose={() => setClaimOpen(false)}
+          onSubmitted={handleClaimSubmitted}
+        />
+      </>
     );
   }
 

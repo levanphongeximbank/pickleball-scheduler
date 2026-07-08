@@ -305,9 +305,52 @@ export function isOrgWideClusterRole(user) {
   return role === ROLES.TENANT_OWNER || role === ROLES.VENUE_MANAGER;
 }
 
+export function isClusterUnassigned(clusterId) {
+  if (!clusterId) {
+    return false;
+  }
+  const cluster = getClusterById(clusterId);
+  if (!cluster || cluster.status !== "active") {
+    return false;
+  }
+  if (cluster.ownerUserId) {
+    return false;
+  }
+  return !listAssignmentsForCluster(clusterId).some((item) => item.role === "CLUSTER_OWNER");
+}
+
+export function listUnassignedClusters({ search = "" } = {}) {
+  const term = String(search || "").trim().toLowerCase();
+  return loadCourtClusters().filter((cluster) => {
+    if (!isClusterUnassigned(cluster.id)) {
+      return false;
+    }
+    if (!term) {
+      return true;
+    }
+    return (
+      cluster.name.toLowerCase().includes(term) ||
+      cluster.address.toLowerCase().includes(term) ||
+      cluster.venueId.toLowerCase().includes(term)
+    );
+  });
+}
+
+export function listClustersForAssignedUser(user) {
+  const assignedIds = new Set(resolveAssignedClusterIdsForUser(user));
+  if (assignedIds.size === 0) {
+    return [];
+  }
+  return loadCourtClusters().filter((cluster) => assignedIds.has(cluster.id));
+}
+
 export function listAccessibleClustersForUser(user, venueId) {
   if (!isCourtClustersEnabled()) {
     if (!venueId) {
+      const assigned = listClustersForAssignedUser(user);
+      if (assigned.length > 0) {
+        return assigned;
+      }
       return [];
     }
 
@@ -315,8 +358,16 @@ export function listAccessibleClustersForUser(user, venueId) {
     return ensured.cluster ? [ensured.cluster] : [];
   }
 
+  const assignedClusters = listClustersForAssignedUser(user);
+  if (assignedClusters.length > 0) {
+    if (!venueId) {
+      return assignedClusters;
+    }
+    return assignedClusters.filter((cluster) => cluster.venueId === venueId);
+  }
+
   if (!venueId) {
-    return loadCourtClusters();
+    return [];
   }
 
   const venueClusters = listClustersForVenue(venueId);
@@ -324,13 +375,12 @@ export function listAccessibleClustersForUser(user, venueId) {
     return venueClusters;
   }
 
-  if (isGlobalRole(user.role) || isOrgWideClusterRole(user)) {
+  if (isGlobalRole(user.role)) {
     return venueClusters;
   }
 
-  const assignedIds = new Set(resolveAssignedClusterIdsForUser(user));
-  if (assignedIds.size > 0) {
-    return venueClusters.filter((cluster) => assignedIds.has(cluster.id));
+  if (isOrgWideClusterRole(user) && user.venueId === venueId) {
+    return venueClusters;
   }
 
   if (isVenueScopedRole(user.role) && !isOrgWideClusterRole(user)) {
@@ -361,15 +411,20 @@ export function canUserAccessCluster(user, clusterId, options = {}) {
     return true;
   }
 
+  const assignedIds = resolveAssignedClusterIdsForUser(user);
+  if (assignedIds.length > 0) {
+    return assignedIds.includes(clusterId);
+  }
+
   if (user.venueId && user.venueId !== cluster.venueId) {
     return false;
   }
 
-  if (isOrgWideClusterRole(user)) {
+  if (isOrgWideClusterRole(user) && user.venueId === cluster.venueId) {
     return true;
   }
 
-  return resolveAssignedClusterIdsForUser(user).includes(clusterId);
+  return false;
 }
 
 export function switchActiveCluster(clusterId, { user = null, venueId = null } = {}) {
@@ -396,7 +451,9 @@ export function resolveActiveClusterForUser(user, venueId) {
     return null;
   }
 
-  const storedId = getActiveClusterIdForVenue(venueId);
+  const storedId = venueId
+    ? getActiveClusterIdForVenue(venueId)
+    : getActiveClusterId();
   if (storedId && accessible.some((cluster) => cluster.id === storedId)) {
     return getClusterById(storedId);
   }

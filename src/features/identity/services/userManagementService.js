@@ -12,6 +12,7 @@ import { getSupabaseAuthClient, hasSupabaseConfig, PROFILES_TABLE } from "../../
 import { createUserRecord, normalizeUser, USER_STATUS } from "../../../models/user.js";
 import { writeAuditLog, AUDIT_ACTIONS } from "./auditService.js";
 import { requestPasswordReset } from "./passwordService.js";
+import { callIdentityAdminCreateUser } from "./identityAdminApiClient.js";
 import { rpcAdminUpdateUser, rpcListUsers } from "./identityRpcService.js";
 
 const DEV_REGISTRY_KEY = "pickleball-dev-user-registry-v1";
@@ -148,53 +149,53 @@ export async function createManagedUser({
   const resolvedVenueId = venueId || currentUser?.venueId || null;
 
   if (hasSupabaseConfig()) {
-    const client = getSupabaseAuthClient();
-    if (!client) {
-      return { ok: false, error: "Supabase chưa cấu hình.", code: "NO_SUPABASE" };
-    }
-
-    const { data, error } = await client.auth.signUp({
+    const adminResult = await callIdentityAdminCreateUser({
       email: normalizedEmail,
-      password: String(password || "ChangeMe123!"),
-      options: {
-        data: { display_name: displayName || normalizedEmail.split("@")[0] },
-      },
+      password: String(password || "").trim() || undefined,
+      displayName,
+      role: targetRole,
+      venueId: resolvedVenueId,
+      clubId,
+      phone,
     });
 
-    if (error) {
-      return { ok: false, error: error.message, code: "SIGNUP_FAILED" };
-    }
-
-    if (!data.user?.id) {
-      return { ok: false, error: "Tạo user chưa hoàn tất.", code: "SIGNUP_INCOMPLETE" };
-    }
-
-    const profile = mapUserToProfileRow(
-      createUserRecord({
-        id: data.user.id,
-        email: normalizedEmail,
-        displayName,
-        role: targetRole,
-        venueId: resolvedVenueId,
-        clubId,
-        phone,
-        status: USER_STATUS.INVITED,
-      })
-    );
-
-    const upsert = await upsertProfileRow(profile);
-    if (!upsert.ok) {
-      return upsert;
+    if (!adminResult.ok) {
+      if (adminResult.code === "ADMIN_API_UNREACHABLE") {
+        return {
+          ok: false,
+          error:
+            "Không gọi được API admin tạo user. Chạy qua Vercel preview/production hoặc cấu hình SUPABASE_SERVICE_ROLE_KEY.",
+          code: adminResult.code,
+        };
+      }
+      if (adminResult.code === "SERVICE_ROLE_MISSING") {
+        return {
+          ok: false,
+          error: "Server thiếu SUPABASE_SERVICE_ROLE_KEY để tạo user qua Admin API.",
+          code: adminResult.code,
+        };
+      }
+      return adminResult;
     }
 
     await writeAuditLog({
       action: AUDIT_ACTIONS.CREATE,
       resourceType: "user",
-      resourceId: data.user.id,
-      metadata: { email: normalizedEmail, role: targetRole },
+      resourceId: adminResult.user.id,
+      metadata: {
+        email: normalizedEmail,
+        role: targetRole,
+        emailConfirmed: true,
+        passwordSetupSent: Boolean(adminResult.passwordSetupSent),
+      },
     });
 
-    return { ok: true, user: upsert.user };
+    return {
+      ok: true,
+      user: adminResult.user,
+      passwordSetupSent: adminResult.passwordSetupSent,
+      passwordSetupMessage: adminResult.passwordSetupMessage,
+    };
   }
 
   if (!isDevAuthAllowed()) {

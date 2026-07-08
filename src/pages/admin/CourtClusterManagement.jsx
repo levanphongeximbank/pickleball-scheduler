@@ -44,6 +44,7 @@ import {
   assignUserToCluster,
   createCourtCluster,
   deleteCourtCluster,
+  getClusterById,
   listAssignmentsForCluster,
   listClustersForVenue,
   setUserClusterAssignments,
@@ -51,6 +52,10 @@ import {
   updateCourtCluster,
 } from "../../features/court-cluster/services/courtClusterService.js";
 import { openClusterInGoogleMaps } from "../../features/court-cluster/utils/clusterMapsUtils.js";
+import {
+  listPendingCourtClaimRequests,
+  reviewCourtClaimRequest,
+} from "../../features/court-cluster/services/courtClaimRequestService.js";
 
 const EMPTY_FORM = {
   name: "",
@@ -79,6 +84,9 @@ export default function CourtClusterManagement() {
     userId: "",
     clusterIds: [],
   });
+  const [pendingClaims, setPendingClaims] = useState([]);
+  const [reviewNote, setReviewNote] = useState("");
+  const [reviewingId, setReviewingId] = useState(null);
 
   const canPickTenant = isSuperAdmin || isPlatformScopedRole(user?.role);
   const tenants = useMemo(() => listTenants(), [message]);
@@ -92,6 +100,40 @@ export default function CourtClusterManagement() {
       setError("Bật VITE_COURT_CLUSTERS_ENABLED=true để quản lý cụm sân.");
     }
   }, []);
+
+  const loadPendingClaims = async () => {
+    const result = await listPendingCourtClaimRequests();
+    if (result.ok) {
+      setPendingClaims(result.requests || []);
+    }
+  };
+
+  useEffect(() => {
+    if (canManage) {
+      void loadPendingClaims();
+    }
+  }, [canManage, message]);
+
+  const handleReviewClaim = async (requestId, action) => {
+    setReviewingId(requestId);
+    setError(null);
+    const result = await reviewCourtClaimRequest({
+      requestId,
+      action,
+      reviewNote,
+    });
+    setReviewingId(null);
+
+    if (!result.ok) {
+      setError(result.error);
+      return;
+    }
+
+    setMessage(action === "approve" ? "Đã duyệt yêu cầu gắn cụm." : "Đã từ chối yêu cầu.");
+    setReviewNote("");
+    refreshClusters();
+    await loadPendingClaims();
+  };
 
   const resetForm = () => {
     setForm(EMPTY_FORM);
@@ -313,6 +355,95 @@ export default function CourtClusterManagement() {
         <Alert severity="error" sx={{ mb: 2 }} onClose={() => setError(null)}>
           {error}
         </Alert>
+      )}
+
+      {pendingClaims.length > 0 && (
+        <Card sx={{ mb: 2 }}>
+          <CardContent>
+            <Typography variant="h6" fontWeight={700} sx={{ mb: 1.5 }}>
+              Yêu cầu gắn cụm sân ({pendingClaims.length})
+            </Typography>
+            <TableContainer component={Paper} variant="outlined">
+              <Table size="small">
+                <TableHead>
+                  <TableRow>
+                    <TableCell>Người yêu cầu</TableCell>
+                    <TableCell>Cụm sân</TableCell>
+                    <TableCell>Ghi chú</TableCell>
+                    <TableCell>Thời gian</TableCell>
+                    <TableCell align="right">Thao tác</TableCell>
+                  </TableRow>
+                </TableHead>
+                <TableBody>
+                  {pendingClaims.map((request) => (
+                    <TableRow key={request.id} hover>
+                      <TableCell>
+                        <Typography variant="body2" fontWeight={600}>
+                          {request.userDisplayName || request.userId}
+                        </Typography>
+                        <Typography variant="caption" color="text.secondary">
+                          {request.userEmail || "—"}
+                        </Typography>
+                      </TableCell>
+                      <TableCell>
+                        {(request.clusterIds || []).map((clusterId) => {
+                          const cluster = getClusterById(clusterId);
+                          return (
+                            <Chip
+                              key={clusterId}
+                              size="small"
+                              label={cluster?.name || clusterId}
+                              sx={{ mr: 0.5, mb: 0.5 }}
+                            />
+                          );
+                        })}
+                      </TableCell>
+                      <TableCell sx={{ maxWidth: 200 }}>
+                        <Typography variant="body2" noWrap title={request.message}>
+                          {request.message || "—"}
+                        </Typography>
+                      </TableCell>
+                      <TableCell>
+                        {request.requestedAt
+                          ? new Date(request.requestedAt).toLocaleString("vi-VN")
+                          : "—"}
+                      </TableCell>
+                      <TableCell align="right">
+                        <Stack direction="row" spacing={1} justifyContent="flex-end">
+                          <Button
+                            size="small"
+                            variant="contained"
+                            color="success"
+                            disabled={reviewingId === request.id}
+                            onClick={() => handleReviewClaim(request.id, "approve")}
+                          >
+                            Duyệt
+                          </Button>
+                          <Button
+                            size="small"
+                            color="error"
+                            disabled={reviewingId === request.id}
+                            onClick={() => handleReviewClaim(request.id, "reject")}
+                          >
+                            Từ chối
+                          </Button>
+                        </Stack>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </TableContainer>
+            <TextField
+              size="small"
+              label="Ghi chú duyệt (áp dụng lần duyệt tiếp theo)"
+              value={reviewNote}
+              onChange={(event) => setReviewNote(event.target.value)}
+              fullWidth
+              sx={{ mt: 2 }}
+            />
+          </CardContent>
+        </Card>
       )}
 
       <Card>
