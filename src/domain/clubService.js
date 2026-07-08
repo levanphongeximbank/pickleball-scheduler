@@ -10,6 +10,7 @@ import { PERMISSIONS } from "../auth/permissions.js";
 import { guardClubAction, guardClubAccess, guardPermission } from "../auth/guardAction.js";
 import { getCurrentUser, isRbacEnabled } from "../auth/authService.js";
 import { ROLES, isGlobalRole, isVenueScopedRole } from "../auth/roles.js";
+import { canDeleteClub } from "../features/club/services/clubGovernanceService.js";
 import { resolveEffectiveTenantId } from "../features/tenant/services/tenantService.js";
 import { guardMaxClubs } from "../auth/subscriptionGuard.js";
 import { createClubRecord, normalizeClub } from "../models/club.js";
@@ -106,6 +107,42 @@ export function renameClub(clubId, name) {
   return { ok: true, club: next[index] };
 }
 
+export function bindClubVenueRegistry(clubId, venueId, options = {}) {
+  const { skipGuard = false } = options;
+
+  if (!clubId || !venueId) {
+    return { ok: false, error: "Thieu clubId hoac venueId." };
+  }
+
+  if (!skipGuard) {
+    const check = guardClubAction(clubId, PERMISSIONS.CLUB_UPDATE);
+    if (!check.ok) {
+      return check;
+    }
+  }
+
+  const clubs = loadClubs();
+  const index = clubs.findIndex((club) => club.id === clubId);
+
+  if (index < 0) {
+    return { ok: false, error: "Khong tim thay CLB." };
+  }
+
+  const next = clubs.map((club) =>
+    club.id === clubId
+      ? normalizeClub({
+          ...club,
+          venueId,
+          tenantId: venueId,
+          updatedAt: new Date().toISOString(),
+        })
+      : club
+  );
+
+  saveClubs(next);
+  return { ok: true, club: next.find((club) => club.id === clubId) };
+}
+
 export function updateClubMeta(clubId, patch = {}) {
   const check = guardClubAction(clubId, PERMISSIONS.CLUB_UPDATE);
   if (!check.ok) {
@@ -140,9 +177,18 @@ export function deleteClub(clubId) {
     return { ok: false, error: "Khong the xoa CLB mac dinh." };
   }
 
+  const club = getClubById(clubId);
+  const user = getCurrentUser();
   const check = guardClubAction(clubId, PERMISSIONS.CLUB_DELETE);
   if (!check.ok) {
-    return check;
+    if (!canDeleteClub(user, club)) {
+      return check;
+    }
+
+    const access = guardClubAccess(clubId);
+    if (!access.ok) {
+      return access;
+    }
   }
 
   const clubs = loadClubs();

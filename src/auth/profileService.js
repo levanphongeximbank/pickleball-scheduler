@@ -3,6 +3,7 @@ import { ROLES, denormalizeRoleForDb, normalizeRole } from "./roles.js";
 import { formatAuthError } from "./authErrors.js";
 import { getSupabaseAuthClient, PROFILES_TABLE } from "./supabaseClient.js";
 import { isSecureRuntime } from "./runtime.js";
+import { resolveAssignedClusterIdsForUser } from "../features/court-cluster/services/courtClusterService.js";
 
 /**
  * Mapping auth.users ↔ public.profiles (docs/supabase-rbac.sql).
@@ -38,9 +39,12 @@ export function mapProfileRowToUser(row) {
     teamId: row.team_id || row.teamId || null,
     phone: row.phone || "",
     avatarUrl: row.avatar_url || row.avatarUrl || "",
+    gender: row.gender || "",
+    birthYear: row.birth_year ?? row.birthYear ?? null,
     status: row.status || "active",
     createdAt: row.created_at,
     updatedAt: row.updated_at,
+    assignedClusterIds: resolveAssignedClusterIdsForUser({ id: row.id }),
   });
 }
 

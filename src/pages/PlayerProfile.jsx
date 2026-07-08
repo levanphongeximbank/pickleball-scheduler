@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Link as RouterLink, useNavigate, useParams } from "react-router-dom";
 
 import {
@@ -10,6 +10,8 @@ import {
   Paper,
   Slider,
   Stack,
+  Tab,
+  Tabs,
   TextField,
   Typography,
 } from "@mui/material";
@@ -20,13 +22,22 @@ import { useTenant } from "../context/TenantContext.jsx";
 import { useAuth } from "../context/AuthContext.jsx";
 import { canViewPlayerSkillLevel } from "../auth/rbac.js";
 import { PERMISSIONS } from "../auth/permissions.js";
+import { ROLES, normalizeRole } from "../auth/roles.js";
 import { guardRecordTenant } from "../features/tenant/index.js";
 import {
   getPlayerPendingSkillLevelRequest,
   submitSkillLevelChangeRequest,
 } from "../domain/skillLevelChangeService.js";
-import { getPlayerSkillLevel } from "../models/player.js";
-import { loadPlayerHistoryProfileForClub } from "../tournament/engines/playerHistoryEngine.js";
+import { getPlayerCurrentRating } from "../models/player.js";
+import { loadPlayerHistoryProfileResolved } from "../tournament/engines/playerHistoryEngine.js";
+import VprProfilePanel from "../features/vpr-ranking/components/VprProfilePanel.jsx";
+import PickVnRatingPanel from "../features/pick-vn-rating/components/PickVnRatingPanel.jsx";
+import {
+  formatPickVnRating,
+  PICK_VN_MAX,
+  PICK_VN_MIN,
+  snapPickVnRating,
+} from "../features/pick-vn-rating/constants/pickVnRatingScale.js";
 import { getLevelColor, getLevelLabel } from "../utils/playerHelpers.js";
 
 function StatCard({ label, value, helper }) {
@@ -87,20 +98,53 @@ export default function PlayerProfile() {
   const [changeReason, setChangeReason] = useState("");
   const [formMessage, setFormMessage] = useState(null);
   const [requestTick, setRequestTick] = useState(0);
+  const [profileTab, setProfileTab] = useState("pick_vn");
+
+  const isSelfProfile =
+    Boolean(user?.playerId) && String(user.playerId) === String(playerId);
+  const isPlayerRole = normalizeRole(user?.role) === ROLES.PLAYER;
 
   const profile = useMemo(() => {
     void revision;
-    return loadPlayerHistoryProfileForClub(activeClubId, playerId, { recentLimit: 12 });
-  }, [activeClubId, playerId, revision]);
+    return loadPlayerHistoryProfileResolved(
+      {
+        primaryClubId: isPlayerRole || isSelfProfile ? user?.clubId : null,
+        secondaryClubId: activeClubId,
+        playerId,
+        authUserId: isPlayerRole || isSelfProfile ? user?.id : null,
+      },
+      { recentLimit: 12 }
+    );
+  }, [activeClubId, isPlayerRole, isSelfProfile, playerId, revision, user?.clubId, user?.id]);
+
+  const profileClubId = profile.ok ? profile.clubId : activeClubId;
+  const resolvedPlayerId = profile.ok ? profile.resolvedPlayerId || playerId : playerId;
+  const profileClub =
+    activeClub?.id === profileClubId
+      ? activeClub
+      : profile.ok
+        ? { id: profileClubId, name: profile.player?.clubName || "CLB" }
+        : activeClub;
+
+  useEffect(() => {
+    if (!profile.ok || !(isSelfProfile || isPlayerRole)) {
+      return;
+    }
+
+    const canonicalId = profile.resolvedPlayerId || playerId;
+    if (canonicalId && String(canonicalId) !== String(playerId)) {
+      navigate(`/players/profile/${canonicalId}`, { replace: true });
+    }
+  }, [isPlayerRole, isSelfProfile, navigate, playerId, profile]);
 
   const pendingRequest = useMemo(() => {
     void revision;
     void requestTick;
-    if (!activeClubId || !playerId) {
+    if (!profileClubId || !resolvedPlayerId) {
       return null;
     }
-    return getPlayerPendingSkillLevelRequest(activeClubId, playerId);
-  }, [activeClubId, playerId, revision, requestTick]);
+    return getPlayerPendingSkillLevelRequest(profileClubId, resolvedPlayerId);
+  }, [profileClubId, resolvedPlayerId, revision, requestTick]);
 
   const canViewSkill = useMemo(() => {
     if (!profile.ok) {
@@ -108,20 +152,20 @@ export default function PlayerProfile() {
     }
     return canViewPlayerSkillLevel(
       user,
-      { clubId: activeClubId, playerId },
+      { clubId: profileClubId, playerId: resolvedPlayerId },
       { rbacEnabled }
     );
-  }, [activeClubId, playerId, profile.ok, rbacEnabled, user]);
-
-  const isSelfProfile =
-    Boolean(user?.playerId) && String(user.playerId) === String(playerId);
+  }, [profile.ok, profileClubId, rbacEnabled, resolvedPlayerId, user]);
 
   const canRequestChange =
-    isSelfProfile &&
+    (isSelfProfile || (isPlayerRole && profile.ok)) &&
     can(PERMISSIONS.SKILL_LEVEL_REQUEST_CHANGE, {
-      clubId: activeClubId,
-      playerId,
+      clubId: profileClubId,
+      playerId: resolvedPlayerId,
     });
+
+  const profileBackPath = isPlayerRole ? "/tournament" : "/players";
+  const profileBackLabel = isPlayerRole ? "Quay lai" : "Quay lai Nguoi choi";
 
   const tenantDenied = useMemo(() => {
     if (!rbacEnabled || !isAuthenticated || !currentTenantId || !profile.ok) {
@@ -133,8 +177,8 @@ export default function PlayerProfile() {
 
   const handleSubmitChangeRequest = () => {
     const result = submitSkillLevelChangeRequest(
-      activeClubId,
-      playerId,
+      profileClubId,
+      resolvedPlayerId,
       requestedLevel,
       {
         reason: changeReason,
@@ -161,8 +205,8 @@ export default function PlayerProfile() {
         <Alert severity="error">
           {tenantDenied.error || "Không có quyền xem hồ sơ người chơi này."}
         </Alert>
-        <Button component={RouterLink} to="/players" sx={{ mt: 2 }}>
-          Quay lai danh sach
+        <Button component={RouterLink} to={profileBackPath} sx={{ mt: 2 }}>
+          {profileBackLabel}
         </Button>
       </Box>
     );
@@ -172,20 +216,20 @@ export default function PlayerProfile() {
     return (
       <Box>
         <Alert severity="error">{profile.error}</Alert>
-        <Button component={RouterLink} to="/players" sx={{ mt: 2 }}>
-          Quay lai danh sach
+        <Button component={RouterLink} to={profileBackPath} sx={{ mt: 2 }}>
+          {profileBackLabel}
         </Button>
       </Box>
     );
   }
 
   const { player, stats, recentMatches, topPartners, topOpponents } = profile;
-  const skillLevel = getPlayerSkillLevel(player);
+  const skillLevel = getPlayerCurrentRating(player);
 
   return (
     <Box>
-      <Button startIcon={<ArrowBackIcon />} onClick={() => navigate("/players")} sx={{ mb: 2 }}>
-        Quay lai Nguoi choi
+      <Button startIcon={<ArrowBackIcon />} onClick={() => navigate(profileBackPath)} sx={{ mb: 2 }}>
+        {profileBackLabel}
       </Button>
 
       <Paper variant="outlined" sx={{ p: 2, mb: 2 }}>
@@ -200,12 +244,12 @@ export default function PlayerProfile() {
               {player.name}
             </Typography>
             <Typography color="text.secondary">
-              {activeClub?.name || "CLB"} • {player.gender || "?"}
+              {profileClub?.name || "CLB"} • {player.gender || "?"}
               {canViewSkill && (
                 <>
                   {" "}
                   • Điểm trình độ{" "}
-                  <strong>{Number(skillLevel).toFixed(1)}</strong>
+                  <strong>{formatPickVnRating(skillLevel)}</strong>
                 </>
               )}
             </Typography>
@@ -253,12 +297,13 @@ export default function PlayerProfile() {
                 />
               </Stack>
               <Slider
-                value={requestedLevel}
-                min={1.5}
-                max={6}
-                step={0.1}
+                value={snapPickVnRating(requestedLevel)}
+                min={PICK_VN_MIN}
+                max={PICK_VN_MAX}
+                step={0.5}
                 valueLabelDisplay="auto"
-                onChange={(_, value) => setRequestedLevel(value)}
+                valueLabelFormat={(value) => formatPickVnRating(value)}
+                onChange={(_, value) => setRequestedLevel(snapPickVnRating(value))}
               />
               <TextField
                 label="Lý do thay đổi"
@@ -273,6 +318,36 @@ export default function PlayerProfile() {
               </Button>
             </Stack>
           )}
+        </Paper>
+      )}
+
+      {canViewSkill && (
+        <Paper variant="outlined" sx={{ mb: 2 }}>
+          <Tabs
+            value={profileTab}
+            onChange={(_, value) => setProfileTab(value)}
+            sx={{ px: 1, borderBottom: 1, borderColor: "divider" }}
+          >
+            <Tab value="pick_vn" label="Trình độ Pick_VN" />
+            <Tab value="vpr" label="VPR Ranking" />
+          </Tabs>
+          <Box sx={{ p: 0 }}>
+            {profileTab === "pick_vn" ? (
+              <PickVnRatingPanel
+                player={player}
+                clubId={profileClubId}
+                authUserId={player.authUserId || (isSelfProfile ? user?.id : null)}
+              />
+            ) : (
+              <Box sx={{ p: 2 }}>
+                <VprProfilePanel
+                  clubId={profileClubId}
+                  playerId={resolvedPlayerId}
+                  playerName={player.name || ""}
+                />
+              </Box>
+            )}
+          </Box>
         </Paper>
       )}
 

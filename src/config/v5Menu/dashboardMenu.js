@@ -8,7 +8,7 @@ const VIEW = [
   PERMISSIONS.BOOKING_VIEW,
 ];
 
-/** Sidebar: 1 mục — chi tiết KPI trên trang Dashboard. */
+/** Sidebar: Tổng quan + VPR Ranking (Phase 29). */
 export const DASHBOARD_MENU_ROOT = menuFolder({
   key: "dashboard-root",
   icon: "dashboard",
@@ -19,9 +19,18 @@ export const DASHBOARD_MENU_ROOT = menuFolder({
       key: "dashboard-ops",
       icon: "dashboard",
       text: "Tổng quan",
-      path: "/",
+      path: "/dashboard",
       match: "exact",
       permissions: VIEW,
+      featureStatus: FEATURE_STATUS.LIVE,
+    }),
+    menuLeaf({
+      key: "dashboard-vpr-rankings",
+      icon: "statistics",
+      text: "Xếp hạng VPR",
+      path: "/dashboard/rankings",
+      match: "dashboard-rankings",
+      permissions: [PERMISSIONS.RANKING_VIEW, PERMISSIONS.RANKING_MANAGE],
       featureStatus: FEATURE_STATUS.LIVE,
     }),
   ],

@@ -2,6 +2,7 @@ import {
   DEFAULT_CLOSE_HOUR,
   DEFAULT_OPEN_HOUR,
 } from "../../domain/courtBookingEngine.js";
+import { CALENDAR_CELL_TONES } from "./calendar/courtCalendarTokens.js";
 
 export function buildTimeOptions(
   openHour = DEFAULT_OPEN_HOUR,
@@ -37,19 +38,16 @@ function formatHourLabel(hour) {
   return `${String(hour).padStart(2, "0")}:00`;
 }
 
-export const CALENDAR_CELL_COLORS = {
-  empty: { bg: "#f5f5f5", color: "#757575" },
-  booked: { bg: "#e3f2fd", color: "#1565c0" },
-  deposit_paid: { bg: "#e0f7fa", color: "#00838f" },
-  playing: { bg: "#e8f5e9", color: "#2e7d32" },
-  completed: { bg: "#eeeeee", color: "#616161" },
-  cancelled: { bg: "#ffebee", color: "#c62828" },
-  locked: { bg: "#efebe9", color: "#5d4037" },
-  maintenance: { bg: "#fff3e0", color: "#ef6c00" },
-  tournament: { bg: "#fff8e1", color: "#f57f17" },
-  social_play: { bg: "#f3e5f5", color: "#7b1fa2" },
-  recurring: { bg: "#e8eaf6", color: "#3949ab" },
-};
+export const CALENDAR_CELL_COLORS = Object.fromEntries(
+  Object.entries(CALENDAR_CELL_TONES).map(([key, value]) => [
+    key,
+    { bg: value.bg, color: value.color },
+  ])
+);
+
+export const CALENDAR_STATUS_LABELS = Object.fromEntries(
+  Object.entries(CALENDAR_CELL_TONES).map(([key, value]) => [key, value.label])
+);
 
 export const BOOKING_TYPE_LABELS = {
   single: "Booking lẻ",

@@ -11,12 +11,22 @@ const PUBLIC_PATH_PREFIXES = [
   "/login",
   "/forgot-password",
   "/reset-password",
+  "/home",
+  "/tournaments",
+  "/clubs",
+  "/courts",
+  "/rankings",
+  "/news",
 ];
 
 /** Path được phép khi chưa đăng nhập. */
 export function isPublicAuthPath(pathname, { authProductionEnabled, rbacEnabled }) {
   if (!pathname) {
     return false;
+  }
+
+  if (pathname === "/") {
+    return true;
   }
 
   if (PUBLIC_PATH_PREFIXES.some((path) => pathname === path || pathname.startsWith(`${path}/`))) {
@@ -74,7 +84,7 @@ export function shouldRedirectToLogin(
 
 export function shouldRedirectToForbidden(
   pathname,
-  { rbacEnabled, isAuthenticated, can, scope }
+  { rbacEnabled, isAuthenticated, can, scope, user }
 ) {
   if (!rbacEnabled || !isAuthenticated) {
     return false;
@@ -88,5 +98,5 @@ export function shouldRedirectToForbidden(
     return false;
   }
 
-  return !canAccessRoute(can, pathname, scope);
+  return !canAccessRoute(can, pathname, scope, user);
 }

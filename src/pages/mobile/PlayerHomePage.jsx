@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { useSearchParams } from "react-router-dom";
 import {
   Alert,
   Box,
@@ -38,10 +39,11 @@ import { ROLES } from "../../auth/roles.js";
 
 export default function PlayerHomePage() {
   const auth = useAuth();
+  const [searchParams] = useSearchParams();
   const { activeClubId } = useClub();
   const { currentTenantId } = useTenant();
   const { activeLeagueId, activeSeasonId } = useSeasonLeague();
-  const [tab, setTab] = useState(0);
+  const [tab, setTab] = useState(() => (searchParams.get("tab") === "qr" ? 1 : 0));
   const [notifications, setNotifications] = useState([]);
   const [checkinStatus, setCheckinStatus] = useState(CHECKIN_STATUS.PENDING);
   const [personalQr, setPersonalQr] = useState(null);

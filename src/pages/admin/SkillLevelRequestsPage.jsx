@@ -32,6 +32,8 @@ import {
 } from "../../domain/skillLevelChangeService.js";
 import { writeAuditLog, AUDIT_ACTIONS } from "../../features/identity/services/auditService.js";
 import { getCurrentUser } from "../../auth/authService.js";
+import { formatPickVnRating } from "../../features/pick-vn-rating/constants/pickVnRatingScale.js";
+import { RATING_STATUS_LABELS } from "../../features/pick-vn-rating/constants/ratingStatus.js";
 
 export default function SkillLevelRequestsPage() {
   const { user } = useAuth();
@@ -135,6 +137,7 @@ export default function SkillLevelRequestsPage() {
                   <TableCell>VĐV</TableCell>
                   <TableCell>CLB</TableCell>
                   <TableCell>Hiện tại → Đề xuất</TableCell>
+                  <TableCell>Trạng thái sau duyệt</TableCell>
                   <TableCell>Lý do</TableCell>
                   <TableCell>Ghi chú duyệt</TableCell>
                   <TableCell align="right">Thao tác</TableCell>
@@ -143,7 +146,7 @@ export default function SkillLevelRequestsPage() {
               <TableBody>
                 {pendingRequests.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={6}>
+                    <TableCell colSpan={7}>
                       <Typography variant="body2" color="text.secondary" sx={{ py: 2 }}>
                         Không có yêu cầu đang chờ duyệt.
                       </Typography>
@@ -162,7 +165,15 @@ export default function SkillLevelRequestsPage() {
                       <TableCell>
                         <Chip
                           size="small"
-                          label={`${Number(request.currentLevel).toFixed(1)} → ${Number(request.requestedLevel).toFixed(1)}`}
+                          label={`${formatPickVnRating(request.currentLevel)} → ${formatPickVnRating(request.requestedLevel)}`}
+                        />
+                      </TableCell>
+                      <TableCell>
+                        <Chip
+                          size="small"
+                          color="primary"
+                          variant="outlined"
+                          label={RATING_STATUS_LABELS.admin_verified}
                         />
                       </TableCell>
                       <TableCell sx={{ maxWidth: 220 }}>{request.reason}</TableCell>

@@ -22,19 +22,30 @@ export {
   isClubOwner,
   isClubPresident,
   isClubVicePresident,
+  resolveClubGovernanceTitle,
   canViewFullClubMembers,
   canViewClubMemberSummary,
   canAssignClubOwner,
+  canChangeClubPresident,
+  canDeleteClub,
   canDeleteClubMembers,
+  canApproveClubMembershipRequests,
   canManageClubGovernance,
   assignClubOwner,
   updateClubGovernance,
   getGovernanceDisplayLabels,
+  getRegisteredClusterLabel,
   getRegisteredCourtsLabels,
   canApproveClubRegistration,
   approveClubRegistration,
   rejectClubRegistration,
   resolveGovernanceForCreate,
+  canSelfRegisterClub,
+  canTransferClubOwnership,
+  transferClubOwnership,
+  transferClubPresident,
+  listClubGovernanceCandidates,
+  deleteClubAsOwner,
 } from "./services/clubGovernanceService.js";
 
 export {
@@ -71,5 +82,21 @@ export {
 } from "./services/clubTournamentService.js";
 
 export { applyClubMatchElo, applyClubMatchEloById } from "./services/clubEloService.js";
+
+export {
+  CLUB_MEMBERSHIP_REQUEST_STATUSES,
+  CLUB_MEMBERSHIP_REQUEST_STATUS_LABELS,
+} from "./constants/clubMembershipRequestStatuses.js";
+
+export {
+  submitClubMembershipRequest,
+  cancelClubMembershipRequest,
+  listPendingMembershipRequests,
+  listMyMembershipRequests,
+  listJoinableClubs,
+  approveClubMembershipRequest,
+  rejectClubMembershipRequest,
+  getMyClubSummary,
+} from "./services/clubMembershipRequestService.js";
 
 export { ensureClubManagementSeed } from "./seed/clubManagementSeed.js";

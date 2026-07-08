@@ -7,11 +7,72 @@ import {
   normalizeRole,
 } from "../../../auth/roles.js";
 import { getClubById as getRegistryClubById, updateClubMeta } from "../../../domain/clubService.js";
+import { deleteClub as deleteClubRegistry } from "../../../domain/clubService.js";
 import { guardClubAction, guardPermission } from "../../../auth/guardAction.js";
 import { PERMISSIONS } from "../../../auth/permissions.js";
 import { CLUB_STATUSES } from "../constants/clubStatus.js";
 import { hasClubPresident, normalizeClubGovernance } from "../models/clubGovernance.js";
 import { loadCourtsForVenueScoped } from "../../../domain/courtService.js";
+import { loadPlayersForClub } from "../../../domain/clubStorage.js";
+import { getClubMembers } from "./clubMemberService.js";
+import { CLUB_MEMBER_STATUSES } from "../constants/clubMemberRoles.js";
+import { findUserIdByPlayerId, saveAthleteClubLink } from "../storage/athleteClubLinkStore.js";
+import { purgeClubExtension } from "../storage/clubExtensionStorage.js";
+import { writeAuditLog } from "../../identity/services/auditService.js";
+import { rpcAdminUpdateUser } from "../../identity/services/identityRpcService.js";
+import {
+  getClusterById,
+  listClustersForVenue,
+} from "../../court-cluster/services/courtClusterService.js";
+
+function deriveRegisteredClusterIdFromLegacy(governance, tenantId) {
+  if (governance?.registeredClusterId) {
+    return governance.registeredClusterId;
+  }
+
+  const courtIds = governance?.registeredCourtIds || [];
+  if (!courtIds.length || !tenantId) {
+    return null;
+  }
+
+  const courts = loadCourtsForVenueScoped(tenantId, tenantId);
+  const clusterCounts = new Map();
+
+  for (const courtId of courtIds) {
+    const court = courts.find((item) => item.id === courtId);
+    const clusterId = court?.clusterId ? String(court.clusterId).trim() : "";
+    if (!clusterId) {
+      continue;
+    }
+    clusterCounts.set(clusterId, (clusterCounts.get(clusterId) || 0) + 1);
+  }
+
+  if (clusterCounts.size === 0) {
+    return null;
+  }
+
+  if (clusterCounts.size === 1) {
+    return [...clusterCounts.keys()][0];
+  }
+
+  let bestClusterId = null;
+  let bestCount = 0;
+  for (const [clusterId, count] of clusterCounts) {
+    if (count > bestCount) {
+      bestClusterId = clusterId;
+      bestCount = count;
+    }
+  }
+
+  if (import.meta.env?.DEV) {
+    console.warn(
+      "[clubGovernance] registeredCourtIds span multiple clusters — migrated to",
+      bestClusterId
+    );
+  }
+
+  return bestClusterId;
+}
 
 function sameUserId(a, b) {
   if (!a || !b) return false;
@@ -37,6 +98,20 @@ export function isClubVicePresident(user, club) {
     return false;
   }
   return sameUserId(user.id, club.governance.vicePresidentUserId);
+}
+
+/** Chức danh nghiệp vụ CLB (khác auth role) — dùng trên hồ sơ VĐV. */
+export function resolveClubGovernanceTitle(user, club) {
+  if (!user?.id || !club) {
+    return null;
+  }
+  if (isClubPresident(user, club)) {
+    return "Chủ tịch CLB";
+  }
+  if (isClubVicePresident(user, club)) {
+    return "Phó chủ tịch CLB";
+  }
+  return null;
 }
 
 export function canViewFullClubMembers(user, club) {
@@ -95,6 +170,46 @@ export function canAssignClubOwner(user) {
   return normalizeRole(user.role) === ROLES.TENANT_OWNER;
 }
 
+export function canChangeClubPresident(user, club) {
+  if (!club) {
+    return false;
+  }
+
+  if (!isRbacEnabled() || !user) {
+    return true;
+  }
+
+  if (isGlobalRole(user.role)) {
+    return true;
+  }
+
+  if (canAssignClubOwner(user)) {
+    return true;
+  }
+
+  return isClubOwner(user, club);
+}
+
+export function canDeleteClub(user, club) {
+  if (!club) {
+    return false;
+  }
+
+  if (!isRbacEnabled() || !user) {
+    return true;
+  }
+
+  if (isGlobalRole(user.role)) {
+    return true;
+  }
+
+  if (canAssignClubOwner(user)) {
+    return true;
+  }
+
+  return isClubOwner(user, club);
+}
+
 export function canDeleteClubMembers(user, club) {
   if (!canViewFullClubMembers(user, club)) {
     return false;
@@ -105,6 +220,18 @@ export function canDeleteClubMembers(user, club) {
   }
 
   return true;
+}
+
+export function canApproveClubMembershipRequests(user, club) {
+  if (!club || !user?.id) {
+    return false;
+  }
+
+  return (
+    isClubPresident(user, club) ||
+    isClubVicePresident(user, club) ||
+    isClubOwner(user, club)
+  );
 }
 
 export function canManageClubGovernance(user, club) {
@@ -133,6 +260,242 @@ export function canApproveClubRegistration(user, club) {
   }
 
   return canAssignClubOwner(user);
+}
+
+/** CLUB_MANAGER chưa có clubId — tự đăng ký CLB (spec §6.1 B). */
+export function canSelfRegisterClub(user) {
+  if (!user?.id) {
+    return false;
+  }
+
+  if (!isRbacEnabled()) {
+    return isClubScopedRole(user.role) && !user.clubId;
+  }
+
+  return (
+    isClubScopedRole(user.role) &&
+    normalizeRole(user.role) === ROLES.CLUB_MANAGER &&
+    !user.clubId
+  );
+}
+
+export function canTransferClubOwnership(user, club) {
+  return isClubOwner(user, club);
+}
+
+function assertClubMemberUser(clubId, tenantId, userId) {
+  const trimmed = String(userId || "").trim();
+  if (!trimmed) {
+    return { ok: false, error: "Thiếu user thành viên." };
+  }
+
+  const candidates = listClubGovernanceCandidates(clubId, tenantId);
+  const matched = candidates.find((item) => sameUserId(item.userId, trimmed));
+  if (!matched) {
+    return {
+      ok: false,
+      error: "Người nhận phải là thành viên active của CLB.",
+      code: "NOT_CLUB_MEMBER",
+    };
+  }
+
+  return { ok: true, candidate: matched };
+}
+
+export function listClubGovernanceCandidates(clubId, tenantId) {
+  const club = getRegistryClubById(clubId);
+  if (!club) {
+    return [];
+  }
+
+  const members = getClubMembers(clubId, tenantId, { skipGovernanceGuard: true });
+  const players = loadPlayersForClub(clubId);
+  const playerById = new Map(players.map((player) => [player.id, player]));
+  const candidateMap = new Map();
+
+  const addCandidate = (userId, playerId = null) => {
+    const id = String(userId || "").trim();
+    if (!id) {
+      return;
+    }
+
+    if (candidateMap.has(id)) {
+      return;
+    }
+
+    const player = playerId ? playerById.get(playerId) : null;
+    candidateMap.set(id, {
+      userId: id,
+      playerId: playerId || null,
+      displayName: player?.name || `User ${id.slice(0, 8)}`,
+    });
+  };
+
+  for (const member of members) {
+    if (member.status !== CLUB_MEMBER_STATUSES.ACTIVE) {
+      continue;
+    }
+    const linkedUserId = findUserIdByPlayerId(member.playerId);
+    if (linkedUserId) {
+      addCandidate(linkedUserId, member.playerId);
+    }
+  }
+
+  const governance = club.governance || {};
+  addCandidate(governance.presidentUserId);
+  addCandidate(governance.ownerUserId);
+  addCandidate(governance.vicePresidentUserId);
+
+  return Array.from(candidateMap.values()).sort((a, b) =>
+    a.displayName.localeCompare(b.displayName, "vi")
+  );
+}
+
+export function transferClubOwnership(clubId, nextOwnerUserId, tenantId) {
+  const user = getCurrentUser();
+  const club = getRegistryClubById(clubId);
+  if (!club) {
+    return { ok: false, error: "Không tìm thấy CLB." };
+  }
+
+  if (!canTransferClubOwnership(user, club)) {
+    return { ok: false, error: "Chỉ Chủ sở hữu hiện tại được chuyển quyền sở hữu." };
+  }
+
+  const trimmed = String(nextOwnerUserId || "").trim();
+  if (!trimmed) {
+    return { ok: false, error: "Chọn thành viên nhận quyền sở hữu." };
+  }
+
+  if (sameUserId(user.id, trimmed)) {
+    return { ok: false, error: "Không thể chuyển quyền sở hữu cho chính mình." };
+  }
+
+  const memberCheck = assertClubMemberUser(clubId, tenantId, trimmed);
+  if (!memberCheck.ok) {
+    return memberCheck;
+  }
+
+  const access = guardClubAction(clubId, PERMISSIONS.CLUB_UPDATE);
+  if (!access.ok) {
+    return access;
+  }
+
+  const previousOwnerUserId = club.governance?.ownerUserId || null;
+  const result = updateClubMeta(clubId, {
+    governance: {
+      ...club.governance,
+      ownerUserId: trimmed,
+    },
+  });
+
+  if (!result.ok) {
+    return result;
+  }
+
+  void writeAuditLog({
+    action: "club.owner.transfer",
+    resourceType: "club",
+    resourceId: clubId,
+    venueId: tenantId || club.venueId || club.tenantId,
+    clubId,
+    metadata: {
+      previousOwnerUserId,
+      nextOwnerUserId: trimmed,
+    },
+  });
+
+  return { ok: true, club: getRegistryClubById(clubId) };
+}
+
+export async function transferClubPresident(clubId, nextPresidentUserId, tenantId) {
+  const user = getCurrentUser();
+  const club = getRegistryClubById(clubId);
+  if (!club) {
+    return { ok: false, error: "Không tìm thấy CLB." };
+  }
+
+  if (!canChangeClubPresident(user, club)) {
+    return { ok: false, error: "Chỉ Chủ sở hữu CLB hoặc chủ sân được đổi Chủ tịch." };
+  }
+
+  const trimmed = String(nextPresidentUserId || "").trim();
+  if (!trimmed) {
+    return { ok: false, error: "Chọn thành viên làm Chủ tịch." };
+  }
+
+  const currentPresident = club.governance?.presidentUserId || null;
+  if (sameUserId(currentPresident, trimmed)) {
+    return { ok: true, club, skipped: true };
+  }
+
+  const memberCheck = assertClubMemberUser(clubId, tenantId, trimmed);
+  if (!memberCheck.ok) {
+    return memberCheck;
+  }
+
+  const result = updateClubGovernance(clubId, { presidentUserId: trimmed });
+  if (!result.ok) {
+    return result;
+  }
+
+  if (memberCheck.candidate?.playerId) {
+    saveAthleteClubLink(trimmed, {
+      clubId,
+      playerId: memberCheck.candidate.playerId,
+    });
+  } else {
+    saveAthleteClubLink(trimmed, { clubId, playerId: null });
+  }
+
+  void rpcAdminUpdateUser(trimmed, {
+    clubId,
+    role: ROLES.CLUB_MANAGER,
+  });
+
+  void writeAuditLog({
+    action: "club.president.transfer",
+    resourceType: "club",
+    resourceId: clubId,
+    venueId: tenantId || club.venueId || club.tenantId,
+    clubId,
+    metadata: {
+      previousPresidentUserId: currentPresident,
+      nextPresidentUserId: trimmed,
+    },
+  });
+
+  return { ok: true, club: getRegistryClubById(clubId) };
+}
+
+export function deleteClubAsOwner(clubId, tenantId) {
+  const user = getCurrentUser();
+  const club = getRegistryClubById(clubId);
+  if (!club) {
+    return { ok: false, error: "Không tìm thấy CLB." };
+  }
+
+  if (!canDeleteClub(user, club)) {
+    return { ok: false, error: "Không có quyền xóa CLB này." };
+  }
+
+  const result = deleteClubRegistry(clubId);
+  if (!result.ok) {
+    return result;
+  }
+
+  purgeClubExtension(clubId);
+
+  void writeAuditLog({
+    action: "club.delete",
+    resourceType: "club",
+    resourceId: clubId,
+    venueId: tenantId || club.venueId || club.tenantId,
+    clubId,
+    metadata: { clubName: club.name },
+  });
+
+  return { ok: true };
 }
 
 export function resolveGovernanceForCreate(data = {}, user = getCurrentUser()) {
@@ -253,20 +616,36 @@ export function rejectClubRegistration(clubId, tenantId) {
   return updateClubMeta(clubId, { status: CLUB_STATUSES.INACTIVE });
 }
 
-export function getRegisteredCourtsLabels(club, tenantId) {
-  const ids = new Set(club?.governance?.registeredCourtIds || []);
-  if (!ids.size || !tenantId) {
-    return [];
+export function getRegisteredClusterLabel(club, tenantId) {
+  const clusterId = deriveRegisteredClusterIdFromLegacy(club?.governance, tenantId);
+  if (!clusterId) {
+    return null;
   }
 
-  const courts = loadCourtsForVenueScoped(tenantId, tenantId);
-  return courts
-    .filter((court) => ids.has(court.id))
-    .map((court) => ({
-      id: court.id,
-      name: court.name || court.id,
-      clubName: court.clubName,
-    }));
+  const cluster =
+    getClusterById(clusterId) ||
+    listClustersForVenue(tenantId).find((item) => item.id === clusterId) ||
+    null;
+
+  if (!cluster) {
+    return {
+      id: clusterId,
+      name: clusterId,
+      address: "",
+    };
+  }
+
+  return {
+    id: cluster.id,
+    name: cluster.name || cluster.id,
+    address: cluster.address || "",
+  };
+}
+
+/** @deprecated Use getRegisteredClusterLabel */
+export function getRegisteredCourtsLabels(club, tenantId) {
+  const label = getRegisteredClusterLabel(club, tenantId);
+  return label ? [label] : [];
 }
 
 export function updateClubGovernance(clubId, patch = {}) {
@@ -283,10 +662,25 @@ export function updateClubGovernance(clubId, patch = {}) {
     return { ok: false, error: "Không có quyền gán Chủ sở hữu CLB." };
   }
 
+  if (patch.presidentUserId !== undefined) {
+    const currentPresident = club.governance?.presidentUserId || null;
+    const nextPresident = patch.presidentUserId
+      ? String(patch.presidentUserId).trim()
+      : null;
+    const presidentUnchanged =
+      String(currentPresident || "") === String(nextPresident || "");
+
+    if (!presidentUnchanged && !canChangeClubPresident(user, club)) {
+      return {
+        ok: false,
+        error: "Chỉ Chủ sở hữu CLB hoặc chủ sân được đổi Chủ tịch.",
+      };
+    }
+  }
+
   if (
-    (patch.presidentUserId !== undefined ||
-      patch.vicePresidentUserId !== undefined ||
-      patch.registeredCourtIds !== undefined) &&
+    (patch.vicePresidentUserId !== undefined ||
+      patch.registeredClusterId !== undefined) &&
     !canManage
   ) {
     return { ok: false, error: "Không có quyền cập nhật quản trị CLB." };

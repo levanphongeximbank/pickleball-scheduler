@@ -1,0 +1,67 @@
+import { TOURNAMENT_LEVEL } from "../../../models/tournament/constants.js";
+import { VPR_PLACEMENT } from "./vprPlacements.js";
+
+/**
+ * Default VPR point table — seed for local store and SQL migration.
+ * placement × tournament_level → base_points
+ */
+export const DEFAULT_VPR_POINT_TABLE = {
+  [VPR_PLACEMENT.CHAMPION]: {
+    [TOURNAMENT_LEVEL.CERTIFIED]: 150,
+    [TOURNAMENT_LEVEL.VPT_250]: 250,
+    [TOURNAMENT_LEVEL.VPT_500]: 500,
+    [TOURNAMENT_LEVEL.VPT_1000]: 1000,
+    [TOURNAMENT_LEVEL.VPT_MASTERS]: 1500,
+    [TOURNAMENT_LEVEL.VPT_FINALS]: 2000,
+  },
+  [VPR_PLACEMENT.RUNNER_UP]: {
+    [TOURNAMENT_LEVEL.CERTIFIED]: 90,
+    [TOURNAMENT_LEVEL.VPT_250]: 150,
+    [TOURNAMENT_LEVEL.VPT_500]: 300,
+    [TOURNAMENT_LEVEL.VPT_1000]: 600,
+    [TOURNAMENT_LEVEL.VPT_MASTERS]: 900,
+    [TOURNAMENT_LEVEL.VPT_FINALS]: 1200,
+  },
+  [VPR_PLACEMENT.SEMIFINAL]: {
+    [TOURNAMENT_LEVEL.CERTIFIED]: 55,
+    [TOURNAMENT_LEVEL.VPT_250]: 90,
+    [TOURNAMENT_LEVEL.VPT_500]: 180,
+    [TOURNAMENT_LEVEL.VPT_1000]: 360,
+    [TOURNAMENT_LEVEL.VPT_MASTERS]: 540,
+    [TOURNAMENT_LEVEL.VPT_FINALS]: 720,
+  },
+  [VPR_PLACEMENT.QUARTERFINAL]: {
+    [TOURNAMENT_LEVEL.CERTIFIED]: 30,
+    [TOURNAMENT_LEVEL.VPT_250]: 45,
+    [TOURNAMENT_LEVEL.VPT_500]: 90,
+    [TOURNAMENT_LEVEL.VPT_1000]: 180,
+    [TOURNAMENT_LEVEL.VPT_MASTERS]: 270,
+    [TOURNAMENT_LEVEL.VPT_FINALS]: 360,
+  },
+  [VPR_PLACEMENT.ROUND_16]: {
+    [TOURNAMENT_LEVEL.CERTIFIED]: 15,
+    [TOURNAMENT_LEVEL.VPT_250]: 25,
+    [TOURNAMENT_LEVEL.VPT_500]: 50,
+    [TOURNAMENT_LEVEL.VPT_1000]: 90,
+    [TOURNAMENT_LEVEL.VPT_MASTERS]: 135,
+    [TOURNAMENT_LEVEL.VPT_FINALS]: 180,
+  },
+  [VPR_PLACEMENT.PARTICIPATION]: {
+    [TOURNAMENT_LEVEL.CERTIFIED]: 5,
+    [TOURNAMENT_LEVEL.VPT_250]: 10,
+    [TOURNAMENT_LEVEL.VPT_500]: 20,
+    [TOURNAMENT_LEVEL.VPT_1000]: 30,
+    [TOURNAMENT_LEVEL.VPT_MASTERS]: 45,
+    [TOURNAMENT_LEVEL.VPT_FINALS]: 60,
+  },
+};
+
+export function flattenDefaultPointConfig() {
+  const rows = [];
+  for (const [placementKey, byLevel] of Object.entries(DEFAULT_VPR_POINT_TABLE)) {
+    for (const [tournamentLevel, basePoints] of Object.entries(byLevel)) {
+      rows.push({ placementKey, tournamentLevel, basePoints });
+    }
+  }
+  return rows;
+}

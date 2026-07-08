@@ -60,6 +60,23 @@ function createEngine(store = getBillingStore()) {
   return engine;
 }
 
+export function getPhase9SubscriptionForTenant(tenantId) {
+  const id = String(tenantId || "").trim();
+  if (!id) {
+    return null;
+  }
+
+  return (
+    ensureCollection(getBillingStore(), "subscriptions", []).find(
+      (item) => item.tenant_id === id
+    ) || null
+  );
+}
+
+export function getLegacySubscriptionForVenue(venueId) {
+  return phase9SubscriptionToLegacy(getPhase9SubscriptionForTenant(venueId));
+}
+
 export function phase9SubscriptionToLegacy(phase9Sub) {
   if (!phase9Sub) {
     return null;

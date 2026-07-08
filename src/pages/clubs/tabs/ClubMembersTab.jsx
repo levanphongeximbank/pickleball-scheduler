@@ -39,7 +39,14 @@ import {
   updateClubMemberStatus,
   canViewFullClubMembers,
   canDeleteClubMembers,
+  canApproveClubMembershipRequests,
+  listPendingMembershipRequests,
+  approveClubMembershipRequest,
+  rejectClubMembershipRequest,
 } from "../../../features/club/index.js";
+import { formatPickVnRating } from "../../../features/pick-vn-rating/constants/pickVnRatingScale.js";
+import { writeAuditLog, AUDIT_ACTIONS } from "../../../features/identity/services/auditService.js";
+import { getCurrentUser } from "../../../auth/authService.js";
 
 export default function ClubMembersTab({ club, tenantId, onRefresh }) {
   const { can, rbacEnabled, isAuthenticated, user } = useAuth();
@@ -48,8 +55,16 @@ export default function ClubMembersTab({ club, tenantId, onRefresh }) {
   const [error, setError] = useState(null);
   const [removeTarget, setRemoveTarget] = useState(null);
   const [revision, setRevision] = useState(0);
+  const [reviewNotes, setReviewNotes] = useState({});
+  const [requestMessage, setRequestMessage] = useState(null);
 
   const fullAccess = canViewFullClubMembers(user, club);
+  const canApproveRequests = canApproveClubMembershipRequests(user, club);
+
+  const pendingMembershipRequests = useMemo(
+    () => listPendingMembershipRequests(club.id, tenantId, user),
+    [club.id, tenantId, user, revision]
+  );
 
   const canManage =
     fullAccess &&
@@ -137,6 +152,63 @@ export default function ClubMembersTab({ club, tenantId, onRefresh }) {
     onRefresh?.();
   };
 
+  const handleApproveRequest = async (request) => {
+    const result = await approveClubMembershipRequest(club.id, request.id, tenantId, {
+      user,
+      reviewNote: reviewNotes[request.id] || "",
+    });
+
+    if (!result.ok) {
+      setRequestMessage({ type: "error", text: result.error });
+      return;
+    }
+
+    await writeAuditLog({
+      action: AUDIT_ACTIONS.UPDATE,
+      resourceType: "club_membership_request",
+      resourceId: request.id,
+      clubId: club.id,
+      metadata: {
+        status: "approved",
+        userId: request.userId,
+        playerId: result.player?.id,
+      },
+      actor: getCurrentUser(),
+    });
+
+    setRequestMessage({ type: "success", text: "Đã duyệt yêu cầu tham gia CLB." });
+    setRevision((v) => v + 1);
+    onRefresh?.();
+  };
+
+  const handleRejectRequest = async (request) => {
+    const result = rejectClubMembershipRequest(club.id, request.id, tenantId, {
+      user,
+      reviewNote: reviewNotes[request.id] || "",
+    });
+
+    if (!result.ok) {
+      setRequestMessage({ type: "error", text: result.error });
+      return;
+    }
+
+    await writeAuditLog({
+      action: AUDIT_ACTIONS.UPDATE,
+      resourceType: "club_membership_request",
+      resourceId: request.id,
+      clubId: club.id,
+      metadata: {
+        status: "rejected",
+        userId: request.userId,
+      },
+      actor: getCurrentUser(),
+    });
+
+    setRequestMessage({ type: "info", text: "Đã từ chối yêu cầu tham gia." });
+    setRevision((v) => v + 1);
+    onRefresh?.();
+  };
+
   return (
     <Box>
       {!fullAccess && (
@@ -154,6 +226,96 @@ export default function ClubMembersTab({ club, tenantId, onRefresh }) {
 
       {fullAccess && (
         <>
+      {canApproveRequests && requestMessage && (
+        <Alert
+          severity={requestMessage.type}
+          sx={{ mb: 2 }}
+          onClose={() => setRequestMessage(null)}
+        >
+          {requestMessage.text}
+        </Alert>
+      )}
+
+      {canApproveRequests && (
+        <Box sx={{ mb: 3 }}>
+          <Typography variant="subtitle1" fontWeight={600} gutterBottom>
+            Yêu cầu tham gia ({pendingMembershipRequests.length})
+          </Typography>
+          {pendingMembershipRequests.length === 0 ? (
+            <Paper sx={{ p: 2 }}>
+              <Typography color="text.secondary" variant="body2">
+                Không có yêu cầu đang chờ duyệt.
+              </Typography>
+            </Paper>
+          ) : (
+            <TableContainer component={Paper}>
+              <Table size="small">
+                <TableHead>
+                  <TableRow>
+                    <TableCell>VĐV</TableCell>
+                    <TableCell>Pick_VN</TableCell>
+                    <TableCell>Ngày gửi</TableCell>
+                    <TableCell>Lời nhắn</TableCell>
+                    <TableCell>Ghi chú duyệt</TableCell>
+                    <TableCell align="right">Thao tác</TableCell>
+                  </TableRow>
+                </TableHead>
+                <TableBody>
+                  {pendingMembershipRequests.map((request) => (
+                    <TableRow key={request.id} hover>
+                      <TableCell>{request.displayName || request.userId}</TableCell>
+                      <TableCell>
+                        {request.pickVnRating != null
+                          ? formatPickVnRating(request.pickVnRating)
+                          : "—"}
+                      </TableCell>
+                      <TableCell>
+                        {new Date(request.requestedAt).toLocaleDateString("vi-VN")}
+                      </TableCell>
+                      <TableCell>{request.message || "—"}</TableCell>
+                      <TableCell sx={{ minWidth: 180 }}>
+                        <TextField
+                          size="small"
+                          fullWidth
+                          placeholder="Ghi chú"
+                          value={reviewNotes[request.id] || ""}
+                          onChange={(event) =>
+                            setReviewNotes((prev) => ({
+                              ...prev,
+                              [request.id]: event.target.value,
+                            }))
+                          }
+                        />
+                      </TableCell>
+                      <TableCell align="right">
+                        <Stack direction="row" spacing={1} justifyContent="flex-end">
+                          <Button
+                            size="small"
+                            color="success"
+                            variant="contained"
+                            onClick={() => handleApproveRequest(request)}
+                          >
+                            Duyệt
+                          </Button>
+                          <Button
+                            size="small"
+                            color="error"
+                            variant="outlined"
+                            onClick={() => handleRejectRequest(request)}
+                          >
+                            Từ chối
+                          </Button>
+                        </Stack>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </TableContainer>
+          )}
+        </Box>
+      )}
+
       <Stack direction="row" justifyContent="space-between" mb={2}>
         <Typography variant="subtitle1" fontWeight={600}>
           {members.length} thành viên

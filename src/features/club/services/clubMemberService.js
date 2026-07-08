@@ -75,9 +75,16 @@ export function getClubMembersForTournamentInvite(clubId, tenantId) {
 }
 
 export function addMemberToClub(clubId, playerId, tenantId, options = {}) {
-  const check = guardClubMemberAccess(clubId, tenantId, PERMISSIONS.PLAYER_UPDATE);
-  if (!check.ok) {
-    return check;
+  if (!options.skipPermissionGuard) {
+    const check = guardClubMemberAccess(clubId, tenantId, PERMISSIONS.PLAYER_UPDATE);
+    if (!check.ok) {
+      return check;
+    }
+  } else if (tenantId) {
+    const tenantCheck = guardClubTenant(clubId, tenantId);
+    if (!tenantCheck.ok) {
+      return tenantCheck;
+    }
   }
 
   const trimmedPlayerId = String(playerId || "").trim();

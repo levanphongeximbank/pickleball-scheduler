@@ -54,6 +54,8 @@ import {
 } from "../domain/skillLevelService.js";
 import { PROPOSAL_STATUS } from "../tournament/engines/skillLevelEngine.js";
 import { getLevelColor, getLevelLabel } from "../utils/playerHelpers.js";
+import { formatPickVnRating } from "../features/pick-vn-rating/constants/pickVnRatingScale.js";
+import { RATING_STATUS_LABELS } from "../features/pick-vn-rating/constants/ratingStatus.js";
 
 const HISTORY_TABS = [
   { key: "approved", label: "Đã duyệt", status: PROPOSAL_STATUS.APPROVED },
@@ -251,9 +253,9 @@ export default function SkillLevelsPage() {
         </Grid>
         <Grid size={{ xs: 6, sm: 3 }}>
           <KpiCard
-            label="Chốt trình"
-            value={overview.rules.enabled ? "Bật" : "Tắt"}
-            hint={overview.rules.autoGenerateProposals ? "Tự động" : "Thủ công"}
+            label="Đã xác thực Pick_VN"
+            value={overview.verifiedCount}
+            hint={`${overview.unverifiedCount} chưa xác thực`}
           />
         </Grid>
       </Grid>
@@ -279,6 +281,37 @@ export default function SkillLevelsPage() {
           </TournamentSectionCard>
         </Grid>
 
+        <Grid size={{ xs: 12, md: 5 }}>
+          <TournamentSectionCard title="Trạng thái Pick_VN">
+            {overview.ratingStatusDistribution.every((row) => row.count === 0) ? (
+              <Typography color="text.secondary">Chưa có dữ liệu trạng thái.</Typography>
+            ) : (
+              <Box sx={{ width: "100%", height: 280 }}>
+                <ResponsiveContainer>
+                  <BarChart
+                    data={overview.ratingStatusDistribution}
+                    layout="vertical"
+                    margin={{ top: 8, right: 8, left: 8, bottom: 0 }}
+                  >
+                    <CartesianGrid strokeDasharray="3 3" horizontal={false} />
+                    <XAxis type="number" allowDecimals={false} tick={{ fontSize: 12 }} />
+                    <YAxis
+                      type="category"
+                      dataKey="label"
+                      width={108}
+                      tick={{ fontSize: 11 }}
+                    />
+                    <Tooltip />
+                    <Bar dataKey="count" name="Số VĐV" fill="#0d6efd" radius={[0, 4, 4, 0]} />
+                  </BarChart>
+                </ResponsiveContainer>
+              </Box>
+            )}
+          </TournamentSectionCard>
+        </Grid>
+      </Grid>
+
+      <Grid container spacing={TOURNAMENT_LAYOUT.gridSpacing} sx={{ mb: TOURNAMENT_LAYOUT.sectionGap }}>
         <Grid size={{ xs: 12, md: 5 }}>
           <TournamentSectionCard title="Cấu hình quy tắc">
             <Stack spacing={2}>
@@ -337,6 +370,16 @@ export default function SkillLevelsPage() {
                 disabled={!canManage}
                 fullWidth
               />
+              <TextField
+                label="Số trận tối thiểu để đề xuất"
+                type="number"
+                size="small"
+                inputProps={{ step: 1, min: 1, max: 50 }}
+                value={rulesForm.minMatchesForProposal ?? 5}
+                onChange={(e) => updateRule("minMatchesForProposal", Number(e.target.value))}
+                disabled={!canManage}
+                fullWidth
+              />
               {canManage && (
                 <Button variant="contained" startIcon={<SaveIcon />} onClick={handleSaveRules}>
                   Lưu cấu hình
@@ -363,6 +406,7 @@ export default function SkillLevelsPage() {
                 <TableRow>
                   <TableCell>VĐV</TableCell>
                   <TableCell>Thay đổi</TableCell>
+                  <TableCell>Trạng thái</TableCell>
                   <TableCell>Rating nội bộ</TableCell>
                   <TableCell>Tháng</TableCell>
                   {canManage && <TableCell align="right">Thao tác</TableCell>}
@@ -373,8 +417,18 @@ export default function SkillLevelsPage() {
                   <TableRow key={proposal.id}>
                     <TableCell>{proposal.playerName || `VĐV #${proposal.playerId}`}</TableCell>
                     <TableCell>
-                      {Number(proposal.currentLevel).toFixed(1)} →{" "}
-                      <strong>{Number(proposal.proposedLevel).toFixed(1)}</strong>
+                      {formatPickVnRating(proposal.currentLevel)} →{" "}
+                      <strong>{formatPickVnRating(proposal.proposedLevel)}</strong>
+                    </TableCell>
+                    <TableCell>
+                      <Chip
+                        size="small"
+                        variant="outlined"
+                        label={
+                          RATING_STATUS_LABELS[proposal.ratingStatus] ||
+                          RATING_STATUS_LABELS.under_review
+                        }
+                      />
                     </TableCell>
                     <TableCell>{Number(proposal.ratingInternal).toFixed(2)}</TableCell>
                     <TableCell>{proposal.reviewMonth}</TableCell>
@@ -416,6 +470,7 @@ export default function SkillLevelsPage() {
                 <TableRow>
                   <TableCell>Họ tên</TableCell>
                   <TableCell>Trình công khai</TableCell>
+                  <TableCell>Trạng thái Pick_VN</TableCell>
                   <TableCell>Rating nội bộ</TableCell>
                   <TableCell>Chênh lệch</TableCell>
                   <TableCell>Lần chốt gần nhất</TableCell>
@@ -443,6 +498,13 @@ export default function SkillLevelsPage() {
                           color: getLevelColor(row.publicLevel),
                           fontWeight: 700,
                         }}
+                      />
+                    </TableCell>
+                    <TableCell>
+                      <Chip
+                        size="small"
+                        variant="outlined"
+                        label={RATING_STATUS_LABELS[row.ratingStatus] || row.ratingStatus}
                       />
                     </TableCell>
                     <TableCell>{row.ratingInternal.toFixed(2)}</TableCell>

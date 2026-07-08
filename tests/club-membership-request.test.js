@@ -1,0 +1,189 @@
+import { describe, it, beforeEach, afterEach } from "node:test";
+import assert from "node:assert/strict";
+
+import { loadClubs, saveClubs } from "../src/data/club.js";
+import { createClubRecord } from "../src/models/club.js";
+import { ROLES } from "../src/auth/roles.js";
+import { CLUB_STATUSES } from "../src/features/club/constants/clubStatus.js";
+import { CLUB_MEMBERSHIP_REQUEST_STATUSES } from "../src/features/club/constants/clubMembershipRequestStatuses.js";
+import {
+  submitClubMembershipRequest,
+  listPendingMembershipRequests,
+  approveClubMembershipRequest,
+  rejectClubMembershipRequest,
+  listMyMembershipRequests,
+  canApproveClubMembershipRequests,
+} from "../src/features/club/index.js";
+import { loadPlayersForClub } from "../src/domain/clubStorage.js";
+import { getClubMembers } from "../src/features/club/services/clubMemberService.js";
+import { loadAthleteClubLink } from "../src/features/club/storage/athleteClubLinkStore.js";
+import { loadClubExtension } from "../src/features/club/storage/clubExtensionStorage.js";
+
+const TENANT = "tenant-membership-test";
+const CLUB_ID = "club-membership-test";
+const ATHLETE_ID = "athlete-user-1";
+const PRESIDENT_ID = "user-president";
+const VICE_ID = "user-vice";
+const VENUE_OWNER_ID = "venue-owner-other";
+
+function createLocalStorageMock(seed = {}) {
+  const store = new Map(Object.entries(seed));
+  return {
+    getItem(key) {
+      return store.has(key) ? store.get(key) : null;
+    },
+    setItem(key, value) {
+      store.set(key, String(value));
+    },
+    removeItem(key) {
+      store.delete(key);
+    },
+    clear() {
+      store.clear();
+    },
+  };
+}
+
+function makeClub(overrides = {}) {
+  return createClubRecord("CLB Membership Test", {
+    id: CLUB_ID,
+    tenantId: TENANT,
+    venueId: TENANT,
+    status: CLUB_STATUSES.ACTIVE,
+    governance: {
+      presidentUserId: PRESIDENT_ID,
+      ownerUserId: "user-owner",
+      vicePresidentUserId: VICE_ID,
+      registeredCourtIds: [],
+    },
+    ...overrides,
+  });
+}
+
+function seedClub() {
+  saveClubs([makeClub()]);
+}
+
+describe("club membership requests", () => {
+  beforeEach(() => {
+    globalThis.localStorage = createLocalStorageMock();
+    seedClub();
+  });
+
+  afterEach(() => {
+    delete globalThis.localStorage;
+  });
+
+  it("athlete submits request when no club", () => {
+    const athlete = {
+      id: ATHLETE_ID,
+      role: ROLES.PLAYER,
+      displayName: "VĐV Test",
+      tenantId: TENANT,
+    };
+
+    const result = submitClubMembershipRequest(CLUB_ID, TENANT, athlete, {
+      message: "Muốn tham gia CLB",
+    });
+
+    assert.equal(result.ok, true);
+    assert.equal(result.request.status, CLUB_MEMBERSHIP_REQUEST_STATUSES.PENDING);
+
+    const mine = listMyMembershipRequests(TENANT, ATHLETE_ID);
+    assert.equal(mine.length, 1);
+    assert.equal(mine[0].clubId, CLUB_ID);
+  });
+
+  it("blocks submit when athlete already has club", () => {
+    const athlete = {
+      id: ATHLETE_ID,
+      role: ROLES.PLAYER,
+      clubId: "other-club",
+      tenantId: TENANT,
+    };
+
+    const result = submitClubMembershipRequest(CLUB_ID, TENANT, athlete);
+    assert.equal(result.ok, false);
+  });
+
+  it("blocks duplicate pending request", () => {
+    const athlete = { id: ATHLETE_ID, role: ROLES.PLAYER, tenantId: TENANT };
+    assert.equal(submitClubMembershipRequest(CLUB_ID, TENANT, athlete).ok, true);
+    const duplicate = submitClubMembershipRequest(CLUB_ID, TENANT, athlete);
+    assert.equal(duplicate.ok, false);
+  });
+
+  it("president can approve and creates player + member + profile link", async () => {
+    const athlete = { id: ATHLETE_ID, role: ROLES.PLAYER, displayName: "VĐV Test", tenantId: TENANT };
+    const submit = submitClubMembershipRequest(CLUB_ID, TENANT, athlete);
+    assert.equal(submit.ok, true);
+
+    const president = {
+      id: PRESIDENT_ID,
+      role: ROLES.CLUB_MANAGER,
+      clubId: CLUB_ID,
+      tenantId: TENANT,
+    };
+    const club = makeClub();
+    assert.equal(canApproveClubMembershipRequests(president, club), true);
+
+    const pending = listPendingMembershipRequests(CLUB_ID, TENANT, president);
+    assert.equal(pending.length, 1);
+
+    const approved = await approveClubMembershipRequest(CLUB_ID, pending[0].id, TENANT, {
+      user: president,
+    });
+    assert.equal(approved.ok, true);
+
+    const players = loadPlayersForClub(CLUB_ID);
+    assert.ok(players.some((player) => player.authUserId === ATHLETE_ID));
+
+    const members = getClubMembers(CLUB_ID, TENANT, {
+      user: president,
+      skipGovernanceGuard: false,
+    });
+    assert.ok(members.some((member) => member.status === "active"));
+
+    const link = loadAthleteClubLink(ATHLETE_ID);
+    assert.equal(link.clubId, CLUB_ID);
+    assert.ok(link.playerId);
+  });
+
+  it("vice president can approve", async () => {
+    const athlete = { id: "athlete-vice", role: ROLES.PLAYER, displayName: "VP Athlete", tenantId: TENANT };
+    submitClubMembershipRequest(CLUB_ID, TENANT, athlete);
+
+    const vice = { id: VICE_ID, role: ROLES.CLUB_MANAGER, clubId: CLUB_ID, tenantId: TENANT };
+    const pending = listPendingMembershipRequests(CLUB_ID, TENANT, vice);
+    const approved = await approveClubMembershipRequest(CLUB_ID, pending[0].id, TENANT, {
+      user: vice,
+    });
+    assert.equal(approved.ok, true);
+  });
+
+  it("venue manager who is not club owner cannot approve", () => {
+    const venueOwner = { id: VENUE_OWNER_ID, role: ROLES.TENANT_OWNER, venueId: TENANT };
+    const club = makeClub();
+    assert.equal(canApproveClubMembershipRequests(venueOwner, club), false);
+    assert.equal(listPendingMembershipRequests(CLUB_ID, TENANT, venueOwner).length, 0);
+  });
+
+  it("reject updates request status", () => {
+    const athlete = { id: "athlete-reject", role: ROLES.PLAYER, displayName: "Reject Me", tenantId: TENANT };
+    submitClubMembershipRequest(CLUB_ID, TENANT, athlete);
+
+    const president = { id: PRESIDENT_ID, role: ROLES.CLUB_MANAGER, clubId: CLUB_ID };
+    const pending = listPendingMembershipRequests(CLUB_ID, TENANT, president);
+    const rejected = rejectClubMembershipRequest(CLUB_ID, pending[0].id, TENANT, {
+      user: president,
+      reviewNote: "Chưa đủ điều kiện",
+    });
+
+    assert.equal(rejected.ok, true);
+    assert.equal(rejected.request.status, CLUB_MEMBERSHIP_REQUEST_STATUSES.REJECTED);
+
+    const ext = loadClubExtension(CLUB_ID);
+    const stored = ext.membershipRequests.find((request) => request.id === pending[0].id);
+    assert.equal(stored.reviewNote, "Chưa đủ điều kiện");
+  });
+});

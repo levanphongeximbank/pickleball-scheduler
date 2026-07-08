@@ -85,6 +85,9 @@ export default function AccountMenu() {
           </Stack>
         </Box>
         <Divider />
+        <MenuItem component={RouterLink} to="/home" onClick={() => setAnchorEl(null)}>
+          Trang chủ PICK_VN
+        </MenuItem>
         <MenuItem component={RouterLink} to="/profile" onClick={() => setAnchorEl(null)}>
           Hồ sơ
         </MenuItem>

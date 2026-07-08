@@ -24,11 +24,18 @@ import {
 
 import SportsTennisIcon from "@mui/icons-material/SportsTennis";
 import AddIcon from "@mui/icons-material/Add";
+import DirectionsIcon from "@mui/icons-material/Directions";
 
 import { useClub } from "../context/ClubContext.jsx";
+import { useCluster } from "../context/ClusterContext.jsx";
+import { useTenant } from "../context/TenantContext.jsx";
 import { useAuth } from "../context/AuthContext.jsx";
 import { PERMISSIONS } from "../auth/permissions.js";
 import { resolveRouteAccessScope } from "../auth/menuAccess.js";
+import { isVenueScopedRole } from "../auth/roles.js";
+import { isCourtClustersEnabled } from "../features/court-cluster/config/clusterFlags.js";
+import { openClusterInGoogleMaps } from "../features/court-cluster/utils/clusterMapsUtils.js";
+import { ensureWritableClubForVenueOwner } from "../features/club/services/venueOwnerClubService.js";
 import {
   getCourtDisplayName,
   loadCourts,
@@ -38,17 +45,29 @@ import {
   upsertCourt,
   validateCourtName,
   validateCourtLimit,
+  validateCourtLimitBulk,
+  createCourtsBulk,
+  buildBulkCourtRecords,
+  getCourtCapacityForClub,
 } from "./courts.logic";
 import { COURT_STATUSES, COURT_TYPES } from "../models/court.js";
 import { COURT_STATUS_LABELS } from "./courtManagement/courtManagement.constants.js";
 import ClubDataTransferPanel from "./ClubDataTransferPanel";
 
 export default function Courts() {
-  const { activeClubId, activeClub, revision } = useClub();
+  const { activeClubId, activeClub, revision, refreshClubs } = useClub();
+  const { activeClusterId, activeCluster } = useCluster();
+  const { revision: tenantRevision } = useTenant();
   const { can, rbacEnabled, isAuthenticated, user } = useAuth();
   const scope = useMemo(
-    () => resolveRouteAccessScope({ user, activeClubId, activeClub }),
-    [user, activeClubId, activeClub]
+    () =>
+      resolveRouteAccessScope({
+        user,
+        activeClubId,
+        activeClub,
+        activeClusterId,
+      }),
+    [user, activeClubId, activeClub, activeClusterId]
   );
   const canCreate =
     !rbacEnabled || !isAuthenticated || can(PERMISSIONS.COURT_CREATE, scope);
@@ -58,11 +77,46 @@ export default function Courts() {
     !rbacEnabled || !isAuthenticated || can(PERMISSIONS.COURT_DELETE, scope);
   const [courts, setCourts] = useState(() => loadCourts([], activeClubId));
   const [permissionError, setPermissionError] = useState(null);
+  const [clubBootstrapError, setClubBootstrapError] = useState(null);
+  const [writableClubId, setWritableClubId] = useState(activeClubId);
+  const courtCapacity = useMemo(
+    () => getCourtCapacityForClub(writableClubId || activeClubId),
+    [writableClubId, activeClubId, revision, tenantRevision, courts.length]
+  );
 
   useEffect(() => {
-    setCourts(loadCourts([], activeClubId));
-  }, [activeClubId, revision]);
+    if (!rbacEnabled || !isAuthenticated || !user || !isVenueScopedRole(user.role)) {
+      setWritableClubId(activeClubId);
+      return;
+    }
+
+    const ensured = ensureWritableClubForVenueOwner(user, { activeClubId });
+    if (!ensured.ok) {
+      setClubBootstrapError(ensured.error || "Không thể khởi tạo CLB cho cơ sở.");
+      return;
+    }
+
+    setClubBootstrapError(null);
+    if (ensured.clubId) {
+      setWritableClubId(ensured.clubId);
+      if (ensured.created) {
+        refreshClubs();
+      }
+    }
+  }, [activeClubId, isAuthenticated, rbacEnabled, refreshClubs, user]);
+
+  useEffect(() => {
+    setCourts(
+      loadCourts([], writableClubId || activeClubId, {
+        clusterId: activeClusterId,
+        venueId: activeClub?.venueId || user?.venueId || null,
+      })
+    );
+  }, [writableClubId, activeClubId, revision, activeClusterId, activeClub?.venueId, user?.venueId]);
   const [open, setOpen] = useState(false);
+  const [quickSetupOpen, setQuickSetupOpen] = useState(false);
+  const [bulkCourtCount, setBulkCourtCount] = useState("3");
+  const [bulkFormError, setBulkFormError] = useState(null);
   const [deleteCourt, setDeleteCourt] = useState(null);
 
   const [courtName, setCourtName] = useState("");
@@ -87,14 +141,31 @@ export default function Courts() {
     setFormError(null);
   };
 
+  const targetClubId = writableClubId || activeClubId;
+  const bulkPreview = useMemo(() => {
+    const count = Number(bulkCourtCount);
+    if (!Number.isFinite(count) || count < 1) {
+      return [];
+    }
+    return buildBulkCourtRecords(courts, count).map((court) => court.name);
+  }, [bulkCourtCount, courts]);
+
   const updateCourts = (nextCourts, permission = PERMISSIONS.COURT_UPDATE) => {
-    const result = saveCourts(nextCourts, activeClubId, { permission });
+    const result = saveCourts(nextCourts, targetClubId, {
+      permission,
+      clusterId: activeClusterId,
+    });
     if (!result.ok) {
       setPermissionError(result.error || "Không có quyền thực hiện thao tác này.");
       return false;
     }
     setPermissionError(null);
-    setCourts(nextCourts);
+    setCourts(
+      loadCourts([], targetClubId, {
+        clusterId: activeClusterId,
+        venueId: activeClub?.venueId || user?.venueId || null,
+      })
+    );
     return true;
   };
 
@@ -107,7 +178,7 @@ export default function Courts() {
     }
 
     if (!editingCourt) {
-      const limitError = validateCourtLimit(activeClubId, { isNew: true });
+      const limitError = validateCourtLimit(targetClubId, { isNew: true });
       if (limitError) {
         setFormError(limitError);
         return;
@@ -127,6 +198,7 @@ export default function Courts() {
         defaultHourlyRate: Number(defaultHourlyRate) || 0,
         peakHourlyRate: Number(peakHourlyRate) || 0,
         note: courtNote,
+        clusterId: activeClusterId,
       },
     });
 
@@ -138,6 +210,34 @@ export default function Courts() {
 
     resetCourtForm();
     setOpen(false);
+  };
+
+  const handleQuickSetup = () => {
+    const count = Number(bulkCourtCount);
+    if (!Number.isFinite(count) || count < 1) {
+      setBulkFormError("Vui lòng nhập số sân hợp lệ (từ 1 trở lên).");
+      return;
+    }
+
+    const limitError = validateCourtLimitBulk(targetClubId, count);
+    if (limitError) {
+      setBulkFormError(limitError);
+      return;
+    }
+
+    if (!canCreate) {
+      setBulkFormError("Không có quyền thêm sân.");
+      return;
+    }
+
+    const updatedCourts = createCourtsBulk(courts, count);
+    const saved = updateCourts(updatedCourts, PERMISSIONS.COURT_CREATE);
+    if (!saved) {
+      return;
+    }
+
+    setBulkFormError(null);
+    setQuickSetupOpen(false);
   };
 
   return (
@@ -154,23 +254,75 @@ export default function Courts() {
           🏟️ Quản lý sân
         </Typography>
 
-        <Button
-          variant="contained"
-          size="large"
-          startIcon={<AddIcon />}
-          disabled={!canCreate}
-          onClick={() => {
-            resetCourtForm();
-            setOpen(true);
-          }}
-        >
-          THÊM SÂN
-        </Button>
+        <Stack direction="row" spacing={1}>
+          <Button
+            variant="outlined"
+            size="large"
+            disabled={!canCreate}
+            onClick={() => {
+              setBulkCourtCount(String(courtCapacity?.remaining ?? 3));
+              setBulkFormError(null);
+              setQuickSetupOpen(true);
+            }}
+          >
+            THIẾT LẬP NHANH
+          </Button>
+          <Button
+            variant="contained"
+            size="large"
+            startIcon={<AddIcon />}
+            disabled={!canCreate}
+            onClick={() => {
+              resetCourtForm();
+              setOpen(true);
+            }}
+          >
+            THÊM SÂN
+          </Button>
+        </Stack>
       </Box>
+
+      {courtCapacity && (
+        <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+          Đã có {courtCapacity.current} / tối đa {courtCapacity.maxCourts} sân
+          {courtCapacity.planName ? ` (gói ${courtCapacity.planName})` : ""}
+        </Typography>
+      )}
+
+      {clubBootstrapError && (
+        <Alert severity="warning" sx={{ mb: 2 }}>
+          {clubBootstrapError}
+        </Alert>
+      )}
 
       {permissionError && (
         <Alert severity="error" sx={{ mb: 2 }} onClose={() => setPermissionError(null)}>
           {permissionError}
+        </Alert>
+      )}
+
+      {isCourtClustersEnabled() && activeCluster && (
+        <Alert
+          severity="info"
+          sx={{ mb: 2 }}
+          action={
+            activeCluster.googleMapsUrl ? (
+              <Button
+                color="inherit"
+                size="small"
+                startIcon={<DirectionsIcon />}
+                onClick={() => openClusterInGoogleMaps(activeCluster)}
+              >
+                Chỉ đường
+              </Button>
+            ) : null
+          }
+        >
+          <strong>Cụm:</strong> {activeCluster.name}
+          {activeCluster.address ? ` — ${activeCluster.address}` : ""}
+          {typeof activeCluster.courtCount === "number"
+            ? ` (${activeCluster.courtCount} sân)`
+            : ""}
         </Alert>
       )}
 
@@ -185,7 +337,8 @@ export default function Courts() {
         {courts.length === 0 && (
           <Grid size={{ xs: 12 }}>
             <Alert severity="info">
-              Chưa có sân nào trong CLB hiện tại. Bấm <strong>THÊM SÂN</strong> để tạo sân đầu tiên.
+              Chưa có sân nào tại cơ sở hiện tại. Bấm <strong>THIẾT LẬP NHANH</strong> để tạo
+              nhiều sân cùng lúc, hoặc <strong>THÊM SÂN</strong> để thêm từng sân.
             </Alert>
           </Grid>
         )}
@@ -388,6 +541,57 @@ export default function Courts() {
 
           <Button variant="contained" onClick={handleSave}>
             LƯU
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      <Dialog
+        open={quickSetupOpen}
+        onClose={() => {
+          setBulkFormError(null);
+          setQuickSetupOpen(false);
+        }}
+        maxWidth="sm"
+        fullWidth
+      >
+        <DialogTitle>Thiết lập nhanh sân</DialogTitle>
+        <DialogContent>
+          {bulkFormError && (
+            <Alert severity="error" sx={{ mb: 2 }}>
+              {bulkFormError}
+            </Alert>
+          )}
+          <DialogContentText sx={{ mb: 2 }}>
+            Nhập số sân tại cơ sở của bạn (2, 3, 4, 6...). Hệ thống sẽ tạo tên Sân 1, Sân 2, ...
+          </DialogContentText>
+          <TextField
+            label="Số sân tại cơ sở"
+            fullWidth
+            type="number"
+            inputProps={{
+              min: 1,
+              max: courtCapacity?.remaining ?? undefined,
+            }}
+            value={bulkCourtCount}
+            onChange={(event) => setBulkCourtCount(event.target.value)}
+          />
+          {bulkPreview.length > 0 && (
+            <Typography variant="body2" color="text.secondary" sx={{ mt: 2 }}>
+              Sẽ tạo: {bulkPreview.join(", ")}
+            </Typography>
+          )}
+        </DialogContent>
+        <DialogActions>
+          <Button
+            onClick={() => {
+              setBulkFormError(null);
+              setQuickSetupOpen(false);
+            }}
+          >
+            Hủy
+          </Button>
+          <Button variant="contained" onClick={handleQuickSetup}>
+            Tạo {bulkCourtCount || 0} sân
           </Button>
         </DialogActions>
       </Dialog>

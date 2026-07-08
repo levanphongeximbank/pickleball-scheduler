@@ -3,7 +3,7 @@
  * Sidebar, mobile drawer, bottom nav và route guards đều derive từ file này.
  */
 import { PERMISSIONS } from "../auth/permissions.js";
-import { ROLES, normalizeRole } from "../auth/roles.js";
+import { ROLES, normalizeRole, rolesEqual } from "../auth/roles.js";
 import { isAiEngineEnabled } from "../features/ai-assistant/constants/aiConfig.js";
 import { V5_MENU_GROUPS } from "./v5Menu/index.js";
 import { SYSTEM_TECHNICIAN_MENU_ROOT } from "./v5Menu/systemTechnicianMenu.js";
@@ -30,6 +30,7 @@ export const MENU_GROUP_IDS = Object.freeze({
   CRM: "crm",
   AI: "ai",
   ADMIN: "admin",
+  PROFILE: "profile",
   SUPPORT: "support",
   SYSTEM_TECH_ZONE: "system-tech-zone",
   TEAM_CAPTAIN_ZONE: "team-captain-zone",
@@ -169,7 +170,6 @@ export const ROLE_MENU_MAP = Object.freeze({
     MENU_GROUP_IDS.CLUB,
     MENU_GROUP_IDS.TOURNAMENT,
     MENU_GROUP_IDS.SUPPORT,
-    MENU_GROUP_IDS.PLAYER_ZONE,
   ],
   CLUB_MANAGER: [
     MENU_GROUP_IDS.DASHBOARD,
@@ -177,7 +177,6 @@ export const ROLE_MENU_MAP = Object.freeze({
     MENU_GROUP_IDS.CLUB,
     MENU_GROUP_IDS.TOURNAMENT,
     MENU_GROUP_IDS.SUPPORT,
-    MENU_GROUP_IDS.PLAYER_ZONE,
   ],
   CLUB_OWNER: [
     MENU_GROUP_IDS.DASHBOARD,
@@ -185,7 +184,6 @@ export const ROLE_MENU_MAP = Object.freeze({
     MENU_GROUP_IDS.CLUB,
     MENU_GROUP_IDS.TOURNAMENT,
     MENU_GROUP_IDS.SUPPORT,
-    MENU_GROUP_IDS.PLAYER_ZONE,
   ],
   [ROLES.COACH]: [
     MENU_GROUP_IDS.CLUB,
@@ -206,6 +204,12 @@ export const ROLE_MENU_MAP = Object.freeze({
     MENU_GROUP_IDS.SUPPORT,
   ],
   [ROLES.REFEREE]: [
+    MENU_GROUP_IDS.CLUB,
+    MENU_GROUP_IDS.REFEREE_ZONE,
+    MENU_GROUP_IDS.SUPPORT,
+  ],
+  REFEREE: [
+    MENU_GROUP_IDS.CLUB,
     MENU_GROUP_IDS.REFEREE_ZONE,
     MENU_GROUP_IDS.SUPPORT,
   ],
@@ -215,11 +219,19 @@ export const ROLE_MENU_MAP = Object.freeze({
     MENU_GROUP_IDS.SUPPORT,
     MENU_GROUP_IDS.PLAYER_ZONE,
   ],
+  PLAYER: [
+    MENU_GROUP_IDS.CLUB,
+    MENU_GROUP_IDS.TOURNAMENT,
+    MENU_GROUP_IDS.SUPPORT,
+    MENU_GROUP_IDS.PLAYER_ZONE,
+  ],
   [ROLES.CUSTOMER]: [
+    MENU_GROUP_IDS.CLUB,
     MENU_GROUP_IDS.SUPPORT,
     MENU_GROUP_IDS.PLAYER_ZONE,
   ],
   CUSTOMER: [
+    MENU_GROUP_IDS.CLUB,
     MENU_GROUP_IDS.SUPPORT,
     MENU_GROUP_IDS.PLAYER_ZONE,
   ],
@@ -233,6 +245,29 @@ export const ROLE_MENU_MAP = Object.freeze({
   ],
 });
 
+/** Route prefix VĐV không được truy cập (menu + guard). */
+export const PLAYER_RESTRICTED_ROUTE_PREFIXES = Object.freeze([
+  "/daily-play",
+  "/tournament/types",
+  "/tournament/operations",
+  "/tournament/config",
+]);
+
+export function isRouteRestrictedForUser(user, pathname) {
+  if (!user?.role || !pathname) {
+    return false;
+  }
+
+  if (!rolesEqual(user.role, ROLES.PLAYER)) {
+    return false;
+  }
+
+  const path = String(pathname).split("?")[0];
+  return PLAYER_RESTRICTED_ROUTE_PREFIXES.some(
+    (prefix) => path === prefix || path.startsWith(`${prefix}/`)
+  );
+}
+
 /**
  * Mapping route cũ ↔ nhãn menu V5 (tham chiếu, không đổi route).
  */
@@ -242,6 +277,7 @@ export const NAV_ROUTE_ALIASES = Object.freeze({
   "/select-players": { label: "Danh sách chờ / Ghép cặp", group: MENU_GROUP_IDS.VENUE_OPS },
   "/players": { label: "Danh sách VĐV", group: MENU_GROUP_IDS.CUSTOMERS },
   "/club": { label: "Lịch sinh hoạt / Mùa giải", group: MENU_GROUP_IDS.CLUB },
+  "/my-club": { label: "CLB của tôi", group: MENU_GROUP_IDS.CLUB },
   "/daily-play": { label: "Vui chơi mỗi ngày", group: MENU_GROUP_IDS.CLUB },
   "/statistics": { label: "Kết quả & Xếp hạng", group: MENU_GROUP_IDS.TOURNAMENT },
 });
@@ -337,6 +373,7 @@ export const NAV_ICON_KEYS = Object.freeze({
   marketplace: "marketplace",
   billing: "billing",
   "player-profile": "player-profile",
+  "my-club": "my-club",
   "referee-hub": "referee-hub",
   "referee-tournaments": "referee-tournaments",
   "mobile-player": "mobile-player",
@@ -371,9 +408,7 @@ export const MENU_GROUPS = [
         key: "player-profile",
         icon: NAV_ICON_KEYS["player-profile"],
         text: "Hồ sơ cá nhân",
-        resolvePath: (user) =>
-          user?.playerId ? `/players/profile/${user.playerId}` : null,
-        permissions: [PERMISSIONS.PLAYER_VIEW],
+        path: "/player/profile",
         roles: [ROLES.PLAYER],
       },
       {
@@ -420,8 +455,8 @@ export const MENU_GROUPS = [
 
 /** Route → permissions tối thiểu (OR). Re-export cho menuAccess. */
 export const ROUTE_PERMISSIONS = Object.freeze({
-  "/": [PERMISSIONS.STATISTICS_VIEW, PERMISSIONS.TOURNAMENT_VIEW, PERMISSIONS.FINANCE_VIEW, PERMISSIONS.BOOKING_VIEW],
   "/dashboard": [PERMISSIONS.STATISTICS_VIEW, PERMISSIONS.TOURNAMENT_VIEW, PERMISSIONS.FINANCE_VIEW, PERMISSIONS.BOOKING_VIEW],
+  "/dashboard/rankings": [PERMISSIONS.RANKING_VIEW, PERMISSIONS.RANKING_MANAGE],
   "/players": [PERMISSIONS.PLAYER_VIEW],
   "/players/skill": [PERMISSIONS.PLAYER_VIEW],
   "/court-management": [PERMISSIONS.COURT_VIEW],
@@ -433,10 +468,10 @@ export const ROUTE_PERMISSIONS = Object.freeze({
   "/select-players": [PERMISSIONS.SCHEDULING_VIEW],
   "/daily-play": [PERMISSIONS.TOURNAMENT_VIEW],
   "/club": [PERMISSIONS.CLUB_VIEW],
-  "/clubs": [PERMISSIONS.CLUB_VIEW],
+  "/manage/clubs": [PERMISSIONS.CLUB_VIEW],
   "/tournament": [PERMISSIONS.TOURNAMENT_VIEW],
   "/tournament/list": [PERMISSIONS.TOURNAMENT_VIEW],
-  "/tournament/create": [PERMISSIONS.TOURNAMENT_CREATE, PERMISSIONS.TOURNAMENT_VIEW],
+  "/tournament/create": [PERMISSIONS.TOURNAMENT_CREATE],
   "/tournament/register": [PERMISSIONS.TOURNAMENT_UPDATE, PERMISSIONS.TOURNAMENT_VIEW],
   "/tournament/teams": [PERMISSIONS.TOURNAMENT_VIEW],
   "/tournament/schedule": [PERMISSIONS.TOURNAMENT_VIEW, PERMISSIONS.DIRECTOR_USE],
@@ -452,6 +487,8 @@ export const ROUTE_PERMISSIONS = Object.freeze({
     PERMISSIONS.COURT_VIEW,
   ],
   "/settings": [PERMISSIONS.SETTINGS_VIEW],
+  "/my-club": [],
+  "/player/profile": [],
   "/settings/integrations": [PERMISSIONS.INTEGRATION_VIEW, PERMISSIONS.SETTINGS_VIEW],
   "/settings/integrations/payments": [PERMISSIONS.INTEGRATION_MANAGE],
   "/settings/integrations/zalo-oa": [PERMISSIONS.INTEGRATION_MANAGE],
@@ -478,11 +515,19 @@ export const ROUTE_PERMISSIONS = Object.freeze({
   "/admin/billing/payments": [PERMISSIONS.BILLING_PAYMENT_VIEW],
   "/admin/billing/audit": [PERMISSIONS.BILLING_AUDIT_VIEW],
   "/users": [PERMISSIONS.USER_MANAGE, PERMISSIONS.USER_VIEW],
+  "/admin/roles": [
+    PERMISSIONS.ROLE_MANAGE,
+    PERMISSIONS.ROLE_VIEW,
+    PERMISSIONS.PERMISSION_VIEW,
+    PERMISSIONS.TENANT_ROLE_CUSTOMIZE,
+  ],
+  "/admin/tournament-certifications": [PERMISSIONS.TOURNAMENT_CERTIFY, PERMISSIONS.RANKING_MANAGE],
   "/audit": [PERMISSIONS.USER_MANAGE, PERMISSIONS.ACTIVITY_LOG_VIEW, PERMISSIONS.ROLE_VIEW],
   "/profile": [],
   "/referee": [PERMISSIONS.TOURNAMENT_VIEW, PERMISSIONS.MATCH_UPDATE],
   "/403": [],
-  "/admin/tenants": [PERMISSIONS.ROLE_MANAGE, PERMISSIONS.VENUE_UPDATE, PERMISSIONS.TENANT_VIEW],
+  "/admin/tenants": [PERMISSIONS.TENANT_VIEW, PERMISSIONS.ROLE_MANAGE],
+  "/admin/court-clusters": [PERMISSIONS.CLUSTER_MANAGE],
   "/support": [PERMISSIONS.SUPPORT_TICKET_MANAGE, PERMISSIONS.BILLING_VIEW],
   "/marketplace": [PERMISSIONS.MARKETPLACE_VIEW],
   "/marketplace/orders": [PERMISSIONS.MARKETPLACE_VIEW],
@@ -517,7 +562,7 @@ export const MOBILE_BOTTOM_NAV_PROFILES = Object.freeze({
     {
       key: "dashboard",
       label: "Tổng quan",
-      path: "/",
+      path: "/dashboard",
       iconKey: "dashboard",
       match: "exact",
       permissions: [
@@ -618,15 +663,14 @@ export const MOBILE_BOTTOM_NAV_PROFILES = Object.freeze({
     {
       key: "player-qr",
       label: "QR",
-      path: "/mobile/check-in",
+      path: "/mobile/player?tab=qr",
       iconKey: "checkin",
-      permissions: [PERMISSIONS.TOURNAMENT_VIEW],
+      roles: [ROLES.PLAYER],
     },
     {
       key: "player-profile",
       label: "Hồ sơ",
-      resolvePath: (user) =>
-        user?.playerId ? `/players/profile/${user.playerId}` : "/mobile/player",
+      path: "/player/profile",
       iconKey: "player-profile",
       roles: [ROLES.PLAYER],
     },
@@ -635,6 +679,12 @@ export const MOBILE_BOTTOM_NAV_PROFILES = Object.freeze({
 
 /** Drawer quick links — mobile. */
 export const MOBILE_QUICK_LINKS = [
+  {
+    key: "my-profile",
+    label: "Hồ sơ của tôi",
+    path: "/profile",
+    iconKey: "profile",
+  },
   {
     key: "operations",
     label: "Dashboard vận hành",
@@ -837,12 +887,10 @@ export const SHELL_FLAT_MENU_LABELS = Object.freeze({
 
 const SHELL_FLAT_MENU_KEYS_BY_ROLE = Object.freeze({
   [ROLES.PLAYER]: [
-    "club-list",
-    "club-daily-play",
+    "my-club",
     "tournament-root",
     "player-profile",
     "mobile-notifications",
-    "support-settings",
   ],
   [ROLES.TEAM_CAPTAIN]: ["captain-home", "captain-schedule", "captain-lineup", "captain-results", "captain-support"],
   [ROLES.REFEREE]: ["referee-hub", "profile", "mobile-notifications"],

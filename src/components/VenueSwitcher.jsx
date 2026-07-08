@@ -55,13 +55,13 @@ export default function VenueSwitcher({ size = "small", minWidth = 180, variant 
     window.dispatchEvent(new CustomEvent("venue-switched", { detail: event.target.value }));
   };
 
-  const fieldLabel = hideLabel ? "" : "Cụm sân";
+  const fieldLabel = hideLabel ? "" : "Tổ chức";
 
   return (
     <FormControl size={size} sx={{ minWidth, width: hideLabel ? "100%" : undefined }}>
       {!hideLabel && (
         <InputLabel id="header-venue-label" sx={variant !== "dark" ? { color: SHELL_COLORS.textSecondary } : undefined}>
-          Cụm sân
+          Tổ chức
         </InputLabel>
       )}
       <Select

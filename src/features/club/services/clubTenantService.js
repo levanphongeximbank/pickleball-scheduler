@@ -13,7 +13,7 @@ import { createClubRecord } from "../../../models/club.js";
 import { loadClubExtension, purgeClubExtension } from "../storage/clubExtensionStorage.js";
 import { CLUB_STATUSES } from "../constants/clubStatus.js";
 import { canUserViewClub } from "./clubAccessService.js";
-import { resolveGovernanceForCreate } from "./clubGovernanceService.js";
+import { resolveGovernanceForCreate, canSelfRegisterClub } from "./clubGovernanceService.js";
 
 function resolveTenantIdForCreate(user) {
   if (!isRbacEnabled() || !user) {
@@ -145,7 +145,7 @@ export function createClub(data = {}) {
     PERMISSIONS.CLUB_CREATE,
     tenantId ? { venueId: tenantId, tenantId } : {}
   );
-  if (!check.ok) {
+  if (!check.ok && !(user && canSelfRegisterClub(user))) {
     return check;
   }
 

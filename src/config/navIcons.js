@@ -101,6 +101,7 @@ export const NAV_ICON_COMPONENTS = Object.freeze({
   marketplace: StorefrontIcon,
   billing: CardMembershipIcon,
   "player-profile": PersonIcon,
+  "my-club": GroupsIcon,
   "referee-hub": GavelIcon,
   "referee-tournaments": SportsTennisIcon,
   "mobile-player": PersonIcon,

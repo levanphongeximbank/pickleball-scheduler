@@ -102,12 +102,12 @@ afterEach(() => {
 });
 
 test("setInitialSkillLevel locks skill level on first create only", () => {
-  const created = setInitialSkillLevel({ id: 2, name: "Binh" }, 4.2);
-  assert.equal(created.skillLevel, 4.2);
+  const created = setInitialSkillLevel({ id: 2, name: "Binh" }, 4.0);
+  assert.equal(created.skillLevel, 4.0);
   assert.ok(created.skillLevelLockedAt);
 
   const again = setInitialSkillLevel(created, 5);
-  assert.equal(again.skillLevel, 4.2);
+  assert.equal(again.skillLevel, 4.0);
 });
 
 test("submit and approve skill level change request updates player skillLevel", () => {

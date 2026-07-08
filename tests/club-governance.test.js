@@ -12,6 +12,8 @@ import {
   canViewClubMemberSummary,
   isClubOwner,
   canAssignClubOwner,
+  canChangeClubPresident,
+  canDeleteClub,
   canDeleteClubMembers,
   getClubMembers,
   getClubMembersForTournamentInvite,
@@ -19,14 +21,23 @@ import {
   canApproveClubRegistration,
   approveClubRegistration,
   rejectClubRegistration,
-  getRegisteredCourtsLabels,
+  getRegisteredClusterLabel,
   updateClubGovernance,
 } from "../src/features/club/index.js";
+import { deleteClub } from "../src/domain/clubService.js";
 import { saveClubData, getDefaultClubData } from "../src/domain/clubStorage.js";
 import { normalizePlayers } from "../src/models/player.js";
+import {
+  createCourtCluster,
+  ensureDefaultClusterForVenue,
+} from "../src/features/court-cluster/services/courtClusterService.js";
+import { saveClusterAssignments, saveCourtClusters } from "../src/data/courtCluster.js";
+import { ROLES as CLUSTER_ROLES } from "../src/auth/roles.js";
 
 const TENANT = "tenant-gov-test";
 const CLUB_ID = "club-gov-test";
+const PLATFORM_ADMIN = { id: "platform-admin", role: CLUSTER_ROLES.PLATFORM_ADMIN, status: "active" };
+let clusterNamLongId = "";
 
 function createLocalStorageMock(seed = {}) {
   const store = new Map(Object.entries(seed));
@@ -61,7 +72,21 @@ function makeClub(overrides = {}) {
   });
 }
 
+function seedCluster() {
+  saveCourtClusters([]);
+  saveClusterAssignments([]);
+  ensureDefaultClusterForVenue(TENANT);
+  const result = createCourtCluster({
+    venueId: TENANT,
+    name: "Cụm sân Nam Long",
+    slug: "nam-long",
+    user: PLATFORM_ADMIN,
+  });
+  clusterNamLongId = result.cluster.id;
+}
+
 function seedClub() {
+  seedCluster();
   saveClubs([makeClub()]);
   const players = normalizePlayers([
     { id: "p1", name: "Player 1", tenantId: TENANT, level: 3, status: "active", active: true },
@@ -191,13 +216,37 @@ describe("club governance", () => {
     assert.equal(result.club.status, CLUB_STATUSES.INACTIVE);
   });
 
-  it("registered courts labels resolve from venue courts", () => {
+  it("registered cluster label resolves from court_clusters", () => {
+    const club = makeClub({
+      governance: {
+        presidentUserId: "user-president",
+        ownerUserId: "user-owner",
+        vicePresidentUserId: null,
+        registeredClusterId: clusterNamLongId,
+      },
+    });
+    const label = getRegisteredClusterLabel(club, TENANT);
+    assert.ok(label);
+    assert.equal(label.name, "Cụm sân Nam Long");
+    assert.equal(label.id, clusterNamLongId);
+  });
+
+  it("migrates legacy registeredCourtIds to cluster label", () => {
     saveClubData(CLUB_ID, {
       ...getDefaultClubData(CLUB_ID),
       players: normalizePlayers([
         { id: "p1", name: "Player 1", tenantId: TENANT, level: 3, status: "active", active: true },
       ]),
-      courts: [{ id: "court-1", name: "Sân 1", number: 1, active: true, tenantId: TENANT }],
+      courts: [
+        {
+          id: "court-1",
+          name: "Sân 1",
+          number: 1,
+          active: true,
+          tenantId: TENANT,
+          clusterId: clusterNamLongId,
+        },
+      ],
       tenantId: TENANT,
     });
     const club = makeClub({
@@ -208,17 +257,85 @@ describe("club governance", () => {
         registeredCourtIds: ["court-1"],
       },
     });
-    const labels = getRegisteredCourtsLabels(club, TENANT);
-    assert.equal(labels.length, 1);
-    assert.equal(labels[0].name, "Sân 1");
+    const label = getRegisteredClusterLabel(club, TENANT);
+    assert.ok(label);
+    assert.equal(label.id, clusterNamLongId);
+    assert.equal(label.name, "Cụm sân Nam Long");
   });
 
-  it("stores registered courts via governance update", () => {
+  it("stores registered cluster via governance update", () => {
     saveAuthSession({ id: "user-president", role: ROLES.CLUB_MANAGER, clubId: CLUB_ID });
     const result = updateClubGovernance(CLUB_ID, {
-      registeredCourtIds: ["court-a", "court-b"],
+      registeredClusterId: clusterNamLongId,
     });
     assert.equal(result.ok, true);
-    assert.deepEqual(result.club.governance.registeredCourtIds, ["court-a", "court-b"]);
+    assert.equal(result.club.governance.registeredClusterId, clusterNamLongId);
+  });
+
+  it("president cannot change club president", () => {
+    const club = makeClub();
+    const president = { id: "user-president", role: ROLES.CLUB_MANAGER, clubId: CLUB_ID };
+    saveAuthSession(president);
+
+    assert.equal(canChangeClubPresident(president, club), false);
+
+    const result = updateClubGovernance(CLUB_ID, {
+      presidentUserId: "user-other-president",
+    });
+    assert.equal(result.ok, false);
+    assert.match(result.error, /Chủ tịch/);
+  });
+
+  it("governance owner can change club president", () => {
+    const club = makeClub();
+    const owner = { id: "user-owner", role: ROLES.CLUB_MANAGER, clubId: CLUB_ID };
+    saveAuthSession(owner);
+
+    assert.equal(canChangeClubPresident(owner, club), true);
+
+    const result = updateClubGovernance(CLUB_ID, {
+      presidentUserId: "user-new-president",
+    });
+    assert.equal(result.ok, true);
+    assert.equal(result.club.governance.presidentUserId, "user-new-president");
+  });
+
+  it("governance owner can delete club without club.delete permission", () => {
+    const deletableClub = createClubRecord("CLB Delete Test", {
+      id: "club-delete-test",
+      tenantId: TENANT,
+      venueId: TENANT,
+      governance: {
+        presidentUserId: "user-president",
+        ownerUserId: "user-owner",
+        vicePresidentUserId: null,
+        registeredCourtIds: [],
+      },
+    });
+    saveClubs([deletableClub]);
+    saveClubData("club-delete-test", {
+      ...getDefaultClubData("club-delete-test"),
+      players: [],
+      tenantId: TENANT,
+    });
+
+    const owner = { id: "user-owner", role: ROLES.CLUB_MANAGER, clubId: "club-delete-test" };
+    saveAuthSession(owner);
+
+    assert.equal(canDeleteClub(owner, deletableClub), true);
+
+    const result = deleteClub("club-delete-test");
+    assert.equal(result.ok, true);
+    assert.equal(loadClubs().some((club) => club.id === "club-delete-test"), false);
+  });
+
+  it("president without ownership cannot delete club", () => {
+    const president = { id: "user-president", role: ROLES.CLUB_MANAGER, clubId: CLUB_ID };
+    saveAuthSession(president);
+
+    assert.equal(canDeleteClub(president, makeClub()), false);
+
+    const result = deleteClub(CLUB_ID);
+    assert.equal(result.ok, false);
   });
 });

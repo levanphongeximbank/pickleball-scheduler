@@ -10,8 +10,11 @@ import {
   createEmptyPlayerHistoryStats,
   dailyMatchToRecord,
   eventMatchToRecord,
+  loadPlayerHistoryProfileResolved,
   mergeLegacyAiHistory,
 } from "../src/tournament/engines/playerHistoryEngine.js";
+import { saveClubData, getDefaultClubData } from "../src/domain/clubStorage.js";
+import { DEFAULT_CLUB, setActiveClubId } from "../src/data/club.js";
 
 const players = [
   { id: "p1", name: "Nam 1", gender: "Nam", rating: 4.5 },
@@ -207,4 +210,52 @@ test("collectMatchRecordsFromTournaments sorts newest first", () => {
 
   assert.equal(records[0].id, "new");
   assert.equal(records[1].id, "old");
+});
+
+test("loadPlayerHistoryProfileResolved finds athlete by authUserId in assigned club", () => {
+  globalThis.localStorage = {
+    store: new Map(),
+    getItem(key) {
+      return this.store.has(key) ? this.store.get(key) : null;
+    },
+    setItem(key, value) {
+      this.store.set(key, String(value));
+    },
+    removeItem(key) {
+      this.store.delete(key);
+    },
+    clear() {
+      this.store.clear();
+    },
+  };
+
+  const clubId = "club-athlete-profile";
+  setActiveClubId(clubId);
+  saveClubData(clubId, {
+    ...getDefaultClubData(clubId),
+    players: [
+      {
+        id: "player-auth-user-1",
+        name: "Player Staging A",
+        authUserId: "user-1",
+        gender: "Nam",
+        level: 3.5,
+        active: true,
+      },
+    ],
+  });
+
+  const wrongIdProfile = loadPlayerHistoryProfileResolved({
+    primaryClubId: "other-club",
+    secondaryClubId: clubId,
+    playerId: "stale-profile-player-id",
+    authUserId: "user-1",
+  });
+
+  assert.equal(wrongIdProfile.ok, true);
+  assert.equal(wrongIdProfile.clubId, clubId);
+  assert.equal(wrongIdProfile.resolvedPlayerId, "player-auth-user-1");
+  assert.equal(wrongIdProfile.player.name, "Player Staging A");
+
+  delete globalThis.localStorage;
 });

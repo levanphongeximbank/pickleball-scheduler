@@ -144,8 +144,8 @@ test("normalizePlayer preserves guest playerType", () => {
 
 test("formatPlayerPickerMeta includes gender rating and club", () => {
   assert.equal(
-    formatPlayerPickerMeta({ gender: "Nam", rating: 3.5, clubName: "Future Arena" }),
+    formatPlayerPickerMeta({ gender: "Nam", rating: 3.5, clubName: "Future Arena" }, true),
     "Nam • 3.5 • Future Arena"
   );
-  assert.equal(formatPlayerPickerMeta({ gender: "Nữ", level: 2.75 }), "Nữ • 2.75");
+  assert.equal(formatPlayerPickerMeta({ gender: "Nữ", rating: 2.75, clubName: "" }, true), "Nữ • 2.8");
 });

@@ -44,6 +44,8 @@ import PermissionGate from "../components/auth/PermissionGate.jsx";
 import ClubAssignmentBanner from "../components/auth/ClubAssignmentBanner.jsx";
 import { PERMISSIONS } from "../auth/permissions.js";
 import { usePageRuntimeAccess } from "../core/platform/app/usePageRuntimeAccess.js";
+import { useAuth } from "../context/AuthContext.jsx";
+import { canDeleteClub } from "../features/club/index.js";
 
 function TabPanel({ children, value, index }) {
   if (value !== index) {
@@ -54,6 +56,7 @@ function TabPanel({ children, value, index }) {
 }
 
 export default function ClubManagement() {
+  const { user } = useAuth();
   const {
     clubs,
     activeClub,
@@ -108,6 +111,11 @@ export default function ClubManagement() {
         leagues,
       }),
     [clubs, activeClubId, summary, seasons, leagues]
+  );
+
+  const canUserDeleteActiveClub = useMemo(
+    () => view.canDeleteActiveClub && activeClub && canDeleteClub(user, activeClub),
+    [view.canDeleteActiveClub, activeClub, user]
   );
 
   const leaguesForSelectedSeason = useMemo(
@@ -342,19 +350,19 @@ export default function ClubManagement() {
                 </PermissionGate>
               </Stack>
 
-              <Stack direction={{ xs: "column", md: "row" }} spacing={2}>
-                <TextField
-                  fullWidth
-                  label="Tạo CLB mới"
-                  value={newClubName}
-                  onChange={(event) => setNewClubName(event.target.value)}
-                />
-                <PermissionGate permission={PERMISSIONS.CLUB_UPDATE}>
+              <PermissionGate permission={PERMISSIONS.CLUB_CREATE}>
+                <Stack direction={{ xs: "column", md: "row" }} spacing={2}>
+                  <TextField
+                    fullWidth
+                    label="Tạo CLB mới"
+                    value={newClubName}
+                    onChange={(event) => setNewClubName(event.target.value)}
+                  />
                   <Button variant="outlined" onClick={handleCreateClub}>
                     Thêm CLB
                   </Button>
-                </PermissionGate>
-              </Stack>
+                </Stack>
+              </PermissionGate>
 
               <Stack direction="row" spacing={1} sx={{ flexWrap: "wrap" }}>
                 {clubs.map((club) => (
@@ -367,12 +375,10 @@ export default function ClubManagement() {
                 ))}
               </Stack>
 
-              {view.canDeleteActiveClub && (
-                <PermissionGate permission={PERMISSIONS.CLUB_DELETE}>
-                  <Button color="error" onClick={() => setDeleteDialogOpen(true)}>
-                    Xóa CLB hiện tại
-                  </Button>
-                </PermissionGate>
+              {canUserDeleteActiveClub && (
+                <Button color="error" onClick={() => setDeleteDialogOpen(true)}>
+                  Xóa CLB hiện tại
+                </Button>
               )}
             </Stack>
           </TabPanel>

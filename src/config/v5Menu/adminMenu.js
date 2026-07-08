@@ -22,11 +22,31 @@ export const ADMIN_MENU_ROOT = menuFolder({
 
       icon: "tenants",
 
-      text: "Cụm sân / Cơ sở",
+      text: "Tổ chức / Tenant",
 
       path: "/admin/tenants",
 
       permissions: [PERMISSIONS.ROLE_MANAGE, PERMISSIONS.VENUE_UPDATE],
+
+      roles: [ROLES.PLATFORM_ADMIN, ROLES.SUPER_ADMIN],
+
+      featureStatus: FEATURE_STATUS.LIVE,
+
+    }),
+
+    menuLeaf({
+
+      key: "admin-court-clusters",
+
+      icon: "courts",
+
+      text: "Cụm sân",
+
+      path: "/admin/court-clusters",
+
+      match: "admin-court-clusters",
+
+      permissions: [PERMISSIONS.CLUSTER_MANAGE],
 
       roles: [ROLES.PLATFORM_ADMIN, ROLES.SUPER_ADMIN],
 
@@ -112,15 +132,49 @@ export const ADMIN_MENU_ROOT = menuFolder({
 
       text: "Vai trò & Quyền",
 
-      path: "/users?tab=roles",
+      path: "/admin/roles",
 
-      match: "users-roles",
+      match: "admin-roles",
 
-      permissions: [PERMISSIONS.USER_MANAGE, PERMISSIONS.ROLE_MANAGE],
+      permissions: [PERMISSIONS.ROLE_VIEW, PERMISSIONS.ROLE_MANAGE, PERMISSIONS.PERMISSION_VIEW, PERMISSIONS.TENANT_ROLE_CUSTOMIZE],
 
       featureStatus: FEATURE_STATUS.LIVE,
 
-      featureNote: "Tab vai trò trên trang Người dùng",
+    }),
+
+    menuLeaf({
+
+      key: "admin-tournament-certifications",
+
+      icon: "trophy",
+
+      text: "Duyệt giải VPR",
+
+      path: "/admin/tournament-certifications",
+
+      permissions: [PERMISSIONS.TOURNAMENT_CERTIFY],
+
+      roles: [ROLES.PLATFORM_ADMIN, ROLES.SUPER_ADMIN],
+
+      featureStatus: FEATURE_STATUS.LIVE,
+
+    }),
+
+    menuLeaf({
+
+      key: "admin-rankings",
+
+      icon: "statistics",
+
+      text: "Quản trị VPR",
+
+      path: "/dashboard/rankings",
+
+      permissions: [PERMISSIONS.RANKING_VIEW, PERMISSIONS.RANKING_MANAGE],
+
+      roles: [ROLES.PLATFORM_ADMIN, ROLES.SUPER_ADMIN],
+
+      featureStatus: FEATURE_STATUS.LIVE,
 
     }),
 

@@ -1,4 +1,5 @@
 import { loadClubs } from "../data/club.js";
+import { bindClubVenueRegistry } from "../domain/clubService.js";
 import { loadActiveTenantId } from "../data/tenantSession.js";
 import { PERMISSIONS } from "./permissions.js";
 import { getCurrentUser, isRbacEnabled } from "./authService.js";
@@ -11,6 +12,8 @@ import {
   getExplicitTenantIdForClub,
 } from "../features/tenant/guards/tenantGuard.js";
 import { resolveEffectiveTenantId } from "../features/tenant/services/tenantService.js";
+import { canAccessCluster } from "./rbac.js";
+import { getClusterById } from "../features/court-cluster/services/courtClusterService.js";
 
 export function getAuthOptions() {
   return {
@@ -19,13 +22,14 @@ export function getAuthOptions() {
   };
 }
 
-export function scopeForClubId(clubId) {
+export function scopeForClubId(clubId, clusterId = null) {
   const club = loadClubs().find((item) => item.id === clubId);
   const tenantId = resolveTenantIdForClub(clubId);
   return {
     clubId: clubId || null,
     venueId: club?.venueId || tenantId || null,
     tenantId,
+    clusterId: clusterId || null,
   };
 }
 
@@ -53,9 +57,20 @@ export function guardClubAccess(clubId, options = {}) {
     return { ok: true };
   }
 
+  const club = loadClubs().find((item) => item.id === clubId);
+  const profileVenueId =
+    user && isVenueScopedRole(user.role) ? user.venueId || user.tenantId : null;
   const scope = scopeForClubId(clubId);
+  const clubMeta = {
+    venueId: profileVenueId || club?.venueId || scope.venueId || null,
+  };
 
-  if (!canAccessClub(user, clubId, { venueId: scope.venueId }, { rbacEnabled })) {
+  if (profileVenueId && club && !club.isDefault && !club.venueId) {
+    bindClubVenueRegistry(clubId, profileVenueId, { skipGuard: true });
+    clubMeta.venueId = profileVenueId;
+  }
+
+  if (!canAccessClub(user, clubId, clubMeta, { rbacEnabled })) {
     if (isClubScopedRole(user?.role) && !user?.clubId) {
       return {
         ok: false,
@@ -69,6 +84,13 @@ export function guardClubAccess(clubId, options = {}) {
       error: "Không có quyền truy cập CLB này.",
       code: "FORBIDDEN",
     };
+  }
+
+  if (profileVenueId && club && !club.isDefault) {
+    const explicitTenant = getExplicitTenantIdForClub(clubId);
+    if (club.venueId === profileVenueId && explicitTenant !== profileVenueId) {
+      bindClubVenueRegistry(clubId, profileVenueId, { skipGuard: true });
+    }
   }
 
   const currentTenantId = resolveCurrentTenantId(user);
@@ -181,4 +203,27 @@ export function guardCourtLockAction(clubId, options = {}) {
     {},
     options
   );
+}
+
+export function guardClusterAccess(clusterId, options = {}) {
+  const { user, rbacEnabled } = { ...getAuthOptions(), ...options };
+
+  if (!isRbacEnforced({ rbacEnabled, user })) {
+    return { ok: true };
+  }
+
+  const cluster = getClusterById(clusterId);
+  if (!cluster) {
+    return { ok: false, error: "Không tìm thấy cụm sân", code: "NOT_FOUND" };
+  }
+
+  if (!canAccessCluster(user, clusterId, { venueId: cluster.venueId }, { rbacEnabled })) {
+    return {
+      ok: false,
+      error: "Không có quyền truy cập cụm sân này.",
+      code: "FORBIDDEN",
+    };
+  }
+
+  return { ok: true, cluster };
 }

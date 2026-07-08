@@ -10,6 +10,7 @@ import TenantGate from "../components/TenantGate.jsx";
 import SubscriptionBanner from "../components/SubscriptionBanner.jsx";
 import OperationalRouteGate from "../features/billing/components/OperationalRouteGate.jsx";
 import { TenantProvider } from "../context/TenantContext.jsx";
+import { ClusterProvider } from "../context/ClusterContext.jsx";
 import { ClubProvider } from "../context/ClubContext.jsx";
 import { SeasonProvider } from "../context/SeasonContext.jsx";
 import OfflineBanner from "../features/mobile/components/OfflineBanner.jsx";
@@ -73,11 +74,13 @@ function MainLayoutContent() {
 export default function MainLayout() {
   return (
     <TenantProvider>
-      <ClubProvider>
-        <SeasonProvider>
-          <MainLayoutContent />
-        </SeasonProvider>
-      </ClubProvider>
+      <ClusterProvider>
+        <ClubProvider>
+          <SeasonProvider>
+            <MainLayoutContent />
+          </SeasonProvider>
+        </ClubProvider>
+      </ClusterProvider>
     </TenantProvider>
   );
 }

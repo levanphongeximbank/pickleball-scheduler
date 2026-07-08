@@ -36,6 +36,9 @@ function migrateClubRecord(club) {
   if (!Array.isArray(governance.registeredCourtIds)) {
     governance.registeredCourtIds = [];
   }
+  if (governance.registeredClusterId == null) {
+    governance.registeredClusterId = null;
+  }
 
   return {
     ...normalized,

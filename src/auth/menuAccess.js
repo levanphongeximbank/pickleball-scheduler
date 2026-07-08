@@ -11,8 +11,10 @@ import {
   resolveNavRole,
   resolveRoleMenuAccess,
   ROUTE_PERMISSIONS,
+  isRouteRestrictedForUser,
 } from "../config/navigationConfig.js";
 import { getNavigationPermissions } from "../config/navigationPermissions.js";
+import { needsPickVnOnboarding } from "../features/pick-vn-rating/services/pickVnRatingService.js";
 
 const FEATURE_FLAG_CHECKERS = Object.freeze({
   marketplace: isMarketplaceEnabled,
@@ -22,7 +24,13 @@ const FEATURE_FLAG_CHECKERS = Object.freeze({
 });
 
 /** Route không cần permission khi RBAC bật (hồ sơ, thông báo, placeholder). */
-const PUBLIC_MENU_PATHS = new Set(["/profile", "/mobile/notifications", "/403"]);
+const PUBLIC_MENU_PATHS = new Set([
+  "/profile",
+  "/my-club",
+  "/player/profile",
+  "/mobile/notifications",
+  "/403",
+]);
 
 function isPublicMenuPath(pathname) {
   if (!pathname) return false;
@@ -127,7 +135,11 @@ export function getRouteAccessPermissions(pathname) {
   return [];
 }
 
-export function canAccessRoute(can, pathname, scope = {}) {
+export function canAccessRoute(can, pathname, scope = {}, user = null) {
+  if (user && isRouteRestrictedForUser(user, pathname)) {
+    return false;
+  }
+
   const permissions = getRouteAccessPermissions(pathname);
   if (permissions.length === 0) return true;
 
@@ -192,7 +204,7 @@ function passesMenuPermissionCheck(item, { can, user, scope }, { allowEmpty = fa
 
   const path = resolveMenuItemPath(item, user);
   if (path) {
-    return canAccessRoute(can, String(path).split("?")[0], resolvedScope);
+    return canAccessRoute(can, String(path).split("?")[0], resolvedScope, user);
   }
 
   return true;
@@ -233,6 +245,10 @@ export function isMenuItemVisible(item, { can, rbacEnabled, isAuthenticated, use
 function isGroupAllowedForRole(group, user, rbacEnabled) {
   if (!rbacEnabled) {
     return true;
+  }
+
+  if (group.id === MENU_GROUP_IDS.PROFILE) {
+    return Boolean(user?.role);
   }
 
   const navRole = resolveNavRole(user?.role);
@@ -365,14 +381,14 @@ export function filterInPageNavHub(hub, authContext, scope = {}) {
 
 export function getDefaultHomePath(user, rbacEnabled = false) {
   if (!rbacEnabled || !user?.role) {
-    return "/";
+    return "/dashboard";
   }
 
   switch (normalizeRole(user.role)) {
     case ROLES.PLAYER:
-      // Người chơi mới đăng ký chưa gắn CLB — /tournament cần tournament.view (SELF + clubId).
+      // Người chơi mới đăng ký chưa gắn CLB — hướng tới chọn CLB.
       if (!user.clubId && !user.club_id) {
-        return "/profile";
+        return "/my-club";
       }
       return "/tournament";
     case ROLES.CLUB_MANAGER:
@@ -390,12 +406,20 @@ export function getDefaultHomePath(user, rbacEnabled = false) {
       return tournamentId ? `/team-portal/${tournamentId}` : "/profile";
     }
     default:
-      return "/";
+      return "/dashboard";
   }
 }
 
 /** Sau đăng nhập — không quay lại route bị cấm (vd. PLAYER chưa CLB → /tournament). */
 export function resolvePostAuthRedirectPath(requestedPath, user, rbacEnabled = false) {
+  if (
+    user?.id &&
+    normalizeRole(user?.role) === ROLES.PLAYER &&
+    needsPickVnOnboarding(user.id)
+  ) {
+    return "/onboarding/pick-vn-rating";
+  }
+
   const homePath = getDefaultHomePath(user, rbacEnabled);
   const path = String(requestedPath || "").split("?")[0];
 
@@ -407,6 +431,10 @@ export function resolvePostAuthRedirectPath(requestedPath, user, rbacEnabled = f
     return homePath;
   }
 
+  if (path === "/home") {
+    return path;
+  }
+
   if (rbacEnabled && normalizeRole(user?.role) === ROLES.PLAYER) {
     if (!user?.clubId && !user?.club_id) {
       if (
@@ -415,7 +443,7 @@ export function resolvePostAuthRedirectPath(requestedPath, user, rbacEnabled = f
         path === "/dashboard" ||
         path === "/"
       ) {
-        return "/profile";
+        return "/my-club";
       }
     }
   }

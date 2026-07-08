@@ -96,6 +96,10 @@ import { useAuth } from "../../context/AuthContext.jsx";
 import { canViewPlayerSkillLevel } from "../../auth/rbac.js";
 import { useTenant } from "../../context/TenantContext.jsx";
 import { formatOrganizerPlayerMeta } from "../../utils/skillLevelVisibility.js";
+import {
+  resolveTournamentEntryPlayers,
+  TournamentRegistrationRatingPanel,
+} from "../../features/pick-vn-rating/index.js";
 
 const EVENT_OPTIONS = EVENT_TYPE_OPTIONS;
 
@@ -197,6 +201,12 @@ export default function InternalTournamentSetup() {
       .map((id) => pool.get(String(id)))
       .filter(Boolean);
   }, [selectedPlayerIds, sourceClubId, tournamentClubId, tournament?.tenantId, localRevision]);
+
+  const tenantPlayers = useMemo(() => {
+    const tenantId =
+      tournament?.tenantId || resolveTenantIdForClub(sourceClubId || tournamentClubId);
+    return tenantId ? getTenantPlayers(tenantId) : [];
+  }, [tournament?.tenantId, sourceClubId, tournamentClubId, localRevision]);
 
   const savedEvent = tournament?.events?.[0] || null;
 
@@ -950,6 +960,16 @@ export default function InternalTournamentSetup() {
                         ? `Rating: ${entry.rating}`
                         : `Rating đội: ${entry.rating}`}
                     </Typography>
+                    <TournamentRegistrationRatingPanel
+                      players={resolveTournamentEntryPlayers(entry, tenantPlayers)}
+                      tournamentId={tournamentId}
+                      hostClubId={tournamentClubId || activeClubId}
+                      compact
+                      onVerified={() => {
+                        refreshClubs();
+                        setLocalRevision((value) => value + 1);
+                      }}
+                    />
                   </Paper>
                 )
               )}

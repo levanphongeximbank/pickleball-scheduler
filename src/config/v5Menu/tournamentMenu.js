@@ -2,11 +2,12 @@
  * Sidebar Giải đấu — phẳng 9 mục. Chi tiết sâu: tournamentInPageNav.js
  */
 import { PERMISSIONS } from "../../auth/permissions.js";
+import { ROLES } from "../../auth/roles.js";
 import { TOURNAMENT_ROUTES } from "../tournamentRoutes.js";
 import { FEATURE_STATUS, menuFolder, menuLeaf } from "./menuBuilders.js";
 
 const VIEW = [PERMISSIONS.TOURNAMENT_VIEW];
-const CREATE = [PERMISSIONS.TOURNAMENT_CREATE, PERMISSIONS.TOURNAMENT_VIEW];
+const CREATE = [PERMISSIONS.TOURNAMENT_CREATE];
 
 export const TOURNAMENT_MENU_ROOT = menuFolder({
   key: "tournament-root",
@@ -47,6 +48,7 @@ export const TOURNAMENT_MENU_ROOT = menuFolder({
       path: TOURNAMENT_ROUTES.typesHub,
       match: "tournament-types-hub",
       permissions: VIEW,
+      excludeRoles: [ROLES.PLAYER],
       featureStatus: FEATURE_STATUS.LIVE,
       featureNote: "Tab/thẻ: Đơn nam, Đôi tự do, Chia thủ công…",
     }),
@@ -75,6 +77,7 @@ export const TOURNAMENT_MENU_ROOT = menuFolder({
       path: TOURNAMENT_ROUTES.operationsHub,
       match: "tournament-operations-hub",
       permissions: VIEW,
+      excludeRoles: [ROLES.PLAYER],
       featureStatus: FEATURE_STATUS.LIVE,
     }),
     menuLeaf({
@@ -93,6 +96,7 @@ export const TOURNAMENT_MENU_ROOT = menuFolder({
       path: TOURNAMENT_ROUTES.configHub,
       match: "tournament-config-hub",
       permissions: VIEW,
+      excludeRoles: [ROLES.PLAYER],
       featureStatus: FEATURE_STATUS.LIVE,
     }),
   ],

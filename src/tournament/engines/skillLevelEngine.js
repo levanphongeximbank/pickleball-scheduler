@@ -27,6 +27,16 @@ export function normalizeSkillLevelRules(rules = {}) {
     ),
     minLevel: toRating(rules.minLevel, DEFAULT_SKILL_LEVEL_RULES.minLevel),
     maxLevel: toRating(rules.maxLevel, DEFAULT_SKILL_LEVEL_RULES.maxLevel),
+    minMatchesForProposal: Math.max(
+      1,
+      Number(rules.minMatchesForProposal) ||
+        DEFAULT_SKILL_LEVEL_RULES.minMatchesForProposal ||
+        5
+    ),
+    confidencePerMatch: toRating(
+      rules.confidencePerMatch,
+      DEFAULT_SKILL_LEVEL_RULES.confidencePerMatch
+    ),
   };
 }
 
@@ -52,6 +62,12 @@ export function isMonthlyReviewDue(skillMeta, now = new Date()) {
 
   const lastMonth = getMonthKey(lastReviewAt);
   return Boolean(lastMonth && lastMonth < currentMonth);
+}
+
+function canGenerateRatingProposal(player, rules = DEFAULT_SKILL_LEVEL_RULES) {
+  const minMatches = Number(rules.minMatchesForProposal) || 5;
+  const matchCount = Number(player?.rating_match_count) || 0;
+  return matchCount >= minMatches;
 }
 
 export function snapPublicLevel(value, rules = {}) {
@@ -97,12 +113,16 @@ export function assessMonthlyPublicLevel(player, rules = {}, now = new Date(), o
     return null;
   }
 
+  if (!options.force && !canGenerateRatingProposal(player, normalizedRules)) {
+    return null;
+  }
+
   const skillMeta = player.skillMeta || {};
   if (!options.force && !isMonthlyReviewDue(skillMeta, now)) {
     return null;
   }
 
-  const publicLevel = toRating(player.level ?? player.rating);
+  const publicLevel = toRating(player.current_rating ?? player.level ?? player.rating);
   const ratingInternal = getPlayerRatingInternal(player, publicLevel);
   const decision = computeNextPublicLevel(publicLevel, ratingInternal, normalizedRules);
 
@@ -139,6 +159,8 @@ export function createSkillLevelProposal(assessment, now = new Date()) {
     ratingInternal: assessment.ratingInternal,
     direction: assessment.direction,
     status: PROPOSAL_STATUS.PENDING,
+    ratingStatus: "under_review",
+    source: "system_match_analysis",
     createdAt: reviewedAt,
     reviewedAt: null,
   };

@@ -12,7 +12,6 @@ import {
   InputLabel,
   ListItemText,
   MenuItem,
-  OutlinedInput,
   Select,
   Stack,
   TextField,
@@ -20,7 +19,7 @@ import {
 
 import { useAuth } from "../../context/AuthContext.jsx";
 import { ROLES, normalizeRole } from "../../auth/roles.js";
-import { loadCourtsForVenueScoped } from "../../domain/courtService.js";
+import { listClustersForVenue } from "../../features/court-cluster/services/courtClusterService.js";
 import { CLUB_STATUSES } from "../../features/club/index.js";
 import { createClub, updateClub } from "../../features/club/index.js";
 
@@ -31,7 +30,7 @@ const defaultForm = {
   status: CLUB_STATUSES.ACTIVE,
   presidentUserId: "",
   vicePresidentUserId: "",
-  registeredCourtIds: [],
+  registeredClusterId: "",
   assignOwnerToCreator: true,
 };
 
@@ -45,8 +44,8 @@ export default function ClubFormDialog({ open, club, tenantId, onClose, onSucces
   const isCourtOwner = normalizeRole(user?.role) === ROLES.TENANT_OWNER;
   const isClubManager = normalizeRole(user?.role) === ROLES.CLUB_MANAGER;
 
-  const venueCourts = useMemo(
-    () => (tenantId ? loadCourtsForVenueScoped(tenantId, tenantId) : []),
+  const venueClusters = useMemo(
+    () => (tenantId ? listClustersForVenue(tenantId) : []),
     [tenantId]
   );
 
@@ -60,7 +59,7 @@ export default function ClubFormDialog({ open, club, tenantId, onClose, onSucces
         status: club.status || CLUB_STATUSES.ACTIVE,
         presidentUserId: club.governance?.presidentUserId || "",
         vicePresidentUserId: club.governance?.vicePresidentUserId || "",
-        registeredCourtIds: club.governance?.registeredCourtIds || [],
+        registeredClusterId: club.governance?.registeredClusterId || "",
         assignOwnerToCreator: true,
       });
     } else {
@@ -88,7 +87,7 @@ export default function ClubFormDialog({ open, club, tenantId, onClose, onSucces
       presidentUserId: presidentUserId || club?.governance?.presidentUserId,
       ownerUserId: club?.governance?.ownerUserId ?? null,
       vicePresidentUserId: form.vicePresidentUserId.trim() || null,
-      registeredCourtIds: form.registeredCourtIds,
+      registeredClusterId: form.registeredClusterId.trim() || null,
     };
 
     const payload = {
@@ -170,32 +169,27 @@ export default function ClubFormDialog({ open, club, tenantId, onClose, onSucces
           <FormControl fullWidth>
             <InputLabel>Cụm sân đăng ký</InputLabel>
             <Select
-              multiple
-              value={form.registeredCourtIds}
+              value={form.registeredClusterId}
               onChange={(e) =>
                 setForm((f) => ({
                   ...f,
-                  registeredCourtIds:
-                    typeof e.target.value === "string"
-                      ? e.target.value.split(",")
-                      : e.target.value,
+                  registeredClusterId: e.target.value,
                 }))
               }
-              input={<OutlinedInput label="Cụm sân đăng ký" />}
-              renderValue={(selected) =>
-                selected
-                  .map((id) => venueCourts.find((c) => c.id === id)?.name || id)
-                  .join(", ")
-              }
+              label="Cụm sân đăng ký"
+              displayEmpty
             >
-              {venueCourts.length === 0 && (
-                <MenuItem disabled>Chưa có sân trong venue</MenuItem>
+              <MenuItem value="">
+                <em>Chưa chọn</em>
+              </MenuItem>
+              {venueClusters.length === 0 && (
+                <MenuItem disabled>Chưa có cụm sân trong tổ chức</MenuItem>
               )}
-              {venueCourts.map((court) => (
-                <MenuItem key={court.id} value={court.id}>
+              {venueClusters.map((cluster) => (
+                <MenuItem key={cluster.id} value={cluster.id}>
                   <ListItemText
-                    primary={court.name || court.id}
-                    secondary={court.clubName ? `CLB: ${court.clubName}` : undefined}
+                    primary={cluster.name || cluster.id}
+                    secondary={cluster.address || undefined}
                   />
                 </MenuItem>
               ))}

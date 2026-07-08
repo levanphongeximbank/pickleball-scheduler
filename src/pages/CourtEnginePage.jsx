@@ -50,6 +50,8 @@ import {
   canUpdateCourt,
 } from "../features/court-engine/guards/courtEngineGuard.js";
 import { resolveRouteAccessScope } from "../auth/menuAccess.js";
+import { isVenueScopedRole } from "../auth/roles.js";
+import { ensureWritableClubForVenueOwner } from "../features/club/services/venueOwnerClubService.js";
 import CourtQuickManageDialog from "../features/court-engine/components/CourtQuickManageDialog.jsx";
 import { resolveCourtEngineContextState } from "../features/court-engine/guards/courtEngineContextGuard.js";
 import { useCourtEngine } from "../features/court-engine/hooks/useCourtEngine.js";
@@ -72,9 +74,55 @@ function StatusChip({ status }) {
 
 function CourtEngineAccessGate({ children }) {
   const { can, rbacEnabled, isAuthenticated, user } = useAuth();
-  const { activeClubId, activeClub } = useClub();
+  const { activeClubId, activeClub, refreshClubs } = useClub();
+  const [bootstrapReady, setBootstrapReady] = useState(false);
+  const [bootstrapError, setBootstrapError] = useState(null);
+
+  useEffect(() => {
+    if (!rbacEnabled || !isAuthenticated || !user) {
+      setBootstrapReady(true);
+      setBootstrapError(null);
+      return;
+    }
+
+    if (!isVenueScopedRole(user.role)) {
+      setBootstrapReady(true);
+      setBootstrapError(null);
+      return;
+    }
+
+    const ensured = ensureWritableClubForVenueOwner(user, { activeClubId });
+    if (!ensured.ok) {
+      setBootstrapError(ensured.error || "Không thể khởi tạo CLB cho cơ sở.");
+      setBootstrapReady(true);
+      return;
+    }
+
+    if (ensured.created) {
+      refreshClubs();
+    }
+    setBootstrapError(null);
+    setBootstrapReady(true);
+  }, [activeClubId, isAuthenticated, rbacEnabled, refreshClubs, user]);
+
   const scope = resolveRouteAccessScope({ user, activeClubId, activeClub });
   const allowed = canUseCourtEngine(can, scope);
+
+  if (!bootstrapReady) {
+    return (
+      <Box sx={{ display: "flex", justifyContent: "center", py: 8 }}>
+        <CircularProgress />
+      </Box>
+    );
+  }
+
+  if (bootstrapError) {
+    return (
+      <Box sx={{ py: 6, px: 2, maxWidth: 560, mx: "auto" }}>
+        <Alert severity="error">{bootstrapError}</Alert>
+      </Box>
+    );
+  }
 
   if (rbacEnabled && isAuthenticated && !allowed) {
     return <ForbiddenPage />;

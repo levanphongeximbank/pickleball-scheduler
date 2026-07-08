@@ -4,6 +4,7 @@ import ExpandLessIcon from "@mui/icons-material/ExpandLess";
 import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
 
 import ClubSwitcher from "../ClubSwitcher.jsx";
+import ClusterSwitcher from "../ClusterSwitcher.jsx";
 import SeasonLeagueSwitcher from "../SeasonLeagueSwitcher.jsx";
 import TenantSwitcher from "../TenantSwitcher.jsx";
 import { useClub } from "../../context/ClubContext.jsx";
@@ -43,6 +44,7 @@ export default function AppContextBar() {
       <Collapse in={expanded}>
         <Stack spacing={1} sx={{ pt: 1, pb: 0.5 }}>
           {isSuperAdmin && <TenantSwitcher variant="context" />}
+          <ClusterSwitcher variant="context" />
           <ClubSwitcher variant="context" />
           <SeasonLeagueSwitcher variant="context" />
         </Stack>

@@ -45,13 +45,14 @@ Khi `VITE_RBAC_ENABLED=false` → mọi `can()` trả `true` (workflow cũ khôn
 
 | Canonical (app) | Legacy DB | Ghi chú |
 |-----------------|-----------|---------|
-| `COURT_OWNER` | `VENUE_OWNER` | `normalizeRole()` khi đọc |
-| `COURT_MANAGER` | `VENUE_MANAGER` | `denormalizeRoleForDb()` khi ghi |
-| `REFEREE` | — | Mới v4 |
-| `CASHIER` | `CASHIER` | Giữ độc lập |
-| … | … | |
+| `TENANT_OWNER` | `VENUE_OWNER`, `COURT_OWNER` | `normalizeRole()` khi đọc |
+| `VENUE_MANAGER` | `VENUE_MANAGER`, `COURT_MANAGER` | `denormalizeRoleForDb()` khi ghi |
+| `PLATFORM_ADMIN` | `SUPER_ADMIN` | Alias legacy |
+| `CLUB_MANAGER` | `CLUB_OWNER` | Alias legacy |
+| `REFEREE` | — | RBAC role chính thức |
+| … | … | Xem `roles.js` — `CANONICAL_ROLES` |
 
-**8 canonical roles:** SUPER_ADMIN, COURT_OWNER, COURT_MANAGER, CASHIER, ACCOUNTANT, REFEREE, CLUB_OWNER, PLAYER.
+**Canonical roles V5.2:** `PLATFORM_ADMIN`, `SYSTEM_TECHNICIAN`, `TENANT_OWNER`, `VENUE_MANAGER`, `TOURNAMENT_MANAGER`, `TEAM_CAPTAIN`, `CASHIER`, `CLUB_MANAGER`, `COACH`, `REFEREE`, `STAFF`, `PLAYER`, `CUSTOMER`, `SUPPORT`.
 
 ## Permission catalog
 

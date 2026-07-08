@@ -14,6 +14,10 @@ import {
   validateClubPayloadForSync,
 } from "../domain/clubStorage.js";
 import { loadAIData, saveAIData } from "./storage.js";
+import {
+  hydrateClubPlayersPickVnRatings,
+  pushClubPlayersPickVnRatings,
+} from "../features/pick-vn-rating/services/pickVnClubSyncService.js";
 
 const CLOUD_DB_KEY = "pickleball-cloud-db-v1";
 const SUPABASE_TABLE = "club_ai_data";
@@ -160,6 +164,12 @@ async function syncToSupabase(clubId, options = {}) {
 
   setClubCloudVersion(clubId, nextVersion);
 
+  try {
+    await pushClubPlayersPickVnRatings(clubId);
+  } catch {
+    // best-effort — club blob đã sync
+  }
+
   return {
     ok: true,
     provider: "supabase",
@@ -219,6 +229,12 @@ async function pullFromSupabase(clubId) {
 
   if (row.version != null) {
     setClubCloudVersion(clubId, Number(row.version) || 0);
+  }
+
+  try {
+    await hydrateClubPlayersPickVnRatings(clubId);
+  } catch {
+    // best-effort
   }
 
   return {

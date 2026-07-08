@@ -7,6 +7,7 @@ import { Box, CircularProgress } from "@mui/material";
 
 
 import MainLayout from "./layouts/MainLayout";
+import PickVnOnboardingGate from "./components/auth/PickVnOnboardingGate.jsx";
 
 import { AuthProvider } from "./context/AuthContext.jsx";
 
@@ -20,6 +21,15 @@ const ResetPasswordPage = lazy(() => import("./pages/ResetPasswordPage"));
 
 const ForbiddenPage = lazy(() => import("./pages/ForbiddenPage"));
 const ComingSoonPage = lazy(() => import("./pages/ComingSoonPage"));
+
+const PublicLayout = lazy(() => import("./layouts/public/PublicLayout.jsx"));
+const PublicRootPage = lazy(() => import("./pages/public/PublicRootPage.jsx"));
+const HomePage = lazy(() => import("./pages/public/HomePage.jsx"));
+const PublicTournamentsPage = lazy(() => import("./pages/public/TournamentsPage.jsx"));
+const PublicClubsPage = lazy(() => import("./pages/public/ClubsPage.jsx"));
+const PublicCourtsPage = lazy(() => import("./pages/public/CourtsPage.jsx"));
+const PublicRankingsPage = lazy(() => import("./pages/public/RankingsPage.jsx"));
+const PublicNewsPage = lazy(() => import("./pages/public/NewsPage.jsx"));
 
 
 
@@ -202,13 +212,16 @@ const Statistics = lazy(() => import("./features/statistics"));
 
 const Settings = lazy(() => import("./pages/Settings"));
 
-const MyProfilePage = lazy(() => import("./pages/MyProfilePage"));
+const SelfProfilePage = lazy(() => import("./pages/SelfProfilePage"));
 
 const UserManagementPage = lazy(() => import("./pages/UserManagementPage"));
+
+const RolesPermissionsPage = lazy(() => import("./pages/admin/RolesPermissionsPage"));
 
 const AuditLogPage = lazy(() => import("./pages/AuditLogPage"));
 
 const TenantManagement = lazy(() => import("./pages/admin/TenantManagement"));
+const CourtClusterManagement = lazy(() => import("./pages/admin/CourtClusterManagement"));
 
 const CheckInDashboardPage = lazy(() => import("./pages/mobile/CheckInDashboardPage"));
 const QrScanPage = lazy(() => import("./pages/mobile/QrScanPage"));
@@ -231,6 +244,13 @@ const BillingPage = lazy(() => import("./pages/billing/BillingPage"));
 const AdminBillingPage = lazy(() => import("./pages/admin/AdminBillingPage"));
 const VenueHoursPage = lazy(() => import("./pages/admin/VenueHoursPage"));
 const SkillLevelRequestsPage = lazy(() => import("./pages/admin/SkillLevelRequestsPage"));
+const PickVnOnboardingPage = lazy(() => import("./pages/onboarding/PickVnOnboardingPage.jsx"));
+const MyClubPage = lazy(() => import("./pages/player/MyClubPage.jsx"));
+const AthleteSelfProfilePage = lazy(() => import("./pages/player/AthleteSelfProfilePage.jsx"));
+const TournamentCertificationQueuePage = lazy(() =>
+  import("./pages/admin/TournamentCertificationQueuePage")
+);
+const RankingManagementPage = lazy(() => import("./pages/admin/RankingManagementPage"));
 const StaffListPage = lazy(() => import("./pages/admin/StaffListPage"));
 
 const CoachesPage = lazy(() => import("./pages/coaching/CoachesPage"));
@@ -261,6 +281,12 @@ const CourtManagementHome = lazy(() => import("./pages/courtManagement/CourtMana
 const CourtManagementCalendarPage = lazy(() =>
 
   import("./pages/courtManagement/CourtManagementCalendarPage")
+
+);
+
+const CourtCalendarPreviewPage = lazy(() =>
+
+  import("./pages/courtManagement/calendar/CourtCalendarPreviewPage")
 
 );
 
@@ -359,11 +385,23 @@ export default function Router() {
 
             <Route path="/referee/:token" element={<RefereeScoreboard />} />
 
+            <Route element={<PublicLayout />}>
+              <Route path="/" element={<PublicRootPage />} />
+              <Route path="/home" element={<HomePage />} />
+              <Route path="/tournaments" element={<PublicTournamentsPage />} />
+              <Route path="/clubs" element={<PublicClubsPage />} />
+              <Route path="/courts" element={<PublicCourtsPage />} />
+              <Route path="/rankings" element={<PublicRankingsPage />} />
+              <Route path="/news" element={<PublicNewsPage />} />
+            </Route>
+
+            <Route element={<PickVnOnboardingGate />}>
+            <Route path="/onboarding/pick-vn-rating" element={<PickVnOnboardingPage />} />
+
             <Route element={<MainLayout />}>
 
-            <Route path="/" element={<Dashboard />} />
-
             <Route path="/dashboard" element={<Dashboard />} />
+            <Route path="/dashboard/rankings" element={<RankingManagementPage />} />
 
             <Route path="/players/skill" element={<SkillLevelsPage />} />
 
@@ -371,20 +409,25 @@ export default function Router() {
 
             <Route path="/players/profile/:playerId" element={<PlayerProfile />} />
 
-            <Route path="/profile" element={<MyProfilePage />} />
+            <Route path="/profile" element={<SelfProfilePage />} />
+            <Route path="/my-club" element={<MyClubPage />} />
+            <Route path="/player/profile" element={<AthleteSelfProfilePage />} />
 
             <Route path="/users" element={<UserManagementPage />} />
+            <Route path="/admin/roles" element={<RolesPermissionsPage />} />
             <Route path="/audit" element={<AuditLogPage />} />
 
             <Route path="/referee" element={<RefereeHub />} />
 
             <Route path="/referee/match/:matchId" element={<RefereeSessionScoreboard />} />
 
-            <Route path="/courts" element={<Navigate to="/court-management/courts" replace />} />
+            <Route path="/courts-ops" element={<Navigate to="/court-management/courts" replace />} />
 
             <Route path="/court-management" element={<CourtManagementLayout />}>
 
               <Route index element={<CourtManagementHome />} />
+
+              <Route path="calendar/preview" element={<CourtCalendarPreviewPage />} />
 
               <Route path="calendar" element={<CourtManagementCalendarPage />} />
 
@@ -408,8 +451,8 @@ export default function Router() {
 
             <Route path="/select-players" element={<SelectPlayers />} />
 
-            <Route path="/clubs" element={<ClubListPage />} />
-            <Route path="/clubs/:clubId" element={<ClubDetailPage />} />
+            <Route path="/manage/clubs" element={<ClubListPage />} />
+            <Route path="/manage/clubs/:clubId" element={<ClubDetailPage />} />
             <Route path="/club" element={<ClubManagement />} />
 
             <Route path="/tournament/list" element={<TournamentListPage />} />
@@ -550,8 +593,13 @@ export default function Router() {
             <Route path="/marketplace/:productId" element={<MarketplaceProductPage />} />
 
             <Route path="/admin/tenants" element={<TenantManagement />} />
+            <Route path="/admin/court-clusters" element={<CourtClusterManagement />} />
             <Route path="/admin/hours" element={<VenueHoursPage />} />
             <Route path="/admin/skill-level-requests" element={<SkillLevelRequestsPage />} />
+            <Route
+              path="/admin/tournament-certifications"
+              element={<TournamentCertificationQueuePage />}
+            />
             <Route path="/admin/staff" element={<StaffListPage />} />
             <Route path="/admin/marketplace" element={<AdminMarketplacePage />} />
             <Route path="/admin/marketplace/products" element={<AdminMarketplacePage />} />
@@ -596,6 +644,7 @@ export default function Router() {
               <Route path="notifications" element={<NotificationSettingsPage />} />
             </Route>
 
+          </Route>
           </Route>
 
         </Routes>

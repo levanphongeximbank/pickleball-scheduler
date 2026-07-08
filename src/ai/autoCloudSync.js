@@ -1,30 +1,23 @@
 import { PERMISSIONS } from "../auth/permissions.js";
-import { hasSupabaseConfig } from "../auth/supabaseClient.js";
 import { getClubCloudVersion } from "../domain/clubStorage.js";
 import { pullClubFromCloud, syncClubToCloud } from "./cloudSync.js";
+import { isClubCloudSyncEnabled } from "./cloudSyncConfig.js";
+
+export { isClubCloudSyncEnabled, isAiAutoCloudSyncEnabled } from "./cloudSyncConfig.js";
 
 const SCHEDULE_SYNC_PERMISSION = PERMISSIONS.SCHEDULING_RUN;
 
-/** Auto-push AI/club blob sau commit xếp sân khi bật flag + Supabase configured. */
-export function isAiAutoCloudSyncEnabled() {
-  if (!hasSupabaseConfig()) {
-    return false;
-  }
-  return String(import.meta.env?.VITE_AI_AUTO_CLOUD_SYNC || "").toLowerCase() === "true";
-}
-
 export async function autoSyncAfterScheduleCommit(clubId) {
-  if (!isAiAutoCloudSyncEnabled()) {
+  if (!isClubCloudSyncEnabled()) {
     return { ok: true, skipped: true };
   }
 
   try {
-    const result = await syncClubToCloud({
+    return await syncClubToCloud({
       clubId,
       permission: SCHEDULE_SYNC_PERMISSION,
       expectedVersion: getClubCloudVersion(clubId),
     });
-    return result;
   } catch (error) {
     return {
       ok: false,
@@ -34,18 +27,16 @@ export async function autoSyncAfterScheduleCommit(clubId) {
   }
 }
 
-/** Pull club/AI blob khi đổi CLB — máy B thấy waiting/history mà không cần vào Cài đặt. */
 export async function autoPullOnClubActivate(clubId) {
-  if (!isAiAutoCloudSyncEnabled() || !clubId) {
+  if (!isClubCloudSyncEnabled() || !clubId) {
     return { ok: true, skipped: true };
   }
 
   try {
-    const result = await pullClubFromCloud({
+    return await pullClubFromCloud({
       clubId,
       permission: SCHEDULE_SYNC_PERMISSION,
     });
-    return result;
   } catch (error) {
     return {
       ok: false,

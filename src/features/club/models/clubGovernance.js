@@ -29,10 +29,16 @@ export function normalizeClubGovernance(input = {}, club = {}) {
     ? raw.registeredCourtIds.map((id) => String(id).trim()).filter(Boolean)
     : [];
 
+  const registeredClusterId =
+    raw.registeredClusterId != null && String(raw.registeredClusterId).trim()
+      ? String(raw.registeredClusterId).trim()
+      : null;
+
   return {
     ownerUserId,
     presidentUserId,
     vicePresidentUserId,
+    registeredClusterId,
     registeredCourtIds,
     approvedByUserId: raw.approvedByUserId ? String(raw.approvedByUserId).trim() : null,
     approvedAt: raw.approvedAt || null,

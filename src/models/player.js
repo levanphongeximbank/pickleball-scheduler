@@ -1,4 +1,9 @@
 import { PLAYER_TYPE } from "./tournament/constants.js";
+import { migrateLegacyRating, snapPickVnRating } from "../features/pick-vn-rating/constants/pickVnRatingScale.js";
+import {
+  migratePlayerRatingFields,
+} from "../features/pick-vn-rating/models/pickVnRating.js";
+import { normalizeRatingStatus, RATING_STATUS } from "../features/pick-vn-rating/constants/ratingStatus.js";
 
 const VALID_PLAYER_TYPES = new Set(Object.values(PLAYER_TYPE));
 
@@ -65,6 +70,25 @@ function normalizeSkillMeta(skillMeta) {
 }
 
 /**
+ * Trình độ hiệu lực Pick_VN — ưu tiên current_rating, fallback legacy.
+ */
+export function getPlayerCurrentRating(player, fallback = 3.5) {
+  if (!player) {
+    return fallback;
+  }
+
+  if (
+    player.current_rating !== undefined &&
+    player.current_rating !== null &&
+    player.current_rating !== ""
+  ) {
+    return snapPickVnRating(player.current_rating);
+  }
+
+  return getPlayerSkillLevel(player, fallback);
+}
+
+/**
  * Điểm trình độ chính thức (riêng tư) — fallback dữ liệu cũ.
  */
 export function getPlayerSkillLevel(player, fallback = 3.5) {
@@ -73,10 +97,10 @@ export function getPlayerSkillLevel(player, fallback = 3.5) {
   }
 
   if (player.skillLevel !== undefined && player.skillLevel !== null && player.skillLevel !== "") {
-    return toNumber(player.skillLevel, fallback);
+    return migrateLegacyRating(toNumber(player.skillLevel, fallback));
   }
 
-  return toNumber(player.level ?? player.rating, fallback);
+  return migrateLegacyRating(toNumber(player.level ?? player.rating, fallback));
 }
 
 /**
@@ -94,13 +118,21 @@ export function getPlayerRatingInternal(player, fallback = 3.5) {
   return toNumber(player.rating ?? player.level, fallback);
 }
 
-export function syncSkillLevelMirrors(player, skillLevel) {
-  const value = toNumber(skillLevel, 3.5);
+export function syncCurrentRatingMirrors(skillLevel) {
+  const value = snapPickVnRating(skillLevel);
   return {
     skillLevel: value,
     level: value,
     rating: value,
-    ratingInternal: value,
+    current_rating: value,
+  };
+}
+
+export function syncSkillLevelMirrors(player, skillLevel) {
+  const value = snapPickVnRating(skillLevel);
+  return {
+    ...syncCurrentRatingMirrors(value),
+    ratingInternal: toNumber(player?.ratingInternal, value),
   };
 }
 
@@ -109,11 +141,23 @@ export function normalizePlayer(player) {
     return null;
   }
 
-  const skillLevel = getPlayerSkillLevel(player, toNumber(player.level ?? player.rating, 3.5));
+  const skillLevel = getPlayerCurrentRating(
+    player,
+    migrateLegacyRating(toNumber(player.level ?? player.rating, 3.5))
+  );
   const ratingInternal = getPlayerRatingInternal(player, skillLevel);
+
+  const migratedRating = migratePlayerRatingFields({
+    ...player,
+    skillLevel,
+    level: skillLevel,
+    rating: skillLevel,
+    ratingInternal,
+  });
 
   const normalized = {
     ...player,
+    ...migratedRating,
     id: player.id,
     name: String(player.name || "Unknown").trim(),
     gender: player.gender ?? null,
@@ -125,6 +169,10 @@ export function normalizePlayer(player) {
     ratingInternal,
     status: normalizeStatus(player.status),
     active: player.active !== false,
+    rating_status: normalizeRatingStatus(
+      migratedRating.rating_status ?? player.rating_status,
+      skillLevel ? RATING_STATUS.SELF_DECLARED : RATING_STATUS.UNRATED
+    ),
   };
 
   if (player.skillLevelLockedAt) {

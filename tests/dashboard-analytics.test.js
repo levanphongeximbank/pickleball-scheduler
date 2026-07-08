@@ -62,6 +62,23 @@ test("resolveDashboardAccess limits cashier sections", () => {
   assert.equal(access.sections.revenue, true);
 });
 
+test("resolveDashboardAccess scopes CLUB_OWNER alias to club data", () => {
+  const can = (permission) =>
+    [
+      PERMISSIONS.CLUB_VIEW,
+      PERMISSIONS.PLAYER_VIEW,
+      PERMISSIONS.STATISTICS_VIEW,
+      PERMISSIONS.TOURNAMENT_VIEW,
+    ].includes(permission);
+
+  const access = resolveDashboardAccess({ role: ROLES.CLUB_OWNER }, can, {});
+  assert.equal(access.allowed, true);
+  assert.equal(access.dataScope, "club");
+  assert.equal(access.sections.courts, false);
+  assert.equal(access.sections.heatmap, false);
+  assert.equal(access.sections.peakHours, false);
+});
+
 test("buildMockDashboardPayload returns complete analytics shape", () => {
   const payload = buildMockDashboardPayload("2026-06-01", "2026-06-28", "2026-05-01", "2026-05-28");
 

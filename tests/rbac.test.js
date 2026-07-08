@@ -25,6 +25,7 @@ import {
   getDefaultHomePath,
   resolvePostAuthRedirectPath,
 } from "../src/auth/menuAccess.js";
+import { completePickVnOnboarding } from "../src/features/pick-vn-rating/services/pickVnRatingService.js";
 import { SIDEBAR_MENU_GROUPS } from "../src/config/sidebarMenu.js";
 import {
   listFutureNavItems,
@@ -34,6 +35,14 @@ import {
   resolveRoleMenuAccess,
 } from "../src/config/navigationConfig.js";
 import { filterMobileBottomNav } from "../src/features/mobile/services/mobileNavAccess.js";
+import {
+  canAccessOperationsDashboard,
+  getOperationsDashboardMode,
+} from "../src/features/mobile/services/operationsDashboardService.js";
+import {
+  canEditRoleForUser,
+  listRolesForPermissionUi,
+} from "../src/features/identity/constants/rolePermissionUiConfig.js";
 import { resolveMenuItemPath, resolveRouteAccessScope } from "../src/auth/menuAccess.js";
 import { resolveRouteAccessScope as resolveProfileRouteAccessScope } from "../src/features/tenant/services/profileVenueService.js";
 import { enableRbac, signInAs, signOut } from "../src/auth/authService.js";
@@ -56,7 +65,7 @@ import { syncClubToCloud } from "../src/ai/cloudSync.js";
 import { inviteVenueStaff, listVenueStaff } from "../src/domain/staffService.js";
 import { requestPlanUpgrade, applyPaymentWebhook } from "../src/domain/paymentService.js";
 import { saveClubData, getDefaultClubData } from "../src/domain/clubStorage.js";
-import { setActiveClubId, DEFAULT_CLUB } from "../src/data/club.js";
+import { setActiveClubId, DEFAULT_CLUB, saveClubs } from "../src/data/club.js";
 import { normalizeCourt } from "../src/models/court.js";
 
 const RBAC_ON = { rbacEnabled: true };
@@ -192,32 +201,121 @@ test("menuAccess — PLAYER chỉ thấy menu giải đấu", () => {
 
   const labels = collectMenuItemLabels(visible);
   assert.ok(labels.includes("Danh sách giải"));
-  assert.ok(labels.includes("Loại giải"));
   assert.ok(labels.includes("Hồ sơ cá nhân"));
+  assert.equal(labels.includes("CLB & Huấn luyện"), false);
+  assert.equal(labels.includes("Vui chơi mỗi ngày"), false);
+  assert.equal(labels.includes("Loại giải"), false);
+  assert.equal(labels.includes("Điều hành"), false);
+  assert.equal(labels.includes("Cấu hình"), false);
   assert.equal(labels.includes("Vận động viên"), false);
   assert.equal(labels.includes("Khách hàng"), false);
   assert.equal(labels.includes("Cài đặt"), false);
+  assert.equal(labels.includes("Tạo giải"), false);
+});
+
+test("PLAYER không có tournament.create trong ma trận mặc định", () => {
+  assert.equal(roleHasPermission(ROLES.PLAYER, PERMISSIONS.TOURNAMENT_CREATE), false);
+  assert.equal(roleHasPermission(ROLES.PLAYER, PERMISSIONS.TOURNAMENT_VIEW), true);
+});
+
+test("route access — PLAYER bị chặn daily-play và tournament hubs", () => {
+  const player = user(ROLES.PLAYER, { venueId: "venue-a", clubId: "club-1", playerId: "p-1" });
+  const check = makeRouteChecker(player);
+
+  assert.equal(check("/daily-play"), false);
+  assert.equal(check("/tournament/types"), false);
+  assert.equal(check("/tournament/types/individual"), false);
+  assert.equal(check("/tournament/operations"), false);
+  assert.equal(check("/tournament/config"), false);
+  assert.equal(check("/tournament/config/format"), false);
+  assert.equal(check("/tournament"), true);
 });
 
 test("menuAccess — getDefaultHomePath theo role", () => {
-  assert.equal(getDefaultHomePath(user(ROLES.PLAYER), true), "/profile");
+  assert.equal(getDefaultHomePath(user(ROLES.PLAYER), true), "/my-club");
   assert.equal(
     getDefaultHomePath(user(ROLES.PLAYER, { clubId: "c1", playerId: "p1" }), true),
     "/tournament"
   );
   assert.equal(getDefaultHomePath(user(ROLES.CASHIER), true), "/court-management/bookings");
-  assert.equal(getDefaultHomePath(user(ROLES.VENUE_OWNER), true), "/");
+  assert.equal(getDefaultHomePath(user(ROLES.VENUE_OWNER), true), "/dashboard");
 });
 
-test("menuAccess — resolvePostAuthRedirectPath PLAYER chưa CLB", () => {
-  const player = user(ROLES.PLAYER);
-  assert.equal(resolvePostAuthRedirectPath("/tournament", player, true), "/profile");
-  assert.equal(resolvePostAuthRedirectPath("/", player, true), "/profile");
-  assert.equal(resolvePostAuthRedirectPath("/403", player, true), "/profile");
-  assert.equal(
-    resolvePostAuthRedirectPath("/tournament", user(ROLES.PLAYER, { clubId: "c1" }), true),
-    "/tournament"
-  );
+test("menuAccess — resolvePostAuthRedirectPath PLAYER chưa CLB", async () => {
+  const store = new Map();
+  globalThis.localStorage = {
+    getItem(key) {
+      return store.has(key) ? store.get(key) : null;
+    },
+    setItem(key, value) {
+      store.set(key, String(value));
+    },
+    removeItem(key) {
+      store.delete(key);
+    },
+    clear() {
+      store.clear();
+    },
+  };
+
+  const onboardingAnswers = {
+    gender: "male",
+    birth_year: 1992,
+    playing_duration: "1_3yr",
+    sessions_per_week: "3",
+    has_coach: "yes",
+    tournament_level: "club_internal",
+    best_result: "quarter",
+    was_seed: "no",
+    prior_sports: ["badminton"],
+    prior_sport_level: "club",
+    rally_consistency: "pct_80",
+    return_stability: "pct_50",
+    dink_ability: "10",
+    volley_ability: "basic",
+    third_shot_drop: "stable",
+    reset_ability: "basic",
+    play_style: "all_around",
+    kitchen_frequency: "often",
+    stacking_knowledge: "know",
+    nvz_transition: "basic",
+    team_coordination: "medium",
+    pace_control: "basic",
+    doubles_positioning: "none",
+    self_rating: "3.5",
+  };
+
+  try {
+    const player = user(ROLES.PLAYER);
+    assert.equal(
+      resolvePostAuthRedirectPath("/tournament", player, true),
+      "/onboarding/pick-vn-rating"
+    );
+    assert.equal(resolvePostAuthRedirectPath("/", player, true), "/onboarding/pick-vn-rating");
+    assert.equal(resolvePostAuthRedirectPath("/403", player, true), "/onboarding/pick-vn-rating");
+
+    const playerWithClub = user(ROLES.PLAYER, { clubId: "c1", id: "rbac-player-club" });
+    await completePickVnOnboarding("rbac-player-club", {
+      answers: onboardingAnswers,
+      clubId: "c1",
+    });
+    assert.equal(
+      resolvePostAuthRedirectPath("/tournament", playerWithClub, true),
+      "/tournament"
+    );
+
+    const playerNoClub = user(ROLES.PLAYER, { id: "rbac-player-noclub" });
+    await completePickVnOnboarding("rbac-player-noclub", {
+      answers: onboardingAnswers,
+    });
+    assert.equal(resolvePostAuthRedirectPath("/", playerNoClub, true), "/my-club");
+    assert.equal(
+      resolvePostAuthRedirectPath("/tournament", playerNoClub, true),
+      "/my-club"
+    );
+  } finally {
+    delete globalThis.localStorage;
+  }
 });
 
 test("canAccessRoute — PLAYER vào statistics", () => {
@@ -267,6 +365,22 @@ test("CLUB_MANAGER thiếu clubId — không truy cập CLB và không có quy�
   const access = guardClubAccess("default-club", { user: chairman, rbacEnabled: true });
   assert.equal(access.ok, false);
   assert.equal(access.code, "CLUB_UNASSIGNED");
+});
+
+test("TENANT_OWNER — canAccessClub ưu tiên registry venueId khi tenantId blob lệch", () => {
+  globalThis.localStorage = createLocalStorageMock();
+  saveClubs([
+    {
+      id: "club-stale-tenant",
+      name: "CLB stale",
+      venueId: "venue-prod-main",
+      tenantId: "legacy-tenant",
+    },
+  ]);
+
+  const owner = user(ROLES.TENANT_OWNER, { venueId: "venue-prod-main" });
+  assert.equal(canAccessClub(owner, "club-stale-tenant", {}, RBAC_ON), true);
+  assert.equal(canAccessClub(owner, "club-stale-tenant", { venueId: "other-venue" }, RBAC_ON), true);
 });
 
 test("resolveRouteAccessScope — club-scoped user không fallback activeClubId", () => {
@@ -654,7 +768,8 @@ function makeRouteChecker(roleUser) {
     canAccessRoute(
       (perm, scope) => can(roleUser, perm, scope, RBAC_ON),
       path,
-      SCOPE
+      SCOPE,
+      roleUser
     );
 }
 
@@ -787,7 +902,8 @@ test("menuAccess — CLUB_OWNER thấy CLB & Giải, không Live Courts", () => 
   const visible = filterMenuGroups(SIDEBAR_MENU_GROUPS, makeMenuAuth(clubOwner), SCOPE);
   const labels = collectMenuItemLabels(visible);
 
-  assert.ok(labels.includes("Lịch sinh hoạt") || labels.includes("Danh sách CLB"));
+  assert.ok(labels.includes("Lịch sinh hoạt"));
+  assert.ok(labels.includes("Danh sách CLB"));
   assert.ok(labels.includes("Danh sách giải"));
   assert.ok(labels.includes("Loại giải"));
   assert.equal(labels.includes("Trạng thái sân"), false);
@@ -851,6 +967,7 @@ test("menuAccess — VENUE_OWNER không còn Trang của tôi trên sidebar (dù
   const labels = collectMenuItemLabels(visible);
 
   assert.equal(labels.includes("Trang của tôi"), false);
+  assert.ok(labels.includes("Hồ sơ của tôi"));
 });
 
 test("menuAccess — không còn label USERS trong sidebar", () => {
@@ -892,6 +1009,16 @@ test("mobile nav — PLAYER thấy Trang của tôi", () => {
   const labels = items.map((item) => item.label);
 
   assert.ok(labels.includes("Trang của tôi"));
+});
+
+test("mobile nav — PLAYER tab QR trỏ về trang cá nhân, không /mobile/check-in", () => {
+  const player = user(ROLES.PLAYER, { venueId: "venue-a", clubId: "club-1", playerId: "p-1" });
+  const items = filterMobileBottomNav(makeMenuAuth(player), SCOPE);
+  const qr = items.find((item) => item.label === "QR");
+
+  assert.ok(qr);
+  assert.equal(qr.path, "/mobile/player?tab=qr");
+  assert.ok(!items.some((item) => item.path === "/mobile/check-in"));
 });
 
 const OWNER_V5_GROUPS = [
@@ -1033,7 +1160,7 @@ test("Phase 19B — CLUB_OWNER vào /club không 403", () => {
     canAccessRoute((perm, s) => can(clubOwner, perm, s, RBAC_ON), path, scope);
 
   assert.equal(check("/club"), true);
-  assert.equal(check("/clubs"), true);
+  assert.equal(check("/manage/clubs"), true);
   assert.equal(check("/daily-play"), true);
   assert.equal(getDefaultHomePath(clubOwner, true), "/club");
 });
@@ -1094,4 +1221,43 @@ test("Phase 19B — PLAYER không thấy admin routes", () => {
   assert.equal(check("/admin/tenants"), false);
   assert.equal(check("/users"), false);
   assert.equal(check("/audit"), false);
+});
+
+test("menuAccess — VENUE_OWNER thấy nhóm profile desktop", () => {
+  const owner = user(ROLES.VENUE_OWNER, { venueId: "venue-a", clubId: "club-1" });
+  const visible = filterMenuGroups(SIDEBAR_MENU_GROUPS, makeMenuAuth(owner), SCOPE);
+  const groupIds = visible.map((group) => group.id);
+  const labels = collectMenuItemLabels(visible);
+
+  assert.ok(groupIds.includes("profile"));
+  assert.ok(labels.includes("Hồ sơ của tôi"));
+});
+
+test("TENANT_OWNER — tenant.role.customize mở /admin/roles, chặn /admin/tenants", () => {
+  const owner = user(ROLES.VENUE_OWNER, { venueId: "venue-a", clubId: "club-1" });
+  const scope = { venueId: "venue-a", clubId: "club-1", tenantId: "venue-a" };
+  const check = (path) =>
+    canAccessRoute((perm, s) => can(owner, perm, s, RBAC_ON), path, scope);
+
+  assert.equal(owner.role, ROLES.TENANT_OWNER);
+  assert.equal(roleHasPermission(ROLES.TENANT_OWNER, PERMISSIONS.TENANT_ROLE_CUSTOMIZE), true);
+  assert.equal(check("/admin/roles"), true);
+  assert.equal(check("/admin/tenants"), false);
+});
+
+test("TENANT_OWNER — canEditRoleForUser với profile VENUE_OWNER legacy", () => {
+  assert.equal(canEditRoleForUser(ROLES.VENUE_OWNER, ROLES.VENUE_MANAGER), true);
+  assert.equal(canEditRoleForUser(ROLES.VENUE_OWNER, ROLES.PLATFORM_ADMIN), false);
+  assert.equal(canEditRoleForUser(ROLES.VENUE_OWNER, ROLES.TENANT_OWNER), false);
+
+  const tenantRoles = listRolesForPermissionUi(ROLES.VENUE_OWNER);
+  assert.ok(tenantRoles.includes(ROLES.VENUE_MANAGER));
+  assert.ok(!tenantRoles.includes(ROLES.PLATFORM_ADMIN));
+});
+
+test("TENANT_OWNER — operations dashboard mode owner sau normalize", () => {
+  const owner = user(ROLES.COURT_OWNER, { venueId: "v1" });
+  assert.equal(owner.role, ROLES.TENANT_OWNER);
+  assert.equal(getOperationsDashboardMode(owner), "owner");
+  assert.equal(canAccessOperationsDashboard(owner, { clubId: "c1", tenantId: "v1" }), true);
 });

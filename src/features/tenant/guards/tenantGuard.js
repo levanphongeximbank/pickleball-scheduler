@@ -117,6 +117,17 @@ export function filterByTenant(items = [], tenantId) {
   });
 }
 
+export function filterByCluster(items = [], clusterId) {
+  if (!clusterId) {
+    return items;
+  }
+
+  return items.filter((item) => {
+    const itemClusterId = item?.clusterId || item?.cluster_id || null;
+    return !itemClusterId || itemClusterId === clusterId;
+  });
+}
+
 export function listClubsForTenant(tenantId) {
   if (!tenantId) {
     return loadClubs();

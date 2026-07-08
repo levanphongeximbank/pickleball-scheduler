@@ -11,8 +11,16 @@ import {
 } from "./roles.js";
 import { getPermissionScopes, PERMISSION_SCOPE, PERMISSIONS } from "./permissions.js";
 import { roleHasPermission } from "./rolePermissions.js";
+import { getEffectivePermissionsForTenantRole } from "../features/identity/services/tenantRolePermissionService.js";
 import { isUserActive } from "../models/user.js";
+import { loadClubs } from "../data/club.js";
 import { getExplicitTenantIdForClub } from "../features/tenant/guards/tenantGuard.js";
+import {
+  canUserAccessCluster,
+  isOrgWideClusterRole,
+  resolveAssignedClusterIdsForUser,
+} from "../features/court-cluster/services/courtClusterService.js";
+import { isCourtClustersEnabled } from "../features/court-cluster/config/clusterFlags.js";
 
 /**
  * RBAC có được áp dụng không.
@@ -30,6 +38,23 @@ export function hasRole(user, role) {
 export function hasAnyRole(user, roles = []) {
   if (!user?.role) return false;
   return roles.some((role) => rolesEqual(user.role, role));
+}
+
+/**
+ * Kiểm tra role permission, có áp dụng tenant overrides khi user có tenantId/venueId.
+ */
+export function roleHasEffectivePermission(user, permission) {
+  const role = normalizeRole(user?.role);
+  if (!role) {
+    return false;
+  }
+
+  const tenantId = user?.tenantId || user?.venueId || null;
+  if (tenantId) {
+    return getEffectivePermissionsForTenantRole(tenantId, role).has(permission);
+  }
+
+  return roleHasPermission(role, permission);
 }
 
 /**
@@ -51,7 +76,7 @@ export function can(user, permission, scope = {}, options = {}) {
     return false;
   }
 
-  if (!roleHasPermission(user.role, permission)) {
+  if (!roleHasEffectivePermission(user, permission)) {
     return false;
   }
 
@@ -135,16 +160,23 @@ export function canAccessClub(user, clubId, clubMeta = {}, options = {}) {
       return false;
     }
 
+    const club = loadClubs().find((item) => item.id === clubId);
+    const registryVenueId = club?.venueId || clubVenueId || null;
+
+    if (registryVenueId === user.venueId) {
+      return true;
+    }
+
     const explicitTenant = getExplicitTenantIdForClub(clubId);
-    if (explicitTenant) {
-      return user.venueId === explicitTenant;
+    if (explicitTenant === user.venueId) {
+      return true;
     }
 
-    if (clubVenueId && user.venueId !== clubVenueId) {
-      return false;
+    if (!registryVenueId && !explicitTenant) {
+      return true;
     }
 
-    return true;
+    return false;
   }
 
   if (isClubScopedRole(user.role)) {
@@ -165,6 +197,39 @@ export function canAccessClub(user, clubId, clubMeta = {}, options = {}) {
   }
 
   return false;
+}
+
+export function canAccessCluster(user, clusterId, clusterMeta = {}, options = {}) {
+  const { rbacEnabled = false } = options;
+  const { venueId: clusterVenueId = null } = clusterMeta;
+
+  if (!isRbacEnforced({ rbacEnabled, user })) {
+    return true;
+  }
+
+  if (!isUserActive(user)) {
+    return false;
+  }
+
+  if (hasRole(user, ROLES.PLATFORM_ADMIN) || hasRole(user, ROLES.SUPER_ADMIN)) {
+    return true;
+  }
+
+  if (!clusterId) {
+    return false;
+  }
+
+  if (!isCourtClustersEnabled()) {
+    if (clusterVenueId && user?.venueId) {
+      return user.venueId === clusterVenueId;
+    }
+    if (user?.venueId && cluster.venueId) {
+      return user.venueId === cluster.venueId;
+    }
+    return isVenueScopedRole(user?.role);
+  }
+
+  return canUserAccessCluster(user, clusterId, { venueId: clusterVenueId || user?.venueId });
 }
 
 function matchesScope(user, permission, scope) {
@@ -197,6 +262,9 @@ function matchesScopeType(user, permissionScope, scope, permission) {
 
     case PERMISSION_SCOPE.VENUE:
       return matchesVenueScope(user, scope.venueId, permission);
+
+    case PERMISSION_SCOPE.CLUSTER:
+      return matchesClusterScope(user, scope);
 
     case PERMISSION_SCOPE.CLUB:
       return matchesClubScope(user, scope);
@@ -275,6 +343,33 @@ function matchesTeamScope(user, scope) {
   }
 
   return userTournamentId === tournamentId && userTeamId === teamId;
+}
+
+function matchesClusterScope(user, scope) {
+  const clusterId = scope.clusterId || scope.cluster_id;
+  const venueId = scope.venueId || scope.tenantId || user.venueId;
+
+  if (!isCourtClustersEnabled()) {
+    return matchesVenueScope(user, venueId);
+  }
+
+  if (!clusterId) {
+    if (isOrgWideClusterRole(user) || isGlobalRole(user.role)) {
+      return matchesVenueScope(user, venueId);
+    }
+
+    return resolveAssignedClusterIdsForUser(user).length > 0;
+  }
+
+  if (venueId && user.venueId && user.venueId !== venueId) {
+    return false;
+  }
+
+  if (isGlobalRole(user.role) || isOrgWideClusterRole(user)) {
+    return !venueId || !user.venueId || user.venueId === venueId;
+  }
+
+  return canUserAccessCluster(user, clusterId, { venueId });
 }
 
 function matchesVenueScope(user, venueId, permission) {
@@ -363,11 +458,7 @@ function matchesSelfScope(user, scope, permission) {
     return user.playerId === scope.playerId;
   }
 
-  if (
-    permission === PERMISSIONS.TOURNAMENT_VIEW ||
-    permission === PERMISSIONS.STATISTICS_VIEW ||
-    permission === PERMISSIONS.TOURNAMENT_CREATE
-  ) {
+  if (permission === PERMISSIONS.TOURNAMENT_VIEW || permission === PERMISSIONS.STATISTICS_VIEW) {
     return Boolean(user.clubId);
   }
 

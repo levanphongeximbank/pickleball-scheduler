@@ -103,7 +103,7 @@ export default function ClubDetailPage() {
     return (
       <Box>
         <Alert severity="error">Không tìm thấy CLB hoặc bạn không có quyền truy cập.</Alert>
-        <Link component={RouterLink} to="/clubs" sx={{ mt: 2, display: "inline-block" }}>
+        <Link component={RouterLink} to="/manage/clubs" sx={{ mt: 2, display: "inline-block" }}>
           ← Quay lại danh sách CLB
         </Link>
       </Box>
@@ -113,7 +113,7 @@ export default function ClubDetailPage() {
   return (
     <Box>
       <Breadcrumbs sx={{ mb: 2 }}>
-        <Link component={RouterLink} to="/clubs" underline="hover" color="inherit">
+        <Link component={RouterLink} to="/manage/clubs" underline="hover" color="inherit">
           CLB
         </Link>
         <Typography color="text.primary">{club.name}</Typography>

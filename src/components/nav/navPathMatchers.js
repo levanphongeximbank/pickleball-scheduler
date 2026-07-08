@@ -28,8 +28,8 @@ export function isNavItemActive(currentPath, item, resolvedPath) {
   const pathOnly = stripQuery(currentPath);
   const itemPath = stripQuery(resolvedPath || item.path);
 
-  if (item.match === "exact" || itemPath === "/") {
-    return pathOnly === "/";
+  if (item.match === "exact" || itemPath === "/dashboard") {
+    return pathOnly === "/dashboard";
   }
 
   if (item.match === "live-courts") {
@@ -106,6 +106,10 @@ export function isNavItemActive(currentPath, item, resolvedPath) {
 
   if (item.match === "club-settings") {
     return pathOnly === "/club" || pathOnly.startsWith("/club/");
+  }
+
+  if (item.match === "my-club") {
+    return pathOnly === "/my-club";
   }
 
   if (item.match === "seasons-only") {
@@ -286,8 +290,8 @@ export function isNavItemActive(currentPath, item, resolvedPath) {
     return pathOnly === "/daily-play" || pathOnly.startsWith("/tournament/daily/");
   }
 
-  if (item.match === "clubs" || item.match === "clubs-create") {
-    return pathOnly === "/clubs" || pathOnly.startsWith("/clubs/");
+  if (item.match === "manage-clubs" || item.match === "clubs-create") {
+    return pathOnly === "/manage/clubs" || pathOnly.startsWith("/manage/clubs/");
   }
 
   if (item.match === "club-members") {
@@ -314,6 +318,10 @@ export function isNavItemActive(currentPath, item, resolvedPath) {
 
   if (item.match === "users-roles") {
     return pathOnly === "/users";
+  }
+
+  if (item.match === "admin-roles") {
+    return pathOnly === "/admin/roles";
   }
 
   if (item.match === "referee-hub") {

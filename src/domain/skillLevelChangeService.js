@@ -1,9 +1,14 @@
 import { DEFAULT_SKILL_LEVEL_RULES } from "../ai/config.js";
 import {
-  getPlayerSkillLevel,
+  getPlayerCurrentRating,
   normalizePlayers,
+  syncCurrentRatingMirrors,
   syncSkillLevelMirrors,
 } from "../models/player.js";
+import { snapPickVnRating, PICK_VN_MIN, PICK_VN_MAX } from "../features/pick-vn-rating/constants/pickVnRatingScale.js";
+import { RATING_STATUS } from "../features/pick-vn-rating/constants/ratingStatus.js";
+import { migratePlayerRatingFields } from "../features/pick-vn-rating/models/pickVnRating.js";
+import { verifyAdminPlayerRating } from "../features/pick-vn-rating/services/ratingVerificationService.js";
 import { listClubs } from "./clubService.js";
 import { loadClubData, saveClubData } from "./clubStorage.js";
 import { getSkillLevelRules } from "./skillLevelService.js";
@@ -20,9 +25,9 @@ function toLevel(value, fallback = 3.5) {
 }
 
 function clampLevel(value, rules = DEFAULT_SKILL_LEVEL_RULES) {
-  const min = Number(rules.minLevel) || 1.5;
-  const max = Number(rules.maxLevel) || 6;
-  return Math.min(max, Math.max(min, Math.round(toLevel(value) * 10) / 10));
+  const min = Number(rules.minLevel) || PICK_VN_MIN;
+  const max = Number(rules.maxLevel) || PICK_VN_MAX;
+  return snapPickVnRating(Math.min(max, Math.max(min, toLevel(value))));
 }
 
 export function normalizeSkillLevelChangeRequest(request) {
@@ -65,26 +70,50 @@ export function setInitialSkillLevel(player, level, lockedAt = new Date().toISOS
   }
 
   const skillLevel = clampLevel(level);
-  return {
+  const base = {
     ...player,
     ...syncSkillLevelMirrors(player, skillLevel),
     skillLevelLockedAt: lockedAt,
+  };
+  return {
+    ...base,
+    ...migratePlayerRatingFields({
+      ...base,
+      self_declared_rating: skillLevel,
+      current_rating: skillLevel,
+      rating_status: RATING_STATUS.SELF_DECLARED,
+      rating_confidence: 0.2,
+      last_rating_updated_at: lockedAt,
+    }),
   };
 }
 
 export function applySkillLevelValue(player, level, options = {}) {
   const skillLevel = clampLevel(level, options.rules);
-  const next = {
+  const now = options.lockedAt || new Date().toISOString();
+  const base = {
     ...player,
-    ...syncSkillLevelMirrors(player, skillLevel),
+    ...syncCurrentRatingMirrors(skillLevel),
+    ratingInternal: player?.ratingInternal ?? skillLevel,
   };
 
   if (options.lock && !player.skillLevelLockedAt) {
-    next.skillLevelLockedAt =
-      options.lockedAt || new Date().toISOString();
+    base.skillLevelLockedAt = now;
   }
 
-  return next;
+  const status = options.ratingStatus || RATING_STATUS.ADMIN_VERIFIED;
+  return {
+    ...base,
+    ...migratePlayerRatingFields({
+      ...base,
+      verified_rating: skillLevel,
+      current_rating: skillLevel,
+      rating_status: status,
+      rating_verified_by: options.verifiedBy || null,
+      rating_verification_note: options.note || "",
+      last_rating_updated_at: now,
+    }),
+  };
 }
 
 export function listSkillLevelChangeRequests(clubId, options = {}) {
@@ -150,7 +179,7 @@ export function submitSkillLevelChangeRequest(
     return { ok: false, error: "Điểm trình độ chưa được khóa." };
   }
 
-  const currentLevel = getPlayerSkillLevel(player);
+  const currentLevel = getPlayerCurrentRating(player);
   const nextLevel = clampLevel(requestedLevel, rules);
 
   if (nextLevel === currentLevel) {
@@ -215,10 +244,27 @@ export function approveSkillLevelChangeRequest(
   }
 
   const reviewedAt = new Date().toISOString();
-  const nextPlayers = [...(data.players || [])];
-  nextPlayers[playerIndex] = applySkillLevelValue(nextPlayers[playerIndex], request.requestedLevel);
+  const verifyResult = verifyAdminPlayerRating(clubId, request.playerId, request.requestedLevel, {
+    verifiedBy: reviewedBy,
+    note: reviewNote ? String(reviewNote).trim() : "",
+    authUserId: data.players[playerIndex]?.authUserId || null,
+  });
 
-  requests[index] = {
+  if (!verifyResult.ok) {
+    return verifyResult;
+  }
+
+  const refreshed = loadClubData(clubId);
+  const refreshedRequests = getClubChangeRequests(refreshed);
+  const refreshedIndex = refreshedRequests.findIndex(
+    (item) => String(item.id) === String(requestId)
+  );
+
+  if (refreshedIndex < 0) {
+    return { ok: false, error: "Không tìm thấy yêu cầu sau khi cập nhật." };
+  }
+
+  refreshedRequests[refreshedIndex] = {
     ...request,
     status: CHANGE_REQUEST_STATUS.APPROVED,
     reviewedBy,
@@ -226,12 +272,15 @@ export function approveSkillLevelChangeRequest(
     reviewNote: reviewNote ? String(reviewNote).trim() : "",
   };
 
-  data.players = normalizePlayers(nextPlayers);
-  data.skillLevelChangeRequests = requests;
-  data.updatedAt = reviewedAt;
-  saveClubData(clubId, data);
+  refreshed.skillLevelChangeRequests = refreshedRequests;
+  refreshed.updatedAt = reviewedAt;
+  saveClubData(clubId, refreshed);
 
-  return { ok: true, request: requests[index], player: nextPlayers[playerIndex] };
+  return {
+    ok: true,
+    request: refreshedRequests[refreshedIndex],
+    player: verifyResult.player,
+  };
 }
 
 export function rejectSkillLevelChangeRequest(

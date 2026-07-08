@@ -50,7 +50,7 @@ export function resolveDashboardAccess(user, can, scope = {}) {
     sections.clubOperations = false;
   }
 
-  if (role === ROLES.CLUB_OWNER) {
+  if (role === ROLES.CLUB_MANAGER) {
     sections.revenue = canCheck(PERMISSIONS.FINANCE_VIEW);
     sections.courts = false;
     sections.heatmap = false;
@@ -60,7 +60,7 @@ export function resolveDashboardAccess(user, can, scope = {}) {
   const dataScope =
     role === ROLES.SUPER_ADMIN
       ? "system"
-      : role === ROLES.CLUB_OWNER
+      : role === ROLES.CLUB_MANAGER
         ? "club"
         : "tenant";
 

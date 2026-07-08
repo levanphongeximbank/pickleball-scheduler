@@ -3,6 +3,7 @@ import { Box, CircularProgress } from "@mui/material";
 
 import { useAuth } from "../../context/AuthContext.jsx";
 import { useClub } from "../../context/ClubContext.jsx";
+import { useCluster } from "../../context/ClusterContext.jsx";
 import {
   isAuthenticatedOnlyRoute,
   isPermissionExemptPath,
@@ -34,6 +35,7 @@ export default function RouteAccessGate({ children }) {
     user,
   } = useAuth();
   const { activeClubId, activeClub } = useClub();
+  const { activeClusterId } = useCluster();
 
   if (authLoading && location.pathname !== "/login") {
     return <AuthLoading />;
@@ -69,15 +71,12 @@ export default function RouteAccessGate({ children }) {
     user,
     activeClubId,
     activeClub,
+    activeClusterId,
   });
 
   const homePath = getDefaultHomePath(user, rbacEnabled);
 
-  if (location.pathname === "/" && user?.role && homePath !== "/") {
-    return <Navigate to={homePath} replace />;
-  }
-
-  if (location.pathname === "/dashboard" && user?.role && homePath !== "/" && homePath !== "/dashboard") {
+  if (location.pathname === "/dashboard" && user?.role && homePath !== "/dashboard") {
     return <Navigate to={homePath} replace />;
   }
 
@@ -95,6 +94,7 @@ export default function RouteAccessGate({ children }) {
       isAuthenticated,
       can,
       scope,
+      user,
     })
   ) {
     if (location.pathname !== "/403") {
@@ -106,6 +106,7 @@ export default function RouteAccessGate({ children }) {
           isAuthenticated,
           can,
           scope,
+          user,
         })
       ) {
         return <Navigate to={homePath} replace />;

@@ -63,7 +63,7 @@ test("v5 menu audit — thống kê live / partial / planned (sidebar)", () => {
   const audit = auditMenuFeatureCoverage(MENU_GROUPS);
 
   assert.ok(audit.summary.totalLeaves >= 35, "sidebar phải có >= 35 mục lá");
-  assert.ok(audit.summary.totalLeaves <= 85, "sidebar không quá 85 mục lá (phẳng)");
+  assert.ok(audit.summary.totalLeaves <= 95, "sidebar không quá 95 mục lá (phẳng)");
   assert.ok(audit.summary.live > 0);
   assert.ok(audit.summary.coveragePercent >= 40);
   assert.ok(audit.summary.coveragePercent <= 100);

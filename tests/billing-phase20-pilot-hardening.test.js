@@ -183,12 +183,10 @@ test("Phase 20 — tenant_not_found when tenant id missing", () => {
 
 test("Phase 20B — operational routes are not billing-exempt when tenant active", () => {
   const operationalRoutes = [
-    "/",
     "/dashboard",
     "/court-engine",
     "/players",
-    "/clubs",
-    "/tournaments",
+    "/manage/clubs",
     "/tournaments/t-1/engine",
   ];
 

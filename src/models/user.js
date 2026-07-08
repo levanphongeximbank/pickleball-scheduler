@@ -37,8 +37,14 @@ export function normalizeUser(user) {
       : null,
     /** Liên kết bản ghi player — PLAYER. */
     playerId: user?.playerId ? String(user.playerId).trim() : null,
+    /** Cụm sân được gán (Phase 23). */
+    assignedClusterIds: Array.isArray(user?.assignedClusterIds)
+      ? user.assignedClusterIds.map((id) => String(id).trim()).filter(Boolean)
+      : [],
     phone: user?.phone ? String(user.phone).trim() : "",
     avatarUrl: user?.avatarUrl ? String(user.avatarUrl).trim() : "",
+    gender: user?.gender ? String(user.gender).trim() : "",
+    birthYear: user?.birthYear ?? user?.birth_year ?? null,
     status: user?.status || USER_STATUS.ACTIVE,
     createdAt: user?.createdAt || new Date().toISOString(),
     updatedAt: user?.updatedAt || new Date().toISOString(),

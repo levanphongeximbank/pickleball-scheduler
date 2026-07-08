@@ -30,6 +30,13 @@ import {
   assertSubscriptionOperational,
   runSubscriptionMaintenance,
 } from "../features/billing/bridges/subscriptionAccessBridge.js";
+import {
+  BILLING_STORE_MODES,
+  getBillingStore,
+  resolveBillingStoreMode,
+} from "../features/billing/repositories/billingRepository.js";
+import { ensureBillingStoreHydrated } from "../features/billing/repositories/billingStoreRuntime.js";
+import { syncLegacySubscriptionsFromBilling } from "../domain/venueService.js";
 import { isSubscriptionOperationalExemptRole } from "../features/billing/guards/operationalRoutePolicy.js";
 
 const TenantContext = createContext(null);
@@ -69,9 +76,27 @@ export function TenantProvider({ children }) {
   }, [currentTenantId, revision, user]);
 
   useEffect(() => {
-    ensureTenantBootstrap();
-    runSubscriptionMaintenance();
-    setRevision((value) => value + 1);
+    let cancelled = false;
+
+    void (async () => {
+      ensureTenantBootstrap();
+
+      if (resolveBillingStoreMode() === BILLING_STORE_MODES.SUPABASE) {
+        await ensureBillingStoreHydrated(getBillingStore());
+        syncLegacySubscriptionsFromBilling();
+      }
+
+      if (cancelled) {
+        return;
+      }
+
+      runSubscriptionMaintenance();
+      setRevision((value) => value + 1);
+    })();
+
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   const userId = user?.id || null;

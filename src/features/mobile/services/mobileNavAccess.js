@@ -182,7 +182,7 @@ export function canAccessMobileRoute(pathname, auth, scope = {}, options = {}) {
   const { can, rbacEnabled, isAuthenticated, user } = auth;
 
   if (!pathname?.startsWith("/mobile/")) {
-    return canAccessRoute(can, pathname, resolveScope(auth, scope));
+    return canAccessRoute(can, pathname, resolveScope(auth, scope), user);
   }
 
   if (!rbacEnabled) {

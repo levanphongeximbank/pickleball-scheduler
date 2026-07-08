@@ -900,3 +900,31 @@ test("summarizeCourtManagementImport previews counts", async () => {
   assert.equal(preview.ok, true);
   assert.ok(preview.summary.importBookings >= 1);
 });
+
+test("buildDayGridBlocks spans multi-hour bookings and skips covered slots", async () => {
+  const { buildDayGridBlocks, buildHourSlots } = await import("../src/domain/courtBookingEngine.js");
+
+  const courts = [{ id: "c1", name: "Sân 1", status: "active", active: true }];
+  const hourSlots = buildHourSlots(8, 12, 60);
+  const date = "2026-07-07";
+  const bookings = [
+    {
+      id: "b1",
+      courtId: "c1",
+      date,
+      startTime: "08:00",
+      endTime: "10:00",
+      bookingStatus: "confirmed",
+    },
+  ];
+
+  const blocks = buildDayGridBlocks(bookings, courts, date, hourSlots, 60);
+  const start = blocks.get("c1::08:00");
+  const covered = blocks.get("c1::09:00");
+  const empty = blocks.get("c1::10:00");
+
+  assert.equal(start?.type, "booking");
+  assert.equal(start?.rowSpan, 2);
+  assert.equal(covered?.type, "skip");
+  assert.equal(empty?.type, "empty");
+});

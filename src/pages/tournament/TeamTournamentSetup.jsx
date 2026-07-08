@@ -60,6 +60,7 @@ import { computeTeamTournamentWorkflow } from "../../components/tournament/team/
 import { MATCHUP_STATUS } from "../../features/team-tournament/constants.js";
 import { getPermissionsForRole } from "../../features/identity/matrix/rolePermissions.js";
 import { TEAM_TAB_QUERY } from "../../config/tournamentRoutes.js";
+import TournamentVprPanel from "../../features/vpr-ranking/components/TournamentVprPanel.jsx";
 import TournamentActionBar from "../../components/tournament/TournamentActionBar.jsx";
 
 function buildVisibleTabs(canManage) {
@@ -472,6 +473,14 @@ export default function TeamTournamentSetup() {
     >
       <Stack spacing={2}>
         <TeamTournamentWorkflowBar teamData={teamData} />
+
+        {access.canManage ? (
+          <TournamentVprPanel
+            clubId={activeClubId}
+            tournament={tournament}
+            onUpdated={refreshClubs}
+          />
+        ) : null}
 
         <Tabs value={activeTabIndex} onChange={handleTabChange}>
           {visibleTabs.map((tabItem) => (

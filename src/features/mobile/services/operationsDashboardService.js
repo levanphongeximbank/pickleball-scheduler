@@ -64,9 +64,9 @@ export function canAccessOperationsDashboard(user, scope = {}) {
   }
   const role = normalizeRole(user.role);
   const allowedRoles = [
-    ROLES.SUPER_ADMIN,
-    ROLES.COURT_OWNER,
-    ROLES.COURT_MANAGER,
+    ROLES.PLATFORM_ADMIN,
+    ROLES.TENANT_OWNER,
+    ROLES.VENUE_MANAGER,
     ROLES.CASHIER,
   ];
   if (!allowedRoles.includes(role)) {
@@ -87,10 +87,10 @@ export function getOperationsDashboardMode(user) {
   if (role === ROLES.CASHIER) {
     return "cashier";
   }
-  if (role === ROLES.COURT_MANAGER) {
+  if (role === ROLES.VENUE_MANAGER) {
     return "staff";
   }
-  if (role === ROLES.COURT_OWNER || role === ROLES.SUPER_ADMIN) {
+  if (role === ROLES.TENANT_OWNER || role === ROLES.PLATFORM_ADMIN) {
     return "owner";
   }
   return "staff";

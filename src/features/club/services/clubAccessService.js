@@ -1,5 +1,6 @@
 import { getCurrentUser, isRbacEnabled } from "../../../auth/authService.js";
 import { isClubScopedRole, isGlobalRole, isVenueScopedRole } from "../../../auth/roles.js";
+import { loadClubs } from "../../../data/club.js";
 import { listClubsForTenant } from "../../tenant/guards/tenantGuard.js";
 import { getClubMembers } from "./clubMemberService.js";
 import { CLUB_MEMBER_STATUSES } from "../constants/clubMemberRoles.js";
@@ -53,7 +54,16 @@ export function getClubsVisibleToUser(tenantId, user = getCurrentUser()) {
   }
 
   if (isClubScopedRole(user.role)) {
-    return clubs.filter((club) => canUserViewClub(user, club.id, tenantId));
+    const visible = clubs.filter((club) => canUserViewClub(user, club.id, tenantId));
+
+    if (user.clubId && !visible.some((club) => club.id === user.clubId)) {
+      const assigned = loadClubs().find((club) => club.id === user.clubId && !club.isDefault);
+      if (assigned && canUserViewClub(user, assigned.id, tenantId)) {
+        return [...visible, assigned];
+      }
+    }
+
+    return visible;
   }
 
   return clubs;

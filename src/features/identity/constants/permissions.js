@@ -12,11 +12,16 @@ export const PERMISSIONS = Object.freeze({
   SKILL_LEVEL_VIEW_PRIVATE: "skill_level.view_private",
   SKILL_LEVEL_REQUEST_CHANGE: "skill_level.request_change",
   SKILL_LEVEL_APPROVE: "skill_level.approve",
+  SKILL_LEVEL_VERIFY_CLUB: "skill_level.verify_club",
+  SKILL_LEVEL_VERIFY_TOURNAMENT: "skill_level.verify_tournament",
 
   COURT_VIEW: "court.view",
   COURT_CREATE: "court.create",
   COURT_UPDATE: "court.update",
   COURT_DELETE: "court.delete",
+
+  CLUSTER_VIEW: "cluster.view",
+  CLUSTER_MANAGE: "cluster.manage",
 
   TOURNAMENT_VIEW: "tournament.view",
   TOURNAMENT_CREATE: "tournament.create",
@@ -31,6 +36,8 @@ export const PERMISSIONS = Object.freeze({
 
   USER_MANAGE: "user.manage",
   ROLE_MANAGE: "role.manage",
+  /** Chủ sân tùy chỉnh quyền nhân viên trong phạm vi tenant (không phải role.manage platform). */
+  TENANT_ROLE_CUSTOMIZE: "tenant.role.customize",
   SYSTEM_SETTING: "system.setting",
 
   // ─── Domain extensions (CRUD, existing modules) ─────────────────
@@ -156,6 +163,11 @@ export const PERMISSIONS = Object.freeze({
   TEAM_LINEUP_APPROVE: "team_lineup.approve",
   TEAM_LINEUP_LOCK_V5: "team_lineup.lock",
   TEAM_SUBSTITUTION_APPROVE: "team_substitution.approve",
+
+  // ─── V5.0 Phase 29 — VPR Ranking ─────────────────────────────────
+  RANKING_VIEW: "ranking.view",
+  RANKING_MANAGE: "ranking.manage",
+  TOURNAMENT_CERTIFY: "tournament.certify",
 });
 
 export function isValidPermission(permission) {

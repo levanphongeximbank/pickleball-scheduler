@@ -1,104 +1,128 @@
-# RBAC Permission Matrix — v3.5.4
+# RBAC Permission Matrix — V5.2
 
-Ma trận quyền production. Nguồn code: `src/auth/rolePermissions.js`, `src/auth/permissions.js`.
+Ma trận quyền production. Nguồn code: `src/features/identity/matrix/rolePermissions.js`, `src/features/identity/constants/permissions.js` (re-export qua `src/auth/`).
 
-> **Club governance vs Auth roles (V5):** RBAC roles (`CLUB_OWNER`, `COURT_OWNER`, …) kiểm soát đăng nhập và route. Quy tắc nghiệp vụ CLB (Chủ sở hữu, Chủ tịch, Phó chủ tịch, quyền xem thành viên theo mối quan hệ chủ sân–chủ sở hữu CLB) — **spec v1.1** tại [`docs/v5/CLUB_GOVERNANCE_SPEC.md`](v5/CLUB_GOVERNANCE_SPEC.md). Enforced trong `src/features/club/` (local + SQL `docs/supabase-club-governance-v52.sql`).
+> **Club governance vs Auth roles (V5):** RBAC roles (`CLUB_MANAGER`, `TENANT_OWNER`, …) kiểm soát đăng nhập và route. Quy tắc nghiệp vụ CLB (Chủ sở hữu, Chủ tịch, …) — **spec v1.1** tại [`docs/v5/CLUB_GOVERNANCE_SPEC.md`](v5/CLUB_GOVERNANCE_SPEC.md). Enforced trong `src/features/club/`.
 
-## Roles
+## Roles (canonical app)
 
-| Role DB (`profiles.role`) | Tên hiển thị | Phạm vi |
-|---------------------------|--------------|---------|
-| `SUPER_ADMIN` | Quản trị hệ thống (admin) | Toàn hệ thống |
-| `VENUE_OWNER` | Chủ sân | Tenant / venue |
-| `VENUE_MANAGER` | Quản lý sân (manager) | Vận hành venue |
-| `CASHIER` | Thu ngân | Thu ngân venue |
-| `ACCOUNTANT` | Kế toán | Kế toán venue |
-| `CLUB_OWNER` | Chủ CLB | CLB trong venue |
-| `PLAYER` | VĐV | Self-service |
+| Canonical (runtime) | DB legacy (`profiles.role`) | Tên hiển thị | Phạm vi |
+|---------------------|----------------------------|--------------|---------|
+| `PLATFORM_ADMIN` | `SUPER_ADMIN` | Quản trị nền tảng | Toàn hệ thống |
+| `SYSTEM_TECHNICIAN` | — | Kỹ thuật viên hệ thống | Platform (giới hạn) |
+| `TENANT_OWNER` | `VENUE_OWNER`, `COURT_OWNER` | Chủ đơn vị / Chủ sân | Tenant / venue |
+| `VENUE_MANAGER` | `VENUE_MANAGER`, `COURT_MANAGER` | Quản lý sân | Vận hành venue |
+| `CLUB_MANAGER` | `CLUB_OWNER` | Quản lý CLB | CLB trong venue |
+| `PLAYER` | `PLAYER` | VĐV | Self-service |
+| … | … | Xem `src/features/identity/constants/roles.js` | |
 
-**Trọng tài (referee):** không phải RBAC role — dùng link token `/referee/:token` (không đăng nhập). Gán trọng tài trong Director Mode.
+`normalizeRole()` khi đọc profile; `denormalizeRoleForDb()` khi ghi (`TENANT_OWNER` → `VENUE_OWNER`).
 
-## Profile mapping (`public.profiles`)
+## Chủ tịch CLB (`CLUB_MANAGER`)
 
-| Cột DB | App field | Ghi chú |
-|--------|-----------|---------|
-| `id` | `userId` | = `auth.users.id` |
-| `email` | `email` | |
-| `display_name` | `displayName` | |
-| `role` | `role` | Một trong các role trên |
-| `club_id` | `clubId` | Bắt buộc cho CLUB_OWNER, PLAYER |
-| `venue_id` | `venueId` | Bắt buộc cho role venue-scoped |
-| `status` | `status` | `active` / `suspended` / `invited` |
+Auth legacy: `CLUB_OWNER`. Phạm vi: `profiles.club_id` — một CLB được gán.
 
-Khi `VITE_RBAC_ENABLED=true`, app **bắt buộc** profile hợp lệ — không fallback `PLAYER` từ metadata.
+### Quyền auth mặc định
 
-## Permission groups
+`club.view/update`, `season.update`, `league.update`, `player.view/create/update/delete`, `skill_level.view_private`, `skill_level.verify_club`, `tournament.*`, `director.use`, `match.update`, `scheduling.view/run`, `court_engine.*`, `statistics.view/export`, `settings.view`, `marketplace.view`, `integration.view`, team-tournament permissions.
 
-### Venue operations (VENUE_MANAGER+)
-`VENUE_VIEW`, `COURTS_*`, `BOOKINGS_*`, `CUSTOMERS_*`, `REVENUE_VIEW`, `CLUB_VIEW`, `PLAYERS_VIEW`, `TOURNAMENT_*`, `SCHEDULING_*`, `STATISTICS_VIEW`, `SETTINGS_VIEW`
+**Không có:** `club.delete`, `club.create` (RBAC), `customer.view`, `court.view`, `booking.*`, `finance.*`, `user.manage`, `ranking.view`, `billing.view`.
 
-### Venue owner extras
-`VENUE_MANAGE`, `VENUE_STAFF_MANAGE`, `VENUE_SUBSCRIPTION_VIEW`, `REVENUE_MANAGE`, `CLUB_MANAGE`, `CLUB_DELETE`, `SEASONS_MANAGE`, `LEAGUES_MANAGE`, `PLAYERS_MANAGE`, `STATISTICS_EXPORT`, `SETTINGS_MANAGE`, `SETTINGS_CLOUD_SYNC`, `PAYMENTS_*`, `ACCOUNTING_*`
+**Ngoại lệ governance:** `CLUB_MANAGER` chưa có `club_id` có thể **tự đăng ký CLB** qua `/my-club` (`canSelfRegisterClub` → `pending_approval`). Quyền xóa/chuyển sở hữu/chủ tịch theo `ownerUserId` — xem bảng governance bên dưới.
 
-### Cashier
-`COURTS_VIEW`, `BOOKINGS_VIEW`, `BOOKINGS_CREATE`, `CUSTOMERS_VIEW`, `PAYMENTS_VIEW`, `PAYMENTS_COLLECT`
+### Quyền governance (ngoài RBAC)
 
-### Accountant
-`BOOKINGS_VIEW`, `CUSTOMERS_VIEW`, `REVENUE_VIEW`, `PAYMENTS_VIEW`, `ACCOUNTING_*`, `STATISTICS_VIEW`
+| Hành động | Chủ tịch | Chủ sở hữu CLB (`ownerUserId`) | Chủ sân |
+|-----------|:--------:|:------------------------------:|:-------:|
+| Xem/sửa thành viên đầy đủ | ✓ | ✓ | Chỉ khi là owner |
+| Đổi Chủ tịch | ✗ | ✓ | ✓ |
+| Xóa CLB | ✗ | ✓ (`canDeleteClub`) | ✓ (`club.delete`) |
+| Gán Chủ sở hữu (lần đầu) | ✗ | ✗ | ✓ |
+| Chuyển quyền sở hữu | ✗ | ✓ (`transferClubOwnership`) | ✓ |
 
-### Club owner
-`CLUB_*`, `SEASONS_*`, `LEAGUES_*`, `PLAYERS_*`, `TOURNAMENT_*`, `SCHEDULING_*`, `STATISTICS_*`, `SETTINGS_VIEW`
+Enforced: `src/features/club/services/clubGovernanceService.js` (`canChangeClubPresident`, `canDeleteClub`, `transferClubOwnership`).
 
-### Player
-`PLAYER_SCHEDULE_VIEW`, `PLAYER_REGISTRATION_MANAGE`, `PLAYER_RESULTS_VIEW`, `PLAYER_PROFILE_*`
+### Menu sidebar
 
-## Scope rules
+Nhóm: Tổng quan, Khách hàng & VĐV (VĐV + điểm trình độ), CLB & Huấn luyện (**Lịch sinh hoạt** `/club`, **CLB của tôi** `/my-club`, Danh sách CLB, Vui chơi mỗi ngày), Giải đấu, Hỗ trợ (Hồ sơ).
 
-| Permission scope | Kiểm tra |
-|------------------|----------|
-| `venue` | `user.venueId === scope.venueId` hoặc SUPER_ADMIN |
-| `club` | `user.clubId === scope.clubId` hoặc venue staff |
-| `player` | `user.playerId === scope.playerId` |
+**Không có:** Vận hành sân, Tài chính, Báo cáo, Quản trị.
+
+Home mặc định: `/club`.
+
+## Chủ sân (`TENANT_OWNER`)
+
+### Quyền vận hành (`VENUE_OPS` — dùng chung với `VENUE_MANAGER`)
+
+`venue.view`, `court.view/create/update`, `booking.view/create/update`, `customer.view`, `finance.view`, `club.view`, `player.view*`, `skill_level.view_private`, `tournament.view/create/update`, `director.use`, `match.update`, `scheduling.view/run`, `court_engine.*`, `statistics.view`, `settings.view`, `ranking.view`, team-tournament permissions.
+
+### Quyền riêng chủ sân
+
+`venue.update`, `user.manage`, `tenant.role.customize`, `subscription.view`, `billing.view` (+ invoice/payment/subscription view), `finance.edit`, `club.create/update/delete`, `club.governance.assign_owner`, `club.governance.approve`, `season.update`, `league.update`, `player.create/update/delete`, `court.delete`, `booking.delete`, `customer.create/update/delete`, `tournament.delete`, `statistics.export`, `system.setting`, `integration.view/manage`, `marketplace.view/manage`, `api.manage`.
+
+### Không có (platform / ngoài phạm vi)
+
+| Quyền | Hệ quả |
+|-------|--------|
+| `role.manage`, `role.view`, `permission.view` | Không quản lý role platform |
+| `tenant.view`, `cluster.manage` | Không quản lý tenant/cụm toàn hệ thống |
+| `billing.manage`, `subscription.update` | Billing chỉ xem |
+| `ranking.manage`, `tournament.certify` | Không duyệt VPR |
+| `skill_level.approve` | Không duyệt trình độ platform |
+
+### Tùy chỉnh quyền nhân viên
+
+- Permission: `tenant.role.customize` (chỉ `TENANT_OWNER`).
+- Route: `/admin/roles` (OR với `role.manage` cho platform).
+- Chỉ sửa các role trong `TENANT_CUSTOMIZABLE_ROLES` (`VENUE_MANAGER`, `CASHIER`, `PLAYER`, …).
+- Ma trận `TENANT_OWNER` read-only — không tự bớt quyền mình.
+- Override lưu qua `tenantRolePermissionService` → `rbac.roleHasEffectivePermission()`.
+
+## Court clusters (Phase 32)
+
+| Permission | TENANT_OWNER | VENUE_MANAGER |
+|------------|--------------|---------------|
+| `cluster.view` | — | — |
+| `cluster.manage` | — | — |
+
+Chủ sân vận hành sân trên cụm được gán; không tạo/sửa cụm (`/admin/court-clusters`).
+
+## Route guards (chủ sân)
+
+| Route | Truy cập |
+|-------|----------|
+| `/admin/roles` | ✓ (`tenant.role.customize`) |
+| `/admin/tenants` | ✗ (cần `tenant.view` — platform only) |
+| `/users` | ✓ (`user.manage`) |
+| `/billing/*` | ✓ (view) |
+| `/marketplace/*` | ✓ (`marketplace.manage`) |
 
 ## Enforcement points (client)
 
 | Layer | File |
 |-------|------|
 | Route | `RouteAccessGate.jsx` + `menuAccess.js` |
-| Sidebar | `Sidebar.jsx` + `filterMenuGroups()` |
+| Sidebar | `filterMenuGroups()` |
 | UI action | `PermissionGate.jsx` |
-| Domain | `guardAction.js` (club, booking, tournament, director, cloud sync) |
+| Domain | `guardAction.js` |
+| Tenant overrides | `tenantRolePermissionService.js` → `rbac.roleHasEffectivePermission()` |
 
 ## Bật RBAC production
 
-### 1. Env
+### Env
 
 ```env
-VITE_SUPABASE_URL=https://xxx.supabase.co
-VITE_SUPABASE_ANON_KEY=eyJ...
 VITE_RBAC_ENABLED=true
 ```
 
-### 2. SQL (Supabase SQL Editor)
+### SQL
 
-Chạy theo thứ tự:
+Chạy theo checklist: `docs/SUPABASE-STAGING-CHECKLIST.md`, `docs/v5/PHASE_V52_PRODUCTION_RBAC_ROLES.sql`.
 
-1. `docs/supabase-club-v3.sql` (nếu chưa có `club_data_v3`)
-2. `docs/supabase-rbac.sql` — venues, subscriptions, profiles, trigger `handle_new_user`
-3. `docs/supabase-club-v3-rls.sql` — RLS `club_data_v3` (staging)
-4. `docs/supabase-match-live.sql` + `docs/supabase-match-live-rls.sql` (referee)
-5. Checklist đầy đủ: `docs/SUPABASE-STAGING-CHECKLIST.md`
-
-### 3. Tạo admin đầu tiên
-
-Sau khi user đăng ký, cập nhật role trong SQL:
+### Admin đầu tiên
 
 ```sql
 update public.profiles
 set role = 'SUPER_ADMIN', status = 'active'
 where email = 'admin@yourdomain.com';
 ```
-
-### 4. Đăng nhập
-
-`/login` — session restore đọc `profiles`; thiếu profile → từ chối đăng nhập khi RBAC bật.

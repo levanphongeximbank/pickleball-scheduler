@@ -33,12 +33,15 @@ Tài liệu này làm rõ quy tắc nghiệp vụ cho **Câu lạc bộ (CLB)** 
 
 ## 2. Phân tầng khái niệm
 
-Hệ thống có **hai lớp vai trò** tách biệt. Không trộn lẫn khi thiết kế UI, RBAC hay dữ liệu.
+Hệ thống có **ba lớp** tách biệt. Không trộn lẫn khi thiết kế UI, RBAC hay dữ liệu.
 
 | Lớp | Ví dụ | Mục đích |
 |-----|-------|----------|
 | **Auth RBAC** | `COURT_OWNER`, `CLUB_MANAGER`, `PLAYER` | Đăng nhập, route guard, permission hệ thống |
+| **Court cluster (tài sản)** | `court_clusters`, `user_cluster_assignments` | Cụm sân vận hành (Nam Long, Nam Lý) — xem [`COURT_CLUSTER_SPEC.md`](./COURT_CLUSTER_SPEC.md) |
 | **Club governance** | Chủ sở hữu, Chủ tịch, Phó chủ tịch | Quản trị nội bộ CLB, hiển thị trên trang CLB |
+
+> **Lưu ý thuật ngữ (Phase 23+):** **Cơ sở hiện tại** (sidebar) và **cụm sân đăng ký CLB** đều tham chiếu entity `court_clusters` (vd. Sân Nam Long), không phải từng sân vật lý hay tên venue/tổ chức.
 
 ```mermaid
 flowchart TB
@@ -67,12 +70,13 @@ flowchart TB
 
 | Thuật ngữ UI | Thuật ngữ nghiệp vụ | Auth role liên quan |
 |--------------|---------------------|---------------------|
-| Chủ cụm sân / Chủ sân | Chủ venue (tenant) | `COURT_OWNER` (alias `VENUE_OWNER`, `TENANT_OWNER`) |
+| Chủ tổ chức / Chủ cơ sở | Chủ venue (billing org) | `COURT_OWNER` (alias `VENUE_OWNER`, `TENANT_OWNER`) |
+| Chủ sân (theo cụm) | Gán qua `user_cluster_assignments` | `CLUSTER_OWNER` scope trên cụm được gán |
 | Quản lý sân | Nhân viên vận hành venue | `VENUE_MANAGER` (alias `COURT_MANAGER`) |
 | Chủ sở hữu CLB | Người sở hữu pháp lý / tài chính CLB | `COURT_OWNER` hoặc `CLUB_MANAGER` |
 | Chủ tịch CLB | Người điều hành hằng ngày | `CLUB_MANAGER` (alias `CLUB_OWNER`) |
 | Phó chủ tịch CLB | Phụ tá điều hành | `CLUB_MANAGER` + `governance.vicePresidentUserId` |
-| Cụm sân đăng ký hoạt động | Tập sân vật lý CLB dùng tổ chức hoạt động | Không phải auth role |
+| Cụm sân đăng ký hoạt động | Một `court_clusters.id` CLB hoạt động | Không phải auth role |
 
 > **Lưu ý:** Trong code hiện tại, `CLUB_OWNER` hiển thị "Quản lý CLB". Spec này dùng **"Chủ tịch"** cho vai trò nghiệp vụ; khi triển khai UI có thể đổi label mà không đổi role code.
 
@@ -125,7 +129,8 @@ CLB: ACCC
     ownerUserId: string | null,        // optional — gán sau
     presidentUserId: string,           // required for active
     vicePresidentUserId: string | null,
-    registeredCourtIds: string[],      // optional V1
+    registeredClusterId: string | null,   // optional V1 — một cụm sân (court_clusters.id)
+    registeredCourtIds: string[],         // legacy read-only — migrate sang registeredClusterId
   },
   status: "pending_setup" | "active" | "inactive",
 }
@@ -172,16 +177,19 @@ Khi `ownerUserId ≠ presidentUserId`:
 
 > Chủ sở hữu CLB (dù không phải Chủ tịch) có quyền xem/quản lý thành viên **đầy đủ** nếu auth role phù hợp. Quyền **đổi Chủ tịch** chỉ dành cho Chủ sở hữu hoặc SUPER_ADMIN.
 
-### 4.2 Gán Chủ sở hữu CLB
+### 4.2 Gán / chuyển Chủ sở hữu CLB
 
-| Ai gán | Điều kiện |
-|--------|-----------|
+| Ai thực hiện | Điều kiện |
+|--------------|-----------|
 | `COURT_OWNER` (chủ sân venue của CLB) | Luôn được gán / đổi `ownerUserId` |
 | `SUPER_ADMIN` | Luôn được |
+| **Chủ sở hữu hiện tại** (`governance.ownerUserId`) | Được **chuyển** quyền sở hữu cho thành viên active khác (`transferClubOwnership`) |
 | Chủ tịch | **Không** được tự gán mình hoặc người khác làm Chủ sở hữu |
 | Phó chủ tịch | **Không** |
 
-Khi chủ sân tạo CLB: mặc định `ownerUserId` = chính chủ sân (tùy chọn bỏ tick). Khi Chủ tịch tự đăng ký CLB (§6.1): `ownerUserId` = `null` cho đến khi chủ sân gán.
+Khi chủ sân tạo CLB: mặc định `ownerUserId` = chính chủ sân (tùy chọn bỏ tick). Khi Chủ tịch tự đăng ký CLB (§6.1): `ownerUserId` = `null` cho đến khi chủ sân gán hoặc chủ sở hữu sau này chuyển quyền.
+
+UI: **CLB của tôi** (`/my-club`) — menu cấp 2 trong **CLB & Huấn luyện**, hiển thị cho mọi role đã đăng nhập; nội dung theo governance (`MyClubGovernancePanel`).
 
 ---
 
@@ -305,22 +313,25 @@ CLB đã tồn tại trước V5 governance:
 
 ### 7.1 Định nghĩa
 
-**Cụm sân đăng ký hoạt động** là tập **sân vật lý** (`courtId`) thuộc venue/tenant mà CLB đăng ký để tổ chức hoạt động.
+**Cụm sân đăng ký hoạt động** là **một cụm sân** (`court_clusters.id`) thuộc venue/tenant mà CLB đăng ký để tổ chức hoạt động (vd. "Cụm sân Nam Long"). Không chọn từng sân vật lý.
 
 ### 7.2 Khác với courts trong club blob
 
 | Khái niệm | Nguồn dữ liệu | Mục đích |
 |-----------|---------------|----------|
-| Sân vật lý venue | Court Engine / venue registry | Quản lý bởi chủ sân |
+| Cụm sân vận hành | `court_clusters` | Tài sản chủ sân — sidebar "Cơ sở hiện tại" |
+| Sân vật lý venue | Court Engine / venue registry | Sân con trong cụm (Sân 1, Sân 2…) |
 | Courts trong club blob | `club_data_v3` local | Legacy — xếp sân AI nội bộ |
-| Cụm sân đăng ký (spec) | `governance.registeredCourtIds` | Liên kết CLB ↔ sân venue |
+| Cụm sân đăng ký CLB | `governance.registeredClusterId` | Liên kết CLB ↔ cụm sân venue |
 
 ### 7.3 Quy tắc
 
-- CLB chỉ đăng ký sân thuộc **cùng venue** (`club.venueId`).
-- Chủ sân quản lý sân vật lý; CLB **chọn** sân đã tồn tại.
+- Mỗi CLB chỉ đăng ký **một cụm sân** (`registeredClusterId`).
+- CLB chỉ đăng ký cụm thuộc **cùng venue** (`club.venueId`).
+- Chủ sân quản lý cụm/sân vật lý; CLB **chọn cụm** đã tồn tại.
 - **V1:** không bắt buộc có cụm sân để `active`; khi tạo giải nội bộ chưa đăng ký → gợi ý từ toàn bộ sân venue.
-- Chỉ Chủ tịch hoặc Chủ sở hữu CLB được sửa `registeredCourtIds`.
+- Chỉ Chủ tịch hoặc Chủ sở hữu CLB được sửa `registeredClusterId`.
+- Dữ liệu cũ `registeredCourtIds` được migrate client-side sang `registeredClusterId` (ưu tiên cluster xuất hiện nhiều nhất).
 
 ---
 

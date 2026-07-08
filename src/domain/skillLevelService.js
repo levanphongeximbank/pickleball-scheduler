@@ -1,8 +1,14 @@
+import { approveRatingProposal } from "../features/pick-vn-rating/services/ratingProposalService.js";
+import {
+  RATING_STATUS,
+  RATING_STATUS_LABELS,
+  isVerifiedRatingStatus,
+  normalizeRatingStatus,
+} from "../features/pick-vn-rating/constants/ratingStatus.js";
 import { DEFAULT_SKILL_LEVEL_RULES } from "../ai/config.js";
 import { getPlayerRatingInternal, normalizePlayers } from "../models/player.js";
 import { loadClubData, saveClubData } from "./clubStorage.js";
 import {
-  applyApprovedPublicLevel,
   applyMonthlyHoldReview,
   assessMonthlyPublicLevel,
   createSkillLevelProposal,
@@ -82,6 +88,35 @@ function buildLevelDistribution(players = [], rules = DEFAULT_SKILL_LEVEL_RULES)
   return buckets;
 }
 
+const RATING_STATUS_ORDER = [
+  RATING_STATUS.UNRATED,
+  RATING_STATUS.SELF_DECLARED,
+  RATING_STATUS.PROVISIONAL,
+  RATING_STATUS.UNDER_REVIEW,
+  RATING_STATUS.CLUB_VERIFIED,
+  RATING_STATUS.ADMIN_VERIFIED,
+  RATING_STATUS.SYSTEM_VERIFIED,
+  RATING_STATUS.REJECTED,
+];
+
+function buildRatingStatusDistribution(players = []) {
+  const counts = Object.fromEntries(RATING_STATUS_ORDER.map((status) => [status, 0]));
+
+  players.forEach((player) => {
+    const status = normalizeRatingStatus(
+      player.rating_status ?? player.ratingStatus,
+      RATING_STATUS.UNRATED
+    );
+    counts[status] = (counts[status] || 0) + 1;
+  });
+
+  return RATING_STATUS_ORDER.map((status) => ({
+    status,
+    label: RATING_STATUS_LABELS[status] || status,
+    count: counts[status] || 0,
+  }));
+}
+
 export function getSkillLevelOverview(clubId, now = new Date()) {
   const data = loadClubData(clubId);
   const rules = getClubSkillLevelRules(data);
@@ -108,8 +143,23 @@ export function getSkillLevelOverview(clubId, now = new Date()) {
       ratingInternal,
       delta: Math.round((ratingInternal - publicLevel) * 100) / 100,
       lastReviewAt: player.skillMeta?.lastPublicLevelReviewAt || null,
+      ratingStatus: normalizeRatingStatus(
+        player.rating_status ?? player.ratingStatus,
+        RATING_STATUS.UNRATED
+      ),
+      ratingMatchCount: Math.max(
+        0,
+        Number(player.rating_match_count ?? player.ratingMatchCount) || 0
+      ),
     };
   });
+
+  const ratingStatusDistribution = buildRatingStatusDistribution(activePlayers);
+  const verifiedCount = activePlayers.filter((player) =>
+    isVerifiedRatingStatus(
+      normalizeRatingStatus(player.rating_status ?? player.ratingStatus, RATING_STATUS.UNRATED)
+    )
+  ).length;
 
   return {
     rules,
@@ -117,7 +167,10 @@ export function getSkillLevelOverview(clubId, now = new Date()) {
     totalPlayers: activePlayers.length,
     averageLevel: Math.round(averageLevel * 10) / 10,
     pendingCount: proposals.filter((item) => item.status === PROPOSAL_STATUS.PENDING).length,
+    verifiedCount,
+    unverifiedCount: activePlayers.length - verifiedCount,
     distribution: buildLevelDistribution(activePlayers, rules),
+    ratingStatusDistribution,
     players: playerRows,
     proposals,
   };
@@ -256,31 +309,48 @@ export function approveSkillLevelProposal(clubId, proposalId, options = {}) {
 
   const now = options.now || new Date();
   const reviewedAt = now instanceof Date ? now.toISOString() : new Date(now).toISOString();
-  const assessment = {
-    playerId: proposal.playerId,
-    previousLevel: proposal.currentLevel,
-    nextLevel: proposal.proposedLevel,
-    ratingInternal: proposal.ratingInternal,
-    changed: true,
-    direction: proposal.direction,
-    reviewMonth: proposal.reviewMonth,
-  };
 
-  const nextPlayers = [...(data.players || [])];
-  nextPlayers[playerIndex] = applyApprovedPublicLevel(nextPlayers[playerIndex], assessment, now);
+  const approveResult = approveRatingProposal(clubId, proposal.playerId, proposal, {
+    authUserId: data.players[playerIndex]?.authUserId || null,
+    verifiedBy: options.reviewedBy || null,
+    note: options.reviewNote || "Duyệt đề xuất trình độ hàng tháng",
+  });
 
-  proposals[index] = {
-    ...proposal,
+  if (!approveResult.ok) {
+    return approveResult;
+  }
+
+  const refreshed = loadClubData(clubId);
+  const refreshedProposals = getClubProposals(refreshed);
+  const refreshedIndex = refreshedProposals.findIndex(
+    (item) => String(item.id) === String(proposalId)
+  );
+  if (refreshedIndex < 0) {
+    return { ok: false, error: "Khong tim thay de xuat sau khi cap nhat." };
+  }
+
+  refreshedProposals[refreshedIndex] = {
+    ...refreshedProposals[refreshedIndex],
     status: PROPOSAL_STATUS.APPROVED,
     reviewedAt,
   };
 
-  data.players = normalizePlayers(nextPlayers);
-  data.skillLevelProposals = proposals;
-  data.updatedAt = reviewedAt;
-  saveClubData(clubId, data);
+  refreshed.skillLevelProposals = refreshedProposals;
+  refreshed.updatedAt = reviewedAt;
+  saveClubData(clubId, refreshed);
 
-  return { ok: true, proposal: proposals[index], player: nextPlayers[playerIndex] };
+  const refreshedPlayerIndex = (refreshed.players || []).findIndex(
+    (item) => String(item.id) === String(proposal.playerId)
+  );
+
+  return {
+    ok: true,
+    proposal: refreshedProposals[refreshedIndex],
+    player:
+      refreshedPlayerIndex >= 0
+        ? refreshed.players[refreshedPlayerIndex]
+        : approveResult.player,
+  };
 }
 
 export function rejectSkillLevelProposal(clubId, proposalId, options = {}) {

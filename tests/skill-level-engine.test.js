@@ -52,6 +52,8 @@ test("assessment does not include applied public level", () => {
     name: "Chi",
     level: 3.5,
     rating: 3.5,
+    current_rating: 3.5,
+    rating_match_count: 5,
     ratingInternal: 4.1,
   };
 

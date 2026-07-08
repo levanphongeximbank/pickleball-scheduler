@@ -88,7 +88,7 @@ export default function Players() {
   const [deletePlayer, setDeletePlayer] = useState(null);
   const [search, setSearch] = useState("");
   const [genderFilter, setGenderFilter] = useState("all");
-  const [levelRange, setLevelRange] = useState([1.5, 6]);
+  const [levelRange, setLevelRange] = useState([2.0, 6.5]);
   const [statusFilter, setStatusFilter] = useState("all");
   const [formError, setFormError] = useState(null);
 
@@ -197,7 +197,7 @@ export default function Players() {
 
   const clearFilters = () => {
     setGenderFilter("all");
-    setLevelRange([1.5, 6]);
+    setLevelRange([2.0, 6.5]);
     setStatusFilter("all");
     setSearch("");
   };
@@ -326,9 +326,9 @@ export default function Players() {
                 </Stack>
                 <Slider
                   value={form.level}
-                  min={1.5}
-                  max={6}
-                  step={0.1}
+                  min={2.0}
+                  max={6.5}
+                  step={0.5}
                   valueLabelDisplay="auto"
                   onChange={(_, v) => updateForm("level", v)}
                 />

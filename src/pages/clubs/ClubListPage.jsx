@@ -297,7 +297,7 @@ export default function ClubListPage() {
                   </TableCell>
                   <TableCell align="right">
                     <Tooltip title="Xem chi tiết">
-                      <IconButton size="small" onClick={() => navigate(`/clubs/${club.id}`)}>
+                      <IconButton size="small" onClick={() => navigate(`/manage/clubs/${club.id}`)}>
                         <VisibilityIcon fontSize="small" />
                       </IconButton>
                     </Tooltip>

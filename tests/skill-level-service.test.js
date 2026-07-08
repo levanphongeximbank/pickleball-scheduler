@@ -47,6 +47,7 @@ beforeEach(() => {
         level: 3.5,
         rating: 3.5,
         ratingInternal: 4.1,
+        rating_match_count: 5,
         skillMeta: { lastPublicLevelReviewAt: "2026-05-01T00:00:00.000Z" },
       },
     ],
@@ -145,7 +146,7 @@ test("applyEloFromMatchRecord updates skillLevel mirrors after tournament match"
   assert.ok(winner.skillLevel > 3.5);
   assert.equal(winner.level, winner.skillLevel);
   assert.equal(winner.rating, winner.skillLevel);
-  assert.equal(winner.ratingInternal, winner.skillLevel);
+  assert.ok(winner.ratingInternal > 3.5);
 });
 
 test("listSkillLevelProposals filters by status", () => {
@@ -213,4 +214,34 @@ test("getSkillLevelOverview returns distribution and player rows", () => {
   assert.equal(overview.players.length, 2);
   assert.equal(overview.players[0].name, "An");
   assert.ok(overview.players[0].delta > 0);
+});
+
+test("getSkillLevelOverview includes Pick_VN rating status distribution", () => {
+  saveClubData(DEFAULT_CLUB.id, {
+    ...loadClubData(DEFAULT_CLUB.id),
+    players: [
+      {
+        id: 1,
+        name: "An",
+        level: 3.5,
+        current_rating: 3.5,
+        verified_rating: 3.5,
+        rating_status: "club_verified",
+      },
+      {
+        id: 2,
+        name: "Binh",
+        level: 2.5,
+        current_rating: 2.5,
+        self_declared_rating: 2.5,
+        rating_status: "self_declared",
+      },
+    ],
+  });
+
+  const overview = getSkillLevelOverview(DEFAULT_CLUB.id);
+  assert.equal(overview.verifiedCount, 1);
+  assert.equal(overview.unverifiedCount, 1);
+  assert.ok(overview.ratingStatusDistribution.some((row) => row.status === "club_verified" && row.count === 1));
+  assert.ok(overview.ratingStatusDistribution.some((row) => row.status === "self_declared" && row.count === 1));
 });

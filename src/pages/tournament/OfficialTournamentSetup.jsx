@@ -24,7 +24,7 @@ import ArrowBackIcon from "@mui/icons-material/ArrowBack";
 
 import { useClub } from "../../context/ClubContext.jsx";
 import { loadCourtsForClub, loadPlayersForClub } from "../../domain/clubStorage.js";
-import TournamentCourtSchedulePanel from "../../components/tournament/TournamentCourtSchedulePanel.jsx";
+import TournamentVprPanel from "../../features/vpr-ranking/components/TournamentVprPanel.jsx";
 import {
   getTournament,
   advanceTournamentStatus,
@@ -95,6 +95,10 @@ import TournamentSelectedPlayersPanel from "../../components/tournament/Tourname
 import TournamentPlayerPickerPanel from "../../components/tournament/TournamentPlayerPickerPanel.jsx";
 import TournamentPlayerQuickAddDialog from "../../components/tournament/TournamentPlayerQuickAddDialog.jsx";
 import { getTenantPlayers } from "../../features/club/index.js";
+import {
+  resolveTournamentEntryPlayers,
+  TournamentRegistrationRatingPanel,
+} from "../../features/pick-vn-rating/index.js";
 import {
   ALL_CLUBS_FILTER,
   filterTournamentPickerPlayers,
@@ -1128,6 +1132,15 @@ export default function OfficialTournamentSetup() {
         </Grid>
       </Paper>
 
+      <TournamentVprPanel
+        clubId={activeClubId}
+        tournament={tournament}
+        onUpdated={() => {
+          setLocalRevision((value) => value + 1);
+          refreshClubs();
+        }}
+      />
+
       {aiEnabled && setupTab === 1 ? (
         <TournamentAiAssistantPanel
           tournamentId={tournamentId}
@@ -1489,6 +1502,16 @@ export default function OfficialTournamentSetup() {
                         <Typography variant="caption" color="text.secondary">
                           {entry.clubName || entry.representativeClubName || "Chua ro CLB"}
                         </Typography>
+                        <TournamentRegistrationRatingPanel
+                          players={resolveTournamentEntryPlayers(entry, allTenantPlayers)}
+                          tournamentId={tournamentId}
+                          hostClubId={activeClubId}
+                          compact
+                          onVerified={() => {
+                            refreshClubs();
+                            setLocalRevision((value) => value + 1);
+                          }}
+                        />
                       </Box>
                       {!savedEvent?.groups?.length && (
                         <Button

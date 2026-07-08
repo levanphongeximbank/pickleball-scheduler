@@ -20,6 +20,7 @@
 | A4 | Trang tạo giải bỏ nhãn V3.3 | ✅ | `TournamentHome.jsx` |
 | A5 | RBAC V5.2 in-page nav đội trưởng | ✅ | `tournamentInPageNav.js` |
 | A6 | SQL V5.2 sẵn sàng | ✅ | `PHASE_V52_PRODUCTION_RBAC_ROLES.sql` |
+| A7 | Phase 22 cloud persistence SQL | ✅ | `PHASE_22_CLOUD_PERSISTENCE.sql` |
 
 ---
 
@@ -63,6 +64,11 @@ git tag -a v5.2.0 -m "Pickleball Scheduler Pro V5.2 — RBAC + menu"
 | C3 | V52-1 → V52-8 verification PASS | ✅ | `npm run verify:v52-production` + MCP roles/perms |
 | C4 | Sửa `REPLACE_ME_TOURNAMENT_ID` / `REPLACE_ME_TEAM_EXTERNAL_ID` cho `doitruong@gmail.com` sau khi có giải đồng đội thật | ☐ | Profile vẫn REPLACE_ME |
 | C5 | (Tuỳ chọn) Tạo auth `kythuat@gmail.com` + chạy `PHASE_V52_PRODUCTION_RBAC_SEED.sql` | ✅ | `kythuat` + `doitruong` auth OK |
+| C6 | Apply `PHASE_22_CLOUD_PERSISTENCE.sql` (staging trước, production sau) | ☐ | Court engine + club version |
+| C7 | Apply `PHASE_33_TENANT_ROLE_CUSTOMIZE.sql` — chủ sân RBAC | ☐ | Staging ✅ MCP · Production ☐ |
+| C8 | `npm run verify:phase33-tenant-owner-rbac-production` | ☐ | Sau C7 |
+
+**Phase 33 (chủ sân):** [`PHASE_33_TENANT_ROLE_CUSTOMIZE.sql`](./PHASE_33_TENANT_ROLE_CUSTOMIZE.sql) · QA: [`PHASE_33_QA_CHECKLIST.md`](./PHASE_33_QA_CHECKLIST.md)
 
 ---
 
@@ -76,6 +82,8 @@ git tag -a v5.2.0 -m "Pickleball Scheduler Pro V5.2 — RBAC + menu"
 | `VITE_SEED_DEMO` | `false` | ✅ | Có trên Vercel — owner xác nhận giá trị |
 | `VITE_BILLING_SUPABASE` | `true` | ✅ | Có trên Vercel Production |
 | `VITE_TEAM_TOURNAMENT_SUPABASE` | `true` | ✅ | Có trên Vercel Production |
+| `VITE_COURT_ENGINE_STORE` | `supabase` | ☐ | Phase 22 — bật sau apply SQL |
+| `VITE_CLUB_CLOUD_SYNC` | `true` | ☐ | Phase 22 — club auto sync |
 | `VITE_PAYMENT_MODE` | `dev` | ✅ | Có trên Vercel Production |
 | `VITE_API_ENABLED` | `false` / absent | ✅ | Không thấy trong `vercel env ls` |
 | Không staging ref `qyewbxjsiiyufanzcjcq` | PASS | ✅ | Bundle scan — không có staging ref |

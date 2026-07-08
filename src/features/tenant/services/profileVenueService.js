@@ -88,7 +88,12 @@ export async function hydrateProfileVenueToLocalRegistry(tenantId) {
   return { ok: true, hydrated: true, tenantId: id, tenant };
 }
 
-export function resolveRouteAccessScope({ user, activeClubId, activeClub }) {
+export function resolveRouteAccessScope({
+  user,
+  activeClubId,
+  activeClub,
+  activeClusterId = null,
+}) {
   const profileVenueId = sanitizeBillingTenantId(user?.venueId || user?.tenantId);
   const clubVenueId = sanitizeBillingTenantId(
     activeClub?.venueId || activeClub?.tenantId
@@ -99,12 +104,14 @@ export function resolveRouteAccessScope({ user, activeClubId, activeClub }) {
     : user?.clubId || activeClubId || null;
   const tournamentId = user?.tournamentId || user?.tournament_id || null;
   const teamId = user?.teamId || user?.team_id || null;
+  const clusterId = activeClusterId || null;
 
   if (user?.role && isVenueScopedRole(user.role) && profileVenueId) {
     return {
       clubId,
       venueId: profileVenueId,
       tenantId: profileVenueId,
+      clusterId,
       playerId: user?.playerId || null,
       tournamentId,
       teamId,
@@ -117,6 +124,7 @@ export function resolveRouteAccessScope({ user, activeClubId, activeClub }) {
     clubId: clubScoped ? clubId : clubId || activeClubId || null,
     venueId,
     tenantId: venueId,
+    clusterId,
     playerId: user?.playerId || null,
     tournamentId,
     teamId,

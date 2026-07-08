@@ -17,6 +17,16 @@ import {
 import { renewSubscriptionPeriod } from "../features/subscription/index.js";
 import { updateClubMeta, getClubById } from "./clubService.js";
 import { guardMaxClubs } from "../auth/subscriptionGuard.js";
+import {
+  BILLING_STORE_MODES,
+  getBillingStore,
+  resolveBillingStoreMode,
+} from "../features/billing/repositories/billingRepository.js";
+import {
+  getLegacySubscriptionForVenue,
+  phase9SubscriptionToLegacy,
+} from "../features/billing/bridges/subscriptionAccessBridge.js";
+import { ensureCollection } from "../features/billing/services/billingStoreUtils.js";
 
 export const DEMO_VENUE_ID = "venue-demo";
 
@@ -29,9 +39,51 @@ export function getVenueById(venueId) {
 }
 
 export function getSubscriptionForVenue(venueId) {
+  const id = String(venueId || "").trim();
+  if (!id) {
+    return null;
+  }
+
+  if (resolveBillingStoreMode() === BILLING_STORE_MODES.SUPABASE) {
+    const fromBilling = getLegacySubscriptionForVenue(id);
+    if (fromBilling) {
+      return fromBilling;
+    }
+  }
+
   const map = loadSubscriptions();
-  const raw = map[venueId];
+  const raw = map[id];
   return raw ? normalizeSubscription(raw) : null;
+}
+
+/** Mirror Supabase billing subscriptions into legacy localStorage map. */
+export function syncLegacySubscriptionsFromBilling() {
+  if (resolveBillingStoreMode() !== BILLING_STORE_MODES.SUPABASE) {
+    return { ok: true, changed: false };
+  }
+
+  const subscriptions = ensureCollection(getBillingStore(), "subscriptions", []);
+  if (!subscriptions.length) {
+    return { ok: true, changed: false };
+  }
+
+  const map = loadSubscriptions();
+  let changed = false;
+
+  for (const subscription of subscriptions) {
+    const legacy = phase9SubscriptionToLegacy(subscription);
+    if (!legacy?.venueId) {
+      continue;
+    }
+    map[legacy.venueId] = legacy;
+    changed = true;
+  }
+
+  if (changed) {
+    saveSubscriptions(map);
+  }
+
+  return { ok: true, changed };
 }
 
 export function ensureDemoVenue() {

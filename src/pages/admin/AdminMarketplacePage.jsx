@@ -25,10 +25,10 @@ import {
   listOrders,
 } from "../../features/marketplace/index.js";
 import { useAuth } from "../../context/AuthContext.jsx";
-import { ROLES } from "../../auth/roles.js";
+import { PERMISSIONS } from "../../auth/permissions.js";
 
 export default function AdminMarketplacePage() {
-  const { user } = useAuth();
+  const { can } = useAuth();
   const { currentTenantId, isSuperAdmin } = useTenant();
   const [tab, setTab] = useState(0);
   const [message, setMessage] = useState(null);
@@ -45,7 +45,7 @@ export default function AdminMarketplacePage() {
     [currentTenantId, isSuperAdmin, refreshKey]
   );
 
-  if (!isSuperAdmin && user?.role !== ROLES.COURT_OWNER) {
+  if (!isSuperAdmin && !can(PERMISSIONS.MARKETPLACE_MANAGE)) {
     return <Alert severity="error">Không có quyền truy cập admin marketplace.</Alert>;
   }
 

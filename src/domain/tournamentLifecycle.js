@@ -8,6 +8,7 @@ import { applySeasonPointsFromMatchRecord } from "./seasonStandingsService.js";
 import { loadClubData } from "./clubStorage.js";
 import { processClubInternalMatchCompletion } from "../features/club/services/clubTournamentBridge.js";
 import { resolveTenantIdForClub } from "../features/tenant/guards/tenantGuard.js";
+import { incrementPickVnMatchCountFromRecord } from "../features/pick-vn-rating/services/pickVnRatingService.js";
 
 function getTournamentFromClub(clubId, tournamentId) {
   const data = loadClubData(clubId);
@@ -106,10 +107,16 @@ export function processCompletedMatch(clubId, { tournament, match, event = null 
         }
       : applyEloFromMatchRecord(clubId, record);
 
+  const matchCountResult =
+    skipEloForDailyPlay
+      ? { ok: true, skipped: true, reason: "daily-play-excluded" }
+      : incrementPickVnMatchCountFromRecord(clubId, record);
+
   return {
     ok: seasonResult.ok !== false && eloResult.ok !== false && clubEloResult?.ok !== false,
     seasonResult,
     eloResult,
+    matchCountResult,
     clubEloResult,
     record,
   };

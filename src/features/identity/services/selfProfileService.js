@@ -44,6 +44,8 @@ export async function fetchSelfProfile() {
         ...result.user,
         phone: profile.phone || "",
         avatarUrl: profile.avatar_url || "",
+        gender: profile.gender || "",
+        birthYear: profile.birth_year ?? null,
       }),
     };
   }
@@ -129,5 +131,70 @@ export async function updateSelfProfile({ displayName, phone, avatarUrl } = {}) 
     resourceId: user.id,
   });
 
+  return { ok: true, user: nextUser };
+}
+
+export async function updateSelfDemographics({ gender, birthYear } = {}) {
+  const user = getCurrentUser();
+  if (!user?.id) {
+    return { ok: false, error: "Chưa đăng nhập.", code: "NOT_AUTHENTICATED" };
+  }
+
+  const patch = {};
+  if (gender !== undefined) {
+    patch.gender = String(gender || "").trim() || null;
+  }
+  if (birthYear !== undefined) {
+    const year = Number(birthYear);
+    patch.birthYear = Number.isFinite(year) ? year : null;
+  }
+
+  if (!Object.keys(patch).length) {
+    return { ok: true, user: normalizeUser(user) };
+  }
+
+  if (hasSupabaseConfig()) {
+    const existing = await fetchProfileByUserId(user.id);
+    if (!existing.ok) {
+      return existing;
+    }
+
+    const row = {
+      id: user.id,
+      email: user.email,
+      display_name: existing.profile?.display_name || user.displayName,
+      phone: existing.profile?.phone || "",
+      avatar_url: existing.profile?.avatar_url || "",
+      role: existing.profile?.role,
+      venue_id: existing.profile?.venue_id,
+      club_id: existing.profile?.club_id,
+      player_id: existing.profile?.player_id,
+      status: existing.profile?.status,
+      gender: patch.gender ?? existing.profile?.gender ?? null,
+      birth_year: patch.birthYear ?? existing.profile?.birth_year ?? null,
+      updated_at: new Date().toISOString(),
+    };
+
+    const result = await upsertProfileRow(row);
+    if (!result.ok) {
+      return result;
+    }
+
+    const merged = normalizeUser({
+      ...result.user,
+      gender: row.gender || "",
+      birthYear: row.birth_year ?? null,
+    });
+    saveAuthSession(merged, { provider: "supabase" });
+    return { ok: true, user: merged };
+  }
+
+  const devUpdated = updateDevSelfProfile(user.id, patch);
+  const nextUser = normalizeUser({
+    ...user,
+    ...patch,
+    ...(devUpdated || {}),
+  });
+  saveAuthSession(nextUser, { provider: "dev" });
   return { ok: true, user: nextUser };
 }

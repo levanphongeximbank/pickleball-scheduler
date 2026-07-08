@@ -135,7 +135,30 @@ set
   data = excluded.data,
   synced_at = now();
 
--- ─── 5) Verify ──────────────────────────────────────────────────────────────
+-- ─── 5) Phase 23 — court clusters (default per tenant) ─────────────────────
+
+insert into public.court_clusters (id, venue_id, name, slug, status, court_count)
+values
+  ('venue-staging-a-main', 'venue-staging-a', 'Cụm chính A', 'main', 'active', 3),
+  ('venue-staging-b-main', 'venue-staging-b', 'Cụm chính B', 'main', 'active', 5)
+on conflict (id) do update
+set
+  court_count = excluded.court_count,
+  updated_at = now();
+
+insert into public.user_cluster_assignments (user_id, cluster_id, role)
+select p.id, 'venue-staging-a-main', 'CLUSTER_OWNER'
+from public.profiles p
+where p.email = 'owner@staging.local'
+on conflict (user_id, cluster_id) do nothing;
+
+insert into public.user_cluster_assignments (user_id, cluster_id, role)
+select p.id, 'venue-staging-b-main', 'CLUSTER_OWNER'
+from public.profiles p
+where p.email = 'owner-b@staging.local'
+on conflict (user_id, cluster_id) do nothing;
+
+-- ─── 6) Verify ──────────────────────────────────────────────────────────────
 
 select 'venues' as section, id, name, status
 from public.venues

@@ -272,6 +272,60 @@ export function findBookingAtSlot(bookings, courtId, date, slotTime, slotMinutes
   });
 }
 
+/**
+ * Build per-cell render plan for day grid (supports multi-slot booking blocks).
+ * Returns Map keyed by `${courtId}::${slotTime}` with type: empty | booking | skip.
+ */
+export function buildDayGridBlocks(
+  dayBookings,
+  courts,
+  date,
+  hourSlots,
+  slotMinutes = DEFAULT_SLOT_MINUTES
+) {
+  const blocks = new Map();
+
+  for (const court of courts || []) {
+    for (let index = 0; index < hourSlots.length; index += 1) {
+      const slotTime = hourSlots[index];
+      const key = `${court.id}::${slotTime}`;
+      const booking = findBookingAtSlot(dayBookings, court.id, date, slotTime, slotMinutes);
+
+      if (!booking) {
+        blocks.set(key, {
+          type: "empty",
+          court,
+          slotTime,
+          slotIndex: index,
+        });
+        continue;
+      }
+
+      const bookingStartMin = timeToMinutes(booking.startTime);
+      const slotMin = timeToMinutes(slotTime);
+
+      if (bookingStartMin < slotMin) {
+        blocks.set(key, { type: "skip" });
+        continue;
+      }
+
+      const duration = calculateDuration(booking.startTime, booking.endTime);
+      const rowSpan = Math.max(1, Math.ceil(duration / slotMinutes));
+
+      blocks.set(key, {
+        type: "booking",
+        court,
+        slotTime,
+        slotIndex: index,
+        booking,
+        rowSpan,
+      });
+    }
+  }
+
+  return blocks;
+}
+
 export function getCurrentBookingForCourt(court, bookings, date, now = new Date()) {
   const today = date || now.toISOString().slice(0, 10);
   const currentTime = minutesToTime(now.getHours() * 60 + now.getMinutes());

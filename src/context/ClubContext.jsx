@@ -16,6 +16,8 @@ import {
   listClubsForTenant,
 } from "../features/tenant/guards/tenantGuard.js";
 import { autoPullOnClubActivate, isAiAutoCloudSyncEnabled } from "../ai/autoCloudSync.js";
+import { isVenueScopedRole, isClubScopedRole } from "../auth/roles.js";
+import { ensureWritableClubForVenueOwner } from "../features/club/services/venueOwnerClubService.js";
 
 const ClubContext = createContext(null);
 
@@ -32,9 +34,24 @@ export function ClubProvider({ children }) {
     }
 
     const tenantClubs = listClubsForTenant(currentTenantId);
-    return tenantClubs.filter((club) =>
+    const visible = tenantClubs.filter((club) =>
       canAccessClub(user, club.id, { venueId: club.venueId || null }, { rbacEnabled })
     );
+
+    if (isClubScopedRole(user?.role) && user?.clubId) {
+      const alreadyVisible = visible.some((club) => club.id === user.clubId);
+      if (!alreadyVisible) {
+        const assigned = loadClubs().find((club) => club.id === user.clubId && !club.isDefault);
+        if (
+          assigned &&
+          canAccessClub(user, assigned.id, { venueId: assigned.venueId || null }, { rbacEnabled })
+        ) {
+          return [...visible, assigned];
+        }
+      }
+    }
+
+    return visible;
   }, [clubs, currentTenantId, isAuthenticated, rbacEnabled, user]);
 
   useEffect(() => {
@@ -44,6 +61,21 @@ export function ClubProvider({ children }) {
 
     const tenantClubs = listClubsForTenant(currentTenantId);
     if (tenantClubs.length === 0) {
+      if (user && isVenueScopedRole(user.role)) {
+        const ensured = ensureWritableClubForVenueOwner(user, { activeClubId });
+        if (ensured.ok && ensured.clubId && ensured.clubId !== activeClubId) {
+          setClubs(loadClubs());
+          setActiveClubId(ensured.clubId);
+          setRevision((value) => value + 1);
+        } else if (ensured.ok && ensured.created) {
+          setClubs(loadClubs());
+          setRevision((value) => value + 1);
+        }
+      }
+      return;
+    }
+
+    if (user && isClubScopedRole(user.role)) {
       return;
     }
 
@@ -56,7 +88,32 @@ export function ClubProvider({ children }) {
         setRevision((value) => value + 1);
       }
     }
-  }, [activeClubId, currentTenantId, isAuthenticated, rbacEnabled]);
+  }, [activeClubId, currentTenantId, isAuthenticated, rbacEnabled, user]);
+
+  useEffect(() => {
+    if (!rbacEnabled || !isAuthenticated || !user?.clubId) {
+      return;
+    }
+
+    if (!isClubScopedRole(user.role)) {
+      return;
+    }
+
+    if (user.clubId === activeClubId) {
+      return;
+    }
+
+    const canUseClub = visibleClubs.some((club) => club.id === user.clubId);
+    if (!canUseClub) {
+      return;
+    }
+
+    const result = switchActiveClub(user.clubId);
+    if (result.ok) {
+      setActiveClubId(user.clubId);
+      setRevision((value) => value + 1);
+    }
+  }, [activeClubId, isAuthenticated, rbacEnabled, user, visibleClubs]);
 
   useEffect(() => {
     if (!activeClubId || !isAuthenticated || !isAiAutoCloudSyncEnabled()) {
@@ -108,14 +165,48 @@ export function ClubProvider({ children }) {
     setRevision((value) => value + 1);
   }, []);
 
-  const activeClub = useMemo(
-    () => visibleClubs.find((club) => club.id === activeClubId) || getActiveClub(),
-    [visibleClubs, activeClubId]
-  );
+  const activeClub = useMemo(() => {
+    const matched = visibleClubs.find((club) => club.id === activeClubId);
+    if (matched) {
+      return matched;
+    }
+
+    if (!rbacEnabled || !isAuthenticated) {
+      return getActiveClub();
+    }
+
+    return visibleClubs[0] || null;
+  }, [visibleClubs, activeClubId, rbacEnabled, isAuthenticated]);
+
+  useEffect(() => {
+    if (!rbacEnabled || !isAuthenticated) {
+      return;
+    }
+
+    const hasAccess = visibleClubs.some((club) => club.id === activeClubId);
+    if (hasAccess) {
+      return;
+    }
+
+    const targetId =
+      user?.clubId && visibleClubs.some((club) => club.id === user.clubId)
+        ? user.clubId
+        : visibleClubs[0]?.id;
+
+    if (!targetId || targetId === activeClubId) {
+      return;
+    }
+
+    const result = switchActiveClub(targetId);
+    if (result.ok) {
+      setActiveClubId(targetId);
+      setRevision((value) => value + 1);
+    }
+  }, [activeClubId, isAuthenticated, rbacEnabled, user, visibleClubs]);
 
   const summary = useMemo(
-    () => getClubSummary(activeClubId),
-    [activeClubId, revision]
+    () => getClubSummary(activeClub?.id || activeClubId),
+    [activeClub?.id, activeClubId, revision]
   );
 
   const handleSwitchClub = useCallback(

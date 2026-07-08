@@ -1,3 +1,6 @@
+import { syncCurrentRatingMirrors } from "../../models/player.js";
+import { snapPickVnRating } from "../../features/pick-vn-rating/constants/pickVnRatingScale.js";
+
 const DEFAULT_K_FACTOR = 32;
 const DEFAULT_RATING = 3.5;
 
@@ -113,11 +116,10 @@ export function applyEloUpdatesToPlayers(players = [], updates = [], options = {
     }
 
     const nextRating = update.nextRating;
+    const publicRating = snapPickVnRating(nextRating);
     return {
       ...player,
-      skillLevel: nextRating,
-      level: nextRating,
-      rating: nextRating,
+      ...syncCurrentRatingMirrors(publicRating),
       ratingInternal: nextRating,
       skillMeta: {
         ...(player.skillMeta || {}),

@@ -1,6 +1,7 @@
 import { AUTH_SESSION_KEY, RBAC_STORAGE_KEY, isRbacEnabledFromEnv } from "./config.js";
 import { isSecureRuntime } from "./runtime.js";
 import { normalizeUser } from "../models/user.js";
+import { mergeAthleteClubLink } from "../features/club/storage/athleteClubLinkStore.js";
 
 function readJson(key, fallback) {
   try {
@@ -44,8 +45,10 @@ export function loadAuthSession() {
   const session = readJson(AUTH_SESSION_KEY, null);
   if (!session?.user) return null;
 
+  const user = mergeAthleteClubLink(normalizeUser(session.user));
+
   return {
-    user: normalizeUser(session.user),
+    user,
     provider: session.provider || "dev",
     loggedInAt: session.loggedInAt || null,
   };

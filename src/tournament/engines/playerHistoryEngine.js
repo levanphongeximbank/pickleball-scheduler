@@ -305,3 +305,54 @@ export function loadPlayerHistoryProfileForClub(clubId, playerId, options = {}) 
     recentLimit: options.recentLimit,
   });
 }
+
+function findPlayerInClubData(clubId, { playerId, authUserId } = {}) {
+  if (!clubId) {
+    return null;
+  }
+
+  const players = loadClubData(clubId).players || [];
+
+  if (playerId) {
+    const byId = players.find((item) => String(item.id) === String(playerId));
+    if (byId) {
+      return byId;
+    }
+  }
+
+  if (authUserId) {
+    return (
+      players.find((item) => String(item.authUserId || "") === String(authUserId)) || null
+    );
+  }
+
+  return null;
+}
+
+/**
+ * Tìm VĐV theo club ưu tiên (profile CLB gán) rồi fallback activeClubId / authUserId.
+ */
+export function loadPlayerHistoryProfileResolved(
+  { primaryClubId, secondaryClubId, playerId, authUserId } = {},
+  options = {}
+) {
+  const clubIds = [...new Set([primaryClubId, secondaryClubId].filter(Boolean))];
+
+  for (const clubId of clubIds) {
+    const player = findPlayerInClubData(clubId, { playerId, authUserId });
+    if (!player) {
+      continue;
+    }
+
+    const profile = loadPlayerHistoryProfileForClub(clubId, player.id, options);
+    if (profile.ok) {
+      return {
+        ...profile,
+        clubId,
+        resolvedPlayerId: player.id,
+      };
+    }
+  }
+
+  return { ok: false, error: "Khong tim thay VDV." };
+}

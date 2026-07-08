@@ -1,4 +1,5 @@
 import { getActiveClubId, getScopedStorageKey } from "../data/club.js";
+import { scheduleClubCloudPush } from "../ai/clubCloudPush.js";
 import { DEFAULT_COMPETITION_TYPE } from "../ai/competition.js";
 import { DEFAULT_SKILL_LEVEL_RULES } from "../ai/config.js";
 import { createLeagueRecord } from "../models/league.js";
@@ -258,6 +259,7 @@ export function saveClubData(clubId, data) {
   );
 
   localStorage.setItem(getClubDataKey(clubId), JSON.stringify(normalized));
+  scheduleClubCloudPush(clubId);
   return normalized;
 }
 
