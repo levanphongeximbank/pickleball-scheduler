@@ -51,6 +51,36 @@ export async function rpcListUnassignedClusters({ search = "", limit = 100 } = {
   return { ok: true, clusters, provider: "rpc" };
 }
 
+export async function rpcListRegisterableClusters({ search = "", limit = 100 } = {}) {
+  const client = getSupabaseAuthClient();
+  if (!client) {
+    return { ok: false, code: "NO_SUPABASE", error: "Supabase chưa sẵn sàng." };
+  }
+
+  const { data, error } = await client.rpc("court_list_registerable_clusters", {
+    p_search: search || "",
+    p_limit: limit,
+  });
+
+  if (error) {
+    if (isMissingRpcError(error)) {
+      return { ok: false, code: "RPC_NOT_DEPLOYED", error: error.message };
+    }
+    return { ok: false, code: "RPC_FAILED", error: error.message };
+  }
+
+  const payload = parseRpcJson(data);
+  if (!payload.ok) {
+    return payload;
+  }
+
+  const clusters = (payload.clusters || []).map((row) => ({
+    ...normalizeCourtCluster(row),
+    venueName: row.venue_name || "",
+  }));
+  return { ok: true, clusters, provider: "rpc" };
+}
+
 export async function rpcSubmitCourtClaimRequest({ clusterIds = [], message = "" } = {}) {
   const client = getSupabaseAuthClient();
   if (!client) {

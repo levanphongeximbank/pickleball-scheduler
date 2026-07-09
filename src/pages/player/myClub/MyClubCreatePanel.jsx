@@ -1,27 +1,78 @@
-import { useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   Alert,
+  Autocomplete,
   Box,
   Button,
-  FormControl,
-  InputLabel,
-  MenuItem,
-  Select,
+  CircularProgress,
+  TextField,
   Typography,
 } from "@mui/material";
 import AddIcon from "@mui/icons-material/Add";
 
 import ClubFormDialog from "../../clubs/ClubFormDialog.jsx";
 import { canSelfRegisterClub } from "../../../features/club/index.js";
-import { listTenants } from "../../../features/tenant/index.js";
+import {
+  cacheRegisterableClusterLocally,
+  listRegisterableClusters,
+} from "../../../features/court-cluster/services/courtClusterDiscoveryService.js";
+
+const SEARCH_DEBOUNCE_MS = 300;
+
+function clusterSearchLabel(cluster) {
+  return cluster?.name || cluster?.id || "";
+}
+
+function clusterSearchSubtitle(cluster) {
+  const venue = cluster?.venueName || cluster?.venueId || "";
+  const address = cluster?.address || "";
+  return [venue, address].filter(Boolean).join(" · ");
+}
 
 export default function MyClubCreatePanel({ tenantId, user, onSuccess }) {
   const [formOpen, setFormOpen] = useState(false);
   const [message, setMessage] = useState(null);
-  const [selectedTenantId, setSelectedTenantId] = useState(tenantId || "");
+  const [selectedCluster, setSelectedCluster] = useState(null);
+  const [clusters, setClusters] = useState([]);
+  const [searchInput, setSearchInput] = useState("");
+  const [search, setSearch] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [loadError, setLoadError] = useState(null);
 
-  const tenants = useMemo(() => listTenants(), []);
-  const effectiveTenantId = tenantId || selectedTenantId || "";
+  const effectiveTenantId = tenantId || selectedCluster?.venueId || "";
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setSearch(searchInput.trim());
+    }, SEARCH_DEBOUNCE_MS);
+    return () => clearTimeout(timer);
+  }, [searchInput]);
+
+  const loadClusters = useCallback(async () => {
+    if (tenantId) {
+      return;
+    }
+
+    setLoading(true);
+    setLoadError(null);
+
+    const result = await listRegisterableClusters({ search });
+    setLoading(false);
+
+    if (!result.ok) {
+      setLoadError(result.error || "Không tải được danh sách cụm sân.");
+      setClusters([]);
+      return;
+    }
+
+    setClusters(result.clusters || []);
+  }, [search, tenantId]);
+
+  useEffect(() => {
+    void loadClusters();
+  }, [loadClusters]);
+
+  const clusterOptions = useMemo(() => clusters, [clusters]);
 
   if (!canSelfRegisterClub(user)) {
     return (
@@ -31,14 +82,19 @@ export default function MyClubCreatePanel({ tenantId, user, onSuccess }) {
     );
   }
 
-  const handleOpenForm = () => {
+  const handleOpenForm = async () => {
     if (!effectiveTenantId) {
       setMessage({
         type: "warning",
-        text: "Vui lòng chọn cơ sở / tổ chức trước khi tạo CLB.",
+        text: "Vui lòng chọn cụm sân hoạt động trước khi tạo CLB.",
       });
       return;
     }
+
+    if (selectedCluster) {
+      await cacheRegisterableClusterLocally(selectedCluster);
+    }
+
     setFormOpen(true);
   };
 
@@ -50,26 +106,58 @@ export default function MyClubCreatePanel({ tenantId, user, onSuccess }) {
         tham gia.
       </Typography>
 
-      {!tenantId && tenants.length > 0 && (
-        <FormControl fullWidth sx={{ mb: 2, maxWidth: 420 }}>
-          <InputLabel>Cơ sở / tổ chức</InputLabel>
-          <Select
-            value={selectedTenantId}
-            label="Cơ sở / tổ chức"
-            onChange={(event) => setSelectedTenantId(event.target.value)}
-          >
-            {tenants.map((item) => (
-              <MenuItem key={item.id} value={item.id}>
-                {item.name || item.id}
-              </MenuItem>
-            ))}
-          </Select>
-        </FormControl>
+      {!tenantId && (
+        <Autocomplete
+          sx={{ mb: 2, maxWidth: 520 }}
+          options={clusterOptions}
+          value={selectedCluster}
+          onChange={(_event, value) => setSelectedCluster(value)}
+          inputValue={searchInput}
+          onInputChange={(_event, value) => setSearchInput(value)}
+          getOptionLabel={clusterSearchLabel}
+          isOptionEqualToValue={(option, value) => option?.id === value?.id}
+          loading={loading}
+          noOptionsText={
+            loading
+              ? "Đang tải..."
+              : search
+                ? "Không tìm thấy cụm sân — thử từ khóa khác"
+                : "Gõ tên cụm sân để tìm"
+          }
+          renderInput={(params) => (
+            <TextField
+              {...params}
+              label="Cụm sân hoạt động"
+              placeholder="Tìm theo tên cụm sân, địa chỉ..."
+              InputProps={{
+                ...params.InputProps,
+                endAdornment: (
+                  <>
+                    {loading ? <CircularProgress color="inherit" size={18} /> : null}
+                    {params.InputProps.endAdornment}
+                  </>
+                ),
+              }}
+            />
+          )}
+          renderOption={(props, cluster) => (
+            <li {...props} key={cluster.id}>
+              <Box>
+                <Typography variant="body2">{clusterSearchLabel(cluster)}</Typography>
+                {clusterSearchSubtitle(cluster) && (
+                  <Typography variant="caption" color="text.secondary">
+                    {clusterSearchSubtitle(cluster)}
+                  </Typography>
+                )}
+              </Box>
+            </li>
+          )}
+        />
       )}
 
-      {!tenantId && tenants.length === 0 && (
+      {loadError && (
         <Alert severity="warning" sx={{ mb: 2 }}>
-          Chưa có cơ sở nào trong hệ thống. Liên hệ quản trị viên để được hỗ trợ tạo CLB.
+          {loadError}
         </Alert>
       )}
 
@@ -82,8 +170,8 @@ export default function MyClubCreatePanel({ tenantId, user, onSuccess }) {
       <Button
         variant="contained"
         startIcon={<AddIcon />}
-        onClick={handleOpenForm}
-        disabled={!effectiveTenantId && tenants.length === 0}
+        onClick={() => void handleOpenForm()}
+        disabled={!effectiveTenantId}
       >
         Tạo CLB mới
       </Button>
@@ -92,6 +180,8 @@ export default function MyClubCreatePanel({ tenantId, user, onSuccess }) {
         open={formOpen}
         club={null}
         tenantId={effectiveTenantId}
+        initialRegisteredClusterId={selectedCluster?.id || ""}
+        lockRegisteredCluster={Boolean(selectedCluster?.id)}
         onClose={() => setFormOpen(false)}
         onSuccess={(club) => {
           setFormOpen(false);

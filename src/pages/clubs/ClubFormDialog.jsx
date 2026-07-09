@@ -1,18 +1,17 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   Alert,
+  Autocomplete,
+  Box,
   Button,
   Checkbox,
+  CircularProgress,
   Dialog,
   DialogActions,
   DialogContent,
   DialogTitle,
-  FormControl,
   FormControlLabel,
-  InputLabel,
-  ListItemText,
   MenuItem,
-  Select,
   Stack,
   TextField,
   Typography,
@@ -22,8 +21,14 @@ import { useAuth } from "../../context/AuthContext.jsx";
 import { ROLES, normalizeRole } from "../../auth/roles.js";
 import GovernanceMemberSelect from "../../components/club/GovernanceMemberSelect.jsx";
 import { listClustersForVenue } from "../../features/court-cluster/services/courtClusterService.js";
+import {
+  cacheRegisterableClusterLocally,
+  listRegisterableClusters,
+} from "../../features/court-cluster/services/courtClusterDiscoveryService.js";
 import { CLUB_STATUSES, listClubGovernanceCandidates, canSelfRegisterClub } from "../../features/club/index.js";
 import { createClub, updateClub } from "../../features/club/index.js";
+
+const SEARCH_DEBOUNCE_MS = 300;
 
 const defaultForm = {
   name: "",
@@ -36,25 +41,90 @@ const defaultForm = {
   assignOwnerToCreator: true,
 };
 
-export default function ClubFormDialog({ open, club, tenantId, onClose, onSuccess }) {
+function clusterSearchLabel(cluster) {
+  return cluster?.name || cluster?.id || "";
+}
+
+function clusterSearchSubtitle(cluster) {
+  const venue = cluster?.venueName || cluster?.venueId || "";
+  const address = cluster?.address || "";
+  return [venue, address].filter(Boolean).join(" · ");
+}
+
+export default function ClubFormDialog({
+  open,
+  club,
+  tenantId,
+  initialRegisteredClusterId = "",
+  lockRegisteredCluster = false,
+  onClose,
+  onSuccess,
+}) {
   const { user } = useAuth();
   const [form, setForm] = useState(defaultForm);
   const [error, setError] = useState(null);
   const [saving, setSaving] = useState(false);
+  const [clusterOptions, setClusterOptions] = useState([]);
+  const [selectedCluster, setSelectedCluster] = useState(null);
+  const [clusterSearchInput, setClusterSearchInput] = useState("");
+  const [clusterSearch, setClusterSearch] = useState("");
+  const [clusterLoading, setClusterLoading] = useState(false);
 
   const isEdit = Boolean(club?.id);
   const isCourtOwner = normalizeRole(user?.role) === ROLES.TENANT_OWNER;
   const isSelfRegister = canSelfRegisterClub(user);
 
-  const venueClusters = useMemo(
+  const localVenueClusters = useMemo(
     () => (tenantId ? listClustersForVenue(tenantId) : []),
-    [tenantId]
+    [tenantId, open]
   );
+
+  const useCloudClusterPicker = !isEdit && (localVenueClusters.length === 0 || isSelfRegister);
 
   const governanceCandidates = useMemo(
     () => (isEdit && club?.id ? listClubGovernanceCandidates(club.id, tenantId) : []),
     [isEdit, club?.id, tenantId]
   );
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setClusterSearch(clusterSearchInput.trim());
+    }, SEARCH_DEBOUNCE_MS);
+    return () => clearTimeout(timer);
+  }, [clusterSearchInput]);
+
+  const loadClusterOptions = useCallback(async () => {
+    if (!open || isEdit) {
+      return;
+    }
+
+    if (!useCloudClusterPicker) {
+      setClusterOptions(localVenueClusters);
+      return;
+    }
+
+    setClusterLoading(true);
+    const result = await listRegisterableClusters({ search: clusterSearch });
+    setClusterLoading(false);
+
+    if (!result.ok) {
+      setClusterOptions(localVenueClusters);
+      return;
+    }
+
+    let options = result.clusters || [];
+    if (tenantId) {
+      options = options.filter((cluster) => cluster.venueId === tenantId);
+    }
+    if (options.length === 0 && localVenueClusters.length > 0) {
+      options = localVenueClusters;
+    }
+    setClusterOptions(options);
+  }, [open, isEdit, useCloudClusterPicker, clusterSearch, tenantId, localVenueClusters]);
+
+  useEffect(() => {
+    void loadClusterOptions();
+  }, [loadClusterOptions]);
 
   useEffect(() => {
     if (!open) return;
@@ -69,15 +139,45 @@ export default function ClubFormDialog({ open, club, tenantId, onClose, onSucces
         registeredClusterId: club.governance?.registeredClusterId || "",
         assignOwnerToCreator: true,
       });
+      const existing = localVenueClusters.find(
+        (item) => item.id === club.governance?.registeredClusterId
+      );
+      setSelectedCluster(existing || null);
     } else {
+      const clusterId = String(initialRegisteredClusterId || "").trim();
       setForm({
         ...defaultForm,
         presidentUserId: isSelfRegister ? user?.id || "" : "",
+        registeredClusterId: clusterId,
         assignOwnerToCreator: isCourtOwner,
       });
+      setSelectedCluster(null);
     }
     setError(null);
-  }, [open, club, user, isSelfRegister, isCourtOwner]);
+  }, [open, club, user, isSelfRegister, isCourtOwner, initialRegisteredClusterId, localVenueClusters]);
+
+  useEffect(() => {
+    if (!open || isEdit || !initialRegisteredClusterId) {
+      return;
+    }
+
+    const match =
+      clusterOptions.find((item) => item.id === initialRegisteredClusterId) ||
+      localVenueClusters.find((item) => item.id === initialRegisteredClusterId);
+
+    if (match) {
+      setSelectedCluster(match);
+      setForm((prev) => ({ ...prev, registeredClusterId: match.id }));
+    }
+  }, [open, isEdit, initialRegisteredClusterId, clusterOptions, localVenueClusters]);
+
+  const handleClusterChange = (_event, value) => {
+    setSelectedCluster(value);
+    setForm((prev) => ({
+      ...prev,
+      registeredClusterId: value?.id || "",
+    }));
+  };
 
   const handleSubmit = async () => {
     setSaving(true);
@@ -90,11 +190,21 @@ export default function ClubFormDialog({ open, club, tenantId, onClose, onSucces
       return;
     }
 
+    const registeredClusterId = form.registeredClusterId.trim() || null;
+    if (registeredClusterId && selectedCluster) {
+      const cacheResult = await cacheRegisterableClusterLocally(selectedCluster);
+      if (!cacheResult.ok) {
+        setSaving(false);
+        setError(cacheResult.error || "Không lưu được cụm sân đã chọn.");
+        return;
+      }
+    }
+
     const governance = {
       presidentUserId: presidentUserId || club?.governance?.presidentUserId,
       ownerUserId: club?.governance?.ownerUserId ?? null,
       vicePresidentUserId: form.vicePresidentUserId.trim() || null,
-      registeredClusterId: form.registeredClusterId.trim() || null,
+      registeredClusterId,
     };
 
     const payload = {
@@ -120,6 +230,8 @@ export default function ClubFormDialog({ open, club, tenantId, onClose, onSucces
 
     onSuccess?.(result.club);
   };
+
+  const clusterPickerOptions = useCloudClusterPicker ? clusterOptions : localVenueClusters;
 
   return (
     <Dialog open={open} onClose={onClose} maxWidth="sm" fullWidth>
@@ -191,35 +303,62 @@ export default function ClubFormDialog({ open, club, tenantId, onClose, onSucces
               helperText="Tùy chọn — gán sau khi CLB có vận động viên"
             />
           )}
-          <FormControl fullWidth>
-            <InputLabel>Cụm sân đăng ký</InputLabel>
-            <Select
-              value={form.registeredClusterId}
-              onChange={(e) =>
-                setForm((f) => ({
-                  ...f,
-                  registeredClusterId: e.target.value,
-                }))
-              }
+          {lockRegisteredCluster && selectedCluster ? (
+            <TextField
               label="Cụm sân đăng ký"
-              displayEmpty
-            >
-              <MenuItem value="">
-                <em>Chưa chọn</em>
-              </MenuItem>
-              {venueClusters.length === 0 && (
-                <MenuItem disabled>Chưa có cụm sân trong tổ chức</MenuItem>
+              value={clusterSearchLabel(selectedCluster)}
+              helperText={clusterSearchSubtitle(selectedCluster)}
+              disabled
+              fullWidth
+            />
+          ) : (
+            <Autocomplete
+              options={clusterPickerOptions}
+              value={selectedCluster}
+              onChange={handleClusterChange}
+              inputValue={clusterSearchInput}
+              onInputChange={(_event, value) => setClusterSearchInput(value)}
+              getOptionLabel={clusterSearchLabel}
+              isOptionEqualToValue={(option, value) => option?.id === value?.id}
+              loading={clusterLoading}
+              disabled={lockRegisteredCluster}
+              noOptionsText={
+                clusterLoading
+                  ? "Đang tải..."
+                  : clusterSearch
+                    ? "Không tìm thấy cụm sân"
+                    : "Gõ tên cụm sân để tìm"
+              }
+              renderInput={(params) => (
+                <TextField
+                  {...params}
+                  label="Cụm sân đăng ký"
+                  placeholder="Tùy chọn — tìm theo tên cụm sân"
+                  InputProps={{
+                    ...params.InputProps,
+                    endAdornment: (
+                      <>
+                        {clusterLoading ? <CircularProgress color="inherit" size={18} /> : null}
+                        {params.InputProps.endAdornment}
+                      </>
+                    ),
+                  }}
+                />
               )}
-              {venueClusters.map((cluster) => (
-                <MenuItem key={cluster.id} value={cluster.id}>
-                  <ListItemText
-                    primary={cluster.name || cluster.id}
-                    secondary={cluster.address || undefined}
-                  />
-                </MenuItem>
-              ))}
-            </Select>
-          </FormControl>
+              renderOption={(props, cluster) => (
+                <li {...props} key={cluster.id}>
+                  <Box>
+                    <Typography variant="body2">{clusterSearchLabel(cluster)}</Typography>
+                    {clusterSearchSubtitle(cluster) && (
+                      <Typography variant="caption" color="text.secondary">
+                        {clusterSearchSubtitle(cluster)}
+                      </Typography>
+                    )}
+                  </Box>
+                </li>
+              )}
+            />
+          )}
           {!isEdit && isCourtOwner && (
             <FormControlLabel
               control={
@@ -252,7 +391,7 @@ export default function ClubFormDialog({ open, club, tenantId, onClose, onSucces
         <Button onClick={onClose} disabled={saving}>
           Hủy
         </Button>
-        <Button variant="contained" onClick={handleSubmit} disabled={saving || !form.name.trim()}>
+        <Button variant="contained" onClick={() => void handleSubmit()} disabled={saving || !form.name.trim()}>
           {saving ? "Đang lưu..." : isEdit ? "Cập nhật" : "Tạo CLB"}
         </Button>
       </DialogActions>
