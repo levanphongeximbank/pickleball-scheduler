@@ -212,6 +212,9 @@ describe("club membership requests", () => {
     assert.ok(summary);
     assert.equal(summary.name, "CLB Membership Test");
     assert.equal(summary.activeMemberCount, 0);
+    if (summary.clusterLabel != null) {
+      assert.equal(typeof summary.clusterLabel, "string");
+    }
   });
 
   it("listMyMembershipRequestsAll scans all discoverable clubs", () => {

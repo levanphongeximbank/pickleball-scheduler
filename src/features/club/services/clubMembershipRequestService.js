@@ -24,6 +24,7 @@ import {
   canApproveClubMembershipRequests,
   getGovernanceDisplayLabels,
   getRegisteredClusterLabel,
+  formatRegisteredClusterDisplay,
 } from "./clubGovernanceService.js";
 import { getPickVnRatingByAuthUserId } from "../../pick-vn-rating/services/pickVnRatingService.js";
 import { syncRatingToClubPlayer } from "../../pick-vn-rating/services/pickVnRatingService.js";
@@ -279,7 +280,7 @@ export function getClubDiscoverySummary(clubId) {
     tenantId,
     presidentLabel: gov.presidentLabel || null,
     activeMemberCount: activeMembers.length,
-    clusterLabel: clusterLabel || null,
+    clusterLabel: formatRegisteredClusterDisplay(clusterLabel),
   };
 }
 

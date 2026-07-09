@@ -218,8 +218,8 @@ export default function MyClubPage() {
           <MyClubCreatePanel
             tenantId={tenantId}
             user={user}
-            onSuccess={() => {
-              refresh();
+            onSuccess={async () => {
+              await refresh();
               bumpRevision();
               handleViewChange("home");
             }}

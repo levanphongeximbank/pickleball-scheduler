@@ -855,6 +855,16 @@ export function getRegisteredClusterLabel(club, tenantId) {
   };
 }
 
+export function formatRegisteredClusterDisplay(cluster) {
+  if (!cluster) {
+    return null;
+  }
+  if (typeof cluster === "string") {
+    return cluster;
+  }
+  return cluster.name || cluster.id || null;
+}
+
 /** @deprecated Use getRegisteredClusterLabel */
 export function getRegisteredCourtsLabels(club, tenantId) {
   const label = getRegisteredClusterLabel(club, tenantId);

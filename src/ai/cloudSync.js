@@ -1,6 +1,6 @@
 import { getActiveClubId } from "../data/club.js";
 import { PERMISSIONS } from "../auth/permissions.js";
-import { guardClubAction } from "../auth/guardAction.js";
+import { guardClubAction, guardAnyClubAction } from "../auth/guardAction.js";
 import { guardSubscriptionForClub } from "../auth/subscriptionGuard.js";
 import { getSupabaseAuthClient, hasSupabaseConfig } from "../auth/supabaseClient.js";
 import { getClubById } from "../domain/clubService.js";
@@ -305,8 +305,12 @@ function saveCloudDatabase(database) {
 
 export async function syncClubToCloud(options = {}) {
   const clubId = options.clubId || getActiveClubId();
-  const permission = options.permission || PERMISSIONS.SYSTEM_SETTING;
-  const check = guardClubAction(clubId, permission);
+  const check = options.permission
+    ? guardClubAction(clubId, options.permission)
+    : guardAnyClubAction(clubId, [
+        PERMISSIONS.CLUB_UPDATE,
+        PERMISSIONS.SYSTEM_SETTING,
+      ]);
   if (!check.ok) {
     return check;
   }
