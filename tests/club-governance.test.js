@@ -201,6 +201,16 @@ describe("club governance", () => {
     assert.equal(canSelfRegisterClub(linked), false);
   });
 
+  it("canSelfRegisterClub allows CLUB_MANAGER when local club is missing", () => {
+    saveClubs([]);
+    const manager = {
+      id: "mgr-orphan",
+      role: ROLES.CLUB_MANAGER,
+      clubId: "club-gone",
+    };
+    assert.equal(canSelfRegisterClub(manager), true);
+  });
+
   it("club scoped self-register resolves to active", () => {
     const manager = { id: "mgr-1", role: ROLES.CLUB_MANAGER, clubId: null };
     const player = { id: "player-1", role: ROLES.PLAYER, clubId: null, tenantId: TENANT };

@@ -24,6 +24,7 @@ import {
   findUserIdByPlayerId,
   loadAthleteClubLink,
   saveAthleteClubLink,
+  clearAthleteClubLink,
 } from "../storage/athleteClubLinkStore.js";
 import { purgeClubExtension } from "../storage/clubExtensionStorage.js";
 import { writeAuditLog } from "../../identity/services/auditService.js";
@@ -285,22 +286,34 @@ export function canApproveClubRegistration(user, club) {
   return canAssignClubOwner(user);
 }
 
-/** VĐV / Quản lý CLB chưa có clubId — tự đăng ký CLB (spec §6.1 B). */
+/** VĐV / Quản lý CLB chưa có clubId hợp lệ — tự đăng ký CLB (spec §6.1 B). */
 export function canSelfRegisterClub(user) {
   if (!user?.id) {
     return false;
   }
 
-  if (!isRbacEnabled()) {
-    return isClubScopedRole(user.role) && !user.clubId;
+  const role = normalizeRole(user.role);
+  if (role !== ROLES.CLUB_MANAGER && role !== ROLES.PLAYER) {
+    return false;
   }
 
-  const role = normalizeRole(user.role);
-  return (
-    isClubScopedRole(user.role) &&
-    !user.clubId &&
-    (role === ROLES.CLUB_MANAGER || role === ROLES.PLAYER)
-  );
+  const clubId = String(user.clubId || user.club_id || "").trim();
+  if (!clubId) {
+    return true;
+  }
+
+  // clubId local trỏ CLB đã mất / không còn trong registry → xóa link cũ, cho tạo lại
+  try {
+    const club = getRegistryClubById(clubId);
+    if (!club || club.isDefault) {
+      clearAthleteClubLink(user.id);
+      return true;
+    }
+  } catch {
+    return true;
+  }
+
+  return false;
 }
 
 function buildPlayerIdForAuthUser(userId) {

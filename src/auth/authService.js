@@ -5,6 +5,7 @@ import {
   loadAuthSession,
   loadRbacConfig,
   saveAuthSession,
+  saveAuthSessionFromCloudProfile,
   saveRbacConfig,
 } from "./authStorage.js";
 import { getSupabaseConfigError, hasSupabaseConfig, getSupabaseAuthClient } from "./supabaseClient.js";
@@ -268,17 +269,17 @@ async function syncSupabaseUser(authUser, options = {}) {
     return resolved;
   }
 
-  saveAuthSession(resolved.user, { provider: "supabase" });
+  saveAuthSessionFromCloudProfile(resolved.user, { provider: "supabase" });
   await pullClusterContextForUser(resolved.user);
   await syncClubRegistryForUser(resolved.user);
   const refreshed = await fetchProfileByUserId(resolved.user.id);
   if (refreshed.ok) {
-    saveAuthSession(refreshed.user, { provider: "supabase" });
+    saveAuthSessionFromCloudProfile(refreshed.user, { provider: "supabase" });
   }
 
   return {
     ok: true,
-    user: refreshed.ok ? refreshed.user : resolved.user,
+    user: loadAuthSession()?.user || (refreshed.ok ? refreshed.user : resolved.user),
     provider: "supabase",
     warning: resolved.warning || null,
   };
@@ -297,12 +298,17 @@ export async function refreshAuthProfileFromSupabase(userId = getCurrentUser()?.
 
   const session = loadAuthSession();
   if (session?.user?.id === targetId) {
-    saveAuthSession(profileResult.user, { provider: session.provider || "supabase" });
+    saveAuthSessionFromCloudProfile(profileResult.user, {
+      provider: session.provider || "supabase",
+    });
   }
 
   await syncClubRegistryForUser(profileResult.user);
 
-  return { ok: true, user: profileResult.user };
+  return {
+    ok: true,
+    user: loadAuthSession()?.user || profileResult.user,
+  };
 }
 
 export async function restoreSupabaseSession() {

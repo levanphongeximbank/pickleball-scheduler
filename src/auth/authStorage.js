@@ -1,7 +1,7 @@
 import { AUTH_SESSION_KEY, RBAC_STORAGE_KEY, isRbacEnabledFromEnv } from "./config.js";
 import { isSecureRuntime } from "./runtime.js";
 import { normalizeUser } from "../models/user.js";
-import { mergeAthleteClubLink } from "../features/club/storage/athleteClubLinkStore.js";
+import { mergeAthleteClubLink, reconcileAthleteClubLinkWithProfile } from "../features/club/storage/athleteClubLinkStore.js";
 import { syncGovernanceAuthRoleFromClub } from "../features/club/services/governanceRoleElevation.js";
 
 function readJson(key, fallback) {
@@ -46,6 +46,8 @@ export function loadAuthSession() {
   const session = readJson(AUTH_SESSION_KEY, null);
   if (!session?.user) return null;
 
+  // Session đã có clubId từ lần login trước: chỉ merge link nếu còn clubId.
+  // Profile cloud null sẽ được reconcile khi login/refresh (authService).
   let user = mergeAthleteClubLink(normalizeUser(session.user));
   const synced = syncGovernanceAuthRoleFromClub(user);
   if (synced.changed) {
@@ -69,6 +71,13 @@ export function saveAuthSession(user, meta = {}) {
     provider: meta.provider || "dev",
     loggedInAt: new Date().toISOString(),
   });
+}
+
+/** Lưu session từ profile cloud — xóa athlete link cũ nếu profile không còn club_id. */
+export function saveAuthSessionFromCloudProfile(user, meta = {}) {
+  const reconciled = reconcileAthleteClubLinkWithProfile(normalizeUser(user));
+  saveAuthSession(reconciled, meta);
+  return reconciled;
 }
 
 export function clearAuthSession() {
