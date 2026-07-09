@@ -4,7 +4,7 @@ import { useAuth } from "../../../context/AuthContext.jsx";
 import { useTenant } from "../../../context/TenantContext.jsx";
 import {
   DEFAULT_OPERATIONAL_ACTION,
-  isBillingExemptPath,
+  isOperationalRouteExempt,
   isSubscriptionOperationalExemptRole,
 } from "../guards/operationalRoutePolicy.js";
 import TenantOperationalGate from "./TenantOperationalGate.jsx";
@@ -27,7 +27,7 @@ export default function OperationalRouteGate({ children, action = DEFAULT_OPERAT
     return children;
   }
 
-  if (isBillingExemptPath(location.pathname)) {
+  if (isOperationalRouteExempt(location.pathname)) {
     return children;
   }
 

@@ -211,7 +211,7 @@ test("closeSeason works after switching away from season", () => {
   assert.equal(result.season.status, "completed");
 });
 
-test("buildSeasonExport blocked when RBAC on trial without statistics plan", () => {
+test("buildSeasonExport allowed on trial — CLB không phụ thuộc gói venue", () => {
   enableRbac(true);
   ensureDemoVenue();
   assignClubToVenue(DEFAULT_CLUB.id, "venue-demo");
@@ -225,9 +225,8 @@ test("buildSeasonExport blocked when RBAC on trial without statistics plan", () 
   );
 
   const data = loadClubData(DEFAULT_CLUB.id);
-  const blocked = buildSeasonExport(DEFAULT_CLUB.id, data.active.seasonId);
-  assert.equal(blocked.ok, false);
-  assert.equal(blocked.code, "PLAN_FEATURE_LOCKED");
+  const result = buildSeasonExport(DEFAULT_CLUB.id, data.active.seasonId);
+  assert.equal(result.ok, true);
 
   signOut();
   enableRbac(false);

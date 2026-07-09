@@ -168,6 +168,15 @@ export function guardMaxCourtsForClub(clubId, { isNew = false } = {}, options = 
 }
 
 export function guardSubscriptionForClub(clubId, feature = null, options = {}) {
+  if (!shouldEnforceSubscription(options)) {
+    return { ok: true };
+  }
+
+  const clubFreeFeatures = new Set(["statistics", "cloud_sync", "director_mode"]);
+  if (feature == null || clubFreeFeatures.has(feature)) {
+    return { ok: true };
+  }
+
   const club = getClubById(clubId);
   const venueId = club?.venueId;
   const activeCheck = guardSubscriptionForVenue(venueId, options);
@@ -176,11 +185,7 @@ export function guardSubscriptionForClub(clubId, feature = null, options = {}) {
     return activeCheck;
   }
 
-  if (feature) {
-    return guardPlanFeature(venueId, feature, options);
-  }
-
-  return { ok: true };
+  return guardPlanFeature(venueId, feature, options);
 }
 
 export function guardMaxUsers(venueId, options = {}) {

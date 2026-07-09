@@ -13,6 +13,8 @@ import { assertSubscriptionOperational } from "../src/features/billing/bridges/s
 import {
   DEFAULT_OPERATIONAL_ACTION,
   isBillingExemptPath,
+  isClubOperationalPath,
+  isOperationalRouteExempt,
   isSubscriptionOperationalExemptRole,
 } from "../src/features/billing/guards/operationalRoutePolicy.js";
 import { ROLES } from "../src/auth/roles.js";
@@ -134,11 +136,15 @@ test("Phase 20 — billing routes exempt from operational lock", () => {
   assert.equal(isBillingExemptPath("/court-management"), false);
 });
 
-test("Phase 20 — PLAYER/CUSTOMER exempt from subscription operational lock", () => {
+test("Phase 20 — PLAYER/CLB/CUSTOMER exempt from subscription operational lock", () => {
   const player = createUserRecord({ role: ROLES.PLAYER });
+  const clubManager = createUserRecord({ role: ROLES.CLUB_MANAGER, clubId: "club-a" });
+  const coach = createUserRecord({ role: ROLES.COACH, clubId: "club-a" });
   const cashier = createUserRecord({ role: ROLES.CASHIER, venueId: "venue-a" });
 
   assert.equal(isSubscriptionOperationalExemptRole(player), true);
+  assert.equal(isSubscriptionOperationalExemptRole(clubManager), true);
+  assert.equal(isSubscriptionOperationalExemptRole(coach), true);
   assert.equal(isSubscriptionOperationalExemptRole(createUserRecord({ role: ROLES.CUSTOMER })), true);
   assert.equal(isSubscriptionOperationalExemptRole(createUserRecord({ role: ROLES.TEAM_CAPTAIN })), true);
   assert.equal(isSubscriptionOperationalExemptRole(cashier), false);
@@ -181,12 +187,34 @@ test("Phase 20 — tenant_not_found when tenant id missing", () => {
   assert.equal(status.status, TENANT_ACCESS_STATUS.TENANT_NOT_FOUND);
 });
 
+test("Phase 20B — club module routes exempt from venue subscription gate", () => {
+  const clubRoutes = [
+    "/club",
+    "/my-club",
+    "/manage/clubs",
+    "/players",
+    "/players/skill",
+    "/select-players",
+    "/daily-play",
+    "/coaching/coaches",
+    "/statistics",
+    "/tournament",
+    "/tournament/internal/t-1",
+  ];
+
+  for (const path of clubRoutes) {
+    assert.equal(isClubOperationalPath(path), true, `${path} should be club-exempt`);
+    assert.equal(isOperationalRouteExempt(path), true, `${path} should bypass operational gate`);
+  }
+
+  assert.equal(isClubOperationalPath("/court-engine"), false);
+  assert.equal(isClubOperationalPath("/tournaments/t-1/engine"), false);
+});
+
 test("Phase 20B — operational routes are not billing-exempt when tenant active", () => {
   const operationalRoutes = [
     "/dashboard",
     "/court-engine",
-    "/players",
-    "/manage/clubs",
     "/tournaments/t-1/engine",
   ];
 

@@ -667,7 +667,7 @@ test("subscription — pro có director_mode sau upgrade", () => {
   enableRbac(false);
 });
 
-test("subscription — cloud_sync bị chặn trên gói trial", async () => {
+test("subscription — club cloud_sync không phụ thuộc gói venue", async () => {
   globalThis.localStorage = createLocalStorageMock();
   setActiveClubId(DEFAULT_CLUB.id);
   saveClubData(DEFAULT_CLUB.id, getDefaultClubData(DEFAULT_CLUB.id));
@@ -683,13 +683,8 @@ test("subscription — cloud_sync bị chặn trên gói trial", async () => {
     })
   );
 
-  const blocked = await syncClubToCloud();
-  assert.equal(blocked.ok, false);
-  assert.equal(blocked.code, "PLAN_FEATURE_LOCKED");
-
-  upgradeSubscription("venue-demo", "professional");
-  const allowed = await syncClubToCloud();
-  assert.equal(allowed.ok, true);
+  const onTrial = await syncClubToCloud();
+  assert.equal(onTrial.ok, true);
 
   signOut();
   enableRbac(false);

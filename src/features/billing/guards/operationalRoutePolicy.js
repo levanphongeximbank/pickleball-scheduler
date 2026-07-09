@@ -4,6 +4,7 @@
 
 import {
   ROLES,
+  isClubScopedRole,
   isGlobalRole,
   isPlatformScopedRole,
   normalizeRole,
@@ -18,7 +19,20 @@ const BILLING_EXEMPT_PREFIXES = [
   "/mobile/notifications",
 ];
 
-/** Vai trò cuối (VĐV/khách/đội trưởng) — không bị khóa bởi gói thuê của tenant. */
+/** Module CLB — không phụ thuộc gói venue (lịch, VĐV, giải nội bộ, xếp sân…). */
+const CLUB_OPERATIONAL_PREFIXES = [
+  "/club",
+  "/my-club",
+  "/manage/clubs",
+  "/players",
+  "/select-players",
+  "/daily-play",
+  "/coaching",
+  "/statistics",
+  "/tournament",
+];
+
+/** Vai trò CLB & VĐV — không bị khóa bởi gói thuê của tenant (chỉ chủ sân/nhân viên vận hành). */
 export function isSubscriptionOperationalExemptRole(user) {
   if (!user?.role) {
     return false;
@@ -30,7 +44,8 @@ export function isSubscriptionOperationalExemptRole(user) {
 
   const role = normalizeRole(user.role);
   return (
-    role === ROLES.PLAYER ||
+    isClubScopedRole(role) ||
+    role === ROLES.COACH ||
     role === ROLES.CUSTOMER ||
     role === ROLES.TEAM_CAPTAIN
   );
@@ -49,6 +64,22 @@ export function isBillingExemptPath(pathname) {
   return BILLING_EXEMPT_PREFIXES.some(
     (prefix) => pathname === prefix || pathname.startsWith(`${prefix}`)
   );
+}
+
+/** Route module CLB — luôn mở dù venue chưa có / hết gói. */
+export function isClubOperationalPath(pathname) {
+  if (!pathname) {
+    return false;
+  }
+
+  return CLUB_OPERATIONAL_PREFIXES.some(
+    (prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`)
+  );
+}
+
+/** Route hoặc billing exempt — dùng trong OperationalRouteGate. */
+export function isOperationalRouteExempt(pathname) {
+  return isBillingExemptPath(pathname) || isClubOperationalPath(pathname);
 }
 
 /** Default operational action checked for route lock. */
