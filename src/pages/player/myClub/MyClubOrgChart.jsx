@@ -18,16 +18,38 @@ import SwapHorizIcon from "@mui/icons-material/SwapHoriz";
 
 import GovernanceMemberSelect from "../../../components/club/GovernanceMemberSelect.jsx";
 import {
-  canChangeClubPresident,
+  canRelinquishClubPresident,
   canManageClubGovernance,
   getClubById,
   getClubStats,
   getGovernanceDisplayLabels,
   getVicePresidentUserIds,
-  isClubPresident,
   listClubGovernanceCandidates,
   transferClubPresident,
 } from "../../../features/club/index.js";
+import { miniGovernanceCardSx } from "./myClubUiStyles.js";
+import { resolvePresidentDisplayLabel } from "./myClubViewLogic.js";
+
+function GovernanceMiniCard({ accent, icon, title, value, action = null }) {
+  return (
+    <Box sx={miniGovernanceCardSx(accent)}>
+      <Stack direction="row" justifyContent="space-between" alignItems="flex-start" spacing={1}>
+        <Stack direction="row" spacing={1} alignItems="flex-start">
+          {icon}
+          <Box>
+            <Typography variant="caption" color="text.secondary">
+              {title}
+            </Typography>
+            <Typography variant="body2" fontWeight={600}>
+              {value}
+            </Typography>
+          </Box>
+        </Stack>
+        {action}
+      </Stack>
+    </Box>
+  );
+}
 
 export default function MyClubOrgChart({
   clubId,
@@ -56,10 +78,11 @@ export default function MyClubOrgChart({
     return null;
   }
 
-  const viceIds = getVicePresidentUserIds(club.governance || {});
   const viceLabels = labels.vicePresidentLabels || [];
-  const canTransfer = canChangeClubPresident(user, club) && isClubPresident(user, club);
+  const canTransfer = canRelinquishClubPresident(user, club);
   const canManage = canManageClubGovernance(user, club);
+  const viceIds = getVicePresidentUserIds(club.governance || {});
+  const presidentLabel = resolvePresidentDisplayLabel(labels);
 
   const handleTransferPresident = async () => {
     if (!nextPresidentId) {
@@ -79,46 +102,48 @@ export default function MyClubOrgChart({
   };
 
   return (
-    <Card variant="outlined" sx={{ mb: 2, borderRadius: 2 }}>
+    <Card variant="outlined" sx={{ borderRadius: 2, height: "100%" }}>
       <CardContent>
         <Typography variant="subtitle1" fontWeight={700} gutterBottom>
           Cấu trúc CLB
         </Typography>
 
         <Stack spacing={1.5}>
-          <Stack direction="row" spacing={1} alignItems="center" flexWrap="wrap">
-            <WorkspacePremiumIcon color="warning" fontSize="small" />
-            <Typography variant="body2">
-              <strong>Chủ tịch:</strong>{" "}
-              {labels.presidentLabel || labels.ownerLabel || "Chưa gán"}
-            </Typography>
-            {canTransfer && (
-              <Button
-                size="small"
-                variant="outlined"
-                startIcon={<SwapHorizIcon />}
-                onClick={() => setTransferOpen(true)}
-              >
-                Nhường chức
-              </Button>
-            )}
-          </Stack>
+          <GovernanceMiniCard
+            accent="president"
+            icon={<WorkspacePremiumIcon color="warning" fontSize="small" />}
+            title="Chủ tịch"
+            value={presidentLabel}
+            action={
+              canTransfer ? (
+                <Button
+                  size="small"
+                  variant="outlined"
+                  startIcon={<SwapHorizIcon />}
+                  onClick={() => setTransferOpen(true)}
+                >
+                  Nhường chức
+                </Button>
+              ) : null
+            }
+          />
 
           {[0, 1].map((index) => (
-            <Stack key={index} direction="row" spacing={1} alignItems="center">
-              <StarIcon color="primary" fontSize="small" />
-              <Typography variant="body2">
-                <strong>Phó CT {index + 1}:</strong> {viceLabels[index] || "(trống)"}
-              </Typography>
-            </Stack>
+            <GovernanceMiniCard
+              key={index}
+              accent="vice"
+              icon={<StarIcon color="primary" fontSize="small" />}
+              title={`Phó CT ${index + 1}`}
+              value={viceLabels[index] || "(trống)"}
+            />
           ))}
 
-          <Stack direction="row" spacing={1} alignItems="center">
-            <GroupsIcon color="action" fontSize="small" />
-            <Typography variant="body2">
-              {stats?.activeMemberCount ?? 0} thành viên
-            </Typography>
-          </Stack>
+          <GovernanceMiniCard
+            accent="members"
+            icon={<GroupsIcon color="action" fontSize="small" />}
+            title="Thành viên"
+            value={`${stats?.activeMemberCount ?? 0} thành viên`}
+          />
 
           {canManage && viceIds.length < 2 && (
             <Typography variant="caption" color="text.secondary">

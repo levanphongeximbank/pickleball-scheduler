@@ -13,6 +13,7 @@ import {
 import { getPermissionScopes, PERMISSION_SCOPE, PERMISSIONS } from "./permissions.js";
 import { roleHasPermission } from "./rolePermissions.js";
 import { getEffectivePermissionsForTenantRole } from "../features/identity/services/tenantRolePermissionService.js";
+import { resolveGovernanceElevatedRole } from "../features/club/services/governanceRoleElevation.js";
 import { isUserActive } from "../models/user.js";
 import { loadClubs } from "../data/club.js";
 import { getExplicitTenantIdForClub } from "../features/tenant/guards/tenantGuard.js";
@@ -45,7 +46,7 @@ export function hasAnyRole(user, roles = []) {
  * Kiểm tra role permission, có áp dụng tenant overrides khi user có tenantId/venueId.
  */
 export function roleHasEffectivePermission(user, permission) {
-  const role = normalizeRole(user?.role);
+  const role = resolveGovernanceElevatedRole(user) || normalizeRole(user?.role);
   if (!role) {
     return false;
   }

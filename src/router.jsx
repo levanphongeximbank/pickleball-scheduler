@@ -643,7 +643,7 @@ export default function Router() {
             <Route path="/billing/usage" element={<BillingPage title="Usage" view="usage" />} />
             <Route path="/billing/invoices" element={<BillingPage title="Invoices" view="invoices" />} />
             <Route path="/billing/payment" element={<BillingPage title="Payment" view="payment" />} />
-            <Route path="/billing/upgrade" element={<BillingPage title="Upgrade" view="upgrade" />} />
+            <Route path="/billing/upgrade" element={<BillingPage title="Nâng cấp gói" view="upgrade" />} />
             <Route path="/billing/support" element={<BillingPage title="Support" view="support" />} />
 
             <Route path="/finance/debt" element={<FinanceDebtPage />} />

@@ -1,5 +1,6 @@
 import { isGlobalRole } from "../../../auth/roles.js";
 import { loadActiveTenantId } from "../../../data/tenantSession.js";
+import { DEMO_SEED_TENANT_IDS } from "../../../demo/seed/demoSeedRegistry.js";
 import { resolveEffectiveTenantId } from "../../tenant/services/tenantService.js";
 
 /** Legacy/demo ids that must never be used for Supabase billing (venues.id). */
@@ -8,6 +9,7 @@ export const INVALID_BILLING_TENANT_IDS = Object.freeze([
   "tenant_demo",
   "demo-tenant",
   "default-tenant",
+  ...DEMO_SEED_TENANT_IDS,
 ]);
 
 /**

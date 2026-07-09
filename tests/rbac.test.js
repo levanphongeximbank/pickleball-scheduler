@@ -1066,6 +1066,7 @@ const OWNER_V5_GROUPS = [
   "CLB & Huấn luyện",
   "Giải đấu",
   "Tài chính",
+  "Tenant",
   "Báo cáo",
   "Chăm sóc khách hàng",
   "Quản trị",
@@ -1298,4 +1299,30 @@ test("TENANT_OWNER — operations dashboard mode owner sau normalize", () => {
   assert.equal(owner.role, ROLES.TENANT_OWNER);
   assert.equal(getOperationsDashboardMode(owner), "owner");
   assert.equal(canAccessOperationsDashboard(owner, { clubId: "c1", tenantId: "v1" }), true);
+});
+
+test("PLAYER Chủ tịch CLB — governance elevation cho club permissions", () => {
+  globalThis.localStorage = createLocalStorageMock();
+  enableRbac(true);
+  saveClubs([
+    {
+      id: "club-president-rbac",
+      name: "CLB President RBAC",
+      venueId: "venue-prod-main",
+      governance: { presidentUserId: "athlete-president" },
+    },
+  ]);
+
+  const president = user(ROLES.PLAYER, {
+    id: "athlete-president",
+    clubId: "club-president-rbac",
+    playerId: "p-president",
+  });
+
+  assert.equal(can(president, PERMISSIONS.CLUB_VIEW, { clubId: "club-president-rbac" }, RBAC_ON), true);
+  assert.equal(
+    can(president, PERMISSIONS.CLUB_UPDATE, { clubId: "club-president-rbac" }, RBAC_ON),
+    true
+  );
+  assert.equal(getDefaultHomePath(president, true), "/club");
 });

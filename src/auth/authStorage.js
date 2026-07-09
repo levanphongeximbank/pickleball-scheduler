@@ -2,6 +2,7 @@ import { AUTH_SESSION_KEY, RBAC_STORAGE_KEY, isRbacEnabledFromEnv } from "./conf
 import { isSecureRuntime } from "./runtime.js";
 import { normalizeUser } from "../models/user.js";
 import { mergeAthleteClubLink } from "../features/club/storage/athleteClubLinkStore.js";
+import { syncGovernanceAuthRoleFromClub } from "../features/club/services/governanceRoleElevation.js";
 
 function readJson(key, fallback) {
   try {
@@ -45,7 +46,15 @@ export function loadAuthSession() {
   const session = readJson(AUTH_SESSION_KEY, null);
   if (!session?.user) return null;
 
-  const user = mergeAthleteClubLink(normalizeUser(session.user));
+  let user = mergeAthleteClubLink(normalizeUser(session.user));
+  const synced = syncGovernanceAuthRoleFromClub(user);
+  if (synced.changed) {
+    user = synced.user;
+    writeJson(AUTH_SESSION_KEY, {
+      ...session,
+      user,
+    });
+  }
 
   return {
     user,

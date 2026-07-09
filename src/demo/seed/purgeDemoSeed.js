@@ -1,4 +1,10 @@
 import { getActiveClubId, loadClubs, saveClubs, setActiveClubId } from "../../data/club.js";
+import {
+  loadClusterAssignments,
+  loadCourtClusters,
+  saveClusterAssignments,
+  saveCourtClusters,
+} from "../../data/courtCluster.js";
 import { loadVenues, saveVenues } from "../../data/venue.js";
 import { clearActiveTenantId, loadActiveTenantId } from "../../data/tenantSession.js";
 import { CLUB_DATA_KEY, purgeClubData } from "../../domain/clubStorage.js";
@@ -78,6 +84,16 @@ export function purgeDemoSeedData() {
   const remainingVenues = loadVenues().filter((venue) => !tenantIds.has(venue.id));
   saveVenues(remainingVenues);
 
+  const remainingClusters = loadCourtClusters().filter((cluster) => !tenantIds.has(cluster.venueId));
+  let removedClusterCount = loadCourtClusters().length - remainingClusters.length;
+  if (removedClusterCount > 0) {
+    saveCourtClusters(remainingClusters);
+    const keptClusterIds = new Set(remainingClusters.map((cluster) => cluster.id));
+    saveClusterAssignments(
+      loadClusterAssignments().filter((assignment) => keptClusterIds.has(assignment.clusterId))
+    );
+  }
+
   const activeClubId = getActiveClubId();
   if (clubIds.has(activeClubId)) {
     const fallback =
@@ -102,6 +118,7 @@ export function purgeDemoSeedData() {
     ok: true,
     removedClubIds: Array.from(clubIds),
     removedTenantIds: Array.from(tenantIds),
+    removedClusterCount,
     remainingClubCount: remainingClubs.length,
     removedKeyCount,
     strippedPlayers,

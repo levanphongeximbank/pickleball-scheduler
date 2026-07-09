@@ -14,6 +14,7 @@ import {
   isRouteRestrictedForUser,
 } from "../config/navigationConfig.js";
 import { getNavigationPermissions } from "../config/navigationPermissions.js";
+import { hasClubGovernanceManagerAccess } from "../features/club/services/governanceRoleElevation.js";
 
 const FEATURE_FLAG_CHECKERS = Object.freeze({
   marketplace: isMarketplaceEnabled,
@@ -238,7 +239,9 @@ export function isMenuItemVisible(item, { can, rbacEnabled, isAuthenticated, use
 
   if (item.excludeRoles?.length && user?.role) {
     const excluded = item.excludeRoles.some((role) => rolesEqual(user.role, role));
-    if (excluded) return false;
+    if (excluded && !(rolesEqual(user.role, ROLES.PLAYER) && hasClubGovernanceManagerAccess(user))) {
+      return false;
+    }
   }
 
   const isFolder = Boolean(item.children?.length);
@@ -397,6 +400,9 @@ export function getDefaultHomePath(user, rbacEnabled = false) {
       // Người chơi mới đăng ký chưa gắn CLB — hướng tới chọn CLB.
       if (!user.clubId && !user.club_id) {
         return "/my-club";
+      }
+      if (hasClubGovernanceManagerAccess(user)) {
+        return "/club";
       }
       return "/tournament";
     case ROLES.CLUB_MANAGER:

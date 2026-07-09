@@ -12,9 +12,8 @@ import {
   normalizeCourtCluster,
 } from "../../../models/courtCluster.js";
 import { isCourtClustersEnabled } from "../config/clusterFlags.js";
+import { isLegacyClusterVenueId } from "../utils/clusterCloudResolver.js";
 import { isValidProfileUserId } from "../utils/profileUserId.js";
-
-const LEGACY_DEFAULT_TENANT_ID = "default-tenant";
 
 function mergeClustersIntoLocal(incomingClusters) {
   const byId = new Map(loadCourtClusters().map((cluster) => [cluster.id, cluster]));
@@ -137,17 +136,12 @@ export function pruneInvalidLocalClusterOwners() {
 
 export function pruneOrphanLocalClusters(currentVenueId) {
   const venueId = String(currentVenueId || "").trim();
-  if (!venueId || venueId === LEGACY_DEFAULT_TENANT_ID) {
+  if (!venueId || isLegacyClusterVenueId(venueId)) {
     return { ok: true, removed: 0 };
   }
 
   const clusters = loadCourtClusters();
-  const kept = clusters.filter((cluster) => {
-    if (cluster.venueId === LEGACY_DEFAULT_TENANT_ID && venueId !== LEGACY_DEFAULT_TENANT_ID) {
-      return false;
-    }
-    return true;
-  });
+  const kept = clusters.filter((cluster) => !isLegacyClusterVenueId(cluster.venueId));
   const removed = clusters.length - kept.length;
 
   if (removed > 0) {

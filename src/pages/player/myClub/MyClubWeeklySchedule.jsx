@@ -11,6 +11,7 @@ import {
   DialogContent,
   DialogTitle,
   FormControl,
+  Grid,
   IconButton,
   InputLabel,
   MenuItem,
@@ -35,6 +36,7 @@ import {
   updateClubActivitySession,
 } from "../../../features/club/index.js";
 import { listClustersForVenue } from "../../../features/court-cluster/services/courtClusterService.js";
+import { getTodayActivityDayOfWeek, WEEK_DAY_SHORT_LABELS, WEEK_GRID_DAYS } from "./myClubViewLogic.js";
 
 const EMPTY_FORM = {
   dayOfWeek: 3,
@@ -77,6 +79,21 @@ export default function MyClubWeeklySchedule({
     void revision;
     return getTodayClubActivitySessions(clubId, tenantId);
   }, [clubId, tenantId, revision]);
+
+  const todayDayOfWeek = getTodayActivityDayOfWeek();
+
+  const sessionsByDay = useMemo(() => {
+    const map = new Map();
+    for (const day of WEEK_GRID_DAYS) {
+      map.set(day, []);
+    }
+    for (const session of sessions) {
+      const bucket = map.get(session.dayOfWeek) || [];
+      bucket.push(session);
+      map.set(session.dayOfWeek, bucket);
+    }
+    return map;
+  }, [sessions]);
 
   const openCreate = () => {
     setEditingSession(null);
@@ -146,7 +163,7 @@ export default function MyClubWeeklySchedule({
     <Box sx={{ mb: 3 }}>
       <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mb: 1.5 }}>
         <Typography variant="subtitle1" fontWeight={700}>
-          Lịch tuần
+          Lịch sinh hoạt tuần
         </Typography>
         {canManage && (
           <Button size="small" variant="contained" startIcon={<AddIcon />} onClick={openCreate}>
@@ -164,10 +181,67 @@ export default function MyClubWeeklySchedule({
         </Alert>
       )}
 
+      <Grid container spacing={1} sx={{ mb: 2, display: { xs: "none", md: "flex" } }}>
+        {WEEK_GRID_DAYS.map((day) => {
+          const daySessions = sessionsByDay.get(day) || [];
+          const isToday = day === todayDayOfWeek;
+          const shortLabel = WEEK_DAY_SHORT_LABELS[day] || `T${day}`;
+
+          return (
+            <Grid item xs key={day} sx={{ minWidth: 0 }}>
+              <Box
+                sx={{
+                  p: 1,
+                  borderRadius: 2,
+                  border: "2px solid",
+                  borderColor: isToday ? "primary.main" : "divider",
+                  bgcolor: isToday ? "primary.light" : "background.paper",
+                  minHeight: 120,
+                }}
+              >
+                <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mb: 0.5 }}>
+                  <Typography variant="caption" fontWeight={700}>
+                    {shortLabel}
+                  </Typography>
+                  {isToday && <Chip size="small" label="Hôm nay" color="primary" />}
+                </Stack>
+                {daySessions.length === 0 ? (
+                  <Typography variant="caption" color="text.secondary">
+                    —
+                  </Typography>
+                ) : (
+                  <Stack spacing={0.75}>
+                    {daySessions.map((session) => (
+                      <Box
+                        key={session.id}
+                        sx={{
+                          p: 0.75,
+                          borderRadius: 1,
+                          bgcolor: "rgba(16, 185, 129, 0.18)",
+                        }}
+                      >
+                        <Typography variant="caption" fontWeight={600} display="block">
+                          {session.startTime}–{session.endTime}
+                        </Typography>
+                        {session.clusterLabel && (
+                          <Typography variant="caption" color="text.secondary" display="block">
+                            {session.clusterLabel}
+                          </Typography>
+                        )}
+                      </Box>
+                    ))}
+                  </Stack>
+                )}
+              </Box>
+            </Grid>
+          );
+        })}
+      </Grid>
+
       {sessions.length === 0 ? (
         <Alert severity="info">CLB chưa có lịch sinh hoạt cố định trong tuần.</Alert>
       ) : (
-        <Stack spacing={1.5}>
+        <Stack spacing={1.5} sx={{ display: { xs: "flex", md: "none" } }}>
           {sessions.map((session) => (
             <Card key={session.id} variant="outlined" sx={{ borderRadius: 2 }}>
               <CardContent sx={{ py: 1.5 }}>
@@ -188,6 +262,56 @@ export default function MyClubWeeklySchedule({
                       </Typography>
                     )}
                     <Chip size="small" label="Nhắc trước 1 ngày" variant="outlined" />
+                  </Stack>
+
+                  {canManage && (
+                    <Stack direction="row" spacing={0.5}>
+                      <IconButton size="small" onClick={() => openEdit(session)} disabled={busy}>
+                        <EditIcon fontSize="small" />
+                      </IconButton>
+                      <IconButton
+                        size="small"
+                        color="error"
+                        onClick={() => handleDelete(session)}
+                        disabled={busy}
+                      >
+                        <DeleteIcon fontSize="small" />
+                      </IconButton>
+                    </Stack>
+                  )}
+                </Stack>
+                {session.note && (
+                  <Typography variant="caption" color="text.secondary" sx={{ mt: 0.5, display: "block" }}>
+                    {session.note}
+                  </Typography>
+                )}
+              </CardContent>
+            </Card>
+          ))}
+        </Stack>
+      )}
+
+      {sessions.length > 0 && (
+        <Stack spacing={1.5} sx={{ display: { xs: "none", md: "flex" } }}>
+          {sessions.map((session) => (
+            <Card key={`manage-${session.id}`} variant="outlined" sx={{ borderRadius: 2 }}>
+              <CardContent sx={{ py: 1.5 }}>
+                <Stack
+                  direction={{ xs: "column", sm: "row" }}
+                  justifyContent="space-between"
+                  alignItems={{ xs: "flex-start", sm: "center" }}
+                  spacing={1}
+                >
+                  <Stack direction="row" spacing={1} alignItems="center" flexWrap="wrap">
+                    <EventIcon color="primary" fontSize="small" />
+                    <Typography fontWeight={600}>
+                      {session.dayLabel} · {session.startTime}–{session.endTime}
+                    </Typography>
+                    {session.clusterLabel && (
+                      <Typography variant="body2" color="text.secondary">
+                        · {session.clusterLabel}
+                      </Typography>
+                    )}
                   </Stack>
 
                   {canManage && (

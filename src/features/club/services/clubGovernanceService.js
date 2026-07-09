@@ -32,6 +32,18 @@ import {
   getClusterById,
   listClustersForVenue,
 } from "../../court-cluster/services/courtClusterService.js";
+import {
+  demoteGovernanceAthleteRole,
+  isClubPresident,
+  isClubVicePresident,
+  promoteGovernanceAthleteRole,
+} from "./governanceRoleElevation.js";
+
+export {
+  hasClubGovernanceManagerAccess,
+  resolveGovernanceElevatedRole,
+  syncGovernanceAuthRoleFromClub,
+} from "./governanceRoleElevation.js";
 
 function deriveRegisteredClusterIdFromLegacy(governance, tenantId) {
   if (governance?.registeredClusterId) {
@@ -94,19 +106,7 @@ export function isClubOwner(user, club) {
   return sameUserId(user.id, club.governance.ownerUserId);
 }
 
-export function isClubPresident(user, club) {
-  if (!user?.id || !club?.governance?.presidentUserId) {
-    return false;
-  }
-  return sameUserId(user.id, club.governance.presidentUserId);
-}
-
-export function isClubVicePresident(user, club) {
-  if (!user?.id) {
-    return false;
-  }
-  return getVicePresidentUserIds(club?.governance).some((id) => sameUserId(user.id, id));
-}
+export { isClubPresident, isClubVicePresident };
 
 /** Chức danh nghiệp vụ CLB (khác auth role) — dùng trên hồ sơ VĐV. */
 export function resolveClubGovernanceTitle(user, club) {
@@ -196,6 +196,18 @@ export function canChangeClubPresident(user, club) {
   }
 
   return isClubOwner(user, club);
+}
+
+export function canRelinquishClubPresident(user, club) {
+  if (!club) {
+    return false;
+  }
+
+  if (!isRbacEnabled() || !user) {
+    return true;
+  }
+
+  return isClubPresident(user, club);
 }
 
 export function canDeleteClub(user, club) {
@@ -432,10 +444,41 @@ function applyGovernanceAthleteSync(clubId, userId, candidate) {
     playerId: candidate?.playerId || null,
   });
 
-  void rpcAdminUpdateUser(trimmed, {
-    clubId,
-    role: ROLES.CLUB_MANAGER,
-  });
+  const promoted = promoteGovernanceAthleteRole(clubId, trimmed, candidate);
+  if (!promoted) {
+    return;
+  }
+
+  const session = loadAuthSession();
+  if (session?.user?.id === trimmed) {
+    saveAuthSession(
+      normalizeUser({
+        ...session.user,
+        clubId: promoted.clubId,
+        playerId: promoted.playerId,
+        role: promoted.role,
+      }),
+      { provider: session.provider || "dev" }
+    );
+  }
+}
+
+function applyGovernanceAthleteDemote(clubId, userId, governance) {
+  const demoted = demoteGovernanceAthleteRole(clubId, userId, governance);
+  if (!demoted) {
+    return;
+  }
+
+  const session = loadAuthSession();
+  if (session?.user?.id === demoted.userId) {
+    saveAuthSession(
+      normalizeUser({
+        ...session.user,
+        role: demoted.role,
+      }),
+      { provider: session.provider || "dev" }
+    );
+  }
 }
 
 function resolveGovernanceUserLabel(userId, clubId, tenantId) {
@@ -570,8 +613,8 @@ export async function transferClubPresident(clubId, nextPresidentUserId, tenantI
     return { ok: false, error: "Không tìm thấy CLB." };
   }
 
-  if (!canChangeClubPresident(user, club)) {
-    return { ok: false, error: "Chỉ Chủ sở hữu CLB hoặc chủ sân được đổi Chủ tịch." };
+  if (!canChangeClubPresident(user, club) && !canRelinquishClubPresident(user, club)) {
+    return { ok: false, error: "Chỉ Chủ tịch, Chủ sở hữu CLB hoặc chủ sân được đổi Chủ tịch." };
   }
 
   const trimmed = String(nextPresidentUserId || "").trim();
@@ -1009,6 +1052,9 @@ export function updateClubGovernance(clubId, patch = {}, tenantId = null) {
   if (patch.presidentUserId !== undefined) {
     const currentPresident = club.governance?.presidentUserId || null;
     const nextPresident = merged.presidentUserId || null;
+    if (currentPresident && !sameUserId(currentPresident, nextPresident)) {
+      applyGovernanceAthleteDemote(clubId, currentPresident, merged);
+    }
     if (nextPresident && !sameUserId(currentPresident, nextPresident)) {
       const athleteCheck = assertClubAthleteUser(
         clubId,
@@ -1024,6 +1070,11 @@ export function updateClubGovernance(clubId, patch = {}, tenantId = null) {
   if (patch.vicePresidentUserIds !== undefined || patch.vicePresidentUserId !== undefined) {
     const currentViceIds = getVicePresidentUserIds(club.governance);
     const nextViceIds = getVicePresidentUserIds(merged);
+    for (const currentVice of currentViceIds) {
+      if (!nextViceIds.some((id) => sameUserId(id, currentVice))) {
+        applyGovernanceAthleteDemote(clubId, currentVice, merged);
+      }
+    }
     for (const nextVice of nextViceIds) {
       if (!currentViceIds.some((id) => sameUserId(id, nextVice))) {
         const athleteCheck = assertClubAthleteUser(clubId, effectiveTenantId, nextVice);

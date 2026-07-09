@@ -188,6 +188,14 @@ export function isNavItemActive(currentPath, item, resolvedPath) {
     return pathOnly === "/support" || pathOnly.startsWith("/support/") || pathOnly.startsWith("/billing/support");
   }
 
+  if (item.match === "billing-current-plan") {
+    return pathOnly === "/billing" || pathOnly === "/billing/current-plan";
+  }
+
+  if (item.match === "billing-upgrade") {
+    return pathOnly === "/billing/upgrade";
+  }
+
   if (item.match === "coaching-coaches") {
     return pathOnly === "/coaching/coaches";
   }

@@ -14,6 +14,45 @@ export const SEASON_STATUS_OPTIONS = [
   { id: "archived", label: "Lưu trữ" },
 ];
 
+export function buildClubManagementOverviewCards({ activeClub = null, totals = {} }) {
+  const activeClubName = activeClub?.name || "CLB của bạn";
+
+  return [
+    {
+      key: "players",
+      label: "Người chơi",
+      value: totals.players ?? 0,
+      caption: `${activeClubName} đang quản lý`,
+      icon: "Groups",
+      accent: "#2563eb",
+    },
+    {
+      key: "courts",
+      label: "Sân hoạt động",
+      value: `${totals.activeCourts ?? 0}/${totals.courts ?? 0}`,
+      caption: "Sân sẵn sàng cho buổi tập",
+      icon: "SportsTennis",
+      accent: "#16a34a",
+    },
+    {
+      key: "seasons",
+      label: "Mùa / Giải",
+      value: `${totals.seasons ?? 0} / ${totals.leagues ?? 0}`,
+      caption: "Mùa giải và league đang chạy",
+      icon: "CalendarMonth",
+      accent: "#ea580c",
+    },
+    {
+      key: "sessions",
+      label: "Phiên xếp sân",
+      value: totals.sessions ?? 0,
+      caption: "Số phiên đã tạo gần đây",
+      icon: "EventNote",
+      accent: "#7c3aed",
+    },
+  ];
+}
+
 export function buildClubManagementView({
   clubs = [],
   activeClubId,
@@ -22,19 +61,21 @@ export function buildClubManagementView({
   leagues = [],
 }) {
   const activeClub = clubs.find((club) => club.id === activeClubId) || null;
+  const totals = summary?.totals || {
+    players: 0,
+    courts: 0,
+    activeCourts: 0,
+    seasons: 0,
+    leagues: 0,
+    sessions: 0,
+    rounds: 0,
+  };
 
   return {
     activeClub,
     canDeleteActiveClub: activeClub?.id !== DEFAULT_CLUB.id,
-    totals: summary?.totals || {
-      players: 0,
-      courts: 0,
-      activeCourts: 0,
-      seasons: 0,
-      leagues: 0,
-      sessions: 0,
-      rounds: 0,
-    },
+    totals,
+    overviewCards: buildClubManagementOverviewCards({ activeClub, totals }),
     seasons,
     leagues,
     competitionOptions: getCompetitionTypeOptions(),

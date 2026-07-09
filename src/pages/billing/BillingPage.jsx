@@ -85,7 +85,7 @@ export default function BillingPage({ title = "Billing", description = "Quản l
             <Button component={RouterLink} to="/billing/usage" variant={view === "usage" ? "contained" : "outlined"} size="small">Usage</Button>
             <Button component={RouterLink} to="/billing/invoices" variant={view === "invoices" ? "contained" : "outlined"} size="small">Invoices</Button>
             <Button component={RouterLink} to="/billing/payment" variant={view === "payment" ? "contained" : "outlined"} size="small">Payment</Button>
-            <Button component={RouterLink} to="/billing/upgrade" variant={view === "upgrade" ? "contained" : "outlined"} size="small">Upgrade</Button>
+            <Button component={RouterLink} to="/billing/upgrade" variant={view === "upgrade" ? "contained" : "outlined"} size="small">Nâng cấp gói</Button>
             <Button component={RouterLink} to="/billing/support" variant={view === "support" ? "contained" : "outlined"} size="small">Support</Button>
           </Stack>
         </Stack>

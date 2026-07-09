@@ -8,6 +8,7 @@ import { REPORTS_MENU_ROOT } from "./reportsMenu.js";
 import { CRM_MENU_ROOT } from "./crmMenu.js";
 import { AI_MENU_ROOT } from "./aiMenu.js";
 import { ADMIN_MENU_ROOT } from "./adminMenu.js";
+import { TENANT_MENU_ROOT } from "./tenantMenu.js";
 import { SUPPORT_HUB_LEAF, PROFILE_MENU_LEAF } from "./supportMenu.js";
 import { SYSTEM_TECHNICIAN_MENU_ROOT } from "./systemTechnicianMenu.js";
 import { TEAM_CAPTAIN_MENU_ROOT } from "./teamCaptainMenu.js";
@@ -31,6 +32,7 @@ export const V5_MENU_GROUPS = [
   { id: "club", label: "CLB & Huấn luyện", items: [CLUB_COACHING_MENU_ROOT] },
   { id: "tournament", label: "Giải đấu", items: [TOURNAMENT_MENU_ROOT] },
   { id: "finance", label: "Tài chính", items: [FINANCE_MENU_ROOT] },
+  { id: "tenant", label: "Tenant", items: [TENANT_MENU_ROOT] },
   { id: "reports", label: "Báo cáo", items: [REPORTS_MENU_ROOT] },
   { id: "crm", label: "Chăm sóc khách hàng", items: [CRM_MENU_ROOT] },
   { id: "ai", label: "Trợ lý thông minh", items: [AI_MENU_ROOT], requiresFeature: "ai" },

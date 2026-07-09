@@ -23,15 +23,10 @@ import MyClubGovernancePanel from "./myClub/MyClubGovernancePanel.jsx";
 import MyClubActionBar from "./myClub/MyClubActionBar.jsx";
 import MyClubDiscoverPanel from "./myClub/MyClubDiscoverPanel.jsx";
 import MyClubSchedulePanel from "./myClub/MyClubSchedulePanel.jsx";
+import MyClubMembersPanel from "./myClub/MyClubMembersPanel.jsx";
+import MyClubMembershipRequestsPanel from "./myClub/MyClubMembershipRequestsPanel.jsx";
 import JoinClubDialog from "./myClub/JoinClubDialog.jsx";
-
-function resolveInitialView(hasClub, searchParams) {
-  const viewParam = searchParams.get("view");
-  if (viewParam === "discover" || viewParam === "home" || viewParam === "schedule") {
-    return viewParam;
-  }
-  return hasClub ? "home" : "discover";
-}
+import { resolveInitialView } from "./myClub/myClubViewLogic.js";
 
 export default function MyClubPage() {
   const { user, refresh } = useAuth();
@@ -177,6 +172,15 @@ export default function MyClubPage() {
           onRevision={bumpRevision}
           onMessage={setMessage}
         />
+      ) : view === "members" && hasClub ? (
+        <MyClubMembersPanel
+          clubId={clubId}
+          tenantId={tenantId}
+          clubRecord={clubRecord}
+          user={user}
+          manageHref={manageHref}
+          revision={revision}
+        />
       ) : view === "home" && hasClub && clubSummary ? (
         <>
           <MyClubSummaryCard
@@ -186,6 +190,11 @@ export default function MyClubPage() {
             registeredCluster={registeredCluster}
             user={user}
             manageHref={manageHref}
+            clubId={clubId}
+            tenantId={tenantId}
+            clubRecord={clubRecord}
+            onRefresh={bumpRevision}
+            onMessage={setMessage}
           />
 
           {showGovernance && (
@@ -198,6 +207,16 @@ export default function MyClubPage() {
               />
             </Box>
           )}
+
+          <MyClubMembershipRequestsPanel
+            clubId={clubId}
+            clubRecord={clubRecord}
+            tenantId={tenantId}
+            user={user}
+            revision={revision}
+            onRefresh={bumpRevision}
+            onMessage={setMessage}
+          />
         </>
       ) : (
         <MyClubDiscoverPanel

@@ -339,7 +339,7 @@ export function listPendingMembershipRequests(clubId, tenantId, user = getCurren
   }
 
   if (tenantId) {
-    const tenantCheck = guardClubTenant(clubId, tenantId);
+    const tenantCheck = guardClubTenant(clubId, tenantId, { user });
     if (!tenantCheck.ok) {
       return [];
     }
@@ -467,7 +467,7 @@ export async function approveClubMembershipRequest(clubId, requestId, tenantId, 
     return { ok: false, error: "Chỉ Chủ tịch / Phó chủ tịch / Chủ sở hữu CLB được duyệt." };
   }
 
-  const tenantCheck = guardClubTenant(clubId, tenantId);
+  const tenantCheck = guardClubTenant(clubId, tenantId, { user });
   if (!tenantCheck.ok) {
     return tenantCheck;
   }
@@ -554,7 +554,7 @@ export function rejectClubMembershipRequest(clubId, requestId, tenantId, options
     return { ok: false, error: "Chỉ Chủ tịch / Phó chủ tịch / Chủ sở hữu CLB được từ chối." };
   }
 
-  const tenantCheck = guardClubTenant(clubId, tenantId);
+  const tenantCheck = guardClubTenant(clubId, tenantId, { user });
   if (!tenantCheck.ok) {
     return tenantCheck;
   }

@@ -56,6 +56,7 @@ import {
 } from "../src/features/court-cluster/services/courtClusterCloudSync.js";
 import {
   migrateLegacyClusterRecord,
+  isLegacyClusterVenueId,
 } from "../src/features/court-cluster/utils/clusterCloudResolver.js";
 
 const VENUE_A = "venue-test-a";
@@ -434,6 +435,46 @@ describe("court cluster model", () => {
     remapClusterIdLocally(legacy.id, migrated);
     assert.equal(getClusterById(`${VENUE_A}-main`)?.name, "Pickleball NAM LONG sports");
     assert.equal(getClusterById("default-tenant-main"), null);
+  });
+
+  it("migrates demo seed tenant-future-arena cluster to cloud venue id", () => {
+    const legacy = normalizeCourtCluster({
+      id: "tenant-future-arena-main",
+      venueId: "tenant-future-arena",
+      name: "Pickleball NAM LONG sports",
+      slug: "main",
+      status: "active",
+    });
+
+    assert.equal(isLegacyClusterVenueId("tenant-future-arena"), true);
+
+    const migrated = migrateLegacyClusterRecord(legacy, VENUE_A);
+    assert.equal(migrated.id, `${VENUE_A}-main`);
+    assert.equal(migrated.venueId, VENUE_A);
+  });
+
+  it("prunes orphan demo seed clusters when syncing to cloud venue", () => {
+    saveCourtClusters([
+      normalizeCourtCluster({
+        id: "tenant-future-arena-main",
+        venueId: "tenant-future-arena",
+        name: "Demo cluster",
+        slug: "main",
+        status: "active",
+      }),
+      normalizeCourtCluster({
+        id: `${VENUE_A}-main`,
+        venueId: VENUE_A,
+        name: "Cloud cluster",
+        slug: "main",
+        status: "active",
+      }),
+    ]);
+
+    const result = pruneOrphanLocalClusters(VENUE_A);
+    assert.equal(result.removed, 1);
+    assert.equal(loadCourtClusters().length, 1);
+    assert.equal(loadCourtClusters()[0].id, `${VENUE_A}-main`);
   });
 
   it("removeClusterOwner clears local assignment", async () => {

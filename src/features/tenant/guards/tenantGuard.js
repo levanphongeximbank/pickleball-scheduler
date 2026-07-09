@@ -1,6 +1,6 @@
 import { loadClubs } from "../../../data/club.js";
 import { getCurrentUser, isRbacEnabled } from "../../../auth/authService.js";
-import { isGlobalRole } from "../../../auth/roles.js";
+import { isClubScopedRole, isGlobalRole } from "../../../auth/roles.js";
 import { DEFAULT_TENANT_ID, tenantIdFromRecord } from "../../../models/tenant.js";
 import { getTenantById } from "../services/tenantService.js";
 import {
@@ -61,6 +61,17 @@ export function guardClubTenant(clubId, currentTenantId, options = {}) {
   const { user = getCurrentUser(), rbacEnabled = isRbacEnabled() } = options;
 
   if (rbacEnabled && user && isGlobalRole(user.role)) {
+    return { ok: true };
+  }
+
+  const trimmedClubId = String(clubId || "").trim();
+  if (
+    rbacEnabled &&
+    user &&
+    isClubScopedRole(user.role) &&
+    trimmedClubId &&
+    String(user.clubId || user.club_id || "") === trimmedClubId
+  ) {
     return { ok: true };
   }
 

@@ -14,6 +14,7 @@ import {
   getClubMembers,
   addMemberToClub,
 } from "../src/features/club/services/clubMemberService.js";
+import { buildClubManagementView } from "../src/pages/clubManagement.logic.js";
 import { getClubRatings, updateClubRating } from "../src/features/club/services/clubRatingService.js";
 import { createFriendlyClubMatch } from "../src/features/club/services/clubActivityService.js";
 import { saveClubData, getDefaultClubData } from "../src/domain/clubStorage.js";
@@ -165,5 +166,30 @@ describe("club management sprint 3", () => {
     const loser = ratings.find((r) => r.playerId === "player-a2");
     assert.ok(winner.elo > 1500);
     assert.ok(loser.elo < 1500);
+  });
+
+  it("builds polished club overview cards for the new UI", () => {
+    const view = buildClubManagementView({
+      clubs: [{ id: CLUB_A, name: "CLB Test A" }],
+      activeClubId: CLUB_A,
+      summary: {
+        totals: {
+          players: 12,
+          courts: 4,
+          activeCourts: 3,
+          seasons: 2,
+          leagues: 5,
+          sessions: 8,
+          rounds: 6,
+        },
+      },
+      seasons: [],
+      leagues: [],
+    });
+
+    assert.equal(view.overviewCards[0].label, "Người chơi");
+    assert.equal(view.overviewCards[0].value, 12);
+    assert.equal(view.overviewCards[1].value, "3/4");
+    assert.equal(view.overviewCards[2].value, "2 / 5");
   });
 });

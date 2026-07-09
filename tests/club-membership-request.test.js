@@ -311,4 +311,27 @@ describe("club membership requests", () => {
     assert.equal(result.ok, false);
     assert.match(result.error, /Chuyển vai trò/);
   });
+
+  it("PLAYER president without tenantId can list pending requests", () => {
+    const athlete = {
+      id: ATHLETE_ID,
+      role: ROLES.PLAYER,
+      displayName: "VĐV Test",
+      tenantId: TENANT,
+    };
+    assert.equal(submitClubMembershipRequest(CLUB_ID, TENANT, athlete).ok, true);
+
+    const president = {
+      id: PRESIDENT_ID,
+      role: ROLES.PLAYER,
+      clubId: CLUB_ID,
+      playerId: "player-president",
+    };
+    const club = makeClub();
+    assert.equal(canApproveClubMembershipRequests(president, club), true);
+
+    const pending = listPendingMembershipRequests(CLUB_ID, TENANT, president);
+    assert.equal(pending.length, 1);
+    assert.equal(pending[0].userId, ATHLETE_ID);
+  });
 });

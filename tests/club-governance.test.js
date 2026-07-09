@@ -41,6 +41,17 @@ import {
 } from "../src/features/court-cluster/services/courtClusterService.js";
 import { saveClusterAssignments, saveCourtClusters } from "../src/data/courtCluster.js";
 import { ROLES as CLUSTER_ROLES } from "../src/auth/roles.js";
+import {
+  demoteGovernanceAthleteRole,
+  hasClubGovernanceManagerAccess,
+  resolveGovernanceElevatedRole,
+} from "../src/features/club/services/governanceRoleElevation.js";
+import { can } from "../src/auth/rbac.js";
+import { PERMISSIONS } from "../src/auth/permissions.js";
+import { getDefaultHomePath, isMenuItemVisible } from "../src/auth/menuAccess.js";
+import { CLUB_COACHING_MENU_ROOT } from "../src/config/v5Menu/clubCoachingMenu.js";
+
+const RBAC_ON = { rbacEnabled: true };
 
 const TENANT = "tenant-gov-test";
 const CLUB_ID = "club-gov-test";
@@ -482,5 +493,106 @@ describe("club governance", () => {
 
     const result = deleteClub(CLUB_ID);
     assert.equal(result.ok, false);
+  });
+
+  it("PLAYER president is elevated to CLUB_MANAGER for RBAC", () => {
+    const president = {
+      id: "user-president",
+      role: ROLES.PLAYER,
+      clubId: CLUB_ID,
+      playerId: "p1",
+      status: "active",
+    };
+
+    assert.equal(hasClubGovernanceManagerAccess(president, makeClub()), true);
+    assert.equal(resolveGovernanceElevatedRole(president), ROLES.CLUB_MANAGER);
+    assert.equal(can(president, PERMISSIONS.CLUB_VIEW, { clubId: CLUB_ID }, RBAC_ON), true);
+    assert.equal(can(president, PERMISSIONS.CLUB_UPDATE, { clubId: CLUB_ID }, RBAC_ON), true);
+  });
+
+  it("PLAYER vice president is elevated to CLUB_MANAGER for RBAC", () => {
+    const clubWithVice = makeClub({
+      governance: {
+        presidentUserId: "user-president",
+        ownerUserId: "user-owner",
+        vicePresidentUserId: "user-vice",
+        registeredCourtIds: [],
+      },
+    });
+    saveClubs([clubWithVice]);
+
+    const vice = {
+      id: "user-vice",
+      role: ROLES.PLAYER,
+      clubId: CLUB_ID,
+      playerId: "p-vice",
+      status: "active",
+    };
+
+    assert.equal(hasClubGovernanceManagerAccess(vice, clubWithVice), true);
+    assert.equal(resolveGovernanceElevatedRole(vice), ROLES.CLUB_MANAGER);
+    assert.equal(can(vice, PERMISSIONS.CLUB_VIEW, { clubId: CLUB_ID }, RBAC_ON), true);
+  });
+
+  it("plain PLAYER without governance title is not elevated", () => {
+    const member = {
+      id: "user-member",
+      role: ROLES.PLAYER,
+      clubId: CLUB_ID,
+      playerId: "p1",
+      status: "active",
+    };
+
+    assert.equal(hasClubGovernanceManagerAccess(member, makeClub()), false);
+    assert.equal(resolveGovernanceElevatedRole(member), ROLES.PLAYER);
+    assert.equal(can(member, PERMISSIONS.CLUB_UPDATE, { clubId: CLUB_ID }, RBAC_ON), false);
+  });
+
+  it("loadAuthSession promotes PLAYER president to CLUB_MANAGER", () => {
+    saveAuthSession({
+      id: "user-president",
+      role: ROLES.PLAYER,
+      clubId: CLUB_ID,
+      playerId: "p1",
+      status: "active",
+    });
+
+    const session = loadAuthSession();
+    assert.equal(session.user.role, ROLES.CLUB_MANAGER);
+  });
+
+  it("governance transfer demotes former president auth role when no longer in governance", () => {
+    const demoted = demoteGovernanceAthleteRole(CLUB_ID, "user-president", {
+      presidentUserId: "user-new-president",
+      ownerUserId: "user-owner",
+      vicePresidentUserId: null,
+      vicePresidentUserIds: [],
+    });
+    assert.ok(demoted);
+    assert.equal(demoted.role, ROLES.PLAYER);
+  });
+
+  it("PLAYER president uses /club home path and club activity menu", () => {
+    const president = {
+      id: "user-president",
+      role: ROLES.PLAYER,
+      clubId: CLUB_ID,
+      status: "active",
+    };
+    const clubActivityItem = CLUB_COACHING_MENU_ROOT.children.find(
+      (item) => item.path === "/club"
+    );
+
+    assert.equal(getDefaultHomePath(president, true), "/club");
+    assert.equal(
+      isMenuItemVisible(clubActivityItem, {
+        can: (permission, scope) => can(president, permission, scope, RBAC_ON),
+        rbacEnabled: true,
+        isAuthenticated: true,
+        user: president,
+        scope: { clubId: CLUB_ID },
+      }),
+      true
+    );
   });
 });

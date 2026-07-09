@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import {
   Alert,
+  Avatar,
   Box,
   Button,
   Card,
@@ -15,6 +16,7 @@ import {
   Grid,
   InputLabel,
   MenuItem,
+  Paper,
   Select,
   Stack,
   Tab,
@@ -22,6 +24,14 @@ import {
   TextField,
   Typography,
 } from "@mui/material";
+import { alpha, useTheme } from "@mui/material/styles";
+import {
+  CalendarMonth,
+  EventNote,
+  Groups,
+  SportsTennis,
+  Storefront,
+} from "@mui/icons-material";
 
 import { useClub } from "../context/ClubContext.jsx";
 import { useSeasonLeague } from "../context/SeasonContext.jsx";
@@ -56,6 +66,7 @@ function TabPanel({ children, value, index }) {
 }
 
 export default function ClubManagement() {
+  const theme = useTheme();
   const { user } = useAuth();
   const {
     clubs,
@@ -243,14 +254,68 @@ export default function ClubManagement() {
     }
   };
 
+  const overviewIcons = {
+    Groups: <Groups fontSize="small" />,
+    SportsTennis: <SportsTennis fontSize="small" />,
+    CalendarMonth: <CalendarMonth fontSize="small" />,
+    EventNote: <EventNote fontSize="small" />,
+  };
+
   return (
     <Box>
-      <Typography variant="h4" fontWeight="bold" sx={{ mb: 1 }}>
-        CLB & Giải
-      </Typography>
-      <Typography color="text.secondary" sx={{ mb: 3 }}>
-        Quản lý CLB, mùa giải và league nội bộ cho {activeClub?.name}.
-      </Typography>
+      <Card
+        sx={{
+          mb: 3,
+          background: `linear-gradient(135deg, ${theme.palette.primary.main}, ${theme.palette.secondary.main})`,
+          color: "white",
+          boxShadow: `0 18px 50px ${alpha(theme.palette.common.black, 0.18)}`,
+        }}
+      >
+        <CardContent>
+          <Stack
+            direction={{ xs: "column", md: "row" }}
+            spacing={2}
+            justifyContent="space-between"
+            alignItems={{ xs: "flex-start", md: "center" }}
+          >
+            <Box>
+              <Stack direction="row" spacing={1} alignItems="center" sx={{ mb: 1 }}>
+                <Storefront />
+                <Typography variant="overline" sx={{ letterSpacing: 1.2 }}>
+                  Trung tâm quản lý CLB
+                </Typography>
+              </Stack>
+              <Typography variant="h4" fontWeight="700" sx={{ mb: 1 }}>
+                {activeClub?.name || "CLB của bạn"}
+              </Typography>
+              <Typography sx={{ maxWidth: 680, opacity: 0.95 }}>
+                Theo dõi người chơi, sân, mùa giải và các giải đấu nội bộ từ một nơi.
+              </Typography>
+            </Box>
+
+            <Stack direction={{ xs: "column", sm: "row" }} spacing={1} flexWrap="wrap">
+              <Chip
+                size="small"
+                label={`Runtime access: ${accessAllowed ? "allowed" : "denied"}`}
+                sx={{
+                  bgcolor: alpha(theme.palette.common.white, 0.16),
+                  color: "white",
+                  border: `1px solid ${alpha(theme.palette.common.white, 0.24)}`,
+                }}
+              />
+              <Chip
+                size="small"
+                label={activeClub?.name ? "Đang hoạt động" : "Chưa chọn CLB"}
+                sx={{
+                  bgcolor: alpha(theme.palette.common.white, 0.2),
+                  color: "white",
+                  border: `1px solid ${alpha(theme.palette.common.white, 0.24)}`,
+                }}
+              />
+            </Stack>
+          </Stack>
+        </CardContent>
+      </Card>
 
       {message && (
         <Alert severity={message.type} sx={{ mb: 2 }}>
@@ -260,67 +325,50 @@ export default function ClubManagement() {
 
       <ClubAssignmentBanner />
 
-      <Chip
-        size="small"
-        label={`Runtime access: ${accessAllowed ? "allowed" : "denied"}`}
-        color={accessAllowed ? "success" : "warning"}
-        sx={{ mb: 2 }}
-      />
-
       <Grid container spacing={2} sx={{ mb: 3 }}>
-        <Grid size={{ xs: 12, sm: 6, md: 3 }}>
-          <Card variant="outlined">
-            <CardContent>
-              <Typography variant="body2" color="text.secondary">
-                Người chơi
-              </Typography>
-              <Typography variant="h5" fontWeight="bold">
-                {view.totals.players}
-              </Typography>
-            </CardContent>
-          </Card>
-        </Grid>
-        <Grid size={{ xs: 12, sm: 6, md: 3 }}>
-          <Card variant="outlined">
-            <CardContent>
-              <Typography variant="body2" color="text.secondary">
-                Sân hoạt động
-              </Typography>
-              <Typography variant="h5" fontWeight="bold">
-                {view.totals.activeCourts}/{view.totals.courts}
-              </Typography>
-            </CardContent>
-          </Card>
-        </Grid>
-        <Grid size={{ xs: 12, sm: 6, md: 3 }}>
-          <Card variant="outlined">
-            <CardContent>
-              <Typography variant="body2" color="text.secondary">
-                Mùa / Giải
-              </Typography>
-              <Typography variant="h5" fontWeight="bold">
-                {view.totals.seasons} / {view.totals.leagues}
-              </Typography>
-            </CardContent>
-          </Card>
-        </Grid>
-        <Grid size={{ xs: 12, sm: 6, md: 3 }}>
-          <Card variant="outlined">
-            <CardContent>
-              <Typography variant="body2" color="text.secondary">
-                Phiên xếp sân
-              </Typography>
-              <Typography variant="h5" fontWeight="bold">
-                {view.totals.sessions}
-              </Typography>
-            </CardContent>
-          </Card>
-        </Grid>
+        {view.overviewCards.map((card) => (
+          <Grid size={{ xs: 12, sm: 6, md: 3 }} key={card.key}>
+            <Card
+              variant="outlined"
+              sx={{
+                height: "100%",
+                borderColor: alpha(card.accent, 0.24),
+                background: `linear-gradient(135deg, ${alpha(card.accent, 0.08)}, ${alpha(card.accent, 0.02)})`,
+              }}
+            >
+              <CardContent>
+                <Stack direction="row" justifyContent="space-between" alignItems="flex-start" spacing={2}>
+                  <Box>
+                    <Typography variant="body2" color="text.secondary">
+                      {card.label}
+                    </Typography>
+                    <Typography variant="h5" fontWeight="700" sx={{ mt: 0.5 }}>
+                      {card.value}
+                    </Typography>
+                    <Typography variant="caption" color="text.secondary" sx={{ display: "block", mt: 0.5 }}>
+                      {card.caption}
+                    </Typography>
+                  </Box>
+                  <Avatar
+                    sx={{
+                      bgcolor: alpha(card.accent, 0.15),
+                      color: card.accent,
+                      width: 44,
+                      height: 44,
+                    }}
+                  >
+                    {overviewIcons[card.icon]}
+                  </Avatar>
+                </Stack>
+              </CardContent>
+            </Card>
+          </Grid>
+        ))}
       </Grid>
 
-      <Card>
+      <Paper variant="outlined" sx={{ p: { xs: 1.5, md: 2 }, mb: 3 }}>
         <CardContent>
-          <Tabs value={tab} onChange={(_event, value) => setTab(value)}>
+          <Tabs value={tab} onChange={(_event, value) => setTab(value)} variant="scrollable" scrollButtons="auto">
             <Tab label="CLB" />
             <Tab label="Mùa giải" />
             <Tab label="Giải / League" />
@@ -635,7 +683,7 @@ export default function ClubManagement() {
             </Stack>
           </TabPanel>
         </CardContent>
-      </Card>
+      </Paper>
 
       <Dialog open={deleteDialogOpen} onClose={() => setDeleteDialogOpen(false)}>
         <DialogTitle>Xóa CLB?</DialogTitle>

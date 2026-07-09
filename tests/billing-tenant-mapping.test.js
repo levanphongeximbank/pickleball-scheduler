@@ -17,6 +17,7 @@ test("sanitizeBillingTenantId rejects empty and blocklisted ids", () => {
   assert.equal(sanitizeBillingTenantId("   "), null);
   assert.equal(sanitizeBillingTenantId("tenant-demo"), null);
   assert.equal(sanitizeBillingTenantId("TENANT-DEMO"), null);
+  assert.equal(sanitizeBillingTenantId("tenant-future-arena"), null);
   assert.equal(sanitizeBillingTenantId("venue-staging-a"), "venue-staging-a");
 });
 

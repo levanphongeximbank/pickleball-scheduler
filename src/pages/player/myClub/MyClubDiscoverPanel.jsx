@@ -1,16 +1,19 @@
 import { useMemo, useState } from "react";
 import {
   Alert,
+  Avatar,
   Box,
   Button,
   Card,
   CardContent,
   Chip,
   Grid,
+  InputAdornment,
   Stack,
   TextField,
   Typography,
 } from "@mui/material";
+import SearchIcon from "@mui/icons-material/Search";
 
 import {
   CLUB_MEMBERSHIP_REQUEST_STATUSES,
@@ -21,6 +24,7 @@ import {
 } from "../../../features/club/index.js";
 import JoinClubDialog from "./JoinClubDialog.jsx";
 import { requestStatusChip } from "./clubMembershipUi.jsx";
+import { clubAvatarColor, clubInitials } from "./myClubUiStyles.js";
 
 export default function MyClubDiscoverPanel({
   user,
@@ -90,10 +94,17 @@ export default function MyClubDiscoverPanel({
         <TextField
           size="small"
           fullWidth
-          label="Tìm theo tên CLB"
+          placeholder="Tìm theo tên CLB"
           value={search}
           onChange={(event) => setSearch(event.target.value)}
-          sx={{ mb: 2, maxWidth: 420 }}
+          sx={{ mb: 2, maxWidth: 520 }}
+          InputProps={{
+            startAdornment: (
+              <InputAdornment position="start">
+                <SearchIcon fontSize="small" />
+              </InputAdornment>
+            ),
+          }}
         />
       )}
 
@@ -108,32 +119,48 @@ export default function MyClubDiscoverPanel({
             const request = requestByClubId.get(club.id);
             const isMyClub = user?.clubId === club.id || user?.club_id === club.id;
 
+            const clubName = summary?.name || club.name;
+            const initials = clubInitials(clubName);
+            const avatarColor = clubAvatarColor(clubName);
+
             return (
               <Grid item xs={12} md={6} key={club.id}>
-                <Card sx={{ height: "100%" }}>
+                <Card
+                  sx={{
+                    height: "100%",
+                    borderRadius: 2,
+                    transition: "box-shadow 0.2s ease",
+                    "&:hover": { boxShadow: 4 },
+                  }}
+                >
                   <CardContent>
                     <Stack spacing={1.5}>
-                      <Stack direction="row" justifyContent="space-between" alignItems="flex-start">
-                        <Typography variant="h6" fontWeight={700}>
-                          {summary?.name || club.name}
-                        </Typography>
-                        {isMyClub ? (
-                          <Chip size="small" label="CLB của bạn" color="success" />
-                        ) : (
-                          request && requestStatusChip(request.status)
-                        )}
+                      <Stack direction="row" spacing={1.5} alignItems="flex-start">
+                        <Avatar sx={{ bgcolor: avatarColor, fontWeight: 700 }}>{initials}</Avatar>
+                        <Box sx={{ flex: 1, minWidth: 0 }}>
+                          <Stack direction="row" justifyContent="space-between" alignItems="flex-start" spacing={1}>
+                            <Typography variant="h6" fontWeight={700}>
+                              {clubName}
+                            </Typography>
+                            {isMyClub ? (
+                              <Chip size="small" label="CLB của bạn" color="success" />
+                            ) : (
+                              request && requestStatusChip(request.status)
+                            )}
+                          </Stack>
+
+                          <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
+                            {summary?.activeMemberCount ?? 0} thành viên
+                            {summary?.presidentLabel ? ` · Chủ tịch: ${summary.presidentLabel}` : ""}
+                          </Typography>
+
+                          {summary?.clusterLabel && (
+                            <Typography variant="body2" color="text.secondary">
+                              Cụm sân: {summary.clusterLabel}
+                            </Typography>
+                          )}
+                        </Box>
                       </Stack>
-
-                      <Typography variant="body2" color="text.secondary">
-                        {summary?.activeMemberCount ?? 0} thành viên
-                        {summary?.presidentLabel ? ` · Chủ tịch: ${summary.presidentLabel}` : ""}
-                      </Typography>
-
-                      {summary?.clusterLabel && (
-                        <Typography variant="body2" color="text.secondary">
-                          Cụm sân: {summary.clusterLabel}
-                        </Typography>
-                      )}
 
                       {request?.status === CLUB_MEMBERSHIP_REQUEST_STATUSES.REJECTED &&
                         request.reviewNote && (
