@@ -1,11 +1,9 @@
 import { useMemo, useState } from "react";
 import {
   Alert,
-  Box,
   Button,
   Divider,
   Paper,
-  Slider,
   Stack,
   TextField,
   Typography,
@@ -14,11 +12,10 @@ import {
 import { useAuth } from "../../../context/AuthContext.jsx";
 import { PERMISSIONS } from "../../../auth/permissions.js";
 import {
+  clampPickVnRating,
   formatPickVnRating,
-  getPickVnRatingSliderMarks,
   PICK_VN_MAX,
   PICK_VN_MIN,
-  snapPickVnRating,
 } from "../constants/pickVnRatingScale.js";
 import { RATING_STATUS, RATING_STATUS_LABELS } from "../constants/ratingStatus.js";
 import {
@@ -40,19 +37,44 @@ export default function PickVnRatingPanel({
 }) {
   const { user, can } = useAuth();
   const [verifyRating, setVerifyRating] = useState(
-    snapPickVnRating(player?.current_rating ?? player?.skillLevel ?? 3.5)
+    clampPickVnRating(player?.current_rating ?? player?.skillLevel ?? 3.5)
   );
   const [verifyNote, setVerifyNote] = useState("");
   const [message, setMessage] = useState(null);
+  const [verifyRatingError, setVerifyRatingError] = useState("");
 
   const globalRecord = useMemo(
     () => (authUserId ? getPickVnRatingByAuthUserId(authUserId) : null),
     [authUserId, player?.last_rating_updated_at, player?.rating_status]
   );
 
-  const marks = useMemo(() => getPickVnRatingSliderMarks(), []);
   const status = player?.rating_status || RATING_STATUS.UNRATED;
   const current = player?.current_rating ?? player?.skillLevel ?? 3.5;
+
+  const validateVerifyRating = (value) => {
+    const raw = String(value ?? "").trim();
+    if (!raw) {
+      return "Nhập trình độ từ 1.0 đến 8.0.";
+    }
+    const numeric = Number(raw);
+    if (!Number.isFinite(numeric)) {
+      return "Giá trị không hợp lệ.";
+    }
+    if (numeric < PICK_VN_MIN || numeric > PICK_VN_MAX) {
+      return `Trình độ phải từ ${PICK_VN_MIN} đến ${PICK_VN_MAX}.`;
+    }
+    return "";
+  };
+
+  const handleVerifyRatingBlur = () => {
+    const error = validateVerifyRating(verifyRating);
+    if (error) {
+      setVerifyRatingError(error);
+      return;
+    }
+    setVerifyRatingError("");
+    setVerifyRating(clampPickVnRating(verifyRating));
+  };
 
   const canVerifyClub = can(PERMISSIONS.SKILL_LEVEL_VERIFY_CLUB, {
     clubId,
@@ -78,7 +100,16 @@ export default function PickVnRatingPanel({
     globalRecord?.ratingStatus || status;
 
   const handleVerify = () => {
-    const result = verifyClubPlayerRating(clubId, player.id, verifyRating, {
+    const error = validateVerifyRating(verifyRating);
+    if (error) {
+      setVerifyRatingError(error);
+      return;
+    }
+    const clamped = clampPickVnRating(verifyRating);
+    setVerifyRating(clamped);
+    setVerifyRatingError("");
+
+    const result = verifyClubPlayerRating(clubId, player.id, clamped, {
       verifiedBy: user?.id || user?.email || null,
       note: verifyNote,
       authUserId,
@@ -210,18 +241,24 @@ export default function PickVnRatingPanel({
               {message.text}
             </Alert>
           )}
-          <Box sx={{ px: 1, mb: 1 }}>
-            <Slider
-              value={verifyRating}
-              min={PICK_VN_MIN}
-              max={PICK_VN_MAX}
-              step={0.5}
-              marks={marks}
-              valueLabelDisplay="auto"
-              valueLabelFormat={(value) => formatPickVnRating(value)}
-              onChange={(_, value) => setVerifyRating(snapPickVnRating(value))}
-            />
-          </Box>
+          <TextField
+            label="Trình độ xác thực"
+            type="number"
+            fullWidth
+            size="small"
+            value={verifyRating}
+            error={Boolean(verifyRatingError)}
+            helperText={verifyRatingError || "Nhập từ 1.0 đến 8.0 (1 chữ số thập phân)"}
+            inputProps={{ min: PICK_VN_MIN, max: PICK_VN_MAX, step: 0.1 }}
+            onChange={(event) => {
+              setVerifyRating(event.target.value);
+              if (verifyRatingError) {
+                setVerifyRatingError("");
+              }
+            }}
+            onBlur={handleVerifyRatingBlur}
+            sx={{ mb: 1 }}
+          />
           <TextField
             label="Ghi chú xác thực"
             fullWidth

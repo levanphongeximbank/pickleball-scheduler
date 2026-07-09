@@ -1,5 +1,5 @@
 import { RATING_STATUS } from "../constants/ratingStatus.js";
-import { snapPickVnRating } from "../constants/pickVnRatingScale.js";
+import { clampPickVnRating, snapPickVnRating } from "../constants/pickVnRatingScale.js";
 import { buildClubPlayerRatingMirror } from "../models/pickVnRating.js";
 import {
   applyVerifiedRatingToRecord,
@@ -37,7 +37,7 @@ export function verifyClubPlayerRating(
   }
 
   const player = data.players[playerIndex];
-  const snapped = snapPickVnRating(rating);
+  const snapped = clampPickVnRating(rating);
   const resolvedAuthUserId = authUserId || player.authUserId || null;
 
   let globalRecord = resolvedAuthUserId

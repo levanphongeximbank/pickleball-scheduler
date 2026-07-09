@@ -2,6 +2,7 @@ import test, { beforeEach } from "node:test";
 import assert from "node:assert/strict";
 
 import {
+  clampPickVnRating,
   formatPickVnRating,
   migrateLegacyRating,
   parsePickVnRating,
@@ -63,6 +64,13 @@ test("snapPickVnRating — fine step up to 4.0, then 0.5 to 8.0", () => {
   assert.equal(snapPickVnRating(8.0), 8.0);
   assert.equal(snapPickVnRating(9.0), 8.0);
   assert.equal(formatPickVnRating(8.0), "8.0");
+});
+
+test("clampPickVnRating — 0.1 precision full range, no 0.5 snap", () => {
+  assert.equal(clampPickVnRating(4.3), 4.3);
+  assert.equal(clampPickVnRating(5.7), 5.7);
+  assert.equal(clampPickVnRating(9.0), 8.0);
+  assert.equal(clampPickVnRating(0.5), 1.0);
 });
 
 test("snapPickVnOnboardingConfirm clamps to 1.0–4.0", () => {

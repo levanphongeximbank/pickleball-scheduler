@@ -6,8 +6,12 @@ import {
   Box,
   Button,
   Chip,
+  FormControl,
   Grid,
+  InputLabel,
+  MenuItem,
   Paper,
+  Select,
   Slider,
   Stack,
   Tab,
@@ -22,7 +26,7 @@ import { useTenant } from "../context/TenantContext.jsx";
 import { useAuth } from "../context/AuthContext.jsx";
 import { canViewPlayerSkillLevel } from "../auth/rbac.js";
 import { PERMISSIONS } from "../auth/permissions.js";
-import { ROLES, normalizeRole } from "../auth/roles.js";
+import { ROLES, isPlatformWideRole, normalizeRole } from "../auth/roles.js";
 import { guardRecordTenant } from "../features/tenant/index.js";
 import {
   getPlayerPendingSkillLevelRequest,
@@ -94,7 +98,7 @@ function RelationshipList({ title, items }) {
 export default function PlayerProfile() {
   const { playerId } = useParams();
   const navigate = useNavigate();
-  const { activeClubId, activeClub, revision, refreshClubs } = useClub();
+  const { clubs, activeClubId, activeClub, revision, refreshClubs } = useClub();
   const { currentTenantId } = useTenant();
   const { rbacEnabled, isAuthenticated, user, can } = useAuth();
 
@@ -106,6 +110,19 @@ export default function PlayerProfile() {
   const [profile, setProfile] = useState({ ok: false, loading: true, error: null });
   const [linkMessage, setLinkMessage] = useState(null);
   const [linking, setLinking] = useState(false);
+  const [linkClubId, setLinkClubId] = useState(activeClubId || "");
+
+  const platformWideRole = isPlatformWideRole(user?.role);
+  const linkTargetClubId = platformWideRole ? linkClubId : activeClubId;
+  const linkTargetClub =
+    clubs.find((club) => club.id === linkTargetClubId) ||
+    (activeClub?.id === linkTargetClubId ? activeClub : null);
+
+  useEffect(() => {
+    if (activeClubId) {
+      setLinkClubId(activeClubId);
+    }
+  }, [activeClubId]);
 
   const isSelfProfile =
     Boolean(user?.playerId) && String(user.playerId) === String(playerId);
@@ -242,14 +259,14 @@ export default function PlayerProfile() {
 
   const canLinkToClub =
     isAccountOnlyProfile &&
-    Boolean(activeClubId) &&
+    Boolean(linkTargetClubId) &&
     can(PERMISSIONS.PLAYER_UPDATE, {
-      clubId: activeClubId,
-      venueId: activeClub?.venueId || null,
+      clubId: linkTargetClubId,
+      venueId: linkTargetClub?.venueId || null,
     });
 
   const handleLinkToClub = async () => {
-    if (!profile.authUserId || !activeClubId) {
+    if (!profile.authUserId || !linkTargetClubId) {
       return;
     }
 
@@ -258,9 +275,9 @@ export default function PlayerProfile() {
 
     const profileResult = await fetchProfileByUserId(profile.authUserId);
     const result = await adminLinkAccountOnlyAthleteToClub({
-      clubId: activeClubId,
+      clubId: linkTargetClubId,
       user: profileResult.ok ? profileResult.user : { id: profile.authUserId },
-      tenantId: activeClub?.venueId || currentTenantId,
+      tenantId: linkTargetClub?.venueId || currentTenantId,
     });
 
     setLinking(false);
@@ -271,7 +288,8 @@ export default function PlayerProfile() {
     }
 
     refreshClubs();
-    setLinkMessage({ type: "success", text: "Đã gắn VĐV vào CLB hiện tại." });
+    const linkedClubName = linkTargetClub?.name || "CLB";
+    setLinkMessage({ type: "success", text: `Đã gắn VĐV vào ${linkedClubName}.` });
     navigate(`/players/profile/${result.playerId}`, { replace: true });
   };
 
@@ -377,15 +395,37 @@ export default function PlayerProfile() {
               Gắn VĐV vào CLB
             </Typography>
             <Typography variant="body2" color="text.secondary">
-              Tạo hồ sơ VĐV trong CLB <strong>{activeClub?.name}</strong> và liên kết tài khoản này.
+              Tạo hồ sơ VĐV trong CLB{" "}
+              <strong>{linkTargetClub?.name || activeClub?.name}</strong> và liên kết tài khoản này.
             </Typography>
+            {platformWideRole && clubs.length > 0 && (
+              <FormControl fullWidth size="small">
+                <InputLabel id="link-club-label">Chọn CLB</InputLabel>
+                <Select
+                  labelId="link-club-label"
+                  value={linkClubId || ""}
+                  label="Chọn CLB"
+                  onChange={(event) => setLinkClubId(event.target.value)}
+                >
+                  {clubs.map((club) => (
+                    <MenuItem key={club.id} value={club.id}>
+                      {club.name}
+                    </MenuItem>
+                  ))}
+                </Select>
+              </FormControl>
+            )}
             {linkMessage && (
               <Alert severity={linkMessage.type === "error" ? "error" : "success"}>
                 {linkMessage.text}
               </Alert>
             )}
-            <Button variant="contained" onClick={handleLinkToClub} disabled={linking}>
-              {linking ? "Đang gắn..." : "Gắn vào CLB hiện tại"}
+            <Button variant="contained" onClick={handleLinkToClub} disabled={linking || !linkTargetClubId}>
+              {linking
+                ? "Đang gắn..."
+                : platformWideRole
+                  ? "Gắn vào CLB đã chọn"
+                  : "Gắn vào CLB hiện tại"}
             </Button>
           </Stack>
         </Paper>

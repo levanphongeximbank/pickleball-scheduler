@@ -63,6 +63,13 @@ export function snapPickVnRating(value) {
   return Math.min(PICK_VN_MAX, Math.max(PICK_VN_MIN, Math.round(snapped * 10) / 10));
 }
 
+/** Clamp 1.0–8.0, làm tròn 1 chữ số thập phân — không ép bước 0.5 */
+export function clampPickVnRating(value) {
+  const numeric = parsePickVnRating(value, PICK_VN_MIN);
+  const clamped = Math.min(PICK_VN_MAX, Math.max(PICK_VN_MIN, numeric));
+  return Math.round(clamped * 10) / 10;
+}
+
 /** Slider bước 7 — chỉ 1.0–4.0, bước 0.1 (chọn được 2.2, 2.3, 2.4…) */
 export function snapPickVnOnboardingConfirm(value) {
   const numeric = parsePickVnRating(value, PICK_VN_MIN);
