@@ -30,11 +30,13 @@ test("identityAdminCreateService source — admin API email_confirm + reset emai
   assert.equal(source.includes(".upsert(profileRow"), true);
 });
 
-test("create-user API source — validate caller JWT via getUser(token)", async () => {
+test("create-user API source — validate caller JWT via service role getUser(token)", async () => {
   const source = await import("node:fs/promises").then((fs) =>
     fs.readFile(new URL("../api/identity/create-user.js", import.meta.url), "utf8")
   );
 
-  assert.equal(source.includes("auth.getUser(token)"), true);
-  assert.equal(source.includes("auth.getUser()"), false);
+  assert.equal(source.includes("adminClient.auth.getUser(token)"), true);
+  assert.equal(source.includes("getSupabaseServiceRoleKey()"), true);
+  assert.equal(source.includes("VITE_SUPABASE_URL"), true);
+  assert.equal(source.includes('from("role_permissions")'), true);
 });

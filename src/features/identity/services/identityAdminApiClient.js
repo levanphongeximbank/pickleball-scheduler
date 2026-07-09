@@ -14,8 +14,14 @@ export async function callIdentityAdminCreateUser(payload = {}) {
     return { ok: false, error: "Supabase chưa cấu hình.", code: "NO_SUPABASE" };
   }
 
-  const { data: sessionData } = await client.auth.getSession();
-  const accessToken = sessionData?.session?.access_token;
+  let { data: sessionData } = await client.auth.getSession();
+  let accessToken = sessionData?.session?.access_token;
+
+  if (!accessToken) {
+    const refreshed = await client.auth.refreshSession();
+    accessToken = refreshed.data?.session?.access_token;
+  }
+
   if (!accessToken) {
     return { ok: false, error: "Chưa đăng nhập.", code: "NOT_AUTHENTICATED" };
   }

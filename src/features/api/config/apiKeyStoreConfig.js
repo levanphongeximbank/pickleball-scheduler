@@ -19,7 +19,8 @@ function readEnv(key, fallback = "") {
 }
 
 export function getSupabaseServerUrl() {
-  return readEnv("SUPABASE_URL") || readEnv("VITE_SUPABASE_URL");
+  // Prefer VITE_* so serverless matches the browser JWT issuer on Vercel Production.
+  return readEnv("VITE_SUPABASE_URL") || readEnv("SUPABASE_URL");
 }
 
 /** Anon/publishable key for serverless routes that validate caller JWT (e.g. create-user). */
