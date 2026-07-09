@@ -211,6 +211,24 @@ test("Phase 20B — club module routes exempt from venue subscription gate", () 
   assert.equal(isClubOperationalPath("/tournaments/t-1/engine"), false);
 });
 
+test("Phase 20B — club-scoped users without venue tenant are subscription-exempt", () => {
+  const playerWithClub = createUserRecord({
+    id: "player-club",
+    role: ROLES.PLAYER,
+    clubId: "club-self-1",
+    status: "active",
+  });
+  const clubManager = createUserRecord({
+    id: "manager-1",
+    role: ROLES.CLUB_MANAGER,
+    clubId: "club-self-1",
+    status: "active",
+  });
+
+  assert.equal(isSubscriptionOperationalExemptRole(playerWithClub), true);
+  assert.equal(isSubscriptionOperationalExemptRole(clubManager), true);
+});
+
 test("Phase 20B — operational routes are not billing-exempt when tenant active", () => {
   const operationalRoutes = [
     "/dashboard",

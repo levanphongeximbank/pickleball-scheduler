@@ -49,6 +49,14 @@ export function isAuthenticatedOnlyRoute(pathname) {
   return (
     pathname === "/profile" ||
     pathname.startsWith("/profile/") ||
+    pathname === "/player/profile" ||
+    pathname.startsWith("/player/profile/") ||
+    pathname === "/player/skill" ||
+    pathname.startsWith("/player/skill/") ||
+    pathname === "/player/skill-assessment" ||
+    pathname.startsWith("/player/skill-assessment/") ||
+    pathname === "/my-club" ||
+    pathname.startsWith("/my-club/") ||
     pathname === "/change-password" ||
     pathname.startsWith("/change-password/") ||
     pathname === "/referee" ||

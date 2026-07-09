@@ -18,6 +18,7 @@ import {
 import {
   getTenantStats,
   listTenants,
+  resolveEffectiveTenantId,
   setTenantStatus,
 } from "../src/features/tenant/services/tenantService.js";
 import { saveClubs } from "../src/data/club.js";
@@ -74,6 +75,30 @@ describe("tenant sprint 2", () => {
 
     const tenantId = resolveTenantIdForClub("default-club");
     assert.equal(tenantId, "default-tenant");
+  });
+
+  it("resolveEffectiveTenantId falls back to explicit club tenant", () => {
+    saveClubs([
+      {
+        id: "club-cluster-1",
+        name: "CLB Test",
+        venueId: "venue-cluster-a",
+      },
+    ]);
+
+    const fromClub = resolveEffectiveTenantId({
+      id: "user-1",
+      role: ROLES.PLAYER,
+      clubId: "club-cluster-1",
+    });
+    assert.equal(fromClub, "venue-cluster-a");
+
+    const noClubTenant = resolveEffectiveTenantId({
+      id: "user-2",
+      role: ROLES.PLAYER,
+      clubId: "missing-club",
+    });
+    assert.equal(noClubTenant, null);
   });
 
   it("seeds three demo tenants with isolated stats", () => {

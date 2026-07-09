@@ -8,7 +8,7 @@ import {
 } from "react";
 
 import { useAuth } from "./AuthContext.jsx";
-import { isGlobalRole, isClubScopedRole, isPlatformScopedRole, normalizeRole, ROLES } from "../auth/roles.js";
+import { isGlobalRole, isClubScopedRole, isPlatformScopedRole } from "../auth/roles.js";
 import { loadActiveTenantId, saveActiveTenantId } from "../data/tenantSession.js";
 import { getActiveClubId } from "../data/club.js";
 import { switchActiveClub } from "../domain/clubService.js";
@@ -174,13 +174,8 @@ export function TenantProvider({ children }) {
     }
 
     if (!currentTenantId) {
-      const role = normalizeRole(user.role);
-      if (
-        (role === ROLES.PLAYER || role === ROLES.CUSTOMER) &&
-        !user.venueId &&
-        !user.tenantId &&
-        !user.clubId
-      ) {
+      // CLB/VĐV/huấn luyện — không bắt buộc gán tenant venue (đồng bộ operationalRoutePolicy).
+      if (isSubscriptionOperationalExemptRole(user)) {
         return { ok: true, code: "TENANT_UNASSIGNED" };
       }
 

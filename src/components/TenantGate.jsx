@@ -1,15 +1,21 @@
 import { Box, Button, Typography } from "@mui/material";
 import BlockIcon from "@mui/icons-material/Block";
-import { Link as RouterLink } from "react-router-dom";
+import { Link as RouterLink, useLocation } from "react-router-dom";
 
 import { useTenant } from "../context/TenantContext.jsx";
 import { useAuth } from "../context/AuthContext.jsx";
+import { isTenantSelfServiceExemptPath } from "../features/billing/guards/operationalRoutePolicy.js";
 
 export default function TenantGate({ children }) {
+  const location = useLocation();
   const { tenantCheck, isSuperAdmin } = useTenant();
   const { rbacEnabled, isAuthenticated } = useAuth();
 
   if (!rbacEnabled || !isAuthenticated) {
+    return children;
+  }
+
+  if (isTenantSelfServiceExemptPath(location.pathname)) {
     return children;
   }
 

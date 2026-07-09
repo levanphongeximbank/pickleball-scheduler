@@ -11,6 +11,7 @@ import {
   DEFAULT_TENANT_ID,
 } from "../../../models/tenant.js";
 import {
+  getExplicitTenantIdForClub,
   listClubsForTenant,
   resolveTenantIdForClub,
 } from "../guards/tenantGuard.js";
@@ -166,6 +167,11 @@ export function resolveEffectiveTenantId(user, overrideTenantId = null) {
 
   if (user?.venueId) {
     return user.venueId;
+  }
+
+  const clubId = user?.clubId || user?.club_id;
+  if (clubId) {
+    return getExplicitTenantIdForClub(clubId);
   }
 
   return null;

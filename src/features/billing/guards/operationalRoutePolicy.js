@@ -10,13 +10,25 @@ import {
   normalizeRole,
 } from "../../../auth/roles.js";
 
-const BILLING_EXEMPT_EXACT = new Set(["/profile", "/403"]);
+const BILLING_EXEMPT_EXACT = new Set([
+  "/profile",
+  "/player/profile",
+  "/player/skill",
+  "/player/skill-assessment",
+  "/my-club",
+  "/change-password",
+  "/403",
+]);
 
 const BILLING_EXEMPT_PREFIXES = [
   "/billing",
   "/profile/",
+  "/player/profile/",
+  "/player/skill/",
+  "/player/skill-assessment/",
   "/mobile/player",
   "/mobile/notifications",
+  "/onboarding/",
 ];
 
 /** Module CLB — không phụ thuộc gói venue (lịch, VĐV, giải nội bộ, xếp sân…). */
@@ -45,6 +57,8 @@ export function isSubscriptionOperationalExemptRole(user) {
   const role = normalizeRole(user.role);
   return (
     isClubScopedRole(role) ||
+    role === ROLES.PLAYER ||
+    role === ROLES.REFEREE ||
     role === ROLES.COACH ||
     role === ROLES.CUSTOMER ||
     role === ROLES.TEAM_CAPTAIN
@@ -80,6 +94,11 @@ export function isClubOperationalPath(pathname) {
 /** Route hoặc billing exempt — dùng trong OperationalRouteGate. */
 export function isOperationalRouteExempt(pathname) {
   return isBillingExemptPath(pathname) || isClubOperationalPath(pathname);
+}
+
+/** Self-service routes — VĐV/khách không cần tenant gán trên profile để mở trang. */
+export function isTenantSelfServiceExemptPath(pathname) {
+  return isBillingExemptPath(pathname);
 }
 
 /** Default operational action checked for route lock. */
