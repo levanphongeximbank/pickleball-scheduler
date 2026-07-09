@@ -336,6 +336,20 @@ export function bootstrapSelfRegisteredPresident(clubId, user, tenantId) {
     });
   }
 
+  if (effectiveTenantId) {
+    const session = loadAuthSession();
+    if (session?.user?.id === normalizedUser.id) {
+      saveAuthSession(
+        normalizeUser({
+          ...session.user,
+          tenantId: effectiveTenantId,
+          venueId: effectiveTenantId,
+        }),
+        { provider: session.provider || "dev" }
+      );
+    }
+  }
+
   const memberResult = addMemberToClub(trimmedClubId, player.id, effectiveTenantId, {
     skipPermissionGuard: true,
   });
@@ -353,6 +367,7 @@ export function bootstrapSelfRegisteredPresident(clubId, user, tenantId) {
       playerId: player.id,
       role: ROLES.CLUB_MANAGER,
       tenantId: effectiveTenantId || session.user.tenantId || session.user.venueId || null,
+      venueId: effectiveTenantId || session.user.venueId || session.user.tenantId || null,
     });
     saveAuthSession(nextUser, { provider: session.provider || "dev" });
   }

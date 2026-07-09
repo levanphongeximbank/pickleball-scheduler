@@ -204,7 +204,13 @@ export function createClub(data = {}) {
   ) {
     const boot = bootstrapSelfRegisteredPresident(club.id, user, tenantId);
     if (!boot.ok) {
-      return boot;
+      saveClubs(loadClubs().filter((item) => item.id !== club.id));
+      purgeClubExtension(club.id);
+      const error =
+        boot.code === "TENANT_FORBIDDEN" || /cross-tenant/i.test(String(boot.error || ""))
+          ? "Không thể gán CLB vào tenant đã chọn. Vui lòng thử lại hoặc liên hệ hỗ trợ."
+          : boot.error;
+      return { ok: false, error, code: boot.code };
     }
   }
 

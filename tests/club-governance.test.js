@@ -248,6 +248,37 @@ describe("club governance", () => {
     assert.ok(members.some((member) => member.playerId === session.user.playerId));
   });
 
+  it("PLAYER without tenantId self-register createClub via cluster tenant", () => {
+    saveVenues([
+      createTenantRecord({ id: TENANT, name: "Tenant Gov", status: TENANT_STATUS.ACTIVE }),
+    ]);
+    saveClubs([]);
+    const athlete = {
+      id: "athlete-no-tenant",
+      role: ROLES.PLAYER,
+      clubId: null,
+      displayName: "Huỳnh Văn Anh",
+      email: "anh@example.com",
+    };
+    saveAuthSession(athlete);
+
+    const result = createClub({
+      name: "CLB ACCC PRO",
+      tenantId: TENANT,
+      governance: { presidentUserId: "athlete-no-tenant" },
+    });
+
+    assert.equal(result.ok, true);
+    assert.equal(result.club.status, CLUB_STATUSES.ACTIVE);
+    assert.equal(result.club.tenantId, TENANT);
+
+    const session = loadAuthSession();
+    assert.equal(session.user.clubId, result.club.id);
+    assert.equal(session.user.tenantId, TENANT);
+    assert.equal(session.user.venueId, TENANT);
+    assert.equal(session.user.role, ROLES.CLUB_MANAGER);
+  });
+
   it("court owner create resolves to active", () => {
     const owner = { id: "owner-1", role: ROLES.TENANT_OWNER, venueId: TENANT };
     const result = resolveGovernanceForCreate(
