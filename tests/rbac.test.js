@@ -221,6 +221,39 @@ test("menuAccess — PLAYER thấy menu CLB và Giải đấu", () => {
   assert.equal(labels.includes("Cài đặt"), false);
   assert.equal(labels.includes("Tạo giải"), false);
   assert.equal(labels.includes("Tổ chức thi đấu"), false);
+  assert.equal(labels.includes("Hồ sơ của tôi"), false);
+});
+
+test("menuAccess — PLAYER chưa CLB vẫn thấy menu Giải đấu", () => {
+  const player = user(ROLES.PLAYER, {
+    venueId: "venue-a",
+    clubId: null,
+    playerId: null,
+  });
+
+  assert.equal(can(player, PERMISSIONS.TOURNAMENT_VIEW, {}, RBAC_ON), true);
+  assert.equal(can(player, PERMISSIONS.STATISTICS_VIEW, {}, RBAC_ON), true);
+
+  const auth = {
+    can: (perm, scope) => can(player, perm, scope, RBAC_ON),
+    rbacEnabled: true,
+    isAuthenticated: true,
+    user: player,
+  };
+
+  const visible = filterMenuGroups(SIDEBAR_MENU_GROUPS, auth, {
+    clubId: null,
+    venueId: "venue-a",
+    playerId: null,
+  });
+
+  const labels = collectMenuItemLabels(visible);
+  assert.ok(labels.includes("Giải đấu"));
+  assert.ok(labels.includes("Tổng quan"));
+  assert.ok(labels.includes("Danh sách giải"));
+  assert.ok(labels.includes("Vận động viên / Đội"));
+  assert.ok(labels.includes("Kết quả"));
+  assert.equal(labels.includes("Hồ sơ của tôi"), false);
 });
 
 test("PLAYER không có tournament.create trong ma trận mặc định", () => {

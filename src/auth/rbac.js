@@ -460,7 +460,7 @@ function matchesSelfScope(user, scope, permission) {
   }
 
   if (permission === PERMISSIONS.TOURNAMENT_VIEW || permission === PERMISSIONS.STATISTICS_VIEW) {
-    return Boolean(user.clubId);
+    return true;
   }
 
   return Boolean(user.playerId || user.clubId);

@@ -253,6 +253,9 @@ function isGroupAllowedForRole(group, user, rbacEnabled) {
   }
 
   if (group.id === MENU_GROUP_IDS.PROFILE) {
+    if (rolesEqual(user?.role, ROLES.PLAYER)) {
+      return false;
+    }
     return Boolean(user?.role);
   }
 
