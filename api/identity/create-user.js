@@ -36,9 +36,15 @@ async function authorizeUserManage(req) {
     global: { headers: { Authorization: `Bearer ${token}` } },
   });
 
-  const { data: userData, error: userError } = await userClient.auth.getUser();
+  const { data: userData, error: userError } = await userClient.auth.getUser(token);
   if (userError || !userData?.user?.id) {
-    return { ok: false, code: "NOT_AUTHENTICATED", error: "Phiên đăng nhập không hợp lệ." };
+    return {
+      ok: false,
+      code: "NOT_AUTHENTICATED",
+      error: userError?.message?.includes("expired")
+        ? "Phiên đăng nhập đã hết hạn. Đăng xuất và đăng nhập lại."
+        : "Phiên đăng nhập không hợp lệ. Đăng xuất và đăng nhập lại.",
+    };
   }
 
   const { data: canManage, error: permError } = await userClient.rpc("user_has_permission", {

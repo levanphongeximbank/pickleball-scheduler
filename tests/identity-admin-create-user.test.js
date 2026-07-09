@@ -29,3 +29,12 @@ test("identityAdminCreateService source — admin API email_confirm + reset emai
   assert.equal(source.includes('.from("profiles")'), true);
   assert.equal(source.includes(".upsert(profileRow"), true);
 });
+
+test("create-user API source — validate caller JWT via getUser(token)", async () => {
+  const source = await import("node:fs/promises").then((fs) =>
+    fs.readFile(new URL("../api/identity/create-user.js", import.meta.url), "utf8")
+  );
+
+  assert.equal(source.includes("auth.getUser(token)"), true);
+  assert.equal(source.includes("auth.getUser()"), false);
+});
