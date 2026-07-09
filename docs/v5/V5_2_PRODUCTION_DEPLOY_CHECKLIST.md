@@ -1,7 +1,7 @@
 # V5.3 — Production Deploy Checklist (Owner + Engineering)
 
 **Ngày cập nhật:** 2026-07-09  
-**Target version:** `5.3.2` — deploying  
+**Target version:** `5.3.2` — ✅ tagged  
 **Production URL:** https://pickleball-scheduler-eight.vercel.app  
 **Production Supabase:** `expuvcohlcjzvrrauvud`  
 **Rollback deployment:** `dpl_J2YxgPK4EBhE3oTnefXK5hfnF5mu` (V5.3.1 `0be1375`)
@@ -30,10 +30,10 @@
 
 | # | Việc | Tick | Ghi chú |
 |---|------|------|---------|
-| B1 | Commit trên branch `v5-platform-edition` | ✅ | `0be1375` |
-| B2 | `package.json` version `5.3.1` | ✅ | |
-| B3 | Tag `v5.3.1` | ✅ | |
-| B4 | Push branch + tag | ✅ | origin `v5-platform-edition` + `v5.3.1` |
+| B1 | Commit trên branch `v5-platform-edition` | ✅ | `5e085c8` |
+| B2 | `package.json` version `5.3.2` | ✅ | |
+| B3 | Tag `v5.3.2` | ✅ | |
+| B4 | Push branch + tag | ✅ | origin `v5-platform-edition` + `v5.3.2` |
 
 ---
 
@@ -91,12 +91,12 @@
 | # | Việc | Tick | Ghi chú |
 |---|------|------|---------|
 | E1 | Ghi deployment ID **trước** deploy | ✅ | `dpl_J2YxgPK4EBhE3oTnefXK5hfnF5mu` (V5.3.1) |
-| E2 | Deploy Production | ☐ | V5.3.2 — court cluster cloud sync + club governance |
+| E2 | Deploy Production | ✅ | `dpl_9tBeCfGQ6wgbLC5KphC8QGWCRC7c` (commit `5e085c8`) |
 | E3 | Alias production domain | ✅ | `pickleball-scheduler-eight.vercel.app` |
 | E4 | Bundle scan — không staging ref | ✅ | |
 | E5 | `/login` HTTP 200 | ✅ | 2026-07-09 |
 
-**Fail P0 → rollback:** Vercel Promote `dpl_GgfrGxH6KFAYLTqzxpVkpypJtFAV`
+**Fail P0 → rollback:** Vercel Promote `dpl_J2YxgPK4EBhE3oTnefXK5hfnF5mu`
 
 ---
 
@@ -123,7 +123,7 @@
 | Role | GO V5.3 Production | Date |
 |------|-------------------|------|
 | Owner | ☐ | |
-| Engineering | ✅ | 2026-07-09 — deploy `0be1375` / `dpl_J2YxgPK4EBhE3oTnefXK5hfnF5mu` |
+| Engineering | ✅ | 2026-07-09 — deploy `5e085c8` / `dpl_9tBeCfGQ6wgbLC5KphC8QGWCRC7c` |
 
 **Không tick Commercial GA** — Gate 4/5 vẫn BLOCKED.
 
