@@ -30,10 +30,10 @@
 
 | # | Việc | Tick | Ghi chú |
 |---|------|------|---------|
-| B1 | Commit trên branch `v5-platform-edition` | ☐ | |
-| B2 | `package.json` version `5.3.7` | ☐ | |
-| B3 | Tag `v5.3.7` | ☐ | |
-| B4 | Push branch + tag | ☐ | origin `v5-platform-edition` + `v5.3.7` |
+| B1 | Commit trên branch `v5-platform-edition` | ✅ | `18cb872` |
+| B2 | `package.json` version `5.3.7` | ✅ | |
+| B3 | Tag `v5.3.7` | ✅ | |
+| B4 | Push branch + tag | ✅ | origin `v5-platform-edition` + `v5.3.7` |
 
 ---
 
@@ -92,8 +92,8 @@
 | # | Việc | Tick | Ghi chú |
 |---|------|------|---------|
 | E1 | Ghi deployment ID **trước** deploy | ✅ | `dpl_zfehiyNxcQNaBFAYYJhSHozEAfVx` (V5.3.6) |
-| E2 | Deploy Production | ☐ | |
-| E3 | Alias production domain | ☐ | `pickleball-scheduler-eight.vercel.app` |
+| E2 | Deploy Production | ✅ | `dpl_2MwRvwsT4iz8PRGHu3hhJ9hDo56R` (commit `18cb872`) |
+| E3 | Alias production domain | ✅ | `pickleball-scheduler-eight.vercel.app` |
 | E4 | Bundle scan — không staging ref | ✅ | |
 | E5 | `/login` HTTP 200 | ✅ | 2026-07-09 |
 
@@ -124,7 +124,7 @@
 | Role | GO V5.3 Production | Date |
 |------|-------------------|------|
 | Owner | ☐ | |
-| Engineering | ✅ | 2026-07-09 — deploy `235b402` / `dpl_zfehiyNxcQNaBFAYYJhSHozEAfVx` |
+| Engineering | ✅ | 2026-07-09 — deploy `18cb872` / `dpl_2MwRvwsT4iz8PRGHu3hhJ9hDo56R` |
 
 **Không tick Commercial GA** — Gate 4/5 vẫn BLOCKED.
 
