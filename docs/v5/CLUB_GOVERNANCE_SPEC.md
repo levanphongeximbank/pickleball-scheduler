@@ -105,7 +105,7 @@ CLB: ACCC
 | G2 | User Chủ tịch **bắt buộc** có `profiles.club_id` trỏ đúng CLB; **một user tối đa 1 CLB** làm Chủ tịch (V1) |
 | G3 | Chủ sở hữu và Chủ tịch **có thể cùng một người** |
 | G4 | **Chủ sở hữu không bắt buộc** lúc tạo CLB; có thể gán sau bởi chủ sân hoặc SUPER_ADMIN (§4.2) |
-| G5 | Phó chủ tịch là **tùy chọn**; tối đa 1 người (V1); auth role **bắt buộc** `CLUB_MANAGER` |
+| G5 | Phó chủ tịch là **tùy chọn**; tối đa **2** người (V1.1); auth role **bắt buộc** `CLUB_MANAGER` |
 | G6 | Cụm sân đăng ký = danh sách `courtId` thuộc venue; **không bắt buộc** để `active` (V1) |
 | G7 | CLB chưa có Chủ tịch → trạng thái `pending_setup`; **không** cho tạo giải nội bộ |
 | G8 | `pending_setup` là **status mới V5**; CLB cũ migrate → `active` + backfill Chủ tịch (§6.4) |

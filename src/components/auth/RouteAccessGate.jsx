@@ -7,8 +7,10 @@ import { useCluster } from "../../context/ClusterContext.jsx";
 import {
   isAuthenticatedOnlyRoute,
   isPermissionExemptPath,
+  shouldRedirectToForcePasswordChange,
   shouldRedirectToLogin,
   shouldRedirectToForbidden,
+  userMustChangePassword,
 } from "../../auth/authGuard.js";
 import { getDefaultHomePath, resolveRouteAccessScope } from "../../auth/menuAccess.js";
 
@@ -49,6 +51,17 @@ export default function RouteAccessGate({ children }) {
     })
   ) {
     return <Navigate to="/login" replace state={{ from: location }} />;
+  }
+
+  if (isAuthenticated && user) {
+    if (userMustChangePassword(user) && shouldRedirectToForcePasswordChange(location.pathname, user)) {
+      return <Navigate to="/change-password" replace />;
+    }
+
+    if (!userMustChangePassword(user) && location.pathname === "/change-password") {
+      const homePath = getDefaultHomePath(user, rbacEnabled);
+      return <Navigate to={homePath || "/"} replace />;
+    }
   }
 
   if (

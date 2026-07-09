@@ -39,6 +39,7 @@ export const TOURNAMENT_MENU_ROOT = menuFolder({
       path: TOURNAMENT_ROUTES.create,
       match: "tournament-create",
       permissions: CREATE,
+      excludeRoles: [ROLES.PLAYER],
       featureStatus: FEATURE_STATUS.LIVE,
     }),
     menuLeaf({
@@ -59,6 +60,17 @@ export const TOURNAMENT_MENU_ROOT = menuFolder({
       path: TOURNAMENT_ROUTES.rosterHub,
       match: "tournament-roster-hub",
       permissions: VIEW,
+      excludeRoles: [ROLES.PLAYER],
+      featureStatus: FEATURE_STATUS.LIVE,
+    }),
+    menuLeaf({
+      key: "tournament-roster-player",
+      icon: "players",
+      text: "Vận động viên",
+      path: TOURNAMENT_ROUTES.rosterHub,
+      match: "tournament-roster-hub",
+      permissions: VIEW,
+      roles: [ROLES.PLAYER],
       featureStatus: FEATURE_STATUS.LIVE,
     }),
     menuLeaf({
@@ -68,6 +80,7 @@ export const TOURNAMENT_MENU_ROOT = menuFolder({
       path: TOURNAMENT_ROUTES.organizeHub,
       match: "tournament-organize-hub",
       permissions: VIEW,
+      excludeRoles: [ROLES.PLAYER],
       featureStatus: FEATURE_STATUS.LIVE,
     }),
     menuLeaf({

@@ -2,6 +2,9 @@
 
 export const MIN_PASSWORD_LENGTH = 6;
 
+/** Mật khẩu mặc định khi admin/super admin reset user trên Production. */
+export const ADMIN_DEFAULT_RESET_PASSWORD = "123456789";
+
 function readViteEnv(key) {
   const nodeEnv = typeof globalThis.process !== "undefined" ? globalThis.process.env : {};
   if (nodeEnv?.[key] !== undefined && String(nodeEnv[key]).trim()) {

@@ -6,13 +6,15 @@ import { Link as RouterLink, useLocation } from "react-router-dom";
 import CurrentFacilitySwitcher from "./CurrentFacilitySwitcher.jsx";
 import { useAuth } from "../../context/AuthContext.jsx";
 import { PERMISSIONS } from "../../auth/permissions.js";
+import { isCourtOwnerCandidate } from "../../features/court-cluster/utils/courtOwnerUtils.js";
 import { SHELL_COLORS } from "./shellTokens.js";
 
 export default function SidebarFooter() {
-  const { can, isAuthenticated } = useAuth();
+  const { can, isAuthenticated, user } = useAuth();
   const location = useLocation();
   const canSwitchVenue =
     can(PERMISSIONS.TENANT_VIEW) || can(PERMISSIONS.ROLE_MANAGE);
+  const showFacilitySwitcher = isAuthenticated && isCourtOwnerCandidate(user);
   const profileActive =
     location.pathname === "/profile" || location.pathname === "/player/profile";
 
@@ -55,6 +57,7 @@ export default function SidebarFooter() {
           Hồ sơ của tôi
         </Button>
       )}
+      {showFacilitySwitcher && (
       <Box
         sx={{
           p: 1,
@@ -101,6 +104,7 @@ export default function SidebarFooter() {
           </Button>
         )}
       </Box>
+      )}
 
       <Typography
         variant="caption"

@@ -84,6 +84,9 @@ export default function LoginPage() {
   }
 
   if (isAuthenticated && user) {
+    if (user.mustChangePassword) {
+      return <Navigate to="/change-password" replace />;
+    }
     return <Navigate to={redirectTo} replace />;
   }
 

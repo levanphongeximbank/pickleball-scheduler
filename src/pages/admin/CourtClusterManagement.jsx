@@ -40,13 +40,15 @@ import { useAuth } from "../../context/AuthContext.jsx";
 import { useCluster } from "../../context/ClusterContext.jsx";
 import { PERMISSIONS } from "../../auth/permissions.js";
 import { isPlatformScopedRole } from "../../auth/roles.js";
-import { listTenants } from "../../features/tenant/index.js";
+import { listTenants, getTenantById } from "../../features/tenant/index.js";
 import { isCourtClustersEnabled } from "../../features/court-cluster/config/clusterFlags.js";
 import {
   createCourtCluster,
-  deleteCourtCluster,
   getClusterById,
+  isClusterAssigned,
   listAssignmentsForCluster,
+  ADMIN_ALL_TENANTS_ID,
+  listClustersForAdminManagement,
   listClustersForVenue,
   updateCourtCluster,
 } from "../../features/court-cluster/services/courtClusterService.js";
@@ -54,6 +56,7 @@ import {
   assignClusterOwnerToUser,
   persistCourtClusterToCloud,
   removeClusterOwner,
+  removeCourtCluster,
   syncClustersForVenueToCloud,
 } from "../../features/court-cluster/services/courtClusterAdminService.js";
 import { pullClusterContextForUser } from "../../features/court-cluster/services/courtClusterCloudSync.js";
@@ -106,13 +109,47 @@ export default function CourtClusterManagement() {
   const [syncSaving, setSyncSaving] = useState(false);
   const [removeOwnerSaving, setRemoveOwnerSaving] = useState(false);
   const [removeOwnerConfirmOpen, setRemoveOwnerConfirmOpen] = useState(false);
+  const [clusterRevision, setClusterRevision] = useState(0);
+  const [venueFilter, setVenueFilter] = useState(ADMIN_ALL_TENANTS_ID);
+  const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
+  const [deleteTarget, setDeleteTarget] = useState(null);
+  const [deleteSaving, setDeleteSaving] = useState(false);
 
   const canPickTenant = isSuperAdmin || isPlatformScopedRole(user?.role);
   const tenants = useMemo(() => listTenants(), [message]);
-  const venueId = currentTenantId || user?.venueId || null;
-  const clusters = useMemo(() => listClustersForVenue(venueId), [venueId, message]);
+  const effectiveVenueId = canPickTenant
+    ? venueFilter === ADMIN_ALL_TENANTS_ID
+      ? ADMIN_ALL_TENANTS_ID
+      : venueFilter || currentTenantId || user?.venueId || null
+    : currentTenantId || user?.venueId || null;
+  const venueId =
+    effectiveVenueId === ADMIN_ALL_TENANTS_ID ? ADMIN_ALL_TENANTS_ID : effectiveVenueId;
+  const createVenueId =
+    effectiveVenueId === ADMIN_ALL_TENANTS_ID ? null : effectiveVenueId;
+  const clusters = useMemo(
+    () => listClustersForAdminManagement(user, venueId),
+    [user, venueId, message, clusterRevision]
+  );
+  const showVenueColumn =
+    canPickTenant &&
+    (venueFilter === ADMIN_ALL_TENANTS_ID ||
+      clusters.some((cluster) => cluster.venueId !== effectiveVenueId));
+  const organizationLabel =
+    venueFilter === ADMIN_ALL_TENANTS_ID
+      ? "Tất cả"
+      : getTenantById(effectiveVenueId)?.name || effectiveVenueId || "—";
   const canManage =
-    !rbacEnabled || can(PERMISSIONS.CLUSTER_MANAGE, { tenantId: venueId, venueId });
+    !rbacEnabled ||
+    can(PERMISSIONS.CLUSTER_MANAGE, {
+      tenantId: effectiveVenueId === ADMIN_ALL_TENANTS_ID ? null : effectiveVenueId,
+      venueId: effectiveVenueId === ADMIN_ALL_TENANTS_ID ? null : effectiveVenueId,
+    });
+
+  useEffect(() => {
+    if (!canPickTenant && currentTenantId) {
+      setVenueFilter(currentTenantId);
+    }
+  }, [canPickTenant, currentTenantId]);
 
   useEffect(() => {
     if (!isCourtClustersEnabled()) {
@@ -121,11 +158,16 @@ export default function CourtClusterManagement() {
   }, []);
 
   useEffect(() => {
-    if (!canManage || !venueId) {
+    if (!canManage || !user?.id) {
       return;
     }
-    void pullClusterContextForUser(user).then(() => refreshClusters());
-  }, [canManage, refreshClusters, user, venueId]);
+    void pullClusterContextForUser(user).then((result) => {
+      if (result.ok) {
+        refreshClusters();
+        setClusterRevision((value) => value + 1);
+      }
+    });
+  }, [canManage, refreshClusters, user]);
 
   const loadPendingClaims = async () => {
     const result = await listPendingCourtClaimRequests();
@@ -170,7 +212,7 @@ export default function CourtClusterManagement() {
     setError(null);
     setCreateSaving(true);
     const result = createCourtCluster({
-      venueId,
+      venueId: createVenueId,
       name: form.name,
       slug: form.slug || undefined,
       address: form.address,
@@ -283,16 +325,39 @@ export default function CourtClusterManagement() {
 
     setMessage(`Đã đồng bộ ${result.synced ?? clusters.length} cụm lên Supabase.`);
     refreshClusters();
+    setClusterRevision((value) => value + 1);
   };
 
-  const handleDelete = (clusterId) => {
-    const result = deleteCourtCluster(clusterId, { user });
+  const handleDelete = async () => {
+    if (!deleteTarget?.id) {
+      return;
+    }
+
+    const deletedName = deleteTarget.name;
+    setDeleteSaving(true);
+    setError(null);
+    const result = await removeCourtCluster({
+      clusterId: deleteTarget.id,
+      venueId: effectiveVenueId === ADMIN_ALL_TENANTS_ID ? null : effectiveVenueId,
+      actor: user,
+    });
+    setDeleteSaving(false);
+    setDeleteConfirmOpen(false);
+    setDeleteTarget(null);
+
     if (!result.ok) {
       setError(result.error);
       return;
     }
-    setMessage("Đã xóa cụm sân");
+
+    setMessage(`Đã xóa cụm sân: ${deletedName}`);
     refreshClusters();
+    setClusterRevision((value) => value + 1);
+  };
+
+  const openDeleteConfirm = (cluster) => {
+    setDeleteTarget(cluster);
+    setDeleteConfirmOpen(true);
   };
 
   const openClusterInfoDialog = async (cluster) => {
@@ -398,6 +463,7 @@ export default function CourtClusterManagement() {
     setMessage("Đã cập nhật gán chủ sân cho cụm (Supabase)");
     setAssignOpen(false);
     refreshClusters();
+    setClusterRevision((value) => value + 1);
   };
 
   if (!canManage) {
@@ -449,7 +515,7 @@ export default function CourtClusterManagement() {
             Quản lý cụm sân
           </Typography>
           <Typography variant="body2" color="text.secondary">
-            Tổ chức: {currentTenant?.name || venueId || "—"}
+            Tổ chức: {organizationLabel}
           </Typography>
         </Box>
         <Stack direction="row" spacing={1} alignItems="center">
@@ -458,10 +524,18 @@ export default function CourtClusterManagement() {
               <InputLabel id="cluster-tenant-picker">Chọn tổ chức</InputLabel>
               <Select
                 labelId="cluster-tenant-picker"
-                value={venueId || ""}
+                value={venueFilter || ADMIN_ALL_TENANTS_ID}
                 label="Chọn tổ chức"
-                onChange={(event) => switchTenant(event.target.value)}
+                onChange={(event) => {
+                  const nextValue = event.target.value;
+                  setVenueFilter(nextValue);
+                  if (nextValue !== ADMIN_ALL_TENANTS_ID) {
+                    switchTenant(nextValue);
+                  }
+                  setClusterRevision((value) => value + 1);
+                }}
               >
+                <MenuItem value={ADMIN_ALL_TENANTS_ID}>Tất cả</MenuItem>
                 {tenants.map((tenant) => (
                   <MenuItem key={tenant.id} value={tenant.id}>
                     {tenant.name}
@@ -485,7 +559,7 @@ export default function CourtClusterManagement() {
               resetForm();
               setCreateOpen(true);
             }}
-            disabled={!venueId}
+            disabled={!createVenueId}
           >
             Thêm cụm sân
           </Button>
@@ -600,8 +674,10 @@ export default function CourtClusterManagement() {
                 <TableRow>
                   <TableCell>ID</TableCell>
                   <TableCell>Tên cụm</TableCell>
+                  {showVenueColumn && <TableCell>Tổ chức</TableCell>}
                   <TableCell>Địa chỉ</TableCell>
                   <TableCell>Số sân</TableCell>
+                  <TableCell>Chủ sân</TableCell>
                   <TableCell>Trạng thái</TableCell>
                   <TableCell align="right">Thao tác</TableCell>
                 </TableRow>
@@ -611,12 +687,28 @@ export default function CourtClusterManagement() {
                   <TableRow key={cluster.id} hover>
                     <TableCell>{cluster.id}</TableCell>
                     <TableCell>{cluster.name}</TableCell>
+                    {showVenueColumn && (
+                      <TableCell>
+                        <Typography variant="caption" color="text.secondary">
+                          {tenants.find((tenant) => tenant.id === cluster.venueId)?.name ||
+                            cluster.venueId}
+                        </Typography>
+                      </TableCell>
+                    )}
                     <TableCell sx={{ maxWidth: 240 }}>
                       <Typography variant="body2" noWrap title={cluster.address || "—"}>
                         {cluster.address || "—"}
                       </Typography>
                     </TableCell>
                     <TableCell>{cluster.courtCount || 0}</TableCell>
+                    <TableCell>
+                      <Chip
+                        size="small"
+                        label={isClusterAssigned(cluster.id) ? "Đã gán" : "Chưa gán"}
+                        color={isClusterAssigned(cluster.id) ? "primary" : "warning"}
+                        variant={isClusterAssigned(cluster.id) ? "filled" : "outlined"}
+                      />
+                    </TableCell>
                     <TableCell>
                       <Chip
                         size="small"
@@ -657,8 +749,7 @@ export default function CourtClusterManagement() {
                         <Button
                           size="small"
                           color="error"
-                          onClick={() => handleDelete(cluster.id)}
-                          disabled={cluster.id.endsWith("-main")}
+                          onClick={() => openDeleteConfirm(cluster)}
                         >
                           Xóa
                         </Button>
@@ -668,7 +759,7 @@ export default function CourtClusterManagement() {
                 ))}
                 {clusters.length === 0 && (
                   <TableRow>
-                    <TableCell colSpan={6}>
+                    <TableCell colSpan={showVenueColumn ? 8 : 7}>
                       <Typography variant="body2" color="text.secondary">
                         Chưa có cụm sân. Tạo cụm đầu tiên (vd. Nam Long, Nam Lý).
                       </Typography>
@@ -919,6 +1010,23 @@ export default function CourtClusterManagement() {
           <Button onClick={() => setRemoveOwnerConfirmOpen(false)}>Huỷ</Button>
           <Button color="error" variant="contained" onClick={handleRemoveOwner} disabled={removeOwnerSaving}>
             {removeOwnerSaving ? "Đang xóa…" : "Xóa gán"}
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      <Dialog open={deleteConfirmOpen} onClose={() => setDeleteConfirmOpen(false)} maxWidth="xs" fullWidth>
+        <DialogTitle>Xóa cụm sân?</DialogTitle>
+        <DialogContent>
+          <Typography variant="body2" color="text.secondary">
+            Bạn sắp xóa cụm <b>{deleteTarget?.name}</b> khỏi hệ thống
+            {deleteTarget?.venueId ? ` (tổ chức: ${deleteTarget.venueId})` : ""}. Thao tác không
+            hoàn tác trên cloud.
+          </Typography>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setDeleteConfirmOpen(false)}>Huỷ</Button>
+          <Button color="error" variant="contained" onClick={handleDelete} disabled={deleteSaving}>
+            {deleteSaving ? "Đang xóa…" : "Xóa cụm"}
           </Button>
         </DialogActions>
       </Dialog>

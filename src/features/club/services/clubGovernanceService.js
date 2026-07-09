@@ -11,10 +11,14 @@ import { deleteClub as deleteClubRegistry } from "../../../domain/clubService.js
 import { guardClubAction, guardPermission } from "../../../auth/guardAction.js";
 import { PERMISSIONS } from "../../../auth/permissions.js";
 import { CLUB_STATUSES } from "../constants/clubStatus.js";
-import { hasClubPresident, normalizeClubGovernance } from "../models/clubGovernance.js";
+import { hasClubPresident, normalizeClubGovernance, getVicePresidentUserIds, MAX_VICE_PRESIDENTS } from "../models/clubGovernance.js";
 import { loadCourtsForVenueScoped } from "../../../domain/courtService.js";
-import { loadPlayersForClub } from "../../../domain/clubStorage.js";
-import { getClubMembers } from "./clubMemberService.js";
+import { loadClubData, loadPlayersForClub, saveClubData } from "../../../domain/clubStorage.js";
+import { normalizePlayers } from "../../../models/player.js";
+import { normalizeUser } from "../../../models/user.js";
+import { saveAuthSession, loadAuthSession } from "../../../auth/authStorage.js";
+import { getPickVnRatingByAuthUserId, syncRatingToClubPlayer } from "../../pick-vn-rating/services/pickVnRatingService.js";
+import { getClubMembers, addMemberToClub } from "./clubMemberService.js";
 import { CLUB_MEMBER_STATUSES } from "../constants/clubMemberRoles.js";
 import {
   findUserIdByPlayerId,
@@ -98,10 +102,10 @@ export function isClubPresident(user, club) {
 }
 
 export function isClubVicePresident(user, club) {
-  if (!user?.id || !club?.governance?.vicePresidentUserId) {
+  if (!user?.id) {
     return false;
   }
-  return sameUserId(user.id, club.governance.vicePresidentUserId);
+  return getVicePresidentUserIds(club?.governance).some((id) => sameUserId(user.id, id));
 }
 
 /** Chức danh nghiệp vụ CLB (khác auth role) — dùng trên hồ sơ VĐV. */
@@ -266,7 +270,7 @@ export function canApproveClubRegistration(user, club) {
   return canAssignClubOwner(user);
 }
 
-/** CLUB_MANAGER chưa có clubId — tự đăng ký CLB (spec §6.1 B). */
+/** VĐV / Quản lý CLB chưa có clubId — tự đăng ký CLB (spec §6.1 B). */
 export function canSelfRegisterClub(user) {
   if (!user?.id) {
     return false;
@@ -276,11 +280,89 @@ export function canSelfRegisterClub(user) {
     return isClubScopedRole(user.role) && !user.clubId;
   }
 
+  const role = normalizeRole(user.role);
   return (
     isClubScopedRole(user.role) &&
-    normalizeRole(user.role) === ROLES.CLUB_MANAGER &&
-    !user.clubId
+    !user.clubId &&
+    (role === ROLES.CLUB_MANAGER || role === ROLES.PLAYER)
   );
+}
+
+function buildPlayerIdForAuthUser(userId) {
+  const safe = String(userId || "").trim().replace(/[^a-zA-Z0-9_-]/g, "");
+  return `player-auth-${safe}`;
+}
+
+/** Sau tự đăng ký CLB: thêm VĐV vào roster, link session, promote CLUB_MANAGER. */
+export function bootstrapSelfRegisteredPresident(clubId, user, tenantId) {
+  const trimmedClubId = String(clubId || "").trim();
+  const normalizedUser = normalizeUser(user);
+  if (!trimmedClubId || !normalizedUser?.id) {
+    return { ok: false, error: "Thiếu CLB hoặc user." };
+  }
+
+  const club = getRegistryClubById(trimmedClubId);
+  const effectiveTenantId =
+    tenantId || club?.venueId || club?.tenantId || normalizedUser.tenantId || normalizedUser.venueId || null;
+
+  const data = loadClubData(trimmedClubId);
+  const players = [...(data.players || [])];
+  let player =
+    players.find((item) => String(item.authUserId || "") === String(normalizedUser.id)) ||
+    players.find((item) => item.id === buildPlayerIdForAuthUser(normalizedUser.id)) ||
+    null;
+
+  if (!player) {
+    const rating = getPickVnRatingByAuthUserId(normalizedUser.id)?.currentRating ?? 3.5;
+    const basePlayer = normalizePlayers([
+      {
+        id: buildPlayerIdForAuthUser(normalizedUser.id),
+        name: normalizedUser.displayName || normalizedUser.email || "VĐV",
+        tenantId: effectiveTenantId,
+        level: rating,
+        status: "active",
+        active: true,
+        authUserId: normalizedUser.id,
+        clubName: club?.name || "",
+        phone: normalizedUser.phone || "",
+      },
+    ])[0];
+    player = syncRatingToClubPlayer(basePlayer, normalizedUser.id);
+    players.push(player);
+    saveClubData(trimmedClubId, {
+      ...data,
+      players,
+      tenantId: data.tenantId || effectiveTenantId,
+    });
+  }
+
+  const memberResult = addMemberToClub(trimmedClubId, player.id, effectiveTenantId, {
+    skipPermissionGuard: true,
+  });
+  if (!memberResult.ok) {
+    return memberResult;
+  }
+
+  saveAthleteClubLink(normalizedUser.id, { clubId: trimmedClubId, playerId: player.id });
+
+  const session = loadAuthSession();
+  if (session?.user?.id === normalizedUser.id) {
+    const nextUser = normalizeUser({
+      ...session.user,
+      clubId: trimmedClubId,
+      playerId: player.id,
+      role: ROLES.CLUB_MANAGER,
+      tenantId: effectiveTenantId || session.user.tenantId || session.user.venueId || null,
+    });
+    saveAuthSession(nextUser, { provider: session.provider || "dev" });
+  }
+
+  void rpcAdminUpdateUser(normalizedUser.id, {
+    clubId: trimmedClubId,
+    role: ROLES.CLUB_MANAGER,
+  });
+
+  return { ok: true, playerId: player.id, clubId: trimmedClubId };
 }
 
 export function canTransferClubOwnership(user, club) {
@@ -512,7 +594,7 @@ export async function transferClubPresident(clubId, nextPresidentUserId, tenantI
   return { ok: true, club: getRegistryClubById(clubId) };
 }
 
-export async function assignClubVicePresident(clubId, nextVicePresidentUserId, tenantId) {
+export async function setClubVicePresidents(clubId, userIds = [], tenantId) {
   const user = getCurrentUser();
   const club = getRegistryClubById(clubId);
   if (!club) {
@@ -523,46 +605,48 @@ export async function assignClubVicePresident(clubId, nextVicePresidentUserId, t
     return { ok: false, error: "Không có quyền cập nhật quản trị CLB." };
   }
 
-  const trimmed = String(nextVicePresidentUserId || "").trim();
-  const currentVice = club.governance?.vicePresidentUserId || null;
+  const trimmed = [...new Set(userIds.map((id) => String(id || "").trim()).filter(Boolean))].slice(
+    0,
+    MAX_VICE_PRESIDENTS
+  );
 
-  if (!trimmed) {
-    if (!currentVice) {
-      return { ok: true, club, skipped: true };
-    }
-    const result = updateClubGovernance(clubId, { vicePresidentUserId: null }, tenantId);
-    if (!result.ok) {
-      return result;
-    }
-    void writeAuditLog({
-      action: "club.vice_president.clear",
-      resourceType: "club",
-      resourceId: clubId,
-      venueId: tenantId || club.venueId || club.tenantId,
-      clubId,
-      metadata: { previousVicePresidentUserId: currentVice },
-    });
-    return { ok: true, club: getRegistryClubById(clubId) };
+  if (userIds.length > MAX_VICE_PRESIDENTS) {
+    return { ok: false, error: `Tối đa ${MAX_VICE_PRESIDENTS} Phó chủ tịch.` };
   }
 
-  if (sameUserId(currentVice, trimmed)) {
-    return { ok: true, club, skipped: true };
-  }
-
-  if (sameUserId(club.governance?.presidentUserId, trimmed)) {
+  const presidentId = club.governance?.presidentUserId || null;
+  if (trimmed.some((id) => sameUserId(id, presidentId))) {
     return { ok: false, error: "Phó chủ tịch không thể trùng Chủ tịch." };
   }
 
-  const memberCheck = assertClubAthleteUser(clubId, tenantId, trimmed);
-  if (!memberCheck.ok) {
-    return memberCheck;
+  if (trimmed.length !== new Set(trimmed).size) {
+    return { ok: false, error: "Không thể gán trùng Phó chủ tịch." };
+  }
+
+  for (const id of trimmed) {
+    const memberCheck = assertClubAthleteUser(clubId, tenantId, id);
+    if (!memberCheck.ok) {
+      return memberCheck;
+    }
+  }
+
+  const currentIds = getVicePresidentUserIds(club.governance);
+  const unchanged =
+    currentIds.length === trimmed.length && currentIds.every((id, index) => sameUserId(id, trimmed[index]));
+
+  if (unchanged) {
+    return { ok: true, club, skipped: true };
   }
 
   const result = updateClubGovernance(
     clubId,
-    { vicePresidentUserId: trimmed },
+    {
+      vicePresidentUserIds: trimmed,
+      vicePresidentUserId: trimmed[0] || null,
+    },
     tenantId
   );
+
   if (!result.ok) {
     return result;
   }
@@ -574,12 +658,17 @@ export async function assignClubVicePresident(clubId, nextVicePresidentUserId, t
     venueId: tenantId || club.venueId || club.tenantId,
     clubId,
     metadata: {
-      previousVicePresidentUserId: currentVice,
-      nextVicePresidentUserId: trimmed,
+      previousVicePresidentUserIds: currentIds,
+      nextVicePresidentUserIds: trimmed,
     },
   });
 
   return { ok: true, club: getRegistryClubById(clubId) };
+}
+
+export async function assignClubVicePresident(clubId, nextVicePresidentUserId, tenantId) {
+  const trimmed = String(nextVicePresidentUserId || "").trim();
+  return setClubVicePresidents(clubId, trimmed ? [trimmed] : [], tenantId);
 }
 
 export function deleteClubAsOwner(clubId, tenantId) {
@@ -623,11 +712,6 @@ export function resolveGovernanceForCreate(data = {}, user = getCurrentUser()) {
   let ownerUserId = governance.ownerUserId;
   const isCourtOwnerCreate =
     user && normalizeRole(user.role) === ROLES.TENANT_OWNER;
-  const isClubManagerSelfRegister =
-    user &&
-    isClubScopedRole(user.role) &&
-    normalizeRole(user.role) === ROLES.CLUB_MANAGER;
-
   if (ownerUserId == null && isCourtOwnerCreate) {
     if (data.assignOwnerToCreator !== false) {
       ownerUserId = user.id;
@@ -642,7 +726,7 @@ export function resolveGovernanceForCreate(data = {}, user = getCurrentUser()) {
 
   let status = CLUB_STATUSES.PENDING_SETUP;
   if (hasClubPresident(nextGovernance)) {
-    if (data.submitForApproval || (isClubManagerSelfRegister && !isCourtOwnerCreate)) {
+    if (data.submitForApproval) {
       status = CLUB_STATUSES.PENDING_APPROVAL;
     } else {
       status = CLUB_STATUSES.ACTIVE;
@@ -793,13 +877,15 @@ export function updateClubGovernance(clubId, patch = {}, tenantId = null) {
     }
 
     if (!presidentUnchanged && nextPresident) {
-      const nextVice =
-        patch.vicePresidentUserId !== undefined
-          ? patch.vicePresidentUserId
-            ? String(patch.vicePresidentUserId).trim()
-            : null
-          : club.governance?.vicePresidentUserId || null;
-      if (sameUserId(nextPresident, nextVice)) {
+      const patchViceIds =
+        patch.vicePresidentUserIds !== undefined
+          ? normalizeClubGovernance({ vicePresidentUserIds: patch.vicePresidentUserIds }).vicePresidentUserIds
+          : patch.vicePresidentUserId !== undefined
+            ? patch.vicePresidentUserId
+              ? [String(patch.vicePresidentUserId).trim()]
+              : []
+            : getVicePresidentUserIds(club.governance);
+      if (patchViceIds.some((id) => sameUserId(nextPresident, id))) {
         return { ok: false, error: "Chủ tịch không thể trùng Phó chủ tịch." };
       }
 
@@ -814,33 +900,47 @@ export function updateClubGovernance(clubId, patch = {}, tenantId = null) {
     }
   }
 
-  if (patch.vicePresidentUserId !== undefined) {
-    const currentVice = club.governance?.vicePresidentUserId || null;
-    const nextVice = patch.vicePresidentUserId
-      ? String(patch.vicePresidentUserId).trim()
-      : null;
-    const viceUnchanged = String(currentVice || "") === String(nextVice || "");
+  if (patch.vicePresidentUserIds !== undefined || patch.vicePresidentUserId !== undefined) {
+    const currentViceIds = getVicePresidentUserIds(club.governance);
+    const nextViceIds =
+      patch.vicePresidentUserIds !== undefined
+        ? normalizeClubGovernance({ vicePresidentUserIds: patch.vicePresidentUserIds }).vicePresidentUserIds
+        : patch.vicePresidentUserId !== undefined
+          ? patch.vicePresidentUserId
+            ? [String(patch.vicePresidentUserId).trim()]
+            : []
+          : currentViceIds;
+    const viceUnchanged =
+      currentViceIds.length === nextViceIds.length &&
+      currentViceIds.every((id, index) => sameUserId(id, nextViceIds[index]));
 
-    if (!viceUnchanged && nextVice) {
+    if (!viceUnchanged) {
+      if (nextViceIds.length > MAX_VICE_PRESIDENTS) {
+        return { ok: false, error: `Tối đa ${MAX_VICE_PRESIDENTS} Phó chủ tịch.` };
+      }
+
       const nextPresident =
         patch.presidentUserId !== undefined
           ? patch.presidentUserId
             ? String(patch.presidentUserId).trim()
             : null
           : club.governance?.presidentUserId || null;
-      if (sameUserId(nextVice, nextPresident)) {
-        return { ok: false, error: "Phó chủ tịch không thể trùng Chủ tịch." };
-      }
 
-      const athleteCheck = assertClubAthleteUser(clubId, effectiveTenantId, nextVice);
-      if (!athleteCheck.ok) {
-        return athleteCheck;
+      for (const nextVice of nextViceIds) {
+        if (sameUserId(nextVice, nextPresident)) {
+          return { ok: false, error: "Phó chủ tịch không thể trùng Chủ tịch." };
+        }
+        const athleteCheck = assertClubAthleteUser(clubId, effectiveTenantId, nextVice);
+        if (!athleteCheck.ok) {
+          return athleteCheck;
+        }
       }
     }
   }
 
   if (
     (patch.vicePresidentUserId !== undefined ||
+      patch.vicePresidentUserIds !== undefined ||
       patch.registeredClusterId !== undefined) &&
     !canManage
   ) {
@@ -896,13 +996,15 @@ export function updateClubGovernance(clubId, patch = {}, tenantId = null) {
     }
   }
 
-  if (patch.vicePresidentUserId !== undefined) {
-    const currentVice = club.governance?.vicePresidentUserId || null;
-    const nextVice = merged.vicePresidentUserId || null;
-    if (nextVice && !sameUserId(currentVice, nextVice)) {
-      const athleteCheck = assertClubAthleteUser(clubId, effectiveTenantId, nextVice);
-      if (athleteCheck.ok) {
-        applyGovernanceAthleteSync(clubId, nextVice, athleteCheck.candidate);
+  if (patch.vicePresidentUserIds !== undefined || patch.vicePresidentUserId !== undefined) {
+    const currentViceIds = getVicePresidentUserIds(club.governance);
+    const nextViceIds = getVicePresidentUserIds(merged);
+    for (const nextVice of nextViceIds) {
+      if (!currentViceIds.some((id) => sameUserId(id, nextVice))) {
+        const athleteCheck = assertClubAthleteUser(clubId, effectiveTenantId, nextVice);
+        if (athleteCheck.ok) {
+          applyGovernanceAthleteSync(clubId, nextVice, athleteCheck.candidate);
+        }
       }
     }
   }
@@ -921,9 +1023,9 @@ export function getGovernanceDisplayLabels(club, tenantId = null) {
   const presidentLabel = gov.presidentUserId
     ? resolveGovernanceUserLabel(gov.presidentUserId, clubId, effectiveTenantId)
     : "Chưa gán";
-  const viceLabel = gov.vicePresidentUserId
-    ? resolveGovernanceUserLabel(gov.vicePresidentUserId, clubId, effectiveTenantId)
-    : "—";
+  const viceIds = getVicePresidentUserIds(gov);
+  const viceLabels = viceIds.map((id) => resolveGovernanceUserLabel(id, clubId, effectiveTenantId));
+  const viceLabel = viceLabels.length ? viceLabels.join(", ") : "—";
 
   if (
     gov.ownerUserId &&
@@ -934,6 +1036,7 @@ export function getGovernanceDisplayLabels(club, tenantId = null) {
       ownerLabel: `${presidentLabel} (Chủ sở hữu & Chủ tịch)`,
       presidentLabel: null,
       vicePresidentLabel: viceLabel,
+      vicePresidentLabels: viceLabels,
       combinedOwnerPresident: true,
     };
   }
@@ -942,6 +1045,7 @@ export function getGovernanceDisplayLabels(club, tenantId = null) {
     ownerLabel,
     presidentLabel,
     vicePresidentLabel: viceLabel,
+    vicePresidentLabels: viceLabels,
     combinedOwnerPresident: false,
   };
 }

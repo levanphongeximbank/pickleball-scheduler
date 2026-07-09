@@ -6,6 +6,8 @@ const AUTH_ERROR_MAP = Object.freeze({
   "Password should be at least 6 characters": "Mật khẩu phải có ít nhất 6 ký tự.",
   "Signup requires a valid password": "Mật khẩu không hợp lệ.",
   "Unable to validate email address: invalid format": "Email không đúng định dạng.",
+  "Auth session missing!":
+    "Phiên đặt lại mật khẩu đã hết hạn hoặc link không hợp lệ. Gửi email reset mới và mở link ngay.",
 });
 
 export function formatAuthError(message, code = "") {

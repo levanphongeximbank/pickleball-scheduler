@@ -214,14 +214,14 @@ export const ROLE_MENU_MAP = Object.freeze({
     MENU_GROUP_IDS.SUPPORT,
   ],
   [ROLES.PLAYER]: [
+    MENU_GROUP_IDS.CLUB,
     MENU_GROUP_IDS.TOURNAMENT,
     MENU_GROUP_IDS.SUPPORT,
-    MENU_GROUP_IDS.PLAYER_ZONE,
   ],
   PLAYER: [
+    MENU_GROUP_IDS.CLUB,
     MENU_GROUP_IDS.TOURNAMENT,
     MENU_GROUP_IDS.SUPPORT,
-    MENU_GROUP_IDS.PLAYER_ZONE,
   ],
   [ROLES.CUSTOMER]: [
     MENU_GROUP_IDS.CLUB,
@@ -504,6 +504,10 @@ export const ROUTE_PERMISSIONS = Object.freeze({
   ],
   "/settings": [PERMISSIONS.SETTINGS_VIEW],
   "/my-club": [],
+  "/clubs/discover": [],
+  "/club/activity": [],
+  "/coaching/coach-list": [],
+  "/coaching/register": [],
   "/player/profile": [],
   "/player/skill": [],
   "/player/skill-assessment": [],

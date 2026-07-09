@@ -183,7 +183,68 @@ export function getAuthState() {
   };
 }
 
-async function syncSupabaseUser(authUser) {
+export function isPasswordRecoveryRoute(pathname = "") {
+  const path =
+    pathname ||
+    (typeof window !== "undefined" && window.location?.pathname
+      ? window.location.pathname
+      : "");
+  return path === "/reset-password" || path.startsWith("/reset-password/");
+}
+
+/**
+ * Đọc token recovery từ URL (hash hoặc PKCE ?code=) và đảm bảo Supabase session tồn tại
+ * trước khi gọi updateUser — không sync profile / không signOut.
+ */
+export async function ensureRecoverySession() {
+  const client = getSupabaseAuthClient();
+  if (!client) {
+    return { ok: false, error: getSupabaseConfigError(), code: "NO_SUPABASE" };
+  }
+
+  if (typeof window !== "undefined") {
+    const searchParams = new URLSearchParams(window.location.search);
+    const code = searchParams.get("code");
+    if (code) {
+      const { error } = await client.auth.exchangeCodeForSession(code);
+      if (error) {
+        return {
+          ok: false,
+          error: formatAuthError(error.message, "RESET_FAILED"),
+          code: "RESET_FAILED",
+        };
+      }
+      window.history.replaceState({}, document.title, window.location.pathname);
+    }
+  }
+
+  const { data, error } = await client.auth.getSession();
+  if (error) {
+    return {
+      ok: false,
+      error: formatAuthError(error.message, "RESET_FAILED"),
+      code: "RESET_FAILED",
+    };
+  }
+
+  if (!data.session?.user) {
+    return {
+      ok: false,
+      error:
+        "Link đặt lại mật khẩu không hợp lệ hoặc đã hết hạn. Vui lòng gửi email reset mới và mở link ngay.",
+      code: "NO_RECOVERY_SESSION",
+    };
+  }
+
+  return { ok: true, user: data.session.user };
+}
+
+async function syncSupabaseUser(authUser, options = {}) {
+  const { authEvent = "" } = options;
+
+  if (authEvent === "PASSWORD_RECOVERY" || isPasswordRecoveryRoute()) {
+    return { ok: false, code: "PASSWORD_RECOVERY", recovery: true };
+  }
   let profileResult = await fetchProfileByUserId(authUser.id);
 
   if (profileResult.ok && !profileResult.user.venueId) {
@@ -246,6 +307,14 @@ export async function restoreSupabaseSession() {
     return { ok: false, error: getSupabaseConfigError(), code: "NO_SUPABASE" };
   }
 
+  if (isPasswordRecoveryRoute()) {
+    const recovery = await ensureRecoverySession();
+    if (!recovery.ok) {
+      return recovery;
+    }
+    return { ok: false, code: "PASSWORD_RECOVERY", recovery: true };
+  }
+
   const { data, error } = await client.auth.getSession();
   if (error) {
     return { ok: false, error: error.message, code: "SESSION_ERROR" };
@@ -290,6 +359,10 @@ export async function signInWithPassword(email, password) {
       resourceType: "auth",
       resourceId: synced.user?.id || "",
     });
+    return {
+      ...synced,
+      mustChangePassword: Boolean(synced.user?.mustChangePassword),
+    };
   }
   return synced;
 }
@@ -463,8 +536,17 @@ export function subscribeToSupabaseAuth(onChange) {
         return;
       }
 
+      if (event === "PASSWORD_RECOVERY") {
+        onChange({ event, user: null, recovery: true });
+        return;
+      }
+
       if (session?.user) {
-        const synced = await syncSupabaseUser(session.user);
+        const synced = await syncSupabaseUser(session.user, { authEvent: event });
+        if (synced.code === "PASSWORD_RECOVERY") {
+          onChange({ event, user: null, recovery: true });
+          return;
+        }
         onChange({
           event,
           user: synced.ok ? synced.user : null,

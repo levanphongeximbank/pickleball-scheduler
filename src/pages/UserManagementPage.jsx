@@ -25,7 +25,7 @@ import PermissionGate from "../components/auth/PermissionGate.jsx";
 import { PERMISSIONS } from "../auth/permissions.js";
 import { ROLE_LABELS } from "../auth/roles.js";
 import { usePlatformRuntime } from "../core/platform/app/usePlatformRuntime.js";
-import { MIN_PASSWORD_LENGTH } from "../config/authConfig.js";
+import { MIN_PASSWORD_LENGTH, ADMIN_DEFAULT_RESET_PASSWORD } from "../config/authConfig.js";
 import { USER_STATUS } from "../models/user.js";
 import {
   createManagedUser,
@@ -64,6 +64,7 @@ export default function UserManagementPage() {
   const [form, setForm] = useState(EMPTY_FORM);
   const [accessPreview, setAccessPreview] = useState(null);
   const [accessAllowed, setAccessAllowed] = useState(true);
+  const [tempPasswordDialog, setTempPasswordDialog] = useState(null);
 
   const roles = useMemo(() => listManageableRoles(), []);
 
@@ -210,18 +211,39 @@ export default function UserManagementPage() {
 
     setDialogOpen(false);
     const createdWithPassword = Boolean(String(form.password || "").trim());
-    setMessage({
-      type: "success",
-      text: editingUser
-        ? "Đã cập nhật user."
-        : createdWithPassword
-          ? "Đã tạo user. Người dùng có thể đăng nhập ngay bằng email và mật khẩu đã đặt."
-          : result.passwordSetupMessage ||
-            (result.passwordSetupSent
-              ? "Đã tạo user và gửi email đặt mật khẩu."
-              : "Đã tạo user (email đã xác nhận, không cần xác nhận thêm)."),
-    });
+
+    if (!editingUser && result.temporaryPassword) {
+      setTempPasswordDialog({
+        email: form.email,
+        password: result.temporaryPassword,
+      });
+      setMessage({
+        type: "success",
+        text: "Đã tạo user. Copy mật khẩu tạm và gửi cho người dùng — lần đăng nhập đầu họ phải đổi mật khẩu.",
+      });
+    } else {
+      setMessage({
+        type: "success",
+        text: editingUser
+          ? "Đã cập nhật user."
+          : createdWithPassword
+            ? "Đã tạo user. Người dùng có thể đăng nhập ngay bằng email và mật khẩu đã đặt."
+            : "Đã tạo user.",
+      });
+    }
     loadUsers();
+  };
+
+  const handleCopyTempPassword = async () => {
+    if (!tempPasswordDialog?.password) {
+      return;
+    }
+    try {
+      await navigator.clipboard.writeText(tempPasswordDialog.password);
+      setMessage({ type: "success", text: "Đã copy mật khẩu tạm." });
+    } catch {
+      setMessage({ type: "error", text: "Không copy được — hãy chọn và copy thủ công." });
+    }
   };
 
   const handleToggleStatus = async (user) => {
@@ -264,10 +286,17 @@ export default function UserManagementPage() {
   };
 
   const handleResetPassword = async (user) => {
-    const result = await requestManagedPasswordReset(user.email);
+    const confirmed = window.confirm(
+      `Reset mật khẩu cho ${user.email} về mặc định ${ADMIN_DEFAULT_RESET_PASSWORD}?`
+    );
+    if (!confirmed) {
+      return;
+    }
+
+    const result = await requestManagedPasswordReset({ userId: user.id, email: user.email });
     setMessage(
       result.ok
-        ? { type: "success", text: result.message || "Đã gửi yêu cầu reset." }
+        ? { type: "success", text: result.message || "Đã reset mật khẩu." }
         : { type: "error", text: result.error }
     );
   };
@@ -429,15 +458,16 @@ export default function UserManagementPage() {
                 <>
                   <Alert severity="info">
                     Tài khoản do Admin tạo được xác nhận email tự động — người dùng đăng nhập được
-                    ngay, không cần bấm link xác nhận. Nhập mật khẩu bên dưới để cấp sẵn; để trống
-                    thì hệ thống gửi email đặt mật khẩu.
+                    ngay. Nhập mật khẩu bên dưới để cấp sẵn; để trống thì hệ thống tạo{" "}
+                    <strong>mật khẩu tạm</strong> (hiện một lần để copy). Lần đăng nhập đầu user phải
+                    đổi mật khẩu.
                   </Alert>
                   <TextField
                     label="Mật khẩu"
                     type="password"
                     value={form.password}
                     onChange={(e) => setForm((prev) => ({ ...prev, password: e.target.value }))}
-                    helperText={`Tối thiểu ${MIN_PASSWORD_LENGTH} ký tự. Để trống = gửi email đặt mật khẩu.`}
+                    helperText={`Tối thiểu ${MIN_PASSWORD_LENGTH} ký tự. Để trống = mật khẩu tạm tự sinh.`}
                     fullWidth
                     autoComplete="new-password"
                   />
@@ -485,6 +515,36 @@ export default function UserManagementPage() {
             <Button onClick={() => setDialogOpen(false)}>Hủy</Button>
             <Button variant="contained" onClick={handleSave} disabled={loading}>
               Lưu
+            </Button>
+          </DialogActions>
+        </Dialog>
+
+        <Dialog
+          open={Boolean(tempPasswordDialog)}
+          onClose={() => setTempPasswordDialog(null)}
+          fullWidth
+          maxWidth="sm"
+        >
+          <DialogTitle>Mật khẩu tạm — chỉ hiện một lần</DialogTitle>
+          <DialogContent>
+            <Stack spacing={2} sx={{ mt: 1 }}>
+              <Alert severity="warning">
+                Lưu hoặc copy mật khẩu tạm và gửi cho người dùng. Sau khi đóng hộp thoại này, mật
+                khẩu không hiển thị lại.
+              </Alert>
+              <TextField label="Email" value={tempPasswordDialog?.email || ""} fullWidth disabled />
+              <TextField
+                label="Mật khẩu tạm"
+                value={tempPasswordDialog?.password || ""}
+                fullWidth
+                InputProps={{ readOnly: true }}
+              />
+            </Stack>
+          </DialogContent>
+          <DialogActions>
+            <Button onClick={handleCopyTempPassword}>Copy mật khẩu</Button>
+            <Button variant="contained" onClick={() => setTempPasswordDialog(null)}>
+              Đã lưu — đóng
             </Button>
           </DialogActions>
         </Dialog>

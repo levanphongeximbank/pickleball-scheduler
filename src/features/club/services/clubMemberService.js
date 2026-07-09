@@ -148,20 +148,32 @@ export function addMemberToClub(clubId, playerId, tenantId, options = {}) {
   return { ok: true, member: members.find((m) => m.playerId === trimmedPlayerId) };
 }
 
-export function removeMemberFromClub(clubId, playerId, tenantId) {
-  const club = getRegistryClubById(clubId);
-  const user = getCurrentUser();
-  if (club && user && !canDeleteClubMembers(user, club)) {
-    return { ok: false, error: "Không có quyền xóa thành viên CLB." };
-  }
+export function removeMemberFromClub(clubId, playerId, tenantId, options = {}) {
+  if (!options.skipPermissionGuard) {
+    const club = getRegistryClubById(clubId);
+    const user = getCurrentUser();
+    if (club && user && !canDeleteClubMembers(user, club)) {
+      return { ok: false, error: "Không có quyền xóa thành viên CLB." };
+    }
 
-  const check = guardClubMemberAccess(clubId, tenantId, PERMISSIONS.PLAYER_UPDATE);
-  if (!check.ok) {
-    return check;
+    const check = guardClubMemberAccess(clubId, tenantId, PERMISSIONS.PLAYER_UPDATE);
+    if (!check.ok) {
+      return check;
+    }
+  } else if (tenantId) {
+    const tenantCheck = guardClubTenant(clubId, tenantId);
+    if (!tenantCheck.ok) {
+      return tenantCheck;
+    }
   }
 
   const trimmedPlayerId = String(playerId || "").trim();
-  const ext = loadClubExtension(clubId);
+  const ext = syncMembersFromBlob(clubId, tenantId);
+  const existing = ext.members.find((m) => m.playerId === trimmedPlayerId);
+  if (!existing) {
+    return { ok: false, error: "Không tìm thấy thành viên trong CLB." };
+  }
+
   const now = new Date().toISOString();
 
   const members = ext.members.map((m) =>

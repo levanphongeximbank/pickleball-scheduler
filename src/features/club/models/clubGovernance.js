@@ -3,6 +3,23 @@
  * @see docs/v5/CLUB_GOVERNANCE_SPEC.md
  */
 
+export const MAX_VICE_PRESIDENTS = 2;
+
+export function normalizeVicePresidentUserIds(raw = {}) {
+  if (Array.isArray(raw.vicePresidentUserIds)) {
+    const ids = raw.vicePresidentUserIds
+      .map((id) => String(id || "").trim())
+      .filter(Boolean);
+    return [...new Set(ids)].slice(0, MAX_VICE_PRESIDENTS);
+  }
+
+  if (raw.vicePresidentUserId != null && String(raw.vicePresidentUserId).trim()) {
+    return [String(raw.vicePresidentUserId).trim()];
+  }
+
+  return [];
+}
+
 export function normalizeClubGovernance(input = {}, club = {}) {
   const raw = input.governance || input;
 
@@ -20,10 +37,8 @@ export function normalizeClubGovernance(input = {}, club = {}) {
       ? String(raw.ownerUserId).trim()
       : null;
 
-  const vicePresidentUserId =
-    raw.vicePresidentUserId != null && String(raw.vicePresidentUserId).trim()
-      ? String(raw.vicePresidentUserId).trim()
-      : null;
+  const vicePresidentUserIds = normalizeVicePresidentUserIds(raw);
+  const vicePresidentUserId = vicePresidentUserIds[0] || null;
 
   const registeredCourtIds = Array.isArray(raw.registeredCourtIds)
     ? raw.registeredCourtIds.map((id) => String(id).trim()).filter(Boolean)
@@ -38,6 +53,7 @@ export function normalizeClubGovernance(input = {}, club = {}) {
     ownerUserId,
     presidentUserId,
     vicePresidentUserId,
+    vicePresidentUserIds,
     registeredClusterId,
     registeredCourtIds,
     approvedByUserId: raw.approvedByUserId ? String(raw.approvedByUserId).trim() : null,
@@ -47,4 +63,17 @@ export function normalizeClubGovernance(input = {}, club = {}) {
 
 export function hasClubPresident(governance) {
   return Boolean(governance?.presidentUserId);
+}
+
+export function getVicePresidentUserIds(governance) {
+  if (!governance) {
+    return [];
+  }
+  if (Array.isArray(governance.vicePresidentUserIds) && governance.vicePresidentUserIds.length) {
+    return governance.vicePresidentUserIds.map((id) => String(id).trim()).filter(Boolean);
+  }
+  if (governance.vicePresidentUserId) {
+    return [String(governance.vicePresidentUserId).trim()];
+  }
+  return [];
 }

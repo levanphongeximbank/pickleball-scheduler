@@ -49,9 +49,23 @@ export function isAuthenticatedOnlyRoute(pathname) {
   return (
     pathname === "/profile" ||
     pathname.startsWith("/profile/") ||
+    pathname === "/change-password" ||
+    pathname.startsWith("/change-password/") ||
     pathname === "/referee" ||
     pathname.startsWith("/referee/match/")
   );
+}
+
+export function userMustChangePassword(user) {
+  return Boolean(user?.mustChangePassword);
+}
+
+export function shouldRedirectToForcePasswordChange(pathname, user) {
+  if (!userMustChangePassword(user)) {
+    return pathname === "/change-password" || pathname.startsWith("/change-password/");
+  }
+
+  return pathname !== "/change-password" && !pathname.startsWith("/change-password/");
 }
 
 /** Route miễn kiểm permission (tránh loop /403). */

@@ -7,18 +7,22 @@ import ClubSwitcher from "../ClubSwitcher.jsx";
 import ClusterSwitcher from "../ClusterSwitcher.jsx";
 import SeasonLeagueSwitcher from "../SeasonLeagueSwitcher.jsx";
 import TenantSwitcher from "../TenantSwitcher.jsx";
+import { useAuth } from "../../context/AuthContext.jsx";
 import { useClub } from "../../context/ClubContext.jsx";
 import { useSeasonLeague } from "../../context/SeasonContext.jsx";
 import { useTenant } from "../../context/TenantContext.jsx";
 import { useIsMobile } from "../../features/mobile/hooks/useIsMobile.js";
+import { ROLES, rolesEqual } from "../../auth/roles.js";
 import { SHELL_COLORS } from "./shellTokens.js";
 
 export default function AppContextBar() {
   const isMobile = useIsMobile();
+  const { user } = useAuth();
   const { activeClub } = useClub();
   const { activeSeason } = useSeasonLeague();
   const { isSuperAdmin } = useTenant();
   const [expanded, setExpanded] = useState(false);
+  const isPlayer = rolesEqual(user?.role, ROLES.PLAYER);
 
   if (!isMobile) {
     return null;
@@ -44,7 +48,7 @@ export default function AppContextBar() {
       <Collapse in={expanded}>
         <Stack spacing={1} sx={{ pt: 1, pb: 0.5 }}>
           {isSuperAdmin && <TenantSwitcher variant="context" />}
-          <ClusterSwitcher variant="context" />
+          {!isPlayer && <ClusterSwitcher variant="context" />}
           <ClubSwitcher variant="context" />
           <SeasonLeagueSwitcher variant="context" />
         </Stack>

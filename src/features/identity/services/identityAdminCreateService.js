@@ -16,8 +16,8 @@ function resolveRedirectTo(redirectTo) {
 }
 
 /**
- * Tạo auth user qua Supabase Admin API (email_confirm=true), upsert profile theo auth.users.id,
- * gửi email đặt mật khẩu khi admin không cung cấp password.
+ * Tạo auth user qua Supabase Admin API (email_confirm=true), upsert profile theo auth.users.id.
+ * Không có password → mật khẩu tạm + must_change_password (không gửi email reset).
  */
 export async function adminCreateManagedUser({
   email,
@@ -28,7 +28,7 @@ export async function adminCreateManagedUser({
   clubId = null,
   phone = "",
   redirectTo = "",
-  sendPasswordSetupEmail = true,
+  sendPasswordSetupEmail = false,
 } = {}) {
   const normalizedEmail = String(email || "").trim().toLowerCase();
   if (!normalizedEmail) {
@@ -44,7 +44,9 @@ export async function adminCreateManagedUser({
   const resolvedDisplayName =
     String(displayName || "").trim() || normalizedEmail.split("@")[0];
   const providedPassword = String(password || "").trim();
+  const useTemporaryPassword = !providedPassword;
   const authPassword = providedPassword || createTemporaryPassword();
+  const mustChangePassword = useTemporaryPassword;
 
   const { data: authData, error: authError } = await admin.auth.admin.createUser({
     email: normalizedEmail,
@@ -52,6 +54,7 @@ export async function adminCreateManagedUser({
     email_confirm: true,
     user_metadata: {
       display_name: resolvedDisplayName,
+      must_change_password: mustChangePassword,
     },
   });
 
@@ -78,6 +81,7 @@ export async function adminCreateManagedUser({
       clubId,
       phone,
       status: USER_STATUS.ACTIVE,
+      mustChangePassword,
     })
   );
 
@@ -86,6 +90,7 @@ export async function adminCreateManagedUser({
   }
 
   profileRow.role = denormalizeRoleForDb(targetRole);
+  profileRow.must_change_password = mustChangePassword;
 
   const { data: profileData, error: profileError } = await admin
     .from("profiles")
@@ -105,7 +110,7 @@ export async function adminCreateManagedUser({
   let passwordSetupSent = false;
   let passwordSetupMessage = null;
 
-  if (!providedPassword && sendPasswordSetupEmail) {
+  if (useTemporaryPassword && sendPasswordSetupEmail) {
     const resetRedirect = resolveRedirectTo(redirectTo);
     const { error: resetError } = await admin.auth.resetPasswordForEmail(normalizedEmail, {
       redirectTo: resetRedirect,
@@ -122,6 +127,8 @@ export async function adminCreateManagedUser({
   return {
     ok: true,
     user: mapProfileRowToUser(profileData),
+    temporaryPassword: useTemporaryPassword ? authPassword : null,
+    mustChangePassword,
     passwordSetupSent,
     passwordSetupMessage,
     emailConfirmed: true,

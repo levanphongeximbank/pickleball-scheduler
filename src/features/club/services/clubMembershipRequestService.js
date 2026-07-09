@@ -2,13 +2,14 @@ import { getCurrentUser } from "../../../auth/authService.js";
 import { saveAuthSession, loadAuthSession } from "../../../auth/authStorage.js";
 import { normalizeUser } from "../../../models/user.js";
 import { getClubById as getRegistryClubById } from "../../../domain/clubService.js";
+import { loadClubs } from "../../../data/club.js";
 import {
   loadClubData,
   saveClubData,
   loadPlayersForClub,
 } from "../../../domain/clubStorage.js";
 import { normalizePlayers } from "../../../models/player.js";
-import { guardClubTenant } from "../../tenant/guards/tenantGuard.js";
+import { guardClubTenant, resolveTenantIdForClub } from "../../tenant/guards/tenantGuard.js";
 import { CLUB_STATUSES } from "../constants/clubStatus.js";
 import { CLUB_MEMBERSHIP_REQUEST_STATUSES } from "../constants/clubMembershipRequestStatuses.js";
 import {
@@ -21,10 +22,17 @@ import { getClubsByTenant } from "./clubTenantService.js";
 import { addMemberToClub } from "./clubMemberService.js";
 import {
   canApproveClubMembershipRequests,
+  getGovernanceDisplayLabels,
+  getRegisteredClusterLabel,
 } from "./clubGovernanceService.js";
 import { getPickVnRatingByAuthUserId } from "../../pick-vn-rating/services/pickVnRatingService.js";
 import { syncRatingToClubPlayer } from "../../pick-vn-rating/services/pickVnRatingService.js";
-import { rpcReviewClubMembershipRequest } from "./clubMembershipRequestRpcService.js";
+import { rpcReviewClubMembershipRequest, rpcLeaveMyClub } from "./clubMembershipRequestRpcService.js";
+import { removeMemberFromClub } from "./clubMemberService.js";
+import {
+  isClubPresident,
+  isClubVicePresident,
+} from "./clubGovernanceService.js";
 
 function buildPlayerIdForUser(userId) {
   const safe = String(userId || "").trim().replace(/[^a-zA-Z0-9_-]/g, "");
@@ -120,6 +128,80 @@ async function linkAthleteProfile({ userId, clubId, playerId }) {
   return { ok: true, playerId, clubId };
 }
 
+async function unlinkAthleteProfile({ userId }) {
+  const localResult = saveAthleteClubLink(userId, { clubId: null, playerId: null });
+  if (!localResult.ok) {
+    return localResult;
+  }
+
+  const session = loadAuthSession();
+  if (session?.user?.id === userId) {
+    const nextUser = normalizeUser({
+      ...session.user,
+      clubId: null,
+      playerId: null,
+      club_id: null,
+      player_id: null,
+    });
+    saveAuthSession(nextUser, { provider: session.provider || "dev" });
+  }
+
+  const rpcResult = await rpcLeaveMyClub();
+  if (rpcResult.ok === false && rpcResult.code !== "RPC_NOT_DEPLOYED" && rpcResult.code !== "NO_SUPABASE") {
+    return rpcResult;
+  }
+
+  return { ok: true };
+}
+
+export async function leaveMyClub({ user, tenantId = null } = {}) {
+  const athlete = normalizeUser(user || getCurrentUser());
+  const clubId = resolveUserClubId(athlete);
+  const playerId = athlete?.playerId || athlete?.player_id || null;
+
+  if (!athlete?.id) {
+    return { ok: false, error: "Chưa đăng nhập." };
+  }
+
+  if (!clubId) {
+    return { ok: false, error: "Bạn chưa thuộc CLB nào." };
+  }
+
+  if (!playerId) {
+    return { ok: false, error: "Không tìm thấy hồ sơ VĐV trong CLB." };
+  }
+
+  const club = getRegistryClubById(clubId);
+  if (!club) {
+    return { ok: false, error: "Không tìm thấy CLB." };
+  }
+
+  if (isClubPresident(athlete, club) || isClubVicePresident(athlete, club)) {
+    return {
+      ok: false,
+      error: "Chuyển vai trò Chủ tịch / Phó chủ tịch trước khi rời CLB.",
+    };
+  }
+
+  const resolvedTenantId =
+    tenantId || club.venueId || club.tenantId || athlete.tenantId || athlete.venueId || null;
+
+  const memberResult = removeMemberFromClub(clubId, playerId, resolvedTenantId, {
+    skipPermissionGuard: true,
+  });
+
+  if (!memberResult.ok) {
+    return memberResult;
+  }
+
+  const unlinkResult = await unlinkAthleteProfile({ userId: athlete.id });
+  if (!unlinkResult.ok) {
+    return unlinkResult;
+  }
+
+  return { ok: true, clubId, playerId };
+}
+
 export async function adminLinkAccountOnlyAthleteToClub({ clubId, user, tenantId = null }) {
   const trimmedClubId = String(clubId || "").trim();
   const normalizedUser = normalizeUser(user);
@@ -170,6 +252,59 @@ export function listJoinableClubs(tenantId) {
   return getClubsByTenant(tenantId).filter((club) => club.status === CLUB_STATUSES.ACTIVE);
 }
 
+/** Tất cả CLB active trên nền tảng (không lọc tenant). */
+export function listDiscoverableClubs() {
+  return loadClubs().filter(
+    (club) => !club.isDefault && club.status === CLUB_STATUSES.ACTIVE
+  );
+}
+
+/** Thống kê công khai cho trang khám phá CLB — không kiểm tra canUserViewClub. */
+export function getClubDiscoverySummary(clubId) {
+  const club = getRegistryClubById(clubId);
+  if (!club) {
+    return null;
+  }
+
+  const tenantId = resolveTenantIdForClub(clubId);
+  const ext = loadClubExtension(clubId);
+  const activeMembers = ext.members.filter((member) => member.status === "active");
+  const gov = getGovernanceDisplayLabels(club, tenantId);
+  const clusterLabel = getRegisteredClusterLabel(club, tenantId);
+
+  return {
+    id: club.id,
+    name: club.name,
+    status: club.status,
+    tenantId,
+    presidentLabel: gov.presidentLabel || null,
+    activeMemberCount: activeMembers.length,
+    clusterLabel: clusterLabel || null,
+  };
+}
+
+/** Quét yêu cầu gia nhập của user trên mọi CLB discoverable. */
+export function listMyMembershipRequestsAll(userId) {
+  const trimmedUserId = String(userId || "").trim();
+  if (!trimmedUserId) {
+    return [];
+  }
+
+  const results = [];
+  for (const club of listDiscoverableClubs()) {
+    const ext = loadClubExtension(club.id);
+    for (const request of getMembershipRequests(ext)) {
+      if (request.userId === trimmedUserId) {
+        results.push({ ...request, clubName: club.name });
+      }
+    }
+  }
+
+  return results.sort(
+    (a, b) => new Date(b.requestedAt).getTime() - new Date(a.requestedAt).getTime()
+  );
+}
+
 export function listMyMembershipRequests(tenantId, userId) {
   const trimmedUserId = String(userId || "").trim();
   if (!trimmedUserId || !tenantId) {
@@ -216,7 +351,6 @@ export function listPendingMembershipRequests(clubId, tenantId, user = getCurren
 
 export function submitClubMembershipRequest(clubId, tenantId, user, options = {}) {
   const trimmedClubId = String(clubId || "").trim();
-  const trimmedTenantId = String(tenantId || "").trim();
   const athlete = user || getCurrentUser();
 
   if (!athlete?.id) {
@@ -236,7 +370,9 @@ export function submitClubMembershipRequest(clubId, tenantId, user, options = {}
     return { ok: false, error: "CLB chưa hoạt động, không thể xin tham gia." };
   }
 
-  const tenantCheck = guardClubTenant(trimmedClubId, trimmedTenantId);
+  const clubTenantId = resolveTenantIdForClub(trimmedClubId);
+  const trimmedTenantId = String(tenantId || clubTenantId || "").trim();
+  const tenantCheck = guardClubTenant(trimmedClubId, clubTenantId || trimmedTenantId);
   if (!tenantCheck.ok) {
     return tenantCheck;
   }
@@ -255,7 +391,7 @@ export function submitClubMembershipRequest(clubId, tenantId, user, options = {}
 
   const ratingRecord = getPickVnRatingByAuthUserId(athlete.id);
   const request = createClubMembershipRequestRecord({
-    tenantId: trimmedTenantId,
+    tenantId: clubTenantId || trimmedTenantId,
     clubId: trimmedClubId,
     userId: athlete.id,
     displayName: athlete.displayName || athlete.email || "",

@@ -33,8 +33,9 @@ import {
   getClubById,
   getGovernanceDisplayLabels,
   getRegisteredClusterLabel,
+  getVicePresidentUserIds,
   listClubGovernanceCandidates,
-  assignClubVicePresident,
+  setClubVicePresidents,
   transferClubOwnership,
   transferClubPresident,
   updateClubGovernance,
@@ -50,7 +51,7 @@ export default function MyClubGovernancePanel({ clubId, tenantId, revision = 0, 
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [nextPresidentId, setNextPresidentId] = useState("");
   const [nextOwnerId, setNextOwnerId] = useState("");
-  const [vicePresidentId, setVicePresidentId] = useState("");
+  const [vicePresidentIds, setVicePresidentIds] = useState(["", ""]);
   const [registeredClusterId, setRegisteredClusterId] = useState("");
 
   const club = useMemo(
@@ -122,17 +123,17 @@ export default function MyClubGovernancePanel({ clubId, tenantId, revision = 0, 
     setBusy(true);
     setError(null);
 
-    const currentVice = club.governance?.vicePresidentUserId || "";
-    const nextVice = vicePresidentId.trim();
+    const currentViceIds = getVicePresidentUserIds(club.governance);
+    const nextViceIds = vicePresidentIds.map((id) => String(id || "").trim()).filter(Boolean);
     const currentCluster = club.governance?.registeredClusterId || "";
     const nextCluster = registeredClusterId.trim();
 
-    if (nextVice !== currentVice) {
-      const viceResult = await assignClubVicePresident(
-        clubId,
-        nextVice || null,
-        tenantId
-      );
+    const viceChanged =
+      currentViceIds.length !== nextViceIds.length ||
+      currentViceIds.some((id, index) => String(id) !== String(nextViceIds[index] || ""));
+
+    if (viceChanged) {
+      const viceResult = await setClubVicePresidents(clubId, nextViceIds, tenantId);
       if (!viceResult.ok) {
         setBusy(false);
         setError(viceResult.error);
@@ -198,7 +199,8 @@ export default function MyClubGovernancePanel({ clubId, tenantId, revision = 0, 
           </Typography>
         )}
         <Typography variant="body2">
-          <strong>Phó chủ tịch:</strong> {labels?.vicePresidentLabel}
+          <strong>Phó chủ tịch:</strong>{" "}
+          {(labels?.vicePresidentLabels || []).filter(Boolean).join(", ") || "—"}
         </Typography>
         {registeredCluster && (
           <Typography variant="body2" color="text.secondary">
@@ -209,18 +211,34 @@ export default function MyClubGovernancePanel({ clubId, tenantId, revision = 0, 
 
       {canManage && (
         <Stack spacing={2}>
-          <GovernanceMemberSelect
-            label="Phó chủ tịch"
-            value={vicePresidentId || club.governance?.vicePresidentUserId || ""}
-            onChange={setVicePresidentId}
-            candidates={candidates.filter(
-              (item) => item.userId !== club.governance?.presidentUserId
-            )}
-            allowEmpty
-            emptyLabel="Không có"
-          />
+          {[0, 1].map((index) => (
+            <GovernanceMemberSelect
+              key={index}
+              label={`Phó chủ tịch ${index + 1}`}
+              value={vicePresidentIds[index] || getVicePresidentUserIds(club.governance)[index] || ""}
+              onChange={(value) =>
+                setVicePresidentIds((prev) => {
+                  const next = [...prev];
+                  next[index] = value;
+                  return next;
+                })
+              }
+              candidates={candidates.filter(
+                (item) =>
+                  item.userId !== club.governance?.presidentUserId &&
+                  !vicePresidentIds.some(
+                    (selectedId, selectedIndex) =>
+                      selectedIndex !== index &&
+                      selectedId &&
+                      selectedId === item.userId
+                  )
+              )}
+              allowEmpty
+              emptyLabel="Không có"
+            />
+          ))}
           <Typography variant="caption" color="text.secondary">
-            Phó chủ tịch phải là vận động viên trong danh sách CLB.
+            Tối đa 2 Phó chủ tịch; phải là vận động viên trong danh sách CLB.
           </Typography>
 
           <FormControl fullWidth>

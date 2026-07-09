@@ -179,7 +179,7 @@ test("venue và subscription models", () => {
   assert.equal(normalizePlanId("pro"), "professional");
 });
 
-test("menuAccess — PLAYER chỉ thấy menu giải đấu", () => {
+test("menuAccess — PLAYER thấy menu CLB và Giải đấu", () => {
   const player = user(ROLES.PLAYER, {
     venueId: "venue-a",
     clubId: "club-1",
@@ -200,19 +200,26 @@ test("menuAccess — PLAYER chỉ thấy menu giải đấu", () => {
   });
 
   const labels = collectMenuItemLabels(visible);
+  assert.ok(labels.includes("CLB & Huấn luyện"));
+  assert.equal(labels.includes("Lịch sinh hoạt"), false);
+  assert.ok(labels.includes("CLB của tôi"));
+  assert.ok(labels.includes("Danh sách huấn luyện viên"));
+  assert.ok(labels.includes("Đăng ký gói học"));
+  assert.equal(labels.includes("Danh sách câu lạc bộ"), false);
+  assert.ok(labels.includes("Tổng quan"));
   assert.ok(labels.includes("Danh sách giải"));
-  assert.ok(labels.includes("Hồ sơ cá nhân"));
-  assert.ok(labels.includes("Điểm trình độ"));
-  assert.ok(labels.includes("Đánh giá trình độ lần đầu"));
-  assert.equal(labels.includes("CLB & Huấn luyện"), false);
+  assert.ok(labels.includes("Vận động viên"));
+  assert.ok(labels.includes("Kết quả"));
+  assert.equal(labels.includes("VĐV"), false);
+  assert.equal(labels.includes("Hồ sơ cá nhân"), false);
   assert.equal(labels.includes("Vui chơi mỗi ngày"), false);
   assert.equal(labels.includes("Loại giải"), false);
   assert.equal(labels.includes("Điều hành"), false);
   assert.equal(labels.includes("Cấu hình"), false);
-  assert.equal(labels.includes("Vận động viên"), false);
   assert.equal(labels.includes("Khách hàng"), false);
   assert.equal(labels.includes("Cài đặt"), false);
   assert.equal(labels.includes("Tạo giải"), false);
+  assert.equal(labels.includes("Tổ chức thi đấu"), false);
 });
 
 test("PLAYER không có tournament.create trong ma trận mặc định", () => {

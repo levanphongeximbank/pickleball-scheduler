@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import {
   Alert,
@@ -7,6 +7,7 @@ import {
   Card,
   CardContent,
   CircularProgress,
+  LinearProgress,
   Stack,
   Tab,
   Tabs,
@@ -48,28 +49,49 @@ export default function PlayerHomePage() {
   const [checkinStatus, setCheckinStatus] = useState(CHECKIN_STATUS.PENDING);
   const [personalQr, setPersonalQr] = useState(null);
   const [homeData, setHomeData] = useState(null);
-  const [loading, setLoading] = useState(true);
+  const [initialLoading, setInitialLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState("");
+  const hasLoadedRef = useRef(false);
 
+  const userId = auth.user?.id || null;
   const playerId = auth.user?.playerId || null;
-  const players = useMemo(
-    () => (activeClubId ? loadPlayersForClub(activeClubId) : []),
-    [activeClubId]
-  );
-  const player = players.find((p) => p.id === playerId) || players[0] || null;
+  const resolvedPlayerId = useMemo(() => {
+    if (!activeClubId) {
+      return playerId;
+    }
+    const players = loadPlayersForClub(activeClubId);
+    const matched = players.find((p) => p.id === playerId) || players[0] || null;
+    return matched?.id || playerId;
+  }, [activeClubId, playerId]);
+
+  const player = useMemo(() => {
+    if (!activeClubId || !resolvedPlayerId) {
+      return null;
+    }
+    const players = loadPlayersForClub(activeClubId);
+    return players.find((p) => p.id === resolvedPlayerId) || null;
+  }, [activeClubId, resolvedPlayerId]);
 
   const refresh = useCallback(async () => {
     if (!activeClubId) {
-      setLoading(false);
+      hasLoadedRef.current = false;
+      setInitialLoading(false);
+      setRefreshing(false);
       return;
     }
 
-    setLoading(true);
+    const isFirstLoad = !hasLoadedRef.current;
+    if (isFirstLoad) {
+      setInitialLoading(true);
+    } else {
+      setRefreshing(true);
+    }
     setError("");
 
     const home = loadPlayerMobileHome({
       clubId: activeClubId,
-      playerId: player?.id,
+      playerId: resolvedPlayerId,
       tenantId: currentTenantId,
       leagueId: activeLeagueId,
       seasonId: activeSeasonId,
@@ -83,7 +105,7 @@ export default function PlayerHomePage() {
     }
 
     const [notifResult, checkinResult] = await Promise.all([
-      listNotifications({ tenantId: currentTenantId, userId: auth.user?.id }),
+      listNotifications({ tenantId: currentTenantId, userId }),
       getCheckinDashboard({ tenantId: currentTenantId }),
     ]);
 
@@ -95,24 +117,36 @@ export default function PlayerHomePage() {
       setNotifications(filtered);
     }
 
-    if (checkinResult.ok && player) {
-      const summary = buildCheckinSummaryForPlayers({
-        players: [player],
-        checkins: checkinResult.checkins,
-      });
-      const row = summary.rows[0];
-      setCheckinStatus(row?.status || CHECKIN_STATUS.PENDING);
+    if (checkinResult.ok && resolvedPlayerId) {
+      const players = loadPlayersForClub(activeClubId);
+      const checkinPlayer =
+        players.find((p) => p.id === resolvedPlayerId) || players[0] || null;
+      if (checkinPlayer) {
+        const summary = buildCheckinSummaryForPlayers({
+          players: [checkinPlayer],
+          checkins: checkinResult.checkins,
+        });
+        const row = summary.rows[0];
+        setCheckinStatus(row?.status || CHECKIN_STATUS.PENDING);
+      }
     }
 
-    setLoading(false);
+    hasLoadedRef.current = true;
+    setInitialLoading(false);
+    setRefreshing(false);
   }, [
     activeClubId,
     activeLeagueId,
     activeSeasonId,
     currentTenantId,
+    userId,
+    resolvedPlayerId,
     auth.user,
-    player,
   ]);
+
+  useEffect(() => {
+    hasLoadedRef.current = false;
+  }, [activeClubId]);
 
   useEffect(() => {
     refresh();
@@ -134,7 +168,23 @@ export default function PlayerHomePage() {
 
   const isPlayerRole = auth.user?.role === ROLES.PLAYER || Boolean(playerId);
 
-  if (loading) {
+  if (!activeClubId) {
+    return (
+      <Box sx={{ px: MOBILE_PAGE_GUTTER, py: 6, textAlign: "center" }}>
+        <Typography variant="h6" fontWeight={700} gutterBottom>
+          Chưa tham gia CLB
+        </Typography>
+        <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
+          Gia nhập một câu lạc bộ để xem lịch thi đấu, QR check-in và kết quả giải.
+        </Typography>
+        <Button component={Link} to="/my-club?view=discover" variant="contained">
+          Tìm CLB
+        </Button>
+      </Box>
+    );
+  }
+
+  if (initialLoading) {
     return (
       <Box sx={{ px: MOBILE_PAGE_GUTTER, py: 6, textAlign: "center" }}>
         <CircularProgress />
@@ -167,6 +217,7 @@ export default function PlayerHomePage() {
 
   return (
     <Box sx={{ px: MOBILE_PAGE_GUTTER, pb: { xs: 10, md: 3 } }}>
+      {refreshing && <LinearProgress sx={{ mb: 1, borderRadius: 1 }} />}
       <Stack direction="row" alignItems="center" spacing={1} sx={{ mb: 2 }}>
         <PersonIcon color="primary" />
         <Typography variant="h5" fontWeight={900}>

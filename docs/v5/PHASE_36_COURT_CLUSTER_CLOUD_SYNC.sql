@@ -180,3 +180,44 @@ $$;
 
 grant execute on function public.court_admin_upsert_cluster(json) to authenticated;
 grant execute on function public.court_admin_remove_cluster_owner(text) to authenticated;
+
+create or replace function public.court_admin_delete_cluster(p_cluster_id text)
+returns json
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  v_cluster_id text := trim(coalesce(p_cluster_id, ''));
+begin
+  if auth.uid() is null then
+    return json_build_object('ok', false, 'code', 'NOT_AUTHENTICATED');
+  end if;
+
+  if not public.can_review_court_claim() then
+    return json_build_object('ok', false, 'code', 'FORBIDDEN');
+  end if;
+
+  if v_cluster_id = '' then
+    return json_build_object('ok', false, 'code', 'CLUSTER_ID_REQUIRED', 'error', 'Thiếu id cụm sân.');
+  end if;
+
+  if not exists (select 1 from public.court_clusters c where c.id = v_cluster_id) then
+    return json_build_object(
+      'ok', false,
+      'code', 'CLUSTER_NOT_FOUND',
+      'error', 'Không tìm thấy cụm: ' || v_cluster_id
+    );
+  end if;
+
+  delete from public.user_cluster_assignments where cluster_id = v_cluster_id;
+  delete from public.court_clusters where id = v_cluster_id;
+
+  return json_build_object('ok', true, 'clusterId', v_cluster_id);
+exception
+  when others then
+    return json_build_object('ok', false, 'code', 'DELETE_FAILED', 'error', sqlerrm);
+end;
+$$;
+
+grant execute on function public.court_admin_delete_cluster(text) to authenticated;

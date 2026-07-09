@@ -78,3 +78,25 @@ export async function rpcSubmitClubMembershipRequest({
 
   return parseRpcJson(data);
 }
+
+/**
+ * Tự rời CLB — xóa club_id/player_id trên profile (staging/production).
+ * Fallback local khi RPC chưa deploy.
+ */
+export async function rpcLeaveMyClub() {
+  const client = getSupabaseAuthClient();
+  if (!client) {
+    return { ok: false, code: "NO_SUPABASE", error: "Supabase chưa sẵn sàng." };
+  }
+
+  const { data, error } = await client.rpc("club_leave_my_membership");
+
+  if (error) {
+    if (isMissingRpcError(error)) {
+      return { ok: false, code: "RPC_NOT_DEPLOYED", error: error.message };
+    }
+    return { ok: false, code: "RPC_FAILED", error: error.message };
+  }
+
+  return parseRpcJson(data);
+}

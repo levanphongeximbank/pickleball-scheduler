@@ -2,6 +2,7 @@ import { getCurrentUser, isDevAuthAllowed } from "../../../auth/authService.js";
 import { hasSupabaseConfig } from "../../../auth/supabaseClient.js";
 import {
   assignUserToCluster,
+  deleteCourtCluster,
   getClusterById,
   listAssignmentsForCluster,
   setUserClusterAssignments,
@@ -15,6 +16,7 @@ import {
   remapClusterIdLocally,
 } from "./courtClusterCloudSync.js";
 import {
+  deleteClusterFromCloud,
   removeClusterOwnerFromCloud,
   upsertClusterToCloud,
 } from "./courtClusterCloudService.js";
@@ -261,4 +263,55 @@ export async function syncClustersForVenueToCloud({
     venueId: ensured.venueId,
     provider: "rpc",
   };
+}
+
+export async function removeCourtCluster({
+  clusterId,
+  venueId = null,
+  actor = getCurrentUser(),
+} = {}) {
+  const normalizedClusterId = String(clusterId || "").trim();
+  if (!normalizedClusterId) {
+    return { ok: false, error: "Thiếu id cụm sân.", code: "CLUSTER_ID_REQUIRED" };
+  }
+
+  let targetClusterId = normalizedClusterId;
+
+  if (hasSupabaseConfig()) {
+    const cluster = getClusterById(normalizedClusterId);
+    if (cluster) {
+      const ensured = await ensureClustersOnCloud([normalizedClusterId], { venueId, actor });
+      if (ensured.ok) {
+        targetClusterId = ensured.clusterIds[0] || normalizedClusterId;
+      }
+    }
+
+    const rpcResult = await deleteClusterFromCloud(targetClusterId);
+    if (rpcResult.ok) {
+      deleteCourtCluster(targetClusterId, { user: actor });
+      if (targetClusterId !== normalizedClusterId) {
+        deleteCourtCluster(normalizedClusterId, { user: actor });
+      }
+      if (actor?.id) {
+        await pullClusterContextForUser(actor);
+      }
+      return { ...rpcResult, clusterId: targetClusterId, provider: "rpc" };
+    }
+    if (rpcResult.code === "CLUSTER_NOT_FOUND") {
+      const localResult = deleteCourtCluster(normalizedClusterId, { user: actor });
+      if (localResult.ok) {
+        return { ok: true, clusterId: normalizedClusterId, provider: "local" };
+      }
+      return localResult;
+    }
+    if (rpcResult.code !== "RPC_NOT_DEPLOYED") {
+      return rpcResult;
+    }
+  }
+
+  if (!isDevAuthAllowed()) {
+    return { ok: false, error: "Chức năng cần Supabase RPC.", code: "NO_SOURCE" };
+  }
+
+  return deleteCourtCluster(normalizedClusterId, { user: actor });
 }

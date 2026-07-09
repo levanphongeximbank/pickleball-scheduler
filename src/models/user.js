@@ -46,6 +46,7 @@ export function normalizeUser(user) {
     gender: user?.gender ? String(user.gender).trim() : "",
     birthYear: user?.birthYear ?? user?.birth_year ?? null,
     status: user?.status || USER_STATUS.ACTIVE,
+    mustChangePassword: Boolean(user?.mustChangePassword ?? user?.must_change_password),
     createdAt: user?.createdAt || new Date().toISOString(),
     updatedAt: user?.updatedAt || new Date().toISOString(),
   };

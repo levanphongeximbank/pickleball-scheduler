@@ -42,6 +42,7 @@ export function mapProfileRowToUser(row) {
     gender: row.gender || "",
     birthYear: row.birth_year ?? row.birthYear ?? null,
     status: row.status || "active",
+    mustChangePassword: Boolean(row.must_change_password ?? row.mustChangePassword),
     createdAt: row.created_at,
     updatedAt: row.updated_at,
     assignedClusterIds: resolveAssignedClusterIdsForUser({ id: row.id }),
@@ -58,6 +59,7 @@ export function mapAuthUserFallback(authUser, metadata = {}) {
     clubId: metadata.club_id || metadata.clubId || null,
     playerId: metadata.player_id || metadata.playerId || null,
     status: metadata.status || "active",
+    mustChangePassword: Boolean(metadata.must_change_password ?? metadata.mustChangePassword),
   });
 }
 
@@ -100,6 +102,7 @@ export function mapUserToProfileRow(user) {
     club_id: normalized.clubId,
     player_id: normalized.playerId,
     status: normalized.status || "active",
+    must_change_password: Boolean(normalized.mustChangePassword),
     updated_at: new Date().toISOString(),
   };
 }

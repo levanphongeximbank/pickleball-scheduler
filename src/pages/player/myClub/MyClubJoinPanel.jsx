@@ -20,12 +20,13 @@ import {
   CLUB_MEMBERSHIP_REQUEST_STATUS_LABELS,
   CLUB_MEMBERSHIP_REQUEST_STATUSES,
   cancelClubMembershipRequest,
-  getClubStats,
-  getGovernanceDisplayLabels,
-  listJoinableClubs,
-  listMyMembershipRequests,
+  getClubDiscoverySummary,
+  listDiscoverableClubs,
+  listMyMembershipRequestsAll,
   submitClubMembershipRequest,
 } from "../../../features/club/index.js";
+import { resolveTenantIdForClub } from "../../../features/tenant/guards/tenantGuard.js";
+import { Link } from "react-router-dom";
 
 function requestStatusChip(status) {
   const label = CLUB_MEMBERSHIP_REQUEST_STATUS_LABELS[status] || status;
@@ -48,11 +49,11 @@ export default function MyClubJoinPanel({ tenantId, user, onRevision }) {
 
   const myRequests = useMemo(() => {
     void revision;
-    if (!user?.id || !tenantId) {
+    if (!user?.id) {
       return [];
     }
-    return listMyMembershipRequests(tenantId, user.id);
-  }, [revision, tenantId, user?.id]);
+    return listMyMembershipRequestsAll(user.id);
+  }, [revision, user?.id]);
 
   const requestByClubId = useMemo(
     () => new Map(myRequests.map((request) => [request.clubId, request])),
@@ -61,11 +62,8 @@ export default function MyClubJoinPanel({ tenantId, user, onRevision }) {
 
   const joinableClubs = useMemo(() => {
     void revision;
-    if (!tenantId) {
-      return [];
-    }
-    return listJoinableClubs(tenantId);
-  }, [tenantId, revision]);
+    return listDiscoverableClubs();
+  }, [revision]);
 
   const bumpRevision = () => {
     setRevision((value) => value + 1);
@@ -77,7 +75,8 @@ export default function MyClubJoinPanel({ tenantId, user, onRevision }) {
       return;
     }
 
-    const result = submitClubMembershipRequest(joinClub.id, tenantId, user, {
+    const clubTenantId = resolveTenantIdForClub(joinClub.id);
+    const result = submitClubMembershipRequest(joinClub.id, clubTenantId, user, {
       message: joinMessage,
     });
 
@@ -106,7 +105,10 @@ export default function MyClubJoinPanel({ tenantId, user, onRevision }) {
     <Box>
       <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
         Duyệt danh sách CLB trong hệ thống và gửi yêu cầu tham gia. Chủ tịch hoặc Phó chủ tịch
-        CLB sẽ duyệt yêu cầu của bạn.
+        CLB sẽ duyệt yêu cầu của bạn.{" "}
+        <Typography component={Link} to="/clubs/discover" variant="body2" sx={{ fontWeight: 600 }}>
+          Xem tất cả CLB →
+        </Typography>
       </Typography>
 
       {message && (
@@ -116,12 +118,11 @@ export default function MyClubJoinPanel({ tenantId, user, onRevision }) {
       )}
 
       {joinableClubs.length === 0 ? (
-        <Alert severity="info">Chưa có CLB đang hoạt động trong tenant này.</Alert>
+        <Alert severity="info">Chưa có CLB đang hoạt động trên hệ thống.</Alert>
       ) : (
         <Grid container spacing={2}>
-          {joinableClubs.map((club) => {
-            const stats = getClubStats(club.id, tenantId);
-            const gov = getGovernanceDisplayLabels(club, tenantId);
+          {joinableClubs.slice(0, 4).map((club) => {
+            const summary = getClubDiscoverySummary(club.id);
             const request = requestByClubId.get(club.id);
 
             return (
@@ -137,9 +138,15 @@ export default function MyClubJoinPanel({ tenantId, user, onRevision }) {
                       </Stack>
 
                       <Typography variant="body2" color="text.secondary">
-                        {stats?.activeMemberCount ?? 0} thành viên
-                        {gov.presidentLabel ? ` · Chủ tịch: ${gov.presidentLabel}` : ""}
+                        {summary?.activeMemberCount ?? 0} thành viên
+                        {summary?.presidentLabel ? ` · Chủ tịch: ${summary.presidentLabel}` : ""}
                       </Typography>
+
+                      {summary?.clusterLabel && (
+                        <Typography variant="body2" color="text.secondary">
+                          Cụm sân: {summary.clusterLabel}
+                        </Typography>
+                      )}
 
                       {request?.status === CLUB_MEMBERSHIP_REQUEST_STATUSES.REJECTED &&
                         request.reviewNote && (

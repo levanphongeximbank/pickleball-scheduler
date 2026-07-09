@@ -26,6 +26,10 @@ const FEATURE_FLAG_CHECKERS = Object.freeze({
 const PUBLIC_MENU_PATHS = new Set([
   "/profile",
   "/my-club",
+  "/clubs/discover",
+  "/club/activity",
+  "/coaching/coach-list",
+  "/coaching/register",
   "/player/profile",
   "/player/skill",
   "/player/skill-assessment",

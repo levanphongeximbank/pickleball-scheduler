@@ -41,13 +41,35 @@ export {
   rejectClubRegistration,
   resolveGovernanceForCreate,
   canSelfRegisterClub,
+  bootstrapSelfRegisteredPresident,
   canTransferClubOwnership,
   transferClubOwnership,
   transferClubPresident,
   assignClubVicePresident,
+  setClubVicePresidents,
   listClubGovernanceCandidates,
   deleteClubAsOwner,
 } from "./services/clubGovernanceService.js";
+
+export {
+  MAX_VICE_PRESIDENTS,
+  getVicePresidentUserIds,
+} from "./models/clubGovernance.js";
+
+export {
+  CLUB_ACTIVITY_DAY_LABELS,
+  formatClubActivityDayLabel,
+} from "./models/clubActivitySession.js";
+
+export {
+  canManageClubActivitySchedule,
+  listClubActivitySessions,
+  getClubActivitySessionSummary,
+  getTodayClubActivitySessions,
+  createClubActivitySession,
+  updateClubActivitySession,
+  deleteClubActivitySession,
+} from "./services/clubActivityScheduleService.js";
 
 export {
   getClubMembers,
@@ -95,9 +117,13 @@ export {
   listPendingMembershipRequests,
   listMyMembershipRequests,
   listJoinableClubs,
+  listDiscoverableClubs,
+  getClubDiscoverySummary,
+  listMyMembershipRequestsAll,
   approveClubMembershipRequest,
   rejectClubMembershipRequest,
   getMyClubSummary,
+  leaveMyClub,
 } from "./services/clubMembershipRequestService.js";
 
 export { ensureClubManagementSeed } from "./seed/clubManagementSeed.js";

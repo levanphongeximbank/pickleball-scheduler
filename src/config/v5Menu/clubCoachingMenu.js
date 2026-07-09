@@ -1,4 +1,5 @@
 import { PERMISSIONS } from "../../auth/permissions.js";
+import { ROLES } from "../../auth/roles.js";
 import { FEATURE_STATUS, menuFolder, menuLeaf } from "./menuBuilders.js";
 
 export const CLUB_COACHING_MENU_ROOT = menuFolder({
@@ -13,6 +14,7 @@ export const CLUB_COACHING_MENU_ROOT = menuFolder({
       path: "/club",
       match: "club-settings",
       permissions: [PERMISSIONS.CLUB_VIEW],
+      excludeRoles: [ROLES.PLAYER],
       featureStatus: FEATURE_STATUS.LIVE,
     }),
     menuLeaf({
@@ -30,6 +32,7 @@ export const CLUB_COACHING_MENU_ROOT = menuFolder({
       path: "/manage/clubs",
       match: "manage-clubs",
       permissions: [PERMISSIONS.CLUB_VIEW],
+      excludeRoles: [ROLES.PLAYER],
       featureStatus: FEATURE_STATUS.LIVE,
     }),
     menuLeaf({
@@ -39,15 +42,34 @@ export const CLUB_COACHING_MENU_ROOT = menuFolder({
       path: "/daily-play",
       match: "daily-play",
       permissions: [PERMISSIONS.TOURNAMENT_VIEW],
+      excludeRoles: [ROLES.PLAYER],
+      featureStatus: FEATURE_STATUS.LIVE,
+    }),
+    menuLeaf({
+      key: "coach-list-player",
+      icon: "coaches",
+      text: "Danh sách huấn luyện viên",
+      path: "/coaching/coach-list",
+      match: "coaching-coach-list",
+      roles: [ROLES.PLAYER, ROLES.CUSTOMER],
+      featureStatus: FEATURE_STATUS.LIVE,
+    }),
+    menuLeaf({
+      key: "coach-package-register",
+      icon: "billing",
+      text: "Đăng ký gói học",
+      path: "/coaching/register",
+      match: "coaching-register",
       featureStatus: FEATURE_STATUS.LIVE,
     }),
     menuLeaf({
       key: "coaches",
       icon: "coaches",
-      text: "Huấn luyện viên",
+      text: "Danh sách huấn luyện viên",
       path: "/coaching/coaches",
       match: "coaching-coaches",
       permissions: [PERMISSIONS.CUSTOMER_VIEW],
+      excludeRoles: [ROLES.PLAYER, ROLES.CUSTOMER],
       featureStatus: FEATURE_STATUS.LIVE,
     }),
     menuLeaf({
@@ -57,6 +79,7 @@ export const CLUB_COACHING_MENU_ROOT = menuFolder({
       path: "/coaching/students",
       match: "coaching-students",
       permissions: [PERMISSIONS.CUSTOMER_VIEW],
+      excludeRoles: [ROLES.PLAYER],
       featureStatus: FEATURE_STATUS.LIVE,
     }),
     menuLeaf({
@@ -66,6 +89,7 @@ export const CLUB_COACHING_MENU_ROOT = menuFolder({
       path: "/coaching/classes",
       match: "coaching-classes",
       permissions: [PERMISSIONS.CUSTOMER_VIEW],
+      excludeRoles: [ROLES.PLAYER],
       featureStatus: FEATURE_STATUS.LIVE,
     }),
     menuLeaf({
@@ -75,6 +99,7 @@ export const CLUB_COACHING_MENU_ROOT = menuFolder({
       path: "/coaching/schedule",
       match: "coaching-schedule",
       permissions: [PERMISSIONS.BOOKING_VIEW],
+      excludeRoles: [ROLES.PLAYER],
       featureStatus: FEATURE_STATUS.LIVE,
     }),
     menuLeaf({
@@ -84,6 +109,7 @@ export const CLUB_COACHING_MENU_ROOT = menuFolder({
       path: "/coaching/packages",
       match: "coaching-packages",
       permissions: [PERMISSIONS.CUSTOMER_VIEW],
+      excludeRoles: [ROLES.PLAYER],
       featureStatus: FEATURE_STATUS.LIVE,
     }),
     menuLeaf({
@@ -93,6 +119,7 @@ export const CLUB_COACHING_MENU_ROOT = menuFolder({
       path: "/coaching/attendance",
       match: "coaching-attendance",
       permissions: [PERMISSIONS.CUSTOMER_VIEW],
+      excludeRoles: [ROLES.PLAYER],
       featureStatus: FEATURE_STATUS.LIVE,
     }),
     menuLeaf({
@@ -102,6 +129,7 @@ export const CLUB_COACHING_MENU_ROOT = menuFolder({
       path: "/coaching/evaluations",
       match: "coaching-evaluations",
       permissions: [PERMISSIONS.CUSTOMER_VIEW],
+      excludeRoles: [ROLES.PLAYER],
       featureStatus: FEATURE_STATUS.LIVE,
     }),
   ],

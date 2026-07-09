@@ -94,8 +94,11 @@ export function computePlayerDashboardStats(players = [], clubId) {
   const total = players.length;
   const male = players.filter((p) => p.gender === "Nam").length;
   const female = players.filter((p) => p.gender === "Nữ").length;
+  const ratedPlayers = players.filter((p) => !isPlayerUnrated(p));
   const averageLevel =
-    total === 0 ? 0 : players.reduce((sum, p) => sum + (Number(p.level) || 0), 0) / total;
+    ratedPlayers.length === 0
+      ? 0
+      : ratedPlayers.reduce((sum, p) => sum + Number(p.level), 0) / ratedPlayers.length;
 
   const checkedInIds = clubId ? getTodayCheckedInPlayerIds(clubId) : new Set();
   const checkedInToday = players.filter((p) => checkedInIds.has(String(p.id))).length;
@@ -249,8 +252,13 @@ export function filterPlayers(players, filters = {}) {
 
     const matchesGender = genderFilter === "all" || player.gender === genderFilter;
 
-    const level = Number(player.level) || 0;
-    const matchesLevel = level >= levelRange[0] && level <= levelRange[1];
+    const matchesLevel =
+      isPlayerUnrated(player) ||
+      (() => {
+        const level = Number(player.level);
+        if (!Number.isFinite(level)) return true;
+        return level >= levelRange[0] && level <= levelRange[1];
+      })();
 
     let matchesStatus = true;
     const statusMeta = getPlayerStatusMeta(player);

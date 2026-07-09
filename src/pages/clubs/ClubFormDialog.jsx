@@ -22,7 +22,7 @@ import { useAuth } from "../../context/AuthContext.jsx";
 import { ROLES, normalizeRole } from "../../auth/roles.js";
 import GovernanceMemberSelect from "../../components/club/GovernanceMemberSelect.jsx";
 import { listClustersForVenue } from "../../features/court-cluster/services/courtClusterService.js";
-import { CLUB_STATUSES, listClubGovernanceCandidates } from "../../features/club/index.js";
+import { CLUB_STATUSES, listClubGovernanceCandidates, canSelfRegisterClub } from "../../features/club/index.js";
 import { createClub, updateClub } from "../../features/club/index.js";
 
 const defaultForm = {
@@ -44,7 +44,7 @@ export default function ClubFormDialog({ open, club, tenantId, onClose, onSucces
 
   const isEdit = Boolean(club?.id);
   const isCourtOwner = normalizeRole(user?.role) === ROLES.TENANT_OWNER;
-  const isClubManager = normalizeRole(user?.role) === ROLES.CLUB_MANAGER;
+  const isSelfRegister = canSelfRegisterClub(user);
 
   const venueClusters = useMemo(
     () => (tenantId ? listClustersForVenue(tenantId) : []),
@@ -72,18 +72,18 @@ export default function ClubFormDialog({ open, club, tenantId, onClose, onSucces
     } else {
       setForm({
         ...defaultForm,
-        presidentUserId: isClubManager ? user?.id || "" : "",
+        presidentUserId: isSelfRegister ? user?.id || "" : "",
         assignOwnerToCreator: isCourtOwner,
       });
     }
     setError(null);
-  }, [open, club, user, isClubManager, isCourtOwner]);
+  }, [open, club, user, isSelfRegister, isCourtOwner]);
 
   const handleSubmit = async () => {
     setSaving(true);
     setError(null);
 
-    const presidentUserId = form.presidentUserId.trim() || (isClubManager ? user?.id : "");
+    const presidentUserId = form.presidentUserId.trim() || (isSelfRegister ? user?.id : "");
     if (!isEdit && !presidentUserId) {
       setSaving(false);
       setError("Chủ tịch CLB bắt buộc — nhập user ID Chủ tịch.");
@@ -127,10 +127,9 @@ export default function ClubFormDialog({ open, club, tenantId, onClose, onSucces
       <DialogContent>
         <Stack spacing={2} sx={{ mt: 1 }}>
           {error && <Alert severity="error">{error}</Alert>}
-          {!isEdit && isClubManager && (
+          {!isEdit && isSelfRegister && (
             <Alert severity="info">
-              CLB do Chủ tịch tự đăng ký sẽ ở trạng thái <strong>Chờ chủ sân duyệt</strong> trước khi
-              hoạt động.
+              Bạn sẽ là <strong>Chủ tịch CLB</strong>. CLB hoạt động ngay sau khi tạo.
             </Alert>
           )}
           <TextField
@@ -160,11 +159,11 @@ export default function ClubFormDialog({ open, club, tenantId, onClose, onSucces
               value={form.presidentUserId}
               onChange={(e) => setForm((f) => ({ ...f, presidentUserId: e.target.value }))}
               helperText={
-                isClubManager
+                isSelfRegister
                   ? "Mặc định là tài khoản của bạn"
                   : "Bắt buộc — auth user id của Chủ tịch CLB"
               }
-              disabled={isClubManager}
+              disabled={isSelfRegister}
             />
           )}
           {isEdit ? (

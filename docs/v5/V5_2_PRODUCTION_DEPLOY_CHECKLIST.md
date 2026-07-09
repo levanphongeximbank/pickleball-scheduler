@@ -1,10 +1,10 @@
 # V5.3 — Production Deploy Checklist (Owner + Engineering)
 
 **Ngày cập nhật:** 2026-07-09  
-**Target version:** `5.3.1` — ✅ tagged  
+**Target version:** `5.3.2` — deploying  
 **Production URL:** https://pickleball-scheduler-eight.vercel.app  
 **Production Supabase:** `expuvcohlcjzvrrauvud`  
-**Rollback deployment:** `dpl_GgfrGxH6KFAYLTqzxpVkpypJtFAV` (trước deploy V5.3.1 `dpl_J2YxgPK4EBhE3oTnefXK5hfnF5mu`)
+**Rollback deployment:** `dpl_J2YxgPK4EBhE3oTnefXK5hfnF5mu` (V5.3.1 `0be1375`)
 
 **Phạm vi:** Controlled Production pilot — **không** Commercial GA · **không** payment live
 
@@ -16,7 +16,7 @@
 
 | # | Việc | Tick | Ghi chú |
 |---|------|------|---------|
-| A1 | `npm test` PASS (gồm pairing + rbac-v52) | ✅ | 1140/1140 (2026-07-09) |
+| A1 | `npm test` PASS (gồm pairing + rbac-v52) | ✅ | 1149/1149 (2026-07-09) |
 | A2 | `npm run build` PASS | ✅ | |
 | A3 | Pairing constraints + intervention (Super Admin) | ✅ | `pairing-constraints/`, `pairing-intervention/` |
 | A4 | Platform athlete service + team group seed | ✅ | `platformAthleteService.js`, `teamGroupSeedEngine.js` |
@@ -49,7 +49,7 @@
 | C6 | `PHASE_22_CLOUD_PERSISTENCE.sql` | ✅ | `court_engine_stores`, `club_data_v3.version` |
 | C7 | `PHASE_33_TENANT_ROLE_CUSTOMIZE.sql` | ✅ | `tenant.role.customize` có trên Production |
 | C8 | Phase 23/32/33 claim/34/35 SQL | ✅ | `court_clusters`, `court_claim_requests`, RPC `court_admin_assign_cluster_owner` |
-| C11 | `PHASE_36_COURT_CLUSTER_CLOUD_SYNC.sql` | ✅ | RPC `court_admin_upsert_cluster`, `court_admin_remove_cluster_owner` (MCP 2026-07-09) |
+| C11 | `PHASE_36_COURT_CLUSTER_CLOUD_SYNC.sql` | ✅ | RPC upsert/remove/delete owner + `court_admin_delete_cluster` (MCP 2026-07-09) |
 | C12 | `PHASE_36_PRODUCTION_BACKFILL_NAM_LONG.sql` | ✅ | `venue-prod-main-main` backfill 2026-07-09 |
 | C9 | Phase 30/31 VPR + club membership SQL | ✅ | `pick_vn_player_ratings`, `club_governance`, `club_membership_requests` |
 | C10 | `npm run verify:phase33-tenant-owner-rbac-production` | ☐ | Cần `SUPABASE_SERVICE_ROLE_KEY` local — MCP đã spot-check |
@@ -90,8 +90,8 @@
 
 | # | Việc | Tick | Ghi chú |
 |---|------|------|---------|
-| E1 | Ghi deployment ID **trước** deploy | ✅ | `dpl_GgfrGxH6KFAYLTqzxpVkpypJtFAV` (`0121740`) |
-| E2 | Deploy Production | ✅ | `dpl_J2YxgPK4EBhE3oTnefXK5hfnF5mu` (commit `0be1375`) |
+| E1 | Ghi deployment ID **trước** deploy | ✅ | `dpl_J2YxgPK4EBhE3oTnefXK5hfnF5mu` (V5.3.1) |
+| E2 | Deploy Production | ☐ | V5.3.2 — court cluster cloud sync + club governance |
 | E3 | Alias production domain | ✅ | `pickleball-scheduler-eight.vercel.app` |
 | E4 | Bundle scan — không staging ref | ✅ | |
 | E5 | `/login` HTTP 200 | ✅ | 2026-07-09 |

@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Link as RouterLink, useNavigate, useSearchParams } from "react-router-dom";
 import {
   Alert,
@@ -6,6 +6,7 @@ import {
   Button,
   Card,
   CardContent,
+  CircularProgress,
   Container,
   Stack,
   TextField,
@@ -16,10 +17,13 @@ import {
   completePasswordReset,
   validateDevResetToken,
 } from "../features/identity/services/passwordService.js";
+import { ensureRecoverySession } from "../auth/authService.js";
 import { hasSupabaseConfig } from "../auth/supabaseClient.js";
+import { useAuth } from "../context/AuthContext.jsx";
 
 export default function ResetPasswordPage() {
   const navigate = useNavigate();
+  const { authLoading } = useAuth();
   const [searchParams] = useSearchParams();
   const devToken = searchParams.get("token") || "";
 
@@ -27,6 +31,7 @@ export default function ResetPasswordPage() {
   const [confirm, setConfirm] = useState("");
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState(null);
+  const [sessionCheck, setSessionCheck] = useState({ loading: hasSupabaseConfig(), ready: null });
 
   const devTokenStatus = useMemo(() => {
     if (!devToken || hasSupabaseConfig()) {
@@ -34,6 +39,26 @@ export default function ResetPasswordPage() {
     }
     return validateDevResetToken(devToken);
   }, [devToken]);
+
+  useEffect(() => {
+    if (!hasSupabaseConfig() || authLoading) {
+      return undefined;
+    }
+
+    let cancelled = false;
+    setSessionCheck({ loading: true, ready: null });
+
+    void ensureRecoverySession().then((result) => {
+      if (cancelled) {
+        return;
+      }
+      setSessionCheck({ loading: false, ready: result.ok, error: result.ok ? null : result.error });
+    });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [authLoading]);
 
   const handleSubmit = async () => {
     if (password !== confirm) {
@@ -60,6 +85,8 @@ export default function ResetPasswordPage() {
     setTimeout(() => navigate("/login", { replace: true }), 1200);
   };
 
+  const recoveryBlocked = hasSupabaseConfig() && !sessionCheck.loading && sessionCheck.ready === false;
+
   return (
     <Box sx={{ minHeight: "100dvh", display: "flex", alignItems: "center", py: 4 }}>
       <Container maxWidth="sm">
@@ -70,9 +97,21 @@ export default function ResetPasswordPage() {
             </Typography>
 
             {hasSupabaseConfig() ? (
-              <Typography color="text.secondary" sx={{ mb: 2 }}>
-                Nhập mật khẩu mới sau khi mở link từ email.
-              </Typography>
+              sessionCheck.loading || authLoading ? (
+                <Stack direction="row" spacing={1} alignItems="center" sx={{ mb: 2 }}>
+                  <CircularProgress size={18} />
+                  <Typography color="text.secondary">Đang xác thực link từ email…</Typography>
+                </Stack>
+              ) : recoveryBlocked ? (
+                <Alert severity="error" sx={{ mb: 2 }}>
+                  {sessionCheck.error ||
+                    "Link đặt lại mật khẩu không hợp lệ hoặc đã hết hạn. Gửi email reset mới và mở link ngay."}
+                </Alert>
+              ) : (
+                <Typography color="text.secondary" sx={{ mb: 2 }}>
+                  Nhập mật khẩu mới cho tài khoản của bạn.
+                </Typography>
+              )
             ) : devTokenStatus && !devTokenStatus.ok ? (
               <Alert severity="error" sx={{ mb: 2 }}>
                 {devTokenStatus.error}
@@ -97,6 +136,7 @@ export default function ResetPasswordPage() {
                 onChange={(e) => setPassword(e.target.value)}
                 fullWidth
                 autoComplete="new-password"
+                disabled={recoveryBlocked || sessionCheck.loading || authLoading}
               />
               <TextField
                 label="Xác nhận mật khẩu"
@@ -105,14 +145,27 @@ export default function ResetPasswordPage() {
                 onChange={(e) => setConfirm(e.target.value)}
                 fullWidth
                 autoComplete="new-password"
+                disabled={recoveryBlocked || sessionCheck.loading || authLoading}
               />
               <Button
                 variant="contained"
                 onClick={handleSubmit}
-                disabled={!password || !confirm || loading}
+                disabled={
+                  !password ||
+                  !confirm ||
+                  loading ||
+                  recoveryBlocked ||
+                  sessionCheck.loading ||
+                  authLoading
+                }
               >
                 {loading ? "Đang lưu…" : "Lưu mật khẩu mới"}
               </Button>
+              {recoveryBlocked && (
+                <Button component={RouterLink} to="/forgot-password" variant="outlined">
+                  Gửi email reset mới
+                </Button>
+              )}
               <Button component={RouterLink} to="/login" size="small">
                 Quay lại đăng nhập
               </Button>

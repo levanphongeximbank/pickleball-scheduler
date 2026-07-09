@@ -1,6 +1,7 @@
 import { hasSupabaseConfig } from "../../../auth/supabaseClient.js";
 import { normalizeCourtCluster } from "../../../models/courtCluster.js";
 import {
+  rpcAdminDeleteCluster,
   rpcAdminRemoveClusterOwner,
   rpcAdminUpsertCluster,
 } from "./courtClaimRequestRpcService.js";
@@ -42,6 +43,23 @@ export async function removeClusterOwnerFromCloud(clusterId) {
   }
 
   const rpcResult = await rpcAdminRemoveClusterOwner({ clusterId: normalizedId });
+  if (!rpcResult.ok && rpcResult.code === "RPC_NOT_DEPLOYED") {
+    return { ok: false, code: "RPC_NOT_DEPLOYED", error: rpcResult.error };
+  }
+  return rpcResult;
+}
+
+export async function deleteClusterFromCloud(clusterId) {
+  const normalizedId = String(clusterId || "").trim();
+  if (!normalizedId) {
+    return { ok: false, code: "CLUSTER_ID_REQUIRED", error: "Thiếu id cụm sân." };
+  }
+
+  if (!hasSupabaseConfig()) {
+    return { ok: false, code: "NO_SUPABASE", error: "Supabase chưa cấu hình." };
+  }
+
+  const rpcResult = await rpcAdminDeleteCluster({ clusterId: normalizedId });
   if (!rpcResult.ok && rpcResult.code === "RPC_NOT_DEPLOYED") {
     return { ok: false, code: "RPC_NOT_DEPLOYED", error: rpcResult.error };
   }

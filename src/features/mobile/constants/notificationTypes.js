@@ -5,6 +5,7 @@ export const NOTIFICATION_TYPES = Object.freeze({
   TOURNAMENT_SCHEDULE_CHANGE: "tournament_schedule_change",
   PAYMENT_REMINDER: "payment_reminder",
   CLUB_ANNOUNCEMENT: "club_announcement",
+  CLUB_SCHEDULE: "club_schedule",
 });
 
 export const NOTIFICATION_TYPE_LABELS = Object.freeze({
@@ -14,6 +15,7 @@ export const NOTIFICATION_TYPE_LABELS = Object.freeze({
   [NOTIFICATION_TYPES.TOURNAMENT_SCHEDULE_CHANGE]: "Thay đổi lịch giải",
   [NOTIFICATION_TYPES.PAYMENT_REMINDER]: "Nhắc thanh toán",
   [NOTIFICATION_TYPES.CLUB_ANNOUNCEMENT]: "Thông báo CLB",
+  [NOTIFICATION_TYPES.CLUB_SCHEDULE]: "Lịch sinh hoạt CLB",
 });
 
 /** Default enabled types for new subscriptions. */
@@ -24,4 +26,5 @@ export const DEFAULT_NOTIFICATION_PREFS = Object.freeze({
   [NOTIFICATION_TYPES.TOURNAMENT_SCHEDULE_CHANGE]: true,
   [NOTIFICATION_TYPES.PAYMENT_REMINDER]: true,
   [NOTIFICATION_TYPES.CLUB_ANNOUNCEMENT]: true,
+  [NOTIFICATION_TYPES.CLUB_SCHEDULE]: true,
 });

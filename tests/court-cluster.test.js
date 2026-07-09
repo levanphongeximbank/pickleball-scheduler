@@ -32,6 +32,8 @@ import {
   isOrgWideClusterRole,
   listAccessibleClustersForUser,
   listClustersForVenue,
+  listClustersForAdminManagement,
+  ADMIN_ALL_TENANTS_ID,
   setUserClusterAssignments,
   updateCourtCluster,
   isClusterUnassigned,
@@ -353,6 +355,67 @@ describe("court cluster model", () => {
     assert.equal(result.removed, 1);
     assert.equal(loadCourtClusters().length, 1);
     assert.equal(loadCourtClusters()[0].id, `${VENUE_A}-main`);
+  });
+
+  it("lists all clusters when admin selects all tenants filter", () => {
+    saveCourtClusters([
+      normalizeCourtCluster({
+        id: `${VENUE_A}-main`,
+        venueId: VENUE_A,
+        name: "A",
+        slug: "main",
+        status: "active",
+      }),
+      normalizeCourtCluster({
+        id: `${VENUE_B}-main`,
+        venueId: VENUE_B,
+        name: "B",
+        slug: "main",
+        status: "active",
+      }),
+    ]);
+
+    const listed = listClustersForAdminManagement(PLATFORM_ADMIN, ADMIN_ALL_TENANTS_ID);
+    assert.equal(listed.length, 2);
+  });
+
+  it("lists all clusters for platform admin when tenant is legacy", () => {
+    saveCourtClusters([
+      normalizeCourtCluster({
+        id: "venue-prod-main-main",
+        venueId: VENUE_A,
+        name: "Pickleball NAM LONG sports",
+        slug: "main",
+        status: "active",
+      }),
+    ]);
+
+    const listed = listClustersForAdminManagement(PLATFORM_ADMIN, "default-tenant");
+    assert.equal(listed.length, 1);
+    assert.equal(listed[0].id, "venue-prod-main-main");
+  });
+
+  it("filters clusters for platform admin when tenant is cloud venue", () => {
+    saveCourtClusters([
+      normalizeCourtCluster({
+        id: `${VENUE_A}-main`,
+        venueId: VENUE_A,
+        name: "A",
+        slug: "main",
+        status: "active",
+      }),
+      normalizeCourtCluster({
+        id: `${VENUE_B}-main`,
+        venueId: VENUE_B,
+        name: "B",
+        slug: "main",
+        status: "active",
+      }),
+    ]);
+
+    const listed = listClustersForAdminManagement(PLATFORM_ADMIN, VENUE_A);
+    assert.equal(listed.length, 1);
+    assert.equal(listed[0].venueId, VENUE_A);
   });
 
   it("migrates legacy default-tenant-main to cloud venue id", () => {

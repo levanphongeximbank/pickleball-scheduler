@@ -13,7 +13,12 @@ import { createClubRecord } from "../../../models/club.js";
 import { loadClubExtension, purgeClubExtension } from "../storage/clubExtensionStorage.js";
 import { CLUB_STATUSES } from "../constants/clubStatus.js";
 import { canUserViewClub } from "./clubAccessService.js";
-import { resolveGovernanceForCreate, canSelfRegisterClub, updateClubGovernance } from "./clubGovernanceService.js";
+import {
+  resolveGovernanceForCreate,
+  canSelfRegisterClub,
+  bootstrapSelfRegisteredPresident,
+  updateClubGovernance,
+} from "./clubGovernanceService.js";
 
 function resolveTenantIdForCreate(user) {
   if (!isRbacEnabled() || !user) {
@@ -191,6 +196,17 @@ export function createClub(data = {}) {
   saveClubs([...clubs, club]);
   initClubData(club.id);
   loadClubExtension(club.id);
+
+  if (
+    user &&
+    canSelfRegisterClub(user) &&
+    String(governance.presidentUserId || "") === String(user.id)
+  ) {
+    const boot = bootstrapSelfRegisteredPresident(club.id, user, tenantId);
+    if (!boot.ok) {
+      return boot;
+    }
+  }
 
   return { ok: true, club };
 }

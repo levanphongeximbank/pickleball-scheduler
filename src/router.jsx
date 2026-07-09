@@ -18,6 +18,7 @@ const LoginPage = lazy(() => import("./pages/LoginPage"));
 const ForgotPasswordPage = lazy(() => import("./pages/ForgotPasswordPage"));
 
 const ResetPasswordPage = lazy(() => import("./pages/ResetPasswordPage"));
+const ForceChangePasswordPage = lazy(() => import("./pages/ForceChangePasswordPage"));
 
 const ForbiddenPage = lazy(() => import("./pages/ForbiddenPage"));
 const ComingSoonPage = lazy(() => import("./pages/ComingSoonPage"));
@@ -261,6 +262,8 @@ const CoachSchedulePage = lazy(() => import("./pages/coaching/CoachSchedulePage"
 const CoachPackagesPage = lazy(() => import("./pages/coaching/CoachPackagesPage"));
 const CoachAttendancePage = lazy(() => import("./pages/coaching/CoachAttendancePage"));
 const CoachEvaluationPage = lazy(() => import("./pages/coaching/CoachEvaluationPage"));
+const CoachListPage = lazy(() => import("./pages/coaching/CoachListPage"));
+const CoachPackageRegisterPage = lazy(() => import("./pages/coaching/CoachPackageRegisterPage"));
 
 const SupportGuidePage = lazy(() => import("./pages/support/SupportGuidePage"));
 const SupportFaqPage = lazy(() => import("./pages/support/SupportFaqPage"));
@@ -387,6 +390,8 @@ export default function Router() {
 
             <Route path="/reset-password" element={<ResetPasswordPage />} />
 
+            <Route path="/change-password" element={<ForceChangePasswordPage />} />
+
             <Route path="/403" element={<ForbiddenPage />} />
             <Route path="/coming-soon/:moduleKey" element={<ComingSoonPage />} />
 
@@ -428,6 +433,8 @@ export default function Router() {
 
             <Route path="/profile" element={<SelfProfilePage />} />
             <Route path="/my-club" element={<MyClubPage />} />
+            <Route path="/clubs/discover" element={<Navigate to="/my-club?view=discover" replace />} />
+            <Route path="/club/activity" element={<Navigate to="/my-club?view=schedule" replace />} />
             <Route path="/player/profile" element={<AthleteSelfProfilePage />} />
             <Route path="/player/skill" element={<PlayerSkillOverviewPage />} />
             <Route path="/player/skill-assessment" element={<FirstSkillAssessmentPage />} />
@@ -595,6 +602,8 @@ export default function Router() {
             <Route path="/support/faq" element={<SupportFaqPage />} />
 
             <Route path="/coaching/coaches" element={<CoachesPage />} />
+            <Route path="/coaching/coach-list" element={<CoachListPage />} />
+            <Route path="/coaching/register" element={<CoachPackageRegisterPage />} />
             <Route path="/coaching/students" element={<StudentsPage />} />
             <Route path="/coaching/classes" element={<ClassesPage />} />
             <Route path="/coaching/schedule" element={<CoachSchedulePage />} />

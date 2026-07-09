@@ -9,6 +9,8 @@ import {
 import { ROLES, normalizeRole } from "../../../auth/roles.js";
 import { isGlobalRole, isPlatformScopedRole, isVenueScopedRole } from "../../../auth/roles.js";
 import { isCourtClustersEnabled } from "../config/clusterFlags.js";
+import { sanitizeBillingTenantId } from "../../billing/services/billingTenantResolver.js";
+import { isValidProfileUserId } from "../utils/profileUserId.js";
 import {
   getActiveClusterId,
   getActiveClusterIdForVenue,
@@ -317,10 +319,71 @@ export function isClusterUnassigned(clusterId) {
   if (!cluster || cluster.status !== "active") {
     return false;
   }
-  if (cluster.ownerUserId) {
+  if (cluster.ownerUserId && isValidProfileUserId(cluster.ownerUserId)) {
     return false;
   }
-  return !listAssignmentsForCluster(clusterId).some((item) => item.role === "CLUSTER_OWNER");
+  return !listAssignmentsForCluster(clusterId).some(
+    (item) => item.role === "CLUSTER_OWNER" && isValidProfileUserId(item.userId)
+  );
+}
+
+export function isClusterAssigned(clusterId) {
+  if (!clusterId) {
+    return false;
+  }
+  const cluster = getClusterById(clusterId);
+  if (!cluster) {
+    return false;
+  }
+  return !isClusterUnassigned(clusterId);
+}
+
+/**
+ * Admin management list — includes assigned + unassigned clusters.
+ * Platform admins see all clusters when selected tenant is legacy/local-only.
+ */
+export const ADMIN_ALL_TENANTS_ID = "__all_tenants__";
+
+export function listClustersForAdminManagement(user, selectedVenueId) {
+  const all = [...loadCourtClusters()].sort((a, b) =>
+    String(a.name || "").localeCompare(String(b.name || ""), "vi")
+  );
+
+  const selected = String(selectedVenueId || "").trim();
+
+  if (!user) {
+    if (!selected || selected === ADMIN_ALL_TENANTS_ID) {
+      return all;
+    }
+    return listClustersForVenue(selected);
+  }
+
+  if (canManageCourtClusters(user)) {
+    if (!selected || selected === ADMIN_ALL_TENANTS_ID) {
+      return all;
+    }
+
+    const cloudVenueId = sanitizeBillingTenantId(selected);
+    if (!cloudVenueId) {
+      return all;
+    }
+    return all.filter(
+      (cluster) => cluster.venueId === cloudVenueId || cluster.venueId === selected
+    );
+  }
+
+  const userVenue = String(user.venueId || user.tenantId || "").trim();
+  const scopeVenue = sanitizeBillingTenantId(userVenue) || sanitizeBillingTenantId(selectedVenueId);
+  if (!scopeVenue) {
+    return all;
+  }
+
+  return all.filter(
+    (cluster) =>
+      cluster.venueId === scopeVenue ||
+      cluster.venueId === userVenue ||
+      cluster.venueId === selectedVenueId
+  );
 }
 
 export function listUnassignedClusters({ search = "" } = {}) {

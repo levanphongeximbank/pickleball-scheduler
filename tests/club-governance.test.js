@@ -18,6 +18,7 @@ import {
   getClubMembers,
   getClubMembersForTournamentInvite,
   resolveGovernanceForCreate,
+  canSelfRegisterClub,
   canApproveClubRegistration,
   approveClubRegistration,
   rejectClubRegistration,
@@ -26,6 +27,10 @@ import {
   assignClubVicePresident,
   listClubGovernanceCandidates,
 } from "../src/features/club/index.js";
+import { createClub } from "../src/features/club/index.js";
+import { saveVenues } from "../src/data/venue.js";
+import { createTenantRecord, TENANT_STATUS } from "../src/models/tenant.js";
+import { loadAuthSession } from "../src/auth/authStorage.js";
 import { saveAthleteClubLink, loadAthleteClubLink } from "../src/features/club/storage/athleteClubLinkStore.js";
 import { deleteClub } from "../src/domain/clubService.js";
 import { saveClubData, getDefaultClubData } from "../src/domain/clubStorage.js";
@@ -178,14 +183,69 @@ describe("club governance", () => {
     assert.equal(canAssignClubOwner(courtOwner), true);
   });
 
-  it("club manager self-register resolves to pending_approval", () => {
+  it("canSelfRegisterClub allows PLAYER without clubId", () => {
+    const player = { id: "player-1", role: ROLES.PLAYER, clubId: null, tenantId: TENANT };
+    const linked = { id: "player-2", role: ROLES.PLAYER, clubId: CLUB_ID, tenantId: TENANT };
+    assert.equal(canSelfRegisterClub(player), true);
+    assert.equal(canSelfRegisterClub(linked), false);
+  });
+
+  it("club scoped self-register resolves to active", () => {
+    const manager = { id: "mgr-1", role: ROLES.CLUB_MANAGER, clubId: null };
+    const player = { id: "player-1", role: ROLES.PLAYER, clubId: null, tenantId: TENANT };
+    const managerResult = resolveGovernanceForCreate(
+      { governance: { presidentUserId: "mgr-1" } },
+      manager
+    );
+    const playerResult = resolveGovernanceForCreate({}, player);
+    assert.equal(managerResult.status, CLUB_STATUSES.ACTIVE);
+    assert.equal(managerResult.governance.presidentUserId, "mgr-1");
+    assert.equal(playerResult.status, CLUB_STATUSES.ACTIVE);
+    assert.equal(playerResult.governance.presidentUserId, "player-1");
+  });
+
+  it("submitForApproval still resolves to pending_approval", () => {
     const manager = { id: "mgr-1", role: ROLES.CLUB_MANAGER, clubId: null };
     const result = resolveGovernanceForCreate(
-      { governance: { presidentUserId: "mgr-1" } },
+      { governance: { presidentUserId: "mgr-1" }, submitForApproval: true },
       manager
     );
     assert.equal(result.status, CLUB_STATUSES.PENDING_APPROVAL);
     assert.equal(result.governance.presidentUserId, "mgr-1");
+  });
+
+  it("PLAYER self-register createClub bootstraps president membership", () => {
+    saveVenues([
+      createTenantRecord({ id: TENANT, name: "Tenant Gov", status: TENANT_STATUS.ACTIVE }),
+    ]);
+    saveClubs([]);
+    const athlete = {
+      id: "athlete-create",
+      role: ROLES.PLAYER,
+      clubId: null,
+      tenantId: TENANT,
+      displayName: "VĐV Tạo CLB",
+      email: "athlete@example.com",
+    };
+    saveAuthSession(athlete);
+
+    const result = createClub({
+      name: "CLB VĐV Mới",
+      tenantId: TENANT,
+      governance: { presidentUserId: "athlete-create" },
+    });
+
+    assert.equal(result.ok, true);
+    assert.equal(result.club.status, CLUB_STATUSES.ACTIVE);
+    assert.equal(result.club.governance.presidentUserId, "athlete-create");
+
+    const session = loadAuthSession();
+    assert.equal(session.user.clubId, result.club.id);
+    assert.ok(session.user.playerId);
+    assert.equal(session.user.role, ROLES.CLUB_MANAGER);
+
+    const members = getClubMembers(result.club.id, TENANT, { skipGovernanceGuard: true });
+    assert.ok(members.some((member) => member.playerId === session.user.playerId));
   });
 
   it("court owner create resolves to active", () => {

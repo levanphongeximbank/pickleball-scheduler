@@ -8,7 +8,7 @@ import {
   enrichAccountOnlyAthlete,
 } from "../src/features/club/services/accountOnlyAthleteService.js";
 import { loadPlayerHistoryProfileResolved } from "../src/tournament/engines/playerHistoryEngine.js";
-import { isPlayerUnrated } from "../src/utils/playerHelpers.js";
+import { isPlayerUnrated, filterPlayers, computePlayerDashboardStats } from "../src/utils/playerHelpers.js";
 import { normalizePlayer } from "../src/models/player.js";
 import { RATING_STATUS } from "../src/features/pick-vn-rating/constants/ratingStatus.js";
 import { __setPickVnRatingRpcClientForTests, __resetPickVnRatingRpcClientForTests } from "../src/features/pick-vn-rating/services/pickVnRatingRpcService.js";
@@ -123,4 +123,59 @@ test("enrichAccountOnlyAthlete — lấy rating từ RPC", async () => {
 
   __resetPickVnRatingRpcClientForTests();
   delete globalThis.localStorage;
+});
+
+function makeUnratedAccountOnlyPlayer(id) {
+  return normalizePlayer({
+    id: `profile-${id}`,
+    name: `VĐV ${id}`,
+    rating_status: RATING_STATUS.UNRATED,
+    level: null,
+    rating: null,
+    skillLevel: null,
+    current_rating: null,
+    linkStatus: "account_only",
+  });
+}
+
+test("filterPlayers — unrated account-only VĐV pass level filter mặc định", () => {
+  const players = Array.from({ length: 5 }, (_, i) => makeUnratedAccountOnlyPlayer(i + 1));
+
+  const filtered = filterPlayers(players, { levelRange: [1.0, 8.0] });
+
+  assert.equal(filtered.length, 5);
+  assert.equal(players.every(isPlayerUnrated), true);
+});
+
+test("filterPlayers — unrated vẫn hiện khi rated bị loại bởi level range", () => {
+  const unrated = makeUnratedAccountOnlyPlayer("u1");
+  const rated = normalizePlayer({
+    id: "player-rated",
+    name: "Rated",
+    level: 4.0,
+    rating_status: RATING_STATUS.SELF_DECLARED,
+  });
+
+  const filtered = filterPlayers([unrated, rated], { levelRange: [5.0, 8.0] });
+
+  assert.equal(filtered.length, 1);
+  assert.equal(filtered[0].id, unrated.id);
+});
+
+test("computePlayerDashboardStats — averageLevel chỉ tính VĐV đã có level", () => {
+  const players = [
+    makeUnratedAccountOnlyPlayer("u1"),
+    makeUnratedAccountOnlyPlayer("u2"),
+    normalizePlayer({
+      id: "player-rated",
+      name: "Rated",
+      level: 4.0,
+      rating_status: RATING_STATUS.SELF_DECLARED,
+    }),
+  ];
+
+  const stats = computePlayerDashboardStats(players);
+
+  assert.equal(stats.total, 3);
+  assert.equal(stats.averageLevel, 4.0);
 });

@@ -12,12 +12,17 @@ import {
   approveClubMembershipRequest,
   rejectClubMembershipRequest,
   listMyMembershipRequests,
+  listDiscoverableClubs,
+  getClubDiscoverySummary,
+  listMyMembershipRequestsAll,
   canApproveClubMembershipRequests,
+  leaveMyClub,
 } from "../src/features/club/index.js";
 import { loadPlayersForClub } from "../src/domain/clubStorage.js";
 import { getClubMembers } from "../src/features/club/services/clubMemberService.js";
 import { loadAthleteClubLink } from "../src/features/club/storage/athleteClubLinkStore.js";
 import { loadClubExtension } from "../src/features/club/storage/clubExtensionStorage.js";
+import { CLUB_MEMBER_STATUSES } from "../src/features/club/constants/clubMemberRoles.js";
 
 const TENANT = "tenant-membership-test";
 const CLUB_ID = "club-membership-test";
@@ -185,5 +190,104 @@ describe("club membership requests", () => {
     const ext = loadClubExtension(CLUB_ID);
     const stored = ext.membershipRequests.find((request) => request.id === pending[0].id);
     assert.equal(stored.reviewNote, "Chưa đủ điều kiện");
+  });
+
+  it("listDiscoverableClubs returns active clubs across tenants", () => {
+    const otherTenantClub = createClubRecord("CLB Other Tenant", {
+      id: "club-other-tenant",
+      tenantId: "tenant-other",
+      venueId: "tenant-other",
+      status: CLUB_STATUSES.ACTIVE,
+      governance: { presidentUserId: "pres-other" },
+    });
+    saveClubs([makeClub(), otherTenantClub]);
+
+    const discoverable = listDiscoverableClubs();
+    assert.ok(discoverable.some((club) => club.id === CLUB_ID));
+    assert.ok(discoverable.some((club) => club.id === "club-other-tenant"));
+  });
+
+  it("getClubDiscoverySummary works for athlete without club membership", () => {
+    const summary = getClubDiscoverySummary(CLUB_ID);
+    assert.ok(summary);
+    assert.equal(summary.name, "CLB Membership Test");
+    assert.equal(summary.activeMemberCount, 0);
+  });
+
+  it("listMyMembershipRequestsAll scans all discoverable clubs", () => {
+    const athlete = { id: ATHLETE_ID, role: ROLES.PLAYER, displayName: "VĐV Test", tenantId: TENANT };
+    submitClubMembershipRequest(CLUB_ID, TENANT, athlete);
+
+    const mine = listMyMembershipRequestsAll(ATHLETE_ID);
+    assert.equal(mine.length, 1);
+    assert.equal(mine[0].clubId, CLUB_ID);
+  });
+
+  it("submit resolves club tenant when athlete tenant differs", () => {
+    const otherTenantClub = createClubRecord("CLB Cross Tenant", {
+      id: "club-cross-tenant",
+      tenantId: "tenant-other",
+      venueId: "tenant-other",
+      status: CLUB_STATUSES.ACTIVE,
+      governance: { presidentUserId: "pres-cross" },
+    });
+    saveClubs([makeClub(), otherTenantClub]);
+
+    const athlete = {
+      id: "athlete-cross",
+      role: ROLES.PLAYER,
+      displayName: "Cross Tenant Athlete",
+      tenantId: TENANT,
+    };
+
+    const result = submitClubMembershipRequest("club-cross-tenant", TENANT, athlete);
+    assert.equal(result.ok, true);
+    assert.equal(result.request.clubId, "club-cross-tenant");
+  });
+
+  it("member can leave club and clears athlete link", async () => {
+    const athlete = { id: ATHLETE_ID, role: ROLES.PLAYER, displayName: "VĐV Test", tenantId: TENANT };
+    submitClubMembershipRequest(CLUB_ID, TENANT, athlete);
+
+    const president = { id: PRESIDENT_ID, role: ROLES.CLUB_MANAGER, clubId: CLUB_ID, tenantId: TENANT };
+    const pending = listPendingMembershipRequests(CLUB_ID, TENANT, president);
+    const approved = await approveClubMembershipRequest(CLUB_ID, pending[0].id, TENANT, {
+      user: president,
+    });
+    assert.equal(approved.ok, true);
+
+    const link = loadAthleteClubLink(ATHLETE_ID);
+    const memberUser = {
+      id: ATHLETE_ID,
+      role: ROLES.PLAYER,
+      clubId: CLUB_ID,
+      playerId: link.playerId,
+      tenantId: TENANT,
+    };
+
+    const left = await leaveMyClub({ user: memberUser, tenantId: TENANT });
+    assert.equal(left.ok, true);
+
+    const cleared = loadAthleteClubLink(ATHLETE_ID);
+    assert.equal(cleared.clubId, null);
+    assert.equal(cleared.playerId, null);
+
+    const ext = loadClubExtension(CLUB_ID);
+    const member = ext.members.find((item) => item.playerId === link.playerId);
+    assert.equal(member.status, CLUB_MEMBER_STATUSES.INACTIVE);
+  });
+
+  it("president cannot leave club without transferring role", async () => {
+    const president = {
+      id: PRESIDENT_ID,
+      role: ROLES.CLUB_MANAGER,
+      clubId: CLUB_ID,
+      playerId: "player-president",
+      tenantId: TENANT,
+    };
+
+    const result = await leaveMyClub({ user: president, tenantId: TENANT });
+    assert.equal(result.ok, false);
+    assert.match(result.error, /Chuyển vai trò/);
   });
 });

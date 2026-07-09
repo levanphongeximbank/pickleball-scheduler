@@ -3,6 +3,7 @@ import { normalizeClubMembershipRequest } from "../models/clubMembershipRequest.
 import { normalizeClubPlayerRating } from "../models/clubPlayerRating.js";
 import { normalizeClubRatingHistory } from "../models/clubRatingHistory.js";
 import { normalizeClubMatch } from "../models/clubMatch.js";
+import { normalizeClubActivitySession } from "../models/clubActivitySession.js";
 
 const EXTENSION_KEY_PREFIX = "pickleball-club-extension-v1";
 
@@ -18,6 +19,7 @@ function emptyExtension(clubId) {
     ratings: [],
     ratingHistory: [],
     matches: [],
+    activitySessions: [],
     updatedAt: new Date().toISOString(),
   };
 }
@@ -50,6 +52,9 @@ export function loadClubExtension(clubId) {
     ratings: (parsed.ratings || []).map(normalizeClubPlayerRating),
     ratingHistory: (parsed.ratingHistory || []).map(normalizeClubRatingHistory),
     matches: (parsed.matches || []).map(normalizeClubMatch),
+    activitySessions: (parsed.activitySessions || [])
+      .map((item) => normalizeClubActivitySession(item))
+      .filter(Boolean),
     updatedAt: parsed.updatedAt || new Date().toISOString(),
   };
 }
@@ -67,6 +72,9 @@ export function saveClubExtension(clubId, data) {
     ratings: (data.ratings || []).map(normalizeClubPlayerRating),
     ratingHistory: (data.ratingHistory || []).map(normalizeClubRatingHistory),
     matches: (data.matches || []).map(normalizeClubMatch),
+    activitySessions: (data.activitySessions || [])
+      .map((item) => normalizeClubActivitySession(item))
+      .filter(Boolean),
     updatedAt: new Date().toISOString(),
   };
 

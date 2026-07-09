@@ -64,6 +64,8 @@ test("Phase 28 — coaching menu routes are LIVE", () => {
     .map((item) => item.path);
 
   assert.deepEqual(coachingPaths, [
+    "/coaching/coach-list",
+    "/coaching/register",
     "/coaching/coaches",
     "/coaching/students",
     "/coaching/classes",

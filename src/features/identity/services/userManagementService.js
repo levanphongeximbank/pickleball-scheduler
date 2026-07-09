@@ -13,7 +13,7 @@ import { MIN_PASSWORD_LENGTH } from "../../../config/authConfig.js";
 import { createUserRecord, normalizeUser, USER_STATUS } from "../../../models/user.js";
 import { writeAuditLog, AUDIT_ACTIONS } from "./auditService.js";
 import { requestPasswordReset } from "./passwordService.js";
-import { callIdentityAdminCreateUser } from "./identityAdminApiClient.js";
+import { callIdentityAdminCreateUser, callIdentityAdminResetPassword } from "./identityAdminApiClient.js";
 import { rpcAdminUpdateUser, rpcListUsers } from "./identityRpcService.js";
 
 const DEV_REGISTRY_KEY = "pickleball-dev-user-registry-v1";
@@ -167,7 +167,7 @@ export async function createManagedUser({
       venueId: resolvedVenueId,
       clubId,
       phone,
-      sendPasswordSetupEmail: !providedPassword,
+      sendPasswordSetupEmail: false,
     });
 
     if (!adminResult.ok) {
@@ -197,6 +197,7 @@ export async function createManagedUser({
         email: normalizedEmail,
         role: targetRole,
         emailConfirmed: true,
+        mustChangePassword: Boolean(adminResult.mustChangePassword),
         passwordSetupSent: Boolean(adminResult.passwordSetupSent),
       },
     });
@@ -204,6 +205,8 @@ export async function createManagedUser({
     return {
       ok: true,
       user: adminResult.user,
+      temporaryPassword: adminResult.temporaryPassword || null,
+      mustChangePassword: Boolean(adminResult.mustChangePassword),
       passwordSetupSent: adminResult.passwordSetupSent,
       passwordSetupMessage: adminResult.passwordSetupMessage,
     };
@@ -394,13 +397,57 @@ export async function setManagedUserStatus(userId, status) {
   return result;
 }
 
-export async function requestManagedPasswordReset(email) {
+export async function requestManagedPasswordReset({ userId, email } = {}) {
   const check = guardUserManage({});
   if (!check.ok) {
     return check;
   }
 
-  return requestPasswordReset(email);
+  const normalizedEmail = String(email || "").trim().toLowerCase();
+  if (!userId && !normalizedEmail) {
+    return { ok: false, error: "Thiếu thông tin user.", code: "USER_REQUIRED" };
+  }
+
+  if (hasSupabaseConfig()) {
+    const adminResult = await callIdentityAdminResetPassword({ userId });
+    if (!adminResult.ok) {
+      if (adminResult.code === "ADMIN_API_UNREACHABLE") {
+        return {
+          ok: false,
+          error:
+            "Không gọi được API admin reset mật khẩu. Chạy qua Vercel preview/production hoặc cấu hình SUPABASE_SERVICE_ROLE_KEY.",
+          code: adminResult.code,
+        };
+      }
+      if (adminResult.code === "SERVICE_ROLE_MISSING") {
+        return {
+          ok: false,
+          error: "Server thiếu SUPABASE_SERVICE_ROLE_KEY để reset mật khẩu qua Admin API.",
+          code: adminResult.code,
+        };
+      }
+      return adminResult;
+    }
+
+    await writeAuditLog({
+      action: AUDIT_ACTIONS.RESET_PASSWORD,
+      resourceType: "user",
+      resourceId: adminResult.userId || userId || "",
+      metadata: {
+        step: "admin_default_reset",
+        email: normalizedEmail || undefined,
+        defaultPassword: adminResult.defaultPassword,
+      },
+    });
+
+    return {
+      ok: true,
+      message: adminResult.message,
+      defaultPassword: adminResult.defaultPassword,
+    };
+  }
+
+  return requestPasswordReset(normalizedEmail);
 }
 
 export { USER_STATUS, ROLES, denormalizeRoleForDb, normalizeRole };

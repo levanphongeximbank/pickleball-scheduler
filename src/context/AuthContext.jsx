@@ -67,12 +67,23 @@ export function AuthProvider({ children }) {
         if (!cancelled) {
           if (result?.ok) {
             setAuthError(null);
-          } else if (result?.code === "PROFILE_INVALID" || result?.code === "PROFILE_NOT_FOUND" || result?.code === "PROFILE_REQUIRED" || result?.code === "PROFILE_SUSPENDED") {
+          } else if (result?.code === "PASSWORD_RECOVERY") {
+            setAuthError(null);
+          } else if (
+            result?.code === "PROFILE_INVALID" ||
+            result?.code === "PROFILE_NOT_FOUND" ||
+            result?.code === "PROFILE_REQUIRED" ||
+            result?.code === "PROFILE_SUSPENDED"
+          ) {
             clearAuthSession();
             setAuthError(formatAuthError(result.error, result.code));
           } else if (result?.code === "NO_SUPABASE") {
             clearAuthSession();
             setAuthError(getSupabaseConfigError());
+          } else if (result?.code === "NO_RECOVERY_SESSION") {
+            setAuthError(null);
+          } else if (result?.code === "NO_SESSION") {
+            clearAuthSession();
           } else {
             clearAuthSession();
           }

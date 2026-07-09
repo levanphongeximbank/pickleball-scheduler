@@ -192,6 +192,14 @@ export function isNavItemActive(currentPath, item, resolvedPath) {
     return pathOnly === "/coaching/coaches";
   }
 
+  if (item.match === "coaching-coach-list") {
+    return pathOnly === "/coaching/coach-list";
+  }
+
+  if (item.match === "coaching-register") {
+    return pathOnly === "/coaching/register";
+  }
+
   if (item.match === "coaching-students") {
     return pathOnly === "/coaching/students";
   }
