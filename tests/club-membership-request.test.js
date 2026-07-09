@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 
 import { loadClubs, saveClubs } from "../src/data/club.js";
 import { createClubRecord } from "../src/models/club.js";
+import { enableRbac } from "../src/auth/authService.js";
 import { ROLES } from "../src/auth/roles.js";
 import { CLUB_STATUSES } from "../src/features/club/constants/clubStatus.js";
 import { CLUB_MEMBERSHIP_REQUEST_STATUSES } from "../src/features/club/constants/clubMembershipRequestStatuses.js";
@@ -224,6 +225,23 @@ describe("club membership requests", () => {
     const mine = listMyMembershipRequestsAll(ATHLETE_ID);
     assert.equal(mine.length, 1);
     assert.equal(mine[0].clubId, CLUB_ID);
+  });
+
+  it("player without tenant can submit when RBAC enabled", () => {
+    enableRbac(true);
+    try {
+      const athlete = {
+        id: "athlete-no-tenant",
+        role: ROLES.PLAYER,
+        displayName: "No Tenant Athlete",
+      };
+
+      const result = submitClubMembershipRequest(CLUB_ID, TENANT, athlete);
+      assert.equal(result.ok, true);
+      assert.equal(result.request.clubId, CLUB_ID);
+    } finally {
+      enableRbac(false);
+    }
   });
 
   it("submit resolves club tenant when athlete tenant differs", () => {

@@ -1,5 +1,7 @@
+import { useEffect, useMemo, useState } from "react";
 import {
   Button,
+  Chip,
   Dialog,
   DialogActions,
   DialogContent,
@@ -22,20 +24,31 @@ export default function JoinClubDialog({
   onSuccess,
   onError,
 }) {
-  const selectedClubId = preselectedClub?.id || "";
-  const clubOptions = preselectedClub
-    ? [preselectedClub, ...clubs.filter((club) => club.id !== preselectedClub.id)]
-    : clubs;
+  const [selectedClubId, setSelectedClubId] = useState("");
+  const [message, setMessage] = useState("");
+
+  const clubOptions = useMemo(() => {
+    if (!preselectedClub) {
+      return clubs;
+    }
+    return [preselectedClub, ...clubs.filter((club) => club.id !== preselectedClub.id)];
+  }, [clubs, preselectedClub]);
+
+  useEffect(() => {
+    if (!open) {
+      return;
+    }
+    setSelectedClubId(preselectedClub?.id || "");
+    setMessage("");
+  }, [open, preselectedClub?.id]);
 
   const handleSubmit = (event) => {
     event.preventDefault();
-    const form = event.currentTarget;
-    const formData = new FormData(form);
-    const clubId = String(formData.get("clubId") || "").trim();
-    const message = String(formData.get("message") || "");
 
-    const club = clubOptions.find((item) => item.id === clubId);
-    if (!club) {
+    const club =
+      preselectedClub || clubOptions.find((item) => item.id === selectedClubId) || null;
+
+    if (!club?.id) {
       onError?.("Chọn CLB để gửi yêu cầu.");
       return;
     }
@@ -53,7 +66,13 @@ export default function JoinClubDialog({
   };
 
   return (
-    <Dialog open={open} onClose={onClose} maxWidth="sm" fullWidth>
+    <Dialog
+      key={preselectedClub?.id || "pick-club"}
+      open={open}
+      onClose={onClose}
+      maxWidth="sm"
+      fullWidth
+    >
       <form onSubmit={handleSubmit}>
         <DialogTitle>Xin gia nhập CLB</DialogTitle>
         <DialogContent>
@@ -61,27 +80,38 @@ export default function JoinClubDialog({
             <Typography variant="body2" color="text.secondary">
               Chọn CLB và gửi lời nhắn. Chủ tịch hoặc Phó chủ tịch sẽ duyệt yêu cầu.
             </Typography>
+
+            {preselectedClub ? (
+              <Stack direction="row" spacing={1} alignItems="center">
+                <Typography variant="body2" color="text.secondary">
+                  Câu lạc bộ:
+                </Typography>
+                <Chip label={preselectedClub.name} color="primary" variant="outlined" />
+              </Stack>
+            ) : (
+              <TextField
+                select
+                label="Câu lạc bộ"
+                value={selectedClubId}
+                onChange={(event) => setSelectedClubId(event.target.value)}
+                fullWidth
+                required
+              >
+                {clubOptions.map((club) => (
+                  <MenuItem key={club.id} value={club.id}>
+                    {club.name}
+                  </MenuItem>
+                ))}
+              </TextField>
+            )}
+
             <TextField
-              select
-              name="clubId"
-              label="Câu lạc bộ"
-              defaultValue={selectedClubId}
-              fullWidth
-              required
-              disabled={Boolean(preselectedClub)}
-            >
-              {clubOptions.map((club) => (
-                <MenuItem key={club.id} value={club.id}>
-                  {club.name}
-                </MenuItem>
-              ))}
-            </TextField>
-            <TextField
-              name="message"
               fullWidth
               multiline
               minRows={3}
               label="Lời nhắn (tùy chọn)"
+              value={message}
+              onChange={(event) => setMessage(event.target.value)}
               placeholder="Giới thiệu ngắn hoặc lý do muốn tham gia CLB..."
             />
           </Stack>

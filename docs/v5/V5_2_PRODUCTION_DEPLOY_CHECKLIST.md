@@ -1,7 +1,7 @@
 # V5.3 — Production Deploy Checklist (Owner + Engineering)
 
 **Ngày cập nhật:** 2026-07-09  
-**Target version:** `5.3.11` — deploying  
+**Target version:** `5.3.12` — deploying  
 **Production URL:** https://pickleball-scheduler-eight.vercel.app  
 **Production Supabase:** `expuvcohlcjzvrrauvud`  
 **Rollback deployment:** `dpl_J25aJ6acT4YedL1ka7iRNji8QYGM` (V5.3.10 `b71f619`)
@@ -30,9 +30,9 @@
 
 | # | Việc | Tick | Ghi chú |
 |---|------|------|---------|
-| B1 | Commit trên branch `v5-platform-edition` | ☐ | v5.3.11 tenant/profile fix |
-| B2 | `package.json` version `5.3.11` | ✅ | |
-| B3 | Tag `v5.3.11` | ☐ | |
+| B1 | Commit trên branch `v5-platform-edition` | ✅ | v5.3.11 profile + v5.3.12 join CLB |
+| B2 | `package.json` version `5.3.12` | ✅ | |
+| B3 | Tag `v5.3.12` | ☐ | |
 | B4 | Push branch + tag | ☐ | |
 
 ---
@@ -92,7 +92,7 @@
 | # | Việc | Tick | Ghi chú |
 |---|------|------|---------|
 | E1 | Ghi deployment ID **trước** deploy | ✅ | `dpl_J25aJ6acT4YedL1ka7iRNji8QYGM` (V5.3.10) |
-| E2 | Deploy Production | ☐ | v5.3.11 |
+| E2 | Deploy Production | ☐ | v5.3.12 |
 | E3 | Alias production domain | ✅ | `pickleball-scheduler-eight.vercel.app` |
 | E4 | Bundle scan — không staging ref | ✅ | |
 | E5 | `/login` HTTP 200 | ✅ | 2026-07-09 |

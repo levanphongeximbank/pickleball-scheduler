@@ -1,4 +1,5 @@
 import { getCurrentUser } from "../../../auth/authService.js";
+import { ROLES, normalizeRole } from "../../../auth/roles.js";
 import { saveAuthSession, loadAuthSession } from "../../../auth/authStorage.js";
 import { normalizeUser } from "../../../models/user.js";
 import { getClubById as getRegistryClubById } from "../../../domain/clubService.js";
@@ -350,6 +351,15 @@ export function listPendingMembershipRequests(clubId, tenantId, user = getCurren
   );
 }
 
+function resolveMembershipRequestTenantCheck(clubId, clubTenantId, user) {
+  const role = normalizeRole(user?.role);
+  if (role === ROLES.PLAYER || role === ROLES.CUSTOMER) {
+    return { ok: true };
+  }
+
+  return guardClubTenant(clubId, clubTenantId, { user });
+}
+
 export function submitClubMembershipRequest(clubId, tenantId, user, options = {}) {
   const trimmedClubId = String(clubId || "").trim();
   const athlete = user || getCurrentUser();
@@ -373,7 +383,11 @@ export function submitClubMembershipRequest(clubId, tenantId, user, options = {}
 
   const clubTenantId = resolveTenantIdForClub(trimmedClubId);
   const trimmedTenantId = String(tenantId || clubTenantId || "").trim();
-  const tenantCheck = guardClubTenant(trimmedClubId, clubTenantId || trimmedTenantId);
+  const tenantCheck = resolveMembershipRequestTenantCheck(
+    trimmedClubId,
+    clubTenantId || trimmedTenantId,
+    athlete
+  );
   if (!tenantCheck.ok) {
     return tenantCheck;
   }
