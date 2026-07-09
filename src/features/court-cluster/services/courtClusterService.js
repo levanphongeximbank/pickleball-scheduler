@@ -305,6 +305,10 @@ export function isOrgWideClusterRole(user) {
   return role === ROLES.TENANT_OWNER || role === ROLES.VENUE_MANAGER;
 }
 
+export function isVenueWideClusterManagerRole(user) {
+  return normalizeRole(user?.role) === ROLES.VENUE_MANAGER;
+}
+
 export function isClusterUnassigned(clusterId) {
   if (!clusterId) {
     return false;
@@ -379,15 +383,11 @@ export function listAccessibleClustersForUser(user, venueId) {
     return venueClusters;
   }
 
-  if (isOrgWideClusterRole(user) && user.venueId === venueId) {
+  if (isVenueWideClusterManagerRole(user) && user.venueId === venueId) {
     return venueClusters;
   }
 
-  if (isVenueScopedRole(user.role) && !isOrgWideClusterRole(user)) {
-    return [];
-  }
-
-  return venueClusters;
+  return [];
 }
 
 export function canUserAccessCluster(user, clusterId, options = {}) {
@@ -420,7 +420,7 @@ export function canUserAccessCluster(user, clusterId, options = {}) {
     return false;
   }
 
-  if (isOrgWideClusterRole(user) && user.venueId === cluster.venueId) {
+  if (isVenueWideClusterManagerRole(user) && user.venueId === cluster.venueId) {
     return true;
   }
 

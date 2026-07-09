@@ -30,6 +30,7 @@ import {
   filterCourtsByCluster,
   isOrgWideClusterRole,
   listAccessibleClustersForUser,
+  listClustersForVenue,
   setUserClusterAssignments,
   updateCourtCluster,
 } from "../src/features/court-cluster/services/courtClusterService.js";
@@ -133,7 +134,7 @@ describe("court cluster model", () => {
       user: PLATFORM_ADMIN,
     });
 
-    assert.equal(listAccessibleClustersForUser(OWNER_A, VENUE_A).length, 3);
+    assert.equal(listClustersForVenue(VENUE_A).length, 3);
   });
 
   it("system technician can create cluster with location metadata", () => {
@@ -188,7 +189,7 @@ describe("court cluster model", () => {
     assert.equal(assigned.length, 2);
   });
 
-  it("org-wide role sees all venue clusters", () => {
+  it("venue manager sees all venue clusters without assignment", () => {
     createCourtCluster({
       venueId: VENUE_A,
       name: "Nam Long",
@@ -201,8 +202,23 @@ describe("court cluster model", () => {
       slug: "nam-ly",
       user: PLATFORM_ADMIN,
     });
-    assert.equal(isOrgWideClusterRole(OWNER_A), true);
-    assert.equal(listAccessibleClustersForUser(OWNER_A, VENUE_A).length, 2);
+    const venueManager = {
+      id: "venue-mgr-1",
+      role: ROLES.VENUE_MANAGER,
+      venueId: VENUE_A,
+      status: "active",
+    };
+    assert.equal(listAccessibleClustersForUser(venueManager, VENUE_A).length, 2);
+  });
+
+  it("tenant owner without assignment sees no clusters when flag enabled", () => {
+    createCourtCluster({
+      venueId: VENUE_A,
+      name: "Nam Long",
+      slug: "nam-long",
+      user: PLATFORM_ADMIN,
+    });
+    assert.equal(listAccessibleClustersForUser(OWNER_A, VENUE_A).length, 0);
   });
 
   it("cluster-scoped user only sees assigned clusters", () => {
@@ -233,6 +249,7 @@ describe("court cluster model", () => {
       user: PLATFORM_ADMIN,
     });
     assert.equal(canUserAccessCluster(OWNER_A, cB.cluster.id), false);
+    assignUserToCluster(OWNER_B.id, cB.cluster.id, { user: PLATFORM_ADMIN });
     assert.equal(canUserAccessCluster(OWNER_B, cB.cluster.id), true);
   });
 

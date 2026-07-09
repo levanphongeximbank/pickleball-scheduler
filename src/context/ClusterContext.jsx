@@ -79,6 +79,7 @@ export function ClusterProvider({ children }) {
   useEffect(() => {
     const assigned = listClustersForAssignedUser(user);
     const shouldBootstrapDefault =
+      !isCourtClustersEnabled() &&
       currentTenantId &&
       user?.venueId &&
       assigned.length === 0 &&

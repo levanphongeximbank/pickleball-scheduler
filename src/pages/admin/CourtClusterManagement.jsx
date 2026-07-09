@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import {
   Alert,
+  Autocomplete,
   Box,
   Button,
   Card,
@@ -42,16 +43,17 @@ import { isPlatformScopedRole } from "../../auth/roles.js";
 import { listTenants } from "../../features/tenant/index.js";
 import { isCourtClustersEnabled } from "../../features/court-cluster/config/clusterFlags.js";
 import {
-  assignUserToCluster,
   createCourtCluster,
   deleteCourtCluster,
   getClusterById,
   listAssignmentsForCluster,
   listClustersForVenue,
-  setUserClusterAssignments,
-  unassignUserFromCluster,
   updateCourtCluster,
 } from "../../features/court-cluster/services/courtClusterService.js";
+import { assignClusterOwnerToUser } from "../../features/court-cluster/services/courtClusterAdminService.js";
+import { pullClusterContextForUser } from "../../features/court-cluster/services/courtClusterCloudSync.js";
+import { isValidProfileUserId } from "../../features/court-cluster/utils/profileUserId.js";
+import { listUsers } from "../../features/identity/services/userManagementService.js";
 import { openClusterInGoogleMaps } from "../../features/court-cluster/utils/clusterMapsUtils.js";
 import {
   listPendingCourtClaimRequests,
@@ -66,11 +68,6 @@ const EMPTY_FORM = {
   googleMapsUrl: "",
 };
 
-const DEMO_USERS = [
-  { id: "demo-owner-a", label: "Chủ sân A (demo)" },
-  { id: "demo-owner-b", label: "Chủ sân B (demo)" },
-];
-
 export default function CourtClusterManagement() {
   const { currentTenantId, currentTenant, switchTenant, isSuperAdmin } = useTenant();
   const { user, can, rbacEnabled } = useAuth();
@@ -83,9 +80,12 @@ export default function CourtClusterManagement() {
   const [form, setForm] = useState(EMPTY_FORM);
   const [editingCluster, setEditingCluster] = useState(null);
   const [assignForm, setAssignForm] = useState({
-    userId: "",
+    user: null,
     clusterIds: [],
   });
+  const [assignUsers, setAssignUsers] = useState([]);
+  const [assignUsersLoading, setAssignUsersLoading] = useState(false);
+  const [assignSaving, setAssignSaving] = useState(false);
   const [pendingClaims, setPendingClaims] = useState([]);
   const [reviewNote, setReviewNote] = useState("");
   const [reviewingId, setReviewingId] = useState(null);
@@ -109,6 +109,13 @@ export default function CourtClusterManagement() {
       setError("Bật VITE_COURT_CLUSTERS_ENABLED=true để quản lý cụm sân.");
     }
   }, []);
+
+  useEffect(() => {
+    if (!canManage || !venueId) {
+      return;
+    }
+    void pullClusterContextForUser(user).then(() => refreshClusters());
+  }, [canManage, refreshClusters, user, venueId]);
 
   const loadPendingClaims = async () => {
     const result = await listPendingCourtClaimRequests();
@@ -242,10 +249,17 @@ export default function CourtClusterManagement() {
 
     const assignments = listAssignmentsForCluster(cluster.id) || [];
     const ownerAssignment = assignments.find((a) => a.role === "CLUSTER_OWNER");
-    const nextOwnerUserId = ownerAssignment?.userId || cluster?.ownerUserId || null;
+    const nextOwnerUserId = cluster?.ownerUserId || ownerAssignment?.userId || null;
     setOwnerUserId(nextOwnerUserId);
 
     if (!nextOwnerUserId) {
+      return;
+    }
+
+    if (!isValidProfileUserId(nextOwnerUserId)) {
+      setOwnerError(
+        "Gán chủ sân chưa đồng bộ cloud (ID không hợp lệ). Dùng Gán chủ và chọn user từ danh sách."
+      );
       return;
     }
 
@@ -261,38 +275,38 @@ export default function CourtClusterManagement() {
     setOwnerProfile(result.user);
   };
 
-  const openAssignDialog = (clusterId = null) => {
-    const initialClusterIds = clusterId ? [clusterId] : [];
-    setAssignForm({ userId: DEMO_USERS[0]?.id || "", clusterIds: initialClusterIds });
-    setAssignOpen(true);
+  const loadAssignUsers = async () => {
+    setAssignUsersLoading(true);
+    const result = await listUsers({ search: "" });
+    setAssignUsersLoading(false);
+    if (result.ok) {
+      setAssignUsers(result.users || []);
+    }
   };
 
-  const handleAssign = () => {
+  const openAssignDialog = (clusterId = null) => {
+    const initialClusterIds = clusterId ? [clusterId] : [];
+    setAssignForm({ user: null, clusterIds: initialClusterIds });
+    setAssignOpen(true);
+    void loadAssignUsers();
+  };
+
+  const handleAssign = async () => {
     setError(null);
-    const result = setUserClusterAssignments(assignForm.userId, assignForm.clusterIds, { user });
+    setAssignSaving(true);
+    const result = await assignClusterOwnerToUser({
+      userId: assignForm.user?.id,
+      clusterIds: assignForm.clusterIds,
+      actor: user,
+    });
+    setAssignSaving(false);
+
     if (!result.ok) {
       setError(result.error);
       return;
     }
 
-    for (const clusterId of assignForm.clusterIds) {
-      assignUserToCluster(assignForm.userId, clusterId, { user });
-    }
-
-    const removed = clusters
-      .map((cluster) => cluster.id)
-      .filter((id) => !assignForm.clusterIds.includes(id));
-
-    for (const clusterId of removed) {
-      const existing = listAssignmentsForCluster(clusterId).some(
-        (item) => item.userId === assignForm.userId
-      );
-      if (existing && !assignForm.clusterIds.includes(clusterId)) {
-        unassignUserFromCluster(assignForm.userId, clusterId, { user });
-      }
-    }
-
-    setMessage("Đã cập nhật gán chủ sân cho cụm");
+    setMessage("Đã cập nhật gán chủ sân cho cụm (Supabase)");
     setAssignOpen(false);
     refreshClusters();
   };
@@ -599,14 +613,26 @@ export default function CourtClusterManagement() {
         <DialogTitle>Gán chủ sân cho cụm</DialogTitle>
         <DialogContent>
           <Stack spacing={2} sx={{ pt: 1 }}>
-            <TextField
-              label="User ID"
-              value={assignForm.userId}
-              onChange={(event) =>
-                setAssignForm((prev) => ({ ...prev, userId: event.target.value }))
+            <Autocomplete
+              options={assignUsers}
+              loading={assignUsersLoading}
+              value={assignForm.user}
+              onChange={(_event, nextUser) =>
+                setAssignForm((prev) => ({ ...prev, user: nextUser }))
               }
-              helperText="Nhập UUID profile hoặc dùng demo ID local"
-              fullWidth
+              getOptionLabel={(option) =>
+                `${option.displayName || option.email || option.id} (${option.email || option.id})`
+              }
+              isOptionEqualToValue={(option, value) => option.id === value?.id}
+              renderInput={(params) => (
+                <TextField
+                  {...params}
+                  label="Chủ sân"
+                  placeholder="Tìm theo tên hoặc email"
+                  helperText="Chọn tài khoản từ danh sách người dùng"
+                  fullWidth
+                />
+              )}
             />
             <Typography variant="subtitle2">Cụm được gán</Typography>
             {clusters.map((cluster) => (
@@ -633,8 +659,12 @@ export default function CourtClusterManagement() {
         </DialogContent>
         <DialogActions>
           <Button onClick={() => setAssignOpen(false)}>Huỷ</Button>
-          <Button variant="contained" onClick={handleAssign}>
-            Lưu gán
+          <Button
+            variant="contained"
+            onClick={handleAssign}
+            disabled={assignSaving || !assignForm.user?.id || assignForm.clusterIds.length === 0}
+          >
+            {assignSaving ? "Đang lưu…" : "Lưu gán"}
           </Button>
         </DialogActions>
       </Dialog>

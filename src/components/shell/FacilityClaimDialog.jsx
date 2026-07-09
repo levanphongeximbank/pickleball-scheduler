@@ -203,10 +203,21 @@ export default function FacilityClaimDialog({ open, onClose, onSubmitted }) {
                         <TableCell align="right">{cluster.courtCount ?? 0}</TableCell>
                       </TableRow>
                     ))}
-                    {clusters.length === 0 && (
+                    {clusters.length === 0 && !loading && (
+                      <TableRow>
+                        <TableCell colSpan={5}>
+                          <Alert severity="info" sx={{ my: 1 }}>
+                            {userHasApprovedClusterAssignments()
+                              ? "Tất cả cụm trên hệ thống đã có chủ. Liên hệ admin để tạo cụm sân mới trước khi gửi yêu cầu gắn thêm."
+                              : "Hiện không có cụm sân trống để xin gắn. Liên hệ admin để tạo cụm sân hoặc gán trực tiếp cho bạn."}
+                          </Alert>
+                        </TableCell>
+                      </TableRow>
+                    )}
+                    {clusters.length === 0 && loading && (
                       <TableRow>
                         <TableCell colSpan={5} align="center">
-                          {loading ? "Đang tải…" : "Không có cụm sân trống."}
+                          Đang tải…
                         </TableCell>
                       </TableRow>
                     )}

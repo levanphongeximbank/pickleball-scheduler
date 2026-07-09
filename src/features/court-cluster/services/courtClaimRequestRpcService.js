@@ -214,3 +214,35 @@ export async function rpcRegisterCourtOwnerIntent(note = "") {
 
   return { ok: true, data, provider: "rpc" };
 }
+
+export async function rpcAdminAssignClusterOwner({ userId, clusterIds = [] } = {}) {
+  const client = getSupabaseAuthClient();
+  if (!client) {
+    return { ok: false, code: "NO_SUPABASE", error: "Supabase chưa sẵn sàng." };
+  }
+
+  const { data, error } = await client.rpc("court_admin_assign_cluster_owner", {
+    p_user_id: userId,
+    p_cluster_ids: clusterIds,
+  });
+
+  if (error) {
+    if (isMissingRpcError(error)) {
+      return { ok: false, code: "RPC_NOT_DEPLOYED", error: error.message };
+    }
+    return { ok: false, code: "RPC_FAILED", error: error.message };
+  }
+
+  const payload = parseRpcJson(data);
+  if (!payload.ok) {
+    return payload;
+  }
+
+  return {
+    ok: true,
+    userId: payload.userId,
+    clusterIds: payload.clusterIds || clusterIds,
+    venueId: payload.venueId || null,
+    provider: "rpc",
+  };
+}
