@@ -14,11 +14,43 @@ import {
   applyProvisionalRatingCalibration,
   detectRatingConflicts,
   validateAssessmentStep,
+  normalizeLegacyAnswers,
 } from "../src/features/player-rating/playerSkillAssessmentEngine.js";
 import { PROVISIONAL_RATING_CALIBRATION } from "../src/features/player-rating/playerSkillAssessmentConfig.js";
 import { RATING_STATUS } from "../src/features/pick-vn-rating/constants/ratingStatus.js";
 
-function baseAnswers(overrides = {}) {
+export function baseAnswers(overrides = {}) {
+  return {
+    gender: "male",
+    birth_year: 1992,
+    playing_duration: "2_3yr",
+    sessions_per_week: "3",
+    has_coach: "regular",
+    tournament_level: "club_internal",
+    best_result: "quarter",
+    was_seed: "never",
+    prior_sports: ["badminton"],
+    prior_sport_level: "club",
+    rally_consistency: "pct_80",
+    return_stability: "pct_50",
+    dink_ability: "10",
+    volley_ability: "basic",
+    third_shot_drop: "stable",
+    reset_ability: "basic",
+    play_style: "all_around",
+    kitchen_frequency: "often",
+    stacking_knowledge: "frequent",
+    nvz_transition: "basic",
+    team_coordination: "medium",
+    pace_control: "basic",
+    doubles_positioning: "none",
+    self_rating: "3.0",
+    ...overrides,
+  };
+}
+
+/** V1 answer IDs for legacy remap tests */
+export function legacyV1Answers(overrides = {}) {
   return {
     gender: "male",
     birth_year: 1992,
@@ -43,7 +75,7 @@ function baseAnswers(overrides = {}) {
     team_coordination: "medium",
     pace_control: "basic",
     doubles_positioning: "none",
-    self_rating: "3.5",
+    self_rating: "3.0",
     ...overrides,
   };
 }
@@ -65,14 +97,14 @@ test("group scorers respect caps", () => {
   const answers = baseAnswers({
     playing_duration: "gt_3yr",
     sessions_per_week: "daily",
-    has_coach: "yes",
+    has_coach: "professional",
   });
   assert.equal(calculateProfileScore(answers), 20);
 
   const tournament = baseAnswers({
     tournament_level: "international",
     best_result: "champion",
-    was_seed: "yes",
+    was_seed: "often",
   });
   assert.equal(calculateTournamentScore(tournament), 25);
 
@@ -120,10 +152,10 @@ test("self declared score capped at 5 points", () => {
   assert.equal(calculateSelfDeclaredScore({ self_rating: "1.5" }), 0);
 });
 
-test("applyProvisionalRatingCalibration scales rating by 0.8", () => {
-  assert.equal(PROVISIONAL_RATING_CALIBRATION, 0.8);
-  assert.equal(applyProvisionalRatingCalibration(3.5), 2.8);
-  assert.equal(applyProvisionalRatingCalibration(2.0), 1.6);
+test("applyProvisionalRatingCalibration scales rating by 0.7", () => {
+  assert.equal(PROVISIONAL_RATING_CALIBRATION, 0.7);
+  assert.equal(applyProvisionalRatingCalibration(3.5), 2.4);
+  assert.equal(applyProvisionalRatingCalibration(2.0), 1.5);
   assert.equal(applyProvisionalRatingCalibration(1.5), 1.5);
 });
 
@@ -131,8 +163,8 @@ test("calculatePlayerAssessment returns calibrated provisional rating not self r
   const result = calculatePlayerAssessment({ answers: baseAnswers() });
   assert.equal(result.ok, true);
   assert.equal(result.raw_provisional_rating, 3.5);
-  assert.equal(result.provisional_rating, 2.8);
-  assert.equal(result.self_declared_rating, 3.5);
+  assert.equal(result.provisional_rating, 2.4);
+  assert.equal(result.self_declared_rating, 3.0);
   assert.equal(result.current_rating, result.provisional_rating);
   assert.equal(result.rating_status, RATING_STATUS.PROVISIONAL);
   assert.ok(result.assessment_score >= 46 && result.assessment_score <= 55);
@@ -141,31 +173,56 @@ test("calculatePlayerAssessment returns calibrated provisional rating not self r
   assert.ok(result.assessment_breakdown.profileScore > 0);
 });
 
+test("legacy V1 answers remap and score without error", () => {
+  const modern = calculatePlayerAssessment({ answers: baseAnswers() });
+  const legacy = calculatePlayerAssessment({ answers: legacyV1Answers() });
+  assert.equal(legacy.ok, true);
+  assert.equal(legacy.assessment_score, modern.assessment_score);
+  assert.equal(legacy.provisional_rating, modern.provisional_rating);
+});
+
+test("normalizeLegacyAnswers maps V1 IDs to V2", () => {
+  const mapped = normalizeLegacyAnswers({
+    playing_duration: "1_3yr",
+    has_coach: "yes",
+    was_seed: "no",
+    rally_consistency: "no",
+    stacking_knowledge: "know",
+    kitchen_frequency: "sometimes",
+  });
+  assert.equal(mapped.playing_duration, "2_3yr");
+  assert.equal(mapped.has_coach, "regular");
+  assert.equal(mapped.was_seed, "never");
+  assert.equal(mapped.rally_consistency, "none");
+  assert.equal(mapped.stacking_knowledge, "frequent");
+  assert.equal(mapped.kitchen_frequency, "weekly");
+});
+
 test("self rating too high triggers warnings and under_review", () => {
   const result = calculatePlayerAssessment({
     answers: baseAnswers({
       playing_duration: "lt_3mo",
       tournament_level: "none",
       best_result: "none",
-      rally_consistency: "no",
-      return_stability: "no",
-      dink_ability: "no",
+      rally_consistency: "none",
+      return_stability: "none",
+      dink_ability: "none",
       volley_ability: "unknown",
       third_shot_drop: "unknown",
       reset_ability: "unknown",
       kitchen_frequency: "rare",
       stacking_knowledge: "none",
       nvz_transition: "none",
-      team_coordination: "low",
+      team_coordination: "very_low",
       pace_control: "none",
       doubles_positioning: "none",
-      self_rating: "5.0plus",
+      self_rating: "6.0plus",
     }),
   });
 
   assert.equal(result.ok, true);
   assert.ok(result.provisional_rating < 4.5);
-  assert.equal(result.self_declared_rating, 5.5);
+  assert.equal(result.self_declared_rating, 6.5);
   assert.ok(result.warning_flags.includes(WARNING_FLAGS.SELF_RATING_TOO_HIGH));
   assert.ok(
     result.warning_flags.includes(WARNING_FLAGS.HIGH_RATING_WITHOUT_TOURNAMENT_HISTORY)

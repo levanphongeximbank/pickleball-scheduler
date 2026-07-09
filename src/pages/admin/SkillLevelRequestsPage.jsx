@@ -106,7 +106,7 @@ export default function SkillLevelRequestsPage() {
     <Box>
       <TournamentPageHeader
         title="Duyệt thay đổi trình độ"
-        description="Hàng chờ yêu cầu thay đổi điểm trình độ từ vận động viên — chỉ kỹ thuật viên hệ thống duyệt."
+        description="Hàng chờ yêu cầu thay đổi điểm trình độ từ vận động viên — chỉ Admin duyệt."
         action={
           <Button
             variant="outlined"

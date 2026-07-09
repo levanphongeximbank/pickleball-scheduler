@@ -1,4 +1,6 @@
-/** Cấu hình bảng hỏi + điểm 0–100 — Player Rating Assessment V1 */
+/** Cấu hình bảng hỏi + điểm 0–100 — Player Rating Assessment V2 */
+
+export { ASSESSMENT_VERSION } from "./assessmentAnswerLegacyMap.js";
 
 export const WARNING_FLAGS = Object.freeze({
   SELF_RATING_TOO_HIGH: "SELF_RATING_TOO_HIGH",
@@ -26,7 +28,7 @@ export const GROUP_CAPS = Object.freeze({
 });
 
 /** Hệ số hiệu chuẩn rating tạm tính sau bảng hỏi (tránh khai cao hơn thực tế). */
-export const PROVISIONAL_RATING_CALIBRATION = 0.8;
+export const PROVISIONAL_RATING_CALIBRATION = 0.7;
 
 export const ASSESSMENT_STEPS = Object.freeze([
   { id: 1, title: "Hồ sơ", key: "profile" },
@@ -53,41 +55,58 @@ export const SCORE_TO_RATING_BANDS = Object.freeze([
 
 export const PROFILE_DURATION_SCORE = Object.freeze({
   never: 0,
-  lt_3mo: 4,
-  "3_12mo": 8,
-  "1_3yr": 14,
+  lt_1mo: 2,
+  lt_3mo: 5,
+  "3_12mo": 10,
+  "1_2yr": 14,
+  "2_3yr": 17,
   gt_3yr: 20,
 });
 
 export const SESSIONS_WEEKLY_BONUS = Object.freeze({
+  "0": 0,
   "1": 1,
   "2": 2,
   "3": 3,
-  "4plus": 4,
+  "4": 4,
+  "5_6": 4.5,
   daily: 5,
 });
 
-export const COACH_BONUS = 3;
+export const COACH_BONUS = Object.freeze({
+  never: 0,
+  occasionally: 1,
+  regular: 2,
+  professional: 3,
+});
 
 export const TOURNAMENT_LEVEL_SCORE = Object.freeze({
   none: 0,
-  club_internal: 5,
-  recreational: 10,
-  provincial: 15,
-  national: 20,
+  club_internal: 4,
+  recreational: 8,
+  district: 12,
+  provincial: 16,
+  national: 21,
   international: 25,
 });
 
 export const BEST_RESULT_BONUS = Object.freeze({
   none: 0,
   group_stage: 1,
+  round_16: 2,
+  top_8: 2.5,
   quarter: 3,
   semi: 5,
   runner_up: 7,
   champion: 9,
 });
 
-export const SEED_BONUS = Object.freeze({ yes: 3, no: 0 });
+export const SEED_BONUS = Object.freeze({
+  never: 0,
+  once: 1,
+  sometimes: 2,
+  often: 3,
+});
 
 export const SPORT_BASE_SCORE = Object.freeze({
   none: 0,
@@ -100,7 +119,9 @@ export const SPORT_BASE_SCORE = Object.freeze({
 
 /** Hệ số trình độ — nén biên để chênh lệch có/không nền tảng không quá lớn. */
 export const SPORT_LEVEL_MULTIPLIER = Object.freeze({
+  beginner: 0.4,
   recreational: 0.55,
+  intermediate: 0.65,
   club: 0.75,
   semi_pro: 0.9,
   pro: 1.0,
@@ -108,16 +129,16 @@ export const SPORT_LEVEL_MULTIPLIER = Object.freeze({
 
 export const SELF_RATING_POINTS = Object.freeze({
   "1.5": 0,
-  "2.0": 1,
-  "2.5": 1.5,
-  "3.0": 2,
-  "3.5": 2.5,
-  "4.0": 3,
-  "4.5": 3.5,
-  "5.0": 4,
-  "5.0plus": 4,
-  "5.5": 4.5,
-  "6.0": 5,
+  "2.0": 0.5,
+  "2.5": 1,
+  "3.0": 1.5,
+  "3.5": 2,
+  "4.0": 2.5,
+  "4.5": 3,
+  "5.0": 3.5,
+  "5.0plus": 3.5,
+  "5.5": 4,
+  "6.0": 4.5,
   "6.0plus": 5,
 });
 
@@ -158,9 +179,11 @@ export const SKILL_ASSESSMENT_QUESTIONS = Object.freeze([
     type: "single",
     options: [
       opt("never", "Chưa từng chơi", 0),
-      opt("lt_3mo", "Dưới 3 tháng", 4),
-      opt("3_12mo", "3–12 tháng", 8),
-      opt("1_3yr", "1–3 năm", 14),
+      opt("lt_1mo", "Dưới 1 tháng", 2),
+      opt("lt_3mo", "1–3 tháng", 5),
+      opt("3_12mo", "3–12 tháng", 10),
+      opt("1_2yr", "1–2 năm", 14),
+      opt("2_3yr", "2–3 năm", 17),
       opt("gt_3yr", "Trên 3 năm", 20),
     ],
   },
@@ -171,10 +194,12 @@ export const SKILL_ASSESSMENT_QUESTIONS = Object.freeze([
     label: "Bạn chơi trung bình bao nhiêu buổi/tuần?",
     type: "single",
     options: [
+      opt("0", "Không chơi đều", 0),
       opt("1", "1 buổi", 1),
       opt("2", "2 buổi", 2),
       opt("3", "3 buổi", 3),
-      opt("4plus", "4+ buổi", 4),
+      opt("4", "4 buổi", 4),
+      opt("5_6", "5–6 buổi", 4.5),
       opt("daily", "Gần như mỗi ngày", 5),
     ],
   },
@@ -184,7 +209,12 @@ export const SKILL_ASSESSMENT_QUESTIONS = Object.freeze([
     scoringGroup: "profile",
     label: "Bạn có HLV hướng dẫn không?",
     type: "single",
-    options: [opt("no", "Không", 0), opt("yes", "Có", 3)],
+    options: [
+      opt("never", "Không", 0),
+      opt("occasionally", "Thỉnh thoảng", 1),
+      opt("regular", "Thường xuyên", 2),
+      opt("professional", "HLV chuyên nghiệp", 3),
+    ],
   },
   {
     id: "tournament_level",
@@ -194,10 +224,11 @@ export const SKILL_ASSESSMENT_QUESTIONS = Object.freeze([
     type: "single",
     options: [
       opt("none", "Chưa", 0),
-      opt("club_internal", "Nội bộ CLB", 5),
-      opt("recreational", "Phong trào", 10),
-      opt("provincial", "Cấp tỉnh/thành", 15),
-      opt("national", "Quốc gia", 20),
+      opt("club_internal", "Nội bộ CLB", 4),
+      opt("recreational", "Phong trào", 8),
+      opt("district", "Huyện/quận", 12),
+      opt("provincial", "Cấp tỉnh/thành", 16),
+      opt("national", "Quốc gia", 21),
       opt("international", "Quốc tế", 25),
     ],
   },
@@ -210,6 +241,8 @@ export const SKILL_ASSESSMENT_QUESTIONS = Object.freeze([
     options: [
       opt("none", "Chưa từng", 0),
       opt("group_stage", "Vòng bảng", 1),
+      opt("round_16", "Vòng 16", 2),
+      opt("top_8", "Tứ kết trở lên (chưa vào bán kết)", 2.5),
       opt("quarter", "Tứ kết", 3),
       opt("semi", "Bán kết", 5),
       opt("runner_up", "Á quân", 7),
@@ -222,7 +255,12 @@ export const SKILL_ASSESSMENT_QUESTIONS = Object.freeze([
     scoringGroup: "tournament",
     label: "Bạn từng là hạt giống?",
     type: "single",
-    options: [opt("no", "Không", 0), opt("yes", "Có", 3)],
+    options: [
+      opt("never", "Chưa bao giờ", 0),
+      opt("once", "Một lần", 1),
+      opt("sometimes", "Vài lần", 2),
+      opt("often", "Thường xuyên", 3),
+    ],
   },
   {
     id: "prior_sports",
@@ -250,7 +288,9 @@ export const SKILL_ASSESSMENT_QUESTIONS = Object.freeze([
       return Array.isArray(sports) && sports.length && !sports.includes("none");
     },
     options: [
+      opt("beginner", "Mới bắt đầu", 0.4),
       opt("recreational", "Phong trào", 0.55),
+      opt("intermediate", "Trung bình", 0.65),
       opt("club", "CLB", 0.75),
       opt("semi_pro", "Bán chuyên", 0.9),
       opt("pro", "Chuyên nghiệp", 1.0),
@@ -264,10 +304,12 @@ export const SKILL_ASSESSMENT_QUESTIONS = Object.freeze([
     label: "Giao bóng / rally ổn định",
     type: "single",
     options: [
-      opt("no", "Không", 0),
-      opt("pct_50", "Khoảng 50%", 1),
-      opt("pct_80", "Khoảng 80%", 2),
-      opt("near_perfect", "Gần như không lỗi", 3),
+      opt("none", "Không / rất ít", 0),
+      opt("pct_25", "Khoảng 25%", 1),
+      opt("pct_50", "Khoảng 50%", 2),
+      opt("pct_65", "Khoảng 65%", 3),
+      opt("pct_80", "Khoảng 80%", 4),
+      opt("near_perfect", "Gần như không lỗi", 5),
     ],
   },
   {
@@ -278,10 +320,12 @@ export const SKILL_ASSESSMENT_QUESTIONS = Object.freeze([
     label: "Return ổn định",
     type: "single",
     options: [
-      opt("no", "Không", 0),
-      opt("pct_50", "Khoảng 50%", 1),
-      opt("pct_80", "Khoảng 80%", 2),
-      opt("near_perfect", "Gần như không lỗi", 3),
+      opt("none", "Không / rất ít", 0),
+      opt("pct_25", "Khoảng 25%", 1),
+      opt("pct_50", "Khoảng 50%", 2),
+      opt("pct_65", "Khoảng 65%", 3),
+      opt("pct_80", "Khoảng 80%", 4),
+      opt("near_perfect", "Gần như không lỗi", 5),
     ],
   },
   {
@@ -292,10 +336,12 @@ export const SKILL_ASSESSMENT_QUESTIONS = Object.freeze([
     label: "Dink liên tục",
     type: "single",
     options: [
-      opt("no", "Không", 0),
-      opt("5", "5 lần", 1),
-      opt("10", "10 lần", 2),
-      opt("20plus", "Trên 20 lần", 3),
+      opt("none", "Không", 0),
+      opt("3", "3 lần", 1),
+      opt("5", "5 lần", 2),
+      opt("10", "10 lần", 3),
+      opt("15", "15 lần", 4),
+      opt("20plus", "Trên 20 lần", 5),
     ],
   },
   {
@@ -307,9 +353,10 @@ export const SKILL_ASSESSMENT_QUESTIONS = Object.freeze([
     type: "single",
     options: [
       opt("unknown", "Chưa biết", 0),
-      opt("basic", "Biết sơ", 1),
-      opt("stable", "Ổn định", 2),
-      opt("mastered", "Thành thạo", 3),
+      opt("attempted", "Đã thử", 1),
+      opt("basic", "Biết sơ", 2),
+      opt("stable", "Ổn định", 3),
+      opt("mastered", "Thành thạo", 4),
     ],
   },
   {
@@ -321,9 +368,10 @@ export const SKILL_ASSESSMENT_QUESTIONS = Object.freeze([
     type: "single",
     options: [
       opt("unknown", "Chưa biết", 0),
-      opt("unstable", "Biết nhưng chưa ổn định", 1),
-      opt("stable", "Ổn định", 2),
-      opt("mastered", "Thành thạo", 3),
+      opt("attempted", "Đã thử", 1),
+      opt("basic", "Biết sơ", 2),
+      opt("stable", "Ổn định", 3),
+      opt("mastered", "Thành thạo", 4),
     ],
   },
   {
@@ -335,9 +383,10 @@ export const SKILL_ASSESSMENT_QUESTIONS = Object.freeze([
     type: "single",
     options: [
       opt("unknown", "Chưa biết", 0),
-      opt("basic", "Biết sơ", 1),
-      opt("stable", "Ổn định", 2),
-      opt("mastered", "Thành thạo", 3),
+      opt("attempted", "Đã thử", 1),
+      opt("basic", "Biết sơ", 2),
+      opt("stable", "Ổn định", 3),
+      opt("mastered", "Thành thạo", 4),
     ],
   },
   {
@@ -364,8 +413,10 @@ export const SKILL_ASSESSMENT_QUESTIONS = Object.freeze([
     type: "single",
     options: [
       opt("rare", "Hiếm", 0),
-      opt("sometimes", "Thỉnh thoảng", 1),
-      opt("often", "Thường xuyên", 2),
+      opt("monthly", "Vài lần/tháng", 1),
+      opt("weekly", "Vài lần/tuần", 2),
+      opt("often", "Hầu hết các buổi", 3),
+      opt("always", "Gần như mọi rally", 4),
     ],
   },
   {
@@ -377,8 +428,9 @@ export const SKILL_ASSESSMENT_QUESTIONS = Object.freeze([
     options: [
       opt("none", "Chưa", 0),
       opt("heard", "Có nghe", 1),
-      opt("know", "Biết", 2),
+      opt("basic", "Biết cơ bản", 2),
       opt("frequent", "Sử dụng thường xuyên", 3),
+      opt("expert", "Thành thạo", 4),
     ],
   },
   {
@@ -389,8 +441,10 @@ export const SKILL_ASSESSMENT_QUESTIONS = Object.freeze([
     type: "single",
     options: [
       opt("none", "Chưa", 0),
-      opt("basic", "Biết sơ", 1),
-      opt("mastered", "Thành thạo", 3),
+      opt("attempted", "Đã thử", 1),
+      opt("developing", "Đang luyện", 2),
+      opt("basic", "Biết sơ", 3),
+      opt("mastered", "Thành thạo", 4),
     ],
   },
   {
@@ -400,9 +454,11 @@ export const SKILL_ASSESSMENT_QUESTIONS = Object.freeze([
     label: "Phối hợp với đồng đội",
     type: "single",
     options: [
-      opt("low", "Ít", 0),
-      opt("medium", "Trung bình", 1.5),
+      opt("very_low", "Rất ít", 0),
+      opt("low", "Ít", 1),
+      opt("medium", "Trung bình", 2),
       opt("good", "Tốt", 3),
+      opt("excellent", "Rất tốt", 4),
     ],
   },
   {
@@ -414,7 +470,9 @@ export const SKILL_ASSESSMENT_QUESTIONS = Object.freeze([
     options: [
       opt("none", "Chưa", 0),
       opt("basic", "Biết sơ", 1),
+      opt("developing", "Đang luyện", 2),
       opt("good", "Tốt", 3),
+      opt("advanced", "Nâng cao", 4),
     ],
   },
   {
@@ -426,7 +484,9 @@ export const SKILL_ASSESSMENT_QUESTIONS = Object.freeze([
     options: [
       opt("none", "Chưa", 0),
       opt("basic", "Biết sơ", 1),
+      opt("developing", "Đang luyện", 2),
       opt("good", "Tốt", 3),
+      opt("advanced", "Nâng cao", 4),
     ],
   },
   {
@@ -437,13 +497,16 @@ export const SKILL_ASSESSMENT_QUESTIONS = Object.freeze([
     type: "single",
     options: [
       opt("1.5", "1.5", 0),
-      opt("2.0", "2.0", 1),
-      opt("2.5", "2.5", 1.5),
-      opt("3.0", "3.0", 2),
-      opt("3.5", "3.5", 2.5),
-      opt("4.0", "4.0", 3),
-      opt("4.5", "4.5", 3.5),
-      opt("5.0plus", "5.0+", 4),
+      opt("2.0", "2.0", 0.5),
+      opt("2.5", "2.5", 1),
+      opt("3.0", "3.0", 1.5),
+      opt("3.5", "3.5", 2),
+      opt("4.0", "4.0", 2.5),
+      opt("4.5", "4.5", 3),
+      opt("5.0", "5.0", 3.5),
+      opt("5.5", "5.5", 4),
+      opt("6.0", "6.0", 4.5),
+      opt("6.0plus", "6.0+", 5),
     ],
   },
   {

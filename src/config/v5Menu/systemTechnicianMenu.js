@@ -2,11 +2,11 @@ import { PERMISSIONS } from "../../auth/permissions.js";
 import { ROLES } from "../../auth/roles.js";
 import { FEATURE_STATUS, menuFolder, menuLeaf } from "./menuBuilders.js";
 
-/** Menu Kỹ thuật viên hệ thống — V5.1 */
+/** Menu Admin (SYSTEM_TECHNICIAN) — V5.1 */
 export const SYSTEM_TECHNICIAN_MENU_ROOT = menuFolder({
   key: "system-tech-root",
   icon: "settings",
-  text: "Kỹ thuật hệ thống",
+  text: "Admin",
   roles: [ROLES.SYSTEM_TECHNICIAN],
   children: [
     menuLeaf({
@@ -52,6 +52,16 @@ export const SYSTEM_TECHNICIAN_MENU_ROOT = menuFolder({
       text: "Người dùng",
       path: "/users",
       permissions: [PERMISSIONS.USER_VIEW],
+      roles: [ROLES.SYSTEM_TECHNICIAN],
+      featureStatus: FEATURE_STATUS.LIVE,
+    }),
+    menuLeaf({
+      key: "tech-players",
+      icon: "players",
+      text: "Vận động viên",
+      path: "/players",
+      match: "players-roster",
+      permissions: [PERMISSIONS.PLAYER_VIEW],
       roles: [ROLES.SYSTEM_TECHNICIAN],
       featureStatus: FEATURE_STATUS.LIVE,
     }),

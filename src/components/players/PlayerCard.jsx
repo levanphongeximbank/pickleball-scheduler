@@ -71,6 +71,7 @@ export default function PlayerCard({
   onEdit,
   onDelete,
   onLock,
+  showPlatformMeta = false,
 }) {
   const navigate = useNavigate();
   const [menuAnchor, setMenuAnchor] = useState(null);
@@ -150,6 +151,29 @@ export default function PlayerCard({
                 }}
               />
             </Stack>
+            {showPlatformMeta && (
+              <Stack direction="row" spacing={0.5} flexWrap="wrap" useFlexGap sx={{ mt: 0.75 }}>
+                {player.clubName ? (
+                  <Chip size="small" label={player.clubName} sx={{ height: 20, fontSize: 11 }} />
+                ) : null}
+                {player.email ? (
+                  <Chip
+                    size="small"
+                    variant="outlined"
+                    label={player.email}
+                    sx={{ height: 20, fontSize: 11, maxWidth: "100%" }}
+                  />
+                ) : null}
+                {player.linkStatus === "account_only" ? (
+                  <Chip
+                    size="small"
+                    color="warning"
+                    label="Chỉ có tài khoản"
+                    sx={{ height: 20, fontSize: 11 }}
+                  />
+                ) : null}
+              </Stack>
+            )}
           </Box>
         </Stack>
 

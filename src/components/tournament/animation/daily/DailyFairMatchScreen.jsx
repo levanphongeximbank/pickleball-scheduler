@@ -79,6 +79,7 @@ export default function DailyFairMatchScreen({
   speed: initialSpeed = "normal",
   controlMode: initialControlMode = FAIR_MATCH_CONTROL_MODES.AUTO,
   autoStart = true,
+  skipDailyAnalyzePhase = false,
   onAnimationComplete,
   onSkip,
 }) {
@@ -92,6 +93,7 @@ export default function DailyFairMatchScreen({
     steps,
     speed,
     controlMode: initialControlMode,
+    skipAnalyzePhase: skipDailyAnalyzePhase,
     onComplete: onAnimationComplete,
   });
 

@@ -90,6 +90,7 @@ export function getDefaultClubData(clubId) {
     rounds: [],
     sessions: [],
     tournaments: [],
+    founderPairingConstraints: [],
     seasonStandings: {},
     skillLevel: { ...DEFAULT_SKILL_LEVEL_RULES },
     skillLevelProposals: [],
@@ -200,6 +201,9 @@ function normalizeClubData(data, clubId) {
     rounds: Array.isArray(upgraded.rounds) ? upgraded.rounds : [],
     sessions: Array.isArray(upgraded.sessions) ? upgraded.sessions : [],
     tournaments: normalizeTournaments(upgraded.tournaments || []),
+    founderPairingConstraints: Array.isArray(upgraded.founderPairingConstraints)
+      ? upgraded.founderPairingConstraints
+      : [],
     seasonStandings:
       upgraded.seasonStandings && typeof upgraded.seasonStandings === "object"
         ? upgraded.seasonStandings

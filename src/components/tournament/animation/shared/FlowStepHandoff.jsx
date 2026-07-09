@@ -1,7 +1,9 @@
 import { useEffect, useState } from "react";
 import { Box, Button, LinearProgress, Stack, Typography } from "@mui/material";
 import ExitToAppIcon from "@mui/icons-material/ExitToApp";
+import SkipNextIcon from "@mui/icons-material/SkipNext";
 
+import CountdownDisplay from "./CountdownDisplay.jsx";
 import TournamentFlowProgress from "./TournamentFlowProgress.jsx";
 import {
   FLOW_HANDOFF_COUNTDOWN_SEC,
@@ -61,30 +63,59 @@ export default function FlowStepHandoff({
           ) : null}
         </Box>
 
-        <Box sx={{ width: "100%" }}>
-          <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mb: 0.75 }}>
-            <Typography variant="body2" fontWeight={700} color="primary.main">
-              Chuyển sau {secondsLeft}s…
-            </Typography>
-            <Typography variant="caption" color="text.secondary">
-              {completedStepKey ? `Đã xong: ${getFlowStepLabel(completedStepKey)}` : null}
-            </Typography>
-          </Stack>
-          <LinearProgress
-            variant="determinate"
-            value={progress}
-            sx={{ height: 8, borderRadius: 99 }}
-          />
-        </Box>
-
-        <Button
-          variant="text"
-          color="inherit"
-          startIcon={<ExitToAppIcon />}
-          onClick={onExit}
+        <Stack
+          direction={{ xs: "column", sm: "row" }}
+          spacing={2}
+          alignItems="center"
+          sx={{ width: "100%" }}
         >
-          Thoát trình chiếu
-        </Button>
+          <CountdownDisplay
+            secondsLeft={secondsLeft}
+            totalSeconds={countdownSeconds}
+            size="medium"
+          />
+
+          <Box sx={{ flex: 1, width: "100%" }}>
+            <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mb: 0.75 }}>
+              <Typography variant="body2" fontWeight={700} color="primary.main">
+                Chuyển sau {secondsLeft}s…
+              </Typography>
+              {completedStepKey ? (
+                <Typography
+                  variant="caption"
+                  className="tournament-flow-step tournament-flow-step--done"
+                  sx={{ px: 1, py: 0.25 }}
+                >
+                  Đã xong: {getFlowStepLabel(completedStepKey)}
+                </Typography>
+              ) : null}
+            </Stack>
+            <LinearProgress
+              variant="determinate"
+              value={progress}
+              sx={{ height: 8, borderRadius: 99 }}
+            />
+          </Box>
+        </Stack>
+
+        <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
+          <Button
+            variant="outlined"
+            size="small"
+            startIcon={<SkipNextIcon />}
+            onClick={() => onContinue?.()}
+          >
+            Bỏ qua chờ
+          </Button>
+          <Button
+            variant="text"
+            color="inherit"
+            startIcon={<ExitToAppIcon />}
+            onClick={onExit}
+          >
+            Thoát trình chiếu
+          </Button>
+        </Stack>
       </Stack>
     </Box>
   );

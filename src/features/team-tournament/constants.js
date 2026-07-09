@@ -94,8 +94,15 @@ export const DEFAULT_TIE_BREAK_ORDER = [
   "manual",
 ];
 
+export const TEAM_GROUP_SEEDING = {
+  OFF: "off",
+  TOP_PLAYER_THEN_TOTAL: "top_player_then_total",
+  AVG_LEVEL: "avg_level",
+};
+
 export const DEFAULT_TEAM_TOURNAMENT_SETTINGS = {
   formatPreset: FORMAT_PRESET.CUSTOM,
+  groupSeeding: TEAM_GROUP_SEEDING.AVG_LEVEL,
   missingLineupPolicy: MISSING_LINEUP_POLICY.RANDOM,
   allowPlayerReusePerMatchup: false,
   allowPlayerCrossTeam: false,

@@ -36,12 +36,12 @@ function createLocalStorageMock(seed = {}) {
 const onboardingAnswers = {
   gender: "male",
   birth_year: 1992,
-  playing_duration: "1_3yr",
+  playing_duration: "2_3yr",
   sessions_per_week: "3",
-  has_coach: "yes",
+  has_coach: "regular",
   tournament_level: "club_internal",
   best_result: "quarter",
-  was_seed: "no",
+  was_seed: "never",
   prior_sports: ["badminton"],
   prior_sport_level: "club",
   rally_consistency: "pct_80",
@@ -52,12 +52,12 @@ const onboardingAnswers = {
   reset_ability: "basic",
   play_style: "all_around",
   kitchen_frequency: "often",
-  stacking_knowledge: "know",
+  stacking_knowledge: "frequent",
   nvz_transition: "basic",
   team_coordination: "medium",
   pace_control: "basic",
   doubles_positioning: "none",
-  self_rating: "3.5",
+    self_rating: "3.0",
 };
 
 function ProfilePageShell() {

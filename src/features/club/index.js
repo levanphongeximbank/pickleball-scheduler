@@ -44,6 +44,7 @@ export {
   canTransferClubOwnership,
   transferClubOwnership,
   transferClubPresident,
+  assignClubVicePresident,
   listClubGovernanceCandidates,
   deleteClubAsOwner,
 } from "./services/clubGovernanceService.js";
@@ -100,3 +101,11 @@ export {
 } from "./services/clubMembershipRequestService.js";
 
 export { ensureClubManagementSeed } from "./seed/clubManagementSeed.js";
+
+export {
+  PLATFORM_ATHLETE_LINK_STATUS,
+  isPlatformAthleteViewer,
+  getClubPlayersPlatformWide,
+  buildOrphanProfileAthletes,
+  getPlatformAthletes,
+} from "./services/platformAthleteService.js";

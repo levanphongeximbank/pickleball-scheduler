@@ -100,6 +100,18 @@ import {
   resolveTournamentEntryPlayers,
   TournamentRegistrationRatingPanel,
 } from "../../features/pick-vn-rating/index.js";
+import {
+  INTERVENTION_PHASE,
+  TournamentEntryEditor,
+  TournamentGroupEditor,
+  usePairingIntervention,
+} from "../../features/pairing-intervention/index.js";
+import {
+  FounderPairingConstraintsPanel,
+  guardFounderConstraints,
+  getTournamentPairingConstraints,
+  logConstraintChange,
+} from "../../features/pairing-constraints/index.js";
 
 const EVENT_OPTIONS = EVENT_TYPE_OPTIONS;
 
@@ -121,6 +133,7 @@ export default function InternalTournamentSetup() {
   const [sourceClubId, setSourceClubId] = useState("");
   const [selectedPlayerIds, setSelectedPlayerIds] = useState([]);
   const [previewEntries, setPreviewEntries] = useState([]);
+  const [founderConstraints, setFounderConstraints] = useState([]);
   const [bracketAdvanceAnim, setBracketAdvanceAnim] = useState(null);
   const anim = useTournamentAnimation();
   const pendingPlanRef = useRef(null);
@@ -156,6 +169,12 @@ export default function InternalTournamentSetup() {
     () => getTournament(tournamentClubId, tournamentId),
     [tournamentClubId, tournamentId, localRevision]
   );
+
+  useEffect(() => {
+    if (tournament) {
+      setFounderConstraints(getTournamentPairingConstraints(tournament));
+    }
+  }, [tournament?.id, tournament?.founderPairingConstraints]);
 
   const isClubInternal = tournament?.type === "club_internal";
 
@@ -260,6 +279,84 @@ export default function InternalTournamentSetup() {
     setLocalRevision((value) => value + 1);
     refreshClubs();
     return true;
+  };
+
+  const pairingIntervention = usePairingIntervention({
+    phase: INTERVENTION_PHASE.TOURNAMENT,
+    tournamentStatus: tournament?.status,
+    clubId: tournamentClubId,
+    resourceId: tournamentId,
+  });
+
+  const canInterveneSetup = pairingIntervention.canIntervene;
+
+  const editorEntries =
+    previewEntries.length > 0 ? previewEntries : savedEvent?.entries || [];
+
+  const handleEntryInterventionApply = (result) => {
+    if (!result?.ok) {
+      return;
+    }
+    setPreviewEntries(result.entries);
+    if (savedEvent?.entries?.length) {
+      persistEvent({ entries: result.entries });
+    }
+    setMessage("Super Admin đã cập nhật ghép cặp.");
+  };
+
+  const handleGroupInterventionApply = (result) => {
+    if (!result?.ok) {
+      return;
+    }
+    if (
+      persistEvent({
+        entries: result.entries,
+        groups: result.groups,
+        matches: result.matches,
+      })
+    ) {
+      setMessage("Super Admin đã cập nhật chia bảng và tạo lại lịch vòng bảng.");
+    }
+  };
+
+  const handleSaveFounderConstraints = async () => {
+    setError(null);
+    const guard = guardFounderConstraints({ user });
+    if (!guard.ok) {
+      setError(guard.error);
+      return;
+    }
+
+    const before = getTournamentPairingConstraints(tournament);
+    const result = updateTournament(tournamentClubId, tournamentId, {
+      founderPairingConstraints: founderConstraints,
+    });
+
+    if (!result.ok) {
+      setError(result.error);
+      return;
+    }
+
+    setLocalRevision((value) => value + 1);
+    setMessage("Đã lưu quy tắc ghép cặp Founder.");
+    await logConstraintChange({
+      user,
+      tournamentId,
+      clubId: tournamentClubId,
+      before,
+      after: founderConstraints,
+    });
+  };
+
+  const applyConstraintWarnings = (pairingOptions) => {
+    const constraintWarnings = pairingOptions?.constraintWarnings || [];
+    if (constraintWarnings.length > 0) {
+      setWarnings(
+        constraintWarnings.map((item) =>
+          typeof item === "string" ? item : item.message || String(item)
+        )
+      );
+    }
   };
 
   const flowAdapters = useMemo(
@@ -512,14 +609,19 @@ export default function InternalTournamentSetup() {
     setError(null);
     setWarnings([]);
 
+    const pairingOptions = {
+      tournamentId,
+      eventId: savedEvent?.id || `event-${tournamentId}`,
+      pairingConstraints: founderConstraints,
+    };
+
     const entries = suggestEntriesFromPlayers(
       players.filter((player) => selectedPlayerIds.includes(String(player.id))),
       eventType,
-      {
-        tournamentId,
-        eventId: savedEvent?.id || `event-${tournamentId}`,
-      }
+      pairingOptions
     );
+
+    applyConstraintWarnings(pairingOptions);
 
     if (entries.length === 0) {
       setError(
@@ -560,14 +662,24 @@ export default function InternalTournamentSetup() {
     setWarnings([]);
     setMessage(null);
 
+    const pairingOptions = {
+      tournamentId,
+      eventId: savedEvent?.id || `event-${tournamentId}`,
+      pairingConstraints: founderConstraints,
+    };
+
     const entries =
       previewEntries.length > 0
         ? previewEntries
         : suggestEntriesFromPlayers(
             players.filter((player) => selectedPlayerIds.includes(String(player.id))),
             eventType,
-            { tournamentId, eventId: savedEvent?.id || `event-${tournamentId}` }
+            pairingOptions
           );
+
+    if (previewEntries.length === 0) {
+      applyConstraintWarnings(pairingOptions);
+    }
 
     const plan = buildInternalTournamentPlan({
       tournament,
@@ -576,6 +688,7 @@ export default function InternalTournamentSetup() {
       eventType,
       groupCount,
       manualEntries: entries,
+      pairingConstraints: founderConstraints,
     });
 
     if (!plan.ok) {
@@ -785,6 +898,14 @@ export default function InternalTournamentSetup() {
         <Grid size={{ xs: 12 }}>
           <RefereeRosterPanel roster={refereeRoster} onChange={handleRefereeRosterChange} />
         </Grid>
+        <Grid size={{ xs: 12 }}>
+          <FounderPairingConstraintsPanel
+            constraints={founderConstraints}
+            players={players}
+            onChange={setFounderConstraints}
+            onSave={handleSaveFounderConstraints}
+          />
+        </Grid>
       </Grid>
 
       <Grid container spacing={2} sx={{ mb: 2 }}>
@@ -976,6 +1097,17 @@ export default function InternalTournamentSetup() {
             </Stack>
           </Paper>
 
+          <TournamentEntryEditor
+            entries={editorEntries}
+            players={players}
+            eventType={eventType}
+            canIntervene={canInterveneSetup && editorEntries.length > 0}
+            tournamentId={tournamentId}
+            eventId={savedEvent?.id || ""}
+            onApply={handleEntryInterventionApply}
+            onAudit={pairingIntervention.auditEntryChange}
+          />
+
           <Paper variant="outlined" sx={{ p: 1.5 }}>
             <Typography variant="subtitle1" fontWeight="bold" sx={{ mb: 1 }}>
               Bảng đấu ({savedEvent?.groups?.length || 0})
@@ -1003,6 +1135,17 @@ export default function InternalTournamentSetup() {
               </Stack>
             )}
           </Paper>
+
+          <TournamentGroupEditor
+            groups={savedEvent?.groups || []}
+            entries={savedEvent?.entries || editorEntries}
+            players={players}
+            canIntervene={canInterveneSetup && (savedEvent?.groups?.length || 0) > 0}
+            tournamentId={tournamentId}
+            eventId={savedEvent?.id || ""}
+            onApply={handleGroupInterventionApply}
+            onAudit={pairingIntervention.auditGroupChange}
+          />
         </Grid>
       </Grid>
 

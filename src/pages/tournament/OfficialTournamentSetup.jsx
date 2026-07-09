@@ -110,6 +110,18 @@ import { useAuth } from "../../context/AuthContext.jsx";
 import { canViewPlayerSkillLevel } from "../../auth/rbac.js";
 import { useTenant } from "../../context/TenantContext.jsx";
 import { resolveTenantIdForClub } from "../../features/tenant/guards/tenantGuard.js";
+import {
+  INTERVENTION_PHASE,
+  TournamentEntryEditor,
+  TournamentGroupEditor,
+  usePairingIntervention,
+} from "../../features/pairing-intervention/index.js";
+import {
+  FounderPairingConstraintsPanel,
+  guardFounderConstraints,
+  getTournamentPairingConstraints,
+  logConstraintChange,
+} from "../../features/pairing-constraints/index.js";
 
 const EVENT_OPTIONS = EVENT_TYPE_OPTIONS;
 
@@ -140,6 +152,7 @@ export default function OfficialTournamentSetup() {
   const [selectedPlayerIds, setSelectedPlayerIds] = useState([]);
   const [sourceClubFilter, setSourceClubFilter] = useState(ALL_CLUBS_FILTER);
   const [previewEntries, setPreviewEntries] = useState([]);
+  const [founderConstraints, setFounderConstraints] = useState([]);
   const [pairPlayerAId, setPairPlayerAId] = useState("");
   const [pairPlayerBId, setPairPlayerBId] = useState("");
   const [entryClubName, setEntryClubName] = useState("");
@@ -166,6 +179,12 @@ export default function OfficialTournamentSetup() {
     () => getTournament(activeClubId, tournamentId),
     [activeClubId, tournamentId, localRevision]
   );
+
+  useEffect(() => {
+    if (tournament) {
+      setFounderConstraints(getTournamentPairingConstraints(tournament));
+    }
+  }, [tournament?.id, tournament?.founderPairingConstraints]);
 
   const tenantId = useMemo(
     () => tournament?.tenantId || resolveTenantIdForClub(activeClubId) || currentTenantId || "",
@@ -311,6 +330,81 @@ export default function OfficialTournamentSetup() {
         processEventId: savedEvent?.id || null,
       }
     );
+  };
+
+  const pairingIntervention = usePairingIntervention({
+    phase: INTERVENTION_PHASE.TOURNAMENT,
+    tournamentStatus: tournament?.status,
+    clubId: activeClubId,
+    resourceId: tournamentId,
+  });
+
+  const canInterveneSetup = pairingIntervention.canIntervene;
+
+  const handleEntryInterventionApply = (result) => {
+    if (!result?.ok) {
+      return;
+    }
+    setPreviewEntries(result.entries);
+    if (savedEvent?.entries?.length) {
+      persistEvent({ entries: result.entries });
+    }
+    setMessage("Super Admin đã cập nhật ghép cặp.");
+  };
+
+  const handleGroupInterventionApply = (result) => {
+    if (!result?.ok) {
+      return;
+    }
+    if (
+      persistEvent({
+        entries: result.entries,
+        groups: result.groups,
+        matches: result.matches,
+      })
+    ) {
+      setMessage("Super Admin đã cập nhật chia bảng và tạo lại lịch vòng bảng.");
+    }
+  };
+
+  const handleSaveFounderConstraints = async () => {
+    setError(null);
+    const guard = guardFounderConstraints({ user });
+    if (!guard.ok) {
+      setError(guard.error);
+      return;
+    }
+
+    const before = getTournamentPairingConstraints(tournament);
+    const result = updateTournament(activeClubId, tournamentId, {
+      founderPairingConstraints: founderConstraints,
+    });
+
+    if (!result.ok) {
+      setError(result.error);
+      return;
+    }
+
+    setLocalRevision((value) => value + 1);
+    setMessage("Đã lưu quy tắc ghép cặp Founder.");
+    await logConstraintChange({
+      user,
+      tournamentId,
+      clubId: activeClubId,
+      before,
+      after: founderConstraints,
+    });
+  };
+
+  const applyConstraintWarnings = (pairingOptions) => {
+    const constraintWarnings = pairingOptions?.constraintWarnings || [];
+    if (constraintWarnings.length > 0) {
+      setWarnings(
+        constraintWarnings.map((item) =>
+          typeof item === "string" ? item : item.message || String(item)
+        )
+      );
+    }
   };
 
   const flowAdapters = useMemo(() => {
@@ -552,11 +646,17 @@ export default function OfficialTournamentSetup() {
 
   const handleSuggestAiPairs = () => {
     setError(null);
+    setWarnings([]);
 
-    const entries = suggestBalancedEntriesFromIndividuals(selectedPlayers, eventType, {
+    const pairingOptions = {
       tournamentId,
       eventId: savedEvent?.id || `event-${tournamentId}`,
-    });
+      pairingConstraints: founderConstraints,
+    };
+
+    const entries = suggestBalancedEntriesFromIndividuals(selectedPlayers, eventType, pairingOptions);
+
+    applyConstraintWarnings(pairingOptions);
 
     if (entries.length === 0) {
       setError("Khong tao duoc cap/VDV nao. Kiem tra gioi tinh va so luong da chon.");
@@ -585,13 +685,20 @@ export default function OfficialTournamentSetup() {
     setWarnings([]);
     setMessage(null);
 
+    const pairingOptions = {
+      tournamentId,
+      eventId: savedEvent?.id || `event-${tournamentId}`,
+      pairingConstraints: founderConstraints,
+    };
+
     const entries =
       previewEntries.length > 0
         ? previewEntries
-        : suggestBalancedEntriesFromIndividuals(selectedPlayers, eventType, {
-            tournamentId,
-            eventId: savedEvent?.id || `event-${tournamentId}`,
-          });
+        : suggestBalancedEntriesFromIndividuals(selectedPlayers, eventType, pairingOptions);
+
+    if (previewEntries.length === 0) {
+      applyConstraintWarnings(pairingOptions);
+    }
 
     const plan = buildOfficialAiBalancePlan({
       tournament,
@@ -602,6 +709,7 @@ export default function OfficialTournamentSetup() {
       groupCount,
       manualEntries: entries,
       individualRegistration: true,
+      pairingConstraints: founderConstraints,
     });
 
     if (!plan.ok) {
@@ -1161,6 +1269,16 @@ export default function OfficialTournamentSetup() {
         <Grid size={{ xs: 12 }}>
           <RefereeRosterPanel roster={refereeRoster} onChange={handleRefereeRosterChange} />
         </Grid>
+        {isAiBalance ? (
+          <Grid size={{ xs: 12 }}>
+            <FounderPairingConstraintsPanel
+              constraints={founderConstraints}
+              players={flowPlayers}
+              onChange={setFounderConstraints}
+              onSave={handleSaveFounderConstraints}
+            />
+          </Grid>
+        ) : null}
       </Grid>
 
       <Grid container spacing={2} sx={{ mb: 2 }}>
@@ -1312,6 +1430,18 @@ export default function OfficialTournamentSetup() {
                 ))}
               </Stack>
             </Paper>
+            {isAiBalance ? (
+              <TournamentEntryEditor
+                entries={displayEntries}
+                players={flowPlayers}
+                eventType={eventType}
+                canIntervene={canInterveneSetup && displayEntries.length > 0}
+                tournamentId={tournamentId}
+                eventId={savedEvent?.id || ""}
+                onApply={handleEntryInterventionApply}
+                onAudit={pairingIntervention.auditEntryChange}
+              />
+            ) : null}
             <Paper variant="outlined" sx={{ p: 1.5 }}>
               <Typography variant="subtitle1" fontWeight="bold" sx={{ mb: 1 }}>
                 Bảng đấu ({savedEvent?.groups?.length || 0})
@@ -1339,6 +1469,16 @@ export default function OfficialTournamentSetup() {
                 </Stack>
               )}
             </Paper>
+            <TournamentGroupEditor
+              groups={savedEvent?.groups || []}
+              entries={savedEvent?.entries || displayEntries}
+              players={flowPlayers}
+              canIntervene={canInterveneSetup && (savedEvent?.groups?.length || 0) > 0}
+              tournamentId={tournamentId}
+              eventId={savedEvent?.id || ""}
+              onApply={handleGroupInterventionApply}
+              onAudit={pairingIntervention.auditGroupChange}
+            />
           </Grid>
         </Grid>
       ) : (
@@ -1556,6 +1696,17 @@ export default function OfficialTournamentSetup() {
               </Stack>
             )}
           </Paper>
+
+          <TournamentGroupEditor
+            groups={savedEvent?.groups || []}
+            entries={savedEvent?.entries || displayEntries}
+            players={flowPlayers}
+            canIntervene={canInterveneSetup && (savedEvent?.groups?.length || 0) > 0}
+            tournamentId={tournamentId}
+            eventId={savedEvent?.id || ""}
+            onApply={handleGroupInterventionApply}
+            onAudit={pairingIntervention.auditGroupChange}
+          />
         </Grid>
       </Grid>
       )}

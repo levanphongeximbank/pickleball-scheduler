@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 
 import {
   Alert,
@@ -24,11 +24,17 @@ import { useClub } from "../context/ClubContext.jsx";
 import { useAuth } from "../context/AuthContext.jsx";
 import PermissionGate from "../components/auth/PermissionGate.jsx";
 import { PERMISSIONS } from "../auth/permissions.js";
-import { savePlayersForClub } from "../domain/clubStorage.js";
+import { isPlatformAthleteViewer } from "../auth/roles.js";
+import { loadClubs } from "../data/club.js";
+import { savePlayersForClub, loadPlayersForClub } from "../domain/clubStorage.js";
 import { setInitialSkillLevel } from "../domain/skillLevelChangeService.js";
 import { canViewPlayerSkillLevel } from "../auth/rbac.js";
 import { loadPlayersFromStorage } from "./selectPlayers.data";
 import { normalizePlayers } from "../models/player.js";
+import {
+  getPlatformAthletes,
+  PLATFORM_ATHLETE_LINK_STATUS,
+} from "../features/club/index.js";
 import PlayerStats from "../components/players/PlayerStats.jsx";
 import PlayerFilters from "../components/players/PlayerFilters.jsx";
 import PlayerCard from "../components/players/PlayerCard.jsx";
@@ -55,8 +61,9 @@ const defaultPlayerForm = {
 };
 
 export default function Players() {
-  const { activeClubId, activeClub, revision } = useClub();
+  const { activeClubId, activeClub, revision, clubs } = useClub();
   const { can, rbacEnabled, isAuthenticated, user } = useAuth();
+  const platformMode = isPlatformAthleteViewer(user?.role);
 
   const canViewClubSkillLevels =
     !rbacEnabled ||
@@ -81,6 +88,10 @@ export default function Players() {
       venueId: activeClub?.venueId || null,
     });
   const [players, setPlayers] = useState(() => normalizePlayers(loadPlayersFromStorage()));
+  const [platformWarning, setPlatformWarning] = useState(null);
+  const [platformLoading, setPlatformLoading] = useState(false);
+  const [clubFilter, setClubFilter] = useState("all");
+  const [linkFilter, setLinkFilter] = useState("all");
   const [form, setForm] = useState(defaultPlayerForm);
   const [open, setOpen] = useState(false);
   const [importOpen, setImportOpen] = useState(false);
@@ -92,10 +103,101 @@ export default function Players() {
   const [statusFilter, setStatusFilter] = useState("all");
   const [formError, setFormError] = useState(null);
 
+  const loadPlatformPlayers = useCallback(async () => {
+    setPlatformLoading(true);
+    const result = await getPlatformAthletes();
+    setPlatformLoading(false);
+
+    if (!result.ok) {
+      setPlatformWarning(result.error || "Không tải được danh sách VĐV toàn hệ thống.");
+      setPlayers([]);
+      return;
+    }
+
+    setPlayers(normalizePlayers(result.players || []));
+    setPlatformWarning(result.warning || null);
+  }, []);
+
   useEffect(() => {
+    if (platformMode) {
+      void loadPlatformPlayers();
+      return;
+    }
+
     const nextPlayers = loadPlayersFromStorage(activeClubId);
     setPlayers(normalizePlayers(nextPlayers));
-  }, [activeClubId, revision]);
+    setPlatformWarning(null);
+  }, [activeClubId, revision, platformMode, loadPlatformPlayers]);
+
+  const clubFilterOptions = useMemo(() => {
+    if (!platformMode) {
+      return [];
+    }
+
+    const registry = new Map();
+    for (const club of clubs || loadClubs()) {
+      if (!club?.isDefault) {
+        registry.set(club.id, club.name);
+      }
+    }
+
+    for (const player of players) {
+      if (player.sourceClubId && !registry.has(player.sourceClubId)) {
+        registry.set(player.sourceClubId, player.clubName || player.sourceClubId);
+      }
+    }
+
+    return Array.from(registry.entries()).map(([id, name]) => ({ id, name }));
+  }, [clubs, platformMode, players]);
+
+  const scopedPlayers = useMemo(() => {
+    if (!platformMode) {
+      return players;
+    }
+
+    return players.filter((player) => {
+      if (clubFilter !== "all") {
+        const sourceClubId = player.sourceClubId || player.clubId || null;
+        if (sourceClubId !== clubFilter) {
+          return false;
+        }
+      }
+
+      if (linkFilter === "linked") {
+        return player.linkStatus !== PLATFORM_ATHLETE_LINK_STATUS.ACCOUNT_ONLY;
+      }
+
+      if (linkFilter === "account_only") {
+        return player.linkStatus === PLATFORM_ATHLETE_LINK_STATUS.ACCOUNT_ONLY;
+      }
+
+      return true;
+    });
+  }, [clubFilter, linkFilter, platformMode, players]);
+
+  const activeClubPlayers = useMemo(() => {
+    if (!platformMode) {
+      return players;
+    }
+
+    return loadPlayersForClub(activeClubId);
+  }, [activeClubId, platformMode, revision]);
+
+  const canManagePlayer = (player) => {
+    if (!canManagePlayers) {
+      return false;
+    }
+
+    if (!platformMode) {
+      return true;
+    }
+
+    if (player.linkStatus === PLATFORM_ATHLETE_LINK_STATUS.ACCOUNT_ONLY) {
+      return false;
+    }
+
+    return String(player.sourceClubId || "") === String(activeClubId || "");
+  };
 
   const checkedInIds = useMemo(
     () => getTodayCheckedInPlayerIds(activeClubId),
@@ -103,12 +205,12 @@ export default function Players() {
   );
 
   const stats = useMemo(
-    () => computePlayerDashboardStats(players, activeClubId),
-    [players, activeClubId]
+    () => computePlayerDashboardStats(scopedPlayers, platformMode ? null : activeClubId),
+    [scopedPlayers, activeClubId, platformMode]
   );
 
   const filteredPlayers = useMemo(() => {
-    const filtered = filterPlayers(players, {
+    const filtered = filterPlayers(scopedPlayers, {
       search,
       genderFilter,
       levelRange,
@@ -116,9 +218,15 @@ export default function Players() {
       checkedInIds,
     });
     return sortPlayers(filtered, "name", "asc");
-  }, [players, search, genderFilter, levelRange, statusFilter, checkedInIds]);
+  }, [scopedPlayers, search, genderFilter, levelRange, statusFilter, checkedInIds]);
 
   const savePlayers = (updatedPlayers) => {
+    if (platformMode) {
+      savePlayersForClub(updatedPlayers, activeClubId);
+      void loadPlatformPlayers();
+      return;
+    }
+
     setPlayers(updatedPlayers);
     savePlayersForClub(updatedPlayers, activeClubId);
   };
@@ -162,11 +270,11 @@ export default function Players() {
     };
 
     const updatedPlayers = editingPlayer
-      ? players.map((player) =>
+      ? activeClubPlayers.map((player) =>
           player.id === editingPlayer.id ? { ...player, ...baseData } : player
         )
       : [
-          ...players,
+          ...activeClubPlayers,
           setInitialSkillLevel(
             { id: Date.now(), ...baseData },
             level,
@@ -182,12 +290,12 @@ export default function Players() {
 
   const handleDelete = () => {
     if (!deletePlayer) return;
-    savePlayers(players.filter((player) => player.id !== deletePlayer.id));
+    savePlayers(activeClubPlayers.filter((player) => player.id !== deletePlayer.id));
     setDeletePlayer(null);
   };
 
   const handleLockPlayer = (player) => {
-    const updated = players.map((p) =>
+    const updated = activeClubPlayers.map((p) =>
       p.id === player.id
         ? { ...p, status: "archived", active: false }
         : p
@@ -200,9 +308,15 @@ export default function Players() {
     setLevelRange([2.0, 6.5]);
     setStatusFilter("all");
     setSearch("");
+    setClubFilter("all");
+    setLinkFilter("all");
   };
 
-  const contextLine = activeClub?.name ? `CLB ${activeClub.name}` : undefined;
+  const contextLine = platformMode
+    ? "Toàn hệ thống"
+    : activeClub?.name
+      ? `CLB ${activeClub.name}`
+      : undefined;
 
   const headerActions = (
     <Stack direction={{ xs: "column", sm: "row" }} spacing={1} useFlexGap>
@@ -218,13 +332,69 @@ export default function Players() {
   return (
     <Box>
       <TournamentPageHeader
-        title="Quản lý người chơi"
-        description="Theo dõi trình độ, giới tính, trạng thái tham gia và dữ liệu để AI xếp sân cân bằng."
+        title={platformMode ? "Vận động viên toàn hệ thống" : "Quản lý người chơi"}
+        description={
+          platformMode
+            ? "Xem mọi VĐV đã đăng ký tài khoản và VĐV trong danh sách CLB trên hệ thống."
+            : "Theo dõi trình độ, giới tính, trạng thái tham gia và dữ liệu để AI xếp sân cân bằng."
+        }
         contextLine={contextLine}
         action={headerActions}
       />
 
+      {platformMode && (
+        <Alert severity="info" sx={{ mb: 2 }}>
+          Chế độ toàn hệ thống — hiển thị mọi VĐV đã đăng ký và VĐV trong CLB. Danh sách CLB
+          phụ thuộc dữ liệu đã đồng bộ trên thiết bị này; tài khoản Supabase vẫn hiển thị khi có
+          quyền truy vấn.
+        </Alert>
+      )}
+
+      {platformWarning && (
+        <Alert severity="warning" sx={{ mb: 2 }}>
+          {platformWarning}
+        </Alert>
+      )}
+
+      {platformLoading && (
+        <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+          Đang tải danh sách VĐV toàn hệ thống...
+        </Typography>
+      )}
+
       <PlayerStats stats={stats} />
+
+      {platformMode && (
+        <Stack direction={{ xs: "column", md: "row" }} spacing={1.5} sx={{ mb: 2 }}>
+          <TextField
+            select
+            label="CLB"
+            size="small"
+            value={clubFilter}
+            onChange={(event) => setClubFilter(event.target.value)}
+            sx={{ minWidth: { md: 220 } }}
+          >
+            <MenuItem value="all">Tất cả CLB</MenuItem>
+            {clubFilterOptions.map((club) => (
+              <MenuItem key={club.id} value={club.id}>
+                {club.name}
+              </MenuItem>
+            ))}
+          </TextField>
+          <TextField
+            select
+            label="Liên kết"
+            size="small"
+            value={linkFilter}
+            onChange={(event) => setLinkFilter(event.target.value)}
+            sx={{ minWidth: { md: 220 } }}
+          >
+            <MenuItem value="all">Tất cả</MenuItem>
+            <MenuItem value="linked">Đã gắn CLB</MenuItem>
+            <MenuItem value="account_only">Chỉ có tài khoản</MenuItem>
+          </TextField>
+        </Stack>
+      )}
 
       <PlayerFilters
         search={search}
@@ -237,7 +407,7 @@ export default function Players() {
         statusFilter={statusFilter}
         onStatusFilterChange={setStatusFilter}
         filteredCount={filteredPlayers.length}
-        totalCount={players.length}
+        totalCount={scopedPlayers.length}
         onClearFilters={clearFilters}
       />
 
@@ -246,13 +416,14 @@ export default function Players() {
           <Grid key={player.id} size={{ xs: 12, sm: 6, lg: 4, xl: 3 }}>
             <PlayerCard
               player={player}
-              clubId={activeClubId}
-              players={players}
+              clubId={platformMode ? player.sourceClubId || activeClubId : activeClubId}
+              players={scopedPlayers}
               checkedInIds={checkedInIds}
               canViewSkillLevel={canViewPlayerSkill(player.id)}
-              onEdit={canManagePlayers ? openEditDialog : undefined}
-              onDelete={canManagePlayers ? setDeletePlayer : undefined}
-              onLock={canManagePlayers ? handleLockPlayer : undefined}
+              showPlatformMeta={platformMode}
+              onEdit={canManagePlayer(player) ? openEditDialog : undefined}
+              onDelete={canManagePlayer(player) ? setDeletePlayer : undefined}
+              onLock={canManagePlayer(player) ? handleLockPlayer : undefined}
             />
           </Grid>
         ))}
@@ -262,8 +433,14 @@ export default function Players() {
         <Box sx={{ mt: TOURNAMENT_LAYOUT.sectionGap }}>
           <TournamentEmptyState
             icon={GroupsOutlinedIcon}
-            title="Không tìm thấy người chơi"
-            description="Thử đổi bộ lọc hoặc thêm người chơi mới."
+            title={players.length === 0 ? "Chưa có vận động viên" : "Không tìm thấy người chơi"}
+            description={
+              players.length === 0
+                ? platformMode
+                  ? "Chưa có VĐV nào trong hệ thống hoặc chưa tải được dữ liệu."
+                  : "Thêm người chơi mới để bắt đầu."
+                : "Thử đổi bộ lọc hoặc thêm người chơi mới."
+            }
           />
         </Box>
       )}
@@ -271,7 +448,7 @@ export default function Players() {
       <PlayerImportExportDialog
         open={importOpen}
         onClose={() => setImportOpen(false)}
-        items={players}
+        items={platformMode ? activeClubPlayers : players}
         onImport={savePlayers}
       />
 
@@ -307,7 +484,7 @@ export default function Players() {
             {editingPlayer ? (
               <Alert severity="info">
                 Điểm trình độ đã khóa sau lần tạo. VĐV có thể gửi yêu cầu thay đổi qua hồ sơ cá
-                nhân; kỹ thuật viên hệ thống sẽ duyệt.
+                nhân; Admin sẽ duyệt.
               </Alert>
             ) : (
               <>

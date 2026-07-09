@@ -121,7 +121,7 @@ export default function MyClubJoinPanel({ tenantId, user, onRevision }) {
         <Grid container spacing={2}>
           {joinableClubs.map((club) => {
             const stats = getClubStats(club.id, tenantId);
-            const gov = getGovernanceDisplayLabels(club);
+            const gov = getGovernanceDisplayLabels(club, tenantId);
             const request = requestByClubId.get(club.id);
 
             return (

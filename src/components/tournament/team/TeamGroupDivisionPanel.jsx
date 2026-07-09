@@ -3,12 +3,17 @@ import {
   Alert,
   Button,
   Chip,
+  FormControl,
+  InputLabel,
+  MenuItem,
   Paper,
+  Select,
   Stack,
   TextField,
   Typography,
 } from "@mui/material";
 
+import { TEAM_GROUP_SEEDING } from "../../../features/team-tournament/constants.js";
 import {
   describeGroupSplit,
   recommendGroupSizes,
@@ -23,8 +28,31 @@ import {
 
 const MIN_TEAMS_FOR_GROUPS = 6;
 
+const GROUP_SEEDING_OPTIONS = [
+  {
+    value: TEAM_GROUP_SEEDING.OFF,
+    label: "Tắt hạt giống",
+    description: "Chia bảng ngẫu nhiên, không xếp hạng hạt giống.",
+  },
+  {
+    value: TEAM_GROUP_SEEDING.TOP_PLAYER_THEN_TOTAL,
+    label: "Ace + tổng điểm",
+    description: "Ưu tiên VĐV mạnh nhất trong đội, tie-break theo tổng điểm đội.",
+  },
+  {
+    value: TEAM_GROUP_SEEDING.AVG_LEVEL,
+    label: "Trung bình đội",
+    description: "Xếp hạt giống theo trung bình trình độ cả đội (chế độ cũ).",
+  },
+];
+
+function getSeedingLabel(mode) {
+  return GROUP_SEEDING_OPTIONS.find((option) => option.value === mode)?.label || mode;
+}
+
 export default function TeamGroupDivisionPanel({
   teamData,
+  clubPlayers = [],
   canManage = false,
   onSave,
   onError,
@@ -32,34 +60,98 @@ export default function TeamGroupDivisionPanel({
 }) {
   const teams = teamData?.teams || [];
   const groups = teamData?.groups || [];
+  const seedingMode = teamData?.settings?.groupSeeding || TEAM_GROUP_SEEDING.AVG_LEVEL;
+  const seedingEnabled = seedingMode !== TEAM_GROUP_SEEDING.OFF;
+  const useTopPlayerMode = seedingMode === TEAM_GROUP_SEEDING.TOP_PLAYER_THEN_TOTAL;
   const [groupCount, setGroupCount] = useState(Math.max(2, groups.length || 2));
   const recommendedSizes = recommendGroupSizes(teams.length);
   const recommendedLabel = describeGroupSplit(teams.length);
   const balance = groups.length
-    ? summarizeSeededGroupBalance(groups, teams)
+    ? summarizeSeededGroupBalance(groups, teams, { seedingMode })
     : null;
+  const selectedSeedingOption =
+    GROUP_SEEDING_OPTIONS.find((option) => option.value === seedingMode) ||
+    GROUP_SEEDING_OPTIONS[2];
 
   if (teams.length < MIN_TEAMS_FOR_GROUPS) {
     return null;
   }
 
   const teamNameById = new Map(teams.map((team) => [team.id, team.name]));
+  const teamById = new Map(teams.map((team) => [team.id, team]));
+
+  function persistTeamData(nextTeamData, message) {
+    onSave?.(nextTeamData);
+    if (message) {
+      onMessage?.(message);
+    }
+  }
+
+  function handleSeedingModeChange(event) {
+    if (!canManage) {
+      return;
+    }
+
+    const nextMode = event.target.value;
+    const nextTeamData = {
+      ...teamData,
+      settings: {
+        ...teamData.settings,
+        groupSeeding: nextMode,
+      },
+    };
+
+    if (groups.length > 0 && nextMode !== seedingMode) {
+      onMessage?.(
+        `Đã đổi chế độ hạt giống sang "${getSeedingLabel(nextMode)}". Chia lại bảng để áp dụng.`
+      );
+    }
+
+    persistTeamData(nextTeamData);
+  }
+
+  function runGroupAssignment(options = {}) {
+    const { teamData: next, balance: nextBalance, warnings = [] } = assignSeededTeamsToGroups(
+      teamData,
+      {
+        ...options,
+        players: clubPlayers,
+        seedingMode,
+      }
+    );
+
+    if (!next.groups?.length) {
+      onError?.("Không chia được bảng.");
+      return null;
+    }
+
+    if (warnings.length) {
+      onMessage?.(warnings.join(" "));
+    }
+
+    return { next, nextBalance };
+  }
 
   function handleAutoAssignGroups() {
     if (!canManage) {
       return;
     }
 
-    const { teamData: next, balance: nextBalance } = assignSeededTeamsToGroups(teamData);
-    if (!next.groups?.length) {
-      onError?.("Không chia được bảng.");
+    const result = runGroupAssignment();
+    if (!result) {
       return;
     }
 
-    onSave?.(next);
+    const { next, nextBalance } = result;
     const label = recommendedLabel || `${next.groups.length} bảng`;
     const balanceLabel = nextBalance?.balanced ? "cân bằng" : "lệch nhẹ";
-    onMessage?.(`Đã chia bảng có hạt giống: ${label} (${balanceLabel}).`);
+    const modeLabel = getSeedingLabel(seedingMode);
+    persistTeamData(
+      next,
+      seedingEnabled
+        ? `Đã chia bảng (${modeLabel}): ${label} (${balanceLabel}).`
+        : `Đã chia bảng ngẫu nhiên: ${label} (${balanceLabel}).`
+    );
   }
 
   function handleAssignGroups() {
@@ -75,17 +167,32 @@ export default function TeamGroupDivisionPanel({
       return;
     }
 
-    const { teamData: next } = assignSeededTeamsToGroups(teamData, { groupCount });
-    onSave?.(next);
-    onMessage?.(`Đã chia ${groupCount} bảng theo hạt giống.`);
+    const result = runGroupAssignment({ groupCount });
+    if (!result) {
+      return;
+    }
+
+    persistTeamData(result.next, `Đã chia ${groupCount} bảng (${getSeedingLabel(seedingMode)}).`);
   }
 
   function handleClearGroups() {
     if (!canManage) {
       return;
     }
-    onSave?.(clearTeamGroups(teamData));
-    onMessage?.("Đã xóa chia bảng.");
+    persistTeamData(clearTeamGroups(teamData), "Đã xóa chia bảng.");
+  }
+
+  function formatTeamSeedLine(teamId) {
+    const team = teamById.get(teamId);
+    if (!team || !seedingEnabled || !team.seed) {
+      return teamNameById.get(teamId) || teamId;
+    }
+
+    if (useTopPlayerMode && team.topPlayerRating > 0) {
+      return `${teamNameById.get(teamId) || teamId} (Seed ${team.seed} · Ace ${team.topPlayerRating} · Tổng ${team.totalRating || "—"})`;
+    }
+
+    return `${teamNameById.get(teamId) || teamId} (Seed ${team.seed} · TB ${team.avgLevel || "—"})`;
   }
 
   return (
@@ -101,14 +208,34 @@ export default function TeamGroupDivisionPanel({
         <Alert severity="info">
           Giải từ {MIN_TEAMS_FOR_GROUPS} đội trở lên cần chia 2 bảng trước khi tạo lịch.
           {recommendedLabel ? ` Gợi ý: ${recommendedLabel}.` : ""}
-          {" "}Chia bảng tự động xét hạt giống theo trình độ đội.
+          {" "}
+          {selectedSeedingOption.description}
         </Alert>
+
+        {canManage ? (
+          <FormControl fullWidth size="small" sx={{ maxWidth: 420 }}>
+            <InputLabel>Chế độ hạt giống</InputLabel>
+            <Select
+              label="Chế độ hạt giống"
+              value={seedingMode}
+              onChange={handleSeedingModeChange}
+            >
+              {GROUP_SEEDING_OPTIONS.map((option) => (
+                <MenuItem key={option.value} value={option.value}>
+                  {option.label}
+                </MenuItem>
+              ))}
+            </Select>
+          </FormControl>
+        ) : (
+          <Chip size="small" variant="outlined" label={`Hạt giống: ${getSeedingLabel(seedingMode)}`} />
+        )}
 
         {canManage ? (
           <Stack direction={{ xs: "column", sm: "row" }} spacing={1} alignItems={{ sm: "center" }} flexWrap="wrap" useFlexGap>
             {recommendedSizes || teams.length >= 6 ? (
               <Button variant="contained" onClick={handleAutoAssignGroups}>
-                Chia bảng tự động (hạt giống)
+                {seedingEnabled ? "Chia bảng tự động (hạt giống)" : "Chia bảng ngẫu nhiên"}
               </Button>
             ) : null}
             <TextField
@@ -138,7 +265,11 @@ export default function TeamGroupDivisionPanel({
                 key={group.groupId}
                 size="small"
                 variant="outlined"
-                label={`${group.groupName}: TB ${group.avgLevel}`}
+                label={
+                  useTopPlayerMode
+                    ? `${group.groupName}: Ace TB ${group.topAvg}`
+                    : `${group.groupName}: TB ${group.avgLevel}`
+                }
               />
             ))}
             <Chip
@@ -162,7 +293,7 @@ export default function TeamGroupDivisionPanel({
                   <Chip size="small" label={`${group.teamIds.length} đội`} />
                 </Stack>
                 <Typography variant="body2" color="text.secondary">
-                  {group.teamIds.map((teamId) => teamNameById.get(teamId) || teamId).join(" · ") ||
+                  {group.teamIds.map((teamId) => formatTeamSeedLine(teamId)).join(" · ") ||
                     "Chưa có đội"}
                 </Typography>
               </Paper>

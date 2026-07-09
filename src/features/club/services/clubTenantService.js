@@ -13,7 +13,7 @@ import { createClubRecord } from "../../../models/club.js";
 import { loadClubExtension, purgeClubExtension } from "../storage/clubExtensionStorage.js";
 import { CLUB_STATUSES } from "../constants/clubStatus.js";
 import { canUserViewClub } from "./clubAccessService.js";
-import { resolveGovernanceForCreate, canSelfRegisterClub } from "./clubGovernanceService.js";
+import { resolveGovernanceForCreate, canSelfRegisterClub, updateClubGovernance } from "./clubGovernanceService.js";
 
 function resolveTenantIdForCreate(user) {
   if (!isRbacEnabled() || !user) {
@@ -217,7 +217,42 @@ export function updateClub(clubId, data = {}, tenantId) {
   if (data.code !== undefined) patch.code = data.code;
   if (data.description !== undefined) patch.description = data.description;
   if (data.status !== undefined) patch.status = data.status;
-  if (data.governance !== undefined) patch.governance = data.governance;
+
+  if (data.governance !== undefined) {
+    const governancePatch = {};
+    const incoming = data.governance || {};
+
+    if (incoming.presidentUserId !== undefined) {
+      governancePatch.presidentUserId = incoming.presidentUserId;
+    }
+    if (incoming.vicePresidentUserId !== undefined) {
+      governancePatch.vicePresidentUserId = incoming.vicePresidentUserId;
+    }
+    if (incoming.ownerUserId !== undefined) {
+      governancePatch.ownerUserId = incoming.ownerUserId;
+    }
+    if (incoming.registeredClusterId !== undefined) {
+      governancePatch.registeredClusterId = incoming.registeredClusterId;
+    }
+    if (incoming.registeredCourtIds !== undefined) {
+      governancePatch.registeredCourtIds = incoming.registeredCourtIds;
+    }
+
+    if (Object.keys(governancePatch).length > 0) {
+      const governanceResult = updateClubGovernance(
+        clubId,
+        governancePatch,
+        effectiveTenantId
+      );
+      if (!governanceResult.ok) {
+        return governanceResult;
+      }
+    }
+  }
+
+  if (Object.keys(patch).length === 0) {
+    return { ok: true, club: getRegistryClubById(clubId) };
+  }
 
   return updateClubMeta(clubId, patch);
 }

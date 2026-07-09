@@ -1,11 +1,16 @@
-import { seedTeamsIntoGroups } from "../../../pages/tournament.seeding.logic.js";
 import { getPlayerGenderKey, getPlayerRatingInternal } from "../../../models/player.js";
 import { createId } from "../../../utils/id.js";
-import { FORMAT_PRESET } from "../constants.js";
+import { FORMAT_PRESET, TEAM_GROUP_SEEDING } from "../constants.js";
 import {
   createTeamRecord,
   normalizeTeamData,
 } from "../models/index.js";
+import {
+  buildSnakeGroupsFromSortedTeams,
+  resolveGroupSeedingMode,
+  shuffleTeamsForOpenDraw,
+  sortTeamsForGroupSeeding,
+} from "./teamGroupSeedEngine.js";
 import {
   recommendGroupSizes,
 } from "./teamRoundRobinScheduleEngine.js";
@@ -328,8 +333,9 @@ export function suggestMlpTeamsFromPlayers(players = [], options = {}) {
   };
 }
 
-export function summarizeSeededGroupBalance(groups = [], teams = []) {
+export function summarizeSeededGroupBalance(groups = [], teams = [], options = {}) {
   const teamById = new Map(teams.map((team) => [team.id, team]));
+  const useTopPlayer = options.seedingMode === TEAM_GROUP_SEEDING.TOP_PLAYER_THEN_TOTAL;
 
   const groupStats = groups.map((group) => {
     const groupTeams = (group.teamIds || [])
@@ -339,65 +345,81 @@ export function summarizeSeededGroupBalance(groups = [], teams = []) {
     const avgLevel = levels.length
       ? Math.round((levels.reduce((sum, level) => sum + level, 0) / levels.length) * 100) / 100
       : 0;
+    const topLevels = groupTeams.map((team) => team.topPlayerRating || team.avgLevel || 0);
+    const topAvg = topLevels.length
+      ? Math.round((topLevels.reduce((sum, level) => sum + level, 0) / topLevels.length) * 100) / 100
+      : 0;
 
     return {
       groupId: group.id,
       groupName: group.name,
       teamCount: groupTeams.length,
       avgLevel,
+      topAvg,
       minLevel: levels.length ? Math.min(...levels) : 0,
       maxLevel: levels.length ? Math.max(...levels) : 0,
     };
   });
 
-  const avgs = groupStats.map((stat) => stat.avgLevel);
+  const avgs = groupStats.map((stat) => (useTopPlayer ? stat.topAvg : stat.avgLevel));
   const spread = avgs.length ? Math.max(...avgs) - Math.min(...avgs) : 0;
 
   return {
     groups: groupStats,
     balanced: spread <= 0.35,
     spread: Math.round(spread * 100) / 100,
+    seedingMode: options.seedingMode || null,
   };
 }
 
 /**
- * Assign existing teams to groups using skill-controlled snake seeding.
+ * Assign existing teams to groups using configured seeding mode + snake distribution.
  */
 export function assignSeededTeamsToGroups(teamData, options = {}) {
   const teams = teamData?.teams || [];
   if (teams.length < 2) {
-    return { teamData, balance: null };
+    return { teamData, balance: null, warnings: [] };
   }
 
-  const teamsForSeed = teams.map((team) => ({
-    id: team.id,
-    name: team.name,
-    avgLevel: Number(team.avgLevel) > 0 ? Number(team.avgLevel) : 0,
-  }));
+  const seedingMode = resolveGroupSeedingMode(
+    options.seedingMode ?? teamData?.settings?.groupSeeding
+  );
+  const players = options.players ?? [];
+  const randomFn = typeof options.randomFn === "function" ? options.randomFn : Math.random;
+  const warnings = [];
+
+  let preparedTeams;
+  if (seedingMode === TEAM_GROUP_SEEDING.OFF) {
+    preparedTeams = shuffleTeamsForOpenDraw(teams, randomFn);
+  } else {
+    preparedTeams = sortTeamsForGroupSeeding(teams, players, seedingMode);
+    if (
+      seedingMode === TEAM_GROUP_SEEDING.TOP_PLAYER_THEN_TOTAL &&
+      players.length === 0
+    ) {
+      warnings.push(
+        "Thiếu danh sách VĐV — xếp hạt giống fallback theo trung bình đội đã lưu."
+      );
+    }
+  }
 
   const recommendedSizes = recommendGroupSizes(teams.length);
   const groupCount =
     Number(options.groupCount) ||
     (recommendedSizes ? recommendedSizes.length : Math.min(2, teams.length));
 
-  const seeded = seedTeamsIntoGroups(teamsForSeed, groupCount, {
-    mode: "skill_controlled",
-  });
-
-  const groups = seeded.map((group, index) => ({
-    id: createId("grp"),
-    name: `Bảng ${group.group || String.fromCharCode(65 + index)}`,
-    teamIds: group.teams.map((team) => team.id),
-  }));
+  const groups = buildSnakeGroupsFromSortedTeams(preparedTeams, groupCount);
 
   const nextTeamData = normalizeTeamData({
     ...teamData,
+    teams: preparedTeams,
     groups,
   });
 
   return {
     teamData: nextTeamData,
-    balance: summarizeSeededGroupBalance(groups, teams),
+    balance: summarizeSeededGroupBalance(groups, preparedTeams, { seedingMode }),
+    warnings,
   };
 }
 
@@ -542,13 +564,16 @@ export function applyMlpAutoDraw(teamData, players = [], options = {}) {
     matchups: [],
   });
 
-  const { teamData: grouped, balance } = assignSeededTeamsToGroups(next, options);
+  const { teamData: grouped, balance, warnings: groupWarnings } = assignSeededTeamsToGroups(next, {
+    ...options,
+    players,
+  });
 
   return {
     ok: true,
     teamData: grouped,
     balance,
-    warnings: suggestion.warnings,
+    warnings: [...suggestion.warnings, ...(groupWarnings || [])],
     teamCount: suggestion.teams.length,
   };
 }

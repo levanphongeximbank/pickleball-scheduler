@@ -216,6 +216,32 @@ function calculateRuleScore(option, context = {}, diff = 0) {
   return Math.max(0, 100 - penalty);
 }
 
+function policyPlayerPairKey(policy) {
+  if (!policy?.playerA || !policy?.playerB) {
+    return "";
+  }
+  return [String(policy.playerA), String(policy.playerB)].sort().join("|");
+}
+
+function isFounderHardAvoid(policy) {
+  return (
+    policy?.source === "founder" &&
+    policy.type === "avoid_teammate" &&
+    policy.priority === "HIGH"
+  );
+}
+
+function isBlockedByFounderAvoid(policy, allPolicies) {
+  const key = policyPlayerPairKey(policy);
+  if (!key) {
+    return false;
+  }
+
+  return allPolicies.some(
+    (item) => isFounderHardAvoid(item) && policyPlayerPairKey(item) === key
+  );
+}
+
 function calculatePolicyScore(option = {}, context = {}) {
   const policies = context.policies || [];
 
@@ -225,6 +251,10 @@ function calculatePolicyScore(option = {}, context = {}) {
     }
 
     if (policy.type === "prefer_teammate") {
+      if (policy.source !== "founder" && isBlockedByFounderAvoid(policy, policies)) {
+        return score;
+      }
+
       const hasPair = policy.playerA && policy.playerB;
       const inTeamAPlayerA = option.teamA?.some((player) => player.id === policy.playerA);
       const inTeamAPlayerB = option.teamA?.some((player) => player.id === policy.playerB);
@@ -252,6 +282,33 @@ function calculatePolicyScore(option = {}, context = {}) {
       }
 
       return score;
+    }
+
+    if (policy.type === "avoid_teammate") {
+      const hasPair = policy.playerA && policy.playerB;
+      const inTeamAPlayerA = option.teamA?.some((player) => player.id === policy.playerA);
+      const inTeamAPlayerB = option.teamA?.some((player) => player.id === policy.playerB);
+      const inTeamBPlayerA = option.teamB?.some((player) => player.id === policy.playerA);
+      const inTeamBPlayerB = option.teamB?.some((player) => player.id === policy.playerB);
+
+      if (!hasPair) {
+        return score;
+      }
+
+      const isSameTeam =
+        (inTeamAPlayerA && inTeamAPlayerB) ||
+        (inTeamBPlayerA && inTeamBPlayerB);
+
+      if (!isSameTeam) {
+        return score;
+      }
+
+      const penalty =
+        policy.priority === "HIGH"
+          ? AI_CONFIG.scoring.avoidTeammateHardPenalty
+          : AI_CONFIG.scoring.avoidTeammatePenalty;
+
+      return score - penalty;
     }
 
     return score;

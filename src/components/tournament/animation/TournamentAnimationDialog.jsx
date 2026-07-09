@@ -10,6 +10,11 @@ import MatchPairingAnimation from "./MatchPairingAnimation.jsx";
 import DailyFairMatchScreen from "./daily/DailyFairMatchScreen.jsx";
 import BracketRevealAnimation from "./BracketRevealAnimation.jsx";
 import FlowStepHandoff from "./shared/FlowStepHandoff.jsx";
+import EffectPreludeScreen from "./shared/EffectPreludeScreen.jsx";
+import {
+  buildEffectPreludeContext,
+  buildEffectPreludeParticipants,
+} from "./shared/effectPreludeConfig.js";
 import { exitAppFullscreen } from "./shared/browserFullscreen.js";
 import { VISUAL_MODES } from "./animationConfig.js";
 import { FLOW_MODES, isGuidedFlow } from "./shared/tournamentFlowConfig.js";
@@ -65,6 +70,8 @@ export default function TournamentAnimationDialog({
   bracketReviewMode = false,
   broadcastStatus,
   broadcastError,
+  preludeActive = false,
+  onPreludeComplete,
   ...payload
 }) {
   const guided = isGuidedFlow(flowMode);
@@ -109,6 +116,39 @@ export default function TournamentAnimationDialog({
   const guidedBracketReview =
     bracketReviewMode && guided && animationMode === ANIMATION_MODES.BRACKET_REVEAL;
   const useGuidedFullscreen = guided;
+  const preludeContext = buildEffectPreludeContext(payload);
+  const preludeParticipants = buildEffectPreludeParticipants(payload);
+
+  if (open && preludeActive && animationMode) {
+    return (
+      <Dialog
+        open
+        onClose={onFlowExit || onDismiss}
+        disableEscapeKeyDown
+        fullScreen={useGuidedFullscreen}
+        fullWidth
+        maxWidth={useGuidedFullscreen ? false : "lg"}
+        scroll="paper"
+        PaperProps={{
+          sx: { bgcolor: "#f8fafc" },
+        }}
+      >
+        <DialogContent sx={{ p: { xs: 1, sm: 2 } }}>
+          <EffectPreludeScreen
+            presetKey={animationMode}
+            context={preludeContext}
+            active
+            participants={preludeParticipants}
+            summaryTitle="Tóm tắt giải"
+            summarySubtitle={payload.subtitle}
+            onComplete={onPreludeComplete}
+            onSkip={onPreludeComplete}
+            onExit={onFlowExit || onDismiss}
+          />
+        </DialogContent>
+      </Dialog>
+    );
+  }
 
   return (
     <Dialog

@@ -9,7 +9,7 @@ export default function GovernanceMemberSelect({
   emptyLabel = "Chưa chọn",
   disabled = false,
   required = false,
-  helperCandidatesEmpty = "Chưa có thành viên có tài khoản liên kết.",
+  helperCandidatesEmpty = "Chưa có vận động viên có tài khoản liên kết trong CLB.",
 }) {
   return (
     <FormControl fullWidth required={required} disabled={disabled}>

@@ -33,6 +33,8 @@ export const AI_CONFIG = {
     mixedPairPenalty: 25,
     preferTeammateBonus: 15,
     preferTeammatePenalty: 15,
+    avoidTeammatePenalty: 35,
+    avoidTeammateHardPenalty: 120,
   },
   penalties: {
     repeatedPartner: 8,

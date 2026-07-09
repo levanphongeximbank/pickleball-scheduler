@@ -13,6 +13,8 @@ import {
 export default function SelectPlayersResult({
   scheduleResult,
   previewMode,
+  canIntervene = false,
+  interventionBanner = null,
   onApplyPreview,
   onCancelPreview,
   lockedCourts,
@@ -41,7 +43,9 @@ export default function SelectPlayersResult({
           </Typography>
           <Typography color="text.secondary" sx={{ mb: 2 }}>
             Bạn đang xem lịch xếp AI trước khi áp dụng. Bạn có thể chấp nhận hoặc hủy.
+            {!canIntervene && " Chỉ Founder mới có thể can thiệp đổi cặp trên sân."}
           </Typography>
+          {interventionBanner}
           <Stack direction="row" spacing={2}>
             <Button variant="contained" color="success" onClick={onApplyPreview}>
               ✅ Áp dụng lịch xếp
@@ -218,13 +222,15 @@ export default function SelectPlayersResult({
               </Stack>
 
               <Stack direction="row" spacing={1} sx={{ mb: 2, flexWrap: "wrap" }}>
-                <Button
-                  size="small"
-                  variant="outlined"
-                  onClick={() => onSwapTeams(court.court)}
-                >
-                  Đảo đội A/B
-                </Button>
+                {canIntervene ? (
+                  <Button
+                    size="small"
+                    variant="outlined"
+                    onClick={() => onSwapTeams(court.court)}
+                  >
+                    Đảo đội A/B
+                  </Button>
+                ) : null}
               </Stack>
 
               <Grid container spacing={2}>
@@ -239,13 +245,15 @@ export default function SelectPlayersResult({
                         <Typography>
                           • {player.name} ({player.level})
                         </Typography>
-                        <Button
-                          size="small"
-                          variant="text"
-                          onClick={() => onMovePlayer(court.court, "A", player.id)}
-                        >
-                          Chuyển B
-                        </Button>
+                        {canIntervene ? (
+                          <Button
+                            size="small"
+                            variant="text"
+                            onClick={() => onMovePlayer(court.court, "A", player.id)}
+                          >
+                            Chuyển B
+                          </Button>
+                        ) : null}
                       </Stack>
                     ))}
 
@@ -266,13 +274,15 @@ export default function SelectPlayersResult({
                         <Typography>
                           • {player.name} ({player.level})
                         </Typography>
-                        <Button
-                          size="small"
-                          variant="text"
-                          onClick={() => onMovePlayer(court.court, "B", player.id)}
-                        >
-                          Chuyển A
-                        </Button>
+                        {canIntervene ? (
+                          <Button
+                            size="small"
+                            variant="text"
+                            onClick={() => onMovePlayer(court.court, "B", player.id)}
+                          >
+                            Chuyển A
+                          </Button>
+                        ) : null}
                       </Stack>
                     ))}
 

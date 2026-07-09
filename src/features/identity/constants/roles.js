@@ -65,7 +65,7 @@ export const CANONICAL_ROLES = Object.freeze([
 export const ROLE_LABELS = Object.freeze({
   [ROLES.PLATFORM_ADMIN]: "Quản trị nền tảng / Super Admin",
   [ROLES.SUPER_ADMIN]: "Quản trị nền tảng / Super Admin",
-  [ROLES.SYSTEM_TECHNICIAN]: "Kỹ thuật viên hệ thống",
+  [ROLES.SYSTEM_TECHNICIAN]: "Admin",
   [ROLES.TENANT_OWNER]: "Chủ đơn vị / Chủ sân",
   [ROLES.COURT_OWNER]: "Chủ đơn vị / Chủ sân",
   [ROLES.VENUE_MANAGER]: "Quản lý cơ sở",
@@ -180,4 +180,9 @@ export function isRefereeRole(role) {
 
 export function isTeamCaptainRole(role) {
   return rolesEqual(role, ROLES.TEAM_CAPTAIN);
+}
+
+export function isPlatformAthleteViewer(role) {
+  const normalized = normalizeRole(role);
+  return isGlobalRole(normalized) || isPlatformScopedRole(normalized);
 }

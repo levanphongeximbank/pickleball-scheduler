@@ -14,6 +14,7 @@ export function useFairMatchSequence({
   steps = [],
   speed = "normal",
   controlMode = FAIR_MATCH_CONTROL_MODES.AUTO,
+  skipAnalyzePhase = false,
   onComplete,
 }) {
   const timing = getDailyFairMatchTiming(speed);
@@ -54,8 +55,10 @@ export function useFairMatchSequence({
       return false;
     }
 
-    setPhase(FAIR_MATCH_PHASES.ANALYZE);
-    await wait(timing.analyzeMs);
+    if (!skipAnalyzePhase) {
+      setPhase(FAIR_MATCH_PHASES.ANALYZE);
+      await wait(timing.analyzeMs);
+    }
 
     setPhase(FAIR_MATCH_PHASES.TEAM_A);
     await wait(timing.teamRevealMs);
@@ -88,7 +91,7 @@ export function useFairMatchSequence({
 
     setPhase(FAIR_MATCH_PHASES.IDLE);
     return true;
-  }, [steps.length, timing, wait, finishIfDone]);
+  }, [steps.length, timing, wait, finishIfDone, skipAnalyzePhase]);
 
   const runAutoChain = useCallback(async () => {
     if (runningRef.current) {

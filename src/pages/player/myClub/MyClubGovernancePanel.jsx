@@ -34,6 +34,7 @@ import {
   getGovernanceDisplayLabels,
   getRegisteredClusterLabel,
   listClubGovernanceCandidates,
+  assignClubVicePresident,
   transferClubOwnership,
   transferClubPresident,
   updateClubGovernance,
@@ -62,7 +63,10 @@ export default function MyClubGovernancePanel({ clubId, tenantId, revision = 0, 
     [clubId, tenantId, revision]
   );
 
-  const labels = useMemo(() => (club ? getGovernanceDisplayLabels(club) : null), [club]);
+  const labels = useMemo(
+    () => (club ? getGovernanceDisplayLabels(club, tenantId) : null),
+    [club, tenantId]
+  );
   const registeredCluster = useMemo(
     () => (club ? getRegisteredClusterLabel(club, tenantId) : null),
     [club, tenantId]
@@ -114,18 +118,42 @@ export default function MyClubGovernancePanel({ clubId, tenantId, revision = 0, 
     onRefresh?.();
   };
 
-  const handleSaveGovernance = () => {
+  const handleSaveGovernance = async () => {
     setBusy(true);
     setError(null);
-    const result = updateClubGovernance(clubId, {
-      vicePresidentUserId: vicePresidentId.trim() || null,
-      registeredClusterId: registeredClusterId.trim() || null,
-    });
-    setBusy(false);
-    if (!result.ok) {
-      setError(result.error);
-      return;
+
+    const currentVice = club.governance?.vicePresidentUserId || "";
+    const nextVice = vicePresidentId.trim();
+    const currentCluster = club.governance?.registeredClusterId || "";
+    const nextCluster = registeredClusterId.trim();
+
+    if (nextVice !== currentVice) {
+      const viceResult = await assignClubVicePresident(
+        clubId,
+        nextVice || null,
+        tenantId
+      );
+      if (!viceResult.ok) {
+        setBusy(false);
+        setError(viceResult.error);
+        return;
+      }
     }
+
+    if (nextCluster !== currentCluster) {
+      const clusterResult = updateClubGovernance(
+        clubId,
+        { registeredClusterId: nextCluster || null },
+        tenantId
+      );
+      if (!clusterResult.ok) {
+        setBusy(false);
+        setError(clusterResult.error);
+        return;
+      }
+    }
+
+    setBusy(false);
     setMessage({ type: "success", text: "Đã cập nhật quản trị CLB." });
     onRefresh?.();
   };
@@ -185,10 +213,15 @@ export default function MyClubGovernancePanel({ clubId, tenantId, revision = 0, 
             label="Phó chủ tịch"
             value={vicePresidentId || club.governance?.vicePresidentUserId || ""}
             onChange={setVicePresidentId}
-            candidates={candidates}
+            candidates={candidates.filter(
+              (item) => item.userId !== club.governance?.presidentUserId
+            )}
             allowEmpty
             emptyLabel="Không có"
           />
+          <Typography variant="caption" color="text.secondary">
+            Phó chủ tịch phải là vận động viên trong danh sách CLB.
+          </Typography>
 
           <FormControl fullWidth>
             <InputLabel>Cụm sân đăng ký</InputLabel>

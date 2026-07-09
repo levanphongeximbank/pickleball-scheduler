@@ -124,7 +124,7 @@ export const PERMISSION_LABELS = Object.freeze({
 export const PERMISSION_GROUPS = Object.freeze([
   {
     id: "system-technician",
-    label: "Kỹ thuật viên hệ thống",
+    label: "Admin",
     permissions: [
       PERMISSIONS.SYSTEM_HEALTH_VIEW,
       PERMISSIONS.SYSTEM_LOG_VIEW,

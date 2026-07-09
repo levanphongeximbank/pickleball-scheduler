@@ -18,9 +18,11 @@ import {
   filterInPageNavHub,
   getDefaultHomePath,
   getRouteAccessPermissions,
+  canAccessRoute,
 } from "../src/auth/menuAccess.js";
 import { MENU_GROUPS } from "../src/config/navigationConfig.js";
 import { TOURNAMENT_IN_PAGE_NAV } from "../src/config/v5Menu/tournamentInPageNav.js";
+import { SYSTEM_TECHNICIAN_MENU_ROOT } from "../src/config/v5Menu/systemTechnicianMenu.js";
 
 const RBAC_ON = { rbacEnabled: true };
 
@@ -29,7 +31,7 @@ function user(role, extra = {}) {
 }
 
 test("V5.2 role labels — tiếng Việt", () => {
-  assert.equal(ROLE_LABELS[ROLES.SYSTEM_TECHNICIAN], "Kỹ thuật viên hệ thống");
+  assert.equal(ROLE_LABELS[ROLES.SYSTEM_TECHNICIAN], "Admin");
   assert.equal(ROLE_LABELS[ROLES.TEAM_CAPTAIN], "Trưởng nhóm / Đội trưởng");
   assert.equal(ROLE_LABELS[ROLES.PLATFORM_ADMIN], "Quản trị nền tảng / Super Admin");
   assert.equal(ROLE_LABELS[ROLES.TENANT_OWNER], "Chủ đơn vị / Chủ sân");
@@ -45,11 +47,25 @@ test("SYSTEM_TECHNICIAN — quyền kỹ thuật, không quyền phá production
   const tech = user(ROLES.SYSTEM_TECHNICIAN);
   assert.equal(roleHasPermission(tech.role, PERMISSIONS.TENANT_VIEW), true);
   assert.equal(roleHasPermission(tech.role, PERMISSIONS.SYSTEM_HEALTH_VIEW), true);
+  assert.equal(roleHasPermission(tech.role, PERMISSIONS.PLAYER_VIEW), true);
   assert.equal(roleHasPermission(tech.role, PERMISSIONS.ROLE_MANAGE), false);
   assert.equal(roleHasPermission(tech.role, PERMISSIONS.BILLING_TENANT_LOCK), false);
   assert.equal(roleHasPermission(tech.role, PERMISSIONS.TOURNAMENT_DELETE), false);
   assert.equal(can(tech, PERMISSIONS.TENANT_VIEW, {}, RBAC_ON), true);
+  assert.equal(can(tech, PERMISSIONS.PLAYER_VIEW, {}, RBAC_ON), true);
   assert.equal(can(tech, PERMISSIONS.ROLE_MANAGE, {}, RBAC_ON), false);
+});
+
+test("SYSTEM_TECHNICIAN — truy cập /players toàn hệ thống", () => {
+  const tech = user(ROLES.SYSTEM_TECHNICIAN);
+  const check = (path) =>
+    canAccessRoute(
+      (perm, scope) => can(tech, perm, scope, RBAC_ON),
+      path,
+      {}
+    );
+
+  assert.equal(check("/players"), true);
 });
 
 test("SYSTEM_TECHNICIAN — xem venue platform scope", () => {
@@ -149,6 +165,13 @@ test("Menu filter — SYSTEM_TECHNICIAN không thấy nhóm vận hành sân", (
   assert.ok(!groupIds.includes(MENU_GROUP_IDS.VENUE_OPS));
   assert.ok(!groupIds.includes(MENU_GROUP_IDS.FINANCE));
   assert.ok(groupIds.includes(MENU_GROUP_IDS.SYSTEM_TECH_ZONE));
+});
+
+test("SYSTEM_TECHNICIAN menu — có mục Vận động viên", () => {
+  const labels = (SYSTEM_TECHNICIAN_MENU_ROOT.children || []).map((item) => item.text);
+  assert.ok(labels.includes("Vận động viên"));
+  const playersItem = SYSTEM_TECHNICIAN_MENU_ROOT.children.find((item) => item.path === "/players");
+  assert.ok(playersItem);
 });
 
 test("Menu filter — CASHIER không thấy mục tạo giải", () => {

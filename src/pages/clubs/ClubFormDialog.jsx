@@ -15,12 +15,14 @@ import {
   Select,
   Stack,
   TextField,
+  Typography,
 } from "@mui/material";
 
 import { useAuth } from "../../context/AuthContext.jsx";
 import { ROLES, normalizeRole } from "../../auth/roles.js";
+import GovernanceMemberSelect from "../../components/club/GovernanceMemberSelect.jsx";
 import { listClustersForVenue } from "../../features/court-cluster/services/courtClusterService.js";
-import { CLUB_STATUSES } from "../../features/club/index.js";
+import { CLUB_STATUSES, listClubGovernanceCandidates } from "../../features/club/index.js";
 import { createClub, updateClub } from "../../features/club/index.js";
 
 const defaultForm = {
@@ -47,6 +49,11 @@ export default function ClubFormDialog({ open, club, tenantId, onClose, onSucces
   const venueClusters = useMemo(
     () => (tenantId ? listClustersForVenue(tenantId) : []),
     [tenantId]
+  );
+
+  const governanceCandidates = useMemo(
+    () => (isEdit && club?.id ? listClubGovernanceCandidates(club.id, tenantId) : []),
+    [isEdit, club?.id, tenantId]
   );
 
   useEffect(() => {
@@ -160,12 +167,31 @@ export default function ClubFormDialog({ open, club, tenantId, onClose, onSucces
               disabled={isClubManager}
             />
           )}
-          <TextField
-            label="User ID Phó chủ tịch"
-            value={form.vicePresidentUserId}
-            onChange={(e) => setForm((f) => ({ ...f, vicePresidentUserId: e.target.value }))}
-            helperText="Tùy chọn"
-          />
+          {isEdit ? (
+            <>
+              <GovernanceMemberSelect
+                label="Phó chủ tịch"
+                value={form.vicePresidentUserId}
+                onChange={(value) => setForm((f) => ({ ...f, vicePresidentUserId: value }))}
+                candidates={governanceCandidates.filter(
+                  (item) =>
+                    item.userId !== (form.presidentUserId || club?.governance?.presidentUserId)
+                )}
+                allowEmpty
+                emptyLabel="Không có"
+              />
+              <Typography variant="caption" color="text.secondary">
+                Phó chủ tịch phải là vận động viên trong danh sách CLB.
+              </Typography>
+            </>
+          ) : (
+            <TextField
+              label="User ID Phó chủ tịch"
+              value={form.vicePresidentUserId}
+              onChange={(e) => setForm((f) => ({ ...f, vicePresidentUserId: e.target.value }))}
+              helperText="Tùy chọn — gán sau khi CLB có vận động viên"
+            />
+          )}
           <FormControl fullWidth>
             <InputLabel>Cụm sân đăng ký</InputLabel>
             <Select

@@ -52,9 +52,9 @@ export default function MyClubPage() {
   }, [clubId, tenantId, revision]);
 
   const governanceLabels = clubSummary
-    ? getGovernanceDisplayLabels({ governance: clubSummary.governance })
+    ? getGovernanceDisplayLabels({ id: clubId, governance: clubSummary.governance }, tenantId)
     : clubRecord
-      ? getGovernanceDisplayLabels(clubRecord)
+      ? getGovernanceDisplayLabels(clubRecord, tenantId)
       : null;
 
   const registeredCluster = clubSummary

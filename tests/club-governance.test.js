@@ -23,7 +23,10 @@ import {
   rejectClubRegistration,
   getRegisteredClusterLabel,
   updateClubGovernance,
+  assignClubVicePresident,
+  listClubGovernanceCandidates,
 } from "../src/features/club/index.js";
+import { saveAthleteClubLink, loadAthleteClubLink } from "../src/features/club/storage/athleteClubLinkStore.js";
 import { deleteClub } from "../src/domain/clubService.js";
 import { saveClubData, getDefaultClubData } from "../src/domain/clubStorage.js";
 import { normalizePlayers } from "../src/models/player.js";
@@ -90,8 +93,26 @@ function seedClub() {
   saveClubs([makeClub()]);
   const players = normalizePlayers([
     { id: "p1", name: "Player 1", tenantId: TENANT, level: 3, status: "active", active: true },
+    {
+      id: "p-new-president",
+      name: "New President",
+      tenantId: TENANT,
+      level: 3.5,
+      status: "active",
+      active: true,
+    },
+    {
+      id: "p-vice",
+      name: "Vice Player",
+      tenantId: TENANT,
+      level: 3,
+      status: "active",
+      active: true,
+    },
   ]);
   saveClubData(CLUB_ID, { ...getDefaultClubData(CLUB_ID), players, tenantId: TENANT });
+  saveAthleteClubLink("user-new-president", { clubId: CLUB_ID, playerId: "p-new-president" });
+  saveAthleteClubLink("user-vice", { clubId: CLUB_ID, playerId: "p-vice" });
 }
 
 describe("club governance", () => {
@@ -286,7 +307,7 @@ describe("club governance", () => {
     assert.match(result.error, /Chủ tịch/);
   });
 
-  it("governance owner can change club president", () => {
+  it("governance owner can change club president to linked athlete", () => {
     const club = makeClub();
     const owner = { id: "user-owner", role: ROLES.CLUB_MANAGER, clubId: CLUB_ID };
     saveAuthSession(owner);
@@ -295,9 +316,42 @@ describe("club governance", () => {
 
     const result = updateClubGovernance(CLUB_ID, {
       presidentUserId: "user-new-president",
-    });
+    }, TENANT);
     assert.equal(result.ok, true);
     assert.equal(result.club.governance.presidentUserId, "user-new-president");
+    assert.equal(loadAthleteClubLink("user-new-president")?.playerId, "p-new-president");
+  });
+
+  it("rejects vice president who is not a linked club athlete", async () => {
+    saveAuthSession({ id: "user-president", role: ROLES.CLUB_MANAGER, clubId: CLUB_ID });
+    const result = await assignClubVicePresident(CLUB_ID, "user-random", TENANT);
+    assert.equal(result.ok, false);
+    assert.match(result.error, /vận động viên/i);
+  });
+
+  it("assigns vice president from linked club athlete", async () => {
+    saveAuthSession({ id: "user-president", role: ROLES.CLUB_MANAGER, clubId: CLUB_ID });
+    const result = await assignClubVicePresident(CLUB_ID, "user-vice", TENANT);
+    assert.equal(result.ok, true);
+    assert.equal(result.club.governance.vicePresidentUserId, "user-vice");
+    assert.equal(loadAthleteClubLink("user-vice")?.playerId, "p-vice");
+  });
+
+  it("rejects vice president same as president", async () => {
+    saveAuthSession({ id: "user-president", role: ROLES.CLUB_MANAGER, clubId: CLUB_ID });
+    const result = await assignClubVicePresident(CLUB_ID, "user-president", TENANT);
+    assert.equal(result.ok, false);
+    assert.match(result.error, /trùng Chủ tịch/i);
+  });
+
+  it("lists only linked athletes as governance candidates", () => {
+    const candidates = listClubGovernanceCandidates(CLUB_ID, TENANT);
+    assert.ok(candidates.some((item) => item.userId === "user-new-president"));
+    assert.ok(candidates.some((item) => item.userId === "user-vice"));
+    assert.equal(
+      candidates.every((item) => item.playerId),
+      true
+    );
   });
 
   it("governance owner can delete club without club.delete permission", () => {

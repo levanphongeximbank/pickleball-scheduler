@@ -8,6 +8,7 @@ import { Box, CircularProgress } from "@mui/material";
 
 import MainLayout from "./layouts/MainLayout";
 import PickVnOnboardingGate from "./components/auth/PickVnOnboardingGate.jsx";
+import SuperAdminRouteGuard from "./features/pairing-constraints/guards/superAdminRouteGuard.jsx";
 
 import { AuthProvider } from "./context/AuthContext.jsx";
 
@@ -290,6 +291,12 @@ const CourtCalendarPreviewPage = lazy(() =>
 
 );
 
+const PairingInterventionPreviewPage = lazy(() =>
+
+  import("./pages/dev/PairingInterventionPreviewPage")
+
+);
+
 const CourtManagementBookingsPage = lazy(() =>
 
   import("./pages/courtManagement/CourtManagementBookingsPage")
@@ -401,6 +408,14 @@ export default function Router() {
             <Route element={<MainLayout />}>
 
             <Route path="/dashboard" element={<Dashboard />} />
+            <Route
+              path="/dev/pairing-intervention-preview"
+              element={
+                <SuperAdminRouteGuard>
+                  <PairingInterventionPreviewPage />
+                </SuperAdminRouteGuard>
+              }
+            />
             <Route path="/dashboard/rankings" element={<RankingManagementPage />} />
 
             <Route path="/players/skill" element={<SkillLevelsPage />} />

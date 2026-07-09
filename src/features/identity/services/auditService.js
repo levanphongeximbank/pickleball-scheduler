@@ -15,6 +15,8 @@ export const AUDIT_ACTIONS = Object.freeze({
   PERMISSION_CHANGE: "permission_change",
   PASSWORD_CHANGE: "password_change",
   RESET_PASSWORD: "reset_password",
+  PAIRING_OVERRIDE: "pairing_override",
+  GROUP_OVERRIDE: "group_override",
 });
 
 const AUDIT_TABLE = "audit_logs";

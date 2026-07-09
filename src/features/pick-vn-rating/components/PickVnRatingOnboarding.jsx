@@ -88,6 +88,7 @@ function QuestionField({ question, answers, onChange, showWhen = true }) {
               key={option.id}
               control={
                 <Checkbox
+                  size="small"
                   checked={selected.includes(option.id)}
                   onChange={(event) => {
                     let next = [...selected];
@@ -101,6 +102,11 @@ function QuestionField({ question, answers, onChange, showWhen = true }) {
                 />
               }
               label={option.label}
+              sx={{
+                "& .MuiFormControlLabel-label": {
+                  fontSize: { xs: "0.875rem", sm: "0.9375rem" },
+                },
+              }}
             />
           ))}
         </FormGroup>
@@ -119,8 +125,17 @@ function QuestionField({ question, answers, onChange, showWhen = true }) {
           <FormControlLabel
             key={option.id}
             value={option.id}
-            control={<Radio />}
+            control={<Radio size="small" />}
             label={option.label}
+            sx={{
+              alignItems: "flex-start",
+              mx: 0,
+              "& .MuiFormControlLabel-label": {
+                fontSize: { xs: "0.875rem", sm: "0.9375rem" },
+                lineHeight: 1.35,
+                pt: 0.25,
+              },
+            }}
           />
         ))}
       </RadioGroup>

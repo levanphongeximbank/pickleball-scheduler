@@ -171,7 +171,7 @@ export async function completePickVnOnboarding(
     from: existing?.currentRating ?? null,
     to: assessment.provisional_rating,
     status: assessment.rating_status,
-    source: "onboarding_assessment_v1",
+    source: "onboarding_assessment_v2",
     note: `Score ${assessment.assessment_score}/100; self ${assessment.self_declared_rating}`,
     at: now,
   });

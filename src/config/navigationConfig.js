@@ -387,7 +387,7 @@ export const MENU_GROUPS = [
   ...V5_MENU_GROUPS,
   {
     id: MENU_GROUP_IDS.SYSTEM_TECH_ZONE,
-    label: "Kỹ thuật hệ thống",
+    label: "Admin",
     roles: [ROLES.SYSTEM_TECHNICIAN, ROLES.SUPPORT],
     items: [SYSTEM_TECHNICIAN_MENU_ROOT],
   },

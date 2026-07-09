@@ -12,6 +12,7 @@ import {
   MATCHUP_STATUS,
   SCORING_SYSTEM,
   SUB_MATCH_STATUS,
+  TEAM_GROUP_SEEDING,
 } from "../constants.js";
 
 const VALID_CATEGORIES = new Set(Object.values(DISCIPLINE_CATEGORY));
@@ -21,6 +22,7 @@ const VALID_MATCHUP_STATUSES = new Set(Object.values(MATCHUP_STATUS));
 const VALID_DISCIPLINE_KINDS = new Set(Object.values(DISCIPLINE_KIND));
 const VALID_ACTIVATION_RULES = new Set(Object.values(ACTIVATION_RULE));
 const VALID_DREAMBREAKER_STATUSES = new Set(Object.values(DREAMBREAKER_STATUS));
+const VALID_GROUP_SEEDING = new Set(Object.values(TEAM_GROUP_SEEDING));
 
 function uniqueStringIds(values = []) {
   return [...new Set(values.map((value) => String(value).trim()).filter(Boolean))];
@@ -187,6 +189,8 @@ export function normalizeTeam(team, index = 0) {
     lockedPlayerIds: uniqueStringIds(team.lockedPlayerIds || []),
     seed: Number(team.seed) > 0 ? Number(team.seed) : 0,
     avgLevel: Number(team.avgLevel) > 0 ? Number(team.avgLevel) : 0,
+    topPlayerRating: Number(team.topPlayerRating) > 0 ? Number(team.topPlayerRating) : 0,
+    totalRating: Number(team.totalRating) > 0 ? Number(team.totalRating) : 0,
   };
 }
 
@@ -213,6 +217,8 @@ export function createTeamRecord(options = {}) {
     lockedPlayerIds: options.lockedPlayerIds || [],
     seed: options.seed,
     avgLevel: options.avgLevel,
+    topPlayerRating: options.topPlayerRating,
+    totalRating: options.totalRating,
   });
 }
 
@@ -453,6 +459,9 @@ export function normalizeTeamData(teamData = {}) {
     ...DEFAULT_TEAM_TOURNAMENT_SETTINGS,
     ...rawSettings,
     formatPreset: rawSettings.formatPreset || FORMAT_PRESET.CUSTOM,
+    groupSeeding: VALID_GROUP_SEEDING.has(rawSettings.groupSeeding)
+      ? rawSettings.groupSeeding
+      : DEFAULT_TEAM_TOURNAMENT_SETTINGS.groupSeeding,
     rosterRules: {
       ...DEFAULT_TEAM_TOURNAMENT_SETTINGS.rosterRules,
       ...(rawSettings.rosterRules || {}),

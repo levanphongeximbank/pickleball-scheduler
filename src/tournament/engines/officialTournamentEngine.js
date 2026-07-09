@@ -8,8 +8,9 @@ import {
 } from "../../models/tournament/constants.js";
 import { getPlayerGenderKey } from "../../models/player.js";
 import { validateEntryForEvent, validateGroupDrawInput } from "./validationEngine.js";
+import { assignGroupsWithConstraints } from "../../features/pairing-constraints/engines/constraintGroupEngine.js";
 import { assignEntriesOpenConditional } from "./openConditionalRandomEngine.js";
-import { assignEntriesToGroupsSnake, summarizeGroupBalance } from "./seededGroupEngine.js";
+import { summarizeGroupBalance } from "./seededGroupEngine.js";
 import { buildGroupStageSchedule, countGroupStageMatches } from "./scheduleEngine.js";
 import {
   assignSeedsToEntries,
@@ -348,6 +349,7 @@ export function buildOfficialAiBalancePlan({
   groupCount = 2,
   manualEntries = null,
   individualRegistration = true,
+  pairingConstraints = [],
   pointsConfig = { win: 2, loss: 1, forfeit: 0 },
 } = {}) {
   const event = ensureOfficialEvent(tournament, eventType, eventId);
@@ -355,19 +357,21 @@ export function buildOfficialAiBalancePlan({
     selectedPlayerIds.includes(String(player.id))
   );
 
+  const pairingOptions = {
+    tournamentId: tournament.id,
+    eventId: event.id,
+    mode: "skill_controlled",
+    pairingConstraints,
+  };
+
   const baseEntries =
     Array.isArray(manualEntries) && manualEntries.length > 0
       ? manualEntries
       : individualRegistration
-        ? suggestBalancedEntriesFromIndividuals(selectedPlayers, eventType, {
-            tournamentId: tournament.id,
-            eventId: event.id,
-          })
-        : suggestEntriesFromPlayers(selectedPlayers, eventType, {
-            mode: "skill_controlled",
-            tournamentId: tournament.id,
-            eventId: event.id,
-          });
+        ? suggestBalancedEntriesFromIndividuals(selectedPlayers, eventType, pairingOptions)
+        : suggestEntriesFromPlayers(selectedPlayers, eventType, pairingOptions);
+
+  const constraintWarnings = pairingOptions.constraintWarnings || [];
 
   const entries = assignSeedsToEntries(baseEntries, selectedPlayers);
 
@@ -389,14 +393,19 @@ export function buildOfficialAiBalancePlan({
     };
   }
 
-  const groups = assignEntriesToGroupsSnake(entries, groupCount, selectedPlayers).map(
-    (group) => ({
-      ...group,
-      tournamentId: tournament.id,
-      eventId: event.id,
-      pointsConfig,
-    })
+  const groupResult = assignGroupsWithConstraints(
+    entries,
+    groupCount,
+    selectedPlayers,
+    pairingConstraints
   );
+
+  const groups = groupResult.groups.map((group) => ({
+    ...group,
+    tournamentId: tournament.id,
+    eventId: event.id,
+    pointsConfig,
+  }));
 
   const schedule = buildGroupStageSchedule(groups, {
     tournamentId: tournament.id,
@@ -416,7 +425,11 @@ export function buildOfficialAiBalancePlan({
       groups: schedule.groups,
       matches: schedule.matches,
     },
-    warnings: validation.warnings,
+    warnings: [
+      ...(validation.warnings || []),
+      ...(constraintWarnings || []),
+      ...(groupResult.warnings || []),
+    ],
     balance,
     matchCount: countGroupStageMatches(schedule.groups),
   };

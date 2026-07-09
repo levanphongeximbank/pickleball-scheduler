@@ -193,7 +193,7 @@ export default function PlayerProfile() {
 
     setFormMessage({
       type: "success",
-      text: "Đã gửi yêu cầu thay đổi trình độ. Kỹ thuật viên hệ thống sẽ duyệt.",
+      text: "Đã gửi yêu cầu thay đổi trình độ. Admin sẽ duyệt.",
     });
     setChangeReason("");
     setRequestTick((value) => value + 1);

@@ -2,6 +2,7 @@ import { createTeamsFromPlayers } from "../../pages/tournament.seeding.logic.js"
 import { getPlayerGenderKey } from "../../models/player.js";
 import { EVENT_TYPE } from "../../models/tournament/constants.js";
 import { createEntryRecord } from "../../models/tournament/entry.js";
+import { optimizeTeamsWithConstraints } from "../../features/pairing-constraints/engines/constraintPairingEngine.js";
 
 function playerRating(player) {
   return Number(player?.rating ?? player?.level ?? 3.5);
@@ -74,15 +75,32 @@ export function createMixedPairsFromPlayers(players = []) {
 export function suggestTeamsFromPlayers(players = [], eventType, options = {}) {
   const filtered = filterPlayersForEventType(players, eventType);
   const mode = options.mode || "skill_controlled";
+  const constraints = options.pairingConstraints || [];
 
+  let teams;
   if (eventType === EVENT_TYPE.MIXED_DOUBLE) {
-    return createMixedPairsFromPlayers(filtered);
+    teams = createMixedPairsFromPlayers(filtered);
+  } else {
+    teams = createTeamsFromPlayers(filtered, {
+      mode,
+      teamSize: 2,
+    });
   }
 
-  return createTeamsFromPlayers(filtered, {
-    mode,
-    teamSize: 2,
+  if (constraints.length === 0) {
+    return teams;
+  }
+
+  const playersById = new Map(filtered.map((player) => [String(player.id), player]));
+  const optimized = optimizeTeamsWithConstraints(teams, constraints, {
+    playersById,
+    maxAttempts: options.constraintMaxAttempts,
   });
+
+  options.constraintWarnings = optimized.warnings;
+  options.constraintEvaluation = optimized.evaluation;
+
+  return optimized.teams;
 }
 
 export function teamToEntry(team, options = {}) {

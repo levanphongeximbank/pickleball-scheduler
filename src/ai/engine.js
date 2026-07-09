@@ -301,7 +301,10 @@ export function runAI(players, options = {}) {
 
   const context = {
     history: aiData.history || {},
-    policies: aiData.policies || [],
+    policies: [
+      ...(options.founderCourtPolicies || []),
+      ...(aiData.policies || []),
+    ],
     rules: aiData.rules || [],
     competition,
     waitingSnapshot: waitingResult.waitingSnapshot || {},

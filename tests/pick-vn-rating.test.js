@@ -108,12 +108,12 @@ test("completePickVnOnboarding saves assessment and clears gate", async () => {
     answers: {
       gender: "male",
       birth_year: 1992,
-      playing_duration: "1_3yr",
+      playing_duration: "2_3yr",
       sessions_per_week: "3",
-      has_coach: "yes",
+      has_coach: "regular",
       tournament_level: "club_internal",
       best_result: "quarter",
-      was_seed: "no",
+      was_seed: "never",
       prior_sports: ["badminton"],
       prior_sport_level: "club",
       rally_consistency: "pct_80",
@@ -124,20 +124,20 @@ test("completePickVnOnboarding saves assessment and clears gate", async () => {
       reset_ability: "basic",
       play_style: "all_around",
       kitchen_frequency: "often",
-      stacking_knowledge: "know",
+      stacking_knowledge: "frequent",
       nvz_transition: "basic",
       team_coordination: "medium",
       pace_control: "basic",
       doubles_positioning: "none",
-      self_rating: "3.5",
+      self_rating: "3.0",
     },
   });
 
   assert.equal(result.ok, true);
   const record = getPickVnRatingByAuthUserId(authUserId);
-  assert.equal(record.currentRating, 2.8);
-  assert.equal(record.provisionalRating, 2.8);
-  assert.equal(record.selfDeclaredRating, 3.5);
+  assert.equal(record.currentRating, 2.4);
+  assert.equal(record.provisionalRating, 2.4);
+  assert.equal(record.selfDeclaredRating, 3.0);
   assert.equal(record.ratingStatus, RATING_STATUS.PROVISIONAL);
   assert.ok(record.assessmentScore >= 46 && record.assessmentScore <= 55);
   assert.ok(record.assessmentAnswers);

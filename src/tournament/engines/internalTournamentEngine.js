@@ -1,8 +1,9 @@
 import { createEventRecord } from "../../models/tournament/event.js";
 import { EVENT_TYPE, TOURNAMENT_MODE } from "../../models/tournament/constants.js";
+import { assignGroupsWithConstraints } from "../../features/pairing-constraints/engines/constraintGroupEngine.js";
 import { validateGroupDrawInput } from "./validationEngine.js";
 import { suggestEntriesFromPlayers } from "./teamPairingEngine.js";
-import { assignEntriesToGroupsSnake, summarizeGroupBalance } from "./seededGroupEngine.js";
+import { summarizeGroupBalance } from "./seededGroupEngine.js";
 import { buildGroupStageSchedule, countGroupStageMatches } from "./scheduleEngine.js";
 
 export function getDefaultInternalEventType() {
@@ -37,6 +38,7 @@ export function buildInternalTournamentPlan({
   eventType = EVENT_TYPE.MIXED_DOUBLE,
   groupCount = 4,
   manualEntries = null,
+  pairingConstraints = [],
   pointsConfig = { win: 2, loss: 1, forfeit: 0 },
 } = {}) {
   const event = ensureInternalEvent(tournament, eventType);
@@ -44,13 +46,18 @@ export function buildInternalTournamentPlan({
     selectedPlayerIds.includes(String(player.id))
   );
 
+  const pairingOptions = {
+    tournamentId: tournament.id,
+    eventId: event.id,
+    pairingConstraints,
+  };
+
   const entries =
     Array.isArray(manualEntries) && manualEntries.length > 0
       ? manualEntries
-      : suggestEntriesFromPlayers(selectedPlayers, eventType, {
-          tournamentId: tournament.id,
-          eventId: event.id,
-        });
+      : suggestEntriesFromPlayers(selectedPlayers, eventType, pairingOptions);
+
+  const constraintWarnings = pairingOptions.constraintWarnings || [];
 
   const validation = validateGroupDrawInput({
     entries,
@@ -69,14 +76,19 @@ export function buildInternalTournamentPlan({
     };
   }
 
-  const groups = assignEntriesToGroupsSnake(entries, groupCount, selectedPlayers).map(
-    (group) => ({
-      ...group,
-      tournamentId: tournament.id,
-      eventId: event.id,
-      pointsConfig,
-    })
+  const groupResult = assignGroupsWithConstraints(
+    entries,
+    groupCount,
+    selectedPlayers,
+    pairingConstraints
   );
+
+  const groups = groupResult.groups.map((group) => ({
+    ...group,
+    tournamentId: tournament.id,
+    eventId: event.id,
+    pointsConfig,
+  }));
 
   const schedule = buildGroupStageSchedule(groups, {
     tournamentId: tournament.id,
@@ -95,7 +107,11 @@ export function buildInternalTournamentPlan({
       groups: schedule.groups,
       matches: schedule.matches,
     },
-    warnings: validation.warnings,
+    warnings: [
+      ...(validation.warnings || []),
+      ...(constraintWarnings || []),
+      ...(groupResult.warnings || []),
+    ],
     balance,
     matchCount: countGroupStageMatches(schedule.groups),
   };

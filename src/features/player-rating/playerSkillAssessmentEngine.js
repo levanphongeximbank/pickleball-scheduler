@@ -18,8 +18,11 @@ import {
   getQuestionById,
   SKILL_ASSESSMENT_QUESTIONS,
 } from "./playerSkillAssessmentConfig.js";
+import { normalizeLegacyAnswers } from "./assessmentAnswerLegacyMap.js";
 
 const CONTENT_STEPS = 6;
+
+export { normalizeLegacyAnswers };
 
 function resolveAgeBand(birthYear, referenceYear = new Date().getFullYear()) {
   const year = Number(birthYear);
@@ -35,7 +38,7 @@ function resolveAgeBand(birthYear, referenceYear = new Date().getFullYear()) {
 }
 
 function enrichAnswers(raw = {}) {
-  const answers = { ...raw };
+  const answers = { ...normalizeLegacyAnswers(raw) };
   if (answers.birth_year != null && answers.birth_year !== "") {
     const band = resolveAgeBand(answers.birth_year);
     if (band) answers.age_band = band;
@@ -57,7 +60,7 @@ function capGroup(score, groupKey) {
 export function calculateProfileScore(answers) {
   const duration = PROFILE_DURATION_SCORE[answers.playing_duration] ?? 0;
   const sessions = SESSIONS_WEEKLY_BONUS[answers.sessions_per_week] ?? 0;
-  const coach = answers.has_coach === "yes" ? COACH_BONUS : 0;
+  const coach = COACH_BONUS[answers.has_coach] ?? 0;
   return capGroup(duration + sessions + coach, "profile");
 }
 
@@ -172,6 +175,7 @@ export function parseSelfDeclaredRating(answers) {
   const key = answers.self_rating;
   if (!key) return null;
   if (key === "5.0plus") return 5.5;
+  if (key === "6.0plus" || key === "6.0+") return 6.5;
   return snapPickVnRating(key);
 }
 
@@ -217,7 +221,9 @@ export function detectRatingConflicts({
   }
 
   if (
-    (answers.playing_duration === "never" || answers.playing_duration === "lt_3mo") &&
+    (answers.playing_duration === "never" ||
+      answers.playing_duration === "lt_1mo" ||
+      answers.playing_duration === "lt_3mo") &&
     self != null &&
     self >= 4.0
   ) {
@@ -394,7 +400,7 @@ export function calculatePlayerAssessment(input = {}) {
   const ratingConfidence = calculateConfidence(
     {
       questionnaireComplete: true,
-      hasCoach: answers.has_coach === "yes",
+      hasCoach: ["regular", "professional", "yes"].includes(answers.has_coach),
       hasClub: Boolean(input.hasClub),
       hasVideo: Boolean(input.hasVideo),
       hasExternalRating: hasExternalRating(answers),

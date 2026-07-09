@@ -10,7 +10,9 @@ import {
   buildPairingSteps,
   buildSnakeSteps,
   buildGroupMatchPairingSteps,
+  ANIMATION_MODES,
 } from "../src/components/tournament/animation/animationUtils.js";
+import { hasEffectPrelude } from "../src/components/tournament/animation/shared/effectPreludeConfig.js";
 
 describe("tournament animation shared flow", () => {
   it("defines five unified flow steps", () => {
@@ -23,6 +25,12 @@ describe("tournament animation shared flow", () => {
     assert.equal(getFlowStepState(FLOW_STEP_KEYS.DRAW, FLOW_STEP_KEYS.PAIRING), "done");
     assert.equal(getFlowStepState(FLOW_STEP_KEYS.DRAW, FLOW_STEP_KEYS.DRAW), "active");
     assert.equal(getFlowStepState(FLOW_STEP_KEYS.DRAW, FLOW_STEP_KEYS.MATCH_PAIRING), "pending");
+  });
+
+  it("enables effect prelude for core tournament animation modes", () => {
+    assert.equal(hasEffectPrelude(ANIMATION_MODES.PAIRING_REVEAL), true);
+    assert.equal(hasEffectPrelude(ANIMATION_MODES.SNAKE_GROUP), true);
+    assert.equal(hasEffectPrelude(ANIMATION_MODES.BRACKET_REVEAL), true);
   });
 });
 

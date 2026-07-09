@@ -48,11 +48,29 @@ import {
 } from "./selectPlayers.messages.logic";
 
 import SelectPlayersDirectorCard from "./SelectPlayersDirectorCard";
+import { useAuth } from "../context/AuthContext.jsx";
+import { useTenant } from "../context/TenantContext.jsx";
+import { loadClubData, saveClubData } from "../domain/clubStorage.js";
+import {
+  INTERVENTION_PHASE,
+  INTERVENTION_TYPE,
+  SuperAdminInterventionBanner,
+  usePairingIntervention,
+} from "../features/pairing-intervention/index.js";
+import {
+  FounderPairingConstraintsPanel,
+  guardFounderConstraints,
+  constraintsToCourtPolicies,
+  getClubPairingConstraints,
+  logConstraintChange,
+} from "../features/pairing-constraints/index.js";
 import {
   Box,
   Button,
   Card,
   CardContent,
+  Dialog,
+  DialogContent,
   FormControl,
   InputLabel,
   MenuItem,
@@ -61,10 +79,14 @@ import {
   TextField,
   Typography,
 } from "@mui/material";
+import EffectPreludeScreen from "../components/tournament/animation/shared/EffectPreludeScreen.jsx";
+import { EFFECT_PRELUDE_SCOPE } from "../components/tournament/animation/shared/effectPreludeConfig.js";
 
 export default function SelectPlayers() {
-  const { activeClub, activeClubId, revision } = useClub();
+  const { activeClub, activeClubId, revision, refreshClubs } = useClub();
   const { activeSeasonId, activeLeagueId } = useSeasonLeague();
+  const { isSuperAdmin } = useTenant();
+  const { user } = useAuth();
 
   const [sessionTemplateId, setSessionTemplateId] = useState(
     SESSION_TEMPLATES[0].id
@@ -82,6 +104,18 @@ export default function SelectPlayers() {
   const [previewMode, setPreviewMode] = useState(false);
   const [search, setSearch] = useState("");
   const [formMessage, setFormMessage] = useState(null);
+  const [preludeOpen, setPreludeOpen] = useState(false);
+  const [pendingScheduleResult, setPendingScheduleResult] = useState(null);
+  const [preludeContext, setPreludeContext] = useState({ players: [], courts: [] });
+
+  const pairingIntervention = usePairingIntervention({
+    phase: INTERVENTION_PHASE.COURT,
+    previewMode,
+    clubId: activeClubId,
+    resourceId: activeClubId,
+  });
+
+  const canInterveneCourt = isSuperAdmin && previewMode && pairingIntervention.canIntervene;
 
   const [lockedCourts, setLockedCourts] = useState(() => {
     return getDirectorState().lockedCourts || [];
@@ -93,11 +127,45 @@ export default function SelectPlayers() {
 
   const [clubPolicies, setClubPolicies] = useState(() => getPolicies());
   const [clubRules, setClubRules] = useState(() => getRules());
+  const [founderConstraints, setFounderConstraints] = useState([]);
 
   const refreshDirectorConfig = () => {
     setClubPolicies(getPolicies());
     setClubRules(getRules());
   };
+
+  const handleSaveFounderConstraints = async () => {
+    if (!activeClubId) {
+      return;
+    }
+
+    const guard = guardFounderConstraints({ user });
+    if (!guard.ok) {
+      setFormMessage({ type: "error", text: guard.error });
+      return;
+    }
+
+    const before = getClubPairingConstraints(loadClubData(activeClubId));
+    const clubData = loadClubData(activeClubId);
+    saveClubData(activeClubId, {
+      ...clubData,
+      founderPairingConstraints: founderConstraints,
+    });
+    refreshClubs();
+    setFormMessage({ type: "success", text: "Đã lưu quy tắc ghép cặp Founder cho CLB." });
+    await logConstraintChange({
+      user,
+      tournamentId: "",
+      clubId: activeClubId,
+      before,
+      after: founderConstraints,
+    });
+  };
+
+  const founderCourtPolicies = useMemo(
+    () => constraintsToCourtPolicies(founderConstraints),
+    [founderConstraints]
+  );
 
   const [courts, setCourts] = useState(() => loadCourtsFromStorage());
 
@@ -125,6 +193,7 @@ export default function SelectPlayers() {
     setPreviewMode(false);
     setLockedCourts(getDirectorState(activeClubId).lockedCourts || []);
     setLockedPlayers(getDirectorState(activeClubId).lockedPlayers || []);
+    setFounderConstraints(getClubPairingConstraints(loadClubData(activeClubId)));
     refreshDirectorConfig();
   }, [activeClubId, revision]);
 
@@ -204,6 +273,30 @@ export default function SelectPlayers() {
     minPlayers: competitionConfig.minPlayers,
   });
 
+  const finalizeScheduleStart = (result) => {
+    setScheduleResult(result);
+
+    if (scheduleMode === "auto") {
+      setPreviewMode(false);
+      setFormMessage({ type: "success", text: "Đã auto-apply và lưu phiên xếp sân." });
+      return;
+    }
+
+    setPreviewMode(true);
+    setFormMessage({
+      type: "info",
+      text: "Đang xem preview. Bấm Áp dụng để lưu phiên, waiting và lịch sử ghép.",
+    });
+  };
+
+  const handlePreludeComplete = () => {
+    setPreludeOpen(false);
+    if (pendingScheduleResult) {
+      finalizeScheduleStart(pendingScheduleResult);
+    }
+    setPendingScheduleResult(null);
+  };
+
   const handleStart = () => {
     setFormMessage(null);
 
@@ -251,21 +344,17 @@ export default function SelectPlayers() {
       competitionType,
       persist: scheduleMode === "auto",
       sessionContext: getSessionContextMeta(activeClubId, activeSeasonId, activeLeagueId),
+      founderCourtPolicies,
     });
 
-    setScheduleResult(result);
-
-    if (scheduleMode === "auto") {
-      setPreviewMode(false);
-      setFormMessage({ type: "success", text: "Đã auto-apply và lưu phiên xếp sân." });
-      return;
-    }
-
-    setPreviewMode(true);
-    setFormMessage({
-      type: "info",
-      text: "Đang xem preview. Bấm Áp dụng để lưu phiên, waiting và lịch sử ghép.",
+    setPendingScheduleResult(result);
+    setPreludeContext({
+      players: playersSelected,
+      courts: enabledCourts,
+      playerCount: playersSelected.length,
+      courtCount: enabledCourts.length,
     });
+    setPreludeOpen(true);
   };
 
   const handleApplyPreview = () => {
@@ -304,13 +393,31 @@ export default function SelectPlayers() {
   };
 
   const handleSwapTeams = (courtId) => {
-    setScheduleResult((prev) => swapTeamsInResult(prev, courtId));
+    if (!canInterveneCourt) {
+      return;
+    }
+    const before = scheduleResult;
+    const next = swapTeamsInResult(scheduleResult, courtId);
+    setScheduleResult(next);
+    pairingIntervention.auditCourtChange({
+      interventionType: INTERVENTION_TYPE.COURT_SWAP_TEAMS,
+      before,
+      after: next,
+    });
   };
 
   const handleMovePlayer = (courtId, fromTeam, playerId) => {
-    setScheduleResult((prev) =>
-      movePlayerInResult(prev, courtId, fromTeam, playerId)
-    );
+    if (!canInterveneCourt) {
+      return;
+    }
+    const before = scheduleResult;
+    const next = movePlayerInResult(scheduleResult, courtId, fromTeam, playerId);
+    setScheduleResult(next);
+    pairingIntervention.auditCourtChange({
+      interventionType: INTERVENTION_TYPE.COURT_MOVE_PLAYER,
+      before,
+      after: next,
+    });
   };
 
   const handleSelectAlternative = (alternativeIndex) => {
@@ -439,6 +546,12 @@ export default function SelectPlayers() {
       </Typography>
 
       <Box sx={{ mb: 3 }}>
+        <FounderPairingConstraintsPanel
+          constraints={founderConstraints}
+          players={players}
+          onChange={setFounderConstraints}
+          onSave={handleSaveFounderConstraints}
+        />
         <SelectPlayersDirectorCard
           lockedCourts={lockedCourts}
           lockedPlayers={lockedPlayers}
@@ -492,6 +605,12 @@ export default function SelectPlayers() {
       <SelectPlayersResult
         scheduleResult={scheduleResult}
         previewMode={previewMode}
+        canIntervene={canInterveneCourt}
+        interventionBanner={
+          canInterveneCourt ? (
+            <SuperAdminInterventionBanner message="Can thiệp xếp sân — đảo đội hoặc chuyển VĐV giữa đội A/B." />
+          ) : null
+        }
         onApplyPreview={handleApplyPreview}
         onCancelPreview={handleCancelPreview}
         lockedCourts={lockedCourts}
@@ -514,11 +633,37 @@ export default function SelectPlayers() {
           size="large"
           color="success"
           onClick={handleStart}
-          disabled={!canStart}
+          disabled={!canStart || preludeOpen}
         >
           🤖 BẮT ĐẦU XẾP
         </Button>
       </Box>
+
+      <Dialog
+        open={preludeOpen}
+        onClose={() => {
+          setPreludeOpen(false);
+          setPendingScheduleResult(null);
+        }}
+        fullWidth
+        maxWidth="sm"
+        PaperProps={{ sx: { bgcolor: "#f8fafc" } }}
+      >
+        <DialogContent sx={{ p: { xs: 1.5, sm: 2 } }}>
+          <EffectPreludeScreen
+            presetKey={EFFECT_PRELUDE_SCOPE.COURT_SCHEDULING}
+            context={preludeContext}
+            active={preludeOpen}
+            compact
+            onComplete={handlePreludeComplete}
+            onSkip={handlePreludeComplete}
+            onExit={() => {
+              setPreludeOpen(false);
+              setPendingScheduleResult(null);
+            }}
+          />
+        </DialogContent>
+      </Dialog>
     </Box>
   );
 }

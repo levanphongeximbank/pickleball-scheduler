@@ -168,6 +168,9 @@ export const PERMISSIONS = Object.freeze({
   RANKING_VIEW: "ranking.view",
   RANKING_MANAGE: "ranking.manage",
   TOURNAMENT_CERTIFY: "tournament.certify",
+
+  /** Founder-only: can thiệp ghép cặp/chia bảng trong setup. */
+  PLATFORM_PAIRING_OVERRIDE: "platform.pairing_override",
 });
 
 export function isValidPermission(permission) {

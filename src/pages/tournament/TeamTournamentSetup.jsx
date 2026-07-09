@@ -507,6 +507,7 @@ export default function TeamTournamentSetup() {
             {access.canManage ? (
               <TeamGroupDivisionPanel
                 teamData={teamData}
+                clubPlayers={players}
                 canManage={access.canManage}
                 onSave={saveTeamData}
                 onError={setError}
