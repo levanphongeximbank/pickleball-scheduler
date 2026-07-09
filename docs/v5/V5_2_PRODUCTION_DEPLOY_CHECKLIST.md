@@ -1,10 +1,10 @@
 # V5.3 — Production Deploy Checklist (Owner + Engineering)
 
 **Ngày cập nhật:** 2026-07-09  
-**Target version:** `5.3.7` — ✅ tagged  
+**Target version:** `5.3.8` — ✅ tagged  
 **Production URL:** https://pickleball-scheduler-eight.vercel.app  
 **Production Supabase:** `expuvcohlcjzvrrauvud`  
-**Rollback deployment:** `dpl_zfehiyNxcQNaBFAYYJhSHozEAfVx` (V5.3.6 `235b402`)
+**Rollback deployment:** `dpl_2MwRvwsT4iz8PRGHu3hhJ9hDo56R` (V5.3.7 `18cb872`)
 
 **Phạm vi:** Controlled Production pilot — **không** Commercial GA · **không** payment live
 
@@ -16,7 +16,7 @@
 
 | # | Việc | Tick | Ghi chú |
 |---|------|------|---------|
-| A1 | `npm test` PASS (gồm pairing + rbac-v52) | ✅ | 1182/1182 (2026-07-09) |
+| A1 | `npm test` PASS (gồm pairing + rbac-v52) | ✅ | 1183/1183 (2026-07-09) |
 | A2 | `npm run build` PASS | ✅ | |
 | A3 | Pairing constraints + intervention (Super Admin) | ✅ | `pairing-constraints/`, `pairing-intervention/` |
 | A4 | Platform athlete service + team group seed | ✅ | `platformAthleteService.js`, `teamGroupSeedEngine.js` |
@@ -30,10 +30,10 @@
 
 | # | Việc | Tick | Ghi chú |
 |---|------|------|---------|
-| B1 | Commit trên branch `v5-platform-edition` | ✅ | `18cb872` |
-| B2 | `package.json` version `5.3.7` | ✅ | |
-| B3 | Tag `v5.3.7` | ✅ | |
-| B4 | Push branch + tag | ✅ | origin `v5-platform-edition` + `v5.3.7` |
+| B1 | Commit trên branch `v5-platform-edition` | ✅ | `2c2f9a9` |
+| B2 | `package.json` version `5.3.8` | ✅ | |
+| B3 | Tag `v5.3.8` | ☐ | |
+| B4 | Push branch + tag | ☐ | |
 
 ---
 
@@ -91,13 +91,13 @@
 
 | # | Việc | Tick | Ghi chú |
 |---|------|------|---------|
-| E1 | Ghi deployment ID **trước** deploy | ✅ | `dpl_zfehiyNxcQNaBFAYYJhSHozEAfVx` (V5.3.6) |
-| E2 | Deploy Production | ✅ | `dpl_2MwRvwsT4iz8PRGHu3hhJ9hDo56R` (commit `18cb872`) |
+| E1 | Ghi deployment ID **trước** deploy | ✅ | `dpl_2MwRvwsT4iz8PRGHu3hhJ9hDo56R` (V5.3.7) |
+| E2 | Deploy Production | ✅ | `dpl_9JKRHT9Zt17vPwNBjbu7AVJo8eoX` (commit `2c2f9a9`) |
 | E3 | Alias production domain | ✅ | `pickleball-scheduler-eight.vercel.app` |
 | E4 | Bundle scan — không staging ref | ✅ | |
 | E5 | `/login` HTTP 200 | ✅ | 2026-07-09 |
 
-**Fail P0 → rollback:** Vercel Promote `dpl_zfehiyNxcQNaBFAYYJhSHozEAfVx`
+**Fail P0 → rollback:** Vercel Promote `dpl_2MwRvwsT4iz8PRGHu3hhJ9hDo56R`
 
 ---
 
@@ -124,7 +124,7 @@
 | Role | GO V5.3 Production | Date |
 |------|-------------------|------|
 | Owner | ☐ | |
-| Engineering | ✅ | 2026-07-09 — deploy `18cb872` / `dpl_2MwRvwsT4iz8PRGHu3hhJ9hDo56R` |
+| Engineering | ✅ | 2026-07-09 — deploy `2c2f9a9` / `dpl_9JKRHT9Zt17vPwNBjbu7AVJo8eoX` |
 
 **Không tick Commercial GA** — Gate 4/5 vẫn BLOCKED.
 
