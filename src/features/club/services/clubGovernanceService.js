@@ -8,6 +8,7 @@ import {
 } from "../../../auth/roles.js";
 import { getClubById as getRegistryClubById, updateClubMeta } from "../../../domain/clubService.js";
 import { deleteClub as deleteClubRegistry } from "../../../domain/clubService.js";
+import { loadClubs } from "../../../data/club.js";
 import { guardClubAction, guardPermission } from "../../../auth/guardAction.js";
 import { PERMISSIONS } from "../../../auth/permissions.js";
 import { CLUB_STATUSES } from "../constants/clubStatus.js";
@@ -491,6 +492,66 @@ export async function finalizeSelfRegisteredClubCloud(clubId, user, tenantId) {
     venueId: claimResult.venue_id || cloudResult.venueId || effectiveTenantId,
     role: claimResult.role || ROLES.CLUB_MANAGER,
     user: claimedUser,
+  };
+}
+
+/** CLB local mà user đang là Chủ tịch (dùng để nhận lại khi profile.cloud chưa gắn club_id). */
+export function listLocalPresidentClubsForUser(user) {
+  if (!user?.id) {
+    return [];
+  }
+
+  return loadClubs().filter((club) => {
+    if (!club || club.isDefault) {
+      return false;
+    }
+    return sameUserId(club.governance?.presidentUserId, user.id);
+  });
+}
+
+/**
+ * Nếu profile chưa có club_id nhưng máy này còn CLB do user làm Chủ tịch,
+ * đẩy lên cloud + claim profiles.club_id để mọi máy đều thấy.
+ */
+export async function reclaimLocalPresidentClubForUser(user) {
+  const normalizedUser = normalizeUser(user);
+  if (!normalizedUser?.id) {
+    return { ok: false, code: "NO_USER", error: "Thiếu user." };
+  }
+
+  if (normalizedUser.clubId || normalizedUser.club_id) {
+    return { ok: true, skipped: true, reason: "ALREADY_HAS_CLUB" };
+  }
+
+  const owned = listLocalPresidentClubsForUser(normalizedUser);
+  if (owned.length === 0) {
+    return { ok: true, skipped: true, reason: "NO_LOCAL_PRESIDENT_CLUB" };
+  }
+
+  // Ưu tiên CLB ACCC / CLB mới nhất
+  const preferred =
+    owned.find((club) => /accc/i.test(String(club.name || ""))) ||
+    [...owned].sort(
+      (a, b) => new Date(b.updatedAt || b.createdAt || 0) - new Date(a.updatedAt || a.createdAt || 0)
+    )[0];
+
+  const result = await finalizeSelfRegisteredClubCloud(
+    preferred.id,
+    normalizedUser,
+    preferred.venueId || preferred.tenantId || null
+  );
+
+  if (!result.ok) {
+    return result;
+  }
+
+  return {
+    ok: true,
+    reclaimed: true,
+    clubId: preferred.id,
+    clubName: preferred.name,
+    venueId: result.venueId,
+    user: result.user || loadAuthSession()?.user || null,
   };
 }
 

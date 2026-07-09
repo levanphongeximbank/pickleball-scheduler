@@ -47,6 +47,8 @@ export {
   canSelfRegisterClub,
   bootstrapSelfRegisteredPresident,
   finalizeSelfRegisteredClubCloud,
+  reclaimLocalPresidentClubForUser,
+  listLocalPresidentClubsForUser,
   canTransferClubOwnership,
   transferClubOwnership,
   transferClubPresident,

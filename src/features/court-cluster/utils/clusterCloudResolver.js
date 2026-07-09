@@ -60,7 +60,24 @@ export async function resolveCloudVenueIdForClusterOps({
   actor = null,
   assigneeUserId = null,
 } = {}) {
-  const fromSelected = sanitizeBillingTenantId(selectedVenueId);
+  let fromSelected = sanitizeBillingTenantId(selectedVenueId);
+
+  // Tránh nhầm id cụm sân (vd. venue-prod-main-pickleball-nam-long-sports) thành venue_id
+  if (fromSelected && hasSupabaseConfig()) {
+    const venueResult = await fetchSupabaseVenues();
+    if (venueResult.ok && venueResult.venues?.length) {
+      const exact = venueResult.venues.find((venue) => venue.id === fromSelected);
+      if (!exact) {
+        const prefixMatch = venueResult.venues.find(
+          (venue) =>
+            fromSelected === venue.id ||
+            fromSelected.startsWith(`${venue.id}-`)
+        );
+        fromSelected = prefixMatch?.id || null;
+      }
+    }
+  }
+
   if (fromSelected) {
     return fromSelected;
   }

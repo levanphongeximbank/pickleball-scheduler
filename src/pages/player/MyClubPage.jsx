@@ -1,5 +1,5 @@
-import { useEffect, useMemo, useState } from "react";
-import { Alert, Box, Divider, Typography } from "@mui/material";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { Alert, Box, Button, Divider, Typography } from "@mui/material";
 import { useSearchParams } from "react-router-dom";
 
 import { useAuth } from "../../context/AuthContext.jsx";
@@ -16,6 +16,7 @@ import {
   getRegisteredClusterLabel,
   leaveMyClub,
   listDiscoverableClubs,
+  reclaimLocalPresidentClubForUser,
 } from "../../features/club/index.js";
 import MyClubSummaryCard from "./myClub/MyClubSummaryCard.jsx";
 import MyClubCreatePanel from "./myClub/MyClubCreatePanel.jsx";
@@ -37,16 +38,14 @@ export default function MyClubPage() {
   const [message, setMessage] = useState(null);
   const [joinDialogOpen, setJoinDialogOpen] = useState(false);
   const [leaveLoading, setLeaveLoading] = useState(false);
+  const [reclaiming, setReclaiming] = useState(false);
+  const reclaimAttemptedRef = useRef(false);
 
   const clubId = user?.clubId || user?.club_id || null;
   const hasClub = Boolean(clubId);
   const canCreateClub = canSelfRegisterClub(user);
 
   const [view, setView] = useState(() => resolveInitialView(hasClub, searchParams));
-
-  useEffect(() => {
-    setView(resolveInitialView(hasClub, searchParams));
-  }, [hasClub, searchParams]);
 
   const handleViewChange = (nextView) => {
     setView(nextView);
@@ -58,6 +57,52 @@ export default function MyClubPage() {
     }
     setSearchParams(nextParams, { replace: true });
   };
+
+  useEffect(() => {
+    setView(resolveInitialView(hasClub, searchParams));
+  }, [hasClub, searchParams]);
+
+  const runReclaim = async ({ manual = false } = {}) => {
+    if (!user?.id || hasClub) {
+      return;
+    }
+
+    setReclaiming(true);
+    setMessage(null);
+
+    const result = await reclaimLocalPresidentClubForUser(user);
+
+    if (result.ok && result.reclaimed) {
+      await refresh();
+      setRevision((value) => value + 1);
+      setMessage({
+        type: "success",
+        text: `Đã nhận lại CLB ${result.clubName || ""} và lưu lên hệ thống chung.`,
+      });
+      handleViewChange("home");
+    } else if (!result.ok && result.error) {
+      setMessage({ type: "warning", text: result.error });
+    } else if (manual && result.skipped) {
+      setMessage({
+        type: "info",
+        text: "Không tìm thấy CLB do bạn làm Chủ tịch trên máy này để nhận lại.",
+      });
+    }
+
+    setReclaiming(false);
+  };
+
+  // Máy còn CLB do user làm Chủ tịch nhưng profile cloud chưa gắn → tự nhận lại
+  useEffect(() => {
+    if (!user?.id || hasClub || reclaimAttemptedRef.current) {
+      return undefined;
+    }
+
+    reclaimAttemptedRef.current = true;
+    void runReclaim({ manual: false });
+    return undefined;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user?.id, hasClub]);
 
   const clubRecord = useMemo(() => {
     void revision;
@@ -145,6 +190,22 @@ export default function MyClubPage() {
         <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
           Tìm CLB phù hợp, gửi yêu cầu tham gia hoặc tạo CLB mới.
         </Typography>
+      )}
+
+      {!hasClub && (
+        <Alert severity="info" sx={{ mb: 2 }}>
+          Nếu bạn đã tạo CLB trên máy này trước đó (ví dụ CLB ACCC) nhưng hệ thống chưa nhận,
+          nhấn nút bên dưới để nhận lại và lưu lên hệ thống chung.
+          <Box sx={{ mt: 1.5 }}>
+            <Button
+              variant="contained"
+              disabled={reclaiming}
+              onClick={() => void runReclaim({ manual: true })}
+            >
+              {reclaiming ? "Đang nhận lại…" : "Nhận lại CLB của tôi"}
+            </Button>
+          </Box>
+        </Alert>
       )}
 
       <MyClubActionBar

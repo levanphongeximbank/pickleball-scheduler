@@ -19,6 +19,7 @@ import {
   getClubMembersForTournamentInvite,
   resolveGovernanceForCreate,
   canSelfRegisterClub,
+  listLocalPresidentClubsForUser,
   canApproveClubRegistration,
   approveClubRegistration,
   rejectClubRegistration,
@@ -209,6 +210,22 @@ describe("club governance", () => {
       clubId: "club-gone",
     };
     assert.equal(canSelfRegisterClub(manager), true);
+  });
+
+  it("listLocalPresidentClubsForUser finds clubs by presidentUserId", () => {
+    saveClubs([
+      createClubRecord("CLB ACCC", {
+        id: "club-accc-local",
+        venueId: TENANT,
+        governance: { presidentUserId: "4cf24ed0-99f8-4997-b803-3c7ff8e32014" },
+      }),
+    ]);
+    const owned = listLocalPresidentClubsForUser({
+      id: "4cf24ed0-99f8-4997-b803-3c7ff8e32014",
+      role: ROLES.PLAYER,
+    });
+    assert.equal(owned.length, 1);
+    assert.equal(owned[0].id, "club-accc-local");
   });
 
   it("club scoped self-register resolves to active", () => {
