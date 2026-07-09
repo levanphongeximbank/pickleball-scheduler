@@ -199,7 +199,7 @@ function AssessmentResultPanel({ preview, answers }) {
         {preview.raw_provisional_rating != null &&
           preview.raw_provisional_rating !== preview.provisional_rating && (
             <Typography variant="body2" color="text.secondary">
-              Trước hiệu chuẩn ×{preview.rating_calibration ?? 0.8}:{" "}
+              Trước hiệu chuẩn ×{preview.rating_calibration ?? 0.6}:{" "}
               {formatPickVnRating(preview.raw_provisional_rating)} →{" "}
               {formatPickVnRating(preview.provisional_rating)}
             </Typography>

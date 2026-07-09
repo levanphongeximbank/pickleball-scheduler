@@ -256,10 +256,10 @@ export default function PlayerProfile() {
     setLinking(true);
     setLinkMessage(null);
 
-    const targetUser = await fetchProfileByUserId(profile.authUserId);
+    const profileResult = await fetchProfileByUserId(profile.authUserId);
     const result = await adminLinkAccountOnlyAthleteToClub({
       clubId: activeClubId,
-      user: targetUser || { id: profile.authUserId },
+      user: profileResult.ok ? profileResult.user : { id: profile.authUserId },
       tenantId: activeClub?.venueId || currentTenantId,
     });
 

@@ -138,8 +138,8 @@ test("completePickVnOnboarding saves assessment and clears gate", async () => {
 
   assert.equal(result.ok, true);
   const record = getPickVnRatingByAuthUserId(authUserId);
-  assert.equal(record.currentRating, 4.0);
-  assert.equal(record.provisionalRating, 4.0);
+  assert.equal(record.currentRating, 3.0);
+  assert.equal(record.provisionalRating, 3.0);
   assert.equal(record.selfDeclaredRating, 3.0);
   assert.equal(record.ratingStatus, RATING_STATUS.PROVISIONAL);
   assert.ok(record.assessmentScore >= 46 && record.assessmentScore <= 55);

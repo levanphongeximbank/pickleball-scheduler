@@ -1,4 +1,4 @@
-import { fetchProfileByUserId } from "../../../auth/profileService.js";
+import { fetchProfileByUserId as defaultFetchProfileByUserId } from "../../../auth/profileService.js";
 import { normalizePlayers } from "../../../models/player.js";
 import { normalizeUser } from "../../../models/user.js";
 import { GENDER_TO_PLAYER_LABEL } from "../../player-rating/playerSkillAssessmentConfig.js";
@@ -12,6 +12,16 @@ import { rpcPickVnGetRatingByAuthUser } from "../../pick-vn-rating/services/pick
 
 const PROFILE_ROUTE_PREFIX = "profile-";
 const ACCOUNT_ONLY_LINK_STATUS = "account_only";
+
+let fetchProfileByUserIdImpl = defaultFetchProfileByUserId;
+
+export function __setFetchProfileByUserIdForTests(fetchImpl) {
+  fetchProfileByUserIdImpl = fetchImpl || defaultFetchProfileByUserId;
+}
+
+export function __resetFetchProfileByUserIdForTests() {
+  fetchProfileByUserIdImpl = defaultFetchProfileByUserId;
+}
 
 export function buildAccountOnlyPlayerId(authUserId) {
   return `${PROFILE_ROUTE_PREFIX}${String(authUserId || "").trim()}`;
@@ -128,23 +138,23 @@ export async function loadAccountOnlyAthleteProfile(authUserId, options = {}) {
     return { ok: false, error: "Thiếu auth user." };
   }
 
-  let profile = options.profile ? normalizeUser(options.profile) : null;
-  if (!profile) {
-    profile = await fetchProfileByUserId(id);
+  let profileUser = options.profile ? normalizeUser(options.profile) : null;
+  if (!profileUser) {
+    const result = await fetchProfileByUserIdImpl(id);
+    if (!result.ok) {
+      return { ok: false, error: result.error || "Không tìm thấy tài khoản VĐV." };
+    }
+    profileUser = result.user;
   }
 
-  if (!profile) {
-    return { ok: false, error: "Không tìm thấy tài khoản VĐV." };
-  }
-
-  const player = await enrichAccountOnlyAthlete(profile);
+  const player = await enrichAccountOnlyAthlete(profileUser);
   if (!player) {
     return { ok: false, error: "Không tải được hồ sơ VĐV." };
   }
 
   return {
     ok: true,
-    clubId: profile.clubId || null,
+    clubId: profileUser.clubId || null,
     resolvedPlayerId: player.id,
     player,
     stats: {

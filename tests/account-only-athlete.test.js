@@ -6,6 +6,9 @@ import {
   parsePlatformAthleteRouteId,
   resolveAthleteGender,
   enrichAccountOnlyAthlete,
+  loadAccountOnlyAthleteProfile,
+  __setFetchProfileByUserIdForTests,
+  __resetFetchProfileByUserIdForTests,
 } from "../src/features/club/services/accountOnlyAthleteService.js";
 import { loadPlayerHistoryProfileResolved } from "../src/tournament/engines/playerHistoryEngine.js";
 import { isPlayerUnrated, filterPlayers, computePlayerDashboardStats } from "../src/utils/playerHelpers.js";
@@ -178,4 +181,48 @@ test("computePlayerDashboardStats — averageLevel chỉ tính VĐV đã có lev
 
   assert.equal(stats.total, 3);
   assert.equal(stats.averageLevel, 4.0);
+});
+
+test("loadAccountOnlyAthleteProfile — unwrap envelope fetchProfileByUserId", async () => {
+  globalThis.localStorage = createLocalStorageMock();
+
+  __setFetchProfileByUserIdForTests(async (userId) => ({
+    ok: true,
+    user: {
+      id: userId,
+      email: "athlete@example.com",
+      displayName: "Account Only VĐV",
+      role: "PLAYER",
+      status: "active",
+    },
+    profile: { id: userId },
+  }));
+
+  const result = await loadAccountOnlyAthleteProfile("user-123");
+
+  assert.equal(result.ok, true);
+  assert.equal(result.isAccountOnly, true);
+  assert.equal(result.authUserId, "user-123");
+  assert.equal(result.player.id, "profile-user-123");
+  assert.equal(result.player.name, "Account Only VĐV");
+  assert.equal(result.player.linkStatus, "account_only");
+
+  __resetFetchProfileByUserIdForTests();
+  delete globalThis.localStorage;
+});
+
+test("loadAccountOnlyAthleteProfile — báo lỗi fetch thay vì enrich fail", async () => {
+  __setFetchProfileByUserIdForTests(async () => ({
+    ok: false,
+    error: "Không tìm thấy profile.",
+    code: "PROFILE_NOT_FOUND",
+  }));
+
+  const result = await loadAccountOnlyAthleteProfile("missing-user");
+
+  assert.equal(result.ok, false);
+  assert.equal(result.error, "Không tìm thấy profile.");
+  assert.notEqual(result.error, "Không tải được hồ sơ VĐV.");
+
+  __resetFetchProfileByUserIdForTests();
 });

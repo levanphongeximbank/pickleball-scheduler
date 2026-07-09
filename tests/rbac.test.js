@@ -206,9 +206,10 @@ test("menuAccess — PLAYER thấy menu CLB và Giải đấu", () => {
   assert.ok(labels.includes("Danh sách huấn luyện viên"));
   assert.ok(labels.includes("Đăng ký gói học"));
   assert.equal(labels.includes("Danh sách câu lạc bộ"), false);
+  assert.ok(labels.includes("Giải đấu"));
   assert.ok(labels.includes("Tổng quan"));
   assert.ok(labels.includes("Danh sách giải"));
-  assert.ok(labels.includes("Vận động viên"));
+  assert.ok(labels.includes("Vận động viên / Đội"));
   assert.ok(labels.includes("Kết quả"));
   assert.equal(labels.includes("VĐV"), false);
   assert.equal(labels.includes("Hồ sơ cá nhân"), false);
@@ -238,6 +239,9 @@ test("route access — PLAYER bị chặn daily-play và tournament hubs", () =>
   assert.equal(check("/tournament/config"), false);
   assert.equal(check("/tournament/config/format"), false);
   assert.equal(check("/tournament"), true);
+  assert.equal(check("/tournament/list"), true);
+  assert.equal(check("/tournament/roster"), true);
+  assert.equal(check("/tournament/results"), true);
 });
 
 test("menuAccess — getDefaultHomePath theo role", () => {

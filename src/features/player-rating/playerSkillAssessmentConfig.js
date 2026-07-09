@@ -28,7 +28,7 @@ export const GROUP_CAPS = Object.freeze({
 });
 
 /** Hệ số hiệu chuẩn rating tạm tính sau bảng hỏi (tránh khai cao hơn thực tế). */
-export const PROVISIONAL_RATING_CALIBRATION = 0.8;
+export const PROVISIONAL_RATING_CALIBRATION = 0.6;
 
 export const ASSESSMENT_STEPS = Object.freeze([
   { id: 1, title: "Hồ sơ", key: "profile" },
