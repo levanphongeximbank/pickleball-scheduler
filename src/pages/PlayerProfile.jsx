@@ -30,6 +30,9 @@ import {
 } from "../domain/skillLevelChangeService.js";
 import { getPlayerCurrentRating } from "../models/player.js";
 import { loadPlayerHistoryProfileResolved } from "../tournament/engines/playerHistoryEngine.js";
+import { loadAccountOnlyAthleteProfile } from "../features/club/services/accountOnlyAthleteService.js";
+import { adminLinkAccountOnlyAthleteToClub } from "../features/club/services/clubMembershipRequestService.js";
+import { fetchProfileByUserId } from "../auth/profileService.js";
 import VprProfilePanel from "../features/vpr-ranking/components/VprProfilePanel.jsx";
 import PickVnRatingPanel from "../features/pick-vn-rating/components/PickVnRatingPanel.jsx";
 import {
@@ -38,7 +41,8 @@ import {
   PICK_VN_MIN,
   snapPickVnRating,
 } from "../features/pick-vn-rating/constants/pickVnRatingScale.js";
-import { getLevelColor, getLevelLabel } from "../utils/playerHelpers.js";
+import { getLevelColor, getLevelLabel, isPlayerUnrated } from "../utils/playerHelpers.js";
+import { RATING_STATUS_LABELS } from "../features/pick-vn-rating/constants/ratingStatus.js";
 
 function StatCard({ label, value, helper }) {
   return (
@@ -90,7 +94,7 @@ function RelationshipList({ title, items }) {
 export default function PlayerProfile() {
   const { playerId } = useParams();
   const navigate = useNavigate();
-  const { activeClubId, activeClub, revision } = useClub();
+  const { activeClubId, activeClub, revision, refreshClubs } = useClub();
   const { currentTenantId } = useTenant();
   const { rbacEnabled, isAuthenticated, user, can } = useAuth();
 
@@ -99,26 +103,63 @@ export default function PlayerProfile() {
   const [formMessage, setFormMessage] = useState(null);
   const [requestTick, setRequestTick] = useState(0);
   const [profileTab, setProfileTab] = useState("pick_vn");
+  const [profile, setProfile] = useState({ ok: false, loading: true, error: null });
+  const [linkMessage, setLinkMessage] = useState(null);
+  const [linking, setLinking] = useState(false);
 
   const isSelfProfile =
     Boolean(user?.playerId) && String(user.playerId) === String(playerId);
   const isPlayerRole = normalizeRole(user?.role) === ROLES.PLAYER;
 
-  const profile = useMemo(() => {
-    void revision;
-    return loadPlayerHistoryProfileResolved(
-      {
-        primaryClubId: isPlayerRole || isSelfProfile ? user?.clubId : null,
-        secondaryClubId: activeClubId,
-        playerId,
-        authUserId: isPlayerRole || isSelfProfile ? user?.id : null,
-      },
-      { recentLimit: 12 }
-    );
+  useEffect(() => {
+    let cancelled = false;
+
+    void (async () => {
+      setProfile({ ok: false, loading: true, error: null });
+
+      const rosterProfile = loadPlayerHistoryProfileResolved(
+        {
+          primaryClubId: isPlayerRole || isSelfProfile ? user?.clubId : null,
+          secondaryClubId: activeClubId,
+          playerId,
+          authUserId: isPlayerRole || isSelfProfile ? user?.id : null,
+        },
+        { recentLimit: 12 }
+      );
+
+      if (rosterProfile.ok) {
+        if (!cancelled) {
+          setProfile({ ...rosterProfile, loading: false });
+        }
+        return;
+      }
+
+      const authUserId = rosterProfile.authUserId;
+      if (rosterProfile.isAccountOnlyRoute && authUserId) {
+        const accountProfile = await loadAccountOnlyAthleteProfile(authUserId);
+        if (!cancelled) {
+          setProfile({ ...accountProfile, loading: false });
+        }
+        return;
+      }
+
+      if (!cancelled) {
+        setProfile({
+          ok: false,
+          loading: false,
+          error: rosterProfile.error || "Không tìm thấy VĐV.",
+        });
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
   }, [activeClubId, isPlayerRole, isSelfProfile, playerId, revision, user?.clubId, user?.id]);
 
-  const profileClubId = profile.ok ? profile.clubId : activeClubId;
+  const profileClubId = profile.ok ? profile.clubId || activeClubId : activeClubId;
   const resolvedPlayerId = profile.ok ? profile.resolvedPlayerId || playerId : playerId;
+  const isAccountOnlyProfile = Boolean(profile.ok && profile.isAccountOnly);
   const profileClub =
     activeClub?.id === profileClubId
       ? activeClub
@@ -199,6 +240,49 @@ export default function PlayerProfile() {
     setRequestTick((value) => value + 1);
   };
 
+  const canLinkToClub =
+    isAccountOnlyProfile &&
+    Boolean(activeClubId) &&
+    can(PERMISSIONS.PLAYER_UPDATE, {
+      clubId: activeClubId,
+      venueId: activeClub?.venueId || null,
+    });
+
+  const handleLinkToClub = async () => {
+    if (!profile.authUserId || !activeClubId) {
+      return;
+    }
+
+    setLinking(true);
+    setLinkMessage(null);
+
+    const targetUser = await fetchProfileByUserId(profile.authUserId);
+    const result = await adminLinkAccountOnlyAthleteToClub({
+      clubId: activeClubId,
+      user: targetUser || { id: profile.authUserId },
+      tenantId: activeClub?.venueId || currentTenantId,
+    });
+
+    setLinking(false);
+
+    if (!result.ok) {
+      setLinkMessage({ type: "error", text: result.error || "Không gắn được VĐV vào CLB." });
+      return;
+    }
+
+    refreshClubs();
+    setLinkMessage({ type: "success", text: "Đã gắn VĐV vào CLB hiện tại." });
+    navigate(`/players/profile/${result.playerId}`, { replace: true });
+  };
+
+  if (profile.loading) {
+    return (
+      <Box>
+        <Typography color="text.secondary">Đang tải hồ sơ VĐV...</Typography>
+      </Box>
+    );
+  }
+
   if (tenantDenied && !tenantDenied.ok) {
     return (
       <Box>
@@ -224,7 +308,8 @@ export default function PlayerProfile() {
   }
 
   const { player, stats, recentMatches, topPartners, topOpponents } = profile;
-  const skillLevel = getPlayerCurrentRating(player);
+  const unrated = isPlayerUnrated(player);
+  const skillLevel = unrated ? null : getPlayerCurrentRating(player);
 
   return (
     <Box>
@@ -244,15 +329,27 @@ export default function PlayerProfile() {
               {player.name}
             </Typography>
             <Typography color="text.secondary">
-              {profileClub?.name || "CLB"} • {player.gender || "?"}
-              {canViewSkill && (
+              {isAccountOnlyProfile ? "Chỉ có tài khoản" : profileClub?.name || "CLB"} •{" "}
+              {player.gender || "Chưa rõ"}
+              {canViewSkill && !unrated && skillLevel != null && (
                 <>
                   {" "}
                   • Điểm trình độ{" "}
                   <strong>{formatPickVnRating(skillLevel)}</strong>
                 </>
               )}
+              {canViewSkill && unrated && (
+                <>
+                  {" "}
+                  • <strong>{RATING_STATUS_LABELS.unrated}</strong>
+                </>
+              )}
             </Typography>
+            {player.email ? (
+              <Typography variant="body2" color="text.secondary">
+                {player.email}
+              </Typography>
+            ) : null}
             {player.clubName && (
               <Typography variant="body2" color="text.secondary">
                 CLB dai dien: {player.clubName}
@@ -260,11 +357,45 @@ export default function PlayerProfile() {
             )}
           </Box>
           <Stack direction="row" spacing={1} flexWrap="wrap">
+            {isAccountOnlyProfile && (
+              <Chip
+                size="small"
+                color="warning"
+                label="Chỉ có tài khoản"
+              />
+            )}
             {player.playerType && <Chip label={player.playerType} size="small" />}
             {player.unitName && <Chip label={player.unitName} size="small" variant="outlined" />}
           </Stack>
         </Stack>
       </Paper>
+
+      {canLinkToClub && (
+        <Paper variant="outlined" sx={{ p: 2, mb: 2 }}>
+          <Stack spacing={1.5}>
+            <Typography variant="subtitle1" fontWeight="bold">
+              Gắn VĐV vào CLB
+            </Typography>
+            <Typography variant="body2" color="text.secondary">
+              Tạo hồ sơ VĐV trong CLB <strong>{activeClub?.name}</strong> và liên kết tài khoản này.
+            </Typography>
+            {linkMessage && (
+              <Alert severity={linkMessage.type === "error" ? "error" : "success"}>
+                {linkMessage.text}
+              </Alert>
+            )}
+            <Button variant="contained" onClick={handleLinkToClub} disabled={linking}>
+              {linking ? "Đang gắn..." : "Gắn vào CLB hiện tại"}
+            </Button>
+          </Stack>
+        </Paper>
+      )}
+
+      {isAccountOnlyProfile && (
+        <Alert severity="info" sx={{ mb: 2 }}>
+          VĐV này chưa có trong danh sách CLB. Lịch sử trận đấu sẽ hiển thị sau khi gắn CLB và tham gia giải.
+        </Alert>
+      )}
 
       {canRequestChange && (
         <Paper variant="outlined" sx={{ p: 2, mb: 2 }}>

@@ -4,7 +4,7 @@ import { getClubById as getRegistryClubById, updateClubMeta } from "../../../dom
 import { PERMISSIONS } from "../../../auth/permissions.js";
 import { guardClubAction, guardPermission } from "../../../auth/guardAction.js";
 import { getCurrentUser, isRbacEnabled } from "../../../auth/authService.js";
-import { ROLES, isGlobalRole, isVenueScopedRole } from "../../../auth/roles.js";
+import { ROLES, isGlobalRole, isPlatformWideRole, isVenueScopedRole } from "../../../auth/roles.js";
 import { loadActiveTenantId } from "../../../data/tenantSession.js";
 import { resolveEffectiveTenantId } from "../../tenant/services/tenantService.js";
 import { guardMaxClubs } from "../../../auth/subscriptionGuard.js";
@@ -79,9 +79,14 @@ export function getClubById(clubId, tenantId) {
   }
 
   if (tenantId) {
-    const check = guardClubTenant(clubId, tenantId);
-    if (!check.ok) {
-      return null;
+    const user = getCurrentUser();
+    const skipTenantGuard =
+      isRbacEnabled() && user && isPlatformWideRole(user.role);
+    if (!skipTenantGuard) {
+      const check = guardClubTenant(clubId, tenantId);
+      if (!check.ok) {
+        return null;
+      }
     }
   }
 

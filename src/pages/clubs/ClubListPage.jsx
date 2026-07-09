@@ -76,7 +76,10 @@ export default function ClubListPage() {
     const clubs = getClubsVisibleToUser(currentTenantId, user).filter((c) => !c.isDefault);
     return clubs.map((club) => ({
       club,
-      stats: getClubStats(club.id, currentTenantId) || {
+      stats: getClubStats(
+        club.id,
+        club.tenantId || club.venueId || currentTenantId
+      ) || {
         memberCount: 0,
         avgElo: 0,
         tournamentCount: 0,

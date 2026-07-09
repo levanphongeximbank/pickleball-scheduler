@@ -1,4 +1,8 @@
 import { normalizeVenue } from "../models/venue.js";
+import {
+  DEMO_SEED_TENANT_IDS,
+  shouldHideDemoSeedData,
+} from "../demo/seed/demoSeedRegistry.js";
 
 const VENUES_KEY = "pickleball-venues-v1";
 const SUBSCRIPTIONS_KEY = "pickleball-subscriptions-v1";
@@ -30,7 +34,12 @@ function safeParseObject(raw, fallback = {}) {
 }
 
 export function loadVenues() {
-  return safeParseArray(localStorage.getItem(VENUES_KEY), []).map(normalizeVenue);
+  const venues = safeParseArray(localStorage.getItem(VENUES_KEY), []).map(normalizeVenue);
+  if (!shouldHideDemoSeedData()) {
+    return venues;
+  }
+
+  return venues.filter((venue) => !DEMO_SEED_TENANT_IDS.includes(venue.id));
 }
 
 export function saveVenues(venues) {

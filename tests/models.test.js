@@ -41,8 +41,8 @@ test("normalizePlayer standardizes core player fields and keeps extra data", () 
   });
 
   assert.equal(player.name, "Linh");
-  assert.equal(player.level, 4.25);
-  assert.equal(player.rating, 4.25);
+  assert.equal(player.level, 4.5);
+  assert.equal(player.rating, 4.5);
   assert.equal(player.ratingInternal, 4.25);
   assert.equal(player.phone, "0900000000");
   assert.equal(player.active, false);

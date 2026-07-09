@@ -16,7 +16,7 @@ import {
   listClubsForTenant,
 } from "../features/tenant/guards/tenantGuard.js";
 import { autoPullOnClubActivate, isAiAutoCloudSyncEnabled } from "../ai/autoCloudSync.js";
-import { isVenueScopedRole, isClubScopedRole } from "../auth/roles.js";
+import { isVenueScopedRole, isClubScopedRole, isPlatformWideRole } from "../auth/roles.js";
 import { ensureWritableClubForVenueOwner } from "../features/club/services/venueOwnerClubService.js";
 
 const ClubContext = createContext(null);
@@ -33,8 +33,10 @@ export function ClubProvider({ children }) {
       return clubs;
     }
 
-    const tenantClubs = listClubsForTenant(currentTenantId);
-    const visible = tenantClubs.filter((club) =>
+    const sourceClubs = isPlatformWideRole(user?.role)
+      ? loadClubs()
+      : listClubsForTenant(currentTenantId);
+    const visible = sourceClubs.filter((club) =>
       canAccessClub(user, club.id, { venueId: club.venueId || null }, { rbacEnabled })
     );
 

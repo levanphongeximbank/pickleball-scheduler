@@ -28,6 +28,7 @@ import {
   createCourtCluster,
   ensureDefaultClusterForVenue,
   filterCourtsByCluster,
+  getClusterById,
   isOrgWideClusterRole,
   listAccessibleClustersForUser,
   listClustersForVenue,
@@ -49,7 +50,11 @@ import { removeClusterOwner } from "../src/features/court-cluster/services/court
 import {
   pruneInvalidLocalClusterOwners,
   pruneOrphanLocalClusters,
+  remapClusterIdLocally,
 } from "../src/features/court-cluster/services/courtClusterCloudSync.js";
+import {
+  migrateLegacyClusterRecord,
+} from "../src/features/court-cluster/utils/clusterCloudResolver.js";
 
 const VENUE_A = "venue-test-a";
 const VENUE_B = "venue-test-b";
@@ -348,6 +353,24 @@ describe("court cluster model", () => {
     assert.equal(result.removed, 1);
     assert.equal(loadCourtClusters().length, 1);
     assert.equal(loadCourtClusters()[0].id, `${VENUE_A}-main`);
+  });
+
+  it("migrates legacy default-tenant-main to cloud venue id", () => {
+    const legacy = normalizeCourtCluster({
+      id: "default-tenant-main",
+      venueId: "default-tenant",
+      name: "Pickleball NAM LONG sports",
+      slug: "main",
+      status: "active",
+    });
+
+    const migrated = migrateLegacyClusterRecord(legacy, VENUE_A);
+    assert.equal(migrated.id, `${VENUE_A}-main`);
+    assert.equal(migrated.venueId, VENUE_A);
+
+    remapClusterIdLocally(legacy.id, migrated);
+    assert.equal(getClusterById(`${VENUE_A}-main`)?.name, "Pickleball NAM LONG sports");
+    assert.equal(getClusterById("default-tenant-main"), null);
   });
 
   it("removeClusterOwner clears local assignment", async () => {

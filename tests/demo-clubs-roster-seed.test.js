@@ -41,7 +41,7 @@ test("buildDemoPlayers — 60 VĐV đa dạng giới tính và level", () => {
   assert.equal(players.length, 60);
   assert.ok(players.some((player) => player.gender === "Nam"));
   assert.ok(players.some((player) => player.gender === "Nữ"));
-  assert.ok(players.every((player) => player.level >= 1.5 && player.level <= 6));
+  assert.ok(players.every((player) => player.level >= 1.0 && player.level <= 8.0));
 });
 
 test("seedDemoClubsRoster — 4 CLB × 60 VĐV", () => {

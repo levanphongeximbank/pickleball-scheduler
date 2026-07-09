@@ -20,13 +20,25 @@ import {
   SEED_TENANTS,
 } from "../seed/multiTenantSeed.js";
 import { ensureClubManagementSeed } from "../../club/seed/clubManagementSeed.js";
+import { isDemoSeedDisabled } from "../../../demo/seed/demoSeedRegistry.js";
+import { purgeDemoSeedData } from "../../../demo/seed/purgeDemoSeed.js";
 
 export { DEFAULT_TENANT_ID, SEED_TENANTS };
 
 export function ensureTenantBootstrap() {
   ensureDefaultTenantMigration();
+
+  if (import.meta.env?.PROD) {
+    return purgeDemoSeedData();
+  }
+
+  if (isDemoSeedDisabled()) {
+    return { ok: true, skipped: true };
+  }
+
   ensureMultiTenantSeed();
   ensureClubManagementSeed();
+  return { ok: true };
 }
 
 export function listTenants() {

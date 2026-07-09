@@ -38,6 +38,7 @@ import {
   getLevelProgress,
   getPlayerQuickStats,
   getPlayerStatusMeta,
+  isPlayerUnrated,
 } from "../../utils/playerHelpers.js";
 
 function QuickStatPlaceholder({ label }) {
@@ -76,9 +77,13 @@ export default function PlayerCard({
   const navigate = useNavigate();
   const [menuAnchor, setMenuAnchor] = useState(null);
 
-  const levelColor = getLevelColor(player.level);
-  const levelLabel = getLevelLabel(player.level);
-  const progress = getLevelProgress(player.level);
+  const unrated = isPlayerUnrated(player);
+  const levelColor = unrated ? "#64748b" : getLevelColor(player.level);
+  const levelLabel = unrated ? "Chưa đánh giá" : getLevelLabel(player.level);
+  const progress = unrated ? 0 : getLevelProgress(player.level);
+  const genderLabel = player.gender || "Chưa rõ";
+  const isFemale = player.gender === "Nữ";
+  const isMale = player.gender === "Nam";
 
   const statusMeta = useMemo(() => {
     const base = getPlayerStatusMeta(player);
@@ -130,13 +135,15 @@ export default function PlayerCard({
               {player.name}
             </Typography>
             <Stack direction="row" spacing={0.5} alignItems="center">
-              {player.gender === "Nữ" ? (
+              {isFemale ? (
                 <FemaleIcon sx={{ fontSize: 16, color: "#db2777" }} />
-              ) : (
+              ) : isMale ? (
                 <MaleIcon sx={{ fontSize: 16, color: "#2563eb" }} />
+              ) : (
+                <PersonIcon sx={{ fontSize: 16, color: "#64748b" }} />
               )}
               <Typography variant="caption" color="text.secondary">
-                {player.gender || "Chưa rõ"}
+                {genderLabel}
               </Typography>
               <Chip
                 size="small"
@@ -185,7 +192,7 @@ export default function PlayerCard({
               </Typography>
               <Chip
                 size="small"
-                label={`${Number(player.level).toFixed(1)} · ${levelLabel}`}
+                label={unrated ? levelLabel : `${Number(player.level).toFixed(1)} · ${levelLabel}`}
                 sx={{
                   bgcolor: `${levelColor}18`,
                   color: levelColor,
@@ -195,6 +202,7 @@ export default function PlayerCard({
               />
             </Stack>
 
+            {!unrated && (
             <LinearProgress
               variant="determinate"
               value={progress}
@@ -209,6 +217,7 @@ export default function PlayerCard({
                 },
               }}
             />
+            )}
           </>
         )}
 

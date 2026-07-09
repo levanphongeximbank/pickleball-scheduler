@@ -70,7 +70,7 @@ function QuestionField({ question, answers, onChange, showWhen = true }) {
         type="number"
         label={question.label}
         value={value ?? ""}
-        inputProps={{ min: 1.5, max: 6.5, step: 0.1 }}
+        inputProps={{ min: 1.0, max: 8.0, step: 0.1 }}
         onChange={(event) => onChange(question.id, event.target.value)}
         helperText="Tùy chọn — tăng độ tin cậy"
       />

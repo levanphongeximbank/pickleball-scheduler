@@ -185,7 +185,7 @@ export default function CourtClusterManagement() {
       return;
     }
 
-    const cloudResult = await persistCourtClusterToCloud(result.cluster, { actor: user });
+    const cloudResult = await persistCourtClusterToCloud(result.cluster, { venueId, actor: user });
     setCreateSaving(false);
 
     if (!cloudResult.ok) {
@@ -234,7 +234,7 @@ export default function CourtClusterManagement() {
       return;
     }
 
-    const cloudResult = await persistCourtClusterToCloud(result.cluster, { actor: user });
+    const cloudResult = await persistCourtClusterToCloud(result.cluster, { venueId, actor: user });
     setEditSaving(false);
 
     if (!cloudResult.ok) {
@@ -256,7 +256,7 @@ export default function CourtClusterManagement() {
       return;
     }
 
-    const cloudResult = await persistCourtClusterToCloud(result.cluster, { actor: user });
+    const cloudResult = await persistCourtClusterToCloud(result.cluster, { venueId, actor: user });
     if (!cloudResult.ok) {
       setError(cloudResult.error || "Không đồng bộ trạng thái lên Supabase.");
       return;
@@ -343,7 +343,7 @@ export default function CourtClusterManagement() {
 
     setError(null);
     setRemoveOwnerSaving(true);
-    const result = await removeClusterOwner({ clusterId: infoCluster.id, actor: user });
+    const result = await removeClusterOwner({ clusterId: infoCluster.id, venueId, actor: user });
     setRemoveOwnerSaving(false);
     setRemoveOwnerConfirmOpen(false);
 
@@ -385,6 +385,7 @@ export default function CourtClusterManagement() {
     const result = await assignClusterOwnerToUser({
       userId: assignForm.user?.id,
       clusterIds: assignForm.clusterIds,
+      venueId,
       actor: user,
     });
     setAssignSaving(false);

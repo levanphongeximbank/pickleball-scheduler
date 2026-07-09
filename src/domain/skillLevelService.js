@@ -67,8 +67,8 @@ export function updateSkillLevelRules(clubId, partialRules = {}) {
 
 function buildLevelDistribution(players = [], rules = DEFAULT_SKILL_LEVEL_RULES) {
   const step = Number(rules.step) || 0.5;
-  const min = Number(rules.minLevel) || 1.5;
-  const max = Number(rules.maxLevel) || 6;
+  const min = Number(rules.minLevel) || 1.0;
+  const max = Number(rules.maxLevel) || 8.0;
   const buckets = [];
 
   for (let level = min; level < max; level += step) {

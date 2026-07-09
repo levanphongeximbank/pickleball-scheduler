@@ -1,5 +1,6 @@
-/** Thang trình Pick_VN — bước 0.5, tối đa hiển thị 6.0+ */
+/** Thang trình Pick_VN — bước 0.5, phạm vi 1.0–8.0 */
 export const PICK_VN_RATING_LEVELS = Object.freeze([
+  "1.0",
   "1.5",
   "2.0",
   "2.5",
@@ -10,16 +11,20 @@ export const PICK_VN_RATING_LEVELS = Object.freeze([
   "5.0",
   "5.5",
   "6.0",
-  "6.0+",
+  "6.5",
+  "7.0",
+  "7.5",
+  "8.0",
 ]);
 
-export const PICK_VN_MIN = 1.5;
-export const PICK_VN_MAX = 6.5;
+export const PICK_VN_MIN = 1.0;
+export const PICK_VN_MAX = 8.0;
 export const PICK_VN_STEP = 0.5;
-/** Bước mịn 1.5–4.0 — onboarding & trình phong trào */
+/** Bước mịn 1.0–4.0 — onboarding & trình phong trào */
 export const PICK_VN_FINE_STEP = 0.1;
 export const PICK_VN_FINE_MAX = 4.0;
 export const PICK_VN_ONBOARDING_CONFIRM_MARKS = Object.freeze([
+  "1.0",
   "1.5",
   "2.0",
   "2.5",
@@ -27,6 +32,7 @@ export const PICK_VN_ONBOARDING_CONFIRM_MARKS = Object.freeze([
   "3.5",
   "4.0",
 ]);
+/** Legacy label — chỉ dùng khi parse dữ liệu cũ */
 export const PICK_VN_PLUS_DISPLAY = "6.0+";
 export const PICK_VN_PLUS_NUMERIC = 6.5;
 
@@ -52,15 +58,12 @@ export function parsePickVnRating(value, fallback = 3.5) {
 
 export function snapPickVnRating(value) {
   const numeric = parsePickVnRating(value, PICK_VN_MIN);
-  if (numeric >= PICK_VN_PLUS_NUMERIC) {
-    return PICK_VN_PLUS_NUMERIC;
-  }
   const step = numeric <= PICK_VN_FINE_MAX ? PICK_VN_FINE_STEP : PICK_VN_STEP;
   const snapped = Math.round(numeric / step) * step;
   return Math.min(PICK_VN_MAX, Math.max(PICK_VN_MIN, Math.round(snapped * 10) / 10));
 }
 
-/** Slider bước 7 — chỉ 1.5–4.0, bước 0.1 (chọn được 2.2, 2.3, 2.4…) */
+/** Slider bước 7 — chỉ 1.0–4.0, bước 0.1 (chọn được 2.2, 2.3, 2.4…) */
 export function snapPickVnOnboardingConfirm(value) {
   const numeric = parsePickVnRating(value, PICK_VN_MIN);
   const clamped = Math.min(PICK_VN_FINE_MAX, Math.max(PICK_VN_MIN, numeric));
@@ -70,9 +73,6 @@ export function snapPickVnOnboardingConfirm(value) {
 
 export function formatPickVnRating(value) {
   const numeric = parsePickVnRating(value);
-  if (numeric >= PICK_VN_PLUS_NUMERIC) {
-    return PICK_VN_PLUS_DISPLAY;
-  }
   return numeric.toFixed(1);
 }
 
@@ -90,7 +90,7 @@ export function getOnboardingConfirmSliderMarks() {
   }));
 }
 
-/** Giữ legacy >= 1.5 trên thang Pick_VN */
+/** Giữ legacy trên thang Pick_VN */
 export function migrateLegacyRating(value) {
   const numeric = parsePickVnRating(value, PICK_VN_MIN);
   if (numeric < PICK_VN_MIN) {

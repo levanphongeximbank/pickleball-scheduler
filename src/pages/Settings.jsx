@@ -205,7 +205,9 @@ export default function Settings() {
     setDataVersion((value) => value + 1);
     setStatusMessage({
       type: "success",
-      text: `Đã xóa ${result.removedClubIds.length} CLB demo và ${result.removedTenantIds.length} tenant demo. Auto-seed đã tắt.`,
+      text: `Đã xóa ${result.removedClubIds.length} CLB demo, ${result.removedTenantIds.length} tenant demo${
+        result.strippedPlayers ? `, gỡ ${result.strippedPlayers} VĐV demo sót` : ""
+      }. Auto-seed đã tắt.`,
     });
   };
 

@@ -12,9 +12,11 @@ import { PlatformRuntimeProvider } from "./core/platform/app/PlatformRuntimeProv
 import CssBaseline from "@mui/material/CssBaseline";
 
 import theme from "./theme/theme";
+import { ensureTenantBootstrap } from "./features/tenant/services/tenantService.js";
 import { seedDemoDataForDev } from "./data/seedDemoData.js";
 import { flushOfflineQueue } from "./features/mobile/services/offlineQueue.js";
 
+ensureTenantBootstrap();
 seedDemoDataForDev();
 
 async function unregisterPreviewServiceWorkers() {

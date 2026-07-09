@@ -72,7 +72,7 @@ export function buildDemoPlayers(count, clubSpec, options = {}) {
       const lastName = LAST_NAMES[index % LAST_NAMES.length];
       const givenPool = isMale ? MALE_GIVEN : FEMALE_GIVEN;
       const givenName = givenPool[Math.floor(index / LAST_NAMES.length) % givenPool.length];
-      const level = 1.5 + ((index * 7) % 46) / 10;
+      const level = 1.0 + (index % 15) * 0.5;
 
       return {
         id: `${clubId}-vdv-${index + 1}`,

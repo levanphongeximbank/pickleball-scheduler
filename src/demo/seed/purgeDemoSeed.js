@@ -1,19 +1,67 @@
 import { getActiveClubId, loadClubs, saveClubs, setActiveClubId } from "../../data/club.js";
 import { loadVenues, saveVenues } from "../../data/venue.js";
 import { clearActiveTenantId, loadActiveTenantId } from "../../data/tenantSession.js";
-import { purgeClubData } from "../../domain/clubStorage.js";
+import { CLUB_DATA_KEY, purgeClubData } from "../../domain/clubStorage.js";
 import { purgeClubExtension } from "../../features/club/storage/clubExtensionStorage.js";
 import {
   disableDemoSeedAutoApply,
   getDemoSeedClubIds,
   getDemoSeedTenantIds,
+  isDemoSeedClubId,
+  isDemoSeedPlayer,
+  purgeAllDemoStorageKeys,
 } from "./demoSeedRegistry.js";
+
+function stripDemoPlayersFromStoredClubBlobs() {
+  const prefix = `${CLUB_DATA_KEY}::`;
+  let strippedPlayers = 0;
+
+  for (const key of Object.keys(localStorage)) {
+    if (!key.startsWith(prefix)) {
+      continue;
+    }
+
+    const clubId = key.slice(prefix.length);
+    if (isDemoSeedClubId(clubId)) {
+      localStorage.removeItem(key);
+      continue;
+    }
+
+    const raw = localStorage.getItem(key);
+    if (!raw) {
+      continue;
+    }
+
+    try {
+      const data = JSON.parse(raw);
+      const players = Array.isArray(data?.players) ? data.players : null;
+      if (!players) {
+        continue;
+      }
+
+      const filtered = players.filter((player) => !isDemoSeedPlayer(player, clubId));
+      if (filtered.length === players.length) {
+        continue;
+      }
+
+      strippedPlayers += players.length - filtered.length;
+      data.players = filtered;
+      localStorage.setItem(key, JSON.stringify(data));
+    } catch {
+      // ignore malformed blobs
+    }
+  }
+
+  return strippedPlayers;
+}
 
 /**
  * Xóa toàn bộ CLB/tenant/VĐV demo (multi-tenant seed, club management seed, roster demo).
  * Chặn auto-seed chạy lại sau khi dọn.
  */
 export function purgeDemoSeedData() {
+  const removedKeyCount = purgeAllDemoStorageKeys();
+
   const tenantIds = new Set(getDemoSeedTenantIds());
   const clubIds = new Set(getDemoSeedClubIds());
 
@@ -21,6 +69,8 @@ export function purgeDemoSeedData() {
     purgeClubData(clubId);
     purgeClubExtension(clubId);
   }
+
+  const strippedPlayers = stripDemoPlayersFromStoredClubBlobs();
 
   const remainingClubs = loadClubs().filter((club) => !clubIds.has(club.id));
   saveClubs(remainingClubs);
@@ -53,5 +103,7 @@ export function purgeDemoSeedData() {
     removedClubIds: Array.from(clubIds),
     removedTenantIds: Array.from(tenantIds),
     remainingClubCount: remainingClubs.length,
+    removedKeyCount,
+    strippedPlayers,
   };
 }

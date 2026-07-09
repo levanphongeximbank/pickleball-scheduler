@@ -1,10 +1,11 @@
 import { loadClubs } from "../../../data/club.js";
 import { loadClubData } from "../../../domain/clubStorage.js";
 import { normalizePlayers } from "../../../models/player.js";
+import { isDemoSeedPlayer, shouldHideDemoSeedData } from "../../../demo/seed/demoSeedRegistry.js";
+import { enrichAccountOnlyAthletes } from "./accountOnlyAthleteService.js";
 import {
   ROLES,
-  isGlobalRole,
-  isPlatformScopedRole,
+  isPlatformWideRole,
   normalizeRole,
 } from "../../identity/constants/roles.js";
 import { listUsers } from "../../identity/services/userManagementService.js";
@@ -19,8 +20,7 @@ export const PLATFORM_ATHLETE_LINK_STATUS = Object.freeze({
 const DEV_REGISTRY_KEY = "pickleball-dev-user-registry-v1";
 
 export function isPlatformAthleteViewer(role) {
-  const normalized = normalizeRole(role);
-  return isGlobalRole(normalized) || isPlatformScopedRole(normalized);
+  return isPlatformWideRole(role);
 }
 
 function loadDevRegistryUsers() {
@@ -60,6 +60,10 @@ export function getClubPlayersPlatformWide() {
     const tenantId = club.venueId || club.tenantId || data.tenantId || null;
 
     for (const player of data.players || []) {
+      if (shouldHideDemoSeedData() && isDemoSeedPlayer(player, club.id)) {
+        continue;
+      }
+
       if (byId.has(player.id)) {
         continue;
       }
@@ -102,8 +106,8 @@ function isProfileLinkedToRoster(profile, rosterPlayers) {
   });
 }
 
-export function buildOrphanProfileAthletes(profiles, rosterPlayers) {
-  const orphans = [];
+function collectOrphanProfiles(profiles, rosterPlayers) {
+  const pending = [];
 
   for (const profile of profiles || []) {
     if (normalizeRole(profile?.role) !== ROLES.PLAYER) {
@@ -114,31 +118,42 @@ export function buildOrphanProfileAthletes(profiles, rosterPlayers) {
       continue;
     }
 
-    const userId = String(profile.id || "").trim();
-    orphans.push(
-      normalizePlayers([
-        {
-          id: `profile-${userId}`,
-          name: profile.displayName || profile.email || "VĐV",
-          email: profile.email || "",
-          phone: profile.phone || "",
-          gender: profile.gender || "",
-          level: 3.5,
-          rating: 3.5,
-          status: profile.status === "suspended" ? "inactive" : "active",
-          active: profile.status !== "suspended",
-          authUserId: userId,
-          clubId: profile.clubId || null,
-          tenantId: profile.tenantId || profile.venueId || null,
-          sourceClubId: profile.clubId || null,
-          clubName: profile.clubId ? "" : "",
-          linkStatus: PLATFORM_ATHLETE_LINK_STATUS.ACCOUNT_ONLY,
-        },
-      ])[0]
-    );
+    pending.push(profile);
   }
 
-  return orphans;
+  return pending;
+}
+
+export async function buildOrphanProfileAthletesAsync(profiles, rosterPlayers) {
+  return enrichAccountOnlyAthletes(collectOrphanProfiles(profiles, rosterPlayers));
+}
+
+/** Sync fallback for tests — không enrich rating từ RPC. */
+export function buildOrphanProfileAthletes(profiles, rosterPlayers) {
+  return collectOrphanProfiles(profiles, rosterPlayers).map((profile) => {
+    const userId = String(profile.id || "").trim();
+    return normalizePlayers([
+      {
+        id: `profile-${userId}`,
+        name: profile.displayName || profile.email || "VĐV",
+        email: profile.email || "",
+        phone: profile.phone || "",
+        gender: profile.gender || "",
+        status: profile.status === "suspended" ? "inactive" : "active",
+        active: profile.status !== "suspended",
+        authUserId: userId,
+        clubId: profile.clubId || null,
+        tenantId: profile.tenantId || profile.venueId || null,
+        sourceClubId: profile.clubId || null,
+        clubName: "",
+        linkStatus: PLATFORM_ATHLETE_LINK_STATUS.ACCOUNT_ONLY,
+        rating_status: "unrated",
+        level: null,
+        rating: null,
+        skillLevel: null,
+      },
+    ])[0];
+  });
 }
 
 async function fetchPlayerProfiles() {
@@ -179,20 +194,20 @@ export async function getPlatformAthletes() {
     return profileResult;
   }
 
-  const orphanPlayers = buildOrphanProfileAthletes(profileResult.profiles, rosterPlayers);
+  const orphanPlayers = await buildOrphanProfileAthletesAsync(
+    profileResult.profiles,
+    rosterPlayers
+  );
   const players = sortByName([...rosterPlayers, ...orphanPlayers]);
-
-  const accountOnlyCount = orphanPlayers.length;
-  const rosterCount = rosterPlayers.length;
 
   return {
     ok: true,
     players,
     stats: {
       total: players.length,
-      rosterCount,
-      accountOnlyCount,
-      linkedCount: rosterCount,
+      rosterCount: rosterPlayers.length,
+      accountOnlyCount: orphanPlayers.length,
+      linkedCount: rosterPlayers.length,
     },
     partial: Boolean(profileResult.partial),
     warning: profileResult.warning || null,

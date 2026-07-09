@@ -96,7 +96,7 @@ export default function PickVnRatingPanel({
         Trình độ Pick_VN
       </Typography>
       <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-        Đánh giá trình độ (2.0–6.0+) — tách biệt với điểm VPR Ranking.
+        Đánh giá trình độ (1.0–8.0) — tách biệt với điểm VPR Ranking.
       </Typography>
 
       <PickVnRatingBadge

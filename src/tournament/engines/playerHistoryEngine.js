@@ -1,4 +1,5 @@
 import { loadClubData } from "../../domain/clubStorage.js";
+import { parsePlatformAthleteRouteId } from "../../features/club/services/accountOnlyAthleteService.js";
 import { MATCH_STATUS, TOURNAMENT_MODE } from "../../models/tournament/constants.js";
 
 const FINISHED_MATCH_STATUSES = new Set([
@@ -336,10 +337,16 @@ export function loadPlayerHistoryProfileResolved(
   { primaryClubId, secondaryClubId, playerId, authUserId } = {},
   options = {}
 ) {
+  const route = parsePlatformAthleteRouteId(playerId);
+  const resolvedAuthUserId = authUserId || route.authUserId || null;
+  const resolvedPlayerId = route.isAccountOnly ? null : playerId;
   const clubIds = [...new Set([primaryClubId, secondaryClubId].filter(Boolean))];
 
   for (const clubId of clubIds) {
-    const player = findPlayerInClubData(clubId, { playerId, authUserId });
+    const player = findPlayerInClubData(clubId, {
+      playerId: resolvedPlayerId,
+      authUserId: resolvedAuthUserId,
+    });
     if (!player) {
       continue;
     }
@@ -354,5 +361,10 @@ export function loadPlayerHistoryProfileResolved(
     }
   }
 
-  return { ok: false, error: "Khong tim thay VDV." };
+  return {
+    ok: false,
+    error: "Khong tim thay VDV.",
+    isAccountOnlyRoute: route.isAccountOnly,
+    authUserId: resolvedAuthUserId,
+  };
 }

@@ -23,6 +23,7 @@ export {
   rolesEqual,
   isValidRole,
   isGlobalRole,
+  isPlatformWideRole,
   isVenueScopedRole,
   isClubScopedRole,
   isRefereeRole,

@@ -8,9 +8,11 @@ import { seedDemoClubsRoster } from "../src/demo/seed/demoClubsRosterSeed.js";
 import {
   DEMO_SEED_DISABLED_KEY,
   isDemoSeedDisabled,
+  isDemoSeedPlayer,
   MULTI_TENANT_SEED_MARKER,
 } from "../src/demo/seed/demoSeedRegistry.js";
 import { purgeDemoSeedData } from "../src/demo/seed/purgeDemoSeed.js";
+import { getClubPlayersPlatformWide } from "../src/features/club/services/platformAthleteService.js";
 import { ensureClubManagementSeed } from "../src/features/club/seed/clubManagementSeed.js";
 import {
   ensureMultiTenantSeed,
@@ -79,6 +81,22 @@ test("purgeDemoSeedData — xóa multi-tenant seed và chặn auto-seed", () => 
     SEED_TENANTS.some((seed) => seed.clubId === club.id)
   );
   assert.equal(reseededClubs.length, 0);
+});
+
+test("isDemoSeedPlayer — nhận diện VĐV abc_pickleball", () => {
+  assert.equal(
+    isDemoSeedPlayer({ id: "abc_pickleball-player-1", name: "abc_pickleball VĐV 1" }, "club-abc-pickleball"),
+    true
+  );
+  assert.equal(isDemoSeedPlayer({ id: "real-1", name: "Nguyễn Văn A" }, "club-nam-long"), false);
+});
+
+test("getClubPlayersPlatformWide — ẩn demo khi demo seed disabled", () => {
+  ensureTenantBootstrap();
+  localStorage.setItem(DEMO_SEED_DISABLED_KEY, "1");
+
+  const players = getClubPlayersPlatformWide();
+  assert.equal(players.some((player) => /abc_pickleball VĐV/.test(player.name || "")), false);
 });
 
 test("purgeDemoSeedData — xóa roster demo 4 CLB × 60 VĐV", () => {

@@ -16,6 +16,7 @@ import {
 
 import { savePlayersForClub, loadPlayersForClub } from "../../domain/clubStorage.js";
 import { normalizePlayer } from "../../models/player.js";
+import { PICK_VN_MAX, PICK_VN_MIN } from "../../features/pick-vn-rating/constants/pickVnRatingScale.js";
 import { PLAYER_TYPE } from "../../models/tournament/constants.js";
 
 const defaultForm = {
@@ -131,8 +132,8 @@ export default function TournamentPlayerQuickAddDialog({
             </Typography>
             <Slider
               value={Number(form.level) || 3.5}
-              min={1.5}
-              max={6}
+              min={PICK_VN_MIN}
+              max={PICK_VN_MAX}
               step={0.25}
               onChange={(_, value) => updateForm("level", value)}
               valueLabelDisplay="auto"

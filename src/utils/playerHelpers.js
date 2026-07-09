@@ -2,6 +2,20 @@ import { loadClubData } from "../domain/clubStorage.js";
 import { loadPlayerHistoryProfileForClub } from "../tournament/engines/playerHistoryEngine.js";
 import { TOURNAMENT_MODE } from "../models/tournament/constants.js";
 import { todayIsoDate } from "../pages/courtManagement/courtManagement.constants.js";
+import { RATING_STATUS } from "../features/pick-vn-rating/constants/ratingStatus.js";
+
+export function isPlayerUnrated(player) {
+  if (!player) {
+    return true;
+  }
+
+  const status = player.rating_status || player.ratingStatus;
+  if (status && status !== RATING_STATUS.UNRATED) {
+    return false;
+  }
+
+  return player.level == null && player.skillLevel == null && player.current_rating == null;
+}
 
 export function getLevelLabel(level) {
   const value = Number(level) || 0;
@@ -22,7 +36,7 @@ export function getLevelColor(level) {
 }
 
 export function getLevelProgress(level) {
-  return Math.min(100, Math.max(0, ((Number(level) - 1.5) / 4.5) * 100));
+  return Math.min(100, Math.max(0, ((Number(level) - 1.0) / 7.0) * 100));
 }
 
 export function getPlayerStatusMeta(player) {
@@ -150,8 +164,8 @@ export function getPlayerQuickStats(player, clubId, playersById = new Map()) {
 export function generatePlayerInsight(player, options = {}) {
   const { clubId, players = [], checkedInIds = new Set() } = options;
   const level = Number(player?.level) || 3.5;
-  const low = Math.max(1.5, Math.round((level - 0.5) * 10) / 10);
-  const high = Math.min(6, Math.round((level + 0.5) * 10) / 10);
+  const low = Math.max(1.0, Math.round((level - 0.5) * 10) / 10);
+  const high = Math.min(8.0, Math.round((level + 0.5) * 10) / 10);
 
   if (clubId) {
     const quick = getPlayerQuickStats(
@@ -219,7 +233,7 @@ export function filterPlayers(players, filters = {}) {
   const {
     search = "",
     genderFilter = "all",
-    levelRange = [1.5, 6],
+    levelRange = [1.0, 8.0],
     statusFilter = "all",
     checkedInIds = new Set(),
   } = filters;

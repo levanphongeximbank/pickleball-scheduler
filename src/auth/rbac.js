@@ -1,6 +1,7 @@
 import {
   ROLES,
   isGlobalRole,
+  isPlatformWideRole,
   isClubScopedRole,
   isVenueScopedRole,
   isRefereeRole,
@@ -147,7 +148,7 @@ export function canAccessClub(user, clubId, clubMeta = {}, options = {}) {
     return false;
   }
 
-  if (hasRole(user, ROLES.PLATFORM_ADMIN) || hasRole(user, ROLES.SUPER_ADMIN)) {
+  if (isPlatformWideRole(user.role)) {
     return true;
   }
 

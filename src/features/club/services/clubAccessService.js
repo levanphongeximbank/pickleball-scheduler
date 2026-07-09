@@ -1,5 +1,9 @@
 import { getCurrentUser, isRbacEnabled } from "../../../auth/authService.js";
-import { isClubScopedRole, isGlobalRole, isVenueScopedRole } from "../../../auth/roles.js";
+import {
+  isClubScopedRole,
+  isPlatformWideRole,
+  isVenueScopedRole,
+} from "../../../auth/roles.js";
 import { loadClubs } from "../../../data/club.js";
 import { listClubsForTenant } from "../../tenant/guards/tenantGuard.js";
 import { getClubMembers } from "./clubMemberService.js";
@@ -7,7 +11,8 @@ import { CLUB_MEMBER_STATUSES } from "../constants/clubMemberRoles.js";
 
 /**
  * User có quyền xem CLB này không (ngoài RBAC permission).
- * - Venue roles / SUPER_ADMIN: toàn tenant
+ * - Platform admin / Admin (SYSTEM_TECHNICIAN): toàn hệ thống
+ * - Venue roles: toàn tenant
  * - CLUB_OWNER / PLAYER: CLB được gán hoặc là thành viên active
  */
 export function canUserViewClub(user, clubId, tenantId) {
@@ -19,7 +24,7 @@ export function canUserViewClub(user, clubId, tenantId) {
     return true;
   }
 
-  if (isGlobalRole(user.role) || isVenueScopedRole(user.role)) {
+  if (isPlatformWideRole(user.role) || isVenueScopedRole(user.role)) {
     return true;
   }
 
@@ -42,14 +47,22 @@ export function canUserViewClub(user, clubId, tenantId) {
   );
 }
 
+function listClubsForUserScope(tenantId, user) {
+  if (user && isPlatformWideRole(user.role)) {
+    return loadClubs().filter((club) => !club.isDefault);
+  }
+
+  return listClubsForTenant(tenantId).filter((club) => !club.isDefault);
+}
+
 export function getClubsVisibleToUser(tenantId, user = getCurrentUser()) {
-  const clubs = listClubsForTenant(tenantId).filter((club) => !club.isDefault);
+  const clubs = listClubsForUserScope(tenantId, user);
 
   if (!isRbacEnabled() || !user) {
     return clubs;
   }
 
-  if (isGlobalRole(user.role) || isVenueScopedRole(user.role)) {
+  if (isPlatformWideRole(user.role) || isVenueScopedRole(user.role)) {
     return clubs;
   }
 
@@ -74,7 +87,7 @@ export function filterClubsForUser(clubs = [], tenantId, user = getCurrentUser()
     return clubs;
   }
 
-  if (isGlobalRole(user.role) || isVenueScopedRole(user.role)) {
+  if (isPlatformWideRole(user.role) || isVenueScopedRole(user.role)) {
     return clubs;
   }
 

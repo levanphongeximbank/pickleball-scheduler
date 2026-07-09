@@ -1,4 +1,5 @@
 import { normalizeClub, createClubRecord } from "../models/club.js";
+import { isDemoSeedClubId, shouldHideDemoSeedData } from "../demo/seed/demoSeedRegistry.js";
 
 const CLUBS_KEY = "pickleball-clubs-v1";
 const ACTIVE_CLUB_KEY = "pickleball-active-club-v1";
@@ -63,16 +64,24 @@ export function loadClubs() {
 
   if (normalized.length === 0) {
     localStorage.setItem(CLUBS_KEY, JSON.stringify([DEFAULT_CLUB]));
-    return [DEFAULT_CLUB];
+    return filterDemoClubs([DEFAULT_CLUB]);
   }
 
   if (!normalized.some((club) => club.id === DEFAULT_CLUB.id)) {
     const withDefault = [DEFAULT_CLUB, ...normalized];
     localStorage.setItem(CLUBS_KEY, JSON.stringify(withDefault));
-    return withDefault;
+    return filterDemoClubs(withDefault);
   }
 
-  return normalized;
+  return filterDemoClubs(normalized);
+}
+
+function filterDemoClubs(clubs) {
+  if (!shouldHideDemoSeedData()) {
+    return clubs;
+  }
+
+  return clubs.filter((club) => !isDemoSeedClubId(club.id));
 }
 
 export function saveClubs(clubs) {

@@ -176,18 +176,19 @@ export function parseSelfDeclaredRating(answers) {
   if (!key) return null;
   if (key === "5.0plus") return 5.5;
   if (key === "6.0plus" || key === "6.0+") return 6.5;
+  if (key === "8.0") return 8.0;
   return snapPickVnRating(key);
 }
 
 export function mapScoreToRating(totalScore) {
   const score = Math.min(100, Math.max(0, Math.round(totalScore)));
   const band = SCORE_TO_RATING_BANDS.find((row) => score >= row.min && score <= row.max);
-  return band ? band.rating : 1.5;
+  return band ? band.rating : 1.0;
 }
 
 export function applyProvisionalRatingCalibration(rating) {
   const scaled = Number(rating) * PROVISIONAL_RATING_CALIBRATION;
-  return snapPickVnRating(Math.max(1.5, scaled));
+  return snapPickVnRating(Math.max(1.0, scaled));
 }
 
 function hasExternalRating(answers) {

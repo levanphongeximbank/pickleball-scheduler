@@ -2,6 +2,7 @@ import { getCurrentUser, isDevAuthAllowed } from "../../../auth/authService.js";
 import { hasSupabaseConfig } from "../../../auth/supabaseClient.js";
 import {
   assignUserToCluster,
+  getClusterById,
   listAssignmentsForCluster,
   setUserClusterAssignments,
   unassignUserFromCluster,
@@ -11,18 +12,79 @@ import {
   pullClusterContextForUser,
   pruneInvalidLocalClusterOwners,
   pruneOrphanLocalClusters,
+  remapClusterIdLocally,
 } from "./courtClusterCloudSync.js";
 import {
   removeClusterOwnerFromCloud,
-  syncVenueClustersToCloud,
   upsertClusterToCloud,
 } from "./courtClusterCloudService.js";
 import { isValidProfileUserId } from "../utils/profileUserId.js";
+import {
+  migrateLegacyClusterRecord,
+  resolveCloudVenueIdForClusterOps,
+} from "../utils/clusterCloudResolver.js";
 import { rpcAdminAssignClusterOwner } from "./courtClaimRequestRpcService.js";
+
+async function ensureClustersOnCloud(clusterIds = [], { venueId, actor, assigneeUserId } = {}) {
+  const ids = [...new Set((clusterIds || []).map((id) => String(id).trim()).filter(Boolean))];
+  if (ids.length === 0) {
+    return { ok: false, error: "Chọn ít nhất một cụm sân.", code: "CLUSTER_IDS_REQUIRED" };
+  }
+
+  const cloudVenueId = await resolveCloudVenueIdForClusterOps({
+    selectedVenueId: venueId,
+    actor,
+    assigneeUserId,
+  });
+
+  if (!cloudVenueId) {
+    return {
+      ok: false,
+      code: "VENUE_ID_REQUIRED",
+      error:
+        "Không xác định được tổ chức cloud. Chọn tổ chức hợp lệ hoặc gán venue_id trên profile chủ sân.",
+    };
+  }
+
+  const resolvedIds = [];
+
+  for (const clusterId of ids) {
+    const cluster = getClusterById(clusterId);
+    if (!cluster) {
+      return {
+        ok: false,
+        code: "CLUSTER_NOT_FOUND",
+        error: `Không tìm thấy cụm: ${clusterId}`,
+      };
+    }
+
+    const cloudCluster = migrateLegacyClusterRecord(cluster, cloudVenueId);
+    if (cloudCluster.id !== cluster.id) {
+      remapClusterIdLocally(cluster.id, cloudCluster);
+    } else if (cloudCluster.venueId !== cluster.venueId) {
+      updateCourtCluster(cluster.id, { venueId: cloudCluster.venueId }, { user: actor });
+    }
+
+    const latestCluster = getClusterById(cloudCluster.id) || cloudCluster;
+    const upsertResult = await upsertClusterToCloud(latestCluster);
+    if (!upsertResult.ok) {
+      if (upsertResult.code === "RPC_NOT_DEPLOYED" && isDevAuthAllowed()) {
+        resolvedIds.push(cloudCluster.id);
+        continue;
+      }
+      return upsertResult;
+    }
+
+    resolvedIds.push(cloudCluster.id);
+  }
+
+  return { ok: true, clusterIds: resolvedIds, venueId: cloudVenueId };
+}
 
 export async function assignClusterOwnerToUser({
   userId,
   clusterIds = [],
+  venueId = null,
   actor = getCurrentUser(),
 } = {}) {
   const normalizedUserId = String(userId || "").trim();
@@ -45,23 +107,33 @@ export async function assignClusterOwnerToUser({
   }
 
   if (hasSupabaseConfig()) {
+    const ensured = await ensureClustersOnCloud(ids, {
+      venueId,
+      actor,
+      assigneeUserId: normalizedUserId,
+    });
+    if (!ensured.ok) {
+      return ensured;
+    }
+
+    const cloudIds = ensured.clusterIds;
     const rpcResult = await rpcAdminAssignClusterOwner({
       userId: normalizedUserId,
-      clusterIds: ids,
+      clusterIds: cloudIds,
     });
     if (rpcResult.ok) {
       await pullClusterContextForUser({ id: normalizedUserId });
       if (actor?.id) {
         await pullClusterContextForUser(actor);
       }
-      for (const clusterId of ids) {
+      for (const clusterId of cloudIds) {
         assignUserToCluster(normalizedUserId, clusterId, {
           role: "CLUSTER_OWNER",
           user: actor,
         });
         updateCourtCluster(clusterId, { ownerUserId: normalizedUserId }, { user: actor });
       }
-      return { ...rpcResult, provider: "rpc" };
+      return { ...rpcResult, clusterIds: cloudIds, provider: "rpc" };
     }
     if (rpcResult.code !== "RPC_NOT_DEPLOYED") {
       return rpcResult;
@@ -87,6 +159,7 @@ export async function assignClusterOwnerToUser({
 
 export async function removeClusterOwner({
   clusterId,
+  venueId = null,
   actor = getCurrentUser(),
 } = {}) {
   const normalizedClusterId = String(clusterId || "").trim();
@@ -94,22 +167,34 @@ export async function removeClusterOwner({
     return { ok: false, error: "Thiếu id cụm sân.", code: "CLUSTER_ID_REQUIRED" };
   }
 
-  const ownerAssignments = listAssignmentsForCluster(normalizedClusterId).filter(
+  let targetClusterId = normalizedClusterId;
+
+  if (hasSupabaseConfig()) {
+    const ensured = await ensureClustersOnCloud([normalizedClusterId], { venueId, actor });
+    if (!ensured.ok && ensured.code !== "RPC_NOT_DEPLOYED") {
+      return ensured;
+    }
+    if (ensured.ok) {
+      targetClusterId = ensured.clusterIds[0] || normalizedClusterId;
+    }
+  }
+
+  const ownerAssignments = listAssignmentsForCluster(targetClusterId).filter(
     (item) => item.role === "CLUSTER_OWNER"
   );
 
   if (hasSupabaseConfig()) {
-    const rpcResult = await removeClusterOwnerFromCloud(normalizedClusterId);
+    const rpcResult = await removeClusterOwnerFromCloud(targetClusterId);
     if (rpcResult.ok) {
       for (const assignment of ownerAssignments) {
-        unassignUserFromCluster(assignment.userId, normalizedClusterId, { user: actor });
+        unassignUserFromCluster(assignment.userId, targetClusterId, { user: actor });
       }
-      updateCourtCluster(normalizedClusterId, { ownerUserId: null }, { user: actor });
+      updateCourtCluster(targetClusterId, { ownerUserId: null }, { user: actor });
       if (actor?.id) {
         await pullClusterContextForUser(actor);
       }
       pruneInvalidLocalClusterOwners();
-      return { ...rpcResult, provider: "rpc" };
+      return { ...rpcResult, clusterId: targetClusterId, provider: "rpc" };
     }
     if (rpcResult.code !== "RPC_NOT_DEPLOYED") {
       return rpcResult;
@@ -121,15 +206,15 @@ export async function removeClusterOwner({
   }
 
   for (const assignment of ownerAssignments) {
-    unassignUserFromCluster(assignment.userId, normalizedClusterId, { user: actor });
+    unassignUserFromCluster(assignment.userId, targetClusterId, { user: actor });
   }
-  updateCourtCluster(normalizedClusterId, { ownerUserId: null }, { user: actor });
+  updateCourtCluster(targetClusterId, { ownerUserId: null }, { user: actor });
   pruneInvalidLocalClusterOwners();
 
-  return { ok: true, clusterId: normalizedClusterId, provider: "local" };
+  return { ok: true, clusterId: targetClusterId, provider: "local" };
 }
 
-export async function persistCourtClusterToCloud(cluster, { actor = getCurrentUser() } = {}) {
+export async function persistCourtClusterToCloud(cluster, { venueId = null, actor = getCurrentUser() } = {}) {
   if (!hasSupabaseConfig()) {
     if (!isDevAuthAllowed()) {
       return { ok: false, code: "NO_SUPABASE", error: "Supabase chưa cấu hình." };
@@ -137,17 +222,16 @@ export async function persistCourtClusterToCloud(cluster, { actor = getCurrentUs
     return { ok: true, provider: "local" };
   }
 
-  const rpcResult = await upsertClusterToCloud(cluster);
-  if (rpcResult.ok) {
-    if (actor?.id) {
-      await pullClusterContextForUser(actor);
-    }
-    return rpcResult;
+  const ensured = await ensureClustersOnCloud([cluster.id], { venueId, actor });
+  if (!ensured.ok && ensured.code !== "RPC_NOT_DEPLOYED") {
+    return ensured;
   }
-  if (rpcResult.code === "RPC_NOT_DEPLOYED" && isDevAuthAllowed()) {
-    return { ok: true, provider: "local" };
+
+  if (actor?.id) {
+    await pullClusterContextForUser(actor);
   }
-  return rpcResult;
+
+  return { ok: true, clusterId: ensured.clusterIds?.[0] || cluster.id, provider: "rpc" };
 }
 
 export async function syncClustersForVenueToCloud({
@@ -159,10 +243,22 @@ export async function syncClustersForVenueToCloud({
     pruneOrphanLocalClusters(venueId);
   }
 
-  const result = await syncVenueClustersToCloud(clusters);
-  if (result.ok && actor?.id) {
+  const clusterIds = (clusters || []).map((cluster) => cluster.id).filter(Boolean);
+  const ensured = await ensureClustersOnCloud(clusterIds, { venueId, actor });
+  if (!ensured.ok) {
+    return ensured;
+  }
+
+  if (actor?.id) {
     await pullClusterContextForUser(actor);
     pruneInvalidLocalClusterOwners();
   }
-  return result;
+
+  return {
+    ok: true,
+    synced: ensured.clusterIds.length,
+    clusterIds: ensured.clusterIds,
+    venueId: ensured.venueId,
+    provider: "rpc",
+  };
 }

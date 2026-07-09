@@ -23,7 +23,7 @@ export function filterTournamentPickerPlayers(players = [], filters = {}) {
   result = filterPlayers(result, {
     search,
     genderFilter,
-    levelRange: [1.5, 6],
+    levelRange: [1.0, 8.0],
     statusFilter: "all",
   });
 

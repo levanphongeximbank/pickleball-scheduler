@@ -148,19 +148,43 @@ export function normalizePlayer(player) {
     return null;
   }
 
-  const skillLevel = getPlayerCurrentRating(
-    player,
-    Math.max(PICK_VN_MIN, parsePickVnRating(player.level ?? player.rating, 3.5))
-  );
-  const ratingInternal = getPlayerRatingInternal(player, skillLevel);
+  const hasExplicitRating =
+    player.current_rating != null ||
+    player.level != null ||
+    player.rating != null ||
+    player.skillLevel != null;
 
-  const migratedRating = migratePlayerRatingFields({
-    ...player,
-    skillLevel,
-    level: skillLevel,
-    rating: skillLevel,
-    ratingInternal,
-  });
+  const incomingStatus = normalizeRatingStatus(player.rating_status, null);
+  const isExplicitlyUnrated =
+    incomingStatus === RATING_STATUS.UNRATED && !hasExplicitRating;
+
+  const migratedRating = isExplicitlyUnrated
+    ? {
+        rating_status: RATING_STATUS.UNRATED,
+        current_rating: null,
+        level: null,
+        rating: null,
+        skillLevel: null,
+      }
+    : migratePlayerRatingFields({
+        ...player,
+        skillLevel: player.skillLevel,
+        level: player.level,
+        rating: player.rating,
+        ratingInternal: player.ratingInternal,
+      });
+
+  const ratingStatus = normalizeRatingStatus(
+    migratedRating.rating_status ?? player.rating_status,
+    hasExplicitRating ? RATING_STATUS.SELF_DECLARED : RATING_STATUS.UNRATED
+  );
+  const isUnrated = ratingStatus === RATING_STATUS.UNRATED && !hasExplicitRating;
+  const skillLevel = isUnrated
+    ? null
+    : getPlayerCurrentRating(
+        { ...player, ...migratedRating },
+        Math.max(PICK_VN_MIN, parsePickVnRating(player.level ?? player.rating, 3.5))
+      );
 
   const normalized = {
     ...player,
@@ -173,13 +197,10 @@ export function normalizePlayer(player) {
     skillLevel,
     level: skillLevel,
     rating: skillLevel,
-    ratingInternal,
+    ratingInternal: isUnrated ? null : getPlayerRatingInternal(player, skillLevel ?? 3.5),
     status: normalizeStatus(player.status),
     active: player.active !== false,
-    rating_status: normalizeRatingStatus(
-      migratedRating.rating_status ?? player.rating_status,
-      skillLevel ? RATING_STATUS.SELF_DECLARED : RATING_STATUS.UNRATED
-    ),
+    rating_status: ratingStatus,
   };
 
   if (player.skillLevelLockedAt) {

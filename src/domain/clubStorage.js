@@ -9,6 +9,10 @@ import { normalizePlayers } from "../models/player.js";
 import { normalizeBookings } from "../models/booking.js";
 import { normalizeCustomers } from "../models/customer.js";
 import { normalizeTournaments } from "../models/tournament/index.js";
+import {
+  isDemoSeedPlayer,
+  shouldHideDemoSeedData,
+} from "../demo/seed/demoSeedRegistry.js";
 import { migrateV2ToV3 } from "./migrateV2ToV3.js";
 import { normalizeCourtManagementSettings } from "./courtManagementSettings.js";
 import {
@@ -245,7 +249,17 @@ export function loadClubData(clubId = getActiveClubId()) {
     const parsed = safeParse(raw, null);
     if (parsed) {
       purgeLegacyAiScopedKeys(resolvedClubId);
-      return normalizeClubData(parsed, resolvedClubId);
+      const normalized = normalizeClubData(parsed, resolvedClubId);
+      if (!shouldHideDemoSeedData()) {
+        return normalized;
+      }
+
+      return {
+        ...normalized,
+        players: (normalized.players || []).filter(
+          (player) => !isDemoSeedPlayer(player, resolvedClubId)
+        ),
+      };
     }
   }
 
@@ -277,7 +291,12 @@ export function purgeClubData(clubId) {
 }
 
 export function loadPlayersForClub(clubId = getActiveClubId()) {
-  return loadClubData(clubId).players;
+  const players = loadClubData(clubId).players;
+  if (!shouldHideDemoSeedData()) {
+    return players;
+  }
+
+  return players.filter((player) => !isDemoSeedPlayer(player, clubId));
 }
 
 function stampCollectionWithTenant(items, clubId) {

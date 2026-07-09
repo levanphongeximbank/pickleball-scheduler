@@ -42,7 +42,7 @@ export default function AthleteRatingSummary({ authUserId }) {
           </Stack>
           <Typography variant="body2" color="text.secondary">
             Chưa có điểm trình độ. Hoàn thành bài đánh giá kỹ năng để hệ thống gợi ý mức
-            Pick_VN phù hợp (2.0–6.0+).
+            Pick_VN phù hợp (1.0–8.0).
           </Typography>
           <Button
             component={RouterLink}

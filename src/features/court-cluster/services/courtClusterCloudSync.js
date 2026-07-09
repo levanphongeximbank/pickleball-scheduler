@@ -1,9 +1,11 @@
 import { getSupabaseAuthClient, hasSupabaseConfig } from "../../../auth/supabaseClient.js";
 import {
+  getActiveClusterId,
   loadClusterAssignments,
   loadCourtClusters,
   saveClusterAssignments,
   saveCourtClusters,
+  setActiveClusterId,
 } from "../../../data/courtCluster.js";
 import {
   normalizeClusterAssignment,
@@ -157,6 +159,25 @@ export function pruneOrphanLocalClusters(currentVenueId) {
   }
 
   return { ok: true, removed };
+}
+
+export function remapClusterIdLocally(oldClusterId, nextCluster) {
+  const normalized = normalizeCourtCluster(nextCluster);
+  const clusters = loadCourtClusters().filter((item) => item.id !== oldClusterId);
+  const withoutDuplicate = clusters.filter((item) => item.id !== normalized.id);
+  withoutDuplicate.push(normalized);
+  saveCourtClusters(withoutDuplicate);
+
+  const assignments = loadClusterAssignments().map((item) =>
+    item.clusterId === oldClusterId ? { ...item, clusterId: normalized.id } : item
+  );
+  saveClusterAssignments(assignments);
+
+  if (getActiveClusterId() === oldClusterId) {
+    setActiveClusterId(normalized.id);
+  }
+
+  return normalized;
 }
 
 export { mergeClustersIntoLocal, mergeUserAssignmentsIntoLocal };

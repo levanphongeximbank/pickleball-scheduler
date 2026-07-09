@@ -28,6 +28,7 @@ import { isPlatformAthleteViewer } from "../auth/roles.js";
 import { loadClubs } from "../data/club.js";
 import { savePlayersForClub, loadPlayersForClub } from "../domain/clubStorage.js";
 import { setInitialSkillLevel } from "../domain/skillLevelChangeService.js";
+import { PICK_VN_MAX, PICK_VN_MIN } from "../features/pick-vn-rating/constants/pickVnRatingScale.js";
 import { canViewPlayerSkillLevel } from "../auth/rbac.js";
 import { loadPlayersFromStorage } from "./selectPlayers.data";
 import { normalizePlayers } from "../models/player.js";
@@ -99,7 +100,7 @@ export default function Players() {
   const [deletePlayer, setDeletePlayer] = useState(null);
   const [search, setSearch] = useState("");
   const [genderFilter, setGenderFilter] = useState("all");
-  const [levelRange, setLevelRange] = useState([2.0, 6.5]);
+  const [levelRange, setLevelRange] = useState([PICK_VN_MIN, PICK_VN_MAX]);
   const [statusFilter, setStatusFilter] = useState("all");
   const [formError, setFormError] = useState(null);
 
@@ -305,7 +306,7 @@ export default function Players() {
 
   const clearFilters = () => {
     setGenderFilter("all");
-    setLevelRange([2.0, 6.5]);
+    setLevelRange([PICK_VN_MIN, PICK_VN_MAX]);
     setStatusFilter("all");
     setSearch("");
     setClubFilter("all");
@@ -503,8 +504,8 @@ export default function Players() {
                 </Stack>
                 <Slider
                   value={form.level}
-                  min={2.0}
-                  max={6.5}
+                  min={PICK_VN_MIN}
+                  max={PICK_VN_MAX}
                   step={0.5}
                   valueLabelDisplay="auto"
                   onChange={(_, v) => updateForm("level", v)}

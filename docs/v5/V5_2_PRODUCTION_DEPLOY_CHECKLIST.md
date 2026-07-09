@@ -50,7 +50,7 @@
 | C7 | `PHASE_33_TENANT_ROLE_CUSTOMIZE.sql` | ✅ | `tenant.role.customize` có trên Production |
 | C8 | Phase 23/32/33 claim/34/35 SQL | ✅ | `court_clusters`, `court_claim_requests`, RPC `court_admin_assign_cluster_owner` |
 | C11 | `PHASE_36_COURT_CLUSTER_CLOUD_SYNC.sql` | ✅ | RPC `court_admin_upsert_cluster`, `court_admin_remove_cluster_owner` (MCP 2026-07-09) |
-| C12 | `PHASE_36_PRODUCTION_BACKFILL_NAM_LONG.sql` | ☐ | Owner chạy backfill cụm `venue-prod-main-main` + gán chủ qua UI |
+| C12 | `PHASE_36_PRODUCTION_BACKFILL_NAM_LONG.sql` | ✅ | `venue-prod-main-main` backfill 2026-07-09 |
 | C9 | Phase 30/31 VPR + club membership SQL | ✅ | `pick_vn_player_ratings`, `club_governance`, `club_membership_requests` |
 | C10 | `npm run verify:phase33-tenant-owner-rbac-production` | ☐ | Cần `SUPABASE_SERVICE_ROLE_KEY` local — MCP đã spot-check |
 

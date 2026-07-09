@@ -41,16 +41,21 @@ export const ASSESSMENT_STEPS = Object.freeze([
 ]);
 
 export const SCORE_TO_RATING_BANDS = Object.freeze([
-  { min: 0, max: 15, rating: 1.5 },
-  { min: 16, max: 25, rating: 2.0 },
-  { min: 26, max: 35, rating: 2.5 },
-  { min: 36, max: 45, rating: 3.0 },
-  { min: 46, max: 55, rating: 3.5 },
-  { min: 56, max: 68, rating: 4.0 },
-  { min: 69, max: 80, rating: 4.5 },
-  { min: 81, max: 90, rating: 5.0 },
-  { min: 91, max: 96, rating: 5.5 },
-  { min: 97, max: 100, rating: 6.0 },
+  { min: 0, max: 6, rating: 1.0 },
+  { min: 7, max: 12, rating: 1.5 },
+  { min: 13, max: 18, rating: 2.0 },
+  { min: 19, max: 24, rating: 2.5 },
+  { min: 25, max: 30, rating: 3.0 },
+  { min: 31, max: 36, rating: 3.5 },
+  { min: 37, max: 42, rating: 4.0 },
+  { min: 43, max: 48, rating: 4.5 },
+  { min: 49, max: 54, rating: 5.0 },
+  { min: 55, max: 60, rating: 5.5 },
+  { min: 61, max: 66, rating: 6.0 },
+  { min: 67, max: 72, rating: 6.5 },
+  { min: 73, max: 78, rating: 7.0 },
+  { min: 79, max: 86, rating: 7.5 },
+  { min: 87, max: 100, rating: 8.0 },
 ]);
 
 export const PROFILE_DURATION_SCORE = Object.freeze({
@@ -128,6 +133,7 @@ export const SPORT_LEVEL_MULTIPLIER = Object.freeze({
 });
 
 export const SELF_RATING_POINTS = Object.freeze({
+  "1.0": 0,
   "1.5": 0,
   "2.0": 0.5,
   "2.5": 1,
@@ -140,6 +146,10 @@ export const SELF_RATING_POINTS = Object.freeze({
   "5.5": 4,
   "6.0": 4.5,
   "6.0plus": 5,
+  "6.5": 4.75,
+  "7.0": 4.85,
+  "7.5": 4.95,
+  "8.0": 5,
 });
 
 export const GROUP_LABELS = Object.freeze({
@@ -496,6 +506,7 @@ export const SKILL_ASSESSMENT_QUESTIONS = Object.freeze([
     label: "Bạn tự đánh giá mình ở mức nào?",
     type: "single",
     options: [
+      opt("1.0", "1.0", 0),
       opt("1.5", "1.5", 0),
       opt("2.0", "2.0", 0.5),
       opt("2.5", "2.5", 1),
@@ -506,7 +517,10 @@ export const SKILL_ASSESSMENT_QUESTIONS = Object.freeze([
       opt("5.0", "5.0", 3.5),
       opt("5.5", "5.5", 4),
       opt("6.0", "6.0", 4.5),
-      opt("6.0plus", "6.0+", 5),
+      opt("6.5", "6.5", 4.75),
+      opt("7.0", "7.0", 4.85),
+      opt("7.5", "7.5", 4.95),
+      opt("8.0", "8.0", 5),
     ],
   },
   {

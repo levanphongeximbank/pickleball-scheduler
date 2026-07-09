@@ -182,7 +182,11 @@ export function isTeamCaptainRole(role) {
   return rolesEqual(role, ROLES.TEAM_CAPTAIN);
 }
 
-export function isPlatformAthleteViewer(role) {
+export function isPlatformWideRole(role) {
   const normalized = normalizeRole(role);
   return isGlobalRole(normalized) || isPlatformScopedRole(normalized);
+}
+
+export function isPlatformAthleteViewer(role) {
+  return isPlatformWideRole(role);
 }

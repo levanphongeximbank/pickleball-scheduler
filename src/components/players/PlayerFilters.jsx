@@ -99,8 +99,8 @@ export default function PlayerFilters({
             </Typography>
             <Slider
               value={levelRange}
-              min={1.5}
-              max={6}
+              min={1.0}
+              max={8.0}
               step={0.1}
               size="small"
               color="primary"

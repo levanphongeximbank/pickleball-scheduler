@@ -81,16 +81,19 @@ export function legacyV1Answers(overrides = {}) {
 }
 
 test("mapScoreToRating follows 100-point bands", () => {
+  assert.equal(mapScoreToRating(5), 1.0);
   assert.equal(mapScoreToRating(10), 1.5);
-  assert.equal(mapScoreToRating(20), 2.0);
-  assert.equal(mapScoreToRating(30), 2.5);
-  assert.equal(mapScoreToRating(40), 3.0);
-  assert.equal(mapScoreToRating(50), 3.5);
-  assert.equal(mapScoreToRating(60), 4.0);
-  assert.equal(mapScoreToRating(75), 4.5);
-  assert.equal(mapScoreToRating(85), 5.0);
-  assert.equal(mapScoreToRating(95), 5.5);
-  assert.equal(mapScoreToRating(100), 6.0);
+  assert.equal(mapScoreToRating(15), 2.0);
+  assert.equal(mapScoreToRating(20), 2.5);
+  assert.equal(mapScoreToRating(25), 3.0);
+  assert.equal(mapScoreToRating(30), 3.0);
+  assert.equal(mapScoreToRating(35), 3.5);
+  assert.equal(mapScoreToRating(50), 5.0);
+  assert.equal(mapScoreToRating(60), 5.5);
+  assert.equal(mapScoreToRating(70), 6.5);
+  assert.equal(mapScoreToRating(80), 7.5);
+  assert.equal(mapScoreToRating(95), 8.0);
+  assert.equal(mapScoreToRating(100), 8.0);
 });
 
 test("group scorers respect caps", () => {
@@ -156,14 +159,14 @@ test("applyProvisionalRatingCalibration scales rating by 0.8", () => {
   assert.equal(PROVISIONAL_RATING_CALIBRATION, 0.8);
   assert.equal(applyProvisionalRatingCalibration(3.5), 2.8);
   assert.equal(applyProvisionalRatingCalibration(2.0), 1.6);
-  assert.equal(applyProvisionalRatingCalibration(1.5), 1.5);
+  assert.equal(applyProvisionalRatingCalibration(1.5), 1.2);
 });
 
 test("calculatePlayerAssessment returns calibrated provisional rating not self rating", () => {
   const result = calculatePlayerAssessment({ answers: baseAnswers() });
   assert.equal(result.ok, true);
-  assert.equal(result.raw_provisional_rating, 3.5);
-  assert.equal(result.provisional_rating, 2.8);
+  assert.equal(result.raw_provisional_rating, 5.0);
+  assert.equal(result.provisional_rating, 4.0);
   assert.equal(result.self_declared_rating, 3.0);
   assert.equal(result.current_rating, result.provisional_rating);
   assert.equal(result.rating_status, RATING_STATUS.PROVISIONAL);

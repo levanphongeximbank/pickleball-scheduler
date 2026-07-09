@@ -16,8 +16,8 @@ export const DEFAULT_SKILL_LEVEL_RULES = {
   step: 0.5,
   promoteThreshold: 0.35,
   demoteThreshold: 0.35,
-  minLevel: 1.5,
-  maxLevel: 6.5,
+  minLevel: 1.0,
+  maxLevel: 8.0,
   minMatchesForProposal: 5,
   confidencePerMatch: 0.05,
 };

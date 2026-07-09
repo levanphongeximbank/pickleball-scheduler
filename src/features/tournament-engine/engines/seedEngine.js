@@ -55,7 +55,7 @@ function buildSeedReason(participant, breakdown) {
 
 function computeSeedBreakdown(participant, weights) {
   const eloNorm = clamp((playerSkill(participant) - 600) / 800);
-  const skillNorm = clamp((Number(participant.skillLevel || 3) - 1.5) / 4.5);
+  const skillNorm = clamp((Number(participant.skillLevel || 3) - 1.0) / 7.0);
   const winRateNorm = clamp(Number(participant.winRate ?? 0.5));
   const recentNorm = clamp(Number(participant.recentPerformance ?? 0.5));
   const manualNorm = clamp(Number(participant.manualPriority ?? 0));

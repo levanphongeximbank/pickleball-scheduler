@@ -51,28 +51,31 @@ beforeEach(() => {
   globalThis.localStorage = createLocalStorageMock();
 });
 
-test("snapPickVnRating — fine step up to 4.0, then 0.5 to 6.0+", () => {
-  assert.equal(snapPickVnRating(1.5), 1.5);
-  assert.equal(snapPickVnRating(1.2), 1.5);
+test("snapPickVnRating — fine step up to 4.0, then 0.5 to 8.0", () => {
+  assert.equal(snapPickVnRating(1.0), 1.0);
+  assert.equal(snapPickVnRating(1.2), 1.2);
   assert.equal(snapPickVnRating(2.23), 2.2);
   assert.equal(snapPickVnRating(2.4), 2.4);
   assert.equal(snapPickVnRating(3.2), 3.2);
   assert.equal(snapPickVnRating(3.7), 3.7);
   assert.equal(snapPickVnRating(4.3), 4.5);
-  assert.equal(snapPickVnRating(6.5), PICK_VN_PLUS_NUMERIC);
-  assert.equal(formatPickVnRating(PICK_VN_PLUS_NUMERIC), "6.0+");
+  assert.equal(snapPickVnRating(6.5), 6.5);
+  assert.equal(snapPickVnRating(8.0), 8.0);
+  assert.equal(snapPickVnRating(9.0), 8.0);
+  assert.equal(formatPickVnRating(8.0), "8.0");
 });
 
-test("snapPickVnOnboardingConfirm clamps to 1.5–4.0", () => {
+test("snapPickVnOnboardingConfirm clamps to 1.0–4.0", () => {
   assert.equal(snapPickVnOnboardingConfirm(2.35), 2.4);
   assert.equal(snapPickVnOnboardingConfirm(4.5), 4.0);
-  assert.equal(snapPickVnOnboardingConfirm(1.2), 1.5);
+  assert.equal(snapPickVnOnboardingConfirm(0.8), 1.0);
 });
 
-test("migrateLegacyRating keeps min 1.5", () => {
-  assert.equal(migrateLegacyRating(1.5), 1.5);
-  assert.equal(migrateLegacyRating(1.0), 1.5);
+test("migrateLegacyRating keeps min 1.0", () => {
+  assert.equal(migrateLegacyRating(1.0), 1.0);
+  assert.equal(migrateLegacyRating(0.5), 1.0);
   assert.equal(migrateLegacyRating(4.0), 4.0);
+  assert.equal(migrateLegacyRating(8.0), 8.0);
 });
 
 test("normalizePlayer migrates legacy skillLevel fields", () => {
@@ -135,8 +138,8 @@ test("completePickVnOnboarding saves assessment and clears gate", async () => {
 
   assert.equal(result.ok, true);
   const record = getPickVnRatingByAuthUserId(authUserId);
-  assert.equal(record.currentRating, 2.8);
-  assert.equal(record.provisionalRating, 2.8);
+  assert.equal(record.currentRating, 4.0);
+  assert.equal(record.provisionalRating, 4.0);
   assert.equal(record.selfDeclaredRating, 3.0);
   assert.equal(record.ratingStatus, RATING_STATUS.PROVISIONAL);
   assert.ok(record.assessmentScore >= 46 && record.assessmentScore <= 55);

@@ -120,6 +120,52 @@ async function linkAthleteProfile({ userId, clubId, playerId }) {
   return { ok: true, playerId, clubId };
 }
 
+export async function adminLinkAccountOnlyAthleteToClub({ clubId, user, tenantId = null }) {
+  const trimmedClubId = String(clubId || "").trim();
+  const normalizedUser = normalizeUser(user);
+  if (!trimmedClubId || !normalizedUser?.id) {
+    return { ok: false, error: "Thiếu CLB hoặc user." };
+  }
+
+  const tenantCheck = guardClubTenant(trimmedClubId, tenantId || normalizedUser.tenantId || normalizedUser.venueId);
+  if (!tenantCheck.ok) {
+    return tenantCheck;
+  }
+
+  const club = getRegistryClubById(trimmedClubId);
+  const resolvedTenantId =
+    tenantId || club?.venueId || club?.tenantId || normalizedUser.tenantId || normalizedUser.venueId || null;
+
+  const ensureResult = ensurePlayerInClubBlob({
+    clubId: trimmedClubId,
+    tenantId: resolvedTenantId,
+    user: normalizedUser,
+    displayName: normalizedUser.displayName,
+  });
+
+  if (!ensureResult.ok) {
+    return ensureResult;
+  }
+
+  const linkResult = await linkAthleteProfile({
+    userId: normalizedUser.id,
+    clubId: trimmedClubId,
+    playerId: ensureResult.player.id,
+  });
+
+  if (!linkResult.ok) {
+    return linkResult;
+  }
+
+  return {
+    ok: true,
+    player: ensureResult.player,
+    playerId: ensureResult.player.id,
+    clubId: trimmedClubId,
+    created: ensureResult.created,
+  };
+}
+
 export function listJoinableClubs(tenantId) {
   return getClubsByTenant(tenantId).filter((club) => club.status === CLUB_STATUSES.ACTIVE);
 }
