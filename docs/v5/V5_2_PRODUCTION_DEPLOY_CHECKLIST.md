@@ -1,10 +1,10 @@
 # V5.3 — Production Deploy Checklist (Owner + Engineering)
 
 **Ngày cập nhật:** 2026-07-09  
-**Target version:** `5.3.9` — ✅ tagged  
+**Target version:** `5.3.10` — ✅ tagged  
 **Production URL:** https://pickleball-scheduler-eight.vercel.app  
 **Production Supabase:** `expuvcohlcjzvrrauvud`  
-**Rollback deployment:** `dpl_9JKRHT9Zt17vPwNBjbu7AVJo8eoX` (V5.3.8 `2c2f9a9`)
+**Rollback deployment:** `dpl_8B6dwJ9xhXSwLsjuCScgx1SyXyPG` (V5.3.9 `2ea1231`)
 
 **Phạm vi:** Controlled Production pilot — **không** Commercial GA · **không** payment live
 
@@ -30,10 +30,10 @@
 
 | # | Việc | Tick | Ghi chú |
 |---|------|------|---------|
-| B1 | Commit trên branch `v5-platform-edition` | ✅ | `2ea1231` |
-| B2 | `package.json` version `5.3.9` | ✅ | |
-| B3 | Tag `v5.3.9` | ✅ | |
-| B4 | Push branch + tag | ✅ | origin `v5-platform-edition` + `v5.3.9` |
+| B1 | Commit trên branch `v5-platform-edition` | ✅ | `b71f619` |
+| B2 | `package.json` version `5.3.10` | ✅ | |
+| B3 | Tag `v5.3.10` | ☐ | |
+| B4 | Push branch + tag | ☐ | |
 
 ---
 
@@ -91,13 +91,13 @@
 
 | # | Việc | Tick | Ghi chú |
 |---|------|------|---------|
-| E1 | Ghi deployment ID **trước** deploy | ✅ | `dpl_9JKRHT9Zt17vPwNBjbu7AVJo8eoX` (V5.3.8) |
-| E2 | Deploy Production | ✅ | `dpl_8B6dwJ9xhXSwLsjuCScgx1SyXyPG` (commit `2ea1231`) |
+| E1 | Ghi deployment ID **trước** deploy | ✅ | `dpl_8B6dwJ9xhXSwLsjuCScgx1SyXyPG` (V5.3.9) |
+| E2 | Deploy Production | ✅ | `dpl_J25aJ6acT4YedL1ka7iRNji8QYGM` (commit `b71f619`) |
 | E3 | Alias production domain | ✅ | `pickleball-scheduler-eight.vercel.app` |
 | E4 | Bundle scan — không staging ref | ✅ | |
 | E5 | `/login` HTTP 200 | ✅ | 2026-07-09 |
 
-**Fail P0 → rollback:** Vercel Promote `dpl_9JKRHT9Zt17vPwNBjbu7AVJo8eoX`
+**Fail P0 → rollback:** Vercel Promote `dpl_8B6dwJ9xhXSwLsjuCScgx1SyXyPG`
 
 ---
 
@@ -124,7 +124,7 @@
 | Role | GO V5.3 Production | Date |
 |------|-------------------|------|
 | Owner | ☐ | |
-| Engineering | ✅ | 2026-07-09 — deploy `2ea1231` / `dpl_8B6dwJ9xhXSwLsjuCScgx1SyXyPG` |
+| Engineering | ✅ | 2026-07-09 — deploy `b71f619` / `dpl_J25aJ6acT4YedL1ka7iRNji8QYGM` |
 
 **Không tick Commercial GA** — Gate 4/5 vẫn BLOCKED.
 
