@@ -124,22 +124,26 @@ export default function MyClubCreatePanel({ tenantId, user, onSuccess }) {
                 ? "Không tìm thấy cụm sân — thử từ khóa khác"
                 : "Gõ tên cụm sân để tìm"
           }
-          renderInput={(params) => (
-            <TextField
-              {...params}
-              label="Cụm sân hoạt động"
-              placeholder="Tìm theo tên cụm sân, địa chỉ..."
-              InputProps={{
-                ...params.InputProps,
-                endAdornment: (
-                  <>
-                    {loading ? <CircularProgress color="inherit" size={18} /> : null}
-                    {params.InputProps.endAdornment}
-                  </>
-                ),
-              }}
-            />
-          )}
+          renderInput={(params) => {
+            const autocompleteInputProps = params.InputProps ?? {};
+
+            return (
+              <TextField
+                {...params}
+                label="Cụm sân hoạt động"
+                placeholder="Tìm theo tên cụm sân, địa chỉ..."
+                InputProps={{
+                  ...autocompleteInputProps,
+                  endAdornment: (
+                    <>
+                      {loading ? <CircularProgress color="inherit" size={18} /> : null}
+                      {autocompleteInputProps.endAdornment}
+                    </>
+                  ),
+                }}
+              />
+            );
+          }}
           renderOption={(props, cluster) => (
             <li {...props} key={cluster.id}>
               <Box>

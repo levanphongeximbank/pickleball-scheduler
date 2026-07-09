@@ -13,7 +13,7 @@ import {
   saveTenantRoleOverrides,
 } from "../src/features/identity/services/tenantRolePermissionService.js";
 import { PERMISSIONS } from "../src/features/identity/constants/permissions.js";
-import { getPermissionsForRole } from "../src/features/identity/matrix/rolePermissions.js";
+import { getPermissionsForRole, PLAYER_DEFAULT_PERMISSION_IDS } from "../src/features/identity/matrix/rolePermissions.js";
 import { can } from "../src/auth/rbac.js";
 import { createUserRecord } from "../src/models/user.js";
 
@@ -117,4 +117,22 @@ test("tenant role permissions — can() áp dụng override theo tenantId", () =
 
   clearTenantRoleOverrides(tenantId, ROLES.PLAYER);
   delete globalThis.localStorage;
+});
+
+test("PLAYER default permissions — tournament browse without clubId", () => {
+  const defaults = getPermissionsForRole(ROLES.PLAYER);
+  assert.deepEqual(defaults, [...PLAYER_DEFAULT_PERMISSION_IDS]);
+  assert.ok(defaults.includes(PERMISSIONS.TOURNAMENT_VIEW));
+  assert.ok(defaults.includes(PERMISSIONS.STATISTICS_VIEW));
+  assert.equal(defaults.includes(PERMISSIONS.TOURNAMENT_CREATE), false);
+
+  const player = createUserRecord({
+    role: ROLES.PLAYER,
+    clubId: null,
+    playerId: null,
+  });
+  const rbacOn = { rbacEnabled: true };
+
+  assert.equal(can(player, PERMISSIONS.TOURNAMENT_VIEW, {}, rbacOn), true);
+  assert.equal(can(player, PERMISSIONS.STATISTICS_VIEW, {}, rbacOn), true);
 });

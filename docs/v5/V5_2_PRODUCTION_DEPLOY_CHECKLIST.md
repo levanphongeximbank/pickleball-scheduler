@@ -1,10 +1,10 @@
 # V5.3 — Production Deploy Checklist (Owner + Engineering)
 
 **Ngày cập nhật:** 2026-07-09  
-**Target version:** `5.3.5` — ✅ tagged  
+**Target version:** `5.3.6` — ✅ tagged  
 **Production URL:** https://pickleball-scheduler-eight.vercel.app  
 **Production Supabase:** `expuvcohlcjzvrrauvud`  
-**Rollback deployment:** `dpl_7j1kdnHxg1j8zELcpB3WQh2MSYCs` (V5.3.4 `3cb6485`)
+**Rollback deployment:** `dpl_9j6oBsYMY8jt9WSYDgc4fCqoLs8Q` (V5.3.5 `49327cf`)
 
 **Phạm vi:** Controlled Production pilot — **không** Commercial GA · **không** payment live
 
@@ -16,7 +16,7 @@
 
 | # | Việc | Tick | Ghi chú |
 |---|------|------|---------|
-| A1 | `npm test` PASS (gồm pairing + rbac-v52) | ✅ | 1154/1154 (2026-07-09) |
+| A1 | `npm test` PASS (gồm pairing + rbac-v52) | ✅ | 1156/1156 (2026-07-09) |
 | A2 | `npm run build` PASS | ✅ | |
 | A3 | Pairing constraints + intervention (Super Admin) | ✅ | `pairing-constraints/`, `pairing-intervention/` |
 | A4 | Platform athlete service + team group seed | ✅ | `platformAthleteService.js`, `teamGroupSeedEngine.js` |
@@ -30,10 +30,10 @@
 
 | # | Việc | Tick | Ghi chú |
 |---|------|------|---------|
-| B1 | Commit trên branch `v5-platform-edition` | ✅ | `49327cf` |
-| B2 | `package.json` version `5.3.5` | ✅ | |
-| B3 | Tag `v5.3.5` | ✅ | |
-| B4 | Push branch + tag | ✅ | origin `v5-platform-edition` + `v5.3.5` |
+| B1 | Commit trên branch `v5-platform-edition` | ☐ | |
+| B2 | `package.json` version `5.3.6` | ☐ | |
+| B3 | Tag `v5.3.6` | ☐ | |
+| B4 | Push branch + tag | ☐ | origin `v5-platform-edition` + `v5.3.6` |
 
 ---
 
@@ -51,6 +51,7 @@
 | C8 | Phase 23/32/33 claim/34/35 SQL | ✅ | `court_clusters`, `court_claim_requests`, RPC `court_admin_assign_cluster_owner` |
 | C11 | `PHASE_36_COURT_CLUSTER_CLOUD_SYNC.sql` | ✅ | RPC upsert/remove/delete owner + `court_admin_delete_cluster` (MCP 2026-07-09) |
 | C12 | `PHASE_36_PRODUCTION_BACKFILL_NAM_LONG.sql` | ✅ | `venue-prod-main-main` backfill 2026-07-09 |
+| C13 | `PHASE_37_PLAYER_DEFAULT_RBAC.sql` | ✅ | PLAYER 9 perms mặc định — MCP 2026-07-09 |
 | C9 | Phase 30/31 VPR + club membership SQL | ✅ | `pick_vn_player_ratings`, `club_governance`, `club_membership_requests` |
 | C10 | `npm run verify:phase33-tenant-owner-rbac-production` | ☐ | Cần `SUPABASE_SERVICE_ROLE_KEY` local — MCP đã spot-check |
 
@@ -90,13 +91,13 @@
 
 | # | Việc | Tick | Ghi chú |
 |---|------|------|---------|
-| E1 | Ghi deployment ID **trước** deploy | ✅ | `dpl_7j1kdnHxg1j8zELcpB3WQh2MSYCs` (V5.3.4) |
-| E2 | Deploy Production | ✅ | `dpl_9j6oBsYMY8jt9WSYDgc4fCqoLs8Q` (commit `49327cf`) |
-| E3 | Alias production domain | ✅ | `pickleball-scheduler-eight.vercel.app` |
+| E1 | Ghi deployment ID **trước** deploy | ✅ | `dpl_9j6oBsYMY8jt9WSYDgc4fCqoLs8Q` (V5.3.5) |
+| E2 | Deploy Production | ☐ | |
+| E3 | Alias production domain | ☐ | `pickleball-scheduler-eight.vercel.app` |
 | E4 | Bundle scan — không staging ref | ✅ | |
 | E5 | `/login` HTTP 200 | ✅ | 2026-07-09 |
 
-**Fail P0 → rollback:** Vercel Promote `dpl_7j1kdnHxg1j8zELcpB3WQh2MSYCs`
+**Fail P0 → rollback:** Vercel Promote `dpl_9j6oBsYMY8jt9WSYDgc4fCqoLs8Q`
 
 ---
 

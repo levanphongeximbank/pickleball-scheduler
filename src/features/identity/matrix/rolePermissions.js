@@ -260,6 +260,11 @@ const REFEREE_PERMISSIONS = [
   PERMISSIONS.STATISTICS_VIEW,
 ];
 
+/**
+ * VĐV — quyền mặc định (self-service).
+ * tournament.view + statistics.view: duyệt giải/kết quả kể cả chưa gắn CLB (scope SELF — rbac.matchesSelfScope).
+ * Không có tournament.create/update/delete, club.*, booking.*, finance.*.
+ */
 const PLAYER_PERMISSIONS = [
   PERMISSIONS.TOURNAMENT_VIEW,
   PERMISSIONS.STATISTICS_VIEW,
@@ -271,6 +276,9 @@ const PLAYER_PERMISSIONS = [
   PERMISSIONS.TEAM_LINEUP_SUBMIT,
   PERMISSIONS.TEAM_STANDINGS_VIEW,
 ];
+
+/** Id permission DB — đồng bộ docs/v5/PHASE_37_PLAYER_DEFAULT_RBAC.sql */
+export const PLAYER_DEFAULT_PERMISSION_IDS = Object.freeze([...PLAYER_PERMISSIONS]);
 
 const CUSTOMER_PERMISSIONS = [
   PERMISSIONS.BOOKING_VIEW,

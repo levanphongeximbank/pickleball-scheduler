@@ -75,6 +75,20 @@ test("app shell — global search không crash khi InputProps undefined (MUI v9)
   assert.ok(search.includes("params.InputProps ?? {}"));
 });
 
+test("my club — create panel không crash khi InputProps undefined (MUI v9)", () => {
+  const panel = readSrc("src/pages/player/myClub/MyClubCreatePanel.jsx");
+
+  assert.equal(/params\.InputProps\.endAdornment/.test(panel), false);
+  assert.ok(panel.includes("params.InputProps ?? {}"));
+});
+
+test("my club — club form dialog không crash khi InputProps undefined (MUI v9)", () => {
+  const dialog = readSrc("src/pages/clubs/ClubFormDialog.jsx");
+
+  assert.equal(/params\.InputProps\.endAdornment/.test(dialog), false);
+  assert.ok(dialog.includes("params.InputProps ?? {}"));
+});
+
 test("app shell — không còn label legacy trong navigation config", () => {
   const nav = readSrc("src/config/navigationConfig.js");
 

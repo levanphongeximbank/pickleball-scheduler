@@ -329,22 +329,26 @@ export default function ClubFormDialog({
                     ? "Không tìm thấy cụm sân"
                     : "Gõ tên cụm sân để tìm"
               }
-              renderInput={(params) => (
-                <TextField
-                  {...params}
-                  label="Cụm sân đăng ký"
-                  placeholder="Tùy chọn — tìm theo tên cụm sân"
-                  InputProps={{
-                    ...params.InputProps,
-                    endAdornment: (
-                      <>
-                        {clusterLoading ? <CircularProgress color="inherit" size={18} /> : null}
-                        {params.InputProps.endAdornment}
-                      </>
-                    ),
-                  }}
-                />
-              )}
+              renderInput={(params) => {
+                const autocompleteInputProps = params.InputProps ?? {};
+
+                return (
+                  <TextField
+                    {...params}
+                    label="Cụm sân đăng ký"
+                    placeholder="Tùy chọn — tìm theo tên cụm sân"
+                    InputProps={{
+                      ...autocompleteInputProps,
+                      endAdornment: (
+                        <>
+                          {clusterLoading ? <CircularProgress color="inherit" size={18} /> : null}
+                          {autocompleteInputProps.endAdornment}
+                        </>
+                      ),
+                    }}
+                  />
+                );
+              }}
               renderOption={(props, cluster) => (
                 <li {...props} key={cluster.id}>
                   <Box>
