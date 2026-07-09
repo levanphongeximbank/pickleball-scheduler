@@ -219,16 +219,16 @@ export default function ClubFormDialog({
 
     const result = isEdit
       ? updateClub(club.id, payload, tenantId)
-      : createClub(payload);
+      : await createClub(payload);
 
     setSaving(false);
 
     if (!result.ok) {
-      setError(result.error);
+      setError(result.error || "Không tạo được CLB.");
       return;
     }
 
-    onSuccess?.(result.club);
+    onSuccess?.(result.club, result);
   };
 
   const clusterPickerOptions = useCloudClusterPicker ? clusterOptions : localVenueClusters;

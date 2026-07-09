@@ -28,7 +28,9 @@ import {
 import { purgeClubExtension } from "../storage/clubExtensionStorage.js";
 import { writeAuditLog } from "../../identity/services/auditService.js";
 import { rpcAdminUpdateUser } from "../../identity/services/identityRpcService.js";
+import { mapProfileRowToUser } from "../../../auth/profileService.js";
 import { persistClubToCloud } from "./clubRegistryCloudService.js";
+import { rpcClubClaimSelfRegistration } from "./clubRegistryRpcService.js";
 import {
   getClusterById,
   listClustersForVenue,
@@ -385,20 +387,98 @@ export function bootstrapSelfRegisteredPresident(clubId, user, tenantId) {
     saveAuthSession(nextUser, { provider: session.provider || "dev" });
   }
 
-  void rpcAdminUpdateUser(normalizedUser.id, {
-    clubId: trimmedClubId,
-    role: ROLES.CLUB_MANAGER,
-  });
+  return { ok: true, playerId: player.id, clubId: trimmedClubId };
+}
 
-  const latestClub = getRegistryClubById(trimmedClubId);
-  if (latestClub) {
-    void persistClubToCloud(latestClub, {
-      venueId: effectiveTenantId,
-      actor: normalizedUser,
-    });
+/**
+ * Đẩy CLB lên cloud rồi gắn profiles.club_id / venue_id / CLUB_MANAGER cho Chủ tịch.
+ * Gọi sau bootstrapSelfRegisteredPresident (local) khi tạo CLB tự đăng ký.
+ */
+export async function finalizeSelfRegisteredClubCloud(clubId, user, tenantId) {
+  const trimmedClubId = String(clubId || "").trim();
+  const normalizedUser = normalizeUser(user);
+  if (!trimmedClubId || !normalizedUser?.id) {
+    return { ok: false, error: "Thiếu CLB hoặc user." };
   }
 
-  return { ok: true, playerId: player.id, clubId: trimmedClubId };
+  const latestClub = getRegistryClubById(trimmedClubId);
+  if (!latestClub) {
+    return { ok: false, code: "CLUB_NOT_FOUND", error: "Không tìm thấy CLB." };
+  }
+
+  const effectiveTenantId =
+    tenantId || latestClub.venueId || latestClub.tenantId || normalizedUser.venueId || null;
+
+  const cloudResult = await persistClubToCloud(latestClub, {
+    venueId: effectiveTenantId,
+    actor: normalizedUser,
+  });
+
+  if (!cloudResult.ok) {
+    return {
+      ok: false,
+      code: cloudResult.code || "CLOUD_SYNC_FAILED",
+      error:
+        cloudResult.error ||
+        "Không lưu được CLB lên cloud. Kiểm tra cụm sân / tổ chức đã chọn.",
+    };
+  }
+
+  if (cloudResult.provider === "local") {
+    return {
+      ok: true,
+      clubId: trimmedClubId,
+      venueId: cloudResult.venueId || effectiveTenantId,
+      provider: "local",
+    };
+  }
+
+  const claimResult = await rpcClubClaimSelfRegistration(trimmedClubId);
+  if (!claimResult.ok) {
+    if (claimResult.code === "RPC_NOT_DEPLOYED") {
+      void rpcAdminUpdateUser(normalizedUser.id, {
+        clubId: trimmedClubId,
+        role: ROLES.CLUB_MANAGER,
+      });
+      return {
+        ok: true,
+        clubId: trimmedClubId,
+        venueId: cloudResult.venueId || effectiveTenantId,
+        warning: "Cloud claim RPC chưa sẵn sàng — đã thử cập nhật profile qua admin RPC.",
+      };
+    }
+    return {
+      ok: false,
+      code: claimResult.code || "CLAIM_FAILED",
+      error: claimResult.error || "Không gắn được CLB vào tài khoản trên cloud.",
+    };
+  }
+
+  const claimedUser = claimResult.user
+    ? mapProfileRowToUser(claimResult.user)
+    : null;
+
+  if (claimedUser?.id) {
+    const session = loadAuthSession();
+    if (session?.user?.id === claimedUser.id) {
+      saveAuthSession(
+        normalizeUser({
+          ...session.user,
+          ...claimedUser,
+          playerId: session.user.playerId || claimedUser.playerId || null,
+        }),
+        { provider: session.provider || "supabase" }
+      );
+    }
+  }
+
+  return {
+    ok: true,
+    clubId: trimmedClubId,
+    venueId: claimResult.venue_id || cloudResult.venueId || effectiveTenantId,
+    role: claimResult.role || ROLES.CLUB_MANAGER,
+    user: claimedUser,
+  };
 }
 
 export function canTransferClubOwnership(user, club) {

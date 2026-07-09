@@ -46,6 +46,7 @@ export {
   resolveGovernanceForCreate,
   canSelfRegisterClub,
   bootstrapSelfRegisteredPresident,
+  finalizeSelfRegisteredClubCloud,
   canTransferClubOwnership,
   transferClubOwnership,
   transferClubPresident,

@@ -225,7 +225,7 @@ describe("club governance", () => {
     assert.equal(result.governance.presidentUserId, "mgr-1");
   });
 
-  it("PLAYER self-register createClub bootstraps president membership", () => {
+  it("PLAYER self-register createClub bootstraps president membership", async () => {
     saveVenues([
       createTenantRecord({ id: TENANT, name: "Tenant Gov", status: TENANT_STATUS.ACTIVE }),
     ]);
@@ -240,7 +240,7 @@ describe("club governance", () => {
     };
     saveAuthSession(athlete);
 
-    const result = createClub({
+    const result = await createClub({
       name: "CLB VĐV Mới",
       tenantId: TENANT,
       governance: { presidentUserId: "athlete-create" },
@@ -259,7 +259,7 @@ describe("club governance", () => {
     assert.ok(members.some((member) => member.playerId === session.user.playerId));
   });
 
-  it("PLAYER without tenantId self-register createClub via cluster tenant", () => {
+  it("PLAYER without tenantId self-register createClub via cluster tenant", async () => {
     saveVenues([
       createTenantRecord({ id: TENANT, name: "Tenant Gov", status: TENANT_STATUS.ACTIVE }),
     ]);
@@ -273,7 +273,7 @@ describe("club governance", () => {
     };
     saveAuthSession(athlete);
 
-    const result = createClub({
+    const result = await createClub({
       name: "CLB ACCC PRO",
       tenantId: TENANT,
       governance: { presidentUserId: "athlete-no-tenant" },

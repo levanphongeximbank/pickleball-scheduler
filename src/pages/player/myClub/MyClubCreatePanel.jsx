@@ -187,11 +187,13 @@ export default function MyClubCreatePanel({ tenantId, user, onSuccess }) {
         initialRegisteredClusterId={selectedCluster?.id || ""}
         lockRegisteredCluster={Boolean(selectedCluster?.id)}
         onClose={() => setFormOpen(false)}
-        onSuccess={(club) => {
+        onSuccess={(club, result) => {
           setFormOpen(false);
           setMessage({
-            type: "success",
-            text: `Đã tạo CLB ${club.name}. Bạn là Chủ tịch CLB.`,
+            type: result?.cloudSynced === false ? "warning" : "success",
+            text: result?.warning
+              ? `Đã tạo CLB ${club.name}. Lưu ý: ${result.warning}`
+              : `Đã tạo CLB ${club.name}. Bạn là Chủ tịch CLB — CLB đã lưu trên hệ thống chung.`,
           });
           onSuccess?.(club);
         }}

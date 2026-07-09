@@ -136,8 +136,8 @@ describe("club management sprint 3", () => {
     assert.equal(result.history.newElo, 1600);
   });
 
-  it("createClub validates duplicate name in tenant", () => {
-    const result = createClub({
+  it("createClub validates duplicate name in tenant", async () => {
+    const result = await createClub({
       name: "CLB Test A",
       tenantId: TENANT_A,
       governance: { presidentUserId: "president-a" },

@@ -23,6 +23,8 @@ import AddIcon from "@mui/icons-material/Add";
 import EditIcon from "@mui/icons-material/Edit";
 import VisibilityIcon from "@mui/icons-material/Visibility";
 import BlockIcon from "@mui/icons-material/Block";
+import CloudSyncIcon from "@mui/icons-material/CloudSync";
+import CloudDownloadIcon from "@mui/icons-material/CloudDownload";
 
 import { useTenant } from "../../context/TenantContext.jsx";
 import { useAuth } from "../../context/AuthContext.jsx";
@@ -212,6 +214,27 @@ export default function ClubListPage() {
     refreshTenant();
   };
 
+  const handlePullFromCloud = async () => {
+    setError(null);
+    setMessage(null);
+    setSyncSaving(true);
+
+    const result = await syncClubRegistryForUser(user);
+    setSyncSaving(false);
+
+    if (!result.ok) {
+      setError(result.error || "Không tải được danh sách CLB từ cloud.");
+      return;
+    }
+
+    setMessage(
+      `Đã tải ${result.pulled ?? 0} CLB từ cloud` +
+        (result.pushed ? `, đẩy thêm ${result.pushed} CLB local.` : ".")
+    );
+    setLocalRevision((value) => value + 1);
+    refreshTenant();
+  };
+
   if (!currentTenantId) {
     return (
       <Alert severity="warning">
@@ -233,13 +256,24 @@ export default function ClubListPage() {
         </Box>
         <Stack direction="row" spacing={1} alignItems="center">
           {canSyncCloud && (
-            <Button
-              variant="outlined"
-              onClick={handleSyncToCloud}
-              disabled={syncSaving || filtered.length === 0}
-            >
-              {syncSaving ? "Đang đồng bộ…" : "Đồng bộ lên cloud"}
-            </Button>
+            <>
+              <Button
+                variant="outlined"
+                startIcon={<CloudDownloadIcon />}
+                onClick={() => void handlePullFromCloud()}
+                disabled={syncSaving}
+              >
+                {syncSaving ? "Đang tải…" : "Tải từ cloud"}
+              </Button>
+              <Button
+                variant="outlined"
+                startIcon={<CloudSyncIcon />}
+                onClick={() => void handleSyncToCloud()}
+                disabled={syncSaving || filtered.length === 0}
+              >
+                {syncSaving ? "Đang đồng bộ…" : "Đồng bộ lên cloud"}
+              </Button>
+            </>
           )}
           <PermissionGate permission={PERMISSIONS.CLUB_CREATE} scope={{ venueId: currentTenantId }}>
             <Button

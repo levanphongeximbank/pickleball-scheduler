@@ -17,6 +17,7 @@ import {
   resolveGovernanceForCreate,
   canSelfRegisterClub,
   bootstrapSelfRegisteredPresident,
+  finalizeSelfRegisteredClubCloud,
   updateClubGovernance,
 } from "./clubGovernanceService.js";
 import { persistClubToCloud } from "./clubRegistryCloudService.js";
@@ -137,7 +138,7 @@ export function getClubStats(clubId, tenantId) {
   };
 }
 
-export function createClub(data = {}) {
+export async function createClub(data = {}) {
   const name = String(data.name || "").trim();
   if (!name) {
     return { ok: false, error: "Tên CLB bắt buộc." };
@@ -198,11 +199,12 @@ export function createClub(data = {}) {
   initClubData(club.id);
   loadClubExtension(club.id);
 
-  if (
+  const isSelfRegister =
     user &&
     canSelfRegisterClub(user) &&
-    String(governance.presidentUserId || "") === String(user.id)
-  ) {
+    String(governance.presidentUserId || "") === String(user.id);
+
+  if (isSelfRegister) {
     const boot = bootstrapSelfRegisteredPresident(club.id, user, tenantId);
     if (!boot.ok) {
       saveClubs(loadClubs().filter((item) => item.id !== club.id));
@@ -213,11 +215,38 @@ export function createClub(data = {}) {
           : boot.error;
       return { ok: false, error, code: boot.code };
     }
+
+    const cloudFinalize = await finalizeSelfRegisteredClubCloud(club.id, user, tenantId);
+    if (!cloudFinalize.ok) {
+      return {
+        ok: false,
+        code: cloudFinalize.code || "CLOUD_SYNC_FAILED",
+        error:
+          cloudFinalize.error ||
+          "CLB đã tạo trên máy này nhưng chưa lưu lên cloud. Thử lại hoặc chọn đúng cụm sân Nam Long.",
+        club: getRegistryClubById(club.id) || club,
+      };
+    }
+
+    return {
+      ok: true,
+      club: getRegistryClubById(club.id) || club,
+      cloudSynced: true,
+      warning: cloudFinalize.warning || null,
+    };
   }
 
-  void persistClubToCloud(club, { venueId: tenantId, actor: user });
+  const cloudResult = await persistClubToCloud(club, { venueId: tenantId, actor: user });
+  if (!cloudResult.ok && cloudResult.code !== "PRESIDENT_REQUIRED") {
+    return {
+      ok: true,
+      club,
+      cloudSynced: false,
+      warning: cloudResult.error || "CLB đã tạo local nhưng chưa đồng bộ cloud.",
+    };
+  }
 
-  return { ok: true, club };
+  return { ok: true, club, cloudSynced: cloudResult.ok };
 }
 
 export function updateClub(clubId, data = {}, tenantId) {

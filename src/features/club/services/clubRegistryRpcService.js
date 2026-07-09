@@ -39,6 +39,27 @@ export async function rpcClubUpsertRegistry({ club } = {}) {
   return parseRpcJson(data);
 }
 
+/** Chủ tịch tự nhận CLB sau khi registry đã upsert lên cloud. */
+export async function rpcClubClaimSelfRegistration(clubId) {
+  const client = getSupabaseAuthClient();
+  if (!client) {
+    return { ok: false, code: "NO_SUPABASE", error: "Supabase chưa sẵn sàng." };
+  }
+
+  const { data, error } = await client.rpc("club_claim_self_registration", {
+    p_club_id: String(clubId || "").trim(),
+  });
+
+  if (error) {
+    if (isMissingRpcError(error)) {
+      return { ok: false, code: "RPC_NOT_DEPLOYED", error: error.message };
+    }
+    return { ok: false, code: "RPC_FAILED", error: error.message };
+  }
+
+  return parseRpcJson(data);
+}
+
 export async function rpcClubListDiscoverable({ search = "", limit = 100 } = {}) {
   const client = getSupabaseAuthClient();
   if (!client) {
