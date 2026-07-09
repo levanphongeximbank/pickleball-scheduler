@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   Alert,
   Avatar,
@@ -22,6 +22,7 @@ import {
   listDiscoverableClubs,
   listMyMembershipRequestsAll,
 } from "../../../features/club/index.js";
+import { syncClubRegistryForUser } from "../../../features/club/services/clubRegistryCloudSync.js";
 import JoinClubDialog from "./JoinClubDialog.jsx";
 import { requestStatusChip } from "./clubMembershipUi.jsx";
 import { clubAvatarColor, clubInitials } from "./myClubUiStyles.js";
@@ -36,6 +37,17 @@ export default function MyClubDiscoverPanel({
 }) {
   const [joinClub, setJoinClub] = useState(null);
   const [search, setSearch] = useState("");
+
+  useEffect(() => {
+    if (!user?.id) {
+      return;
+    }
+    void syncClubRegistryForUser(user).then((result) => {
+      if (result.ok) {
+        onRevision?.();
+      }
+    });
+  }, [user?.id, onRevision]);
 
   const myRequests = useMemo(() => {
     void revision;

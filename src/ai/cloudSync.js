@@ -13,6 +13,7 @@ import {
   setClubCloudVersion,
   validateClubPayloadForSync,
 } from "../domain/clubStorage.js";
+import { markClubDataSynced } from "../domain/clubSyncMetadata.js";
 import { loadAIData, saveAIData } from "./storage.js";
 import {
   hydrateClubPlayersPickVnRatings,
@@ -81,7 +82,7 @@ function dispatchClubVersionConflict(clubId, remoteVersion) {
   );
 }
 
-async function readClubCloudVersion(clubId) {
+export async function readRemoteClubCloudVersion(clubId) {
   const headers = await buildSupabaseHeaders();
   const response = await fetch(
     `${SUPABASE_URL}/rest/v1/${SUPABASE_CLUB_TABLE}?select=version&club_id=eq.${encodeURIComponent(clubId)}&limit=1`,
@@ -100,7 +101,7 @@ async function readClubCloudVersion(clubId) {
 async function syncToSupabase(clubId, options = {}) {
   const club = getClubById(clubId);
   const expectedVersion = Number(options.expectedVersion ?? getClubCloudVersion(clubId) ?? 0);
-  const remote = await readClubCloudVersion(clubId);
+  const remote = await readRemoteClubCloudVersion(clubId);
 
   if (remote.ok && remote.version > expectedVersion) {
     dispatchClubVersionConflict(clubId, remote.version);
@@ -137,37 +138,23 @@ async function syncToSupabase(clubId, options = {}) {
   );
 
   if (!response.ok) {
-    const legacyHeaders = await buildSupabaseHeaders({
-      Prefer: "resolution=merge-duplicates,return=representation",
-    });
-
-    const legacyResponse = await fetch(
-      `${SUPABASE_URL}/rest/v1/${SUPABASE_TABLE}?on_conflict=club_id`,
-      {
-        method: "POST",
-        headers: legacyHeaders,
-        body: JSON.stringify([
-          {
-            club_id: clubId,
-            data: loadAIData(clubId),
-            synced_at: payload.synced_at,
-          },
-        ]),
-      }
-    );
-
-    if (!legacyResponse.ok) {
-      const details = await legacyResponse.text();
-      throw new Error(`Supabase sync failed: ${legacyResponse.status} ${details}`);
-    }
+    const details = await response.text();
+    throw new Error(`Supabase sync failed: ${response.status} ${details}`);
   }
 
   setClubCloudVersion(clubId, nextVersion);
+  markClubDataSynced(clubId, { push: true });
 
+  let pickVnWarning = null;
   try {
-    await pushClubPlayersPickVnRatings(clubId);
-  } catch {
-    // best-effort — club blob đã sync
+    const pickVnResult = await pushClubPlayersPickVnRatings(clubId);
+    if (pickVnResult?.ok === false || (pickVnResult?.pushed ?? 0) < (pickVnResult?.total ?? 0)) {
+      pickVnWarning =
+        pickVnResult?.error ||
+        `Pick_VN: chỉ đồng bộ ${pickVnResult?.pushed ?? 0}/${pickVnResult?.total ?? 0} VĐV.`;
+    }
+  } catch (error) {
+    pickVnWarning = error?.message || "Pick_VN sync thất bại.";
   }
 
   return {
@@ -176,6 +163,7 @@ async function syncToSupabase(clubId, options = {}) {
     clubId,
     syncedAt: payload.synced_at,
     version: nextVersion,
+    warnings: pickVnWarning ? [pickVnWarning] : [],
   };
 }
 
@@ -220,7 +208,7 @@ async function pullFromSupabase(clubId) {
 
   if (clubPayload?.data) {
     const validated = validateClubPayloadForSync(clubPayload.data, clubId);
-    saveClubData(clubId, validated.data);
+    saveClubData(clubId, validated.data, { source: "cloud" });
   }
 
   if (clubPayload?.aiData) {
@@ -230,11 +218,16 @@ async function pullFromSupabase(clubId) {
   if (row.version != null) {
     setClubCloudVersion(clubId, Number(row.version) || 0);
   }
+  markClubDataSynced(clubId, { pull: true });
 
+  let pickVnWarning = null;
   try {
-    await hydrateClubPlayersPickVnRatings(clubId);
-  } catch {
-    // best-effort
+    const hydrateResult = await hydrateClubPlayersPickVnRatings(clubId);
+    if (hydrateResult?.ok === false) {
+      pickVnWarning = hydrateResult.error || "Pick_VN hydrate thất bại.";
+    }
+  } catch (error) {
+    pickVnWarning = error?.message || "Pick_VN hydrate thất bại.";
   }
 
   return {
@@ -244,6 +237,7 @@ async function pullFromSupabase(clubId) {
     pulledAt: new Date().toISOString(),
     sourceSyncedAt: row.synced_at || null,
     version: Number(row.version ?? 0),
+    warnings: pickVnWarning ? [pickVnWarning] : [],
   };
 }
 
@@ -282,6 +276,40 @@ async function pullLegacyFromSupabase(clubId) {
     clubId,
     pulledAt: new Date().toISOString(),
     sourceSyncedAt: row.synced_at || null,
+    legacySource: true,
+    warnings: [
+      "Dữ liệu cloud chỉ có club_ai_data (legacy). Chạy mergeLegacyClubAiToV3 để nâng cấp.",
+    ],
+  };
+}
+
+/**
+ * One-time migration: gộp row club_ai_data legacy lên club_data_v3 đầy đủ.
+ */
+export async function mergeLegacyClubAiToV3(options = {}) {
+  const clubId = options.clubId || getActiveClubId();
+  const legacyPull = await pullLegacyFromSupabase(clubId);
+
+  if (!legacyPull.ok) {
+    return legacyPull;
+  }
+
+  const pushResult = await syncClubToCloud({
+    clubId,
+    permission: options.permission || PERMISSIONS.SYSTEM_SETTING,
+    expectedVersion: getClubCloudVersion(clubId),
+  });
+
+  if (!pushResult.ok) {
+    return pushResult;
+  }
+
+  return {
+    ok: true,
+    clubId,
+    migratedFrom: "club_ai_data",
+    version: pushResult.version,
+    warnings: pushResult.warnings || [],
   };
 }
 
@@ -372,7 +400,9 @@ export async function pullClubFromCloud(options = {}) {
     };
   }
 
-  saveClubData(clubId, validateClubPayloadForSync(payload.data, clubId).data);
+  saveClubData(clubId, validateClubPayloadForSync(payload.data, clubId).data, {
+    source: "cloud",
+  });
   if (payload.aiData) {
     saveAIData(payload.aiData, clubId);
   }

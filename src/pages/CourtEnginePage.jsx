@@ -53,6 +53,7 @@ import { resolveRouteAccessScope } from "../auth/menuAccess.js";
 import { isVenueScopedRole } from "../auth/roles.js";
 import { ensureWritableClubForVenueOwner } from "../features/club/services/venueOwnerClubService.js";
 import CourtQuickManageDialog from "../features/court-engine/components/CourtQuickManageDialog.jsx";
+import { CourtEngineMigrationBanner } from "../features/court-engine/components/CourtEngineMigrationBanner.jsx";
 import { resolveCourtEngineContextState } from "../features/court-engine/guards/courtEngineContextGuard.js";
 import { useCourtEngine } from "../features/court-engine/hooks/useCourtEngine.js";
 import { ASSIGNMENT_STATUS, COURT_RUNTIME_STATUS, SESSION_STATUS } from "../features/court-engine/constants/statuses.js";
@@ -193,6 +194,7 @@ function CourtEngineContextGate({ children }) {
 function CourtEnginePageContent() {
   const { can, rbacEnabled, isAuthenticated, user } = useAuth();
   const { activeClubId, activeClub, refreshClubs } = useClub();
+  const { currentTenantId } = useTenant();
   const { activeLeague } = useSeasonLeague();
   const scope = useMemo(
     () => resolveRouteAccessScope({ user, activeClubId, activeClub }),
@@ -295,6 +297,11 @@ function CourtEnginePageContent() {
 
   return (
     <Box sx={{ pb: 4 }}>
+        <CourtEngineMigrationBanner
+          clubId={activeClubId}
+          tenantId={currentTenantId || activeClub?.venueId}
+          onMigrated={() => setMessage("Đã đồng bộ dữ liệu Court Engine lên cloud.")}
+        />
         <Stack
           direction={{ xs: "column", md: "row" }}
           spacing={2}

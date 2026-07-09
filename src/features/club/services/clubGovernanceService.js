@@ -28,6 +28,7 @@ import {
 import { purgeClubExtension } from "../storage/clubExtensionStorage.js";
 import { writeAuditLog } from "../../identity/services/auditService.js";
 import { rpcAdminUpdateUser } from "../../identity/services/identityRpcService.js";
+import { persistClubToCloud } from "./clubRegistryCloudService.js";
 import {
   getClusterById,
   listClustersForVenue,
@@ -388,6 +389,14 @@ export function bootstrapSelfRegisteredPresident(clubId, user, tenantId) {
     clubId: trimmedClubId,
     role: ROLES.CLUB_MANAGER,
   });
+
+  const latestClub = getRegistryClubById(trimmedClubId);
+  if (latestClub) {
+    void persistClubToCloud(latestClub, {
+      venueId: effectiveTenantId,
+      actor: normalizedUser,
+    });
+  }
 
   return { ok: true, playerId: player.id, clubId: trimmedClubId };
 }
@@ -1084,6 +1093,8 @@ export function updateClubGovernance(clubId, patch = {}, tenantId = null) {
       }
     }
   }
+
+  void persistClubToCloud(result.club, { venueId: effectiveTenantId, actor: user });
 
   return result;
 }

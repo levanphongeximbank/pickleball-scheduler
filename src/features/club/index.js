@@ -132,6 +132,11 @@ export {
 
 export { ensureClubManagementSeed } from "./seed/clubManagementSeed.js";
 
+export { isClubRegistryCloudEnabled } from "./config/clubRegistryFlags.js";
+
+export { pullClubRegistryForUser, mergeClubsIntoLocal, cloudRowToClubRecord, syncClubRegistryForUser, pushPendingLocalClubsToCloud, listLocalClubsEligibleForCloudPush } from "./services/clubRegistryCloudSync.js";
+export { persistClubToCloud, syncClubsForVenueToCloud } from "./services/clubRegistryCloudService.js";
+
 export {
   PLATFORM_ATHLETE_LINK_STATUS,
   isPlatformAthleteViewer,

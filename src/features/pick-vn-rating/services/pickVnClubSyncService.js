@@ -1,3 +1,7 @@
+/**
+ * Pick_VN SSOT: `pick_vn_player_ratings` (global) + local fallback store.
+ * Club blob `players[]` chỉ mirror denormalized — hydrate on pull, push after club sync.
+ */
 import { loadClubData, saveClubData } from "../../../domain/clubStorage.js";
 import { normalizePlayers } from "../../../models/player.js";
 import {

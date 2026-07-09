@@ -19,6 +19,7 @@ import {
   bootstrapSelfRegisteredPresident,
   updateClubGovernance,
 } from "./clubGovernanceService.js";
+import { persistClubToCloud } from "./clubRegistryCloudService.js";
 
 function resolveTenantIdForCreate(user) {
   if (!isRbacEnabled() || !user) {
@@ -214,6 +215,8 @@ export function createClub(data = {}) {
     }
   }
 
+  void persistClubToCloud(club, { venueId: tenantId, actor: user });
+
   return { ok: true, club };
 }
 
@@ -278,10 +281,16 @@ export function updateClub(clubId, data = {}, tenantId) {
   }
 
   if (Object.keys(patch).length === 0) {
-    return { ok: true, club: getRegistryClubById(clubId) };
+    const unchanged = getRegistryClubById(clubId);
+    void persistClubToCloud(unchanged, { venueId: effectiveTenantId });
+    return { ok: true, club: unchanged };
   }
 
-  return updateClubMeta(clubId, patch);
+  const result = updateClubMeta(clubId, patch);
+  if (result.ok) {
+    void persistClubToCloud(result.club, { venueId: effectiveTenantId });
+  }
+  return result;
 }
 
 export function deactivateClub(clubId, tenantId) {

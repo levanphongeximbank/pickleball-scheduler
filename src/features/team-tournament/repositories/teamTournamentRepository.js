@@ -25,7 +25,7 @@ export function resolveTeamTournamentStoreMode() {
 
   if (
     hasSupabaseConfig() &&
-    readEnvFlag("VITE_TEAM_TOURNAMENT_SUPABASE") !== "false"
+    String(readEnvFlag("VITE_TEAM_TOURNAMENT_SUPABASE") || "").toLowerCase() === "true"
   ) {
     return TEAM_TOURNAMENT_STORE_MODES.SUPABASE;
   }

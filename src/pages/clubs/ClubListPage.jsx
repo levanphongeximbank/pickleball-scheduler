@@ -26,6 +26,7 @@ import BlockIcon from "@mui/icons-material/Block";
 
 import { useTenant } from "../../context/TenantContext.jsx";
 import { useAuth } from "../../context/AuthContext.jsx";
+import { isPlatformScopedRole } from "../../auth/roles.js";
 import PermissionGate from "../../components/auth/PermissionGate.jsx";
 import { PERMISSIONS } from "../../auth/permissions.js";
 import {
@@ -38,6 +39,8 @@ import {
   approveClubRegistration,
   rejectClubRegistration,
 } from "../../features/club/index.js";
+import { syncClubRegistryForUser } from "../../features/club/services/clubRegistryCloudSync.js";
+import { syncClubsForVenueToCloud } from "../../features/club/services/clubRegistryCloudService.js";
 import ClubFormDialog from "./ClubFormDialog.jsx";
 import ClubDeactivateDialog from "./ClubDeactivateDialog.jsx";
 
@@ -51,7 +54,7 @@ const SORT_OPTIONS = [
 export default function ClubListPage() {
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
-  const { currentTenantId, currentTenant, revision, refreshTenant } = useTenant();
+  const { currentTenantId, currentTenant, revision, refreshTenant, isSuperAdmin } = useTenant();
   const { can, rbacEnabled, isAuthenticated, user } = useAuth();
 
   const [search, setSearch] = useState("");
@@ -61,7 +64,22 @@ export default function ClubListPage() {
   const [editClub, setEditClub] = useState(null);
   const [deactivateTarget, setDeactivateTarget] = useState(null);
   const [error, setError] = useState(null);
+  const [message, setMessage] = useState(null);
+  const [syncSaving, setSyncSaving] = useState(false);
   const [localRevision, setLocalRevision] = useState(0);
+
+  const canSyncCloud = isSuperAdmin || isPlatformScopedRole(user?.role);
+
+  useEffect(() => {
+    if (!isAuthenticated || !user?.id) {
+      return;
+    }
+    void syncClubRegistryForUser(user).then((result) => {
+      if (result.ok) {
+        setLocalRevision((value) => value + 1);
+      }
+    });
+  }, [isAuthenticated, user, revision]);
 
   const canCreate =
     !rbacEnabled ||
@@ -166,6 +184,34 @@ export default function ClubListPage() {
     refreshTenant();
   };
 
+  const handleSyncToCloud = async () => {
+    setError(null);
+    setMessage(null);
+    setSyncSaving(true);
+
+    const clubs = clubsWithStats.map(({ club }) => club);
+    const result = await syncClubsForVenueToCloud({
+      clubs,
+      venueId: canSyncCloud ? null : currentTenantId,
+      actor: user,
+    });
+
+    setSyncSaving(false);
+
+    if (!result.ok) {
+      setError(result.error || "Đồng bộ CLB lên cloud thất bại.");
+      return;
+    }
+
+    let successText = `Đã đồng bộ ${result.synced ?? 0} CLB lên Supabase.`;
+    if (result.skipped > 0) {
+      successText += ` Bỏ qua ${result.skipped} CLB thiếu Chủ tịch UUID hợp lệ.`;
+    }
+    setMessage(successText);
+    setLocalRevision((value) => value + 1);
+    refreshTenant();
+  };
+
   if (!currentTenantId) {
     return (
       <Alert severity="warning">
@@ -185,21 +231,37 @@ export default function ClubListPage() {
             {currentTenant?.name || currentTenantId}
           </Typography>
         </Box>
-        <PermissionGate permission={PERMISSIONS.CLUB_CREATE} scope={{ venueId: currentTenantId }}>
-          <Button
-            variant="contained"
-            startIcon={<AddIcon />}
-            onClick={() => {
-              setEditClub(null);
-              setFormOpen(true);
-            }}
-            disabled={!canCreate}
-          >
-            Tạo CLB mới
-          </Button>
-        </PermissionGate>
+        <Stack direction="row" spacing={1} alignItems="center">
+          {canSyncCloud && (
+            <Button
+              variant="outlined"
+              onClick={handleSyncToCloud}
+              disabled={syncSaving || filtered.length === 0}
+            >
+              {syncSaving ? "Đang đồng bộ…" : "Đồng bộ lên cloud"}
+            </Button>
+          )}
+          <PermissionGate permission={PERMISSIONS.CLUB_CREATE} scope={{ venueId: currentTenantId }}>
+            <Button
+              variant="contained"
+              startIcon={<AddIcon />}
+              onClick={() => {
+                setEditClub(null);
+                setFormOpen(true);
+              }}
+              disabled={!canCreate}
+            >
+              Tạo CLB mới
+            </Button>
+          </PermissionGate>
+        </Stack>
       </Stack>
 
+      {message && (
+        <Alert severity="success" sx={{ mb: 2 }} onClose={() => setMessage(null)}>
+          {message}
+        </Alert>
+      )}
       {error && (
         <Alert severity="error" sx={{ mb: 2 }} onClose={() => setError(null)}>
           {error}

@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { render, screen, within, SCOPED_DIRECTOR_KEY } from "./testUtils.jsx";
+import { render, screen, within, CLUB_BLOB_KEY } from "./testUtils.jsx";
 import ClubSwitcher from "../../src/components/ClubSwitcher.jsx";
 import userEvent from "@testing-library/user-event";
 
@@ -292,8 +292,8 @@ describe("SelectPlayers UI", () => {
 
     expect(screen.getByRole("button", { name: "Mở khóa" })).toBeInTheDocument();
 
-    const directorState = JSON.parse(localStorage.getItem(SCOPED_DIRECTOR_KEY));
-    expect(directorState.lockedPlayers.length).toBe(1);
+    const clubBlob = JSON.parse(localStorage.getItem(CLUB_BLOB_KEY));
+    expect(clubBlob.director.lockedPlayers.length).toBe(1);
   });
 
   it("toggles court lock inside schedule result", async () => {
@@ -308,8 +308,8 @@ describe("SelectPlayers UI", () => {
     await user.click(screen.getByRole("button", { name: "🔒 Khóa sân" }));
     expect(screen.getByRole("button", { name: "🔓 Đã khóa" })).toBeInTheDocument();
 
-    const directorState = JSON.parse(localStorage.getItem(SCOPED_DIRECTOR_KEY));
-    expect(directorState.lockedCourts).toContain(101);
+    const clubBlob = JSON.parse(localStorage.getItem(CLUB_BLOB_KEY));
+    expect(clubBlob.director.lockedCourts).toContain(101);
   });
 
   it("shows over-capacity warning when selected players exceed available slots", async () => {

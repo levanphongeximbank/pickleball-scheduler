@@ -16,13 +16,15 @@ import {
   Typography,
 } from "@mui/material";
 import { loadAIData, saveAIData } from "../ai/storage";
-import { getActiveClubId, getScopedStorageKey } from "../data/club";
+import { getActiveClubId } from "../data/club";
 import { useClub } from "../context/ClubContext.jsx";
 import { useSeasonLeague } from "../context/SeasonContext.jsx";
 import {
   loadRoundsForClub,
+  loadPlayersForClub,
   saveRoundsForClub,
   setActivePointers,
+  getActivePointers,
 } from "../domain/clubStorage.js";
 import { filterRoundsByLeague } from "./statistics.logic";
 import {
@@ -44,45 +46,20 @@ import { buildGroupStandingsForRounds } from "./tournament.standings.logic";
 import { getCourtDisplayName, loadCourts } from "./courts.logic";
 import { loadInitialSelectedCourts } from "./selectPlayers.data";
 
-const TOURNAMENT_ROUNDS_KEY = "pickleball-tournament-rounds";
-const ACTIVE_SLOT_KEY = "pickleball-active-slot";
-const PLAYERS_KEY = "players";
-const BRACKET_WINNERS_KEY = "pickleball-tournament-bracket-winners";
-
 function loadRounds(clubId = getActiveClubId()) {
   return loadRoundsForClub(clubId);
 }
 
 function saveRounds(rounds, clubId = getActiveClubId()) {
   saveRoundsForClub(rounds, clubId);
-  localStorage.setItem(
-    getScopedStorageKey(TOURNAMENT_ROUNDS_KEY, clubId),
-    JSON.stringify(rounds)
-  );
 }
 
-function loadActiveSlot() {
-  try {
-    const raw =
-      localStorage.getItem(getScopedStorageKey(ACTIVE_SLOT_KEY)) ||
-      localStorage.getItem(ACTIVE_SLOT_KEY);
-    return raw ? JSON.parse(raw) : null;
-  } catch {
-    return null;
-  }
+function loadActiveSlot(clubId = getActiveClubId()) {
+  return getActivePointers(clubId)?.roundSlot || null;
 }
 
 function saveActiveSlot(slot, clubId = getActiveClubId()) {
-  const scopedKey = getScopedStorageKey(ACTIVE_SLOT_KEY, clubId);
-
-  if (!slot) {
-    localStorage.removeItem(scopedKey);
-    setActivePointers({ roundSlot: null }, clubId);
-    return;
-  }
-
-  localStorage.setItem(scopedKey, JSON.stringify(slot));
-  setActivePointers({ roundSlot: slot }, clubId);
+  setActivePointers({ roundSlot: slot || null }, clubId);
 }
 
 function loadBracketWinners() {
@@ -90,20 +67,7 @@ function loadBracketWinners() {
   if (aiData?.tournament?.bracketWinners && typeof aiData.tournament.bracketWinners === "object") {
     return aiData.tournament.bracketWinners;
   }
-
-  try {
-    const raw =
-      localStorage.getItem(getScopedStorageKey(BRACKET_WINNERS_KEY)) ||
-      localStorage.getItem(BRACKET_WINNERS_KEY);
-    if (!raw) {
-      return {};
-    }
-
-    const parsed = JSON.parse(raw);
-    return parsed && typeof parsed === "object" ? parsed : {};
-  } catch {
-    return {};
-  }
+  return {};
 }
 
 function saveBracketWinners(winners) {
@@ -114,24 +78,10 @@ function saveBracketWinners(winners) {
     updatedAt: new Date().toISOString(),
   };
   saveAIData(data);
-
-  localStorage.setItem(getScopedStorageKey(BRACKET_WINNERS_KEY), JSON.stringify(winners || {}));
 }
 
-function loadPlayersForTournamentSeed() {
-  try {
-    const raw =
-      localStorage.getItem(getScopedStorageKey(PLAYERS_KEY)) ||
-      localStorage.getItem(PLAYERS_KEY);
-    if (!raw) {
-      return [];
-    }
-
-    const parsed = JSON.parse(raw);
-    return Array.isArray(parsed) ? parsed : [];
-  } catch {
-    return [];
-  }
+function loadPlayersForTournamentSeed(clubId = getActiveClubId()) {
+  return loadPlayersForClub(clubId);
 }
 
 function formatBracketTeamName(team, seed) {

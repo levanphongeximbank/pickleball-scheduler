@@ -15,6 +15,7 @@ import {
 } from "../demo/seed/demoSeedRegistry.js";
 import { migrateV2ToV3 } from "./migrateV2ToV3.js";
 import { normalizeCourtManagementSettings } from "./courtManagementSettings.js";
+import { markClubDataDirty } from "./clubSyncMetadata.js";
 import {
   resolveTenantIdForClub,
   stampWithTenantId,
@@ -104,6 +105,10 @@ export function getDefaultClubData(clubId) {
       seasonId: null,
       leagueId: null,
       roundSlot: null,
+    },
+    director: {
+      lockedCourts: [],
+      lockedPlayers: [],
     },
     updatedAt: new Date().toISOString(),
   };
@@ -236,6 +241,10 @@ function normalizeClubData(data, clubId) {
       ...getDefaultClubData(clubId).active,
       ...(upgraded.active || {}),
     },
+    director: {
+      ...getDefaultClubData(clubId).director,
+      ...(upgraded.director || {}),
+    },
     updatedAt: upgraded.updatedAt || new Date().toISOString(),
   });
 }
@@ -267,7 +276,7 @@ export function loadClubData(clubId = getActiveClubId()) {
   return saveClubData(resolvedClubId, migrated);
 }
 
-export function saveClubData(clubId, data) {
+export function saveClubData(clubId, data, options = {}) {
   const normalized = normalizeClubData(
     {
       ...data,
@@ -277,6 +286,9 @@ export function saveClubData(clubId, data) {
   );
 
   localStorage.setItem(getClubDataKey(clubId), JSON.stringify(normalized));
+  if (options.source !== "cloud") {
+    markClubDataDirty(clubId);
+  }
   scheduleClubCloudPush(clubId);
   return normalized;
 }

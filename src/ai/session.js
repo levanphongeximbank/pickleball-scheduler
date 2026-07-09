@@ -4,46 +4,25 @@ AI Session Engine
 ==================================================
 */
 
-import { getActiveClubId, getScopedStorageKey } from "../data/club.js";
+import { getActiveClubId } from "../data/club.js";
 import { SESSION_CAP } from "./config.js";
 import { loadAIData, saveAIData } from "./storage.js";
 import { createDebugTrace, appendDebugTrace } from "./debug.js";
 import { loadClubData } from "../domain/clubStorage.js";
 
-const ACTIVE_SLOT_KEY = "pickleball-active-slot";
-
 function getActiveSlotMeta(clubId = getActiveClubId()) {
-  if (typeof localStorage === "undefined") {
-    return null;
-  }
-
   const clubData = loadClubData(clubId);
+  const slot = clubData.active?.roundSlot;
 
-  if (clubData.active?.roundSlot) {
-    return clubData.active.roundSlot;
-  }
-
-  try {
-    const raw =
-      localStorage.getItem(getScopedStorageKey(ACTIVE_SLOT_KEY, clubId)) ||
-      localStorage.getItem(ACTIVE_SLOT_KEY);
-    if (!raw) {
-      return null;
-    }
-
-    const parsed = JSON.parse(raw);
-    if (!parsed || typeof parsed !== "object") {
-      return null;
-    }
-
-    return {
-      roundId: parsed.roundId || null,
-      roundName: parsed.roundName || null,
-      shiftLabel: parsed.shiftLabel || null,
-    };
-  } catch {
+  if (!slot || typeof slot !== "object") {
     return null;
   }
+
+  return {
+    roundId: slot.roundId || null,
+    roundName: slot.roundName || null,
+    shiftLabel: slot.shiftLabel || null,
+  };
 }
 
 function buildSessionMeta(resultMeta = {}, clubId = getActiveClubId()) {

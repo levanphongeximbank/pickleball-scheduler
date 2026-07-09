@@ -23,6 +23,7 @@ import {
 } from "../features/identity/services/signupService.js";
 import { writeAuditLog, AUDIT_ACTIONS } from "../features/identity/services/auditService.js";
 import { pullClusterContextForUser } from "../features/court-cluster/services/courtClusterCloudSync.js";
+import { syncClubRegistryForUser } from "../features/club/services/clubRegistryCloudSync.js";
 
 /** Dev registry — chỉ dùng khi chưa cấu hình Supabase (dev local). */
 const DEV_USERS = [
@@ -269,6 +270,7 @@ async function syncSupabaseUser(authUser, options = {}) {
 
   saveAuthSession(resolved.user, { provider: "supabase" });
   await pullClusterContextForUser(resolved.user);
+  await syncClubRegistryForUser(resolved.user);
   const refreshed = await fetchProfileByUserId(resolved.user.id);
   if (refreshed.ok) {
     saveAuthSession(refreshed.user, { provider: "supabase" });
@@ -297,6 +299,8 @@ export async function refreshAuthProfileFromSupabase(userId = getCurrentUser()?.
   if (session?.user?.id === targetId) {
     saveAuthSession(profileResult.user, { provider: session.provider || "supabase" });
   }
+
+  await syncClubRegistryForUser(profileResult.user);
 
   return { ok: true, user: profileResult.user };
 }
