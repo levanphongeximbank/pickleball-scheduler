@@ -33,6 +33,7 @@ import {
   listClustersForVenue,
   setUserClusterAssignments,
   updateCourtCluster,
+  isClusterUnassigned,
 } from "../src/features/court-cluster/services/courtClusterService.js";
 import {
   loadClusterAssignments,
@@ -44,6 +45,11 @@ import { ROLES } from "../src/auth/roles.js";
 import { canAccessCluster } from "../src/auth/rbac.js";
 import { buildDefaultClusterId, normalizeCourtCluster } from "../src/models/courtCluster.js";
 import { isValidGoogleMapsUrl } from "../src/features/court-cluster/utils/clusterMapsUtils.js";
+import { removeClusterOwner } from "../src/features/court-cluster/services/courtClusterAdminService.js";
+import {
+  pruneInvalidLocalClusterOwners,
+  pruneOrphanLocalClusters,
+} from "../src/features/court-cluster/services/courtClusterCloudSync.js";
 
 const VENUE_A = "venue-test-a";
 const VENUE_B = "venue-test-b";
@@ -297,5 +303,72 @@ describe("court cluster model", () => {
       user: PLATFORM_ADMIN,
     });
     assert.equal(loadCourtClusters().length, 1);
+  });
+
+  it("prunes invalid email owner from local cluster", () => {
+    saveCourtClusters([
+      normalizeCourtCluster({
+        id: "bad-cluster",
+        venueId: VENUE_A,
+        name: "Test",
+        slug: "test",
+        status: "active",
+        ownerUserId: "email@test.com",
+      }),
+    ]);
+    saveClusterAssignments([
+      { userId: "email@test.com", clusterId: "bad-cluster", role: "CLUSTER_OWNER" },
+    ]);
+
+    const result = pruneInvalidLocalClusterOwners();
+    assert.equal(result.changedClusters, true);
+    assert.equal(loadCourtClusters()[0].ownerUserId, null);
+    assert.equal(loadClusterAssignments().length, 0);
+  });
+
+  it("prunes legacy default-tenant clusters when on real venue", () => {
+    saveCourtClusters([
+      normalizeCourtCluster({
+        id: "default-tenant-main",
+        venueId: "default-tenant",
+        name: "Legacy",
+        slug: "main",
+        status: "active",
+      }),
+      normalizeCourtCluster({
+        id: `${VENUE_A}-main`,
+        venueId: VENUE_A,
+        name: "Real",
+        slug: "main",
+        status: "active",
+      }),
+    ]);
+
+    const result = pruneOrphanLocalClusters(VENUE_A);
+    assert.equal(result.removed, 1);
+    assert.equal(loadCourtClusters().length, 1);
+    assert.equal(loadCourtClusters()[0].id, `${VENUE_A}-main`);
+  });
+
+  it("removeClusterOwner clears local assignment", async () => {
+    const created = createCourtCluster({
+      venueId: VENUE_A,
+      name: "Owned",
+      slug: "owned",
+      user: PLATFORM_ADMIN,
+    });
+    assignUserToCluster(CLUSTER_OWNER.id, created.cluster.id, { user: PLATFORM_ADMIN });
+    updateCourtCluster(
+      created.cluster.id,
+      { ownerUserId: CLUSTER_OWNER.id },
+      { user: PLATFORM_ADMIN }
+    );
+
+    const result = await removeClusterOwner({
+      clusterId: created.cluster.id,
+      actor: PLATFORM_ADMIN,
+    });
+    assert.equal(result.ok, true);
+    assert.equal(isClusterUnassigned(created.cluster.id), true);
   });
 });

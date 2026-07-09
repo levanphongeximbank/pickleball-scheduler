@@ -152,10 +152,10 @@ test("self declared score capped at 5 points", () => {
   assert.equal(calculateSelfDeclaredScore({ self_rating: "1.5" }), 0);
 });
 
-test("applyProvisionalRatingCalibration scales rating by 0.7", () => {
-  assert.equal(PROVISIONAL_RATING_CALIBRATION, 0.7);
-  assert.equal(applyProvisionalRatingCalibration(3.5), 2.4);
-  assert.equal(applyProvisionalRatingCalibration(2.0), 1.5);
+test("applyProvisionalRatingCalibration scales rating by 0.8", () => {
+  assert.equal(PROVISIONAL_RATING_CALIBRATION, 0.8);
+  assert.equal(applyProvisionalRatingCalibration(3.5), 2.8);
+  assert.equal(applyProvisionalRatingCalibration(2.0), 1.6);
   assert.equal(applyProvisionalRatingCalibration(1.5), 1.5);
 });
 
@@ -163,7 +163,7 @@ test("calculatePlayerAssessment returns calibrated provisional rating not self r
   const result = calculatePlayerAssessment({ answers: baseAnswers() });
   assert.equal(result.ok, true);
   assert.equal(result.raw_provisional_rating, 3.5);
-  assert.equal(result.provisional_rating, 2.4);
+  assert.equal(result.provisional_rating, 2.8);
   assert.equal(result.self_declared_rating, 3.0);
   assert.equal(result.current_rating, result.provisional_rating);
   assert.equal(result.rating_status, RATING_STATUS.PROVISIONAL);

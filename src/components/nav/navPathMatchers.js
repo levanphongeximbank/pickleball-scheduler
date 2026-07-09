@@ -305,8 +305,19 @@ export function isNavItemActive(currentPath, item, resolvedPath) {
     return pathOnly === "/players/skill";
   }
 
+  if (item.match === "player-skill") {
+    return pathOnly === "/player/skill";
+  }
+
+  if (item.match === "player-skill-assessment") {
+    return pathOnly === "/player/skill-assessment";
+  }
+
   if (item.match === "players-roster") {
     if (pathOnly === "/players/skill") {
+      return false;
+    }
+    if (pathOnly === "/player/skill" || pathOnly === "/player/skill-assessment") {
       return false;
     }
     return pathOnly === "/players" || pathOnly.startsWith("/players/");

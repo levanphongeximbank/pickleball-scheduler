@@ -36,6 +36,7 @@ import VenueStaffPanel from "../components/settings/VenueStaffPanel.jsx";
 import PermissionGate from "../components/auth/PermissionGate.jsx";
 import { PERMISSIONS } from "../auth/permissions.js";
 import { seedDemoClubsRoster } from "../demo/seed/demoClubsRosterSeed.js";
+import { purgeDemoSeedData } from "../demo/seed/purgeDemoSeed.js";
 
 function loadSnapshots(clubId) {
   try {
@@ -63,6 +64,7 @@ export default function Settings() {
   const [statusMessage, setStatusMessage] = useState(null);
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [demoSeedOpen, setDemoSeedOpen] = useState(false);
+  const [demoPurgeOpen, setDemoPurgeOpen] = useState(false);
   const [snapshots, setSnapshots] = useState(() => loadSnapshots(activeClubId));
   const [dataVersion, setDataVersion] = useState(0);
   const [platformPreview, setPlatformPreview] = useState(null);
@@ -187,6 +189,23 @@ export default function Settings() {
     setStatusMessage({
       type: "success",
       text: `Đã tạo ${result.clubs.length} CLB với tổng ${result.totalPlayers} VĐV (mỗi CLB 60 người).`,
+    });
+  };
+
+  const handlePurgeDemoSeed = () => {
+    const result = purgeDemoSeedData();
+    setDemoPurgeOpen(false);
+
+    if (!result.ok) {
+      setStatusMessage({ type: "error", text: result.error || "Không thể dọn dữ liệu demo." });
+      return;
+    }
+
+    refreshClubs();
+    setDataVersion((value) => value + 1);
+    setStatusMessage({
+      type: "success",
+      text: `Đã xóa ${result.removedClubIds.length} CLB demo và ${result.removedTenantIds.length} tenant demo. Auto-seed đã tắt.`,
     });
   };
 
@@ -515,6 +534,17 @@ export default function Settings() {
                 </Button>
               </Stack>
             )}
+            <PermissionGate permission={PERMISSIONS.SYSTEM_SETTING}>
+              <Stack spacing={1.5} sx={{ mt: 2 }}>
+                <Typography variant="body2" color="text.secondary">
+                  Xóa CLB/tenant/VĐV demo (abc_pickleball VĐV, Future Arena, Elite Club, CLB Sài Gòn…)
+                  và tắt auto-seed. Dữ liệu CLB thật không bị xóa.
+                </Typography>
+                <Button color="warning" variant="outlined" onClick={() => setDemoPurgeOpen(true)}>
+                  Dọn dữ liệu demo
+                </Button>
+              </Stack>
+            </PermissionGate>
           </CardContent>
         </Card>
 
@@ -666,6 +696,22 @@ export default function Settings() {
             <Button onClick={() => setDemoSeedOpen(false)}>Hủy</Button>
             <Button variant="contained" onClick={handleSeedDemoRoster}>
               Tạo dữ liệu
+            </Button>
+          </DialogActions>
+        </Dialog>
+        <Dialog open={demoPurgeOpen} onClose={() => setDemoPurgeOpen(false)}>
+          <DialogTitle>Dọn dữ liệu demo</DialogTitle>
+          <DialogContent>
+            <DialogContentText>
+              Xóa các CLB/tenant/VĐV demo (ABC Pickleball, Future Arena, Elite Club, CLB A/B/C và 4
+              CLB roster demo). CLB thật của bạn sẽ giữ nguyên. Sau khi dọn, hệ thống không tự tạo
+              lại dữ liệu demo khi tải trang.
+            </DialogContentText>
+          </DialogContent>
+          <DialogActions>
+            <Button onClick={() => setDemoPurgeOpen(false)}>Hủy</Button>
+            <Button color="warning" variant="contained" onClick={handlePurgeDemoSeed}>
+              Dọn demo
             </Button>
           </DialogActions>
         </Dialog>

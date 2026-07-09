@@ -25,6 +25,7 @@ import PermissionGate from "../components/auth/PermissionGate.jsx";
 import { PERMISSIONS } from "../auth/permissions.js";
 import { ROLE_LABELS } from "../auth/roles.js";
 import { usePlatformRuntime } from "../core/platform/app/usePlatformRuntime.js";
+import { MIN_PASSWORD_LENGTH } from "../config/authConfig.js";
 import { USER_STATUS } from "../models/user.js";
 import {
   createManagedUser,
@@ -43,6 +44,8 @@ const STATUS_LABELS = {
 
 const EMPTY_FORM = {
   email: "",
+  password: "",
+  confirmPassword: "",
   displayName: "",
   role: "",
   phone: "",
@@ -134,6 +137,27 @@ export default function UserManagementPage() {
     setLoading(true);
     setMessage(null);
 
+    if (!editingUser) {
+      const password = String(form.password || "").trim();
+      const confirmPassword = String(form.confirmPassword || "").trim();
+
+      if (password) {
+        if (password.length < MIN_PASSWORD_LENGTH) {
+          setLoading(false);
+          setMessage({
+            type: "error",
+            text: `Mật khẩu tối thiểu ${MIN_PASSWORD_LENGTH} ký tự.`,
+          });
+          return;
+        }
+        if (password !== confirmPassword) {
+          setLoading(false);
+          setMessage({ type: "error", text: "Mật khẩu xác nhận không khớp." });
+          return;
+        }
+      }
+    }
+
     const accessDecision = runtime.accessService.authorize(
       {
         user_id: "platform-admin",
@@ -169,7 +193,13 @@ export default function UserManagementPage() {
           role: form.role,
           phone: form.phone,
         })
-      : await createManagedUser(form);
+      : await createManagedUser({
+          email: form.email,
+          password: String(form.password || "").trim() || undefined,
+          displayName: form.displayName,
+          role: form.role,
+          phone: form.phone,
+        });
 
     setLoading(false);
 
@@ -179,14 +209,17 @@ export default function UserManagementPage() {
     }
 
     setDialogOpen(false);
+    const createdWithPassword = Boolean(String(form.password || "").trim());
     setMessage({
       type: "success",
       text: editingUser
         ? "Đã cập nhật user."
-        : result.passwordSetupMessage ||
-          (result.passwordSetupSent
-            ? "Đã tạo user và gửi email đặt mật khẩu."
-            : "Đã tạo user (email đã xác nhận, không cần xác nhận thêm)."),
+        : createdWithPassword
+          ? "Đã tạo user. Người dùng có thể đăng nhập ngay bằng email và mật khẩu đã đặt."
+          : result.passwordSetupMessage ||
+            (result.passwordSetupSent
+              ? "Đã tạo user và gửi email đặt mật khẩu."
+              : "Đã tạo user (email đã xác nhận, không cần xác nhận thêm)."),
     });
     loadUsers();
   };
@@ -393,10 +426,33 @@ export default function UserManagementPage() {
                 fullWidth
               />
               {!editingUser && (
-                <Alert severity="info">
-                  Tài khoản do Admin tạo sẽ được xác nhận email tự động. Hệ thống gửi email đặt
-                  mật khẩu để người dùng tự thiết lập.
-                </Alert>
+                <>
+                  <Alert severity="info">
+                    Tài khoản do Admin tạo được xác nhận email tự động — người dùng đăng nhập được
+                    ngay, không cần bấm link xác nhận. Nhập mật khẩu bên dưới để cấp sẵn; để trống
+                    thì hệ thống gửi email đặt mật khẩu.
+                  </Alert>
+                  <TextField
+                    label="Mật khẩu"
+                    type="password"
+                    value={form.password}
+                    onChange={(e) => setForm((prev) => ({ ...prev, password: e.target.value }))}
+                    helperText={`Tối thiểu ${MIN_PASSWORD_LENGTH} ký tự. Để trống = gửi email đặt mật khẩu.`}
+                    fullWidth
+                    autoComplete="new-password"
+                  />
+                  <TextField
+                    label="Xác nhận mật khẩu"
+                    type="password"
+                    value={form.confirmPassword}
+                    onChange={(e) =>
+                      setForm((prev) => ({ ...prev, confirmPassword: e.target.value }))
+                    }
+                    fullWidth
+                    autoComplete="new-password"
+                    disabled={!form.password}
+                  />
+                </>
               )}
               <TextField
                 label="Họ tên"

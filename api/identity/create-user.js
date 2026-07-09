@@ -3,18 +3,10 @@ import { createClient } from "@supabase/supabase-js";
 import { adminCreateManagedUser } from "../../src/features/identity/services/identityAdminCreateService.js";
 import {
   ApiKeyStoreConfigError,
+  getSupabaseAnonKey,
   getSupabaseServerUrl,
   getSupabaseServiceRoleKey,
 } from "../../src/features/api/config/apiKeyStoreConfig.js";
-
-function readAnonKey() {
-  return String(
-    process.env.VITE_SUPABASE_ANON_KEY ||
-      process.env.SUPABASE_ANON_KEY ||
-      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ||
-      ""
-  ).trim();
-}
 
 function parseBody(req) {
   if (!req.body) return {};
@@ -34,7 +26,7 @@ async function authorizeUserManage(req) {
   }
 
   const url = getSupabaseServerUrl();
-  const anonKey = readAnonKey();
+  const anonKey = getSupabaseAnonKey();
   if (!url || !anonKey) {
     return { ok: false, code: "NO_SUPABASE", error: "Supabase chưa cấu hình trên server." };
   }
@@ -98,6 +90,11 @@ export default async function handler(req, res) {
   }
 
   const body = parseBody(req);
+  const providedPassword = String(body.password || "").trim();
+  const sendPasswordSetupEmail =
+    body.sendPasswordSetupEmail === undefined
+      ? !providedPassword
+      : body.sendPasswordSetupEmail !== false;
 
   try {
     const result = await adminCreateManagedUser({
@@ -109,7 +106,7 @@ export default async function handler(req, res) {
       clubId: body.clubId,
       phone: body.phone,
       redirectTo: body.redirectTo,
-      sendPasswordSetupEmail: body.sendPasswordSetupEmail !== false,
+      sendPasswordSetupEmail,
     });
 
     if (!result.ok) {

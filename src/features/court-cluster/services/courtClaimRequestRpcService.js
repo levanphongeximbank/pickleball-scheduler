@@ -246,3 +246,61 @@ export async function rpcAdminAssignClusterOwner({ userId, clusterIds = [] } = {
     provider: "rpc",
   };
 }
+
+export async function rpcAdminUpsertCluster({ cluster } = {}) {
+  const client = getSupabaseAuthClient();
+  if (!client) {
+    return { ok: false, code: "NO_SUPABASE", error: "Supabase chưa sẵn sàng." };
+  }
+
+  const { data, error } = await client.rpc("court_admin_upsert_cluster", {
+    p_cluster: cluster,
+  });
+
+  if (error) {
+    if (isMissingRpcError(error)) {
+      return { ok: false, code: "RPC_NOT_DEPLOYED", error: error.message };
+    }
+    return { ok: false, code: "RPC_FAILED", error: error.message };
+  }
+
+  const payload = parseRpcJson(data);
+  if (!payload.ok) {
+    return payload;
+  }
+
+  return {
+    ok: true,
+    cluster: payload.cluster ? normalizeCourtCluster(payload.cluster) : null,
+    provider: "rpc",
+  };
+}
+
+export async function rpcAdminRemoveClusterOwner({ clusterId } = {}) {
+  const client = getSupabaseAuthClient();
+  if (!client) {
+    return { ok: false, code: "NO_SUPABASE", error: "Supabase chưa sẵn sàng." };
+  }
+
+  const { data, error } = await client.rpc("court_admin_remove_cluster_owner", {
+    p_cluster_id: clusterId,
+  });
+
+  if (error) {
+    if (isMissingRpcError(error)) {
+      return { ok: false, code: "RPC_NOT_DEPLOYED", error: error.message };
+    }
+    return { ok: false, code: "RPC_FAILED", error: error.message };
+  }
+
+  const payload = parseRpcJson(data);
+  if (!payload.ok) {
+    return payload;
+  }
+
+  return {
+    ok: true,
+    clusterId: payload.clusterId || clusterId,
+    provider: "rpc",
+  };
+}

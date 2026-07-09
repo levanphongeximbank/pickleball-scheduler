@@ -46,7 +46,7 @@ export default function AthleteRatingSummary({ authUserId }) {
           </Typography>
           <Button
             component={RouterLink}
-            to="/onboarding/pick-vn-rating"
+            to="/player/skill-assessment"
             variant="contained"
             startIcon={<AssessmentIcon />}
           >
@@ -148,7 +148,7 @@ export default function AthleteRatingSummary({ authUserId }) {
 
       <Button
         component={RouterLink}
-        to="/onboarding/pick-vn-rating"
+        to="/player/skill-assessment"
         variant="outlined"
         size="small"
         startIcon={<ReplayIcon />}

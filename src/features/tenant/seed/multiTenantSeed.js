@@ -7,6 +7,10 @@ import { normalizePlayers } from "../../../models/player.js";
 import { normalizeCourts } from "../../../models/court.js";
 import { normalizeTournaments } from "../../../models/tournament/index.js";
 import { TOURNAMENT_MODE, TOURNAMENT_STATUS } from "../../../models/tournament/constants.js";
+import {
+  isDemoSeedDisabled,
+  MULTI_TENANT_SEED_MARKER,
+} from "../../../demo/seed/demoSeedRegistry.js";
 
 export const SEED_TENANTS = Object.freeze([
   {
@@ -47,7 +51,7 @@ export const SEED_TENANTS = Object.freeze([
   },
 ]);
 
-const SEED_MARKER = "pickleball-multi-tenant-seed-v1";
+const SEED_MARKER = MULTI_TENANT_SEED_MARKER;
 
 function buildPlayers(count, tenantId, prefix) {
   const genders = ["Nam", "Nữ"];
@@ -143,7 +147,7 @@ export function isMultiTenantSeedApplied() {
 }
 
 export function ensureMultiTenantSeed() {
-  if (isMultiTenantSeedApplied()) {
+  if (isDemoSeedDisabled() || isMultiTenantSeedApplied()) {
     return { ok: true, skipped: true };
   }
 

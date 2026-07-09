@@ -93,6 +93,15 @@ describe("court claim request", () => {
     assert.equal(isClusterUnassigned(assigned.cluster.id), false);
   });
 
+  it("filters unassigned clusters by name search", () => {
+    createCourtCluster({ venueId: VENUE_A, name: "Pickleball NAM LONG sports", user: ADMIN });
+    createCourtCluster({ venueId: VENUE_A, name: "Cụm Nam Lý", user: ADMIN });
+
+    const matches = listUnassignedClusters({ search: "nam long" });
+    assert.equal(matches.length, 1);
+    assert.equal(matches[0].name, "Pickleball NAM LONG sports");
+  });
+
   it("blocks mixed venue selection on submit", async () => {
     const c1 = createCourtCluster({ venueId: VENUE_A, name: "A1", user: ADMIN });
     const c2 = createCourtCluster({ venueId: "venue-claim-b", name: "B1", user: ADMIN });

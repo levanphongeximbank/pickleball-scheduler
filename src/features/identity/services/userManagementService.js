@@ -9,6 +9,7 @@ import {
   upsertProfileRow,
 } from "../../../auth/profileService.js";
 import { getSupabaseAuthClient, hasSupabaseConfig, PROFILES_TABLE } from "../../../auth/supabaseClient.js";
+import { MIN_PASSWORD_LENGTH } from "../../../config/authConfig.js";
 import { createUserRecord, normalizeUser, USER_STATUS } from "../../../models/user.js";
 import { writeAuditLog, AUDIT_ACTIONS } from "./auditService.js";
 import { requestPasswordReset } from "./passwordService.js";
@@ -145,18 +146,28 @@ export async function createManagedUser({
     return { ok: false, error: "Email bắt buộc.", code: "EMAIL_REQUIRED" };
   }
 
+  const providedPassword = String(password || "").trim();
+  if (providedPassword && providedPassword.length < MIN_PASSWORD_LENGTH) {
+    return {
+      ok: false,
+      error: `Mật khẩu tối thiểu ${MIN_PASSWORD_LENGTH} ký tự.`,
+      code: "PASSWORD_TOO_SHORT",
+    };
+  }
+
   const currentUser = getCurrentUser();
   const resolvedVenueId = venueId || currentUser?.venueId || null;
 
   if (hasSupabaseConfig()) {
     const adminResult = await callIdentityAdminCreateUser({
       email: normalizedEmail,
-      password: String(password || "").trim() || undefined,
+      password: providedPassword || undefined,
       displayName,
       role: targetRole,
       venueId: resolvedVenueId,
       clubId,
       phone,
+      sendPasswordSetupEmail: !providedPassword,
     });
 
     if (!adminResult.ok) {

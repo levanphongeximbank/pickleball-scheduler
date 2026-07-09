@@ -22,6 +22,15 @@ export function getSupabaseServerUrl() {
   return readEnv("SUPABASE_URL") || readEnv("VITE_SUPABASE_URL");
 }
 
+/** Anon/publishable key for serverless routes that validate caller JWT (e.g. create-user). */
+export function getSupabaseAnonKey() {
+  return (
+    readEnv("SUPABASE_ANON_KEY") ||
+    readEnv("VITE_SUPABASE_ANON_KEY") ||
+    readEnv("NEXT_PUBLIC_SUPABASE_ANON_KEY")
+  );
+}
+
 export function getSupabaseServiceRoleKey() {
   return readEnv("SUPABASE_SERVICE_ROLE_KEY");
 }

@@ -46,6 +46,7 @@
     "apply:v52-staging-sql": "node scripts/apply-v52-staging-sql.mjs",
     "grant:team-captain": "node scripts/grant-team-captain.mjs",
     "verify:v52-production": "node scripts/verify-v52-production.mjs",
+    "verify:identity-admin-create-production": "node scripts/verify-identity-admin-create-production.mjs",
     "test:verify-phase29-ranking": "node scripts/verify-phase29-ranking-staging.mjs",
     "apply:ai-v52-staging-sql": "node scripts/apply-ai-v52-staging-sql.mjs",
     "verify:ai-v52-production-smoke": "node scripts/verify-ai-v52-production-smoke.mjs",

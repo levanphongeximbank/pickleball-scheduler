@@ -10,6 +10,9 @@ import {
   normalizeCourtCluster,
 } from "../../../models/courtCluster.js";
 import { isCourtClustersEnabled } from "../config/clusterFlags.js";
+import { isValidProfileUserId } from "../utils/profileUserId.js";
+
+const LEGACY_DEFAULT_TENANT_ID = "default-tenant";
 
 function mergeClustersIntoLocal(incomingClusters) {
   const byId = new Map(loadCourtClusters().map((cluster) => [cluster.id, cluster]));
@@ -86,6 +89,7 @@ export async function pullClusterContextForUser(user) {
 
   mergeClustersIntoLocal(clusters);
   mergeUserAssignmentsIntoLocal(user.id, assignments);
+  pruneInvalidLocalClusterOwners();
 
   return {
     ok: true,
@@ -93,6 +97,66 @@ export async function pullClusterContextForUser(user) {
     assignments,
     provider: "supabase",
   };
+}
+
+export function pruneInvalidLocalClusterOwners() {
+  let changedClusters = false;
+  let changedAssignments = false;
+
+  const nextClusters = loadCourtClusters().map((cluster) => {
+    if (cluster.ownerUserId && !isValidProfileUserId(cluster.ownerUserId)) {
+      changedClusters = true;
+      return { ...cluster, ownerUserId: null };
+    }
+    return cluster;
+  });
+
+  const nextAssignments = loadClusterAssignments().filter((assignment) => {
+    if (!isValidProfileUserId(assignment.userId)) {
+      changedAssignments = true;
+      return false;
+    }
+    return true;
+  });
+
+  if (changedClusters) {
+    saveCourtClusters(nextClusters);
+  }
+  if (changedAssignments) {
+    saveClusterAssignments(nextAssignments);
+  }
+
+  return {
+    ok: true,
+    changedClusters,
+    changedAssignments,
+  };
+}
+
+export function pruneOrphanLocalClusters(currentVenueId) {
+  const venueId = String(currentVenueId || "").trim();
+  if (!venueId || venueId === LEGACY_DEFAULT_TENANT_ID) {
+    return { ok: true, removed: 0 };
+  }
+
+  const clusters = loadCourtClusters();
+  const kept = clusters.filter((cluster) => {
+    if (cluster.venueId === LEGACY_DEFAULT_TENANT_ID && venueId !== LEGACY_DEFAULT_TENANT_ID) {
+      return false;
+    }
+    return true;
+  });
+  const removed = clusters.length - kept.length;
+
+  if (removed > 0) {
+    saveCourtClusters(kept);
+
+    const keptIds = new Set(kept.map((cluster) => cluster.id));
+    const assignments = loadClusterAssignments().filter((item) => keptIds.has(item.clusterId));
+    saveClusterAssignments(assignments);
+  }
+
+  return { ok: true, removed };
 }
 
 export { mergeClustersIntoLocal, mergeUserAssignmentsIntoLocal };

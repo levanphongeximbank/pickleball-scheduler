@@ -7,10 +7,14 @@ import { createClubMemberRecord } from "../models/clubMember.js";
 import { createDefaultClubRating } from "../models/clubPlayerRating.js";
 import { saveClubExtension } from "../storage/clubExtensionStorage.js";
 import { SEED_TENANTS } from "../../tenant/seed/multiTenantSeed.js";
+import {
+  CLUB_MANAGEMENT_SEED_MARKER,
+  isDemoSeedDisabled,
+} from "../../../demo/seed/demoSeedRegistry.js";
 
-const SEED_MARKER = "pickleball-club-management-seed-v1";
+const SEED_MARKER = CLUB_MANAGEMENT_SEED_MARKER;
 
-const FUTURE_ARENA_CLUBS = [
+export const CLUB_MANAGEMENT_DEMO_CLUBS = [
   { id: "club-future-a", name: "CLB A", code: "FA-A" },
   { id: "club-future-b", name: "CLB B", code: "FA-B" },
   { id: "club-future-c", name: "CLB C", code: "FA-C" },
@@ -44,7 +48,7 @@ function markSeeded() {
  * Seed idempotent — chỉ thêm CLB demo nếu chưa có, không xóa dữ liệu thật.
  */
 export function ensureClubManagementSeed() {
-  if (isSeeded()) {
+  if (isDemoSeedDisabled() || isSeeded()) {
     return { ok: true, skipped: true };
   }
 
@@ -57,7 +61,7 @@ export function ensureClubManagementSeed() {
   const clubs = loadClubs();
   let changed = false;
 
-  for (const spec of FUTURE_ARENA_CLUBS) {
+  for (const spec of CLUB_MANAGEMENT_DEMO_CLUBS) {
     const exists = clubs.some((c) => c.id === spec.id);
     if (exists) {
       continue;
@@ -109,5 +113,5 @@ export function ensureClubManagementSeed() {
   }
 
   markSeeded();
-  return { ok: true, seeded: changed, clubCount: FUTURE_ARENA_CLUBS.length };
+  return { ok: true, seeded: changed, clubCount: CLUB_MANAGEMENT_DEMO_CLUBS.length };
 }

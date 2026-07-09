@@ -202,6 +202,8 @@ test("menuAccess — PLAYER chỉ thấy menu giải đấu", () => {
   const labels = collectMenuItemLabels(visible);
   assert.ok(labels.includes("Danh sách giải"));
   assert.ok(labels.includes("Hồ sơ cá nhân"));
+  assert.ok(labels.includes("Điểm trình độ"));
+  assert.ok(labels.includes("Đánh giá trình độ lần đầu"));
   assert.equal(labels.includes("CLB & Huấn luyện"), false);
   assert.equal(labels.includes("Vui chơi mỗi ngày"), false);
   assert.equal(labels.includes("Loại giải"), false);
@@ -287,12 +289,9 @@ test("menuAccess — resolvePostAuthRedirectPath PLAYER chưa CLB", async () => 
 
   try {
     const player = user(ROLES.PLAYER);
-    assert.equal(
-      resolvePostAuthRedirectPath("/tournament", player, true),
-      "/onboarding/pick-vn-rating"
-    );
-    assert.equal(resolvePostAuthRedirectPath("/", player, true), "/onboarding/pick-vn-rating");
-    assert.equal(resolvePostAuthRedirectPath("/403", player, true), "/onboarding/pick-vn-rating");
+    assert.equal(resolvePostAuthRedirectPath("/tournament", player, true), "/my-club");
+    assert.equal(resolvePostAuthRedirectPath("/", player, true), "/my-club");
+    assert.equal(resolvePostAuthRedirectPath("/403", player, true), "/my-club");
 
     const playerWithClub = user(ROLES.PLAYER, { clubId: "c1", id: "rbac-player-club" });
     await completePickVnOnboarding("rbac-player-club", {

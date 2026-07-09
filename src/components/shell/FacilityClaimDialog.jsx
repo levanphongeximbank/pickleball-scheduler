@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   Alert,
+  Autocomplete,
   Box,
   Button,
   Checkbox,
@@ -31,10 +32,23 @@ import {
 import { listAssignmentsForUser } from "../../features/court-cluster/services/courtClusterService.js";
 import { getCurrentUser } from "../../auth/authService.js";
 
+const SEARCH_DEBOUNCE_MS = 300;
+
+function clusterSearchLabel(cluster) {
+  return cluster?.name || cluster?.id || "";
+}
+
+function clusterSearchSubtitle(cluster) {
+  const venue = cluster?.venueName || cluster?.venueId || "";
+  const address = cluster?.address || "";
+  return [venue, address].filter(Boolean).join(" · ");
+}
+
 export default function FacilityClaimDialog({ open, onClose, onSubmitted }) {
   const [clusters, setClusters] = useState([]);
   const [selectedIds, setSelectedIds] = useState([]);
   const [message, setMessage] = useState("");
+  const [searchInput, setSearchInput] = useState("");
   const [search, setSearch] = useState("");
   const [loading, setLoading] = useState(false);
   const [submitting, setSubmitting] = useState(false);
@@ -45,6 +59,13 @@ export default function FacilityClaimDialog({ open, onClose, onSubmitted }) {
     () => myRequests.find((item) => item.status === "pending") || null,
     [myRequests]
   );
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setSearch(searchInput.trim());
+    }, SEARCH_DEBOUNCE_MS);
+    return () => clearTimeout(timer);
+  }, [searchInput]);
 
   const loadData = useCallback(async () => {
     setLoading(true);
@@ -162,13 +183,41 @@ export default function FacilityClaimDialog({ open, onClose, onSubmitted }) {
 
           {!pendingRequest && (
             <>
-              <TextField
-                size="small"
-                label="Tìm cụm sân"
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                onBlur={loadData}
-                fullWidth
+              <Autocomplete
+                freeSolo
+                options={clusters}
+                loading={loading}
+                inputValue={searchInput}
+                onInputChange={(_event, value) => setSearchInput(value)}
+                getOptionLabel={clusterSearchLabel}
+                isOptionEqualToValue={(option, value) => option.id === value?.id}
+                filterOptions={(options) => options}
+                onChange={(_event, cluster) => {
+                  if (cluster?.id) {
+                    toggleCluster(cluster.id);
+                  }
+                }}
+                renderOption={(props, cluster) => (
+                  <Box component="li" {...props} key={cluster.id}>
+                    <Box>
+                      <Typography variant="body2" fontWeight={600}>
+                        {clusterSearchLabel(cluster)}
+                      </Typography>
+                      <Typography variant="caption" color="text.secondary">
+                        {clusterSearchSubtitle(cluster)}
+                      </Typography>
+                    </Box>
+                  </Box>
+                )}
+                renderInput={(params) => (
+                  <TextField
+                    {...params}
+                    label="Tìm cụm sân"
+                    placeholder="Tìm theo tên cụm sân..."
+                    helperText="Gõ tên cụm sân để lọc danh sách bên dưới"
+                    fullWidth
+                  />
+                )}
               />
 
               {mixedVenueWarning && (
@@ -190,14 +239,25 @@ export default function FacilityClaimDialog({ open, onClose, onSubmitted }) {
                   </TableHead>
                   <TableBody>
                     {clusters.map((cluster) => (
-                      <TableRow key={cluster.id} hover>
+                      <TableRow
+                        key={cluster.id}
+                        hover
+                        selected={selectedIds.includes(cluster.id)}
+                        sx={{ cursor: "pointer" }}
+                        onClick={() => toggleCluster(cluster.id)}
+                      >
                         <TableCell padding="checkbox">
                           <Checkbox
                             checked={selectedIds.includes(cluster.id)}
                             onChange={() => toggleCluster(cluster.id)}
+                            onClick={(event) => event.stopPropagation()}
                           />
                         </TableCell>
-                        <TableCell>{cluster.name}</TableCell>
+                        <TableCell>
+                          <Typography variant="body2" fontWeight={600}>
+                            {cluster.name}
+                          </Typography>
+                        </TableCell>
                         <TableCell>{cluster.venueName || cluster.venueId}</TableCell>
                         <TableCell>{cluster.address || "—"}</TableCell>
                         <TableCell align="right">{cluster.courtCount ?? 0}</TableCell>

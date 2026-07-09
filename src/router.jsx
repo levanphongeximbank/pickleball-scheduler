@@ -7,7 +7,6 @@ import { Box, CircularProgress } from "@mui/material";
 
 
 import MainLayout from "./layouts/MainLayout";
-import PickVnOnboardingGate from "./components/auth/PickVnOnboardingGate.jsx";
 import SuperAdminRouteGuard from "./features/pairing-constraints/guards/superAdminRouteGuard.jsx";
 
 import { AuthProvider } from "./context/AuthContext.jsx";
@@ -245,9 +244,10 @@ const BillingPage = lazy(() => import("./pages/billing/BillingPage"));
 const AdminBillingPage = lazy(() => import("./pages/admin/AdminBillingPage"));
 const VenueHoursPage = lazy(() => import("./pages/admin/VenueHoursPage"));
 const SkillLevelRequestsPage = lazy(() => import("./pages/admin/SkillLevelRequestsPage"));
-const PickVnOnboardingPage = lazy(() => import("./pages/onboarding/PickVnOnboardingPage.jsx"));
 const MyClubPage = lazy(() => import("./pages/player/MyClubPage.jsx"));
 const AthleteSelfProfilePage = lazy(() => import("./pages/player/AthleteSelfProfilePage.jsx"));
+const PlayerSkillOverviewPage = lazy(() => import("./pages/player/PlayerSkillOverviewPage.jsx"));
+const FirstSkillAssessmentPage = lazy(() => import("./pages/player/FirstSkillAssessmentPage.jsx"));
 const TournamentCertificationQueuePage = lazy(() =>
   import("./pages/admin/TournamentCertificationQueuePage")
 );
@@ -402,8 +402,10 @@ export default function Router() {
               <Route path="/news" element={<PublicNewsPage />} />
             </Route>
 
-            <Route element={<PickVnOnboardingGate />}>
-            <Route path="/onboarding/pick-vn-rating" element={<PickVnOnboardingPage />} />
+            <Route
+              path="/onboarding/pick-vn-rating"
+              element={<Navigate to="/player/skill-assessment" replace />}
+            />
 
             <Route element={<MainLayout />}>
 
@@ -427,6 +429,8 @@ export default function Router() {
             <Route path="/profile" element={<SelfProfilePage />} />
             <Route path="/my-club" element={<MyClubPage />} />
             <Route path="/player/profile" element={<AthleteSelfProfilePage />} />
+            <Route path="/player/skill" element={<PlayerSkillOverviewPage />} />
+            <Route path="/player/skill-assessment" element={<FirstSkillAssessmentPage />} />
 
             <Route path="/users" element={<UserManagementPage />} />
             <Route path="/admin/roles" element={<RolesPermissionsPage />} />
@@ -659,7 +663,6 @@ export default function Router() {
               <Route path="notifications" element={<NotificationSettingsPage />} />
             </Route>
 
-          </Route>
           </Route>
 
         </Routes>

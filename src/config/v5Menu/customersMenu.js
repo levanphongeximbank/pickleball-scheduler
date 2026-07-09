@@ -44,5 +44,14 @@ export const CUSTOMERS_MENU_ROOT = menuFolder({
       permissions: [PERMISSIONS.PLAYER_VIEW],
       featureStatus: FEATURE_STATUS.LIVE,
     }),
+    menuLeaf({
+      key: "skill-first-assessment",
+      icon: "skill",
+      text: "Đánh giá trình độ lần đầu",
+      path: "/player/skill-assessment",
+      match: "player-skill-assessment",
+      permissions: [],
+      featureStatus: FEATURE_STATUS.LIVE,
+    }),
   ],
 });

@@ -14,7 +14,6 @@ import {
   isRouteRestrictedForUser,
 } from "../config/navigationConfig.js";
 import { getNavigationPermissions } from "../config/navigationPermissions.js";
-import { needsPickVnOnboarding } from "../features/pick-vn-rating/services/pickVnRatingService.js";
 
 const FEATURE_FLAG_CHECKERS = Object.freeze({
   marketplace: isMarketplaceEnabled,
@@ -28,6 +27,8 @@ const PUBLIC_MENU_PATHS = new Set([
   "/profile",
   "/my-club",
   "/player/profile",
+  "/player/skill",
+  "/player/skill-assessment",
   "/mobile/notifications",
   "/403",
 ]);
@@ -412,14 +413,6 @@ export function getDefaultHomePath(user, rbacEnabled = false) {
 
 /** Sau đăng nhập — không quay lại route bị cấm (vd. PLAYER chưa CLB → /tournament). */
 export function resolvePostAuthRedirectPath(requestedPath, user, rbacEnabled = false) {
-  if (
-    user?.id &&
-    normalizeRole(user?.role) === ROLES.PLAYER &&
-    needsPickVnOnboarding(user.id)
-  ) {
-    return "/onboarding/pick-vn-rating";
-  }
-
   const homePath = getDefaultHomePath(user, rbacEnabled);
   const path = String(requestedPath || "").split("?")[0];
 

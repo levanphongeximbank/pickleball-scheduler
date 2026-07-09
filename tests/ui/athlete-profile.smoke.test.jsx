@@ -104,7 +104,7 @@ describe("AthleteRatingSummary", () => {
     expect(screen.getByText("Trình độ Pick_VN")).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "Bắt đầu đánh giá" })).toHaveAttribute(
       "href",
-      "/onboarding/pick-vn-rating"
+      "/player/skill-assessment"
     );
   });
 
@@ -122,7 +122,7 @@ describe("AthleteRatingSummary", () => {
     ).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "Làm lại đánh giá" })).toHaveAttribute(
       "href",
-      "/onboarding/pick-vn-rating"
+      "/player/skill-assessment"
     );
   });
 });

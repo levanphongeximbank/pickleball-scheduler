@@ -1,25 +1,6 @@
-import { useNavigate } from "react-router-dom";
-import { Box, Container } from "@mui/material";
+import { Navigate } from "react-router-dom";
 
-import { useAuth } from "../../context/AuthContext.jsx";
-import PickVnRatingOnboarding from "../../features/pick-vn-rating/components/PickVnRatingOnboarding.jsx";
-
+/** @deprecated Dùng /player/skill-assessment — giữ redirect cho bookmark cũ. */
 export default function PickVnOnboardingPage() {
-  const navigate = useNavigate();
-  const { user } = useAuth();
-
-  return (
-    <Container maxWidth="sm" sx={{ py: 4 }}>
-      <Box sx={{ minHeight: "60vh", display: "flex", alignItems: "center" }}>
-        <PickVnRatingOnboarding
-          authUserId={user?.id}
-          clubId={user?.clubId}
-          playerId={user?.playerId}
-          onComplete={() =>
-            navigate(user?.clubId ? "/" : "/my-club", { replace: true })
-          }
-        />
-      </Box>
-    </Container>
-  );
+  return <Navigate to="/player/skill-assessment" replace />;
 }

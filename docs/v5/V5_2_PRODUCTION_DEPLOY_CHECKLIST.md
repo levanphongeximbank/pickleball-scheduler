@@ -49,6 +49,8 @@
 | C6 | `PHASE_22_CLOUD_PERSISTENCE.sql` | ✅ | `court_engine_stores`, `club_data_v3.version` |
 | C7 | `PHASE_33_TENANT_ROLE_CUSTOMIZE.sql` | ✅ | `tenant.role.customize` có trên Production |
 | C8 | Phase 23/32/33 claim/34/35 SQL | ✅ | `court_clusters`, `court_claim_requests`, RPC `court_admin_assign_cluster_owner` |
+| C11 | `PHASE_36_COURT_CLUSTER_CLOUD_SYNC.sql` | ✅ | RPC `court_admin_upsert_cluster`, `court_admin_remove_cluster_owner` (MCP 2026-07-09) |
+| C12 | `PHASE_36_PRODUCTION_BACKFILL_NAM_LONG.sql` | ☐ | Owner chạy backfill cụm `venue-prod-main-main` + gán chủ qua UI |
 | C9 | Phase 30/31 VPR + club membership SQL | ✅ | `pick_vn_player_ratings`, `club_governance`, `club_membership_requests` |
 | C10 | `npm run verify:phase33-tenant-owner-rbac-production` | ☐ | Cần `SUPABASE_SERVICE_ROLE_KEY` local — MCP đã spot-check |
 
@@ -73,9 +75,14 @@
 | `VITE_VPR_CLOUD_SYNC` | `true` | ☐ | SQL C9 ✅ — tuỳ chọn |
 | `VITE_PAYMENT_MODE` | `dev` | ✅ | |
 | `VITE_API_ENABLED` | `false` / absent | ✅ | |
+| `SUPABASE_SERVICE_ROLE_KEY` | Production service role | ☐ | **Server only** — bắt buộc cho `/api/identity/create-user` (Super Admin tạo user) |
+| `SUPABASE_URL` | Mirror `VITE_SUPABASE_URL` | ☐ | Khuyến nghị — serverless đọc trước `VITE_*` |
+| `SUPABASE_ANON_KEY` | Mirror `VITE_SUPABASE_ANON_KEY` | ☐ | Khuyến nghị — JWT check trên API create-user |
 | Không staging ref `qyewbxjsiiyufanzcjcq` | PASS | ✅ | Bundle deploy `0121740` |
 
-**Supabase Auth (P1):** Site URL + Redirect URLs → Production domain.
+**Supabase Auth (P1):** Site URL + Redirect URLs → Production domain (`/login`, `/reset-password`).
+
+**Super Admin tạo user:** `npm run verify:identity-admin-create-production` (local cần `SUPABASE_SERVICE_ROLE_KEY`). Self-signup có thể bật xác nhận email; admin tạo user qua `/users` dùng `email_confirm=true` — đăng nhập ngay, không cần bấm link.
 
 ---
 
@@ -107,6 +114,7 @@
 | F8 | Admin → Cụm sân (sau bật `VITE_COURT_CLUSTERS_ENABLED`) | ☐ | |
 | F9 | MCP RBAC + team tables | ✅ | 7 giải, 15 đội, 48 members |
 | F10 | `verify:v52-production` script local | ☐ | Cần service role key |
+| F11 | Super Admin → `/users` → Tạo user + mật khẩu → login ngay | ☐ | `verify:identity-admin-create-production` |
 
 ---
 

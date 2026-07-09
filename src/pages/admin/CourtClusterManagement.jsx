@@ -50,7 +50,12 @@ import {
   listClustersForVenue,
   updateCourtCluster,
 } from "../../features/court-cluster/services/courtClusterService.js";
-import { assignClusterOwnerToUser } from "../../features/court-cluster/services/courtClusterAdminService.js";
+import {
+  assignClusterOwnerToUser,
+  persistCourtClusterToCloud,
+  removeClusterOwner,
+  syncClustersForVenueToCloud,
+} from "../../features/court-cluster/services/courtClusterAdminService.js";
 import { pullClusterContextForUser } from "../../features/court-cluster/services/courtClusterCloudSync.js";
 import { isValidProfileUserId } from "../../features/court-cluster/utils/profileUserId.js";
 import { listUsers } from "../../features/identity/services/userManagementService.js";
@@ -96,6 +101,11 @@ export default function CourtClusterManagement() {
   const [ownerLoading, setOwnerLoading] = useState(false);
   const [ownerError, setOwnerError] = useState(null);
   const [ownerProfile, setOwnerProfile] = useState(null);
+  const [createSaving, setCreateSaving] = useState(false);
+  const [editSaving, setEditSaving] = useState(false);
+  const [syncSaving, setSyncSaving] = useState(false);
+  const [removeOwnerSaving, setRemoveOwnerSaving] = useState(false);
+  const [removeOwnerConfirmOpen, setRemoveOwnerConfirmOpen] = useState(false);
 
   const canPickTenant = isSuperAdmin || isPlatformScopedRole(user?.role);
   const tenants = useMemo(() => listTenants(), [message]);
@@ -156,8 +166,9 @@ export default function CourtClusterManagement() {
     setEditingCluster(null);
   };
 
-  const handleCreate = () => {
+  const handleCreate = async () => {
     setError(null);
+    setCreateSaving(true);
     const result = createCourtCluster({
       venueId,
       name: form.name,
@@ -169,7 +180,16 @@ export default function CourtClusterManagement() {
     });
 
     if (!result.ok) {
+      setCreateSaving(false);
       setError(result.error);
+      return;
+    }
+
+    const cloudResult = await persistCourtClusterToCloud(result.cluster, { actor: user });
+    setCreateSaving(false);
+
+    if (!cloudResult.ok) {
+      setError(cloudResult.error || "Không đồng bộ được cụm lên Supabase.");
       return;
     }
 
@@ -190,12 +210,13 @@ export default function CourtClusterManagement() {
     setEditOpen(true);
   };
 
-  const handleEdit = () => {
+  const handleEdit = async () => {
     if (!editingCluster) {
       return;
     }
 
     setError(null);
+    setEditSaving(true);
     const result = updateCourtCluster(
       editingCluster.id,
       {
@@ -208,7 +229,16 @@ export default function CourtClusterManagement() {
     );
 
     if (!result.ok) {
+      setEditSaving(false);
       setError(result.error);
+      return;
+    }
+
+    const cloudResult = await persistCourtClusterToCloud(result.cluster, { actor: user });
+    setEditSaving(false);
+
+    if (!cloudResult.ok) {
+      setError(cloudResult.error || "Không đồng bộ được cụm lên Supabase.");
       return;
     }
 
@@ -218,14 +248,40 @@ export default function CourtClusterManagement() {
     refreshClusters();
   };
 
-  const handleToggleStatus = (cluster) => {
+  const handleToggleStatus = async (cluster) => {
     const nextStatus = cluster.status === "active" ? "inactive" : "active";
     const result = updateCourtCluster(cluster.id, { status: nextStatus }, { user });
     if (!result.ok) {
       setError(result.error);
       return;
     }
+
+    const cloudResult = await persistCourtClusterToCloud(result.cluster, { actor: user });
+    if (!cloudResult.ok) {
+      setError(cloudResult.error || "Không đồng bộ trạng thái lên Supabase.");
+      return;
+    }
+
     setMessage(`Cập nhật trạng thái: ${result.cluster.name}`);
+    refreshClusters();
+  };
+
+  const handleSyncToCloud = async () => {
+    setError(null);
+    setSyncSaving(true);
+    const result = await syncClustersForVenueToCloud({
+      clusters,
+      venueId,
+      actor: user,
+    });
+    setSyncSaving(false);
+
+    if (!result.ok) {
+      setError(result.error || "Đồng bộ cụm lên cloud thất bại.");
+      return;
+    }
+
+    setMessage(`Đã đồng bộ ${result.synced ?? clusters.length} cụm lên Supabase.`);
     refreshClusters();
   };
 
@@ -273,6 +329,38 @@ export default function CourtClusterManagement() {
     }
 
     setOwnerProfile(result.user);
+  };
+
+  const hasClusterOwner = Boolean(
+    ownerUserId || listAssignmentsForCluster(infoCluster?.id || "").some((a) => a.role === "CLUSTER_OWNER")
+  );
+  const ownerIdIsValid = isValidProfileUserId(ownerUserId);
+
+  const handleRemoveOwner = async () => {
+    if (!infoCluster?.id) {
+      return;
+    }
+
+    setError(null);
+    setRemoveOwnerSaving(true);
+    const result = await removeClusterOwner({ clusterId: infoCluster.id, actor: user });
+    setRemoveOwnerSaving(false);
+    setRemoveOwnerConfirmOpen(false);
+
+    if (!result.ok) {
+      setError(result.error);
+      return;
+    }
+
+    setMessage("Đã xóa gán chủ sân cho cụm.");
+    setOwnerUserId(null);
+    setOwnerProfile(null);
+    setOwnerError(null);
+    refreshClusters();
+    const refreshed = getClusterById(infoCluster.id);
+    if (refreshed) {
+      setInfoCluster(refreshed);
+    }
   };
 
   const loadAssignUsers = async () => {
@@ -384,6 +472,11 @@ export default function CourtClusterManagement() {
           <Button variant="outlined" onClick={() => openAssignDialog()}>
             Gán chủ sân
           </Button>
+          {canPickTenant && (
+            <Button variant="outlined" onClick={handleSyncToCloud} disabled={syncSaving || clusters.length === 0}>
+              {syncSaving ? "Đang đồng bộ…" : "Đồng bộ lên cloud"}
+            </Button>
+          )}
           <Button
             variant="contained"
             startIcon={<AddIcon />}
@@ -592,8 +685,8 @@ export default function CourtClusterManagement() {
         <DialogContent>{formFields}</DialogContent>
         <DialogActions>
           <Button onClick={() => setCreateOpen(false)}>Huỷ</Button>
-          <Button variant="contained" onClick={handleCreate} disabled={!form.name.trim()}>
-            Tạo
+          <Button variant="contained" onClick={handleCreate} disabled={createSaving || !form.name.trim()}>
+            {createSaving ? "Đang tạo…" : "Tạo"}
           </Button>
         </DialogActions>
       </Dialog>
@@ -603,8 +696,8 @@ export default function CourtClusterManagement() {
         <DialogContent>{formFields}</DialogContent>
         <DialogActions>
           <Button onClick={() => setEditOpen(false)}>Huỷ</Button>
-          <Button variant="contained" onClick={handleEdit} disabled={!form.name.trim()}>
-            Lưu
+          <Button variant="contained" onClick={handleEdit} disabled={editSaving || !form.name.trim()}>
+            {editSaving ? "Đang lưu…" : "Lưu"}
           </Button>
         </DialogActions>
       </Dialog>
@@ -750,9 +843,21 @@ export default function CourtClusterManagement() {
                   </Typography>
                 ) : (
                   <Stack spacing={0.5} sx={{ mt: 0.5 }}>
-                    <Typography variant="body2" color="text.secondary">
-                      User ID: <b>{ownerUserId || "—"}</b>
-                    </Typography>
+                    <Stack direction="row" spacing={1} alignItems="center" flexWrap="wrap">
+                      <Typography variant="body2" color="text.secondary">
+                        ID chủ sân:
+                      </Typography>
+                      <Typography
+                        variant="body2"
+                        component="code"
+                        sx={{ fontFamily: "monospace", wordBreak: "break-all" }}
+                      >
+                        {ownerUserId || "—"}
+                      </Typography>
+                      {ownerUserId && !ownerIdIsValid && (
+                        <Chip size="small" color="warning" label="Legacy (email)" />
+                      )}
+                    </Stack>
                     <Typography variant="body2" color="text.secondary">
                       Tên hiển thị: <b>{ownerProfile?.displayName || "—"}</b>
                     </Typography>
@@ -762,6 +867,19 @@ export default function CourtClusterManagement() {
                     <Typography variant="body2" color="text.secondary">
                       Email: <b>{ownerProfile?.email || "—"}</b>
                     </Typography>
+                    {hasClusterOwner && (
+                      <Box sx={{ mt: 1 }}>
+                        <Button
+                          size="small"
+                          color="error"
+                          variant="outlined"
+                          disabled={removeOwnerSaving}
+                          onClick={() => setRemoveOwnerConfirmOpen(true)}
+                        >
+                          Xóa gán chủ sân
+                        </Button>
+                      </Box>
+                    )}
                   </Stack>
                 )}
                 {ownerError && (
@@ -785,6 +903,21 @@ export default function CourtClusterManagement() {
             }}
           >
             Đóng
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      <Dialog open={removeOwnerConfirmOpen} onClose={() => setRemoveOwnerConfirmOpen(false)} maxWidth="xs" fullWidth>
+        <DialogTitle>Xóa gán chủ sân?</DialogTitle>
+        <DialogContent>
+          <Typography variant="body2" color="text.secondary">
+            Thao tác này gỡ chủ sân khỏi cụm <b>{infoCluster?.name}</b> trên cloud và trình duyệt.
+          </Typography>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setRemoveOwnerConfirmOpen(false)}>Huỷ</Button>
+          <Button color="error" variant="contained" onClick={handleRemoveOwner} disabled={removeOwnerSaving}>
+            {removeOwnerSaving ? "Đang xóa…" : "Xóa gán"}
           </Button>
         </DialogActions>
       </Dialog>
