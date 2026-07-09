@@ -32,8 +32,8 @@
 |---|------|------|---------|
 | B1 | Commit trên branch `v5-platform-edition` | ✅ | `2ea1231` |
 | B2 | `package.json` version `5.3.9` | ✅ | |
-| B3 | Tag `v5.3.9` | ☐ | |
-| B4 | Push branch + tag | ☐ | |
+| B3 | Tag `v5.3.9` | ✅ | |
+| B4 | Push branch + tag | ✅ | origin `v5-platform-edition` + `v5.3.9` |
 
 ---
 
