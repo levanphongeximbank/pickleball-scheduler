@@ -158,7 +158,7 @@ export default function ClubGovernancePanel({ club, tenantId, onRefresh }) {
     }
 
     if (canAssignOwner && form.ownerUserId.trim() !== (club.governance?.ownerUserId || "")) {
-      const ownerResult = assignClubOwner(
+      const ownerResult = await assignClubOwner(
         club.id,
         form.ownerUserId.trim() || null,
         tenantId

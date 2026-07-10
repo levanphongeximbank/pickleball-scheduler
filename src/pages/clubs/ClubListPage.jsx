@@ -132,7 +132,6 @@ export default function ClubListPage() {
           memberCount: row.memberCount ?? 0,
           avgElo: 0,
           tournamentCount: 0,
-          pendingRequestCount: row.pendingRequestCount,
           ownerName: row.ownerName,
           presidentName: row.presidentName,
         },
@@ -441,7 +440,6 @@ export default function ClubListPage() {
                 {storageV2 && <TableCell>Chủ sở hữu</TableCell>}
                 {storageV2 && <TableCell>Chủ tịch</TableCell>}
                 <TableCell align="right">Thành viên</TableCell>
-                {storageV2 && <TableCell align="right">Chờ duyệt</TableCell>}
                 {!storageV2 && <TableCell align="right">ELO TB</TableCell>}
                 {!storageV2 && <TableCell align="right">Giải nội bộ</TableCell>}
                 <TableCell>Trạng thái</TableCell>
@@ -457,11 +455,6 @@ export default function ClubListPage() {
                   {storageV2 && <TableCell>{stats.ownerName || "—"}</TableCell>}
                   {storageV2 && <TableCell>{stats.presidentName || "—"}</TableCell>}
                   <TableCell align="right">{stats.memberCount}</TableCell>
-                  {storageV2 && (
-                    <TableCell align="right">
-                      {stats.pendingRequestCount == null ? "—" : stats.pendingRequestCount}
-                    </TableCell>
-                  )}
                   {!storageV2 && <TableCell align="right">{stats.avgElo || "—"}</TableCell>}
                   {!storageV2 && <TableCell align="right">{stats.tournamentCount}</TableCell>}
                   <TableCell>

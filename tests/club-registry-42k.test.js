@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
+import { readFileSync } from "node:fs";
 
 import {
   CLUB_REGISTRY_SCOPE,
@@ -33,6 +34,18 @@ describe("42K registry cache keys", () => {
     invalidateClubRegistryCache({ tenantId: "tenant-a", scope: CLUB_REGISTRY_SCOPE.TENANT });
     assert.equal(readClubRegistryCache(keyA), null);
     assert.ok(readClubRegistryCache(keyB));
+  });
+});
+
+describe("42K ClubListPage V2 UI", () => {
+  it("V2 path hides pending request column", () => {
+    const src = readFileSync(
+      new URL("../src/pages/clubs/ClubListPage.jsx", import.meta.url),
+      "utf8"
+    );
+    const v2Block = src.slice(src.indexOf("if (storageV2) {"), src.indexOf("const clubs = getClubsVisibleToUser"));
+    assert.doesNotMatch(v2Block, /Chờ duyệt/);
+    assert.doesNotMatch(v2Block, /pendingRequestCount/);
   });
 });
 

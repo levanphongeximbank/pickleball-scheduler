@@ -37,6 +37,13 @@ import { persistClubToCloud } from "./clubRegistryCloudService.js";
 import { rpcClubClaimSelfRegistration } from "./clubRegistryRpcService.js";
 import { isClubStorageV2Enabled } from "../config/clubRegistryFlags.js";
 import {
+  rpcV2ClubAssignOwner,
+  rpcV2ClubClearOwner,
+  rpcV2ClubGet,
+  rpcV2ClubTransferPresident,
+} from "./clubStorageV2RpcService.js";
+import { invalidateAllClubRegistryCache } from "../registry/clubRegistryCache.js";
+import {
   getClusterById,
   listClustersForVenue,
 } from "../../court-cluster/services/courtClusterService.js";
@@ -346,6 +353,23 @@ export function canSelfRegisterClub(user) {
   }
 
   return false;
+}
+
+async function resolveClubForGovernance(clubId) {
+  if (isClubStorageV2Enabled()) {
+    const result = await rpcV2ClubGet(clubId);
+    if (!result.ok) {
+      return null;
+    }
+    return result.club;
+  }
+  return getRegistryClubById(clubId);
+}
+
+function invalidateRegistryAfterGovernanceMutation() {
+  if (isClubStorageV2Enabled()) {
+    invalidateAllClubRegistryCache();
+  }
 }
 
 function buildPlayerIdForAuthUser(userId) {
@@ -904,7 +928,7 @@ export function transferClubOwnership(clubId, nextOwnerUserId, tenantId) {
 
 export async function transferClubPresident(clubId, nextPresidentUserId, tenantId) {
   const user = getCurrentUser();
-  const club = getRegistryClubById(clubId);
+  const club = await resolveClubForGovernance(clubId);
   if (!club) {
     return { ok: false, error: "Không tìm thấy CLB." };
   }
@@ -921,6 +945,30 @@ export async function transferClubPresident(clubId, nextPresidentUserId, tenantI
   const currentPresident = club.governance?.presidentUserId || null;
   if (sameUserId(currentPresident, trimmed)) {
     return { ok: true, club, skipped: true };
+  }
+
+  if (isClubStorageV2Enabled()) {
+    const transferred = await rpcV2ClubTransferPresident({
+      clubId,
+      nextUserId: trimmed,
+      expectedClubVersion: club.version ?? 1,
+    });
+    if (!transferred.ok) {
+      return transferred;
+    }
+    invalidateRegistryAfterGovernanceMutation();
+    void writeAuditLog({
+      action: "club.president.transfer",
+      resourceType: "club",
+      resourceId: clubId,
+      venueId: tenantId || club.venueId || club.tenantId,
+      clubId,
+      metadata: {
+        previousPresidentUserId: currentPresident,
+        nextPresidentUserId: trimmed,
+      },
+    });
+    return { ok: true, club: transferred.club, provider: "v2-rpc" };
   }
 
   const memberCheck = assertClubAthleteUser(clubId, tenantId, trimmed);
@@ -1090,13 +1138,13 @@ export function resolveGovernanceForCreate(data = {}, user = getCurrentUser()) {
   return { governance: nextGovernance, status };
 }
 
-export function assignClubOwner(clubId, ownerUserId, tenantId) {
+export async function assignClubOwner(clubId, ownerUserId, tenantId) {
   const user = getCurrentUser();
   if (!canAssignClubOwner(user)) {
     return { ok: false, error: "Chỉ chủ sân hoặc quản trị hệ thống được gán Chủ sở hữu CLB." };
   }
 
-  const club = getRegistryClubById(clubId);
+  const club = await resolveClubForGovernance(clubId);
   if (!club) {
     return { ok: false, error: "Không tìm thấy CLB." };
   }
@@ -1111,6 +1159,32 @@ export function assignClubOwner(clubId, ownerUserId, tenantId) {
   }
 
   const trimmed = ownerUserId ? String(ownerUserId).trim() : null;
+
+  if (isClubStorageV2Enabled()) {
+    if (!trimmed) {
+      const cleared = await rpcV2ClubClearOwner({
+        clubId,
+        expectedClubVersion: club.version ?? 1,
+      });
+      if (!cleared.ok) {
+        return cleared;
+      }
+      invalidateRegistryAfterGovernanceMutation();
+      return { ok: true, club: cleared.club, provider: "v2-rpc" };
+    }
+
+    const assigned = await rpcV2ClubAssignOwner({
+      clubId,
+      memberUserId: trimmed,
+      expectedClubVersion: club.version ?? 1,
+    });
+    if (!assigned.ok) {
+      return assigned;
+    }
+    invalidateRegistryAfterGovernanceMutation();
+    return { ok: true, club: assigned.club, provider: "v2-rpc" };
+  }
+
   const governance = {
     ...club.governance,
     ownerUserId: trimmed,

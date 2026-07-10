@@ -32,12 +32,12 @@ export default function AssignClubOwnerDialog({
     onClose?.();
   };
 
-  const handleAssign = () => {
+  const handleAssign = async () => {
     if (!ownerUserId) {
       return;
     }
     setBusy(true);
-    const result = assignClubOwner(clubId, ownerUserId, tenantId);
+    const result = await assignClubOwner(clubId, ownerUserId, tenantId);
     setBusy(false);
     if (!result.ok) {
       onError?.(result.error);
