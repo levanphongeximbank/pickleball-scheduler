@@ -3,6 +3,7 @@
 -- Nguồn: src/features/identity/matrix/rolePermissions.js → PLAYER_DEFAULT_PERMISSION_IDS
 
 -- Gỡ quyền ghi/legacy không thuộc ma trận VĐV mặc định
+-- (club.create được giữ / gán lại ở bước insert bên dưới — Phase 42G)
 delete from public.role_permissions
 where role_id = 'PLAYER'
   and permission_id in (
@@ -10,7 +11,6 @@ where role_id = 'PLAYER'
     'tournament.update',
     'tournament.delete',
     'club.view',
-    'club.create',
     'club.update',
     'club.delete',
     'booking.view',
@@ -22,6 +22,7 @@ where role_id = 'PLAYER'
   );
 
 -- Ma trận mặc định VĐV (mirror PLAYER_DEFAULT_PERMISSION_IDS)
+-- Phase 42G: thêm club.create (VĐV tạo CLB → club_owner scope club; không đổi platform role)
 insert into public.role_permissions (role_id, permission_id)
 select 'PLAYER', p.id
 from public.permissions p
@@ -34,7 +35,8 @@ where p.id in (
   'skill_level.request_change',
   'team.view',
   'team.lineup.submit',
-  'team.standings.view'
+  'team.standings.view',
+  'club.create'
 )
 on conflict do nothing;
 

@@ -18,7 +18,7 @@
 | Environment | `VITE_CLUB_STORAGE_V2` | Supabase project |
 |-------------|------------------------|------------------|
 | Local / Staging Preview | `true` | Staging |
-| Production | `false` (until GO PRODUCTION) | Production |
+| Production | `true` (after GO PRODUCTION RESET) | Production |
 
 ## Files
 
@@ -33,10 +33,8 @@
 - `src/ai/cloudSyncConfig.js`
 - `src/main.jsx`
 
-## Next gate
+## Next
 
-```text
-GO PRODUCTION RESET
-```
+Redeploy client after RBAC matrix change (`PLAYER` + `club.create`). Production already has `VITE_CLUB_STORAGE_V2=true`.
 
-Only after Staging QA with V2 flag + Staging Supabase.
+QA: see checklist in this doc.

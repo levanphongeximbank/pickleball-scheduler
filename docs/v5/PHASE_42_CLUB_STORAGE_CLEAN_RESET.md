@@ -296,7 +296,7 @@ Every mutation accepts at least:
 
 | RPC | Purpose |
 |-----|---------|
-| `club_create` | Create club + creator as `club_members` + `president` assignment (owner only if explicit policy) |
+| `club_create` | Create club + (non-SA) creator as active `club_members` + `club_owner` (+ `president` by default). Single txn; never writes `profiles.club_id`; never changes platform role. See Phase 42G. |
 | `club_get` | Detail + display labels |
 | `club_list_registry` | Admin/tenant registry |
 | `club_list_discoverable` | Discoverable clubs |
@@ -374,13 +374,16 @@ If stored version `< 42`, **delete** (no migrate):
 
 | Case | Expected |
 |------|----------|
+| Athlete + `club.create` tạo CLB | Active member + `club_owner` (+ president default); platform role unchanged |
+| Reload / browser khác | Cùng owner từ cloud |
+| Retry cùng `request_id` | Idempotent; không duplicate club |
+| Lỗi giữa chừng create | Rollback toàn bộ (không orphan club) |
+| Owner CLB A vs CLB B | Không cross-club admin |
 | Two browsers, two users, same tenant | Same clubs / members / requests |
 | Other-tenant user | No cross-tenant read/write |
 | Submit join → approve | Active `club_members`; governance unchanged unless intended |
 | Assign owner / clear owner | Owner cleared only via `club_clear_owner` |
 | Transfer president | Version bump; concurrent stale → `VERSION_CONFLICT` |
-| Retry same `request_id` | Idempotent; no duplicate member |
-| Logout / login / reload | Data from cloud; independent of old LS |
 | Schema 42 cache reset | Business LS wiped |
 | Super Admin | Not auto member/owner/president |
 | Build / lint / unit | Pass before Production GO |
@@ -407,6 +410,7 @@ Before any Staging/Production reset:
 - `docs/v5/PHASE_42B_SCHEMA.sql`
 - `docs/v5/PHASE_42C_RLS_RPC.sql`
 - `docs/v5/PHASE_42E_RESET.sql`
+- `docs/v5/PHASE_42G_CLUB_CREATE_OWNER.sql` / `PHASE_42G_CLUB_CREATE_OWNER.md`
 
 ### Client — club domain
 

@@ -50,6 +50,10 @@ create unique index if not exists clubs_tenant_code_uniq
   on public.clubs (tenant_id, code)
   where code is not null and deleted_at is null;
 
+create unique index if not exists clubs_tenant_name_uniq
+  on public.clubs (tenant_id, lower(name))
+  where deleted_at is null;
+
 -- ---------------------------------------------------------------------------
 -- athletes
 -- ---------------------------------------------------------------------------
@@ -121,6 +125,9 @@ create unique index if not exists club_gov_one_president_active
 
 create index if not exists club_gov_club_idx on public.club_governance_assignments (club_id);
 create index if not exists club_gov_member_idx on public.club_governance_assignments (club_member_id);
+
+-- Active governance rows must reference an active club_member in the same tenant+club
+-- (enforced by trigger phase42_enforce_gov_active_member — see PHASE_42G_CLUB_CREATE_OWNER.sql)
 
 -- ---------------------------------------------------------------------------
 -- club_membership_requests_v42 (new contract; old table truncated separately)

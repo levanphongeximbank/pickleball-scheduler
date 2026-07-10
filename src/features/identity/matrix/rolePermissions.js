@@ -205,6 +205,7 @@ const ACCOUNTANT_PERMISSIONS = [
 
 const CLUB_MANAGER_PERMISSIONS = [
   PERMISSIONS.CLUB_VIEW,
+  PERMISSIONS.CLUB_CREATE,
   PERMISSIONS.CLUB_UPDATE,
   PERMISSIONS.SEASON_UPDATE,
   PERMISSIONS.LEAGUE_UPDATE,
@@ -263,7 +264,8 @@ const REFEREE_PERMISSIONS = [
 /**
  * VĐV — quyền mặc định (self-service).
  * tournament.view + statistics.view: duyệt giải/kết quả kể cả chưa gắn CLB (scope SELF — rbac.matchesSelfScope).
- * Không có tournament.create/update/delete, club.*, booking.*, finance.*.
+ * Phase 42G: club.create — VĐV tạo CLB → club_owner (scope club), không đổi platform role.
+ * Không có tournament.create/update/delete, club.update/delete, booking.*, finance.*.
  */
 const PLAYER_PERMISSIONS = [
   PERMISSIONS.TOURNAMENT_VIEW,
@@ -275,6 +277,7 @@ const PLAYER_PERMISSIONS = [
   PERMISSIONS.TEAM_VIEW,
   PERMISSIONS.TEAM_LINEUP_SUBMIT,
   PERMISSIONS.TEAM_STANDINGS_VIEW,
+  PERMISSIONS.CLUB_CREATE,
 ];
 
 /** Id permission DB — đồng bộ docs/v5/PHASE_37_PLAYER_DEFAULT_RBAC.sql */

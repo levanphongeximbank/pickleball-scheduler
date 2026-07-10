@@ -33,12 +33,12 @@ import { rpcAdminUpdateUser } from "../../identity/services/identityRpcService.j
 import { fetchProfileByUserId, mapProfileRowToUser } from "../../../auth/profileService.js";
 import { persistClubToCloud } from "./clubRegistryCloudService.js";
 import { rpcClubClaimSelfRegistration } from "./clubRegistryRpcService.js";
+import { isClubStorageV2Enabled } from "../config/clubRegistryFlags.js";
 import {
   getClusterById,
   listClustersForVenue,
 } from "../../court-cluster/services/courtClusterService.js";
-import {
-  demoteGovernanceAthleteRole,
+import {  demoteGovernanceAthleteRole,
   isClubPresident,
   isClubVicePresident,
   promoteGovernanceAthleteRole,
@@ -287,7 +287,7 @@ export function canApproveClubRegistration(user, club) {
   return canAssignClubOwner(user);
 }
 
-/** VĐV / Quản lý CLB chưa có clubId hợp lệ — tự đăng ký CLB (spec §6.1 B). */
+/** VĐV / Quản lý CLB — tự đăng ký CLB (spec §6.1 B / Phase 42G). */
 export function canSelfRegisterClub(user) {
   if (!user?.id) {
     return false;
@@ -296,6 +296,11 @@ export function canSelfRegisterClub(user) {
   const role = normalizeRole(user.role);
   if (role !== ROLES.CLUB_MANAGER && role !== ROLES.PLAYER) {
     return false;
+  }
+
+  // Phase 42 Cloud SSOT: membership không dựa profiles.club_id
+  if (isClubStorageV2Enabled()) {
+    return true;
   }
 
   const clubId = String(user.clubId || user.club_id || "").trim();
