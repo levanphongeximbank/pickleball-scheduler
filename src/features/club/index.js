@@ -165,6 +165,18 @@ export {
   stripLegacyProfileClubFields,
 } from "./services/clubActiveMembershipService.js";
 
+export { useMyClubMembership } from "./hooks/useMyClubMembership.js";
+export {
+  CLUB_ROUTE_PATHS,
+  MY_CLUB_MEMBER_VIEWS,
+  resolveLegacyMyClubQueryRedirect,
+  resolveMyClubMemberView,
+  shouldRedirectMyClubToDiscover,
+  isClubRouteRedirectLoop,
+  markClubRouteRedirect,
+  clearClubRouteRedirectLoop,
+} from "./routing/clubMembershipRouteLogic.js";
+
 export { ensureStorageSchemaV42 } from "./storage/storageSchemaV42.js";
 
 export { pullClubRegistryForUser, mergeClubsIntoLocal, cloudRowToClubRecord, syncClubRegistryForUser, pushPendingLocalClubsToCloud, listLocalClubsEligibleForCloudPush } from "./services/clubRegistryCloudSync.js";

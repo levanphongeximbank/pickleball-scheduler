@@ -246,6 +246,8 @@ const AdminBillingPage = lazy(() => import("./pages/admin/AdminBillingPage"));
 const VenueHoursPage = lazy(() => import("./pages/admin/VenueHoursPage"));
 const SkillLevelRequestsPage = lazy(() => import("./pages/admin/SkillLevelRequestsPage"));
 const MyClubPage = lazy(() => import("./pages/player/MyClubPage.jsx"));
+const DiscoverClubsPage = lazy(() => import("./pages/player/DiscoverClubsPage.jsx"));
+const MyClubRequestsPage = lazy(() => import("./pages/player/MyClubRequestsPage.jsx"));
 const AthleteSelfProfilePage = lazy(() => import("./pages/player/AthleteSelfProfilePage.jsx"));
 const PlayerSkillOverviewPage = lazy(() => import("./pages/player/PlayerSkillOverviewPage.jsx"));
 const FirstSkillAssessmentPage = lazy(() => import("./pages/player/FirstSkillAssessmentPage.jsx"));
@@ -432,8 +434,10 @@ export default function Router() {
             <Route path="/players/profile/:playerId" element={<PlayerProfile />} />
 
             <Route path="/profile" element={<SelfProfilePage />} />
+            <Route path="/discover-clubs" element={<DiscoverClubsPage />} />
+            <Route path="/my-club/requests" element={<MyClubRequestsPage />} />
             <Route path="/my-club" element={<MyClubPage />} />
-            <Route path="/clubs/discover" element={<Navigate to="/my-club?view=discover" replace />} />
+            <Route path="/clubs/discover" element={<Navigate to="/discover-clubs" replace />} />
             <Route path="/club/activity" element={<Navigate to="/my-club?view=schedule" replace />} />
             <Route path="/player/profile" element={<AthleteSelfProfilePage />} />
             <Route path="/player/skill" element={<PlayerSkillOverviewPage />} />

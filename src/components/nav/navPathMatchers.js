@@ -109,7 +109,11 @@ export function isNavItemActive(currentPath, item, resolvedPath) {
   }
 
   if (item.match === "my-club") {
-    return pathOnly === "/my-club";
+    return pathOnly === "/my-club" || pathOnly.startsWith("/my-club/");
+  }
+
+  if (item.match === "discover-clubs") {
+    return pathOnly === "/discover-clubs";
   }
 
   if (item.match === "seasons-only") {

@@ -106,7 +106,7 @@ export default function MyClubJoinPanel({ tenantId, user, onRevision }) {
       <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
         Duyệt danh sách CLB trong hệ thống và gửi yêu cầu tham gia. Chủ tịch hoặc Phó chủ tịch
         CLB sẽ duyệt yêu cầu của bạn.{" "}
-        <Typography component={Link} to="/clubs/discover" variant="body2" sx={{ fontWeight: 600 }}>
+        <Typography component={Link} to="/discover-clubs" variant="body2" sx={{ fontWeight: 600 }}>
           Xem tất cả CLB →
         </Typography>
       </Typography>

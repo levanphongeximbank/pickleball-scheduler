@@ -1,28 +1,24 @@
-import { Box, Button, Stack, Tooltip } from "@mui/material";
-import PersonAddIcon from "@mui/icons-material/PersonAdd";
+import { Box, Button, Stack } from "@mui/material";
 import LogoutIcon from "@mui/icons-material/Logout";
+import { Link as RouterLink } from "react-router-dom";
 
+import { CLUB_ROUTE_PATHS } from "../../../features/club/routing/clubMembershipRouteLogic.js";
 import { segmentedTabBarSx, segmentedTabSx } from "./myClubUiStyles.js";
 
 const CLUB_TABS = [
-  { id: "home", label: "Trang chủ", requiresClub: true },
-  { id: "schedule", label: "Lịch sinh hoạt", requiresClub: true },
-  { id: "members", label: "Thành viên", requiresClub: true },
-  { id: "discover", label: "Danh sách CLB", requiresClub: false },
+  { id: "home", label: "Trang chủ" },
+  { id: "schedule", label: "Lịch sinh hoạt" },
+  { id: "members", label: "Thành viên" },
 ];
 
 export default function MyClubActionBar({
   activeView,
   onViewChange,
-  hasClub,
-  onJoinClick,
   onLeaveClick,
   leaveLoading = false,
-  showLeave = null,
+  showLeave = true,
+  showRequestsLink = false,
 }) {
-  const visibleTabs = CLUB_TABS.filter((tab) => !tab.requiresClub || hasClub);
-  const leaveVisible = showLeave == null ? hasClub : Boolean(showLeave);
-
   return (
     <Stack
       direction={{ xs: "column", md: "row" }}
@@ -32,7 +28,7 @@ export default function MyClubActionBar({
       sx={{ mb: 2 }}
     >
       <Box sx={segmentedTabBarSx}>
-        {visibleTabs.map((tab) => (
+        {CLUB_TABS.map((tab) => (
           <Button
             key={tab.id}
             onClick={() => onViewChange(tab.id)}
@@ -44,20 +40,18 @@ export default function MyClubActionBar({
       </Box>
 
       <Stack direction="row" spacing={1} justifyContent={{ xs: "flex-start", md: "flex-end" }}>
-        <Tooltip title={hasClub ? "Bạn đã thuộc một CLB" : ""}>
-          <span>
-            <Button
-              variant="outlined"
-              startIcon={<PersonAddIcon />}
-              onClick={onJoinClick}
-              disabled={hasClub}
-            >
-              Xin gia nhập CLB
-            </Button>
-          </span>
-        </Tooltip>
+        {showRequestsLink && (
+          <Button
+            component={RouterLink}
+            to={CLUB_ROUTE_PATHS.REQUESTS}
+            variant="outlined"
+            size="small"
+          >
+            Yêu cầu gia nhập
+          </Button>
+        )}
 
-        {leaveVisible && (
+        {showLeave && (
           <Button
             variant="outlined"
             color="warning"

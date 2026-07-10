@@ -280,6 +280,7 @@ export const NAV_ROUTE_ALIASES = Object.freeze({
   "/players": { label: "Danh sách VĐV", group: MENU_GROUP_IDS.CUSTOMERS },
   "/club": { label: "Lịch sinh hoạt / Mùa giải", group: MENU_GROUP_IDS.CLUB },
   "/my-club": { label: "CLB của tôi", group: MENU_GROUP_IDS.CLUB },
+  "/discover-clubs": { label: "Khám phá CLB", group: MENU_GROUP_IDS.CLUB },
   "/daily-play": { label: "Vui chơi mỗi ngày", group: MENU_GROUP_IDS.CLUB },
   "/statistics": { label: "Kết quả & Xếp hạng", group: MENU_GROUP_IDS.TOURNAMENT },
 });
@@ -508,6 +509,7 @@ export const ROUTE_PERMISSIONS = Object.freeze({
   ],
   "/settings": [PERMISSIONS.SETTINGS_VIEW],
   "/my-club": [],
+  "/discover-clubs": [],
   "/clubs/discover": [],
   "/club/activity": [],
   "/coaching/coach-list": [],

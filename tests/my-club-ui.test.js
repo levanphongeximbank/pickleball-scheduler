@@ -30,9 +30,8 @@ function makeSearchParams(view) {
 test("my club view logic — supports members tab", () => {
   assert.ok(MY_CLUB_VIEWS.includes("members"));
   assert.equal(resolveInitialView(true, makeSearchParams("members")), "members");
-  assert.equal(resolveInitialView(false, makeSearchParams("members")), "members");
   assert.equal(resolveInitialView(true, makeSearchParams(null)), "home");
-  assert.equal(resolveInitialView(false, makeSearchParams(null)), "discover");
+  assert.ok(!MY_CLUB_VIEWS.includes("discover"));
 });
 
 test("my club view logic — president display label handles combined owner", () => {

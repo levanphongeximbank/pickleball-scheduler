@@ -41,6 +41,7 @@ export default function MyClubDiscoverPanel({
   showHeader = true,
   showSearch = true,
   hasClub: hasClubProp = null,
+  activeClubId = null,
 }) {
   const [joinClub, setJoinClub] = useState(null);
   const [search, setSearch] = useState("");
@@ -166,7 +167,11 @@ export default function MyClubDiscoverPanel({
   };
 
   const hasClub =
-    hasClubProp != null ? Boolean(hasClubProp) : Boolean(user?.clubId || user?.club_id);
+    hasClubProp != null
+      ? Boolean(hasClubProp)
+      : Boolean(activeClubId);
+
+  const resolvedActiveClubId = activeClubId || null;
 
   return (
     <Box>
@@ -226,7 +231,7 @@ export default function MyClubDiscoverPanel({
                 ? resolvePresidentDisplayLabel(labels)
                 : summary?.presidentLabel;
             const request = requestByClubId.get(club.id);
-            const isMyClub = user?.clubId === club.id || user?.club_id === club.id;
+            const isMyClub = resolvedActiveClubId === club.id;
 
             const clubName = summary?.name || club.name;
             const initials = clubInitials(clubName);

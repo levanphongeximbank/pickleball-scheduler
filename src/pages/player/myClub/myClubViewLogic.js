@@ -1,11 +1,14 @@
-﻿export const MY_CLUB_VIEWS = ["home", "schedule", "members", "discover"];
+﻿export const MY_CLUB_VIEWS = ["home", "schedule", "members"];
 
-export function resolveInitialView(hasClub, searchParams) {
-  const viewParam = searchParams.get("view");
-  if (viewParam === "discover" || viewParam === "home" || viewParam === "schedule" || viewParam === "members") {
+/** @deprecated use MY_CLUB_MEMBER_VIEWS from clubMembershipRouteLogic */
+export const MY_CLUB_MEMBER_VIEWS = MY_CLUB_VIEWS;
+
+export function resolveInitialView(_hasClub, searchParams) {
+  const viewParam = String(searchParams?.get?.("view") || "").trim().toLowerCase();
+  if (viewParam === "schedule" || viewParam === "members" || viewParam === "home") {
     return viewParam;
   }
-  return hasClub ? "home" : "discover";
+  return "home";
 }
 
 export function resolvePresidentDisplayLabel(governanceLabels) {

@@ -27,6 +27,7 @@ const FEATURE_FLAG_CHECKERS = Object.freeze({
 const PUBLIC_MENU_PATHS = new Set([
   "/profile",
   "/my-club",
+  "/discover-clubs",
   "/clubs/discover",
   "/club/activity",
   "/coaching/coach-list",
@@ -397,9 +398,9 @@ export function getDefaultHomePath(user, rbacEnabled = false) {
 
   switch (normalizeRole(user.role)) {
     case ROLES.PLAYER:
-      // Người chơi mới đăng ký chưa gắn CLB — hướng tới chọn CLB.
+      // Người chơi mới đăng ký chưa gắn CLB — hướng tới khám phá CLB.
       if (!user.clubId && !user.club_id) {
-        return "/my-club";
+        return "/discover-clubs";
       }
       if (hasClubGovernanceManagerAccess(user)) {
         return "/club";
@@ -449,7 +450,7 @@ export function resolvePostAuthRedirectPath(requestedPath, user, rbacEnabled = f
         path === "/dashboard" ||
         path === "/"
       ) {
-        return "/my-club";
+        return "/discover-clubs";
       }
     }
   }

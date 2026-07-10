@@ -177,7 +177,7 @@ export default function PlayerHomePage() {
         <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
           Gia nhập một câu lạc bộ để xem lịch thi đấu, QR check-in và kết quả giải.
         </Typography>
-        <Button component={Link} to="/my-club?view=discover" variant="contained">
+        <Button component={Link} to="/discover-clubs" variant="contained">
           Tìm CLB
         </Button>
       </Box>

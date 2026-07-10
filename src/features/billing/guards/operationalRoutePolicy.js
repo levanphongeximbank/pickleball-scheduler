@@ -16,6 +16,7 @@ const BILLING_EXEMPT_EXACT = new Set([
   "/player/skill",
   "/player/skill-assessment",
   "/my-club",
+  "/discover-clubs",
   "/change-password",
   "/403",
 ]);
@@ -35,6 +36,7 @@ const BILLING_EXEMPT_PREFIXES = [
 const CLUB_OPERATIONAL_PREFIXES = [
   "/club",
   "/my-club",
+  "/discover-clubs",
   "/manage/clubs",
   "/players",
   "/select-players",

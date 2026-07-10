@@ -1,13 +1,13 @@
-import { useEffect, useMemo, useRef, useState } from "react";
-import { Alert, Box, Button, Divider, Typography } from "@mui/material";
-import { useSearchParams } from "react-router-dom";
+import { useEffect, useMemo, useState } from "react";
+import { Alert, Box, Typography } from "@mui/material";
+import { useNavigate, useSearchParams } from "react-router-dom";
 
 import { useAuth } from "../../context/AuthContext.jsx";
 import { useTenant } from "../../context/TenantContext.jsx";
 import {
+  canApproveClubMembershipRequests,
   canDeleteClub,
   canManageClubGovernance,
-  canSelfRegisterClub,
   canViewFullClubMembers,
   fetchGovernanceNameHints,
   getClubById,
@@ -17,63 +17,33 @@ import {
   getRegisteredClusterLabel,
   getVicePresidentUserIds,
   leaveMyClub,
-  listDiscoverableClubs,
-  listLocalPresidentClubsForUser,
-  reclaimLocalPresidentClubForUser,
 } from "../../features/club/index.js";
-import { syncClubRegistryForUser } from "../../features/club/services/clubRegistryCloudSync.js";
-import {
-  canShowCreateClub,
-  canShowLeaveClub,
-  resolveMyActiveClubMembership,
-} from "../../features/club/services/clubActiveMembershipService.js";
-import { isClubStorageV2Enabled } from "../../features/club/config/clubRegistryFlags.js";
+import { useMyClubMembership } from "../../features/club/hooks/useMyClubMembership.js";
+import { CLUB_ROUTE_PATHS } from "../../features/club/routing/clubMembershipRouteLogic.js";
+import ClubActiveMembershipGuard from "./guards/ClubActiveMembershipGuard.jsx";
 import MyClubSummaryCard from "./myClub/MyClubSummaryCard.jsx";
-import MyClubCreatePanel from "./myClub/MyClubCreatePanel.jsx";
 import MyClubGovernancePanel from "./myClub/MyClubGovernancePanel.jsx";
 import MyClubActionBar from "./myClub/MyClubActionBar.jsx";
-import MyClubDiscoverPanel from "./myClub/MyClubDiscoverPanel.jsx";
 import MyClubSchedulePanel from "./myClub/MyClubSchedulePanel.jsx";
 import MyClubMembersPanel from "./myClub/MyClubMembersPanel.jsx";
-import MyClubMembershipRequestsPanel from "./myClub/MyClubMembershipRequestsPanel.jsx";
-import JoinClubDialog from "./myClub/JoinClubDialog.jsx";
 import { resolveInitialView } from "./myClub/myClubViewLogic.js";
 
-export default function MyClubPage() {
+function MyClubPageContent() {
   const { user, refresh } = useAuth();
   const { currentTenantId } = useTenant();
+  const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const tenantId = currentTenantId || user?.tenantId || user?.venueId || "";
   const [revision, setRevision] = useState(0);
   const [message, setMessage] = useState(null);
-  const [joinDialogOpen, setJoinDialogOpen] = useState(false);
   const [leaveLoading, setLeaveLoading] = useState(false);
-  const [reclaiming, setReclaiming] = useState(false);
   const [nameHints, setNameHints] = useState({});
-  const reclaimAttemptedRef = useRef(false);
-  const [membership, setMembership] = useState({
-    loading: true,
-    clubId: null,
-    hasActiveMembership: false,
-    club: null,
-  });
 
-  // Phase 42H — hasClub from active club_members (V2), never profiles.club_id
+  const membership = useMyClubMembership(revision);
   const clubId = membership.clubId;
   const hasClub = Boolean(membership.hasActiveMembership && clubId);
-  const canCreateClub = canShowCreateClub({
-    user,
-    hasActiveMembership: hasClub,
-    hasClubCreatePermission: canSelfRegisterClub(user),
-  });
-  const showLeaveClub = canShowLeaveClub(hasClub);
-  const canReclaimLocalClub =
-    !isClubStorageV2Enabled() &&
-    !hasClub &&
-    Boolean(user?.id) &&
-    listLocalPresidentClubsForUser(user).length > 0;
 
-  const [view, setView] = useState(() => resolveInitialView(false, searchParams));
+  const [view, setView] = useState(() => resolveInitialView(true, searchParams));
 
   const handleViewChange = (nextView) => {
     setView(nextView);
@@ -89,115 +59,6 @@ export default function MyClubPage() {
   useEffect(() => {
     setView(resolveInitialView(hasClub, searchParams));
   }, [hasClub, searchParams]);
-
-  useEffect(() => {
-    if (!user?.id) {
-      setMembership({
-        loading: false,
-        clubId: null,
-        hasActiveMembership: false,
-        club: null,
-      });
-      return undefined;
-    }
-
-    let cancelled = false;
-    setMembership((prev) => ({ ...prev, loading: true }));
-    void resolveMyActiveClubMembership(user).then((result) => {
-      if (cancelled) {
-        return;
-      }
-      setMembership({
-        loading: false,
-        clubId: result.clubId || null,
-        hasActiveMembership: Boolean(result.hasActiveMembership && result.clubId),
-        club: result.club || null,
-      });
-    });
-
-    return () => {
-      cancelled = true;
-    };
-  }, [user?.id, revision]);
-
-  useEffect(() => {
-    if (!user?.id) {
-      return undefined;
-    }
-
-    let cancelled = false;
-    void syncClubRegistryForUser(user).then((result) => {
-      if (!cancelled && result.ok) {
-        setRevision((value) => value + 1);
-      }
-    });
-
-    return () => {
-      cancelled = true;
-    };
-  }, [user?.id]);
-
-  const runReclaim = async ({ manual = false } = {}) => {
-    if (!user?.id || hasClub) {
-      return;
-    }
-
-    setReclaiming(true);
-    setMessage(null);
-
-    try {
-      const result = await Promise.race([
-        reclaimLocalPresidentClubForUser(user),
-        new Promise((resolve) => {
-          window.setTimeout(
-            () =>
-              resolve({
-                ok: false,
-                code: "TIMEOUT",
-                error: "Nhận lại CLB quá lâu. Đăng xuất rồi đăng nhập lại để thử.",
-              }),
-            20000
-          );
-        }),
-      ]);
-
-      if (result.ok && result.reclaimed) {
-        await refresh();
-        setRevision((value) => value + 1);
-        setMessage({
-          type: "success",
-          text: `Đã nhận lại CLB ${result.clubName || ""} và lưu lên hệ thống chung.`,
-        });
-        handleViewChange("home");
-      } else if (!result.ok && result.error) {
-        setMessage({ type: "warning", text: result.error });
-      } else if (manual && result.skipped) {
-        setMessage({
-          type: "info",
-          text: "Không tìm thấy CLB do bạn làm Chủ tịch trên máy này để nhận lại.",
-        });
-      }
-    } catch (error) {
-      setMessage({
-        type: "warning",
-        text: error?.message || "Không nhận lại được CLB. Thử đăng xuất rồi đăng nhập lại.",
-      });
-    } finally {
-      setReclaiming(false);
-    }
-  };
-
-  // Máy còn CLB do user làm Chủ tịch nhưng profile cloud chưa gắn → tự nhận lại
-  useEffect(() => {
-    if (!user?.id || hasClub || reclaimAttemptedRef.current) {
-      return undefined;
-    }
-
-    reclaimAttemptedRef.current = true;
-    void runReclaim({ manual: false });
-    return undefined;
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [user?.id, hasClub]);
 
   const clubRecord = useMemo(() => {
     void revision;
@@ -285,10 +146,8 @@ export default function MyClubPage() {
       ? `/manage/clubs/${clubId}`
       : null;
 
-  const discoverableClubs = useMemo(() => {
-    void revision;
-    return listDiscoverableClubs();
-  }, [revision]);
+  const showRequestsLink =
+    Boolean(clubRecord && user && canApproveClubMembershipRequests(user, clubRecord));
 
   const bumpRevision = () => setRevision((value) => value + 1);
 
@@ -310,7 +169,7 @@ export default function MyClubPage() {
       setMessage({ type: "success", text: "Đã rời CLB." });
       await refresh();
       bumpRevision();
-      handleViewChange("discover");
+      navigate(CLUB_ROUTE_PATHS.DISCOVER, { replace: true });
     } finally {
       setLeaveLoading(false);
     }
@@ -322,36 +181,13 @@ export default function MyClubPage() {
         CLB của tôi
       </Typography>
 
-      {!hasClub && (
-        <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-          Tìm CLB phù hợp, gửi yêu cầu tham gia hoặc tạo CLB mới.
-        </Typography>
-      )}
-
-      {!hasClub && canReclaimLocalClub && (
-        <Alert severity="info" sx={{ mb: 2 }}>
-          Nếu bạn đã tạo CLB trên máy này trước đó (ví dụ CLB ACCC) nhưng hệ thống chưa nhận,
-          nhấn nút bên dưới để nhận lại và lưu lên hệ thống chung.
-          <Box sx={{ mt: 1.5 }}>
-            <Button
-              variant="contained"
-              disabled={reclaiming}
-              onClick={() => void runReclaim({ manual: true })}
-            >
-              {reclaiming ? "Đang nhận lại…" : "Nhận lại CLB của tôi"}
-            </Button>
-          </Box>
-        </Alert>
-      )}
-
       <MyClubActionBar
         activeView={view}
         onViewChange={handleViewChange}
-        hasClub={hasClub}
-        onJoinClick={() => setJoinDialogOpen(true)}
         onLeaveClick={handleLeaveClub}
         leaveLoading={leaveLoading}
-        showLeave={showLeaveClub}
+        showLeave={hasClub}
+        showRequestsLink={showRequestsLink}
       />
 
       {message && (
@@ -360,7 +196,7 @@ export default function MyClubPage() {
         </Alert>
       )}
 
-      {view === "schedule" && hasClub ? (
+      {view === "schedule" ? (
         <MyClubSchedulePanel
           clubId={clubId}
           tenantId={tenantId}
@@ -370,7 +206,7 @@ export default function MyClubPage() {
           onRevision={bumpRevision}
           onMessage={setMessage}
         />
-      ) : view === "members" && hasClub ? (
+      ) : view === "members" ? (
         <MyClubMembersPanel
           clubId={clubId}
           tenantId={tenantId}
@@ -379,7 +215,7 @@ export default function MyClubPage() {
           manageHref={manageHref}
           revision={revision}
         />
-      ) : view === "home" && hasClub && clubSummary ? (
+      ) : clubSummary ? (
         <>
           <MyClubSummaryCard
             clubSummary={clubSummary}
@@ -405,58 +241,18 @@ export default function MyClubPage() {
               />
             </Box>
           )}
-
-          <MyClubMembershipRequestsPanel
-            clubId={clubId}
-            clubRecord={clubRecord}
-            tenantId={tenantId}
-            user={user}
-            revision={revision}
-            onRefresh={bumpRevision}
-            onMessage={setMessage}
-          />
         </>
       ) : (
-        <MyClubDiscoverPanel
-          user={user}
-          revision={revision}
-          onRevision={bumpRevision}
-          onMessage={setMessage}
-          showHeader={hasClub}
-          hasClub={hasClub}
-        />
+        <Alert severity="info">Đang tải thông tin CLB…</Alert>
       )}
-
-      {!hasClub && canCreateClub && (
-        <Box sx={{ mt: 4 }}>
-          <Divider sx={{ mb: 3 }} />
-          <Typography variant="subtitle1" fontWeight={600} gutterBottom>
-            Tạo CLB mới
-          </Typography>
-          <MyClubCreatePanel
-            tenantId={tenantId}
-            user={user}
-            onSuccess={async () => {
-              await refresh();
-              bumpRevision();
-              handleViewChange("home");
-            }}
-          />
-        </Box>
-      )}
-
-      <JoinClubDialog
-        open={joinDialogOpen}
-        onClose={() => setJoinDialogOpen(false)}
-        user={user}
-        clubs={discoverableClubs}
-        onSuccess={(text) => {
-          setMessage({ type: "success", text });
-          setJoinDialogOpen(false);
-          bumpRevision();
-        }}
-        onError={(text) => setMessage({ type: "error", text })}
-      />
     </Box>
+  );
+}
+
+export default function MyClubPage() {
+  return (
+    <ClubActiveMembershipGuard>
+      <MyClubPageContent />
+    </ClubActiveMembershipGuard>
   );
 }
