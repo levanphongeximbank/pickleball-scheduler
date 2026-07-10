@@ -20,7 +20,7 @@ import { getPhase15DeploymentUrl } from "./phase15-vercel-curl-proxy.mjs";
 const rootDir = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const DEPLOYMENT = getPhase15DeploymentUrl();
 const SCREEN_DIR = path.join(rootDir, "docs", "v5", "qa-evidence", "phase42j2-staging");
-const COMMIT = "24981a2";
+const COMMIT = "8ddd19c";
 
 const results = [];
 const redirectTrace = [];
@@ -382,7 +382,7 @@ async function run() {
     const rpc = createRpcCounter("C4");
     rpc.attach(page);
     attachConsole(page, "C4");
-    let blockRpc = true;
+    let blockRpc = false;
     let failCount = 0;
     await page.route("**/rest/v1/rpc/club_get_my_active_membership**", async (route) => {
       if (blockRpc) {
@@ -399,7 +399,12 @@ async function run() {
 
     try {
       await loginViaForm(page, activePlayerEmail, activePlayerPassword);
-      await page.goto(`${DEPLOYMENT}/my-club`, { waitUntil: "domcontentloaded" });
+      await page.waitForURL((u) => u.pathname.includes("/my-club"), { timeout: 60000 });
+      blockRpc = true;
+      await page.evaluate(() => {
+        window.location.assign(`${window.location.origin}/my-club`);
+      });
+      await page.waitForLoadState("domcontentloaded");
       await page.waitForTimeout(2500);
       const urlErr = page.url();
       const bodyErr = await page.locator("body").innerText();
