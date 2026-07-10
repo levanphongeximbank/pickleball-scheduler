@@ -20,7 +20,7 @@ import { getPhase15DeploymentUrl } from "./phase15-vercel-curl-proxy.mjs";
 const rootDir = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const DEPLOYMENT = getPhase15DeploymentUrl();
 const SCREEN_DIR = path.join(rootDir, "docs", "v5", "qa-evidence", "phase42j2-staging");
-const COMMIT = "8ddd19c";
+const COMMIT = "12ee754";
 
 const results = [];
 const redirectTrace = [];
@@ -199,6 +199,12 @@ async function run() {
       const rpcAfterDirect = rpc.get();
 
       await shot(page, "case1-discover-final");
+      await page.setViewportSize({ width: 1280, height: 900 });
+      await shot(page, "case1-nav-desktop");
+      await page.setViewportSize({ width: 390, height: 844 });
+      await page.getByRole("button", { name: /menu/i }).first().click().catch(() => {});
+      await page.waitForTimeout(800);
+      await shot(page, "case1-nav-mobile-drawer");
 
       const rpcBeforeNav = rpc.get();
       await page.goBack({ waitUntil: "domcontentloaded" });
@@ -402,7 +408,14 @@ async function run() {
       await loginViaForm(page, activePlayerEmail, activePlayerPassword);
       await page.waitForURL((u) => u.pathname.includes("/my-club"), { timeout: 60000 });
       blockRpc = true;
+      // Force a fresh membership fetch (cache would otherwise skip RPC on nav — 42J.2.2).
       await page.evaluate(() => {
+        for (let i = sessionStorage.length - 1; i >= 0; i -= 1) {
+          const key = sessionStorage.key(i);
+          if (key?.startsWith("pb-membership-cache-v1:")) {
+            sessionStorage.removeItem(key);
+          }
+        }
         window.location.assign(`${window.location.origin}/my-club`);
       });
       await page.waitForLoadState("domcontentloaded");
@@ -456,7 +469,7 @@ async function run() {
     fails > 0 ? "NO-GO" : partials > 0 ? "GO WITH CAVEATS" : "GO DEPLOY 42J.2";
 
   const report = {
-    phase: "42J.2.1-staging",
+    phase: "42J.2.2-staging",
     commit: COMMIT,
     previewUrl: DEPLOYMENT,
     v2Flag: {
