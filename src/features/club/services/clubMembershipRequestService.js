@@ -401,7 +401,22 @@ export function listMyMembershipRequests(tenantId, userId) {
 }
 
 export async function listPendingMembershipRequests(clubId, tenantId, user = getCurrentUser()) {
-  const club = getRegistryClubById(clubId);
+  const trimmedClubId = String(clubId || "").trim();
+  if (!trimmedClubId) {
+    return [];
+  }
+
+  if (isClubStorageV2Enabled()) {
+    const result = await rpcV2ClubListPendingRequests(trimmedClubId);
+    if (!result.ok) {
+      return [];
+    }
+    return (result.requests || [])
+      .map((row) => mapV2MembershipRequestRow(row, trimmedClubId))
+      .filter(Boolean);
+  }
+
+  const club = getRegistryClubById(trimmedClubId);
   if (!club) {
     return [];
   }
@@ -411,23 +426,13 @@ export async function listPendingMembershipRequests(clubId, tenantId, user = get
   }
 
   if (tenantId) {
-    const tenantCheck = guardClubTenant(clubId, tenantId, { user });
+    const tenantCheck = guardClubTenant(trimmedClubId, tenantId, { user });
     if (!tenantCheck.ok) {
       return [];
     }
   }
 
-  if (isClubStorageV2Enabled()) {
-    const result = await rpcV2ClubListPendingRequests(clubId);
-    if (!result.ok) {
-      return [];
-    }
-    return (result.requests || [])
-      .map((row) => mapV2MembershipRequestRow(row, clubId))
-      .filter(Boolean);
-  }
-
-  const ext = loadClubExtension(clubId);
+  const ext = loadClubExtension(trimmedClubId);
   return getMembershipRequests(ext).filter(
     (request) => request.status === CLUB_MEMBERSHIP_REQUEST_STATUSES.PENDING
   );

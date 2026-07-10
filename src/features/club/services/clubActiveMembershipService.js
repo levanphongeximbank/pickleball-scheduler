@@ -2,6 +2,42 @@ import { isClubStorageV2Enabled } from "../config/clubRegistryFlags.js";
 import { rpcV2GetMyActiveMembership } from "./clubStorageV2RpcService.js";
 import { clearAthleteClubLink } from "../storage/athleteClubLinkStore.js";
 
+const MEMBERSHIP_CACHE_MS = 3000;
+/** @type {{ userId: string, at: number, result: object } | null} */
+let membershipCache = null;
+/** @type {{ userId: string, promise: Promise<object> } | null} */
+let membershipInflight = null;
+
+function readMembershipCache(userId) {
+  if (
+    membershipCache &&
+    membershipCache.userId === userId &&
+    Date.now() - membershipCache.at < MEMBERSHIP_CACHE_MS
+  ) {
+    return membershipCache.result;
+  }
+  return null;
+}
+
+function writeMembershipCache(userId, result) {
+  membershipCache = { userId, at: Date.now(), result };
+}
+
+/** Test helper — reset in-flight/cache between unit tests. */
+export function resetMyActiveClubMembershipCache() {
+  membershipCache = null;
+  membershipInflight = null;
+}
+
+export function invalidateMyActiveClubMembershipCache(userId = null) {
+  if (!userId || membershipCache?.userId === userId) {
+    membershipCache = null;
+  }
+  if (!userId || membershipInflight?.userId === userId) {
+    membershipInflight = null;
+  }
+}
+
 /**
  * Phase 42H — Membership SoT.
  * V2: active club_members only (never profiles.club_id / player_id / role inference).
@@ -41,6 +77,22 @@ export function canShowLeaveClub(hasActiveMembership) {
   return Boolean(hasActiveMembership);
 }
 
+/** V2 fallback summary from RPC club payload (minimal — full read model is 42K). */
+export function buildMyClubSummaryFromClub(club) {
+  if (!club?.id) {
+    return null;
+  }
+  return {
+    id: club.id,
+    name: club.name,
+    status: club.status,
+    memberCount: club.activeMemberCount ?? 0,
+    governance: club.governance || {},
+    registeredClusterId: club.governance?.registeredClusterId || null,
+    registeredCourtIds: [],
+  };
+}
+
 /**
  * Resolve active membership club id.
  * @returns {Promise<{ ok: boolean, clubId: string|null, hasActiveMembership: boolean, club?: object|null, source: string, error?: string }>}
@@ -56,6 +108,32 @@ export async function resolveMyActiveClubMembership(user) {
       error: "Chưa đăng nhập.",
     };
   }
+
+  const cached = readMembershipCache(user.id);
+  if (cached) {
+    return cached;
+  }
+
+  if (membershipInflight?.userId === user.id) {
+    return membershipInflight.promise;
+  }
+
+  const promise = resolveMyActiveClubMembershipInner(user).then((result) => {
+    writeMembershipCache(user.id, result);
+    return result;
+  });
+
+  membershipInflight = { userId: user.id, promise };
+  try {
+    return await promise;
+  } finally {
+    if (membershipInflight?.userId === user.id) {
+      membershipInflight = null;
+    }
+  }
+}
+
+async function resolveMyActiveClubMembershipInner(user) {
 
   if (!isClubStorageV2Enabled()) {
     const clubId = user.clubId || user.club_id || null;

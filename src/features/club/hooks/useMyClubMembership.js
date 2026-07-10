@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 
 import { useAuth } from "../../../context/AuthContext.jsx";
-import { resolveMyActiveClubMembership } from "../services/clubActiveMembershipService.js";
+import { resolveMyActiveClubMembership, invalidateMyActiveClubMembershipCache } from "../services/clubActiveMembershipService.js";
 
 const INITIAL = Object.freeze({
   loading: true,
@@ -35,6 +35,7 @@ export function useMyClubMembership(revision = 0) {
     }
 
     setState((prev) => ({ ...prev, loading: true, error: null }));
+    invalidateMyActiveClubMembershipCache(user?.id);
     const result = await resolveMyActiveClubMembership(user);
     setState({
       loading: false,

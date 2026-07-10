@@ -15,6 +15,7 @@ import {
 } from "../config/navigationConfig.js";
 import { getNavigationPermissions } from "../config/navigationPermissions.js";
 import { hasClubGovernanceManagerAccess } from "../features/club/services/governanceRoleElevation.js";
+import { isClubStorageV2Enabled } from "../features/club/config/clubRegistryFlags.js";
 
 const FEATURE_FLAG_CHECKERS = Object.freeze({
   marketplace: isMarketplaceEnabled,
@@ -398,6 +399,10 @@ export function getDefaultHomePath(user, rbacEnabled = false) {
 
   switch (normalizeRole(user.role)) {
     case ROLES.PLAYER:
+      // V2: membership SSOT via RPC — route guards resolve discover vs my-club.
+      if (isClubStorageV2Enabled()) {
+        return "/my-club";
+      }
       // Người chơi mới đăng ký chưa gắn CLB — hướng tới khám phá CLB.
       if (!user.clubId && !user.club_id) {
         return "/discover-clubs";
@@ -443,7 +448,7 @@ export function resolvePostAuthRedirectPath(requestedPath, user, rbacEnabled = f
   }
 
   if (rbacEnabled && normalizeRole(user?.role) === ROLES.PLAYER) {
-    if (!user?.clubId && !user?.club_id) {
+    if (!isClubStorageV2Enabled() && !user?.clubId && !user?.club_id) {
       if (
         path === "/tournament" ||
         path.startsWith("/tournament/") ||

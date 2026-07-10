@@ -26,6 +26,15 @@ export const CLUB_COACHING_MENU_ROOT = menuFolder({
       featureStatus: FEATURE_STATUS.LIVE,
     }),
     menuLeaf({
+      key: "discover-clubs",
+      icon: "club-list",
+      text: "Khám phá CLB",
+      path: "/discover-clubs",
+      match: "discover-clubs",
+      roles: [ROLES.PLAYER, ROLES.CUSTOMER],
+      featureStatus: FEATURE_STATUS.LIVE,
+    }),
+    menuLeaf({
       key: "club-list",
       icon: "club-list",
       text: "Danh sách CLB",

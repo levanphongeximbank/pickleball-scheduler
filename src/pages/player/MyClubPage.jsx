@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { Alert, Box, Typography } from "@mui/material";
+import { Alert, Box, Button, Typography } from "@mui/material";
 import { useNavigate, useSearchParams } from "react-router-dom";
 
 import { useAuth } from "../../context/AuthContext.jsx";
@@ -18,7 +18,9 @@ import {
   getVicePresidentUserIds,
   leaveMyClub,
 } from "../../features/club/index.js";
-import { useMyClubMembership } from "../../features/club/hooks/useMyClubMembership.js";
+import { useMyClubMembershipFromContext } from "../../features/club/hooks/MyClubMembershipContext.jsx";
+import { buildMyClubSummaryFromClub } from "../../features/club/services/clubActiveMembershipService.js";
+import { isClubStorageV2Enabled } from "../../features/club/config/clubRegistryFlags.js";
 import { CLUB_ROUTE_PATHS } from "../../features/club/routing/clubMembershipRouteLogic.js";
 import ClubActiveMembershipGuard from "./guards/ClubActiveMembershipGuard.jsx";
 import MyClubSummaryCard from "./myClub/MyClubSummaryCard.jsx";
@@ -39,7 +41,7 @@ function MyClubPageContent() {
   const [leaveLoading, setLeaveLoading] = useState(false);
   const [nameHints, setNameHints] = useState({});
 
-  const membership = useMyClubMembership(revision);
+  const membership = useMyClubMembershipFromContext();
   const clubId = membership.clubId;
   const hasClub = Boolean(membership.hasActiveMembership && clubId);
 
@@ -76,8 +78,14 @@ function MyClubPageContent() {
     if (!clubId) {
       return null;
     }
+    if (isClubStorageV2Enabled() && membership.club?.id === clubId) {
+      const fromRpc = buildMyClubSummaryFromClub(membership.club);
+      if (fromRpc) {
+        return fromRpc;
+      }
+    }
     return getMyClubSummary(clubId, tenantId);
-  }, [clubId, tenantId, revision]);
+  }, [clubId, tenantId, revision, membership.club]);
 
   const clubStats = useMemo(() => {
     if (!clubId) {
@@ -243,7 +251,16 @@ function MyClubPageContent() {
           )}
         </>
       ) : (
-        <Alert severity="info">Đang tải thông tin CLB…</Alert>
+        <Alert
+          severity="warning"
+          action={
+            <Button color="inherit" size="small" onClick={() => bumpRevision()}>
+              Thử lại
+            </Button>
+          }
+        >
+          Không tải được tóm tắt CLB. Vui lòng thử lại.
+        </Alert>
       )}
     </Box>
   );

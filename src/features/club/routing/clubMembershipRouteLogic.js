@@ -1,5 +1,13 @@
 /** Phase 42J — canonical club routes & resolution (no profile.club_id SoT). */
 
+import {
+  CLUB_LANDING_STATE,
+  resolveClubLandingRedirect,
+  resolveClubLandingState,
+} from "./clubLandingResolver.js";
+
+export { CLUB_LANDING_STATE, resolveClubLandingRedirect, resolveClubLandingState };
+
 export const CLUB_ROUTE_PATHS = Object.freeze({
   MY_CLUB: "/my-club",
   DISCOVER: "/discover-clubs",
@@ -36,14 +44,9 @@ export function resolveMyClubMemberView(searchParams) {
  * Whether /my-club should redirect to discover (SSOT: no active membership).
  * RPC error → do not redirect (show error + retry).
  */
-export function shouldRedirectMyClubToDiscover({ loading, ok, hasActiveMembership }) {
-  if (loading) {
-    return false;
-  }
-  if (!ok) {
-    return false;
-  }
-  return !hasActiveMembership;
+export function shouldRedirectMyClubToDiscover(membership) {
+  const state = resolveClubLandingState(membership);
+  return state === CLUB_LANDING_STATE.NO_MEMBERSHIP;
 }
 
 /**

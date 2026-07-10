@@ -163,12 +163,16 @@ export {
   canShowCreateClub,
   canShowLeaveClub,
   stripLegacyProfileClubFields,
+  buildMyClubSummaryFromClub,
 } from "./services/clubActiveMembershipService.js";
 
 export { useMyClubMembership } from "./hooks/useMyClubMembership.js";
 export {
   CLUB_ROUTE_PATHS,
   MY_CLUB_MEMBER_VIEWS,
+  CLUB_LANDING_STATE,
+  resolveClubLandingState,
+  resolveClubLandingRedirect,
   resolveLegacyMyClubQueryRedirect,
   resolveMyClubMemberView,
   shouldRedirectMyClubToDiscover,

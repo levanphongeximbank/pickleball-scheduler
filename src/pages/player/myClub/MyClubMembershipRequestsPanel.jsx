@@ -20,6 +20,7 @@ import {
 import {
   approveClubMembershipRequest,
   canApproveClubMembershipRequests,
+  isClubStorageV2Enabled,
   listPendingMembershipRequests,
   rejectClubMembershipRequest,
 } from "../../../features/club/index.js";
@@ -39,13 +40,20 @@ export default function MyClubMembershipRequestsPanel({
   const [pendingRequests, setPendingRequests] = useState([]);
   const [loadingPending, setLoadingPending] = useState(false);
 
-  const canApprove = clubRecord && user && canApproveClubMembershipRequests(user, clubRecord);
+  const canApprove =
+    (clubRecord && user && canApproveClubMembershipRequests(user, clubRecord)) ||
+    (isClubStorageV2Enabled() && Boolean(clubId && user?.id));
 
   useEffect(() => {
     let cancelled = false;
 
     async function loadPending() {
-      if (!canApprove || !clubId) {
+      if (!clubId || !user?.id) {
+        setPendingRequests([]);
+        return;
+      }
+
+      if (!isClubStorageV2Enabled() && !canApproveClubMembershipRequests(user, clubRecord)) {
         setPendingRequests([]);
         return;
       }
@@ -68,9 +76,9 @@ export default function MyClubMembershipRequestsPanel({
     return () => {
       cancelled = true;
     };
-  }, [canApprove, clubId, tenantId, user, revision]);
+  }, [clubId, tenantId, user, clubRecord, revision]);
 
-  if (!canApprove) {
+  if (!isClubStorageV2Enabled() && !canApprove) {
     return null;
   }
 
