@@ -21,7 +21,8 @@ const CLUB_SMOKE = "club-smoke-42i1";
 const CLUB_SMOKE_NAME = "CLB Smoke 42I1";
 const MANAGER_ID = "c1db2b6a-b26b-4d44-8295-9898c92066cd";
 const PLAYER_ID = "7b381912-2190-415c-b099-6b1e87567b7a";
-const CASHIER_EMAIL = "cashier@staging.local";
+const APPLICANT_EMAIL =
+  process.env.STAGING_APPLICANT_EMAIL || "player.nomember@staging.local";
 const QA_TAG = `CLB QA42KA-${Date.now().toString(36).slice(-5).toUpperCase()}`;
 
 const report = { phase: "42KA", actions: {}, acceptance: {}, preview: DEPLOYMENT };
@@ -112,6 +113,24 @@ async function rpcCall(page, fn, args) {
   );
 }
 
+async function clubGet(page, clubId) {
+  const res = await rpcCall(page, "club_get", { p_club_id: clubId });
+  return res.body?.ok ? res.body.data : null;
+}
+
+async function approveApplicantRow(page, applicantEmail) {
+  await page.goto(`${DEPLOYMENT}/my-club/requests`, { waitUntil: "domcontentloaded" });
+  await page.waitForTimeout(2500);
+  const slug = applicantEmail.split("@")[0].toLowerCase();
+  const row = page.locator("tbody tr").filter({ hasText: new RegExp(slug, "i") }).first();
+  if ((await row.count()) === 0) return false;
+  const approveBtn = row.getByRole("button", { name: /^duyệt$/i });
+  if ((await approveBtn.count()) === 0) return false;
+  await approveBtn.click();
+  await page.waitForTimeout(3500);
+  return true;
+}
+
 async function shot(page, name) {
   fs.mkdirSync(EVIDENCE, { recursive: true });
   await page.screenshot({ path: path.join(EVIDENCE, `${name}.png`), fullPage: true });
@@ -128,7 +147,11 @@ async function run() {
   const ownerPw = process.env.STAGING_OWNER_A_PASSWORD;
   const playerEmail = "player@staging.local";
   const playerPw = process.env.STAGING_PLAYER_PASSWORD;
-  const cashierPw = process.env.STAGING_CLUB_PASSWORD || "PickleStaging!358";
+  const applicantPw =
+    process.env.STAGING_PLAYER_NOMEMBER_PASSWORD ||
+    process.env.STAGING_CASHIER_PASSWORD ||
+    process.env.STAGING_CLUB_PASSWORD ||
+    "PickleStaging!358";
   const saEmail = process.env.STAGING_SUPERADMIN_NOMEMBER_EMAIL || "superadmin.nomember@staging.local";
   const saPw = process.env.STAGING_SUPERADMIN_NOMEMBER_PASSWORD;
   const nomemberPw = process.env.STAGING_PLAYER_NOMEMBER_PASSWORD;
@@ -136,20 +159,22 @@ async function run() {
   console.log(`Phase 42KA QA — ${DEPLOYMENT}\n`);
   const browser = await chromium.launch({ headless: true });
 
-  // ── C Approve member (fresh cashier applicant) ──
+  // ── C Approve member (fresh applicant — not an active member of smoke club) ──
   {
     const ctxC = await browser.newContext();
-    const cashierPage = await ctxC.newPage();
-    await login(cashierPage, CASHIER_EMAIL, cashierPw);
-    await cashierPage.goto(`${DEPLOYMENT}/discover-clubs`, { waitUntil: "domcontentloaded" });
-    await cashierPage.waitForTimeout(2000);
-    const joinBtn = cashierPage.getByRole("button", { name: /xin tham gia|gửi yêu cầu|tham gia/i }).first();
+    const applicantPage = await ctxC.newPage();
+    await login(applicantPage, APPLICANT_EMAIL, applicantPw);
+    await applicantPage.goto(`${DEPLOYMENT}/discover-clubs`, { waitUntil: "domcontentloaded" });
+    await applicantPage.waitForTimeout(2000);
+    const joinBtn = applicantPage
+      .getByRole("button", { name: /xin tham gia|gửi yêu cầu|tham gia/i })
+      .first();
     if ((await joinBtn.count()) > 0) {
       await joinBtn.click();
-      await cashierPage.waitForTimeout(1000);
-      const confirm = cashierPage.getByRole("button", { name: /gửi|xác nhận/i }).last();
+      await applicantPage.waitForTimeout(1000);
+      const confirm = applicantPage.getByRole("button", { name: /gửi|xác nhận/i }).last();
       if ((await confirm.count()) > 0) await confirm.click();
-      await cashierPage.waitForTimeout(2000);
+      await applicantPage.waitForTimeout(2000);
     }
     await ctxC.close();
 
@@ -161,17 +186,12 @@ async function run() {
     const ctxPlayer = await browser.newContext();
     const playerPage = await ctxPlayer.newPage();
     await login(playerPage, playerEmail, playerPw);
-    await playerPage.goto(`${DEPLOYMENT}/my-club/requests`, { waitUntil: "domcontentloaded" });
-    await playerPage.waitForTimeout(2500);
+    const approved = await approveApplicantRow(playerPage, APPLICANT_EMAIL);
     const rows = await playerPage.locator("tbody tr").count();
-    const approveBtn = playerPage.getByRole("button", { name: /^duyệt$/i }).first();
-    const hasCashier = (await playerPage.locator("body").innerText()).toLowerCase().includes("cashier");
-    let approved = false;
-    if ((await approveBtn.count()) > 0) {
-      await approveBtn.click();
-      await playerPage.waitForTimeout(3500);
-      approved = true;
-    }
+    const applicantSlug = APPLICANT_EMAIL.split("@")[0];
+    const hasApplicant = (await playerPage.locator("body").innerText())
+      .toLowerCase()
+      .includes(applicantSlug);
     await shot(playerPage, "C-approve-member");
     await ctxPlayer.close();
 
@@ -187,7 +207,7 @@ async function run() {
     pass(
       "approve-member",
       ok,
-      `memberCount ${before.memberCount}→${after.memberCount} approved=${approved} cashierRow=${hasCashier} pendingRows=${rows}`,
+      `memberCount ${before.memberCount}→${after.memberCount} approved=${approved} applicant=${APPLICANT_EMAIL} row=${hasApplicant} pendingRows=${rows}`,
       { before, after }
     );
     report.acceptance.approveMember = ok ? "PASS" : "FAIL";
@@ -235,20 +255,22 @@ async function run() {
 
   // ── B Transfer president ──
   {
+    const ctxOwner = await browser.newContext();
+    const ownerPage = await ctxOwner.newPage();
+    await login(ownerPage, ownerEmail, ownerPw);
+    const clubBefore = await clubGet(ownerPage, CLUB_SMOKE);
+    const before = await registryRow(ownerPage, TENANT_A, { clubId: CLUB_SMOKE });
+
     const ctxPlayer = await browser.newContext();
     const playerPage = await ctxPlayer.newPage();
     await login(playerPage, playerEmail, playerPw);
-    const before = await registryRow(playerPage, TENANT_A, { clubId: CLUB_SMOKE });
     const rpc = await rpcCall(playerPage, "club_transfer_president", {
       p_request_id: randomUUID(),
       p_club_id: CLUB_SMOKE,
       p_next_user_id: MANAGER_ID,
-      p_expected_club_version: before.version ?? 1,
+      p_expected_club_version: clubBefore?.version ?? before.version ?? 1,
     });
 
-    const ctxOwner = await browser.newContext();
-    const ownerPage = await ctxOwner.newPage();
-    await login(ownerPage, ownerEmail, ownerPw);
     await openManage(ownerPage);
     await ownerPage.reload({ waitUntil: "domcontentloaded" });
     await pageWait(ownerPage);
@@ -266,11 +288,12 @@ async function run() {
     );
     report.acceptance.transferPresident = ok ? "PASS" : "FAIL";
     if (rpc.body?.ok) {
+      const clubMid = await clubGet(playerPage, CLUB_SMOKE);
       await rpcCall(playerPage, "club_transfer_president", {
         p_request_id: randomUUID(),
         p_club_id: CLUB_SMOKE,
         p_next_user_id: PLAYER_ID,
-        p_expected_club_version: after.version ?? before.version,
+        p_expected_club_version: clubMid?.version ?? after.version ?? before.version,
       });
     }
     await ctxPlayer.close();

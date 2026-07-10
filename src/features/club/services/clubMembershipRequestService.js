@@ -35,7 +35,9 @@ import {
   rpcV2ClubSubmitMembershipRequest,
   rpcV2ClubListPendingRequests,
   rpcV2ClubReviewMembershipRequest,
+  rpcV2ClubGet,
 } from "./clubStorageV2RpcService.js";
+import { invalidateAllClubRegistryCache } from "../registry/clubRegistryCache.js";
 import { syncRatingToClubPlayer } from "../../pick-vn-rating/services/pickVnRatingService.js";
 import { rpcReviewClubMembershipRequest, rpcLeaveMyClub } from "./clubMembershipRequestRpcService.js";
 import { removeMemberFromClub } from "./clubMemberService.js";
@@ -565,9 +567,20 @@ export async function cancelClubMembershipRequest(clubId, requestId, userId, opt
   return { ok: true, request: next[index] };
 }
 
+async function resolveClubForMembershipReview(clubId) {
+  if (isClubStorageV2Enabled()) {
+    const result = await rpcV2ClubGet(clubId);
+    if (!result.ok) {
+      return null;
+    }
+    return result.club;
+  }
+  return getRegistryClubById(clubId);
+}
+
 export async function approveClubMembershipRequest(clubId, requestId, tenantId, options = {}) {
   const user = options.user || getCurrentUser();
-  const club = getRegistryClubById(clubId);
+  const club = await resolveClubForMembershipReview(clubId);
   if (!club) {
     return { ok: false, error: "Không tìm thấy CLB." };
   }
@@ -596,6 +609,7 @@ export async function approveClubMembershipRequest(clubId, requestId, tenantId, 
       };
     }
     const request = mapV2ReviewResult(reviewed.data, clubId);
+    invalidateAllClubRegistryCache();
     return {
       ok: true,
       request,
@@ -677,7 +691,7 @@ export async function approveClubMembershipRequest(clubId, requestId, tenantId, 
 
 export async function rejectClubMembershipRequest(clubId, requestId, tenantId, options = {}) {
   const user = options.user || getCurrentUser();
-  const club = getRegistryClubById(clubId);
+  const club = await resolveClubForMembershipReview(clubId);
   if (!club) {
     return { ok: false, error: "Không tìm thấy CLB." };
   }
