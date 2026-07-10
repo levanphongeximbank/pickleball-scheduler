@@ -18,7 +18,9 @@ import SearchIcon from "@mui/icons-material/Search";
 import {
   CLUB_MEMBERSHIP_REQUEST_STATUSES,
   cancelClubMembershipRequest,
+  fetchGovernanceNameHints,
   getClubDiscoverySummary,
+  getGovernanceDisplayLabels,
   listDiscoverableClubs,
   listMyMembershipRequestsAll,
 } from "../../../features/club/index.js";
@@ -26,6 +28,7 @@ import { syncClubRegistryForUser } from "../../../features/club/services/clubReg
 import JoinClubDialog from "./JoinClubDialog.jsx";
 import { requestStatusChip } from "./clubMembershipUi.jsx";
 import { clubAvatarColor, clubInitials } from "./myClubUiStyles.js";
+import { resolvePresidentDisplayLabel } from "./myClubViewLogic.js";
 
 export default function MyClubDiscoverPanel({
   user,
@@ -37,6 +40,7 @@ export default function MyClubDiscoverPanel({
 }) {
   const [joinClub, setJoinClub] = useState(null);
   const [search, setSearch] = useState("");
+  const [nameHints, setNameHints] = useState({});
 
   useEffect(() => {
     if (!user?.id) {
@@ -71,6 +75,26 @@ export default function MyClubDiscoverPanel({
     }
     return clubs.filter((club) => String(club.name || "").toLowerCase().includes(query));
   }, [revision, search]);
+
+  useEffect(() => {
+    let cancelled = false;
+    const ids = discoverableClubs
+      .flatMap((club) => [
+        club?.governance?.presidentUserId,
+        club?.governance?.ownerUserId,
+      ])
+      .filter(Boolean);
+
+    void fetchGovernanceNameHints(ids).then((hints) => {
+      if (!cancelled) {
+        setNameHints(hints);
+      }
+    });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [discoverableClubs]);
 
   const bumpRevision = () => {
     onRevision?.();
@@ -128,6 +152,11 @@ export default function MyClubDiscoverPanel({
         <Grid container spacing={2}>
           {discoverableClubs.map((club) => {
             const summary = getClubDiscoverySummary(club.id);
+            const labels = getGovernanceDisplayLabels(club, club.tenantId || club.venueId, nameHints);
+            const presidentLabel =
+              resolvePresidentDisplayLabel(labels) !== "Chưa gán"
+                ? resolvePresidentDisplayLabel(labels)
+                : summary?.presidentLabel;
             const request = requestByClubId.get(club.id);
             const isMyClub = user?.clubId === club.id || user?.club_id === club.id;
 
@@ -163,7 +192,7 @@ export default function MyClubDiscoverPanel({
 
                           <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
                             {summary?.activeMemberCount ?? 0} thành viên
-                            {summary?.presidentLabel ? ` · Chủ tịch: ${summary.presidentLabel}` : ""}
+                            {presidentLabel ? ` · Chủ tịch: ${presidentLabel}` : ""}
                           </Typography>
 
                           {summary?.clusterLabel && (

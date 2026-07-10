@@ -66,6 +66,8 @@ export async function syncClubRegistryForUser(user = getCurrentUser()) {
     return { ok: true, skipped: true, provider: "disabled" };
   }
 
+  // Pull trước để máy local nhận owner/president mới từ cloud,
+  // tránh push bản local cũ (owner null) ghi đè cloud.
   const pullResult = await pullClubRegistryForUser(user);
   const pushResult = await pushPendingLocalClubsToCloud(user);
 

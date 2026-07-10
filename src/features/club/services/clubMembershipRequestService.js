@@ -273,13 +273,19 @@ export function getClubDiscoverySummary(clubId) {
   const activeMembers = ext.members.filter((member) => member.status === "active");
   const gov = getGovernanceDisplayLabels(club, tenantId);
   const clusterLabel = getRegisteredClusterLabel(club, tenantId);
+  const presidentLabel =
+    gov.presidentLabel ||
+    (gov.combinedOwnerPresident && gov.ownerLabel
+      ? String(gov.ownerLabel).replace(" (Chủ sở hữu & Chủ tịch)", "")
+      : null);
 
   return {
     id: club.id,
     name: club.name,
     status: club.status,
     tenantId,
-    presidentLabel: gov.presidentLabel || null,
+    presidentLabel,
+    ownerLabel: gov.ownerLabel || null,
     activeMemberCount: activeMembers.length,
     clusterLabel: formatRegisteredClusterDisplay(clusterLabel),
   };

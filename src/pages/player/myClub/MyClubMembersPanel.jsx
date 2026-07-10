@@ -26,6 +26,7 @@ import {
   getTenantPlayers,
   getVicePresidentUserIds,
 } from "../../../features/club/index.js";
+import { loadPlayersForClub } from "../../../domain/clubStorage.js";
 import { findUserIdByPlayerId } from "../../../features/club/storage/athleteClubLinkStore.js";
 import { resolveMemberGovernanceRole } from "./myClubViewLogic.js";
 
@@ -66,10 +67,16 @@ export default function MyClubMembersPanel({
       return [];
     }
 
+    const clubPlayers = clubId ? loadPlayersForClub(clubId) : [];
+    const clubPlayerById = new Map(clubPlayers.map((player) => [player.id, player]));
+
     return members
       .map((member) => {
-        const player = playersById.get(member.playerId);
-        const linkedUserId = findUserIdByPlayerId(member.playerId);
+        const player = clubPlayerById.get(member.playerId) || playersById.get(member.playerId);
+        const linkedUserId =
+          findUserIdByPlayerId(member.playerId) ||
+          String(player?.authUserId || "").trim() ||
+          null;
         const governanceRole = resolveMemberGovernanceRole(
           linkedUserId,
           clubRecord.governance,
@@ -86,7 +93,7 @@ export default function MyClubMembersPanel({
         };
       })
       .sort((a, b) => a.name.localeCompare(b.name, "vi"));
-  }, [members, playersById, clubRecord]);
+  }, [members, playersById, clubRecord, clubId]);
 
   const activeCount = rows.filter((row) => row.isActive).length;
 

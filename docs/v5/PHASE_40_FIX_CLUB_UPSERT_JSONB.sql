@@ -122,9 +122,12 @@ begin
     name = excluded.name,
     code = excluded.code,
     description = excluded.description,
-    owner_user_id = excluded.owner_user_id,
+    owner_user_id = coalesce(excluded.owner_user_id, public.club_governance.owner_user_id),
     president_user_id = excluded.president_user_id,
-    vice_president_user_id = excluded.vice_president_user_id,
+    vice_president_user_id = coalesce(
+      excluded.vice_president_user_id,
+      public.club_governance.vice_president_user_id
+    ),
     registered_cluster_id = excluded.registered_cluster_id,
     registered_court_ids = excluded.registered_court_ids,
     status = excluded.status,

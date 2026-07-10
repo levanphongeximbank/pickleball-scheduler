@@ -18,8 +18,10 @@ import {
   getVicePresidentUserIds,
   leaveMyClub,
   listDiscoverableClubs,
+  listLocalPresidentClubsForUser,
   reclaimLocalPresidentClubForUser,
 } from "../../features/club/index.js";
+import { syncClubRegistryForUser } from "../../features/club/services/clubRegistryCloudSync.js";
 import MyClubSummaryCard from "./myClub/MyClubSummaryCard.jsx";
 import MyClubCreatePanel from "./myClub/MyClubCreatePanel.jsx";
 import MyClubGovernancePanel from "./myClub/MyClubGovernancePanel.jsx";
@@ -47,6 +49,8 @@ export default function MyClubPage() {
   const clubId = user?.clubId || user?.club_id || null;
   const hasClub = Boolean(clubId);
   const canCreateClub = canSelfRegisterClub(user);
+  const canReclaimLocalClub =
+    !hasClub && Boolean(user?.id) && listLocalPresidentClubsForUser(user).length > 0;
 
   const [view, setView] = useState(() => resolveInitialView(hasClub, searchParams));
 
@@ -64,6 +68,23 @@ export default function MyClubPage() {
   useEffect(() => {
     setView(resolveInitialView(hasClub, searchParams));
   }, [hasClub, searchParams]);
+
+  useEffect(() => {
+    if (!user?.id) {
+      return undefined;
+    }
+
+    let cancelled = false;
+    void syncClubRegistryForUser(user).then((result) => {
+      if (!cancelled && result.ok) {
+        setRevision((value) => value + 1);
+      }
+    });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [user?.id]);
 
   const runReclaim = async ({ manual = false } = {}) => {
     if (!user?.id || hasClub) {
@@ -253,7 +274,7 @@ export default function MyClubPage() {
         </Typography>
       )}
 
-      {!hasClub && (
+      {!hasClub && canReclaimLocalClub && (
         <Alert severity="info" sx={{ mb: 2 }}>
           Nếu bạn đã tạo CLB trên máy này trước đó (ví dụ CLB ACCC) nhưng hệ thống chưa nhận,
           nhấn nút bên dưới để nhận lại và lưu lên hệ thống chung.
