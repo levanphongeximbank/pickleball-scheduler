@@ -24,6 +24,9 @@ import { useAuth } from "../context/AuthContext.jsx";
 import { ROLE_LABELS } from "../auth/roles.js";
 import { isDevAuthAllowed, listDevUsers } from "../auth/authService.js";
 import { resolvePostAuthRedirectPath } from "../auth/menuAccess.js";
+import { isClubStorageV2Enabled } from "../features/club/config/clubRegistryFlags.js";
+import { ROLES, normalizeRole } from "../auth/roles.js";
+import ClubPostAuthRedirect from "./player/guards/ClubPostAuthRedirect.jsx";
 import { APP_PRODUCT_NAME, APP_VERSION_LABEL, getLoginSubtitle } from "../config/appVersion.js";
 import { isAuthSignupEnabled } from "../config/authConfig.js";
 import { SHELL_COLORS } from "../components/shell/shellTokens.js";
@@ -86,6 +89,9 @@ export default function LoginPage() {
   if (isAuthenticated && user) {
     if (user.mustChangePassword) {
       return <Navigate to="/change-password" replace />;
+    }
+    if (isClubStorageV2Enabled() && normalizeRole(user.role) === ROLES.PLAYER) {
+      return <ClubPostAuthRedirect requestedPath={location.state?.from?.pathname} />;
     }
     return <Navigate to={redirectTo} replace />;
   }

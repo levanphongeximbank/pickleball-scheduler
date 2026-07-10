@@ -164,9 +164,21 @@ export {
   canShowLeaveClub,
   stripLegacyProfileClubFields,
   buildMyClubSummaryFromClub,
+  getCachedMembershipSnapshot,
+  resetMyActiveClubMembershipCache,
+  invalidateMyActiveClubMembershipCache,
 } from "./services/clubActiveMembershipService.js";
 
 export { useMyClubMembership } from "./hooks/useMyClubMembership.js";
+export {
+  MyClubMembershipRootProvider,
+  useMyClubMembershipFromContext,
+  useRequiredMyClubMembership,
+} from "./hooks/MyClubMembershipContext.jsx";
+export {
+  resolveClubAwarePlayerHomePath,
+  resolvePostAuthClubPath,
+} from "./routing/clubLandingResolver.js";
 export {
   CLUB_ROUTE_PATHS,
   MY_CLUB_MEMBER_VIEWS,

@@ -50,10 +50,40 @@ export function resolveClubLandingRedirect({
 /** Post-login / default home for club-aware PLAYER (V2). */
 export function resolveClubAwarePlayerHomePath({ hasActiveMembership, loading }) {
   if (loading) {
-    return "/my-club";
+    return null;
   }
   if (hasActiveMembership) {
     return "/my-club";
   }
   return "/discover-clubs";
+}
+
+/**
+ * Phase 42J.2 — post-auth path after membership RPC resolved (single canonical hop).
+ */
+export function resolvePostAuthClubPath(requestedPath, membership) {
+  const path = String(requestedPath || "").split("?")[0];
+  const home = resolveClubAwarePlayerHomePath(membership);
+
+  if (!path || path === "/login" || path === "/403") {
+    return home || "/discover-clubs";
+  }
+
+  if (path === "/" || path === "/home") {
+    return home || "/discover-clubs";
+  }
+
+  if (path === "/my-club") {
+    return membership?.hasActiveMembership ? "/my-club" : "/discover-clubs";
+  }
+
+  if (
+    path === "/tournament" ||
+    path.startsWith("/tournament/") ||
+    path === "/dashboard"
+  ) {
+    return home || "/discover-clubs";
+  }
+
+  return path;
 }

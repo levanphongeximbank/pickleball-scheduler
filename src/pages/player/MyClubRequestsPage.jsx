@@ -4,19 +4,20 @@ import { Link as RouterLink } from "react-router-dom";
 
 import { useAuth } from "../../context/AuthContext.jsx";
 import { useTenant } from "../../context/TenantContext.jsx";
-import { useMyClubMembershipFromContext } from "../../features/club/hooks/MyClubMembershipContext.jsx";
+import { useRequiredMyClubMembership } from "../../features/club/hooks/MyClubMembershipContext.jsx";
 import { useResolvedClubRecord } from "../../features/club/hooks/useResolvedClubRecord.js";
 import { CLUB_ROUTE_PATHS } from "../../features/club/routing/clubMembershipRouteLogic.js";
 import ClubMembershipRequestsGuard from "./guards/ClubMembershipRequestsGuard.jsx";
 import MyClubMembershipRequestsPanel from "./myClub/MyClubMembershipRequestsPanel.jsx";
 
-function MyClubRequestsContent({ revision, onRefresh }) {
+function MyClubRequestsContent() {
   const { user } = useAuth();
   const { currentTenantId } = useTenant();
   const tenantId = currentTenantId || user?.tenantId || user?.venueId || "";
+  const { revision, bumpRevision } = useRequiredMyClubMembership();
   const [message, setMessage] = useState(null);
-  const membership = useMyClubMembershipFromContext();
-  const clubId = membership?.clubId;
+  const membership = useRequiredMyClubMembership();
+  const clubId = membership.clubId;
   const { clubRecord } = useResolvedClubRecord(membership, tenantId);
 
   return (
@@ -42,7 +43,7 @@ function MyClubRequestsContent({ revision, onRefresh }) {
         tenantId={tenantId}
         user={user}
         revision={revision}
-        onRefresh={onRefresh}
+        onRefresh={bumpRevision}
         onMessage={setMessage}
       />
     </Box>
@@ -50,14 +51,9 @@ function MyClubRequestsContent({ revision, onRefresh }) {
 }
 
 export default function MyClubRequestsPage() {
-  const [revision, setRevision] = useState(0);
-
   return (
-    <ClubMembershipRequestsGuard revision={revision}>
-      <MyClubRequestsContent
-        revision={revision}
-        onRefresh={() => setRevision((value) => value + 1)}
-      />
+    <ClubMembershipRequestsGuard>
+      <MyClubRequestsContent />
     </ClubMembershipRequestsGuard>
   );
 }

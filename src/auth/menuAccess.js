@@ -399,9 +399,9 @@ export function getDefaultHomePath(user, rbacEnabled = false) {
 
   switch (normalizeRole(user.role)) {
     case ROLES.PLAYER:
-      // V2: membership SSOT via RPC — route guards resolve discover vs my-club.
+      // V2: membership resolved via MyClubMembershipRootProvider + ClubPostAuthRedirect / guards.
       if (isClubStorageV2Enabled()) {
-        return "/my-club";
+        return "/discover-clubs";
       }
       // Người chơi mới đăng ký chưa gắn CLB — hướng tới khám phá CLB.
       if (!user.clubId && !user.club_id) {

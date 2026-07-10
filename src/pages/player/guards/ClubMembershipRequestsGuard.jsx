@@ -5,8 +5,7 @@ import { useEffect, useState } from "react";
 import { useAuth } from "../../../context/AuthContext.jsx";
 import { useTenant } from "../../../context/TenantContext.jsx";
 import { canApproveClubMembershipRequests } from "../../../features/club/index.js";
-import { MyClubMembershipProvider } from "../../../features/club/hooks/MyClubMembershipContext.jsx";
-import { useMyClubMembership } from "../../../features/club/hooks/useMyClubMembership.js";
+import { useRequiredMyClubMembership } from "../../../features/club/hooks/MyClubMembershipContext.jsx";
 import { useResolvedClubRecord } from "../../../features/club/hooks/useResolvedClubRecord.js";
 import { rpcV2ClubListPendingRequests } from "../../../features/club/services/clubStorageV2RpcService.js";
 import {
@@ -17,13 +16,14 @@ import {
 
 /**
  * Phase 42J.1 — /my-club/requests guard.
- * Waits for membership + club hydrate; 403 only when permission denied.
+ * Phase 42J.2 — shared membership context (no duplicate RPC).
  */
-export default function ClubMembershipRequestsGuard({ children, revision = 0 }) {
+export default function ClubMembershipRequestsGuard({ children }) {
   const { user } = useAuth();
   const { currentTenantId } = useTenant();
   const tenantId = currentTenantId || user?.tenantId || user?.venueId || "";
-  const membership = useMyClubMembership(revision);
+  const membership = useRequiredMyClubMembership();
+  const { revision } = membership;
   const clubId = membership.clubId;
   const landingState = resolveClubLandingState(membership);
   const { clubRecord, clubLoading, clubError, reload } = useResolvedClubRecord(membership, tenantId);
@@ -108,5 +108,5 @@ export default function ClubMembershipRequestsGuard({ children, revision = 0 }) 
     return <Navigate to="/403" replace state={{ from: "/my-club/requests" }} />;
   }
 
-  return <MyClubMembershipProvider value={membership}>{children}</MyClubMembershipProvider>;
+  return children;
 }

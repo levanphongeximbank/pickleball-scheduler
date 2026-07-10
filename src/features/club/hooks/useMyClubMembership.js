@@ -1,7 +1,11 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 import { useAuth } from "../../../context/AuthContext.jsx";
-import { resolveMyActiveClubMembership, invalidateMyActiveClubMembershipCache } from "../services/clubActiveMembershipService.js";
+import {
+  getCachedMembershipSnapshot,
+  invalidateMyActiveClubMembershipCache,
+  resolveMyActiveClubMembership,
+} from "../services/clubActiveMembershipService.js";
 
 const INITIAL = Object.freeze({
   loading: true,
@@ -14,48 +18,96 @@ const INITIAL = Object.freeze({
   error: null,
 });
 
+function mapMembershipResult(result) {
+  return {
+    loading: false,
+    ok: result.ok,
+    clubId: result.clubId || null,
+    hasActiveMembership: Boolean(result.hasActiveMembership && result.clubId),
+    club: result.club || null,
+    memberId: result.memberId || null,
+    source: result.source || "unknown",
+    error: result.ok ? null : result.error || "MEMBERSHIP_LOOKUP_FAILED",
+  };
+}
+
+function buildInitialState(userId) {
+  if (!userId) {
+    return { ...INITIAL, loading: false, source: "anon", error: "Chưa đăng nhập." };
+  }
+  const cached = getCachedMembershipSnapshot(userId);
+  if (cached) {
+    return mapMembershipResult(cached);
+  }
+  return INITIAL;
+}
+
 /**
  * Phase 42J — Cloud SSOT membership read hook.
- * Never uses profiles.club_id / player_id / localStorage for hasClub.
+ * Phase 42J.2 — cache-first; one in-flight RPC per user via service dedupe.
  */
 export function useMyClubMembership(revision = 0) {
   const { user } = useAuth();
-  const [state, setState] = useState(INITIAL);
+  const userId = user?.id || null;
+  const [state, setState] = useState(() => buildInitialState(userId));
+  const revisionRef = useRef(revision);
 
-  const reload = useCallback(async () => {
-    if (!user?.id) {
-      setState({
-        ...INITIAL,
-        loading: false,
-        ok: false,
-        error: "Chưa đăng nhập.",
-        source: "anon",
-      });
+  const reload = useCallback(
+    async ({ force = true } = {}) => {
+      if (!userId) {
+        setState({
+          ...INITIAL,
+          loading: false,
+          ok: false,
+          error: "Chưa đăng nhập.",
+          source: "anon",
+        });
+        return;
+      }
+
+      if (force) {
+        invalidateMyActiveClubMembershipCache(userId);
+      }
+
+      const cached = !force ? getCachedMembershipSnapshot(userId) : null;
+      if (cached) {
+        setState(mapMembershipResult(cached));
+        return;
+      }
+
+      setState((prev) => ({ ...prev, loading: true, error: null }));
+      const result = await resolveMyActiveClubMembership(user);
+      setState(mapMembershipResult(result));
+    },
+    [user, userId]
+  );
+
+  useEffect(() => {
+    if (!userId) {
+      setState(buildInitialState(null));
       return;
     }
 
-    setState((prev) => ({ ...prev, loading: true, error: null }));
-    invalidateMyActiveClubMembershipCache(user?.id);
-    const result = await resolveMyActiveClubMembership(user);
-    setState({
-      loading: false,
-      ok: result.ok,
-      clubId: result.clubId || null,
-      hasActiveMembership: Boolean(result.hasActiveMembership && result.clubId),
-      club: result.club || null,
-      memberId: result.memberId || null,
-      source: result.source || "unknown",
-      error: result.ok ? null : result.error || "MEMBERSHIP_LOOKUP_FAILED",
-    });
-  }, [user]);
+    const revisionBumped = revision !== revisionRef.current;
+    revisionRef.current = revision;
 
-  useEffect(() => {
-    void reload();
-  }, [reload, revision]);
+    if (revisionBumped) {
+      void reload({ force: true });
+      return;
+    }
+
+    const cached = getCachedMembershipSnapshot(userId);
+    if (cached) {
+      setState(mapMembershipResult(cached));
+      return;
+    }
+
+    void reload({ force: false });
+  }, [userId, revision, reload]);
 
   return {
     ...state,
-    reload,
+    reload: () => reload({ force: true }),
     user,
   };
 }

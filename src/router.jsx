@@ -10,6 +10,7 @@ import MainLayout from "./layouts/MainLayout";
 import SuperAdminRouteGuard from "./features/pairing-constraints/guards/superAdminRouteGuard.jsx";
 
 import { AuthProvider } from "./context/AuthContext.jsx";
+import { MyClubMembershipRootProvider } from "./features/club/hooks/MyClubMembershipContext.jsx";
 
 
 
@@ -382,6 +383,8 @@ export default function Router() {
 
       <AuthProvider>
 
+        <MyClubMembershipRootProvider>
+
         <Suspense fallback={<RouterFallback />}>
 
           <Routes>
@@ -681,6 +684,8 @@ export default function Router() {
         </Routes>
 
         </Suspense>
+
+        </MyClubMembershipRootProvider>
 
       </AuthProvider>
 

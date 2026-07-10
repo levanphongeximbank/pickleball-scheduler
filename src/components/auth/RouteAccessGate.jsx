@@ -13,6 +13,9 @@ import {
   userMustChangePassword,
 } from "../../auth/authGuard.js";
 import { getDefaultHomePath, resolveRouteAccessScope } from "../../auth/menuAccess.js";
+import { isClubStorageV2Enabled } from "../../features/club/config/clubRegistryFlags.js";
+import { ROLES, normalizeRole } from "../../auth/roles.js";
+import ClubPlayerHomeRedirect from "../../pages/player/guards/ClubPlayerHomeRedirect.jsx";
 
 function AuthLoading() {
   return (
@@ -90,6 +93,9 @@ export default function RouteAccessGate({ children }) {
   const homePath = getDefaultHomePath(user, rbacEnabled);
 
   if (location.pathname === "/dashboard" && user?.role && homePath !== "/dashboard") {
+    if (isClubStorageV2Enabled() && normalizeRole(user.role) === ROLES.PLAYER) {
+      return <ClubPlayerHomeRedirect />;
+    }
     return <Navigate to={homePath} replace />;
   }
 

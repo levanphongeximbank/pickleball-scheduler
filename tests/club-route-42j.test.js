@@ -109,7 +109,8 @@ test("42J membership SoT — V2 path does not read profiles.club_id", () => {
 test("42J active membership hook — delegates to cloud SSOT resolver", () => {
   const hook = readSrc("src/features/club/hooks/useMyClubMembership.js");
   assert.match(hook, /resolveMyActiveClubMembership/);
-  assert.match(hook, /Never uses profiles\.club_id/);
+  assert.match(hook, /resolveMyActiveClubMembership/);
+  assert.match(hook, /cache-first/);
 });
 
 test("42J DiscoverPanel — uses activeClubId not profile fields", () => {

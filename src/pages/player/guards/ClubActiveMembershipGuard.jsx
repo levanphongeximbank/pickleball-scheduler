@@ -1,8 +1,7 @@
 import { Alert, Box, Button, CircularProgress, Skeleton, Stack } from "@mui/material";
 import { Navigate, useLocation, useSearchParams } from "react-router-dom";
 
-import { MyClubMembershipProvider } from "../../../features/club/hooks/MyClubMembershipContext.jsx";
-import { useMyClubMembership } from "../../../features/club/hooks/useMyClubMembership.js";
+import { useRequiredMyClubMembership } from "../../../features/club/hooks/MyClubMembershipContext.jsx";
 import {
   CLUB_LANDING_STATE,
   CLUB_ROUTE_PATHS,
@@ -28,10 +27,10 @@ function ClubRouteLoadingShell({ label = "Đang tải thông tin CLB" }) {
   );
 }
 
-export default function ClubActiveMembershipGuard({ children, revision = 0 }) {
+export default function ClubActiveMembershipGuard({ children }) {
   const location = useLocation();
   const [searchParams] = useSearchParams();
-  const membership = useMyClubMembership(revision);
+  const membership = useRequiredMyClubMembership();
   const landingState = resolveClubLandingState(membership);
 
   const legacyDiscover = resolveLegacyMyClubQueryRedirect(searchParams);
@@ -78,5 +77,5 @@ export default function ClubActiveMembershipGuard({ children, revision = 0 }) {
   }
 
   clearClubRouteRedirectLoop();
-  return <MyClubMembershipProvider value={membership}>{children}</MyClubMembershipProvider>;
+  return children;
 }

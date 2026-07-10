@@ -2,7 +2,7 @@ import { isClubStorageV2Enabled } from "../config/clubRegistryFlags.js";
 import { rpcV2GetMyActiveMembership } from "./clubStorageV2RpcService.js";
 import { clearAthleteClubLink } from "../storage/athleteClubLinkStore.js";
 
-const MEMBERSHIP_CACHE_MS = 3000;
+const MEMBERSHIP_CACHE_MS = 30000;
 /** @type {{ userId: string, at: number, result: object } | null} */
 let membershipCache = null;
 /** @type {{ userId: string, promise: Promise<object> } | null} */
@@ -21,6 +21,15 @@ function readMembershipCache(userId) {
 
 function writeMembershipCache(userId, result) {
   membershipCache = { userId, at: Date.now(), result };
+}
+
+/** Sync read for hook initial state / skip stale refetch (Phase 42J.2). */
+export function getCachedMembershipSnapshot(userId) {
+  const id = String(userId || "").trim();
+  if (!id) {
+    return null;
+  }
+  return readMembershipCache(id);
 }
 
 /** Test helper — reset in-flight/cache between unit tests. */

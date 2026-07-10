@@ -79,7 +79,7 @@ test("42J.1 landing resolver — no membership redirects my-club to discover", (
 });
 
 test("42J.1 landing resolver — V2 player home defers to route guards", () => {
-  assert.equal(resolveClubAwarePlayerHomePath({ loading: true }), "/my-club");
+  assert.equal(resolveClubAwarePlayerHomePath({ loading: true }), null);
   assert.equal(resolveClubAwarePlayerHomePath({ hasActiveMembership: true, loading: false }), "/my-club");
   assert.equal(resolveClubAwarePlayerHomePath({ hasActiveMembership: false, loading: false }), "/discover-clubs");
 });
@@ -91,10 +91,10 @@ test("42J.1 route logic — shouldRedirect uses landing state only", () => {
   assert.equal(shouldRedirectMyClubToDiscover({ loading: false, ok: true, hasActiveMembership: true }), false);
 });
 
-test("42J.1 menuAccess — V2 does not use profile.clubId for PLAYER home", () => {
+test("42J.1 menuAccess — V2 PLAYER default home is discover-clubs", () => {
   const src = readSrc("src/auth/menuAccess.js");
   assert.match(src, /isClubStorageV2Enabled/);
-  assert.match(src, /V2: membership SSOT/);
+  assert.match(src, /discover-clubs/);
 });
 
 test("42J.1 requests guard — 403 not my-club bounce", () => {

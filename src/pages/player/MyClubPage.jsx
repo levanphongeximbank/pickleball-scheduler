@@ -18,7 +18,7 @@ import {
   getVicePresidentUserIds,
   leaveMyClub,
 } from "../../features/club/index.js";
-import { useMyClubMembershipFromContext } from "../../features/club/hooks/MyClubMembershipContext.jsx";
+import { useRequiredMyClubMembership } from "../../features/club/hooks/MyClubMembershipContext.jsx";
 import { buildMyClubSummaryFromClub } from "../../features/club/services/clubActiveMembershipService.js";
 import { isClubStorageV2Enabled } from "../../features/club/config/clubRegistryFlags.js";
 import { CLUB_ROUTE_PATHS } from "../../features/club/routing/clubMembershipRouteLogic.js";
@@ -36,14 +36,14 @@ function MyClubPageContent() {
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const tenantId = currentTenantId || user?.tenantId || user?.venueId || "";
-  const [revision, setRevision] = useState(0);
+  const membership = useRequiredMyClubMembership();
+  const { revision, bumpRevision } = membership;
+  const clubId = membership.clubId;
+  const hasClub = Boolean(membership.hasActiveMembership && clubId);
+
   const [message, setMessage] = useState(null);
   const [leaveLoading, setLeaveLoading] = useState(false);
   const [nameHints, setNameHints] = useState({});
-
-  const membership = useMyClubMembershipFromContext();
-  const clubId = membership.clubId;
-  const hasClub = Boolean(membership.hasActiveMembership && clubId);
 
   const [view, setView] = useState(() => resolveInitialView(true, searchParams));
 
@@ -156,8 +156,6 @@ function MyClubPageContent() {
 
   const showRequestsLink =
     Boolean(clubRecord && user && canApproveClubMembershipRequests(user, clubRecord));
-
-  const bumpRevision = () => setRevision((value) => value + 1);
 
   const handleLeaveClub = async () => {
     const confirmed = window.confirm(
