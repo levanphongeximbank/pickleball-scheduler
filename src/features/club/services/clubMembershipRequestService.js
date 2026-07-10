@@ -33,6 +33,8 @@ import {
   rpcV2ClubCancelMembershipRequest,
   rpcV2ClubLeaveMembership,
   rpcV2ClubSubmitMembershipRequest,
+  rpcV2ClubListPendingRequests,
+  rpcV2ClubReviewMembershipRequest,
 } from "./clubStorageV2RpcService.js";
 import { syncRatingToClubPlayer } from "../../pick-vn-rating/services/pickVnRatingService.js";
 import { rpcReviewClubMembershipRequest, rpcLeaveMyClub } from "./clubMembershipRequestRpcService.js";
@@ -41,6 +43,51 @@ import {
   isClubPresident,
   isClubVicePresident,
 } from "./clubGovernanceService.js";
+
+function mapV2MembershipRequestRow(row, clubId) {
+  if (!row) {
+    return null;
+  }
+  const status =
+    row.status === CLUB_MEMBERSHIP_REQUEST_STATUSES.APPROVED
+      ? CLUB_MEMBERSHIP_REQUEST_STATUSES.APPROVED
+      : row.status === CLUB_MEMBERSHIP_REQUEST_STATUSES.REJECTED
+        ? CLUB_MEMBERSHIP_REQUEST_STATUSES.REJECTED
+        : row.status === CLUB_MEMBERSHIP_REQUEST_STATUSES.CANCELLED
+          ? CLUB_MEMBERSHIP_REQUEST_STATUSES.CANCELLED
+          : CLUB_MEMBERSHIP_REQUEST_STATUSES.PENDING;
+
+  return normalizeClubMembershipRequest({
+    id: row.id,
+    clubId: row.club_id || clubId,
+    userId: row.user_id,
+    displayName: row.display_name || "",
+    message: row.message || "",
+    status,
+    requestedAt: row.created_at || new Date().toISOString(),
+    version: row.version,
+  });
+}
+
+function mapV2ReviewResult(data, clubId) {
+  if (!data) {
+    return null;
+  }
+  const status =
+    data.status === "approved"
+      ? CLUB_MEMBERSHIP_REQUEST_STATUSES.APPROVED
+      : data.status === "rejected"
+        ? CLUB_MEMBERSHIP_REQUEST_STATUSES.REJECTED
+        : data.status;
+
+  return normalizeClubMembershipRequest({
+    id: data.id,
+    clubId: data.club_id || clubId,
+    userId: data.user_id,
+    status,
+    approvedPlayerId: data.member_id || null,
+  });
+}
 
 function buildPlayerIdForUser(userId) {
   const safe = String(userId || "").trim().replace(/[^a-zA-Z0-9_-]/g, "");
@@ -353,7 +400,7 @@ export function listMyMembershipRequests(tenantId, userId) {
   );
 }
 
-export function listPendingMembershipRequests(clubId, tenantId, user = getCurrentUser()) {
+export async function listPendingMembershipRequests(clubId, tenantId, user = getCurrentUser()) {
   const club = getRegistryClubById(clubId);
   if (!club) {
     return [];
@@ -368,6 +415,16 @@ export function listPendingMembershipRequests(clubId, tenantId, user = getCurren
     if (!tenantCheck.ok) {
       return [];
     }
+  }
+
+  if (isClubStorageV2Enabled()) {
+    const result = await rpcV2ClubListPendingRequests(clubId);
+    if (!result.ok) {
+      return [];
+    }
+    return (result.requests || [])
+      .map((row) => mapV2MembershipRequestRow(row, clubId))
+      .filter(Boolean);
   }
 
   const ext = loadClubExtension(clubId);
@@ -519,6 +576,29 @@ export async function approveClubMembershipRequest(clubId, requestId, tenantId, 
     return tenantCheck;
   }
 
+  if (isClubStorageV2Enabled()) {
+    const reviewed = await rpcV2ClubReviewMembershipRequest({
+      membershipRequestId: requestId,
+      decision: "approved",
+      reviewNote: options.reviewNote || null,
+      expectedVersion: options.expectedVersion ?? null,
+    });
+    if (!reviewed.ok) {
+      return {
+        ok: false,
+        code: reviewed.code,
+        error: reviewed.error || "Không duyệt được yêu cầu gia nhập.",
+      };
+    }
+    const request = mapV2ReviewResult(reviewed.data, clubId);
+    return {
+      ok: true,
+      request,
+      memberId: reviewed.data?.member_id || null,
+      provider: "v2-rpc",
+    };
+  }
+
   const ext = loadClubExtension(clubId);
   const requests = getMembershipRequests(ext);
   const index = requests.findIndex((request) => request.id === requestId);
@@ -590,7 +670,7 @@ export async function approveClubMembershipRequest(clubId, requestId, tenantId, 
   };
 }
 
-export function rejectClubMembershipRequest(clubId, requestId, tenantId, options = {}) {
+export async function rejectClubMembershipRequest(clubId, requestId, tenantId, options = {}) {
   const user = options.user || getCurrentUser();
   const club = getRegistryClubById(clubId);
   if (!club) {
@@ -604,6 +684,27 @@ export function rejectClubMembershipRequest(clubId, requestId, tenantId, options
   const tenantCheck = guardClubTenant(clubId, tenantId, { user });
   if (!tenantCheck.ok) {
     return tenantCheck;
+  }
+
+  if (isClubStorageV2Enabled()) {
+    const reviewed = await rpcV2ClubReviewMembershipRequest({
+      membershipRequestId: requestId,
+      decision: "rejected",
+      reviewNote: options.reviewNote || null,
+      expectedVersion: options.expectedVersion ?? null,
+    });
+    if (!reviewed.ok) {
+      return {
+        ok: false,
+        code: reviewed.code,
+        error: reviewed.error || "Không từ chối được yêu cầu gia nhập.",
+      };
+    }
+    return {
+      ok: true,
+      request: mapV2ReviewResult(reviewed.data, clubId),
+      provider: "v2-rpc",
+    };
   }
 
   const ext = loadClubExtension(clubId);

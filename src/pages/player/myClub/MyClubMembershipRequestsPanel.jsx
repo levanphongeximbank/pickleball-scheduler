@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import {
   Alert,
   Box,
@@ -36,15 +36,38 @@ export default function MyClubMembershipRequestsPanel({
 }) {
   const [reviewNotes, setReviewNotes] = useState({});
   const [busyId, setBusyId] = useState(null);
+  const [pendingRequests, setPendingRequests] = useState([]);
+  const [loadingPending, setLoadingPending] = useState(false);
 
   const canApprove = clubRecord && user && canApproveClubMembershipRequests(user, clubRecord);
 
-  const pendingRequests = useMemo(() => {
-    void revision;
-    if (!canApprove || !clubId) {
-      return [];
+  useEffect(() => {
+    let cancelled = false;
+
+    async function loadPending() {
+      if (!canApprove || !clubId) {
+        setPendingRequests([]);
+        return;
+      }
+
+      setLoadingPending(true);
+      try {
+        const rows = await listPendingMembershipRequests(clubId, tenantId, user);
+        if (!cancelled) {
+          setPendingRequests(rows);
+        }
+      } finally {
+        if (!cancelled) {
+          setLoadingPending(false);
+        }
+      }
     }
-    return listPendingMembershipRequests(clubId, tenantId, user);
+
+    void revision;
+    loadPending();
+    return () => {
+      cancelled = true;
+    };
   }, [canApprove, clubId, tenantId, user, revision]);
 
   if (!canApprove) {
@@ -72,10 +95,10 @@ export default function MyClubMembershipRequestsPanel({
     }
   };
 
-  const handleReject = (request) => {
+  const handleReject = async (request) => {
     setBusyId(request.id);
     try {
-      const result = rejectClubMembershipRequest(clubId, request.id, tenantId, {
+      const result = await rejectClubMembershipRequest(clubId, request.id, tenantId, {
         user,
         reviewNote: reviewNotes[request.id] || "",
       });
@@ -103,7 +126,11 @@ export default function MyClubMembershipRequestsPanel({
             </Typography>
           </Box>
 
-          {pendingRequests.length === 0 ? (
+          {loadingPending ? (
+            <Alert severity="info" variant="outlined">
+              Đang tải yêu cầu…
+            </Alert>
+          ) : pendingRequests.length === 0 ? (
             <Alert severity="info" variant="outlined">
               Không có yêu cầu đang chờ duyệt.
             </Alert>

@@ -50,6 +50,12 @@ function createLocalStorageMock(seed = {}) {
   };
 }
 
+function forceLocalMembershipStorage() {
+  if (typeof import.meta !== "undefined" && import.meta.env) {
+    import.meta.env.VITE_CLUB_STORAGE_V2 = "false";
+  }
+}
+
 function makeClub(overrides = {}) {
   return createClubRecord("CLB Membership Test", {
     id: CLUB_ID,
@@ -73,6 +79,7 @@ function seedClub() {
 describe("club membership requests", () => {
   beforeEach(() => {
     globalThis.localStorage = createLocalStorageMock();
+    forceLocalMembershipStorage();
     seedClub();
   });
 
@@ -80,7 +87,7 @@ describe("club membership requests", () => {
     delete globalThis.localStorage;
   });
 
-  it("athlete submits request when no club", () => {
+  it("athlete submits request when no club", async () => {
     const athlete = {
       id: ATHLETE_ID,
       role: ROLES.PLAYER,
@@ -88,7 +95,7 @@ describe("club membership requests", () => {
       tenantId: TENANT,
     };
 
-    const result = submitClubMembershipRequest(CLUB_ID, TENANT, athlete, {
+    const result = await submitClubMembershipRequest(CLUB_ID, TENANT, athlete, {
       message: "Muốn tham gia CLB",
     });
 
@@ -100,7 +107,7 @@ describe("club membership requests", () => {
     assert.equal(mine[0].clubId, CLUB_ID);
   });
 
-  it("blocks submit when athlete already has club", () => {
+  it("blocks submit when athlete already has club", async () => {
     const athlete = {
       id: ATHLETE_ID,
       role: ROLES.PLAYER,
@@ -108,20 +115,20 @@ describe("club membership requests", () => {
       tenantId: TENANT,
     };
 
-    const result = submitClubMembershipRequest(CLUB_ID, TENANT, athlete);
+    const result = await submitClubMembershipRequest(CLUB_ID, TENANT, athlete);
     assert.equal(result.ok, false);
   });
 
-  it("blocks duplicate pending request", () => {
+  it("blocks duplicate pending request", async () => {
     const athlete = { id: ATHLETE_ID, role: ROLES.PLAYER, tenantId: TENANT };
-    assert.equal(submitClubMembershipRequest(CLUB_ID, TENANT, athlete).ok, true);
-    const duplicate = submitClubMembershipRequest(CLUB_ID, TENANT, athlete);
+    assert.equal((await submitClubMembershipRequest(CLUB_ID, TENANT, athlete)).ok, true);
+    const duplicate = await submitClubMembershipRequest(CLUB_ID, TENANT, athlete);
     assert.equal(duplicate.ok, false);
   });
 
   it("president can approve and creates player + member + profile link", async () => {
     const athlete = { id: ATHLETE_ID, role: ROLES.PLAYER, displayName: "VĐV Test", tenantId: TENANT };
-    const submit = submitClubMembershipRequest(CLUB_ID, TENANT, athlete);
+    const submit = await submitClubMembershipRequest(CLUB_ID, TENANT, athlete);
     assert.equal(submit.ok, true);
 
     const president = {
@@ -133,7 +140,7 @@ describe("club membership requests", () => {
     const club = makeClub();
     assert.equal(canApproveClubMembershipRequests(president, club), true);
 
-    const pending = listPendingMembershipRequests(CLUB_ID, TENANT, president);
+    const pending = await listPendingMembershipRequests(CLUB_ID, TENANT, president);
     assert.equal(pending.length, 1);
 
     const approved = await approveClubMembershipRequest(CLUB_ID, pending[0].id, TENANT, {
@@ -157,30 +164,30 @@ describe("club membership requests", () => {
 
   it("vice president can approve", async () => {
     const athlete = { id: "athlete-vice", role: ROLES.PLAYER, displayName: "VP Athlete", tenantId: TENANT };
-    submitClubMembershipRequest(CLUB_ID, TENANT, athlete);
+    await submitClubMembershipRequest(CLUB_ID, TENANT, athlete);
 
     const vice = { id: VICE_ID, role: ROLES.CLUB_MANAGER, clubId: CLUB_ID, tenantId: TENANT };
-    const pending = listPendingMembershipRequests(CLUB_ID, TENANT, vice);
+    const pending = await listPendingMembershipRequests(CLUB_ID, TENANT, vice);
     const approved = await approveClubMembershipRequest(CLUB_ID, pending[0].id, TENANT, {
       user: vice,
     });
     assert.equal(approved.ok, true);
   });
 
-  it("venue manager who is not club owner cannot approve", () => {
-    const venueOwner = { id: VENUE_OWNER_ID, role: ROLES.TENANT_OWNER, venueId: TENANT };
+  it("staff without review permission cannot approve", async () => {
+    const staff = { id: VENUE_OWNER_ID, role: ROLES.STAFF, venueId: TENANT };
     const club = makeClub();
-    assert.equal(canApproveClubMembershipRequests(venueOwner, club), false);
-    assert.equal(listPendingMembershipRequests(CLUB_ID, TENANT, venueOwner).length, 0);
+    assert.equal(canApproveClubMembershipRequests(staff, club), false);
+    assert.equal((await listPendingMembershipRequests(CLUB_ID, TENANT, staff)).length, 0);
   });
 
-  it("reject updates request status", () => {
+  it("reject updates request status", async () => {
     const athlete = { id: "athlete-reject", role: ROLES.PLAYER, displayName: "Reject Me", tenantId: TENANT };
-    submitClubMembershipRequest(CLUB_ID, TENANT, athlete);
+    await submitClubMembershipRequest(CLUB_ID, TENANT, athlete);
 
     const president = { id: PRESIDENT_ID, role: ROLES.CLUB_MANAGER, clubId: CLUB_ID };
-    const pending = listPendingMembershipRequests(CLUB_ID, TENANT, president);
-    const rejected = rejectClubMembershipRequest(CLUB_ID, pending[0].id, TENANT, {
+    const pending = await listPendingMembershipRequests(CLUB_ID, TENANT, president);
+    const rejected = await rejectClubMembershipRequest(CLUB_ID, pending[0].id, TENANT, {
       user: president,
       reviewNote: "Chưa đủ điều kiện",
     });
@@ -218,16 +225,16 @@ describe("club membership requests", () => {
     }
   });
 
-  it("listMyMembershipRequestsAll scans all discoverable clubs", () => {
+  it("listMyMembershipRequestsAll scans all discoverable clubs", async () => {
     const athlete = { id: ATHLETE_ID, role: ROLES.PLAYER, displayName: "VĐV Test", tenantId: TENANT };
-    submitClubMembershipRequest(CLUB_ID, TENANT, athlete);
+    await submitClubMembershipRequest(CLUB_ID, TENANT, athlete);
 
     const mine = listMyMembershipRequestsAll(ATHLETE_ID);
     assert.equal(mine.length, 1);
     assert.equal(mine[0].clubId, CLUB_ID);
   });
 
-  it("player without tenant can submit when RBAC enabled", () => {
+  it("player without tenant can submit when RBAC enabled", async () => {
     enableRbac(true);
     try {
       const athlete = {
@@ -236,7 +243,7 @@ describe("club membership requests", () => {
         displayName: "No Tenant Athlete",
       };
 
-      const result = submitClubMembershipRequest(CLUB_ID, TENANT, athlete);
+      const result = await submitClubMembershipRequest(CLUB_ID, TENANT, athlete);
       assert.equal(result.ok, true);
       assert.equal(result.request.clubId, CLUB_ID);
     } finally {
@@ -244,7 +251,7 @@ describe("club membership requests", () => {
     }
   });
 
-  it("submit resolves club tenant when athlete tenant differs", () => {
+  it("submit resolves club tenant when athlete tenant differs", async () => {
     const otherTenantClub = createClubRecord("CLB Cross Tenant", {
       id: "club-cross-tenant",
       tenantId: "tenant-other",
@@ -261,17 +268,17 @@ describe("club membership requests", () => {
       tenantId: TENANT,
     };
 
-    const result = submitClubMembershipRequest("club-cross-tenant", TENANT, athlete);
+    const result = await submitClubMembershipRequest("club-cross-tenant", TENANT, athlete);
     assert.equal(result.ok, true);
     assert.equal(result.request.clubId, "club-cross-tenant");
   });
 
   it("member can leave club and clears athlete link", async () => {
     const athlete = { id: ATHLETE_ID, role: ROLES.PLAYER, displayName: "VĐV Test", tenantId: TENANT };
-    submitClubMembershipRequest(CLUB_ID, TENANT, athlete);
+    await submitClubMembershipRequest(CLUB_ID, TENANT, athlete);
 
     const president = { id: PRESIDENT_ID, role: ROLES.CLUB_MANAGER, clubId: CLUB_ID, tenantId: TENANT };
-    const pending = listPendingMembershipRequests(CLUB_ID, TENANT, president);
+    const pending = await listPendingMembershipRequests(CLUB_ID, TENANT, president);
     const approved = await approveClubMembershipRequest(CLUB_ID, pending[0].id, TENANT, {
       user: president,
     });
@@ -312,14 +319,14 @@ describe("club membership requests", () => {
     assert.match(result.error, /Chuyển vai trò/);
   });
 
-  it("PLAYER president without tenantId can list pending requests", () => {
+  it("PLAYER president without tenantId can list pending requests", async () => {
     const athlete = {
       id: ATHLETE_ID,
       role: ROLES.PLAYER,
       displayName: "VĐV Test",
       tenantId: TENANT,
     };
-    assert.equal(submitClubMembershipRequest(CLUB_ID, TENANT, athlete).ok, true);
+    assert.equal((await submitClubMembershipRequest(CLUB_ID, TENANT, athlete)).ok, true);
 
     const president = {
       id: PRESIDENT_ID,
@@ -330,7 +337,7 @@ describe("club membership requests", () => {
     const club = makeClub();
     assert.equal(canApproveClubMembershipRequests(president, club), true);
 
-    const pending = listPendingMembershipRequests(CLUB_ID, TENANT, president);
+    const pending = await listPendingMembershipRequests(CLUB_ID, TENANT, president);
     assert.equal(pending.length, 1);
     assert.equal(pending[0].userId, ATHLETE_ID);
   });

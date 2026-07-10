@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   Alert,
   Box,
@@ -57,14 +57,39 @@ export default function ClubMembersTab({ club, tenantId, onRefresh }) {
   const [revision, setRevision] = useState(0);
   const [reviewNotes, setReviewNotes] = useState({});
   const [requestMessage, setRequestMessage] = useState(null);
+  const [pendingMembershipRequests, setPendingMembershipRequests] = useState([]);
+  const [loadingPendingRequests, setLoadingPendingRequests] = useState(false);
 
   const fullAccess = canViewFullClubMembers(user, club);
   const canApproveRequests = canApproveClubMembershipRequests(user, club);
 
-  const pendingMembershipRequests = useMemo(
-    () => listPendingMembershipRequests(club.id, tenantId, user),
-    [club.id, tenantId, user, revision]
-  );
+  useEffect(() => {
+    let cancelled = false;
+
+    async function loadPending() {
+      if (!canApproveRequests) {
+        setPendingMembershipRequests([]);
+        return;
+      }
+
+      setLoadingPendingRequests(true);
+      try {
+        const rows = await listPendingMembershipRequests(club.id, tenantId, user);
+        if (!cancelled) {
+          setPendingMembershipRequests(rows);
+        }
+      } finally {
+        if (!cancelled) {
+          setLoadingPendingRequests(false);
+        }
+      }
+    }
+
+    loadPending();
+    return () => {
+      cancelled = true;
+    };
+  }, [club.id, tenantId, user, revision, canApproveRequests]);
 
   const canManage =
     fullAccess &&
@@ -182,7 +207,7 @@ export default function ClubMembersTab({ club, tenantId, onRefresh }) {
   };
 
   const handleRejectRequest = async (request) => {
-    const result = rejectClubMembershipRequest(club.id, request.id, tenantId, {
+    const result = await rejectClubMembershipRequest(club.id, request.id, tenantId, {
       user,
       reviewNote: reviewNotes[request.id] || "",
     });

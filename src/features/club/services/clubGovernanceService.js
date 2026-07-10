@@ -1,4 +1,5 @@
 import { getCurrentUser, isRbacEnabled } from "../../../auth/authService.js";
+import { can } from "../../../auth/rbac.js";
 import {
   ROLES,
   isClubScopedRole,
@@ -10,6 +11,7 @@ import { getClubById as getRegistryClubById, updateClubMeta } from "../../../dom
 import { deleteClub as deleteClubRegistry } from "../../../domain/clubService.js";
 import { loadClubs } from "../../../data/club.js";
 import { guardClubAction, guardPermission } from "../../../auth/guardAction.js";
+import { guardClubTenant, resolveTenantIdForClub } from "../../tenant/guards/tenantGuard.js";
 import { PERMISSIONS } from "../../../auth/permissions.js";
 import { CLUB_STATUSES } from "../constants/clubStatus.js";
 import { hasClubPresident, normalizeClubGovernance, getVicePresidentUserIds, MAX_VICE_PRESIDENTS } from "../models/clubGovernance.js";
@@ -252,11 +254,35 @@ export function canApproveClubMembershipRequests(user, club) {
     return false;
   }
 
-  return (
+  if (
     isClubPresident(user, club) ||
     isClubVicePresident(user, club) ||
     isClubOwner(user, club)
-  );
+  ) {
+    return true;
+  }
+
+  if (!isRbacEnabled()) {
+    return false;
+  }
+
+  const tenantId =
+    club.tenantId || club.venueId || resolveTenantIdForClub(club.id);
+  if (
+    !can(user, PERMISSIONS.CLUB_MEMBERSHIP_REVIEW, {
+      clubId: club.id,
+      venueId: tenantId,
+      tenantId,
+    })
+  ) {
+    return false;
+  }
+
+  if (!tenantId) {
+    return false;
+  }
+
+  return guardClubTenant(club.id, tenantId, { user }).ok;
 }
 
 export function canManageClubGovernance(user, club) {

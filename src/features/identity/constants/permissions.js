@@ -47,6 +47,7 @@ export const PERMISSIONS = Object.freeze({
   CLUB_DELETE: "club.delete",
   CLUB_GOVERNANCE_ASSIGN_OWNER: "club.governance.assign_owner",
   CLUB_GOVERNANCE_APPROVE: "club.governance.approve",
+  CLUB_MEMBERSHIP_REVIEW: "club.membership.review",
 
   PLAYER_VIEW_SUMMARY: "player.view_summary",
   PLAYER_VIEW_FOR_TOURNAMENT_INVITE: "player.view_for_tournament_invite",
