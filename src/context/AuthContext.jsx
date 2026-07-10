@@ -60,7 +60,7 @@ export function AuthProvider({ children }) {
         const result = await Promise.race([
           restoreSupabaseSession(),
           new Promise((_, reject) => {
-            timeoutId = window.setTimeout(() => reject(new Error("AUTH_INIT_TIMEOUT")), 5000);
+            timeoutId = window.setTimeout(() => reject(new Error("AUTH_INIT_TIMEOUT")), 12000);
           }),
         ]);
 
@@ -94,8 +94,16 @@ export function AuthProvider({ children }) {
           console.error("[auth] initialization failed", error);
         }
         if (!cancelled) {
-          clearAuthSession();
-          setAuthError(error?.message || "Không thể khởi tạo phiên đăng nhập.");
+          // Timeout khi restore session: vẫn cho phép form đăng nhập (không khóa UI).
+          const isTimeout = String(error?.message || "").includes("AUTH_INIT_TIMEOUT");
+          if (!isTimeout) {
+            clearAuthSession();
+          }
+          setAuthError(
+            isTimeout
+              ? null
+              : error?.message || "Không thể khởi tạo phiên đăng nhập."
+          );
           refresh();
         }
       } finally {

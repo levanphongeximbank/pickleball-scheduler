@@ -270,16 +270,26 @@ async function syncSupabaseUser(authUser, options = {}) {
   }
 
   saveAuthSessionFromCloudProfile(resolved.user, { provider: "supabase" });
-  await pullClusterContextForUser(resolved.user);
-  await syncClubRegistryForUser(resolved.user);
-  const refreshed = await fetchProfileByUserId(resolved.user.id);
-  if (refreshed.ok) {
-    saveAuthSessionFromCloudProfile(refreshed.user, { provider: "supabase" });
-  }
+
+  // Đồng bộ cụm sân / danh sách CLB chạy nền — không chặn đăng nhập (tránh AUTH_INIT_TIMEOUT).
+  void (async () => {
+    try {
+      await pullClusterContextForUser(resolved.user);
+      await syncClubRegistryForUser(resolved.user);
+      const refreshed = await fetchProfileByUserId(resolved.user.id);
+      if (refreshed.ok) {
+        saveAuthSessionFromCloudProfile(refreshed.user, { provider: "supabase" });
+      }
+    } catch (error) {
+      if (typeof console !== "undefined") {
+        console.warn("[auth] background club/cluster sync failed", error);
+      }
+    }
+  })();
 
   return {
     ok: true,
-    user: loadAuthSession()?.user || (refreshed.ok ? refreshed.user : resolved.user),
+    user: loadAuthSession()?.user || resolved.user,
     provider: "supabase",
     warning: resolved.warning || null,
   };
