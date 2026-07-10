@@ -41,6 +41,7 @@ import {
 } from "../features/billing/repositories/billingStoreRuntime.js";
 import { syncLegacySubscriptionsFromBilling } from "../domain/venueService.js";
 import { isSubscriptionOperationalExemptRole } from "../features/billing/guards/operationalRoutePolicy.js";
+import { invalidateClubRegistryCache } from "../features/club/registry/clubRegistryCache.js";
 
 const TenantContext = createContext(null);
 
@@ -59,12 +60,7 @@ export function TenantProvider({ children }) {
     }
 
     if (canPickTenant) {
-      return (
-        adminTenantId ||
-        loadActiveTenantId() ||
-        listTenants()[0]?.id ||
-        null
-      );
+      return adminTenantId || loadActiveTenantId() || null;
     }
 
     return resolveEffectiveTenantId(user);
@@ -147,15 +143,7 @@ export function TenantProvider({ children }) {
     }
   }, [currentTenantId, isAuthenticated, isSuperAdmin, rbacEnabled, user, userClubId, userId]);
 
-  useEffect(() => {
-    if (!canPickTenant || adminTenantId || !listTenants().length) {
-      return;
-    }
-
-    const firstTenantId = listTenants()[0].id;
-    saveActiveTenantId(firstTenantId);
-    setAdminTenantId(firstTenantId);
-  }, [adminTenantId, canPickTenant]);
+  // Phase 42K — SA must explicitly pick tenant (no listTenants()[0] fallback).
 
   const tenantCheck = useMemo(() => {
     if (!rbacEnabled || !isAuthenticated || !user) {
@@ -235,6 +223,7 @@ export function TenantProvider({ children }) {
 
       saveActiveTenantId(trimmed);
       setAdminTenantId(trimmed);
+      invalidateClubRegistryCache({ tenantId: trimmed });
 
       const clubId = getPrimaryClubIdForTenant(trimmed);
       if (clubId && getActiveClubId() !== clubId) {

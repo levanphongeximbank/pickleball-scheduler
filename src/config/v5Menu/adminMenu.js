@@ -18,6 +18,24 @@ export const ADMIN_MENU_ROOT = menuFolder({
 
     menuLeaf({
 
+      key: "admin-platform-clubs",
+
+      icon: "groups",
+
+      text: "Sổ CLB Platform",
+
+      path: "/platform/clubs",
+
+      match: "platform-clubs",
+
+      roles: [ROLES.PLATFORM_ADMIN, ROLES.SUPER_ADMIN],
+
+      featureStatus: FEATURE_STATUS.LIVE,
+
+    }),
+
+    menuLeaf({
+
       key: "admin-tenants",
 
       icon: "tenants",

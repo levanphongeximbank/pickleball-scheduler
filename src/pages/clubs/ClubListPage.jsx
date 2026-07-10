@@ -8,6 +8,7 @@ import {
   IconButton,
   MenuItem,
   Paper,
+  Skeleton,
   Stack,
   Table,
   TableBody,
@@ -40,7 +41,10 @@ import {
   canApproveClubRegistration,
   approveClubRegistration,
   rejectClubRegistration,
+  isClubStorageV2Enabled,
 } from "../../features/club/index.js";
+import { CLUB_REGISTRY_SCOPE } from "../../features/club/registry/clubRegistryCache.js";
+import { useClubRegistry } from "../../features/club/hooks/useClubRegistry.js";
 import { syncClubRegistryForUser } from "../../features/club/services/clubRegistryCloudSync.js";
 import { syncClubsForVenueToCloud } from "../../features/club/services/clubRegistryCloudService.js";
 import ClubFormDialog from "./ClubFormDialog.jsx";
@@ -70,10 +74,27 @@ export default function ClubListPage() {
   const [syncSaving, setSyncSaving] = useState(false);
   const [localRevision, setLocalRevision] = useState(0);
 
-  const canSyncCloud = isSuperAdmin || isPlatformScopedRole(user?.role);
+  const storageV2 = isClubStorageV2Enabled();
+  const registryFilters = useMemo(
+    () => ({
+      search,
+      status: statusFilter,
+      includeInactive: statusFilter === "all",
+    }),
+    [search, statusFilter]
+  );
+
+  const registry = useClubRegistry({
+    scope: CLUB_REGISTRY_SCOPE.TENANT,
+    tenantId: storageV2 ? currentTenantId : null,
+    filters: registryFilters,
+    enabled: storageV2 && Boolean(currentTenantId) && isAuthenticated,
+  });
+
+  const canSyncCloud = !storageV2 && (isSuperAdmin || isPlatformScopedRole(user?.role));
 
   useEffect(() => {
-    if (!isAuthenticated || !user?.id) {
+    if (storageV2 || !isAuthenticated || !user?.id) {
       return;
     }
     void syncClubRegistryForUser(user).then((result) => {
@@ -81,7 +102,7 @@ export default function ClubListPage() {
         setLocalRevision((value) => value + 1);
       }
     });
-  }, [isAuthenticated, user, revision]);
+  }, [isAuthenticated, storageV2, user, revision]);
 
   const canCreate =
     !rbacEnabled ||
@@ -93,6 +114,31 @@ export default function ClubListPage() {
     can(PERMISSIONS.CLUB_UPDATE, { venueId: currentTenantId, tenantId: currentTenantId });
 
   const clubsWithStats = useMemo(() => {
+    if (storageV2) {
+      return (registry.clubs || []).map((row) => ({
+        club: {
+          id: row.id,
+          name: row.name,
+          code: row.code,
+          status: row.status,
+          createdAt: row.createdAt,
+          tenantId: row.tenantId,
+          governance: {
+            ownerUserId: row._raw?.governance?.ownerUserId || row._raw?.owner_user_id,
+            presidentUserId: row._raw?.governance?.presidentUserId || row._raw?.president_user_id,
+          },
+        },
+        stats: {
+          memberCount: row.memberCount ?? 0,
+          avgElo: 0,
+          tournamentCount: 0,
+          pendingRequestCount: row.pendingRequestCount,
+          ownerName: row.ownerName,
+          presidentName: row.presidentName,
+        },
+      }));
+    }
+
     const clubs = getClubsVisibleToUser(currentTenantId, user).filter((c) => !c.isDefault);
     return clubs.map((club) => ({
       club,
@@ -105,7 +151,7 @@ export default function ClubListPage() {
         tournamentCount: 0,
       },
     }));
-  }, [currentTenantId, user, revision, localRevision]);
+  }, [currentTenantId, user, revision, localRevision, registry.clubs, storageV2]);
 
   useEffect(() => {
     if (searchParams.get("create") === "1" && canCreate) {
@@ -147,11 +193,19 @@ export default function ClubListPage() {
     return rows;
   }, [clubsWithStats, search, statusFilter, sortBy]);
 
+  const bumpList = () => {
+    if (storageV2) {
+      void registry.invalidate();
+    } else {
+      setLocalRevision((v) => v + 1);
+    }
+    refreshTenant();
+  };
+
   const handleFormSuccess = () => {
     setFormOpen(false);
     setEditClub(null);
-    setLocalRevision((v) => v + 1);
-    refreshTenant();
+    bumpList();
   };
 
   const handleDeactivate = () => {
@@ -162,8 +216,7 @@ export default function ClubListPage() {
       return;
     }
     setDeactivateTarget(null);
-    setLocalRevision((v) => v + 1);
-    refreshTenant();
+    bumpList();
   };
 
   const handleApprove = (club) => {
@@ -172,8 +225,7 @@ export default function ClubListPage() {
       setError(result.error);
       return;
     }
-    setLocalRevision((v) => v + 1);
-    refreshTenant();
+    bumpList();
   };
 
   const handleReject = (club) => {
@@ -182,8 +234,7 @@ export default function ClubListPage() {
       setError(result.error);
       return;
     }
-    setLocalRevision((v) => v + 1);
-    refreshTenant();
+    bumpList();
   };
 
   const handleSyncToCloud = async () => {
@@ -237,8 +288,35 @@ export default function ClubListPage() {
 
   if (!currentTenantId) {
     return (
-      <Alert severity="warning">
-        Chưa xác định được tenant. Vui lòng đăng nhập hoặc chọn tenant.
+      <Alert severity="info">
+        {isSuperAdmin || isPlatformScopedRole(user?.role)
+          ? "Chọn tenant ở header trước khi quản lý sổ đăng ký CLB."
+          : "Chưa xác định được tenant. Vui lòng đăng nhập hoặc liên hệ quản trị."}
+      </Alert>
+    );
+  }
+
+  if (storageV2 && registry.loading) {
+    return (
+      <Box>
+        <Skeleton variant="text" width="40%" height={40} />
+        <Skeleton variant="rounded" height={120} sx={{ mt: 2 }} />
+        <Skeleton variant="rounded" height={320} sx={{ mt: 2 }} />
+      </Box>
+    );
+  }
+
+  if (storageV2 && registry.error) {
+    return (
+      <Alert
+        severity="error"
+        action={
+          <Button color="inherit" size="small" onClick={() => void registry.reload()}>
+            Thử lại
+          </Button>
+        }
+      >
+        {registry.error}
       </Alert>
     );
   }
@@ -251,7 +329,7 @@ export default function ClubListPage() {
             Quản lý CLB
           </Typography>
           <Typography variant="body2" color="text.secondary">
-            {currentTenant?.name || currentTenantId}
+            Tenant: {currentTenant?.name || currentTenantId} · {currentTenantId}
           </Typography>
         </Box>
         <Stack direction="row" spacing={1} alignItems="center">
@@ -360,9 +438,12 @@ export default function ClubListPage() {
               <TableRow>
                 <TableCell>Tên CLB</TableCell>
                 <TableCell>Mã</TableCell>
+                {storageV2 && <TableCell>Chủ sở hữu</TableCell>}
+                {storageV2 && <TableCell>Chủ tịch</TableCell>}
                 <TableCell align="right">Thành viên</TableCell>
-                <TableCell align="right">ELO TB</TableCell>
-                <TableCell align="right">Giải nội bộ</TableCell>
+                {storageV2 && <TableCell align="right">Chờ duyệt</TableCell>}
+                {!storageV2 && <TableCell align="right">ELO TB</TableCell>}
+                {!storageV2 && <TableCell align="right">Giải nội bộ</TableCell>}
                 <TableCell>Trạng thái</TableCell>
                 <TableCell>Ngày tạo</TableCell>
                 <TableCell align="right">Thao tác</TableCell>
@@ -373,9 +454,16 @@ export default function ClubListPage() {
                 <TableRow key={club.id} hover>
                   <TableCell>{club.name}</TableCell>
                   <TableCell>{club.code || "—"}</TableCell>
+                  {storageV2 && <TableCell>{stats.ownerName || "—"}</TableCell>}
+                  {storageV2 && <TableCell>{stats.presidentName || "—"}</TableCell>}
                   <TableCell align="right">{stats.memberCount}</TableCell>
-                  <TableCell align="right">{stats.avgElo || "—"}</TableCell>
-                  <TableCell align="right">{stats.tournamentCount}</TableCell>
+                  {storageV2 && (
+                    <TableCell align="right">
+                      {stats.pendingRequestCount == null ? "—" : stats.pendingRequestCount}
+                    </TableCell>
+                  )}
+                  {!storageV2 && <TableCell align="right">{stats.avgElo || "—"}</TableCell>}
+                  {!storageV2 && <TableCell align="right">{stats.tournamentCount}</TableCell>}
                   <TableCell>
                     <Chip
                       size="small"

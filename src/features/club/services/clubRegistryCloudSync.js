@@ -14,7 +14,10 @@ import {
   rpcClubListDiscoverable,
   rpcClubListRegistry,
 } from "./clubRegistryRpcService.js";
-import { rpcV2ClubListDiscoverable, rpcV2ClubListRegistry } from "./clubStorageV2RpcService.js";
+import {
+  invalidateAllClubRegistryCache,
+  invalidateClubRegistryCache,
+} from "../registry/clubRegistryCache.js";
 
 function sameUserId(a, b) {
   return String(a || "").trim() === String(b || "").trim();
@@ -72,17 +75,13 @@ export async function syncClubRegistryForUser(user = getCurrentUser()) {
   }
 
   if (isClubStorageV2Enabled()) {
-    // V2: chỉ hydrate list qua RPC mới; không merge/push local registry.
-    const listResult = await rpcV2ClubListDiscoverable({ limit: 200 });
-    if (!listResult.ok) {
-      return listResult;
-    }
+    // Phase 42K — registry read via clubRegistryService; no discover hydrate / local merge.
     return {
       ok: true,
-      pulled: listResult.clubs?.length ?? 0,
+      skipped: true,
+      pulled: 0,
       pushed: 0,
-      provider: "v2-rpc",
-      clubs: listResult.clubs || [],
+      provider: "v2-registry-service",
     };
   }
 

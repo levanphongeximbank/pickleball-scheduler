@@ -490,6 +490,7 @@ export const ROUTE_PERMISSIONS = Object.freeze({
   "/daily-play": [PERMISSIONS.TOURNAMENT_VIEW],
   "/club": [PERMISSIONS.CLUB_VIEW],
   "/manage/clubs": [PERMISSIONS.CLUB_VIEW],
+  "/platform/clubs": [PERMISSIONS.CLUB_VIEW],
   "/tournament": [PERMISSIONS.TOURNAMENT_VIEW],
   "/tournament/list": [PERMISSIONS.TOURNAMENT_VIEW],
   "/tournament/create": [PERMISSIONS.TOURNAMENT_CREATE],

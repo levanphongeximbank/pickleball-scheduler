@@ -255,6 +255,10 @@ export function isNavItemActive(currentPath, item, resolvedPath) {
     return pathOnly === "/admin/staff";
   }
 
+  if (item.match === "platform-clubs") {
+    return pathOnly === "/platform/clubs";
+  }
+
   if (item.match === "tournament-register") {
     return pathOnly === "/tournament/register";
   }

@@ -210,6 +210,25 @@ export { pullClubRegistryForUser, mergeClubsIntoLocal, cloudRowToClubRecord, syn
 export { persistClubToCloud, syncClubsForVenueToCloud } from "./services/clubRegistryCloudService.js";
 
 export {
+  CLUB_REGISTRY_SCOPE,
+  buildClubRegistryCacheKey,
+  invalidateClubRegistryCache,
+  invalidateAllClubRegistryCache,
+} from "./registry/clubRegistryCache.js";
+
+export {
+  normalizeRegistryRow,
+  filterRegistryRows,
+  fetchTenantClubRegistry,
+  fetchPlatformClubRegistry,
+  assertTenantRegistryAccess,
+  assertPlatformRegistryAccess,
+  paginateRegistryRows,
+} from "./services/clubRegistryService.js";
+
+export { useClubRegistry } from "./hooks/useClubRegistry.js";
+
+export {
   PLATFORM_ATHLETE_LINK_STATUS,
   isPlatformAthleteViewer,
   getClubPlayersPlatformWide,

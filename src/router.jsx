@@ -47,6 +47,7 @@ const SelectPlayers = lazy(() => import("./pages/SelectPlayers"));
 
 const ClubManagement = lazy(() => import("./pages/ClubManagement"));
 const ClubListPage = lazy(() => import("./pages/clubs/ClubListPage"));
+const PlatformClubsPage = lazy(() => import("./pages/platform/PlatformClubsPage"));
 const ClubDetailPage = lazy(() => import("./pages/clubs/ClubDetailPage"));
 
 const Tournament = lazy(() => import("./pages/tournament/TournamentShell"));
@@ -486,6 +487,7 @@ export default function Router() {
 
             <Route path="/manage/clubs" element={<ClubListPage />} />
             <Route path="/manage/clubs/:clubId" element={<ClubDetailPage />} />
+            <Route path="/platform/clubs" element={<PlatformClubsPage />} />
             <Route path="/club" element={<ClubManagement />} />
 
             <Route path="/tournament/list" element={<TournamentListPage />} />
