@@ -70,26 +70,46 @@ export default function MyClubPage() {
     setReclaiming(true);
     setMessage(null);
 
-    const result = await reclaimLocalPresidentClubForUser(user);
+    try {
+      const result = await Promise.race([
+        reclaimLocalPresidentClubForUser(user),
+        new Promise((resolve) => {
+          window.setTimeout(
+            () =>
+              resolve({
+                ok: false,
+                code: "TIMEOUT",
+                error: "Nhận lại CLB quá lâu. Đăng xuất rồi đăng nhập lại để thử.",
+              }),
+            20000
+          );
+        }),
+      ]);
 
-    if (result.ok && result.reclaimed) {
-      await refresh();
-      setRevision((value) => value + 1);
+      if (result.ok && result.reclaimed) {
+        await refresh();
+        setRevision((value) => value + 1);
+        setMessage({
+          type: "success",
+          text: `Đã nhận lại CLB ${result.clubName || ""} và lưu lên hệ thống chung.`,
+        });
+        handleViewChange("home");
+      } else if (!result.ok && result.error) {
+        setMessage({ type: "warning", text: result.error });
+      } else if (manual && result.skipped) {
+        setMessage({
+          type: "info",
+          text: "Không tìm thấy CLB do bạn làm Chủ tịch trên máy này để nhận lại.",
+        });
+      }
+    } catch (error) {
       setMessage({
-        type: "success",
-        text: `Đã nhận lại CLB ${result.clubName || ""} và lưu lên hệ thống chung.`,
+        type: "warning",
+        text: error?.message || "Không nhận lại được CLB. Thử đăng xuất rồi đăng nhập lại.",
       });
-      handleViewChange("home");
-    } else if (!result.ok && result.error) {
-      setMessage({ type: "warning", text: result.error });
-    } else if (manual && result.skipped) {
-      setMessage({
-        type: "info",
-        text: "Không tìm thấy CLB do bạn làm Chủ tịch trên máy này để nhận lại.",
-      });
+    } finally {
+      setReclaiming(false);
     }
-
-    setReclaiming(false);
   };
 
   // Máy còn CLB do user làm Chủ tịch nhưng profile cloud chưa gắn → tự nhận lại

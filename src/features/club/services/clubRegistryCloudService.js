@@ -83,8 +83,9 @@ export async function persistClubToCloud(club, { venueId = null, actor = getCurr
     return rpcResult;
   }
 
+  // Pull registry chạy nền — không chặn tạo/nhận lại CLB.
   if (actor?.id) {
-    await syncClubRegistryForUser(actor);
+    void syncClubRegistryForUser(actor);
   }
 
   return { ok: true, clubId: club.id, venueId: cloudVenueId, provider: "rpc" };
