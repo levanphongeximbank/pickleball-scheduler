@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   Box,
   Button,
@@ -20,6 +20,7 @@ import GovernanceMemberSelect from "../../../components/club/GovernanceMemberSel
 import {
   canRelinquishClubPresident,
   canManageClubGovernance,
+  fetchGovernanceNameHints,
   getClubById,
   getClubStats,
   getGovernanceDisplayLabels,
@@ -62,11 +63,40 @@ export default function MyClubOrgChart({
   const [nextPresidentId, setNextPresidentId] = useState("");
   const [transferOpen, setTransferOpen] = useState(false);
   const [busy, setBusy] = useState(false);
+  const [nameHints, setNameHints] = useState({});
 
   const club = useMemo(() => getClubById(clubId, tenantId), [clubId, tenantId, revision]);
+
+  useEffect(() => {
+    let cancelled = false;
+    const gov = club?.governance || {};
+    const ids = [
+      gov.presidentUserId,
+      gov.ownerUserId,
+      ...getVicePresidentUserIds(gov),
+    ].filter(Boolean);
+
+    void fetchGovernanceNameHints(ids).then((hints) => {
+      if (!cancelled) {
+        setNameHints(hints);
+      }
+    });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [
+    club?.id,
+    club?.governance?.presidentUserId,
+    club?.governance?.ownerUserId,
+    club?.governance?.vicePresidentUserId,
+    club?.governance?.vicePresidentUserIds,
+    revision,
+  ]);
+
   const labels = useMemo(
-    () => (club ? getGovernanceDisplayLabels(club, tenantId) : null),
-    [club, tenantId, revision]
+    () => (club ? getGovernanceDisplayLabels(club, tenantId, nameHints) : null),
+    [club, tenantId, nameHints, revision]
   );
   const stats = useMemo(() => getClubStats(clubId, tenantId), [clubId, tenantId, revision]);
   const candidates = useMemo(

@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   Alert,
   Box,
@@ -28,8 +28,10 @@ import {
   canAssignClubOwner,
   canChangeClubPresident,
   canManageClubGovernance,
+  fetchGovernanceNameHints,
   getGovernanceDisplayLabels,
   getRegisteredClusterLabel,
+  getVicePresidentUserIds,
   listClubGovernanceCandidates,
   updateClubGovernance,
   assignClubOwner,
@@ -41,6 +43,7 @@ export default function ClubGovernancePanel({ club, tenantId, onRefresh }) {
   const { user } = useAuth();
   const [editOpen, setEditOpen] = useState(false);
   const [error, setError] = useState(null);
+  const [nameHints, setNameHints] = useState({});
   const [form, setForm] = useState({
     presidentUserId: "",
     vicePresidentUserId: "",
@@ -48,9 +51,35 @@ export default function ClubGovernancePanel({ club, tenantId, onRefresh }) {
     registeredClusterId: "",
   });
 
+  useEffect(() => {
+    let cancelled = false;
+    const gov = club?.governance || {};
+    const ids = [
+      gov.presidentUserId,
+      gov.ownerUserId,
+      ...getVicePresidentUserIds(gov),
+    ].filter(Boolean);
+
+    void fetchGovernanceNameHints(ids).then((hints) => {
+      if (!cancelled) {
+        setNameHints(hints);
+      }
+    });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [
+    club?.id,
+    club?.governance?.presidentUserId,
+    club?.governance?.ownerUserId,
+    club?.governance?.vicePresidentUserId,
+    club?.governance?.vicePresidentUserIds,
+  ]);
+
   const labels = useMemo(
-    () => getGovernanceDisplayLabels(club, tenantId),
-    [club, tenantId]
+    () => getGovernanceDisplayLabels(club, tenantId, nameHints),
+    [club, tenantId, nameHints]
   );
   const registeredCluster = useMemo(
     () => getRegisteredClusterLabel(club, tenantId),

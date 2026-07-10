@@ -9,11 +9,13 @@ import {
   canManageClubGovernance,
   canSelfRegisterClub,
   canViewFullClubMembers,
+  fetchGovernanceNameHints,
   getClubById,
   getClubStats,
   getGovernanceDisplayLabels,
   getMyClubSummary,
   getRegisteredClusterLabel,
+  getVicePresidentUserIds,
   leaveMyClub,
   listDiscoverableClubs,
   reclaimLocalPresidentClubForUser,
@@ -39,6 +41,7 @@ export default function MyClubPage() {
   const [joinDialogOpen, setJoinDialogOpen] = useState(false);
   const [leaveLoading, setLeaveLoading] = useState(false);
   const [reclaiming, setReclaiming] = useState(false);
+  const [nameHints, setNameHints] = useState({});
   const reclaimAttemptedRef = useRef(false);
 
   const clubId = user?.clubId || user?.club_id || null;
@@ -147,10 +150,48 @@ export default function MyClubPage() {
     return getClubStats(clubId, tenantId);
   }, [clubId, tenantId, revision]);
 
+  useEffect(() => {
+    let cancelled = false;
+    const gov = clubSummary?.governance || clubRecord?.governance || {};
+    const ids = [
+      gov.presidentUserId,
+      gov.ownerUserId,
+      ...getVicePresidentUserIds(gov),
+    ].filter(Boolean);
+
+    if (ids.length === 0) {
+      setNameHints({});
+      return undefined;
+    }
+
+    void fetchGovernanceNameHints(ids).then((hints) => {
+      if (!cancelled) {
+        setNameHints(hints);
+      }
+    });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [
+    clubId,
+    clubSummary?.governance?.presidentUserId,
+    clubSummary?.governance?.ownerUserId,
+    clubSummary?.governance?.vicePresidentUserId,
+    clubSummary?.governance?.vicePresidentUserIds,
+    clubRecord?.governance?.presidentUserId,
+    clubRecord?.governance?.ownerUserId,
+    revision,
+  ]);
+
   const governanceLabels = clubSummary
-    ? getGovernanceDisplayLabels({ id: clubId, governance: clubSummary.governance }, tenantId)
+    ? getGovernanceDisplayLabels(
+        { id: clubId, governance: clubSummary.governance },
+        tenantId,
+        nameHints
+      )
     : clubRecord
-      ? getGovernanceDisplayLabels(clubRecord, tenantId)
+      ? getGovernanceDisplayLabels(clubRecord, tenantId, nameHints)
       : null;
 
   const registeredCluster = clubSummary

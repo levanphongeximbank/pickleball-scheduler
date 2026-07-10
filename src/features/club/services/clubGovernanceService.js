@@ -30,7 +30,7 @@ import {
 import { purgeClubExtension } from "../storage/clubExtensionStorage.js";
 import { writeAuditLog } from "../../identity/services/auditService.js";
 import { rpcAdminUpdateUser } from "../../identity/services/identityRpcService.js";
-import { mapProfileRowToUser } from "../../../auth/profileService.js";
+import { fetchProfileByUserId, mapProfileRowToUser } from "../../../auth/profileService.js";
 import { persistClubToCloud } from "./clubRegistryCloudService.js";
 import { rpcClubClaimSelfRegistration } from "./clubRegistryRpcService.js";
 import {
@@ -644,25 +644,69 @@ function applyGovernanceAthleteDemote(clubId, userId, governance) {
   }
 }
 
-function resolveGovernanceUserLabel(userId, clubId, tenantId) {
+function isPlaceholderGovernanceLabel(label, userId) {
+  const trimmedId = String(userId || "").trim();
+  const text = String(label || "").trim();
+  if (!text) {
+    return true;
+  }
+  if (!trimmedId) {
+    return false;
+  }
+  return text === `User ${trimmedId.slice(0, 8)}`;
+}
+
+function resolvePlayerNameForAuthUser(clubId, userId) {
+  const trimmed = String(userId || "").trim();
+  if (!trimmed || !clubId) {
+    return null;
+  }
+
+  const players = loadPlayersForClub(clubId);
+  const byAuth = players.find((item) => sameUserId(item.authUserId, trimmed));
+  if (byAuth?.name) {
+    return String(byAuth.name).trim() || null;
+  }
+
+  const link = loadAthleteClubLink(trimmed);
+  if (link?.playerId) {
+    const player = players.find((item) => item.id === link.playerId);
+    if (player?.name) {
+      return String(player.name).trim() || null;
+    }
+  }
+
+  return null;
+}
+
+function resolveGovernanceUserLabel(userId, clubId, tenantId, nameHints = null) {
   const trimmed = String(userId || "").trim();
   if (!trimmed) {
     return null;
   }
 
-  const candidates = listClubGovernanceCandidates(clubId, tenantId);
-  const matched = candidates.find((item) => sameUserId(item.userId, trimmed));
-  if (matched?.displayName) {
-    return matched.displayName;
+  const hinted = nameHints?.[trimmed] || nameHints?.[String(trimmed).toLowerCase()];
+  if (hinted && String(hinted).trim()) {
+    return String(hinted).trim();
   }
 
-  const link = loadAthleteClubLink(trimmed);
-  if (link?.playerId) {
-    const players = loadPlayersForClub(clubId);
-    const player = players.find((item) => item.id === link.playerId);
-    if (player?.name) {
-      return player.name;
+  const current = getCurrentUser();
+  if (sameUserId(current?.id, trimmed)) {
+    const selfName = String(current.displayName || current.email || "").trim();
+    if (selfName) {
+      return selfName;
     }
+  }
+
+  const playerName = resolvePlayerNameForAuthUser(clubId, trimmed);
+  if (playerName) {
+    return playerName;
+  }
+
+  const candidates = listClubGovernanceCandidates(clubId, tenantId);
+  const matched = candidates.find((item) => sameUserId(item.userId, trimmed));
+  if (matched?.displayName && !isPlaceholderGovernanceLabel(matched.displayName, trimmed)) {
+    return matched.displayName;
   }
 
   return `User ${trimmed.slice(0, 8)}`;
@@ -679,21 +723,54 @@ export function listClubGovernanceCandidates(clubId, tenantId) {
   const playerById = new Map(players.map((player) => [player.id, player]));
   const candidateMap = new Map();
 
+  const resolveDisplayName = (userId, playerId = null) => {
+    const id = String(userId || "").trim();
+    const player = playerId ? playerById.get(playerId) : null;
+    if (player?.name) {
+      return String(player.name).trim();
+    }
+
+    const byAuth = players.find((item) => sameUserId(item.authUserId, id));
+    if (byAuth?.name) {
+      return String(byAuth.name).trim();
+    }
+
+    const current = getCurrentUser();
+    if (sameUserId(current?.id, id)) {
+      const selfName = String(current.displayName || current.email || "").trim();
+      if (selfName) {
+        return selfName;
+      }
+    }
+
+    return `User ${id.slice(0, 8)}`;
+  };
+
   const addCandidate = (userId, playerId = null) => {
     const id = String(userId || "").trim();
     if (!id) {
       return;
     }
 
-    if (candidateMap.has(id)) {
+    const nextName = resolveDisplayName(id, playerId);
+    const existing = candidateMap.get(id);
+    if (existing) {
+      if (
+        isPlaceholderGovernanceLabel(existing.displayName, id) &&
+        !isPlaceholderGovernanceLabel(nextName, id)
+      ) {
+        existing.displayName = nextName;
+      }
+      if (!existing.playerId && playerId) {
+        existing.playerId = playerId;
+      }
       return;
     }
 
-    const player = playerId ? playerById.get(playerId) : null;
     candidateMap.set(id, {
       userId: id,
       playerId: playerId || null,
-      displayName: player?.name || `User ${id.slice(0, 8)}`,
+      displayName: nextName,
     });
   };
 
@@ -705,6 +782,31 @@ export function listClubGovernanceCandidates(clubId, tenantId) {
     if (linkedUserId) {
       addCandidate(linkedUserId, member.playerId);
     }
+    const player = playerById.get(member.playerId);
+    if (player?.authUserId) {
+      addCandidate(player.authUserId, member.playerId);
+    }
+  }
+
+  for (const player of players) {
+    if (player?.authUserId) {
+      addCandidate(player.authUserId, player.id);
+    }
+  }
+
+  const governance = club.governance || {};
+  const governanceUserIds = [
+    governance.presidentUserId,
+    governance.ownerUserId,
+    ...getVicePresidentUserIds(governance),
+  ];
+  for (const governanceUserId of governanceUserIds) {
+    if (!governanceUserId) {
+      continue;
+    }
+    const player =
+      players.find((item) => sameUserId(item.authUserId, governanceUserId)) || null;
+    addCandidate(governanceUserId, player?.id || null);
   }
 
   return Array.from(candidateMap.values()).sort((a, b) =>
@@ -983,7 +1085,16 @@ export function assignClubOwner(clubId, ownerUserId, tenantId) {
     ownerUserId: trimmed,
   };
 
-  return updateClubMeta(clubId, { governance });
+  const result = updateClubMeta(clubId, { governance });
+  if (result.ok) {
+    const effectiveTenantId = tenantId || club.venueId || club.tenantId || null;
+    void persistClubToCloud(result.club || { ...club, governance }, {
+      venueId: effectiveTenantId,
+      actor: user,
+    });
+  }
+
+  return result;
 }
 
 export function approveClubRegistration(clubId, tenantId) {
@@ -1253,19 +1364,21 @@ export function updateClubGovernance(clubId, patch = {}, tenantId = null) {
   return result;
 }
 
-export function getGovernanceDisplayLabels(club, tenantId = null) {
+export function getGovernanceDisplayLabels(club, tenantId = null, nameHints = null) {
   const gov = club?.governance || {};
   const clubId = club?.id || null;
   const effectiveTenantId = tenantId || club?.tenantId || club?.venueId || null;
 
   const ownerLabel = gov.ownerUserId
-    ? resolveGovernanceUserLabel(gov.ownerUserId, clubId, effectiveTenantId)
+    ? resolveGovernanceUserLabel(gov.ownerUserId, clubId, effectiveTenantId, nameHints)
     : "Chưa gán";
   const presidentLabel = gov.presidentUserId
-    ? resolveGovernanceUserLabel(gov.presidentUserId, clubId, effectiveTenantId)
+    ? resolveGovernanceUserLabel(gov.presidentUserId, clubId, effectiveTenantId, nameHints)
     : "Chưa gán";
   const viceIds = getVicePresidentUserIds(gov);
-  const viceLabels = viceIds.map((id) => resolveGovernanceUserLabel(id, clubId, effectiveTenantId));
+  const viceLabels = viceIds.map((id) =>
+    resolveGovernanceUserLabel(id, clubId, effectiveTenantId, nameHints)
+  );
   const viceLabel = viceLabels.length ? viceLabels.join(", ") : "—";
 
   if (
@@ -1289,4 +1402,39 @@ export function getGovernanceDisplayLabels(club, tenantId = null) {
     vicePresidentLabels: viceLabels,
     combinedOwnerPresident: false,
   };
+}
+
+/** Lấy display_name từ profiles (Super Admin / venue staff / chính mình) để hiển thị Chủ tịch / Chủ sở hữu. */
+export async function fetchGovernanceNameHints(userIds = []) {
+  const uniqueIds = [
+    ...new Set(
+      (Array.isArray(userIds) ? userIds : [])
+        .map((id) => String(id || "").trim())
+        .filter(Boolean)
+    ),
+  ];
+
+  if (uniqueIds.length === 0) {
+    return {};
+  }
+
+  const hints = {};
+  await Promise.all(
+    uniqueIds.map(async (userId) => {
+      try {
+        const result = await fetchProfileByUserId(userId);
+        if (!result.ok) {
+          return;
+        }
+        const name = String(result.user?.displayName || result.profile?.display_name || "").trim();
+        if (name) {
+          hints[userId] = name;
+        }
+      } catch {
+        // RLS có thể chặn — giữ fallback local
+      }
+    })
+  );
+
+  return hints;
 }

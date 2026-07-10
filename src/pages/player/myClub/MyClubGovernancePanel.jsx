@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   Alert,
@@ -30,6 +30,7 @@ import {
   canManageClubGovernance,
   canTransferClubOwnership,
   deleteClubAsOwner,
+  fetchGovernanceNameHints,
   getClubById,
   getGovernanceDisplayLabels,
   getRegisteredClusterLabel,
@@ -49,6 +50,7 @@ export default function MyClubGovernancePanel({ clubId, tenantId, revision = 0, 
   const [message, setMessage] = useState(null);
   const [busy, setBusy] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
+  const [nameHints, setNameHints] = useState({});
   const [nextPresidentId, setNextPresidentId] = useState("");
   const [nextOwnerId, setNextOwnerId] = useState("");
   const [vicePresidentIds, setVicePresidentIds] = useState(["", ""]);
@@ -59,14 +61,41 @@ export default function MyClubGovernancePanel({ clubId, tenantId, revision = 0, 
     [clubId, tenantId, revision]
   );
 
+  useEffect(() => {
+    let cancelled = false;
+    const gov = club?.governance || {};
+    const ids = [
+      gov.presidentUserId,
+      gov.ownerUserId,
+      ...getVicePresidentUserIds(gov),
+    ].filter(Boolean);
+
+    void fetchGovernanceNameHints(ids).then((hints) => {
+      if (!cancelled) {
+        setNameHints(hints);
+      }
+    });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [
+    club?.id,
+    club?.governance?.presidentUserId,
+    club?.governance?.ownerUserId,
+    club?.governance?.vicePresidentUserId,
+    club?.governance?.vicePresidentUserIds,
+    revision,
+  ]);
+
   const candidates = useMemo(
     () => listClubGovernanceCandidates(clubId, tenantId),
     [clubId, tenantId, revision]
   );
 
   const labels = useMemo(
-    () => (club ? getGovernanceDisplayLabels(club, tenantId) : null),
-    [club, tenantId]
+    () => (club ? getGovernanceDisplayLabels(club, tenantId, nameHints) : null),
+    [club, tenantId, nameHints]
   );
   const registeredCluster = useMemo(
     () => (club ? getRegisteredClusterLabel(club, tenantId) : null),

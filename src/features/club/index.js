@@ -38,6 +38,7 @@ export {
   assignClubOwner,
   updateClubGovernance,
   getGovernanceDisplayLabels,
+  fetchGovernanceNameHints,
   getRegisteredClusterLabel,
   getRegisteredCourtsLabels,
   canApproveClubRegistration,
