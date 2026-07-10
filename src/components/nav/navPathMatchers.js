@@ -116,6 +116,17 @@ export function isNavItemActive(currentPath, item, resolvedPath) {
     return pathOnly === "/discover-clubs";
   }
 
+  // Phase 42J.2.2 — prevent default prefix matcher cross-highlighting club routes.
+  if (pathOnly === "/discover-clubs" && item.match !== "discover-clubs") {
+    return false;
+  }
+  if (
+    (pathOnly === "/my-club" || pathOnly.startsWith("/my-club/")) &&
+    item.match !== "my-club"
+  ) {
+    return false;
+  }
+
   if (item.match === "seasons-only") {
     return pathOnly === "/club";
   }

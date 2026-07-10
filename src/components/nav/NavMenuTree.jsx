@@ -138,6 +138,7 @@ function NavTreeNode({
       component={Link}
       to={path}
       selected={selected}
+      aria-current={selected ? "page" : undefined}
       onClick={onItemClick}
       sx={sidebarNavItemSx({ isDark, selected, pl })}
     >

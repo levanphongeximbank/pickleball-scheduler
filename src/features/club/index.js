@@ -168,6 +168,7 @@ export {
   resetMyActiveClubMembershipCache,
   invalidateMyActiveClubMembershipCache,
   clearMembershipCacheForUser,
+  shouldFetchMembership,
 } from "./services/clubActiveMembershipService.js";
 
 export {

@@ -10,6 +10,7 @@ import {
   getCachedMembershipSnapshot,
   invalidateMyActiveClubMembershipCache,
   resolveMyActiveClubMembership,
+  shouldFetchMembership,
 } from "../services/clubActiveMembershipService.js";
 
 const PENDING = Object.freeze({
@@ -103,6 +104,14 @@ export function useMyClubMembership(revision = 0, explicitUserId = null) {
       const cached = !force ? getCachedMembershipSnapshot(uid) : null;
       if (cached) {
         applyResult(cached);
+        return;
+      }
+
+      if (!shouldFetchMembership(uid, { force })) {
+        const snapshot = getCachedMembershipSnapshot(uid);
+        if (snapshot) {
+          applyResult(snapshot);
+        }
         return;
       }
 

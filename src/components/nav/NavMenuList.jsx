@@ -119,6 +119,7 @@ function NavGroupSection({
                 to={path}
                 key={item.key || `${group.label}-${item.text}`}
                 selected={selected}
+                aria-current={selected ? "page" : undefined}
                 onClick={onItemClick}
                 sx={{
                   position: "relative",

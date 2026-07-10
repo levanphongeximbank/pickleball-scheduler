@@ -2,7 +2,7 @@ import { createContext, useContext, useEffect, useMemo, useRef, useState } from 
 
 import { useAuth } from "../../../context/AuthContext.jsx";
 import { subscribeToSupabaseAuth } from "../../../auth/authService.js";
-import { clearMembershipCacheForUser } from "../services/clubActiveMembershipService.js";
+import { clearMembershipCacheForUser, invalidateMyActiveClubMembershipCache } from "../services/clubActiveMembershipService.js";
 import { useMyClubMembership } from "./useMyClubMembership.js";
 
 const MyClubMembershipContext = createContext(null);
@@ -63,7 +63,10 @@ export function MyClubMembershipRootProvider({ children }) {
     return {
       ...membership,
       revision,
-      bumpRevision: () => setRevision((current) => current + 1),
+      bumpRevision: () => {
+        invalidateMyActiveClubMembershipCache(userId);
+        setRevision((current) => current + 1);
+      },
     };
   }, [membership, revision, userId]);
 

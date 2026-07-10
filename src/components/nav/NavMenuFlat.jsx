@@ -77,6 +77,7 @@ export default function NavMenuFlat({ groups, user, currentPath, onItemClick, va
             to={path}
             key={item.key || item.path}
             selected={selected}
+            aria-current={selected ? "page" : undefined}
             onClick={onItemClick}
             sx={sidebarNavItemSx({ isDark, selected })}
           >

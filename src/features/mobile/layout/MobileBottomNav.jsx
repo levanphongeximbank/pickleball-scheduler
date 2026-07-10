@@ -10,6 +10,7 @@ import { useClub } from "../../../context/ClubContext.jsx";
 import { filterMobileBottomNav } from "../services/mobileNavAccess.js";
 import { resolveRouteAccessScope } from "../../../auth/menuAccess.js";
 import { useMobileNav } from "../context/mobileNavContext.js";
+import { isNavItemActive } from "../../../components/nav/navPathMatchers.js";
 
 function isNavActive(currentPath, item) {
   if (item.action) {
@@ -19,19 +20,7 @@ function isNavActive(currentPath, item) {
   const path = item.path;
   if (!path) return false;
 
-  if (item.match === "exact" || path === "/") {
-    return currentPath === "/";
-  }
-
-  if (item.match === "tournament-home") {
-    return currentPath === "/tournament" || currentPath.startsWith("/tournament/");
-  }
-
-  if (item.match === "referee-hub") {
-    return currentPath === "/referee" || currentPath.startsWith("/referee/");
-  }
-
-  return currentPath === path || currentPath.startsWith(`${path}/`);
+  return isNavItemActive(currentPath, item, path);
 }
 
 export default function MobileBottomNav() {
@@ -85,6 +74,7 @@ export default function MobileBottomNav() {
       >
         {navItems.map((item) => {
           const Icon = item.icon;
+          const active = isNavActive(location.pathname, item);
 
           if (item.action === "open-drawer") {
             return (
@@ -110,6 +100,7 @@ export default function MobileBottomNav() {
               to={item.path}
               label={item.label}
               icon={<Icon />}
+              aria-current={active ? "page" : undefined}
               sx={{
                 minWidth: 0,
                 px: 0.5,

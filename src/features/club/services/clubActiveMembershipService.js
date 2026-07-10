@@ -21,9 +21,87 @@ function resolveMembershipCacheScope() {
 }
 
 const MEMBERSHIP_CACHE_SCOPE = resolveMembershipCacheScope();
+const SESSION_CACHE_PREFIX = "pb-membership-cache-v1:";
 
 function buildMembershipCacheKey(userId) {
   return `${MEMBERSHIP_CACHE_SCOPE}:${String(userId || "").trim()}`;
+}
+
+function sessionCacheStorageKey(cacheKey) {
+  return `${SESSION_CACHE_PREFIX}${cacheKey}`;
+}
+
+/** In-memory resolved flag — survives route nav, cleared only on explicit invalidation. */
+const membershipResolvedKeys = new Set();
+
+function readSessionMembershipCache(cacheKey) {
+  if (typeof sessionStorage === "undefined") {
+    return null;
+  }
+  try {
+    const raw = sessionStorage.getItem(sessionCacheStorageKey(cacheKey));
+    if (!raw) {
+      return null;
+    }
+    const parsed = JSON.parse(raw);
+    if (!parsed?.at || !parsed?.result || Date.now() - parsed.at >= MEMBERSHIP_CACHE_MS) {
+      sessionStorage.removeItem(sessionCacheStorageKey(cacheKey));
+      return null;
+    }
+    return parsed.result;
+  } catch {
+    return null;
+  }
+}
+
+function writeSessionMembershipCache(cacheKey, result) {
+  if (typeof sessionStorage === "undefined") {
+    return;
+  }
+  try {
+    sessionStorage.setItem(
+      sessionCacheStorageKey(cacheKey),
+      JSON.stringify({ at: Date.now(), result })
+    );
+  } catch {
+    /* quota */
+  }
+}
+
+function clearSessionMembershipCache(cacheKey = null) {
+  if (typeof sessionStorage === "undefined") {
+    return;
+  }
+  try {
+    if (!cacheKey) {
+      for (let i = sessionStorage.length - 1; i >= 0; i -= 1) {
+        const key = sessionStorage.key(i);
+        if (key?.startsWith(SESSION_CACHE_PREFIX)) {
+          sessionStorage.removeItem(key);
+        }
+      }
+      return;
+    }
+    sessionStorage.removeItem(sessionCacheStorageKey(cacheKey));
+  } catch {
+    /* ignore */
+  }
+}
+
+function markMembershipResolved(cacheKey) {
+  membershipResolvedKeys.add(cacheKey);
+}
+
+function isMembershipResolved(cacheKey) {
+  return membershipResolvedKeys.has(cacheKey);
+}
+
+function clearMembershipResolved(cacheKey = null) {
+  if (!cacheKey) {
+    membershipResolvedKeys.clear();
+    return;
+  }
+  membershipResolvedKeys.delete(cacheKey);
 }
 
 /** @type {{ cacheKey: string, at: number, result: object } | null} */
@@ -40,11 +118,24 @@ function readMembershipCache(userId) {
   ) {
     return membershipCache.result;
   }
+
+  const sessionCached = readSessionMembershipCache(cacheKey);
+  if (sessionCached) {
+    membershipCache = { cacheKey, at: Date.now(), result: sessionCached };
+    markMembershipResolved(cacheKey);
+    return sessionCached;
+  }
+
   return null;
 }
 
 function writeMembershipCache(userId, result) {
-  membershipCache = { cacheKey: buildMembershipCacheKey(userId), at: Date.now(), result };
+  const cacheKey = buildMembershipCacheKey(userId);
+  membershipCache = { cacheKey, at: Date.now(), result };
+  writeSessionMembershipCache(cacheKey, result);
+  if (result?.ok) {
+    markMembershipResolved(cacheKey);
+  }
 }
 
 /** Sync read for hook initial state / skip stale refetch (Phase 42J.2). */
@@ -60,12 +151,16 @@ export function getCachedMembershipSnapshot(userId) {
 export function resetMyActiveClubMembershipCache() {
   membershipCache = null;
   membershipInflight = null;
+  clearMembershipResolved();
+  clearSessionMembershipCache();
 }
 
 export function invalidateMyActiveClubMembershipCache(userId = null) {
   if (!userId) {
     membershipCache = null;
     membershipInflight = null;
+    clearMembershipResolved();
+    clearSessionMembershipCache();
     return;
   }
   const cacheKey = buildMembershipCacheKey(userId);
@@ -75,6 +170,19 @@ export function invalidateMyActiveClubMembershipCache(userId = null) {
   if (membershipInflight?.cacheKey === cacheKey) {
     membershipInflight = null;
   }
+  clearMembershipResolved(cacheKey);
+  clearSessionMembershipCache(cacheKey);
+}
+
+/** Phase 42J.2.2 — skip network when cache/session still fresh (not SoT). */
+export function shouldFetchMembership(userId, { force = false } = {}) {
+  if (!userId) {
+    return false;
+  }
+  if (force) {
+    return true;
+  }
+  return !readMembershipCache(userId);
 }
 
 /** Clear cache on sign-out / user switch only — not route navigation or token refresh. */
@@ -159,6 +267,10 @@ export async function resolveMyActiveClubMembership(user) {
   }
 
   const cacheKey = buildMembershipCacheKey(user.id);
+  if (isMembershipResolved(cacheKey) && readMembershipCache(user.id)) {
+    return readMembershipCache(user.id);
+  }
+
   if (membershipInflight?.cacheKey === cacheKey) {
     return membershipInflight.promise;
   }

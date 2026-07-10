@@ -114,7 +114,8 @@ function countPathHits(navLog, segment) {
 
 async function isNavHighlighted(page, label) {
   const ariaCurrent = await page.locator(`a[aria-current="page"]`).allTextContents();
-  const combined = ariaCurrent.join(" ");
+  const selected = await page.locator(`.Mui-selected`).allTextContents();
+  const combined = [...ariaCurrent, ...selected].join(" ");
   return new RegExp(label, "i").test(combined);
 }
 
