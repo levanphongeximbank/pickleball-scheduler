@@ -78,9 +78,10 @@ begin
     ''
   )::uuid;
 
+  -- Cast json extracts to jsonb before COALESCE (avoids jsonb/json mismatch)
   v_registered_court_ids := coalesce(
-    p_club -> 'registered_court_ids',
-    p_club -> 'registeredCourtIds',
+    (p_club -> 'registered_court_ids')::jsonb,
+    (p_club -> 'registeredCourtIds')::jsonb,
     '[]'::jsonb
   );
   if jsonb_typeof(v_registered_court_ids) <> 'array' then
