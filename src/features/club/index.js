@@ -167,7 +167,15 @@ export {
   getCachedMembershipSnapshot,
   resetMyActiveClubMembershipCache,
   invalidateMyActiveClubMembershipCache,
+  clearMembershipCacheForUser,
 } from "./services/clubActiveMembershipService.js";
+
+export {
+  MEMBERSHIP_PHASE,
+  resolveMembershipPhase,
+  isMembershipPhaseReady,
+  isMembershipPhasePending,
+} from "./membership/membershipState.js";
 
 export { useMyClubMembership } from "./hooks/useMyClubMembership.js";
 export {
@@ -178,6 +186,8 @@ export {
 export {
   resolveClubAwarePlayerHomePath,
   resolvePostAuthClubPath,
+  resolvePostLoginClubPath,
+  resolveDirectMyClubPath,
 } from "./routing/clubLandingResolver.js";
 export {
   CLUB_ROUTE_PATHS,

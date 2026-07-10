@@ -33,11 +33,11 @@ test("42J.1 landing resolver — state machine", () => {
     CLUB_LANDING_STATE.ERROR
   );
   assert.equal(
-    resolveClubLandingState({ loading: false, ok: true, hasActiveMembership: false }),
+    resolveClubLandingState({ loading: false, ok: true, hasActiveMembership: false, clubId: null }),
     CLUB_LANDING_STATE.NO_MEMBERSHIP
   );
   assert.equal(
-    resolveClubLandingState({ loading: false, ok: true, hasActiveMembership: true }),
+    resolveClubLandingState({ loading: false, ok: true, hasActiveMembership: true, clubId: "c1" }),
     CLUB_LANDING_STATE.ACTIVE_MEMBERSHIP
   );
 });
@@ -80,15 +80,21 @@ test("42J.1 landing resolver — no membership redirects my-club to discover", (
 
 test("42J.1 landing resolver — V2 player home defers to route guards", () => {
   assert.equal(resolveClubAwarePlayerHomePath({ loading: true }), null);
-  assert.equal(resolveClubAwarePlayerHomePath({ hasActiveMembership: true, loading: false }), "/my-club");
-  assert.equal(resolveClubAwarePlayerHomePath({ hasActiveMembership: false, loading: false }), "/discover-clubs");
+  assert.equal(
+    resolveClubAwarePlayerHomePath({ ok: true, hasActiveMembership: true, clubId: "c1", loading: false }),
+    "/my-club"
+  );
+  assert.equal(
+    resolveClubAwarePlayerHomePath({ ok: true, hasActiveMembership: false, clubId: null, loading: false }),
+    "/discover-clubs"
+  );
 });
 
 test("42J.1 route logic — shouldRedirect uses landing state only", () => {
   assert.equal(shouldRedirectMyClubToDiscover({ loading: true, ok: true, hasActiveMembership: false }), false);
   assert.equal(shouldRedirectMyClubToDiscover({ loading: false, ok: false, hasActiveMembership: false }), false);
   assert.equal(shouldRedirectMyClubToDiscover({ loading: false, ok: true, hasActiveMembership: false }), true);
-  assert.equal(shouldRedirectMyClubToDiscover({ loading: false, ok: true, hasActiveMembership: true }), false);
+  assert.equal(shouldRedirectMyClubToDiscover({ loading: false, ok: true, hasActiveMembership: true, clubId: "c1" }), false);
 });
 
 test("42J.1 menuAccess — V2 PLAYER default home is discover-clubs", () => {
@@ -125,6 +131,9 @@ test("42J.1 guard — loading skeleton not blank shell", () => {
 });
 
 test("42J.1 exports — landing resolver re-exported from route logic", () => {
-  assert.equal(resolveFromLogic({ loading: false, ok: true, hasActiveMembership: true }), CLUB_LANDING_STATE.ACTIVE_MEMBERSHIP);
+  assert.equal(
+    resolveFromLogic({ loading: false, ok: true, hasActiveMembership: true, clubId: "c1" }),
+    CLUB_LANDING_STATE.ACTIVE_MEMBERSHIP
+  );
   assert.equal(CLUB_ROUTE_PATHS.DISCOVER, "/discover-clubs");
 });

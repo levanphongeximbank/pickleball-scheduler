@@ -25,14 +25,14 @@ test("42J.2 — loading home path is null (wait for RPC)", () => {
 });
 
 test("42J.2 — post-auth no membership lands discover once", () => {
-  const membership = { loading: false, hasActiveMembership: false, ok: true };
+  const membership = { loading: false, ok: true, hasActiveMembership: false, clubId: null };
   assert.equal(resolvePostAuthClubPath("/login", membership), "/discover-clubs");
   assert.equal(resolvePostAuthClubPath("/my-club", membership), "/discover-clubs");
   assert.equal(resolvePostAuthClubPath("/dashboard", membership), "/discover-clubs");
 });
 
 test("42J.2 — post-auth active member lands my-club", () => {
-  const membership = { loading: false, hasActiveMembership: true, ok: true };
+  const membership = { loading: false, ok: true, hasActiveMembership: true, clubId: "club-1" };
   assert.equal(resolvePostAuthClubPath("/login", membership), "/my-club");
   assert.equal(resolvePostAuthClubPath("/my-club", membership), "/my-club");
 });
@@ -74,5 +74,5 @@ test("42J.2 — cache TTL extended to 30s", () => {
 
 test("42J.2 — guard redirects use replace", () => {
   const guard = readSrc("src/pages/player/guards/ClubActiveMembershipGuard.jsx");
-  assert.match(guard, /Navigate to=\{target\} replace/);
+  assert.match(guard, /Navigate to=\{directTarget\} replace/);
 });

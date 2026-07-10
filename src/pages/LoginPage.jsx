@@ -91,7 +91,7 @@ export default function LoginPage() {
       return <Navigate to="/change-password" replace />;
     }
     if (isClubStorageV2Enabled() && normalizeRole(user.role) === ROLES.PLAYER) {
-      return <ClubPostAuthRedirect requestedPath={location.state?.from?.pathname} />;
+      return <ClubPostAuthRedirect />;
     }
     return <Navigate to={redirectTo} replace />;
   }

@@ -2,24 +2,41 @@ import { useCallback, useEffect, useRef, useState } from "react";
 
 import { useAuth } from "../../../context/AuthContext.jsx";
 import {
+  MEMBERSHIP_PHASE,
+  resolveMembershipPhase,
+} from "../membership/membershipState.js";
+import {
   getCachedMembershipSnapshot,
   invalidateMyActiveClubMembershipCache,
   resolveMyActiveClubMembership,
 } from "../services/clubActiveMembershipService.js";
 
-const INITIAL = Object.freeze({
+const PENDING = Object.freeze({
+  phase: MEMBERSHIP_PHASE.LOADING,
   loading: true,
   ok: false,
   clubId: null,
   hasActiveMembership: false,
   club: null,
   memberId: null,
-  source: "init",
+  source: "pending",
   error: null,
 });
 
+const ANON = Object.freeze({
+  phase: MEMBERSHIP_PHASE.IDLE,
+  loading: false,
+  ok: false,
+  clubId: null,
+  hasActiveMembership: false,
+  club: null,
+  memberId: null,
+  source: "anon",
+  error: "Chưa đăng nhập.",
+});
+
 function mapMembershipResult(result) {
-  return {
+  const base = {
     loading: false,
     ok: result.ok,
     clubId: result.clubId || null,
@@ -29,81 +46,106 @@ function mapMembershipResult(result) {
     source: result.source || "unknown",
     error: result.ok ? null : result.error || "MEMBERSHIP_LOOKUP_FAILED",
   };
+  return {
+    ...base,
+    phase: resolveMembershipPhase(base),
+  };
 }
 
 function buildInitialState(userId) {
   if (!userId) {
-    return { ...INITIAL, loading: false, source: "anon", error: "Chưa đăng nhập." };
+    return { ...ANON };
   }
   const cached = getCachedMembershipSnapshot(userId);
   if (cached) {
     return mapMembershipResult(cached);
   }
-  return INITIAL;
+  return { ...PENDING };
 }
 
 /**
  * Phase 42J — Cloud SSOT membership read hook.
- * Phase 42J.2 — cache-first; one in-flight RPC per user via service dedupe.
+ * Phase 42J.2.1 — cache-first; stable userId fetch; no refetch on route navigation.
  */
 export function useMyClubMembership(revision = 0) {
   const { user } = useAuth();
   const userId = user?.id || null;
+  const userRef = useRef(user);
+  userRef.current = user;
+
   const [state, setState] = useState(() => buildInitialState(userId));
   const revisionRef = useRef(revision);
+  const fetchGenRef = useRef(0);
+
+  const applyResult = useCallback((result) => {
+    setState(mapMembershipResult(result));
+  }, []);
 
   const reload = useCallback(
-    async ({ force = true } = {}) => {
-      if (!userId) {
-        setState({
-          ...INITIAL,
-          loading: false,
-          ok: false,
-          error: "Chưa đăng nhập.",
-          source: "anon",
-        });
+    async ({ force = false } = {}) => {
+      const currentUser = userRef.current;
+      const uid = currentUser?.id || null;
+      if (!uid) {
+        setState({ ...ANON });
         return;
       }
 
       if (force) {
-        invalidateMyActiveClubMembershipCache(userId);
+        invalidateMyActiveClubMembershipCache(uid);
       }
 
-      const cached = !force ? getCachedMembershipSnapshot(userId) : null;
+      const cached = !force ? getCachedMembershipSnapshot(uid) : null;
       if (cached) {
-        setState(mapMembershipResult(cached));
+        applyResult(cached);
         return;
       }
 
-      setState((prev) => ({ ...prev, loading: true, error: null }));
-      const result = await resolveMyActiveClubMembership(user);
-      setState(mapMembershipResult(result));
+      const gen = fetchGenRef.current + 1;
+      fetchGenRef.current = gen;
+      setState((prev) =>
+        prev.phase === MEMBERSHIP_PHASE.LOADING
+          ? prev
+          : { ...PENDING, source: force ? "reload" : "fetch" }
+      );
+
+      const result = await resolveMyActiveClubMembership(currentUser);
+      if (fetchGenRef.current !== gen) {
+        return;
+      }
+      applyResult(result);
     },
-    [user, userId]
+    [applyResult]
   );
 
   useEffect(() => {
     if (!userId) {
-      setState(buildInitialState(null));
+      fetchGenRef.current += 1;
+      setState({ ...ANON });
       return;
     }
 
     const revisionBumped = revision !== revisionRef.current;
     revisionRef.current = revision;
 
+    const cached = getCachedMembershipSnapshot(userId);
+    if (cached) {
+      applyResult(cached);
+      if (!revisionBumped) {
+        return;
+      }
+    }
+
     if (revisionBumped) {
       void reload({ force: true });
       return;
     }
 
-    const cached = getCachedMembershipSnapshot(userId);
     if (cached) {
-      setState(mapMembershipResult(cached));
       return;
     }
 
     void reload({ force: false });
-  }, [userId, revision, reload]);
+  }, [userId, revision, reload, applyResult]);
 
   return {
     ...state,

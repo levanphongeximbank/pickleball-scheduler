@@ -2,16 +2,40 @@ import { isClubStorageV2Enabled } from "../config/clubRegistryFlags.js";
 import { rpcV2GetMyActiveMembership } from "./clubStorageV2RpcService.js";
 import { clearAthleteClubLink } from "../storage/athleteClubLinkStore.js";
 
-const MEMBERSHIP_CACHE_MS = 30000;
-/** @type {{ userId: string, at: number, result: object } | null} */
+export const MEMBERSHIP_CACHE_MS = 30000;
+
+function resolveMembershipCacheScope() {
+  const raw = String(
+    typeof import.meta !== "undefined" && import.meta.env
+      ? import.meta.env.VITE_SUPABASE_URL || ""
+      : ""
+  ).trim();
+  if (!raw) {
+    return "local";
+  }
+  try {
+    return new URL(raw).hostname.split(".")[0] || raw;
+  } catch {
+    return raw;
+  }
+}
+
+const MEMBERSHIP_CACHE_SCOPE = resolveMembershipCacheScope();
+
+function buildMembershipCacheKey(userId) {
+  return `${MEMBERSHIP_CACHE_SCOPE}:${String(userId || "").trim()}`;
+}
+
+/** @type {{ cacheKey: string, at: number, result: object } | null} */
 let membershipCache = null;
-/** @type {{ userId: string, promise: Promise<object> } | null} */
+/** @type {{ cacheKey: string, promise: Promise<object> } | null} */
 let membershipInflight = null;
 
 function readMembershipCache(userId) {
+  const cacheKey = buildMembershipCacheKey(userId);
   if (
     membershipCache &&
-    membershipCache.userId === userId &&
+    membershipCache.cacheKey === cacheKey &&
     Date.now() - membershipCache.at < MEMBERSHIP_CACHE_MS
   ) {
     return membershipCache.result;
@@ -20,7 +44,7 @@ function readMembershipCache(userId) {
 }
 
 function writeMembershipCache(userId, result) {
-  membershipCache = { userId, at: Date.now(), result };
+  membershipCache = { cacheKey: buildMembershipCacheKey(userId), at: Date.now(), result };
 }
 
 /** Sync read for hook initial state / skip stale refetch (Phase 42J.2). */
@@ -39,12 +63,23 @@ export function resetMyActiveClubMembershipCache() {
 }
 
 export function invalidateMyActiveClubMembershipCache(userId = null) {
-  if (!userId || membershipCache?.userId === userId) {
+  if (!userId) {
+    membershipCache = null;
+    membershipInflight = null;
+    return;
+  }
+  const cacheKey = buildMembershipCacheKey(userId);
+  if (membershipCache?.cacheKey === cacheKey) {
     membershipCache = null;
   }
-  if (!userId || membershipInflight?.userId === userId) {
+  if (membershipInflight?.cacheKey === cacheKey) {
     membershipInflight = null;
   }
+}
+
+/** Clear cache on sign-out / user switch only — not route navigation or token refresh. */
+export function clearMembershipCacheForUser(userId) {
+  invalidateMyActiveClubMembershipCache(userId);
 }
 
 /**
@@ -123,7 +158,8 @@ export async function resolveMyActiveClubMembership(user) {
     return cached;
   }
 
-  if (membershipInflight?.userId === user.id) {
+  const cacheKey = buildMembershipCacheKey(user.id);
+  if (membershipInflight?.cacheKey === cacheKey) {
     return membershipInflight.promise;
   }
 
@@ -132,11 +168,11 @@ export async function resolveMyActiveClubMembership(user) {
     return result;
   });
 
-  membershipInflight = { userId: user.id, promise };
+  membershipInflight = { cacheKey, promise };
   try {
     return await promise;
   } finally {
-    if (membershipInflight?.userId === user.id) {
+    if (membershipInflight?.cacheKey === cacheKey) {
       membershipInflight = null;
     }
   }

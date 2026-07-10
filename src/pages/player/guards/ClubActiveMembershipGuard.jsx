@@ -1,17 +1,20 @@
+import { useRef } from "react";
 import { Alert, Box, Button, CircularProgress, Skeleton, Stack } from "@mui/material";
 import { Navigate, useLocation, useSearchParams } from "react-router-dom";
 
 import { useRequiredMyClubMembership } from "../../../features/club/hooks/MyClubMembershipContext.jsx";
 import {
-  CLUB_LANDING_STATE,
-  CLUB_ROUTE_PATHS,
+  isMembershipPhasePending,
+  MEMBERSHIP_PHASE,
+  resolveMembershipPhase,
+} from "../../../features/club/membership/membershipState.js";
+import {
   clearClubRouteRedirectLoop,
   isClubRouteRedirectLoop,
   markClubRouteRedirect,
-  resolveClubLandingState,
   resolveLegacyMyClubQueryRedirect,
-  shouldRedirectMyClubToDiscover,
 } from "../../../features/club/routing/clubMembershipRouteLogic.js";
+import { resolveDirectMyClubPath } from "../../../features/club/routing/clubLandingResolver.js";
 
 function ClubRouteLoadingShell({ label = "Đang tải thông tin CLB" }) {
   return (
@@ -27,11 +30,15 @@ function ClubRouteLoadingShell({ label = "Đang tải thông tin CLB" }) {
   );
 }
 
+/**
+ * Phase 42J.2.1 — direct protected /my-club routes only (not post-login landing).
+ */
 export default function ClubActiveMembershipGuard({ children }) {
   const location = useLocation();
   const [searchParams] = useSearchParams();
   const membership = useRequiredMyClubMembership();
-  const landingState = resolveClubLandingState(membership);
+  const phase = resolveMembershipPhase(membership);
+  const redirectIssuedRef = useRef(false);
 
   const legacyDiscover = resolveLegacyMyClubQueryRedirect(searchParams);
   if (legacyDiscover) {
@@ -39,11 +46,13 @@ export default function ClubActiveMembershipGuard({ children }) {
     return <Navigate to={legacyDiscover} replace />;
   }
 
-  if (landingState === CLUB_LANDING_STATE.LOADING) {
+  if (isMembershipPhasePending(phase)) {
+    redirectIssuedRef.current = false;
     return <ClubRouteLoadingShell />;
   }
 
-  if (landingState === CLUB_LANDING_STATE.ERROR) {
+  if (phase === MEMBERSHIP_PHASE.ERROR) {
+    redirectIssuedRef.current = false;
     return (
       <Box sx={{ p: 3, maxWidth: 560, mx: "auto" }}>
         <Alert
@@ -60,9 +69,12 @@ export default function ClubActiveMembershipGuard({ children }) {
     );
   }
 
-  if (shouldRedirectMyClubToDiscover(membership)) {
-    const target = CLUB_ROUTE_PATHS.DISCOVER;
-    if (isClubRouteRedirectLoop(location.pathname, target)) {
+  const directTarget = resolveDirectMyClubPath(membership);
+  if (directTarget) {
+    if (redirectIssuedRef.current) {
+      return <ClubRouteLoadingShell label="Đang chuyển hướng" />;
+    }
+    if (isClubRouteRedirectLoop(location.pathname, directTarget)) {
       clearClubRouteRedirectLoop();
       return (
         <Box sx={{ p: 3, maxWidth: 560, mx: "auto" }}>
@@ -72,10 +84,12 @@ export default function ClubActiveMembershipGuard({ children }) {
         </Box>
       );
     }
-    markClubRouteRedirect(location.pathname, target);
-    return <Navigate to={target} replace state={{ from: location.pathname }} />;
+    redirectIssuedRef.current = true;
+    markClubRouteRedirect(location.pathname, directTarget);
+    return <Navigate to={directTarget} replace />;
   }
 
+  redirectIssuedRef.current = false;
   clearClubRouteRedirectLoop();
   return children;
 }

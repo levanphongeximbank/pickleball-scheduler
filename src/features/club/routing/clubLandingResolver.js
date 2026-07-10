@@ -1,5 +1,12 @@
-/** Phase 42J.1 — canonical club landing states (V2 membership SSOT). */
+/** Phase 42J.1+ — canonical club landing (V2 membership SSOT). */
 
+import {
+  MEMBERSHIP_PHASE,
+  isMembershipPhasePending,
+  resolveMembershipPhase,
+} from "../membership/membershipState.js";
+
+/** @deprecated use MEMBERSHIP_PHASE */
 export const CLUB_LANDING_STATE = Object.freeze({
   LOADING: "LOADING",
   ERROR: "ERROR",
@@ -7,18 +14,15 @@ export const CLUB_LANDING_STATE = Object.freeze({
   ACTIVE_MEMBERSHIP: "ACTIVE_MEMBERSHIP",
 });
 
-/**
- * Resolve landing state from membership hook / RPC result.
- * Never uses profiles.club_id, user.clubId, or localStorage.
- */
-export function resolveClubLandingState({ loading, ok, hasActiveMembership }) {
-  if (loading) {
+export function resolveClubLandingState(membership) {
+  const phase = resolveMembershipPhase(membership);
+  if (phase === MEMBERSHIP_PHASE.LOADING || phase === MEMBERSHIP_PHASE.IDLE) {
     return CLUB_LANDING_STATE.LOADING;
   }
-  if (!ok) {
+  if (phase === MEMBERSHIP_PHASE.ERROR) {
     return CLUB_LANDING_STATE.ERROR;
   }
-  if (!hasActiveMembership) {
+  if (phase === MEMBERSHIP_PHASE.NONE) {
     return CLUB_LANDING_STATE.NO_MEMBERSHIP;
   }
   return CLUB_LANDING_STATE.ACTIVE_MEMBERSHIP;
@@ -47,43 +51,66 @@ export function resolveClubLandingRedirect({
   return null;
 }
 
-/** Post-login / default home for club-aware PLAYER (V2). */
-export function resolveClubAwarePlayerHomePath({ hasActiveMembership, loading }) {
-  if (loading) {
+/** Default PLAYER home after membership is ready (not while pending). */
+export function resolveClubAwarePlayerHomePath(membership) {
+  const phase = resolveMembershipPhase(membership);
+  if (isMembershipPhasePending(phase)) {
     return null;
   }
-  if (hasActiveMembership) {
+  if (phase === MEMBERSHIP_PHASE.ERROR) {
+    return null;
+  }
+  if (phase === MEMBERSHIP_PHASE.ACTIVE) {
     return "/my-club";
   }
   return "/discover-clubs";
 }
 
 /**
- * Phase 42J.2 — post-auth path after membership RPC resolved (single canonical hop).
+ * Phase 42J.2.1 — post-login landing ONLY (ClubPostAuthRedirect / ClubPlayerHomeRedirect).
+ * Ignores stale auth-guard `from` paths like /discover-clubs.
  */
+export function resolvePostLoginClubPath(membership) {
+  const phase = resolveMembershipPhase(membership);
+  if (isMembershipPhasePending(phase)) {
+    return null;
+  }
+  if (phase === MEMBERSHIP_PHASE.ERROR) {
+    return null;
+  }
+  if (phase === MEMBERSHIP_PHASE.ACTIVE) {
+    return "/my-club";
+  }
+  return "/discover-clubs";
+}
+
+/**
+ * Direct protected /my-club access — guard redirect only (not post-login).
+ */
+export function resolveDirectMyClubPath(membership) {
+  const phase = resolveMembershipPhase(membership);
+  if (isMembershipPhasePending(phase)) {
+    return null;
+  }
+  if (phase === MEMBERSHIP_PHASE.ERROR) {
+    return null;
+  }
+  if (phase === MEMBERSHIP_PHASE.NONE) {
+    return "/discover-clubs";
+  }
+  return null;
+}
+
+/** @deprecated use resolvePostLoginClubPath for login landing */
 export function resolvePostAuthClubPath(requestedPath, membership) {
+  const ready = resolvePostLoginClubPath(membership);
+  if (ready) {
+    return ready;
+  }
   const path = String(requestedPath || "").split("?")[0];
-  const home = resolveClubAwarePlayerHomePath(membership);
-
-  if (!path || path === "/login" || path === "/403") {
-    return home || "/discover-clubs";
-  }
-
-  if (path === "/" || path === "/home") {
-    return home || "/discover-clubs";
-  }
-
   if (path === "/my-club") {
-    return membership?.hasActiveMembership ? "/my-club" : "/discover-clubs";
+    const phase = resolveMembershipPhase(membership);
+    return phase === MEMBERSHIP_PHASE.ACTIVE ? "/my-club" : "/discover-clubs";
   }
-
-  if (
-    path === "/tournament" ||
-    path.startsWith("/tournament/") ||
-    path === "/dashboard"
-  ) {
-    return home || "/discover-clubs";
-  }
-
-  return path;
+  return resolveClubAwarePlayerHomePath(membership) || "/discover-clubs";
 }

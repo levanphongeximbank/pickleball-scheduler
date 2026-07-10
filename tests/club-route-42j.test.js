@@ -55,7 +55,7 @@ test("42J route logic — redirect to discover only without active membership", 
     true
   );
   assert.equal(
-    shouldRedirectMyClubToDiscover({ loading: false, ok: true, hasActiveMembership: true }),
+    shouldRedirectMyClubToDiscover({ loading: false, ok: true, hasActiveMembership: true, clubId: "c1" }),
     false
   );
 });
