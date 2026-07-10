@@ -38,6 +38,9 @@ test("42I1 production cleanup targets erroneous SA request", () => {
   assert.match(sql, /7a498187-b5ad-4301-9e92-051ca6c510d1/);
   assert.match(sql, /e3e07720-32dd-4dcf-91c2-d82fc5b8e8a4/);
   assert.match(sql, /club\.membership_request\.correction/);
+  assert.match(sql, /status = 'removed'/);
+  assert.match(sql, /club_members_status_check/);
+  assert.doesNotMatch(sql, /set status = 'inactive'/);
 });
 
 test("42I1 staging smoke covers SA forbidden and idempotency", () => {

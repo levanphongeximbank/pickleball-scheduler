@@ -1,6 +1,7 @@
 -- Phase 42I.1 — Hotfix: SA/PLATFORM_ADMIN auth + mandatory audit + rollback on audit fail
 -- Apply STAGING first. Production cleanup in PHASE_42I1_PRODUCTION_QA_CLEANUP.sql (separate GO).
 -- Rollback: docs/v5/PHASE_42I1_ROLLBACK.sql
+-- Note: club_members_status_check allows active|left|removed only (Phase 42B); cleanup uses removed.
 
 -- ---------------------------------------------------------------------------
 -- 1) audit_logs — allow Phase 42 club actions (root cause of silent audit fail)

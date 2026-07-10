@@ -1,5 +1,10 @@
 -- Phase 42I.1 — Production QA data cleanup (DO NOT apply until GO DEPLOY 42I.1)
 -- Reverts erroneous SA approve of request 7a498187; keeps Hoàng active + 69e67a8f rejected.
+--
+-- club_members.status is constrained by club_members_status_check (Phase 42B):
+--   allowed: active | left | removed
+--   NOT allowed: inactive
+-- Use status = 'removed' to deactivate a member created by an erroneous approve.
 
 -- ---------------------------------------------------------------------------
 -- Baseline snapshot (run before cleanup)
@@ -14,9 +19,9 @@
 
 begin;
 
--- 1) Deactivate member created by erroneous SA approve
+-- 1) Deactivate member created by erroneous SA approve (removed, not inactive — see header)
 update public.club_members
-set status = 'inactive', version = version + 1
+set status = 'removed', version = version + 1
 where id = 'e3e07720-32dd-4dcf-91c2-d82fc5b8e8a4'
   and club_id = 'club-219e4a7cbd73437eb6271f02a53314c3'
   and user_id = '9182a06e-c14f-4dde-ab07-cc998b1b7cb5'
@@ -61,11 +66,12 @@ select
     'review_action', 'correction',
     'before_data', jsonb_build_object(
       'request_status', 'approved',
-      'member_id', 'e3e07720-32dd-4dcf-91c2-d82fc5b8e8a4'
+      'member_id', 'e3e07720-32dd-4dcf-91c2-d82fc5b8e8a4',
+      'member_status', 'active'
     ),
     'after_data', jsonb_build_object(
       'request_status', 'pending',
-      'member_status', 'inactive'
+      'member_status', 'removed'
     ),
     'created_at', now(),
     'reason', 'Phase 42I smoke QA — revert SA approve without governance'
