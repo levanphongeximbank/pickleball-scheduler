@@ -3,6 +3,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { useAuth } from "../../../context/AuthContext.jsx";
 import {
   MEMBERSHIP_PHASE,
+  isMembershipPhaseReady,
   resolveMembershipPhase,
 } from "../membership/membershipState.js";
 import {
@@ -67,19 +68,24 @@ function buildInitialState(userId) {
  * Phase 42J — Cloud SSOT membership read hook.
  * Phase 42J.2.1 — cache-first; stable userId fetch; no refetch on route navigation.
  */
-export function useMyClubMembership(revision = 0) {
+export function useMyClubMembership(revision = 0, explicitUserId = null) {
   const { user } = useAuth();
-  const userId = user?.id || null;
+  const userId = explicitUserId || user?.id || null;
   const userRef = useRef(user);
   userRef.current = user;
 
   const [state, setState] = useState(() => buildInitialState(userId));
   const revisionRef = useRef(revision);
   const fetchGenRef = useRef(0);
+  const resolvedUserRef = useRef(null);
 
   const applyResult = useCallback((result) => {
-    setState(mapMembershipResult(result));
-  }, []);
+    const mapped = mapMembershipResult(result);
+    if (isMembershipPhaseReady(mapped.phase)) {
+      resolvedUserRef.current = userId;
+    }
+    setState(mapped);
+  }, [userId]);
 
   const reload = useCallback(
     async ({ force = false } = {}) => {
@@ -120,6 +126,7 @@ export function useMyClubMembership(revision = 0) {
   useEffect(() => {
     if (!userId) {
       fetchGenRef.current += 1;
+      resolvedUserRef.current = null;
       setState({ ...ANON });
       return;
     }
@@ -136,11 +143,12 @@ export function useMyClubMembership(revision = 0) {
     }
 
     if (revisionBumped) {
+      resolvedUserRef.current = null;
       void reload({ force: true });
       return;
     }
 
-    if (cached) {
+    if (cached || resolvedUserRef.current === userId) {
       return;
     }
 

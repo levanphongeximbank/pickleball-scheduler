@@ -8,33 +8,33 @@ import { useMyClubMembership } from "./useMyClubMembership.js";
 const MyClubMembershipContext = createContext(null);
 
 /**
- * Phase 42J.2.1 — single app-wide membership SSOT (one RPC stream per session).
- * Mounted once in router.jsx — does not remount on route changes.
+ * Phase 42J.2.1 — single app-wide membership SSOT.
+ * Provider shell always mounted (no remount on route change).
  */
 export function MyClubMembershipRootProvider({ children }) {
   const { isAuthenticated, user } = useAuth();
+  const userId = isAuthenticated && user?.id ? user.id : null;
   const [revision, setRevision] = useState(0);
   const prevUserIdRef = useRef(null);
-  const membership = useMyClubMembership(revision);
+  const membership = useMyClubMembership(revision, userId);
 
   useEffect(() => {
-    const uid = user?.id || null;
-    if (!uid) {
+    if (!userId) {
       if (prevUserIdRef.current) {
         clearMembershipCacheForUser(prevUserIdRef.current);
         prevUserIdRef.current = null;
       }
       return;
     }
-    if (prevUserIdRef.current && prevUserIdRef.current !== uid) {
+    if (prevUserIdRef.current && prevUserIdRef.current !== userId) {
       clearMembershipCacheForUser(prevUserIdRef.current);
       setRevision((current) => current + 1);
     }
-    prevUserIdRef.current = uid;
-  }, [user?.id]);
+    prevUserIdRef.current = userId;
+  }, [userId]);
 
   useEffect(() => {
-    if (!isAuthenticated) {
+    if (!userId) {
       return undefined;
     }
     return subscribeToSupabaseAuth(({ event, user: nextUser }) => {
@@ -45,7 +45,7 @@ export function MyClubMembershipRootProvider({ children }) {
         }
         return;
       }
-      if (event === "TOKEN_REFRESHED") {
+      if (event === "TOKEN_REFRESHED" || event === "SIGNED_IN") {
         return;
       }
       if (nextUser?.id && prevUserIdRef.current && nextUser.id !== prevUserIdRef.current) {
@@ -54,20 +54,18 @@ export function MyClubMembershipRootProvider({ children }) {
         setRevision((current) => current + 1);
       }
     });
-  }, [isAuthenticated]);
+  }, [userId]);
 
-  const value = useMemo(
-    () => ({
+  const value = useMemo(() => {
+    if (!userId) {
+      return null;
+    }
+    return {
       ...membership,
       revision,
       bumpRevision: () => setRevision((current) => current + 1),
-    }),
-    [membership, revision]
-  );
-
-  if (!isAuthenticated || !user?.id) {
-    return children;
-  }
+    };
+  }, [membership, revision, userId]);
 
   return (
     <MyClubMembershipContext.Provider value={value}>{children}</MyClubMembershipContext.Provider>

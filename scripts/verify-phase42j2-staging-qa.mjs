@@ -20,7 +20,7 @@ import { getPhase15DeploymentUrl } from "./phase15-vercel-curl-proxy.mjs";
 const rootDir = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const DEPLOYMENT = getPhase15DeploymentUrl();
 const SCREEN_DIR = path.join(rootDir, "docs", "v5", "qa-evidence", "phase42j2-staging");
-const COMMIT = "217af65";
+const COMMIT = "24981a2";
 
 const results = [];
 const redirectTrace = [];
@@ -87,7 +87,7 @@ async function loginViaForm(page, email, password) {
   await page.getByLabel(/^email$/i).fill(email);
   await page.getByLabel(/^mật khẩu$/i).fill(password);
   await page.getByRole("button", { name: /^đăng nhập$/i }).click();
-  await page.waitForURL((url) => !url.pathname.includes("/login"), { timeout: 90000 });
+  await page.waitForURL((url) => !url.pathname.includes("/login"), { timeout: 90000, waitUntil: "commit" });
 }
 
 function countPathHits(navLog, segment) {
