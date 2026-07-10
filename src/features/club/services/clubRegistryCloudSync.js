@@ -5,12 +5,16 @@ import { hasSupabaseConfig } from "../../../auth/supabaseClient.js";
 import { isGlobalRole, isPlatformScopedRole } from "../../../auth/roles.js";
 import { sanitizeBillingTenantId } from "../../billing/services/billingTenantResolver.js";
 import { isValidProfileUserId } from "../../court-cluster/utils/profileUserId.js";
-import { isClubRegistryCloudEnabled } from "../config/clubRegistryFlags.js";
+import {
+  isClubRegistryCloudEnabled,
+  isClubStorageV2Enabled,
+} from "../config/clubRegistryFlags.js";
 import { syncClubsForVenueToCloud } from "./clubRegistryCloudService.js";
 import {
   rpcClubListDiscoverable,
   rpcClubListRegistry,
 } from "./clubRegistryRpcService.js";
+import { rpcV2ClubListDiscoverable, rpcV2ClubListRegistry } from "./clubStorageV2RpcService.js";
 
 function sameUserId(a, b) {
   return String(a || "").trim() === String(b || "").trim();
@@ -38,6 +42,11 @@ export function listLocalClubsEligibleForCloudPush(user) {
 }
 
 export async function pushPendingLocalClubsToCloud(user = getCurrentUser()) {
+  // Phase 42F: không background full registry push.
+  if (isClubStorageV2Enabled()) {
+    return { ok: true, skipped: true, synced: 0, provider: "v2-no-push" };
+  }
+
   if (!user?.id || !isClubRegistryCloudEnabled()) {
     return { ok: true, skipped: true, synced: 0 };
   }
@@ -60,6 +69,21 @@ export async function pushPendingLocalClubsToCloud(user = getCurrentUser()) {
 export async function syncClubRegistryForUser(user = getCurrentUser()) {
   if (!user?.id) {
     return { ok: false, code: "NO_USER", error: "Thiếu user." };
+  }
+
+  if (isClubStorageV2Enabled()) {
+    // V2: chỉ hydrate list qua RPC mới; không merge/push local registry.
+    const listResult = await rpcV2ClubListDiscoverable({ limit: 200 });
+    if (!listResult.ok) {
+      return listResult;
+    }
+    return {
+      ok: true,
+      pulled: listResult.clubs?.length ?? 0,
+      pushed: 0,
+      provider: "v2-rpc",
+      clubs: listResult.clubs || [],
+    };
   }
 
   if (!isClubRegistryCloudEnabled()) {

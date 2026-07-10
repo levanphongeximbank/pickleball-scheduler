@@ -42,7 +42,7 @@ export default function JoinClubDialog({
     setMessage("");
   }, [open, preselectedClub?.id]);
 
-  const handleSubmit = (event) => {
+  const handleSubmit = async (event) => {
     event.preventDefault();
 
     const club =
@@ -53,8 +53,8 @@ export default function JoinClubDialog({
       return;
     }
 
-    const clubTenantId = resolveTenantIdForClub(club.id);
-    const result = submitClubMembershipRequest(club.id, clubTenantId, user, { message });
+    const clubTenantId = resolveTenantIdForClub(club.id) || club.tenantId || club.venueId || null;
+    const result = await submitClubMembershipRequest(club.id, clubTenantId, user, { message });
 
     if (!result.ok) {
       onError?.(result.error);

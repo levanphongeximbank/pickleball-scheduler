@@ -28,6 +28,12 @@ import {
   formatRegisteredClusterDisplay,
 } from "./clubGovernanceService.js";
 import { getPickVnRatingByAuthUserId } from "../../pick-vn-rating/services/pickVnRatingService.js";
+import { isClubStorageV2Enabled } from "../config/clubRegistryFlags.js";
+import {
+  rpcV2ClubCancelMembershipRequest,
+  rpcV2ClubLeaveMembership,
+  rpcV2ClubSubmitMembershipRequest,
+} from "./clubStorageV2RpcService.js";
 import { syncRatingToClubPlayer } from "../../pick-vn-rating/services/pickVnRatingService.js";
 import { rpcReviewClubMembershipRequest, rpcLeaveMyClub } from "./clubMembershipRequestRpcService.js";
 import { removeMemberFromClub } from "./clubMemberService.js";
@@ -167,6 +173,10 @@ export async function leaveMyClub({ user, tenantId = null } = {}) {
 
   if (!clubId) {
     return { ok: false, error: "Bạn chưa thuộc CLB nào." };
+  }
+
+  if (isClubStorageV2Enabled()) {
+    return rpcV2ClubLeaveMembership({ clubId });
   }
 
   if (!playerId) {
@@ -366,7 +376,7 @@ function resolveMembershipRequestTenantCheck(clubId, clubTenantId, user) {
   return guardClubTenant(clubId, clubTenantId, { user });
 }
 
-export function submitClubMembershipRequest(clubId, tenantId, user, options = {}) {
+export async function submitClubMembershipRequest(clubId, tenantId, user, options = {}) {
   const trimmedClubId = String(clubId || "").trim();
   const athlete = user || getCurrentUser();
 
@@ -376,6 +386,21 @@ export function submitClubMembershipRequest(clubId, tenantId, user, options = {}
 
   if (resolveUserClubId(athlete)) {
     return { ok: false, error: "Bạn đã thuộc một CLB." };
+  }
+
+  if (isClubStorageV2Enabled()) {
+    const result = await rpcV2ClubSubmitMembershipRequest({
+      clubId: trimmedClubId,
+      message: options.message || "",
+    });
+    if (!result.ok) {
+      return {
+        ok: false,
+        code: result.code,
+        error: result.error || "Không gửi được yêu cầu gia nhập.",
+      };
+    }
+    return { ok: true, request: result.data, provider: "v2-rpc" };
   }
 
   const club = getRegistryClubById(trimmedClubId);
@@ -425,10 +450,17 @@ export function submitClubMembershipRequest(clubId, tenantId, user, options = {}
   return { ok: true, request };
 }
 
-export function cancelClubMembershipRequest(clubId, requestId, userId) {
+export async function cancelClubMembershipRequest(clubId, requestId, userId, options = {}) {
   const trimmedClubId = String(clubId || "").trim();
   const trimmedRequestId = String(requestId || "").trim();
   const trimmedUserId = String(userId || "").trim();
+
+  if (isClubStorageV2Enabled()) {
+    return rpcV2ClubCancelMembershipRequest({
+      membershipRequestId: trimmedRequestId,
+      expectedVersion: options.expectedVersion ?? null,
+    });
+  }
 
   const ext = loadClubExtension(trimmedClubId);
   const requests = getMembershipRequests(ext);

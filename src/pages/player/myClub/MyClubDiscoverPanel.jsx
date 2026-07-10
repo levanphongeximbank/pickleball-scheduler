@@ -21,8 +21,11 @@ import {
   fetchGovernanceNameHints,
   getClubDiscoverySummary,
   getGovernanceDisplayLabels,
+  isClubStorageV2Enabled,
   listDiscoverableClubs,
   listMyMembershipRequestsAll,
+  rpcV2ClubListDiscoverable,
+  rpcV2ClubListMyRequests,
 } from "../../../features/club/index.js";
 import { syncClubRegistryForUser } from "../../../features/club/services/clubRegistryCloudSync.js";
 import JoinClubDialog from "./JoinClubDialog.jsx";
@@ -41,25 +44,68 @@ export default function MyClubDiscoverPanel({
   const [joinClub, setJoinClub] = useState(null);
   const [search, setSearch] = useState("");
   const [nameHints, setNameHints] = useState({});
+  const [v2Clubs, setV2Clubs] = useState([]);
+  const [v2Requests, setV2Requests] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const storageV2 = isClubStorageV2Enabled();
 
   useEffect(() => {
     if (!user?.id) {
       return;
     }
-    void syncClubRegistryForUser(user).then((result) => {
-      if (result.ok) {
-        onRevision?.();
+
+    if (!storageV2) {
+      void syncClubRegistryForUser(user).then((result) => {
+        if (result.ok) {
+          onRevision?.();
+        }
+      });
+      return;
+    }
+
+    let cancelled = false;
+    setLoading(true);
+    void Promise.all([
+      rpcV2ClubListDiscoverable({ search, limit: 200 }),
+      rpcV2ClubListMyRequests(),
+    ]).then(([clubsResult, requestsResult]) => {
+      if (cancelled) {
+        return;
+      }
+      setLoading(false);
+      if (clubsResult.ok) {
+        setV2Clubs(clubsResult.clubs || []);
+      } else {
+        onMessage?.({ type: "error", text: clubsResult.error || "Không tải được danh sách CLB." });
+      }
+      if (requestsResult.ok) {
+        setV2Requests(requestsResult.requests || []);
       }
     });
-  }, [user?.id, onRevision]);
+
+    return () => {
+      cancelled = true;
+    };
+  }, [user?.id, onRevision, storageV2, search, revision, onMessage]);
 
   const myRequests = useMemo(() => {
+    if (storageV2) {
+      return (v2Requests || []).map((request) => ({
+        id: request.id,
+        clubId: request.club_id,
+        userId: request.user_id,
+        status: request.status,
+        message: request.message,
+        version: request.version,
+        requestedAt: request.created_at,
+      }));
+    }
     void revision;
     if (!user?.id) {
       return [];
     }
     return listMyMembershipRequestsAll(user.id);
-  }, [revision, user?.id]);
+  }, [revision, user?.id, storageV2, v2Requests]);
 
   const requestByClubId = useMemo(
     () => new Map(myRequests.map((request) => [request.clubId, request])),
@@ -67,6 +113,9 @@ export default function MyClubDiscoverPanel({
   );
 
   const discoverableClubs = useMemo(() => {
+    if (storageV2) {
+      return v2Clubs;
+    }
     void revision;
     const query = search.trim().toLowerCase();
     const clubs = listDiscoverableClubs();
@@ -74,9 +123,12 @@ export default function MyClubDiscoverPanel({
       return clubs;
     }
     return clubs.filter((club) => String(club.name || "").toLowerCase().includes(query));
-  }, [revision, search]);
+  }, [revision, search, storageV2, v2Clubs]);
 
   useEffect(() => {
+    if (storageV2) {
+      return undefined;
+    }
     let cancelled = false;
     const ids = discoverableClubs
       .flatMap((club) => [
@@ -94,14 +146,16 @@ export default function MyClubDiscoverPanel({
     return () => {
       cancelled = true;
     };
-  }, [discoverableClubs]);
+  }, [discoverableClubs, storageV2]);
 
   const bumpRevision = () => {
     onRevision?.();
   };
 
-  const handleCancelRequest = (request) => {
-    const result = cancelClubMembershipRequest(request.clubId, request.id, user.id);
+  const handleCancelRequest = async (request) => {
+    const result = await cancelClubMembershipRequest(request.clubId, request.id, user.id, {
+      expectedVersion: request.version,
+    });
     if (!result.ok) {
       onMessage?.({ type: "error", text: result.error });
       return;
@@ -144,17 +198,29 @@ export default function MyClubDiscoverPanel({
         />
       )}
 
-      {discoverableClubs.length === 0 ? (
+      {loading && storageV2 ? (
+        <Alert severity="info">Đang tải danh sách CLB từ cloud…</Alert>
+      ) : discoverableClubs.length === 0 ? (
         <Alert severity="info">
           {search.trim() ? "Không tìm thấy CLB phù hợp." : "Chưa có CLB đang hoạt động trên hệ thống."}
         </Alert>
       ) : (
         <Grid container spacing={2}>
           {discoverableClubs.map((club) => {
-            const summary = getClubDiscoverySummary(club.id);
-            const labels = getGovernanceDisplayLabels(club, club.tenantId || club.venueId, nameHints);
-            const presidentLabel =
-              resolvePresidentDisplayLabel(labels) !== "Chưa gán"
+            const summary = storageV2
+              ? {
+                  name: club.name,
+                  activeMemberCount: club.activeMemberCount ?? 0,
+                  presidentLabel: club.presidentLabel,
+                  clusterLabel: null,
+                }
+              : getClubDiscoverySummary(club.id);
+            const labels = storageV2
+              ? null
+              : getGovernanceDisplayLabels(club, club.tenantId || club.venueId, nameHints);
+            const presidentLabel = storageV2
+              ? club.presidentLabel
+              : resolvePresidentDisplayLabel(labels) !== "Chưa gán"
                 ? resolvePresidentDisplayLabel(labels)
                 : summary?.presidentLabel;
             const request = requestByClubId.get(club.id);
@@ -226,18 +292,9 @@ export default function MyClubDiscoverPanel({
                               variant="outlined"
                               size="small"
                               color="inherit"
-                              onClick={() => handleCancelRequest(request)}
+                              onClick={() => void handleCancelRequest(request)}
                             >
                               Hủy yêu cầu
-                            </Button>
-                          )}
-                          {request?.status === CLUB_MEMBERSHIP_REQUEST_STATUSES.REJECTED && (
-                            <Button
-                              variant="outlined"
-                              size="small"
-                              onClick={() => setJoinClub(club)}
-                            >
-                              Gửi lại
                             </Button>
                           )}
                         </Stack>
@@ -259,7 +316,6 @@ export default function MyClubDiscoverPanel({
         preselectedClub={joinClub}
         onSuccess={(text) => {
           onMessage?.({ type: "success", text });
-          setJoinClub(null);
           bumpRevision();
         }}
         onError={(text) => onMessage?.({ type: "error", text })}

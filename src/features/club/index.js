@@ -136,7 +136,27 @@ export {
 
 export { ensureClubManagementSeed } from "./seed/clubManagementSeed.js";
 
-export { isClubRegistryCloudEnabled } from "./config/clubRegistryFlags.js";
+export { isClubRegistryCloudEnabled, isClubStorageV2Enabled } from "./config/clubRegistryFlags.js";
+
+export {
+  rpcV2ClubCreate,
+  rpcV2ClubGet,
+  rpcV2ClubListRegistry,
+  rpcV2ClubListDiscoverable,
+  rpcV2ClubListMembers,
+  rpcV2ClubSubmitMembershipRequest,
+  rpcV2ClubListMyRequests,
+  rpcV2ClubListPendingRequests,
+  rpcV2ClubCancelMembershipRequest,
+  rpcV2ClubReviewMembershipRequest,
+  rpcV2ClubAssignOwner,
+  rpcV2ClubClearOwner,
+  rpcV2ClubTransferPresident,
+  rpcV2ClubLeaveMembership,
+  mapV2ClubToUiClub,
+} from "./services/clubStorageV2RpcService.js";
+
+export { ensureStorageSchemaV42 } from "./storage/storageSchemaV42.js";
 
 export { pullClubRegistryForUser, mergeClubsIntoLocal, cloudRowToClubRecord, syncClubRegistryForUser, pushPendingLocalClubsToCloud, listLocalClubsEligibleForCloudPush } from "./services/clubRegistryCloudSync.js";
 export { persistClubToCloud, syncClubsForVenueToCloud } from "./services/clubRegistryCloudService.js";

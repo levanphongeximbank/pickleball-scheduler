@@ -21,6 +21,8 @@ import {
   updateClubGovernance,
 } from "./clubGovernanceService.js";
 import { persistClubToCloud } from "./clubRegistryCloudService.js";
+import { isClubStorageV2Enabled } from "../config/clubRegistryFlags.js";
+import { rpcV2ClubCreate } from "./clubStorageV2RpcService.js";
 
 function resolveTenantIdForCreate(user) {
   if (!isRbacEnabled() || !user) {
@@ -159,6 +161,29 @@ export async function createClub(data = {}) {
   );
   if (!check.ok && !(user && canSelfRegisterClub(user))) {
     return check;
+  }
+
+  if (!tenantId) {
+    return { ok: false, error: "Thiếu tenant/venue để tạo CLB." };
+  }
+
+  // Phase 42F — Cloud SSOT create (no local SoT, no dual-write).
+  if (isClubStorageV2Enabled()) {
+    const cloud = await rpcV2ClubCreate({
+      tenantId,
+      name,
+      code: data.code || null,
+      description: data.description || "",
+      registeredClusterId: data.governance?.registeredClusterId || data.registeredClusterId || null,
+    });
+    if (!cloud.ok) {
+      return {
+        ok: false,
+        code: cloud.code || "CLOUD_CREATE_FAILED",
+        error: cloud.error || "Không tạo được CLB trên cloud.",
+      };
+    }
+    return { ok: true, club: cloud.club, provider: "v2-rpc", version: cloud.version };
   }
 
   if (tenantId) {

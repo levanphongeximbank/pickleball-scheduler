@@ -15,6 +15,12 @@ import theme from "./theme/theme";
 import { ensureTenantBootstrap } from "./features/tenant/services/tenantService.js";
 import { seedDemoDataForDev } from "./data/seedDemoData.js";
 import { flushOfflineQueue } from "./features/mobile/services/offlineQueue.js";
+import { ensureStorageSchemaV42 } from "./features/club/storage/storageSchemaV42.js";
+import { isClubStorageV2Enabled } from "./features/club/config/clubRegistryFlags.js";
+
+if (isClubStorageV2Enabled()) {
+  ensureStorageSchemaV42();
+}
 
 ensureTenantBootstrap();
 seedDemoDataForDev();
