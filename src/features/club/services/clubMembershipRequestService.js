@@ -136,7 +136,7 @@ async function linkAthleteProfile({ userId, clubId, playerId }) {
   return { ok: true, playerId, clubId };
 }
 
-async function unlinkAthleteProfile({ userId }) {
+async function unlinkAthleteProfile({ userId, skipLegacyRpc = false } = {}) {
   const localResult = saveAthleteClubLink(userId, { clubId: null, playerId: null });
   if (!localResult.ok) {
     return localResult;
@@ -154,6 +154,10 @@ async function unlinkAthleteProfile({ userId }) {
     saveAuthSession(nextUser, { provider: session.provider || "dev" });
   }
 
+  if (skipLegacyRpc || isClubStorageV2Enabled()) {
+    return { ok: true };
+  }
+
   const rpcResult = await rpcLeaveMyClub();
   if (rpcResult.ok === false && rpcResult.code !== "RPC_NOT_DEPLOYED" && rpcResult.code !== "NO_SUPABASE") {
     return rpcResult;
@@ -162,9 +166,9 @@ async function unlinkAthleteProfile({ userId }) {
   return { ok: true };
 }
 
-export async function leaveMyClub({ user, tenantId = null } = {}) {
+export async function leaveMyClub({ user, tenantId = null, clubId: clubIdOverride = null } = {}) {
   const athlete = normalizeUser(user || getCurrentUser());
-  const clubId = resolveUserClubId(athlete);
+  const clubId = clubIdOverride || resolveUserClubId(athlete);
   const playerId = athlete?.playerId || athlete?.player_id || null;
 
   if (!athlete?.id) {
@@ -176,7 +180,12 @@ export async function leaveMyClub({ user, tenantId = null } = {}) {
   }
 
   if (isClubStorageV2Enabled()) {
-    return rpcV2ClubLeaveMembership({ clubId });
+    const left = await rpcV2ClubLeaveMembership({ clubId });
+    if (!left.ok) {
+      return left;
+    }
+    await unlinkAthleteProfile({ userId: athlete.id, skipLegacyRpc: true });
+    return { ok: true, clubId, provider: "v2-rpc" };
   }
 
   if (!playerId) {

@@ -40,6 +40,7 @@ export default function MyClubDiscoverPanel({
   onMessage,
   showHeader = true,
   showSearch = true,
+  hasClub: hasClubProp = null,
 }) {
   const [joinClub, setJoinClub] = useState(null);
   const [search, setSearch] = useState("");
@@ -164,7 +165,8 @@ export default function MyClubDiscoverPanel({
     bumpRevision();
   };
 
-  const hasClub = Boolean(user?.clubId || user?.club_id);
+  const hasClub =
+    hasClubProp != null ? Boolean(hasClubProp) : Boolean(user?.clubId || user?.club_id);
 
   return (
     <Box>

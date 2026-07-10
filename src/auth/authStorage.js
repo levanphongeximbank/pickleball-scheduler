@@ -1,8 +1,14 @@
 import { AUTH_SESSION_KEY, RBAC_STORAGE_KEY, isRbacEnabledFromEnv } from "./config.js";
 import { isSecureRuntime } from "./runtime.js";
 import { normalizeUser } from "../models/user.js";
-import { mergeAthleteClubLink, reconcileAthleteClubLinkWithProfile } from "../features/club/storage/athleteClubLinkStore.js";
+import {
+  mergeAthleteClubLink,
+  reconcileAthleteClubLinkWithProfile,
+  clearAthleteClubLink,
+} from "../features/club/storage/athleteClubLinkStore.js";
 import { syncGovernanceAuthRoleFromClub } from "../features/club/services/governanceRoleElevation.js";
+import { isClubStorageV2Enabled } from "../features/club/config/clubRegistryFlags.js";
+import { stripLegacyProfileClubFields } from "../features/club/services/clubActiveMembershipService.js";
 
 function readJson(key, fallback) {
   try {
@@ -46,9 +52,18 @@ export function loadAuthSession() {
   const session = readJson(AUTH_SESSION_KEY, null);
   if (!session?.user) return null;
 
-  // Session đã có clubId từ lần login trước: chỉ merge link nếu còn clubId.
-  // Profile cloud null sẽ được reconcile khi login/refresh (authService).
-  let user = mergeAthleteClubLink(normalizeUser(session.user));
+  let user = normalizeUser(session.user);
+
+  // Phase 42H — V2: never restore membership from session/profile/athlete-link.
+  if (isClubStorageV2Enabled()) {
+    if (user.id) {
+      clearAthleteClubLink(user.id);
+    }
+    user = stripLegacyProfileClubFields(user);
+  } else {
+    user = mergeAthleteClubLink(user);
+  }
+
   const synced = syncGovernanceAuthRoleFromClub(user);
   if (synced.changed) {
     user = synced.user;
@@ -73,11 +88,19 @@ export function saveAuthSession(user, meta = {}) {
   });
 }
 
-/** Lưu session từ profile cloud — xóa athlete link cũ nếu profile không còn club_id. */
+/** Lưu session từ profile cloud — V2 strips club_id/player_id; legacy reconciles athlete link. */
 export function saveAuthSessionFromCloudProfile(user, meta = {}) {
-  const reconciled = reconcileAthleteClubLinkWithProfile(normalizeUser(user));
-  saveAuthSession(reconciled, meta);
-  return reconciled;
+  let next = normalizeUser(user);
+  if (isClubStorageV2Enabled()) {
+    if (next?.id) {
+      clearAthleteClubLink(next.id);
+    }
+    next = stripLegacyProfileClubFields(next);
+  } else {
+    next = reconcileAthleteClubLinkWithProfile(next);
+  }
+  saveAuthSession(next, meta);
+  return next;
 }
 
 export function clearAuthSession() {

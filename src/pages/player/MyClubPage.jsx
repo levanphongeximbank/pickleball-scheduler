@@ -22,6 +22,12 @@ import {
   reclaimLocalPresidentClubForUser,
 } from "../../features/club/index.js";
 import { syncClubRegistryForUser } from "../../features/club/services/clubRegistryCloudSync.js";
+import {
+  canShowCreateClub,
+  canShowLeaveClub,
+  resolveMyActiveClubMembership,
+} from "../../features/club/services/clubActiveMembershipService.js";
+import { isClubStorageV2Enabled } from "../../features/club/config/clubRegistryFlags.js";
 import MyClubSummaryCard from "./myClub/MyClubSummaryCard.jsx";
 import MyClubCreatePanel from "./myClub/MyClubCreatePanel.jsx";
 import MyClubGovernancePanel from "./myClub/MyClubGovernancePanel.jsx";
@@ -45,14 +51,29 @@ export default function MyClubPage() {
   const [reclaiming, setReclaiming] = useState(false);
   const [nameHints, setNameHints] = useState({});
   const reclaimAttemptedRef = useRef(false);
+  const [membership, setMembership] = useState({
+    loading: true,
+    clubId: null,
+    hasActiveMembership: false,
+    club: null,
+  });
 
-  const clubId = user?.clubId || user?.club_id || null;
-  const hasClub = Boolean(clubId);
-  const canCreateClub = canSelfRegisterClub(user);
+  // Phase 42H — hasClub from active club_members (V2), never profiles.club_id
+  const clubId = membership.clubId;
+  const hasClub = Boolean(membership.hasActiveMembership && clubId);
+  const canCreateClub = canShowCreateClub({
+    user,
+    hasActiveMembership: hasClub,
+    hasClubCreatePermission: canSelfRegisterClub(user),
+  });
+  const showLeaveClub = canShowLeaveClub(hasClub);
   const canReclaimLocalClub =
-    !hasClub && Boolean(user?.id) && listLocalPresidentClubsForUser(user).length > 0;
+    !isClubStorageV2Enabled() &&
+    !hasClub &&
+    Boolean(user?.id) &&
+    listLocalPresidentClubsForUser(user).length > 0;
 
-  const [view, setView] = useState(() => resolveInitialView(hasClub, searchParams));
+  const [view, setView] = useState(() => resolveInitialView(false, searchParams));
 
   const handleViewChange = (nextView) => {
     setView(nextView);
@@ -68,6 +89,36 @@ export default function MyClubPage() {
   useEffect(() => {
     setView(resolveInitialView(hasClub, searchParams));
   }, [hasClub, searchParams]);
+
+  useEffect(() => {
+    if (!user?.id) {
+      setMembership({
+        loading: false,
+        clubId: null,
+        hasActiveMembership: false,
+        club: null,
+      });
+      return undefined;
+    }
+
+    let cancelled = false;
+    setMembership((prev) => ({ ...prev, loading: true }));
+    void resolveMyActiveClubMembership(user).then((result) => {
+      if (cancelled) {
+        return;
+      }
+      setMembership({
+        loading: false,
+        clubId: result.clubId || null,
+        hasActiveMembership: Boolean(result.hasActiveMembership && result.clubId),
+        club: result.club || null,
+      });
+    });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [user?.id, revision]);
 
   useEffect(() => {
     if (!user?.id) {
@@ -153,8 +204,11 @@ export default function MyClubPage() {
     if (!clubId) {
       return null;
     }
+    if (membership.club?.id === clubId) {
+      return membership.club;
+    }
     return getClubById(clubId, tenantId);
-  }, [clubId, tenantId, revision]);
+  }, [clubId, tenantId, revision, membership.club]);
 
   const clubSummary = useMemo(() => {
     void revision;
@@ -248,7 +302,7 @@ export default function MyClubPage() {
 
     setLeaveLoading(true);
     try {
-      const result = await leaveMyClub({ user, tenantId });
+      const result = await leaveMyClub({ user, tenantId, clubId });
       if (!result.ok) {
         setMessage({ type: "error", text: result.error });
         return;
@@ -297,6 +351,7 @@ export default function MyClubPage() {
         onJoinClick={() => setJoinDialogOpen(true)}
         onLeaveClick={handleLeaveClub}
         leaveLoading={leaveLoading}
+        showLeave={showLeaveClub}
       />
 
       {message && (
@@ -368,6 +423,7 @@ export default function MyClubPage() {
           onRevision={bumpRevision}
           onMessage={setMessage}
           showHeader={hasClub}
+          hasClub={hasClub}
         />
       )}
 

@@ -265,4 +265,19 @@ export async function rpcV2ClubLeaveMembership({
   });
 }
 
+export async function rpcV2GetMyActiveMembership() {
+  const result = await callRpc("club_get_my_active_membership", {});
+  if (!result.ok) {
+    return result;
+  }
+  const data = result.data || {};
+  return {
+    ok: true,
+    clubId: data.club_id || null,
+    memberId: data.member_id || null,
+    hasActiveMembership: Boolean(data.has_active_membership && data.club_id),
+    club: data.club ? mapV2ClubToUiClub(data.club) : null,
+  };
+}
+
 export { newRequestId };

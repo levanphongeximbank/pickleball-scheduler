@@ -153,8 +153,17 @@ export {
   rpcV2ClubClearOwner,
   rpcV2ClubTransferPresident,
   rpcV2ClubLeaveMembership,
+  rpcV2GetMyActiveMembership,
   mapV2ClubToUiClub,
 } from "./services/clubStorageV2RpcService.js";
+
+export {
+  resolveMyActiveClubMembership,
+  hasClubFromProfileFields,
+  canShowCreateClub,
+  canShowLeaveClub,
+  stripLegacyProfileClubFields,
+} from "./services/clubActiveMembershipService.js";
 
 export { ensureStorageSchemaV42 } from "./storage/storageSchemaV42.js";
 

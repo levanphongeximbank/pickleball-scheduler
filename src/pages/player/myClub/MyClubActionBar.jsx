@@ -18,8 +18,10 @@ export default function MyClubActionBar({
   onJoinClick,
   onLeaveClick,
   leaveLoading = false,
+  showLeave = null,
 }) {
   const visibleTabs = CLUB_TABS.filter((tab) => !tab.requiresClub || hasClub);
+  const leaveVisible = showLeave == null ? hasClub : Boolean(showLeave);
 
   return (
     <Stack
@@ -55,7 +57,7 @@ export default function MyClubActionBar({
           </span>
         </Tooltip>
 
-        {hasClub && (
+        {leaveVisible && (
           <Button
             variant="outlined"
             color="warning"
