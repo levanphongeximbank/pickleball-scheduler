@@ -85,4 +85,7 @@ export {
   getPlayerCompetitionElo,
   buildRatingSnapshotFromPlayer,
   backfillPlayerRatingV2Fields,
+  applyCompetitionEloFromMatchRecord,
+  backfillClubPlayerRatingsV2,
+  assessMonthlyPublicLevelV2,
 } from "./rating/index.js";

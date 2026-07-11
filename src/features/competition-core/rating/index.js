@@ -26,3 +26,23 @@ export {
   buildRatingSnapshotFromPlayer,
   backfillPlayerRatingV2Fields,
 } from "./playerRatingCompat.js";
+
+export {
+  buildCompetitionEloUpdatesFromMatchRecord,
+  applyCompetitionEloUpdatesToPlayers,
+  expectedScore,
+  calculateEloDelta,
+} from "./competitionEloEngine.js";
+
+export {
+  applyCompetitionEloFromMatchRecord,
+  backfillClubPlayerRatingsV2,
+} from "./ratingServiceV2.js";
+
+export {
+  normalizeMonthlyReviewV2Rules,
+  evaluateMonthlyReviewV2Gates,
+  computePublicLevelFromCompetitionElo,
+  assessMonthlyPublicLevelV2,
+  createMonthlyReviewV2Proposal,
+} from "./monthlyReviewV2.js";

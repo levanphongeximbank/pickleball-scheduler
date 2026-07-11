@@ -1,5 +1,6 @@
 import { COMPETITION_CORE_VERSION } from "../constants/index.js";
 import { COMPETITION_ENGINE_TYPE } from "../constants/engineType.js";
+import { isRatingV2Enabled } from "../config/featureFlags.js";
 import { ENGINE_RUN_STATUS } from "../constants/engineRunStatus.js";
 import { getCompetitionCoreFeatureFlags } from "../config/featureFlags.js";
 import {
@@ -25,13 +26,15 @@ export const LEGACY_ENGINE_IDS = Object.freeze({
 });
 
 /**
- * CC-01: V2 engines are not implemented. Always false regardless of flags.
+ * CC-02B: Rating V2 available when rating flag enabled.
  * @param {import('../types/engineType.js').CompetitionEngineTypeValue} engineType
  * @param {Record<string, unknown>|undefined|null} [envSource]
  * @returns {boolean}
  */
 export function isEngineV2Available(engineType, envSource) {
-  void engineType;
+  if (engineType === COMPETITION_ENGINE_TYPE.RATING) {
+    return isRatingV2Enabled(envSource);
+  }
   void envSource;
   return false;
 }

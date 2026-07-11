@@ -123,6 +123,8 @@ export function dailyMatchToRecord(match, tournament) {
   return {
     id: String(match.id),
     source: "daily_play",
+    status: match.status || null,
+    forfeitConfirmed: match.status === "forfeit" && toScore(match.scoreA) + toScore(match.scoreB) > 0,
     tournamentId: tournament?.id || "",
     tournamentName: tournament?.name || "Daily Play",
     eventName: match.competitionType || "Daily",
@@ -156,6 +158,8 @@ export function eventMatchToRecord(match, tournament, event) {
   return {
     id: String(match.id),
     source: "tournament",
+    status: match.status || null,
+    forfeitConfirmed: match.status === "forfeit" && toScore(match.scoreA) + toScore(match.scoreB) > 0,
     tournamentId: tournament?.id || "",
     tournamentName: tournament?.name || "Giai",
     eventName: event?.name || event?.eventType || "Noi dung",

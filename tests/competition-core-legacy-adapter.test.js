@@ -78,7 +78,7 @@ test("wrapLegacyEngineResult passes legacy payload through unchanged", () => {
   assert.equal(wrapped.result.data.drawScore, 880);
 });
 
-test("v2 flags enabled still resolve to legacy in CC-01", () => {
+test("draw v2 flag enabled still resolves to legacy when engine unavailable", () => {
   const env = {
     VITE_COMPETITION_CORE_ENABLED: "true",
     VITE_COMPETITION_CORE_DRAW_V2_ENABLED: "true",
@@ -87,6 +87,23 @@ test("v2 flags enabled still resolve to legacy in CC-01", () => {
   const plan = resolveEngineExecutionPlan(sampleInput, env);
   assert.equal(plan.v2FlagEnabled, true);
   assert.equal(plan.executionPath, "legacy");
+});
+
+test("rating v2 flag reports engine available in CC-02", () => {
+  const env = {
+    VITE_COMPETITION_CORE_ENABLED: "true",
+    VITE_COMPETITION_CORE_RATING_V2_ENABLED: "true",
+  };
+
+  assert.equal(isEngineV2Available(COMPETITION_ENGINE_TYPE.RATING, env), true);
+
+  const ratingInput = {
+    ...sampleInput,
+    engineType: COMPETITION_ENGINE_TYPE.RATING,
+  };
+  const plan = resolveEngineExecutionPlan(ratingInput, env);
+  assert.equal(plan.v2FlagEnabled, true);
+  assert.equal(plan.executionPath, "v2");
 });
 
 test("importing competition core has no localStorage side effects", () => {

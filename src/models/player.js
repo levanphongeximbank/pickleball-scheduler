@@ -225,6 +225,32 @@ export function normalizePlayer(player) {
     normalized.skillMeta = normalizeSkillMeta(player.skillMeta);
   }
 
+  if (
+    player.competitionElo !== undefined &&
+    player.competitionElo !== null &&
+    player.competitionElo !== ""
+  ) {
+    const parsed = Number(player.competitionElo);
+    if (Number.isFinite(parsed)) {
+      normalized.competitionElo = parsed;
+    }
+  }
+
+  if (
+    player.dailyPlayRating !== undefined &&
+    player.dailyPlayRating !== null &&
+    player.dailyPlayRating !== ""
+  ) {
+    const parsed = Number(player.dailyPlayRating);
+    if (Number.isFinite(parsed)) {
+      normalized.dailyPlayRating = parsed;
+    }
+  }
+
+  if (player.competitionMatchCount !== undefined && player.competitionMatchCount !== null) {
+    normalized.competitionMatchCount = Math.max(0, Number(player.competitionMatchCount) || 0);
+  }
+
   if (player.tenantId) {
     normalized.tenantId = String(player.tenantId).trim();
   }
