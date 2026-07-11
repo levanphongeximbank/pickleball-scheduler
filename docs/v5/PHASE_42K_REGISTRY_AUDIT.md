@@ -121,4 +121,4 @@ Fields: `id`, `tenant_id`, `name`, `code`, `status`, `owner_label`, `president_l
 - Deprecate local SoT paths when `VITE_CLUB_STORAGE_V2=true`
 - Tests + staging QA gate
 
-**Stop:** await `GO DEPLOY 42K` — no Production deploy in this phase.
+**Stop:** Phase 42K **CLOSED** — see `PHASE_42K_PRODUCTION_CLOSEOUT.md`.

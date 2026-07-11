@@ -1,0 +1,46 @@
+{
+  "phase": "42K",
+  "status": "CLOSED",
+  "closedAt": "2026-07-11",
+  "productionUrl": "https://pickleball-scheduler-eight.vercel.app",
+  "deploymentId": "dpl_EJAp3Y7u6R9P8AtAD3Vx8rwcQpFB",
+  "supabaseRef": "expuvcohlcjzvrrauvud",
+  "rollback": false,
+  "redeploy": false,
+  "phase42LStarted": false,
+  "acccUntouched": true,
+  "pass": {
+    "tenantIsolation": {
+      "case": "A-tenant-owner-scope",
+      "verdict": "PASS"
+    },
+    "platformRegistry": {
+      "case": "A-platform-registry",
+      "verdict": "PASS"
+    },
+    "discover": {
+      "case": "E-discover",
+      "verdict": "PASS"
+    },
+    "rpcSignature": {
+      "source": "DRY_RUN.json",
+      "verdict": "PASS"
+    },
+    "noRpcLoop": {
+      "case": "E-no-rpc-loop",
+      "verdict": "PASS",
+      "membershipRpcCount": 1
+    },
+    "noPageError": {
+      "case": "E-no-pageerrors",
+      "verdict": "PASS",
+      "pageErrors": 0
+    }
+  },
+  "incompleteNotProductionDefect": {
+    "cases": ["B-approve-ui", "C-assign-owner", "C-transfer-president", "C-audit-logs", "D-create-club"],
+    "reasons": ["PLAN_CLUB_LIMIT", "QA_DATA"],
+    "summary": "Mutating QA flows blocked by subscription club limit on venue-prod-main and QA fixture constraints; not Production app bugs."
+  },
+  "closeoutDoc": "docs/v5/PHASE_42K_PRODUCTION_CLOSEOUT.md"
+}

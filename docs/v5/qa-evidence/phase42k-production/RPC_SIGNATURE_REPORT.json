@@ -1,0 +1,206 @@
+{
+  "generatedAt": "2026-07-11T07:10:57.223Z",
+  "note": "Compiled from repo SQL/client; live pg_proc verification runs in dry-run when service role available.",
+  "functions": [
+    {
+      "functionName": "club_create",
+      "identityArguments": "uuid, text, text, text, text, text",
+      "returnType": "json",
+      "requiredParameters": [
+        "p_request_id",
+        "p_tenant_id",
+        "p_name"
+      ],
+      "optionalParametersWithDefaults": [
+        "p_code",
+        "p_description",
+        "p_registered_cluster_id"
+      ],
+      "overloads": [],
+      "source": "docs/v5/PHASE_42G_CLUB_CREATE_OWNER.sql",
+      "canonicalResponse": {
+        "success": {
+          "ok": true,
+          "data": "phase42_club_canonical",
+          "version": "number"
+        },
+        "error": {
+          "ok": false,
+          "code": "string",
+          "error": "string"
+        },
+        "clubIdPath": "data.id",
+        "clubObjectPath": "data"
+      }
+    },
+    {
+      "functionName": "club_get",
+      "identityArguments": "text",
+      "returnType": "json",
+      "requiredParameters": [
+        "p_club_id"
+      ],
+      "optionalParametersWithDefaults": [],
+      "overloads": [],
+      "source": "docs/v5/PHASE_42C_RLS_RPC.sql",
+      "canonicalResponse": {
+        "success": {
+          "ok": true,
+          "data": "phase42_club_canonical",
+          "version": "number|string"
+        },
+        "error": {
+          "ok": false,
+          "code": "string",
+          "error": "string"
+        },
+        "clubIdPath": "data.id"
+      }
+    },
+    {
+      "functionName": "club_list_pending_requests",
+      "identityArguments": "text",
+      "returnType": "json",
+      "requiredParameters": [
+        "p_club_id"
+      ],
+      "optionalParametersWithDefaults": [],
+      "overloads": [],
+      "source": "docs/v5/PHASE_42I1_MEMBERSHIP_REVIEW_HOTFIX.sql",
+      "canonicalResponse": {
+        "success": {
+          "ok": true,
+          "data": "array"
+        },
+        "error": {
+          "ok": false,
+          "code": "string",
+          "error": "string"
+        }
+      }
+    },
+    {
+      "functionName": "club_review_membership_request",
+      "identityArguments": "uuid, uuid, text, text, integer",
+      "returnType": "json",
+      "requiredParameters": [
+        "p_request_id",
+        "p_membership_request_id",
+        "p_decision"
+      ],
+      "optionalParametersWithDefaults": [
+        "p_review_note",
+        "p_expected_version"
+      ],
+      "overloads": [
+        "uuid, text, text, text, text (Phase 31 legacy — dropped on Production per PHASE_42_BACKUP)"
+      ],
+      "source": "docs/v5/PHASE_42I1_MEMBERSHIP_REVIEW_HOTFIX.sql",
+      "canonicalResponse": {
+        "success": {
+          "ok": true,
+          "data": "object",
+          "version": "number"
+        },
+        "error": {
+          "ok": false,
+          "code": "string",
+          "error": "string"
+        }
+      }
+    },
+    {
+      "functionName": "club_assign_owner",
+      "identityArguments": "uuid, text, uuid, integer",
+      "returnType": "json",
+      "requiredParameters": [
+        "p_request_id",
+        "p_club_id",
+        "p_member_user_id",
+        "p_expected_club_version"
+      ],
+      "optionalParametersWithDefaults": [],
+      "overloads": [],
+      "source": "src/features/club/services/clubStorageV2RpcService.js (SQL not in repo; deployed Production)",
+      "canonicalResponse": {
+        "success": {
+          "ok": true,
+          "data": "phase42_club_canonical",
+          "version": "number"
+        },
+        "error": {
+          "ok": false,
+          "code": "string",
+          "error": "string"
+        }
+      }
+    },
+    {
+      "functionName": "club_transfer_president",
+      "identityArguments": "uuid, text, uuid, integer",
+      "returnType": "json",
+      "requiredParameters": [
+        "p_request_id",
+        "p_club_id",
+        "p_next_user_id",
+        "p_expected_club_version"
+      ],
+      "optionalParametersWithDefaults": [],
+      "overloads": [],
+      "source": "src/features/club/services/clubStorageV2RpcService.js (SQL not in repo; deployed Production)",
+      "canonicalResponse": {
+        "success": {
+          "ok": true,
+          "data": "phase42_club_canonical",
+          "version": "number"
+        },
+        "error": {
+          "ok": false,
+          "code": "string",
+          "error": "string"
+        }
+      }
+    },
+    {
+      "functionName": "club_submit_membership_request",
+      "identityArguments": "uuid, text, text",
+      "returnType": "json",
+      "requiredParameters": [
+        "p_request_id",
+        "p_club_id"
+      ],
+      "optionalParametersWithDefaults": [
+        "p_message"
+      ],
+      "overloads": [
+        "text, text, numeric (Phase 31 legacy — dropped on Production)"
+      ],
+      "source": "clubStorageV2RpcService.js + PHASE_42_BACKUP_2026-07-10_PRODUCTION.md",
+      "canonicalResponse": {
+        "success": {
+          "ok": true,
+          "data": "object"
+        },
+        "error": {
+          "ok": false,
+          "code": "string",
+          "error": "string"
+        }
+      }
+    }
+  ],
+  "clubCreateCanonical": {
+    "clubIdField": "body.data.id",
+    "clubObjectField": "body.data",
+    "envelope": {
+      "ok": "body.ok",
+      "code": "body.code",
+      "message": "body.error (errors) or absent on success"
+    },
+    "notAtRoot": [
+      "id",
+      "club",
+      "club_id"
+    ]
+  }
+}

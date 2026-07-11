@@ -1,0 +1,188 @@
+{
+  "phase": "42K-production-dry-run",
+  "mode": "dry-run",
+  "mutate": false,
+  "sections": {
+    "parser-fixtures": {
+      "verdict": "PASS",
+      "evidence": "4/4 fixtures"
+    },
+    "live-signature-probes": {
+      "verdict": "PASS",
+      "evidence": "PostgREST signature resolution (read-only invalid payloads)"
+    },
+    "extract-club-id": {
+      "verdict": "PASS",
+      "evidence": "extractClubIdFromBody=club-dryrun-test"
+    }
+  },
+  "parserFixtures": [
+    {
+      "name": "club_create_success",
+      "verdict": "PASS",
+      "expected": "PARSED_OK",
+      "actual": "PARSED_OK",
+      "clubId": "club-abc123",
+      "responseKeys": [
+        "ok",
+        "data:{id,name,version,tenant_id}",
+        "version"
+      ]
+    },
+    {
+      "name": "club_create_ok_missing_id",
+      "verdict": "PASS",
+      "expected": "TEST_PARSER_ERROR",
+      "actual": "TEST_PARSER_ERROR",
+      "clubId": null,
+      "responseKeys": [
+        "ok",
+        "data:{name}",
+        "version"
+      ]
+    },
+    {
+      "name": "pgrst202_wrong_signature",
+      "verdict": "PASS",
+      "expected": "RPC_SIGNATURE_MISMATCH",
+      "actual": "RPC_SIGNATURE_MISMATCH",
+      "clubId": null,
+      "responseKeys": [
+        "code",
+        "message:string(97)"
+      ]
+    },
+    {
+      "name": "club_get_success",
+      "verdict": "PASS",
+      "expected": "PARSED_OK",
+      "actual": "PARSED_OK",
+      "clubId": "club-219e4a7cbd73437eb6271f02a53314c3",
+      "responseKeys": [
+        "ok",
+        "data:{id,name}",
+        "version"
+      ]
+    }
+  ],
+  "signatureProbes": {
+    "club_create": {
+      "verdict": "SKIP",
+      "note": "Mutating RPC — contract from SQL only",
+      "contract": {
+        "name": "club_create",
+        "identityArgs": "uuid, text, text, text, text, text",
+        "returnType": "json",
+        "required": [
+          "p_request_id",
+          "p_tenant_id",
+          "p_name"
+        ],
+        "optional": [
+          "p_code",
+          "p_description",
+          "p_registered_cluster_id"
+        ],
+        "overloads": [],
+        "source": "docs/v5/PHASE_42G_CLUB_CREATE_OWNER.sql",
+        "responseShape": {
+          "success": {
+            "ok": true,
+            "data": "phase42_club_canonical",
+            "version": "number"
+          },
+          "error": {
+            "ok": false,
+            "code": "string",
+            "error": "string"
+          },
+          "clubIdPath": "data.id",
+          "clubObjectPath": "data"
+        }
+      }
+    },
+    "club_get": {
+      "verdict": "PASS",
+      "classification": "RPC_OK",
+      "evidence": "status=200 ok=true code= msg= keys=[ok,data:{id,code,name,status,version,tenant_id,created_at,updated_at,description,owner_label,owner_user_id,president_label,president_user_id,created_by_user_id,active_member_count,registered_cluster_id},version]",
+      "argsSent": [
+        "p_club_id"
+      ],
+      "contractRequired": [
+        "p_club_id"
+      ]
+    },
+    "club_list_pending_requests": {
+      "verdict": "PASS",
+      "classification": "RPC_SIGNATURE_OK",
+      "evidence": "status=200 ok=false code=FORBIDDEN msg=Không có quyền duyệt yêu cầu. keys=[ok,code,error]",
+      "argsSent": [
+        "p_club_id"
+      ],
+      "contractRequired": [
+        "p_club_id"
+      ]
+    },
+    "club_review_membership_request": {
+      "verdict": "PASS",
+      "classification": "RPC_SIGNATURE_OK",
+      "evidence": "status=200 ok=false code=NOT_FOUND msg=Không tìm thấy yêu cầu. keys=[ok,code,error]",
+      "argsSent": [
+        "p_request_id",
+        "p_membership_request_id",
+        "p_decision"
+      ],
+      "contractRequired": [
+        "p_request_id",
+        "p_membership_request_id",
+        "p_decision"
+      ]
+    },
+    "club_assign_owner": {
+      "verdict": "PASS",
+      "classification": "RPC_SIGNATURE_OK",
+      "evidence": "status=200 ok=false code=MEMBER_REQUIRED msg=Chủ sở hữu phải là thành viên active. keys=[ok,code,error]",
+      "argsSent": [
+        "p_request_id",
+        "p_club_id",
+        "p_member_user_id",
+        "p_expected_club_version"
+      ],
+      "contractRequired": [
+        "p_request_id",
+        "p_club_id",
+        "p_member_user_id",
+        "p_expected_club_version"
+      ]
+    },
+    "club_transfer_president": {
+      "verdict": "PASS",
+      "classification": "RPC_SIGNATURE_OK",
+      "evidence": "status=200 ok=false code=MEMBER_REQUIRED msg=Chủ tịch mới phải là thành viên active. keys=[ok,code,error]",
+      "argsSent": [
+        "p_request_id",
+        "p_club_id",
+        "p_next_user_id",
+        "p_expected_club_version"
+      ],
+      "contractRequired": [
+        "p_request_id",
+        "p_club_id",
+        "p_next_user_id",
+        "p_expected_club_version"
+      ]
+    },
+    "club_submit_membership_request": {
+      "verdict": "SKIP",
+      "note": "No probe args"
+    },
+    "club_assign_owner_wrong_2arg": {
+      "verdict": "PASS",
+      "classification": "RPC_SIGNATURE_MISMATCH",
+      "evidence": "status=404 ok=undefined code=PGRST202 msg=Could not find the function public.club_assign_owner(p_club_id, p_request_id) in the schema cache keys=[code,details:string(184),hint:string(131),message:string(97)]",
+      "note": "Intentionally wrong signature — must classify RPC_SIGNATURE_MISMATCH"
+    }
+  },
+  "contractReportPath": "C:\\Users\\Le Phong\\pickleball-scheduler\\docs\\v5\\qa-evidence\\phase42k-production\\RPC_SIGNATURE_REPORT.json",
+  "verdict": "PASS"
+}

@@ -1,0 +1,53 @@
+{
+  "phase": "42K-production",
+  "productionUrl": "https://pickleball-scheduler-eight.vercel.app",
+  "deploymentId": "dpl_EJAp3Y7u6R9P8AtAD3Vx8rwcQpFB",
+  "supabaseRef": "expuvcohlcjzvrrauvud",
+  "mutate": false,
+  "caseFilter": [
+    "E"
+  ],
+  "sections": {
+    "E-discover": {
+      "verdict": "PASS",
+      "evidence": "discoverRpc=1 url=https://pickleball-scheduler-eight.vercel.app/discover-clubs",
+      "metrics": {
+        "discoverRpc": 1
+      }
+    },
+    "E-no-rpc-loop": {
+      "verdict": "PASS",
+      "evidence": "membershipRpc=1",
+      "metrics": {
+        "url": "https://pickleball-scheduler-eight.vercel.app/manage/clubs"
+      }
+    },
+    "E-no-pageerrors": {
+      "verdict": "PASS",
+      "evidence": "pageErrors=0",
+      "metrics": null
+    }
+  },
+  "qaArtifacts": {
+    "clubs": [],
+    "cleaned": []
+  },
+  "audit": [],
+  "memberCount": {},
+  "console": [],
+  "rpcLoops": [
+    {
+      "label": "manage-reload",
+      "count": 1
+    }
+  ],
+  "urls": {
+    "E-discover": "https://pickleball-scheduler-eight.vercel.app/discover-clubs"
+  },
+  "productionDeployed": true,
+  "phase42LStarted": false,
+  "rollback": false,
+  "verdict": "PASS",
+  "acccUntouched": true,
+  "applicantEmail": "doitruong@gmail.com"
+}

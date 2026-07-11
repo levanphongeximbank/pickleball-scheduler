@@ -1,0 +1,147 @@
+{
+  "phase": "42K-production-audit",
+  "date": "2026-07-11",
+  "verdict": "SCRIPT_FIX_REQUIRED",
+  "rollbackRecommended": false,
+  "productionDataChanged": false,
+  "traceFromReport": {
+    "A-tenant-owner-scope": {
+      "verdict": "PASS",
+      "inferredUrl": "/manage/clubs",
+      "evidence": "ACCC=true !stagingB=true rpcProd=true crossBlocked=true",
+      "screenshot": "A-tenant-owner-manage.png"
+    },
+    "A-no-auto-pick": {
+      "verdict": "PASS",
+      "inferredUrl": "/manage/clubs (SA, tenant cleared)",
+      "evidence": "manage shows tenant picker=true"
+    },
+    "A-platform-registry": {
+      "verdict": "PASS",
+      "inferredUrl": "/platform/clubs",
+      "screenshot": "A-sa-platform-clubs.png"
+    },
+    "B-approve-ui": {
+      "verdict": "FAIL",
+      "classification": "TEST_SCRIPT_ERROR",
+      "inferredUrl": "/manage/clubs/{qaClubId} (overview — Thành viên tab absent)",
+      "failureStep": "getByRole('tab', { name: /^thành viên$/i }).click() timeout 30s",
+      "actorUsed": "chusantest@gmail.com (COURT_OWNER / Chủ sân)",
+      "actorShouldBe": "huynhanh1970@gmail.com (club president on QA club)"
+    },
+    "C-assign-owner": {
+      "verdict": "FAIL",
+      "classification": "CASCADE / INVALID_RPC_INPUT",
+      "evidence": "rpcOk=undefined — govClubId likely undefined; not an app RPC failure",
+      "inferredUrl": "/manage/clubs (create step)"
+    },
+    "C-transfer-president": {
+      "verdict": "FAIL",
+      "classification": "CASCADE",
+      "evidence": "rpcOk=undefined"
+    },
+    "C-audit-logs": {
+      "verdict": "FAIL",
+      "classification": "CASCADE",
+      "evidence": "assign=0 transfer=0 — no governance RPC executed"
+    },
+    "D-create-club": {
+      "verdict": "FAIL",
+      "classification": "NEEDS_ISOLATED_RERUN",
+      "evidence": "visible=false registry=false — qaArtifacts missing club ids",
+      "note": "Screenshot C-governance.png / D-create-club.png show /manage/clubs list; create may not have persisted id to report"
+    },
+    "E-discover": {
+      "verdict": "FAIL",
+      "classification": "NEEDS_ISOLATED_RERUN",
+      "evidence": "discoverRpc=0 — likely redirect/timing; not proven app regression"
+    },
+    "E-no-rpc-loop": {
+      "verdict": "PASS",
+      "evidence": "club_get_my_active_membership calls=1"
+    },
+    "E-no-pageerrors": {
+      "verdict": "PASS",
+      "evidence": "pageErrors=0"
+    }
+  },
+  "selectorMatrix": {
+    "my-club-nav": {
+      "canonicalRoutes": ["/my-club", "/my-club/requests"],
+      "myClubMembersControl": "Button (segmented), NOT role=tab — MyClubActionBar.jsx",
+      "requestsLink": "Button 'Yêu cầu gia nhập' → /my-club/requests",
+      "dataTestId": "none in production UI"
+    },
+    "manage-clubs-detail": {
+      "canonicalRoute": "/manage/clubs/:clubId?tab=members",
+      "membersTab": "MUI Tab label 'Thành viên' — ONLY if canViewFullClubMembers(user, club)",
+      "approveInTab": "ClubMembersTab — button 'Duyệt' in pending requests table",
+      "courtOwnerOnForeignClub": "Tab hidden — isVenueScopedRole requires isClubOwner"
+    },
+    "my-club-requests": {
+      "canonicalRoute": "/my-club/requests",
+      "heading": "Yêu cầu gia nhập",
+      "approveSelector": "getByRole('button', { name: /^duyệt$/i })",
+      "guard": "Requires active membership club + canApprove; scoped to active club NOT arbitrary QA club",
+      "oldScriptBug": "Used manage/clubs tab click with wrong actor"
+    },
+    "create-club": {
+      "route": "/manage/clubs",
+      "button": "Tạo CLB mới",
+      "formLabels": ["Tên CLB", "User ID Chủ tịch"]
+    },
+    "discover": {
+      "route": "/discover-clubs",
+      "rpc": "club_list_discoverable"
+    }
+  },
+  "rootCauseByCase": {
+    "B": {
+      "fault": "SCRIPT",
+      "summary": "Wrong actor (tenant court owner) + wrong navigation (click MUI tab on club detail). President huynhanh1970 should approve via /manage/clubs/:qaId?tab=members or /my-club/requests if active membership matches.",
+      "oldSelector": "getByRole('tab', { name: /^thành viên$/i })",
+      "newSelector": "goto /manage/clubs/:id?tab=members; getByRole('button', { name: /^duyệt$/i })",
+      "appBug": false
+    },
+    "C": {
+      "fault": "SCRIPT_CASCADE",
+      "summary": "Undefined club id propagated to RPC; formatRpcEvidence not used in old script",
+      "appBug": false
+    },
+    "D": {
+      "fault": "SCRIPT_UNCONFIRMED",
+      "summary": "Isolate with PHASE42K_CASE=D; may pass after B fix",
+      "appBug": "unknown — rerun required"
+    },
+    "E": {
+      "fault": "SCRIPT_UNCONFIRMED",
+      "summary": "discoverRpc=0 in shared browser state; isolated context rerun needed",
+      "appBug": "unknown — rerun required"
+    }
+  },
+  "scriptDiff": {
+    "files": [
+      "scripts/phase42k-production-helpers.mjs (new)",
+      "scripts/verify-phase42k-production-diagnostic.mjs (new)",
+      "scripts/verify-phase42k-production-smoke.mjs (refactor)"
+    ],
+    "changes": [
+      "PHASE42K_CASE filter — isolated A/B/C/D/E",
+      "PHASE42K_MUTATE=0 default — probe selectors without approve/create",
+      "B: president approver; /my-club/requests then fallback ?tab=members",
+      "TEST_SELECTOR_MISMATCH verdict with screenshot + URL + nav dump",
+      "formatRpcEvidence — no undefined as failure evidence"
+    ]
+  },
+  "rerunPlan": {
+    "rollback": "NO — A cases PASS; failures are script-side",
+    "steps": [
+      "1. export SUPABASE_SERVICE_ROLE_KEY (Production) in shell",
+      "2. node scripts/verify-phase42k-prod-smoke-run.mjs with PHASE42K_MODE=diagnostic",
+      "3. PHASE42K_CASE=B PHASE42K_MUTATE=0 — selector probe only",
+      "4. PHASE42K_CASE=B PHASE42K_MUTATE=1 — mutate approve after probe PASS",
+      "5. Repeat C/D/E individually"
+    ]
+  },
+  "acccUntouched": true
+}

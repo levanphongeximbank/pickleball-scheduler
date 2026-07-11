@@ -1,7 +1,7 @@
 # Phase 42K — Registry Read Model Map
 
 **Version:** 5.3.33  
-**Status:** Implementation complete — **await GO DEPLOY 42K** (Staging QA required; no Production)
+**Status:** **CLOSED** — Production verification complete (2026-07-11). See `PHASE_42K_PRODUCTION_CLOSEOUT.md`.
 
 ## Routes
 
