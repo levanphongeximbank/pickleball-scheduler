@@ -3,7 +3,7 @@ import { CONSTRAINT_SEVERITY } from "../constants/constraintSeverity.js";
 import { createEngineValidationResult } from "../contracts/engineContracts.js";
 import { evaluateHardRules } from "./evaluateHardRules.js";
 import { toRuleEvaluationContext } from "./resolveContext.js";
-import { buildExplanation, toConstraintExplanation } from "./buildExplanation.js";
+import { toConstraintExplanation } from "./buildExplanation.js";
 
 /**
  * @typedef {import('../types/index.js').ConstraintDefinition} ConstraintDefinition

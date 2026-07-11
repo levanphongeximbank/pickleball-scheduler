@@ -122,4 +122,5 @@ export {
   aggregateResult,
   buildExplanation,
   createConstraintExplanation,
+  validateRuleSetLifecycle,
 } from "./constraints/index.js";

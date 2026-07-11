@@ -133,7 +133,7 @@ export function detectConstraintConflicts(constraintsOrRuleSet, context = {}) {
         item.severity === CONSTRAINT_SEVERITY.HARD
     )
     .forEach((constraint) => {
-      const { anchor, targets } = getPartnerParams(constraint);
+      const { anchor } = getPartnerParams(constraint);
       if (!anchor) {
         return;
       }

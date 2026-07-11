@@ -22,14 +22,6 @@ import {
  * @property {import('../types/index.js').EngineExplanation[]} notes
  */
 
-function findOpposingTeamIndex(playerId, teams) {
-  const teamIndex = findTeamIndexForPlayer(teams, playerId);
-  if (teamIndex < 0) {
-    return -1;
-  }
-  return teams.findIndex((_, index) => index !== teamIndex);
-}
-
 function findTeamIndexForPlayer(teams, playerId) {
   return teams.findIndex((team) => team.map(String).includes(String(playerId)));
 }
