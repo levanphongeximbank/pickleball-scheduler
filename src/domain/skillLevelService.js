@@ -7,6 +7,11 @@ import {
 } from "../features/pick-vn-rating/constants/ratingStatus.js";
 import { DEFAULT_SKILL_LEVEL_RULES } from "../ai/config.js";
 import { getPlayerRatingInternal, normalizePlayers } from "../models/player.js";
+import { isRatingV2Enabled } from "../features/competition-core/config/featureFlags.js";
+import {
+  assessMonthlyPublicLevelV2,
+  createMonthlyReviewV2Proposal,
+} from "../features/competition-core/rating/monthlyReviewV2.js";
 import { loadClubData, saveClubData } from "./clubStorage.js";
 import {
   applyMonthlyHoldReview,
@@ -215,15 +220,23 @@ export function generateMonthlySkillLevelProposals(clubId, options = {}) {
   const playersToUpdate = new Map();
 
   (data.players || []).forEach((player) => {
-    const assessment = assessMonthlyPublicLevel(player, rules, now, options);
+    const assessment = isRatingV2Enabled(options.envSource)
+      ? assessMonthlyPublicLevelV2(player, rules, now, options)
+      : assessMonthlyPublicLevel(player, rules, now, options);
     if (!assessment) {
+      return;
+    }
+
+    if (assessment.skipped) {
       return;
     }
 
     if (assessment.changed) {
       const key = `${assessment.playerId}::${assessment.reviewMonth}`;
       if (!pendingByPlayerMonth.has(key)) {
-        const proposal = createSkillLevelProposal(assessment, now);
+        const proposal = isRatingV2Enabled(options.envSource)
+          ? createMonthlyReviewV2Proposal(assessment, now)
+          : createSkillLevelProposal(assessment, now);
         if (proposal) {
           newProposals.push(proposal);
           pendingByPlayerMonth.add(key);

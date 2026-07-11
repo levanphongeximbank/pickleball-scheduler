@@ -4,10 +4,19 @@ import {
   buildEloUpdatesFromMatchRecord,
 } from "../tournament/engines/eloEngine.js";
 import { loadClubData, saveClubData } from "./clubStorage.js";
+import { isRatingV2Enabled } from "../features/competition-core/config/featureFlags.js";
+import { applyCompetitionEloFromMatchRecord } from "../features/competition-core/rating/ratingServiceV2.js";
 
 export function applyEloFromMatchRecord(clubId, record, options = {}) {
   if (!record?.id) {
     return { ok: true, skipped: true, updates: [] };
+  }
+
+  if (isRatingV2Enabled(options.envSource)) {
+    return applyCompetitionEloFromMatchRecord(clubId, record, {
+      ...options,
+      allowForfeit: record.status === "forfeit",
+    });
   }
 
   const data = loadClubData(clubId);
