@@ -1,0 +1,20 @@
+{
+  "phase": "CC-02C",
+  "generatedAt": "2026-07-11T16:53:35.956Z",
+  "stagingMigration": "NOT APPLIED",
+  "productionMigration": "NOT APPLIED",
+  "previewDeployment": "NOT DEPLOYED",
+  "productionDeployment": "NOT DEPLOYED",
+  "featureFlagsProduction": "OFF",
+  "verdict": "PARTIAL",
+  "dbAvailable": false,
+  "note": "No CC02C_LOCAL_DB_URL / LOCAL_DATABASE_URL / DATABASE_URL — SQL proposal verified statically only.",
+  "checks": {
+    "firstApply": "SKIPPED",
+    "verificationSql": "SKIPPED",
+    "duplicateApply": "SKIPPED",
+    "rls": "SKIPPED",
+    "uniqueIdempotency": "SKIPPED",
+    "transactionRollback": "SKIPPED"
+  }
+}

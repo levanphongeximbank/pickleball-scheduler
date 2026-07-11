@@ -9,6 +9,21 @@ export const ELO_PER_SKILL_POINT_V1 = 400;
 
 export const RATING_MAPPING_VERSION_V1 = "v1";
 
+export const RATING_ENGINE_VERSION = "competition-core-rating-v2-cc02c";
+
+/** @type {Readonly<Record<string, string>>} */
+export const RATING_TYPE = Object.freeze({
+  COMPETITION_ELO: "competition_elo",
+});
+
+/** Standardized forfeit subtypes — CC-02C policy. */
+export const FORFEIT_SUBTYPE = Object.freeze({
+  FORFEIT_BEFORE_START: "forfeit_before_start",
+  WALKOVER: "walkover",
+  ADMINISTRATIVE_FORFEIT: "administrative_forfeit",
+  FORFEIT_AFTER_START: "forfeit_after_start",
+});
+
 /** @type {Readonly<Record<string, string>>} */
 export const RATING_INELIGIBILITY_REASON = Object.freeze({
   BYE: "bye",
@@ -21,6 +36,7 @@ export const RATING_INELIGIBILITY_REASON = Object.freeze({
   INVALID_LINEUP: "invalid_lineup",
   MISSING_TEAMS: "missing_teams",
   DAILY_PLAY: "daily_play",
+  FORFEIT_LEGACY: "forfeit_legacy",
 });
 
 /** @type {Readonly<Record<string, string>>} */

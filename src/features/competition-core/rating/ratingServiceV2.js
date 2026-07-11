@@ -1,14 +1,11 @@
+import { applyCompetitionEloAtomically } from "./ratingAtomicApply.js";
+import { backfillPlayerRatingV2Fields } from "./playerRatingCompat.js";
 import { normalizePlayers } from "../../../models/player.js";
 import { loadClubData, saveClubData } from "../../../domain/clubStorage.js";
-import { isMatchRatingEligible } from "./isMatchRatingEligible.js";
-import {
-  applyCompetitionEloUpdatesToPlayers,
-  buildCompetitionEloUpdatesFromMatchRecord,
-} from "./competitionEloEngine.js";
-import { backfillPlayerRatingV2Fields } from "./playerRatingCompat.js";
 
 /**
  * Apply competition Elo V2 from a match record — public skill unchanged.
+ * Uses atomic apply with durable per-player idempotency markers.
  *
  * @param {string} clubId
  * @param {Object} record
@@ -16,55 +13,7 @@ import { backfillPlayerRatingV2Fields } from "./playerRatingCompat.js";
  * @returns {{ ok: boolean, skipped?: boolean, reason?: string|null, updates?: Array, eligibility?: Object }}
  */
 export function applyCompetitionEloFromMatchRecord(clubId, record, options = {}) {
-  if (!record?.id) {
-    return { ok: true, skipped: true, updates: [], reason: "missing-record" };
-  }
-
-  const eligibility = isMatchRatingEligible(record, options);
-  if (!eligibility.eligible) {
-    return {
-      ok: true,
-      skipped: true,
-      reason: eligibility.reason,
-      eligibility,
-      updates: [],
-    };
-  }
-
-  const data = loadClubData(clubId);
-  const matchId = String(record.id);
-  const appliedIds = Array.isArray(data.ratingV2AppliedMatchIds)
-    ? data.ratingV2AppliedMatchIds.map(String)
-    : [];
-
-  if (appliedIds.includes(matchId)) {
-    return {
-      ok: true,
-      skipped: true,
-      reason: "already-applied",
-      updates: [],
-      eligibility,
-    };
-  }
-
-  const updates = buildCompetitionEloUpdatesFromMatchRecord(
-    record,
-    data.players || [],
-    options
-  );
-
-  if (!updates.length) {
-    return { ok: true, skipped: true, updates: [], reason: "no-updates", eligibility };
-  }
-
-  data.players = normalizePlayers(
-    applyCompetitionEloUpdatesToPlayers(data.players || [], updates, options)
-  );
-  data.ratingV2AppliedMatchIds = [...appliedIds, matchId];
-  data.updatedAt = new Date().toISOString();
-  saveClubData(clubId, data);
-
-  return { ok: true, skipped: false, updates, eligibility, engine: "competition-core-rating-v2" };
+  return applyCompetitionEloAtomically(clubId, record, options);
 }
 
 /**

@@ -52,16 +52,50 @@ test("isMatchRatingEligible rejects missing teams", () => {
   assert.equal(result.eligible, false);
 });
 
-test("isMatchRatingEligible returns REQUIRES_REVIEW for unclear forfeit", () => {
+test("isMatchRatingEligible returns REQUIRES_REVIEW for legacy forfeit without subtype", () => {
   const result = isMatchRatingEligible({ ...baseRecord, status: "forfeit" });
   assert.equal(result.eligible, false);
   assert.equal(result.status, "requires_review");
-  assert.equal(result.reason, "forfeit");
+  assert.equal(result.reason, "forfeit_legacy");
 });
 
-test("isMatchRatingEligible allows forfeit when explicitly confirmed", () => {
-  const result = isMatchRatingEligible(
-    { ...baseRecord, status: "forfeit", forfeitConfirmed: true }
-  );
-  assert.equal(result.eligible, true);
+test("isMatchRatingEligible rejects forfeit_before_start subtype", () => {
+  const result = isMatchRatingEligible({
+    ...baseRecord,
+    status: "forfeit",
+    forfeitSubtype: "forfeit_before_start",
+  });
+  assert.equal(result.eligible, false);
+  assert.equal(result.status, "ineligible");
+});
+
+test("isMatchRatingEligible rejects walkover subtype", () => {
+  const result = isMatchRatingEligible({
+    ...baseRecord,
+    status: "forfeit",
+    forfeitSubtype: "walkover",
+  });
+  assert.equal(result.eligible, false);
+  assert.equal(result.status, "ineligible");
+});
+
+test("isMatchRatingEligible returns REQUIRES_REVIEW for administrative_forfeit", () => {
+  const result = isMatchRatingEligible({
+    ...baseRecord,
+    status: "forfeit",
+    forfeitSubtype: "administrative_forfeit",
+  });
+  assert.equal(result.eligible, false);
+  assert.equal(result.status, "requires_review");
+});
+
+test("isMatchRatingEligible returns REQUIRES_REVIEW for forfeit with scores but no subtype", () => {
+  const result = isMatchRatingEligible({
+    ...baseRecord,
+    status: "forfeit",
+    scoreA: 11,
+    scoreB: 0,
+  });
+  assert.equal(result.eligible, false);
+  assert.equal(result.status, "requires_review");
 });

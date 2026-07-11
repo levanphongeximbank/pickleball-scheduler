@@ -1,4 +1,4 @@
-import { RATING_INELIGIBILITY_REASON } from "./ratingConstants.js";
+import { FORFEIT_SUBTYPE, RATING_INELIGIBILITY_REASON } from "./ratingConstants.js";
 
 /**
  * @typedef {Object} MatchRatingEligibilityResult
@@ -30,13 +30,35 @@ const INELIGIBLE_STATUSES = new Set([
   "invalid_lineup",
 ]);
 
+const INELIGIBLE_FORFEIT_SUBTYPES = new Set([
+  FORFEIT_SUBTYPE.FORFEIT_BEFORE_START,
+  FORFEIT_SUBTYPE.WALKOVER,
+  RATING_INELIGIBILITY_REASON.WALKOVER_BEFORE_START,
+]);
+
+const REQUIRES_REVIEW_FORFEIT_SUBTYPES = new Set([
+  FORFEIT_SUBTYPE.ADMINISTRATIVE_FORFEIT,
+  FORFEIT_SUBTYPE.FORFEIT_AFTER_START,
+]);
+
+function resolveForfeitSubtype(record, match) {
+  return String(
+    record.forfeitSubtype ??
+      record.ratingForfeitSubtype ??
+      match.forfeitSubtype ??
+      match.ratingForfeitSubtype ??
+      ""
+  )
+    .trim()
+    .toLowerCase();
+}
+
 /**
  * Determine whether a completed match record should update competition Elo.
  *
  * @param {Object|null|undefined} record Match record or raw match object
  * @param {Object} [options]
  * @param {Object|null} [options.match] Original match for extra flags
- * @param {boolean} [options.allowForfeit] When true, forfeit counts as eligible (legacy compat)
  * @returns {MatchRatingEligibilityResult}
  */
 export function isMatchRatingEligible(record, options = {}) {
@@ -98,20 +120,38 @@ export function isMatchRatingEligible(record, options = {}) {
     };
   }
 
-  if (status === "forfeit") {
-    const forfeitConfirmed =
-      record.forfeitConfirmed === true ||
-      match.forfeitConfirmed === true ||
-      record.ratingForfeitConfirmed === true ||
-      match.ratingForfeitConfirmed === true;
+  if (status === "forfeit" || resultType === "forfeit") {
+    const subtype = resolveForfeitSubtype(record, match);
 
-    if (!forfeitConfirmed && options.allowForfeit !== true) {
+    if (!subtype) {
       return {
         eligible: false,
-        reason: "forfeit",
+        reason: RATING_INELIGIBILITY_REASON.FORFEIT_LEGACY,
         status: "requires_review",
       };
     }
+
+    if (INELIGIBLE_FORFEIT_SUBTYPES.has(subtype)) {
+      return { eligible: false, reason: subtype, status: "ineligible" };
+    }
+
+    if (REQUIRES_REVIEW_FORFEIT_SUBTYPES.has(subtype)) {
+      return { eligible: false, reason: subtype, status: "requires_review" };
+    }
+
+    return {
+      eligible: false,
+      reason: subtype || RATING_INELIGIBILITY_REASON.FORFEIT_LEGACY,
+      status: "requires_review",
+    };
+  }
+
+  if (status === "walkover" || resultType === FORFEIT_SUBTYPE.WALKOVER) {
+    return {
+      eligible: false,
+      reason: FORFEIT_SUBTYPE.WALKOVER,
+      status: "ineligible",
+    };
   }
 
   if (record.source === "daily_play" || record.mode === "daily_play") {
