@@ -75,3 +75,14 @@ export {
   cloneCompetitionEngineInput,
   isBusinessPayloadPreserved,
 } from "./utils/inputClone.js";
+
+export {
+  mapCompetitionEloToSkill,
+  mapSkillToCompetitionElo,
+  mapLegacySkillToInitialElo,
+  isMatchRatingEligible,
+  resolveKFactor,
+  getPlayerCompetitionElo,
+  buildRatingSnapshotFromPlayer,
+  backfillPlayerRatingV2Fields,
+} from "./rating/index.js";
