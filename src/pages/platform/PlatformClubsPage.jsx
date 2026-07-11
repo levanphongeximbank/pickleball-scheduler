@@ -4,11 +4,9 @@ import {
   Alert,
   Box,
   Button,
-  Chip,
   IconButton,
   MenuItem,
   Paper,
-  Skeleton,
   Stack,
   Table,
   TableBody,
@@ -18,7 +16,6 @@ import {
   TableRow,
   TextField,
   Tooltip,
-  Typography,
 } from "@mui/material";
 import VisibilityIcon from "@mui/icons-material/Visibility";
 
@@ -27,8 +24,14 @@ import { isGlobalRole, isPlatformScopedRole } from "../../auth/roles.js";
 import { CLUB_REGISTRY_SCOPE } from "../../features/club/registry/clubRegistryCache.js";
 import { useClubRegistry } from "../../features/club/hooks/useClubRegistry.js";
 import { paginateRegistryRows } from "../../features/club/services/clubRegistryService.js";
-import { CLUB_STATUS_LABELS } from "../../features/club/index.js";
 import { listTenants } from "../../features/tenant/index.js";
+import {
+  ClubEmptyState,
+  ClubPageShell,
+  ClubRegistrySkeleton,
+  ClubStatusBadge,
+  clubRegistryPaperSx,
+} from "../../features/club/ui/index.js";
 
 export default function PlatformClubsPage() {
   const navigate = useNavigate();
@@ -66,43 +69,68 @@ export default function PlatformClubsPage() {
   const tenants = useMemo(() => listTenants(), []);
 
   if (!allowed) {
-    return <Alert severity="error">Chỉ Platform Admin / Super Admin được xem sổ đăng ký toàn nền tảng.</Alert>;
+    return (
+      <ClubPageShell title="Sổ đăng ký CLB (Platform)" maxWidth={1400}>
+        <Alert severity="error">
+          Chỉ Platform Admin / Super Admin được xem sổ đăng ký toàn nền tảng.
+        </Alert>
+      </ClubPageShell>
+    );
   }
 
   if (registry.loading) {
     return (
-      <Box>
-        <Skeleton variant="text" width="50%" height={40} />
-        <Skeleton variant="rounded" height={360} sx={{ mt: 2 }} />
-      </Box>
+      <ClubPageShell
+        title="Sổ đăng ký CLB (Platform)"
+        subtitle="Cross-tenant read-only registry — không tự tạo membership cho Super Admin."
+        breadcrumbs={[
+          { label: "Platform", href: "/platform/clubs" },
+          { label: "Sổ đăng ký CLB" },
+        ]}
+        maxWidth={1400}
+      >
+        <ClubRegistrySkeleton />
+      </ClubPageShell>
     );
   }
 
   if (registry.error) {
     return (
-      <Alert
-        severity="error"
-        action={
-          <Button color="inherit" size="small" onClick={() => void registry.reload()}>
-            Thử lại
-          </Button>
-        }
+      <ClubPageShell
+        title="Sổ đăng ký CLB (Platform)"
+        breadcrumbs={[
+          { label: "Platform", href: "/platform/clubs" },
+          { label: "Sổ đăng ký CLB" },
+        ]}
+        maxWidth={1400}
       >
-        {registry.error}
-      </Alert>
+        <Alert
+          severity="error"
+          action={
+            <Button color="inherit" size="small" onClick={() => void registry.reload()}>
+              Thử lại
+            </Button>
+          }
+        >
+          {registry.error}
+        </Alert>
+      </ClubPageShell>
     );
   }
 
-  return (
-    <Box sx={{ p: { xs: 2, md: 3 } }}>
-      <Typography variant="h5" fontWeight={700} gutterBottom>
-        Sổ đăng ký CLB (Platform)
-      </Typography>
-      <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-        Cross-tenant read-only registry — không tự tạo membership cho Super Admin.
-      </Typography>
+  const hasFilters = Boolean(search || tenantFilter || statusFilter !== "all");
 
-      <Paper sx={{ p: 2, mb: 2 }}>
+  return (
+    <ClubPageShell
+      title="Sổ đăng ký CLB (Platform)"
+      subtitle="Cross-tenant read-only registry — không tự tạo membership cho Super Admin."
+      breadcrumbs={[
+        { label: "Platform", href: "/platform/clubs" },
+        { label: "Sổ đăng ký CLB" },
+      ]}
+      maxWidth={1400}
+    >
+      <Paper sx={clubRegistryPaperSx}>
         <Stack direction={{ xs: "column", md: "row" }} spacing={2}>
           <TextField
             label="Tìm kiếm"
@@ -152,11 +180,9 @@ export default function PlatformClubsPage() {
       </Paper>
 
       {pageData.total === 0 ? (
-        <Paper sx={{ p: 4, textAlign: "center" }}>
-          <Typography color="text.secondary">Không có CLB phù hợp bộ lọc.</Typography>
-        </Paper>
+        <ClubEmptyState preset={hasFilters ? "registryFilter" : "registry"} />
       ) : (
-        <TableContainer component={Paper}>
+        <TableContainer component={Paper} sx={{ borderRadius: 2 }}>
           <Table size="small">
             <TableHead>
               <TableRow>
@@ -180,7 +206,7 @@ export default function PlatformClubsPage() {
                   <TableCell>{row.presidentName || "—"}</TableCell>
                   <TableCell align="right">{row.memberCount ?? 0}</TableCell>
                   <TableCell>
-                    <Chip size="small" label={CLUB_STATUS_LABELS[row.status] || row.status} />
+                    <ClubStatusBadge status={row.status} />
                   </TableCell>
                   <TableCell align="right">
                     <Tooltip title="Xem chi tiết tenant registry">
@@ -199,22 +225,24 @@ export default function PlatformClubsPage() {
         </TableContainer>
       )}
 
-      <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mt: 2 }}>
-        <Typography variant="body2" color="text.secondary">
-          {pageData.total} CLB · trang {pageData.page}/{pageData.totalPages}
-        </Typography>
-        <Stack direction="row" spacing={1}>
-          <Button disabled={page <= 1} onClick={() => setPage((p) => Math.max(1, p - 1))}>
-            Trước
-          </Button>
-          <Button
-            disabled={page >= pageData.totalPages}
-            onClick={() => setPage((p) => p + 1)}
-          >
-            Sau
-          </Button>
+      {pageData.total > 0 && (
+        <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mt: 2 }}>
+          <Box component="span" sx={{ typography: "body2", color: "text.secondary" }}>
+            {pageData.total} CLB · trang {pageData.page}/{pageData.totalPages}
+          </Box>
+          <Stack direction="row" spacing={1}>
+            <Button disabled={page <= 1} onClick={() => setPage((p) => Math.max(1, p - 1))}>
+              Trước
+            </Button>
+            <Button
+              disabled={page >= pageData.totalPages}
+              onClick={() => setPage((p) => p + 1)}
+            >
+              Sau
+            </Button>
+          </Stack>
         </Stack>
-      </Stack>
-    </Box>
+      )}
+    </ClubPageShell>
   );
 }

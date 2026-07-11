@@ -4,11 +4,9 @@ import {
   Alert,
   Box,
   Button,
-  Chip,
   IconButton,
   MenuItem,
   Paper,
-  Skeleton,
   Stack,
   Table,
   TableBody,
@@ -18,7 +16,6 @@ import {
   TableRow,
   TextField,
   Tooltip,
-  Typography,
 } from "@mui/material";
 import AddIcon from "@mui/icons-material/Add";
 import EditIcon from "@mui/icons-material/Edit";
@@ -33,7 +30,6 @@ import { isPlatformScopedRole } from "../../auth/roles.js";
 import PermissionGate from "../../components/auth/PermissionGate.jsx";
 import { PERMISSIONS } from "../../auth/permissions.js";
 import {
-  CLUB_STATUS_LABELS,
   CLUB_STATUSES,
   deactivateClub,
   getClubStats,
@@ -43,6 +39,14 @@ import {
   rejectClubRegistration,
   isClubStorageV2Enabled,
 } from "../../features/club/index.js";
+import {
+  ClubEmptyState,
+  ClubFeedbackAlert,
+  ClubPageShell,
+  ClubRegistrySkeleton,
+  ClubStatusBadge,
+  clubRegistryPaperSx,
+} from "../../features/club/ui/index.js";
 import { CLUB_REGISTRY_SCOPE } from "../../features/club/registry/clubRegistryCache.js";
 import { useClubRegistry } from "../../features/club/hooks/useClubRegistry.js";
 import { syncClubRegistryForUser } from "../../features/club/services/clubRegistryCloudSync.js";
@@ -297,89 +301,101 @@ export default function ClubListPage() {
 
   if (storageV2 && registry.loading) {
     return (
-      <Box>
-        <Skeleton variant="text" width="40%" height={40} />
-        <Skeleton variant="rounded" height={120} sx={{ mt: 2 }} />
-        <Skeleton variant="rounded" height={320} sx={{ mt: 2 }} />
-      </Box>
+      <ClubPageShell
+        title="Quản lý CLB"
+        subtitle={`Tenant: ${currentTenant?.name || currentTenantId}`}
+        breadcrumbs={[
+          { label: "Quản lý", href: "/manage/clubs" },
+          { label: "Sổ đăng ký CLB" },
+        ]}
+        maxWidth={1400}
+      >
+        <ClubRegistrySkeleton />
+      </ClubPageShell>
     );
   }
 
   if (storageV2 && registry.error) {
     return (
-      <Alert
-        severity="error"
-        action={
-          <Button color="inherit" size="small" onClick={() => void registry.reload()}>
-            Thử lại
-          </Button>
-        }
+      <ClubPageShell
+        title="Quản lý CLB"
+        subtitle={`Tenant: ${currentTenant?.name || currentTenantId}`}
+        breadcrumbs={[
+          { label: "Quản lý", href: "/manage/clubs" },
+          { label: "Sổ đăng ký CLB" },
+        ]}
+        maxWidth={1400}
       >
-        {registry.error}
-      </Alert>
+        <Alert
+          severity="error"
+          action={
+            <Button color="inherit" size="small" onClick={() => void registry.reload()}>
+              Thử lại
+            </Button>
+          }
+        >
+          {registry.error}
+        </Alert>
+      </ClubPageShell>
     );
   }
 
+  const headerActions = (
+    <Stack direction="row" spacing={1} alignItems="center" flexWrap="wrap">
+      {canSyncCloud && (
+        <>
+          <Button
+            variant="outlined"
+            startIcon={<CloudDownloadIcon />}
+            onClick={() => void handlePullFromCloud()}
+            disabled={syncSaving}
+          >
+            {syncSaving ? "Đang tải…" : "Tải từ cloud"}
+          </Button>
+          <Button
+            variant="outlined"
+            startIcon={<CloudSyncIcon />}
+            onClick={() => void handleSyncToCloud()}
+            disabled={syncSaving || filtered.length === 0}
+          >
+            {syncSaving ? "Đang đồng bộ…" : "Đồng bộ lên cloud"}
+          </Button>
+        </>
+      )}
+      <PermissionGate permission={PERMISSIONS.CLUB_CREATE} scope={{ venueId: currentTenantId }}>
+        <Button
+          variant="contained"
+          startIcon={<AddIcon />}
+          onClick={() => {
+            setEditClub(null);
+            setFormOpen(true);
+          }}
+          disabled={!canCreate}
+        >
+          Tạo CLB mới
+        </Button>
+      </PermissionGate>
+    </Stack>
+  );
+
   return (
-    <Box>
-      <Stack direction={{ xs: "column", sm: "row" }} justifyContent="space-between" spacing={2} mb={3}>
-        <Box>
-          <Typography variant="h5" fontWeight={700}>
-            Quản lý CLB
-          </Typography>
-          <Typography variant="body2" color="text.secondary">
-            Tenant: {currentTenant?.name || currentTenantId} · {currentTenantId}
-          </Typography>
-        </Box>
-        <Stack direction="row" spacing={1} alignItems="center">
-          {canSyncCloud && (
-            <>
-              <Button
-                variant="outlined"
-                startIcon={<CloudDownloadIcon />}
-                onClick={() => void handlePullFromCloud()}
-                disabled={syncSaving}
-              >
-                {syncSaving ? "Đang tải…" : "Tải từ cloud"}
-              </Button>
-              <Button
-                variant="outlined"
-                startIcon={<CloudSyncIcon />}
-                onClick={() => void handleSyncToCloud()}
-                disabled={syncSaving || filtered.length === 0}
-              >
-                {syncSaving ? "Đang đồng bộ…" : "Đồng bộ lên cloud"}
-              </Button>
-            </>
-          )}
-          <PermissionGate permission={PERMISSIONS.CLUB_CREATE} scope={{ venueId: currentTenantId }}>
-            <Button
-              variant="contained"
-              startIcon={<AddIcon />}
-              onClick={() => {
-                setEditClub(null);
-                setFormOpen(true);
-              }}
-              disabled={!canCreate}
-            >
-              Tạo CLB mới
-            </Button>
-          </PermissionGate>
-        </Stack>
-      </Stack>
+    <ClubPageShell
+      title="Quản lý CLB"
+      subtitle={`Tenant: ${currentTenant?.name || currentTenantId} · ${currentTenantId}`}
+      breadcrumbs={[
+        { label: "Quản lý", href: "/manage/clubs" },
+        { label: "Sổ đăng ký CLB" },
+      ]}
+      actions={headerActions}
+      maxWidth={1400}
+    >
+      <ClubFeedbackAlert
+        message={message ? { type: "success", text: message } : null}
+        onClose={() => setMessage(null)}
+      />
+      <ClubFeedbackAlert message={error ? { type: "error", text: error } : null} onClose={() => setError(null)} />
 
-      {message && (
-        <Alert severity="success" sx={{ mb: 2 }} onClose={() => setMessage(null)}>
-          {message}
-        </Alert>
-      )}
-      {error && (
-        <Alert severity="error" sx={{ mb: 2 }} onClose={() => setError(null)}>
-          {error}
-        </Alert>
-      )}
-
-      <Paper sx={{ p: 2, mb: 2 }}>
+      <Paper sx={clubRegistryPaperSx}>
         <Stack direction={{ xs: "column", md: "row" }} spacing={2}>
           <TextField
             label="Tìm theo tên / mã CLB"
@@ -420,16 +436,18 @@ export default function ClubListPage() {
       </Paper>
 
       {filtered.length === 0 ? (
-        <Paper sx={{ p: 4, textAlign: "center" }}>
-          <Typography color="text.secondary" gutterBottom>
-            Chưa có CLB nào trong tenant này.
-          </Typography>
-          {canCreate && (
-            <Button variant="outlined" startIcon={<AddIcon />} onClick={() => setFormOpen(true)}>
-              Tạo CLB đầu tiên
-            </Button>
-          )}
-        </Paper>
+        <ClubEmptyState
+          preset={search || statusFilter !== "all" ? "registryFilter" : "registry"}
+          actionLabel={canCreate && !search && statusFilter === "all" ? "Tạo CLB đầu tiên" : undefined}
+          onAction={
+            canCreate && !search && statusFilter === "all"
+              ? () => {
+                  setEditClub(null);
+                  setFormOpen(true);
+                }
+              : undefined
+          }
+        />
       ) : (
         <TableContainer component={Paper}>
           <Table size="small">
@@ -458,19 +476,7 @@ export default function ClubListPage() {
                   {!storageV2 && <TableCell align="right">{stats.avgElo || "—"}</TableCell>}
                   {!storageV2 && <TableCell align="right">{stats.tournamentCount}</TableCell>}
                   <TableCell>
-                    <Chip
-                      size="small"
-                      label={CLUB_STATUS_LABELS[club.status] || club.status}
-                      color={
-                        club.status === CLUB_STATUSES.ACTIVE
-                          ? "success"
-                          : club.status === CLUB_STATUSES.PENDING_SETUP
-                            ? "warning"
-                            : club.status === CLUB_STATUSES.PENDING_APPROVAL
-                              ? "warning"
-                              : "default"
-                      }
-                    />
+                    <ClubStatusBadge status={club.status} />
                   </TableCell>
                   <TableCell>
                     {new Date(club.createdAt).toLocaleDateString("vi-VN")}
@@ -556,6 +562,6 @@ export default function ClubListPage() {
         onClose={() => setDeactivateTarget(null)}
         onConfirm={handleDeactivate}
       />
-    </Box>
+    </ClubPageShell>
   );
 }

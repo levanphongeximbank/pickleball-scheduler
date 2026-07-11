@@ -14,6 +14,8 @@ import {
   TableHead,
   TableRow,
   Typography,
+  useMediaQuery,
+  useTheme,
 } from "@mui/material";
 
 import { useAuth } from "../../../context/AuthContext.jsx";
@@ -26,9 +28,48 @@ import {
   getTenantPlayers,
   getVicePresidentUserIds,
 } from "../../../features/club/index.js";
+import { ClubEmptyState, GovernanceRoleChip } from "../../../features/club/ui/index.js";
 import { loadPlayersForClub } from "../../../domain/clubStorage.js";
 import { findUserIdByPlayerId } from "../../../features/club/storage/athleteClubLinkStore.js";
 import { resolveMemberGovernanceRole } from "./myClubViewLogic.js";
+
+function mapGovernanceChip(governanceRole) {
+  if (!governanceRole) {
+    return null;
+  }
+  if (governanceRole.includes("Phó")) {
+    return { role: "vice", label: governanceRole };
+  }
+  if (governanceRole.includes("Chủ tịch") && governanceRole.includes("Chủ sở hữu")) {
+    return { role: "president", label: governanceRole };
+  }
+  if (governanceRole === "Chủ tịch") {
+    return { role: "president" };
+  }
+  if (governanceRole === "Chủ sở hữu") {
+    return { role: "owner" };
+  }
+  return { role: "member", label: governanceRole };
+}
+
+function MemberRowContent({ row }) {
+  const gov = mapGovernanceChip(row.governanceRole);
+  return (
+    <>
+      <Typography fontWeight={600}>{row.name}</Typography>
+      <Stack direction="row" spacing={0.5} flexWrap="wrap" useFlexGap sx={{ mt: 0.5 }}>
+        {gov && <GovernanceRoleChip role={gov.role} label={gov.label} />}
+        <GovernanceRoleChip role="member" label={row.memberRole} />
+        <Chip
+          size="small"
+          label={row.isActive ? "Đang hoạt động" : "Không hoạt động"}
+          color={row.isActive ? "success" : "default"}
+          aria-label={row.isActive ? "Đang hoạt động" : "Không hoạt động"}
+        />
+      </Stack>
+    </>
+  );
+}
 
 export default function MyClubMembersPanel({
   clubId,
@@ -38,6 +79,8 @@ export default function MyClubMembersPanel({
   manageHref = null,
   revision = 0,
 }) {
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down("md"));
   const { can, rbacEnabled, isAuthenticated } = useAuth();
 
   const fullAccess = clubRecord && user && canViewFullClubMembers(user, clubRecord);
@@ -107,7 +150,7 @@ export default function MyClubMembersPanel({
         sx={{ mb: 2 }}
       >
         <Box>
-          <Typography variant="subtitle1" fontWeight={700}>
+          <Typography variant="subtitle1" fontWeight={700} component="h3">
             Thành viên CLB
           </Typography>
           <Typography variant="body2" color="text.secondary">
@@ -130,11 +173,19 @@ export default function MyClubMembersPanel({
         </Alert>
       )}
 
-      {fullAccess && rows.length === 0 && (
-        <Alert severity="info">CLB chưa có thành viên trong danh sách.</Alert>
-      )}
+      {fullAccess && rows.length === 0 && <ClubEmptyState preset="members" />}
 
-      {fullAccess && rows.length > 0 && (
+      {fullAccess && rows.length > 0 && isMobile ? (
+        <Stack spacing={1.5}>
+          {rows.map((row) => (
+            <Paper key={row.id} variant="outlined" sx={{ p: 2, borderRadius: 2 }}>
+              <MemberRowContent row={row} />
+            </Paper>
+          ))}
+        </Stack>
+      ) : null}
+
+      {fullAccess && rows.length > 0 && !isMobile ? (
         <TableContainer component={Paper} variant="outlined" sx={{ borderRadius: 2 }}>
           <Table size="small">
             <TableHead>
@@ -145,32 +196,33 @@ export default function MyClubMembersPanel({
               </TableRow>
             </TableHead>
             <TableBody>
-              {rows.map((row) => (
-                <TableRow key={row.id} hover>
-                  <TableCell>
-                    <Typography fontWeight={600}>{row.name}</Typography>
-                  </TableCell>
-                  <TableCell>
-                    <Stack direction="row" spacing={0.5} flexWrap="wrap" useFlexGap>
-                      {row.governanceRole && (
-                        <Chip size="small" label={row.governanceRole} color="primary" variant="outlined" />
-                      )}
-                      <Chip size="small" label={row.memberRole} variant="outlined" />
-                    </Stack>
-                  </TableCell>
-                  <TableCell>
-                    <Chip
-                      size="small"
-                      label={row.isActive ? "Đang hoạt động" : "Không hoạt động"}
-                      color={row.isActive ? "success" : "default"}
-                    />
-                  </TableCell>
-                </TableRow>
-              ))}
+              {rows.map((row) => {
+                const gov = mapGovernanceChip(row.governanceRole);
+                return (
+                  <TableRow key={row.id} hover>
+                    <TableCell>
+                      <Typography fontWeight={600}>{row.name}</Typography>
+                    </TableCell>
+                    <TableCell>
+                      <Stack direction="row" spacing={0.5} flexWrap="wrap" useFlexGap>
+                        {gov && <GovernanceRoleChip role={gov.role} label={gov.label} />}
+                        <GovernanceRoleChip role="member" label={row.memberRole} />
+                      </Stack>
+                    </TableCell>
+                    <TableCell>
+                      <Chip
+                        size="small"
+                        label={row.isActive ? "Đang hoạt động" : "Không hoạt động"}
+                        color={row.isActive ? "success" : "default"}
+                      />
+                    </TableCell>
+                  </TableRow>
+                );
+              })}
             </TableBody>
           </Table>
         </TableContainer>
-      )}
+      ) : null}
     </Box>
   );
 }

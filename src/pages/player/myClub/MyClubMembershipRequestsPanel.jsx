@@ -1,11 +1,10 @@
 import { useEffect, useState } from "react";
 import {
-  Alert,
   Box,
   Button,
   Card,
   CardContent,
-  Paper,
+  Skeleton,
   Stack,
   Table,
   TableBody,
@@ -15,6 +14,8 @@ import {
   TableRow,
   TextField,
   Typography,
+  useMediaQuery,
+  useTheme,
 } from "@mui/material";
 
 import {
@@ -24,7 +25,44 @@ import {
   listPendingMembershipRequests,
   rejectClubMembershipRequest,
 } from "../../../features/club/index.js";
+import {
+  ClubConfirmDialog,
+  ClubEmptyState,
+} from "../../../features/club/ui/index.js";
 import { formatPickVnRating } from "../../../features/pick-vn-rating/constants/pickVnRatingScale.js";
+
+function RequestReviewNotes({ requestId, value, onChange }) {
+  return (
+    <TextField
+      size="small"
+      fullWidth
+      label="Ghi chú (tuỳ chọn)"
+      placeholder="Ghi chú khi duyệt / từ chối"
+      value={value}
+      onChange={(event) => onChange(requestId, event.target.value)}
+    />
+  );
+}
+
+function RequestActions({ request, busyId, onApprove, onReject }) {
+  const disabled = busyId === request.id;
+  return (
+    <Stack direction={{ xs: "column", sm: "row" }} spacing={1} justifyContent="flex-end">
+      <Button
+        size="small"
+        color="error"
+        variant="outlined"
+        disabled={disabled}
+        onClick={() => onReject(request)}
+      >
+        Từ chối
+      </Button>
+      <Button size="small" variant="contained" disabled={disabled} onClick={() => onApprove(request)}>
+        Duyệt
+      </Button>
+    </Stack>
+  );
+}
 
 export default function MyClubMembershipRequestsPanel({
   clubId,
@@ -35,10 +73,14 @@ export default function MyClubMembershipRequestsPanel({
   onRefresh,
   onMessage,
 }) {
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down("md"));
+
   const [reviewNotes, setReviewNotes] = useState({});
   const [busyId, setBusyId] = useState(null);
   const [pendingRequests, setPendingRequests] = useState([]);
   const [loadingPending, setLoadingPending] = useState(false);
+  const [rejectTarget, setRejectTarget] = useState(null);
 
   const canApprove =
     (clubRecord && user && canApproveClubMembershipRequests(user, clubRecord)) ||
@@ -82,6 +124,10 @@ export default function MyClubMembershipRequestsPanel({
     return null;
   }
 
+  const handleNoteChange = (requestId, value) => {
+    setReviewNotes((current) => ({ ...current, [requestId]: value }));
+  };
+
   const handleApprove = async (request) => {
     setBusyId(request.id);
     try {
@@ -103,7 +149,11 @@ export default function MyClubMembershipRequestsPanel({
     }
   };
 
-  const handleReject = async (request) => {
+  const handleRejectConfirm = async () => {
+    const request = rejectTarget;
+    if (!request) {
+      return;
+    }
     setBusyId(request.id);
     try {
       const result = await rejectClubMembershipRequest(clubId, request.id, tenantId, {
@@ -115,6 +165,7 @@ export default function MyClubMembershipRequestsPanel({
         return;
       }
       onMessage?.({ type: "info", text: "Đã từ chối yêu cầu tham gia." });
+      setRejectTarget(null);
       onRefresh?.();
     } finally {
       setBusyId(null);
@@ -122,95 +173,132 @@ export default function MyClubMembershipRequestsPanel({
   };
 
   return (
-    <Card sx={{ mt: 3 }}>
-      <CardContent>
-        <Stack spacing={2}>
-          <Box>
-            <Typography variant="subtitle1" fontWeight={700}>
-              Yêu cầu gia nhập CLB
-            </Typography>
-            <Typography variant="body2" color="text.secondary">
-              VĐV gửi yêu cầu từ mục Khám phá CLB — duyệt tại đây hoặc tab Thành viên trong Chi tiết CLB.
-            </Typography>
-          </Box>
+    <>
+      <Card sx={{ mt: 3, borderRadius: 2, border: 1, borderColor: "divider" }}>
+        <CardContent>
+          <Stack spacing={2}>
+            <Box>
+              <Typography variant="subtitle1" fontWeight={700} component="h3">
+                Yêu cầu gia nhập CLB
+              </Typography>
+              <Typography variant="body2" color="text.secondary">
+                VĐV gửi yêu cầu từ mục Khám phá CLB — duyệt tại đây hoặc tab Thành viên trong Chi
+                tiết CLB.
+              </Typography>
+            </Box>
 
-          {loadingPending ? (
-            <Alert severity="info" variant="outlined">
-              Đang tải yêu cầu…
-            </Alert>
-          ) : pendingRequests.length === 0 ? (
-            <Alert severity="info" variant="outlined">
-              Không có yêu cầu đang chờ duyệt.
-            </Alert>
-          ) : (
-            <TableContainer component={Paper} variant="outlined">
-              <Table size="small">
-                <TableHead>
-                  <TableRow>
-                    <TableCell>VĐV</TableCell>
-                    <TableCell>Pick_VN</TableCell>
-                    <TableCell>Ngày gửi</TableCell>
-                    <TableCell>Lời nhắn</TableCell>
-                    <TableCell>Ghi chú</TableCell>
-                    <TableCell align="right">Thao tác</TableCell>
-                  </TableRow>
-                </TableHead>
-                <TableBody>
-                  {pendingRequests.map((request) => (
-                    <TableRow key={request.id} hover>
-                      <TableCell>{request.displayName || request.userId}</TableCell>
-                      <TableCell>
-                        {request.pickVnRating != null
-                          ? formatPickVnRating(request.pickVnRating)
-                          : "—"}
-                      </TableCell>
-                      <TableCell>
-                        {new Date(request.requestedAt).toLocaleDateString("vi-VN")}
-                      </TableCell>
-                      <TableCell>{request.message || "—"}</TableCell>
-                      <TableCell sx={{ minWidth: 160 }}>
-                        <TextField
-                          size="small"
-                          fullWidth
-                          placeholder="Ghi chú (tuỳ chọn)"
+            {loadingPending ? (
+              <Stack spacing={1.5} aria-busy="true" aria-label="Đang tải yêu cầu">
+                <Skeleton variant="rounded" height={72} />
+                <Skeleton variant="rounded" height={72} />
+              </Stack>
+            ) : pendingRequests.length === 0 ? (
+              <ClubEmptyState preset="requests" />
+            ) : isMobile ? (
+              <Stack spacing={1.5}>
+                {pendingRequests.map((request) => (
+                  <Card key={request.id} variant="outlined" sx={{ borderRadius: 2 }}>
+                    <CardContent>
+                      <Stack spacing={1.5}>
+                        <Box>
+                          <Typography fontWeight={700}>
+                            {request.displayName || request.userId}
+                          </Typography>
+                          <Typography variant="body2" color="text.secondary">
+                            Pick_VN:{" "}
+                            {request.pickVnRating != null
+                              ? formatPickVnRating(request.pickVnRating)
+                              : "—"}
+                            {" · "}
+                            {new Date(request.requestedAt).toLocaleDateString("vi-VN")}
+                          </Typography>
+                          {request.message && (
+                            <Typography variant="body2" sx={{ mt: 0.5 }}>
+                              Lời nhắn: {request.message}
+                            </Typography>
+                          )}
+                        </Box>
+                        <RequestReviewNotes
+                          requestId={request.id}
                           value={reviewNotes[request.id] || ""}
-                          onChange={(event) =>
-                            setReviewNotes((current) => ({
-                              ...current,
-                              [request.id]: event.target.value,
-                            }))
-                          }
+                          onChange={handleNoteChange}
                         />
-                      </TableCell>
-                      <TableCell align="right">
-                        <Stack direction="row" spacing={1} justifyContent="flex-end">
-                          <Button
-                            size="small"
-                            color="error"
-                            variant="outlined"
-                            disabled={busyId === request.id}
-                            onClick={() => handleReject(request)}
-                          >
-                            Từ chối
-                          </Button>
-                          <Button
-                            size="small"
-                            variant="contained"
-                            disabled={busyId === request.id}
-                            onClick={() => handleApprove(request)}
-                          >
-                            Duyệt
-                          </Button>
-                        </Stack>
-                      </TableCell>
+                        <RequestActions
+                          request={request}
+                          busyId={busyId}
+                          onApprove={handleApprove}
+                          onReject={setRejectTarget}
+                        />
+                      </Stack>
+                    </CardContent>
+                  </Card>
+                ))}
+              </Stack>
+            ) : (
+              <TableContainer component={Card} variant="outlined" sx={{ borderRadius: 2 }}>
+                <Table size="small">
+                  <TableHead>
+                    <TableRow>
+                      <TableCell>VĐV</TableCell>
+                      <TableCell>Pick_VN</TableCell>
+                      <TableCell>Ngày gửi</TableCell>
+                      <TableCell>Lời nhắn</TableCell>
+                      <TableCell>Ghi chú</TableCell>
+                      <TableCell align="right">Thao tác</TableCell>
                     </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </TableContainer>
-          )}
-        </Stack>
-      </CardContent>
-    </Card>
+                  </TableHead>
+                  <TableBody>
+                    {pendingRequests.map((request) => (
+                      <TableRow key={request.id} hover>
+                        <TableCell>{request.displayName || request.userId}</TableCell>
+                        <TableCell>
+                          {request.pickVnRating != null
+                            ? formatPickVnRating(request.pickVnRating)
+                            : "—"}
+                        </TableCell>
+                        <TableCell>
+                          {new Date(request.requestedAt).toLocaleDateString("vi-VN")}
+                        </TableCell>
+                        <TableCell>{request.message || "—"}</TableCell>
+                        <TableCell sx={{ minWidth: 160 }}>
+                          <RequestReviewNotes
+                            requestId={request.id}
+                            value={reviewNotes[request.id] || ""}
+                            onChange={handleNoteChange}
+                          />
+                        </TableCell>
+                        <TableCell align="right">
+                          <RequestActions
+                            request={request}
+                            busyId={busyId}
+                            onApprove={handleApprove}
+                            onReject={setRejectTarget}
+                          />
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </TableContainer>
+            )}
+          </Stack>
+        </CardContent>
+      </Card>
+
+      <ClubConfirmDialog
+        open={Boolean(rejectTarget)}
+        title="Từ chối yêu cầu gia nhập?"
+        description={
+          rejectTarget
+            ? `Xác nhận từ chối yêu cầu của ${rejectTarget.displayName || "VĐV"}. Hành động này không thể hoàn tác.`
+            : ""
+        }
+        confirmLabel="Từ chối"
+        confirmColor="error"
+        loading={Boolean(rejectTarget && busyId === rejectTarget.id)}
+        onClose={() => setRejectTarget(null)}
+        onConfirm={() => void handleRejectConfirm()}
+      />
+    </>
   );
 }

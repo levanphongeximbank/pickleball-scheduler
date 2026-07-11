@@ -244,3 +244,5 @@ export {
   buildOrphanProfileAthletes,
   getPlatformAthletes,
 } from "./services/platformAthleteService.js";
+
+export * from "./ui/index.js";

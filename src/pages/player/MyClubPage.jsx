@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { Alert, Box, Button, Typography } from "@mui/material";
+import { Alert, Box, Button } from "@mui/material";
 import { useNavigate, useSearchParams } from "react-router-dom";
 
 import { useAuth } from "../../context/AuthContext.jsx";
@@ -22,6 +22,12 @@ import { useRequiredMyClubMembership } from "../../features/club/hooks/MyClubMem
 import { buildMyClubSummaryFromClub } from "../../features/club/services/clubActiveMembershipService.js";
 import { isClubStorageV2Enabled } from "../../features/club/config/clubRegistryFlags.js";
 import { CLUB_ROUTE_PATHS } from "../../features/club/routing/clubMembershipRouteLogic.js";
+import {
+  ClubConfirmDialog,
+  ClubFeedbackAlert,
+  ClubPageShell,
+  MyClubHomeInsights,
+} from "../../features/club/ui/index.js";
 import ClubActiveMembershipGuard from "./guards/ClubActiveMembershipGuard.jsx";
 import MyClubSummaryCard from "./myClub/MyClubSummaryCard.jsx";
 import MyClubGovernancePanel from "./myClub/MyClubGovernancePanel.jsx";
@@ -43,6 +49,7 @@ function MyClubPageContent() {
 
   const [message, setMessage] = useState(null);
   const [leaveLoading, setLeaveLoading] = useState(false);
+  const [leaveConfirmOpen, setLeaveConfirmOpen] = useState(false);
   const [nameHints, setNameHints] = useState({});
 
   const [view, setView] = useState(() => resolveInitialView(true, searchParams));
@@ -158,13 +165,6 @@ function MyClubPageContent() {
     Boolean(clubRecord && user && canApproveClubMembershipRequests(user, clubRecord));
 
   const handleLeaveClub = async () => {
-    const confirmed = window.confirm(
-      "Bạn có chắc muốn rời CLB hiện tại? Bạn sẽ cần gửi yêu cầu mới để tham gia lại."
-    );
-    if (!confirmed) {
-      return;
-    }
-
     setLeaveLoading(true);
     try {
       const result = await leaveMyClub({ user, tenantId, clubId });
@@ -173,6 +173,7 @@ function MyClubPageContent() {
         return;
       }
       setMessage({ type: "success", text: "Đã rời CLB." });
+      setLeaveConfirmOpen(false);
       await refresh();
       bumpRevision();
       navigate(CLUB_ROUTE_PATHS.DISCOVER, { replace: true });
@@ -182,25 +183,21 @@ function MyClubPageContent() {
   };
 
   return (
-    <Box sx={{ p: { xs: 2, md: 3 }, maxWidth: 1100, mx: "auto" }}>
-      <Typography variant="h5" fontWeight={700} gutterBottom>
-        CLB của tôi
-      </Typography>
-
+    <ClubPageShell
+      title="CLB của tôi"
+      subtitle="Trang chủ CLB — lịch sinh hoạt, thành viên và hoạt động."
+      breadcrumbs={[{ label: "CLB", href: CLUB_ROUTE_PATHS.MY_CLUB }]}
+    >
       <MyClubActionBar
         activeView={view}
         onViewChange={handleViewChange}
-        onLeaveClick={handleLeaveClub}
+        onLeaveClick={() => setLeaveConfirmOpen(true)}
         leaveLoading={leaveLoading}
         showLeave={hasClub}
         showRequestsLink={showRequestsLink}
       />
 
-      {message && (
-        <Alert severity={message.type} sx={{ mb: 2 }} onClose={() => setMessage(null)}>
-          {message.text}
-        </Alert>
-      )}
+      <ClubFeedbackAlert message={message} onClose={() => setMessage(null)} />
 
       {view === "schedule" ? (
         <MyClubSchedulePanel
@@ -237,6 +234,16 @@ function MyClubPageContent() {
             onMessage={setMessage}
           />
 
+          <MyClubHomeInsights
+            clubId={clubId}
+            tenantId={tenantId}
+            clubRecord={clubRecord}
+            user={user}
+            revision={revision}
+            showRequestsLink={showRequestsLink}
+            onViewSchedule={() => handleViewChange("schedule")}
+          />
+
           {showGovernance && (
             <Box sx={{ mt: 3 }}>
               <MyClubGovernancePanel
@@ -260,7 +267,18 @@ function MyClubPageContent() {
           Không tải được tóm tắt CLB. Vui lòng thử lại.
         </Alert>
       )}
-    </Box>
+
+      <ClubConfirmDialog
+        open={leaveConfirmOpen}
+        title="Rời câu lạc bộ"
+        description="Bạn sẽ mất quyền truy cập lịch và giải nội bộ. Bạn sẽ cần gửi yêu cầu mới để tham gia lại. Tiếp tục?"
+        confirmLabel="Rời CLB"
+        confirmColor="error"
+        loading={leaveLoading}
+        onConfirm={() => void handleLeaveClub()}
+        onClose={() => setLeaveConfirmOpen(false)}
+      />
+    </ClubPageShell>
   );
 }
 

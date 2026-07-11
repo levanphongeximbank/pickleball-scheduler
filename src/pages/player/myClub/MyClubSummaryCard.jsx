@@ -1,11 +1,9 @@
 import { useMemo, useState } from "react";
 import { Link as RouterLink } from "react-router-dom";
 import {
-  Avatar,
   Box,
   Button,
   Card,
-  Chip,
   Stack,
   Typography,
 } from "@mui/material";
@@ -19,11 +17,9 @@ import {
   canAssignClubOwner,
   listClubGovernanceCandidates,
 } from "../../../features/club/index.js";
-import { CLUB_STATUS_LABELS } from "../../../features/club/constants/clubStatus.js";
+import { ClubAvatar, ClubStatusBadge } from "../../../features/club/ui/index.js";
 import AssignClubOwnerDialog from "./AssignClubOwnerDialog.jsx";
 import {
-  clubAvatarColor,
-  clubInitials,
   heroGradientSx,
   statBoxSx,
 } from "./myClubUiStyles.js";
@@ -60,39 +56,22 @@ export default function MyClubSummaryCard({
     [clubId, tenantId, clubRecord?.governance?.ownerUserId]
   );
 
-  const initials = clubInitials(clubSummary.name);
-  const avatarColor = clubAvatarColor(clubSummary.name);
-
   return (
     <>
-      <Card sx={{ mb: 2, overflow: "hidden", borderRadius: 2 }}>
+      <Card sx={{ mb: 2, overflow: "hidden", borderRadius: 2, border: 1, borderColor: "divider" }}>
         <Box sx={{ ...heroGradientSx, p: { xs: 2, md: 2.5 } }}>
           <Stack direction="row" spacing={2} alignItems="center" flexWrap="wrap">
-            <Avatar
-              sx={{
-                width: 64,
-                height: 64,
-                bgcolor: avatarColor,
-                fontWeight: 700,
-                fontSize: "1.25rem",
-              }}
-            >
-              {initials}
-            </Avatar>
+            <ClubAvatar name={clubSummary.name} size={64} />
             <Box sx={{ flex: 1, minWidth: 200 }}>
               <Stack direction="row" spacing={1} alignItems="center" flexWrap="wrap">
-                <Typography variant="h5" fontWeight={700}>
+                <Typography variant="h5" fontWeight={700} component="h2">
                   {clubSummary.name}
                 </Typography>
-                <Chip
-                  size="small"
-                  label={CLUB_STATUS_LABELS[clubSummary.status] || clubSummary.status}
-                  color={clubSummary.status === "active" ? "success" : "default"}
-                />
+                <ClubStatusBadge status={clubSummary.status} />
               </Stack>
               {registeredCluster && (
                 <Stack direction="row" spacing={0.75} alignItems="center" sx={{ mt: 0.5 }}>
-                  <PlaceIcon fontSize="small" color="action" />
+                  <PlaceIcon fontSize="small" color="action" aria-hidden />
                   <Typography variant="body2" color="text.secondary">
                     Cụm sân: {registeredCluster.name}
                   </Typography>

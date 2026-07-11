@@ -1,15 +1,8 @@
 import { useEffect, useMemo, useState } from "react";
 import {
-  Alert,
-  Avatar,
   Box,
-  Button,
-  Card,
-  CardContent,
-  Chip,
   Grid,
   InputAdornment,
-  Stack,
   TextField,
   Typography,
 } from "@mui/material";
@@ -29,9 +22,12 @@ import {
 } from "../../../features/club/index.js";
 import { syncClubRegistryForUser } from "../../../features/club/services/clubRegistryCloudSync.js";
 import JoinClubDialog from "./JoinClubDialog.jsx";
-import { requestStatusChip } from "./clubMembershipUi.jsx";
-import { clubAvatarColor, clubInitials } from "./myClubUiStyles.js";
 import { resolvePresidentDisplayLabel } from "./myClubViewLogic.js";
+import {
+  ClubCard,
+  ClubDiscoverSkeleton,
+  ClubEmptyState,
+} from "../../../features/club/ui/index.js";
 
 export default function MyClubDiscoverPanel({
   user,
@@ -206,11 +202,13 @@ export default function MyClubDiscoverPanel({
       )}
 
       {loading && storageV2 ? (
-        <Alert severity="info">Đang tải danh sách CLB từ cloud…</Alert>
+        <ClubDiscoverSkeleton count={3} />
       ) : discoverableClubs.length === 0 ? (
-        <Alert severity="info">
-          {search.trim() ? "Không tìm thấy CLB phù hợp." : "Chưa có CLB đang hoạt động trên hệ thống."}
-        </Alert>
+        <ClubEmptyState
+          preset={search.trim() ? "discoverSearch" : "discover"}
+          actionLabel={search.trim() ? "Xóa tìm kiếm" : undefined}
+          onAction={search.trim() ? () => setSearch("") : undefined}
+        />
       ) : (
         <Grid container spacing={2}>
           {discoverableClubs.map((club) => {
@@ -234,81 +232,29 @@ export default function MyClubDiscoverPanel({
             const isMyClub = resolvedActiveClubId === club.id;
 
             const clubName = summary?.name || club.name;
-            const initials = clubInitials(clubName);
-            const avatarColor = clubAvatarColor(clubName);
+            let variant = "joinable";
+            if (isMyClub) {
+              variant = "your-club";
+            } else if (request?.status === CLUB_MEMBERSHIP_REQUEST_STATUSES.PENDING) {
+              variant = "pending";
+            } else if (request?.status === CLUB_MEMBERSHIP_REQUEST_STATUSES.REJECTED) {
+              variant = "rejected";
+            }
 
             return (
-              <Grid item xs={12} md={6} key={club.id}>
-                <Card
-                  sx={{
-                    height: "100%",
-                    borderRadius: 2,
-                    transition: "box-shadow 0.2s ease",
-                    "&:hover": { boxShadow: 4 },
-                  }}
-                >
-                  <CardContent>
-                    <Stack spacing={1.5}>
-                      <Stack direction="row" spacing={1.5} alignItems="flex-start">
-                        <Avatar sx={{ bgcolor: avatarColor, fontWeight: 700 }}>{initials}</Avatar>
-                        <Box sx={{ flex: 1, minWidth: 0 }}>
-                          <Stack direction="row" justifyContent="space-between" alignItems="flex-start" spacing={1}>
-                            <Typography variant="h6" fontWeight={700}>
-                              {clubName}
-                            </Typography>
-                            {isMyClub ? (
-                              <Chip size="small" label="CLB của bạn" color="success" />
-                            ) : (
-                              request && requestStatusChip(request.status)
-                            )}
-                          </Stack>
-
-                          <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
-                            {summary?.activeMemberCount ?? 0} thành viên
-                            {presidentLabel ? ` · Chủ tịch: ${presidentLabel}` : ""}
-                          </Typography>
-
-                          {summary?.clusterLabel && (
-                            <Typography variant="body2" color="text.secondary">
-                              Cụm sân: {summary.clusterLabel}
-                            </Typography>
-                          )}
-                        </Box>
-                      </Stack>
-
-                      {request?.status === CLUB_MEMBERSHIP_REQUEST_STATUSES.REJECTED &&
-                        request.reviewNote && (
-                          <Typography variant="caption" color="error">
-                            Lý do: {request.reviewNote}
-                          </Typography>
-                        )}
-
-                      {!hasClub && !isMyClub && (
-                        <Stack direction="row" spacing={1}>
-                          {!request && (
-                            <Button
-                              variant="contained"
-                              size="small"
-                              onClick={() => setJoinClub(club)}
-                            >
-                              Xin tham gia
-                            </Button>
-                          )}
-                          {request?.status === CLUB_MEMBERSHIP_REQUEST_STATUSES.PENDING && (
-                            <Button
-                              variant="outlined"
-                              size="small"
-                              color="inherit"
-                              onClick={() => void handleCancelRequest(request)}
-                            >
-                              Hủy yêu cầu
-                            </Button>
-                          )}
-                        </Stack>
-                      )}
-                    </Stack>
-                  </CardContent>
-                </Card>
+              <Grid item xs={12} md={6} lg={4} key={club.id}>
+                <ClubCard
+                  clubName={clubName}
+                  memberCount={summary?.activeMemberCount ?? 0}
+                  presidentLabel={presidentLabel}
+                  clusterLabel={summary?.clusterLabel}
+                  variant={variant}
+                  requestStatus={!isMyClub ? request?.status : null}
+                  reviewNote={request?.reviewNote}
+                  disabled={hasClub}
+                  onJoin={() => setJoinClub(club)}
+                  onCancel={() => void handleCancelRequest(request)}
+                />
               </Grid>
             );
           })}
