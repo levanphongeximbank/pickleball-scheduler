@@ -1,0 +1,63 @@
+{
+  "phase": "42J-FINAL-production",
+  "version": "5.3.32",
+  "commit": "2a887d400a8d43581d04edd6583d17a97c9be90d",
+  "productionUrl": "https://pickleball-scheduler-eight.vercel.app",
+  "deploymentId": "dpl_9XNP4G8cK7wVe7DcTLomJXjrfC2u",
+  "deploymentUrl": "https://pickleball-scheduler-bpw8c20ut-pickleball-scheduler.vercel.app",
+  "rollback": {
+    "deploymentId": "dpl_D5i9Pn7241RRmaU9N9qMRTrrSakj",
+    "url": "https://pickleball-scheduler-lflope0e9-pickleball-scheduler.vercel.app",
+    "created": "2026-07-10T14:10:56+07:00"
+  },
+  "preDeploy": {
+    "viteClubStorageV2": "present on Vercel Production env",
+    "supabaseMigrations": ["phase_42h_orphan_profile_links", "phase_42i_membership_review", "phase_42i1_membership_review_hotfix", "phase_42i1_production_qa_cleanup"],
+    "sqlRpcChangesInRelease": false,
+    "credentialsInCommit": false
+  },
+  "verdict": "PARTIAL",
+  "verdictNote": "Production deploy READY. Automated authenticated browser smoke blocked locally (Vercel CLI does not decrypt SUPABASE_SERVICE_ROLE_KEY). Public route smoke PASS. Auth cases require manual form-login QA.",
+  "results": [
+    {
+      "case": "1",
+      "verdict": "BLOCKED",
+      "evidence": "Automated auth unavailable locally (no production service role decrypt). Staging Preview PASS on commit 2a887d4."
+    },
+    {
+      "case": "2",
+      "verdict": "BLOCKED",
+      "evidence": "Requires production form login (huynhanh1970@gmail.com active member)."
+    },
+    {
+      "case": "3",
+      "verdict": "BLOCKED",
+      "evidence": "Requires president login + /my-club/requests. Production pending count=0 at deploy time."
+    },
+    {
+      "case": "4",
+      "verdict": "BLOCKED",
+      "evidence": "Requires SA form login (lephong.eximbank@gmail.com)."
+    },
+    {
+      "case": "5",
+      "verdict": "PARTIAL",
+      "evidence": "/clubs/discover → /discover-clubs PASS (Playwright). /my-club?view=discover requires auth — not run."
+    },
+    {
+      "case": "6",
+      "verdict": "BLOCKED",
+      "evidence": "Nav/cache highlight requires authenticated session."
+    }
+  ],
+  "publicSmoke": {
+    "loginPage": "PASS (200, title OK)",
+    "legacyDiscoverRedirect": "PASS → /discover-clubs",
+    "bundleAriaCurrent": true
+  },
+  "consoleFindings": [],
+  "networkFindings": [],
+  "productionDatabaseChanged": false,
+  "phase42KStarted": false,
+  "stagingQaReference": "docs/v5/qa-evidence/phase42j2-staging/REPORT.json — 4/4 PASS on Preview for commit 12ee754/2a887d4"
+}

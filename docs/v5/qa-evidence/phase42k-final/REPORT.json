@@ -1,0 +1,42 @@
+{
+  "sections": {
+    "1-tenant-isolation-A": {
+      "verdict": "PASS",
+      "evidence": "uiA=true !B=true crossRpcBlocked=true"
+    },
+    "1-tenant-isolation-B": {
+      "verdict": "PASS",
+      "evidence": "uiB=true !A=true crossRpcBlocked=true"
+    },
+    "2-super-admin-desktop": {
+      "verdict": "PASS",
+      "evidence": "noAuto=true aOnly=true bOnly=true platformCross=true"
+    },
+    "3-invalidation-tenant-switch": {
+      "verdict": "PASS",
+      "evidence": "cacheIsolation=true memberCol=true pendingCol=true"
+    },
+    "3-invalidation-create-approve-governance": {
+      "verdict": "FAIL",
+      "evidence": "NOT_BROWSER_VERIFIED: create/approve/owner/president refresh requires manual staging actions (code paths: bumpList/registry.invalidate + bumpRevision→invalidateAllClubRegistryCache)"
+    },
+    "4-pending-request-count": {
+      "verdict": "FAIL",
+      "evidence": "columnVisible=true showsMisleadingDash=true (RPC field absent in phase42_club_canonical)"
+    },
+    "5-discover-regression": {
+      "verdict": "PASS",
+      "evidence": "discoverRpc=2"
+    }
+  },
+  "rpc": [
+    "ownerA→tenantA: status=200 ok=true count=1 code=",
+    "ownerA→tenantB: status=200 ok=true count=0 code=",
+    "ownerB→tenantB: status=200 ok=true count=1 code=",
+    "ownerB→tenantA: status=200 ok=true count=0 code="
+  ],
+  "console": [],
+  "overall": "FAIL",
+  "preview": "https://pickleball-scheduler-sboxqk8sw-pickleball-scheduler.vercel.app",
+  "commit": "c2f1694"
+}

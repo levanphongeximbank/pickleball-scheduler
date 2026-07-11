@@ -1,0 +1,376 @@
+﻿node.exe : npm warn Unknown env config "devdir". This will stop working in the next major version of npm. See `npm 
+help npmrc` for supported config options.
+At line:1 char:1
++ & "C:\Program Files\nodejs/node.exe" "C:\Program Files\nodejs/node_mo ...
++ ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (npm warn Unknow...config options.:String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 
+
+> pickleball-scheduler@5.2.0 build
+> vite build
+
+vite v8.1.0 building client environment for production...
+[2K
+transforming...Γ£ô 2455 modules transformed.
+rendering chunks...
+computing gzip size...
+dist/manifest.webmanifest                                   0.64 kB
+dist/index.html                                             4.91 kB Γöé gzip:   1.25 kB
+dist/assets/dm-sans-latin-ext-400-normal-BtiwyxMk.woff2     7.36 kB
+dist/assets/dm-sans-latin-ext-600-normal-4vooXBpG.woff2     7.42 kB
+dist/assets/dm-sans-latin-ext-500-normal-BJfUCQsA.woff2     7.43 kB
+dist/assets/dm-sans-latin-ext-700-normal-CJIcxD6K.woff2     7.45 kB
+dist/assets/dm-sans-latin-ext-400-normal-BjWJ59Pq.woff      9.97 kB
+dist/assets/dm-sans-latin-ext-700-normal-BLI3TTWz.woff     10.01 kB
+dist/assets/dm-sans-latin-ext-600-normal-DRtaDpgU.woff     10.02 kB
+dist/assets/dm-sans-latin-ext-500-normal-DR84L5F-.woff     10.06 kB
+dist/assets/dm-sans-latin-600-normal-Aqo67rzb.woff2        14.14 kB
+dist/assets/dm-sans-latin-400-normal-CW0RaeGs.woff2        14.20 kB
+dist/assets/dm-sans-latin-500-normal-B9HHJjqV.woff2        14.30 kB
+dist/assets/dm-sans-latin-700-normal-DvUfVpUG.woff2        14.34 kB
+dist/assets/dm-sans-latin-600-normal-BmdmIIQ2.woff         18.32 kB
+dist/assets/dm-sans-latin-400-normal-BwCSEQnW.woff         18.35 kB
+dist/assets/dm-sans-latin-700-normal-CUSSCpQX.woff         18.50 kB
+dist/assets/dm-sans-latin-500-normal-Dr3UlScf.woff         18.52 kB
+dist/assets/TournamentNavHubPages-ylgYofiZ.css              0.33 kB Γöé gzip:   0.19 kB
+dist/assets/TeamTournamentSetup-Dvyjpp1U.css                0.85 kB Γöé gzip:   0.40 kB
+dist/assets/TeamStandingsTable-Bzqp7cq5.css                 3.09 kB Γöé gzip:   0.84 kB
+dist/assets/index-BpdSH9YF.css                              3.11 kB Γöé gzip:   0.53 kB
+dist/assets/useTournamentAnimation-Op1dnutP.css            11.84 kB Γöé gzip:   2.93 kB
+dist/assets/tournamentBracket-DLdokKnN.css                 19.74 kB Γöé gzip:   4.15 kB
+dist/assets/marketplace-CG_pbCWt.js                         0.04 kB Γöé gzip:   0.06 kB
+dist/assets/payments-CG_pbCWt.js                            0.04 kB Γöé gzip:   0.06 kB
+dist/assets/isMuiElement-BGcu9UqH.js                        0.06 kB Γöé gzip:   0.08 kB
+dist/assets/Stop-DxWz-RpA.js                                0.15 kB Γöé gzip:   0.16 kB
+dist/assets/Remove-B4D30c9e.js                              0.16 kB Γöé gzip:   0.16 kB
+dist/assets/skillLevelVisibility-DQLhYSgS.js                0.16 kB Γöé gzip:   0.17 kB
+dist/assets/PlayArrow-uX1EqupS.js                           0.16 kB Γöé gzip:   0.16 kB
+dist/assets/TournamentListPage-Dx3ZOfAl.js                  0.17 kB Γöé gzip:   0.16 kB
+dist/assets/TournamentCreatePage-CttImjDI.js                0.17 kB Γöé gzip:   0.16 kB
+dist/assets/FiberManualRecord-FRkEvoek.js                   0.17 kB Γöé gzip:   0.17 kB
+dist/assets/Send-SRgVDwVt.js                                0.18 kB Γöé gzip:   0.17 kB
+dist/assets/TournamentShell-D2tZNgZK.js                     0.18 kB Γöé gzip:   0.16 kB
+dist/assets/Check-CgZshJMI.js                               0.19 kB Γöé gzip:   0.18 kB
+dist/assets/ChevronLeft-vm2sNkE2.js                         0.19 kB Γöé gzip:   0.18 kB
+dist/assets/ChevronRight-DhSrR8E3.js                        0.20 kB Γöé gzip:   0.18 kB
+dist/assets/Dashboard-C3h705n8.js                           0.20 kB Γöé gzip:   0.18 kB
+dist/assets/selectPlayers.data-CSKqVPCC.js                  0.20 kB Γöé gzip:   0.16 kB
+dist/assets/ArrowBack-bGxnJlZr.js                           0.20 kB Γöé gzip:   0.19 kB
+dist/assets/ArrowForward-BV_8qXL5.js                        0.21 kB Γöé gzip:   0.20 kB
+dist/assets/Delete-DzNypsv8.js                              0.22 kB Γöé gzip:   0.20 kB
+dist/assets/isMuiElement-B-xbwcNE.js                        0.23 kB Γöé gzip:   0.20 kB
+dist/assets/DeleteOutlined-DQSVptHU.js                      0.24 kB Γöé gzip:   0.22 kB
+dist/assets/getActiveElement-DDyJ5h47.js                    0.25 kB Γöé gzip:   0.17 kB
+dist/assets/mobileUi-BrHzwXFC.js                            0.25 kB Γöé gzip:   0.21 kB
+dist/assets/CheckCircle-xstSMyQt.js                         0.26 kB Γöé gzip:   0.22 kB
+dist/assets/ContentCopy-CsypkLGO.js                         0.27 kB Γöé gzip:   0.22 kB
+dist/assets/Edit-B6C2AaKj.js                                0.27 kB Γöé gzip:   0.23 kB
+dist/assets/Save-CQUMiSyY.js                                0.28 kB Γöé gzip:   0.23 kB
+dist/assets/ArticleOutlined-byg9Y2sy.js                     0.32 kB Γöé gzip:   0.25 kB
+dist/assets/useId-DHapf3DE.js                               0.32 kB Γöé gzip:   0.25 kB
+dist/assets/PublicRootPage-BVaBZt2b.js                      0.32 kB Γöé gzip:   0.25 kB
+dist/assets/contains-CGzZwUmq.js                            0.33 kB Γöé gzip:   0.25 kB
+dist/assets/EventAvailable-TDHKaGcw.js                      0.33 kB Γöé gzip:   0.27 kB
+dist/assets/Refresh-DulFB7Ew.js                             0.34 kB Γöé gzip:   0.27 kB
+dist/assets/CourtManagementCalendarPage-DBq-39H2.js         0.35 kB Γöé gzip:   0.24 kB
+dist/assets/Visibility-DVlwI-vO.js                          0.35 kB Γöé gzip:   0.26 kB
+dist/assets/Lock-FBrF_YFM.js                                0.36 kB Γöé gzip:   0.27 kB
+dist/assets/styled-BvCBE_GH.js                              0.36 kB Γöé gzip:   0.24 kB
+dist/assets/LocationOnOutlined-Bq_C0QSD.js                  0.36 kB Γöé gzip:   0.29 kB
+dist/assets/LockOpen-Cb0gYLqp.js                            0.36 kB Γöé gzip:   0.27 kB
+dist/assets/CalendarMonthOutlined-Dh4OmvxD.js               0.37 kB Γöé gzip:   0.27 kB
+dist/assets/TournamentConfigPageShell-BM5WVtYy.js           0.38 kB Γöé gzip:   0.25 kB
+dist/assets/Verified-B0OH-lQo.js                            0.38 kB Γöé gzip:   0.28 kB
+dist/assets/TournamentStatusChip-C9lsEv2X.js                0.38 kB Γöé gzip:   0.26 kB
+dist/assets/CheckInStatusChip-B7U0r2ya.js                   0.39 kB Γöé gzip:   0.30 kB
+dist/assets/TournamentActionBar-Bu8cTW2G.js                 0.40 kB Γöé gzip:   0.30 kB
+dist/assets/EmojiEventsOutlined-BTktk06B.js                 0.45 kB Γöé gzip:   0.33 kB
+dist/assets/Cloud-BIzEAizh.js                               0.46 kB Γöé gzip:   0.33 kB
+dist/assets/QrCode2-DVMH_ie9.js                             0.46 kB Γöé gzip:   0.30 kB
+dist/assets/AutoFixHigh-DNCGmHuZ.js                         0.49 kB Γöé gzip:   0.32 kB
+dist/assets/useForkRef-DsWIyGLS.js                          0.50 kB Γöé gzip:   0.31 kB
+dist/assets/tournament.fixtures.logic-CqPfyP9T.js           0.50 kB Γöé gzip:   0.33 kB
+dist/assets/BillingAccessGate-CgwaXB0-.js                   0.51 kB Γöé gzip:   0.37 kB
+dist/assets/debugPanel-Bqsc2KRT.js                          0.54 kB Γöé gzip:   0.31 kB
+dist/assets/PickVnOnboardingPage-BLYoS_nP.js                0.55 kB Γöé gzip:   0.37 kB
+dist/assets/Sports-lYKUOrKt.js                              0.56 kB Γöé gzip:   0.38 kB
+dist/assets/Card-BvDVJSyx.js                                0.60 kB Γöé gzip:   0.39 kB
+dist/assets/TableContainer-CDG98nFi.js                      0.61 kB Γöé gzip:   0.39 kB
+dist/assets/CardContent-D2equAcU.js                         0.61 kB Γöé gzip:   0.39 kB
+dist/assets/seasonStandingsService-7D5D6WZK.js              0.63 kB Γöé gzip:   0.41 kB
+dist/assets/StudentsPage-CNv1JjPg.js                        0.65 kB Γöé gzip:   0.39 kB
+dist/assets/debounce-BKp4ftD8.js                            0.68 kB Γöé gzip:   0.42 kB
+dist/assets/CoachesPage-BCM0pglJ.js                         0.68 kB Γöé gzip:   0.40 kB
+dist/assets/DialogContentText-CRp0Ayl0.js                   0.69 kB Γöé gzip:   0.43 kB
+dist/assets/CoachEvaluationPage-CurPZmOd.js                 0.69 kB Γöé gzip:   0.42 kB
+dist/assets/rolldown-runtime-QTnfLwEv.js                    0.69 kB Γöé gzip:   0.42 kB
+dist/assets/ClassesPage-B7aRfWsI.js                         0.69 kB Γöé gzip:   0.42 kB
+dist/assets/CoachAttendancePage-Ctsv0z9F.js                 0.69 kB Γöé gzip:   0.42 kB
+dist/assets/SportsTennis-DiNUkm-t.js                        0.76 kB Γöé gzip:   0.45 kB
+dist/assets/crmTemplateService-DzeiBE3n.js                  0.76 kB Γöé gzip:   0.44 kB
+dist/assets/CoachPackagesPage-DtqHnawq.js                   0.77 kB Γöé gzip:   0.45 kB
+dist/assets/TournamentEmptyState-BtD87SfG.js                0.78 kB Γöé gzip:   0.47 kB
+dist/assets/GroupsOutlined-Cdo_GqF8.js                      0.79 kB Γöé gzip:   0.47 kB
+dist/assets/PickVnRatingBadge-CiQzwRUa.js                   0.79 kB Γöé gzip:   0.51 kB
+dist/assets/vprFlags-UQmNA5e5.js                            0.80 kB Γöé gzip:   0.40 kB
+dist/assets/GovernanceMemberSelect-CzjKudwr.js              0.81 kB Γöé gzip:   0.49 kB
+dist/assets/CoachSchedulePage-B_c_ESWk.js                   0.82 kB Γöé gzip:   0.45 kB
+dist/assets/vprCategories-CJzGedQ9.js                       0.82 kB Γöé gzip:   0.41 kB
+dist/assets/CourtsPage-Bem0WyXQ.js                          0.82 kB Γöé gzip:   0.50 kB
+dist/assets/PermissionGate-Cz8kDHlo.js                      0.83 kB Γöé gzip:   0.50 kB
+dist/assets/CardActions-bR4UyVqL.js                         0.84 kB Γöé gzip:   0.49 kB
+dist/assets/TournamentSectionCard-YT_6DGeU.js               0.84 kB Γöé gzip:   0.50 kB
+dist/assets/FormGroup-DiaWUpjB.js                           0.87 kB Γöé gzip:   0.52 kB
+dist/assets/crmContactHistoryService-CGhviZVi.js            0.89 kB Γöé gzip:   0.48 kB
+dist/assets/director-Bwzm9N-F.js                            0.90 kB Γöé gzip:   0.37 kB
+dist/assets/CrmBookingReminderPage-D-WKhoUk.js              1.00 kB Γöé gzip:   0.64 kB
+dist/assets/ForbiddenPage-jGqeotsG.js                       1.00 kB Γöé gzip:   0.62 kB
+dist/assets/TournamentPageHeader-DINHClAe.js                1.03 kB Γöé gzip:   0.55 kB
+dist/assets/virtual_pwa-register-BWrn7eae.js                1.13 kB Γöé gzip:   0.60 kB
+dist/assets/MobileRouteGate-CDQihK3v.js                     1.14 kB Γöé gzip:   0.66 kB
+dist/assets/bookingReminderService-rjiZwqfw.js              1.14 kB Γöé gzip:   0.64 kB
+dist/assets/CourtOpsLogPage-BDoHZGkc.js                     1.16 kB Γöé gzip:   0.61 kB
+dist/assets/MarketplaceProductPage-DQ8WvpHF.js              1.17 kB Γöé gzip:   0.68 kB
+dist/assets/aiConfig-BVg6qHKC.js                            1.17 kB Γöé gzip:   0.69 kB
+dist/assets/List-BKhkKY2k.js                                1.20 kB Γöé gzip:   0.65 kB
+dist/assets/usePageRuntimeAccess-B8OxHf0m.js                1.23 kB Γöé gzip:   0.77 kB
+dist/assets/preload-helper-CZgWQFsJ.js                      1.25 kB Γöé gzip:   0.70 kB
+dist/assets/SupportFaqPage-kSm6vlyJ.js                      1.28 kB Γöé gzip:   0.83 kB
+dist/assets/TournamentSetupShell-DCa0zbP2.js                1.30 kB Γöé gzip:   0.76 kB
+dist/assets/tournamentNavigation-DIay6pKj.js                1.32 kB Γöé gzip:   0.62 kB
+dist/assets/vprAthleteService-yPFyDXDM.js                   1.32 kB Γöé gzip:   0.68 kB
+dist/assets/refereeStatusEngine-CdHgbFrz.js                 1.34 kB Γöé gzip:   0.68 kB
+dist/assets/utils-s_LoXvoN.js                               1.35 kB Γöé gzip:   0.71 kB
+dist/assets/useFormControl-dTLRq3wh.js                      1.35 kB Γöé gzip:   0.65 kB
+dist/assets/SupportGuidePage-DJeI2pZd.js                    1.41 kB Γöé gzip:   0.90 kB
+dist/assets/actionQueueService-DrlIZ0jm.js                  1.42 kB Γöé gzip:   0.76 kB
+dist/assets/designTokens-S-aoWAzW.js                        1.44 kB Γöé gzip:   0.68 kB
+dist/assets/refereeRoster-zLQnZdeO.js                       1.55 kB Γöé gzip:   0.71 kB
+dist/assets/seededGroupEngine-g2x_ja9F.js                   1.60 kB Γöé gzip:   0.83 kB
+dist/assets/ForgotPasswordPage-BtOCENJC.js                  1.60 kB Γöé gzip:   0.89 kB
+dist/assets/refereeSessionService-BS5_fGjd.js               1.61 kB Γöé gzip:   0.89 kB
+dist/assets/RefereeSessionScoreboard-BhFf3XdZ.js            1.61 kB Γöé gzip:   0.88 kB
+dist/assets/TournamentGenderRulesPage-rRxO4tck.js           1.62 kB Γöé gzip:   0.93 kB
+dist/assets/ClubCard-CDEhUYig.js                            1.70 kB Γöé gzip:   0.79 kB
+dist/assets/MarketplaceOrdersPage-DXIYzEFB.js               1.71 kB Γöé gzip:   0.85 kB
+dist/assets/seasonStandingsEngine-D6NL2qht.js               1.71 kB Γöé gzip:   0.73 kB
+dist/assets/CourtCard-e4VcQWwA.js                           1.73 kB Γöé gzip:   0.82 kB
+dist/assets/TournamentAgeRulesPage-Dy4kcHT-.js              1.75 kB Γöé gzip:   0.93 kB
+dist/assets/NewsPage-Bc6AxxOS.js                            1.76 kB Γöé gzip:   0.86 kB
+dist/assets/constraintGroupEngine-CRQoEvrn.js               1.77 kB Γöé gzip:   0.82 kB
+dist/assets/useSlot-BN-cmw6q.js                             1.81 kB Γöé gzip:   0.83 kB
+dist/assets/ComingSoonPage-DBIJ7FBg.js                      1.84 kB Γöé gzip:   1.04 kB
+dist/assets/ClubsPage-Bt6wSCH0.js                           1.85 kB Γöé gzip:   0.99 kB
+dist/assets/Paper-x3AenkTR.js                               1.90 kB Γöé gzip:   0.89 kB
+dist/assets/teamTournamentLabels-BPAreUC_.js                1.90 kB Γöé gzip:   0.90 kB
+dist/assets/QrDisplayCard-DjGWx-4d.js                       1.94 kB Γöé gzip:   1.03 kB
+dist/assets/rankingEngine-DAgc34ll.js                       1.94 kB Γöé gzip:   0.87 kB
+dist/assets/TournamentRegulationsPage-_hBbXk2N.js           1.98 kB Γöé gzip:   1.13 kB
+dist/assets/clubData.logic-DLrg1yqv.js                      2.03 kB Γöé gzip:   0.89 kB
+dist/assets/Container-BwAB9_h_.js                           2.04 kB Γöé gzip:   0.87 kB
+dist/assets/vprRpcService-Dc57plFy.js                       2.07 kB Γöé gzip:   1.00 kB
+dist/assets/TournamentCard-DFspAlR7.js                      2.07 kB Γöé gzip:   0.92 kB
+dist/assets/ResetPasswordPage-Bh7tvXJL.js                   2.13 kB Γöé gzip:   1.11 kB
+dist/assets/TournamentsPage-BIjEM8kG.js                     2.19 kB Γöé gzip:   1.12 kB
+dist/assets/TournamentSectionPages-Czlam9f3.js              2.29 kB Γöé gzip:   1.15 kB
+dist/assets/runtimeAccess-CIx5Vlmi.js                       2.38 kB Γöé gzip:   1.08 kB
+dist/assets/tournamentRoutes-Bx7rh7Vo.js                    2.42 kB Γöé gzip:   0.92 kB
+dist/assets/createSvgIcon-b9MQiurZ.js                       2.44 kB Γöé gzip:   1.14 kB
+dist/assets/DailyPlayLauncher-DFrte0Rb.js                   2.47 kB Γöé gzip:   1.28 kB
+dist/assets/SwitchBase-C0E8jf-8.js                          2.52 kB Γöé gzip:   1.22 kB
+dist/assets/BookingNotificationPanel-DkMddMle.js            2.53 kB Γöé gzip:   1.24 kB
+dist/assets/tournamentLayout-YN7UL8_I.js                    2.54 kB Γöé gzip:   1.17 kB
+dist/assets/courtEngine-7WMJdBRn.js                         2.57 kB Γöé gzip:   1.10 kB
+dist/assets/courtManagement.constants-C6k9r-gH.js           2.60 kB Γöé gzip:   1.25 kB
+dist/assets/ZaloIntegrationPage-J02yg5Qp.js                 2.61 kB Γöé gzip:   1.25 kB
+dist/assets/FormControlLabel-A6BkAgfk.js                    2.64 kB Γöé gzip:   1.23 kB
+dist/assets/RefereeHub-C5jVSJkZ.js                          2.65 kB Γöé gzip:   1.32 kB
+dist/assets/constants-tjW6SgpP.js                           2.68 kB Γöé gzip:   1.37 kB
+dist/assets/CustomerDetailDialog-CZF2jGFq.js                2.70 kB Γöé gzip:   1.31 kB
+dist/assets/seasonExportEngine-BrabJNKP.js                  2.78 kB Γöé gzip:   1.06 kB
+dist/assets/TournamentBracketHub-CpCDd39M.js                2.79 kB Γöé gzip:   1.53 kB
+dist/assets/CustomerGroupsPage-DjO5WjyZ.js                  2.81 kB Γöé gzip:   1.30 kB
+dist/assets/StaffListPage-a2BDyL31.js                       2.83 kB Γöé gzip:   1.31 kB
+dist/assets/VenueHoursPage-DzVcAMiV.js                      2.86 kB Γöé gzip:   1.32 kB
+dist/assets/TournamentFeePage-CYEtFwE_.js                   2.88 kB Γöé gzip:   1.41 kB
+dist/assets/CrmTemplatesPage-BmguAVg5.js                    2.99 kB Γöé gzip:   1.32 kB
+dist/assets/MarketplacePage-oZmX2VXE.js                     3.01 kB Γöé gzip:   1.48 kB
+dist/assets/courts.logic-Blo89GVf.js                        3.01 kB Γöé gzip:   1.49 kB
+dist/assets/QrGeneratePage-CMOlCQCK.js                      3.04 kB Γöé gzip:   1.51 kB
+dist/assets/AuthContext-CfJnCZgE.js                         3.05 kB Γöé gzip:   1.50 kB
+dist/assets/publicPortalStyles-D9agY6e5.js                  3.05 kB Γöé gzip:   1.34 kB
+dist/assets/AdminMarketplacePage-DxhV566C.js                3.11 kB Γöé gzip:   1.24 kB
+dist/assets/TournamentCourtSchedulePanel-B-HFIF6K.js        3.11 kB Γöé gzip:   1.43 kB
+dist/assets/integrationFlags-B3I_e-M7.js                    3.11 kB Γöé gzip:   1.01 kB
+dist/assets/NotificationSettingsPage-RpvWONsn.js            3.13 kB Γöé gzip:   1.50 kB
+dist/assets/TournamentEligibilityPage-B-GNSuvr.js           3.15 kB Γöé gzip:   1.32 kB
+dist/assets/tournamentCertificationService-Bfs1WMuA.js      3.16 kB Γöé gzip:   1.14 kB
+dist/assets/eligibilityEngine-Dtls9YXb.js                   3.19 kB Γöé gzip:   1.37 kB
+dist/assets/TournamentPublishSchedulePage-9KrxAMB_.js       3.23 kB Γöé gzip:   1.43 kB
+dist/assets/Breadcrumbs-CTUeSVBh.js                         3.23 kB Γöé gzip:   1.49 kB
+dist/assets/IntegrationPaymentsPage-CVs-eymz.js             3.30 kB Γöé gzip:   1.38 kB
+dist/assets/Link-CQ8oWXZ9.js                                3.31 kB Γöé gzip:   1.36 kB
+dist/assets/RankingsPage-CyCxg4CF.js                        3.34 kB Γöé gzip:   1.42 kB
+dist/assets/AthleteRatingSummary-BIwAmnux.js                3.34 kB Γöé gzip:   1.55 kB
+dist/assets/CrmContactHistoryPage-vU-Yop9s.js               3.34 kB Γöé gzip:   1.39 kB
+dist/assets/FinanceRefundsPage-CvIL8fEu.js                  3.44 kB Γöé gzip:   1.45 kB
+dist/assets/TournamentCertificationQueuePage-Bm5M9y4u.js    3.45 kB Γöé gzip:   1.52 kB
+dist/assets/Transition-CaT2utMe.js                          3.48 kB Γöé gzip:   1.38 kB
+dist/assets/CourtCalendarPreviewPage-kz3aWdJh.js            3.50 kB Γöé gzip:   1.35 kB
+dist/assets/financeLedgerService-DMAne6NF.js                3.56 kB Γöé gzip:   1.28 kB
+dist/assets/qrTokenService-3vh8UJq7.js                      3.57 kB Γöé gzip:   1.69 kB
+dist/assets/CircularProgress-DsXiqHmc.js                    3.59 kB Γöé gzip:   1.44 kB
+dist/assets/TournamentAwardsPage-5gc8KISa.js                3.72 kB Γöé gzip:   1.55 kB
+dist/assets/IntegrationSettingsPage-CWudvCcy.js             3.74 kB Γöé gzip:   1.68 kB
+dist/assets/leagueRoundService-C9jwbah9.js                  3.76 kB Γöé gzip:   1.19 kB
+dist/assets/MatchListPanel-T2GntgAV.js                      3.77 kB Γöé gzip:   1.60 kB
+dist/assets/SelfProfilePage-Cf8qEiPe.js                     3.78 kB Γöé gzip:   1.56 kB
+dist/assets/ListItem-O8z8zUt7.js                            3.80 kB Γöé gzip:   1.45 kB
+dist/assets/TournamentRefereeAssignPage-C1wuoeZ3.js         3.83 kB Γöé gzip:   1.72 kB
+dist/assets/FinanceReceiptsPage-Sr2lEG5u.js                 3.92 kB Γöé gzip:   1.57 kB
+dist/assets/ActiveTournamentsPanel-DuitgDAv.js              4.07 kB Γöé gzip:   1.78 kB
+dist/assets/SkillLevelRequestsPage-JZ2tXZP4.js              4.10 kB Γöé gzip:   1.73 kB
+dist/assets/FinanceDebtPage-6WCwmO2h.js                     4.14 kB Γöé gzip:   1.60 kB
+dist/assets/skillLevelChangeService-DmNdEmUn.js             4.22 kB Γöé gzip:   1.67 kB
+dist/assets/passwordService-C6dWnKZo.js                     4.35 kB Γöé gzip:   1.59 kB
+dist/assets/PickVnRatingPanel-BYY8RRhl.js                   4.45 kB Γöé gzip:   1.89 kB
+dist/assets/playerHelpers-Da6LQpSf.js                       4.47 kB Γöé gzip:   2.11 kB
+dist/assets/playerHistoryEngine-BT9E7kir.js                 4.50 kB Γöé gzip:   1.80 kB
+dist/assets/notificationService-CD-NPlBD.js                 4.60 kB Γöé gzip:   2.00 kB
+dist/assets/Grid-DUim7mfC.js                                4.69 kB Γöé gzip:   1.87 kB
+dist/assets/Switch-BzVZAsJv.js                              4.75 kB Γöé gzip:   1.84 kB
+dist/assets/useRovingTabIndex-Bu4r6GO-.js                   4.90 kB Γöé gzip:   2.13 kB
+dist/assets/CrmCampaignsPage-DaGRwmAJ.js                    4.91 kB Γöé gzip:   2.04 kB
+dist/assets/RadioGroup-DXt2SFgZ.js                          4.94 kB Γöé gzip:   2.12 kB
+dist/assets/clubTournamentBridge-CkLO09ZE.js                5.02 kB Γöé gzip:   2.13 kB
+dist/assets/CrmMessagesPage-B8qDefIo.js                     5.04 kB Γöé gzip:   2.04 kB
+dist/assets/BookingForm-BTyBK7ZE.js                         5.08 kB Γöé gzip:   2.02 kB
+dist/assets/ClubFormDialog-DgQPyxai.js                      5.16 kB Γöé gzip:   2.12 kB
+dist/assets/notifications-HKmCnaWJ.js                       5.17 kB Γöé gzip:   2.08 kB
+dist/assets/TeamStandingsTable-DidkqAFx.js                  5.26 kB Γöé gzip:   2.02 kB
+dist/assets/RankingManagementPage-CscXrW__.js               5.31 kB Γöé gzip:   1.82 kB
+dist/assets/CourtManagementLayout-CHdRf41J.js               5.55 kB Γöé gzip:   2.28 kB
+dist/assets/integrationStorage-Bh3ZBsRB.js                  5.57 kB Γöé gzip:   2.22 kB
+dist/assets/workbox-window.prod.es5-Bd17z0YL.js             5.65 kB Γöé gzip:   2.20 kB
+dist/assets/QrScanPage-CZseODU-.js                          5.66 kB Γöé gzip:   2.51 kB
+dist/assets/coachingService-CH1-F0mJ.js                     5.70 kB Γöé gzip:   2.37 kB
+dist/assets/TournamentHubPages-BwSyESF-.js                  5.85 kB Γöé gzip:   2.29 kB
+dist/assets/BracketView-Dgatgo6o.js                         5.92 kB Γöé gzip:   2.39 kB
+dist/assets/vprLeaderboardService-Cf9soW6q.js               5.95 kB Γöé gzip:   2.21 kB
+dist/assets/clubMembershipRequestService-CYr7gB_n.js        5.96 kB Γöé gzip:   2.38 kB
+dist/assets/SeasonStandingsTable-KfdecVTe.js                5.97 kB Γöé gzip:   2.61 kB
+dist/assets/integrations-wdzlVYrZ.js                        6.00 kB Γöé gzip:   2.36 kB
+dist/assets/AuditLogPage-CBHhobB-.js                        6.04 kB Γöé gzip:   2.55 kB
+dist/assets/ToggleButtonGroup-D_OG-PFH.js                   6.09 kB Γöé gzip:   1.98 kB
+dist/assets/PairingInterventionPreviewPage-BqKi8g1x.js      6.11 kB Γöé gzip:   2.22 kB
+dist/assets/LinearProgress-D1k7Vid-.js                      6.15 kB Γöé gzip:   1.91 kB
+dist/assets/TournamentWithdrawalPage-fzt21e05.js            6.24 kB Γöé gzip:   2.24 kB
+dist/assets/AccordionSummary-BDrH6KgQ.js                    6.26 kB Γöé gzip:   2.21 kB
+dist/assets/OperationsMobileDashboardPage-CEihVOV2.js       6.30 kB Γöé gzip:   2.12 kB
+dist/assets/TenantManagement-DpP4FFMM.js                    6.40 kB Γöé gzip:   2.29 kB
+dist/assets/userManagementService-Bjsduj7S.js               6.40 kB Γöé gzip:   2.56 kB
+dist/assets/pairing-constraints-C0YSHfNX.js                 6.53 kB Γöé gzip:   2.64 kB
+dist/assets/CourtManagementBookingsPage-DhWZY33V.js         6.73 kB Γöé gzip:   2.58 kB
+dist/assets/AdminBillingPage-BfrKq_Gz.js                    6.76 kB Γöé gzip:   2.35 kB
+dist/assets/club-wLAQp2i6.js                                6.77 kB Γöé gzip:   3.03 kB
+dist/assets/PublicLayout-BOfolQeE.js                        6.81 kB Γöé gzip:   2.70 kB
+dist/assets/DreambreakerPanel-DrZd3w4j.js                   6.93 kB Γöé gzip:   2.84 kB
+dist/assets/Snackbar-D9X56D5I.js                            6.98 kB Γöé gzip:   2.67 kB
+dist/assets/vprAwardService-BDKsWNeJ.js                     6.98 kB Γöé gzip:   2.55 kB
+dist/assets/ClubListPage-BL3REjfs.js                        7.05 kB Γöé gzip:   2.78 kB
+dist/assets/PickVnRatingOnboarding-K4rfZu5o.js              7.24 kB Γöé gzip:   2.85 kB
+dist/assets/queueService-BJR8DjDZ.js                        7.26 kB Γöé gzip:   2.27 kB
+dist/assets/CourtManagementCustomersPage-vVxev8WN.js        7.28 kB Γöé gzip:   2.82 kB
+dist/assets/BillingPage-BSdTGJ7u.js                         7.31 kB Γöé gzip:   2.36 kB
+dist/assets/matchLiveSync-DRlReb8t.js                       7.54 kB Γöé gzip:   2.46 kB
+dist/assets/tournamentService-Cm1xr1nG.js                   7.76 kB Γöé gzip:   3.07 kB
+dist/assets/UserManagementPage-CHxpH3Fw.js                  7.84 kB Γöé gzip:   2.65 kB
+dist/assets/LoginPage-BQtP4yo5.js                           7.93 kB Γöé gzip:   3.07 kB
+dist/assets/CourtManagementMembersPage-BSxIzTTc.js          7.99 kB Γöé gzip:   3.08 kB
+dist/assets/refereeEngine-Duaau_Mt.js                       8.55 kB Γöé gzip:   3.29 kB
+dist/assets/RolesPermissionsPage-BOag7-30.js                8.72 kB Γöé gzip:   3.39 kB
+dist/assets/PlayerHomePage-BMhLD4ah.js                      9.08 kB Γöé gzip:   3.47 kB
+dist/assets/teamPairingEngine-CL0C7Zkq.js                   9.09 kB Γöé gzip:   3.35 kB
+dist/assets/BookingDetail-D6LSwXGg.js                       9.12 kB Γöé gzip:   3.17 kB
+dist/assets/CourtManagementRevenuePage-CY2weqbq.js          9.30 kB Γöé gzip:   2.80 kB
+dist/assets/DailyPlaySetup-Bc0txLwt.js                      9.45 kB Γöé gzip:   3.59 kB
+dist/assets/RefereeScoreboard-DsQEZ3TX.js                   9.72 kB Γöé gzip:   3.62 kB
+dist/assets/AthleteSelfProfilePage-C_vb_V--.js             10.12 kB Γöé gzip:   4.04 kB
+dist/assets/CheckInDashboardPage-BtenyDqy.js               10.26 kB Γöé gzip:   3.91 kB
+dist/assets/selectPlayers.logic-5ONp-kDE.js                10.27 kB Γöé gzip:   3.22 kB
+dist/assets/TournamentPlayerQuickAddDialog-DbcFVeBQ.js     10.42 kB Γöé gzip:   4.25 kB
+dist/assets/checkInService-BUYntnoT.js                     10.52 kB Γöé gzip:   3.93 kB
+dist/assets/PlayerProfile-BpggMh4a.js                      10.56 kB Γöé gzip:   3.71 kB
+dist/assets/publicPortalService-DySOcbv0.js                10.85 kB Γöé gzip:   3.91 kB
+dist/assets/bookingService-D8Gj8Owt.js                     10.99 kB Γöé gzip:   3.78 kB
+dist/assets/Menu-DvF1L2RU.js                               11.74 kB Γöé gzip:   4.52 kB
+dist/assets/HomePage-9WDDW0tN.js                           11.80 kB Γöé gzip:   3.75 kB
+dist/assets/CourtManagementCourtsPage-DgDYllz0.js          12.19 kB Γöé gzip:   4.45 kB
+dist/assets/TournamentHome-Ds8Yc96B.js                     12.22 kB Γöé gzip:   4.85 kB
+dist/assets/Stepper-DRf9-fMX.js                            12.34 kB Γöé gzip:   3.77 kB
+dist/assets/teamStandingsEngine-D9zP29cu.js                12.60 kB Γöé gzip:   4.07 kB
+dist/assets/TeamPortal-DztgiUof.js                         12.86 kB Γöé gzip:   4.51 kB
+dist/assets/MyClubPage-C4AAxTCZ.js                         12.91 kB Γöé gzip:   4.16 kB
+dist/assets/teamResultEngine-CJ6uVSp0.js                   12.92 kB Γöé gzip:   4.47 kB
+dist/assets/timePredictionEngine-BYuA5T-d.js               13.08 kB Γöé gzip:   5.35 kB
+dist/assets/TournamentNavHubPages-Bap-yca-.js              13.32 kB Γöé gzip:   5.18 kB
+dist/assets/ButtonBase-Dcf-0Mda.js                         13.69 kB Γöé gzip:   5.35 kB
+dist/assets/TeamRefereePortal-D2dRFpPq.js                  14.90 kB Γöé gzip:   5.28 kB
+dist/assets/marketplaceOrderService-CRzQVc2Q.js            14.92 kB Γöé gzip:   4.33 kB
+dist/assets/CourtClusterManagement-DASYCWR1.js             15.21 kB Γöé gzip:   4.95 kB
+dist/assets/Tabs-BxhMIZUE.js                               15.26 kB Γöé gzip:   5.35 kB
+dist/assets/AdminIntegrationMonitoringPage-BoewgJMu.js     15.69 kB Γöé gzip:   5.16 kB
+dist/assets/CourtManagementHome-B6R1_E_T.js                16.78 kB Γöé gzip:   6.20 kB
+dist/assets/Modal-6PjvtKiz.js                              16.80 kB Γöé gzip:   6.32 kB
+dist/assets/CourtCalendarShell-EIDxXwOH.js                 17.48 kB Γöé gzip:   5.98 kB
+dist/assets/teamTournamentEngine-ivAWpvr_.js               17.67 kB Γöé gzip:   6.48 kB
+dist/assets/engine-BwbPoXFD.js                             17.67 kB Γöé gzip:   5.77 kB
+dist/assets/InternalTournamentSetup-CbW_wB8u.js            18.61 kB Γöé gzip:   6.68 kB
+dist/assets/Slider-KDURzfNQ.js                             20.01 kB Γöé gzip:   6.85 kB
+dist/assets/TournamentBracketPage-BkRFc-Mg.js              20.03 kB Γöé gzip:   6.06 kB
+dist/assets/pairing-intervention-BvlTE_NQ.js               20.14 kB Γöé gzip:   6.04 kB
+dist/assets/roles-aIbg5loq.js                              20.82 kB Γöé gzip:   5.15 kB
+dist/assets/SelectPlayers-K5WHddmo.js                      22.35 kB Γöé gzip:   6.86 kB
+dist/assets/id-CUdzy-x0.js                                 22.66 kB Γöé gzip:   6.61 kB
+dist/assets/Players-HYaVmVWl.js                            22.71 kB Γöé gzip:   7.92 kB
+dist/assets/ClubManagement-D79rY2f4.js                     23.38 kB Γöé gzip:   6.28 kB
+dist/assets/browser-B_X_RtOd.js                            23.47 kB Γöé gzip:   8.85 kB
+dist/assets/CourtManagementFuturePage-rXbnVLCz.js          24.11 kB Γöé gzip:   6.37 kB
+dist/assets/tournamentBracket-D814DgaQ.js                  26.19 kB Γöé gzip:   9.51 kB
+dist/assets/OfficialTournamentSetup-Do6FfDJV.js            27.36 kB Γöé gzip:   8.59 kB
+dist/assets/Settings-B5G_-ldh.js                           27.56 kB Γöé gzip:   8.78 kB
+dist/assets/engines-DILVxR-P.js                            27.75 kB Γöé gzip:   8.65 kB
+dist/assets/TournamentDirectorMode-DXkVOFJf.js             27.82 kB Γöé gzip:   9.28 kB
+dist/assets/ClubDetailPage-DRFDqdqo.js                     29.65 kB Γöé gzip:   7.75 kB
+dist/assets/SkillLevelsPage-BvVoFQlz.js                    32.52 kB Γöé gzip:  10.61 kB
+dist/assets/statistics-DXswo-eo.js                         32.64 kB Γöé gzip:   8.71 kB
+dist/assets/TournamentEnginePage-uIiW1DY4.js               34.20 kB Γöé gzip:   9.78 kB
+dist/assets/navigationConfig-CMhF2zSQ.js                   40.54 kB Γöé gzip:   9.44 kB
+dist/assets/CourtEnginePage-DAcUMTgM.js                    40.78 kB Γöé gzip:  12.66 kB
+dist/assets/Select-DyVdfrm0.js                             40.86 kB Γöé gzip:  12.12 kB
+dist/assets/teamTournamentService-Bo7_X_gM.js              43.41 kB Γöé gzip:  12.16 kB
+dist/assets/TeamTournamentSetup-DzG_s6Gj.js                53.95 kB Γöé gzip:  15.72 kB
+dist/assets/Dashboard-CUtKldd_.js                          70.23 kB Γöé gzip:  22.12 kB
+dist/assets/pick-vn-rating-DuPIVFXD.js                     84.42 kB Γöé gzip:  26.26 kB
+dist/assets/Typography-C0z5GmI3.js                         90.03 kB Γöé gzip:  31.26 kB
+dist/assets/useTournamentAnimation-hbPJfoAU.js             97.33 kB Γöé gzip:  27.26 kB
+dist/assets/CartesianChart-BwyBQoVJ.js                    331.14 kB Γöé gzip:  96.50 kB
+dist/assets/esm-Dj6BG0p3.js                               368.90 kB Γöé gzip: 108.10 kB
+dist/assets/pickVnRatingService-CDDBV3aO.js               412.04 kB Γöé gzip: 110.54 kB
+dist/assets/index-BYtE0RU1.js                             568.09 kB Γöé gzip: 173.22 kB
+
+Γ£ô built in 1.52s
+[plugin builtin:vite-reporter] 
+(!) Some chunks are larger than 500 kB after minification. Consider:
+- Using dynamic import() to code-split the application
+- Use build.rolldownOptions.output.codeSplitting to improve chunking: 
+https://rolldown.rs/reference/OutputOptions.codeSplitting
+- Adjust chunk size limit for this warning via build.chunkSizeWarningLimit.
+
+PWA v1.3.0
+mode      generateSW
+precache  347 entries (3909.69 KiB)
+files generated
+  dist/sw.js
+  dist/workbox-e4022e15.js

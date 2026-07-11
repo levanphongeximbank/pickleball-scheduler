@@ -1,0 +1,49 @@
+{
+  "phase": "42J.1-nomember-real",
+  "previewUrl": "https://pickleball-scheduler-f1lxv97eg-pickleball-scheduler.vercel.app",
+  "verdict": "NO-GO",
+  "results": [
+    {
+      "case": "1",
+      "verdict": "FAIL",
+      "evidence": "final=https://pickleball-scheduler-f1lxv97eg-pickleball-scheduler.vercel.app/discover-clubs title=true myClubHits=2 pingPong=true blank=false leave=0 highlight=true back=https://pickleball-scheduler-f1lxv97eg-pickleball-scheduler.vercel.app/discover-clubs fwd=https://pickleball-scheduler-f1lxv97eg-pickleball-scheduler.vercel.app/discover-clubs"
+    },
+    {
+      "case": "2",
+      "verdict": "PASS",
+      "evidence": "SA (magiclink) → https://pickleball-scheduler-f1lxv97eg-pickleball-scheduler.vercel.app/discover-clubs; no my-club content; leave=0; no pageerror; rpc ok"
+    }
+  ],
+  "redirectTrace": [
+    "C1: https://pickleball-scheduler-f1lxv97eg-pickleball-scheduler.vercel.app/login",
+    "C1: https://pickleball-scheduler-f1lxv97eg-pickleball-scheduler.vercel.app/",
+    "C1: https://pickleball-scheduler-f1lxv97eg-pickleball-scheduler.vercel.app/",
+    "C1: https://pickleball-scheduler-f1lxv97eg-pickleball-scheduler.vercel.app/my-club",
+    "C1: https://pickleball-scheduler-f1lxv97eg-pickleball-scheduler.vercel.app/my-club",
+    "C1: https://pickleball-scheduler-f1lxv97eg-pickleball-scheduler.vercel.app/discover-clubs",
+    "C1: https://pickleball-scheduler-f1lxv97eg-pickleball-scheduler.vercel.app/discover-clubs",
+    "C1: https://pickleball-scheduler-f1lxv97eg-pickleball-scheduler.vercel.app/",
+    "C1: https://pickleball-scheduler-f1lxv97eg-pickleball-scheduler.vercel.app/dashboard",
+    "C1: https://pickleball-scheduler-f1lxv97eg-pickleball-scheduler.vercel.app/my-club",
+    "C1: https://pickleball-scheduler-f1lxv97eg-pickleball-scheduler.vercel.app/discover-clubs",
+    "C1: https://pickleball-scheduler-f1lxv97eg-pickleball-scheduler.vercel.app/discover-clubs",
+    "C2: https://pickleball-scheduler-f1lxv97eg-pickleball-scheduler.vercel.app/login",
+    "C2: https://pickleball-scheduler-f1lxv97eg-pickleball-scheduler.vercel.app/",
+    "C2: https://pickleball-scheduler-f1lxv97eg-pickleball-scheduler.vercel.app/",
+    "C2: https://pickleball-scheduler-f1lxv97eg-pickleball-scheduler.vercel.app/dashboard",
+    "C2: https://pickleball-scheduler-f1lxv97eg-pickleball-scheduler.vercel.app/my-club",
+    "C2: https://pickleball-scheduler-f1lxv97eg-pickleball-scheduler.vercel.app/my-club",
+    "C2: https://pickleball-scheduler-f1lxv97eg-pickleball-scheduler.vercel.app/discover-clubs"
+  ],
+  "consoleFindings": [],
+  "networkFindings": [
+    "C1: club_get_my_active_membership called 6 times"
+  ],
+  "screenshotsDir": "C:\\Users\\LePhong\\pickleball-scheduler\\docs\\v5\\qa-evidence\\phase42j1-nomember-real",
+  "loginMode": "magiclink",
+  "credentialsInEnv": {
+    "playerPassword": false,
+    "adminPassword": false
+  },
+  "productionDeployed": false
+}

@@ -1,0 +1,140 @@
+{
+  "phase": "42KA",
+  "actions": {
+    "approve-member": {
+      "verdict": "PASS",
+      "evidence": "memberCount 4→5 approved=true applicant=player.nomember@staging.local",
+      "metrics": {
+        "before": {
+          "ok": true,
+          "id": "club-smoke-42i1",
+          "memberCount": 4,
+          "ownerLabel": "Player Staging A",
+          "presidentLabel": "Player Staging A",
+          "version": 11
+        },
+        "after": {
+          "ok": true,
+          "id": "club-smoke-42i1",
+          "memberCount": 5,
+          "ownerLabel": "Player Staging A",
+          "presidentLabel": "Player Staging A",
+          "version": 11
+        }
+      }
+    },
+    "assign-owner": {
+      "verdict": "PASS",
+      "evidence": "rpcOk=true owner Player Staging A→Manager Staging A",
+      "metrics": {
+        "before": {
+          "ok": true,
+          "id": "club-smoke-42i1",
+          "memberCount": 5,
+          "ownerLabel": "Player Staging A",
+          "presidentLabel": "Player Staging A",
+          "version": 11
+        },
+        "after": {
+          "ok": true,
+          "id": "club-smoke-42i1",
+          "memberCount": 5,
+          "ownerLabel": "Manager Staging A",
+          "presidentLabel": "Player Staging A",
+          "version": 12
+        },
+        "rpc": {
+          "ok": true,
+          "data": {
+            "id": "club-smoke-42i1",
+            "code": "SMK42I1",
+            "name": "CLB Smoke 42I1",
+            "status": "active",
+            "version": 12,
+            "tenant_id": "venue-staging-a",
+            "created_at": "2026-07-10T07:48:29.113607+00:00",
+            "updated_at": "2026-07-10T23:00:04.930298+00:00",
+            "description": "",
+            "owner_label": "Manager Staging A",
+            "owner_user_id": "c1db2b6a-b26b-4d44-8295-9898c92066cd",
+            "president_label": "Player Staging A",
+            "president_user_id": "7b381912-2190-415c-b099-6b1e87567b7a",
+            "created_by_user_id": null,
+            "active_member_count": 5,
+            "registered_cluster_id": null
+          },
+          "version": 12
+        }
+      }
+    },
+    "transfer-president": {
+      "verdict": "PASS",
+      "evidence": "rpcOk=true president Player Staging A→Manager Staging A",
+      "metrics": {
+        "before": {
+          "ok": true,
+          "id": "club-smoke-42i1",
+          "memberCount": 5,
+          "ownerLabel": "Player Staging A",
+          "presidentLabel": "Player Staging A",
+          "version": 13
+        },
+        "after": {
+          "ok": true,
+          "id": "club-smoke-42i1",
+          "memberCount": 5,
+          "ownerLabel": "Player Staging A",
+          "presidentLabel": "Manager Staging A",
+          "version": 14
+        },
+        "rpc": {
+          "ok": true,
+          "data": {
+            "id": "club-smoke-42i1",
+            "code": "SMK42I1",
+            "name": "CLB Smoke 42I1",
+            "status": "active",
+            "version": 14,
+            "tenant_id": "venue-staging-a",
+            "created_at": "2026-07-10T07:48:29.113607+00:00",
+            "updated_at": "2026-07-10T23:00:15.953628+00:00",
+            "description": "",
+            "owner_label": "Player Staging A",
+            "owner_user_id": "7b381912-2190-415c-b099-6b1e87567b7a",
+            "president_label": "Manager Staging A",
+            "president_user_id": "c1db2b6a-b26b-4d44-8295-9898c92066cd",
+            "created_by_user_id": null,
+            "active_member_count": 5,
+            "registered_cluster_id": null
+          },
+          "version": 14
+        }
+      }
+    },
+    "create-club": {
+      "verdict": "PASS",
+      "evidence": "visible=true registry=true id=club-bd064ed75b4844f6913476a99925854d",
+      "metrics": null
+    }
+  },
+  "acceptance": {
+    "approveMember": "PASS",
+    "assignOwner": "PASS",
+    "transferPresident": "PASS",
+    "createClub": "PASS",
+    "tenantIsolationA": "PASS",
+    "tenantIsolationB": "PASS",
+    "platformRegistry": "PASS",
+    "superAdminNoAutoPick": "PASS",
+    "pendingColumnHidden": "PASS",
+    "discoverRegression": "PASS"
+  },
+  "preview": "https://pickleball-scheduler-8buuh81e1-pickleball-scheduler.vercel.app",
+  "qaClub": {
+    "tag": "CLB QA42KA-JFRA3",
+    "id": "club-bd064ed75b4844f6913476a99925854d"
+  },
+  "overall": "PASS",
+  "goDeploy42K": true,
+  "productionDeployed": false
+}

@@ -1,0 +1,77 @@
+{
+  "phase": "42J",
+  "previewUrl": "https://pickleball-scheduler-qmmmyhd7e-pickleball-scheduler.vercel.app",
+  "commit": "42J.1-staging-uncommitted",
+  "v2Flag": true,
+  "productionDeployed": false,
+  "verdict": "GO WITH CAVEATS (staging seed gaps)",
+  "results": [
+    {
+      "case": "1",
+      "verdict": "PARTIAL",
+      "evidence": "cashier login unavailable; player+RPC-mock no-membership → https://pickleball-scheduler-qmmmyhd7e-pickleball-scheduler.vercel.app/discover-clubs"
+    },
+    {
+      "case": "2",
+      "verdict": "PASS",
+      "evidence": "player@staging → /my-club home; reload stable; no self-join CTA (0)"
+    },
+    {
+      "case": "3",
+      "verdict": "PASS",
+      "evidence": "pending list visible; reject clicked; reload OK; post-state=true"
+    },
+    {
+      "case": "4",
+      "verdict": "PARTIAL",
+      "evidence": "login/admin path: page.waitForURL: Timeout 90000ms exceeded.\n=========================== logs ===========================\nwaiting for navigation until \"load\"\n============================================================"
+    },
+    {
+      "case": "5",
+      "verdict": "PASS",
+      "evidence": "/clubs/discover → https://pickleball-scheduler-qmmmyhd7e-pickleball-scheduler.vercel.app/discover-clubs; /my-club?view=discover → https://pickleball-scheduler-qmmmyhd7e-pickleball-scheduler.vercel.app/discover-clubs; no legacy query; back=https://pickleball-scheduler-qmmmyhd7e-pickleball-scheduler.vercel.app/discover-clubs"
+    },
+    {
+      "case": "6",
+      "verdict": "PASS",
+      "evidence": "RPC fail → error+retry on /my-club; retry → home render (https://pickleball-scheduler-qmmmyhd7e-pickleball-scheduler.vercel.app/my-club)"
+    },
+    {
+      "case": "7",
+      "verdict": "PASS",
+      "evidence": "No /my-club?view=discover in mobile/desktop HTML; /discover-clubs present"
+    },
+    {
+      "case": "8",
+      "verdict": "PASS",
+      "evidence": "No uncaught errors; no abnormal RPC spam; no route 404 (5 console notes)"
+    }
+  ],
+  "redirectTrace": [
+    "C1: https://pickleball-scheduler-qmmmyhd7e-pickleball-scheduler.vercel.app/login",
+    "C1: https://pickleball-scheduler-qmmmyhd7e-pickleball-scheduler.vercel.app/login",
+    "C1: https://pickleball-scheduler-qmmmyhd7e-pickleball-scheduler.vercel.app/login",
+    "C1: https://pickleball-scheduler-qmmmyhd7e-pickleball-scheduler.vercel.app/my-club",
+    "C1: https://pickleball-scheduler-qmmmyhd7e-pickleball-scheduler.vercel.app/my-club",
+    "C1: https://pickleball-scheduler-qmmmyhd7e-pickleball-scheduler.vercel.app/discover-clubs",
+    "C5: https://pickleball-scheduler-qmmmyhd7e-pickleball-scheduler.vercel.app/login",
+    "C5: https://pickleball-scheduler-qmmmyhd7e-pickleball-scheduler.vercel.app/login",
+    "C5: https://pickleball-scheduler-qmmmyhd7e-pickleball-scheduler.vercel.app/my-club",
+    "C5: https://pickleball-scheduler-qmmmyhd7e-pickleball-scheduler.vercel.app/clubs/discover",
+    "C5: https://pickleball-scheduler-qmmmyhd7e-pickleball-scheduler.vercel.app/clubs/discover",
+    "C5: https://pickleball-scheduler-qmmmyhd7e-pickleball-scheduler.vercel.app/discover-clubs",
+    "C5: https://pickleball-scheduler-qmmmyhd7e-pickleball-scheduler.vercel.app/my-club?view=discover",
+    "C5: https://pickleball-scheduler-qmmmyhd7e-pickleball-scheduler.vercel.app/my-club?view=discover",
+    "C5: https://pickleball-scheduler-qmmmyhd7e-pickleball-scheduler.vercel.app/discover-clubs",
+    "C5: https://pickleball-scheduler-qmmmyhd7e-pickleball-scheduler.vercel.app/discover-clubs"
+  ],
+  "consoleFindings": [
+    "C1 console: Failed to load resource: the server responded with a status of 400 ()",
+    "C1 console: Failed to load resource: the server responded with a status of 401 ()",
+    "C4 console: Failed to load resource: the server responded with a status of 400 ()",
+    "C4 console: Failed to load resource: the server responded with a status of 401 ()",
+    "C6 console: Failed to load resource: the server responded with a status of 500 (Internal Server Error)"
+  ],
+  "networkFindings": [],
+  "screenshotsDir": "C:\\Users\\LePhong\\pickleball-scheduler\\docs\\v5\\qa-evidence\\phase42j1-staging"
+}

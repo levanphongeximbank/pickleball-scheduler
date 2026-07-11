@@ -1,0 +1,82 @@
+{
+  "phase": "42J",
+  "previewUrl": "https://pickleball-scheduler-mqd5txuv3-pickleball-scheduler.vercel.app",
+  "commit": "009fe0766af299b46062d287741280ea7f5a3ff1",
+  "v2Flag": true,
+  "productionDeployed": false,
+  "verdict": "NO-GO",
+  "results": [
+    {
+      "case": "1",
+      "verdict": "FAIL",
+      "evidence": "redirects=1 final=https://pickleball-scheduler-mqd5txuv3-pickleball-scheduler.vercel.app/discover-clubs loop=false"
+    },
+    {
+      "case": "2",
+      "verdict": "PASS",
+      "evidence": "player@staging → /my-club home; reload stable; no self-join CTA (0)"
+    },
+    {
+      "case": "3",
+      "verdict": "FAIL",
+      "evidence": "locator.click: Timeout 30000ms exceeded.\nCall log:\n  - waiting for getByRole('button', { name: /menu tài khoản/i })\n"
+    },
+    {
+      "case": "4",
+      "verdict": "PARTIAL",
+      "evidence": "login/admin path: page.waitForURL: Timeout 90000ms exceeded.\n=========================== logs ===========================\nwaiting for navigation until \"load\"\n============================================================"
+    },
+    {
+      "case": "5",
+      "verdict": "FAIL",
+      "evidence": "u1=https://pickleball-scheduler-mqd5txuv3-pickleball-scheduler.vercel.app/discover-clubs u2=https://pickleball-scheduler-mqd5txuv3-pickleball-scheduler.vercel.app/discover-clubs legacyQuery=false pingPong=true"
+    },
+    {
+      "case": "6",
+      "verdict": "PASS",
+      "evidence": "RPC fail → error+retry on /my-club; retry → home render (https://pickleball-scheduler-mqd5txuv3-pickleball-scheduler.vercel.app/my-club)"
+    },
+    {
+      "case": "7",
+      "verdict": "PARTIAL",
+      "evidence": "mobileLegacy=false deskLegacy=false deskDiscover=false"
+    },
+    {
+      "case": "8",
+      "verdict": "PARTIAL",
+      "evidence": "console notes=4; network=C2: club_get_my_active_membership called 4 times; C2: club_get_my_active_membership called 5 times"
+    }
+  ],
+  "redirectTrace": [
+    "C1: https://pickleball-scheduler-mqd5txuv3-pickleball-scheduler.vercel.app/login",
+    "C1: https://pickleball-scheduler-mqd5txuv3-pickleball-scheduler.vercel.app/login",
+    "C1: https://pickleball-scheduler-mqd5txuv3-pickleball-scheduler.vercel.app/club",
+    "C1: https://pickleball-scheduler-mqd5txuv3-pickleball-scheduler.vercel.app/403",
+    "C1: https://pickleball-scheduler-mqd5txuv3-pickleball-scheduler.vercel.app/my-club",
+    "C1: https://pickleball-scheduler-mqd5txuv3-pickleball-scheduler.vercel.app/my-club",
+    "C1: https://pickleball-scheduler-mqd5txuv3-pickleball-scheduler.vercel.app/discover-clubs",
+    "C1: https://pickleball-scheduler-mqd5txuv3-pickleball-scheduler.vercel.app/403",
+    "C1: https://pickleball-scheduler-mqd5txuv3-pickleball-scheduler.vercel.app/discover-clubs",
+    "C5: https://pickleball-scheduler-mqd5txuv3-pickleball-scheduler.vercel.app/login",
+    "C5: https://pickleball-scheduler-mqd5txuv3-pickleball-scheduler.vercel.app/login",
+    "C5: https://pickleball-scheduler-mqd5txuv3-pickleball-scheduler.vercel.app/discover-clubs",
+    "C5: https://pickleball-scheduler-mqd5txuv3-pickleball-scheduler.vercel.app/clubs/discover",
+    "C5: https://pickleball-scheduler-mqd5txuv3-pickleball-scheduler.vercel.app/clubs/discover",
+    "C5: https://pickleball-scheduler-mqd5txuv3-pickleball-scheduler.vercel.app/discover-clubs",
+    "C5: https://pickleball-scheduler-mqd5txuv3-pickleball-scheduler.vercel.app/my-club?view=discover",
+    "C5: https://pickleball-scheduler-mqd5txuv3-pickleball-scheduler.vercel.app/my-club?view=discover",
+    "C5: https://pickleball-scheduler-mqd5txuv3-pickleball-scheduler.vercel.app/discover-clubs",
+    "C5: https://pickleball-scheduler-mqd5txuv3-pickleball-scheduler.vercel.app/discover-clubs"
+  ],
+  "consoleFindings": [
+    "C3 console: Failed to load resource: the server responded with a status of 400 ()",
+    "C4 console: Failed to load resource: the server responded with a status of 400 ()",
+    "C4 console: Failed to load resource: the server responded with a status of 401 ()",
+    "C6 console: Failed to load resource: the server responded with a status of 500 (Internal Server Error)"
+  ],
+  "networkFindings": [
+    "C2: club_get_my_active_membership called 4 times",
+    "C2: club_get_my_active_membership called 5 times"
+  ],
+  "screenshotsDir": "C:\\Users\\LePhong\\pickleball-scheduler\\docs\\v5\\qa-evidence\\phase42j-staging"
+}

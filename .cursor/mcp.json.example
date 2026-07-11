@@ -1,0 +1,10 @@
+{
+  "mcpServers": {
+    "supabase-production": {
+      "url": "https://mcp.supabase.com/mcp?project_ref=expuvcohlcjzvrrauvud&read_only=false&features=database"
+    },
+    "supabase-staging": {
+      "url": "https://mcp.supabase.com/mcp?project_ref=qyewbxjsiiyufanzcjcq&read_only=false&features=database"
+    }
+  }
+}

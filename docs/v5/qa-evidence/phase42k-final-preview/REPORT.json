@@ -1,0 +1,114 @@
+{
+  "phase": "42K-final-preview",
+  "preview": "https://pickleball-scheduler-i4vorr8to-pickleball-scheduler.vercel.app",
+  "sections": {
+    "A-tenant-owner-a": {
+      "verdict": "PASS",
+      "evidence": "A visible=true B absent=true",
+      "metrics": null
+    },
+    "A-tenant-owner-b": {
+      "verdict": "PASS",
+      "evidence": "B visible=true A absent=true",
+      "metrics": null
+    },
+    "A-platform-registry": {
+      "verdict": "PASS",
+      "evidence": "both tenants visible; smoke=true stagingB=true",
+      "metrics": null
+    },
+    "A-no-auto-pick": {
+      "verdict": "PASS",
+      "evidence": "manage shows tenant picker=true",
+      "metrics": null
+    },
+    "B-approve-ui": {
+      "verdict": "FAIL",
+      "evidence": "submit=false before=4 after=4 ui=false success=false clubNotFound=false",
+      "metrics": {
+        "before": {
+          "ok": true,
+          "id": "club-smoke-42i1",
+          "memberCount": 4,
+          "ownerLabel": "Player Staging A",
+          "presidentLabel": "Player Staging A",
+          "version": 23
+        },
+        "after": {
+          "ok": true,
+          "id": "club-smoke-42i1",
+          "memberCount": 4,
+          "ownerLabel": "Player Staging A",
+          "presidentLabel": "Player Staging A",
+          "version": 23
+        },
+        "clubNotFound": false,
+        "successMsg": false,
+        "submitted": false
+      }
+    },
+    "C-assign-owner": {
+      "verdict": "PASS",
+      "evidence": "rpcOk=true owner Player Staging A→Manager Staging A",
+      "metrics": null
+    },
+    "C-transfer-president": {
+      "verdict": "PASS",
+      "evidence": "rpcOk=true president Player Staging A→Manager Staging A",
+      "metrics": null
+    },
+    "C-audit-logs": {
+      "verdict": "PASS",
+      "evidence": "assign=3 transfer=3",
+      "metrics": null
+    },
+    "D-create-club": {
+      "verdict": "PASS",
+      "evidence": "visible=true registry=true rows 7→8 dupHits=1",
+      "metrics": null
+    },
+    "E-discover": {
+      "verdict": "PASS",
+      "evidence": "discoverRpc=2",
+      "metrics": null
+    },
+    "E-pending-hidden": {
+      "verdict": "PASS",
+      "evidence": "pending column absent=true",
+      "metrics": null
+    },
+    "E-no-local-registry-v2": {
+      "verdict": "PASS",
+      "evidence": "discover path uses club_list_discoverable only",
+      "metrics": null
+    },
+    "E-no-pageerrors": {
+      "verdict": "PASS",
+      "evidence": "pageErrors=0",
+      "metrics": null
+    }
+  },
+  "audit": [
+    {
+      "action": "club.assign_owner",
+      "count": 3,
+      "latest": "2026-07-11T00:56:31.859187+00:00"
+    },
+    {
+      "action": "club.transfer_president",
+      "count": 3,
+      "latest": "2026-07-11T00:56:37.424216+00:00"
+    }
+  ],
+  "memberCount": {
+    "beforeApprove": 4,
+    "afterApprove": 4
+  },
+  "productionDeployed": false,
+  "qaClub": {
+    "tag": "CLB QA42K-F-NLCWM",
+    "id": "club-d560c020f713403d9c32fdfb6eba6292"
+  },
+  "verdict": "PARTIAL",
+  "pageErrors": []
+}

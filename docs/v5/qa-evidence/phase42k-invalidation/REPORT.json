@@ -1,0 +1,121 @@
+{
+  "actions": [
+    {
+      "id": "A-create-club",
+      "verdict": "PASS",
+      "evidence": "visible=true rows=2→3 registry=true id=club-4b4c914dcc5a451fa770c86ce0f8c5bd",
+      "metrics": {
+        "beforeCount": 2,
+        "afterCount": 3,
+        "registryRpc": 4,
+        "row": {
+          "ok": true,
+          "id": "club-4b4c914dcc5a451fa770c86ce0f8c5bd",
+          "memberCount": 1,
+          "ownerLabel": "Owner Staging A",
+          "presidentLabel": "Owner Staging A",
+          "version": 1
+        }
+      }
+    },
+    {
+      "id": "B-approve-member",
+      "verdict": "FAIL",
+      "evidence": "memberCount 4→4",
+      "metrics": {
+        "before": {
+          "ok": true,
+          "id": "club-smoke-42i1",
+          "memberCount": 4,
+          "ownerLabel": "Player Staging A",
+          "presidentLabel": "Player Staging A",
+          "version": 1
+        },
+        "after": {
+          "ok": true,
+          "id": "club-smoke-42i1",
+          "memberCount": 4,
+          "ownerLabel": "Player Staging A",
+          "presidentLabel": "Player Staging A",
+          "version": 1
+        },
+        "hasPending": true
+      }
+    },
+    {
+      "id": "C-assign-owner",
+      "verdict": "FAIL",
+      "evidence": "rpcOk=false code=23514 owner Player Staging A→Player Staging A",
+      "metrics": {
+        "before": {
+          "ok": true,
+          "id": "club-smoke-42i1",
+          "memberCount": 4,
+          "ownerLabel": "Player Staging A",
+          "presidentLabel": "Player Staging A",
+          "version": 1
+        },
+        "after": {
+          "ok": true,
+          "id": "club-smoke-42i1",
+          "memberCount": 4,
+          "ownerLabel": "Player Staging A",
+          "presidentLabel": "Player Staging A",
+          "version": 1
+        },
+        "rpc": {
+          "code": "23514",
+          "details": "Failing row contains (c3d7e9d1-6f91-4c44-b716-a6b365c832be, 13e0968b-53c5-4ba6-8ae0-dce12b1faf9c, owner@staging.local, club.assign_owner, club, club-smoke-42i1, venue-staging-a, club-smoke-42i1, {\"request_id\": \"fa6976a1-01da-40c5-97ea-fb8e5f82c6dc\", \"owner_us..., 2026-07-10 22:40:13.472368+00, , ).",
+          "hint": null,
+          "message": "new row for relation \"audit_logs\" violates check constraint \"audit_logs_action_check\""
+        }
+      }
+    },
+    {
+      "id": "D-transfer-president",
+      "verdict": "FAIL",
+      "evidence": "rpcOk=false code=23514 president undefined→Player Staging A",
+      "metrics": {
+        "before": {
+          "ok": false,
+          "rows": 0
+        },
+        "after": {
+          "ok": true,
+          "id": "club-smoke-42i1",
+          "memberCount": 4,
+          "ownerLabel": "Player Staging A",
+          "presidentLabel": "Player Staging A",
+          "version": 1
+        },
+        "rpc": {
+          "code": "23514",
+          "details": "Failing row contains (24e7f746-3ba2-42b1-af38-24c783db2503, 7b381912-2190-415c-b099-6b1e87567b7a, player@staging.local, club.transfer_president, club, club-smoke-42i1, venue-staging-a, club-smoke-42i1, {\"request_id\": \"8269edd9-fdb6-4e44-9300-a1c267ba48c6\", \"next_use..., 2026-07-10 22:40:21.54+00, , ).",
+          "hint": null,
+          "message": "new row for relation \"audit_logs\" violates check constraint \"audit_logs_action_check\""
+        }
+      }
+    },
+    {
+      "id": "E-tenant-switch",
+      "verdict": "PASS",
+      "evidence": "hadA=true isolatedB=true",
+      "metrics": null
+    }
+  ],
+  "acceptance": {
+    "pendingColumnHidden": true,
+    "discoverRpc": true,
+    "tenantIsolationOwner": true
+  },
+  "metrics": {
+    "createRpc": true
+  },
+  "qaClub": {
+    "tag": "CLB QA42K-FIQ9C1",
+    "id": "club-4b4c914dcc5a451fa770c86ce0f8c5bd"
+  },
+  "preview": "https://pickleball-scheduler-8buuh81e1-pickleball-scheduler.vercel.app",
+  "overall": "FAIL",
+  "productionDeployed": false
+}

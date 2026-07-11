@@ -1,0 +1,79 @@
+{
+  "phase": "42K",
+  "commit": "c2f1694",
+  "preview": "https://pickleball-scheduler-sboxqk8sw-pickleball-scheduler.vercel.app",
+  "tenants": {
+    "A": "venue-staging-a",
+    "B": "venue-staging-b"
+  },
+  "clubs": {
+    "A": "club-smoke-42i1",
+    "B": "club-staging-b"
+  },
+  "viteClubStorageV2": true,
+  "productionDeployed": false,
+  "rollbackProduction": "dpl_9XNP4G8cK7wVe7DcTLomJXjrfC2u (v5.3.32)",
+  "rollbackPreview": "dpl_BudkjgWHknuPjuYSN4NVz5PpmCM6",
+  "results": [
+    {
+      "case": "A",
+      "verdict": "FAIL",
+      "evidence": "saProxy=true hasA=false hasB=false banner=false search=true reload=false rpcRegistry=4"
+    },
+    {
+      "case": "B",
+      "verdict": "FAIL",
+      "evidence": "fallback=true hasB=false hasA=false banner=false crossTenantRpc=200"
+    },
+    {
+      "case": "C",
+      "verdict": "FAIL",
+      "evidence": "noAutoPick=true aOnly=false bOnly=true crossTenant=true rpcRegistry=2→5"
+    },
+    {
+      "case": "D",
+      "verdict": "PARTIAL",
+      "evidence": "discover=true club=false rpcDiscover=2 joinBtn=false"
+    },
+    {
+      "case": "E",
+      "verdict": "PARTIAL",
+      "evidence": "tenantSwitchIsolation=true (create/approve/owner label not automated in staging QA)"
+    },
+    {
+      "case": "F",
+      "verdict": "PARTIAL",
+      "evidence": "noTenantGuard=true retry=true error=false blank=false pageErrors=0"
+    }
+  ],
+  "rpcFindings": [
+    "A: club_list_registry #1",
+    "A: club_list_registry #2",
+    "A: club_list_registry #3",
+    "A: club_list_registry #4",
+    "B: club_list_registry #1",
+    "B: club_list_registry #2",
+    "C: club_list_registry #1",
+    "C: club_list_registry #2",
+    "C: club_list_registry #3",
+    "C: club_list_registry #4",
+    "C: club_list_registry #5",
+    "D: club_list_discoverable #1",
+    "D: club_list_discoverable #2",
+    "E: club_list_registry #1",
+    "E: club_list_registry #2",
+    "E: club_list_registry #3"
+  ],
+  "cacheFindings": [
+    "C: after switch B, tenant A club visible=false"
+  ],
+  "consoleFindings": [
+    "F console: Failed to load resource: the server responded with a status of 500 (Internal Server Error)"
+  ],
+  "routes": {
+    "manageClubs": "club_list_registry (tenant scope)",
+    "platformClubs": "club_list_registry (platform scope)",
+    "discoverClubs": "club_list_discoverable"
+  },
+  "verdict": "FAIL"
+}
