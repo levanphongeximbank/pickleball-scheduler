@@ -4,16 +4,32 @@
 
 ---
 
-## Tests
+## Mandatory tests (20)
 
-| File | Cases | Focus |
-|------|-------|-------|
-| `competition-core-rules-engine.test.js` | 11 | Normalization, conflicts, hard/soft eval, flag gate, idempotency |
-| `competition-core-feature-flags.test.js` | 4 | Defaults, sub-flag gating incl. constraints V2 |
-| `competition-core-contracts.test.js` | 5 | CC-01 regression (unchanged) |
+| # | Case | Status |
+|---|------|--------|
+| 1 | MUST_NOT_PARTNER reject | PASS |
+| 2 | MUST_PARTNER pass | PASS |
+| 3 | MUST + MUST_NOT conflict | PASS |
+| 4 | Must-partner component exceeds team size | PASS |
+| 5 | Mixed composition invalid | PASS |
+| 6 | Skill cap exceeded | PASS |
+| 7 | Player not checked in | PASS |
+| 8 | Player unavailable | PASS |
+| 9 | Player busy | PASS |
+| 10 | Prefer partner soft score | PASS |
+| 11 | Avoid partner soft score | PASS |
+| 12 | Same club soft penalty | PASS |
+| 13 | Max partner repeat | PASS |
+| 14 | Max opponent repeat | PASS |
+| 15 | Invalid parameters | PASS |
+| 16 | Context not applicable → rule skipped | PASS |
+| 17 | Rule set version selection | PASS |
+| 18 | Hard fail cannot be offset by soft score | PASS |
+| 19 | Same input + same ruleset → same output | PASS |
+| 20 | Pure evaluator does not write database | PASS |
 
-**Total CC-03A new:** 11 rules-engine + 2 flag assertions  
-**Combined run:** 20 pass / 0 fail
+Additional: flag-off no-op, explainability `suggestedResolution`
 
 ---
 
@@ -28,32 +44,22 @@ node --test tests/competition-core-rules-engine.test.js tests/competition-core-f
 ## Results (2026-07-12)
 
 ```
-✔ normalizeRuleDefinition maps legacy avoid_same_group alias
-✔ detectConstraintConflicts finds contradictory must/must-not
-✔ detectConstraintConflicts flags unsatisfiable multiple hard must-partner targets
-✔ evaluateHardRules rejects hard avoid_partner on same team
-✔ evaluateHardRules rejects skill cap breach without negative totalScore hack
-✔ scoreSoftRules applies prefer_partner bonus without rejecting candidate
-✔ evaluateCanonicalRules is no-op when constraints v2 flag off
-✔ evaluateCanonicalRules returns infeasible on conflict before candidate eval
-✔ evaluateCanonicalRules idempotent re-apply on same candidate
-✔ preflightRuleSet detects conflicts only when flag on
-✔ gender eligibility hard rule validates mixed doubles teams
-✔ (feature flags + contracts — 9 additional cases)
-
-ℹ tests 20 | pass 20 | fail 0
+ℹ tests 31 | pass 31 | fail 0
 ```
 
 ---
 
 ## Runtime behavior
 
-**Unchanged** — no wiring to `teamPairingEngine`, `ai/scoring.js`, or pairing-constraints in CC-03A.
+**Unchanged** — no wiring to legacy pairing/scoring consumers.
 
 ---
 
-## Out of scope
+## Environment
 
-- CC-03B consumer integration tests
-- CC-04 Draw Engine merge tests
-- Staging/production migration
+| Item | Status |
+|------|--------|
+| Preview deployment | NOT DEPLOYED |
+| Production | NOT DEPLOYED |
+| Production migration | NOT APPLIED |
+| Feature flags production | OFF |

@@ -1,5 +1,7 @@
 /**
- * @typedef {import('./drawMode.js').DrawModeValue} DrawModeValue
+ * @typedef {import('./constraintScope.js').ConstraintScopeValue} ConstraintScopeValue
+ * @typedef {import('./ruleSetStatus.js').RuleSetStatusValue} RuleSetStatusValue
+ */
  * @typedef {import('./engineType.js').CompetitionEngineTypeValue} CompetitionEngineTypeValue
  * @typedef {import('./constraintType.js').CompetitionConstraintTypeValue} CompetitionConstraintTypeValue
  * @typedef {import('./constraintSeverity.js').ConstraintSeverityValue} ConstraintSeverityValue
@@ -19,11 +21,30 @@
  */
 
 /**
+ * @typedef {Object} ConstraintApplicability
+ * @property {string} [tenantId]
+ * @property {string} [clubId]
+ * @property {string} [tournamentId]
+ * @property {string} [eventId]
+ * @property {string} [sessionId]
+ * @property {string} [venueId]
+ * @property {string} [competitionType]
+ * @property {string} [gender]
+ * @property {string} [ageGroup]
+ * @property {number} [skillMin]
+ * @property {number} [skillMax]
+ * @property {string} [effectiveFrom]
+ * @property {string} [effectiveTo]
+ */
+
+/**
  * @typedef {Object} ConstraintDefinition
  * @property {string} [id]
  * @property {CompetitionConstraintTypeValue} type
  * @property {ConstraintSeverityValue} severity
  * @property {boolean} [enabled]
+ * @property {ConstraintScopeValue} [scope]
+ * @property {ConstraintApplicability} [applicability]
  * @property {Record<string, unknown>} [params]
  */
 
@@ -58,6 +79,77 @@
  * @typedef {Object} EngineScoreBreakdown
  * @property {number} [total]
  * @property {Record<string, number>} [components]
+ */
+
+/**
+ * @typedef {Object} ConstraintExplanation
+ * @property {string} reasonCode
+ * @property {string} title
+ * @property {string} message
+ * @property {ConstraintSeverityValue} severity
+ * @property {string[]} [affectedPlayers]
+ * @property {string} [suggestedResolution]
+ * @property {Record<string, unknown>} [details]
+ */
+
+/**
+ * @typedef {Object} ConstraintEvaluationResult
+ * @property {boolean} enabled
+ * @property {boolean} eligible
+ * @property {boolean} feasible
+ * @property {EngineValidationResult} validation
+ * @property {ConstraintExplanation[]} hardViolations
+ * @property {number} softScore
+ * @property {EngineScoreBreakdown} [softBreakdown]
+ * @property {ConstraintExplanation[]} softNotes
+ * @property {ConstraintExplanation[]} explanations
+ * @property {string} engineVersion
+ * @property {string} ruleSetId
+ * @property {string} ruleSetVersion
+ * @property {RuleSetStatusValue} [ruleSetStatus]
+ */
+
+/**
+ * @typedef {Object} ConstraintContext
+ * @property {ConstraintScopeValue} scope
+ * @property {string} [tenantId]
+ * @property {string} [clubId]
+ * @property {string} [tournamentId]
+ * @property {string} [eventId]
+ * @property {string} [sessionId]
+ * @property {string} [venueId]
+ * @property {string} [competitionType]
+ * @property {string} [gender]
+ * @property {string} [ageGroup]
+ * @property {number} [skillMin]
+ * @property {number} [skillMax]
+ * @property {string} [evaluatedAt]
+ * @property {number} [teamSize]
+ * @property {Record<string, import('../constraints/evaluateHardRules.js').RulePlayerSnapshot>} [playersById]
+ * @property {Array<{ id?: string, label?: string, playerIds?: string[] }>} [groups]
+ * @property {Array<{ playerId: string, position?: string, required?: boolean }>} [lineupSlots]
+ * @property {Record<string, { eligible?: boolean, reason?: string }>} [entriesByPlayerId]
+ * @property {Record<string, Record<string, number>>} [partnerRepeatCounts]
+ * @property {Record<string, Record<string, number>>} [opponentRepeatCounts]
+ */
+
+/**
+ * @typedef {Object} RuleSet
+ * @property {string} id
+ * @property {string} version
+ * @property {RuleSetStatusValue} [status]
+ * @property {string} [effectiveFrom]
+ * @property {string} [lockedAt]
+ * @property {ConstraintDefinition[]} constraints
+ * @property {Record<string, unknown>} [metadata]
+ */
+
+/**
+ * @typedef {Object} CandidateAssignment
+ * @property {string[][]} [teams]
+ * @property {Array<{ id?: string, label?: string, playerIds?: string[] }>} [groups]
+ * @property {{ teamA?: string[], teamB?: string[] }} [matchOption]
+ * @property {string[]} [playerIds]
  */
 
 /**

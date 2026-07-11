@@ -1,5 +1,7 @@
 import { COMPETITION_CONSTRAINT_TYPE, isCompetitionConstraintType } from "../constants/constraintType.js";
 import { CONSTRAINT_SEVERITY, isConstraintSeverity } from "../constants/constraintSeverity.js";
+import { isConstraintScope } from "../constants/constraintScope.js";
+import { RULE_SET_STATUS, isRuleSetStatus } from "../constants/ruleSetStatus.js";
 import {
   DEFAULT_RULE_SET_ID,
   DEFAULT_RULE_SET_VERSION,
@@ -9,14 +11,8 @@ import {
 
 /**
  * @typedef {import('../types/index.js').ConstraintDefinition} ConstraintDefinition
- */
-
-/**
- * @typedef {Object} RuleSet
- * @property {string} id
- * @property {string} version
- * @property {ConstraintDefinition[]} constraints
- * @property {Record<string, unknown>} [metadata]
+ * @typedef {import('../types/index.js').RuleSet} RuleSet
+ * @typedef {import('../types/index.js').ConstraintApplicability} ConstraintApplicability
  */
 
 function resolveCanonicalType(rawType) {
@@ -87,6 +83,39 @@ function normalizeParams(partial, canonicalType) {
   return Object.keys(params).length ? params : undefined;
 }
 
+function normalizeApplicability(raw) {
+  if (!raw || typeof raw !== "object") {
+    return undefined;
+  }
+  /** @type {ConstraintApplicability} */
+  const applicability = {};
+  const fields = [
+    "tenantId",
+    "clubId",
+    "tournamentId",
+    "eventId",
+    "sessionId",
+    "venueId",
+    "competitionType",
+    "gender",
+    "ageGroup",
+    "effectiveFrom",
+    "effectiveTo",
+  ];
+  fields.forEach((field) => {
+    if (raw[field] != null) {
+      applicability[field] = String(raw[field]);
+    }
+  });
+  if (raw.skillMin != null) {
+    applicability.skillMin = Number(raw.skillMin);
+  }
+  if (raw.skillMax != null) {
+    applicability.skillMax = Number(raw.skillMax);
+  }
+  return Object.keys(applicability).length ? applicability : undefined;
+}
+
 /**
  * Normalize raw constraint input to canonical ConstraintDefinition.
  *
@@ -111,6 +140,8 @@ export function normalizeRuleDefinition(raw, index = 0) {
     type: canonicalType,
     severity: resolveSeverity(canonicalType, raw),
     enabled: raw.enabled !== false,
+    scope: isConstraintScope(raw.scope) ? raw.scope : undefined,
+    applicability: normalizeApplicability(raw.applicability),
     params: normalizeParams(raw, canonicalType),
   };
 }
@@ -134,9 +165,13 @@ export function normalizeRuleDefinitions(rules = []) {
  * @returns {RuleSet}
  */
 export function createRuleSet(partial = {}) {
+  const status = isRuleSetStatus(partial.status) ? partial.status : RULE_SET_STATUS.ACTIVE;
   return {
     id: String(partial.id || DEFAULT_RULE_SET_ID),
     version: String(partial.version || DEFAULT_RULE_SET_VERSION),
+    status,
+    effectiveFrom: partial.effectiveFrom ? String(partial.effectiveFrom) : undefined,
+    lockedAt: partial.lockedAt ? String(partial.lockedAt) : undefined,
     constraints: normalizeRuleDefinitions(partial.constraints || []),
     metadata: partial.metadata && typeof partial.metadata === "object" ? { ...partial.metadata } : {},
   };

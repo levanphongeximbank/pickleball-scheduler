@@ -1,148 +1,131 @@
 # CC-03A — Canonical Rules Model
 
-**Phase:** CC-03A | **Parent:** CC-03 audit | **Date:** 2026-07-12
+**Phase:** CC-03A | **Engine version:** `cc03a-v2` | **Date:** 2026-07-12
 
 ---
 
 ## 1. Scope
 
-Foundation-only canonical rules engine — **no runtime wiring** to legacy pairing/scoring consumers (CC-03B).
+Domain-only canonical rules engine — **pure evaluation**, **no legacy runtime wiring** (CC-03B).
 
-| Component | Path |
-|-----------|------|
-| Constants | `constraints/ruleConstants.js` |
-| Normalization | `constraints/normalizeRule.js` |
-| Conflict detection | `constraints/detectConflicts.js` |
-| Hard evaluation | `constraints/evaluateHardRules.js` |
-| Soft scoring | `constraints/scoreSoftRules.js` |
-| Entry point | `constraints/evaluateCanonicalRules.js` |
-| Barrel | `constraints/index.js` |
-
-**Engine version:** `cc03a-v1`
-
----
-
-## 2. RuleSet shape
-
-```javascript
-{
-  id: "competition-core-default",   // DEFAULT_RULE_SET_ID
-  version: "1",                     // DEFAULT_RULE_SET_VERSION
-  constraints: [ /* ConstraintDefinition[] */ ],
-  metadata?: {}
-}
-```
-
-Factory: `createRuleSet(partial)` — fills defaults and normalizes each constraint via `normalizeRuleDefinition()`.
+| Layer | Path |
+|-------|------|
+| Constants | `constraints/ruleConstants.js`, `constants/constraintScope.js`, `constants/ruleSetStatus.js` |
+| Normalization | `constraints/normalizeRule.js`, `constraints/normalizeInput.js` |
+| Context | `constraints/resolveContext.js`, `constraints/expandApplicableRules.js` |
+| Pipeline | `constraints/evaluateCandidate.js` |
+| Hard eval | `constraints/evaluateHardRules.js`, `constraints/validateHardConstraints.js` |
+| Soft eval | `constraints/scoreSoftRules.js`, `constraints/scoreSoftConstraints.js` |
+| Conflicts | `constraints/detectConflicts.js` |
+| Explainability | `constraints/buildExplanation.js` |
+| Versioning | `constraints/selectRuleSetVersion.js` |
 
 ---
 
-## 3. ConstraintDefinition (canonical)
+## 2. Domain types
+
+### ConstraintDefinition
 
 | Field | Type | Notes |
 |-------|------|-------|
 | `id` | string | Required for conflict detection |
-| `type` | `COMPETITION_CONSTRAINT_TYPE` | Canonical or legacy alias |
-| `severity` | `hard` \| `soft` | Defaults from type map; legacy `mode` also accepted |
-| `enabled` | boolean | Default `true`; `false` skips rule |
-| `params` | object | Type-specific (see below) |
+| `type` | `CompetitionConstraintTypeValue` | 19 canonical types |
+| `severity` | `hard` \| `soft` | Default per type; legacy `mode` accepted |
+| `enabled` | boolean | Default `true` |
+| `scope` | `ConstraintScopeValue` | Optional filter |
+| `applicability` | `ConstraintApplicability` | tenant/club/tournament/time filters |
+| `params` | object | Type-specific |
 
-### Supported constraint types
+### ConstraintContext
 
-| Type | Default severity | Params |
-|------|------------------|--------|
-| `must_partner` | hard | `anchorPlayerId`, `targetPlayerIds[]` |
-| `must_not_partner` | hard | same |
-| `prefer_partner` | soft | same |
-| `avoid_partner` | soft | same |
-| `gender_eligibility` | hard | `eventType` (default `mixed_double`) |
-| `skill_cap` | soft | `maxDiff` (default `0.5`) |
-| `checkin_required` | hard | player scope |
-| `availability_required` | hard | player scope |
-| `same_club_separation` | soft | club/org grouping |
-| `same_organization_separation` | soft | club/org grouping |
+Resolved evaluation context: `scope`, tenant/club/tournament/event/session/venue, competition type, gender, age group, skill range, `evaluatedAt`, `teamSize`, `playersById`, history counters, lineup/entry data.
 
-### Legacy aliases
-
-| Legacy | Canonical |
-|--------|-----------|
-| `avoid_same_group` | `same_club_separation` |
-| `avoid_teammate` | `avoid_partner` |
-| `prefer_teammate` | `prefer_partner` |
-
-Legacy `mode: "hard"` / `mode: "soft"` maps to `severity`.
-
----
-
-## 4. Evaluation pipeline
-
-```
-normalizeRuleSet(ruleSet)
-  → validateRuleSetConflicts (preflight)
-  → evaluateHardRules(constraints, context)   // feasible / infeasible
-  → scoreSoftRules(constraints, context)      // numeric bonus/penalty only
-```
-
-### Hard vs soft separation (CC-03A design)
-
-| Layer | Behavior |
-|-------|----------|
-| **Hard** | Returns `feasible: false` + `RULE_ERROR_CODE` — **never** uses large negative scores |
-| **Soft** | Returns `softScore` + breakdown — **never** rejects a candidate |
-
-This replaces the legacy pattern of simulating hard constraints via `-100` / `-120` penalties in AI scoring.
-
----
-
-## 5. Evaluation context
-
-```javascript
-{
-  scope: "pairing" | "match" | "draw",
-  teams?: string[][],           // pairing scope
-  matchOption?: { teamA, teamB }, // match scope
-  playersById?: Record<string, Player>,
-  checkedInPlayerIds?: string[],
-  availablePlayerIds?: string[],
-}
-```
-
----
-
-## 6. Result envelope
-
-`evaluateCanonicalRules()` returns:
+### ConstraintEvaluationResult
 
 | Field | Meaning |
 |-------|---------|
 | `enabled` | Constraints V2 flag active |
-| `feasible` | Hard rules satisfied |
-| `validation` | `EngineValidationResult` (ok, errors, conflicts) |
-| `hardViolations` | `EngineExplanation[]` |
-| `softScore` | Numeric total |
-| `softBreakdown` | Per-rule score components |
-| `softNotes` | Non-blocking soft observations |
-| `engineVersion` | `cc03a-v1` |
-| `ruleSetId` / `ruleSetVersion` | Traceability |
+| `eligible` | Entry eligibility passed |
+| `feasible` | Hard constraints satisfied |
+| `hardViolations` | `ConstraintExplanation[]` |
+| `softScore` | Numeric total (never rejects) |
+| `explanations` | Merged explainability output |
+| `ruleSetId` / `ruleSetVersion` / `ruleSetStatus` | Traceability |
 
-When flag **OFF**: `{ enabled: false, feasible: true }` — zero behavior change.
+### ConstraintExplanation
+
+`reasonCode`, `title`, `message`, `severity`, `affectedPlayers`, `suggestedResolution`, `details`.
+
+### RuleSet contract
+
+```javascript
+{
+  id, version, status, effectiveFrom, lockedAt,
+  constraints: ConstraintDefinition[],
+  metadata?: {}
+}
+```
+
+`status`: `draft` | `active` | `locked` | `archived`
 
 ---
 
-## 7. Public API
+## 3. Hard constraint types
 
-Exported from `src/features/competition-core/index.js`:
+| Type | Default severity |
+|------|------------------|
+| `must_partner` | hard |
+| `must_not_partner` | hard |
+| `gender_eligibility` | hard |
+| `mixed_team_composition` | hard |
+| `skill_cap` | soft/hard (configurable) |
+| `team_skill_difference` | soft/hard |
+| `checkin_required` | hard |
+| `availability_required` | hard |
+| `player_not_busy` | hard |
+| `lineup_validity` | hard |
+| `entry_eligibility` | hard |
 
-- `createRuleSet`, `normalizeRuleSet`, `normalizeRuleDefinition`
-- `detectConstraintConflicts`, `preflightRuleSet`
-- `evaluateCanonicalRules`, `evaluateHardRules`, `scoreSoftRules`
-- `RULE_ERROR_CODE`, `RULE_ENGINE_VERSION`, `RULE_SOFT_SCORE`
+Hard rules return `feasible: false` — **never** simulated via large negative scores.
 
 ---
 
-## 8. Out of scope (CC-03B+)
+## 4. Soft constraint types
 
-- Wiring to `teamPairingEngine`, `ai/scoring.js`, `pairing-constraints`
-- Draw Engine merge (CC-04)
-- Production/staging migration
-- Feature flag ON in production
+| Type | Default severity |
+|------|------------------|
+| `prefer_partner` | soft |
+| `avoid_partner` | soft |
+| `avoid_opponent` | soft |
+| `same_club_separation` | soft |
+| `same_organization_separation` | soft |
+| `max_partner_repeat` | soft |
+| `max_opponent_repeat` | soft |
+| `min_rest_time` | soft |
+| `skill_cap` | soft |
+| `team_skill_difference` | soft |
+
+---
+
+## 5. Public API
+
+```javascript
+evaluateCandidate(candidate, constraintsOrRuleSet, context, options)
+validateEligibility(context, constraints)
+detectConstraintConflicts(constraints, context)
+validateHardConstraints(candidate, constraints, context)
+scoreSoftConstraints(candidate, constraints, context)
+evaluateCanonicalRules(ruleSet, context, options)  // legacy envelope
+preflightRuleSet(ruleSet, options)
+selectRuleSetVersion(ruleSets, context)
+```
+
+Flag OFF → `{ enabled: false, feasible: true }` — zero behavior change.
+
+---
+
+## 6. Out of scope
+
+- CC-03B consumer wiring (`ai/scoring.js`, pairing engines)
+- CC-04 Draw Engine merge
+- Production/staging migration or deploy

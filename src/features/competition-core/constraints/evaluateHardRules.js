@@ -15,17 +15,24 @@ import { RULE_ERROR_CODE } from "./ruleConstants.js";
  * @property {string} [organizationId]
  * @property {boolean} [checkedIn]
  * @property {boolean} [available]
+ * @property {boolean} [busy]
  * @property {number} [skillLevel]
+ * @property {string} [lastMatchAt]
  */
 
 /**
  * @typedef {Object} RuleEvaluationContext
- * @property {'pairing'|'group'|'match'} scope
+ * @property {'pairing'|'group'|'match'|'draw'|'lineup'|'entry'} scope
  * @property {string[][]} [teams]
  * @property {Array<{ id?: string, label?: string, playerIds?: string[] }>} [groups]
  * @property {{ teamA?: string[], teamB?: string[] }} [matchOption]
  * @property {Record<string, RulePlayerSnapshot>} [playersById]
  * @property {number} [teamSize]
+ * @property {Array<{ playerId: string, position?: string, required?: boolean }>} [lineupSlots]
+ * @property {Record<string, { eligible?: boolean, reason?: string }>} [entriesByPlayerId]
+ * @property {Record<string, Record<string, number>>} [partnerRepeatCounts]
+ * @property {Record<string, Record<string, number>>} [opponentRepeatCounts]
+ * @property {string} [evaluatedAt]
  */
 
 /**
@@ -279,6 +286,138 @@ function evaluateSeparationRule(constraint, groups, code, field, playersById = {
   return violations;
 }
 
+function evaluateMixedTeamComposition(constraint, context) {
+  const params = constraint.params || {};
+  const composition = String(params.composition || params.eventType || "mixed_double").toLowerCase();
+  if (composition !== "mixed_double") {
+    return [];
+  }
+  return evaluateGenderEligibility(
+    { ...constraint, params: { ...params, eventType: "mixed_double" } },
+    context
+  ).map((item) => ({
+    ...item,
+    code: RULE_ERROR_CODE.MIXED_TEAM_COMPOSITION_VIOLATED,
+    message: item.message.replace("gender eligibility", "mixed team composition"),
+  }));
+}
+
+function collectCandidatePlayerIds(context) {
+  const playerIds = new Set();
+  (context.teams || []).forEach((team) => team.forEach((id) => playerIds.add(String(id))));
+  (context.groups || []).forEach((group) =>
+    (group.playerIds || []).forEach((id) => playerIds.add(String(id)))
+  );
+  if (context.matchOption) {
+    (context.matchOption.teamA || []).forEach((id) => playerIds.add(String(id)));
+    (context.matchOption.teamB || []).forEach((id) => playerIds.add(String(id)));
+  }
+  return playerIds;
+}
+
+function evaluatePlayerNotBusy(constraint, context) {
+  /** @type {EngineExplanation[]} */
+  const violations = [];
+  collectCandidatePlayerIds(context).forEach((playerId) => {
+    const snapshot = getPlayerSnapshot(context.playersById, playerId);
+    if (snapshot.busy === true) {
+      violations.push(
+        createEngineExplanation({
+          code: RULE_ERROR_CODE.PLAYER_BUSY,
+          message: `Player ${playerId} is busy.`,
+          details: { constraintId: constraint.id, playerId, affectedPlayers: [playerId] },
+        })
+      );
+    }
+  });
+  return violations;
+}
+
+function evaluateLineupValidity(constraint, context) {
+  const slots = context.lineupSlots || [];
+  /** @type {EngineExplanation[]} */
+  const violations = [];
+  const requiredPositions = slots.filter((slot) => slot.required !== false);
+
+  requiredPositions.forEach((slot) => {
+    if (!slot.playerId) {
+      violations.push(
+        createEngineExplanation({
+          code: RULE_ERROR_CODE.LINEUP_VALIDITY_VIOLATED,
+          message: `Required lineup slot ${slot.position || "?"} is empty.`,
+          details: { constraintId: constraint.id, slot },
+        })
+      );
+    }
+  });
+
+  const assigned = new Set(
+    slots.map((slot) => String(slot.playerId || "")).filter(Boolean)
+  );
+  if (assigned.size !== slots.filter((slot) => slot.playerId).length) {
+    violations.push(
+      createEngineExplanation({
+        code: RULE_ERROR_CODE.LINEUP_VALIDITY_VIOLATED,
+        message: "Duplicate player assignment in lineup.",
+        details: { constraintId: constraint.id },
+      })
+    );
+  }
+
+  return violations;
+}
+
+function evaluateEntryEligibility(constraint, context) {
+  /** @type {EngineExplanation[]} */
+  const violations = [];
+  collectCandidatePlayerIds(context).forEach((playerId) => {
+    const entry = context.entriesByPlayerId?.[playerId];
+    if (entry && entry.eligible === false) {
+      violations.push(
+        createEngineExplanation({
+          code: RULE_ERROR_CODE.ENTRY_ELIGIBILITY_VIOLATED,
+          message: entry.reason || `Player ${playerId} is not eligible to enter.`,
+          details: {
+            constraintId: constraint.id,
+            playerId,
+            affectedPlayers: [playerId],
+          },
+        })
+      );
+    }
+  });
+  return violations;
+}
+
+function evaluateTeamSkillDifferenceHard(constraint, context) {
+  const params = constraint.params || {};
+  const maxDiff = Number(params.maxDiff ?? 0.5);
+  const teams =
+    context.teams ||
+    (context.matchOption
+      ? [context.matchOption.teamA || [], context.matchOption.teamB || []]
+      : []);
+
+  if (teams.length < 2) {
+    return [];
+  }
+
+  const totals = teams.map((team) => teamSkillTotal(team, context.playersById || {}));
+  const diff = Math.abs(totals[0] - totals[1]);
+
+  if (diff > maxDiff) {
+    return [
+      createEngineExplanation({
+        code: RULE_ERROR_CODE.TEAM_SKILL_DIFFERENCE_EXCEEDED,
+        message: `Team skill difference ${diff.toFixed(2)} exceeds limit ${maxDiff}.`,
+        details: { constraintId: constraint.id, diff, maxDiff, totals },
+      }),
+    ];
+  }
+
+  return [];
+}
+
 /**
  * Evaluate hard constraints — infeasible candidates are rejected, not penalized.
  *
@@ -313,12 +452,27 @@ export function evaluateHardRules(constraints = [], context) {
       case COMPETITION_CONSTRAINT_TYPE.GENDER_ELIGIBILITY:
         violations.push(...evaluateGenderEligibility(constraint, context));
         break;
+      case COMPETITION_CONSTRAINT_TYPE.MIXED_TEAM_COMPOSITION:
+        violations.push(...evaluateMixedTeamComposition(constraint, context));
+        break;
       case COMPETITION_CONSTRAINT_TYPE.SKILL_CAP:
         violations.push(...evaluateSkillCap(constraint, context));
+        break;
+      case COMPETITION_CONSTRAINT_TYPE.TEAM_SKILL_DIFFERENCE:
+        violations.push(...evaluateTeamSkillDifferenceHard(constraint, context));
         break;
       case COMPETITION_CONSTRAINT_TYPE.CHECKIN_REQUIRED:
       case COMPETITION_CONSTRAINT_TYPE.AVAILABILITY_REQUIRED:
         violations.push(...evaluateCheckinAndAvailability(constraint, context));
+        break;
+      case COMPETITION_CONSTRAINT_TYPE.PLAYER_NOT_BUSY:
+        violations.push(...evaluatePlayerNotBusy(constraint, context));
+        break;
+      case COMPETITION_CONSTRAINT_TYPE.LINEUP_VALIDITY:
+        violations.push(...evaluateLineupValidity(constraint, context));
+        break;
+      case COMPETITION_CONSTRAINT_TYPE.ENTRY_ELIGIBILITY:
+        violations.push(...evaluateEntryEligibility(constraint, context));
         break;
       case COMPETITION_CONSTRAINT_TYPE.SAME_CLUB_SEPARATION:
         if (context.scope === "group" && groups.length) {

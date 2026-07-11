@@ -34,13 +34,17 @@ function isPartnerConstraint(type) {
 /**
  * Detect structural conflicts before running any optimizer.
  *
- * @param {RuleSet|{ constraints?: ConstraintDefinition[] }} ruleSet
+ * @param {RuleSet|{ constraints?: ConstraintDefinition[] }|ConstraintDefinition[]} constraintsOrRuleSet
+ * @param {Partial<import('../types/index.js').ConstraintContext>} [context]
  * @returns {ConstraintConflict[]}
  */
-export function detectConstraintConflicts(ruleSet) {
+export function detectConstraintConflicts(constraintsOrRuleSet, context = {}) {
   /** @type {ConstraintConflict[]} */
   const conflicts = [];
-  const constraints = (ruleSet?.constraints || []).filter((item) => item?.enabled !== false);
+  const constraints = Array.isArray(constraintsOrRuleSet)
+    ? constraintsOrRuleSet
+    : (constraintsOrRuleSet?.constraints || []).filter((item) => item?.enabled !== false);
+  const teamSize = Number(context.teamSize ?? 2);
   const seenIds = new Map();
 
   constraints.forEach((constraint) => {
@@ -142,7 +146,15 @@ export function detectConstraintConflicts(ruleSet) {
     const uniqueTargets = new Set(
       bucket.flatMap((item) => getPartnerParams(item).targets)
     );
-    if (uniqueTargets.size > 1) {
+    if (uniqueTargets.size > Math.max(teamSize - 1, 0)) {
+      conflicts.push(
+        createConstraintConflict({
+          code: RULE_ERROR_CODE.MUST_PARTNER_COMPONENT_EXCEEDS_TEAM_SIZE,
+          message: `Anchor ${anchor} has ${uniqueTargets.size} hard must-partner targets but team size is ${teamSize}.`,
+          constraints: bucket,
+        })
+      );
+    } else if (uniqueTargets.size > 1 && teamSize <= 2) {
       conflicts.push(
         createConstraintConflict({
           code: RULE_ERROR_CODE.UNSATISFIABLE_MUST_PARTNER,
@@ -152,6 +164,82 @@ export function detectConstraintConflicts(ruleSet) {
       );
     }
   });
+
+  const hasMixedHard = constraints.some(
+    (item) =>
+      item.type === COMPETITION_CONSTRAINT_TYPE.MIXED_TEAM_COMPOSITION &&
+      item.severity === CONSTRAINT_SEVERITY.HARD
+  );
+  const hasSameGenderOnly = constraints.some((item) => {
+    const eventType = String(item.params?.eventType || item.params?.composition || "").toLowerCase();
+    return (
+      item.type === COMPETITION_CONSTRAINT_TYPE.GENDER_ELIGIBILITY &&
+      item.severity === CONSTRAINT_SEVERITY.HARD &&
+      eventType &&
+      eventType !== "mixed_double"
+    );
+  });
+  if (hasMixedHard && hasSameGenderOnly) {
+    conflicts.push(
+      createConstraintConflict({
+        code: RULE_ERROR_CODE.CONTRADICTORY_MIXED_GENDER,
+        message: "Contradictory mixed-team and same-gender eligibility rules.",
+        constraints: constraints.filter(
+          (item) =>
+            item.type === COMPETITION_CONSTRAINT_TYPE.MIXED_TEAM_COMPOSITION ||
+            item.type === COMPETITION_CONSTRAINT_TYPE.GENDER_ELIGIBILITY
+        ),
+      })
+    );
+  }
+
+  const skillCaps = constraints.filter((item) => item.type === COMPETITION_CONSTRAINT_TYPE.SKILL_CAP);
+  const skillDiffs = constraints.filter(
+    (item) => item.type === COMPETITION_CONSTRAINT_TYPE.TEAM_SKILL_DIFFERENCE
+  );
+  [...skillCaps, ...skillDiffs].forEach((constraint) => {
+    const maxDiff = Number(constraint.params?.maxDiff);
+    if (!Number.isFinite(maxDiff) || maxDiff < 0) {
+      conflicts.push(
+        createConstraintConflict({
+          code: RULE_ERROR_CODE.INVALID_CONSTRAINT_PARAMS,
+          message: `Constraint ${constraint.id} has invalid maxDiff.`,
+          constraints: [constraint],
+        })
+      );
+    }
+  });
+  if (skillCaps.length && skillDiffs.length) {
+    const capValues = new Set(skillCaps.map((item) => Number(item.params?.maxDiff ?? 0.5)));
+    const diffValues = new Set(skillDiffs.map((item) => Number(item.params?.maxDiff ?? 0.5)));
+    if (capValues.size > 1 || diffValues.size > 1) {
+      conflicts.push(
+        createConstraintConflict({
+          code: RULE_ERROR_CODE.CONTRADICTORY_SKILL_CAP,
+          message: "Contradictory skill cap thresholds in the same rule set.",
+          constraints: [...skillCaps, ...skillDiffs],
+        })
+      );
+    }
+  }
+
+  if (context.playersById) {
+    constraints
+      .filter((item) => item.type === COMPETITION_CONSTRAINT_TYPE.CHECKIN_REQUIRED)
+      .forEach((constraint) => {
+        Object.entries(context.playersById).forEach(([playerId, snapshot]) => {
+          if (snapshot?.checkedIn === false && snapshot?.available === false) {
+            conflicts.push(
+              createConstraintConflict({
+                code: RULE_ERROR_CODE.CONTRADICTORY_AVAILABILITY,
+                message: `Player ${playerId} is unavailable and not checked in under check-in rules.`,
+                constraints: [constraint],
+              })
+            );
+          }
+        });
+      });
+  }
 
   return conflicts;
 }

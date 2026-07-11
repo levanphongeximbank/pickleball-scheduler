@@ -11,6 +11,16 @@ export {
   isConstraintSeverity,
 } from "./constraintSeverity.js";
 export {
+  CONSTRAINT_SCOPE,
+  CONSTRAINT_SCOPE_VALUES,
+  isConstraintScope,
+} from "./constraintScope.js";
+export {
+  RULE_SET_STATUS,
+  RULE_SET_STATUS_VALUES,
+  isRuleSetStatus,
+} from "./ruleSetStatus.js";
+export {
   COMPETITION_CONSTRAINT_TYPE,
   COMPETITION_CONSTRAINT_TYPE_VALUES,
   isCompetitionConstraintType,

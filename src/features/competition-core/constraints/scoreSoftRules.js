@@ -22,8 +22,30 @@ import {
  * @property {import('../types/index.js').EngineExplanation[]} notes
  */
 
-function getPlayerSnapshot(playersById, playerId) {
-  return playersById?.[String(playerId)] || {};
+function findOpposingTeamIndex(playerId, teams) {
+  const teamIndex = findTeamIndexForPlayer(teams, playerId);
+  if (teamIndex < 0) {
+    return -1;
+  }
+  return teams.findIndex((_, index) => index !== teamIndex);
+}
+
+function findTeamIndexForPlayer(teams, playerId) {
+  return teams.findIndex((team) => team.map(String).includes(String(playerId)));
+}
+
+function getRepeatCount(store, playerA, playerB) {
+  const a = String(playerA);
+  const b = String(playerB);
+  return Number(store?.[a]?.[b] ?? store?.[b]?.[a] ?? 0);
+}
+
+function parseTime(value) {
+  if (!value) {
+    return null;
+  }
+  const time = Date.parse(String(value));
+  return Number.isFinite(time) ? time : null;
 }
 
 /**
@@ -168,6 +190,129 @@ export function scoreSoftRules(constraints = [], context) {
           total += penalty;
         }
       }
+      return;
+    }
+
+    if (constraint.type === COMPETITION_CONSTRAINT_TYPE.TEAM_SKILL_DIFFERENCE && teams.length >= 2) {
+      const maxDiff = Number(constraint.params?.maxDiff ?? 0.5);
+      const totalA = teams[0].reduce(
+        (sum, id) => sum + Number(getPlayerSnapshot(playersById, id).skillLevel ?? 0),
+        0
+      );
+      const totalB = teams[1].reduce(
+        (sum, id) => sum + Number(getPlayerSnapshot(playersById, id).skillLevel ?? 0),
+        0
+      );
+      const diff = Math.abs(totalA - totalB);
+      if (diff > maxDiff) {
+        const over = diff - maxDiff;
+        const penalty =
+          -1 * Math.ceil(over / 0.1) * RULE_SOFT_SCORE.teamSkillDiffPenaltyPerStep;
+        components[key] = penalty;
+        total += penalty;
+      }
+      return;
+    }
+
+    if (constraint.type === COMPETITION_CONSTRAINT_TYPE.AVOID_OPPONENT && teams.length >= 2) {
+      const { anchor, targets } = getPartnerParams(constraint);
+      if (!anchor || !targets.length) {
+        return;
+      }
+      let penalty = 0;
+      targets.forEach((target) => {
+        const anchorTeam = findTeamIndexForPlayer(teams, anchor);
+        const targetTeam = findTeamIndexForPlayer(teams, target);
+        if (anchorTeam >= 0 && targetTeam >= 0 && anchorTeam !== targetTeam) {
+          penalty -= RULE_SOFT_SCORE.avoidOpponentViolationPenalty;
+          notes.push(
+            createEngineExplanation({
+              code: RULE_ERROR_CODE.AVOID_OPPONENT_VIOLATED,
+              message: `${anchor} should avoid opponent ${target}.`,
+              details: { constraintId: constraint.id, soft: true },
+            })
+          );
+        }
+      });
+      components[key] = penalty;
+      total += penalty;
+      return;
+    }
+
+    if (constraint.type === COMPETITION_CONSTRAINT_TYPE.MAX_PARTNER_REPEAT) {
+      const maxRepeat = Number(constraint.params?.maxRepeat ?? 1);
+      let penalty = 0;
+      teams.forEach((team) => {
+        for (let i = 0; i < team.length; i += 1) {
+          for (let j = i + 1; j < team.length; j += 1) {
+            const count = getRepeatCount(
+              context.partnerRepeatCounts,
+              team[i],
+              team[j]
+            );
+            if (count > maxRepeat) {
+              penalty -= RULE_SOFT_SCORE.maxPartnerRepeatPenalty * (count - maxRepeat);
+              notes.push(
+                createEngineExplanation({
+                  code: RULE_ERROR_CODE.MAX_PARTNER_REPEAT_EXCEEDED,
+                  message: `${team[i]} and ${team[j]} exceeded partner repeat limit.`,
+                  details: { constraintId: constraint.id, count, maxRepeat, soft: true },
+                })
+              );
+            }
+          }
+        }
+      });
+      components[key] = penalty;
+      total += penalty;
+      return;
+    }
+
+    if (constraint.type === COMPETITION_CONSTRAINT_TYPE.MAX_OPPONENT_REPEAT && teams.length >= 2) {
+      const maxRepeat = Number(constraint.params?.maxRepeat ?? 1);
+      let penalty = 0;
+      teams[0].forEach((playerA) => {
+        teams[1].forEach((playerB) => {
+          const count = getRepeatCount(context.opponentRepeatCounts, playerA, playerB);
+          if (count > maxRepeat) {
+            penalty -= RULE_SOFT_SCORE.maxOpponentRepeatPenalty * (count - maxRepeat);
+            notes.push(
+              createEngineExplanation({
+                code: RULE_ERROR_CODE.MAX_OPPONENT_REPEAT_EXCEEDED,
+                message: `${playerA} and ${playerB} exceeded opponent repeat limit.`,
+                details: { constraintId: constraint.id, count, maxRepeat, soft: true },
+              })
+            );
+          }
+        });
+      });
+      components[key] = penalty;
+      total += penalty;
+      return;
+    }
+
+    if (constraint.type === COMPETITION_CONSTRAINT_TYPE.MIN_REST_TIME) {
+      const minMinutes = Number(constraint.params?.minMinutes ?? 30);
+      const evaluatedAt = parseTime(context.evaluatedAt) ?? Date.now();
+      let penalty = 0;
+      teams.flat().forEach((playerId) => {
+        const lastMatchAt = parseTime(getPlayerSnapshot(playersById, playerId).lastMatchAt);
+        if (lastMatchAt != null) {
+          const elapsedMinutes = (evaluatedAt - lastMatchAt) / 60000;
+          if (elapsedMinutes < minMinutes) {
+            penalty -= RULE_SOFT_SCORE.minRestTimePenalty;
+            notes.push(
+              createEngineExplanation({
+                code: RULE_ERROR_CODE.MIN_REST_TIME_VIOLATED,
+                message: `Player ${playerId} has insufficient rest (${elapsedMinutes.toFixed(0)}m).`,
+                details: { constraintId: constraint.id, playerId, soft: true },
+              })
+            );
+          }
+        }
+      });
+      components[key] = penalty;
+      total += penalty;
     }
   });
 
@@ -176,6 +321,10 @@ export function scoreSoftRules(constraints = [], context) {
     breakdown: createEngineScoreBreakdown({ total, components }),
     notes,
   };
+}
+
+function getPlayerSnapshot(playersById, playerId) {
+  return playersById?.[String(playerId)] || {};
 }
 
 export { shareGroup };

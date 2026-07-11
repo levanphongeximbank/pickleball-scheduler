@@ -4,83 +4,55 @@
 
 ---
 
-## 1. Purpose
+## 1. API
 
-Detect **structural** rule-set conflicts **before** candidate evaluation — prevents optimizers from running on unsatisfiable constraint sets.
+```javascript
+detectConstraintConflicts(constraints, context?)
+validateRuleSetConflicts(ruleSet)
+preflightRuleSet(ruleSet, { envSource, context })
+```
 
-Entry points:
-
-- `detectConstraintConflicts(ruleSet)` — returns conflict array
-- `validateRuleSetConflicts(ruleSet)` — `{ ok, conflicts }`
-- `preflightRuleSet(ruleSet, { envSource })` — flag-gated preflight
-- `evaluateCanonicalRules()` — auto-runs conflict check unless `skipConflictCheck: true`
+Conflicts are detected **before** candidate evaluation when flag is ON.
 
 ---
 
-## 2. Detected conflict types
+## 2. Structural conflicts
 
 | Code | Trigger |
 |------|---------|
-| `duplicate_constraint_id` | Same `id` appears twice |
-| `invalid_constraint_params` | Partner rule missing anchor/target |
+| `duplicate_constraint_id` | Same `id` twice |
+| `invalid_constraint_params` | Missing anchor/target or invalid `maxDiff` |
 | `contradictory_must_must_not` | Hard must + hard must-not on same pair |
-| `contradictory_must_avoid` | Hard must-partner + hard avoid-partner on same pair |
-| `unsatisfiable_must_partner` | One anchor with multiple hard must-partner targets |
+| `contradictory_must_avoid` | Hard must-partner + hard avoid-partner |
+| `unsatisfiable_must_partner` | Multiple hard must-partner targets (doubles) |
+| `must_partner_component_exceeds_team_size` | Must-partner targets > `teamSize - 1` |
+| `contradictory_mixed_gender` | Hard mixed composition + same-gender eligibility |
+| `contradictory_skill_cap` | Conflicting skill thresholds |
+| `contradictory_availability` | Check-in rule vs player unavailable in context |
 
 ---
 
-## 3. Partner pair indexing
+## 3. Context-aware checks
 
-Partner-family constraints (`must_partner`, `must_not_partner`, `prefer_partner`, `avoid_partner`) are indexed by sorted pair key:
+When `context.teamSize` is provided, must-partner fan-out is validated against team capacity.
 
-```
-pairKey("1", "2") → "1|2"
-```
-
-Conflicts compare constraints sharing the same anchor↔target pair.
+When `context.playersById` is provided, check-in vs availability contradictions are surfaced at preflight.
 
 ---
 
-## 4. Hard-only structural checks
+## 4. Partner pair indexing
 
-Conflict detection applies to **hard** severity partner rules only for contradiction/unsatisfiability checks. Soft rules do not create structural conflicts at preflight (they score at evaluation time).
+Partner-family rules indexed by sorted pair key `playerA|playerB`.
 
 ---
 
-## 5. Integration with evaluation
+## 5. Integration
 
-When conflicts exist and flag is ON:
+Pipeline aborts before hard/soft eval when conflicts exist:
 
 ```javascript
-evaluateCanonicalRules(ruleSet, context, { envSource: v2Env })
-// → { enabled: true, feasible: false, validation: { ok: false, conflicts: [...] } }
+evaluateCandidate(candidate, ruleSet, context, { envSource: v2Env })
+// → { feasible: false, validation: { conflicts: [...] } }
 ```
 
-Hard/soft evaluators are **not** invoked when preflight fails.
-
-When flag is OFF:
-
-```javascript
-preflightRuleSet(ruleSet, { envSource: {} })
-// → { ok: true, conflicts: [] }
-```
-
----
-
-## 6. Error code reference
-
-Full list in `constraints/ruleConstants.js` → `RULE_ERROR_CODE`.
-
-Evaluation-time hard violations (not preflight):
-
-- `must_partner_unsatisfied`
-- `must_not_partner_violated`
-- `avoid_partner_violated`
-- `gender_eligibility_violated`
-- `skill_cap_exceeded`
-- `checkin_required_missing`
-- `availability_required_missing`
-- `same_club_separation_violated`
-- `same_organization_separation_violated`
-
-Soft scoring uses `RULE_SOFT_SCORE` weights — violations produce penalties in `softScore`, not `feasible: false` (unless severity upgraded to hard).
+Flag OFF → `preflightRuleSet` returns `{ ok: true, conflicts: [] }`.
