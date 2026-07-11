@@ -204,8 +204,9 @@ export async function invokeApi({
     return { statusCode: 200, response };
   } catch (error) {
     const statusCode = error.statusCode || 500;
+    const code = error.code || API_ERROR_CODES.INTERNAL_ERROR;
     const response = apiError(
-      API_ERROR_CODES.INTERNAL_ERROR,
+      code,
       error.message || "Internal error",
       null,
       { requestId }

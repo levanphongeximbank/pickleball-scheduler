@@ -1,5 +1,6 @@
 import { getActiveClubId, getScopedStorageKey } from "../data/club.js";
 import { scheduleClubCloudPush } from "../ai/clubCloudPush.js";
+import { isPhase43aSafetyEnabled } from "../features/safety/phase43aFlags.js";
 import { DEFAULT_COMPETITION_TYPE } from "../ai/competition.js";
 import { DEFAULT_SKILL_LEVEL_RULES } from "../ai/config.js";
 import { createLeagueRecord } from "../models/league.js";
@@ -20,6 +21,17 @@ import {
   resolveTenantIdForClub,
   stampWithTenantId,
 } from "../features/tenant/guards/tenantGuard.js";
+
+function recordBlobWriteTelemetry(clubId) {
+  if (!isPhase43aSafetyEnabled() || typeof window === "undefined") {
+    return;
+  }
+  window.dispatchEvent(
+    new CustomEvent("club-blob:write", {
+      detail: { clubId, at: new Date().toISOString() },
+    })
+  );
+}
 
 export const CLUB_DATA_KEY = "pickleball-club-data-v3";
 export const CLUB_SCHEMA_VERSION = 3.5;
@@ -288,6 +300,7 @@ export function saveClubData(clubId, data, options = {}) {
   localStorage.setItem(getClubDataKey(clubId), JSON.stringify(normalized));
   if (options.source !== "cloud") {
     markClubDataDirty(clubId);
+    recordBlobWriteTelemetry(clubId);
   }
   scheduleClubCloudPush(clubId);
   return normalized;

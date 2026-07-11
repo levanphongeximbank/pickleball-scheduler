@@ -24,6 +24,7 @@ import { PERMISSIONS } from "../auth/permissions.js";
 import { pullClubFromCloud } from "../ai/cloudSync.js";
 import { isVenueScopedRole, isClubScopedRole, isPlatformWideRole } from "../auth/roles.js";
 import { ensureWritableClubForVenueOwner } from "../features/club/services/venueOwnerClubService.js";
+import { invalidateMyActiveClubMembershipCache } from "../features/club/services/clubActiveMembershipService.js";
 
 const ClubContext = createContext(null);
 
@@ -254,17 +255,35 @@ export function ClubProvider({ children }) {
 
   const handleSwitchClub = useCallback(
     (clubId) => {
-      const result = switchActiveClub(clubId);
+      const trimmed = String(clubId || "").trim();
+      if (!trimmed) {
+        return { ok: false, error: "CLB không hợp lệ.", code: "CLUB_INVALID" };
+      }
+
+      if (rbacEnabled && isAuthenticated) {
+        const allowed = visibleClubs.some((club) => club.id === trimmed);
+        if (!allowed) {
+          return {
+            ok: false,
+            error: "CLB không nằm trong phạm vi cho phép.",
+            code: "CLUB_OUT_OF_SCOPE",
+          };
+        }
+      }
+
+      invalidateMyActiveClubMembershipCache(user?.id || null);
+
+      const result = switchActiveClub(trimmed);
 
       if (!result.ok) {
         return result;
       }
 
-      setActiveClubId(clubId);
+      setActiveClubId(trimmed);
       setRevision((value) => value + 1);
       return result;
     },
-    []
+    [isAuthenticated, rbacEnabled, user?.id, visibleClubs]
   );
 
   const handleCreateClub = useCallback((name) => {

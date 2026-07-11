@@ -14,6 +14,11 @@ const OTHER_TOKEN = "b".repeat(32);
 
 test.beforeEach(() => {
   __resetRefereeRpcCacheForTests();
+  process.env.VITE_PHASE43A_SAFETY = "false";
+});
+
+test.afterEach(() => {
+  delete process.env.VITE_PHASE43A_SAFETY;
 });
 
 const RPC_MATCH = {

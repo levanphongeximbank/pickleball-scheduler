@@ -21,6 +21,7 @@ import {
 import {
   enqueueOfflineAction,
   flushOfflineQueue,
+  resetOfflineQueueForTests,
   OFFLINE_ACTION_TYPES,
 } from "../src/features/mobile/services/offlineQueue.js";
 import {
@@ -37,8 +38,8 @@ import {
   guardRefereeSessionRoute,
   REFEREE_MATCH_ACTIONS,
 } from "../src/features/mobile/services/refereeMatchGuard.js";
+import { signInAs, enableRbac, signOut } from "../src/auth/authService.js";
 import { buildPwaInstallBannerModel } from "../src/features/mobile/utils/pwaInstallState.js";
-import { enableRbac, signInAs, signOut } from "../src/auth/authService.js";
 import { MATCH_LIVE_STATUS } from "../src/domain/matchLiveSync.js";
 import { QR_ENTITY_TYPES } from "../src/features/mobile/constants/qrEntityTypes.js";
 
@@ -408,9 +409,18 @@ describe("mobile phase 8 — offline strategy", () => {
   });
 
   it("flush không sync match score từ queue", async () => {
+    resetOfflineQueueForTests();
+    signInAs({
+      id: "mobile-p8-offline-user",
+      role: ROLES.PLAYER,
+      venueId: "tenant-a",
+      tenantId: "tenant-a",
+      status: "active",
+    });
     enqueueOfflineAction({
       type: OFFLINE_ACTION_TYPES.REFEREE_NOTE,
       payload: { matchId: "m1", note: "safe" },
+      tenantId: "tenant-a",
     });
     const enqueueScore = enqueueOfflineAction({
       type: OFFLINE_ACTION_TYPES.MATCH_SCORE,

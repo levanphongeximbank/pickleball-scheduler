@@ -1,13 +1,30 @@
 import { syncClubToCloud } from "./cloudSync.js";
 import { isClubCloudSyncEnabled } from "./cloudSyncConfig.js";
 import { getClubCloudVersion } from "../domain/clubStorage.js";
+import { getCurrentUser } from "../auth/authService.js";
+import { loadActiveTenantId } from "../data/tenantSession.js";
+import { getExplicitTenantIdForClub } from "../features/tenant/guards/tenantGuard.js";
+import { isPhase43aSafetyEnabled } from "../features/safety/phase43aFlags.js";
 
 const DEBOUNCE_MS = 1500;
 const pendingTimers = new Map();
 
+function canScheduleCloudPush(clubId) {
+  if (!isPhase43aSafetyEnabled()) {
+    return true;
+  }
+  const clubTenant = getExplicitTenantIdForClub(clubId);
+  const user = getCurrentUser();
+  const activeTenant = loadActiveTenantId() || user?.venueId || user?.tenantId || null;
+  if (clubTenant && activeTenant && clubTenant !== activeTenant) {
+    return false;
+  }
+  return true;
+}
+
 export function scheduleClubCloudPush(clubId) {
   const id = String(clubId || "").trim();
-  if (!id || !isClubCloudSyncEnabled()) {
+  if (!id || !isClubCloudSyncEnabled() || !canScheduleCloudPush(id)) {
     return;
   }
 

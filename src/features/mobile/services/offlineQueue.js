@@ -2,6 +2,14 @@ import { getSupabaseAuthClient, hasSupabaseConfig } from "../../../auth/supabase
 import { getCurrentUser } from "../../../auth/authService.js";
 import { writeAuditLog } from "../../identity/services/auditService.js";
 import { canEnqueueOfflineAction } from "./offlineGuardService.js";
+import { isPhase43aSafetyEnabled } from "../../safety/phase43aFlags.js";
+import {
+  OFFLINE_QUEUE_STATUS,
+  createScopedQueueEntry,
+  entryMatchesSession,
+  isFlushableEntry,
+  normalizeQueueEntries,
+} from "./offlineQueueSchema.js";
 
 const QUEUE_KEY = "pickleball-offline-queue-v1";
 const SYNC_LOCK_KEY = "pickleball-offline-sync-lock";
@@ -13,7 +21,7 @@ export const OFFLINE_ACTION_TYPES = Object.freeze({
   REFEREE_NOTE: "referee_note",
 });
 
-function loadQueue() {
+function loadQueueRaw() {
   try {
     const raw = localStorage.getItem(QUEUE_KEY);
     const parsed = raw ? JSON.parse(raw) : [];
@@ -21,6 +29,19 @@ function loadQueue() {
   } catch {
     return [];
   }
+}
+
+function loadQueue() {
+  const raw = loadQueueRaw();
+  const normalized = normalizeQueueEntries(raw);
+  if (isPhase43aSafetyEnabled()) {
+    const serialized = JSON.stringify(normalized);
+    const current = localStorage.getItem(QUEUE_KEY);
+    if (current !== serialized) {
+      saveQueue(normalized);
+    }
+  }
+  return normalized;
 }
 
 function saveQueue(items) {
@@ -41,32 +62,87 @@ function saveQueueMeta(meta) {
   localStorage.setItem(QUEUE_META_KEY, JSON.stringify(meta));
 }
 
+function getSyncedRequestIds(meta = loadQueueMeta()) {
+  const list = meta.syncedRequestIds;
+  return Array.isArray(list) ? list : [];
+}
+
+function markRequestIdSynced(requestId) {
+  if (!requestId) {
+    return;
+  }
+  const meta = loadQueueMeta();
+  const syncedRequestIds = getSyncedRequestIds(meta);
+  if (!syncedRequestIds.includes(requestId)) {
+    syncedRequestIds.push(requestId);
+  }
+  saveQueueMeta({ ...meta, syncedRequestIds });
+}
+
+function getFlushSessionScope() {
+  const user = getCurrentUser();
+  return {
+    userId: user?.id || null,
+    tenantId: user?.venueId || user?.tenantId || null,
+  };
+}
+
+function shouldFlushEntry(entry, scope, syncedRequestIds) {
+  if (!isFlushableEntry(entry)) {
+    return false;
+  }
+
+  if (!isPhase43aSafetyEnabled()) {
+    return true;
+  }
+
+  if (!entryMatchesSession(entry, scope)) {
+    return false;
+  }
+
+  if (entry.requestId && syncedRequestIds.includes(entry.requestId)) {
+    return false;
+  }
+
+  return true;
+}
+
 export function getPendingQueueCount() {
-  return loadQueue().filter((item) => item.status === "pending" || item.status === "failed").length;
+  return loadQueue().filter((item) => isFlushableEntry(item)).length;
 }
 
 export function listOfflineQueue() {
   return loadQueue();
 }
 
-export function enqueueOfflineAction({ type, payload, tenantId, clubId }) {
+export function enqueueOfflineAction({ type, payload, tenantId, clubId, userId }) {
   const enqueueGuard = canEnqueueOfflineAction(type);
   if (!enqueueGuard.ok) {
     return enqueueGuard;
   }
 
   const user = getCurrentUser();
-  const entry = {
-    id: `oq-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+  const resolvedUserId = userId || user?.id || null;
+  const resolvedTenantId = tenantId || user?.venueId || user?.tenantId || null;
+
+  if (isPhase43aSafetyEnabled()) {
+    if (!resolvedUserId || !resolvedTenantId) {
+      return {
+        ok: false,
+        error: "Thiếu user hoặc tenant — không thể xếp hàng offline.",
+        code: "SCOPE_REQUIRED",
+      };
+    }
+  }
+
+  const entry = createScopedQueueEntry({
     type,
     payload,
-    tenantId: tenantId || user?.venueId || null,
+    userId: resolvedUserId,
+    tenantId: resolvedTenantId,
     clubId: clubId || user?.clubId || null,
-    status: "pending",
-    createdAt: new Date().toISOString(),
-    attempts: 0,
-    lastError: null,
-  };
+  });
+
   const queue = loadQueue();
   queue.push(entry);
   saveQueue(queue);
@@ -81,7 +157,11 @@ async function syncCheckinAction(entry) {
   if (!client) {
     return { ok: false, error: "Supabase chưa sẵn sàng." };
   }
-  const { data, error } = await client.from("checkins").insert(entry.payload).select("*").single();
+  const insertPayload = {
+    ...entry.payload,
+    ...(entry.requestId ? { request_id: entry.requestId } : {}),
+  };
+  const { data, error } = await client.from("checkins").insert(insertPayload).select("*").single();
   if (error) {
     if (error.code === "23505") {
       return { ok: false, error: "Xung đột dữ liệu check-in.", code: "CONFLICT", conflict: true };
@@ -147,17 +227,20 @@ export function getOfflineQueueStatusSummary() {
     synced: 0,
     conflict: 0,
     failed: 0,
+    quarantined: 0,
     lastSyncAt: null,
     lastSyncResult: null,
   };
 
   queue.forEach((item) => {
-    if (item.status === "synced") {
+    if (item.status === OFFLINE_QUEUE_STATUS.SYNCED) {
       summary.synced += 1;
-    } else if (item.status === "conflict") {
+    } else if (item.status === OFFLINE_QUEUE_STATUS.CONFLICT) {
       summary.conflict += 1;
-    } else if (item.status === "failed") {
+    } else if (item.status === OFFLINE_QUEUE_STATUS.FAILED) {
       summary.failed += 1;
+    } else if (item.status === OFFLINE_QUEUE_STATUS.QUARANTINED) {
+      summary.quarantined += 1;
     } else {
       summary.pending += 1;
     }
@@ -186,11 +269,29 @@ export async function flushOfflineQueue() {
   sessionStorage.setItem(SYNC_LOCK_KEY, String(Date.now()));
 
   const queue = loadQueue();
-  const results = { synced: 0, failed: 0, conflicts: [] };
+  const meta = loadQueueMeta();
+  const syncedRequestIds = getSyncedRequestIds(meta);
+  const scope = getFlushSessionScope();
+  const results = { synced: 0, failed: 0, skipped: 0, conflicts: [] };
 
   for (let i = 0; i < queue.length; i++) {
     const entry = queue[i];
-    if (entry.status === "synced") {
+
+    if (entry.status === OFFLINE_QUEUE_STATUS.SYNCED) {
+      continue;
+    }
+
+    if (!shouldFlushEntry(entry, scope, syncedRequestIds)) {
+      if (
+        isPhase43aSafetyEnabled() &&
+        entry.requestId &&
+        syncedRequestIds.includes(entry.requestId)
+      ) {
+        entry.status = OFFLINE_QUEUE_STATUS.SYNCED;
+        entry.syncedAt = entry.syncedAt || new Date().toISOString();
+        queue[i] = entry;
+      }
+      results.skipped += 1;
       continue;
     }
 
@@ -198,16 +299,19 @@ export async function flushOfflineQueue() {
     const result = await processEntry(entry);
 
     if (result.ok) {
-      entry.status = "synced";
+      entry.status = OFFLINE_QUEUE_STATUS.SYNCED;
       entry.syncedAt = new Date().toISOString();
+      if (entry.requestId) {
+        markRequestIdSynced(entry.requestId);
+      }
       results.synced += 1;
     } else if (result.conflict) {
-      entry.status = "conflict";
+      entry.status = OFFLINE_QUEUE_STATUS.CONFLICT;
       entry.lastError = result.error;
       results.conflicts.push({ id: entry.id, error: result.error });
       results.failed += 1;
     } else {
-      entry.status = entry.attempts >= 3 ? "failed" : "pending";
+      entry.status = entry.attempts >= 3 ? OFFLINE_QUEUE_STATUS.FAILED : OFFLINE_QUEUE_STATUS.PENDING;
       entry.lastError = result.error;
       results.failed += 1;
     }
@@ -216,10 +320,13 @@ export async function flushOfflineQueue() {
 
   saveQueue(queue);
   saveQueueMeta({
+    ...meta,
+    syncedRequestIds: getSyncedRequestIds(),
     lastSyncAt: new Date().toISOString(),
     lastSyncResult: {
       synced: results.synced,
       failed: results.failed,
+      skipped: results.skipped,
       conflicts: results.conflicts.length,
     },
   });
@@ -228,7 +335,26 @@ export async function flushOfflineQueue() {
 }
 
 export function clearSyncedQueue() {
-  const remaining = loadQueue().filter((item) => item.status !== "synced");
+  const remaining = loadQueue().filter((item) => item.status !== OFFLINE_QUEUE_STATUS.SYNCED);
   saveQueue(remaining);
   return { ok: true, remaining: remaining.length };
+}
+
+export function clearQuarantinedQueue() {
+  const remaining = loadQueue().filter((item) => item.status !== OFFLINE_QUEUE_STATUS.QUARANTINED);
+  saveQueue(remaining);
+  return { ok: true, remaining: remaining.length };
+}
+
+export { quarantineOfflineQueueForTenantSwitch, quarantineOfflineQueueOnLogout } from "./offlineQueueQuarantine.js";
+
+/** Test helper — reset queue storage between unit tests. */
+export function resetOfflineQueueForTests() {
+  if (typeof localStorage !== "undefined") {
+    localStorage.removeItem(QUEUE_KEY);
+    localStorage.removeItem(QUEUE_META_KEY);
+  }
+  if (typeof sessionStorage !== "undefined") {
+    sessionStorage.removeItem(SYNC_LOCK_KEY);
+  }
 }

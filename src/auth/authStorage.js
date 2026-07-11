@@ -9,6 +9,7 @@ import {
 import { syncGovernanceAuthRoleFromClub } from "../features/club/services/governanceRoleElevation.js";
 import { isClubStorageV2Enabled } from "../features/club/config/clubRegistryFlags.js";
 import { stripLegacyProfileClubFields } from "../features/club/services/clubActiveMembershipService.js";
+import { quarantineOfflineQueueOnLogout } from "../features/mobile/services/offlineQueueQuarantine.js";
 
 function readJson(key, fallback) {
   try {
@@ -104,5 +105,6 @@ export function saveAuthSessionFromCloudProfile(user, meta = {}) {
 }
 
 export function clearAuthSession() {
+  quarantineOfflineQueueOnLogout();
   localStorage.removeItem(AUTH_SESSION_KEY);
 }

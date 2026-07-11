@@ -1,17 +1,15 @@
 import { API_SCOPES } from "../../constants/apiScopes.js";
-import { filterByTenant } from "../../../tenant/guards/tenantGuard.js";
 import { loadPlayersForClub } from "../../../../domain/clubStorage.js";
-import { loadClubs } from "../../../../data/club.js";
+import { resolveScopedClubId } from "../../services/clubScopeService.js";
 
 export function handlePlayersList(ctx) {
-  const tenantId = ctx.auth?.tenantId;
-  const clubs = filterByTenant(loadClubs(), tenantId);
-  const clubId = ctx.query?.clubId || clubs[0]?.id;
+  const clubId = resolveScopedClubId(ctx);
 
   if (!clubId) {
     return { items: [], total: 0 };
   }
 
+  const tenantId = ctx.auth?.tenantId;
   const players = loadPlayersForClub(clubId) || [];
   return {
     items: players.map((p) => ({

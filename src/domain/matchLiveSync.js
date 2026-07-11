@@ -2,6 +2,7 @@ import { createClient } from "@supabase/supabase-js";
 
 import { getSupabaseAuthClient } from "../auth/supabaseClient.js";
 import { isSecureRuntime } from "../auth/runtime.js";
+import { isPhase43aSafetyEnabled } from "../features/safety/phase43aFlags.js";
 
 import {
   createScoreAdjustLogEntry,
@@ -37,6 +38,9 @@ let anonClient = null;
 let refereeRpcAvailable = null;
 
 function isRefereeDirectFallbackAllowed() {
+  if (isPhase43aSafetyEnabled()) {
+    return false;
+  }
   return !isSecureRuntime();
 }
 

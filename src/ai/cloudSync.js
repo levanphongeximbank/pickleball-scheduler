@@ -3,6 +3,9 @@ import { PERMISSIONS } from "../auth/permissions.js";
 import { guardClubAction, guardAnyClubAction } from "../auth/guardAction.js";
 import { guardSubscriptionForClub } from "../auth/subscriptionGuard.js";
 import { getSupabaseAuthClient, hasSupabaseConfig } from "../auth/supabaseClient.js";
+import { getCurrentUser } from "../auth/authService.js";
+import { loadActiveTenantId } from "../data/tenantSession.js";
+import { isPhase43aSafetyEnabled } from "../features/safety/phase43aFlags.js";
 import { getClubById } from "../domain/clubService.js";
 import { getExplicitTenantIdForClub } from "../features/tenant/guards/tenantGuard.js";
 import {
@@ -98,7 +101,34 @@ export async function readRemoteClubCloudVersion(clubId) {
   return { ok: true, version: Number(row?.version ?? 0) };
 }
 
+function assertCloudPushScope(clubId) {
+  if (!isPhase43aSafetyEnabled()) {
+    return { ok: true };
+  }
+
+  const user = getCurrentUser();
+  const clubTenant = getExplicitTenantIdForClub(clubId);
+  const activeTenant =
+    loadActiveTenantId() || user?.venueId || user?.tenantId || null;
+
+  if (clubTenant && activeTenant && clubTenant !== activeTenant) {
+    return {
+      ok: false,
+      code: "TENANT_FORBIDDEN",
+      error: "Từ chối push cloud: CLB thuộc tenant khác.",
+      clubId,
+    };
+  }
+
+  return { ok: true };
+}
+
 async function syncToSupabase(clubId, options = {}) {
+  const scopeCheck = assertCloudPushScope(clubId);
+  if (!scopeCheck.ok) {
+    return scopeCheck;
+  }
+
   const club = getClubById(clubId);
   const expectedVersion = Number(options.expectedVersion ?? getClubCloudVersion(clubId) ?? 0);
   const remote = await readRemoteClubCloudVersion(clubId);

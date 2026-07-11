@@ -1,0 +1,210 @@
+{
+  "phase": "43A-preview",
+  "preview": "https://pickleball-scheduler-jx2a5rt7c-pickleball-scheduler.vercel.app",
+  "commit": "2ff3838+43a-local",
+  "deploymentId": "dpl_CRY6gS7mvxVWsunFoFAtvKjfZBQ6",
+  "stagingRef": "qyewbxjsiiyufanzcjcq",
+  "groups": {
+    "LOCAL": {
+      "verdict": "PARTIAL",
+      "cases": [
+        {
+          "case": "offline_queue_isolation_unit",
+          "verdict": "PASS"
+        },
+        {
+          "case": "api_club_scope_unit",
+          "verdict": "PASS"
+        },
+        {
+          "case": "regression_42l_nav_matrix_unit",
+          "verdict": "PASS"
+        },
+        {
+          "case": "build",
+          "verdict": "SKIP"
+        }
+      ]
+    },
+    "ENV": {
+      "verdict": "PASS",
+      "cases": [
+        {
+          "case": "bundle_43a_probe",
+          "verdict": "PASS"
+        }
+      ]
+    },
+    "Q": {
+      "verdict": "PASS",
+      "cases": [
+        {
+          "case": "offline_logout_quarantine",
+          "verdict": "PASS"
+        },
+        {
+          "case": "tenant_switch_sa_picker",
+          "verdict": "PASS"
+        }
+      ]
+    },
+    "R": {
+      "verdict": "PASS",
+      "cases": [
+        {
+          "case": "42l_nomember_discover_no_platform",
+          "verdict": "PASS"
+        },
+        {
+          "case": "42l_president_requests_menu",
+          "verdict": "PASS"
+        },
+        {
+          "case": "42l_unauthorized_platform_guard",
+          "verdict": "PASS"
+        }
+      ]
+    },
+    "PAGE": {
+      "verdict": "PASS",
+      "cases": [
+        {
+          "case": "pageerror_zero",
+          "verdict": "PASS"
+        }
+      ]
+    }
+  },
+  "cases": [
+    {
+      "group": "LOCAL",
+      "case": "offline_queue_isolation_unit",
+      "verdict": "PASS",
+      "evidence": "exit=0 durationMs=245"
+    },
+    {
+      "group": "LOCAL",
+      "case": "api_club_scope_unit",
+      "verdict": "PASS",
+      "evidence": "exit=0 durationMs=270"
+    },
+    {
+      "group": "LOCAL",
+      "case": "regression_42l_nav_matrix_unit",
+      "verdict": "PASS",
+      "evidence": "exit=0 durationMs=460"
+    },
+    {
+      "group": "LOCAL",
+      "case": "build",
+      "verdict": "SKIP",
+      "evidence": "SKIP_BUILD=1"
+    },
+    {
+      "group": "ENV",
+      "case": "bundle_43a_probe",
+      "verdict": "PASS",
+      "evidence": "safety=false quarantine=true clubScope=true"
+    },
+    {
+      "group": "Q",
+      "case": "offline_logout_quarantine",
+      "verdict": "PASS",
+      "evidence": "queueStatus=quarantined"
+    },
+    {
+      "group": "Q",
+      "case": "tenant_switch_sa_picker",
+      "verdict": "PASS",
+      "evidence": "hasPicker=true pickOk=true"
+    },
+    {
+      "group": "R",
+      "case": "42l_nomember_discover_no_platform",
+      "verdict": "PASS",
+      "evidence": "discover=true platformHidden=true"
+    },
+    {
+      "group": "R",
+      "case": "42l_president_requests_menu",
+      "verdict": "PASS",
+      "evidence": "requestsMenu=true onRequests=true"
+    },
+    {
+      "group": "R",
+      "case": "42l_unauthorized_platform_guard",
+      "verdict": "PASS",
+      "evidence": "final=https://pickleball-scheduler-jx2a5rt7c-pickleball-scheduler.vercel.app/discover-clubs"
+    },
+    {
+      "group": "PAGE",
+      "case": "pageerror_zero",
+      "verdict": "PASS",
+      "evidence": "pageErrors=0"
+    }
+  ],
+  "local": {
+    "isolation": {
+      "label": "phase43a-offline",
+      "ok": true,
+      "status": 0,
+      "durationMs": 245,
+      "stdout": "▶ Phase 43A — offline queue isolation\n  ✔ T1: User A queue is not flushed as User B (4.0013ms)\n  ✔ T2: Tenant A queue is not flushed under Tenant B session (0.4785ms)\n  ✔ T3: legacy unscoped queue entries are quarantined (0.4124ms)\n  ✔ T4: same request_id is not processed twice (0.8354ms)\n  ✔ T5: logout quarantines pending session entries (0.423ms)\n  ✔ tenant switch quarantines other-tenant pending entries (0.3613ms)\n  ✔ rejects enqueue without user/tenant scope when 43A safety is on (0.2034ms)\n✔ Phase 43A — offline queue isolation (7.5503ms)\nℹ tests 7\nℹ suites 1\nℹ pass 7\nℹ fail 0\nℹ cancelled 0\nℹ skipped 0\nℹ todo 0\nℹ duration_ms 178.0586\n",
+      "stderr": ""
+    },
+    "apiScope": {
+      "label": "phase43a-api",
+      "ok": true,
+      "status": 0,
+      "durationMs": 270,
+      "stdout": "▶ Phase 43A — API club scope\n  ✔ T7: client clubId outside allowed scope returns 403 (6.2838ms)\n  ✔ allows in-scope clubId for players list (0.9446ms)\n  ✔ assertClubInScope throws CLUB_OUT_OF_SCOPE for foreign club (0.8173ms)\n✔ Phase 43A — API club scope (8.7891ms)\n▶ Phase 43A — membership cache invalidation\n  ✔ T6: invalidateMyActiveClubMembershipCache clears cached snapshot (0.7395ms)\n✔ Phase 43A — membership cache invalidation (0.8277ms)\nℹ tests 4\nℹ suites 2\nℹ pass 4\nℹ fail 0\nℹ cancelled 0\nℹ skipped 0\nℹ todo 0\nℹ duration_ms 213.9782\n",
+      "stderr": ""
+    },
+    "navMatrix": {
+      "label": "phase42l-nav-matrix",
+      "ok": true,
+      "status": 0,
+      "durationMs": 460,
+      "stdout": "▶ Phase 42L — clubNavMatrix\n  ✔ PLAYER no membership — discover + create only (0.9573ms)\n  ✔ PLAYER active member — my-club + discover (0.2517ms)\n  ✔ President — governance menu leaves (0.1589ms)\n  ✔ Super Admin no membership — platform + manage, no my-club (0.3811ms)\n  ✔ Super Admin with membership — my-club + platform (0.1694ms)\n  ✔ SA without governance cannot review membership (0.1612ms)\n  ✔ Tenant owner sees manage list (0.1037ms)\n✔ Phase 42L — clubNavMatrix (3.0494ms)\n▶ Phase 42L — sidebar + mobile parity\n  ✔ filterMenuGroups uses same club keys for president (1.4405ms)\n  ✔ PLAYER no membership sidebar hides my-club (0.5143ms)\n✔ Phase 42L — sidebar + mobile parity (2.1166ms)\nℹ tests 9\nℹ suites 2\nℹ pass 9\nℹ fail 0\nℹ cancelled 0\nℹ skipped 0\nℹ todo 0\nℹ duration_ms 404.208\n",
+      "stderr": ""
+    }
+  },
+  "envProbe": {
+    "bundleScanned": 1,
+    "phase43aSafetyRef": false,
+    "offlineQuarantineRef": true,
+    "clubScopeRef": true,
+    "verdict": "PASS"
+  },
+  "consoleFindings": [
+    "Q1 console: Failed to load resource: the server responded with a status of 401 ()",
+    "R1 console: Failed to load resource: the server responded with a status of 404 ()",
+    "R1 console: Failed to load resource: the server responded with a status of 404 ()",
+    "R3 console: Failed to load resource: the server responded with a status of 404 ()",
+    "R3 console: Failed to load resource: the server responded with a status of 404 ()"
+  ],
+  "networkFindings": [
+    "Q1 401 https://qyewbxjsiiyufanzcjcq.supabase.co/rest/v1/audit_logs?select=*",
+    "R1 404 https://qyewbxjsiiyufanzcjcq.supabase.co/rest/v1/rpc/court_list_registerable_clusters",
+    "R1 404 https://qyewbxjsiiyufanzcjcq.supabase.co/rest/v1/rpc/court_list_registerable_clusters",
+    "R3 404 https://qyewbxjsiiyufanzcjcq.supabase.co/rest/v1/rpc/court_list_registerable_clusters",
+    "R3 404 https://qyewbxjsiiyufanzcjcq.supabase.co/rest/v1/rpc/court_list_registerable_clusters"
+  ],
+  "pageErrors": [],
+  "screenshots": [
+    "docs/v5/qa-evidence/phase43a-preview/q1-offline-logout-quarantine.png",
+    "docs/v5/qa-evidence/phase43a-preview/q2-tenant-switch-sa.png",
+    "docs/v5/qa-evidence/phase43a-preview/r1-nomember-menu.png",
+    "docs/v5/qa-evidence/phase43a-preview/r2-president-requests.png",
+    "docs/v5/qa-evidence/phase43a-preview/r3-unauthorized-platform.png"
+  ],
+  "verdict": "PASS",
+  "blockers": [],
+  "summary": {
+    "pass": 10,
+    "fail": 0,
+    "partial": 0,
+    "skip": 1,
+    "total": 11
+  }
+}

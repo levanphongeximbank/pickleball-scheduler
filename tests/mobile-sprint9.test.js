@@ -36,6 +36,9 @@ import { buildOfflineQueueBannerModel } from "../src/features/mobile/utils/offli
 import { CHECKIN_STATUS } from "../src/features/mobile/constants/checkInStatus.js";
 import { NOTIFICATION_TYPES } from "../src/features/mobile/constants/notificationTypes.js";
 import { QR_ENTITY_TYPES } from "../src/features/mobile/constants/qrEntityTypes.js";
+import { signInAs } from "../src/auth/authService.js";
+import { ROLES } from "../src/auth/roles.js";
+import { resetOfflineQueueForTests } from "../src/features/mobile/services/offlineQueue.js";
 
 function createLocalStorageMock(seed = {}) {
   const store = new Map(Object.entries(seed));
@@ -267,6 +270,17 @@ describe("mobile sprint 9 — check-in", () => {
 });
 
 describe("mobile sprint 9 — offline queue", () => {
+  beforeEach(() => {
+    resetOfflineQueueForTests();
+    signInAs({
+      id: "mobile-s9-offline-user",
+      role: ROLES.PLAYER,
+      venueId: "tenant-a",
+      tenantId: "tenant-a",
+      status: "active",
+    });
+  });
+
   it("enqueues and flushes offline actions", async () => {
     enqueueOfflineAction({
       type: OFFLINE_ACTION_TYPES.REFEREE_NOTE,
@@ -289,6 +303,7 @@ describe("mobile sprint 9 — offline queue", () => {
     enqueueOfflineAction({
       type: OFFLINE_ACTION_TYPES.REFEREE_NOTE,
       payload: { matchId: "m2" },
+      tenantId: "tenant-a",
     });
     const result = await flushOfflineQueue();
     assert.equal(result.ok, false);

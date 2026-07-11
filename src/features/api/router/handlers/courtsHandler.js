@@ -1,12 +1,9 @@
 import { API_SCOPES } from "../../constants/apiScopes.js";
 import { loadAIData } from "../../../../ai/storage.js";
-import { loadClubs } from "../../../../data/club.js";
-import { filterByTenant } from "../../../tenant/guards/tenantGuard.js";
+import { resolveScopedClubId } from "../../services/clubScopeService.js";
 
 export function handleCourtsList(ctx) {
-  const tenantId = ctx.auth?.tenantId;
-  const clubs = filterByTenant(loadClubs(), tenantId);
-  const clubId = ctx.query?.clubId || clubs[0]?.id;
+  const clubId = resolveScopedClubId(ctx);
 
   if (!clubId) {
     return { items: [], total: 0 };

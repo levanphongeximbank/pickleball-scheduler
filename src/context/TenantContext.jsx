@@ -43,6 +43,7 @@ import {
 import { syncLegacySubscriptionsFromBilling } from "../domain/venueService.js";
 import { isSubscriptionOperationalExemptRole } from "../features/billing/guards/operationalRoutePolicy.js";
 import { invalidateClubRegistryCache } from "../features/club/registry/clubRegistryCache.js";
+import { quarantineOfflineQueueForTenantSwitch } from "../features/mobile/services/offlineQueueQuarantine.js";
 
 const TenantContext = createContext(null);
 
@@ -243,6 +244,7 @@ export function TenantProvider({ children }) {
       saveActiveTenantId(trimmed);
       setAdminTenantId(trimmed);
       invalidateClubRegistryCache({ tenantId: trimmed });
+      quarantineOfflineQueueForTenantSwitch(trimmed);
 
       const clubId = getPrimaryClubIdForTenant(trimmed);
       if (clubId && getActiveClubId() !== clubId) {
