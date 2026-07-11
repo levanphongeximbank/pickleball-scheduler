@@ -1,0 +1,140 @@
+{
+  "phase": "42M-final",
+  "preview": "https://pickleball-scheduler-my4caxq8l-pickleball-scheduler.vercel.app",
+  "commit": "13955f9",
+  "deploymentId": "dpl_Ev83SXFLFwQsCxonbfETyMSL92ZT",
+  "seed": {
+    "script": "scripts/phase42m-staging-qa-seed.mjs",
+    "club": "club-smoke-42i1",
+    "tenant": "venue-staging-a",
+    "leaveMember": "player.nomember@staging.local",
+    "pendingApplicant": "qa42l.nomember@staging.local",
+    "reviewer": "player@staging.local",
+    "note": "Data-only seed via service role; no schema/RPC changes. Pending request cleaned after reject QA."
+  },
+  "envProbe": {
+    "verdict": "PASS",
+    "VITE_CLUB_STORAGE_V2": "PASS (Vercel Preview env + registry functional)",
+    "VITE_RBAC_ENABLED": "PASS (Vercel Preview env)",
+    "vercelEnvConfigured": true
+  },
+  "groups": {
+    "A": { "verdict": "PASS" },
+    "B": { "verdict": "PASS" },
+    "C": { "verdict": "PASS" },
+    "D": { "verdict": "PASS" },
+    "E": { "verdict": "PASS" },
+    "F": { "verdict": "PASS" },
+    "G": { "verdict": "PASS" },
+    "H": { "verdict": "PASS" },
+    "I": { "verdict": "PASS" },
+    "loading": { "verdict": "PASS" }
+  },
+  "cases": [
+    {
+      "group": "A",
+      "case": "leave_button_and_dialog",
+      "verdict": "PASS",
+      "evidence": "player.nomember@staging.local — nút 'Rời câu lạc bộ', dialog title/body, Cancel không mutate"
+    },
+    {
+      "group": "A",
+      "case": "leave_mobile",
+      "verdict": "PASS",
+      "evidence": "375px dialog captured; a-confirm-leave-mobile.png"
+    },
+    {
+      "group": "B",
+      "case": "my_club_mobile_layout",
+      "verdict": "PASS",
+      "evidence": "noOverflow=true; menu Discover OK"
+    },
+    {
+      "group": "C",
+      "case": "discover_desktop_mobile",
+      "verdict": "PASS",
+      "evidence": "cards, search, join CTA; empty filter captured"
+    },
+    {
+      "group": "D",
+      "case": "members_desktop_mobile",
+      "verdict": "PASS",
+      "evidence": "table + chips desktop; cards mobile"
+    },
+    {
+      "group": "E",
+      "case": "pending_reject_flow",
+      "verdict": "PASS",
+      "evidence": "pending row → Từ chối dialog → Cancel OK → confirm reject → empty queue"
+    },
+    {
+      "group": "F",
+      "case": "manage_registry",
+      "verdict": "PASS",
+      "evidence": "tenant context, table, status/owner/president columns"
+    },
+    {
+      "group": "G",
+      "case": "platform_registry",
+      "verdict": "PASS",
+      "evidence": "cross-tenant; SA access; filters"
+    },
+    {
+      "group": "H",
+      "case": "player_nomember_guard",
+      "verdict": "PASS",
+      "evidence": "qa42l.nomember — no Manage menu; /manage/clubs → /discover-clubs; club_list_registry RPC count=0"
+    },
+    {
+      "group": "H",
+      "case": "menu_matrix_42l",
+      "verdict": "PASS",
+      "evidence": "Discover only; no My Club / Manage for nomember"
+    },
+    {
+      "group": "I",
+      "case": "accessibility",
+      "verdict": "PASS",
+      "evidence": "card focus; join button named; dialog focus trap on leave/reject"
+    },
+    {
+      "group": "loading",
+      "case": "registry_skeleton",
+      "verdict": "PASS",
+      "evidence": "ClubRegistrySkeleton visible under delayed club_list_registry; no blank shell"
+    }
+  ],
+  "consoleFindings": [
+    "Non-club RPC 404 (court_list_registerable_clusters) — pre-existing staging gap; pageerror=0"
+  ],
+  "networkFindings": [
+    "H: club_list_registry not called for PLAYER nomember direct /manage/clubs (guard redirect)"
+  ],
+  "screenshots": [
+    "docs/v5/qa-evidence/phase42m-preview/a-confirm-leave-dialog.png",
+    "docs/v5/qa-evidence/phase42m-preview/a-confirm-leave-mobile.png",
+    "docs/v5/qa-evidence/phase42m-preview/a-my-club-desktop-president.png",
+    "docs/v5/qa-evidence/phase42m-preview/b-my-club-mobile-member.png",
+    "docs/v5/qa-evidence/phase42m-preview/c-discover-desktop.png",
+    "docs/v5/qa-evidence/phase42m-preview/c-discover-mobile.png",
+    "docs/v5/qa-evidence/phase42m-preview/c-discover-empty-filter.png",
+    "docs/v5/qa-evidence/phase42m-preview/d-members-desktop.png",
+    "docs/v5/qa-evidence/phase42m-preview/d-members-mobile.png",
+    "docs/v5/qa-evidence/phase42m-preview/e-confirm-reject-dialog.png",
+    "docs/v5/qa-evidence/phase42m-preview/e-reject-success.png",
+    "docs/v5/qa-evidence/phase42m-preview/e-requests-panel.png",
+    "docs/v5/qa-evidence/phase42m-preview/f-manage-clubs.png",
+    "docs/v5/qa-evidence/phase42m-preview/g-platform-clubs.png",
+    "docs/v5/qa-evidence/phase42m-preview/h-manage-guard-player.png",
+    "docs/v5/qa-evidence/phase42m-preview/h-regression-nomember.png",
+    "docs/v5/qa-evidence/phase42m-preview/i-accessibility-discover.png",
+    "docs/v5/qa-evidence/phase42m-preview/loading-skeleton.png"
+  ],
+  "scripts": [
+    "scripts/phase42m-staging-qa-seed.mjs",
+    "scripts/verify-phase42m-final-preview-qa.mjs",
+    "scripts/verify-phase42m-preview-qa.mjs"
+  ],
+  "verdict": "PASS",
+  "productionDeployed": false
+}

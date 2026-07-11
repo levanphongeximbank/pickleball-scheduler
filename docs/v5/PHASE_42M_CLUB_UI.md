@@ -128,4 +128,8 @@ Screenshots: capture during Preview QA → `docs/v5/qa-evidence/phase42m-preview
 
 **Do not deploy Production** until Preview QA checklist above is PASS and signed off for **GO DEPLOY 42M**.
 
-Commit hash: _(fill after commit)_
+Commit hash: `13955f9b5ba0b5c28955246fea9ae1379ec931b9`
+
+Preview URL: `https://pickleball-scheduler-my4caxq8l-pickleball-scheduler.vercel.app`
+
+Deployment ID: `dpl_Ev83SXFLFwQsCxonbfETyMSL92ZT`

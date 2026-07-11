@@ -1,0 +1,227 @@
+{
+  "phase": "42M-production-smoke",
+  "productionUrl": "https://pickleball-scheduler-eight.vercel.app",
+  "commit": "13955f9",
+  "deploymentId": "dpl_GiuiviLhLAvc3tBRn6tBhqndcCKE",
+  "rollbackDeploymentId": "dpl_2UDJ7MTYw9AgJFn4fGLWWE6Z5yas",
+  "supabaseRef": "expuvcohlcjzvrrauvud",
+  "accountMap": {
+    "playerNoMember": "qa42l-prod-player-nomember@pickleball-scheduler.qa",
+    "president": "huynhanh1970@gmail.com",
+    "tenantOwner": "chusantest@gmail.com",
+    "saMember": "qa42l-prod-sa-member@pickleball-scheduler.qa"
+  },
+  "precheck": [
+    {
+      "email": "qa42l-prod-player-nomember@pickleball-scheduler.qa",
+      "role": "PLAYER",
+      "status": "active",
+      "activeMembership": 0,
+      "governanceRows": 0,
+      "clubAccc": "club-219e4a7cbd73437eb6271f02a53314c3",
+      "tenant": "venue-prod-main"
+    },
+    {
+      "email": "huynhanh1970@gmail.com",
+      "role": "PLAYER",
+      "status": "active",
+      "activeMembership": 1,
+      "governanceRows": 0,
+      "clubAccc": "club-219e4a7cbd73437eb6271f02a53314c3",
+      "tenant": "venue-prod-main"
+    },
+    {
+      "email": "chusantest@gmail.com",
+      "role": "COURT_OWNER",
+      "status": "active",
+      "activeMembership": 0,
+      "governanceRows": 0,
+      "clubAccc": "club-219e4a7cbd73437eb6271f02a53314c3",
+      "tenant": "venue-prod-main"
+    },
+    {
+      "email": "qa42l-prod-sa-member@pickleball-scheduler.qa",
+      "role": "SUPER_ADMIN",
+      "status": "active",
+      "activeMembership": 1,
+      "governanceRows": 0,
+      "clubAccc": "club-219e4a7cbd73437eb6271f02a53314c3",
+      "tenant": "venue-prod-main"
+    }
+  ],
+  "envProbe": {
+    "affectsPhaseVerdict": false,
+    "note": "informational only — does not affect overall smoke verdict",
+    "bundle": {
+      "VITE_CLUB_STORAGE_V2": "UNRESOLVED",
+      "VITE_RBAC_ENABLED": "UNRESOLVED",
+      "productionSupabaseRef": "FAIL"
+    },
+    "vercelRuntime": {
+      "VITE_CLUB_STORAGE_V2": "false_or_missing",
+      "VITE_RBAC_ENABLED": "false_or_missing"
+    },
+    "verdict": "FAIL"
+  },
+  "cases": [
+    {
+      "case": "A_my_club_desktop",
+      "verdict": "PASS",
+      "evidence": "onMyClub=true header=true insights=true noJoinOwn=true membershipRpc=1",
+      "account": "huynhanh1970@gmail.com",
+      "finalUrl": "https://pickleball-scheduler-eight.vercel.app/my-club",
+      "membershipRpc": 1
+    },
+    {
+      "case": "B_my_club_mobile",
+      "verdict": "PASS",
+      "evidence": "noOverflow=true readable=true scrollW=375 clientW=375",
+      "account": "huynhanh1970@gmail.com"
+    },
+    {
+      "case": "C_discover",
+      "verdict": "PASS",
+      "evidence": "onDiscover=true search=true card=true empty=false membershipRpc=1",
+      "account": "qa42l-prod-player-nomember@pickleball-scheduler.qa",
+      "finalUrl": "https://pickleball-scheduler-eight.vercel.app/discover-clubs"
+    },
+    {
+      "case": "C_discover_mobile",
+      "verdict": "PASS",
+      "evidence": "bodyLen=477"
+    },
+    {
+      "case": "D_members",
+      "verdict": "PASS",
+      "evidence": "members=true chips=true",
+      "account": "huynhanh1970@gmail.com"
+    },
+    {
+      "case": "D_members_mobile",
+      "verdict": "PASS",
+      "evidence": "body=Pickleball Pro\n​\n0\nHA\n\nCLB • Mua hien tai\n\nMùaGiải\n\nCLB\n\nCLB"
+    },
+    {
+      "case": "E_requests",
+      "verdict": "PASS",
+      "evidence": "panel=true emptyOrRows=true",
+      "account": "huynhanh1970@gmail.com"
+    },
+    {
+      "case": "F_manage_clubs",
+      "verdict": "PASS",
+      "evidence": "manageMenu=true platformMenu=false tenant=true table=true guard=true registryRpc=0",
+      "account": "chusantest@gmail.com",
+      "finalUrl": "https://pickleball-scheduler-eight.vercel.app/manage/clubs"
+    },
+    {
+      "case": "G_platform_clubs",
+      "verdict": "PASS",
+      "evidence": "platformMenu=true manageMenu=true onPlatform=true blocked=false registry=true",
+      "account": "qa42l-prod-sa-member@pickleball-scheduler.qa",
+      "finalUrl": "https://pickleball-scheduler-eight.vercel.app/platform/clubs"
+    },
+    {
+      "case": "H_menu_matrix_42l",
+      "verdict": "PASS",
+      "evidence": "landing=true discover=true myClub=false manage=false platform=false redirect=true manageDenied=true noAdminCta=true membershipRpc=1",
+      "account": "qa42l-prod-player-nomember@pickleball-scheduler.qa"
+    }
+  ],
+  "consoleFindings": [],
+  "networkFindings": [],
+  "redirectTrace": [
+    "A: https://pickleball-scheduler-eight.vercel.app/login",
+    "A: https://pickleball-scheduler-eight.vercel.app/",
+    "A: https://pickleball-scheduler-eight.vercel.app/",
+    "A: https://pickleball-scheduler-eight.vercel.app/dashboard",
+    "A: https://pickleball-scheduler-eight.vercel.app/my-club",
+    "A: https://pickleball-scheduler-eight.vercel.app/my-club",
+    "B: https://pickleball-scheduler-eight.vercel.app/login",
+    "B: https://pickleball-scheduler-eight.vercel.app/",
+    "B: https://pickleball-scheduler-eight.vercel.app/",
+    "B: https://pickleball-scheduler-eight.vercel.app/dashboard",
+    "B: https://pickleball-scheduler-eight.vercel.app/my-club",
+    "B: https://pickleball-scheduler-eight.vercel.app/my-club",
+    "C: https://pickleball-scheduler-eight.vercel.app/login",
+    "C: https://pickleball-scheduler-eight.vercel.app/",
+    "C: https://pickleball-scheduler-eight.vercel.app/",
+    "C: https://pickleball-scheduler-eight.vercel.app/dashboard",
+    "C: https://pickleball-scheduler-eight.vercel.app/discover-clubs",
+    "C: https://pickleball-scheduler-eight.vercel.app/discover-clubs",
+    "C-mobile: https://pickleball-scheduler-eight.vercel.app/login",
+    "C-mobile: https://pickleball-scheduler-eight.vercel.app/",
+    "C-mobile: https://pickleball-scheduler-eight.vercel.app/",
+    "C-mobile: https://pickleball-scheduler-eight.vercel.app/dashboard",
+    "C-mobile: https://pickleball-scheduler-eight.vercel.app/discover-clubs",
+    "C-mobile: https://pickleball-scheduler-eight.vercel.app/discover-clubs",
+    "D: https://pickleball-scheduler-eight.vercel.app/login",
+    "D: https://pickleball-scheduler-eight.vercel.app/",
+    "D: https://pickleball-scheduler-eight.vercel.app/",
+    "D: https://pickleball-scheduler-eight.vercel.app/dashboard",
+    "D: https://pickleball-scheduler-eight.vercel.app/my-club",
+    "D: https://pickleball-scheduler-eight.vercel.app/my-club?view=members",
+    "D: https://pickleball-scheduler-eight.vercel.app/my-club?view=members",
+    "D-mobile: https://pickleball-scheduler-eight.vercel.app/login",
+    "D-mobile: https://pickleball-scheduler-eight.vercel.app/",
+    "D-mobile: https://pickleball-scheduler-eight.vercel.app/",
+    "D-mobile: https://pickleball-scheduler-eight.vercel.app/dashboard",
+    "D-mobile: https://pickleball-scheduler-eight.vercel.app/my-club",
+    "D-mobile: https://pickleball-scheduler-eight.vercel.app/my-club?view=members",
+    "D-mobile: https://pickleball-scheduler-eight.vercel.app/my-club?view=members",
+    "E: https://pickleball-scheduler-eight.vercel.app/login",
+    "E: https://pickleball-scheduler-eight.vercel.app/",
+    "E: https://pickleball-scheduler-eight.vercel.app/",
+    "E: https://pickleball-scheduler-eight.vercel.app/dashboard",
+    "E: https://pickleball-scheduler-eight.vercel.app/my-club",
+    "E: https://pickleball-scheduler-eight.vercel.app/my-club/requests",
+    "E: https://pickleball-scheduler-eight.vercel.app/my-club/requests",
+    "F: https://pickleball-scheduler-eight.vercel.app/login",
+    "F: https://pickleball-scheduler-eight.vercel.app/",
+    "F: https://pickleball-scheduler-eight.vercel.app/",
+    "F: https://pickleball-scheduler-eight.vercel.app/dashboard",
+    "F: https://pickleball-scheduler-eight.vercel.app/manage/clubs",
+    "F: https://pickleball-scheduler-eight.vercel.app/manage/clubs",
+    "F: https://pickleball-scheduler-eight.vercel.app/platform/clubs",
+    "F: https://pickleball-scheduler-eight.vercel.app/platform/clubs",
+    "G: https://pickleball-scheduler-eight.vercel.app/login",
+    "G: https://pickleball-scheduler-eight.vercel.app/",
+    "G: https://pickleball-scheduler-eight.vercel.app/",
+    "G: https://pickleball-scheduler-eight.vercel.app/dashboard",
+    "G: https://pickleball-scheduler-eight.vercel.app/platform/clubs",
+    "G: https://pickleball-scheduler-eight.vercel.app/platform/clubs",
+    "H: https://pickleball-scheduler-eight.vercel.app/login",
+    "H: https://pickleball-scheduler-eight.vercel.app/",
+    "H: https://pickleball-scheduler-eight.vercel.app/",
+    "H: https://pickleball-scheduler-eight.vercel.app/dashboard",
+    "H: https://pickleball-scheduler-eight.vercel.app/discover-clubs",
+    "H: https://pickleball-scheduler-eight.vercel.app/my-club",
+    "H: https://pickleball-scheduler-eight.vercel.app/my-club",
+    "H: https://pickleball-scheduler-eight.vercel.app/discover-clubs",
+    "H: https://pickleball-scheduler-eight.vercel.app/manage/clubs",
+    "H: https://pickleball-scheduler-eight.vercel.app/manage/clubs",
+    "H: https://pickleball-scheduler-eight.vercel.app/discover-clubs"
+  ],
+  "screenshots": [
+    "docs/v5/qa-evidence/phase42m-production/prod-a-my-club-desktop.png",
+    "docs/v5/qa-evidence/phase42m-production/prod-b-my-club-mobile.png",
+    "docs/v5/qa-evidence/phase42m-production/prod-c-discover-desktop.png",
+    "docs/v5/qa-evidence/phase42m-production/prod-c-discover-mobile.png",
+    "docs/v5/qa-evidence/phase42m-production/prod-d-members-desktop.png",
+    "docs/v5/qa-evidence/phase42m-production/prod-d-members-mobile.png",
+    "docs/v5/qa-evidence/phase42m-production/prod-e-requests.png",
+    "docs/v5/qa-evidence/phase42m-production/prod-f-manage-clubs.png",
+    "docs/v5/qa-evidence/phase42m-production/prod-g-platform-clubs.png",
+    "docs/v5/qa-evidence/phase42m-production/prod-h-matrix-nomember.png"
+  ],
+  "phase43Started": false,
+  "verdict": "PASS",
+  "pageErrors": 0,
+  "summary": {
+    "pass": 10,
+    "partial": 0,
+    "fail": 0,
+    "total": 10,
+    "pageErrors": 0
+  }
+}
