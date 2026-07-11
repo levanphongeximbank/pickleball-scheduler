@@ -28,9 +28,9 @@ Entry: `evaluateLegacyRulesBridge()` in `constraints/adapters/constraintsEvaluat
 | 1 | Pairing constraints | `pairing-constraints/engines/constraintEvaluator.js` | `evaluateLegacyPairingConstraints` |
 | 2 | AI scoring | `ai/scoring.js` | `evaluateLegacyAiPairScore` |
 | 3 | Founder constraints | Via pairing + AI policy mapping | `mapAiContextToRuleSet` |
-| 4 | Tournament validation | Adapter ready | `evaluateLegacyTournamentValidation` |
+| 4 | Tournament validation | `tournament/engines/validationEngine.js` | `evaluateLegacyTournamentDrawValidation` |
 | 5 | Daily Play eligibility | `tournament/engines/dailyPlayEngine.js` | `evaluateLegacyDailyPlayPlayer` |
-| 6 | Court Engine | Adapter ready | `evaluateLegacyCourtEngineRules` |
+| 6 | Court Engine | `queueService.js`, `autoCourtAssignmentEngine.js` | `evaluateLegacyCourtEngineQueueGate`, `evaluateLegacyCourtEngineCombinationScore` |
 | 7 | Decision trace | All bridge paths | `decisionTrace.js` |
 
 **Not in scope:** Draw Engine merge (CC-04).
@@ -67,6 +67,5 @@ Regression: `pairing-constraints.test.js`, `scoring.test.js` — pass with flag 
 
 ## Deferred
 
-- Full tournament `validationEngine.js` inline wiring (adapter exported)
-- Court Engine `autoCourtAssignmentEngine.js` inline wiring (adapter exported)
+- Group constraints / draw algorithm (`assignGroupsWithConstraints`) — see `CC03B_C_GROUP_CONSTRAINT_ASSESSMENT.md` → CC-04
 - Replace `courtPolicyAdapter.js` dual-path in SelectPlayers UI

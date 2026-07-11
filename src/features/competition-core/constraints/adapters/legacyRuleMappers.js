@@ -1,5 +1,6 @@
 import { COMPETITION_CONSTRAINT_TYPE } from "../../constants/constraintType.js";
 import { CONSTRAINT_SEVERITY } from "../../constants/constraintSeverity.js";
+import { EVENT_TYPE } from "../../../../models/tournament/constants.js";
 import { createRuleSet, normalizeRuleDefinition } from "../normalizeRule.js";
 
 /**
@@ -228,33 +229,41 @@ export function mapCourtEngineConfigToRuleSet(config = {}) {
     });
   }
 
-  if (config.maxTeamDiff != null) {
+  constraints.push({
+    id: "court-not-busy",
+    type: COMPETITION_CONSTRAINT_TYPE.PLAYER_NOT_BUSY,
+    severity: CONSTRAINT_SEVERITY.HARD,
+    enabled: true,
+  });
+
+  const maxLevelDiff = Number(config.maxLevelDiff ?? config.maxTeamDiff);
+  if (Number.isFinite(maxLevelDiff) && maxLevelDiff > 0) {
     constraints.push({
-      id: "court-team-balance",
-      type: COMPETITION_CONSTRAINT_TYPE.TEAM_SKILL_DIFFERENCE,
-      severity: CONSTRAINT_SEVERITY.SOFT,
+      id: "court-skill-cap",
+      type: COMPETITION_CONSTRAINT_TYPE.SKILL_CAP,
+      severity: CONSTRAINT_SEVERITY.HARD,
       enabled: true,
-      params: { maxDiff: Number(config.maxTeamDiff) },
+      params: { maxDiff: maxLevelDiff },
     });
   }
 
-  if (config.maxPartnerRepeat != null) {
+  if (config.avoidPartnerRepeat !== false) {
     constraints.push({
       id: "court-partner-repeat",
       type: COMPETITION_CONSTRAINT_TYPE.MAX_PARTNER_REPEAT,
       severity: CONSTRAINT_SEVERITY.SOFT,
       enabled: true,
-      params: { maxRepeat: Number(config.maxPartnerRepeat) },
+      params: { maxRepeat: Number(config.maxPartnerRepeat ?? 1) },
     });
   }
 
-  if (config.maxOpponentRepeat != null) {
+  if (config.avoidOpponentRepeat !== false) {
     constraints.push({
       id: "court-opponent-repeat",
       type: COMPETITION_CONSTRAINT_TYPE.MAX_OPPONENT_REPEAT,
       severity: CONSTRAINT_SEVERITY.SOFT,
       enabled: true,
-      params: { maxRepeat: Number(config.maxOpponentRepeat) },
+      params: { maxRepeat: Number(config.maxOpponentRepeat ?? 1) },
     });
   }
 
@@ -306,4 +315,216 @@ export function mapDailyPlaySettingsToRuleSet(settings = {}) {
     version: "1",
     constraints,
   });
+}
+
+const EVENT_PLAYER_COUNTS = {
+  [EVENT_TYPE.MEN_SINGLE]: 1,
+  [EVENT_TYPE.WOMEN_SINGLE]: 1,
+  [EVENT_TYPE.MEN_DOUBLE]: 2,
+  [EVENT_TYPE.WOMEN_DOUBLE]: 2,
+  [EVENT_TYPE.MIXED_DOUBLE]: 2,
+  [EVENT_TYPE.OPEN_DOUBLE]: 2,
+};
+
+/**
+ * Tournament draw validation → canonical RuleSet.
+ *
+ * @param {string} eventType
+ * @param {Object} [options]
+ * @returns {import('../normalizeRule.js').RuleSet}
+ */
+export function mapTournamentDrawInputToRuleSet(eventType, options = {}) {
+  /** @type {import('../../types/index.js').ConstraintDefinition[]} */
+  const constraints = [
+    {
+      id: "tournament-gender",
+      type: COMPETITION_CONSTRAINT_TYPE.GENDER_ELIGIBILITY,
+      severity: CONSTRAINT_SEVERITY.HARD,
+      enabled: true,
+      params: { eventType: String(eventType || EVENT_TYPE.MIXED_DOUBLE).toLowerCase() },
+    },
+    {
+      id: "tournament-lineup",
+      type: COMPETITION_CONSTRAINT_TYPE.LINEUP_VALIDITY,
+      severity: CONSTRAINT_SEVERITY.HARD,
+      enabled: true,
+      params: {
+        expectedCount: EVENT_PLAYER_COUNTS[eventType] || 2,
+      },
+    },
+    {
+      id: "tournament-entry-eligibility",
+      type: COMPETITION_CONSTRAINT_TYPE.ENTRY_ELIGIBILITY,
+      severity: CONSTRAINT_SEVERITY.HARD,
+      enabled: true,
+    },
+  ];
+
+  if (eventType === EVENT_TYPE.MIXED_DOUBLE) {
+    constraints.push({
+      id: "tournament-mixed-composition",
+      type: COMPETITION_CONSTRAINT_TYPE.MIXED_TEAM_COMPOSITION,
+      severity: CONSTRAINT_SEVERITY.HARD,
+      enabled: true,
+      params: { composition: "mixed_double" },
+    });
+  }
+
+  if (options.skillCap != null) {
+    constraints.push({
+      id: "tournament-skill-cap",
+      type: COMPETITION_CONSTRAINT_TYPE.SKILL_CAP,
+      severity: CONSTRAINT_SEVERITY.SOFT,
+      enabled: true,
+      params: { maxDiff: Number(options.skillCap) },
+    });
+  }
+
+  return createRuleSet({
+    id: "legacy-tournament-validation",
+    version: "1",
+    constraints,
+  });
+}
+
+/**
+ * @param {Array<{ id?: string, name?: string, playerIds?: string[] }>} entries
+ * @returns {import('../../types/index.js').CandidateAssignment}
+ */
+export function mapTournamentEntriesToCandidate(entries = []) {
+  return {
+    teams: (entries || []).map((entry) => (entry.playerIds || []).map(String)),
+  };
+}
+
+/**
+ * Build tournament draw validation context including duplicate-player eligibility map.
+ *
+ * @param {Object} input
+ * @param {Array<{ id?: string, name?: string, playerIds?: string[] }>} [input.entries]
+ * @param {Array<{ id: string, gender?: string, level?: number, rating?: number }>} [input.players]
+ * @param {string} [input.eventType]
+ * @returns {Partial<import('../../types/index.js').ConstraintContext>}
+ */
+export function mapTournamentDrawInputToContext(input = {}) {
+  const entries = input.entries || [];
+  const players = input.players || [];
+  const expectedCount = EVENT_PLAYER_COUNTS[input.eventType] || 2;
+
+  /** @type {Record<string, { eligible?: boolean, reason?: string }>} */
+  const entriesByPlayerId = {};
+  /** @type {Array<{ position: string, playerId?: string, required?: boolean }>} */
+  const lineupSlots = [];
+
+  entries.forEach((entry) => {
+    const playerIds = (entry.playerIds || []).map(String);
+    playerIds.forEach((playerId, index) => {
+      if (entriesByPlayerId[playerId]?.eligible === false) {
+        return;
+      }
+      if (entriesByPlayerId[playerId]) {
+        const firstEntry = entriesByPlayerId[playerId].entryName || "?";
+        entriesByPlayerId[playerId] = {
+          eligible: false,
+          reason: `VDV ${playerId} nam trong nhieu doi (${firstEntry} va ${entry.name}).`,
+        };
+      } else {
+        entriesByPlayerId[playerId] = { eligible: true, entryName: entry.name };
+      }
+
+      lineupSlots.push({
+        position: `${entry.name || entry.id}-slot-${index + 1}`,
+        playerId,
+        required: index < expectedCount,
+      });
+    });
+
+    for (let slot = playerIds.length; slot < expectedCount; slot += 1) {
+      lineupSlots.push({
+        position: `${entry.name || entry.id}-missing-${slot + 1}`,
+        required: true,
+      });
+    }
+  });
+
+  return {
+    scope: "entry",
+    playersById: mapPlayersToSnapshots(players),
+    entriesByPlayerId,
+    lineupSlots,
+    competitionType: input.eventType,
+  };
+}
+
+/**
+ * Court session player snapshots for queue / assignment gates.
+ *
+ * @param {Object} session
+ * @param {Array<{ id: string, gender?: string, level?: number, rating?: number }>} [players]
+ * @returns {Record<string, import('../evaluateHardRules.js').RulePlayerSnapshot>}
+ */
+export function mapCourtSessionPlayersToSnapshots(session, players = []) {
+  const checkIns = session?.checkIns || [];
+  const checkInById = new Map(checkIns.map((item) => [String(item.playerId), item]));
+
+  return mapPlayersToSnapshots(
+    (players || []).map((player) => {
+      const checkIn = checkInById.get(String(player.id));
+      const status = checkIn?.status;
+      return {
+        ...player,
+        checkedIn: Boolean(checkIn && status !== "cancelled"),
+        busy: status === "playing",
+      };
+    })
+  );
+}
+
+/**
+ * @param {Array<{ teamA?: string[], teamB?: string[], teams?: string[][] }>} matchHistory
+ * @returns {{ partnerRepeatCounts: Record<string, Record<string, number>>, opponentRepeatCounts: Record<string, Record<string, number>> }}
+ */
+export function mapCourtMatchHistoryToRepeatCounts(matchHistory = []) {
+  /** @type {Record<string, Record<string, number>>} */
+  const partnerRepeatCounts = {};
+  /** @type {Record<string, Record<string, number>>} */
+  const opponentRepeatCounts = {};
+
+  const bump = (map, a, b) => {
+    const keyA = String(a);
+    const keyB = String(b);
+    if (!map[keyA]) {
+      map[keyA] = {};
+    }
+    map[keyA][keyB] = (map[keyA][keyB] || 0) + 1;
+  };
+
+  (matchHistory || []).forEach((match) => {
+    const teamA = (match.teamA || match.teams?.[0] || []).map(String);
+    const teamB = (match.teamB || match.teams?.[1] || []).map(String);
+
+    teamA.forEach((playerId, index) => {
+      teamA.forEach((mateId, mateIndex) => {
+        if (index !== mateIndex) {
+          bump(partnerRepeatCounts, playerId, mateId);
+        }
+      });
+      teamB.forEach((opponentId) => {
+        bump(opponentRepeatCounts, playerId, opponentId);
+      });
+    });
+
+    teamB.forEach((playerId, index) => {
+      teamB.forEach((mateId, mateIndex) => {
+        if (index !== mateIndex) {
+          bump(partnerRepeatCounts, playerId, mateId);
+        }
+      });
+      teamA.forEach((opponentId) => {
+        bump(opponentRepeatCounts, playerId, opponentId);
+      });
+    });
+  });
+
+  return { partnerRepeatCounts, opponentRepeatCounts };
 }

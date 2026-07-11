@@ -4,6 +4,7 @@ import {
   OFFICIAL_MODE,
   TOURNAMENT_MODE,
 } from "../../models/tournament/constants.js";
+import { evaluateLegacyTournamentDrawValidation } from "../../features/competition-core/constraints/adapters/constraintsEvaluationBridge.js";
 
 const EVENT_PLAYER_COUNTS = {
   [EVENT_TYPE.MEN_SINGLE]: 1,
@@ -113,7 +114,7 @@ export function validateNoDuplicatePlayersInEvent(entries = []) {
   };
 }
 
-export function validateGroupDrawInput({
+function validateGroupDrawInputLegacy({
   entries = [],
   players = [],
   eventType,
@@ -191,6 +192,25 @@ export function validateGroupDrawInput({
     errors,
     warnings,
   };
+}
+
+export function validateGroupDrawInput(input = {}, options = {}) {
+  const legacy = validateGroupDrawInputLegacy(input);
+  const bridge = evaluateLegacyTournamentDrawValidation(
+    { ...input, legacyResult: legacy },
+    options
+  );
+
+  if (!bridge.usedCanonical) {
+    return legacy;
+  }
+
+  const { decisionTrace, ...result } = bridge.result || legacy;
+  if (decisionTrace) {
+    return { ...result, decisionTrace };
+  }
+
+  return result;
 }
 
 export function validateTournamentActivation(tournament, courts = []) {

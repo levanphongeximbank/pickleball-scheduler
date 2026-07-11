@@ -11,17 +11,25 @@ import {
   mapAiHistoryToRepeatCounts,
   mapAiOptionToCandidate,
   mapCourtEngineConfigToRuleSet,
+  mapCourtMatchHistoryToRepeatCounts,
   mapDailyPlaySettingsToRuleSet,
   mapPairingConstraintsToRuleSet,
   mapPlayersToSnapshots,
   mapTeamsToCandidateTeams,
+  mapTournamentDrawInputToContext,
+  mapTournamentDrawInputToRuleSet,
+  mapTournamentEntriesToCandidate,
 } from "./legacyRuleMappers.js";
 import {
   isDailyPlayPlayerEligible,
+  mergeValidationResults,
   toAiScoreBridgeResult,
+  toCourtEngineScoreBridgeResult,
+  toCourtQueueGateResult,
   toPairingConstraintEvaluation,
   toValidationResult,
 } from "./adaptLegacyResult.js";
+import { RULE_ERROR_CODE } from "../ruleConstants.js";
 
 /**
  * @typedef {'pairing_constraints'|'ai_scoring'|'tournament_validation'|'daily_play'|'court_engine'} LegacyRulesConsumer
@@ -164,6 +172,131 @@ export function evaluateLegacyAiPairScore(option, context = {}, options = {}) {
 }
 
 /**
+ * Tournament draw validation bridge — merges legacy + canonical without duplicate errors.
+ *
+ * @param {Object} input
+ * @param {Array<Record<string, unknown>>} [input.entries]
+ * @param {Array<Record<string, unknown>>} [input.players]
+ * @param {string} [input.eventType]
+ * @param {{ ok?: boolean, errors?: string[], warnings?: string[] }} [input.legacyResult]
+ * @param {Object} [options]
+ */
+export function evaluateLegacyTournamentDrawValidation(input = {}, options = {}) {
+  const legacyResult = input.legacyResult || options.legacyResult || { ok: true, errors: [], warnings: [] };
+
+  if (!isRulesV2Enabled(options.envSource)) {
+    return {
+      usedCanonical: false,
+      result: legacyResult,
+      trace: createDecisionTrace(),
+    };
+  }
+
+  const ruleSet = mapTournamentDrawInputToRuleSet(input.eventType, options.ruleSetMeta);
+  const context = mapTournamentDrawInputToContext(input);
+
+  if (!context.playersById || Object.keys(context.playersById).length === 0) {
+    const trace = createDecisionTrace();
+    const record = createDecisionTraceRecord({
+      consumer: "tournament_validation",
+      action: "context_missing",
+      usedCanonical: true,
+      feasible: true,
+      eligible: true,
+      softScore: 0,
+      metadata: { code: RULE_ERROR_CODE.RULES_V2_CONTEXT_MISSING, field: "playersById" },
+    });
+
+    return {
+      usedCanonical: isRulesV2Enabled(options.envSource),
+      result: legacyResult,
+      trace: appendDecisionTrace(trace, record),
+    };
+  }
+
+  const bridge = evaluateLegacyRulesBridge({
+    consumer: "tournament_validation",
+    envSource: options.envSource,
+    candidate: mapTournamentEntriesToCandidate(input.entries || []),
+    context,
+    ruleSet,
+    legacyEvaluate: () => legacyResult,
+    adapt: (canonical) =>
+      mergeValidationResults(legacyResult, toValidationResult(canonical), {
+        decisionTrace: undefined,
+      }),
+  });
+
+  if (bridge.usedCanonical && bridge.result) {
+    bridge.result.decisionTrace = bridge.trace;
+  }
+
+  return bridge;
+}
+
+/**
+ * Court Engine queue gate — check-in + busy hard rejects only.
+ *
+ * @param {Object} session
+ * @param {string} playerId
+ * @param {Object} [options]
+ */
+export function evaluateLegacyCourtEngineQueueGate(session, playerId, options = {}) {
+  const key = String(playerId);
+  const checkIn = (session?.checkIns || []).find((item) => String(item.playerId) === key);
+  const status = checkIn?.status;
+  const rosterPlayer =
+    (options.players || []).find((item) => String(item.id) === key) || { id: key };
+
+  const playersById = mapPlayersToSnapshots([
+    {
+      ...rosterPlayer,
+      id: key,
+      checkedIn: Boolean(checkIn && status !== "cancelled"),
+      busy: status === "playing",
+    },
+  ]);
+
+  const ruleSet = mapCourtEngineConfigToRuleSet({
+    requireCheckIn: true,
+    avoidPartnerRepeat: false,
+    avoidOpponentRepeat: false,
+  });
+
+  return evaluateLegacyRulesBridge({
+    consumer: "court_engine",
+    envSource: options.envSource,
+    candidate: { teams: [[String(playerId)]] },
+    context: { scope: "entry", playersById },
+    ruleSet,
+    legacyEvaluate: () => ({ ok: true }),
+    adapt: toCourtQueueGateResult,
+  });
+}
+
+/**
+ * Court Engine combination scoring bridge.
+ *
+ * @param {{ teamA: string[], teamB: string[] }} split
+ * @param {Object} config
+ * @param {Partial<import('../../types/index.js').ConstraintContext>} context
+ * @param {Object} [options]
+ */
+export function evaluateLegacyCourtEngineCombinationScore(split, config, context, options = {}) {
+  const ruleSet = mapCourtEngineConfigToRuleSet(config);
+
+  return evaluateLegacyRulesBridge({
+    consumer: "court_engine",
+    envSource: options.envSource,
+    candidate: { matchOption: { teamA: split.teamA, teamB: split.teamB } },
+    context: { scope: "match", ...context },
+    ruleSet,
+    legacyEvaluate: () => ({ ok: true, softScoreDelta: 0, hardRejected: false }),
+    adapt: toCourtEngineScoreBridgeResult,
+  });
+}
+
+/**
  * Tournament validation bridge (candidate-level).
  *
  * @param {Object} input
@@ -223,12 +356,24 @@ export function evaluateLegacyDailyPlayPlayer(player, settings = {}, options = {
  */
 export function evaluateLegacyCourtEngineRules(candidate, config, context, options = {}) {
   const ruleSet = mapCourtEngineConfigToRuleSet(config);
+  const repeatCounts =
+    context.partnerRepeatCounts && context.opponentRepeatCounts
+      ? {
+          partnerRepeatCounts: context.partnerRepeatCounts,
+          opponentRepeatCounts: context.opponentRepeatCounts,
+        }
+      : mapCourtMatchHistoryToRepeatCounts(context.matchHistory || []);
 
   return evaluateLegacyRulesBridge({
     consumer: "court_engine",
     envSource: options.envSource,
     candidate,
-    context: { scope: "pairing", ...context },
+    context: {
+      scope: "match",
+      ...context,
+      partnerRepeatCounts: repeatCounts.partnerRepeatCounts,
+      opponentRepeatCounts: repeatCounts.opponentRepeatCounts,
+    },
     ruleSet,
     legacyEvaluate: options.legacyEvaluate,
     adapt: toPairingConstraintEvaluation,

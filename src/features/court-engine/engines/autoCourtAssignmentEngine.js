@@ -8,6 +8,14 @@ import {
   patchCourtState,
 } from "../services/courtStateService.js";
 import { computePriorityScore } from "../services/queueService.js";
+import { isRulesV2Enabled } from "../../competition-core/config/featureFlags.js";
+import {
+  evaluateLegacyCourtEngineCombinationScore,
+} from "../../competition-core/constraints/adapters/constraintsEvaluationBridge.js";
+import {
+  mapCourtMatchHistoryToRepeatCounts,
+  mapCourtSessionPlayersToSnapshots,
+} from "../../competition-core/constraints/adapters/legacyRuleMappers.js";
 
 function playerRating(player) {
   return Number(player?.rating ?? player?.level ?? 3.5);
@@ -68,19 +76,30 @@ function countRecentOpponents(matchHistory, playerId, opponentId, windowSize = 2
   return count;
 }
 
-function scoreTeamBalance(teamA, teamB, playersById, maxLevelDiff) {
+function scoreTeamBalance(teamA, teamB, playersById, maxLevelDiff, options = {}) {
   const sumA = teamA.reduce((sum, id) => sum + playerRating(playersById.get(String(id))), 0);
   const sumB = teamB.reduce((sum, id) => sum + playerRating(playersById.get(String(id))), 0);
   const diff = Math.abs(sumA - sumB);
   const balanceScore = Math.max(0, 100 - diff * 20);
-  const penalty = diff > maxLevelDiff ? (diff - maxLevelDiff) * 30 : 0;
+  const penalty =
+    options.skipLegacyLevelPenalty || isRulesV2Enabled(options.envSource)
+      ? 0
+      : diff > maxLevelDiff
+        ? (diff - maxLevelDiff) * 30
+        : 0;
   return { balanceScore: Math.max(0, balanceScore - penalty), diff };
 }
 
-function scoreCombination(group, playersById, matchHistory, config, queueEntries, session) {
+function scoreCombination(group, playersById, matchHistory, config, queueEntries, session, options = {}) {
   const ids = group.map((item) => String(item.playerId));
   const playMode = config.playMode || PLAY_MODE.DOUBLES;
   const maxLevelDiff = Number(config.maxLevelDiff ?? 0.5);
+  const useCanonical = isRulesV2Enabled(options.envSource);
+  const repeatCounts = mapCourtMatchHistoryToRepeatCounts(matchHistory);
+  const canonicalPlayersById = mapCourtSessionPlayersToSnapshots(
+    session,
+    [...playersById.values()]
+  );
 
   let waitingScore = 0;
   ids.forEach((playerId) => {
@@ -92,7 +111,6 @@ function scoreCombination(group, playersById, matchHistory, config, queueEntries
 
   if (config.avoidPartnerRepeat !== false && playMode !== PLAY_MODE.SINGLES) {
     const [a, b, c, d] = ids;
-    // evaluate best team split for doubles
     const splits = [
       { teamA: [a, b], teamB: [c, d] },
       { teamA: [a, c], teamB: [b, d] },
@@ -101,27 +119,83 @@ function scoreCombination(group, playersById, matchHistory, config, queueEntries
 
     let bestSplit = null;
     let bestSplitScore = -Infinity;
+    let decisionTrace = null;
 
     splits.forEach((split) => {
-      const { balanceScore, diff } = scoreTeamBalance(split.teamA, split.teamB, playersById, maxLevelDiff);
+      const { balanceScore, diff } = scoreTeamBalance(
+        split.teamA,
+        split.teamB,
+        playersById,
+        maxLevelDiff,
+        options
+      );
       let penalty = 0;
-      if (config.avoidPartnerRepeat !== false) {
-        penalty += countRecentPartners(matchHistory, split.teamA[0], 2) * 15;
-        penalty += countRecentPartners(matchHistory, split.teamA[1], 2) * 15;
-      }
-      if (config.avoidOpponentRepeat !== false) {
-        split.teamA.forEach((p) => {
-          split.teamB.forEach((o) => {
-            penalty += countRecentOpponents(matchHistory, p, o, 2) * 10;
+      let canonicalSoftDelta = 0;
+      let hardRejected = false;
+
+      if (useCanonical) {
+        const bridge = evaluateLegacyCourtEngineCombinationScore(
+          split,
+          config,
+          {
+            playersById: canonicalPlayersById,
+            partnerRepeatCounts: repeatCounts.partnerRepeatCounts,
+            opponentRepeatCounts: repeatCounts.opponentRepeatCounts,
+          },
+          options
+        );
+        if (bridge.usedCanonical) {
+          decisionTrace = bridge.trace;
+          hardRejected = bridge.result.hardRejected === true;
+          canonicalSoftDelta = Number(bridge.result.softScoreDelta ?? 0);
+        }
+      } else {
+        if (config.avoidPartnerRepeat !== false) {
+          penalty += countRecentPartners(matchHistory, split.teamA[0], 2) * 15;
+          penalty += countRecentPartners(matchHistory, split.teamA[1], 2) * 15;
+        }
+        if (config.avoidOpponentRepeat !== false) {
+          split.teamA.forEach((p) => {
+            split.teamB.forEach((o) => {
+              penalty += countRecentOpponents(matchHistory, p, o, 2) * 10;
+            });
           });
-        });
+        }
       }
-      const total = balanceScore - penalty;
+
+      const total = hardRejected
+        ? -Infinity
+        : waitingScore * 0.4 +
+          balanceScore * 0.4 -
+          (useCanonical ? -canonicalSoftDelta * 0.2 : penalty * 0.2);
+
       if (total > bestSplitScore) {
         bestSplitScore = total;
-        bestSplit = { ...split, balanceScore, diff, penalty };
+        bestSplit = {
+          ...split,
+          balanceScore,
+          diff,
+          penalty: useCanonical ? -canonicalSoftDelta : penalty,
+          hardRejected,
+        };
       }
     });
+
+    if (bestSplit?.hardRejected) {
+      return {
+        teamA: bestSplit.teamA,
+        teamB: bestSplit.teamB,
+        waitingScore,
+        balanceScore: 0,
+        repeatPenalty: 0,
+        courtAvailabilityScore: 0,
+        refereeScore: 0,
+        totalScore: -Infinity,
+        hardRejected: true,
+        decisionTrace,
+        reasons: ["Rules V2 rejected combination"],
+      };
+    }
 
     const repeatPenalty = bestSplit?.penalty || 0;
     const balanceScore = bestSplit?.balanceScore || 0;
@@ -134,14 +208,15 @@ function scoreCombination(group, playersById, matchHistory, config, queueEntries
       repeatPenalty,
       courtAvailabilityScore: 0,
       refereeScore: 0,
-      totalScore: waitingScore * 0.4 + balanceScore * 0.4 - repeatPenalty * 0.2,
-      reasons: buildReasons(ids, bestSplit, waitingScore, balanceScore, repeatPenalty),
+      totalScore: waitingScore * 0.4 + balanceScore * 0.4 - Math.max(0, repeatPenalty) * 0.2,
+      decisionTrace,
+      reasons: buildReasons(ids, bestSplit, waitingScore, balanceScore, Math.max(0, repeatPenalty)),
     };
   }
 
   const teamA = [ids[0]];
   const teamB = [ids[1]];
-  const { balanceScore } = scoreTeamBalance(teamA, teamB, playersById, maxLevelDiff);
+  const { balanceScore } = scoreTeamBalance(teamA, teamB, playersById, maxLevelDiff, options);
 
   return {
     teamA,
@@ -311,14 +386,18 @@ export function generateCourtAssignments(input = {}) {
       return;
     }
 
-    const sessionStub = { checkIns: [], queue: queueEntries };
+    const sessionStub = {
+      checkIns: input.checkIns || input.session?.checkIns || [],
+      queue: queueEntries,
+    };
     const scored = scoreCombination(
       groupResult.group,
       playersById,
       history,
       config,
       queueEntries,
-      sessionStub
+      sessionStub,
+      { envSource: input.envSource }
     );
 
     const refereeSuggestion = config.useReferees !== false

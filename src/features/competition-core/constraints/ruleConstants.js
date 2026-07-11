@@ -34,6 +34,7 @@ export const RULE_ERROR_CODE = Object.freeze({
   MAX_OPPONENT_REPEAT_EXCEEDED: "max_opponent_repeat_exceeded",
   MIN_REST_TIME_VIOLATED: "min_rest_time_violated",
   UNSUPPORTED_SCOPE: "unsupported_scope",
+  RULES_V2_CONTEXT_MISSING: "rules_v2_context_missing",
 });
 
 export const RULE_ENGINE_VERSION = "cc03a-v2";

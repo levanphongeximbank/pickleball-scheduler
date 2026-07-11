@@ -66,8 +66,12 @@ export {
   evaluateLegacyPairingConstraints,
   evaluateLegacyAiPairScore,
   evaluateLegacyTournamentValidation,
+  evaluateLegacyTournamentDrawValidation,
   evaluateLegacyDailyPlayPlayer,
   evaluateLegacyCourtEngineRules,
+  evaluateLegacyCourtEngineQueueGate,
+  evaluateLegacyCourtEngineCombinationScore,
+  mergeValidationResults,
   createDecisionTrace,
   summarizeDecisionTrace,
 } from "./adapters/index.js";

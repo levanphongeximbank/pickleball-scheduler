@@ -1,5 +1,7 @@
 import { EVENT_TYPE, PLAYER_SESSION_STATUS, QUEUE_STATUS } from "../constants/statuses.js";
 import { updateCheckInStatus } from "./checkInService.js";
+import { isRulesV2Enabled } from "../../competition-core/config/featureFlags.js";
+import { evaluateLegacyCourtEngineQueueGate } from "../../competition-core/constraints/adapters/constraintsEvaluationBridge.js";
 
 function createQueueId() {
   return `q-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
@@ -38,6 +40,18 @@ export function computePriorityScore(entry, checkIn, now = Date.now()) {
 
 export function addToQueue(session, playerId, options = {}) {
   const key = String(playerId || "").trim();
+
+  if (isRulesV2Enabled(options.envSource)) {
+    const gate = evaluateLegacyCourtEngineQueueGate(session, key, options);
+    if (gate.usedCanonical && !gate.result.ok) {
+      return {
+        ok: false,
+        error: gate.result.error || gate.result.errors?.[0] || "Không thể thêm vào queue.",
+        decisionTrace: gate.trace,
+      };
+    }
+  }
+
   const checkIn = findCheckIn(session, key);
 
   if (!checkIn || checkIn.status === PLAYER_SESSION_STATUS.CANCELLED) {

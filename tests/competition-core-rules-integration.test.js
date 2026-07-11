@@ -120,3 +120,97 @@ test("flag OFF AI bridge preserves legacyEvaluate path", () => {
   assert.equal(bridge.usedCanonical, false);
   assert.equal(bridge.result.totalScore, 42);
 });
+
+test("flag OFF tournament draw validation preserves legacy output shape", async () => {
+  const { validateGroupDrawInput } = await import("../src/tournament/engines/validationEngine.js");
+  const { EVENT_TYPE } = await import("../src/models/tournament/index.js");
+
+  const result = validateGroupDrawInput(
+    {
+      entries: [
+        { id: "e1", name: "Cap 1", playerIds: ["1", "3"] },
+        { id: "e2", name: "Cap 2", playerIds: ["2", "4"] },
+      ],
+      players: [
+        { id: "1", gender: "Nam" },
+        { id: "2", gender: "Nam" },
+        { id: "3", gender: "Nữ" },
+        { id: "4", gender: "Nữ" },
+      ],
+      eventType: EVENT_TYPE.MIXED_DOUBLE,
+      groupCount: 2,
+      courtCount: 2,
+    },
+    { envSource: {} }
+  );
+
+  assert.equal(result.ok, true);
+  assert.equal(result.decisionTrace, undefined);
+});
+
+test("flag ON tournament draw validation dedupes duplicate player errors", async () => {
+  const { validateGroupDrawInput } = await import("../src/tournament/engines/validationEngine.js");
+  const { EVENT_TYPE } = await import("../src/models/tournament/index.js");
+
+  const result = validateGroupDrawInput(
+    {
+      entries: [
+        { id: "e1", name: "Cap 1", playerIds: ["1", "3"] },
+        { id: "e2", name: "Cap 2", playerIds: ["1", "4"] },
+      ],
+      players: [
+        { id: "1", gender: "Nam" },
+        { id: "3", gender: "Nữ" },
+        { id: "4", gender: "Nữ" },
+      ],
+      eventType: EVENT_TYPE.MIXED_DOUBLE,
+      groupCount: 2,
+      courtCount: 2,
+    },
+    { envSource: v2EnvRules }
+  );
+
+  assert.equal(result.ok, false);
+  const duplicateErrors = result.errors.filter((message) => /nhieu doi|nhiều đội/i.test(message));
+  assert.equal(duplicateErrors.length, 1);
+  assert.ok(result.decisionTrace);
+});
+
+test("flag ON court queue gate rejects unchecked player", async () => {
+  const { evaluateLegacyCourtEngineQueueGate } = await import(
+    "../src/features/competition-core/constraints/adapters/constraintsEvaluationBridge.js"
+  );
+  const { createCourtSession } = await import("../src/features/court-engine/models/courtSession.js");
+
+  const session = createCourtSession({ clubId: "club-1" });
+  const gate = evaluateLegacyCourtEngineQueueGate(session, "p1", { envSource: v2EnvRules });
+
+  assert.equal(gate.usedCanonical, true);
+  assert.equal(gate.result.ok, false);
+  assert.match(gate.result.error || "", /check-in/i);
+});
+
+test("flag ON court combination bridge hard-rejects excessive skill gap", async () => {
+  const { evaluateLegacyCourtEngineCombinationScore } = await import(
+    "../src/features/competition-core/constraints/adapters/constraintsEvaluationBridge.js"
+  );
+
+  const bridge = evaluateLegacyCourtEngineCombinationScore(
+    { teamA: ["1", "2"], teamB: ["3", "4"] },
+    { maxLevelDiff: 0.5, avoidPartnerRepeat: false, avoidOpponentRepeat: false },
+    {
+      playersById: {
+        1: { skillLevel: 5, checkedIn: true, busy: false },
+        2: { skillLevel: 5, checkedIn: true, busy: false },
+        3: { skillLevel: 1, checkedIn: true, busy: false },
+        4: { skillLevel: 1, checkedIn: true, busy: false },
+      },
+      partnerRepeatCounts: {},
+      opponentRepeatCounts: {},
+    },
+    { envSource: v2EnvRules }
+  );
+
+  assert.equal(bridge.usedCanonical, true);
+  assert.equal(bridge.result.hardRejected, true);
+});
