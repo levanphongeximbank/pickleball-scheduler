@@ -12,6 +12,8 @@ import {
   setCourtLocked,
 } from "./courtEngine.js";
 import { startMatch, submitMatchScore } from "./matchEngine.js";
+import { isRulesV2Enabled } from "../../features/competition-core/config/featureFlags.js";
+import { evaluateLegacyDailyPlayPlayer } from "../../features/competition-core/constraints/adapters/constraintsEvaluationBridge.js";
 
 export const DAILY_MATCH_TYPE = {
   MEN_DOUBLE: "men_double",
@@ -165,7 +167,26 @@ export function getEligibleDailyPlayers({
     available
   );
 
-  return getEligiblePlayersForCompetition(available, competitionType);
+  let eligible = getEligiblePlayersForCompetition(available, competitionType);
+
+  if (isRulesV2Enabled()) {
+    eligible = eligible.filter((player) => {
+      const bridge = evaluateLegacyDailyPlayPlayer(
+        {
+          ...player,
+          checkedIn: checkedIn.has(String(player.id)),
+          busy: busy.has(String(player.id)),
+        },
+        { competitionType },
+        {
+          legacyEvaluate: () => ({ eligible: true }),
+        }
+      );
+      return bridge.result?.eligible !== false;
+    });
+  }
+
+  return eligible;
 }
 
 function pickPlayersForSingleMatch(available = [], competitionType) {

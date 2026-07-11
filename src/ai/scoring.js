@@ -6,6 +6,7 @@ Decision Engine
 */
 
 import { AI_CONFIG } from "./config.js";
+import { evaluateLegacyAiPairScore } from "../features/competition-core/constraints/adapters/constraintsEvaluationBridge.js";
 
 function getTeamTotal(team) {
   return team.reduce(
@@ -319,13 +320,61 @@ export function calculatePairScore(
   option,
   context = {}
 ) {
+  const bridged = evaluateLegacyAiPairScore(option, context, {
+    levelDiffAllowed: AI_CONFIG.thresholds.levelDiffAllowed,
+    legacyEvaluate: () => calculatePairScoreLegacy(option, context),
+  });
+
+  if (bridged.usedCanonical) {
+    if (bridged.result.rejected) {
+      const teamATotal = getTeamTotal(option.teamA);
+      const teamBTotal = getTeamTotal(option.teamB);
+      const diff = Math.abs(teamATotal - teamBTotal);
+      return {
+        totalScore: bridged.result.totalScore,
+        levelScore: 0,
+        historyScore: 0,
+        waitingScore: 0,
+        ruleScore: 0,
+        policyScore: 0,
+        competitionScore: 0,
+        teamATotal,
+        teamBTotal,
+        diff,
+        decisionTrace: bridged.trace,
+      };
+    }
+
+    const legacy = calculatePairScoreLegacy(option, context, {
+      skipHardLevelDiff: true,
+      skipCanonicalManagedScores: true,
+    });
+
+    return {
+      ...legacy,
+      totalScore: legacy.totalScore + bridged.result.canonicalSoftDelta,
+      policyScore: bridged.result.canonicalSoftDelta,
+      ruleScore: 100,
+      competitionScore: 100,
+      decisionTrace: bridged.trace,
+    };
+  }
+
+  return bridged.result;
+}
+
+function calculatePairScoreLegacy(
+  option,
+  context = {},
+  options = {}
+) {
   const history = context.history || {};
 
   const teamATotal = getTeamTotal(option.teamA);
   const teamBTotal = getTeamTotal(option.teamB);
 
   const diff = Math.abs(teamATotal - teamBTotal);
-  if (diff > AI_CONFIG.thresholds.levelDiffAllowed) {
+  if (!options.skipHardLevelDiff && diff > AI_CONFIG.thresholds.levelDiffAllowed) {
   return {
     totalScore: -AI_CONFIG.penalties.largeLevelDiff,
     levelScore: 0,
@@ -346,9 +395,15 @@ export function calculatePairScore(
     history
   );
   const waitingScore = calculateWaitingScore(option, context);
-  const ruleScore = calculateRuleScore(option, context, diff);
-  const policyScore = calculatePolicyScore(option, context);
-  const competitionScore = calculateCompetitionScore(option, context.competition || {});
+  const ruleScore = options.skipCanonicalManagedScores
+    ? 100
+    : calculateRuleScore(option, context, diff);
+  const policyScore = options.skipCanonicalManagedScores
+    ? 0
+    : calculatePolicyScore(option, context);
+  const competitionScore = options.skipCanonicalManagedScores
+    ? 100
+    : calculateCompetitionScore(option, context.competition || {});
 
   const totalScore =
     levelScore * AI_CONFIG.weights.level +

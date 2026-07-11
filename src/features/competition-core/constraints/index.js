@@ -62,6 +62,17 @@ export {
 } from "./evaluateCandidate.js";
 
 export {
+  evaluateLegacyRulesBridge,
+  evaluateLegacyPairingConstraints,
+  evaluateLegacyAiPairScore,
+  evaluateLegacyTournamentValidation,
+  evaluateLegacyDailyPlayPlayer,
+  evaluateLegacyCourtEngineRules,
+  createDecisionTrace,
+  summarizeDecisionTrace,
+} from "./adapters/index.js";
+
+export {
   evaluateCanonicalRules,
   preflightRuleSet,
 } from "./evaluateCanonicalRules.js";

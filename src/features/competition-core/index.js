@@ -43,10 +43,13 @@ export {
   isCompetitionCoreEnabled,
   isRatingV2Enabled,
   isConstraintsV2Enabled,
+  isRulesV2Enabled,
   isDrawV2Enabled,
   isMatchmakingV2Enabled,
   isStandingsV2Enabled,
 } from "./config/featureFlags.js";
+
+export { resolveRulesV2Flag, RULES_V2_ENV_KEYS } from "./config/rulesV2FlagReader.js";
 
 export { parseEnvBoolean, readEnvBoolean, readEnvString } from "./config/envReader.js";
 
@@ -123,4 +126,11 @@ export {
   buildExplanation,
   createConstraintExplanation,
   validateRuleSetLifecycle,
+  evaluateLegacyRulesBridge,
+  evaluateLegacyPairingConstraints,
+  evaluateLegacyAiPairScore,
+  evaluateLegacyDailyPlayPlayer,
+  evaluateLegacyCourtEngineRules,
+  createDecisionTrace,
+  summarizeDecisionTrace,
 } from "./constraints/index.js";

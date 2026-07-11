@@ -1,12 +1,8 @@
 import { CONSTRAINT_MODE, CONSTRAINT_SCORE, CONSTRAINT_TYPE } from "../constants.js";
+import { evaluateLegacyPairingConstraints } from "../../competition-core/constraints/adapters/constraintsEvaluationBridge.js";
 
 function activeConstraints(constraints = []) {
   return (constraints || []).filter((item) => item?.enabled !== false);
-}
-
-function sameTeam(playerA, playerB, teamMemberIds) {
-  const set = new Set(teamMemberIds.map(String));
-  return set.has(String(playerA)) && set.has(String(playerB));
 }
 
 export function getTeamMemberIds(team) {
@@ -71,7 +67,15 @@ export function evaluatePartnerConstraintsForTeam(team, constraints = []) {
   return { score, violations, satisfied };
 }
 
-export function evaluatePartnerConstraintsForTeams(teams = [], constraints = []) {
+export function evaluatePartnerConstraintsForTeams(teams = [], constraints = [], options = {}) {
+  const bridge = evaluateLegacyPairingConstraints(teams, constraints, {
+    envSource: options.envSource,
+    legacyEvaluate: () => evaluatePartnerConstraintsForTeamsLegacy(teams, constraints),
+  });
+  return bridge.result;
+}
+
+function evaluatePartnerConstraintsForTeamsLegacy(teams = [], constraints = []) {
   let score = 0;
   const violations = [];
   const satisfied = [];
