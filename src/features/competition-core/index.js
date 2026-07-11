@@ -36,6 +36,7 @@ export {
   getCompetitionCoreFeatureFlags,
   isCompetitionCoreEnabled,
   isRatingV2Enabled,
+  isConstraintsV2Enabled,
   isDrawV2Enabled,
   isMatchmakingV2Enabled,
   isStandingsV2Enabled,
@@ -89,3 +90,19 @@ export {
   backfillClubPlayerRatingsV2,
   assessMonthlyPublicLevelV2,
 } from "./rating/index.js";
+
+export {
+  RULE_ERROR_CODE,
+  RULE_ENGINE_VERSION,
+  RULE_SOFT_SCORE,
+  DEFAULT_RULE_SET_ID,
+  DEFAULT_RULE_SET_VERSION,
+  createRuleSet,
+  normalizeRuleSet,
+  normalizeRuleDefinition,
+  detectConstraintConflicts,
+  preflightRuleSet,
+  evaluateCanonicalRules,
+  evaluateHardRules,
+  scoreSoftRules,
+} from "./constraints/index.js";
