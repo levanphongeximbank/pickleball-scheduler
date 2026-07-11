@@ -22,6 +22,7 @@ import {
 } from "../features/tenant/index.js";
 import {
   hydrateProfileVenueToLocalRegistry,
+  hydrateSupabaseVenuesToLocalRegistry,
   resolveTenantRecord,
 } from "../features/tenant/services/profileVenueService.js";
 import { getTenantById } from "../features/tenant/index.js";
@@ -125,6 +126,24 @@ export function TenantProvider({ children }) {
       cancelled = true;
     };
   }, [currentTenantId, isAuthenticated, rbacEnabled, userId]);
+
+  useEffect(() => {
+    if (!rbacEnabled || !isAuthenticated || !userId || !canPickTenant || !hasSupabaseConfig()) {
+      return;
+    }
+
+    let cancelled = false;
+
+    void hydrateSupabaseVenuesToLocalRegistry().then((result) => {
+      if (!cancelled && result?.ok) {
+        setRevision((value) => value + 1);
+      }
+    });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [canPickTenant, isAuthenticated, rbacEnabled, userId]);
 
   useEffect(() => {
     if (!rbacEnabled || !isAuthenticated || !userId || !currentTenantId) {

@@ -23,6 +23,7 @@ export {
   buildProfileBackedTenant,
   resolveTenantRecord,
   hydrateProfileVenueToLocalRegistry,
+  hydrateSupabaseVenuesToLocalRegistry,
   resolveRouteAccessScope,
 } from "./services/profileVenueService.js";
 

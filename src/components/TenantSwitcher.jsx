@@ -1,4 +1,5 @@
 import { FormControl, InputLabel, MenuItem, Select, Typography } from "@mui/material";
+import { useMemo } from "react";
 
 import { useTenant } from "../context/TenantContext.jsx";
 import { listTenants } from "../features/tenant/index.js";
@@ -20,14 +21,14 @@ const VARIANT_STYLES = {
 };
 
 export default function TenantSwitcher({ size = "small", minWidth = 180, variant = "dark" }) {
-  const { currentTenantId, isSuperAdmin, switchTenant } = useTenant();
+  const { currentTenantId, isSuperAdmin, switchTenant, revision } = useTenant();
   const styles = VARIANT_STYLES[variant] || VARIANT_STYLES.dark;
 
   if (!isSuperAdmin) {
     return null;
   }
 
-  const tenants = listTenants();
+  const tenants = useMemo(() => listTenants(), [revision]);
   const hasSelection = tenants.some((tenant) => tenant.id === currentTenantId);
   const value = hasSelection ? currentTenantId : "";
 

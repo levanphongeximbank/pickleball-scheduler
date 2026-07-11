@@ -14,7 +14,7 @@ Phase 42L enforces the **role × membership** menu matrix on desktop sidebar, mo
 |------|--------|
 | SSOT | `src/features/club/navigation/clubNavMatrix.js` |
 | Menu scope hook | `useClubMenuScope()` — shared desktop + mobile |
-| SA tenant picker | Desktop header `TenantSwitcher` (no auto-pick first tenant) |
+| SA tenant picker | Desktop header `TenantSwitcher` — hydrates `public.venues` from Supabase; no auto-pick |
 | Review guard | SA without governance assignment cannot review membership |
 | Label | `Lịch sinh hoạt` → **Vận hành CLB** (`/club`) for governance/staff |
 
@@ -63,14 +63,17 @@ Phase 42L enforces the **role × membership** menu matrix on desktop sidebar, mo
 | `src/config/v5Menu/clubCoachingMenu.js` | New leaves + rename Vận hành CLB |
 | `src/auth/menuAccess.js` | `clubNav` override in `isMenuItemVisible` |
 | `src/components/Header.jsx` | Desktop SA `TenantSwitcher` |
-| `src/components/TenantSwitcher.jsx` | Empty until explicit pick |
 | `src/components/Sidebar.jsx` | `useClubMenuScope` |
 | `src/features/mobile/layout/MobileDrawer.jsx` | `useClubMenuScope` |
 | `src/features/mobile/services/mobileNavAccess.js` | Preserve `clubNav` in scope |
 | `src/components/GlobalSearch.jsx` | `useClubMenuScope` |
 | `src/components/nav/navPathMatchers.js` | `/my-club/requests` matcher |
 | `src/features/club/services/clubGovernanceService.js` | SA review guard + `canReviewMembershipForClub` |
+| `src/features/tenant/services/profileVenueService.js` | `hydrateSupabaseVenuesToLocalRegistry` — cloud → local mirror for SA picker |
+| `src/context/TenantContext.jsx` | Hydrate venues on SA/platform login; bump `revision` |
+| `src/components/TenantSwitcher.jsx` | Empty until explicit pick; re-render after hydrate |
 | `tests/phase42l-navigation-matrix.test.js` | **New** — 7 personas + parity |
+| `tests/phase42l-tenant-hydrate.test.js` | **New** — cloud hydrate, empty state, A→B→A cache, scope guard |
 
 ---
 
@@ -78,6 +81,7 @@ Phase 42L enforces the **role × membership** menu matrix on desktop sidebar, mo
 
 ```bash
 node --test tests/phase42l-navigation-matrix.test.js
+node --test tests/phase42l-tenant-hydrate.test.js
 npm run test:unit   # includes phase42l + rbac + club-governance
 npm run build
 ```
@@ -90,6 +94,10 @@ Coverage:
 - Super Admin no membership / with membership  
 - SA cannot review without governance  
 - Desktop vs mobile `isMenuItemVisible` parity  
+- **Cloud tenant hydrate** (`venue-staging-a`, `venue-staging-b`)  
+- **No auto-pick** — empty “Chọn tenant…” until explicit selection  
+- **A→B→A** registry cache isolation (no leak / stale / duplicate)  
+- **Scope guard** — venue owner blocked from other tenant  
 
 ---
 

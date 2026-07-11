@@ -3,7 +3,10 @@ import { isClubScopedRole, isVenueScopedRole } from "../../../auth/roles.js";
 import { loadVenues, saveVenues } from "../../../data/venue.js";
 import { normalizeTenant, TENANT_STATUS } from "../../../models/tenant.js";
 import { sanitizeBillingTenantId } from "../../billing/services/billingTenantResolver.js";
-import { validateBillingTenantOnSupabase } from "../../billing/services/billingVenueService.js";
+import {
+  fetchSupabaseVenues,
+  validateBillingTenantOnSupabase,
+} from "../../billing/services/billingVenueService.js";
 import { getTenantById } from "./tenantService.js";
 import { resolveTenantIdFromUser } from "../guards/tenantGuard.js";
 
@@ -86,6 +89,72 @@ export async function hydrateProfileVenueToLocalRegistry(tenantId) {
   saveVenues([...venues, tenant]);
 
   return { ok: true, hydrated: true, tenantId: id, tenant };
+}
+
+function mapSupabaseVenueStatus(raw) {
+  const status = String(raw || TENANT_STATUS.ACTIVE).toLowerCase();
+  if (status === TENANT_STATUS.SUSPENDED) {
+    return TENANT_STATUS.SUSPENDED;
+  }
+  if (status === TENANT_STATUS.INACTIVE) {
+    return TENANT_STATUS.INACTIVE;
+  }
+  if (status === TENANT_STATUS.TRIAL) {
+    return TENANT_STATUS.TRIAL;
+  }
+  return TENANT_STATUS.ACTIVE;
+}
+
+/**
+ * Phase 42L — mirror Supabase public.venues into local registry for SA tenant picker.
+ * No localStorage manual seed; uses authenticated Supabase RLS (SA sees all venues).
+ */
+export async function hydrateSupabaseVenuesToLocalRegistry(client) {
+  if (!hasSupabaseConfig()) {
+    return { ok: false, code: "NO_SUPABASE", tenantIds: [], venues: [] };
+  }
+
+  const result = await fetchSupabaseVenues(client);
+  if (!result.ok) {
+    return { ...result, tenantIds: [], venues: [] };
+  }
+
+  const incoming = result.venues || [];
+  if (!incoming.length) {
+    return { ok: true, hydrated: false, hydratedCount: 0, tenantIds: [], venues: [] };
+  }
+
+  const merged = new Map(loadVenues().map((item) => [item.id, item]));
+  let hydratedCount = 0;
+
+  for (const venue of incoming) {
+    const id = sanitizeBillingTenantId(venue.id);
+    if (!id) {
+      continue;
+    }
+
+    const tenant = normalizeTenant({
+      id,
+      name: venue.name || id,
+      status: mapSupabaseVenueStatus(venue.status),
+    });
+
+    const prev = merged.get(id);
+    if (!prev || prev.name !== tenant.name || prev.status !== tenant.status) {
+      hydratedCount += 1;
+    }
+    merged.set(id, tenant);
+  }
+
+  saveVenues([...merged.values()]);
+
+  return {
+    ok: true,
+    hydrated: hydratedCount > 0,
+    hydratedCount,
+    tenantIds: incoming.map((row) => row.id),
+    venues: incoming,
+  };
 }
 
 export function resolveRouteAccessScope({
