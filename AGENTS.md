@@ -153,3 +153,15 @@ Mọi tính năng tournament mới phải phục vụ:
 3. **Chốt mùa / Export** kết quả mùa giải.
 4. Director Mode refactor (dùng chung kiến trúc Giải đấu).
 5. Deploy production (Vercel + Supabase env).
+
+## Cursor Cloud specific instructions
+
+Frontend-only Vite/React SPA (single app, npm). No backend server, no database, no devcontainer, no git hooks. Runs fully local-first via browser `localStorage`; Supabase, Stripe, RBAC/auth are all optional and OFF by default (`.env.example` empty). No `.env` is required to run/test locally.
+
+Commands (defined in `package.json`):
+- Dev server: `npm run dev` (Vite, http://localhost:5173). Only process needed to run the app end-to-end.
+- Lint: `npm run lint` (currently passes with 0 errors; ~80 pre-existing `react-hooks/exhaustive-deps` warnings are expected).
+- Unit tests: `npm run test` (Node built-in test runner). UI tests: `npm run test:ui` (Vitest + jsdom).
+- `npm run test:supabase-referee` only does something when Supabase env vars are set; skip it for local dev.
+
+Node 22 works (Vite 8 needs Node 20.19+ / 22.12+).
