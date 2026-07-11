@@ -11,28 +11,18 @@ import {
 import SearchIcon from "@mui/icons-material/Search";
 
 import { MENU_GROUPS, buildSearchableNavItems } from "../config/navigationConfig.js";
-import { filterMenuGroups, resolveRouteAccessScope } from "../auth/menuAccess.js";
+import { filterMenuGroups } from "../auth/menuAccess.js";
 import { useAuth } from "../context/AuthContext.jsx";
-import { useClub } from "../context/ClubContext.jsx";
+import { useClubMenuScope } from "../features/club/navigation/useClubMenuScope.js";
 import { SHELL_COLORS } from "./shell/shellTokens.js";
 
 export default function GlobalSearch({ size = "small", maxWidth = 420, variant = "dark" }) {
   const navigate = useNavigate();
   const auth = useAuth();
-  const { activeClubId, activeClub } = useClub();
+  const scope = useClubMenuScope();
   const [inputValue, setInputValue] = useState("");
   const inputRef = useRef(null);
   const isLight = variant === "light";
-
-  const scope = useMemo(
-    () =>
-      resolveRouteAccessScope({
-        user: auth.user,
-        activeClubId,
-        activeClub,
-      }),
-    [activeClubId, activeClub, auth.user]
-  );
 
   const options = useMemo(() => {
     const visibleGroups = filterMenuGroups(MENU_GROUPS, auth, scope);

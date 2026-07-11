@@ -3,10 +3,9 @@ import SportsTennisIcon from "@mui/icons-material/SportsTennis";
 import { useLocation } from "react-router-dom";
 
 import { MENU_GROUPS } from "../config/navigationConfig.js";
-import { filterMenuGroups, resolveRouteAccessScope } from "../auth/menuAccess.js";
+import { filterMenuGroups } from "../auth/menuAccess.js";
 import { useAuth } from "../context/AuthContext.jsx";
-import { useClub } from "../context/ClubContext.jsx";
-import { useIsMobile } from "../features/mobile/hooks/useIsMobile.js";
+import { useClubMenuScope } from "../features/club/navigation/useClubMenuScope.js";
 import NavMenuShell from "./nav/NavMenuShell.jsx";
 import SidebarFooter from "./shell/SidebarFooter.jsx";
 import { APP_PRODUCT_NAME } from "../config/appVersion.js";
@@ -15,18 +14,12 @@ import { SHELL_COLORS, SHELL_LAYOUT } from "./shell/shellTokens.js";
 export default function Sidebar() {
   const location = useLocation();
   const auth = useAuth();
-  const { activeClubId, activeClub } = useClub();
+  const scope = useClubMenuScope();
   const isMobile = useIsMobile();
 
   if (isMobile) {
     return null;
   }
-
-  const scope = resolveRouteAccessScope({
-    user: auth.user,
-    activeClubId,
-    activeClub,
-  });
 
   const visibleGroups = filterMenuGroups(MENU_GROUPS, auth, scope);
 

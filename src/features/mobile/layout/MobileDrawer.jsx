@@ -15,23 +15,17 @@ import { Link, useLocation } from "react-router-dom";
 
 import { MENU_GROUPS, MOBILE_DRAWER_WIDTH } from "../../../config/navigationConfig.js";
 import { getNavIcon } from "../../../config/navIcons.js";
-import { filterMenuGroups, resolveRouteAccessScope } from "../../../auth/menuAccess.js";
+import { filterMenuGroups } from "../../../auth/menuAccess.js";
 import { filterMobileQuickLinks } from "../services/mobileNavAccess.js";
 import { useAuth } from "../../../context/AuthContext.jsx";
-import { useClub } from "../../../context/ClubContext.jsx";
+import { useClubMenuScope } from "../../../features/club/navigation/useClubMenuScope.js";
 import NavMenuShell from "../../../components/nav/NavMenuShell.jsx";
 import { APP_VERSION_LABEL } from "../../../config/appVersion.js";
 
 export default function MobileDrawer({ open, onClose }) {
   const location = useLocation();
   const auth = useAuth();
-  const { activeClubId, activeClub } = useClub();
-
-  const scope = resolveRouteAccessScope({
-    user: auth.user,
-    activeClubId,
-    activeClub,
-  });
+  const scope = useClubMenuScope();
 
   const visibleGroups = filterMenuGroups(MENU_GROUPS, auth, scope);
   const quickLinks = filterMobileQuickLinks(auth, scope);

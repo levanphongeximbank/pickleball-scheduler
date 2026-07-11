@@ -28,9 +28,8 @@ export default function TenantSwitcher({ size = "small", minWidth = 180, variant
   }
 
   const tenants = listTenants();
-  const value = tenants.some((tenant) => tenant.id === currentTenantId)
-    ? currentTenantId
-    : tenants[0]?.id || "";
+  const hasSelection = tenants.some((tenant) => tenant.id === currentTenantId);
+  const value = hasSelection ? currentTenantId : "";
 
   return (
     <FormControl size={size} sx={{ minWidth }}>
@@ -41,7 +40,20 @@ export default function TenantSwitcher({ size = "small", minWidth = 180, variant
         labelId="header-tenant-label"
         value={value}
         label="Đang quản trị"
-        onChange={(event) => switchTenant(event.target.value)}
+        displayEmpty
+        renderValue={(selected) => {
+          if (!selected) {
+            return "Chọn tenant…";
+          }
+          const tenant = tenants.find((item) => item.id === selected);
+          return tenant?.name || selected;
+        }}
+        onChange={(event) => {
+          const next = event.target.value;
+          if (next) {
+            switchTenant(next);
+          }
+        }}
         sx={{
           bgcolor: styles.bgcolor,
           color: styles.color,
@@ -50,6 +62,9 @@ export default function TenantSwitcher({ size = "small", minWidth = 180, variant
           ".MuiSvgIcon-root": { color: styles.icon },
         }}
       >
+        <MenuItem value="" disabled>
+          <em>Chọn tenant…</em>
+        </MenuItem>
         {tenants.map((tenant) => (
           <MenuItem key={tenant.id} value={tenant.id}>
             {tenant.name}

@@ -261,6 +261,14 @@ export function canApproveClubMembershipRequests(user, club) {
     return false;
   }
 
+  if (isGlobalRole(user.role)) {
+    return (
+      isClubPresident(user, club) ||
+      isClubVicePresident(user, club) ||
+      isClubOwner(user, club)
+    );
+  }
+
   if (
     isClubPresident(user, club) ||
     isClubVicePresident(user, club) ||
@@ -290,6 +298,21 @@ export function canApproveClubMembershipRequests(user, club) {
   }
 
   return guardClubTenant(club.id, tenantId, { user }).ok;
+}
+
+/** Phase 42L — client guard; blocks bare global roles without governance assignment. */
+export function canReviewMembershipForClub(user, club) {
+  if (!user?.id || !club) {
+    return false;
+  }
+  if (isGlobalRole(user.role)) {
+    return (
+      isClubPresident(user, club) ||
+      isClubVicePresident(user, club) ||
+      isClubOwner(user, club)
+    );
+  }
+  return canApproveClubMembershipRequests(user, club);
 }
 
 export function canManageClubGovernance(user, club) {

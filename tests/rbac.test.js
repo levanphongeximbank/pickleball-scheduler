@@ -201,7 +201,7 @@ test("menuAccess — PLAYER thấy menu CLB và Giải đấu", () => {
 
   const labels = collectMenuItemLabels(visible);
   assert.ok(labels.includes("CLB & Huấn luyện"));
-  assert.equal(labels.includes("Lịch sinh hoạt"), false);
+  assert.equal(labels.includes("Vận hành CLB"), false);
   assert.ok(labels.includes("CLB của tôi"));
   assert.ok(labels.includes("Danh sách huấn luyện viên"));
   assert.ok(labels.includes("Đăng ký gói học"));

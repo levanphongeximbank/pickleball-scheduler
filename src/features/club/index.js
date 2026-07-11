@@ -226,7 +226,16 @@ export {
   paginateRegistryRows,
 } from "./services/clubRegistryService.js";
 
-export { useClubRegistry } from "./hooks/useClubRegistry.js";
+export { useCanReviewMembership } from "./hooks/useCanReviewMembership.js";
+export { canReviewMembershipForClub } from "./services/clubGovernanceService.js";
+export {
+  buildClubNavContext,
+  isClubNavItemVisible,
+  resolveMyClubTabVisibility,
+  CLUB_NAV_GATED_KEYS,
+  CLUB_NAV_ITEM_KEYS,
+} from "./navigation/clubNavMatrix.js";
+export { useClubMenuScope } from "./navigation/useClubMenuScope.js";
 
 export {
   PLATFORM_ATHLETE_LINK_STATUS,

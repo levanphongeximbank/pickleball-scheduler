@@ -16,6 +16,10 @@ import {
 import { getNavigationPermissions } from "../config/navigationPermissions.js";
 import { hasClubGovernanceManagerAccess } from "../features/club/services/governanceRoleElevation.js";
 import { isClubStorageV2Enabled } from "../features/club/config/clubRegistryFlags.js";
+import {
+  applyClubNavMenuOverride,
+  CLUB_NAV_GATED_KEYS,
+} from "../features/club/navigation/clubNavMatrix.js";
 
 const FEATURE_FLAG_CHECKERS = Object.freeze({
   marketplace: isMarketplaceEnabled,
@@ -28,6 +32,7 @@ const FEATURE_FLAG_CHECKERS = Object.freeze({
 const PUBLIC_MENU_PATHS = new Set([
   "/profile",
   "/my-club",
+  "/my-club/requests",
   "/discover-clubs",
   "/clubs/discover",
   "/club/activity",
@@ -159,9 +164,17 @@ export function canAccessRoute(can, pathname, scope = {}, user = null) {
   return permissions.some((permission) => can(permission, routeScope));
 }
 
-export function resolveMenuItemPath(item, user) {
+export function resolveMenuItemPath(item, user, scope = {}) {
+  if (item?.key === "club-governance-manage") {
+    if (scope.clubNav?.isPlayerLike && scope.clubNav?.hasGovernanceRole) {
+      return scope.membershipClubId ? `/manage/clubs/${scope.membershipClubId}` : "/my-club";
+    }
+    if (scope.membershipClubId) {
+      return `/manage/clubs/${scope.membershipClubId}`;
+    }
+  }
   if (typeof item.resolvePath === "function") {
-    return item.resolvePath(user);
+    return item.resolvePath(user, scope);
   }
   return item.path;
 }
@@ -195,7 +208,7 @@ function passesMenuPermissionCheck(item, { can, user, scope }, { allowEmpty = fa
   if (!permissions.length) {
     if (allowEmpty) return true;
     if (item?.roles?.length) return true;
-    const path = resolveMenuItemPath(item, user);
+    const path = resolveMenuItemPath(item, user, scope);
     return isPublicMenuPath(path);
   }
 
@@ -218,7 +231,7 @@ function passesMenuPermissionCheck(item, { can, user, scope }, { allowEmpty = fa
   return true;
 }
 
-export function isMenuItemVisible(item, { can, rbacEnabled, isAuthenticated, user, scope }) {
+export function isMenuItemVisible(item, { can, rbacEnabled, isAuthenticated, user, scope = {} }) {
   if (item.navStatus === NAV_ITEM_STATUS.FUTURE) {
     return false;
   }
@@ -231,6 +244,19 @@ export function isMenuItemVisible(item, { can, rbacEnabled, isAuthenticated, use
   }
 
   if (!rbacEnabled || !isAuthenticated) {
+    return true;
+  }
+
+  const clubOverride =
+    scope.clubNav && CLUB_NAV_GATED_KEYS.has(item.key)
+      ? applyClubNavMenuOverride(item, scope.clubNav)
+      : null;
+
+  if (clubOverride === false) {
+    return false;
+  }
+
+  if (clubOverride === true) {
     return true;
   }
 
@@ -313,7 +339,7 @@ function filterNavTreeItems(items, ctx) {
       continue;
     }
 
-    const path = resolveMenuItemPath(item, user);
+    const path = resolveMenuItemPath(item, user, scope);
     if (!path) continue;
     if (!isMenuItemVisible(item, { can, rbacEnabled, isAuthenticated, user, scope })) {
       continue;

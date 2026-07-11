@@ -62,6 +62,8 @@ function resolveScope(auth, scope = {}) {
     venueId: scope.venueId ?? user?.venueId ?? null,
     tenantId: scope.tenantId ?? user?.tenantId ?? user?.venueId ?? null,
     playerId: scope.playerId ?? user?.playerId ?? null,
+    clubNav: scope.clubNav ?? null,
+    membershipClubId: scope.membershipClubId ?? null,
   };
 }
 

@@ -19,12 +19,15 @@ import HelpOutlineOutlinedIcon from "@mui/icons-material/HelpOutlineOutlined";
 
 import GlobalSearch from "./GlobalSearch.jsx";
 import AccountMenu from "./shell/AccountMenu.jsx";
+import TenantSwitcher from "./TenantSwitcher.jsx";
 import { usePlatformRuntime } from "../core/platform/app/usePlatformRuntime.js";
 import { useIsMobile } from "../features/mobile/hooks/useIsMobile.js";
+import { useTenant } from "../context/TenantContext.jsx";
 import { SHELL_COLORS, SHELL_LAYOUT } from "./shell/shellTokens.js";
 
 export default function Header({ onMenuClick }) {
   const isMobile = useIsMobile();
+  const { isSuperAdmin } = useTenant();
   const runtime = usePlatformRuntime();
   const navigate = useNavigate();
   const [unreadNotificationCount, setUnreadNotificationCount] = useState(0);
@@ -102,17 +105,16 @@ export default function Header({ onMenuClick }) {
         )}
 
         {!isMobile && (
-          <Box
-            sx={{
-              flex: 1,
-              display: "flex",
-              justifyContent: "center",
-              minWidth: 0,
-              px: { md: 2, lg: 3 },
-            }}
-          >
-            <GlobalSearch variant="light" maxWidth={520} />
-          </Box>
+          <Stack direction="row" alignItems="center" spacing={1.5} sx={{ flex: 1, minWidth: 0, justifyContent: "center" }}>
+            {isSuperAdmin && (
+              <Box sx={{ flexShrink: 0 }}>
+                <TenantSwitcher variant="light" minWidth={200} />
+              </Box>
+            )}
+            <Box sx={{ flex: 1, display: "flex", justifyContent: "center", minWidth: 0, maxWidth: 520 }}>
+              <GlobalSearch variant="light" maxWidth={520} />
+            </Box>
+          </Stack>
         )}
 
         {isMobile && (
