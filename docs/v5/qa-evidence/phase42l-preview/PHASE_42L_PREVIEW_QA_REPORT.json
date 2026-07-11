@@ -1,0 +1,187 @@
+{
+  "phase": "42L",
+  "preview": "https://pickleball-scheduler-nfcpq8040-pickleball-scheduler.vercel.app",
+  "commit": "af7d22d+sidebar-fix",
+  "deploymentId": "dpl_6wwErE4xKb26kWDvaVe25svDn6HK",
+  "stagingRef": "qyewbxjsiiyufanzcjcq",
+  "authReset": "PASS",
+  "cases": [
+    {
+      "case": "1_PLAYER_no_membership",
+      "verdict": "PASS",
+      "evidence": "discover=true create=true myClub=false manage=false platform=false /my-club→discover=true",
+      "account": "qa42l.nomember@staging.local"
+    },
+    {
+      "case": "2_PLAYER_active_member",
+      "verdict": "PASS",
+      "evidence": "myClub=true discover=true govern=false",
+      "account": "player.nomember@staging.local"
+    },
+    {
+      "case": "3_President_governance",
+      "verdict": "PASS",
+      "evidence": "requests=true govern=true operate=true route=/my-club/requests ok=true",
+      "account": "player@staging.local"
+    },
+    {
+      "case": "4_VicePresident_menu",
+      "verdict": "PASS",
+      "evidence": "requests=false govern=false platform=false manage=true /my-club/requests=true",
+      "account": "manager@staging.local"
+    },
+    {
+      "case": "5_ClubOwner_scope",
+      "verdict": "PASS",
+      "evidence": "govern=true platformMenu=false manageMenu=false /platform/clubs blocked=true",
+      "account": "player@staging.local"
+    },
+    {
+      "case": "6_TenantOwner_manage",
+      "verdict": "PASS",
+      "evidence": "manageMenu=true /manage/clubs=true platformMenu=false /platform blocked=true",
+      "account": "owner@staging.local"
+    },
+    {
+      "case": "7_SA_no_membership",
+      "verdict": "PASS",
+      "evidence": "platform=true manage=true myClub=false requests=false tenantPicker=true /platform/clubs=true",
+      "account": "superadmin.nomember@staging.local"
+    },
+    {
+      "case": "8_SA_with_membership",
+      "verdict": "PARTIAL",
+      "evidence": "staging seed: no SUPER_ADMIN with active club_members row; admin@ has VP gov only",
+      "account": "admin@staging.local",
+      "seedGap": true
+    },
+    {
+      "case": "9_Desktop_tenant_switch",
+      "verdict": "FAIL",
+      "evidence": "pickA=false pickB=false labelA=Chọn tenant… labelB=Chọn tenant… labelA2=Chọn tenant… namesA=20 namesB=20 cacheLeak=true",
+      "account": "superadmin.nomember@staging.local"
+    },
+    {
+      "case": "10_Mobile_parity",
+      "verdict": "PASS",
+      "evidence": "president menu parity desktop/mobile=true",
+      "mobileSample": [
+        "Vận hành CLB",
+        "CLB của tôi",
+        "Yêu cầu gia nhập",
+        "Quản trị CLB"
+      ]
+    },
+    {
+      "case": "11_Deep_links",
+      "verdict": "PASS",
+      "evidence": "/my-club→ok; /my-club/requests→ok; /discover-clubs→ok; /manage/clubs→https://pickleball-scheduler-nfcpq8040-pickleball-scheduler.vercel.app/discover-clubs; /platform/clubs→https://pickleball-scheduler-nfcpq8040-pickleball-scheduler.vercel.app/discover-clubs",
+      "presidentCanManage": false,
+      "presidentCanPlatform": false
+    },
+    {
+      "case": "12_Unauthorized_guard",
+      "verdict": "PASS",
+      "evidence": "platformMenuHidden=true routeBlocked=true final=https://pickleball-scheduler-nfcpq8040-pickleball-scheduler.vercel.app/discover-clubs",
+      "account": "player.nomember@staging.local"
+    }
+  ],
+  "redirectTrace": [
+    "C1: https://pickleball-scheduler-nfcpq8040-pickleball-scheduler.vercel.app/login",
+    "C1: https://pickleball-scheduler-nfcpq8040-pickleball-scheduler.vercel.app/login",
+    "C1: https://pickleball-scheduler-nfcpq8040-pickleball-scheduler.vercel.app/discover-clubs",
+    "C1: https://pickleball-scheduler-nfcpq8040-pickleball-scheduler.vercel.app/my-club",
+    "C1: https://pickleball-scheduler-nfcpq8040-pickleball-scheduler.vercel.app/my-club",
+    "C1: https://pickleball-scheduler-nfcpq8040-pickleball-scheduler.vercel.app/discover-clubs",
+    "C2: https://pickleball-scheduler-nfcpq8040-pickleball-scheduler.vercel.app/login",
+    "C2: https://pickleball-scheduler-nfcpq8040-pickleball-scheduler.vercel.app/login",
+    "C2: https://pickleball-scheduler-nfcpq8040-pickleball-scheduler.vercel.app/my-club",
+    "C2: https://pickleball-scheduler-nfcpq8040-pickleball-scheduler.vercel.app/my-club",
+    "C3: https://pickleball-scheduler-nfcpq8040-pickleball-scheduler.vercel.app/login",
+    "C3: https://pickleball-scheduler-nfcpq8040-pickleball-scheduler.vercel.app/login",
+    "C3: https://pickleball-scheduler-nfcpq8040-pickleball-scheduler.vercel.app/my-club",
+    "C3: https://pickleball-scheduler-nfcpq8040-pickleball-scheduler.vercel.app/my-club/requests",
+    "C3: https://pickleball-scheduler-nfcpq8040-pickleball-scheduler.vercel.app/my-club/requests",
+    "C4: https://pickleball-scheduler-nfcpq8040-pickleball-scheduler.vercel.app/login",
+    "C4: https://pickleball-scheduler-nfcpq8040-pickleball-scheduler.vercel.app/login",
+    "C4: https://pickleball-scheduler-nfcpq8040-pickleball-scheduler.vercel.app/dashboard",
+    "C4: https://pickleball-scheduler-nfcpq8040-pickleball-scheduler.vercel.app/my-club/requests",
+    "C4: https://pickleball-scheduler-nfcpq8040-pickleball-scheduler.vercel.app/my-club/requests",
+    "C5: https://pickleball-scheduler-nfcpq8040-pickleball-scheduler.vercel.app/login",
+    "C5: https://pickleball-scheduler-nfcpq8040-pickleball-scheduler.vercel.app/login",
+    "C5: https://pickleball-scheduler-nfcpq8040-pickleball-scheduler.vercel.app/my-club",
+    "C5: https://pickleball-scheduler-nfcpq8040-pickleball-scheduler.vercel.app/platform/clubs",
+    "C5: https://pickleball-scheduler-nfcpq8040-pickleball-scheduler.vercel.app/platform/clubs",
+    "C5: https://pickleball-scheduler-nfcpq8040-pickleball-scheduler.vercel.app/discover-clubs",
+    "C6: https://pickleball-scheduler-nfcpq8040-pickleball-scheduler.vercel.app/login",
+    "C6: https://pickleball-scheduler-nfcpq8040-pickleball-scheduler.vercel.app/login",
+    "C6: https://pickleball-scheduler-nfcpq8040-pickleball-scheduler.vercel.app/dashboard",
+    "C6: https://pickleball-scheduler-nfcpq8040-pickleball-scheduler.vercel.app/manage/clubs",
+    "C6: https://pickleball-scheduler-nfcpq8040-pickleball-scheduler.vercel.app/manage/clubs",
+    "C6: https://pickleball-scheduler-nfcpq8040-pickleball-scheduler.vercel.app/platform/clubs",
+    "C6: https://pickleball-scheduler-nfcpq8040-pickleball-scheduler.vercel.app/platform/clubs",
+    "C7: https://pickleball-scheduler-nfcpq8040-pickleball-scheduler.vercel.app/login",
+    "C7: https://pickleball-scheduler-nfcpq8040-pickleball-scheduler.vercel.app/login",
+    "C7: https://pickleball-scheduler-nfcpq8040-pickleball-scheduler.vercel.app/dashboard",
+    "C7: https://pickleball-scheduler-nfcpq8040-pickleball-scheduler.vercel.app/platform/clubs",
+    "C7: https://pickleball-scheduler-nfcpq8040-pickleball-scheduler.vercel.app/platform/clubs",
+    "C8: https://pickleball-scheduler-nfcpq8040-pickleball-scheduler.vercel.app/login",
+    "C8: https://pickleball-scheduler-nfcpq8040-pickleball-scheduler.vercel.app/login",
+    "C8: https://pickleball-scheduler-nfcpq8040-pickleball-scheduler.vercel.app/dashboard",
+    "C9: https://pickleball-scheduler-nfcpq8040-pickleball-scheduler.vercel.app/login",
+    "C9: https://pickleball-scheduler-nfcpq8040-pickleball-scheduler.vercel.app/login",
+    "C9: https://pickleball-scheduler-nfcpq8040-pickleball-scheduler.vercel.app/dashboard",
+    "C9: https://pickleball-scheduler-nfcpq8040-pickleball-scheduler.vercel.app/manage/clubs",
+    "C9: https://pickleball-scheduler-nfcpq8040-pickleball-scheduler.vercel.app/manage/clubs",
+    "C9: https://pickleball-scheduler-nfcpq8040-pickleball-scheduler.vercel.app/manage/clubs",
+    "C10: https://pickleball-scheduler-nfcpq8040-pickleball-scheduler.vercel.app/login",
+    "C10: https://pickleball-scheduler-nfcpq8040-pickleball-scheduler.vercel.app/login",
+    "C10: https://pickleball-scheduler-nfcpq8040-pickleball-scheduler.vercel.app/my-club",
+    "C11: https://pickleball-scheduler-nfcpq8040-pickleball-scheduler.vercel.app/login",
+    "C11: https://pickleball-scheduler-nfcpq8040-pickleball-scheduler.vercel.app/login",
+    "C11: https://pickleball-scheduler-nfcpq8040-pickleball-scheduler.vercel.app/my-club",
+    "C11: https://pickleball-scheduler-nfcpq8040-pickleball-scheduler.vercel.app/my-club",
+    "C11: https://pickleball-scheduler-nfcpq8040-pickleball-scheduler.vercel.app/my-club/requests",
+    "C11: https://pickleball-scheduler-nfcpq8040-pickleball-scheduler.vercel.app/my-club/requests",
+    "C11: https://pickleball-scheduler-nfcpq8040-pickleball-scheduler.vercel.app/discover-clubs",
+    "C11: https://pickleball-scheduler-nfcpq8040-pickleball-scheduler.vercel.app/discover-clubs",
+    "C11: https://pickleball-scheduler-nfcpq8040-pickleball-scheduler.vercel.app/manage/clubs",
+    "C11: https://pickleball-scheduler-nfcpq8040-pickleball-scheduler.vercel.app/manage/clubs",
+    "C11: https://pickleball-scheduler-nfcpq8040-pickleball-scheduler.vercel.app/discover-clubs",
+    "C11: https://pickleball-scheduler-nfcpq8040-pickleball-scheduler.vercel.app/platform/clubs",
+    "C11: https://pickleball-scheduler-nfcpq8040-pickleball-scheduler.vercel.app/platform/clubs",
+    "C11: https://pickleball-scheduler-nfcpq8040-pickleball-scheduler.vercel.app/discover-clubs",
+    "C12: https://pickleball-scheduler-nfcpq8040-pickleball-scheduler.vercel.app/login",
+    "C12: https://pickleball-scheduler-nfcpq8040-pickleball-scheduler.vercel.app/login",
+    "C12: https://pickleball-scheduler-nfcpq8040-pickleball-scheduler.vercel.app/my-club",
+    "C12: https://pickleball-scheduler-nfcpq8040-pickleball-scheduler.vercel.app/platform/clubs",
+    "C12: https://pickleball-scheduler-nfcpq8040-pickleball-scheduler.vercel.app/platform/clubs",
+    "C12: https://pickleball-scheduler-nfcpq8040-pickleball-scheduler.vercel.app/discover-clubs"
+  ],
+  "consoleFindings": [
+    "C1 console: Failed to load resource: the server responded with a status of 404 ()",
+    "C1 console: Failed to load resource: the server responded with a status of 404 ()",
+    "C6 console: Failed to load resource: the server responded with a status of 404 ()",
+    "C6 console: Failed to load resource: the server responded with a status of 404 ()",
+    "C6 console: Failed to load resource: the server responded with a status of 404 ()",
+    "C6 console: Failed to load resource: the server responded with a status of 404 ()",
+    "C6 console: Failed to load resource: the server responded with a status of 404 ()",
+    "C6 console: Failed to load resource: the server responded with a status of 404 ()",
+    "C6 console: Failed to load resource: the server responded with a status of 404 ()",
+    "C6 console: Failed to load resource: the server responded with a status of 404 ()",
+    "C6 console: Failed to load resource: the server responded with a status of 404 ()"
+  ],
+  "networkFindings": [],
+  "verdict": "FAIL",
+  "summary": {
+    "pass": 10,
+    "partial": 1,
+    "fail": 1,
+    "total": 12
+  },
+  "pageErrors": 0,
+  "blockers": [
+    "Case 8: staging thiếu SUPER_ADMIN + active club_members seed",
+    "Case 9: desktop tenant switch cần xác minh thủ công nếu picker không tự động"
+  ]
+}

@@ -6,6 +6,7 @@ import { MENU_GROUPS } from "../config/navigationConfig.js";
 import { filterMenuGroups } from "../auth/menuAccess.js";
 import { useAuth } from "../context/AuthContext.jsx";
 import { useClubMenuScope } from "../features/club/navigation/useClubMenuScope.js";
+import { useIsMobile } from "../features/mobile/hooks/useIsMobile.js";
 import NavMenuShell from "./nav/NavMenuShell.jsx";
 import SidebarFooter from "./shell/SidebarFooter.jsx";
 import { APP_PRODUCT_NAME } from "../config/appVersion.js";
