@@ -1,0 +1,73 @@
+{
+  "phase": "CC-02D",
+  "generatedAt": "2026-07-11T17:05:00.000Z",
+  "stagingProjectRef": "qyewbxjsiiyufanzcjcq",
+  "stagingProjectName": "pickleball-scheduler-stagin",
+  "productionProjectRef": "expuvcohlcjzvrrauvud",
+  "productionProjectName": "pickleball-scheduler-production",
+  "envSource": "Supabase MCP project-0-pickleball-scheduler-supabase-staging + docs/v5/V5_SAAS_COMPLETION_ROADMAP.md",
+  "productionMigration": "NOT APPLIED",
+  "productionDeployment": "NOT DEPLOYED",
+  "featureFlagsProduction": "OFF",
+  "migrations": [
+    {
+      "order": 1,
+      "name": "cc02_rating_v2_schema",
+      "file": "docs/competition-core/supabase-cc02-rating-v2.sql",
+      "result": "PASS",
+      "objectsCreated": [
+        "player_ratings",
+        "rating_history",
+        "rating_proposals",
+        "rating_confidence_events"
+      ]
+    },
+    {
+      "order": 2,
+      "name": "cc02c_rating_durability",
+      "file": "docs/competition-core/supabase-cc02c-rating-durability.sql",
+      "result": "PASS",
+      "objectsCreated": [
+        "rating_applications",
+        "competition_core_apply_match_rating_v2"
+      ]
+    },
+    {
+      "order": 3,
+      "name": "cc02d_staging_hardening",
+      "file": "docs/competition-core/supabase-cc02d-staging-hardening.sql",
+      "result": "PASS",
+      "objectsCreated": [
+        "player_ratings_competition_match_count_nonneg",
+        "player_ratings_public_skill_range",
+        "rating_history RLS",
+        "RPC advisory lock + authenticated grant"
+      ]
+    },
+    {
+      "order": 4,
+      "name": "cc02d_rpc_auth_postgres_bypass",
+      "file": "docs/competition-core/supabase-cc02d-staging-hardening.sql",
+      "result": "PASS",
+      "note": "Allow postgres/service_role for staging SQL verification"
+    }
+  ],
+  "verification": {
+    "player_ratings_rls": true,
+    "rating_history_rls": true,
+    "rating_applications_rls": true,
+    "unique_player_tenant": true,
+    "unique_match_player_rating_type": true,
+    "rpc_first_apply": "PASS",
+    "rpc_idempotent_reapply": "PASS",
+    "rpc_rollback_missing_player": "PASS",
+    "unique_duplicate_insert_blocked": "PASS",
+    "public_skill_unchanged_after_rpc": "PASS",
+    "rating_history_before_after_delta": "PASS",
+    "rls_rating_applications_insert_blocked": "PASS",
+    "rls_anon_update_blocked": "PASS",
+    "rls_authenticated_player_update": "PARTIAL — policy using(false); live JWT test deferred"
+  },
+  "testFixtureCleanup": "PASS — cc02d-tenant-test rows deleted",
+  "verdict": "CONDITIONAL PASS"
+}

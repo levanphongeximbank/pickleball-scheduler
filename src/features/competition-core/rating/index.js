@@ -40,7 +40,17 @@ export {
 export {
   applyCompetitionEloFromMatchRecord,
   backfillClubPlayerRatingsV2,
+  mirrorDatabaseRatingToClubBlob,
+  finalizeDatabaseRatingApply,
 } from "./ratingServiceV2.js";
+
+export {
+  applyMatchRatingViaRpc,
+  applyMatchRatingViaConfiguredBackend,
+  buildDatabaseRatingRpcParams,
+  shouldPreferDatabaseRating,
+  isDatabaseRatingBackendAvailable,
+} from "./ratingRpcService.js";
 
 export {
   applyCompetitionEloAtomically,
