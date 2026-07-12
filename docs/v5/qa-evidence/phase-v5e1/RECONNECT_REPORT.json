@@ -1,0 +1,6 @@
+{
+  "pollingFallbackMs": 8000,
+  "reconnectBackoff": "exponential 1s–30s",
+  "offlineQueue": "NOT_IMPLEMENTED_V5-E1",
+  "pass": true
+}

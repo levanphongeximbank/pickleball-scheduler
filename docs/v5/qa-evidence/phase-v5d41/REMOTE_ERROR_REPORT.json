@@ -1,0 +1,25 @@
+{
+  "pass": true,
+  "results": [
+    {
+      "id": "remote_error_displayed",
+      "pass": true,
+      "detail": "Lỗi kết nối remote — tải lại để thử lại"
+    },
+    {
+      "id": "remote_error_no_local_fallback",
+      "pass": true,
+      "detail": "no prototype fixture select"
+    },
+    {
+      "id": "remote_error_actions_disabled",
+      "pass": true,
+      "detail": "start disabled=true"
+    },
+    {
+      "id": "remote_error_recovery",
+      "pass": true,
+      "detail": "reload restored remote=true"
+    }
+  ]
+}

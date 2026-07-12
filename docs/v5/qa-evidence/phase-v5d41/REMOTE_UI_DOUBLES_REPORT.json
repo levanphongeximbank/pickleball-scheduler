@@ -1,0 +1,68 @@
+{
+  "pass": true,
+  "replayPass": true,
+  "results": [
+    {
+      "id": "doubles_four_players",
+      "pass": true,
+      "detail": "4 players"
+    },
+    {
+      "id": "doubles_remote_badge",
+      "pass": true,
+      "detail": "remote mode"
+    },
+    {
+      "id": "doubles_start_match",
+      "pass": true,
+      "detail": "scores 0-0"
+    },
+    {
+      "id": "doubles_serving_team_wins",
+      "pass": true,
+      "detail": "team A score 1"
+    },
+    {
+      "id": "doubles_after_win_server_marked",
+      "pass": true,
+      "detail": "Nguyễn Văn A"
+    },
+    {
+      "id": "doubles_server1_lost",
+      "pass": true,
+      "detail": "no extra point"
+    },
+    {
+      "id": "doubles_server2_sideout",
+      "pass": true,
+      "detail": "side-out no point"
+    },
+    {
+      "id": "doubles_new_serving_team",
+      "pass": true,
+      "detail": "team B scores"
+    },
+    {
+      "id": "doubles_switch_ends",
+      "pass": true,
+      "detail": "confirmed"
+    },
+    {
+      "id": "doubles_undo",
+      "pass": true,
+      "detail": "{\"teamA\":1,\"teamB\":1}"
+    },
+    {
+      "id": "doubles_reload_persistence",
+      "pass": true,
+      "detail": "{\"score\":{\"teamA\":1,\"teamB\":1},\"snap\":{\"matchStateId\":\"REFEREE_V5_TEST_TENANT_A::REFEREE_V5_TEST_TOURNAMENT_A::REFEREE_V5_TEST_MATCH_DOUBLES\",\"version\":7,\"sequence\":7,\"stateHash\":\"h6ba4417c\",\"status\":\"in_progress\",\"lockedAt\":null,\"eventCount\":7,\"mutationCount\":7,\"completedMutations\":7,\"revisionCount\":0,\"outboxCount\":0}}"
+    },
+    {
+      "id": "doubles_replay_hash",
+      "pass": true,
+      "detail": "{\"snapshotHash\":\"h6ba4417c\",\"rebuiltHash\":\"h6ba4417c\",\"version\":7,\"sequence\":7}"
+    }
+  ],
+  "baseUrl": "http://localhost:5174",
+  "edgeUrl": "https://qyewbxjsiiyufanzcjcq.supabase.co/functions/v1/referee-v5-match"
+}

@@ -1,0 +1,40 @@
+{
+  "pass": true,
+  "results": [
+    {
+      "id": "realtime_subscribed",
+      "pass": true,
+      "detail": "both contexts loaded workspace"
+    },
+    {
+      "id": "r1_start_sync",
+      "pass": true,
+      "detail": "{\"teamA\":0,\"teamB\":0}"
+    },
+    {
+      "id": "r1_a_rally_b_auto_update",
+      "pass": true,
+      "detail": "2117ms"
+    },
+    {
+      "id": "r1_b_no_manual_reload",
+      "pass": true,
+      "detail": "B updated without reload"
+    },
+    {
+      "id": "r1_switch_ends_sync",
+      "pass": true,
+      "detail": "switch ends propagated"
+    },
+    {
+      "id": "r1_undo_sync",
+      "pass": true,
+      "detail": "undo propagated"
+    },
+    {
+      "id": "r1_b_no_spurious_events",
+      "pass": true,
+      "detail": "before=4 after=4"
+    }
+  ]
+}

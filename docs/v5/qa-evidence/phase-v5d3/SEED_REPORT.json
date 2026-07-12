@@ -1,0 +1,47 @@
+{
+  "stagingRef": "qyewbxjsiiyufanzcjcq",
+  "prefix": "REFEREE_V5_TEST_",
+  "tenants": [
+    "REFEREE_V5_TEST_TENANT_A",
+    "REFEREE_V5_TEST_TENANT_B"
+  ],
+  "tournaments": [
+    "REFEREE_V5_TEST_TOURNAMENT_A",
+    "REFEREE_V5_TEST_TOURNAMENT_B"
+  ],
+  "matches": [
+    "REFEREE_V5_TEST_MATCH_DOUBLES",
+    "REFEREE_V5_TEST_MATCH_SINGLES",
+    "REFEREE_V5_TEST_MATCH_EXPIRED",
+    "REFEREE_V5_TEST_MATCH_TENANT_B"
+  ],
+  "assignments": {
+    "active": [
+      "REFEREE_V5_TEST_MATCH_DOUBLES",
+      "REFEREE_V5_TEST_MATCH_SINGLES",
+      "REFEREE_V5_TEST_MATCH_TENANT_B"
+    ],
+    "expired": [
+      "REFEREE_V5_TEST_MATCH_EXPIRED"
+    ],
+    "revoked": [
+      {
+        "matchId": "REFEREE_V5_TEST_MATCH_DOUBLES",
+        "userId": "7b381912-2190-415c-b099-6b1e87567b7a"
+      }
+    ],
+    "unassigned": [
+      {
+        "matchId": "REFEREE_V5_TEST_MATCH_SINGLES",
+        "userId": "7b381912-2190-415c-b099-6b1e87567b7a"
+      }
+    ]
+  },
+  "userIds": {
+    "refereeA": "13e0968b-53c5-4ba6-8ae0-dce12b1faf9c",
+    "player": "7b381912-2190-415c-b099-6b1e87567b7a",
+    "refereeB": "e54abeac-6619-477a-9eb4-b64b05c1ddba"
+  },
+  "applied": true,
+  "timestamp": "2026-07-12T14:56:43.279Z"
+}

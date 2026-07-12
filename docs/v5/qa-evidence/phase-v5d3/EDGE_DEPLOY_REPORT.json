@@ -1,0 +1,20 @@
+{
+  "stagingProjectRef": "qyewbxjsiiyufanzcjcq",
+  "productionProjectRef": "expuvcohlcjzvrrauvud",
+  "functionName": "referee-v5-match",
+  "architecture": "single-function-action-router",
+  "actions": [
+    "get-state",
+    "apply-command",
+    "finalize"
+  ],
+  "deployedAt": "2026-07-12T14:34:43.517Z",
+  "functionUrl": "https://qyewbxjsiiyufanzcjcq.supabase.co/functions/v1/referee-v5-match",
+  "bundleChecksum": "f8db988f70a7031b7be2c9097b14638c3593e4f76816909459b89dadb24b1763",
+  "deploymentId": "83d2ed84-6dff-464a-8157-9baa5b66e7a7",
+  "verified": true,
+  "secrets": {
+    "SUPABASE_ACCESS_TOKEN": "PRESENT",
+    "SUPABASE_SERVICE_ROLE_KEY": "CONFIGURED"
+  }
+}

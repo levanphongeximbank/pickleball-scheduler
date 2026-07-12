@@ -1,0 +1,30 @@
+{
+  "allPass": true,
+  "results": [
+    {
+      "id": "fault_injection_browser_edge_blocked",
+      "pass": true,
+      "detail": "edge ignores client fault — ok=false code=VALIDATION_FAILED"
+    },
+    {
+      "id": "fault_injection_authenticated_rpc_blocked",
+      "pass": true,
+      "detail": "permission denied for function referee_v5_commit_match_transition"
+    },
+    {
+      "id": "fault_injection_test_namespace_only",
+      "pass": true,
+      "detail": "{\"ok\":false,\"code\":\"VALIDATION_FAILED\",\"error\":\"fault_test_scope\"}"
+    },
+    {
+      "id": "fault_injection_disabled_after_tests",
+      "pass": true,
+      "detail": "stagingFault=null"
+    }
+  ],
+  "summary": {
+    "browserBlocked": true,
+    "namespaceRestricted": true,
+    "disabledAfter": true
+  }
+}

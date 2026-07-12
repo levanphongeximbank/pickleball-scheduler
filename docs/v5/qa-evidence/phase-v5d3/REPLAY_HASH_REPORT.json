@@ -1,0 +1,10 @@
+{
+  "undoPass": true,
+  "eventRevertedAppended": true,
+  "originalEventsPreserved": true,
+  "snapshotHash": "h6b1731c1",
+  "replayHash": "h6b1731c1",
+  "replayMatchesSnapshot": true,
+  "versionAfterUndo": 5,
+  "sequenceAfterUndo": 5
+}

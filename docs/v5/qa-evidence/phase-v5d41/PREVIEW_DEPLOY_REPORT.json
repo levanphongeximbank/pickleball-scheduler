@@ -1,0 +1,13 @@
+{
+  "stagingRef": "qyewbxjsiiyufanzcjcq",
+  "productionDeployment": "NOT_PERFORMED",
+  "remoteMode": "ENABLED_ON_PREVIEW_ONLY",
+  "viteRefereeV5Enabled": true,
+  "viteRefereeV5DataMode": "remote",
+  "deployAttempted": true,
+  "deployPass": true,
+  "previewUrl": "https://pickleball-scheduler-el61wvjed-pickleball-scheduler.vercel.app",
+  "browserE2eOnPreview": "REQUIRES_VERCEL_AUTOMATION_BYPASS_SECRET",
+  "browserE2eEvidence": "local Vite remote mode — REMOTE_UI_* reports",
+  "error": null
+}

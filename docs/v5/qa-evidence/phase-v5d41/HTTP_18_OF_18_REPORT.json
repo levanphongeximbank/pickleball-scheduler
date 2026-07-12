@@ -1,0 +1,160 @@
+{
+  "passCount": 18,
+  "total": 18,
+  "allPass": true,
+  "results": [
+    {
+      "id": "edge_function_reachable",
+      "pass": true,
+      "expected": "OPTIONS 200/204",
+      "actual": 200,
+      "method": "HTTP OPTIONS"
+    },
+    {
+      "id": "no_authorization_header",
+      "pass": true,
+      "expected": 401,
+      "actual": 401,
+      "method": "HTTP POST without Authorization"
+    },
+    {
+      "id": "invalid_token_rejected",
+      "pass": true,
+      "expected": 401,
+      "actual": 401,
+      "method": "HTTP POST expired JWT"
+    },
+    {
+      "id": "auth_referee_a",
+      "pass": true,
+      "expected": "token present",
+      "actual": "present",
+      "method": "signInStagingUser"
+    },
+    {
+      "id": "fake_actor_tenant_ignored",
+      "pass": true,
+      "expected": "fake actor rejected or ignored; verified actor used on success",
+      "actual": "VALIDATION_FAILED",
+      "method": "apply-command with fake actorId in body"
+    },
+    {
+      "id": "fake_actor_never_trusted",
+      "pass": true,
+      "expected": "fake actor rejected",
+      "actual": "VALIDATION_FAILED",
+      "method": "fake actor rejected before commit"
+    },
+    {
+      "id": "unassigned_referee_denied",
+      "pass": true,
+      "expected": "REFEREE_NOT_ASSIGNED",
+      "actual": "REFEREE_NOT_ASSIGNED",
+      "method": "player get-state singles (no assignment)"
+    },
+    {
+      "id": "revoked_assignment_denied",
+      "pass": true,
+      "expected": "ASSIGNMENT_REVOKED or NOT_ASSIGNED",
+      "actual": "ASSIGNMENT_REVOKED",
+      "method": "player apply on doubles (revoked row)"
+    },
+    {
+      "id": "expired_assignment_denied",
+      "pass": true,
+      "expected": "ASSIGNMENT_EXPIRED",
+      "actual": "ASSIGNMENT_EXPIRED",
+      "method": "get-state expired match"
+    },
+    {
+      "id": "cross_tenant_read_blocked_as_expected",
+      "pass": true,
+      "expected": "denied",
+      "actual": "REFEREE_NOT_ASSIGNED",
+      "method": "tenant A reads tenant B"
+    },
+    {
+      "id": "internal_rpc_browser_call_blocked_as_expected",
+      "pass": true,
+      "expected": "permission denied",
+      "actual": "permission denied for function referee_v5_commit_match_transition",
+      "method": "authenticated commit rpc"
+    },
+    {
+      "id": "http_commands_applied",
+      "pass": true,
+      "expected": "all commands ok",
+      "actual": "all pass",
+      "method": "Edge apply-command sequence"
+    },
+    {
+      "id": "undo_event_reverted_appended",
+      "pass": true,
+      "expected": "EVENT_REVERTED",
+      "actual": "UNDO_LAST_EVENT",
+      "method": "undo event row"
+    },
+    {
+      "id": "undo_replay_snapshot_consistency",
+      "pass": true,
+      "expected": "hash match",
+      "actual": {
+        "undoPass": true,
+        "eventRevertedAppended": true,
+        "originalEventsPreserved": true,
+        "snapshotHash": "h6b1731c1",
+        "replayHash": "h6b1731c1",
+        "replayMatchesSnapshot": true,
+        "versionAfterUndo": 5,
+        "sequenceAfterUndo": 5
+      },
+      "method": "replay vs snapshot"
+    },
+    {
+      "id": "c1_same_version_conflict",
+      "pass": true,
+      "expected": "one ok one CONFLICT",
+      "actual": {
+        "b": "MATCH_STATE_CONFLICT"
+      },
+      "method": "parallel apply"
+    },
+    {
+      "id": "c2_same_idempotency_duplicate",
+      "pass": true,
+      "expected": "both ok duplicate, one event, one version step",
+      "actual": {
+        "duplicate": {
+          "b": true
+        },
+        "eventsBefore": 6,
+        "eventsAfter": 7,
+        "version": 7
+      },
+      "method": "parallel same idempotency"
+    },
+    {
+      "id": "c3_idempotency_hash_mismatch",
+      "pass": true,
+      "expected": "IDEMPOTENCY_KEY_REUSE_MISMATCH",
+      "actual": "IDEMPOTENCY_KEY_REUSE_MISMATCH",
+      "method": "reuse key different command"
+    },
+    {
+      "id": "c3_state_unchanged_on_mismatch",
+      "pass": true,
+      "expected": "only first command applied",
+      "actual": {
+        "before": {
+          "v": 7,
+          "s": 7
+        },
+        "after": {
+          "v": 8,
+          "s": 8
+        }
+      },
+      "method": "snapshot unchanged after mismatch retry"
+    }
+  ]
+}

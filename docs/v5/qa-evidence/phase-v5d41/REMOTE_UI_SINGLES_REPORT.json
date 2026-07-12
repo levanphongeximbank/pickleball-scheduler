@@ -1,0 +1,42 @@
+{
+  "pass": true,
+  "replayPass": true,
+  "results": [
+    {
+      "id": "singles_two_players",
+      "pass": true,
+      "detail": "2 players"
+    },
+    {
+      "id": "singles_no_server_number",
+      "pass": true,
+      "detail": "no S1/S2"
+    },
+    {
+      "id": "singles_rally",
+      "pass": true,
+      "detail": "point awarded"
+    },
+    {
+      "id": "singles_switch_ends",
+      "pass": true,
+      "detail": "server preserved"
+    },
+    {
+      "id": "singles_undo",
+      "pass": true,
+      "detail": "undo switch ends"
+    },
+    {
+      "id": "singles_reload",
+      "pass": true,
+      "detail": "persisted"
+    },
+    {
+      "id": "singles_replay_hash",
+      "pass": true,
+      "detail": "{\"snapshotHash\":\"h7ed0d238\",\"rebuiltHash\":\"h7ed0d238\",\"version\":4,\"sequence\":4}"
+    }
+  ],
+  "baseUrl": "http://localhost:5174"
+}

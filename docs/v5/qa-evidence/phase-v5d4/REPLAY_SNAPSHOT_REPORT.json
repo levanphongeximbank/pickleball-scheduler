@@ -1,0 +1,35 @@
+{
+  "allPass": true,
+  "results": [
+    {
+      "id": "doubles_replay_hash",
+      "pass": true,
+      "detail": "{\"snapshotHash\":\"h6fb34402\",\"rebuiltHash\":\"h6fb34402\"}"
+    },
+    {
+      "id": "doubles_initial_state_integrity",
+      "pass": true,
+      "detail": "first=START_MATCH hasInitial=true"
+    },
+    {
+      "id": "doubles_append_only",
+      "pass": true,
+      "detail": "eventCount=6"
+    },
+    {
+      "id": "singles_replay_hash",
+      "pass": true,
+      "detail": "{\"snapshotHash\":\"h64321cc5\",\"rebuiltHash\":\"h64321cc5\"}"
+    },
+    {
+      "id": "singles_initial_state_integrity",
+      "pass": true,
+      "detail": "first=START_MATCH hasInitial=true"
+    },
+    {
+      "id": "singles_append_only",
+      "pass": true,
+      "detail": "eventCount=5"
+    }
+  ]
+}

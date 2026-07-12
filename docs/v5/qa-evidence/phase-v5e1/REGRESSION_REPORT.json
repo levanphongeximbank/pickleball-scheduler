@@ -1,0 +1,37 @@
+{
+  "stepResults": [
+    {
+      "step": "apply-e1-sql",
+      "status": "PASS"
+    },
+    {
+      "step": "e1-unit",
+      "status": "PASS"
+    },
+    {
+      "step": "referee-v5-unit",
+      "status": "PASS"
+    },
+    {
+      "step": "http-harness",
+      "status": "PASS"
+    },
+    {
+      "step": "e1-browser-realtime",
+      "status": "PASS"
+    },
+    {
+      "step": "legacy-referee",
+      "status": "PASS"
+    },
+    {
+      "step": "build",
+      "status": "PASS"
+    },
+    {
+      "step": "referee-scoped-lint",
+      "status": "PASS"
+    }
+  ],
+  "failures": 0
+}
