@@ -68,3 +68,23 @@ export function getSupabaseEnv() {
     anonKey: String(process.env.VITE_SUPABASE_ANON_KEY || "").trim(),
   };
 }
+
+const STAGING_REF = "qyewbxjsiiyufanzcjcq";
+
+export function getStagingSupabaseEnv() {
+  loadProjectEnv();
+
+  const url = String(
+    process.env.STAGING_SUPABASE_URL || process.env.VITE_SUPABASE_URL || ""
+  ).trim();
+  const anonKey = String(
+    process.env.STAGING_SUPABASE_ANON_KEY || process.env.VITE_SUPABASE_ANON_KEY || ""
+  ).trim();
+  const serviceKey = String(process.env.STAGING_SUPABASE_SERVICE_ROLE_KEY || "").trim();
+
+  if (url && !url.includes(STAGING_REF)) {
+    throw new Error(`Refusing non-staging Supabase URL (expected ref ${STAGING_REF})`);
+  }
+
+  return { url, anonKey, serviceKey, stagingRef: STAGING_REF };
+}

@@ -1,0 +1,278 @@
+[
+  {
+    "check_id": "V1.team_tournament_dreambreaker_states.column_exists",
+    "expected": "version column exists",
+    "actual": "exists",
+    "status": "PASS"
+  },
+  {
+    "check_id": "V1.team_tournament_dreambreaker_states.data_type_integer",
+    "expected": "integer",
+    "actual": "integer",
+    "status": "PASS"
+  },
+  {
+    "check_id": "V1.team_tournament_dreambreaker_states.default_1",
+    "expected": "default = 1",
+    "actual": "1",
+    "status": "PASS"
+  },
+  {
+    "check_id": "V1.team_tournament_dreambreaker_states.no_invalid_version_rows",
+    "expected": "0 rows with version < 1",
+    "actual": "0",
+    "status": "PASS"
+  },
+  {
+    "check_id": "V1.team_tournament_dreambreaker_states.no_null_version_rows",
+    "expected": "0 null version rows",
+    "actual": "0",
+    "status": "PASS"
+  },
+  {
+    "check_id": "V1.team_tournament_dreambreaker_states.not_null",
+    "expected": "NO",
+    "actual": "NO",
+    "status": "PASS"
+  },
+  {
+    "check_id": "V1.team_tournament_forfeit_events.column_exists",
+    "expected": "version column exists",
+    "actual": "exists",
+    "status": "PASS"
+  },
+  {
+    "check_id": "V1.team_tournament_forfeit_events.data_type_integer",
+    "expected": "integer",
+    "actual": "integer",
+    "status": "PASS"
+  },
+  {
+    "check_id": "V1.team_tournament_forfeit_events.default_1",
+    "expected": "default = 1",
+    "actual": "1",
+    "status": "PASS"
+  },
+  {
+    "check_id": "V1.team_tournament_forfeit_events.no_invalid_version_rows",
+    "expected": "0 rows with version < 1",
+    "actual": "0",
+    "status": "PASS"
+  },
+  {
+    "check_id": "V1.team_tournament_forfeit_events.no_null_version_rows",
+    "expected": "0 null version rows",
+    "actual": "0",
+    "status": "PASS"
+  },
+  {
+    "check_id": "V1.team_tournament_forfeit_events.not_null",
+    "expected": "NO",
+    "actual": "NO",
+    "status": "PASS"
+  },
+  {
+    "check_id": "V1.team_tournament_lineups.column_exists",
+    "expected": "version column exists",
+    "actual": "exists",
+    "status": "PASS"
+  },
+  {
+    "check_id": "V1.team_tournament_lineups.data_type_integer",
+    "expected": "integer",
+    "actual": "integer",
+    "status": "PASS"
+  },
+  {
+    "check_id": "V1.team_tournament_lineups.default_1",
+    "expected": "default = 1",
+    "actual": "1",
+    "status": "PASS"
+  },
+  {
+    "check_id": "V1.team_tournament_lineups.no_invalid_version_rows",
+    "expected": "0 rows with version < 1",
+    "actual": "0",
+    "status": "PASS"
+  },
+  {
+    "check_id": "V1.team_tournament_lineups.no_null_version_rows",
+    "expected": "0 null version rows",
+    "actual": "0",
+    "status": "PASS"
+  },
+  {
+    "check_id": "V1.team_tournament_lineups.not_null",
+    "expected": "NO",
+    "actual": "NO",
+    "status": "PASS"
+  },
+  {
+    "check_id": "V1.team_tournament_matchups.column_exists",
+    "expected": "version column exists",
+    "actual": "exists",
+    "status": "PASS"
+  },
+  {
+    "check_id": "V1.team_tournament_matchups.data_type_integer",
+    "expected": "integer",
+    "actual": "integer",
+    "status": "PASS"
+  },
+  {
+    "check_id": "V1.team_tournament_matchups.default_1",
+    "expected": "default = 1",
+    "actual": "1",
+    "status": "PASS"
+  },
+  {
+    "check_id": "V1.team_tournament_matchups.no_invalid_version_rows",
+    "expected": "0 rows with version < 1",
+    "actual": "0",
+    "status": "PASS"
+  },
+  {
+    "check_id": "V1.team_tournament_matchups.no_null_version_rows",
+    "expected": "0 null version rows",
+    "actual": "0",
+    "status": "PASS"
+  },
+  {
+    "check_id": "V1.team_tournament_matchups.not_null",
+    "expected": "NO",
+    "actual": "NO",
+    "status": "PASS"
+  },
+  {
+    "check_id": "V1.team_tournament_standings.column_exists",
+    "expected": "version column exists",
+    "actual": "exists",
+    "status": "PASS"
+  },
+  {
+    "check_id": "V1.team_tournament_standings.data_type_integer",
+    "expected": "integer",
+    "actual": "integer",
+    "status": "PASS"
+  },
+  {
+    "check_id": "V1.team_tournament_standings.default_1",
+    "expected": "default = 1",
+    "actual": "1",
+    "status": "PASS"
+  },
+  {
+    "check_id": "V1.team_tournament_standings.no_invalid_version_rows",
+    "expected": "0 rows with version < 1",
+    "actual": "0",
+    "status": "PASS"
+  },
+  {
+    "check_id": "V1.team_tournament_standings.no_null_version_rows",
+    "expected": "0 null version rows",
+    "actual": "0",
+    "status": "PASS"
+  },
+  {
+    "check_id": "V1.team_tournament_standings.not_null",
+    "expected": "NO",
+    "actual": "NO",
+    "status": "PASS"
+  },
+  {
+    "check_id": "V1.team_tournament_sub_matches.column_exists",
+    "expected": "version column exists",
+    "actual": "exists",
+    "status": "PASS"
+  },
+  {
+    "check_id": "V1.team_tournament_sub_matches.data_type_integer",
+    "expected": "integer",
+    "actual": "integer",
+    "status": "PASS"
+  },
+  {
+    "check_id": "V1.team_tournament_sub_matches.default_1",
+    "expected": "default = 1",
+    "actual": "1",
+    "status": "PASS"
+  },
+  {
+    "check_id": "V1.team_tournament_sub_matches.no_invalid_version_rows",
+    "expected": "0 rows with version < 1",
+    "actual": "0",
+    "status": "PASS"
+  },
+  {
+    "check_id": "V1.team_tournament_sub_matches.no_null_version_rows",
+    "expected": "0 null version rows",
+    "actual": "0",
+    "status": "PASS"
+  },
+  {
+    "check_id": "V1.team_tournament_sub_matches.not_null",
+    "expected": "NO",
+    "actual": "NO",
+    "status": "PASS"
+  },
+  {
+    "check_id": "V1.team_tournament_teams.column_exists",
+    "expected": "no version column (not in TT-1B SSOT)",
+    "actual": "absent (OK)",
+    "status": "PASS"
+  },
+  {
+    "check_id": "V1.team_tournament_teams.data_type_integer",
+    "expected": "integer",
+    "actual": "missing",
+    "status": "PASS"
+  },
+  {
+    "check_id": "V1.team_tournament_teams.default_1",
+    "expected": "default = 1",
+    "actual": "missing",
+    "status": "PASS"
+  },
+  {
+    "check_id": "V1.team_tournament_teams.not_null",
+    "expected": "NO",
+    "actual": "missing",
+    "status": "PASS"
+  },
+  {
+    "check_id": "V1.team_tournaments.column_exists",
+    "expected": "version column exists",
+    "actual": "exists",
+    "status": "PASS"
+  },
+  {
+    "check_id": "V1.team_tournaments.data_type_integer",
+    "expected": "integer",
+    "actual": "integer",
+    "status": "PASS"
+  },
+  {
+    "check_id": "V1.team_tournaments.default_1",
+    "expected": "default = 1",
+    "actual": "1",
+    "status": "PASS"
+  },
+  {
+    "check_id": "V1.team_tournaments.no_invalid_version_rows",
+    "expected": "0 rows with version < 1",
+    "actual": "0",
+    "status": "PASS"
+  },
+  {
+    "check_id": "V1.team_tournaments.no_null_version_rows",
+    "expected": "0 null version rows",
+    "actual": "0",
+    "status": "PASS"
+  },
+  {
+    "check_id": "V1.team_tournaments.not_null",
+    "expected": "NO",
+    "actual": "NO",
+    "status": "PASS"
+  }
+]

@@ -1,0 +1,480 @@
+{
+  "phase": "TT-1B.5",
+  "generatedAt": "2026-07-11T22:25:39.446Z",
+  "environment": {
+    "ref": "qyewbxjsiiyufanzcjcq",
+    "url": "https://qyewbxjsiiyufanzcjcq.supabase.co",
+    "hasAnonKey": false,
+    "hasServiceKey": true,
+    "branch": "feature/competition-core-standardization"
+  },
+  "commitSha": "15b5efb78839e92725177314682e16d53cc3eaca",
+  "preMigration": {
+    "tables": {
+      "team_tournaments": {
+        "exists": true,
+        "count": 1
+      },
+      "team_tournament_teams": {
+        "exists": true,
+        "count": 2
+      },
+      "team_tournament_team_members": {
+        "exists": true,
+        "count": 16
+      },
+      "team_tournament_disciplines": {
+        "exists": true,
+        "count": 4
+      },
+      "team_tournament_matchups": {
+        "exists": true,
+        "count": 1
+      },
+      "team_tournament_lineups": {
+        "exists": true,
+        "count": 2
+      },
+      "team_tournament_lineup_entries": {
+        "exists": true,
+        "count": 10
+      },
+      "team_tournament_sub_matches": {
+        "exists": true,
+        "count": 4
+      },
+      "team_tournament_standings": {
+        "exists": true,
+        "count": 2
+      },
+      "team_tournament_command_log": {
+        "exists": true,
+        "count": 15
+      },
+      "team_tournament_lineup_revisions": {
+        "exists": true,
+        "count": 3
+      },
+      "team_tournament_dreambreaker_states": {
+        "exists": true,
+        "count": 0
+      },
+      "team_tournament_forfeit_events": {
+        "exists": true,
+        "count": 0
+      },
+      "team_tournament_sync_mismatch": {
+        "exists": true,
+        "count": 0
+      }
+    },
+    "rpcs": {
+      "team_tournament_get_setup": "present",
+      "team_tournament_get_visible_lineups": "present",
+      "team_tournament_apply_forfeit": "present",
+      "team_tournament_begin_command": "present"
+    }
+  },
+  "sqlReview": {
+    "no_drop_table": "PASS",
+    "no_truncate": "PASS",
+    "idempotent_ddl": "PASS",
+    "pgcrypto": "PASS",
+    "version_columns": "PASS",
+    "command_log_unique": "PASS",
+    "lineup_select_revoked": "PASS",
+    "payload_hash_extensions_digest": "PASS",
+    "search_path_set": "PASS",
+    "security_definer": "PASS",
+    "overall": "PASS"
+  },
+  "migrationApply": {
+    "status": "SKIPPED",
+    "reason": "No --apply-sql flag; thiếu STAGING_SUPABASE_DB_URL / SUPABASE_ACCESS_TOKEN",
+    "manual": "docs/v5/PHASE_TT1B_TEAM_TOURNAMENT_SSOT.sql → SQL Editor staging qyewbxjsiiyufanzcjcq"
+  },
+  "verificationQueries": [
+    {
+      "id": "V2_command_log_table",
+      "expected": "Có",
+      "actual": "PASS",
+      "result": "PASS",
+      "detail": ""
+    },
+    {
+      "id": "V2_lineup_revisions_table",
+      "expected": "Có",
+      "actual": "PASS",
+      "result": "PASS",
+      "detail": ""
+    },
+    {
+      "id": "V4_rpc_get_visible_lineups",
+      "expected": "Có",
+      "actual": "PASS",
+      "result": "PASS",
+      "detail": ""
+    },
+    {
+      "id": "V4_rpc_apply_forfeit",
+      "expected": "Có",
+      "actual": "PASS",
+      "result": "PASS",
+      "detail": ""
+    },
+    {
+      "id": "V6_version_column_readable",
+      "expected": "Có",
+      "actual": "PASS",
+      "result": "PASS",
+      "detail": ""
+    }
+  ],
+  "rlsSecurityMatrix": [
+    {
+      "id": "CaptainA-direct-select-opponent",
+      "expected": "Blocked/0 rows",
+      "actual": "0 rows",
+      "result": "PASS",
+      "detail": ""
+    }
+  ],
+  "rpcVisibilityMatrix": [
+    {
+      "id": "BTC-visible-lineups",
+      "expected": "RPC response",
+      "actual": "ok",
+      "result": "PASS",
+      "detail": "{\"ownSelections\":\"null\",\"opponentSelections\":\"present\",\"matchupStatus\":\"locked\"}"
+    },
+    {
+      "id": "CaptainA-visible-lineups",
+      "expected": "RPC response",
+      "actual": "ok",
+      "result": "PASS",
+      "detail": "{\"ownSelections\":\"present\",\"opponentSelections\":\"present\",\"matchupStatus\":\"locked\"}"
+    },
+    {
+      "id": "CaptainB-visible-lineups",
+      "expected": "Blocked cross-tenant",
+      "actual": "RPC_ERROR",
+      "result": "PASS",
+      "detail": "access_denied: cross-tenant"
+    },
+    {
+      "id": "Referee-visible-lineups",
+      "expected": "RPC response",
+      "actual": "ok",
+      "result": "PASS",
+      "detail": "{\"ownSelections\":\"null\",\"opponentSelections\":\"present\",\"matchupStatus\":\"locked\"}"
+    },
+    {
+      "id": "Viewer-visible-lineups",
+      "expected": "RPC response",
+      "actual": "ok",
+      "result": "PASS",
+      "detail": "{\"ownSelections\":\"null\",\"opponentSelections\":\"present\",\"matchupStatus\":\"locked\"}"
+    },
+    {
+      "id": "CrossTenant-visible-lineups",
+      "expected": "Blocked cross-tenant",
+      "actual": "RPC_ERROR",
+      "result": "PASS",
+      "detail": "access_denied: cross-tenant"
+    }
+  ],
+  "lockingScenarios": [
+    {
+      "id": "lineup_version_conflict",
+      "expected": "version_conflict",
+      "actual": "version_conflict",
+      "result": "PASS",
+      "detail": "{\"expected\":1,\"actual\":12}"
+    }
+  ],
+  "idempotencyScenarios": [
+    {
+      "id": "same_key_same_payload",
+      "expected": "Replay same version",
+      "actual": "version=10",
+      "result": "PASS",
+      "detail": ""
+    },
+    {
+      "id": "same_key_diff_payload",
+      "expected": "idempotency_payload_mismatch",
+      "actual": "idempotency_payload_mismatch",
+      "result": "PASS",
+      "detail": ""
+    }
+  ],
+  "repositoryIntegration": [
+    {
+      "id": "getTournament",
+      "expected": "tournament",
+      "actual": "found",
+      "result": "PASS",
+      "detail": ""
+    },
+    {
+      "id": "getVisibleLineups",
+      "expected": "ok",
+      "actual": "true",
+      "result": "PASS",
+      "detail": ""
+    }
+  ],
+  "dryRunMigration": {
+    "phase": "TT-1B",
+    "dryRun": true,
+    "stats": {
+      "read": 1,
+      "valid": 1,
+      "migrated": 1,
+      "skippedDuplicate": 0,
+      "conflicts": 0,
+      "errors": 0,
+      "conflictReports": [],
+      "errorReports": []
+    },
+    "seedStats": "tournaments: insert=0 update=0 skip=0\nteams: insert=0 update=0 skip=0\nmembers: insert=0 update=0 skip=0\ndisciplines: insert=0 update=0 skip=0\nmatchups: insert=0 update=0 skip=0\nlineups: insert=0 update=0 skip=0\nlineupEntries: insert=0 update=0 skip=0\nsubMatches: insert=0 update=0 skip=0\nstandings: insert=0 update=0 skip=0",
+    "generatedAt": "2026-07-11T22:25:54.464Z"
+  },
+  "shadowComparison": {
+    "syntheticMismatchDetected": true,
+    "mismatchCount": 1,
+    "sample": [
+      {
+        "entityType": "lineup",
+        "entityKey": "phase23d-matchup-1::phase23d-team-b",
+        "mismatchType": "value_mismatch",
+        "blobHash": "63e3f79ecdd904e89ed7c0783a53b2a2bdd7ed0d99dcc44658bdc72777411558",
+        "cloudHash": "fe69b7a49658b6c4764645bfec3afb8d5652311218f7ce68b884fb445dad72de"
+      }
+    ]
+  },
+  "featureModeValidation": [
+    {
+      "id": "mode_legacy",
+      "expected": "pass",
+      "actual": "pass",
+      "result": "PASS",
+      "detail": ""
+    },
+    {
+      "id": "mode_shadow",
+      "expected": "pass",
+      "actual": "pass",
+      "result": "PASS",
+      "detail": ""
+    },
+    {
+      "id": "mode_cloud_primary",
+      "expected": "fail",
+      "actual": "fail",
+      "result": "PASS",
+      "detail": ""
+    },
+    {
+      "id": "mode_cloud_only",
+      "expected": "fail",
+      "actual": "fail",
+      "result": "PASS",
+      "detail": ""
+    },
+    {
+      "id": "mode_invalid-mode",
+      "expected": "fail",
+      "actual": "fail",
+      "result": "PASS",
+      "detail": ""
+    }
+  ],
+  "regressionTests": {
+    "tt1b": {
+      "exitCode": 0,
+      "passed": 17,
+      "failed": 0
+    },
+    "allTeamTournament": {
+      "exitCode": 0,
+      "passed": 128,
+      "failed": 0
+    }
+  },
+  "rpcOverloadAudit": {
+    "doc": "PASS",
+    "clientUsesBuildTt1bCommandRpcArgs": true
+  },
+  "bugs": [],
+  "knownConditions": [
+    "TT-1C UI wire NOT started",
+    "Production expuvcohlcjzvrrauvud untouched",
+    "Legacy callers with null idempotency_key delegate to *_legacy RPC body"
+  ],
+  "productionImpact": "NONE",
+  "verdict": "READY FOR TT-1C",
+  "section11": {
+    "sqlReview": {
+      "idempotent": true,
+      "no_drop_data": true,
+      "legacy_preserved": true,
+      "rename_safe": true,
+      "search_path": "public",
+      "authenticated_grant": true,
+      "anon_revoked": true,
+      "db_version_idempotency": true
+    },
+    "migrationApply": {
+      "status": "APPLIED",
+      "via": "MCP apply_migration",
+      "projectRef": "qyewbxjsiiyufanzcjcq",
+      "migrations": [
+        "phase_tt1b_section11_rpc_guards",
+        "phase_tt1b_section11_revoke_anon_rpc"
+      ]
+    },
+    "rpcSignatureAudit": {
+      "legacy": [
+        {
+          "name": "team_tournament_save_lineup_draft_legacy",
+          "params": 4,
+          "args": "p_tournament_id text, p_matchup_id text, p_team_id text, p_selections jsonb",
+          "securityDefiner": true,
+          "searchPath": [
+            "search_path=public"
+          ]
+        },
+        {
+          "name": "team_tournament_upsert_standings_legacy",
+          "params": 2,
+          "args": "p_tournament_id text, p_standings jsonb",
+          "securityDefiner": true,
+          "searchPath": [
+            "search_path=public"
+          ]
+        }
+      ],
+      "tt1b": [
+        {
+          "name": "team_tournament_save_lineup_draft",
+          "params": 6,
+          "args": "p_tournament_id text, p_matchup_id text, p_team_id text, p_selections jsonb, p_expected_version integer, p_idempotency_key text",
+          "securityDefiner": true,
+          "execute": [
+            "authenticated"
+          ],
+          "searchPath": [
+            "search_path=public"
+          ]
+        },
+        {
+          "name": "team_tournament_upsert_standings",
+          "params": 4,
+          "args": "p_tournament_id text, p_standings jsonb, p_expected_version integer, p_idempotency_key text",
+          "securityDefiner": true,
+          "execute": [
+            "authenticated"
+          ],
+          "searchPath": [
+            "search_path=public"
+          ]
+        }
+      ],
+      "anonExecuteOnWrappers": false
+    },
+    "databaseSmoke": {
+      "generatedAt": "2026-07-11T22:24:01.778Z",
+      "environment": {
+        "ref": "qyewbxjsiiyufanzcjcq"
+      },
+      "rpcSignatureAudit": null,
+      "saveLineupDraft": [
+        {
+          "id": "expected_version_match",
+          "pass": true,
+          "expected": "ok=true",
+          "actual": "{\"ok\":true,\"version\":5,\"lineupId\":\"4bfe1b03-55ad-4bbf-9993-2f06e497418b\"}",
+          "detail": "version=5"
+        },
+        {
+          "id": "expected_version_stale",
+          "pass": true,
+          "expected": "version_conflict",
+          "actual": "version_conflict",
+          "detail": ""
+        },
+        {
+          "id": "idempotency_replay",
+          "pass": true,
+          "expected": "same version on replay",
+          "actual": "v1=5 v2=5",
+          "detail": ""
+        },
+        {
+          "id": "idempotency_payload_mismatch",
+          "pass": true,
+          "expected": "idempotency_payload_mismatch",
+          "actual": "idempotency_payload_mismatch",
+          "detail": ""
+        }
+      ],
+      "upsertStandings": [
+        {
+          "id": "expected_version_match",
+          "pass": true,
+          "expected": "ok=true",
+          "actual": "{\"ok\":true,\"version\":4,\"calculationVersion\":\"0b78a3f1448151a92889741bfde3a460\"}",
+          "detail": "version=4"
+        },
+        {
+          "id": "expected_version_stale",
+          "pass": true,
+          "expected": "version_conflict",
+          "actual": "version_conflict",
+          "detail": ""
+        },
+        {
+          "id": "idempotency_replay",
+          "pass": true,
+          "expected": "same version on replay",
+          "actual": "v1=4 v2=4",
+          "detail": ""
+        },
+        {
+          "id": "idempotency_payload_mismatch",
+          "pass": true,
+          "expected": "idempotency_payload_mismatch",
+          "actual": "idempotency_payload_mismatch",
+          "detail": ""
+        }
+      ],
+      "repositoryGuard": [
+        {
+          "id": "saveDraftLineup_not_guard_blocked",
+          "pass": true,
+          "expected": "not RPC_GUARD_NOT_DEPLOYED",
+          "actual": "version_conflict",
+          "detail": ""
+        },
+        {
+          "id": "recalculateStandings_not_guard_blocked",
+          "pass": true,
+          "expected": "not RPC_GUARD_NOT_DEPLOYED",
+          "actual": "version_conflict",
+          "detail": ""
+        }
+      ],
+      "verdict": "READY FOR TT-1C"
+    },
+    "stagingGuardConfig": {
+      "envVar": "VITE_TEAM_TOURNAMENT_TT1B_RPC_GUARDS",
+      "value": "deployed",
+      "scope": "STAGING/PREVIEW only",
+      "documentedIn": [
+        ".env.staging-qa.example"
+      ]
+    },
+    "smokePass": true
+  }
+}

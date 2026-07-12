@@ -1,0 +1,170 @@
+[
+  {
+    "check_id": "V6.team_tournament_dreambreaker_states.summary",
+    "expected": "row_count>=0; null_version=0; invalid_version=0; min/max valid if non-empty",
+    "actual": "rows=0 null=0 invalid=0 min=null max=null",
+    "status": "PASS"
+  },
+  {
+    "check_id": "V6.team_tournament_forfeit_events.summary",
+    "expected": "row_count>=0; null_version=0; invalid_version=0; min/max valid if non-empty",
+    "actual": "rows=0 null=0 invalid=0 min=null max=null",
+    "status": "PASS"
+  },
+  {
+    "check_id": "V6.team_tournament_lineups.summary",
+    "expected": "row_count>=0; null_version=0; invalid_version=0; min/max valid if non-empty",
+    "actual": "rows=2 null=0 invalid=0 min=3 max=4",
+    "status": "PASS"
+  },
+  {
+    "check_id": "V6.team_tournament_matchups.summary",
+    "expected": "row_count>=0; null_version=0; invalid_version=0; min/max valid if non-empty",
+    "actual": "rows=1 null=0 invalid=0 min=8 max=8",
+    "status": "PASS"
+  },
+  {
+    "check_id": "V6.team_tournament_standings.summary",
+    "expected": "row_count>=0; null_version=0; invalid_version=0; min/max valid if non-empty",
+    "actual": "rows=2 null=0 invalid=0 min=1 max=1",
+    "status": "PASS"
+  },
+  {
+    "check_id": "V6.team_tournament_sub_matches.summary",
+    "expected": "row_count>=0; null_version=0; invalid_version=0; min/max valid if non-empty",
+    "actual": "rows=4 null=0 invalid=0 min=1 max=2",
+    "status": "PASS"
+  },
+  {
+    "check_id": "V6.team_tournaments.summary",
+    "expected": "row_count>=0; null_version=0; invalid_version=0; min/max valid if non-empty",
+    "actual": "rows=1 null=0 invalid=0 min=1 max=1",
+    "status": "PASS"
+  },
+  {
+    "check_id": "V7.dreambreaker_orphan_matchup",
+    "expected": "0 orphan rows",
+    "actual": "0",
+    "status": "PASS"
+  },
+  {
+    "check_id": "V7.forfeit_orphan_parent",
+    "expected": "0 orphan rows",
+    "actual": "0",
+    "status": "PASS"
+  },
+  {
+    "check_id": "V7.lineup_entries_orphan_lineup",
+    "expected": "0 orphan rows",
+    "actual": "0",
+    "status": "PASS"
+  },
+  {
+    "check_id": "V7.lineup_orphan_matchup",
+    "expected": "0 orphan rows",
+    "actual": "0",
+    "status": "PASS"
+  },
+  {
+    "check_id": "V7.lineup_orphan_team",
+    "expected": "0 orphan rows",
+    "actual": "0",
+    "status": "PASS"
+  },
+  {
+    "check_id": "V7.lineup_revision_orphan_lineup",
+    "expected": "0 orphan rows",
+    "actual": "0",
+    "status": "PASS"
+  },
+  {
+    "check_id": "V7.matchup_orphan_tournament",
+    "expected": "0 orphan rows",
+    "actual": "0",
+    "status": "PASS"
+  },
+  {
+    "check_id": "V7.standing_orphan_team",
+    "expected": "0 orphan rows",
+    "actual": "0",
+    "status": "PASS"
+  },
+  {
+    "check_id": "V7.sub_match_orphan_matchup",
+    "expected": "0 orphan rows",
+    "actual": "0",
+    "status": "PASS"
+  },
+  {
+    "check_id": "X.command_log.idempotency_key_not_null",
+    "expected": "column NOT NULL",
+    "actual": "NOT NULL",
+    "status": "PASS"
+  },
+  {
+    "check_id": "X.command_log.no_null_idempotency_rows",
+    "expected": "0 rows with null/blank idempotency_key",
+    "actual": "0",
+    "status": "PASS"
+  },
+  {
+    "check_id": "X.command_log.payload_hash_type",
+    "expected": "text NOT NULL",
+    "actual": "text nullable=NO",
+    "status": "PASS"
+  },
+  {
+    "check_id": "X.fk.dreambreaker_matchup_id",
+    "expected": "FK dreambreaker_states.matchup_id -> team_tournament_matchups.id",
+    "actual": "team_tournament_dreambreaker_states_matchup_id_fkey",
+    "status": "PASS"
+  },
+  {
+    "check_id": "X.fk.lineup_revisions_lineup_id",
+    "expected": "FK lineup_revisions.lineup_id -> team_tournament_lineups.id",
+    "actual": "team_tournament_lineup_revisions_actor_id_fkey",
+    "status": "PASS"
+  },
+  {
+    "check_id": "X.fk.lineup_revisions_lineup_id",
+    "expected": "FK lineup_revisions.lineup_id -> team_tournament_lineups.id",
+    "actual": "team_tournament_lineup_revisions_lineup_id_fkey",
+    "status": "PASS"
+  },
+  {
+    "check_id": "X.index.idx_team_tournament_command_log_tenant.exists",
+    "expected": "index present on staging",
+    "actual": "idx_team_tournament_command_log_tenant",
+    "status": "PASS"
+  },
+  {
+    "check_id": "X.index.idx_team_tournament_lineup_revisions_lineup.exists",
+    "expected": "index present on staging",
+    "actual": "idx_team_tournament_lineup_revisions_lineup",
+    "status": "PASS"
+  },
+  {
+    "check_id": "X.index.idx_team_tournament_sync_mismatch_open.exists",
+    "expected": "index present on staging",
+    "actual": "idx_team_tournament_sync_mismatch_open",
+    "status": "PASS"
+  },
+  {
+    "check_id": "X.lineup.no_duplicate_matchup_team",
+    "expected": "0 duplicate (matchup_id, team_external_id)",
+    "actual": "0",
+    "status": "PASS"
+  },
+  {
+    "check_id": "X.payload_hash.digest_hotfix",
+    "expected": "function uses extensions.digest and search_path public, extensions",
+    "actual": "extensions.digest present",
+    "status": "PASS"
+  },
+  {
+    "check_id": "X.version_conflict_rpc.exists",
+    "expected": "team_tournament_version_conflict(text, integer, integer) returns json",
+    "actual": "p_entity text, p_expected integer, p_actual integer -> json",
+    "status": "PASS"
+  }
+]
