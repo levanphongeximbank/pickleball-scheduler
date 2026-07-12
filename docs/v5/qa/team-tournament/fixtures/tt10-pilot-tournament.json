@@ -16,6 +16,11 @@
     "lineupLockLeadMinutes": 15,
     "missingLineupPolicy": "random",
     "tiebreakOrder": ["wins", "subMatchDiff", "pointsScored", "manual"],
+    "lineupPolicy": {
+      "requiredDisciplineIds": ["disc-md", "disc-wd", "disc-mx1", "disc-mx2"],
+      "playersPerDiscipline": 2,
+      "disallowMixedDisciplinePlayerReuse": true
+    },
     "disciplines": [
       { "id": "disc-md", "name": "Đôi nam", "category": "doubles", "playerCount": 2 },
       { "id": "disc-wd", "name": "Đôi nữ", "category": "doubles", "playerCount": 2 },
@@ -161,7 +166,85 @@
       "disc-wd": ["p-d3", "p-d4"],
       "disc-mx1": ["p-d1", "p-d3"],
       "disc-mx2": ["p-d1", "p-d3"],
-      "validationError": "Player reuse across mixed disciplines"
+      "validationError": "Player reuse across mixed disciplines",
+      "expectedRejectionCode": "LINEUP_MIXED_REUSE"
+    }
+  },
+  "resultsCatalog": {
+    "m-ab": {
+      "status": "confirmed",
+      "winnerTeamId": "team-a",
+      "teamAWins": 3,
+      "teamBWins": 1,
+      "forfeit": false,
+      "subResults": [
+        { "disciplineId": "disc-md", "teamASubWins": 2, "teamBSubWins": 0, "teamAPoints": 22, "teamBPoints": 11, "winnerTeamId": "team-a" },
+        { "disciplineId": "disc-wd", "teamASubWins": 2, "teamBSubWins": 0, "teamAPoints": 22, "teamBPoints": 15, "winnerTeamId": "team-a" },
+        { "disciplineId": "disc-mx1", "teamASubWins": 1, "teamBSubWins": 2, "teamAPoints": 19, "teamBPoints": 22, "winnerTeamId": "team-b" },
+        { "disciplineId": "disc-mx2", "teamASubWins": 2, "teamBSubWins": 0, "teamAPoints": 21, "teamBPoints": 14, "winnerTeamId": "team-a" }
+      ]
+    },
+    "m-cd": {
+      "status": "confirmed",
+      "winnerTeamId": "team-c",
+      "teamAWins": 3,
+      "teamBWins": 1,
+      "forfeit": false,
+      "subResults": [
+        { "disciplineId": "disc-md", "teamASubWins": 2, "teamBSubWins": 0, "teamAPoints": 22, "teamBPoints": 18, "winnerTeamId": "team-c" },
+        { "disciplineId": "disc-wd", "teamASubWins": 2, "teamBSubWins": 0, "teamAPoints": 21, "teamBPoints": 16, "winnerTeamId": "team-c" },
+        { "disciplineId": "disc-mx1", "teamASubWins": 1, "teamBSubWins": 2, "teamAPoints": 18, "teamBPoints": 22, "winnerTeamId": "team-d" },
+        { "disciplineId": "disc-mx2", "teamASubWins": 2, "teamBSubWins": 0, "teamAPoints": 21, "teamBPoints": 17, "winnerTeamId": "team-c" }
+      ]
+    },
+    "m-bd": {
+      "status": "forfeit",
+      "winnerTeamId": "team-b",
+      "teamAWins": 1,
+      "teamBWins": 0,
+      "forfeit": true,
+      "subResults": [
+        { "disciplineId": "disc-md", "teamASubWins": 0, "teamBSubWins": 0, "teamAPoints": 0, "teamBPoints": 0, "winnerTeamId": "team-b" }
+      ]
+    },
+    "m-ac": {
+      "status": "confirmed",
+      "winnerTeamId": "team-a",
+      "teamAWins": 3,
+      "teamBWins": 1,
+      "forfeit": false,
+      "subResults": [
+        { "disciplineId": "disc-md", "teamASubWins": 2, "teamBSubWins": 0, "teamAPoints": 22, "teamBPoints": 19, "winnerTeamId": "team-a" },
+        { "disciplineId": "disc-wd", "teamASubWins": 1, "teamBSubWins": 2, "teamAPoints": 17, "teamBPoints": 22, "winnerTeamId": "team-c" },
+        { "disciplineId": "disc-mx1", "teamASubWins": 2, "teamBSubWins": 0, "teamAPoints": 21, "teamBPoints": 18, "winnerTeamId": "team-a" },
+        { "disciplineId": "disc-mx2", "teamASubWins": 2, "teamBSubWins": 0, "teamAPoints": 21, "teamBPoints": 16, "winnerTeamId": "team-a" }
+      ]
+    },
+    "m-ad": {
+      "status": "confirmed",
+      "winnerTeamId": "team-a",
+      "teamAWins": 3,
+      "teamBWins": 1,
+      "forfeit": false,
+      "subResults": [
+        { "disciplineId": "disc-md", "teamASubWins": 2, "teamBSubWins": 0, "teamAPoints": 22, "teamBPoints": 17, "winnerTeamId": "team-a" },
+        { "disciplineId": "disc-wd", "teamASubWins": 2, "teamBSubWins": 0, "teamAPoints": 21, "teamBPoints": 15, "winnerTeamId": "team-a" },
+        { "disciplineId": "disc-mx1", "teamASubWins": 1, "teamBSubWins": 2, "teamAPoints": 18, "teamBPoints": 22, "winnerTeamId": "team-d" },
+        { "disciplineId": "disc-mx2", "teamASubWins": 2, "teamBSubWins": 0, "teamAPoints": 21, "teamBPoints": 14, "winnerTeamId": "team-a" }
+      ]
+    },
+    "m-bc": {
+      "status": "confirmed",
+      "winnerTeamId": "team-b",
+      "teamAWins": 3,
+      "teamBWins": 1,
+      "forfeit": false,
+      "subResults": [
+        { "disciplineId": "disc-md", "teamASubWins": 2, "teamBSubWins": 0, "teamAPoints": 22, "teamBPoints": 18, "winnerTeamId": "team-b" },
+        { "disciplineId": "disc-wd", "teamASubWins": 2, "teamBSubWins": 0, "teamAPoints": 21, "teamBPoints": 17, "winnerTeamId": "team-b" },
+        { "disciplineId": "disc-mx1", "teamASubWins": 1, "teamBSubWins": 2, "teamAPoints": 19, "teamBPoints": 22, "winnerTeamId": "team-c" },
+        { "disciplineId": "disc-mx2", "teamASubWins": 2, "teamBSubWins": 0, "teamAPoints": 21, "teamBPoints": 16, "winnerTeamId": "team-b" }
+      ]
     }
   }
 }

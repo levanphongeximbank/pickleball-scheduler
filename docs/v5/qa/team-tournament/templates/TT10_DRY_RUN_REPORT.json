@@ -1,6 +1,6 @@
 {
   "reportType": "TT10_DRY_RUN_REPORT",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "generatedAt": null,
   "productionImpact": "NONE",
   "tournamentId": "tt10-pilot-club-2026-07",
@@ -13,21 +13,166 @@
   },
   "scenarioResults": [
     {
-      "stepId": "S01",
-      "status": "pass | fail | blocked | skipped",
-      "notes": "",
-      "evidence": []
+      "scenarioId": "S01",
+      "title": "BTC tạo giải từ template 4 đội MLP",
+      "status": "not_run",
+      "expected": "Tournament shell + 6 matchups scheduled",
+      "actual": "",
+      "evidence": [],
+      "incidentId": "",
+      "notes": ""
+    },
+    {
+      "scenarioId": "S02",
+      "title": "Đội trưởng A submit đúng hạn",
+      "status": "not_run",
+      "expected": "Lineup status = submitted before deadline",
+      "actual": "",
+      "evidence": [],
+      "incidentId": "",
+      "notes": ""
+    },
+    {
+      "scenarioId": "S03",
+      "title": "Đội trưởng B submit sát deadline",
+      "status": "not_run",
+      "expected": "Accepted if before server deadline",
+      "actual": "",
+      "evidence": [],
+      "incidentId": "",
+      "notes": ""
+    },
+    {
+      "scenarioId": "S04",
+      "title": "Đội C không submit → BTC randomize",
+      "status": "not_run",
+      "expected": "Lineup source = random after lock",
+      "actual": "",
+      "evidence": [],
+      "incidentId": "",
+      "notes": ""
+    },
+    {
+      "scenarioId": "S05",
+      "title": "Đội D submit lineup invalid → sửa lại",
+      "status": "not_run",
+      "expected": "Validation error LINEUP_MIXED_REUSE then successful resubmit",
+      "actual": "",
+      "evidence": [],
+      "incidentId": "",
+      "notes": ""
+    },
+    {
+      "scenarioId": "S06",
+      "title": "BTC lock tất cả lineup",
+      "status": "not_run",
+      "expected": "Captains cannot edit; missing → randomized",
+      "actual": "",
+      "evidence": [],
+      "incidentId": "",
+      "notes": ""
+    },
+    {
+      "scenarioId": "S07",
+      "title": "BTC publish lineup",
+      "status": "not_run",
+      "expected": "Opponent selections visible to captains/referees",
+      "actual": "",
+      "evidence": [],
+      "incidentId": "",
+      "notes": ""
+    },
+    {
+      "scenarioId": "S08",
+      "title": "Referee 1 nhập kết quả draft trận AB",
+      "status": "not_run",
+      "expected": "Sub-match results saved as draft for m-ab",
+      "actual": "",
+      "evidence": [],
+      "incidentId": "",
+      "notes": ""
+    },
+    {
+      "scenarioId": "S09",
+      "title": "Referee 1 xác nhận m-ab; retry idempotency",
+      "status": "not_run",
+      "expected": "m-ab terminal confirmed; single command log entry",
+      "actual": "",
+      "evidence": [],
+      "incidentId": "",
+      "notes": ""
+    },
+    {
+      "scenarioId": "S10",
+      "title": "Referee 2 conflict + resolve m-cd",
+      "status": "not_run",
+      "expected": "version_conflict returned then m-cd confirmed terminal",
+      "actual": "",
+      "evidence": [],
+      "incidentId": "",
+      "notes": ""
+    },
+    {
+      "scenarioId": "S11",
+      "title": "BTC áp dụng thua kỹ thuật m-bd",
+      "status": "not_run",
+      "expected": "m-bd terminal forfeit; winner team-b",
+      "actual": "",
+      "evidence": [],
+      "incidentId": "",
+      "notes": ""
+    },
+    {
+      "scenarioId": "S12",
+      "title": "Referee 1 xác nhận m-ac và m-ad",
+      "status": "not_run",
+      "expected": "m-ac and m-ad terminal confirmed; standings recalculated",
+      "actual": "",
+      "evidence": [],
+      "incidentId": "",
+      "notes": ""
+    },
+    {
+      "scenarioId": "S13",
+      "title": "BTC override m-ac; Referee 2 xác nhận m-bc",
+      "status": "not_run",
+      "expected": "m-ac override audited; m-bc terminal confirmed; standings recalculated",
+      "actual": "",
+      "evidence": [],
+      "incidentId": "",
+      "notes": ""
+    },
+    {
+      "scenarioId": "S14",
+      "title": "Hoàn tất giải sau 6/6 matchup terminal",
+      "status": "not_run",
+      "expected": "All 6 matchups terminal; standings updated; tournament status complete",
+      "actual": "",
+      "evidence": [],
+      "incidentId": "",
+      "notes": ""
+    },
+    {
+      "scenarioId": "S15",
+      "title": "Export dữ liệu JSON/CSV fallback",
+      "status": "not_run",
+      "expected": "Export files match fallback templates",
+      "actual": "",
+      "evidence": [],
+      "incidentId": "",
+      "notes": ""
     }
   ],
   "summary": {
     "totalSteps": 15,
     "passed": 0,
     "failed": 0,
-    "blocked": 0
+    "blocked": 0,
+    "notRun": 15
   },
   "standingsSnapshot": null,
   "exportBundlePath": null,
-  "verdict": "PASS | FAIL | BLOCKED",
+  "verdict": "NOT_RUN",
   "signOff": {
     "facilitator": null,
     "owner": null,

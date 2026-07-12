@@ -5,6 +5,16 @@
     "productionImpact": "NONE",
     "notes": "Fixture account metadata only. Map to staging test users during TT-10 execution on main branch — do not create Production accounts."
   },
+  "actorAliases": {
+    "btc": "acct-btc-01",
+    "captain-a": "acct-captain-a",
+    "captain-b": "acct-captain-b",
+    "captain-c": "acct-captain-c",
+    "captain-d": "acct-captain-d",
+    "referee-1": "acct-referee-1",
+    "referee-2": "acct-referee-2",
+    "system": null
+  },
   "accounts": [
     {
       "fixtureAccountId": "acct-btc-01",
