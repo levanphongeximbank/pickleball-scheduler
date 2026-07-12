@@ -20,7 +20,7 @@ import { useClub } from "../../context/ClubContext.jsx";
 import { useTenant } from "../../context/TenantContext.jsx";
 import { PERMISSIONS } from "../../auth/permissions.js";
 import { loadPlayersForClub } from "../../domain/clubStorage.js";
-import { assertTournamentAccess, getTournament } from "../../domain/tournamentService.js";
+import { assertTournamentAccess } from "../../domain/tournamentService.js";
 import { getTenantPlayers } from "../../features/club/index.js";
 import { resolveTenantIdForClub } from "../../features/tenant/guards/tenantGuard.js";
 import {
@@ -34,11 +34,10 @@ import { getStandingsTable } from "../../features/team-tournament/engines/teamSt
 import { MISSING_LINEUP_POLICY } from "../../features/team-tournament/constants.js";
 import {
   organizerLockDreambreakerOrders,
-  organizerLockLineups,
-  organizerPublishLineups,
   organizerSyncDreambreaker,
-  patchTeamTournament,
 } from "../../features/team-tournament/services/teamTournamentService.js";
+import { useTeamTournamentPage } from "../../features/team-tournament/ui/useTeamTournamentPage.js";
+import { buildUiCommandScope } from "../../features/team-tournament/ui/teamTournamentUiCommandKeys.js";
 import TeamRosterPanel from "../../components/tournament/TeamRosterPanel.jsx";
 import TournamentSetupShell from "../../components/tournament/TournamentSetupShell.jsx";
 import BuildScheduleDialog from "../../components/tournament/team/BuildScheduleDialog.jsx";
@@ -158,27 +157,38 @@ export default function TeamTournamentSetup() {
   const { tournamentId } = useParams();
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
-  const { activeClubId, clubs, revision, refreshClubs } = useClub();
+  const { activeClubId, clubs } = useClub();
   const { currentTenantId } = useTenant();
 
-  const [message, setMessage] = useState("");
-  const [error, setError] = useState("");
-  const [scheduleDialogOpen, setScheduleDialogOpen] = useState(false);
-  const [schedulePreviewOpen, setSchedulePreviewOpen] = useState(false);
-  const [hubBanner, setHubBanner] = useState("");
-
-  const tournament = useMemo(() => {
-    if (!activeClubId || !tournamentId) {
-      return null;
-    }
-    return getTournament(activeClubId, tournamentId);
-  }, [activeClubId, tournamentId, revision]);
+  const {
+    loading,
+    tournament,
+    teamData,
+    version,
+    error: loadError,
+    versionConflict,
+    reload,
+    runMutation,
+    patchTeamData,
+    dataVersion,
+  } = useTeamTournamentPage({
+    clubId: activeClubId,
+    tournamentId,
+    pollingEnabled: true,
+  });
 
   const access = useTeamTournamentAccess({ tournament, activeClubId, tournamentId });
   const visibleTabs = useMemo(
     () => buildVisibleTabs(access.canManage),
     [access.canManage]
   );
+
+  const [message, setMessage] = useState("");
+  const [error, setError] = useState("");
+  const [scheduleDialogOpen, setScheduleDialogOpen] = useState(false);
+  const [schedulePreviewOpen, setSchedulePreviewOpen] = useState(false);
+  const [hubBanner, setHubBanner] = useState("");
+  const [mutationBusy, setMutationBusy] = useState(false);
   const requestedTab = searchParams.get("tab") || TEAM_TAB_QUERY.teams;
   const activeTabKey = visibleTabs.some((tab) => tab.key === requestedTab)
     ? requestedTab
@@ -206,17 +216,14 @@ export default function TeamTournamentSetup() {
     () => tournament?.tenantId || resolveTenantIdForClub(activeClubId) || currentTenantId || "",
     [tournament?.tenantId, activeClubId, currentTenantId]
   );
-  const teamData = useMemo(
-    () => getTeamData(tournament) || { teams: [], disciplines: [], matchups: [], standings: [] },
-    [tournament]
-  );
+  const teamDataView = teamData || { teams: [], disciplines: [], matchups: [], standings: [] };
   const players = useMemo(
     () => (activeClubId ? loadPlayersForClub(activeClubId) : []),
-    [activeClubId, revision]
+    [activeClubId]
   );
   const allTenantPlayers = useMemo(
     () => (tenantId ? getTenantPlayers(tenantId) : []),
-    [tenantId, revision]
+    [tenantId, dataVersion]
   );
   const lineupPlayers = useMemo(() => {
     const pool = new Map();
@@ -225,21 +232,23 @@ export default function TeamTournamentSetup() {
     });
     return [...pool.values()];
   }, [allTenantPlayers, players]);
-  const standings = useMemo(() => getStandingsTable(teamData), [teamData]);
-  const workflow = useMemo(() => computeTeamTournamentWorkflow(teamData), [teamData]);
+  const td = teamData || teamDataView;
+
+  const standings = useMemo(() => getStandingsTable(td), [td]);
+  const workflow = useMemo(() => computeTeamTournamentWorkflow(td), [td]);
   const allMatchupsPublished = useMemo(
     () =>
-      teamData.matchups.length > 0 &&
-      teamData.matchups.every((matchup) =>
+      td.matchups.length > 0 &&
+      td.matchups.every((matchup) =>
         [
           MATCHUP_STATUS.PUBLISHED,
           MATCHUP_STATUS.IN_PROGRESS,
           MATCHUP_STATUS.COMPLETED,
         ].includes(matchup.status)
       ),
-    [teamData.matchups]
+    [td.matchups]
   );
-  const firstPublishedMatchupId = teamData.matchups.find((matchup) =>
+  const firstPublishedMatchupId = td.matchups.find((matchup) =>
     [MATCHUP_STATUS.PUBLISHED, MATCHUP_STATUS.IN_PROGRESS, MATCHUP_STATUS.COMPLETED].includes(
       matchup.status
     )
@@ -277,12 +286,12 @@ export default function TeamTournamentSetup() {
   };
 
   function saveTeamData(nextTeamData) {
-    const result = patchTeamTournament(activeClubId, tournamentId, { teamData: nextTeamData });
+    const result = patchTeamData({ teamData: nextTeamData });
     if (!result.ok) {
       setError(result.error || "Không lưu được dữ liệu giải đồng đội.");
       return false;
     }
-    refreshClubs();
+    reload({ silent: true });
     setMessage("Đã lưu.");
     setError("");
     return true;
@@ -292,26 +301,26 @@ export default function TeamTournamentSetup() {
     if (!access.canManage) {
       return;
     }
-    if (teamData.teams.length < 2) {
+    if (td.teams.length < 2) {
       setError("Cần ít nhất 2 đội.");
       return;
     }
-    if (teamData.disciplines.length === 0) {
+    if (td.disciplines.length === 0) {
       setError("Cần ít nhất 1 nội dung thi đấu.");
       return;
     }
 
     const next = buildRoundRobinMatchups(
       searchParams.get("random") === "1" &&
-        teamData.settings?.missingLineupPolicy !== MISSING_LINEUP_POLICY.RANDOM
+        td.settings?.missingLineupPolicy !== MISSING_LINEUP_POLICY.RANDOM
         ? {
-            ...teamData,
+            ...td,
             settings: {
-              ...teamData.settings,
+              ...td.settings,
               missingLineupPolicy: MISSING_LINEUP_POLICY.RANDOM,
             },
           }
-        : teamData,
+        : td,
       options
     );
     if (saveTeamData(next)) {
@@ -321,25 +330,27 @@ export default function TeamTournamentSetup() {
   }
 
   function handleUpdateMatchup(matchupId, patch) {
-    const next = updateMatchupInTournament(teamData, matchupId, patch);
+    const next = updateMatchupInTournament(td, matchupId, patch);
     saveTeamData(next);
   }
 
   async function handleLock(matchupId) {
     setError("");
-    const result = await organizerLockLineups(activeClubId, tournamentId, {
-      matchupId,
-      players: lineupPlayers,
-      now: new Date().toISOString(),
+    setMutationBusy(true);
+    const result = await runMutation({
+      method: "lockLineup",
+      payload: { matchupId, players: lineupPlayers, now: new Date().toISOString() },
+      actionScope: buildUiCommandScope("lock", tournamentId, matchupId),
+      expectedVersion: version,
     });
+    setMutationBusy(false);
     if (!result.ok) {
       setError(result.error);
       return;
     }
-    refreshClubs();
-    const detail = (result.logs || []).join(" ") || "Đã khóa đội hình.";
-    if (result.warning) {
-      setMessage(`${detail} (Đã lưu trên máy — chưa đồng bộ cloud: ${result.warning})`);
+    const detail = "Đã khóa đội hình.";
+    if (result.mirrorWarning) {
+      setMessage(`${detail} (Cảnh báo mirror blob: ${result.mirrorWarning})`);
     } else {
       setMessage(detail);
     }
@@ -347,17 +358,19 @@ export default function TeamTournamentSetup() {
 
   async function handlePublish(matchupId) {
     setError("");
-    const result = await organizerPublishLineups(activeClubId, tournamentId, { matchupId });
+    setMutationBusy(true);
+    const result = await runMutation({
+      method: "publishLineups",
+      payload: { matchupId },
+      actionScope: buildUiCommandScope("publish", tournamentId, matchupId),
+      expectedVersion: version,
+    });
+    setMutationBusy(false);
     if (!result.ok) {
       setError(result.error);
       return;
     }
-    refreshClubs();
-    if (result.warning) {
-      setMessage(`Đã công bố đội hình trên máy. Chưa đồng bộ cloud: ${result.warning}`);
-    } else {
-      setMessage("Đã công bố đội hình. Trọng tài có thể nhập điểm.");
-    }
+    setMessage("Đã công bố đội hình. Trọng tài có thể nhập điểm.");
   }
 
   async function handleSyncDreambreaker() {
@@ -367,7 +380,7 @@ export default function TeamTournamentSetup() {
       setError(result.error);
       return;
     }
-    refreshClubs();
+    reload({ silent: true });
     setMessage(
       result.changed
         ? "Đã đồng bộ Dreambreaker — đội trưởng có thể nộp thứ tự."
@@ -384,7 +397,7 @@ export default function TeamTournamentSetup() {
       setError(result.error || "Không khóa được thứ tự Dreambreaker.");
       return;
     }
-    refreshClubs();
+    reload({ silent: true });
     const detail = (result.logs || []).join(" ") || "Đã khóa thứ tự Dreambreaker.";
     if (result.warning) {
       setError(result.warning);
@@ -399,6 +412,27 @@ export default function TeamTournamentSetup() {
     } else {
       setError("Không sao chép được link.");
     }
+  }
+
+  if (loading) {
+    return (
+      <Box sx={{ p: 3 }}>
+        <Alert severity="info">Đang tải giải đồng đội…</Alert>
+      </Box>
+    );
+  }
+
+  if (loadError) {
+    return (
+      <Box sx={{ p: 3 }}>
+        <Stack spacing={2}>
+          <Alert severity="error">{loadError}</Alert>
+          <Button variant="contained" onClick={() => reload()}>
+            Thử lại
+          </Button>
+        </Stack>
+      </Box>
+    );
   }
 
   if (!tournament || !isTeamTournament(tournament)) {
@@ -472,13 +506,13 @@ export default function TeamTournamentSetup() {
       }
     >
       <Stack spacing={2}>
-        <TeamTournamentWorkflowBar teamData={teamData} />
+        <TeamTournamentWorkflowBar teamData={td} />
 
         {access.canManage ? (
           <TournamentVprPanel
             clubId={activeClubId}
             tournament={tournament}
-            onUpdated={refreshClubs}
+            onUpdated={() => reload({ silent: true })}
           />
         ) : null}
 
@@ -493,20 +527,20 @@ export default function TeamTournamentSetup() {
             <TeamRosterPanel
               clubId={activeClubId}
               tournamentId={tournamentId}
-              teamData={teamData}
+              teamData={td}
               clubPlayers={players}
               allTenantPlayers={allTenantPlayers}
               clubs={clubs}
               canManage={access.canManage}
               canViewAll={access.canViewAll}
               viewerPlayerId={access.viewerPlayerId}
-              onUpdated={refreshClubs}
+              onUpdated={() => reload({ silent: true })}
               onError={setError}
               onMessage={setMessage}
             />
             {access.canManage ? (
               <TeamGroupDivisionPanel
-                teamData={teamData}
+                teamData={td}
                 clubPlayers={players}
                 canManage={access.canManage}
                 onSave={saveTeamData}
@@ -519,7 +553,7 @@ export default function TeamTournamentSetup() {
 
         {access.canManage && activeTabKey === TEAM_TAB_QUERY.disciplines ? (
           <TeamDisciplinesPanel
-            teamData={teamData}
+            teamData={td}
             canManage={access.canManage}
             onSave={saveTeamData}
             onError={setError}
@@ -551,24 +585,24 @@ export default function TeamTournamentSetup() {
                 nhập điểm.
               </Alert>
             )}
-            {teamData.groups?.length > 0 ? (
+            {td.groups?.length > 0 ? (
               <Alert severity="info">
-                Đã chia {teamData.groups.length} bảng — lịch vòng tròn chỉ tạo trận trong từng bảng.
+                Đã chia {td.groups.length} bảng — lịch vòng tròn chỉ tạo trận trong từng bảng.
               </Alert>
             ) : null}
-            {teamData.matchups.length === 0 ? (
+            {td.matchups.length === 0 ? (
               <Alert severity="info">
                 Chưa có lượt đối đầu. Tạo lịch sau khi có ít nhất 2 đội và 1 nội dung.
               </Alert>
             ) : (
-              teamData.matchups.map((matchup) => {
-                const teamA = teamData.teams.find((team) => team.id === matchup.teamAId);
-                const teamB = teamData.teams.find((team) => team.id === matchup.teamBId);
+              td.matchups.map((matchup) => {
+                const teamA = td.teams.find((team) => team.id === matchup.teamAId);
+                const teamB = td.teams.find((team) => team.id === matchup.teamBId);
                 return (
                   <TeamMatchupOperationsCard
                     key={matchup.id}
                     matchup={matchup}
-                    teamData={teamData}
+                    teamData={td}
                     teamA={teamA}
                     teamB={teamB}
                     tournamentId={tournamentId}
@@ -585,16 +619,16 @@ export default function TeamTournamentSetup() {
               })
             )}
             <TournamentActionBar>
-              {(teamData.matchups.length > 0) ? (
+              {(td.matchups.length > 0) ? (
                 <Button variant="outlined" onClick={() => setSchedulePreviewOpen(true)}>
                   Xem sơ đồ trước
                 </Button>
               ) : null}
               <Button
-                variant={teamData.matchups.length > 0 ? "outlined" : "contained"}
+                variant={td.matchups.length > 0 ? "outlined" : "contained"}
                 onClick={() => setScheduleDialogOpen(true)}
               >
-                {teamData.matchups.length > 0 ? "Tạo lại lịch vòng tròn" : "Tạo lịch vòng tròn"}
+                {td.matchups.length > 0 ? "Tạo lại lịch vòng tròn" : "Tạo lịch vòng tròn"}
               </Button>
             </TournamentActionBar>
             {workflow.hints[0] && !allMatchupsPublished ? (
@@ -607,18 +641,18 @@ export default function TeamTournamentSetup() {
           <TeamStandingsTable
             standings={standings}
             tournamentName={tournament?.name || ""}
-            formatPreset={teamData.settings?.formatPreset}
-            tiebreakOrder={teamData.settings?.tiebreakOrder}
-            matchupsDone={countMatchupsWithSubResults(teamData.matchups)}
-            matchupsTotal={teamData.matchups.length}
-            dreambreakerPending={countDreambreakerPendingMatchups(teamData)}
-            scheduleLabel={teamData.groups?.length > 0 ? "Vòng tròn theo bảng" : "Vòng tròn"}
+            formatPreset={td.settings?.formatPreset}
+            tiebreakOrder={td.settings?.tiebreakOrder}
+            matchupsDone={countMatchupsWithSubResults(td.matchups)}
+            matchupsTotal={td.matchups.length}
+            dreambreakerPending={countDreambreakerPendingMatchups(td)}
+            scheduleLabel={td.groups?.length > 0 ? "Vòng tròn theo bảng" : "Vòng tròn"}
           />
         ) : null}
 
         {activeTabKey === TEAM_TAB_QUERY.diagram ? (
           <TeamTournamentScheduleDiagram
-            teamData={teamData}
+            teamData={td}
             tournamentName={tournament?.name || ""}
           />
         ) : null}
@@ -628,8 +662,8 @@ export default function TeamTournamentSetup() {
         open={scheduleDialogOpen}
         onClose={() => setScheduleDialogOpen(false)}
         onConfirm={handleBuildScheduleConfirm}
-        teamData={teamData}
-        hasExistingResults={countMatchupsWithSubResults(teamData.matchups) > 0}
+        teamData={td}
+        hasExistingResults={countMatchupsWithSubResults(td.matchups) > 0}
         onPreview={() => {
           setScheduleDialogOpen(false);
           setSchedulePreviewOpen(true);
@@ -639,7 +673,7 @@ export default function TeamTournamentSetup() {
       <TeamSchedulePreviewDialog
         open={schedulePreviewOpen}
         onClose={() => setSchedulePreviewOpen(false)}
-        teamData={teamData}
+        teamData={td}
         tournamentName={tournament?.name || ""}
       />
     </TournamentSetupShell>

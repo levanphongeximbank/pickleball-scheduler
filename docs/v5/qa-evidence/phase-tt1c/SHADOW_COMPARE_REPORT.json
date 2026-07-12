@@ -1,0 +1,98 @@
+{
+  "generatedAt": "2026-07-12T08:09:24.510Z",
+  "environment": {
+    "ref": "qyewbxjsiiyufanzcjcq",
+    "btcEmail": "owner@staging.local"
+  },
+  "tournamentId": "phase23d-probe-tournament",
+  "clubId": {
+    "cli": "club-staging-demo",
+    "blob": "club-staging-demo",
+    "match": true
+  },
+  "status": "OK",
+  "blobRead": {
+    "status": "OK",
+    "code": null,
+    "error": null,
+    "source": "club_data_v3(service_role)"
+  },
+  "cloudRead": {
+    "status": "OK",
+    "code": null,
+    "error": null
+  },
+  "auth": {
+    "signIn": "OK",
+    "signInError": null
+  },
+  "compare": {
+    "ok": true,
+    "mismatchCount": 0,
+    "summaryByType": {},
+    "sections": {
+      "teams": {
+        "ok": true,
+        "mismatchCount": 0,
+        "mismatches": []
+      },
+      "members": {
+        "ok": true,
+        "mismatchCount": 0,
+        "mismatches": []
+      },
+      "matchups": {
+        "ok": true,
+        "mismatchCount": 0,
+        "mismatches": []
+      },
+      "lineups": {
+        "ok": true,
+        "mismatchCount": 0,
+        "mismatches": []
+      },
+      "disciplines": {
+        "ok": true,
+        "mismatchCount": 0,
+        "mismatches": []
+      },
+      "subMatches": {
+        "ok": true,
+        "mismatchCount": 0,
+        "mismatches": []
+      },
+      "standings": {
+        "ok": true,
+        "mismatchCount": 0,
+        "mismatches": []
+      },
+      "schedule": {
+        "ok": true,
+        "mismatchCount": 0,
+        "mismatches": []
+      },
+      "courtAssignment": {
+        "ok": true,
+        "mismatchCount": 0,
+        "mismatches": []
+      },
+      "forfeit": {
+        "ok": true,
+        "mismatchCount": 0,
+        "mismatches": []
+      },
+      "dreambreaker": {
+        "ok": true,
+        "mismatchCount": 0,
+        "mismatches": []
+      }
+    },
+    "dreambreakerPilot": {
+      "blobHasDreambreaker": false,
+      "cloudHasDreambreaker": false,
+      "pilotUsesDreambreaker": false
+    },
+    "mismatches": []
+  },
+  "notes": []
+}

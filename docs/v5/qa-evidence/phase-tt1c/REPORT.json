@@ -1,0 +1,83 @@
+{
+  "phase": "TT-1C",
+  "generatedAt": "2026-07-12T08:05:00.000Z",
+  "environment": {
+    "ref": "qyewbxjsiiyufanzcjcq",
+    "url": "https://qyewbxjsiiyufanzcjcq.supabase.co"
+  },
+  "commitSha": "b243da77250d81034b92fcbb49c6a7dab3cfd6f0",
+  "productionImpact": "NONE",
+  "rootCauseFix": {
+    "issue": "VITE_CLUB_STORAGE_V2=true on Preview stripped profiles.player_id from auth session",
+    "fix": "stripLegacyProfileClubFields keeps playerId; TeamPortal profile fallback; portal deep-link scope",
+    "deployId": "dpl_D5LFYJHCQm6kHraCrrC9ADhHy7fV"
+  },
+  "previewDeployments": {
+    "cloudPrimary": {
+      "deploymentId": "dpl_D5LFYJHCQm6kHraCrrC9ADhHy7fV",
+      "previewUrl": "https://pickleball-scheduler-g8tpl706z-pickleball-scheduler.vercel.app",
+      "bundleCommitSha": "b243da77250d81034b92fcbb49c6a7dab3cfd6f0",
+      "env": {
+        "VITE_TEAM_TOURNAMENT_SUPABASE": "true",
+        "VITE_TEAM_TOURNAMENT_TT1B_RPC_GUARDS": "deployed",
+        "VITE_TEAM_TOURNAMENT_DATA_MODE": "cloud_primary",
+        "VITE_CLUB_STORAGE_V2": "true"
+      }
+    }
+  },
+  "dreambreaker": {
+    "pilotUsesDreambreaker": false,
+    "cloudPathRequired": false,
+    "legacyBlobInPages": true,
+    "note": "Probe pilot has no dreambreaker rows; dreambreakerEnabled=false for pilot"
+  },
+  "steps": {
+    "A_compare_script_review": {
+      "pass": true,
+      "detail": "compare script uses JWT sign-in; BLOCKED/ERROR on auth failure"
+    },
+    "C_blob_mirror_sync": {
+      "pass": true,
+      "detail": "cloud → club_data_v3",
+      "exitCode": 0
+    },
+    "C_shadow_compare": {
+      "pass": true,
+      "detail": "0 mismatch after sync",
+      "exitCode": 0,
+      "mismatchCount": 0
+    },
+    "lineup_security": {
+      "pass": true,
+      "detail": "captain B opponent hidden pre-publish; cross-tenant blocked"
+    },
+    "D_cloud_primary_env_probe": {
+      "pass": true,
+      "deploymentId": "dpl_D5LFYJHCQm6kHraCrrC9ADhHy7fV",
+      "dataMode": "cloud_primary"
+    },
+    "D_cloud_primary_ui": {
+      "pass": true,
+      "detail": "Captain A/B portal + draft/submit + BTC lock/publish PASS",
+      "reportPath": "docs/v5/qa-evidence/phase-tt1c/PREVIEW_UI_SMOKE_REPORT.json",
+      "verdict": "PASS"
+    },
+    "E_multi_device": {
+      "pass": true,
+      "detail": "RPC PASS + UI captain mutations PASS",
+      "reportPath": "docs/v5/qa-evidence/phase-tt1c/MULTI_DEVICE_SMOKE_REPORT.json"
+    },
+    "F_blob_mirror_contract": {
+      "pass": true,
+      "detail": "mirror failure warn-only"
+    },
+    "staging_captain_prep": {
+      "pass": true,
+      "reportPath": "docs/v5/qa-evidence/phase-tt1c/PREP_CAPTAIN_PROFILES_REPORT.json"
+    }
+  },
+  "automatedGatePass": true,
+  "previewUiGatePass": true,
+  "verdict": "READY FOR TT-2",
+  "ownerNote": "TT-1C complete on staging/preview. Do NOT start TT-2 or deploy Production until owner approves."
+}

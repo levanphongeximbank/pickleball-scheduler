@@ -1,0 +1,232 @@
+{
+  "ok": true,
+  "stagingRef": "qyewbxjsiiyufanzcjcq",
+  "clubId": "club-staging-demo",
+  "tenantId": "venue-staging-a",
+  "tournamentId": "phase23d-probe-tournament",
+  "before": {
+    "generatedAt": "2026-07-12T08:06:56.841Z",
+    "captains": [
+      {
+        "email": "player@staging.local",
+        "profile": {
+          "id": "7b381912-2190-415c-b099-6b1e87567b7a",
+          "email": "player@staging.local",
+          "role": "PLAYER",
+          "player_id": "player-staging-a-1",
+          "club_id": null,
+          "venue_id": "venue-staging-a",
+          "status": "active"
+        },
+        "clubMember": {
+          "id": "61bf04bd-d586-4eb3-98db-09b7e0087c22",
+          "club_id": "club-staging-demo",
+          "status": "active",
+          "membership_type": "regular"
+        },
+        "team": {
+          "id": "412f1241-d309-4315-9e95-b36f4894648c",
+          "external_team_id": "phase23d-team-a",
+          "name": "Probe Team A",
+          "captain_player_id": "player-staging-a-1",
+          "tenant_id": "venue-staging-a",
+          "tournament_id": "phase23d-probe-tournament"
+        },
+        "teamMember": {
+          "id": "212a1808-af2c-4922-90fd-e5c8789cee2f",
+          "player_id": "player-staging-a-1",
+          "role": "captain"
+        },
+        "expectedPlayerId": "player-staging-a-1",
+        "expectedTeamId": "phase23d-team-a"
+      },
+      {
+        "email": "club@staging.local",
+        "profile": {
+          "id": "48a85745-900b-4703-80f7-d1dd8a82b081",
+          "email": "club@staging.local",
+          "role": "PLAYER",
+          "player_id": "player-staging-b-1",
+          "club_id": null,
+          "venue_id": "venue-staging-a",
+          "status": "active"
+        },
+        "clubMember": {
+          "id": "b26cc3e5-fd70-4ae2-bb29-f77154123178",
+          "club_id": "club-staging-demo",
+          "status": "active",
+          "membership_type": "regular"
+        },
+        "team": {
+          "id": "9bba7380-f1d5-49df-88ad-0d347c53eff4",
+          "external_team_id": "phase23d-team-b",
+          "name": "Probe Team B",
+          "captain_player_id": "player-staging-b-1",
+          "tenant_id": "venue-staging-a",
+          "tournament_id": "phase23d-probe-tournament"
+        },
+        "teamMember": {
+          "id": "e6e3dbe7-5b84-47c2-8223-d30e4a4d7a10",
+          "player_id": "player-staging-b-1",
+          "role": "captain"
+        },
+        "expectedPlayerId": "player-staging-b-1",
+        "expectedTeamId": "phase23d-team-b"
+      }
+    ]
+  },
+  "after": {
+    "generatedAt": "2026-07-12T08:07:02.726Z",
+    "captains": [
+      {
+        "email": "player@staging.local",
+        "profile": {
+          "id": "7b381912-2190-415c-b099-6b1e87567b7a",
+          "email": "player@staging.local",
+          "role": "PLAYER",
+          "player_id": "player-staging-a-1",
+          "club_id": null,
+          "venue_id": "venue-staging-a",
+          "status": "active"
+        },
+        "clubMember": {
+          "id": "61bf04bd-d586-4eb3-98db-09b7e0087c22",
+          "club_id": "club-staging-demo",
+          "status": "active",
+          "membership_type": "regular"
+        },
+        "team": {
+          "id": "412f1241-d309-4315-9e95-b36f4894648c",
+          "external_team_id": "phase23d-team-a",
+          "name": "Probe Team A",
+          "captain_player_id": "player-staging-a-1",
+          "tenant_id": "venue-staging-a",
+          "tournament_id": "phase23d-probe-tournament"
+        },
+        "teamMember": {
+          "id": "212a1808-af2c-4922-90fd-e5c8789cee2f",
+          "player_id": "player-staging-a-1",
+          "role": "captain"
+        },
+        "expectedPlayerId": "player-staging-a-1",
+        "expectedTeamId": "phase23d-team-a"
+      },
+      {
+        "email": "club@staging.local",
+        "profile": {
+          "id": "48a85745-900b-4703-80f7-d1dd8a82b081",
+          "email": "club@staging.local",
+          "role": "PLAYER",
+          "player_id": "player-staging-b-1",
+          "club_id": null,
+          "venue_id": "venue-staging-a",
+          "status": "active"
+        },
+        "clubMember": {
+          "id": "b26cc3e5-fd70-4ae2-bb29-f77154123178",
+          "club_id": "club-staging-demo",
+          "status": "active",
+          "membership_type": "regular"
+        },
+        "team": {
+          "id": "9bba7380-f1d5-49df-88ad-0d347c53eff4",
+          "external_team_id": "phase23d-team-b",
+          "name": "Probe Team B",
+          "captain_player_id": "player-staging-b-1",
+          "tenant_id": "venue-staging-a",
+          "tournament_id": "phase23d-probe-tournament"
+        },
+        "teamMember": {
+          "id": "e6e3dbe7-5b84-47c2-8223-d30e4a4d7a10",
+          "player_id": "player-staging-b-1",
+          "role": "captain"
+        },
+        "expectedPlayerId": "player-staging-b-1",
+        "expectedTeamId": "phase23d-team-b"
+      }
+    ]
+  },
+  "profileResults": [
+    {
+      "email": "player@staging.local",
+      "before": {
+        "id": "7b381912-2190-415c-b099-6b1e87567b7a",
+        "email": "player@staging.local",
+        "player_id": "player-staging-a-1",
+        "venue_id": "venue-staging-a",
+        "role": "PLAYER",
+        "status": "active",
+        "club_id": null
+      },
+      "after": {
+        "email": "player@staging.local",
+        "player_id": "player-staging-a-1",
+        "role": "PLAYER",
+        "venue_id": "venue-staging-a",
+        "club_id": null,
+        "status": "active"
+      }
+    },
+    {
+      "email": "club@staging.local",
+      "before": {
+        "id": "48a85745-900b-4703-80f7-d1dd8a82b081",
+        "email": "club@staging.local",
+        "player_id": "player-staging-b-1",
+        "venue_id": "venue-staging-a",
+        "role": "PLAYER",
+        "status": "active",
+        "club_id": null
+      },
+      "after": {
+        "email": "club@staging.local",
+        "player_id": "player-staging-b-1",
+        "role": "PLAYER",
+        "venue_id": "venue-staging-a",
+        "club_id": null,
+        "status": "active"
+      }
+    }
+  ],
+  "memberResults": [
+    {
+      "email": "owner@staging.local",
+      "userId": "13e0968b-53c5-4ba6-8ae0-dce12b1faf9c",
+      "action": "skip"
+    },
+    {
+      "email": "player@staging.local",
+      "userId": "7b381912-2190-415c-b099-6b1e87567b7a",
+      "action": "skip"
+    },
+    {
+      "email": "club@staging.local",
+      "userId": "48a85745-900b-4703-80f7-d1dd8a82b081",
+      "action": "skip"
+    },
+    {
+      "email": "manager@staging.local",
+      "userId": "c1db2b6a-b26b-4d44-8295-9898c92066cd",
+      "action": "skip"
+    }
+  ],
+  "clubAction": "exists",
+  "checks": [
+    {
+      "email": "player@staging.local",
+      "playerIdOk": true,
+      "clubMemberActive": true,
+      "captainPlayerIdOk": true,
+      "teamMemberOk": true,
+      "tournamentClubOk": true
+    },
+    {
+      "email": "club@staging.local",
+      "playerIdOk": true,
+      "clubMemberActive": true,
+      "captainPlayerIdOk": true,
+      "teamMemberOk": true,
+      "tournamentClubOk": true
+    }
+  ]
+}

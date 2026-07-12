@@ -1,0 +1,132 @@
+{
+  "generatedAt": "2026-07-12T01:34:38.480Z",
+  "stagingRef": "qyewbxjsiiyufanzcjcq",
+  "productionImpact": "NONE",
+  "previewUrl": "https://pickleball-scheduler-h8swyt4n7-pickleball-scheduler.vercel.app",
+  "deploymentId": "dpl_GH12B9FYtHYreEqNajvPxrLRZd3x",
+  "localCommitSha": "89aa7d76cefddc52fe085b6766ff28b873ae8b05",
+  "bundleCommitSha": "78a4cfcb59e90db783477cf02865aabb3d50fe9b",
+  "envProbe": {
+    "ok": true,
+    "baseUrl": "https://pickleball-scheduler-h8swyt4n7-pickleball-scheduler.vercel.app",
+    "dataMode": "shadow",
+    "ttSupabaseLikely": true,
+    "tt1bGuardsLikely": true,
+    "jsChunksScanned": 24,
+    "commitSha": "78a4cfcb59e90db783477cf02865aabb3d50fe9b",
+    "deploymentId": "dpl_GH12B9FYtHYreEqNajvPxrLRZd3x"
+  },
+  "dataModeExpected": "shadow",
+  "browserProfiles": 4,
+  "cases": [
+    {
+      "id": "preview_env_probe",
+      "pass": true,
+      "expected": "mode=shadow guards=deployed",
+      "actual": "{\"dataMode\":\"shadow\",\"ttSupabaseLikely\":true,\"tt1bGuardsLikely\":true,\"deploymentId\":\"dpl_GH12B9FYtHYreEqNajvPxrLRZd3x\"}",
+      "detail": "https://pickleball-scheduler-h8swyt4n7-pickleball-scheduler.vercel.app"
+    },
+    {
+      "id": "btc_setup_render",
+      "pass": true,
+      "expected": "expected route + tournament UI",
+      "actual": "rendered",
+      "detail": "/tournament/team/phase23d-probe-tournament"
+    },
+    {
+      "id": "btc_setup_polling_not_excessive",
+      "pass": true,
+      "expected": "<=6 get_setup in ~5.5s window",
+      "actual": "1",
+      "detail": ""
+    },
+    {
+      "id": "captain_a_portal_render",
+      "pass": false,
+      "expected": "expected route + tournament UI",
+      "actual": "redirected:https://pickleball-scheduler-h8swyt4n7-pickleball-scheduler.vercel.app/discover-clubs",
+      "detail": "/team-portal/phase23d-probe-tournament"
+    },
+    {
+      "id": "captain_a_portal_polling_not_excessive",
+      "pass": true,
+      "expected": "<=6 get_setup in ~5.5s window",
+      "actual": "0",
+      "detail": ""
+    },
+    {
+      "id": "captain_b_portal_render",
+      "pass": false,
+      "expected": "expected route + tournament UI",
+      "actual": "redirected:https://pickleball-scheduler-h8swyt4n7-pickleball-scheduler.vercel.app/discover-clubs",
+      "detail": "/team-portal/phase23d-probe-tournament"
+    },
+    {
+      "id": "captain_b_portal_polling_not_excessive",
+      "pass": true,
+      "expected": "<=6 get_setup in ~5.5s window",
+      "actual": "0",
+      "detail": ""
+    },
+    {
+      "id": "referee_portal_render",
+      "pass": false,
+      "expected": "expected route + tournament UI",
+      "actual": "rendered",
+      "detail": "/team-referee/phase23d-probe-tournament"
+    },
+    {
+      "id": "referee_portal_polling_not_excessive",
+      "pass": true,
+      "expected": "<=80 get_setup in ~5.5s window",
+      "actual": "1",
+      "detail": ""
+    },
+    {
+      "id": "captain_a_refresh_persistence",
+      "pass": true,
+      "expected": "content after reload",
+      "actual": "ok",
+      "detail": ""
+    },
+    {
+      "id": "no_serious_console_errors",
+      "pass": false,
+      "expected": "0 serious console errors",
+      "actual": "11",
+      "detail": ""
+    },
+    {
+      "id": "shadow_compare_zero_mismatch",
+      "pass": true,
+      "expected": "0 mismatch",
+      "actual": "OK",
+      "detail": ""
+    }
+  ],
+  "consoleErrors": [
+    "btc console: Failed to load resource: the server responded with a status of 404 ()",
+    "btc console: Failed to load resource: the server responded with a status of 404 ()",
+    "btc console: [TT-1C] loadTournament failed TypeError: (0 , De.createHash) is not a function\n    at ke (https://pickleball-scheduler-h8swyt4n7-pickleball-scheduler.vercel.app/assets/useTeamTournamentPage-COU46Fru.j",
+    "btc console: Failed to load resource: the server responded with a status of 404 ()",
+    "btc console: [TT-1C] loadTournament failed TypeError: (0 , De.createHash) is not a function\n    at ke (https://pickleball-scheduler-h8swyt4n7-pickleball-scheduler.vercel.app/assets/useTeamTournamentPage-COU46Fru.j",
+    "btc console: [TT-1C] loadTournament failed TypeError: (0 , De.createHash) is not a function\n    at ke (https://pickleball-scheduler-h8swyt4n7-pickleball-scheduler.vercel.app/assets/useTeamTournamentPage-COU46Fru.j",
+    "btc console: [TT-1C] loadTournament failed TypeError: (0 , De.createHash) is not a function\n    at ke (https://pickleball-scheduler-h8swyt4n7-pickleball-scheduler.vercel.app/assets/useTeamTournamentPage-COU46Fru.j",
+    "btc console: [TT-1C] loadTournament failed TypeError: (0 , De.createHash) is not a function\n    at ke (https://pickleball-scheduler-h8swyt4n7-pickleball-scheduler.vercel.app/assets/useTeamTournamentPage-COU46Fru.j",
+    "btc console: Failed to load resource: the server responded with a status of 404 ()",
+    "btc console: [TT-1C] loadTournament failed TypeError: (0 , De.createHash) is not a function\n    at ke (https://pickleball-scheduler-h8swyt4n7-pickleball-scheduler.vercel.app/assets/useTeamTournamentPage-COU46Fru.j",
+    "btc console: [TT-1C] loadTournament failed TypeError: (0 , De.createHash) is not a function\n    at ke (https://pickleball-scheduler-h8swyt4n7-pickleball-scheduler.vercel.app/assets/useTeamTournamentPage-COU46Fru.j",
+    "ref console: [TT-1C] loadTournament failed TypeError: (0 , De.createHash) is not a function\n    at ke (https://pickleball-scheduler-h8swyt4n7-pickleball-scheduler.vercel.app/assets/useTeamTournamentPage-COU46Fru.j",
+    "ref console: [TT-1C] loadTournament failed TypeError: (0 , De.createHash) is not a function\n    at ke (https://pickleball-scheduler-h8swyt4n7-pickleball-scheduler.vercel.app/assets/useTeamTournamentPage-COU46Fru.j",
+    "btc console: [TT-1C] loadTournament failed TypeError: (0 , De.createHash) is not a function\n    at ke (https://pickleball-scheduler-h8swyt4n7-pickleball-scheduler.vercel.app/assets/useTeamTournamentPage-COU46Fru.j",
+    "ref console: [TT-1C] loadTournament failed TypeError: (0 , De.createHash) is not a function\n    at ke (https://pickleball-scheduler-h8swyt4n7-pickleball-scheduler.vercel.app/assets/useTeamTournamentPage-COU46Fru.j"
+  ],
+  "networkFindings": [
+    "btc 404 https://qyewbxjsiiyufanzcjcq.supabase.co/rest/v1/rpc/court_list_my_claim_requests",
+    "btc 404 https://qyewbxjsiiyufanzcjcq.supabase.co/rest/v1/rpc/court_list_my_claim_requests",
+    "btc 404 https://qyewbxjsiiyufanzcjcq.supabase.co/rest/v1/rpc/court_list_my_claim_requests",
+    "btc 404 https://qyewbxjsiiyufanzcjcq.supabase.co/rest/v1/rpc/court_list_my_claim_requests"
+  ],
+  "rpcCounts": {},
+  "verdict": "FAIL"
+}

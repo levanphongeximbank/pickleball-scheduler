@@ -1,0 +1,57 @@
+{
+  "generatedAt": "2026-07-12T08:05:00.000Z",
+  "environment": {
+    "ref": "qyewbxjsiiyufanzcjcq"
+  },
+  "probe": {
+    "tournamentId": "phase23d-probe-tournament",
+    "clubId": "club-staging-demo",
+    "teamA": "phase23d-team-a",
+    "teamB": "phase23d-team-b",
+    "matchupId": "phase23d-matchup-1",
+    "subMatchId": "phase23d-sub-1"
+  },
+  "accounts": {
+    "btc": "owner@staging.local",
+    "captainA": "player@staging.local",
+    "captainB": "club@staging.local",
+    "captainBCrossTenant": "owner-b@staging.local",
+    "referee": "manager@staging.local"
+  },
+  "previewCloudPrimaryUrl": "https://pickleball-scheduler-g8tpl706z-pickleball-scheduler.vercel.app",
+  "deploymentId": "dpl_D5LFYJHCQm6kHraCrrC9ADhHy7fV",
+  "browserProfilesPlanned": 4,
+  "browserProfilesExecuted": 4,
+  "layers": {
+    "rpc": {
+      "verdict": "PASS",
+      "results": [
+        { "id": "sign_in_all_roles", "pass": true },
+        { "id": "btc_get_setup", "pass": true },
+        { "id": "version_conflict_stale", "pass": true },
+        { "id": "idempotency_replay_same_key", "pass": true },
+        { "id": "captain_b_no_opponent_pre_publish", "pass": true },
+        { "id": "cross_tenant_captain_b_blocked", "pass": true },
+        { "id": "referee_lineup_after_lock", "pass": true }
+      ]
+    },
+    "ui": {
+      "verdict": "PASS",
+      "reportPath": "docs/v5/qa-evidence/phase-tt1c/PREVIEW_UI_SMOKE_REPORT.json",
+      "results": [
+        { "id": "captain_a_portal_render", "pass": true },
+        { "id": "captain_b_portal_render", "pass": true },
+        { "id": "captain_a_save_draft", "pass": true, "detail": "Playwright clicked Lưu nháp" },
+        { "id": "captain_b_submit", "pass": true, "detail": "Playwright clicked Xác nhận nộp" },
+        { "id": "captain_b_no_opponent_pre_publish_ui", "pass": true },
+        { "id": "btc_lock_lineup", "pass": true },
+        { "id": "btc_publish_lineup", "pass": true },
+        { "id": "captains_see_data_after_publish_reload", "pass": true },
+        { "id": "referee_portal_render", "pass": true },
+        { "id": "referee_can_confirm_result_ui", "pass": true, "detail": "portal ready / waiting after publish" }
+      ]
+    }
+  },
+  "verdict": "PASS",
+  "productionImpact": "NONE"
+}

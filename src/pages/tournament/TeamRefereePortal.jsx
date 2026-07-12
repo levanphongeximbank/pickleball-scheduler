@@ -25,7 +25,8 @@ import { useAuth } from "../../context/AuthContext.jsx";
 import { useClub } from "../../context/ClubContext.jsx";
 import { useTenant } from "../../context/TenantContext.jsx";
 import { loadPlayersForClub } from "../../domain/clubStorage.js";
-import { assertTournamentAccess, getTournament } from "../../domain/tournamentService.js";
+import { assertTournamentPortalAccess } from "../../domain/tournamentService.js";
+import { findTournamentClubId } from "../../features/club/services/clubTournamentBridge.js";
 import { getPermissionsForRole } from "../../features/identity/matrix/rolePermissions.js";
 import {
   MATCHUP_STATUS,
@@ -49,15 +50,14 @@ import {
   isTeamTournament,
 } from "../../features/team-tournament/engines/teamTournamentEngine.js";
 import {
-  refereeConfirmSubMatch,
-  refereeSaveSubMatchDraft,
   refereeRecordDreambreakerPoint,
   refereeStartDreambreaker,
   refereeUndoDreambreakerPoint,
-  refereeForfeitSubMatch,
   refereeDreambreakerInjury,
   refereeLockDreambreakerOrders,
 } from "../../features/team-tournament/services/teamTournamentService.js";
+import { useTeamTournamentPage } from "../../features/team-tournament/ui/useTeamTournamentPage.js";
+import { buildUiCommandScope } from "../../features/team-tournament/ui/teamTournamentUiCommandKeys.js";
 import { getRallyScoringHints } from "../../features/team-tournament/engines/rallyScoringEngine.js";
 import { RefereeDreambreakerPanel } from "../../components/tournament/team/DreambreakerPanel.jsx";
 import { syncDreambreakerForAllMatchups } from "../../features/team-tournament/engines/dreambreakerEngine.js";
@@ -520,13 +520,35 @@ export default function TeamRefereePortal() {
   const { rbacEnabled, isAuthenticated, user } = useAuth();
   const { currentTenantId } = useTenant();
 
-  const [tournament, setTournament] = useState(null);
+  const resolvedClubId = useMemo(
+    () => findTournamentClubId(tournamentId) || activeClubId,
+    [tournamentId, activeClubId]
+  );
+
   const [message, setMessage] = useState(null);
   const [error, setError] = useState(null);
   const [busy, setBusy] = useState(false);
   const [expandedMatchupId, setExpandedMatchupId] = useState("");
   const [selectedSubMatchId, setSelectedSubMatchId] = useState("");
   const [statusFilter, setStatusFilter] = useState(REFEREE_FILTER.ALL);
+
+  const {
+    loading,
+    tournament,
+    teamData,
+    version,
+    error: loadError,
+    versionConflict,
+    reload,
+    runMutation,
+    saveSubMatchDraft,
+  } = useTeamTournamentPage({
+    clubId: resolvedClubId,
+    tournamentId,
+    pollingEnabled: true,
+  });
+
+  const effectiveClubId = tournament?.clubId || resolvedClubId;
 
   const permissions = useMemo(
     () => getPermissionsForRole(user?.role || ""),
@@ -544,10 +566,9 @@ export default function TeamRefereePortal() {
   );
 
   const reloadTournament = useCallback(() => {
-    const next = getTournament(activeClubId, tournamentId);
-    setTournament(next);
-    return next;
-  }, [activeClubId, tournamentId]);
+    reload({ silent: true });
+    return tournament;
+  }, [reload, tournament]);
 
   useEffect(() => {
     reloadTournament();
@@ -563,8 +584,10 @@ export default function TeamRefereePortal() {
     }
 
     if (rbacEnabled && isAuthenticated) {
-      const tenantCheck = assertTournamentAccess(activeClubId, tournamentId, {
+      const tenantCheck = assertTournamentPortalAccess(effectiveClubId, tournamentId, {
         tenantId: currentTenantId,
+        user,
+        rbacEnabled,
       });
       if (!tenantCheck.ok) {
         return { allowed: false, error: tenantCheck.error };
@@ -580,7 +603,7 @@ export default function TeamRefereePortal() {
 
     return { allowed: true, error: null };
   }, [
-    activeClubId,
+    effectiveClubId,
     canManage,
     canView,
     currentTenantId,
@@ -591,17 +614,11 @@ export default function TeamRefereePortal() {
   ]);
 
   const players = useMemo(
-    () => (activeClubId ? loadPlayersForClub(activeClubId) : []),
-    [activeClubId]
+    () => (effectiveClubId ? loadPlayersForClub(effectiveClubId) : []),
+    [effectiveClubId]
   );
 
-  const teamData = useMemo(() => {
-    if (!tournament) {
-      return null;
-    }
-    const raw = getTeamData(tournament);
-    return syncDreambreakerForAllMatchups(raw).teamData;
-  }, [tournament]);
+  const teamDataView = teamData;
 
   const dreambreakerPendingCount = useMemo(
     () => (teamData ? countDreambreakerPendingMatchups(teamData) : 0),
@@ -682,11 +699,10 @@ export default function TeamRefereePortal() {
     setError(null);
     setMessage(null);
 
-    const result = await refereeSaveSubMatchDraft(activeClubId, tournamentId, {
-      matchupId,
-      subMatchId,
-      ...payload,
-    });
+    const result = await saveSubMatchDraft(
+      { matchupId, subMatchId, ...payload },
+      { expectedVersion: version }
+    );
 
     setBusy(false);
 
@@ -695,12 +711,8 @@ export default function TeamRefereePortal() {
       return;
     }
 
-    setTournament(result.tournament);
-    setMessage(
-      result.warning
-        ? `Đã lưu nháp tỷ số trên máy. ${result.warning}`
-        : "Đã lưu nháp tỷ số."
-    );
+    await reload({ silent: true });
+    setMessage("Đã lưu nháp tỷ số.");
   }
 
   async function handleConfirm(matchupId, subMatchId, payload) {
@@ -708,10 +720,16 @@ export default function TeamRefereePortal() {
     setError(null);
     setMessage(null);
 
-    const result = await refereeConfirmSubMatch(activeClubId, tournamentId, {
-      matchupId,
-      subMatchId,
-      ...payload,
+    const result = await runMutation({
+      method: "confirmSubMatchResult",
+      payload: {
+        matchupId,
+        subMatchId,
+        score: payload.score,
+        winnerTeamId: payload.winnerTeamId,
+      },
+      actionScope: buildUiCommandScope("confirm", tournamentId, subMatchId),
+      expectedVersion: version,
     });
 
     setBusy(false);
@@ -721,18 +739,9 @@ export default function TeamRefereePortal() {
       return;
     }
 
-    setTournament(result.tournament);
-
     let nextMessage = "Đã xác nhận kết quả trận con.";
-    if (result.matchupResult?.winnerTeamId) {
-      const winnerName =
-        result.matchupResult.winnerTeamId === activeMatchup?.teamAId
-          ? activeMatchup?.teamAName
-          : activeMatchup?.teamBName;
-      nextMessage = `Đã xác nhận. Chung cuộc: ${activeMatchup?.teamAName} ${result.matchupResult.teamAWins}–${result.matchupResult.teamBWins} ${activeMatchup?.teamBName}${winnerName ? ` (${winnerName} thắng)` : ""}`;
-    }
-    if (result.warning) {
-      nextMessage = `${nextMessage} (${result.warning})`;
+    if (result.mirrorWarning) {
+      nextMessage = `${nextMessage} (${result.mirrorWarning})`;
     }
     setMessage(nextMessage);
   }
@@ -740,25 +749,33 @@ export default function TeamRefereePortal() {
   async function handleForfeit(matchupId, subMatchId, payload, forfeitingTeamId) {
     setBusy(true);
     setError(null);
-    const result = await refereeForfeitSubMatch(activeClubId, tournamentId, {
-      matchupId,
-      subMatchId,
-      forfeitingTeamId,
-      currentScoreA: payload.score?.teamA,
-      currentScoreB: payload.score?.teamB,
+    const result = await runMutation({
+      method: "applyForfeit",
+      payload: {
+        matchupId,
+        subMatchId,
+        forfeitingTeamId,
+        scope: "sub_match",
+        resultType: "forfeit",
+        technicalScore: {
+          teamA: payload.score?.teamA,
+          teamB: payload.score?.teamB,
+        },
+      },
+      actionScope: buildUiCommandScope("forfeit", tournamentId, subMatchId),
+      expectedVersion: version,
     });
     setBusy(false);
     if (!result.ok) {
       setError(result.error);
       return;
     }
-    setTournament(result.tournament);
     setMessage("Đã ghi nhận forfeit/chấn thương.");
   }
 
   async function handleDreambreakerPoint(matchupId, scoringTeamId) {
     setBusy(true);
-    const result = await refereeRecordDreambreakerPoint(activeClubId, tournamentId, {
+    const result = await refereeRecordDreambreakerPoint(effectiveClubId, tournamentId, {
       matchupId,
       scoringTeamId,
     });
@@ -767,7 +784,7 @@ export default function TeamRefereePortal() {
       setError(result.error);
       return;
     }
-    setTournament(result.tournament);
+    await reload({ silent: true });
     if (result.completed) {
       setMessage("Dreambreaker kết thúc.");
     }
@@ -775,22 +792,22 @@ export default function TeamRefereePortal() {
 
   async function handleDreambreakerStart(matchupId) {
     setBusy(true);
-    const result = refereeStartDreambreaker(activeClubId, tournamentId, { matchupId });
+    const result = refereeStartDreambreaker(effectiveClubId, tournamentId, { matchupId });
     setBusy(false);
     if (!result.ok) {
       setError(result.error);
       return;
     }
-    setTournament(result.tournament);
+    await reload({ silent: true });
   }
 
   async function handleDreambreakerLock(matchupId) {
     setBusy(true);
     setError(null);
-    const result = refereeLockDreambreakerOrders(activeClubId, tournamentId, { matchupId });
+    const result = refereeLockDreambreakerOrders(effectiveClubId, tournamentId, { matchupId });
     setBusy(false);
     if (result.tournament) {
-      setTournament(result.tournament);
+      await reload({ silent: true });
     }
     const detail = (result.logs || []).join(" ") || "Đã khóa thứ tự Dreambreaker.";
     if (result.warning) {
@@ -801,18 +818,18 @@ export default function TeamRefereePortal() {
 
   async function handleDreambreakerUndo(matchupId) {
     setBusy(true);
-    const result = refereeUndoDreambreakerPoint(activeClubId, tournamentId, { matchupId });
+    const result = refereeUndoDreambreakerPoint(effectiveClubId, tournamentId, { matchupId });
     setBusy(false);
     if (!result.ok) {
       setError(result.error);
       return;
     }
-    setTournament(result.tournament);
+    await reload({ silent: true });
   }
 
   async function handleDreambreakerInjury(matchupId, payload) {
     setBusy(true);
-    const result = refereeDreambreakerInjury(activeClubId, tournamentId, {
+    const result = refereeDreambreakerInjury(effectiveClubId, tournamentId, {
       matchupId,
       ...payload,
     });
@@ -821,7 +838,7 @@ export default function TeamRefereePortal() {
       setError(result.error);
       return;
     }
-    setTournament(result.tournament);
+    await reload({ silent: true });
     setMessage("Đã ghi nhận chấn thương Dreambreaker.");
   }
 

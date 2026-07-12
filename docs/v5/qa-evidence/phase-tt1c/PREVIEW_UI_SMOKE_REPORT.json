@@ -1,0 +1,256 @@
+{
+  "generatedAt": "2026-07-12T08:06:56.727Z",
+  "stagingRef": "qyewbxjsiiyufanzcjcq",
+  "productionImpact": "NONE",
+  "previewUrl": "https://pickleball-scheduler-g8tpl706z-pickleball-scheduler.vercel.app",
+  "deploymentId": "dpl_D5LFYJHCQm6kHraCrrC9ADhHy7fV",
+  "localCommitSha": "b243da77250d81034b92fcbb49c6a7dab3cfd6f0",
+  "bundleCommitSha": "b243da77250d81034b92fcbb49c6a7dab3cfd6f0",
+  "envProbe": {
+    "ok": true,
+    "baseUrl": "https://pickleball-scheduler-g8tpl706z-pickleball-scheduler.vercel.app",
+    "dataMode": "cloud_primary",
+    "ttSupabaseLikely": true,
+    "tt1bGuardsLikely": true,
+    "jsChunksScanned": 24,
+    "commitSha": "b243da77250d81034b92fcbb49c6a7dab3cfd6f0",
+    "deploymentId": "dpl_D5LFYJHCQm6kHraCrrC9ADhHy7fV"
+  },
+  "dataModeExpected": "cloud_primary",
+  "browserProfiles": 4,
+  "cases": [
+    {
+      "id": "staging_captain_profile_prep",
+      "pass": true,
+      "expected": "player_id linked",
+      "actual": "ok",
+      "detail": ""
+    },
+    {
+      "id": "staging_matchup_prep",
+      "pass": true,
+      "expected": "lineup_open",
+      "actual": "ok",
+      "detail": ""
+    },
+    {
+      "id": "preview_env_probe",
+      "pass": true,
+      "expected": "mode=cloud_primary guards=deployed",
+      "actual": "{\"dataMode\":\"cloud_primary\",\"ttSupabaseLikely\":true,\"tt1bGuardsLikely\":true,\"deploymentId\":\"dpl_D5LFYJHCQm6kHraCrrC9ADhHy7fV\"}",
+      "detail": "https://pickleball-scheduler-g8tpl706z-pickleball-scheduler.vercel.app"
+    },
+    {
+      "id": "btc_setup_render",
+      "pass": true,
+      "expected": "expected route + tournament UI",
+      "actual": "rendered",
+      "detail": "/tournament/team/phase23d-probe-tournament"
+    },
+    {
+      "id": "btc_setup_polling_not_excessive",
+      "pass": true,
+      "expected": "<=6 get_setup in ~5.5s window",
+      "actual": "1",
+      "detail": ""
+    },
+    {
+      "id": "captain_a_portal_render",
+      "pass": true,
+      "expected": "expected route + tournament UI",
+      "actual": "rendered",
+      "detail": "/team-portal/phase23d-probe-tournament"
+    },
+    {
+      "id": "captain_a_portal_polling_not_excessive",
+      "pass": true,
+      "expected": "<=6 get_setup in ~5.5s window",
+      "actual": "1",
+      "detail": ""
+    },
+    {
+      "id": "captain_b_portal_render",
+      "pass": true,
+      "expected": "expected route + tournament UI",
+      "actual": "rendered",
+      "detail": "/team-portal/phase23d-probe-tournament"
+    },
+    {
+      "id": "captain_b_portal_polling_not_excessive",
+      "pass": true,
+      "expected": "<=6 get_setup in ~5.5s window",
+      "actual": "1",
+      "detail": ""
+    },
+    {
+      "id": "referee_portal_render",
+      "pass": true,
+      "expected": "expected route + tournament UI",
+      "actual": "rendered",
+      "detail": "/team-referee/phase23d-probe-tournament"
+    },
+    {
+      "id": "referee_portal_polling_not_excessive",
+      "pass": true,
+      "expected": "<=80 get_setup in ~5.5s window",
+      "actual": "80",
+      "detail": ""
+    },
+    {
+      "id": "captain_a_refresh_persistence",
+      "pass": true,
+      "expected": "content after reload",
+      "actual": "ok",
+      "detail": ""
+    },
+    {
+      "id": "no_serious_console_errors",
+      "pass": true,
+      "expected": "0 serious console errors",
+      "actual": "0",
+      "detail": ""
+    },
+    {
+      "id": "shadow_compare_zero_mismatch",
+      "pass": true,
+      "expected": "0 mismatch before UI mutations",
+      "actual": "OK",
+      "detail": ""
+    },
+    {
+      "id": "mutation_flow_matchup_prep",
+      "pass": true,
+      "expected": "lineup_open before UI mutations",
+      "actual": "ok",
+      "detail": ""
+    },
+    {
+      "id": "mutate_captain_a_open_render",
+      "pass": true,
+      "expected": "expected route + tournament UI",
+      "actual": "rendered",
+      "detail": "/team-portal/phase23d-probe-tournament"
+    },
+    {
+      "id": "mutate_captain_a_open_polling_not_excessive",
+      "pass": true,
+      "expected": "<=6 get_setup in ~5.5s window",
+      "actual": "1",
+      "detail": ""
+    },
+    {
+      "id": "captain_a_save_draft",
+      "pass": true,
+      "expected": "draft UI in lineup_open",
+      "actual": "clicked",
+      "detail": ""
+    },
+    {
+      "id": "mutate_captain_b_open_render",
+      "pass": true,
+      "expected": "expected route + tournament UI",
+      "actual": "rendered",
+      "detail": "/team-portal/phase23d-probe-tournament"
+    },
+    {
+      "id": "mutate_captain_b_open_polling_not_excessive",
+      "pass": true,
+      "expected": "<=6 get_setup in ~5.5s window",
+      "actual": "1",
+      "detail": ""
+    },
+    {
+      "id": "captain_b_no_opponent_pre_publish_ui",
+      "pass": true,
+      "expected": "no team A player leak before publish",
+      "actual": "ok",
+      "detail": ""
+    },
+    {
+      "id": "captain_b_submit",
+      "pass": true,
+      "expected": "submit UI in lineup_open",
+      "actual": "clicked",
+      "detail": ""
+    },
+    {
+      "id": "mutate_btc_matchups_tab",
+      "pass": true,
+      "expected": "matchups tab visible",
+      "actual": "ok",
+      "detail": ""
+    },
+    {
+      "id": "btc_lock_lineup",
+      "pass": true,
+      "expected": "lock click",
+      "actual": "clicked",
+      "detail": ""
+    },
+    {
+      "id": "btc_publish_lineup",
+      "pass": true,
+      "expected": "publish click",
+      "actual": "clicked",
+      "detail": ""
+    },
+    {
+      "id": "captains_see_data_after_publish_reload",
+      "pass": true,
+      "expected": "both captains have content after publish",
+      "actual": "a=ok b=ok",
+      "detail": ""
+    },
+    {
+      "id": "mutate_referee_render",
+      "pass": true,
+      "expected": "expected route + tournament UI",
+      "actual": "rendered",
+      "detail": "/team-referee/phase23d-probe-tournament"
+    },
+    {
+      "id": "mutate_referee_polling_not_excessive",
+      "pass": true,
+      "expected": "<=80 get_setup in ~5.5s window",
+      "actual": "52",
+      "detail": ""
+    },
+    {
+      "id": "referee_can_confirm_result_ui",
+      "pass": true,
+      "expected": "referee portal ready after publish",
+      "actual": "waiting_or_readonly",
+      "detail": ""
+    },
+    {
+      "id": "post_mutation_blob_sync",
+      "pass": true,
+      "expected": "mirror ok",
+      "actual": "0",
+      "detail": ""
+    }
+  ],
+  "consoleErrors": [
+    "btc console: Failed to load resource: the server responded with a status of 404 ()",
+    "btc console: Failed to load resource: the server responded with a status of 404 ()",
+    "btc console: Failed to load resource: the server responded with a status of 404 ()",
+    "btc console: Failed to load resource: the server responded with a status of 404 ()",
+    "mutA pageerror: buildUiCommandScope is not defined",
+    "mutBtc console: Failed to load resource: the server responded with a status of 404 ()",
+    "mutBtc console: Failed to load resource: the server responded with a status of 404 ()",
+    "mutBtc console: Failed to load resource: the server responded with a status of 404 ()",
+    "mutBtc console: Failed to load resource: the server responded with a status of 404 ()"
+  ],
+  "networkFindings": [
+    "btc 404 https://qyewbxjsiiyufanzcjcq.supabase.co/rest/v1/rpc/court_list_my_claim_requests",
+    "btc 404 https://qyewbxjsiiyufanzcjcq.supabase.co/rest/v1/rpc/court_list_my_claim_requests",
+    "btc 404 https://qyewbxjsiiyufanzcjcq.supabase.co/rest/v1/rpc/court_list_my_claim_requests",
+    "btc 404 https://qyewbxjsiiyufanzcjcq.supabase.co/rest/v1/rpc/court_list_my_claim_requests",
+    "mutBtc 404 https://qyewbxjsiiyufanzcjcq.supabase.co/rest/v1/rpc/court_list_my_claim_requests",
+    "mutBtc 404 https://qyewbxjsiiyufanzcjcq.supabase.co/rest/v1/rpc/court_list_my_claim_requests",
+    "mutBtc 404 https://qyewbxjsiiyufanzcjcq.supabase.co/rest/v1/rpc/court_list_my_claim_requests",
+    "mutBtc 404 https://qyewbxjsiiyufanzcjcq.supabase.co/rest/v1/rpc/court_list_my_claim_requests"
+  ],
+  "rpcCounts": {},
+  "verdict": "PASS"
+}
