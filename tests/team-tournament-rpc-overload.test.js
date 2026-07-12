@@ -12,7 +12,8 @@ afterEach(() => {
 });
 
 test("TT1B_COMMAND_RPCS export remains stable", () => {
-  assert.equal(TT1B_COMMAND_RPCS.length, 5);
+  assert.equal(TT1B_COMMAND_RPCS.length, 6);
+  assert.ok(TT1B_COMMAND_RPCS.includes("team_tournament_randomize_lineup"));
 });
 
 test("buildTt1bCommandRpcArgs null disambiguators for overload resolution", () => {

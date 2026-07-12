@@ -180,9 +180,9 @@ export function lockMatchupLineups(teamData, { matchupId, players = [], now = ne
   const lockTime = new Date(now).toISOString();
 
   for (const teamId of [matchup.teamAId, matchup.teamBId]) {
-    const key = lineupKey(matchupId, teamId);
     const lineup = getLineup(nextData, matchupId, teamId);
     const team = findTeam(nextData, teamId);
+    const current = getLineup(nextData, matchupId, teamId);
 
     if (
       !lineup ||
@@ -211,18 +211,32 @@ export function lockMatchupLineups(teamData, { matchupId, players = [], now = ne
         continue;
       }
 
-      if (policy === MISSING_LINEUP_POLICY.FORFEIT) {
-        return { ok: false, error: `Đội ${team?.name || teamId} không nộp đội hình.` };
+      if (
+        policy === MISSING_LINEUP_POLICY.FORFEIT ||
+        policy === MISSING_LINEUP_POLICY.FORFEIT_PENDING
+      ) {
+        nextData.lineups[lineupKey(matchupId, teamId)] = normalizeLineup({
+          ...(current || { matchupId, teamId, selections: {} }),
+          status: LINEUP_STATUS.NOT_SUBMITTED,
+          auditNote: "tt2d:forfeit_pending",
+        });
+        logs.push(`Đội ${team?.name || teamId} thiếu lineup — đánh dấu forfeit_pending (TT-4).`);
+        continue;
+      }
+
+      if (policy === MISSING_LINEUP_POLICY.MANUAL_PENDING) {
+        return { ok: false, error: `Đội ${team?.name || teamId} thiếu lineup — cần xử lý thủ công.` };
       }
     }
 
-    const current = getLineup(nextData, matchupId, teamId);
-    if (!current) {
+    const lockedLineup = getLineup(nextData, matchupId, teamId);
+    if (!lockedLineup) {
       continue;
     }
 
+    const key = lineupKey(matchupId, teamId);
     nextData.lineups[key] = normalizeLineup({
-      ...current,
+      ...lockedLineup,
       status: LINEUP_STATUS.LOCKED,
       lockedAt: lockTime,
     });

@@ -6,6 +6,7 @@ import {
   rpcTeamTournamentApplyForfeit,
   rpcTeamTournamentLockMatchup,
   rpcTeamTournamentPublishMatchup,
+  rpcTeamTournamentRandomizeLineup,
   rpcTeamTournamentSaveLineupDraft,
   rpcTeamTournamentSubmitLineup,
   rpcTeamTournamentUpsertStandings,
@@ -235,15 +236,19 @@ export function createCloudTeamTournamentRepository() {
       );
     },
 
-    async randomizeLineup(_clubId, _tournamentId, _payload, commandOptions) {
-      const validationError = validateVersionedCommandOptions(
-        commandOptions,
-        "randomizeLineup"
+    async randomizeLineup(_clubId, tournamentId, payload, commandOptions) {
+      return runVersionedMutation("randomizeLineup", commandOptions, async (options) =>
+        rpcTeamTournamentRandomizeLineup(
+          withCommandParams(
+            {
+              tournamentId,
+              matchupId: payload.matchupId,
+              teamId: payload.teamId,
+            },
+            options
+          )
+        )
       );
-      if (validationError) {
-        return validationError;
-      }
-      return notImplemented("randomizeLineup");
     },
 
     async confirmSubMatchResult(_clubId, tournamentId, payload, commandOptions) {

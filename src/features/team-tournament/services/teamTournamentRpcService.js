@@ -5,6 +5,7 @@ let testRpcClientOverride = null;
 /** RPC names that have Phase 23C + TT-1B overloads — always pass full TT-1B arg set. */
 export const TT1B_COMMAND_RPCS = Object.freeze([
   "team_tournament_submit_lineup",
+  "team_tournament_randomize_lineup",
   "team_tournament_lock_matchup",
   "team_tournament_publish_matchup",
   "team_tournament_confirm_sub_match",
@@ -21,6 +22,7 @@ export const TT1B_REQUIRES_EXPECTED_VERSION = Object.freeze([
 export const TT1B_IDEMPOTENCY_PREFIX_BY_RPC = Object.freeze({
   team_tournament_save_lineup_draft: "draft",
   team_tournament_submit_lineup: "submit",
+  team_tournament_randomize_lineup: "randomize",
   team_tournament_lock_matchup: "lock",
   team_tournament_publish_matchup: "publish",
   team_tournament_confirm_sub_match: "confirm",
@@ -43,6 +45,13 @@ export const TT1B_RPC_ARG_CONTRACTS = Object.freeze({
     "p_matchup_id",
     "p_team_id",
     "p_selections",
+    "p_expected_version",
+    "p_idempotency_key",
+  ],
+  team_tournament_randomize_lineup: [
+    "p_tournament_id",
+    "p_matchup_id",
+    "p_team_id",
     "p_expected_version",
     "p_idempotency_key",
   ],
@@ -466,6 +475,24 @@ export async function rpcTeamTournamentLockMatchup(params, matchupId) {
     {
       p_tournament_id: String(normalized.tournamentId),
       p_matchup_id: String(normalized.matchupId),
+    },
+    normalized
+  );
+}
+
+export async function rpcTeamTournamentRandomizeLineup(params, matchupId, teamId) {
+  const normalized = normalizeCommandParams(params, {
+    tournamentId: params,
+    matchupId,
+    teamId,
+  });
+
+  return callTt1bCommandRpc(
+    "team_tournament_randomize_lineup",
+    {
+      p_tournament_id: String(normalized.tournamentId),
+      p_matchup_id: String(normalized.matchupId),
+      p_team_id: String(normalized.teamId),
     },
     normalized
   );

@@ -32,8 +32,12 @@ export const DREAMBREAKER_ORDER_SOURCE = {
 
 export const MISSING_LINEUP_POLICY = {
   RANDOM: "random",
-  BTC_OVERRIDE: "btc_override",
+  /** @deprecated use FORFEIT_PENDING — legacy alias */
   FORFEIT: "forfeit",
+  FORFEIT_PENDING: "forfeit_pending",
+  /** @deprecated use MANUAL_PENDING — legacy alias */
+  BTC_OVERRIDE: "btc_override",
+  MANUAL_PENDING: "manual_pending",
 };
 
 export const MATCHUP_STATUS = {

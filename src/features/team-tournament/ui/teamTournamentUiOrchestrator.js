@@ -115,6 +115,12 @@ async function delegateLegacyMutation(method, clubId, tournamentId, payload, com
       return legacySubmitLineup(clubId, tournamentId, { ...payload, ...commandOptions });
     case "lockLineup":
       return legacyLockLineup(clubId, tournamentId, { ...payload, ...commandOptions });
+    case "randomizeLineup":
+      return {
+        ok: false,
+        code: REPOSITORY_ERROR_CODES.NOT_IMPLEMENTED,
+        error: "randomizeLineup chỉ khả dụng trên cloud repository.",
+      };
     case "publishLineups":
       return legacyPublishLineups(clubId, tournamentId, { ...payload, ...commandOptions });
     case "confirmSubMatchResult":

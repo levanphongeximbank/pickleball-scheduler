@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import {
   Alert,
   Button,
@@ -11,6 +11,7 @@ import {
 import ContentCopyIcon from "@mui/icons-material/ContentCopy";
 import LockIcon from "@mui/icons-material/Lock";
 import PublishIcon from "@mui/icons-material/Publish";
+import ShuffleIcon from "@mui/icons-material/Shuffle";
 import SportsIcon from "@mui/icons-material/Sports";
 import SyncIcon from "@mui/icons-material/Sync";
 
@@ -21,8 +22,11 @@ import {
   LINEUP_STATUS,
   DREAMBREAKER_STATUS,
   MATCHUP_STATUS,
-  MISSING_LINEUP_POLICY,
 } from "../../../features/team-tournament/constants.js";
+import {
+  NORMALIZED_MISSING_LINEUP_POLICY,
+  resolveMatchupMissingLineupState,
+} from "../../../features/team-tournament/engines/missingLineupPolicyEngine.js";
 import TournamentSectionCard from "../TournamentSectionCard.jsx";
 import {
   buildCaptainPortalUrl,
@@ -42,7 +46,9 @@ function LineupProgressChip({ teamData, matchupId, teamId, teamName }) {
   const meta = getLineupStatusMeta(lineup?.status);
   const isAutoRandom =
     lineup?.source === LINEUP_SOURCE.RANDOM &&
-    [LINEUP_STATUS.LOCKED, LINEUP_STATUS.PUBLISHED].includes(lineup?.status);
+    [LINEUP_STATUS.LOCKED, LINEUP_STATUS.PUBLISHED, LINEUP_STATUS.SUBMITTED].includes(
+      lineup?.status
+    );
   const statusLabel = isAutoRandom ? "Tự động sắp xếp" : meta.label;
   return (
     <Chip
@@ -52,6 +58,16 @@ function LineupProgressChip({ teamData, matchupId, teamId, teamName }) {
       variant="outlined"
     />
   );
+}
+
+function policyLabel(policy) {
+  if (policy === NORMALIZED_MISSING_LINEUP_POLICY.FORFEIT_PENDING) {
+    return "Chờ xử thua (TT-4)";
+  }
+  if (policy === NORMALIZED_MISSING_LINEUP_POLICY.MANUAL_PENDING) {
+    return "Chờ BTC xử lý thủ công";
+  }
+  return "Random khi thiếu lineup";
 }
 
 function toLocalInputValue(isoString) {
@@ -81,7 +97,11 @@ export default function TeamMatchupOperationsCard({
   teamB,
   tournamentId,
   canManage,
+  mutationBusy = false,
+  serverTime = null,
+  missingLineupPolicy,
   onLock,
+  onRandomize,
   onPublish,
   onUpdateMatchup,
   onMessage,
@@ -90,15 +110,33 @@ export default function TeamMatchupOperationsCard({
   onLockDreambreaker,
 }) {
   const [copyOk, setCopyOk] = useState(false);
+  const [randomizingTeamId, setRandomizingTeamId] = useState("");
+  const [clientNowMs] = useState(() => Date.now());
   const statusMeta = getMatchupStatusMeta(matchup.status);
   const tieProgress = computeMatchupTieProgress(teamData, matchup);
   const dreambreakerMeta = getDreambreakerStatusMeta(tieProgress.dreambreakerStatus);
-  const autoRandomizeMissingLineups =
-    teamData.settings?.missingLineupPolicy !== MISSING_LINEUP_POLICY.FORFEIT;
-  const canLock = [
-    MATCHUP_STATUS.LINEUP_OPEN,
-    MATCHUP_STATUS.SCHEDULED,
-  ].includes(matchup.status);
+
+  const serverTimeMs = serverTime ? new Date(serverTime).getTime() : clientNowMs;
+  const lineupState = useMemo(
+    () =>
+      resolveMatchupMissingLineupState({
+        teamData,
+        matchup,
+        policy: missingLineupPolicy ?? teamData.settings?.missingLineupPolicy,
+        serverTimeMs,
+      }),
+    [teamData, matchup, missingLineupPolicy, serverTimeMs]
+  );
+
+  const canLockFromServer = matchup.canLock;
+  const canLock =
+    typeof canLockFromServer === "boolean"
+      ? canLockFromServer
+      : lineupState.canLock;
+  const canRandomizeTeamIds = Array.isArray(matchup.canRandomizeTeamIds)
+    ? matchup.canRandomizeTeamIds
+    : lineupState.canRandomizeTeamIds;
+
   const canPublish = matchup.status === MATCHUP_STATUS.LOCKED;
   const isPublished = [
     MATCHUP_STATUS.PUBLISHED,
@@ -129,6 +167,28 @@ export default function TeamMatchupOperationsCard({
     const value = field === "courtLabel" ? rawValue : fromLocalInputValue(rawValue);
     onUpdateMatchup?.(matchup.id, { [field]: value ?? (field === "courtLabel" ? "" : matchup[field]) });
   }
+
+  async function handleRandomizeClick(teamId, teamName) {
+    if (mutationBusy || randomizingTeamId) {
+      return;
+    }
+    setRandomizingTeamId(teamId);
+    try {
+      await onRandomize?.(matchup.id, teamId, teamName);
+    } finally {
+      setRandomizingTeamId("");
+    }
+  }
+
+  const missingTeamNames = lineupState.missingTeamIds.map((teamId) => {
+    if (teamId === matchup.teamAId) {
+      return teamA?.name || teamId;
+    }
+    if (teamId === matchup.teamBId) {
+      return teamB?.name || teamId;
+    }
+    return teamId;
+  });
 
   return (
     <TournamentSectionCard
@@ -186,6 +246,26 @@ export default function TeamMatchupOperationsCard({
             {matchup.courtLabel ? ` · Sân ${matchup.courtLabel}` : ""}
           </Typography>
         )}
+
+        {canManage ? (
+          <Alert severity={lineupState.deadlinePassed ? "warning" : "info"}>
+            <Typography variant="body2">
+              Chính sách thiếu lineup: <strong>{policyLabel(lineupState.policy)}</strong>
+              {" · "}
+              Hạn nộp: {formatTeamTournamentDateTime(matchup.lineupLockAt)}
+              {lineupState.deadlinePassed ? " · Đã hết hạn" : " · Còn hạn"}
+            </Typography>
+            {missingTeamNames.length > 0 ? (
+              <Typography variant="body2" sx={{ mt: 0.5 }}>
+                Đội chưa nộp: {missingTeamNames.join(", ")}
+              </Typography>
+            ) : (
+              <Typography variant="body2" sx={{ mt: 0.5 }}>
+                Cả hai đội đã nộp đội hình.
+              </Typography>
+            )}
+          </Alert>
+        ) : null}
 
         <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap alignItems="center">
           <Tooltip title="Trận con thắng trong tie (đôi nữ, đôi nam, mixed×2)">
@@ -298,11 +378,37 @@ export default function TeamMatchupOperationsCard({
             >
               {copyOk ? "Đã sao chép" : "Link đội trưởng"}
             </Button>
+            {canRandomizeTeamIds.map((teamId) => {
+              const teamName =
+                teamId === matchup.teamAId
+                  ? teamA?.name || teamId
+                  : teamB?.name || teamId;
+              const busy = mutationBusy || randomizingTeamId === teamId;
+              return (
+                <Tooltip
+                  key={`random-${teamId}`}
+                  title="Random đội hình trên server (TT-2D) — chỉ sau hạn nộp"
+                >
+                  <span>
+                    <Button
+                      size="small"
+                      variant="outlined"
+                      color="warning"
+                      startIcon={<ShuffleIcon />}
+                      disabled={busy}
+                      onClick={() => handleRandomizeClick(teamId, teamName)}
+                    >
+                      Random {teamName}
+                    </Button>
+                  </span>
+                </Tooltip>
+              );
+            })}
             <Tooltip
               title={
-                autoRandomizeMissingLineups
-                  ? "Đội chưa nộp đội hình sẽ được hệ thống tự sắp xếp VĐV theo nội dung thi đấu"
-                  : "Đội chưa nộp đội hình sẽ bị từ chối khóa"
+                lineupState.policy === NORMALIZED_MISSING_LINEUP_POLICY.RANDOM
+                  ? "Khóa khi đủ điều kiện server (canLock). Thiếu lineup sẽ được xử lý theo chính sách."
+                  : "Khóa theo trạng thái server canLock"
               }
             >
               <span>
@@ -311,7 +417,7 @@ export default function TeamMatchupOperationsCard({
                   variant="outlined"
                   startIcon={<LockIcon />}
                   onClick={() => onLock?.(matchup.id)}
-                  disabled={!canLock}
+                  disabled={!canLock || mutationBusy}
                 >
                   Khóa đội hình
                 </Button>
@@ -322,17 +428,10 @@ export default function TeamMatchupOperationsCard({
               variant="contained"
               startIcon={<PublishIcon />}
               onClick={() => onPublish?.(matchup.id)}
-              disabled={!canPublish}
+              disabled={!canPublish || mutationBusy}
             >
               Công bố
             </Button>
-            {import.meta.env.DEV ? (
-              <Tooltip title="Chỉ hiện khi dev — nộp demo nhanh">
-                <Typography variant="caption" color="text.secondary">
-                  Dùng portal đội trưởng thay vì demo
-                </Typography>
-              </Tooltip>
-            ) : null}
           </Stack>
         ) : null}
       </Stack>

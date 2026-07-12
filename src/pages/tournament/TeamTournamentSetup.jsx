@@ -32,6 +32,8 @@ import {
 import { canManageTeam } from "../../features/team-tournament/engines/teamPermissionEngine.js";
 import { getStandingsTable } from "../../features/team-tournament/engines/teamStandingsEngine.js";
 import { MISSING_LINEUP_POLICY } from "../../features/team-tournament/constants.js";
+import { getLineup } from "../../features/team-tournament/models/index.js";
+import { normalizeMissingLineupPolicy } from "../../features/team-tournament/engines/missingLineupPolicyEngine.js";
 import {
   organizerLockDreambreakerOrders,
   organizerSyncDreambreaker,
@@ -165,8 +167,8 @@ export default function TeamTournamentSetup() {
     tournament,
     teamData,
     version,
+    serverTime,
     error: loadError,
-    versionConflict,
     reload,
     runMutation,
     patchTeamData,
@@ -335,13 +337,14 @@ export default function TeamTournamentSetup() {
   }
 
   async function handleLock(matchupId) {
+    const matchup = td.matchups.find((item) => item.id === matchupId);
     setError("");
     setMutationBusy(true);
     const result = await runMutation({
       method: "lockLineup",
       payload: { matchupId, players: lineupPlayers, now: new Date().toISOString() },
       actionScope: buildUiCommandScope("lock", tournamentId, matchupId),
-      expectedVersion: version,
+      expectedVersion: matchup?.version ?? version,
     });
     setMutationBusy(false);
     if (!result.ok) {
@@ -356,14 +359,43 @@ export default function TeamTournamentSetup() {
     }
   }
 
+  async function handleRandomize(matchupId, teamId) {
+    const team = td.teams.find((item) => item.id === teamId);
+    const teamName = team?.name || teamId;
+    if (
+      !window.confirm(
+        `Xác nhận random đội hình cho ${teamName}? Hệ thống sẽ chọn VĐV trên server — không thể hoàn tác từ client.`
+      )
+    ) {
+      return;
+    }
+
+    const lineup = getLineup(td, matchupId, teamId);
+    setError("");
+    setMutationBusy(true);
+    const result = await runMutation({
+      method: "randomizeLineup",
+      payload: { matchupId, teamId },
+      actionScope: buildUiCommandScope("randomize", tournamentId, `${matchupId}:${teamId}`),
+      expectedVersion: lineup?.version ?? 1,
+    });
+    setMutationBusy(false);
+    if (!result.ok) {
+      setError(result.error || "Không random được đội hình.");
+      return;
+    }
+    setMessage(`Đã random đội hình cho ${teamName}.`);
+  }
+
   async function handlePublish(matchupId) {
+    const matchup = td.matchups.find((item) => item.id === matchupId);
     setError("");
     setMutationBusy(true);
     const result = await runMutation({
       method: "publishLineups",
       payload: { matchupId },
       actionScope: buildUiCommandScope("publish", tournamentId, matchupId),
-      expectedVersion: version,
+      expectedVersion: matchup?.version ?? version,
     });
     setMutationBusy(false);
     if (!result.ok) {
@@ -607,7 +639,13 @@ export default function TeamTournamentSetup() {
                     teamB={teamB}
                     tournamentId={tournamentId}
                     canManage={access.canManage}
+                    mutationBusy={mutationBusy}
+                    serverTime={serverTime}
+                    missingLineupPolicy={normalizeMissingLineupPolicy(
+                      td.settings?.missingLineupPolicy
+                    )}
                     onLock={handleLock}
+                    onRandomize={handleRandomize}
                     onPublish={handlePublish}
                     onUpdateMatchup={handleUpdateMatchup}
                     onMessage={setMessage}
