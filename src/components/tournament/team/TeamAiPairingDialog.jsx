@@ -22,10 +22,8 @@ import {
 } from "@mui/material";
 
 import { FORMAT_PRESET } from "../../../features/team-tournament/constants.js";
-import {
-  applyTeamPairing,
-  pairTeamsFromSelectedPlayers,
-} from "../../../features/team-tournament/engines/teamAutoDrawEngine.js";
+import { applyTeamPairing } from "../../../features/team-tournament/engines/teamAutoDrawEngine.js";
+import { runTeamFormationWithCanonicalAdapter } from "../../../features/competition-core/formation/adapters/teamFormationAdapter.js";
 import TournamentPlayerPickerPanel from "../TournamentPlayerPickerPanel.jsx";
 import TournamentPlayerQuickAddDialog from "../TournamentPlayerQuickAddDialog.jsx";
 import { ALL_CLUBS_FILTER, formatPlayerPickerMeta } from "../../../utils/tournamentPlayerPicker.js";
@@ -150,17 +148,21 @@ export default function TeamAiPairingDialog({
   }
 
   function handlePairTeams() {
-    const result = pairTeamsFromSelectedPlayers({
+    const pairing = runTeamFormationWithCanonicalAdapter({
       players: pickerPlayers,
       selectedPlayerIds: selectedIds,
       teamCount,
       teamNames,
       formatPreset: teamData?.settings?.formatPreset,
     });
-    setPairingResult(result);
+    setPairingResult({
+      teams: pairing.teams,
+      waitingPlayerIds: pairing.waitingPlayerIds,
+      warnings: pairing.warnings,
+    });
 
     const initialCaptains = {};
-    result.teams.forEach((team) => {
+    pairing.teams.forEach((team) => {
       initialCaptains[team.id] = "";
     });
     setCaptains(initialCaptains);

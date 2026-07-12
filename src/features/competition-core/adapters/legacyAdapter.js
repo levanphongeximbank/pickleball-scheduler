@@ -1,6 +1,7 @@
 import { COMPETITION_CORE_VERSION } from "../constants/index.js";
 import { COMPETITION_ENGINE_TYPE } from "../constants/engineType.js";
-import { isRatingV2Enabled, isDrawV2Enabled } from "../config/featureFlags.js";
+import { isRatingV2Enabled, isDrawV2Enabled, isFormationV2Enabled } from "../config/featureFlags.js";
+import { evaluateCanonicalFormation } from "../formation/adapters/formationRuntimeAdapter.js";
 import { ENGINE_RUN_STATUS } from "../constants/engineRunStatus.js";
 import { getCompetitionCoreFeatureFlags } from "../config/featureFlags.js";
 import {
@@ -39,6 +40,9 @@ export function isEngineV2Available(engineType, envSource) {
   if (engineType === COMPETITION_ENGINE_TYPE.DRAW) {
     return isDrawV2Enabled(envSource);
   }
+  if (engineType === COMPETITION_ENGINE_TYPE.TEAM_FORMATION) {
+    return isFormationV2Enabled(envSource);
+  }
   void envSource;
   return false;
 }
@@ -59,6 +63,7 @@ export function isEngineV2FlagEnabled(engineType, flags) {
     case COMPETITION_ENGINE_TYPE.RATING:
       return flags.ratingV2Enabled;
     case COMPETITION_ENGINE_TYPE.TEAM_FORMATION:
+      return flags.formationV2Enabled;
     case COMPETITION_ENGINE_TYPE.SCHEDULING:
       return flags.coreEnabled;
     default:
@@ -193,6 +198,44 @@ export async function executeCompetitionEngine(input, options = {}) {
         legacyResult: bridge.legacyResult,
         executionPath: "v2",
         warnings: bridge.outputPreserved ? [] : ["Draw adapter output parity check failed"],
+      });
+    }
+
+    if (input.engineType === COMPETITION_ENGINE_TYPE.TEAM_FORMATION) {
+      const bridge = evaluateCanonicalFormation({
+        consumer: "competition_engine",
+        legacyPayload: {
+          ...(plan.input.payload && typeof plan.input.payload === "object"
+            ? plan.input.payload
+            : {}),
+          sessionId: plan.input.sessionId,
+          clubId: plan.input.clubId,
+          eventId: plan.input.eventId,
+          strategyKey:
+            plan.input.payload?.strategyKey ||
+            plan.input.payload?.legacyStrategyKey ||
+            "unknown",
+        },
+        envSource: options.envSource,
+        legacyExecutor: () => {
+          const legacyExecutor = options.legacyExecutor;
+          if (typeof legacyExecutor !== "function") {
+            return { teams: [], waitingPlayerIds: [], warnings: ["Legacy executor not configured"] };
+          }
+          return legacyExecutor(plan.input);
+        },
+      });
+
+      return wrapLegacyEngineResult({
+        engineType: input.engineType,
+        legacyEngine: plan.legacyEngineId,
+        legacyResult: bridge.legacyResult,
+        executionPath: "v2",
+        warnings: bridge.outputPreserved
+          ? bridge.randomFnPreserved
+            ? []
+            : ["Formation adapter randomFn parity check failed"]
+          : ["Formation adapter output parity check failed"],
       });
     }
 

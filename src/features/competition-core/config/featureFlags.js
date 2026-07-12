@@ -9,6 +9,7 @@ export const COMPETITION_CORE_FLAG_KEYS = Object.freeze({
   /** @deprecated Use RULES_V2 — backward-compatible alias reader only. */
   CONSTRAINTS_V2: "VITE_COMPETITION_CORE_CONSTRAINTS_V2_ENABLED",
   DRAW_V2: "VITE_COMPETITION_CORE_DRAW_V2_ENABLED",
+  FORMATION_V2: "VITE_COMPETITION_CORE_FORMATION_V2_ENABLED",
   MATCHMAKING_V2: "VITE_COMPETITION_CORE_MATCHMAKING_V2_ENABLED",
   STANDINGS_V2: "VITE_COMPETITION_CORE_STANDINGS_V2_ENABLED",
 });
@@ -20,6 +21,7 @@ export const COMPETITION_CORE_FLAG_KEYS = Object.freeze({
  * @property {boolean} rulesV2Enabled
  * @property {boolean} constraintsV2Enabled
  * @property {boolean} drawV2Enabled
+ * @property {boolean} formationV2Enabled
  * @property {boolean} matchmakingV2Enabled
  * @property {boolean} standingsV2Enabled
  * @property {'rules_v2'|'constraints_v2'|'default'} [rulesV2FlagSource]
@@ -39,6 +41,7 @@ export function getCompetitionCoreFeatureFlags(envSource) {
     rulesV2Enabled,
     constraintsV2Enabled: rulesV2Enabled,
     drawV2Enabled: readEnvBoolean(COMPETITION_CORE_FLAG_KEYS.DRAW_V2, envSource),
+    formationV2Enabled: readEnvBoolean(COMPETITION_CORE_FLAG_KEYS.FORMATION_V2, envSource),
     matchmakingV2Enabled: readEnvBoolean(
       COMPETITION_CORE_FLAG_KEYS.MATCHMAKING_V2,
       envSource
@@ -72,6 +75,11 @@ export function isConstraintsV2Enabled(envSource) {
 export function isDrawV2Enabled(envSource) {
   const flags = getCompetitionCoreFeatureFlags(envSource);
   return flags.coreEnabled && flags.drawV2Enabled;
+}
+
+export function isFormationV2Enabled(envSource) {
+  const flags = getCompetitionCoreFeatureFlags(envSource);
+  return flags.coreEnabled && flags.formationV2Enabled;
 }
 
 export function isMatchmakingV2Enabled(envSource) {

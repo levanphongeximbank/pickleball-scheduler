@@ -6,6 +6,7 @@ import {
   getCompetitionCoreFeatureFlags,
   isCompetitionCoreEnabled,
   isDrawV2Enabled,
+  isFormationV2Enabled,
   isMatchmakingV2Enabled,
   isRatingV2Enabled,
   isRulesV2Enabled,
@@ -22,6 +23,7 @@ test("all competition core feature flags default to false", () => {
   assert.equal(flags.ratingV2Enabled, false);
   assert.equal(flags.constraintsV2Enabled, false);
   assert.equal(flags.drawV2Enabled, false);
+  assert.equal(flags.formationV2Enabled, false);
   assert.equal(flags.matchmakingV2Enabled, false);
   assert.equal(flags.standingsV2Enabled, false);
 
@@ -30,6 +32,7 @@ test("all competition core feature flags default to false", () => {
   assert.equal(isConstraintsV2Enabled(EMPTY_ENV), false);
   assert.equal(isRulesV2Enabled(EMPTY_ENV), false);
   assert.equal(isDrawV2Enabled(EMPTY_ENV), false);
+  assert.equal(isFormationV2Enabled(EMPTY_ENV), false);
   assert.equal(isMatchmakingV2Enabled(EMPTY_ENV), false);
   assert.equal(isStandingsV2Enabled(EMPTY_ENV), false);
 });
@@ -48,12 +51,14 @@ test("parseEnvBoolean handles true/false strings safely", () => {
 test("sub-flags require core flag enabled", () => {
   const env = {
     [COMPETITION_CORE_FLAG_KEYS.DRAW_V2]: "true",
+    [COMPETITION_CORE_FLAG_KEYS.FORMATION_V2]: "true",
     [COMPETITION_CORE_FLAG_KEYS.RATING_V2]: "true",
     [COMPETITION_CORE_FLAG_KEYS.CONSTRAINTS_V2]: "true",
     [COMPETITION_CORE_FLAG_KEYS.RULES_V2]: "true",
   };
 
   assert.equal(isDrawV2Enabled(env), false);
+  assert.equal(isFormationV2Enabled(env), false);
   assert.equal(isRatingV2Enabled(env), false);
   assert.equal(isConstraintsV2Enabled(env), false);
   assert.equal(isRulesV2Enabled(env), false);
@@ -61,6 +66,7 @@ test("sub-flags require core flag enabled", () => {
   const enabledEnv = {
     [COMPETITION_CORE_FLAG_KEYS.CORE]: "true",
     [COMPETITION_CORE_FLAG_KEYS.DRAW_V2]: "true",
+    [COMPETITION_CORE_FLAG_KEYS.FORMATION_V2]: "true",
     [COMPETITION_CORE_FLAG_KEYS.MATCHMAKING_V2]: "true",
     [COMPETITION_CORE_FLAG_KEYS.CONSTRAINTS_V2]: "true",
     [COMPETITION_CORE_FLAG_KEYS.RULES_V2]: "true",
@@ -68,6 +74,7 @@ test("sub-flags require core flag enabled", () => {
 
   assert.equal(isCompetitionCoreEnabled(enabledEnv), true);
   assert.equal(isDrawV2Enabled(enabledEnv), true);
+  assert.equal(isFormationV2Enabled(enabledEnv), true);
   assert.equal(isMatchmakingV2Enabled(enabledEnv), true);
   assert.equal(isConstraintsV2Enabled(enabledEnv), true);
   assert.equal(isRulesV2Enabled(enabledEnv), true);
