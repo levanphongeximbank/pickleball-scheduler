@@ -381,3 +381,28 @@ export {
   appendFormationRuntimeDecisionTrace,
   resolveLegacyFormationRandomFn,
 } from "./formation/index.js";
+
+export {
+  MATCHMAKING_ENGINE_VERSION,
+  MATCHMAKING_STRATEGY,
+  LEGACY_MATCHMAKING_RUNTIME_INVENTORY,
+  LEGACY_MATCHMAKING_STRATEGY_INVENTORY,
+  buildMatchmakingRuntimeCallGraph,
+  evaluateCanonicalMatchmaking,
+  runLegacyMatchmakingWithCanonicalAdapter,
+  runDailyMatchmakingWithCanonicalAdapter,
+  runMatchmakingShadowComparison,
+  compareMatchmakingShadowParity,
+  verifyMatchmakingRandomParity,
+  verifyMatchmakingPayloadPreservation,
+  buildMatchmakingParityComparison,
+  buildCompleteMatchmakingTraceRecord,
+  validateCompleteMatchmakingTraceRecord,
+  isMatchmakingTraceJsonSerializable,
+  redactMatchmakingTraceSecrets,
+  isLegacyMatchmakingOutputPreserved,
+  mapLegacyMatchmakingPayloadToMatchmakingRequest,
+  mapLegacyMatchmakingResultToMatchmakingResult,
+  cloneLegacyMatchmakingPayload,
+  buildMatchmakingDecisionPath,
+} from "./matchmaking/index.js";
