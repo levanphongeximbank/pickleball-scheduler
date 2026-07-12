@@ -1,0 +1,78 @@
+{
+  "generatedAt": "2026-07-12T23:29:29.384Z",
+  "phase": "TT-5B-PROVISION",
+  "stagingRef": "qyewbxjsiiyufanzcjcq",
+  "productionImpact": "NONE",
+  "localCommitSha": "ef16a323d0532811478c05768ef79a625dd251d1",
+  "sqlPatches": [
+    "docs/v5/team-tournament/tt5/TT5-B_BRIDGE_SCHEMA.sql",
+    "docs/v5/team-tournament/tt5/TT5-B_PROVISION_RPC.sql",
+    "docs/v5/team-tournament/tt5/TT5-B_LEGACY_LOCK_GUARD.sql",
+    "docs/v5/team-tournament/tt5/TT5-B_GET_SETUP_PATCH.sql"
+  ],
+  "probe": {
+    "tournamentId": "phase23d-probe-tournament",
+    "teamA": "phase23d-team-a",
+    "teamB": "phase23d-team-b",
+    "matchupId": "phase23d-matchup-1",
+    "subMatchId": "phase23d-sub-1"
+  },
+  "cases": [
+    {
+      "id": "P00",
+      "name": "probe prep + assignment",
+      "pass": true,
+      "assignmentId": "8f27ada3-dc49-42fd-a2eb-b60337ac8a33"
+    },
+    {
+      "id": "P01",
+      "name": "valid provision",
+      "pass": true,
+      "result": {
+        "ok": true,
+        "route": "/referee/match/phase23d-sub-1",
+        "linkId": "359b0d73-0615-44fd-b27e-20750f14e0fa",
+        "status": "provisioned",
+        "version": 1,
+        "replayed": false,
+        "matchStateId": "venue-staging-a::phase23d-probe-tournament::phase23d-sub-1",
+        "provisionedAt": "2026-07-12T23:29:32.999841+00:00",
+        "refereeMatchId": "phase23d-sub-1",
+        "externalSubMatchId": "phase23d-sub-1",
+        "refereeAssignmentId": "8f27ada3-dc49-42fd-a2eb-b60337ac8a33"
+      }
+    },
+    {
+      "id": "P02",
+      "name": "match_live_states created",
+      "pass": true,
+      "liveState": {
+        "id": "venue-staging-a::phase23d-probe-tournament::phase23d-sub-1",
+        "match_id": "phase23d-sub-1",
+        "status": "not_started"
+      }
+    },
+    {
+      "id": "P03",
+      "name": "revoke before active",
+      "pass": true,
+      "revoke": {
+        "ok": true,
+        "linkId": "359b0d73-0615-44fd-b27e-20750f14e0fa",
+        "status": "revoked",
+        "version": 2
+      }
+    },
+    {
+      "id": "P04",
+      "name": "revoke after revoked blocked",
+      "pass": true,
+      "code": "NOT_FOUND"
+    }
+  ],
+  "verdict": "PASS",
+  "reportFile": "TT5B_PROVISION_REPORT.json",
+  "passCount": 5,
+  "totalCount": 5,
+  "allPass": true
+}

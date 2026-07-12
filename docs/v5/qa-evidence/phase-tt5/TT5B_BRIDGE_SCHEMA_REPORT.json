@@ -1,0 +1,32 @@
+{
+  "generatedAt": "2026-07-12T23:29:29.355Z",
+  "phase": "TT-5B-SCHEMA",
+  "stagingRef": "qyewbxjsiiyufanzcjcq",
+  "productionImpact": "NONE",
+  "localCommitSha": "ef16a323d0532811478c05768ef79a625dd251d1",
+  "sqlPatches": [
+    "docs/v5/team-tournament/tt5/TT5-B_BRIDGE_SCHEMA.sql",
+    "docs/v5/team-tournament/tt5/TT5-B_PROVISION_RPC.sql",
+    "docs/v5/team-tournament/tt5/TT5-B_LEGACY_LOCK_GUARD.sql",
+    "docs/v5/team-tournament/tt5/TT5-B_GET_SETUP_PATCH.sql"
+  ],
+  "probe": {
+    "tournamentId": "phase23d-probe-tournament",
+    "teamA": "phase23d-team-a",
+    "teamB": "phase23d-team-b",
+    "matchupId": "phase23d-matchup-1",
+    "subMatchId": "phase23d-sub-1"
+  },
+  "cases": [
+    {
+      "id": "S01",
+      "name": "bridge table exists",
+      "pass": true
+    }
+  ],
+  "verdict": "PASS",
+  "reportFile": "TT5B_BRIDGE_SCHEMA_REPORT.json",
+  "passCount": 1,
+  "totalCount": 1,
+  "allPass": true
+}

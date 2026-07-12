@@ -1,0 +1,55 @@
+{
+  "generatedAt": "2026-07-12T23:29:29.455Z",
+  "phase": "TT-5B-LEGACY-LOCK",
+  "stagingRef": "qyewbxjsiiyufanzcjcq",
+  "productionImpact": "NONE",
+  "localCommitSha": "ef16a323d0532811478c05768ef79a625dd251d1",
+  "sqlPatches": [
+    "docs/v5/team-tournament/tt5/TT5-B_BRIDGE_SCHEMA.sql",
+    "docs/v5/team-tournament/tt5/TT5-B_PROVISION_RPC.sql",
+    "docs/v5/team-tournament/tt5/TT5-B_LEGACY_LOCK_GUARD.sql",
+    "docs/v5/team-tournament/tt5/TT5-B_GET_SETUP_PATCH.sql"
+  ],
+  "probe": {
+    "tournamentId": "phase23d-probe-tournament",
+    "teamA": "phase23d-team-a",
+    "teamB": "phase23d-team-b",
+    "matchupId": "phase23d-matchup-1",
+    "subMatchId": "phase23d-sub-1"
+  },
+  "cases": [
+    {
+      "id": "L01",
+      "name": "scoreOps blocks legacy draft",
+      "pass": true,
+      "scoreOps": {
+        "linkId": "359b0d73-0615-44fd-b27e-20750f14e0fa",
+        "blockCode": "referee_v5_linked_legacy_write_blocked",
+        "canConfirm": false,
+        "linkStatus": "provisioned",
+        "blockMessage": "Trận con đang dùng Referee V5 — legacy score entry bị khóa.",
+        "canSaveDraft": false,
+        "refereeRoute": "/referee/match/phase23d-sub-1",
+        "refereeMatchId": "phase23d-sub-1",
+        "subMatchVersion": 7
+      }
+    },
+    {
+      "id": "L02",
+      "name": "save draft RPC blocked",
+      "pass": true,
+      "code": "referee_v5_linked_legacy_write_blocked"
+    },
+    {
+      "id": "L03",
+      "name": "confirm RPC blocked",
+      "pass": true,
+      "code": "referee_v5_linked_legacy_write_blocked"
+    }
+  ],
+  "verdict": "PASS",
+  "reportFile": "TT5B_LEGACY_LOCK_REPORT.json",
+  "passCount": 3,
+  "totalCount": 3,
+  "allPass": true
+}

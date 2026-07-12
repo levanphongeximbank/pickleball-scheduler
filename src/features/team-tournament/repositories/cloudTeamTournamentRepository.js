@@ -5,6 +5,8 @@ import {
   rpcTeamTournamentGetVisibleLineups,
   rpcTeamTournamentApplyForfeit,
   rpcTeamTournamentWithdrawTeam,
+  rpcTeamTournamentProvisionRefereeMatch,
+  rpcTeamTournamentRevokeRefereeLink,
   rpcTeamTournamentLockMatchup,
   rpcTeamTournamentPublishMatchup,
   rpcTeamTournamentRandomizeLineup,
@@ -356,6 +358,41 @@ export function createCloudTeamTournamentRepository() {
               reason: payload.reason || "",
               reasonCode: payload.reasonCode || "team_withdrawal",
               requestId: payload.requestId || null,
+            },
+            options
+          )
+        )
+      );
+    },
+
+    async provisionRefereeMatch(_clubId, tournamentId, payload, commandOptions) {
+      return runVersionedMutation("provisionRefereeMatch", commandOptions, async (options) =>
+        rpcTeamTournamentProvisionRefereeMatch(
+          withCommandParams(
+            {
+              tournamentId,
+              matchupId: payload.matchupId,
+              subMatchId: payload.subMatchId,
+              refereeAssignmentId: payload.refereeAssignmentId,
+              expectedSubMatchVersion: payload.expectedSubMatchVersion ?? payload.subMatchVersion ?? null,
+              reason: payload.reason || "tt5b_provision",
+              source: payload.source || "repository",
+            },
+            options
+          )
+        )
+      );
+    },
+
+    async revokeRefereeLink(_clubId, tournamentId, payload, commandOptions) {
+      return runVersionedMutation("revokeRefereeLink", commandOptions, async (options) =>
+        rpcTeamTournamentRevokeRefereeLink(
+          withCommandParams(
+            {
+              tournamentId,
+              subMatchId: payload.subMatchId,
+              reason: payload.reason || "",
+              expectedLinkVersion: payload.expectedLinkVersion ?? payload.linkVersion ?? null,
             },
             options
           )

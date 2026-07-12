@@ -441,6 +441,8 @@ export function buildRefereeMatchupView(teamData, matchupId, players = []) {
       score: subMatch.score,
       winnerTeamId: subMatch.winnerTeamId,
       resultConfirmedAt: subMatch.resultConfirmedAt || null,
+      scoreOps: subMatch.scoreOps || null,
+      refereeLinkOps: subMatch.refereeLinkOps || null,
       hasOfficialLineup: hasLineupPlayersForDiscipline(
         teamData,
         matchup,

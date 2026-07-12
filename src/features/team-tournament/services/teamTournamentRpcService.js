@@ -11,6 +11,8 @@ export const TT1B_COMMAND_RPCS = Object.freeze([
   "team_tournament_confirm_sub_match",
   "team_tournament_apply_forfeit",
   "team_tournament_withdraw_team",
+  "team_tournament_provision_referee_match",
+  "team_tournament_revoke_referee_link",
 ]);
 
 /** TT-1B commands that require optimistic-lock version before RPC. */
@@ -30,6 +32,8 @@ export const TT1B_IDEMPOTENCY_PREFIX_BY_RPC = Object.freeze({
   team_tournament_confirm_sub_match: "confirm",
   team_tournament_apply_forfeit: "forfeit",
   team_tournament_withdraw_team: "withdraw",
+  team_tournament_provision_referee_match: "provision",
+  team_tournament_revoke_referee_link: "revoke_link",
   team_tournament_upsert_standings: "standings",
 });
 
@@ -112,6 +116,23 @@ export const TT1B_RPC_ARG_CONTRACTS = Object.freeze({
     "p_reason_code",
     "p_idempotency_key",
     "p_request_id",
+  ],
+  team_tournament_provision_referee_match: [
+    "p_tournament_id",
+    "p_matchup_id",
+    "p_sub_match_id",
+    "p_referee_assignment_id",
+    "p_expected_sub_match_version",
+    "p_idempotency_key",
+    "p_reason",
+    "p_source",
+  ],
+  team_tournament_revoke_referee_link: [
+    "p_tournament_id",
+    "p_sub_match_id",
+    "p_reason",
+    "p_expected_link_version",
+    "p_idempotency_key",
   ],
   team_tournament_upsert_standings: [
     "p_tournament_id",
@@ -712,6 +733,41 @@ export async function rpcTeamTournamentWithdrawTeam(params) {
       p_reason: normalized.reason || "",
       p_reason_code: normalized.reasonCode || "team_withdrawal",
       p_request_id: normalized.requestId || null,
+    },
+    normalized
+  );
+}
+
+export async function rpcTeamTournamentProvisionRefereeMatch(params) {
+  const normalized =
+    typeof params === "object" && params !== null && "tournamentId" in params ? params : {};
+
+  return callTt1bCommandRpc(
+    "team_tournament_provision_referee_match",
+    {
+      p_tournament_id: String(normalized.tournamentId),
+      p_matchup_id: String(normalized.matchupId),
+      p_sub_match_id: String(normalized.subMatchId),
+      p_referee_assignment_id: normalized.refereeAssignmentId,
+      p_expected_sub_match_version: normalized.expectedSubMatchVersion ?? null,
+      p_reason: normalized.reason || "tt5b_provision",
+      p_source: normalized.source || "client",
+    },
+    normalized
+  );
+}
+
+export async function rpcTeamTournamentRevokeRefereeLink(params) {
+  const normalized =
+    typeof params === "object" && params !== null && "tournamentId" in params ? params : {};
+
+  return callTt1bCommandRpc(
+    "team_tournament_revoke_referee_link",
+    {
+      p_tournament_id: String(normalized.tournamentId),
+      p_sub_match_id: String(normalized.subMatchId),
+      p_reason: normalized.reason || "",
+      p_expected_link_version: normalized.expectedLinkVersion ?? null,
     },
     normalized
   );
