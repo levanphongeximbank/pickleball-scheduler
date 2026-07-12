@@ -1,0 +1,147 @@
+{
+  "meta": {
+    "fixtureId": "tt7-four-teams",
+    "version": "1.0.1",
+    "phase": "TT-7",
+    "description": "4-team single round-robin with tie-break coverage (wins, H2H, sub-match diff, points scored)",
+    "productionImpact": "NONE"
+  },
+  "settings": {
+    "format": "round_robin_single",
+    "tiebreakOrder": ["wins", "subMatchDiff", "pointsScored", "manual"],
+    "dreambreakerEnabled": false
+  },
+  "teams": [
+    { "id": "team-a", "name": "Đội A", "code": "A" },
+    { "id": "team-b", "name": "Đội B", "code": "B" },
+    { "id": "team-c", "name": "Đội C", "code": "C" },
+    { "id": "team-d", "name": "Đội D", "code": "D" }
+  ],
+  "matchups": [
+    {
+      "id": "m-ab",
+      "teamAId": "team-a",
+      "teamBId": "team-b",
+      "status": "completed",
+      "result": {
+        "winnerTeamId": "team-b",
+        "teamAWins": 1,
+        "teamBWins": 3,
+        "teamAPoints": 25,
+        "teamBPoints": 33
+      },
+      "scenarioTags": ["baseline_win"]
+    },
+    {
+      "id": "m-ac",
+      "teamAId": "team-a",
+      "teamBId": "team-c",
+      "status": "completed",
+      "result": {
+        "winnerTeamId": "team-c",
+        "teamAWins": 1,
+        "teamBWins": 3,
+        "teamAPoints": 24,
+        "teamBPoints": 32
+      },
+      "scenarioTags": ["upset"]
+    },
+    {
+      "id": "m-ad",
+      "teamAId": "team-a",
+      "teamBId": "team-d",
+      "status": "completed",
+      "result": {
+        "winnerTeamId": "team-a",
+        "teamAWins": 3,
+        "teamBWins": 1,
+        "teamAPoints": 33,
+        "teamBPoints": 27
+      },
+      "scenarioTags": ["one_win_tie_group"]
+    },
+    {
+      "id": "m-bc",
+      "teamAId": "team-b",
+      "teamBId": "team-c",
+      "status": "completed",
+      "result": {
+        "winnerTeamId": "team-b",
+        "teamAWins": 3,
+        "teamBWins": 1,
+        "teamAPoints": 33,
+        "teamBPoints": 26
+      },
+      "scenarioTags": ["head_to_head_decider"]
+    },
+    {
+      "id": "m-bd",
+      "teamAId": "team-b",
+      "teamBId": "team-d",
+      "status": "completed",
+      "result": {
+        "winnerTeamId": "team-d",
+        "teamAWins": 1,
+        "teamBWins": 3,
+        "teamAPoints": 28,
+        "teamBPoints": 33
+      },
+      "scenarioTags": ["two_win_tie_setup"]
+    },
+    {
+      "id": "m-cd",
+      "teamAId": "team-c",
+      "teamBId": "team-d",
+      "status": "completed",
+      "result": {
+        "winnerTeamId": "team-c",
+        "teamAWins": 3,
+        "teamBWins": 1,
+        "teamAPoints": 34,
+        "teamBPoints": 28
+      },
+      "scenarioTags": ["points_scored_tiebreaker_input"]
+    }
+  ],
+  "expectedProfiles": {
+    "default": {
+      "tiebreakOrder": ["wins", "subMatchDiff", "pointsScored", "manual"]
+    },
+    "headToHeadPriority": {
+      "tiebreakOrder": ["wins", "headToHead", "subMatchDiff", "pointsScored", "manual"]
+    },
+    "pointsScoredPriority": {
+      "tiebreakOrder": ["wins", "subMatchDiff", "pointsScored", "pointDiff", "manual"]
+    }
+  },
+  "scenarios": [
+    {
+      "id": "S1",
+      "name": "Two teams tied on wins and subMatchDiff (B vs C)",
+      "teams": ["team-b", "team-c"],
+      "expectedDecider": "headToHead",
+      "notes": "Both 2W-1L with subMatchDiff +2; m-bc (B beats C) decides order when headToHead is in tiebreak chain."
+    },
+    {
+      "id": "S2",
+      "name": "Default order keeps subMatchDiff before manual when wins differ",
+      "teams": ["team-b", "team-a"],
+      "expectedDecider": "wins",
+      "notes": "B (2W) ranks above A (1W) regardless of lower-level tie-breakers."
+    },
+    {
+      "id": "S3",
+      "name": "One-win tie group (A vs D)",
+      "teams": ["team-a", "team-d"],
+      "expectedDecider": "subMatchDiff",
+      "notes": "Both 1W-2L with subMatchDiff -2; pointsScored breaks tie (A 82 vs D 88 — D ranks above A on pointsScored)."
+    },
+    {
+      "id": "S4",
+      "name": "Points scored as tie-breaker",
+      "teams": ["team-a", "team-d"],
+      "expectedDecider": "pointsScored",
+      "notes": "When subMatchDiff is equal, higher pointsScored wins."
+    }
+  ]
+}

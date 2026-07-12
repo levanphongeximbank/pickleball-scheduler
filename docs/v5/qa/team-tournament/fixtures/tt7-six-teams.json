@@ -1,0 +1,211 @@
+{
+  "meta": {
+    "fixtureId": "tt7-six-teams",
+    "version": "1.0.0",
+    "phase": "TT-7",
+    "description": "6-team grouped round-robin with 3-way tie, forfeit, withdrawal, incomplete match, correction, DreamBreaker metadata",
+    "productionImpact": "NONE"
+  },
+  "settings": {
+    "format": "grouped_round_robin",
+    "groups": [
+      { "id": "group-1", "label": "Bảng 1", "teamIds": ["team-a", "team-b", "team-c"] },
+      { "id": "group-2", "label": "Bảng 2", "teamIds": ["team-d", "team-e", "team-f"] }
+    ],
+    "tiebreakOrder": ["wins", "subMatchDiff", "pointsScored", "manual"],
+    "dreambreakerEnabled": true
+  },
+  "teams": [
+    { "id": "team-a", "name": "Đội A", "code": "A", "groupId": "group-1" },
+    { "id": "team-b", "name": "Đội B", "code": "B", "groupId": "group-1" },
+    { "id": "team-c", "name": "Đội C", "code": "C", "groupId": "group-1" },
+    { "id": "team-d", "name": "Đội D", "code": "D", "groupId": "group-2" },
+    { "id": "team-e", "name": "Đội E", "code": "E", "groupId": "group-2" },
+    { "id": "team-f", "name": "Đội F", "code": "F", "groupId": "group-2", "withdrawn": true, "withdrawnAt": "2026-07-10T09:00:00.000Z", "withdrawnReason": "Roster injury — approved withdrawal" }
+  ],
+  "matchups": [
+    {
+      "id": "g1-ab",
+      "groupId": "group-1",
+      "teamAId": "team-a",
+      "teamBId": "team-b",
+      "status": "completed",
+      "result": { "winnerTeamId": "team-a", "teamAWins": 3, "teamBWins": 1, "teamAPoints": 33, "teamBPoints": 24 }
+    },
+    {
+      "id": "g1-bc",
+      "groupId": "group-1",
+      "teamAId": "team-b",
+      "teamBId": "team-c",
+      "status": "completed",
+      "result": { "winnerTeamId": "team-b", "teamAWins": 3, "teamBWins": 1, "teamAPoints": 30, "teamBPoints": 22 }
+    },
+    {
+      "id": "g1-ca",
+      "groupId": "group-1",
+      "teamAId": "team-c",
+      "teamBId": "team-a",
+      "status": "completed",
+      "result": { "winnerTeamId": "team-c", "teamAWins": 3, "teamBWins": 1, "teamAPoints": 31, "teamBPoints": 25 }
+    },
+    {
+      "id": "g2-de",
+      "groupId": "group-2",
+      "teamAId": "team-d",
+      "teamBId": "team-e",
+      "status": "completed",
+      "result": {
+        "winnerTeamId": "team-d",
+        "teamAWins": 3,
+        "teamBWins": 0,
+        "teamAPoints": 33,
+        "teamBPoints": 0,
+        "forfeit": true,
+        "resultType": "forfeit",
+        "forfeitingTeamId": "team-e",
+        "forfeitReason": "No-show at court — technical forfeit"
+      },
+      "scenarioTags": ["technical_forfeit"]
+    },
+    {
+      "id": "g2-df",
+      "groupId": "group-2",
+      "teamAId": "team-d",
+      "teamBId": "team-f",
+      "status": "completed",
+      "result": {
+        "winnerTeamId": "team-d",
+        "teamAWins": 3,
+        "teamBWins": 0,
+        "teamAPoints": 33,
+        "teamBPoints": 0,
+        "resultType": "walkover",
+        "notes": "Opponent withdrawn before match"
+      },
+      "scenarioTags": ["withdrawal_walkover"]
+    },
+    {
+      "id": "g2-ef",
+      "groupId": "group-2",
+      "teamAId": "team-e",
+      "teamBId": "team-f",
+      "status": "scheduled",
+      "result": null,
+      "scenarioTags": ["incomplete_match", "withdrawn_opponent"]
+    }
+  ],
+  "exhibitionMatchups": [
+    {
+      "id": "xb-dc",
+      "label": "Crossover exhibition",
+      "teamAId": "team-d",
+      "teamBId": "team-c",
+      "status": "completed",
+      "countsForStandings": false,
+      "result": {
+        "winnerTeamId": "team-d",
+        "teamAWins": 3,
+        "teamBWins": 2,
+        "teamAPoints": 35,
+        "teamBPoints": 33,
+        "dreambreaker": {
+          "played": true,
+          "winnerTeamId": "team-d",
+          "teamAPoints": 15,
+          "teamBPoints": 12,
+          "notes": "Fixture metadata only — no runtime DreamBreaker requirement in TT-7 prep"
+        }
+      },
+      "scenarioTags": ["dreambreaker_metadata"]
+    }
+  ],
+  "correctionMatchups": [
+    {
+      "id": "g2-de-replay",
+      "groupId": "group-2",
+      "teamAId": "team-d",
+      "teamBId": "team-e",
+      "status": "completed",
+      "supersedes": "g2-de",
+      "activeForStandings": false,
+      "result": {
+        "winnerTeamId": "team-d",
+        "teamAWins": 3,
+        "teamBWins": 1,
+        "teamAPoints": 33,
+        "teamBPoints": 28,
+        "correctionOf": "g2-de",
+        "correctedAt": "2026-07-11T18:00:00.000Z",
+        "correctionReason": "Forfeit overturned after evidence review — played match result applied"
+      },
+      "scenarioTags": ["post_standings_correction"],
+      "notes": "QA only: documents correction workflow; default oracle uses g2-de unless --apply-corrections"
+    }
+  ],
+  "expectedProfiles": {
+    "group1_default": {
+      "tiebreakOrder": ["wins", "subMatchDiff", "pointsScored", "manual"]
+    },
+    "group2_exclude_withdrawn": {
+      "tiebreakOrder": ["wins", "subMatchDiff", "pointsScored", "manual"],
+      "excludeWithdrawnFromRanking": true
+    },
+    "group2_with_correction": {
+      "tiebreakOrder": ["wins", "subMatchDiff", "pointsScored", "manual"],
+      "notes": "Apply g2-de-replay instead of g2-de when validating correction scenario"
+    }
+  },
+  "scenarios": [
+    {
+      "id": "S1",
+      "name": "Three-way tie in Group 1",
+      "groupId": "group-1",
+      "teams": ["team-a", "team-b", "team-c"],
+      "expectedDecider": "pointsScored",
+      "notes": "Circular 1W-1L each with subMatchDiff 0; pointsScored breaks order (A 58, B 54, C 53)."
+    },
+    {
+      "id": "S2",
+      "name": "Technical forfeit (Team E)",
+      "matchupId": "g2-de",
+      "expectedDecider": "forfeit",
+      "notes": "E receives loss; D receives win with forfeit flags."
+    },
+    {
+      "id": "S3",
+      "name": "Withdrawn team (Team F)",
+      "teamId": "team-f",
+      "expectedDecider": "withdrawal",
+      "notes": "Excluded from ranking when excludeWithdrawnFromRanking profile is used."
+    },
+    {
+      "id": "S4",
+      "name": "Incomplete match",
+      "matchupId": "g2-ef",
+      "expectedDecider": "excluded",
+      "notes": "Scheduled with null result — must not affect standings."
+    },
+    {
+      "id": "S5",
+      "name": "Result correction after standings",
+      "matchupIds": ["g2-de", "g2-de-replay"],
+      "expectedDecider": "correction_workflow",
+      "notes": "Document only; oracle default uses original forfeit unless correction flag passed."
+    },
+    {
+      "id": "S6",
+      "name": "DreamBreaker metadata present",
+      "matchupId": "xb-dc",
+      "expectedDecider": "none",
+      "notes": "Sub-match totals include regular matches; dreambreaker block is audit metadata."
+    }
+  ],
+  "corrections": [
+    {
+      "originalMatchupId": "g2-de",
+      "replacementMatchupId": "g2-de-replay",
+      "trigger": "manual_override_after_standings_publish",
+      "expectedImpact": "E sub-match stats increase; ranking order unchanged (D still 1st)"
+    }
+  ]
+}
