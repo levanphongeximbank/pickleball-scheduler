@@ -19,6 +19,8 @@ import {
   __resetTeamTournamentRpcClientForTests,
   __setTeamTournamentRpcClientForTests,
   isTeamTournamentRpcNotFoundError,
+  isTeamTournamentRpcSignatureMismatchError,
+  mapTeamTournamentRpcTransportError,
 } from "../src/features/team-tournament/services/teamTournamentRpcService.js";
 import { getVisibleLineup } from "../src/features/team-tournament/engines/lineupEngine.js";
 import {
@@ -138,7 +140,8 @@ function lineupSelectionsForTeam(teamData, teamId) {
 test("RPC not found — fallback an toàn về blob", async () => {
   const result = await tryCloudMutation(async () => ({
     ok: false,
-    code: "RPC_NOT_DEPLOYED",
+    code: "rpc_not_deployed",
+    legacyCode: "RPC_NOT_DEPLOYED",
     error: "function not found",
   }));
 
@@ -185,6 +188,7 @@ test("captain cloud submit lineup — RPC thành công", async () => {
     matchupId: MATCHUP_ID,
     teamId: "team-a",
     selections: { disc1: ["p1"] },
+    expectedVersion: 1,
   });
 
   assert.equal(result.ok, true);
@@ -390,6 +394,7 @@ test("confirm sub-match cloud — thành công", async () => {
     subMatchId: "sub-1",
     score: { teamA: 11, teamB: 7 },
     winnerTeamId: "team-a",
+    expectedVersion: 1,
   });
 
   assert.equal(result.ok, true);
@@ -435,11 +440,20 @@ test("resolveTeamTournamentCloudTenantId — bỏ tenant local, dùng venue prof
   assert.equal(result.tenantId, "venue-prod-main");
 });
 
-test("isTeamTournamentRpcNotFoundError nhận diện PGRST202", () => {
-  assert.equal(isTeamTournamentRpcNotFoundError({ code: "PGRST202" }), true);
+test("PGRST202 và function-not-found được phân loại RPC transport errors", () => {
+  assert.equal(isTeamTournamentRpcSignatureMismatchError({ code: "PGRST202" }), true);
+  assert.equal(
+    mapTeamTournamentRpcTransportError({ code: "PGRST202", message: "schema cache" }).code,
+    "rpc_signature_mismatch"
+  );
+  assert.equal(isTeamTournamentRpcNotFoundError({ code: "PGRST202" }), false);
   assert.equal(
     isTeamTournamentRpcNotFoundError({ message: "function does not exist" }),
     true
+  );
+  assert.equal(
+    mapTeamTournamentRpcTransportError({ message: "function does not exist" }).code,
+    "rpc_not_deployed"
   );
   assert.equal(isTeamTournamentRpcNotFoundError({ message: "access denied" }), false);
 });

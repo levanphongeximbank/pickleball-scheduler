@@ -33,6 +33,7 @@ import {
   rpcTeamTournamentSetCaptain,
   rpcTeamTournamentSubmitLineup,
   rpcTeamTournamentUpsertStandings,
+  createTeamTournamentIdempotencyKey,
 } from "./teamTournamentRpcService.js";
 
 let testStoreModeOverride = null;
@@ -57,7 +58,7 @@ export function shouldUseTeamTournamentCloud() {
 }
 
 function cloudFallbackResult(rpcResult) {
-  if (!rpcResult?.ok && rpcResult?.code !== "RPC_NOT_DEPLOYED") {
+  if (!rpcResult?.ok && rpcResult?.code !== "RPC_NOT_DEPLOYED" && rpcResult?.code !== "rpc_not_deployed") {
     return { cloudAttempted: true, cloudResult: rpcResult };
   }
   return { cloudAttempted: false, cloudResult: rpcResult };
@@ -132,22 +133,17 @@ export async function resolveTeamTournamentCloudTenantId({
     user?.tenantId,
   ];
 
-  let tenantId = null;
-
-  if (supabase) {
-    tenantId = await pickSupabaseVenueTenantId({
-      client: supabase,
-      user,
-      preferredIds,
-    });
-  } else {
-    tenantId =
-      resolveBillingTenantId({
+  const tenantId = supabase
+    ? await pickSupabaseVenueTenantId({
+        client: supabase,
+        user,
+        preferredIds,
+      })
+    : resolveBillingTenantId({
         user,
         tenantIdOverride: tournament?.tenantId,
         currentTenantId: loadActiveTenantId(),
       }) || sanitizeBillingTenantId(getExplicitTenantIdForClub(clubId));
-  }
 
   if (!tenantId) {
     return {
@@ -266,7 +262,7 @@ export async function tryCloudMutation(rpcCall, { fallbackLabel = "blob" } = {})
     return { ok: true, usedCloud: true, cloudResult: result };
   }
 
-  if (result.code === "RPC_NOT_DEPLOYED" || result.code === "NO_SUPABASE") {
+  if (result.code === "RPC_NOT_DEPLOYED" || result.code === "rpc_not_deployed" || result.code === "NO_SUPABASE") {
     return { ok: true, usedCloud: false, fallback: fallbackLabel, cloudResult: result };
   }
 
@@ -293,24 +289,37 @@ export async function cloudCaptainSaveLineup(tournamentId, payload) {
 
 export async function cloudCaptainSubmitLineup(tournamentId, payload) {
   return tryCloudMutation(() =>
-    rpcTeamTournamentSubmitLineup(
+    rpcTeamTournamentSubmitLineup({
       tournamentId,
-      payload.matchupId,
-      payload.teamId,
-      payload.selections || {}
-    )
+      matchupId: payload.matchupId,
+      teamId: payload.teamId,
+      selections: payload.selections || {},
+      expectedVersion: payload.expectedVersion,
+      idempotencyKey:
+        payload.idempotencyKey || createTeamTournamentIdempotencyKey("submit"),
+    })
   );
 }
 
 export async function cloudOrganizerLockLineups(tournamentId, payload) {
   return tryCloudMutation(() =>
-    rpcTeamTournamentLockMatchup(tournamentId, payload.matchupId)
+    rpcTeamTournamentLockMatchup({
+      tournamentId,
+      matchupId: payload.matchupId,
+      expectedVersion: payload.expectedVersion,
+      idempotencyKey: payload.idempotencyKey || createTeamTournamentIdempotencyKey("lock"),
+    })
   );
 }
 
 export async function cloudOrganizerPublishLineups(tournamentId, payload) {
   return tryCloudMutation(() =>
-    rpcTeamTournamentPublishMatchup(tournamentId, payload.matchupId)
+    rpcTeamTournamentPublishMatchup({
+      tournamentId,
+      matchupId: payload.matchupId,
+      expectedVersion: payload.expectedVersion,
+      idempotencyKey: payload.idempotencyKey || createTeamTournamentIdempotencyKey("publish"),
+    })
   );
 }
 
@@ -331,17 +340,20 @@ export async function cloudRefereeSaveSubMatchDraft(tournamentId, payload) {
 
 export async function cloudRefereeConfirmSubMatch(tournamentId, payload) {
   return tryCloudMutation(() =>
-    rpcTeamTournamentConfirmSubMatch(
+    rpcTeamTournamentConfirmSubMatch({
       tournamentId,
-      payload.matchupId,
-      payload.subMatchId,
-      {
+      matchupId: payload.matchupId,
+      subMatchId: payload.subMatchId,
+      score: {
         teamA: payload.score?.teamA ?? payload.teamA ?? 0,
         teamB: payload.score?.teamB ?? payload.teamB ?? 0,
         games: payload.games || payload.score?.games || [],
       },
-      payload.winnerTeamId || null
-    )
+      winnerTeamId: payload.winnerTeamId || null,
+      expectedVersion: payload.expectedVersion,
+      idempotencyKey:
+        payload.idempotencyKey || createTeamTournamentIdempotencyKey("confirm"),
+    })
   );
 }
 

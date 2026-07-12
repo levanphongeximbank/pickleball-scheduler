@@ -386,6 +386,8 @@ async function probeAdminLockPublish(client, label) {
   const lockPayload = await rpc(client, "team_tournament_lock_matchup", {
     p_tournament_id: PROBE.tournamentId,
     p_matchup_id: PROBE.matchupId,
+    p_expected_version: null,
+    p_idempotency_key: `phase23d-lock-${Date.now()}`,
   });
 
   if (lockPayload.ok) {
@@ -402,6 +404,8 @@ async function probeAdminLockPublish(client, label) {
   const publishPayload = await rpc(client, "team_tournament_publish_matchup", {
     p_tournament_id: PROBE.tournamentId,
     p_matchup_id: PROBE.matchupId,
+    p_expected_version: null,
+    p_idempotency_key: `phase23d-publish-${Date.now()}`,
   });
 
   if (publishPayload.ok) {
