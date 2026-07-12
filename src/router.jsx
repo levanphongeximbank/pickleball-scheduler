@@ -305,8 +305,6 @@ const PairingInterventionPreviewPage = lazy(() =>
 
 );
 
-const RefereeV5PreviewPage = lazy(() => import("./pages/dev/RefereeV5PreviewPage"));
-
 const CourtManagementBookingsPage = lazy(() =>
 
   import("./pages/courtManagement/CourtManagementBookingsPage")
@@ -429,14 +427,6 @@ export default function Router() {
               element={
                 <SuperAdminRouteGuard>
                   <PairingInterventionPreviewPage />
-                </SuperAdminRouteGuard>
-              }
-            />
-            <Route
-              path="/dev/referee-v5"
-              element={
-                <SuperAdminRouteGuard>
-                  <RefereeV5PreviewPage />
                 </SuperAdminRouteGuard>
               }
             />
