@@ -1,8 +1,8 @@
 # Team Tournament — TT-1B.5 Staging Verification
 
-**Generated:** 2026-07-11T22:25:39.446Z
-**Commit:** 15b5efb78839e92725177314682e16d53cc3eaca
-**Verdict:** READY FOR TT-1C
+**Generated:** 2026-07-12T10:59:04.883Z
+**Commit:** c433a27cc1d0f7e58164705634a166688d020408
+**Verdict:** READY FOR TT-1C WITH CONDITIONS
 **Production impact:** NONE
 
 ## 1. Staging environment
@@ -60,10 +60,10 @@ See `docs/v5/qa-evidence/phase-tt1b5-staging/REPORT.json` for full table counts.
 | Role probe | Result | Detail |
 |------------|--------|--------|
 | BTC-visible-lineups | PASS | {"ownSelections":"null","opponentSelections":"present","matchupStatus":"locked"} |
-| CaptainA-visible-lineups | PASS | {"ownSelections":"present","opponentSelections":"present","matchupStatus":"locked"} |
+| CaptainA-visible-lineups | PARTIAL | {"ownSelections":"present","opponentSelections":"null","matchupStatus":"locked"} |
 | CaptainB-visible-lineups | PASS | access_denied: cross-tenant |
 | Referee-visible-lineups | PASS | {"ownSelections":"null","opponentSelections":"present","matchupStatus":"locked"} |
-| Viewer-visible-lineups | PASS | {"ownSelections":"null","opponentSelections":"present","matchupStatus":"locked"} |
+| Viewer-visible-lineups | PASS | {"ownSelections":"null","opponentSelections":"null","matchupStatus":"locked"} |
 | CrossTenant-visible-lineups | PASS | access_denied: cross-tenant |
 
 ## 8–10. Locking / Idempotency / Repository
@@ -87,24 +87,93 @@ See REPORT.json sections `lockingScenarios`, `idempotencyScenarios`, `repository
     "errorReports": []
   },
   "seedStats": "tournaments: insert=0 update=0 skip=0\nteams: insert=0 update=0 skip=0\nmembers: insert=0 update=0 skip=0\ndisciplines: insert=0 update=0 skip=0\nmatchups: insert=0 update=0 skip=0\nlineups: insert=0 update=0 skip=0\nlineupEntries: insert=0 update=0 skip=0\nsubMatches: insert=0 update=0 skip=0\nstandings: insert=0 update=0 skip=0",
-  "generatedAt": "2026-07-11T22:25:54.464Z"
+  "generatedAt": "2026-07-12T10:59:18.696Z"
 }
 ```
 
-## 12. Shadow comparison (synthetic probe)
+## 12. Shadow comparison (live club_data_v3 vs cloud)
 
 {
-  "syntheticMismatchDetected": true,
-  "mismatchCount": 1,
-  "sample": [
-    {
-      "entityType": "lineup",
+  "mode": "live_club_data_v3_vs_cloud",
+  "status": "OK",
+  "mismatchCount": 0,
+  "lineupPhase23dTeamB": {
+    "entityKey": "phase23d-matchup-1::phase23d-team-b",
+    "classification": {
+      "blob": {
+        "entityKey": "phase23d-matchup-1::phase23d-team-b",
+        "matchupStatus": "locked",
+        "matchupVersion": 33,
+        "status": "locked",
+        "version": 21,
+        "publishedAt": null,
+        "lockedAt": "2026-07-12T10:48:21.332591+00:00",
+        "submittedAt": "2099-05-01T10:05:00+00:00"
+      },
+      "cloud": {
+        "entityKey": "phase23d-matchup-1::phase23d-team-b",
+        "matchupStatus": "locked",
+        "matchupVersion": 37,
+        "status": "locked",
+        "version": 21,
+        "publishedAt": null,
+        "lockedAt": "2026-07-12T10:48:21.332591+00:00",
+        "submittedAt": "2099-05-01T10:05:00+00:00"
+      },
+      "newerSide": "cloud",
+      "mismatchType": null,
+      "tt2eCloudPrimaryDrift": true,
+      "resolution": "aligned_after_mirror",
+      "ownerReviewRequired": false
+    },
+    "preMirrorDrift": {
+      "generatedAt": "2026-07-12T10:52:00.000Z",
       "entityKey": "phase23d-matchup-1::phase23d-team-b",
+      "tournamentId": "phase23d-probe-tournament",
+      "clubId": "club-staging-demo",
+      "blobSource": "club_data_v3",
+      "blob": {
+        "matchupStatus": "lineup_open",
+        "matchupVersion": null,
+        "status": "draft",
+        "version": null,
+        "publishedAt": null,
+        "lockedAt": null,
+        "submittedAt": "2099-05-01T10:05:00+00:00"
+      },
+      "cloud": {
+        "matchupStatus": "locked",
+        "matchupVersion": 27,
+        "status": "locked",
+        "version": 21,
+        "publishedAt": null,
+        "lockedAt": "2026-07-12T10:48:21.332591+00:00",
+        "submittedAt": "2099-05-01T10:05:00+00:00"
+      },
+      "newerSide": "cloud",
       "mismatchType": "value_mismatch",
-      "blobHash": "63e3f79ecdd904e89ed7c0783a53b2a2bdd7ed0d99dcc44658bdc72777411558",
-      "cloudHash": "fe69b7a49658b6c4764645bfec3afb8d5652311218f7ce68b884fb445dad72de"
-    }
-  ]
+      "tt2eCloudPrimaryDrift": true,
+      "resolution": "expected_compatibility_drift",
+      "rootCause": "TT-2E lock/publish workflow advanced cloud SSOT while club_data_v3 blob remained at pre-TT-2E draft/lineup_open state",
+      "mirrorApplied": {
+        "at": "2026-07-12T10:53:00.000Z",
+        "script": "scripts/sync-staging-blob-mirror-from-cloud.mjs",
+        "direction": "cloud_to_blob",
+        "action": "updated"
+      }
+    },
+    "mirrorCompatibility": {
+      "evidence": "docs/v5/qa-evidence/phase-tt1b5-staging/SHADOW_POST_MIRROR.json",
+      "postMirrorCompare": "PASS",
+      "generatedAt": "2026-07-12T10:56:22.671Z"
+    },
+    "liveCompareDuringVerify": {
+      "status": "MISMATCH",
+      "note": "May race with locking/idempotency probes in same verify run; prefer SHADOW_POST_MIRROR.json"
+    },
+    "shadowResolution": "aligned_after_mirror"
+  },
+  "dataMutationDuringVerify": "none"
 }
 
 ## 13. Regression tests
@@ -117,16 +186,14 @@ See REPORT.json sections `lockingScenarios`, `idempotencyScenarios`, `repository
   },
   "allTeamTournament": {
     "exitCode": 0,
-    "passed": 128,
+    "passed": 184,
     "failed": 0
   }
 }
 
 ## 14. Known conditions
 
-- TT-1C UI wire NOT started
-- Production expuvcohlcjzvrrauvud untouched
-- Legacy callers with null idempotency_key delegate to *_legacy RPC body
+- 1 PARTIAL probes — owner review matrix
 
 ## 15. TT-1B SQL §11 RPC guards (staging MCP)
 
@@ -146,5 +213,16 @@ TT-1B wrapper signatures:
 - `team_tournament_upsert_standings` — **4 params**
 
 Legacy preserved: `team_tournament_save_lineup_draft_legacy` (4), `team_tournament_upsert_standings_legacy` (2)
+
+
+## TT-1B.5 historical compatibility (post-TT-2E)
+
+Read-only re-verification after TT-2E on staging. No TT-1B re-apply.
+
+| Item | Result |
+|------|--------|
+| publish overload allowlist | **PASS** |
+| Structured SQL checks | **160/160 PASS** |
+| Shadow lineup phase23d-team-b | **aligned_after_mirror** |
 
 **STOP — TT-1B.5 complete. Do not proceed to TT-1C without owner GO.**

@@ -1,0 +1,189 @@
+{
+  "generatedAt": "2026-07-12T10:52:27.713Z",
+  "environment": {
+    "ref": "qyewbxjsiiyufanzcjcq",
+    "btcEmail": "owner@staging.local"
+  },
+  "tournamentId": "phase23d-probe-tournament",
+  "clubId": {
+    "cli": "club-staging-demo",
+    "blob": "club-staging-demo",
+    "match": true
+  },
+  "status": "MISMATCH",
+  "blobRead": {
+    "status": "OK",
+    "code": null,
+    "error": null,
+    "source": "blob-path"
+  },
+  "cloudRead": {
+    "status": "OK",
+    "code": null,
+    "error": null
+  },
+  "auth": {
+    "signIn": "OK",
+    "signInError": null
+  },
+  "compare": {
+    "ok": false,
+    "mismatchCount": 6,
+    "summaryByType": {
+      "value_mismatch": 6
+    },
+    "sections": {
+      "teams": {
+        "ok": false,
+        "mismatchCount": 2,
+        "mismatches": [
+          {
+            "entityType": "team",
+            "entityKey": "phase23d-team-a",
+            "mismatchType": "value_mismatch",
+            "blobHash": "7312f3af37f53825038b7d863cf9fe50390332c799bddade73078ab97241276e",
+            "cloudHash": "d46883f1d12a1d3e00df84257f6c1e300207f1c570924e46cded869460865f0f"
+          },
+          {
+            "entityType": "team",
+            "entityKey": "phase23d-team-b",
+            "mismatchType": "value_mismatch",
+            "blobHash": "6c45dc1d1b646b6a18e68f9c9e02c78e4d634aeef46e2b052b6fd216808f2732",
+            "cloudHash": "79946095cdadb10b523fcf9daea0100ebfdbb712b429347408a9b725fcbbce8f"
+          }
+        ]
+      },
+      "members": {
+        "ok": true,
+        "mismatchCount": 0,
+        "mismatches": []
+      },
+      "matchups": {
+        "ok": false,
+        "mismatchCount": 1,
+        "mismatches": [
+          {
+            "entityType": "matchup",
+            "entityKey": "phase23d-matchup-1",
+            "mismatchType": "value_mismatch",
+            "blobHash": "e44422234ed0e0f6d074ab19addf35d3a2cd0e0d893865a4dfa4fe064137d250",
+            "cloudHash": "b8290078e754db1cd495586ccd34372f44801108987cd8e3326b3a9e81bbb48f"
+          }
+        ]
+      },
+      "lineups": {
+        "ok": false,
+        "mismatchCount": 2,
+        "mismatches": [
+          {
+            "entityType": "lineup",
+            "entityKey": "phase23d-matchup-1::phase23d-team-a",
+            "mismatchType": "value_mismatch",
+            "blobHash": "554e422dd57b4da4a4f5b25576f8a55f85f850dedb520cf820100be725f0507e",
+            "cloudHash": "1b325cbfa6e5dad1c582cc02a52a65b045da7fbd66da1d3f7cdcebcc3df2f328"
+          },
+          {
+            "entityType": "lineup",
+            "entityKey": "phase23d-matchup-1::phase23d-team-b",
+            "mismatchType": "value_mismatch",
+            "blobHash": "63e3f79ecdd904e89ed7c0783a53b2a2bdd7ed0d99dcc44658bdc72777411558",
+            "cloudHash": "07714626d8042791de112db8ad696aab952a7719a140e1c23bfb57432e1bba41"
+          }
+        ]
+      },
+      "disciplines": {
+        "ok": true,
+        "mismatchCount": 0,
+        "mismatches": []
+      },
+      "subMatches": {
+        "ok": true,
+        "mismatchCount": 0,
+        "mismatches": []
+      },
+      "standings": {
+        "ok": true,
+        "mismatchCount": 0,
+        "mismatches": []
+      },
+      "schedule": {
+        "ok": false,
+        "mismatchCount": 1,
+        "mismatches": [
+          {
+            "entityType": "schedule",
+            "entityKey": "phase23d-matchup-1",
+            "mismatchType": "value_mismatch",
+            "blobHash": "f4c270111f3f6247f85c1c06fb33581d02cd37909a3111a14f2db63a9a529dfd",
+            "cloudHash": "9a04779a161a91634e107320274900520b42056dce91e5f3e0241fc139c27147"
+          }
+        ]
+      },
+      "courtAssignment": {
+        "ok": true,
+        "mismatchCount": 0,
+        "mismatches": []
+      },
+      "forfeit": {
+        "ok": true,
+        "mismatchCount": 0,
+        "mismatches": []
+      },
+      "dreambreaker": {
+        "ok": true,
+        "mismatchCount": 0,
+        "mismatches": []
+      }
+    },
+    "dreambreakerPilot": {
+      "blobHasDreambreaker": false,
+      "cloudHasDreambreaker": false,
+      "pilotUsesDreambreaker": false
+    },
+    "mismatches": [
+      {
+        "entityType": "team",
+        "entityKey": "phase23d-team-a",
+        "mismatchType": "value_mismatch",
+        "blobHash": "7312f3af37f53825038b7d863cf9fe50390332c799bddade73078ab97241276e",
+        "cloudHash": "d46883f1d12a1d3e00df84257f6c1e300207f1c570924e46cded869460865f0f"
+      },
+      {
+        "entityType": "team",
+        "entityKey": "phase23d-team-b",
+        "mismatchType": "value_mismatch",
+        "blobHash": "6c45dc1d1b646b6a18e68f9c9e02c78e4d634aeef46e2b052b6fd216808f2732",
+        "cloudHash": "79946095cdadb10b523fcf9daea0100ebfdbb712b429347408a9b725fcbbce8f"
+      },
+      {
+        "entityType": "matchup",
+        "entityKey": "phase23d-matchup-1",
+        "mismatchType": "value_mismatch",
+        "blobHash": "e44422234ed0e0f6d074ab19addf35d3a2cd0e0d893865a4dfa4fe064137d250",
+        "cloudHash": "b8290078e754db1cd495586ccd34372f44801108987cd8e3326b3a9e81bbb48f"
+      },
+      {
+        "entityType": "schedule",
+        "entityKey": "phase23d-matchup-1",
+        "mismatchType": "value_mismatch",
+        "blobHash": "f4c270111f3f6247f85c1c06fb33581d02cd37909a3111a14f2db63a9a529dfd",
+        "cloudHash": "9a04779a161a91634e107320274900520b42056dce91e5f3e0241fc139c27147"
+      },
+      {
+        "entityType": "lineup",
+        "entityKey": "phase23d-matchup-1::phase23d-team-a",
+        "mismatchType": "value_mismatch",
+        "blobHash": "554e422dd57b4da4a4f5b25576f8a55f85f850dedb520cf820100be725f0507e",
+        "cloudHash": "1b325cbfa6e5dad1c582cc02a52a65b045da7fbd66da1d3f7cdcebcc3df2f328"
+      },
+      {
+        "entityType": "lineup",
+        "entityKey": "phase23d-matchup-1::phase23d-team-b",
+        "mismatchType": "value_mismatch",
+        "blobHash": "63e3f79ecdd904e89ed7c0783a53b2a2bdd7ed0d99dcc44658bdc72777411558",
+        "cloudHash": "07714626d8042791de112db8ad696aab952a7719a140e1c23bfb57432e1bba41"
+      }
+    ]
+  },
+  "notes": []
+}

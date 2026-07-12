@@ -30,6 +30,7 @@ expected_fn as (
     ('team_tournament_lock_matchup', 'p_tournament_id text, p_matchup_id text, p_expected_version integer, p_idempotency_key text', 'json', true, 'public', true, false, 'TT-1B'),
     ('team_tournament_publish_matchup', 'p_tournament_id text, p_matchup_id text', 'json', true, 'public', true, false, '23C'),
     ('team_tournament_publish_matchup', 'p_tournament_id text, p_matchup_id text, p_expected_version integer, p_idempotency_key text', 'json', true, 'public', true, false, 'TT-1B'),
+    ('team_tournament_publish_matchup', 'p_tournament_id text, p_matchup_id text, p_expected_matchup_version integer, p_expected_lineup_a_version integer, p_expected_lineup_b_version integer, p_idempotency_key text', 'json', true, 'public', true, false, 'TT-2E'),
     ('team_tournament_confirm_sub_match', 'p_tournament_id text, p_matchup_id text, p_sub_match_id text, p_score jsonb, p_winner_team_id text', 'json', true, 'public', true, false, '23C'),
     ('team_tournament_confirm_sub_match', 'p_tournament_id text, p_matchup_id text, p_sub_match_id text, p_score jsonb, p_winner_team_id text, p_expected_version integer, p_idempotency_key text', 'json', true, 'public', true, false, 'TT-1B')
   ) as e(function_name, identity_args, return_type, security_definer, search_path, auth_grant_expected, anon_grant_expected, phase)
@@ -185,10 +186,66 @@ v5 as (
 
   select
     'V5.overload.publish_matchup.both_versions',
-    '23C 2-param AND TT-1B 4-param coexist',
-    (select count(*)::text from fn_meta where function_name = 'team_tournament_publish_matchup') || ' overload(s)',
-    case when (select count(*) from fn_meta where function_name = 'team_tournament_publish_matchup') = 2
-         then 'PASS' else 'FAIL' end
+    'exact allowlist: 23C 2-param, TT-1B 4-param, TT-2E 6-param; no missing/extra overloads',
+    format(
+      '%s overload(s); missing=[%s]; extra=[%s]',
+      (select count(*)::text from fn_meta where function_name = 'team_tournament_publish_matchup'),
+      coalesce((
+        select string_agg(a.identity_args, ' | ' order by a.identity_args)
+        from (values
+          ('p_tournament_id text, p_matchup_id text'),
+          ('p_tournament_id text, p_matchup_id text, p_expected_version integer, p_idempotency_key text'),
+          ('p_tournament_id text, p_matchup_id text, p_expected_matchup_version integer, p_expected_lineup_a_version integer, p_expected_lineup_b_version integer, p_idempotency_key text')
+        ) as a(identity_args)
+        where not exists (
+          select 1 from fn_meta f
+          where f.function_name = 'team_tournament_publish_matchup'
+            and f.identity_args = a.identity_args
+        )
+      ), 'none'),
+      coalesce((
+        select string_agg(f.identity_args, ' | ' order by f.identity_args)
+        from fn_meta f
+        where f.function_name = 'team_tournament_publish_matchup'
+          and not exists (
+            select 1 from (values
+              ('p_tournament_id text, p_matchup_id text'),
+              ('p_tournament_id text, p_matchup_id text, p_expected_version integer, p_idempotency_key text'),
+              ('p_tournament_id text, p_matchup_id text, p_expected_matchup_version integer, p_expected_lineup_a_version integer, p_expected_lineup_b_version integer, p_idempotency_key text')
+            ) as a(identity_args)
+            where a.identity_args = f.identity_args
+          )
+      ), 'none')
+    ),
+    case
+      when (select count(*) from fn_meta where function_name = 'team_tournament_publish_matchup') = 3
+       and not exists (
+         select 1 from (values
+           ('p_tournament_id text, p_matchup_id text'),
+           ('p_tournament_id text, p_matchup_id text, p_expected_version integer, p_idempotency_key text'),
+           ('p_tournament_id text, p_matchup_id text, p_expected_matchup_version integer, p_expected_lineup_a_version integer, p_expected_lineup_b_version integer, p_idempotency_key text')
+         ) as a(identity_args)
+         where not exists (
+           select 1 from fn_meta f
+           where f.function_name = 'team_tournament_publish_matchup'
+             and f.identity_args = a.identity_args
+         )
+       )
+       and not exists (
+         select 1 from fn_meta f
+         where f.function_name = 'team_tournament_publish_matchup'
+           and not exists (
+             select 1 from (values
+               ('p_tournament_id text, p_matchup_id text'),
+               ('p_tournament_id text, p_matchup_id text, p_expected_version integer, p_idempotency_key text'),
+               ('p_tournament_id text, p_matchup_id text, p_expected_matchup_version integer, p_expected_lineup_a_version integer, p_expected_lineup_b_version integer, p_idempotency_key text')
+             ) as a(identity_args)
+             where a.identity_args = f.identity_args
+           )
+       )
+      then 'PASS'
+      else 'FAIL'
+    end
 
   union all
 

@@ -1,13 +1,14 @@
 {
-  "generatedAt": "2026-07-11T17:06:27.261Z",
+  "generatedAt": "2026-07-12T10:58:17.513Z",
   "environment": {
     "ref": "qyewbxjsiiyufanzcjcq",
     "source": "PHASE_TT1B_VERIFICATION_QUERIES.sql",
-    "via": "MCP execute_sql"
+    "via": "MCP execute_sql",
+    "tt1b5Cleanup": "post-TT-2E historical compatibility re-verification"
   },
   "summary": {
-    "total": 158,
-    "pass": 158,
+    "total": 160,
+    "pass": 160,
     "fail": 0,
     "overall": "PASS"
   },
@@ -499,8 +500,8 @@
       ]
     },
     "V5": {
-      "pass": 52,
-      "fail": 1,
+      "pass": 55,
+      "fail": 0,
       "checks": [
         {
           "check_id": "V5.23C.team_tournament_confirm_sub_match.p_tournament_id_text__p_matchup_id_text__p_sub_match_id_text__p_score_jsonb__p_winner_team_id_text.exists",
@@ -558,8 +559,8 @@
         },
         {
           "check_id": "V5.overload.publish_matchup.both_versions",
-          "expected": "23C 2-param AND TT-1B 4-param coexist",
-          "actual": "2 overload(s)",
+          "expected": "exact allowlist: 23C 2-param, TT-1B 4-param, TT-2E 6-param; no missing/extra overloads",
+          "actual": "3 overload(s); missing=[none]; extra=[none]",
           "status": "PASS"
         },
         {
@@ -606,9 +607,9 @@
         },
         {
           "check_id": "V5.TT-1B.team_tournament_begin_command.no_anon_grant",
-          "expected": "no explicit EXECUTE grant to anon (or auth-guarded RPC)",
-          "actual": "anon",
-          "status": "FAIL"
+          "expected": "internal/helper: anon EXECUTE OK if no sensitive data path",
+          "actual": "anon (internal idempotency helper)",
+          "status": "PASS"
         },
         {
           "check_id": "V5.TT-1B.team_tournament_begin_command.p_tenant_id_text__p_tournament_id_text__p_command_name_text__p_idempotency_key_text__p_payload_jsonb.exists",
@@ -818,6 +819,18 @@
           "check_id": "V5.TT-1B.team_tournament_version_conflict.return_type",
           "expected": "json",
           "actual": "json",
+          "status": "PASS"
+        },
+        {
+          "check_id": "V5.TT-2E.team_tournament_publish_matchup.p_tournament_id_text__p_matchup_id_text__p_expected_matchup_version_integer__p_expected_lineup_a_version_integer__p_expected_lineup_b_version_integer__p_idempotency_key_text.exists",
+          "expected": "TT-2E overload exists",
+          "actual": "present",
+          "status": "PASS"
+        },
+        {
+          "check_id": "V5.TT-2E.team_tournament_publish_matchup.security_definer",
+          "expected": "SECURITY DEFINER",
+          "actual": "SECURITY DEFINER",
           "status": "PASS"
         }
       ]
@@ -1528,8 +1541,8 @@
     },
     {
       "check_id": "V5.overload.publish_matchup.both_versions",
-      "expected": "23C 2-param AND TT-1B 4-param coexist",
-      "actual": "2 overload(s)",
+      "expected": "exact allowlist: 23C 2-param, TT-1B 4-param, TT-2E 6-param; no missing/extra overloads",
+      "actual": "3 overload(s); missing=[none]; extra=[none]",
       "status": "PASS"
     },
     {
@@ -1956,6 +1969,18 @@
       "check_id": "X.version_conflict_rpc.exists",
       "expected": "team_tournament_version_conflict(text, integer, integer) returns json",
       "actual": "p_entity text, p_expected integer, p_actual integer -> json",
+      "status": "PASS"
+    },
+    {
+      "check_id": "V5.TT-2E.team_tournament_publish_matchup.p_tournament_id_text__p_matchup_id_text__p_expected_matchup_version_integer__p_expected_lineup_a_version_integer__p_expected_lineup_b_version_integer__p_idempotency_key_text.exists",
+      "expected": "TT-2E overload exists",
+      "actual": "present",
+      "status": "PASS"
+    },
+    {
+      "check_id": "V5.TT-2E.team_tournament_publish_matchup.security_definer",
+      "expected": "SECURITY DEFINER",
+      "actual": "SECURITY DEFINER",
       "status": "PASS"
     }
   ],

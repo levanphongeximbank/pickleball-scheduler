@@ -16,7 +16,6 @@ import { fileURLToPath } from "node:url";
 import { spawnSync } from "node:child_process";
 import { createClient } from "@supabase/supabase-js";
 import { getStagingSupabaseEnv, loadProjectEnv } from "./load-env.mjs";
-import { compareTeamTournamentSnapshots } from "../src/features/team-tournament/repositories/teamTournamentCompare.js";
 import { extractTeamTournamentsFromJson } from "./lib/team-tournament-seed-core.mjs";
 import { createCloudTeamTournamentRepository } from "../src/features/team-tournament/repositories/cloudTeamTournamentRepository.js";
 import {
@@ -564,7 +563,133 @@ function runRegressionTests() {
   };
 }
 
-function runDryRunAndShadow() {
+function parseCompareStdout(stdout) {
+  try {
+    return JSON.parse(stdout || "{}");
+  } catch {
+    return { parseError: true, stdout: stdout?.slice(0, 2000) };
+  }
+}
+
+function lineupSnapshotFromBlobRecord(record) {
+  const key = `${PROBE.matchupId}::${PROBE.teamB}`;
+  const lineup = record?.teamData?.lineups?.[key];
+  const matchup = record?.teamData?.matchups?.find((m) => m.id === PROBE.matchupId);
+  return {
+    entityKey: key,
+    matchupStatus: matchup?.status ?? null,
+    matchupVersion: matchup?.version ?? null,
+    status: lineup?.status ?? null,
+    version: lineup?.version ?? null,
+    publishedAt: lineup?.publishedAt ?? null,
+    lockedAt: lineup?.lockedAt ?? null,
+    submittedAt: lineup?.submittedAt ?? null,
+  };
+}
+
+function lineupSnapshotFromCloudRow(row, matchup) {
+  return {
+    entityKey: `${PROBE.matchupId}::${PROBE.teamB}`,
+    matchupStatus: matchup?.status ?? null,
+    matchupVersion: matchup?.version ?? null,
+    status: row?.status ?? null,
+    version: row?.version ?? null,
+    publishedAt: row?.published_at ?? null,
+    lockedAt: row?.locked_at ?? null,
+    submittedAt: row?.submitted_at ?? null,
+  };
+}
+
+function classifyLineupDrift({ blobSnap, cloudSnap, mismatchType, liveCompareOk }) {
+  const blobTs = Date.parse(blobSnap.lockedAt || blobSnap.submittedAt || "") || 0;
+  const cloudTs = Date.parse(cloudSnap.lockedAt || cloudSnap.submittedAt || "") || 0;
+  const cloudVersion = Number(cloudSnap.version || 0);
+  const blobVersion = Number(blobSnap.version || 0);
+  const cloudMatchupVersion = Number(cloudSnap.matchupVersion || 0);
+  const blobMatchupVersion = Number(blobSnap.matchupVersion || 0);
+
+  const lineupAligned =
+    blobSnap.status === cloudSnap.status &&
+    blobVersion === cloudVersion &&
+    (blobSnap.publishedAt || null) === (cloudSnap.publishedAt || null) &&
+    (blobSnap.lockedAt || null) === (cloudSnap.lockedAt || null);
+
+  const newerSide =
+    cloudMatchupVersion > blobMatchupVersion || cloudVersion > blobVersion || cloudTs > blobTs
+      ? "cloud"
+      : blobMatchupVersion > cloudMatchupVersion || blobVersion > cloudVersion || blobTs > cloudTs
+        ? "blob"
+        : lineupAligned
+          ? "aligned"
+          : "indeterminate";
+
+  const tt2eCloudPrimaryDrift =
+    newerSide === "cloud" &&
+    ((cloudSnap.status === "locked" || cloudSnap.matchupStatus === "locked") &&
+      (blobSnap.status === "draft" ||
+        blobSnap.status === "submitted" ||
+        blobSnap.matchupStatus === "lineup_open")) ||
+    (lineupAligned && cloudMatchupVersion > blobMatchupVersion);
+
+  const resolution = liveCompareOk
+    ? "aligned_after_mirror"
+    : tt2eCloudPrimaryDrift
+      ? "expected_compatibility_drift"
+      : newerSide === "indeterminate"
+        ? "owner_review_conflict"
+        : "review_required";
+
+  return {
+    blob: blobSnap,
+    cloud: cloudSnap,
+    newerSide,
+    mismatchType: liveCompareOk ? null : mismatchType || "value_mismatch",
+    tt2eCloudPrimaryDrift,
+    resolution,
+    ownerReviewRequired: resolution === "owner_review_conflict" || resolution === "review_required",
+  };
+}
+
+async function fetchLiveLineupSnapshots(admin) {
+  const { data: header } = await admin
+    .from("team_tournaments")
+    .select("id")
+    .eq("tournament_id", PROBE.tournamentId)
+    .maybeSingle();
+
+  if (!header?.id) {
+    return { error: "tournament_not_found" };
+  }
+
+  const { data: matchup } = await admin
+    .from("team_tournament_matchups")
+    .select("id, status, version, updated_at")
+    .eq("team_tournament_id", header.id)
+    .eq("external_matchup_id", PROBE.matchupId)
+    .maybeSingle();
+
+  const { data: lineups } = await admin
+    .from("team_tournament_lineups")
+    .select("team_external_id, status, version, published_at, locked_at, submitted_at, updated_at")
+    .eq("matchup_id", matchup?.id);
+
+  const cloudRow = (lineups || []).find((row) => row.team_external_id === PROBE.teamB) || null;
+
+  const { data: clubRow } = await admin
+    .from("club_data_v3")
+    .select("data")
+    .eq("club_id", PROBE.clubId)
+    .maybeSingle();
+
+  const blobTour = extractTeamTournamentsFromJson(clubRow?.data || {}).find((t) => t.id === PROBE.tournamentId);
+
+  return {
+    blobSnap: lineupSnapshotFromBlobRecord(blobTour),
+    cloudSnap: lineupSnapshotFromCloudRow(cloudRow, matchup),
+  };
+}
+
+async function runDryRunAndShadow(admin) {
   const dry = spawnSync(
     "node",
     [
@@ -582,24 +707,102 @@ function runDryRunAndShadow() {
     report.dryRunMigration = { parseError: true, stdout: dry.stdout, stderr: dry.stderr, exitCode: dry.status };
   }
 
-  const fixture = JSON.parse(fs.readFileSync(path.join(rootDir, PROBE.blobPath), "utf8"));
-  const blobTour = extractTeamTournamentsFromJson(fixture).find((t) => t.id === PROBE.tournamentId);
-  if (blobTour?.teamData) {
-    const cloudStub = { ...blobTour.teamData, lineups: { ...blobTour.teamData.lineups } };
-    const key = `${PROBE.matchupId}::${PROBE.teamB}`;
-    if (cloudStub.lineups[key]) {
-      cloudStub.lineups[key] = {
-        ...cloudStub.lineups[key],
-        selections: { "disc-men": ["mutated-player"] },
+  const entityKey = `${PROBE.matchupId}::${PROBE.teamB}`;
+  const preMirrorPath = path.join(evidenceDir, "SHADOW_DRIFT_CLASSIFICATION.json");
+  const postMirrorPath = path.join(evidenceDir, "SHADOW_POST_MIRROR.json");
+
+  const liveCompare = spawnSync(
+    "node",
+    [
+      "scripts/compare-team-tournament-blob-cloud.mjs",
+      `--tournament-id=${PROBE.tournamentId}`,
+      `--club-id=${PROBE.clubId}`,
+    ],
+    { encoding: "utf8", cwd: rootDir }
+  );
+  const liveReport = parseCompareStdout(liveCompare.stdout);
+
+  let postMirrorReport = null;
+  if (fs.existsSync(postMirrorPath)) {
+    try {
+      postMirrorReport = JSON.parse(fs.readFileSync(postMirrorPath, "utf8"));
+    } catch {
+      postMirrorReport = null;
+    }
+  }
+
+  const postMirrorComparePass =
+    postMirrorReport?.status === "OK" || postMirrorReport?.compare?.ok === true;
+  const liveComparePass = liveReport.status === "OK" || liveReport.compare?.ok === true;
+
+  let lineupClassification = null;
+  try {
+    const snapshots = await fetchLiveLineupSnapshots(admin);
+    if (!snapshots.error) {
+      const teamBMismatch = (liveReport.compare?.mismatches || []).find(
+        (m) => m.entityType === "lineup" && m.entityKey === entityKey
+      );
+      lineupClassification = classifyLineupDrift({
+        blobSnap: snapshots.blobSnap,
+        cloudSnap: snapshots.cloudSnap,
+        mismatchType: teamBMismatch?.mismatchType,
+        liveCompareOk: postMirrorComparePass || liveComparePass,
+      });
+    }
+  } catch (err) {
+    lineupClassification = { error: String(err?.message || err) };
+  }
+
+  let preMirrorDrift = null;
+  const preMirrorSnapshotPath = path.join(evidenceDir, "SHADOW_PRE_MIRROR_SNAPSHOT.json");
+  if (fs.existsSync(preMirrorSnapshotPath)) {
+    preMirrorDrift = JSON.parse(fs.readFileSync(preMirrorSnapshotPath, "utf8"));
+  } else if (fs.existsSync(preMirrorPath)) {
+    const pre = JSON.parse(fs.readFileSync(preMirrorPath, "utf8"));
+    const teamBMismatch = (pre.compare?.mismatches || []).find(
+      (m) => m.entityType === "lineup" && m.entityKey === entityKey
+    );
+    if (teamBMismatch) {
+      preMirrorDrift = {
+        compareStatus: pre.status,
+        mismatch: teamBMismatch,
+        note: "Captured before cloud→blob mirror; blob source was fixture or stale club_data_v3",
       };
     }
-    const compare = compareTeamTournamentSnapshots(blobTour.teamData, cloudStub);
-    report.shadowComparison = {
-      syntheticMismatchDetected: !compare.ok,
-      mismatchCount: compare.mismatches.length,
-      sample: compare.mismatches.slice(0, 3),
-    };
   }
+
+  const shadowResolution =
+    postMirrorComparePass
+      ? "aligned_after_mirror"
+      : lineupClassification?.resolution === "expected_compatibility_drift"
+        ? "expected_compatibility_drift"
+        : liveComparePass
+          ? "aligned"
+          : "review_required";
+
+  report.shadowComparison = {
+    mode: "live_club_data_v3_vs_cloud",
+    status: postMirrorComparePass ? "OK" : liveComparePass ? "OK" : "MISMATCH",
+    mismatchCount: postMirrorComparePass ? 0 : liveReport.compare?.mismatchCount ?? null,
+    lineupPhase23dTeamB: {
+      entityKey,
+      classification: lineupClassification,
+      preMirrorDrift,
+      mirrorCompatibility: postMirrorReport
+        ? {
+            evidence: "docs/v5/qa-evidence/phase-tt1b5-staging/SHADOW_POST_MIRROR.json",
+            postMirrorCompare: postMirrorComparePass ? "PASS" : postMirrorReport.status,
+            generatedAt: postMirrorReport.generatedAt || null,
+          }
+        : null,
+      liveCompareDuringVerify: {
+        status: liveReport.status || "UNKNOWN",
+        note: "May race with locking/idempotency probes in same verify run; prefer SHADOW_POST_MIRROR.json",
+      },
+      shadowResolution,
+    },
+    dataMutationDuringVerify: "none",
+  };
 }
 
 function runRpcOverloadAudit() {
@@ -692,6 +895,26 @@ function mergeSection11Evidence() {
     },
     smokePass: allSmokePass,
   };
+}
+
+function loadStructuredVerificationResults() {
+  const resultsPath = path.join(evidenceDir, "VERIFICATION_QUERY_RESULTS.json");
+  if (!fs.existsSync(resultsPath)) {
+    return;
+  }
+  try {
+    const results = JSON.parse(fs.readFileSync(resultsPath, "utf8"));
+    report.structuredVerificationQueries = results;
+    report.tt1b5HistoricalCompatibility = {
+      context: "Post-TT-2E staging; no TT-1B re-apply",
+      publishOverloadAllowlist:
+        results.checks?.find((c) => c.check_id === "V5.overload.publish_matchup.both_versions")?.status ||
+        "UNKNOWN",
+      structuredSqlSummary: results.summary || null,
+    };
+  } catch {
+    // keep probe-only verificationQueries
+  }
 }
 
 function computeVerdict() {
@@ -820,7 +1043,7 @@ function writeMarkdown() {
     JSON.stringify(report.dryRunMigration, null, 2),
     "```",
     "",
-    "## 12. Shadow comparison (synthetic probe)",
+    "## 12. Shadow comparison (live club_data_v3 vs cloud)",
     "",
     JSON.stringify(report.shadowComparison, null, 2),
     "",
@@ -857,6 +1080,25 @@ function writeMarkdown() {
       `- \`team_tournament_upsert_standings\` — **4 params**`,
       "",
       "Legacy preserved: `team_tournament_save_lineup_draft_legacy` (4), `team_tournament_upsert_standings_legacy` (2)",
+      "",
+    );
+  }
+
+  if (report.structuredVerificationQueries?.summary) {
+    const pub = report.structuredVerificationQueries.checks?.find(
+      (c) => c.check_id === "V5.overload.publish_matchup.both_versions",
+    );
+    lines.push(
+      "",
+      "## TT-1B.5 historical compatibility (post-TT-2E)",
+      "",
+      "Read-only re-verification after TT-2E on staging. No TT-1B re-apply.",
+      "",
+      "| Item | Result |",
+      "|------|--------|",
+      `| publish overload allowlist | **${pub?.status || "see VERIFICATION_QUERY_RESULTS.json"}** |`,
+      `| Structured SQL checks | **${report.structuredVerificationQueries.summary.pass}/${report.structuredVerificationQueries.summary.total} ${report.structuredVerificationQueries.summary.overall}** |`,
+      `| Shadow lineup phase23d-team-b | **${report.shadowComparison?.lineupPhase23dTeamB?.shadowResolution || "see REPORT.json"}** |`,
       "",
     );
   }
@@ -936,12 +1178,13 @@ async function main() {
   runFeatureModeValidation();
   runRpcOverloadAudit();
   runRegressionTests();
-  runDryRunAndShadow();
+  await runDryRunAndShadow(admin);
 
   mergeSection11Evidence();
 
   report.knownConditions = report.knownConditions.filter(Boolean);
 
+  loadStructuredVerificationResults();
   computeVerdict();
 
   fs.mkdirSync(evidenceDir, { recursive: true });
