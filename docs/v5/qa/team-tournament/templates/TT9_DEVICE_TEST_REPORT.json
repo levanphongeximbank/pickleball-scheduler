@@ -1,0 +1,55 @@
+{
+  "reportType": "TT9_DEVICE_TEST_REPORT",
+  "version": "1.0.0",
+  "generatedAt": null,
+  "productionImpact": "NONE",
+  "environment": {
+    "name": "staging-preview",
+    "baseUrl": "",
+    "buildSha": "",
+    "tournamentId": ""
+  },
+  "tester": {
+    "name": "",
+    "role": ""
+  },
+  "device": {
+    "platform": "iphone-safari | android-chrome | desktop-chrome | desktop-edge",
+    "model": "",
+    "osVersion": "",
+    "browserVersion": "",
+    "viewport": ""
+  },
+  "sessions": [
+    {
+      "profileLabel": "primary",
+      "accountRole": "captain | btc | referee",
+      "accountFixtureId": ""
+    }
+  ],
+  "results": [
+    {
+      "scenarioId": "C01",
+      "name": "",
+      "priority": "P0",
+      "status": "pass | fail | blocked | skipped",
+      "durationMs": null,
+      "evidence": [],
+      "notes": ""
+    }
+  ],
+  "summary": {
+    "total": 0,
+    "passed": 0,
+    "failed": 0,
+    "blocked": 0,
+    "skipped": 0
+  },
+  "p0Failures": [],
+  "verdict": "PASS | FAIL | BLOCKED",
+  "signOff": {
+    "tester": null,
+    "reviewer": null,
+    "signedAt": null
+  }
+}
