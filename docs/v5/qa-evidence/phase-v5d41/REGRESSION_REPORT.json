@@ -1,0 +1,29 @@
+{
+  "stepResults": [
+    { "step": "password-env", "status": "PASS" },
+    { "step": "password-reset", "status": "PASS" },
+    { "step": "http-harness", "status": "PASS" },
+    { "step": "preview-deploy", "status": "PASS" },
+    { "step": "browser-e2e-d41", "status": "PASS", "detail": "25/25 local Vite remote mode" },
+    { "step": "referee-v5-unit", "status": "PASS", "detail": "123/123" },
+    { "step": "legacy-referee", "status": "PASS", "detail": "23/23" },
+    { "step": "build", "status": "PASS" },
+    { "step": "referee-scoped-lint", "status": "PASS" },
+    { "step": "changed-files-lint", "status": "PASS" }
+  ],
+  "regression": {
+    "httpHarness": "18/18 PASS",
+    "refereeV5Unit": "123/123 PASS",
+    "legacy": "23/23 PASS",
+    "build": "PASS",
+    "refereeScopedLint": "PASS",
+    "changedFilesLint": "PASS",
+    "repoWideLint": "PRE_EXISTING_FAIL"
+  },
+  "failures": 0,
+  "notes": {
+    "browserE2eMode": "local Vite with VITE_REFEREE_V5_DATA_MODE=remote against staging Edge",
+    "previewBrowserE2e": "BLOCKED without VERCEL_AUTOMATION_BYPASS_SECRET (Deployment Protection)",
+    "productionDeployment": "NOT_PERFORMED"
+  }
+}

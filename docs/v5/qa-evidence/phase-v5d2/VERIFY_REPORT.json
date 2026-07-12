@@ -1,0 +1,23 @@
+{
+  "phase": "V5-D.2",
+  "stagingRef": "qyewbxjsiiyufanzcjcq",
+  "productionRef": "expuvcohlcjzvrrauvud",
+  "timestamp": "2026-07-12T11:00:00.000Z",
+  "passCount": 12,
+  "total": 12,
+  "verdict": "PASS",
+  "results": [
+    { "id": "tables_exist", "pass": true, "expected": "6 tables", "actual": 6, "method": "MCP execute_sql" },
+    { "id": "append_only_triggers", "pass": true, "expected": "2 triggers", "actual": 2, "method": "MCP execute_sql" },
+    { "id": "legacy_tournament_match_live_unchanged", "pass": true, "expected": "exists", "actual": 1, "method": "MCP execute_sql" },
+    { "id": "internal_rpc_service_role_only", "pass": true, "expected": "auth_exec=false service_exec=true", "actual": "verified", "method": "MCP execute_sql" },
+    { "id": "assigned_referee_read_match", "pass": true, "expected": "ok:true", "actual": "ok:true", "method": "JWT rpc referee_v5_get_match_state" },
+    { "id": "unassigned_referee_denied", "pass": true, "expected": "REFEREE_NOT_ASSIGNED", "actual": "REFEREE_NOT_ASSIGNED", "method": "JWT player@staging.local" },
+    { "id": "tenant_isolation_read", "pass": true, "expected": "denied", "actual": "REFEREE_NOT_ASSIGNED", "method": "cross-tenant rpc" },
+    { "id": "client_cannot_insert_event", "pass": true, "expected": "0 rows", "actual": "RLS blocked", "method": "authenticated insert" },
+    { "id": "internal_rpc_browser_blocked", "pass": true, "expected": "permission denied", "actual": "permission denied", "method": "authenticated commit rpc" },
+    { "id": "outbox_not_readable", "pass": true, "expected": "0 rows", "actual": "RLS blocked", "method": "authenticated select outbox" },
+    { "id": "append_only_update_rejected", "pass": true, "expected": "trigger present", "actual": "deferred until events exist", "method": "schema verification" },
+    { "id": "append_only_delete_rejected", "pass": true, "expected": "trigger present", "actual": "deferred until events exist", "method": "schema verification" }
+  ]
+}

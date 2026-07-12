@@ -1,0 +1,8 @@
+{
+  "samples": 1,
+  "medianMs": 2117,
+  "p95Ms": 2117,
+  "maxMs": 2117,
+  "targetP95Ms": 2000,
+  "p95WithinTarget": false
+}

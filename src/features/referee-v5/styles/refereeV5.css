@@ -1,0 +1,373 @@
+.rv5-workspace {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  max-width: 960px;
+  margin: 0 auto;
+  padding: 12px 12px 24px;
+  box-sizing: border-box;
+}
+
+.rv5-prototype-badge {
+  align-self: flex-start;
+  font-size: 0.75rem;
+  font-weight: 600;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: #fff3e0;
+  color: #e65100;
+  border: 1px solid #ffcc80;
+}
+
+.rv5-header {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.rv5-header-title {
+  font-size: 1rem;
+  font-weight: 700;
+  margin: 0;
+}
+
+.rv5-header-meta {
+  font-size: 0.8125rem;
+  color: #546e7a;
+  margin: 0;
+}
+
+.rv5-scoreboard {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  padding: 12px;
+  border-radius: 12px;
+  background: #0d47a1;
+  color: #fff;
+}
+
+.rv5-scoreboard-team {
+  text-align: center;
+}
+
+.rv5-scoreboard-team.is-serving {
+  outline: 2px solid #ffeb3b;
+  border-radius: 8px;
+  padding: 4px;
+}
+
+.rv5-scoreboard-label {
+  font-size: 0.75rem;
+  opacity: 0.9;
+}
+
+.rv5-scoreboard-score {
+  font-size: 2rem;
+  font-weight: 800;
+  line-height: 1.1;
+}
+
+.rv5-scoreboard-sideout {
+  grid-column: 1 / -1;
+  text-align: center;
+  font-size: 0.875rem;
+  opacity: 0.95;
+}
+
+.rv5-court {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 3 / 4;
+  max-height: 420px;
+  border-radius: 12px;
+  overflow: hidden;
+  background: #1b5e20;
+  border: 2px solid #fff;
+}
+
+.rv5-court-end-label {
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: 0.6875rem;
+  font-weight: 700;
+  color: rgba(255, 255, 255, 0.85);
+  z-index: 2;
+}
+
+.rv5-court-end-label.far {
+  top: 6px;
+}
+
+.rv5-court-end-label.near {
+  bottom: 6px;
+}
+
+.rv5-court-net {
+  position: absolute;
+  top: 50%;
+  left: 4%;
+  right: 4%;
+  height: 3px;
+  background: #fff;
+  transform: translateY(-50%);
+  z-index: 1;
+}
+
+.rv5-court-kitchen {
+  position: absolute;
+  left: 4%;
+  right: 4%;
+  height: 18%;
+  border: 1px dashed rgba(255, 255, 255, 0.45);
+  z-index: 0;
+}
+
+.rv5-court-kitchen.far {
+  top: 32%;
+}
+
+.rv5-court-kitchen.near {
+  bottom: 32%;
+}
+
+.rv5-court-center-line {
+  position: absolute;
+  top: 8%;
+  bottom: 8%;
+  left: 50%;
+  width: 2px;
+  background: rgba(255, 255, 255, 0.55);
+  transform: translateX(-50%);
+  z-index: 0;
+}
+
+.rv5-player-slot {
+  position: absolute;
+  width: 38%;
+  max-width: 140px;
+  transform: translate(-50%, -50%);
+  z-index: 3;
+}
+
+.rv5-player-slot.top-left { left: 28%; top: 18%; }
+.rv5-player-slot.top-right { left: 72%; top: 18%; }
+.rv5-player-slot.bottom-left { left: 28%; top: 82%; }
+.rv5-player-slot.bottom-right { left: 72%; top: 82%; }
+
+.rv5-player-card {
+  background: #fff;
+  border-radius: 10px;
+  padding: 6px 8px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.25);
+  border: 2px solid transparent;
+  transition: transform 200ms ease, border-color 200ms ease;
+}
+
+.rv5-player-card.is-server {
+  border-color: #1565c0;
+}
+
+.rv5-player-card.is-receiver {
+  border-color: #2e7d32;
+}
+
+.rv5-player-card.is-server.is-receiver {
+  border-color: #6a1b9a;
+}
+
+.rv5-player-card.switched {
+  animation: rv5-switch 220ms ease;
+}
+
+.rv5-player-name {
+  font-size: 0.8125rem;
+  font-weight: 700;
+  margin: 0;
+  line-height: 1.2;
+}
+
+.rv5-player-team {
+  font-size: 0.6875rem;
+  color: #607d8b;
+  margin: 2px 0 0;
+}
+
+.rv5-player-side {
+  font-size: 0.6875rem;
+  color: #37474f;
+}
+
+.rv5-role-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  margin-top: 4px;
+  font-size: 0.6875rem;
+  font-weight: 700;
+  padding: 2px 6px;
+  border-radius: 6px;
+}
+
+.rv5-role-badge.server {
+  background: #e3f2fd;
+  color: #0d47a1;
+}
+
+.rv5-role-badge.receiver {
+  background: #e8f5e9;
+  color: #1b5e20;
+}
+
+.rv5-serve-arrow {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  z-index: 2;
+}
+
+.rv5-serve-context {
+  padding: 10px 12px;
+  border-radius: 10px;
+  background: #eceff1;
+  font-size: 0.8125rem;
+  line-height: 1.5;
+}
+
+.rv5-serve-context dt {
+  font-weight: 700;
+  display: inline;
+}
+
+.rv5-serve-context dd {
+  display: inline;
+  margin: 0 0 0 4px;
+}
+
+.rv5-serve-context-row {
+  margin: 0 0 4px;
+}
+
+.rv5-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.rv5-actions-rally {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+
+.rv5-btn {
+  border: none;
+  border-radius: 10px;
+  padding: 14px 12px;
+  font-size: 0.9375rem;
+  font-weight: 700;
+  cursor: pointer;
+  min-height: 48px;
+}
+
+.rv5-btn:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.rv5-btn-rally-a {
+  background: #1565c0;
+  color: #fff;
+}
+
+.rv5-btn-rally-b {
+  background: #c62828;
+  color: #fff;
+}
+
+.rv5-btn-secondary {
+  background: #eceff1;
+  color: #263238;
+}
+
+.rv5-btn-warning {
+  background: #ff8f00;
+  color: #fff;
+}
+
+.rv5-actions-secondary {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+}
+
+.rv5-error {
+  color: #b71c1c;
+  font-size: 0.8125rem;
+  margin: 0;
+}
+
+.rv5-timeline {
+  border: 1px solid #cfd8dc;
+  border-radius: 10px;
+  padding: 8px 10px;
+  max-height: 160px;
+  overflow-y: auto;
+}
+
+.rv5-timeline-item {
+  font-size: 0.75rem;
+  padding: 4px 0;
+  border-bottom: 1px solid #eceff1;
+}
+
+.rv5-timeline-item.reverted {
+  opacity: 0.55;
+  text-decoration: line-through;
+}
+
+.rv5-fixture-select {
+  width: 100%;
+  padding: 8px;
+  border-radius: 8px;
+  border: 1px solid #b0bec5;
+  font-size: 0.875rem;
+}
+
+@media (min-width: 768px) {
+  .rv5-main-grid {
+    display: grid;
+    grid-template-columns: 1.2fr 0.8fr;
+    gap: 12px;
+    align-items: start;
+  }
+}
+
+@media (max-width: 430px) {
+  .rv5-scoreboard-score {
+    font-size: 1.75rem;
+  }
+
+  .rv5-player-name {
+    font-size: 0.75rem;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .rv5-player-card {
+    transition: none;
+  }
+
+  .rv5-player-card.switched {
+    animation: none;
+  }
+}
+
+@keyframes rv5-switch {
+  0% { transform: scale(1); }
+  50% { transform: scale(1.04); }
+  100% { transform: scale(1); }
+}

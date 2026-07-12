@@ -1,0 +1,15 @@
+{
+  "pass": true,
+  "results": [
+    {
+      "id": "multi_context_stale_conflict",
+      "pass": true,
+      "detail": "Trạng thái trận đã thay đổi trên thiết bị khác. Vui lòng tải lại. — hãy reload để đồng bộ."
+    },
+    {
+      "id": "multi_context_convergence",
+      "pass": true,
+      "detail": "{\"a\":{\"teamA\":1,\"teamB\":0},\"b\":{\"teamA\":1,\"teamB\":0}}"
+    }
+  ]
+}

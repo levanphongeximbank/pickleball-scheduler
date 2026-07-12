@@ -1,0 +1,35 @@
+{
+  "allPass": true,
+  "results": [
+    {
+      "id": "m1_stale_version_conflict",
+      "pass": true,
+      "detail": "{\"b\":\"MATCH_STATE_CONFLICT\"}"
+    },
+    {
+      "id": "m1_device_convergence_after_reload",
+      "pass": true,
+      "detail": "{\"a\":2,\"b\":2}"
+    },
+    {
+      "id": "m2_same_idempotency_key",
+      "pass": true,
+      "detail": "{\"a\":{\"ok\":true,\"duplicate\":true,\"state\":{\"games\":[],\"teams\":{\"teamA\":{\"score\":2,\"teamId\":\"team-a\",\"players\":[{\"playerId\":\"A\",\"logicalServiceSide\":\"RIGHT_SERVICE_COURT\"},{\"playerId\":\"B\",\"logicalServiceSide\":\"LEFT_SERVICE_COURT\"}],\"courtEnd\":\"NEAR_END\"},\"teamB\":{\"score\":0,\"teamId\":\"team-b\",\"players\":[{\"playerId\":\"C\",\"logicalServiceSide\":\"LEFT_SERVICE_COURT\"},{\"playerId\":\"D\",\"logicalServiceSide\":\"RIGHT_SERVICE_COURT\"}],\"courtEnd\":\"FAR_END\"}},\"winBy\":2,\"bestOf\":1,\"status\":\"in_progress\",\"matchId\":\"REFEREE_V5_TEST_MATCH_DOUBLES\",\"version\":3,\"matchType\":\"doubles\",\"pointsToWin\":11,\"maximumScore\":null,\"serverNumber\":1,\"scoringFormat\":\"side_out\",\"servingTeamId\":\"team-a\",\"receivingTeamId\":\"team-b\",\"servingPlayerId\":\"A\",\"currentGameNumber\":1,\"lastEventSequence\":3,\"receivingPlayerId\":\"D\",\"stateSchemaVersion\":1},\"stateVersion\":3,\"lastEventSequence\":3,\"stateHash\":\"h3ae011b4\",\"generatedEvents\":[\"RALLY_WON\",\"POINT_AWARDED\",\"PLAYERS_SWITCHED\",\"SERVE_CHANGED\"]},\"b\":{\"ok\":true,\"state\":{\"games\":[],\"teams\":{\"teamA\":{\"score\":2,\"teamId\":\"team-a\",\"players\":[{\"playerId\":\"A\",\"logicalServiceSide\":\"RIGHT_SERVICE_COURT\"},{\"playerId\":\"B\",\"logicalServiceSide\":\"LEFT_SERVICE_COURT\"}],\"courtEnd\":\"NEAR_END\"},\"teamB\":{\"score\":0,\"teamId\":\"team-b\",\"players\":[{\"playerId\":\"C\",\"logicalServiceSide\":\"LEFT_SERVICE_COURT\"},{\"playerId\":\"D\",\"logicalServiceSide\":\"RIGHT_SERVICE_COURT\"}],\"courtEnd\":\"FAR_END\"}},\"winBy\":2,\"bestOf\":1,\"status\":\"in_progress\",\"matchId\":\"REFEREE_V5_TEST_MATCH_DOUBLES\",\"version\":3,\"matchType\":\"doubles\",\"pointsToWin\":11,\"maximumScore\":null,\"serverNumber\":1,\"scoringFormat\":\"side_out\",\"servingTeamId\":\"team-a\",\"receivingTeamId\":\"team-b\",\"servingPlayerId\":\"A\",\"currentGameNumber\":1,\"lastEventSequence\":3,\"receivingPlayerId\":\"D\",\"stateSchemaVersion\":1},\"stateVersion\":3,\"lastEventSequence\":3,\"stateHash\":\"h3ae011b4\",\"generatedEvents\":[\"RALLY_WON\",\"POINT_AWARDED\",\"PLAYERS_SWITCHED\",\"SERVE_CHANGED\"]},\"snap\":{\"matchStateId\":\"REFEREE_V5_TEST_TENANT_A::REFEREE_V5_TEST_TOURNAMENT_A::REFEREE_V5_TEST_MATCH_DOUBLES\",\"version\":3,\"sequence\":3,\"stateHash\":\"h3ae011b4\",\"status\":\"in_progress\",\"lockedAt\":null,\"eventCount\":3,\"mutationCount\":3,\"completedMutations\":3,\"revisionCount\":0,\"outboxCount\":0}}"
+    },
+    {
+      "id": "m3_switch_ends_conflict",
+      "pass": true,
+      "detail": "{\"a\":\"MATCH_STATE_CONFLICT\"}"
+    },
+    {
+      "id": "m4_undo_conflict",
+      "pass": true,
+      "detail": "{\"b\":\"MATCH_STATE_CONFLICT\"}"
+    },
+    {
+      "id": "m4_replay_after_conflict",
+      "pass": true,
+      "detail": "{\"ok\":true}"
+    }
+  ]
+}
