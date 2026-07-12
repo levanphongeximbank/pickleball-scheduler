@@ -314,7 +314,8 @@ export function getVisibleLineup(teamData, { matchupId, viewerTeamId, isOrganize
   const canSeeOpponent =
     isOrganizer ||
     matchup.status === MATCHUP_STATUS.PUBLISHED ||
-    opponentLineup?.status === LINEUP_STATUS.PUBLISHED;
+    matchup.status === MATCHUP_STATUS.IN_PROGRESS ||
+    matchup.status === MATCHUP_STATUS.COMPLETED;
 
   return {
     ok: true,

@@ -33,6 +33,7 @@ import { canManageTeam } from "../../features/team-tournament/engines/teamPermis
 import { getStandingsTable } from "../../features/team-tournament/engines/teamStandingsEngine.js";
 import { MISSING_LINEUP_POLICY } from "../../features/team-tournament/constants.js";
 import { getLineup } from "../../features/team-tournament/models/index.js";
+import { resolveLineupVersions } from "../../features/team-tournament/engines/atomicPublishWorkflowEngine.js";
 import { normalizeMissingLineupPolicy } from "../../features/team-tournament/engines/missingLineupPolicyEngine.js";
 import {
   organizerLockDreambreakerOrders,
@@ -389,6 +390,21 @@ export default function TeamTournamentSetup() {
 
   async function handlePublish(matchupId) {
     const matchup = td.matchups.find((item) => item.id === matchupId);
+    const { lineupAVersion, lineupBVersion } = resolveLineupVersions(td, matchup);
+
+    if (
+      !window.confirm(
+        "Xác nhận công bố đội hình? Hệ thống sẽ publish đồng thời cả hai đội trong một lệnh server — không thể hoàn tác từ client."
+      )
+    ) {
+      return;
+    }
+
+    if (lineupAVersion == null || lineupBVersion == null) {
+      setError("Thiếu version đội hình — tải lại trang rồi thử lại.");
+      return;
+    }
+
     setError("");
     setMutationBusy(true);
     const result = await runMutation({
@@ -396,10 +412,18 @@ export default function TeamTournamentSetup() {
       payload: { matchupId },
       actionScope: buildUiCommandScope("publish", tournamentId, matchupId),
       expectedVersion: matchup?.version ?? version,
+      commandOptions: {
+        expectedLineupAVersion: lineupAVersion,
+        expectedLineupBVersion: lineupBVersion,
+      },
     });
     setMutationBusy(false);
     if (!result.ok) {
-      setError(result.error);
+      if (String(result.code || "").includes("version")) {
+        setError(`${result.error || "Xung đột version."} — dữ liệu đã thay đổi, vui lòng tải lại.`);
+      } else {
+        setError(result.error);
+      }
       return;
     }
     setMessage("Đã công bố đội hình. Trọng tài có thể nhập điểm.");

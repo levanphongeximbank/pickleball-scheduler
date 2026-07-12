@@ -87,6 +87,31 @@ export function validateVersionedCommandOptions(commandOptions, methodName) {
   return null;
 }
 
+export function validatePublishCommandOptions(commandOptions, methodName = "publishLineups") {
+  const base = validateVersionedCommandOptions(commandOptions, methodName);
+  if (base) {
+    return base;
+  }
+
+  if (!isFiniteVersion(commandOptions.expectedLineupAVersion)) {
+    return repositoryFailure(
+      REPOSITORY_ERROR_CODES.MISSING_EXPECTED_VERSION,
+      `${methodName} requires expectedLineupAVersion.`,
+      { methodName }
+    );
+  }
+
+  if (!isFiniteVersion(commandOptions.expectedLineupBVersion)) {
+    return repositoryFailure(
+      REPOSITORY_ERROR_CODES.MISSING_EXPECTED_VERSION,
+      `${methodName} requires expectedLineupBVersion.`,
+      { methodName }
+    );
+  }
+
+  return null;
+}
+
 /**
  * Cloud/shadow reads must not trust client-supplied viewerTeamId.
  * @param {import('./teamTournamentRepositoryTypes.js').ReadOptions | import('./teamTournamentRepositoryTypes.js').VisibleLineupsReadOptions | undefined} options

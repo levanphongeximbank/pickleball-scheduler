@@ -188,11 +188,20 @@ test("lock_matchup and publish_matchup never use legacy 2-param contract", async
   });
 
   await rpcTeamTournamentLockMatchup({ tournamentId: "t1", matchupId: "m1" });
-  await rpcTeamTournamentPublishMatchup("t1", "m1");
+  await rpcTeamTournamentPublishMatchup({
+    tournamentId: "t1",
+    matchupId: "m1",
+    expectedVersion: 2,
+    expectedLineupAVersion: 3,
+    expectedLineupBVersion: 4,
+  });
 
   assert.equal(captured.length, 2);
   assertExactArgContract("team_tournament_lock_matchup", captured[0].args);
   assertExactArgContract("team_tournament_publish_matchup", captured[1].args);
+  assert.equal(captured[1].args.p_expected_matchup_version, 2);
+  assert.equal(captured[1].args.p_expected_lineup_a_version, 3);
+  assert.equal(captured[1].args.p_expected_lineup_b_version, 4);
   assert.match(captured[0].args.p_idempotency_key, /^lock-/);
   assert.match(captured[1].args.p_idempotency_key, /^publish-/);
 });

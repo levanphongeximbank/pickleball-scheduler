@@ -64,7 +64,9 @@ export const TT1B_RPC_ARG_CONTRACTS = Object.freeze({
   team_tournament_publish_matchup: [
     "p_tournament_id",
     "p_matchup_id",
-    "p_expected_version",
+    "p_expected_matchup_version",
+    "p_expected_lineup_a_version",
+    "p_expected_lineup_b_version",
     "p_idempotency_key",
   ],
   team_tournament_confirm_sub_match: [
@@ -327,6 +329,14 @@ async function callTeamTournamentRpc(rpcName, args = {}) {
       "lineup_incomplete",
       "captain_scope_denied",
       "cross_tenant_denied",
+      "publish_forbidden",
+      "matchup_not_locked",
+      "lineup_not_locked",
+      "lineup_missing",
+      "missing_policy_unresolved",
+      "manual_pending",
+      "already_published",
+      "CANNOT_PUBLISH",
       "NOT_FOUND",
       "FORBIDDEN",
       "NOT_AUTHENTICATED",
@@ -498,20 +508,109 @@ export async function rpcTeamTournamentRandomizeLineup(params, matchupId, teamId
   );
 }
 
+export function buildPublishRpcArgs(baseArgs, options = {}) {
+  const expectedMatchupVersion =
+    options.expectedVersion != null && options.expectedVersion !== ""
+      ? Number(options.expectedVersion)
+      : null;
+  const expectedLineupAVersion =
+    options.expectedLineupAVersion != null && options.expectedLineupAVersion !== ""
+      ? Number(options.expectedLineupAVersion)
+      : null;
+  const expectedLineupBVersion =
+    options.expectedLineupBVersion != null && options.expectedLineupBVersion !== ""
+      ? Number(options.expectedLineupBVersion)
+      : null;
+  const idempotencyKey =
+    options.idempotencyKey != null && options.idempotencyKey !== ""
+      ? String(options.idempotencyKey)
+      : null;
+
+  return {
+    ...baseArgs,
+    p_expected_matchup_version: expectedMatchupVersion,
+    p_expected_lineup_a_version: expectedLineupAVersion,
+    p_expected_lineup_b_version: expectedLineupBVersion,
+    p_idempotency_key: idempotencyKey,
+  };
+}
+
+export function preparePublishRpcCall(baseArgs, normalized = {}) {
+  if (normalized.expectedVersion == null || normalized.expectedVersion === "") {
+    return {
+      ok: false,
+      code: "MISSING_EXPECTED_VERSION",
+      error: "team_tournament_publish_matchup yêu cầu expectedVersion (matchup).",
+      provider: "client",
+    };
+  }
+  if (normalized.expectedLineupAVersion == null || normalized.expectedLineupAVersion === "") {
+    return {
+      ok: false,
+      code: "MISSING_EXPECTED_LINEUP_VERSION",
+      error: "team_tournament_publish_matchup yêu cầu expectedLineupAVersion.",
+      provider: "client",
+    };
+  }
+  if (normalized.expectedLineupBVersion == null || normalized.expectedLineupBVersion === "") {
+    return {
+      ok: false,
+      code: "MISSING_EXPECTED_LINEUP_VERSION",
+      error: "team_tournament_publish_matchup yêu cầu expectedLineupBVersion.",
+      provider: "client",
+    };
+  }
+
+  const idempotencyKey = resolveTt1bIdempotencyKey("team_tournament_publish_matchup", normalized);
+  if (!idempotencyKey) {
+    return {
+      ok: false,
+      code: "MISSING_IDEMPOTENCY_KEY",
+      error: "team_tournament_publish_matchup yêu cầu idempotencyKey.",
+      provider: "client",
+    };
+  }
+
+  const args = buildPublishRpcArgs(baseArgs, {
+    ...normalized,
+    idempotencyKey,
+  });
+
+  const contract = TT1B_RPC_ARG_CONTRACTS.team_tournament_publish_matchup;
+  const argNames = Object.keys(args).sort();
+  const expected = [...contract].sort();
+  if (argNames.join(",") !== expected.join(",")) {
+    return {
+      ok: false,
+      code: "RPC_ARG_CONTRACT_MISMATCH",
+      error: "team_tournament_publish_matchup argument contract mismatch",
+      provider: "client",
+      expectedArgs: expected,
+      actualArgs: argNames,
+    };
+  }
+
+  return { ok: true, args, idempotencyKey };
+}
+
 export async function rpcTeamTournamentPublishMatchup(params, matchupId) {
   const normalized = normalizeCommandParams(params, {
     tournamentId: params,
     matchupId,
   });
 
-  return callTt1bCommandRpc(
-    "team_tournament_publish_matchup",
+  const prepared = preparePublishRpcCall(
     {
       p_tournament_id: String(normalized.tournamentId),
       p_matchup_id: String(normalized.matchupId),
     },
     normalized
   );
+  if (!prepared.ok) {
+    return prepared;
+  }
+
+  return callTeamTournamentRpc("team_tournament_publish_matchup", prepared.args);
 }
 
 export async function rpcTeamTournamentSaveSubMatchDraft(

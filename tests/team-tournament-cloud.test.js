@@ -369,11 +369,17 @@ test("BXH cập nhật sau confirm result — engine + cloud upsert", async () =
 test("publish matchup cloud — thành công", async () => {
   rpcHandlers.team_tournament_publish_matchup = (args) => {
     assert.equal(args.p_matchup_id, MATCHUP_ID);
+    assert.equal(args.p_expected_matchup_version, 2);
+    assert.equal(args.p_expected_lineup_a_version, 3);
+    assert.equal(args.p_expected_lineup_b_version, 4);
     return { data: { ok: true, publishedAt: "2026-07-05T10:00:00.000Z" }, error: null };
   };
 
   const result = await cloudOrganizerPublishLineups(TOURNAMENT_ID, {
     matchupId: MATCHUP_ID,
+    expectedVersion: 2,
+    expectedLineupAVersion: 3,
+    expectedLineupBVersion: 4,
   });
 
   assert.equal(result.ok, true);

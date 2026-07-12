@@ -318,6 +318,8 @@ export async function cloudOrganizerPublishLineups(tournamentId, payload) {
       tournamentId,
       matchupId: payload.matchupId,
       expectedVersion: payload.expectedVersion,
+      expectedLineupAVersion: payload.expectedLineupAVersion,
+      expectedLineupBVersion: payload.expectedLineupBVersion,
       idempotencyKey: payload.idempotencyKey || createTeamTournamentIdempotencyKey("publish"),
     })
   );

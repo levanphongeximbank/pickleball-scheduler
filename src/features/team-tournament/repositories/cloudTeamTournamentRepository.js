@@ -26,6 +26,7 @@ import {
   repositoryFailure,
   repositorySuccess,
   validateVersionedCommandOptions,
+  validatePublishCommandOptions,
 } from "./TeamTournamentRepository.interface.js";
 import {
   describeTeamTournamentRpcGuard,
@@ -79,6 +80,8 @@ function withCommandParams(baseArgs, commandOptions) {
   return {
     ...baseArgs,
     expectedVersion: Number(commandOptions.expectedVersion),
+    expectedLineupAVersion: Number(commandOptions.expectedLineupAVersion),
+    expectedLineupBVersion: Number(commandOptions.expectedLineupBVersion),
     idempotencyKey: String(commandOptions.idempotencyKey),
   };
 }
@@ -229,6 +232,10 @@ export function createCloudTeamTournamentRepository() {
     },
 
     async publishLineups(_clubId, tournamentId, payload, commandOptions) {
+      const validationError = validatePublishCommandOptions(commandOptions, "publishLineups");
+      if (validationError) {
+        return validationError;
+      }
       return runVersionedMutation("publishLineups", commandOptions, async (options) =>
         rpcTeamTournamentPublishMatchup(
           withCommandParams({ tournamentId, matchupId: payload.matchupId }, options)

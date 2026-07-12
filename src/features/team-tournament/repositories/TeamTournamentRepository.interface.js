@@ -87,6 +87,7 @@ export {
   repositoryFailure,
   repositorySuccess,
   validateVersionedCommandOptions,
+  validatePublishCommandOptions,
 } from "./teamTournamentRepositoryValidation.js";
 
 export {

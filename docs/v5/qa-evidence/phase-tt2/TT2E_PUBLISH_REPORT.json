@@ -1,0 +1,38 @@
+{
+  "generatedAt": "2026-07-12T10:38:47.232Z",
+  "phase": "TT-2E-PUBLISH",
+  "stagingRef": "qyewbxjsiiyufanzcjcq",
+  "productionImpact": "NONE",
+  "localCommitSha": "c433a27cc1d0f7e58164705634a166688d020408",
+  "sqlPatches": [
+    "docs/v5/PHASE_TT2E_ATOMIC_PUBLISH_WORKFLOW.sql"
+  ],
+  "probe": {
+    "tournamentId": "phase23d-probe-tournament",
+    "teamA": "phase23d-team-a",
+    "teamB": "phase23d-team-b",
+    "matchupId": "phase23d-matchup-1"
+  },
+  "cases": [
+    {
+      "id": "P01",
+      "name": "stale matchup version returns version_conflict",
+      "pass": true,
+      "code": "version_conflict"
+    },
+    {
+      "id": "P02",
+      "name": "atomic publish success",
+      "pass": true,
+      "matchupVersion": 22,
+      "lineupAVersion": 16,
+      "lineupBVersion": 17,
+      "publishedAt": "2026-07-12T10:38:48.60357+00:00"
+    }
+  ],
+  "verdict": "PASS",
+  "reportFile": "TT2E_PUBLISH_REPORT.json",
+  "passCount": 2,
+  "totalCount": 2,
+  "allPass": true
+}

@@ -129,6 +129,8 @@
  * @property {number} expectedVersion
  * @property {string} idempotencyKey
  * @property {string} [reason]
+ * @property {number} [expectedLineupAVersion]
+ * @property {number} [expectedLineupBVersion]
  */
 
 /**

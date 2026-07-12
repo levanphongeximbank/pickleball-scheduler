@@ -27,6 +27,9 @@ import {
   NORMALIZED_MISSING_LINEUP_POLICY,
   resolveMatchupMissingLineupState,
 } from "../../../features/team-tournament/engines/missingLineupPolicyEngine.js";
+import {
+  resolvePublishReadiness,
+} from "../../../features/team-tournament/engines/atomicPublishWorkflowEngine.js";
 import TournamentSectionCard from "../TournamentSectionCard.jsx";
 import {
   buildCaptainPortalUrl,
@@ -137,7 +140,23 @@ export default function TeamMatchupOperationsCard({
     ? matchup.canRandomizeTeamIds
     : lineupState.canRandomizeTeamIds;
 
-  const canPublish = matchup.status === MATCHUP_STATUS.LOCKED;
+  const publishReadiness = useMemo(
+    () =>
+      resolvePublishReadiness({
+        teamData,
+        matchup,
+        policy: missingLineupPolicy ?? teamData.settings?.missingLineupPolicy,
+      }),
+    [teamData, matchup, missingLineupPolicy]
+  );
+
+  const canPublishFromServer = matchup.canPublish;
+  const canPublish =
+    typeof canPublishFromServer === "boolean"
+      ? canPublishFromServer
+      : publishReadiness.canPublish;
+  const publishBlockMessage =
+    matchup.publishBlockMessage || publishReadiness.blockMessage || null;
   const isPublished = [
     MATCHUP_STATUS.PUBLISHED,
     MATCHUP_STATUS.IN_PROGRESS,
@@ -246,6 +265,22 @@ export default function TeamMatchupOperationsCard({
             {matchup.courtLabel ? ` · Sân ${matchup.courtLabel}` : ""}
           </Typography>
         )}
+
+        {canManage && matchup.status === MATCHUP_STATUS.LOCKED ? (
+          <Alert severity={canPublish ? "success" : "warning"}>
+            <Typography variant="body2">
+              {canPublish
+                ? "Sẵn sàng công bố — cả hai đội hình đã locked."
+                : publishBlockMessage || "Chưa đủ điều kiện công bố."}
+            </Typography>
+          </Alert>
+        ) : null}
+
+        {isPublished && matchup.publishedAt ? (
+          <Typography variant="body2" color="text.secondary">
+            Đã công bố lúc: {formatTeamTournamentDateTime(matchup.publishedAt)}
+          </Typography>
+        ) : null}
 
         {canManage ? (
           <Alert severity={lineupState.deadlinePassed ? "warning" : "info"}>
@@ -423,15 +458,25 @@ export default function TeamMatchupOperationsCard({
                 </Button>
               </span>
             </Tooltip>
-            <Button
-              size="small"
-              variant="contained"
-              startIcon={<PublishIcon />}
-              onClick={() => onPublish?.(matchup.id)}
-              disabled={!canPublish || mutationBusy}
+            <Tooltip
+              title={
+                canPublish
+                  ? "Công bố đồng thời đội hình hai đội (atomic publish trên server)"
+                  : publishBlockMessage || "Chưa đủ điều kiện công bố"
+              }
             >
-              Công bố
-            </Button>
+              <span>
+                <Button
+                  size="small"
+                  variant="contained"
+                  startIcon={<PublishIcon />}
+                  onClick={() => onPublish?.(matchup.id)}
+                  disabled={!canPublish || mutationBusy}
+                >
+                  Công bố
+                </Button>
+              </span>
+            </Tooltip>
           </Stack>
         ) : null}
       </Stack>
