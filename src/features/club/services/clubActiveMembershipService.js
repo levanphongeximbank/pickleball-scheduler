@@ -192,19 +192,21 @@ export function clearMembershipCacheForUser(userId) {
 
 /**
  * Phase 42H — Membership SoT.
- * V2: active club_members only (never profiles.club_id / player_id / role inference).
+ * V2: active club_members only (never profiles.club_id for hasClub).
+ * player_id is athlete identity (tournament captain portal) — keep in session.
  * Legacy: user.clubId || user.club_id.
  */
 export function stripLegacyProfileClubFields(user) {
   if (!user || typeof user !== "object") {
     return user;
   }
+  const playerId = user.playerId || user.player_id || null;
   return {
     ...user,
     clubId: null,
     club_id: null,
-    playerId: null,
-    player_id: null,
+    playerId: playerId ? String(playerId).trim() : null,
+    player_id: playerId ? String(playerId).trim() : null,
   };
 }
 

@@ -9,6 +9,7 @@ import {
 } from "../../billing/services/billingVenueService.js";
 import { getTenantById } from "./tenantService.js";
 import { resolveTenantIdFromUser } from "../guards/tenantGuard.js";
+import { applyTeamPortalRouteScope } from "../../team-tournament/routing/teamPortalRouteScope.js";
 
 /**
  * profiles.venue_id is the billing/RLS tenant id on Supabase staging/production.
@@ -162,6 +163,7 @@ export function resolveRouteAccessScope({
   activeClubId,
   activeClub,
   activeClusterId = null,
+  pathname = null,
 }) {
   const profileVenueId = sanitizeBillingTenantId(user?.venueId || user?.tenantId);
   const clubVenueId = sanitizeBillingTenantId(
@@ -176,26 +178,34 @@ export function resolveRouteAccessScope({
   const clusterId = activeClusterId || null;
 
   if (user?.role && isVenueScopedRole(user.role) && profileVenueId) {
-    return {
-      clubId,
-      venueId: profileVenueId,
-      tenantId: profileVenueId,
-      clusterId,
-      playerId: user?.playerId || null,
-      tournamentId,
-      teamId,
-    };
+    return applyTeamPortalRouteScope(
+      pathname,
+      {
+        clubId,
+        venueId: profileVenueId,
+        tenantId: profileVenueId,
+        clusterId,
+        playerId: user?.playerId || null,
+        tournamentId,
+        teamId,
+      },
+      { user }
+    );
   }
 
   const venueId = profileVenueId || clubVenueId || null;
 
-  return {
-    clubId: clubScoped ? clubId : clubId || activeClubId || null,
-    venueId,
-    tenantId: venueId,
-    clusterId,
-    playerId: user?.playerId || null,
-    tournamentId,
-    teamId,
-  };
+  return applyTeamPortalRouteScope(
+    pathname,
+    {
+      clubId: clubScoped ? clubId : clubId || activeClubId || null,
+      venueId,
+      tenantId: venueId,
+      clusterId,
+      playerId: user?.playerId || null,
+      tournamentId,
+      teamId,
+    },
+    { user }
+  );
 }

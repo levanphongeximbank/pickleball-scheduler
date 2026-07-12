@@ -14,6 +14,7 @@ import {
 } from "../../auth/authGuard.js";
 import { getDefaultHomePath, resolveRouteAccessScope } from "../../auth/menuAccess.js";
 import { isClubStorageV2Enabled } from "../../features/club/config/clubRegistryFlags.js";
+import { isTeamTournamentPortalPath } from "../../features/team-tournament/routing/teamPortalRouteScope.js";
 import { ROLES, normalizeRole } from "../../auth/roles.js";
 import ClubPlayerHomeRedirect from "../../pages/player/guards/ClubPlayerHomeRedirect.jsx";
 
@@ -88,6 +89,7 @@ export default function RouteAccessGate({ children }) {
     activeClubId,
     activeClub,
     activeClusterId,
+    pathname: location.pathname,
   });
 
   const homePath = getDefaultHomePath(user, rbacEnabled);
@@ -117,7 +119,9 @@ export default function RouteAccessGate({ children }) {
     })
   ) {
     if (location.pathname !== "/403") {
+      const portalDeepLink = isTeamTournamentPortalPath(location.pathname);
       if (
+        !portalDeepLink &&
         homePath &&
         homePath !== location.pathname &&
         !shouldRedirectToForbidden(homePath, {

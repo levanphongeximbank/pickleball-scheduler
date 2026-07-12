@@ -44,6 +44,8 @@ const CLUB_OPERATIONAL_PREFIXES = [
   "/coaching",
   "/statistics",
   "/tournament",
+  "/team-portal",
+  "/team-referee",
 ];
 
 /** Vai trò CLB & VĐV — không bị khóa bởi gói thuê của tenant (chỉ chủ sân/nhân viên vận hành). */

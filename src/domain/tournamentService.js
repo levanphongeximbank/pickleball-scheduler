@@ -1,6 +1,9 @@
 import { getActiveClubId } from "../data/club.js";
 import { PERMISSIONS } from "../auth/permissions.js";
 import { guardClubAccess, guardClubAction, guardDirectorAction } from "../auth/guardAction.js";
+import { isRbacEnforced, hasRole } from "../auth/rbac.js";
+import { isRefereeRole, ROLES } from "../auth/roles.js";
+import { resolveEffectiveTenantId } from "../features/tenant/services/tenantService.js";
 import {
   guardRecordTenant,
   resolveTenantIdForClub,
@@ -248,6 +251,42 @@ export function assertTournamentAccess(clubId, tournamentId, options = {}) {
       error: "Không tìm thấy giải.",
       code: "NOT_FOUND",
       tournament: null,
+    };
+  }
+
+  if (tenantId) {
+    const tenantCheck = guardRecordTenant(tournament, tenantId, options);
+    if (!tenantCheck.ok) {
+      return { ...tenantCheck, tournament: null };
+    }
+  }
+
+  return { ok: true, tournament };
+}
+
+/**
+ * Team portal deep-link: tournament club scope from URL/blob, not header CLB picker.
+ * PLAYER/REFEREE captains skip profiles.club_id club guard; tenant + page captain check remain.
+ */
+export function assertTournamentPortalAccess(clubId, tournamentId, options = {}) {
+  const { user = null, rbacEnabled = false } = options;
+  const tenantId =
+    options.tenantId || (user ? resolveEffectiveTenantId(user) : null) || null;
+  const skipClubGuard =
+    isRbacEnforced({ rbacEnabled, user }) &&
+    user &&
+    (hasRole(user, ROLES.PLAYER) || isRefereeRole(user.role));
+
+  if (!skipClubGuard) {
+    return assertTournamentAccess(clubId, tournamentId, { ...options, tenantId });
+  }
+
+  const tournament = options.tournament || (clubId ? getTournament(clubId, tournamentId) : null);
+  if (!tournament) {
+    return {
+      ok: true,
+      tournament: null,
+      portalDeepLink: true,
     };
   }
 

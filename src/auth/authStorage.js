@@ -89,7 +89,7 @@ export function saveAuthSession(user, meta = {}) {
   });
 }
 
-/** Lưu session từ profile cloud — V2 strips club_id/player_id; legacy reconciles athlete link. */
+/** Lưu session từ profile cloud — V2 strips club_id only; legacy reconciles athlete link. */
 export function saveAuthSessionFromCloudProfile(user, meta = {}) {
   let next = normalizeUser(user);
   if (isClubStorageV2Enabled()) {

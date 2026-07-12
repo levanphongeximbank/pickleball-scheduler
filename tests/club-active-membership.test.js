@@ -30,7 +30,18 @@ test("orphan profile.club_id must not imply hasClub SoT helper", () => {
   const stripped = stripLegacyProfileClubFields(orphan);
   assert.equal(hasClubFromProfileFields(stripped), false);
   assert.equal(stripped.clubId, null);
-  assert.equal(stripped.playerId, null);
+});
+
+test("V2 strip clears club scope but keeps athlete player_id", () => {
+  const captain = {
+    id: "user-1",
+    role: "PLAYER",
+    clubId: "club-old",
+    playerId: "player-staging-a-1",
+  };
+  const stripped = stripLegacyProfileClubFields(captain);
+  assert.equal(stripped.clubId, null);
+  assert.equal(stripped.playerId, "player-staging-a-1");
 });
 
 test("PLAYER with club.create and no active membership → show create club", () => {

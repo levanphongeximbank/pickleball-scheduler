@@ -439,7 +439,7 @@ function matchesSelfScope(user, scope, permission) {
     return false;
   }
 
-  if (scope.clubId && user.clubId !== scope.clubId) {
+  if (scope.clubId && user.clubId && user.clubId !== scope.clubId) {
     return false;
   }
 

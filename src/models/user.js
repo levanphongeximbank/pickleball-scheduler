@@ -35,8 +35,11 @@ export function normalizeUser(user) {
     teamId: user?.teamId || user?.team_id
       ? String(user.teamId || user.team_id).trim()
       : null,
-    /** Liên kết bản ghi player — PLAYER. */
-    playerId: user?.playerId ? String(user.playerId).trim() : null,
+    /** Liên kết bản ghi player — PLAYER / captain portal. */
+    playerId:
+      user?.playerId || user?.player_id
+        ? String(user.playerId || user.player_id).trim()
+        : null,
     /** Cụm sân được gán (Phase 23). */
     assignedClusterIds: Array.isArray(user?.assignedClusterIds)
       ? user.assignedClusterIds.map((id) => String(id).trim()).filter(Boolean)
