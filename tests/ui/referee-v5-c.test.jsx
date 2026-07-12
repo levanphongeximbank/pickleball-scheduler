@@ -362,7 +362,7 @@ describe("Referee V5-C Court Visualizer", () => {
 
   it("35 singles shows no server number label", () => {
     renderWorkspace("singles-even");
-    expect(screen.getByTestId("serve-context-server-number")).toHaveTextContent("Không áp dụng");
+    expect(screen.queryByTestId("serve-context-server-number")).not.toBeInTheDocument();
   });
 });
 
