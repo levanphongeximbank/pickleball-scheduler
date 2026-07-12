@@ -15,7 +15,7 @@ $ErrorActionPreference = "Stop"
 
 $StagingRef = "qyewbxjsiiyufanzcjcq"
 $ProductionRef = "expuvcohlcjzvrrauvud"
-$PreviewUrl = "https://pickleball-scheduler-git-feature-co-769297-pickleball-scheduler.vercel.app"
+$PreviewUrl = if ($env:STAGING_PREVIEW_URL) { $env:STAGING_PREVIEW_URL } else { "https://pickleball-scheduler-git-feature-co-769297-pickleball-scheduler.vercel.app" }
 $RepoRoot = Split-Path -Parent $PSScriptRoot
 $EnvLocalFile = Join-Path $RepoRoot ".env.staging-qa.local"
 $GitIgnoreFile = Join-Path $RepoRoot ".gitignore"
@@ -161,6 +161,12 @@ function Invoke-PasswordReset {
 function Import-OptionalLocalEnv {
   foreach ($line in Get-Content $EnvLocalFile) {
     $trim = $line.Trim()
+    if ($trim -match '^STAGING_PREVIEW_URL\s*=\s*(.+)$' -and -not $env:STAGING_PREVIEW_URL) {
+      $value = $matches[1].Trim().Trim('"').Trim("'")
+      if ($value) {
+        $script:PreviewUrl = $value
+      }
+    }
     if ($trim -match '^VERCEL_AUTOMATION_BYPASS_SECRET\s*=\s*(.+)$' -and -not $env:VERCEL_AUTOMATION_BYPASS_SECRET) {
       $value = $matches[1].Trim().Trim('"').Trim("'")
       if ($value) {
@@ -251,6 +257,7 @@ function Update-DocsIfPass {
 try {
   Assert-Environment
   if ($Blocked) { return }
+  Import-OptionalLocalEnv
 
   Write-Step "B. Secure password input"
   Write-Host "Enter NEW passwords for staging Browser E2E (not saved to disk)."

@@ -43,6 +43,7 @@ const PUBLIC_MENU_PATHS = new Set([
   "/player/profile",
   "/player/skill",
   "/player/skill-assessment",
+  "/player/skill-assessment-v5",
   "/mobile/notifications",
   "/403",
 ]);

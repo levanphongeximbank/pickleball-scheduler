@@ -34,13 +34,16 @@ function setPreviewEnv(name, value) {
   } catch {
     // ignore missing
   }
-  const result = spawnSync("npx", ["vercel", "env", "add", name, "preview", "--force"], {
-    cwd: rootDir,
-    input: `${value}\n`,
-    encoding: "utf8",
-    stdio: ["pipe", "pipe", "pipe"],
-    shell: true,
-  });
+  const result = spawnSync(
+    "npx",
+    ["vercel", "env", "add", name, "preview", "--force", "--yes", "--value", value],
+    {
+      cwd: rootDir,
+      encoding: "utf8",
+      stdio: ["pipe", "pipe", "pipe"],
+      shell: true,
+    },
+  );
   if (result.status !== 0) {
     const err = [result.stderr, result.stdout].filter(Boolean).join("\n");
     throw new Error(`vercel env add ${name} failed: ${err.slice(0, 300)}`);
@@ -91,12 +94,31 @@ async function main() {
   console.log("Building Preview bundle (NOT production)...");
   run("npm run build", { env: deployEnv, quiet: false });
 
-  console.log("Deploying Preview (no --prod)...");
-  const deployOut = run("npx vercel deploy --yes", {
+  console.log("Deploying Preview with build-time env (no --prod)...");
+  const deployArgs = [
+    "vercel",
+    "deploy",
+    "--yes",
+    "--build-env",
+    "VITE_PICK_VN_RATING_V5_ENABLED=true",
+    "--build-env",
+    `VITE_SUPABASE_URL=${url}`,
+    "--build-env",
+    `VITE_SUPABASE_ANON_KEY=${anonKey}`,
+  ];
+  const deployOut = spawnSync("npx", deployArgs, {
+    cwd: rootDir,
     env: deployEnv,
-    quiet: true,
+    encoding: "utf8",
+    stdio: ["pipe", "pipe", "pipe"],
+    shell: true,
   });
-  const matches = deployOut.match(/https:\/\/[^\s]+\.vercel\.app/g) || [];
+  if (deployOut.status !== 0) {
+    const err = [deployOut.stderr, deployOut.stdout].filter(Boolean).join("\n");
+    throw new Error(`vercel deploy failed: ${err.slice(0, 500)}`);
+  }
+  const deployText = [deployOut.stdout, deployOut.stderr].filter(Boolean).join("\n");
+  const matches = deployText.match(/https:\/\/[^\s]+\.vercel\.app/g) || [];
   const previewUrl = matches.length ? matches[matches.length - 1].replace(/\/+$/, "") : "";
   if (!previewUrl) {
     throw new Error("Deploy finished but Preview URL not found in CLI output");

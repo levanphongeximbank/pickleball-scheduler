@@ -221,11 +221,13 @@ export const ROLE_MENU_MAP = Object.freeze({
   [ROLES.PLAYER]: [
     MENU_GROUP_IDS.CLUB,
     MENU_GROUP_IDS.TOURNAMENT,
+    MENU_GROUP_IDS.PLAYER_ZONE,
     MENU_GROUP_IDS.SUPPORT,
   ],
   PLAYER: [
     MENU_GROUP_IDS.CLUB,
     MENU_GROUP_IDS.TOURNAMENT,
+    MENU_GROUP_IDS.PLAYER_ZONE,
     MENU_GROUP_IDS.SUPPORT,
   ],
   [ROLES.CUSTOMER]: [
@@ -529,6 +531,7 @@ export const ROUTE_PERMISSIONS = Object.freeze({
   "/player/profile": [],
   "/player/skill": [],
   "/player/skill-assessment": [],
+  "/player/skill-assessment-v5": [],
   "/settings/integrations": [PERMISSIONS.INTEGRATION_VIEW, PERMISSIONS.SETTINGS_VIEW],
   "/settings/integrations/payments": [PERMISSIONS.INTEGRATION_MANAGE],
   "/settings/integrations/zalo-oa": [PERMISSIONS.INTEGRATION_MANAGE],
@@ -713,6 +716,14 @@ export const MOBILE_BOTTOM_NAV_PROFILES = Object.freeze({
       path: "/player/skill",
       iconKey: "skill",
       roles: [ROLES.PLAYER],
+    },
+    {
+      key: "player-skill-assessment-v5",
+      label: "Đánh giá V5 (shadow)",
+      path: "/player/skill-assessment-v5",
+      iconKey: "skill",
+      roles: [ROLES.PLAYER],
+      requiresFeature: "pickVnRatingV5",
     },
     {
       key: "player-profile",

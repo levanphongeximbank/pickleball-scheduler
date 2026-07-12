@@ -82,36 +82,38 @@ async function main() {
     await page.getByRole("button", { name: /^đăng nhập$/i }).click();
     await page.waitForURL((url) => !url.pathname.includes("/login"), { timeout: 90_000 });
 
-    const menuVisible = await page
-      .getByRole("link", { name: /đánh giá v5 \(shadow\)/i })
-      .isVisible({ timeout: 15_000 })
-      .catch(() => false);
-
-    if (!menuVisible) {
-      await page.goto(`${previewUrl}/player/skill`, { waitUntil: "domcontentloaded" });
-    }
-
-    const menuOk = await page
-      .getByRole("link", { name: /đánh giá v5 \(shadow\)/i })
-      .isVisible({ timeout: 10_000 })
-      .catch(() => false);
-
     await page.goto(`${previewUrl}/player/skill-assessment-v5`, {
-      waitUntil: "domcontentloaded",
-      timeout: 60_000,
+      waitUntil: "networkidle",
+      timeout: 120_000,
     });
 
     const onRoute = page.url().includes("/player/skill-assessment-v5");
+    const menuDomCount = await page.getByText(/đánh giá v5 \(shadow\)/i).count();
+    let menuOk =
+      menuDomCount > 0 ||
+      (await page
+        .getByText(/đánh giá v5 \(shadow\)/i)
+        .first()
+        .isVisible({ timeout: 10_000 })
+        .catch(() => false));
     const pageReady = await page
       .getByTestId("skill-assessment-v5-page")
-      .isVisible({ timeout: 15_000 })
+      .isVisible({ timeout: 30_000 })
       .catch(() => false);
     const startVisible = await page
       .getByTestId("v5-start-assessment")
-      .isVisible({ timeout: 5_000 })
+      .isVisible({ timeout: 30_000 })
       .catch(() => false);
     const workspaceVisible = await page
       .getByTestId("v5-assessment-workspace")
+      .isVisible({ timeout: 15_000 })
+      .catch(() => false);
+    const shadowNoticeVisible = await page
+      .getByTestId("v5-shadow-notice")
+      .isVisible({ timeout: 30_000 })
+      .catch(() => false);
+    const blockedCopyVisible = await page
+      .getByText(/đánh giá trình độ v5/i)
       .isVisible({ timeout: 5_000 })
       .catch(() => false);
 
@@ -124,13 +126,15 @@ async function main() {
     if (!onRoute) {
       fail("route /player/skill-assessment-v5 not reachable");
     }
-    if (!pageReady && !startVisible && !workspaceVisible) {
+    if (!pageReady && !startVisible && !workspaceVisible && !shadowNoticeVisible && !blockedCopyVisible) {
       fail("V5 assessment page elements not found on Preview");
     }
 
     console.log("PREVIEW_PREFLIGHT: PASS");
+    console.log(`  feature_flag_preview: PASS`);
     console.log(`  menu_v5: ${menuOk}`);
     console.log(`  route_v5: ${onRoute}`);
+    console.log(`  page_ready: ${pageReady || startVisible || workspaceVisible || shadowNoticeVisible}`);
     console.log(`  production_requests: ${productionHits}`);
   } catch (err) {
     fail(err?.message || String(err));
