@@ -78,7 +78,7 @@ test("wrapLegacyEngineResult passes legacy payload through unchanged", () => {
   assert.equal(wrapped.result.data.drawScore, 880);
 });
 
-test("draw v2 flag enabled still resolves to legacy when engine unavailable", () => {
+test("draw v2 flag enabled resolves to v2 when draw adapter available", () => {
   const env = {
     VITE_COMPETITION_CORE_ENABLED: "true",
     VITE_COMPETITION_CORE_DRAW_V2_ENABLED: "true",
@@ -86,7 +86,8 @@ test("draw v2 flag enabled still resolves to legacy when engine unavailable", ()
 
   const plan = resolveEngineExecutionPlan(sampleInput, env);
   assert.equal(plan.v2FlagEnabled, true);
-  assert.equal(plan.executionPath, "legacy");
+  assert.equal(isEngineV2Available(COMPETITION_ENGINE_TYPE.DRAW, env), true);
+  assert.equal(plan.executionPath, "v2");
 });
 
 test("rating v2 flag reports engine available in CC-02", () => {

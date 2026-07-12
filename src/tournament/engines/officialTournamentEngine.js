@@ -10,6 +10,7 @@ import { getPlayerGenderKey } from "../../models/player.js";
 import { validateEntryForEvent, validateGroupDrawInput } from "./validationEngine.js";
 import { assignGroupsWithConstraints } from "../../features/pairing-constraints/engines/constraintGroupEngine.js";
 import { assignEntriesOpenConditional } from "./openConditionalRandomEngine.js";
+import { runLegacyDrawWithCanonicalAdapter } from "../../features/competition-core/draw/adapters/drawRuntimeAdapter.js";
 import { summarizeGroupBalance } from "./seededGroupEngine.js";
 import { buildGroupStageSchedule, countGroupStageMatches } from "./scheduleEngine.js";
 import {
@@ -251,12 +252,24 @@ export function buildOfficialOpenPlan({
     };
   }
 
-  const draw = assignEntriesOpenConditional(normalizedEntries, groupCount, {
-    hostClubName: tournament.hostClubName || tournament.settings?.hostClubName || "",
-    splitUnits,
-    playersById,
-    randomFn,
-    pointsConfig,
+  const draw = runLegacyDrawWithCanonicalAdapter({
+    consumer: "official_open",
+    strategyKey: "official_open",
+    legacyPayload: {
+      tournamentId: tournament.id,
+      eventId: event.id,
+      entries: normalizedEntries,
+      groupCount,
+      options: {
+        hostClubName: tournament.hostClubName || tournament.settings?.hostClubName || "",
+        splitUnits,
+        playersById,
+        randomFn,
+        pointsConfig,
+      },
+    },
+    legacyExecutor: (payload) =>
+      assignEntriesOpenConditional(payload.entries, payload.groupCount, payload.options),
   });
 
   if (!draw.ok) {
@@ -393,12 +406,25 @@ export function buildOfficialAiBalancePlan({
     };
   }
 
-  const groupResult = assignGroupsWithConstraints(
-    entries,
-    groupCount,
-    selectedPlayers,
-    pairingConstraints
-  );
+  const groupResult = runLegacyDrawWithCanonicalAdapter({
+    consumer: "official_ai_balance",
+    strategyKey: "official_ai_balance",
+    legacyPayload: {
+      tournamentId: tournament.id,
+      eventId: event.id,
+      entries,
+      groupCount,
+      players: selectedPlayers,
+      constraints: pairingConstraints,
+    },
+    legacyExecutor: (payload) =>
+      assignGroupsWithConstraints(
+        payload.entries,
+        payload.groupCount,
+        payload.players,
+        payload.constraints
+      ),
+  });
 
   const groups = groupResult.groups.map((group) => ({
     ...group,

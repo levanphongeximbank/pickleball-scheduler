@@ -1,6 +1,6 @@
 import { COMPETITION_CORE_VERSION } from "../constants/index.js";
 import { COMPETITION_ENGINE_TYPE } from "../constants/engineType.js";
-import { isRatingV2Enabled } from "../config/featureFlags.js";
+import { isRatingV2Enabled, isDrawV2Enabled } from "../config/featureFlags.js";
 import { ENGINE_RUN_STATUS } from "../constants/engineRunStatus.js";
 import { getCompetitionCoreFeatureFlags } from "../config/featureFlags.js";
 import {
@@ -9,6 +9,7 @@ import {
   createEngineValidationResult,
 } from "../contracts/engineContracts.js";
 import { cloneCompetitionEngineInput } from "../utils/inputClone.js";
+import { evaluateCanonicalDraw } from "../draw/adapters/drawRuntimeAdapter.js";
 
 /**
  * @typedef {import('../types/index.js').CompetitionEngineInput} CompetitionEngineInput
@@ -34,6 +35,9 @@ export const LEGACY_ENGINE_IDS = Object.freeze({
 export function isEngineV2Available(engineType, envSource) {
   if (engineType === COMPETITION_ENGINE_TYPE.RATING) {
     return isRatingV2Enabled(envSource);
+  }
+  if (engineType === COMPETITION_ENGINE_TYPE.DRAW) {
+    return isDrawV2Enabled(envSource);
   }
   void envSource;
   return false;
@@ -158,6 +162,40 @@ export async function executeCompetitionEngine(input, options = {}) {
   const plan = resolveEngineExecutionPlan(input, options.envSource);
 
   if (plan.executionPath === "v2") {
+    if (input.engineType === COMPETITION_ENGINE_TYPE.DRAW) {
+      const bridge = evaluateCanonicalDraw({
+        consumer: "competition_engine",
+        legacyPayload: {
+          ...(plan.input.payload && typeof plan.input.payload === "object"
+            ? plan.input.payload
+            : {}),
+          tournamentId: plan.input.tournamentId,
+          clubId: plan.input.clubId,
+          eventId: plan.input.eventId,
+          strategyKey:
+            plan.input.payload?.strategyKey ||
+            plan.input.payload?.legacyStrategyKey ||
+            plan.input.payload?.drawMode,
+        },
+        envSource: options.envSource,
+        legacyExecutor: () => {
+          const legacyExecutor = options.legacyExecutor;
+          if (typeof legacyExecutor !== "function") {
+            return { ok: false, errors: ["Legacy executor not configured"], groups: [] };
+          }
+          return legacyExecutor(plan.input);
+        },
+      });
+
+      return wrapLegacyEngineResult({
+        engineType: input.engineType,
+        legacyEngine: plan.legacyEngineId,
+        legacyResult: bridge.legacyResult,
+        executionPath: "v2",
+        warnings: bridge.outputPreserved ? [] : ["Draw adapter output parity check failed"],
+      });
+    }
+
     return createCompetitionEngineResult({
       success: false,
       engineType: input.engineType,

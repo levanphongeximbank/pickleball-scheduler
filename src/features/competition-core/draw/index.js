@@ -98,6 +98,34 @@ export {
 } from "./strategy/index.js";
 
 export {
+  DRAW_RUNTIME_ADAPTER_VERSION,
+  LEGACY_DRAW_RUNTIME_INVENTORY,
+  buildDrawRuntimeCallGraph,
+  findDrawRuntimeInventoryByFunction,
+  mapLegacyDrawPayloadToDrawRequest,
+  mapLegacyDrawPayloadToStrategyDrawRequest,
+  mapCompetitionEngineInputToDrawRequest,
+  cloneLegacyDrawPayload,
+  isLegacyDrawPayloadPreserved,
+  mapLegacyGroupToDrawGroup,
+  mapLegacyGroupsToDrawGroups,
+  mapDrawGroupToLegacyGroup,
+  mapDrawGroupsToLegacyGroups,
+  mapLegacyDrawResultToDrawResult,
+  adaptDrawResultForLegacyConsumer,
+  mapDrawResultToStrategyDrawResult,
+  isLegacyDrawOutputPreserved,
+  createDrawDecisionTrace,
+  createDrawDecisionTraceRecord,
+  appendDrawDecisionTrace,
+  buildDrawDecisionPath,
+  summarizeDrawDecisionTrace,
+  resolveDrawEnvSource,
+  evaluateCanonicalDraw,
+  runLegacyDrawWithCanonicalAdapter,
+} from "./adapters/index.js";
+
+export {
   createManualDrawSeed,
   createAverageLevelDrawSeed,
   createCompetitionEloDrawSeed,

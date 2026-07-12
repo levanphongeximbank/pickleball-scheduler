@@ -1,6 +1,7 @@
 import { createEventRecord } from "../../models/tournament/event.js";
 import { EVENT_TYPE, TOURNAMENT_MODE } from "../../models/tournament/constants.js";
 import { assignGroupsWithConstraints } from "../../features/pairing-constraints/engines/constraintGroupEngine.js";
+import { runLegacyDrawWithCanonicalAdapter } from "../../features/competition-core/draw/adapters/drawRuntimeAdapter.js";
 import { validateGroupDrawInput } from "./validationEngine.js";
 import { suggestEntriesFromPlayers } from "./teamPairingEngine.js";
 import { summarizeGroupBalance } from "./seededGroupEngine.js";
@@ -76,12 +77,25 @@ export function buildInternalTournamentPlan({
     };
   }
 
-  const groupResult = assignGroupsWithConstraints(
-    entries,
-    groupCount,
-    selectedPlayers,
-    pairingConstraints
-  );
+  const groupResult = runLegacyDrawWithCanonicalAdapter({
+    consumer: "internal_tournament",
+    strategyKey: "skill_controlled",
+    legacyPayload: {
+      tournamentId: tournament.id,
+      eventId: event.id,
+      entries,
+      groupCount,
+      players: selectedPlayers,
+      constraints: pairingConstraints,
+    },
+    legacyExecutor: (payload) =>
+      assignGroupsWithConstraints(
+        payload.entries,
+        payload.groupCount,
+        payload.players,
+        payload.constraints
+      ),
+  });
 
   const groups = groupResult.groups.map((group) => ({
     ...group,
