@@ -528,3 +528,153 @@ export function mapCourtMatchHistoryToRepeatCounts(matchHistory = []) {
 
   return { partnerRepeatCounts, opponentRepeatCounts };
 }
+
+/**
+ * Map legacy group draw constraints to canonical RuleSet.
+ *
+ * @param {Array<Record<string, unknown>>} constraints
+ * @param {Partial<{ id: string, version: string }>} [meta]
+ */
+export function mapGroupConstraintsToRuleSet(constraints = [], meta = {}) {
+  const normalized = (constraints || [])
+    .map((item, index) =>
+      normalizeRuleDefinition(
+        {
+          id: item.id,
+          type:
+            item.type === "avoid_same_group"
+              ? COMPETITION_CONSTRAINT_TYPE.AVOID_PARTNER
+              : item.type,
+          mode: item.mode,
+          severity: item.mode,
+          enabled: item.enabled,
+          anchorPlayerId: item.anchorPlayerId,
+          targetPlayerIds: item.targetPlayerIds,
+          params: {
+            anchorPlayerId: item.anchorPlayerId,
+            targetPlayerIds: item.targetPlayerIds,
+            groupConstraintType: item.groupConstraintType || item.type,
+          },
+        },
+        index
+      )
+    )
+    .filter(Boolean);
+
+  return createRuleSet({
+    id: meta.id || "legacy-group-constraints",
+    version: meta.version || "1",
+    constraints: normalized,
+  });
+}
+
+/**
+ * @param {Array<{ id?: string, label?: string, name?: string, entries?: Array<{ playerIds?: string[] }> }>} groups
+ * @param {Array<{ id: string, clubId?: string, organizationId?: string }>} [players]
+ */
+export function mapGroupConstraintsToContext(groups = [], players = []) {
+  const playersById = mapPlayersToSnapshots(players);
+  const canonicalGroups = groups.map((group) => {
+    const playerIds = new Set();
+    (group.entries || []).forEach((entry) => {
+      (entry.playerIds || []).forEach((id) => playerIds.add(String(id)));
+    });
+    return {
+      id: group.id,
+      label: group.label || group.name,
+      playerIds: [...playerIds],
+    };
+  });
+
+  return {
+    scope: "group",
+    groups: canonicalGroups,
+    playersById,
+  };
+}
+
+/**
+ * Map team tournament lineup validation payload to canonical context.
+ *
+ * @param {Object} payload
+ */
+export function mapTeamLineupValidationToContext(payload = {}) {
+  const team = payload.team || {};
+  const players = payload.players || [];
+  const selections = payload.selections || {};
+
+  const lineupSlots = [];
+  Object.entries(selections).forEach(([disciplineId, playerIds]) => {
+    (playerIds || []).forEach((playerId, index) => {
+      lineupSlots.push({
+        position: `${disciplineId}-slot-${index + 1}`,
+        playerId: String(playerId),
+        required: true,
+      });
+    });
+  });
+
+  return {
+    scope: "lineup",
+    playersById: mapPlayersToSnapshots(players),
+    lineupSlots,
+    teamSize: team.playerIds?.length,
+    competitionType: payload.competitionType,
+  };
+}
+
+/**
+ * Build canonical lineup validation RuleSet from TT validation codes.
+ *
+ * @param {Object} [meta]
+ */
+export function mapTeamLineupValidationToRuleSet(meta = {}) {
+  return createRuleSet({
+    id: meta.id || "legacy-team-lineup-validation",
+    version: meta.version || "1",
+    constraints: [
+      {
+        id: "lineup-validity",
+        type: COMPETITION_CONSTRAINT_TYPE.LINEUP_VALIDITY,
+        severity: CONSTRAINT_SEVERITY.HARD,
+        enabled: true,
+        params: { requireComplete: meta.requireComplete !== false },
+      },
+      {
+        id: "mixed-composition",
+        type: COMPETITION_CONSTRAINT_TYPE.MIXED_TEAM_COMPOSITION,
+        severity: CONSTRAINT_SEVERITY.HARD,
+        enabled: meta.validateMixed !== false,
+        params: { composition: "mixed_double" },
+      },
+      {
+        id: "gender-eligibility",
+        type: COMPETITION_CONSTRAINT_TYPE.GENDER_ELIGIBILITY,
+        severity: CONSTRAINT_SEVERITY.HARD,
+        enabled: true,
+        params: {},
+      },
+      {
+        id: "entry-eligibility",
+        type: COMPETITION_CONSTRAINT_TYPE.ENTRY_ELIGIBILITY,
+        severity: CONSTRAINT_SEVERITY.HARD,
+        enabled: true,
+        params: {},
+      },
+    ],
+  });
+}
+
+/**
+ * Referee match action eligibility context.
+ *
+ * @param {Object} payload
+ */
+export function mapRefereeMatchEligibilityToContext(payload = {}) {
+  return {
+    scope: "lineup",
+    playersById: mapPlayersToSnapshots(payload.players || []),
+    lineupSlots: payload.lineupSlots || [],
+    competitionType: payload.matchStatus,
+  };
+}

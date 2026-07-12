@@ -90,6 +90,41 @@ function teamSkillTotal(team, playersById) {
   }, 0);
 }
 
+function evaluateGroupAnchorTargetRule(constraint, groups = []) {
+  const { anchor, targets } = getPartnerParams(constraint);
+  if (!anchor || !targets.length) {
+    return [];
+  }
+
+  /** @type {EngineExplanation[]} */
+  const violations = [];
+
+  targets.forEach((target) => {
+    if (!shareGroup(anchor, target, groups)) {
+      return;
+    }
+
+    const mustBeApart =
+      constraint.type === COMPETITION_CONSTRAINT_TYPE.MUST_NOT_PARTNER ||
+      constraint.type === COMPETITION_CONSTRAINT_TYPE.AVOID_PARTNER;
+
+    if (mustBeApart) {
+      violations.push(
+        createEngineExplanation({
+          code:
+            constraint.type === COMPETITION_CONSTRAINT_TYPE.MUST_NOT_PARTNER
+              ? RULE_ERROR_CODE.MUST_NOT_PARTNER_VIOLATED
+              : RULE_ERROR_CODE.AVOID_PARTNER_VIOLATED,
+          message: `${anchor} and ${target} must not share a group.`,
+          details: { constraintId: constraint.id, anchor, target },
+        })
+      );
+    }
+  });
+
+  return violations;
+}
+
 function evaluatePartnerHardRule(constraint, teams) {
   const { anchor, targets } = getPartnerParams(constraint);
   if (!anchor || !targets.length) {
@@ -447,7 +482,11 @@ export function evaluateHardRules(constraints = [], context) {
         break;
       case COMPETITION_CONSTRAINT_TYPE.MUST_NOT_PARTNER:
       case COMPETITION_CONSTRAINT_TYPE.AVOID_PARTNER:
-        violations.push(...(evaluatePartnerHardRule(constraint, teams) || []));
+        if (context.scope === "group" && groups.length) {
+          violations.push(...evaluateGroupAnchorTargetRule(constraint, groups));
+        } else {
+          violations.push(...(evaluatePartnerHardRule(constraint, teams) || []));
+        }
         break;
       case COMPETITION_CONSTRAINT_TYPE.GENDER_ELIGIBILITY:
         violations.push(...evaluateGenderEligibility(constraint, context));

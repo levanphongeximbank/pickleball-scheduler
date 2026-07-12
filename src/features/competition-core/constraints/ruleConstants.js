@@ -35,6 +35,12 @@ export const RULE_ERROR_CODE = Object.freeze({
   MIN_REST_TIME_VIOLATED: "min_rest_time_violated",
   UNSUPPORTED_SCOPE: "unsupported_scope",
   RULES_V2_CONTEXT_MISSING: "rules_v2_context_missing",
+  RULES_V2_MAPPING_ERROR: "rules_v2_mapping_error",
+  RULES_V2_CONFLICT: "rules_v2_conflict",
+  RULES_V2_EVALUATION_FAILED: "rules_v2_evaluation_failed",
+  RULES_V2_UNSUPPORTED_LEGACY_RULE: "rules_v2_unsupported_legacy_rule",
+  RULES_V2_DUPLICATE_DECISION: "rules_v2_duplicate_decision",
+  RULES_V2_DOUBLE_COUNT_DETECTED: "rules_v2_double_count_detected",
 });
 
 export const RULE_ENGINE_VERSION = "cc03a-v2";

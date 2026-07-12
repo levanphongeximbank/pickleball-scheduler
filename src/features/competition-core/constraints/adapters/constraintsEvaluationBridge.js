@@ -1,11 +1,10 @@
 import { isRulesV2Enabled } from "../../config/featureFlags.js";
-import { evaluateCandidate } from "../evaluateCandidate.js";
-import { resolveContext } from "../resolveContext.js";
 import {
   appendDecisionTrace,
   createDecisionTrace,
   createDecisionTraceRecord,
 } from "./decisionTrace.js";
+import { evaluateCanonicalRulesRuntime } from "./rulesRuntimeOrchestrator.js";
 import {
   mapAiContextToRuleSet,
   mapAiHistoryToRepeatCounts,
@@ -57,53 +56,28 @@ import { RULE_ERROR_CODE } from "../ruleConstants.js";
  * @returns {LegacyRulesBridgeResult}
  */
 export function evaluateLegacyRulesBridge(input) {
-  const trace = input.trace || createDecisionTrace();
-  const envSource = input.envSource;
-
-  if (!isRulesV2Enabled(envSource)) {
-    const legacyResult = typeof input.legacyEvaluate === "function" ? input.legacyEvaluate() : null;
-    const record = createDecisionTraceRecord({
-      consumer: input.consumer,
-      action: "legacy_fallback",
-      usedCanonical: false,
-      feasible: true,
-      eligible: true,
-      softScore: 0,
-      metadata: { flag: "off" },
-    });
-
-    return {
-      usedCanonical: false,
-      result: legacyResult,
-      trace: appendDecisionTrace(trace, record),
-    };
-  }
-
-  const canonical = evaluateCandidate(
-    input.candidate || {},
-    input.ruleSet || { constraints: [] },
-    resolveContext(input.context || {}),
-    { envSource }
-  );
-
-  const record = createDecisionTraceRecord({
+  const bridge = evaluateCanonicalRulesRuntime({
     consumer: input.consumer,
-    action: canonical.feasible ? "score" : "reject",
-    usedCanonical: true,
-    feasible: canonical.feasible,
-    eligible: canonical.eligible,
-    softScore: canonical.softScore,
-    engineVersion: canonical.engineVersion,
-    ruleSetId: canonical.ruleSetId,
-    ruleSetVersion: canonical.ruleSetVersion,
-    explanations: canonical.explanations,
+    legacyPayload: input.legacyPayload,
+    candidate: input.candidate,
+    context: input.context,
+    ruleSet: input.ruleSet,
+    envSource: input.envSource,
+    legacyEvaluate: input.legacyEvaluate,
+    adapt: input.adapt,
+    trace: input.trace,
+    contextId: input.contextId,
+    candidateOrActionId: input.candidateOrActionId,
   });
 
   return {
-    usedCanonical: true,
-    result: input.adapt ? input.adapt(canonical) : canonical,
-    trace: appendDecisionTrace(trace, record),
-    canonical,
+    usedCanonical: bridge.usedCanonical,
+    result: bridge.result,
+    trace: bridge.trace,
+    canonical: bridge.canonical,
+    traceRecord: bridge.traceRecord,
+    doubleCountDetected: bridge.doubleCountDetected,
+    runtimeError: bridge.runtimeError,
   };
 }
 
