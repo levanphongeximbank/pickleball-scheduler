@@ -26,7 +26,7 @@
 | B06 | Assign courts to matchups | ☐ | |
 | B07 | Audit log entries visible | ☐ | |
 | B08 | Stale version on lock → conflict | ☐ | |
-| B09 | Two tabs — same BTC session | ☐ | |
+| B09 | Two independent browser profiles/sessions | ☐ | Not two tabs same profile |
 | B10 | Disconnect network → reconnect | ☐ | |
 
 ## Desktop UX

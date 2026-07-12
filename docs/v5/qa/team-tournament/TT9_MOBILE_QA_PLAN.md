@@ -18,11 +18,9 @@ Prepare device-specific checklists and report templates for real-device QA of Te
 | iPhone Safari | `TT9_IPHONE_SAFARI_CHECKLIST.md` | Primary mobile captain + referee |
 | Android Chrome | `TT9_ANDROID_CHROME_CHECKLIST.md` | Primary mobile captain |
 | Desktop Chrome or Edge | `TT9_DESKTOP_CHECKLIST.md` | BTC operations |
-| Second browser profile | All checklists § Multi-session | Version conflict / dual tab |
+| Second browser profile | All checklists § Multi-session | Version conflict / dual session |
 
 ## 3. Role scenarios
-
-### Captain (Team Portal)
 
 | ID | Scenario | Priority |
 |----|----------|----------|
@@ -52,7 +50,7 @@ Prepare device-specific checklists and report templates for real-device QA of Te
 | B06 | Assign courts | P1 |
 | B07 | View audit trail | P1 |
 | B08 | Version conflict on lock/publish | P0 |
-| B09 | Two tabs same tournament | P0 |
+| B09 | Two independent sessions same tournament | P0 |
 | B10 | Refresh and reconnect | P1 |
 
 ### Referee (Team Referee Portal)
@@ -89,10 +87,32 @@ Not implemented on this branch. Verify during TT-9 execution:
 - Device test report: `templates/TT9_DEVICE_TEST_REPORT.json`
 - Incident log: `templates/TT9_INCIDENT_LOG.md`
 
-## 6. Execution rules (TT-9 on main branch)
+## 6. Multi-session independence rules (mandatory)
+
+**Do not** use two ordinary Safari tabs on the same device/profile to represent independent sessions.
+
+Valid dual-session setups:
+
+| Setup | Account A | Account B | Evidence required |
+|-------|-----------|-----------|-------------------|
+| Safari normal + Safari Private | Captain A | Captain B or BTC | Screenshots showing both modes + timestamps |
+| Safari + Chrome iOS | Distinct logged-in accounts | Distinct logged-in accounts | App switcher capture + login banners |
+| Two Safari profiles | Profile 1 account | Profile 2 account | Settings → Profiles screenshot |
+| Two physical devices | Device 1 account | Device 2 account | Photo/video of both devices |
+
+Required evidence for concurrency/conflict scenarios:
+
+- Account A identifier (email or fixture account id)
+- Account B identifier
+- Proof sessions/cookies are isolated (private mode, separate browser, or separate device)
+- Timestamp for each action
+- Screenshot or screen recording
+- Observed conflict/concurrency outcome (error code, refresh prompt, or single winner)
+
+## 7. Execution rules (TT-9 on main branch)
 
 - Staging / Preview only — never Production
-- Two independent browser profiles for conflict tests
+- Two **independent** browser sessions for conflict tests (see §6 — not two Safari tabs on same profile)
 - Capture HAR or RPC log for P0 failures
 - Do not modify mobile UI on QA prep branch
 

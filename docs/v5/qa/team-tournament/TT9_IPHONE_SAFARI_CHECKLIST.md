@@ -54,9 +54,25 @@
 - [ ] Date/time picker native behaviour OK
 - [ ] Back gesture does not lose unsaved draft without warning
 
-## Multi-session (second profile)
+## Multi-session independence (mandatory)
 
-- [ ] Second Safari tab or different Apple ID profile — version conflict reproduced
+**Invalid:** two ordinary Safari tabs on the same profile — cookies/session are shared.
+
+**Valid setups (pick one):**
+
+- [ ] Safari normal + Safari Private Browsing
+- [ ] Safari + Chrome iOS with separate logged-in accounts
+- [ ] Two Safari profiles with separate Apple IDs / accounts
+- [ ] Two physical iPhones
+
+**Evidence checklist (attach to report):**
+
+- [ ] Account A identifier recorded
+- [ ] Account B identifier recorded
+- [ ] Proof sessions are isolated (private mode, separate browser, profile, or device)
+- [ ] Timestamp for each concurrent action
+- [ ] Screenshot or screen recording
+- [ ] Conflict/concurrency outcome captured (error code or final state)
 
 ---
 
