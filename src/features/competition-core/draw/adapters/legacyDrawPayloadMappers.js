@@ -142,6 +142,19 @@ export function cloneLegacyDrawPayload(payload = {}) {
 
   return {
     ...payload,
+    teamData:
+      payload.teamData && typeof payload.teamData === "object"
+        ? {
+            ...payload.teamData,
+            teams: Array.isArray(payload.teamData.teams)
+              ? payload.teamData.teams.map((team) => ({ ...team }))
+              : [],
+            groups: Array.isArray(payload.teamData.groups)
+              ? payload.teamData.groups.map((group) => ({ ...group }))
+              : [],
+            settings: payload.teamData.settings ? { ...payload.teamData.settings } : undefined,
+          }
+        : undefined,
     entries: Array.isArray(payload.entries) ? payload.entries.map((entry) => ({ ...entry })) : [],
     players: Array.isArray(payload.players) ? payload.players.map((player) => ({ ...player })) : [],
     seeds: Array.isArray(payload.seeds) ? payload.seeds.map((seed) => ({ ...seed })) : [],

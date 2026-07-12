@@ -121,6 +121,7 @@ export function evaluateCanonicalDraw(input) {
   const legacyResult = input.legacyExecutor(payloadSnapshot);
   const drawResult = mapLegacyDrawResultToDrawResult(legacyResult);
   const adaptedLegacyResult = adaptDrawResultForLegacyConsumer(drawResult, legacyResult);
+  const outputPreserved = isLegacyDrawOutputPreserved(legacyResult, adaptedLegacyResult);
   const strategyDrawResult = mapDrawResultToStrategyDrawResult(drawResult, strategyDrawRequest);
 
   const decisionPath = buildDrawDecisionPath({
@@ -155,14 +156,14 @@ export function evaluateCanonicalDraw(input) {
   return {
     usedCanonical: true,
     executionPath: "canonical-adapter",
-    legacyResult: adaptedLegacyResult,
+    legacyResult: outputPreserved ? legacyResult : adaptedLegacyResult,
     drawRequest,
     drawResult,
     strategyDrawRequest,
     strategyDrawResult,
     trace: appendDrawDecisionTrace(trace, record),
     audit,
-    outputPreserved: isLegacyDrawOutputPreserved(legacyResult, adaptedLegacyResult),
+    outputPreserved,
   };
 }
 

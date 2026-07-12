@@ -123,6 +123,19 @@ export {
   resolveDrawEnvSource,
   evaluateCanonicalDraw,
   runLegacyDrawWithCanonicalAdapter,
+  extractDrawGroupMembership,
+  wrapTeamDrawLegacyResult,
+  unwrapTeamDrawLegacyResult,
+  buildTeamDrawLegacyPayload,
+  runTeamDrawWithCanonicalAdapter,
+  runDirectTeamDraw,
+  compareDrawShadowParity,
+  runDrawShadowComparison,
+  compareSeedShadowParity,
+  buildLegacySeedRowsFromOrder,
+  buildCompleteDrawTraceRecord,
+  isDrawTraceJsonSerializable,
+  validateCompleteDrawTraceRecord,
 } from "./adapters/index.js";
 
 export {

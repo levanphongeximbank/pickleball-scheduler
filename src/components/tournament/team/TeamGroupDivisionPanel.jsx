@@ -18,10 +18,8 @@ import {
   describeGroupSplit,
   recommendGroupSizes,
 } from "../../../features/team-tournament/engines/teamRoundRobinScheduleEngine.js";
-import {
-  assignSeededTeamsToGroups,
-  summarizeSeededGroupBalance,
-} from "../../../features/team-tournament/engines/teamAutoDrawEngine.js";
+import { summarizeSeededGroupBalance } from "../../../features/team-tournament/engines/teamAutoDrawEngine.js";
+import { runTeamDrawWithCanonicalAdapter } from "../../../features/competition-core/draw/adapters/teamDrawAdapter.js";
 import {
   clearTeamGroups,
 } from "../../../features/team-tournament/engines/teamTournamentEngine.js";
@@ -111,14 +109,13 @@ export default function TeamGroupDivisionPanel({
   }
 
   function runGroupAssignment(options = {}) {
-    const { teamData: next, balance: nextBalance, warnings = [] } = assignSeededTeamsToGroups(
+    const { teamData: next, balance: nextBalance, warnings = [] } = runTeamDrawWithCanonicalAdapter({
       teamData,
-      {
-        ...options,
-        players: clubPlayers,
-        seedingMode,
-      }
-    );
+      players: clubPlayers,
+      seedingMode,
+      groupCount: options.groupCount,
+      randomFn: options.randomFn,
+    });
 
     if (!next.groups?.length) {
       onError?.("Không chia được bảng.");

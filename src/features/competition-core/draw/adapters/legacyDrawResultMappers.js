@@ -157,6 +157,13 @@ export function adaptDrawResultForLegacyConsumer(drawResult, originalLegacyResul
       ? drawResult.warnings
       : originalLegacyResult.warnings || [],
     errors: drawResult.errors?.length ? drawResult.errors : originalLegacyResult.errors || [],
+    teamData: originalLegacyResult.teamData
+      ? {
+          ...originalLegacyResult.teamData,
+          groups,
+        }
+      : undefined,
+    balance: originalLegacyResult.balance,
   };
 }
 
@@ -223,5 +230,20 @@ function normalizeGroupsForCompare(groups = []) {
     id: group.id != null ? String(group.id) : null,
     label: group.label ?? group.name ?? null,
     entryIds: [...(group.entryIds || group.teamIds || [])].map(String).sort(),
+  }));
+}
+
+/**
+ * Extract group membership by entry/team IDs for shadow parity checks.
+ *
+ * @param {Array<Record<string, unknown>>} [groups]
+ * @returns {Array<{ groupIndex: number, groupId: string|null, label: string|null, memberIds: string[] }>}
+ */
+export function extractDrawGroupMembership(groups = []) {
+  return (groups || []).map((group, groupIndex) => ({
+    groupIndex,
+    groupId: group.id != null ? String(group.id) : null,
+    label: group.label != null ? String(group.label) : group.name != null ? String(group.name) : null,
+    memberIds: [...(group.entryIds || group.teamIds || [])].map(String).sort(),
   }));
 }

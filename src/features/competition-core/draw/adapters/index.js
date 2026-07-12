@@ -27,6 +27,7 @@ export {
   adaptDrawResultForLegacyConsumer,
   mapDrawResultToStrategyDrawResult,
   isLegacyDrawOutputPreserved,
+  extractDrawGroupMembership,
 } from "./legacyDrawResultMappers.js";
 
 export {
@@ -42,3 +43,27 @@ export {
   evaluateCanonicalDraw,
   runLegacyDrawWithCanonicalAdapter,
 } from "./drawRuntimeAdapter.js";
+
+export {
+  wrapTeamDrawLegacyResult,
+  unwrapTeamDrawLegacyResult,
+  buildTeamDrawLegacyPayload,
+  runTeamDrawWithCanonicalAdapter,
+  runDirectTeamDraw,
+} from "./teamDrawAdapter.js";
+
+export {
+  compareDrawShadowParity,
+  runDrawShadowComparison,
+} from "./drawShadowParity.js";
+
+export {
+  compareSeedShadowParity,
+  buildLegacySeedRowsFromOrder,
+} from "./seedShadowCompare.js";
+
+export {
+  buildCompleteDrawTraceRecord,
+  isDrawTraceJsonSerializable,
+  validateCompleteDrawTraceRecord,
+} from "./drawTraceVerification.js";
