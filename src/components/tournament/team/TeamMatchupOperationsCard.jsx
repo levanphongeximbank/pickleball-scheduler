@@ -15,6 +15,7 @@ import PublishIcon from "@mui/icons-material/Publish";
 import ShuffleIcon from "@mui/icons-material/Shuffle";
 import SportsIcon from "@mui/icons-material/Sports";
 import SyncIcon from "@mui/icons-material/Sync";
+import GavelIcon from "@mui/icons-material/Gavel";
 
 import { getLineup } from "../../../features/team-tournament/models/index.js";
 import { computeMatchupTieProgress } from "../../../features/team-tournament/engines/matchupTieEngine.js";
@@ -109,6 +110,7 @@ export default function TeamMatchupOperationsCard({
   onRandomize,
   onPublish,
   onRequestOverride,
+  onRequestForfeit,
   onUpdateMatchup,
   onMessage,
   onError,
@@ -463,6 +465,23 @@ export default function TeamMatchupOperationsCard({
                 </Tooltip>
               );
             })}
+            {onRequestForfeit &&
+            [MATCHUP_STATUS.PUBLISHED, MATCHUP_STATUS.IN_PROGRESS].includes(matchup.status) ? (
+              <Tooltip title="Xử thua kỹ thuật sub-match (TT-4)">
+                <span>
+                  <Button
+                    size="small"
+                    variant="outlined"
+                    color="warning"
+                    startIcon={<GavelIcon />}
+                    disabled={mutationBusy}
+                    onClick={() => onRequestForfeit(matchup.id)}
+                  >
+                    Xử thua kỹ thuật
+                  </Button>
+                </span>
+              </Tooltip>
+            ) : null}
             {canRandomizeTeamIds.map((teamId) => {
               const teamName =
                 teamId === matchup.teamAId

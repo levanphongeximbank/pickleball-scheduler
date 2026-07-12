@@ -10,6 +10,7 @@ export const TT1B_COMMAND_RPCS = Object.freeze([
   "team_tournament_publish_matchup",
   "team_tournament_confirm_sub_match",
   "team_tournament_apply_forfeit",
+  "team_tournament_withdraw_team",
 ]);
 
 /** TT-1B commands that require optimistic-lock version before RPC. */
@@ -28,6 +29,7 @@ export const TT1B_IDEMPOTENCY_PREFIX_BY_RPC = Object.freeze({
   team_tournament_override_lineup: "override",
   team_tournament_confirm_sub_match: "confirm",
   team_tournament_apply_forfeit: "forfeit",
+  team_tournament_withdraw_team: "withdraw",
   team_tournament_upsert_standings: "standings",
 });
 
@@ -100,6 +102,16 @@ export const TT1B_RPC_ARG_CONTRACTS = Object.freeze({
     "p_technical_score",
     "p_expected_version",
     "p_idempotency_key",
+    "p_reason_code",
+    "p_request_id",
+  ],
+  team_tournament_withdraw_team: [
+    "p_tournament_id",
+    "p_team_id",
+    "p_reason",
+    "p_reason_code",
+    "p_idempotency_key",
+    "p_request_id",
   ],
   team_tournament_upsert_standings: [
     "p_tournament_id",
@@ -681,6 +693,25 @@ export async function rpcTeamTournamentApplyForfeit(params) {
       p_result_type: normalized.resultType || "forfeit",
       p_forfeit_reason: normalized.forfeitReason || normalized.reason || "",
       p_technical_score: normalized.technicalScore || {},
+      p_reason_code: normalized.reasonCode || "",
+      p_request_id: normalized.requestId || null,
+    },
+    normalized
+  );
+}
+
+export async function rpcTeamTournamentWithdrawTeam(params) {
+  const normalized =
+    typeof params === "object" && params !== null && "tournamentId" in params ? params : {};
+
+  return callTt1bCommandRpc(
+    "team_tournament_withdraw_team",
+    {
+      p_tournament_id: String(normalized.tournamentId),
+      p_team_id: String(normalized.teamId),
+      p_reason: normalized.reason || "",
+      p_reason_code: normalized.reasonCode || "team_withdrawal",
+      p_request_id: normalized.requestId || null,
     },
     normalized
   );

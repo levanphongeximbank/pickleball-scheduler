@@ -4,6 +4,7 @@ import {
   rpcTeamTournamentGetStandings,
   rpcTeamTournamentGetVisibleLineups,
   rpcTeamTournamentApplyForfeit,
+  rpcTeamTournamentWithdrawTeam,
   rpcTeamTournamentLockMatchup,
   rpcTeamTournamentPublishMatchup,
   rpcTeamTournamentRandomizeLineup,
@@ -335,7 +336,26 @@ export function createCloudTeamTournamentRepository() {
               scope: payload.scope || "sub_match",
               resultType: payload.resultType || "forfeit",
               forfeitReason: payload.reason || payload.forfeitReason || "",
+              reasonCode: payload.reasonCode || "",
+              requestId: payload.requestId || null,
               technicalScore: payload.technicalScore || {},
+            },
+            options
+          )
+        )
+      );
+    },
+
+    async withdrawTeam(_clubId, tournamentId, payload, commandOptions) {
+      return runVersionedMutation("withdrawTeam", commandOptions, async (options) =>
+        rpcTeamTournamentWithdrawTeam(
+          withCommandParams(
+            {
+              tournamentId,
+              teamId: payload.teamId,
+              reason: payload.reason || "",
+              reasonCode: payload.reasonCode || "team_withdrawal",
+              requestId: payload.requestId || null,
             },
             options
           )

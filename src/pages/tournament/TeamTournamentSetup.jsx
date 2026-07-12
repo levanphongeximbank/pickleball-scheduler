@@ -37,6 +37,7 @@ import { resolveLineupVersions } from "../../features/team-tournament/engines/at
 import {
   buildOverrideCommandVersions,
 } from "../../features/team-tournament/engines/overrideLineupWorkflowEngine.js";
+import { buildForfeitCommandPayload } from "../../features/team-tournament/engines/forfeitWorkflowEngine.js";
 import { normalizeMissingLineupPolicy } from "../../features/team-tournament/engines/missingLineupPolicyEngine.js";
 import {
   organizerLockDreambreakerOrders,
@@ -52,6 +53,8 @@ import TeamDisciplinesPanel from "../../components/tournament/team/TeamDisciplin
 import TeamGroupDivisionPanel from "../../components/tournament/team/TeamGroupDivisionPanel.jsx";
 import TeamMatchupOperationsCard from "../../components/tournament/team/TeamMatchupOperationsCard.jsx";
 import TeamLineupOverrideDialog from "../../components/tournament/team/TeamLineupOverrideDialog.jsx";
+import TeamForfeitDialog from "../../components/tournament/team/TeamForfeitDialog.jsx";
+import TeamWithdrawTeamDialog from "../../components/tournament/team/TeamWithdrawTeamDialog.jsx";
 import TeamStandingsTable from "../../components/tournament/team/TeamStandingsTable.jsx";
 import TeamTournamentScheduleDiagram from "../../components/tournament/team/TeamTournamentScheduleDiagram.jsx";
 import { countMatchupsWithSubResults } from "../../components/tournament/team/teamStandingsLabels.js";
@@ -198,6 +201,8 @@ export default function TeamTournamentSetup() {
   const [hubBanner, setHubBanner] = useState("");
   const [mutationBusy, setMutationBusy] = useState(false);
   const [overrideDialog, setOverrideDialog] = useState(null);
+  const [forfeitDialog, setForfeitDialog] = useState(null);
+  const [withdrawDialog, setWithdrawDialog] = useState(null);
   const requestedTab = searchParams.get("tab") || TEAM_TAB_QUERY.teams;
   const activeTabKey = visibleTabs.some((tab) => tab.key === requestedTab)
     ? requestedTab
@@ -511,6 +516,88 @@ export default function TeamTournamentSetup() {
     setMessage(`Đã thay đổi lineup ${team.name || team.id}. Cần công bố lại trước khi đội trưởng/trọng tài thấy.`);
   }
 
+  function handleRequestForfeit(matchupId) {
+    const matchup = td.matchups.find((item) => item.id === matchupId);
+    if (!matchup) {
+      return;
+    }
+    setForfeitDialog({
+      matchup,
+      teamA: td.teams.find((team) => team.id === matchup.teamAId),
+      teamB: td.teams.find((team) => team.id === matchup.teamBId),
+      forfeitOps: null,
+    });
+  }
+
+  async function handleForfeitConfirm({
+    subMatchId,
+    subMatchVersion,
+    forfeitingTeamId,
+    resultType,
+    reasonCode,
+    reasonText,
+  }) {
+    if (!forfeitDialog?.matchup) {
+      return;
+    }
+    const payload = buildForfeitCommandPayload({
+      matchupId: forfeitDialog.matchup.id,
+      subMatchId,
+      forfeitingTeamId,
+      resultType,
+      reasonCode,
+      reasonText,
+      subMatchVersion,
+    });
+
+    setError("");
+    setMutationBusy(true);
+    const result = await runMutation({
+      method: "applyForfeit",
+      payload,
+      actionScope: buildUiCommandScope("forfeit", tournamentId, subMatchId),
+      expectedVersion: subMatchVersion ?? version,
+    });
+    setMutationBusy(false);
+
+    if (!result.ok) {
+      setError(result.error || "Không ghi nhận được forfeit.");
+      return;
+    }
+
+    setForfeitDialog(null);
+    setMessage("Đã ghi nhận thua kỹ thuật. BXH đã được cập nhật.");
+  }
+
+  function handleRequestWithdraw(teamId) {
+    const team = td.teams.find((item) => item.id === teamId);
+    if (!team || team.withdrawn) {
+      setError("Đội không hợp lệ hoặc đã rút giải.");
+      return;
+    }
+    setWithdrawDialog({ team });
+  }
+
+  async function handleWithdrawConfirm({ teamId, reason, reasonCode }) {
+    setError("");
+    setMutationBusy(true);
+    const result = await runMutation({
+      method: "withdrawTeam",
+      payload: { teamId, reason, reasonCode },
+      actionScope: buildUiCommandScope("withdraw", tournamentId, teamId),
+      expectedVersion: version,
+    });
+    setMutationBusy(false);
+
+    if (!result.ok) {
+      setError(result.error || "Không rút giải được.");
+      return;
+    }
+
+    setWithdrawDialog(null);
+    setMessage("Đã ghi nhận đội rút giải và cập nhật các trận còn lại.");
+  }
+
   async function handleSyncDreambreaker() {
     setError("");
     const result = await organizerSyncDreambreaker(activeClubId, tournamentId);
@@ -677,6 +764,24 @@ export default function TeamTournamentSetup() {
               onMessage={setMessage}
             />
             {access.canManage ? (
+              <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
+                {td.teams
+                  .filter((team) => !team.withdrawn)
+                  .map((team) => (
+                    <Button
+                      key={`withdraw-${team.id}`}
+                      size="small"
+                      color="error"
+                      variant="outlined"
+                      onClick={() => handleRequestWithdraw(team.id)}
+                      disabled={mutationBusy}
+                    >
+                      Rút giải — {team.name}
+                    </Button>
+                  ))}
+              </Stack>
+            ) : null}
+            {access.canManage ? (
               <TeamGroupDivisionPanel
                 teamData={td}
                 clubPlayers={players}
@@ -754,6 +859,7 @@ export default function TeamTournamentSetup() {
                     onRandomize={handleRandomize}
                     onPublish={handlePublish}
                     onRequestOverride={access.canManage ? handleRequestOverride : undefined}
+                    onRequestForfeit={access.canManage ? handleRequestForfeit : undefined}
                     onUpdateMatchup={handleUpdateMatchup}
                     onMessage={setMessage}
                     onError={setError}
@@ -833,6 +939,26 @@ export default function TeamTournamentSetup() {
         overrideOps={overrideDialog?.overrideOps}
         busy={mutationBusy}
         onConfirm={handleOverrideConfirm}
+      />
+
+      <TeamForfeitDialog
+        open={Boolean(forfeitDialog)}
+        onClose={() => setForfeitDialog(null)}
+        teamData={td}
+        matchup={forfeitDialog?.matchup}
+        teamA={forfeitDialog?.teamA}
+        teamB={forfeitDialog?.teamB}
+        forfeitOps={forfeitDialog?.forfeitOps}
+        busy={mutationBusy}
+        onConfirm={handleForfeitConfirm}
+      />
+
+      <TeamWithdrawTeamDialog
+        open={Boolean(withdrawDialog)}
+        onClose={() => setWithdrawDialog(null)}
+        team={withdrawDialog?.team}
+        busy={mutationBusy}
+        onConfirm={handleWithdrawConfirm}
       />
     </TournamentSetupShell>
   );

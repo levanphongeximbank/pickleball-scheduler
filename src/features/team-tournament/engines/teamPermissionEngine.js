@@ -95,6 +95,20 @@ export function canOverrideLineup({ permissions = [] } = {}) {
   );
 }
 
+export function canApplyForfeit({ permissions = [] } = {}) {
+  return (
+    canManageTeam({ permissions }) ||
+    canManageTeamMatchResult({ permissions })
+  );
+}
+
+export function canWithdrawTeam({ permissions = [] } = {}) {
+  return (
+    permissions.includes(PERMISSIONS.TEAM_WITHDRAW) ||
+    permissions.includes(PERMISSIONS.TOURNAMENT_UPDATE)
+  );
+}
+
 export function canManageTeamMatchResult({ permissions = [] } = {}) {
   return (
     permissions.includes(PERMISSIONS.TEAM_MATCH_RESULT_MANAGE) ||

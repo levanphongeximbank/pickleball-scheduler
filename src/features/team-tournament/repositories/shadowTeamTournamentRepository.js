@@ -127,6 +127,9 @@ export function createShadowTeamTournamentRepository(options = {}) {
     applyForfeit(clubId, tournamentId, payload, commandOptions) {
       return delegateMutation("applyForfeit", clubId, tournamentId, payload, commandOptions);
     },
+    withdrawTeam(clubId, tournamentId, payload, commandOptions) {
+      return delegateMutation("withdrawTeam", clubId, tournamentId, payload, commandOptions);
+    },
     completeMatchup(clubId, tournamentId, payload, commandOptions) {
       return delegateMutation("completeMatchup", clubId, tournamentId, payload, commandOptions);
     },

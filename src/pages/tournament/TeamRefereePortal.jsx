@@ -47,7 +47,6 @@ import {
   getStandingsTable,
 } from "../../features/team-tournament/engines/teamStandingsEngine.js";
 import {
-  getTeamData,
   isTeamTournament,
 } from "../../features/team-tournament/engines/teamTournamentEngine.js";
 import {
@@ -61,7 +60,6 @@ import { useTeamTournamentPage } from "../../features/team-tournament/ui/useTeam
 import { buildUiCommandScope } from "../../features/team-tournament/ui/teamTournamentUiCommandKeys.js";
 import { getRallyScoringHints } from "../../features/team-tournament/engines/rallyScoringEngine.js";
 import { RefereeDreambreakerPanel } from "../../components/tournament/team/DreambreakerPanel.jsx";
-import { syncDreambreakerForAllMatchups } from "../../features/team-tournament/engines/dreambreakerEngine.js";
 import {
   computeMatchupTieProgress,
   countDreambreakerPendingMatchups,
@@ -73,6 +71,8 @@ import {
   getSubMatchStatusMeta,
 } from "../../components/tournament/team/teamTournamentLabels.js";
 import TeamStandingsTable from "../../components/tournament/team/TeamStandingsTable.jsx";
+import TeamForfeitDialog from "../../components/tournament/team/TeamForfeitDialog.jsx";
+import { buildForfeitCommandPayload } from "../../features/team-tournament/engines/forfeitWorkflowEngine.js";
 import { countMatchupsWithSubResults } from "../../components/tournament/team/teamStandingsLabels.js";
 
 const REFEREE_FILTER = {
@@ -139,8 +139,6 @@ function SubMatchScorePanel({
   subMatch,
   teamAName,
   teamBName,
-  teamAId,
-  teamBId,
   discipline,
   canEdit,
   onSaveDraft,
@@ -453,8 +451,6 @@ function MatchupCard({
                       }}
                       teamAName={matchup.teamAName}
                       teamBName={matchup.teamBName}
-                      teamAId={matchup.teamAId}
-                      teamBId={matchup.teamBId}
                       discipline={teamData?.disciplines?.find(
                         (item) => item.id === subMatch.disciplineId
                       )}
@@ -532,14 +528,12 @@ export default function TeamRefereePortal() {
   const [expandedMatchupId, setExpandedMatchupId] = useState("");
   const [selectedSubMatchId, setSelectedSubMatchId] = useState("");
   const [statusFilter, setStatusFilter] = useState(REFEREE_FILTER.ALL);
+  const [forfeitDialog, setForfeitDialog] = useState(null);
 
   const {
-    loading,
     tournament,
     teamData,
     version,
-    error: loadError,
-    versionConflict,
     reload,
     runMutation,
     saveSubMatchDraft,
@@ -618,8 +612,6 @@ export default function TeamRefereePortal() {
     () => (effectiveClubId ? loadPlayersForClub(effectiveClubId) : []),
     [effectiveClubId]
   );
-
-  const teamDataView = teamData;
 
   const dreambreakerPendingCount = useMemo(
     () => (teamData ? countDreambreakerPendingMatchups(teamData) : 0),
@@ -750,31 +742,42 @@ export default function TeamRefereePortal() {
     setMessage(nextMessage);
   }
 
-  async function handleForfeit(matchupId, subMatchId, payload, forfeitingTeamId) {
+  async function handleForfeitConfirm({
+    subMatchId,
+    subMatchVersion,
+    forfeitingTeamId,
+    resultType,
+    reasonCode,
+    reasonText,
+  }) {
+    if (!forfeitDialog?.matchup) {
+      return;
+    }
+    const payload = buildForfeitCommandPayload({
+      matchupId: forfeitDialog.matchup.id,
+      subMatchId,
+      forfeitingTeamId,
+      resultType,
+      reasonCode,
+      reasonText,
+      subMatchVersion,
+    });
+
     setBusy(true);
     setError(null);
     const result = await runMutation({
       method: "applyForfeit",
-      payload: {
-        matchupId,
-        subMatchId,
-        forfeitingTeamId,
-        scope: "sub_match",
-        resultType: "forfeit",
-        technicalScore: {
-          teamA: payload.score?.teamA,
-          teamB: payload.score?.teamB,
-        },
-      },
+      payload,
       actionScope: buildUiCommandScope("forfeit", tournamentId, subMatchId),
-      expectedVersion: version,
+      expectedVersion: subMatchVersion ?? version,
     });
     setBusy(false);
     if (!result.ok) {
       setError(result.error);
       return;
     }
-    setMessage("Đã ghi nhận forfeit/chấn thương.");
+    setForfeitDialog(null);
+    setMessage("Đã ghi nhận thua kỹ thuật.");
   }
 
   async function handleDreambreakerPoint(matchupId, scoringTeamId) {
@@ -975,16 +978,15 @@ export default function TeamRefereePortal() {
                 }
                 onForfeit={
                   canManage
-                    ? (subMatchId, payload) => {
-                        const forfeitingTeamA = window.confirm(
-                          `Đội forfeit: OK = ${item.matchup.teamAName}, Cancel = ${item.matchup.teamBName}`
-                        );
-                        handleForfeit(
-                          item.matchup.id,
-                          subMatchId,
-                          payload,
-                          forfeitingTeamA ? item.matchup.teamAId : item.matchup.teamBId
-                        );
+                    ? (subMatchId) => {
+                        const subMatch = item.matchup.subMatches?.find((sm) => sm.id === subMatchId);
+                        setForfeitDialog({
+                          matchup: item.matchup,
+                          subMatch,
+                          teamA: { id: item.matchup.teamAId, name: item.matchup.teamAName },
+                          teamB: { id: item.matchup.teamBId, name: item.matchup.teamBName },
+                          forfeitOps: subMatch?.forfeitOps || null,
+                        });
                       }
                     : null
                 }
@@ -1018,6 +1020,19 @@ export default function TeamRefereePortal() {
           />
         </Box>
       ) : null}
+
+      <TeamForfeitDialog
+        open={Boolean(forfeitDialog)}
+        onClose={() => setForfeitDialog(null)}
+        teamData={teamData}
+        matchup={forfeitDialog?.matchup}
+        teamA={forfeitDialog?.teamA}
+        teamB={forfeitDialog?.teamB}
+        subMatch={forfeitDialog?.subMatch}
+        forfeitOps={forfeitDialog?.forfeitOps}
+        busy={busy}
+        onConfirm={handleForfeitConfirm}
+      />
     </Box>
   );
 }
