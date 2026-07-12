@@ -1,4 +1,6 @@
 import { getPlayerGenderKey } from "../../../models/player.js";
+import { evaluateLegacyTeamLineupValidation } from "../../competition-core/constraints/adapters/teamTournamentRulesBridge.js";
+import { isRulesV2Enabled } from "../../competition-core/config/featureFlags.js";
 import {
   DISCIPLINE_CATEGORY,
   GENDER_REQUIREMENT,
@@ -373,7 +375,22 @@ export function validateMlpLineupParticipation(teamData, teamId, selections = {}
   };
 }
 
-export function validateLineupSelectionsStructured({
+export function validateLineupSelectionsStructured(args) {
+  if (isRulesV2Enabled(args.envSource)) {
+    const bridge = evaluateLegacyTeamLineupValidation(
+      {
+        ...args,
+        team: findTeam(args.teamData, args.teamId),
+        legacyEvaluate: () => validateLineupSelectionsStructuredLegacy(args),
+      },
+      { envSource: args.envSource }
+    );
+    return bridge.result;
+  }
+  return validateLineupSelectionsStructuredLegacy(args);
+}
+
+function validateLineupSelectionsStructuredLegacy({
   teamData,
   teamId,
   selections = {},

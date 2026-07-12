@@ -1,5 +1,6 @@
 import { CONSTRAINT_MODE, CONSTRAINT_SCORE, CONSTRAINT_TYPE } from "../constants.js";
 import { evaluateLegacyPairingConstraints } from "../../competition-core/constraints/adapters/constraintsEvaluationBridge.js";
+import { evaluateLegacyGroupConstraints } from "../../competition-core/constraints/adapters/groupConstraintsBridge.js";
 
 function activeConstraints(constraints = []) {
   return (constraints || []).filter((item) => item?.enabled !== false);
@@ -95,7 +96,16 @@ export function getEntryPlayerIds(entry) {
   return (entry.playerIds || []).map(String);
 }
 
-export function evaluateGroupConstraints(groups = [], constraints = []) {
+export function evaluateGroupConstraints(groups = [], constraints = [], options = {}) {
+  const bridge = evaluateLegacyGroupConstraints(groups, constraints, {
+    envSource: options.envSource,
+    players: options.players,
+    legacyEvaluate: () => evaluateGroupConstraintsLegacy(groups, constraints),
+  });
+  return bridge.result;
+}
+
+function evaluateGroupConstraintsLegacy(groups = [], constraints = []) {
   let score = 0;
   const violations = [];
 
