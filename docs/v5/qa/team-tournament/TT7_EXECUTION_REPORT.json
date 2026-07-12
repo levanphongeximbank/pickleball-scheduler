@@ -1,0 +1,120 @@
+{
+  "reportType": "TT7_EXECUTION_REPORT",
+  "generatedAt": "2026-07-12T22:35:38.547Z",
+  "productionImpact": "NONE",
+  "verdict": "TT-7 EXECUTION PASS",
+  "executionBase": {
+    "branch": "qa/tt7-standings-engine-fix",
+    "baseRef": "origin/feature/competition-core-standardization",
+    "baseSha": "23462878782726b9f933380071126245bd767dec"
+  },
+  "initialResult": {
+    "verdict": "TT-7 EXECUTION FAIL",
+    "oracle": "13/13 PASS",
+    "integration": "7/10 PASS",
+    "findings": {
+      "P0": [],
+      "P1": [
+        {
+          "teamId": "team-d",
+          "field": "forfeitWins",
+          "expected": 1,
+          "actual": 0
+        },
+        {
+          "teamId": "team-e",
+          "field": "forfeitLosses",
+          "expected": 1,
+          "actual": 0
+        },
+        {
+          "teamId": "team-f",
+          "field": "withdrawn",
+          "expected": true,
+          "actual": false
+        }
+      ],
+      "P2": []
+    }
+  },
+  "rootCause": [
+    "teamStandingsEngine empty standings rows did not expose forfeitWins/forfeitLosses.",
+    "teamStandingsEngine did not propagate team.withdrawn to standings rows.",
+    "normalizeStanding dropped forfeitWins/forfeitLosses/withdrawn from normalized standings.",
+    "normalizeMatchup dropped canonical forfeit result metadata, so double-normalized teamData could lose forfeit signal."
+  ],
+  "engineFix": {
+    "fieldsAdded": ["forfeitWins", "forfeitLosses", "withdrawn"],
+    "forfeitWinsRule": "Increment winner row once when result/matchup canonical forfeit signal is present.",
+    "forfeitLossesRule": "Increment forfeiting team row once using result.forfeitingTeamId, matchup.forfeitingTeamId, or opposite winner fallback.",
+    "withdrawnRule": "Propagate Boolean(team.withdrawn) from team metadata to standings row.",
+    "rankingLogicChanged": false,
+    "tieBreakLogicChanged": false,
+    "frozenExpectedChanged": false
+  },
+  "validation": {
+    "oracle": "13/13 PASS",
+    "integration": "10/10 PASS",
+    "standingsTiebreak": "6/6 PASS",
+    "teamTournament": "12/12 PASS"
+  },
+  "comparisons": [
+    {
+      "label": "four-team-default",
+      "fixtureId": "tt7-four-teams",
+      "pass": true,
+      "diffCount": 0,
+      "diffs": [],
+      "highestSeverity": null
+    },
+    {
+      "label": "six-team-default",
+      "fixtureId": "tt7-six-teams",
+      "pass": true,
+      "diffCount": 0,
+      "diffs": [],
+      "highestSeverity": null
+    },
+    {
+      "label": "six-team-forfeit",
+      "fixtureId": "tt7-six-teams",
+      "pass": true,
+      "diffCount": 0,
+      "diffs": [],
+      "highestSeverity": null
+    },
+    {
+      "label": "six-team-withdrawn",
+      "fixtureId": "tt7-six-teams",
+      "pass": true,
+      "diffCount": 0,
+      "diffs": [],
+      "highestSeverity": null
+    },
+    {
+      "label": "four-team-headToHead",
+      "fixtureId": "tt7-four-teams",
+      "pass": true,
+      "diffCount": 0,
+      "diffs": [],
+      "highestSeverity": null
+    },
+    {
+      "label": "four-team-subMatchDiff",
+      "fixtureId": "tt7-four-teams",
+      "pass": true,
+      "diffCount": 0,
+      "diffs": [],
+      "highestSeverity": null
+    }
+  ],
+  "findings": {
+    "P0": [],
+    "P1": [],
+    "P2": []
+  },
+  "deployment": {
+    "productionDeployment": "NONE",
+    "productionImpact": "NONE"
+  }
+}
