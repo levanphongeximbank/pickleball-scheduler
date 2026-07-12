@@ -253,6 +253,7 @@ const MyClubRequestsPage = lazy(() => import("./pages/player/MyClubRequestsPage.
 const AthleteSelfProfilePage = lazy(() => import("./pages/player/AthleteSelfProfilePage.jsx"));
 const PlayerSkillOverviewPage = lazy(() => import("./pages/player/PlayerSkillOverviewPage.jsx"));
 const FirstSkillAssessmentPage = lazy(() => import("./pages/player/FirstSkillAssessmentPage.jsx"));
+const SkillAssessmentV5Page = lazy(() => import("./pages/player/SkillAssessmentV5Page.jsx"));
 const TournamentCertificationQueuePage = lazy(() =>
   import("./pages/admin/TournamentCertificationQueuePage")
 );
@@ -303,6 +304,8 @@ const PairingInterventionPreviewPage = lazy(() =>
   import("./pages/dev/PairingInterventionPreviewPage")
 
 );
+
+const RefereeV5PreviewPage = lazy(() => import("./pages/dev/RefereeV5PreviewPage"));
 
 const CourtManagementBookingsPage = lazy(() =>
 
@@ -429,6 +432,14 @@ export default function Router() {
                 </SuperAdminRouteGuard>
               }
             />
+            <Route
+              path="/dev/referee-v5"
+              element={
+                <SuperAdminRouteGuard>
+                  <RefereeV5PreviewPage />
+                </SuperAdminRouteGuard>
+              }
+            />
             <Route path="/dashboard/rankings" element={<RankingManagementPage />} />
 
             <Route path="/players/skill" element={<SkillLevelsPage />} />
@@ -446,6 +457,7 @@ export default function Router() {
             <Route path="/player/profile" element={<AthleteSelfProfilePage />} />
             <Route path="/player/skill" element={<PlayerSkillOverviewPage />} />
             <Route path="/player/skill-assessment" element={<FirstSkillAssessmentPage />} />
+            <Route path="/player/skill-assessment-v5" element={<SkillAssessmentV5Page />} />
 
             <Route path="/users" element={<UserManagementPage />} />
             <Route path="/admin/roles" element={<RolesPermissionsPage />} />

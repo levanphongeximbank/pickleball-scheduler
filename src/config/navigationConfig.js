@@ -5,6 +5,7 @@
 import { PERMISSIONS } from "../auth/permissions.js";
 import { ROLES, normalizeRole, rolesEqual } from "../auth/roles.js";
 import { isAiEngineEnabled } from "../features/ai-assistant/constants/aiConfig.js";
+import { isPickVnRatingV5Enabled } from "../features/pick-vn-rating-v5/config/flags.js";
 import { V5_MENU_GROUPS } from "./v5Menu/index.js";
 import { SYSTEM_TECHNICIAN_MENU_ROOT } from "./v5Menu/systemTechnicianMenu.js";
 import { TEAM_CAPTAIN_MENU_ROOT } from "./v5Menu/teamCaptainMenu.js";
@@ -378,6 +379,7 @@ export const NAV_ICON_KEYS = Object.freeze({
   "player-profile": "player-profile",
   "player-skill": "skill",
   "player-skill-assessment": "skill",
+  "player-skill-assessment-v5": "skill",
   "my-club": "my-club",
   "referee-hub": "referee-hub",
   "referee-tournaments": "referee-tournaments",
@@ -431,6 +433,15 @@ export const MENU_GROUPS = [
         path: "/player/skill-assessment",
         match: "player-skill-assessment",
         roles: [ROLES.PLAYER],
+      },
+      {
+        key: "player-skill-assessment-v5",
+        icon: NAV_ICON_KEYS["player-skill-assessment"],
+        text: "Đánh giá V5 (shadow)",
+        path: "/player/skill-assessment-v5",
+        match: "player-skill-assessment-v5",
+        roles: [ROLES.PLAYER],
+        requiresFeature: "pickVnRatingV5",
       },
       {
         key: "player-home",
@@ -849,6 +860,7 @@ export function resolveMobileNavProfile(role) {
 
 export function isNavFeatureEnabled(featureKey) {
   if (featureKey === "ai") return isAiEngineEnabled();
+  if (featureKey === "pickVnRatingV5") return isPickVnRatingV5Enabled();
   return true;
 }
 

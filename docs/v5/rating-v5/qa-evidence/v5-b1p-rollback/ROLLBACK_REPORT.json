@@ -1,0 +1,92 @@
+{
+  "passCount": 5,
+  "total": 5,
+  "allPass": true,
+  "results": [
+    {
+      "fault": "after_assessment_update",
+      "pass": true,
+      "error": "rating_v5_test_fault: after_assessment_update",
+      "before": {
+        "completed": false,
+        "eventCount": 0,
+        "profileDisplay": 3.7,
+        "v2": "[]"
+      },
+      "after": {
+        "completed": false,
+        "eventCount": 0,
+        "profileDisplay": 3.7,
+        "v2": "[]"
+      }
+    },
+    {
+      "fault": "before_event_insert",
+      "pass": true,
+      "error": "rating_v5_test_fault: before_event_insert",
+      "before": {
+        "completed": false,
+        "eventCount": 0,
+        "profileDisplay": 3.7,
+        "v2": "[]"
+      },
+      "after": {
+        "completed": false,
+        "eventCount": 0,
+        "profileDisplay": 3.7,
+        "v2": "[]"
+      }
+    },
+    {
+      "fault": "after_event_insert",
+      "pass": true,
+      "error": "rating_v5_test_fault: after_event_insert",
+      "before": {
+        "completed": false,
+        "eventCount": 0,
+        "profileDisplay": 3.7,
+        "v2": "[]"
+      },
+      "after": {
+        "completed": false,
+        "eventCount": 0,
+        "profileDisplay": 3.7,
+        "v2": "[]"
+      }
+    },
+    {
+      "fault": "before_profile_upsert",
+      "pass": true,
+      "error": "rating_v5_test_fault: before_profile_upsert",
+      "before": {
+        "completed": false,
+        "eventCount": 0,
+        "profileDisplay": 3.7,
+        "v2": "[]"
+      },
+      "after": {
+        "completed": false,
+        "eventCount": 0,
+        "profileDisplay": 3.7,
+        "v2": "[]"
+      }
+    },
+    {
+      "fault": "during_profile_upsert",
+      "pass": true,
+      "error": "rating_v5_test_fault: during_profile_upsert",
+      "before": {
+        "completed": false,
+        "eventCount": 0,
+        "profileDisplay": 3.7,
+        "v2": "[]"
+      },
+      "after": {
+        "completed": false,
+        "eventCount": 0,
+        "profileDisplay": 3.7,
+        "v2": "[]"
+      }
+    }
+  ]
+}

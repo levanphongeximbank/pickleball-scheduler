@@ -1,0 +1,471 @@
+{
+  "phase": "V5-B.1E",
+  "edgeUrl": "https://qyewbxjsiiyufanzcjcq.supabase.co/functions/v1/rating-v5-complete-assessment",
+  "generatedAt": "2026-07-12T11:42:21.788Z",
+  "passCount": 43,
+  "total": 43,
+  "allPass": true,
+  "httpEndToEndTests": "43/43",
+  "goldenVectorMismatches": 0,
+  "crossTenantLeaks": 0,
+  "duplicateEvents": 0,
+  "partialWrites": 0,
+  "v2Mutations": 0,
+  "secretExposures": 0,
+  "categories": {
+    "AUTH_TESTS": [
+      {
+        "id": "auth_no_header",
+        "pass": true,
+        "detail": "status=401"
+      },
+      {
+        "id": "auth_bad_jwt",
+        "pass": true,
+        "detail": "status=401"
+      },
+      {
+        "id": "auth_expired_jwt",
+        "pass": true,
+        "detail": "status=401"
+      },
+      {
+        "id": "auth_user_a_success",
+        "pass": true,
+        "detail": "status=200"
+      }
+    ],
+    "CROSS_TENANT_TESTS": [
+      {
+        "id": "auth_cross_user",
+        "pass": true,
+        "detail": "status=404"
+      },
+      {
+        "id": "auth_assessment_not_found",
+        "pass": true,
+        "detail": "status=404"
+      }
+    ],
+    "PAYLOAD_TESTS": [
+      {
+        "id": "payload_invalid_question",
+        "pass": true,
+        "detail": "INVALID_QUESTION"
+      },
+      {
+        "id": "payload_invalid_anchor",
+        "pass": true,
+        "detail": "INVALID_ANSWER"
+      },
+      {
+        "id": "payload_verified_rating",
+        "pass": true,
+        "detail": "FORBIDDEN_PAYLOAD_FIELD"
+      },
+      {
+        "id": "payload_domain_scores",
+        "pass": true,
+        "detail": "FORBIDDEN_PAYLOAD_FIELD"
+      },
+      {
+        "id": "payload_reliability_score",
+        "pass": true,
+        "detail": "FORBIDDEN_PAYLOAD_FIELD"
+      },
+      {
+        "id": "payload_estimated_rating",
+        "pass": true,
+        "detail": "FORBIDDEN_PAYLOAD_FIELD"
+      },
+      {
+        "id": "payload_rating_status",
+        "pass": true,
+        "detail": "FORBIDDEN_PAYLOAD_FIELD"
+      },
+      {
+        "id": "payload_evidence_level",
+        "pass": true,
+        "detail": "FORBIDDEN_PAYLOAD_FIELD"
+      },
+      {
+        "id": "payload_tenant_id",
+        "pass": true,
+        "detail": "FORBIDDEN_PAYLOAD_FIELD"
+      },
+      {
+        "id": "payload_player_id",
+        "pass": true,
+        "detail": "FORBIDDEN_PAYLOAD_FIELD"
+      },
+      {
+        "id": "payload_multi_forbidden",
+        "pass": true,
+        "detail": "FORBIDDEN_PAYLOAD_FIELD"
+      },
+      {
+        "id": "payload_unknown_future_field",
+        "pass": true,
+        "detail": "FORBIDDEN_PAYLOAD_FIELD"
+      },
+      {
+        "id": "payload_singles",
+        "pass": true,
+        "detail": "status=422"
+      }
+    ],
+    "GOLDEN_PARITY_TESTS": [
+      {
+        "id": "golden_p01_brand_new",
+        "pass": true,
+        "detail": "skill=1.5"
+      },
+      {
+        "id": "golden_p09_balanced_30",
+        "pass": true,
+        "detail": "skill=3.154285714285714"
+      },
+      {
+        "id": "golden_p10_balanced_35",
+        "pass": true,
+        "detail": "skill=3.7457142857142856"
+      },
+      {
+        "id": "golden_p11_balanced_40",
+        "pass": true,
+        "detail": "skill=4.5"
+      },
+      {
+        "id": "golden_p13_expected_above_45",
+        "pass": true,
+        "detail": "skill=4.5"
+      },
+      {
+        "id": "golden_p05_drive_strong_dink_weak",
+        "pass": true,
+        "detail": "skill=3.5"
+      },
+      {
+        "id": "golden_gv_footwork_weak",
+        "pass": true,
+        "detail": "skill=3.7457142857142856"
+      },
+      {
+        "id": "golden_gv_third_shot_exec_weak",
+        "pass": true,
+        "detail": "skill=3.5"
+      },
+      {
+        "id": "golden_p30_contradiction_check",
+        "pass": true,
+        "detail": "skill=2.611071428571428"
+      },
+      {
+        "id": "golden_p12_all_high",
+        "pass": true,
+        "detail": "skill=4.5"
+      }
+    ],
+    "PERSISTENCE_TESTS": [
+      {
+        "id": "persistence_db_match",
+        "pass": "reliability-v5.0",
+        "detail": "events=1"
+      }
+    ],
+    "IDEMPOTENCY_TESTS": [
+      {
+        "id": "idempotency_retry",
+        "pass": true,
+        "detail": "ASSESSMENT_ALREADY_COMPLETED"
+      }
+    ],
+    "CONCURRENCY_TESTS": [
+      {
+        "id": "concurrency_dual_request",
+        "pass": true,
+        "detail": "events=1"
+      }
+    ],
+    "ROLLBACK_TESTS": [
+      {
+        "id": "rollback_after_scoring",
+        "pass": true,
+        "detail": "status=500"
+      },
+      {
+        "id": "rollback_after_assessment_update",
+        "pass": true,
+        "detail": "status=500"
+      },
+      {
+        "id": "rollback_before_event_insert",
+        "pass": true,
+        "detail": "status=500"
+      },
+      {
+        "id": "rollback_after_event_insert",
+        "pass": true,
+        "detail": "status=500"
+      },
+      {
+        "id": "rollback_before_profile_upsert",
+        "pass": true,
+        "detail": "status=500"
+      }
+    ],
+    "CORS_TESTS": [
+      {
+        "id": "cors_preflight_allowed",
+        "pass": true,
+        "detail": "status=204"
+      },
+      {
+        "id": "cors_allow_origin_header",
+        "pass": true,
+        "detail": "https://qyewbxjsiiyufanzcjcq.supabase.co"
+      },
+      {
+        "id": "cors_denied_origin",
+        "pass": true,
+        "detail": "status=403"
+      }
+    ],
+    "ERROR_CONTRACT_TESTS": [
+      {
+        "id": "error_contract_sanitized",
+        "pass": true,
+        "detail": "no internal leak"
+      },
+      {
+        "id": "secret_not_exposed",
+        "pass": true,
+        "detail": "response clean"
+      }
+    ],
+    "V2_ISOLATION": [
+      {
+        "id": "v2_unchanged",
+        "pass": true,
+        "detail": "pick_vn_player_ratings stable"
+      }
+    ]
+  },
+  "results": [
+    {
+      "id": "auth_no_header",
+      "pass": true,
+      "detail": "status=401"
+    },
+    {
+      "id": "auth_bad_jwt",
+      "pass": true,
+      "detail": "status=401"
+    },
+    {
+      "id": "auth_expired_jwt",
+      "pass": true,
+      "detail": "status=401"
+    },
+    {
+      "id": "auth_user_a_success",
+      "pass": true,
+      "detail": "status=200"
+    },
+    {
+      "id": "auth_cross_user",
+      "pass": true,
+      "detail": "status=404"
+    },
+    {
+      "id": "auth_assessment_not_found",
+      "pass": true,
+      "detail": "status=404"
+    },
+    {
+      "id": "payload_invalid_question",
+      "pass": true,
+      "detail": "INVALID_QUESTION"
+    },
+    {
+      "id": "payload_invalid_anchor",
+      "pass": true,
+      "detail": "INVALID_ANSWER"
+    },
+    {
+      "id": "payload_verified_rating",
+      "pass": true,
+      "detail": "FORBIDDEN_PAYLOAD_FIELD"
+    },
+    {
+      "id": "payload_domain_scores",
+      "pass": true,
+      "detail": "FORBIDDEN_PAYLOAD_FIELD"
+    },
+    {
+      "id": "payload_reliability_score",
+      "pass": true,
+      "detail": "FORBIDDEN_PAYLOAD_FIELD"
+    },
+    {
+      "id": "payload_estimated_rating",
+      "pass": true,
+      "detail": "FORBIDDEN_PAYLOAD_FIELD"
+    },
+    {
+      "id": "payload_rating_status",
+      "pass": true,
+      "detail": "FORBIDDEN_PAYLOAD_FIELD"
+    },
+    {
+      "id": "payload_evidence_level",
+      "pass": true,
+      "detail": "FORBIDDEN_PAYLOAD_FIELD"
+    },
+    {
+      "id": "payload_tenant_id",
+      "pass": true,
+      "detail": "FORBIDDEN_PAYLOAD_FIELD"
+    },
+    {
+      "id": "payload_player_id",
+      "pass": true,
+      "detail": "FORBIDDEN_PAYLOAD_FIELD"
+    },
+    {
+      "id": "payload_multi_forbidden",
+      "pass": true,
+      "detail": "FORBIDDEN_PAYLOAD_FIELD"
+    },
+    {
+      "id": "payload_unknown_future_field",
+      "pass": true,
+      "detail": "FORBIDDEN_PAYLOAD_FIELD"
+    },
+    {
+      "id": "payload_singles",
+      "pass": true,
+      "detail": "status=422"
+    },
+    {
+      "id": "golden_p01_brand_new",
+      "pass": true,
+      "detail": "skill=1.5"
+    },
+    {
+      "id": "golden_p09_balanced_30",
+      "pass": true,
+      "detail": "skill=3.154285714285714"
+    },
+    {
+      "id": "golden_p10_balanced_35",
+      "pass": true,
+      "detail": "skill=3.7457142857142856"
+    },
+    {
+      "id": "golden_p11_balanced_40",
+      "pass": true,
+      "detail": "skill=4.5"
+    },
+    {
+      "id": "golden_p13_expected_above_45",
+      "pass": true,
+      "detail": "skill=4.5"
+    },
+    {
+      "id": "golden_p05_drive_strong_dink_weak",
+      "pass": true,
+      "detail": "skill=3.5"
+    },
+    {
+      "id": "golden_gv_footwork_weak",
+      "pass": true,
+      "detail": "skill=3.7457142857142856"
+    },
+    {
+      "id": "golden_gv_third_shot_exec_weak",
+      "pass": true,
+      "detail": "skill=3.5"
+    },
+    {
+      "id": "golden_p30_contradiction_check",
+      "pass": true,
+      "detail": "skill=2.611071428571428"
+    },
+    {
+      "id": "golden_p12_all_high",
+      "pass": true,
+      "detail": "skill=4.5"
+    },
+    {
+      "id": "persistence_db_match",
+      "pass": "reliability-v5.0",
+      "detail": "events=1"
+    },
+    {
+      "id": "idempotency_retry",
+      "pass": true,
+      "detail": "ASSESSMENT_ALREADY_COMPLETED"
+    },
+    {
+      "id": "concurrency_dual_request",
+      "pass": true,
+      "detail": "events=1"
+    },
+    {
+      "id": "rollback_after_scoring",
+      "pass": true,
+      "detail": "status=500"
+    },
+    {
+      "id": "rollback_after_assessment_update",
+      "pass": true,
+      "detail": "status=500"
+    },
+    {
+      "id": "rollback_before_event_insert",
+      "pass": true,
+      "detail": "status=500"
+    },
+    {
+      "id": "rollback_after_event_insert",
+      "pass": true,
+      "detail": "status=500"
+    },
+    {
+      "id": "rollback_before_profile_upsert",
+      "pass": true,
+      "detail": "status=500"
+    },
+    {
+      "id": "cors_preflight_allowed",
+      "pass": true,
+      "detail": "status=204"
+    },
+    {
+      "id": "cors_allow_origin_header",
+      "pass": true,
+      "detail": "https://qyewbxjsiiyufanzcjcq.supabase.co"
+    },
+    {
+      "id": "cors_denied_origin",
+      "pass": true,
+      "detail": "status=403"
+    },
+    {
+      "id": "error_contract_sanitized",
+      "pass": true,
+      "detail": "no internal leak"
+    },
+    {
+      "id": "secret_not_exposed",
+      "pass": true,
+      "detail": "response clean"
+    },
+    {
+      "id": "v2_unchanged",
+      "pass": true,
+      "detail": "pick_vn_player_ratings stable"
+    }
+  ]
+}

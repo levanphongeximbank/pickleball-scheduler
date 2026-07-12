@@ -1,0 +1,1440 @@
+{
+  "generatedAt": "2026-07-12T10:19:42.906Z",
+  "personaCount": 30,
+  "validation": {
+    "ok": true,
+    "issues": [],
+    "count": 30
+  },
+  "personas": [
+    {
+      "id": "p01_brand_new",
+      "label": "Người mới hoàn toàn",
+      "domain_scores": {
+        "consistency": 1.5,
+        "pressure_execution": 1.5,
+        "serve": 1.5,
+        "return": 1.5,
+        "groundstroke": 1.5,
+        "rally_consistency": 1.5,
+        "dink_soft_game": 1.5,
+        "error_control": 1.5,
+        "third_shot": 1.5,
+        "transition": 1.5,
+        "volley": 1.5,
+        "block_reset": 1.5,
+        "doubles_positioning": 1.5,
+        "communication": 1.5,
+        "tactical_decision": 1.5,
+        "rules": 1.5
+      },
+      "overall_skill": 1.5,
+      "rating_before_gates": 1.5,
+      "rating_after_gates": 1.5,
+      "estimated_rating": 1.5,
+      "provisional_display_rating": 1.5,
+      "confidence": 76,
+      "estimated_error": 1.5,
+      "limiting_skills": [],
+      "applied_gates": [],
+      "contradiction_flags": [],
+      "adaptive_questions_selected": [
+        "adp_found_ret_01",
+        "adp_found_pos_01"
+      ],
+      "total_questions_answered": 24,
+      "verification_required": false,
+      "rating_status": "self_assessed",
+      "verified_rating_created": false
+    },
+    {
+      "id": "p02_never_played",
+      "label": "Biết môn nhưng chưa chơi",
+      "domain_scores": {
+        "consistency": 2.142857142857143,
+        "pressure_execution": 2.142857142857143,
+        "serve": 2.142857142857143,
+        "return": 2.142857142857143,
+        "groundstroke": 2.142857142857143,
+        "rally_consistency": 2.142857142857143,
+        "dink_soft_game": 2.142857142857143,
+        "error_control": 2.142857142857143,
+        "third_shot": 2.142857142857143,
+        "transition": 2.142857142857143,
+        "volley": 2.142857142857143,
+        "block_reset": 2.142857142857143,
+        "doubles_positioning": 2.142857142857143,
+        "communication": 2.142857142857143,
+        "tactical_decision": 2.142857142857143,
+        "rules": 2.142857142857143
+      },
+      "overall_skill": 1.9714285714285718,
+      "rating_before_gates": 1.9714285714285718,
+      "rating_after_gates": 1.9714285714285718,
+      "estimated_rating": 1.9714285714285718,
+      "provisional_display_rating": 2,
+      "confidence": 76,
+      "estimated_error": 1.5,
+      "limiting_skills": [],
+      "applied_gates": [],
+      "contradiction_flags": [],
+      "adaptive_questions_selected": [
+        "adp_found_ret_01",
+        "adp_found_pos_01"
+      ],
+      "total_questions_answered": 24,
+      "verification_required": false,
+      "rating_status": "self_assessed",
+      "verified_rating_created": false
+    },
+    {
+      "id": "p03_tennis_new_pb",
+      "label": "Tennis mạnh, mới pickleball",
+      "domain_scores": {
+        "consistency": 2.785714285714286,
+        "pressure_execution": 2.7857142857142856,
+        "serve": 4.071428571428571,
+        "return": 3.4285714285714284,
+        "groundstroke": 4.071428571428572,
+        "rally_consistency": 2.7857142857142856,
+        "dink_soft_game": 2.357142857142857,
+        "error_control": 2.7857142857142856,
+        "third_shot": 2.7857142857142856,
+        "transition": 2.142857142857143,
+        "volley": 2.7857142857142856,
+        "block_reset": 2.7857142857142856,
+        "doubles_positioning": 2.785714285714286,
+        "communication": 2.7857142857142856,
+        "tactical_decision": 2.7857142857142856,
+        "rules": 2.7857142857142856
+      },
+      "overall_skill": 2.7074999999999996,
+      "rating_before_gates": 2.7074999999999996,
+      "rating_after_gates": 2.7074999999999996,
+      "estimated_rating": 2.7074999999999996,
+      "provisional_display_rating": 2.7,
+      "confidence": 83,
+      "estimated_error": 1.5,
+      "limiting_skills": [],
+      "applied_gates": [],
+      "contradiction_flags": [],
+      "adaptive_questions_selected": [
+        "adp_found_ret_01",
+        "adp_found_pos_01",
+        "adp_found_rules_01",
+        "adp_found_exp_01"
+      ],
+      "total_questions_answered": 26,
+      "verification_required": false,
+      "rating_status": "self_assessed",
+      "verified_rating_created": false
+    },
+    {
+      "id": "p04_badminton_bg",
+      "label": "Cầu lông, học pickleball",
+      "domain_scores": {
+        "consistency": 3.4285714285714284,
+        "pressure_execution": 3.4285714285714284,
+        "serve": 3.4285714285714284,
+        "return": 3.4285714285714284,
+        "groundstroke": 3.857142857142857,
+        "rally_consistency": 3.4285714285714284,
+        "dink_soft_game": 3.4285714285714284,
+        "error_control": 3.4285714285714284,
+        "third_shot": 3.4285714285714284,
+        "transition": 3.4285714285714284,
+        "volley": 4.071428571428571,
+        "block_reset": 3.4285714285714284,
+        "doubles_positioning": 3.4285714285714284,
+        "communication": 3.4285714285714284,
+        "tactical_decision": 3.4285714285714284,
+        "rules": 3.4285714285714284
+      },
+      "overall_skill": 3.2185714285714284,
+      "rating_before_gates": 3.2185714285714284,
+      "rating_after_gates": 3.2185714285714284,
+      "estimated_rating": 3.2185714285714284,
+      "provisional_display_rating": 3.2,
+      "confidence": 83,
+      "estimated_error": 1.5,
+      "limiting_skills": [],
+      "applied_gates": [],
+      "contradiction_flags": [],
+      "adaptive_questions_selected": [
+        "adp_med_rally_01",
+        "adp_med_err_01",
+        "adp_med_ts_01",
+        "adp_med_comm_01"
+      ],
+      "total_questions_answered": 26,
+      "verification_required": false,
+      "rating_status": "self_assessed",
+      "verified_rating_created": false
+    },
+    {
+      "id": "p05_drive_strong_dink_weak",
+      "label": "Drive mạnh, dink yếu",
+      "domain_scores": {
+        "consistency": 4.714285714285714,
+        "pressure_execution": 4.714285714285714,
+        "serve": 4.714285714285714,
+        "return": 4.714285714285714,
+        "groundstroke": 5.142857142857142,
+        "rally_consistency": 4.392857142857142,
+        "dink_soft_game": 3,
+        "error_control": 4.392857142857142,
+        "third_shot": 4.392857142857142,
+        "transition": 2.7857142857142856,
+        "volley": 4.714285714285714,
+        "block_reset": 2.7857142857142856,
+        "doubles_positioning": 4.071428571428571,
+        "communication": 4.714285714285714,
+        "tactical_decision": 4.714285714285714,
+        "rules": 4.714285714285714,
+        "footwork": 4.071428571428571
+      },
+      "overall_skill": 3.5,
+      "rating_before_gates": 4.163035714285714,
+      "rating_after_gates": 3.5,
+      "estimated_rating": 4.163035714285714,
+      "provisional_display_rating": 3.5,
+      "confidence": 83,
+      "estimated_error": 1.5,
+      "limiting_skills": [
+        "transition",
+        "block_reset"
+      ],
+      "applied_gates": [
+        {
+          "id": "gate_35_critical_floor",
+          "domain": "transition",
+          "threshold": 2.8,
+          "actual": 2.7857142857142856
+        },
+        {
+          "id": "gate_35_critical_floor",
+          "domain": "block_reset",
+          "threshold": 2.8,
+          "actual": 2.7857142857142856
+        }
+      ],
+      "contradiction_flags": [],
+      "adaptive_questions_selected": [
+        "adp_adv_foot_01",
+        "adp_med_rally_01",
+        "adp_med_err_01",
+        "adp_med_ts_01"
+      ],
+      "total_questions_answered": 26,
+      "verification_required": false,
+      "rating_status": "self_assessed",
+      "verified_rating_created": false
+    },
+    {
+      "id": "p06_dink_good_transition_weak",
+      "label": "Dink tốt, transition yếu",
+      "domain_scores": {
+        "consistency": 4.071428571428571,
+        "pressure_execution": 4.071428571428571,
+        "serve": 4.071428571428571,
+        "return": 4.071428571428571,
+        "groundstroke": 4.071428571428571,
+        "rally_consistency": 4.071428571428571,
+        "dink_soft_game": 5.142857142857142,
+        "error_control": 4.392857142857142,
+        "third_shot": 3.75,
+        "transition": 2.142857142857143,
+        "volley": 4.071428571428571,
+        "block_reset": 4.071428571428571,
+        "doubles_positioning": 4.071428571428571,
+        "communication": 4.071428571428571,
+        "tactical_decision": 4.071428571428571,
+        "rules": 4.071428571428571
+      },
+      "overall_skill": 3.5,
+      "rating_before_gates": 3.728035714285714,
+      "rating_after_gates": 3.5,
+      "estimated_rating": 3.728035714285714,
+      "provisional_display_rating": 3.5,
+      "confidence": 83,
+      "estimated_error": 1.5,
+      "limiting_skills": [
+        "transition"
+      ],
+      "applied_gates": [
+        {
+          "id": "gate_35_critical_floor",
+          "domain": "transition",
+          "threshold": 2.8,
+          "actual": 2.142857142857143
+        }
+      ],
+      "contradiction_flags": [],
+      "adaptive_questions_selected": [
+        "adp_med_rally_01",
+        "adp_med_err_01",
+        "adp_med_ts_01",
+        "adp_med_comm_01"
+      ],
+      "total_questions_answered": 26,
+      "verification_required": false,
+      "rating_status": "self_assessed",
+      "verified_rating_created": false
+    },
+    {
+      "id": "p07_tech_good_position_weak",
+      "label": "Kỹ thuật tốt, positioning yếu",
+      "domain_scores": {
+        "consistency": 4.071428571428571,
+        "pressure_execution": 4.071428571428571,
+        "serve": 4.071428571428571,
+        "return": 4.071428571428571,
+        "groundstroke": 4.5,
+        "rally_consistency": 4.071428571428571,
+        "dink_soft_game": 4.5,
+        "error_control": 4.071428571428571,
+        "third_shot": 4.071428571428571,
+        "transition": 4.071428571428571,
+        "volley": 4.714285714285714,
+        "block_reset": 4.071428571428571,
+        "doubles_positioning": 2.4642857142857144,
+        "communication": 3.4285714285714284,
+        "tactical_decision": 4.071428571428571,
+        "rules": 4.071428571428571
+      },
+      "overall_skill": 3.5,
+      "rating_before_gates": 3.7489285714285705,
+      "rating_after_gates": 3.5,
+      "estimated_rating": 3.7489285714285705,
+      "provisional_display_rating": 3.5,
+      "confidence": 83,
+      "estimated_error": 1.5,
+      "limiting_skills": [
+        "doubles_positioning"
+      ],
+      "applied_gates": [
+        {
+          "id": "gate_35_critical_floor",
+          "domain": "doubles_positioning",
+          "threshold": 2.8,
+          "actual": 2.4642857142857144
+        }
+      ],
+      "contradiction_flags": [],
+      "adaptive_questions_selected": [
+        "adp_med_rally_01",
+        "adp_med_err_01",
+        "adp_med_ts_01",
+        "adp_med_comm_01"
+      ],
+      "total_questions_answered": 26,
+      "verification_required": false,
+      "rating_status": "self_assessed",
+      "verified_rating_created": false
+    },
+    {
+      "id": "p08_tactics_high_rules_low",
+      "label": "Chiến thuật khai cao, luật thấp",
+      "domain_scores": {
+        "consistency": 4.392857142857142,
+        "pressure_execution": 4.714285714285714,
+        "serve": 4.071428571428571,
+        "return": 4.071428571428571,
+        "groundstroke": 4.071428571428571,
+        "rally_consistency": 4.071428571428571,
+        "dink_soft_game": 4.071428571428571,
+        "error_control": 4.071428571428571,
+        "third_shot": 4.071428571428571,
+        "transition": 4.071428571428571,
+        "volley": 4.071428571428571,
+        "block_reset": 4.071428571428571,
+        "doubles_positioning": 4.071428571428571,
+        "communication": 4.071428571428571,
+        "tactical_decision": 5.357142857142857,
+        "rules": 2.142857142857143
+      },
+      "overall_skill": 3.8405357142857146,
+      "rating_before_gates": 3.8405357142857146,
+      "rating_after_gates": 3.8405357142857146,
+      "estimated_rating": 3.8405357142857146,
+      "provisional_display_rating": 3.8,
+      "confidence": 83,
+      "estimated_error": 1.5,
+      "limiting_skills": [],
+      "applied_gates": [],
+      "contradiction_flags": [],
+      "adaptive_questions_selected": [
+        "adp_med_rally_01",
+        "adp_med_err_01",
+        "adp_med_ts_01",
+        "adp_med_comm_01"
+      ],
+      "total_questions_answered": 26,
+      "verification_required": false,
+      "rating_status": "self_assessed",
+      "verified_rating_created": false
+    },
+    {
+      "id": "p09_balanced_30",
+      "label": "Cân bằng ~3.0",
+      "domain_scores": {
+        "consistency": 3.4285714285714284,
+        "pressure_execution": 3.4285714285714284,
+        "serve": 3.4285714285714284,
+        "return": 3.4285714285714284,
+        "groundstroke": 3.4285714285714284,
+        "rally_consistency": 3.4285714285714284,
+        "dink_soft_game": 3.4285714285714284,
+        "error_control": 3.4285714285714284,
+        "third_shot": 3.4285714285714284,
+        "transition": 3.4285714285714284,
+        "volley": 3.4285714285714284,
+        "block_reset": 3.4285714285714284,
+        "doubles_positioning": 3.4285714285714284,
+        "communication": 3.4285714285714284,
+        "tactical_decision": 3.4285714285714284,
+        "rules": 3.4285714285714284
+      },
+      "overall_skill": 3.154285714285714,
+      "rating_before_gates": 3.154285714285714,
+      "rating_after_gates": 3.154285714285714,
+      "estimated_rating": 3.154285714285714,
+      "provisional_display_rating": 3.2,
+      "confidence": 83,
+      "estimated_error": 1.5,
+      "limiting_skills": [],
+      "applied_gates": [],
+      "contradiction_flags": [],
+      "adaptive_questions_selected": [
+        "adp_med_rally_01",
+        "adp_med_err_01",
+        "adp_med_ts_01",
+        "adp_med_comm_01"
+      ],
+      "total_questions_answered": 26,
+      "verification_required": false,
+      "rating_status": "self_assessed",
+      "verified_rating_created": false
+    },
+    {
+      "id": "p10_balanced_35",
+      "label": "Cân bằng ~3.5",
+      "domain_scores": {
+        "consistency": 4.071428571428571,
+        "pressure_execution": 4.071428571428571,
+        "serve": 4.071428571428571,
+        "return": 4.071428571428571,
+        "groundstroke": 4.071428571428571,
+        "rally_consistency": 4.071428571428571,
+        "dink_soft_game": 4.071428571428571,
+        "error_control": 4.071428571428571,
+        "third_shot": 4.071428571428571,
+        "transition": 4.071428571428571,
+        "volley": 4.071428571428571,
+        "block_reset": 4.071428571428571,
+        "doubles_positioning": 4.071428571428571,
+        "communication": 4.071428571428571,
+        "tactical_decision": 4.071428571428571,
+        "rules": 4.071428571428571
+      },
+      "overall_skill": 3.7457142857142856,
+      "rating_before_gates": 3.7457142857142856,
+      "rating_after_gates": 3.7457142857142856,
+      "estimated_rating": 3.7457142857142856,
+      "provisional_display_rating": 3.7,
+      "confidence": 83,
+      "estimated_error": 1.5,
+      "limiting_skills": [],
+      "applied_gates": [],
+      "contradiction_flags": [],
+      "adaptive_questions_selected": [
+        "adp_med_rally_01",
+        "adp_med_err_01",
+        "adp_med_ts_01",
+        "adp_med_comm_01"
+      ],
+      "total_questions_answered": 26,
+      "verification_required": false,
+      "rating_status": "self_assessed",
+      "verified_rating_created": false
+    },
+    {
+      "id": "p11_balanced_40",
+      "label": "Cân bằng ~4.0",
+      "domain_scores": {
+        "consistency": 4.714285714285714,
+        "pressure_execution": 4.714285714285714,
+        "serve": 4.714285714285714,
+        "return": 4.714285714285714,
+        "groundstroke": 4.714285714285714,
+        "rally_consistency": 4.714285714285714,
+        "dink_soft_game": 4.714285714285714,
+        "error_control": 4.714285714285714,
+        "third_shot": 4.714285714285714,
+        "transition": 4.714285714285714,
+        "volley": 4.714285714285714,
+        "block_reset": 4.714285714285714,
+        "doubles_positioning": 4.714285714285714,
+        "communication": 4.714285714285714,
+        "tactical_decision": 4.714285714285714,
+        "rules": 4.714285714285714,
+        "footwork": 4.714285714285714
+      },
+      "overall_skill": 4.5,
+      "rating_before_gates": 4.714285714285714,
+      "rating_after_gates": 4.5,
+      "estimated_rating": 4.714285714285714,
+      "provisional_display_rating": 4.5,
+      "confidence": 83,
+      "estimated_error": 1.5,
+      "limiting_skills": [],
+      "applied_gates": [
+        {
+          "id": "gate_45_cap",
+          "cap": 4.5
+        }
+      ],
+      "contradiction_flags": [],
+      "adaptive_questions_selected": [
+        "adp_adv_foot_01",
+        "adp_adv_vol_01",
+        "adp_adv_press_01",
+        "adp_adv_stack_01"
+      ],
+      "total_questions_answered": 26,
+      "verification_required": true,
+      "rating_status": "under_review",
+      "verified_rating_created": false
+    },
+    {
+      "id": "p12_all_high",
+      "label": "Tất cả đáp án cao",
+      "domain_scores": {
+        "consistency": 6,
+        "pressure_execution": 6,
+        "serve": 6,
+        "return": 6,
+        "groundstroke": 6,
+        "rally_consistency": 6,
+        "dink_soft_game": 6,
+        "error_control": 6,
+        "third_shot": 6,
+        "transition": 6,
+        "volley": 6,
+        "block_reset": 6,
+        "doubles_positioning": 6,
+        "communication": 6,
+        "tactical_decision": 6,
+        "rules": 6,
+        "footwork": 6
+      },
+      "overall_skill": 4.5,
+      "rating_before_gates": 6,
+      "rating_after_gates": 4.5,
+      "estimated_rating": 6,
+      "provisional_display_rating": 4.5,
+      "confidence": 83,
+      "estimated_error": 1.5,
+      "limiting_skills": [],
+      "applied_gates": [
+        {
+          "id": "gate_45_cap",
+          "cap": 4.5
+        }
+      ],
+      "contradiction_flags": [],
+      "adaptive_questions_selected": [
+        "adp_adv_foot_01",
+        "adp_adv_vol_01",
+        "adp_adv_press_01",
+        "adp_adv_stack_01"
+      ],
+      "total_questions_answered": 26,
+      "verification_required": true,
+      "rating_status": "under_review",
+      "verified_rating_created": false
+    },
+    {
+      "id": "p13_expected_above_45",
+      "label": "Dự kiến trên 4.5",
+      "domain_scores": {
+        "consistency": 5.357142857142857,
+        "pressure_execution": 5.357142857142857,
+        "serve": 5.357142857142857,
+        "return": 5.357142857142857,
+        "groundstroke": 5.357142857142857,
+        "rally_consistency": 5.357142857142857,
+        "dink_soft_game": 5.357142857142857,
+        "error_control": 5.357142857142857,
+        "third_shot": 5.357142857142857,
+        "transition": 5.357142857142857,
+        "volley": 5.357142857142857,
+        "block_reset": 5.357142857142857,
+        "doubles_positioning": 5.357142857142857,
+        "communication": 5.357142857142857,
+        "tactical_decision": 5.357142857142857,
+        "rules": 5.357142857142857,
+        "footwork": 5.357142857142857
+      },
+      "overall_skill": 4.5,
+      "rating_before_gates": 5.357142857142857,
+      "rating_after_gates": 4.5,
+      "estimated_rating": 5.357142857142857,
+      "provisional_display_rating": 4.5,
+      "confidence": 83,
+      "estimated_error": 1.5,
+      "limiting_skills": [],
+      "applied_gates": [
+        {
+          "id": "gate_45_cap",
+          "cap": 4.5
+        }
+      ],
+      "contradiction_flags": [],
+      "adaptive_questions_selected": [
+        "adp_adv_foot_01",
+        "adp_adv_vol_01",
+        "adp_adv_press_01",
+        "adp_adv_stack_01"
+      ],
+      "total_questions_answered": 26,
+      "verification_required": true,
+      "rating_status": "under_review",
+      "verified_rating_created": false
+    },
+    {
+      "id": "p14_sandbagger",
+      "label": "Kỹ thuật cao, khai thấp exp",
+      "domain_scores": {
+        "consistency": 3.8571428571428577,
+        "pressure_execution": 4.714285714285714,
+        "serve": 4.714285714285714,
+        "return": 4.714285714285714,
+        "groundstroke": 5.142857142857142,
+        "rally_consistency": 4.714285714285714,
+        "dink_soft_game": 5.035714285714286,
+        "error_control": 4.714285714285714,
+        "third_shot": 4.714285714285714,
+        "transition": 4.714285714285714,
+        "volley": 4.714285714285714,
+        "block_reset": 4.714285714285714,
+        "doubles_positioning": 4.714285714285714,
+        "communication": 4.714285714285714,
+        "tactical_decision": 4.714285714285714,
+        "rules": 4.714285714285714,
+        "footwork": 4.714285714285714
+      },
+      "overall_skill": 4.5,
+      "rating_before_gates": 4.752857142857144,
+      "rating_after_gates": 4.5,
+      "estimated_rating": 4.752857142857144,
+      "provisional_display_rating": 4.5,
+      "confidence": 85,
+      "estimated_error": 1.5,
+      "limiting_skills": [],
+      "applied_gates": [
+        {
+          "id": "gate_45_cap",
+          "cap": 4.5
+        }
+      ],
+      "contradiction_flags": [],
+      "adaptive_questions_selected": [
+        "adp_cc_exp_rally_01",
+        "adp_cc_pos_drive_01",
+        "adp_cc_srv_ret_01",
+        "adp_cc_dink_drive_01",
+        "adp_adv_foot_01",
+        "adp_adv_vol_01",
+        "adp_adv_press_01",
+        "adp_adv_return_depth_01"
+      ],
+      "total_questions_answered": 30,
+      "verification_required": true,
+      "rating_status": "under_review",
+      "verified_rating_created": false
+    },
+    {
+      "id": "p15_soft_game_specialist",
+      "label": "Chuyên soft game",
+      "domain_scores": {
+        "consistency": 4.714285714285714,
+        "pressure_execution": 4.714285714285714,
+        "serve": 4.714285714285714,
+        "return": 4.714285714285714,
+        "groundstroke": 3.857142857142857,
+        "rally_consistency": 4.714285714285714,
+        "dink_soft_game": 5.571428571428572,
+        "error_control": 4.714285714285714,
+        "third_shot": 4.714285714285714,
+        "transition": 4.714285714285714,
+        "volley": 4.392857142857142,
+        "block_reset": 4.714285714285714,
+        "doubles_positioning": 4.714285714285714,
+        "communication": 4.714285714285714,
+        "tactical_decision": 4.714285714285714,
+        "rules": 4.714285714285714,
+        "footwork": 4.714285714285714
+      },
+      "overall_skill": 4.5,
+      "rating_before_gates": 4.727142857142858,
+      "rating_after_gates": 4.5,
+      "estimated_rating": 4.727142857142858,
+      "provisional_display_rating": 4.5,
+      "confidence": 83,
+      "estimated_error": 1.5,
+      "limiting_skills": [],
+      "applied_gates": [
+        {
+          "id": "gate_45_cap",
+          "cap": 4.5
+        }
+      ],
+      "contradiction_flags": [],
+      "adaptive_questions_selected": [
+        "adp_adv_foot_01",
+        "adp_adv_vol_01",
+        "adp_adv_press_01",
+        "adp_adv_stack_01"
+      ],
+      "total_questions_answered": 26,
+      "verification_required": true,
+      "rating_status": "under_review",
+      "verified_rating_created": false
+    },
+    {
+      "id": "p16_baseline_banger",
+      "label": "Baseline banger",
+      "domain_scores": {
+        "consistency": 4.714285714285714,
+        "pressure_execution": 4.714285714285714,
+        "serve": 4.714285714285714,
+        "return": 4.714285714285714,
+        "groundstroke": 5.785714285714286,
+        "rally_consistency": 5.357142857142857,
+        "dink_soft_game": 3.4285714285714284,
+        "error_control": 4.714285714285714,
+        "third_shot": 4.714285714285714,
+        "transition": 2.7857142857142856,
+        "volley": 4.714285714285714,
+        "block_reset": 4.714285714285714,
+        "doubles_positioning": 4.714285714285714,
+        "communication": 4.714285714285714,
+        "tactical_decision": 4.714285714285714,
+        "rules": 4.714285714285714,
+        "footwork": 4.714285714285714
+      },
+      "overall_skill": 3.5,
+      "rating_before_gates": 4.531071428571429,
+      "rating_after_gates": 3.5,
+      "estimated_rating": 4.531071428571429,
+      "provisional_display_rating": 3.5,
+      "confidence": 83,
+      "estimated_error": 1.5,
+      "limiting_skills": [
+        "transition"
+      ],
+      "applied_gates": [
+        {
+          "id": "gate_35_critical_floor",
+          "domain": "transition",
+          "threshold": 2.8,
+          "actual": 2.7857142857142856
+        }
+      ],
+      "contradiction_flags": [],
+      "adaptive_questions_selected": [
+        "adp_adv_foot_01",
+        "adp_adv_vol_01",
+        "adp_adv_press_01",
+        "adp_adv_stack_01"
+      ],
+      "total_questions_answered": 26,
+      "verification_required": false,
+      "rating_status": "self_assessed",
+      "verified_rating_created": false
+    },
+    {
+      "id": "p17_net_player",
+      "label": "Net/volley player",
+      "domain_scores": {
+        "consistency": 4.714285714285714,
+        "pressure_execution": 4.714285714285714,
+        "serve": 4.714285714285714,
+        "return": 4.714285714285714,
+        "groundstroke": 3.857142857142857,
+        "rally_consistency": 4.714285714285714,
+        "dink_soft_game": 4.714285714285714,
+        "error_control": 4.714285714285714,
+        "third_shot": 4.714285714285714,
+        "transition": 4.714285714285714,
+        "volley": 5.035714285714286,
+        "block_reset": 5.357142857142857,
+        "doubles_positioning": 4.714285714285714,
+        "communication": 4.714285714285714,
+        "tactical_decision": 4.714285714285714,
+        "rules": 4.714285714285714,
+        "footwork": 4.714285714285714
+      },
+      "overall_skill": 4.5,
+      "rating_before_gates": 4.701428571428572,
+      "rating_after_gates": 4.5,
+      "estimated_rating": 4.701428571428572,
+      "provisional_display_rating": 4.5,
+      "confidence": 83,
+      "estimated_error": 1.5,
+      "limiting_skills": [],
+      "applied_gates": [
+        {
+          "id": "gate_45_cap",
+          "cap": 4.5
+        }
+      ],
+      "contradiction_flags": [],
+      "adaptive_questions_selected": [
+        "adp_adv_foot_01",
+        "adp_adv_vol_01",
+        "adp_adv_press_01",
+        "adp_adv_stack_01"
+      ],
+      "total_questions_answered": 26,
+      "verification_required": true,
+      "rating_status": "under_review",
+      "verified_rating_created": false
+    },
+    {
+      "id": "p18_weak_serve_strong_return",
+      "label": "Giao yếu, return mạnh",
+      "domain_scores": {
+        "consistency": 4.071428571428571,
+        "pressure_execution": 4.071428571428571,
+        "serve": 2.7857142857142856,
+        "return": 5.357142857142857,
+        "groundstroke": 4.071428571428571,
+        "rally_consistency": 4.071428571428571,
+        "dink_soft_game": 4.071428571428571,
+        "error_control": 4.071428571428571,
+        "third_shot": 4.071428571428571,
+        "transition": 4.071428571428571,
+        "volley": 4.071428571428571,
+        "block_reset": 4.071428571428571,
+        "doubles_positioning": 4.071428571428571,
+        "communication": 4.071428571428571,
+        "tactical_decision": 4.071428571428571,
+        "rules": 4.071428571428571
+      },
+      "overall_skill": 3.5,
+      "rating_before_gates": 3.7585714285714285,
+      "rating_after_gates": 3.5,
+      "estimated_rating": 3.7585714285714285,
+      "provisional_display_rating": 3.5,
+      "confidence": 83,
+      "estimated_error": 1.5,
+      "limiting_skills": [
+        "serve"
+      ],
+      "applied_gates": [
+        {
+          "id": "gate_35_critical_floor",
+          "domain": "serve",
+          "threshold": 2.8,
+          "actual": 2.7857142857142856
+        }
+      ],
+      "contradiction_flags": [],
+      "adaptive_questions_selected": [
+        "adp_med_rally_01",
+        "adp_med_err_01",
+        "adp_med_ts_01",
+        "adp_med_comm_01"
+      ],
+      "total_questions_answered": 26,
+      "verification_required": false,
+      "rating_status": "self_assessed",
+      "verified_rating_created": false
+    },
+    {
+      "id": "p19_strong_serve_weak_return",
+      "label": "Giao mạnh, return yếu",
+      "domain_scores": {
+        "consistency": 4.071428571428571,
+        "pressure_execution": 4.071428571428571,
+        "serve": 5.357142857142857,
+        "return": 2.7857142857142856,
+        "groundstroke": 4.071428571428571,
+        "rally_consistency": 4.071428571428571,
+        "dink_soft_game": 4.071428571428571,
+        "error_control": 4.071428571428571,
+        "third_shot": 4.071428571428571,
+        "transition": 4.071428571428571,
+        "volley": 4.071428571428571,
+        "block_reset": 4.071428571428571,
+        "doubles_positioning": 4.071428571428571,
+        "communication": 4.071428571428571,
+        "tactical_decision": 4.071428571428571,
+        "rules": 4.071428571428571
+      },
+      "overall_skill": 3.5,
+      "rating_before_gates": 3.7328571428571427,
+      "rating_after_gates": 3.5,
+      "estimated_rating": 3.7328571428571427,
+      "provisional_display_rating": 3.5,
+      "confidence": 83,
+      "estimated_error": 1.5,
+      "limiting_skills": [
+        "return"
+      ],
+      "applied_gates": [
+        {
+          "id": "gate_35_critical_floor",
+          "domain": "return",
+          "threshold": 2.8,
+          "actual": 2.7857142857142856
+        }
+      ],
+      "contradiction_flags": [],
+      "adaptive_questions_selected": [
+        "adp_med_rally_01",
+        "adp_med_err_01",
+        "adp_med_ts_01",
+        "adp_med_comm_01"
+      ],
+      "total_questions_answered": 26,
+      "verification_required": false,
+      "rating_status": "self_assessed",
+      "verified_rating_created": false
+    },
+    {
+      "id": "p20_communication_weak",
+      "label": "Đánh tốt, giao tiếp kém",
+      "domain_scores": {
+        "consistency": 4.714285714285714,
+        "pressure_execution": 4.714285714285714,
+        "serve": 4.714285714285714,
+        "return": 4.714285714285714,
+        "groundstroke": 4.714285714285714,
+        "rally_consistency": 4.714285714285714,
+        "dink_soft_game": 4.714285714285714,
+        "error_control": 4.714285714285714,
+        "third_shot": 4.714285714285714,
+        "transition": 4.714285714285714,
+        "volley": 4.714285714285714,
+        "block_reset": 4.714285714285714,
+        "doubles_positioning": 3.214285714285714,
+        "communication": 2.142857142857143,
+        "tactical_decision": 4.714285714285714,
+        "rules": 4.714285714285714,
+        "footwork": 4.714285714285714
+      },
+      "overall_skill": 4.5,
+      "rating_before_gates": 4.510714285714286,
+      "rating_after_gates": 4.5,
+      "estimated_rating": 4.510714285714286,
+      "provisional_display_rating": 4.5,
+      "confidence": 83,
+      "estimated_error": 1.5,
+      "limiting_skills": [],
+      "applied_gates": [
+        {
+          "id": "gate_45_cap",
+          "cap": 4.5
+        }
+      ],
+      "contradiction_flags": [],
+      "adaptive_questions_selected": [
+        "adp_adv_foot_01",
+        "adp_adv_vol_01",
+        "adp_adv_press_01",
+        "adp_adv_stack_01"
+      ],
+      "total_questions_answered": 26,
+      "verification_required": true,
+      "rating_status": "under_review",
+      "verified_rating_created": false
+    },
+    {
+      "id": "p21_third_shot_weak",
+      "label": "Third-shot yếu",
+      "domain_scores": {
+        "consistency": 4.071428571428571,
+        "pressure_execution": 4.071428571428571,
+        "serve": 4.071428571428571,
+        "return": 4.714285714285714,
+        "groundstroke": 4.5,
+        "rally_consistency": 4.071428571428571,
+        "dink_soft_game": 4.071428571428571,
+        "error_control": 4.071428571428571,
+        "third_shot": 3.1071428571428568,
+        "transition": 2.7857142857142856,
+        "volley": 4.071428571428571,
+        "block_reset": 4.071428571428571,
+        "doubles_positioning": 4.071428571428571,
+        "communication": 4.071428571428571,
+        "tactical_decision": 4.071428571428571,
+        "rules": 4.071428571428571
+      },
+      "overall_skill": 3.5,
+      "rating_before_gates": 3.6830357142857144,
+      "rating_after_gates": 3.5,
+      "estimated_rating": 3.6830357142857144,
+      "provisional_display_rating": 3.5,
+      "confidence": 83,
+      "estimated_error": 1.5,
+      "limiting_skills": [
+        "transition"
+      ],
+      "applied_gates": [
+        {
+          "id": "gate_35_critical_floor",
+          "domain": "transition",
+          "threshold": 2.8,
+          "actual": 2.7857142857142856
+        }
+      ],
+      "contradiction_flags": [],
+      "adaptive_questions_selected": [
+        "adp_med_rally_01",
+        "adp_med_err_01",
+        "adp_med_ts_01",
+        "adp_med_comm_01"
+      ],
+      "total_questions_answered": 26,
+      "verification_required": false,
+      "rating_status": "self_assessed",
+      "verified_rating_created": false
+    },
+    {
+      "id": "p22_error_prone",
+      "label": "Lỗi không ép buộc nhiều",
+      "domain_scores": {
+        "consistency": 3.4285714285714284,
+        "pressure_execution": 3.4285714285714284,
+        "serve": 3.4285714285714284,
+        "return": 3.4285714285714284,
+        "groundstroke": 3.214285714285714,
+        "rally_consistency": 3.1071428571428568,
+        "dink_soft_game": 3,
+        "error_control": 2.7857142857142856,
+        "third_shot": 3.4285714285714284,
+        "transition": 3.4285714285714284,
+        "volley": 3.4285714285714284,
+        "block_reset": 3.4285714285714284,
+        "doubles_positioning": 3.4285714285714284,
+        "communication": 3.4285714285714284,
+        "tactical_decision": 3.4285714285714284,
+        "rules": 3.4285714285714284
+      },
+      "overall_skill": 3.0835714285714286,
+      "rating_before_gates": 3.0835714285714286,
+      "rating_after_gates": 3.0835714285714286,
+      "estimated_rating": 3.0835714285714286,
+      "provisional_display_rating": 3.1,
+      "confidence": 83,
+      "estimated_error": 1.5,
+      "limiting_skills": [],
+      "applied_gates": [],
+      "contradiction_flags": [],
+      "adaptive_questions_selected": [
+        "adp_med_rally_01",
+        "adp_med_err_01",
+        "adp_med_ts_01",
+        "adp_med_comm_01"
+      ],
+      "total_questions_answered": 26,
+      "verification_required": false,
+      "rating_status": "self_assessed",
+      "verified_rating_created": false
+    },
+    {
+      "id": "p23_rules_solid_mid",
+      "label": "Luật tốt, kỹ thuật TB",
+      "domain_scores": {
+        "consistency": 3.4285714285714284,
+        "pressure_execution": 3.4285714285714284,
+        "serve": 3.4285714285714284,
+        "return": 3.4285714285714284,
+        "groundstroke": 3.4285714285714284,
+        "rally_consistency": 3.4285714285714284,
+        "dink_soft_game": 3.4285714285714284,
+        "error_control": 3.4285714285714284,
+        "third_shot": 3.4285714285714284,
+        "transition": 3.4285714285714284,
+        "volley": 3.4285714285714284,
+        "block_reset": 3.4285714285714284,
+        "doubles_positioning": 3.4285714285714284,
+        "communication": 3.4285714285714284,
+        "tactical_decision": 3.4285714285714284,
+        "rules": 5.357142857142857
+      },
+      "overall_skill": 3.2314285714285713,
+      "rating_before_gates": 3.2314285714285713,
+      "rating_after_gates": 3.2314285714285713,
+      "estimated_rating": 3.2314285714285713,
+      "provisional_display_rating": 3.2,
+      "confidence": 83,
+      "estimated_error": 1.5,
+      "limiting_skills": [],
+      "applied_gates": [],
+      "contradiction_flags": [],
+      "adaptive_questions_selected": [
+        "adp_med_rally_01",
+        "adp_med_err_01",
+        "adp_med_ts_01",
+        "adp_med_comm_01"
+      ],
+      "total_questions_answered": 26,
+      "verification_required": false,
+      "rating_status": "self_assessed",
+      "verified_rating_created": false
+    },
+    {
+      "id": "p24_pressure_collapse",
+      "label": "Áp lực điểm yếu",
+      "domain_scores": {
+        "consistency": 3.428571428571429,
+        "pressure_execution": 3.428571428571429,
+        "serve": 4.714285714285714,
+        "return": 4.714285714285714,
+        "groundstroke": 4.714285714285714,
+        "rally_consistency": 4.714285714285714,
+        "dink_soft_game": 4.714285714285714,
+        "error_control": 4.714285714285714,
+        "third_shot": 4.714285714285714,
+        "transition": 4.714285714285714,
+        "volley": 4.714285714285714,
+        "block_reset": 4.714285714285714,
+        "doubles_positioning": 4.714285714285714,
+        "communication": 4.714285714285714,
+        "tactical_decision": 4.714285714285714,
+        "rules": 4.714285714285714,
+        "footwork": 4.714285714285714
+      },
+      "overall_skill": 4,
+      "rating_before_gates": 4.598571428571428,
+      "rating_after_gates": 4,
+      "estimated_rating": 4.598571428571428,
+      "provisional_display_rating": 4,
+      "confidence": 83,
+      "estimated_error": 1.5,
+      "limiting_skills": [],
+      "applied_gates": [
+        {
+          "id": "gate_40_pressure",
+          "domain": "pressure_execution"
+        }
+      ],
+      "contradiction_flags": [],
+      "adaptive_questions_selected": [
+        "adp_adv_foot_01",
+        "adp_adv_vol_01",
+        "adp_adv_press_01",
+        "adp_adv_stack_01"
+      ],
+      "total_questions_answered": 26,
+      "verification_required": false,
+      "rating_status": "self_assessed",
+      "verified_rating_created": false
+    },
+    {
+      "id": "p25_club_regular",
+      "label": "Chơi CLB đều",
+      "domain_scores": {
+        "consistency": 4.392857142857142,
+        "pressure_execution": 4.071428571428571,
+        "serve": 4.071428571428571,
+        "return": 4.071428571428571,
+        "groundstroke": 4.071428571428571,
+        "rally_consistency": 4.071428571428571,
+        "dink_soft_game": 4.071428571428571,
+        "error_control": 4.071428571428571,
+        "third_shot": 4.071428571428571,
+        "transition": 4.071428571428571,
+        "volley": 4.071428571428571,
+        "block_reset": 4.071428571428571,
+        "doubles_positioning": 4.071428571428571,
+        "communication": 4.071428571428571,
+        "tactical_decision": 4.071428571428571,
+        "rules": 4.071428571428571
+      },
+      "overall_skill": 3.7601785714285714,
+      "rating_before_gates": 3.7601785714285714,
+      "rating_after_gates": 3.7601785714285714,
+      "estimated_rating": 3.7601785714285714,
+      "provisional_display_rating": 3.8,
+      "confidence": 83,
+      "estimated_error": 1.5,
+      "limiting_skills": [],
+      "applied_gates": [],
+      "contradiction_flags": [],
+      "adaptive_questions_selected": [
+        "adp_med_rally_01",
+        "adp_med_err_01",
+        "adp_med_ts_01",
+        "adp_med_comm_01"
+      ],
+      "total_questions_answered": 26,
+      "verification_required": false,
+      "rating_status": "self_assessed",
+      "verified_rating_created": false
+    },
+    {
+      "id": "p26_recreational_25",
+      "label": "Giải trí ~2.5",
+      "domain_scores": {
+        "consistency": 2.7857142857142856,
+        "pressure_execution": 2.7857142857142856,
+        "serve": 2.7857142857142856,
+        "return": 2.7857142857142856,
+        "groundstroke": 2.785714285714286,
+        "rally_consistency": 2.7857142857142856,
+        "dink_soft_game": 2.785714285714286,
+        "error_control": 2.7857142857142856,
+        "third_shot": 2.7857142857142856,
+        "transition": 2.7857142857142856,
+        "volley": 2.7857142857142856,
+        "block_reset": 2.7857142857142856,
+        "doubles_positioning": 2.785714285714286,
+        "communication": 2.7857142857142856,
+        "tactical_decision": 2.7857142857142856,
+        "rules": 2.7857142857142856
+      },
+      "overall_skill": 2.5628571428571423,
+      "rating_before_gates": 2.5628571428571423,
+      "rating_after_gates": 2.5628571428571423,
+      "estimated_rating": 2.5628571428571423,
+      "provisional_display_rating": 2.6,
+      "confidence": 76,
+      "estimated_error": 1.5,
+      "limiting_skills": [],
+      "applied_gates": [],
+      "contradiction_flags": [],
+      "adaptive_questions_selected": [
+        "adp_found_ret_01",
+        "adp_found_pos_01"
+      ],
+      "total_questions_answered": 24,
+      "verification_required": false,
+      "rating_status": "self_assessed",
+      "verified_rating_created": false
+    },
+    {
+      "id": "p27_intermediate_45_gate",
+      "label": "Gần 4.5 nhưng thiếu dink",
+      "domain_scores": {
+        "consistency": 4.714285714285714,
+        "pressure_execution": 4.714285714285714,
+        "serve": 5.357142857142857,
+        "return": 5.357142857142857,
+        "groundstroke": 5.142857142857142,
+        "rally_consistency": 4.714285714285714,
+        "dink_soft_game": 3.4285714285714284,
+        "error_control": 4.714285714285714,
+        "third_shot": 4.714285714285714,
+        "transition": 4.714285714285714,
+        "volley": 4.714285714285714,
+        "block_reset": 4.714285714285714,
+        "doubles_positioning": 4.714285714285714,
+        "communication": 4.714285714285714,
+        "tactical_decision": 4.714285714285714,
+        "rules": 4.714285714285714,
+        "footwork": 4.714285714285714
+      },
+      "overall_skill": 4.5,
+      "rating_before_gates": 4.682142857142858,
+      "rating_after_gates": 4.5,
+      "estimated_rating": 4.682142857142858,
+      "provisional_display_rating": 4.5,
+      "confidence": 83,
+      "estimated_error": 1.5,
+      "limiting_skills": [],
+      "applied_gates": [
+        {
+          "id": "gate_45_cap",
+          "cap": 4.5
+        }
+      ],
+      "contradiction_flags": [],
+      "adaptive_questions_selected": [
+        "adp_adv_foot_01",
+        "adp_adv_vol_01",
+        "adp_adv_press_01",
+        "adp_adv_stack_01"
+      ],
+      "total_questions_answered": 26,
+      "verification_required": true,
+      "rating_status": "under_review",
+      "verified_rating_created": false
+    },
+    {
+      "id": "p28_well_rounded_40",
+      "label": "Toàn diện 4.0",
+      "domain_scores": {
+        "consistency": 4.714285714285714,
+        "pressure_execution": 4.714285714285714,
+        "serve": 4.714285714285714,
+        "return": 4.714285714285714,
+        "groundstroke": 4.714285714285714,
+        "rally_consistency": 4.714285714285714,
+        "dink_soft_game": 4.714285714285714,
+        "error_control": 4.714285714285714,
+        "third_shot": 4.714285714285714,
+        "transition": 4.714285714285714,
+        "volley": 4.714285714285714,
+        "block_reset": 4.714285714285714,
+        "doubles_positioning": 4.714285714285714,
+        "communication": 4.714285714285714,
+        "tactical_decision": 4.714285714285714,
+        "rules": 4.714285714285714,
+        "footwork": 4.714285714285714
+      },
+      "overall_skill": 4.5,
+      "rating_before_gates": 4.714285714285714,
+      "rating_after_gates": 4.5,
+      "estimated_rating": 4.714285714285714,
+      "provisional_display_rating": 4.5,
+      "confidence": 83,
+      "estimated_error": 1.5,
+      "limiting_skills": [],
+      "applied_gates": [
+        {
+          "id": "gate_45_cap",
+          "cap": 4.5
+        }
+      ],
+      "contradiction_flags": [],
+      "adaptive_questions_selected": [
+        "adp_adv_foot_01",
+        "adp_adv_vol_01",
+        "adp_adv_press_01",
+        "adp_adv_stack_01"
+      ],
+      "total_questions_answered": 26,
+      "verification_required": true,
+      "rating_status": "under_review",
+      "verified_rating_created": false
+    },
+    {
+      "id": "p29_almost_advanced",
+      "label": "Gần advanced",
+      "domain_scores": {
+        "consistency": 5.357142857142857,
+        "pressure_execution": 5.357142857142857,
+        "serve": 5.357142857142857,
+        "return": 5.357142857142857,
+        "groundstroke": 5.357142857142857,
+        "rally_consistency": 5.357142857142857,
+        "dink_soft_game": 5.357142857142857,
+        "error_control": 5.357142857142857,
+        "third_shot": 5.357142857142857,
+        "transition": 5.357142857142857,
+        "volley": 5.357142857142857,
+        "block_reset": 5.357142857142857,
+        "doubles_positioning": 5.357142857142857,
+        "communication": 5.357142857142857,
+        "tactical_decision": 5.357142857142857,
+        "rules": 5.357142857142857,
+        "footwork": 5.357142857142857
+      },
+      "overall_skill": 4.5,
+      "rating_before_gates": 5.357142857142857,
+      "rating_after_gates": 4.5,
+      "estimated_rating": 5.357142857142857,
+      "provisional_display_rating": 4.5,
+      "confidence": 83,
+      "estimated_error": 1.5,
+      "limiting_skills": [],
+      "applied_gates": [
+        {
+          "id": "gate_45_cap",
+          "cap": 4.5
+        }
+      ],
+      "contradiction_flags": [],
+      "adaptive_questions_selected": [
+        "adp_adv_foot_01",
+        "adp_adv_vol_01",
+        "adp_adv_press_01",
+        "adp_adv_stack_01"
+      ],
+      "total_questions_answered": 26,
+      "verification_required": true,
+      "rating_status": "under_review",
+      "verified_rating_created": false
+    },
+    {
+      "id": "p30_contradiction_check",
+      "label": "Mâu thuẫn exp vs rally",
+      "domain_scores": {
+        "consistency": 3.8571428571428563,
+        "pressure_execution": 2.7857142857142856,
+        "serve": 2.785714285714286,
+        "return": 2.7857142857142856,
+        "groundstroke": 2.785714285714286,
+        "rally_consistency": 2.7857142857142856,
+        "dink_soft_game": 2.7857142857142856,
+        "error_control": 2.7857142857142856,
+        "third_shot": 2.7857142857142856,
+        "transition": 2.7857142857142856,
+        "volley": 2.7857142857142856,
+        "block_reset": 2.7857142857142856,
+        "doubles_positioning": 2.785714285714286,
+        "communication": 2.7857142857142856,
+        "tactical_decision": 2.7857142857142856,
+        "rules": 2.7857142857142856
+      },
+      "overall_skill": 2.611071428571428,
+      "rating_before_gates": 2.611071428571428,
+      "rating_after_gates": 2.611071428571428,
+      "estimated_rating": 2.611071428571428,
+      "provisional_display_rating": 2.6,
+      "confidence": 43,
+      "estimated_error": 1.5,
+      "limiting_skills": [],
+      "applied_gates": [],
+      "contradiction_flags": [
+        {
+          "type": "CONTRADICTION",
+          "questionId": "adp_cc_srv_ret_01",
+          "related": [
+            "core_srv_01",
+            "core_ret_01"
+          ]
+        },
+        {
+          "type": "CONTRADICTION",
+          "questionId": "adp_cc_dink_drive_01",
+          "related": [
+            "core_dink_01",
+            "core_gs_01"
+          ]
+        },
+        {
+          "type": "CONTRADICTION",
+          "questionId": "adp_cc_exp_rally_01",
+          "related": [
+            "core_exp_01",
+            "core_exp_02"
+          ]
+        },
+        {
+          "type": "CONTRADICTION",
+          "questionId": "adp_cc_pos_drive_01",
+          "related": [
+            "core_pos_01",
+            "core_gs_01"
+          ]
+        }
+      ],
+      "adaptive_questions_selected": [
+        "adp_cc_exp_rally_01",
+        "adp_cc_pos_drive_01",
+        "adp_cc_srv_ret_01",
+        "adp_cc_dink_drive_01"
+      ],
+      "total_questions_answered": 26,
+      "verification_required": false,
+      "rating_status": "under_review",
+      "verified_rating_created": false
+    }
+  ]
+}

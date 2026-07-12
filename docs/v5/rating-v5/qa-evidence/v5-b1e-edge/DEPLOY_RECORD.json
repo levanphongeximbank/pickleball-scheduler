@@ -1,0 +1,11 @@
+{
+  "stagingProjectRef": "qyewbxjsiiyufanzcjcq",
+  "functionName": "rating-v5-complete-assessment",
+  "deployedAt": "2026-07-12T11:41:43.556Z",
+  "deployedBy": "Le Phong",
+  "edgeBundleChecksum": "b9675053312284929be43413cd7ab9c8da2ae05aa989caa30cdf73fb85eeda58",
+  "functionUrl": "https://qyewbxjsiiyufanzcjcq.supabase.co/functions/v1/rating-v5-complete-assessment",
+  "deploymentId": null,
+  "functionVersion": null,
+  "deployOutput": "Deployed Functions on project qyewbxjsiiyufanzcjcq: rating-v5-complete-assessment\nYou can inspect your deployment in the Dashboard: https://supabase.com/dashboard/project/qyewbxjsiiyufanzcjcq/functions"
+}

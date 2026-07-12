@@ -1,0 +1,112 @@
+{
+  "phase": "V5-B.1P",
+  "stagingRef": "qyewbxjsiiyufanzcjcq",
+  "generatedAt": "2026-07-12T10:46:47.863Z",
+  "trustedRuntime": "Node trustedCompleteAssessment + service_role persistence RPC",
+  "edgeFunction": "rating-v5-complete-assessment (deploy separately)",
+  "passCount": 20,
+  "total": 20,
+  "allPass": true,
+  "results": [
+    {
+      "id": "ls01_self_complete",
+      "pass": true,
+      "detail": "COMPLETED"
+    },
+    {
+      "id": "ls02_cross_user_blocked",
+      "pass": true,
+      "detail": "FORBIDDEN_OWNER"
+    },
+    {
+      "id": "ls03_cross_tenant_blocked",
+      "pass": true,
+      "detail": "TENANT_MISMATCH"
+    },
+    {
+      "id": "ls04_invalid_question",
+      "pass": true,
+      "detail": "INVALID_QUESTION_ID"
+    },
+    {
+      "id": "ls05_invalid_anchor",
+      "pass": true,
+      "detail": "INVALID_ANSWER_ANCHOR"
+    },
+    {
+      "id": "ls06_forbidden_verified_rating",
+      "pass": true,
+      "detail": "FORBIDDEN_RATING_FIELDS"
+    },
+    {
+      "id": "ls07_forbidden_domain_scores",
+      "pass": true,
+      "detail": "FORBIDDEN_RATING_FIELDS"
+    },
+    {
+      "id": "ls08_golden_vector_parity",
+      "pass": true,
+      "detail": "skill=3.154285714285714"
+    },
+    {
+      "id": "ls09_version_stamping",
+      "pass": true,
+      "detail": "{\"gateVersion\":\"gates-v5.0f\",\"systemVersion\":\"pick-vn-rating-v5\",\"glossaryVersion\":\"glossary-v5.0f\",\"assessmentVersion\":\"assessment-v5.0f\",\"calibrationVersion\":\"calibration-v5.0f\",\"reliabilityVersion\":\"reliability-v5.0\",\"questionBankVersion\":\"qbank-v5.0f\",\"scoringEngineVersion\":\"scoring-v5.0f\"}"
+    },
+    {
+      "id": "ls10_append_only_event",
+      "pass": true,
+      "detail": "events=1"
+    },
+    {
+      "id": "ls11_shadow_profile",
+      "pass": true,
+      "detail": "29a82eaf-c8a1-4cde-b418-bd12c6ccad98"
+    },
+    {
+      "id": "ls12_v2_unchanged",
+      "pass": true,
+      "detail": "pick_vn_player_ratings stable"
+    },
+    {
+      "id": "ls13_provisional_cap_45",
+      "pass": true,
+      "detail": "display=4.5"
+    },
+    {
+      "id": "ls14_singles_not_implemented",
+      "pass": true,
+      "detail": "SINGLES_NOT_IMPLEMENTED"
+    },
+    {
+      "id": "ls15_idempotent_retry",
+      "pass": true,
+      "detail": "ALREADY_COMPLETED"
+    },
+    {
+      "id": "ls16_concurrency_no_duplicate",
+      "pass": true,
+      "detail": "events=1 c1=COMPLETED c2=ALREADY_COMPLETED"
+    },
+    {
+      "id": "ls17_completed_version_immutable",
+      "pass": true,
+      "detail": "3.154 vs 3.154285714285714"
+    },
+    {
+      "id": "ls18_direct_rpc_player_denied",
+      "pass": true,
+      "detail": "rating_v5_service_forbidden: service_role required (role=authenticated)"
+    },
+    {
+      "id": "ls19_mean_prototype_revoked",
+      "pass": true,
+      "detail": "permission denied for function rating_v5_prototype_mean_complete_assessment"
+    },
+    {
+      "id": "ls20_response_matches_db",
+      "pass": true,
+      "detail": "db=3.154 resp=3.154285714285714"
+    }
+  ]
+}

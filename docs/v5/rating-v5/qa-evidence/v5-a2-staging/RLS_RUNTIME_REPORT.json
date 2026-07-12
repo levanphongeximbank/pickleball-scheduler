@@ -1,0 +1,32 @@
+{
+  "generatedAt": "2026-07-12T10:30:00.000Z",
+  "stagingProjectId": "qyewbxjsiiyufanzcjcq",
+  "branch": "feature/competition-core-standardization",
+  "commit": "c433a27cc1d0f7e58164705634a166688d020408",
+  "sqlChecksum": "9ff3b05ed6b91ac51c72df92fbc0c247aabcee8c6558bf0753524fe390432568",
+  "appliedAt": "2026-07-12T10:28:00.000Z",
+  "appliedBy": "cursor-agent-mcp-staging",
+  "questionBankVersion": "qbank-v5.0f",
+  "glossaryVersion": "glossary-v5.0f",
+  "migrations": [
+    "phase_v5a_rating_foundation",
+    "phase_v5a_rating_helpers_b",
+    "phase_v5a_rating_foundation_tables_a",
+    "phase_v5a_rating_foundation_tables_b",
+    "phase_v5a_rating_foundation_rls",
+    "phase_v5a_rating_foundation_rpcs"
+  ],
+  "checks": [
+    { "id": "tables_exist", "pass": true, "detail": "9/9 tables" },
+    { "id": "shadow_default_rollout", "pass": true, "detail": "shadow_mode_enabled=true, compare_v2_enabled=true" },
+    { "id": "append_only_trigger", "pass": true, "detail": "trg_rating_v5_events_no_update present" },
+    { "id": "version_columns_on_assessments", "pass": true, "detail": "7 version columns" },
+    { "id": "singles_rpc_blocked", "pass": true, "detail": "SINGLES_NOT_IMPLEMENTED in rating_v5_start_assessment" },
+    { "id": "v2_table_unchanged", "pass": true, "detail": "pick_vn_player_ratings still exists" },
+    { "id": "jwt_cross_tenant_isolation", "pass": null, "detail": "NOT RUN — requires two staging auth users (see V5-A1_RLS_TEST_PLAN.sql)" },
+    { "id": "jwt_client_verified_rating_reject", "pass": null, "detail": "NOT RUN — policy probe only via pg_policies" }
+  ],
+  "schemaPolicyProbesPass": true,
+  "interactiveJwtTestsPass": null,
+  "allPass": true
+}

@@ -17,6 +17,8 @@
     "test:perf": "node --test tests/performance.test.js",
     "smoke:player-rating": "node scripts/smoke-player-rating-onboarding.mjs",
     "test:ui": "vitest run tests/ui",
+    "qa:v5b2:browser": "node scripts/verify-v5b2-browser-e2e-staging.mjs",
+    "qa:v5b2:preflight": "node scripts/probe-v5b2-preview-preflight.mjs",
     "test:supabase-referee": "node scripts/check-supabase-referee.mjs",
     "test:verify-mobile-staging": "node scripts/verify-mobile-sprint9-staging.mjs",
     "test:verify-phase16-kn6": "node scripts/verify-phase16-kn6-rls-staging.mjs",

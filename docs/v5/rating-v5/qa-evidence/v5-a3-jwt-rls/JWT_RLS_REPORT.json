@@ -1,0 +1,103 @@
+{
+  "generatedAt": "2026-07-12T10:45:55.531Z",
+  "stagingProjectId": "qyewbxjsiiyufanzcjcq",
+  "branch": "feature/competition-core-standardization",
+  "commit": "c433a27cc1d0f7e58164705634a166688d020408",
+  "fixtures": {
+    "userA": {
+      "email": "player@staging.local",
+      "role": "PLAYER",
+      "tenant": "venue-staging-a"
+    },
+    "userB": {
+      "email": "owner-b@staging.local",
+      "role": "VENUE_OWNER",
+      "tenant": "venue-staging-b"
+    },
+    "managerA": {
+      "email": "manager@staging.local",
+      "role": "VENUE_MANAGER",
+      "tenant": "venue-staging-a"
+    },
+    "coachA": {
+      "email": "club@staging.local",
+      "role": "PLAYER",
+      "tenant": "venue-staging-a"
+    }
+  },
+  "results": [
+    {
+      "id": "cross_tenant_read_assessment",
+      "pass": true,
+      "detail": "[]"
+    },
+    {
+      "id": "cross_tenant_update_profile",
+      "pass": true,
+      "detail": "[]"
+    },
+    {
+      "id": "cross_tenant_create_assessment",
+      "pass": true,
+      "detail": "\"new row violates row-level security policy for table \\\"player_skill_assessments\\\"\""
+    },
+    {
+      "id": "coach_manager_cross_tenant_assessment",
+      "pass": true,
+      "detail": "[]"
+    },
+    {
+      "id": "manager_cross_tenant_review",
+      "pass": true,
+      "detail": "[]"
+    },
+    {
+      "id": "player_no_profile_insert",
+      "pass": true,
+      "detail": "\"new row violates row-level security policy for table \\\"player_rating_profiles\\\"\""
+    },
+    {
+      "id": "player_no_verified_rating",
+      "pass": true,
+      "detail": "\"new row violates row-level security policy for table \\\"player_rating_profiles\\\"\""
+    },
+    {
+      "id": "player_no_reliability_update",
+      "pass": true,
+      "detail": "[]"
+    },
+    {
+      "id": "player_no_high_evidence",
+      "pass": true,
+      "detail": "\"new row violates row-level security policy for table \\\"rating_evidence\\\"\""
+    },
+    {
+      "id": "coach_no_canonical_override",
+      "pass": true,
+      "detail": "[]"
+    },
+    {
+      "id": "player_no_event_insert",
+      "pass": true,
+      "detail": "\"new row violates row-level security policy for table \\\"player_rating_events\\\"\""
+    },
+    {
+      "id": "player_no_event_update",
+      "pass": true,
+      "detail": "[]"
+    },
+    {
+      "id": "player_no_event_delete",
+      "pass": true,
+      "detail": "[]"
+    },
+    {
+      "id": "v2_unchanged",
+      "pass": true,
+      "detail": "rows=0"
+    }
+  ],
+  "passCount": 14,
+  "total": 14,
+  "allPass": true
+}

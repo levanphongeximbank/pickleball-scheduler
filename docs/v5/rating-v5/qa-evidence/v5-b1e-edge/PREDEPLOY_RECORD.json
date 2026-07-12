@@ -1,0 +1,14 @@
+{
+  "generatedAt": "2026-07-12T11:41:37.239Z",
+  "stagingProjectRef": "qyewbxjsiiyufanzcjcq",
+  "freezeVersion": "v5.0f",
+  "gitBranch": "feature/competition-core-standardization",
+  "gitCommit": "15e85ffca6f6df5a13a7d976627565a5629356e3",
+  "edgeBundleChecksum": "b9675053312284929be43413cd7ab9c8da2ae05aa989caa30cdf73fb85eeda58",
+  "sharedEngineChecksum": "71e4c19cb1dc2a2d6ad52f16fe0408cf0929dfb5939d066b6b3954bd160e729f",
+  "questionBankChecksum": "e69cc1ea14abc9fb771684be3dfb056ad35595b0a1cefabd31c58f4b7264f37f",
+  "glossaryChecksum": "686cacd6fb2817bda2b750c1ef14526047e5c232351faa8be6fa65a15375049f",
+  "scoringConfigChecksum": "74729b36a17d331922b1dda734a8b7d025f19a9bfeb348807c51ba8cdcef6da1",
+  "freezeMatch": true,
+  "mismatches": []
+}

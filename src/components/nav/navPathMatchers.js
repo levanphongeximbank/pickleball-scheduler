@@ -352,11 +352,19 @@ export function isNavItemActive(currentPath, item, resolvedPath) {
     return pathOnly === "/player/skill-assessment";
   }
 
+  if (item.match === "player-skill-assessment-v5") {
+    return pathOnly === "/player/skill-assessment-v5";
+  }
+
   if (item.match === "players-roster") {
     if (pathOnly === "/players/skill") {
       return false;
     }
-    if (pathOnly === "/player/skill" || pathOnly === "/player/skill-assessment") {
+    if (
+      pathOnly === "/player/skill"
+      || pathOnly === "/player/skill-assessment"
+      || pathOnly === "/player/skill-assessment-v5"
+    ) {
       return false;
     }
     return pathOnly === "/players" || pathOnly.startsWith("/players/");

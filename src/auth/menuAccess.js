@@ -4,6 +4,7 @@ import {
   isApiEnabled,
   isMarketplaceEnabled,
 } from "../features/integrations/config/integrationFlags.js";
+import { isPickVnRatingV5Enabled } from "../features/pick-vn-rating-v5/config/flags.js";
 import {
   isNavFeatureEnabled,
   NAV_ITEM_STATUS,
@@ -26,6 +27,7 @@ const FEATURE_FLAG_CHECKERS = Object.freeze({
   api: isApiEnabled,
   integrations: () => isApiEnabled() || isMarketplaceEnabled(),
   ai: isNavFeatureEnabled.bind(null, "ai"),
+  pickVnRatingV5: isPickVnRatingV5Enabled,
 });
 
 /** Route không cần permission khi RBAC bật (hồ sơ, thông báo, placeholder). */
