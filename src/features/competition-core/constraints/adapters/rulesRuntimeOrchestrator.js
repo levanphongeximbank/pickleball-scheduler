@@ -16,6 +16,13 @@ import {
   createRulesRuntimeError,
   RULES_RUNTIME_ERROR_CODE,
 } from "./rulesErrorModel.js";
+import {
+  buildDeduplicationTraceEntries,
+  buildFounderShadowContributionSummary,
+  deduplicateCanonicalContributions,
+  detectFounderDoubleCount,
+} from "./founderPolicyDeduplication.js";
+import { EVALUATION_OWNER } from "./ruleEvaluationOwnership.js";
 
 /**
  * @typedef {import('../normalizeRule.js').RuleSet} RuleSet
@@ -148,13 +155,46 @@ export function evaluateCanonicalRulesRuntime(input) {
   }
 
   const candidate = input.candidate || buildCandidateFromContext(context);
-  const canonical = evaluateCandidate(candidate, ruleSet, context, { envSource });
+  let canonical = evaluateCandidate(candidate, ruleSet, context, { envSource });
+  const deduplicationPlan = input.legacyPayload?.deduplicationPlan;
+  if (deduplicationPlan?.rulesV2Enabled) {
+    canonical = deduplicateCanonicalContributions(canonical, deduplicationPlan);
+  }
 
-  const doubleCountDetected = detectDoubleCount(canonical, input.legacyPayload);
+  const legacySoftScore = Number(input.legacyPayload?.legacySoftScore ?? 0);
+  const legacySuppressed = deduplicationPlan?.suppressedLegacyKeys?.length > 0;
+  const doubleCountDetected =
+    detectDoubleCount(canonical, input.legacyPayload) ||
+    detectFounderDoubleCount({
+      legacySoftScore,
+      canonicalSoftScore: canonical.softScore,
+      legacySuppressed,
+      hardRejected: canonical.feasible === false,
+    });
   const warnings = [];
   if (doubleCountDetected) {
     warnings.push("Rules V2 double-count detected between legacy and canonical soft scores.");
   }
+  if (deduplicationPlan?.duplicateDetected) {
+    warnings.push("Founder policy duplicate identities resolved via SKIPPED_DUPLICATE.");
+  }
+
+  const deduplicationSummary = deduplicationPlan
+    ? {
+        entries: buildDeduplicationTraceEntries(deduplicationPlan),
+        duplicateDetected: deduplicationPlan.duplicateDetected,
+        duplicateResolved: deduplicationPlan.duplicateResolved,
+        legacyContributionSuppressed: legacySuppressed || deduplicationPlan.rulesV2Enabled,
+        shadowContribution: buildFounderShadowContributionSummary({
+          legacyContribution: legacySoftScore,
+          canonicalContribution: Number(canonical.softScore ?? 0),
+          legacyContributionSuppressed: legacySuppressed || deduplicationPlan.rulesV2Enabled,
+          duplicateDetected: deduplicationPlan.duplicateDetected,
+          duplicateResolved: deduplicationPlan.duplicateResolved,
+          evaluationOwner: EVALUATION_OWNER.CANONICAL,
+        }),
+      }
+    : undefined;
 
   const unsupportedHard = detectUnsupportedHardRules(input.legacyPayload, canonical);
   if (unsupportedHard.length > 0) {
@@ -175,6 +215,8 @@ export function evaluateCanonicalRulesRuntime(input) {
     contextId: input.contextId,
     candidateOrActionId: input.candidateOrActionId,
     warnings,
+    sourceMappings: deduplicationPlan?.sourceMappings || {},
+    deduplicationSummary,
   });
   const legacyTraceRecord = createDecisionTraceRecord({
     consumer: input.consumer,
@@ -204,6 +246,8 @@ export function evaluateCanonicalRulesRuntime(input) {
     doubleCountDetected,
     warnings,
     runtimeError: null,
+    deduplicationPlan,
+    deduplicationSummary,
   };
 }
 

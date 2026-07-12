@@ -322,6 +322,8 @@ export function calculatePairScore(
 ) {
   const bridged = evaluateLegacyAiPairScore(option, context, {
     levelDiffAllowed: AI_CONFIG.thresholds.levelDiffAllowed,
+    envSource: context.envSource,
+    legacyPolicyScore: calculatePolicyScore(option, context),
     legacyEvaluate: () => calculatePairScoreLegacy(option, context),
   });
 

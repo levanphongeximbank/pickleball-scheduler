@@ -146,9 +146,13 @@ export function toPairingConstraintEvaluation(canonical) {
  *
  * @param {import('../../types/index.js').ConstraintEvaluationResult} canonical
  * @param {number} [baseScore]
- * @returns {{ rejected: boolean, totalScore: number, canonicalSoftDelta: number, policyScore: number, ruleScore: number }}
+ * @param {{ deduplicationPlan?: ReturnType<import('./founderPolicyDeduplication.js').buildFounderPolicyDeduplicationPlan> }} [options]
+ * @returns {{ rejected: boolean, totalScore: number, canonicalSoftDelta: number, policyScore: number, ruleScore: number, legacyContributionSuppressed?: boolean, deduplicationSummary?: unknown }}
  */
-export function toAiScoreBridgeResult(canonical, baseScore = 0) {
+export function toAiScoreBridgeResult(canonical, baseScore = 0, options = {}) {
+  const deduplicationPlan = options.deduplicationPlan;
+  const legacyContributionSuppressed = deduplicationPlan?.rulesV2Enabled === true;
+
   if (!canonical.feasible) {
     return {
       rejected: true,
@@ -156,6 +160,14 @@ export function toAiScoreBridgeResult(canonical, baseScore = 0) {
       canonicalSoftDelta: 0,
       policyScore: 0,
       ruleScore: 0,
+      legacyContributionSuppressed,
+      deduplicationSummary: deduplicationPlan
+        ? {
+            duplicateDetected: deduplicationPlan.duplicateDetected,
+            duplicateResolved: deduplicationPlan.duplicateResolved,
+            suppressedLegacyKeys: deduplicationPlan.suppressedLegacyKeys,
+          }
+        : undefined,
     };
   }
 
@@ -166,6 +178,14 @@ export function toAiScoreBridgeResult(canonical, baseScore = 0) {
     canonicalSoftDelta: softDelta,
     policyScore: softDelta,
     ruleScore: 0,
+    legacyContributionSuppressed,
+    deduplicationSummary: deduplicationPlan
+      ? {
+          duplicateDetected: deduplicationPlan.duplicateDetected,
+          duplicateResolved: deduplicationPlan.duplicateResolved,
+          suppressedLegacyKeys: deduplicationPlan.suppressedLegacyKeys,
+        }
+      : undefined,
   };
 }
 
