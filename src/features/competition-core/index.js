@@ -148,6 +148,16 @@ export {
   RULES_DECISION_STATUS,
   createDecisionTrace,
   summarizeDecisionTrace,
+  RULE_SOURCE_TYPE,
+  EVALUATION_OWNER,
+  resolveRuleEvaluationOwner,
+  buildFounderPolicyDeduplicationPlan,
+  buildFounderShadowContributionSummary,
+  detectFounderDoubleCount,
+  buildRuleSourceIdentity,
+  buildDeduplicationKey,
+  buildIdentityFromAiPolicy,
+  sortedPlayerPairKey,
 } from "./constraints/index.js";
 
 export {

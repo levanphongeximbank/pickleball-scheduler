@@ -91,6 +91,16 @@ export {
   mergeValidationResults,
   createDecisionTrace,
   summarizeDecisionTrace,
+  RULE_SOURCE_TYPE,
+  EVALUATION_OWNER,
+  resolveRuleEvaluationOwner,
+  buildFounderPolicyDeduplicationPlan,
+  buildFounderShadowContributionSummary,
+  detectFounderDoubleCount,
+  buildRuleSourceIdentity,
+  buildDeduplicationKey,
+  buildIdentityFromAiPolicy,
+  sortedPlayerPairKey,
 } from "./adapters/index.js";
 
 export {

@@ -1,3 +1,5 @@
+import { buildFounderCourtPolicySourceId } from "../../competition-core/constraints/adapters/founderPolicyIdentity.js";
+
 export function constraintsToCourtPolicies(constraints = []) {
   const policies = [];
 
@@ -8,7 +10,11 @@ export function constraintsToCourtPolicies(constraints = []) {
 
     if (constraint.type === "prefer_partner") {
       constraint.targetPlayerIds.forEach((targetId) => {
+        const sourceId = buildFounderCourtPolicySourceId(constraint, targetId, "prefer_teammate");
         policies.push({
+          id: sourceId,
+          sourceId,
+          sourceType: "founder_policy",
           type: "prefer_teammate",
           playerA: constraint.anchorPlayerId,
           playerB: targetId,
@@ -22,7 +28,11 @@ export function constraintsToCourtPolicies(constraints = []) {
 
     if (constraint.type === "avoid_partner") {
       constraint.targetPlayerIds.forEach((targetId) => {
+        const sourceId = buildFounderCourtPolicySourceId(constraint, targetId, "avoid_teammate");
         policies.push({
+          id: sourceId,
+          sourceId,
+          sourceType: "founder_policy",
           type: "avoid_teammate",
           playerA: constraint.anchorPlayerId,
           playerB: targetId,

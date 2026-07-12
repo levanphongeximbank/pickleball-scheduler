@@ -6,6 +6,9 @@ import {
 } from "./decisionTrace.js";
 import { evaluateCanonicalRulesRuntime } from "./rulesRuntimeOrchestrator.js";
 import {
+  buildFounderPolicyDeduplicationPlan,
+} from "./founderPolicyDeduplication.js";
+import {
   mapAiContextToRuleSet,
   mapAiHistoryToRepeatCounts,
   mapAiOptionToCandidate,
@@ -78,6 +81,8 @@ export function evaluateLegacyRulesBridge(input) {
     traceRecord: bridge.traceRecord,
     doubleCountDetected: bridge.doubleCountDetected,
     runtimeError: bridge.runtimeError,
+    deduplicationPlan: bridge.deduplicationPlan,
+    deduplicationSummary: bridge.deduplicationSummary,
   };
 }
 
@@ -120,6 +125,13 @@ export function evaluateLegacyAiPairScore(option, context = {}, options = {}) {
     context.history || {}
   );
 
+  const deduplicationPlan = buildFounderPolicyDeduplicationPlan({
+    policies: context.policies,
+    pairingConstraints: options.pairingConstraints,
+    envSource: options.envSource,
+    consumer: "ai_scoring",
+  });
+
   const ruleSet = mapAiContextToRuleSet({
     policies: context.policies,
     rules: context.rules,
@@ -139,8 +151,17 @@ export function evaluateLegacyAiPairScore(option, context = {}, options = {}) {
         opponentRepeatCounts,
       },
       ruleSet,
+      legacyPayload: {
+        policies: context.policies,
+        deduplicationPlan,
+        applyCanonicalSoft: true,
+        legacySoftScore: options.legacyPolicyScore,
+      },
       legacyEvaluate: options.legacyEvaluate,
-      adapt: (canonical) => toAiScoreBridgeResult(canonical, options.baseScore ?? 0),
+      adapt: (canonical) =>
+        toAiScoreBridgeResult(canonical, options.baseScore ?? 0, {
+          deduplicationPlan,
+        }),
     })
   );
 }

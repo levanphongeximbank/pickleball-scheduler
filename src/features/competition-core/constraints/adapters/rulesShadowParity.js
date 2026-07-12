@@ -13,6 +13,13 @@ import { evaluateCanonicalRulesRuntime } from "./rulesRuntimeOrchestrator.js";
  * @property {boolean} contextMissing
  * @property {boolean} duplicateDecision
  * @property {boolean} doubleCountDetected
+ * @property {number} [legacyContribution]
+ * @property {number} [canonicalContribution]
+ * @property {number} [suppressedLegacyContribution]
+ * @property {boolean} [duplicateDetected]
+ * @property {boolean} [duplicateResolved]
+ * @property {string} [evaluationOwner]
+ * @property {number} [finalBusinessContribution]
  */
 
 /**
@@ -65,6 +72,15 @@ export function buildRulesShadowComparison(input = {}) {
     contextMissing: input.contextMissing === true,
     duplicateDecision: input.duplicateDecision === true,
     doubleCountDetected: input.doubleCountDetected === true,
+    legacyContribution: Number(input.legacyContribution ?? legacySoft),
+    canonicalContribution: Number(input.canonicalContribution ?? v2Soft),
+    suppressedLegacyContribution: Number(input.suppressedLegacyContribution ?? 0),
+    duplicateDetected: input.duplicateDetected === true,
+    duplicateResolved: input.duplicateResolved === true,
+    evaluationOwner: input.evaluationOwner,
+    finalBusinessContribution: Number(
+      input.finalBusinessContribution ?? (input.legacyContributionSuppressed ? v2Soft : legacySoft + v2Soft)
+    ),
   };
 }
 
@@ -123,6 +139,14 @@ export function runRulesShadowComparison(input) {
     contextMissing: bridge.runtimeError?.code === "rules_v2_context_missing",
     duplicateDecision: !primary.sideEffectSafe,
     doubleCountDetected: bridge.doubleCountDetected,
+    legacyContribution: extractSoftScore(primary.result),
+    canonicalContribution: bridge.canonical?.softScore,
+    suppressedLegacyContribution: bridge.deduplicationSummary?.shadowContribution?.suppressedLegacyContribution,
+    duplicateDetected: bridge.deduplicationSummary?.duplicateDetected,
+    duplicateResolved: bridge.deduplicationSummary?.duplicateResolved,
+    evaluationOwner: bridge.deduplicationSummary?.shadowContribution?.evaluationOwner,
+    finalBusinessContribution: bridge.deduplicationSummary?.shadowContribution?.finalBusinessContribution,
+    legacyContributionSuppressed: bridge.deduplicationSummary?.shadowContribution?.suppressedLegacyContribution > 0,
   });
 
   return {

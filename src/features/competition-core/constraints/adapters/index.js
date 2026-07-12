@@ -30,6 +30,36 @@ export {
 } from "./rulesRuntimeInventory.js";
 
 export {
+  RULE_SOURCE_TYPE,
+  sortedPlayerPairKey,
+  buildFounderPolicySourceId,
+  buildFounderConstraintSourceId,
+  buildFounderCourtPolicySourceId,
+  buildRuleSourceIdentity,
+  buildIdentityFromAiPolicy,
+  buildIdentityFromPairingConstraint,
+  buildDeduplicationKey,
+  mapPolicyToCanonicalType,
+  mapPolicyToSeverity,
+} from "./founderPolicyIdentity.js";
+
+export {
+  EVALUATION_OWNER,
+  resolveRuleEvaluationOwner,
+  isCanonicalManagedFounderPolicy,
+  shouldSuppressLegacyContribution,
+} from "./ruleEvaluationOwnership.js";
+
+export {
+  deduplicatePoliciesByIdentity,
+  buildFounderPolicyDeduplicationPlan,
+  deduplicateCanonicalContributions,
+  buildDeduplicationTraceEntries,
+  buildFounderShadowContributionSummary,
+  detectFounderDoubleCount,
+} from "./founderPolicyDeduplication.js";
+
+export {
   evaluateCanonicalRulesRuntime,
 } from "./rulesRuntimeOrchestrator.js";
 

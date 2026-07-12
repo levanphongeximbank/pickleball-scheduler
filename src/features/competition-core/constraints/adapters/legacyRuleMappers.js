@@ -2,6 +2,13 @@ import { COMPETITION_CONSTRAINT_TYPE } from "../../constants/constraintType.js";
 import { CONSTRAINT_SEVERITY } from "../../constants/constraintSeverity.js";
 import { EVENT_TYPE } from "../../../../models/tournament/constants.js";
 import { createRuleSet, normalizeRuleDefinition } from "../normalizeRule.js";
+import {
+  buildFounderPolicySourceId,
+  buildIdentityFromAiPolicy,
+  buildRuleSourceIdentity,
+  RULE_SOURCE_TYPE,
+} from "./founderPolicyIdentity.js";
+import { deduplicatePoliciesByIdentity } from "./founderPolicyDeduplication.js";
 
 /**
  * Map legacy pairing-constraints records to canonical RuleSet.
@@ -52,8 +59,11 @@ export function mapPairingConstraintsToRuleSet(constraints = [], meta = {}) {
 export function mapAiContextToRuleSet(input = {}) {
   /** @type {import('../../types/index.js').ConstraintDefinition[]} */
   const constraints = [];
+  const ruleSetId = input.ruleSetId || "legacy-ai-scoring";
+  const ruleSetVersion = input.ruleSetVersion || "1";
+  const dedupedPolicies = deduplicatePoliciesByIdentity(input.policies || []);
 
-  (input.policies || []).forEach((policy, index) => {
+  dedupedPolicies.forEach((policy, index) => {
     if (policy?.enabled === false) {
       return;
     }
@@ -68,15 +78,22 @@ export function mapAiContextToRuleSet(input = {}) {
         ? CONSTRAINT_SEVERITY.HARD
         : CONSTRAINT_SEVERITY.SOFT;
 
+    const sourceId = buildFounderPolicySourceId(policy);
+    const identity = buildIdentityFromAiPolicy(policy, { ruleSetId, ruleSetVersion });
+
     constraints.push({
-      id: policy.id || `ai-policy-${index + 1}`,
+      id: policy.id || sourceId || `ai-policy-${index + 1}`,
       type,
       severity,
       enabled: true,
       params: {
         anchorPlayerId: String(policy.playerA),
         targetPlayerIds: [String(policy.playerB)],
+        sourceType: policy.source === "founder" ? RULE_SOURCE_TYPE.FOUNDER_POLICY : RULE_SOURCE_TYPE.AI_POLICY,
+        sourceId,
+        deduplicationKey: identity.deduplicationKey,
       },
+      metadata: buildRuleSourceIdentity(identity),
     });
   });
 
@@ -138,8 +155,8 @@ export function mapAiContextToRuleSet(input = {}) {
   }
 
   return createRuleSet({
-    id: "legacy-ai-scoring",
-    version: "1",
+    id: ruleSetId,
+    version: ruleSetVersion,
     constraints,
   });
 }
