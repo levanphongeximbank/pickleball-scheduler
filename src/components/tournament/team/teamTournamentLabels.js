@@ -11,6 +11,7 @@ export const LINEUP_STATUS_META = {
   [LINEUP_STATUS.SUBMITTED]: { label: "Đã nộp", color: "info" },
   [LINEUP_STATUS.LOCKED]: { label: "Đã khóa", color: "secondary" },
   [LINEUP_STATUS.PUBLISHED]: { label: "Đã công bố", color: "success" },
+  overridden: { label: "BTC đã thay đổi", color: "warning" },
 };
 
 export const MATCHUP_STATUS_META = {

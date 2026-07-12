@@ -59,6 +59,10 @@ export function resolvePublishReadiness({ teamData, matchup, policy }) {
   const normalizedPolicy = normalizeMissingLineupPolicy(policy);
   const versions = resolveLineupVersions(teamData, matchup);
   const server = resolveCanPublishFromServer(matchup);
+  const republishing =
+    matchup?.requiresRepublish === true ||
+    matchup?.publishOps?.requiresRepublish === true ||
+    server.republishMode === true;
 
   const lineupA = getLineup(teamData, matchup.id, matchup.teamAId);
   const lineupB = getLineup(teamData, matchup.id, matchup.teamBId);
@@ -69,6 +73,26 @@ export function resolvePublishReadiness({ teamData, matchup, policy }) {
       canPublish: false,
       blockCode: PUBLISH_BLOCK_CODES.LINEUP_MISSING,
       blockMessage: "Thiếu đội hình một hoặc cả hai đội.",
+      ...versions,
+    };
+  }
+
+  if (republishing) {
+    const readyStatuses = new Set(["locked", "overridden", "published"]);
+    if (!readyStatuses.has(lineupA.status) || !readyStatuses.has(lineupB.status)) {
+      return {
+        ...server,
+        canPublish: false,
+        blockCode: "lineup_not_ready_republish",
+        blockMessage: "Cả hai đội hình phải sẵn sàng trước khi công bố lại.",
+        requiresRepublish: true,
+        ...versions,
+      };
+    }
+    return {
+      ...server,
+      canPublish: server.canPublish !== false,
+      requiresRepublish: true,
       ...versions,
     };
   }
@@ -133,6 +157,9 @@ export function mergeServerPublishOps(matchup, serverOps = {}) {
 }
 
 export function isOpponentLineupVisible({ matchup, viewerTeamId, isOrganizer = false, isReferee = false }) {
+  if (matchup?.requiresRepublish) {
+    return isOrganizer;
+  }
   if (isOrganizer || isReferee) {
     return PUBLISHED_MATCHUP_STATUSES.has(matchup?.status);
   }

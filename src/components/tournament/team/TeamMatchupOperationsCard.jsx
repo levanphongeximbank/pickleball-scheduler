@@ -9,6 +9,7 @@ import {
   Typography,
 } from "@mui/material";
 import ContentCopyIcon from "@mui/icons-material/ContentCopy";
+import EditIcon from "@mui/icons-material/Edit";
 import LockIcon from "@mui/icons-material/Lock";
 import PublishIcon from "@mui/icons-material/Publish";
 import ShuffleIcon from "@mui/icons-material/Shuffle";
@@ -30,6 +31,7 @@ import {
 import {
   resolvePublishReadiness,
 } from "../../../features/team-tournament/engines/atomicPublishWorkflowEngine.js";
+import { isRepublishPending } from "../../../features/team-tournament/engines/overrideLineupWorkflowEngine.js";
 import TournamentSectionCard from "../TournamentSectionCard.jsx";
 import {
   buildCaptainPortalUrl,
@@ -106,6 +108,7 @@ export default function TeamMatchupOperationsCard({
   onLock,
   onRandomize,
   onPublish,
+  onRequestOverride,
   onUpdateMatchup,
   onMessage,
   onError,
@@ -157,6 +160,7 @@ export default function TeamMatchupOperationsCard({
       : publishReadiness.canPublish;
   const publishBlockMessage =
     matchup.publishBlockMessage || publishReadiness.blockMessage || null;
+  const republishPending = isRepublishPending(matchup);
   const isPublished = [
     MATCHUP_STATUS.PUBLISHED,
     MATCHUP_STATUS.IN_PROGRESS,
@@ -266,7 +270,13 @@ export default function TeamMatchupOperationsCard({
           </Typography>
         )}
 
-        {canManage && matchup.status === MATCHUP_STATUS.LOCKED ? (
+        {canManage && republishPending ? (
+          <Alert severity="warning">
+            Lineup đã bị BTC thay đổi — cần công bố lại trước khi đội trưởng/trọng tài thấy đội hình mới.
+          </Alert>
+        ) : null}
+
+        {canManage && matchup.status === MATCHUP_STATUS.LOCKED && !republishPending ? (
           <Alert severity={canPublish ? "success" : "warning"}>
             <Typography variant="body2">
               {canPublish
@@ -276,7 +286,19 @@ export default function TeamMatchupOperationsCard({
           </Alert>
         ) : null}
 
-        {isPublished && matchup.publishedAt ? (
+        {canManage && republishPending && canPublish ? (
+          <Alert severity="success">
+            Sẵn sàng công bố lại — cả hai đội hình đã sẵn sàng sau override.
+          </Alert>
+        ) : null}
+
+        {canManage && (matchup.status === MATCHUP_STATUS.LOCKED || republishPending) && !canPublish && republishPending ? (
+          <Alert severity="warning">
+            {publishBlockMessage || "Chưa đủ điều kiện công bố lại."}
+          </Alert>
+        ) : null}
+
+        {isPublished && matchup.publishedAt && !republishPending ? (
           <Typography variant="body2" color="text.secondary">
             Đã công bố lúc: {formatTeamTournamentDateTime(matchup.publishedAt)}
           </Typography>
@@ -413,6 +435,34 @@ export default function TeamMatchupOperationsCard({
             >
               {copyOk ? "Đã sao chép" : "Link đội trưởng"}
             </Button>
+            {[matchup.teamAId, matchup.teamBId].map((teamId) => {
+              const teamName =
+                teamId === matchup.teamAId
+                  ? teamA?.name || teamId
+                  : teamB?.name || teamId;
+              if (!onRequestOverride) {
+                return null;
+              }
+              return (
+                <Tooltip
+                  key={`override-${teamId}`}
+                  title="BTC thay đổi lineup (TT-3) — quyền do server quyết định"
+                >
+                  <span>
+                    <Button
+                      size="small"
+                      variant="outlined"
+                      color="secondary"
+                      startIcon={<EditIcon />}
+                      disabled={mutationBusy}
+                      onClick={() => onRequestOverride(matchup.id, teamId)}
+                    >
+                      Thay đổi {teamName}
+                    </Button>
+                  </span>
+                </Tooltip>
+              );
+            })}
             {canRandomizeTeamIds.map((teamId) => {
               const teamName =
                 teamId === matchup.teamAId
@@ -473,7 +523,7 @@ export default function TeamMatchupOperationsCard({
                   onClick={() => onPublish?.(matchup.id)}
                   disabled={!canPublish || mutationBusy}
                 >
-                  Công bố
+                  {republishPending ? "Công bố lại" : "Công bố"}
                 </Button>
               </span>
             </Tooltip>

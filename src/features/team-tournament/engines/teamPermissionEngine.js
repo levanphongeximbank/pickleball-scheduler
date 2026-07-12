@@ -88,6 +88,13 @@ export function canRandomizeLineup({ permissions = [] } = {}) {
   );
 }
 
+export function canOverrideLineup({ permissions = [] } = {}) {
+  return (
+    permissions.includes(PERMISSIONS.TEAM_LINEUP_OVERRIDE) ||
+    permissions.includes(PERMISSIONS.TOURNAMENT_UPDATE)
+  );
+}
+
 export function canManageTeamMatchResult({ permissions = [] } = {}) {
   return (
     permissions.includes(PERMISSIONS.TEAM_MATCH_RESULT_MANAGE) ||

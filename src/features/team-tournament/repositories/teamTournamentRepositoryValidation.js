@@ -112,6 +112,42 @@ export function validatePublishCommandOptions(commandOptions, methodName = "publ
   return null;
 }
 
+export function validateOverrideCommandOptions(commandOptions, methodName = "overrideLineup") {
+  if (commandOptions == null || typeof commandOptions !== "object") {
+    return repositoryFailure(
+      REPOSITORY_ERROR_CODES.INVALID_COMMAND_OPTIONS,
+      `${methodName} requires command options object.`,
+      { methodName }
+    );
+  }
+
+  if (!isFiniteVersion(commandOptions.expectedMatchupVersion)) {
+    return repositoryFailure(
+      REPOSITORY_ERROR_CODES.MISSING_EXPECTED_VERSION,
+      `${methodName} requires expectedMatchupVersion.`,
+      { methodName }
+    );
+  }
+
+  if (!isFiniteVersion(commandOptions.expectedLineupVersion)) {
+    return repositoryFailure(
+      REPOSITORY_ERROR_CODES.MISSING_EXPECTED_VERSION,
+      `${methodName} requires expectedLineupVersion.`,
+      { methodName }
+    );
+  }
+
+  if (!isPresentString(commandOptions.idempotencyKey)) {
+    return repositoryFailure(
+      REPOSITORY_ERROR_CODES.MISSING_IDEMPOTENCY_KEY,
+      `${methodName} requires idempotencyKey.`,
+      { methodName }
+    );
+  }
+
+  return null;
+}
+
 /**
  * Cloud/shadow reads must not trust client-supplied viewerTeamId.
  * @param {import('./teamTournamentRepositoryTypes.js').ReadOptions | import('./teamTournamentRepositoryTypes.js').VisibleLineupsReadOptions | undefined} options

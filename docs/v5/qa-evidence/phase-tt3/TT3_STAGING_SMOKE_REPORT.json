@@ -1,0 +1,40 @@
+{
+  "generatedAt": "2026-07-12T11:30:56.013Z",
+  "phase": "TT-3-SMOKE",
+  "stagingRef": "qyewbxjsiiyufanzcjcq",
+  "productionImpact": "NONE",
+  "localCommitSha": "7f297d89e1b1cfdd67ef98cafef79a45bce4abb7",
+  "sqlPatches": [
+    "docs/v5/PHASE_TT3_LINEUP_OVERRIDE.sql",
+    "docs/v5/PHASE_TT3_GET_SETUP_PATCH.sql"
+  ],
+  "probe": {
+    "tournamentId": "phase23d-probe-tournament",
+    "teamA": "phase23d-team-a",
+    "teamB": "phase23d-team-b",
+    "matchupId": "phase23d-matchup-1"
+  },
+  "cases": [
+    {
+      "id": "SM01",
+      "name": "get_setup ok",
+      "pass": true
+    },
+    {
+      "id": "SM02",
+      "name": "override RPC deployed",
+      "pass": true,
+      "note": "verified via MCP proname check"
+    },
+    {
+      "id": "SM03",
+      "name": "override + revision + visibility reports generated",
+      "pass": true
+    }
+  ],
+  "verdict": "PASS",
+  "reportFile": "TT3_STAGING_SMOKE_REPORT.json",
+  "passCount": 3,
+  "totalCount": 3,
+  "allPass": true
+}

@@ -1,0 +1,40 @@
+{
+  "generatedAt": "2026-07-12T11:30:55.965Z",
+  "phase": "TT-3-REVISION",
+  "stagingRef": "qyewbxjsiiyufanzcjcq",
+  "productionImpact": "NONE",
+  "localCommitSha": "7f297d89e1b1cfdd67ef98cafef79a45bce4abb7",
+  "sqlPatches": [
+    "docs/v5/PHASE_TT3_LINEUP_OVERRIDE.sql",
+    "docs/v5/PHASE_TT3_GET_SETUP_PATCH.sql"
+  ],
+  "probe": {
+    "tournamentId": "phase23d-probe-tournament",
+    "teamA": "phase23d-team-a",
+    "teamB": "phase23d-team-b",
+    "matchupId": "phase23d-matchup-1"
+  },
+  "cases": [
+    {
+      "id": "R01",
+      "name": "requires_republish set on matchup",
+      "pass": true
+    },
+    {
+      "id": "R02",
+      "name": "revision btc_override recorded",
+      "pass": true,
+      "latest": {
+        "action_type": "btc_override",
+        "reason": "TT-3 staging override locked lineup",
+        "version_before": 30,
+        "version_after": 31
+      }
+    }
+  ],
+  "verdict": "PASS",
+  "reportFile": "TT3_REVISION_REPORT.json",
+  "passCount": 2,
+  "totalCount": 2,
+  "allPass": true
+}

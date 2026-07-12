@@ -237,6 +237,8 @@ export function useTeamTournamentPage({
       orchestrator.saveSubMatchDraft(clubId, tournamentId, payload, commandOptions),
     patchTeamData,
     getVisibleLineups,
+    getLineupOverrideOps: (matchupId, teamId) =>
+      orchestrator.getLineupOverrideOps(clubId, tournamentId, { matchupId, teamId }),
     mapRepositoryResultToUi,
   };
 }

@@ -88,6 +88,7 @@ export {
   repositorySuccess,
   validateVersionedCommandOptions,
   validatePublishCommandOptions,
+  validateOverrideCommandOptions,
 } from "./teamTournamentRepositoryValidation.js";
 
 export {

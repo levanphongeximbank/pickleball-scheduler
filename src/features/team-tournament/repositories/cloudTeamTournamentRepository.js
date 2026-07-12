@@ -7,6 +7,8 @@ import {
   rpcTeamTournamentLockMatchup,
   rpcTeamTournamentPublishMatchup,
   rpcTeamTournamentRandomizeLineup,
+  rpcTeamTournamentOverrideLineup,
+  rpcTeamTournamentGetLineupOverrideOps,
   rpcTeamTournamentSaveLineupDraft,
   rpcTeamTournamentSubmitLineup,
   rpcTeamTournamentUpsertStandings,
@@ -27,6 +29,7 @@ import {
   repositorySuccess,
   validateVersionedCommandOptions,
   validatePublishCommandOptions,
+  validateOverrideCommandOptions,
 } from "./TeamTournamentRepository.interface.js";
 import {
   describeTeamTournamentRpcGuard,
@@ -84,6 +87,24 @@ function withCommandParams(baseArgs, commandOptions) {
     expectedLineupBVersion: Number(commandOptions.expectedLineupBVersion),
     idempotencyKey: String(commandOptions.idempotencyKey),
   };
+}
+
+function withOverrideCommandParams(baseArgs, commandOptions) {
+  return {
+    ...baseArgs,
+    expectedMatchupVersion: Number(commandOptions.expectedMatchupVersion),
+    expectedLineupVersion: Number(commandOptions.expectedLineupVersion),
+    idempotencyKey: String(commandOptions.idempotencyKey),
+  };
+}
+
+async function runOverrideMutation(methodName, commandOptions, executor) {
+  const validationError = validateOverrideCommandOptions(commandOptions, methodName);
+  if (validationError) {
+    return validationError;
+  }
+  const result = await executor(commandOptions);
+  return normalizeRepositoryResult(result, { provider: "cloud" });
 }
 
 async function runVersionedMutation(methodName, commandOptions, executor) {
@@ -180,6 +201,7 @@ export function createCloudTeamTournamentRepository() {
         {
           lineups: result.lineups,
           matchupStatus: result.matchupStatus,
+          requiresRepublish: result.requiresRepublish === true,
           serverTime: result.serverTime,
         },
         { provider: "cloud" }
@@ -256,6 +278,32 @@ export function createCloudTeamTournamentRepository() {
           )
         )
       );
+    },
+
+    async overrideLineup(_clubId, tournamentId, payload, commandOptions) {
+      return runOverrideMutation("overrideLineup", commandOptions, async (options) =>
+        rpcTeamTournamentOverrideLineup(
+          withOverrideCommandParams(
+            {
+              tournamentId,
+              matchupId: payload.matchupId,
+              teamId: payload.teamId,
+              selections: payload.selections || {},
+              reason: payload.reason || "",
+            },
+            options
+          )
+        )
+      );
+    },
+
+    async getLineupOverrideOps(_clubId, tournamentId, payload) {
+      const result = await rpcTeamTournamentGetLineupOverrideOps(
+        tournamentId,
+        payload.matchupId,
+        payload.teamId
+      );
+      return normalizeRepositoryResult(result, { provider: "cloud" });
     },
 
     async confirmSubMatchResult(_clubId, tournamentId, payload, commandOptions) {

@@ -34,6 +34,9 @@ import { getStandingsTable } from "../../features/team-tournament/engines/teamSt
 import { MISSING_LINEUP_POLICY } from "../../features/team-tournament/constants.js";
 import { getLineup } from "../../features/team-tournament/models/index.js";
 import { resolveLineupVersions } from "../../features/team-tournament/engines/atomicPublishWorkflowEngine.js";
+import {
+  buildOverrideCommandVersions,
+} from "../../features/team-tournament/engines/overrideLineupWorkflowEngine.js";
 import { normalizeMissingLineupPolicy } from "../../features/team-tournament/engines/missingLineupPolicyEngine.js";
 import {
   organizerLockDreambreakerOrders,
@@ -48,6 +51,7 @@ import TeamSchedulePreviewDialog from "../../components/tournament/team/TeamSche
 import TeamDisciplinesPanel from "../../components/tournament/team/TeamDisciplinesPanel.jsx";
 import TeamGroupDivisionPanel from "../../components/tournament/team/TeamGroupDivisionPanel.jsx";
 import TeamMatchupOperationsCard from "../../components/tournament/team/TeamMatchupOperationsCard.jsx";
+import TeamLineupOverrideDialog from "../../components/tournament/team/TeamLineupOverrideDialog.jsx";
 import TeamStandingsTable from "../../components/tournament/team/TeamStandingsTable.jsx";
 import TeamTournamentScheduleDiagram from "../../components/tournament/team/TeamTournamentScheduleDiagram.jsx";
 import { countMatchupsWithSubResults } from "../../components/tournament/team/teamStandingsLabels.js";
@@ -174,6 +178,7 @@ export default function TeamTournamentSetup() {
     runMutation,
     patchTeamData,
     dataVersion,
+    getLineupOverrideOps,
   } = useTeamTournamentPage({
     clubId: activeClubId,
     tournamentId,
@@ -192,6 +197,7 @@ export default function TeamTournamentSetup() {
   const [schedulePreviewOpen, setSchedulePreviewOpen] = useState(false);
   const [hubBanner, setHubBanner] = useState("");
   const [mutationBusy, setMutationBusy] = useState(false);
+  const [overrideDialog, setOverrideDialog] = useState(null);
   const requestedTab = searchParams.get("tab") || TEAM_TAB_QUERY.teams;
   const activeTabKey = visibleTabs.some((tab) => tab.key === requestedTab)
     ? requestedTab
@@ -427,6 +433,82 @@ export default function TeamTournamentSetup() {
       return;
     }
     setMessage("Đã công bố đội hình. Trọng tài có thể nhập điểm.");
+  }
+
+  async function handleRequestOverride(matchupId, teamId) {
+    setError("");
+    setMutationBusy(true);
+    const opsResult = await getLineupOverrideOps(matchupId, teamId);
+    setMutationBusy(false);
+
+    if (!opsResult.ok) {
+      setError(opsResult.error || "Không kiểm tra được quyền override.");
+      return;
+    }
+
+    const overrideOps = opsResult.data?.overrideOps;
+    if (overrideOps?.canOverride !== true) {
+      setError(overrideOps?.blockMessage || "Không thể thay đổi lineup cho đội này.");
+      return;
+    }
+
+    const matchup = td.matchups.find((item) => item.id === matchupId);
+    const team = td.teams.find((item) => item.id === teamId);
+    const lineup = getLineup(td, matchupId, teamId);
+    setOverrideDialog({
+      matchup,
+      team,
+      lineup,
+      overrideOps,
+    });
+  }
+
+  async function handleOverrideConfirm({ reason, selections }) {
+    if (!overrideDialog) {
+      return;
+    }
+    const { matchup, team, lineup, overrideOps } = overrideDialog;
+    const versions = buildOverrideCommandVersions({
+      matchup: {
+        ...matchup,
+        version: overrideOps.matchupVersion ?? matchup.version,
+      },
+      lineup: {
+        ...lineup,
+        version: overrideOps.lineupVersion ?? lineup?.version,
+      },
+    });
+
+    setError("");
+    setMutationBusy(true);
+    const result = await runMutation({
+      method: "overrideLineup",
+      payload: {
+        matchupId: matchup.id,
+        teamId: team.id,
+        selections,
+        reason,
+      },
+      actionScope: buildUiCommandScope("override", tournamentId, `${matchup.id}:${team.id}`),
+      expectedVersion: versions.expectedMatchupVersion,
+      commandOptions: {
+        expectedMatchupVersion: versions.expectedMatchupVersion,
+        expectedLineupVersion: versions.expectedLineupVersion,
+      },
+    });
+    setMutationBusy(false);
+
+    if (!result.ok) {
+      if (result.isVersionConflict) {
+        setError(`${result.error} — vui lòng tải lại trang.`);
+      } else {
+        setError(result.error || "Không override được lineup.");
+      }
+      return;
+    }
+
+    setOverrideDialog(null);
+    setMessage(`Đã thay đổi lineup ${team.name || team.id}. Cần công bố lại trước khi đội trưởng/trọng tài thấy.`);
   }
 
   async function handleSyncDreambreaker() {
@@ -671,6 +753,7 @@ export default function TeamTournamentSetup() {
                     onLock={handleLock}
                     onRandomize={handleRandomize}
                     onPublish={handlePublish}
+                    onRequestOverride={access.canManage ? handleRequestOverride : undefined}
                     onUpdateMatchup={handleUpdateMatchup}
                     onMessage={setMessage}
                     onError={setError}
@@ -737,6 +820,19 @@ export default function TeamTournamentSetup() {
         onClose={() => setSchedulePreviewOpen(false)}
         teamData={td}
         tournamentName={tournament?.name || ""}
+      />
+
+      <TeamLineupOverrideDialog
+        open={Boolean(overrideDialog)}
+        onClose={() => setOverrideDialog(null)}
+        team={overrideDialog?.team}
+        teamData={td}
+        matchup={overrideDialog?.matchup}
+        lineup={overrideDialog?.lineup}
+        players={lineupPlayers}
+        overrideOps={overrideDialog?.overrideOps}
+        busy={mutationBusy}
+        onConfirm={handleOverrideConfirm}
       />
     </TournamentSetupShell>
   );

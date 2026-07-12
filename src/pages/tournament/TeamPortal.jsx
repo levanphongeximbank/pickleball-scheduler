@@ -40,6 +40,10 @@ import {
   getLineupStatusMeta,
 } from "../../components/tournament/team/teamTournamentLabels.js";
 import {
+  canCaptainEditAfterOverride,
+  resolveLineupDisplayStatus,
+} from "../../features/team-tournament/engines/overrideLineupWorkflowEngine.js";
+import {
   buildOfficialPairings,
   getVisibleLineup,
 } from "../../features/team-tournament/engines/lineupEngine.js";
@@ -77,6 +81,9 @@ import { fetchProfileByUserId } from "../../auth/profileService.js";
 function canEditLineup(lineup) {
   if (!lineup) {
     return true;
+  }
+  if (!canCaptainEditAfterOverride(lineup)) {
+    return false;
   }
   return (
     lineup.status === LINEUP_STATUS.NOT_SUBMITTED ||
@@ -256,6 +263,7 @@ function MatchupLineupCard({
   const ownLineup = getLineup(teamData, matchup.id, team.id);
   const lineupStatus = ownLineup?.status || LINEUP_STATUS.NOT_SUBMITTED;
   const statusMeta = getLineupStatusMeta(lineupStatus);
+  const overrideDisplay = resolveLineupDisplayStatus(ownLineup, matchup);
 
   const permissions = useMemo(
     () =>
@@ -480,15 +488,33 @@ function MatchupLineupCard({
               />
             ) : null}
             <Chip label={statusMeta.label} color={statusMeta.color} />
+            {overrideDisplay ? (
+              <Chip
+                label={overrideDisplay.label}
+                color={overrideDisplay.color}
+                variant="outlined"
+              />
+            ) : null}
           </Stack>
         </Stack>
+
+        {overrideDisplay ? (
+          <Alert severity="warning">
+            BTC đã thay đổi đội hình của bạn
+            {ownLineup?.overrideReason ? `: ${ownLineup.overrideReason}` : "."}
+            {" "}
+            Chờ công bố lại — bạn không thể tự sửa và chưa thấy đối thủ mới.
+          </Alert>
+        ) : null}
 
         {message ? <Alert severity="success">{message}</Alert> : null}
         {error ? <Alert severity="error">{error}</Alert> : null}
 
         {!editable ? (
           <Alert severity="info" icon={<LockIcon />}>
-            {deadlineBlockedMessage(permissions)}
+            {overrideDisplay
+              ? "Đội hình đã bị BTC thay đổi — chờ công bố lại."
+              : deadlineBlockedMessage(permissions)}
           </Alert>
         ) : null}
 

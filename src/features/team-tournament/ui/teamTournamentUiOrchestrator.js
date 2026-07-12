@@ -129,6 +129,12 @@ async function delegateLegacyMutation(method, clubId, tournamentId, payload, com
       return legacySaveSubMatchDraft(clubId, tournamentId, { ...payload, ...commandOptions });
     case "applyForfeit":
       return legacyApplyForfeit(clubId, tournamentId, { ...payload, ...commandOptions });
+    case "overrideLineup":
+      return {
+        ok: false,
+        code: REPOSITORY_ERROR_CODES.NOT_IMPLEMENTED,
+        error: "overrideLineup chỉ khả dụng trên cloud repository.",
+      };
     default:
       return {
         ok: false,
@@ -228,6 +234,27 @@ export function createTeamTournamentUiOrchestrator(options = {}) {
           ok: false,
           code: UI_MUTATION_ERROR.NETWORK,
           error: error?.message || "Không tải được đội hình.",
+        };
+      }
+    },
+
+    async getLineupOverrideOps(clubId, tournamentId, payload) {
+      const fn = repo.getLineupOverrideOps;
+      if (typeof fn !== "function") {
+        return mapRepositoryResultToUi({
+          ok: false,
+          code: REPOSITORY_ERROR_CODES.NOT_IMPLEMENTED,
+          error: "getLineupOverrideOps không khả dụng trên repository này.",
+        });
+      }
+      try {
+        const result = await fn.call(repo, clubId, tournamentId, payload);
+        return mapRepositoryResultToUi(result);
+      } catch (error) {
+        return {
+          ok: false,
+          code: UI_MUTATION_ERROR.NETWORK,
+          error: error?.message || "Không tải được quyền override.",
         };
       }
     },

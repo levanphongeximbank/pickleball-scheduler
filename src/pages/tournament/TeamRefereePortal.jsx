@@ -38,6 +38,7 @@ import {
   listRefereeMatchupSummaries,
   MATCH_FORMAT,
 } from "../../features/team-tournament/engines/teamRefereeEngine.js";
+import { isRepublishPending } from "../../features/team-tournament/engines/overrideLineupWorkflowEngine.js";
 import {
   canManageTeamMatchResult,
   canViewTeamMatchResults,
@@ -686,13 +687,16 @@ export default function TeamRefereePortal() {
     [teamData]
   );
 
-  const activeMatchup = useMemo(() => {
+  const activeMatchupView = useMemo(() => {
     if (!teamData || !expandedMatchupId) {
       return null;
     }
-    const view = buildRefereeMatchupView(teamData, expandedMatchupId, players);
-    return view.ok ? view.matchup : null;
+    return buildRefereeMatchupView(teamData, expandedMatchupId, players);
   }, [teamData, expandedMatchupId, players]);
+
+  const activeMatchup = activeMatchupView?.ok ? activeMatchupView.matchup : null;
+  const activeMatchupError =
+    activeMatchupView && !activeMatchupView.ok ? activeMatchupView.error : null;
 
   async function handleSaveDraft(matchupId, subMatchId, payload) {
     setBusy(true);
@@ -935,7 +939,18 @@ export default function TeamRefereePortal() {
             item.type === "waiting" ? (
               <WaitingMatchupCard key={item.matchup.id} matchup={item.matchup} />
             ) : (
-              <MatchupCard
+              <Stack key={item.matchup.id} spacing={1}>
+                {expandedMatchupId === item.matchup.id && activeMatchupError ? (
+                  <Alert severity="warning">{activeMatchupError}</Alert>
+                ) : null}
+                {expandedMatchupId === item.matchup.id &&
+                isRepublishPending(item.matchup) &&
+                !activeMatchupError ? (
+                  <Alert severity="warning">
+                    Lineup đã thay đổi — chờ BTC công bố lại trước khi dùng đội hình mới.
+                  </Alert>
+                ) : null}
+                <MatchupCard
                 key={item.matchup.id}
                 matchup={
                   expandedMatchupId === item.matchup.id && activeMatchup
@@ -983,6 +998,7 @@ export default function TeamRefereePortal() {
                 onDreambreakerInjury={handleDreambreakerInjury}
                 busy={busy}
               />
+              </Stack>
             )
           )}
         </Stack>

@@ -379,6 +379,11 @@ export function normalizeLineup(lineup) {
     submittedAt: lineup.submittedAt || null,
     lockedAt: lineup.lockedAt || null,
     publishedAt: lineup.publishedAt || null,
+    overriddenAt: lineup.overriddenAt || null,
+    overriddenBy: lineup.overriddenBy || null,
+    overrideReason: lineup.overrideReason ? String(lineup.overrideReason).trim() : "",
+    previousLineupVersion:
+      lineup.previousLineupVersion != null ? Number(lineup.previousLineupVersion) : null,
     source: lineup.source || LINEUP_SOURCE.CAPTAIN,
     auditNote: lineup.auditNote ? String(lineup.auditNote).trim() : "",
   };

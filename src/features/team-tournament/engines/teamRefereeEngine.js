@@ -3,6 +3,7 @@ import {
   MATCHUP_STATUS,
   SUB_MATCH_STATUS,
 } from "../constants.js";
+import { isRefereeLineupBlocked } from "./overrideLineupWorkflowEngine.js";
 import {
   findMatchup,
   findTeam,
@@ -404,6 +405,14 @@ export function buildRefereeMatchupView(teamData, matchupId, players = []) {
 
   if (!isMatchupPublishedForReferee(matchup)) {
     return { ok: false, error: "Lượt đối đầu chưa được công bố." };
+  }
+
+  if (isRefereeLineupBlocked(matchup)) {
+    return {
+      ok: false,
+      error: "Lineup đã thay đổi — chờ BTC công bố lại trước khi trọng tài bắt đầu trận.",
+      code: "requires_republish",
+    };
   }
 
   const teamA = findTeam(teamData, matchup.teamAId);

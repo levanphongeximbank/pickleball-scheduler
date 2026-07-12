@@ -17,6 +17,7 @@ export const LINEUP_STATUS = {
   SUBMITTED: "submitted",
   LOCKED: "locked",
   PUBLISHED: "published",
+  OVERRIDDEN: "overridden",
 };
 
 export const LINEUP_SOURCE = {

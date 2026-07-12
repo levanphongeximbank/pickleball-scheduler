@@ -25,6 +25,7 @@ export const TT1B_IDEMPOTENCY_PREFIX_BY_RPC = Object.freeze({
   team_tournament_randomize_lineup: "randomize",
   team_tournament_lock_matchup: "lock",
   team_tournament_publish_matchup: "publish",
+  team_tournament_override_lineup: "override",
   team_tournament_confirm_sub_match: "confirm",
   team_tournament_apply_forfeit: "forfeit",
   team_tournament_upsert_standings: "standings",
@@ -67,6 +68,16 @@ export const TT1B_RPC_ARG_CONTRACTS = Object.freeze({
     "p_expected_matchup_version",
     "p_expected_lineup_a_version",
     "p_expected_lineup_b_version",
+    "p_idempotency_key",
+  ],
+  team_tournament_override_lineup: [
+    "p_tournament_id",
+    "p_matchup_id",
+    "p_team_id",
+    "p_selections",
+    "p_reason",
+    "p_expected_matchup_version",
+    "p_expected_lineup_version",
     "p_idempotency_key",
   ],
   team_tournament_confirm_sub_match: [
@@ -701,5 +712,54 @@ export async function rpcTeamTournamentUpsertStandings(params, standings) {
   return callTeamTournamentRpc("team_tournament_upsert_standings", {
     p_tournament_id: String(normalized.tournamentId),
     p_standings: normalized.standings,
+  });
+}
+
+export function prepareOverrideRpcCall(baseArgs, params = {}) {
+  const normalized = normalizeCommandParams(params, baseArgs);
+  const idempotencyKey = resolveTt1bIdempotencyKey("team_tournament_override_lineup", normalized);
+  if (!idempotencyKey) {
+    return {
+      ok: false,
+      code: "MISSING_IDEMPOTENCY_KEY",
+      error: "team_tournament_override_lineup yêu cầu idempotencyKey.",
+      provider: "client",
+    };
+  }
+
+  const args = {
+    p_tournament_id: String(normalized.tournamentId),
+    p_matchup_id: String(normalized.matchupId),
+    p_team_id: String(normalized.teamId),
+    p_selections: normalized.selections || {},
+    p_reason: String(normalized.reason || ""),
+    p_expected_matchup_version: Number(normalized.expectedMatchupVersion),
+    p_expected_lineup_version: Number(normalized.expectedLineupVersion),
+    p_idempotency_key: idempotencyKey,
+  };
+
+  return { ok: true, args, idempotencyKey };
+}
+
+export async function rpcTeamTournamentOverrideLineup(params) {
+  const prepared = prepareOverrideRpcCall(
+    {
+      tournamentId: params.tournamentId,
+      matchupId: params.matchupId,
+      teamId: params.teamId,
+    },
+    params
+  );
+  if (!prepared.ok) {
+    return prepared;
+  }
+  return callTeamTournamentRpc("team_tournament_override_lineup", prepared.args);
+}
+
+export async function rpcTeamTournamentGetLineupOverrideOps(tournamentId, matchupId, teamId) {
+  return callTeamTournamentRpc("team_tournament_get_lineup_override_ops", {
+    p_tournament_id: String(tournamentId),
+    p_matchup_id: String(matchupId),
+    p_team_id: String(teamId),
   });
 }

@@ -1,0 +1,72 @@
+{
+  "generatedAt": "2026-07-12T11:30:55.939Z",
+  "phase": "TT-3-OVERRIDE",
+  "stagingRef": "qyewbxjsiiyufanzcjcq",
+  "productionImpact": "NONE",
+  "localCommitSha": "7f297d89e1b1cfdd67ef98cafef79a45bce4abb7",
+  "sqlPatches": [
+    "docs/v5/PHASE_TT3_LINEUP_OVERRIDE.sql",
+    "docs/v5/PHASE_TT3_GET_SETUP_PATCH.sql"
+  ],
+  "probe": {
+    "tournamentId": "phase23d-probe-tournament",
+    "teamA": "phase23d-team-a",
+    "teamB": "phase23d-team-b",
+    "matchupId": "phase23d-matchup-1"
+  },
+  "cases": [
+    {
+      "id": "O01",
+      "name": "get_lineup_override_ops canOverride before match",
+      "pass": true,
+      "overrideOps": {
+        "blockCode": null,
+        "canOverride": true,
+        "blockMessage": null,
+        "lineupStatus": "locked",
+        "lineupVersion": 30,
+        "matchupStatus": "locked",
+        "matchupStarted": false,
+        "matchupVersion": 50,
+        "requiresRepublish": false,
+        "operationalWarning": null,
+        "elevatedReasonRequired": false
+      }
+    },
+    {
+      "id": "O02",
+      "name": "reason required",
+      "pass": true,
+      "code": "override_reason_required"
+    },
+    {
+      "id": "O03",
+      "name": "stale version conflict",
+      "pass": true,
+      "code": "version_conflict"
+    },
+    {
+      "id": "O04",
+      "name": "override locked lineup success",
+      "pass": true,
+      "lineupVersion": 31,
+      "matchupVersion": 51
+    },
+    {
+      "id": "O05",
+      "name": "idempotency replay same key",
+      "pass": true
+    },
+    {
+      "id": "O06",
+      "name": "idempotency payload mismatch blocked",
+      "pass": true,
+      "code": "idempotency_payload_mismatch"
+    }
+  ],
+  "verdict": "PASS",
+  "reportFile": "TT3_OVERRIDE_REPORT.json",
+  "passCount": 6,
+  "totalCount": 6,
+  "allPass": true
+}
