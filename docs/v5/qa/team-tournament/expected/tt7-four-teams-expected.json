@@ -1,0 +1,414 @@
+{
+  "fixtureId": "tt7-four-teams",
+  "generatedAt": "2026-07-12T10:26:50.199Z",
+  "default": {
+    "fixtureId": "tt7-four-teams",
+    "generatedAt": "2026-07-12T10:26:50.199Z",
+    "tiebreakOrder": [
+      "wins",
+      "subMatchDiff",
+      "pointsScored",
+      "manual"
+    ],
+    "standings": [
+      {
+        "teamId": "team-b",
+        "rank": 1,
+        "played": 3,
+        "wins": 2,
+        "losses": 1,
+        "subMatchWins": 7,
+        "subMatchLosses": 5,
+        "subMatchDiff": 2,
+        "pointsScored": 94,
+        "pointsConceded": 84,
+        "pointDiff": 10,
+        "rankingPoints": 5,
+        "withdrawn": false,
+        "forfeitLosses": 0,
+        "forfeitWins": 0,
+        "teamName": "Đội B"
+      },
+      {
+        "teamId": "team-c",
+        "rank": 2,
+        "played": 3,
+        "wins": 2,
+        "losses": 1,
+        "subMatchWins": 7,
+        "subMatchLosses": 5,
+        "subMatchDiff": 2,
+        "pointsScored": 92,
+        "pointsConceded": 85,
+        "pointDiff": 7,
+        "rankingPoints": 5,
+        "withdrawn": false,
+        "forfeitLosses": 0,
+        "forfeitWins": 0,
+        "teamName": "Đội C"
+      },
+      {
+        "teamId": "team-d",
+        "rank": 3,
+        "played": 3,
+        "wins": 1,
+        "losses": 2,
+        "subMatchWins": 5,
+        "subMatchLosses": 7,
+        "subMatchDiff": -2,
+        "pointsScored": 88,
+        "pointsConceded": 95,
+        "pointDiff": -7,
+        "rankingPoints": 4,
+        "withdrawn": false,
+        "forfeitLosses": 0,
+        "forfeitWins": 0,
+        "teamName": "Đội D"
+      },
+      {
+        "teamId": "team-a",
+        "rank": 4,
+        "played": 3,
+        "wins": 1,
+        "losses": 2,
+        "subMatchWins": 5,
+        "subMatchLosses": 7,
+        "subMatchDiff": -2,
+        "pointsScored": 82,
+        "pointsConceded": 92,
+        "pointDiff": -10,
+        "rankingPoints": 4,
+        "withdrawn": false,
+        "forfeitLosses": 0,
+        "forfeitWins": 0,
+        "teamName": "Đội A"
+      }
+    ],
+    "summary": {
+      "teamCount": 4,
+      "matchupCount": 6,
+      "completedMatchups": 6,
+      "incompleteMatchups": 0,
+      "withdrawnTeams": []
+    }
+  },
+  "profiles": {
+    "default": {
+      "fixtureId": "tt7-four-teams",
+      "generatedAt": "2026-07-12T10:26:50.200Z",
+      "tiebreakOrder": [
+        "wins",
+        "subMatchDiff",
+        "pointsScored",
+        "manual"
+      ],
+      "standings": [
+        {
+          "teamId": "team-b",
+          "rank": 1,
+          "played": 3,
+          "wins": 2,
+          "losses": 1,
+          "subMatchWins": 7,
+          "subMatchLosses": 5,
+          "subMatchDiff": 2,
+          "pointsScored": 94,
+          "pointsConceded": 84,
+          "pointDiff": 10,
+          "rankingPoints": 5,
+          "withdrawn": false,
+          "forfeitLosses": 0,
+          "forfeitWins": 0,
+          "teamName": "Đội B"
+        },
+        {
+          "teamId": "team-c",
+          "rank": 2,
+          "played": 3,
+          "wins": 2,
+          "losses": 1,
+          "subMatchWins": 7,
+          "subMatchLosses": 5,
+          "subMatchDiff": 2,
+          "pointsScored": 92,
+          "pointsConceded": 85,
+          "pointDiff": 7,
+          "rankingPoints": 5,
+          "withdrawn": false,
+          "forfeitLosses": 0,
+          "forfeitWins": 0,
+          "teamName": "Đội C"
+        },
+        {
+          "teamId": "team-d",
+          "rank": 3,
+          "played": 3,
+          "wins": 1,
+          "losses": 2,
+          "subMatchWins": 5,
+          "subMatchLosses": 7,
+          "subMatchDiff": -2,
+          "pointsScored": 88,
+          "pointsConceded": 95,
+          "pointDiff": -7,
+          "rankingPoints": 4,
+          "withdrawn": false,
+          "forfeitLosses": 0,
+          "forfeitWins": 0,
+          "teamName": "Đội D"
+        },
+        {
+          "teamId": "team-a",
+          "rank": 4,
+          "played": 3,
+          "wins": 1,
+          "losses": 2,
+          "subMatchWins": 5,
+          "subMatchLosses": 7,
+          "subMatchDiff": -2,
+          "pointsScored": 82,
+          "pointsConceded": 92,
+          "pointDiff": -10,
+          "rankingPoints": 4,
+          "withdrawn": false,
+          "forfeitLosses": 0,
+          "forfeitWins": 0,
+          "teamName": "Đội A"
+        }
+      ],
+      "summary": {
+        "teamCount": 4,
+        "matchupCount": 6,
+        "completedMatchups": 6,
+        "incompleteMatchups": 0,
+        "withdrawnTeams": []
+      }
+    },
+    "headToHeadPriority": {
+      "fixtureId": "tt7-four-teams",
+      "generatedAt": "2026-07-12T10:26:50.200Z",
+      "tiebreakOrder": [
+        "wins",
+        "headToHead",
+        "subMatchDiff",
+        "pointsScored",
+        "manual"
+      ],
+      "standings": [
+        {
+          "teamId": "team-b",
+          "rank": 1,
+          "played": 3,
+          "wins": 2,
+          "losses": 1,
+          "subMatchWins": 7,
+          "subMatchLosses": 5,
+          "subMatchDiff": 2,
+          "pointsScored": 94,
+          "pointsConceded": 84,
+          "pointDiff": 10,
+          "rankingPoints": 5,
+          "withdrawn": false,
+          "forfeitLosses": 0,
+          "forfeitWins": 0,
+          "teamName": "Đội B"
+        },
+        {
+          "teamId": "team-c",
+          "rank": 2,
+          "played": 3,
+          "wins": 2,
+          "losses": 1,
+          "subMatchWins": 7,
+          "subMatchLosses": 5,
+          "subMatchDiff": 2,
+          "pointsScored": 92,
+          "pointsConceded": 85,
+          "pointDiff": 7,
+          "rankingPoints": 5,
+          "withdrawn": false,
+          "forfeitLosses": 0,
+          "forfeitWins": 0,
+          "teamName": "Đội C"
+        },
+        {
+          "teamId": "team-a",
+          "rank": 3,
+          "played": 3,
+          "wins": 1,
+          "losses": 2,
+          "subMatchWins": 5,
+          "subMatchLosses": 7,
+          "subMatchDiff": -2,
+          "pointsScored": 82,
+          "pointsConceded": 92,
+          "pointDiff": -10,
+          "rankingPoints": 4,
+          "withdrawn": false,
+          "forfeitLosses": 0,
+          "forfeitWins": 0,
+          "teamName": "Đội A"
+        },
+        {
+          "teamId": "team-d",
+          "rank": 4,
+          "played": 3,
+          "wins": 1,
+          "losses": 2,
+          "subMatchWins": 5,
+          "subMatchLosses": 7,
+          "subMatchDiff": -2,
+          "pointsScored": 88,
+          "pointsConceded": 95,
+          "pointDiff": -7,
+          "rankingPoints": 4,
+          "withdrawn": false,
+          "forfeitLosses": 0,
+          "forfeitWins": 0,
+          "teamName": "Đội D"
+        }
+      ],
+      "summary": {
+        "teamCount": 4,
+        "matchupCount": 6,
+        "completedMatchups": 6,
+        "incompleteMatchups": 0,
+        "withdrawnTeams": []
+      }
+    },
+    "pointsScoredPriority": {
+      "fixtureId": "tt7-four-teams",
+      "generatedAt": "2026-07-12T10:26:50.200Z",
+      "tiebreakOrder": [
+        "wins",
+        "subMatchDiff",
+        "pointsScored",
+        "pointDiff",
+        "manual"
+      ],
+      "standings": [
+        {
+          "teamId": "team-b",
+          "rank": 1,
+          "played": 3,
+          "wins": 2,
+          "losses": 1,
+          "subMatchWins": 7,
+          "subMatchLosses": 5,
+          "subMatchDiff": 2,
+          "pointsScored": 94,
+          "pointsConceded": 84,
+          "pointDiff": 10,
+          "rankingPoints": 5,
+          "withdrawn": false,
+          "forfeitLosses": 0,
+          "forfeitWins": 0,
+          "teamName": "Đội B"
+        },
+        {
+          "teamId": "team-c",
+          "rank": 2,
+          "played": 3,
+          "wins": 2,
+          "losses": 1,
+          "subMatchWins": 7,
+          "subMatchLosses": 5,
+          "subMatchDiff": 2,
+          "pointsScored": 92,
+          "pointsConceded": 85,
+          "pointDiff": 7,
+          "rankingPoints": 5,
+          "withdrawn": false,
+          "forfeitLosses": 0,
+          "forfeitWins": 0,
+          "teamName": "Đội C"
+        },
+        {
+          "teamId": "team-d",
+          "rank": 3,
+          "played": 3,
+          "wins": 1,
+          "losses": 2,
+          "subMatchWins": 5,
+          "subMatchLosses": 7,
+          "subMatchDiff": -2,
+          "pointsScored": 88,
+          "pointsConceded": 95,
+          "pointDiff": -7,
+          "rankingPoints": 4,
+          "withdrawn": false,
+          "forfeitLosses": 0,
+          "forfeitWins": 0,
+          "teamName": "Đội D"
+        },
+        {
+          "teamId": "team-a",
+          "rank": 4,
+          "played": 3,
+          "wins": 1,
+          "losses": 2,
+          "subMatchWins": 5,
+          "subMatchLosses": 7,
+          "subMatchDiff": -2,
+          "pointsScored": 82,
+          "pointsConceded": 92,
+          "pointDiff": -10,
+          "rankingPoints": 4,
+          "withdrawn": false,
+          "forfeitLosses": 0,
+          "forfeitWins": 0,
+          "teamName": "Đội A"
+        }
+      ],
+      "summary": {
+        "teamCount": 4,
+        "matchupCount": 6,
+        "completedMatchups": 6,
+        "incompleteMatchups": 0,
+        "withdrawnTeams": []
+      }
+    }
+  },
+  "scenarios": [
+    {
+      "id": "S1",
+      "name": "Two teams tied on wins and subMatchDiff (B vs C)",
+      "teams": [
+        "team-b",
+        "team-c"
+      ],
+      "expectedDecider": "headToHead",
+      "notes": "Both 2W-1L with subMatchDiff +2; m-bc (B beats C) decides order when headToHead is in tiebreak chain."
+    },
+    {
+      "id": "S2",
+      "name": "Default order keeps subMatchDiff before manual when wins differ",
+      "teams": [
+        "team-b",
+        "team-a"
+      ],
+      "expectedDecider": "wins",
+      "notes": "B (2W) ranks above A (1W) regardless of lower-level tie-breakers."
+    },
+    {
+      "id": "S3",
+      "name": "One-win tie group (A vs D)",
+      "teams": [
+        "team-a",
+        "team-d"
+      ],
+      "expectedDecider": "subMatchDiff",
+      "notes": "Both 1W-2L with subMatchDiff -2; pointsScored breaks tie (A 82 vs D 88 — D ranks above A on pointsScored)."
+    },
+    {
+      "id": "S4",
+      "name": "Points scored as tie-breaker",
+      "teams": [
+        "team-a",
+        "team-d"
+      ],
+      "expectedDecider": "pointsScored",
+      "notes": "When subMatchDiff is equal, higher pointsScored wins."
+    }
+  ]
+}
