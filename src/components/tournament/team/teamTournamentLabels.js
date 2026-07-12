@@ -80,7 +80,8 @@ export function formatCountdownTo(targetIso, now = new Date()) {
     return null;
   }
 
-  const diffMs = new Date(targetIso).getTime() - now.getTime();
+  const nowMs = typeof now === "number" ? now : now.getTime();
+  const diffMs = new Date(targetIso).getTime() - nowMs;
   if (diffMs <= 0) {
     return "Đã quá hạn";
   }

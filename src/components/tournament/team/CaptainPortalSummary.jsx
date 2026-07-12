@@ -4,29 +4,53 @@ import AccessTimeIcon from "@mui/icons-material/AccessTime";
 
 import { LINEUP_STATUS } from "../../../features/team-tournament/constants.js";
 import { getLineup } from "../../../features/team-tournament/models/index.js";
+import {
+  getSyncedNowMs,
+  matchupNeedsLineupAction,
+  resolveMatchupLineupPermissions,
+} from "../../../features/team-tournament/services/lineupDeadlineService.js";
 import { formatCountdownTo, formatTeamTournamentDateTime } from "./teamTournamentLabels.js";
 
-function needsLineupAction(teamData, matchup, teamId) {
+function needsLineupAction(teamData, matchup, teamId, isCloudPrimary) {
   const lineup = getLineup(teamData, matchup.id, teamId);
   const status = lineup?.status || LINEUP_STATUS.NOT_SUBMITTED;
-  return (
-    status === LINEUP_STATUS.NOT_SUBMITTED ||
-    status === LINEUP_STATUS.DRAFT ||
-    status === LINEUP_STATUS.SUBMITTED
-  );
+  const permissions = resolveMatchupLineupPermissions({
+    matchup,
+    lineup,
+    isCloudPrimary,
+  });
+  return matchupNeedsLineupAction({ permissions, lineupStatus: status });
 }
 
-export default function CaptainPortalSummary({ teamData, teamId, upcomingMatchups = [] }) {
-  const [now, setNow] = useState(() => new Date());
+export default function CaptainPortalSummary({
+  teamData,
+  teamId,
+  upcomingMatchups = [],
+  serverClock = null,
+  primaryCountdown = null,
+  deadlineStatus = null,
+  isCloudPrimary = false,
+}) {
+  const [syncedNowMs, setSyncedNowMs] = useState(() =>
+    serverClock ? getSyncedNowMs(serverClock) : Date.now()
+  );
 
   useEffect(() => {
-    const timer = setInterval(() => setNow(new Date()), 60000);
+    if (!serverClock) {
+      return undefined;
+    }
+    const timer = setInterval(() => {
+      setSyncedNowMs(getSyncedNowMs(serverClock));
+    }, 1000);
     return () => clearInterval(timer);
-  }, []);
+  }, [serverClock]);
 
   const pendingCount = useMemo(
-    () => upcomingMatchups.filter((matchup) => needsLineupAction(teamData, matchup, teamId)).length,
-    [teamData, teamId, upcomingMatchups]
+    () =>
+      upcomingMatchups.filter((matchup) =>
+        needsLineupAction(teamData, matchup, teamId, isCloudPrimary)
+      ).length,
+    [teamData, teamId, upcomingMatchups, isCloudPrimary]
   );
 
   const nextMatchup = useMemo(() => {
@@ -40,7 +64,9 @@ export default function CaptainPortalSummary({ teamData, teamId, upcomingMatchup
     })[0];
   }, [upcomingMatchups]);
 
-  const countdown = nextMatchup ? formatCountdownTo(nextMatchup.lineupLockAt, now) : null;
+  const countdown =
+    primaryCountdown ??
+    (nextMatchup ? formatCountdownTo(nextMatchup.lineupLockAt, syncedNowMs) : null);
   const allSubmitted = upcomingMatchups.length > 0 && pendingCount === 0;
 
   return (
@@ -66,6 +92,9 @@ export default function CaptainPortalSummary({ teamData, teamId, upcomingMatchup
         {countdown ? (
           <Chip label={countdown} size="small" color="info" variant="outlined" />
         ) : null}
+        {deadlineStatus === "past" || deadlineStatus === "at" ? (
+          <Chip label="Đã hết hạn nộp" size="small" color="error" variant="outlined" />
+        ) : null}
       </Stack>
 
       {pendingCount > 0 ? (
@@ -79,12 +108,6 @@ export default function CaptainPortalSummary({ teamData, teamId, upcomingMatchup
         <Alert severity="success">
           Bạn đã nộp đủ đội hình cho các trận sắp tới. Chờ BTC khóa và công bố để xem cặp đấu chính thức.
         </Alert>
-      ) : null}
-
-      {upcomingMatchups.length === 0 ? (
-        <Typography variant="body2" color="text.secondary">
-          Chưa có lịch đối đầu cho đội của bạn.
-        </Typography>
       ) : null}
     </Stack>
   );

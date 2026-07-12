@@ -1,0 +1,81 @@
+{
+  "generatedAt": "2026-07-12T09:37:05.474Z",
+  "phase": "TT-2B",
+  "stagingRef": "qyewbxjsiiyufanzcjcq",
+  "productionImpact": "NONE",
+  "localCommitSha": "b243da77250d81034b92fcbb49c6a7dab3cfd6f0",
+  "sqlPatch": "docs/v5/PHASE_TT2B_LINEUP_DEADLINE_SERVER_TIME.sql",
+  "probe": {
+    "tournamentId": "phase23d-probe-tournament",
+    "teamA": "phase23d-team-a",
+    "matchupId": "phase23d-matchup-1"
+  },
+  "cases": [
+    {
+      "id": "TT2B-01-get_setup-fields",
+      "pass": true,
+      "expected": "serverTime + lineupDeadline + canSaveDraft + canSubmit + deadlineStatus",
+      "actual": "{\"serverTime\":true,\"lineupDeadline\":\"2026-07-12T11:37:06.44+00:00\",\"appliedLockAt\":\"2026-07-12T11:37:06.44+00:00\",\"canSaveDraft\":true,\"canSubmit\":true,\"deadlineStatus\":\"before\"}",
+      "detail": ""
+    },
+    {
+      "id": "TT2B-02-before-deadline",
+      "pass": true,
+      "expected": "deadlineStatus=before, captain can save/submit",
+      "actual": "status=before save=true submit=true",
+      "detail": ""
+    },
+    {
+      "id": "TT2B-03-after-deadline",
+      "pass": true,
+      "expected": "deadlineStatus=past, blocked",
+      "actual": "status=past save=false",
+      "detail": ""
+    },
+    {
+      "id": "TT2B-04-retry-after-deadline",
+      "pass": true,
+      "expected": "save draft rejected after deadline",
+      "actual": "code=deadline_passed",
+      "detail": ""
+    },
+    {
+      "id": "TT2B-05-at-deadline",
+      "pass": true,
+      "expected": "deadlineStatus=at (or past if >1s elapsed), blocked",
+      "actual": "status=at lockAt=2026-07-12T09:37:07.793Z",
+      "detail": ""
+    },
+    {
+      "id": "TT2B-06-refresh-restore-before",
+      "pass": true,
+      "expected": "reload after lock restore → before",
+      "actual": "status=before",
+      "detail": ""
+    },
+    {
+      "id": "TT2B-07-serverTime-present",
+      "pass": true,
+      "expected": "serverTime on every get_setup",
+      "actual": "2026-07-12T09:37:09.112293+00:00",
+      "detail": ""
+    },
+    {
+      "id": "TT2B-08-viewer-team-resolved",
+      "pass": true,
+      "expected": "viewerTeamId derived from auth",
+      "actual": "phase23d-team-a",
+      "detail": ""
+    },
+    {
+      "id": "TT2B-09-at-boundary-helper",
+      "pass": true,
+      "expected": "SQL helper blocks at exact server now() boundary",
+      "actual": "{\"canSubmit\":false,\"canSaveDraft\":false,\"deadlineStatus\":\"at\",\"lineupDeadline\":\"2026-07-12T09:37:09.112293+00:00\"}",
+      "detail": ""
+    }
+  ],
+  "verdict": "READY FOR TT-2C",
+  "failedCount": 0,
+  "passCount": 9
+}
