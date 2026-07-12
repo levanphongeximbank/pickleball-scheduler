@@ -37,9 +37,47 @@ export {
 } from "./formationRuntimeAdapter.js";
 
 export {
+  normalizeFormationPairs,
+  comparePairMembership,
+  buildFormationParityComparison,
+} from "./formationParityModel.js";
+
+export {
+  verifyFormationPayloadPreservation,
+  extractLegacyPayloadExtensions,
+  containsSecretLikeKeys,
+} from "./formationPayloadPreservation.js";
+
+export { compareFormationConstraintParity } from "./formationConstraintParity.js";
+export { compareFormationScoreParity } from "./formationScoreParity.js";
+export {
+  extractLegacyCourtAllocation,
+  compareFormationCourtParity,
+} from "./formationCourtParity.js";
+
+export {
+  buildCompleteFormationTraceRecord,
+  redactFormationTraceSecrets,
+  isFormationTraceJsonSerializable,
+  validateCompleteFormationTraceRecord,
+} from "./formationTraceVerification.js";
+
+export {
+  measureFormationPerformanceBaseline,
+  summarizeFormationPerformanceReports,
+} from "./formationPerformanceBaseline.js";
+
+export {
+  FORMATION_FIXTURE_MATRIX,
+  getFormationFixture,
+  buildMlpFormationPayload,
+} from "./formationFixtures.js";
+
+export {
+  createMemoizedFormationExecutor,
+  runFormationShadowComparison,
   compareFormationShadowParity,
   verifyFormationRandomParity,
-  runFormationShadowComparison,
 } from "./formationShadowParity.js";
 
 export {
