@@ -51,6 +51,30 @@ async function callTeamTournamentRpc(rpcName, args = {}) {
   const payload = parseRpcJson(data);
   if (!payload.ok) {
     const code = payload.code || "FORBIDDEN";
+    const passthrough = [
+      "version_conflict",
+      "lineup_locked",
+      "deadline_passed",
+      "player_not_in_team",
+      "player_inactive",
+      "player_not_eligible",
+      "invalid_gender",
+      "invalid_discipline",
+      "duplicate_player",
+      "duplicate_slot",
+      "roster_limit_exceeded",
+      "lineup_incomplete",
+      "captain_scope_denied",
+      "cross_tenant_denied",
+      "NOT_FOUND",
+      "FORBIDDEN",
+      "NOT_AUTHENTICATED",
+      "VALIDATION",
+      "LOCKED",
+    ];
+    if (passthrough.includes(code)) {
+      return { ...payload, provider: "rpc" };
+    }
     const errorByCode = {
       NOT_FOUND: "Giải chưa có trên cloud. Kiểm tra venue ở header rồi thử lại.",
       FORBIDDEN: "Không có quyền quản lý giải đồng đội.",
@@ -60,7 +84,9 @@ async function callTeamTournamentRpc(rpcName, args = {}) {
     return {
       ok: false,
       code,
-      error: payload.error || errorByCode[code] || "Không có quyền.",
+      error: payload.error || payload.message || errorByCode[code] || "Không có quyền.",
+      ...payload,
+      provider: "rpc",
     };
   }
 

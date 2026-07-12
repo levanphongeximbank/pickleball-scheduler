@@ -1,11 +1,17 @@
 import { getPlayerGenderKey } from "../../../models/player.js";
 import {
-  ACTIVATION_RULE,
   DISCIPLINE_CATEGORY,
   GENDER_REQUIREMENT,
 } from "../constants.js";
 import { findTeam } from "../models/index.js";
-import { isMlpFormat } from "./mlpPresetEngine.js";
+import { isMlpFormat, getActiveMatchDisciplines } from "./mlpPresetEngine.js";
+import {
+  LINEUP_VALIDATION_CODE,
+  createLineupValidationResult,
+  mergeValidationMessages,
+  validationFailure,
+  validationSuccess,
+} from "./lineupValidationContract.js";
 
 function playerMap(players = []) {
   return new Map(players.map((player) => [String(player.id), player]));
@@ -17,25 +23,56 @@ function isPlayerAvailable(team, playerId) {
   return !absent.has(String(playerId)) && !locked.has(String(playerId));
 }
 
+function pushFieldError(fieldErrors, key, message) {
+  if (!fieldErrors[key]) {
+    fieldErrors[key] = [];
+  }
+  fieldErrors[key].push(message);
+}
+
 function validateGenderRequirement(playerIds, playersById, requirement) {
   const members = playerIds
     .map((id) => playersById.get(String(id)))
     .filter(Boolean);
 
   if (members.length !== playerIds.length) {
-    return "Có VĐV không tồn tại trong danh sách.";
+    return {
+      code: LINEUP_VALIDATION_CODE.PLAYER_NOT_ELIGIBLE,
+      message: "Có VĐV không tồn tại trong danh sách.",
+    };
+  }
+
+  for (const player of members) {
+    const genderKey = getPlayerGenderKey(player.gender);
+    if (genderKey === "unknown" || genderKey === "other") {
+      return {
+        code: LINEUP_VALIDATION_CODE.INVALID_GENDER,
+        message: `VĐV ${player.name || player.id} thiếu hoặc có giới tính không hợp lệ.`,
+        invalidPlayerIds: [String(player.id)],
+      };
+    }
   }
 
   if (requirement === GENDER_REQUIREMENT.MALE) {
-    return members.every((player) => getPlayerGenderKey(player.gender) === "male")
+    const invalid = members.filter((player) => getPlayerGenderKey(player.gender) !== "male");
+    return invalid.length === 0
       ? null
-      : "Nội dung yêu cầu VĐV nam.";
+      : {
+          code: LINEUP_VALIDATION_CODE.INVALID_GENDER,
+          message: "Nội dung yêu cầu VĐV nam.",
+          invalidPlayerIds: invalid.map((p) => String(p.id)),
+        };
   }
 
   if (requirement === GENDER_REQUIREMENT.FEMALE) {
-    return members.every((player) => getPlayerGenderKey(player.gender) === "female")
+    const invalid = members.filter((player) => getPlayerGenderKey(player.gender) !== "female");
+    return invalid.length === 0
       ? null
-      : "Nội dung yêu cầu VĐV nữ.";
+      : {
+          code: LINEUP_VALIDATION_CODE.INVALID_GENDER,
+          message: "Nội dung yêu cầu VĐV nữ.",
+          invalidPlayerIds: invalid.map((p) => String(p.id)),
+        };
   }
 
   if (requirement === GENDER_REQUIREMENT.MIXED_PAIR) {
@@ -43,13 +80,17 @@ function validateGenderRequirement(playerIds, playersById, requirement) {
     const females = members.filter((player) => getPlayerGenderKey(player.gender) === "female");
     return members.length === 2 && males.length === 1 && females.length === 1
       ? null
-      : "Nội dung mixed cần 1 nam + 1 nữ.";
+      : {
+          code: LINEUP_VALIDATION_CODE.INVALID_GENDER,
+          message: "Nội dung mixed cần 1 nam + 1 nữ.",
+          invalidPlayerIds: members.map((p) => String(p.id)),
+        };
   }
 
   return null;
 }
 
-export function validateDisciplineSelection({
+export function validateDisciplineSelectionStructured({
   team,
   discipline,
   playerIds,
@@ -58,59 +99,110 @@ export function validateDisciplineSelection({
   allowReuse = false,
   partial = false,
 }) {
+  const fieldErrors = {};
+  const ruleViolations = [];
+  const invalidPlayerIds = [];
+
   if (!team || !discipline) {
-    return { ok: false, error: "Thiếu đội hoặc nội dung thi đấu." };
+    return validationFailure(LINEUP_VALIDATION_CODE.VALIDATION, "Thiếu đội hoặc nội dung thi đấu.");
   }
 
   const normalizedIds = playerIds.map((id) => String(id).trim()).filter(Boolean);
   const expectedCount = discipline.playerCount;
+  const disciplineKey = String(discipline.id);
 
   if (normalizedIds.length === 0) {
-    return partial
-      ? { ok: true, playerIds: [] }
-      : { ok: false, error: `${discipline.name} cần ${expectedCount} VĐV.` };
+    if (partial) {
+      return validationSuccess({ selections: { [disciplineKey]: [] }, playerIds: [] });
+    }
+    return validationFailure(
+      LINEUP_VALIDATION_CODE.LINEUP_INCOMPLETE,
+      `${discipline.name} cần ${expectedCount} VĐV.`,
+      { invalidDisciplineIds: [disciplineKey] }
+    );
   }
 
   if (partial && normalizedIds.length > expectedCount) {
-    return {
-      ok: false,
-      error: `${discipline.name}: tối đa ${expectedCount} VĐV.`,
-    };
+    return validationFailure(
+      LINEUP_VALIDATION_CODE.ROSTER_LIMIT_EXCEEDED,
+      `${discipline.name}: tối đa ${expectedCount} VĐV.`,
+      { invalidDisciplineIds: [disciplineKey] }
+    );
   }
 
   if (!partial && normalizedIds.length !== expectedCount) {
-    return {
-      ok: false,
-      error: `${discipline.name} cần ${expectedCount} VĐV.`,
-    };
+    return validationFailure(
+      LINEUP_VALIDATION_CODE.LINEUP_INCOMPLETE,
+      `${discipline.name} cần ${expectedCount} VĐV.`,
+      { invalidDisciplineIds: [disciplineKey] }
+    );
   }
 
   const uniqueIds = new Set(normalizedIds);
   if (uniqueIds.size !== normalizedIds.length) {
-    return { ok: false, error: `${discipline.name}: không được trùng VĐV.` };
+    return validationFailure(
+      LINEUP_VALIDATION_CODE.DUPLICATE_PLAYER,
+      `${discipline.name}: không được trùng VĐV.`,
+      { invalidDisciplineIds: [disciplineKey] }
+    );
   }
 
   for (const playerId of normalizedIds) {
     if (!team.playerIds.includes(playerId)) {
-      return {
-        ok: false,
-        error: `${discipline.name}: VĐV ${playerId} không thuộc đội.`,
-      };
+      invalidPlayerIds.push(playerId);
+      pushFieldError(fieldErrors, disciplineKey, `${discipline.name}: VĐV ${playerId} không thuộc đội.`);
+      ruleViolations.push({
+        code: LINEUP_VALIDATION_CODE.PLAYER_NOT_IN_TEAM,
+        disciplineId: disciplineKey,
+        playerId,
+        message: `${discipline.name}: VĐV ${playerId} không thuộc đội.`,
+      });
+      continue;
     }
 
     if (!isPlayerAvailable(team, playerId)) {
-      return {
-        ok: false,
-        error: `${discipline.name}: VĐV ${playerId} vắng mặt hoặc bị khóa.`,
-      };
+      invalidPlayerIds.push(playerId);
+      pushFieldError(
+        fieldErrors,
+        disciplineKey,
+        `${discipline.name}: VĐV ${playerId} vắng mặt hoặc bị khóa.`
+      );
+      ruleViolations.push({
+        code: LINEUP_VALIDATION_CODE.PLAYER_NOT_ELIGIBLE,
+        disciplineId: disciplineKey,
+        playerId,
+        message: `${discipline.name}: VĐV ${playerId} vắng mặt hoặc bị khóa.`,
+      });
+      continue;
     }
 
     if (!allowReuse && usedPlayerIds.has(playerId)) {
-      return {
-        ok: false,
-        error: `${discipline.name}: VĐV ${playerId} đã được chọn ở nội dung khác.`,
-      };
+      invalidPlayerIds.push(playerId);
+      pushFieldError(
+        fieldErrors,
+        disciplineKey,
+        `${discipline.name}: VĐV ${playerId} đã được chọn ở nội dung khác.`
+      );
+      ruleViolations.push({
+        code: LINEUP_VALIDATION_CODE.DUPLICATE_PLAYER,
+        disciplineId: disciplineKey,
+        playerId,
+        message: `${discipline.name}: VĐV ${playerId} đã được chọn ở nội dung khác.`,
+      });
     }
+  }
+
+  if (ruleViolations.length > 0) {
+    return validationFailure(
+      ruleViolations[0].code || LINEUP_VALIDATION_CODE.VALIDATION,
+      ruleViolations[0].message,
+      {
+        fieldErrors,
+        ruleViolations,
+        invalidPlayerIds: [...new Set(invalidPlayerIds)],
+        invalidDisciplineIds: [disciplineKey],
+      }
+    );
   }
 
   const playersById = playerMap(players);
@@ -124,7 +216,19 @@ export function validateDisciplineSelection({
     );
 
     if (genderError) {
-      return { ok: false, error: `${discipline.name}: ${genderError}` };
+      pushFieldError(fieldErrors, disciplineKey, `${discipline.name}: ${genderError.message}`);
+      return validationFailure(genderError.code, `${discipline.name}: ${genderError.message}`, {
+        fieldErrors,
+        ruleViolations: [
+          {
+            code: genderError.code,
+            disciplineId: disciplineKey,
+            message: genderError.message,
+          },
+        ],
+        invalidPlayerIds: genderError.invalidPlayerIds || [],
+        invalidDisciplineIds: [disciplineKey],
+      });
     }
 
     if (
@@ -137,27 +241,45 @@ export function validateDisciplineSelection({
         GENDER_REQUIREMENT.MIXED_PAIR
       );
       if (mixedError) {
-        return { ok: false, error: `${discipline.name}: ${mixedError}` };
+        return validationFailure(
+          mixedError.code,
+          `${discipline.name}: ${mixedError.message}`,
+          {
+            fieldErrors: { [disciplineKey]: [mixedError.message] },
+            invalidDisciplineIds: [disciplineKey],
+            invalidPlayerIds: mixedError.invalidPlayerIds || [],
+          }
+        );
       }
     }
   }
 
-  return { ok: true, playerIds: normalizedIds };
+  return validationSuccess({
+    selections: { [disciplineKey]: normalizedIds },
+    playerIds: normalizedIds,
+  });
 }
 
-export function validateMlpLineupParticipation(teamData, teamId, selections = {}) {
+/** @deprecated use validateDisciplineSelectionStructured — kept for callers expecting { ok, error } */
+export function validateDisciplineSelection(args) {
+  const result = validateDisciplineSelectionStructured(args);
+  if (result.ok) {
+    return { ok: true, playerIds: result.playerIds || args.playerIds };
+  }
+  return { ok: false, error: result.message, code: result.code, validation: result };
+}
+
+export function validateMlpLineupParticipationStructured(teamData, teamId, selections = {}) {
   if (!isMlpFormat(teamData)) {
-    return { ok: true };
+    return validationSuccess();
   }
 
   const team = findTeam(teamData, teamId);
   if (!team) {
-    return { ok: false, error: "Không tìm thấy đội." };
+    return validationFailure(LINEUP_VALIDATION_CODE.VALIDATION, "Không tìm thấy đội.");
   }
 
-  const mainDisciplines = teamData.disciplines.filter(
-    (discipline) => discipline.activationRule === ACTIVATION_RULE.ALWAYS
-  );
+  const mainDisciplines = getActiveMatchDisciplines(teamData.disciplines || []);
 
   const playCount = new Map();
   team.playerIds.forEach((playerId) => playCount.set(String(playerId), 0));
@@ -170,13 +292,15 @@ export function validateMlpLineupParticipation(teamData, teamId, selections = {}
     }
   }
 
-  const errors = [];
+  const ruleViolations = [];
   for (const playerId of team.playerIds) {
     const count = playCount.get(String(playerId)) || 0;
     if (count !== 2) {
-      errors.push(
-        `VĐV phải tham gia đúng 2 trận trong tie (1 đồng giới + 1 mixed). Hiện tại: ${count} trận.`
-      );
+      ruleViolations.push({
+        code: LINEUP_VALIDATION_CODE.LINEUP_INCOMPLETE,
+        message: `VĐV phải tham gia đúng 2 trận trong tie (1 đồng giới + 1 mixed). Hiện tại: ${count} trận.`,
+        playerId: String(playerId),
+      });
       break;
     }
   }
@@ -199,7 +323,10 @@ export function validateMlpLineupParticipation(teamData, teamId, selections = {}
       if (femaleInMixed) {
         const maleInMixed = mixedIds.find((id) => !femaleIds.has(String(id)));
         if (!maleInMixed) {
-          errors.push("Mỗi VĐV nữ: 1 trận đôi nữ + 1 trận mixed.");
+          ruleViolations.push({
+            code: LINEUP_VALIDATION_CODE.INVALID_GENDER,
+            message: "Mỗi VĐV nữ: 1 trận đôi nữ + 1 trận mixed.",
+          });
         }
       }
     }
@@ -213,35 +340,68 @@ export function validateMlpLineupParticipation(teamData, teamId, selections = {}
       if (maleInMixed) {
         const femaleInMixed = mixedIds.find((id) => !maleIds.has(String(id)));
         if (!femaleInMixed) {
-          errors.push("Mỗi VĐV nam: 1 trận đôi nam + 1 trận mixed.");
+          ruleViolations.push({
+            code: LINEUP_VALIDATION_CODE.INVALID_GENDER,
+            message: "Mỗi VĐV nam: 1 trận đôi nam + 1 trận mixed.",
+          });
         }
       }
     }
   }
 
-  return errors.length > 0 ? { ok: false, errors } : { ok: true };
+  if (ruleViolations.length > 0) {
+    return validationFailure(
+      ruleViolations[0].code,
+      ruleViolations[0].message,
+      { ruleViolations }
+    );
+  }
+
+  return validationSuccess();
 }
 
-export function validateLineupSelections({
+export function validateMlpLineupParticipation(teamData, teamId, selections = {}) {
+  const result = validateMlpLineupParticipationStructured(teamData, teamId, selections);
+  if (result.ok) {
+    return { ok: true };
+  }
+  return {
+    ok: false,
+    error: result.message,
+    errors: mergeValidationMessages(result),
+    validation: result,
+  };
+}
+
+export function validateLineupSelectionsStructured({
   teamData,
   teamId,
   selections = {},
   players = [],
   partial = false,
+  serverTime = null,
+  lineupVersion = null,
 }) {
   const team = findTeam(teamData, teamId);
   if (!team) {
-    return { ok: false, error: "Không tìm thấy đội." };
+    return validationFailure(LINEUP_VALIDATION_CODE.VALIDATION, "Không tìm thấy đội.");
   }
 
   const allowReuse = teamData.settings?.allowPlayerReusePerMatchup === true;
   const usedPlayerIds = new Set();
-  const errors = [];
   const normalizedSelections = {};
+  const fieldErrors = {};
+  const ruleViolations = [];
+  const invalidPlayerIds = [];
+  const invalidDisciplineIds = [];
+  const warnings = [];
 
-  for (const discipline of teamData.disciplines) {
+  for (const discipline of teamData.disciplines || []) {
+    if (!discipline?.id) {
+      continue;
+    }
     const playerIds = selections[discipline.id] || [];
-    const result = validateDisciplineSelection({
+    const result = validateDisciplineSelectionStructured({
       team,
       discipline,
       playerIds,
@@ -252,25 +412,93 @@ export function validateLineupSelections({
     });
 
     if (!result.ok) {
-      errors.push(result.error);
+      const violations =
+        result.ruleViolations?.length > 0
+          ? result.ruleViolations
+          : [
+              {
+                code: result.code,
+                message: result.message,
+                disciplineId: discipline.id,
+              },
+            ];
+      ruleViolations.push(...violations);
+      invalidPlayerIds.push(...(result.invalidPlayerIds || []));
+      invalidDisciplineIds.push(...(result.invalidDisciplineIds || [discipline.id]));
+      Object.assign(fieldErrors, result.fieldErrors || {});
       continue;
     }
 
-    result.playerIds.forEach((playerId) => usedPlayerIds.add(playerId));
-    normalizedSelections[discipline.id] = result.playerIds;
-  }
+    const ids = result.playerIds || result.selections?.[discipline.id] || [];
+    ids.forEach((playerId) => usedPlayerIds.add(playerId));
+    normalizedSelections[discipline.id] = ids;
 
-  if (!partial) {
-    const mlpCheck = validateMlpLineupParticipation(teamData, teamId, normalizedSelections);
-    if (!mlpCheck.ok) {
-      errors.push(...(mlpCheck.errors || [mlpCheck.error].filter(Boolean)));
+    if (partial && ids.length > 0 && ids.length < discipline.playerCount) {
+      warnings.push(`${discipline.name}: nháp chưa đủ ${discipline.playerCount} VĐV.`);
     }
   }
 
-  return {
-    ok: errors.length === 0,
-    errors,
+  if (ruleViolations.length > 0) {
+    return validationFailure(
+      ruleViolations[0].code || LINEUP_VALIDATION_CODE.VALIDATION,
+      ruleViolations[0].message,
+      {
+        fieldErrors,
+        ruleViolations,
+        invalidPlayerIds: [...new Set(invalidPlayerIds)],
+        invalidDisciplineIds: [...new Set(invalidDisciplineIds)],
+        serverTime,
+        lineupVersion,
+        warnings,
+      }
+    );
+  }
+
+  if (!partial) {
+    for (const discipline of teamData.disciplines || []) {
+      const ids = normalizedSelections[discipline.id] || [];
+      if (ids.length !== discipline.playerCount) {
+        return validationFailure(
+          LINEUP_VALIDATION_CODE.LINEUP_INCOMPLETE,
+          `${discipline.name} cần ${discipline.playerCount} VĐV.`,
+          { invalidDisciplineIds: [discipline.id] }
+        );
+      }
+    }
+
+    const mlpCheck = validateMlpLineupParticipationStructured(
+      teamData,
+      teamId,
+      normalizedSelections
+    );
+    if (!mlpCheck.ok) {
+      return createLineupValidationResult({
+        ...mlpCheck,
+        serverTime,
+        lineupVersion,
+        selections: normalizedSelections,
+      });
+    }
+  }
+
+  return validationSuccess({
     selections: normalizedSelections,
+    serverTime,
+    lineupVersion,
+    warnings,
+  });
+}
+
+export function validateLineupSelections(args) {
+  const result = validateLineupSelectionsStructured(args);
+  const errors = mergeValidationMessages(result);
+  return {
+    ok: result.ok,
+    errors,
+    error: errors[0] || result.message || null,
+    selections: result.selections,
+    warnings: result.warnings,
+    validation: result,
   };
 }
 
@@ -316,3 +544,5 @@ export function filterEligiblePlayersForDiscipline({
       return true;
     });
 }
+
+export { LINEUP_VALIDATION_CODE, mergeValidationMessages } from "./lineupValidationContract.js";
