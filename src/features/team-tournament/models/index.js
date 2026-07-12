@@ -303,6 +303,16 @@ export function normalizeMatchup(matchup) {
             winnerTeamId: matchup.result.winnerTeamId
               ? String(matchup.result.winnerTeamId).trim()
               : "",
+            forfeit: matchup.result.forfeit === true,
+            resultType: matchup.result.resultType
+              ? String(matchup.result.resultType).trim()
+              : "",
+            forfeitingTeamId: matchup.result.forfeitingTeamId
+              ? String(matchup.result.forfeitingTeamId).trim()
+              : "",
+            forfeitReason: matchup.result.forfeitReason
+              ? String(matchup.result.forfeitReason).trim()
+              : "",
           }
         : null,
     dreambreaker: normalizeDreambreakerState(matchup.dreambreaker),
@@ -421,6 +431,9 @@ export function normalizeStanding(standing, index = 0) {
     pointsScored: Number(standing.pointsScored) || 0,
     pointsConceded: Number(standing.pointsConceded) || 0,
     rankingPoints: Number(standing.rankingPoints) || 0,
+    forfeitWins: Number(standing.forfeitWins) || 0,
+    forfeitLosses: Number(standing.forfeitLosses) || 0,
+    withdrawn: Boolean(standing.withdrawn),
   };
 }
 

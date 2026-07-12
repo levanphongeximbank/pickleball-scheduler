@@ -5,7 +5,7 @@ import {
   normalizeTeamData,
 } from "../models/index.js";
 
-function emptyStanding(teamId) {
+function emptyStanding(teamId, team = {}) {
   return {
     teamId,
     rank: 0,
@@ -18,7 +18,18 @@ function emptyStanding(teamId) {
     pointsScored: 0,
     pointsConceded: 0,
     rankingPoints: 0,
+    forfeitWins: 0,
+    forfeitLosses: 0,
+    withdrawn: Boolean(team.withdrawn),
   };
+}
+
+function isForfeitMatchup(matchup, result) {
+  return (
+    result?.forfeit === true ||
+    result?.resultType === "forfeit" ||
+    matchup?.resultType === "forfeit"
+  );
 }
 
 function headToHeadWinner(teamAId, teamBId, matchups = []) {
@@ -60,7 +71,7 @@ export function computeTeamStandings(teamData) {
   const standingsMap = new Map();
 
   teamData.teams.forEach((team) => {
-    standingsMap.set(team.id, emptyStanding(team.id));
+    standingsMap.set(team.id, emptyStanding(team.id, team));
   });
 
   teamData.matchups.forEach((matchup) => {
@@ -76,8 +87,12 @@ export function computeTeamStandings(teamData) {
       return;
     }
 
-    const teamA = standingsMap.get(matchup.teamAId) || emptyStanding(matchup.teamAId);
-    const teamB = standingsMap.get(matchup.teamBId) || emptyStanding(matchup.teamBId);
+    const teamA =
+      standingsMap.get(matchup.teamAId) ||
+      emptyStanding(matchup.teamAId, findTeam(teamData, matchup.teamAId));
+    const teamB =
+      standingsMap.get(matchup.teamBId) ||
+      emptyStanding(matchup.teamBId, findTeam(teamData, matchup.teamBId));
 
     if (hasSubMatchResults) {
       teamA.subMatchWins += result.teamAWins;
@@ -108,6 +123,21 @@ export function computeTeamStandings(teamData) {
         teamA.losses += 1;
         teamB.rankingPoints += 2;
         teamA.rankingPoints += 1;
+      }
+
+      if (isForfeitMatchup(matchup, result)) {
+        const forfeitingTeamId =
+          result.forfeitingTeamId ||
+          matchup.forfeitingTeamId ||
+          (result.winnerTeamId === matchup.teamAId ? matchup.teamBId : matchup.teamAId);
+
+        if (forfeitingTeamId === matchup.teamAId) {
+          teamA.forfeitLosses += 1;
+          teamB.forfeitWins += 1;
+        } else if (forfeitingTeamId === matchup.teamBId) {
+          teamB.forfeitLosses += 1;
+          teamA.forfeitWins += 1;
+        }
       }
     }
 
