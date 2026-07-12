@@ -14,37 +14,62 @@ import {
 } from "../models/index.js";
 import { validateLineupSelections } from "./lineupValidationEngine.js";
 import { randomizeMissingLineups } from "./lineupRandomEngine.js";
+import {
+  LINEUP_ACTION,
+  LINEUP_ACTOR_ROLE,
+  assertLineupTransitionAllowed,
+  canCaptainEditLineupStatus,
+  evaluateLineupDeadline,
+} from "./lineupStateMachine.js";
 
 function isBeforeLock(matchup, now = new Date()) {
-  if (!matchup?.lineupLockAt) {
-    return true;
-  }
-  return new Date(now).getTime() < new Date(matchup.lineupLockAt).getTime();
+  const check = evaluateLineupDeadline({
+    action: LINEUP_ACTION.SUBMIT,
+    matchup,
+    serverNow: now,
+  });
+  return !check.isPastDeadline;
 }
 
 function canEditLineup(lineup) {
   if (!lineup) {
     return true;
   }
-  return (
-    lineup.status === LINEUP_STATUS.NOT_SUBMITTED ||
-    lineup.status === LINEUP_STATUS.DRAFT ||
-    lineup.status === LINEUP_STATUS.SUBMITTED
-  );
+  return canCaptainEditLineupStatus(lineup.status);
 }
 
-export function saveLineupDraft(teamData, { matchupId, teamId, selections, players = [] }) {
+function guardCaptainMutation({ action, lineup, matchup, now }) {
+  return assertLineupTransitionAllowed({
+    action,
+    fromStatus: lineup?.status || LINEUP_STATUS.NOT_SUBMITTED,
+    actorRole: LINEUP_ACTOR_ROLE.CAPTAIN,
+    matchup,
+    serverNow: now,
+    lineup,
+  });
+}
+
+export function saveLineupDraft(teamData, { matchupId, teamId, selections, players = [], now = new Date() }) {
   const matchup = findMatchup(teamData, matchupId);
   if (!matchup) {
     return { ok: false, error: "Không tìm thấy lượt đối đầu." };
   }
 
-  if (!isBeforeLock(matchup)) {
+  if (!isBeforeLock(matchup, now)) {
     return { ok: false, error: "Đã quá giờ khóa đội hình." };
   }
 
   const key = lineupKey(matchupId, teamId);
   const existing = getLineup(teamData, matchupId, teamId);
+  const transition = guardCaptainMutation({
+    action: LINEUP_ACTION.SAVE_DRAFT,
+    lineup: existing,
+    matchup,
+    now,
+  });
+  if (!transition.ok) {
+    return { ok: false, error: transition.error, code: transition.code };
+  }
   if (existing && !canEditLineup(existing)) {
     return { ok: false, error: "Đội hình đã khóa, không thể sửa." };
   }
@@ -98,6 +123,15 @@ export function submitLineup(teamData, { matchupId, teamId, selections, players 
 
   const key = lineupKey(matchupId, teamId);
   const existing = getLineup(teamData, matchupId, teamId);
+  const transition = guardCaptainMutation({
+    action: LINEUP_ACTION.SUBMIT,
+    lineup: existing,
+    matchup,
+    now,
+  });
+  if (!transition.ok) {
+    return { ok: false, error: transition.error, code: transition.code };
+  }
   if (existing && !canEditLineup(existing)) {
     return { ok: false, error: "Đội hình đã khóa, không thể nộp." };
   }
@@ -204,7 +238,7 @@ export function lockMatchupLineups(teamData, { matchupId, players = [], now = ne
   return { ok: true, teamData: nextData, logs };
 }
 
-export function publishMatchupLineups(teamData, { matchupId }) {
+export function publishMatchupLineups(teamData, { matchupId, actorRole = LINEUP_ACTOR_ROLE.BTC }) {
   const matchup = findMatchup(teamData, matchupId);
   if (!matchup) {
     return { ok: false, error: "Không tìm thấy lượt đối đầu." };
@@ -218,6 +252,18 @@ export function publishMatchupLineups(teamData, { matchupId }) {
     const lineup = nextLineups[key];
     if (!lineup) {
       return { ok: false, error: `Đội ${teamId} chưa có đội hình để công bố.` };
+    }
+
+    const transition = assertLineupTransitionAllowed({
+      action: LINEUP_ACTION.PUBLISH,
+      fromStatus: lineup.status,
+      actorRole,
+      matchup,
+      serverNow: publishTime,
+      lineup,
+    });
+    if (!transition.ok) {
+      return { ok: false, error: transition.error, code: transition.code };
     }
 
     nextLineups[key] = normalizeLineup({
