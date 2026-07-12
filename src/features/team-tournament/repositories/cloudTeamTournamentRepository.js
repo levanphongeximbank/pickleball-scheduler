@@ -7,6 +7,7 @@ import {
   rpcTeamTournamentWithdrawTeam,
   rpcTeamTournamentProvisionRefereeMatch,
   rpcTeamTournamentRevokeRefereeLink,
+  rpcTeamTournamentResyncRefereeLink,
   rpcTeamTournamentLockMatchup,
   rpcTeamTournamentPublishMatchup,
   rpcTeamTournamentRandomizeLineup,
@@ -392,6 +393,22 @@ export function createCloudTeamTournamentRepository() {
               tournamentId,
               subMatchId: payload.subMatchId,
               reason: payload.reason || "",
+              expectedLinkVersion: payload.expectedLinkVersion ?? payload.linkVersion ?? null,
+            },
+            options
+          )
+        )
+      );
+    },
+
+    async resyncRefereeLink(_clubId, tournamentId, payload, commandOptions) {
+      return runVersionedMutation("resyncRefereeLink", commandOptions, async (options) =>
+        rpcTeamTournamentResyncRefereeLink(
+          withCommandParams(
+            {
+              tournamentId,
+              subMatchId: payload.subMatchId,
+              reason: payload.reason || "tt5c_resync",
               expectedLinkVersion: payload.expectedLinkVersion ?? payload.linkVersion ?? null,
             },
             options

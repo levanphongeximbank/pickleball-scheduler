@@ -74,6 +74,92 @@ export function buildProvisionCommandPayload({
   };
 }
 
+export const REFEREE_V5_RESULT_SOURCE = "referee_v5";
+
+export const REFEREE_OUTBOX_EVENT_TYPES = Object.freeze({
+  MATCH_FINALIZED: "REFEREE_MATCH_FINALIZED",
+  RESULT_REVISED: "REFEREE_RESULT_REVISED",
+  MATCH_REOPENED: "REFEREE_MATCH_REOPENED",
+  STANDINGS_RECALC: "STANDINGS_RECALC_REQUESTED",
+});
+
+/** Map V5 revision payload → TT sub-match summary (mirrors SQL mapper for unit tests). */
+export function mapRefereeV5ResultToSubMatch({
+  revision = {},
+  matchup = {},
+} = {}) {
+  const reopened = ["cancelled", "void"].includes(String(revision.status || "").toLowerCase());
+  const teamA = Number(revision.officialScore?.teamA ?? revision.finalScore?.teamA ?? 0);
+  const teamB = Number(revision.officialScore?.teamB ?? revision.finalScore?.teamB ?? 0);
+  let winnerTeamId = revision.winnerId || revision.winnerTeamId || null;
+
+  if (reopened) {
+    return {
+      ok: true,
+      score: { teamA: 0, teamB: 0, games: [] },
+      winnerTeamId: null,
+      status: "waiting",
+      resultType: "reopened",
+      source: REFEREE_V5_RESULT_SOURCE,
+      reopened: true,
+    };
+  }
+
+  if (winnerTeamId && ![matchup.teamAId, matchup.teamBId].includes(winnerTeamId)) {
+    return { ok: false, code: "winner_team_mismatch" };
+  }
+
+  if (!winnerTeamId) {
+    if (teamA > teamB) winnerTeamId = matchup.teamAId;
+    else if (teamB > teamA) winnerTeamId = matchup.teamBId;
+  }
+
+  return {
+    ok: true,
+    score: { teamA, teamB, games: revision.games || [] },
+    winnerTeamId,
+    status: "completed",
+    resultType: "normal",
+    source: REFEREE_V5_RESULT_SOURCE,
+    revisionId: revision.id,
+    revisionNumber: revision.revision,
+    reopened: false,
+  };
+}
+
+export function normalizeRefereeOutboxEventType(eventType, revisionStatus) {
+  const status = String(revisionStatus || "").toLowerCase();
+  if (status === "cancelled" || status === "void") {
+    return REFEREE_OUTBOX_EVENT_TYPES.MATCH_REOPENED;
+  }
+  if (eventType === REFEREE_OUTBOX_EVENT_TYPES.STANDINGS_RECALC && status === "overridden") {
+    return REFEREE_OUTBOX_EVENT_TYPES.RESULT_REVISED;
+  }
+  if (eventType === REFEREE_OUTBOX_EVENT_TYPES.STANDINGS_RECALC) {
+    return REFEREE_OUTBOX_EVENT_TYPES.MATCH_FINALIZED;
+  }
+  return eventType || "UNKNOWN";
+}
+
+export function shouldSkipStaleRevision(incomingRevision, appliedRevision) {
+  if (appliedRevision == null || incomingRevision == null) {
+    return false;
+  }
+  return Number(incomingRevision) < Number(appliedRevision);
+}
+
+export function canResyncRefereeLink(refereeLinkOps) {
+  return refereeLinkOps?.canResync === true;
+}
+
+export function buildResyncLinkPayload({ subMatchId, linkVersion, reason = "TT-5C BTC resync" }) {
+  return {
+    subMatchId: String(subMatchId),
+    reason,
+    expectedLinkVersion: linkVersion ?? null,
+  };
+}
+
 export function buildRevokeLinkPayload({ subMatchId, reason, linkVersion }) {
   return {
     subMatchId: String(subMatchId),

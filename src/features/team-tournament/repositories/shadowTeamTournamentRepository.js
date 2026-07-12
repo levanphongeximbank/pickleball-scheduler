@@ -136,6 +136,9 @@ export function createShadowTeamTournamentRepository(options = {}) {
     revokeRefereeLink(clubId, tournamentId, payload, commandOptions) {
       return delegateMutation("revokeRefereeLink", clubId, tournamentId, payload, commandOptions);
     },
+    resyncRefereeLink(clubId, tournamentId, payload, commandOptions) {
+      return delegateMutation("resyncRefereeLink", clubId, tournamentId, payload, commandOptions);
+    },
     completeMatchup(clubId, tournamentId, payload, commandOptions) {
       return delegateMutation("completeMatchup", clubId, tournamentId, payload, commandOptions);
     },

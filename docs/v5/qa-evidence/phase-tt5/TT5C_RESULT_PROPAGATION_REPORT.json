@@ -1,0 +1,97 @@
+{
+  "generatedAt": "2026-07-12T23:46:57.641Z",
+  "phase": "TT-5C-PROPAGATION",
+  "stagingRef": "qyewbxjsiiyufanzcjcq",
+  "productionImpact": "NONE",
+  "localCommitSha": "84810bfeca986c618b67d206b5ffc9a620cb8483",
+  "sqlPatches": [
+    "docs/v5/team-tournament/tt5/TT5-C_RESULT_OUTBOX_CONSUMER.sql",
+    "docs/v5/team-tournament/tt5/TT5-C_RESULT_PROPAGATION.sql",
+    "docs/v5/team-tournament/tt5/TT5-C_STANDINGS_RECOMPUTE.sql",
+    "docs/v5/team-tournament/tt5/TT5-C_REPROVISION_STATE.sql"
+  ],
+  "probe": {
+    "tournamentId": "phase23d-probe-tournament",
+    "teamA": "phase23d-team-a",
+    "teamB": "phase23d-team-b",
+    "matchupId": "phase23d-matchup-1",
+    "subMatchId": "phase23d-sub-1"
+  },
+  "cases": [
+    {
+      "id": "P01",
+      "name": "consumer applies result",
+      "pass": true,
+      "consume1": {
+        "ok": true,
+        "after": {
+          "score": {
+            "games": [],
+            "teamA": 11,
+            "teamB": 7
+          },
+          "status": "completed",
+          "version": 11,
+          "winnerTeamId": "phase23d-team-a",
+          "resultConfirmedAt": "2026-07-12T23:47:01.347739+00:00"
+        },
+        "before": {
+          "score": {
+            "games": [],
+            "teamA": 0,
+            "teamB": 0
+          },
+          "status": "waiting",
+          "version": 10,
+          "winnerTeamId": null,
+          "resultConfirmedAt": null
+        },
+        "inboxId": "1b8f4f48-514f-4af9-a2ba-c04006b882a6",
+        "replayed": false,
+        "eventType": "REFEREE_MATCH_FINALIZED",
+        "revisionId": "7e5998a8-f3de-49ef-a85f-d4181ed3dd87",
+        "subMatchId": "phase23d-sub-1",
+        "bridgeStatus": "finalized",
+        "matchupResult": {
+          "ok": true,
+          "teamAWins": 1,
+          "teamBWins": 0,
+          "teamAPoints": 11,
+          "teamBPoints": 7,
+          "winnerTeamId": "phase23d-team-a",
+          "matchupCompleted": false
+        },
+        "revisionNumber": 1
+      }
+    },
+    {
+      "id": "P02",
+      "name": "sub-match completed with score",
+      "pass": true,
+      "subAfter": {
+        "status": "completed",
+        "score": {
+          "games": [],
+          "teamA": 11,
+          "teamB": 7
+        },
+        "winner_team_id": "phase23d-team-a",
+        "result_confirmed_at": "2026-07-12T23:47:01.347739+00:00"
+      }
+    },
+    {
+      "id": "P03",
+      "name": "bridge finalized",
+      "pass": true,
+      "linkAfter": {
+        "status": "finalized",
+        "last_result_revision_id": "7e5998a8-f3de-49ef-a85f-d4181ed3dd87"
+      }
+    }
+  ],
+  "verdict": "PASS",
+  "reportFile": "TT5C_RESULT_PROPAGATION_REPORT.json",
+  "passCount": 3,
+  "totalCount": 3,
+  "allPass": true
+}

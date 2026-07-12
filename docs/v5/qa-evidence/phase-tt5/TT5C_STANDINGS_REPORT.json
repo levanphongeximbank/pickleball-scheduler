@@ -1,0 +1,46 @@
+{
+  "generatedAt": "2026-07-12T23:46:57.732Z",
+  "phase": "TT-5C-STANDINGS",
+  "stagingRef": "qyewbxjsiiyufanzcjcq",
+  "productionImpact": "NONE",
+  "localCommitSha": "84810bfeca986c618b67d206b5ffc9a620cb8483",
+  "sqlPatches": [
+    "docs/v5/team-tournament/tt5/TT5-C_RESULT_OUTBOX_CONSUMER.sql",
+    "docs/v5/team-tournament/tt5/TT5-C_RESULT_PROPAGATION.sql",
+    "docs/v5/team-tournament/tt5/TT5-C_STANDINGS_RECOMPUTE.sql",
+    "docs/v5/team-tournament/tt5/TT5-C_REPROVISION_STATE.sql"
+  ],
+  "probe": {
+    "tournamentId": "phase23d-probe-tournament",
+    "teamA": "phase23d-team-a",
+    "teamB": "phase23d-team-b",
+    "matchupId": "phase23d-matchup-1",
+    "subMatchId": "phase23d-sub-1"
+  },
+  "cases": [
+    {
+      "id": "ST01",
+      "name": "standings cache present",
+      "pass": true,
+      "standings": [
+        {
+          "team_external_id": "phase23d-team-a",
+          "played": 0,
+          "wins": 0,
+          "sub_match_wins": 1
+        },
+        {
+          "team_external_id": "phase23d-team-b",
+          "played": 0,
+          "wins": 0,
+          "sub_match_wins": 0
+        }
+      ]
+    }
+  ],
+  "verdict": "PASS",
+  "reportFile": "TT5C_STANDINGS_REPORT.json",
+  "passCount": 1,
+  "totalCount": 1,
+  "allPass": true
+}

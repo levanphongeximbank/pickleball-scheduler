@@ -1,0 +1,39 @@
+{
+  "generatedAt": "2026-07-12T23:46:57.760Z",
+  "phase": "TT-5C-SECURITY",
+  "stagingRef": "qyewbxjsiiyufanzcjcq",
+  "productionImpact": "NONE",
+  "localCommitSha": "84810bfeca986c618b67d206b5ffc9a620cb8483",
+  "sqlPatches": [
+    "docs/v5/team-tournament/tt5/TT5-C_RESULT_OUTBOX_CONSUMER.sql",
+    "docs/v5/team-tournament/tt5/TT5-C_RESULT_PROPAGATION.sql",
+    "docs/v5/team-tournament/tt5/TT5-C_STANDINGS_RECOMPUTE.sql",
+    "docs/v5/team-tournament/tt5/TT5-C_REPROVISION_STATE.sql"
+  ],
+  "probe": {
+    "tournamentId": "phase23d-probe-tournament",
+    "teamA": "phase23d-team-a",
+    "teamB": "phase23d-team-b",
+    "matchupId": "phase23d-matchup-1",
+    "subMatchId": "phase23d-sub-1"
+  },
+  "cases": [
+    {
+      "id": "S01",
+      "name": "legacy save draft blocked",
+      "pass": true,
+      "code": "referee_v5_result_finalized"
+    },
+    {
+      "id": "S02",
+      "name": "authenticated cannot consume",
+      "pass": true,
+      "code": "42501"
+    }
+  ],
+  "verdict": "PASS",
+  "reportFile": "TT5C_SECURITY_REPORT.json",
+  "passCount": 2,
+  "totalCount": 2,
+  "allPass": true
+}

@@ -33,6 +33,7 @@ import {
   resolvePublishReadiness,
 } from "../../../features/team-tournament/engines/atomicPublishWorkflowEngine.js";
 import { isRepublishPending } from "../../../features/team-tournament/engines/overrideLineupWorkflowEngine.js";
+import TeamSubMatchRefereeProvisionRow from "./TeamSubMatchRefereeProvisionRow.jsx";
 import TournamentSectionCard from "../TournamentSectionCard.jsx";
 import {
   buildCaptainPortalUrl,
@@ -116,6 +117,9 @@ export default function TeamMatchupOperationsCard({
   onError,
   onSyncDreambreaker,
   onLockDreambreaker,
+  onProvisionReferee,
+  onResyncReferee,
+  onRevokeReferee,
 }) {
   const [copyOk, setCopyOk] = useState(false);
   const [randomizingTeamId, setRandomizingTeamId] = useState("");
@@ -426,6 +430,26 @@ export default function TeamMatchupOperationsCard({
             teamName={teamB?.name || "Đội B"}
           />
         </Stack>
+
+        {canManage && isPublished && Array.isArray(matchup.subMatches) && matchup.subMatches.length > 0 ? (
+          <Stack spacing={0.5} sx={{ mt: 1, p: 1, bgcolor: "action.hover", borderRadius: 2 }}>
+            <Typography variant="caption" color="text.secondary" fontWeight={600}>
+              Referee V5 — trận con
+            </Typography>
+            {matchup.subMatches.map((subMatch) => (
+              <TeamSubMatchRefereeProvisionRow
+                key={subMatch.id}
+                subMatch={subMatch}
+                matchupId={matchup.id}
+                busy={mutationBusy}
+                onProvision={onProvisionReferee}
+                onResync={onResyncReferee}
+                onRevoke={onRevokeReferee}
+                onError={onError}
+              />
+            ))}
+          </Stack>
+        ) : null}
 
         {canManage ? (
           <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap alignItems="center">
