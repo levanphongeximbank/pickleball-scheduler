@@ -82,3 +82,5 @@ export {
   mapStandingsResultToLegacyTeamRows,
   cloneLegacyStandingsPayload,
 } from "./legacyStandingsMapping.js";
+
+export * from "./adapters/index.js";
