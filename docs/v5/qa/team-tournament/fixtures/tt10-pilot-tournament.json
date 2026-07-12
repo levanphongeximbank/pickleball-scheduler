@@ -1,0 +1,167 @@
+{
+  "meta": {
+    "tournamentId": "tt10-pilot-club-2026-07",
+    "name": "TT-10 Pilot — Giải đồng đội 4 đội CLB",
+    "version": "1.0.0",
+    "phase": "TT-10",
+    "clubId": "fixture-club-pilot",
+    "seasonId": "fixture-season-2026-summer",
+    "productionImpact": "NONE",
+    "notes": "Metadata-only fixture for dry-run. No real Supabase users created on QA branch."
+  },
+  "settings": {
+    "formatPreset": "mlp_4",
+    "dreambreakerEnabled": false,
+    "lineupDeadline": "2026-07-20T17:00:00+07:00",
+    "lineupLockLeadMinutes": 15,
+    "missingLineupPolicy": "random",
+    "tiebreakOrder": ["wins", "subMatchDiff", "pointsScored", "manual"],
+    "disciplines": [
+      { "id": "disc-md", "name": "Đôi nam", "category": "doubles", "playerCount": 2 },
+      { "id": "disc-wd", "name": "Đôi nữ", "category": "doubles", "playerCount": 2 },
+      { "id": "disc-mx1", "name": "Mixed 1", "category": "mixed", "playerCount": 2 },
+      { "id": "disc-mx2", "name": "Mixed 2", "category": "mixed", "playerCount": 2 }
+    ]
+  },
+  "courts": [
+    { "id": "court-1", "name": "Sân 1", "number": 1 },
+    { "id": "court-2", "name": "Sân 2", "number": 2 },
+    { "id": "court-3", "name": "Sân 3", "number": 3 }
+  ],
+  "teams": [
+    {
+      "id": "team-a",
+      "name": "Đội A — Future Arena",
+      "code": "A",
+      "captainPlayerId": "p-a1",
+      "deputyPlayerId": "p-a2"
+    },
+    {
+      "id": "team-b",
+      "name": "Đội B — Elite Club",
+      "code": "B",
+      "captainPlayerId": "p-b1",
+      "deputyPlayerId": "p-b2"
+    },
+    {
+      "id": "team-c",
+      "name": "Đội C — Smash Bros",
+      "code": "C",
+      "captainPlayerId": "p-c1",
+      "deputyPlayerId": "p-c2"
+    },
+    {
+      "id": "team-d",
+      "name": "Đội D — Pickle Pro",
+      "code": "D",
+      "captainPlayerId": "p-d1",
+      "deputyPlayerId": "p-d2"
+    }
+  ],
+  "players": [
+    { "id": "p-a1", "teamId": "team-a", "name": "Nguyễn Văn An", "gender": "male", "skillLevel": 3.5 },
+    { "id": "p-a2", "teamId": "team-a", "name": "Trần Văn Bình", "gender": "male", "skillLevel": 3.2 },
+    { "id": "p-a3", "teamId": "team-a", "name": "Lê Thị Chi", "gender": "female", "skillLevel": 3.0 },
+    { "id": "p-a4", "teamId": "team-a", "name": "Phạm Thị Dung", "gender": "female", "skillLevel": 2.8 },
+    { "id": "p-a5", "teamId": "team-a", "name": "Hoàng Văn Em", "gender": "male", "skillLevel": 3.1 },
+    { "id": "p-b1", "teamId": "team-b", "name": "Võ Văn Phú", "gender": "male", "skillLevel": 3.6 },
+    { "id": "p-b2", "teamId": "team-b", "name": "Đặng Văn Giang", "gender": "male", "skillLevel": 3.3 },
+    { "id": "p-b3", "teamId": "team-b", "name": "Ngô Thị Hà", "gender": "female", "skillLevel": 3.4 },
+    { "id": "p-b4", "teamId": "team-b", "name": "Bùi Thị Lan", "gender": "female", "skillLevel": 3.0 },
+    { "id": "p-b5", "teamId": "team-b", "name": "Đinh Văn Long", "gender": "male", "skillLevel": 2.9 },
+    { "id": "p-c1", "teamId": "team-c", "name": "Mai Văn Minh", "gender": "male", "skillLevel": 3.7 },
+    { "id": "p-c2", "teamId": "team-c", "name": "Trương Văn Nam", "gender": "male", "skillLevel": 3.1 },
+    { "id": "p-c3", "teamId": "team-c", "name": "Vũ Thị Oanh", "gender": "female", "skillLevel": 3.2 },
+    { "id": "p-c4", "teamId": "team-c", "name": "Đỗ Thị Phương", "gender": "female", "skillLevel": 2.7 },
+    { "id": "p-c5", "teamId": "team-c", "name": "Lý Văn Quân", "gender": "male", "skillLevel": 3.0 },
+    { "id": "p-c6", "teamId": "team-c", "name": "Hồ Thị Rinh", "gender": "female", "skillLevel": 2.9 },
+    { "id": "p-d1", "teamId": "team-d", "name": "Phan Văn Sơn", "gender": "male", "skillLevel": 3.4 },
+    { "id": "p-d2", "teamId": "team-d", "name": "Cao Văn Tài", "gender": "male", "skillLevel": 3.0 },
+    { "id": "p-d3", "teamId": "team-d", "name": "Lưu Thị Uyên", "gender": "female", "skillLevel": 3.3 },
+    { "id": "p-d4", "teamId": "team-d", "name": "Tạ Thị Vân", "gender": "female", "skillLevel": 2.8 },
+    { "id": "p-d5", "teamId": "team-d", "name": "Châu Văn Xuyên", "gender": "male", "skillLevel": 2.6 }
+  ],
+  "matchups": [
+    {
+      "id": "m-ab",
+      "teamAId": "team-a",
+      "teamBId": "team-b",
+      "scheduledAt": "2026-07-20T18:00:00+07:00",
+      "courtId": "court-1",
+      "round": 1
+    },
+    {
+      "id": "m-cd",
+      "teamAId": "team-c",
+      "teamBId": "team-d",
+      "scheduledAt": "2026-07-20T18:00:00+07:00",
+      "courtId": "court-2",
+      "round": 1
+    },
+    {
+      "id": "m-ac",
+      "teamAId": "team-a",
+      "teamBId": "team-c",
+      "scheduledAt": "2026-07-20T19:30:00+07:00",
+      "courtId": "court-1",
+      "round": 2
+    },
+    {
+      "id": "m-bd",
+      "teamAId": "team-b",
+      "teamBId": "team-d",
+      "scheduledAt": "2026-07-20T19:30:00+07:00",
+      "courtId": "court-2",
+      "round": 2
+    },
+    {
+      "id": "m-ad",
+      "teamAId": "team-a",
+      "teamBId": "team-d",
+      "scheduledAt": "2026-07-20T21:00:00+07:00",
+      "courtId": "court-3",
+      "round": 3
+    },
+    {
+      "id": "m-bc",
+      "teamAId": "team-b",
+      "teamBId": "team-c",
+      "scheduledAt": "2026-07-20T21:00:00+07:00",
+      "courtId": "court-1",
+      "round": 3
+    }
+  ],
+  "lineupTemplates": {
+    "team-a": {
+      "disc-md": ["p-a1", "p-a2"],
+      "disc-wd": ["p-a3", "p-a4"],
+      "disc-mx1": ["p-a1", "p-a3"],
+      "disc-mx2": ["p-a5", "p-a4"]
+    },
+    "team-b": {
+      "disc-md": ["p-b1", "p-b2"],
+      "disc-wd": ["p-b3", "p-b4"],
+      "disc-mx1": ["p-b1", "p-b3"],
+      "disc-mx2": ["p-b5", "p-b4"]
+    },
+    "team-c": {
+      "disc-md": ["p-c1", "p-c2"],
+      "disc-wd": ["p-c3", "p-c4"],
+      "disc-mx1": ["p-c1", "p-c3"],
+      "disc-mx2": ["p-c5", "p-c6"]
+    },
+    "team-d-valid": {
+      "disc-md": ["p-d1", "p-d2"],
+      "disc-wd": ["p-d3", "p-d4"],
+      "disc-mx1": ["p-d1", "p-d3"],
+      "disc-mx2": ["p-d2", "p-d4"]
+    },
+    "team-d-invalid-first": {
+      "disc-md": ["p-d1", "p-d2"],
+      "disc-wd": ["p-d3", "p-d4"],
+      "disc-mx1": ["p-d1", "p-d3"],
+      "disc-mx2": ["p-d1", "p-d3"],
+      "validationError": "Player reuse across mixed disciplines"
+    }
+  }
+}

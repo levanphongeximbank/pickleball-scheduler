@@ -1,0 +1,154 @@
+{
+  "meta": {
+    "scenarioId": "tt10-dry-run-15-steps",
+    "version": "1.0.0",
+    "tournamentFixture": "tt10-pilot-tournament.json",
+    "productionImpact": "NONE"
+  },
+  "steps": [
+    {
+      "id": "S01",
+      "order": 1,
+      "actor": "btc",
+      "action": "create_tournament",
+      "description": "BTC tạo giải từ template 4 đội MLP",
+      "expectedOutcome": "Tournament shell + 6 matchups scheduled",
+      "evidence": ["audit:team.create", "screenshot:setup"]
+    },
+    {
+      "id": "S02",
+      "order": 2,
+      "actor": "captain-a",
+      "action": "submit_lineup_on_time",
+      "matchupId": "m-ab",
+      "description": "Đội trưởng A submit đúng hạn",
+      "expectedOutcome": "Lineup status = submitted before deadline",
+      "evidence": ["lineup:team-a:submitted"]
+    },
+    {
+      "id": "S03",
+      "order": 3,
+      "actor": "captain-b",
+      "action": "submit_lineup_near_deadline",
+      "matchupId": "m-ab",
+      "description": "Đội trưởng B submit sát deadline (T-2 min)",
+      "expectedOutcome": "Accepted if before server deadline",
+      "evidence": ["timestamp:submit", "server:deadline_check"]
+    },
+    {
+      "id": "S04",
+      "order": 4,
+      "actor": "captain-c",
+      "action": "no_submit",
+      "matchupId": "m-cd",
+      "description": "Đội C không submit → BTC randomize",
+      "expectedOutcome": "Lineup source = random after lock",
+      "evidence": ["lineup:team-c:random"]
+    },
+    {
+      "id": "S05",
+      "order": 5,
+      "actor": "captain-d",
+      "action": "submit_invalid_then_fix",
+      "matchupId": "m-cd",
+      "description": "Đội D submit lineup invalid → sửa lại",
+      "expectedOutcome": "Validation error then successful resubmit",
+      "evidence": ["validation:error", "lineup:team-d:submitted"]
+    },
+    {
+      "id": "S06",
+      "order": 6,
+      "actor": "btc",
+      "action": "lock_lineups",
+      "description": "BTC lock tất cả lineup",
+      "expectedOutcome": "Captains cannot edit; missing → randomized",
+      "evidence": ["audit:lineup.lock"]
+    },
+    {
+      "id": "S07",
+      "order": 7,
+      "actor": "btc",
+      "action": "publish_lineups",
+      "description": "BTC publish lineup",
+      "expectedOutcome": "Opponent selections visible to captains/referees",
+      "evidence": ["audit:lineup.publish"]
+    },
+    {
+      "id": "S08",
+      "order": 8,
+      "actor": "referee-1",
+      "action": "enter_results",
+      "matchupId": "m-ab",
+      "description": "Referee nhập kết quả trận AB",
+      "expectedOutcome": "Sub-match results saved",
+      "evidence": ["result:m-ab:draft"]
+    },
+    {
+      "id": "S09",
+      "order": 9,
+      "actor": "referee-1",
+      "action": "retry_request",
+      "matchupId": "m-ab",
+      "description": "Một request bị retry (same idempotency key)",
+      "expectedOutcome": "Single command log entry — no duplicate",
+      "evidence": ["command_log:idempotency"]
+    },
+    {
+      "id": "S10",
+      "order": 10,
+      "actor": "referee-2",
+      "action": "result_conflict",
+      "matchupId": "m-cd",
+      "description": "Một result bị conflict (stale version)",
+      "expectedOutcome": "version_conflict returned",
+      "evidence": ["error:version_conflict"]
+    },
+    {
+      "id": "S11",
+      "order": 11,
+      "actor": "btc",
+      "action": "apply_forfeit",
+      "matchupId": "m-bd",
+      "description": "Một trận thua kỹ thuật giả lập",
+      "expectedOutcome": "Winner assigned; forfeit flagged",
+      "evidence": ["audit:team.match.forfeit"]
+    },
+    {
+      "id": "S12",
+      "order": 12,
+      "actor": "system",
+      "action": "recalculate_standings",
+      "description": "BXH cập nhật sau kết quả",
+      "expectedOutcome": "Standings table reflects completed matchups",
+      "evidence": ["standings:snapshot"]
+    },
+    {
+      "id": "S13",
+      "order": 13,
+      "actor": "btc",
+      "action": "override_result",
+      "matchupId": "m-ac",
+      "description": "Một kết quả bị sửa sau khi BXH đã tính",
+      "expectedOutcome": "Standings recalculated; audit trail",
+      "evidence": ["audit:team.match.result.override"]
+    },
+    {
+      "id": "S14",
+      "order": 14,
+      "actor": "btc",
+      "action": "complete_tournament",
+      "description": "Hoàn tất giải",
+      "expectedOutcome": "All matchups terminal; tournament status complete",
+      "evidence": ["tournament:status:complete"]
+    },
+    {
+      "id": "S15",
+      "order": 15,
+      "actor": "btc",
+      "action": "export_data",
+      "description": "Export dữ liệu (JSON/CSV fallback)",
+      "expectedOutcome": "Export files match fallback templates",
+      "evidence": ["export:bundle"]
+    }
+  ]
+}

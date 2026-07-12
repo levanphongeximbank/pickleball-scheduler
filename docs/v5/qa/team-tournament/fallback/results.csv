@@ -1,0 +1,7 @@
+matchup_id,discipline_id,team_a_sub_wins,team_b_sub_wins,team_a_points,team_b_points,winner_team_id,status,forfeit,notes
+m-ab,disc-md,2,0,22,11,team-a,confirmed,false,
+m-ab,disc-wd,2,0,22,15,team-a,confirmed,false,
+m-ab,disc-mx1,1,2,19,22,team-b,confirmed,false,
+m-ab,disc-mx2,2,0,21,14,team-a,confirmed,false,
+m-cd,disc-md,0,0,0,0,,draft,false,Pending TT-10 execution
+m-bd,disc-md,0,0,0,0,team-b,forfeit,true,Team D no-show simulated

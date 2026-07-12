@@ -1,0 +1,36 @@
+{
+  "reportType": "TT10_DRY_RUN_REPORT",
+  "version": "1.0.0",
+  "generatedAt": null,
+  "productionImpact": "NONE",
+  "tournamentId": "tt10-pilot-club-2026-07",
+  "environment": "staging",
+  "facilitator": "",
+  "participants": {
+    "btc": "",
+    "captains": [],
+    "referees": []
+  },
+  "scenarioResults": [
+    {
+      "stepId": "S01",
+      "status": "pass | fail | blocked | skipped",
+      "notes": "",
+      "evidence": []
+    }
+  ],
+  "summary": {
+    "totalSteps": 15,
+    "passed": 0,
+    "failed": 0,
+    "blocked": 0
+  },
+  "standingsSnapshot": null,
+  "exportBundlePath": null,
+  "verdict": "PASS | FAIL | BLOCKED",
+  "signOff": {
+    "facilitator": null,
+    "owner": null,
+    "signedAt": null
+  }
+}
