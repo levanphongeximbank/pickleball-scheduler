@@ -51,6 +51,15 @@ export {
   isSchedulingV2Enabled,
 } from "./config/featureFlags.js";
 
+export {
+  EXECUTION_MODE,
+  EXECUTION_MODE_VALUES,
+  normalizeExecutionMode,
+  isModuleV2Enabled,
+  resolveCompetitionCoreExecutionMode,
+  mapAdapterExecutionMode,
+} from "./config/executionMode.js";
+
 export { resolveRulesV2Flag, RULES_V2_ENV_KEYS } from "./config/rulesV2FlagReader.js";
 
 export { parseEnvBoolean, readEnvBoolean, readEnvString } from "./config/envReader.js";
