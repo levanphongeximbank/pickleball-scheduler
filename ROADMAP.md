@@ -19,6 +19,30 @@
 
 ---
 
+## Competition Core — Integration Track
+
+**Status:** ✅ **Completed** (CC-01 → CC-10 on `feature/competition-core-standardization`)
+
+Evidence: `docs/competition-core/` closing reports · `PROJECT_STATUS.md`
+
+---
+
+## Team Tournament — Integration Track
+
+| Phase  | Status        |
+| ------ | ------------- |
+| TT-5   | ✅ Complete   |
+| TT-6C  | ✅ Complete   |
+| TT-7   | ✅ Complete   |
+| TT-9   | ⏳ Pending    |
+| TT-10  | ⏳ Pending    |
+| TT-11  | ⏳ Pending    |
+
+TT-7 merge: PR #5 · TT-6C merge: PR #6 · Hygiene: H1–H3 complete  
+**Production impact:** NONE
+
+---
+
 ## v4.1 — Post-GA Stabilization (đề xuất)
 
 **Mục tiêu:** Ổn định production, giảm known limitations.
@@ -77,6 +101,7 @@
 
 ## Liên kết
 
+- `PROJECT_STATUS.md` — trạng thái integration TT-7 / TT-6C / hygiene
 - `RELEASE_NOTES_v4.0.md` — chi tiết v4.0.0
 - `docs/ARCHITECTURE.md` — kiến trúc hiện tại
 - `AGENTS.md` — context sprint cho agent
