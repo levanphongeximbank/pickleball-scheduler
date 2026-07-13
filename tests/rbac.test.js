@@ -212,7 +212,8 @@ test("menuAccess — PLAYER thấy menu CLB và Giải đấu", () => {
   assert.ok(labels.includes("Vận động viên / Đội"));
   assert.ok(labels.includes("Kết quả"));
   assert.equal(labels.includes("VĐV"), false);
-  assert.equal(labels.includes("Hồ sơ cá nhân"), false);
+  // Phase 42J+: PLAYER có mục hồ sơ / trình độ trong sidebar (không phải menu quản trị).
+  assert.ok(labels.includes("Hồ sơ cá nhân"));
   assert.equal(labels.includes("Vui chơi mỗi ngày"), false);
   assert.equal(labels.includes("Loại giải"), false);
   assert.equal(labels.includes("Điều hành"), false);
@@ -278,7 +279,8 @@ test("route access — PLAYER bị chặn daily-play và tournament hubs", () =>
 });
 
 test("menuAccess — getDefaultHomePath theo role", () => {
-  assert.equal(getDefaultHomePath(user(ROLES.PLAYER), true), "/my-club");
+  // Phase 42J+: PLAYER chưa gắn CLB → Khám phá CLB (không còn /my-club mặc định).
+  assert.equal(getDefaultHomePath(user(ROLES.PLAYER), true), "/discover-clubs");
   assert.equal(
     getDefaultHomePath(user(ROLES.PLAYER, { clubId: "c1", playerId: "p1" }), true),
     "/tournament"
@@ -333,9 +335,9 @@ test("menuAccess — resolvePostAuthRedirectPath PLAYER chưa CLB", async () => 
 
   try {
     const player = user(ROLES.PLAYER);
-    assert.equal(resolvePostAuthRedirectPath("/tournament", player, true), "/my-club");
-    assert.equal(resolvePostAuthRedirectPath("/", player, true), "/my-club");
-    assert.equal(resolvePostAuthRedirectPath("/403", player, true), "/my-club");
+    assert.equal(resolvePostAuthRedirectPath("/tournament", player, true), "/discover-clubs");
+    assert.equal(resolvePostAuthRedirectPath("/", player, true), "/discover-clubs");
+    assert.equal(resolvePostAuthRedirectPath("/403", player, true), "/discover-clubs");
 
     const playerWithClub = user(ROLES.PLAYER, { clubId: "c1", id: "rbac-player-club" });
     await completePickVnOnboarding("rbac-player-club", {
@@ -351,10 +353,10 @@ test("menuAccess — resolvePostAuthRedirectPath PLAYER chưa CLB", async () => 
     await completePickVnOnboarding("rbac-player-noclub", {
       answers: onboardingAnswers,
     });
-    assert.equal(resolvePostAuthRedirectPath("/", playerNoClub, true), "/my-club");
+    assert.equal(resolvePostAuthRedirectPath("/", playerNoClub, true), "/discover-clubs");
     assert.equal(
       resolvePostAuthRedirectPath("/tournament", playerNoClub, true),
-      "/my-club"
+      "/discover-clubs"
     );
   } finally {
     delete globalThis.localStorage;
@@ -940,8 +942,9 @@ test("menuAccess — CLUB_OWNER thấy CLB & Giải, không Live Courts", () => 
   const visible = filterMenuGroups(SIDEBAR_MENU_GROUPS, makeMenuAuth(clubOwner), SCOPE);
   const labels = collectMenuItemLabels(visible);
 
-  assert.ok(labels.includes("Lịch sinh hoạt"));
-  assert.ok(labels.includes("Danh sách CLB"));
+  // Phase 42 club menu: lịch sinh hoạt là tab in-page; sidebar dùng "Vận hành CLB".
+  assert.ok(labels.includes("Vận hành CLB"));
+  assert.ok(labels.includes("Quản lý CLB"));
   assert.ok(labels.includes("Danh sách giải"));
   assert.ok(labels.includes("Loại giải"));
   assert.equal(labels.includes("Trạng thái sân"), false);

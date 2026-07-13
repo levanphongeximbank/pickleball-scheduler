@@ -41,7 +41,8 @@ test("v5 menu audit — mục sidebar chính theo spec V5", () => {
     "Tổng quan",
     "Lịch sân",
     "Khách hàng",
-    "Danh sách CLB",
+    "CLB của tôi",
+    "Khám phá CLB",
     "Vui chơi mỗi ngày",
     "Danh sách giải",
     "Loại giải",
@@ -63,7 +64,8 @@ test("v5 menu audit — thống kê live / partial / planned (sidebar)", () => {
   const audit = auditMenuFeatureCoverage(MENU_GROUPS);
 
   assert.ok(audit.summary.totalLeaves >= 35, "sidebar phải có >= 35 mục lá");
-  assert.ok(audit.summary.totalLeaves <= 105, "sidebar không quá 105 mục lá (phẳng)");
+  // Phase 42 club routes (+3 lá) — cap theo spec V5 hiện tại, không nới vô hạn.
+  assert.ok(audit.summary.totalLeaves <= 115, "sidebar không quá 115 mục lá (phẳng)");
   assert.ok(audit.summary.live > 0);
   assert.ok(audit.summary.coveragePercent >= 40);
   assert.ok(audit.summary.coveragePercent <= 100);
