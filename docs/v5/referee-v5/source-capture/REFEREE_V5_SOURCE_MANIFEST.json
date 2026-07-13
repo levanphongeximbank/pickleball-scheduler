@@ -1,0 +1,2338 @@
+{
+  "generatedAt": "2026-07-12T22:44:33.484Z",
+  "baseSha": "23462878782726b9f933380071126245bd767dec",
+  "entries": [
+    {
+      "relative_path": "docs/v5/REFEREE_MODULE_CURRENT_STATE_AUDIT.md",
+      "classification": "REFEREE_DOCUMENTATION",
+      "source_status": "untracked",
+      "sha256": "5e1d5c22a5bb6ba9726311c362462a9bbf781040ecd00f0b3f59ef076f60dcbf",
+      "include_or_exclude": "INCLUDE",
+      "reason": "Approved for Referee V5 source capture",
+      "target_commit_group": "commit-7-docs"
+    },
+    {
+      "relative_path": "docs/v5/mcp-chunks/tt2e-get_setup.sql",
+      "classification": "TEAM_TOURNAMENT",
+      "source_status": "untracked",
+      "sha256": "836ce266653799c8b51117d941e359d967e316c164241d0a3be9d0df91c43f3b",
+      "include_or_exclude": "EXCLUDE",
+      "reason": "Team Tournament scope",
+      "target_commit_group": null
+    },
+    {
+      "relative_path": "docs/v5/mcp-chunks/tt2e-grants.sql",
+      "classification": "TEAM_TOURNAMENT",
+      "source_status": "untracked",
+      "sha256": "9698d40b0155f3ef975329a8918c3ccf58702481eb9bfbe7c886d294891cb0da",
+      "include_or_exclude": "EXCLUDE",
+      "reason": "Team Tournament scope",
+      "target_commit_group": null
+    },
+    {
+      "relative_path": "docs/v5/mcp-chunks/tt2e-publish_core.sql",
+      "classification": "TEAM_TOURNAMENT",
+      "source_status": "untracked",
+      "sha256": "0f5316476530867b3245efafef9b501954faab95342309f303eaf655e5cccc3a",
+      "include_or_exclude": "EXCLUDE",
+      "reason": "Team Tournament scope",
+      "target_commit_group": null
+    },
+    {
+      "relative_path": "docs/v5/mcp-chunks/tt2e-publish_ops.sql",
+      "classification": "TEAM_TOURNAMENT",
+      "source_status": "untracked",
+      "sha256": "2384cf291a87e6b9164197904a91ae6f842caf2bf4cdb456ffec00f42e690c1d",
+      "include_or_exclude": "EXCLUDE",
+      "reason": "Team Tournament scope",
+      "target_commit_group": null
+    },
+    {
+      "relative_path": "docs/v5/mcp-chunks/tt2e-undefined.sql",
+      "classification": "TEAM_TOURNAMENT",
+      "source_status": "untracked",
+      "sha256": "0532e30c813375c0836306b32ac912c28b7ddff0f202ae37df6d4eaf3c6f9560",
+      "include_or_exclude": "EXCLUDE",
+      "reason": "Team Tournament scope",
+      "target_commit_group": null
+    },
+    {
+      "relative_path": "docs/v5/mcp-chunks/tt2e-visible.sql",
+      "classification": "TEAM_TOURNAMENT",
+      "source_status": "untracked",
+      "sha256": "1a051abe281cbaf377868481ec229714d22a4b536acec2723567704326202a78",
+      "include_or_exclude": "EXCLUDE",
+      "reason": "Team Tournament scope",
+      "target_commit_group": null
+    },
+    {
+      "relative_path": "docs/v5/mcp-chunks/v5d1_part2.sql",
+      "classification": "REFEREE_DATABASE",
+      "source_status": "untracked",
+      "sha256": "bc182598a5e638a3f83bd5f583b40bb7a154172531c6d5a4bf6a2b4f976180a6",
+      "include_or_exclude": "INCLUDE",
+      "reason": "Approved for Referee V5 source capture",
+      "target_commit_group": "commit-5-migrations"
+    },
+    {
+      "relative_path": "docs/v5/qa-evidence/phase-tt1b5-staging/MCP_APPLY_REPORT.json",
+      "classification": "TEAM_TOURNAMENT",
+      "source_status": "untracked",
+      "sha256": "9a2444bb94a1b13c1b5537e11ebc480c7999851254fdf9687e554320eff9d2ad",
+      "include_or_exclude": "EXCLUDE",
+      "reason": "Team Tournament scope",
+      "target_commit_group": null
+    },
+    {
+      "relative_path": "docs/v5/qa-evidence/phase-tt1b5-staging/_mcp_query.txt",
+      "classification": "TEAM_TOURNAMENT",
+      "source_status": "untracked",
+      "sha256": "6d2a9f7905be4db9b7c00c60902a3bf8aa9f2c722f9cc027d5b95c43e29f2ddb",
+      "include_or_exclude": "EXCLUDE",
+      "reason": "Team Tournament scope",
+      "target_commit_group": null
+    },
+    {
+      "relative_path": "docs/v5/qa-evidence/phase-v5d2/SEED_SQL.sql",
+      "classification": "REFEREE_DOCUMENTATION",
+      "source_status": "untracked",
+      "sha256": "22b33c815dec0e321eec584c76107696920d32ae9aadee646f42bf5c371ea993",
+      "include_or_exclude": "INCLUDE",
+      "reason": "Approved for Referee V5 source capture",
+      "target_commit_group": "commit-7-docs"
+    },
+    {
+      "relative_path": "docs/v5/qa-evidence/phase-v5d2/VERIFY_REPORT.json",
+      "classification": "REFEREE_DOCUMENTATION",
+      "source_status": "untracked",
+      "sha256": "a24399b6c22041308ebe40b5d4af3eb92b1a759eb9d40726095fe684668cbd9e",
+      "include_or_exclude": "INCLUDE",
+      "reason": "Approved for Referee V5 source capture",
+      "target_commit_group": "commit-7-docs"
+    },
+    {
+      "relative_path": "docs/v5/qa-evidence/phase-v5d3/CONCURRENCY_REPORT.json",
+      "classification": "REFEREE_DOCUMENTATION",
+      "source_status": "untracked",
+      "sha256": "46dbf812abbd913aff75d3209e15d57ce8b555e3c8af7806cbd9d1c57252a460",
+      "include_or_exclude": "INCLUDE",
+      "reason": "Approved for Referee V5 source capture",
+      "target_commit_group": "commit-7-docs"
+    },
+    {
+      "relative_path": "docs/v5/qa-evidence/phase-v5d3/EDGE_DEPLOY_REPORT.json",
+      "classification": "REFEREE_DOCUMENTATION",
+      "source_status": "untracked",
+      "sha256": "c84333669e7e78b5a1149a77bab58ac94136eda2b18a3827ade7c5a69d2e303e",
+      "include_or_exclude": "INCLUDE",
+      "reason": "Approved for Referee V5 source capture",
+      "target_commit_group": "commit-7-docs"
+    },
+    {
+      "relative_path": "docs/v5/qa-evidence/phase-v5d3/HTTP_COMMAND_REPORT.json",
+      "classification": "REFEREE_DOCUMENTATION",
+      "source_status": "untracked",
+      "sha256": "5e157957a22b8602b56bde0e4c9a3771e9987aa3f1f57fe70a51120d5cb90c6e",
+      "include_or_exclude": "INCLUDE",
+      "reason": "Approved for Referee V5 source capture",
+      "target_commit_group": "commit-7-docs"
+    },
+    {
+      "relative_path": "docs/v5/qa-evidence/phase-v5d3/IDEMPOTENCY_REPORT.json",
+      "classification": "REFEREE_DOCUMENTATION",
+      "source_status": "untracked",
+      "sha256": "65eb792dcd77892fb87977900acf8dd8d8946757d141193a5f61115d25c87438",
+      "include_or_exclude": "INCLUDE",
+      "reason": "Approved for Referee V5 source capture",
+      "target_commit_group": "commit-7-docs"
+    },
+    {
+      "relative_path": "docs/v5/qa-evidence/phase-v5d3/REPLAY_HASH_REPORT.json",
+      "classification": "REFEREE_DOCUMENTATION",
+      "source_status": "untracked",
+      "sha256": "32d72495c9b8bf81404adc2126e3fe5b2ee913c137f4c827a337df3877889aad",
+      "include_or_exclude": "INCLUDE",
+      "reason": "Approved for Referee V5 source capture",
+      "target_commit_group": "commit-7-docs"
+    },
+    {
+      "relative_path": "docs/v5/qa-evidence/phase-v5d3/SEED_REPORT.json",
+      "classification": "REFEREE_DOCUMENTATION",
+      "source_status": "untracked",
+      "sha256": "f5cf83b466772483145eed8c2209ea17e40f8187bc398c3af76655ad0d9c6ca6",
+      "include_or_exclude": "INCLUDE",
+      "reason": "Approved for Referee V5 source capture",
+      "target_commit_group": "commit-7-docs"
+    },
+    {
+      "relative_path": "docs/v5/qa-evidence/phase-v5d3/SEED_SQL.sql",
+      "classification": "REFEREE_DOCUMENTATION",
+      "source_status": "untracked",
+      "sha256": "d8c8f2d631abaf6509654db88031fd5ece4f5a1eddcac87353abf5dc5e20f488",
+      "include_or_exclude": "INCLUDE",
+      "reason": "Approved for Referee V5 source capture",
+      "target_commit_group": "commit-7-docs"
+    },
+    {
+      "relative_path": "docs/v5/qa-evidence/phase-v5d4/ATOMIC_COMMAND_ROLLBACK_REPORT.json",
+      "classification": "REFEREE_DOCUMENTATION",
+      "source_status": "untracked",
+      "sha256": "defca5a3fffe2facae857f2a19f02938f4cb3723118df96cbd3be225c0d266ea",
+      "include_or_exclude": "INCLUDE",
+      "reason": "Approved for Referee V5 source capture",
+      "target_commit_group": "commit-7-docs"
+    },
+    {
+      "relative_path": "docs/v5/qa-evidence/phase-v5d4/ATOMIC_FINALIZE_ROLLBACK_REPORT.json",
+      "classification": "REFEREE_DOCUMENTATION",
+      "source_status": "untracked",
+      "sha256": "a1f4b0f988f93c992fabc1108fd9fa8264b8818b48c5c7382c3d2f29d95f4d30",
+      "include_or_exclude": "INCLUDE",
+      "reason": "Approved for Referee V5 source capture",
+      "target_commit_group": "commit-7-docs"
+    },
+    {
+      "relative_path": "docs/v5/qa-evidence/phase-v5d4/FAULT_INJECTION_SECURITY_REPORT.json",
+      "classification": "REFEREE_DOCUMENTATION",
+      "source_status": "untracked",
+      "sha256": "37ca5876f80cee7091a9d7ea90597bf5b98042fa0b42e417123811f9de8a54bb",
+      "include_or_exclude": "INCLUDE",
+      "reason": "Approved for Referee V5 source capture",
+      "target_commit_group": "commit-7-docs"
+    },
+    {
+      "relative_path": "docs/v5/qa-evidence/phase-v5d4/MULTI_DEVICE_REPORT.json",
+      "classification": "REFEREE_DOCUMENTATION",
+      "source_status": "untracked",
+      "sha256": "004c5c26f0cc7a235decdcffe287331be173d703b21ca770fa18f16f5d52c6b3",
+      "include_or_exclude": "INCLUDE",
+      "reason": "Approved for Referee V5 source capture",
+      "target_commit_group": "commit-7-docs"
+    },
+    {
+      "relative_path": "docs/v5/qa-evidence/phase-v5d4/REPLAY_SNAPSHOT_REPORT.json",
+      "classification": "REFEREE_DOCUMENTATION",
+      "source_status": "untracked",
+      "sha256": "f23ef0367780a7e612c85a856fa21ee366373140f1cd500cfab805d70a829ca6",
+      "include_or_exclude": "INCLUDE",
+      "reason": "Approved for Referee V5 source capture",
+      "target_commit_group": "commit-7-docs"
+    },
+    {
+      "relative_path": "docs/v5/qa-evidence/phase-v5d4/ROLLBACK_REHEARSAL_REPORT.json",
+      "classification": "REFEREE_DOCUMENTATION",
+      "source_status": "untracked",
+      "sha256": "e7d59a72c0cd8e81405427d4fd4715aec101dbc708b2c235e3268782313e04e5",
+      "include_or_exclude": "INCLUDE",
+      "reason": "Approved for Referee V5 source capture",
+      "target_commit_group": "commit-7-docs"
+    },
+    {
+      "relative_path": "docs/v5/qa-evidence/phase-v5d41/AUTH_LOGIN_REPORT.json",
+      "classification": "REFEREE_DOCUMENTATION",
+      "source_status": "untracked",
+      "sha256": "fac5da2b7fa6a245a4bf8e2af81a77b48ff02037d74ce8688a210b4d7d9fe212",
+      "include_or_exclude": "INCLUDE",
+      "reason": "Approved for Referee V5 source capture",
+      "target_commit_group": "commit-7-docs"
+    },
+    {
+      "relative_path": "docs/v5/qa-evidence/phase-v5d41/HTTP_18_OF_18_REPORT.json",
+      "classification": "REFEREE_DOCUMENTATION",
+      "source_status": "untracked",
+      "sha256": "59cd3053f0d59250548cd662b96d866420d26da1887bd2a84a3a3244d4021b3f",
+      "include_or_exclude": "INCLUDE",
+      "reason": "Approved for Referee V5 source capture",
+      "target_commit_group": "commit-7-docs"
+    },
+    {
+      "relative_path": "docs/v5/qa-evidence/phase-v5d41/MULTI_CONTEXT_BROWSER_REPORT.json",
+      "classification": "REFEREE_DOCUMENTATION",
+      "source_status": "untracked",
+      "sha256": "8b57cc4fcd302e992c41aad20a535766c7dfe5e990d7ca35e0464a9dc4889ac6",
+      "include_or_exclude": "INCLUDE",
+      "reason": "Approved for Referee V5 source capture",
+      "target_commit_group": "commit-7-docs"
+    },
+    {
+      "relative_path": "docs/v5/qa-evidence/phase-v5d41/PASSWORD_RESET_REPORT.json",
+      "classification": "REFEREE_DOCUMENTATION",
+      "source_status": "untracked",
+      "sha256": "786b93edbf292c86ee3245fa372727c5824e3fcdea01232a0a9c96998609b2d9",
+      "include_or_exclude": "INCLUDE",
+      "reason": "Approved for Referee V5 source capture",
+      "target_commit_group": "commit-7-docs"
+    },
+    {
+      "relative_path": "docs/v5/qa-evidence/phase-v5d41/PREVIEW_DEPLOY_REPORT.json",
+      "classification": "REFEREE_DOCUMENTATION",
+      "source_status": "untracked",
+      "sha256": "59a4a9480ba7396d76a0c6b326c98551a5cf90e08b6c5688969efbffd3cadf8c",
+      "include_or_exclude": "INCLUDE",
+      "reason": "Approved for Referee V5 source capture",
+      "target_commit_group": "commit-7-docs"
+    },
+    {
+      "relative_path": "docs/v5/qa-evidence/phase-v5d41/REGRESSION_REPORT.json",
+      "classification": "REFEREE_DOCUMENTATION",
+      "source_status": "untracked",
+      "sha256": "fccb034d426eff099fc558f593257a26c92099461ad96dbe21cfc00e32ea92fc",
+      "include_or_exclude": "INCLUDE",
+      "reason": "Approved for Referee V5 source capture",
+      "target_commit_group": "commit-7-docs"
+    },
+    {
+      "relative_path": "docs/v5/qa-evidence/phase-v5d41/REMOTE_ERROR_REPORT.json",
+      "classification": "REFEREE_DOCUMENTATION",
+      "source_status": "untracked",
+      "sha256": "8ecb5d2addad50877d760a57be6ef83ccb6007877f14f41ed36c522b58ca00c5",
+      "include_or_exclude": "INCLUDE",
+      "reason": "Approved for Referee V5 source capture",
+      "target_commit_group": "commit-7-docs"
+    },
+    {
+      "relative_path": "docs/v5/qa-evidence/phase-v5d41/REMOTE_UI_DOUBLES_REPORT.json",
+      "classification": "REFEREE_DOCUMENTATION",
+      "source_status": "untracked",
+      "sha256": "5ebd7052dcfde6487ab70919b79f9a523b143a0d6e18ab063582d2830c90e33f",
+      "include_or_exclude": "INCLUDE",
+      "reason": "Approved for Referee V5 source capture",
+      "target_commit_group": "commit-7-docs"
+    },
+    {
+      "relative_path": "docs/v5/qa-evidence/phase-v5d41/REMOTE_UI_SINGLES_REPORT.json",
+      "classification": "REFEREE_DOCUMENTATION",
+      "source_status": "untracked",
+      "sha256": "4f5a99afbbf86fc33667f761524dcde616ef3a2981f8f03ad00e9eaab7cde95a",
+      "include_or_exclude": "INCLUDE",
+      "reason": "Approved for Referee V5 source capture",
+      "target_commit_group": "commit-7-docs"
+    },
+    {
+      "relative_path": "docs/v5/qa-evidence/phase-v5d41/REPLAY_SNAPSHOT_REPORT.json",
+      "classification": "REFEREE_DOCUMENTATION",
+      "source_status": "untracked",
+      "sha256": "112bfa3475389e316852d423256f16bcddb2a9cfad1d965efa16a20c4a6bcb99",
+      "include_or_exclude": "INCLUDE",
+      "reason": "Approved for Referee V5 source capture",
+      "target_commit_group": "commit-7-docs"
+    },
+    {
+      "relative_path": "docs/v5/qa-evidence/phase-v5e1/FINALIZE_SYNC_REPORT.json",
+      "classification": "REFEREE_DOCUMENTATION",
+      "source_status": "untracked",
+      "sha256": "2a3a22c48f77896b1d1d5a4f99c7ce5a635ef09abd80f8c5ae002ec23996519f",
+      "include_or_exclude": "INCLUDE",
+      "reason": "Approved for Referee V5 source capture",
+      "target_commit_group": "commit-7-docs"
+    },
+    {
+      "relative_path": "docs/v5/qa-evidence/phase-v5e1/MULTI_DEVICE_SYNC_REPORT.json",
+      "classification": "REFEREE_DOCUMENTATION",
+      "source_status": "untracked",
+      "sha256": "32f51d95cd3d4fb812171e68f1a282cf29bb54e5a4c15676498cce4b65c93c8a",
+      "include_or_exclude": "INCLUDE",
+      "reason": "Approved for Referee V5 source capture",
+      "target_commit_group": "commit-7-docs"
+    },
+    {
+      "relative_path": "docs/v5/qa-evidence/phase-v5e1/REALTIME_LATENCY_REPORT.json",
+      "classification": "REFEREE_DOCUMENTATION",
+      "source_status": "untracked",
+      "sha256": "a0f04f4bb25dd9ee0482169a30cb830a22a20661f7e9727345ac224cc447f8c5",
+      "include_or_exclude": "INCLUDE",
+      "reason": "Approved for Referee V5 source capture",
+      "target_commit_group": "commit-7-docs"
+    },
+    {
+      "relative_path": "docs/v5/qa-evidence/phase-v5e1/REALTIME_SECURITY_REPORT.json",
+      "classification": "REFEREE_DOCUMENTATION",
+      "source_status": "untracked",
+      "sha256": "b098e2b5a63b32635ed193cb54dc5b4c0d947321ec9d4821f999c142b0bf296a",
+      "include_or_exclude": "INCLUDE",
+      "reason": "Approved for Referee V5 source capture",
+      "target_commit_group": "commit-7-docs"
+    },
+    {
+      "relative_path": "docs/v5/qa-evidence/phase-v5e1/REALTIME_SUBSCRIPTION_REPORT.json",
+      "classification": "REFEREE_DOCUMENTATION",
+      "source_status": "untracked",
+      "sha256": "6a956e60b7ce72c60a565491f8dc447aa1a768ea9465fc140454d8eb26164633",
+      "include_or_exclude": "INCLUDE",
+      "reason": "Approved for Referee V5 source capture",
+      "target_commit_group": "commit-7-docs"
+    },
+    {
+      "relative_path": "docs/v5/qa-evidence/phase-v5e1/RECONNECT_REPORT.json",
+      "classification": "REFEREE_DOCUMENTATION",
+      "source_status": "untracked",
+      "sha256": "eacd331d418ce58224c588b7df6cb20d9b72479322aa8f6b952e8d9feded0131",
+      "include_or_exclude": "INCLUDE",
+      "reason": "Approved for Referee V5 source capture",
+      "target_commit_group": "commit-7-docs"
+    },
+    {
+      "relative_path": "docs/v5/qa-evidence/phase-v5e1/REGRESSION_REPORT.json",
+      "classification": "REFEREE_DOCUMENTATION",
+      "source_status": "untracked",
+      "sha256": "64850a3c6140a2d784ef1d6bfbda224bb276b8dac6703ab47f08f43792118f19",
+      "include_or_exclude": "INCLUDE",
+      "reason": "Approved for Referee V5 source capture",
+      "target_commit_group": "commit-7-docs"
+    },
+    {
+      "relative_path": "docs/v5/referee-v5/PHASE_V5A_REFEREE_FOUNDATION.sql",
+      "classification": "REFEREE_DATABASE",
+      "source_status": "untracked",
+      "sha256": "c1a079535a6295cb3d185aee9c9b2e54da6ed0aebbeb67bbfd4b929dd13c0f8e",
+      "include_or_exclude": "INCLUDE",
+      "reason": "Approved for Referee V5 source capture",
+      "target_commit_group": "commit-5-migrations"
+    },
+    {
+      "relative_path": "docs/v5/referee-v5/PHASE_V5D1_REFEREE_HARDENING.sql",
+      "classification": "REFEREE_DATABASE",
+      "source_status": "untracked",
+      "sha256": "caf20d89b35bee42f2e06f20ddc0b498ffb7b2081a30a8cd4057dedcfc47a579",
+      "include_or_exclude": "INCLUDE",
+      "reason": "Approved for Referee V5 source capture",
+      "target_commit_group": "commit-5-migrations"
+    },
+    {
+      "relative_path": "docs/v5/referee-v5/PHASE_V5D32_IDEMPOTENCY_UNDO.sql",
+      "classification": "REFEREE_DATABASE",
+      "source_status": "untracked",
+      "sha256": "f0d0eb05c83883078b812e88e7515733017f9fa48fda9fbd629e85d35a79c17d",
+      "include_or_exclude": "INCLUDE",
+      "reason": "Approved for Referee V5 source capture",
+      "target_commit_group": "commit-5-migrations"
+    },
+    {
+      "relative_path": "docs/v5/referee-v5/PHASE_V5D4_ATOMIC_ROLLBACK.sql",
+      "classification": "REFEREE_DATABASE",
+      "source_status": "untracked",
+      "sha256": "ee482eead1791633cdb6b0989d470076cbc12d99902fe7df28c277d0951267e1",
+      "include_or_exclude": "INCLUDE",
+      "reason": "Approved for Referee V5 source capture",
+      "target_commit_group": "commit-5-migrations"
+    },
+    {
+      "relative_path": "docs/v5/referee-v5/PHASE_V5D_REFEREE_PERSISTENCE.sql",
+      "classification": "REFEREE_DATABASE",
+      "source_status": "untracked",
+      "sha256": "5c3bcda4e38449021516d0b966ab553e6f79d58a409b2d75af59160f6295fdb9",
+      "include_or_exclude": "INCLUDE",
+      "reason": "Approved for Referee V5 source capture",
+      "target_commit_group": "commit-5-migrations"
+    },
+    {
+      "relative_path": "docs/v5/referee-v5/PHASE_V5E1_REALTIME_SYNC.sql",
+      "classification": "REFEREE_DATABASE",
+      "source_status": "untracked",
+      "sha256": "1697585ebe3e8642968a5eea3008addfd0e6a5aac922771ae3d012f70711f024",
+      "include_or_exclude": "INCLUDE",
+      "reason": "Approved for Referee V5 source capture",
+      "target_commit_group": "commit-5-migrations"
+    },
+    {
+      "relative_path": "docs/v5/referee-v5/REFEREE_V5_INTEGRATION_HANDOFF.md",
+      "classification": "REFEREE_DOCUMENTATION",
+      "source_status": "untracked",
+      "sha256": "3d776433b06589b4ed5c879262178c51a136117c569b53a9530fc29b84c4c7fb",
+      "include_or_exclude": "INCLUDE",
+      "reason": "Approved for Referee V5 source capture",
+      "target_commit_group": "commit-7-docs"
+    },
+    {
+      "relative_path": "docs/v5/referee-v5/V5-A_ARCHITECTURE.md",
+      "classification": "REFEREE_DOCUMENTATION",
+      "source_status": "untracked",
+      "sha256": "380982ff813215c76cc5370aa470dee9c2ccb73a1ded21ad2dcb477dfa3edebd",
+      "include_or_exclude": "INCLUDE",
+      "reason": "Approved for Referee V5 source capture",
+      "target_commit_group": "commit-7-docs"
+    },
+    {
+      "relative_path": "docs/v5/referee-v5/V5-A_CURRENT_STATE_AUDIT.md",
+      "classification": "REFEREE_DOCUMENTATION",
+      "source_status": "untracked",
+      "sha256": "6e9ac8894c6da557c17f82b8500258e834bbb3517b356b77e82c43dc79caf4fe",
+      "include_or_exclude": "INCLUDE",
+      "reason": "Approved for Referee V5 source capture",
+      "target_commit_group": "commit-7-docs"
+    },
+    {
+      "relative_path": "docs/v5/referee-v5/V5-A_FINAL_VERDICT.md",
+      "classification": "REFEREE_DOCUMENTATION",
+      "source_status": "untracked",
+      "sha256": "63128c2a72ce5df6592ce75a0a06951e710ecd3712955463e5b6a1920ad3807c",
+      "include_or_exclude": "INCLUDE",
+      "reason": "Approved for Referee V5 source capture",
+      "target_commit_group": "commit-7-docs"
+    },
+    {
+      "relative_path": "docs/v5/referee-v5/V5-A_SECURITY_VERIFICATION.md",
+      "classification": "REFEREE_DOCUMENTATION",
+      "source_status": "untracked",
+      "sha256": "d045c06b498e504d001c8bbf07f702ca7d5a0d4908d1c651f330e547d0028784",
+      "include_or_exclude": "INCLUDE",
+      "reason": "Approved for Referee V5 source capture",
+      "target_commit_group": "commit-7-docs"
+    },
+    {
+      "relative_path": "docs/v5/referee-v5/V5-B_COURT_POSITION_SPECIFICATION.md",
+      "classification": "REFEREE_DOCUMENTATION",
+      "source_status": "untracked",
+      "sha256": "f4dc0e5d2f7497e7fa3a257c1a89931f9424b2651fc32b8f1b0d252158b00bb8",
+      "include_or_exclude": "INCLUDE",
+      "reason": "Approved for Referee V5 source capture",
+      "target_commit_group": "commit-7-docs"
+    },
+    {
+      "relative_path": "docs/v5/referee-v5/V5-B_IMPLEMENTATION_REPORT.md",
+      "classification": "REFEREE_DOCUMENTATION",
+      "source_status": "untracked",
+      "sha256": "838a22103dd377cf338b260daffa32687b350100f8aac671fdca92d57dea86a3",
+      "include_or_exclude": "INCLUDE",
+      "reason": "Approved for Referee V5 source capture",
+      "target_commit_group": "commit-7-docs"
+    },
+    {
+      "relative_path": "docs/v5/referee-v5/V5-B_MATCH_STATE_ENGINE.md",
+      "classification": "REFEREE_DOCUMENTATION",
+      "source_status": "untracked",
+      "sha256": "9c016cbf3e213897f7a713b139bc95e6bc8d87ff6318a1bc485fcccdaf5b2f07",
+      "include_or_exclude": "INCLUDE",
+      "reason": "Approved for Referee V5 source capture",
+      "target_commit_group": "commit-7-docs"
+    },
+    {
+      "relative_path": "docs/v5/referee-v5/V5-B_RECEIVER_AND_DIAGONAL_MAPPING.md",
+      "classification": "REFEREE_DOCUMENTATION",
+      "source_status": "untracked",
+      "sha256": "c2db9df0b6117b768e1c8f8eb49540bd428ee85686517623cb6da95413c917d2",
+      "include_or_exclude": "INCLUDE",
+      "reason": "Approved for Referee V5 source capture",
+      "target_commit_group": "commit-7-docs"
+    },
+    {
+      "relative_path": "docs/v5/referee-v5/V5-B_SERVE_ROTATION_ENGINE.md",
+      "classification": "REFEREE_DOCUMENTATION",
+      "source_status": "untracked",
+      "sha256": "7729a3237dbb3affee9258735640c3a710217295d4349144dfdaa1b3bc0a4cd1",
+      "include_or_exclude": "INCLUDE",
+      "reason": "Approved for Referee V5 source capture",
+      "target_commit_group": "commit-7-docs"
+    },
+    {
+      "relative_path": "docs/v5/referee-v5/V5-B_TEST_RESULTS.md",
+      "classification": "REFEREE_DOCUMENTATION",
+      "source_status": "untracked",
+      "sha256": "569be0ec2a52e8d964dab7fe07c4b2d38e8a524684fb212dbb94bdebf796dd12",
+      "include_or_exclude": "INCLUDE",
+      "reason": "Approved for Referee V5 source capture",
+      "target_commit_group": "commit-7-docs"
+    },
+    {
+      "relative_path": "docs/v5/referee-v5/V5-C_COURT_VISUALIZER_IMPLEMENTATION.md",
+      "classification": "REFEREE_DOCUMENTATION",
+      "source_status": "untracked",
+      "sha256": "6f9500e0ade5666c177ef1511a1b107bbfa685846a71fd8e939371d70844165f",
+      "include_or_exclude": "INCLUDE",
+      "reason": "Approved for Referee V5 source capture",
+      "target_commit_group": "commit-7-docs"
+    },
+    {
+      "relative_path": "docs/v5/referee-v5/V5-C_FINAL_VERDICT.md",
+      "classification": "REFEREE_DOCUMENTATION",
+      "source_status": "untracked",
+      "sha256": "baff32c8853302ae1ce8d3d355936056aec91964276a97de77794a01adfe4ce3",
+      "include_or_exclude": "INCLUDE",
+      "reason": "Approved for Referee V5 source capture",
+      "target_commit_group": "commit-7-docs"
+    },
+    {
+      "relative_path": "docs/v5/referee-v5/V5-C_MATCH_STATE_ENGINE_SPECIFICATION.md",
+      "classification": "REFEREE_DOCUMENTATION",
+      "source_status": "untracked",
+      "sha256": "0fdbb27cc7efd25b2abf5c258ccae7c284012f632d6c1c9470f38d257938cd8a",
+      "include_or_exclude": "INCLUDE",
+      "reason": "Approved for Referee V5 source capture",
+      "target_commit_group": "commit-7-docs"
+    },
+    {
+      "relative_path": "docs/v5/referee-v5/V5-C_RESPONSIVE_ACCESSIBILITY_REPORT.md",
+      "classification": "REFEREE_DOCUMENTATION",
+      "source_status": "untracked",
+      "sha256": "50953b975271588b2e9fd18884f3b8ac4ecb1cf9e1a7a3f5a44f671849fe22e1",
+      "include_or_exclude": "INCLUDE",
+      "reason": "Approved for Referee V5 source capture",
+      "target_commit_group": "commit-7-docs"
+    },
+    {
+      "relative_path": "docs/v5/referee-v5/V5-C_TEST_RESULTS.md",
+      "classification": "REFEREE_DOCUMENTATION",
+      "source_status": "untracked",
+      "sha256": "64f528193d1141eed1d9ac4eb7767147528f0e64b2895bb4f089b5d499ed500c",
+      "include_or_exclude": "INCLUDE",
+      "reason": "Approved for Referee V5 source capture",
+      "target_commit_group": "commit-7-docs"
+    },
+    {
+      "relative_path": "docs/v5/referee-v5/V5-C_UI_COMPONENT_SPECIFICATION.md",
+      "classification": "REFEREE_DOCUMENTATION",
+      "source_status": "untracked",
+      "sha256": "293028c4f48bf6a52ece415865bd5589b4fab56ea00c0a3b02c00c33ba2f4b27",
+      "include_or_exclude": "INCLUDE",
+      "reason": "Approved for Referee V5 source capture",
+      "target_commit_group": "commit-7-docs"
+    },
+    {
+      "relative_path": "docs/v5/referee-v5/V5-D1_APPEND_ONLY_VERIFICATION.md",
+      "classification": "REFEREE_DOCUMENTATION",
+      "source_status": "untracked",
+      "sha256": "d7b024f4c5ae0024bbd71929f3c53c5b42e2f5d503d8e8844be4be9b46044662",
+      "include_or_exclude": "INCLUDE",
+      "reason": "Approved for Referee V5 source capture",
+      "target_commit_group": "commit-7-docs"
+    },
+    {
+      "relative_path": "docs/v5/referee-v5/V5-D1_ARCHITECTURE_CORRECTION.md",
+      "classification": "REFEREE_DOCUMENTATION",
+      "source_status": "untracked",
+      "sha256": "9d08b6d19281909981c5a0a874eaf03bddf281251759f1e92261278c7e2da1dc",
+      "include_or_exclude": "INCLUDE",
+      "reason": "Approved for Referee V5 source capture",
+      "target_commit_group": "commit-7-docs"
+    },
+    {
+      "relative_path": "docs/v5/referee-v5/V5-D1_ATOMIC_COMMIT_SPECIFICATION.md",
+      "classification": "REFEREE_DOCUMENTATION",
+      "source_status": "untracked",
+      "sha256": "0d5913f9a4466f4e655aad0ae7b05498f5065b1d0760620cc735b844d37f0ac6",
+      "include_or_exclude": "INCLUDE",
+      "reason": "Approved for Referee V5 source capture",
+      "target_commit_group": "commit-7-docs"
+    },
+    {
+      "relative_path": "docs/v5/referee-v5/V5-D1_IDEMPOTENCY_SPECIFICATION.md",
+      "classification": "REFEREE_DOCUMENTATION",
+      "source_status": "untracked",
+      "sha256": "1b67b70b63e8d58b6713b468f6b206fac888dbfda45565faf77566a4823fc478",
+      "include_or_exclude": "INCLUDE",
+      "reason": "Approved for Referee V5 source capture",
+      "target_commit_group": "commit-7-docs"
+    },
+    {
+      "relative_path": "docs/v5/referee-v5/V5-D1_PRE_STAGING_REVIEW.md",
+      "classification": "REFEREE_DOCUMENTATION",
+      "source_status": "untracked",
+      "sha256": "4c46f92701f6f5bfe71f0d0fa14ea927d7346d537e225a382eec400d1fa9ea68",
+      "include_or_exclude": "INCLUDE",
+      "reason": "Approved for Referee V5 source capture",
+      "target_commit_group": "commit-7-docs"
+    },
+    {
+      "relative_path": "docs/v5/referee-v5/V5-D1_SQL_STATIC_VERIFICATION.md",
+      "classification": "REFEREE_DOCUMENTATION",
+      "source_status": "untracked",
+      "sha256": "5e885a10cae67b695676efb9cb26b1a40381d9c20da83f212546078d29094473",
+      "include_or_exclude": "INCLUDE",
+      "reason": "Approved for Referee V5 source capture",
+      "target_commit_group": "commit-7-docs"
+    },
+    {
+      "relative_path": "docs/v5/referee-v5/V5-D1_TRUST_BOUNDARY_SECURITY.md",
+      "classification": "REFEREE_DOCUMENTATION",
+      "source_status": "untracked",
+      "sha256": "1912514a57310bc0345dc3eadce86b84d2fa0d100d93dc947d4d8cb5215413ed",
+      "include_or_exclude": "INCLUDE",
+      "reason": "Approved for Referee V5 source capture",
+      "target_commit_group": "commit-7-docs"
+    },
+    {
+      "relative_path": "docs/v5/referee-v5/V5-D2_ATOMIC_ROLLBACK_RESULTS.md",
+      "classification": "REFEREE_DOCUMENTATION",
+      "source_status": "untracked",
+      "sha256": "add345f96fbda0482293623f9dc0bf55bdfc2f3eeee155213c760f3a0be8ef32",
+      "include_or_exclude": "INCLUDE",
+      "reason": "Approved for Referee V5 source capture",
+      "target_commit_group": "commit-7-docs"
+    },
+    {
+      "relative_path": "docs/v5/referee-v5/V5-D2_CONCURRENCY_IDEMPOTENCY_RESULTS.md",
+      "classification": "REFEREE_DOCUMENTATION",
+      "source_status": "untracked",
+      "sha256": "ccc59c339ed17523be0a45ac76f6089dfcba824a4978e8e14ada90c82b98dc72",
+      "include_or_exclude": "INCLUDE",
+      "reason": "Approved for Referee V5 source capture",
+      "target_commit_group": "commit-7-docs"
+    },
+    {
+      "relative_path": "docs/v5/referee-v5/V5-D2_DATABASE_OBJECT_VERIFICATION.md",
+      "classification": "REFEREE_DOCUMENTATION",
+      "source_status": "untracked",
+      "sha256": "b2f5dcf6bd873178a67c456dfaaf4dd30a14160494d33df545b835dc6d10921d",
+      "include_or_exclude": "INCLUDE",
+      "reason": "Approved for Referee V5 source capture",
+      "target_commit_group": "commit-7-docs"
+    },
+    {
+      "relative_path": "docs/v5/referee-v5/V5-D2_E2E_RESULTS.md",
+      "classification": "REFEREE_DOCUMENTATION",
+      "source_status": "untracked",
+      "sha256": "8b308c89e2e67d5bc6946b72f6c84c716aaea48830b4a22e0de78ea2ed0c490a",
+      "include_or_exclude": "INCLUDE",
+      "reason": "Approved for Referee V5 source capture",
+      "target_commit_group": "commit-7-docs"
+    },
+    {
+      "relative_path": "docs/v5/referee-v5/V5-D2_EDGE_FUNCTION_VERIFICATION.md",
+      "classification": "REFEREE_DOCUMENTATION",
+      "source_status": "untracked",
+      "sha256": "3b49ba2ba406210ad0b8b2145f21d4a1761a21b494bc979b1ea329c5c8064e6d",
+      "include_or_exclude": "INCLUDE",
+      "reason": "Approved for Referee V5 source capture",
+      "target_commit_group": "commit-7-docs"
+    },
+    {
+      "relative_path": "docs/v5/referee-v5/V5-D2_FINAL_VERDICT.md",
+      "classification": "REFEREE_DOCUMENTATION",
+      "source_status": "untracked",
+      "sha256": "6d93671df4583bb22363b768b874fa3659b2c1a6c9eabce340b2ba90a7286eb9",
+      "include_or_exclude": "INCLUDE",
+      "reason": "Approved for Referee V5 source capture",
+      "target_commit_group": "commit-7-docs"
+    },
+    {
+      "relative_path": "docs/v5/referee-v5/V5-D2_MIGRATION_RESULTS.md",
+      "classification": "REFEREE_DOCUMENTATION",
+      "source_status": "untracked",
+      "sha256": "ad4c072f4fde8fa9cbcacb4beb50234c4a51ae457b1f6d58d3418aee79131000",
+      "include_or_exclude": "INCLUDE",
+      "reason": "Approved for Referee V5 source capture",
+      "target_commit_group": "commit-7-docs"
+    },
+    {
+      "relative_path": "docs/v5/referee-v5/V5-D2_RLS_TEST_RESULTS.md",
+      "classification": "REFEREE_DOCUMENTATION",
+      "source_status": "untracked",
+      "sha256": "124a4e22a1dfbdd3a0f143c5b42ad280e9be56b354d714fb4f3c892868243244",
+      "include_or_exclude": "INCLUDE",
+      "reason": "Approved for Referee V5 source capture",
+      "target_commit_group": "commit-7-docs"
+    },
+    {
+      "relative_path": "docs/v5/referee-v5/V5-D2_ROLLBACK_REHEARSAL.md",
+      "classification": "REFEREE_DOCUMENTATION",
+      "source_status": "untracked",
+      "sha256": "e1b7fc12e7aff3bb155bc56e0f2140aa2ffdc502a0d4fac900ce8f88b72c0b2e",
+      "include_or_exclude": "INCLUDE",
+      "reason": "Approved for Referee V5 source capture",
+      "target_commit_group": "commit-7-docs"
+    },
+    {
+      "relative_path": "docs/v5/referee-v5/V5-D2_STAGING_APPLY_RUNBOOK.md",
+      "classification": "REFEREE_DOCUMENTATION",
+      "source_status": "untracked",
+      "sha256": "0841acd8d0b370a00a67c1c3862e850b9a8a32ec97e24e42bd0caefeb9bd1d78",
+      "include_or_exclude": "INCLUDE",
+      "reason": "Approved for Referee V5 source capture",
+      "target_commit_group": "commit-7-docs"
+    },
+    {
+      "relative_path": "docs/v5/referee-v5/V5-D3_EDGE_DEPLOYMENT.md",
+      "classification": "REFEREE_DOCUMENTATION",
+      "source_status": "untracked",
+      "sha256": "ca56c0d05fbf89b800c6762863076bd3e0136b82838cfe0e9b63993c2bdfc167",
+      "include_or_exclude": "INCLUDE",
+      "reason": "Approved for Referee V5 source capture",
+      "target_commit_group": "commit-7-docs"
+    },
+    {
+      "relative_path": "docs/v5/referee-v5/V5-D3_FINAL_VERDICT.md",
+      "classification": "REFEREE_DOCUMENTATION",
+      "source_status": "untracked",
+      "sha256": "f897083b40f6e2f3fd5070974048cf802f08334a4922b803ceb5e1b992f848b3",
+      "include_or_exclude": "INCLUDE",
+      "reason": "Approved for Referee V5 source capture",
+      "target_commit_group": "commit-7-docs"
+    },
+    {
+      "relative_path": "docs/v5/referee-v5/V5-D41_FINAL_VERDICT.md",
+      "classification": "REFEREE_DOCUMENTATION",
+      "source_status": "untracked",
+      "sha256": "b1750cc39a56b1184a634da233ef0958931208d2ce39b7e8bb23bf0a43040084",
+      "include_or_exclude": "INCLUDE",
+      "reason": "Approved for Referee V5 source capture",
+      "target_commit_group": "commit-7-docs"
+    },
+    {
+      "relative_path": "docs/v5/referee-v5/V5-D4_FINAL_VERDICT.md",
+      "classification": "REFEREE_DOCUMENTATION",
+      "source_status": "untracked",
+      "sha256": "4e836b0e7e70197acc2d4cc7b59d607220b9455b92da86ad21e22bb828a9942f",
+      "include_or_exclude": "INCLUDE",
+      "reason": "Approved for Referee V5 source capture",
+      "target_commit_group": "commit-7-docs"
+    },
+    {
+      "relative_path": "docs/v5/referee-v5/V5-D_CURRENT_DATABASE_MAPPING.md",
+      "classification": "REFEREE_DOCUMENTATION",
+      "source_status": "untracked",
+      "sha256": "175c3af0d4c2ced772cb8d681ed3b848c903f4b125d8c8fbc429f5d3339e12ec",
+      "include_or_exclude": "INCLUDE",
+      "reason": "Approved for Referee V5 source capture",
+      "target_commit_group": "commit-7-docs"
+    },
+    {
+      "relative_path": "docs/v5/referee-v5/V5-D_FINAL_VERDICT.md",
+      "classification": "REFEREE_DOCUMENTATION",
+      "source_status": "untracked",
+      "sha256": "f78a162b8cbf777c4968e1937337b0a5c10b0cee2cd31a9be042b9586a01b434",
+      "include_or_exclude": "INCLUDE",
+      "reason": "Approved for Referee V5 source capture",
+      "target_commit_group": "commit-7-docs"
+    },
+    {
+      "relative_path": "docs/v5/referee-v5/V5-D_IMPLEMENTATION_REPORT.md",
+      "classification": "REFEREE_DOCUMENTATION",
+      "source_status": "untracked",
+      "sha256": "b692178e7015811af1340d8ba1a1ee884d7a980be9901b6e290c25374f340eb4",
+      "include_or_exclude": "INCLUDE",
+      "reason": "Approved for Referee V5 source capture",
+      "target_commit_group": "commit-7-docs"
+    },
+    {
+      "relative_path": "docs/v5/referee-v5/V5-D_INTEGRATION_TEST_PLAN.md",
+      "classification": "REFEREE_DOCUMENTATION",
+      "source_status": "untracked",
+      "sha256": "0ffd1c29cfe3af9a868ed0f2616a7c6b3910a9a3bdfa0a42a6a2066f1a1ff61e",
+      "include_or_exclude": "INCLUDE",
+      "reason": "Approved for Referee V5 source capture",
+      "target_commit_group": "commit-7-docs"
+    },
+    {
+      "relative_path": "docs/v5/referee-v5/V5-D_PERSISTENCE_ARCHITECTURE.md",
+      "classification": "REFEREE_DOCUMENTATION",
+      "source_status": "untracked",
+      "sha256": "f1eaadac868b2f9a9f76e106f89d8a154faa27171c1605856aad8fa225b11229",
+      "include_or_exclude": "INCLUDE",
+      "reason": "Approved for Referee V5 source capture",
+      "target_commit_group": "commit-7-docs"
+    },
+    {
+      "relative_path": "docs/v5/referee-v5/V5-D_REFEREE_UI_SPECIFICATION.md",
+      "classification": "REFEREE_DOCUMENTATION",
+      "source_status": "untracked",
+      "sha256": "8b3e1b93efb9ef3b51a7670269f3cbf7ce7ce3e1b8045cf3cd1056cac8bfe30f",
+      "include_or_exclude": "INCLUDE",
+      "reason": "Approved for Referee V5 source capture",
+      "target_commit_group": "commit-7-docs"
+    },
+    {
+      "relative_path": "docs/v5/referee-v5/V5-D_RLS_SECURITY_SPECIFICATION.md",
+      "classification": "REFEREE_DOCUMENTATION",
+      "source_status": "untracked",
+      "sha256": "e5283477c929936402295dd49c8f7543d2c857b6e4208cd0beafad9b16909edd",
+      "include_or_exclude": "INCLUDE",
+      "reason": "Approved for Referee V5 source capture",
+      "target_commit_group": "commit-7-docs"
+    },
+    {
+      "relative_path": "docs/v5/referee-v5/V5-D_ROLLBACK_PLAN.md",
+      "classification": "REFEREE_DOCUMENTATION",
+      "source_status": "untracked",
+      "sha256": "f946cf39ef5e7a778a1771627e95a9108826b57f28877133d136d088195deddf",
+      "include_or_exclude": "INCLUDE",
+      "reason": "Approved for Referee V5 source capture",
+      "target_commit_group": "commit-7-docs"
+    },
+    {
+      "relative_path": "docs/v5/referee-v5/V5-D_RPC_SPECIFICATION.md",
+      "classification": "REFEREE_DOCUMENTATION",
+      "source_status": "untracked",
+      "sha256": "6b49c0c5982ab5dc73b528d4ac1ba59b9981cf427f5117020b40adaa5b963b8c",
+      "include_or_exclude": "INCLUDE",
+      "reason": "Approved for Referee V5 source capture",
+      "target_commit_group": "commit-7-docs"
+    },
+    {
+      "relative_path": "docs/v5/referee-v5/V5-E1_FINAL_VERDICT.md",
+      "classification": "REFEREE_DOCUMENTATION",
+      "source_status": "untracked",
+      "sha256": "d98cf62c7ab5f13dac044fd82c3d6678483374e168e0e9b01a044cb42ec8c4c6",
+      "include_or_exclude": "INCLUDE",
+      "reason": "Approved for Referee V5 source capture",
+      "target_commit_group": "commit-7-docs"
+    },
+    {
+      "relative_path": "docs/v5/referee-v5/V5-E1_MULTI_DEVICE_RESULTS.md",
+      "classification": "REFEREE_DOCUMENTATION",
+      "source_status": "untracked",
+      "sha256": "b8b4cc7c528a84ff5aa44c33523b78cbd696b4fe0b70b2d17299aa269ac84a72",
+      "include_or_exclude": "INCLUDE",
+      "reason": "Approved for Referee V5 source capture",
+      "target_commit_group": "commit-7-docs"
+    },
+    {
+      "relative_path": "docs/v5/referee-v5/V5-E1_PERFORMANCE_RESULTS.md",
+      "classification": "REFEREE_DOCUMENTATION",
+      "source_status": "untracked",
+      "sha256": "e63cab0f12c88dd9cab88b4632ab7cafdacaff9375ffddc7ee987b69a89ce3ce",
+      "include_or_exclude": "INCLUDE",
+      "reason": "Approved for Referee V5 source capture",
+      "target_commit_group": "commit-7-docs"
+    },
+    {
+      "relative_path": "docs/v5/referee-v5/V5-E1_REALTIME_ARCHITECTURE.md",
+      "classification": "REFEREE_DOCUMENTATION",
+      "source_status": "untracked",
+      "sha256": "cd1024625a4d2769656b50b3b6ab816c541b957c77d68a5769c1d9f117561f07",
+      "include_or_exclude": "INCLUDE",
+      "reason": "Approved for Referee V5 source capture",
+      "target_commit_group": "commit-7-docs"
+    },
+    {
+      "relative_path": "docs/v5/referee-v5/V5-E1_REALTIME_SECURITY.md",
+      "classification": "REFEREE_DOCUMENTATION",
+      "source_status": "untracked",
+      "sha256": "6d3321036f22e8df5190543edaafbff2cd265bfd56ca939c1062f3ba57557403",
+      "include_or_exclude": "INCLUDE",
+      "reason": "Approved for Referee V5 source capture",
+      "target_commit_group": "commit-7-docs"
+    },
+    {
+      "relative_path": "docs/v5/referee-v5/V5-E_REALTIME_OFFLINE_SPECIFICATION.md",
+      "classification": "REFEREE_DOCUMENTATION",
+      "source_status": "untracked",
+      "sha256": "7a15545effc9df42068bddb38047ae7815928f0b9e38afd7012e365d6685ecf4",
+      "include_or_exclude": "INCLUDE",
+      "reason": "Approved for Referee V5 source capture",
+      "target_commit_group": "commit-7-docs"
+    },
+    {
+      "relative_path": "docs/v5/referee-v5/V5-F_TEST_PLAN.md",
+      "classification": "REFEREE_DOCUMENTATION",
+      "source_status": "untracked",
+      "sha256": "c26bfab4f8d93d5503693e7a942d054d90804d8319137ab41824d76cf938d46d",
+      "include_or_exclude": "INCLUDE",
+      "reason": "Approved for Referee V5 source capture",
+      "target_commit_group": "commit-7-docs"
+    },
+    {
+      "relative_path": "docs/v5/referee-v5/adr/ADR-001-referee-state-source-of-truth.md",
+      "classification": "REFEREE_DOCUMENTATION",
+      "source_status": "untracked",
+      "sha256": "0b57669560c621658e49ffb1fb683de68483fff3061686c2d004f5816f4197ba",
+      "include_or_exclude": "INCLUDE",
+      "reason": "Approved for Referee V5 source capture",
+      "target_commit_group": "commit-7-docs"
+    },
+    {
+      "relative_path": "docs/v5/referee-v5/adr/ADR-002-event-driven-match-state.md",
+      "classification": "REFEREE_DOCUMENTATION",
+      "source_status": "untracked",
+      "sha256": "a09cb7f1c54913466982c39b881836e5983ba7be802bba356477085c6c2e2e14",
+      "include_or_exclude": "INCLUDE",
+      "reason": "Approved for Referee V5 source capture",
+      "target_commit_group": "commit-7-docs"
+    },
+    {
+      "relative_path": "docs/v5/referee-v5/adr/ADR-003-scoring-rule-engine.md",
+      "classification": "REFEREE_DOCUMENTATION",
+      "source_status": "untracked",
+      "sha256": "e712ef5915bf6c0fc63b15141b80c4e3fa8d25966c882afdb284f33ff535f3b8",
+      "include_or_exclude": "INCLUDE",
+      "reason": "Approved for Referee V5 source capture",
+      "target_commit_group": "commit-7-docs"
+    },
+    {
+      "relative_path": "docs/v5/referee-v5/adr/ADR-004-player-position-and-court-orientation.md",
+      "classification": "REFEREE_DOCUMENTATION",
+      "source_status": "untracked",
+      "sha256": "73e5f2a9473332a6a5d0deda2e1d282e0586e138458d1c242ccb975ee2a2fab6",
+      "include_or_exclude": "INCLUDE",
+      "reason": "Approved for Referee V5 source capture",
+      "target_commit_group": "commit-7-docs"
+    },
+    {
+      "relative_path": "docs/v5/referee-v5/adr/ADR-005-realtime-offline-conflict-strategy.md",
+      "classification": "REFEREE_DOCUMENTATION",
+      "source_status": "untracked",
+      "sha256": "2f5dc9280faf84bcad7df98d397dd62cdaa8dca10ae6b35c27f756b5052030ff",
+      "include_or_exclude": "INCLUDE",
+      "reason": "Approved for Referee V5 source capture",
+      "target_commit_group": "commit-7-docs"
+    },
+    {
+      "relative_path": "docs/v5/referee-v5/adr/ADR-006-result-finalization-and-idempotency.md",
+      "classification": "REFEREE_DOCUMENTATION",
+      "source_status": "untracked",
+      "sha256": "002e3a9f4e61b31baf2fae026fcfe84805410e561e259fd408c46feb1b336881",
+      "include_or_exclude": "INCLUDE",
+      "reason": "Approved for Referee V5 source capture",
+      "target_commit_group": "commit-7-docs"
+    },
+    {
+      "relative_path": "docs/v5/referee-v5/source-capture/REFEREE_V5_SOURCE_MANIFEST.json",
+      "classification": "REFEREE_DOCUMENTATION",
+      "source_status": "untracked",
+      "sha256": "fcb7dbe797438aa3c978c32bde48696e012977f4737d0fab3cacc0a7f92257a6",
+      "include_or_exclude": "INCLUDE",
+      "reason": "Approved for Referee V5 source capture",
+      "target_commit_group": "commit-7-docs"
+    },
+    {
+      "relative_path": "docs/v5/referee-v5/source-capture/_git_diff_name_status.txt",
+      "classification": "GENERATED",
+      "source_status": "untracked",
+      "sha256": "706227282047c39008ed4d2b0a82385e786a11fdda8afb8347850a40da8b2bda",
+      "include_or_exclude": "EXCLUDE",
+      "reason": "Generated or temp artifact",
+      "target_commit_group": null
+    },
+    {
+      "relative_path": "docs/v5/referee-v5/source-capture/_git_status_raw.txt",
+      "classification": "GENERATED",
+      "source_status": "untracked",
+      "sha256": "dd91309bf8a702ec5e2110565266be03b2b055f4202b47fc1011b6752ed5c544",
+      "include_or_exclude": "EXCLUDE",
+      "reason": "Generated or temp artifact",
+      "target_commit_group": null
+    },
+    {
+      "relative_path": "docs/v5/referee-v5/source-capture/_git_untracked_raw.txt",
+      "classification": "GENERATED",
+      "source_status": "untracked",
+      "sha256": "07c2f3526c45e4b42982ea898c7152730ee6d45034896200906606c6d5895871",
+      "include_or_exclude": "EXCLUDE",
+      "reason": "Generated or temp artifact",
+      "target_commit_group": null
+    },
+    {
+      "relative_path": "docs/v5/team-tournament/TT5-A_DATA_MAPPING.md",
+      "classification": "TEAM_TOURNAMENT",
+      "source_status": "untracked",
+      "sha256": "0d3780c0e66ce74a58f08dbaf6ec162a37a93923feb6e4866f0cf2eb564891e5",
+      "include_or_exclude": "EXCLUDE",
+      "reason": "Team Tournament scope",
+      "target_commit_group": null
+    },
+    {
+      "relative_path": "docs/v5/team-tournament/TT5-A_DUPLICATE_LOGIC_REPORT.md",
+      "classification": "TEAM_TOURNAMENT",
+      "source_status": "untracked",
+      "sha256": "0ce13791835249991668068440e6365b9508e4f3fe07d812f87c0a5f1e0b3fd1",
+      "include_or_exclude": "EXCLUDE",
+      "reason": "Team Tournament scope",
+      "target_commit_group": null
+    },
+    {
+      "relative_path": "docs/v5/team-tournament/TT5-A_FINAL_VERDICT.md",
+      "classification": "TEAM_TOURNAMENT",
+      "source_status": "untracked",
+      "sha256": "ad3bf609a68e9767f0c7153af3d05b1c6f835f6df1dee3b83c088af454222b48",
+      "include_or_exclude": "EXCLUDE",
+      "reason": "Team Tournament scope",
+      "target_commit_group": null
+    },
+    {
+      "relative_path": "docs/v5/team-tournament/TT5-A_REFEREE_INTEGRATION_AUDIT.md",
+      "classification": "TEAM_TOURNAMENT",
+      "source_status": "untracked",
+      "sha256": "296efb2d51e1a8e54363d11d6713d81d969f858ce187aba45ff650ed39c60536",
+      "include_or_exclude": "EXCLUDE",
+      "reason": "Team Tournament scope",
+      "target_commit_group": null
+    },
+    {
+      "relative_path": "docs/v5/team-tournament/tt5-preparation/TT5_PREP_FINAL_VERDICT.md",
+      "classification": "TEAM_TOURNAMENT",
+      "source_status": "untracked",
+      "sha256": "66329279beb70642ef3a2a712f3b71760591b9fd62cb5bcdd727570c0c23f2ff",
+      "include_or_exclude": "EXCLUDE",
+      "reason": "Team Tournament scope",
+      "target_commit_group": null
+    },
+    {
+      "relative_path": "docs/v5/team-tournament/tt5-preparation/TT5_PREP_GIT_INTEGRATION_STRATEGY.md",
+      "classification": "TEAM_TOURNAMENT",
+      "source_status": "untracked",
+      "sha256": "38819663a5d0ec012bb553825b44c0a92e545f828c9b12bbc739e47876b7cfd9",
+      "include_or_exclude": "EXCLUDE",
+      "reason": "Team Tournament scope",
+      "target_commit_group": null
+    },
+    {
+      "relative_path": "docs/v5/team-tournament/tt5-preparation/TT5_PREP_MIGRATION_DEPENDENCY.md",
+      "classification": "TEAM_TOURNAMENT",
+      "source_status": "untracked",
+      "sha256": "dae8722ffb589ea47145a3c78a0e99c9ccf1f21abe272b3e901701e5e24a1f11",
+      "include_or_exclude": "EXCLUDE",
+      "reason": "Team Tournament scope",
+      "target_commit_group": null
+    },
+    {
+      "relative_path": "docs/v5/team-tournament/tt5-preparation/TT5_PREP_REFEREE_V5_HANDOFF_REVIEW.md",
+      "classification": "TEAM_TOURNAMENT",
+      "source_status": "untracked",
+      "sha256": "0233f32cd7487633ae55fcafe180152dc1d69af1fc5b2ca9f42d77fb6d75e7c5",
+      "include_or_exclude": "EXCLUDE",
+      "reason": "Team Tournament scope",
+      "target_commit_group": null
+    },
+    {
+      "relative_path": "docs/v5/team-tournament/tt5-preparation/TT5_PREP_SOURCE_INVENTORY.md",
+      "classification": "TEAM_TOURNAMENT",
+      "source_status": "untracked",
+      "sha256": "94b651e6f7958b20343335582532e2e8df5f9f313ca1ce198ff649034a3f3e28",
+      "include_or_exclude": "EXCLUDE",
+      "reason": "Team Tournament scope",
+      "target_commit_group": null
+    },
+    {
+      "relative_path": "docs/v5/team-tournament/tt5-preparation/TT5_PREP_TEAM_TOURNAMENT_INVENTORY.md",
+      "classification": "TEAM_TOURNAMENT",
+      "source_status": "untracked",
+      "sha256": "ff3f1a1bb191cd27b839bee4d3ea2f6e1b49730e5f9b5812cf62dc7a54f13ce9",
+      "include_or_exclude": "EXCLUDE",
+      "reason": "Team Tournament scope",
+      "target_commit_group": null
+    },
+    {
+      "relative_path": "scripts/apply-phase-v5d2-staging.mjs",
+      "classification": "REFEREE_QA_SCRIPT",
+      "source_status": "untracked",
+      "sha256": "66f9adcb3c6827ece4d5080c1dc0350a15c9b8e8c29cb3fed0ee13f19684fa8c",
+      "include_or_exclude": "INCLUDE",
+      "reason": "Approved for Referee V5 source capture",
+      "target_commit_group": "commit-6-qa"
+    },
+    {
+      "relative_path": "scripts/apply-phase-v5d4-staging.mjs",
+      "classification": "REFEREE_QA_SCRIPT",
+      "source_status": "untracked",
+      "sha256": "80ac8355e6ae0dbff9f121500d1f43892a71499909e422ee6ef0a9abc03392a3",
+      "include_or_exclude": "INCLUDE",
+      "reason": "Approved for Referee V5 source capture",
+      "target_commit_group": "commit-6-qa"
+    },
+    {
+      "relative_path": "scripts/apply-phase-v5e1-staging.mjs",
+      "classification": "REFEREE_QA_SCRIPT",
+      "source_status": "untracked",
+      "sha256": "2ee0bf63b1f4e05ba89ab8d3f59cfe5a25923f75dfba4d711263968a7a9faa00",
+      "include_or_exclude": "INCLUDE",
+      "reason": "Approved for Referee V5 source capture",
+      "target_commit_group": "commit-6-qa"
+    },
+    {
+      "relative_path": "scripts/apply-referee-v5-source-capture.mjs",
+      "classification": "UNKNOWN",
+      "source_status": "untracked",
+      "sha256": "3d8079d56dcebc81ba78c2bb6eb3d2b14d73939e45f3decdb61846350be812b8",
+      "include_or_exclude": "EXCLUDE",
+      "reason": "Role not determined — exclude pending review",
+      "target_commit_group": null
+    },
+    {
+      "relative_path": "scripts/apply-v5a-rating-foundation-staging.mjs",
+      "classification": "RATING_V5",
+      "source_status": "untracked",
+      "sha256": "ba1b0a271909ca5030c33e337f77b83d140c1cde699cf59dd2abb956ecf87f91",
+      "include_or_exclude": "EXCLUDE",
+      "reason": "Rating V5 scope",
+      "target_commit_group": null
+    },
+    {
+      "relative_path": "scripts/apply-v5b1p-persistence-staging.mjs",
+      "classification": "RATING_V5",
+      "source_status": "untracked",
+      "sha256": "8827eb2d4507063f71237b040154da7052fe127e869d1512200788e36b1583d5",
+      "include_or_exclude": "EXCLUDE",
+      "reason": "Rating V5 scope",
+      "target_commit_group": null
+    },
+    {
+      "relative_path": "scripts/build-referee-v5-source-manifest.mjs",
+      "classification": "REFEREE_QA_SCRIPT",
+      "source_status": "untracked",
+      "sha256": "c3cbb310e75d10696590f46fa2662fd082cb51e93522bfb8d255d0c1581a0eef",
+      "include_or_exclude": "INCLUDE",
+      "reason": "Approved for Referee V5 source capture",
+      "target_commit_group": "commit-6-qa"
+    },
+    {
+      "relative_path": "scripts/bundle-rating-v5-edge-shared.mjs",
+      "classification": "RATING_V5",
+      "source_status": "untracked",
+      "sha256": "9528dfd763f88cd084ce4d8f454c178f04b4082b1b62b514bc6441dadc3b15a4",
+      "include_or_exclude": "EXCLUDE",
+      "reason": "Rating V5 scope",
+      "target_commit_group": null
+    },
+    {
+      "relative_path": "scripts/bundle-referee-v5-edge-shared.mjs",
+      "classification": "REFEREE_EDGE",
+      "source_status": "untracked",
+      "sha256": "51e645a3792c90c7ee3a7478579ad1c2d577c0b78ec20f91a55ed577f669e872",
+      "include_or_exclude": "INCLUDE",
+      "reason": "Approved for Referee V5 source capture",
+      "target_commit_group": "commit-3-persistence-edge"
+    },
+    {
+      "relative_path": "scripts/debug-captain-profile-rls.mjs",
+      "classification": "TEAM_TOURNAMENT",
+      "source_status": "untracked",
+      "sha256": "a33d859f26b437e6ee3c4728f63b737bb33c8f36f249c0d59dceae4792514a5d",
+      "include_or_exclude": "EXCLUDE",
+      "reason": "Team Tournament scope",
+      "target_commit_group": null
+    },
+    {
+      "relative_path": "scripts/debug-tt1c-captain-session.mjs",
+      "classification": "TEAM_TOURNAMENT",
+      "source_status": "untracked",
+      "sha256": "5f24330f29c524fe1e0ba037c87f936232b9fcf4f77668ccef5b803262ee387a",
+      "include_or_exclude": "EXCLUDE",
+      "reason": "Team Tournament scope",
+      "target_commit_group": null
+    },
+    {
+      "relative_path": "scripts/deploy-referee-v5-edge-staging.mjs",
+      "classification": "REFEREE_EDGE",
+      "source_status": "untracked",
+      "sha256": "ded598a53d0217427ee4c8bedd63415bccb0fdcad51574137172cc846f3c4a97",
+      "include_or_exclude": "INCLUDE",
+      "reason": "Approved for Referee V5 source capture",
+      "target_commit_group": "commit-3-persistence-edge"
+    },
+    {
+      "relative_path": "scripts/deploy-referee-v5-preview-staging.mjs",
+      "classification": "REFEREE_QA_SCRIPT",
+      "source_status": "untracked",
+      "sha256": "b2c8da8d9e6fcaad09726e931d606d07dc0f081e639499fd58b812348481a43f",
+      "include_or_exclude": "INCLUDE",
+      "reason": "Approved for Referee V5 source capture",
+      "target_commit_group": "commit-6-qa"
+    },
+    {
+      "relative_path": "scripts/deploy-v5b1e-edge-staging.mjs",
+      "classification": "RATING_V5",
+      "source_status": "untracked",
+      "sha256": "c53c1ec0196564d1d88b4f8608863fb0956300f34efc022d8b43d54b76869865",
+      "include_or_exclude": "EXCLUDE",
+      "reason": "Rating V5 scope",
+      "target_commit_group": null
+    },
+    {
+      "relative_path": "scripts/ensure-staging-qa-password-env.mjs",
+      "classification": "REFEREE_QA_SCRIPT",
+      "source_status": "untracked",
+      "sha256": "aff194dc2d13ec5b20087df9d5a5afd755679bcf110d2a63e0025e34b6655586",
+      "include_or_exclude": "INCLUDE",
+      "reason": "Approved for Referee V5 source capture",
+      "target_commit_group": "commit-6-qa"
+    },
+    {
+      "relative_path": "scripts/generate-rating-v5-golden-vectors.mjs",
+      "classification": "RATING_V5",
+      "source_status": "untracked",
+      "sha256": "ecd0364ba1ed63621cea25cb1bf9fe3c1d778d56f362e014d885763ffbf3cc6c",
+      "include_or_exclude": "EXCLUDE",
+      "reason": "Rating V5 scope",
+      "target_commit_group": null
+    },
+    {
+      "relative_path": "scripts/generate-v5-b0-content-review.mjs",
+      "classification": "RATING_V5",
+      "source_status": "untracked",
+      "sha256": "1ec4cb0119a8fb48b2dd9feb9f84622e26f27cc8bd4f4b559a5972d7146986aa",
+      "include_or_exclude": "EXCLUDE",
+      "reason": "Rating V5 scope",
+      "target_commit_group": null
+    },
+    {
+      "relative_path": "scripts/generate-v5-b0f-terminology-freeze.mjs",
+      "classification": "RATING_V5",
+      "source_status": "untracked",
+      "sha256": "5f8c766ce7905d977c1ee9c1ae8ff176bcc522aa8921ac5a61a54f17090387f0",
+      "include_or_exclude": "EXCLUDE",
+      "reason": "Rating V5 scope",
+      "target_commit_group": null
+    },
+    {
+      "relative_path": "scripts/generate-v5-data-consistency-audit.mjs",
+      "classification": "RATING_V5",
+      "source_status": "untracked",
+      "sha256": "1611a26f5da54d2c8a37a241d2f229abef7e61f4f71ce518c71156d1c0f75eff",
+      "include_or_exclude": "EXCLUDE",
+      "reason": "Rating V5 scope",
+      "target_commit_group": null
+    },
+    {
+      "relative_path": "scripts/inspect-rating-v5-edge-bundle.mjs",
+      "classification": "RATING_V5",
+      "source_status": "untracked",
+      "sha256": "9a08070bd7bef8e3e086b590be4527bfffa2d6b38cec667b725a440eb99f1a4b",
+      "include_or_exclude": "EXCLUDE",
+      "reason": "Rating V5 scope",
+      "target_commit_group": null
+    },
+    {
+      "relative_path": "scripts/lint-referee-v5-scoped.mjs",
+      "classification": "REFEREE_QA_SCRIPT",
+      "source_status": "untracked",
+      "sha256": "1b0b69aecd40fc84d0d31eab32585e5bf47249de50bccec5c33da0351172989d",
+      "include_or_exclude": "INCLUDE",
+      "reason": "Approved for Referee V5 source capture",
+      "target_commit_group": "commit-6-qa"
+    },
+    {
+      "relative_path": "scripts/lint-v5-scoped.mjs",
+      "classification": "RATING_V5",
+      "source_status": "untracked",
+      "sha256": "cd7c9954f8c85df5688ad0c2b5caf211f9587e29108e0d72091569ca4f1ccc89",
+      "include_or_exclude": "EXCLUDE",
+      "reason": "Rating V5 scope",
+      "target_commit_group": null
+    },
+    {
+      "relative_path": "scripts/predeploy-v5b1e-check.mjs",
+      "classification": "RATING_V5",
+      "source_status": "untracked",
+      "sha256": "db4e041acf94f7e548dce1595ffdf5905dc234e19864e9cd36bae51650359e01",
+      "include_or_exclude": "EXCLUDE",
+      "reason": "Rating V5 scope",
+      "target_commit_group": null
+    },
+    {
+      "relative_path": "scripts/probe-preview-flags.mjs",
+      "classification": "UNRELATED",
+      "source_status": "untracked",
+      "sha256": "44438fa321899de6085020d60a0a3fc25e1ba24f744c20576a26bfe8defc566d",
+      "include_or_exclude": "EXCLUDE",
+      "reason": "Unrelated change on dirty tree",
+      "target_commit_group": null
+    },
+    {
+      "relative_path": "scripts/referee-v5-staging-harness.mjs",
+      "classification": "REFEREE_QA_SCRIPT",
+      "source_status": "untracked",
+      "sha256": "14b18b4df3d065c2a248e5b6a9c0f215de8c8277c1d5ff2db2b74cb986ebccd2",
+      "include_or_exclude": "INCLUDE",
+      "reason": "Approved for Referee V5 source capture",
+      "target_commit_group": "commit-6-qa"
+    },
+    {
+      "relative_path": "scripts/run-v5-benchmark-personas.mjs",
+      "classification": "RATING_V5",
+      "source_status": "untracked",
+      "sha256": "05e6b2d17a47b6d2cc7c2d3a457e6389b6a32b3635f9e63f521b3e70b12fae8f",
+      "include_or_exclude": "EXCLUDE",
+      "reason": "Rating V5 scope",
+      "target_commit_group": null
+    },
+    {
+      "relative_path": "scripts/scan-preview-v2-chunks.mjs",
+      "classification": "UNRELATED",
+      "source_status": "untracked",
+      "sha256": "2c6abe429d70eded4c58d4807a218c8af8f3545bec4e63ff9ef2ae1e44c64e27",
+      "include_or_exclude": "EXCLUDE",
+      "reason": "Unrelated change on dirty tree",
+      "target_commit_group": null
+    },
+    {
+      "relative_path": "scripts/seed-referee-v5-test-staging.mjs",
+      "classification": "REFEREE_QA_SCRIPT",
+      "source_status": "untracked",
+      "sha256": "ba8c504caf04ce840ccf747c49ceac613a88f63e76949e12f96d6ddb6c626633",
+      "include_or_exclude": "INCLUDE",
+      "reason": "Approved for Referee V5 source capture",
+      "target_commit_group": "commit-6-qa"
+    },
+    {
+      "relative_path": "scripts/verify-phase-v5d2-staging.mjs",
+      "classification": "REFEREE_QA_SCRIPT",
+      "source_status": "untracked",
+      "sha256": "94098f12c3c3c5ae2bd84a6e28b2821eb47edbc0d57eb72598fc5e0a40c11d51",
+      "include_or_exclude": "INCLUDE",
+      "reason": "Approved for Referee V5 source capture",
+      "target_commit_group": "commit-6-qa"
+    },
+    {
+      "relative_path": "scripts/verify-referee-v5-atomic-rollback-staging.mjs",
+      "classification": "REFEREE_QA_SCRIPT",
+      "source_status": "untracked",
+      "sha256": "3665c07f6ec2f10f713b6936bd54567448dbed1d6b8b763b276a47c9ceb84821",
+      "include_or_exclude": "INCLUDE",
+      "reason": "Approved for Referee V5 source capture",
+      "target_commit_group": "commit-6-qa"
+    },
+    {
+      "relative_path": "scripts/verify-referee-v5-browser-e2e-staging.mjs",
+      "classification": "REFEREE_QA_SCRIPT",
+      "source_status": "untracked",
+      "sha256": "503aae9597d1e18c07344487595be6c206fe4e997e2686a11bc0f189c5b7eedf",
+      "include_or_exclude": "INCLUDE",
+      "reason": "Approved for Referee V5 source capture",
+      "target_commit_group": "commit-6-qa"
+    },
+    {
+      "relative_path": "scripts/verify-referee-v5-d4-staging-closure.mjs",
+      "classification": "REFEREE_QA_SCRIPT",
+      "source_status": "untracked",
+      "sha256": "a7cf51041a582c7afe8d7cf0f3720b2cc201ba2ec5289a0d3147dbaf8545f6ae",
+      "include_or_exclude": "INCLUDE",
+      "reason": "Approved for Referee V5 source capture",
+      "target_commit_group": "commit-6-qa"
+    },
+    {
+      "relative_path": "scripts/verify-referee-v5-d41-browser-e2e-staging.mjs",
+      "classification": "REFEREE_QA_SCRIPT",
+      "source_status": "untracked",
+      "sha256": "c1a2629fe5e89b29d6e4fd5f26b9c6b8b0d7912de9c90940bc4659345035e8f8",
+      "include_or_exclude": "INCLUDE",
+      "reason": "Approved for Referee V5 source capture",
+      "target_commit_group": "commit-6-qa"
+    },
+    {
+      "relative_path": "scripts/verify-referee-v5-d41-staging-closure.mjs",
+      "classification": "REFEREE_QA_SCRIPT",
+      "source_status": "untracked",
+      "sha256": "6386a1bcb492a0bde8151ee167c543453798838ca0cf30178560a5a0bb3ea8dc",
+      "include_or_exclude": "INCLUDE",
+      "reason": "Approved for Referee V5 source capture",
+      "target_commit_group": "commit-6-qa"
+    },
+    {
+      "relative_path": "scripts/verify-referee-v5-e1-realtime-browser-staging.mjs",
+      "classification": "REFEREE_QA_SCRIPT",
+      "source_status": "untracked",
+      "sha256": "cf56dd5b4cc88efbae0b5efa31ee631a99a5f56fd0578337449cf57db329221c",
+      "include_or_exclude": "INCLUDE",
+      "reason": "Approved for Referee V5 source capture",
+      "target_commit_group": "commit-4-realtime"
+    },
+    {
+      "relative_path": "scripts/verify-referee-v5-e1-staging-closure.mjs",
+      "classification": "REFEREE_QA_SCRIPT",
+      "source_status": "untracked",
+      "sha256": "35cf1d38f6623366b08815f6187eb824496dda047812ce344d4fda1e43c1cb27",
+      "include_or_exclude": "INCLUDE",
+      "reason": "Approved for Referee V5 source capture",
+      "target_commit_group": "commit-4-realtime"
+    },
+    {
+      "relative_path": "scripts/verify-referee-v5-fault-security-staging.mjs",
+      "classification": "REFEREE_QA_SCRIPT",
+      "source_status": "untracked",
+      "sha256": "40b8b3ad47148938a557dcbcdae5358030a33647a0f7cfdd4a0fe4321b4624d4",
+      "include_or_exclude": "INCLUDE",
+      "reason": "Approved for Referee V5 source capture",
+      "target_commit_group": "commit-6-qa"
+    },
+    {
+      "relative_path": "scripts/verify-referee-v5-http-concurrency-staging.mjs",
+      "classification": "REFEREE_QA_SCRIPT",
+      "source_status": "untracked",
+      "sha256": "48769907130413e9e08b3eb1e49c62c22ed136b749fb97ad4dd34a3d78e072f4",
+      "include_or_exclude": "INCLUDE",
+      "reason": "Approved for Referee V5 source capture",
+      "target_commit_group": "commit-6-qa"
+    },
+    {
+      "relative_path": "scripts/verify-referee-v5-multi-device-staging.mjs",
+      "classification": "REFEREE_QA_SCRIPT",
+      "source_status": "untracked",
+      "sha256": "5551598d2eb40b9f02e92838f512614a96fb44eb35c6115268e01c043f89cddf",
+      "include_or_exclude": "INCLUDE",
+      "reason": "Approved for Referee V5 source capture",
+      "target_commit_group": "commit-6-qa"
+    },
+    {
+      "relative_path": "scripts/verify-referee-v5-replay-staging.mjs",
+      "classification": "REFEREE_QA_SCRIPT",
+      "source_status": "untracked",
+      "sha256": "4e5dcfb09f427e34dee6b2f9e68f60cf683c6e782ebe183c7347d0fadd2bb32e",
+      "include_or_exclude": "INCLUDE",
+      "reason": "Approved for Referee V5 source capture",
+      "target_commit_group": "commit-6-qa"
+    },
+    {
+      "relative_path": "scripts/verify-referee-v5-rollback-rehearsal-staging.mjs",
+      "classification": "REFEREE_QA_SCRIPT",
+      "source_status": "untracked",
+      "sha256": "986f4d844f7e45b0ce9c74e111c0b2b6909a20567a180e1d15edd4d2928f9d93",
+      "include_or_exclude": "INCLUDE",
+      "reason": "Approved for Referee V5 source capture",
+      "target_commit_group": "commit-6-qa"
+    },
+    {
+      "relative_path": "scripts/verify-referee-v5-staging-closure.mjs",
+      "classification": "REFEREE_QA_SCRIPT",
+      "source_status": "untracked",
+      "sha256": "f0b4687d71035965f707a52f04ded4cf49064736af5fdf2847e81d11d80fc2ad",
+      "include_or_exclude": "INCLUDE",
+      "reason": "Approved for Referee V5 source capture",
+      "target_commit_group": "commit-6-qa"
+    },
+    {
+      "relative_path": "scripts/verify-v5a2-rls-staging.mjs",
+      "classification": "RATING_V5",
+      "source_status": "untracked",
+      "sha256": "a0f72d6af407ac8e7d16d872c79a0fc868fdefec0c02e04620ba1568c3207c18",
+      "include_or_exclude": "EXCLUDE",
+      "reason": "Rating V5 scope",
+      "target_commit_group": null
+    },
+    {
+      "relative_path": "scripts/verify-v5a3-jwt-rls-staging.mjs",
+      "classification": "RATING_V5",
+      "source_status": "untracked",
+      "sha256": "3ceee23799dcbf778a4f77064625181b65234a3f976d1f1522f23a2996e83f97",
+      "include_or_exclude": "EXCLUDE",
+      "reason": "Rating V5 scope",
+      "target_commit_group": null
+    },
+    {
+      "relative_path": "scripts/verify-v5b1e-edge-http-staging.mjs",
+      "classification": "RATING_V5",
+      "source_status": "untracked",
+      "sha256": "f10c1497122cfccba13ec981579266526708bc8d0ffd1464e6b9f3470fbfcf93",
+      "include_or_exclude": "EXCLUDE",
+      "reason": "Rating V5 scope",
+      "target_commit_group": null
+    },
+    {
+      "relative_path": "scripts/verify-v5b1p-live-staging.mjs",
+      "classification": "RATING_V5",
+      "source_status": "untracked",
+      "sha256": "36a9dfdb1a4c0fa1c3afb4bd584040d40632e13943bf2d3accae7813083feec8",
+      "include_or_exclude": "EXCLUDE",
+      "reason": "Rating V5 scope",
+      "target_commit_group": null
+    },
+    {
+      "relative_path": "scripts/verify-v5b1p-transaction-rollback.mjs",
+      "classification": "RATING_V5",
+      "source_status": "untracked",
+      "sha256": "c0bed4615bdac1f03d9ff002e7b650cfec2223cf14d89efcd989eec783d620a5",
+      "include_or_exclude": "EXCLUDE",
+      "reason": "Rating V5 scope",
+      "target_commit_group": null
+    },
+    {
+      "relative_path": "src/features/referee-v5/adapters/LocalPrototypeAdapter.js",
+      "classification": "REFEREE_PERSISTENCE",
+      "source_status": "untracked",
+      "sha256": "a7617e0d279e71bad58eb29929515a0f5096785fa4f69c992a6cd7d56a10aa05",
+      "include_or_exclude": "INCLUDE",
+      "reason": "Approved for Referee V5 source capture",
+      "target_commit_group": "commit-3-persistence-edge"
+    },
+    {
+      "relative_path": "src/features/referee-v5/adapters/RemotePersistenceAdapter.js",
+      "classification": "REFEREE_PERSISTENCE",
+      "source_status": "untracked",
+      "sha256": "eef8620ceb223dc0b3460bbde8190b248be74b5212b133344aeb3afd38b1c141",
+      "include_or_exclude": "INCLUDE",
+      "reason": "Approved for Referee V5 source capture",
+      "target_commit_group": "commit-3-persistence-edge"
+    },
+    {
+      "relative_path": "src/features/referee-v5/adapters/index.js",
+      "classification": "REFEREE_PERSISTENCE",
+      "source_status": "untracked",
+      "sha256": "83fd22d5e8040189234984b8963016bafb42c7a22478bea0186c11100c3d3f92",
+      "include_or_exclude": "INCLUDE",
+      "reason": "Approved for Referee V5 source capture",
+      "target_commit_group": "commit-3-persistence-edge"
+    },
+    {
+      "relative_path": "src/features/referee-v5/components/CourtVisualizer.jsx",
+      "classification": "REFEREE_UI",
+      "source_status": "untracked",
+      "sha256": "82f7703ad2b6eb2b9a2c559e7fab4ff38cb2288481d965236afd245f69bf0169",
+      "include_or_exclude": "INCLUDE",
+      "reason": "Approved for Referee V5 source capture",
+      "target_commit_group": "commit-2-ui"
+    },
+    {
+      "relative_path": "src/features/referee-v5/components/MatchEventTimeline.jsx",
+      "classification": "REFEREE_UI",
+      "source_status": "untracked",
+      "sha256": "2372aebe2c6bdfe9f0b3cb157e8be132f3db76b8b4b2b895206238ef348fc37f",
+      "include_or_exclude": "INCLUDE",
+      "reason": "Approved for Referee V5 source capture",
+      "target_commit_group": "commit-2-ui"
+    },
+    {
+      "relative_path": "src/features/referee-v5/components/PlayerPositionCard.jsx",
+      "classification": "REFEREE_UI",
+      "source_status": "untracked",
+      "sha256": "3f8434151f6ee94355e04369f550cdf7a49d4b0f55560efa8a8fd94865c164cf",
+      "include_or_exclude": "INCLUDE",
+      "reason": "Approved for Referee V5 source capture",
+      "target_commit_group": "commit-2-ui"
+    },
+    {
+      "relative_path": "src/features/referee-v5/components/RefereeActionPanel.jsx",
+      "classification": "REFEREE_UI",
+      "source_status": "untracked",
+      "sha256": "a0d2d056dd36409927cb91b79bb2931109cab33becbae2d4af299fe292577d44",
+      "include_or_exclude": "INCLUDE",
+      "reason": "Approved for Referee V5 source capture",
+      "target_commit_group": "commit-2-ui"
+    },
+    {
+      "relative_path": "src/features/referee-v5/components/RefereeConfirmationDialog.jsx",
+      "classification": "REFEREE_UI",
+      "source_status": "untracked",
+      "sha256": "77407561d0976752aa8a26084292bf00f7874d0c02983917aa87da74f4265722",
+      "include_or_exclude": "INCLUDE",
+      "reason": "Approved for Referee V5 source capture",
+      "target_commit_group": "commit-2-ui"
+    },
+    {
+      "relative_path": "src/features/referee-v5/components/RefereeConnectionStatus.jsx",
+      "classification": "REFEREE_UI",
+      "source_status": "untracked",
+      "sha256": "cd4a5ae57c4e26e5a17f124f92bc2c295cbcea3ea63b2da072a9902c26a4f63d",
+      "include_or_exclude": "INCLUDE",
+      "reason": "Approved for Referee V5 source capture",
+      "target_commit_group": "commit-2-ui"
+    },
+    {
+      "relative_path": "src/features/referee-v5/components/RefereeMatchHeader.jsx",
+      "classification": "REFEREE_UI",
+      "source_status": "untracked",
+      "sha256": "fbdd909f00e154d95105046c7809b8625bbf579c53d5772e3a3d09c329c78dd7",
+      "include_or_exclude": "INCLUDE",
+      "reason": "Approved for Referee V5 source capture",
+      "target_commit_group": "commit-2-ui"
+    },
+    {
+      "relative_path": "src/features/referee-v5/components/RefereeScoreboard.jsx",
+      "classification": "REFEREE_UI",
+      "source_status": "untracked",
+      "sha256": "d6f8ada1f8ca99e602a3ca26253cc1122e13f2e7571ed6d5ddeccf7fc4bddde5",
+      "include_or_exclude": "INCLUDE",
+      "reason": "Approved for Referee V5 source capture",
+      "target_commit_group": "commit-2-ui"
+    },
+    {
+      "relative_path": "src/features/referee-v5/components/RefereeV5Workspace.jsx",
+      "classification": "REFEREE_UI",
+      "source_status": "untracked",
+      "sha256": "56e32dfd582796735339fc9edc675d6a93211300e7d86a3be15ab6a9418dd03c",
+      "include_or_exclude": "INCLUDE",
+      "reason": "Approved for Referee V5 source capture",
+      "target_commit_group": "commit-2-ui"
+    },
+    {
+      "relative_path": "src/features/referee-v5/components/ServeContextPanel.jsx",
+      "classification": "REFEREE_UI",
+      "source_status": "untracked",
+      "sha256": "51dce8781d3da551da4c3ed21bfe9eb1bb0cd530ad935408877ad7a734863ec4",
+      "include_or_exclude": "INCLUDE",
+      "reason": "Approved for Referee V5 source capture",
+      "target_commit_group": "commit-2-ui"
+    },
+    {
+      "relative_path": "src/features/referee-v5/components/ServeDirectionArrow.jsx",
+      "classification": "REFEREE_UI",
+      "source_status": "untracked",
+      "sha256": "f9c568f4fe96d50f5cbbe678a09ab8d6f53ad151a6503844a3718647e7e4f2bb",
+      "include_or_exclude": "INCLUDE",
+      "reason": "Approved for Referee V5 source capture",
+      "target_commit_group": "commit-2-ui"
+    },
+    {
+      "relative_path": "src/features/referee-v5/constants/courtEnds.js",
+      "classification": "REFEREE_RUNTIME_CORE",
+      "source_status": "untracked",
+      "sha256": "baccecda225d9a85d9ff434fc8264c846fb53521035529f909d50e1888ff4e3f",
+      "include_or_exclude": "INCLUDE",
+      "reason": "Approved for Referee V5 source capture",
+      "target_commit_group": "commit-1-domain"
+    },
+    {
+      "relative_path": "src/features/referee-v5/constants/courtSides.js",
+      "classification": "REFEREE_RUNTIME_CORE",
+      "source_status": "untracked",
+      "sha256": "0dd3940e3e9076c7604a7f4f62fa19645635a897ab6e2948e3b525461558471a",
+      "include_or_exclude": "INCLUDE",
+      "reason": "Approved for Referee V5 source capture",
+      "target_commit_group": "commit-1-domain"
+    },
+    {
+      "relative_path": "src/features/referee-v5/constants/eventTypes.js",
+      "classification": "REFEREE_RUNTIME_CORE",
+      "source_status": "untracked",
+      "sha256": "eed69c8764e7bf4586e33ccb5dcaf46ac712ecbe28f7dd215c5ef3164106fdbd",
+      "include_or_exclude": "INCLUDE",
+      "reason": "Approved for Referee V5 source capture",
+      "target_commit_group": "commit-1-domain"
+    },
+    {
+      "relative_path": "src/features/referee-v5/constants/matchTypes.js",
+      "classification": "REFEREE_RUNTIME_CORE",
+      "source_status": "untracked",
+      "sha256": "de51f0db0e8f1265482c4827f6ebf11ccc4306551a647759c58ac8dc446481d2",
+      "include_or_exclude": "INCLUDE",
+      "reason": "Approved for Referee V5 source capture",
+      "target_commit_group": "commit-1-domain"
+    },
+    {
+      "relative_path": "src/features/referee-v5/constants/realtimeConnectionStates.js",
+      "classification": "REFEREE_REALTIME",
+      "source_status": "untracked",
+      "sha256": "040c0ffdfeddfc0ddcbf953d0353aacc4118ad6f8c1d2eef9cca9a2450dcd3c6",
+      "include_or_exclude": "INCLUDE",
+      "reason": "Approved for Referee V5 source capture",
+      "target_commit_group": "commit-4-realtime"
+    },
+    {
+      "relative_path": "src/features/referee-v5/constants/scoringFormats.js",
+      "classification": "REFEREE_RUNTIME_CORE",
+      "source_status": "untracked",
+      "sha256": "0bcdd2984db095dd8470f0cd7782061a9c403ec6734fd5e5c73e54b7bd003d11",
+      "include_or_exclude": "INCLUDE",
+      "reason": "Approved for Referee V5 source capture",
+      "target_commit_group": "commit-1-domain"
+    },
+    {
+      "relative_path": "src/features/referee-v5/constants/stateSchema.js",
+      "classification": "REFEREE_RUNTIME_CORE",
+      "source_status": "untracked",
+      "sha256": "54bc8bbf2b08fe47ef398a11f442ed64c6ea0c2f3d27184398a6fec3129eb190",
+      "include_or_exclude": "INCLUDE",
+      "reason": "Approved for Referee V5 source capture",
+      "target_commit_group": "commit-1-domain"
+    },
+    {
+      "relative_path": "src/features/referee-v5/constants/viewModes.js",
+      "classification": "REFEREE_RUNTIME_CORE",
+      "source_status": "untracked",
+      "sha256": "8562f1c217df0d71e10515263f8d034a8586371b78a4daf35897d10240d230d8",
+      "include_or_exclude": "INCLUDE",
+      "reason": "Approved for Referee V5 source capture",
+      "target_commit_group": "commit-1-domain"
+    },
+    {
+      "relative_path": "src/features/referee-v5/domain/matchEvents.js",
+      "classification": "REFEREE_RUNTIME_CORE",
+      "source_status": "untracked",
+      "sha256": "b0315de709b363fba0c144c4357aeb13afa55edc6d89f1d51bc257d5217cd050",
+      "include_or_exclude": "INCLUDE",
+      "reason": "Approved for Referee V5 source capture",
+      "target_commit_group": "commit-1-domain"
+    },
+    {
+      "relative_path": "src/features/referee-v5/domain/matchState.js",
+      "classification": "REFEREE_RUNTIME_CORE",
+      "source_status": "untracked",
+      "sha256": "5ccef9798ee5b739cda5a77ac07631c3fcc2bdccd97c95b1a2e5b1a8f8bd17de",
+      "include_or_exclude": "INCLUDE",
+      "reason": "Approved for Referee V5 source capture",
+      "target_commit_group": "commit-1-domain"
+    },
+    {
+      "relative_path": "src/features/referee-v5/domain/matchValidation.js",
+      "classification": "REFEREE_RUNTIME_CORE",
+      "source_status": "untracked",
+      "sha256": "fa526529911c436a968dc908790863ae1cd46d15a1050653bf8610aeaa8350b1",
+      "include_or_exclude": "INCLUDE",
+      "reason": "Approved for Referee V5 source capture",
+      "target_commit_group": "commit-1-domain"
+    },
+    {
+      "relative_path": "src/features/referee-v5/engines/courtPositionEngine.js",
+      "classification": "REFEREE_RUNTIME_CORE",
+      "source_status": "untracked",
+      "sha256": "e0fc15a0871478a6a3f289f55e80815456260b72deab1b7451bf0893a75a0dac",
+      "include_or_exclude": "INCLUDE",
+      "reason": "Approved for Referee V5 source capture",
+      "target_commit_group": "commit-1-domain"
+    },
+    {
+      "relative_path": "src/features/referee-v5/engines/initializeMatchState.js",
+      "classification": "REFEREE_RUNTIME_CORE",
+      "source_status": "untracked",
+      "sha256": "fd1e266a4573fbdb93fbbc917a0b251c4505e1585b0ea0252e021952cfbd57d0",
+      "include_or_exclude": "INCLUDE",
+      "reason": "Approved for Referee V5 source capture",
+      "target_commit_group": "commit-1-domain"
+    },
+    {
+      "relative_path": "src/features/referee-v5/engines/matchCommandDispatcher.js",
+      "classification": "REFEREE_RUNTIME_CORE",
+      "source_status": "untracked",
+      "sha256": "3fc7b941814d408a9a2691b9dd7b66f0d659fa9e695148cf04241977adf67b5c",
+      "include_or_exclude": "INCLUDE",
+      "reason": "Approved for Referee V5 source capture",
+      "target_commit_group": "commit-1-domain"
+    },
+    {
+      "relative_path": "src/features/referee-v5/engines/matchStateEngine.js",
+      "classification": "REFEREE_RUNTIME_CORE",
+      "source_status": "untracked",
+      "sha256": "440fd2e44c9adb92ae584f46bae39cabbacb4f8bcba13d62aa87ebde330314fb",
+      "include_or_exclude": "INCLUDE",
+      "reason": "Approved for Referee V5 source capture",
+      "target_commit_group": "commit-1-domain"
+    },
+    {
+      "relative_path": "src/features/referee-v5/engines/rallyScoringEngine.js",
+      "classification": "REFEREE_RUNTIME_CORE",
+      "source_status": "untracked",
+      "sha256": "6ffec56d3cd00d05ba4addbc940aa74b8d8d994ee944189eb919212ae0a0fdb3",
+      "include_or_exclude": "INCLUDE",
+      "reason": "Approved for Referee V5 source capture",
+      "target_commit_group": "commit-1-domain"
+    },
+    {
+      "relative_path": "src/features/referee-v5/engines/receiverResolver.js",
+      "classification": "REFEREE_RUNTIME_CORE",
+      "source_status": "untracked",
+      "sha256": "0d450a2b2ab662917c022a3af70f0dc20385d2f2463b883d677540f17f6229f9",
+      "include_or_exclude": "INCLUDE",
+      "reason": "Approved for Referee V5 source capture",
+      "target_commit_group": "commit-1-domain"
+    },
+    {
+      "relative_path": "src/features/referee-v5/engines/serveRotationEngine.js",
+      "classification": "REFEREE_RUNTIME_CORE",
+      "source_status": "untracked",
+      "sha256": "5a24203a60c69356b6448d2bf2dd46d0518583479162c1994a37affc619b3b76",
+      "include_or_exclude": "INCLUDE",
+      "reason": "Approved for Referee V5 source capture",
+      "target_commit_group": "commit-1-domain"
+    },
+    {
+      "relative_path": "src/features/referee-v5/engines/sideOutScoringEngine.js",
+      "classification": "REFEREE_RUNTIME_CORE",
+      "source_status": "untracked",
+      "sha256": "454ce0fcb0cb7a1ac05b6d80392169940b2f62f4b8ed57c6eb500a94cecb8d8e",
+      "include_or_exclude": "INCLUDE",
+      "reason": "Approved for Referee V5 source capture",
+      "target_commit_group": "commit-1-domain"
+    },
+    {
+      "relative_path": "src/features/referee-v5/engines/singlesScoringEngine.js",
+      "classification": "REFEREE_RUNTIME_CORE",
+      "source_status": "untracked",
+      "sha256": "abf722fd05885e383afcfb8aa78d0df404f60417dca237ddedda211e1dd09ff6",
+      "include_or_exclude": "INCLUDE",
+      "reason": "Approved for Referee V5 source capture",
+      "target_commit_group": "commit-1-domain"
+    },
+    {
+      "relative_path": "src/features/referee-v5/engines/stateReplayEngine.js",
+      "classification": "REFEREE_RUNTIME_CORE",
+      "source_status": "untracked",
+      "sha256": "ae86e0d0f16ea4bca50128c45304e94b4167ed1be1cd29946b80eddb04736608",
+      "include_or_exclude": "INCLUDE",
+      "reason": "Approved for Referee V5 source capture",
+      "target_commit_group": "commit-1-domain"
+    },
+    {
+      "relative_path": "src/features/referee-v5/engines/switchEndsEngine.js",
+      "classification": "REFEREE_RUNTIME_CORE",
+      "source_status": "untracked",
+      "sha256": "71aa50c928d5405b2982ada2af88aff7e947d6f76410aaf2e83e5d72ab629209",
+      "include_or_exclude": "INCLUDE",
+      "reason": "Approved for Referee V5 source capture",
+      "target_commit_group": "commit-1-domain"
+    },
+    {
+      "relative_path": "src/features/referee-v5/engines/undoEngine.js",
+      "classification": "REFEREE_RUNTIME_CORE",
+      "source_status": "untracked",
+      "sha256": "35693fa77daeed51b423fcf934eb8ecaead4d9538cdde6e8f7638bfdfc20ce71",
+      "include_or_exclude": "INCLUDE",
+      "reason": "Approved for Referee V5 source capture",
+      "target_commit_group": "commit-1-domain"
+    },
+    {
+      "relative_path": "src/features/referee-v5/flags.js",
+      "classification": "REFEREE_RUNTIME_CORE",
+      "source_status": "untracked",
+      "sha256": "655e1b0fbd18a0439cf44b7b1dd60bba6b7d0414c935053f8d23bab5abb43106",
+      "include_or_exclude": "INCLUDE",
+      "reason": "Approved for Referee V5 source capture",
+      "target_commit_group": "commit-1-domain"
+    },
+    {
+      "relative_path": "src/features/referee-v5/hooks/useCourtVisualizerState.js",
+      "classification": "REFEREE_UI",
+      "source_status": "untracked",
+      "sha256": "b6146ed4eea67f0e35166db7b27497e9d7da624db5abdbf2db294fe5c778765e",
+      "include_or_exclude": "INCLUDE",
+      "reason": "Approved for Referee V5 source capture",
+      "target_commit_group": "commit-2-ui"
+    },
+    {
+      "relative_path": "src/features/referee-v5/hooks/useRefereeConfirmation.js",
+      "classification": "REFEREE_UI",
+      "source_status": "untracked",
+      "sha256": "48b976a0212a503df0e0b13e5797437620e7460d90653eeff560bcbc6de2aafa",
+      "include_or_exclude": "INCLUDE",
+      "reason": "Approved for Referee V5 source capture",
+      "target_commit_group": "commit-2-ui"
+    },
+    {
+      "relative_path": "src/features/referee-v5/hooks/useRefereeMatchController.js",
+      "classification": "REFEREE_UI",
+      "source_status": "untracked",
+      "sha256": "f20bd3eb5ad37fd6b987b11b7783473727156ffa81bb1e7bd8c6e7c895cfab3e",
+      "include_or_exclude": "INCLUDE",
+      "reason": "Approved for Referee V5 source capture",
+      "target_commit_group": "commit-2-ui"
+    },
+    {
+      "relative_path": "src/features/referee-v5/hooks/useRefereeRealtimeSync.js",
+      "classification": "REFEREE_REALTIME",
+      "source_status": "untracked",
+      "sha256": "10f12e981e348b941892c9ba576d6e918d7af736ae179c0035ce2b752968986a",
+      "include_or_exclude": "INCLUDE",
+      "reason": "Approved for Referee V5 source capture",
+      "target_commit_group": "commit-4-realtime"
+    },
+    {
+      "relative_path": "src/features/referee-v5/hooks/useRefereeRemoteMatchController.js",
+      "classification": "REFEREE_REALTIME",
+      "source_status": "untracked",
+      "sha256": "2413d7a1cd38ef1360a2f00b90cbdb399949e59b6c42eccc1587b22782fd3c5e",
+      "include_or_exclude": "INCLUDE",
+      "reason": "Approved for Referee V5 source capture",
+      "target_commit_group": "commit-4-realtime"
+    },
+    {
+      "relative_path": "src/features/referee-v5/index.js",
+      "classification": "REFEREE_RUNTIME_CORE",
+      "source_status": "untracked",
+      "sha256": "23c1f170fcba1b7fd3fa2b4ba33f9d0b20120ffd88e36c3bf15f1cfdbc8b5782",
+      "include_or_exclude": "INCLUDE",
+      "reason": "Approved for Referee V5 source capture",
+      "target_commit_group": "commit-1-domain"
+    },
+    {
+      "relative_path": "src/features/referee-v5/persistence/InMemoryMatchRepository.js",
+      "classification": "REFEREE_PERSISTENCE",
+      "source_status": "untracked",
+      "sha256": "5ff948c7dc402037353995e696575c2177bf66e28456028744b44e4a3f2fc622",
+      "include_or_exclude": "INCLUDE",
+      "reason": "Approved for Referee V5 source capture",
+      "target_commit_group": "commit-3-persistence-edge"
+    },
+    {
+      "relative_path": "src/features/referee-v5/persistence/RefereeV5AtomicCommitService.js",
+      "classification": "REFEREE_PERSISTENCE",
+      "source_status": "untracked",
+      "sha256": "f653d0e95e62fb8041b0c58f27b2a96c30fbcb4437b3d2077a90c44deede8629",
+      "include_or_exclude": "INCLUDE",
+      "reason": "Approved for Referee V5 source capture",
+      "target_commit_group": "commit-3-persistence-edge"
+    },
+    {
+      "relative_path": "src/features/referee-v5/persistence/RefereeV5EdgeCommandHandler.js",
+      "classification": "REFEREE_PERSISTENCE",
+      "source_status": "untracked",
+      "sha256": "fdca1e1cb397d70818db58986c1d829b5e4bf41c114cd485761fe997b5e2c247",
+      "include_or_exclude": "INCLUDE",
+      "reason": "Approved for Referee V5 source capture",
+      "target_commit_group": "commit-3-persistence-edge"
+    },
+    {
+      "relative_path": "src/features/referee-v5/persistence/RefereeV5PersistenceService.js",
+      "classification": "REFEREE_PERSISTENCE",
+      "source_status": "untracked",
+      "sha256": "4b572e0aef2c76b69112facbc23db812b25c48c5a2b467c57d073b100f7ae3f6",
+      "include_or_exclude": "INCLUDE",
+      "reason": "Approved for Referee V5 source capture",
+      "target_commit_group": "commit-3-persistence-edge"
+    },
+    {
+      "relative_path": "src/features/referee-v5/persistence/RefereeV5RpcAtomicCommitService.js",
+      "classification": "REFEREE_PERSISTENCE",
+      "source_status": "untracked",
+      "sha256": "67ada608cee06bd0a0ddb4becf39550aa3038dbf4d643f4f1c83423722a59a3d",
+      "include_or_exclude": "INCLUDE",
+      "reason": "Approved for Referee V5 source capture",
+      "target_commit_group": "commit-3-persistence-edge"
+    },
+    {
+      "relative_path": "src/features/referee-v5/persistence/RefereeV5SupabaseRepository.js",
+      "classification": "REFEREE_PERSISTENCE",
+      "source_status": "untracked",
+      "sha256": "b9bf7293edc4b8b91325e8df1bcd6ac0c28c3438c9fcd73b14a3ed7b9cdb13c3",
+      "include_or_exclude": "INCLUDE",
+      "reason": "Approved for Referee V5 source capture",
+      "target_commit_group": "commit-3-persistence-edge"
+    },
+    {
+      "relative_path": "src/features/referee-v5/persistence/auditLog.js",
+      "classification": "REFEREE_PERSISTENCE",
+      "source_status": "untracked",
+      "sha256": "4456ac684854f8ccc6a22daa8426a4476415359ebd6b1c77e1998b1777590095",
+      "include_or_exclude": "INCLUDE",
+      "reason": "Approved for Referee V5 source capture",
+      "target_commit_group": "commit-3-persistence-edge"
+    },
+    {
+      "relative_path": "src/features/referee-v5/persistence/canonicalStateHash.js",
+      "classification": "REFEREE_PERSISTENCE",
+      "source_status": "untracked",
+      "sha256": "9267e1aa4a14193dfcd3faf3fb2198dd7d6aa73e621093ddbb95dab7a312866e",
+      "include_or_exclude": "INCLUDE",
+      "reason": "Approved for Referee V5 source capture",
+      "target_commit_group": "commit-3-persistence-edge"
+    },
+    {
+      "relative_path": "src/features/referee-v5/persistence/errors.js",
+      "classification": "REFEREE_PERSISTENCE",
+      "source_status": "untracked",
+      "sha256": "53e6f55e5bf539968dfba70db89a4340dd7ba7497d03aeefc6baf266203b9e31",
+      "include_or_exclude": "INCLUDE",
+      "reason": "Approved for Referee V5 source capture",
+      "target_commit_group": "commit-3-persistence-edge"
+    },
+    {
+      "relative_path": "src/features/referee-v5/persistence/matchStateSerializer.js",
+      "classification": "REFEREE_PERSISTENCE",
+      "source_status": "untracked",
+      "sha256": "c64d330084b9099d13d83e44a07a27dda7ecb6b6c333bfa2b7430c407d4ddc53",
+      "include_or_exclude": "INCLUDE",
+      "reason": "Approved for Referee V5 source capture",
+      "target_commit_group": "commit-3-persistence-edge"
+    },
+    {
+      "relative_path": "src/features/referee-v5/persistence/refereeV5Authorization.js",
+      "classification": "REFEREE_PERSISTENCE",
+      "source_status": "untracked",
+      "sha256": "0273f0f2d0b8c8ba519952b35d014bf2ecbfa0927c4245a15663bfe4e2df6a0f",
+      "include_or_exclude": "INCLUDE",
+      "reason": "Approved for Referee V5 source capture",
+      "target_commit_group": "commit-3-persistence-edge"
+    },
+    {
+      "relative_path": "src/features/referee-v5/persistence/refereeV5TrustBoundary.js",
+      "classification": "REFEREE_PERSISTENCE",
+      "source_status": "untracked",
+      "sha256": "87ee6a8f59c0fb2d70b1527b05604e9e0c10a43af26174b1bc83716e48ed2b5a",
+      "include_or_exclude": "INCLUDE",
+      "reason": "Approved for Referee V5 source capture",
+      "target_commit_group": "commit-3-persistence-edge"
+    },
+    {
+      "relative_path": "src/features/referee-v5/persistence/repoAsync.js",
+      "classification": "REFEREE_PERSISTENCE",
+      "source_status": "untracked",
+      "sha256": "37580d0010508ecb832e12925055722aca9f6ea59a1646f30ef1ce3c6111278e",
+      "include_or_exclude": "INCLUDE",
+      "reason": "Approved for Referee V5 source capture",
+      "target_commit_group": "commit-3-persistence-edge"
+    },
+    {
+      "relative_path": "src/features/referee-v5/persistence/validateCommandPayload.js",
+      "classification": "REFEREE_PERSISTENCE",
+      "source_status": "untracked",
+      "sha256": "0f1ac59f02242f668fa0bbc93579bfa2b408185f1d12fe16c41710e02f8a641a",
+      "include_or_exclude": "INCLUDE",
+      "reason": "Approved for Referee V5 source capture",
+      "target_commit_group": "commit-3-persistence-edge"
+    },
+    {
+      "relative_path": "src/features/referee-v5/persistence/validatePersistedState.js",
+      "classification": "REFEREE_PERSISTENCE",
+      "source_status": "untracked",
+      "sha256": "8bd35e7a0f02e51dba877856ba8f06a0f39faf522942796cbd9abc1c83dc5a92",
+      "include_or_exclude": "INCLUDE",
+      "reason": "Approved for Referee V5 source capture",
+      "target_commit_group": "commit-3-persistence-edge"
+    },
+    {
+      "relative_path": "src/features/referee-v5/persistence/validateStateSchema.js",
+      "classification": "REFEREE_PERSISTENCE",
+      "source_status": "untracked",
+      "sha256": "3f8bf8f3191bfaed193b7edade8ff94611872b0d2e894b98f999fb862920335a",
+      "include_or_exclude": "INCLUDE",
+      "reason": "Approved for Referee V5 source capture",
+      "target_commit_group": "commit-3-persistence-edge"
+    },
+    {
+      "relative_path": "src/features/referee-v5/prototype/RefereeV5PrototypePage.jsx",
+      "classification": "REFEREE_UI",
+      "source_status": "untracked",
+      "sha256": "84535d365ab3b5d71a278c900b90337fa458c23c68f061e139beb2df97ecbe82",
+      "include_or_exclude": "INCLUDE",
+      "reason": "Approved for Referee V5 source capture",
+      "target_commit_group": "commit-2-ui"
+    },
+    {
+      "relative_path": "src/features/referee-v5/prototype/refereeV5PrototypeFixtures.js",
+      "classification": "REFEREE_UI",
+      "source_status": "untracked",
+      "sha256": "69f26d98e3ee4f513a336c14c7119cd89e76030c35aed077550449d1a659be56",
+      "include_or_exclude": "INCLUDE",
+      "reason": "Approved for Referee V5 source capture",
+      "target_commit_group": "commit-2-ui"
+    },
+    {
+      "relative_path": "src/features/referee-v5/prototype/refereeV5StagingFixtures.js",
+      "classification": "REFEREE_UI",
+      "source_status": "untracked",
+      "sha256": "f58481b2b24c094cc7f327d000d42ed3e27f7269adb49fc2e8ddfd951b7a5469",
+      "include_or_exclude": "INCLUDE",
+      "reason": "Approved for Referee V5 source capture",
+      "target_commit_group": "commit-2-ui"
+    },
+    {
+      "relative_path": "src/features/referee-v5/realtime/realtimeSyncLogic.js",
+      "classification": "REFEREE_REALTIME",
+      "source_status": "untracked",
+      "sha256": "d4327824cca31e792ebff62dd140d7d159bf47f58d03f2fa6f5a7a8067ced491",
+      "include_or_exclude": "INCLUDE",
+      "reason": "Approved for Referee V5 source capture",
+      "target_commit_group": "commit-4-realtime"
+    },
+    {
+      "relative_path": "src/features/referee-v5/realtime/refereeV5RealtimeChannel.js",
+      "classification": "REFEREE_REALTIME",
+      "source_status": "untracked",
+      "sha256": "31768b5415b9cf5f82ce1e7750efd5a6952558ac8d7f07d766485ccbe6b03536",
+      "include_or_exclude": "INCLUDE",
+      "reason": "Approved for Referee V5 source capture",
+      "target_commit_group": "commit-4-realtime"
+    },
+    {
+      "relative_path": "src/features/referee-v5/selectors/courtScreenPositionSelector.js",
+      "classification": "REFEREE_RUNTIME_CORE",
+      "source_status": "untracked",
+      "sha256": "16f14117983c5562afa0b1dcbf705fc6cc80051926171bd46c67aa078912263f",
+      "include_or_exclude": "INCLUDE",
+      "reason": "Approved for Referee V5 source capture",
+      "target_commit_group": "commit-1-domain"
+    },
+    {
+      "relative_path": "src/features/referee-v5/selectors/scoreboardSelector.js",
+      "classification": "REFEREE_RUNTIME_CORE",
+      "source_status": "untracked",
+      "sha256": "6fc19d7856a01552ccb5d93d23535ff09188282144055653df6aff60b855429f",
+      "include_or_exclude": "INCLUDE",
+      "reason": "Approved for Referee V5 source capture",
+      "target_commit_group": "commit-1-domain"
+    },
+    {
+      "relative_path": "src/features/referee-v5/selectors/serveArrowSelector.js",
+      "classification": "REFEREE_RUNTIME_CORE",
+      "source_status": "untracked",
+      "sha256": "cc0c8034dd8b7672ef463682caf262b3d000b2558251e1a71d9fafe6b4609ba8",
+      "include_or_exclude": "INCLUDE",
+      "reason": "Approved for Referee V5 source capture",
+      "target_commit_group": "commit-1-domain"
+    },
+    {
+      "relative_path": "src/features/referee-v5/selectors/serveContextSelector.js",
+      "classification": "REFEREE_RUNTIME_CORE",
+      "source_status": "untracked",
+      "sha256": "2bdfb4c4b96f747f36451e7e77e3408dd334a407b402b5cbc174540c170811e7",
+      "include_or_exclude": "INCLUDE",
+      "reason": "Approved for Referee V5 source capture",
+      "target_commit_group": "commit-1-domain"
+    },
+    {
+      "relative_path": "src/features/referee-v5/selectors/timelineSelector.js",
+      "classification": "REFEREE_RUNTIME_CORE",
+      "source_status": "untracked",
+      "sha256": "158e61b886b8f4538e92c67d3c17f6c33b0d8963a6c40dc3f805946fea2f66df",
+      "include_or_exclude": "INCLUDE",
+      "reason": "Approved for Referee V5 source capture",
+      "target_commit_group": "commit-1-domain"
+    },
+    {
+      "relative_path": "src/features/referee-v5/server/edgeEntry.js",
+      "classification": "REFEREE_PERSISTENCE",
+      "source_status": "untracked",
+      "sha256": "f8db988f70a7031b7be2c9097b14638c3593e4f76816909459b89dadb24b1763",
+      "include_or_exclude": "INCLUDE",
+      "reason": "Approved for Referee V5 source capture",
+      "target_commit_group": "commit-3-persistence-edge"
+    },
+    {
+      "relative_path": "src/features/referee-v5/server/edgeHttpHandler.js",
+      "classification": "REFEREE_PERSISTENCE",
+      "source_status": "untracked",
+      "sha256": "2a979e9153e656293ae3eece033da3a7b6aab5bc9d0730484e852ba2bb48fb1b",
+      "include_or_exclude": "INCLUDE",
+      "reason": "Approved for Referee V5 source capture",
+      "target_commit_group": "commit-3-persistence-edge"
+    },
+    {
+      "relative_path": "src/features/referee-v5/services/refereeV5EdgeClient.js",
+      "classification": "REFEREE_PERSISTENCE",
+      "source_status": "untracked",
+      "sha256": "c07b07aaf0e04ad310c1393477ea9d6aa82a93d933f0846f7e29afd20340bdbe",
+      "include_or_exclude": "INCLUDE",
+      "reason": "Approved for Referee V5 source capture",
+      "target_commit_group": "commit-3-persistence-edge"
+    },
+    {
+      "relative_path": "src/features/referee-v5/services/refereeV5InternalRpcService.js",
+      "classification": "REFEREE_PERSISTENCE",
+      "source_status": "untracked",
+      "sha256": "dca9f8abee6233260bee62f9f83abf0c6a71d37686a763364bf485366045df30",
+      "include_or_exclude": "INCLUDE",
+      "reason": "Approved for Referee V5 source capture",
+      "target_commit_group": "commit-3-persistence-edge"
+    },
+    {
+      "relative_path": "src/features/referee-v5/services/refereeV5RemoteEdgeService.js",
+      "classification": "REFEREE_PERSISTENCE",
+      "source_status": "untracked",
+      "sha256": "06b716f14ab76132161d66e074a989248126f4b7ebd49a702ba5d41e9c1a5fbf",
+      "include_or_exclude": "INCLUDE",
+      "reason": "Approved for Referee V5 source capture",
+      "target_commit_group": "commit-3-persistence-edge"
+    },
+    {
+      "relative_path": "src/features/referee-v5/services/refereeV5RpcService.js",
+      "classification": "REFEREE_PERSISTENCE",
+      "source_status": "untracked",
+      "sha256": "a831ea8898b689b9fd79dce7fb0b6eb59f26546edce2b79ba716419c6bbca720",
+      "include_or_exclude": "INCLUDE",
+      "reason": "Approved for Referee V5 source capture",
+      "target_commit_group": "commit-3-persistence-edge"
+    },
+    {
+      "relative_path": "src/features/referee-v5/styles/refereeV5.css",
+      "classification": "REFEREE_UI",
+      "source_status": "untracked",
+      "sha256": "870add20de035feaaa8f18320c8a9908cf1d6cc0d25a14b58591e7d8b0fd0cd0",
+      "include_or_exclude": "INCLUDE",
+      "reason": "Approved for Referee V5 source capture",
+      "target_commit_group": "commit-2-ui"
+    },
+    {
+      "relative_path": "src/pages/dev/RefereeV5PreviewPage.jsx",
+      "classification": "REFEREE_UI",
+      "source_status": "untracked",
+      "sha256": "becc3f8978ca94211a3659002835eaa3cd05a1dd434b298704ae8f304f9f4838",
+      "include_or_exclude": "INCLUDE",
+      "reason": "Approved for Referee V5 source capture",
+      "target_commit_group": "commit-2-ui"
+    },
+    {
+      "relative_path": "supabase/.temp/linked-project.json",
+      "classification": "GENERATED",
+      "source_status": "untracked",
+      "sha256": "868c13f33ae37afaddff76e346f387b11da39d5ad1879b761c7b4ec6053c852f",
+      "include_or_exclude": "EXCLUDE",
+      "reason": "Generated or temp artifact",
+      "target_commit_group": null
+    },
+    {
+      "relative_path": "supabase/functions/_shared/ratingV5Server.mjs",
+      "classification": "RATING_V5",
+      "source_status": "untracked",
+      "sha256": "b9675053312284929be43413cd7ab9c8da2ae05aa989caa30cdf73fb85eeda58",
+      "include_or_exclude": "EXCLUDE",
+      "reason": "Rating V5 scope",
+      "target_commit_group": null
+    },
+    {
+      "relative_path": "supabase/functions/_shared/refereeV5Server.mjs",
+      "classification": "REFEREE_EDGE",
+      "source_status": "untracked",
+      "sha256": "dbcf7d1664c8a76d21fdb748086e311e3c516c1f5c34043962f36ddc17325220",
+      "include_or_exclude": "INCLUDE",
+      "reason": "Approved for Referee V5 source capture",
+      "target_commit_group": "commit-3-persistence-edge"
+    },
+    {
+      "relative_path": "supabase/functions/rating-v5-complete-assessment/index.ts",
+      "classification": "RATING_V5",
+      "source_status": "untracked",
+      "sha256": "ea71529d7afb8f0d1d3793b81800fe370eeca4e83a539675ee0efb61b877bec1",
+      "include_or_exclude": "EXCLUDE",
+      "reason": "Rating V5 scope",
+      "target_commit_group": null
+    },
+    {
+      "relative_path": "supabase/functions/referee-v5-match/index.ts",
+      "classification": "REFEREE_EDGE",
+      "source_status": "untracked",
+      "sha256": "36babab9fffb238e8ccf5f326a0684de5632c7280fa4634e4ad384bed5269ed1",
+      "include_or_exclude": "INCLUDE",
+      "reason": "Approved for Referee V5 source capture",
+      "target_commit_group": "commit-3-persistence-edge"
+    },
+    {
+      "relative_path": "tests/referee-v5/referee-v5-command.test.js",
+      "classification": "REFEREE_TEST",
+      "source_status": "untracked",
+      "sha256": "2a86fbe010061253bcc3d427597f93c3dbef2eaf19ebc147196b146d44913829",
+      "include_or_exclude": "INCLUDE",
+      "reason": "Approved for Referee V5 source capture",
+      "target_commit_group": "commit-1-domain"
+    },
+    {
+      "relative_path": "tests/referee-v5/referee-v5-d1.test.js",
+      "classification": "REFEREE_TEST",
+      "source_status": "untracked",
+      "sha256": "276d23dbf65ed3b837f8e5d55917b89d8195a8bea2787f833ef723274e21761e",
+      "include_or_exclude": "INCLUDE",
+      "reason": "Approved for Referee V5 source capture",
+      "target_commit_group": "commit-3-persistence-edge"
+    },
+    {
+      "relative_path": "tests/referee-v5/referee-v5-e1-realtime.test.js",
+      "classification": "REFEREE_TEST",
+      "source_status": "untracked",
+      "sha256": "8f10b3b4fd59b7346b7ec9d5d315a41775c0bbe4a087be15f9287b6be3c97e8e",
+      "include_or_exclude": "INCLUDE",
+      "reason": "Approved for Referee V5 source capture",
+      "target_commit_group": "commit-4-realtime"
+    },
+    {
+      "relative_path": "tests/referee-v5/referee-v5-engine.test.js",
+      "classification": "REFEREE_TEST",
+      "source_status": "untracked",
+      "sha256": "b67f9344ebaee9dc80389150fffb66d8e1a52be497d8d495c3656026e8b29d95",
+      "include_or_exclude": "INCLUDE",
+      "reason": "Approved for Referee V5 source capture",
+      "target_commit_group": "commit-1-domain"
+    },
+    {
+      "relative_path": "tests/referee-v5/referee-v5-persistence.test.js",
+      "classification": "REFEREE_TEST",
+      "source_status": "untracked",
+      "sha256": "e9d13cc15e26101df96211ea89f62e473383bf1a5ca83a4de9377d8a7fd2162f",
+      "include_or_exclude": "INCLUDE",
+      "reason": "Approved for Referee V5 source capture",
+      "target_commit_group": "commit-3-persistence-edge"
+    },
+    {
+      "relative_path": "tests/referee-v5/testHelpers.js",
+      "classification": "REFEREE_TEST",
+      "source_status": "untracked",
+      "sha256": "121685c21f38dc37d33563e938098949b9d683ac0818ca8c431f9d3da486e203",
+      "include_or_exclude": "INCLUDE",
+      "reason": "Approved for Referee V5 source capture",
+      "target_commit_group": "commit-1-domain"
+    },
+    {
+      "relative_path": "tests/ui/referee-v5-c.test.jsx",
+      "classification": "REFEREE_TEST",
+      "source_status": "untracked",
+      "sha256": "c92fc19dda25e97e5d82be58f68c13ab455befdc839ceb56a7a57a089efe7f97",
+      "include_or_exclude": "INCLUDE",
+      "reason": "Approved for Referee V5 source capture",
+      "target_commit_group": "commit-2-ui"
+    }
+  ],
+  "sourceHead": "0c5b41dd5d63a1e92a495f19f9ef7eedf7855151"
+}

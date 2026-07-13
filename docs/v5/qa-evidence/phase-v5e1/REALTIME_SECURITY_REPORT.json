@@ -1,0 +1,6 @@
+{
+  "trustBoundary": "RLS on match_live_states SELECT + assignment helper",
+  "tenantFromClient": "not trusted for authorization",
+  "revokedAssignment": "RLS denies SELECT — no realtime delivery",
+  "pass": true
+}

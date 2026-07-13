@@ -1,0 +1,38 @@
+{
+  "generatedAt": "2026-07-13T00:09:52.126Z",
+  "phase": "TT-5D-ASSIGNMENT",
+  "stagingRef": "qyewbxjsiiyufanzcjcq",
+  "productionImpact": "NONE",
+  "localCommitSha": "f36f7cbfcf5a1ca43ce62d567bc5cc3160c6671e",
+  "sqlPatches": [
+    "docs/v5/team-tournament/tt5/TT5-D_ASSIGNMENT_SAFETY.sql",
+    "docs/v5/team-tournament/tt5/TT5-D_REOPEN_RESULT_REVISION.sql",
+    "docs/v5/team-tournament/tt5/TT5-D_CORRECTION_WORKFLOW.sql",
+    "docs/v5/team-tournament/tt5/TT5-D_SECURITY_GUARDS.sql"
+  ],
+  "probe": {
+    "tournamentId": "phase23d-probe-tournament",
+    "matchupId": "phase23d-matchup-1",
+    "subMatchId": "phase23d-sub-1"
+  },
+  "cases": [
+    {
+      "id": "A01",
+      "name": "create scoped assignment",
+      "pass": true,
+      "createAssign": {
+        "ok": true,
+        "assignmentId": "b2036f74-6bc7-4d50-93d6-0fbb73dfdf04",
+        "refereeMatchId": "phase23d-sub-1",
+        "status": "active",
+        "version": 1,
+        "expiresAt": "2026-07-13T01:09:55.357+00:00"
+      }
+    }
+  ],
+  "verdict": "PASS",
+  "reportFile": "TT5D_ASSIGNMENT_REPORT.json",
+  "passCount": 1,
+  "totalCount": 1,
+  "allPass": true
+}

@@ -1,0 +1,130 @@
+{
+  "generatedAt": "2026-07-12T23:46:57.790Z",
+  "phase": "TT-5C-E2E",
+  "stagingRef": "qyewbxjsiiyufanzcjcq",
+  "productionImpact": "NONE",
+  "localCommitSha": "84810bfeca986c618b67d206b5ffc9a620cb8483",
+  "sqlPatches": [
+    "docs/v5/team-tournament/tt5/TT5-C_RESULT_OUTBOX_CONSUMER.sql",
+    "docs/v5/team-tournament/tt5/TT5-C_RESULT_PROPAGATION.sql",
+    "docs/v5/team-tournament/tt5/TT5-C_STANDINGS_RECOMPUTE.sql",
+    "docs/v5/team-tournament/tt5/TT5-C_REPROVISION_STATE.sql"
+  ],
+  "probe": {
+    "tournamentId": "phase23d-probe-tournament",
+    "teamA": "phase23d-team-a",
+    "teamB": "phase23d-team-b",
+    "matchupId": "phase23d-matchup-1",
+    "subMatchId": "phase23d-sub-1"
+  },
+  "cases": [
+    {
+      "id": "E01",
+      "name": "BTC provision",
+      "pass": true,
+      "provision": {
+        "ok": true,
+        "route": "/referee/match/phase23d-sub-1",
+        "linkId": "2ff40d83-1a7f-4a6f-887e-b74feaa68146",
+        "status": "provisioned",
+        "version": 1,
+        "replayed": false,
+        "matchStateId": "venue-staging-a::phase23d-probe-tournament::phase23d-sub-1",
+        "provisionedAt": "2026-07-12T23:47:00.97543+00:00",
+        "refereeMatchId": "phase23d-sub-1",
+        "externalSubMatchId": "phase23d-sub-1",
+        "refereeAssignmentId": "3fe270ab-5f0d-4644-b08e-ea761ab2f7c9"
+      }
+    },
+    {
+      "id": "E02",
+      "name": "V5 finalize + outbox",
+      "pass": true,
+      "finalize": {
+        "ok": true,
+        "locked": true
+      }
+    },
+    {
+      "id": "E03",
+      "name": "consumer propagation",
+      "pass": true
+    },
+    {
+      "id": "E04",
+      "name": "TT sub-match updated",
+      "pass": true,
+      "subAfter": {
+        "status": "completed",
+        "score": {
+          "games": [],
+          "teamA": 11,
+          "teamB": 7
+        },
+        "winner_team_id": "phase23d-team-a",
+        "result_confirmed_at": "2026-07-12T23:47:01.347739+00:00"
+      }
+    },
+    {
+      "id": "E05",
+      "name": "retry no duplicate standings",
+      "pass": true
+    },
+    {
+      "id": "E06",
+      "name": "legacy scoreOps blocked",
+      "pass": true,
+      "scoreOps": {
+        "linkId": "2ff40d83-1a7f-4a6f-887e-b74feaa68146",
+        "blockCode": "referee_v5_result_finalized",
+        "canConfirm": false,
+        "linkStatus": "finalized",
+        "blockMessage": "Kết quả đã chốt qua Referee V5.",
+        "canSaveDraft": false,
+        "refereeRoute": "/referee/match/phase23d-sub-1",
+        "refereeMatchId": "phase23d-sub-1",
+        "subMatchVersion": 11
+      }
+    },
+    {
+      "id": "E07",
+      "name": "refereeLinkOps route",
+      "pass": true,
+      "refereeLinkOps": {
+        "route": "/referee/match/phase23d-sub-1",
+        "linkId": "2ff40d83-1a7f-4a6f-887e-b74feaa68146",
+        "status": "finalized",
+        "hasLink": true,
+        "version": 2,
+        "dbStatus": "finalized",
+        "snapshot": {
+          "matchType": "doubles",
+          "courtLabel": null,
+          "disciplineId": "disc-men",
+          "lineupAVersion": 32,
+          "lineupBVersion": 34,
+          "matchupVersion": 52,
+          "provisionSource": "verify",
+          "subMatchVersion": 10
+        },
+        "blockCode": null,
+        "canResync": false,
+        "canRevoke": false,
+        "staleReason": null,
+        "blockMessage": null,
+        "canProvision": false,
+        "provisionedAt": "2026-07-12T23:47:00.97543+00:00",
+        "snapshotStale": false,
+        "refereeMatchId": "phase23d-sub-1",
+        "canOpenWorkspace": true,
+        "refereeAssignmentId": "3fe270ab-5f0d-4644-b08e-ea761ab2f7c9",
+        "lastResultRevisionId": "7e5998a8-f3de-49ef-a85f-d4181ed3dd87"
+      }
+    }
+  ],
+  "verdict": "PASS",
+  "reportFile": "TT5C_E2E_STAGING_REPORT.json",
+  "passCount": 7,
+  "totalCount": 7,
+  "allPass": true
+}

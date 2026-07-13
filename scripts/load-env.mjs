@@ -57,6 +57,17 @@ export function loadProjectEnv({ production = false } = {}) {
     }
   }
 
+  // Integration worktree: sibling main repo may hold .env.staging-qa.local (gitignored).
+  const siblingStagingEnv = path.join(rootDir, "..", "pickleball-scheduler", ".env.staging-qa.local");
+  if (fs.existsSync(siblingStagingEnv)) {
+    const stagingValues = parseEnvFile(fs.readFileSync(siblingStagingEnv, "utf8"));
+    for (const [key, value] of Object.entries(stagingValues)) {
+      if (key.startsWith("STAGING_") || key === "SUPABASE_ACCESS_TOKEN" || key === "PHASE42L_QA_PASSWORD") {
+        process.env[key] = value;
+      }
+    }
+  }
+
   return merged;
 }
 

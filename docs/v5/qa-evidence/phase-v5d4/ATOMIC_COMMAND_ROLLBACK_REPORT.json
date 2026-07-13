@@ -1,0 +1,20 @@
+{
+  "pass": true,
+  "results": [
+    {
+      "id": "cmd_rollback_after_event",
+      "pass": true,
+      "detail": "{\"before\":{\"matchStateId\":\"REFEREE_V5_TEST_TENANT_A::REFEREE_V5_TEST_TOURNAMENT_A::REFEREE_V5_TEST_MATCH_DOUBLES\",\"version\":0,\"sequence\":0,\"stateHash\":\"h5c33887a\",\"status\":\"not_started\",\"lockedAt\":null,\"eventCount\":0,\"mutationCount\":0,\"completedMutations\":0,\"revisionCount\":0,\"outboxCount\":0},\"after\":{\"matchStateId\":\"REFEREE_V5_TEST_TENANT_A::REFEREE_V5_TEST_TOURNAMENT_A::REFEREE_V5_TEST_MATCH_DOUBLES\",\"version\":0,\"sequence\":0,\"stateHash\":\"h5c33887a\",\"status\":\"not_started\",\"lockedAt\":null,\"eventCount\":0,\"mutationCount\":0,\"completedMutations\":0,\"revisionCount\":0,\"outboxCount\":0},\"code\":\"VALIDATION_FAILED\"}"
+    },
+    {
+      "id": "cmd_rollback_after_snapshot",
+      "pass": true,
+      "detail": "{\"mid\":{\"matchStateId\":\"REFEREE_V5_TEST_TENANT_A::REFEREE_V5_TEST_TOURNAMENT_A::REFEREE_V5_TEST_MATCH_DOUBLES\",\"version\":1,\"sequence\":1,\"stateHash\":\"h45db9e6e\",\"status\":\"in_progress\",\"lockedAt\":null,\"eventCount\":1,\"mutationCount\":1,\"completedMutations\":1,\"revisionCount\":0,\"outboxCount\":0},\"after\":{\"matchStateId\":\"REFEREE_V5_TEST_TENANT_A::REFEREE_V5_TEST_TOURNAMENT_A::REFEREE_V5_TEST_MATCH_DOUBLES\",\"version\":1,\"sequence\":1,\"stateHash\":\"h45db9e6e\",\"status\":\"in_progress\",\"lockedAt\":null,\"eventCount\":1,\"mutationCount\":1,\"completedMutations\":1,\"revisionCount\":0,\"outboxCount\":0},\"code\":\"VALIDATION_FAILED\"}"
+    },
+    {
+      "id": "cmd_retry_after_rollback",
+      "pass": true,
+      "detail": "{\"afterFail\":{\"matchStateId\":\"REFEREE_V5_TEST_TENANT_A::REFEREE_V5_TEST_TOURNAMENT_A::REFEREE_V5_TEST_MATCH_DOUBLES\",\"version\":0,\"sequence\":0,\"stateHash\":\"h5c33887a\",\"status\":\"not_started\",\"lockedAt\":null,\"eventCount\":0,\"mutationCount\":0,\"completedMutations\":0,\"revisionCount\":0,\"outboxCount\":0},\"after\":{\"matchStateId\":\"REFEREE_V5_TEST_TENANT_A::REFEREE_V5_TEST_TOURNAMENT_A::REFEREE_V5_TEST_MATCH_DOUBLES\",\"version\":1,\"sequence\":1,\"stateHash\":\"h45db9e6e\",\"status\":\"in_progress\",\"lockedAt\":null,\"eventCount\":1,\"mutationCount\":1,\"completedMutations\":1,\"revisionCount\":0,\"outboxCount\":0}}"
+    }
+  ]
+}

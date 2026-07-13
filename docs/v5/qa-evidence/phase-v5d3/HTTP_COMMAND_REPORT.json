@@ -1,0 +1,49 @@
+{
+  "commandLog": [
+    {
+      "commandType": "START_MATCH",
+      "httpStatus": 200,
+      "beforeVersion": 0,
+      "afterVersion": 1,
+      "beforeSequence": 0,
+      "afterSequence": 1,
+      "pass": true
+    },
+    {
+      "commandType": "TEAM_A_WON_RALLY",
+      "httpStatus": 200,
+      "beforeVersion": 1,
+      "afterVersion": 2,
+      "beforeSequence": 1,
+      "afterSequence": 2,
+      "pass": true
+    },
+    {
+      "commandType": "TEAM_B_WON_RALLY",
+      "httpStatus": 200,
+      "beforeVersion": 2,
+      "afterVersion": 3,
+      "beforeSequence": 2,
+      "afterSequence": 3,
+      "pass": true
+    },
+    {
+      "commandType": "SWITCH_ENDS",
+      "httpStatus": 200,
+      "beforeVersion": 3,
+      "afterVersion": 4,
+      "beforeSequence": 3,
+      "afterSequence": 4,
+      "pass": true
+    },
+    {
+      "commandType": "UNDO_LAST_EVENT",
+      "httpStatus": 200,
+      "beforeVersion": 4,
+      "afterVersion": 5,
+      "beforeSequence": 4,
+      "afterSequence": 5,
+      "pass": true
+    }
+  ]
+}

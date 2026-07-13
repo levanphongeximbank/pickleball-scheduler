@@ -1,0 +1,258 @@
+{
+  "c1": {
+    "r1a": "MATCH_STATE_CONFLICT"
+  },
+  "c2": {
+    "r2a": {
+      "ok": true,
+      "state": {
+        "games": [],
+        "teams": {
+          "teamA": {
+            "score": 1,
+            "teamId": "team-a",
+            "players": [
+              {
+                "playerId": "A",
+                "logicalServiceSide": "LEFT_SERVICE_COURT"
+              },
+              {
+                "playerId": "B",
+                "logicalServiceSide": "RIGHT_SERVICE_COURT"
+              }
+            ],
+            "courtEnd": "NEAR_END"
+          },
+          "teamB": {
+            "score": 0,
+            "teamId": "team-b",
+            "players": [
+              {
+                "playerId": "C",
+                "logicalServiceSide": "LEFT_SERVICE_COURT"
+              },
+              {
+                "playerId": "D",
+                "logicalServiceSide": "RIGHT_SERVICE_COURT"
+              }
+            ],
+            "courtEnd": "FAR_END"
+          }
+        },
+        "winBy": 2,
+        "bestOf": 1,
+        "status": "in_progress",
+        "matchId": "REFEREE_V5_TEST_MATCH_DOUBLES",
+        "version": 7,
+        "matchType": "doubles",
+        "pointsToWin": 11,
+        "maximumScore": null,
+        "serverNumber": 2,
+        "scoringFormat": "side_out",
+        "servingTeamId": "team-b",
+        "receivingTeamId": "team-a",
+        "servingPlayerId": "C",
+        "currentGameNumber": 1,
+        "lastEventSequence": 7,
+        "receivingPlayerId": "A",
+        "stateSchemaVersion": 1
+      },
+      "stateVersion": 7,
+      "lastEventSequence": 7,
+      "stateHash": "h2d31bb01",
+      "generatedEvents": [
+        "RALLY_WON",
+        "SECOND_SERVER_ACTIVATED",
+        "SERVE_CHANGED"
+      ]
+    },
+    "r2b": {
+      "ok": true,
+      "duplicate": true,
+      "state": {
+        "games": [],
+        "teams": {
+          "teamA": {
+            "score": 1,
+            "teamId": "team-a",
+            "players": [
+              {
+                "playerId": "A",
+                "logicalServiceSide": "LEFT_SERVICE_COURT"
+              },
+              {
+                "playerId": "B",
+                "logicalServiceSide": "RIGHT_SERVICE_COURT"
+              }
+            ],
+            "courtEnd": "NEAR_END"
+          },
+          "teamB": {
+            "score": 0,
+            "teamId": "team-b",
+            "players": [
+              {
+                "playerId": "C",
+                "logicalServiceSide": "LEFT_SERVICE_COURT"
+              },
+              {
+                "playerId": "D",
+                "logicalServiceSide": "RIGHT_SERVICE_COURT"
+              }
+            ],
+            "courtEnd": "FAR_END"
+          }
+        },
+        "winBy": 2,
+        "bestOf": 1,
+        "status": "in_progress",
+        "matchId": "REFEREE_V5_TEST_MATCH_DOUBLES",
+        "version": 7,
+        "matchType": "doubles",
+        "pointsToWin": 11,
+        "maximumScore": null,
+        "serverNumber": 2,
+        "scoringFormat": "side_out",
+        "servingTeamId": "team-b",
+        "receivingTeamId": "team-a",
+        "servingPlayerId": "C",
+        "currentGameNumber": 1,
+        "lastEventSequence": 7,
+        "receivingPlayerId": "A",
+        "stateSchemaVersion": 1
+      },
+      "stateVersion": 7,
+      "lastEventSequence": 7,
+      "stateHash": "h2d31bb01",
+      "generatedEvents": [
+        "RALLY_WON",
+        "SECOND_SERVER_ACTIVATED",
+        "SERVE_CHANGED"
+      ]
+    },
+    "eventsBeforeC2": 6,
+    "eventsAfterC2": 7
+  },
+  "c3": {
+    "response": {
+      "ok": false,
+      "code": "IDEMPOTENCY_KEY_REUSE_MISMATCH",
+      "error": "Idempotency key đã dùng cho request khác.",
+      "messageVi": "Idempotency key đã dùng cho request khác."
+    },
+    "liveBeforeC3": {
+      "state_version": 7,
+      "last_event_sequence": 7,
+      "state_hash": "h2d31bb01",
+      "state_payload": {
+        "games": [],
+        "teams": {
+          "teamA": {
+            "score": 1,
+            "teamId": "team-a",
+            "players": [
+              {
+                "playerId": "A",
+                "logicalServiceSide": "LEFT_SERVICE_COURT"
+              },
+              {
+                "playerId": "B",
+                "logicalServiceSide": "RIGHT_SERVICE_COURT"
+              }
+            ],
+            "courtEnd": "NEAR_END"
+          },
+          "teamB": {
+            "score": 0,
+            "teamId": "team-b",
+            "players": [
+              {
+                "playerId": "C",
+                "logicalServiceSide": "LEFT_SERVICE_COURT"
+              },
+              {
+                "playerId": "D",
+                "logicalServiceSide": "RIGHT_SERVICE_COURT"
+              }
+            ],
+            "courtEnd": "FAR_END"
+          }
+        },
+        "winBy": 2,
+        "bestOf": 1,
+        "status": "in_progress",
+        "matchId": "REFEREE_V5_TEST_MATCH_DOUBLES",
+        "version": 7,
+        "matchType": "doubles",
+        "pointsToWin": 11,
+        "maximumScore": null,
+        "serverNumber": 2,
+        "scoringFormat": "side_out",
+        "servingTeamId": "team-b",
+        "receivingTeamId": "team-a",
+        "servingPlayerId": "C",
+        "currentGameNumber": 1,
+        "lastEventSequence": 7,
+        "receivingPlayerId": "A",
+        "stateSchemaVersion": 1
+      }
+    },
+    "liveAfterC3": {
+      "state_version": 8,
+      "last_event_sequence": 8,
+      "state_hash": "h65229a1c",
+      "state_payload": {
+        "games": [],
+        "teams": {
+          "teamA": {
+            "score": 1,
+            "teamId": "team-a",
+            "players": [
+              {
+                "playerId": "A",
+                "logicalServiceSide": "LEFT_SERVICE_COURT"
+              },
+              {
+                "playerId": "B",
+                "logicalServiceSide": "RIGHT_SERVICE_COURT"
+              }
+            ],
+            "courtEnd": "NEAR_END"
+          },
+          "teamB": {
+            "score": 0,
+            "teamId": "team-b",
+            "players": [
+              {
+                "playerId": "C",
+                "logicalServiceSide": "LEFT_SERVICE_COURT"
+              },
+              {
+                "playerId": "D",
+                "logicalServiceSide": "RIGHT_SERVICE_COURT"
+              }
+            ],
+            "courtEnd": "FAR_END"
+          }
+        },
+        "winBy": 2,
+        "bestOf": 1,
+        "status": "in_progress",
+        "matchId": "REFEREE_V5_TEST_MATCH_DOUBLES",
+        "version": 8,
+        "matchType": "doubles",
+        "pointsToWin": 11,
+        "maximumScore": null,
+        "serverNumber": 1,
+        "scoringFormat": "side_out",
+        "servingTeamId": "team-a",
+        "receivingTeamId": "team-b",
+        "servingPlayerId": "B",
+        "currentGameNumber": 1,
+        "lastEventSequence": 8,
+        "receivingPlayerId": "D",
+        "stateSchemaVersion": 1
+      }
+    }
+  }
+}

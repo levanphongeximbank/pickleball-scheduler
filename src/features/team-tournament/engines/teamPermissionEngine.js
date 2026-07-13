@@ -109,6 +109,10 @@ export function canWithdrawTeam({ permissions = [] } = {}) {
   );
 }
 
+export function canProvisionRefereeLink({ permissions = [] } = {}) {
+  return canManageTeam({ permissions });
+}
+
 export function canManageTeamMatchResult({ permissions = [] } = {}) {
   return (
     permissions.includes(PERMISSIONS.TEAM_MATCH_RESULT_MANAGE) ||

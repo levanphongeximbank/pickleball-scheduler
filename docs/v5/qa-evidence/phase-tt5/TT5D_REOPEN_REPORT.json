@@ -1,0 +1,87 @@
+{
+  "generatedAt": "2026-07-13T00:09:52.205Z",
+  "phase": "TT-5D-REOPEN",
+  "stagingRef": "qyewbxjsiiyufanzcjcq",
+  "productionImpact": "NONE",
+  "localCommitSha": "f36f7cbfcf5a1ca43ce62d567bc5cc3160c6671e",
+  "sqlPatches": [
+    "docs/v5/team-tournament/tt5/TT5-D_ASSIGNMENT_SAFETY.sql",
+    "docs/v5/team-tournament/tt5/TT5-D_REOPEN_RESULT_REVISION.sql",
+    "docs/v5/team-tournament/tt5/TT5-D_CORRECTION_WORKFLOW.sql",
+    "docs/v5/team-tournament/tt5/TT5-D_SECURITY_GUARDS.sql"
+  ],
+  "probe": {
+    "tournamentId": "phase23d-probe-tournament",
+    "matchupId": "phase23d-matchup-1",
+    "subMatchId": "phase23d-sub-1"
+  },
+  "cases": [
+    {
+      "id": "R01",
+      "name": "reopen void revision propagates",
+      "pass": true,
+      "reopen": {
+        "ok": true,
+        "subMatchId": "phase23d-sub-1",
+        "revisionId": "d277b5ad-774b-4b3a-943a-0e86553c054d",
+        "outboxId": "8a4c1eb8-f822-4f78-86b3-5ff703735537",
+        "propagation": {
+          "ok": true,
+          "after": {
+            "score": {
+              "games": [],
+              "teamA": 0,
+              "teamB": 0
+            },
+            "status": "waiting",
+            "version": 31,
+            "winnerTeamId": null,
+            "resultConfirmedAt": null
+          },
+          "before": {
+            "score": {
+              "games": [],
+              "teamA": 11,
+              "teamB": 9
+            },
+            "status": "completed",
+            "version": 30,
+            "winnerTeamId": "phase23d-team-a",
+            "resultConfirmedAt": "2026-07-13T00:09:59.055455+00:00"
+          },
+          "inboxId": "053be7be-c22a-4343-9de5-328a1a921d77",
+          "replayed": false,
+          "eventType": "REFEREE_MATCH_REOPENED",
+          "revisionId": "d277b5ad-774b-4b3a-943a-0e86553c054d",
+          "subMatchId": "phase23d-sub-1",
+          "bridgeStatus": "active",
+          "matchupResult": {
+            "ok": true,
+            "teamAWins": 0,
+            "teamBWins": 0,
+            "teamAPoints": 0,
+            "teamBPoints": 0,
+            "winnerTeamId": null,
+            "matchupCompleted": false
+          },
+          "revisionNumber": 4
+        },
+        "linkStatus": "active"
+      }
+    },
+    {
+      "id": "R02",
+      "name": "finalize after reopen",
+      "pass": true,
+      "fin2": {
+        "ok": true,
+        "locked": true
+      }
+    }
+  ],
+  "verdict": "PASS",
+  "reportFile": "TT5D_REOPEN_REPORT.json",
+  "passCount": 2,
+  "totalCount": 2,
+  "allPass": true
+}

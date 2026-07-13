@@ -1,0 +1,36 @@
+{
+  "allPass": true,
+  "results": [
+    {
+      "id": "rollback_feature_flag_default_off",
+      "pass": true,
+      "detail": "VITE_REFEREE_V5_ENABLED=(unset)"
+    },
+    {
+      "id": "rollback_legacy_regression",
+      "pass": true,
+      "detail": "referee legacy unit tests"
+    },
+    {
+      "id": "rollback_edge_path_probe",
+      "pass": true,
+      "detail": "OPTIONS 200"
+    },
+    {
+      "id": "rollback_remote_no_silent_fallback",
+      "pass": true,
+      "detail": "\"VALIDATION_FAILED\""
+    },
+    {
+      "id": "rollback_data_retained",
+      "pass": true,
+      "detail": "{\"events\":0,\"version\":0}"
+    },
+    {
+      "id": "rollback_internal_rpc_browser_blocked",
+      "pass": true,
+      "detail": "permission denied for function referee_v5_commit_match_transition"
+    }
+  ],
+  "note": "Edge undeploy drill skipped — probe-only to avoid staging outage"
+}

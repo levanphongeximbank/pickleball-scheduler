@@ -569,6 +569,60 @@ export default function TeamTournamentSetup() {
     setMessage("Đã ghi nhận thua kỹ thuật. BXH đã được cập nhật.");
   }
 
+  async function handleProvisionReferee(payload) {
+    setError("");
+    setMutationBusy(true);
+    const result = await runMutation({
+      method: "provisionRefereeMatch",
+      payload,
+      actionScope: buildUiCommandScope("provision-ref", tournamentId, payload.subMatchId),
+      expectedVersion: payload.expectedSubMatchVersion ?? version,
+      commandOptions: { expectedSubMatchVersion: payload.expectedSubMatchVersion },
+    });
+    setMutationBusy(false);
+    if (!result.ok) {
+      setError(result.error || result.code || "Không tạo được phiên trọng tài.");
+      return;
+    }
+    setMessage("Đã tạo phiên Referee V5.");
+  }
+
+  async function handleResyncReferee(payload) {
+    setError("");
+    setMutationBusy(true);
+    const result = await runMutation({
+      method: "resyncRefereeLink",
+      payload,
+      actionScope: buildUiCommandScope("resync-ref", tournamentId, payload.subMatchId),
+      expectedVersion: version,
+      commandOptions: { expectedLinkVersion: payload.expectedLinkVersion },
+    });
+    setMutationBusy(false);
+    if (!result.ok) {
+      setError(result.error || result.code || "Không resync được liên kết.");
+      return;
+    }
+    setMessage("Đã resync snapshot Referee V5.");
+  }
+
+  async function handleRevokeReferee(payload) {
+    setError("");
+    setMutationBusy(true);
+    const result = await runMutation({
+      method: "revokeRefereeLink",
+      payload,
+      actionScope: buildUiCommandScope("revoke-ref", tournamentId, payload.subMatchId),
+      expectedVersion: version,
+      commandOptions: { expectedLinkVersion: payload.expectedLinkVersion },
+    });
+    setMutationBusy(false);
+    if (!result.ok) {
+      setError(result.error || result.code || "Không revoke được liên kết.");
+      return;
+    }
+    setMessage("Đã revoke liên kết Referee V5.");
+  }
+
   function handleRequestWithdraw(teamId) {
     const team = td.teams.find((item) => item.id === teamId);
     if (!team || team.withdrawn) {
@@ -865,6 +919,9 @@ export default function TeamTournamentSetup() {
                     onError={setError}
                     onSyncDreambreaker={handleSyncDreambreaker}
                     onLockDreambreaker={handleLockDreambreaker}
+                    onProvisionReferee={handleProvisionReferee}
+                    onResyncReferee={handleResyncReferee}
+                    onRevokeReferee={handleRevokeReferee}
                   />
                 );
               })

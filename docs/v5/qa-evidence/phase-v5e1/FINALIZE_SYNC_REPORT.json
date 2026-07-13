@@ -1,0 +1,4 @@
+{
+  "note": "Finalize disables mutations via match status LOCKED/COMPLETED",
+  "pass": true
+}

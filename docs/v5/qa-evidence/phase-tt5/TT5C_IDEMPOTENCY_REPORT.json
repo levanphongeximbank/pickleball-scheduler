@@ -1,0 +1,43 @@
+{
+  "generatedAt": "2026-07-12T23:46:57.671Z",
+  "phase": "TT-5C-IDEMPOTENCY",
+  "stagingRef": "qyewbxjsiiyufanzcjcq",
+  "productionImpact": "NONE",
+  "localCommitSha": "84810bfeca986c618b67d206b5ffc9a620cb8483",
+  "sqlPatches": [
+    "docs/v5/team-tournament/tt5/TT5-C_RESULT_OUTBOX_CONSUMER.sql",
+    "docs/v5/team-tournament/tt5/TT5-C_RESULT_PROPAGATION.sql",
+    "docs/v5/team-tournament/tt5/TT5-C_STANDINGS_RECOMPUTE.sql",
+    "docs/v5/team-tournament/tt5/TT5-C_REPROVISION_STATE.sql"
+  ],
+  "probe": {
+    "tournamentId": "phase23d-probe-tournament",
+    "teamA": "phase23d-team-a",
+    "teamB": "phase23d-team-b",
+    "matchupId": "phase23d-matchup-1",
+    "subMatchId": "phase23d-sub-1"
+  },
+  "cases": [
+    {
+      "id": "I01",
+      "name": "duplicate delivery replay",
+      "pass": true,
+      "consume2": {
+        "ok": true,
+        "code": "OUTBOX_ALREADY_COMPLETED",
+        "replayed": true
+      }
+    },
+    {
+      "id": "I02",
+      "name": "exactly one inbox row",
+      "pass": true,
+      "inboxCount": 1
+    }
+  ],
+  "verdict": "PASS",
+  "reportFile": "TT5C_IDEMPOTENCY_REPORT.json",
+  "passCount": 2,
+  "totalCount": 2,
+  "allPass": true
+}

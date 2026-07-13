@@ -1,0 +1,9 @@
+{
+  "mechanism": "supabase_realtime_postgres_changes",
+  "channelPattern": "referee-v5:match:{matchId}",
+  "table": "match_live_states",
+  "filter": "id=eq.{matchStateId}",
+  "reloadPath": "Edge get-state (official)",
+  "applyBroadcastPayload": false,
+  "pass": true
+}

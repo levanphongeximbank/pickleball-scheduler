@@ -73,6 +73,9 @@ import {
 import TeamStandingsTable from "../../components/tournament/team/TeamStandingsTable.jsx";
 import TeamForfeitDialog from "../../components/tournament/team/TeamForfeitDialog.jsx";
 import { buildForfeitCommandPayload } from "../../features/team-tournament/engines/forfeitWorkflowEngine.js";
+import {
+  canSaveLegacyDraft,
+} from "../../features/team-tournament/engines/teamRefereeV5BridgeEngine.js";
 import { countMatchupsWithSubResults } from "../../components/tournament/team/teamStandingsLabels.js";
 
 const REFEREE_FILTER = {
@@ -155,7 +158,10 @@ function SubMatchScorePanel({
       : [{ teamA: 0, teamB: 0 }]
   );
   const [activeGameIndex, setActiveGameIndex] = useState(0);
-  const editable = canEdit && subMatch.hasOfficialLineup;
+  const editable =
+    canEdit &&
+    subMatch.hasOfficialLineup &&
+    canSaveLegacyDraft(subMatch.scoreOps);
 
   useEffect(() => {
     setScoreA(subMatch.score?.teamA || 0);
@@ -201,6 +207,21 @@ function SubMatchScorePanel({
           Thiếu đội hình chính thức — không thể nhập tỷ số.
         </Alert>
       )}
+      {subMatch.scoreOps?.blockCode ? (
+        <Alert severity="info" sx={{ mb: 1.5 }}>
+          {subMatch.scoreOps.blockMessage || "Trận con đang dùng Referee V5 — legacy score entry bị khóa."}
+          {subMatch.scoreOps.refereeRoute ? (
+            <Button
+              size="small"
+              sx={{ ml: 1 }}
+              component={RouterLink}
+              to={subMatch.scoreOps.refereeRoute}
+            >
+              Mở Referee V5
+            </Button>
+          ) : null}
+        </Alert>
+      ) : null}
 
       {subMatch.status === SUB_MATCH_STATUS.COMPLETED && !canEdit && (
         <Alert severity="info" sx={{ mb: 1.5 }}>

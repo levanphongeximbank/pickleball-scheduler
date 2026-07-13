@@ -1,0 +1,25 @@
+{
+  "pass": true,
+  "results": [
+    {
+      "id": "finalize_rollback_after_result_revision",
+      "pass": true,
+      "detail": "{\"after\":{\"matchStateId\":\"REFEREE_V5_TEST_TENANT_A::REFEREE_V5_TEST_TOURNAMENT_A::REFEREE_V5_TEST_MATCH_SINGLES\",\"version\":1,\"sequence\":1,\"stateHash\":\"h174c60c\",\"status\":\"in_progress\",\"lockedAt\":null,\"eventCount\":1,\"mutationCount\":1,\"completedMutations\":1,\"revisionCount\":0,\"outboxCount\":0},\"code\":\"FINALIZE_FAILED\"}"
+    },
+    {
+      "id": "finalize_rollback_after_state_lock",
+      "pass": true,
+      "detail": "{\"after\":{\"matchStateId\":\"REFEREE_V5_TEST_TENANT_A::REFEREE_V5_TEST_TOURNAMENT_A::REFEREE_V5_TEST_MATCH_SINGLES\",\"version\":1,\"sequence\":1,\"stateHash\":\"h174c60c\",\"status\":\"in_progress\",\"lockedAt\":null,\"eventCount\":1,\"mutationCount\":1,\"completedMutations\":1,\"revisionCount\":0,\"outboxCount\":0},\"code\":\"FINALIZE_FAILED\"}"
+    },
+    {
+      "id": "finalize_rollback_after_outbox",
+      "pass": true,
+      "detail": "{\"after\":{\"matchStateId\":\"REFEREE_V5_TEST_TENANT_A::REFEREE_V5_TEST_TOURNAMENT_A::REFEREE_V5_TEST_MATCH_SINGLES\",\"version\":1,\"sequence\":1,\"stateHash\":\"h174c60c\",\"status\":\"in_progress\",\"lockedAt\":null,\"eventCount\":1,\"mutationCount\":1,\"completedMutations\":1,\"revisionCount\":0,\"outboxCount\":0},\"code\":\"FINALIZE_FAILED\"}"
+    },
+    {
+      "id": "finalize_success_and_idempotent_retry",
+      "pass": true,
+      "detail": "{\"after\":{\"matchStateId\":\"REFEREE_V5_TEST_TENANT_A::REFEREE_V5_TEST_TOURNAMENT_A::REFEREE_V5_TEST_MATCH_SINGLES\",\"version\":1,\"sequence\":1,\"stateHash\":\"h174c60c\",\"status\":\"locked\",\"lockedAt\":\"2026-07-12T14:51:26.572141+00:00\",\"eventCount\":1,\"mutationCount\":2,\"completedMutations\":2,\"revisionCount\":1,\"outboxCount\":3},\"rallyCode\":\"MATCH_LOCKED\"}"
+    }
+  ]
+}
