@@ -24,6 +24,7 @@ No code deploy required for flag rollback.
 | CC-10 base | `00317e95058b5e195c3b89623cfe98925fffecad` |
 | CC-10 branch tip | `023d94e` |
 | CC-10M merge into standardization | `8f8e920` |
+| Post-Stage-1 standardization tip | `fbca572` |
 
 Revert code path (owner approval only):
 
