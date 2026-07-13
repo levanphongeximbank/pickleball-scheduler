@@ -12,6 +12,7 @@ import {
   isRulesV2Enabled,
   isConstraintsV2Enabled,
   isStandingsV2Enabled,
+  isSchedulingV2Enabled,
 } from "../src/features/competition-core/config/featureFlags.js";
 import { parseEnvBoolean } from "../src/features/competition-core/config/envReader.js";
 
@@ -26,6 +27,7 @@ test("all competition core feature flags default to false", () => {
   assert.equal(flags.formationV2Enabled, false);
   assert.equal(flags.matchmakingV2Enabled, false);
   assert.equal(flags.standingsV2Enabled, false);
+  assert.equal(flags.schedulingV2Enabled, false);
 
   assert.equal(isCompetitionCoreEnabled(EMPTY_ENV), false);
   assert.equal(isRatingV2Enabled(EMPTY_ENV), false);
@@ -35,6 +37,7 @@ test("all competition core feature flags default to false", () => {
   assert.equal(isFormationV2Enabled(EMPTY_ENV), false);
   assert.equal(isMatchmakingV2Enabled(EMPTY_ENV), false);
   assert.equal(isStandingsV2Enabled(EMPTY_ENV), false);
+  assert.equal(isSchedulingV2Enabled(EMPTY_ENV), false);
 });
 
 test("parseEnvBoolean handles true/false strings safely", () => {
