@@ -1,14 +1,15 @@
-﻿{
+{
   "reportType": "TT7_EXECUTION_REPORT",
-  "generatedAt": "2026-07-12T22:35:38.547Z",
+  "generatedAt": "2026-07-13T01:15:00.000Z",
   "productionImpact": "NONE",
   "verdict": "TT-7 EXECUTION PASS",
   "executionBase": {
-    "branch": "qa/tt7-standings-engine-fix-latest-base",
+    "branch": "qa/tt7-standings-engine-fix-final",
     "originalBranch": "qa/tt7-standings-engine-fix",
     "baseRef": "origin/feature/competition-core-standardization",
     "baseSha": "23462878782726b9f933380071126245bd767dec",
-    "latestBaseSha": "4df0a529e0d56b08e00cae28983cb785481c0935"
+    "latestBaseSha": "4df0a529e0d56b08e00cae28983cb785481c0935",
+    "finalBaseSha": "00317e95058b5e195c3b89623cfe98925fffecad"
   },
   "latestBaseRetest": {
     "branch": "qa/tt7-standings-engine-fix-latest-base",
@@ -22,8 +23,45 @@
       "standingsTiebreak": "6/6 PASS",
       "teamTournament": "12/12 PASS"
     },
-    "refereePreviewRouteOnBase": "removed by 88c2a29; no RefereeV5PreviewPage.jsx added",
-    "notes": "Cherry-picked TT-7 commits onto latest feature tip per owner GO."
+    "notes": "Cherry-picked TT-7 commits onto feature tip 4df0a52 per owner GO."
+  },
+  "finalBaseRetest": {
+    "branch": "qa/tt7-standings-engine-fix-final",
+    "reportedFeatureTipSha": "63d757118499195688dbb82d121bd98382e31e40",
+    "actualFeatureTipSha": "00317e95058b5e195c3b89623cfe98925fffecad",
+    "featureTipMovedAgain": true,
+    "featureTipMoveDelta": [
+      "e772dca feat(competition-core): add canonical scheduling domain and runtime adapter",
+      "c496e46 test(competition-core): verify scheduling shadow parity and conflict handling",
+      "97f6d02 merge: integrate CC-09 canonical scheduling runtime adapter",
+      "00317e9 docs(competition-core): add CC-09M merge verification and rollback checkpoint"
+    ],
+    "standingsOverlapAudit": "NONE — teamStandingsEngine.js, models/index.js, team-standings-tiebreak.test.js, team-tournament.test.js unchanged between 4df0a52 and final tip",
+    "retestedAt": "2026-07-13T01:15:00.000Z",
+    "baseBuildBeforeCherryPick": {
+      "sha": "63d757118499195688dbb82d121bd98382e31e40",
+      "npmCi": "PASS",
+      "npmRunBuild": "PASS",
+      "standingsTiebreak": "1/1 PASS (pre-TT-7 base)",
+      "teamTournament": "12/12 PASS"
+    },
+    "build": "PASS",
+    "validation": {
+      "oracle": "13/13 PASS",
+      "integration": "10/10 PASS",
+      "standingsTiebreak": "6/6 PASS",
+      "teamTournament": "12/12 PASS"
+    },
+    "cherryPickCommits": [
+      "9700592",
+      "9dfbb3b",
+      "1a2090f",
+      "d2b70d5",
+      "69b97dc"
+    ],
+    "cherryPickResult": "PASS — no conflicts",
+    "scopeCheck": "15 files — TT-7 approved scope only",
+    "notes": "Branch created from actual latest feature tip 00317e9 (CC-09 merge landed after reported 63d7571). No ranking or tie-break logic changes."
   },
   "initialResult": {
     "verdict": "TT-7 EXECUTION FAIL",
