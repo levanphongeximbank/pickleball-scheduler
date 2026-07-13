@@ -12,6 +12,7 @@ export const COMPETITION_CORE_FLAG_KEYS = Object.freeze({
   FORMATION_V2: "VITE_COMPETITION_CORE_FORMATION_V2_ENABLED",
   MATCHMAKING_V2: "VITE_COMPETITION_CORE_MATCHMAKING_V2_ENABLED",
   STANDINGS_V2: "VITE_COMPETITION_CORE_STANDINGS_V2_ENABLED",
+  SCHEDULING_V2: "VITE_COMPETITION_CORE_SCHEDULING_V2_ENABLED",
 });
 
 /**
@@ -24,6 +25,7 @@ export const COMPETITION_CORE_FLAG_KEYS = Object.freeze({
  * @property {boolean} formationV2Enabled
  * @property {boolean} matchmakingV2Enabled
  * @property {boolean} standingsV2Enabled
+ * @property {boolean} schedulingV2Enabled
  * @property {'rules_v2'|'constraints_v2'|'default'} [rulesV2FlagSource]
  */
 
@@ -47,6 +49,7 @@ export function getCompetitionCoreFeatureFlags(envSource) {
       envSource
     ),
     standingsV2Enabled: readEnvBoolean(COMPETITION_CORE_FLAG_KEYS.STANDINGS_V2, envSource),
+    schedulingV2Enabled: readEnvBoolean(COMPETITION_CORE_FLAG_KEYS.SCHEDULING_V2, envSource),
     rulesV2FlagSource: rulesResolved.source,
   };
 }
@@ -90,4 +93,9 @@ export function isMatchmakingV2Enabled(envSource) {
 export function isStandingsV2Enabled(envSource) {
   const flags = getCompetitionCoreFeatureFlags(envSource);
   return flags.coreEnabled && flags.standingsV2Enabled;
+}
+
+export function isSchedulingV2Enabled(envSource) {
+  const flags = getCompetitionCoreFeatureFlags(envSource);
+  return flags.coreEnabled && flags.schedulingV2Enabled;
 }

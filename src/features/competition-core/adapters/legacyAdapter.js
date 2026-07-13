@@ -1,9 +1,10 @@
 import { COMPETITION_CORE_VERSION } from "../constants/index.js";
 import { COMPETITION_ENGINE_TYPE } from "../constants/engineType.js";
-import { isRatingV2Enabled, isDrawV2Enabled, isFormationV2Enabled, isMatchmakingV2Enabled, isStandingsV2Enabled } from "../config/featureFlags.js";
+import { isRatingV2Enabled, isDrawV2Enabled, isFormationV2Enabled, isMatchmakingV2Enabled, isStandingsV2Enabled, isSchedulingV2Enabled } from "../config/featureFlags.js";
 import { evaluateCanonicalFormation } from "../formation/adapters/formationRuntimeAdapter.js";
 import { evaluateCanonicalMatchmaking } from "../matchmaking/adapters/matchmakingRuntimeAdapter.js";
 import { evaluateCanonicalStandingsRuntime } from "../standings/adapters/standingsRuntimeAdapter.js";
+import { evaluateCanonicalSchedulingRuntime } from "../scheduling/adapters/schedulingRuntimeAdapter.js";
 import { ENGINE_RUN_STATUS } from "../constants/engineRunStatus.js";
 import { getCompetitionCoreFeatureFlags } from "../config/featureFlags.js";
 import {
@@ -51,6 +52,9 @@ export function isEngineV2Available(engineType, envSource) {
   if (engineType === COMPETITION_ENGINE_TYPE.STANDINGS) {
     return isStandingsV2Enabled(envSource);
   }
+  if (engineType === COMPETITION_ENGINE_TYPE.SCHEDULING) {
+    return isSchedulingV2Enabled(envSource);
+  }
   void envSource;
   return false;
 }
@@ -68,12 +72,12 @@ export function isEngineV2FlagEnabled(engineType, flags) {
       return flags.matchmakingV2Enabled;
     case COMPETITION_ENGINE_TYPE.STANDINGS:
       return flags.standingsV2Enabled;
+    case COMPETITION_ENGINE_TYPE.SCHEDULING:
+      return flags.schedulingV2Enabled;
     case COMPETITION_ENGINE_TYPE.RATING:
       return flags.ratingV2Enabled;
     case COMPETITION_ENGINE_TYPE.TEAM_FORMATION:
       return flags.formationV2Enabled;
-    case COMPETITION_ENGINE_TYPE.SCHEDULING:
-      return flags.coreEnabled;
     default:
       return false;
   }
@@ -283,6 +287,37 @@ export async function executeCompetitionEngine(input, options = {}) {
             ? []
             : ["Matchmaking adapter randomFn parity check failed"]
           : ["Matchmaking adapter output parity check failed"],
+      });
+    }
+
+    if (input.engineType === COMPETITION_ENGINE_TYPE.SCHEDULING) {
+      const payload = plan.input.payload && typeof plan.input.payload === "object"
+        ? plan.input.payload
+        : {};
+      const bridge = evaluateCanonicalSchedulingRuntime({
+        consumer: payload.consumer || "competition_engine",
+        legacyPayload: {
+          ...payload,
+          tournamentId: plan.input.tournamentId,
+          eventId: plan.input.eventId,
+        },
+        envSource: options.envSource,
+        legacyExecutor: () => {
+          const legacyExecutor = options.legacyExecutor;
+          if (typeof legacyExecutor !== "function") {
+            return { ok: false, errors: ["Legacy executor not configured"], matches: [] };
+          }
+          return legacyExecutor(plan.input);
+        },
+        executionMode: "shadow",
+      });
+
+      return wrapLegacyEngineResult({
+        engineType: input.engineType,
+        legacyEngine: plan.legacyEngineId,
+        legacyResult: bridge.legacyResult,
+        executionPath: "v2",
+        warnings: bridge.outputPreserved ? bridge.warnings : ["Scheduling adapter output parity check failed"],
       });
     }
 
