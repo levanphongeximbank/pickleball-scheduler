@@ -1,0 +1,39 @@
+{
+  "generatedAt": "2026-07-13T00:09:52.229Z",
+  "phase": "TT-5D-CONCURRENCY",
+  "stagingRef": "qyewbxjsiiyufanzcjcq",
+  "productionImpact": "NONE",
+  "localCommitSha": "f36f7cbfcf5a1ca43ce62d567bc5cc3160c6671e",
+  "sqlPatches": [
+    "docs/v5/team-tournament/tt5/TT5-D_ASSIGNMENT_SAFETY.sql",
+    "docs/v5/team-tournament/tt5/TT5-D_REOPEN_RESULT_REVISION.sql",
+    "docs/v5/team-tournament/tt5/TT5-D_CORRECTION_WORKFLOW.sql",
+    "docs/v5/team-tournament/tt5/TT5-D_SECURITY_GUARDS.sql"
+  ],
+  "probe": {
+    "tournamentId": "phase23d-probe-tournament",
+    "matchupId": "phase23d-matchup-1",
+    "subMatchId": "phase23d-sub-1"
+  },
+  "cases": [
+    {
+      "id": "K01",
+      "name": "double finalize idempotent replay",
+      "pass": true,
+      "conc1": {
+        "ok": true,
+        "locked": true
+      },
+      "conc2": {
+        "ok": true,
+        "locked": true,
+        "duplicate": true
+      }
+    }
+  ],
+  "verdict": "PASS",
+  "reportFile": "TT5D_CONCURRENCY_REPORT.json",
+  "passCount": 1,
+  "totalCount": 1,
+  "allPass": true
+}

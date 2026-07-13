@@ -34,6 +34,7 @@ import {
 } from "../../../features/team-tournament/engines/atomicPublishWorkflowEngine.js";
 import { isRepublishPending } from "../../../features/team-tournament/engines/overrideLineupWorkflowEngine.js";
 import TeamSubMatchRefereeProvisionRow from "./TeamSubMatchRefereeProvisionRow.jsx";
+import TeamRefereeSafetyPanel from "./TeamRefereeSafetyPanel.jsx";
 import TournamentSectionCard from "../TournamentSectionCard.jsx";
 import {
   buildCaptainPortalUrl,
@@ -448,6 +449,10 @@ export default function TeamMatchupOperationsCard({
                 onError={onError}
               />
             ))}
+            <TeamRefereeSafetyPanel
+              tournamentId={tournamentId}
+              onNotice={(msg) => onMessage?.(msg)}
+            />
           </Stack>
         ) : null}
 

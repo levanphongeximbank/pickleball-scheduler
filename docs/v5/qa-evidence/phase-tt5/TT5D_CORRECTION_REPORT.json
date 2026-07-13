@@ -1,0 +1,102 @@
+{
+  "generatedAt": "2026-07-13T00:09:52.180Z",
+  "phase": "TT-5D-CORRECTION",
+  "stagingRef": "qyewbxjsiiyufanzcjcq",
+  "productionImpact": "NONE",
+  "localCommitSha": "f36f7cbfcf5a1ca43ce62d567bc5cc3160c6671e",
+  "sqlPatches": [
+    "docs/v5/team-tournament/tt5/TT5-D_ASSIGNMENT_SAFETY.sql",
+    "docs/v5/team-tournament/tt5/TT5-D_REOPEN_RESULT_REVISION.sql",
+    "docs/v5/team-tournament/tt5/TT5-D_CORRECTION_WORKFLOW.sql",
+    "docs/v5/team-tournament/tt5/TT5-D_SECURITY_GUARDS.sql"
+  ],
+  "probe": {
+    "tournamentId": "phase23d-probe-tournament",
+    "matchupId": "phase23d-matchup-1",
+    "subMatchId": "phase23d-sub-1"
+  },
+  "cases": [
+    {
+      "id": "C01",
+      "name": "referee correction request",
+      "pass": true,
+      "corrReq": {
+        "ok": true,
+        "correctionRequestId": "cd04e2dc-0355-4297-9dcd-e08d1f319e38",
+        "requestId": "tt5d-corr-1783901398417",
+        "status": "pending",
+        "version": 1
+      }
+    },
+    {
+      "id": "C02",
+      "name": "BTC approve correction",
+      "pass": true,
+      "corrApprove": {
+        "ok": true,
+        "status": "approved",
+        "correctionRequestId": "cd04e2dc-0355-4297-9dcd-e08d1f319e38",
+        "newRevisionId": "5a855987-384f-4b57-b44d-38236d2c035c",
+        "outboxId": "1746c8c2-ebea-467b-8a47-39dd1951b4c2",
+        "propagation": {
+          "ok": true,
+          "after": {
+            "score": {
+              "games": [],
+              "teamA": 11,
+              "teamB": 9
+            },
+            "status": "completed",
+            "version": 30,
+            "winnerTeamId": "phase23d-team-a",
+            "resultConfirmedAt": "2026-07-13T00:09:59.055455+00:00"
+          },
+          "before": {
+            "score": {
+              "games": [],
+              "teamA": 11,
+              "teamB": 7
+            },
+            "status": "completed",
+            "version": 29,
+            "winnerTeamId": "phase23d-team-a",
+            "resultConfirmedAt": "2026-07-13T00:09:58.041418+00:00"
+          },
+          "inboxId": "552e0091-5c3a-48a9-8a17-ba95754089e4",
+          "replayed": false,
+          "eventType": "REFEREE_RESULT_REVISED",
+          "revisionId": "5a855987-384f-4b57-b44d-38236d2c035c",
+          "subMatchId": "phase23d-sub-1",
+          "bridgeStatus": "finalized",
+          "matchupResult": {
+            "ok": true,
+            "teamAWins": 1,
+            "teamBWins": 0,
+            "teamAPoints": 11,
+            "teamBPoints": 9,
+            "winnerTeamId": "phase23d-team-a",
+            "matchupCompleted": false
+          },
+          "revisionNumber": 3
+        },
+        "version": 2
+      }
+    },
+    {
+      "id": "C03",
+      "name": "BTC reject correction",
+      "pass": true,
+      "corrReject": {
+        "ok": true,
+        "status": "rejected",
+        "correctionRequestId": "278c7526-5734-4cae-af09-0aa7a28dcbe1",
+        "version": 2
+      }
+    }
+  ],
+  "verdict": "PASS",
+  "reportFile": "TT5D_CORRECTION_REPORT.json",
+  "passCount": 3,
+  "totalCount": 3,
+  "allPass": true
+}

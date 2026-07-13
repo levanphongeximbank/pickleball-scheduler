@@ -1,0 +1,82 @@
+{
+  "generatedAt": "2026-07-13T00:09:52.253Z",
+  "phase": "TT-5D-SECURITY",
+  "stagingRef": "qyewbxjsiiyufanzcjcq",
+  "productionImpact": "NONE",
+  "localCommitSha": "f36f7cbfcf5a1ca43ce62d567bc5cc3160c6671e",
+  "sqlPatches": [
+    "docs/v5/team-tournament/tt5/TT5-D_ASSIGNMENT_SAFETY.sql",
+    "docs/v5/team-tournament/tt5/TT5-D_REOPEN_RESULT_REVISION.sql",
+    "docs/v5/team-tournament/tt5/TT5-D_CORRECTION_WORKFLOW.sql",
+    "docs/v5/team-tournament/tt5/TT5-D_SECURITY_GUARDS.sql"
+  ],
+  "probe": {
+    "tournamentId": "phase23d-probe-tournament",
+    "matchupId": "phase23d-matchup-1",
+    "subMatchId": "phase23d-sub-1"
+  },
+  "cases": [
+    {
+      "id": "S01",
+      "name": "active assignment access",
+      "pass": true,
+      "accessActive": {
+        "ok": true,
+        "tenantId": "venue-staging-a",
+        "tournamentId": "phase23d-probe-tournament",
+        "matchId": "phase23d-sub-1",
+        "refereeMatchId": "phase23d-sub-1",
+        "canWrite": true,
+        "readOnly": false,
+        "blockCode": "active",
+        "assignmentStatus": "active",
+        "assignmentId": "b2036f74-6bc7-4d50-93d6-0fbb73dfdf04",
+        "assignmentVersion": "1",
+        "linkStatus": "provisioned",
+        "bridgeValid": true,
+        "matchFinalized": false,
+        "expiresAt": "2026-07-13T01:09:55.357+00:00",
+        "revokeReason": null,
+        "pendingCorrectionCount": 0,
+        "lastResultRevisionId": null,
+        "workspaceRoute": "/referee/match/phase23d-sub-1"
+      }
+    },
+    {
+      "id": "S02",
+      "name": "finalized read-only",
+      "pass": true,
+      "accessReadOnly": {
+        "ok": true,
+        "tenantId": "venue-staging-a",
+        "tournamentId": "phase23d-probe-tournament",
+        "matchId": "phase23d-sub-1",
+        "refereeMatchId": "phase23d-sub-1",
+        "canWrite": false,
+        "readOnly": true,
+        "blockCode": "read_only",
+        "assignmentStatus": "active",
+        "assignmentId": "b2036f74-6bc7-4d50-93d6-0fbb73dfdf04",
+        "assignmentVersion": "1",
+        "linkStatus": "finalized",
+        "bridgeValid": true,
+        "matchFinalized": true,
+        "expiresAt": "2026-07-13T01:09:56.277+00:00",
+        "revokeReason": null,
+        "pendingCorrectionCount": 0,
+        "lastResultRevisionId": "4ab6fb59-9dac-4514-9a57-2fe4719627c6",
+        "workspaceRoute": "/referee/match/phase23d-sub-1"
+      }
+    },
+    {
+      "id": "S03",
+      "name": "correction table exists",
+      "pass": true
+    }
+  ],
+  "verdict": "PASS",
+  "reportFile": "TT5D_SECURITY_REPORT.json",
+  "passCount": 3,
+  "totalCount": 3,
+  "allPass": true
+}

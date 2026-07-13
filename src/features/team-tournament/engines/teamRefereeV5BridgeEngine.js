@@ -25,12 +25,16 @@ export function resolveRefereeMatchId(externalSubMatchId) {
   return String(externalSubMatchId || "").trim();
 }
 
-export function buildRefereeWorkspaceRoute(externalSubMatchId) {
+export function buildRefereeWorkspaceRoute(externalSubMatchId, tournamentId = null) {
   const matchId = resolveRefereeMatchId(externalSubMatchId);
   if (!matchId) {
     return null;
   }
-  return `/referee/match/${matchId}`;
+  const base = `/referee/match/${matchId}`;
+  if (!tournamentId) {
+    return base;
+  }
+  return `${base}?tournamentId=${encodeURIComponent(String(tournamentId))}`;
 }
 
 export function isLegacyScoreBlocked(scoreOps) {

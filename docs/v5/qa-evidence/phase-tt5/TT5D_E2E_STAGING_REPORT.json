@@ -1,0 +1,62 @@
+{
+  "generatedAt": "2026-07-13T00:09:52.276Z",
+  "phase": "TT-5D-E2E",
+  "stagingRef": "qyewbxjsiiyufanzcjcq",
+  "productionImpact": "NONE",
+  "localCommitSha": "f36f7cbfcf5a1ca43ce62d567bc5cc3160c6671e",
+  "sqlPatches": [
+    "docs/v5/team-tournament/tt5/TT5-D_ASSIGNMENT_SAFETY.sql",
+    "docs/v5/team-tournament/tt5/TT5-D_REOPEN_RESULT_REVISION.sql",
+    "docs/v5/team-tournament/tt5/TT5-D_CORRECTION_WORKFLOW.sql",
+    "docs/v5/team-tournament/tt5/TT5-D_SECURITY_GUARDS.sql"
+  ],
+  "probe": {
+    "tournamentId": "phase23d-probe-tournament",
+    "matchupId": "phase23d-matchup-1",
+    "subMatchId": "phase23d-sub-1"
+  },
+  "cases": [
+    {
+      "id": "E01",
+      "name": "provision after assign",
+      "pass": true,
+      "provision": {
+        "ok": true,
+        "route": "/referee/match/phase23d-sub-1",
+        "linkId": "10d14114-d4cc-4484-a030-4ab21b973a50",
+        "status": "provisioned",
+        "version": 1,
+        "replayed": false,
+        "matchStateId": "venue-staging-a::phase23d-probe-tournament::phase23d-sub-1",
+        "provisionedAt": "2026-07-13T00:09:56.090329+00:00",
+        "refereeMatchId": "phase23d-sub-1",
+        "externalSubMatchId": "phase23d-sub-1",
+        "refereeAssignmentId": "b2036f74-6bc7-4d50-93d6-0fbb73dfdf04"
+      }
+    },
+    {
+      "id": "E02",
+      "name": "finalize + consume",
+      "pass": true,
+      "fin": {
+        "ok": true,
+        "locked": true
+      }
+    },
+    {
+      "id": "E03",
+      "name": "assignment created via RPC",
+      "pass": true
+    },
+    {
+      "id": "E04",
+      "name": "revoke blocks further access",
+      "pass": true
+    }
+  ],
+  "verdict": "PASS",
+  "reportFile": "TT5D_E2E_STAGING_REPORT.json",
+  "passCount": 4,
+  "totalCount": 4,
+  "allPass": true
+}

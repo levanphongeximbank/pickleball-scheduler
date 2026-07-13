@@ -22,11 +22,16 @@ export default function RefereeV5Workspace({
   showPrototypeBadge = true,
   accessToken = null,
   stagingFixtureId = "staging-doubles",
+  tournamentId = null,
+  matchId = null,
+  readOnly = false,
 }) {
   const localController = useRefereeMatchController(initialFixtureId);
   const remoteController = useRefereeRemoteMatchController({
     fixtureId: stagingFixtureId,
     accessToken,
+    tournamentId,
+    matchId,
   });
   const remoteMode = isRefereeV5RemoteMode();
   const controller = remoteMode ? remoteController : localController;
@@ -126,7 +131,7 @@ export default function RefereeV5Workspace({
 
       <RefereeActionPanel
         status={controller.state.status}
-        disabled={controller.actionsDisabled}
+        disabled={readOnly || controller.actionsDisabled}
         canUndo={controller.canUndo}
         timeoutActive={controller.timeoutActive}
         onCommand={handleCommand}
