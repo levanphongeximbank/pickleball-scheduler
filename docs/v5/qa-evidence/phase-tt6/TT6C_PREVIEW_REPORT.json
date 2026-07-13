@@ -1,22 +1,23 @@
 {
-  "generatedAt": "2026-07-13T09:37:00.000Z",
+  "generatedAt": "2026-07-13T07:56:12.345Z",
   "phase": "TT-6C",
   "productionImpact": "NONE",
-  "verdict": "BLOCKED",
-  "blockedAtStep": 1,
-  "reason": "Working tree not CLEAN; HEAD is TT-6B (26076d8), not a TT-6C commit. Preview deploy not started.",
-  "branch": "feature/tt6-realtime-sync",
-  "headSha": "26076d8b5565e9ea2260642d433c9482e602d742",
-  "headMessage": "feat(team-tournament): complete TT-6B realtime core service",
-  "workingTreeClean": false,
-  "uncommittedTt6cFiles": 28,
-  "previewDeploymentId": null,
-  "previewUrl": null,
+  "verdict": "PASS",
+  "previewUrl": "https://pickleball-scheduler-tt6-realtime-sync-8oeaq3xk6.vercel.app",
+  "deploymentId": "dpl_6LH3u6wUoCYBCHVHjo6TpAJntbEU",
+  "deploymentCommitSha": "c3eb7208c9cec71ca8291b3091670c4a0f5e5008",
+  "buildStatus": "READY",
   "flag": {
     "name": "VITE_TT_REALTIME_ENABLED",
-    "previewConfigured": "UNKNOWN",
+    "previewConfigured": true,
     "requiredValue": true,
     "productionValue": false
   },
-  "deployStatus": "NOT_STARTED"
+  "deploymentProtection": {
+    "enabled": true,
+    "bypassConfigured": true,
+    "protectionPassed": true,
+    "vercelProtection": "BYPASSED_FOR_AUTOMATION"
+  },
+  "commitMatch": null
 }
