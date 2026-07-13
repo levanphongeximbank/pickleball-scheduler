@@ -1,0 +1,45 @@
+{
+  "generatedAt": "2026-07-13T10:00:54.329Z",
+  "phase": "TT-6D",
+  "stagingRef": "qyewbxjsiiyufanzcjcq",
+  "productionImpact": "NONE",
+  "localCommitSha": "1d129e92743a9eba8b1e67db2b34557f0e0d09ff",
+  "cases": [
+    {
+      "id": "metrics_snapshot",
+      "name": "Observability snapshot exposes counters",
+      "pass": true,
+      "snapshot": {
+        "subscriptions_started": 0,
+        "subscriptions_closed": 0,
+        "reconnect_attempts": 0,
+        "fallback_polling_started": 0,
+        "fallback_polling_stopped": 0,
+        "duplicate_events": 2,
+        "stale_events": 0,
+        "payload_conflicts": 0,
+        "unauthorized_events": 0,
+        "snapshot_reload_success": 0,
+        "snapshot_reload_failure": 0,
+        "event_to_snapshot_latency_ms_total": 12,
+        "event_to_snapshot_latency_ms_count": 1,
+        "event_to_snapshot_latency_ms_avg": 12
+      }
+    },
+    {
+      "id": "debug_logger_redacts_payload",
+      "name": "Logger redacts payload and jwt",
+      "pass": true
+    },
+    {
+      "id": "debug_flag_enables_configure",
+      "name": "Debug configure path runs when flag on",
+      "pass": true
+    }
+  ],
+  "verdict": "PASS",
+  "reportFile": "TT6D_OBSERVABILITY_REPORT.json",
+  "passCount": 3,
+  "totalCount": 3,
+  "allPass": true
+}

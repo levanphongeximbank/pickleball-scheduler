@@ -1,9 +1,11 @@
+import { isTeamTournamentRealtimeDebugEnabled } from "./realtimeDebugFlags.js";
+
 /**
  * TT-6B injectable metrics/logger — no external vendor.
+ * TT-6D: optional debug logger when VITE_TT_REALTIME_DEBUG=true.
  */
 
-const defaultMetrics = {
-  subscriptions_started: 0,
+const defaultMetrics = {  subscriptions_started: 0,
   subscriptions_closed: 0,
   reconnect_attempts: 0,
   fallback_polling_started: 0,
@@ -69,13 +71,33 @@ export function createRealtimeObservability(seed = {}) {
 }
 
 let sharedObservability = createRealtimeObservability();
+let debugLoggerConfigured = false;
+
+/**
+ * Wire console debug logger when staging debug flag is on.
+ * Never logs payload, JWT, or secrets.
+ * @param {ReturnType<typeof createRealtimeObservability>} [obs]
+ */
+export function configureRealtimeObservabilityDebug(obs = sharedObservability) {
+  if (debugLoggerConfigured || !isTeamTournamentRealtimeDebugEnabled()) {
+    return;
+  }
+  obs.setLogger((entry) => {
+    if (typeof console !== "undefined" && typeof console.info === "function") {
+      console.info("[tt-realtime-debug]", JSON.stringify(entry));
+    }
+  });
+  debugLoggerConfigured = true;
+}
 
 export function getTeamTournamentRealtimeObservability() {
+  configureRealtimeObservabilityDebug(sharedObservability);
   return sharedObservability;
 }
 
 /** @internal tests */
 export function __resetTeamTournamentRealtimeObservabilityForTests() {
   sharedObservability = createRealtimeObservability();
+  debugLoggerConfigured = false;
   return sharedObservability;
 }

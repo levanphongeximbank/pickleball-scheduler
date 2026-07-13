@@ -1,0 +1,106 @@
+{
+  "generatedAt": "2026-07-13T10:00:33.862Z",
+  "phase": "TT-6D",
+  "productionImpact": "NONE",
+  "localCommitSha": "1d129e92743a9eba8b1e67db2b34557f0e0d09ff",
+  "verdict": "PASS",
+  "tt6d": "PASS",
+  "staging": "PASS",
+  "browser": "PASS",
+  "browserPassCount": "14/14",
+  "production": "UNTOUCHED",
+  "previewUrl": "https://pickleball-scheduler-tt6-realtime-sync-8oeaq3xk6.vercel.app",
+  "reports": [
+    "TT6D_STAGING_REPORT.json",
+    "TT6D_MULTI_DEVICE_BROWSER_REPORT.json",
+    "TT6D_OBSERVABILITY_REPORT.json",
+    "TT6D_FLAG_CONTRACT.json",
+    "TT6D_SERVICE_OBSERVABILITY_REPORT.json"
+  ],
+  "browserCases": [
+    {
+      "id": "bypass_configured",
+      "pass": true,
+      "detail": "source=vercel_api",
+      "failureClass": null
+    },
+    {
+      "id": "protection_passed",
+      "pass": true,
+      "detail": "App login reachable (HTTP 200)",
+      "failureClass": null
+    },
+    {
+      "id": "five_contexts_created",
+      "pass": true,
+      "detail": "contexts=5",
+      "failureClass": null
+    },
+    {
+      "id": "btc_a_render",
+      "pass": true,
+      "detail": "email=owner@staging.local bodyLen=1536 url=https://pickleball-scheduler-tt6-realtime-sync-8oeaq3xk6.vercel.app/tournament/team/phase23d-probe-tournament",
+      "failureClass": null
+    },
+    {
+      "id": "btc_b_render",
+      "pass": true,
+      "detail": "email=owner-b@staging.local bodyLen=343 url=https://pickleball-scheduler-tt6-realtime-sync-8oeaq3xk6.vercel.app/tournament/team/phase23d-probe-tournament",
+      "failureClass": null
+    },
+    {
+      "id": "captain_a_render",
+      "pass": true,
+      "detail": "email=player@staging.local bodyLen=902 url=https://pickleball-scheduler-tt6-realtime-sync-8oeaq3xk6.vercel.app/team-portal/phase23d-probe-tournament",
+      "failureClass": null
+    },
+    {
+      "id": "captain_b_render",
+      "pass": true,
+      "detail": "email=club@staging.local bodyLen=890 url=https://pickleball-scheduler-tt6-realtime-sync-8oeaq3xk6.vercel.app/team-portal/phase23d-probe-tournament",
+      "failureClass": null
+    },
+    {
+      "id": "referee_v5_render",
+      "pass": true,
+      "detail": "email=owner@staging.local bodyLen=307 url=https://pickleball-scheduler-tt6-realtime-sync-8oeaq3xk6.vercel.app/team-referee/phase23d-probe-tournament",
+      "failureClass": null
+    },
+    {
+      "id": "sessions_isolated_auth",
+      "pass": true,
+      "detail": "btc_a=owner@staging.local | btc_b=owner-b@staging.local | captain_a=player@staging.local | captain_b=club@staging.local | referee_v5=owner@staging.local",
+      "failureClass": null
+    },
+    {
+      "id": "captain_portals_independent",
+      "pass": true,
+      "detail": "captainA=902 captainB=890",
+      "failureClass": null
+    },
+    {
+      "id": "captain_team_scope",
+      "pass": true,
+      "detail": "each captain portal scoped to own team label",
+      "failureClass": null
+    },
+    {
+      "id": "realtime_websocket_any_context",
+      "pass": true,
+      "detail": "websocket_connections=3",
+      "failureClass": null
+    },
+    {
+      "id": "cross_device_snapshot_activity",
+      "pass": true,
+      "detail": "captainA_rpc_after_peer_activity=444 total=1808 before=1364",
+      "failureClass": null
+    },
+    {
+      "id": "no_false_success",
+      "pass": true,
+      "detail": "btc_a:https://pickleball-scheduler-tt6-realtime-sync-8oeaq3xk6.vercel.app/tournament/team/phase23d-probe-tournament | btc_b:https://pickleball-scheduler-tt6-realtime-sync-8oeaq3xk6.vercel.app/tournament/team/phase23d-probe-tournament | captain_a:https://pickleball-scheduler-tt6-realtime-sync-8oeaq3xk6.vercel.app/team-portal/phase23d-probe-tournament | captain_b:https://pickleball-scheduler-tt6-realtime-sync-8oeaq3xk6.vercel.app/team-portal/phase23d-probe-tournament | referee_v5:https://pickleball-scheduler-tt6-realtime-sync-8oeaq3xk6.vercel.app/team-referee/phase23d-probe-tournament",
+      "failureClass": null
+    }
+  ]
+}
