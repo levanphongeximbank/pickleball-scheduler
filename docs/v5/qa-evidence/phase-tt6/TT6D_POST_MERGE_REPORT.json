@@ -1,0 +1,25 @@
+{
+  "generatedAt": "2026-07-13T10:26:00.000Z",
+  "phase": "TT-6D",
+  "gate": "POST_MERGE_CLEANUP",
+  "productionImpact": "NONE",
+  "verdict": "PASS",
+  "mergeCommitSha": "c93764d39a6938a2b3933542b8d43f098c81b0d1",
+  "sourceCommitSha": "2cdd2c7",
+  "authoritativeBranch": "feature/competition-core-standardization",
+  "regression": {
+    "tt6Unit": "40/40 PASS",
+    "tt6dStaging": "PASS",
+    "teamTournamentCore": "PASS",
+    "refereeV5Sample": "PASS",
+    "build": "PASS"
+  },
+  "branchCleanup": {
+    "localDeleted": ["feature/tt6d-multi-device-observability"],
+    "remoteDeleted": [
+      "feature/tt6d-multi-device-observability",
+      "feature/tt6-realtime-sync"
+    ]
+  },
+  "production": "UNTOUCHED"
+}
