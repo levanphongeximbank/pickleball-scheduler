@@ -758,6 +758,7 @@ export default function TeamTournamentSetup() {
               size="small"
               startIcon={<ContentCopyIcon />}
               onClick={handleCopyCaptainLink}
+              sx={{ minHeight: { xs: 44, md: 36 }, py: { xs: 1.25, md: 0.75 } }}
             >
               Link đội trưởng
             </Button>
@@ -769,6 +770,7 @@ export default function TeamTournamentSetup() {
               variant="outlined"
               size="small"
               startIcon={<SportsIcon />}
+              sx={{ minHeight: { xs: 44, md: 36 }, py: { xs: 1.25, md: 0.75 } }}
             >
               Portal đội trưởng
             </Button>
@@ -779,6 +781,7 @@ export default function TeamTournamentSetup() {
             variant="outlined"
             size="small"
             startIcon={<SportsIcon />}
+            sx={{ minHeight: { xs: 44, md: 36 }, py: { xs: 1.25, md: 0.75 } }}
           >
             Trọng tài
           </Button>

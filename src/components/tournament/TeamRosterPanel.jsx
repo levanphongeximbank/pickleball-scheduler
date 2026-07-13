@@ -22,6 +22,7 @@ import PersonAddIcon from "@mui/icons-material/PersonAdd";
 import AddIcon from "@mui/icons-material/Add";
 
 import { loadPlayersForClub } from "../../domain/clubStorage.js";
+import { useIsMobile } from "../../features/mobile/hooks/useIsMobile.js";
 import { getPlayerGenderKey } from "../../models/player.js";
 import {
   computeTeamRosterStats,
@@ -44,6 +45,12 @@ import TournamentPlayerQuickAddDialog from "./TournamentPlayerQuickAddDialog.jsx
 import { FORMAT_PRESET } from "../../features/team-tournament/constants.js";
 
 const ALL_CLUBS_FILTER = "__all__";
+
+/** AAC touch targets: ≥44px on mobile/tablet-portrait; default density on desktop (md+). */
+const MOBILE_TOUCH_BUTTON_SX = {
+  minHeight: { xs: 44, md: 36 },
+  py: { xs: 1.25, md: 0.75 },
+};
 
 const GENDER_FILTER_OPTIONS = [
   { value: "all", label: "Tất cả giới tính" },
@@ -276,7 +283,12 @@ function TeamCard({
                 onChange={(event) => setLogoUrl(event.target.value)}
                 fullWidth
               />
-              <Button startIcon={<SaveIcon />} variant="outlined" onClick={handleSaveProfile}>
+              <Button
+                startIcon={<SaveIcon />}
+                variant="outlined"
+                onClick={handleSaveProfile}
+                sx={MOBILE_TOUCH_BUTTON_SX}
+              >
                 Lưu
               </Button>
             </Stack>
@@ -350,6 +362,7 @@ function TeamCard({
                 variant="contained"
                 onClick={handleAddPlayer}
                 disabled={!selectedPlayer}
+                sx={MOBILE_TOUCH_BUTTON_SX}
               >
                 Thêm
               </Button>
@@ -358,6 +371,7 @@ function TeamCard({
                 variant="outlined"
                 onClick={() => setQuickAddOpen(true)}
                 disabled={!clubId}
+                sx={MOBILE_TOUCH_BUTTON_SX}
               >
                 Thêm mới
               </Button>
@@ -389,7 +403,12 @@ function TeamCard({
                   ))}
                 </Select>
               </FormControl>
-              <Button variant="outlined" onClick={handleAssignCaptain} disabled={!captainId}>
+              <Button
+                variant="outlined"
+                onClick={handleAssignCaptain}
+                disabled={!captainId}
+                sx={MOBILE_TOUCH_BUTTON_SX}
+              >
                 Gán đội trưởng
               </Button>
             </Stack>
@@ -416,7 +435,7 @@ function TeamCard({
                   ))}
               </Select>
             </FormControl>
-            <Button variant="outlined" onClick={handleAssignDeputies}>
+            <Button variant="outlined" onClick={handleAssignDeputies} sx={MOBILE_TOUCH_BUTTON_SX}>
               Lưu đội phó
             </Button>
           </>
@@ -486,6 +505,7 @@ export default function TeamRosterPanel({
   onError,
   onMessage,
 }) {
+  const isMobile = useIsMobile();
   const [teamName, setTeamName] = useState("");
   const [aiPairingOpen, setAiPairingOpen] = useState(false);
 
@@ -561,11 +581,21 @@ export default function TeamRosterPanel({
             fullWidth
             sx={{ flex: 1, minWidth: 200 }}
           />
-          <Button variant="contained" onClick={handleCreateTeam}>
+          <Button
+            variant="contained"
+            onClick={handleCreateTeam}
+            fullWidth={isMobile}
+            sx={MOBILE_TOUCH_BUTTON_SX}
+          >
             Tạo đội
           </Button>
           {isMlp ? (
-            <Button variant="outlined" onClick={() => setAiPairingOpen(true)}>
+            <Button
+              variant="outlined"
+              onClick={() => setAiPairingOpen(true)}
+              fullWidth={isMobile}
+              sx={MOBILE_TOUCH_BUTTON_SX}
+            >
               AI ghép đội
             </Button>
           ) : null}

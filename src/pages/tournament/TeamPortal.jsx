@@ -582,6 +582,7 @@ function MatchupLineupCard({
               startIcon={<SaveIcon />}
               onClick={handleSaveDraft}
               disabled={busy || !canSaveDraft}
+              sx={{ minHeight: { xs: 44, md: 36 }, py: { xs: 1.25, md: 0.75 } }}
             >
               Lưu nháp
             </Button>
@@ -590,6 +591,7 @@ function MatchupLineupCard({
               startIcon={<SendIcon />}
               onClick={handleSubmit}
               disabled={busy || !canSubmitLineup}
+              sx={{ minHeight: { xs: 44, md: 36 }, py: { xs: 1.25, md: 0.75 } }}
             >
               Xác nhận nộp
             </Button>
@@ -845,12 +847,20 @@ export default function TeamPortal() {
         onBack={() => navigate("/tournament")}
         backLabel="Quay lại"
         headerActions={
-          <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
-            <Chip label="Portal đội trưởng" color="primary" size="small" />
+          <Stack
+            direction={{ xs: "column", sm: "row" }}
+            spacing={1}
+            flexWrap="wrap"
+            useFlexGap
+            sx={{ minWidth: 0, maxWidth: "100%" }}
+          >
+            <Chip label="Portal đội trưởng" color="primary" size="small" sx={{ maxWidth: "100%" }} />
             {access.captainTeam ? (
-              <Chip label={access.captainTeam.name} variant="outlined" size="small" />
+              <Chip label={access.captainTeam.name} variant="outlined" size="small" sx={{ maxWidth: "100%" }} />
             ) : null}
-            {captainRoleLabel ? <Chip label={captainRoleLabel} size="small" /> : null}
+            {captainRoleLabel ? (
+              <Chip label={captainRoleLabel} size="small" sx={{ maxWidth: "100%" }} />
+            ) : null}
           </Stack>
         }
       >
@@ -872,7 +882,12 @@ export default function TeamPortal() {
         ) : null}
 
         <Stack direction="row" justifyContent="flex-end">
-          <Button size="small" onClick={() => reload()} disabled={loading}>
+          <Button
+            size="small"
+            onClick={() => reload()}
+            disabled={loading}
+            sx={{ minHeight: { xs: 44, md: 36 }, py: { xs: 1.25, md: 0.75 } }}
+          >
             Tải lại
           </Button>
         </Stack>
