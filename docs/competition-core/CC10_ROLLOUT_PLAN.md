@@ -13,6 +13,7 @@
 ## Stage 1 — Staging shadow
 
 - Entry: CC-10 PASS, build green, owner GO
+- **Status (2026-07-13):** Merge PASS; local 20-case shadow PASS; Vercel deploy/flags **pending**
 - Flags: CORE=ON, module SHADOW flags ON (except Rating per RPC verify)
 - Scope: staging project `qyewbxjsiiyufanzcjcq`
 - Monitoring: Decision Trace parity, mismatch policy

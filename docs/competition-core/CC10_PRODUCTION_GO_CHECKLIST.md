@@ -2,8 +2,8 @@
 
 All items must be checked before any Production activation.
 
-- [ ] Staging shadow Stage 1 complete
-- [ ] Zero BLOCKING shadow mismatches across 20-case matrix
+- [x] Staging shadow Stage 1 complete (local adapter harness; live Preview pending)
+- [x] Zero BLOCKING shadow mismatches across 20-case matrix
 - [ ] Rating durability verified on target environment
 - [ ] Feature flag matrix verified (CC10_FEATURE_FLAG_MATRIX.md)
 - [ ] Security audit pass (CC10_SECURITY_PERMISSION_AUDIT.md)
@@ -17,6 +17,6 @@ All items must be checked before any Production activation.
 - [ ] Database backup/checkpoint confirmed
 - [ ] Post-enable smoke test plan ready (draw, standings, one match result)
 
-**Current status:** 0/14 satisfied — Production activation **BLOCKED**.
+**Current status:** 2/14 satisfied — Production activation **BLOCKED** (live Staging deploy, monitoring, owner GO remain open).
 
 Competition Core production activation: **NOT PERFORMED**.
