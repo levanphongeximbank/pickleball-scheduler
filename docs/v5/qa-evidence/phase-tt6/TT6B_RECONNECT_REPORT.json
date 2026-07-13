@@ -1,0 +1,24 @@
+{
+  "generatedAt": "2026-07-13T01:28:48.517Z",
+  "phase": "TT-6B",
+  "stagingRef": "qyewbxjsiiyufanzcjcq",
+  "productionImpact": "NONE",
+  "localCommitSha": "bb1efd76361ebc336103604456b04ee2bc49aa15",
+  "probe": {
+    "tournamentId": "phase23d-probe-tournament",
+    "matchupId": "phase23d-matchup-1",
+    "subMatchId": "phase23d-sub-1"
+  },
+  "cases": [
+    {
+      "id": "reconnect_api",
+      "name": "reconnect() callable",
+      "pass": true
+    }
+  ],
+  "verdict": "PASS",
+  "reportFile": "TT6B_RECONNECT_REPORT.json",
+  "passCount": 1,
+  "totalCount": 1,
+  "allPass": true
+}

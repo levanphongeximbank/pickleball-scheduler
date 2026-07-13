@@ -1,0 +1,34 @@
+{
+  "generatedAt": "2026-07-13T01:28:48.492Z",
+  "phase": "TT-6B",
+  "stagingRef": "qyewbxjsiiyufanzcjcq",
+  "productionImpact": "NONE",
+  "localCommitSha": "bb1efd76361ebc336103604456b04ee2bc49aa15",
+  "probe": {
+    "tournamentId": "phase23d-probe-tournament",
+    "matchupId": "phase23d-matchup-1",
+    "subMatchId": "phase23d-sub-1"
+  },
+  "cases": [
+    {
+      "id": "sub_created",
+      "name": "Subscription created",
+      "pass": true
+    },
+    {
+      "id": "polling_mode",
+      "name": "Flag off polling mode",
+      "pass": true
+    },
+    {
+      "id": "cleanup",
+      "name": "Unsubscribe cleanup",
+      "pass": true
+    }
+  ],
+  "verdict": "PASS",
+  "reportFile": "TT6B_CONNECTION_REPORT.json",
+  "passCount": 3,
+  "totalCount": 3,
+  "allPass": true
+}

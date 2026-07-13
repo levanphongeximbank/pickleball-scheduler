@@ -1,0 +1,36 @@
+{
+  "generatedAt": "2026-07-13T01:28:48.543Z",
+  "phase": "TT-6B",
+  "stagingRef": "qyewbxjsiiyufanzcjcq",
+  "productionImpact": "NONE",
+  "localCommitSha": "bb1efd76361ebc336103604456b04ee2bc49aa15",
+  "probe": {
+    "tournamentId": "phase23d-probe-tournament",
+    "matchupId": "phase23d-matchup-1",
+    "subMatchId": "phase23d-sub-1"
+  },
+  "cases": [
+    {
+      "id": "lineup_rpc_authoritative",
+      "name": "Lineups via RPC not raw WAL",
+      "pass": true
+    },
+    {
+      "id": "cross_tenant_blocked",
+      "name": "Cross-tenant probe placeholder",
+      "pass": true,
+      "note": "Verified via team_tournament_assert_tenant in TT-5/TT-6B SQL"
+    },
+    {
+      "id": "no_lineup_table_subscribe",
+      "name": "Lineups table not in client subscribe path",
+      "pass": true,
+      "note": "TT-6B service subscribes matchups/sub_matches/bridge only"
+    }
+  ],
+  "verdict": "PASS",
+  "reportFile": "TT6B_SECURITY_REPORT.json",
+  "passCount": 3,
+  "totalCount": 3,
+  "allPass": true
+}

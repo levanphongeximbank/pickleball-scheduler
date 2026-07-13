@@ -1,0 +1,58 @@
+{
+  "generatedAt": "2026-07-13T01:30:00.000Z",
+  "phase": "TT-6B",
+  "stagingRef": "qyewbxjsiiyufanzcjcq",
+  "productionImpact": "NONE",
+  "migrationsApplied": [
+    "tt6b_realtime_security",
+    "tt6b_realtime_core"
+  ],
+  "sqlFiles": [
+    "docs/v5/team-tournament/tt6/TT6-B_REALTIME_SECURITY.sql",
+    "docs/v5/team-tournament/tt6/TT6-B_REALTIME_CORE.sql"
+  ],
+  "applyOrder": ["SECURITY (RLS) first", "CORE (publication) second"],
+  "cases": [
+    {
+      "id": "rls_policies",
+      "name": "tt6_* SELECT policies present",
+      "pass": true,
+      "detail": ["tt6_matchups_realtime_select", "tt6_sub_matches_realtime_select", "tt6_bridge_realtime_select"]
+    },
+    {
+      "id": "publication_narrow",
+      "name": "Only matchups/sub_matches/bridge published",
+      "pass": true,
+      "published": [
+        "team_tournament_matchups",
+        "team_tournament_sub_matches",
+        "team_sub_match_referee_links"
+      ]
+    },
+    {
+      "id": "no_sensitive_publish",
+      "name": "Lineups/outbox/inbox/command_log NOT published",
+      "pass": true,
+      "excluded": [
+        "team_tournament_lineups",
+        "team_tournament_command_log",
+        "team_tournament_referee_event_inbox",
+        "match_integration_outbox"
+      ]
+    },
+    {
+      "id": "tenant_helper",
+      "name": "team_tournament_tenant_allowed boolean helper",
+      "pass": true
+    },
+    {
+      "id": "revoked_referee_blocked",
+      "name": "Bridge policy requires revoked_at IS NULL",
+      "pass": true
+    }
+  ],
+  "verdict": "PASS",
+  "passCount": 5,
+  "totalCount": 5,
+  "allPass": true
+}

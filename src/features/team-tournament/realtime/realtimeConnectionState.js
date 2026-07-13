@@ -1,0 +1,132 @@
+/**
+ * TT-6B unified connection state machine.
+ */
+export const TT_REALTIME_CONNECTION = Object.freeze({
+  IDLE: "idle",
+  CONNECTING: "connecting",
+  CONNECTED: "connected",
+  DEGRADED: "degraded",
+  RECONNECTING: "reconnecting",
+  DISCONNECTED: "disconnected",
+  UNAUTHORIZED: "unauthorized",
+  ERROR: "error",
+  CLOSED: "closed",
+});
+
+/** @type {Record<string, Set<string>>} */
+export const TT_REALTIME_TRANSITIONS = Object.freeze({
+  [TT_REALTIME_CONNECTION.IDLE]: new Set([
+    TT_REALTIME_CONNECTION.CONNECTING,
+    TT_REALTIME_CONNECTION.DEGRADED,
+    TT_REALTIME_CONNECTION.CLOSED,
+  ]),
+  [TT_REALTIME_CONNECTION.CONNECTING]: new Set([
+    TT_REALTIME_CONNECTION.CONNECTED,
+    TT_REALTIME_CONNECTION.DEGRADED,
+    TT_REALTIME_CONNECTION.RECONNECTING,
+    TT_REALTIME_CONNECTION.DISCONNECTED,
+    TT_REALTIME_CONNECTION.UNAUTHORIZED,
+    TT_REALTIME_CONNECTION.ERROR,
+    TT_REALTIME_CONNECTION.CLOSED,
+  ]),
+  [TT_REALTIME_CONNECTION.CONNECTED]: new Set([
+    TT_REALTIME_CONNECTION.DEGRADED,
+    TT_REALTIME_CONNECTION.RECONNECTING,
+    TT_REALTIME_CONNECTION.DISCONNECTED,
+    TT_REALTIME_CONNECTION.UNAUTHORIZED,
+    TT_REALTIME_CONNECTION.ERROR,
+    TT_REALTIME_CONNECTION.CLOSED,
+  ]),
+  [TT_REALTIME_CONNECTION.DEGRADED]: new Set([
+    TT_REALTIME_CONNECTION.CONNECTED,
+    TT_REALTIME_CONNECTION.RECONNECTING,
+    TT_REALTIME_CONNECTION.DISCONNECTED,
+    TT_REALTIME_CONNECTION.UNAUTHORIZED,
+    TT_REALTIME_CONNECTION.ERROR,
+    TT_REALTIME_CONNECTION.CLOSED,
+  ]),
+  [TT_REALTIME_CONNECTION.RECONNECTING]: new Set([
+    TT_REALTIME_CONNECTION.CONNECTED,
+    TT_REALTIME_CONNECTION.DEGRADED,
+    TT_REALTIME_CONNECTION.DISCONNECTED,
+    TT_REALTIME_CONNECTION.UNAUTHORIZED,
+    TT_REALTIME_CONNECTION.ERROR,
+    TT_REALTIME_CONNECTION.CLOSED,
+  ]),
+  [TT_REALTIME_CONNECTION.DISCONNECTED]: new Set([
+    TT_REALTIME_CONNECTION.CONNECTING,
+    TT_REALTIME_CONNECTION.RECONNECTING,
+    TT_REALTIME_CONNECTION.DEGRADED,
+    TT_REALTIME_CONNECTION.CLOSED,
+  ]),
+  [TT_REALTIME_CONNECTION.UNAUTHORIZED]: new Set([
+    TT_REALTIME_CONNECTION.CLOSED,
+    TT_REALTIME_CONNECTION.IDLE,
+  ]),
+  [TT_REALTIME_CONNECTION.ERROR]: new Set([
+    TT_REALTIME_CONNECTION.RECONNECTING,
+    TT_REALTIME_CONNECTION.DEGRADED,
+    TT_REALTIME_CONNECTION.DISCONNECTED,
+    TT_REALTIME_CONNECTION.CLOSED,
+  ]),
+  [TT_REALTIME_CONNECTION.CLOSED]: new Set([]),
+});
+
+/**
+ * @param {string} fromState
+ * @param {string} toState
+ * @returns {{ ok: boolean, code?: string }}
+ */
+export function transitionConnectionState(fromState, toState) {
+  const from = fromState || TT_REALTIME_CONNECTION.IDLE;
+  const allowed = TT_REALTIME_TRANSITIONS[from];
+  if (!allowed || !allowed.has(toState)) {
+    return {
+      ok: false,
+      code: "invalid_connection_transition",
+      from,
+      to: toState,
+    };
+  }
+  return { ok: true, from, to: toState };
+}
+
+/**
+ * @param {string} state
+ * @returns {boolean}
+ */
+export function isPollingEligibleState(state) {
+  return (
+    state === TT_REALTIME_CONNECTION.DEGRADED ||
+    state === TT_REALTIME_CONNECTION.DISCONNECTED ||
+    state === TT_REALTIME_CONNECTION.RECONNECTING ||
+    state === TT_REALTIME_CONNECTION.ERROR
+  );
+}
+
+/**
+ * Map Referee V5 connection enum to TT unified state.
+ * @param {string} refereeState
+ * @returns {string}
+ */
+export function mapRefereeV5ConnectionState(refereeState) {
+  switch (refereeState) {
+    case "CONNECTING":
+      return TT_REALTIME_CONNECTION.CONNECTING;
+    case "CONNECTED":
+    case "SYNCED":
+      return TT_REALTIME_CONNECTION.CONNECTED;
+    case "SYNCING":
+      return TT_REALTIME_CONNECTION.CONNECTING;
+    case "RECONNECTING":
+      return TT_REALTIME_CONNECTION.RECONNECTING;
+    case "DISCONNECTED":
+      return TT_REALTIME_CONNECTION.DISCONNECTED;
+    case "CONFLICT":
+      return TT_REALTIME_CONNECTION.ERROR;
+    case "ERROR":
+      return TT_REALTIME_CONNECTION.ERROR;
+    default:
+      return TT_REALTIME_CONNECTION.IDLE;
+  }
+}

@@ -26,7 +26,6 @@ import { mapSetupDeadlineMeta } from "../services/lineupDeadlineService.js";
 import { mapTournamentToAggregate } from "./teamTournamentRepositoryAggregate.js";
 import {
   notImplemented,
-  notImplementedSubscriptionResult,
   normalizeRepositoryResult,
   rejectClientViewerTeamIdForCloud,
   repositoryFailure,
@@ -40,6 +39,7 @@ import {
   isTeamTournamentRpcGuardDeployed,
 } from "./teamTournamentRpcGuards.js";
 import { REPOSITORY_ERROR_CODES } from "./teamTournamentRepositoryTypes.js";
+import { subscribeCloudTournament } from "./teamTournamentRealtimeRepository.js";
 
 const replayCache = new Map();
 
@@ -492,8 +492,8 @@ export function createCloudTeamTournamentRepository() {
       return success;
     },
 
-    async subscribeTournament() {
-      return notImplementedSubscriptionResult();
+    async subscribeTournament(clubId, tournamentId, handlers = {}) {
+      return subscribeCloudTournament(this, clubId, tournamentId, handlers);
     },
   };
 }
