@@ -4,6 +4,22 @@ All notable changes to Pickleball Scheduler Pro are documented in this file.
 
 ## [Unreleased] — v5 Platform Edition
 
+### TT-7 Integration & Post-TT7 Hygiene (2026-07-13)
+
+Integration: `feature/competition-core-standardization` @ `cd05d41` — TT-7 merged
+(PR #5 @ `99e5749`), TT-6C merged (PR #6 @ `1d129e9`), TT-6D merged (PR #8 @ `c93764d`),
+H3 test hygiene merged (PR #7).
+
+## TT-7
+
+- Completed
+- H1 WIP preservation
+- H2 generated/stale cleanup
+- H3 test hygiene
+- TT-6C realtime sync integrated
+- TT-6D multi-device observability integrated
+- No production impact
+
 ### Audited (Phase 13 — full software audit 2026-07-03)
 - Phase 13 full software audit — `docs/v5/PHASE_13_V5_FULL_SOFTWARE_AUDIT.md`
 - Local gates re-confirmed: `npm test` 723/723, `build`, `lint` (0 errors), `git diff --check` clean
