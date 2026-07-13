@@ -409,7 +409,7 @@ test("30 rating v2 flag still independent", () => {
   assert.equal(isRatingV2Enabled(formationV2Env), false);
 });
 
-test("fixture matrix performance baseline", () => {
+test("fixture matrix performance baseline reports non-pathological overhead", () => {
   const sizes = ["4_players_even", "8_players", "12_players", "20_players"];
   for (const label of sizes) {
     const fixture = FORMATION_FIXTURE_MATRIX.find((f) => f.label === label);
@@ -424,8 +424,35 @@ test("fixture matrix performance baseline", () => {
           legacyExecutor: mlpExecutor,
         }),
     });
-    assert.ok(report.legacyDurationMs >= 0);
-    assert.ok(report.shadowDurationMs >= report.legacyDurationMs);
+    assert.ok(Number.isFinite(report.legacyDurationMs) && report.legacyDurationMs >= 0);
+    assert.ok(Number.isFinite(report.shadowDurationMs) && report.shadowDurationMs >= 0);
+    assert.ok(Number.isFinite(report.adapterDurationMs) && report.adapterDurationMs >= 0);
+    // Avoid sub-ms ordering assertions — shadow includes legacy + adapter and may measure
+    // faster than an isolated legacy call under full-suite CPU contention.
+    const overheadMs = report.shadowDurationMs - report.legacyDurationMs;
+    assert.ok(
+      overheadMs < 30_000,
+      `pathological shadow overhead for ${label}: ${overheadMs}ms`
+    );
+    assert.ok(report.candidateCount >= 0);
+  }
+});
+
+test("fixture matrix shadow correctness under performance harness", () => {
+  const sizes = ["4_players_even", "8_players"];
+  for (const label of sizes) {
+    const fixture = FORMATION_FIXTURE_MATRIX.find((f) => f.label === label);
+    const payload = buildPayloadFromFixture(fixture);
+    const result = runFormationShadowComparison({
+      strategy: label,
+      legacyPayload: payload,
+      envSource: formationV2Env,
+      legacyExecutor: mlpExecutor,
+    });
+    assert.equal(result.bridge.usedCanonical, true);
+    assert.equal(result.bridge.outputPreserved, true);
+    assert.equal(result.sideEffectSafe, true);
+    assert.equal(result.comparison.pairMembershipParity, true);
   }
 });
 
