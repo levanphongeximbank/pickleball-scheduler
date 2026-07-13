@@ -1,0 +1,92 @@
+{
+  "generatedAt": "2026-07-13T12:44:25.958Z",
+  "project": "pickleball-scheduler-tt6-realtime-sync",
+  "team": "pickleball-scheduler",
+  "environment": "preview",
+  "gitBranch": null,
+  "stagingRef": "qyewbxjsiiyufanzcjcq",
+  "beforeEnvListExcerpt": [
+    "",
+    " name                               value               environments    created    ",
+    " VITE_COMPETITION_CORE_ENABLED      Encrypted           Preview         38s ago    ",
+    "",
+    ""
+  ],
+  "flagSnapshot": {
+    "VITE_COMPETITION_CORE_ENABLED": "true",
+    "VITE_COMPETITION_CORE_RULES_V2_ENABLED": "true",
+    "VITE_COMPETITION_CORE_DRAW_V2_ENABLED": "true",
+    "VITE_COMPETITION_CORE_FORMATION_V2_ENABLED": "true",
+    "VITE_COMPETITION_CORE_MATCHMAKING_V2_ENABLED": "true",
+    "VITE_COMPETITION_CORE_STANDINGS_V2_ENABLED": "true",
+    "VITE_COMPETITION_CORE_SCHEDULING_V2_ENABLED": "true",
+    "VITE_COMPETITION_CORE_RATING_V2_ENABLED": "true",
+    "VITE_TEAM_TOURNAMENT_DATA_MODE": "shadow",
+    "VITE_TEAM_TOURNAMENT_TT1B_RPC_GUARDS": "deployed",
+    "VITE_SUPABASE_URL": "https://qyewbxjsiiyufanzcjcq.supabase.co",
+    "VITE_SUPABASE_ANON_KEY": "[REDACTED]"
+  },
+  "applyResults": [
+    {
+      "name": "VITE_SUPABASE_URL",
+      "ok": true,
+      "detail": "npm warn Unknown env config \"devdir\". This will stop working in the next major version of npm. See `npm help npmrc` for supported config options.\nVercel CLI 55.0.0 (Node.js 24.18.0)\nRetrieving project"
+    },
+    {
+      "name": "VITE_SUPABASE_ANON_KEY",
+      "ok": true,
+      "detail": "npm warn Unknown env config \"devdir\". This will stop working in the next major version of npm. See `npm help npmrc` for supported config options.\nVercel CLI 55.0.0 (Node.js 24.18.0)\nRetrieving project"
+    },
+    {
+      "name": "VITE_COMPETITION_CORE_ENABLED",
+      "ok": true,
+      "detail": "npm warn Unknown env config \"devdir\". This will stop working in the next major version of npm. See `npm help npmrc` for supported config options.\nVercel CLI 55.0.0 (Node.js 24.18.0)\nRetrieving project"
+    },
+    {
+      "name": "VITE_COMPETITION_CORE_RULES_V2_ENABLED",
+      "ok": true,
+      "detail": "npm warn Unknown env config \"devdir\". This will stop working in the next major version of npm. See `npm help npmrc` for supported config options.\nVercel CLI 55.0.0 (Node.js 24.18.0)\nRetrieving project"
+    },
+    {
+      "name": "VITE_COMPETITION_CORE_DRAW_V2_ENABLED",
+      "ok": true,
+      "detail": "npm warn Unknown env config \"devdir\". This will stop working in the next major version of npm. See `npm help npmrc` for supported config options.\nVercel CLI 55.0.0 (Node.js 24.18.0)\nRetrieving project"
+    },
+    {
+      "name": "VITE_COMPETITION_CORE_FORMATION_V2_ENABLED",
+      "ok": true,
+      "detail": "npm warn Unknown env config \"devdir\". This will stop working in the next major version of npm. See `npm help npmrc` for supported config options.\nVercel CLI 55.0.0 (Node.js 24.18.0)\nRetrieving project"
+    },
+    {
+      "name": "VITE_COMPETITION_CORE_MATCHMAKING_V2_ENABLED",
+      "ok": true,
+      "detail": "npm warn Unknown env config \"devdir\". This will stop working in the next major version of npm. See `npm help npmrc` for supported config options.\nVercel CLI 55.0.0 (Node.js 24.18.0)\nRetrieving project"
+    },
+    {
+      "name": "VITE_COMPETITION_CORE_STANDINGS_V2_ENABLED",
+      "ok": true,
+      "detail": "npm warn Unknown env config \"devdir\". This will stop working in the next major version of npm. See `npm help npmrc` for supported config options.\nVercel CLI 55.0.0 (Node.js 24.18.0)\nRetrieving project"
+    },
+    {
+      "name": "VITE_COMPETITION_CORE_SCHEDULING_V2_ENABLED",
+      "ok": true,
+      "detail": "npm warn Unknown env config \"devdir\". This will stop working in the next major version of npm. See `npm help npmrc` for supported config options.\nVercel CLI 55.0.0 (Node.js 24.18.0)\nRetrieving project"
+    },
+    {
+      "name": "VITE_COMPETITION_CORE_RATING_V2_ENABLED",
+      "ok": true,
+      "detail": "npm warn Unknown env config \"devdir\". This will stop working in the next major version of npm. See `npm help npmrc` for supported config options.\nVercel CLI 55.0.0 (Node.js 24.18.0)\nRetrieving project"
+    },
+    {
+      "name": "VITE_TEAM_TOURNAMENT_DATA_MODE",
+      "ok": true,
+      "detail": "npm warn Unknown env config \"devdir\". This will stop working in the next major version of npm. See `npm help npmrc` for supported config options.\nVercel CLI 55.0.0 (Node.js 24.18.0)\nRetrieving project"
+    },
+    {
+      "name": "VITE_TEAM_TOURNAMENT_TT1B_RPC_GUARDS",
+      "ok": true,
+      "detail": "npm warn Unknown env config \"devdir\". This will stop working in the next major version of npm. See `npm help npmrc` for supported config options.\nVercel CLI 55.0.0 (Node.js 24.18.0)\nRetrieving project"
+    }
+  ],
+  "allOk": true
+}

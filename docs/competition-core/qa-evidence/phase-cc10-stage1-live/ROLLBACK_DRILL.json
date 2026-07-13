@@ -1,0 +1,20 @@
+{
+  "generatedAt": "2026-07-13T13:10:00.000Z",
+  "phase": "CC10-STAGE1B-ROLLBACK",
+  "beforeFlags": {
+    "VITE_COMPETITION_CORE_ENABLED": "true"
+  },
+  "rollbackFlags": {
+    "VITE_COMPETITION_CORE_ENABLED": "false"
+  },
+  "rollbackDeploymentId": "dpl_CNXtAjNVjm8v5WoP6CikGTFiRazz",
+  "rollbackPreviewUrl": "https://pickleball-scheduler-tt6-realtime-sync-dihmd2hl8.vercel.app",
+  "rollbackAppLoadHttp": 200,
+  "dataReconciliationRequired": false,
+  "restoredFlags": {
+    "VITE_COMPETITION_CORE_ENABLED": "true"
+  },
+  "restoredDeploymentId": "dpl_HToia5DeXRGEA6De1kMdi5MSiBBL",
+  "restoredPreviewUrl": "https://pickleball-scheduler-tt6-realtime-sync-c5irmeat1.vercel.app",
+  "verdict": "PASS"
+}

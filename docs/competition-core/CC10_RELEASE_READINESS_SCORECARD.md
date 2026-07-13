@@ -12,9 +12,9 @@
 | Rollback readiness | PASS | Flag-first rollback plan |
 | Test coverage | PASS | CC-01 through CC-10 suites |
 | Documentation | PASS | CC10 docs complete |
-| Staging verification | PARTIAL | DB prereqs PASS; 20-case local shadow PASS; Vercel deploy pending |
-| Production readiness | BLOCKED | Flags OFF; GO checklist 1/14 |
+| Staging verification | PASS | Preview SHADOW deployed; 20/20 live matrix; 0 blocking |
+| Production readiness | BLOCKED | Flags OFF; monitoring/owner GO open |
 
-**Overall Competition Core program:** CC-10 merged to standardization; **Staging Stage 1 local shadow PASS**; live Preview deploy **pending**; **not** Production activation.
+**Overall Competition Core program:** CC-10 merged; **Staging Stage 1B live shadow PASS**; Production activation **BLOCKED**.
 
 No unsupported numerical score assigned.

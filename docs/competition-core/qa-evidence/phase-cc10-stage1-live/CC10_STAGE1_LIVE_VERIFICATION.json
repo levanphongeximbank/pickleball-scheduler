@@ -1,0 +1,410 @@
+{
+  "generatedAt": "2026-07-13T13:02:41.034Z",
+  "phase": "CC10-STAGE1B",
+  "expectedCommit": "691f370",
+  "deploymentId": "dpl_2oNfn2rhorptv3z8jTDdZMdaQndz",
+  "previewUrl": "https://pickleball-scheduler-tt6-realtime-sync-8oeaq3xk6.vercel.app",
+  "stagingRef": "qyewbxjsiiyufanzcjcq",
+  "productionImpact": "NONE",
+  "cases": [
+    {
+      "section": "env",
+      "id": "E1-protection-bypass",
+      "pass": true,
+      "detail": "App login reachable (HTTP 200)"
+    },
+    {
+      "section": "env",
+      "id": "E2-staging-ref",
+      "pass": true,
+      "detail": "staging=true"
+    },
+    {
+      "section": "env",
+      "id": "E3-commit-sha",
+      "pass": true,
+      "detail": "deploy-source=691f370"
+    },
+    {
+      "section": "env",
+      "id": "E4-all-flags-on",
+      "pass": true,
+      "detail": "{\"core\":true,\"rules\":true,\"draw\":true,\"formation\":true,\"matchmaking\":true,\"standings\":true,\"scheduling\":true,\"rating\":true}"
+    },
+    {
+      "section": "matrix",
+      "id": "M20-local-adapter",
+      "pass": true,
+      "detail": "pass=20/20"
+    },
+    {
+      "section": "browser",
+      "id": "B1-login-load",
+      "pass": true,
+      "detail": "loadMs=334"
+    },
+    {
+      "section": "browser",
+      "id": "B2-no-white-screen",
+      "pass": true,
+      "detail": "bodyLen=7175"
+    },
+    {
+      "section": "browser",
+      "id": "B3-console-errors",
+      "pass": true,
+      "detail": "none"
+    },
+    {
+      "section": "rating",
+      "id": "R1-valid-match",
+      "pass": true,
+      "detail": "status=200"
+    },
+    {
+      "section": "rating",
+      "id": "R2-idempotent",
+      "pass": true,
+      "detail": "{\"ok\":true,\"reason\":\"already-applied\",\"skipped\":true,\"idempotent\":true}"
+    },
+    {
+      "section": "rating",
+      "id": "R3-bye-no-updates",
+      "pass": true,
+      "detail": "status=200"
+    },
+    {
+      "section": "rating",
+      "id": "R4-public-skill-unchanged",
+      "pass": true,
+      "detail": "public=3.5 competition=3.6"
+    },
+    {
+      "section": "rating",
+      "id": "R-cleanup",
+      "pass": true,
+      "detail": "fixture rating rows removed"
+    }
+  ],
+  "verdict": "PASS",
+  "bundleProbe": {
+    "previewUrl": "https://pickleball-scheduler-tt6-realtime-sync-8oeaq3xk6.vercel.app",
+    "homeOk": true,
+    "homeStatus": 200,
+    "hasStagingRef": true,
+    "hasProductionRefGuess": false,
+    "commitSha": null,
+    "shaOk": false,
+    "flags": {
+      "core": true,
+      "rules": true,
+      "draw": true,
+      "formation": true,
+      "matchmaking": true,
+      "standings": true,
+      "scheduling": true,
+      "rating": true
+    },
+    "allFlagsOn": true,
+    "chunkCount": 52
+  },
+  "deploySourceCommit": "691f370",
+  "shadowMatrix": {
+    "generatedAt": "2026-07-13T13:06:20.414Z",
+    "prefix": "CC10-STAGE1",
+    "executionMode": "SHADOW",
+    "stagingProjectRef": "qyewbxjsiiyufanzcjcq",
+    "totalCases": 20,
+    "passCount": 20,
+    "blockingCount": 0,
+    "blockingMismatches": [],
+    "cases": [
+      {
+        "caseId": "CC10-S1-01",
+        "module": "draw",
+        "prefix": "CC10-STAGE1",
+        "inputSummary": "internal skill-controlled 8/2",
+        "parityOk": true,
+        "severity": "INFO",
+        "businessOutputOwner": "legacy",
+        "executionMode": "SHADOW",
+        "durationMs": 2.84,
+        "warnings": [],
+        "traceSerializable": true,
+        "sideEffectSafe": false,
+        "mismatches": []
+      },
+      {
+        "caseId": "CC10-S1-02",
+        "module": "draw",
+        "prefix": "CC10-STAGE1",
+        "inputSummary": "official open 12/3",
+        "parityOk": true,
+        "severity": "INFO",
+        "businessOutputOwner": "legacy",
+        "executionMode": "SHADOW",
+        "durationMs": 4.73,
+        "warnings": [],
+        "sideEffectSafe": false,
+        "mismatches": []
+      },
+      {
+        "caseId": "CC10-S1-03",
+        "module": "draw",
+        "prefix": "CC10-STAGE1",
+        "inputSummary": "official ai balance 8/2",
+        "parityOk": true,
+        "severity": "INFO",
+        "businessOutputOwner": "legacy",
+        "executionMode": "SHADOW",
+        "durationMs": 0.33,
+        "warnings": [],
+        "sideEffectSafe": false,
+        "mismatches": []
+      },
+      {
+        "caseId": "CC10-S1-04",
+        "module": "draw",
+        "prefix": "CC10-STAGE1",
+        "inputSummary": "team tournament 8/2",
+        "parityOk": true,
+        "severity": "INFO",
+        "businessOutputOwner": "legacy",
+        "executionMode": "SHADOW",
+        "durationMs": 1.32,
+        "warnings": [],
+        "sideEffectSafe": true,
+        "mismatches": []
+      },
+      {
+        "caseId": "CC10-S1-05",
+        "module": "formation",
+        "prefix": "CC10-STAGE1",
+        "inputSummary": "4_players_even",
+        "parityOk": true,
+        "severity": "INFO",
+        "businessOutputOwner": "legacy",
+        "executionMode": "SHADOW",
+        "durationMs": 3.31,
+        "warnings": [],
+        "traceSerializable": true,
+        "sideEffectSafe": true,
+        "mismatches": []
+      },
+      {
+        "caseId": "CC10-S1-06",
+        "module": "formation",
+        "prefix": "CC10-STAGE1",
+        "inputSummary": "8_players",
+        "parityOk": true,
+        "severity": "INFO",
+        "businessOutputOwner": "legacy",
+        "executionMode": "SHADOW",
+        "durationMs": 0.68,
+        "warnings": [],
+        "traceSerializable": true,
+        "sideEffectSafe": true,
+        "mismatches": []
+      },
+      {
+        "caseId": "CC10-S1-07",
+        "module": "matchmaking",
+        "prefix": "CC10-STAGE1",
+        "inputSummary": "daily balanced 8",
+        "parityOk": true,
+        "severity": "INFO",
+        "businessOutputOwner": "legacy",
+        "executionMode": "SHADOW",
+        "durationMs": 21.45,
+        "warnings": [],
+        "traceSerializable": true,
+        "sideEffectSafe": true,
+        "mismatches": []
+      },
+      {
+        "caseId": "CC10-S1-08",
+        "module": "matchmaking",
+        "prefix": "CC10-STAGE1",
+        "inputSummary": "daily odd overflow 10/2 courts",
+        "parityOk": true,
+        "severity": "INFO",
+        "businessOutputOwner": "legacy",
+        "executionMode": "SHADOW",
+        "durationMs": 6.53,
+        "warnings": [],
+        "sideEffectSafe": true,
+        "mismatches": []
+      },
+      {
+        "caseId": "CC10-S1-09",
+        "module": "matchmaking",
+        "prefix": "CC10-STAGE1",
+        "inputSummary": "repeat partner history scoring",
+        "parityOk": true,
+        "severity": "INFO",
+        "businessOutputOwner": "legacy",
+        "executionMode": "SHADOW",
+        "durationMs": 6.6,
+        "warnings": [],
+        "sideEffectSafe": true,
+        "mismatches": []
+      },
+      {
+        "caseId": "CC10-S1-10",
+        "module": "rules",
+        "prefix": "CC10-STAGE1",
+        "inputSummary": "MUST_NOT_PARTNER hard reject",
+        "parityOk": true,
+        "severity": "INFO",
+        "businessOutputOwner": "legacy",
+        "executionMode": "SHADOW",
+        "durationMs": 1.88,
+        "warnings": [],
+        "traceSerializable": true,
+        "mismatches": []
+      },
+      {
+        "caseId": "CC10-S1-11",
+        "module": "rules",
+        "prefix": "CC10-STAGE1",
+        "inputSummary": "soft partner repeat score",
+        "parityOk": true,
+        "severity": "INFO",
+        "businessOutputOwner": "legacy",
+        "executionMode": "SHADOW",
+        "durationMs": 1.12,
+        "warnings": [],
+        "mismatches": []
+      },
+      {
+        "caseId": "CC10-S1-12",
+        "module": "rules",
+        "prefix": "CC10-STAGE1",
+        "inputSummary": "team lineup duplicate",
+        "parityOk": true,
+        "severity": "INFO",
+        "businessOutputOwner": "legacy",
+        "executionMode": "SHADOW",
+        "durationMs": 1.72,
+        "warnings": [],
+        "mismatches": []
+      },
+      {
+        "caseId": "CC10-S1-13",
+        "module": "rules",
+        "prefix": "CC10-STAGE1",
+        "inputSummary": "same-club separation",
+        "parityOk": true,
+        "severity": "INFO",
+        "businessOutputOwner": "legacy",
+        "executionMode": "SHADOW",
+        "durationMs": 0.42,
+        "warnings": [],
+        "mismatches": []
+      },
+      {
+        "caseId": "CC10-S1-14",
+        "module": "standings",
+        "prefix": "CC10-STAGE1",
+        "inputSummary": "simple group",
+        "parityOk": true,
+        "severity": "INFO",
+        "businessOutputOwner": "legacy",
+        "executionMode": "SHADOW",
+        "durationMs": 2.59,
+        "warnings": [],
+        "sideEffectSafe": true,
+        "mismatches": []
+      },
+      {
+        "caseId": "CC10-S1-15",
+        "module": "standings",
+        "prefix": "CC10-STAGE1",
+        "inputSummary": "two-entry head-to-head",
+        "parityOk": true,
+        "severity": "INFO",
+        "businessOutputOwner": "legacy",
+        "executionMode": "SHADOW",
+        "durationMs": 7.83,
+        "warnings": [],
+        "sideEffectSafe": true,
+        "mismatches": []
+      },
+      {
+        "caseId": "CC10-S1-16",
+        "module": "standings",
+        "prefix": "CC10-STAGE1",
+        "inputSummary": "three-entry mini-table",
+        "parityOk": true,
+        "severity": "INFO",
+        "businessOutputOwner": "legacy",
+        "executionMode": "SHADOW",
+        "durationMs": 0.36,
+        "warnings": [],
+        "sideEffectSafe": true,
+        "mismatches": []
+      },
+      {
+        "caseId": "CC10-S1-17",
+        "module": "standings",
+        "prefix": "CC10-STAGE1",
+        "inputSummary": "team forfeit/withdrawal",
+        "parityOk": true,
+        "severity": "INFO",
+        "businessOutputOwner": "legacy",
+        "executionMode": "SHADOW",
+        "durationMs": 1.21,
+        "warnings": [],
+        "sideEffectSafe": true,
+        "mismatches": []
+      },
+      {
+        "caseId": "CC10-S1-18",
+        "module": "scheduling",
+        "prefix": "CC10-STAGE1",
+        "inputSummary": "group-stage",
+        "parityOk": true,
+        "severity": "INFO",
+        "businessOutputOwner": "legacy",
+        "executionMode": "SHADOW",
+        "durationMs": 2.79,
+        "warnings": [],
+        "traceSerializable": true,
+        "sideEffectSafe": true,
+        "mismatches": []
+      },
+      {
+        "caseId": "CC10-S1-19",
+        "module": "scheduling",
+        "prefix": "CC10-STAGE1",
+        "inputSummary": "round-robin BYE",
+        "parityOk": true,
+        "severity": "INFO",
+        "businessOutputOwner": "legacy",
+        "executionMode": "SHADOW",
+        "durationMs": 0.3,
+        "warnings": [],
+        "sideEffectSafe": true,
+        "mismatches": []
+      },
+      {
+        "caseId": "CC10-S1-20",
+        "module": "scheduling",
+        "prefix": "CC10-STAGE1",
+        "inputSummary": "team schedule court/time",
+        "parityOk": true,
+        "severity": "INFO",
+        "businessOutputOwner": "legacy",
+        "executionMode": "SHADOW",
+        "durationMs": 0.44,
+        "warnings": [],
+        "sideEffectSafe": true,
+        "mismatches": []
+      }
+    ]
+  },
+  "performance": {
+    "pageLoadMs": 334,
+    "consoleErrorCount": 0
+  }
+}

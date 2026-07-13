@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-07-13T12:22:41.013Z",
+  "generatedAt": "2026-07-13T13:06:20.414Z",
   "prefix": "CC10-STAGE1",
   "executionMode": "SHADOW",
   "stagingProjectRef": "qyewbxjsiiyufanzcjcq",
@@ -17,7 +17,7 @@
       "severity": "INFO",
       "businessOutputOwner": "legacy",
       "executionMode": "SHADOW",
-      "durationMs": 3.07,
+      "durationMs": 2.84,
       "warnings": [],
       "traceSerializable": true,
       "sideEffectSafe": false,
@@ -32,7 +32,7 @@
       "severity": "INFO",
       "businessOutputOwner": "legacy",
       "executionMode": "SHADOW",
-      "durationMs": 6.31,
+      "durationMs": 4.73,
       "warnings": [],
       "sideEffectSafe": false,
       "mismatches": []
@@ -46,7 +46,7 @@
       "severity": "INFO",
       "businessOutputOwner": "legacy",
       "executionMode": "SHADOW",
-      "durationMs": 0.31,
+      "durationMs": 0.33,
       "warnings": [],
       "sideEffectSafe": false,
       "mismatches": []
@@ -60,7 +60,7 @@
       "severity": "INFO",
       "businessOutputOwner": "legacy",
       "executionMode": "SHADOW",
-      "durationMs": 1.34,
+      "durationMs": 1.32,
       "warnings": [],
       "sideEffectSafe": true,
       "mismatches": []
@@ -74,7 +74,7 @@
       "severity": "INFO",
       "businessOutputOwner": "legacy",
       "executionMode": "SHADOW",
-      "durationMs": 3.03,
+      "durationMs": 3.31,
       "warnings": [],
       "traceSerializable": true,
       "sideEffectSafe": true,
@@ -89,7 +89,7 @@
       "severity": "INFO",
       "businessOutputOwner": "legacy",
       "executionMode": "SHADOW",
-      "durationMs": 0.53,
+      "durationMs": 0.68,
       "warnings": [],
       "traceSerializable": true,
       "sideEffectSafe": true,
@@ -104,7 +104,7 @@
       "severity": "INFO",
       "businessOutputOwner": "legacy",
       "executionMode": "SHADOW",
-      "durationMs": 20.9,
+      "durationMs": 21.45,
       "warnings": [],
       "traceSerializable": true,
       "sideEffectSafe": true,
@@ -119,7 +119,7 @@
       "severity": "INFO",
       "businessOutputOwner": "legacy",
       "executionMode": "SHADOW",
-      "durationMs": 7.25,
+      "durationMs": 6.53,
       "warnings": [],
       "sideEffectSafe": true,
       "mismatches": []
@@ -133,7 +133,7 @@
       "severity": "INFO",
       "businessOutputOwner": "legacy",
       "executionMode": "SHADOW",
-      "durationMs": 6.46,
+      "durationMs": 6.6,
       "warnings": [],
       "sideEffectSafe": true,
       "mismatches": []
@@ -147,7 +147,7 @@
       "severity": "INFO",
       "businessOutputOwner": "legacy",
       "executionMode": "SHADOW",
-      "durationMs": 1.78,
+      "durationMs": 1.88,
       "warnings": [],
       "traceSerializable": true,
       "mismatches": []
@@ -174,7 +174,7 @@
       "severity": "INFO",
       "businessOutputOwner": "legacy",
       "executionMode": "SHADOW",
-      "durationMs": 1.84,
+      "durationMs": 1.72,
       "warnings": [],
       "mismatches": []
     },
@@ -187,7 +187,7 @@
       "severity": "INFO",
       "businessOutputOwner": "legacy",
       "executionMode": "SHADOW",
-      "durationMs": 0.47,
+      "durationMs": 0.42,
       "warnings": [],
       "mismatches": []
     },
@@ -200,7 +200,7 @@
       "severity": "INFO",
       "businessOutputOwner": "legacy",
       "executionMode": "SHADOW",
-      "durationMs": 2.63,
+      "durationMs": 2.59,
       "warnings": [],
       "sideEffectSafe": true,
       "mismatches": []
@@ -214,7 +214,7 @@
       "severity": "INFO",
       "businessOutputOwner": "legacy",
       "executionMode": "SHADOW",
-      "durationMs": 7.75,
+      "durationMs": 7.83,
       "warnings": [],
       "sideEffectSafe": true,
       "mismatches": []
@@ -242,7 +242,7 @@
       "severity": "INFO",
       "businessOutputOwner": "legacy",
       "executionMode": "SHADOW",
-      "durationMs": 0.98,
+      "durationMs": 1.21,
       "warnings": [],
       "sideEffectSafe": true,
       "mismatches": []
@@ -256,7 +256,7 @@
       "severity": "INFO",
       "businessOutputOwner": "legacy",
       "executionMode": "SHADOW",
-      "durationMs": 3.37,
+      "durationMs": 2.79,
       "warnings": [],
       "traceSerializable": true,
       "sideEffectSafe": true,
@@ -271,7 +271,7 @@
       "severity": "INFO",
       "businessOutputOwner": "legacy",
       "executionMode": "SHADOW",
-      "durationMs": 0.2,
+      "durationMs": 0.3,
       "warnings": [],
       "sideEffectSafe": true,
       "mismatches": []
@@ -285,7 +285,7 @@
       "severity": "INFO",
       "businessOutputOwner": "legacy",
       "executionMode": "SHADOW",
-      "durationMs": 0.32,
+      "durationMs": 0.44,
       "warnings": [],
       "sideEffectSafe": true,
       "mismatches": []
