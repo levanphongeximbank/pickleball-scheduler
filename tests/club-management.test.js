@@ -9,7 +9,7 @@ import {
   getClubsByTenant,
   createClub,
   getClubById,
-} from "../src/features/club/index.js";
+} from "../src/features/club/services/clubTenantService.js";
 import {
   getClubMembers,
   addMemberToClub,

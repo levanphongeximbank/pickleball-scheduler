@@ -16,9 +16,9 @@ import {
   listDiscoverableClubs,
   getClubDiscoverySummary,
   listMyMembershipRequestsAll,
-  canApproveClubMembershipRequests,
   leaveMyClub,
-} from "../src/features/club/index.js";
+} from "../src/features/club/services/clubMembershipRequestService.js";
+import { canApproveClubMembershipRequests } from "../src/features/club/services/clubGovernanceService.js";
 import { loadPlayersForClub } from "../src/domain/clubStorage.js";
 import { getClubMembers } from "../src/features/club/services/clubMemberService.js";
 import { loadAthleteClubLink } from "../src/features/club/storage/athleteClubLinkStore.js";
