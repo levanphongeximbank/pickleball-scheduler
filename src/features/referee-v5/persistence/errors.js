@@ -19,6 +19,7 @@ export const REFEREE_V5_ERROR = Object.freeze({
   IDEMPOTENCY_KEY_REUSE_MISMATCH: "IDEMPOTENCY_KEY_REUSE_MISMATCH",
   APPEND_ONLY_VIOLATION: "APPEND_ONLY_VIOLATION",
   INTERNAL_RPC_FORBIDDEN: "INTERNAL_RPC_FORBIDDEN",
+  ATOMIC_COMMIT_ABORTED: "ATOMIC_COMMIT_ABORTED",
 });
 
 export const REFEREE_V5_ERROR_VI = Object.freeze({
@@ -42,6 +43,8 @@ export const REFEREE_V5_ERROR_VI = Object.freeze({
     "Idempotency key đã dùng cho request khác.",
   [REFEREE_V5_ERROR.APPEND_ONLY_VIOLATION]: "Không được sửa hoặc xóa sự kiện trận đấu.",
   [REFEREE_V5_ERROR.INTERNAL_RPC_FORBIDDEN]: "RPC nội bộ không khả dụng từ client.",
+  [REFEREE_V5_ERROR.ATOMIC_COMMIT_ABORTED]: "Giao dịch bị hủy — không có thay đổi một phần.",
+  [REFEREE_V5_ERROR.FINALIZE_FAILED]: "Không thể chốt kết quả trận.",
 });
 
 export function createPersistenceError(code, message, extra = {}) {

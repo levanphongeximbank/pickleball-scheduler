@@ -286,6 +286,13 @@ export class RefereeV5EdgeCommandHandler {
       overrideReason,
       createdBy: trusted.actor.userId,
       createdAt: new Date().toISOString(),
+      // Scoring-system agnostic format metadata (Rally/Side-Out).
+      scoringFormat: state.scoringFormat ?? null,
+      scoringSystem: state.scoringSystem ?? null,
+      scoringVariant: state.scoringVariant ?? null,
+      ruleSetId: state.ruleSetId ?? null,
+      pointsToWin: state.pointsToWin ?? null,
+      winBy: state.winBy ?? null,
     };
 
     const requestHash = buildCommandRequestHash({

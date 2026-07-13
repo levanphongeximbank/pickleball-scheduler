@@ -245,38 +245,43 @@ export class RefereeV5AtomicCommitService {
         return createPersistenceError(REFEREE_V5_ERROR.RESULT_NOT_READY);
       }
 
-      const saved = this.repository.saveResultRevision(revision);
-      if (!saved.ok && !saved.duplicate) {
-        return createPersistenceError(REFEREE_V5_ERROR.FINALIZE_FAILED);
-      }
+      const responsePayload = {
+        revision,
+        locked: true,
+        outboxCount: outboxEvents.length,
+      };
 
-      this.repository.lockLiveState(matchStateId, actor.userId);
-
-      for (const outbox of outboxEvents) {
-        this.repository.appendOutbox({
+      const commit = this.repository.commitFinalizationMutation({
+        matchStateId,
+        revision,
+        actorId: actor.userId,
+        outboxEvents: outboxEvents.map((outbox) => ({
           ...outbox,
           tenantId,
           tournamentId,
           matchId,
           idempotencyKey: outbox.idempotencyKey || `${finalizeKey}::${outbox.eventType}`,
-        });
+        })),
+        idempotencyRecord: {
+          matchId: matchStateId,
+          idempotencyKey: finalizeKey,
+          clientMutationId: idempotencyKey,
+          commandType: isOverride ? "OVERRIDE_RESULT" : "FINALIZE_MATCH",
+          requestHash,
+          status: "applied",
+          responsePayload: {
+            revision,
+            locked: true,
+            outboxCount: outboxEvents.length,
+          },
+        },
+      });
+
+      if (!commit.ok) {
+        return commit;
       }
 
-      const responsePayload = {
-        revision: saved.revision || revision,
-        locked: true,
-        outboxCount: outboxEvents.length,
-      };
-
-      this.repository.saveIdempotency({
-        matchId: matchStateId,
-        idempotencyKey: finalizeKey,
-        clientMutationId: idempotencyKey,
-        commandType: isOverride ? "OVERRIDE_RESULT" : "FINALIZE_MATCH",
-        requestHash,
-        status: "applied",
-        responsePayload,
-      });
+      responsePayload.revision = commit.revision || revision;
 
       this.repository.appendAudit(
         buildAuditEntry({
