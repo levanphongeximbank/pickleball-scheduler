@@ -1,0 +1,19 @@
+{
+  "generatedAt": "2026-07-13T10:00:54.464Z",
+  "phase": "TT-6D",
+  "stagingRef": "qyewbxjsiiyufanzcjcq",
+  "productionImpact": "NONE",
+  "localCommitSha": "1d129e92743a9eba8b1e67db2b34557f0e0d09ff",
+  "cases": [
+    {
+      "id": "service_observability_export",
+      "name": "Service exposes observability",
+      "pass": true
+    }
+  ],
+  "verdict": "PASS",
+  "reportFile": "TT6D_SERVICE_OBSERVABILITY_REPORT.json",
+  "passCount": 1,
+  "totalCount": 1,
+  "allPass": true
+}

@@ -119,13 +119,16 @@ export async function probeVercelProtection(previewUrl, secret) {
     };
   }
 
-  const second = await fetch(`${base}/login`, { headers, redirect: "manual" });
+  const cookieHeader = mergeSetCookieHeaders(first.headers);
+  const secondHeaders = cookieHeader ? { ...headers, Cookie: cookieHeader } : headers;
+  const second = await fetch(`${base}/login`, { headers: secondHeaders, redirect: "manual" });
   const text = await second.text();
   const blocked =
     second.url?.includes("vercel.com/login") ||
     (text.includes("Authentication Required") && text.includes("Vercel"));
   const hasApp =
-    /Pickleball Scheduler|đăng nhập|Email|Mật khẩu/i.test(text) && !blocked;
+    /Pickleball Scheduler|đăng nhập|Email|Mật khẩu|type="email"|type="password"/i.test(text) &&
+    !blocked;
 
   return {
     protectionPassed: !blocked && hasApp,
@@ -137,4 +140,24 @@ export async function probeVercelProtection(previewUrl, secret) {
         : `Unexpected login body (HTTP ${second.status})`,
     httpStatus: second.status,
   };
+}
+
+function mergeSetCookieHeaders(headers) {
+  const getSetCookie = headers.getSetCookie?.bind(headers);
+  if (getSetCookie) {
+    const cookies = getSetCookie();
+    if (cookies?.length) {
+      return cookies.map((entry) => entry.split(";")[0]).join("; ");
+    }
+  }
+
+  const raw = headers.get("set-cookie");
+  if (!raw) {
+    return "";
+  }
+  return raw
+    .split(/,(?=[^;]+?=)/)
+    .map((entry) => entry.split(";")[0].trim())
+    .filter(Boolean)
+    .join("; ");
 }

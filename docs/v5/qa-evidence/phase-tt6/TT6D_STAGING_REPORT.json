@@ -1,0 +1,16 @@
+{
+  "generatedAt": "2026-07-13T10:00:54.511Z",
+  "phase": "TT-6D",
+  "productionImpact": "NONE",
+  "localCommitSha": "1d129e92743a9eba8b1e67db2b34557f0e0d09ff",
+  "verdict": "PASS",
+  "reports": [
+    "TT6D_OBSERVABILITY_REPORT.json",
+    "TT6D_FLAG_CONTRACT.json",
+    "TT6D_SERVICE_OBSERVABILITY_REPORT.json"
+  ],
+  "tt6d": "PASS",
+  "staging": "PASS",
+  "browser": "NOT_RUN",
+  "production": "UNTOUCHED"
+}
