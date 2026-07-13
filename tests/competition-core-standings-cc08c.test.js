@@ -109,7 +109,7 @@ test("CC08C-3 legacy adapter routing delegates standings in shadow mode", async 
   assert.deepEqual(result.result.standing, [{ id: "a", rank: 1, matchPoints: 0 }]);
 });
 
-test("CC08C-4 TT-4 forfeit outcomes preserve wins/losses fields (no separate forfeitWins column)", () => {
+test("CC08C-4 TT-4 forfeit outcomes preserve wins/losses and expose forfeitWins metadata (TT-7)", () => {
   const teamData = {
     ...teamDataBase,
     matchups: [
@@ -137,7 +137,9 @@ test("CC08C-4 TT-4 forfeit outcomes preserve wins/losses fields (no separate for
   assert.equal(rowB.losses, 1);
   assert.equal(rowA.rankingPoints, 2);
   assert.equal(rowB.rankingPoints, 1);
-  assert.equal("forfeitWins" in rowA, false);
+  // TT-7: forfeit metadata is additive; wins/losses remain canonical matchup counters.
+  assert.equal(rowA.forfeitWins, 1);
+  assert.equal(rowB.forfeitWins, 0);
 });
 
 test("CC08C-5 withdrawal winnerTeamId does not corrupt team standings", () => {

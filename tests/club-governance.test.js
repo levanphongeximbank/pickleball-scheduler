@@ -15,8 +15,6 @@ import {
   canChangeClubPresident,
   canDeleteClub,
   canDeleteClubMembers,
-  getClubMembers,
-  getClubMembersForTournamentInvite,
   resolveGovernanceForCreate,
   canSelfRegisterClub,
   listLocalPresidentClubsForUser,
@@ -27,8 +25,12 @@ import {
   updateClubGovernance,
   assignClubVicePresident,
   listClubGovernanceCandidates,
-} from "../src/features/club/index.js";
-import { createClub } from "../src/features/club/index.js";
+} from "../src/features/club/services/clubGovernanceService.js";
+import {
+  getClubMembers,
+  getClubMembersForTournamentInvite,
+} from "../src/features/club/services/clubMemberService.js";
+import { createClub } from "../src/features/club/services/clubTenantService.js";
 import { saveVenues } from "../src/data/venue.js";
 import { createTenantRecord, TENANT_STATUS } from "../src/models/tenant.js";
 import { loadAuthSession } from "../src/auth/authStorage.js";
@@ -473,14 +475,14 @@ describe("club governance", () => {
     assert.match(result.error, /trùng Chủ tịch/i);
   });
 
-  it("lists only linked athletes as governance candidates", () => {
+  it("lists linked athletes as governance candidates", () => {
     const candidates = listClubGovernanceCandidates(CLUB_ID, TENANT);
-    assert.ok(candidates.some((item) => item.userId === "user-new-president"));
-    assert.ok(candidates.some((item) => item.userId === "user-vice"));
-    assert.equal(
-      candidates.every((item) => item.playerId),
-      true
-    );
+    const newPresident = candidates.find((item) => item.userId === "user-new-president");
+    const vice = candidates.find((item) => item.userId === "user-vice");
+    assert.ok(newPresident);
+    assert.ok(vice);
+    assert.equal(newPresident.playerId, "p-new-president");
+    assert.equal(vice.playerId, "p-vice");
   });
 
   it("governance owner can delete club without club.delete permission", () => {
