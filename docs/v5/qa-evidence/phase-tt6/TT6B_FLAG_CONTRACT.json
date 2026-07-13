@@ -1,0 +1,25 @@
+{
+  "generatedAt": "2026-07-13T08:30:00.000Z",
+  "phase": "TT-6B",
+  "productionImpact": "NONE",
+  "flag": "VITE_TT_REALTIME_ENABLED",
+  "default": false,
+  "stagingRecommendedValue": true,
+  "productionValue": false,
+  "rollbackValue": false,
+  "environments": {
+    "staging": {
+      "target": "Supabase staging ref qyewbxjsiiyufanzcjcq + Vercel Preview",
+      "action": "Set VITE_TT_REALTIME_ENABLED=true after SQL/RLS verify PASS",
+      "deployRequiredForEffect": "Preview rebuild only (TT-6C UI wiring not started)"
+    },
+    "production": {
+      "action": "DO NOT SET — remain false / unset"
+    }
+  },
+  "contractReady": true,
+  "notes": [
+    "Flag gates channel creation only; polling fallback remains when false.",
+    "TT-6C page wiring not included in TT-6B commit."
+  ]
+}

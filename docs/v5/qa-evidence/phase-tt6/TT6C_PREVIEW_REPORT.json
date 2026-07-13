@@ -1,0 +1,23 @@
+{
+  "generatedAt": "2026-07-13T07:56:12.345Z",
+  "phase": "TT-6C",
+  "productionImpact": "NONE",
+  "verdict": "PASS",
+  "previewUrl": "https://pickleball-scheduler-tt6-realtime-sync-8oeaq3xk6.vercel.app",
+  "deploymentId": "dpl_6LH3u6wUoCYBCHVHjo6TpAJntbEU",
+  "deploymentCommitSha": "c3eb7208c9cec71ca8291b3091670c4a0f5e5008",
+  "buildStatus": "READY",
+  "flag": {
+    "name": "VITE_TT_REALTIME_ENABLED",
+    "previewConfigured": true,
+    "requiredValue": true,
+    "productionValue": false
+  },
+  "deploymentProtection": {
+    "enabled": true,
+    "bypassConfigured": true,
+    "protectionPassed": true,
+    "vercelProtection": "BYPASSED_FOR_AUTOMATION"
+  },
+  "commitMatch": null
+}

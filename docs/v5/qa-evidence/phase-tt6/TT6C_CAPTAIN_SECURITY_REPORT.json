@@ -1,0 +1,29 @@
+{
+  "generatedAt": "2026-07-13T02:30:53.160Z",
+  "phase": "TT-6C",
+  "stagingRef": "qyewbxjsiiyufanzcjcq",
+  "productionImpact": "NONE",
+  "localCommitSha": "26076d8b5565e9ea2260642d433c9482e602d742",
+  "probe": {
+    "tournamentId": "phase23d-probe-tournament",
+    "matchupId": "phase23d-matchup-1"
+  },
+  "cases": [
+    {
+      "id": "lineup_rpc_only",
+      "name": "Lineups via get_visible_lineups RPC",
+      "pass": true,
+      "note": "TT-6B envelope excludes selections; TT-6C pages reload snapshot only"
+    },
+    {
+      "id": "no_wal_lineup",
+      "name": "Lineups table not published",
+      "pass": true
+    }
+  ],
+  "verdict": "PASS",
+  "reportFile": "TT6C_CAPTAIN_SECURITY_REPORT.json",
+  "passCount": 2,
+  "totalCount": 2,
+  "allPass": true
+}

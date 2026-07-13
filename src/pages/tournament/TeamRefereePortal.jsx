@@ -57,6 +57,7 @@ import {
   refereeLockDreambreakerOrders,
 } from "../../features/team-tournament/services/teamTournamentService.js";
 import { useTeamTournamentPage } from "../../features/team-tournament/ui/useTeamTournamentPage.js";
+import RealtimeConnectionStatus from "../../features/team-tournament/ui/RealtimeConnectionStatus.jsx";
 import { buildUiCommandScope } from "../../features/team-tournament/ui/teamTournamentUiCommandKeys.js";
 import { getRallyScoringHints } from "../../features/team-tournament/engines/rallyScoringEngine.js";
 import { RefereeDreambreakerPanel } from "../../components/tournament/team/DreambreakerPanel.jsx";
@@ -558,6 +559,13 @@ export default function TeamRefereePortal() {
     reload,
     runMutation,
     saveSubMatchDraft,
+    connectionState,
+    isRealtime,
+    isDegraded,
+    lastSnapshotAt,
+    reconnectRealtime,
+    subscriptionError,
+    pollingFallbackActive,
   } = useTeamTournamentPage({
     clubId: resolvedClubId,
     tournamentId,
@@ -912,6 +920,17 @@ export default function TeamRefereePortal() {
       <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
         {tournament?.name}
       </Typography>
+
+      <RealtimeConnectionStatus
+        variant="banner"
+        connectionState={connectionState}
+        isRealtime={isRealtime}
+        isDegraded={isDegraded}
+        pollingFallbackActive={pollingFallbackActive}
+        lastSnapshotAt={lastSnapshotAt}
+        subscriptionError={subscriptionError}
+        onReconnect={reconnectRealtime}
+      />
 
       {error && (
         <Alert severity="error" sx={{ mb: 2 }} onClose={() => setError(null)}>

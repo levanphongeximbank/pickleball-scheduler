@@ -1,0 +1,23 @@
+{
+  "generatedAt": "2026-07-13T02:30:53.134Z",
+  "phase": "TT-6C",
+  "stagingRef": "qyewbxjsiiyufanzcjcq",
+  "productionImpact": "NONE",
+  "localCommitSha": "26076d8b5565e9ea2260642d433c9482e602d742",
+  "probe": {
+    "tournamentId": "phase23d-probe-tournament",
+    "matchupId": "phase23d-matchup-1"
+  },
+  "cases": [
+    {
+      "id": "polling_eligible",
+      "name": "Degraded eligible for fallback",
+      "pass": true
+    }
+  ],
+  "verdict": "PASS",
+  "reportFile": "TT6C_RECONNECT_REPORT.json",
+  "passCount": 1,
+  "totalCount": 1,
+  "allPass": true
+}

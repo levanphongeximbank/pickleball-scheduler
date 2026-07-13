@@ -16,6 +16,9 @@ import {
 } from "../src/features/team-tournament/repositories/teamTournamentRpcGuards.js";
 import { createShadowTeamTournamentRepository } from "../src/features/team-tournament/repositories/shadowTeamTournamentRepository.js";
 import {
+  __resetTeamTournamentRealtimeServiceForTests,
+} from "../src/features/team-tournament/realtime/TeamTournamentRealtimeService.js";
+import {
   listAggregateCollectionKeys,
   notImplemented,
   notImplementedSubscriptionResult,
@@ -33,6 +36,7 @@ afterEach(() => {
   __resetTeamTournamentRpcClientForTests();
   __resetCloudRepositoryReplayCacheForTests();
   __resetTeamTournamentRpcGuardsForTests();
+  __resetTeamTournamentRealtimeServiceForTests({ enabled: false });
   rpcCallCount = 0;
 });
 
@@ -182,14 +186,31 @@ test("notImplemented is awaitable and returns structured failure", async () => {
   assert.ok(result.details?.methodName);
 });
 
-test("subscribeTournament notImplemented is awaitable with reload fallback", async () => {
+test("subscribeTournament returns subscription handle (cloud delegate)", async () => {
+  installRpc(async (name) => {
+    if (name === "team_tournament_get_setup") {
+      return {
+        data: {
+          ok: true,
+          tenantId: "tenant-1",
+          tournament: { id: "tour-1", version: 1, teamData: { matchups: [] } },
+        },
+        error: null,
+      };
+    }
+    return { data: { ok: true, tournament: { id: "tour-1", teamData: {} } }, error: null };
+  });
+
   const repo = createCloudTeamTournamentRepository();
   const result = await repo.subscribeTournament("club-1", "tour-1", {});
-  assert.equal(result.ok, false);
-  assert.equal(result.code, REPOSITORY_ERROR_CODES.REALTIME_NOT_IMPLEMENTED);
-  assert.equal(result.details?.fallbackMode, "reload");
-  assert.equal(result.details?.pollingIntervalMs, 5000);
+  assert.equal(result.ok, true);
+  assert.ok(typeof result.data?.unsubscribe === "function");
+  assert.ok(result.data?.subscriptionId);
+  assert.ok(["polling", "realtime"].includes(result.data?.fallbackMode));
+  result.data.unsubscribe();
+});
 
+test("notImplementedSubscriptionResult still available for direct calls", async () => {
   const direct = await notImplementedSubscriptionResult();
   assert.equal(direct.code, REPOSITORY_ERROR_CODES.REALTIME_NOT_IMPLEMENTED);
 });

@@ -6,18 +6,21 @@ import {
 } from "./teamTournamentUiOrchestrator.js";
 import { REPOSITORY_REALTIME_FALLBACK } from "../repositories/teamTournamentRepositoryTypes.js";
 import { syncDreambreakerForAllMatchups } from "../engines/dreambreakerEngine.js";
+import { useTeamTournamentRealtime } from "./useTeamTournamentRealtime.js";
 
 const DEFAULT_POLL_MS = REPOSITORY_REALTIME_FALLBACK.pollingIntervalMs;
 
 /**
  * TT-1C page hook — repository read path + polling + mutation helpers.
- * @param {{ clubId?: string, tournamentId?: string, pollingEnabled?: boolean, pollIntervalMs?: number }} params
+ * TT-6C: realtime subscription via useTeamTournamentRealtime (repository boundary).
+ * @param {{ clubId?: string, tournamentId?: string, pollingEnabled?: boolean, pollIntervalMs?: number, realtimeEnabled?: boolean }} params
  */
 export function useTeamTournamentPage({
   clubId,
   tournamentId,
   pollingEnabled = true,
   pollIntervalMs = DEFAULT_POLL_MS,
+  realtimeEnabled = true,
 } = {}) {
   const orchestrator = getTeamTournamentUiOrchestrator();
   const [loading, setLoading] = useState(true);
@@ -36,6 +39,7 @@ export function useTeamTournamentPage({
   const [deadlineStatus, setDeadlineStatus] = useState(null);
   const pollRef = useRef(null);
   const loadingRef = useRef(false);
+  const reloadFnRef = useRef(null);
 
   const applyLoadResult = useCallback((result) => {
     if (!result.ok) {
@@ -99,6 +103,17 @@ export function useTeamTournamentPage({
     },
     [applyLoadResult, clubId, orchestrator, tournamentId]
   );
+
+  reloadFnRef.current = reload;
+
+  const realtime = useTeamTournamentRealtime({
+    clubId,
+    tournamentId,
+    enabled: realtimeEnabled && Boolean(clubId && tournamentId),
+    onReload: useCallback((options) => reloadFnRef.current?.(options), []),
+  });
+
+  const effectivePollingEnabled = pollingEnabled && realtime.pollingFallbackActive;
 
   const runMutation = useCallback(
     async ({ method, payload, commandOptions, actionScope, expectedVersion }) => {
@@ -173,7 +188,7 @@ export function useTeamTournamentPage({
   }, [reload]);
 
   useEffect(() => {
-    if (!pollingEnabled || !clubId || !tournamentId) {
+    if (!effectivePollingEnabled || !clubId || !tournamentId) {
       return undefined;
     }
 
@@ -212,7 +227,7 @@ export function useTeamTournamentPage({
       stopPolling();
       document.removeEventListener("visibilitychange", onVisibilityChange);
     };
-  }, [clubId, pollIntervalMs, pollingEnabled, reload, tournamentId]);
+  }, [clubId, effectivePollingEnabled, pollIntervalMs, reload, tournamentId]);
 
   return {
     loading,
@@ -240,6 +255,16 @@ export function useTeamTournamentPage({
     getLineupOverrideOps: (matchupId, teamId) =>
       orchestrator.getLineupOverrideOps(clubId, tournamentId, { matchupId, teamId }),
     mapRepositoryResultToUi,
+    realtime,
+    connectionState: realtime.connectionState,
+    isRealtime: realtime.isRealtime,
+    isDegraded: realtime.isDegraded,
+    lastEventAt: realtime.lastEventAt,
+    lastSnapshotAt: realtime.lastSnapshotAt,
+    reconnectRealtime: realtime.reconnect,
+    refreshRealtime: realtime.refresh,
+    subscriptionError: realtime.subscriptionError,
+    pollingFallbackActive: realtime.pollingFallbackActive,
   };
 }
 

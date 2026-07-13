@@ -16,6 +16,9 @@ import {
   rpcTeamTournamentRequestRefereeCorrection,
 } from "../../features/team-tournament/services/teamTournamentRpcService.js";
 import RefereeSessionScoreboard from "./RefereeSessionScoreboard.jsx";
+import { findTournamentClubId } from "../../features/club/services/clubTournamentBridge.js";
+import { useTeamTournamentRealtime } from "../../features/team-tournament/ui/useTeamTournamentRealtime.js";
+import RealtimeConnectionStatus from "../../features/team-tournament/ui/RealtimeConnectionStatus.jsx";
 
 /**
  * TT-5D — /referee/match/:matchId with server-side access guard.
@@ -48,7 +51,17 @@ export default function RefereeV5TeamMatchPage() {
     });
     setAccessOps(result);
     setLoading(false);
+    return result;
   }, [matchId, tournamentId]);
+
+  const resolvedClubId = findTournamentClubId(tournamentId);
+
+  const realtime = useTeamTournamentRealtime({
+    clubId: resolvedClubId,
+    tournamentId,
+    enabled: Boolean(tournamentId && resolvedClubId && isRefereeV5Enabled()),
+    onReload: useCallback(async () => reloadAccess(), [reloadAccess]),
+  });
 
   useEffect(() => {
     if (!isRefereeV5Enabled() || !tournamentId) {
@@ -130,6 +143,17 @@ export default function RefereeV5TeamMatchPage() {
   return (
     <Box sx={{ p: { xs: 1, md: 2 } }} data-testid="referee-v5-team-match-page">
       <Stack spacing={1} sx={{ mb: 2 }}>
+        <RealtimeConnectionStatus
+          variant="chip"
+          showWhenConnected
+          connectionState={realtime.connectionState}
+          isRealtime={realtime.isRealtime}
+          isDegraded={realtime.isDegraded}
+          pollingFallbackActive={realtime.pollingFallbackActive}
+          lastSnapshotAt={realtime.lastSnapshotAt}
+          subscriptionError={realtime.subscriptionError}
+          onReconnect={realtime.reconnect}
+        />
         <Alert severity={accessState.severity} data-testid="referee-access-banner">
           <Typography variant="body2">
             Assignment: <strong>{accessState.label}</strong>

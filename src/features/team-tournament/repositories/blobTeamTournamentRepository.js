@@ -6,13 +6,13 @@ import { hashTeamTournamentPayload } from "./teamTournamentIdempotency.js";
 import { mapTournamentToAggregate } from "./teamTournamentRepositoryAggregate.js";
 import {
   notImplemented,
-  notImplementedSubscriptionResult,
   normalizeRepositoryResult,
   repositoryFailure,
   repositorySuccess,
   validateVersionedCommandOptions,
 } from "./TeamTournamentRepository.interface.js";
 import { REPOSITORY_ERROR_CODES } from "./teamTournamentRepositoryTypes.js";
+import { subscribeBlobTournamentPollingOnly } from "./teamTournamentRealtimeRepository.js";
 
 function findBlobTournament(clubId, tournamentId) {
   const data = loadClubData(clubId);
@@ -170,8 +170,8 @@ export function createBlobTeamTournamentRepository() {
       );
     },
 
-    async subscribeTournament() {
-      return notImplementedSubscriptionResult();
+    async subscribeTournament(clubId, tournamentId, handlers = {}) {
+      return subscribeBlobTournamentPollingOnly(this, clubId, tournamentId, handlers);
     },
   };
 }
