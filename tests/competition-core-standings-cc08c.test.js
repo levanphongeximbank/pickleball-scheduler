@@ -12,10 +12,6 @@ import {
   COMPETITION_ENGINE_TYPE,
   LEGACY_STANDINGS_RUNTIME_INVENTORY,
   calculateCanonicalStandings,
-  createStandingsEntry,
-  createStandingsMatchRecord,
-  createStandingsConfiguration,
-  createScoringRule,
   evaluateCanonicalStandingsRuntime,
   executeCompetitionEngine,
   isEngineV2Available,
@@ -318,6 +314,33 @@ test("CC08C-15 flag ON does not intercept unsupported season/session consumers",
   });
   assert.equal(seasonBridge.outputPreserved, true);
   assert.notEqual(seasonBridge.executionPath, "canonical-primary");
+});
+
+test("CC08D unsupported standings consumers remain legacy-primary with STANDINGS_V2 ON", () => {
+  const seasonLegacy = { players: { p1: { points: 9, wins: 3, losses: 0, draws: 0, matches: 3 } } };
+  const sessionLegacy = { standing: [{ id: "team-key", matchPoints: 3, won: 1 }] };
+
+  const seasonBridge = evaluateCanonicalStandingsRuntime({
+    consumer: "season_standings_engine",
+    envSource: v2Env,
+    legacyPayload: { players: {}, matchContributions: {} },
+    legacyExecutor: () => seasonLegacy,
+    executionMode: "shadow",
+  });
+  assert.equal(seasonBridge.outputPreserved, true);
+  assert.deepEqual(seasonBridge.legacyResult, seasonLegacy);
+  assert.notEqual(seasonBridge.executionPath, "canonical-primary");
+
+  const sessionBridge = evaluateCanonicalStandingsRuntime({
+    consumer: "session_standings_engine",
+    envSource: v2Env,
+    legacyPayload: { sessions: [], round: {} },
+    legacyExecutor: () => sessionLegacy,
+    executionMode: "shadow",
+  });
+  assert.equal(sessionBridge.outputPreserved, true);
+  assert.deepEqual(sessionBridge.legacyResult, sessionLegacy);
+  assert.notEqual(sessionBridge.executionPath, "canonical-primary");
 });
 
 test("CC08C-16 existing CC-07 tests import surface remains available", async () => {
