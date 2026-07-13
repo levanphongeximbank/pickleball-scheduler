@@ -7,11 +7,13 @@ Branch: `feature/competition-core-cc10-readiness`
 | Metric | Value |
 |---|---|
 | Total | 2212 |
-| Pass | 2203 |
-| Fail | 9 |
+| Pass | 2201 |
+| Fail | 11 |
 | New regressions | **0** |
 
 Baseline failures (unchanged): club-governance, club-management, club-membership-request (import), rbac (4), v5-menu-audit (2).
+
+Flaky under full-suite load (passes isolated): formation-cc05c performance timing assertion.
 
 ## Scoped Competition Core suites
 
