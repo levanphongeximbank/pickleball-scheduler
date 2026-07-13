@@ -1,6 +1,12 @@
 export { isRefereeV5Enabled } from "./flags.js";
 export { initializeMatchState } from "./engines/initializeMatchState.js";
 export { applyMatchEvent, buildRuleConfig } from "./engines/matchStateEngine.js";
+export { ScoringStrategyRegistry } from "./engines/scoring/ScoringStrategyRegistry.js";
+export {
+  SCORING_SYSTEM,
+  SCORING_VARIANT,
+  RULE_SET_ID,
+} from "./constants/scoringStrategy.js";
 export {
   dispatchMatchCommand,
   applyMatchEventWithUndo,

@@ -1,6 +1,4 @@
 import { DOMAIN_EVENT_TYPE, MATCH_EVENT_TYPE, MATCH_STATUS } from "../constants/eventTypes.js";
-import { SCORING_FORMAT } from "../constants/scoringFormats.js";
-import { MATCH_TYPE } from "../constants/matchTypes.js";
 import { cloneMatchState, incrementVersion } from "../domain/matchState.js";
 import {
   createEngineError,
@@ -9,12 +7,14 @@ import {
 } from "../domain/matchEvents.js";
 import { validateEventPreconditions, validateServeSnapshot } from "../domain/matchValidation.js";
 import { startMatchFromInitialized } from "./initializeMatchState.js";
-import { applyRallyScoringByTeamKey } from "./rallyScoringEngine.js";
-import { applySideOutRallyByTeamKey } from "./sideOutScoringEngine.js";
-import { applySinglesScoringEvent } from "./singlesScoringEngine.js";
+import { ScoringStrategyRegistry } from "./scoring/ScoringStrategyRegistry.js";
+import { ScoringFormatError } from "./scoring/scoringFormatError.js";
+import { buildRuleConfig } from "./scoring/ruleConfig.js";
 import { applySwitchEnds } from "./switchEndsEngine.js";
 import { resolveReceivingPlayer, recomputeServeContext } from "./receiverResolver.js";
 import { undoLastEvent } from "./undoEngine.js";
+
+export { buildRuleConfig } from "./scoring/ruleConfig.js";
 
 function assertValidServeSnapshot(state) {
   const receiverResult = resolveReceivingPlayer(state);
@@ -23,16 +23,8 @@ function assertValidServeSnapshot(state) {
 
 function applyRallyWin(state, teamKey, config) {
   const teamId = state.teams[teamKey].teamId;
-
-  if (state.matchType === MATCH_TYPE.SINGLES) {
-    return applySinglesScoringEvent(state, teamId, config);
-  }
-
-  if (state.scoringFormat === SCORING_FORMAT.RALLY) {
-    return applyRallyScoringByTeamKey(state, teamKey, config);
-  }
-
-  return applySideOutRallyByTeamKey(state, teamKey, config);
+  const strategy = ScoringStrategyRegistry.resolve(state);
+  return strategy.applyRallyResult(state, teamId, config);
 }
 
 export function applyMatchEvent(state, rawEvent, config = {}, options = {}) {
@@ -73,7 +65,16 @@ export function applyMatchEvent(state, rawEvent, config = {}, options = {}) {
       const teamKey =
         event.eventType === MATCH_EVENT_TYPE.TEAM_A_WON_RALLY ? "teamA" : "teamB";
       const ruleConfig = buildRuleConfig(working, config);
-      const rallyResult = applyRallyWin(working, teamKey, ruleConfig);
+
+      let rallyResult;
+      try {
+        rallyResult = applyRallyWin(working, teamKey, ruleConfig);
+      } catch (error) {
+        if (error instanceof ScoringFormatError) {
+          return createEngineError("VALIDATION_FAILED", error.code);
+        }
+        throw error;
+      }
 
       if (!rallyResult.ok) {
         return createEngineError("VALIDATION_FAILED", rallyResult.error);
@@ -179,14 +180,4 @@ export function applyMatchEvent(state, rawEvent, config = {}, options = {}) {
     default:
       return createEngineError("INVALID_EVENT", `Unsupported event: ${event.eventType}`);
   }
-}
-
-export function buildRuleConfig(state, overrides = {}) {
-  return {
-    pointsToWin: overrides.pointsToWin ?? state.pointsToWin,
-    winBy: overrides.winBy ?? state.winBy,
-    maximumScore: overrides.maximumScore ?? state.maximumScore,
-    sideOutInitialServerSide: overrides.sideOutInitialServerSide,
-    sideSwitchAt: overrides.sideSwitchAt,
-  };
 }
