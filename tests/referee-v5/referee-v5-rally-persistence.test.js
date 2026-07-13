@@ -128,9 +128,10 @@ function assertFormatFields(state) {
   assert.equal(state.matchType, "doubles");
 }
 
-async function playToComplete(service, matchId = MATCH) {
+async function playGameAndPrepareFinalize(service, matchId = MATCH) {
+  // Domain sets GAME_COMPLETED events but match status stays in_progress unless forfeit;
+  // finalize uses forceComplete (same contract as Side-Out persistence tests).
   await apply(service, { matchId, commandType: MATCH_EVENT_TYPE.START_MATCH, idempotencyKey: "start" });
-  // Serve team A points to 11 (win by 2): A wins 11 consecutive while serving/keeping serve after first.
   for (let i = 0; i < 11; i += 1) {
     const result = await apply(service, {
       matchId,
@@ -140,8 +141,23 @@ async function playToComplete(service, matchId = MATCH) {
     assert.equal(result.ok, true, result.error);
   }
   const loaded = await load(service, matchId);
-  assert.equal(loaded.state.status, MATCH_STATUS.COMPLETED);
+  assert.equal(loaded.state.teams.teamA.score, 11);
+  assert.equal(loaded.state.status, MATCH_STATUS.IN_PROGRESS);
   return loaded;
+}
+
+function finalizeInput(serviceMatch, overrides = {}) {
+  return {
+    tenantId: TENANT,
+    tournamentId: TOURNAMENT,
+    matchId: serviceMatch.matchId,
+    expectedVersion: serviceMatch.stateVersion,
+    idempotencyKey: "fin-default",
+    actor: actor(),
+    assignment: assignment(serviceMatch.matchId),
+    forceComplete: true,
+    ...overrides,
+  };
 }
 
 // ─── Persistence 1–6 ─────────────────────────────────────────────
@@ -484,17 +500,10 @@ test("R2-2D-15 snapshot equals replay after undo", async () => {
 
 test("R2-2D-16 Rally finalize succeeds with format metadata", async () => {
   const { service, matchId, repo } = setupRallyService("match-fin");
-  await playToComplete(service, matchId);
-  const loaded = await load(service, matchId);
-  const fin = await service.finalizeMatchResult({
-    tenantId: TENANT,
-    tournamentId: TOURNAMENT,
-    matchId,
-    expectedVersion: loaded.stateVersion,
-    idempotencyKey: "fin-1",
-    actor: actor(),
-    assignment: assignment(matchId),
-  });
+  const loaded = await playGameAndPrepareFinalize(service, matchId);
+  const fin = await service.finalizeMatchResult(
+    finalizeInput(loaded, { matchId, idempotencyKey: "fin-1" })
+  );
   assert.equal(fin.ok, true, fin.error);
   assert.equal(fin.locked, true);
   assert.equal(fin.revision.scoringSystem, SCORING_SYSTEM.RALLY);
@@ -505,28 +514,15 @@ test("R2-2D-16 Rally finalize succeeds with format metadata", async () => {
 
 test("R2-2D-17 result revision created once", async () => {
   const { service, matchId, repo } = setupRallyService("match-fin-once");
-  await playToComplete(service, matchId);
-  const loaded = await load(service, matchId);
-  const f1 = await service.finalizeMatchResult({
-    tenantId: TENANT,
-    tournamentId: TOURNAMENT,
-    matchId,
-    expectedVersion: loaded.stateVersion,
-    idempotencyKey: "fin-once",
-    actor: actor(),
-    assignment: assignment(matchId),
-  });
+  const loaded = await playGameAndPrepareFinalize(service, matchId);
+  const f1 = await service.finalizeMatchResult(
+    finalizeInput(loaded, { matchId, idempotencyKey: "fin-once" })
+  );
   assert.equal(f1.ok, true);
   const count1 = repo.results.size;
-  const f2 = await service.finalizeMatchResult({
-    tenantId: TENANT,
-    tournamentId: TOURNAMENT,
-    matchId,
-    expectedVersion: loaded.stateVersion,
-    idempotencyKey: "fin-once",
-    actor: actor(),
-    assignment: assignment(matchId),
-  });
+  const f2 = await service.finalizeMatchResult(
+    finalizeInput(loaded, { matchId, idempotencyKey: "fin-once" })
+  );
   assert.equal(f2.ok, true);
   assert.equal(f2.duplicate, true);
   assert.equal(repo.results.size, count1);
@@ -534,44 +530,18 @@ test("R2-2D-17 result revision created once", async () => {
 
 test("R2-2D-18 outbox created once", async () => {
   const { service, matchId, repo } = setupRallyService("match-outbox");
-  await playToComplete(service, matchId);
-  const loaded = await load(service, matchId);
-  await service.finalizeMatchResult({
-    tenantId: TENANT,
-    tournamentId: TOURNAMENT,
-    matchId,
-    expectedVersion: loaded.stateVersion,
-    idempotencyKey: "out-1",
-    actor: actor(),
-    assignment: assignment(matchId),
-  });
+  const loaded = await playGameAndPrepareFinalize(service, matchId);
+  await service.finalizeMatchResult(finalizeInput(loaded, { matchId, idempotencyKey: "out-1" }));
   const n = repo.outbox.length;
-  await service.finalizeMatchResult({
-    tenantId: TENANT,
-    tournamentId: TOURNAMENT,
-    matchId,
-    expectedVersion: loaded.stateVersion,
-    idempotencyKey: "out-1",
-    actor: actor(),
-    assignment: assignment(matchId),
-  });
+  await service.finalizeMatchResult(finalizeInput(loaded, { matchId, idempotencyKey: "out-1" }));
   assert.equal(repo.outbox.length, n);
   assert.ok(n >= 1);
 });
 
 test("R2-2D-19 scoring command rejected after finalize", async () => {
   const { service, matchId } = setupRallyService("match-post-fin");
-  await playToComplete(service, matchId);
-  const loaded = await load(service, matchId);
-  await service.finalizeMatchResult({
-    tenantId: TENANT,
-    tournamentId: TOURNAMENT,
-    matchId,
-    expectedVersion: loaded.stateVersion,
-    idempotencyKey: "pf-1",
-    actor: actor(),
-    assignment: assignment(matchId),
-  });
+  const loaded = await playGameAndPrepareFinalize(service, matchId);
+  await service.finalizeMatchResult(finalizeInput(loaded, { matchId, idempotencyKey: "pf-1" }));
   const blocked = await apply(service, {
     matchId,
     commandType: MATCH_EVENT_TYPE.TEAM_B_WON_RALLY,
@@ -583,26 +553,13 @@ test("R2-2D-19 scoring command rejected after finalize", async () => {
 
 test("R2-2D-20 finalize retry idempotent", async () => {
   const { service, matchId } = setupRallyService("match-fin-retry");
-  await playToComplete(service, matchId);
-  const loaded = await load(service, matchId);
-  const a = await service.finalizeMatchResult({
-    tenantId: TENANT,
-    tournamentId: TOURNAMENT,
-    matchId,
-    expectedVersion: loaded.stateVersion,
-    idempotencyKey: "retry-fin",
-    actor: actor(),
-    assignment: assignment(matchId),
-  });
-  const b = await service.finalizeMatchResult({
-    tenantId: TENANT,
-    tournamentId: TOURNAMENT,
-    matchId,
-    expectedVersion: loaded.stateVersion,
-    idempotencyKey: "retry-fin",
-    actor: actor(),
-    assignment: assignment(matchId),
-  });
+  const loaded = await playGameAndPrepareFinalize(service, matchId);
+  const a = await service.finalizeMatchResult(
+    finalizeInput(loaded, { matchId, idempotencyKey: "retry-fin" })
+  );
+  const b = await service.finalizeMatchResult(
+    finalizeInput(loaded, { matchId, idempotencyKey: "retry-fin" })
+  );
   assert.equal(a.ok, true);
   assert.equal(b.ok, true);
   assert.equal(b.duplicate, true);
@@ -666,18 +623,11 @@ test("R2-2D-23 idempotency fault rolls back", async () => {
 
 test("R2-2D-24 finalize fault rolls back", async () => {
   const { service, matchId, repo } = setupRallyService("match-fault-fin");
-  await playToComplete(service, matchId);
-  const loaded = await load(service, matchId);
+  const loaded = await playGameAndPrepareFinalize(service, matchId);
   repo.setTestFault("after_result_revision");
-  const failed = await service.finalizeMatchResult({
-    tenantId: TENANT,
-    tournamentId: TOURNAMENT,
-    matchId,
-    expectedVersion: loaded.stateVersion,
-    idempotencyKey: "ff1",
-    actor: actor(),
-    assignment: assignment(matchId),
-  });
+  const failed = await service.finalizeMatchResult(
+    finalizeInput(loaded, { matchId, idempotencyKey: "ff1" })
+  );
   assert.equal(failed.ok, false);
   assert.equal(failed.code, REFEREE_V5_ERROR.ATOMIC_COMMIT_ABORTED);
   repo.clearTestFault();
