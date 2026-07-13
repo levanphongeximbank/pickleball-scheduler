@@ -1,5 +1,9 @@
 import { isPickVnRatingV5Enabled } from "../config/flags.js";
-import { fetchRatingV5RolloutConfig, isUserInRolloutCohort } from "./ratingV5RolloutService.js";
+import {
+  fetchRatingV5RolloutConfig,
+  fetchMyPilotEnrollment,
+  isPilotEnrollmentActive,
+} from "./ratingV5RolloutService.js";
 import { rpcRatingV5GetProfile } from "./ratingV5RpcService.js";
 
 export async function resolveRatingV5Access() {
@@ -12,22 +16,24 @@ export async function resolveRatingV5Access() {
     return { ok: false, code: rollout.code ?? "ROLLOUT_BLOCKED", visible: false };
   }
 
-  const profileResult = await rpcRatingV5GetProfile("doubles");
-  const profile = profileResult.ok ? profileResult.profile : null;
-  const inCohort = isUserInRolloutCohort({
+  const enrollment = await fetchMyPilotEnrollment();
+  const enrolled = isPilotEnrollmentActive({
     rolloutConfig: rollout.config,
-    profile,
+    enrollmentResult: enrollment,
   });
 
-  if (!inCohort) {
+  if (!enrolled) {
     return {
       ok: false,
-      code: "ROLLOUT_BLOCKED",
+      code: enrollment.code ?? "PILOT_NOT_ENROLLED",
       visible: false,
       rolloutConfig: rollout.config,
-      profile,
+      enrollment,
     };
   }
+
+  const profileResult = await rpcRatingV5GetProfile("doubles");
+  const profile = profileResult.ok ? profileResult.profile : null;
 
   return {
     ok: true,
@@ -35,6 +41,7 @@ export async function resolveRatingV5Access() {
     visible: true,
     rolloutConfig: rollout.config,
     profile,
+    enrollment,
   };
 }
 

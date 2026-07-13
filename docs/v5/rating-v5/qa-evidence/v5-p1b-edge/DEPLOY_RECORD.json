@@ -1,0 +1,25 @@
+{
+  "productionProjectRef": "expuvcohlcjzvrrauvud",
+  "stagingProjectRef": "qyewbxjsiiyufanzcjcq",
+  "functionName": "rating-v5-complete-assessment",
+  "deployedAt": "2026-07-13T15:34:48.753Z",
+  "functionUrl": "https://expuvcohlcjzvrrauvud.supabase.co/functions/v1/rating-v5-complete-assessment",
+  "corsOrigins": "https://pickleball-scheduler-eight.vercel.app",
+  "bundleChecksum": "f914ebb8f71645f302a78d5da761887f08446677a7fe7f5d962d5079738f1b64",
+  "deploymentId": "0674df12-e3e5-4aa5-acb3-3b7bc9debb6e",
+  "verified": true,
+  "deployOutput": {
+    "id": "0674df12-e3e5-4aa5-acb3-3b7bc9debb6e",
+    "slug": "rating-v5-complete-assessment",
+    "version": 3,
+    "name": "rating-v5-complete-assessment",
+    "status": "ACTIVE",
+    "entrypoint_path": "file:///tmp/user_fn_expuvcohlcjzvrrauvud_0674df12-e3e5-4aa5-acb3-3b7bc9debb6e_3/source/rating-v5-complete-assessment/index.ts",
+    "import_map_path": null,
+    "import_map": false,
+    "verify_jwt": true,
+    "created_at": 1783956665269,
+    "updated_at": 1783956888357,
+    "ezbr_sha256": "0aaf5df74bd517ee4ffb91f0de3558ec8b496b4867c8b3e5bb12a93f892d8b3a"
+  }
+}

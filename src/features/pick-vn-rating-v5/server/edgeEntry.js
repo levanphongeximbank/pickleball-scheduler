@@ -16,13 +16,14 @@ import {
   sanitizeErrorMessage,
   STAGING_FAULT_HEADER,
 } from "./edgeHttpHelpers.js";
+import { resolveRatingV5CorsAllowlistFromEnv } from "../config/ratingV5EdgeCorsConfig.js";
 
 export async function handleCompleteAssessmentHttpRequest(request, env = {}) {
   assertTrustedRuntime("edgeHttp");
   const started = Date.now();
   const requestId = createRequestId();
   const origin = request.headers.get("Origin") ?? "";
-  const allowedOrigins = env.allowedOrigins ?? [];
+  const allowedOrigins = resolveRatingV5CorsAllowlistFromEnv(env);
   const { headers: corsHeaders, allowed: corsAllowed } = buildCorsHeaders(origin, allowedOrigins);
 
   const finish = (payload, status, meta = {}) => {

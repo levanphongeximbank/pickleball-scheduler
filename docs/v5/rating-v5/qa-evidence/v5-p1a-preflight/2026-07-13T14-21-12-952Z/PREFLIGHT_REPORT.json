@@ -1,0 +1,91 @@
+{
+  "run_id": "2026-07-13T14-21-12-952Z",
+  "git_sha": "e37ce0ebab163ab891edd8b100c5f02accd7bce8",
+  "owner_decision": {
+    "functional_acceptance": "APPROVED",
+    "pilot_validation": "ASSUMED_PASS_BY_OWNER",
+    "empirical_calibration": "DEFERRED",
+    "ready_for_controlled_production": "YES"
+  },
+  "project_refs": {
+    "staging": "qyewbxjsiiyufanzcjcq",
+    "production": "expuvcohlcjzvrrauvud"
+  },
+  "staging_url_guard": "PASS",
+  "production_schema_diff": {
+    "production_has_v5_tables": false,
+    "staging_v5_table_count": 11,
+    "production_v2_table": "pick_vn_player_ratings",
+    "missing_on_production": [
+      "rating_v5_rollout_config",
+      "rating_v5_idempotency",
+      "rating_v5_pilot_enrollments",
+      "rating_v5_reassessment_approvals",
+      "player_rating_profiles",
+      "player_skill_assessments",
+      "player_rating_events",
+      "rating_evidence",
+      "rating_snapshots",
+      "rating_review_cases",
+      "rating_calibration_versions"
+    ],
+    "diff_status": "PASS"
+  },
+  "migration_bundle": {
+    "files": {
+      "docs/v5/rating-v5/PHASE_V5A_RATING_FOUNDATION.sql": "9ff3b05ed6b91ac51c72df92fbc0c247aabcee8c6558bf0753524fe390432568",
+      "docs/v5/rating-v5/PHASE_V5B1_COMPLETE_ASSESSMENT.sql": "5445e66697e7e094b957273d8a4833c8dcd519f29715a1cc1f275b7ff731c4b7",
+      "docs/v5/rating-v5/PHASE_V5B1P_PERSISTENCE_AND_EDGE.sql": "d407a548f7c0835d0588ae3639ab20d2f92e3bd39bbc68167d4eadc83712e267"
+    },
+    "repo_gaps_vs_staging": [
+      "rating_v5_pilot_enrollments table + RLS (on staging, not in committed SQL bundle)",
+      "rating_v5_reassessment_approvals table (on staging, not in committed SQL bundle)",
+      "rating_v5_rollout_config columns: max_completed_assessments, cooldown_days, allow_manual_reassessment, reassessment_requires_approval",
+      "pilot gate RPCs: assert_pilot_gate, admin_upsert_pilot_enrollment, get_my_pilot_enrollment, grant_reassessment_approval",
+      "supabase/functions/rating-v5-complete-assessment/index.ts wrapper (bundle from src/features/pick-vn-rating-v5/server)"
+    ],
+    "migration_ready": "NO",
+    "idempotent_intent": "YES",
+    "destructive_ddl_in_bundle": "NONE_IDENTIFIED"
+  },
+  "edge_bundle": {
+    "entry_checksum_sha256": "46966a8c51fe92e0eb36c2f5368235af83f2638ab220cd77f4fca991a3134959",
+    "engine_freeze": "v5.0f",
+    "staging_ref_in_edge_helpers": true,
+    "production_cors_origin_proposed": "https://pickleball-scheduler-eight.vercel.app",
+    "edge_config_ready": "CONDITIONAL"
+  },
+  "production_config_initial": {
+    "shadow_mode_enabled": true,
+    "compare_v2_enabled": true,
+    "allow_v5_assessment": false,
+    "max_completed_assessments": 1,
+    "cooldown_days": 7,
+    "reassessment_requires_approval": true,
+    "pilot_cohort_label": "club-rating-v5-production-pilot",
+    "vite_flag": "VITE_PICK_VN_RATING_V5_ENABLED=false"
+  },
+  "club_enrollment": {
+    "sot_table": "rating_v5_pilot_enrollments",
+    "frontend_uses_enrollment_rpc": false,
+    "frontend_profile_cohort_auth": true,
+    "flow_ready": "NO"
+  },
+  "backup_ready": "OWNER_ACTION_REQUIRED",
+  "rollback_ready": "YES",
+  "production_cors_ready": "OWNER_CONFIRM_REQUIRED",
+  "p1a_verdict": {
+    "PRODUCTION_SCHEMA_DIFF": "PASS",
+    "MIGRATION_READY": "NO",
+    "BACKUP_READY": "NO",
+    "EDGE_CONFIG_READY": "CONDITIONAL",
+    "PRODUCTION_CORS_READY": "NO",
+    "ROLLBACK_READY": "YES",
+    "CLUB_ENROLLMENT_FLOW_READY": "NO",
+    "READY_TO_APPLY_PRODUCTION_MIGRATION": "NO",
+    "READY_TO_DEPLOY_PRODUCTION_EDGE": "NO",
+    "READY_TO_ACTIVATE_WAVE_A": "NO",
+    "READY_FOR_PUBLIC_RELEASE": "NO",
+    "OWNER_APPROVAL_REQUIRED": "YES"
+  }
+}

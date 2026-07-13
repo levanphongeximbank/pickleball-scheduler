@@ -21,7 +21,9 @@ import {
   buildCompleteAssessmentPayload,
   completeRatingV5Assessment,
 } from "../../src/features/pick-vn-rating-v5/services/ratingV5EdgeClient.js";
-import { isUserInRolloutCohort } from "../../src/features/pick-vn-rating-v5/services/ratingV5RolloutService.js";
+import {
+  isPilotEnrollmentActive,
+} from "../../src/features/pick-vn-rating-v5/services/ratingV5RolloutService.js";
 import { resolveAssessmentErrorMessage } from "../../src/features/pick-vn-rating-v5/constants/assessmentErrorMessages.js";
 import {
   saveRatingV5Draft,
@@ -68,26 +70,30 @@ describe("V5-B.2 UI wiring", () => {
     expect(visibleWhenFlagOff).toBe(false);
   });
 
-  it("2. user outside rollout cohort is blocked", () => {
-    const allowed = isUserInRolloutCohort({
+  it("2. user without pilot enrollment is blocked", () => {
+    const allowed = isPilotEnrollmentActive({
       rolloutConfig: {
         allowV5Assessment: true,
         shadowModeEnabled: true,
         pilotCohortLabel: "v5-shadow-pilot",
       },
-      profile: { rollout_cohort: "other-cohort" },
+      enrollmentResult: { ok: false, enrolled: false, code: "PILOT_NOT_ENROLLED" },
     });
     expect(allowed).toBe(false);
   });
 
-  it("3. user in rollout cohort can access", () => {
-    const allowed = isUserInRolloutCohort({
+  it("3. user with active pilot enrollment can access", () => {
+    const allowed = isPilotEnrollmentActive({
       rolloutConfig: {
         allowV5Assessment: true,
         shadowModeEnabled: true,
         pilotCohortLabel: "v5-shadow-pilot",
       },
-      profile: { rollout_cohort: "v5-shadow-pilot" },
+      enrollmentResult: {
+        ok: true,
+        enrolled: true,
+        enrollment: { status: "active", cohort_label: "v5-shadow-pilot" },
+      },
     });
     expect(allowed).toBe(true);
   });

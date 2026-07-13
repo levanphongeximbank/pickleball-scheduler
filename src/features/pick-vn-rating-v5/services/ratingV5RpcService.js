@@ -41,6 +41,10 @@ export async function rpcRatingV5StartAssessment(ratingMode = "doubles") {
   return callRatingV5Rpc("rating_v5_start_assessment", { p_rating_mode: ratingMode });
 }
 
+export async function rpcRatingV5GetMyPilotEnrollment() {
+  return callRatingV5Rpc("rating_v5_get_my_pilot_enrollment");
+}
+
 export async function rpcRatingV5GetProfile(ratingMode = "doubles") {
   return callRatingV5Rpc("rating_v5_get_profile", { p_rating_mode: ratingMode });
 }

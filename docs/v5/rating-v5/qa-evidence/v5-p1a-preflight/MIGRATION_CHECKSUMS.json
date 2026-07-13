@@ -1,0 +1,23 @@
+{
+  "generated_at": "2026-07-13T15-10-29-760Z",
+  "git_sha": "e37ce0ebab163ab891edd8b100c5f02accd7bce8",
+  "migrations": {
+    "docs/v5/rating-v5/PHASE_V5A_RATING_FOUNDATION.sql": {
+      "sha256": "9ff3b05ed6b91ac51c72df92fbc0c247aabcee8c6558bf0753524fe390432568",
+      "bytes": 31268
+    },
+    "docs/v5/rating-v5/PHASE_V5B1_COMPLETE_ASSESSMENT.sql": {
+      "sha256": "5445e66697e7e094b957273d8a4833c8dcd519f29715a1cc1f275b7ff731c4b7",
+      "bytes": 8452
+    },
+    "docs/v5/rating-v5/PHASE_V5B1P_PERSISTENCE_AND_EDGE.sql": {
+      "sha256": "d407a548f7c0835d0588ae3639ab20d2f92e3bd39bbc68167d4eadc83712e267",
+      "bytes": 12824
+    },
+    "docs/v5/rating-v5/PHASE_V5C1_PILOT_ENROLLMENT_AND_POLICY.sql": {
+      "sha256": "b952f60d116898e4a0919cc59a17e26638761506954ee7cdcdf4e5298dde31b6",
+      "bytes": 32131
+    }
+  },
+  "edge_entry": "f914ebb8f71645f302a78d5da761887f08446677a7fe7f5d962d5079738f1b64"
+}

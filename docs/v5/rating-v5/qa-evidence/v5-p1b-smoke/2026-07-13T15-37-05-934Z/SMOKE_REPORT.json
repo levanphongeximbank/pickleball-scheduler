@@ -1,0 +1,94 @@
+{
+  "run_id": "2026-07-13T15-37-05-934Z",
+  "production_ref": "expuvcohlcjzvrrauvud",
+  "production_origin": "https://pickleball-scheduler-eight.vercel.app",
+  "generated_at": "2026-07-13T15:37:43.246Z",
+  "pass_count": 16,
+  "fail_count": 0,
+  "all_pass": true,
+  "v2_mutations": 0,
+  "duplicate_events": 0,
+  "partial_writes": 0,
+  "results": [
+    {
+      "id": "project_identity_url",
+      "status": "PASS",
+      "detail": "expuvcohlcjzvrrauvud"
+    },
+    {
+      "id": "project_identity_edge",
+      "status": "PASS",
+      "detail": "expuvcohlcjzvrrauvud"
+    },
+    {
+      "id": "kill_switch_allow_v5_assessment",
+      "status": "PASS",
+      "detail": "false"
+    },
+    {
+      "id": "no_active_enrollments",
+      "status": "PASS",
+      "detail": "0"
+    },
+    {
+      "id": "edge_health_options",
+      "status": "PASS",
+      "detail": "204"
+    },
+    {
+      "id": "cors_allowed_origin",
+      "status": "PASS",
+      "detail": "https://pickleball-scheduler-eight.vercel.app"
+    },
+    {
+      "id": "cors_denied_origin",
+      "status": "PASS",
+      "detail": "403"
+    },
+    {
+      "id": "jwt_no_header",
+      "status": "PASS",
+      "detail": "401"
+    },
+    {
+      "id": "jwt_bad_token",
+      "status": "PASS",
+      "detail": "401"
+    },
+    {
+      "id": "jwt_mint_probe_user",
+      "status": "PASS",
+      "detail": "player@gmail.com"
+    },
+    {
+      "id": "edge_non_enrolled_block",
+      "status": "PASS",
+      "detail": "404/ASSESSMENT_NOT_FOUND"
+    },
+    {
+      "id": "rpc_pilot_gate",
+      "status": "PASS",
+      "detail": "ROLLOUT_BLOCKED"
+    },
+    {
+      "id": "rls_anon_assessments",
+      "status": "PASS",
+      "detail": "permission denied for table player_skill_assessments"
+    },
+    {
+      "id": "version_stamping_cohort",
+      "status": "PASS",
+      "detail": "club-rating-v5-production-pilot"
+    },
+    {
+      "id": "no_duplicate_events_baseline",
+      "status": "PASS",
+      "detail": "events=0"
+    },
+    {
+      "id": "v2_isolation",
+      "status": "PASS",
+      "detail": "unchanged=0"
+    }
+  ]
+}

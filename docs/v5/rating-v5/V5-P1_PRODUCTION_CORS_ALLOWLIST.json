@@ -1,0 +1,16 @@
+{
+  "owner_confirmed_at": "2026-07-13",
+  "status": "CONFIRMED",
+  "env_key": "RATING_V5_CORS_ORIGINS",
+  "production_origins": [
+    "https://pickleball-scheduler-eight.vercel.app"
+  ],
+  "excluded": [
+    "https://*.vercel.app",
+    "__vercel_preview__",
+    "__localhost_qa__",
+    "staging preview URLs",
+    "wildcard *"
+  ],
+  "notes": "Change domain by updating this file and RATING_V5_CORS_ORIGINS on Production Edge deploy only."
+}

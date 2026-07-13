@@ -1,4 +1,5 @@
 import { SCORING_ENGINE_VERSION } from "../constants/versions.js";
+import { isOriginAllowedForRatingV5 } from "../config/ratingV5EdgeCorsConfig.js";
 
 const ERROR_MESSAGES = {
   UNAUTHORIZED: "Yêu cầu đăng nhập hợp lệ.",
@@ -77,8 +78,7 @@ export function mapHttpStatus(code) {
 
 export function buildCorsHeaders(origin, allowedOrigins = []) {
   const list = Array.isArray(allowedOrigins) ? allowedOrigins : [];
-  const useWildcard = list.length === 0 || list.includes("*");
-  const allowed = useWildcard || (origin && list.includes(origin));
+  const allowed = isOriginAllowedForRatingV5(origin, list);
   const headers = {
     "Access-Control-Allow-Methods": "POST, OPTIONS",
     "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-rating-v5-staging-fault",
@@ -86,9 +86,9 @@ export function buildCorsHeaders(origin, allowedOrigins = []) {
     Vary: "Origin",
   };
   if (allowed) {
-    headers["Access-Control-Allow-Origin"] = useWildcard ? "*" : origin;
+    headers["Access-Control-Allow-Origin"] = String(origin).trim();
   }
-  return { headers, allowed: Boolean(allowed) };
+  return { headers, allowed };
 }
 
 export function buildErrorResponse(code, requestId, extra = {}) {

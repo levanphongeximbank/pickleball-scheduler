@@ -26,7 +26,6 @@ test("edge handler rejects forbidden top-level field before scoring", async () =
       verified_rating: 4,
     }),
     {
-      allowedOrigins: ["*"],
       supabaseUrl: "https://qyewbxjsiiyufanzcjcq.supabase.co",
       createSupabaseClients() {
         throw new Error("must not reach auth when payload invalid");
@@ -50,7 +49,7 @@ test("edge handler rejects unknown future field", async () => {
       rating_mode: "doubles",
       unexpected_future_field: true,
     }),
-    { allowedOrigins: ["*"] },
+    { supabaseUrl: "https://qyewbxjsiiyufanzcjcq.supabase.co" },
   );
   assert.equal(response.status, 400);
   const json = await response.json();

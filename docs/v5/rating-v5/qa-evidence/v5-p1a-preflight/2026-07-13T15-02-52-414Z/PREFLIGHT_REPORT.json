@@ -1,0 +1,49 @@
+{
+  "run_id": "2026-07-13T15-02-52-414Z",
+  "git_sha": "e37ce0ebab163ab891edd8b100c5f02accd7bce8",
+  "production_domain_observed": "https://pickleball-scheduler-eight.vercel.app",
+  "production_cors_status": "AWAITING_OWNER_DOMAIN_CONFIRMATION",
+  "migration_bundle": {
+    "files": {
+      "docs/v5/rating-v5/PHASE_V5A_RATING_FOUNDATION.sql": {
+        "sha256": "9ff3b05ed6b91ac51c72df92fbc0c247aabcee8c6558bf0753524fe390432568",
+        "bytes": 31268
+      },
+      "docs/v5/rating-v5/PHASE_V5B1_COMPLETE_ASSESSMENT.sql": {
+        "sha256": "5445e66697e7e094b957273d8a4833c8dcd519f29715a1cc1f275b7ff731c4b7",
+        "bytes": 8452
+      },
+      "docs/v5/rating-v5/PHASE_V5B1P_PERSISTENCE_AND_EDGE.sql": {
+        "sha256": "d407a548f7c0835d0588ae3639ab20d2f92e3bd39bbc68167d4eadc83712e267",
+        "bytes": 12824
+      },
+      "docs/v5/rating-v5/PHASE_V5C1_PILOT_ENROLLMENT_AND_POLICY.sql": {
+        "sha256": "b952f60d116898e4a0919cc59a17e26638761506954ee7cdcdf4e5298dde31b6",
+        "bytes": 32131
+      }
+    },
+    "complete": true
+  },
+  "edge_bundle": {
+    "entry_checksum_sha256": "46966a8c51fe92e0eb36c2f5368235af83f2638ab220cd77f4fca991a3134959",
+    "engine_freeze": "v5.0f"
+  },
+  "enrollment_sot": {
+    "frontend": true,
+    "no_profile_cohort_auth": true
+  },
+  "p1a_verdict": {
+    "PRODUCTION_SCHEMA_DIFF": "PASS",
+    "MIGRATION_READY": "YES",
+    "BACKUP_READY": "YES",
+    "EDGE_CONFIG_READY": "YES",
+    "PRODUCTION_CORS_READY": "AWAITING_OWNER_DOMAIN_CONFIRMATION",
+    "ROLLBACK_READY": "YES",
+    "CLUB_ENROLLMENT_FLOW_READY": "YES",
+    "READY_TO_APPLY_PRODUCTION_MIGRATION": "YES",
+    "READY_TO_DEPLOY_PRODUCTION_EDGE": "NO",
+    "READY_TO_ACTIVATE_WAVE_A": "NO",
+    "READY_FOR_PUBLIC_RELEASE": "NO",
+    "OWNER_APPROVAL_REQUIRED": "YES"
+  }
+}
