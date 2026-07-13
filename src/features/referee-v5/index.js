@@ -18,6 +18,10 @@ export { applySwitchEnds } from "./engines/switchEndsEngine.js";
 export { rebuildMatchState } from "./engines/stateReplayEngine.js";
 export { undoLastEvent } from "./engines/undoEngine.js";
 export { buildServeContext, formatSideOutScoreLine } from "./selectors/scoreboardSelector.js";
+export {
+  buildPresentationModel,
+  isUsap2026ProvisionalRallyDoubles,
+} from "./selectors/presentationSelector.js";
 export { buildArrowGeometry, describeServeDirectionVi } from "./selectors/serveArrowSelector.js";
 export { buildTimelineEntries } from "./selectors/timelineSelector.js";
 export { RALLY_VARIANT } from "./constants/scoringFormats.js";

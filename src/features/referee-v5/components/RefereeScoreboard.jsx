@@ -25,7 +25,7 @@ export default function RefereeScoreboard({ visualState }) {
       </div>
       {visualState.isDoubles ? (
         <div className="rv5-scoreboard-sideout" data-testid="side-out-line">
-          {visualState.sideOutLine} · Đội giao: {visualState.servingTeamName}
+          {visualState.scoreLine} · Đội giao: {visualState.servingTeamName}
         </div>
       ) : (
         <div className="rv5-scoreboard-sideout" data-testid="side-out-line">

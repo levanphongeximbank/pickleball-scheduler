@@ -36,7 +36,9 @@ export default function PlayerPositionCard({
         {player.isServer ? (
           <span className="rv5-role-badge server" aria-label="Đang giao">
             🎾 ĐANG GIAO
-            {player.serverNumber != null ? ` S${player.serverNumber}` : ""}
+            {player.showServerNumber && player.serverNumber != null
+              ? ` S${player.serverNumber}`
+              : ""}
           </span>
         ) : null}
         {player.isReceiver ? (

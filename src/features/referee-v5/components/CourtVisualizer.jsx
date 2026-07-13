@@ -16,10 +16,7 @@ export default function CourtVisualizer({ visualState, lastDomainEvents = [] }) 
       {visualState.players.map((player) => (
         <PlayerPositionCard
           key={player.playerId}
-          player={{
-            ...player,
-            serverNumber: player.isServer ? visualState.serveContext?.serverNumber : null,
-          }}
+          player={player}
           highlightSwitch={highlightSwitch && player.isServer}
         />
       ))}

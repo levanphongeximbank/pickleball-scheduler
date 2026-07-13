@@ -3,6 +3,11 @@ import { LOGICAL_SERVICE_SIDE } from "../constants/courtSides.js";
 import { MATCH_EVENT_TYPE } from "../constants/eventTypes.js";
 import { MATCH_TYPE } from "../constants/matchTypes.js";
 import { SCORING_FORMAT } from "../constants/scoringFormats.js";
+import {
+  RULE_SET_ID,
+  SCORING_SYSTEM,
+  SCORING_VARIANT,
+} from "../constants/scoringStrategy.js";
 
 const PLAYER_NAMES = {
   A: "Nguyễn Văn A",
@@ -48,6 +53,21 @@ function doublesBase(overrides = {}) {
     firstServingPlayerId: "A",
     ...overrides,
   };
+}
+
+function usapRallyDoublesBase(overrides = {}) {
+  return doublesBase({
+    matchId: "proto-usap-rally-doubles",
+    scoringFormat: SCORING_FORMAT.RALLY,
+    scoringSystem: SCORING_SYSTEM.RALLY,
+    scoringVariant: SCORING_VARIANT.USAP_2026_PROVISIONAL_RALLY,
+    ruleSetId: RULE_SET_ID.RALLY_USAP_2026_PROVISIONAL_DOUBLES_V1,
+    pointsToWin: 11,
+    winBy: 2,
+    freezeRule: "NONE",
+    serverNumberRule: "NONE",
+    ...overrides,
+  });
 }
 
 export const REFEREE_V5_FIXTURES = [
@@ -160,6 +180,18 @@ export const REFEREE_V5_FIXTURES = [
       MATCH_EVENT_TYPE.START_MATCH,
       MATCH_EVENT_TYPE.TEAM_A_WON_RALLY,
     ],
+  },
+  {
+    id: "doubles-usap-rally",
+    label: "Doubles — USAP 2026 Rally",
+    meta: {
+      tournamentName: "Giải Prototype V5",
+      eventName: "USAP Rally đôi nam",
+      matchCode: "UR-01",
+      courtName: "Sân 8",
+    },
+    config: usapRallyDoublesBase(),
+    preEvents: [MATCH_EVENT_TYPE.START_MATCH],
   },
   {
     id: "near-end-serving",
