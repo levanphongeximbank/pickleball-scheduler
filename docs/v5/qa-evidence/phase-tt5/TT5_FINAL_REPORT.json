@@ -1,0 +1,265 @@
+{
+  "reportType": "TT5_FINAL_INTEGRATION",
+  "generatedAt": "2026-07-13T00:00:00.000Z",
+  "phaseStatus": "COMPLETE",
+  "integrationBranch": "feature/tt5-referee-v5-integration",
+  "stagingRef": "qyewbxjsiiyufanzcjcq",
+  "workingTree": "CLEAN",
+  "shas": {
+    "teamTournamentAuthoritativeBase": "cb32ae2669182a81ac1cc1f41ad00f51b58b933c",
+    "refereeV5AuthoritativeSource": "a678229e7cfba7736d0f62f7d3824d3816175721",
+    "integrationMerge": "2140c81782dfdd738bf42603b7bcf7f8df9ed356",
+    "tt5aAuditDocs": "ef16a323d0532811478c05768ef79a625dd251d1",
+    "tt5b": "84810bfeca986c618b67d206b5ffc9a620cb8483",
+    "tt5c": "f36f7cbfcf5a1ca43ce62d567bc5cc3160c6671e",
+    "tt5d": "7cc4b58d72adf309a2e05cc7b51bae2b30722102",
+    "finalReportCommit": "PENDING"
+  },
+  "phases": {
+    "TT-5A": {
+      "commit": "ef16a323d0532811478c05768ef79a625dd251d1",
+      "type": "read-only-audit",
+      "stagingSqlApplied": false,
+      "verdict": "COMPLETE",
+      "summary": [
+        "duplicate logic audit",
+        "schema mapping",
+        "route audit",
+        "security/RLS audit",
+        "result propagation recommendation",
+        "bridge requirement",
+        "source-of-truth decision",
+        "DreamBreaker out of scope",
+        "offline non-blocking for online pilot"
+      ]
+    },
+    "TT-5B": {
+      "commit": "84810bfeca986c618b67d206b5ffc9a620cb8483",
+      "type": "bridge-provision-legacy-lock",
+      "stagingSqlApplied": true,
+      "verdict": "PASS",
+      "evidence": [
+        "docs/v5/qa-evidence/phase-tt5/TT5B_BRIDGE_SCHEMA_REPORT.json",
+        "docs/v5/qa-evidence/phase-tt5/TT5B_PROVISION_REPORT.json",
+        "docs/v5/qa-evidence/phase-tt5/TT5B_LEGACY_LOCK_REPORT.json",
+        "docs/v5/qa-evidence/phase-tt5/TT5B_CONCURRENCY_REPORT.json",
+        "docs/v5/qa-evidence/phase-tt5/TT5B_SECURITY_RLS_REPORT.json",
+        "docs/v5/qa-evidence/phase-tt5/TT5B_STAGING_SMOKE_REPORT.json"
+      ],
+      "unitTests": { "file": "tests/team-tournament-tt5b.test.js", "passed": 9, "total": 9 }
+    },
+    "TT-5C": {
+      "commit": "f36f7cbfcf5a1ca43ce62d567bc5cc3160c6671e",
+      "type": "outbox-consumer-propagation",
+      "stagingSqlApplied": true,
+      "verdict": "PASS",
+      "evidence": [
+        "docs/v5/qa-evidence/phase-tt5/TT5C_OUTBOX_REPORT.json",
+        "docs/v5/qa-evidence/phase-tt5/TT5C_RESULT_PROPAGATION_REPORT.json",
+        "docs/v5/qa-evidence/phase-tt5/TT5C_IDEMPOTENCY_REPORT.json",
+        "docs/v5/qa-evidence/phase-tt5/TT5C_REVISION_REPORT.json",
+        "docs/v5/qa-evidence/phase-tt5/TT5C_STANDINGS_REPORT.json",
+        "docs/v5/qa-evidence/phase-tt5/TT5C_SECURITY_REPORT.json",
+        "docs/v5/qa-evidence/phase-tt5/TT5C_E2E_STAGING_REPORT.json"
+      ],
+      "unitTests": { "file": "tests/team-tournament-tt5c.test.js", "passed": 10, "total": 10 }
+    },
+    "TT-5D": {
+      "commit": "7cc4b58d72adf309a2e05cc7b51bae2b30722102",
+      "type": "referee-safety-completion",
+      "stagingSqlApplied": true,
+      "verdict": "PASS",
+      "evidence": [
+        "docs/v5/qa-evidence/phase-tt5/TT5D_ASSIGNMENT_REPORT.json",
+        "docs/v5/qa-evidence/phase-tt5/TT5D_EXPIRY_REVOKE_REPORT.json",
+        "docs/v5/qa-evidence/phase-tt5/TT5D_CORRECTION_REPORT.json",
+        "docs/v5/qa-evidence/phase-tt5/TT5D_REOPEN_REPORT.json",
+        "docs/v5/qa-evidence/phase-tt5/TT5D_CONCURRENCY_REPORT.json",
+        "docs/v5/qa-evidence/phase-tt5/TT5D_SECURITY_REPORT.json",
+        "docs/v5/qa-evidence/phase-tt5/TT5D_E2E_STAGING_REPORT.json"
+      ],
+      "unitTests": { "file": "tests/team-tournament-tt5d.test.js", "passed": 11, "total": 11 },
+      "stagingVerify": { "script": "scripts/verify-phase-tt5d-staging.mjs", "passed": 17, "total": 17 }
+    }
+  },
+  "architecture": {
+    "refereeV5Owns": [
+      "live scoring",
+      "match state",
+      "event history",
+      "referee assignment",
+      "official result revision",
+      "referee workspace",
+      "correction request lifecycle",
+      "reopen/finalize workflow"
+    ],
+    "teamTournamentOwns": [
+      "tournament",
+      "teams",
+      "published lineup",
+      "sub-match summary",
+      "matchup result",
+      "standings",
+      "tournament-level audit",
+      "tournament progression"
+    ],
+    "integrationLayerOwns": [
+      "bridge identity",
+      "provision contract",
+      "outbox/inbox",
+      "result propagation",
+      "reprovision/resync",
+      "legacy write lock"
+    ],
+    "identity": {
+      "teamSubMatchId": "external_sub_match_id",
+      "refereeV5MatchId": "external_sub_match_id",
+      "bridgeTable": "team_sub_match_referee_links"
+    },
+    "routes": {
+      "main": "/referee/match/:matchId",
+      "legacyNavigator": "/team-referee/:id",
+      "legacyWhenLinked": "LOCKED_FOR_WRITE_READ_ONLY_SUMMARY"
+    },
+    "officialResultSource": "referee_v5_match_result_revisions_via_outbox_consumer"
+  },
+  "gateResults": {
+    "refereeV5Unit": { "passed": 133, "total": 133, "verdict": "PASS" },
+    "refereeV5Ui": { "passed": 36, "total": 36, "verdict": "PASS" },
+    "legacyReferee": { "passed": 29, "total": 29, "verdict": "PASS" },
+    "teamTournamentFull": { "passed": 236, "total": 236, "verdict": "PASS" },
+    "tt5bUnit": { "passed": 9, "total": 9, "verdict": "PASS" },
+    "tt5cUnit": { "passed": 10, "total": 10, "verdict": "PASS" },
+    "tt5dUnit": { "passed": 11, "total": 11, "verdict": "PASS" },
+    "tt5dStagingVerify": { "passed": 17, "total": 17, "verdict": "PASS" },
+    "build": { "verdict": "PASS" },
+    "scopedLint": { "verdict": "PASS" },
+    "changedFilesLint": { "verdict": "PASS" }
+  },
+  "securityVerdict": {
+    "overall": "PASS_ON_STAGING",
+    "controls": {
+      "crossTenantBlocked": true,
+      "assignmentScoped": true,
+      "expiredAssignmentBlocked": true,
+      "revokedAssignmentBlocked": true,
+      "wrongRefereeBlocked": true,
+      "legacyWriteBlockedWhenLinked": true,
+      "duplicateFinalizeBlocked": true,
+      "idempotencyEnforced": true,
+      "resultRevisionTracked": true,
+      "serviceRoleInternalOnly": true,
+      "anonSensitiveRpcBlocked": true,
+      "productionSqlApplied": false
+    }
+  },
+  "remainingFindings": {
+    "P0": [
+      {
+        "id": "P0-1",
+        "title": "Production migration not applied",
+        "detail": "TT-5B/C/D SQL applied to staging only."
+      },
+      {
+        "id": "P0-2",
+        "title": "Production E2E not executed",
+        "detail": "All E2E evidence is staging probe tournament."
+      }
+    ],
+    "P1": [
+      {
+        "id": "P1-1",
+        "title": "Offline queue not production-ready",
+        "detail": "Non-blocking for online pilot per TT-5A."
+      },
+      {
+        "id": "P1-2",
+        "title": "TT-6 realtime not implemented",
+        "detail": "Multi-device sync deferred."
+      },
+      {
+        "id": "P1-3",
+        "title": "DreamBreaker/MLP out of scope",
+        "detail": "Parallel legacy path remains."
+      },
+      {
+        "id": "P1-4",
+        "title": "Legacy route deprecation incomplete",
+        "detail": "/referee/match/:matchId may fall back without tournamentId."
+      },
+      {
+        "id": "P1-5",
+        "title": "Correction UX polish",
+        "detail": "Functional RPC + minimal UI."
+      },
+      {
+        "id": "P1-6",
+        "title": "Load/stress testing incomplete",
+        "detail": "Functional staging E2E only."
+      }
+    ],
+    "P2": [
+      {
+        "id": "P2-1",
+        "title": "Observability/alerting",
+        "detail": "No dedicated ops dashboard in TT-5."
+      },
+      {
+        "id": "P2-2",
+        "title": "Outbox drain worker",
+        "detail": "No always-on production worker documented."
+      },
+      {
+        "id": "P2-3",
+        "title": "Handoff doc SHA drift",
+        "detail": "Use TT5_FINAL_REPORT as canonical baseline."
+      }
+    ]
+  },
+  "rollback": {
+    "branchStrategy": "Revert integration commits D then C then B on feature branch",
+    "featureFlags": ["VITE_REFEREE_V5_ENABLED", "VITE_REFEREE_V5_DATA_MODE"],
+    "bridgeDisable": "Stop provision; revoke links; legacy lock releases",
+    "consumerDisable": "Revoke consume RPC callers; retain inbox/outbox history",
+    "noHardDelete": true,
+    "officialResultsPreserved": "match_result_revisions and applied inbox rows retained",
+    "docs": [
+      "docs/v5/team-tournament/tt5/TT5-B_ROLLBACK.md",
+      "docs/v5/team-tournament/tt5/TT5-C_ROLLBACK.md",
+      "docs/v5/team-tournament/tt5/TT5-D_ROLLBACK.md"
+    ]
+  },
+  "mergeRecommendation": {
+    "verdict": "READY_TO_MERGE_WITH_CONDITIONS",
+    "conditions": [
+      "Owner review of TT5_FINAL_REPORT",
+      "Separate production migration plan and rollback runbook",
+      "Production E2E sign-off before go-live",
+      "TT-6 not bundled in TT-5 merge",
+      "Merge does not imply production deploy"
+    ]
+  },
+  "tt6Readiness": {
+    "ready": true,
+    "scope": [
+      "realtime subscriptions",
+      "reconnect",
+      "deduplication",
+      "live multi-device synchronization",
+      "degraded mode/polling fallback",
+      "observability"
+    ],
+    "outOfScope": [
+      "official result ownership",
+      "outbox consumer semantics",
+      "bridge identity",
+      "legacy lock policy"
+    ]
+  },
+  "productionImpact": {
+    "status": "UNTOUCHED",
+    "sqlApplied": false,
+    "deployed": false,
+    "e2eExecuted": false
+  }
+}
