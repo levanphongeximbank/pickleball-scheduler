@@ -1,0 +1,26 @@
+{
+  "generatedAt": "2026-07-13T09:37:00.000Z",
+  "phase": "TT-6C",
+  "productionImpact": "NONE",
+  "verdict": "BLOCKED",
+  "tt6c": "BLOCKED",
+  "preview": "NOT_STARTED",
+  "browser": "NOT_RUN",
+  "regression": "NOT_RUN",
+  "readyForTt6d": false,
+  "tt6d": "NOT_STARTED",
+  "blockedAtStep": 1,
+  "reason": "Working tree not CLEAN. HEAD remains TT-6B commit 26076d8. TT-6C implementation exists only as uncommitted local changes (28 files). Cannot deploy Preview from TT-6C commit or verify HEAD until TT-6C commit is created.",
+  "branch": "feature/tt6-realtime-sync",
+  "headSha": "26076d8b5565e9ea2260642d433c9482e602d742",
+  "workingTreeClean": false,
+  "remoteBranch": "origin/feature/tt6-realtime-sync not present",
+  "requiredBeforeRetry": [
+    "Owner GO: commit TT-6C on feature/tt6-realtime-sync",
+    "Working tree CLEAN after commit",
+    "Set VITE_TT_REALTIME_ENABLED=true on Vercel Preview environment only",
+    "Deploy Preview from TT-6C commit SHA",
+    "Re-run verify-phase-tt6c-preview-smoke.mjs against new Preview URL"
+  ],
+  "production": "UNTOUCHED"
+}

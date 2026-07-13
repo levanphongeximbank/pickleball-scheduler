@@ -1,0 +1,22 @@
+{
+  "generatedAt": "2026-07-13T09:37:00.000Z",
+  "phase": "TT-6C",
+  "productionImpact": "NONE",
+  "verdict": "BLOCKED",
+  "blockedAtStep": 1,
+  "reason": "Working tree not CLEAN; HEAD is TT-6B (26076d8), not a TT-6C commit. Preview deploy not started.",
+  "branch": "feature/tt6-realtime-sync",
+  "headSha": "26076d8b5565e9ea2260642d433c9482e602d742",
+  "headMessage": "feat(team-tournament): complete TT-6B realtime core service",
+  "workingTreeClean": false,
+  "uncommittedTt6cFiles": 28,
+  "previewDeploymentId": null,
+  "previewUrl": null,
+  "flag": {
+    "name": "VITE_TT_REALTIME_ENABLED",
+    "previewConfigured": "UNKNOWN",
+    "requiredValue": true,
+    "productionValue": false
+  },
+  "deployStatus": "NOT_STARTED"
+}

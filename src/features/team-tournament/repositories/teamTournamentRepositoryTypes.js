@@ -151,12 +151,14 @@
  * @property {(event: { type: string, lineupKey: string, payload?: object }) => void} [onLineupChange]
  * @property {(event: { type: string, payload?: object }) => void} [onStandingsChange]
  * @property {(error: { code: string, error: string }) => void} [onError]
+ * @property {(state: string) => void} [onConnectionStateChange]
  */
 
 /**
  * @typedef {object} TournamentSubscriptionResult
  * @property {() => void} unsubscribe
- * @property {'polling'|'reload'} [fallbackMode]
+ * @property {string} [subscriptionId]
+ * @property {'polling'|'reload'|'realtime'} [fallbackMode]
  * @property {number} [pollingIntervalMs]
  */
 

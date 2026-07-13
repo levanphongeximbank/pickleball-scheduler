@@ -72,10 +72,13 @@ export async function subscribeCloudTournament(repo, clubId, tournamentId, handl
     handlers,
     refreshSnapshot,
     onConnectionStateChange: (state) => {
-      handlers.onError?.({
-        code: state === "unauthorized" ? "realtime_unauthorized" : "realtime_connection",
-        error: String(state),
-      });
+      handlers.onConnectionStateChange?.(state);
+      if (state === "unauthorized") {
+        handlers.onError?.({
+          code: "realtime_unauthorized",
+          error: "Không có quyền truy cập đồng bộ realtime.",
+        });
+      }
     },
   });
 

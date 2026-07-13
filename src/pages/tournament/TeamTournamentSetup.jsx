@@ -44,6 +44,7 @@ import {
   organizerSyncDreambreaker,
 } from "../../features/team-tournament/services/teamTournamentService.js";
 import { useTeamTournamentPage } from "../../features/team-tournament/ui/useTeamTournamentPage.js";
+import RealtimeConnectionStatus from "../../features/team-tournament/ui/RealtimeConnectionStatus.jsx";
 import { buildUiCommandScope } from "../../features/team-tournament/ui/teamTournamentUiCommandKeys.js";
 import TeamRosterPanel from "../../components/tournament/TeamRosterPanel.jsx";
 import TournamentSetupShell from "../../components/tournament/TournamentSetupShell.jsx";
@@ -182,6 +183,13 @@ export default function TeamTournamentSetup() {
     patchTeamData,
     dataVersion,
     getLineupOverrideOps,
+    connectionState,
+    isRealtime,
+    isDegraded,
+    lastSnapshotAt,
+    reconnectRealtime,
+    subscriptionError,
+    pollingFallbackActive,
   } = useTeamTournamentPage({
     clubId: activeClubId,
     tournamentId,
@@ -778,6 +786,16 @@ export default function TeamTournamentSetup() {
       }
       alerts={
         <>
+          <RealtimeConnectionStatus
+            variant="banner"
+            connectionState={connectionState}
+            isRealtime={isRealtime}
+            isDegraded={isDegraded}
+            pollingFallbackActive={pollingFallbackActive}
+            lastSnapshotAt={lastSnapshotAt}
+            subscriptionError={subscriptionError}
+            onReconnect={reconnectRealtime}
+          />
           {hubBanner ? <Alert severity="info" sx={{ mb: 2 }}>{hubBanner}</Alert> : null}
           {message ? <Alert severity="success" sx={{ mb: 2 }} onClose={() => setMessage("")}>{message}</Alert> : null}
           {error ? <Alert severity="error" sx={{ mb: 2 }} onClose={() => setError("")}>{error}</Alert> : null}

@@ -1,0 +1,13 @@
+{
+  "generatedAt": "2026-07-13T09:37:00.000Z",
+  "phase": "TT-6C",
+  "productionImpact": "NONE",
+  "verdict": "BLOCKED",
+  "blockedAtStep": 1,
+  "reason": "Browser E2E not run — prerequisite TT-6C commit + Preview deploy not completed.",
+  "previousRunNote": "Prior smoke against old Preview (26076d8) failed connection_status_ui — expected until TT-6C Preview deploy.",
+  "cases": [],
+  "passCount": 0,
+  "totalCount": 0,
+  "allPass": false
+}

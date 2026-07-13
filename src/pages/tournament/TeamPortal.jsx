@@ -14,7 +14,6 @@ import {
   Stack,
   Typography,
 } from "@mui/material";
-import ArrowBackIcon from "@mui/icons-material/ArrowBack";
 import LockIcon from "@mui/icons-material/Lock";
 import SaveIcon from "@mui/icons-material/Save";
 import SendIcon from "@mui/icons-material/Send";
@@ -29,10 +28,7 @@ import { guardRecordTenant } from "../../features/tenant/guards/tenantGuard.js";
 import { findTournamentClubId } from "../../features/club/services/clubTournamentBridge.js";
 import { LINEUP_STATUS, MATCHUP_STATUS } from "../../features/team-tournament/constants.js";
 import { CaptainDreambreakerPanel } from "../../components/tournament/team/DreambreakerPanel.jsx";
-import {
-  listDreambreakerMatchups,
-  syncDreambreakerForAllMatchups,
-} from "../../features/team-tournament/engines/dreambreakerEngine.js";
+import { listDreambreakerMatchups } from "../../features/team-tournament/engines/dreambreakerEngine.js";
 import { isMlpFormat } from "../../features/team-tournament/engines/mlpPresetEngine.js";
 import CaptainPortalSummary from "../../components/tournament/team/CaptainPortalSummary.jsx";
 import {
@@ -67,6 +63,7 @@ import TournamentSetupShell from "../../components/tournament/TournamentSetupShe
 import { findTeam, getLineup } from "../../features/team-tournament/models/index.js";
 import { captainSubmitDreambreakerOrder } from "../../features/team-tournament/services/teamTournamentService.js";
 import { useTeamTournamentPage } from "../../features/team-tournament/ui/useTeamTournamentPage.js";
+import RealtimeConnectionStatus from "../../features/team-tournament/ui/RealtimeConnectionStatus.jsx";
 import { useLineupDeadlineClock } from "../../features/team-tournament/ui/useLineupDeadlineClock.js";
 import {
   DEADLINE_STATUS,
@@ -246,7 +243,6 @@ function MatchupLineupCard({
   team,
   teamData,
   players,
-  clubId,
   tournamentId,
   dataVersion,
   tournamentVersion,
@@ -256,7 +252,6 @@ function MatchupLineupCard({
   isCloudPrimary,
   serverClock,
   onSaved,
-  versionConflict,
 }) {
   const opponentId = getOpponentTeamId(matchup, team.id);
   const opponent = findTeam(teamData, opponentId);
@@ -673,6 +668,13 @@ export default function TeamPortal() {
     serverTime,
     lineupDeadline,
     deadlineStatus,
+    connectionState,
+    isRealtime,
+    isDegraded,
+    lastSnapshotAt,
+    reconnectRealtime,
+    subscriptionError,
+    pollingFallbackActive,
   } = useTeamTournamentPage({
     clubId: resolvedClubId,
     tournamentId,
@@ -824,7 +826,6 @@ export default function TeamPortal() {
     : "";
 
   const lineupCardProps = {
-    clubId: effectiveClubId,
     tournamentId,
     dataVersion,
     tournamentVersion: version,
@@ -834,7 +835,6 @@ export default function TeamPortal() {
     isCloudPrimary,
     serverClock,
     onSaved: handleDeadlineElapsed,
-    versionConflict,
   };
 
   return (
@@ -855,6 +855,16 @@ export default function TeamPortal() {
         }
       >
       <Stack spacing={2}>
+        <RealtimeConnectionStatus
+          variant="banner"
+          connectionState={connectionState}
+          isRealtime={isRealtime}
+          isDegraded={isDegraded}
+          pollingFallbackActive={pollingFallbackActive}
+          lastSnapshotAt={lastSnapshotAt}
+          subscriptionError={subscriptionError}
+          onReconnect={reconnectRealtime}
+        />
         {versionConflict ? (
           <Alert severity="warning">
             Dữ liệu đã được cập nhật từ thiết bị khác. Vui lòng kiểm tra lại trước khi gửi.

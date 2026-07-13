@@ -1,0 +1,39 @@
+{
+  "generatedAt": "2026-07-13T02:31:39.901Z",
+  "phase": "TT-6C",
+  "stagingRef": "qyewbxjsiiyufanzcjcq",
+  "productionImpact": "NONE",
+  "previewUrl": {
+    "ok": true,
+    "blocked": false,
+    "envPresent": true,
+    "source": "env",
+    "baseUrl": "https://pickleball-scheduler-leue5cz8f-pickleball-scheduler.vercel.app",
+    "hostname": "pickleball-scheduler-leue5cz8f-pickleball-scheduler.vercel.app"
+  },
+  "previewBaseUrl": "https://pickleball-scheduler-leue5cz8f-pickleball-scheduler.vercel.app",
+  "localCommitSha": "26076d8b5565e9ea2260642d433c9482e602d742",
+  "flagExpected": "VITE_TT_REALTIME_ENABLED=true",
+  "cases": [
+    {
+      "id": "btc_setup_render",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "id": "connection_status_ui",
+      "pass": false,
+      "detail": ""
+    },
+    {
+      "id": "captain_portal_render",
+      "pass": true,
+      "detail": "May require captain account in full E2E"
+    }
+  ],
+  "verdict": "FAIL",
+  "reportFile": "TT6C_BROWSER_E2E_REPORT.json",
+  "passCount": 2,
+  "totalCount": 3,
+  "allPass": false
+}
