@@ -133,4 +133,10 @@ Phase R1-A khuyến nghị bắt đầu bằng **luật USAP 2026**, vì rõ rà
 
 ---
 
+---
+
+## Owner override (2026-07-13)
+
+R1-A đề xuất default **21** điểm; **Owner đã phê duyệt 11 / win by 2** cho profile đầu tiên. Kiến trúc vẫn cho phép 15/21 sau. Chi tiết: `V5-R1_OWNER_DECISIONS.md`, `V5-R1C_FINAL_VERDICT.md`.
+
 **End of REFEREE V5-R1A**

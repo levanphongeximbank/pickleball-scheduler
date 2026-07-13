@@ -67,11 +67,13 @@ Impact ↑
 
 ## Owner decisions gating risk closure
 
-| Decision (from R1-A) | Risks unblocked |
-|----------------------|-----------------|
+| Decision (Owner 2026-07-13) | Risks unblocked |
+|-----------------------------|-----------------|
 | First variant = USAP 2026 | P1-07 freeze excluded, P0-02 scope clear |
-| Default points 21 | P1-10 |
-| Doubles-first scope | P1-05 test priority |
+| Default points **11** (arch 15/21) | P1-10 resolved for R2 default |
+| Doubles-only R2 | P1-05 test priority, singles deferred |
 | DreamBreaker separate | P2-06 |
+| Migration deferred | No premature SQL |
+| Strategy + Registry | P1-02 |
 
 **Code changes:** DOCUMENTATION ONLY

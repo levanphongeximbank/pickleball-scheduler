@@ -150,7 +150,7 @@ Legacy portal locked when V5 bridge active. DreamBreaker out of TT-5 V5 scope.
 Đủ audit để bắt đầu **R1-C** (architecture / rules spec pack) sau owner review.  
 **R1-C chưa bắt đầu trong lượt này.**
 
-Owner decisions từ R1-A vẫn **PENDING** (default 21, win-by-1, doubles-first).
+Owner decisions: **APPROVED 2026-07-13** — see `V5-R1_OWNER_DECISIONS.md` (default **11** / win by 2, doubles-only R2). R1-C complete: `V5-R1C_FINAL_VERDICT.md`.
 
 ---
 
