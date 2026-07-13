@@ -11,7 +11,6 @@ import {
 } from "../../src/features/referee-v5/constants/scoringStrategy.js";
 import { ScoringStrategyRegistry } from "../../src/features/referee-v5/engines/scoring/ScoringStrategyRegistry.js";
 import { resolveRuleSetId } from "../../src/features/referee-v5/engines/scoring/formatResolution.js";
-import { ScoringFormatError } from "../../src/features/referee-v5/engines/scoring/scoringFormatError.js";
 import { applyMatchEvent } from "../../src/features/referee-v5/engines/matchStateEngine.js";
 import {
   applyEvent,
@@ -88,20 +87,16 @@ test("resolve legacy singles rally", () => {
   assert.equal(resolveRuleSetId(state), RULE_SET_ID.RALLY_SINGLES_LEGACY_V1);
 });
 
-test("USAP 2026 rally variant throws not implemented in R2-1", () => {
+test("USAP 2026 rally variant resolves to canonical strategy", () => {
   const state = {
     matchType: MATCH_TYPE.DOUBLES,
     scoringSystem: SCORING_SYSTEM.RALLY,
     scoringVariant: SCORING_VARIANT.USAP_2026_PROVISIONAL_RALLY,
   };
   assert.equal(resolveRuleSetId(state), RULE_SET_ID.RALLY_USAP_2026_PROVISIONAL_DOUBLES_V1);
-  assert.throws(
-    () => ScoringStrategyRegistry.resolve(state),
-    (error) => {
-      assert.ok(error instanceof ScoringFormatError);
-      assert.equal(error.code, "RALLY_STRATEGY_NOT_IMPLEMENTED");
-      return true;
-    }
+  assert.equal(
+    ScoringStrategyRegistry.resolve(state).id,
+    RULE_SET_ID.RALLY_USAP_2026_PROVISIONAL_DOUBLES_V1
   );
 });
 
@@ -146,11 +141,13 @@ test("legacy rally doubles scores through prototype strategy", () => {
   assert.equal(result.nextState.teams.teamA.score, 1);
 });
 
-test("USAP rally apply rejected at match engine layer", () => {
+test("USAP rally apply succeeds at match engine layer", () => {
   const started = initStartedMatch(
     buildDoublesSideOutConfig({
       scoringSystem: SCORING_SYSTEM.RALLY,
       scoringVariant: SCORING_VARIANT.USAP_2026_PROVISIONAL_RALLY,
+      scoringFormat: SCORING_FORMAT.RALLY,
+      ruleSetId: RULE_SET_ID.RALLY_USAP_2026_PROVISIONAL_DOUBLES_V1,
     })
   );
   const result = applyMatchEvent(started, {
@@ -161,8 +158,9 @@ test("USAP rally apply rejected at match engine layer", () => {
     actorId: "ref-1",
     payload: {},
   });
-  assert.equal(result.ok, false);
-  assert.equal(result.error, "RALLY_STRATEGY_NOT_IMPLEMENTED");
+  assert.equal(result.ok, true);
+  assert.equal(result.nextState.teams.teamA.score, 1);
+  assert.equal(result.nextState.serverNumber, null);
 });
 
 test("singles side-out via registry preserves no point on receive win", () => {
