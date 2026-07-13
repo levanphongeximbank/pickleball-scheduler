@@ -46,9 +46,9 @@
 
 | Action | Branch |
 |--------|--------|
-| Local delete | `feature/tt6d-multi-device-observability` |
-| Remote delete | `origin/feature/tt6d-multi-device-observability` |
-| Remote delete (stale TT-6C) | `origin/feature/tt6-realtime-sync` |
+| Local delete | `feature/tt6d-multi-device-observability` — **DONE** |
+| Remote delete | `origin/feature/tt6d-multi-device-observability` — **already absent** (PR #8 merge) |
+| Remote delete (stale TT-6C) | `origin/feature/tt6-realtime-sync` — **already absent** (PR #6 merge) |
 
 Main worktree checked out on `feature/competition-core-standardization` @ `c93764d`.
 

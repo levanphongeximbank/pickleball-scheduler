@@ -16,7 +16,8 @@
   },
   "branchCleanup": {
     "localDeleted": ["feature/tt6d-multi-device-observability"],
-    "remoteDeleted": [
+    "remoteDeleted": [],
+    "remoteAlreadyAbsent": [
       "feature/tt6d-multi-device-observability",
       "feature/tt6-realtime-sync"
     ]
