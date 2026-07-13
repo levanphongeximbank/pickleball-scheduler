@@ -51,6 +51,10 @@ export function initializeMatchState(config) {
     ...(config.scoringSystem ? { scoringSystem: String(config.scoringSystem) } : {}),
     ...(config.scoringVariant ? { scoringVariant: String(config.scoringVariant) } : {}),
     ...(config.ruleSetId ? { ruleSetId: String(config.ruleSetId) } : {}),
+    ...(config.freezeRule != null ? { freezeRule: String(config.freezeRule) } : {}),
+    ...(config.serverNumberRule != null
+      ? { serverNumberRule: String(config.serverNumberRule) }
+      : {}),
     pointsToWin: Number(config.pointsToWin) || 11,
     winBy: Number(config.winBy) || 2,
     maximumScore: config.maximumScore ?? null,

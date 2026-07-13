@@ -50,6 +50,8 @@ export function buildDoublesUsapRallyConfig(overrides = {}) {
     ruleSetId: RULE_SET_ID.RALLY_USAP_2026_PROVISIONAL_DOUBLES_V1,
     pointsToWin: 11,
     winBy: 2,
+    freezeRule: "NONE",
+    serverNumberRule: "NONE",
     ...overrides,
   });
 }

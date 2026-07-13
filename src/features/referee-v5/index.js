@@ -15,8 +15,17 @@ export { resolveReceivingPlayer, recomputeServeContext } from "./engines/receive
 export { resolveServeDirection, SERVE_DIRECTION } from "./selectors/serveContextSelector.js";
 export { logicalPositionToScreenPosition } from "./engines/courtPositionEngine.js";
 export { applySwitchEnds } from "./engines/switchEndsEngine.js";
-export { rebuildMatchState } from "./engines/stateReplayEngine.js";
+export {
+  rebuildMatchState,
+  statesEqual,
+  domainStatesEqual,
+} from "./engines/stateReplayEngine.js";
 export { undoLastEvent } from "./engines/undoEngine.js";
+export {
+  extractMatchFormatSnapshot,
+  assertEventDoesNotMutateFormat,
+  IMMUTABLE_MATCH_FORMAT_FIELDS,
+} from "./engines/scoring/matchFormatIntegrity.js";
 export { buildServeContext, formatSideOutScoreLine } from "./selectors/scoreboardSelector.js";
 export {
   buildPresentationModel,

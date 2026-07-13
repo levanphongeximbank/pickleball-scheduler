@@ -10,6 +10,10 @@ import { startMatchFromInitialized } from "./initializeMatchState.js";
 import { ScoringStrategyRegistry } from "./scoring/ScoringStrategyRegistry.js";
 import { ScoringFormatError } from "./scoring/scoringFormatError.js";
 import { buildRuleConfig } from "./scoring/ruleConfig.js";
+import {
+  assertEventDoesNotMutateFormat,
+  extractMatchFormatSnapshot,
+} from "./scoring/matchFormatIntegrity.js";
 import { applySwitchEnds } from "./switchEndsEngine.js";
 import { resolveReceivingPlayer, recomputeServeContext } from "./receiverResolver.js";
 import { undoLastEvent } from "./undoEngine.js";
@@ -33,6 +37,12 @@ export function applyMatchEvent(state, rawEvent, config = {}, options = {}) {
 
   if (!options.skipLockedCheck && working.status === MATCH_STATUS.LOCKED) {
     return createEngineError("MATCH_LOCKED", "Trận đã khóa.");
+  }
+
+  const formatSnapshot = options.formatSnapshot || extractMatchFormatSnapshot(working);
+  const formatGuard = assertEventDoesNotMutateFormat(formatSnapshot, event);
+  if (!formatGuard.ok) {
+    return createEngineError(formatGuard.error, formatGuard.error);
   }
 
   const pre = validateEventPreconditions(working, event);
