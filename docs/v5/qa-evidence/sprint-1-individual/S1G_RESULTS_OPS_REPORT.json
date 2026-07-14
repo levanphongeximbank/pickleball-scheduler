@@ -1,0 +1,60 @@
+{
+  "reportId": "S1G_RESULTS_OPS_QA",
+  "sprint": "Tournament V5 Sprint 1",
+  "batch": "S1-G",
+  "date": "2026-07-14",
+  "environment": "local",
+  "verdict": "PASS_PENDING_OWNER_REVIEW",
+  "gapsClosed": [
+    "S1-GAP-072",
+    "S1-GAP-073",
+    "S1-GAP-074",
+    "S1-GAP-401"
+  ],
+  "automatedTests": {
+    "individual-tournament-results-ops.test.js": {
+      "total": 8,
+      "passed": 8,
+      "cases": [
+        "T-S1-G01",
+        "T-S1-G02",
+        "T-S1-G03",
+        "T-S1-G04",
+        "tournament closing locks results and freezes summary",
+        "injury withdrawal during event awards walkovers",
+        "TournamentAwardsPage / WithdrawalPage no longer use team demo",
+        "sync third place participants from SF losers"
+      ]
+    },
+    "s1IndividualRegressionBundle": {
+      "total": 72,
+      "passed": 72,
+      "note": "Includes S1-A through S1-G suites + engine + regression"
+    }
+  },
+  "auditEvents": [
+    "walkover_declared",
+    "withdrawal_requested",
+    "withdrawal_approved",
+    "award_assigned",
+    "tournament_closed",
+    "third_place_enabled",
+    "third_place_generated"
+  ],
+  "manualChecklist": {
+    "status": "NOT_RUN",
+    "ownerSignOffRequired": true,
+    "items": [
+      "M1 Walkover no-show",
+      "M2 Withdrawal before event",
+      "M3 Injury withdrawal mid-event",
+      "M4 Third place generation",
+      "M5 Awards auto + export",
+      "M6 Close tournament",
+      "M7 Player medal/certificate"
+    ]
+  },
+  "nextBatch": "S1-H",
+  "deployed": false,
+  "merged": false
+}

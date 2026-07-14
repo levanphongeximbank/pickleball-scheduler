@@ -37,7 +37,7 @@ Priority: **P0** = pilot blocker · **P1** = production blocker or core DoD · *
 | Mời và xác nhận đồng đội | COMPLETE (S1-B) | S1-GAP-005 |
 | BTC thêm thủ công | COMPLETE | — |
 | Duyệt, từ chối, danh sách chờ | COMPLETE (S1-B) | S1-GAP-004 |
-| Hủy đăng ký | PARTIAL (cancel before lock = S1-B; withdrawal standings = S1-G) | S1-GAP-072 |
+| Hủy đăng ký | COMPLETE (S1-B cancel + S1-G withdrawal) | S1-GAP-072 |
 | Đổi đồng đội trước khi khóa | COMPLETE (S1-B) | S1-GAP-006 |
 | Chặn trùng nội dung / xung đột lịch | COMPLETE (S1-C cross-event; schedule conflict soft/later) | S1-GAP-007 |
 | Rating V5 eligibility | COMPLETE (S1-C consume snapshot; no V5 module edit) | S1-GAP-008 |
@@ -68,7 +68,7 @@ Priority: **P0** = pilot blocker · **P1** = production blocker or core DoD · *
 | Round Robin | COMPLETE | — |
 | Vòng bảng → Knockout | COMPLETE | — |
 | Knockout trực tiếp | PARTIAL | S1-GAP-402 |
-| Tranh hạng ba | PARTIAL | S1-GAP-401 |
+| Tranh hạng ba | COMPLETE (S1-G) | S1-GAP-401 |
 | Chung kết | COMPLETE | — |
 | Swiss | OUT OF SCOPE V5 | S1-GAP-403 |
 | Double Elimination | OUT OF SCOPE V5 | S1-GAP-404 |
@@ -97,13 +97,13 @@ Priority: **P0** = pilot blocker · **P1** = production blocker or core DoD · *
 | Phân công trọng tài | PARTIAL | S1-GAP-061 |
 | Nhập điểm | PARTIAL | S1-GAP-062 |
 | Xác nhận kết quả | PARTIAL | S1-GAP-063 |
-| Walkover | NOT STARTED | S1-GAP-064 |
-| Retirement | NOT STARTED | S1-GAP-065 |
-| Disqualification | NOT STARTED | S1-GAP-066 |
-| Sửa kết quả có kiểm soát | NOT STARTED | S1-GAP-067 |
+| Walkover | COMPLETE (S1-F types + S1-G workflow) | S1-GAP-064 |
+| Retirement | PARTIAL (S1-F result type) | S1-GAP-065 |
+| Disqualification | PARTIAL (S1-F result type) | S1-GAP-066 |
+| Sửa kết quả có kiểm soát | COMPLETE (S1-F) | S1-GAP-067 |
 | Audit log | PARTIAL | S1-GAP-068 |
-| Propagation bảng xếp hạng / bracket | PARTIAL | S1-GAP-063 |
-| Không double-count | PARTIAL | S1-GAP-069 |
+| Propagation bảng xếp hạng / bracket | COMPLETE (S1-F blob) | S1-GAP-063 |
+| Không double-count | COMPLETE (S1-F blob) | S1-GAP-069 |
 
 ---
 
@@ -116,9 +116,9 @@ Priority: **P0** = pilot blocker · **P1** = production blocker or core DoD · *
 | Hiệu số | COMPLETE | — |
 | Head-to-head | COMPLETE (S1-D STANDINGS_V2) | S1-GAP-070 |
 | Tie-break nhiều đội | COMPLETE (S1-D mini-table) | S1-GAP-071 |
-| Forfeit / withdrawn | PARTIAL | S1-GAP-072 |
-| Xếp hạng cuối cùng | PARTIAL | S1-GAP-073 |
-| Huy chương | NOT STARTED | S1-GAP-074 |
+| Forfeit / withdrawn | COMPLETE (S1-G) | S1-GAP-072 |
+| Xếp hạng cuối cùng | COMPLETE (S1-G) | S1-GAP-073 |
+| Huy chương | COMPLETE (S1-G) | S1-GAP-074 |
 | Đồng hạng (cấu hình) | NOT STARTED | S1-GAP-075 |
 
 ---
@@ -213,7 +213,7 @@ Priority: **P0** = pilot blocker · **P1** = production blocker or core DoD · *
 | **S1-GAP-302** | Manual seed BTC UI missing | BTC cannot override seed | `EngineSeedTab.jsx` | Editable seed grid + persist | Manual seed tests | S1-GAP-308 | No | No |
 | **S1-GAP-304** | ~~Draw edit audit insufficient~~ **CLOSED S1-A** | Không trace BTC edits | `engineRunLog.js`, `workflowHistory.js`, `settings.draw.auditLog` | ✅ Actor + before/after | T-S1-A04 + audit tests | — | No | Yes |
 | **S1-GAP-305** | ~~Regenerate-before-publish undefined~~ **CLOSED S1-A** | Redraw after publish risk | setup pages, `publishDrawEngine.js` | ✅ Guard on publish + forceRedraw | T-S1-A02, T-S1-A03 | — | No | Yes |
-| **S1-GAP-401** | Third-place match not generated | Tranh H3 thiếu trận | `bracketEngine.js` | Create `MATCH_STAGE.THIRD_PLACE` match | Bracket tests | None | No | No |
+| **S1-GAP-401** | ~~Third-place match not generated~~ **CLOSED S1-G** | Tranh H3 thiếu trận | `thirdPlaceEngine.js` | ✅ Optional generate + SF loser sync | T-S1-G03 | None | No | No |
 | **S1-GAP-402** | Knockout-only format unavailable | Không giải KO thuần | format config | Format selector + direct KO path | Format tests | None | No | No |
 | **S1-GAP-501** | ~~Min rest not enforced in schedule engine~~ **CLOSED S1-E** | VĐV fatigue / unfair schedule | `scheduleEngine.js`, `restTimeEngine.js` | ✅ Per-player min-rest + auto-adjust + fail hard | T-S1-E01 | None | No | Yes |
 | **S1-GAP-503** | ~~BTC per-match court/time change UI~~ **CLOSED S1-E** | Reschedule manual only via director | `ScheduleBuilderPanel.jsx` | ✅ Minimal match ops + rest warnings | T-S1-E03 + panel | None | No | No |
@@ -222,8 +222,9 @@ Priority: **P0** = pilot blocker · **P1** = production blocker or core DoD · *
 | **S1-GAP-069** | ~~No server idempotency on finalize~~ **CLOSED S1-F (blob pilot)** | Double-count risk | `resultPropagation.processedCommandIds` | ✅ Durable command ids on tournament blob | T-S1-F01 | S1-GAP-063 | No | Yes |
 | **S1-GAP-070** | ~~H2H not in production standings~~ **CLOSED S1-D** | Wrong tie order | `individualStandingsAdapter.js` | ✅ STANDINGS_V2 path in Official/Internal/BracketResults | T-S1-D03 + CC-08 #31 | — | No | Yes |
 | **S1-GAP-071** | ~~Multi-team mini-table not in prod~~ **CLOSED S1-D** | 3+ tie wrong | `individualStandingsAdapter.js` | ✅ Canonical mini-table via STANDINGS_V2 | T-S1-D04 | — | No | Yes |
-| **S1-GAP-072** | Individual withdrawal not implemented | Rút lui không xử lý standings | `withdrawalEngine.js` (team) | Individual withdrawal engine | Withdrawal standings tests | S1-GAP-076 | No | Yes |
-| **S1-GAP-074** | Awards page mock | Trao giải không dùng được | `TournamentAwardsPage.jsx` | Wire `awardsEngine` to individual | Awards preview tests | S1-GAP-073 | No | No |
+| **S1-GAP-072** | ~~Individual withdrawal not implemented~~ **CLOSED S1-G** | Rút lui không xử lý standings | `withdrawalEngine.js` (individual) | ✅ before/during/injury + replacement + draw exclude | T-S1-G02 | S1-GAP-076 | No | Yes |
+| **S1-GAP-073** | ~~Final ranking / podium~~ **CLOSED S1-G** | Không có hạng cuối rõ | `awardsEngine.buildFinalRanking` | ✅ KO final + H3 + H4 | T-S1-G04 | S1-GAP-401 | No | Yes |
+| **S1-GAP-074** | ~~Awards page mock~~ **CLOSED S1-G** | Trao giải không dùng được | `TournamentAwardsPage.jsx`, `awardsEngine.js` | ✅ Individual awards + export + close | T-S1-G04 | S1-GAP-073 | No | No |
 | **S1-GAP-076** | ~~STANDINGS_V2 shadow-only~~ **CLOSED S1-D** | Legacy sort in UI | `individualStandingsAdapter.js` | ✅ Canonical-primary when flags on; legacy fallback | T-S1-D03–D05 | None | No | Yes |
 | **S1-GAP-082** | Post-match legacy Elo not Rating V5 | Rating drift vs Pick_VN | `tournamentLifecycle.js` | Route finalize → Rating V5 RPC | Rating event tests | S1-GAP-083 | No | Yes |
 | **S1-GAP-083** | Rating idempotency flag-gated | Duplicate rating events | `ratingIdempotencyStore.js` | Default-on for certified events | Idempotency tests | S1-GAP-082 | No | Yes |

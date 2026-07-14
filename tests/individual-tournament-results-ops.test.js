@@ -380,7 +380,14 @@ test("sync third place participants from SF losers", () => {
   });
   const created = ensureThirdPlaceMatch(event);
   assert.equal(created.ok, true);
+  assert.equal(created.match.entryAId, "e2");
+  assert.equal(created.match.entryBId, "e3");
+
   const synced = syncThirdPlaceParticipants(created.event);
-  assert.equal(synced.match.entryAId, "e2");
-  assert.equal(synced.match.entryBId, "e3");
+  const third = (synced.event.matches || []).find(
+    (m) => m.stage === MATCH_STAGE.THIRD_PLACE
+  );
+  assert.ok(third);
+  assert.equal(third.entryAId, "e2");
+  assert.equal(third.entryBId, "e3");
 });

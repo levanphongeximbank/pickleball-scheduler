@@ -1,7 +1,7 @@
 # S1 — Individual Tournament: Current State
 
 **Sprint:** Tournament V5 Sprint 1 — Individual Tournament  
-**Phase:** 1 in progress · **S1-A/B/C/D/E/F implemented 2026-07-14** — S1-F awaiting owner review  
+**Phase:** 1 in progress · **S1-A/B/C/D/E/F/G implemented 2026-07-14** — S1-G awaiting owner review  
 **Date:** 2026-07-14  
 **Branch audited:** `feature/competition-core-standardization` (working tree)  
 **Audit type:** Read-only — no runtime code modified
