@@ -89,6 +89,11 @@ function GroupStandingCard({ groupStanding, courts = [], matches = [] }) {
                     <Typography variant="body2" fontWeight={index < 2 ? 700 : 500}>
                       {team.name}
                     </Typography>
+                    {team.qualificationStatus?.startsWith("qualified") ? (
+                      <Typography variant="caption" color="success.main">
+                        Vào KO
+                      </Typography>
+                    ) : null}
                   </TableCell>
                   <TableCell align="center" sx={tournamentTableCellSx}>
                     <Typography
@@ -168,6 +173,13 @@ export default function BracketGroupStandingsPanel({
       <Typography variant="h6" fontWeight={700} sx={{ mb: 0.25 }}>
         BXH vòng bảng
       </Typography>
+      {standings[0]?.tieBreakExplanation ? (
+        <Typography variant="caption" color="text.secondary" display="block" sx={{ mb: 1.5 }}>
+          Tie-break: {standings[0].tieBreakExplanation}
+        </Typography>
+      ) : (
+        <Box sx={{ mb: 1.5 }} />
+      )}
       <Stack spacing={2}>
         {standings.map((groupStanding) => (
           <GroupStandingCard

@@ -1,7 +1,7 @@
 import { useMemo } from "react";
 import { Box, useMediaQuery, useTheme } from "@mui/material";
 
-import { buildAllGroupStandings } from "../../../tournament/engines/rankingEngine.js";
+import { buildIndividualAllGroupStandings } from "../../../features/individual-tournament/adapters/individualStandingsAdapter.js";
 import BracketGroupStandingsPanel from "./BracketGroupStandingsPanel.jsx";
 import BracketResultsTable from "./BracketResultsTable.jsx";
 
@@ -10,7 +10,7 @@ export default function BracketResultsView({ event, courts = [], viewModel }) {
   const desktop = useMediaQuery(theme.breakpoints.up("md"));
 
   const groupStandings = useMemo(
-    () => (event?.groups?.length ? buildAllGroupStandings(event) : []),
+    () => (event?.groups?.length ? buildIndividualAllGroupStandings(event) : []),
     [event]
   );
 

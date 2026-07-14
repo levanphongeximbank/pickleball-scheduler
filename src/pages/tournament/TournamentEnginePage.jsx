@@ -40,7 +40,6 @@ import PermissionGate from "../../components/auth/PermissionGate.jsx";
 import TournamentPageHeader from "../../components/tournament/TournamentPageHeader.jsx";
 import { tournamentCardSx } from "../../components/tournament/tournamentLayout.js";
 import { PERMISSIONS } from "../../auth/permissions.js";
-import { runPlatformEngineWorkflow } from "../../core/platform/engines/orchestrator.js";
 import {
   getPlatformEventSummary,
   getPlatformNotificationSummary,
@@ -88,16 +87,36 @@ export default function TournamentEnginePage() {
   const [notificationFilter, setNotificationFilter] = useState("all");
 
   const engine = useTournamentEngineState(tournamentId);
-  const platformSummary = useMemo(
-    () =>
-      runPlatformEngineWorkflow({
-        tournament: engine.tournament,
-        players: engine.players || [],
-        courts: engine.courts || [],
-        matches: engine.matches || [],
-      }),
-    [engine.tournament, engine.players, engine.courts, engine.matches]
-  );
+  const platformSummary = useMemo(() => {
+    const participantCount = engine.engineState?.participants?.length || 0;
+    const groupCount = engine.engineState?.groups?.length || 0;
+    const matchCount = engine.matches?.length || 0;
+    const hasRanking = Boolean(engine.engineState?.rankingResult);
+
+    let recommendation = "Bắt đầu workflow Engine 4.0";
+    let reason = "Chạy hạt giống → bốc thăm → lịch đấu → xếp hạng.";
+
+    if (hasRanking) {
+      recommendation = "Workflow hoàn tất";
+      reason = `${participantCount} VĐV · ${groupCount} bảng · ${matchCount} trận.`;
+    } else if (matchCount > 0) {
+      recommendation = "Tiếp theo: cập nhật xếp hạng";
+      reason = `${matchCount} trận đã lên lịch.`;
+    } else if (groupCount > 0) {
+      recommendation = "Tiếp theo: tạo lịch đấu";
+      reason = `${groupCount} bảng đã bốc thăm.`;
+    } else if (participantCount > 0) {
+      recommendation = "Tiếp theo: bốc thăm";
+      reason = `${participantCount} hạt giống sẵn sàng.`;
+    }
+
+    return {
+      ok: true,
+      data: {
+        recommendation: { recommendation, reason },
+      },
+    };
+  }, [engine.engineState, engine.matches]);
 
   const workflowHistoryGroups = useMemo(() => groupWorkflowHistoryByDate(engine.workflowHistory || []), [engine.workflowHistory]);
 

@@ -63,6 +63,9 @@ const TournamentRegisterHub = lazy(() =>
     default: m.TournamentRegisterHub,
   }))
 );
+const IndividualRegistrationPage = lazy(() =>
+  import("./pages/tournament/IndividualRegistrationPage.jsx")
+);
 const TournamentTeamsHub = lazy(() =>
   import("./pages/tournament/hubs/TournamentHubPages.jsx").then((m) => ({
     default: m.TournamentTeamsHub,
@@ -504,6 +507,10 @@ export default function Router() {
             <Route path="/tournament/operations" element={<TournamentOperationsHubPage />} />
             <Route path="/tournament/results" element={<TournamentResultsHubPage />} />
             <Route path="/tournament/register" element={<TournamentRegisterHub />} />
+            <Route
+              path="/tournament/:tournamentId/register"
+              element={<IndividualRegistrationPage />}
+            />
             <Route path="/tournament/teams/presets" element={<TournamentTeamPresetsHub />} />
             <Route path="/tournament/teams/build/manual" element={<TournamentTeamBuildManualHub />} />
             <Route path="/tournament/teams/build/random" element={<TournamentTeamBuildRandomHub />} />

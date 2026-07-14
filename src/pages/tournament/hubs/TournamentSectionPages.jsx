@@ -1,5 +1,5 @@
 import { useMemo } from "react";
-import { useNavigate, useParams } from "react-router-dom";
+import { useNavigate, useParams, useSearchParams } from "react-router-dom";
 
 import { Alert, Box, Button, Grid } from "@mui/material";
 import GroupsIcon from "@mui/icons-material/Groups";
@@ -14,6 +14,7 @@ import ModeCard from "../../../components/tournament/ModeCard.jsx";
 import TournamentPageHeader from "../../../components/tournament/TournamentPageHeader.jsx";
 import { TOURNAMENT_LAYOUT } from "../../../components/tournament/tournamentLayout.js";
 import { TOURNAMENT_ROUTES, isIndividualTournament, isTeamTournament } from "../../../config/tournamentRoutes.js";
+import { resolveEventTypeFromQuery } from "../../../features/individual-tournament/index.js";
 
 const CREATE_OPTIONS = {
   individual: [
@@ -45,8 +46,10 @@ const CREATE_OPTIONS = {
 
 export function TournamentTypePage() {
   const { category } = useParams();
+  const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   const { activeClubId, revision } = useClub();
+  const eventQuery = resolveEventTypeFromQuery(searchParams.get("event"));
 
   const tournaments = useMemo(
     () => listTournaments(activeClubId),
@@ -64,9 +67,15 @@ export function TournamentTypePage() {
   const title = isTeam ? "Giải đồng đội" : "Giải cá nhân / đôi";
   const description = isTeam
     ? "Tạo hoặc mở các giải đồng đội (team vs team)."
-    : "Tạo hoặc mở các giải nội bộ và giải chính thức.";
+    : eventQuery
+      ? `Tạo giải với nội dung preselect: ${eventQuery}.`
+      : "Tạo hoặc mở các giải nội bộ và giải chính thức.";
 
   const createOptions = CREATE_OPTIONS[isTeam ? "team" : "individual"];
+
+  const createPath = eventQuery
+    ? `${TOURNAMENT_ROUTES.create}?event=${eventQuery}`
+    : TOURNAMENT_ROUTES.create;
 
   return (
     <Box>
@@ -81,7 +90,7 @@ export function TournamentTypePage() {
               icon={option.icon}
               mode={option.mode}
               badge={option.badge}
-              onStart={() => navigate(TOURNAMENT_ROUTES.create)}
+              onStart={() => navigate(createPath)}
             />
           </Grid>
         ))}

@@ -1,0 +1,71 @@
+{
+  "reportId": "S1F_REFEREE_RESULT_PROPAGATION_QA",
+  "sprint": "Tournament V5 Sprint 1",
+  "batch": "S1-F",
+  "date": "2026-07-14",
+  "environment": "local",
+  "verdict": "PASS_PENDING_OWNER_REVIEW",
+  "gapsClosed": [
+    "S1-GAP-061",
+    "S1-GAP-063",
+    "S1-GAP-064",
+    "S1-GAP-067",
+    "S1-GAP-069",
+    "S1-GAP-100"
+  ],
+  "gapsDeferred": [
+    {
+      "id": "S1-GAP-062",
+      "note": "Classic referee token path + portal used for pilot; Referee V5 individual deferred"
+    }
+  ],
+  "automatedTests": {
+    "individual-tournament-referee-result.test.js": {
+      "total": 9,
+      "passed": 9,
+      "cases": [
+        "T-S1-F01",
+        "T-S1-F02",
+        "T-S1-F03",
+        "T-S1-F04",
+        "T-S1-F05",
+        "referee auto assign + conflict detection + reassign",
+        "walkover / retirement / injury / DQ result types lock match",
+        "TournamentRefereeAssignPage no longer uses team demo builder",
+        "S1-F regression: index exports referee/result engines"
+      ]
+    },
+    "s1IndividualRegressionBundle": {
+      "total": 64,
+      "passed": 64,
+      "note": "Includes S1-A through S1-F suites + engine + regression"
+    }
+  },
+  "auditEvents": [
+    "referee_assigned",
+    "referee_changed",
+    "referee_revoked",
+    "referee_auto_assigned",
+    "result_submitted",
+    "result_confirmed",
+    "result_corrected"
+  ],
+  "manualChecklist": {
+    "status": "NOT_RUN",
+    "ownerSignOffRequired": true,
+    "items": [
+      "M1 Add referee roster",
+      "M2 Manual + auto assign with conflict detection",
+      "M3 Reassign with audit",
+      "M4 Finalize score propagates standings",
+      "M5 Walkover / injury / DQ",
+      "M6 Referee portal submit + confirm",
+      "M7 Correction approve recomputes",
+      "M8 Player live results panel",
+      "M9 Duplicate commandId idempotent"
+    ]
+  },
+  "nextBatch": "S1-G",
+  "deployed": false,
+  "merged": false
+}

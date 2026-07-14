@@ -1,0 +1,60 @@
+{
+  "reportId": "S1B_REGISTRATION_QA",
+  "sprint": "Tournament V5 Sprint 1",
+  "batch": "S1-B",
+  "date": "2026-07-14",
+  "environment": "local",
+  "verdict": "PASS_PENDING_OWNER_REVIEW",
+  "gapsClosed": [
+    "S1-GAP-002",
+    "S1-GAP-004",
+    "S1-GAP-005",
+    "S1-GAP-006",
+    "S1-GAP-012"
+  ],
+  "automatedTests": {
+    "individual-tournament-registration.test.js": {
+      "total": 8,
+      "passed": 8,
+      "cases": [
+        "T-S1-B01",
+        "T-S1-B02",
+        "T-S1-B03",
+        "T-S1-B04",
+        "T-S1-B05",
+        "T-S1-B06",
+        "registration locks after draw publish",
+        "organizer reject and waitlist workflow"
+      ]
+    },
+    "individual-tournament-draw-publish.test.js": {
+      "note": "S1-A regression — untouched and still PASS"
+    },
+    "tournament-regression.test.js": {
+      "total": 6,
+      "passed": 6
+    }
+  },
+  "manualChecklist": {
+    "status": "NOT_RUN",
+    "ownerSignOffRequired": true,
+    "items": [
+      "M1 Registration window",
+      "M2 Player self-register pending",
+      "M3 BTC approve/reject/waitlist",
+      "M4 Capacity auto-waitlist + promote",
+      "M5 Partner invite confirm",
+      "M6 Cancel before lock",
+      "M7 Lock after draw publish",
+      "M8 ?event= preselect"
+    ]
+  },
+  "nonGoalsRespected": {
+    "S1-A unmodified": true,
+    "drawEngineUnmodified": true,
+    "ratingV5Edits": true,
+    "teamTournamentChanges": true,
+    "productionDeploy": true,
+    "merge": true
+  }
+}

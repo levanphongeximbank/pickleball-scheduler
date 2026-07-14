@@ -11,6 +11,7 @@ export const TOURNAMENT_ROUTES = Object.freeze({
   typeIndividual: "/tournament/types/individual",
   typeTeam: "/tournament/types/team",
   register: "/tournament/register",
+  /** Player self-registration — use with `:tournamentId` via individualPlayerRegistrationPath */
   teams: "/tournament/teams",
   teamPresets: "/tournament/teams/presets",
   teamBuildManual: "/tournament/teams/build/manual",
@@ -93,11 +94,30 @@ export function isRegisterableTournament(tournament) {
   if (!tournament || tournament.status === TOURNAMENT_STATUS.CANCELLED) {
     return false;
   }
+  // Player self-registration / BTC registration ops: draft + registration only.
+  // READY = registration closed (S1-B).
   return (
     tournament.status === TOURNAMENT_STATUS.REGISTRATION ||
-    tournament.status === TOURNAMENT_STATUS.DRAFT ||
-    tournament.status === TOURNAMENT_STATUS.READY
+    tournament.status === TOURNAMENT_STATUS.DRAFT
   );
+}
+
+/** Hub filter for organizer registration ops (includes locked view after ready). */
+export function isRegistrationManageableTournament(tournament) {
+  if (!tournament || tournament.status === TOURNAMENT_STATUS.CANCELLED) {
+    return false;
+  }
+  return (
+    isIndividualTournament(tournament) &&
+    (tournament.status === TOURNAMENT_STATUS.REGISTRATION ||
+      tournament.status === TOURNAMENT_STATUS.DRAFT ||
+      tournament.status === TOURNAMENT_STATUS.READY)
+  );
+}
+
+export function individualPlayerRegistrationPath(tournamentId) {
+  if (!tournamentId) return TOURNAMENT_ROUTES.register;
+  return `/tournament/${tournamentId}/register`;
 }
 
 export function isSchedulableTournament(tournament) {

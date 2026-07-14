@@ -1,43 +1,58 @@
-import { useState } from "react";
-
 import {
   Alert,
-  Box,
   Button,
   FormControlLabel,
   Stack,
   Switch,
   TextField,
-  Typography,
 } from "@mui/material";
 
 import {
   getEligibilityRules,
   updateEligibilityRules,
-} from "../../../features/team-tournament/engines/eligibilityEngine.js";
-import { initializeTeamTournamentData } from "../../../features/team-tournament/engines/teamTournamentEngine.js";
+} from "../../../features/individual-tournament/engines/eligibilityEngine.js";
+import { useIndividualTournamentConfig } from "../../../features/individual-tournament/hooks/useIndividualTournamentConfig.js";
 import TournamentConfigPageShell from "../../../components/tournament/TournamentConfigPageShell.jsx";
+import IndividualTournamentSelector from "../../../components/tournament/IndividualTournamentSelector.jsx";
 
 export default function TournamentAgeRulesPage() {
-  const [teamData, setTeamData] = useState(() => initializeTeamTournamentData());
-  const [message, setMessage] = useState(null);
-  const rules = getEligibilityRules(teamData).age;
+  const {
+    tournament,
+    tournaments,
+    tournamentId,
+    selectTournament,
+    persistTournament,
+    message,
+    setMessage,
+  } = useIndividualTournamentConfig();
+
+  const rules = getEligibilityRules(tournament).age;
 
   const save = (patch) => {
-    const result = updateEligibilityRules(teamData, { age: patch });
+    if (!tournament) {
+      setMessage({ type: "error", text: "Chưa chọn giải." });
+      return;
+    }
+    const result = updateEligibilityRules(tournament, { age: patch });
     if (!result.ok) {
       setMessage({ type: "error", text: result.error || "Không lưu được." });
       return;
     }
-    setTeamData(result.teamData);
-    setMessage({ type: "success", text: "Đã cập nhật quy tắc độ tuổi." });
+    if (!persistTournament(result.tournament)) return;
+    setMessage({ type: "success", text: "Đã lưu quy tắc độ tuổi." });
   };
 
   return (
     <TournamentConfigPageShell
       title="Độ tuổi"
-      description="Thiết lập giới hạn tuổi tham gia giải đồng đội."
+      description="Giới hạn tuổi tham gia giải cá nhân (lưu trên blob giải)."
     >
+      <IndividualTournamentSelector
+        tournaments={tournaments}
+        tournamentId={tournamentId}
+        onSelect={selectTournament}
+      />
+
       {message ? (
         <Alert severity={message.type} sx={{ mb: 2 }} onClose={() => setMessage(null)}>
           {message.text}
@@ -50,6 +65,7 @@ export default function TournamentAgeRulesPage() {
             <Switch
               checked={rules.enabled}
               onChange={(event) => save({ enabled: event.target.checked })}
+              disabled={!tournament}
             />
           }
           label="Bật kiểm tra độ tuổi"
@@ -61,7 +77,7 @@ export default function TournamentAgeRulesPage() {
           onChange={(event) =>
             save({ minAge: event.target.value === "" ? null : Number(event.target.value) })
           }
-          disabled={!rules.enabled}
+          disabled={!tournament || !rules.enabled}
         />
         <TextField
           label="Tuổi tối đa"
@@ -70,7 +86,7 @@ export default function TournamentAgeRulesPage() {
           onChange={(event) =>
             save({ maxAge: event.target.value === "" ? null : Number(event.target.value) })
           }
-          disabled={!rules.enabled}
+          disabled={!tournament || !rules.enabled}
         />
         <TextField
           label="Tính tuổi đến ngày"
@@ -78,9 +94,9 @@ export default function TournamentAgeRulesPage() {
           InputLabelProps={{ shrink: true }}
           value={rules.asOfDate ? rules.asOfDate.slice(0, 10) : ""}
           onChange={(event) => save({ asOfDate: event.target.value || null })}
-          disabled={!rules.enabled}
+          disabled={!tournament || !rules.enabled}
         />
-        <Button variant="contained" onClick={() => save(rules)}>
+        <Button variant="contained" onClick={() => save(rules)} disabled={!tournament}>
           Lưu
         </Button>
       </Stack>

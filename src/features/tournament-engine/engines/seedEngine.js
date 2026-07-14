@@ -5,6 +5,11 @@ import {
   UNSEEDED_THRESHOLD_MATCHES,
 } from "../constants/defaults.js";
 import { validateSeedInput } from "../validation/tournamentValidation.js";
+import {
+  attachSeedBands,
+  displayRatingToSeedSkill,
+  verifySeedIntegrity,
+} from "../../individual-tournament/adapters/ratingV5SeedAdapter.js";
 
 function clamp(value, min = 0, max = 1) {
   return Math.min(max, Math.max(min, value));
@@ -22,6 +27,11 @@ function normalizeWeights(weights = {}) {
 }
 
 function playerSkill(participant) {
+  // Prefer Rating V5 display rating when present (S1-D)
+  const fromV5 = displayRatingToSeedSkill(participant?.displayRating);
+  if (fromV5 != null) {
+    return fromV5;
+  }
   if (participant.elo != null && Number.isFinite(Number(participant.elo))) {
     return Number(participant.elo);
   }
@@ -33,7 +43,13 @@ function playerSkill(participant) {
 
 function buildSeedReason(participant, breakdown) {
   const parts = [];
-  if (breakdown.elo > 0) {
+  if (participant.displayRating != null && breakdown.elo > 0) {
+    parts.push(
+      `Rating V5 ${participant.displayRating}${
+        participant.reliabilityScore != null ? ` (rel ${participant.reliabilityScore})` : ""
+      }`
+    );
+  } else if (breakdown.elo > 0) {
     parts.push(`ELO ${participant.elo ?? "—"}`);
   } else if (breakdown.skillLevel > 0) {
     parts.push(`Trình độ ${participant.skillLevel ?? "—"}`);
@@ -45,7 +61,7 @@ function buildSeedReason(participant, breakdown) {
     parts.push("Phong độ gần đây");
   }
   if (participant.manualSeedOverride) {
-    parts.push("Chỉnh tay bởi BTC");
+    parts.push("Chỉnh tay bởi BTC (protected)");
   }
   if (participant.unseeded) {
     return "VĐV mới — chưa đủ dữ liệu, xếp nhóm unseeded";
@@ -59,10 +75,11 @@ function computeSeedBreakdown(participant, weights) {
   const winRateNorm = clamp(Number(participant.winRate ?? 0.5));
   const recentNorm = clamp(Number(participant.recentPerformance ?? 0.5));
   const manualNorm = clamp(Number(participant.manualPriority ?? 0));
+  const hasV5 = participant.displayRating != null;
 
   return {
     elo: eloNorm * weights.elo,
-    skillLevel: participant.elo == null ? skillNorm * weights.skillLevel : 0,
+    skillLevel: hasV5 || participant.elo != null ? 0 : skillNorm * weights.skillLevel,
     winRate: winRateNorm * weights.winRate,
     recentPerformance: recentNorm * weights.recentPerformance,
     manualPriority: manualNorm * weights.manualPriority,
@@ -76,6 +93,9 @@ function computeSeedScore(participant, weights) {
 }
 
 function isNewPlayer(participant) {
+  if (participant.displayRating != null) {
+    return false;
+  }
   const played = Number(participant.matchesPlayed ?? 0);
   return played < UNSEEDED_THRESHOLD_MATCHES && participant.elo == null;
 }
@@ -90,6 +110,7 @@ export function generateSeed(context = {}) {
   }
 
   const weights = normalizeWeights(context.seedWeights);
+  const bandSize = Number(context.seedBandSize || context.seedConfig?.bandSize || 4);
   const warnings = [...validation.warnings];
   const explain = [];
 
@@ -137,7 +158,13 @@ export function generateSeed(context = {}) {
 
   const seededPool = scored
     .filter((p) => !p.unseeded)
-    .sort((a, b) => b.seedScore - a.seedScore);
+    .sort((a, b) => {
+      if (b.seedScore !== a.seedScore) return b.seedScore - a.seedScore;
+      const dA = a.displayRating ?? -1;
+      const dB = b.displayRating ?? -1;
+      if (dB !== dA) return dB - dA;
+      return String(a.name || "").localeCompare(String(b.name || ""), "vi");
+    });
 
   const unseededPool = scored.filter((p) => p.unseeded);
 
@@ -153,16 +180,25 @@ export function generateSeed(context = {}) {
     seed: null,
   }));
 
-  const all = [...seeded, ...unseeded, ...excluded];
+  const banded = attachSeedBands([...seeded, ...unseeded], bandSize);
+  const all = [...banded, ...excluded];
+  const integrity = verifySeedIntegrity(all);
+  if (!integrity.ok) {
+    warnings.push(...integrity.errors);
+  }
+
   explain.push(`${seeded.length} hạt giống, ${unseeded.length} unseeded, ${excluded.length} loại.`);
+  explain.push(`Seed bands size=${bandSize}; Rating V5 preferred when displayRating present.`);
 
   return {
     ok: true,
     data: {
       participants: all,
-      seeded,
+      seeded: attachSeedBands(seeded, bandSize),
       unseeded,
       excluded,
+      integrity,
+      seedConfig: { bandSize, preferRatingV5: true },
     },
     score: seeded.length ? seeded[0].seedScore : 0,
     warnings,

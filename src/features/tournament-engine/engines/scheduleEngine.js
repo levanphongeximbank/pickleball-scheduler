@@ -1,8 +1,18 @@
 import { buildGroupStageSchedule } from "../../../tournament/engines/scheduleEngine.js";
 import { MATCH_STATUS } from "../../../models/tournament/constants.js";
 import { validateScheduleInput } from "../validation/tournamentValidation.js";
+import {
+  findMinimumRestViolations,
+  validateScheduleConflicts,
+} from "../../individual-tournament/engines/restTimeEngine.js";
 
 const COMPLETED_STATUSES = new Set(["completed", "forfeit"]);
+
+export const DEFAULT_SESSIONS = Object.freeze({
+  morning: { id: "morning", label: "Sáng", startTime: "06:00", endTime: "12:00" },
+  afternoon: { id: "afternoon", label: "Chiều", startTime: "12:00", endTime: "17:00" },
+  evening: { id: "evening", label: "Tối", startTime: "17:00", endTime: "23:00" },
+});
 
 function parseTimeToMinutes(timeStr) {
   const [h, m] = String(timeStr || "08:00").split(":").map(Number);
@@ -21,13 +31,96 @@ function addMinutesToIso(dateStr, startMinutes, durationMinutes) {
   return base.toISOString();
 }
 
+function isoToMinutesOnDate(iso, dateStr) {
+  if (!iso) return null;
+  const start = new Date(iso).getTime();
+  if (!Number.isFinite(start)) return null;
+  const base = new Date(`${dateStr || new Date(iso).toISOString().slice(0, 10)}T00:00:00`).getTime();
+  return Math.round((start - base) / 60000);
+}
+
 function getParticipantIds(match) {
   return [match.entryAId, match.entryBId].filter(Boolean).map(String);
 }
 
-function participantBusyAt(matchByParticipant, participantId, slotStart) {
-  const slots = matchByParticipant.get(participantId) || [];
-  return slots.some((slot) => slot === slotStart);
+function resolveSessions(config = {}) {
+  if (Array.isArray(config.sessions) && config.sessions.length > 0) {
+    return config.sessions.map((session) => ({
+      id: session.id || session.name || "session",
+      label: session.label || session.name || session.id || "session",
+      startTime: session.startTime,
+      endTime: session.endTime,
+      startMinutes: parseTimeToMinutes(session.startTime),
+      endMinutes: parseTimeToMinutes(session.endTime),
+    }));
+  }
+
+  const startMinutes = parseTimeToMinutes(config.startTime || "08:00");
+  const endMinutes = parseTimeToMinutes(config.endTime || "22:00");
+  return [
+    {
+      id: "full-day",
+      label: "Cả ngày",
+      startTime: config.startTime || "08:00",
+      endTime: config.endTime || "22:00",
+      startMinutes,
+      endMinutes,
+    },
+  ];
+}
+
+function sessionForMinutes(sessions, minutes) {
+  return (
+    sessions.find((s) => minutes >= s.startMinutes && minutes < s.endMinutes) ||
+    sessions[0] ||
+    null
+  );
+}
+
+function courtsByPriority(courts = []) {
+  return [...courts]
+    .filter((court) => !court.locked)
+    .sort(
+      (a, b) =>
+        Number(b.priority ?? 0) - Number(a.priority ?? 0) ||
+        String(a.name || a.id).localeCompare(String(b.name || b.id), "vi")
+    );
+}
+
+function courtAllowsSession(court, sessionId) {
+  const allowed = court.availableSessions || court.sessions;
+  if (!allowed || !allowed.length) return true;
+  if (sessionId === "full-day") return true;
+  return allowed.map(String).includes(String(sessionId));
+}
+
+function participantReadyAt(busyByParticipant, participantId, startMinutes, minRestMinutes) {
+  const slots = busyByParticipant.get(participantId) || [];
+  return slots.every((slot) => startMinutes >= slot.end + minRestMinutes);
+}
+
+function courtFreeAt(busyByCourt, courtId, startMinutes, endMinutes) {
+  const slots = busyByCourt.get(courtId) || [];
+  return slots.every((slot) => endMinutes <= slot.start || startMinutes >= slot.end);
+}
+
+function validateCourtAvailability(courts, sessions) {
+  const errors = [];
+  const available = courtsByPriority(courts);
+  if (available.length === 0) {
+    errors.push("Không có sân khả dụng (tất cả sân đang bị khóa).");
+    return errors;
+  }
+
+  sessions.forEach((session) => {
+    if (session.id === "full-day") return;
+    const coverage = available.some((court) => courtAllowsSession(court, session.id));
+    if (!coverage) {
+      errors.push(`Không có sân khả dụng cho phiên ${session.label || session.id}.`);
+    }
+  });
+
+  return errors;
 }
 
 /**
@@ -42,15 +135,28 @@ export function generateSchedule(context = {}, options = {}) {
 
   const config = context.scheduleConfig || {};
   const warnings = [...validation.warnings];
+  const errors = [];
   const explain = [];
-  const courts = (context.courts || []).filter((c) => !c.locked);
+  const courts = courtsByPriority(context.courts || []);
   const courtCount = Math.max(1, courts.length);
   const matchDuration = Number(config.averageMatchMinutes || 25);
   const buffer = Number(config.bufferMinutes || 5);
+  const minRestMinutes = Number(
+    config.minRestMinutes ?? config.restMinutes ?? buffer
+  );
   const slotDuration = matchDuration + buffer;
-  const startMinutes = parseTimeToMinutes(config.startTime);
-  const endMinutes = parseTimeToMinutes(config.endTime || "22:00");
   const date = config.date || new Date().toISOString().slice(0, 10);
+  const sessions = resolveSessions(config);
+  const strictRest = options.strictRest !== false && config.strictRest !== false;
+
+  const availabilityErrors = validateCourtAvailability(courts, sessions);
+  if (availabilityErrors.length) {
+    return {
+      ok: false,
+      errors: availabilityErrors,
+      warnings,
+    };
+  }
 
   let matches = [...(context.matches || [])];
 
@@ -76,6 +182,7 @@ export function generateSchedule(context = {}, options = {}) {
       delete rest.scheduledEnd;
       delete rest.slot;
       delete rest.courtId;
+      delete rest.session;
       return { ...rest, status: match.status || MATCH_STATUS.WAITING };
     });
     explain.push("Regenerate: giữ nguyên trận đã hoàn thành / khóa thủ công.");
@@ -91,90 +198,160 @@ export function generateSchedule(context = {}, options = {}) {
     );
 
   const scheduled = [...matches.filter((m) => COMPLETED_STATUSES.has(m.status))];
-  const matchByParticipant = new Map();
+  const busyByParticipant = new Map();
+  const busyByCourt = new Map();
 
   scheduled.forEach((match) => {
-    if (match.slot != null) {
-      getParticipantIds(match).forEach((pid) => {
-        const list = matchByParticipant.get(pid) || [];
-        list.push(match.slot);
-        matchByParticipant.set(pid, list);
-      });
+    if (!match.scheduledStart) return;
+    const start = isoToMinutesOnDate(match.scheduledStart, date);
+    if (start == null) return;
+    const end =
+      isoToMinutesOnDate(match.scheduledEnd, date) ?? start + matchDuration;
+
+    getParticipantIds(match).forEach((pid) => {
+      const list = busyByParticipant.get(pid) || [];
+      list.push({ start, end, matchId: match.id });
+      busyByParticipant.set(pid, list);
+    });
+    if (match.courtId) {
+      const list = busyByCourt.get(match.courtId) || [];
+      list.push({ start, end, matchId: match.id });
+      busyByCourt.set(match.courtId, list);
     }
   });
 
-  let slotIndex = 0;
-  let currentMinutes = startMinutes;
+  let globalSlotIndex = 0;
+  const dayEnd = Math.max(...sessions.map((s) => s.endMinutes));
 
   pending.forEach((match, index) => {
     if (match.scheduledStart && match.manualScheduleLock) {
       scheduled.push(match);
+      const restCheck = findMinimumRestViolations(
+        [...scheduled.filter((m) => m.scheduledStart), match],
+        minRestMinutes
+      );
+      restCheck.violations
+        .filter((v) => v.type === "min_rest")
+        .forEach((v) => warnings.push(`Cảnh báo nghỉ thủ công: ${v.message}`));
       return;
     }
 
     let assigned = false;
     let attempts = 0;
+    let cursorMinutes = sessions[0].startMinutes;
 
-    while (!assigned && attempts < 500) {
-      const courtIndex = slotIndex % courtCount;
-      const court = courts[courtIndex];
+    while (!assigned && attempts < 2000 && cursorMinutes + matchDuration <= dayEnd + slotDuration) {
+      const session = sessionForMinutes(sessions, cursorMinutes);
+      if (!session || cursorMinutes + matchDuration > session.endMinutes) {
+        const nextSession = sessions.find((s) => s.startMinutes > cursorMinutes);
+        if (!nextSession) {
+          cursorMinutes += slotDuration;
+          attempts += 1;
+          continue;
+        }
+        cursorMinutes = nextSession.startMinutes;
+        attempts += 1;
+        continue;
+      }
+
       const participantIds = getParticipantIds(match);
-
-      const conflict = participantIds.some((pid) =>
-        participantBusyAt(matchByParticipant, pid, slotIndex)
+      const restOk = participantIds.every((pid) =>
+        participantReadyAt(busyByParticipant, pid, cursorMinutes, minRestMinutes)
       );
 
-      if (!conflict) {
-        const endMinutesSlot = currentMinutes + matchDuration;
-        if (endMinutesSlot > endMinutes) {
-          warnings.push(
-            `Trận ${match.id || index + 1} có thể vượt khung giờ giải (${config.endTime}).`
-          );
+      if (!restOk) {
+        cursorMinutes += Math.max(1, Math.floor(slotDuration / 2));
+        attempts += 1;
+        continue;
+      }
+
+      const eligibleCourts = courts.filter((court) =>
+        courtAllowsSession(court, session.id)
+      );
+
+      for (const court of eligibleCourts) {
+        const endMinutes = cursorMinutes + matchDuration;
+        if (!courtFreeAt(busyByCourt, court.id, cursorMinutes, endMinutes)) {
+          continue;
         }
 
         const scheduledMatch = {
           ...match,
           matchOrder: match.matchOrder ?? index + 1,
-          courtId: court?.id || null,
-          slot: slotIndex,
-          scheduledStart: addMinutesToIso(date, currentMinutes, 0),
-          scheduledEnd: addMinutesToIso(date, currentMinutes, matchDuration),
+          courtId: court.id,
+          slot: globalSlotIndex,
+          session: session.id,
+          scheduledStart: addMinutesToIso(date, cursorMinutes, 0),
+          scheduledEnd: addMinutesToIso(date, cursorMinutes, matchDuration),
           status: match.status || MATCH_STATUS.WAITING,
         };
 
         participantIds.forEach((pid) => {
-          const list = matchByParticipant.get(pid) || [];
-          list.push(slotIndex);
-          matchByParticipant.set(pid, list);
+          const list = busyByParticipant.get(pid) || [];
+          list.push({ start: cursorMinutes, end: endMinutes, matchId: match.id });
+          busyByParticipant.set(pid, list);
         });
+        const courtList = busyByCourt.get(court.id) || [];
+        courtList.push({ start: cursorMinutes, end: endMinutes, matchId: match.id });
+        busyByCourt.set(court.id, courtList);
 
         scheduled.push(scheduledMatch);
         assigned = true;
-
-        if ((slotIndex + 1) % courtCount === 0) {
-          currentMinutes += slotDuration;
-        }
-        slotIndex += 1;
-      } else {
-        slotIndex += 1;
-        if (slotIndex % courtCount === 0) {
-          currentMinutes += slotDuration;
-        }
+        globalSlotIndex += 1;
+        break;
       }
 
-      attempts += 1;
+      if (!assigned) {
+        cursorMinutes += Math.max(1, Math.floor(slotDuration / Math.max(1, courtCount)));
+        attempts += 1;
+      }
     }
 
     if (!assigned) {
-      warnings.push(`Không xếp được slot cho trận ${match.id || index + 1} — xung đột lịch.`);
+      const message = `Không xếp được slot cho trận ${match.id || index + 1} (nghỉ tối thiểu ${minRestMinutes} phút / sân).`;
+      if (strictRest) {
+        errors.push(message);
+      } else {
+        warnings.push(message);
+      }
       scheduled.push(match);
     }
   });
 
   explain.push(
-    `${courtCount} sân, ${slotDuration} phút/slot (gồm buffer ${buffer} phút).`,
-    `Khung giờ ${config.startTime}–${config.endTime}.`
+    `${courtCount} sân (ưu tiên), nghỉ tối thiểu ${minRestMinutes} phút, slot ~${slotDuration} phút.`,
+    `Phiên: ${sessions.map((s) => s.label || s.id).join(", ")}.`
   );
+
+  const conflictCheck = validateScheduleConflicts(
+    scheduled.filter((m) => m.scheduledStart),
+    { minRestMinutes }
+  );
+  conflictCheck.warnings.forEach((w) => {
+    if (!warnings.includes(w)) warnings.push(w);
+  });
+
+  if (strictRest && errors.length > 0) {
+    return {
+      ok: false,
+      errors,
+      warnings,
+      explain,
+      data: {
+        matches: scheduled,
+        slotCount: globalSlotIndex,
+        minRestMinutes,
+        estimatedEndTime: minutesToTimeString(
+          Math.max(
+            sessions[0].startMinutes,
+            ...scheduled
+              .filter((m) => m.scheduledEnd)
+              .map((m) => parseTimeToMinutes(new Date(m.scheduledEnd).toISOString().slice(11, 16)))
+          )
+        ),
+      },
+    };
+  }
 
   return {
     ok: true,
@@ -182,12 +359,21 @@ export function generateSchedule(context = {}, options = {}) {
       matches: scheduled.sort(
         (a, b) => Number(a.slot ?? 9999) - Number(b.slot ?? 9999)
       ),
-      slotCount: slotIndex,
-      estimatedEndTime: minutesToTimeString(currentMinutes + matchDuration),
+      slotCount: globalSlotIndex,
+      minRestMinutes,
+      estimatedEndTime: minutesToTimeString(
+        Math.max(
+          sessions[0].startMinutes,
+          ...scheduled
+            .filter((m) => m.scheduledEnd)
+            .map((m) => parseTimeToMinutes(new Date(m.scheduledEnd).toISOString().slice(11, 16))),
+          sessions[sessions.length - 1].endMinutes
+        )
+      ),
     },
     warnings,
     explain,
   };
 }
 
-export { parseTimeToMinutes, minutesToTimeString };
+export { parseTimeToMinutes, minutesToTimeString, validateScheduleConflicts };

@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 
 import {
   Alert,
@@ -38,7 +38,8 @@ import { createTeamTournament } from "../../features/team-tournament/services/te
 import { getTeamData } from "../../features/team-tournament/engines/teamTournamentEngine.js";
 import { findTeamForCaptain } from "../../features/team-tournament/engines/teamPermissionEngine.js";
 import { TOURNAMENT_LAYOUT } from "../../components/tournament/tournamentLayout.js";
-
+import { resolveEventTypeFromQuery } from "../../features/individual-tournament/index.js";
+import { EVENT_TYPE_LABELS } from "../../models/tournament/index.js";
 const SECTION_META = {
   overview: {
     title: "Tổng quan",
@@ -95,9 +96,11 @@ function canDeleteTournament(tournament) {
 
 export default function TournamentHome({ section = "overview" }) {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const createRef = useRef(null);
   const listRef = useRef(null);
   const { user } = useAuth();
+  const preselectedEvent = resolveEventTypeFromQuery(searchParams.get("event"));
   const { activeClub, activeClubId, revision, refreshClubs } = useClub();
   const { activeSeason, activeLeague } = useSeasonLeague();
   const { accessAllowed } = usePageRuntimeAccess("tournament.manage", activeClub?.tenantId || activeClubId, {
@@ -241,11 +244,19 @@ export default function TournamentHome({ section = "overview" }) {
       return;
     }
     if (option.mode === TOURNAMENT_MODE.INTERNAL_TOURNAMENT) {
-      navigate(`/tournament/internal/${result.tournament.id}`);
+      navigate(
+        preselectedEvent
+          ? `/tournament/internal/${result.tournament.id}?event=${preselectedEvent}`
+          : `/tournament/internal/${result.tournament.id}`
+      );
       return;
     }
     if (option.mode === TOURNAMENT_MODE.OFFICIAL_TOURNAMENT) {
-      navigate(`/tournament/official/${result.tournament.id}`);
+      navigate(
+        preselectedEvent
+          ? `/tournament/official/${result.tournament.id}?event=${preselectedEvent}`
+          : `/tournament/official/${result.tournament.id}`
+      );
       return;
     }
     if (option.mode === TOURNAMENT_MODE.TEAM_TOURNAMENT) {
@@ -276,6 +287,12 @@ export default function TournamentHome({ section = "overview" }) {
       />
 
       <ClubAssignmentBanner />
+
+      {showCreateSection && preselectedEvent && (
+        <Alert severity="info" sx={{ mb: 2 }}>
+          Nội dung được chọn trước: {EVENT_TYPE_LABELS[preselectedEvent] || preselectedEvent}
+        </Alert>
+      )}
 
       {message && (
         <Alert severity="success" sx={{ mb: 2 }} onClose={() => setMessage(null)}>

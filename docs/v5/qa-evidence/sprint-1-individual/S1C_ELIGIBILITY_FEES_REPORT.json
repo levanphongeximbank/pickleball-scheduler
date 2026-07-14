@@ -1,0 +1,55 @@
+{
+  "reportId": "S1C_ELIGIBILITY_FEES_QA",
+  "sprint": "Tournament V5 Sprint 1",
+  "batch": "S1-C",
+  "date": "2026-07-14",
+  "environment": "local",
+  "verdict": "PASS_PENDING_OWNER_REVIEW",
+  "gapsClosed": [
+    "S1-GAP-003",
+    "S1-GAP-007",
+    "S1-GAP-008",
+    "S1-GAP-009",
+    "S1-GAP-010"
+  ],
+  "automatedTests": {
+    "individual-tournament-eligibility.test.js": {
+      "total": 6,
+      "passed": 6,
+      "cases": [
+        "T-S1-C01",
+        "T-S1-C02",
+        "T-S1-C03",
+        "T-S1-C04",
+        "T-S1-C05",
+        "gated submit blocks + audit"
+      ]
+    },
+    "regressionBundles": {
+      "S1-A_draw_publish": "PASS",
+      "S1-B_registration": "PASS",
+      "tournament-regression": "PASS"
+    }
+  },
+  "manualChecklist": {
+    "status": "NOT_RUN",
+    "ownerSignOffRequired": true,
+    "items": [
+      "M1 Age config persist",
+      "M2 Age reject at register",
+      "M3 Gender event reject",
+      "M4 Cross-event duplicate",
+      "M5 Fee unpaid block + override",
+      "M6 Regulations messages"
+    ]
+  },
+  "nonGoalsRespected": {
+    "S1-A unmodified": true,
+    "registrationEngineUnmodified": true,
+    "drawEngineUnmodified": true,
+    "ratingV5ModuleUnmodified": true,
+    "teamTournamentEnginesUnmodified": true,
+    "productionDeploy": true,
+    "merge": true
+  }
+}

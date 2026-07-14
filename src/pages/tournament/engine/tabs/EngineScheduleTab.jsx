@@ -3,33 +3,68 @@ import {
   Box,
   Button,
   Chip,
-  Paper,
   Stack,
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableRow,
+  TextField,
   Typography,
 } from "@mui/material";
-import ScheduleIcon from "@mui/icons-material/Schedule";
 import TimerIcon from "@mui/icons-material/Timer";
 
+import ScheduleBuilderPanel from "../../../../components/tournament/ScheduleBuilderPanel.jsx";
+
 export default function EngineScheduleTab({ engine }) {
-  const { engineState, generateSchedule, predictTime } = engine;
+  const {
+    tournament,
+    engineState,
+    courts,
+    schedulePublish,
+    hasReopenPermission,
+    generateSchedule,
+    predictTime,
+    lockSchedulePublish,
+    publishScheduleResult,
+    reopenSchedulePublish,
+    forceRepublish,
+    updateScheduleMatches,
+    saveConfig,
+  } = engine;
+
   const schedule = engineState.scheduleResult;
   const matches = schedule?.matches || engineState.matches || [];
   const time = engineState.timeResult;
+  const minRestMinutes =
+    tournament?.settings?.schedule?.minRestMinutes ??
+    engineState?.scheduleConfig?.minRestMinutes ??
+    contextMinRest(engine) ??
+    15;
+
+  const entryLabels = {};
+  (engineState?.seedResult?.participants || []).forEach((p) => {
+    entryLabels[p.id] = p.name || p.id;
+  });
 
   return (
     <Box>
       <Stack direction="row" spacing={1} sx={{ mb: 2 }} flexWrap="wrap" useFlexGap alignItems="center">
-        <Button variant="contained" startIcon={<ScheduleIcon />} onClick={() => generateSchedule(false)}>
-          Tạo lịch đấu
-        </Button>
-        <Button variant="outlined" onClick={() => generateSchedule(true)}>
-          Tạo lại lịch
-        </Button>
+        <TextField
+          size="small"
+          type="number"
+          label="Nghỉ tối thiểu (phút)"
+          value={minRestMinutes}
+          onChange={(e) => {
+            const value = Math.max(0, Number(e.target.value) || 0);
+            saveConfig?.({
+              scheduleConfig: {
+                ...(engineState.scheduleConfig || {}),
+                minRestMinutes: value,
+              },
+            });
+            if (tournament) {
+              // persisted via mergeEngineState; also stash on schedule settings
+            }
+          }}
+          sx={{ width: 180 }}
+          inputProps={{ min: 0 }}
+        />
         <Button variant="outlined" startIcon={<TimerIcon />} onClick={predictTime}>
           Dự đoán thời gian
         </Button>
@@ -43,46 +78,34 @@ export default function EngineScheduleTab({ engine }) {
         </Alert>
       )}
 
-      {matches.length === 0 ? (
-        <Alert severity="info">Chưa có lịch. Chạy bốc thăm trước.</Alert>
+      {!tournament ? (
+        <Alert severity="warning">Chọn giải để lập và công bố lịch.</Alert>
       ) : (
-        <Paper sx={{ overflow: "auto" }}>
-          <Table size="small">
-            <TableHead>
-              <TableRow>
-                <TableCell>Trận</TableCell>
-                <TableCell>Slot</TableCell>
-                <TableCell>Bắt đầu</TableCell>
-                <TableCell>Sân</TableCell>
-                <TableCell>Trạng thái</TableCell>
-              </TableRow>
-            </TableHead>
-            <TableBody>
-              {matches.slice(0, 50).map((match) => (
-                <TableRow key={match.id}>
-                  <TableCell>{match.id}</TableCell>
-                  <TableCell>{match.slot ?? "—"}</TableCell>
-                  <TableCell>
-                    {match.scheduledStart
-                      ? new Date(match.scheduledStart).toLocaleTimeString("vi-VN", {
-                          hour: "2-digit",
-                          minute: "2-digit",
-                        })
-                      : "—"}
-                  </TableCell>
-                  <TableCell>{match.courtId ?? "—"}</TableCell>
-                  <TableCell>{match.status}</TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-          {matches.length > 50 && (
-            <Typography variant="caption" sx={{ p: 1, display: "block" }}>
-              … và {matches.length - 50} trận khác
-            </Typography>
-          )}
-        </Paper>
+        <ScheduleBuilderPanel
+          tournament={tournament}
+          matches={matches}
+          courts={courts}
+          minRestMinutes={minRestMinutes}
+          schedulePublish={schedulePublish}
+          hasReopenPermission={hasReopenPermission}
+          onGenerate={() => generateSchedule(false)}
+          onRegenerate={() => generateSchedule(true)}
+          onLock={lockSchedulePublish}
+          onPublish={publishScheduleResult}
+          onReopen={reopenSchedulePublish}
+          onForceRepublish={forceRepublish}
+          onMatchesChange={(next) => updateScheduleMatches(next)}
+          entryLabels={entryLabels}
+        />
       )}
+
+      <Typography variant="caption" color="text.secondary" display="block" sx={{ mt: 1 }}>
+        Lịch chỉ công bố sau khi bốc thăm đã publish. Snapshot bất biến đến khi Owner/Super Admin mở lại.
+      </Typography>
     </Box>
   );
+}
+
+function contextMinRest(engine) {
+  return engine?.context?.scheduleConfig?.minRestMinutes;
 }

@@ -512,6 +512,7 @@ export const ROUTE_PERMISSIONS = Object.freeze({
   "/tournament/list": [PERMISSIONS.TOURNAMENT_VIEW],
   "/tournament/create": [PERMISSIONS.TOURNAMENT_CREATE],
   "/tournament/register": [PERMISSIONS.TOURNAMENT_UPDATE, PERMISSIONS.TOURNAMENT_VIEW],
+  "/tournament/:tournamentId/register": [PERMISSIONS.TOURNAMENT_VIEW],
   "/tournament/teams": [PERMISSIONS.TOURNAMENT_VIEW],
   "/tournament/schedule": [PERMISSIONS.TOURNAMENT_VIEW, PERMISSIONS.DIRECTOR_USE],
   "/tournament/match-reports": [PERMISSIONS.TOURNAMENT_VIEW],

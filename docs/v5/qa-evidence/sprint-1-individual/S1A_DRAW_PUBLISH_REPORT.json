@@ -1,0 +1,60 @@
+{
+  "reportId": "S1A_DRAW_PUBLISH_QA",
+  "sprint": "Tournament V5 Sprint 1",
+  "batch": "S1-A",
+  "date": "2026-07-14",
+  "environment": "local",
+  "verdict": "PASS_PENDING_OWNER_REVIEW",
+  "gapsClosed": [
+    "S1-GAP-308",
+    "S1-GAP-303",
+    "S1-GAP-305",
+    "S1-GAP-304"
+  ],
+  "automatedTests": {
+    "individual-tournament-draw-publish.test.js": {
+      "total": 6,
+      "passed": 6,
+      "cases": [
+        "T-S1-A01",
+        "T-S1-A02",
+        "T-S1-A03",
+        "T-S1-A04",
+        "draw lifecycle draft → lock → publish → reopen",
+        "engineRunLog actor + before/after"
+      ]
+    },
+    "tournament-engine.test.js": {
+      "total": 16,
+      "passed": 16
+    },
+    "tournament-regression.test.js": {
+      "total": 6,
+      "passed": 6
+    }
+  },
+  "manualChecklist": {
+    "status": "NOT_RUN",
+    "ownerSignOffRequired": true,
+    "items": [
+      "M1 Engine 4.0 real seed/draw data",
+      "M2 Lock draw",
+      "M3 Publish draw immutable snapshot",
+      "M4 Regenerate blocked after publish",
+      "M5 Force redraw with audit",
+      "M6 Internal setup parity"
+    ]
+  },
+  "nonGoalsRespected": {
+    "S1-B": true,
+    "ratingV5Edits": true,
+    "teamTournamentChanges": true,
+    "productionDeploy": true,
+    "merge": true
+  },
+  "evidenceNotes": [
+    "Platform stub removed from useTournamentEngine and TournamentEnginePage preview",
+    "publishDrawEngine implements TT2E-inspired blob-first immutable publish",
+    "Audit trail: settings.draw.auditLog + engineRunLog + workflowHistory + writeAuditLog"
+  ]
+}

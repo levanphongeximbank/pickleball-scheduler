@@ -10,15 +10,35 @@ import {
 } from "@mui/material";
 import ShuffleIcon from "@mui/icons-material/Shuffle";
 
+import DrawPublishControls from "../../../../components/tournament/DrawPublishControls.jsx";
+import { canRegenerateDraw, DRAW_PUBLISH_STATUS } from "../../../../tournament/engines/publishDrawEngine.js";
+
 export default function EngineDrawTab({ engine }) {
-  const { engineState, generateDraw } = engine;
+  const {
+    engineState,
+    generateDraw,
+    drawPublish,
+    hasReopenPermission,
+    lockDrawPublish,
+    publishDrawResult,
+    reopenDrawPublish,
+    forceRedraw,
+    tournament,
+  } = engine;
   const draw = engineState.drawResult;
   const groups = draw?.groups || engineState.groups || [];
+  const regenCheck = canRegenerateDraw(tournament);
 
   return (
     <Box>
       <Stack direction="row" spacing={1} sx={{ mb: 2 }} alignItems="center" flexWrap="wrap" useFlexGap>
-        <Button variant="contained" startIcon={<ShuffleIcon />} onClick={generateDraw}>
+        <Button
+          variant="contained"
+          startIcon={<ShuffleIcon />}
+          onClick={generateDraw}
+          disabled={!regenCheck.ok}
+          title={regenCheck.ok ? "" : regenCheck.error}
+        >
           Bốc thăm thông minh
         </Button>
         {draw?.drawScore != null && (
@@ -26,6 +46,29 @@ export default function EngineDrawTab({ engine }) {
         )}
         <Chip label={`Bảng: ${groups.length}`} size="small" variant="outlined" />
       </Stack>
+
+      {groups.length > 0 && (
+        <Paper sx={{ p: 2, mb: 2 }}>
+          <Typography variant="subtitle2" gutterBottom>
+            Vòng đời bốc thăm
+          </Typography>
+          <DrawPublishControls
+            tournament={tournament}
+            groups={groups}
+            drawPublish={drawPublish}
+            hasReopenPermission={hasReopenPermission}
+            onLock={lockDrawPublish}
+            onPublish={publishDrawResult}
+            onReopen={reopenDrawPublish}
+            onForceRedraw={forceRedraw}
+          />
+          {drawPublish?.status === DRAW_PUBLISH_STATUS.PUBLISHED && drawPublish?.snapshot && (
+            <Alert severity="success" sx={{ mt: 1 }}>
+              Snapshot bất biến đã lưu — {drawPublish.snapshot.length} bảng.
+            </Alert>
+          )}
+        </Paper>
+      )}
 
       {groups.length === 0 ? (
         <Alert severity="info">Chưa có bảng. Chạy hạt giống trước, rồi bốc thăm.</Alert>

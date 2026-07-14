@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 
 import { useClub } from "../../../context/ClubContext.jsx";
+import { useAuth } from "../../../context/AuthContext.jsx";
 import { usePlatformRuntime } from "../../../core/platform/app/usePlatformRuntime.js";
 import { loadCourtsForClub } from "../../../domain/clubStorage.js";
 import { getTournament, updateTournament } from "../../../domain/tournamentService.js";
@@ -9,8 +10,38 @@ import {
   mergeEngineStateIntoSettings,
   applyEnginePlanToEvent,
 } from "../services/tournamentEngineAdapter.js";
-import { runTimePredictionEngine } from "../orchestrator/tournamentEngine.js";
-import { runPlatformEngineWorkflow } from "../../../core/platform/engines/orchestrator.js";
+import {
+  runSeedEngine,
+  runDrawEngine,
+  runScheduleEngine,
+  runCourtAssignmentEngine,
+  runTimePredictionEngine,
+  runRankingEngine,
+  runFullTournamentPlan,
+} from "../orchestrator/tournamentEngine.js";
+import {
+  canRegenerateDraw,
+  forceRedrawDraw,
+  getDrawPublishStatus,
+  lockDraw,
+  publishDraw,
+  recordDrawCreated,
+  reopenDraw,
+  resolveDrawReopenPermission,
+  summarizeGroups,
+  DRAW_PUBLISH_STATUS,
+} from "../../../tournament/engines/publishDrawEngine.js";
+import {
+  canRegenerateSchedule,
+  forceRepublishSchedule,
+  getSchedulePublishStatus,
+  lockSchedule,
+  publishSchedule,
+  recordScheduleCreated,
+  reopenSchedule,
+  resolveScheduleReopenPermission,
+  SCHEDULE_PUBLISH_STATUS,
+} from "../../../tournament/engines/publishScheduleEngine.js";
 import {
   createPlatformEvent,
   createEventStore,
@@ -19,24 +50,45 @@ import {
 } from "../../../core/platform/events/index.js";
 import { appendWorkflowHistoryEntry, resetWorkflowHistory } from "./workflowHistory.js";
 
-function toPlatformParticipants(names = []) {
-  return names.map((name, index) => ({
-    id: `platform-${index + 1}`,
-    name,
-    status: "active",
-  }));
+function buildActor(user) {
+  if (!user) {
+    return null;
+  }
+  return {
+    id: user.id,
+    email: user.email || "",
+    name: user.displayName || user.name || "",
+  };
 }
 
-function toPlatformGroups(names = []) {
-  return names.map((name, index) => ({
-    id: `platform-group-${index + 1}`,
-    name,
-    entries: [{ id: `platform-${index + 1}`, name }],
-  }));
+function buildLogOptions(activeClubId, user, before, after, action) {
+  const actor = buildActor(user);
+  return {
+    clubId: activeClubId,
+    createdBy: actor?.email || actor?.id || null,
+    actor,
+    before,
+    after,
+    action,
+  };
+}
+
+function mergeDrawSettings(tournament, drawSettingsPatch) {
+  return {
+    ...tournament,
+    settings: {
+      ...(tournament.settings || {}),
+      draw: {
+        ...(tournament.settings?.draw || {}),
+        ...drawSettingsPatch,
+      },
+    },
+  };
 }
 
 export function useTournamentEngineState(tournamentId) {
   const { activeClubId, players } = useClub();
+  const { user, can, rbacEnabled } = useAuth();
   const runtime = usePlatformRuntime();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
@@ -54,9 +106,34 @@ export function useTournamentEngineState(tournamentId) {
     [runtime?.auditService, runtime?.notificationService]
   );
 
+  const hasReopenPermission = useMemo(
+    () =>
+      resolveDrawReopenPermission({
+        canPermission: can,
+        rbacEnabled,
+        canIntervene: false,
+      }) ||
+      resolveScheduleReopenPermission({
+        canPermission: can,
+        rbacEnabled,
+        canIntervene: false,
+      }),
+    [can, rbacEnabled]
+  );
+
   const tournament = useMemo(
     () => (tournamentId ? getTournament(activeClubId, tournamentId) : null),
     [activeClubId, tournamentId, engineState]
+  );
+
+  const drawPublish = useMemo(
+    () => getDrawPublishStatus(tournament),
+    [tournament]
+  );
+
+  const schedulePublish = useMemo(
+    () => getSchedulePublishStatus(tournament),
+    [tournament]
   );
 
   const courts = useMemo(
@@ -107,6 +184,20 @@ export function useTournamentEngineState(tournamentId) {
     [activeClubId, tournament, tournamentId]
   );
 
+  const persistTournamentPatch = useCallback(
+    (patch) => {
+      if (!tournament) {
+        return { ok: false, error: "Không tìm thấy giải." };
+      }
+      const result = updateTournament(activeClubId, tournamentId, patch);
+      if (result.ok) {
+        setEngineState(result.tournament.settings?.engineV4 || engineState);
+      }
+      return result;
+    },
+    [activeClubId, engineState, tournament, tournamentId]
+  );
+
   const syncPlatformNotifications = useCallback(() => {
     const notifications = runtime?.notificationService?.list?.() || [];
     setPlatformNotifications(notifications);
@@ -142,6 +233,7 @@ export function useTournamentEngineState(tournamentId) {
         metadata: {
           status: entry.status,
           detail: entry.detail,
+          actor: entry.actor,
         },
         tenantId: activeClubId || null,
       });
@@ -176,7 +268,7 @@ export function useTournamentEngineState(tournamentId) {
     try {
       const result = fn();
       if (!result.ok) {
-        setError((result.errors || []).join(" ") || "Engine thất bại.");
+        setError((result.errors || []).join(" ") || result.error || "Engine thất bại.");
       }
       return result;
     } catch (err) {
@@ -188,190 +280,635 @@ export function useTournamentEngineState(tournamentId) {
   }, []);
 
   const generateSeed = useCallback(async () => {
-    if (!context) {
+    if (!context || !tournament) {
       return { ok: false };
     }
+    const regenCheck = canRegenerateDraw(tournament);
+    if (!regenCheck.ok) {
+      setError(regenCheck.error);
+      return regenCheck;
+    }
+
     return runWithLoading(() => {
-      const result = runPlatformEngineWorkflow({
-        tournament,
-        players,
-        courts,
-        matches: context.matches || [],
-      });
+      const beforeParticipants = context.participants || [];
+      const result = runSeedEngine(
+        context,
+        buildLogOptions(activeClubId, user, { participants: beforeParticipants }, null, "seed")
+      );
       if (result.ok) {
-        const participants = toPlatformParticipants(result.data.plan.summary.participantNames);
         persistEngineState({
-          participants,
-          seedResult: { participants },
+          participants: result.data.participants,
+          seedResult: result.data,
         });
         recordWorkflowHistory({
           action: "seed",
           status: "success",
-          detail: `Generated ${participants.length} seed entries`,
+          detail: `Generated ${result.data.participants.length} seed entries`,
+          actor: buildActor(user),
+          before: { participants: beforeParticipants.map((p) => p.id) },
+          after: { participants: result.data.participants.map((p) => p.id) },
         });
       }
       return result;
     });
-  }, [context, tournament, players, courts, persistEngineState, runWithLoading]);
+  }, [
+    activeClubId,
+    context,
+    persistEngineState,
+    recordWorkflowHistory,
+    runWithLoading,
+    tournament,
+    user,
+  ]);
 
   const generateDraw = useCallback(async () => {
-    if (!context) {
+    if (!context || !tournament) {
       return { ok: false };
     }
+    const regenCheck = canRegenerateDraw(tournament);
+    if (!regenCheck.ok) {
+      setError(regenCheck.error);
+      return regenCheck;
+    }
+
     return runWithLoading(() => {
-      const result = runPlatformEngineWorkflow({
-        tournament,
-        players,
-        courts,
-        matches: context.matches || [],
-      });
+      const seedParticipants =
+        engineState?.seedResult?.participants ||
+        tournament.settings?.engineV4?.seedResult?.participants ||
+        context.participants ||
+        [];
+      const drawContext = {
+        ...context,
+        participants: seedParticipants,
+      };
+      const beforeGroups = engineState?.groups || context.groups || [];
+      const result = runDrawEngine(
+        drawContext,
+        buildLogOptions(
+          activeClubId,
+          user,
+          { groups: summarizeGroups(beforeGroups) },
+          null,
+          "draw"
+        )
+      );
       if (result.ok) {
-        const groups = toPlatformGroups(result.data.plan.summary.participantNames);
+        const groups = result.data.groups;
         persistEngineState({
           groups,
-          drawResult: { groups },
+          drawResult: result.data,
         });
+
+        const created = recordDrawCreated(tournament, groups, {
+          userId: user?.id,
+          actor: buildActor(user),
+          clubId: activeClubId,
+          before: summarizeGroups(beforeGroups),
+        });
+        if (created.ok) {
+          persistTournamentPatch({ settings: created.tournament.settings });
+        }
+
         recordWorkflowHistory({
           action: "draw",
           status: "success",
           detail: `Generated ${groups.length} groups`,
+          actor: buildActor(user),
+          before: summarizeGroups(beforeGroups),
+          after: summarizeGroups(groups),
         });
       }
       return result;
     });
-  }, [context, tournament, players, courts, persistEngineState, runWithLoading]);
+  }, [
+    activeClubId,
+    context,
+    engineState,
+    persistEngineState,
+    persistTournamentPatch,
+    recordWorkflowHistory,
+    runWithLoading,
+    tournament,
+    user,
+  ]);
 
-  const generateSchedule = useCallback(
-    async () => {
-      if (!context) {
-        return { ok: false };
+  const generateSchedule = useCallback(async (regenerate = false) => {
+    if (!context) {
+      return { ok: false };
+    }
+    if (tournament) {
+      const editCheck = canRegenerateSchedule(tournament);
+      if (!editCheck.ok) {
+        return editCheck;
       }
-      return runWithLoading(() => {
-        const result = runPlatformEngineWorkflow({
-          tournament,
-          players,
-          courts,
-          matches: context.matches || [],
-        });
-        if (result.ok) {
-          persistEngineState({
-            matches: context.matches || [],
-            scheduleResult: { matches: context.matches || [] },
-          });
-          recordWorkflowHistory({
-            action: "schedule",
-            status: "success",
-            detail: `Prepared ${context.matches?.length || 0} matches`,
-          });
+    }
+    return runWithLoading(() => {
+      const scheduleContext = {
+        ...context,
+        participants:
+          engineState?.seedResult?.participants ||
+          tournament?.settings?.engineV4?.seedResult?.participants ||
+          context.participants,
+        groups: engineState?.groups || context.groups || [],
+        matches: engineState?.matches || context.matches || [],
+      };
+      const beforeMatches = scheduleContext.matches || [];
+      const result = runScheduleEngine(
+        scheduleContext,
+        { regenerate: Boolean(regenerate) },
+        buildLogOptions(
+          activeClubId,
+          user,
+          { matches: beforeMatches.length },
+          null,
+          "schedule"
+        )
+      );
+      if (result.ok) {
+        const recorded = tournament
+          ? recordScheduleCreated(tournament, result.data.matches, {
+              userId: user?.id,
+              actor: buildActor(user),
+              clubId: activeClubId,
+              minRestMinutes: result.data.minRestMinutes,
+              before: { matchCount: beforeMatches.length },
+            })
+          : null;
+        if (recorded?.ok) {
+          persistTournamentPatch({ settings: recorded.tournament.settings });
         }
-        return result;
-      });
-    },
-    [context, tournament, players, courts, persistEngineState, runWithLoading]
-  );
+        persistEngineState({
+          matches: result.data.matches,
+          scheduleResult: result.data,
+        });
+        recordWorkflowHistory({
+          action: regenerate ? "schedule-regenerate" : "schedule",
+          status: "success",
+          detail: `Prepared ${result.data.matches.length} matches (minRest=${result.data.minRestMinutes})`,
+          actor: buildActor(user),
+          before: { matchCount: beforeMatches.length },
+          after: { matchCount: result.data.matches.length },
+        });
+      }
+      return result;
+    });
+  }, [
+    activeClubId,
+    context,
+    engineState,
+    persistEngineState,
+    persistTournamentPatch,
+    recordWorkflowHistory,
+    runWithLoading,
+    tournament,
+    user,
+  ]);
 
-  const assignCourtsAuto = useCallback(
-    async () => {
-      if (!context) {
-        return { ok: false };
-      }
-      return runWithLoading(() => {
-        const result = runPlatformEngineWorkflow({
-          tournament,
-          players,
-          courts,
-          matches: context.matches || [],
+  const assignCourtsAuto = useCallback(async () => {
+    if (!context) {
+      return { ok: false };
+    }
+    return runWithLoading(() => {
+      const courtContext = {
+        ...context,
+        matches: engineState?.matches || context.matches || [],
+      };
+      const result = runCourtAssignmentEngine(
+        courtContext,
+        {},
+        buildLogOptions(
+          activeClubId,
+          user,
+          { matchCount: courtContext.matches.length },
+          null,
+          "courts"
+        )
+      );
+      if (result.ok) {
+        persistEngineState({
+          matches: result.data.matches,
+          courtResult: result.data,
         });
-        if (result.ok) {
-          persistEngineState({
-            matches: context.matches || [],
-            courtResult: { assignments: [], matches: context.matches || [] },
-            rankingResult: result.data.ranking,
-          });
-          recordWorkflowHistory({
-            action: "courts",
-            status: "success",
-            detail: `Assigned court workflow for ${context.matches?.length || 0} matches`,
-          });
-        }
-        return result;
-      });
-    },
-    [context, tournament, players, courts, persistEngineState, runWithLoading]
-  );
+        recordWorkflowHistory({
+          action: "courts",
+          status: "success",
+          detail: `Assigned courts for ${result.data.matches.length} matches`,
+          actor: buildActor(user),
+        });
+      }
+      return result;
+    });
+  }, [
+    activeClubId,
+    context,
+    engineState,
+    persistEngineState,
+    recordWorkflowHistory,
+    runWithLoading,
+    user,
+  ]);
 
   const predictTime = useCallback(async () => {
     if (!context) {
       return { ok: false };
     }
     return runWithLoading(() => {
-      const result = runTimePredictionEngine(context, { clubId: activeClubId });
+      const result = runTimePredictionEngine(
+        context,
+        buildLogOptions(activeClubId, user, null, null, "time")
+      );
       if (result.ok) {
         persistEngineState({ timeResult: result.data });
       }
       return result;
     });
-  }, [context, activeClubId, persistEngineState, runWithLoading]);
+  }, [activeClubId, context, persistEngineState, runWithLoading, user]);
 
   const updateRanking = useCallback(async () => {
     if (!context) {
       return { ok: false };
     }
     return runWithLoading(() => {
-      const result = runPlatformEngineWorkflow({
-        tournament,
-        players,
-        courts,
-        matches: context.matches || [],
-      });
+      const rankingContext = {
+        ...context,
+        matches: engineState?.matches || context.matches || [],
+      };
+      const result = runRankingEngine(
+        rankingContext,
+        buildLogOptions(activeClubId, user, null, null, "ranking")
+      );
       if (result.ok) {
-        persistEngineState({ rankingResult: result.data.ranking });
+        persistEngineState({ rankingResult: result.data });
         recordWorkflowHistory({
           action: "ranking",
           status: "success",
-          detail: `Updated ranking for ${players.length} players`,
+          detail: `Updated ranking for ${result.data.rankings?.length || 0} entries`,
+          actor: buildActor(user),
         });
       }
       return result;
     });
-  }, [context, tournament, players, courts, persistEngineState, runWithLoading]);
+  }, [
+    activeClubId,
+    context,
+    engineState,
+    persistEngineState,
+    recordWorkflowHistory,
+    runWithLoading,
+    user,
+  ]);
 
   const runFullPlan = useCallback(async () => {
-    if (!context) {
+    if (!context || !tournament) {
       return { ok: false };
     }
+    const regenCheck = canRegenerateDraw(tournament);
+    if (!regenCheck.ok) {
+      setError(regenCheck.error);
+      return regenCheck;
+    }
+
     return runWithLoading(() => {
-      const result = runPlatformEngineWorkflow({
-        tournament,
-        players,
-        courts,
-        matches: context.matches || [],
-      });
+      const result = runFullTournamentPlan(
+        context,
+        buildLogOptions(activeClubId, user, null, null, "full-plan")
+      );
       if (result.ok) {
         persistEngineState({
-          participants: result.data.plan.summary.participantNames.map((name, index) => ({
-            id: `platform-${index + 1}`,
-            name,
-            status: "active",
-          })),
-          groups: [],
-          matches: context.matches || [],
-          seedResult: { participants: [] },
-          drawResult: { groups: [] },
-          scheduleResult: { matches: context.matches || [] },
-          courtResult: { matches: context.matches || [] },
-          timeResult: { estimatedMinutes: 0 },
+          participants: result.data.seed.participants,
+          groups: result.data.draw.groups,
+          matches: result.data.courts?.matches || result.data.schedule.matches,
+          seedResult: result.data.seed,
+          drawResult: result.data.draw,
+          scheduleResult: result.data.schedule,
+          courtResult: result.data.courts,
+          timeResult: result.data.time,
           rankingResult: result.data.ranking,
         });
+
+        const created = recordDrawCreated(tournament, result.data.draw.groups, {
+          userId: user?.id,
+          actor: buildActor(user),
+          clubId: activeClubId,
+        });
+        if (created.ok) {
+          persistTournamentPatch({ settings: created.tournament.settings });
+        }
+
         recordWorkflowHistory({
           action: "full-plan",
           status: "success",
-          detail: `Ran full platform workflow for ${players.length} players`,
+          detail: `Ran full tournament plan for ${context.participants?.length || 0} participants`,
+          actor: buildActor(user),
         });
       }
       return result;
     });
-  }, [context, tournament, players, courts, persistEngineState, runWithLoading]);
+  }, [
+    activeClubId,
+    context,
+    persistEngineState,
+    persistTournamentPatch,
+    recordWorkflowHistory,
+    runWithLoading,
+    tournament,
+    user,
+  ]);
+
+  const lockDrawPublish = useCallback(async () => {
+    if (!tournament) {
+      return { ok: false, error: "Không tìm thấy giải." };
+    }
+    const groups = engineState?.groups || context?.groups || [];
+    return runWithLoading(() => {
+      const result = lockDraw(tournament, groups, {
+        userId: user?.id,
+        actor: buildActor(user),
+        clubId: activeClubId,
+      });
+      if (result.ok) {
+        persistTournamentPatch({ settings: result.tournament.settings });
+        recordWorkflowHistory({
+          action: "draw-lock",
+          status: "success",
+          detail: `Locked draw with ${groups.length} groups`,
+          actor: buildActor(user),
+          after: summarizeGroups(groups),
+        });
+      }
+      return result;
+    });
+  }, [
+    activeClubId,
+    context,
+    engineState,
+    persistTournamentPatch,
+    recordWorkflowHistory,
+    runWithLoading,
+    tournament,
+    user,
+  ]);
+
+  const publishDrawResult = useCallback(async () => {
+    if (!tournament) {
+      return { ok: false, error: "Không tìm thấy giải." };
+    }
+    const groups = engineState?.groups || context?.groups || [];
+    return runWithLoading(() => {
+      const result = publishDraw(tournament, groups, {
+        userId: user?.id,
+        actor: buildActor(user),
+        clubId: activeClubId,
+      });
+      if (result.ok) {
+        const applied = applyEnginePlanToEvent(result.tournament, {
+          draw: { groups: result.snapshot || groups },
+        });
+        persistTournamentPatch({
+          settings: result.tournament.settings,
+          events: applied.ok ? applied.tournament.events : tournament.events,
+        });
+        recordWorkflowHistory({
+          action: "draw-publish",
+          status: "success",
+          detail: `Published draw snapshot (${groups.length} groups)`,
+          actor: buildActor(user),
+          after: summarizeGroups(result.snapshot || groups),
+        });
+      }
+      return result;
+    });
+  }, [
+    activeClubId,
+    context,
+    engineState,
+    persistTournamentPatch,
+    recordWorkflowHistory,
+    runWithLoading,
+    tournament,
+    user,
+  ]);
+
+  const reopenDrawPublish = useCallback(async () => {
+    if (!tournament) {
+      return { ok: false, error: "Không tìm thấy giải." };
+    }
+    return runWithLoading(() => {
+      const result = reopenDraw(tournament, {
+        userId: user?.id,
+        actor: buildActor(user),
+        clubId: activeClubId,
+        hasReopenPermission,
+      });
+      if (result.ok) {
+        persistTournamentPatch({ settings: result.tournament.settings });
+        recordWorkflowHistory({
+          action: "draw-reopen",
+          status: "success",
+          detail: "Reopened draw for editing",
+          actor: buildActor(user),
+        });
+      }
+      return result;
+    });
+  }, [
+    activeClubId,
+    hasReopenPermission,
+    persistTournamentPatch,
+    recordWorkflowHistory,
+    runWithLoading,
+    tournament,
+    user,
+  ]);
+
+  const forceRedraw = useCallback(async () => {
+    if (!tournament) {
+      return { ok: false, error: "Không tìm thấy giải." };
+    }
+    return runWithLoading(() => {
+      const result = forceRedrawDraw(tournament, {
+        userId: user?.id,
+        actor: buildActor(user),
+        clubId: activeClubId,
+        hasReopenPermission,
+      });
+      if (result.ok) {
+        persistTournamentPatch({ settings: result.tournament.settings });
+        recordWorkflowHistory({
+          action: "draw-force-redraw",
+          status: "success",
+          detail: "Force redraw authorized after publish",
+          actor: buildActor(user),
+        });
+      }
+      return result;
+    });
+  }, [
+    activeClubId,
+    hasReopenPermission,
+    persistTournamentPatch,
+    recordWorkflowHistory,
+    runWithLoading,
+    tournament,
+    user,
+  ]);
+
+  const lockSchedulePublish = useCallback(async () => {
+    if (!tournament) {
+      return { ok: false, error: "Không tìm thấy giải." };
+    }
+    const matches = engineState?.matches || context?.matches || [];
+    return runWithLoading(() => {
+      const result = lockSchedule(tournament, matches, {
+        userId: user?.id,
+        actor: buildActor(user),
+        clubId: activeClubId,
+      });
+      if (result.ok) {
+        persistTournamentPatch({ settings: result.tournament.settings });
+        recordWorkflowHistory({
+          action: "schedule-lock",
+          status: "success",
+          detail: `Locked schedule (${matches.length} matches)`,
+          actor: buildActor(user),
+        });
+      }
+      return result;
+    });
+  }, [
+    activeClubId,
+    context,
+    engineState,
+    persistTournamentPatch,
+    recordWorkflowHistory,
+    runWithLoading,
+    tournament,
+    user,
+  ]);
+
+  const publishScheduleResult = useCallback(async () => {
+    if (!tournament) {
+      return { ok: false, error: "Không tìm thấy giải." };
+    }
+    const matches = engineState?.matches || context?.matches || [];
+    return runWithLoading(() => {
+      const result = publishSchedule(tournament, matches, {
+        userId: user?.id,
+        actor: buildActor(user),
+        clubId: activeClubId,
+      });
+      if (result.ok) {
+        const applied = applyEnginePlanToEvent(result.tournament, {
+          schedule: { matches: result.snapshot || matches },
+        });
+        persistTournamentPatch({
+          settings: result.tournament.settings,
+          events: applied.ok ? applied.tournament.events : tournament.events,
+        });
+        recordWorkflowHistory({
+          action: "schedule-publish",
+          status: "success",
+          detail: `Published schedule snapshot (${matches.length} matches)`,
+          actor: buildActor(user),
+        });
+      }
+      return result;
+    });
+  }, [
+    activeClubId,
+    context,
+    engineState,
+    persistTournamentPatch,
+    recordWorkflowHistory,
+    runWithLoading,
+    tournament,
+    user,
+  ]);
+
+  const reopenSchedulePublish = useCallback(async () => {
+    if (!tournament) {
+      return { ok: false, error: "Không tìm thấy giải." };
+    }
+    return runWithLoading(() => {
+      const result = reopenSchedule(tournament, {
+        userId: user?.id,
+        actor: buildActor(user),
+        clubId: activeClubId,
+        hasReopenPermission,
+      });
+      if (result.ok) {
+        persistTournamentPatch({ settings: result.tournament.settings });
+        recordWorkflowHistory({
+          action: "schedule-reopen",
+          status: "success",
+          detail: "Reopened schedule for editing",
+          actor: buildActor(user),
+        });
+      }
+      return result;
+    });
+  }, [
+    activeClubId,
+    hasReopenPermission,
+    persistTournamentPatch,
+    recordWorkflowHistory,
+    runWithLoading,
+    tournament,
+    user,
+  ]);
+
+  const forceRepublish = useCallback(async () => {
+    if (!tournament) {
+      return { ok: false, error: "Không tìm thấy giải." };
+    }
+    return runWithLoading(() => {
+      const result = forceRepublishSchedule(tournament, {
+        userId: user?.id,
+        actor: buildActor(user),
+        clubId: activeClubId,
+        hasReopenPermission,
+      });
+      if (result.ok) {
+        persistTournamentPatch({ settings: result.tournament.settings });
+        recordWorkflowHistory({
+          action: "schedule-force-publish",
+          status: "success",
+          detail: "Force republish after publish",
+          actor: buildActor(user),
+        });
+      }
+      return result;
+    });
+  }, [
+    activeClubId,
+    hasReopenPermission,
+    persistTournamentPatch,
+    recordWorkflowHistory,
+    runWithLoading,
+    tournament,
+    user,
+  ]);
+
+  const updateScheduleMatches = useCallback(
+    (matches) => {
+      if (!tournament) {
+        return { ok: false, error: "Không tìm thấy giải." };
+      }
+      const editCheck = canRegenerateSchedule(tournament);
+      if (!editCheck.ok) {
+        return editCheck;
+      }
+      persistEngineState({
+        matches,
+        scheduleResult: {
+          ...(engineState?.scheduleResult || {}),
+          matches,
+        },
+      });
+      return { ok: true, matches };
+    },
+    [engineState, persistEngineState, tournament]
+  );
 
   const applyToTournament = useCallback(async () => {
     if (!tournament) {
@@ -410,6 +947,9 @@ export function useTournamentEngineState(tournamentId) {
     loading,
     error,
     engineState: engineState || tournament?.settings?.engineV4 || {},
+    drawPublish,
+    schedulePublish,
+    hasReopenPermission,
     workflowHistory,
     platformEvents,
     platformNotifications,
@@ -422,8 +962,21 @@ export function useTournamentEngineState(tournamentId) {
     predictTime,
     updateRanking,
     runFullPlan,
+    lockDrawPublish,
+    publishDrawResult,
+    reopenDrawPublish,
+    forceRedraw,
+    lockSchedulePublish,
+    publishScheduleResult,
+    reopenSchedulePublish,
+    forceRepublish,
+    updateScheduleMatches,
     applyToTournament,
     saveConfig,
     clearWorkflowHistory,
+    DRAW_PUBLISH_STATUS,
+    SCHEDULE_PUBLISH_STATUS,
   };
 }
+
+export { mergeDrawSettings, buildActor, buildLogOptions, summarizeGroups };

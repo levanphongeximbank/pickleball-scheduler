@@ -25,12 +25,16 @@ export function appendEngineRun(clubId, tournamentId, run) {
     id: `run-${Date.now()}-${runs.length}`,
     tournamentId,
     engineType: run.engineType,
+    action: run.action || run.engineType,
     inputSummary: run.inputSummary || {},
     output: run.output || null,
     warnings: run.warnings || [],
     errors: run.errors || [],
     explain: run.explain || [],
-    createdBy: run.createdBy,
+    createdBy: run.createdBy || run.actor?.email || run.actor?.id || null,
+    actor: run.actor || null,
+    before: run.before ?? null,
+    after: run.after ?? null,
     createdAt: new Date().toISOString(),
   };
   runs.unshift(entry);

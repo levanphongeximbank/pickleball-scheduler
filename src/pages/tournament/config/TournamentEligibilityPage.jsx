@@ -18,12 +18,13 @@ import {
 import { useClub } from "../../../context/ClubContext.jsx";
 import { loadPlayersForClub } from "../../../domain/clubStorage.js";
 import { getTournament } from "../../../domain/tournamentService.js";
+import { isIndividualTournament, isTeamTournament } from "../../../config/tournamentRoutes.js";
+import { checkAllEntriesEligibility } from "../../../features/individual-tournament/engines/eligibilityEngine.js";
 import {
   checkAllTeamsEligibility,
 } from "../../../features/team-tournament/engines/eligibilityEngine.js";
 import {
   getTeamData,
-  isTeamTournament,
 } from "../../../features/team-tournament/engines/teamTournamentEngine.js";
 import TournamentConfigPageShell from "../../../components/tournament/TournamentConfigPageShell.jsx";
 
@@ -33,26 +34,27 @@ export default function TournamentEligibilityPage() {
   const { activeClubId, revision } = useClub();
 
   const tournament = useMemo(() => {
-    if (!activeClubId || !tournamentId) {
-      return null;
-    }
+    if (!activeClubId || !tournamentId) return null;
     return getTournament(activeClubId, tournamentId);
   }, [activeClubId, tournamentId, revision]);
-
-  const teamData = useMemo(
-    () => (tournament ? getTeamData(tournament) : null),
-    [tournament]
-  );
 
   const players = useMemo(
     () => (activeClubId ? loadPlayersForClub(activeClubId) : []),
     [activeClubId, revision]
   );
 
-  const report = useMemo(() => {
-    if (!teamData) {
-      return null;
-    }
+  const individualReport = useMemo(() => {
+    if (!tournament || !isIndividualTournament(tournament)) return null;
+    return checkAllEntriesEligibility(tournament, players);
+  }, [tournament, players]);
+
+  const teamData = useMemo(
+    () => (tournament && isTeamTournament(tournament) ? getTeamData(tournament) : null),
+    [tournament]
+  );
+
+  const teamReport = useMemo(() => {
+    if (!teamData) return null;
     return checkAllTeamsEligibility(teamData, players);
   }, [teamData, players]);
 
@@ -60,11 +62,11 @@ export default function TournamentEligibilityPage() {
     return (
       <TournamentConfigPageShell
         title="Kiểm tra điều kiện tham gia"
-        description="Chọn giải đồng đội để xem báo cáo điều kiện."
+        description="Chọn giải để xem báo cáo điều kiện."
         noCard
       >
         <Alert severity="info" sx={{ mb: 2 }}>
-          Vui lòng chọn giải đồng đội từ danh sách.
+          Chọn giải từ hub điều kiện tham gia.
         </Alert>
         <Button component={RouterLink} to="/tournament/eligibility" variant="contained">
           Chọn giải
@@ -73,91 +75,103 @@ export default function TournamentEligibilityPage() {
     );
   }
 
-  if (!tournament || !isTeamTournament(tournament) || !teamData) {
+  if (!tournament) {
     return (
-      <TournamentConfigPageShell
-        title="Kiểm tra điều kiện tham gia"
-        description="Không tìm thấy giải đồng đội."
-        noCard
-      >
-        <Alert severity="warning">Giải không tồn tại hoặc không phải giải đồng đội.</Alert>
-        <Button component={RouterLink} to="/tournament/eligibility" sx={{ mt: 2 }}>
-          Chọn giải khác
-        </Button>
+      <TournamentConfigPageShell title="Kiểm tra điều kiện tham gia" description="Không tìm thấy giải.">
+        <Alert severity="error">Giải không tồn tại.</Alert>
       </TournamentConfigPageShell>
     );
   }
 
+  if (isIndividualTournament(tournament) && individualReport) {
+    const failed = individualReport.rows.filter((row) => !row.ok);
+    return (
+      <TournamentConfigPageShell
+        title="Kiểm tra điều kiện — giải cá nhân"
+        description={tournament.name}
+      >
+        <Stack direction="row" spacing={1} sx={{ mb: 2 }} alignItems="center">
+          <Chip
+            label={individualReport.ok ? "Tất cả đạt" : `${failed.length} đăng ký chưa đạt`}
+            color={individualReport.ok ? "success" : "warning"}
+          />
+          <Button component={RouterLink} to={`/tournament/${tournament.id}/register`} size="small">
+            Trang đăng ký
+          </Button>
+        </Stack>
+        {failed.length === 0 ? (
+          <Alert severity="success">Không có vi phạm điều kiện trên các đăng ký đang mở.</Alert>
+        ) : (
+          <Table size="small">
+            <TableHead>
+              <TableRow>
+                <TableCell>Đăng ký</TableCell>
+                <TableCell>Nội dung</TableCell>
+                <TableCell>Vi phạm</TableCell>
+              </TableRow>
+            </TableHead>
+            <TableBody>
+              {failed.map((row) => (
+                <TableRow key={row.entryId}>
+                  <TableCell>{row.entryName}</TableCell>
+                  <TableCell>{row.eventName}</TableCell>
+                  <TableCell>
+                    {row.players
+                      .flatMap((player) => player.violations.map((v) => v.message))
+                      .join("; ")}
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        )}
+      </TournamentConfigPageShell>
+    );
+  }
+
+  if (!isTeamTournament(tournament) || !teamData || !teamReport) {
+    return (
+      <TournamentConfigPageShell title="Kiểm tra điều kiện tham gia" description="Không hỗ trợ loại giải này.">
+        <Alert severity="warning">Chỉ hỗ trợ giải cá nhân (S1-C) hoặc giải đồng đội.</Alert>
+      </TournamentConfigPageShell>
+    );
+  }
+
+  // Keep existing team report path
+  const teamFailed = (teamReport.teams || []).filter((team) => !team.ok);
   return (
-    <TournamentConfigPageShell
-      title="Kiểm tra điều kiện tham gia"
-      description={`${tournament.name} — đối chiếu roster với quy tắc tuổi, giới tính và trình độ.`}
-      noCard
-    >
-      <Stack direction="row" spacing={1} sx={{ mb: 2 }}>
-        <Button component={RouterLink} to="/tournament/eligibility" size="small">
-          Đổi giải
-        </Button>
-        <Button
-          component={RouterLink}
-          to={`/tournament/team/${tournamentId}`}
-          size="small"
-          variant="outlined"
-        >
-          Mở setup giải
-        </Button>
-      </Stack>
-
-      {!report ? (
-        <Alert severity="info">Chưa có dữ liệu đội để kiểm tra.</Alert>
-      ) : (
-        <>
-          <Alert severity={report.ok ? "success" : "warning"} sx={{ mb: 2 }}>
-            {report.ok
-              ? "Tất cả VĐV trong roster đáp ứng điều kiện."
-              : "Có VĐV chưa đáp ứng điều kiện tham gia."}
-          </Alert>
-
-          {report.teams.map((team) => (
-            <Paper key={team.teamId} sx={{ p: 2, mb: 2 }}>
-              <Stack direction="row" spacing={1} alignItems="center" sx={{ mb: 1 }}>
-                <Typography fontWeight={700}>{team.teamName}</Typography>
-                <Chip
-                  size="small"
-                  color={team.ok ? "success" : "warning"}
-                  label={team.ok ? "Đạt" : "Chưa đạt"}
-                />
-              </Stack>
-              <Table size="small">
-                <TableHead>
-                  <TableRow>
-                    <TableCell>VĐV</TableCell>
-                    <TableCell>Trạng thái</TableCell>
-                    <TableCell>Chi tiết</TableCell>
+    <TournamentConfigPageShell title="Kiểm tra điều kiện — đồng đội" description={tournament.name}>
+      <Chip
+        sx={{ mb: 2 }}
+        label={teamReport.ok ? "Tất cả đạt" : `${teamFailed.length} đội chưa đạt`}
+        color={teamReport.ok ? "success" : "warning"}
+      />
+      <Paper variant="outlined">
+        <Table size="small">
+          <TableHead>
+            <TableRow>
+              <TableCell>Đội</TableCell>
+              <TableCell>VĐV</TableCell>
+              <TableCell>Vi phạm</TableCell>
+            </TableRow>
+          </TableHead>
+          <TableBody>
+            {teamFailed.flatMap((team) =>
+              team.players
+                .filter((player) => !player.ok)
+                .map((player) => (
+                  <TableRow key={`${team.teamId}-${player.playerId}`}>
+                    <TableCell>{team.teamName}</TableCell>
+                    <TableCell>{player.playerName}</TableCell>
+                    <TableCell>
+                      {player.violations.map((item) => item.message).join("; ")}
+                    </TableCell>
                   </TableRow>
-                </TableHead>
-                <TableBody>
-                  {team.players.map((player) => (
-                    <TableRow key={player.playerId}>
-                      <TableCell>{player.playerName}</TableCell>
-                      <TableCell>
-                        <Chip
-                          size="small"
-                          color={player.ok ? "success" : "error"}
-                          label={player.ok ? "Đạt" : "Không đạt"}
-                        />
-                      </TableCell>
-                      <TableCell>
-                        {player.violations.map((violation) => violation.message).join(" ") || "—"}
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </Paper>
-          ))}
-        </>
-      )}
+                ))
+            )}
+          </TableBody>
+        </Table>
+      </Paper>
     </TournamentConfigPageShell>
   );
 }

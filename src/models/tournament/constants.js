@@ -19,6 +19,31 @@ export const TOURNAMENT_STATUS = {
   CANCELLED: "cancelled",
 };
 
+/** Individual entry registration workflow (S1-B). Legacy BTC entries may still use `active`. */
+export const ENTRY_STATUS = {
+  DRAFT: "draft",
+  PENDING: "pending",
+  APPROVED: "approved",
+  REJECTED: "rejected",
+  WAITLISTED: "waitlisted",
+  CANCELLED: "cancelled",
+  /** S1-G — entry withdrew from tournament. */
+  WITHDRAWN: "withdrawn",
+  /** Legacy draw-ready entries created by BTC before S1-B. */
+  ACTIVE: "active",
+};
+
+export const ENTRY_STATUS_LABELS = {
+  [ENTRY_STATUS.DRAFT]: "Nháp",
+  [ENTRY_STATUS.PENDING]: "Chờ duyệt",
+  [ENTRY_STATUS.APPROVED]: "Đã duyệt",
+  [ENTRY_STATUS.REJECTED]: "Từ chối",
+  [ENTRY_STATUS.WAITLISTED]: "Danh sách chờ",
+  [ENTRY_STATUS.CANCELLED]: "Đã hủy",
+  [ENTRY_STATUS.WITHDRAWN]: "Đã rút lui",
+  [ENTRY_STATUS.ACTIVE]: "Đang tham gia",
+};
+
 export const EVENT_TYPE = {
   MEN_SINGLE: "men_single",
   WOMEN_SINGLE: "women_single",

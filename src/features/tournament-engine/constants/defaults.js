@@ -64,6 +64,7 @@ export const DEFAULT_SCHEDULE_CONFIG = {
   endTime: "22:00",
   averageMatchMinutes: 25,
   bufferMinutes: 5,
+  minRestMinutes: 15,
   restRoundsBetweenMatches: 1,
   randomSeed: 42,
 };

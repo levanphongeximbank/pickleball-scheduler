@@ -1,0 +1,45 @@
+{
+  "batch": "S1-D",
+  "sprint": "Tournament V5 Sprint 1 — Individual",
+  "date": "2026-07-14",
+  "status": "PASS_PENDING_OWNER_REVIEW",
+  "gapsClosed": [
+    "S1-GAP-301",
+    "S1-GAP-081",
+    "S1-GAP-076",
+    "S1-GAP-070",
+    "S1-GAP-071"
+  ],
+  "tests": {
+    "file": "tests/individual-tournament-seed-standings.test.js",
+    "ids": ["T-S1-D01", "T-S1-D02", "T-S1-D03", "T-S1-D04", "T-S1-D05"],
+    "regression": {
+      "suites": [
+        "individual-tournament-draw-publish.test.js",
+        "individual-tournament-registration.test.js",
+        "individual-tournament-eligibility.test.js",
+        "tournament-regression.test.js",
+        "tournament-engine.test.js"
+      ],
+      "result": "47/47 PASS"
+    }
+  },
+  "artifacts": {
+    "seedAdapter": "src/features/individual-tournament/adapters/ratingV5SeedAdapter.js",
+    "standingsAdapter": "src/features/individual-tournament/adapters/individualStandingsAdapter.js",
+    "seedEngine": "src/features/tournament-engine/engines/seedEngine.js",
+    "report": "docs/v5/tournament-final/sprint-1-individual/S1D_IMPLEMENTATION_REPORT.md"
+  },
+  "constraintsHonored": {
+    "noDeploy": true,
+    "noMerge": true,
+    "noDrawEngineEdit": true,
+    "noTeamTournamentEdit": true,
+    "noRatingV5CalcEdit": true,
+    "noS1ABCCoreRewrites": true
+  },
+  "notes": [
+    "STANDINGS_V2 canonical-primary when competition-core standings flags on; legacy fallback otherwise",
+    "Post-tournament Rating V5 update intentionally stubbed only"
+  ]
+}

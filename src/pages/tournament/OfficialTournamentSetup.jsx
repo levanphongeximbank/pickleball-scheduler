@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Link as RouterLink, useNavigate, useParams } from "react-router-dom";
+import { Link as RouterLink, useNavigate, useParams, useSearchParams } from "react-router-dom";
 
 import {
   Alert,
@@ -37,8 +37,8 @@ import {
   TOURNAMENT_STATUS,
   EVENT_TYPE_OPTIONS,
 } from "../../models/tournament/index.js";
+import { buildIndividualAllGroupStandings } from "../../features/individual-tournament/adapters/individualStandingsAdapter.js";
 import {
-  buildAllGroupStandings,
   buildOfficialAiBalancePatch,
   buildOfficialAiBalancePlan,
   buildOfficialOpenPatch,
@@ -122,6 +122,20 @@ import {
   getTournamentPairingConstraints,
   logConstraintChange,
 } from "../../features/pairing-constraints/index.js";
+import DrawPublishControls from "../../components/tournament/DrawPublishControls.jsx";
+import RegistrationOpsPanel from "../../components/tournament/RegistrationOpsPanel.jsx";
+import {
+  canRegenerateDraw,
+  forceRedrawDraw,
+  getDrawPublishStatus,
+  lockDraw,
+  publishDraw,
+  recordDrawCreated,
+  reopenDraw,
+  resolveDrawReopenPermission,
+  summarizeGroups,
+} from "../../tournament/engines/publishDrawEngine.js";
+import { resolveEventTypeFromQuery } from "../../features/individual-tournament/index.js";
 
 const EVENT_OPTIONS = EVENT_TYPE_OPTIONS;
 
@@ -132,9 +146,10 @@ const OFFICIAL_MODE_OPTIONS = [
 
 export default function OfficialTournamentSetup() {
   const { tournamentId } = useParams();
+  const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   const { activeClub, activeClubId, clubs, refreshClubs } = useClub();
-  const { user, rbacEnabled } = useAuth();
+  const { user, rbacEnabled, can } = useAuth();
   const { currentTenantId } = useTenant();
   const aiEnabled = isAiEngineEnabled();
   const [setupTab, setSetupTab] = useState(0);
@@ -145,7 +160,8 @@ export default function OfficialTournamentSetup() {
 
   const [officialMode, setOfficialMode] = useState(OFFICIAL_MODE.OPEN);
   const [activeEventId, setActiveEventId] = useState("");
-  const [eventType, setEventType] = useState(EVENT_TYPE.MEN_DOUBLE);
+  const preselectedEvent = resolveEventTypeFromQuery(searchParams.get("event"));
+  const [eventType, setEventType] = useState(preselectedEvent || EVENT_TYPE.MEN_DOUBLE);
   const [groupCount, setGroupCount] = useState(4);
   const [splitUnits, setSplitUnits] = useState(true);
   const [registeredEntries, setRegisteredEntries] = useState([]);
@@ -257,7 +273,7 @@ export default function OfficialTournamentSetup() {
   );
 
   const groupStandings = useMemo(
-    () => (savedEvent ? buildAllGroupStandings(savedEvent) : []),
+    () => (savedEvent ? buildIndividualAllGroupStandings(savedEvent) : []),
     [savedEvent]
   );
 
@@ -340,6 +356,104 @@ export default function OfficialTournamentSetup() {
   });
 
   const canInterveneSetup = pairingIntervention.canIntervene;
+
+  const drawPublish = useMemo(
+    () => getDrawPublishStatus(tournament),
+    [tournament, localRevision]
+  );
+
+  const hasDrawReopenPermission = useMemo(
+    () =>
+      resolveDrawReopenPermission({
+        canPermission: can,
+        rbacEnabled,
+        canIntervene: canInterveneSetup,
+      }),
+    [can, rbacEnabled, canInterveneSetup]
+  );
+
+  const buildDrawActor = () =>
+    user
+      ? { id: user.id, email: user.email || "", name: user.displayName || user.name || "" }
+      : null;
+
+  const handleLockDraw = () => {
+    setError(null);
+    const groups = savedEvent?.groups || [];
+    const result = lockDraw(tournament, groups, {
+      userId: user?.id,
+      actor: buildDrawActor(),
+      clubId: activeClubId,
+    });
+    if (!result.ok) {
+      setError(result.error);
+      return;
+    }
+    if (persistTournament({ settings: result.tournament.settings })) {
+      setMessage("Đã khóa bốc thăm. Sẵn sàng công bố.");
+    }
+  };
+
+  const handlePublishDraw = () => {
+    setError(null);
+    const groups = savedEvent?.groups || [];
+    const result = publishDraw(tournament, groups, {
+      userId: user?.id,
+      actor: buildDrawActor(),
+      clubId: activeClubId,
+    });
+    if (!result.ok) {
+      setError(result.error);
+      return;
+    }
+    const events = (savedEvents || []).map((event) =>
+      String(event.id) === String(savedEvent?.id)
+        ? { ...event, groups: result.snapshot || groups }
+        : event
+    );
+    if (
+      persistTournament({
+        settings: result.tournament.settings,
+        events,
+      })
+    ) {
+      setMessage("Đã công bố bốc thăm. Bracket bất biến.");
+    }
+  };
+
+  const handleReopenDraw = () => {
+    setError(null);
+    const result = reopenDraw(tournament, {
+      userId: user?.id,
+      actor: buildDrawActor(),
+      clubId: activeClubId,
+      hasReopenPermission: hasDrawReopenPermission,
+    });
+    if (!result.ok) {
+      setError(result.error);
+      return;
+    }
+    if (persistTournament({ settings: result.tournament.settings })) {
+      setMessage("Đã mở lại bốc thăm để chỉnh sửa.");
+    }
+  };
+
+  const handleForceRedraw = () => {
+    setError(null);
+    const result = forceRedrawDraw(tournament, {
+      userId: user?.id,
+      actor: buildDrawActor(),
+      clubId: activeClubId,
+      hasReopenPermission: hasDrawReopenPermission,
+    });
+    if (!result.ok) {
+      setError(result.error);
+      return;
+    }
+    if (persistTournament({ settings: result.tournament.settings })) {
+      setMessage("Force redraw được phép. Bạn có thể random lại.");
+    }
+  };
 
   const handleEntryInterventionApply = (result) => {
     if (!result?.ok) {
@@ -835,6 +949,14 @@ export default function OfficialTournamentSetup() {
     setWarnings([]);
     setMessage(null);
 
+    if (isRedraw) {
+      const regenCheck = canRegenerateDraw(tournament);
+      if (!regenCheck.ok) {
+        setError(regenCheck.error);
+        return;
+      }
+    }
+
     if (displayEntries.length < 2) {
       setError("Can it nhat 2 doi/VDV da dang ky.");
       return;
@@ -903,6 +1025,20 @@ export default function OfficialTournamentSetup() {
 
         if (!saved) {
           return;
+        }
+
+        const created = recordDrawCreated(
+          getTournament(activeClubId, tournamentId),
+          patch.events[0]?.groups || [],
+          {
+            userId: user?.id,
+            actor: buildDrawActor(),
+            clubId: activeClubId,
+            before: isRedraw ? summarizeGroups(savedEvent?.groups || []) : null,
+          }
+        );
+        if (created.ok) {
+          persistTournament({ settings: created.tournament.settings });
         }
 
         setRegisteredEntries([]);
@@ -1279,6 +1415,26 @@ export default function OfficialTournamentSetup() {
             />
           </Grid>
         ) : null}
+        <Grid size={{ xs: 12 }}>
+          <RegistrationOpsPanel
+            tournament={tournament}
+            event={savedEvent}
+            players={flowPlayers}
+            actor={
+              user
+                ? { id: user.id, email: user.email || "", name: user.displayName || user.name || "" }
+                : null
+            }
+            clubId={activeClubId}
+            onPersist={(nextTournament) =>
+              persistTournament({
+                events: nextTournament.events,
+                settings: nextTournament.settings,
+                status: nextTournament.status,
+              })
+            }
+          />
+        </Grid>
       </Grid>
 
       <Grid container spacing={2} sx={{ mb: 2 }}>
@@ -1612,12 +1768,25 @@ export default function OfficialTournamentSetup() {
               <Button fullWidth variant="contained" onClick={() => handleDrawGroups(false)}>
                 Chia bảng random
               </Button>
-              {savedEvent?.groups?.length > 0 && (
+              {savedEvent?.groups?.length > 0 && canRegenerateDraw(tournament).ok && (
                 <Button fullWidth variant="outlined" onClick={() => handleDrawGroups(true)}>
                   Random lại
                 </Button>
               )}
             </Stack>
+            {savedEvent?.groups?.length > 0 && (
+              <DrawPublishControls
+                tournament={tournament}
+                groups={savedEvent.groups}
+                drawPublish={drawPublish}
+                hasReopenPermission={hasDrawReopenPermission}
+                onLock={handleLockDraw}
+                onPublish={handlePublishDraw}
+                onReopen={handleReopenDraw}
+                onForceRedraw={handleForceRedraw}
+                compact
+              />
+            )}
           </Stack>
         </Grid>
 
@@ -1713,6 +1882,28 @@ export default function OfficialTournamentSetup() {
 
       {savedEvent?.groups?.length > 0 && (
         <Stack spacing={2} sx={{ mt: 2 }}>
+          <Paper variant="outlined" sx={{ p: 1.5 }}>
+            <DrawPublishControls
+              tournament={tournament}
+              groups={savedEvent.groups}
+              drawPublish={drawPublish}
+              hasReopenPermission={hasDrawReopenPermission}
+              onLock={handleLockDraw}
+              onPublish={handlePublishDraw}
+              onReopen={handleReopenDraw}
+              onForceRedraw={handleForceRedraw}
+            />
+            <Button
+              component={RouterLink}
+              to={`/tournament/publish-schedule?tournamentId=${encodeURIComponent(tournamentId)}`}
+              variant="outlined"
+              sx={{ mt: 1.5 }}
+              fullWidth
+            >
+              Lịch thi đấu & công bố (S1-E)
+            </Button>
+          </Paper>
+
           <GroupStagePanel
             event={savedEvent}
             players={flowPlayers}
@@ -1724,6 +1915,12 @@ export default function OfficialTournamentSetup() {
             <Typography variant="subtitle1" fontWeight="bold" sx={{ mb: 1 }}>
               Bảng xếp hạng vòng bảng
             </Typography>
+            {groupStandings[0]?.tieBreakExplanation ? (
+              <Typography variant="caption" color="text.secondary" display="block" sx={{ mb: 1 }}>
+                Tie-break: {groupStandings[0].tieBreakExplanation}
+                {groupStandings[0].source === "standings_v2" ? " · STANDINGS_V2" : " · Legacy"}
+              </Typography>
+            ) : null}
             {groupStandings.length === 0 ? (
               <Typography variant="body2" color="text.secondary">
                 Chưa có kết quả trận vòng bảng.
@@ -1744,6 +1941,7 @@ export default function OfficialTournamentSetup() {
                             fontWeight={index < 2 ? "bold" : "regular"}
                           >
                             {index + 1}. {team.name} — {team.matchPoints} điểm
+                            {team.qualificationStatus?.startsWith("qualified") ? " ✓ KO" : ""}
                           </Typography>
                         ))}
                       </Stack>

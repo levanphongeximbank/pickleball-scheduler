@@ -16,6 +16,7 @@ function wrapEngineRun(engineType, context, result, options = {}) {
   const clubId = options.clubId || getActiveClubId();
   appendEngineRun(clubId, context.tournamentId, {
     engineType,
+    action: options.action || engineType,
     inputSummary: {
       participantCount: context.participants?.length ?? 0,
       groupCount: context.groupCount,
@@ -26,7 +27,10 @@ function wrapEngineRun(engineType, context, result, options = {}) {
     warnings: result.warnings || [],
     errors: result.errors || [],
     explain: result.explain || [],
-    createdBy: options.createdBy || null,
+    createdBy: options.createdBy || options.actor?.email || options.actor?.id || null,
+    actor: options.actor || null,
+    before: options.before ?? null,
+    after: options.after ?? (result.ok ? result.data : null),
   });
 
   return result;

@@ -3,8 +3,10 @@ import {
   TOURNAMENT_ROUTES,
   directorPath,
   engineTabPath,
+  individualPlayerRegistrationPath,
   isDirectorTournament,
   isEngineTournament,
+  isIndividualTournament,
   isRegisterableTournament,
   isSchedulableTournament,
   isTeamTournament,
@@ -17,10 +19,12 @@ export function TournamentRegisterHub() {
   return (
     <TournamentPickerHub
       title="Đăng ký VĐV"
-      description="Chọn giải để mở màn hình đăng ký vận động viên / cặp đấu."
-      filter={isRegisterableTournament}
-      resolvePath={(tournament) => getTournamentSetupPath(tournament)}
-      emptyHint="Chưa có giải ở trạng thái Nháp / Đăng ký / Sẵn sàng."
+      description="Chọn giải cá nhân để VĐV tự đăng ký. BTC quản lý duyệt trên màn hình setup giải."
+      filter={(tournament) =>
+        isIndividualTournament(tournament) && isRegisterableTournament(tournament)
+      }
+      resolvePath={(tournament) => individualPlayerRegistrationPath(tournament.id)}
+      emptyHint="Chưa có giải cá nhân ở trạng thái Nháp / Đang đăng ký."
     />
   );
 }
@@ -90,12 +94,12 @@ export function TournamentTeamEligibilityHub() {
   return (
     <TournamentPickerHub
       title="Kiểm tra điều kiện tham gia"
-      description="Chọn giải đồng đội để đối chiếu roster với quy tắc tuổi, giới tính và trình độ."
-      filter={isTeamTournament}
+      description="Chọn giải cá nhân hoặc đồng đội để đối chiếu quy tắc tuổi, giới tính, trình độ."
+      filter={(tournament) => isTeamTournament(tournament) || isIndividualTournament(tournament)}
       resolvePath={(tournament) =>
         `/tournament/eligibility/check?tournamentId=${encodeURIComponent(tournament.id)}`
       }
-      emptyHint="Chưa có giải đồng đội. Tạo giải từ Loại giải → Đồng đội."
+      emptyHint="Chưa có giải phù hợp. Tạo giải từ Loại giải."
     />
   );
 }

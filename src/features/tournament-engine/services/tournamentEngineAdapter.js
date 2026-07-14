@@ -6,6 +6,7 @@ import {
   DEFAULT_SCHEDULE_CONFIG,
   DEFAULT_SEED_WEIGHTS,
 } from "../constants/defaults.js";
+import { enrichParticipantWithRatingV5 } from "../../individual-tournament/adapters/ratingV5SeedAdapter.js";
 
 function playerRating(player) {
   return Number(player?.rating ?? player?.level ?? player?.elo ?? 3.5);
@@ -52,7 +53,7 @@ function entryToParticipant(entry, playersById) {
     ? winRates.reduce((a, b) => a + b, 0) / winRates.length
     : null;
 
-  return {
+  const base = {
     id: String(entry.id),
     name: entry.name,
     playerIds: playerIds.map(String),
@@ -68,6 +69,8 @@ function entryToParticipant(entry, playersById) {
     manualSeedOverride: Boolean(entry.manualSeedOverride),
     unseeded: entry.unseeded ?? false,
   };
+
+  return enrichParticipantWithRatingV5(base, members.length ? members : [entry]);
 }
 
 function playersToParticipants(players, eventType, tournamentId, eventId) {
@@ -131,6 +134,7 @@ export function buildEngineContext({
 
   const settings = tournament?.settings?.engineV4 || {};
   const courtSchedule = tournament?.courtSchedule;
+  const schedulePublish = tournament?.settings?.schedule || {};
 
   return {
     tournamentId: tournament.id,
@@ -143,6 +147,7 @@ export function buildEngineContext({
       name: court.name || `Sân ${court.number || index + 1}`,
       locked: Boolean(court.locked),
       priority: court.priority ?? courts.length - index,
+      availableSessions: court.availableSessions || court.sessions || undefined,
     })),
     groupCount: settings.groupCount ?? engineState?.groupCount ?? 4,
     scheduleConfig: {
@@ -151,6 +156,13 @@ export function buildEngineContext({
       date: courtSchedule?.date || settings.scheduleConfig?.date,
       startTime: courtSchedule?.startTime || settings.scheduleConfig?.startTime,
       endTime: courtSchedule?.endTime || settings.scheduleConfig?.endTime,
+      minRestMinutes:
+        schedulePublish.minRestMinutes ??
+        settings.scheduleConfig?.minRestMinutes ??
+        settings.scheduleConfig?.restMinutes ??
+        DEFAULT_SCHEDULE_CONFIG.minRestMinutes ??
+        15,
+      sessions: settings.scheduleConfig?.sessions,
     },
     seedWeights: { ...DEFAULT_SEED_WEIGHTS, ...settings.seedWeights },
     rankingRules: { ...DEFAULT_RANKING_RULES, ...settings.rankingRules },

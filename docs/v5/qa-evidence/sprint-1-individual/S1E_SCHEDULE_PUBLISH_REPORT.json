@@ -1,0 +1,69 @@
+{
+  "reportId": "S1E_SCHEDULE_PUBLISH_QA",
+  "sprint": "Tournament V5 Sprint 1",
+  "batch": "S1-E",
+  "date": "2026-07-14",
+  "environment": "local",
+  "verdict": "PASS_PENDING_OWNER_REVIEW",
+  "gapsClosed": [
+    "S1-GAP-502",
+    "S1-GAP-501",
+    "S1-GAP-503"
+  ],
+  "automatedTests": {
+    "individual-tournament-schedule.test.js": {
+      "total": 8,
+      "passed": 8,
+      "cases": [
+        "T-S1-E01",
+        "T-S1-E01b",
+        "T-S1-E02",
+        "T-S1-E03",
+        "schedule lifecycle draft → lock → publish → reopen",
+        "cannot lock schedule before draw published",
+        "TournamentPublishSchedulePage no longer uses team demo builder",
+        "sessions + court priority respected"
+      ]
+    },
+    "tournament-engine.test.js": {
+      "total": 16,
+      "passed": 16
+    },
+    "tournament-regression.test.js": {
+      "total": 6,
+      "passed": 6
+    },
+    "s1IndividualRegressionBundle": {
+      "total": 55,
+      "passed": 55,
+      "note": "Includes S1-A through S1-E suites + engine + regression"
+    }
+  },
+  "manualChecklist": {
+    "status": "NOT_RUN",
+    "ownerSignOffRequired": true,
+    "items": [
+      "M1 Generate schedule after draw publish",
+      "M2 Impossible min rest fails generation",
+      "M3 Lock + publish immutable snapshot",
+      "M4 Regenerate blocked after publish",
+      "M5 Force republish with audit",
+      "M6 Manual reschedule rest warning",
+      "M7 Player schedule view after publish"
+    ]
+  },
+  "nonGoalsRespected": {
+    "S1F": true,
+    "teamPublishScheduleEngineUntouched": true,
+    "ratingV5Edits": true,
+    "teamTournamentChanges": true,
+    "productionDeploy": true,
+    "merge": true
+  },
+  "evidenceNotes": [
+    "Individual publishScheduleEngine mirrors draw lifecycle (draft/lock/publish/reopen/force)",
+    "scheduleEngine enforces minRestMinutes with auto-adjust and hard fail",
+    "TournamentPublishSchedulePage loads real individual tournaments — demo team builder removed",
+    "Audit trail: settings.schedule.auditLog + writeAuditLog + workflowHistory"
+  ]
+}

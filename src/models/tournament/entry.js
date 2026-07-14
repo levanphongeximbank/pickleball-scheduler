@@ -1,6 +1,7 @@
-import { PAIR_TYPE } from "./constants.js";
+import { ENTRY_STATUS, PAIR_TYPE } from "./constants.js";
 
 const VALID_PAIR_TYPES = new Set(Object.values(PAIR_TYPE));
+const VALID_ENTRY_STATUSES = new Set(Object.values(ENTRY_STATUS));
 
 function toNumber(value, fallback = 0) {
   const parsed = Number(value);
@@ -10,6 +11,30 @@ function toNumber(value, fallback = 0) {
 function normalizePairType(value) {
   const raw = String(value || "").trim().toLowerCase();
   return VALID_PAIR_TYPES.has(raw) ? raw : PAIR_TYPE.SAME_CLUB;
+}
+
+function normalizeEntryStatus(value) {
+  const raw = String(value || ENTRY_STATUS.ACTIVE).trim().toLowerCase();
+  return VALID_ENTRY_STATUSES.has(raw) ? raw : ENTRY_STATUS.ACTIVE;
+}
+
+export function isDrawEligibleEntry(entry) {
+  const status = normalizeEntryStatus(entry?.status);
+  return status === ENTRY_STATUS.APPROVED || status === ENTRY_STATUS.ACTIVE;
+}
+
+export function isCountableRegistrationEntry(entry) {
+  const status = normalizeEntryStatus(entry?.status);
+  return (
+    status === ENTRY_STATUS.PENDING ||
+    status === ENTRY_STATUS.APPROVED ||
+    status === ENTRY_STATUS.ACTIVE ||
+    status === ENTRY_STATUS.WAITLISTED
+  );
+}
+
+export function isWithdrawnEntry(entry) {
+  return normalizeEntryStatus(entry?.status) === ENTRY_STATUS.WITHDRAWN;
 }
 
 export function normalizeEntry(entry, index = 0) {
@@ -37,7 +62,19 @@ export function normalizeEntry(entry, index = 0) {
     groupId: entry.groupId ? String(entry.groupId).trim() : "",
     clubName: entry.clubName ? String(entry.clubName).trim() : "",
     unitName: entry.unitName ? String(entry.unitName).trim() : "",
-    status: entry.status || "active",
+    status: normalizeEntryStatus(entry.status),
+    waitlistPosition:
+      entry.waitlistPosition != null && Number.isFinite(Number(entry.waitlistPosition))
+        ? Number(entry.waitlistPosition)
+        : null,
+    partnerInviteToken: entry.partnerInviteToken
+      ? String(entry.partnerInviteToken).trim()
+      : "",
+    registeredAt: entry.registeredAt || null,
+    decidedAt: entry.decidedAt || null,
+    decidedBy: entry.decidedBy ? String(entry.decidedBy).trim() : "",
+    cancelledAt: entry.cancelledAt || null,
+    rejectionReason: entry.rejectionReason ? String(entry.rejectionReason).trim() : "",
   };
 }
 
@@ -65,6 +102,13 @@ export function createEntryRecord(options = {}) {
     groupId: options.groupId || "",
     clubName: options.clubName || "",
     unitName: options.unitName || "",
-    status: options.status || "active",
+    status: options.status || ENTRY_STATUS.ACTIVE,
+    waitlistPosition: options.waitlistPosition ?? null,
+    partnerInviteToken: options.partnerInviteToken || "",
+    registeredAt: options.registeredAt || null,
+    decidedAt: options.decidedAt || null,
+    decidedBy: options.decidedBy || "",
+    cancelledAt: options.cancelledAt || null,
+    rejectionReason: options.rejectionReason || "",
   });
 }

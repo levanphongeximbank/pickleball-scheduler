@@ -1,76 +1,73 @@
-import { useState } from "react";
-
 import {
   Alert,
-  Box,
   Button,
   MenuItem,
   Stack,
   TextField,
-  Typography,
 } from "@mui/material";
 
-import { normalizeTeamData } from "../../../features/team-tournament/models/index.js";
-import { initializeTeamTournamentData } from "../../../features/team-tournament/engines/teamTournamentEngine.js";
-import { MLP_REGULATIONS_BODY } from "../../../features/team-tournament/engines/mlpPresetEngine.js";
+import {
+  getRegulations,
+  getRegistrationPolicy,
+  REGULATION_TEMPLATES,
+  setRegistrationPolicy,
+  setRegulations,
+} from "../../../features/individual-tournament/engines/regulationsEngine.js";
+import { useIndividualTournamentConfig } from "../../../features/individual-tournament/hooks/useIndividualTournamentConfig.js";
 import TournamentConfigPageShell from "../../../components/tournament/TournamentConfigPageShell.jsx";
-
-const TEMPLATES = [
-  {
-    id: "mlp_4",
-    label: "MLP 4 người (Major League Pickleball)",
-    body: MLP_REGULATIONS_BODY,
-  },
-  {
-    id: "standard",
-    label: "Điều lệ chuẩn CLB",
-    body:
-      "1. Đội đăng ký đủ roster trước hạn.\n2. BTC có quyền từ chối đội không đủ điều kiện.\n3. Kết quả trọng tài là quyết định cuối cùng.",
-  },
-  {
-    id: "enterprise",
-    label: "Giải doanh nghiệp",
-    body:
-      "1. Mỗi đội tối đa 12 VĐV.\n2. Trang phục thống nhất theo đội.\n3. Tuân thủ quy định an toàn sân.",
-  },
-];
-
-function getRegulations(teamData) {
-  return teamData?.settings?.regulations || { templateId: "standard", body: TEMPLATES[0].body };
-}
-
-function setRegulations(teamData, patch) {
-  const current = getRegulations(teamData);
-  const next = {
-    templateId: patch.templateId ?? current.templateId,
-    body: patch.body ?? current.body,
-  };
-  return normalizeTeamData({
-    ...teamData,
-    settings: { ...teamData.settings, regulations: next },
-  });
-}
+import IndividualTournamentSelector from "../../../components/tournament/IndividualTournamentSelector.jsx";
 
 export default function TournamentRegulationsPage() {
-  const [teamData, setTeamData] = useState(() => initializeTeamTournamentData());
-  const [message, setMessage] = useState(null);
-  const regulations = getRegulations(teamData);
+  const {
+    tournament,
+    tournaments,
+    tournamentId,
+    selectTournament,
+    persistTournament,
+    message,
+    setMessage,
+  } = useIndividualTournamentConfig();
+
+  const regulations = getRegulations(tournament);
+  const policy = getRegistrationPolicy(tournament);
 
   const applyTemplate = (templateId) => {
-    const template = TEMPLATES.find((item) => item.id === templateId);
-    const next = setRegulations(teamData, {
+    if (!tournament) return;
+    const template = REGULATION_TEMPLATES.find((item) => item.id === templateId);
+    const result = setRegulations(tournament, {
       templateId,
       body: template?.body || "",
     });
-    setTeamData(next);
-    setMessage({ type: "success", text: "Đã áp dụng mẫu điều lệ." });
+    if (persistTournament(result.tournament)) {
+      setMessage({ type: "success", text: "Đã áp dụng mẫu điều lệ." });
+    }
+  };
+
+  const saveBody = (body) => {
+    if (!tournament) return;
+    const result = setRegulations(tournament, { body });
+    persistTournament(result.tournament);
+  };
+
+  const savePolicy = (patch) => {
+    if (!tournament) return;
+    const result = setRegistrationPolicy(tournament, patch);
+    if (persistTournament(result.tournament)) {
+      setMessage({ type: "success", text: "Đã lưu chính sách đăng ký." });
+    }
   };
 
   return (
     <TournamentConfigPageShell
-      title="Mẫu điều lệ"
-      description="Chọn mẫu và chỉnh sửa điều lệ giải đấu."
+      title="Điều lệ & thông báo"
+      description="Mẫu điều lệ và message xác nhận cho giải cá nhân."
     >
+      <IndividualTournamentSelector
+        tournaments={tournaments}
+        tournamentId={tournamentId}
+        onSelect={selectTournament}
+      />
+
       {message ? (
         <Alert severity={message.type} sx={{ mb: 2 }} onClose={() => setMessage(null)}>
           {message.text}
@@ -80,11 +77,12 @@ export default function TournamentRegulationsPage() {
       <Stack spacing={2} sx={{ maxWidth: 640 }}>
         <TextField
           select
-          label="Mẫu"
+          label="Mẫu điều lệ"
           value={regulations.templateId}
           onChange={(event) => applyTemplate(event.target.value)}
+          disabled={!tournament}
         >
-          {TEMPLATES.map((template) => (
+          {REGULATION_TEMPLATES.map((template) => (
             <MenuItem key={template.id} value={template.id}>
               {template.label}
             </MenuItem>
@@ -95,13 +93,50 @@ export default function TournamentRegulationsPage() {
           multiline
           minRows={8}
           value={regulations.body}
-          onChange={(event) => {
-            setTeamData(setRegulations(teamData, { body: event.target.value }));
-          }}
+          onChange={(event) => saveBody(event.target.value)}
+          disabled={!tournament}
+        />
+        <TextField
+          label="Message xác nhận đăng ký"
+          value={policy.confirmationMessage}
+          onChange={(event) => savePolicy({ confirmationMessage: event.target.value })}
+          disabled={!tournament}
+        />
+        <TextField
+          label="Message từ chối"
+          value={policy.rejectionMessage}
+          onChange={(event) => savePolicy({ rejectionMessage: event.target.value })}
+          disabled={!tournament}
+        />
+        <TextField
+          label="Message waitlist"
+          value={policy.waitlistMessage}
+          onChange={(event) => savePolicy({ waitlistMessage: event.target.value })}
+          disabled={!tournament}
+        />
+        <TextField
+          label="Message chưa thanh toán"
+          value={policy.unpaidFeeMessage}
+          onChange={(event) => savePolicy({ unpaidFeeMessage: event.target.value })}
+          disabled={!tournament}
+        />
+        <TextField
+          label="Message không đủ điều kiện"
+          value={policy.eligibilityFailedMessage}
+          onChange={(event) => savePolicy({ eligibilityFailedMessage: event.target.value })}
+          disabled={!tournament}
         />
         <Button
           variant="contained"
-          onClick={() => setMessage({ type: "success", text: "Đã lưu điều lệ." })}
+          disabled={!tournament}
+          onClick={() => {
+            if (!tournament) return;
+            const reg = setRegulations(tournament, regulations);
+            const pol = setRegistrationPolicy(reg.tournament, policy);
+            if (persistTournament(pol.tournament)) {
+              setMessage({ type: "success", text: "Đã lưu điều lệ & thông báo." });
+            }
+          }}
         >
           Lưu
         </Button>

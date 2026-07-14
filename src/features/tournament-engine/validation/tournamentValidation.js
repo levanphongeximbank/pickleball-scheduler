@@ -83,7 +83,7 @@ export function validateScheduleInput(context = {}) {
   const courts = context.courts || [];
   const matches = context.matches || [];
 
-  if (matches.length === 0) {
+  if (matches.length === 0 && !(context.groups || []).length) {
     errors.push("Chưa có trận đấu để lập lịch. Hãy chạy Bốc thăm trước.");
   }
 
@@ -92,11 +92,12 @@ export function validateScheduleInput(context = {}) {
     errors.push("Không có sân khả dụng (tất cả sân đang bị khóa).");
   }
 
-  if (!config.startTime) {
+  const hasSessions = Array.isArray(config.sessions) && config.sessions.length > 0;
+  if (!config.startTime && !hasSessions) {
     errors.push("Thiếu thời gian bắt đầu giải.");
   }
 
-  if (!config.endTime) {
+  if (!config.endTime && !hasSessions) {
     warnings.push("Chưa cấu hình thời gian kết thúc — không kiểm tra vượt khung giờ.");
   }
 

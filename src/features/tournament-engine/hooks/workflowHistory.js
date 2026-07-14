@@ -5,6 +5,9 @@ export function appendWorkflowHistoryEntry(history = [], entry = {}) {
     status: entry.status || "success",
     detail: entry.detail || "",
     timestamp: entry.timestamp || new Date().toISOString(),
+    actor: entry.actor || null,
+    before: entry.before ?? null,
+    after: entry.after ?? null,
   };
 
   const next = [nextEntry, ...history].slice(0, 8);

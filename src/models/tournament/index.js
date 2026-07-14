@@ -2,6 +2,8 @@ export {
   TOURNAMENT_MODE,
   OFFICIAL_MODE,
   TOURNAMENT_STATUS,
+  ENTRY_STATUS,
+  ENTRY_STATUS_LABELS,
   TOURNAMENT_LEVEL,
   TOURNAMENT_LEVEL_LABELS,
   TOURNAMENT_LEVEL_OPTIONS,
@@ -26,6 +28,8 @@ export {
   normalizeEntry,
   normalizeEntries,
   createEntryRecord,
+  isDrawEligibleEntry,
+  isCountableRegistrationEntry,
 } from "./entry.js";
 
 export {

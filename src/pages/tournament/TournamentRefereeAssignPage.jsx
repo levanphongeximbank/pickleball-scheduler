@@ -1,125 +1,164 @@
 import { useMemo, useState } from "react";
+import { useSearchParams } from "react-router-dom";
 
 import {
   Alert,
   Box,
-  Button,
-  MenuItem,
-  Paper,
-  Stack,
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableRow,
-  TextField,
+  Tab,
+  Tabs,
   Typography,
 } from "@mui/material";
 
+import { useClub } from "../../context/ClubContext.jsx";
+import { useAuth } from "../../context/AuthContext.jsx";
 import {
-  addTeamToTournament,
-  buildRoundRobinMatchups,
-  initializeTeamTournamentData,
-} from "../../features/team-tournament/engines/teamTournamentEngine.js";
-import {
-  addReferee,
-  assignReferee,
-  buildRefereeAssignmentTable,
-} from "../../features/team-tournament/engines/refereeAssignEngine.js";
+  getTournament,
+  listTournaments,
+  updateTournament,
+} from "../../domain/tournamentService.js";
+import { isIndividualTournament } from "../../config/tournamentRoutes.js";
 import TournamentConfigPageShell from "../../components/tournament/TournamentConfigPageShell.jsx";
+import IndividualTournamentSelector from "../../components/tournament/IndividualTournamentSelector.jsx";
+import RefereeAssignPanel from "../../components/tournament/RefereeAssignPanel.jsx";
+import MatchResultMonitorPanel from "../../components/tournament/MatchResultMonitorPanel.jsx";
+import ResultCorrectionPanel from "../../components/tournament/ResultCorrectionPanel.jsx";
+import IndividualRefereePortalPanel from "../../components/tournament/IndividualRefereePortalPanel.jsx";
+import PlayerLiveResultsPanel from "../../components/tournament/PlayerLiveResultsPanel.jsx";
 
-function buildDemoTeamData() {
-  let teamData = initializeTeamTournamentData();
-  teamData = addTeamToTournament(teamData, { id: "team-a", name: "Team A", playerIds: [] });
-  teamData = addTeamToTournament(teamData, { id: "team-b", name: "Team B", playerIds: [] });
-  teamData = buildRoundRobinMatchups(teamData, {
-    scheduledAt: "2026-07-10T08:00:00.000Z",
-  });
-  teamData = addReferee(teamData, { id: "ref-1", name: "Trọng tài A" }).teamData;
-  teamData = addReferee(teamData, { id: "ref-2", name: "Trọng tài B" }).teamData;
-  return teamData;
-}
+const TABS = [
+  { id: "assign", label: "Phân công TT" },
+  { id: "results", label: "Giám sát kết quả" },
+  { id: "correction", label: "Sửa kết quả" },
+  { id: "referee", label: "Cổng trọng tài" },
+  { id: "player", label: "Kết quả VĐV" },
+];
 
 export default function TournamentRefereeAssignPage() {
-  const [teamData, setTeamData] = useState(() => buildDemoTeamData());
+  const [searchParams, setSearchParams] = useSearchParams();
+  const tournamentId = searchParams.get("tournamentId") || "";
+  const tabParam = searchParams.get("tab") || "assign";
+  const { activeClubId, revision, refreshClubs } = useClub();
+  const { user } = useAuth();
   const [message, setMessage] = useState(null);
-  const rows = useMemo(() => buildRefereeAssignmentTable(teamData), [teamData]);
+  const [tab, setTab] = useState(
+    TABS.some((t) => t.id === tabParam) ? tabParam : "assign"
+  );
 
-  const handleAssign = (matchId, refereeId) => {
-    const result = assignReferee(teamData, matchId, refereeId);
+  const tournaments = useMemo(
+    () => listTournaments(activeClubId).filter(isIndividualTournament),
+    [activeClubId, revision]
+  );
+
+  const tournament = useMemo(() => {
+    if (!tournamentId || !activeClubId) return null;
+    return getTournament(activeClubId, tournamentId);
+  }, [activeClubId, tournamentId, revision]);
+
+  const persistTournament = (nextTournament) => {
+    if (!activeClubId || !tournamentId || !nextTournament) return false;
+    const result = updateTournament(activeClubId, tournamentId, {
+      settings: nextTournament.settings,
+      events: nextTournament.events,
+    });
     if (!result.ok) {
-      setMessage({ type: "error", text: result.error });
-      return;
+      setMessage({ type: "error", text: result.error || "Không lưu được." });
+      return false;
     }
-    setTeamData(result.teamData);
-    setMessage({ type: "success", text: "Đã phân công trọng tài." });
+    refreshClubs();
+    return true;
+  };
+
+  const handleSelect = (id) => {
+    const next = new URLSearchParams(searchParams);
+    if (id) next.set("tournamentId", id);
+    else next.delete("tournamentId");
+    setSearchParams(next);
+  };
+
+  const handleTab = (_event, value) => {
+    setTab(value);
+    const next = new URLSearchParams(searchParams);
+    next.set("tab", value);
+    setSearchParams(next);
   };
 
   return (
     <TournamentConfigPageShell
-      title="Phân công trọng tài"
-      description="Gán trọng tài cho từng lượt đối đầu."
+      title="Trọng tài & kết quả (Individual)"
+      description="Phân công trọng tài, xác nhận kết quả, lan truyền bảng xếp hạng / nhánh, và sửa lỗi có kiểm soát."
     >
+      <IndividualTournamentSelector
+        tournaments={tournaments}
+        tournamentId={tournamentId}
+        onSelect={handleSelect}
+      />
+
       {message ? (
         <Alert severity={message.type} sx={{ mb: 2 }} onClose={() => setMessage(null)}>
           {message.text}
         </Alert>
       ) : null}
 
-      <Paper sx={{ overflowX: "auto" }}>
-        <Table size="small">
-          <TableHead>
-            <TableRow>
-              <TableCell>Trận</TableCell>
-              <TableCell>Thời gian</TableCell>
-              <TableCell>Trọng tài</TableCell>
-              <TableCell />
-            </TableRow>
-          </TableHead>
-          <TableBody>
-            {rows.map((row) => (
-              <TableRow key={row.matchId}>
-                <TableCell>
-                  {row.teamAName} vs {row.teamBName}
-                </TableCell>
-                <TableCell>
-                  {row.scheduledAt
-                    ? new Date(row.scheduledAt).toLocaleString("vi-VN")
-                    : "—"}
-                </TableCell>
-                <TableCell>
-                  <TextField
-                    select
-                    size="small"
-                    value={row.refereeId}
-                    onChange={(event) => handleAssign(row.matchId, event.target.value)}
-                    sx={{ minWidth: 180 }}
-                  >
-                    <MenuItem value="">— Chưa phân công —</MenuItem>
-                    {row.availableReferees.map((referee) => (
-                      <MenuItem key={referee.id} value={referee.id}>
-                        {referee.name}
-                      </MenuItem>
-                    ))}
-                  </TextField>
-                </TableCell>
-                <TableCell>
-                  <Stack direction="row" spacing={1}>
-                    <Button
-                      size="small"
-                      variant="outlined"
-                      disabled={!row.refereeId}
-                      onClick={() => handleAssign(row.matchId, row.refereeId)}
-                    >
-                      Lưu
-                    </Button>
-                  </Stack>
-                </TableCell>
-              </TableRow>
+      {!tournamentId ? (
+        <Alert severity="info">
+          Chọn giải cá nhân (không dùng dữ liệu demo đồng đội).
+        </Alert>
+      ) : (
+        <>
+          <Tabs
+            value={tab}
+            onChange={handleTab}
+            variant="scrollable"
+            scrollButtons="auto"
+            sx={{ mb: 2 }}
+          >
+            {TABS.map((item) => (
+              <Tab key={item.id} value={item.id} label={item.label} />
             ))}
-          </TableBody>
-        </Table>
-      </Paper>
+          </Tabs>
+
+          <Box>
+            {tab === "assign" ? (
+              <RefereeAssignPanel
+                tournament={tournament}
+                actor={user}
+                onTournamentChange={persistTournament}
+              />
+            ) : null}
+            {tab === "results" ? (
+              <MatchResultMonitorPanel
+                tournament={tournament}
+                actor={user}
+                onTournamentChange={persistTournament}
+              />
+            ) : null}
+            {tab === "correction" ? (
+              <ResultCorrectionPanel
+                tournament={tournament}
+                actor={user}
+                onTournamentChange={persistTournament}
+              />
+            ) : null}
+            {tab === "referee" ? (
+              <IndividualRefereePortalPanel
+                tournament={tournament}
+                actor={user}
+                onTournamentChange={persistTournament}
+              />
+            ) : null}
+            {tab === "player" ? (
+              <PlayerLiveResultsPanel tournament={tournament} />
+            ) : null}
+          </Box>
+
+          {tournament ? (
+            <Typography variant="caption" color="text.secondary" sx={{ mt: 2, display: "block" }}>
+              Audit blob: settings.resultPropagation.auditLog · Phân công:
+              settings.refereeAssignments · Kết quả: settings.matchResults
+            </Typography>
+          ) : null}
+        </>
+      )}
     </TournamentConfigPageShell>
   );
 }
