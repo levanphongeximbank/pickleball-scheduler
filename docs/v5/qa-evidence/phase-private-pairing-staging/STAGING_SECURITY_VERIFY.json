@@ -2,8 +2,8 @@
   "phase": "private-pairing-pr4-staging-security",
   "staging_ref": "qyewbxjsiiyufanzcjcq",
   "production_touched": false,
-  "started_at": "2026-07-14T08:53:04.524Z",
-  "finished_at": "2026-07-14T08:53:16.987Z",
+  "started_at": "2026-07-14T20:57:26.153Z",
+  "finished_at": "2026-07-14T20:57:36.350Z",
   "summary": {
     "passed": 5,
     "failed": 1,
@@ -104,13 +104,11 @@
     {
       "id": "vercel_preview_vite_rbac_enabled",
       "pass": false,
-      "present": true,
-      "value_is_true": false,
-      "readable": true,
-      "method": "vercel env pull preview (single key, value not printed)",
-      "note": "Preview VITE_RBAC_ENABLED present but value is empty (not literally true)",
-      "value_empty": true,
-      "value_is_false": false,
+      "present": false,
+      "value_is_true": null,
+      "readable": false,
+      "method": null,
+      "note": "Could not query Vercel Preview env: Command failed: npx vercel env ls preview\nnpm warn Unknown env config \"devdir\". This will stop working in the next major version of npm. See `npm help npmrc` for supported config options.\nVercel CLI 56.2.0 (Node.js 24.18.0)\nError: Your codebase isn’t linked to a project on Vercel. Run `vercel link -",
       "production_env_touched": false
     }
   ]
