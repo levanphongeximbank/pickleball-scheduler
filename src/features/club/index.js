@@ -82,6 +82,8 @@ export {
 export {
   getClubMembers,
   getClubMembersForTournamentInvite,
+  listClubMembersAsync,
+  mapV2MemberRowToUi,
   addMemberToClub,
   removeMemberFromClub,
   updateClubMemberRole,

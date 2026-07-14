@@ -1,10 +1,11 @@
-import { useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Link as RouterLink } from "react-router-dom";
 import {
   Alert,
   Box,
   Button,
   Chip,
+  CircularProgress,
   Paper,
   Stack,
   Table,
@@ -24,13 +25,10 @@ import {
   CLUB_MEMBER_ROLE_LABELS,
   CLUB_MEMBER_STATUSES,
   canViewFullClubMembers,
-  getClubMembers,
-  getTenantPlayers,
   getVicePresidentUserIds,
+  listClubMembersAsync,
 } from "../../../features/club/index.js";
 import { ClubEmptyState, GovernanceRoleChip } from "../../../features/club/ui/index.js";
-import { loadPlayersForClub } from "../../../domain/clubStorage.js";
-import { findUserIdByPlayerId } from "../../../features/club/storage/athleteClubLinkStore.js";
 import { resolveMemberGovernanceRole } from "./myClubViewLogic.js";
 
 function mapGovernanceChip(governanceRole) {
@@ -50,6 +48,29 @@ function mapGovernanceChip(governanceRole) {
     return { role: "owner" };
   }
   return { role: "member", label: governanceRole };
+}
+
+function resolveGovernanceRoleFromV2(member, clubRecord) {
+  const roles = member.governanceRoles || [];
+  const hasPresident = roles.includes("president");
+  const hasOwner = roles.includes("club_owner");
+  const hasVice = roles.includes("vice_president");
+
+  if (hasPresident && hasOwner) {
+    return "Chủ sở hữu & Chủ tịch";
+  }
+  if (hasPresident) {
+    return "Chủ tịch";
+  }
+  if (hasVice) {
+    return "Phó chủ tịch";
+  }
+  if (hasOwner) {
+    return "Chủ sở hữu";
+  }
+
+  const linkedUserId = member.userId || member.playerId;
+  return resolveMemberGovernanceRole(linkedUserId, clubRecord?.governance, getVicePresidentUserIds);
 }
 
 function MemberRowContent({ row }) {
@@ -92,51 +113,64 @@ export default function MyClubMembersPanel({
       !isAuthenticated ||
       can(PERMISSIONS.PLAYER_UPDATE, { clubId, venueId: tenantId }));
 
-  const members = useMemo(() => {
-    void revision;
-    if (!fullAccess || !clubId) {
-      return [];
-    }
-    return getClubMembers(clubId, tenantId);
-  }, [clubId, tenantId, revision, fullAccess]);
+  const [members, setMembers] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [loadError, setLoadError] = useState(null);
 
-  const playersById = useMemo(() => {
-    const players = getTenantPlayers(tenantId);
-    return new Map(players.map((player) => [player.id, player]));
-  }, [tenantId, revision]);
+  useEffect(() => {
+    let cancelled = false;
+
+    if (!fullAccess || !clubId) {
+      setMembers([]);
+      setLoadError(null);
+      setLoading(false);
+      return undefined;
+    }
+
+    setLoading(true);
+    setLoadError(null);
+
+    void listClubMembersAsync(clubId, tenantId).then((result) => {
+      if (cancelled) {
+        return;
+      }
+      if (!result.ok) {
+        setMembers([]);
+        setLoadError(result.error || "Không tải được danh sách thành viên.");
+        setLoading(false);
+        return;
+      }
+      setMembers(result.members || []);
+      setLoading(false);
+    });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [clubId, tenantId, revision, fullAccess]);
 
   const rows = useMemo(() => {
     if (!clubRecord) {
       return [];
     }
 
-    const clubPlayers = clubId ? loadPlayersForClub(clubId) : [];
-    const clubPlayerById = new Map(clubPlayers.map((player) => [player.id, player]));
-
     return members
       .map((member) => {
-        const player = clubPlayerById.get(member.playerId) || playersById.get(member.playerId);
-        const linkedUserId =
-          findUserIdByPlayerId(member.playerId) ||
-          String(player?.authUserId || "").trim() ||
-          null;
-        const governanceRole = resolveMemberGovernanceRole(
-          linkedUserId,
-          clubRecord.governance,
-          getVicePresidentUserIds
-        );
+        const name =
+          String(member.displayName || "").trim() ||
+          String(member.playerId || member.userId || "Thành viên").trim();
 
         return {
-          id: member.id,
-          name: player?.name || member.playerId,
-          governanceRole,
-          memberRole: CLUB_MEMBER_ROLE_LABELS[member.role] || member.role,
+          id: member.id || member.userId || member.playerId,
+          name,
+          governanceRole: resolveGovernanceRoleFromV2(member, clubRecord),
+          memberRole: CLUB_MEMBER_ROLE_LABELS[member.role] || member.role || "Thành viên",
           status: member.status,
           isActive: member.status === CLUB_MEMBER_STATUSES.ACTIVE,
         };
       })
       .sort((a, b) => a.name.localeCompare(b.name, "vi"));
-  }, [members, playersById, clubRecord, clubId]);
+  }, [members, clubRecord]);
 
   const activeCount = rows.filter((row) => row.isActive).length;
 
@@ -173,9 +207,21 @@ export default function MyClubMembersPanel({
         </Alert>
       )}
 
-      {fullAccess && rows.length === 0 && <ClubEmptyState preset="members" />}
+      {fullAccess && loadError && (
+        <Alert severity="error" sx={{ mb: 2 }}>
+          {loadError}
+        </Alert>
+      )}
 
-      {fullAccess && rows.length > 0 && isMobile ? (
+      {fullAccess && loading && (
+        <Stack alignItems="center" py={4}>
+          <CircularProgress size={28} />
+        </Stack>
+      )}
+
+      {fullAccess && !loading && rows.length === 0 && !loadError && <ClubEmptyState preset="members" />}
+
+      {fullAccess && !loading && rows.length > 0 && isMobile ? (
         <Stack spacing={1.5}>
           {rows.map((row) => (
             <Paper key={row.id} variant="outlined" sx={{ p: 2, borderRadius: 2 }}>
@@ -185,7 +231,7 @@ export default function MyClubMembersPanel({
         </Stack>
       ) : null}
 
-      {fullAccess && rows.length > 0 && !isMobile ? (
+      {fullAccess && !loading && rows.length > 0 && !isMobile ? (
         <TableContainer component={Paper} variant="outlined" sx={{ borderRadius: 2 }}>
           <Table size="small">
             <TableHead>

@@ -5,6 +5,7 @@ import { getClubById as getRegistryClubById } from "../../../domain/clubService.
 import { loadPlayersForClub } from "../../../domain/clubStorage.js";
 import { guardClubTenant } from "../../tenant/guards/tenantGuard.js";
 import { CLUB_MEMBER_STATUSES } from "../constants/clubMemberRoles.js";
+import { isClubStorageV2Enabled } from "../config/clubRegistryFlags.js";
 import { canViewFullClubMembers, canDeleteClubMembers } from "./clubGovernanceService.js";
 import {
   createClubMemberRecord,
@@ -13,6 +14,67 @@ import {
 import { loadClubExtension, saveClubExtension } from "../storage/clubExtensionStorage.js";
 import { createDefaultClubRating } from "../models/clubPlayerRating.js";
 import { getTenantPlayers } from "./clubTenantService.js";
+import { rpcV2ClubListMembers } from "./clubStorageV2RpcService.js";
+
+/** Map V2 `club_list_members` row → UI member shape used by My Club / manage tabs. */
+export function mapV2MemberRowToUi(row = {}) {
+  const roles = Array.isArray(row.governance_roles)
+    ? row.governance_roles.map((r) => String(r || "").trim()).filter(Boolean)
+    : [];
+  const statusRaw = String(row.status || "").toLowerCase();
+  const status =
+    statusRaw === CLUB_MEMBER_STATUSES.INACTIVE || statusRaw === "inactive"
+      ? CLUB_MEMBER_STATUSES.INACTIVE
+      : CLUB_MEMBER_STATUSES.ACTIVE;
+
+  return {
+    id: String(row.id || ""),
+    playerId: String(row.user_id || row.player_id || ""),
+    userId: String(row.user_id || "").trim() || null,
+    displayName: String(row.display_name || "").trim(),
+    status,
+    role: "member",
+    membershipType: row.membership_type || "regular",
+    governanceRoles: roles,
+    version: row.version ?? null,
+    source: "v2-rpc",
+  };
+}
+
+/**
+ * List club members for UI. Under Club Storage V2, uses cloud RPC `club_list_members`
+ * (SoT). Legacy path uses local club extension / blob sync.
+ */
+export async function listClubMembersAsync(clubId, tenantId, options = {}) {
+  const trimmedClubId = String(clubId || "").trim();
+  if (!trimmedClubId) {
+    return { ok: false, error: "Thiếu clubId.", members: [] };
+  }
+
+  if (isClubStorageV2Enabled()) {
+    const result = await rpcV2ClubListMembers(trimmedClubId);
+    if (!result.ok) {
+      return {
+        ok: false,
+        code: result.code,
+        error: result.error || "Không tải được danh sách thành viên.",
+        members: [],
+      };
+    }
+    return {
+      ok: true,
+      members: (result.members || []).map(mapV2MemberRowToUi),
+      provider: "v2-rpc",
+      version: result.version,
+    };
+  }
+
+  return {
+    ok: true,
+    members: getClubMembers(trimmedClubId, tenantId, options),
+    provider: "local",
+  };
+}
 
 function guardClubMemberAccess(clubId, tenantId, permission) {
   if (tenantId) {

@@ -32,6 +32,7 @@ import {
   CLUB_MEMBER_STATUSES,
   addMemberToClub,
   getClubMembers,
+  listClubMembersAsync,
   getClubRatings,
   getTenantPlayers,
   removeMemberFromClub,
@@ -59,9 +60,34 @@ export default function ClubMembersTab({ club, tenantId, onRefresh }) {
   const [requestMessage, setRequestMessage] = useState(null);
   const [pendingMembershipRequests, setPendingMembershipRequests] = useState([]);
   const [loadingPendingRequests, setLoadingPendingRequests] = useState(false);
+  const [members, setMembers] = useState([]);
+  const [membersLoading, setMembersLoading] = useState(false);
 
   const fullAccess = canViewFullClubMembers(user, club);
   const canApproveRequests = canApproveClubMembershipRequests(user, club);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    async function loadMembers() {
+      setMembersLoading(true);
+      try {
+        const result = await listClubMembersAsync(club.id, tenantId);
+        if (!cancelled) {
+          setMembers(result.ok ? result.members || [] : getClubMembers(club.id, tenantId));
+        }
+      } finally {
+        if (!cancelled) {
+          setMembersLoading(false);
+        }
+      }
+    }
+
+    void loadMembers();
+    return () => {
+      cancelled = true;
+    };
+  }, [club.id, tenantId, revision]);
 
   useEffect(() => {
     let cancelled = false;
@@ -98,11 +124,6 @@ export default function ClubMembersTab({ club, tenantId, onRefresh }) {
       can(PERMISSIONS.PLAYER_UPDATE, { clubId: club.id, venueId: tenantId }));
 
   const canRemoveMembers = canDeleteClubMembers(user, club) && canManage;
-
-  const members = useMemo(
-    () => getClubMembers(club.id, tenantId),
-    [club.id, tenantId, revision]
-  );
 
   const ratings = useMemo(
     () => getClubRatings(club.id, tenantId),
@@ -380,7 +401,9 @@ export default function ClubMembersTab({ club, tenantId, onRefresh }) {
                 const rating = ratingByPlayer.get(member.playerId);
                 return (
                   <TableRow key={member.id} hover>
-                    <TableCell>{player?.name || member.playerId}</TableCell>
+                    <TableCell>
+                      {member.displayName || player?.name || member.playerId}
+                    </TableCell>
                     <TableCell>{player?.phone || "—"}</TableCell>
                     <TableCell>{player?.gender || "—"}</TableCell>
                     <TableCell>{player?.level ?? rating?.level ?? "—"}</TableCell>

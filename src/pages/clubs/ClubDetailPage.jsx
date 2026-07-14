@@ -6,6 +6,7 @@ import {
   Breadcrumbs,
   Button,
   Chip,
+  CircularProgress,
   Link,
   Stack,
   Tab,
@@ -23,6 +24,9 @@ import {
   canApproveClubRegistration,
   approveClubRegistration,
   rejectClubRegistration,
+  canUserViewClub,
+  isClubStorageV2Enabled,
+  rpcV2ClubGet,
 } from "../../features/club/index.js";
 import ClubOverviewTab from "./tabs/ClubOverviewTab.jsx";
 import ClubMembersTab from "./tabs/ClubMembersTab.jsx";
@@ -38,6 +42,16 @@ const ALL_TABS = [
   { key: "tournaments", label: "Giải nội bộ", requiresFullMembers: false },
 ];
 
+function canAccessClubDetail(user, club, tenantId) {
+  if (!club) {
+    return false;
+  }
+  if (canViewFullClubMembers(user, club)) {
+    return true;
+  }
+  return canUserViewClub(user, club.id, tenantId);
+}
+
 export default function ClubDetailPage() {
   const { clubId } = useParams();
   const navigate = useNavigate();
@@ -45,11 +59,73 @@ export default function ClubDetailPage() {
   const { currentTenantId, revision } = useTenant();
   const { user } = useAuth();
   const [localRevision, setLocalRevision] = useState(0);
+  const [club, setClub] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState(null);
 
-  const club = useMemo(
-    () => getClubById(clubId, currentTenantId),
-    [clubId, currentTenantId, revision, localRevision]
-  );
+  useEffect(() => {
+    let cancelled = false;
+    const trimmedId = String(clubId || "").trim();
+
+    async function loadClub() {
+      if (!trimmedId) {
+        if (!cancelled) {
+          setClub(null);
+          setLoadError("Thiếu mã CLB.");
+          setLoading(false);
+        }
+        return;
+      }
+
+      setLoading(true);
+      setLoadError(null);
+
+      if (isClubStorageV2Enabled()) {
+        const local = getClubById(trimmedId, currentTenantId);
+        if (local && canAccessClubDetail(user, local, currentTenantId)) {
+          if (!cancelled) {
+            setClub(local);
+            setLoading(false);
+          }
+          return;
+        }
+
+        const result = await rpcV2ClubGet(trimmedId);
+        if (cancelled) {
+          return;
+        }
+        if (!result.ok || !result.club) {
+          setClub(null);
+          setLoadError(result.error || "Không tìm thấy CLB hoặc bạn không có quyền truy cập.");
+          setLoading(false);
+          return;
+        }
+        if (!canAccessClubDetail(user, result.club, currentTenantId)) {
+          setClub(null);
+          setLoadError("Không tìm thấy CLB hoặc bạn không có quyền truy cập.");
+          setLoading(false);
+          return;
+        }
+        setClub(result.club);
+        setLoading(false);
+        return;
+      }
+
+      const localClub = getClubById(trimmedId, currentTenantId);
+      if (!cancelled) {
+        setClub(localClub);
+        setLoadError(
+          localClub ? null : "Không tìm thấy CLB hoặc bạn không có quyền truy cập."
+        );
+        setLoading(false);
+      }
+    }
+
+    void loadClub();
+    return () => {
+      cancelled = true;
+    };
+  }, [clubId, currentTenantId, revision, localRevision, user]);
 
   const fullMemberAccess = useMemo(
     () => (club ? canViewFullClubMembers(user, club) : false),
@@ -99,10 +175,20 @@ export default function ClubDetailPage() {
     return <Alert severity="warning">Chưa xác định được tenant.</Alert>;
   }
 
+  if (loading) {
+    return (
+      <Box sx={{ display: "flex", justifyContent: "center", py: 6 }}>
+        <CircularProgress size={32} />
+      </Box>
+    );
+  }
+
   if (!club) {
     return (
       <Box>
-        <Alert severity="error">Không tìm thấy CLB hoặc bạn không có quyền truy cập.</Alert>
+        <Alert severity="error">
+          {loadError || "Không tìm thấy CLB hoặc bạn không có quyền truy cập."}
+        </Alert>
         <Link component={RouterLink} to="/manage/clubs" sx={{ mt: 2, display: "inline-block" }}>
           ← Quay lại danh sách CLB
         </Link>
