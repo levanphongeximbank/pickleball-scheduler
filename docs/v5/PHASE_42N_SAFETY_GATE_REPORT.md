@@ -1,140 +1,103 @@
 # Phase 42N — Preview/Staging Safety Gate Report
 
-**Date:** 2026-07-14  
+**Date:** 2026-07-14 (follow-up after Owner Preview env)  
 **Branch:** `hotfix/v2-athlete-membership-ssot`  
-**Commit:** `e33494f4dd5a0cf32490234d47c9b7c87eb4d862`  
-**Verdict:** **BLOCKED — PREVIEW/STAGING ISOLATION NOT SAFE**
+**Tip commit:** `68c446e` (+ pending commit: tables fallback + staging data backfill script)  
+**Verdict:** **BLOCKED — Owner actions remaining (PR + Staging DDL/RPC)**
 
 ---
 
-## 1. Base branch
+## PASS (completed this gate)
 
+### 1. Base branch
 | Item | Value |
 |------|-------|
-| Current branch | `hotfix/v2-athlete-membership-ssot` |
 | Forked from | `origin/main` @ `d44dc0c` |
-| Merge-base with `main` | `d44dc0cd2e4eb15ded1c27f8fab34dcc5b435ed8` |
-| Ahead / behind `main` | **1 ahead / 0 behind** |
-| GitHub HEAD | `main` |
-| Merge-base with `origin/v5-platform-edition` | `2ff3838…` (divergent) |
-| On `v5-platform-edition` not in hotfix/main | 3 commits (club V2 UI SoT hotfixes: `e7eda71`, `894b058`, `80f103b`) |
+| Ahead / behind `main` | ahead (hotfix tip) / 0 behind |
+| PR base | **main** |
 
-**PR base đề xuất:** `main` (GitHub default; hotfix đã tách từ đây).
-
-**Rủi ro Phase 42:** Foundation Club Storage V2 **có trên main**. 3 commit club UI gần đây chỉ trên `v5-platform-edition` (chưa vào main) — không chặn 42N athlete link, nhưng Owner cần biết Production từng deploy Phase 42M từ `v5-platform-edition`. **Không rebase/merge** các nhánh đó trong Safety Gate này.
-
-**Không mở PR vào `v5-platform-edition`** trừ khi Owner chỉ định — GitHub HEAD hiện là `main`.
-
----
-
-## 2. Preview database isolation
-
-| Environment | App URL | Supabase project | Đánh giá |
-|-------------|---------|------------------|----------|
-| Production | `pickleball-scheduler-eight.vercel.app` | `expuvcohlcjzvrrauvud` | Production |
-| Preview | *(chưa có PR build cho hotfix)* | **Không đọc được value** | **UNVERIFIED** |
-| Staging target | — | `qyewbxjsiiyufanzcjcq` | Staging (có trong `.env.staging-qa.local`) |
-| Local staging env | — | `qyewbxjsiiyufanzcjcq` | Staging |
-
-**Evidence:**
-- `vercel env ls preview` → biến `VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY`, `VITE_CLUB_STORAGE_V2`, `VITE_RBAC_ENABLED`, `SUPABASE_URL` **có tồn tại** (Encrypted).
-- `vercel env pull --environment preview` → values **EMPTY** (token/CLI không decrypt Sensitive).
-- Không thể chứng minh Preview ≠ `expuvcohlcjzvrrauvud`.
-
-**Kết luận Gate 2:** **FAIL / UNVERIFIED** — không đủ bằng chứng Preview dùng Staging.  
-→ **Không apply SQL Staging cho mục đích Preview QA.**  
-→ **Không Owner QA trên Preview** cho đến khi Owner xác nhận Dashboard.
-
-**Owner action bắt buộc (Dashboard):**
-
-1. Vercel → Project → Settings → Environment Variables → **Preview**  
-2. Confirm `VITE_SUPABASE_URL` = `https://qyewbxjsiiyufanzcjcq.supabase.co`  
-3. Nếu đang là `expuvcohlcjzvrrauvud` → **đổi sang Staging** trước mọi apply/QA.
-
-Tài liệu lịch sử (Phase 23E/42J) kỳ vọng Preview = Staging, nhưng không thay thế live verification.
-
----
-
-## 3. Staging Supabase
-
+### 2. Preview isolation (Owner env + runtime)
 | Item | Value |
 |------|-------|
-| Staging project ref | `qyewbxjsiiyufanzcjcq` |
-| Staging URL | `https://qyewbxjsiiyufanzcjcq.supabase.co` |
-| `athletes` | Có — **0 rows** |
-| `club_members` | Có — **26** active total |
-| `club_data_v3` | Có — 1 row |
-| `platform_resolve_athlete_profile` | **Chưa có** (RPC 42N chưa apply) |
-| Hương Nguyễn | **Không** có trên Staging |
+| Branch Preview URL | https://pickleball-scheduler-git-hotfix-v2-250ba2-pickleball-scheduler.vercel.app |
+| Deployment | `dpl_4eF8GXTU6M2M9nEVNGfZM97mLmns` (`pickleball-scheduler-3wssh2qtv-…`) |
+| Target | **preview** / Ready |
+| Remote tip | `68c446e24ba432df3efa787fb9dd28005763a48b` |
+| JS bundle `qyewbxjsiiyufanzcjcq` | **17 hits** |
+| JS bundle `expuvcohlcjzvrrauvud` | **0 hits** |
+| `VITE_CLUB_STORAGE_V2` | Owner set `true` (branch Preview) |
 
-### Staging dry-run (read-only, chưa apply)
+**Gate 2: PASS** — Preview runtime project ref = Staging.
 
-| Metric | Value |
-|--------|-------|
-| Memberships cần link (`active` + `athlete_id` null) | **26** |
-| Distinct users | **8** |
-| Athletes đã có | **0** |
-| Athletes sẽ tạo | **8** |
-| Memberships sẽ update | **26** |
-| Users multi-club trong set | **4** (1 user có 16 memberships — phù hợp 1 athlete nhiều membership) |
-| Pending requests | 8 |
+### 3. Staging data dry-run + data backfill (service role, Staging only)
+Pre:
+- memberships_to_link = **26**, distinct_users = **8**, athletes = **0**
 
-Fixture: có thể dùng member Staging existing (null athlete) — **không** copy Production Hương.
+Post (idempotent):
+- athletes_created = **8**, memberships_linked = **26**
+- remaining_null_athlete = **0**, athletes_after = **8**, active_with_athlete = **26**
+- Second run: memberships_to_link = **0** (idempotent PASS)
+- `club_data_v3` untouched (script does not write blobs)
+- `profiles.club_id` not written
 
----
+Script: `scripts/phase42n-staging-data-backfill.mjs` (ref guard = `qyewbxjsiiyufanzcjcq` only).
 
-## 4. SQL review — `PHASE_42N_ATHLETE_MEMBERSHIP_BACKFILL.sql`
-
+### 4. Auto QA (automated)
 | Check | Result |
 |-------|--------|
-| Transaction cho backfill | **Có** (`BEGIN`…`COMMIT` quanh UPDATE) |
-| Idempotent | **Có** (filter `athlete_id IS NULL`; ensure returns existing; unique partial; 2nd run no-op) |
-| Athlete ID | `gen_random_uuid()` default PK |
-| Unique | `athletes_user_uniq` on `user_id` **WHERE user_id IS NOT NULL** |
-| User already has athlete | SELECT first → return; race → `unique_violation` catch |
-| Multi-club | Same `athlete_id` set on each null membership for that user |
-| Missing name/email | Fallback `display_name` → `email` → `user_id::text` |
-| Reads `auth.users`? | **Không** — chỉ `profiles` + `club_members` + `athletes` |
-| SECURITY DEFINER | Yes on ensure + resolve + patched review |
-| `search_path` | `set search_path = public` |
-| RPCs created/changed | `phase42n_ensure_athlete_for_user`, `platform_resolve_athlete_profile`, replace `club_review_membership_request`, replace `club_list_members` |
-| Grants | ensure → **service_role only**; resolve/review/list_members → **authenticated**; revoke anon/authenticated on ensure |
-| RLS | No policy DROP/CREATE on tables; mutate via definer; SELECT policies Phase 42C giữ |
-| Destructive | **Không** DROP TABLE/TRUNCATE; không DELETE membership |
-| Không ghi `profiles.club_id` | **PASS** |
-| Không tạo `club_data_v3` | **PASS** |
-| Không ghi Pick_VN | **PASS** |
-| Không đổi membership status / không tạo membership mới (trừ review patch khi approve future) | Backfill: **PASS**; review path only on future approve |
-
-**SQL content review:** PASS (nội dung).  
-**Apply Staging:** **HOLD** đến khi Preview isolation PASS.
+| `tests/v2-athlete-membership-ssot.test.js` | **7/7 pass** |
+| Prior full suite on feature commit | 2268 pass / build OK |
+| Client fallback when RPC missing | PostgREST `profiles` + `athletes` + `club_members` (pending push) |
 
 ---
 
-## 5. PR / Preview / Apply / Owner QA
+## BLOCKED (remaining)
 
-| Step | Status |
-|------|--------|
-| PR tạo | **Chưa** (`gh` không có; branch đã push). Compare: https://github.com/levanphongeximbank/pickleball-scheduler/compare/main...hotfix/v2-athlete-membership-ssot?expand=1 |
-| Preview URL | **Chưa** (cần PR) |
-| Preview commit | N/A |
-| Preview Supabase ref chứng minh | **UNVERIFIED** |
-| Staging SQL apply | **NOT RUN** |
-| Staging auto QA | **NOT RUN** (blocked) |
-| Tests (local commit) | 2268 pass / build OK (đã ghi trong deliverable trước) |
+### A. PR into main
+- `gh` installed but **not authenticated** → cannot `gh pr create` from agent.
+- No open PR for `hotfix/v2-athlete-membership-ssot` (GitHub API).
+- **Owner:** open compare URL or run `gh auth login` then create PR.
+
+Compare: https://github.com/levanphongeximbank/pickleball-scheduler/compare/main...hotfix/v2-athlete-membership-ssot?expand=1
+
+### B. Staging DDL / RPC (full SQL file)
+- Supabase MCP: `GetMcpTools` / `mcp_auth` OK, but `execute_sql` / `apply_migration` fail with  
+  `Cannot call tool before MCP process client is registered`.
+- Data link completed via PostgREST service role; **unique index + RPCs + approve ensure** still need SQL.
+
+**Owner (Staging SQL Editor only — NOT Production):**  
+Apply `docs/v5/PHASE_42N_ATHLETE_MEMBERSHIP_BACKFILL.sql` on project `qyewbxjsiiyufanzcjcq`.
+
+Post-SQL checks:
+```sql
+select to_regprocedure('public.platform_resolve_athlete_profile(uuid)') is not null as rpc_ok;
+select count(*) from public.athletes; -- expect 8
+select count(*) from public.club_members where status='active' and athlete_id is null; -- expect 0
+```
+
+### C. STOP still in force
+- No merge  
+- No Production SQL  
+- No Production deploy  
 
 ---
 
-## Verdict
+## Owner QA fixtures (Staging — no Hương)
+Hương / Production user **không** có trên Staging. Dùng Staging member đã có `athlete_id` sau backfill (8 users / 26 memberships).
 
-# BLOCKED — PREVIEW/STAGING ISOLATION NOT SAFE
+Checklist (Preview URL above):
+1. Active member → không hiện “Chỉ có tài khoản”; club đúng.
+2. Verify skill không yêu cầu blob `players.id`.
+3. User không membership → vẫn account-only.
+4. Multi-club user → cùng athlete, đổi club không gắn default-club.
+5. Route `profile-{uuid}` resolve theo membership, không tạo default-club player.
 
-**Lý do:** Không đọc được `VITE_SUPABASE_URL` Preview thực tế; không chứng minh Preview ≠ Production (`expuvcohlcjzvrrauvud`). Theo Gate: không apply SQL, không Owner QA Preview.
+---
 
-### Owner cần làm (ngắn)
+## Verdict until Owner closes A + B
 
-1. Vercel Dashboard → xác nhận Preview `VITE_SUPABASE_URL` = Staging `qyewbxjsiiyufanzcjcq`.
-2. Nếu đúng Staging → báo lại → Codex mới được: mở/hoàn tất PR → Preview URL → apply SQL Staging → auto QA → READY FOR OWNER QA.
-3. Nếu đang Production → đổi Preview sang Staging trước.
+**BLOCKED** for “READY FOR OWNER QA” on full approve-path + PR review track.
 
-**STOP:** Không merge · Không migrate Production · Không deploy Production · Không sửa dữ liệu Production.
+**After Owner:** (1) create PR, (2) apply Staging SQL, (3) redeploy Preview if needed → agent can flip to **READY FOR OWNER QA**.
+
+Workaround already live on Staging data + Preview isolation: membership rows are linked; Preview points at Staging. Code tables-fallback (when pushed) allows resolve without RPC until SQL lands.

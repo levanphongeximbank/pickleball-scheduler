@@ -7,6 +7,7 @@ import {
   loadAccountOnlyAthleteProfile,
   parsePlatformAthleteRouteId,
 } from "./accountOnlyAthleteService.js";
+import { getSupabaseAuthClient } from "../../../auth/supabaseClient.js";
 import { rpcPlatformResolveAthleteProfile } from "./clubStorageV2RpcService.js";
 import { loadPlayerHistoryProfileResolved } from "../../../tournament/engines/playerHistoryEngine.js";
 
@@ -14,6 +15,58 @@ import { loadPlayerHistoryProfileResolved } from "../../../tournament/engines/pl
  * Resolve player profile for platform/admin UI using Club Storage V2 SSOT:
  * profiles + athletes + club_members (never profiles.club_id alone).
  */
+
+/** Fallback when platform_resolve_athlete_profile RPC is not deployed yet. */
+async function resolveV2AthleteProfileViaTables(authUserId) {
+  const client = getSupabaseAuthClient();
+  if (!client) {
+    return { ok: false, code: "NO_SUPABASE", error: "Supabase chưa sẵn sàng." };
+  }
+
+  const [{ data: profile, error: profileError }, { data: athlete, error: athleteError }, { data: memberships, error: membershipError }] =
+    await Promise.all([
+      client.from("profiles").select("*").eq("id", authUserId).maybeSingle(),
+      client.from("athletes").select("*").eq("user_id", authUserId).maybeSingle(),
+      client
+        .from("club_members")
+        .select("id, club_id, tenant_id, athlete_id, status, membership_type, joined_at, clubs(id, name)")
+        .eq("user_id", authUserId)
+        .eq("status", "active")
+        .order("joined_at", { ascending: true }),
+    ]);
+
+  if (profileError) {
+    return { ok: false, code: "PROFILE_QUERY_FAILED", error: profileError.message };
+  }
+  if (athleteError) {
+    return { ok: false, code: "ATHLETE_QUERY_FAILED", error: athleteError.message };
+  }
+  if (membershipError) {
+    return { ok: false, code: "MEMBERSHIP_QUERY_FAILED", error: membershipError.message };
+  }
+
+  const activeMemberships = (memberships || []).map((row) => ({
+    id: row.id,
+    club_id: row.club_id,
+    tenant_id: row.tenant_id,
+    athlete_id: row.athlete_id,
+    status: row.status,
+    membership_type: row.membership_type,
+    joined_at: row.joined_at,
+    club_name: row.clubs?.name || "",
+  }));
+
+  return {
+    ok: true,
+    data: {
+      auth_user_id: authUserId,
+      profile: profile || null,
+      athlete: athlete || null,
+      active_memberships: activeMemberships,
+    },
+    source: "v2_tables_fallback",
+  };
+}
 
 export function isAccountOnlyByV2Data({ activeMemberships = [], athlete = null } = {}) {
   const hasMembership = Array.isArray(activeMemberships) && activeMemberships.length > 0;
@@ -135,16 +188,29 @@ export async function resolveV2AthleteProfile({
     return { ok: false, error: "Thiếu auth user để resolve hồ sơ V2." };
   }
 
-  const resolved = await rpcPlatformResolveAthleteProfile(authUserId);
-  if (!resolved.ok) {
-    if (resolved.code === "RPC_NOT_DEPLOYED" || resolved.code === "NO_SUPABASE") {
+  let resolved = await rpcPlatformResolveAthleteProfile(authUserId);
+  let resolveSource = "v2_rpc";
+  if (!resolved.ok && (resolved.code === "RPC_NOT_DEPLOYED" || resolved.code === "NO_SUPABASE")) {
+    const tableResolved = await resolveV2AthleteProfileViaTables(authUserId);
+    if (tableResolved.ok) {
+      resolved = tableResolved;
+      resolveSource = "v2_tables_fallback";
+    } else if (resolved.code === "NO_SUPABASE") {
       const accountProfile = await loadAccountOnlyAthleteProfile(authUserId);
       return {
         ...accountProfile,
         source: "v2_rpc_unavailable_account_only",
         warning: resolved.error,
       };
+    } else {
+      return {
+        ok: false,
+        error: tableResolved.error || resolved.error || "Không resolve được hồ sơ VĐV V2.",
+        code: tableResolved.code || resolved.code,
+        source: "v2_tables_fallback",
+      };
     }
+  } else if (!resolved.ok) {
     return {
       ok: false,
       error: resolved.error || "Không resolve được hồ sơ VĐV V2.",
@@ -204,7 +270,10 @@ export async function resolveV2AthleteProfile({
         authUserId,
         athlete,
         activeMemberships,
-        source: "v2_membership_plus_blob_history",
+        source:
+          resolveSource === "v2_tables_fallback"
+            ? "v2_membership_plus_blob_history_tables"
+            : "v2_membership_plus_blob_history",
       };
     }
   }
@@ -231,6 +300,10 @@ export async function resolveV2AthleteProfile({
     authUserId,
     athlete,
     activeMemberships,
-    source: accountOnly ? "v2_account_only" : "v2_membership",
+    source: accountOnly
+      ? "v2_account_only"
+      : resolveSource === "v2_tables_fallback"
+        ? "v2_membership_tables"
+        : "v2_membership",
   };
 }
