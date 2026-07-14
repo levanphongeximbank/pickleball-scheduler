@@ -113,7 +113,7 @@ Evidence: `docs/v5/qa-evidence/phase-private-pairing-staging/STAGING_SECURITY_VE
 |------|--------------|-------------------|------------|
 | `VITE_PRIVATE_PAIRING_RULES_ENABLED` | `false` | `true` (set 2026-07-14, Preview) | **OFF / not set by this GO** |
 | `VITE_UNIFIED_CONSTRAINT_ENGINE_ENABLED` | `false` | `true` (set 2026-07-14, Preview) | **OFF / not set by this GO** |
-| `VITE_PRIVATE_PAIRING_SIMULATION_ENABLED` | `false` | Preview optional (read-only sim) | **OFF** |
+| `VITE_PRIVATE_PAIRING_SIMULATION_ENABLED` | `false` | `true` (set 2026-07-15, Preview — read-only sim for RC-1 E2E) | **OFF / not set by this GO** |
 | `VITE_CANONICAL_CLUB_REPOSITORY_ENABLED` | `false` | dev/preview only | **OFF** |
 | `VITE_CANONICAL_PLAYER_REPOSITORY_ENABLED` | `false` | dev/preview only | **OFF** |
 
@@ -129,7 +129,8 @@ Evidence: `docs/v5/qa-evidence/phase-private-pairing-staging/STAGING_SECURITY_VE
 | Stable alias (project default / flags OFF) | `https://pickleball-scheduler-levanphongeximbank-pickleball-scheduler.vercel.app` — **feature switch OFF here** (project default build); menu correctly hidden |
 | **Fresh Preview (RC-1, flags ON)** | `https://pickleball-scheduler-6aip3pn6u-pickleball-scheduler.vercel.app` — deployed 2026-07-15, `target: null` (Preview, not production), HTTP 200 open |
 | RC-1a Preview (picker fix) | `https://pickleball-scheduler-4jxit5zj9-pickleball-scheduler.vercel.app` — superseded (commit `d22e19d`) |
-| **RC-1b Preview (picker + reason_text fix)** | `https://pickleball-scheduler-hqbfot4a0-pickleball-scheduler.vercel.app` — **current** (2026-07-15, commit `438a3c6`), `readyState: READY`, `target: null` (Preview). Use this URL for the SA browser smoke. |
+| RC-1b Preview (picker + reason_text fix) | `https://pickleball-scheduler-hqbfot4a0-pickleball-scheduler.vercel.app` — superseded (commit `438a3c6`) |
+| **RC-1c Preview (+ simulation flag ON)** | `https://pickleball-scheduler-cp7ytzkyx-pickleball-scheduler.vercel.app` — **current** (2026-07-15), `readyState: READY`, `target: null` (Preview), `VITE_PRIVATE_PAIRING_SIMULATION_ENABLED=true` on Preview. Use this URL for the SA browser smoke incl. Top-N simulation. |
 | Preview env flags | `VITE_PRIVATE_PAIRING_RULES_ENABLED`, `VITE_UNIFIED_CONSTRAINT_ENGINE_ENABLED`, `VITE_RBAC_ENABLED` all set in **Preview** scope (encrypted) |
 | Route | `/admin/ai-pairing/private-rules` |
 | Menu | Quản trị → Quy tắc ghép cặp riêng (`admin-private-pairing-rules`) |
