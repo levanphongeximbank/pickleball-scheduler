@@ -48,7 +48,6 @@ set search_path = public
 as $$
 declare
   v_user_id uuid;
-  v_found boolean := false;
 begin
   if auth.uid() is null then
     return public.phase42_err('NOT_AUTHENTICATED', 'Chưa đăng nhập.');
@@ -58,12 +57,14 @@ begin
     return public.phase42_err('VALIDATION', 'Thiếu mã vận động viên.');
   end if;
 
-  select a.user_id, true
-    into v_user_id, v_found
+  -- NOTE: rely on the FOUND special variable. `SELECT ..., true INTO ...`
+  -- would set the flag to NULL (not false) on no-row, skipping NOT_FOUND.
+  select a.user_id
+    into v_user_id
   from public.athletes a
   where a.id = p_athlete_id;
 
-  if not v_found then
+  if not found then
     return public.phase42_err('NOT_FOUND', 'Không tìm thấy vận động viên.');
   end if;
 
