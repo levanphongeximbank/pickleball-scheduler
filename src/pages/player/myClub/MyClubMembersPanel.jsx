@@ -23,9 +23,11 @@ import { useAuth } from "../../../context/AuthContext.jsx";
 import { PERMISSIONS } from "../../../auth/permissions.js";
 import {
   CLUB_MEMBER_ROLE_LABELS,
-  CLUB_MEMBER_STATUSES,
   canViewFullClubMembers,
+  countActiveClubMembers,
+  getClubMemberStatusLabel,
   getVicePresidentUserIds,
+  isClubMemberStatusActive,
   listClubMembersAsync,
 } from "../../../features/club/index.js";
 import { ClubEmptyState, GovernanceRoleChip } from "../../../features/club/ui/index.js";
@@ -83,9 +85,9 @@ function MemberRowContent({ row }) {
         <GovernanceRoleChip role="member" label={row.memberRole} />
         <Chip
           size="small"
-          label={row.isActive ? "Đang hoạt động" : "Không hoạt động"}
+          label={row.statusLabel}
           color={row.isActive ? "success" : "default"}
-          aria-label={row.isActive ? "Đang hoạt động" : "Không hoạt động"}
+          aria-label={row.statusLabel}
         />
       </Stack>
     </>
@@ -166,20 +168,23 @@ export default function MyClubMembersPanel({
         const name =
           String(member.displayName || "").trim() ||
           String(member.playerId || member.userId || "Thành viên").trim();
+        const status = member.status;
+        const isActive = isClubMemberStatusActive(status);
 
         return {
           id: member.id || member.userId || member.playerId,
           name,
           governanceRole: resolveGovernanceRoleFromV2(member, clubRecord),
           memberRole: CLUB_MEMBER_ROLE_LABELS[member.role] || member.role || "Thành viên",
-          status: member.status,
-          isActive: member.status === CLUB_MEMBER_STATUSES.ACTIVE,
+          status,
+          statusLabel: getClubMemberStatusLabel(status),
+          isActive,
         };
       })
       .sort((a, b) => a.name.localeCompare(b.name, "vi"));
   }, [members, clubRecord]);
 
-  const activeCount = rows.filter((row) => row.isActive).length;
+  const activeCount = countActiveClubMembers(rows);
 
   return (
     <Box>
@@ -265,7 +270,7 @@ export default function MyClubMembersPanel({
                     <TableCell>
                       <Chip
                         size="small"
-                        label={row.isActive ? "Đang hoạt động" : "Không hoạt động"}
+                        label={row.statusLabel}
                         color={row.isActive ? "success" : "default"}
                       />
                     </TableCell>

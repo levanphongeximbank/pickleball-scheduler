@@ -41,6 +41,9 @@ import {
   canViewFullClubMembers,
   canDeleteClubMembers,
   canApproveClubMembershipRequests,
+  countActiveClubMembers,
+  getClubMemberStatusLabel,
+  isClubMemberStatusActive,
   listPendingMembershipRequests,
   approveClubMembershipRequest,
   rejectClubMembershipRequest,
@@ -373,7 +376,7 @@ export default function ClubMembersTab({ club, tenantId, onRefresh }) {
 
       <Stack direction="row" justifyContent="space-between" mb={2}>
         <Typography variant="subtitle1" fontWeight={600}>
-          {members.length} thành viên
+          {countActiveClubMembers(members)} thành viên đang hoạt động
         </Typography>
         {canManage && (
           <Button startIcon={<AddIcon />} variant="contained" size="small" onClick={() => setAddOpen(true)}>
@@ -442,14 +445,20 @@ export default function ClubMembersTab({ club, tenantId, onRefresh }) {
                     <TableCell>
                       <Chip
                         size="small"
-                        label={member.status === CLUB_MEMBER_STATUSES.ACTIVE ? "Active" : "Inactive"}
-                        color={member.status === CLUB_MEMBER_STATUSES.ACTIVE ? "success" : "default"}
-                        onClick={canManage ? () => handleStatusToggle(member) : undefined}
+                        label={getClubMemberStatusLabel(member.status)}
+                        color={isClubMemberStatusActive(member.status) ? "success" : "default"}
+                        onClick={
+                          canManage &&
+                          (isClubMemberStatusActive(member.status) ||
+                            member.status === CLUB_MEMBER_STATUSES.INACTIVE)
+                            ? () => handleStatusToggle(member)
+                            : undefined
+                        }
                       />
                     </TableCell>
                     {canRemoveMembers && (
                       <TableCell align="right">
-                        {member.status === CLUB_MEMBER_STATUSES.ACTIVE && (
+                        {isClubMemberStatusActive(member.status) && (
                           <Tooltip title="Xóa khỏi CLB">
                             <IconButton size="small" color="error" onClick={() => setRemoveTarget(member)}>
                               <PersonRemoveIcon fontSize="small" />

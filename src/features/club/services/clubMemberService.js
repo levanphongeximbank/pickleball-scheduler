@@ -4,7 +4,10 @@ import { getCurrentUser } from "../../../auth/authService.js";
 import { getClubById as getRegistryClubById } from "../../../domain/clubService.js";
 import { loadPlayersForClub } from "../../../domain/clubStorage.js";
 import { guardClubTenant } from "../../tenant/guards/tenantGuard.js";
-import { CLUB_MEMBER_STATUSES } from "../constants/clubMemberRoles.js";
+import {
+  CLUB_MEMBER_STATUSES,
+  normalizeClubMemberStatus,
+} from "../constants/clubMemberRoles.js";
 import { isClubStorageV2Enabled } from "../config/clubRegistryFlags.js";
 import { canViewFullClubMembers, canDeleteClubMembers } from "./clubGovernanceService.js";
 import {
@@ -21,11 +24,7 @@ export function mapV2MemberRowToUi(row = {}) {
   const roles = Array.isArray(row.governance_roles)
     ? row.governance_roles.map((r) => String(r || "").trim()).filter(Boolean)
     : [];
-  const statusRaw = String(row.status || "").toLowerCase();
-  const status =
-    statusRaw === CLUB_MEMBER_STATUSES.INACTIVE || statusRaw === "inactive"
-      ? CLUB_MEMBER_STATUSES.INACTIVE
-      : CLUB_MEMBER_STATUSES.ACTIVE;
+  const status = normalizeClubMemberStatus(row.status);
 
   return {
     id: String(row.id || ""),
