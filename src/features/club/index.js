@@ -245,4 +245,10 @@ export {
   getPlatformAthletes,
 } from "./services/platformAthleteService.js";
 
+export {
+  resolveV2AthleteProfile,
+  isAccountOnlyByV2Data,
+  pickPrimaryMembership,
+} from "./services/resolveV2AthleteProfileService.js";
+
 export * from "./ui/index.js";

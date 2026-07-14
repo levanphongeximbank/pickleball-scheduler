@@ -11,6 +11,11 @@ import {
 import { listUsers } from "../../identity/services/userManagementService.js";
 import { getCurrentUser, isDevAuthAllowed, listDevUsers } from "../../../auth/authService.js";
 import { normalizeUser } from "../../../models/user.js";
+import { isClubStorageV2Enabled } from "../config/clubRegistryFlags.js";
+import {
+  rpcV2ClubListMembers,
+  rpcV2ClubListRegistry,
+} from "./clubStorageV2RpcService.js";
 
 export const PLATFORM_ATHLETE_LINK_STATUS = Object.freeze({
   LINKED: "linked",
@@ -81,15 +86,83 @@ export function getClubPlayersPlatformWide() {
   return normalizePlayers(Array.from(byId.values()));
 }
 
+async function getV2MembershipLinkedPlayers() {
+  if (!isClubStorageV2Enabled()) {
+    return { players: [], linkedUserIds: new Set() };
+  }
+
+  const registry = await rpcV2ClubListRegistry({ includeInactive: false });
+  if (!registry.ok) {
+    return { players: [], linkedUserIds: new Set(), warning: registry.error };
+  }
+
+  const byAuthUser = new Map();
+  const linkedUserIds = new Set();
+
+  for (const club of registry.clubs || []) {
+    if (!club?.id || club.isDefault) {
+      continue;
+    }
+    const membersResult = await rpcV2ClubListMembers(club.id);
+    if (!membersResult.ok) {
+      continue;
+    }
+    for (const member of membersResult.members || []) {
+      if (String(member.status || "").toLowerCase() !== "active") {
+        continue;
+      }
+      const userId = String(member.user_id || "").trim();
+      if (!userId) {
+        continue;
+      }
+      linkedUserIds.add(userId);
+      if (byAuthUser.has(userId)) {
+        continue;
+      }
+      const athleteId = member.athlete_id || null;
+      byAuthUser.set(
+        userId,
+        normalizePlayers([
+          {
+            id: athleteId ? `athlete-${athleteId}` : `profile-${userId}`,
+            name: member.display_name || member.email || "VĐV",
+            email: member.email || "",
+            authUserId: userId,
+            athleteId,
+            clubId: club.id,
+            sourceClubId: club.id,
+            clubName: club.name,
+            tenantId: club.venueId || club.tenantId || null,
+            linkStatus: PLATFORM_ATHLETE_LINK_STATUS.LINKED,
+            membershipStatus: member.status,
+            membershipId: member.id,
+            rating_status: "unrated",
+            level: null,
+            rating: null,
+            skillLevel: null,
+            playerType: null,
+          },
+        ])[0]
+      );
+    }
+  }
+
+  return { players: Array.from(byAuthUser.values()), linkedUserIds };
+}
+
 function buildPlayerIdForUser(userId) {
   const safe = String(userId || "").trim().replace(/[^a-zA-Z0-9_-]/g, "");
   return `player-auth-${safe}`;
 }
 
-function isProfileLinkedToRoster(profile, rosterPlayers) {
+function isProfileLinkedToRoster(profile, rosterPlayers, linkedUserIds = null) {
   const userId = String(profile?.id || "").trim();
   if (!userId) {
     return false;
+  }
+
+  if (linkedUserIds?.has(userId)) {
+    return true;
   }
 
   const profilePlayerId = String(profile?.playerId || "").trim();
@@ -106,7 +179,7 @@ function isProfileLinkedToRoster(profile, rosterPlayers) {
   });
 }
 
-function collectOrphanProfiles(profiles, rosterPlayers) {
+function collectOrphanProfiles(profiles, rosterPlayers, linkedUserIds = null) {
   const pending = [];
 
   for (const profile of profiles || []) {
@@ -114,7 +187,7 @@ function collectOrphanProfiles(profiles, rosterPlayers) {
       continue;
     }
 
-    if (isProfileLinkedToRoster(profile, rosterPlayers)) {
+    if (isProfileLinkedToRoster(profile, rosterPlayers, linkedUserIds)) {
       continue;
     }
 
@@ -124,13 +197,13 @@ function collectOrphanProfiles(profiles, rosterPlayers) {
   return pending;
 }
 
-export async function buildOrphanProfileAthletesAsync(profiles, rosterPlayers) {
-  return enrichAccountOnlyAthletes(collectOrphanProfiles(profiles, rosterPlayers));
+export async function buildOrphanProfileAthletesAsync(profiles, rosterPlayers, linkedUserIds = null) {
+  return enrichAccountOnlyAthletes(collectOrphanProfiles(profiles, rosterPlayers, linkedUserIds));
 }
 
 /** Sync fallback for tests — không enrich rating từ RPC. */
-export function buildOrphanProfileAthletes(profiles, rosterPlayers) {
-  return collectOrphanProfiles(profiles, rosterPlayers).map((profile) => {
+export function buildOrphanProfileAthletes(profiles, rosterPlayers, linkedUserIds = null) {
+  return collectOrphanProfiles(profiles, rosterPlayers, linkedUserIds).map((profile) => {
     const userId = String(profile.id || "").trim();
     return normalizePlayers([
       {
@@ -151,6 +224,7 @@ export function buildOrphanProfileAthletes(profiles, rosterPlayers) {
         level: null,
         rating: null,
         skillLevel: null,
+        playerType: null,
       },
     ])[0];
   });
@@ -187,7 +261,31 @@ export async function getPlatformAthletes() {
     return { ok: false, error: "Không có quyền xem VĐV toàn hệ thống.", code: "FORBIDDEN" };
   }
 
-  const rosterPlayers = getClubPlayersPlatformWide();
+  const blobRoster = getClubPlayersPlatformWide();
+  const v2 = await getV2MembershipLinkedPlayers();
+  const rosterByKey = new Map();
+
+  for (const player of blobRoster) {
+    const key = player.authUserId || player.id;
+    rosterByKey.set(String(key), player);
+  }
+  for (const player of v2.players) {
+    const key = player.authUserId || player.id;
+    if (!rosterByKey.has(String(key))) {
+      rosterByKey.set(String(key), player);
+    } else {
+      const existing = rosterByKey.get(String(key));
+      rosterByKey.set(String(key), {
+        ...existing,
+        ...player,
+        linkStatus: PLATFORM_ATHLETE_LINK_STATUS.LINKED,
+        athleteId: player.athleteId || existing.athleteId || null,
+        clubName: existing.clubName || player.clubName,
+      });
+    }
+  }
+
+  const rosterPlayers = Array.from(rosterByKey.values());
   const profileResult = await fetchPlayerProfiles();
 
   if (!profileResult.ok) {
@@ -196,7 +294,8 @@ export async function getPlatformAthletes() {
 
   const orphanPlayers = await buildOrphanProfileAthletesAsync(
     profileResult.profiles,
-    rosterPlayers
+    rosterPlayers,
+    v2.linkedUserIds
   );
   const players = sortByName([...rosterPlayers, ...orphanPlayers]);
 
@@ -210,6 +309,6 @@ export async function getPlatformAthletes() {
       linkedCount: rosterPlayers.length,
     },
     partial: Boolean(profileResult.partial),
-    warning: profileResult.warning || null,
+    warning: profileResult.warning || v2.warning || null,
   };
 }
