@@ -27,6 +27,8 @@ import { PERMISSIONS } from "../auth/permissions.js";
 import { isPlatformAthleteViewer } from "../auth/roles.js";
 import { loadClubs } from "../data/club.js";
 import { savePlayersForClub, loadPlayersForClub } from "../domain/clubStorage.js";
+import { listPlayersForClubAware } from "../features/club/repositories/canonicalPlayerPickerAdapter.js";
+import { isCanonicalPlayerRepositoryEnabled } from "../features/club/config/canonicalRepositoryFlags.js";
 import { setInitialSkillLevel } from "../domain/skillLevelChangeService.js";
 import { PICK_VN_MAX, PICK_VN_MIN } from "../features/pick-vn-rating/constants/pickVnRatingScale.js";
 import { canViewPlayerSkillLevel } from "../auth/rbac.js";
@@ -125,9 +127,32 @@ export default function Players() {
       return;
     }
 
-    const nextPlayers = loadPlayersFromStorage(activeClubId);
-    setPlayers(normalizePlayers(nextPlayers));
-    setPlatformWarning(null);
+    let cancelled = false;
+    (async () => {
+      if (isCanonicalPlayerRepositoryEnabled()) {
+        const result = await listPlayersForClubAware(activeClubId);
+        if (cancelled) return;
+        if (result.ok) {
+          setPlayers(normalizePlayers(result.legacyPlayers || []));
+          const unmapped = result.mappingSummary?.unmappedMembers || 0;
+          setPlatformWarning(
+            unmapped > 0
+              ? `${unmapped} thành viên active chưa map playerId (không hiện trong danh sách chọn).`
+              : null
+          );
+          return;
+        }
+      }
+      const nextPlayers = loadPlayersFromStorage(activeClubId);
+      if (!cancelled) {
+        setPlayers(normalizePlayers(nextPlayers));
+        setPlatformWarning(null);
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
   }, [activeClubId, revision, platformMode, loadPlatformPlayers]);
 
   const clubFilterOptions = useMemo(() => {
