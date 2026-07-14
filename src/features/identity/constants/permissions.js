@@ -175,6 +175,12 @@ export const PERMISSIONS = Object.freeze({
 
   /** Founder-only: can thiệp ghép cặp/chia bảng trong setup. */
   PLATFORM_PAIRING_OVERRIDE: "platform.pairing_override",
+
+  /** SUPER_ADMIN only — Private Pairing Rules Engine V2. */
+  PAIRING_PRIVATE_RULES_VIEW: "pairing.private_rules.view",
+  PAIRING_PRIVATE_RULES_MANAGE: "pairing.private_rules.manage",
+  PAIRING_PRIVATE_RULES_AUDIT: "pairing.private_rules.audit",
+  PAIRING_PRIVATE_RULES_SIMULATE: "pairing.private_rules.simulate",
 });
 
 export function isValidPermission(permission) {
