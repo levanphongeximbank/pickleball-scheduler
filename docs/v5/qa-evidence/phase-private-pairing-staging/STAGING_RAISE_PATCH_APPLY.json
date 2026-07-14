@@ -1,0 +1,15 @@
+{
+  "phase": "private-pairing-pr4-raise-patch-staging",
+  "staging_ref": "qyewbxjsiiyufanzcjcq",
+  "production_touched": false,
+  "started_at": "2026-07-14T08:52:20.420Z",
+  "finished_at": "2026-07-14T08:52:21.921Z",
+  "sql_file": "docs/v5/PHASE_PRIVATE_PAIRING_RULES_V2_PR4_RAISE_PATCH.sql",
+  "mode": "management-api",
+  "overall": "PASS",
+  "functions_patched": [
+    "private_pairing_block_hard_delete_rules",
+    "private_pairing_block_audit_mutation",
+    "private_pairing_validate_target_insert"
+  ]
+}

@@ -212,8 +212,8 @@ function PrivatePairingRulesAdminInner() {
     );
   }, [detail, ruleSets]);
 
-  const rules = detail?.rules || [];
-  const dbRules = detail?.dbRules || [];
+  const rules = useMemo(() => detail?.rules || [], [detail]);
+  const dbRules = useMemo(() => detail?.dbRules || [], [detail]);
   const filteredRules = useMemo(
     () =>
       filterRules(rules, {

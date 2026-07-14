@@ -334,8 +334,7 @@ set search_path = public, pg_temp
 as $$
 begin
   raise exception 'HARD_DELETE_FORBIDDEN'
-    using errcode = 'P0001',
-          message = 'HARD_DELETE_FORBIDDEN';
+    using errcode = 'P0001';
 end;
 $$;
 
@@ -353,8 +352,7 @@ set search_path = public, pg_temp
 as $$
 begin
   raise exception 'AUDIT_APPEND_ONLY'
-    using errcode = 'P0001',
-          message = 'AUDIT_APPEND_ONLY';
+    using errcode = 'P0001';
 end;
 $$;
 
@@ -418,14 +416,14 @@ begin
 
   if v_primary is not null and v_primary = new.target_player_id then
     raise exception 'SELF_TARGET_NOT_ALLOWED'
-      using errcode = 'P0001', message = 'SELF_TARGET_NOT_ALLOWED';
+      using errcode = 'P0001';
   end if;
 
   if new.tenant_id is distinct from (
     select r.tenant_id from public.private_pairing_rules r where r.id = new.rule_id
   ) then
     raise exception 'CROSS_TENANT_ACCESS'
-      using errcode = 'P0001', message = 'CROSS_TENANT_ACCESS';
+      using errcode = 'P0001';
   end if;
 
   return new;

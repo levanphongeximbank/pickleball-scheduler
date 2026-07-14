@@ -1,0 +1,117 @@
+{
+  "phase": "private-pairing-pr4-staging-security",
+  "staging_ref": "qyewbxjsiiyufanzcjcq",
+  "production_touched": false,
+  "started_at": "2026-07-14T08:53:04.524Z",
+  "finished_at": "2026-07-14T08:53:16.987Z",
+  "summary": {
+    "passed": 5,
+    "failed": 1,
+    "total": 6,
+    "overall": "FAIL"
+  },
+  "checks": [
+    {
+      "id": "schema_tables_rls_rpcs",
+      "pass": true,
+      "expected": {
+        "tables": 4,
+        "rpcs": 11,
+        "rls": true,
+        "policies_gt": 0
+      },
+      "actual": {
+        "table_count": 4,
+        "policy_count": 4,
+        "rpc_count": 11,
+        "rls_on_rule_sets": true,
+        "tables_found": "{private_pairing_rule_audit_logs,private_pairing_rule_sets,private_pairing_rule_targets,private_pairing_rules}",
+        "rpcs_found": "{private_pairing_activate_rule_set,private_pairing_block_audit_mutation,private_pairing_block_hard_delete_rules,private_pairing_can,private_pairing_clone_rule_set_version,private_pairing_compute_rule_set_hash,private_pairing_create_rule,private_pairing_create_rule_set,private_pairing_current_tenant_id,private_pairing_disable_rule,private_pairing_err,private_pairing_get_active_rules_for_scope,private_pairing_get_rule_set,private_pairing_list_audit_logs,private_pairing_list_rule_sets,private_pairing_ok,private_pairing_rollback_rule_set,private_pairing_tenant_visible,private_pairing_touch_updated_at,private_pairing_update_rule,private_pairing_validate_target_insert,private_pairing_write_audit}"
+      },
+      "note": "4 tables + RLS + expected RPCs present"
+    },
+    {
+      "id": "audit_append_only",
+      "pass": true,
+      "strategy": "leftover_probe_update",
+      "insert_ok": null,
+      "probe_id": "35d86719-a60c-4359-a4f6-a9fcd66ef27d",
+      "probe_tenant": "__qa_pr4_audit_probe_1784018964618__",
+      "update_blocked": true,
+      "update_sqlstate": "P0001",
+      "update_message": "AUDIT_APPEND_ONLY",
+      "update_error": "audit_update_probe: Failed to run sql query: ERROR:  P0001: AUDIT_APPEND_ONLY\nCONTEXT:  PL/pgSQL function private_pairing_block_audit_mutation() line 3 at RAISE\n | Failed to run sql query: ERROR:  P0001: AUDIT_APPEND_ONLY\nCONTEXT:  PL/pgSQL function private_pairing_block_audit_mutation() line 3 at RAISE\n",
+      "delete_blocked": true,
+      "delete_error": "audit_delete_probe_optional: Failed to run sql query: ERROR:  P0001: AUDIT_APPEND_ONLY\nCONTEXT:  PL/pgSQL function private_pairing_block_audit_mutation() line 3 at RAISE\n | Failed to run sql query: ERROR:  P0001: AUDIT_APPEND_ONLY\nCONTEXT:  PL/pgSQL function private_pairing_block_audit_mutation() line 3 at RAISE\n",
+      "leftover_probe_row": true,
+      "note": "UPDATE blocked with P0001 AUDIT_APPEND_ONLY (leftover probe row)"
+    },
+    {
+      "id": "authenticated_no_dml",
+      "pass": true,
+      "expected": "authenticated: no INSERT/UPDATE/DELETE on 4 tables (SELECT may exist)",
+      "actual": [
+        {
+          "tablename": "private_pairing_rule_audit_logs",
+          "can_insert": false,
+          "can_update": false,
+          "can_delete": false,
+          "can_select": true
+        },
+        {
+          "tablename": "private_pairing_rule_sets",
+          "can_insert": false,
+          "can_update": false,
+          "can_delete": false,
+          "can_select": true
+        },
+        {
+          "tablename": "private_pairing_rule_targets",
+          "can_insert": false,
+          "can_update": false,
+          "can_delete": false,
+          "can_select": true
+        },
+        {
+          "tablename": "private_pairing_rules",
+          "can_insert": false,
+          "can_update": false,
+          "can_delete": false,
+          "can_select": true
+        }
+      ],
+      "note": "no INSERT/UPDATE/DELETE for authenticated"
+    },
+    {
+      "id": "one_active_version_uidx",
+      "pass": true,
+      "expected": "private_pairing_rule_sets_one_active_uidx",
+      "actual": [
+        {
+          "indexname": "private_pairing_rule_sets_one_active_uidx",
+          "indexdef": "CREATE UNIQUE INDEX private_pairing_rule_sets_one_active_uidx ON public.private_pairing_rule_sets USING btree (tenant_id, logical_id) WHERE (status = 'active'::text)"
+        }
+      ],
+      "note": "unique partial index present"
+    },
+    {
+      "id": "realtime_publication_empty",
+      "pass": true,
+      "expected": 0,
+      "actual": 0,
+      "note": "0 private_pairing% in supabase_realtime"
+    },
+    {
+      "id": "vercel_preview_vite_rbac_enabled",
+      "pass": false,
+      "present": true,
+      "value_is_true": false,
+      "readable": true,
+      "method": "vercel env pull preview (single key, value not printed)",
+      "note": "Preview VITE_RBAC_ENABLED present but value is empty (not literally true)",
+      "value_empty": true,
+      "value_is_false": false,
+      "production_env_touched": false
+    }
+  ]
+}
