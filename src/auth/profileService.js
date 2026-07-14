@@ -4,6 +4,7 @@ import { formatAuthError } from "./authErrors.js";
 import { getSupabaseAuthClient, PROFILES_TABLE } from "./supabaseClient.js";
 import { isSecureRuntime } from "./runtime.js";
 import { resolveAssignedClusterIdsForUser } from "../features/court-cluster/services/courtClusterService.js";
+import { normalizeProfileGender } from "../features/identity/utils/profileGender.js";
 
 /**
  * Mapping auth.users ↔ public.profiles (docs/supabase-rbac.sql).
@@ -39,7 +40,7 @@ export function mapProfileRowToUser(row) {
     teamId: row.team_id || row.teamId || null,
     phone: row.phone || "",
     avatarUrl: row.avatar_url || row.avatarUrl || "",
-    gender: row.gender || "",
+    gender: normalizeProfileGender(row.gender) || "",
     birthYear: row.birth_year ?? row.birthYear ?? null,
     status: row.status || "active",
     mustChangePassword: Boolean(row.must_change_password ?? row.mustChangePassword),
@@ -63,12 +64,14 @@ export function mapAuthUserFallback(authUser, metadata = {}) {
   });
 }
 
-/** Trường user được tự sửa (RLS + trigger v3.5.7). */
+/** Trường user được tự sửa (RLS + trigger v3.5.7 / Phase 31 demographics). */
 export const SELF_EDITABLE_PROFILE_FIELDS = Object.freeze([
   "display_name",
   "player_id",
   "phone",
   "avatar_url",
+  "gender",
+  "birth_year",
 ]);
 
 export function mapUserToSelfProfilePatch(user) {
@@ -82,6 +85,8 @@ export function mapUserToSelfProfilePatch(user) {
     player_id: normalized.playerId,
     phone: normalized.phone || "",
     avatar_url: normalized.avatarUrl || "",
+    gender: normalized.gender || null,
+    birth_year: normalized.birthYear ?? null,
     updated_at: new Date().toISOString(),
   };
 }
