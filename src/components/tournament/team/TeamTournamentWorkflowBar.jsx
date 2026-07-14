@@ -6,11 +6,12 @@ export default function TeamTournamentWorkflowBar({ teamData }) {
   const workflow = computeTeamTournamentWorkflow(teamData);
 
   return (
-    <Box sx={{ mb: 2 }}>
+    <Box sx={{ mb: 2, minWidth: 0, overflowX: "auto" }}>
       <Stepper
         activeStep={workflow.currentStep}
         alternativeLabel
         sx={{
+          minWidth: { xs: 360, sm: "auto" },
           "& .MuiStepLabel-label": { fontSize: { xs: "0.7rem", sm: "0.8rem" } },
         }}
       >

@@ -36,7 +36,7 @@ export default function TournamentPageHeader({
             <Chip size="small" label={badge} color={badgeColor} variant="outlined" />
           ) : null}
         </Stack>
-        {action}
+        {action ? <Box sx={{ minWidth: 0, maxWidth: "100%", width: { xs: "100%", sm: "auto" } }}>{action}</Box> : null}
       </Stack>
       {description ? (
         <Typography

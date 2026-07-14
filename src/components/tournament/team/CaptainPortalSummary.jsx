@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { Alert, Chip, Stack, Typography } from "@mui/material";
+import { Alert, Chip, Stack } from "@mui/material";
 import AccessTimeIcon from "@mui/icons-material/AccessTime";
 
 import { LINEUP_STATUS } from "../../../features/team-tournament/constants.js";
@@ -70,8 +70,14 @@ export default function CaptainPortalSummary({
   const allSubmitted = upcomingMatchups.length > 0 && pendingCount === 0;
 
   return (
-    <Stack spacing={1.5} sx={{ mb: 2 }}>
-      <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
+    <Stack spacing={1.5} sx={{ mb: 2, minWidth: 0, maxWidth: "100%" }}>
+      <Stack
+        direction={{ xs: "column", sm: "row" }}
+        spacing={1}
+        flexWrap="wrap"
+        useFlexGap
+        sx={{ minWidth: 0, maxWidth: "100%" }}
+      >
         <Chip
           label={
             pendingCount > 0
@@ -80,6 +86,7 @@ export default function CaptainPortalSummary({
           }
           color={pendingCount > 0 ? "warning" : "success"}
           size="small"
+          sx={{ maxWidth: "100%" }}
         />
         {nextMatchup ? (
           <Chip
@@ -87,13 +94,20 @@ export default function CaptainPortalSummary({
             label={`Hạn gần nhất: ${formatTeamTournamentDateTime(nextMatchup.lineupLockAt)}`}
             size="small"
             variant="outlined"
+            sx={{ maxWidth: "100%" }}
           />
         ) : null}
         {countdown ? (
-          <Chip label={countdown} size="small" color="info" variant="outlined" />
+          <Chip label={countdown} size="small" color="info" variant="outlined" sx={{ maxWidth: "100%" }} />
         ) : null}
         {deadlineStatus === "past" || deadlineStatus === "at" ? (
-          <Chip label="Đã hết hạn nộp" size="small" color="error" variant="outlined" />
+          <Chip
+            label="Đã hết hạn nộp"
+            size="small"
+            color="error"
+            variant="outlined"
+            sx={{ maxWidth: "100%" }}
+          />
         ) : null}
       </Stack>
 

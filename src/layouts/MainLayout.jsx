@@ -48,7 +48,7 @@ function MainLayoutContent() {
             sx={{
               flexGrow: 1,
               p: { xs: 1.5, sm: 2, md: "24px" },
-              pb: { xs: 9, md: "24px" },
+              pb: { xs: 9, sm: 9, md: "24px" },
               minWidth: 0,
             }}
           >
