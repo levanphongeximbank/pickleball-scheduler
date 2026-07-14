@@ -20,10 +20,13 @@ import {
   TextField,
   Typography,
 } from "@mui/material";
-import ArrowBackIcon from "@mui/icons-material/ArrowBack";
 
 import { useClub } from "../../context/ClubContext.jsx";
-import { loadCourtsForClub, loadPlayersForClub } from "../../domain/clubStorage.js";
+import { loadCourtsForClub } from "../../domain/clubStorage.js";
+import {
+  useClubPlayerPool,
+  useTenantPlayerPool,
+} from "../../features/club/hooks/useClubPlayerPool.js";
 import TournamentVprPanel from "../../features/vpr-ranking/components/TournamentVprPanel.jsx";
 import {
   getTournament,
@@ -94,7 +97,7 @@ import TournamentSetupShell from "../../components/tournament/TournamentSetupShe
 import TournamentSelectedPlayersPanel from "../../components/tournament/TournamentSelectedPlayersPanel.jsx";
 import TournamentPlayerPickerPanel from "../../components/tournament/TournamentPlayerPickerPanel.jsx";
 import TournamentPlayerQuickAddDialog from "../../components/tournament/TournamentPlayerQuickAddDialog.jsx";
-import { getTenantPlayers } from "../../features/club/index.js";
+import TournamentCourtSchedulePanel from "../../components/tournament/TournamentCourtSchedulePanel.jsx";
 import {
   resolveTournamentEntryPlayers,
   TournamentRegistrationRatingPanel,
@@ -207,15 +210,13 @@ export default function OfficialTournamentSetup() {
     [tournament?.tenantId, activeClubId, currentTenantId]
   );
 
-  const allTenantPlayers = useMemo(
-    () => (tenantId ? getTenantPlayers(tenantId) : []),
-    [tenantId, localRevision]
-  );
-
-  const players = useMemo(
-    () => loadPlayersForClub(activeClubId),
-    [activeClubId, localRevision]
-  );
+  const { players: allTenantPlayers } = useTenantPlayerPool(tenantId, {
+    revision: localRevision,
+  });
+  const { players } = useClubPlayerPool(activeClubId, {
+    tenantId,
+    revision: localRevision,
+  });
 
   const isAiBalance = officialMode === OFFICIAL_MODE.AI_BALANCE;
 

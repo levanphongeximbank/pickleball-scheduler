@@ -22,7 +22,8 @@ import {
 import ArrowBackIcon from "@mui/icons-material/ArrowBack";
 
 import { useClub } from "../../context/ClubContext.jsx";
-import { loadCourtsForClub, loadPlayersForClub } from "../../domain/clubStorage.js";
+import { loadCourtsForClub } from "../../domain/clubStorage.js";
+import { listPlayersForClubAware } from "../../features/club/repositories/canonicalPlayerPickerAdapter.js";
 import TournamentCourtSchedulePanel from "../../components/tournament/TournamentCourtSchedulePanel.jsx";
 import {
   getTournament,
@@ -85,8 +86,8 @@ import TournamentSelectedPlayersPanel from "../../components/tournament/Tourname
 import {
   findTournamentClubId,
   getClubById,
-  getClubInternalTournamentPlayers,
-  getTenantPlayers,
+  getClubInternalTournamentPlayersAware,
+  getTenantPlayersAware,
   canViewFullClubMembers,
 } from "../../features/club/index.js";
 import { resolveTenantIdForClub } from "../../features/tenant/guards/tenantGuard.js";
@@ -194,22 +195,63 @@ export default function InternalTournamentSetup() {
 
   const isClubInternal = tournament?.type === "club_internal";
 
-  const players = useMemo(() => {
-    if (!sourceClubId) {
-      return [];
-    }
-    if (isClubInternal) {
-      const tenantId = tournament?.tenantId || resolveTenantIdForClub(sourceClubId);
-      const club = getClubById(sourceClubId, tenantId);
-      const forTournamentInvite = Boolean(
-        club && user && !canViewFullClubMembers(user, club)
-      );
-      return getClubInternalTournamentPlayers(sourceClubId, tenantId, {
-        forTournamentInvite,
+  const playerTenantId = useMemo(
+    () => tournament?.tenantId || resolveTenantIdForClub(sourceClubId || tournamentClubId),
+    [tournament?.tenantId, sourceClubId, tournamentClubId]
+  );
+
+  const [players, setPlayers] = useState([]);
+  const [tenantPlayers, setTenantPlayers] = useState([]);
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      if (!sourceClubId) {
+        if (!cancelled) setPlayers([]);
+        return;
+      }
+      if (isClubInternal) {
+        const club = getClubById(sourceClubId, playerTenantId);
+        const forTournamentInvite = Boolean(
+          club && user && !canViewFullClubMembers(user, club)
+        );
+        const result = await getClubInternalTournamentPlayersAware(
+          sourceClubId,
+          playerTenantId,
+          { forTournamentInvite }
+        );
+        if (!cancelled) {
+          setPlayers(result.ok ? result.legacyPlayers || result.data || [] : []);
+        }
+        return;
+      }
+      const result = await listPlayersForClubAware(sourceClubId, {
+        tenantId: playerTenantId,
       });
+      if (!cancelled) {
+        setPlayers(result.ok ? result.legacyPlayers || [] : []);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [isClubInternal, sourceClubId, localRevision, user, playerTenantId]);
+
+  useEffect(() => {
+    let cancelled = false;
+    if (!playerTenantId) {
+      setTenantPlayers([]);
+      return undefined;
     }
-    return loadPlayersForClub(sourceClubId);
-  }, [isClubInternal, tournament, sourceClubId, localRevision, user]);
+    getTenantPlayersAware(playerTenantId).then((result) => {
+      if (!cancelled) {
+        setTenantPlayers(result.ok ? result.legacyPlayers || result.data || [] : []);
+      }
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [playerTenantId, localRevision]);
 
   const courts = useMemo(
     () => loadCourtsForClub(tournamentClubId),
@@ -229,19 +271,13 @@ export default function InternalTournamentSetup() {
   );
 
   const selectedPlayers = useMemo(() => {
-    const tenantId =
-      tournament?.tenantId || resolveTenantIdForClub(sourceClubId || tournamentClubId);
-    const pool = new Map(getTenantPlayers(tenantId).map((player) => [String(player.id), player]));
+    const pool = new Map(
+      [...tenantPlayers, ...players].map((player) => [String(player.id), player])
+    );
     return selectedPlayerIds
       .map((id) => pool.get(String(id)))
       .filter(Boolean);
-  }, [selectedPlayerIds, sourceClubId, tournamentClubId, tournament?.tenantId, localRevision]);
-
-  const tenantPlayers = useMemo(() => {
-    const tenantId =
-      tournament?.tenantId || resolveTenantIdForClub(sourceClubId || tournamentClubId);
-    return tenantId ? getTenantPlayers(tenantId) : [];
-  }, [tournament?.tenantId, sourceClubId, tournamentClubId, localRevision]);
+  }, [selectedPlayerIds, tenantPlayers, players]);
 
   const savedEvent = tournament?.events?.[0] || null;
 

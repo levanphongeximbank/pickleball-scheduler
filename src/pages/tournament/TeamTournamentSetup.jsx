@@ -19,9 +19,11 @@ import { useAuth } from "../../context/AuthContext.jsx";
 import { useClub } from "../../context/ClubContext.jsx";
 import { useTenant } from "../../context/TenantContext.jsx";
 import { PERMISSIONS } from "../../auth/permissions.js";
-import { loadPlayersForClub } from "../../domain/clubStorage.js";
 import { assertTournamentAccess } from "../../domain/tournamentService.js";
-import { getTenantPlayers } from "../../features/club/index.js";
+import {
+  useClubPlayerPool,
+  useTenantPlayerPool,
+} from "../../features/club/hooks/useClubPlayerPool.js";
 import { resolveTenantIdForClub } from "../../features/tenant/guards/tenantGuard.js";
 import {
   buildRoundRobinMatchups,
@@ -239,14 +241,13 @@ export default function TeamTournamentSetup() {
     [tournament?.tenantId, activeClubId, currentTenantId]
   );
   const teamDataView = teamData || { teams: [], disciplines: [], matchups: [], standings: [] };
-  const players = useMemo(
-    () => (activeClubId ? loadPlayersForClub(activeClubId) : []),
-    [activeClubId]
-  );
-  const allTenantPlayers = useMemo(
-    () => (tenantId ? getTenantPlayers(tenantId) : []),
-    [tenantId, dataVersion]
-  );
+  const { players } = useClubPlayerPool(activeClubId, {
+    tenantId,
+    revision: dataVersion,
+  });
+  const { players: allTenantPlayers } = useTenantPlayerPool(tenantId, {
+    revision: dataVersion,
+  });
   const lineupPlayers = useMemo(() => {
     const pool = new Map();
     [...allTenantPlayers, ...players].forEach((player) => {

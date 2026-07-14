@@ -1,4 +1,5 @@
 import { useMemo, useState } from "react";
+import { useClubPlayerPool } from "../../features/club/hooks/useClubPlayerPool.js";
 import { Link as RouterLink, useNavigate, useParams, useSearchParams } from "react-router-dom";
 
 import {
@@ -19,7 +20,6 @@ import ArrowBackIcon from "@mui/icons-material/ArrowBack";
 
 import { useAuth } from "../../context/AuthContext.jsx";
 import { useClub } from "../../context/ClubContext.jsx";
-import { loadPlayersForClub } from "../../domain/clubStorage.js";
 import { getTournament, updateTournament } from "../../domain/tournamentService.js";
 import {
   ENTRY_STATUS,
@@ -67,7 +67,7 @@ export default function IndividualRegistrationPage() {
     [activeClubId, tournamentId, revision]
   );
 
-  const players = useMemo(() => loadPlayersForClub(activeClubId), [activeClubId, revision]);
+  const { players } = useClubPlayerPool(activeClubId, { revision });
   const event = tournament?.events?.[0] || null;
   const isSingle = resolveIsSingle(event?.eventType);
   const linkedPlayerId = user?.playerId ? String(user.playerId) : "";

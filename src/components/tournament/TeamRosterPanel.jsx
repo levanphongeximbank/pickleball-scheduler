@@ -1,4 +1,5 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { listPlayersForClubAware } from "../../features/club/repositories/canonicalPlayerPickerAdapter.js";
 import {
   Alert,
   Autocomplete,
@@ -21,7 +22,6 @@ import SaveIcon from "@mui/icons-material/Save";
 import PersonAddIcon from "@mui/icons-material/PersonAdd";
 import AddIcon from "@mui/icons-material/Add";
 
-import { loadPlayersForClub } from "../../domain/clubStorage.js";
 import { getPlayerGenderKey } from "../../models/player.js";
 import {
   computeTeamRosterStats,
@@ -104,12 +104,30 @@ function TeamCard({
     [playerById, team.playerIds]
   );
 
+  const [filteredClubPlayers, setFilteredClubPlayers] = useState([]);
+
+  useEffect(() => {
+    let cancelled = false;
+    if (sourceClubFilter === ALL_CLUBS_FILTER || !sourceClubFilter) {
+      setFilteredClubPlayers([]);
+      return undefined;
+    }
+    listPlayersForClubAware(sourceClubFilter).then((result) => {
+      if (!cancelled) {
+        setFilteredClubPlayers(result.ok ? result.legacyPlayers || [] : []);
+      }
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [sourceClubFilter]);
+
   const pickerPlayers = useMemo(() => {
     if (sourceClubFilter === ALL_CLUBS_FILTER) {
       return allTenantPlayers.length > 0 ? allTenantPlayers : clubPlayers;
     }
-    return loadPlayersForClub(sourceClubFilter);
-  }, [sourceClubFilter, allTenantPlayers, clubPlayers]);
+    return filteredClubPlayers;
+  }, [sourceClubFilter, allTenantPlayers, clubPlayers, filteredClubPlayers]);
 
   const stats = useMemo(
     () => computeTeamRosterStats(team, rosterPlayers),
