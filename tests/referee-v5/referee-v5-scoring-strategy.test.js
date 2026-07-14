@@ -108,7 +108,7 @@ test("canonical RALLY without variant throws", () => {
   assert.throws(
     () => resolveRuleSetId(state),
     (error) => {
-      assert.equal(error.code, "SCORING_VARIANT_REQUIRED");
+      assert.equal(error.code, "SCORING_FORMAT_REQUIRED");
       return true;
     }
   );
@@ -118,7 +118,7 @@ test("unknown ruleSetId throws", () => {
   assert.throws(
     () => ScoringStrategyRegistry.resolve({ ruleSetId: "unknown_ruleset" }),
     (error) => {
-      assert.equal(error.code, "UNKNOWN_RULE_SET");
+      assert.equal(error.code, "SCORING_STRATEGY_NOT_FOUND");
       return true;
     }
   );

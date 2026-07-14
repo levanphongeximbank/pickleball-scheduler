@@ -43,7 +43,7 @@ function resolveCanonicalRuleSetId(state) {
       return RULE_SET_ID.SIDE_OUT_DOUBLES_V1;
     }
     throw new ScoringFormatError(
-      "UNKNOWN_SCORING_VARIANT",
+      "UNSUPPORTED_SCORING_VARIANT",
       `Unsupported side-out variant: ${variant}`
     );
   }
@@ -51,27 +51,45 @@ function resolveCanonicalRuleSetId(state) {
   if (system === SCORING_SYSTEM.RALLY) {
     if (!variant) {
       throw new ScoringFormatError(
-        "SCORING_VARIANT_REQUIRED",
+        "SCORING_FORMAT_REQUIRED",
         "Rally matches require scoringVariant."
+      );
+    }
+    const variantUpper = String(variant).toUpperCase();
+    if (
+      variantUpper.includes("DREAMBREAKER") ||
+      variantUpper.includes("DREAM_BREAKER") ||
+      variantUpper.includes("MLP")
+    ) {
+      throw new ScoringFormatError(
+        "UNSUPPORTED_SCORING_VARIANT",
+        `Unsupported rally variant: ${variant}`
       );
     }
     if (variant === SCORING_VARIANT.USAP_2026_PROVISIONAL_RALLY) {
       if (matchType !== MATCH_TYPE.DOUBLES) {
         throw new ScoringFormatError(
-          "UNSUPPORTED_MATCH_TYPE",
+          "UNSUPPORTED_SCORING_VARIANT",
           "USAP 2026 provisional rally is doubles-only in R2."
+        );
+      }
+      const freeze = state.freezeRule == null ? "NONE" : String(state.freezeRule);
+      if (freeze !== "NONE") {
+        throw new ScoringFormatError(
+          "UNSUPPORTED_SCORING_VARIANT",
+          "Freeze-enabled Rally is not supported for USAP 2026 provisional profile."
         );
       }
       return RULE_SET_ID.RALLY_USAP_2026_PROVISIONAL_DOUBLES_V1;
     }
     throw new ScoringFormatError(
-      "UNKNOWN_SCORING_VARIANT",
+      "UNSUPPORTED_SCORING_VARIANT",
       `Unsupported rally variant: ${variant}`
     );
   }
 
   throw new ScoringFormatError(
-    "UNKNOWN_SCORING_SYSTEM",
+    "UNSUPPORTED_SCORING_SYSTEM",
     `Unsupported scoringSystem: ${system}`
   );
 }

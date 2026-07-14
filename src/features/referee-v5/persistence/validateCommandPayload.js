@@ -41,7 +41,18 @@ export function validateMatchCommandPayload(commandType, payload = {}) {
   }
 
   if (payload && typeof payload === "object") {
+    for (const key of IMMUTABLE_MATCH_FORMAT_FIELDS) {
+      if (Object.prototype.hasOwnProperty.call(payload, key)) {
+        return createPersistenceError(
+          REFEREE_V5_ERROR.SCORING_FORMAT_IMMUTABLE,
+          `Client không được đổi format field: ${key}`
+        );
+      }
+    }
     for (const key of FORBIDDEN_PAYLOAD_KEYS) {
+      if (IMMUTABLE_MATCH_FORMAT_FIELDS.includes(key)) {
+        continue;
+      }
       if (Object.prototype.hasOwnProperty.call(payload, key)) {
         return createPersistenceError(
           REFEREE_V5_ERROR.INVALID_MATCH_COMMAND,

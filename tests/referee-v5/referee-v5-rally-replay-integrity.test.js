@@ -322,7 +322,7 @@ test("16 missing Rally variant fails resolution and replay", () => {
     scoringSystem: SCORING_SYSTEM.RALLY,
   };
   assert.throws(() => resolveRuleSetId(incomplete), (error) => {
-    assert.equal(error.code, "SCORING_VARIANT_REQUIRED");
+    assert.equal(error.code, "SCORING_FORMAT_REQUIRED");
     return true;
   });
 
@@ -333,7 +333,7 @@ test("16 missing Rally variant fails resolution and replay", () => {
 
   const rebuilt = rebuildMatchState(broken, [startEvent()]);
   assert.equal(rebuilt.ok, false);
-  assert.equal(rebuilt.error, "SCORING_VARIANT_REQUIRED");
+  assert.equal(rebuilt.error, "SCORING_FORMAT_REQUIRED");
 });
 
 test("17 unsupported Rally variant fails", () => {
@@ -343,7 +343,7 @@ test("17 unsupported Rally variant fails", () => {
     scoringVariant: "MLP_DREAMBREAKER",
   };
   assert.throws(() => resolveRuleSetId(state), (error) => {
-    assert.equal(error.code, "UNKNOWN_SCORING_VARIANT");
+    assert.equal(error.code, "UNSUPPORTED_SCORING_VARIANT");
     return true;
   });
 
@@ -356,7 +356,7 @@ test("17 unsupported Rally variant fails", () => {
   delete broken.ruleSetId;
   const rebuilt = rebuildMatchState(broken, []);
   assert.equal(rebuilt.ok, false);
-  assert.equal(rebuilt.error, "UNKNOWN_SCORING_VARIANT");
+  assert.equal(rebuilt.error, "UNSUPPORTED_SCORING_VARIANT");
 });
 
 test("18 Rally does not fallback to Side-Out", () => {

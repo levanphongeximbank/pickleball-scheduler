@@ -81,7 +81,7 @@ export function applyMatchEvent(state, rawEvent, config = {}, options = {}) {
         rallyResult = applyRallyWin(working, teamKey, ruleConfig);
       } catch (error) {
         if (error instanceof ScoringFormatError) {
-          return createEngineError("VALIDATION_FAILED", error.code);
+          return createEngineError(error.code, error.message || error.code);
         }
         throw error;
       }

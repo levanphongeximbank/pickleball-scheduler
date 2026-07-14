@@ -59,15 +59,24 @@ function enrichError(result) {
   };
 }
 
-export function createRefereeV5EdgeRuntime({ serviceClient }) {
-  const repository = new RefereeV5SupabaseRepository(serviceClient);
-  const atomicCommit = new RefereeV5RpcAtomicCommitService(
-    repository,
-    serviceClient,
-    REFEREE_V5_INTERNAL_RPC,
-  );
-  const handler = new RefereeV5EdgeCommandHandler(repository, atomicCommit);
-  return { repository, handler };
+export function createRefereeV5EdgeRuntime({
+  serviceClient,
+  repository: repositoryOverride = null,
+  atomicCommit: atomicCommitOverride = null,
+  handler: handlerOverride = null,
+} = {}) {
+  const repository =
+    repositoryOverride || new RefereeV5SupabaseRepository(serviceClient);
+  const atomicCommit =
+    atomicCommitOverride ||
+    new RefereeV5RpcAtomicCommitService(
+      repository,
+      serviceClient,
+      REFEREE_V5_INTERNAL_RPC,
+    );
+  const handler =
+    handlerOverride || new RefereeV5EdgeCommandHandler(repository, atomicCommit);
+  return { repository, handler, atomicCommit };
 }
 
 export async function handleRefereeV5MatchAction({
@@ -75,6 +84,7 @@ export async function handleRefereeV5MatchAction({
   body,
   userClient,
   serviceClient,
+  runtime = null,
 }) {
   const verified = await verifyBearerToken(userClient);
   if (!verified.ok) {
@@ -82,7 +92,8 @@ export async function handleRefereeV5MatchAction({
   }
 
   const token = `jwt:${verified.userId}`;
-  const { handler, repository } = createRefereeV5EdgeRuntime({ serviceClient });
+  const { handler, repository } =
+    runtime || createRefereeV5EdgeRuntime({ serviceClient });
 
   if (action === "get-state") {
     const { tournamentId, matchId } = body;

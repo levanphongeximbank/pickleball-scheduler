@@ -19,7 +19,7 @@ function get(ruleSetId) {
   const strategy = registry.get(ruleSetId);
   if (!strategy) {
     throw new ScoringFormatError(
-      "UNKNOWN_RULE_SET",
+      "SCORING_STRATEGY_NOT_FOUND",
       `No scoring strategy registered for ruleSetId: ${ruleSetId}`
     );
   }

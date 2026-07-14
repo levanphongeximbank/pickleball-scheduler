@@ -66,15 +66,22 @@ export function validateCommitTransition({
   if (nextState.scoringSystem === SCORING_SYSTEM.RALLY) {
     if (!nextState.scoringVariant) {
       return createPersistenceError(
-        REFEREE_V5_ERROR.UNSUPPORTED_SCORING_FORMAT,
+        REFEREE_V5_ERROR.SCORING_FORMAT_REQUIRED,
         "Rally scoringSystem requires scoringVariant."
       );
     }
     if (nextState.scoringVariant === SCORING_VARIANT.USAP_2026_PROVISIONAL_RALLY) {
       if (nextState.matchType !== MATCH_TYPE.DOUBLES) {
         return createPersistenceError(
-          REFEREE_V5_ERROR.UNSUPPORTED_SCORING_FORMAT,
+          REFEREE_V5_ERROR.UNSUPPORTED_SCORING_VARIANT,
           "USAP 2026 provisional rally is doubles-only."
+        );
+      }
+      const freeze = nextState.freezeRule == null ? "NONE" : String(nextState.freezeRule);
+      if (freeze !== "NONE") {
+        return createPersistenceError(
+          REFEREE_V5_ERROR.UNSUPPORTED_SCORING_VARIANT,
+          "Freeze-enabled Rally is not supported."
         );
       }
     }
@@ -94,7 +101,7 @@ export function validateCommitTransition({
       ruleSet.includes("legacy") || ruleSet.includes("LEGACY") || ruleSet.includes("prototype");
     if (!isExplicitLegacy) {
       return createPersistenceError(
-        REFEREE_V5_ERROR.UNSUPPORTED_SCORING_FORMAT,
+        REFEREE_V5_ERROR.SCORING_FORMAT_REQUIRED,
         "New Rally state requires scoringSystem and scoringVariant."
       );
     }

@@ -60,6 +60,25 @@ function normalizeIncomingEvent(event) {
   };
 }
 
+// src/features/referee-v5/constants/stateSchema.js
+var STATE_SCHEMA_VERSION = 1;
+
+// src/features/referee-v5/constants/courtEnds.js
+var COURT_END = Object.freeze({
+  NEAR_END: "NEAR_END",
+  FAR_END: "FAR_END"
+});
+var OPPOSITE_COURT_END = Object.freeze({
+  [COURT_END.NEAR_END]: COURT_END.FAR_END,
+  [COURT_END.FAR_END]: COURT_END.NEAR_END
+});
+
+// src/features/referee-v5/constants/matchTypes.js
+var MATCH_TYPE = Object.freeze({
+  SINGLES: "singles",
+  DOUBLES: "doubles"
+});
+
 // src/features/referee-v5/constants/scoringFormats.js
 var SCORING_FORMAT = Object.freeze({
   SIDE_OUT: "side_out",
@@ -82,25 +101,6 @@ var DEFAULT_RALLY_CONFIG = Object.freeze({
   sideSwitchAt: 11,
   /** OWNER DECISION REQUIRED: full rally serve rotation order */
   rallyServeRotation: "winning_team_serves"
-});
-
-// src/features/referee-v5/constants/matchTypes.js
-var MATCH_TYPE = Object.freeze({
-  SINGLES: "singles",
-  DOUBLES: "doubles"
-});
-
-// src/features/referee-v5/constants/stateSchema.js
-var STATE_SCHEMA_VERSION = 1;
-
-// src/features/referee-v5/constants/courtEnds.js
-var COURT_END = Object.freeze({
-  NEAR_END: "NEAR_END",
-  FAR_END: "FAR_END"
-});
-var OPPOSITE_COURT_END = Object.freeze({
-  [COURT_END.NEAR_END]: COURT_END.FAR_END,
-  [COURT_END.FAR_END]: COURT_END.NEAR_END
 });
 
 // src/features/referee-v5/domain/matchState.js
@@ -281,6 +281,114 @@ function startMatchFromInitialized(state) {
   };
 }
 
+// src/features/referee-v5/constants/scoringStrategy.js
+var SCORING_SYSTEM = Object.freeze({
+  SIDE_OUT: "SIDE_OUT",
+  RALLY: "RALLY"
+});
+var SCORING_VARIANT = Object.freeze({
+  SIDE_OUT_DOUBLES_V1: "SIDE_OUT_DOUBLES_V1",
+  SIDE_OUT_SINGLES_V1: "SIDE_OUT_SINGLES_V1",
+  USAP_2026_PROVISIONAL_RALLY: "USAP_2026_PROVISIONAL_RALLY"
+});
+var RULE_SET_ID = Object.freeze({
+  SIDE_OUT_DOUBLES_V1: "side_out_doubles_v1",
+  SIDE_OUT_SINGLES_V1: "side_out_singles_v1",
+  RALLY_DOUBLES_LEGACY_PROTOTYPE_V1: "rally_doubles_legacy_prototype_v1",
+  RALLY_SINGLES_LEGACY_V1: "rally_singles_legacy_v1",
+  RALLY_USAP_2026_PROVISIONAL_DOUBLES_V1: "rally_usap_2026_provisional_doubles_v1"
+});
+
+// src/features/referee-v5/engines/scoring/scoringFormatError.js
+var ScoringFormatError = class extends Error {
+  constructor(code, message) {
+    super(message);
+    this.name = "ScoringFormatError";
+    this.code = code;
+  }
+};
+
+// src/features/referee-v5/engines/scoring/formatResolution.js
+function isRallyScoringFormat(scoringFormat) {
+  return scoringFormat === SCORING_FORMAT.RALLY || scoringFormat === "rally";
+}
+function resolveRuleSetId(state) {
+  if (state.ruleSetId) {
+    return String(state.ruleSetId);
+  }
+  if (state.scoringSystem) {
+    return resolveCanonicalRuleSetId(state);
+  }
+  return resolveLegacyRuleSetId(state);
+}
+function resolveCanonicalRuleSetId(state) {
+  const system = String(state.scoringSystem);
+  const variant = state.scoringVariant ? String(state.scoringVariant) : null;
+  const matchType = state.matchType || MATCH_TYPE.DOUBLES;
+  if (system === SCORING_SYSTEM.SIDE_OUT) {
+    if (matchType === MATCH_TYPE.SINGLES) {
+      return RULE_SET_ID.SIDE_OUT_SINGLES_V1;
+    }
+    if (!variant || variant === SCORING_VARIANT.SIDE_OUT_DOUBLES_V1) {
+      return RULE_SET_ID.SIDE_OUT_DOUBLES_V1;
+    }
+    throw new ScoringFormatError(
+      "UNSUPPORTED_SCORING_VARIANT",
+      `Unsupported side-out variant: ${variant}`
+    );
+  }
+  if (system === SCORING_SYSTEM.RALLY) {
+    if (!variant) {
+      throw new ScoringFormatError(
+        "SCORING_FORMAT_REQUIRED",
+        "Rally matches require scoringVariant."
+      );
+    }
+    const variantUpper = String(variant).toUpperCase();
+    if (variantUpper.includes("DREAMBREAKER") || variantUpper.includes("DREAM_BREAKER") || variantUpper.includes("MLP")) {
+      throw new ScoringFormatError(
+        "UNSUPPORTED_SCORING_VARIANT",
+        `Unsupported rally variant: ${variant}`
+      );
+    }
+    if (variant === SCORING_VARIANT.USAP_2026_PROVISIONAL_RALLY) {
+      if (matchType !== MATCH_TYPE.DOUBLES) {
+        throw new ScoringFormatError(
+          "UNSUPPORTED_SCORING_VARIANT",
+          "USAP 2026 provisional rally is doubles-only in R2."
+        );
+      }
+      const freeze = state.freezeRule == null ? "NONE" : String(state.freezeRule);
+      if (freeze !== "NONE") {
+        throw new ScoringFormatError(
+          "UNSUPPORTED_SCORING_VARIANT",
+          "Freeze-enabled Rally is not supported for USAP 2026 provisional profile."
+        );
+      }
+      return RULE_SET_ID.RALLY_USAP_2026_PROVISIONAL_DOUBLES_V1;
+    }
+    throw new ScoringFormatError(
+      "UNSUPPORTED_SCORING_VARIANT",
+      `Unsupported rally variant: ${variant}`
+    );
+  }
+  throw new ScoringFormatError(
+    "UNSUPPORTED_SCORING_SYSTEM",
+    `Unsupported scoringSystem: ${system}`
+  );
+}
+function resolveLegacyRuleSetId(state) {
+  const matchType = state.matchType || MATCH_TYPE.DOUBLES;
+  const rally = isRallyScoringFormat(state.scoringFormat);
+  if (matchType === MATCH_TYPE.SINGLES) {
+    return rally ? RULE_SET_ID.RALLY_SINGLES_LEGACY_V1 : RULE_SET_ID.SIDE_OUT_SINGLES_V1;
+  }
+  if (rally) {
+    return RULE_SET_ID.RALLY_DOUBLES_LEGACY_PROTOTYPE_V1;
+  }
+  return RULE_SET_ID.SIDE_OUT_DOUBLES_V1;
+}
+
 // src/features/referee-v5/constants/viewModes.js
 var VIEW_MODE = Object.freeze({
   REFEREE_PHYSICAL_VIEW: "REFEREE_PHYSICAL_VIEW",
@@ -420,10 +528,6 @@ function applySideOutScoringEvent(state, winningTeamId, config = {}) {
     generatedEvents: [...generatedEvents, ...sideOutResult.generatedEvents]
   };
 }
-function applySideOutRallyByTeamKey(state, teamKey, config) {
-  const teamId = state.teams[teamKey].teamId;
-  return applySideOutScoringEvent(state, teamId, config);
-}
 
 // src/features/referee-v5/engines/rallyScoringEngine.js
 function applyRallyScoringEvent(state, winningTeamId, config = {}) {
@@ -462,10 +566,14 @@ function applyRallyScoringEvent(state, winningTeamId, config = {}) {
   }
   return { ok: true, state: next, generatedEvents };
 }
-function applyRallyScoringByTeamKey(state, teamKey, config) {
-  const teamId = state.teams[teamKey].teamId;
-  return applyRallyScoringEvent(state, teamId, config);
-}
+
+// src/features/referee-v5/engines/scoring/strategies/rallyDoublesLegacyPrototypeStrategy.js
+var rallyDoublesLegacyPrototypeStrategy = {
+  id: RULE_SET_ID.RALLY_DOUBLES_LEGACY_PROTOTYPE_V1,
+  applyRallyResult(state, winningTeamId, config) {
+    return applyRallyScoringEvent(state, winningTeamId, config);
+  }
+};
 
 // src/features/referee-v5/engines/singlesScoringEngine.js
 function serviceSideForScore(score) {
@@ -541,12 +649,30 @@ function applySinglesRallyEvent(state, winningTeamId, config = {}) {
   }
   return { ok: true, state: context.state, generatedEvents };
 }
-function applySinglesScoringEvent(state, winningTeamId, config = {}) {
-  if (state.scoringFormat === "rally") {
+
+// src/features/referee-v5/engines/scoring/strategies/rallySinglesLegacyStrategy.js
+var rallySinglesLegacyStrategy = {
+  id: RULE_SET_ID.RALLY_SINGLES_LEGACY_V1,
+  applyRallyResult(state, winningTeamId, config) {
     return applySinglesRallyEvent(state, winningTeamId, config);
   }
-  return applySinglesSideOutEvent(state, winningTeamId, config);
-}
+};
+
+// src/features/referee-v5/engines/scoring/strategies/sideOutDoublesStrategy.js
+var sideOutDoublesStrategy = {
+  id: RULE_SET_ID.SIDE_OUT_DOUBLES_V1,
+  applyRallyResult(state, winningTeamId, config) {
+    return applySideOutScoringEvent(state, winningTeamId, config);
+  }
+};
+
+// src/features/referee-v5/engines/scoring/strategies/sideOutSinglesStrategy.js
+var sideOutSinglesStrategy = {
+  id: RULE_SET_ID.SIDE_OUT_SINGLES_V1,
+  applyRallyResult(state, winningTeamId, config) {
+    return applySinglesSideOutEvent(state, winningTeamId, config);
+  }
+};
 
 // src/features/referee-v5/engines/switchEndsEngine.js
 function applySwitchEnds(state) {
@@ -583,27 +709,299 @@ function applySwitchEnds(state) {
   };
 }
 
+// src/features/referee-v5/engines/scoring/strategies/usap2026ProvisionalRallyDoublesStrategy.js
+function resolveSideSwitchThreshold(pointsToWin) {
+  const target = Number(pointsToWin) || 11;
+  if (target <= 11) {
+    return 6;
+  }
+  if (target <= 15) {
+    return 8;
+  }
+  return 11;
+}
+function serviceSideForScore2(score) {
+  return Number(score) % 2 === 0 ? LOGICAL_SERVICE_SIDE.RIGHT_SERVICE_COURT : LOGICAL_SERVICE_SIDE.LEFT_SERVICE_COURT;
+}
+function alignTeamForScore(state, teamId, serverPlayerId) {
+  const team = getTeamById(state, teamId);
+  if (!team) {
+    return state;
+  }
+  const requiredServerSide = serviceSideForScore2(team.score);
+  const partner = getPartner(team, serverPlayerId);
+  let next = setPlayerLogicalSide(state, teamId, serverPlayerId, requiredServerSide);
+  if (partner) {
+    next = setPlayerLogicalSide(
+      next,
+      teamId,
+      partner.playerId,
+      flipLogicalServiceSide(requiredServerSide)
+    );
+  }
+  return next;
+}
+function pickServerPlayerId(state, teamId) {
+  const team = getTeamById(state, teamId);
+  if (!team) {
+    return null;
+  }
+  const requiredServerSide = serviceSideForScore2(team.score);
+  const onSide = team.players.find(
+    (player) => player.logicalServiceSide === requiredServerSide
+  );
+  return onSide?.playerId || team.players[0]?.playerId || null;
+}
+function shouldSwitchEndsAfterScore(state, config, scoreBefore) {
+  const threshold = resolveSideSwitchThreshold(config.pointsToWin ?? state.pointsToWin);
+  const maxBefore = Math.max(scoreBefore.teamA, scoreBefore.teamB);
+  const maxAfter = Math.max(state.teams.teamA.score, state.teams.teamB.score);
+  return maxBefore < threshold && maxAfter >= threshold;
+}
+function applyUsap2026ProvisionalRallyDoubles(state, winningTeamId, config = {}) {
+  const generatedEvents = [DOMAIN_EVENT_TYPE.POINT_AWARDED];
+  const scoreBefore = {
+    teamA: state.teams.teamA.score,
+    teamB: state.teams.teamB.score
+  };
+  let next = cloneMatchState(state);
+  const winningKey = getTeamSideKey(next, winningTeamId);
+  if (!winningKey) {
+    return { ok: false, error: "INVALID_WINNING_TEAM" };
+  }
+  next.teams[winningKey].score += 1;
+  const wasServing = String(next.servingTeamId) === String(winningTeamId);
+  if (wasServing) {
+    next = alignTeamForScore(next, next.servingTeamId, next.servingPlayerId);
+    next.serverNumber = null;
+    generatedEvents.push(DOMAIN_EVENT_TYPE.PLAYERS_SWITCHED, DOMAIN_EVENT_TYPE.SERVE_CHANGED);
+  } else {
+    generatedEvents.push(DOMAIN_EVENT_TYPE.SIDE_OUT);
+    const newServerId = pickServerPlayerId(next, winningTeamId);
+    if (!newServerId) {
+      return { ok: false, error: "RALLY_SERVER_NOT_FOUND" };
+    }
+    next = alignTeamForScore(next, winningTeamId, newServerId);
+    next.servingTeamId = String(winningTeamId);
+    next.servingPlayerId = String(newServerId);
+    next.serverNumber = null;
+    generatedEvents.push(DOMAIN_EVENT_TYPE.SERVE_CHANGED);
+  }
+  if (shouldSwitchEndsAfterScore(next, config, scoreBefore)) {
+    const switchResult = applySwitchEnds(next);
+    if (!switchResult.ok) {
+      return switchResult;
+    }
+    next = switchResult.state;
+    generatedEvents.push(...switchResult.generatedEvents);
+  }
+  const context = recomputeServeContext(next);
+  if (!context.ok) {
+    return context;
+  }
+  next = context.state;
+  if (checkGameComplete(next, config)) {
+    generatedEvents.push(DOMAIN_EVENT_TYPE.GAME_COMPLETED);
+  }
+  return { ok: true, state: next, generatedEvents };
+}
+var usap2026ProvisionalRallyDoublesStrategy = {
+  id: RULE_SET_ID.RALLY_USAP_2026_PROVISIONAL_DOUBLES_V1,
+  applyRallyResult(state, winningTeamId, config) {
+    return applyUsap2026ProvisionalRallyDoubles(state, winningTeamId, config);
+  }
+};
+
+// src/features/referee-v5/engines/scoring/ScoringStrategyRegistry.js
+var registry = /* @__PURE__ */ new Map();
+function register(strategy) {
+  if (!strategy?.id) {
+    throw new Error("ScoringStrategy must have an id.");
+  }
+  registry.set(strategy.id, strategy);
+}
+function get(ruleSetId) {
+  const strategy = registry.get(ruleSetId);
+  if (!strategy) {
+    throw new ScoringFormatError(
+      "SCORING_STRATEGY_NOT_FOUND",
+      `No scoring strategy registered for ruleSetId: ${ruleSetId}`
+    );
+  }
+  return strategy;
+}
+function resolve(state) {
+  const ruleSetId = resolveRuleSetId(state);
+  return get(ruleSetId);
+}
+register(sideOutDoublesStrategy);
+register(sideOutSinglesStrategy);
+register(rallyDoublesLegacyPrototypeStrategy);
+register(rallySinglesLegacyStrategy);
+register(usap2026ProvisionalRallyDoublesStrategy);
+var ScoringStrategyRegistry = {
+  register,
+  get,
+  resolve,
+  resolveRuleSetId
+};
+
+// src/features/referee-v5/engines/scoring/ruleConfig.js
+function buildRuleConfig(state, overrides = {}) {
+  return {
+    pointsToWin: overrides.pointsToWin ?? state.pointsToWin,
+    winBy: overrides.winBy ?? state.winBy,
+    maximumScore: overrides.maximumScore ?? state.maximumScore,
+    sideOutInitialServerSide: overrides.sideOutInitialServerSide,
+    sideSwitchAt: overrides.sideSwitchAt
+  };
+}
+
+// src/features/referee-v5/engines/scoring/matchFormatIntegrity.js
+var IMMUTABLE_MATCH_FORMAT_FIELDS = Object.freeze([
+  "scoringSystem",
+  "scoringVariant",
+  "scoringFormat",
+  "ruleSetId",
+  "pointsToWin",
+  "winBy",
+  "freezeRule",
+  "serverNumberRule",
+  "matchType",
+  "bestOf",
+  "maximumScore"
+]);
+function extractMatchFormatSnapshot(state) {
+  const snapshot = {};
+  for (const field of IMMUTABLE_MATCH_FORMAT_FIELDS) {
+    if (Object.prototype.hasOwnProperty.call(state, field)) {
+      snapshot[field] = state[field];
+    }
+  }
+  return snapshot;
+}
+function valuesEqual(a, b) {
+  if (a === b) {
+    return true;
+  }
+  if (a == null && b == null) {
+    return true;
+  }
+  return String(a) === String(b);
+}
+function assertEventDoesNotMutateFormat(formatSnapshot, event) {
+  const payload = event?.payload;
+  if (!payload || typeof payload !== "object") {
+    return { ok: true };
+  }
+  for (const field of IMMUTABLE_MATCH_FORMAT_FIELDS) {
+    if (!Object.prototype.hasOwnProperty.call(payload, field)) {
+      continue;
+    }
+    if (!Object.prototype.hasOwnProperty.call(formatSnapshot, field)) {
+      return {
+        ok: false,
+        error: "SCORING_FORMAT_IMMUTABLE"
+      };
+    }
+    if (!valuesEqual(payload[field], formatSnapshot[field])) {
+      return {
+        ok: false,
+        error: "SCORING_FORMAT_IMMUTABLE"
+      };
+    }
+  }
+  return { ok: true };
+}
+function assertStateFormatUnchanged(formatSnapshot, nextState) {
+  for (const field of Object.keys(formatSnapshot)) {
+    if (!valuesEqual(nextState[field], formatSnapshot[field])) {
+      return {
+        ok: false,
+        error: "SCORING_FORMAT_IMMUTABLE"
+      };
+    }
+  }
+  return { ok: true };
+}
+
 // src/features/referee-v5/engines/stateReplayEngine.js
+function collectRevertedKeys(events = []) {
+  const keys = /* @__PURE__ */ new Set();
+  for (const event of events) {
+    if (event.eventType !== MATCH_EVENT_TYPE.EVENT_REVERTED) {
+      continue;
+    }
+    const payload = event.payload || {};
+    if (payload.revertedEventId) {
+      keys.add(`id:${payload.revertedEventId}`);
+    }
+    if (payload.revertedSequence != null) {
+      keys.add(`seq:${payload.revertedSequence}`);
+    }
+  }
+  return keys;
+}
+function isRevertedEvent(event, revertedKeys) {
+  if (revertedKeys.has(`id:${event.eventId}`)) {
+    return true;
+  }
+  if (event.sequence != null && revertedKeys.has(`seq:${event.sequence}`)) {
+    return true;
+  }
+  return false;
+}
 function rebuildMatchState(initialState, events = [], config = {}) {
+  let strategy;
+  try {
+    strategy = ScoringStrategyRegistry.resolve(initialState);
+  } catch (error) {
+    if (error instanceof ScoringFormatError) {
+      return { ok: false, error: error.code, appliedCount: 0 };
+    }
+    throw error;
+  }
+  const formatSnapshot = extractMatchFormatSnapshot(initialState);
+  const revertedKeys = collectRevertedKeys(events);
   let state = cloneMatchState(initialState);
   const applied = [];
   for (const event of events) {
     if (event.eventType === MATCH_EVENT_TYPE.EVENT_REVERTED) {
       continue;
     }
+    if (isRevertedEvent(event, revertedKeys)) {
+      continue;
+    }
+    const immutability = assertEventDoesNotMutateFormat(formatSnapshot, event);
+    if (!immutability.ok) {
+      return { ok: false, error: immutability.error, appliedCount: applied.length };
+    }
     const replayEvent = {
       ...event,
       expectedVersion: state.version,
       sequence: state.lastEventSequence + 1
     };
-    const result = applyMatchEvent(state, replayEvent, config, { skipLockedCheck: false });
+    const result = applyMatchEvent(state, replayEvent, config, {
+      skipLockedCheck: false,
+      formatSnapshot,
+      resolvedStrategyId: strategy.id
+    });
     if (!result.ok) {
-      return { ok: false, error: result.error, appliedCount: applied.length };
+      return { ok: false, error: result.error || result.code, appliedCount: applied.length };
+    }
+    const formatCheck = assertStateFormatUnchanged(formatSnapshot, result.nextState);
+    if (!formatCheck.ok) {
+      return { ok: false, error: formatCheck.error, appliedCount: applied.length };
     }
     state = result.nextState;
     applied.push(event.eventType);
   }
-  return { ok: true, state, appliedCount: applied.length };
+  return {
+    ok: true,
+    state,
+    appliedCount: applied.length,
+    ruleSetId: strategy.id
+  };
 }
 
 // src/features/referee-v5/engines/undoEngine.js
@@ -659,19 +1057,19 @@ function assertValidServeSnapshot(state) {
 }
 function applyRallyWin(state, teamKey, config) {
   const teamId = state.teams[teamKey].teamId;
-  if (state.matchType === MATCH_TYPE.SINGLES) {
-    return applySinglesScoringEvent(state, teamId, config);
-  }
-  if (state.scoringFormat === SCORING_FORMAT.RALLY) {
-    return applyRallyScoringByTeamKey(state, teamKey, config);
-  }
-  return applySideOutRallyByTeamKey(state, teamKey, config);
+  const strategy = ScoringStrategyRegistry.resolve(state);
+  return strategy.applyRallyResult(state, teamId, config);
 }
 function applyMatchEvent(state, rawEvent, config = {}, options = {}) {
   const event = normalizeIncomingEvent(rawEvent);
   const working = cloneMatchState(state);
   if (!options.skipLockedCheck && working.status === MATCH_STATUS.LOCKED) {
     return createEngineError("MATCH_LOCKED", "Tr\u1EADn \u0111\xE3 kh\xF3a.");
+  }
+  const formatSnapshot = options.formatSnapshot || extractMatchFormatSnapshot(working);
+  const formatGuard = assertEventDoesNotMutateFormat(formatSnapshot, event);
+  if (!formatGuard.ok) {
+    return createEngineError(formatGuard.error, formatGuard.error);
   }
   const pre = validateEventPreconditions(working, event);
   if (!pre.ok) {
@@ -699,7 +1097,15 @@ function applyMatchEvent(state, rawEvent, config = {}, options = {}) {
       }
       const teamKey = event.eventType === MATCH_EVENT_TYPE.TEAM_A_WON_RALLY ? "teamA" : "teamB";
       const ruleConfig = buildRuleConfig(working, config);
-      const rallyResult = applyRallyWin(working, teamKey, ruleConfig);
+      let rallyResult;
+      try {
+        rallyResult = applyRallyWin(working, teamKey, ruleConfig);
+      } catch (error) {
+        if (error instanceof ScoringFormatError) {
+          return createEngineError(error.code, error.message || error.code);
+        }
+        throw error;
+      }
       if (!rallyResult.ok) {
         return createEngineError("VALIDATION_FAILED", rallyResult.error);
       }
@@ -793,15 +1199,6 @@ function applyMatchEvent(state, rawEvent, config = {}, options = {}) {
     default:
       return createEngineError("INVALID_EVENT", `Unsupported event: ${event.eventType}`);
   }
-}
-function buildRuleConfig(state, overrides = {}) {
-  return {
-    pointsToWin: overrides.pointsToWin ?? state.pointsToWin,
-    winBy: overrides.winBy ?? state.winBy,
-    maximumScore: overrides.maximumScore ?? state.maximumScore,
-    sideOutInitialServerSide: overrides.sideOutInitialServerSide,
-    sideSwitchAt: overrides.sideSwitchAt
-  };
 }
 
 // src/features/referee-v5/engines/matchCommandDispatcher.js
@@ -967,6 +1364,11 @@ var REFEREE_V5_ERROR = Object.freeze({
   INVALID_MATCH_COMMAND: "INVALID_MATCH_COMMAND",
   INVALID_MATCH_STATE: "INVALID_MATCH_STATE",
   UNSUPPORTED_SCORING_FORMAT: "UNSUPPORTED_SCORING_FORMAT",
+  SCORING_FORMAT_REQUIRED: "SCORING_FORMAT_REQUIRED",
+  UNSUPPORTED_SCORING_SYSTEM: "UNSUPPORTED_SCORING_SYSTEM",
+  UNSUPPORTED_SCORING_VARIANT: "UNSUPPORTED_SCORING_VARIANT",
+  SCORING_FORMAT_IMMUTABLE: "SCORING_FORMAT_IMMUTABLE",
+  SCORING_STRATEGY_NOT_FOUND: "SCORING_STRATEGY_NOT_FOUND",
   UNDO_NOT_ALLOWED: "UNDO_NOT_ALLOWED",
   RESULT_NOT_READY: "RESULT_NOT_READY",
   TENANT_ACCESS_DENIED: "TENANT_ACCESS_DENIED",
@@ -974,7 +1376,8 @@ var REFEREE_V5_ERROR = Object.freeze({
   FINALIZE_FAILED: "FINALIZE_FAILED",
   IDEMPOTENCY_KEY_REUSE_MISMATCH: "IDEMPOTENCY_KEY_REUSE_MISMATCH",
   APPEND_ONLY_VIOLATION: "APPEND_ONLY_VIOLATION",
-  INTERNAL_RPC_FORBIDDEN: "INTERNAL_RPC_FORBIDDEN"
+  INTERNAL_RPC_FORBIDDEN: "INTERNAL_RPC_FORBIDDEN",
+  ATOMIC_COMMIT_ABORTED: "ATOMIC_COMMIT_ABORTED"
 });
 var REFEREE_V5_ERROR_VI = Object.freeze({
   [REFEREE_V5_ERROR.MATCH_NOT_FOUND]: "Kh\xF4ng t\xECm th\u1EA5y tr\u1EADn \u0111\u1EA5u.",
@@ -989,12 +1392,19 @@ var REFEREE_V5_ERROR_VI = Object.freeze({
   [REFEREE_V5_ERROR.INVALID_MATCH_COMMAND]: "L\u1EC7nh kh\xF4ng h\u1EE3p l\u1EC7.",
   [REFEREE_V5_ERROR.INVALID_MATCH_STATE]: "Tr\u1EA1ng th\xE1i tr\u1EADn kh\xF4ng h\u1EE3p l\u1EC7.",
   [REFEREE_V5_ERROR.UNSUPPORTED_SCORING_FORMAT]: "Th\u1EC3 th\u1EE9c t\xEDnh \u0111i\u1EC3m ch\u01B0a \u0111\u01B0\u1EE3c h\u1ED7 tr\u1EE3.",
+  [REFEREE_V5_ERROR.SCORING_FORMAT_REQUIRED]: "Thi\u1EBFu th\xF4ng tin th\u1EC3 th\u1EE9c t\xEDnh \u0111i\u1EC3m.",
+  [REFEREE_V5_ERROR.UNSUPPORTED_SCORING_SYSTEM]: "H\u1EC7 th\u1ED1ng t\xEDnh \u0111i\u1EC3m kh\xF4ng \u0111\u01B0\u1EE3c h\u1ED7 tr\u1EE3.",
+  [REFEREE_V5_ERROR.UNSUPPORTED_SCORING_VARIANT]: "Bi\u1EBFn th\u1EC3 t\xEDnh \u0111i\u1EC3m kh\xF4ng \u0111\u01B0\u1EE3c h\u1ED7 tr\u1EE3.",
+  [REFEREE_V5_ERROR.SCORING_FORMAT_IMMUTABLE]: "Kh\xF4ng \u0111\u01B0\u1EE3c \u0111\u1ED5i th\u1EC3 th\u1EE9c t\xEDnh \u0111i\u1EC3m sau khi b\u1EAFt \u0111\u1EA7u.",
+  [REFEREE_V5_ERROR.SCORING_STRATEGY_NOT_FOUND]: "Kh\xF4ng t\xECm th\u1EA5y chi\u1EBFn l\u01B0\u1EE3c t\xEDnh \u0111i\u1EC3m.",
   [REFEREE_V5_ERROR.UNDO_NOT_ALLOWED]: "Kh\xF4ng th\u1EC3 ho\xE0n t\xE1c.",
   [REFEREE_V5_ERROR.RESULT_NOT_READY]: "Tr\u1EADn ch\u01B0a s\u1EB5n s\xE0ng \u0111\u1EC3 ch\u1ED1t k\u1EBFt qu\u1EA3.",
   [REFEREE_V5_ERROR.TENANT_ACCESS_DENIED]: "Kh\xF4ng c\xF3 quy\u1EC1n truy c\u1EADp tenant n\xE0y.",
   [REFEREE_V5_ERROR.IDEMPOTENCY_KEY_REUSE_MISMATCH]: "Idempotency key \u0111\xE3 d\xF9ng cho request kh\xE1c.",
   [REFEREE_V5_ERROR.APPEND_ONLY_VIOLATION]: "Kh\xF4ng \u0111\u01B0\u1EE3c s\u1EEDa ho\u1EB7c x\xF3a s\u1EF1 ki\u1EC7n tr\u1EADn \u0111\u1EA5u.",
-  [REFEREE_V5_ERROR.INTERNAL_RPC_FORBIDDEN]: "RPC n\u1ED9i b\u1ED9 kh\xF4ng kh\u1EA3 d\u1EE5ng t\u1EEB client."
+  [REFEREE_V5_ERROR.INTERNAL_RPC_FORBIDDEN]: "RPC n\u1ED9i b\u1ED9 kh\xF4ng kh\u1EA3 d\u1EE5ng t\u1EEB client.",
+  [REFEREE_V5_ERROR.ATOMIC_COMMIT_ABORTED]: "Giao d\u1ECBch b\u1ECB h\u1EE7y \u2014 kh\xF4ng c\xF3 thay \u0111\u1ED5i m\u1ED9t ph\u1EA7n.",
+  [REFEREE_V5_ERROR.FINALIZE_FAILED]: "Kh\xF4ng th\u1EC3 ch\u1ED1t k\u1EBFt qu\u1EA3 tr\u1EADn."
 });
 function createPersistenceError(code, message, extra = {}) {
   return {
@@ -1006,6 +1416,68 @@ function createPersistenceError(code, message, extra = {}) {
 }
 function createPersistenceSuccess(payload) {
   return { ok: true, ...payload };
+}
+var SCORING_ENGINE_ERROR_CODES = /* @__PURE__ */ new Set([
+  REFEREE_V5_ERROR.SCORING_FORMAT_REQUIRED,
+  REFEREE_V5_ERROR.UNSUPPORTED_SCORING_SYSTEM,
+  REFEREE_V5_ERROR.UNSUPPORTED_SCORING_VARIANT,
+  REFEREE_V5_ERROR.SCORING_FORMAT_IMMUTABLE,
+  REFEREE_V5_ERROR.SCORING_STRATEGY_NOT_FOUND,
+  // Legacy aliases retained for older snapshots / messages.
+  "SCORING_VARIANT_REQUIRED",
+  "UNKNOWN_SCORING_SYSTEM",
+  "UNKNOWN_SCORING_VARIANT",
+  "UNKNOWN_RULE_SET",
+  "UNSUPPORTED_MATCH_TYPE"
+]);
+function resolveScoringPersistenceCode(engineCode, engineMessage) {
+  const candidates = [engineCode, engineMessage].filter(Boolean).map(String);
+  for (const candidate of candidates) {
+    if (candidate === "SCORING_VARIANT_REQUIRED") {
+      return REFEREE_V5_ERROR.SCORING_FORMAT_REQUIRED;
+    }
+    if (candidate === "UNKNOWN_SCORING_SYSTEM") {
+      return REFEREE_V5_ERROR.UNSUPPORTED_SCORING_SYSTEM;
+    }
+    if (candidate === "UNKNOWN_SCORING_VARIANT" || candidate === "UNSUPPORTED_MATCH_TYPE") {
+      return REFEREE_V5_ERROR.UNSUPPORTED_SCORING_VARIANT;
+    }
+    if (candidate === "UNKNOWN_RULE_SET") {
+      return REFEREE_V5_ERROR.SCORING_STRATEGY_NOT_FOUND;
+    }
+    if (candidate === REFEREE_V5_ERROR.SCORING_FORMAT_REQUIRED || candidate === REFEREE_V5_ERROR.UNSUPPORTED_SCORING_SYSTEM || candidate === REFEREE_V5_ERROR.UNSUPPORTED_SCORING_VARIANT || candidate === REFEREE_V5_ERROR.SCORING_FORMAT_IMMUTABLE || candidate === REFEREE_V5_ERROR.SCORING_STRATEGY_NOT_FOUND) {
+      return candidate;
+    }
+  }
+  return null;
+}
+function mapEngineErrorToPersistence(engineResult, extra = {}) {
+  if (engineResult.ok) {
+    return engineResult;
+  }
+  const scoringCode = resolveScoringPersistenceCode(engineResult.code, engineResult.error);
+  if (scoringCode) {
+    return createPersistenceError(scoringCode, engineResult.error, extra);
+  }
+  const codeMap = {
+    VERSION_CONFLICT: REFEREE_V5_ERROR.MATCH_STATE_CONFLICT,
+    SEQUENCE_GAP: REFEREE_V5_ERROR.EVENT_SEQUENCE_CONFLICT,
+    MATCH_LOCKED: REFEREE_V5_ERROR.MATCH_LOCKED,
+    MATCH_NOT_STARTED: REFEREE_V5_ERROR.MATCH_NOT_STARTED,
+    UNDO_NOT_ALLOWED: REFEREE_V5_ERROR.UNDO_NOT_ALLOWED,
+    VALIDATION_FAILED: REFEREE_V5_ERROR.INVALID_MATCH_COMMAND
+  };
+  if (engineResult.code === "VALIDATION_FAILED" && SCORING_ENGINE_ERROR_CODES.has(String(engineResult.error || ""))) {
+    const nested = resolveScoringPersistenceCode(engineResult.error, engineResult.error);
+    if (nested) {
+      return createPersistenceError(nested, engineResult.error, extra);
+    }
+  }
+  return createPersistenceError(
+    codeMap[engineResult.code] || REFEREE_V5_ERROR.INVALID_MATCH_COMMAND,
+    engineResult.error,
+    engineResult.code === "VERSION_CONFLICT" ? { currentVersion: engineResult.currentVersion, ...extra } : extra
+  );
 }
 
 // src/features/referee-v5/persistence/InMemoryMatchRepository.js
@@ -1192,6 +1664,39 @@ function validateCommitTransition({
   }
   if (nextState.rallyVariant === RALLY_VARIANT.MLP || nextState.scoringFormat === "mlp_rally") {
     return createPersistenceError(REFEREE_V5_ERROR.UNSUPPORTED_SCORING_FORMAT);
+  }
+  if (nextState.scoringSystem === SCORING_SYSTEM.RALLY) {
+    if (!nextState.scoringVariant) {
+      return createPersistenceError(
+        REFEREE_V5_ERROR.SCORING_FORMAT_REQUIRED,
+        "Rally scoringSystem requires scoringVariant."
+      );
+    }
+    if (nextState.scoringVariant === SCORING_VARIANT.USAP_2026_PROVISIONAL_RALLY) {
+      if (nextState.matchType !== MATCH_TYPE.DOUBLES) {
+        return createPersistenceError(
+          REFEREE_V5_ERROR.UNSUPPORTED_SCORING_VARIANT,
+          "USAP 2026 provisional rally is doubles-only."
+        );
+      }
+      const freeze = nextState.freezeRule == null ? "NONE" : String(nextState.freezeRule);
+      if (freeze !== "NONE") {
+        return createPersistenceError(
+          REFEREE_V5_ERROR.UNSUPPORTED_SCORING_VARIANT,
+          "Freeze-enabled Rally is not supported."
+        );
+      }
+    }
+  }
+  if ((nextState.scoringFormat === SCORING_FORMAT.RALLY || nextState.scoringFormat === "rally") && nextState.scoringSystem == null && nextState.scoringVariant == null) {
+    const ruleSet = String(nextState.ruleSetId || "");
+    const isExplicitLegacy = ruleSet.includes("legacy") || ruleSet.includes("LEGACY") || ruleSet.includes("prototype");
+    if (!isExplicitLegacy) {
+      return createPersistenceError(
+        REFEREE_V5_ERROR.SCORING_FORMAT_REQUIRED,
+        "New Rally state requires scoringSystem and scoringVariant."
+      );
+    }
   }
   if (nextState.matchType === MATCH_TYPE.DOUBLES && nextState.serverNumber != null && ![1, 2].includes(Number(nextState.serverNumber))) {
     return createPersistenceError(REFEREE_V5_ERROR.INVALID_MATCH_STATE, "Doubles side-out server number kh\xF4ng h\u1EE3p l\u1EC7.");
@@ -1397,34 +1902,40 @@ var RefereeV5AtomicCommitService = class {
       if (state.status !== MATCH_STATUS.COMPLETED && !input.forceComplete) {
         return createPersistenceError(REFEREE_V5_ERROR.RESULT_NOT_READY);
       }
-      const saved = this.repository.saveResultRevision(revision);
-      if (!saved.ok && !saved.duplicate) {
-        return createPersistenceError(REFEREE_V5_ERROR.FINALIZE_FAILED);
-      }
-      this.repository.lockLiveState(matchStateId, actor.userId);
-      for (const outbox of outboxEvents) {
-        this.repository.appendOutbox({
+      const responsePayload = {
+        revision,
+        locked: true,
+        outboxCount: outboxEvents.length
+      };
+      const commit = this.repository.commitFinalizationMutation({
+        matchStateId,
+        revision,
+        actorId: actor.userId,
+        outboxEvents: outboxEvents.map((outbox) => ({
           ...outbox,
           tenantId,
           tournamentId,
           matchId,
           idempotencyKey: outbox.idempotencyKey || `${finalizeKey}::${outbox.eventType}`
-        });
-      }
-      const responsePayload = {
-        revision: saved.revision || revision,
-        locked: true,
-        outboxCount: outboxEvents.length
-      };
-      this.repository.saveIdempotency({
-        matchId: matchStateId,
-        idempotencyKey: finalizeKey,
-        clientMutationId: idempotencyKey,
-        commandType: isOverride ? "OVERRIDE_RESULT" : "FINALIZE_MATCH",
-        requestHash,
-        status: "applied",
-        responsePayload
+        })),
+        idempotencyRecord: {
+          matchId: matchStateId,
+          idempotencyKey: finalizeKey,
+          clientMutationId: idempotencyKey,
+          commandType: isOverride ? "OVERRIDE_RESULT" : "FINALIZE_MATCH",
+          requestHash,
+          status: "applied",
+          responsePayload: {
+            revision,
+            locked: true,
+            outboxCount: outboxEvents.length
+          }
+        }
       });
+      if (!commit.ok) {
+        return commit;
+      }
+      responsePayload.revision = commit.revision || revision;
       this.repository.appendAudit(
         buildAuditEntry({
           tenantId,
@@ -1544,7 +2055,9 @@ var FORBIDDEN_PAYLOAD_KEYS = Object.freeze([
   "official_result",
   "officialResult",
   "official_score",
-  "officialScore"
+  "officialScore",
+  // Official format is locked after start — never accept client mutations.
+  ...IMMUTABLE_MATCH_FORMAT_FIELDS
 ]);
 function validateMatchCommandPayload(commandType, payload = {}) {
   if (!commandType || typeof commandType !== "string") {
@@ -1555,7 +2068,18 @@ function validateMatchCommandPayload(commandType, payload = {}) {
     return createPersistenceError(REFEREE_V5_ERROR.INVALID_MATCH_COMMAND, `Command kh\xF4ng h\u1ED7 tr\u1EE3: ${commandType}`);
   }
   if (payload && typeof payload === "object") {
+    for (const key of IMMUTABLE_MATCH_FORMAT_FIELDS) {
+      if (Object.prototype.hasOwnProperty.call(payload, key)) {
+        return createPersistenceError(
+          REFEREE_V5_ERROR.SCORING_FORMAT_IMMUTABLE,
+          `Client kh\xF4ng \u0111\u01B0\u1EE3c \u0111\u1ED5i format field: ${key}`
+        );
+      }
+    }
     for (const key of FORBIDDEN_PAYLOAD_KEYS) {
+      if (IMMUTABLE_MATCH_FORMAT_FIELDS.includes(key)) {
+        continue;
+      }
       if (Object.prototype.hasOwnProperty.call(payload, key)) {
         return createPersistenceError(
           REFEREE_V5_ERROR.INVALID_MATCH_COMMAND,
@@ -1675,8 +2199,7 @@ var RefereeV5EdgeCommandHandler = class {
       initialState
     });
     if (!engineResult.ok) {
-      const code = engineResult.code === "VERSION_CONFLICT" ? REFEREE_V5_ERROR.MATCH_STATE_CONFLICT : engineResult.code === "SEQUENCE_GAP" ? REFEREE_V5_ERROR.EVENT_SEQUENCE_CONFLICT : REFEREE_V5_ERROR.INVALID_MATCH_COMMAND;
-      return createPersistenceError(code, engineResult.error, {
+      return mapEngineErrorToPersistence(engineResult, {
         currentVersion: currentLive.stateVersion,
         currentSequence: currentLive.lastEventSequence
       });
@@ -1793,7 +2316,14 @@ var RefereeV5EdgeCommandHandler = class {
       idempotencyKey,
       overrideReason,
       createdBy: trusted.actor.userId,
-      createdAt: (/* @__PURE__ */ new Date()).toISOString()
+      createdAt: (/* @__PURE__ */ new Date()).toISOString(),
+      // Scoring-system agnostic format metadata (Rally/Side-Out).
+      scoringFormat: state.scoringFormat ?? null,
+      scoringSystem: state.scoringSystem ?? null,
+      scoringVariant: state.scoringVariant ?? null,
+      ruleSetId: state.ruleSetId ?? null,
+      pointsToWin: state.pointsToWin ?? null,
+      winBy: state.winBy ?? null
     };
     const requestHash = buildCommandRequestHash({
       commandType: isOverride ? "OVERRIDE_RESULT" : "FINALIZE_MATCH",
@@ -2213,28 +2743,34 @@ function enrichError(result) {
     messageVi: REFEREE_V5_ERROR_VI[result.code] || result.error || result.code
   };
 }
-function createRefereeV5EdgeRuntime({ serviceClient }) {
-  const repository = new RefereeV5SupabaseRepository(serviceClient);
-  const atomicCommit = new RefereeV5RpcAtomicCommitService(
+function createRefereeV5EdgeRuntime({
+  serviceClient,
+  repository: repositoryOverride = null,
+  atomicCommit: atomicCommitOverride = null,
+  handler: handlerOverride = null
+} = {}) {
+  const repository = repositoryOverride || new RefereeV5SupabaseRepository(serviceClient);
+  const atomicCommit = atomicCommitOverride || new RefereeV5RpcAtomicCommitService(
     repository,
     serviceClient,
     REFEREE_V5_INTERNAL_RPC
   );
-  const handler = new RefereeV5EdgeCommandHandler(repository, atomicCommit);
-  return { repository, handler };
+  const handler = handlerOverride || new RefereeV5EdgeCommandHandler(repository, atomicCommit);
+  return { repository, handler, atomicCommit };
 }
 async function handleRefereeV5MatchAction({
   action,
   body,
   userClient,
-  serviceClient
+  serviceClient,
+  runtime = null
 }) {
   const verified = await verifyBearerToken(userClient);
   if (!verified.ok) {
     return { httpStatus: 401, body: enrichError(verified) };
   }
   const token = `jwt:${verified.userId}`;
-  const { handler, repository } = createRefereeV5EdgeRuntime({ serviceClient });
+  const { handler, repository } = runtime || createRefereeV5EdgeRuntime({ serviceClient });
   if (action === "get-state") {
     const { tournamentId, matchId } = body;
     const assignment = await repository.findAssignmentByUserAndMatch({

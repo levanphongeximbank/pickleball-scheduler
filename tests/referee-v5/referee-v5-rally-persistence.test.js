@@ -701,7 +701,7 @@ test("R2-2D-27 reject incomplete Rally without scoringSystem/variant", async () 
     idempotencyKey: "bare-start",
   });
   assert.equal(start.ok, false);
-  assert.equal(start.code, REFEREE_V5_ERROR.UNSUPPORTED_SCORING_FORMAT);
+  assert.equal(start.code, REFEREE_V5_ERROR.SCORING_FORMAT_REQUIRED);
 });
 
 test("R2-2D-28 format mutation in command payload rejected", () => {
@@ -709,7 +709,7 @@ test("R2-2D-28 format mutation in command payload rejected", () => {
     scoringSystem: SCORING_SYSTEM.SIDE_OUT,
   });
   assert.equal(check.ok, false);
-  assert.equal(check.code, REFEREE_V5_ERROR.INVALID_MATCH_COMMAND);
+  assert.equal(check.code, REFEREE_V5_ERROR.SCORING_FORMAT_IMMUTABLE);
 });
 
 test("R2-2D-29 Rally never loads as Side-Out after save", async () => {
