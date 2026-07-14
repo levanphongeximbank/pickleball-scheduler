@@ -2,9 +2,11 @@
 
 | Field | Value |
 |-------|-------|
-| Status | Plan only (PR-1) — no data migration run |
+| Status | PR-4 DB schema ready; **no legacy data migration run**; Production blocked |
 | Spec | [`PRIVATE_PAIRING_RULES_V2_SPEC.md`](./PRIVATE_PAIRING_RULES_V2_SPEC.md) |
 | Audit | [`PRIVATE_PAIRING_RULES_V2_PR1_AUDIT.md`](./PRIVATE_PAIRING_RULES_V2_PR1_AUDIT.md) |
+| PR-4 schema | [`PHASE_PRIVATE_PAIRING_RULES_V2_PR4.sql`](./PHASE_PRIVATE_PAIRING_RULES_V2_PR4.sql) |
+| PR-4 security doc | [`PRIVATE_PAIRING_RULES_V2_PR4_DATABASE_SECURITY.md`](./PRIVATE_PAIRING_RULES_V2_PR4_DATABASE_SECURITY.md) |
 
 ---
 
@@ -134,6 +136,19 @@ Record fixtures under `docs/v5/qa-evidence/private-pairing-rules/` (created in P
 | Server | Disable RPCs / server flag |
 | Data | Keep legacy arrays; optional restore from active version archive |
 | Results | Prior pairings keep stored `rule_set_version`; no recompute |
+
+---
+
+## 9b. PR-4 destination tables (schema only)
+
+Private pairing data targets dedicated tables (not club/tournament blobs):
+
+- `private_pairing_rule_sets`
+- `private_pairing_rules`
+- `private_pairing_rule_targets`
+- `private_pairing_rule_audit_logs`
+
+Legacy `founderPairingConstraints` is **unchanged** in PR-4. Data migrate job is later (PR-6/7). Apply steps: [`PRIVATE_PAIRING_RULES_V2_PR4_APPLY_RUNBOOK.md`](./PRIVATE_PAIRING_RULES_V2_PR4_APPLY_RUNBOOK.md).
 
 ---
 

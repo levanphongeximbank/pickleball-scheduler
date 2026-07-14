@@ -2,14 +2,16 @@
 
 | Field | Value |
 |-------|-------|
-| Status | Plan from PR-1; PR-2/PR-3 unit coverage added; full Staging QA in PR-7 |
+| Status | Plan from PR-1; PR-2/PR-3/PR-4 unit coverage; Staging JWT QA after owner apply GO |
 | Spec | [`PRIVATE_PAIRING_RULES_V2_SPEC.md`](./PRIVATE_PAIRING_RULES_V2_SPEC.md) |
 | PR-2 | [`PRIVATE_PAIRING_RULES_V2_PR2_CANONICAL_CONFLICT.md`](./PRIVATE_PAIRING_RULES_V2_PR2_CANONICAL_CONFLICT.md) |
 | PR-3 | [`PRIVATE_PAIRING_RULES_V2_PR3_RUNTIME.md`](./PRIVATE_PAIRING_RULES_V2_PR3_RUNTIME.md) |
+| PR-4 | [`PRIVATE_PAIRING_RULES_V2_PR4_DATABASE_SECURITY.md`](./PRIVATE_PAIRING_RULES_V2_PR4_DATABASE_SECURITY.md) |
 | Security | [`PRIVATE_PAIRING_RULES_V2_SECURITY.md`](./PRIVATE_PAIRING_RULES_V2_SECURITY.md) |
 | Migration | [`PRIVATE_PAIRING_RULES_V2_MIGRATION.md`](./PRIVATE_PAIRING_RULES_V2_MIGRATION.md) |
 | PR-2 suite | `tests/private-pairing-rules-pr2.test.js` |
 | PR-3 suite | `tests/private-pairing-rules-pr3-runtime.test.js` |
+| PR-4 suites | `tests/private-pairing-rules-pr4-database-security.test.js`, `tests/private-pairing-rules-pr4-repository.test.js` |
 
 ---
 
@@ -45,6 +47,16 @@
 - [x] Legacy adapter + flags OFF unchanged path
 - [x] AI score hard reject without -120 when flags ON
 - [x] Benchmark guards 8/16/32 players
+
+## 1d. PR-4 database / adapter coverage (done in PR-4 unit tests)
+
+- [x] SQL contract: tables, RLS, revoke writes, no `using (true)`, realtime OFF
+- [x] Permissions SUPER_ADMIN only; blocked roles matrix (client)
+- [x] RPC names + SECURITY DEFINER + activate hash/preflight gates in SQL
+- [x] Flag OFF → repository does not query
+- [x] DB → canonical normalize → PR-3 runtime path
+- [x] Activate preflight blocks fatal conflicts; hash passed when clear
+- [ ] Staging JWT RLS/RPC probes (requires owner staging apply GO)
 
 ## 2. Permission tests
 

@@ -2,9 +2,11 @@
 
 | Field | Value |
 |-------|-------|
-| Status | Design from PR-1 audit — no RLS/RPC applied yet |
+| Status | PR-4 delivered schema/RLS/RPC (staging apply pending owner GO) |
 | Audit findings | [`PRIVATE_PAIRING_RULES_V2_PR1_AUDIT.md`](./PRIVATE_PAIRING_RULES_V2_PR1_AUDIT.md) §6 |
 | Spec | [`PRIVATE_PAIRING_RULES_V2_SPEC.md`](./PRIVATE_PAIRING_RULES_V2_SPEC.md) |
+| PR-4 detail | [`PRIVATE_PAIRING_RULES_V2_PR4_DATABASE_SECURITY.md`](./PRIVATE_PAIRING_RULES_V2_PR4_DATABASE_SECURITY.md) |
+| Apply runbook | [`PRIVATE_PAIRING_RULES_V2_PR4_APPLY_RUNBOOK.md`](./PRIVATE_PAIRING_RULES_V2_PR4_APPLY_RUNBOOK.md) |
 
 ---
 
@@ -131,10 +133,18 @@ Frontend flags are **not** a security boundary.
 
 ---
 
-## 10. PR-4 deliverables (preview)
+## 10. PR-4 deliverables (status)
 
-1. SQL migration creating four tables + indexes + FKs.
-2. RLS policies: default deny; SUPER_ADMIN select/insert/update per permissions.
-3. RPCs: `private_pairing_rules_list|upsert|disable|simulate|audit_list|apply_set|rollback_set`.
-4. Strippers on club/tournament read APIs / mappers.
-5. Staging-only apply; Production apply blocked until owner GO.
+| Item | Status |
+|------|--------|
+| SQL migration `PHASE_PRIVATE_PAIRING_RULES_V2_PR4.sql` | Done |
+| Tables + indexes + FKs + versioning | Done |
+| Permissions seed SUPER_ADMIN only | Done |
+| RLS SELECT + deny writes; audit append-only | Done |
+| SECURITY DEFINER RPCs + audit | Done |
+| Activate Architecture A (PR-2 preflight + hash) | Done |
+| Realtime OFF | Done |
+| Repository/service adapter (flag-gated) | Done |
+| Staging apply | **Pending owner GO** |
+| Production apply | Blocked |
+| SUPER_ADMIN UI / strip club blob | PR-5 / PR-6 |
