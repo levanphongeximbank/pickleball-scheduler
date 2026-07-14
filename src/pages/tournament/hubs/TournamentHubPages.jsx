@@ -41,17 +41,7 @@ export function TournamentTeamsHub() {
   );
 }
 
-export function TournamentTeamPresetsHub() {
-  return (
-    <TournamentPickerHub
-      title="Đội có sẵn"
-      description="Mở giải đồng đội để xem và tái sử dụng đội đã có trong hệ thống."
-      filter={isTeamTournament}
-      resolvePath={(tournament) => teamTournamentPath(tournament.id, TEAM_TAB_QUERY.teams)}
-      emptyHint="Chưa có giải đồng đội để quản lý đội có sẵn."
-    />
-  );
-}
+export { default as TournamentTeamPresetsHub } from "./TournamentExistingTeamsHub.jsx";
 
 export function TournamentTeamBuildManualHub() {
   return (

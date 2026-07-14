@@ -96,6 +96,7 @@ export const DEFAULT_TIE_BREAK_ORDER = [
   "wins",
   "subMatchDiff",
   "pointsScored",
+  "headToHead",
   "manual",
 ];
 
@@ -120,12 +121,14 @@ export const DEFAULT_TEAM_TOURNAMENT_SETTINGS = {
 
 export const TEAM_AUDIT_ACTIONS = {
   TEAM_CREATE: "team.create",
+  TEAM_CLONE: "team.clone",
   TEAM_UPDATE: "team.update",
   TEAM_CAPTAIN_ASSIGN: "team.captain_assign",
   TEAM_CAPTAIN_CHANGE: "team.captain_change",
   TEAM_DEPUTY_ASSIGN: "team.deputy_assign",
   TEAM_PLAYER_ADD: "team.player_add",
   TEAM_PLAYER_REMOVE: "team.player_remove",
+  TEAM_SUBSTITUTION: "team.substitution",
   LINEUP_DRAFT: "team.lineup.draft",
   LINEUP_SUBMIT: "team.lineup.submit",
   LINEUP_UPDATE: "team.lineup.update",
@@ -140,4 +143,8 @@ export const TEAM_AUDIT_ACTIONS = {
   DREAMBREAKER_ORDER_SUBMIT: "team.dreambreaker.order_submit",
   DREAMBREAKER_ORDER_LOCK: "team.dreambreaker.order_lock",
   DREAMBREAKER_POINT: "team.dreambreaker.point",
+  KNOCKOUT_GENERATE: "team.knockout.generate",
+  AWARDS_UPDATE: "team.awards.update",
+  AWARDS_ASSIGN: "team.awards.assign",
+  TOURNAMENT_CLOSE: "team.tournament.close",
 };

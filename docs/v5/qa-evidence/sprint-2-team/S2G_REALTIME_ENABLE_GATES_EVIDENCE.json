@@ -1,0 +1,30 @@
+{
+  "reportType": "S2G_REALTIME_ENABLE_GATES",
+  "generatedAt": "2026-07-14T13:50:00.000Z",
+  "batch": "S2-G",
+  "gapId": "S2-GAP-060",
+  "productionFlagApplyAllowed": false,
+  "flagMatrix": {
+    "staging": "recommended_true",
+    "preview": "recommended_true",
+    "production": "must_remain_false_until_owner_go"
+  },
+  "reconnectPoll": {
+    "verdict": "PASS",
+    "source": "realtimeConnectionState + realtimePollingFallback + realtimeDeduplicator"
+  },
+  "captainIsolation": {
+    "verdict": "PASS",
+    "evidence": "docs/v5/qa-evidence/phase-tt6/TT6C_CAPTAIN_SECURITY_REPORT.json"
+  },
+  "multiDeviceSmokeRows": ["MD-01", "MD-02", "MD-03", "MD-04", "MD-05"],
+  "tt6Evidence": [
+    "docs/v5/qa-evidence/phase-tt6/TT6D_MULTI_DEVICE_BROWSER_REPORT.json",
+    "docs/v5/qa-evidence/phase-tt6/TT6C_RECONNECT_REPORT.json",
+    "docs/v5/qa-evidence/phase-tt6/TT6D_FLAG_CONTRACT.json"
+  ],
+  "unitTests": {
+    "file": "tests/team-tournament-realtime-enable-gates.test.js",
+    "ids": ["T-S2-G01", "T-S2-G02", "T-S2-G03", "T-S2-G04", "T-S2-G05", "T-S2-G06"]
+  }
+}
