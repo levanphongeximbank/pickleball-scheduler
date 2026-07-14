@@ -240,9 +240,24 @@ export function buildMyClubSummaryFromClub(club) {
     status: club.status,
     memberCount: club.activeMemberCount ?? 0,
     governance: club.governance || {},
+    ownerLabel: club.ownerLabel || null,
+    presidentLabel: club.presidentLabel || null,
     registeredClusterId: club.governance?.registeredClusterId || null,
     registeredCourtIds: [],
+    source: "v2-rpc",
   };
+}
+
+/** Home member count SoT when Club Storage V2 is on — never local extension. */
+export function resolveMyClubHomeMemberCount({ clubSummary, clubStats } = {}) {
+  if (isClubStorageV2Enabled()) {
+    const n = clubSummary?.memberCount;
+    return Number.isFinite(Number(n)) ? Number(n) : 0;
+  }
+  if (clubStats?.activeMemberCount != null) {
+    return Number(clubStats.activeMemberCount) || 0;
+  }
+  return Number(clubSummary?.memberCount) || 0;
 }
 
 /**

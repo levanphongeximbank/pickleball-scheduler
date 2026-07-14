@@ -99,12 +99,19 @@ export default function MyClubMembersPanel({
   user,
   manageHref = null,
   revision = 0,
+  activeMembershipClubId = null,
 }) {
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down("md"));
   const { can, rbacEnabled, isAuthenticated } = useAuth();
 
-  const fullAccess = clubRecord && user && canViewFullClubMembers(user, clubRecord);
+  const fullAccess = Boolean(
+    clubId &&
+      user &&
+      canViewFullClubMembers(user, clubRecord || { id: clubId }, {
+        activeMembershipClubId,
+      })
+  );
 
   const canManage =
     fullAccess &&

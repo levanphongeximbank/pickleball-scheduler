@@ -67,6 +67,7 @@ export function mapV2ClubToUiClub(row) {
     createdAt: row.created_at,
     updatedAt: row.updated_at,
     isDefault: false,
+    source: "v2-rpc",
   };
 }
 

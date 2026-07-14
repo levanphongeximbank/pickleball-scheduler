@@ -44,6 +44,7 @@ import {
   listPendingMembershipRequests,
   approveClubMembershipRequest,
   rejectClubMembershipRequest,
+  isClubStorageV2Enabled,
 } from "../../../features/club/index.js";
 import { formatPickVnRating } from "../../../features/pick-vn-rating/constants/pickVnRatingScale.js";
 import { writeAuditLog, AUDIT_ACTIONS } from "../../../features/identity/services/auditService.js";
@@ -74,7 +75,15 @@ export default function ClubMembersTab({ club, tenantId, onRefresh }) {
       try {
         const result = await listClubMembersAsync(club.id, tenantId);
         if (!cancelled) {
-          setMembers(result.ok ? result.members || [] : getClubMembers(club.id, tenantId));
+          if (result.ok) {
+            setMembers(result.members || []);
+          } else if (isClubStorageV2Enabled()) {
+            // V2 SoT: never fill from empty local extension when RPC fails.
+            setMembers([]);
+            setError(result.error || "Không tải được danh sách thành viên.");
+          } else {
+            setMembers(getClubMembers(club.id, tenantId));
+          }
         }
       } finally {
         if (!cancelled) {

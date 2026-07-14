@@ -166,6 +166,7 @@ export {
   canShowLeaveClub,
   stripLegacyProfileClubFields,
   buildMyClubSummaryFromClub,
+  resolveMyClubHomeMemberCount,
   getCachedMembershipSnapshot,
   resetMyActiveClubMembershipCache,
   invalidateMyActiveClubMembershipCache,
