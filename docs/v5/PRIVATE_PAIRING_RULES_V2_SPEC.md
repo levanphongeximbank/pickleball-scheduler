@@ -173,6 +173,8 @@ Tree/chips with labels + tooltips (not color-only): Prefer / Must / Avoid / Must
 
 Button **Mô phỏng ghép cặp**: selected candidate, balance/fairness scores, satisfied/missed soft rules, rejected candidates + reasons. SUPER_ADMIN only.
 
+**PR-4.5 engine (read-only):** `simulatePrivatePairing` under `src/features/private-pairing-rules/simulation/`. Flag `VITE_PRIVATE_PAIRING_SIMULATION_ENABLED` (default OFF). Returns Top N ranked candidates with explanation codes; does **not** apply pairings. Docs: `PRIVATE_PAIRING_RULES_V2_PR45_SIMULATION.md`.
+
 ---
 
 ## 11. Conflict detection

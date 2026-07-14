@@ -203,3 +203,9 @@ Mandatory: ACCC cloud-only fixture + club/membership/player/private-pairing adap
 ## 16. PR-4.26 Consumer Parity QA
 
 See [`PRIVATE_PAIRING_RULES_V2_PR426_PARITY_QA.md`](./PRIVATE_PAIRING_RULES_V2_PR426_PARITY_QA.md). Cross-consumer ACCC selectable playerId parity required when flags ON.
+
+---
+
+## 17. PR-4.5 Simulation QA
+
+See [`PRIVATE_PAIRING_RULES_V2_PR45_QA.md`](./PRIVATE_PAIRING_RULES_V2_PR45_QA.md) and benchmarks in [`PRIVATE_PAIRING_RULES_V2_PR45_BENCHMARK.md`](./PRIVATE_PAIRING_RULES_V2_PR45_BENCHMARK.md). Production simulation flag stays OFF.
