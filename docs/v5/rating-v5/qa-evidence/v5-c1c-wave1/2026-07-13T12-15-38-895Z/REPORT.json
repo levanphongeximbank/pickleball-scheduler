@@ -1,0 +1,83 @@
+{
+  "run_id": "2026-07-13T12-15-38-895Z",
+  "pass": 15,
+  "fail": 0,
+  "results": [
+    {
+      "id": "t01_staging_ref",
+      "status": "PASS",
+      "detail": "qyewbxjsiiyufanzcjcq"
+    },
+    {
+      "id": "t02_production_blocked",
+      "status": "PASS",
+      "detail": "no production ref"
+    },
+    {
+      "id": "t03_auth_mapping",
+      "status": "PASS",
+      "detail": "candidate_count=12"
+    },
+    {
+      "id": "t07_duplicates",
+      "status": "PASS",
+      "detail": "0 duplicates"
+    },
+    {
+      "id": "t04_player_mapping",
+      "status": "PASS",
+      "detail": "12 profiles aligned"
+    },
+    {
+      "id": "t05_tenant",
+      "status": "PASS",
+      "detail": "all tenants set"
+    },
+    {
+      "id": "t06_role",
+      "status": "PASS",
+      "detail": "all PLAYER"
+    },
+    {
+      "id": "t07b_enrollment_clean",
+      "status": "PASS",
+      "detail": "no wave0/active in cohort"
+    },
+    {
+      "id": "t07c_staging_email_only",
+      "status": "PASS",
+      "detail": "all @staging.local"
+    },
+    {
+      "id": "t07d_skill_bands",
+      "status": "PASS",
+      "detail": "{\"1.5-2.5\":4,\"3.0-3.5\":5,\"4.0-4.5\":3}"
+    },
+    {
+      "id": "t08_route_block",
+      "status": "PASS",
+      "detail": "PILOT_NOT_ENROLLED"
+    },
+    {
+      "id": "t09_edge_block",
+      "status": "PASS",
+      "detail": "PILOT_NOT_ENROLLED"
+    },
+    {
+      "id": "t10_secret_scan",
+      "status": "PASS",
+      "detail": "PASS"
+    },
+    {
+      "id": "t11_v2_unchanged",
+      "status": "PASS",
+      "detail": "isolated"
+    },
+    {
+      "id": "t12_production_isolation",
+      "status": "PASS",
+      "detail": "staging only"
+    }
+  ],
+  "manifest_slots": 12
+}

@@ -1,0 +1,120 @@
+{
+  "gate": "P1-C.7",
+  "run_id": "2026-07-14T00-59-18-676Z",
+  "production_url": "https://pickleball-scheduler-eight.vercel.app",
+  "production_ref": "expuvcohlcjzvrrauvud",
+  "enrolled_email": "lephong.banker@gmail.com",
+  "control_email": "lephong.eximbank@gmail.com",
+  "cohort": "club-rating-v5-production-wave-a",
+  "edgeCapture": {
+    "status": 200,
+    "ok": true
+  },
+  "v2_before": 0,
+  "v2_after": 0,
+  "completed_assessments": [
+    {
+      "id": "7e3331f7-97bb-4c3f-80eb-c01a986e85c0",
+      "player_id": "42c8ad99-3afd-4122-bf36-de1f6f9a302f",
+      "assessment_status": "completed",
+      "completed_at": "2026-07-14T00:59:43.320962+00:00",
+      "tenant_id": "venue-prod-main"
+    }
+  ],
+  "complete_events": [
+    {
+      "id": "23721a24-8cc2-407f-8c3a-efca0cfc557e",
+      "player_id": "42c8ad99-3afd-4122-bf36-de1f6f9a302f",
+      "event_type": "assessment_complete",
+      "created_at": "2026-07-14T00:59:43.320962+00:00"
+    }
+  ],
+  "profile_shadow": {
+    "is_shadow": true,
+    "rollout_cohort": "club-rating-v5-production-wave-a"
+  },
+  "results": [
+    {
+      "id": "t01_login_enrolled",
+      "status": "PASS",
+      "detail": "magic-link login lephong.banker@gmail.com"
+    },
+    {
+      "id": "t02_menu_v5",
+      "status": "PASS",
+      "detail": "menu visible"
+    },
+    {
+      "id": "t03_route_v5",
+      "status": "PASS",
+      "detail": "route loaded"
+    },
+    {
+      "id": "t04_draft_resume",
+      "status": "PASS",
+      "detail": "assessment 7e3331f7-97bb-4c3f-80eb-c01a986e85c0"
+    },
+    {
+      "id": "t05_complete_edge",
+      "status": "PASS",
+      "detail": "Edge ok status=200"
+    },
+    {
+      "id": "t06_shadow_notice",
+      "status": "PASS",
+      "detail": "provisional/shadow notice present"
+    },
+    {
+      "id": "t07_production_only",
+      "status": "PASS",
+      "detail": "no staging network hits"
+    },
+    {
+      "id": "t08_question_count",
+      "status": "FAIL",
+      "detail": "answered=0"
+    },
+    {
+      "id": "t09_control_menu_hidden",
+      "status": "PASS",
+      "detail": "menu hidden"
+    },
+    {
+      "id": "t10_control_route_blocked",
+      "status": "PASS",
+      "detail": "route blocked / no workspace"
+    },
+    {
+      "id": "t11_control_gate",
+      "status": "PASS",
+      "detail": "PILOT_NOT_ENROLLED"
+    },
+    {
+      "id": "t12_control_edge",
+      "status": "FAIL",
+      "detail": "{\"ok\":false,\"error\":{\"code\":\"ASSESSMENT_NOT_FOUND\",\"message\":\"Không tìm thấy bài đánh giá.\",\"requestId\":\"8f973d94-c0df-4644-9fc8-4ab366ee1a03\"},\"request_id\":\"8f973d94-c0df-4644-9fc8-4ab366ee1a03\",\"code\":\"ASSESSMENT_NOT_FOUND\"}"
+    },
+    {
+      "id": "t13_one_assessment",
+      "status": "PASS",
+      "detail": "7e3331f7-97bb-4c3f-80eb-c01a986e85c0"
+    },
+    {
+      "id": "t14_one_event",
+      "status": "PASS",
+      "detail": "23721a24-8cc2-407f-8c3a-efca0cfc557e"
+    },
+    {
+      "id": "t15_v2_isolation",
+      "status": "PASS",
+      "detail": "v2=0"
+    },
+    {
+      "id": "t16_shadow_profile",
+      "status": "PASS",
+      "detail": "is_shadow=true fields=rollout_cohort,profile_version"
+    }
+  ],
+  "pass_count": 14,
+  "fail_count": 2
+}

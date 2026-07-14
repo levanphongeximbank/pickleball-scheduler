@@ -1,0 +1,42 @@
+{
+  "generatedAt": "2026-07-12T12:04:59.521Z",
+  "phase": "TT-4-STANDINGS",
+  "stagingRef": "qyewbxjsiiyufanzcjcq",
+  "productionImpact": "NONE",
+  "localCommitSha": "afbd6ab8c365313430f6a376e85e646e6e811476",
+  "sqlPatches": [
+    "docs/v5/PHASE_TT4_FORFEIT_WITHDRAWAL.sql",
+    "docs/v5/PHASE_TT4_GET_SETUP_PATCH.sql"
+  ],
+  "probe": {
+    "tournamentId": "phase23d-probe-tournament",
+    "teamA": "phase23d-team-a",
+    "teamB": "phase23d-team-b",
+    "matchupId": "phase23d-matchup-1"
+  },
+  "cases": [
+    {
+      "id": "S01",
+      "name": "affectsElo false",
+      "pass": true,
+      "affectsElo": false
+    },
+    {
+      "id": "S02",
+      "name": "matchup result updated after forfeit",
+      "pass": true,
+      "result": {
+        "teamAWins": 0,
+        "teamBWins": 1,
+        "teamAPoints": 0,
+        "teamBPoints": 11,
+        "winnerTeamId": "phase23d-team-b"
+      }
+    }
+  ],
+  "verdict": "PASS",
+  "reportFile": "TT4_STANDINGS_IMPACT_REPORT.json",
+  "passCount": 2,
+  "totalCount": 2,
+  "allPass": true
+}

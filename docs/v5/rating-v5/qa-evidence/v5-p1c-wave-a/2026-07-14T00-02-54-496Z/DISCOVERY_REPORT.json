@@ -1,0 +1,171 @@
+{
+  "run_id": "2026-07-14T00-02-54-496Z",
+  "mode": "dry-run",
+  "production_ref": "expuvcohlcjzvrrauvud",
+  "production_changed": false,
+  "allow_v5_assessment": false,
+  "active_enrollments": 0,
+  "v2_rows": 0,
+  "candidate_count": 5,
+  "ready_count": 0,
+  "duplicate_email_count": 0,
+  "rows": [
+    {
+      "slot": "WA-01",
+      "email": "tudotaichinhtuoi29@gmail.com",
+      "display_name": "Lương Hữu Kiên",
+      "expected_skill_band": "1.5-2.5",
+      "auth": "yes",
+      "profile": "yes",
+      "player_id": "",
+      "club_membership": "active",
+      "skill_band": "1.5-2.5",
+      "result": "NEEDS_PLAYER_LINK",
+      "link_plan": {
+        "auth_user_id": "c13392ab-fc7e-483a-9b31-ba08d94a69a9",
+        "email": "tudotaichinhtuoi29@gmail.com",
+        "current_player_id": null,
+        "proposed_player_id": "player-auth-c13392ab-fc7e-483a-9b31-ba08d94a69a9",
+        "action": "UPDATE profiles.player_id (idempotent — only if null)",
+        "club_blob_note": "club_data_v3 empty for pilot club — may require club roster sync via app/RPC in separate owner step",
+        "duplicate_guard": "skip if another profile already has player_id='player-auth-c13392ab-fc7e-483a-9b31-ba08d94a69a9'"
+      },
+      "apply_result": null
+    },
+    {
+      "slot": "WA-02",
+      "email": "hoangmanhluong2405@gmail.com",
+      "display_name": "Hoàng Mạnh Lương",
+      "expected_skill_band": "3.0-3.5",
+      "auth": "yes",
+      "profile": "yes",
+      "player_id": "",
+      "club_membership": "active",
+      "skill_band": "3.0-3.5",
+      "result": "NEEDS_PLAYER_LINK",
+      "link_plan": {
+        "auth_user_id": "6e77321e-1182-4174-a08a-3ee2d1833c7c",
+        "email": "hoangmanhluong2405@gmail.com",
+        "current_player_id": null,
+        "proposed_player_id": "player-auth-6e77321e-1182-4174-a08a-3ee2d1833c7c",
+        "action": "UPDATE profiles.player_id (idempotent — only if null)",
+        "club_blob_note": "club_data_v3 empty for pilot club — may require club roster sync via app/RPC in separate owner step",
+        "duplicate_guard": "skip if another profile already has player_id='player-auth-6e77321e-1182-4174-a08a-3ee2d1833c7c'"
+      },
+      "apply_result": null
+    },
+    {
+      "slot": "WA-03",
+      "email": "lephong.banker@gmail.com",
+      "display_name": "Lê Văn Phong",
+      "expected_skill_band": "3.0-3.5",
+      "auth": "yes",
+      "profile": "yes",
+      "player_id": "",
+      "club_membership": "active",
+      "skill_band": "3.0-3.5",
+      "result": "NEEDS_PLAYER_LINK",
+      "link_plan": {
+        "auth_user_id": "42c8ad99-3afd-4122-bf36-de1f6f9a302f",
+        "email": "lephong.banker@gmail.com",
+        "current_player_id": null,
+        "proposed_player_id": "player-auth-42c8ad99-3afd-4122-bf36-de1f6f9a302f",
+        "action": "UPDATE profiles.player_id (idempotent — only if null)",
+        "club_blob_note": "club_data_v3 empty for pilot club — may require club roster sync via app/RPC in separate owner step",
+        "duplicate_guard": "skip if another profile already has player_id='player-auth-42c8ad99-3afd-4122-bf36-de1f6f9a302f'"
+      },
+      "apply_result": null
+    },
+    {
+      "slot": "WA-04",
+      "email": "gionam76@gmail.com",
+      "display_name": "Đình Phong",
+      "expected_skill_band": "3.0-3.5",
+      "auth": "yes",
+      "profile": "yes",
+      "player_id": "",
+      "club_membership": "active",
+      "skill_band": "3.0-3.5",
+      "result": "NEEDS_PLAYER_LINK",
+      "link_plan": {
+        "auth_user_id": "6ff822c6-c1b6-4ce0-9e20-61f7afc74a88",
+        "email": "gionam76@gmail.com",
+        "current_player_id": null,
+        "proposed_player_id": "player-auth-6ff822c6-c1b6-4ce0-9e20-61f7afc74a88",
+        "action": "UPDATE profiles.player_id (idempotent — only if null)",
+        "club_blob_note": "club_data_v3 empty for pilot club — may require club roster sync via app/RPC in separate owner step",
+        "duplicate_guard": "skip if another profile already has player_id='player-auth-6ff822c6-c1b6-4ce0-9e20-61f7afc74a88'"
+      },
+      "apply_result": null
+    },
+    {
+      "slot": "WA-05",
+      "email": "huonganna120193@gmail.com",
+      "display_name": "Nguyễn Thị Hương",
+      "expected_skill_band": "1.5-2.5",
+      "auth": "yes",
+      "profile": "yes",
+      "player_id": "",
+      "club_membership": "active",
+      "skill_band": "1.5-2.5",
+      "result": "NEEDS_PLAYER_LINK",
+      "link_plan": {
+        "auth_user_id": "f776d627-a9f2-4c0c-8d81-bda239cc923b",
+        "email": "huonganna120193@gmail.com",
+        "current_player_id": null,
+        "proposed_player_id": "player-auth-f776d627-a9f2-4c0c-8d81-bda239cc923b",
+        "action": "UPDATE profiles.player_id (idempotent — only if null)",
+        "club_blob_note": "club_data_v3 empty for pilot club — may require club roster sync via app/RPC in separate owner step",
+        "duplicate_guard": "skip if another profile already has player_id='player-auth-f776d627-a9f2-4c0c-8d81-bda239cc923b'"
+      },
+      "apply_result": null
+    }
+  ],
+  "link_plans": [
+    {
+      "auth_user_id": "c13392ab-fc7e-483a-9b31-ba08d94a69a9",
+      "email": "tudotaichinhtuoi29@gmail.com",
+      "current_player_id": null,
+      "proposed_player_id": "player-auth-c13392ab-fc7e-483a-9b31-ba08d94a69a9",
+      "action": "UPDATE profiles.player_id (idempotent — only if null)",
+      "club_blob_note": "club_data_v3 empty for pilot club — may require club roster sync via app/RPC in separate owner step",
+      "duplicate_guard": "skip if another profile already has player_id='player-auth-c13392ab-fc7e-483a-9b31-ba08d94a69a9'"
+    },
+    {
+      "auth_user_id": "6e77321e-1182-4174-a08a-3ee2d1833c7c",
+      "email": "hoangmanhluong2405@gmail.com",
+      "current_player_id": null,
+      "proposed_player_id": "player-auth-6e77321e-1182-4174-a08a-3ee2d1833c7c",
+      "action": "UPDATE profiles.player_id (idempotent — only if null)",
+      "club_blob_note": "club_data_v3 empty for pilot club — may require club roster sync via app/RPC in separate owner step",
+      "duplicate_guard": "skip if another profile already has player_id='player-auth-6e77321e-1182-4174-a08a-3ee2d1833c7c'"
+    },
+    {
+      "auth_user_id": "42c8ad99-3afd-4122-bf36-de1f6f9a302f",
+      "email": "lephong.banker@gmail.com",
+      "current_player_id": null,
+      "proposed_player_id": "player-auth-42c8ad99-3afd-4122-bf36-de1f6f9a302f",
+      "action": "UPDATE profiles.player_id (idempotent — only if null)",
+      "club_blob_note": "club_data_v3 empty for pilot club — may require club roster sync via app/RPC in separate owner step",
+      "duplicate_guard": "skip if another profile already has player_id='player-auth-42c8ad99-3afd-4122-bf36-de1f6f9a302f'"
+    },
+    {
+      "auth_user_id": "6ff822c6-c1b6-4ce0-9e20-61f7afc74a88",
+      "email": "gionam76@gmail.com",
+      "current_player_id": null,
+      "proposed_player_id": "player-auth-6ff822c6-c1b6-4ce0-9e20-61f7afc74a88",
+      "action": "UPDATE profiles.player_id (idempotent — only if null)",
+      "club_blob_note": "club_data_v3 empty for pilot club — may require club roster sync via app/RPC in separate owner step",
+      "duplicate_guard": "skip if another profile already has player_id='player-auth-6ff822c6-c1b6-4ce0-9e20-61f7afc74a88'"
+    },
+    {
+      "auth_user_id": "f776d627-a9f2-4c0c-8d81-bda239cc923b",
+      "email": "huonganna120193@gmail.com",
+      "current_player_id": null,
+      "proposed_player_id": "player-auth-f776d627-a9f2-4c0c-8d81-bda239cc923b",
+      "action": "UPDATE profiles.player_id (idempotent — only if null)",
+      "club_blob_note": "club_data_v3 empty for pilot club — may require club roster sync via app/RPC in separate owner step",
+      "duplicate_guard": "skip if another profile already has player_id='player-auth-f776d627-a9f2-4c0c-8d81-bda239cc923b'"
+    }
+  ]
+}

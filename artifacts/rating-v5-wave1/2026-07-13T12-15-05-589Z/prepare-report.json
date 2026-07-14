@@ -1,0 +1,106 @@
+{
+  "run_id": "2026-07-13T12-15-05-589Z",
+  "dry_run": false,
+  "staging_ref": "qyewbxjsiiyufanzcjcq",
+  "candidate_count": 12,
+  "account_reports": [
+    {
+      "slot": "W1-01",
+      "email": "qa42l.nomember@staging.local",
+      "action": "verified",
+      "auth_user_id": "c53681eb-2cec-4971-93c0-31eace84a36c",
+      "audit": "READY",
+      "enrollment_status": "none"
+    },
+    {
+      "slot": "W1-02",
+      "email": "club@staging.local",
+      "action": "verified",
+      "auth_user_id": "48a85745-900b-4703-80f7-d1dd8a82b081",
+      "audit": "READY",
+      "enrollment_status": "none"
+    },
+    {
+      "slot": "W1-03",
+      "email": "rating.wave1.01@staging.local",
+      "action": "created",
+      "auth_user_id": "b5f1fdf9-ca63-4c7c-90b5-52e7199e3555",
+      "audit": "READY",
+      "enrollment_status": "none"
+    },
+    {
+      "slot": "W1-04",
+      "email": "rating.wave1.02@staging.local",
+      "action": "created",
+      "auth_user_id": "33a44ed9-f8e0-4028-83e4-aa6867950fbc",
+      "audit": "READY",
+      "enrollment_status": "none"
+    },
+    {
+      "slot": "W1-05",
+      "email": "rating.wave1.03@staging.local",
+      "action": "created",
+      "auth_user_id": "fa9fb320-b635-462c-875c-b16df0c3de00",
+      "audit": "READY",
+      "enrollment_status": "none"
+    },
+    {
+      "slot": "W1-06",
+      "email": "rating.wave1.04@staging.local",
+      "action": "created",
+      "auth_user_id": "73749b6a-58aa-4a06-b0d5-cecdd8002e41",
+      "audit": "READY",
+      "enrollment_status": "none"
+    },
+    {
+      "slot": "W1-07",
+      "email": "rating.wave1.05@staging.local",
+      "action": "created",
+      "auth_user_id": "be3339d0-02c0-4795-8171-1cc9da222e60",
+      "audit": "READY",
+      "enrollment_status": "none"
+    },
+    {
+      "slot": "W1-08",
+      "email": "rating.wave1.06@staging.local",
+      "action": "created",
+      "auth_user_id": "cdf69ef5-40fd-42f4-bcac-165e2f144156",
+      "audit": "READY",
+      "enrollment_status": "none"
+    },
+    {
+      "slot": "W1-09",
+      "email": "rating.wave1.07@staging.local",
+      "action": "created",
+      "auth_user_id": "06bf7e4f-5430-4569-a9a3-80e32044d984",
+      "audit": "READY",
+      "enrollment_status": "none"
+    },
+    {
+      "slot": "W1-10",
+      "email": "rating.wave1.08@staging.local",
+      "action": "created",
+      "auth_user_id": "66dbde7b-eaff-4348-aadd-e53a336ddc66",
+      "audit": "READY",
+      "enrollment_status": "none"
+    },
+    {
+      "slot": "W1-11",
+      "email": "rating.wave1.09@staging.local",
+      "action": "created",
+      "auth_user_id": "9bfeb586-387c-4abd-83e1-47e49b0e4d89",
+      "audit": "READY",
+      "enrollment_status": "none"
+    },
+    {
+      "slot": "W1-12",
+      "email": "rating.wave1.10@staging.local",
+      "action": "created",
+      "auth_user_id": "eb08397a-3a24-4045-a4f1-8a16a995f10d",
+      "audit": "READY",
+      "enrollment_status": "none"
+    }
+  ],
+  "cohort_csv": "C:\\Users\\Le Phong\\pickleball-scheduler\\docs\\v5\\rating-v5\\V5-C1C_WAVE1_COHORT_REVIEW.csv",
+  "secret_scan_pass": true
+}

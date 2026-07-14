@@ -1,0 +1,62 @@
+{
+  "generatedAt": "2026-07-12T12:04:59.473Z",
+  "phase": "TT-4-FORFEIT",
+  "stagingRef": "qyewbxjsiiyufanzcjcq",
+  "productionImpact": "NONE",
+  "localCommitSha": "afbd6ab8c365313430f6a376e85e646e6e811476",
+  "sqlPatches": [
+    "docs/v5/PHASE_TT4_FORFEIT_WITHDRAWAL.sql",
+    "docs/v5/PHASE_TT4_GET_SETUP_PATCH.sql"
+  ],
+  "probe": {
+    "tournamentId": "phase23d-probe-tournament",
+    "teamA": "phase23d-team-a",
+    "teamB": "phase23d-team-b",
+    "matchupId": "phase23d-matchup-1"
+  },
+  "cases": [
+    {
+      "id": "F01",
+      "name": "reason required",
+      "pass": true,
+      "code": "forfeit_reason_required"
+    },
+    {
+      "id": "F02",
+      "name": "apply valid forfeit",
+      "pass": true,
+      "result": {
+        "ok": true,
+        "score": {
+          "games": [],
+          "teamA": 0,
+          "teamB": 11
+        },
+        "eventId": "5665782d-3c9f-40fa-a3d1-b4cf11cf2994",
+        "version": 6,
+        "affectsElo": false,
+        "winnerTeamId": "phase23d-team-b",
+        "matchupResult": {
+          "ok": true,
+          "teamAWins": 0,
+          "teamBWins": 1,
+          "teamAPoints": 0,
+          "teamBPoints": 11,
+          "winnerTeamId": "phase23d-team-b",
+          "matchupCompleted": false
+        }
+      }
+    },
+    {
+      "id": "F03",
+      "name": "confirmed result blocked",
+      "pass": true,
+      "code": "forfeit_blocked_confirmed_result"
+    }
+  ],
+  "verdict": "PASS",
+  "reportFile": "TT4_FORFEIT_REPORT.json",
+  "passCount": 3,
+  "totalCount": 3,
+  "allPass": true
+}

@@ -1,0 +1,188 @@
+[
+  {
+    "check_id": "V2.all_tt1b_tables",
+    "expected": "all 5 TT-1B tables present",
+    "actual": "5/5 present",
+    "status": "PASS"
+  },
+  {
+    "check_id": "V2.team_tournament_command_log.exists",
+    "expected": "table exists in public schema",
+    "actual": "present",
+    "status": "PASS"
+  },
+  {
+    "check_id": "V2.team_tournament_dreambreaker_states.exists",
+    "expected": "table exists in public schema",
+    "actual": "present",
+    "status": "PASS"
+  },
+  {
+    "check_id": "V2.team_tournament_forfeit_events.exists",
+    "expected": "table exists in public schema",
+    "actual": "present",
+    "status": "PASS"
+  },
+  {
+    "check_id": "V2.team_tournament_lineup_revisions.exists",
+    "expected": "table exists in public schema",
+    "actual": "present",
+    "status": "PASS"
+  },
+  {
+    "check_id": "V2.team_tournament_sync_mismatch.exists",
+    "expected": "table exists in public schema",
+    "actual": "present",
+    "status": "PASS"
+  },
+  {
+    "check_id": "V3.lineup_no_direct_select_bypass",
+    "expected": "no SELECT policy; ALL policies require manage or super_admin",
+    "actual": "0 SELECT; 0 ALL without manage",
+    "status": "PASS"
+  },
+  {
+    "check_id": "V3.team_tournament_command_log_manage.manage_role_expected",
+    "expected": "is_super_admin() OR team_tournament_can_manage() [dreambreaker/forfeit: tenant + manage]",
+    "actual": "(is_super_admin() OR team_tournament_can_manage())",
+    "status": "PASS"
+  },
+  {
+    "check_id": "V3.team_tournament_dreambreaker_manage.manage_role_expected",
+    "expected": "is_super_admin() OR team_tournament_can_manage() [dreambreaker/forfeit: tenant + manage]",
+    "actual": "(is_super_admin() OR (tenant_id = ( SELECT profiles.venue_id\n   FROM profiles\n  WHERE (profiles.id = auth.uid()))))",
+    "status": "PASS"
+  },
+  {
+    "check_id": "V3.team_tournament_forfeit_manage.manage_role_expected",
+    "expected": "is_super_admin() OR team_tournament_can_manage() [dreambreaker/forfeit: tenant + manage]",
+    "actual": "(is_super_admin() OR (tenant_id = ( SELECT profiles.venue_id\n   FROM profiles\n  WHERE (profiles.id = auth.uid()))))",
+    "status": "PASS"
+  },
+  {
+    "check_id": "V3.team_tournament_lineup_entries.anon_select_rls_blocked",
+    "expected": "RLS blocks anon reads (no tenant_select policy; write requires manage)",
+    "actual": "Supabase default grant; RLS + no broad SELECT policy",
+    "status": "PASS"
+  },
+  {
+    "check_id": "V3.team_tournament_lineup_entries.authenticated_select_rls_blocked",
+    "expected": "no broad tenant SELECT for captain/player (manage-only ALL policy OK)",
+    "actual": "no tenant_select policy",
+    "status": "PASS"
+  },
+  {
+    "check_id": "V3.team_tournament_lineup_entries.no_anon_select_grant",
+    "expected": "no direct GRANT SELECT to anon role (information_schema)",
+    "actual": "1",
+    "status": "PASS"
+  },
+  {
+    "check_id": "V3.team_tournament_lineup_entries.no_broad_tenant_select",
+    "expected": "0 broad tenant SELECT policies (captain/player leak)",
+    "actual": "0",
+    "status": "PASS"
+  },
+  {
+    "check_id": "V3.team_tournament_lineup_entries.rls_enabled",
+    "expected": "RLS enabled (relrowsecurity=true)",
+    "actual": "enabled",
+    "status": "PASS"
+  },
+  {
+    "check_id": "V3.team_tournament_lineup_entries.write_policy_exists",
+    "expected": "tenant_write policy for RPC security-definer writes",
+    "actual": "team_tournament_lineup_entries_tenant_write",
+    "status": "PASS"
+  },
+  {
+    "check_id": "V3.team_tournament_lineup_entries.write_policy_requires_manage",
+    "expected": "tenant_write USING includes team_tournament_can_manage()",
+    "actual": "(is_super_admin() OR ((tenant_id = ( SELECT profiles.venue_id\n   FROM profiles\n  WHERE (profiles.id = auth.uid()))) AND ",
+    "status": "PASS"
+  },
+  {
+    "check_id": "V3.team_tournament_lineup_revisions_manage.manage_role_expected",
+    "expected": "is_super_admin() OR team_tournament_can_manage() [dreambreaker/forfeit: tenant + manage]",
+    "actual": "(is_super_admin() OR team_tournament_can_manage())",
+    "status": "PASS"
+  },
+  {
+    "check_id": "V3.team_tournament_lineups.anon_select_rls_blocked",
+    "expected": "RLS blocks anon reads (no tenant_select policy; write requires manage)",
+    "actual": "Supabase default grant; RLS + no broad SELECT policy",
+    "status": "PASS"
+  },
+  {
+    "check_id": "V3.team_tournament_lineups.authenticated_select_rls_blocked",
+    "expected": "no broad tenant SELECT for captain/player (manage-only ALL policy OK)",
+    "actual": "no tenant_select policy",
+    "status": "PASS"
+  },
+  {
+    "check_id": "V3.team_tournament_lineups.no_anon_select_grant",
+    "expected": "no direct GRANT SELECT to anon role (information_schema)",
+    "actual": "1",
+    "status": "PASS"
+  },
+  {
+    "check_id": "V3.team_tournament_lineups.no_broad_tenant_select",
+    "expected": "0 broad tenant SELECT policies (captain/player leak)",
+    "actual": "0",
+    "status": "PASS"
+  },
+  {
+    "check_id": "V3.team_tournament_lineups.rls_enabled",
+    "expected": "RLS enabled (relrowsecurity=true)",
+    "actual": "enabled",
+    "status": "PASS"
+  },
+  {
+    "check_id": "V3.team_tournament_lineups.write_policy_exists",
+    "expected": "tenant_write policy for RPC security-definer writes",
+    "actual": "team_tournament_lineups_tenant_write",
+    "status": "PASS"
+  },
+  {
+    "check_id": "V3.team_tournament_lineups.write_policy_requires_manage",
+    "expected": "tenant_write USING includes team_tournament_can_manage()",
+    "actual": "(is_super_admin() OR ((tenant_id = ( SELECT profiles.venue_id\n   FROM profiles\n  WHERE (profiles.id = auth.uid()))) AND ",
+    "status": "PASS"
+  },
+  {
+    "check_id": "V3.team_tournament_sync_mismatch_manage.manage_role_expected",
+    "expected": "is_super_admin() OR team_tournament_can_manage() [dreambreaker/forfeit: tenant + manage]",
+    "actual": "(is_super_admin() OR team_tournament_can_manage())",
+    "status": "PASS"
+  },
+  {
+    "check_id": "V4.team_tournament_command_log.unique_columns",
+    "expected": "tenant_id, tournament_id, command_name, idempotency_key",
+    "actual": "team_tournament_command_log_tenant_id_tournament_id_command_key: tenant_id, tournament_id, command_name, idempotency_key",
+    "status": "PASS"
+  },
+  {
+    "check_id": "V4.team_tournament_dreambreaker_states.unique_columns",
+    "expected": "matchup_id",
+    "actual": "team_tournament_dreambreaker_states_matchup_id_key: matchup_id",
+    "status": "PASS"
+  },
+  {
+    "check_id": "V4.team_tournament_forfeit_events.unique_columns",
+    "expected": "tenant_id, tournament_id, idempotency_key",
+    "actual": "team_tournament_forfeit_event_tenant_id_tournament_id_idemp_key: tenant_id, tournament_id, idempotency_key",
+    "status": "PASS"
+  },
+  {
+    "check_id": "V4.team_tournament_lineup_revisions.unique_columns",
+    "expected": "lineup_id, revision_no",
+    "actual": "team_tournament_lineup_revisions_lineup_id_revision_no_key: lineup_id, revision_no",
+    "status": "PASS"
+  },
+  {
+    "check_id": "V4.team_tournament_lineups.unique_columns",
+    "expected": "matchup_id, team_external_id",
+    "actual": "team_tournament_lineups_matchup_id_team_external_id_key: matchup_id, team_external_id",
+    "status": "PASS"
+  }
+]

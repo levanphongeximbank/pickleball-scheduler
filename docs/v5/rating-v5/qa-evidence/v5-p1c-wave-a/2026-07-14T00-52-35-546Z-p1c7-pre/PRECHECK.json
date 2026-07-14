@@ -1,0 +1,64 @@
+{
+  "branch": "feature/rating-v5-production-wave-a",
+  "git_sha": "add62869e558fc65ac9a08fdea32cea896a1e857",
+  "production_ref": "expuvcohlcjzvrrauvud",
+  "url": "https://expuvcohlcjzvrrauvud.supabase.co",
+  "rollout": {
+    "id": "default",
+    "shadow_mode_enabled": true,
+    "pilot_cohort_label": "club-rating-v5-production-wave-a",
+    "allow_v5_assessment": true,
+    "allow_v5_profile_write": true,
+    "compare_v2_enabled": true,
+    "effective_from": "2026-07-13T15:29:09.531699+00:00",
+    "effective_to": null,
+    "updated_at": "2026-07-14T00:44:38.584+00:00",
+    "updated_by": null,
+    "max_completed_assessments": 1,
+    "cooldown_days": 7,
+    "allow_manual_reassessment": true,
+    "reassessment_requires_approval": true
+  },
+  "active_wave_a": 5,
+  "wave_rows": [
+    {
+      "player_id": "c13392ab-fc7e-483a-9b31-ba08d94a69a9",
+      "status": "active",
+      "cohort_label": "club-rating-v5-production-wave-a",
+      "tenant_id": "venue-prod-main"
+    },
+    {
+      "player_id": "6e77321e-1182-4174-a08a-3ee2d1833c7c",
+      "status": "active",
+      "cohort_label": "club-rating-v5-production-wave-a",
+      "tenant_id": "venue-prod-main"
+    },
+    {
+      "player_id": "42c8ad99-3afd-4122-bf36-de1f6f9a302f",
+      "status": "active",
+      "cohort_label": "club-rating-v5-production-wave-a",
+      "tenant_id": "venue-prod-main"
+    },
+    {
+      "player_id": "6ff822c6-c1b6-4ce0-9e20-61f7afc74a88",
+      "status": "active",
+      "cohort_label": "club-rating-v5-production-wave-a",
+      "tenant_id": "venue-prod-main"
+    },
+    {
+      "player_id": "f776d627-a9f2-4c0c-8d81-bda239cc923b",
+      "status": "active",
+      "cohort_label": "club-rating-v5-production-wave-a",
+      "tenant_id": "venue-prod-main"
+    }
+  ],
+  "v2": 0,
+  "events": 0,
+  "edge": {
+    "url": "https://expuvcohlcjzvrrauvud.supabase.co/functions/v1/rating-v5-complete-assessment",
+    "options_status": 204,
+    "allow_origin_prod": "https://pickleball-scheduler-eight.vercel.app",
+    "allow_origin_evil": null,
+    "cors_ok": true
+  }
+}

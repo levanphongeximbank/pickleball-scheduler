@@ -1,0 +1,857 @@
+{
+  "networkLog": [
+    {
+      "type": "staging_supabase",
+      "url": "https://qyewbxjsiiyufanzcjcq.supabase.co/auth/v1/token?grant_type=password",
+      "method": "POST"
+    },
+    {
+      "type": "staging_supabase",
+      "url": "https://qyewbxjsiiyufanzcjcq.supabase.co/rest/v1/profiles?select=*&id=eq.7b381912-2190-415c-b099-6b1e87567b7a",
+      "method": "GET"
+    },
+    {
+      "type": "staging_supabase",
+      "url": "https://qyewbxjsiiyufanzcjcq.supabase.co/rest/v1/profiles?select=*&id=eq.7b381912-2190-415c-b099-6b1e87567b7a",
+      "method": "GET"
+    },
+    {
+      "type": "staging_supabase",
+      "url": "https://qyewbxjsiiyufanzcjcq.supabase.co/rest/v1/profiles?select=*&id=eq.7b381912-2190-415c-b099-6b1e87567b7a",
+      "method": "GET"
+    },
+    {
+      "type": "staging_supabase",
+      "url": "https://qyewbxjsiiyufanzcjcq.supabase.co/rest/v1/rpc/club_get_my_active_membership",
+      "method": "POST"
+    },
+    {
+      "type": "staging_supabase",
+      "url": "https://qyewbxjsiiyufanzcjcq.supabase.co/rest/v1/profiles?select=*&id=eq.7b381912-2190-415c-b099-6b1e87567b7a",
+      "method": "GET"
+    },
+    {
+      "type": "staging_supabase",
+      "url": "https://qyewbxjsiiyufanzcjcq.supabase.co/rest/v1/audit_logs?select=*",
+      "method": "POST"
+    },
+    {
+      "type": "staging_supabase",
+      "url": "https://qyewbxjsiiyufanzcjcq.supabase.co/rest/v1/profiles?select=*&id=eq.7b381912-2190-415c-b099-6b1e87567b7a",
+      "method": "GET"
+    },
+    {
+      "type": "staging_supabase",
+      "url": "https://qyewbxjsiiyufanzcjcq.supabase.co/rest/v1/plans?select=*",
+      "method": "GET"
+    },
+    {
+      "type": "staging_supabase",
+      "url": "https://qyewbxjsiiyufanzcjcq.supabase.co/rest/v1/venues?select=id%2Cname%2Cstatus&id=eq.venue-staging-a",
+      "method": "GET"
+    },
+    {
+      "type": "staging_supabase",
+      "url": "https://qyewbxjsiiyufanzcjcq.supabase.co/rest/v1/profiles?select=*&id=eq.7b381912-2190-415c-b099-6b1e87567b7a",
+      "method": "GET"
+    },
+    {
+      "type": "staging_supabase",
+      "url": "https://qyewbxjsiiyufanzcjcq.supabase.co/rest/v1/profiles?select=*&id=eq.7b381912-2190-415c-b099-6b1e87567b7a",
+      "method": "GET"
+    },
+    {
+      "type": "staging_supabase",
+      "url": "https://qyewbxjsiiyufanzcjcq.supabase.co/rest/v1/profiles?select=*&id=eq.7b381912-2190-415c-b099-6b1e87567b7a",
+      "method": "GET"
+    },
+    {
+      "type": "staging_supabase",
+      "url": "https://qyewbxjsiiyufanzcjcq.supabase.co/rest/v1/plans?select=*",
+      "method": "GET"
+    },
+    {
+      "type": "staging_supabase",
+      "url": "https://qyewbxjsiiyufanzcjcq.supabase.co/rest/v1/venues?select=id%2Cname%2Cstatus&id=eq.venue-staging-a",
+      "method": "GET"
+    },
+    {
+      "type": "staging_supabase",
+      "url": "https://qyewbxjsiiyufanzcjcq.supabase.co/rest/v1/profiles?select=*&id=eq.7b381912-2190-415c-b099-6b1e87567b7a",
+      "method": "GET"
+    },
+    {
+      "type": "staging_supabase",
+      "url": "https://qyewbxjsiiyufanzcjcq.supabase.co/rest/v1/profiles?select=*&id=eq.7b381912-2190-415c-b099-6b1e87567b7a",
+      "method": "GET"
+    },
+    {
+      "type": "staging_supabase",
+      "url": "https://qyewbxjsiiyufanzcjcq.supabase.co/rest/v1/profiles?select=*&id=eq.7b381912-2190-415c-b099-6b1e87567b7a",
+      "method": "GET"
+    },
+    {
+      "type": "staging_supabase",
+      "url": "https://qyewbxjsiiyufanzcjcq.supabase.co/rest/v1/plan_limits?select=*",
+      "method": "GET"
+    },
+    {
+      "type": "staging_supabase",
+      "url": "https://qyewbxjsiiyufanzcjcq.supabase.co/rest/v1/profiles?select=*&id=eq.7b381912-2190-415c-b099-6b1e87567b7a",
+      "method": "GET"
+    },
+    {
+      "type": "staging_supabase",
+      "url": "https://qyewbxjsiiyufanzcjcq.supabase.co/rest/v1/profiles?select=*&id=eq.7b381912-2190-415c-b099-6b1e87567b7a",
+      "method": "GET"
+    },
+    {
+      "type": "staging_supabase",
+      "url": "https://qyewbxjsiiyufanzcjcq.supabase.co/rest/v1/tenant_subscriptions?select=*",
+      "method": "GET"
+    },
+    {
+      "type": "staging_supabase",
+      "url": "https://qyewbxjsiiyufanzcjcq.supabase.co/rest/v1/profiles?select=*&id=eq.7b381912-2190-415c-b099-6b1e87567b7a",
+      "method": "GET"
+    },
+    {
+      "type": "staging_supabase",
+      "url": "https://qyewbxjsiiyufanzcjcq.supabase.co/rest/v1/profiles?select=*&id=eq.7b381912-2190-415c-b099-6b1e87567b7a",
+      "method": "GET"
+    },
+    {
+      "type": "staging_supabase",
+      "url": "https://qyewbxjsiiyufanzcjcq.supabase.co/rest/v1/invoices?select=*",
+      "method": "GET"
+    },
+    {
+      "type": "staging_supabase",
+      "url": "https://qyewbxjsiiyufanzcjcq.supabase.co/rest/v1/invoice_items?select=*",
+      "method": "GET"
+    },
+    {
+      "type": "staging_supabase",
+      "url": "https://qyewbxjsiiyufanzcjcq.supabase.co/rest/v1/rating_v5_rollout_config?select=shadow_mode_enabled%2Cpilot_cohort_label%2Callow_v5_assessment%2Ccompare_v2_enabled&id=eq.default",
+      "method": "GET"
+    },
+    {
+      "type": "staging_supabase",
+      "url": "https://qyewbxjsiiyufanzcjcq.supabase.co/rest/v1/payments?select=*",
+      "method": "GET"
+    },
+    {
+      "type": "staging_supabase",
+      "url": "https://qyewbxjsiiyufanzcjcq.supabase.co/rest/v1/rpc/rating_v5_get_profile",
+      "method": "POST"
+    },
+    {
+      "type": "staging_supabase",
+      "url": "https://qyewbxjsiiyufanzcjcq.supabase.co/rest/v1/profiles?select=*&id=eq.7b381912-2190-415c-b099-6b1e87567b7a",
+      "method": "GET"
+    },
+    {
+      "type": "staging_supabase",
+      "url": "https://qyewbxjsiiyufanzcjcq.supabase.co/rest/v1/billing_events?select=*",
+      "method": "GET"
+    },
+    {
+      "type": "staging_supabase",
+      "url": "https://qyewbxjsiiyufanzcjcq.supabase.co/rest/v1/billing_audit_logs?select=*",
+      "method": "GET"
+    },
+    {
+      "type": "staging_supabase",
+      "url": "https://qyewbxjsiiyufanzcjcq.supabase.co/rest/v1/plans?select=*",
+      "method": "GET"
+    },
+    {
+      "type": "staging_supabase",
+      "url": "https://qyewbxjsiiyufanzcjcq.supabase.co/rest/v1/profiles?select=*&id=eq.7b381912-2190-415c-b099-6b1e87567b7a",
+      "method": "GET"
+    },
+    {
+      "type": "staging_supabase",
+      "url": "https://qyewbxjsiiyufanzcjcq.supabase.co/rest/v1/profiles?select=*&id=eq.7b381912-2190-415c-b099-6b1e87567b7a",
+      "method": "GET"
+    },
+    {
+      "type": "staging_supabase",
+      "url": "https://qyewbxjsiiyufanzcjcq.supabase.co/rest/v1/profiles?select=*&id=eq.7b381912-2190-415c-b099-6b1e87567b7a",
+      "method": "GET"
+    },
+    {
+      "type": "staging_supabase",
+      "url": "https://qyewbxjsiiyufanzcjcq.supabase.co/rest/v1/plan_limits?select=*",
+      "method": "GET"
+    },
+    {
+      "type": "staging_supabase",
+      "url": "https://qyewbxjsiiyufanzcjcq.supabase.co/rest/v1/profiles?select=*&id=eq.7b381912-2190-415c-b099-6b1e87567b7a",
+      "method": "GET"
+    },
+    {
+      "type": "staging_supabase",
+      "url": "https://qyewbxjsiiyufanzcjcq.supabase.co/rest/v1/tenant_subscriptions?select=*",
+      "method": "GET"
+    },
+    {
+      "type": "staging_supabase",
+      "url": "https://qyewbxjsiiyufanzcjcq.supabase.co/rest/v1/profiles?select=*&id=eq.7b381912-2190-415c-b099-6b1e87567b7a",
+      "method": "GET"
+    },
+    {
+      "type": "staging_supabase",
+      "url": "https://qyewbxjsiiyufanzcjcq.supabase.co/rest/v1/profiles?select=*&id=eq.7b381912-2190-415c-b099-6b1e87567b7a",
+      "method": "GET"
+    },
+    {
+      "type": "staging_supabase",
+      "url": "https://qyewbxjsiiyufanzcjcq.supabase.co/rest/v1/profiles?select=*&id=eq.7b381912-2190-415c-b099-6b1e87567b7a",
+      "method": "GET"
+    },
+    {
+      "type": "staging_supabase",
+      "url": "https://qyewbxjsiiyufanzcjcq.supabase.co/rest/v1/invoices?select=*",
+      "method": "GET"
+    },
+    {
+      "type": "staging_supabase",
+      "url": "https://qyewbxjsiiyufanzcjcq.supabase.co/rest/v1/invoice_items?select=*",
+      "method": "GET"
+    },
+    {
+      "type": "staging_supabase",
+      "url": "https://qyewbxjsiiyufanzcjcq.supabase.co/rest/v1/rating_v5_rollout_config?select=shadow_mode_enabled%2Cpilot_cohort_label%2Callow_v5_assessment%2Ccompare_v2_enabled&id=eq.default",
+      "method": "GET"
+    },
+    {
+      "type": "staging_supabase",
+      "url": "https://qyewbxjsiiyufanzcjcq.supabase.co/rest/v1/payments?select=*",
+      "method": "GET"
+    },
+    {
+      "type": "staging_supabase",
+      "url": "https://qyewbxjsiiyufanzcjcq.supabase.co/rest/v1/rpc/rating_v5_get_profile",
+      "method": "POST"
+    },
+    {
+      "type": "staging_supabase",
+      "url": "https://qyewbxjsiiyufanzcjcq.supabase.co/rest/v1/billing_events?select=*",
+      "method": "GET"
+    },
+    {
+      "type": "staging_supabase",
+      "url": "https://qyewbxjsiiyufanzcjcq.supabase.co/rest/v1/profiles?select=*&id=eq.7b381912-2190-415c-b099-6b1e87567b7a",
+      "method": "GET"
+    },
+    {
+      "type": "staging_supabase",
+      "url": "https://qyewbxjsiiyufanzcjcq.supabase.co/rest/v1/billing_audit_logs?select=*",
+      "method": "GET"
+    },
+    {
+      "type": "staging_supabase",
+      "url": "https://qyewbxjsiiyufanzcjcq.supabase.co/rest/v1/rpc/rating_v5_start_assessment",
+      "method": "POST"
+    },
+    {
+      "type": "staging_supabase",
+      "url": "https://qyewbxjsiiyufanzcjcq.supabase.co/rest/v1/plans?select=*",
+      "method": "GET"
+    },
+    {
+      "type": "staging_supabase",
+      "url": "https://qyewbxjsiiyufanzcjcq.supabase.co/rest/v1/profiles?select=*&id=eq.7b381912-2190-415c-b099-6b1e87567b7a",
+      "method": "GET"
+    },
+    {
+      "type": "staging_supabase",
+      "url": "https://qyewbxjsiiyufanzcjcq.supabase.co/rest/v1/profiles?select=*&id=eq.7b381912-2190-415c-b099-6b1e87567b7a",
+      "method": "GET"
+    },
+    {
+      "type": "staging_supabase",
+      "url": "https://qyewbxjsiiyufanzcjcq.supabase.co/rest/v1/profiles?select=*&id=eq.7b381912-2190-415c-b099-6b1e87567b7a",
+      "method": "GET"
+    },
+    {
+      "type": "staging_supabase",
+      "url": "https://qyewbxjsiiyufanzcjcq.supabase.co/rest/v1/profiles?select=*&id=eq.7b381912-2190-415c-b099-6b1e87567b7a",
+      "method": "GET"
+    },
+    {
+      "type": "staging_supabase",
+      "url": "https://qyewbxjsiiyufanzcjcq.supabase.co/rest/v1/plan_limits?select=*",
+      "method": "GET"
+    },
+    {
+      "type": "staging_supabase",
+      "url": "https://qyewbxjsiiyufanzcjcq.supabase.co/rest/v1/plans?select=*",
+      "method": "GET"
+    },
+    {
+      "type": "staging_supabase",
+      "url": "https://qyewbxjsiiyufanzcjcq.supabase.co/rest/v1/profiles?select=*&id=eq.7b381912-2190-415c-b099-6b1e87567b7a",
+      "method": "GET"
+    },
+    {
+      "type": "staging_supabase",
+      "url": "https://qyewbxjsiiyufanzcjcq.supabase.co/rest/v1/profiles?select=*&id=eq.7b381912-2190-415c-b099-6b1e87567b7a",
+      "method": "GET"
+    },
+    {
+      "type": "staging_supabase",
+      "url": "https://qyewbxjsiiyufanzcjcq.supabase.co/rest/v1/profiles?select=*&id=eq.7b381912-2190-415c-b099-6b1e87567b7a",
+      "method": "GET"
+    },
+    {
+      "type": "staging_supabase",
+      "url": "https://qyewbxjsiiyufanzcjcq.supabase.co/rest/v1/profiles?select=*&id=eq.7b381912-2190-415c-b099-6b1e87567b7a",
+      "method": "GET"
+    },
+    {
+      "type": "staging_supabase",
+      "url": "https://qyewbxjsiiyufanzcjcq.supabase.co/rest/v1/plan_limits?select=*",
+      "method": "GET"
+    },
+    {
+      "type": "staging_supabase",
+      "url": "https://qyewbxjsiiyufanzcjcq.supabase.co/rest/v1/profiles?select=*&id=eq.7b381912-2190-415c-b099-6b1e87567b7a",
+      "method": "GET"
+    },
+    {
+      "type": "staging_supabase",
+      "url": "https://qyewbxjsiiyufanzcjcq.supabase.co/rest/v1/tenant_subscriptions?select=*",
+      "method": "GET"
+    },
+    {
+      "type": "staging_supabase",
+      "url": "https://qyewbxjsiiyufanzcjcq.supabase.co/rest/v1/invoices?select=*",
+      "method": "GET"
+    },
+    {
+      "type": "staging_supabase",
+      "url": "https://qyewbxjsiiyufanzcjcq.supabase.co/rest/v1/profiles?select=*&id=eq.7b381912-2190-415c-b099-6b1e87567b7a",
+      "method": "GET"
+    },
+    {
+      "type": "staging_supabase",
+      "url": "https://qyewbxjsiiyufanzcjcq.supabase.co/rest/v1/profiles?select=*&id=eq.7b381912-2190-415c-b099-6b1e87567b7a",
+      "method": "GET"
+    },
+    {
+      "type": "staging_supabase",
+      "url": "https://qyewbxjsiiyufanzcjcq.supabase.co/rest/v1/invoice_items?select=*",
+      "method": "GET"
+    },
+    {
+      "type": "staging_supabase",
+      "url": "https://qyewbxjsiiyufanzcjcq.supabase.co/rest/v1/rating_v5_rollout_config?select=shadow_mode_enabled%2Cpilot_cohort_label%2Callow_v5_assessment%2Ccompare_v2_enabled&id=eq.default",
+      "method": "GET"
+    },
+    {
+      "type": "staging_supabase",
+      "url": "https://qyewbxjsiiyufanzcjcq.supabase.co/rest/v1/payments?select=*",
+      "method": "GET"
+    },
+    {
+      "type": "staging_supabase",
+      "url": "https://qyewbxjsiiyufanzcjcq.supabase.co/rest/v1/rpc/rating_v5_get_profile",
+      "method": "POST"
+    },
+    {
+      "type": "staging_supabase",
+      "url": "https://qyewbxjsiiyufanzcjcq.supabase.co/rest/v1/billing_events?select=*",
+      "method": "GET"
+    },
+    {
+      "type": "staging_supabase",
+      "url": "https://qyewbxjsiiyufanzcjcq.supabase.co/rest/v1/profiles?select=*&id=eq.7b381912-2190-415c-b099-6b1e87567b7a",
+      "method": "GET"
+    },
+    {
+      "type": "staging_supabase",
+      "url": "https://qyewbxjsiiyufanzcjcq.supabase.co/rest/v1/billing_audit_logs?select=*",
+      "method": "GET"
+    },
+    {
+      "type": "staging_supabase",
+      "url": "https://qyewbxjsiiyufanzcjcq.supabase.co/rest/v1/rpc/rating_v5_start_assessment",
+      "method": "POST"
+    },
+    {
+      "type": "staging_supabase",
+      "url": "https://qyewbxjsiiyufanzcjcq.supabase.co/rest/v1/plans?select=*",
+      "method": "GET"
+    },
+    {
+      "type": "staging_supabase",
+      "url": "https://qyewbxjsiiyufanzcjcq.supabase.co/rest/v1/rpc/club_get_my_active_membership",
+      "method": "POST"
+    },
+    {
+      "type": "staging_supabase",
+      "url": "https://qyewbxjsiiyufanzcjcq.supabase.co/rest/v1/profiles?select=*&id=eq.7b381912-2190-415c-b099-6b1e87567b7a",
+      "method": "GET"
+    },
+    {
+      "type": "staging_supabase",
+      "url": "https://qyewbxjsiiyufanzcjcq.supabase.co/rest/v1/profiles?select=*&id=eq.7b381912-2190-415c-b099-6b1e87567b7a",
+      "method": "GET"
+    },
+    {
+      "type": "staging_supabase",
+      "url": "https://qyewbxjsiiyufanzcjcq.supabase.co/rest/v1/profiles?select=*&id=eq.7b381912-2190-415c-b099-6b1e87567b7a",
+      "method": "GET"
+    },
+    {
+      "type": "staging_supabase",
+      "url": "https://qyewbxjsiiyufanzcjcq.supabase.co/rest/v1/plan_limits?select=*",
+      "method": "GET"
+    },
+    {
+      "type": "staging_supabase",
+      "url": "https://qyewbxjsiiyufanzcjcq.supabase.co/rest/v1/profiles?select=*&id=eq.7b381912-2190-415c-b099-6b1e87567b7a",
+      "method": "GET"
+    },
+    {
+      "type": "staging_supabase",
+      "url": "https://qyewbxjsiiyufanzcjcq.supabase.co/rest/v1/tenant_subscriptions?select=*",
+      "method": "GET"
+    },
+    {
+      "type": "staging_supabase",
+      "url": "https://qyewbxjsiiyufanzcjcq.supabase.co/rest/v1/profiles?select=*&id=eq.7b381912-2190-415c-b099-6b1e87567b7a",
+      "method": "GET"
+    },
+    {
+      "type": "staging_supabase",
+      "url": "https://qyewbxjsiiyufanzcjcq.supabase.co/rest/v1/profiles?select=*&id=eq.7b381912-2190-415c-b099-6b1e87567b7a",
+      "method": "GET"
+    },
+    {
+      "type": "staging_supabase",
+      "url": "https://qyewbxjsiiyufanzcjcq.supabase.co/rest/v1/profiles?select=*&id=eq.7b381912-2190-415c-b099-6b1e87567b7a",
+      "method": "GET"
+    },
+    {
+      "type": "staging_supabase",
+      "url": "https://qyewbxjsiiyufanzcjcq.supabase.co/rest/v1/invoices?select=*",
+      "method": "GET"
+    },
+    {
+      "type": "staging_supabase",
+      "url": "https://qyewbxjsiiyufanzcjcq.supabase.co/rest/v1/invoice_items?select=*",
+      "method": "GET"
+    },
+    {
+      "type": "staging_supabase",
+      "url": "https://qyewbxjsiiyufanzcjcq.supabase.co/rest/v1/rating_v5_rollout_config?select=shadow_mode_enabled%2Cpilot_cohort_label%2Callow_v5_assessment%2Ccompare_v2_enabled&id=eq.default",
+      "method": "GET"
+    },
+    {
+      "type": "staging_supabase",
+      "url": "https://qyewbxjsiiyufanzcjcq.supabase.co/rest/v1/payments?select=*",
+      "method": "GET"
+    },
+    {
+      "type": "staging_supabase",
+      "url": "https://qyewbxjsiiyufanzcjcq.supabase.co/rest/v1/rpc/rating_v5_get_profile",
+      "method": "POST"
+    },
+    {
+      "type": "staging_supabase",
+      "url": "https://qyewbxjsiiyufanzcjcq.supabase.co/rest/v1/billing_events?select=*",
+      "method": "GET"
+    },
+    {
+      "type": "staging_supabase",
+      "url": "https://qyewbxjsiiyufanzcjcq.supabase.co/rest/v1/profiles?select=*&id=eq.7b381912-2190-415c-b099-6b1e87567b7a",
+      "method": "GET"
+    },
+    {
+      "type": "staging_supabase",
+      "url": "https://qyewbxjsiiyufanzcjcq.supabase.co/rest/v1/billing_audit_logs?select=*",
+      "method": "GET"
+    },
+    {
+      "type": "edge_request",
+      "url": "https://qyewbxjsiiyufanzcjcq.supabase.co/functions/v1/rating-v5-complete-assessment",
+      "method": "POST"
+    },
+    {
+      "type": "staging_supabase",
+      "url": "https://qyewbxjsiiyufanzcjcq.supabase.co/functions/v1/rating-v5-complete-assessment",
+      "method": "POST"
+    },
+    {
+      "type": "staging_supabase",
+      "url": "https://qyewbxjsiiyufanzcjcq.supabase.co/rest/v1/plans?select=*",
+      "method": "GET"
+    },
+    {
+      "type": "staging_supabase",
+      "url": "https://qyewbxjsiiyufanzcjcq.supabase.co/rest/v1/rpc/club_get_my_active_membership",
+      "method": "POST"
+    },
+    {
+      "type": "staging_supabase",
+      "url": "https://qyewbxjsiiyufanzcjcq.supabase.co/rest/v1/profiles?select=*&id=eq.7b381912-2190-415c-b099-6b1e87567b7a",
+      "method": "GET"
+    },
+    {
+      "type": "staging_supabase",
+      "url": "https://qyewbxjsiiyufanzcjcq.supabase.co/rest/v1/profiles?select=*&id=eq.7b381912-2190-415c-b099-6b1e87567b7a",
+      "method": "GET"
+    },
+    {
+      "type": "staging_supabase",
+      "url": "https://qyewbxjsiiyufanzcjcq.supabase.co/rest/v1/profiles?select=*&id=eq.7b381912-2190-415c-b099-6b1e87567b7a",
+      "method": "GET"
+    },
+    {
+      "type": "staging_supabase",
+      "url": "https://qyewbxjsiiyufanzcjcq.supabase.co/rest/v1/plans?select=*",
+      "method": "GET"
+    },
+    {
+      "type": "staging_supabase",
+      "url": "https://qyewbxjsiiyufanzcjcq.supabase.co/rest/v1/profiles?select=*&id=eq.7b381912-2190-415c-b099-6b1e87567b7a",
+      "method": "GET"
+    },
+    {
+      "type": "staging_supabase",
+      "url": "https://qyewbxjsiiyufanzcjcq.supabase.co/rest/v1/profiles?select=*&id=eq.7b381912-2190-415c-b099-6b1e87567b7a",
+      "method": "GET"
+    },
+    {
+      "type": "staging_supabase",
+      "url": "https://qyewbxjsiiyufanzcjcq.supabase.co/rest/v1/profiles?select=*&id=eq.7b381912-2190-415c-b099-6b1e87567b7a",
+      "method": "GET"
+    },
+    {
+      "type": "staging_supabase",
+      "url": "https://qyewbxjsiiyufanzcjcq.supabase.co/rest/v1/profiles?select=*&id=eq.7b381912-2190-415c-b099-6b1e87567b7a",
+      "method": "GET"
+    },
+    {
+      "type": "staging_supabase",
+      "url": "https://qyewbxjsiiyufanzcjcq.supabase.co/rest/v1/profiles?select=*&id=eq.7b381912-2190-415c-b099-6b1e87567b7a",
+      "method": "GET"
+    },
+    {
+      "type": "staging_supabase",
+      "url": "https://qyewbxjsiiyufanzcjcq.supabase.co/rest/v1/plan_limits?select=*",
+      "method": "GET"
+    },
+    {
+      "type": "staging_supabase",
+      "url": "https://qyewbxjsiiyufanzcjcq.supabase.co/rest/v1/profiles?select=*&id=eq.7b381912-2190-415c-b099-6b1e87567b7a",
+      "method": "GET"
+    },
+    {
+      "type": "staging_supabase",
+      "url": "https://qyewbxjsiiyufanzcjcq.supabase.co/rest/v1/profiles?select=*&id=eq.7b381912-2190-415c-b099-6b1e87567b7a",
+      "method": "GET"
+    },
+    {
+      "type": "staging_supabase",
+      "url": "https://qyewbxjsiiyufanzcjcq.supabase.co/rest/v1/tenant_subscriptions?select=*",
+      "method": "GET"
+    },
+    {
+      "type": "staging_supabase",
+      "url": "https://qyewbxjsiiyufanzcjcq.supabase.co/rest/v1/rating_v5_rollout_config?select=shadow_mode_enabled%2Cpilot_cohort_label%2Callow_v5_assessment%2Ccompare_v2_enabled&id=eq.default",
+      "method": "GET"
+    },
+    {
+      "type": "staging_supabase",
+      "url": "https://qyewbxjsiiyufanzcjcq.supabase.co/rest/v1/invoices?select=*",
+      "method": "GET"
+    },
+    {
+      "type": "staging_supabase",
+      "url": "https://qyewbxjsiiyufanzcjcq.supabase.co/rest/v1/invoice_items?select=*",
+      "method": "GET"
+    },
+    {
+      "type": "staging_supabase",
+      "url": "https://qyewbxjsiiyufanzcjcq.supabase.co/rest/v1/rpc/rating_v5_get_profile",
+      "method": "POST"
+    },
+    {
+      "type": "staging_supabase",
+      "url": "https://qyewbxjsiiyufanzcjcq.supabase.co/rest/v1/profiles?select=*&id=eq.7b381912-2190-415c-b099-6b1e87567b7a",
+      "method": "GET"
+    },
+    {
+      "type": "staging_supabase",
+      "url": "https://qyewbxjsiiyufanzcjcq.supabase.co/rest/v1/payments?select=*",
+      "method": "GET"
+    },
+    {
+      "type": "staging_supabase",
+      "url": "https://qyewbxjsiiyufanzcjcq.supabase.co/rest/v1/billing_events?select=*",
+      "method": "GET"
+    },
+    {
+      "type": "staging_supabase",
+      "url": "https://qyewbxjsiiyufanzcjcq.supabase.co/rest/v1/billing_audit_logs?select=*",
+      "method": "GET"
+    },
+    {
+      "type": "staging_supabase",
+      "url": "https://qyewbxjsiiyufanzcjcq.supabase.co/rest/v1/rpc/rating_v5_start_assessment",
+      "method": "POST"
+    },
+    {
+      "type": "edge_request",
+      "url": "https://qyewbxjsiiyufanzcjcq.supabase.co/functions/v1/rating-v5-complete-assessment",
+      "method": "POST"
+    },
+    {
+      "type": "staging_supabase",
+      "url": "https://qyewbxjsiiyufanzcjcq.supabase.co/functions/v1/rating-v5-complete-assessment",
+      "method": "POST"
+    },
+    {
+      "type": "staging_supabase",
+      "url": "https://qyewbxjsiiyufanzcjcq.supabase.co/rest/v1/plans?select=*",
+      "method": "GET"
+    },
+    {
+      "type": "staging_supabase",
+      "url": "https://qyewbxjsiiyufanzcjcq.supabase.co/rest/v1/rpc/club_get_my_active_membership",
+      "method": "POST"
+    },
+    {
+      "type": "staging_supabase",
+      "url": "https://qyewbxjsiiyufanzcjcq.supabase.co/rest/v1/profiles?select=*&id=eq.7b381912-2190-415c-b099-6b1e87567b7a",
+      "method": "GET"
+    },
+    {
+      "type": "staging_supabase",
+      "url": "https://qyewbxjsiiyufanzcjcq.supabase.co/rest/v1/profiles?select=*&id=eq.7b381912-2190-415c-b099-6b1e87567b7a",
+      "method": "GET"
+    },
+    {
+      "type": "staging_supabase",
+      "url": "https://qyewbxjsiiyufanzcjcq.supabase.co/rest/v1/profiles?select=*&id=eq.7b381912-2190-415c-b099-6b1e87567b7a",
+      "method": "GET"
+    },
+    {
+      "type": "staging_supabase",
+      "url": "https://qyewbxjsiiyufanzcjcq.supabase.co/rest/v1/plan_limits?select=*",
+      "method": "GET"
+    },
+    {
+      "type": "staging_supabase",
+      "url": "https://qyewbxjsiiyufanzcjcq.supabase.co/rest/v1/profiles?select=*&id=eq.7b381912-2190-415c-b099-6b1e87567b7a",
+      "method": "GET"
+    },
+    {
+      "type": "staging_supabase",
+      "url": "https://qyewbxjsiiyufanzcjcq.supabase.co/rest/v1/profiles?select=*&id=eq.7b381912-2190-415c-b099-6b1e87567b7a",
+      "method": "GET"
+    },
+    {
+      "type": "staging_supabase",
+      "url": "https://qyewbxjsiiyufanzcjcq.supabase.co/rest/v1/tenant_subscriptions?select=*",
+      "method": "GET"
+    },
+    {
+      "type": "staging_supabase",
+      "url": "https://qyewbxjsiiyufanzcjcq.supabase.co/rest/v1/profiles?select=*&id=eq.7b381912-2190-415c-b099-6b1e87567b7a",
+      "method": "GET"
+    },
+    {
+      "type": "staging_supabase",
+      "url": "https://qyewbxjsiiyufanzcjcq.supabase.co/rest/v1/profiles?select=*&id=eq.7b381912-2190-415c-b099-6b1e87567b7a",
+      "method": "GET"
+    },
+    {
+      "type": "staging_supabase",
+      "url": "https://qyewbxjsiiyufanzcjcq.supabase.co/rest/v1/invoices?select=*",
+      "method": "GET"
+    },
+    {
+      "type": "staging_supabase",
+      "url": "https://qyewbxjsiiyufanzcjcq.supabase.co/rest/v1/invoice_items?select=*",
+      "method": "GET"
+    },
+    {
+      "type": "staging_supabase",
+      "url": "https://qyewbxjsiiyufanzcjcq.supabase.co/rest/v1/rating_v5_rollout_config?select=shadow_mode_enabled%2Cpilot_cohort_label%2Callow_v5_assessment%2Ccompare_v2_enabled&id=eq.default",
+      "method": "GET"
+    },
+    {
+      "type": "staging_supabase",
+      "url": "https://qyewbxjsiiyufanzcjcq.supabase.co/rest/v1/payments?select=*",
+      "method": "GET"
+    },
+    {
+      "type": "staging_supabase",
+      "url": "https://qyewbxjsiiyufanzcjcq.supabase.co/rest/v1/rpc/rating_v5_get_profile",
+      "method": "POST"
+    },
+    {
+      "type": "staging_supabase",
+      "url": "https://qyewbxjsiiyufanzcjcq.supabase.co/rest/v1/billing_events?select=*",
+      "method": "GET"
+    },
+    {
+      "type": "staging_supabase",
+      "url": "https://qyewbxjsiiyufanzcjcq.supabase.co/rest/v1/profiles?select=*&id=eq.7b381912-2190-415c-b099-6b1e87567b7a",
+      "method": "GET"
+    },
+    {
+      "type": "staging_supabase",
+      "url": "https://qyewbxjsiiyufanzcjcq.supabase.co/rest/v1/billing_audit_logs?select=*",
+      "method": "GET"
+    },
+    {
+      "type": "staging_supabase",
+      "url": "https://qyewbxjsiiyufanzcjcq.supabase.co/auth/v1/logout?scope=global",
+      "method": "POST"
+    },
+    {
+      "type": "staging_supabase",
+      "url": "https://qyewbxjsiiyufanzcjcq.supabase.co/rest/v1/audit_logs?select=*",
+      "method": "POST"
+    },
+    {
+      "type": "staging_supabase",
+      "url": "https://qyewbxjsiiyufanzcjcq.supabase.co/auth/v1/token?grant_type=password",
+      "method": "POST"
+    },
+    {
+      "type": "staging_supabase",
+      "url": "https://qyewbxjsiiyufanzcjcq.supabase.co/rest/v1/profiles?select=*&id=eq.e54abeac-6619-477a-9eb4-b64b05c1ddba",
+      "method": "GET"
+    },
+    {
+      "type": "staging_supabase",
+      "url": "https://qyewbxjsiiyufanzcjcq.supabase.co/rest/v1/profiles?select=*&id=eq.e54abeac-6619-477a-9eb4-b64b05c1ddba",
+      "method": "GET"
+    },
+    {
+      "type": "staging_supabase",
+      "url": "https://qyewbxjsiiyufanzcjcq.supabase.co/rest/v1/audit_logs?select=*",
+      "method": "POST"
+    },
+    {
+      "type": "staging_supabase",
+      "url": "https://qyewbxjsiiyufanzcjcq.supabase.co/rest/v1/profiles?select=*&id=eq.e54abeac-6619-477a-9eb4-b64b05c1ddba",
+      "method": "GET"
+    },
+    {
+      "type": "staging_supabase",
+      "url": "https://qyewbxjsiiyufanzcjcq.supabase.co/rest/v1/profiles?select=*&id=eq.e54abeac-6619-477a-9eb4-b64b05c1ddba",
+      "method": "GET"
+    },
+    {
+      "type": "staging_supabase",
+      "url": "https://qyewbxjsiiyufanzcjcq.supabase.co/rest/v1/rpc/club_get_my_active_membership",
+      "method": "POST"
+    },
+    {
+      "type": "staging_supabase",
+      "url": "https://qyewbxjsiiyufanzcjcq.supabase.co/rest/v1/profiles?select=*&id=eq.e54abeac-6619-477a-9eb4-b64b05c1ddba",
+      "method": "GET"
+    },
+    {
+      "type": "staging_supabase",
+      "url": "https://qyewbxjsiiyufanzcjcq.supabase.co/rest/v1/rpc/court_list_my_claim_requests",
+      "method": "POST"
+    },
+    {
+      "type": "staging_supabase",
+      "url": "https://qyewbxjsiiyufanzcjcq.supabase.co/rest/v1/rating_v5_rollout_config?select=shadow_mode_enabled%2Cpilot_cohort_label%2Callow_v5_assessment%2Ccompare_v2_enabled&id=eq.default",
+      "method": "GET"
+    },
+    {
+      "type": "staging_supabase",
+      "url": "https://qyewbxjsiiyufanzcjcq.supabase.co/rest/v1/plans?select=*",
+      "method": "GET"
+    },
+    {
+      "type": "staging_supabase",
+      "url": "https://qyewbxjsiiyufanzcjcq.supabase.co/rest/v1/venues?select=id%2Cname%2Cstatus&id=eq.venue-staging-b",
+      "method": "GET"
+    },
+    {
+      "type": "staging_supabase",
+      "url": "https://qyewbxjsiiyufanzcjcq.supabase.co/rest/v1/rpc/court_list_my_claim_requests",
+      "method": "POST"
+    },
+    {
+      "type": "staging_supabase",
+      "url": "https://qyewbxjsiiyufanzcjcq.supabase.co/rest/v1/plans?select=*",
+      "method": "GET"
+    },
+    {
+      "type": "staging_supabase",
+      "url": "https://qyewbxjsiiyufanzcjcq.supabase.co/rest/v1/venues?select=id%2Cname%2Cstatus&id=eq.venue-staging-b",
+      "method": "GET"
+    },
+    {
+      "type": "staging_supabase",
+      "url": "https://qyewbxjsiiyufanzcjcq.supabase.co/rest/v1/profiles?select=*&id=eq.e54abeac-6619-477a-9eb4-b64b05c1ddba",
+      "method": "GET"
+    },
+    {
+      "type": "staging_supabase",
+      "url": "https://qyewbxjsiiyufanzcjcq.supabase.co/rest/v1/profiles?select=*&id=eq.e54abeac-6619-477a-9eb4-b64b05c1ddba",
+      "method": "GET"
+    },
+    {
+      "type": "staging_supabase",
+      "url": "https://qyewbxjsiiyufanzcjcq.supabase.co/rest/v1/profiles?select=*&id=eq.e54abeac-6619-477a-9eb4-b64b05c1ddba",
+      "method": "GET"
+    }
+  ],
+  "edgeCaptures": [
+    {
+      "phase": "request",
+      "body": {
+        "assessment_id": "9777c19e-3599-447c-8f4b-b2e55bcb76f7",
+        "answers": {
+          "core_exp_01": 7,
+          "core_exp_02": 7,
+          "core_srv_01": 7,
+          "core_srv_02": 7,
+          "core_ret_01": 7,
+          "core_gs_01": 7,
+          "core_gs_02": 7,
+          "core_gs_03": 7,
+          "core_dink_01": 7,
+          "core_dink_02": 7,
+          "core_dink_03": 7,
+          "core_ts_01": 7,
+          "core_tr_01": 7,
+          "core_tr_02": 7,
+          "core_vol_01": 7,
+          "core_blk_01": 7,
+          "core_blk_02": 7,
+          "core_pos_01": 7,
+          "core_pos_02": 7,
+          "core_tac_01": 7,
+          "core_tac_02": 7,
+          "core_rules_01": 7,
+          "adp_adv_foot_01": 7,
+          "adp_adv_vol_01": 7,
+          "adp_med_rally_01": 7,
+          "adp_med_err_01": 7,
+          "adp_med_ts_01": 7,
+          "adp_med_comm_01": 7,
+          "adp_med_rules_nvz_01": 7,
+          "adp_med_gs_01": 7
+        },
+        "rating_mode": "doubles",
+        "assessment_version": "assessment-v5.0f"
+      },
+      "url": "https://qyewbxjsiiyufanzcjcq.supabase.co/functions/v1/rating-v5-complete-assessment"
+    }
+  ]
+}

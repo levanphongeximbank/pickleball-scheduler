@@ -1,0 +1,102 @@
+{
+  "generatedAt": "2026-07-12T09:52:26.066Z",
+  "phase": "TT-2C",
+  "stagingRef": "qyewbxjsiiyufanzcjcq",
+  "productionImpact": "NONE",
+  "localCommitSha": "2ab79ad1a16f8ca19cede30b302ef9a2172fd622",
+  "sqlPatches": [
+    "docs/v5/PHASE_TT2C_LINEUP_VALIDATION.sql",
+    "docs/v5/PHASE_TT2C_SUBMIT_LINEUP_VALIDATION.sql"
+  ],
+  "probe": {
+    "tournamentId": "phase23d-probe-tournament",
+    "teamA": "phase23d-team-a",
+    "teamB": "phase23d-team-b",
+    "matchupId": "phase23d-matchup-1"
+  },
+  "cases": [
+    {
+      "id": "TT2C-01-setup-loaded",
+      "pass": true,
+      "expected": "team_tournament_get_setup returns teamData",
+      "actual": "ok",
+      "detail": ""
+    },
+    {
+      "id": "TT2C-02-gender-source",
+      "pass": true,
+      "expected": "profiles.gender resolves to male for player-staging-a-1",
+      "actual": "male",
+      "detail": ""
+    },
+    {
+      "id": "TT2C-03-valid-draft-save",
+      "pass": true,
+      "expected": "valid lineup draft saves on server",
+      "actual": "ok",
+      "detail": ""
+    },
+    {
+      "id": "TT2C-04-partial-draft-allowed",
+      "pass": true,
+      "expected": "incomplete draft allowed (basic scope checks pass)",
+      "actual": "ok",
+      "detail": ""
+    },
+    {
+      "id": "TT2C-05-player-not-in-team",
+      "pass": true,
+      "expected": "client+server reject outsider player",
+      "actual": "client=player_not_in_team server=player_not_in_team",
+      "detail": ""
+    },
+    {
+      "id": "TT2C-06-invalid-gender",
+      "pass": true,
+      "expected": "client+server reject wrong gender in men's doubles",
+      "actual": "client=invalid_gender server=invalid_gender",
+      "detail": ""
+    },
+    {
+      "id": "TT2C-07-duplicate-player-slot",
+      "pass": true,
+      "expected": "client+server reject duplicate within discipline",
+      "actual": "client=duplicate_player server=duplicate_player",
+      "detail": ""
+    },
+    {
+      "id": "TT2C-08-cross-discipline-duplicate",
+      "pass": true,
+      "expected": "client+server reject reuse when allowPlayerReuse=false",
+      "actual": "client=duplicate_player server=duplicate_player",
+      "detail": ""
+    },
+    {
+      "id": "TT2C-09-submit-incomplete",
+      "pass": true,
+      "expected": "submit rejects incomplete lineup",
+      "actual": "lineup_incomplete",
+      "detail": ""
+    },
+    {
+      "id": "TT2C-10-roster-limit-exceeded",
+      "pass": true,
+      "expected": "draft rejects too many players in discipline",
+      "actual": "roster_limit_exceeded",
+      "detail": ""
+    },
+    {
+      "id": "TT2C-11-validation-contract",
+      "pass": true,
+      "expected": "server returns fieldErrors + invalidPlayerIds + serverTime",
+      "actual": "{\"fieldErrors\":true,\"invalidPlayerIds\":true,\"serverTime\":true}",
+      "detail": ""
+    }
+  ],
+  "verdict": "READY FOR TT-2D",
+  "summary": {
+    "total": 11,
+    "passed": 11,
+    "failed": 0
+  }
+}

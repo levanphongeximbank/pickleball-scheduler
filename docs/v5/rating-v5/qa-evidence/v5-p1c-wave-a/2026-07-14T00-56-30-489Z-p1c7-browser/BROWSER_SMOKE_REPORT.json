@@ -1,0 +1,74 @@
+{
+  "gate": "P1-C.7",
+  "run_id": "2026-07-14T00-56-30-489Z",
+  "production_url": "https://pickleball-scheduler-eight.vercel.app",
+  "production_ref": "expuvcohlcjzvrrauvud",
+  "enrolled_email": "lephong.banker@gmail.com",
+  "control_email": "lephong.eximbank@gmail.com",
+  "cohort": "club-rating-v5-production-wave-a",
+  "edgeCapture": null,
+  "v2_before": 0,
+  "v2_after": 0,
+  "completed_assessments": [],
+  "complete_events": [],
+  "profile_shadow": null,
+  "results": [
+    {
+      "id": "t01_login_enrolled",
+      "status": "PASS",
+      "detail": "session injected for lephong.banker@gmail.com"
+    },
+    {
+      "id": "t02_menu_v5",
+      "status": "FAIL",
+      "detail": "menu not visible"
+    },
+    {
+      "id": "enrolled_flow",
+      "status": "FAIL",
+      "detail": "locator.waitFor: Timeout 30000ms exceeded.\nCall log:\n  - waiting for getByTestId('skill-assessment-v5-page') to be visible\n"
+    },
+    {
+      "id": "t09_control_menu_hidden",
+      "status": "PASS",
+      "detail": "menu hidden"
+    },
+    {
+      "id": "t10_control_route_blocked",
+      "status": "PASS",
+      "detail": "route blocked / no workspace"
+    },
+    {
+      "id": "t11_control_gate",
+      "status": "PASS",
+      "detail": "PILOT_NOT_ENROLLED"
+    },
+    {
+      "id": "t12_control_edge",
+      "status": "FAIL",
+      "detail": "{\"ok\":false,\"error\":{\"code\":\"ASSESSMENT_NOT_FOUND\",\"message\":\"Không tìm thấy bài đánh giá.\",\"requestId\":\"7c104bf6-eed9-4019-a8ca-7276bb1e7d24\"},\"request_id\":\"7c104bf6-eed9-4019-a8ca-7276bb1e7d24\",\"code\":\"ASSESSMENT_NOT_FOUND\"}"
+    },
+    {
+      "id": "t13_one_assessment",
+      "status": "FAIL",
+      "detail": "completed=0"
+    },
+    {
+      "id": "t14_one_event",
+      "status": "FAIL",
+      "detail": "events=0"
+    },
+    {
+      "id": "t15_v2_isolation",
+      "status": "PASS",
+      "detail": "v2=0"
+    },
+    {
+      "id": "t16_shadow_profile",
+      "status": "FAIL",
+      "detail": "profile=missing fields="
+    }
+  ],
+  "pass_count": 5,
+  "fail_count": 6
+}

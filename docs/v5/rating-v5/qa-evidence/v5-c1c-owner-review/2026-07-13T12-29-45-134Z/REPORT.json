@@ -1,0 +1,32 @@
+{
+  "run_id": "2026-07-13T12-29-45-134Z",
+  "owner_review_data_complete": "PASS",
+  "coach_estimates_complete": "FAIL",
+  "gender_mix": "PASS",
+  "tenant_mix": "PASS",
+  "data_quality": "PASS",
+  "ready_for_owner_approval": "YES",
+  "ready_to_enroll_wave1": "NO",
+  "metrics": {
+    "slot_count": 12,
+    "ready_count": 12,
+    "skill_bands": {
+      "1.5-2.5": 4,
+      "3.0-3.5": 5,
+      "4.0-4.5": 3
+    },
+    "gender": {
+      "Nam": 6,
+      "Nu": 4,
+      "empty": 2
+    },
+    "tenant": {
+      "venue_staging_a": 6,
+      "platform": 6
+    },
+    "coach_complete": 0,
+    "missing_columns": [],
+    "unexpected_qa": [],
+    "active_enrollment": 0
+  }
+}

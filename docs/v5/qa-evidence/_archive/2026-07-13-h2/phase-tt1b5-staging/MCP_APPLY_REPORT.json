@@ -1,0 +1,124 @@
+{
+  "generatedAt": "2026-07-12T10:50:00.000Z",
+  "phase": "TT-1B.5",
+  "method": "MCP Supabase Staging (preferred over manual SQL Editor)",
+  "productionImpact": "NONE",
+  "environment": {
+    "mcpServer": "project-0-pickleball-scheduler-supabase-staging",
+    "projectRef": "qyewbxjsiiyufanzcjcq",
+    "productionRefBlocked": "expuvcohlcjzvrrauvud",
+    "urlVerified": "https://qyewbxjsiiyufanzcjcq.supabase.co",
+    "confirmedNotProduction": true
+  },
+  "migrationApply": {
+    "status": "SUCCESS",
+    "sourceFile": "docs/v5/PHASE_TT1B_TEAM_TOURNAMENT_SSOT.sql",
+    "via": "MCP apply_migration (7 chunks)",
+    "migrationsThisSession": [
+      "phase_tt1b_ssot_version_tables",
+      "phase_tt1b_ssot_command_log",
+      "phase_tt1b_ssot_revisions_dreambreaker_forfeit",
+      "phase_tt1b_ssot_helpers",
+      "phase_tt1b_ssot_visible_lineups",
+      "phase_tt1b_ssot_command_rpcs",
+      "phase_tt1b_ssot_rls_grants"
+    ],
+    "sqlErrors": []
+  },
+  "tablesCreatedOrUpdated": [
+    "team_tournaments (version, schedule_meta via prior patches)",
+    "team_tournament_matchups (version, schedule_meta, result_type)",
+    "team_tournament_lineups (version)",
+    "team_tournament_sub_matches (version)",
+    "team_tournament_standings (version)",
+    "team_tournament_command_log (new table)",
+    "team_tournament_lineup_revisions (new table)",
+    "team_tournament_dreambreaker_states (new table)",
+    "team_tournament_forfeit_events (new table)",
+    "team_tournament_sync_mismatch (new table)"
+  ],
+  "versionColumns": {
+    "status": "PRESENT",
+    "tables": [
+      "team_tournaments",
+      "team_tournament_matchups",
+      "team_tournament_lineups",
+      "team_tournament_sub_matches",
+      "team_tournament_standings",
+      "team_tournament_dreambreaker_states",
+      "team_tournament_forfeit_events"
+    ]
+  },
+  "rlsLineupDirectSelect": {
+    "status": "BLOCKED",
+    "team_tournament_lineups.rls_enabled": true,
+    "selectPolicies": "none (only tenant_write policy; no broad SELECT)",
+    "captainDirectSelectOpponent": "0 rows (PASS in verify script)"
+  },
+  "rpcsVerified": [
+    "team_tournament_get_visible_lineups(p_tournament_id, p_matchup_id, p_viewer_team_id)",
+    "team_tournament_begin_command(...)",
+    "team_tournament_finish_command(...)",
+    "team_tournament_lock_matchup (2-param + 4-param TT-1B)",
+    "team_tournament_publish_matchup (2-param + 4-param TT-1B + 6-param TT-2E on staging)",
+    "team_tournament_submit_lineup (4-param + 6-param)",
+    "team_tournament_apply_forfeit",
+    "team_tournament_version_conflict"
+  ],
+  "verificationQueries": {
+    "sourceFile": "docs/v5/PHASE_TT1B_VERIFICATION_QUERIES.sql",
+    "via": "MCP execute_sql",
+    "total": 158,
+    "pass": 157,
+    "fail": 1,
+    "overall": "FAIL (known drift)",
+    "failedChecks": [
+      {
+        "check_id": "V5.overload.publish_matchup.both_versions",
+        "expected": "exactly 2 overloads (23C + TT-1B)",
+        "actual": "3 overload(s) — TT-2E 6-param atomic publish added on staging",
+        "note": "Not a TT-1B regression; update verification query to allow >=2 overloads"
+      }
+    ],
+    "sectionsAllPassExceptV5PublishOverload": {
+      "V1_version_columns": "46/46 PASS",
+      "V2_tables": "6/6 PASS",
+      "V3_lineup_security": "20/20 PASS",
+      "V4_idempotency": "5/5 PASS",
+      "V5_rpc_contracts": "52/53 PASS",
+      "V6_version_data": "7/7 PASS",
+      "V7_orphans": "9/9 PASS",
+      "X_extra": "12/12 PASS"
+    }
+  },
+  "postApplyScripts": {
+    "verify_phase_tt1b5_staging": {
+      "command": "npm run verify:phase-tt1b5-staging",
+      "verdict": "READY FOR TT-1C WITH CONDITIONS",
+      "exitCode": 1
+    },
+    "verify_phase_tt1b5_staging_seed_probe": {
+      "command": "npm run verify:phase-tt1b5-staging -- --seed-probe",
+      "verdict": "READY FOR TT-1C",
+      "exitCode": 0
+    },
+    "dryRunMigration": {
+      "status": "PASS",
+      "read": 1,
+      "valid": 1,
+      "migrated": 1,
+      "errors": 0
+    },
+    "shadowComparison": {
+      "status": "1 synthetic mismatch",
+      "entity": "lineup phase23d-matchup-1::phase23d-team-b",
+      "note": "Blob mirror drift after cloud mutations (TT-2E publish); not TT-1B blocker"
+    },
+    "regressionTests": {
+      "tt1b": "17/17 PASS",
+      "allTeamTournament": "184/184 PASS"
+    }
+  },
+  "verdict": "TT-1B.5 MCP APPLY SUCCESS — READY FOR TT-1C (with known publish overload query drift)",
+  "ownerActionsRequired": []
+}

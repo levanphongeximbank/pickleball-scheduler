@@ -1,0 +1,84 @@
+{
+  "runId": "2026-07-13T00-34-47-210Z",
+  "testResults": [
+    {
+      "id": "t01_login_cohort",
+      "status": "PASS",
+      "detail": "logged in as player@staging.local"
+    },
+    {
+      "id": "t02_menu_v5",
+      "status": "PASS",
+      "detail": "menu Đánh giá V5 (shadow) visible"
+    },
+    {
+      "id": "t03_route_v5",
+      "status": "FAIL",
+      "detail": "locator.waitFor: Timeout 20000ms exceeded.\nCall log:\n  - waiting for getByTestId('skill-assessment-v5-page') to be visible\n"
+    },
+    {
+      "id": "t04_question_counts",
+      "status": "FAIL",
+      "detail": "locator.waitFor: Timeout 30000ms exceeded.\nCall log:\n  - waiting for getByTestId('v5-start-assessment') to be visible\n"
+    },
+    {
+      "id": "t05_terminology",
+      "status": "FAIL",
+      "detail": "locator.innerText: Timeout 30000ms exceeded.\nCall log:\n  - waiting for getByTestId('v5-question-card')\n"
+    },
+    {
+      "id": "t06_back_next",
+      "status": "FAIL",
+      "detail": "locator.waitFor: Timeout 30000ms exceeded.\nCall log:\n  - waiting for getByTestId('v5-start-assessment') to be visible\n"
+    },
+    {
+      "id": "t07_draft_resume",
+      "status": "FAIL",
+      "detail": "locator.waitFor: Timeout 30000ms exceeded.\nCall log:\n  - waiting for getByTestId('v5-assessment-workspace') to be visible\n"
+    },
+    {
+      "id": "t08_payload_allowlist",
+      "status": "FAIL",
+      "detail": "locator.waitFor: Timeout 60000ms exceeded.\nCall log:\n  - waiting for getByTestId('v5-submit-assessment') to be visible\n; no Edge response captured (check CORS / network); UI: Bài đánh giá V5 chưa mở cho tài khoản của bạn."
+    },
+    {
+      "id": "t09_ui_parity",
+      "status": "FAIL",
+      "detail": "no Edge response JSON"
+    },
+    {
+      "id": "t10_shadow_notice",
+      "status": "FAIL",
+      "detail": "locator.innerText: Timeout 30000ms exceeded.\nCall log:\n  - waiting for getByTestId('v5-shadow-notice')\n"
+    },
+    {
+      "id": "t11_rating_cap",
+      "status": "FAIL",
+      "detail": "locator.waitFor: Timeout 30000ms exceeded.\nCall log:\n  - waiting for getByTestId('v5-start-assessment') to be visible\n"
+    },
+    {
+      "id": "t12_idempotency",
+      "status": "PASS",
+      "detail": "eventCount=0"
+    },
+    {
+      "id": "t13_v2_isolation",
+      "status": "PASS",
+      "detail": "pick_vn_player_ratings unchanged"
+    },
+    {
+      "id": "t14_non_cohort",
+      "status": "PASS",
+      "detail": "non-cohort user blocked from V5 UI"
+    }
+  ],
+  "metrics": {
+    "unresolvedPlaceholders": 0,
+    "duplicateAssessments": 0,
+    "duplicateEvents": 0,
+    "v2Mutations": 0,
+    "productionRequests": 0
+  },
+  "assessmentIdA": null,
+  "assessmentIdB": null
+}

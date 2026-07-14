@@ -1,0 +1,68 @@
+{
+  "production_ref": "expuvcohlcjzvrrauvud",
+  "url": "https://expuvcohlcjzvrrauvud.supabase.co",
+  "allow_v5_assessment": false,
+  "active_enrollments": 0,
+  "v2_rows": 0,
+  "profiles_matched_proposed": 5,
+  "unique_player_ids": 5,
+  "duplicate_player_id_values": 0,
+  "club_active": true,
+  "post": [
+    {
+      "slot": "WA-01",
+      "email": "tudotaichinhtuoi29@gmail.com",
+      "profiles_id": "c13392ab-fc7e-483a-9b31-ba08d94a69a9",
+      "player_id": "player-auth-c13392ab-fc7e-483a-9b31-ba08d94a69a9",
+      "expected": "player-auth-c13392ab-fc7e-483a-9b31-ba08d94a69a9",
+      "match": true,
+      "club_membership": "active",
+      "status": "active",
+      "updated_at": "2026-07-14T00:27:36.144+00:00"
+    },
+    {
+      "slot": "WA-02",
+      "email": "hoangmanhluong2405@gmail.com",
+      "profiles_id": "6e77321e-1182-4174-a08a-3ee2d1833c7c",
+      "player_id": "player-auth-6e77321e-1182-4174-a08a-3ee2d1833c7c",
+      "expected": "player-auth-6e77321e-1182-4174-a08a-3ee2d1833c7c",
+      "match": true,
+      "club_membership": "active",
+      "status": "active",
+      "updated_at": "2026-07-14T00:27:37.513+00:00"
+    },
+    {
+      "slot": "WA-03",
+      "email": "lephong.banker@gmail.com",
+      "profiles_id": "42c8ad99-3afd-4122-bf36-de1f6f9a302f",
+      "player_id": "player-auth-42c8ad99-3afd-4122-bf36-de1f6f9a302f",
+      "expected": "player-auth-42c8ad99-3afd-4122-bf36-de1f6f9a302f",
+      "match": true,
+      "club_membership": "active",
+      "status": "active",
+      "updated_at": "2026-07-14T00:27:38.954+00:00"
+    },
+    {
+      "slot": "WA-04",
+      "email": "gionam76@gmail.com",
+      "profiles_id": "6ff822c6-c1b6-4ce0-9e20-61f7afc74a88",
+      "player_id": "player-auth-6ff822c6-c1b6-4ce0-9e20-61f7afc74a88",
+      "expected": "player-auth-6ff822c6-c1b6-4ce0-9e20-61f7afc74a88",
+      "match": true,
+      "club_membership": "active",
+      "status": "active",
+      "updated_at": "2026-07-14T00:27:40.549+00:00"
+    },
+    {
+      "slot": "WA-05",
+      "email": "huonganna120193@gmail.com",
+      "profiles_id": "f776d627-a9f2-4c0c-8d81-bda239cc923b",
+      "player_id": "player-auth-f776d627-a9f2-4c0c-8d81-bda239cc923b",
+      "expected": "player-auth-f776d627-a9f2-4c0c-8d81-bda239cc923b",
+      "match": true,
+      "club_membership": "active",
+      "status": "active",
+      "updated_at": "2026-07-14T00:27:41.996+00:00"
+    }
+  ]
+}

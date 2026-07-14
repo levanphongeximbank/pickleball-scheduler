@@ -1,0 +1,57 @@
+{
+  "run_id": "2026-07-13T00-33-57-017Z",
+  "pass": 8,
+  "fail": 2,
+  "results": [
+    {
+      "id": "a_active_enrollment_empty_profile_cohort",
+      "status": "PASS",
+      "detail": "gate+start ok"
+    },
+    {
+      "id": "b_profile_cohort_without_enrollment_blocked",
+      "status": "PASS",
+      "detail": "PILOT_NOT_ENROLLED"
+    },
+    {
+      "id": "c_paused_enrollment_stale_profile_blocked",
+      "status": "PASS",
+      "detail": "paused"
+    },
+    {
+      "id": "d_removed_enrollment_stale_profile_blocked",
+      "status": "PASS",
+      "detail": "removed"
+    },
+    {
+      "id": "e_wrong_profile_cohort_enrollment_wins",
+      "status": "FAIL",
+      "detail": "{\"gateE\":{\"ok\":true,\"code\":\"OK\",\"cohort_label\":\"v5-shadow-pilot-wave0\",\"enrollment_id\":\"d13dc501-8822-44ad-994e-62942a5f7d75\"},\"feE\":{\"allowed\":false,\"enrollment\":{\"ok\":true,\"enrolled\":true,\"enrollment\":{\"id\":\"d13dc501-8822-44ad-994e-62942a5f7d75\",\"status\":\"active\",\"version\":1,\"tenant_id\":\"venue-staging-a\",\"expires_at\":\"2026-09-30T09:59:59+00:00\",\"cohort_label\":\"v5-shadow-pilot-wave0\"}}}}"
+    },
+    {
+      "id": "f_cross_tenant_blocked",
+      "status": "PASS",
+      "detail": "PILOT_NOT_ENROLLED"
+    },
+    {
+      "id": "g_frontend_reflects_enrollment_refresh",
+      "status": "FAIL",
+      "detail": "{\"feG1\":{\"allowed\":false,\"enrollment\":{\"ok\":true,\"enrolled\":true,\"enrollment\":{\"id\":\"edd8d2ce-c806-4736-b6e6-07dfd851ba9f\",\"status\":\"paused\",\"version\":33,\"tenant_id\":\"venue-staging-a\",\"expires_at\":null,\"cohort_label\":\"v5-shadow-pilot-wave0\"}}},\"feG2\":{\"allowed\":false,\"enrollment\":{\"ok\":true,\"enrolled\":true,\"enrollment\":{\"id\":\"edd8d2ce-c806-4736-b6e6-07dfd851ba9f\",\"status\":\"active\",\"version\":34,\"tenant_id\":\"venue-staging-a\",\"expires_at\":\"2026-09-30T09:59:59+00:00\",\"cohort_label\":\"v5-shadow-pilot-wave0\"}}}}"
+    },
+    {
+      "id": "h_edge_no_bypass",
+      "status": "PASS",
+      "detail": "PILOT_NOT_ENROLLED"
+    },
+    {
+      "id": "i_v2_unchanged",
+      "status": "PASS",
+      "detail": "isolated"
+    },
+    {
+      "id": "j_production_isolation",
+      "status": "PASS",
+      "detail": "staging ref qyewbxjsiiyufanzcjcq"
+    }
+  ]
+}

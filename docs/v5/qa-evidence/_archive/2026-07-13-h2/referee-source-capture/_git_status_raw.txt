@@ -1,0 +1,87 @@
+﻿ M docs/v5/qa-evidence/phase-tt2/TT2C_VALIDATION_REPORT.json
+ M docs/v5/qa-evidence/phase-tt2/TT2D_CONCURRENCY_REPORT.json
+ M docs/v5/qa-evidence/phase-tt2/TT2D_LOCK_REPORT.json
+ M docs/v5/qa-evidence/phase-tt2/TT2D_RANDOMIZE_REPORT.json
+ M docs/v5/qa-evidence/phase-tt2/TT2D_STAGING_SMOKE_REPORT.json
+ M docs/v5/qa-evidence/phase-tt4/TT4_ATOMICITY_REPORT.json
+ M docs/v5/qa-evidence/phase-tt4/TT4_FORFEIT_REPORT.json
+ M docs/v5/qa-evidence/phase-tt4/TT4_STAGING_SMOKE_REPORT.json
+ M docs/v5/qa-evidence/phase-tt4/TT4_STANDINGS_IMPACT_REPORT.json
+ M docs/v5/qa-evidence/phase-tt4/TT4_WITHDRAWAL_REPORT.json
+ M package-lock.json
+ M scripts/deploy-v5b2-preview-staging.mjs
+ M scripts/probe-v5b2-preview-preflight.mjs
+ M scripts/run-v5b2e-staging-browser-e2e.ps1
+ M scripts/staging-auth-resolve.mjs
+ M src/auth/menuAccess.js
+ M src/config/navigationConfig.js
+?? docs/v5/REFEREE_MODULE_CURRENT_STATE_AUDIT.md
+?? docs/v5/mcp-chunks/tt2e-get_setup.sql
+?? docs/v5/mcp-chunks/tt2e-grants.sql
+?? docs/v5/mcp-chunks/tt2e-publish_core.sql
+?? docs/v5/mcp-chunks/tt2e-publish_ops.sql
+?? docs/v5/mcp-chunks/tt2e-undefined.sql
+?? docs/v5/mcp-chunks/tt2e-visible.sql
+?? docs/v5/mcp-chunks/v5d1_part2.sql
+?? docs/v5/qa-evidence/phase-tt1b5-staging/MCP_APPLY_REPORT.json
+?? docs/v5/qa-evidence/phase-tt1b5-staging/_mcp_query.txt
+?? docs/v5/qa-evidence/phase-v5d2/
+?? docs/v5/qa-evidence/phase-v5d3/
+?? docs/v5/qa-evidence/phase-v5d4/
+?? docs/v5/qa-evidence/phase-v5d41/
+?? docs/v5/qa-evidence/phase-v5e1/
+?? docs/v5/referee-v5/
+?? docs/v5/team-tournament/
+?? scripts/_debug-v5-preflight.mjs
+?? scripts/_probe-bundle-v5.mjs
+?? scripts/_probe-deployed-flags.mjs
+?? scripts/apply-phase-v5d2-staging.mjs
+?? scripts/apply-phase-v5d4-staging.mjs
+?? scripts/apply-phase-v5e1-staging.mjs
+?? scripts/apply-v5a-rating-foundation-staging.mjs
+?? scripts/apply-v5b1p-persistence-staging.mjs
+?? scripts/bundle-rating-v5-edge-shared.mjs
+?? scripts/bundle-referee-v5-edge-shared.mjs
+?? scripts/debug-captain-profile-rls.mjs
+?? scripts/debug-tt1c-captain-session.mjs
+?? scripts/deploy-referee-v5-edge-staging.mjs
+?? scripts/deploy-referee-v5-preview-staging.mjs
+?? scripts/deploy-v5b1e-edge-staging.mjs
+?? scripts/ensure-staging-qa-password-env.mjs
+?? scripts/generate-rating-v5-golden-vectors.mjs
+?? scripts/generate-v5-b0-content-review.mjs
+?? scripts/generate-v5-b0f-terminology-freeze.mjs
+?? scripts/generate-v5-data-consistency-audit.mjs
+?? scripts/inspect-rating-v5-edge-bundle.mjs
+?? scripts/lint-referee-v5-scoped.mjs
+?? scripts/lint-v5-scoped.mjs
+?? scripts/predeploy-v5b1e-check.mjs
+?? scripts/probe-preview-flags.mjs
+?? scripts/referee-v5-staging-harness.mjs
+?? scripts/run-v5-benchmark-personas.mjs
+?? scripts/scan-preview-v2-chunks.mjs
+?? scripts/seed-referee-v5-test-staging.mjs
+?? scripts/verify-phase-v5d2-staging.mjs
+?? scripts/verify-referee-v5-atomic-rollback-staging.mjs
+?? scripts/verify-referee-v5-browser-e2e-staging.mjs
+?? scripts/verify-referee-v5-d4-staging-closure.mjs
+?? scripts/verify-referee-v5-d41-browser-e2e-staging.mjs
+?? scripts/verify-referee-v5-d41-staging-closure.mjs
+?? scripts/verify-referee-v5-e1-realtime-browser-staging.mjs
+?? scripts/verify-referee-v5-e1-staging-closure.mjs
+?? scripts/verify-referee-v5-fault-security-staging.mjs
+?? scripts/verify-referee-v5-http-concurrency-staging.mjs
+?? scripts/verify-referee-v5-multi-device-staging.mjs
+?? scripts/verify-referee-v5-replay-staging.mjs
+?? scripts/verify-referee-v5-rollback-rehearsal-staging.mjs
+?? scripts/verify-referee-v5-staging-closure.mjs
+?? scripts/verify-v5a2-rls-staging.mjs
+?? scripts/verify-v5a3-jwt-rls-staging.mjs
+?? scripts/verify-v5b1e-edge-http-staging.mjs
+?? scripts/verify-v5b1p-live-staging.mjs
+?? scripts/verify-v5b1p-transaction-rollback.mjs
+?? src/features/referee-v5/
+?? src/pages/dev/RefereeV5PreviewPage.jsx
+?? supabase/
+?? tests/referee-v5/
+?? tests/ui/referee-v5-c.test.jsx

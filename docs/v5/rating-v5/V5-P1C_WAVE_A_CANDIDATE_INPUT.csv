@@ -1,0 +1,6 @@
+slot,email,display_name,expected_skill_band,tenant_id,club_id,intended_role_slot,owner_notes
+WA-01,tudotaichinhtuoi29@gmail.com,Lương Hữu Kiên,1.5-2.5,CLB ACCC,venue-prod-main,club-219e4a7cbd73437eb6271f02a53314c3,internal-admin,OWNER_FILL_REQUIRED
+WA-02,hoangmanhluong2405@gmail.com,Hoàng Mạnh Lương,3.0-3.5,CLB ACCC,venue-prod-main,club-219e4a7cbd73437eb6271f02a53314c3,beginner,OWNER_FILL_REQUIRED
+WA-03,lephong.banker@gmail.com,Lê Văn Phong,3.0-3.5,CLB ACCC,venue-prod-main,club-219e4a7cbd73437eb6271f02a53314c3,intermediate,OWNER_FILL_REQUIRED
+WA-04,gionam76@gmail.com, Đình Phong,3.0-3.5,CLB ACCC,venue-prod-main,club-219e4a7cbd73437eb6271f02a53314c3,intermediate,OWNER_FILL_REQUIRED
+WA-05,huonganna120193@gmail.com, Nguyễn Thị Hương,1.5-2.5,CLB ACCC,venue-prod-main,club-219e4a7cbd73437eb6271f02a53314c3,advanced,OWNER_FILL_REQUIRED

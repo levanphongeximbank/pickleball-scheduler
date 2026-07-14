@@ -1,0 +1,68 @@
+{
+  "run_id": "2026-07-13T00-14-24-394Z",
+  "dry_run": true,
+  "enrolled_by": "admin@staging.local",
+  "cohort_label": "v5-shadow-pilot-wave0",
+  "pilot_cohort_label_before": "v5-shadow-pilot",
+  "pilot_cohort_label_after": "v5-shadow-pilot-wave0",
+  "enrollments": [
+    {
+      "player_id": "54f5ee47-3d78-4b50-b286-2ebfdf948b2e",
+      "email": "player.nomember@staging.local",
+      "wave": "0-A",
+      "tenant_id": "venue-staging-a",
+      "rpc_result": {
+        "ok": true,
+        "dryRun": true,
+        "payload": {
+          "p_player_id": "54f5ee47-3d78-4b50-b286-2ebfdf948b2e",
+          "p_tenant_id": "venue-staging-a",
+          "p_cohort_label": "v5-shadow-pilot-wave0",
+          "p_status": "active",
+          "p_expected_version": null,
+          "p_expires_at": "2026-09-30T16:59:59+07:00",
+          "p_notes": "Wave 0 internal verification"
+        }
+      }
+    },
+    {
+      "player_id": "7b381912-2190-415c-b099-6b1e87567b7a",
+      "email": "player@staging.local",
+      "wave": "0-B",
+      "tenant_id": "venue-staging-a",
+      "rpc_result": {
+        "ok": true,
+        "dryRun": true,
+        "payload": {
+          "p_player_id": "7b381912-2190-415c-b099-6b1e87567b7a",
+          "p_tenant_id": "venue-staging-a",
+          "p_cohort_label": "v5-shadow-pilot-wave0",
+          "p_status": "active",
+          "p_expected_version": null,
+          "p_expires_at": "2026-09-30T16:59:59+07:00",
+          "p_notes": "Wave 0 internal verification"
+        }
+      }
+    },
+    {
+      "player_id": "d8997acc-cf9b-4b2e-9027-302e830bf12f",
+      "email": "vicepresident@staging.local",
+      "wave": "0-C",
+      "tenant_id": "platform",
+      "rpc_result": {
+        "ok": true,
+        "dryRun": true,
+        "payload": {
+          "p_player_id": "d8997acc-cf9b-4b2e-9027-302e830bf12f",
+          "p_tenant_id": "platform",
+          "p_cohort_label": "v5-shadow-pilot-wave0",
+          "p_status": "active",
+          "p_expected_version": null,
+          "p_expires_at": "2026-09-30T16:59:59+07:00",
+          "p_notes": "Wave 0 internal verification"
+        }
+      }
+    }
+  ],
+  "artifact_dir": "C:\\Users\\Le Phong\\pickleball-scheduler\\artifacts\\rating-v5-wave0\\2026-07-13T00-14-24-394Z"
+}

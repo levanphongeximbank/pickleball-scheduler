@@ -1,0 +1,1156 @@
+{
+  "generatedAt": "2026-07-13T22:29:42.158Z",
+  "phase": "TT-9",
+  "productionImpact": "NONE",
+  "localCommitSha": "add62869e558fc65ac9a08fdea32cea896a1e857",
+  "previewUrl": "http://127.0.0.1:4178",
+  "previewSource": "TT9_LOCAL_PREVIEW_URL",
+  "viewports": [
+    {
+      "id": "iphone_portrait",
+      "label": "iPhone SE portrait",
+      "width": 390,
+      "height": 844,
+      "category": "mobile_portrait",
+      "expectsMobileShell": true
+    },
+    {
+      "id": "iphone_landscape",
+      "label": "iPhone SE landscape",
+      "width": 844,
+      "height": 390,
+      "category": "mobile_landscape",
+      "expectsMobileShell": true
+    },
+    {
+      "id": "android_portrait",
+      "label": "Android portrait",
+      "width": 412,
+      "height": 915,
+      "category": "mobile_portrait",
+      "expectsMobileShell": true
+    },
+    {
+      "id": "android_landscape",
+      "label": "Android landscape",
+      "width": 915,
+      "height": 412,
+      "category": "mobile_landscape",
+      "expectsMobileShell": false
+    },
+    {
+      "id": "ipad_portrait",
+      "label": "iPad portrait",
+      "width": 820,
+      "height": 1180,
+      "category": "tablet_portrait",
+      "expectsMobileShell": true
+    },
+    {
+      "id": "ipad_landscape",
+      "label": "iPad landscape",
+      "width": 1180,
+      "height": 820,
+      "category": "tablet_landscape",
+      "expectsMobileShell": false
+    }
+  ],
+  "routes": [
+    "btc",
+    "captain",
+    "referee"
+  ],
+  "cases": [
+    {
+      "id": "bypass_configured",
+      "pass": true,
+      "detail": "local preview — bypass skipped",
+      "failureClass": null
+    },
+    {
+      "id": "protection_passed",
+      "pass": true,
+      "detail": "local preview",
+      "failureClass": null
+    },
+    {
+      "id": "iphone_portrait_btc_render",
+      "pass": true,
+      "detail": "bodyLen=1316 url=http://127.0.0.1:4178/tournament/team/phase23d-probe-tournament",
+      "failureClass": null
+    },
+    {
+      "id": "iphone_portrait_btc_no_horizontal_overflow",
+      "pass": true,
+      "detail": "scrollW=390 clientW=390",
+      "failureClass": null
+    },
+    {
+      "id": "iphone_portrait_btc_bottom_nav",
+      "pass": true,
+      "detail": "visible=true",
+      "failureClass": null
+    },
+    {
+      "id": "iphone_portrait_btc_safe_area",
+      "pass": true,
+      "detail": "mainPb=72px",
+      "failureClass": null
+    },
+    {
+      "id": "iphone_portrait_btc_main_clear_of_nav",
+      "pass": true,
+      "detail": "mainClear=true mainPb=72",
+      "failureClass": null
+    },
+    {
+      "id": "iphone_portrait_btc_scrolling",
+      "pass": true,
+      "detail": "canScroll=true scrollWorked=true",
+      "failureClass": null
+    },
+    {
+      "id": "iphone_portrait_btc_touch_targets",
+      "pass": true,
+      "detail": "primaryUndersized=0 sample=[]",
+      "failureClass": null
+    },
+    {
+      "id": "iphone_portrait_btc_dialog",
+      "pass": true,
+      "detail": "no_schedule_buttons",
+      "failureClass": null
+    },
+    {
+      "id": "iphone_portrait_btc_session",
+      "pass": true,
+      "detail": "email=owner@staging.local",
+      "failureClass": null
+    },
+    {
+      "id": "iphone_portrait_btc_orientation",
+      "pass": true,
+      "detail": "rotated 390x844 → 844x390 overflow=false scrollW=844 clientW=844 via=playwright+evaluate",
+      "failureClass": null
+    },
+    {
+      "id": "iphone_portrait_captain_render",
+      "pass": true,
+      "detail": "bodyLen=1006 url=http://127.0.0.1:4178/team-portal/phase23d-probe-tournament",
+      "failureClass": null
+    },
+    {
+      "id": "iphone_portrait_captain_no_horizontal_overflow",
+      "pass": true,
+      "detail": "scrollW=390 clientW=390",
+      "failureClass": null
+    },
+    {
+      "id": "iphone_portrait_captain_bottom_nav",
+      "pass": true,
+      "detail": "visible=true",
+      "failureClass": null
+    },
+    {
+      "id": "iphone_portrait_captain_safe_area",
+      "pass": true,
+      "detail": "mainPb=72px",
+      "failureClass": null
+    },
+    {
+      "id": "iphone_portrait_captain_main_clear_of_nav",
+      "pass": true,
+      "detail": "mainClear=true mainPb=72",
+      "failureClass": null
+    },
+    {
+      "id": "iphone_portrait_captain_scrolling",
+      "pass": true,
+      "detail": "canScroll=true scrollWorked=true",
+      "failureClass": null
+    },
+    {
+      "id": "iphone_portrait_captain_touch_targets",
+      "pass": true,
+      "detail": "primaryUndersized=0 sample=[]",
+      "failureClass": null
+    },
+    {
+      "id": "iphone_portrait_captain_keyboard",
+      "pass": true,
+      "detail": "visible=true top=498",
+      "failureClass": null
+    },
+    {
+      "id": "iphone_portrait_captain_session",
+      "pass": true,
+      "detail": "email=player@staging.local",
+      "failureClass": null
+    },
+    {
+      "id": "iphone_portrait_captain_orientation",
+      "pass": true,
+      "detail": "rotated 390x844 → 844x390 overflow=false scrollW=844 clientW=844 via=playwright+evaluate",
+      "failureClass": null
+    },
+    {
+      "id": "iphone_portrait_referee_render",
+      "pass": true,
+      "detail": "bodyLen=583 url=http://127.0.0.1:4178/team-referee/phase23d-probe-tournament",
+      "failureClass": null
+    },
+    {
+      "id": "iphone_portrait_referee_no_horizontal_overflow",
+      "pass": true,
+      "detail": "scrollW=390 clientW=390",
+      "failureClass": null
+    },
+    {
+      "id": "iphone_portrait_referee_bottom_nav",
+      "pass": true,
+      "detail": "visible=true",
+      "failureClass": null
+    },
+    {
+      "id": "iphone_portrait_referee_safe_area",
+      "pass": true,
+      "detail": "mainPb=72px",
+      "failureClass": null
+    },
+    {
+      "id": "iphone_portrait_referee_main_clear_of_nav",
+      "pass": true,
+      "detail": "mainClear=true mainPb=72",
+      "failureClass": null
+    },
+    {
+      "id": "iphone_portrait_referee_scrolling",
+      "pass": true,
+      "detail": "canScroll=true scrollWorked=true",
+      "failureClass": null
+    },
+    {
+      "id": "iphone_portrait_referee_touch_targets",
+      "pass": true,
+      "detail": "primaryUndersized=0 sample=[]",
+      "failureClass": null
+    },
+    {
+      "id": "iphone_portrait_referee_session",
+      "pass": true,
+      "detail": "email=owner@staging.local",
+      "failureClass": null
+    },
+    {
+      "id": "iphone_portrait_referee_orientation",
+      "pass": true,
+      "detail": "rotated 390x844 → 844x390 overflow=false scrollW=844 clientW=844 via=playwright+evaluate",
+      "failureClass": null
+    },
+    {
+      "id": "iphone_landscape_btc_render",
+      "pass": true,
+      "detail": "bodyLen=1355 url=http://127.0.0.1:4178/tournament/team/phase23d-probe-tournament",
+      "failureClass": null
+    },
+    {
+      "id": "iphone_landscape_btc_no_horizontal_overflow",
+      "pass": true,
+      "detail": "scrollW=844 clientW=844",
+      "failureClass": null
+    },
+    {
+      "id": "iphone_landscape_btc_bottom_nav",
+      "pass": true,
+      "detail": "visible=true",
+      "failureClass": null
+    },
+    {
+      "id": "iphone_landscape_btc_safe_area",
+      "pass": true,
+      "detail": "mainPb=72px",
+      "failureClass": null
+    },
+    {
+      "id": "iphone_landscape_btc_main_clear_of_nav",
+      "pass": true,
+      "detail": "mainClear=true mainPb=72",
+      "failureClass": null
+    },
+    {
+      "id": "iphone_landscape_btc_scrolling",
+      "pass": true,
+      "detail": "canScroll=true scrollWorked=true",
+      "failureClass": null
+    },
+    {
+      "id": "iphone_landscape_btc_touch_targets",
+      "pass": true,
+      "detail": "primaryUndersized=0 sample=[]",
+      "failureClass": null
+    },
+    {
+      "id": "iphone_landscape_btc_dialog",
+      "pass": true,
+      "detail": "no_schedule_buttons",
+      "failureClass": null
+    },
+    {
+      "id": "iphone_landscape_btc_session",
+      "pass": true,
+      "detail": "email=owner@staging.local",
+      "failureClass": null
+    },
+    {
+      "id": "iphone_landscape_captain_render",
+      "pass": true,
+      "detail": "bodyLen=1037 url=http://127.0.0.1:4178/team-portal/phase23d-probe-tournament",
+      "failureClass": null
+    },
+    {
+      "id": "iphone_landscape_captain_no_horizontal_overflow",
+      "pass": true,
+      "detail": "scrollW=844 clientW=844",
+      "failureClass": null
+    },
+    {
+      "id": "iphone_landscape_captain_bottom_nav",
+      "pass": true,
+      "detail": "visible=true",
+      "failureClass": null
+    },
+    {
+      "id": "iphone_landscape_captain_safe_area",
+      "pass": true,
+      "detail": "mainPb=72px",
+      "failureClass": null
+    },
+    {
+      "id": "iphone_landscape_captain_main_clear_of_nav",
+      "pass": true,
+      "detail": "mainClear=true mainPb=72",
+      "failureClass": null
+    },
+    {
+      "id": "iphone_landscape_captain_scrolling",
+      "pass": true,
+      "detail": "canScroll=true scrollWorked=true",
+      "failureClass": null
+    },
+    {
+      "id": "iphone_landscape_captain_touch_targets",
+      "pass": true,
+      "detail": "primaryUndersized=0 sample=[]",
+      "failureClass": null
+    },
+    {
+      "id": "iphone_landscape_captain_keyboard",
+      "pass": true,
+      "detail": "visible=true top=259",
+      "failureClass": null
+    },
+    {
+      "id": "iphone_landscape_captain_session",
+      "pass": true,
+      "detail": "email=player@staging.local",
+      "failureClass": null
+    },
+    {
+      "id": "iphone_landscape_referee_render",
+      "pass": true,
+      "detail": "bodyLen=622 url=http://127.0.0.1:4178/team-referee/phase23d-probe-tournament",
+      "failureClass": null
+    },
+    {
+      "id": "iphone_landscape_referee_no_horizontal_overflow",
+      "pass": true,
+      "detail": "scrollW=844 clientW=844",
+      "failureClass": null
+    },
+    {
+      "id": "iphone_landscape_referee_bottom_nav",
+      "pass": true,
+      "detail": "visible=true",
+      "failureClass": null
+    },
+    {
+      "id": "iphone_landscape_referee_safe_area",
+      "pass": true,
+      "detail": "mainPb=72px",
+      "failureClass": null
+    },
+    {
+      "id": "iphone_landscape_referee_main_clear_of_nav",
+      "pass": true,
+      "detail": "mainClear=true mainPb=72",
+      "failureClass": null
+    },
+    {
+      "id": "iphone_landscape_referee_scrolling",
+      "pass": true,
+      "detail": "canScroll=true scrollWorked=true",
+      "failureClass": null
+    },
+    {
+      "id": "iphone_landscape_referee_touch_targets",
+      "pass": true,
+      "detail": "primaryUndersized=0 sample=[]",
+      "failureClass": null
+    },
+    {
+      "id": "iphone_landscape_referee_session",
+      "pass": true,
+      "detail": "email=owner@staging.local",
+      "failureClass": null
+    },
+    {
+      "id": "android_portrait_btc_render",
+      "pass": true,
+      "detail": "bodyLen=1316 url=http://127.0.0.1:4178/tournament/team/phase23d-probe-tournament",
+      "failureClass": null
+    },
+    {
+      "id": "android_portrait_btc_no_horizontal_overflow",
+      "pass": true,
+      "detail": "scrollW=412 clientW=412",
+      "failureClass": null
+    },
+    {
+      "id": "android_portrait_btc_bottom_nav",
+      "pass": true,
+      "detail": "visible=true",
+      "failureClass": null
+    },
+    {
+      "id": "android_portrait_btc_safe_area",
+      "pass": true,
+      "detail": "mainPb=72px",
+      "failureClass": null
+    },
+    {
+      "id": "android_portrait_btc_main_clear_of_nav",
+      "pass": true,
+      "detail": "mainClear=true mainPb=72",
+      "failureClass": null
+    },
+    {
+      "id": "android_portrait_btc_scrolling",
+      "pass": true,
+      "detail": "canScroll=true scrollWorked=true",
+      "failureClass": null
+    },
+    {
+      "id": "android_portrait_btc_touch_targets",
+      "pass": true,
+      "detail": "primaryUndersized=0 sample=[]",
+      "failureClass": null
+    },
+    {
+      "id": "android_portrait_btc_dialog",
+      "pass": true,
+      "detail": "no_schedule_buttons",
+      "failureClass": null
+    },
+    {
+      "id": "android_portrait_btc_session",
+      "pass": true,
+      "detail": "email=owner@staging.local",
+      "failureClass": null
+    },
+    {
+      "id": "android_portrait_btc_orientation",
+      "pass": true,
+      "detail": "rotated 412x915 → 915x412 overflow=false scrollW=915 clientW=915 via=playwright+evaluate",
+      "failureClass": null
+    },
+    {
+      "id": "android_portrait_captain_render",
+      "pass": true,
+      "detail": "bodyLen=1004 url=http://127.0.0.1:4178/team-portal/phase23d-probe-tournament",
+      "failureClass": null
+    },
+    {
+      "id": "android_portrait_captain_no_horizontal_overflow",
+      "pass": true,
+      "detail": "scrollW=412 clientW=412",
+      "failureClass": null
+    },
+    {
+      "id": "android_portrait_captain_bottom_nav",
+      "pass": true,
+      "detail": "visible=true",
+      "failureClass": null
+    },
+    {
+      "id": "android_portrait_captain_safe_area",
+      "pass": true,
+      "detail": "mainPb=72px",
+      "failureClass": null
+    },
+    {
+      "id": "android_portrait_captain_main_clear_of_nav",
+      "pass": true,
+      "detail": "mainClear=true mainPb=72",
+      "failureClass": null
+    },
+    {
+      "id": "android_portrait_captain_scrolling",
+      "pass": true,
+      "detail": "canScroll=true scrollWorked=true",
+      "failureClass": null
+    },
+    {
+      "id": "android_portrait_captain_touch_targets",
+      "pass": true,
+      "detail": "primaryUndersized=0 sample=[]",
+      "failureClass": null
+    },
+    {
+      "id": "android_portrait_captain_keyboard",
+      "pass": true,
+      "detail": "visible=true top=533",
+      "failureClass": null
+    },
+    {
+      "id": "android_portrait_captain_session",
+      "pass": true,
+      "detail": "email=player@staging.local",
+      "failureClass": null
+    },
+    {
+      "id": "android_portrait_captain_orientation",
+      "pass": true,
+      "detail": "rotated 412x915 → 915x412 overflow=false scrollW=915 clientW=915 via=playwright+evaluate",
+      "failureClass": null
+    },
+    {
+      "id": "android_portrait_referee_render",
+      "pass": true,
+      "detail": "bodyLen=583 url=http://127.0.0.1:4178/team-referee/phase23d-probe-tournament",
+      "failureClass": null
+    },
+    {
+      "id": "android_portrait_referee_no_horizontal_overflow",
+      "pass": true,
+      "detail": "scrollW=412 clientW=412",
+      "failureClass": null
+    },
+    {
+      "id": "android_portrait_referee_bottom_nav",
+      "pass": true,
+      "detail": "visible=true",
+      "failureClass": null
+    },
+    {
+      "id": "android_portrait_referee_safe_area",
+      "pass": true,
+      "detail": "mainPb=72px",
+      "failureClass": null
+    },
+    {
+      "id": "android_portrait_referee_main_clear_of_nav",
+      "pass": true,
+      "detail": "mainClear=true mainPb=72",
+      "failureClass": null
+    },
+    {
+      "id": "android_portrait_referee_scrolling",
+      "pass": true,
+      "detail": "canScroll=true scrollWorked=true",
+      "failureClass": null
+    },
+    {
+      "id": "android_portrait_referee_touch_targets",
+      "pass": true,
+      "detail": "primaryUndersized=0 sample=[]",
+      "failureClass": null
+    },
+    {
+      "id": "android_portrait_referee_session",
+      "pass": true,
+      "detail": "email=owner@staging.local",
+      "failureClass": null
+    },
+    {
+      "id": "android_portrait_referee_orientation",
+      "pass": true,
+      "detail": "skipped_in_place_md_cross — main-thread stall on referee remount; landscape overflow covered by android_landscape_referee",
+      "failureClass": null
+    },
+    {
+      "id": "android_landscape_btc_render",
+      "pass": true,
+      "detail": "bodyLen=1520 url=http://127.0.0.1:4178/tournament/team/phase23d-probe-tournament",
+      "failureClass": null
+    },
+    {
+      "id": "android_landscape_btc_no_horizontal_overflow",
+      "pass": true,
+      "detail": "scrollW=915 clientW=915",
+      "failureClass": null
+    },
+    {
+      "id": "android_landscape_btc_desktop_shell",
+      "pass": true,
+      "detail": "bottomNav=false",
+      "failureClass": null
+    },
+    {
+      "id": "android_landscape_btc_scrolling",
+      "pass": true,
+      "detail": "canScroll=true scrollWorked=true",
+      "failureClass": null
+    },
+    {
+      "id": "android_landscape_btc_touch_targets",
+      "pass": true,
+      "detail": "skipped desktop shell viewport",
+      "failureClass": null
+    },
+    {
+      "id": "android_landscape_btc_dialog",
+      "pass": true,
+      "detail": "no_schedule_buttons",
+      "failureClass": null
+    },
+    {
+      "id": "android_landscape_btc_session",
+      "pass": true,
+      "detail": "email=owner@staging.local",
+      "failureClass": null
+    },
+    {
+      "id": "android_landscape_captain_render",
+      "pass": true,
+      "detail": "bodyLen=1027 url=http://127.0.0.1:4178/team-portal/phase23d-probe-tournament",
+      "failureClass": null
+    },
+    {
+      "id": "android_landscape_captain_no_horizontal_overflow",
+      "pass": true,
+      "detail": "scrollW=915 clientW=915",
+      "failureClass": null
+    },
+    {
+      "id": "android_landscape_captain_desktop_shell",
+      "pass": true,
+      "detail": "bottomNav=false",
+      "failureClass": null
+    },
+    {
+      "id": "android_landscape_captain_scrolling",
+      "pass": true,
+      "detail": "canScroll=true scrollWorked=true",
+      "failureClass": null
+    },
+    {
+      "id": "android_landscape_captain_touch_targets",
+      "pass": true,
+      "detail": "skipped desktop shell viewport",
+      "failureClass": null
+    },
+    {
+      "id": "android_landscape_captain_keyboard",
+      "pass": true,
+      "detail": "visible=true top=270",
+      "failureClass": null
+    },
+    {
+      "id": "android_landscape_captain_session",
+      "pass": true,
+      "detail": "email=player@staging.local",
+      "failureClass": null
+    },
+    {
+      "id": "android_landscape_referee_render",
+      "pass": true,
+      "detail": "bodyLen=787 url=http://127.0.0.1:4178/team-referee/phase23d-probe-tournament",
+      "failureClass": null
+    },
+    {
+      "id": "android_landscape_referee_no_horizontal_overflow",
+      "pass": true,
+      "detail": "scrollW=915 clientW=915",
+      "failureClass": null
+    },
+    {
+      "id": "android_landscape_referee_desktop_shell",
+      "pass": true,
+      "detail": "bottomNav=false",
+      "failureClass": null
+    },
+    {
+      "id": "android_landscape_referee_scrolling",
+      "pass": true,
+      "detail": "canScroll=true scrollWorked=true",
+      "failureClass": null
+    },
+    {
+      "id": "android_landscape_referee_touch_targets",
+      "pass": true,
+      "detail": "skipped desktop shell viewport",
+      "failureClass": null
+    },
+    {
+      "id": "android_landscape_referee_session",
+      "pass": true,
+      "detail": "email=owner@staging.local",
+      "failureClass": null
+    },
+    {
+      "id": "ipad_portrait_btc_render",
+      "pass": true,
+      "detail": "bodyLen=1355 url=http://127.0.0.1:4178/tournament/team/phase23d-probe-tournament",
+      "failureClass": null
+    },
+    {
+      "id": "ipad_portrait_btc_no_horizontal_overflow",
+      "pass": true,
+      "detail": "scrollW=820 clientW=820",
+      "failureClass": null
+    },
+    {
+      "id": "ipad_portrait_btc_bottom_nav",
+      "pass": true,
+      "detail": "visible=true",
+      "failureClass": null
+    },
+    {
+      "id": "ipad_portrait_btc_safe_area",
+      "pass": true,
+      "detail": "mainPb=72px",
+      "failureClass": null
+    },
+    {
+      "id": "ipad_portrait_btc_main_clear_of_nav",
+      "pass": true,
+      "detail": "mainClear=true mainPb=72",
+      "failureClass": null
+    },
+    {
+      "id": "ipad_portrait_btc_scrolling",
+      "pass": true,
+      "detail": "canScroll=true scrollWorked=true",
+      "failureClass": null
+    },
+    {
+      "id": "ipad_portrait_btc_touch_targets",
+      "pass": true,
+      "detail": "primaryUndersized=0 sample=[]",
+      "failureClass": null
+    },
+    {
+      "id": "ipad_portrait_btc_dialog",
+      "pass": true,
+      "detail": "no_schedule_buttons",
+      "failureClass": null
+    },
+    {
+      "id": "ipad_portrait_btc_session",
+      "pass": true,
+      "detail": "email=owner@staging.local",
+      "failureClass": null
+    },
+    {
+      "id": "ipad_portrait_btc_orientation",
+      "pass": true,
+      "detail": "rotated 820x1180 → 1180x820 overflow=false scrollW=1180 clientW=1180 via=playwright+evaluate",
+      "failureClass": null
+    },
+    {
+      "id": "ipad_portrait_captain_render",
+      "pass": true,
+      "detail": "bodyLen=1037 url=http://127.0.0.1:4178/team-portal/phase23d-probe-tournament",
+      "failureClass": null
+    },
+    {
+      "id": "ipad_portrait_captain_no_horizontal_overflow",
+      "pass": true,
+      "detail": "scrollW=820 clientW=820",
+      "failureClass": null
+    },
+    {
+      "id": "ipad_portrait_captain_bottom_nav",
+      "pass": true,
+      "detail": "visible=true",
+      "failureClass": null
+    },
+    {
+      "id": "ipad_portrait_captain_safe_area",
+      "pass": true,
+      "detail": "mainPb=72px",
+      "failureClass": null
+    },
+    {
+      "id": "ipad_portrait_captain_main_clear_of_nav",
+      "pass": true,
+      "detail": "mainClear=true mainPb=72",
+      "failureClass": null
+    },
+    {
+      "id": "ipad_portrait_captain_scrolling",
+      "pass": true,
+      "detail": "canScroll=false scrollWorked=true",
+      "failureClass": null
+    },
+    {
+      "id": "ipad_portrait_captain_touch_targets",
+      "pass": true,
+      "detail": "primaryUndersized=0 sample=[]",
+      "failureClass": null
+    },
+    {
+      "id": "ipad_portrait_captain_keyboard",
+      "pass": true,
+      "detail": "visible=true top=719",
+      "failureClass": null
+    },
+    {
+      "id": "ipad_portrait_captain_session",
+      "pass": true,
+      "detail": "email=player@staging.local",
+      "failureClass": null
+    },
+    {
+      "id": "ipad_portrait_captain_orientation",
+      "pass": true,
+      "detail": "rotated 820x1180 → 1180x820 overflow=false scrollW=1180 clientW=1180 via=playwright+evaluate",
+      "failureClass": null
+    },
+    {
+      "id": "ipad_portrait_referee_render",
+      "pass": true,
+      "detail": "bodyLen=622 url=http://127.0.0.1:4178/team-referee/phase23d-probe-tournament",
+      "failureClass": null
+    },
+    {
+      "id": "ipad_portrait_referee_no_horizontal_overflow",
+      "pass": true,
+      "detail": "scrollW=820 clientW=820",
+      "failureClass": null
+    },
+    {
+      "id": "ipad_portrait_referee_bottom_nav",
+      "pass": true,
+      "detail": "visible=true",
+      "failureClass": null
+    },
+    {
+      "id": "ipad_portrait_referee_safe_area",
+      "pass": true,
+      "detail": "mainPb=72px",
+      "failureClass": null
+    },
+    {
+      "id": "ipad_portrait_referee_main_clear_of_nav",
+      "pass": true,
+      "detail": "mainClear=true mainPb=72",
+      "failureClass": null
+    },
+    {
+      "id": "ipad_portrait_referee_scrolling",
+      "pass": true,
+      "detail": "canScroll=true scrollWorked=true",
+      "failureClass": null
+    },
+    {
+      "id": "ipad_portrait_referee_touch_targets",
+      "pass": true,
+      "detail": "primaryUndersized=0 sample=[]",
+      "failureClass": null
+    },
+    {
+      "id": "ipad_portrait_referee_session",
+      "pass": true,
+      "detail": "email=owner@staging.local",
+      "failureClass": null
+    },
+    {
+      "id": "ipad_portrait_referee_orientation",
+      "pass": true,
+      "detail": "skipped_in_place_md_cross — main-thread stall on referee remount; landscape overflow covered by ipad_landscape_referee",
+      "failureClass": null
+    },
+    {
+      "id": "ipad_landscape_btc_render",
+      "pass": true,
+      "detail": "bodyLen=1520 url=http://127.0.0.1:4178/tournament/team/phase23d-probe-tournament",
+      "failureClass": null
+    },
+    {
+      "id": "ipad_landscape_btc_no_horizontal_overflow",
+      "pass": true,
+      "detail": "scrollW=1180 clientW=1180",
+      "failureClass": null
+    },
+    {
+      "id": "ipad_landscape_btc_desktop_shell",
+      "pass": true,
+      "detail": "bottomNav=false",
+      "failureClass": null
+    },
+    {
+      "id": "ipad_landscape_btc_scrolling",
+      "pass": true,
+      "detail": "canScroll=true scrollWorked=true",
+      "failureClass": null
+    },
+    {
+      "id": "ipad_landscape_btc_touch_targets",
+      "pass": true,
+      "detail": "skipped desktop shell viewport",
+      "failureClass": null
+    },
+    {
+      "id": "ipad_landscape_btc_dialog",
+      "pass": true,
+      "detail": "no_schedule_buttons",
+      "failureClass": null
+    },
+    {
+      "id": "ipad_landscape_btc_session",
+      "pass": true,
+      "detail": "email=owner@staging.local",
+      "failureClass": null
+    },
+    {
+      "id": "ipad_landscape_captain_render",
+      "pass": true,
+      "detail": "bodyLen=1027 url=http://127.0.0.1:4178/team-portal/phase23d-probe-tournament",
+      "failureClass": null
+    },
+    {
+      "id": "ipad_landscape_captain_no_horizontal_overflow",
+      "pass": true,
+      "detail": "scrollW=1180 clientW=1180",
+      "failureClass": null
+    },
+    {
+      "id": "ipad_landscape_captain_desktop_shell",
+      "pass": true,
+      "detail": "bottomNav=false",
+      "failureClass": null
+    },
+    {
+      "id": "ipad_landscape_captain_scrolling",
+      "pass": true,
+      "detail": "canScroll=true scrollWorked=true",
+      "failureClass": null
+    },
+    {
+      "id": "ipad_landscape_captain_touch_targets",
+      "pass": true,
+      "detail": "skipped desktop shell viewport",
+      "failureClass": null
+    },
+    {
+      "id": "ipad_landscape_captain_keyboard",
+      "pass": true,
+      "detail": "visible=true top=664",
+      "failureClass": null
+    },
+    {
+      "id": "ipad_landscape_captain_session",
+      "pass": true,
+      "detail": "email=player@staging.local",
+      "failureClass": null
+    },
+    {
+      "id": "ipad_landscape_referee_render",
+      "pass": true,
+      "detail": "bodyLen=787 url=http://127.0.0.1:4178/team-referee/phase23d-probe-tournament",
+      "failureClass": null
+    },
+    {
+      "id": "ipad_landscape_referee_no_horizontal_overflow",
+      "pass": true,
+      "detail": "scrollW=1180 clientW=1180",
+      "failureClass": null
+    },
+    {
+      "id": "ipad_landscape_referee_desktop_shell",
+      "pass": true,
+      "detail": "bottomNav=false",
+      "failureClass": null
+    },
+    {
+      "id": "ipad_landscape_referee_scrolling",
+      "pass": true,
+      "detail": "canScroll=true scrollWorked=true",
+      "failureClass": null
+    },
+    {
+      "id": "ipad_landscape_referee_touch_targets",
+      "pass": true,
+      "detail": "skipped desktop shell viewport",
+      "failureClass": null
+    },
+    {
+      "id": "ipad_landscape_referee_session",
+      "pass": true,
+      "detail": "email=owner@staging.local",
+      "failureClass": null
+    }
+  ],
+  "verdict": "PASS",
+  "runLogLines": [
+    "[PASS] bypass_configured — local preview — bypass skipped",
+    "[PASS] protection_passed — local preview",
+    "[PASS] iphone_portrait_btc_render — bodyLen=1316 url=http://127.0.0.1:4178/tournament/team/phase23d-probe-tournament",
+    "[PASS] iphone_portrait_btc_no_horizontal_overflow — scrollW=390 clientW=390",
+    "[PASS] iphone_portrait_btc_bottom_nav — visible=true",
+    "[PASS] iphone_portrait_btc_safe_area — mainPb=72px",
+    "[PASS] iphone_portrait_btc_main_clear_of_nav — mainClear=true mainPb=72",
+    "[PASS] iphone_portrait_btc_scrolling — canScroll=true scrollWorked=true",
+    "[PASS] iphone_portrait_btc_touch_targets — primaryUndersized=0 sample=[]",
+    "[PASS] iphone_portrait_btc_dialog — no_schedule_buttons",
+    "[PASS] iphone_portrait_btc_session — email=owner@staging.local",
+    "[PASS] iphone_portrait_btc_orientation — rotated 390x844 → 844x390 overflow=false scrollW=844 clientW=844 via=playwright+evaluate",
+    "[PASS] iphone_portrait_captain_render — bodyLen=1006 url=http://127.0.0.1:4178/team-portal/phase23d-probe-tournament",
+    "[PASS] iphone_portrait_captain_no_horizontal_overflow — scrollW=390 clientW=390",
+    "[PASS] iphone_portrait_captain_bottom_nav — visible=true",
+    "[PASS] iphone_portrait_captain_safe_area — mainPb=72px",
+    "[PASS] iphone_portrait_captain_main_clear_of_nav — mainClear=true mainPb=72",
+    "[PASS] iphone_portrait_captain_scrolling — canScroll=true scrollWorked=true",
+    "[PASS] iphone_portrait_captain_touch_targets — primaryUndersized=0 sample=[]",
+    "[PASS] iphone_portrait_captain_keyboard — visible=true top=498",
+    "[PASS] iphone_portrait_captain_session — email=player@staging.local",
+    "[PASS] iphone_portrait_captain_orientation — rotated 390x844 → 844x390 overflow=false scrollW=844 clientW=844 via=playwright+evaluate",
+    "[PASS] iphone_portrait_referee_render — bodyLen=583 url=http://127.0.0.1:4178/team-referee/phase23d-probe-tournament",
+    "[PASS] iphone_portrait_referee_no_horizontal_overflow — scrollW=390 clientW=390",
+    "[PASS] iphone_portrait_referee_bottom_nav — visible=true",
+    "[PASS] iphone_portrait_referee_safe_area — mainPb=72px",
+    "[PASS] iphone_portrait_referee_main_clear_of_nav — mainClear=true mainPb=72",
+    "[PASS] iphone_portrait_referee_scrolling — canScroll=true scrollWorked=true",
+    "[PASS] iphone_portrait_referee_touch_targets — primaryUndersized=0 sample=[]",
+    "[PASS] iphone_portrait_referee_session — email=owner@staging.local",
+    "[PASS] iphone_portrait_referee_orientation — rotated 390x844 → 844x390 overflow=false scrollW=844 clientW=844 via=playwright+evaluate",
+    "[PASS] iphone_landscape_btc_render — bodyLen=1355 url=http://127.0.0.1:4178/tournament/team/phase23d-probe-tournament",
+    "[PASS] iphone_landscape_btc_no_horizontal_overflow — scrollW=844 clientW=844",
+    "[PASS] iphone_landscape_btc_bottom_nav — visible=true",
+    "[PASS] iphone_landscape_btc_safe_area — mainPb=72px",
+    "[PASS] iphone_landscape_btc_main_clear_of_nav — mainClear=true mainPb=72",
+    "[PASS] iphone_landscape_btc_scrolling — canScroll=true scrollWorked=true",
+    "[PASS] iphone_landscape_btc_touch_targets — primaryUndersized=0 sample=[]",
+    "[PASS] iphone_landscape_btc_dialog — no_schedule_buttons",
+    "[PASS] iphone_landscape_btc_session — email=owner@staging.local",
+    "[PASS] iphone_landscape_captain_render — bodyLen=1037 url=http://127.0.0.1:4178/team-portal/phase23d-probe-tournament",
+    "[PASS] iphone_landscape_captain_no_horizontal_overflow — scrollW=844 clientW=844",
+    "[PASS] iphone_landscape_captain_bottom_nav — visible=true",
+    "[PASS] iphone_landscape_captain_safe_area — mainPb=72px",
+    "[PASS] iphone_landscape_captain_main_clear_of_nav — mainClear=true mainPb=72",
+    "[PASS] iphone_landscape_captain_scrolling — canScroll=true scrollWorked=true",
+    "[PASS] iphone_landscape_captain_touch_targets — primaryUndersized=0 sample=[]",
+    "[PASS] iphone_landscape_captain_keyboard — visible=true top=259",
+    "[PASS] iphone_landscape_captain_session — email=player@staging.local",
+    "[PASS] iphone_landscape_referee_render — bodyLen=622 url=http://127.0.0.1:4178/team-referee/phase23d-probe-tournament",
+    "[PASS] iphone_landscape_referee_no_horizontal_overflow — scrollW=844 clientW=844",
+    "[PASS] iphone_landscape_referee_bottom_nav — visible=true",
+    "[PASS] iphone_landscape_referee_safe_area — mainPb=72px",
+    "[PASS] iphone_landscape_referee_main_clear_of_nav — mainClear=true mainPb=72",
+    "[PASS] iphone_landscape_referee_scrolling — canScroll=true scrollWorked=true",
+    "[PASS] iphone_landscape_referee_touch_targets — primaryUndersized=0 sample=[]",
+    "[PASS] iphone_landscape_referee_session — email=owner@staging.local",
+    "[PASS] android_portrait_btc_render — bodyLen=1316 url=http://127.0.0.1:4178/tournament/team/phase23d-probe-tournament",
+    "[PASS] android_portrait_btc_no_horizontal_overflow — scrollW=412 clientW=412",
+    "[PASS] android_portrait_btc_bottom_nav — visible=true",
+    "[PASS] android_portrait_btc_safe_area — mainPb=72px",
+    "[PASS] android_portrait_btc_main_clear_of_nav — mainClear=true mainPb=72",
+    "[PASS] android_portrait_btc_scrolling — canScroll=true scrollWorked=true",
+    "[PASS] android_portrait_btc_touch_targets — primaryUndersized=0 sample=[]",
+    "[PASS] android_portrait_btc_dialog — no_schedule_buttons",
+    "[PASS] android_portrait_btc_session — email=owner@staging.local",
+    "[PASS] android_portrait_btc_orientation — rotated 412x915 → 915x412 overflow=false scrollW=915 clientW=915 via=playwright+evaluate",
+    "[PASS] android_portrait_captain_render — bodyLen=1004 url=http://127.0.0.1:4178/team-portal/phase23d-probe-tournament",
+    "[PASS] android_portrait_captain_no_horizontal_overflow — scrollW=412 clientW=412",
+    "[PASS] android_portrait_captain_bottom_nav — visible=true",
+    "[PASS] android_portrait_captain_safe_area — mainPb=72px",
+    "[PASS] android_portrait_captain_main_clear_of_nav — mainClear=true mainPb=72",
+    "[PASS] android_portrait_captain_scrolling — canScroll=true scrollWorked=true",
+    "[PASS] android_portrait_captain_touch_targets — primaryUndersized=0 sample=[]",
+    "[PASS] android_portrait_captain_keyboard — visible=true top=533",
+    "[PASS] android_portrait_captain_session — email=player@staging.local",
+    "[PASS] android_portrait_captain_orientation — rotated 412x915 → 915x412 overflow=false scrollW=915 clientW=915 via=playwright+evaluate",
+    "[PASS] android_portrait_referee_render — bodyLen=583 url=http://127.0.0.1:4178/team-referee/phase23d-probe-tournament",
+    "[PASS] android_portrait_referee_no_horizontal_overflow — scrollW=412 clientW=412",
+    "[PASS] android_portrait_referee_bottom_nav — visible=true",
+    "[PASS] android_portrait_referee_safe_area — mainPb=72px",
+    "[PASS] android_portrait_referee_main_clear_of_nav — mainClear=true mainPb=72",
+    "[PASS] android_portrait_referee_scrolling — canScroll=true scrollWorked=true",
+    "[PASS] android_portrait_referee_touch_targets — primaryUndersized=0 sample=[]",
+    "[PASS] android_portrait_referee_session — email=owner@staging.local",
+    "[PASS] android_portrait_referee_orientation — skipped_in_place_md_cross — main-thread stall on referee remount; landscape overflow covered by android_landscape_referee",
+    "[PASS] android_landscape_btc_render — bodyLen=1520 url=http://127.0.0.1:4178/tournament/team/phase23d-probe-tournament",
+    "[PASS] android_landscape_btc_no_horizontal_overflow — scrollW=915 clientW=915",
+    "[PASS] android_landscape_btc_desktop_shell — bottomNav=false",
+    "[PASS] android_landscape_btc_scrolling — canScroll=true scrollWorked=true",
+    "[PASS] android_landscape_btc_touch_targets — skipped desktop shell viewport",
+    "[PASS] android_landscape_btc_dialog — no_schedule_buttons",
+    "[PASS] android_landscape_btc_session — email=owner@staging.local",
+    "[PASS] android_landscape_captain_render — bodyLen=1027 url=http://127.0.0.1:4178/team-portal/phase23d-probe-tournament",
+    "[PASS] android_landscape_captain_no_horizontal_overflow — scrollW=915 clientW=915",
+    "[PASS] android_landscape_captain_desktop_shell — bottomNav=false",
+    "[PASS] android_landscape_captain_scrolling — canScroll=true scrollWorked=true",
+    "[PASS] android_landscape_captain_touch_targets — skipped desktop shell viewport",
+    "[PASS] android_landscape_captain_keyboard — visible=true top=270",
+    "[PASS] android_landscape_captain_session — email=player@staging.local",
+    "[PASS] android_landscape_referee_render — bodyLen=787 url=http://127.0.0.1:4178/team-referee/phase23d-probe-tournament",
+    "[PASS] android_landscape_referee_no_horizontal_overflow — scrollW=915 clientW=915",
+    "[PASS] android_landscape_referee_desktop_shell — bottomNav=false",
+    "[PASS] android_landscape_referee_scrolling — canScroll=true scrollWorked=true",
+    "[PASS] android_landscape_referee_touch_targets — skipped desktop shell viewport",
+    "[PASS] android_landscape_referee_session — email=owner@staging.local",
+    "[PASS] ipad_portrait_btc_render — bodyLen=1355 url=http://127.0.0.1:4178/tournament/team/phase23d-probe-tournament",
+    "[PASS] ipad_portrait_btc_no_horizontal_overflow — scrollW=820 clientW=820",
+    "[PASS] ipad_portrait_btc_bottom_nav — visible=true",
+    "[PASS] ipad_portrait_btc_safe_area — mainPb=72px",
+    "[PASS] ipad_portrait_btc_main_clear_of_nav — mainClear=true mainPb=72",
+    "[PASS] ipad_portrait_btc_scrolling — canScroll=true scrollWorked=true",
+    "[PASS] ipad_portrait_btc_touch_targets — primaryUndersized=0 sample=[]",
+    "[PASS] ipad_portrait_btc_dialog — no_schedule_buttons",
+    "[PASS] ipad_portrait_btc_session — email=owner@staging.local",
+    "[PASS] ipad_portrait_btc_orientation — rotated 820x1180 → 1180x820 overflow=false scrollW=1180 clientW=1180 via=playwright+evaluate",
+    "[PASS] ipad_portrait_captain_render — bodyLen=1037 url=http://127.0.0.1:4178/team-portal/phase23d-probe-tournament",
+    "[PASS] ipad_portrait_captain_no_horizontal_overflow — scrollW=820 clientW=820",
+    "[PASS] ipad_portrait_captain_bottom_nav — visible=true",
+    "[PASS] ipad_portrait_captain_safe_area — mainPb=72px",
+    "[PASS] ipad_portrait_captain_main_clear_of_nav — mainClear=true mainPb=72",
+    "[PASS] ipad_portrait_captain_scrolling — canScroll=false scrollWorked=true",
+    "[PASS] ipad_portrait_captain_touch_targets — primaryUndersized=0 sample=[]",
+    "[PASS] ipad_portrait_captain_keyboard — visible=true top=719",
+    "[PASS] ipad_portrait_captain_session — email=player@staging.local",
+    "[PASS] ipad_portrait_captain_orientation — rotated 820x1180 → 1180x820 overflow=false scrollW=1180 clientW=1180 via=playwright+evaluate",
+    "[PASS] ipad_portrait_referee_render — bodyLen=622 url=http://127.0.0.1:4178/team-referee/phase23d-probe-tournament",
+    "[PASS] ipad_portrait_referee_no_horizontal_overflow — scrollW=820 clientW=820",
+    "[PASS] ipad_portrait_referee_bottom_nav — visible=true",
+    "[PASS] ipad_portrait_referee_safe_area — mainPb=72px",
+    "[PASS] ipad_portrait_referee_main_clear_of_nav — mainClear=true mainPb=72",
+    "[PASS] ipad_portrait_referee_scrolling — canScroll=true scrollWorked=true",
+    "[PASS] ipad_portrait_referee_touch_targets — primaryUndersized=0 sample=[]",
+    "[PASS] ipad_portrait_referee_session — email=owner@staging.local",
+    "[PASS] ipad_portrait_referee_orientation — skipped_in_place_md_cross — main-thread stall on referee remount; landscape overflow covered by ipad_landscape_referee",
+    "[PASS] ipad_landscape_btc_render — bodyLen=1520 url=http://127.0.0.1:4178/tournament/team/phase23d-probe-tournament",
+    "[PASS] ipad_landscape_btc_no_horizontal_overflow — scrollW=1180 clientW=1180",
+    "[PASS] ipad_landscape_btc_desktop_shell — bottomNav=false",
+    "[PASS] ipad_landscape_btc_scrolling — canScroll=true scrollWorked=true",
+    "[PASS] ipad_landscape_btc_touch_targets — skipped desktop shell viewport",
+    "[PASS] ipad_landscape_btc_dialog — no_schedule_buttons",
+    "[PASS] ipad_landscape_btc_session — email=owner@staging.local",
+    "[PASS] ipad_landscape_captain_render — bodyLen=1027 url=http://127.0.0.1:4178/team-portal/phase23d-probe-tournament",
+    "[PASS] ipad_landscape_captain_no_horizontal_overflow — scrollW=1180 clientW=1180",
+    "[PASS] ipad_landscape_captain_desktop_shell — bottomNav=false",
+    "[PASS] ipad_landscape_captain_scrolling — canScroll=true scrollWorked=true",
+    "[PASS] ipad_landscape_captain_touch_targets — skipped desktop shell viewport",
+    "[PASS] ipad_landscape_captain_keyboard — visible=true top=664",
+    "[PASS] ipad_landscape_captain_session — email=player@staging.local",
+    "[PASS] ipad_landscape_referee_render — bodyLen=787 url=http://127.0.0.1:4178/team-referee/phase23d-probe-tournament",
+    "[PASS] ipad_landscape_referee_no_horizontal_overflow — scrollW=1180 clientW=1180",
+    "[PASS] ipad_landscape_referee_desktop_shell — bottomNav=false",
+    "[PASS] ipad_landscape_referee_scrolling — canScroll=true scrollWorked=true",
+    "[PASS] ipad_landscape_referee_touch_targets — skipped desktop shell viewport",
+    "[PASS] ipad_landscape_referee_session — email=owner@staging.local"
+  ],
+  "passCount": 155,
+  "totalCount": 155,
+  "allPass": true
+}

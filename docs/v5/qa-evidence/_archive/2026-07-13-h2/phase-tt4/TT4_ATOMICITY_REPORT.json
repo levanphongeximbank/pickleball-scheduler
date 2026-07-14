@@ -1,0 +1,36 @@
+{
+  "generatedAt": "2026-07-12T12:04:59.544Z",
+  "phase": "TT-4-ATOMICITY",
+  "stagingRef": "qyewbxjsiiyufanzcjcq",
+  "productionImpact": "NONE",
+  "localCommitSha": "afbd6ab8c365313430f6a376e85e646e6e811476",
+  "sqlPatches": [
+    "docs/v5/PHASE_TT4_FORFEIT_WITHDRAWAL.sql",
+    "docs/v5/PHASE_TT4_GET_SETUP_PATCH.sql"
+  ],
+  "probe": {
+    "tournamentId": "phase23d-probe-tournament",
+    "teamA": "phase23d-team-a",
+    "teamB": "phase23d-team-b",
+    "matchupId": "phase23d-matchup-1"
+  },
+  "cases": [
+    {
+      "id": "A01",
+      "name": "forfeit returns eventId",
+      "pass": true,
+      "eventId": "5665782d-3c9f-40fa-a3d1-b4cf11cf2994"
+    },
+    {
+      "id": "A02",
+      "name": "idempotency replay",
+      "pass": true,
+      "replayEventId": "5665782d-3c9f-40fa-a3d1-b4cf11cf2994"
+    }
+  ],
+  "verdict": "PASS",
+  "reportFile": "TT4_ATOMICITY_REPORT.json",
+  "passCount": 2,
+  "totalCount": 2,
+  "allPass": true
+}

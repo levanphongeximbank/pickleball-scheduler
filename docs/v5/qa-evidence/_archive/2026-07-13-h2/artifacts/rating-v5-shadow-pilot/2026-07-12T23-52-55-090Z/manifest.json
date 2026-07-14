@@ -1,0 +1,13 @@
+{
+  "runId": "2026-07-12T23-52-55-090Z",
+  "outDir": "C:\\Users\\Le Phong\\pickleball-scheduler\\artifacts\\rating-v5-shadow-pilot\\2026-07-12T23-52-55-090Z",
+  "rowCount": 186,
+  "cohortFilter": "v5-shadow-pilot",
+  "formats": [
+    "json",
+    "csv"
+  ],
+  "secretScanHits": 0,
+  "secretScanPass": true,
+  "versionFieldsPresent": true
+}

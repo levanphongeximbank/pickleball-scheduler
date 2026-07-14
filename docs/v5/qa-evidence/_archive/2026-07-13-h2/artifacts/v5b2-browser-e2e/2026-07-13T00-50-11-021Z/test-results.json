@@ -1,0 +1,84 @@
+{
+  "runId": "2026-07-13T00-50-11-021Z",
+  "testResults": [
+    {
+      "id": "t01_login_cohort",
+      "status": "PASS",
+      "detail": "logged in as player@staging.local"
+    },
+    {
+      "id": "t02_menu_v5",
+      "status": "PASS",
+      "detail": "menu Đánh giá V5 (shadow) visible"
+    },
+    {
+      "id": "t03_route_v5",
+      "status": "PASS",
+      "detail": "route /player/skill-assessment-v5 loaded"
+    },
+    {
+      "id": "t04_question_counts",
+      "status": "PASS",
+      "detail": "answered=30, core=22, adaptive<=8"
+    },
+    {
+      "id": "t05_terminology",
+      "status": "PASS",
+      "detail": "no unresolved placeholders detected"
+    },
+    {
+      "id": "t06_back_next",
+      "status": "PASS",
+      "detail": "answers preserved across Back/Next"
+    },
+    {
+      "id": "t07_draft_resume",
+      "status": "PASS",
+      "detail": "resumed assessment 1c5d4cfd-cad0-4bcd-ab2d-fe10ceddebfb"
+    },
+    {
+      "id": "t08_payload_allowlist",
+      "status": "PASS",
+      "detail": "4-field allowlist"
+    },
+    {
+      "id": "t09_ui_parity",
+      "status": "PASS",
+      "detail": "UI shows canonical Edge values"
+    },
+    {
+      "id": "t10_shadow_notice",
+      "status": "PASS",
+      "detail": "shadow notice visible"
+    },
+    {
+      "id": "t11_rating_cap",
+      "status": "PASS",
+      "detail": "provisional cap 4.5 + under_review"
+    },
+    {
+      "id": "t12_idempotency",
+      "status": "PASS",
+      "detail": "eventCount=1"
+    },
+    {
+      "id": "t13_v2_isolation",
+      "status": "PASS",
+      "detail": "pick_vn_player_ratings unchanged"
+    },
+    {
+      "id": "t14_non_cohort",
+      "status": "PASS",
+      "detail": "non-cohort user blocked from V5 UI"
+    }
+  ],
+  "metrics": {
+    "unresolvedPlaceholders": 0,
+    "duplicateAssessments": 0,
+    "duplicateEvents": 0,
+    "v2Mutations": 0,
+    "productionRequests": 0
+  },
+  "assessmentIdA": "1c5d4cfd-cad0-4bcd-ab2d-fe10ceddebfb",
+  "assessmentIdB": "07cb8e89-b8cd-481c-9127-4aaecd8133a5"
+}

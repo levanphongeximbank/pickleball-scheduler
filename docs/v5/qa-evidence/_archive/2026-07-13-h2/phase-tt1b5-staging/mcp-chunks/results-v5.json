@@ -1,0 +1,320 @@
+[
+  {
+    "check_id": "V5.23C.team_tournament_confirm_sub_match.p_tournament_id_text__p_matchup_id_text__p_sub_match_id_text__p_score_jsonb__p_winner_team_id_text.exists",
+    "expected": "23C overload exists",
+    "actual": "present",
+    "status": "PASS"
+  },
+  {
+    "check_id": "V5.23C.team_tournament_lock_matchup.p_tournament_id_text__p_matchup_id_text.exists",
+    "expected": "23C overload exists",
+    "actual": "present",
+    "status": "PASS"
+  },
+  {
+    "check_id": "V5.23C.team_tournament_lock_matchup.security_definer",
+    "expected": "SECURITY DEFINER",
+    "actual": "SECURITY DEFINER",
+    "status": "PASS"
+  },
+  {
+    "check_id": "V5.23C.team_tournament_publish_matchup.p_tournament_id_text__p_matchup_id_text.exists",
+    "expected": "23C overload exists",
+    "actual": "present",
+    "status": "PASS"
+  },
+  {
+    "check_id": "V5.23C.team_tournament_publish_matchup.security_definer",
+    "expected": "SECURITY DEFINER",
+    "actual": "SECURITY DEFINER",
+    "status": "PASS"
+  },
+  {
+    "check_id": "V5.23C.team_tournament_submit_lineup.p_tournament_id_text__p_matchup_id_text__p_team_id_text__p_selections_jsonb.exists",
+    "expected": "23C overload exists",
+    "actual": "present",
+    "status": "PASS"
+  },
+  {
+    "check_id": "V5.23C.team_tournament_submit_lineup.security_definer",
+    "expected": "SECURITY DEFINER",
+    "actual": "SECURITY DEFINER",
+    "status": "PASS"
+  },
+  {
+    "check_id": "V5.overload.confirm_sub_match.both_versions",
+    "expected": "23C 5-param AND TT-1B 7-param coexist",
+    "actual": "2 overload(s)",
+    "status": "PASS"
+  },
+  {
+    "check_id": "V5.overload.lock_matchup.both_versions",
+    "expected": "23C 2-param AND TT-1B 4-param coexist",
+    "actual": "2 overload(s)",
+    "status": "PASS"
+  },
+  {
+    "check_id": "V5.overload.publish_matchup.both_versions",
+    "expected": "23C 2-param AND TT-1B 4-param coexist",
+    "actual": "2 overload(s)",
+    "status": "PASS"
+  },
+  {
+    "check_id": "V5.overload.submit_lineup.both_versions",
+    "expected": "23C 4-param AND TT-1B 6-param coexist (TT-1B.5 policy)",
+    "actual": "2 overload(s)",
+    "status": "PASS"
+  },
+  {
+    "check_id": "V5.TT-1B.team_tournament_apply_forfeit.authenticated_grant",
+    "expected": "explicit EXECUTE grant to authenticated in ACL",
+    "actual": "granted",
+    "status": "PASS"
+  },
+  {
+    "check_id": "V5.TT-1B.team_tournament_apply_forfeit.no_anon_grant",
+    "expected": "no explicit EXECUTE grant to anon (or auth-guarded RPC)",
+    "actual": "anon",
+    "status": "PASS"
+  },
+  {
+    "check_id": "V5.TT-1B.team_tournament_apply_forfeit.p_tournament_id_text__p_matchup_id_text__p_sub_match_id_text__p_forfeiting_team_id_text__p_scope_text__p_result_type_text__p_forfeit_reason_text__p_technical_score_jsonb__p_expected_version_integer__p_idempotency_key_text.exists",
+    "expected": "TT-1B overload exists",
+    "actual": "present",
+    "status": "PASS"
+  },
+  {
+    "check_id": "V5.TT-1B.team_tournament_apply_forfeit.return_type",
+    "expected": "json",
+    "actual": "json",
+    "status": "PASS"
+  },
+  {
+    "check_id": "V5.TT-1B.team_tournament_apply_forfeit.security_definer",
+    "expected": "SECURITY DEFINER",
+    "actual": "SECURITY DEFINER",
+    "status": "PASS"
+  },
+  {
+    "check_id": "V5.TT-1B.team_tournament_begin_command.authenticated_grant",
+    "expected": "explicit EXECUTE grant to authenticated in ACL",
+    "actual": "granted",
+    "status": "PASS"
+  },
+  {
+    "check_id": "V5.TT-1B.team_tournament_begin_command.no_anon_grant",
+    "expected": "no explicit EXECUTE grant to anon (or auth-guarded RPC)",
+    "actual": "anon",
+    "status": "FAIL"
+  },
+  {
+    "check_id": "V5.TT-1B.team_tournament_begin_command.p_tenant_id_text__p_tournament_id_text__p_command_name_text__p_idempotency_key_text__p_payload_jsonb.exists",
+    "expected": "TT-1B overload exists",
+    "actual": "present",
+    "status": "PASS"
+  },
+  {
+    "check_id": "V5.TT-1B.team_tournament_begin_command.return_type",
+    "expected": "json",
+    "actual": "json",
+    "status": "PASS"
+  },
+  {
+    "check_id": "V5.TT-1B.team_tournament_begin_command.security_definer",
+    "expected": "SECURITY DEFINER",
+    "actual": "SECURITY DEFINER",
+    "status": "PASS"
+  },
+  {
+    "check_id": "V5.TT-1B.team_tournament_confirm_sub_match.authenticated_grant",
+    "expected": "explicit EXECUTE grant to authenticated in ACL",
+    "actual": "granted",
+    "status": "PASS"
+  },
+  {
+    "check_id": "V5.TT-1B.team_tournament_confirm_sub_match.no_anon_grant",
+    "expected": "no explicit EXECUTE grant to anon (or auth-guarded RPC)",
+    "actual": "anon",
+    "status": "PASS"
+  },
+  {
+    "check_id": "V5.TT-1B.team_tournament_confirm_sub_match.p_tournament_id_text__p_matchup_id_text__p_sub_match_id_text__p_score_jsonb__p_winner_team_id_text__p_expected_version_integer__p_idempotency_key_text.exists",
+    "expected": "TT-1B overload exists",
+    "actual": "present",
+    "status": "PASS"
+  },
+  {
+    "check_id": "V5.TT-1B.team_tournament_finish_command.authenticated_grant",
+    "expected": "internal helper (no explicit authenticated grant required)",
+    "actual": "granted",
+    "status": "PASS"
+  },
+  {
+    "check_id": "V5.TT-1B.team_tournament_finish_command.no_anon_grant",
+    "expected": "internal/helper: anon EXECUTE OK if no sensitive data path",
+    "actual": "anon",
+    "status": "PASS"
+  },
+  {
+    "check_id": "V5.TT-1B.team_tournament_finish_command.p_tenant_id_text__p_tournament_id_text__p_command_name_text__p_idempotency_key_text__p_payload_hash_text__p_result_jsonb.exists",
+    "expected": "TT-1B overload exists",
+    "actual": "present",
+    "status": "PASS"
+  },
+  {
+    "check_id": "V5.TT-1B.team_tournament_get_visible_lineups.authenticated_grant",
+    "expected": "explicit EXECUTE grant to authenticated in ACL",
+    "actual": "granted",
+    "status": "PASS"
+  },
+  {
+    "check_id": "V5.TT-1B.team_tournament_get_visible_lineups.no_anon_grant",
+    "expected": "no explicit EXECUTE grant to anon (or auth-guarded RPC)",
+    "actual": "anon",
+    "status": "PASS"
+  },
+  {
+    "check_id": "V5.TT-1B.team_tournament_get_visible_lineups.p_tournament_id_text__p_matchup_id_text__p_viewer_team_id_text.exists",
+    "expected": "TT-1B overload exists",
+    "actual": "present",
+    "status": "PASS"
+  },
+  {
+    "check_id": "V5.TT-1B.team_tournament_get_visible_lineups.return_type",
+    "expected": "json",
+    "actual": "json",
+    "status": "PASS"
+  },
+  {
+    "check_id": "V5.TT-1B.team_tournament_get_visible_lineups.security_definer",
+    "expected": "SECURITY DEFINER",
+    "actual": "SECURITY DEFINER",
+    "status": "PASS"
+  },
+  {
+    "check_id": "V5.TT-1B.team_tournament_lock_matchup.authenticated_grant",
+    "expected": "explicit EXECUTE grant to authenticated in ACL",
+    "actual": "granted",
+    "status": "PASS"
+  },
+  {
+    "check_id": "V5.TT-1B.team_tournament_lock_matchup.no_anon_grant",
+    "expected": "no explicit EXECUTE grant to anon (or auth-guarded RPC)",
+    "actual": "anon",
+    "status": "PASS"
+  },
+  {
+    "check_id": "V5.TT-1B.team_tournament_lock_matchup.p_tournament_id_text__p_matchup_id_text__p_expected_version_integer__p_idempotency_key_text.exists",
+    "expected": "TT-1B overload exists",
+    "actual": "present",
+    "status": "PASS"
+  },
+  {
+    "check_id": "V5.TT-1B.team_tournament_lock_matchup.security_definer",
+    "expected": "SECURITY DEFINER",
+    "actual": "SECURITY DEFINER",
+    "status": "PASS"
+  },
+  {
+    "check_id": "V5.TT-1B.team_tournament_payload_hash.authenticated_grant",
+    "expected": "explicit EXECUTE grant to authenticated in ACL",
+    "actual": "granted",
+    "status": "PASS"
+  },
+  {
+    "check_id": "V5.TT-1B.team_tournament_payload_hash.no_anon_grant",
+    "expected": "internal/helper: anon EXECUTE OK if no sensitive data path",
+    "actual": "anon",
+    "status": "PASS"
+  },
+  {
+    "check_id": "V5.TT-1B.team_tournament_payload_hash.p_payload_jsonb.exists",
+    "expected": "TT-1B overload exists",
+    "actual": "present",
+    "status": "PASS"
+  },
+  {
+    "check_id": "V5.TT-1B.team_tournament_payload_hash.return_type",
+    "expected": "text",
+    "actual": "text",
+    "status": "PASS"
+  },
+  {
+    "check_id": "V5.TT-1B.team_tournament_payload_hash.security_definer",
+    "expected": "SECURITY INVOKER",
+    "actual": "SECURITY INVOKER",
+    "status": "PASS"
+  },
+  {
+    "check_id": "V5.TT-1B.team_tournament_publish_matchup.authenticated_grant",
+    "expected": "explicit EXECUTE grant to authenticated in ACL",
+    "actual": "granted",
+    "status": "PASS"
+  },
+  {
+    "check_id": "V5.TT-1B.team_tournament_publish_matchup.no_anon_grant",
+    "expected": "no explicit EXECUTE grant to anon (or auth-guarded RPC)",
+    "actual": "anon",
+    "status": "PASS"
+  },
+  {
+    "check_id": "V5.TT-1B.team_tournament_publish_matchup.p_tournament_id_text__p_matchup_id_text__p_expected_version_integer__p_idempotency_key_text.exists",
+    "expected": "TT-1B overload exists",
+    "actual": "present",
+    "status": "PASS"
+  },
+  {
+    "check_id": "V5.TT-1B.team_tournament_publish_matchup.security_definer",
+    "expected": "SECURITY DEFINER",
+    "actual": "SECURITY DEFINER",
+    "status": "PASS"
+  },
+  {
+    "check_id": "V5.TT-1B.team_tournament_submit_lineup.authenticated_grant",
+    "expected": "explicit EXECUTE grant to authenticated in ACL",
+    "actual": "granted",
+    "status": "PASS"
+  },
+  {
+    "check_id": "V5.TT-1B.team_tournament_submit_lineup.no_anon_grant",
+    "expected": "no explicit EXECUTE grant to anon (or auth-guarded RPC)",
+    "actual": "anon",
+    "status": "PASS"
+  },
+  {
+    "check_id": "V5.TT-1B.team_tournament_submit_lineup.p_tournament_id_text__p_matchup_id_text__p_team_id_text__p_selections_jsonb__p_expected_version_integer__p_idempotency_key_text.exists",
+    "expected": "TT-1B overload exists",
+    "actual": "present",
+    "status": "PASS"
+  },
+  {
+    "check_id": "V5.TT-1B.team_tournament_submit_lineup.security_definer",
+    "expected": "SECURITY DEFINER",
+    "actual": "SECURITY DEFINER",
+    "status": "PASS"
+  },
+  {
+    "check_id": "V5.TT-1B.team_tournament_version_conflict.authenticated_grant",
+    "expected": "internal helper (no explicit authenticated grant required)",
+    "actual": "granted",
+    "status": "PASS"
+  },
+  {
+    "check_id": "V5.TT-1B.team_tournament_version_conflict.no_anon_grant",
+    "expected": "internal/helper: anon EXECUTE OK if no sensitive data path",
+    "actual": "anon",
+    "status": "PASS"
+  },
+  {
+    "check_id": "V5.TT-1B.team_tournament_version_conflict.p_entity_text__p_expected_integer__p_actual_integer.exists",
+    "expected": "TT-1B overload exists",
+    "actual": "present",
+    "status": "PASS"
+  },
+  {
+    "check_id": "V5.TT-1B.team_tournament_version_conflict.return_type",
+    "expected": "json",
+    "actual": "json",
+    "status": "PASS"
+  }
+]

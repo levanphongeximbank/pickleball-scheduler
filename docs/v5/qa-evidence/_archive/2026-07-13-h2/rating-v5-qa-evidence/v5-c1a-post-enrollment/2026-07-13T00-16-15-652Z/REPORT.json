@@ -1,0 +1,117 @@
+{
+  "run_id": "2026-07-13T00-16-15-652Z",
+  "pass": 21,
+  "fail": 1,
+  "results": [
+    {
+      "id": "e01_wave0_active_route",
+      "status": "PASS",
+      "detail": "start_assessment ok"
+    },
+    {
+      "id": "e02_non_enrolled_blocked",
+      "status": "PASS",
+      "detail": "PILOT_NOT_ENROLLED"
+    },
+    {
+      "id": "e03_paused_blocked",
+      "status": "PASS",
+      "detail": "paused"
+    },
+    {
+      "id": "e04_removed_blocked",
+      "status": "PASS",
+      "detail": "removed"
+    },
+    {
+      "id": "e05_expired_blocked",
+      "status": "PASS",
+      "detail": "expired"
+    },
+    {
+      "id": "e06_cross_tenant_blocked",
+      "status": "PASS",
+      "detail": "PILOT_NOT_ENROLLED"
+    },
+    {
+      "id": "e07_user_cannot_self_enroll",
+      "status": "PASS",
+      "detail": "FORBIDDEN"
+    },
+    {
+      "id": "e08_user_cannot_self_activate",
+      "status": "PASS",
+      "detail": "FORBIDDEN"
+    },
+    {
+      "id": "e09_kill_switch_off",
+      "status": "PASS",
+      "detail": "ROLLOUT_BLOCKED"
+    },
+    {
+      "id": "e10_kill_switch_on_restore",
+      "status": "PASS",
+      "detail": "OK"
+    },
+    {
+      "id": "e11_control_start_blocked",
+      "status": "PASS",
+      "detail": "FORBIDDEN"
+    },
+    {
+      "id": "e12_edge_blocks_non_enrolled",
+      "status": "PASS",
+      "detail": "PILOT_NOT_ENROLLED"
+    },
+    {
+      "id": "r01_first_assessment",
+      "status": "PASS",
+      "detail": "COMPLETED"
+    },
+    {
+      "id": "r02_reassessment_cooldown_blocked",
+      "status": "PASS",
+      "detail": "REASSESSMENT_APPROVAL_REQUIRED"
+    },
+    {
+      "id": "r03_reassessment_after_approval",
+      "status": "PASS",
+      "detail": "start ok"
+    },
+    {
+      "id": "r04_first_assessment_preserved",
+      "status": "PASS",
+      "detail": "count=1"
+    },
+    {
+      "id": "r05_shadow_source_trace",
+      "status": "PASS",
+      "detail": "7ce999e9-3f53-4028-afe6-6cdb5e91d8bd"
+    },
+    {
+      "id": "i01_invalidate_ok",
+      "status": "PASS",
+      "detail": "INVALIDATED"
+    },
+    {
+      "id": "i02_invalidation_applied",
+      "status": "PASS",
+      "detail": "v5c1a_smoke_test"
+    },
+    {
+      "id": "i03_invalidated_not_source",
+      "status": "PASS",
+      "detail": "6346f1fd-d7b9-47cb-af70-8610086a1832"
+    },
+    {
+      "id": "i04_v2_unchanged",
+      "status": "PASS",
+      "detail": "isolated"
+    },
+    {
+      "id": "i05_invalidation_idempotent",
+      "status": "FAIL",
+      "detail": "{\"ok\":false,\"code\":\"VERSION_CONFLICT\",\"actual\":3,\"expected\":2}"
+    }
+  ]
+}

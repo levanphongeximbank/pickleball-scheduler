@@ -1,0 +1,36 @@
+{
+  "generatedAt": "2026-07-12T10:52:00.000Z",
+  "entityKey": "phase23d-matchup-1::phase23d-team-b",
+  "tournamentId": "phase23d-probe-tournament",
+  "clubId": "club-staging-demo",
+  "blobSource": "club_data_v3",
+  "blob": {
+    "matchupStatus": "lineup_open",
+    "matchupVersion": null,
+    "status": "draft",
+    "version": null,
+    "publishedAt": null,
+    "lockedAt": null,
+    "submittedAt": "2099-05-01T10:05:00+00:00"
+  },
+  "cloud": {
+    "matchupStatus": "locked",
+    "matchupVersion": 27,
+    "status": "locked",
+    "version": 21,
+    "publishedAt": null,
+    "lockedAt": "2026-07-12T10:48:21.332591+00:00",
+    "submittedAt": "2099-05-01T10:05:00+00:00"
+  },
+  "newerSide": "cloud",
+  "mismatchType": "value_mismatch",
+  "tt2eCloudPrimaryDrift": true,
+  "resolution": "expected_compatibility_drift",
+  "rootCause": "TT-2E lock/publish workflow advanced cloud SSOT while club_data_v3 blob remained at pre-TT-2E draft/lineup_open state",
+  "mirrorApplied": {
+    "at": "2026-07-12T10:53:00.000Z",
+    "script": "scripts/sync-staging-blob-mirror-from-cloud.mjs",
+    "direction": "cloud_to_blob",
+    "action": "updated"
+  }
+}

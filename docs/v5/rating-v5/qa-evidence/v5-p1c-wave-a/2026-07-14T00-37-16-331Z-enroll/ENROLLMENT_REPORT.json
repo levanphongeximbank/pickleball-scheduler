@@ -1,0 +1,441 @@
+{
+  "gate": "P1-C.5",
+  "run_id": "2026-07-14T00-37-16-331Z",
+  "production_ref": "expuvcohlcjzvrrauvud",
+  "url": "https://expuvcohlcjzvrrauvud.supabase.co",
+  "production_changed": true,
+  "scope": "rating_v5_pilot_enrollments only",
+  "cohort_label": "club-rating-v5-production-wave-a",
+  "enrolled_by": {
+    "email": "lephong.eximbank@gmail.com",
+    "id": "6dd85e98-e493-4e04-9582-d904e27b3a44"
+  },
+  "pre": {
+    "production_ref": "expuvcohlcjzvrrauvud",
+    "url": "https://expuvcohlcjzvrrauvud.supabase.co",
+    "link_results_present": true,
+    "cohort_label": "club-rating-v5-production-wave-a",
+    "enrolled_by_admin": {
+      "email": "lephong.eximbank@gmail.com",
+      "id": "6dd85e98-e493-4e04-9582-d904e27b3a44"
+    },
+    "rollout_config": {
+      "id": "default",
+      "shadow_mode_enabled": true,
+      "pilot_cohort_label": "club-rating-v5-production-pilot",
+      "allow_v5_assessment": false,
+      "allow_v5_profile_write": true,
+      "compare_v2_enabled": true,
+      "effective_from": "2026-07-13T15:29:09.531699+00:00",
+      "effective_to": null,
+      "updated_at": "2026-07-13T15:29:12.305106+00:00",
+      "updated_by": null,
+      "max_completed_assessments": 1,
+      "cooldown_days": 7,
+      "allow_manual_reassessment": true,
+      "reassessment_requires_approval": true
+    },
+    "active_enrollments_before": 0,
+    "v2_rows_before": 0,
+    "enrollment_table_before": [],
+    "vite_pick_vn_rating_v5_enabled": {
+      "file": null,
+      "value": "unset/false (no local override found)"
+    },
+    "candidates": [
+      {
+        "slot": "WA-01",
+        "email": "tudotaichinhtuoi29@gmail.com",
+        "skill_band": "1.5-2.5",
+        "profiles_id": "c13392ab-fc7e-483a-9b31-ba08d94a69a9",
+        "player_id_text": "player-auth-c13392ab-fc7e-483a-9b31-ba08d94a69a9",
+        "tenant_id": "venue-prod-main",
+        "cohort_label": "club-rating-v5-production-wave-a",
+        "club_membership": "active"
+      },
+      {
+        "slot": "WA-02",
+        "email": "hoangmanhluong2405@gmail.com",
+        "skill_band": "3.0-3.5",
+        "profiles_id": "6e77321e-1182-4174-a08a-3ee2d1833c7c",
+        "player_id_text": "player-auth-6e77321e-1182-4174-a08a-3ee2d1833c7c",
+        "tenant_id": "venue-prod-main",
+        "cohort_label": "club-rating-v5-production-wave-a",
+        "club_membership": "active"
+      },
+      {
+        "slot": "WA-03",
+        "email": "lephong.banker@gmail.com",
+        "skill_band": "3.0-3.5",
+        "profiles_id": "42c8ad99-3afd-4122-bf36-de1f6f9a302f",
+        "player_id_text": "player-auth-42c8ad99-3afd-4122-bf36-de1f6f9a302f",
+        "tenant_id": "venue-prod-main",
+        "cohort_label": "club-rating-v5-production-wave-a",
+        "club_membership": "active"
+      },
+      {
+        "slot": "WA-04",
+        "email": "gionam76@gmail.com",
+        "skill_band": "3.0-3.5",
+        "profiles_id": "6ff822c6-c1b6-4ce0-9e20-61f7afc74a88",
+        "player_id_text": "player-auth-6ff822c6-c1b6-4ce0-9e20-61f7afc74a88",
+        "tenant_id": "venue-prod-main",
+        "cohort_label": "club-rating-v5-production-wave-a",
+        "club_membership": "active"
+      },
+      {
+        "slot": "WA-05",
+        "email": "huonganna120193@gmail.com",
+        "skill_band": "1.5-2.5",
+        "profiles_id": "f776d627-a9f2-4c0c-8d81-bda239cc923b",
+        "player_id_text": "player-auth-f776d627-a9f2-4c0c-8d81-bda239cc923b",
+        "tenant_id": "venue-prod-main",
+        "cohort_label": "club-rating-v5-production-wave-a",
+        "club_membership": "active"
+      }
+    ]
+  },
+  "enroll_results": [
+    {
+      "slot": "WA-01",
+      "email": "tudotaichinhtuoi29@gmail.com",
+      "profiles_id": "c13392ab-fc7e-483a-9b31-ba08d94a69a9",
+      "rpc_error": null,
+      "rpc_result": {
+        "ok": true,
+        "enrollment": {
+          "id": "6e485287-cd55-431c-947f-1c6a55059ce9",
+          "notes": "P1-C.5 Wave A WA-01 1.5-2.5",
+          "status": "active",
+          "version": 1,
+          "paused_at": null,
+          "player_id": "c13392ab-fc7e-483a-9b31-ba08d94a69a9",
+          "tenant_id": "venue-prod-main",
+          "created_at": "2026-07-14T00:37:20.634077+00:00",
+          "expires_at": null,
+          "removed_at": null,
+          "updated_at": "2026-07-14T00:37:20.634077+00:00",
+          "enrolled_at": "2026-07-14T00:37:20.634077+00:00",
+          "enrolled_by": "6dd85e98-e493-4e04-9582-d904e27b3a44",
+          "cohort_label": "club-rating-v5-production-wave-a"
+        }
+      }
+    },
+    {
+      "slot": "WA-02",
+      "email": "hoangmanhluong2405@gmail.com",
+      "profiles_id": "6e77321e-1182-4174-a08a-3ee2d1833c7c",
+      "rpc_error": null,
+      "rpc_result": {
+        "ok": true,
+        "enrollment": {
+          "id": "3bc3dad6-8eaf-48a2-b4db-01a1a4a191c1",
+          "notes": "P1-C.5 Wave A WA-02 3.0-3.5",
+          "status": "active",
+          "version": 1,
+          "paused_at": null,
+          "player_id": "6e77321e-1182-4174-a08a-3ee2d1833c7c",
+          "tenant_id": "venue-prod-main",
+          "created_at": "2026-07-14T00:37:20.7914+00:00",
+          "expires_at": null,
+          "removed_at": null,
+          "updated_at": "2026-07-14T00:37:20.7914+00:00",
+          "enrolled_at": "2026-07-14T00:37:20.7914+00:00",
+          "enrolled_by": "6dd85e98-e493-4e04-9582-d904e27b3a44",
+          "cohort_label": "club-rating-v5-production-wave-a"
+        }
+      }
+    },
+    {
+      "slot": "WA-03",
+      "email": "lephong.banker@gmail.com",
+      "profiles_id": "42c8ad99-3afd-4122-bf36-de1f6f9a302f",
+      "rpc_error": null,
+      "rpc_result": {
+        "ok": true,
+        "enrollment": {
+          "id": "4ccc53b8-2179-4250-bcc1-195beeb7d1c1",
+          "notes": "P1-C.5 Wave A WA-03 3.0-3.5",
+          "status": "active",
+          "version": 1,
+          "paused_at": null,
+          "player_id": "42c8ad99-3afd-4122-bf36-de1f6f9a302f",
+          "tenant_id": "venue-prod-main",
+          "created_at": "2026-07-14T00:37:20.936717+00:00",
+          "expires_at": null,
+          "removed_at": null,
+          "updated_at": "2026-07-14T00:37:20.936717+00:00",
+          "enrolled_at": "2026-07-14T00:37:20.936717+00:00",
+          "enrolled_by": "6dd85e98-e493-4e04-9582-d904e27b3a44",
+          "cohort_label": "club-rating-v5-production-wave-a"
+        }
+      }
+    },
+    {
+      "slot": "WA-04",
+      "email": "gionam76@gmail.com",
+      "profiles_id": "6ff822c6-c1b6-4ce0-9e20-61f7afc74a88",
+      "rpc_error": null,
+      "rpc_result": {
+        "ok": true,
+        "enrollment": {
+          "id": "53b9e5c2-6965-4649-b7cf-880b6688a220",
+          "notes": "P1-C.5 Wave A WA-04 3.0-3.5",
+          "status": "active",
+          "version": 1,
+          "paused_at": null,
+          "player_id": "6ff822c6-c1b6-4ce0-9e20-61f7afc74a88",
+          "tenant_id": "venue-prod-main",
+          "created_at": "2026-07-14T00:37:21.085384+00:00",
+          "expires_at": null,
+          "removed_at": null,
+          "updated_at": "2026-07-14T00:37:21.085384+00:00",
+          "enrolled_at": "2026-07-14T00:37:21.085384+00:00",
+          "enrolled_by": "6dd85e98-e493-4e04-9582-d904e27b3a44",
+          "cohort_label": "club-rating-v5-production-wave-a"
+        }
+      }
+    },
+    {
+      "slot": "WA-05",
+      "email": "huonganna120193@gmail.com",
+      "profiles_id": "f776d627-a9f2-4c0c-8d81-bda239cc923b",
+      "rpc_error": null,
+      "rpc_result": {
+        "ok": true,
+        "enrollment": {
+          "id": "bc063d1f-123d-4ed2-b7fd-5f99ea84b596",
+          "notes": "P1-C.5 Wave A WA-05 1.5-2.5",
+          "status": "active",
+          "version": 1,
+          "paused_at": null,
+          "player_id": "f776d627-a9f2-4c0c-8d81-bda239cc923b",
+          "tenant_id": "venue-prod-main",
+          "created_at": "2026-07-14T00:37:21.232788+00:00",
+          "expires_at": null,
+          "removed_at": null,
+          "updated_at": "2026-07-14T00:37:21.232788+00:00",
+          "enrolled_at": "2026-07-14T00:37:21.232788+00:00",
+          "enrolled_by": "6dd85e98-e493-4e04-9582-d904e27b3a44",
+          "cohort_label": "club-rating-v5-production-wave-a"
+        }
+      }
+    }
+  ],
+  "retry_results": [
+    {
+      "slot": "WA-01",
+      "email": "tudotaichinhtuoi29@gmail.com",
+      "rpc_error": null,
+      "rpc_result": {
+        "ok": true,
+        "enrollment": {
+          "id": "6e485287-cd55-431c-947f-1c6a55059ce9",
+          "notes": "P1-C.5 Wave A WA-01 1.5-2.5",
+          "status": "active",
+          "version": 2,
+          "paused_at": null,
+          "player_id": "c13392ab-fc7e-483a-9b31-ba08d94a69a9",
+          "tenant_id": "venue-prod-main",
+          "created_at": "2026-07-14T00:37:20.634077+00:00",
+          "expires_at": null,
+          "removed_at": null,
+          "updated_at": "2026-07-14T00:37:22.427566+00:00",
+          "enrolled_at": "2026-07-14T00:37:20.634077+00:00",
+          "enrolled_by": "6dd85e98-e493-4e04-9582-d904e27b3a44",
+          "cohort_label": "club-rating-v5-production-wave-a"
+        }
+      },
+      "version_before": 1,
+      "version_after": 2
+    },
+    {
+      "slot": "WA-02",
+      "email": "hoangmanhluong2405@gmail.com",
+      "rpc_error": null,
+      "rpc_result": {
+        "ok": true,
+        "enrollment": {
+          "id": "3bc3dad6-8eaf-48a2-b4db-01a1a4a191c1",
+          "notes": "P1-C.5 Wave A WA-02 3.0-3.5",
+          "status": "active",
+          "version": 2,
+          "paused_at": null,
+          "player_id": "6e77321e-1182-4174-a08a-3ee2d1833c7c",
+          "tenant_id": "venue-prod-main",
+          "created_at": "2026-07-14T00:37:20.7914+00:00",
+          "expires_at": null,
+          "removed_at": null,
+          "updated_at": "2026-07-14T00:37:22.577554+00:00",
+          "enrolled_at": "2026-07-14T00:37:20.7914+00:00",
+          "enrolled_by": "6dd85e98-e493-4e04-9582-d904e27b3a44",
+          "cohort_label": "club-rating-v5-production-wave-a"
+        }
+      },
+      "version_before": 1,
+      "version_after": 2
+    },
+    {
+      "slot": "WA-03",
+      "email": "lephong.banker@gmail.com",
+      "rpc_error": null,
+      "rpc_result": {
+        "ok": true,
+        "enrollment": {
+          "id": "4ccc53b8-2179-4250-bcc1-195beeb7d1c1",
+          "notes": "P1-C.5 Wave A WA-03 3.0-3.5",
+          "status": "active",
+          "version": 2,
+          "paused_at": null,
+          "player_id": "42c8ad99-3afd-4122-bf36-de1f6f9a302f",
+          "tenant_id": "venue-prod-main",
+          "created_at": "2026-07-14T00:37:20.936717+00:00",
+          "expires_at": null,
+          "removed_at": null,
+          "updated_at": "2026-07-14T00:37:22.715215+00:00",
+          "enrolled_at": "2026-07-14T00:37:20.936717+00:00",
+          "enrolled_by": "6dd85e98-e493-4e04-9582-d904e27b3a44",
+          "cohort_label": "club-rating-v5-production-wave-a"
+        }
+      },
+      "version_before": 1,
+      "version_after": 2
+    },
+    {
+      "slot": "WA-04",
+      "email": "gionam76@gmail.com",
+      "rpc_error": null,
+      "rpc_result": {
+        "ok": true,
+        "enrollment": {
+          "id": "53b9e5c2-6965-4649-b7cf-880b6688a220",
+          "notes": "P1-C.5 Wave A WA-04 3.0-3.5",
+          "status": "active",
+          "version": 2,
+          "paused_at": null,
+          "player_id": "6ff822c6-c1b6-4ce0-9e20-61f7afc74a88",
+          "tenant_id": "venue-prod-main",
+          "created_at": "2026-07-14T00:37:21.085384+00:00",
+          "expires_at": null,
+          "removed_at": null,
+          "updated_at": "2026-07-14T00:37:22.852637+00:00",
+          "enrolled_at": "2026-07-14T00:37:21.085384+00:00",
+          "enrolled_by": "6dd85e98-e493-4e04-9582-d904e27b3a44",
+          "cohort_label": "club-rating-v5-production-wave-a"
+        }
+      },
+      "version_before": 1,
+      "version_after": 2
+    },
+    {
+      "slot": "WA-05",
+      "email": "huonganna120193@gmail.com",
+      "rpc_error": null,
+      "rpc_result": {
+        "ok": true,
+        "enrollment": {
+          "id": "bc063d1f-123d-4ed2-b7fd-5f99ea84b596",
+          "notes": "P1-C.5 Wave A WA-05 1.5-2.5",
+          "status": "active",
+          "version": 2,
+          "paused_at": null,
+          "player_id": "f776d627-a9f2-4c0c-8d81-bda239cc923b",
+          "tenant_id": "venue-prod-main",
+          "created_at": "2026-07-14T00:37:21.232788+00:00",
+          "expires_at": null,
+          "removed_at": null,
+          "updated_at": "2026-07-14T00:37:22.994696+00:00",
+          "enrolled_at": "2026-07-14T00:37:21.232788+00:00",
+          "enrolled_by": "6dd85e98-e493-4e04-9582-d904e27b3a44",
+          "cohort_label": "club-rating-v5-production-wave-a"
+        }
+      },
+      "version_before": 1,
+      "version_after": 2
+    }
+  ],
+  "post": {
+    "active_enrollments": 5,
+    "active_enrollments_after_retry": 5,
+    "wave_a_active_rows": [
+      {
+        "player_id": "c13392ab-fc7e-483a-9b31-ba08d94a69a9",
+        "tenant_id": "venue-prod-main",
+        "cohort_label": "club-rating-v5-production-wave-a",
+        "status": "active"
+      },
+      {
+        "player_id": "6e77321e-1182-4174-a08a-3ee2d1833c7c",
+        "tenant_id": "venue-prod-main",
+        "cohort_label": "club-rating-v5-production-wave-a",
+        "status": "active"
+      },
+      {
+        "player_id": "42c8ad99-3afd-4122-bf36-de1f6f9a302f",
+        "tenant_id": "venue-prod-main",
+        "cohort_label": "club-rating-v5-production-wave-a",
+        "status": "active"
+      },
+      {
+        "player_id": "6ff822c6-c1b6-4ce0-9e20-61f7afc74a88",
+        "tenant_id": "venue-prod-main",
+        "cohort_label": "club-rating-v5-production-wave-a",
+        "status": "active"
+      },
+      {
+        "player_id": "f776d627-a9f2-4c0c-8d81-bda239cc923b",
+        "tenant_id": "venue-prod-main",
+        "cohort_label": "club-rating-v5-production-wave-a",
+        "status": "active"
+      }
+    ],
+    "duplicate_active_player_ids": 0,
+    "v2_rows_before": 0,
+    "v2_rows_after": 0,
+    "allow_v5_assessment": false,
+    "pilot_cohort_label_config": "club-rating-v5-production-pilot",
+    "frontend_flag": {
+      "file": null,
+      "value": "unset/false (no local override found)"
+    },
+    "memberships": [
+      {
+        "email": "tudotaichinhtuoi29@gmail.com",
+        "club_id": "club-219e4a7cbd73437eb6271f02a53314c3",
+        "status": "active"
+      },
+      {
+        "email": "hoangmanhluong2405@gmail.com",
+        "club_id": "club-219e4a7cbd73437eb6271f02a53314c3",
+        "status": "active"
+      },
+      {
+        "email": "lephong.banker@gmail.com",
+        "club_id": "club-219e4a7cbd73437eb6271f02a53314c3",
+        "status": "active"
+      },
+      {
+        "email": "gionam76@gmail.com",
+        "club_id": "club-219e4a7cbd73437eb6271f02a53314c3",
+        "status": "active"
+      },
+      {
+        "email": "huonganna120193@gmail.com",
+        "club_id": "club-219e4a7cbd73437eb6271f02a53314c3",
+        "status": "active"
+      }
+    ],
+    "control": {
+      "email": "lephong.eximbank@gmail.com",
+      "active_enrollments": [],
+      "assert_pilot_gate": {
+        "ok": false,
+        "code": "ROLLOUT_BLOCKED"
+      }
+    },
+    "cross_tenant_assert": {
+      "ok": false,
+      "code": "ROLLOUT_BLOCKED"
+    }
+  }
+}

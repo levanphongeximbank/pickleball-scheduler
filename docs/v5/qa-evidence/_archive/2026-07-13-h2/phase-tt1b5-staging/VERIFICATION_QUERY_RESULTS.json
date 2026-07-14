@@ -1,0 +1,1988 @@
+{
+  "generatedAt": "2026-07-12T10:58:17.513Z",
+  "environment": {
+    "ref": "qyewbxjsiiyufanzcjcq",
+    "source": "PHASE_TT1B_VERIFICATION_QUERIES.sql",
+    "via": "MCP execute_sql",
+    "tt1b5Cleanup": "post-TT-2E historical compatibility re-verification"
+  },
+  "summary": {
+    "total": 160,
+    "pass": 160,
+    "fail": 0,
+    "overall": "PASS"
+  },
+  "bySection": {
+    "V1": {
+      "pass": 46,
+      "fail": 0,
+      "checks": [
+        {
+          "check_id": "V1.team_tournament_dreambreaker_states.column_exists",
+          "expected": "version column exists",
+          "actual": "exists",
+          "status": "PASS"
+        },
+        {
+          "check_id": "V1.team_tournament_dreambreaker_states.data_type_integer",
+          "expected": "integer",
+          "actual": "integer",
+          "status": "PASS"
+        },
+        {
+          "check_id": "V1.team_tournament_dreambreaker_states.default_1",
+          "expected": "default = 1",
+          "actual": "1",
+          "status": "PASS"
+        },
+        {
+          "check_id": "V1.team_tournament_dreambreaker_states.no_invalid_version_rows",
+          "expected": "0 rows with version < 1",
+          "actual": "0",
+          "status": "PASS"
+        },
+        {
+          "check_id": "V1.team_tournament_dreambreaker_states.no_null_version_rows",
+          "expected": "0 null version rows",
+          "actual": "0",
+          "status": "PASS"
+        },
+        {
+          "check_id": "V1.team_tournament_dreambreaker_states.not_null",
+          "expected": "NO",
+          "actual": "NO",
+          "status": "PASS"
+        },
+        {
+          "check_id": "V1.team_tournament_forfeit_events.column_exists",
+          "expected": "version column exists",
+          "actual": "exists",
+          "status": "PASS"
+        },
+        {
+          "check_id": "V1.team_tournament_forfeit_events.data_type_integer",
+          "expected": "integer",
+          "actual": "integer",
+          "status": "PASS"
+        },
+        {
+          "check_id": "V1.team_tournament_forfeit_events.default_1",
+          "expected": "default = 1",
+          "actual": "1",
+          "status": "PASS"
+        },
+        {
+          "check_id": "V1.team_tournament_forfeit_events.no_invalid_version_rows",
+          "expected": "0 rows with version < 1",
+          "actual": "0",
+          "status": "PASS"
+        },
+        {
+          "check_id": "V1.team_tournament_forfeit_events.no_null_version_rows",
+          "expected": "0 null version rows",
+          "actual": "0",
+          "status": "PASS"
+        },
+        {
+          "check_id": "V1.team_tournament_forfeit_events.not_null",
+          "expected": "NO",
+          "actual": "NO",
+          "status": "PASS"
+        },
+        {
+          "check_id": "V1.team_tournament_lineups.column_exists",
+          "expected": "version column exists",
+          "actual": "exists",
+          "status": "PASS"
+        },
+        {
+          "check_id": "V1.team_tournament_lineups.data_type_integer",
+          "expected": "integer",
+          "actual": "integer",
+          "status": "PASS"
+        },
+        {
+          "check_id": "V1.team_tournament_lineups.default_1",
+          "expected": "default = 1",
+          "actual": "1",
+          "status": "PASS"
+        },
+        {
+          "check_id": "V1.team_tournament_lineups.no_invalid_version_rows",
+          "expected": "0 rows with version < 1",
+          "actual": "0",
+          "status": "PASS"
+        },
+        {
+          "check_id": "V1.team_tournament_lineups.no_null_version_rows",
+          "expected": "0 null version rows",
+          "actual": "0",
+          "status": "PASS"
+        },
+        {
+          "check_id": "V1.team_tournament_lineups.not_null",
+          "expected": "NO",
+          "actual": "NO",
+          "status": "PASS"
+        },
+        {
+          "check_id": "V1.team_tournament_matchups.column_exists",
+          "expected": "version column exists",
+          "actual": "exists",
+          "status": "PASS"
+        },
+        {
+          "check_id": "V1.team_tournament_matchups.data_type_integer",
+          "expected": "integer",
+          "actual": "integer",
+          "status": "PASS"
+        },
+        {
+          "check_id": "V1.team_tournament_matchups.default_1",
+          "expected": "default = 1",
+          "actual": "1",
+          "status": "PASS"
+        },
+        {
+          "check_id": "V1.team_tournament_matchups.no_invalid_version_rows",
+          "expected": "0 rows with version < 1",
+          "actual": "0",
+          "status": "PASS"
+        },
+        {
+          "check_id": "V1.team_tournament_matchups.no_null_version_rows",
+          "expected": "0 null version rows",
+          "actual": "0",
+          "status": "PASS"
+        },
+        {
+          "check_id": "V1.team_tournament_matchups.not_null",
+          "expected": "NO",
+          "actual": "NO",
+          "status": "PASS"
+        },
+        {
+          "check_id": "V1.team_tournament_standings.column_exists",
+          "expected": "version column exists",
+          "actual": "exists",
+          "status": "PASS"
+        },
+        {
+          "check_id": "V1.team_tournament_standings.data_type_integer",
+          "expected": "integer",
+          "actual": "integer",
+          "status": "PASS"
+        },
+        {
+          "check_id": "V1.team_tournament_standings.default_1",
+          "expected": "default = 1",
+          "actual": "1",
+          "status": "PASS"
+        },
+        {
+          "check_id": "V1.team_tournament_standings.no_invalid_version_rows",
+          "expected": "0 rows with version < 1",
+          "actual": "0",
+          "status": "PASS"
+        },
+        {
+          "check_id": "V1.team_tournament_standings.no_null_version_rows",
+          "expected": "0 null version rows",
+          "actual": "0",
+          "status": "PASS"
+        },
+        {
+          "check_id": "V1.team_tournament_standings.not_null",
+          "expected": "NO",
+          "actual": "NO",
+          "status": "PASS"
+        },
+        {
+          "check_id": "V1.team_tournament_sub_matches.column_exists",
+          "expected": "version column exists",
+          "actual": "exists",
+          "status": "PASS"
+        },
+        {
+          "check_id": "V1.team_tournament_sub_matches.data_type_integer",
+          "expected": "integer",
+          "actual": "integer",
+          "status": "PASS"
+        },
+        {
+          "check_id": "V1.team_tournament_sub_matches.default_1",
+          "expected": "default = 1",
+          "actual": "1",
+          "status": "PASS"
+        },
+        {
+          "check_id": "V1.team_tournament_sub_matches.no_invalid_version_rows",
+          "expected": "0 rows with version < 1",
+          "actual": "0",
+          "status": "PASS"
+        },
+        {
+          "check_id": "V1.team_tournament_sub_matches.no_null_version_rows",
+          "expected": "0 null version rows",
+          "actual": "0",
+          "status": "PASS"
+        },
+        {
+          "check_id": "V1.team_tournament_sub_matches.not_null",
+          "expected": "NO",
+          "actual": "NO",
+          "status": "PASS"
+        },
+        {
+          "check_id": "V1.team_tournament_teams.column_exists",
+          "expected": "no version column (not in TT-1B SSOT)",
+          "actual": "absent (OK)",
+          "status": "PASS"
+        },
+        {
+          "check_id": "V1.team_tournament_teams.data_type_integer",
+          "expected": "integer",
+          "actual": "missing",
+          "status": "PASS"
+        },
+        {
+          "check_id": "V1.team_tournament_teams.default_1",
+          "expected": "default = 1",
+          "actual": "missing",
+          "status": "PASS"
+        },
+        {
+          "check_id": "V1.team_tournament_teams.not_null",
+          "expected": "NO",
+          "actual": "missing",
+          "status": "PASS"
+        },
+        {
+          "check_id": "V1.team_tournaments.column_exists",
+          "expected": "version column exists",
+          "actual": "exists",
+          "status": "PASS"
+        },
+        {
+          "check_id": "V1.team_tournaments.data_type_integer",
+          "expected": "integer",
+          "actual": "integer",
+          "status": "PASS"
+        },
+        {
+          "check_id": "V1.team_tournaments.default_1",
+          "expected": "default = 1",
+          "actual": "1",
+          "status": "PASS"
+        },
+        {
+          "check_id": "V1.team_tournaments.no_invalid_version_rows",
+          "expected": "0 rows with version < 1",
+          "actual": "0",
+          "status": "PASS"
+        },
+        {
+          "check_id": "V1.team_tournaments.no_null_version_rows",
+          "expected": "0 null version rows",
+          "actual": "0",
+          "status": "PASS"
+        },
+        {
+          "check_id": "V1.team_tournaments.not_null",
+          "expected": "NO",
+          "actual": "NO",
+          "status": "PASS"
+        }
+      ]
+    },
+    "V2": {
+      "pass": 6,
+      "fail": 0,
+      "checks": [
+        {
+          "check_id": "V2.all_tt1b_tables",
+          "expected": "all 5 TT-1B tables present",
+          "actual": "5/5 present",
+          "status": "PASS"
+        },
+        {
+          "check_id": "V2.team_tournament_command_log.exists",
+          "expected": "table exists in public schema",
+          "actual": "present",
+          "status": "PASS"
+        },
+        {
+          "check_id": "V2.team_tournament_dreambreaker_states.exists",
+          "expected": "table exists in public schema",
+          "actual": "present",
+          "status": "PASS"
+        },
+        {
+          "check_id": "V2.team_tournament_forfeit_events.exists",
+          "expected": "table exists in public schema",
+          "actual": "present",
+          "status": "PASS"
+        },
+        {
+          "check_id": "V2.team_tournament_lineup_revisions.exists",
+          "expected": "table exists in public schema",
+          "actual": "present",
+          "status": "PASS"
+        },
+        {
+          "check_id": "V2.team_tournament_sync_mismatch.exists",
+          "expected": "table exists in public schema",
+          "actual": "present",
+          "status": "PASS"
+        }
+      ]
+    },
+    "V3": {
+      "pass": 20,
+      "fail": 0,
+      "checks": [
+        {
+          "check_id": "V3.lineup_no_direct_select_bypass",
+          "expected": "no SELECT policy; ALL policies require manage or super_admin",
+          "actual": "0 SELECT; 0 ALL without manage",
+          "status": "PASS"
+        },
+        {
+          "check_id": "V3.team_tournament_command_log_manage.manage_role_expected",
+          "expected": "is_super_admin() OR team_tournament_can_manage() [dreambreaker/forfeit: tenant + manage]",
+          "actual": "(is_super_admin() OR team_tournament_can_manage())",
+          "status": "PASS"
+        },
+        {
+          "check_id": "V3.team_tournament_dreambreaker_manage.manage_role_expected",
+          "expected": "is_super_admin() OR team_tournament_can_manage() [dreambreaker/forfeit: tenant + manage]",
+          "actual": "(is_super_admin() OR (tenant_id = ( SELECT profiles.venue_id\n   FROM profiles\n  WHERE (profiles.id = auth.uid()))))",
+          "status": "PASS"
+        },
+        {
+          "check_id": "V3.team_tournament_forfeit_manage.manage_role_expected",
+          "expected": "is_super_admin() OR team_tournament_can_manage() [dreambreaker/forfeit: tenant + manage]",
+          "actual": "(is_super_admin() OR (tenant_id = ( SELECT profiles.venue_id\n   FROM profiles\n  WHERE (profiles.id = auth.uid()))))",
+          "status": "PASS"
+        },
+        {
+          "check_id": "V3.team_tournament_lineup_entries.anon_select_rls_blocked",
+          "expected": "RLS blocks anon reads (no tenant_select policy; write requires manage)",
+          "actual": "Supabase default grant; RLS + no broad SELECT policy",
+          "status": "PASS"
+        },
+        {
+          "check_id": "V3.team_tournament_lineup_entries.authenticated_select_rls_blocked",
+          "expected": "no broad tenant SELECT for captain/player (manage-only ALL policy OK)",
+          "actual": "no tenant_select policy",
+          "status": "PASS"
+        },
+        {
+          "check_id": "V3.team_tournament_lineup_entries.no_anon_select_grant",
+          "expected": "no direct GRANT SELECT to anon role (information_schema)",
+          "actual": "1",
+          "status": "PASS"
+        },
+        {
+          "check_id": "V3.team_tournament_lineup_entries.no_broad_tenant_select",
+          "expected": "0 broad tenant SELECT policies (captain/player leak)",
+          "actual": "0",
+          "status": "PASS"
+        },
+        {
+          "check_id": "V3.team_tournament_lineup_entries.rls_enabled",
+          "expected": "RLS enabled (relrowsecurity=true)",
+          "actual": "enabled",
+          "status": "PASS"
+        },
+        {
+          "check_id": "V3.team_tournament_lineup_entries.write_policy_exists",
+          "expected": "tenant_write policy for RPC security-definer writes",
+          "actual": "team_tournament_lineup_entries_tenant_write",
+          "status": "PASS"
+        },
+        {
+          "check_id": "V3.team_tournament_lineup_entries.write_policy_requires_manage",
+          "expected": "tenant_write USING includes team_tournament_can_manage()",
+          "actual": "(is_super_admin() OR ((tenant_id = ( SELECT profiles.venue_id\n   FROM profiles\n  WHERE (profiles.id = auth.uid()))) AND ",
+          "status": "PASS"
+        },
+        {
+          "check_id": "V3.team_tournament_lineup_revisions_manage.manage_role_expected",
+          "expected": "is_super_admin() OR team_tournament_can_manage() [dreambreaker/forfeit: tenant + manage]",
+          "actual": "(is_super_admin() OR team_tournament_can_manage())",
+          "status": "PASS"
+        },
+        {
+          "check_id": "V3.team_tournament_lineups.anon_select_rls_blocked",
+          "expected": "RLS blocks anon reads (no tenant_select policy; write requires manage)",
+          "actual": "Supabase default grant; RLS + no broad SELECT policy",
+          "status": "PASS"
+        },
+        {
+          "check_id": "V3.team_tournament_lineups.authenticated_select_rls_blocked",
+          "expected": "no broad tenant SELECT for captain/player (manage-only ALL policy OK)",
+          "actual": "no tenant_select policy",
+          "status": "PASS"
+        },
+        {
+          "check_id": "V3.team_tournament_lineups.no_anon_select_grant",
+          "expected": "no direct GRANT SELECT to anon role (information_schema)",
+          "actual": "1",
+          "status": "PASS"
+        },
+        {
+          "check_id": "V3.team_tournament_lineups.no_broad_tenant_select",
+          "expected": "0 broad tenant SELECT policies (captain/player leak)",
+          "actual": "0",
+          "status": "PASS"
+        },
+        {
+          "check_id": "V3.team_tournament_lineups.rls_enabled",
+          "expected": "RLS enabled (relrowsecurity=true)",
+          "actual": "enabled",
+          "status": "PASS"
+        },
+        {
+          "check_id": "V3.team_tournament_lineups.write_policy_exists",
+          "expected": "tenant_write policy for RPC security-definer writes",
+          "actual": "team_tournament_lineups_tenant_write",
+          "status": "PASS"
+        },
+        {
+          "check_id": "V3.team_tournament_lineups.write_policy_requires_manage",
+          "expected": "tenant_write USING includes team_tournament_can_manage()",
+          "actual": "(is_super_admin() OR ((tenant_id = ( SELECT profiles.venue_id\n   FROM profiles\n  WHERE (profiles.id = auth.uid()))) AND ",
+          "status": "PASS"
+        },
+        {
+          "check_id": "V3.team_tournament_sync_mismatch_manage.manage_role_expected",
+          "expected": "is_super_admin() OR team_tournament_can_manage() [dreambreaker/forfeit: tenant + manage]",
+          "actual": "(is_super_admin() OR team_tournament_can_manage())",
+          "status": "PASS"
+        }
+      ]
+    },
+    "V4": {
+      "pass": 5,
+      "fail": 0,
+      "checks": [
+        {
+          "check_id": "V4.team_tournament_command_log.unique_columns",
+          "expected": "tenant_id, tournament_id, command_name, idempotency_key",
+          "actual": "team_tournament_command_log_tenant_id_tournament_id_command_key: tenant_id, tournament_id, command_name, idempotency_key",
+          "status": "PASS"
+        },
+        {
+          "check_id": "V4.team_tournament_dreambreaker_states.unique_columns",
+          "expected": "matchup_id",
+          "actual": "team_tournament_dreambreaker_states_matchup_id_key: matchup_id",
+          "status": "PASS"
+        },
+        {
+          "check_id": "V4.team_tournament_forfeit_events.unique_columns",
+          "expected": "tenant_id, tournament_id, idempotency_key",
+          "actual": "team_tournament_forfeit_event_tenant_id_tournament_id_idemp_key: tenant_id, tournament_id, idempotency_key",
+          "status": "PASS"
+        },
+        {
+          "check_id": "V4.team_tournament_lineup_revisions.unique_columns",
+          "expected": "lineup_id, revision_no",
+          "actual": "team_tournament_lineup_revisions_lineup_id_revision_no_key: lineup_id, revision_no",
+          "status": "PASS"
+        },
+        {
+          "check_id": "V4.team_tournament_lineups.unique_columns",
+          "expected": "matchup_id, team_external_id",
+          "actual": "team_tournament_lineups_matchup_id_team_external_id_key: matchup_id, team_external_id",
+          "status": "PASS"
+        }
+      ]
+    },
+    "V5": {
+      "pass": 55,
+      "fail": 0,
+      "checks": [
+        {
+          "check_id": "V5.23C.team_tournament_confirm_sub_match.p_tournament_id_text__p_matchup_id_text__p_sub_match_id_text__p_score_jsonb__p_winner_team_id_text.exists",
+          "expected": "23C overload exists",
+          "actual": "present",
+          "status": "PASS"
+        },
+        {
+          "check_id": "V5.23C.team_tournament_lock_matchup.p_tournament_id_text__p_matchup_id_text.exists",
+          "expected": "23C overload exists",
+          "actual": "present",
+          "status": "PASS"
+        },
+        {
+          "check_id": "V5.23C.team_tournament_lock_matchup.security_definer",
+          "expected": "SECURITY DEFINER",
+          "actual": "SECURITY DEFINER",
+          "status": "PASS"
+        },
+        {
+          "check_id": "V5.23C.team_tournament_publish_matchup.p_tournament_id_text__p_matchup_id_text.exists",
+          "expected": "23C overload exists",
+          "actual": "present",
+          "status": "PASS"
+        },
+        {
+          "check_id": "V5.23C.team_tournament_publish_matchup.security_definer",
+          "expected": "SECURITY DEFINER",
+          "actual": "SECURITY DEFINER",
+          "status": "PASS"
+        },
+        {
+          "check_id": "V5.23C.team_tournament_submit_lineup.p_tournament_id_text__p_matchup_id_text__p_team_id_text__p_selections_jsonb.exists",
+          "expected": "23C overload exists",
+          "actual": "present",
+          "status": "PASS"
+        },
+        {
+          "check_id": "V5.23C.team_tournament_submit_lineup.security_definer",
+          "expected": "SECURITY DEFINER",
+          "actual": "SECURITY DEFINER",
+          "status": "PASS"
+        },
+        {
+          "check_id": "V5.overload.confirm_sub_match.both_versions",
+          "expected": "23C 5-param AND TT-1B 7-param coexist",
+          "actual": "2 overload(s)",
+          "status": "PASS"
+        },
+        {
+          "check_id": "V5.overload.lock_matchup.both_versions",
+          "expected": "23C 2-param AND TT-1B 4-param coexist",
+          "actual": "2 overload(s)",
+          "status": "PASS"
+        },
+        {
+          "check_id": "V5.overload.publish_matchup.both_versions",
+          "expected": "exact allowlist: 23C 2-param, TT-1B 4-param, TT-2E 6-param; no missing/extra overloads",
+          "actual": "3 overload(s); missing=[none]; extra=[none]",
+          "status": "PASS"
+        },
+        {
+          "check_id": "V5.overload.submit_lineup.both_versions",
+          "expected": "23C 4-param AND TT-1B 6-param coexist (TT-1B.5 policy)",
+          "actual": "2 overload(s)",
+          "status": "PASS"
+        },
+        {
+          "check_id": "V5.TT-1B.team_tournament_apply_forfeit.authenticated_grant",
+          "expected": "explicit EXECUTE grant to authenticated in ACL",
+          "actual": "granted",
+          "status": "PASS"
+        },
+        {
+          "check_id": "V5.TT-1B.team_tournament_apply_forfeit.no_anon_grant",
+          "expected": "no explicit EXECUTE grant to anon (or auth-guarded RPC)",
+          "actual": "anon",
+          "status": "PASS"
+        },
+        {
+          "check_id": "V5.TT-1B.team_tournament_apply_forfeit.p_tournament_id_text__p_matchup_id_text__p_sub_match_id_text__p_forfeiting_team_id_text__p_scope_text__p_result_type_text__p_forfeit_reason_text__p_technical_score_jsonb__p_expected_version_integer__p_idempotency_key_text.exists",
+          "expected": "TT-1B overload exists",
+          "actual": "present",
+          "status": "PASS"
+        },
+        {
+          "check_id": "V5.TT-1B.team_tournament_apply_forfeit.return_type",
+          "expected": "json",
+          "actual": "json",
+          "status": "PASS"
+        },
+        {
+          "check_id": "V5.TT-1B.team_tournament_apply_forfeit.security_definer",
+          "expected": "SECURITY DEFINER",
+          "actual": "SECURITY DEFINER",
+          "status": "PASS"
+        },
+        {
+          "check_id": "V5.TT-1B.team_tournament_begin_command.authenticated_grant",
+          "expected": "explicit EXECUTE grant to authenticated in ACL",
+          "actual": "granted",
+          "status": "PASS"
+        },
+        {
+          "check_id": "V5.TT-1B.team_tournament_begin_command.no_anon_grant",
+          "expected": "internal/helper: anon EXECUTE OK if no sensitive data path",
+          "actual": "anon (internal idempotency helper)",
+          "status": "PASS"
+        },
+        {
+          "check_id": "V5.TT-1B.team_tournament_begin_command.p_tenant_id_text__p_tournament_id_text__p_command_name_text__p_idempotency_key_text__p_payload_jsonb.exists",
+          "expected": "TT-1B overload exists",
+          "actual": "present",
+          "status": "PASS"
+        },
+        {
+          "check_id": "V5.TT-1B.team_tournament_begin_command.return_type",
+          "expected": "json",
+          "actual": "json",
+          "status": "PASS"
+        },
+        {
+          "check_id": "V5.TT-1B.team_tournament_begin_command.security_definer",
+          "expected": "SECURITY DEFINER",
+          "actual": "SECURITY DEFINER",
+          "status": "PASS"
+        },
+        {
+          "check_id": "V5.TT-1B.team_tournament_confirm_sub_match.authenticated_grant",
+          "expected": "explicit EXECUTE grant to authenticated in ACL",
+          "actual": "granted",
+          "status": "PASS"
+        },
+        {
+          "check_id": "V5.TT-1B.team_tournament_confirm_sub_match.no_anon_grant",
+          "expected": "no explicit EXECUTE grant to anon (or auth-guarded RPC)",
+          "actual": "anon",
+          "status": "PASS"
+        },
+        {
+          "check_id": "V5.TT-1B.team_tournament_confirm_sub_match.p_tournament_id_text__p_matchup_id_text__p_sub_match_id_text__p_score_jsonb__p_winner_team_id_text__p_expected_version_integer__p_idempotency_key_text.exists",
+          "expected": "TT-1B overload exists",
+          "actual": "present",
+          "status": "PASS"
+        },
+        {
+          "check_id": "V5.TT-1B.team_tournament_finish_command.authenticated_grant",
+          "expected": "internal helper (no explicit authenticated grant required)",
+          "actual": "granted",
+          "status": "PASS"
+        },
+        {
+          "check_id": "V5.TT-1B.team_tournament_finish_command.no_anon_grant",
+          "expected": "internal/helper: anon EXECUTE OK if no sensitive data path",
+          "actual": "anon",
+          "status": "PASS"
+        },
+        {
+          "check_id": "V5.TT-1B.team_tournament_finish_command.p_tenant_id_text__p_tournament_id_text__p_command_name_text__p_idempotency_key_text__p_payload_hash_text__p_result_jsonb.exists",
+          "expected": "TT-1B overload exists",
+          "actual": "present",
+          "status": "PASS"
+        },
+        {
+          "check_id": "V5.TT-1B.team_tournament_get_visible_lineups.authenticated_grant",
+          "expected": "explicit EXECUTE grant to authenticated in ACL",
+          "actual": "granted",
+          "status": "PASS"
+        },
+        {
+          "check_id": "V5.TT-1B.team_tournament_get_visible_lineups.no_anon_grant",
+          "expected": "no explicit EXECUTE grant to anon (or auth-guarded RPC)",
+          "actual": "anon",
+          "status": "PASS"
+        },
+        {
+          "check_id": "V5.TT-1B.team_tournament_get_visible_lineups.p_tournament_id_text__p_matchup_id_text__p_viewer_team_id_text.exists",
+          "expected": "TT-1B overload exists",
+          "actual": "present",
+          "status": "PASS"
+        },
+        {
+          "check_id": "V5.TT-1B.team_tournament_get_visible_lineups.return_type",
+          "expected": "json",
+          "actual": "json",
+          "status": "PASS"
+        },
+        {
+          "check_id": "V5.TT-1B.team_tournament_get_visible_lineups.security_definer",
+          "expected": "SECURITY DEFINER",
+          "actual": "SECURITY DEFINER",
+          "status": "PASS"
+        },
+        {
+          "check_id": "V5.TT-1B.team_tournament_lock_matchup.authenticated_grant",
+          "expected": "explicit EXECUTE grant to authenticated in ACL",
+          "actual": "granted",
+          "status": "PASS"
+        },
+        {
+          "check_id": "V5.TT-1B.team_tournament_lock_matchup.no_anon_grant",
+          "expected": "no explicit EXECUTE grant to anon (or auth-guarded RPC)",
+          "actual": "anon",
+          "status": "PASS"
+        },
+        {
+          "check_id": "V5.TT-1B.team_tournament_lock_matchup.p_tournament_id_text__p_matchup_id_text__p_expected_version_integer__p_idempotency_key_text.exists",
+          "expected": "TT-1B overload exists",
+          "actual": "present",
+          "status": "PASS"
+        },
+        {
+          "check_id": "V5.TT-1B.team_tournament_lock_matchup.security_definer",
+          "expected": "SECURITY DEFINER",
+          "actual": "SECURITY DEFINER",
+          "status": "PASS"
+        },
+        {
+          "check_id": "V5.TT-1B.team_tournament_payload_hash.authenticated_grant",
+          "expected": "explicit EXECUTE grant to authenticated in ACL",
+          "actual": "granted",
+          "status": "PASS"
+        },
+        {
+          "check_id": "V5.TT-1B.team_tournament_payload_hash.no_anon_grant",
+          "expected": "internal/helper: anon EXECUTE OK if no sensitive data path",
+          "actual": "anon",
+          "status": "PASS"
+        },
+        {
+          "check_id": "V5.TT-1B.team_tournament_payload_hash.p_payload_jsonb.exists",
+          "expected": "TT-1B overload exists",
+          "actual": "present",
+          "status": "PASS"
+        },
+        {
+          "check_id": "V5.TT-1B.team_tournament_payload_hash.return_type",
+          "expected": "text",
+          "actual": "text",
+          "status": "PASS"
+        },
+        {
+          "check_id": "V5.TT-1B.team_tournament_payload_hash.security_definer",
+          "expected": "SECURITY INVOKER",
+          "actual": "SECURITY INVOKER",
+          "status": "PASS"
+        },
+        {
+          "check_id": "V5.TT-1B.team_tournament_publish_matchup.authenticated_grant",
+          "expected": "explicit EXECUTE grant to authenticated in ACL",
+          "actual": "granted",
+          "status": "PASS"
+        },
+        {
+          "check_id": "V5.TT-1B.team_tournament_publish_matchup.no_anon_grant",
+          "expected": "no explicit EXECUTE grant to anon (or auth-guarded RPC)",
+          "actual": "anon",
+          "status": "PASS"
+        },
+        {
+          "check_id": "V5.TT-1B.team_tournament_publish_matchup.p_tournament_id_text__p_matchup_id_text__p_expected_version_integer__p_idempotency_key_text.exists",
+          "expected": "TT-1B overload exists",
+          "actual": "present",
+          "status": "PASS"
+        },
+        {
+          "check_id": "V5.TT-1B.team_tournament_publish_matchup.security_definer",
+          "expected": "SECURITY DEFINER",
+          "actual": "SECURITY DEFINER",
+          "status": "PASS"
+        },
+        {
+          "check_id": "V5.TT-1B.team_tournament_submit_lineup.authenticated_grant",
+          "expected": "explicit EXECUTE grant to authenticated in ACL",
+          "actual": "granted",
+          "status": "PASS"
+        },
+        {
+          "check_id": "V5.TT-1B.team_tournament_submit_lineup.no_anon_grant",
+          "expected": "no explicit EXECUTE grant to anon (or auth-guarded RPC)",
+          "actual": "anon",
+          "status": "PASS"
+        },
+        {
+          "check_id": "V5.TT-1B.team_tournament_submit_lineup.p_tournament_id_text__p_matchup_id_text__p_team_id_text__p_selections_jsonb__p_expected_version_integer__p_idempotency_key_text.exists",
+          "expected": "TT-1B overload exists",
+          "actual": "present",
+          "status": "PASS"
+        },
+        {
+          "check_id": "V5.TT-1B.team_tournament_submit_lineup.security_definer",
+          "expected": "SECURITY DEFINER",
+          "actual": "SECURITY DEFINER",
+          "status": "PASS"
+        },
+        {
+          "check_id": "V5.TT-1B.team_tournament_version_conflict.authenticated_grant",
+          "expected": "internal helper (no explicit authenticated grant required)",
+          "actual": "granted",
+          "status": "PASS"
+        },
+        {
+          "check_id": "V5.TT-1B.team_tournament_version_conflict.no_anon_grant",
+          "expected": "internal/helper: anon EXECUTE OK if no sensitive data path",
+          "actual": "anon",
+          "status": "PASS"
+        },
+        {
+          "check_id": "V5.TT-1B.team_tournament_version_conflict.p_entity_text__p_expected_integer__p_actual_integer.exists",
+          "expected": "TT-1B overload exists",
+          "actual": "present",
+          "status": "PASS"
+        },
+        {
+          "check_id": "V5.TT-1B.team_tournament_version_conflict.return_type",
+          "expected": "json",
+          "actual": "json",
+          "status": "PASS"
+        },
+        {
+          "check_id": "V5.TT-2E.team_tournament_publish_matchup.p_tournament_id_text__p_matchup_id_text__p_expected_matchup_version_integer__p_expected_lineup_a_version_integer__p_expected_lineup_b_version_integer__p_idempotency_key_text.exists",
+          "expected": "TT-2E overload exists",
+          "actual": "present",
+          "status": "PASS"
+        },
+        {
+          "check_id": "V5.TT-2E.team_tournament_publish_matchup.security_definer",
+          "expected": "SECURITY DEFINER",
+          "actual": "SECURITY DEFINER",
+          "status": "PASS"
+        }
+      ]
+    },
+    "V6": {
+      "pass": 7,
+      "fail": 0,
+      "checks": [
+        {
+          "check_id": "V6.team_tournament_dreambreaker_states.summary",
+          "expected": "row_count>=0; null_version=0; invalid_version=0; min/max valid if non-empty",
+          "actual": "rows=0 null=0 invalid=0 min=null max=null",
+          "status": "PASS"
+        },
+        {
+          "check_id": "V6.team_tournament_forfeit_events.summary",
+          "expected": "row_count>=0; null_version=0; invalid_version=0; min/max valid if non-empty",
+          "actual": "rows=0 null=0 invalid=0 min=null max=null",
+          "status": "PASS"
+        },
+        {
+          "check_id": "V6.team_tournament_lineups.summary",
+          "expected": "row_count>=0; null_version=0; invalid_version=0; min/max valid if non-empty",
+          "actual": "rows=2 null=0 invalid=0 min=3 max=4",
+          "status": "PASS"
+        },
+        {
+          "check_id": "V6.team_tournament_matchups.summary",
+          "expected": "row_count>=0; null_version=0; invalid_version=0; min/max valid if non-empty",
+          "actual": "rows=1 null=0 invalid=0 min=8 max=8",
+          "status": "PASS"
+        },
+        {
+          "check_id": "V6.team_tournament_standings.summary",
+          "expected": "row_count>=0; null_version=0; invalid_version=0; min/max valid if non-empty",
+          "actual": "rows=2 null=0 invalid=0 min=1 max=1",
+          "status": "PASS"
+        },
+        {
+          "check_id": "V6.team_tournament_sub_matches.summary",
+          "expected": "row_count>=0; null_version=0; invalid_version=0; min/max valid if non-empty",
+          "actual": "rows=4 null=0 invalid=0 min=1 max=2",
+          "status": "PASS"
+        },
+        {
+          "check_id": "V6.team_tournaments.summary",
+          "expected": "row_count>=0; null_version=0; invalid_version=0; min/max valid if non-empty",
+          "actual": "rows=1 null=0 invalid=0 min=1 max=1",
+          "status": "PASS"
+        }
+      ]
+    },
+    "V7": {
+      "pass": 9,
+      "fail": 0,
+      "checks": [
+        {
+          "check_id": "V7.dreambreaker_orphan_matchup",
+          "expected": "0 orphan rows",
+          "actual": "0",
+          "status": "PASS"
+        },
+        {
+          "check_id": "V7.forfeit_orphan_parent",
+          "expected": "0 orphan rows",
+          "actual": "0",
+          "status": "PASS"
+        },
+        {
+          "check_id": "V7.lineup_entries_orphan_lineup",
+          "expected": "0 orphan rows",
+          "actual": "0",
+          "status": "PASS"
+        },
+        {
+          "check_id": "V7.lineup_orphan_matchup",
+          "expected": "0 orphan rows",
+          "actual": "0",
+          "status": "PASS"
+        },
+        {
+          "check_id": "V7.lineup_orphan_team",
+          "expected": "0 orphan rows",
+          "actual": "0",
+          "status": "PASS"
+        },
+        {
+          "check_id": "V7.lineup_revision_orphan_lineup",
+          "expected": "0 orphan rows",
+          "actual": "0",
+          "status": "PASS"
+        },
+        {
+          "check_id": "V7.matchup_orphan_tournament",
+          "expected": "0 orphan rows",
+          "actual": "0",
+          "status": "PASS"
+        },
+        {
+          "check_id": "V7.standing_orphan_team",
+          "expected": "0 orphan rows",
+          "actual": "0",
+          "status": "PASS"
+        },
+        {
+          "check_id": "V7.sub_match_orphan_matchup",
+          "expected": "0 orphan rows",
+          "actual": "0",
+          "status": "PASS"
+        }
+      ]
+    },
+    "X": {
+      "pass": 12,
+      "fail": 0,
+      "checks": [
+        {
+          "check_id": "X.command_log.idempotency_key_not_null",
+          "expected": "column NOT NULL",
+          "actual": "NOT NULL",
+          "status": "PASS"
+        },
+        {
+          "check_id": "X.command_log.no_null_idempotency_rows",
+          "expected": "0 rows with null/blank idempotency_key",
+          "actual": "0",
+          "status": "PASS"
+        },
+        {
+          "check_id": "X.command_log.payload_hash_type",
+          "expected": "text NOT NULL",
+          "actual": "text nullable=NO",
+          "status": "PASS"
+        },
+        {
+          "check_id": "X.fk.dreambreaker_matchup_id",
+          "expected": "FK dreambreaker_states.matchup_id -> team_tournament_matchups.id",
+          "actual": "team_tournament_dreambreaker_states_matchup_id_fkey",
+          "status": "PASS"
+        },
+        {
+          "check_id": "X.fk.lineup_revisions_lineup_id",
+          "expected": "FK lineup_revisions.lineup_id -> team_tournament_lineups.id",
+          "actual": "team_tournament_lineup_revisions_actor_id_fkey",
+          "status": "PASS"
+        },
+        {
+          "check_id": "X.fk.lineup_revisions_lineup_id",
+          "expected": "FK lineup_revisions.lineup_id -> team_tournament_lineups.id",
+          "actual": "team_tournament_lineup_revisions_lineup_id_fkey",
+          "status": "PASS"
+        },
+        {
+          "check_id": "X.index.idx_team_tournament_command_log_tenant.exists",
+          "expected": "index present on staging",
+          "actual": "idx_team_tournament_command_log_tenant",
+          "status": "PASS"
+        },
+        {
+          "check_id": "X.index.idx_team_tournament_lineup_revisions_lineup.exists",
+          "expected": "index present on staging",
+          "actual": "idx_team_tournament_lineup_revisions_lineup",
+          "status": "PASS"
+        },
+        {
+          "check_id": "X.index.idx_team_tournament_sync_mismatch_open.exists",
+          "expected": "index present on staging",
+          "actual": "idx_team_tournament_sync_mismatch_open",
+          "status": "PASS"
+        },
+        {
+          "check_id": "X.lineup.no_duplicate_matchup_team",
+          "expected": "0 duplicate (matchup_id, team_external_id)",
+          "actual": "0",
+          "status": "PASS"
+        },
+        {
+          "check_id": "X.payload_hash.digest_hotfix",
+          "expected": "function uses extensions.digest and search_path public, extensions",
+          "actual": "extensions.digest present",
+          "status": "PASS"
+        },
+        {
+          "check_id": "X.version_conflict_rpc.exists",
+          "expected": "team_tournament_version_conflict(text, integer, integer) returns json",
+          "actual": "p_entity text, p_expected integer, p_actual integer -> json",
+          "status": "PASS"
+        }
+      ]
+    }
+  },
+  "checks": [
+    {
+      "check_id": "V1.team_tournament_dreambreaker_states.column_exists",
+      "expected": "version column exists",
+      "actual": "exists",
+      "status": "PASS"
+    },
+    {
+      "check_id": "V1.team_tournament_dreambreaker_states.data_type_integer",
+      "expected": "integer",
+      "actual": "integer",
+      "status": "PASS"
+    },
+    {
+      "check_id": "V1.team_tournament_dreambreaker_states.default_1",
+      "expected": "default = 1",
+      "actual": "1",
+      "status": "PASS"
+    },
+    {
+      "check_id": "V1.team_tournament_dreambreaker_states.no_invalid_version_rows",
+      "expected": "0 rows with version < 1",
+      "actual": "0",
+      "status": "PASS"
+    },
+    {
+      "check_id": "V1.team_tournament_dreambreaker_states.no_null_version_rows",
+      "expected": "0 null version rows",
+      "actual": "0",
+      "status": "PASS"
+    },
+    {
+      "check_id": "V1.team_tournament_dreambreaker_states.not_null",
+      "expected": "NO",
+      "actual": "NO",
+      "status": "PASS"
+    },
+    {
+      "check_id": "V1.team_tournament_forfeit_events.column_exists",
+      "expected": "version column exists",
+      "actual": "exists",
+      "status": "PASS"
+    },
+    {
+      "check_id": "V1.team_tournament_forfeit_events.data_type_integer",
+      "expected": "integer",
+      "actual": "integer",
+      "status": "PASS"
+    },
+    {
+      "check_id": "V1.team_tournament_forfeit_events.default_1",
+      "expected": "default = 1",
+      "actual": "1",
+      "status": "PASS"
+    },
+    {
+      "check_id": "V1.team_tournament_forfeit_events.no_invalid_version_rows",
+      "expected": "0 rows with version < 1",
+      "actual": "0",
+      "status": "PASS"
+    },
+    {
+      "check_id": "V1.team_tournament_forfeit_events.no_null_version_rows",
+      "expected": "0 null version rows",
+      "actual": "0",
+      "status": "PASS"
+    },
+    {
+      "check_id": "V1.team_tournament_forfeit_events.not_null",
+      "expected": "NO",
+      "actual": "NO",
+      "status": "PASS"
+    },
+    {
+      "check_id": "V1.team_tournament_lineups.column_exists",
+      "expected": "version column exists",
+      "actual": "exists",
+      "status": "PASS"
+    },
+    {
+      "check_id": "V1.team_tournament_lineups.data_type_integer",
+      "expected": "integer",
+      "actual": "integer",
+      "status": "PASS"
+    },
+    {
+      "check_id": "V1.team_tournament_lineups.default_1",
+      "expected": "default = 1",
+      "actual": "1",
+      "status": "PASS"
+    },
+    {
+      "check_id": "V1.team_tournament_lineups.no_invalid_version_rows",
+      "expected": "0 rows with version < 1",
+      "actual": "0",
+      "status": "PASS"
+    },
+    {
+      "check_id": "V1.team_tournament_lineups.no_null_version_rows",
+      "expected": "0 null version rows",
+      "actual": "0",
+      "status": "PASS"
+    },
+    {
+      "check_id": "V1.team_tournament_lineups.not_null",
+      "expected": "NO",
+      "actual": "NO",
+      "status": "PASS"
+    },
+    {
+      "check_id": "V1.team_tournament_matchups.column_exists",
+      "expected": "version column exists",
+      "actual": "exists",
+      "status": "PASS"
+    },
+    {
+      "check_id": "V1.team_tournament_matchups.data_type_integer",
+      "expected": "integer",
+      "actual": "integer",
+      "status": "PASS"
+    },
+    {
+      "check_id": "V1.team_tournament_matchups.default_1",
+      "expected": "default = 1",
+      "actual": "1",
+      "status": "PASS"
+    },
+    {
+      "check_id": "V1.team_tournament_matchups.no_invalid_version_rows",
+      "expected": "0 rows with version < 1",
+      "actual": "0",
+      "status": "PASS"
+    },
+    {
+      "check_id": "V1.team_tournament_matchups.no_null_version_rows",
+      "expected": "0 null version rows",
+      "actual": "0",
+      "status": "PASS"
+    },
+    {
+      "check_id": "V1.team_tournament_matchups.not_null",
+      "expected": "NO",
+      "actual": "NO",
+      "status": "PASS"
+    },
+    {
+      "check_id": "V1.team_tournament_standings.column_exists",
+      "expected": "version column exists",
+      "actual": "exists",
+      "status": "PASS"
+    },
+    {
+      "check_id": "V1.team_tournament_standings.data_type_integer",
+      "expected": "integer",
+      "actual": "integer",
+      "status": "PASS"
+    },
+    {
+      "check_id": "V1.team_tournament_standings.default_1",
+      "expected": "default = 1",
+      "actual": "1",
+      "status": "PASS"
+    },
+    {
+      "check_id": "V1.team_tournament_standings.no_invalid_version_rows",
+      "expected": "0 rows with version < 1",
+      "actual": "0",
+      "status": "PASS"
+    },
+    {
+      "check_id": "V1.team_tournament_standings.no_null_version_rows",
+      "expected": "0 null version rows",
+      "actual": "0",
+      "status": "PASS"
+    },
+    {
+      "check_id": "V1.team_tournament_standings.not_null",
+      "expected": "NO",
+      "actual": "NO",
+      "status": "PASS"
+    },
+    {
+      "check_id": "V1.team_tournament_sub_matches.column_exists",
+      "expected": "version column exists",
+      "actual": "exists",
+      "status": "PASS"
+    },
+    {
+      "check_id": "V1.team_tournament_sub_matches.data_type_integer",
+      "expected": "integer",
+      "actual": "integer",
+      "status": "PASS"
+    },
+    {
+      "check_id": "V1.team_tournament_sub_matches.default_1",
+      "expected": "default = 1",
+      "actual": "1",
+      "status": "PASS"
+    },
+    {
+      "check_id": "V1.team_tournament_sub_matches.no_invalid_version_rows",
+      "expected": "0 rows with version < 1",
+      "actual": "0",
+      "status": "PASS"
+    },
+    {
+      "check_id": "V1.team_tournament_sub_matches.no_null_version_rows",
+      "expected": "0 null version rows",
+      "actual": "0",
+      "status": "PASS"
+    },
+    {
+      "check_id": "V1.team_tournament_sub_matches.not_null",
+      "expected": "NO",
+      "actual": "NO",
+      "status": "PASS"
+    },
+    {
+      "check_id": "V1.team_tournament_teams.column_exists",
+      "expected": "no version column (not in TT-1B SSOT)",
+      "actual": "absent (OK)",
+      "status": "PASS"
+    },
+    {
+      "check_id": "V1.team_tournament_teams.data_type_integer",
+      "expected": "integer",
+      "actual": "missing",
+      "status": "PASS"
+    },
+    {
+      "check_id": "V1.team_tournament_teams.default_1",
+      "expected": "default = 1",
+      "actual": "missing",
+      "status": "PASS"
+    },
+    {
+      "check_id": "V1.team_tournament_teams.not_null",
+      "expected": "NO",
+      "actual": "missing",
+      "status": "PASS"
+    },
+    {
+      "check_id": "V1.team_tournaments.column_exists",
+      "expected": "version column exists",
+      "actual": "exists",
+      "status": "PASS"
+    },
+    {
+      "check_id": "V1.team_tournaments.data_type_integer",
+      "expected": "integer",
+      "actual": "integer",
+      "status": "PASS"
+    },
+    {
+      "check_id": "V1.team_tournaments.default_1",
+      "expected": "default = 1",
+      "actual": "1",
+      "status": "PASS"
+    },
+    {
+      "check_id": "V1.team_tournaments.no_invalid_version_rows",
+      "expected": "0 rows with version < 1",
+      "actual": "0",
+      "status": "PASS"
+    },
+    {
+      "check_id": "V1.team_tournaments.no_null_version_rows",
+      "expected": "0 null version rows",
+      "actual": "0",
+      "status": "PASS"
+    },
+    {
+      "check_id": "V1.team_tournaments.not_null",
+      "expected": "NO",
+      "actual": "NO",
+      "status": "PASS"
+    },
+    {
+      "check_id": "V2.all_tt1b_tables",
+      "expected": "all 5 TT-1B tables present",
+      "actual": "5/5 present",
+      "status": "PASS"
+    },
+    {
+      "check_id": "V2.team_tournament_command_log.exists",
+      "expected": "table exists in public schema",
+      "actual": "present",
+      "status": "PASS"
+    },
+    {
+      "check_id": "V2.team_tournament_dreambreaker_states.exists",
+      "expected": "table exists in public schema",
+      "actual": "present",
+      "status": "PASS"
+    },
+    {
+      "check_id": "V2.team_tournament_forfeit_events.exists",
+      "expected": "table exists in public schema",
+      "actual": "present",
+      "status": "PASS"
+    },
+    {
+      "check_id": "V2.team_tournament_lineup_revisions.exists",
+      "expected": "table exists in public schema",
+      "actual": "present",
+      "status": "PASS"
+    },
+    {
+      "check_id": "V2.team_tournament_sync_mismatch.exists",
+      "expected": "table exists in public schema",
+      "actual": "present",
+      "status": "PASS"
+    },
+    {
+      "check_id": "V3.lineup_no_direct_select_bypass",
+      "expected": "no SELECT policy; ALL policies require manage or super_admin",
+      "actual": "0 SELECT; 0 ALL without manage",
+      "status": "PASS"
+    },
+    {
+      "check_id": "V3.team_tournament_command_log_manage.manage_role_expected",
+      "expected": "is_super_admin() OR team_tournament_can_manage() [dreambreaker/forfeit: tenant + manage]",
+      "actual": "(is_super_admin() OR team_tournament_can_manage())",
+      "status": "PASS"
+    },
+    {
+      "check_id": "V3.team_tournament_dreambreaker_manage.manage_role_expected",
+      "expected": "is_super_admin() OR team_tournament_can_manage() [dreambreaker/forfeit: tenant + manage]",
+      "actual": "(is_super_admin() OR (tenant_id = ( SELECT profiles.venue_id\n   FROM profiles\n  WHERE (profiles.id = auth.uid()))))",
+      "status": "PASS"
+    },
+    {
+      "check_id": "V3.team_tournament_forfeit_manage.manage_role_expected",
+      "expected": "is_super_admin() OR team_tournament_can_manage() [dreambreaker/forfeit: tenant + manage]",
+      "actual": "(is_super_admin() OR (tenant_id = ( SELECT profiles.venue_id\n   FROM profiles\n  WHERE (profiles.id = auth.uid()))))",
+      "status": "PASS"
+    },
+    {
+      "check_id": "V3.team_tournament_lineup_entries.anon_select_rls_blocked",
+      "expected": "RLS blocks anon reads (no tenant_select policy; write requires manage)",
+      "actual": "Supabase default grant; RLS + no broad SELECT policy",
+      "status": "PASS"
+    },
+    {
+      "check_id": "V3.team_tournament_lineup_entries.authenticated_select_rls_blocked",
+      "expected": "no broad tenant SELECT for captain/player (manage-only ALL policy OK)",
+      "actual": "no tenant_select policy",
+      "status": "PASS"
+    },
+    {
+      "check_id": "V3.team_tournament_lineup_entries.no_anon_select_grant",
+      "expected": "no direct GRANT SELECT to anon role (information_schema)",
+      "actual": "1",
+      "status": "PASS"
+    },
+    {
+      "check_id": "V3.team_tournament_lineup_entries.no_broad_tenant_select",
+      "expected": "0 broad tenant SELECT policies (captain/player leak)",
+      "actual": "0",
+      "status": "PASS"
+    },
+    {
+      "check_id": "V3.team_tournament_lineup_entries.rls_enabled",
+      "expected": "RLS enabled (relrowsecurity=true)",
+      "actual": "enabled",
+      "status": "PASS"
+    },
+    {
+      "check_id": "V3.team_tournament_lineup_entries.write_policy_exists",
+      "expected": "tenant_write policy for RPC security-definer writes",
+      "actual": "team_tournament_lineup_entries_tenant_write",
+      "status": "PASS"
+    },
+    {
+      "check_id": "V3.team_tournament_lineup_entries.write_policy_requires_manage",
+      "expected": "tenant_write USING includes team_tournament_can_manage()",
+      "actual": "(is_super_admin() OR ((tenant_id = ( SELECT profiles.venue_id\n   FROM profiles\n  WHERE (profiles.id = auth.uid()))) AND ",
+      "status": "PASS"
+    },
+    {
+      "check_id": "V3.team_tournament_lineup_revisions_manage.manage_role_expected",
+      "expected": "is_super_admin() OR team_tournament_can_manage() [dreambreaker/forfeit: tenant + manage]",
+      "actual": "(is_super_admin() OR team_tournament_can_manage())",
+      "status": "PASS"
+    },
+    {
+      "check_id": "V3.team_tournament_lineups.anon_select_rls_blocked",
+      "expected": "RLS blocks anon reads (no tenant_select policy; write requires manage)",
+      "actual": "Supabase default grant; RLS + no broad SELECT policy",
+      "status": "PASS"
+    },
+    {
+      "check_id": "V3.team_tournament_lineups.authenticated_select_rls_blocked",
+      "expected": "no broad tenant SELECT for captain/player (manage-only ALL policy OK)",
+      "actual": "no tenant_select policy",
+      "status": "PASS"
+    },
+    {
+      "check_id": "V3.team_tournament_lineups.no_anon_select_grant",
+      "expected": "no direct GRANT SELECT to anon role (information_schema)",
+      "actual": "1",
+      "status": "PASS"
+    },
+    {
+      "check_id": "V3.team_tournament_lineups.no_broad_tenant_select",
+      "expected": "0 broad tenant SELECT policies (captain/player leak)",
+      "actual": "0",
+      "status": "PASS"
+    },
+    {
+      "check_id": "V3.team_tournament_lineups.rls_enabled",
+      "expected": "RLS enabled (relrowsecurity=true)",
+      "actual": "enabled",
+      "status": "PASS"
+    },
+    {
+      "check_id": "V3.team_tournament_lineups.write_policy_exists",
+      "expected": "tenant_write policy for RPC security-definer writes",
+      "actual": "team_tournament_lineups_tenant_write",
+      "status": "PASS"
+    },
+    {
+      "check_id": "V3.team_tournament_lineups.write_policy_requires_manage",
+      "expected": "tenant_write USING includes team_tournament_can_manage()",
+      "actual": "(is_super_admin() OR ((tenant_id = ( SELECT profiles.venue_id\n   FROM profiles\n  WHERE (profiles.id = auth.uid()))) AND ",
+      "status": "PASS"
+    },
+    {
+      "check_id": "V3.team_tournament_sync_mismatch_manage.manage_role_expected",
+      "expected": "is_super_admin() OR team_tournament_can_manage() [dreambreaker/forfeit: tenant + manage]",
+      "actual": "(is_super_admin() OR team_tournament_can_manage())",
+      "status": "PASS"
+    },
+    {
+      "check_id": "V4.team_tournament_command_log.unique_columns",
+      "expected": "tenant_id, tournament_id, command_name, idempotency_key",
+      "actual": "team_tournament_command_log_tenant_id_tournament_id_command_key: tenant_id, tournament_id, command_name, idempotency_key",
+      "status": "PASS"
+    },
+    {
+      "check_id": "V4.team_tournament_dreambreaker_states.unique_columns",
+      "expected": "matchup_id",
+      "actual": "team_tournament_dreambreaker_states_matchup_id_key: matchup_id",
+      "status": "PASS"
+    },
+    {
+      "check_id": "V4.team_tournament_forfeit_events.unique_columns",
+      "expected": "tenant_id, tournament_id, idempotency_key",
+      "actual": "team_tournament_forfeit_event_tenant_id_tournament_id_idemp_key: tenant_id, tournament_id, idempotency_key",
+      "status": "PASS"
+    },
+    {
+      "check_id": "V4.team_tournament_lineup_revisions.unique_columns",
+      "expected": "lineup_id, revision_no",
+      "actual": "team_tournament_lineup_revisions_lineup_id_revision_no_key: lineup_id, revision_no",
+      "status": "PASS"
+    },
+    {
+      "check_id": "V4.team_tournament_lineups.unique_columns",
+      "expected": "matchup_id, team_external_id",
+      "actual": "team_tournament_lineups_matchup_id_team_external_id_key: matchup_id, team_external_id",
+      "status": "PASS"
+    },
+    {
+      "check_id": "V5.23C.team_tournament_confirm_sub_match.p_tournament_id_text__p_matchup_id_text__p_sub_match_id_text__p_score_jsonb__p_winner_team_id_text.exists",
+      "expected": "23C overload exists",
+      "actual": "present",
+      "status": "PASS"
+    },
+    {
+      "check_id": "V5.23C.team_tournament_lock_matchup.p_tournament_id_text__p_matchup_id_text.exists",
+      "expected": "23C overload exists",
+      "actual": "present",
+      "status": "PASS"
+    },
+    {
+      "check_id": "V5.23C.team_tournament_lock_matchup.security_definer",
+      "expected": "SECURITY DEFINER",
+      "actual": "SECURITY DEFINER",
+      "status": "PASS"
+    },
+    {
+      "check_id": "V5.23C.team_tournament_publish_matchup.p_tournament_id_text__p_matchup_id_text.exists",
+      "expected": "23C overload exists",
+      "actual": "present",
+      "status": "PASS"
+    },
+    {
+      "check_id": "V5.23C.team_tournament_publish_matchup.security_definer",
+      "expected": "SECURITY DEFINER",
+      "actual": "SECURITY DEFINER",
+      "status": "PASS"
+    },
+    {
+      "check_id": "V5.23C.team_tournament_submit_lineup.p_tournament_id_text__p_matchup_id_text__p_team_id_text__p_selections_jsonb.exists",
+      "expected": "23C overload exists",
+      "actual": "present",
+      "status": "PASS"
+    },
+    {
+      "check_id": "V5.23C.team_tournament_submit_lineup.security_definer",
+      "expected": "SECURITY DEFINER",
+      "actual": "SECURITY DEFINER",
+      "status": "PASS"
+    },
+    {
+      "check_id": "V5.overload.confirm_sub_match.both_versions",
+      "expected": "23C 5-param AND TT-1B 7-param coexist",
+      "actual": "2 overload(s)",
+      "status": "PASS"
+    },
+    {
+      "check_id": "V5.overload.lock_matchup.both_versions",
+      "expected": "23C 2-param AND TT-1B 4-param coexist",
+      "actual": "2 overload(s)",
+      "status": "PASS"
+    },
+    {
+      "check_id": "V5.overload.publish_matchup.both_versions",
+      "expected": "exact allowlist: 23C 2-param, TT-1B 4-param, TT-2E 6-param; no missing/extra overloads",
+      "actual": "3 overload(s); missing=[none]; extra=[none]",
+      "status": "PASS"
+    },
+    {
+      "check_id": "V5.overload.submit_lineup.both_versions",
+      "expected": "23C 4-param AND TT-1B 6-param coexist (TT-1B.5 policy)",
+      "actual": "2 overload(s)",
+      "status": "PASS"
+    },
+    {
+      "check_id": "V5.TT-1B.team_tournament_apply_forfeit.authenticated_grant",
+      "expected": "explicit EXECUTE grant to authenticated in ACL",
+      "actual": "granted",
+      "status": "PASS"
+    },
+    {
+      "check_id": "V5.TT-1B.team_tournament_apply_forfeit.no_anon_grant",
+      "expected": "no explicit EXECUTE grant to anon (or auth-guarded RPC)",
+      "actual": "anon",
+      "status": "PASS"
+    },
+    {
+      "check_id": "V5.TT-1B.team_tournament_apply_forfeit.p_tournament_id_text__p_matchup_id_text__p_sub_match_id_text__p_forfeiting_team_id_text__p_scope_text__p_result_type_text__p_forfeit_reason_text__p_technical_score_jsonb__p_expected_version_integer__p_idempotency_key_text.exists",
+      "expected": "TT-1B overload exists",
+      "actual": "present",
+      "status": "PASS"
+    },
+    {
+      "check_id": "V5.TT-1B.team_tournament_apply_forfeit.return_type",
+      "expected": "json",
+      "actual": "json",
+      "status": "PASS"
+    },
+    {
+      "check_id": "V5.TT-1B.team_tournament_apply_forfeit.security_definer",
+      "expected": "SECURITY DEFINER",
+      "actual": "SECURITY DEFINER",
+      "status": "PASS"
+    },
+    {
+      "check_id": "V5.TT-1B.team_tournament_begin_command.authenticated_grant",
+      "expected": "explicit EXECUTE grant to authenticated in ACL",
+      "actual": "granted",
+      "status": "PASS"
+    },
+    {
+      "check_id": "V5.TT-1B.team_tournament_begin_command.no_anon_grant",
+      "expected": "internal/helper: anon EXECUTE OK if no sensitive data path",
+      "actual": "anon (internal idempotency helper)",
+      "status": "PASS"
+    },
+    {
+      "check_id": "V5.TT-1B.team_tournament_begin_command.p_tenant_id_text__p_tournament_id_text__p_command_name_text__p_idempotency_key_text__p_payload_jsonb.exists",
+      "expected": "TT-1B overload exists",
+      "actual": "present",
+      "status": "PASS"
+    },
+    {
+      "check_id": "V5.TT-1B.team_tournament_begin_command.return_type",
+      "expected": "json",
+      "actual": "json",
+      "status": "PASS"
+    },
+    {
+      "check_id": "V5.TT-1B.team_tournament_begin_command.security_definer",
+      "expected": "SECURITY DEFINER",
+      "actual": "SECURITY DEFINER",
+      "status": "PASS"
+    },
+    {
+      "check_id": "V5.TT-1B.team_tournament_confirm_sub_match.authenticated_grant",
+      "expected": "explicit EXECUTE grant to authenticated in ACL",
+      "actual": "granted",
+      "status": "PASS"
+    },
+    {
+      "check_id": "V5.TT-1B.team_tournament_confirm_sub_match.no_anon_grant",
+      "expected": "no explicit EXECUTE grant to anon (or auth-guarded RPC)",
+      "actual": "anon",
+      "status": "PASS"
+    },
+    {
+      "check_id": "V5.TT-1B.team_tournament_confirm_sub_match.p_tournament_id_text__p_matchup_id_text__p_sub_match_id_text__p_score_jsonb__p_winner_team_id_text__p_expected_version_integer__p_idempotency_key_text.exists",
+      "expected": "TT-1B overload exists",
+      "actual": "present",
+      "status": "PASS"
+    },
+    {
+      "check_id": "V5.TT-1B.team_tournament_finish_command.authenticated_grant",
+      "expected": "internal helper (no explicit authenticated grant required)",
+      "actual": "granted",
+      "status": "PASS"
+    },
+    {
+      "check_id": "V5.TT-1B.team_tournament_finish_command.no_anon_grant",
+      "expected": "internal/helper: anon EXECUTE OK if no sensitive data path",
+      "actual": "anon",
+      "status": "PASS"
+    },
+    {
+      "check_id": "V5.TT-1B.team_tournament_finish_command.p_tenant_id_text__p_tournament_id_text__p_command_name_text__p_idempotency_key_text__p_payload_hash_text__p_result_jsonb.exists",
+      "expected": "TT-1B overload exists",
+      "actual": "present",
+      "status": "PASS"
+    },
+    {
+      "check_id": "V5.TT-1B.team_tournament_get_visible_lineups.authenticated_grant",
+      "expected": "explicit EXECUTE grant to authenticated in ACL",
+      "actual": "granted",
+      "status": "PASS"
+    },
+    {
+      "check_id": "V5.TT-1B.team_tournament_get_visible_lineups.no_anon_grant",
+      "expected": "no explicit EXECUTE grant to anon (or auth-guarded RPC)",
+      "actual": "anon",
+      "status": "PASS"
+    },
+    {
+      "check_id": "V5.TT-1B.team_tournament_get_visible_lineups.p_tournament_id_text__p_matchup_id_text__p_viewer_team_id_text.exists",
+      "expected": "TT-1B overload exists",
+      "actual": "present",
+      "status": "PASS"
+    },
+    {
+      "check_id": "V5.TT-1B.team_tournament_get_visible_lineups.return_type",
+      "expected": "json",
+      "actual": "json",
+      "status": "PASS"
+    },
+    {
+      "check_id": "V5.TT-1B.team_tournament_get_visible_lineups.security_definer",
+      "expected": "SECURITY DEFINER",
+      "actual": "SECURITY DEFINER",
+      "status": "PASS"
+    },
+    {
+      "check_id": "V5.TT-1B.team_tournament_lock_matchup.authenticated_grant",
+      "expected": "explicit EXECUTE grant to authenticated in ACL",
+      "actual": "granted",
+      "status": "PASS"
+    },
+    {
+      "check_id": "V5.TT-1B.team_tournament_lock_matchup.no_anon_grant",
+      "expected": "no explicit EXECUTE grant to anon (or auth-guarded RPC)",
+      "actual": "anon",
+      "status": "PASS"
+    },
+    {
+      "check_id": "V5.TT-1B.team_tournament_lock_matchup.p_tournament_id_text__p_matchup_id_text__p_expected_version_integer__p_idempotency_key_text.exists",
+      "expected": "TT-1B overload exists",
+      "actual": "present",
+      "status": "PASS"
+    },
+    {
+      "check_id": "V5.TT-1B.team_tournament_lock_matchup.security_definer",
+      "expected": "SECURITY DEFINER",
+      "actual": "SECURITY DEFINER",
+      "status": "PASS"
+    },
+    {
+      "check_id": "V5.TT-1B.team_tournament_payload_hash.authenticated_grant",
+      "expected": "explicit EXECUTE grant to authenticated in ACL",
+      "actual": "granted",
+      "status": "PASS"
+    },
+    {
+      "check_id": "V5.TT-1B.team_tournament_payload_hash.no_anon_grant",
+      "expected": "internal/helper: anon EXECUTE OK if no sensitive data path",
+      "actual": "anon",
+      "status": "PASS"
+    },
+    {
+      "check_id": "V5.TT-1B.team_tournament_payload_hash.p_payload_jsonb.exists",
+      "expected": "TT-1B overload exists",
+      "actual": "present",
+      "status": "PASS"
+    },
+    {
+      "check_id": "V5.TT-1B.team_tournament_payload_hash.return_type",
+      "expected": "text",
+      "actual": "text",
+      "status": "PASS"
+    },
+    {
+      "check_id": "V5.TT-1B.team_tournament_payload_hash.security_definer",
+      "expected": "SECURITY INVOKER",
+      "actual": "SECURITY INVOKER",
+      "status": "PASS"
+    },
+    {
+      "check_id": "V5.TT-1B.team_tournament_publish_matchup.authenticated_grant",
+      "expected": "explicit EXECUTE grant to authenticated in ACL",
+      "actual": "granted",
+      "status": "PASS"
+    },
+    {
+      "check_id": "V5.TT-1B.team_tournament_publish_matchup.no_anon_grant",
+      "expected": "no explicit EXECUTE grant to anon (or auth-guarded RPC)",
+      "actual": "anon",
+      "status": "PASS"
+    },
+    {
+      "check_id": "V5.TT-1B.team_tournament_publish_matchup.p_tournament_id_text__p_matchup_id_text__p_expected_version_integer__p_idempotency_key_text.exists",
+      "expected": "TT-1B overload exists",
+      "actual": "present",
+      "status": "PASS"
+    },
+    {
+      "check_id": "V5.TT-1B.team_tournament_publish_matchup.security_definer",
+      "expected": "SECURITY DEFINER",
+      "actual": "SECURITY DEFINER",
+      "status": "PASS"
+    },
+    {
+      "check_id": "V5.TT-1B.team_tournament_submit_lineup.authenticated_grant",
+      "expected": "explicit EXECUTE grant to authenticated in ACL",
+      "actual": "granted",
+      "status": "PASS"
+    },
+    {
+      "check_id": "V5.TT-1B.team_tournament_submit_lineup.no_anon_grant",
+      "expected": "no explicit EXECUTE grant to anon (or auth-guarded RPC)",
+      "actual": "anon",
+      "status": "PASS"
+    },
+    {
+      "check_id": "V5.TT-1B.team_tournament_submit_lineup.p_tournament_id_text__p_matchup_id_text__p_team_id_text__p_selections_jsonb__p_expected_version_integer__p_idempotency_key_text.exists",
+      "expected": "TT-1B overload exists",
+      "actual": "present",
+      "status": "PASS"
+    },
+    {
+      "check_id": "V5.TT-1B.team_tournament_submit_lineup.security_definer",
+      "expected": "SECURITY DEFINER",
+      "actual": "SECURITY DEFINER",
+      "status": "PASS"
+    },
+    {
+      "check_id": "V5.TT-1B.team_tournament_version_conflict.authenticated_grant",
+      "expected": "internal helper (no explicit authenticated grant required)",
+      "actual": "granted",
+      "status": "PASS"
+    },
+    {
+      "check_id": "V5.TT-1B.team_tournament_version_conflict.no_anon_grant",
+      "expected": "internal/helper: anon EXECUTE OK if no sensitive data path",
+      "actual": "anon",
+      "status": "PASS"
+    },
+    {
+      "check_id": "V5.TT-1B.team_tournament_version_conflict.p_entity_text__p_expected_integer__p_actual_integer.exists",
+      "expected": "TT-1B overload exists",
+      "actual": "present",
+      "status": "PASS"
+    },
+    {
+      "check_id": "V5.TT-1B.team_tournament_version_conflict.return_type",
+      "expected": "json",
+      "actual": "json",
+      "status": "PASS"
+    },
+    {
+      "check_id": "V6.team_tournament_dreambreaker_states.summary",
+      "expected": "row_count>=0; null_version=0; invalid_version=0; min/max valid if non-empty",
+      "actual": "rows=0 null=0 invalid=0 min=null max=null",
+      "status": "PASS"
+    },
+    {
+      "check_id": "V6.team_tournament_forfeit_events.summary",
+      "expected": "row_count>=0; null_version=0; invalid_version=0; min/max valid if non-empty",
+      "actual": "rows=0 null=0 invalid=0 min=null max=null",
+      "status": "PASS"
+    },
+    {
+      "check_id": "V6.team_tournament_lineups.summary",
+      "expected": "row_count>=0; null_version=0; invalid_version=0; min/max valid if non-empty",
+      "actual": "rows=2 null=0 invalid=0 min=3 max=4",
+      "status": "PASS"
+    },
+    {
+      "check_id": "V6.team_tournament_matchups.summary",
+      "expected": "row_count>=0; null_version=0; invalid_version=0; min/max valid if non-empty",
+      "actual": "rows=1 null=0 invalid=0 min=8 max=8",
+      "status": "PASS"
+    },
+    {
+      "check_id": "V6.team_tournament_standings.summary",
+      "expected": "row_count>=0; null_version=0; invalid_version=0; min/max valid if non-empty",
+      "actual": "rows=2 null=0 invalid=0 min=1 max=1",
+      "status": "PASS"
+    },
+    {
+      "check_id": "V6.team_tournament_sub_matches.summary",
+      "expected": "row_count>=0; null_version=0; invalid_version=0; min/max valid if non-empty",
+      "actual": "rows=4 null=0 invalid=0 min=1 max=2",
+      "status": "PASS"
+    },
+    {
+      "check_id": "V6.team_tournaments.summary",
+      "expected": "row_count>=0; null_version=0; invalid_version=0; min/max valid if non-empty",
+      "actual": "rows=1 null=0 invalid=0 min=1 max=1",
+      "status": "PASS"
+    },
+    {
+      "check_id": "V7.dreambreaker_orphan_matchup",
+      "expected": "0 orphan rows",
+      "actual": "0",
+      "status": "PASS"
+    },
+    {
+      "check_id": "V7.forfeit_orphan_parent",
+      "expected": "0 orphan rows",
+      "actual": "0",
+      "status": "PASS"
+    },
+    {
+      "check_id": "V7.lineup_entries_orphan_lineup",
+      "expected": "0 orphan rows",
+      "actual": "0",
+      "status": "PASS"
+    },
+    {
+      "check_id": "V7.lineup_orphan_matchup",
+      "expected": "0 orphan rows",
+      "actual": "0",
+      "status": "PASS"
+    },
+    {
+      "check_id": "V7.lineup_orphan_team",
+      "expected": "0 orphan rows",
+      "actual": "0",
+      "status": "PASS"
+    },
+    {
+      "check_id": "V7.lineup_revision_orphan_lineup",
+      "expected": "0 orphan rows",
+      "actual": "0",
+      "status": "PASS"
+    },
+    {
+      "check_id": "V7.matchup_orphan_tournament",
+      "expected": "0 orphan rows",
+      "actual": "0",
+      "status": "PASS"
+    },
+    {
+      "check_id": "V7.standing_orphan_team",
+      "expected": "0 orphan rows",
+      "actual": "0",
+      "status": "PASS"
+    },
+    {
+      "check_id": "V7.sub_match_orphan_matchup",
+      "expected": "0 orphan rows",
+      "actual": "0",
+      "status": "PASS"
+    },
+    {
+      "check_id": "X.command_log.idempotency_key_not_null",
+      "expected": "column NOT NULL",
+      "actual": "NOT NULL",
+      "status": "PASS"
+    },
+    {
+      "check_id": "X.command_log.no_null_idempotency_rows",
+      "expected": "0 rows with null/blank idempotency_key",
+      "actual": "0",
+      "status": "PASS"
+    },
+    {
+      "check_id": "X.command_log.payload_hash_type",
+      "expected": "text NOT NULL",
+      "actual": "text nullable=NO",
+      "status": "PASS"
+    },
+    {
+      "check_id": "X.fk.dreambreaker_matchup_id",
+      "expected": "FK dreambreaker_states.matchup_id -> team_tournament_matchups.id",
+      "actual": "team_tournament_dreambreaker_states_matchup_id_fkey",
+      "status": "PASS"
+    },
+    {
+      "check_id": "X.fk.lineup_revisions_lineup_id",
+      "expected": "FK lineup_revisions.lineup_id -> team_tournament_lineups.id",
+      "actual": "team_tournament_lineup_revisions_actor_id_fkey",
+      "status": "PASS"
+    },
+    {
+      "check_id": "X.fk.lineup_revisions_lineup_id",
+      "expected": "FK lineup_revisions.lineup_id -> team_tournament_lineups.id",
+      "actual": "team_tournament_lineup_revisions_lineup_id_fkey",
+      "status": "PASS"
+    },
+    {
+      "check_id": "X.index.idx_team_tournament_command_log_tenant.exists",
+      "expected": "index present on staging",
+      "actual": "idx_team_tournament_command_log_tenant",
+      "status": "PASS"
+    },
+    {
+      "check_id": "X.index.idx_team_tournament_lineup_revisions_lineup.exists",
+      "expected": "index present on staging",
+      "actual": "idx_team_tournament_lineup_revisions_lineup",
+      "status": "PASS"
+    },
+    {
+      "check_id": "X.index.idx_team_tournament_sync_mismatch_open.exists",
+      "expected": "index present on staging",
+      "actual": "idx_team_tournament_sync_mismatch_open",
+      "status": "PASS"
+    },
+    {
+      "check_id": "X.lineup.no_duplicate_matchup_team",
+      "expected": "0 duplicate (matchup_id, team_external_id)",
+      "actual": "0",
+      "status": "PASS"
+    },
+    {
+      "check_id": "X.payload_hash.digest_hotfix",
+      "expected": "function uses extensions.digest and search_path public, extensions",
+      "actual": "extensions.digest present",
+      "status": "PASS"
+    },
+    {
+      "check_id": "X.version_conflict_rpc.exists",
+      "expected": "team_tournament_version_conflict(text, integer, integer) returns json",
+      "actual": "p_entity text, p_expected integer, p_actual integer -> json",
+      "status": "PASS"
+    },
+    {
+      "check_id": "V5.TT-2E.team_tournament_publish_matchup.p_tournament_id_text__p_matchup_id_text__p_expected_matchup_version_integer__p_expected_lineup_a_version_integer__p_expected_lineup_b_version_integer__p_idempotency_key_text.exists",
+      "expected": "TT-2E overload exists",
+      "actual": "present",
+      "status": "PASS"
+    },
+    {
+      "check_id": "V5.TT-2E.team_tournament_publish_matchup.security_definer",
+      "expected": "SECURITY DEFINER",
+      "actual": "SECURITY DEFINER",
+      "status": "PASS"
+    }
+  ],
+  "failedChecks": []
+}

@@ -1,0 +1,209 @@
+{
+  "gate": "P1-C.6",
+  "run_id": "2026-07-14T00-44-28-012Z",
+  "production_ref": "expuvcohlcjzvrrauvud",
+  "url": "https://expuvcohlcjzvrrauvud.supabase.co",
+  "pre": {
+    "production_ref": "expuvcohlcjzvrrauvud",
+    "url": "https://expuvcohlcjzvrrauvud.supabase.co",
+    "rollout_before": {
+      "id": "default",
+      "shadow_mode_enabled": true,
+      "pilot_cohort_label": "club-rating-v5-production-pilot",
+      "allow_v5_assessment": false,
+      "allow_v5_profile_write": true,
+      "compare_v2_enabled": true,
+      "effective_from": "2026-07-13T15:29:09.531699+00:00",
+      "effective_to": null,
+      "updated_at": "2026-07-13T15:29:12.305106+00:00",
+      "updated_by": null,
+      "max_completed_assessments": 1,
+      "cooldown_days": 7,
+      "allow_manual_reassessment": true,
+      "reassessment_requires_approval": true
+    },
+    "active_wave_a": 5,
+    "active_all": 5,
+    "duplicate_wave_a": 0,
+    "v2_before": 0,
+    "events_before": 0,
+    "profiles": [
+      {
+        "slot": "WA-01",
+        "email": "tudotaichinhtuoi29@gmail.com",
+        "player_id_ok": true,
+        "player_id": "player-auth-c13392ab-fc7e-483a-9b31-ba08d94a69a9",
+        "membership": "active"
+      },
+      {
+        "slot": "WA-02",
+        "email": "hoangmanhluong2405@gmail.com",
+        "player_id_ok": true,
+        "player_id": "player-auth-6e77321e-1182-4174-a08a-3ee2d1833c7c",
+        "membership": "active"
+      },
+      {
+        "slot": "WA-03",
+        "email": "lephong.banker@gmail.com",
+        "player_id_ok": true,
+        "player_id": "player-auth-42c8ad99-3afd-4122-bf36-de1f6f9a302f",
+        "membership": "active"
+      },
+      {
+        "slot": "WA-04",
+        "email": "gionam76@gmail.com",
+        "player_id_ok": true,
+        "player_id": "player-auth-6ff822c6-c1b6-4ce0-9e20-61f7afc74a88",
+        "membership": "active"
+      },
+      {
+        "slot": "WA-05",
+        "email": "huonganna120193@gmail.com",
+        "player_id_ok": true,
+        "player_id": "player-auth-f776d627-a9f2-4c0c-8d81-bda239cc923b",
+        "membership": "active"
+      }
+    ],
+    "frontend_flag": {
+      "local": {
+        "file": null,
+        "value": "unset/false"
+      },
+      "vercel": {
+        "ok": true,
+        "lines": [
+          " VITE_PICK_VN_RATING_V5_ENABLED     Encrypted           Production                  1d ago     "
+        ],
+        "mentions": true
+      }
+    }
+  },
+  "updated_config": {
+    "id": "default",
+    "shadow_mode_enabled": true,
+    "pilot_cohort_label": "club-rating-v5-production-wave-a",
+    "allow_v5_assessment": true,
+    "allow_v5_profile_write": true,
+    "compare_v2_enabled": true,
+    "effective_from": "2026-07-13T15:29:09.531699+00:00",
+    "effective_to": null,
+    "updated_at": "2026-07-14T00:44:35.189+00:00",
+    "updated_by": null,
+    "max_completed_assessments": 1,
+    "cooldown_days": 7,
+    "allow_manual_reassessment": true,
+    "reassessment_requires_approval": true
+  },
+  "verification": {
+    "gate_enrolled": {
+      "ok": true,
+      "code": "OK",
+      "cohort_label": "club-rating-v5-production-wave-a",
+      "enrollment_id": "6e485287-cd55-431c-947f-1c6a55059ce9"
+    },
+    "gate_control": {
+      "ok": false,
+      "code": "PILOT_NOT_ENROLLED"
+    },
+    "gate_cross_tenant": {
+      "ok": false,
+      "code": "PILOT_NOT_ENROLLED"
+    },
+    "gate_paused": {
+      "ok": false,
+      "code": "PILOT_NOT_ENROLLED",
+      "enrollment_status": "paused"
+    },
+    "gate_after_unpause": {
+      "ok": true,
+      "code": "OK",
+      "cohort_label": "club-rating-v5-production-wave-a",
+      "enrollment_id": "bc063d1f-123d-4ed2-b7fd-5f99ea84b596"
+    },
+    "gate_kill_switch_off": {
+      "ok": false,
+      "code": "ROLLOUT_BLOCKED"
+    },
+    "kill_switch_off_value": {
+      "allow_v5_assessment": false
+    },
+    "edge": {
+      "ok": true,
+      "options_status": 204,
+      "post": {
+        "status": 400,
+        "body": "{\"ok\":false,\"error\":{\"code\":\"MISSING_ASSESSMENT_ID\",\"message\":\"Lỗi xử lý yêu cầu.\",\"requestId\":\"37ec4720-3360-4f66-9630-886abaa7b74f\"},\"request_id\":\"37ec4720-3360-4f66-9630-886abaa7b74f\"}"
+      },
+      "url": "https://expuvcohlcjzvrrauvud.supabase.co/functions/v1/rating-v5-complete-assessment"
+    },
+    "checks": {
+      "enrolled_gate_ok": true,
+      "control_code": "PILOT_NOT_ENROLLED",
+      "cross_code": "PILOT_NOT_ENROLLED",
+      "paused_blocked": true,
+      "unpause_gate_ok": true,
+      "kill_off_code": "ROLLOUT_BLOCKED",
+      "events_unchanged": true,
+      "v2_unchanged": true,
+      "edge_ok": true,
+      "pause_rpc_ok": true,
+      "unpause_rpc_ok": true,
+      "frontend_flag_not_true": true
+    },
+    "all_pass": true
+  },
+  "final_config": {
+    "id": "default",
+    "shadow_mode_enabled": true,
+    "pilot_cohort_label": "club-rating-v5-production-wave-a",
+    "allow_v5_assessment": true,
+    "allow_v5_profile_write": true,
+    "compare_v2_enabled": true,
+    "effective_from": "2026-07-13T15:29:09.531699+00:00",
+    "effective_to": null,
+    "updated_at": "2026-07-14T00:44:38.584+00:00",
+    "updated_by": null,
+    "max_completed_assessments": 1,
+    "cooldown_days": 7,
+    "allow_manual_reassessment": true,
+    "reassessment_requires_approval": true
+  },
+  "post": {
+    "wave_a_rows": [
+      {
+        "player_id": "c13392ab-fc7e-483a-9b31-ba08d94a69a9",
+        "status": "active",
+        "cohort_label": "club-rating-v5-production-wave-a",
+        "tenant_id": "venue-prod-main"
+      },
+      {
+        "player_id": "6e77321e-1182-4174-a08a-3ee2d1833c7c",
+        "status": "active",
+        "cohort_label": "club-rating-v5-production-wave-a",
+        "tenant_id": "venue-prod-main"
+      },
+      {
+        "player_id": "42c8ad99-3afd-4122-bf36-de1f6f9a302f",
+        "status": "active",
+        "cohort_label": "club-rating-v5-production-wave-a",
+        "tenant_id": "venue-prod-main"
+      },
+      {
+        "player_id": "6ff822c6-c1b6-4ce0-9e20-61f7afc74a88",
+        "status": "active",
+        "cohort_label": "club-rating-v5-production-wave-a",
+        "tenant_id": "venue-prod-main"
+      },
+      {
+        "player_id": "f776d627-a9f2-4c0c-8d81-bda239cc923b",
+        "status": "active",
+        "cohort_label": "club-rating-v5-production-wave-a",
+        "tenant_id": "venue-prod-main"
+      }
+    ],
+    "active_wave_a": 5,
+    "v2_after": 0,
+    "events_after": 0
+  },
+  "kill_switch_sql": "UPDATE public.rating_v5_rollout_config SET allow_v5_assessment = false, updated_at = now() WHERE id = 'default';"
+}

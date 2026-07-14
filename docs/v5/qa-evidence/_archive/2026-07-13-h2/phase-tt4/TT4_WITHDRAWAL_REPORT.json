@@ -1,0 +1,36 @@
+{
+  "generatedAt": "2026-07-12T12:04:59.499Z",
+  "phase": "TT-4-WITHDRAWAL",
+  "stagingRef": "qyewbxjsiiyufanzcjcq",
+  "productionImpact": "NONE",
+  "localCommitSha": "afbd6ab8c365313430f6a376e85e646e6e811476",
+  "sqlPatches": [
+    "docs/v5/PHASE_TT4_FORFEIT_WITHDRAWAL.sql",
+    "docs/v5/PHASE_TT4_GET_SETUP_PATCH.sql"
+  ],
+  "probe": {
+    "tournamentId": "phase23d-probe-tournament",
+    "teamA": "phase23d-team-a",
+    "teamB": "phase23d-team-b",
+    "matchupId": "phase23d-matchup-1"
+  },
+  "cases": [
+    {
+      "id": "W01",
+      "name": "withdrawal reason required",
+      "pass": true,
+      "code": "withdrawal_reason_required"
+    },
+    {
+      "id": "W02",
+      "name": "withdraw_team RPC deployed",
+      "pass": true,
+      "note": "schema verified via MCP apply"
+    }
+  ],
+  "verdict": "PASS",
+  "reportFile": "TT4_WITHDRAWAL_REPORT.json",
+  "passCount": 2,
+  "totalCount": 2,
+  "allPass": true
+}

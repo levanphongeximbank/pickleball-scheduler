@@ -1,0 +1,84 @@
+{
+  "generatedAt": "2026-07-11T22:24:01.778Z",
+  "environment": {
+    "ref": "qyewbxjsiiyufanzcjcq"
+  },
+  "rpcSignatureAudit": null,
+  "saveLineupDraft": [
+    {
+      "id": "expected_version_match",
+      "pass": true,
+      "expected": "ok=true",
+      "actual": "{\"ok\":true,\"version\":5,\"lineupId\":\"4bfe1b03-55ad-4bbf-9993-2f06e497418b\"}",
+      "detail": "version=5"
+    },
+    {
+      "id": "expected_version_stale",
+      "pass": true,
+      "expected": "version_conflict",
+      "actual": "version_conflict",
+      "detail": ""
+    },
+    {
+      "id": "idempotency_replay",
+      "pass": true,
+      "expected": "same version on replay",
+      "actual": "v1=5 v2=5",
+      "detail": ""
+    },
+    {
+      "id": "idempotency_payload_mismatch",
+      "pass": true,
+      "expected": "idempotency_payload_mismatch",
+      "actual": "idempotency_payload_mismatch",
+      "detail": ""
+    }
+  ],
+  "upsertStandings": [
+    {
+      "id": "expected_version_match",
+      "pass": true,
+      "expected": "ok=true",
+      "actual": "{\"ok\":true,\"version\":4,\"calculationVersion\":\"0b78a3f1448151a92889741bfde3a460\"}",
+      "detail": "version=4"
+    },
+    {
+      "id": "expected_version_stale",
+      "pass": true,
+      "expected": "version_conflict",
+      "actual": "version_conflict",
+      "detail": ""
+    },
+    {
+      "id": "idempotency_replay",
+      "pass": true,
+      "expected": "same version on replay",
+      "actual": "v1=4 v2=4",
+      "detail": ""
+    },
+    {
+      "id": "idempotency_payload_mismatch",
+      "pass": true,
+      "expected": "idempotency_payload_mismatch",
+      "actual": "idempotency_payload_mismatch",
+      "detail": ""
+    }
+  ],
+  "repositoryGuard": [
+    {
+      "id": "saveDraftLineup_not_guard_blocked",
+      "pass": true,
+      "expected": "not RPC_GUARD_NOT_DEPLOYED",
+      "actual": "version_conflict",
+      "detail": ""
+    },
+    {
+      "id": "recalculateStandings_not_guard_blocked",
+      "pass": true,
+      "expected": "not RPC_GUARD_NOT_DEPLOYED",
+      "actual": "version_conflict",
+      "detail": ""
+    }
+  ],
+  "verdict": "READY FOR TT-1C"
+}

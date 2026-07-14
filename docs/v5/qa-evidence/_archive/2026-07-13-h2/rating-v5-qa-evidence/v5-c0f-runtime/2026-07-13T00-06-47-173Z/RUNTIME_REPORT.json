@@ -1,0 +1,132 @@
+{
+  "runId": "2026-07-13T00-06-47-173Z",
+  "results": [
+    {
+      "id": "t01_active_user_start",
+      "status": "PASS",
+      "detail": "assessmentId=7a7d07dc-0db6-4441-b979-2e81995905c2"
+    },
+    {
+      "id": "t02_non_enrolled_blocked",
+      "status": "PASS",
+      "detail": "PILOT_NOT_ENROLLED"
+    },
+    {
+      "id": "t03_paused_blocked",
+      "status": "PASS",
+      "detail": "paused"
+    },
+    {
+      "id": "t04_removed_blocked",
+      "status": "PASS",
+      "detail": "removed"
+    },
+    {
+      "id": "t05_expired_blocked",
+      "status": "PASS",
+      "detail": "expired"
+    },
+    {
+      "id": "t06_cross_tenant_blocked",
+      "status": "PASS",
+      "detail": "PILOT_NOT_ENROLLED"
+    },
+    {
+      "id": "t07_db_rollout_off",
+      "status": "PASS",
+      "detail": "ROLLOUT_BLOCKED"
+    },
+    {
+      "id": "t08_non_cohort_start_blocked",
+      "status": "PASS",
+      "detail": "FORBIDDEN"
+    },
+    {
+      "id": "t09_first_assessment_allowed",
+      "status": "PASS",
+      "detail": "COMPLETED"
+    },
+    {
+      "id": "t10_second_in_cooldown_blocked",
+      "status": "PASS",
+      "detail": "REASSESSMENT_APPROVAL_REQUIRED"
+    },
+    {
+      "id": "t11_manual_approval_allows",
+      "status": "PASS",
+      "detail": "cb1e9209-7411-41d8-8507-26b32de43bd6"
+    },
+    {
+      "id": "t12_invalid_approval_role_blocked",
+      "status": "PASS",
+      "detail": "FORBIDDEN"
+    },
+    {
+      "id": "t13_reassessment_history_preserved",
+      "status": "PASS",
+      "detail": "completed=68"
+    },
+    {
+      "id": "t14_admin_invalidate",
+      "status": "PASS",
+      "detail": "INVALIDATED"
+    },
+    {
+      "id": "t15_missing_reason_blocked",
+      "status": "PASS",
+      "detail": "INVALID_REASON"
+    },
+    {
+      "id": "t16_player_invalidate_blocked",
+      "status": "PASS",
+      "detail": "FORBIDDEN"
+    },
+    {
+      "id": "t17_version_conflict",
+      "status": "PASS",
+      "detail": "VERSION_CONFLICT"
+    },
+    {
+      "id": "t18_invalidated_not_profile_source",
+      "status": "PASS",
+      "detail": "ac5df6b0-a563-49a3-82a9-16f8a884355c"
+    },
+    {
+      "id": "t19_fallback_previous_valid",
+      "status": "PASS",
+      "detail": "ac5df6b0-a563-49a3-82a9-16f8a884355c"
+    },
+    {
+      "id": "t20_no_valid_source_state",
+      "status": "PASS",
+      "detail": "NO_VALID_SOURCE"
+    },
+    {
+      "id": "t21_v2_unchanged",
+      "status": "PASS",
+      "detail": "pick_vn stable"
+    },
+    {
+      "id": "t22_production_isolation",
+      "status": "PASS",
+      "detail": "qyewbxjsiiyufanzcjcq"
+    },
+    {
+      "id": "t23_duplicate_events",
+      "status": "PASS",
+      "detail": "events=69 (unique index enforced)"
+    },
+    {
+      "id": "t24_no_partial_writes",
+      "status": "PASS",
+      "detail": "completed rows scored"
+    },
+    {
+      "id": "t08b_edge_non_enrolled_403",
+      "status": "PASS",
+      "detail": "PILOT_NOT_ENROLLED"
+    }
+  ],
+  "passN": 25,
+  "failN": 0
+}

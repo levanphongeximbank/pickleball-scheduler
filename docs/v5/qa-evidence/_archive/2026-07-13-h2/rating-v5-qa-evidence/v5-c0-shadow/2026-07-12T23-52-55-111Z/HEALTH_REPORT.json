@@ -1,0 +1,77 @@
+{
+  "runId": "2026-07-12T23-52-55-111Z",
+  "checks": [
+    {
+      "id": "h01_rollout_config",
+      "status": "PASS",
+      "detail": "shadow=true allow=true cohort=v5-shadow-pilot"
+    },
+    {
+      "id": "h02_duplicate_events",
+      "status": "PASS",
+      "detail": "scanned 67 events, duplicates=0"
+    },
+    {
+      "id": "h03_completed_missing_event",
+      "status": "PASS",
+      "detail": "completed=67, missing events=0"
+    },
+    {
+      "id": "h04_partial_writes",
+      "status": "PASS",
+      "detail": "completed rows=67, partial=0"
+    },
+    {
+      "id": "h05_version_mismatch",
+      "status": "PASS",
+      "detail": "recent completed=67, mismatches=0 (assessment-v5.0f)"
+    },
+    {
+      "id": "h06_high_rating",
+      "status": "PASS",
+      "detail": "rows above 4.5=0 (informational, gates expected)"
+    },
+    {
+      "id": "h07_low_confidence",
+      "status": "PASS",
+      "detail": "confidence<30 count=0 (informational)"
+    },
+    {
+      "id": "h08_v2_table_readable",
+      "status": "PASS",
+      "detail": "pick_vn_player_ratings rows=0 (no V5 write path)"
+    },
+    {
+      "id": "h09_production_isolation",
+      "status": "PASS",
+      "detail": "staging ref only (qyewbxjsiiyufanzcjcq)"
+    },
+    {
+      "id": "h10_staging_cors",
+      "status": "PASS",
+      "detail": "OPTIONS 204, ACAO=https://pickleball-scheduler-example.vercel.app"
+    },
+    {
+      "id": "h11_export_no_secrets",
+      "status": "PASS",
+      "detail": "export script includes secret scan + redaction"
+    },
+    {
+      "id": "h12_disable_runbook",
+      "status": "PASS",
+      "detail": "runbook present"
+    },
+    {
+      "id": "h13_profile_event_consistency",
+      "status": "PASS",
+      "detail": "shadow profiles=1, zero-event profiles=0"
+    },
+    {
+      "id": "h14_rollout_kill_switch",
+      "status": "PASS",
+      "detail": "allow_v5_assessment + VITE_PICK_VN_RATING_V5_ENABLED documented in disable runbook"
+    }
+  ],
+  "ok": true,
+  "at": "2026-07-12T23:53:18.454Z"
+}

@@ -1,0 +1,117 @@
+{
+  "run_id": "2026-07-13T00-15-42-802Z",
+  "pass": 17,
+  "fail": 5,
+  "results": [
+    {
+      "id": "e01_wave0_active_route",
+      "status": "PASS",
+      "detail": "start_assessment ok"
+    },
+    {
+      "id": "e02_non_enrolled_blocked",
+      "status": "PASS",
+      "detail": "PILOT_NOT_ENROLLED"
+    },
+    {
+      "id": "e03_paused_blocked",
+      "status": "PASS",
+      "detail": "paused"
+    },
+    {
+      "id": "e04_removed_blocked",
+      "status": "PASS",
+      "detail": "removed"
+    },
+    {
+      "id": "e05_expired_blocked",
+      "status": "PASS",
+      "detail": "expired"
+    },
+    {
+      "id": "e06_cross_tenant_blocked",
+      "status": "PASS",
+      "detail": "PILOT_NOT_ENROLLED"
+    },
+    {
+      "id": "e07_user_cannot_self_enroll",
+      "status": "PASS",
+      "detail": "FORBIDDEN"
+    },
+    {
+      "id": "e08_user_cannot_self_activate",
+      "status": "PASS",
+      "detail": "FORBIDDEN"
+    },
+    {
+      "id": "e09_kill_switch_off",
+      "status": "PASS",
+      "detail": "ROLLOUT_BLOCKED"
+    },
+    {
+      "id": "e10_kill_switch_on_restore",
+      "status": "PASS",
+      "detail": "OK"
+    },
+    {
+      "id": "e11_control_start_blocked",
+      "status": "PASS",
+      "detail": "FORBIDDEN"
+    },
+    {
+      "id": "e12_edge_blocks_non_enrolled",
+      "status": "PASS",
+      "detail": "PILOT_NOT_ENROLLED"
+    },
+    {
+      "id": "r01_first_assessment",
+      "status": "PASS",
+      "detail": "COMPLETED"
+    },
+    {
+      "id": "r02_reassessment_cooldown_blocked",
+      "status": "PASS",
+      "detail": "REASSESSMENT_APPROVAL_REQUIRED"
+    },
+    {
+      "id": "r03_reassessment_after_approval",
+      "status": "PASS",
+      "detail": "start ok"
+    },
+    {
+      "id": "r04_first_assessment_preserved",
+      "status": "PASS",
+      "detail": "count=1"
+    },
+    {
+      "id": "r05_shadow_source_trace",
+      "status": "FAIL",
+      "detail": "null"
+    },
+    {
+      "id": "i01_invalidate_ok",
+      "status": "FAIL",
+      "detail": "{\"code\":\"42501\",\"details\":null,\"hint\":null,\"message\":\"rating_v5_service_forbidden: service_role required (role=authenticated)\"}"
+    },
+    {
+      "id": "i02_invalidation_applied",
+      "status": "FAIL",
+      "detail": "{\"invalidated_at\":null,\"invalidation_reason_code\":null}"
+    },
+    {
+      "id": "i03_invalidated_not_source",
+      "status": "FAIL",
+      "detail": "still source"
+    },
+    {
+      "id": "i04_v2_unchanged",
+      "status": "PASS",
+      "detail": "isolated"
+    },
+    {
+      "id": "i05_invalidation_idempotent",
+      "status": "FAIL",
+      "detail": "{\"code\":\"42501\",\"details\":null,\"hint\":null,\"message\":\"rating_v5_service_forbidden: service_role required (role=authenticated)\"}"
+    }
+  ]
+}

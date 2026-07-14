@@ -1,0 +1,78 @@
+{
+  "run_id": "2026-07-13T00-14-33-241Z",
+  "cohort_label": "v5-shadow-pilot-wave0",
+  "pilot_expires_at": "2026-09-30T16:59:59+07:00",
+  "control_user": {
+    "email": "owner-b@staging.local",
+    "player_id": "e54abeac-6619-477a-9eb4-b64b05c1ddba",
+    "tenant_id": "venue-staging-b",
+    "purpose": "non_enrolled_control"
+  },
+  "wave0_rows": [
+    {
+      "player_id": "54f5ee47-3d78-4b50-b286-2ebfdf948b2e",
+      "email": "player.nomember@staging.local",
+      "tenant_id": "venue-staging-a",
+      "wave": "0-A",
+      "expected_skill_band": "1.5-2.5",
+      "coach_estimate": "2.0",
+      "profile": {
+        "role": "PLAYER",
+        "venue_id": "venue-staging-a",
+        "status": "active"
+      },
+      "v2_rating_readonly": {
+        "current_rating": null,
+        "verified_rating": null,
+        "self_declared_rating": null,
+        "rating_status": null
+      },
+      "issues": [],
+      "ready": true
+    },
+    {
+      "player_id": "7b381912-2190-415c-b099-6b1e87567b7a",
+      "email": "player@staging.local",
+      "tenant_id": "venue-staging-a",
+      "wave": "0-B",
+      "expected_skill_band": "3.0-3.5",
+      "coach_estimate": "3.2",
+      "profile": {
+        "role": "PLAYER",
+        "venue_id": "venue-staging-a",
+        "status": "active"
+      },
+      "v2_rating_readonly": {
+        "current_rating": null,
+        "verified_rating": null,
+        "self_declared_rating": null,
+        "rating_status": null
+      },
+      "issues": [],
+      "ready": true
+    },
+    {
+      "player_id": "d8997acc-cf9b-4b2e-9027-302e830bf12f",
+      "email": "vicepresident@staging.local",
+      "tenant_id": "platform",
+      "wave": "0-C",
+      "expected_skill_band": "4.0-4.5",
+      "coach_estimate": "4.2",
+      "profile": {
+        "role": "PLAYER",
+        "venue_id": null,
+        "status": "active"
+      },
+      "v2_rating_readonly": {
+        "current_rating": null,
+        "verified_rating": null,
+        "self_declared_rating": null,
+        "rating_status": null
+      },
+      "issues": [],
+      "ready": true
+    }
+  ],
+  "all_ready": true,
+  "dry_run": false
+}

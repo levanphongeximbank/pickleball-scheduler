@@ -1,0 +1,43 @@
+﻿git : warning: in the working copy of 'docs/v5/qa-evidence/phase-tt2/TT2C_VALIDATION_REPORT.json', LF will be replaced 
+by CRLF the next time Git touches it
+At C:\Users\Le Phong\AppData\Local\Temp\ps-script-9a43a1cd-ee01-40fd-a5cc-e65ee58effe3.ps1:103 char:153
++ ... rce-capture\_git_status_raw.txt"; git diff --name-status 2>&1 | Out-F ...
++                                       ~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (warning: in the... Git touches it:String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 
+warning: in the working copy of 'docs/v5/qa-evidence/phase-tt2/TT2D_CONCURRENCY_REPORT.json', LF will be replaced by 
+CRLF the next time Git touches it
+warning: in the working copy of 'docs/v5/qa-evidence/phase-tt2/TT2D_LOCK_REPORT.json', LF will be replaced by CRLF the 
+next time Git touches it
+warning: in the working copy of 'docs/v5/qa-evidence/phase-tt2/TT2D_RANDOMIZE_REPORT.json', LF will be replaced by 
+CRLF the next time Git touches it
+warning: in the working copy of 'docs/v5/qa-evidence/phase-tt2/TT2D_STAGING_SMOKE_REPORT.json', LF will be replaced by 
+CRLF the next time Git touches it
+warning: in the working copy of 'docs/v5/qa-evidence/phase-tt4/TT4_ATOMICITY_REPORT.json', LF will be replaced by CRLF 
+the next time Git touches it
+warning: in the working copy of 'docs/v5/qa-evidence/phase-tt4/TT4_FORFEIT_REPORT.json', LF will be replaced by CRLF 
+the next time Git touches it
+warning: in the working copy of 'docs/v5/qa-evidence/phase-tt4/TT4_STAGING_SMOKE_REPORT.json', LF will be replaced by 
+CRLF the next time Git touches it
+warning: in the working copy of 'docs/v5/qa-evidence/phase-tt4/TT4_STANDINGS_IMPACT_REPORT.json', LF will be replaced 
+by CRLF the next time Git touches it
+warning: in the working copy of 'docs/v5/qa-evidence/phase-tt4/TT4_WITHDRAWAL_REPORT.json', LF will be replaced by 
+CRLF the next time Git touches it
+M	docs/v5/qa-evidence/phase-tt2/TT2C_VALIDATION_REPORT.json
+M	docs/v5/qa-evidence/phase-tt2/TT2D_CONCURRENCY_REPORT.json
+M	docs/v5/qa-evidence/phase-tt2/TT2D_LOCK_REPORT.json
+M	docs/v5/qa-evidence/phase-tt2/TT2D_RANDOMIZE_REPORT.json
+M	docs/v5/qa-evidence/phase-tt2/TT2D_STAGING_SMOKE_REPORT.json
+M	docs/v5/qa-evidence/phase-tt4/TT4_ATOMICITY_REPORT.json
+M	docs/v5/qa-evidence/phase-tt4/TT4_FORFEIT_REPORT.json
+M	docs/v5/qa-evidence/phase-tt4/TT4_STAGING_SMOKE_REPORT.json
+M	docs/v5/qa-evidence/phase-tt4/TT4_STANDINGS_IMPACT_REPORT.json
+M	docs/v5/qa-evidence/phase-tt4/TT4_WITHDRAWAL_REPORT.json
+M	package-lock.json
+M	scripts/deploy-v5b2-preview-staging.mjs
+M	scripts/probe-v5b2-preview-preflight.mjs
+M	scripts/run-v5b2e-staging-browser-e2e.ps1
+M	scripts/staging-auth-resolve.mjs
+M	src/auth/menuAccess.js
+M	src/config/navigationConfig.js

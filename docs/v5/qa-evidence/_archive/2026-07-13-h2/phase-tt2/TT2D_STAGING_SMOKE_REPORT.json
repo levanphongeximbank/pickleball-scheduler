@@ -1,0 +1,39 @@
+{
+  "generatedAt": "2026-07-12T10:39:09.284Z",
+  "phase": "TT-2D-SMOKE",
+  "stagingRef": "qyewbxjsiiyufanzcjcq",
+  "productionImpact": "NONE",
+  "localCommitSha": "c433a27cc1d0f7e58164705634a166688d020408",
+  "sqlPatches": [
+    "docs/v5/PHASE_TT2D_RANDOMIZE_LOCK_WORKFLOW.sql"
+  ],
+  "probe": {
+    "tournamentId": "phase23d-probe-tournament",
+    "teamA": "phase23d-team-a",
+    "teamB": "phase23d-team-b",
+    "matchupId": "phase23d-matchup-1"
+  },
+  "cases": [
+    {
+      "id": "S01",
+      "name": "get_setup ok",
+      "pass": true,
+      "setup0": true
+    },
+    {
+      "id": "S02",
+      "name": "matchup exposes canLock for BTC",
+      "pass": true,
+      "canLock": false
+    },
+    {
+      "id": "S03",
+      "name": "matchup exposes lineupOps",
+      "pass": true,
+      "policy": "random"
+    }
+  ],
+  "verdict": "PASS",
+  "reportFile": "TT2D_STAGING_SMOKE_REPORT.json",
+  "summary": "3/3 PASS"
+}
