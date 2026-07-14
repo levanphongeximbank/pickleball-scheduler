@@ -11,7 +11,7 @@ import {
   Typography,
 } from "@mui/material";
 import InboxOutlinedIcon from "@mui/icons-material/InboxOutlined";
-import ErrorOutlineIcon from "@mui/icons-material/ErrorOutline";
+import ErrorOutlineIcon from "@mui/icons-material/ErrorOutlined";
 
 import { MOBILE_PAGE_GUTTER, touchButtonSx } from "./mobileUi.js";
 
