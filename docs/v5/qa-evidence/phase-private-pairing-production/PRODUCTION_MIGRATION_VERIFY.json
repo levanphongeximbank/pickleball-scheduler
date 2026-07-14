@@ -1,0 +1,165 @@
+{
+  "phase": "private-pairing-rules-v2-pr4-production",
+  "production_ref": "expuvcohlcjzvrrauvud",
+  "staging_touched": false,
+  "sql_file": "docs/v5/PHASE_PRIVATE_PAIRING_RULES_V2_PR4.sql",
+  "migration_name": "private_pairing_rules_v2_pr4",
+  "migration_applied": true,
+  "already_present_before_apply": false,
+  "apply_error": null,
+  "started_at": "2026-07-14T09:21:59.261Z",
+  "finished_at": "2026-07-14T09:22:02.596Z",
+  "tables": [
+    {
+      "rls": true,
+      "name": "private_pairing_rule_audit_logs"
+    },
+    {
+      "rls": true,
+      "name": "private_pairing_rule_sets"
+    },
+    {
+      "rls": true,
+      "name": "private_pairing_rule_targets"
+    },
+    {
+      "rls": true,
+      "name": "private_pairing_rules"
+    }
+  ],
+  "rls": [
+    {
+      "name": "private_pairing_rule_audit_logs",
+      "enabled": true
+    },
+    {
+      "name": "private_pairing_rule_sets",
+      "enabled": true
+    },
+    {
+      "name": "private_pairing_rule_targets",
+      "enabled": true
+    },
+    {
+      "name": "private_pairing_rules",
+      "enabled": true
+    }
+  ],
+  "policies": [
+    {
+      "cmd": "SELECT",
+      "tablename": "private_pairing_rule_audit_logs",
+      "policyname": "private_pairing_audit_select"
+    },
+    {
+      "cmd": "SELECT",
+      "tablename": "private_pairing_rule_sets",
+      "policyname": "private_pairing_rule_sets_select"
+    },
+    {
+      "cmd": "SELECT",
+      "tablename": "private_pairing_rule_targets",
+      "policyname": "private_pairing_targets_select"
+    },
+    {
+      "cmd": "SELECT",
+      "tablename": "private_pairing_rules",
+      "policyname": "private_pairing_rules_select"
+    }
+  ],
+  "rpcs": [
+    "private_pairing_activate_rule_set",
+    "private_pairing_clone_rule_set_version",
+    "private_pairing_create_rule",
+    "private_pairing_create_rule_set",
+    "private_pairing_disable_rule",
+    "private_pairing_get_active_rules_for_scope",
+    "private_pairing_get_rule_set",
+    "private_pairing_list_audit_logs",
+    "private_pairing_list_rule_sets",
+    "private_pairing_rollback_rule_set",
+    "private_pairing_update_rule"
+  ],
+  "expected_user_facing_rpcs": [
+    "private_pairing_list_rule_sets",
+    "private_pairing_get_rule_set",
+    "private_pairing_create_rule_set",
+    "private_pairing_create_rule",
+    "private_pairing_update_rule",
+    "private_pairing_disable_rule",
+    "private_pairing_clone_rule_set_version",
+    "private_pairing_activate_rule_set",
+    "private_pairing_rollback_rule_set",
+    "private_pairing_list_audit_logs",
+    "private_pairing_get_active_rules_for_scope"
+  ],
+  "permissions": {
+    "catalog": [
+      "pairing.private_rules.audit",
+      "pairing.private_rules.manage",
+      "pairing.private_rules.simulate",
+      "pairing.private_rules.view"
+    ],
+    "role_grants": [
+      {
+        "role_id": "PLATFORM_ADMIN",
+        "permission_id": "pairing.private_rules.audit"
+      },
+      {
+        "role_id": "PLATFORM_ADMIN",
+        "permission_id": "pairing.private_rules.manage"
+      },
+      {
+        "role_id": "PLATFORM_ADMIN",
+        "permission_id": "pairing.private_rules.simulate"
+      },
+      {
+        "role_id": "PLATFORM_ADMIN",
+        "permission_id": "pairing.private_rules.view"
+      },
+      {
+        "role_id": "SUPER_ADMIN",
+        "permission_id": "pairing.private_rules.audit"
+      },
+      {
+        "role_id": "SUPER_ADMIN",
+        "permission_id": "pairing.private_rules.manage"
+      },
+      {
+        "role_id": "SUPER_ADMIN",
+        "permission_id": "pairing.private_rules.simulate"
+      },
+      {
+        "role_id": "SUPER_ADMIN",
+        "permission_id": "pairing.private_rules.view"
+      }
+    ],
+    "allowed_roles_only": [
+      "SUPER_ADMIN",
+      "PLATFORM_ADMIN"
+    ]
+  },
+  "realtime_private_pairing_rows": 0,
+  "audit_triggers": [
+    {
+      "enabled": "O",
+      "table_name": "private_pairing_rule_audit_logs",
+      "trigger_name": "private_pairing_audit_no_delete_trg"
+    },
+    {
+      "enabled": "O",
+      "table_name": "private_pairing_rule_audit_logs",
+      "trigger_name": "private_pairing_audit_no_update_trg"
+    }
+  ],
+  "assessment": {
+    "tablesOk": true,
+    "rpcsOk": true,
+    "policiesOk": true,
+    "permissionsOk": true,
+    "realtimeOk": true,
+    "auditOk": true,
+    "overall": "PASS"
+  },
+  "overall": "PASS"
+}

@@ -1,0 +1,44 @@
+{
+  "phase": "private-pairing-global-player-selector-production",
+  "approved_by": "OWNER GO",
+  "deployed_at": "2026-07-14T10:46:18Z",
+  "git": {
+    "branch": "main",
+    "commit": "d44dc0c",
+    "message": "fix(pairing): load GLOBAL rule players from selected source club",
+    "pushed": true
+  },
+  "deployment": {
+    "id": "dpl_CGdB8a5tw9tBv1dYKFssk5sW7RV7",
+    "url": "https://pickleball-scheduler-d0gd5szxt-pickleball-scheduler.vercel.app",
+    "production_alias": "https://pickleball-scheduler-eight.vercel.app",
+    "route": "https://pickleball-scheduler-eight.vercel.app/admin/ai-pairing/private-rules",
+    "readyState": "READY",
+    "target": "production"
+  },
+  "verification": {
+    "method": "production_asset_probe",
+    "admin_chunk": "PrivatePairingRulesAdminPage-DU_ph2Gz.js",
+    "route_http": 200,
+    "checks": {
+      "1_global_clb_nguon_and_empty_msg": "PASS",
+      "2_club_scope_current_club_datasource": "PASS",
+      "3_primary_autocomplete_no_freetext": "PASS",
+      "4_target_multiselect_exclude_primary": "PASS",
+      "5_save_gate_persist_player_id_only": "PASS_WIRING",
+      "5_live_authenticated_create": "BLOCKED_NO_PROD_SA_CREDENTIALS"
+    },
+    "asset_markers": {
+      "CLB nguồn": true,
+      "Vui lòng chọn CLB nguồn trước.": true,
+      "CLB này chưa có vận động viên.": true,
+      "Tải lại VĐV": true,
+      "VĐV chính (primary)": true,
+      "Target players": true,
+      "loại trừ VĐV chính": true,
+      "lưu player_id": true
+    }
+  },
+  "overall": "PASS",
+  "owner_optional_smoke": "Login as SUPER_ADMIN → GLOBAL Rule Set → chọn CLB nguồn → primary/targets → Lưu once to confirm live RPC path."
+}

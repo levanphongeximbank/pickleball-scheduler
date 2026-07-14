@@ -1,0 +1,187 @@
+{
+  "phase": "private-pairing-rules-v2-pr4-production-post-deploy",
+  "production_ref": "expuvcohlcjzvrrauvud",
+  "staging_touched": false,
+  "method": "supabase_management_api",
+  "started_at": "2026-07-14T09:39:43.976Z",
+  "finished_at": "2026-07-14T09:39:45.039Z",
+  "table_count": 4,
+  "tables": [
+    {
+      "name": "private_pairing_rule_audit_logs",
+      "rls": true
+    },
+    {
+      "name": "private_pairing_rule_sets",
+      "rls": true
+    },
+    {
+      "name": "private_pairing_rule_targets",
+      "rls": true
+    },
+    {
+      "name": "private_pairing_rules",
+      "rls": true
+    }
+  ],
+  "rls": [
+    {
+      "name": "private_pairing_rule_audit_logs",
+      "enabled": true
+    },
+    {
+      "name": "private_pairing_rule_sets",
+      "enabled": true
+    },
+    {
+      "name": "private_pairing_rule_targets",
+      "enabled": true
+    },
+    {
+      "name": "private_pairing_rules",
+      "enabled": true
+    }
+  ],
+  "policy_count": 4,
+  "policies": [
+    {
+      "tablename": "private_pairing_rule_audit_logs",
+      "policyname": "private_pairing_audit_select",
+      "cmd": "SELECT"
+    },
+    {
+      "tablename": "private_pairing_rule_sets",
+      "policyname": "private_pairing_rule_sets_select",
+      "cmd": "SELECT"
+    },
+    {
+      "tablename": "private_pairing_rule_targets",
+      "policyname": "private_pairing_targets_select",
+      "cmd": "SELECT"
+    },
+    {
+      "tablename": "private_pairing_rules",
+      "policyname": "private_pairing_rules_select",
+      "cmd": "SELECT"
+    }
+  ],
+  "expected_user_facing_rpcs": [
+    "private_pairing_list_rule_sets",
+    "private_pairing_get_rule_set",
+    "private_pairing_create_rule_set",
+    "private_pairing_create_rule",
+    "private_pairing_update_rule",
+    "private_pairing_disable_rule",
+    "private_pairing_clone_rule_set_version",
+    "private_pairing_activate_rule_set",
+    "private_pairing_rollback_rule_set",
+    "private_pairing_list_audit_logs",
+    "private_pairing_get_active_rules_for_scope"
+  ],
+  "rpcs": [
+    "private_pairing_activate_rule_set",
+    "private_pairing_clone_rule_set_version",
+    "private_pairing_create_rule",
+    "private_pairing_create_rule_set",
+    "private_pairing_disable_rule",
+    "private_pairing_get_active_rules_for_scope",
+    "private_pairing_get_rule_set",
+    "private_pairing_list_audit_logs",
+    "private_pairing_list_rule_sets",
+    "private_pairing_rollback_rule_set",
+    "private_pairing_update_rule"
+  ],
+  "permissions": {
+    "catalog": [
+      "pairing.private_rules.audit",
+      "pairing.private_rules.manage",
+      "pairing.private_rules.simulate",
+      "pairing.private_rules.view"
+    ],
+    "role_grants": [
+      {
+        "role_id": "PLATFORM_ADMIN",
+        "permission_id": "pairing.private_rules.audit"
+      },
+      {
+        "role_id": "PLATFORM_ADMIN",
+        "permission_id": "pairing.private_rules.manage"
+      },
+      {
+        "role_id": "PLATFORM_ADMIN",
+        "permission_id": "pairing.private_rules.simulate"
+      },
+      {
+        "role_id": "PLATFORM_ADMIN",
+        "permission_id": "pairing.private_rules.view"
+      },
+      {
+        "role_id": "SUPER_ADMIN",
+        "permission_id": "pairing.private_rules.audit"
+      },
+      {
+        "role_id": "SUPER_ADMIN",
+        "permission_id": "pairing.private_rules.manage"
+      },
+      {
+        "role_id": "SUPER_ADMIN",
+        "permission_id": "pairing.private_rules.simulate"
+      },
+      {
+        "role_id": "SUPER_ADMIN",
+        "permission_id": "pairing.private_rules.view"
+      }
+    ],
+    "allowed_roles_only": [
+      "SUPER_ADMIN",
+      "PLATFORM_ADMIN"
+    ]
+  },
+  "realtime_private_pairing_rows": 0,
+  "authenticated_dml_privileges": [
+    {
+      "tablename": "private_pairing_rule_audit_logs",
+      "can_insert": false,
+      "can_update": false,
+      "can_delete": false,
+      "can_select": true
+    },
+    {
+      "tablename": "private_pairing_rule_sets",
+      "can_insert": false,
+      "can_update": false,
+      "can_delete": false,
+      "can_select": true
+    },
+    {
+      "tablename": "private_pairing_rule_targets",
+      "can_insert": false,
+      "can_update": false,
+      "can_delete": false,
+      "can_select": true
+    },
+    {
+      "tablename": "private_pairing_rules",
+      "can_insert": false,
+      "can_update": false,
+      "can_delete": false,
+      "can_select": true
+    }
+  ],
+  "sample": {
+    "private_pairing_can_exists": true,
+    "private_pairing_list_rule_sets_exists": true
+  },
+  "assessment": {
+    "tablesOk": true,
+    "rlsOk": true,
+    "policiesOk": true,
+    "rpcsOk": true,
+    "permissionsOk": true,
+    "realtimeOk": true,
+    "authenticatedDmlOk": true,
+    "sampleOk": true,
+    "overall": "PASS"
+  },
+  "overall": "PASS"
+}

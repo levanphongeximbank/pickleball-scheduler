@@ -1,0 +1,42 @@
+{
+  "phase": "private-pairing-tenant-id-ui-fix-production",
+  "approved_by": "OWNER GO",
+  "deployed_at": "2026-07-14T10:17:59Z",
+  "git": {
+    "branch": "main",
+    "commit": "a49804e1c0f71a69c1db7f1d878a75123d3acc2a",
+    "message": "fix(pairing): resolve tenant_id from club/tenant context in admin UI",
+    "files": [
+      "src/features/private-pairing-rules/components/PrivatePairingRulesAdminView.jsx"
+    ]
+  },
+  "scope": {
+    "ui_only": true,
+    "engine_changed": false,
+    "pairing_logic_changed": false,
+    "database_migration": false,
+    "additional_features": false
+  },
+  "deployment": {
+    "id": "dpl_34JuEx16N8mtEgQhVvPAywRHXd6s",
+    "url": "https://pickleball-scheduler-6fdhzyna3-pickleball-scheduler.vercel.app",
+    "inspector": "https://vercel.com/pickleball-scheduler/pickleball-scheduler/34JuEx16N8mtEgQhVvPAywRHXd6s",
+    "readyState": "READY",
+    "target": "production",
+    "aliases": [
+      "https://pickleball-scheduler-eight.vercel.app",
+      "https://pickleball-scheduler-pickleball-scheduler.vercel.app",
+      "[REDACTED_TEAM_ALIAS]"
+    ]
+  },
+  "post_deploy_verify": {
+    "route_status": 200,
+    "admin_chunk": "PrivatePairingRulesAdminPage-Cb_jgMDn.js",
+    "bundle_has_club_required_message": true,
+    "bundle_has_clb_autofill_hint": true,
+    "bundle_has_tenant_id_field": true,
+    "bundle_lacks_hardcoded_tenant_id_required": true,
+    "live_create_with_SA_session": "OWNER_MANUAL"
+  },
+  "overall": "DEPLOYED"
+}
