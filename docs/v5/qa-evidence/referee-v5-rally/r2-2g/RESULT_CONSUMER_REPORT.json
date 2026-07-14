@@ -1,0 +1,81 @@
+{
+  "phase": "R2-2G",
+  "cases": [
+    {
+      "id": "FINALIZE-OK",
+      "pass": true,
+      "detail": {
+        "ok": true,
+        "locked": true
+      }
+    },
+    {
+      "id": "CONSUME-FINAL",
+      "pass": true,
+      "detail": {
+        "consume1": {
+          "ok": true,
+          "after": {
+            "score": {
+              "games": [],
+              "teamA": 11,
+              "teamB": 7
+            },
+            "status": "completed",
+            "version": 34,
+            "winnerTeamId": "phase23d-team-a",
+            "resultConfirmedAt": "2026-07-14T01:54:16.832316+00:00"
+          },
+          "before": {
+            "score": {
+              "games": [],
+              "teamA": 0,
+              "teamB": 0
+            },
+            "status": "waiting",
+            "version": 33,
+            "winnerTeamId": null,
+            "resultConfirmedAt": null
+          },
+          "inboxId": "b77682ca-e9b1-420c-8e8d-10901e00c55a",
+          "replayed": false,
+          "eventType": "REFEREE_MATCH_FINALIZED",
+          "revisionId": "b461e3c4-2237-405e-9d0c-9bbff9603021",
+          "subMatchId": "phase23d-sub-1",
+          "bridgeStatus": "finalized",
+          "matchupResult": {
+            "ok": true,
+            "teamAWins": 1,
+            "teamBWins": 0,
+            "teamAPoints": 11,
+            "teamBPoints": 7,
+            "winnerTeamId": "phase23d-team-a",
+            "matchupCompleted": false
+          },
+          "revisionNumber": 1
+        },
+        "subAfter": {
+          "winner_team_id": "phase23d-team-a",
+          "score": {
+            "games": [],
+            "teamA": 11,
+            "teamB": 7
+          },
+          "status": "completed",
+          "result_confirmed_at": "2026-07-14T01:54:16.832316+00:00"
+        },
+        "outboxId": "e70efc2d-db6f-4d44-9a3d-18789f95fa08"
+      }
+    },
+    {
+      "id": "CONSUME-DUP",
+      "pass": true,
+      "detail": {
+        "ok": true,
+        "code": "OUTBOX_ALREADY_COMPLETED",
+        "replayed": true
+      }
+    }
+  ],
+  "verdict": "PASS"
+}

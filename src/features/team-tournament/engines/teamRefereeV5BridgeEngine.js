@@ -1,6 +1,24 @@
 /**
  * TT-5B — Referee V5 bridge identity + eligibility (client-side helpers).
+ * R2-2G — Rally format mapping re-exported from teamRefereeV5FormatMapper.
  */
+
+export {
+  USAP_2026_RALLY_DOUBLES_PROFILE,
+  isTtRefereeV5RallyEnabled,
+  resolveOfficialScoringConfig,
+  assertProvisionScoringAllowed,
+  mapTtScoringToV5StateFields,
+  buildProvisionScoringFormatPayload,
+  buildUsap2026RallyDoublesScoringFormat,
+  buildSideOutScoringFormat,
+  assertScoringFormatImmutable,
+  resolveBestOfMatchOutcome,
+  applyOfficialResultRevision,
+  summarizeOfficialResultForStandings,
+  shouldUpdateStandingsFromRefereeEvent,
+  isUsap2026RallyDoublesConfig,
+} from "./teamRefereeV5FormatMapper.js";
 
 export const REFEREE_LINK_STATUS = Object.freeze({
   NONE: "none",

@@ -1,0 +1,84 @@
+{
+  "phase": "R2-2G",
+  "cases": [
+    {
+      "id": "CORRECTION-REV2",
+      "pass": true,
+      "detail": {
+        "corrReq": {
+          "ok": true,
+          "correctionRequestId": "bad6164e-1d00-4d5c-9507-a42439a43f98",
+          "requestId": "r22g-corr-1783994057617",
+          "status": "pending",
+          "version": 1
+        },
+        "corrApprove": {
+          "ok": true,
+          "status": "approved",
+          "correctionRequestId": "bad6164e-1d00-4d5c-9507-a42439a43f98",
+          "newRevisionId": "bb8f62b4-c99e-4ed1-8020-4bef8369c45c",
+          "outboxId": "20269fc6-abe5-4410-9613-5c86d26888ea",
+          "propagation": {
+            "ok": true,
+            "after": {
+              "score": {
+                "games": [],
+                "teamA": 8,
+                "teamB": 11
+              },
+              "status": "completed",
+              "version": 35,
+              "winnerTeamId": "phase23d-team-b",
+              "resultConfirmedAt": "2026-07-14T01:54:18.290199+00:00"
+            },
+            "before": {
+              "score": {
+                "games": [],
+                "teamA": 11,
+                "teamB": 7
+              },
+              "status": "completed",
+              "version": 34,
+              "winnerTeamId": "phase23d-team-a",
+              "resultConfirmedAt": "2026-07-14T01:54:16.832316+00:00"
+            },
+            "inboxId": "75eb1271-7096-4ae8-8662-d4c3cfae3188",
+            "replayed": false,
+            "eventType": "REFEREE_RESULT_REVISED",
+            "revisionId": "bb8f62b4-c99e-4ed1-8020-4bef8369c45c",
+            "subMatchId": "phase23d-sub-1",
+            "bridgeStatus": "finalized",
+            "matchupResult": {
+              "ok": true,
+              "teamAWins": 0,
+              "teamBWins": 1,
+              "teamAPoints": 8,
+              "teamBPoints": 11,
+              "winnerTeamId": "phase23d-team-b",
+              "matchupCompleted": false
+            },
+            "revisionNumber": 2
+          },
+          "version": 2
+        },
+        "consumeCorr": {
+          "ok": true,
+          "skipped": true
+        },
+        "subCorr": {
+          "winner_team_id": "phase23d-team-b",
+          "score": {
+            "games": [],
+            "teamA": 8,
+            "teamB": 11
+          }
+        },
+        "revRow": {
+          "id": "b461e3c4-2237-405e-9d0c-9bbff9603021",
+          "revision": 1
+        }
+      }
+    }
+  ],
+  "verdict": "PASS"
+}

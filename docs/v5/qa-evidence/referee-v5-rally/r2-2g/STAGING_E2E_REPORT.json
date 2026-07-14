@@ -1,0 +1,291 @@
+{
+  "phase": "R2-2G",
+  "generatedAt": "2026-07-14T01:54:18.354Z",
+  "stagingRef": "qyewbxjsiiyufanzcjcq",
+  "productionImpact": "NONE",
+  "localCommitSha": "63b50adfdf9989386537006d8848ab193d369c87",
+  "cases": [
+    {
+      "id": "CFG-RALLY-MAP",
+      "pass": true,
+      "detail": {
+        "ok": true,
+        "winBy": 2,
+        "bestOf": 1,
+        "matchType": "doubles",
+        "ruleSetId": "rally_usap_2026_provisional_doubles_v1",
+        "freezeRule": "NONE",
+        "pointsToWin": 11,
+        "serverNumber": null,
+        "scoringFormat": "rally",
+        "scoringSystem": "RALLY",
+        "scoringVariant": "USAP_2026_PROVISIONAL_RALLY",
+        "serverNumberRule": "NONE"
+      }
+    },
+    {
+      "id": "CFG-SINGLES-REJECT",
+      "pass": true,
+      "detail": {
+        "ok": false,
+        "code": "UNSUPPORTED_SCORING_VARIANT",
+        "error": "USAP 2026 Provisional Rally chỉ hỗ trợ doubles trong R2-2G."
+      }
+    },
+    {
+      "id": "CFG-MLP-REJECT",
+      "pass": true,
+      "detail": {
+        "ok": false,
+        "code": "UNSUPPORTED_SCORING_VARIANT",
+        "error": "Freeze-enabled / MLP Rally chưa được hỗ trợ qua Referee V5."
+      }
+    },
+    {
+      "id": "CFG-SIDEOUT-MAP",
+      "pass": true,
+      "detail": {
+        "ok": true,
+        "winBy": 2,
+        "bestOf": 1,
+        "matchType": "doubles",
+        "ruleSetId": "side_out_doubles_v1",
+        "freezeRule": null,
+        "pointsToWin": 21,
+        "serverNumber": 1,
+        "scoringFormat": "side_out",
+        "scoringSystem": "SIDE_OUT",
+        "scoringVariant": "SIDE_OUT_DOUBLES_V1",
+        "serverNumberRule": null
+      }
+    },
+    {
+      "id": "PROV-OK",
+      "pass": true,
+      "detail": {
+        "ok": true,
+        "route": "/referee/match/phase23d-sub-1",
+        "winBy": 2,
+        "bestOf": 1,
+        "linkId": "df3ea9bd-fe5f-4c78-b5b7-3e2f6a12f03e",
+        "status": "provisioned",
+        "version": 1,
+        "replayed": false,
+        "pointsToWin": 11,
+        "matchStateId": "venue-staging-a::phase23d-probe-tournament::phase23d-sub-1",
+        "provisionedAt": "2026-07-14T01:54:15.656438+00:00",
+        "scoringSystem": "RALLY",
+        "refereeMatchId": "phase23d-sub-1",
+        "scoringVariant": "USAP_2026_PROVISIONAL_RALLY",
+        "externalSubMatchId": "phase23d-sub-1",
+        "refereeAssignmentId": "2505d0b6-9c09-42b6-b4df-9c3539a2802d"
+      }
+    },
+    {
+      "id": "PROV-VARIANT",
+      "pass": true,
+      "detail": {
+        "scoringSystem": "RALLY",
+        "scoringVariant": "USAP_2026_PROVISIONAL_RALLY",
+        "pointsToWin": 11,
+        "winBy": 2,
+        "ruleSetId": "rally_usap_2026_provisional_doubles_v1",
+        "columnScoringSystem": "rally"
+      }
+    },
+    {
+      "id": "PROV-IDEMPOTENT",
+      "pass": true,
+      "detail": {
+        "provision2": {
+          "ok": false,
+          "code": "bridge_already_exists",
+          "error": "Sub-match đã có liên kết Referee V5."
+        },
+        "linkCount": 1
+      }
+    },
+    {
+      "id": "LEGACY-DRAFT-BLOCKED",
+      "pass": true,
+      "detail": {
+        "ok": false,
+        "code": "referee_v5_linked_legacy_write_blocked",
+        "error": "Trận con đang dùng Referee V5 — legacy score entry bị khóa."
+      }
+    },
+    {
+      "id": "FINALIZE-OK",
+      "pass": true,
+      "detail": {
+        "ok": true,
+        "locked": true
+      }
+    },
+    {
+      "id": "CONSUME-FINAL",
+      "pass": true,
+      "detail": {
+        "consume1": {
+          "ok": true,
+          "after": {
+            "score": {
+              "games": [],
+              "teamA": 11,
+              "teamB": 7
+            },
+            "status": "completed",
+            "version": 34,
+            "winnerTeamId": "phase23d-team-a",
+            "resultConfirmedAt": "2026-07-14T01:54:16.832316+00:00"
+          },
+          "before": {
+            "score": {
+              "games": [],
+              "teamA": 0,
+              "teamB": 0
+            },
+            "status": "waiting",
+            "version": 33,
+            "winnerTeamId": null,
+            "resultConfirmedAt": null
+          },
+          "inboxId": "b77682ca-e9b1-420c-8e8d-10901e00c55a",
+          "replayed": false,
+          "eventType": "REFEREE_MATCH_FINALIZED",
+          "revisionId": "b461e3c4-2237-405e-9d0c-9bbff9603021",
+          "subMatchId": "phase23d-sub-1",
+          "bridgeStatus": "finalized",
+          "matchupResult": {
+            "ok": true,
+            "teamAWins": 1,
+            "teamBWins": 0,
+            "teamAPoints": 11,
+            "teamBPoints": 7,
+            "winnerTeamId": "phase23d-team-a",
+            "matchupCompleted": false
+          },
+          "revisionNumber": 1
+        },
+        "subAfter": {
+          "winner_team_id": "phase23d-team-a",
+          "score": {
+            "games": [],
+            "teamA": 11,
+            "teamB": 7
+          },
+          "status": "completed",
+          "result_confirmed_at": "2026-07-14T01:54:16.832316+00:00"
+        },
+        "outboxId": "e70efc2d-db6f-4d44-9a3d-18789f95fa08"
+      }
+    },
+    {
+      "id": "CONSUME-DUP",
+      "pass": true,
+      "detail": {
+        "ok": true,
+        "code": "OUTBOX_ALREADY_COMPLETED",
+        "replayed": true
+      }
+    },
+    {
+      "id": "STANDINGS-ONCE",
+      "pass": true,
+      "detail": {
+        "subAfter": {
+          "winner_team_id": "phase23d-team-a",
+          "score": {
+            "games": [],
+            "teamA": 11,
+            "teamB": 7
+          },
+          "status": "completed",
+          "result_confirmed_at": "2026-07-14T01:54:16.832316+00:00"
+        }
+      }
+    },
+    {
+      "id": "CORRECTION-REV2",
+      "pass": true,
+      "detail": {
+        "corrReq": {
+          "ok": true,
+          "correctionRequestId": "bad6164e-1d00-4d5c-9507-a42439a43f98",
+          "requestId": "r22g-corr-1783994057617",
+          "status": "pending",
+          "version": 1
+        },
+        "corrApprove": {
+          "ok": true,
+          "status": "approved",
+          "correctionRequestId": "bad6164e-1d00-4d5c-9507-a42439a43f98",
+          "newRevisionId": "bb8f62b4-c99e-4ed1-8020-4bef8369c45c",
+          "outboxId": "20269fc6-abe5-4410-9613-5c86d26888ea",
+          "propagation": {
+            "ok": true,
+            "after": {
+              "score": {
+                "games": [],
+                "teamA": 8,
+                "teamB": 11
+              },
+              "status": "completed",
+              "version": 35,
+              "winnerTeamId": "phase23d-team-b",
+              "resultConfirmedAt": "2026-07-14T01:54:18.290199+00:00"
+            },
+            "before": {
+              "score": {
+                "games": [],
+                "teamA": 11,
+                "teamB": 7
+              },
+              "status": "completed",
+              "version": 34,
+              "winnerTeamId": "phase23d-team-a",
+              "resultConfirmedAt": "2026-07-14T01:54:16.832316+00:00"
+            },
+            "inboxId": "75eb1271-7096-4ae8-8662-d4c3cfae3188",
+            "replayed": false,
+            "eventType": "REFEREE_RESULT_REVISED",
+            "revisionId": "bb8f62b4-c99e-4ed1-8020-4bef8369c45c",
+            "subMatchId": "phase23d-sub-1",
+            "bridgeStatus": "finalized",
+            "matchupResult": {
+              "ok": true,
+              "teamAWins": 0,
+              "teamBWins": 1,
+              "teamAPoints": 8,
+              "teamBPoints": 11,
+              "winnerTeamId": "phase23d-team-b",
+              "matchupCompleted": false
+            },
+            "revisionNumber": 2
+          },
+          "version": 2
+        },
+        "consumeCorr": {
+          "ok": true,
+          "skipped": true
+        },
+        "subCorr": {
+          "winner_team_id": "phase23d-team-b",
+          "score": {
+            "games": [],
+            "teamA": 8,
+            "teamB": 11
+          }
+        },
+        "revRow": {
+          "id": "b461e3c4-2237-405e-9d0c-9bbff9603021",
+          "revision": 1
+        }
+      }
+    }
+  ],
+  "passCount": 13,
+  "totalCount": 13,
+  "allPass": true,
+  "verdict": "GO"
+}
