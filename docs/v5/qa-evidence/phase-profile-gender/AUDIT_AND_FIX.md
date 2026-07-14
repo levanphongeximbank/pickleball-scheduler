@@ -1,8 +1,10 @@
 # Profile gender persistence — audit + fix
 
 **Branch:** `fix/profile-gender-persist`  
+**Commit:** `3ca133132f7661825e353cdbc64b3ee432d619bf`  
 **Production deploy:** ❌ blocked until Preview QA PASS  
-**Generated:** 2026-07-14
+**Generated:** 2026-07-14  
+**Preview URL:** Vercel auto-deploy on branch push — check Vercel dashboard for `fix/profile-gender-persist` (CLI/`gh` unavailable locally this session).
 
 ## Root cause
 
