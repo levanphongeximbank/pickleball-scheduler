@@ -32,6 +32,7 @@ export {
   FEATURE_FLAG_KEYS,
   isPrivatePairingRulesEnabled,
   isUnifiedConstraintEngineEnabled,
+  isPrivatePairingSimulationEnabled,
 } from "./constants/codes.js";
 
 export {
@@ -114,3 +115,16 @@ export {
   filterRules,
   filterRuleSets,
 } from "./ui/privatePairingAdminHelpers.js";
+
+export {
+  SIMULATION_DEFAULTS,
+  SIMULATION_CODE,
+  EXPLANATION_CODE,
+  SIMULATION_VERSION,
+  filterEligibleSimulationPlayers,
+  canonicalizeCandidateKey,
+  generateSimulationCandidates,
+  simulatePrivatePairing,
+  SIMULATE_PRIVATE_PAIRING_ACTION,
+  buildSimulatePrivatePairingAudit,
+} from "./simulation/index.js";

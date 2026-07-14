@@ -43,6 +43,7 @@ export const PRIVATE_PAIRING_CONFLICT_CODE = Object.freeze({
 export const FEATURE_FLAG_KEYS = Object.freeze({
   PRIVATE_PAIRING_RULES: "VITE_PRIVATE_PAIRING_RULES_ENABLED",
   UNIFIED_CONSTRAINT_ENGINE: "VITE_UNIFIED_CONSTRAINT_ENGINE_ENABLED",
+  PRIVATE_PAIRING_SIMULATION: "VITE_PRIVATE_PAIRING_SIMULATION_ENABLED",
 });
 
 /**
@@ -70,4 +71,13 @@ export function isPrivatePairingRulesEnabled(envSource) {
  */
 export function isUnifiedConstraintEngineEnabled(envSource) {
   return readFlag(envSource, FEATURE_FLAG_KEYS.UNIFIED_CONSTRAINT_ENGINE);
+}
+
+/**
+ * Simulation gate — default OFF. Does not enable real pairing apply.
+ * @param {Record<string, unknown>|undefined|null} [envSource]
+ * @returns {boolean}
+ */
+export function isPrivatePairingSimulationEnabled(envSource) {
+  return readFlag(envSource, FEATURE_FLAG_KEYS.PRIVATE_PAIRING_SIMULATION);
 }
