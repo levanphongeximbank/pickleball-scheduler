@@ -1,0 +1,7 @@
+matchup_id,team_a_id,team_b_id,scheduled_at,court_id,round
+m-ab,team-a,team-b,2026-07-20T18:00:00+07:00,court-1,1
+m-cd,team-c,team-d,2026-07-20T18:00:00+07:00,court-2,1
+m-ac,team-a,team-c,2026-07-20T19:30:00+07:00,court-1,2
+m-bd,team-b,team-d,2026-07-20T19:30:00+07:00,court-2,2
+m-ad,team-a,team-d,2026-07-20T21:00:00+07:00,court-3,3
+m-bc,team-b,team-c,2026-07-20T21:00:00+07:00,court-1,3

@@ -1,0 +1,22 @@
+player_id,team_id,name,gender,skill_level
+p-a1,team-a,Nguyễn Văn An,male,3.5
+p-a2,team-a,Trần Văn Bình,male,3.2
+p-a3,team-a,Lê Thị Chi,female,3.0
+p-a4,team-a,Phạm Thị Dung,female,2.8
+p-a5,team-a,Hoàng Văn Em,male,3.1
+p-b1,team-b,Võ Văn Phú,male,3.6
+p-b2,team-b,Đặng Văn Giang,male,3.3
+p-b3,team-b,Ngô Thị Hà,female,3.4
+p-b4,team-b,Bùi Thị Lan,female,3.0
+p-b5,team-b,Đinh Văn Long,male,2.9
+p-c1,team-c,Mai Văn Minh,male,3.7
+p-c2,team-c,Trương Văn Nam,male,3.1
+p-c3,team-c,Vũ Thị Oanh,female,3.2
+p-c4,team-c,Đỗ Thị Phương,female,2.7
+p-c5,team-c,Lý Văn Quân,male,3.0
+p-c6,team-c,Hồ Thị Rinh,female,2.9
+p-d1,team-d,Phan Văn Sơn,male,3.4
+p-d2,team-d,Cao Văn Tài,male,3.0
+p-d3,team-d,Lưu Thị Uyên,female,3.3
+p-d4,team-d,Tạ Thị Vân,female,2.8
+p-d5,team-d,Châu Văn Xuyên,male,2.6

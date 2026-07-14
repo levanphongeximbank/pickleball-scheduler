@@ -1,0 +1,73 @@
+{
+  "meta": {
+    "fixtureId": "tt10-users",
+    "version": "1.0.0",
+    "productionImpact": "NONE",
+    "notes": "Fixture account metadata only. Map to staging test users during TT-10 execution on main branch — do not create Production accounts."
+  },
+  "actorAliases": {
+    "btc": "acct-btc-01",
+    "captain-a": "acct-captain-a",
+    "captain-b": "acct-captain-b",
+    "captain-c": "acct-captain-c",
+    "captain-d": "acct-captain-d",
+    "referee-1": "acct-referee-1",
+    "referee-2": "acct-referee-2",
+    "system": null
+  },
+  "accounts": [
+    {
+      "fixtureAccountId": "acct-btc-01",
+      "role": "btc",
+      "displayName": "BTC Organizer",
+      "emailPlaceholder": "tt10-btc+staging@fixture.local",
+      "permissions": ["team_tournament.manage", "team_tournament.publish"]
+    },
+    {
+      "fixtureAccountId": "acct-captain-a",
+      "role": "captain",
+      "teamId": "team-a",
+      "playerId": "p-a1",
+      "displayName": "Captain A — Nguyễn Văn An",
+      "emailPlaceholder": "tt10-captain-a+staging@fixture.local"
+    },
+    {
+      "fixtureAccountId": "acct-captain-b",
+      "role": "captain",
+      "teamId": "team-b",
+      "playerId": "p-b1",
+      "displayName": "Captain B — Võ Văn Phú",
+      "emailPlaceholder": "tt10-captain-b+staging@fixture.local"
+    },
+    {
+      "fixtureAccountId": "acct-captain-c",
+      "role": "captain",
+      "teamId": "team-c",
+      "playerId": "p-c1",
+      "displayName": "Captain C — Mai Văn Minh",
+      "emailPlaceholder": "tt10-captain-c+staging@fixture.local"
+    },
+    {
+      "fixtureAccountId": "acct-captain-d",
+      "role": "captain",
+      "teamId": "team-d",
+      "playerId": "p-d1",
+      "displayName": "Captain D — Phan Văn Sơn",
+      "emailPlaceholder": "tt10-captain-d+staging@fixture.local"
+    },
+    {
+      "fixtureAccountId": "acct-referee-1",
+      "role": "referee",
+      "displayName": "Referee 1 — Trọng tài A",
+      "emailPlaceholder": "tt10-referee-1+staging@fixture.local",
+      "assignedMatchupIds": ["m-ab", "m-ac", "m-ad"]
+    },
+    {
+      "fixtureAccountId": "acct-referee-2",
+      "role": "referee",
+      "displayName": "Referee 2 — Trọng tài B",
+      "emailPlaceholder": "tt10-referee-2+staging@fixture.local",
+      "assignedMatchupIds": ["m-cd", "m-bd", "m-bc"]
+    }
+  ]
+}

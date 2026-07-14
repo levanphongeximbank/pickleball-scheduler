@@ -1,0 +1,49 @@
+{
+  "reportType": "TT11_RELEASE_READINESS_REPORT",
+  "version": "1.0.0",
+  "generatedAt": null,
+  "productionImpact": "NONE",
+  "tournamentId": "",
+  "targetEnvironment": "staging | production",
+  "goNoGo": {
+    "decision": "GO | NO-GO | CONDITIONAL | NOT_ASSESSED",
+    "decisionDate": null,
+    "productOwner": null,
+    "conditions": []
+  },
+  "p0Gates": {
+    "total": 16,
+    "passed": 0,
+    "failed": 0,
+    "openItems": []
+  },
+  "backup": {
+    "completed": false,
+    "backupManifestPath": null,
+    "restoreTested": false,
+    "ownerApproved": false
+  },
+  "rollback": {
+    "runbookReviewed": false,
+    "reviewer": null
+  },
+  "featureFlags": {
+    "snapshotPath": null,
+    "driftDetected": false
+  },
+  "evidence": {
+    "tt7": null,
+    "tt9": null,
+    "tt10": null,
+    "tt2": null
+  },
+  "incidents": [],
+  "verdict": "NOT_ASSESSED",
+  "signOff": {
+    "productOwner": null,
+    "techLead": null,
+    "qaLead": null,
+    "ops": null,
+    "signedAt": null
+  }
+}

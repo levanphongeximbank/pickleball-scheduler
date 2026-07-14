@@ -1,0 +1,17 @@
+matchup_id,team_id,discipline_id,player_1_id,player_2_id,status,source
+m-ab,team-a,disc-md,p-a1,p-a2,submitted,captain
+m-ab,team-a,disc-wd,p-a3,p-a4,submitted,captain
+m-ab,team-a,disc-mx1,p-a1,p-a3,submitted,captain
+m-ab,team-a,disc-mx2,p-a5,p-a4,submitted,captain
+m-ab,team-b,disc-md,p-b1,p-b2,submitted,captain
+m-ab,team-b,disc-wd,p-b3,p-b4,submitted,captain
+m-ab,team-b,disc-mx1,p-b1,p-b3,submitted,captain
+m-ab,team-b,disc-mx2,p-b5,p-b4,submitted,captain
+m-cd,team-c,disc-md,p-c1,p-c2,locked,random
+m-cd,team-c,disc-wd,p-c3,p-c4,locked,random
+m-cd,team-c,disc-mx1,p-c1,p-c3,locked,random
+m-cd,team-c,disc-mx2,p-c5,p-c6,locked,random
+m-cd,team-d,disc-md,p-d1,p-d2,submitted,captain
+m-cd,team-d,disc-wd,p-d3,p-d4,submitted,captain
+m-cd,team-d,disc-mx1,p-d1,p-d3,submitted,captain
+m-cd,team-d,disc-mx2,p-d2,p-d4,submitted,captain
