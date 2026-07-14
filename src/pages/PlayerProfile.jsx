@@ -33,8 +33,7 @@ import {
   submitSkillLevelChangeRequest,
 } from "../domain/skillLevelChangeService.js";
 import { getPlayerCurrentRating } from "../models/player.js";
-import { loadPlayerHistoryProfileResolved } from "../tournament/engines/playerHistoryEngine.js";
-import { loadAccountOnlyAthleteProfile } from "../features/club/services/accountOnlyAthleteService.js";
+import { resolveV2AthleteProfile } from "../features/club/services/resolveV2AthleteProfileService.js";
 import { adminLinkAccountOnlyAthleteToClub } from "../features/club/services/clubMembershipRequestService.js";
 import { fetchProfileByUserId } from "../auth/profileService.js";
 import VprProfilePanel from "../features/vpr-ranking/components/VprProfilePanel.jsx";
@@ -47,6 +46,7 @@ import {
 } from "../features/pick-vn-rating/constants/pickVnRatingScale.js";
 import { getLevelColor, getLevelLabel, isPlayerUnrated } from "../utils/playerHelpers.js";
 import { RATING_STATUS_LABELS } from "../features/pick-vn-rating/constants/ratingStatus.js";
+import { isClubStorageV2Enabled } from "../features/club/config/clubRegistryFlags.js";
 
 function StatCard({ label, value, helper }) {
   return (
@@ -113,16 +113,19 @@ export default function PlayerProfile() {
   const [linkClubId, setLinkClubId] = useState(activeClubId || "");
 
   const platformWideRole = isPlatformWideRole(user?.role);
+  const linkableClubs = clubs.filter((club) => !club.isDefault);
   const linkTargetClubId = platformWideRole ? linkClubId : activeClubId;
   const linkTargetClub =
-    clubs.find((club) => club.id === linkTargetClubId) ||
-    (activeClub?.id === linkTargetClubId ? activeClub : null);
+    linkableClubs.find((club) => club.id === linkTargetClubId) ||
+    clubs.find((club) => club.id === linkTargetClubId && !club.isDefault) ||
+    null;
 
   useEffect(() => {
-    if (activeClubId) {
-      setLinkClubId(activeClubId);
+    // Only default link target for true account-only flows (no active membership).
+    if (activeClubId && !profile.ok) {
+      setLinkClubId((prev) => prev || activeClubId);
     }
-  }, [activeClubId]);
+  }, [activeClubId, profile.ok]);
 
   const isSelfProfile =
     Boolean(user?.playerId) && String(user.playerId) === String(playerId);
@@ -134,38 +137,15 @@ export default function PlayerProfile() {
     void (async () => {
       setProfile({ ok: false, loading: true, error: null });
 
-      const rosterProfile = loadPlayerHistoryProfileResolved(
-        {
-          primaryClubId: isPlayerRole || isSelfProfile ? user?.clubId : null,
-          secondaryClubId: activeClubId,
-          playerId,
-          authUserId: isPlayerRole || isSelfProfile ? user?.id : null,
-        },
-        { recentLimit: 12 }
-      );
-
-      if (rosterProfile.ok) {
-        if (!cancelled) {
-          setProfile({ ...rosterProfile, loading: false });
-        }
-        return;
-      }
-
-      const authUserId = rosterProfile.authUserId;
-      if (rosterProfile.isAccountOnlyRoute && authUserId) {
-        const accountProfile = await loadAccountOnlyAthleteProfile(authUserId);
-        if (!cancelled) {
-          setProfile({ ...accountProfile, loading: false });
-        }
-        return;
-      }
+      const resolved = await resolveV2AthleteProfile({
+        routePlayerId: playerId,
+        preferredClubId: isPlayerRole || isSelfProfile ? user?.clubId : null,
+        secondaryClubId: activeClubId,
+        fallbackAuthUserId: isPlayerRole || isSelfProfile ? user?.id : null,
+      });
 
       if (!cancelled) {
-        setProfile({
-          ok: false,
-          loading: false,
-          error: rosterProfile.error || "Không tìm thấy VĐV.",
-        });
+        setProfile({ ...resolved, loading: false });
       }
     })();
 
@@ -174,15 +154,36 @@ export default function PlayerProfile() {
     };
   }, [activeClubId, isPlayerRole, isSelfProfile, playerId, revision, user?.clubId, user?.id]);
 
-  const profileClubId = profile.ok ? profile.clubId || activeClubId : activeClubId;
+  const activeMemberships = profile.ok ? profile.activeMemberships || [] : [];
+  const primaryMembership = activeMemberships[0] || null;
+  const profileClubId = profile.ok
+    ? profile.clubId || primaryMembership?.club_id || null
+    : null;
   const resolvedPlayerId = profile.ok ? profile.resolvedPlayerId || playerId : playerId;
   const isAccountOnlyProfile = Boolean(profile.ok && profile.isAccountOnly);
   const profileClub =
-    activeClub?.id === profileClubId
+    clubs.find((club) => club.id === profileClubId) ||
+    (activeClub?.id === profileClubId
       ? activeClub
-      : profile.ok
-        ? { id: profileClubId, name: profile.player?.clubName || "CLB" }
-        : activeClub;
+      : profile.ok && profileClubId
+        ? { id: profileClubId, name: profile.player?.clubName || primaryMembership?.club_name || "CLB" }
+        : null);
+
+  useEffect(() => {
+    if (!isAccountOnlyProfile) {
+      return;
+    }
+    const nonDefault = clubs.find((club) => club.id && !club.isDefault);
+    if (nonDefault?.id) {
+      setLinkClubId((prev) => {
+        const current = clubs.find((club) => club.id === prev);
+        if (current && !current.isDefault) {
+          return prev;
+        }
+        return nonDefault.id;
+      });
+    }
+  }, [clubs, isAccountOnlyProfile]);
 
   useEffect(() => {
     if (!profile.ok || !(isSelfProfile || isPlayerRole)) {
@@ -347,8 +348,10 @@ export default function PlayerProfile() {
               {player.name}
             </Typography>
             <Typography color="text.secondary">
-              {isAccountOnlyProfile ? "Chỉ có tài khoản" : profileClub?.name || "CLB"} •{" "}
-              {player.gender || "Chưa rõ"}
+              {isAccountOnlyProfile
+                ? "Chỉ có tài khoản"
+                : profileClub?.name || primaryMembership?.club_name || "CLB"}{" "}
+              • {player.gender || "Chưa rõ"}
               {canViewSkill && !unrated && skillLevel != null && (
                 <>
                   {" "}
@@ -368,9 +371,13 @@ export default function PlayerProfile() {
                 {player.email}
               </Typography>
             ) : null}
-            {player.clubName && (
+            {activeMemberships.length > 1 && (
               <Typography variant="body2" color="text.secondary">
-                CLB dai dien: {player.clubName}
+                Thành viên các CLB:{" "}
+                {activeMemberships
+                  .map((row) => row.club_name || row.club_id)
+                  .filter(Boolean)
+                  .join(", ")}
               </Typography>
             )}
           </Box>
@@ -382,7 +389,16 @@ export default function PlayerProfile() {
                 label="Chỉ có tài khoản"
               />
             )}
-            {player.playerType && <Chip label={player.playerType} size="small" />}
+            {!isAccountOnlyProfile &&
+              activeMemberships.map((row) => (
+                <Chip
+                  key={row.membership_id || row.club_id}
+                  size="small"
+                  color="success"
+                  variant="outlined"
+                  label={`Thành viên ${row.club_name || row.club_id}`}
+                />
+              ))}
             {player.unitName && <Chip label={player.unitName} size="small" variant="outlined" />}
           </Stack>
         </Stack>
@@ -395,8 +411,8 @@ export default function PlayerProfile() {
               Gắn VĐV vào CLB
             </Typography>
             <Typography variant="body2" color="text.secondary">
-              Tạo hồ sơ VĐV trong CLB{" "}
-              <strong>{linkTargetClub?.name || activeClub?.name}</strong> và liên kết tài khoản này.
+              Tạo hồ sơ VĐV tại{" "}
+              <strong>{linkTargetClub?.name || "CLB đã chọn"}</strong> và liên kết tài khoản này.
             </Typography>
             {platformWideRole && clubs.length > 0 && (
               <FormControl fullWidth size="small">
@@ -407,11 +423,11 @@ export default function PlayerProfile() {
                   label="Chọn CLB"
                   onChange={(event) => setLinkClubId(event.target.value)}
                 >
-                  {clubs.map((club) => (
-                    <MenuItem key={club.id} value={club.id}>
-                      {club.name}
-                    </MenuItem>
-                  ))}
+                  {linkableClubs.map((club) => (
+                      <MenuItem key={club.id} value={club.id}>
+                        {club.name}
+                      </MenuItem>
+                    ))}
                 </Select>
               </FormControl>
             )}
@@ -429,6 +445,16 @@ export default function PlayerProfile() {
             </Button>
           </Stack>
         </Paper>
+      )}
+
+      {!isAccountOnlyProfile && activeMemberships.length > 0 && (
+        <Alert severity="success" sx={{ mb: 2 }}>
+          Đang là thành viên của{" "}
+          {activeMemberships.map((row) => row.club_name || row.club_id).join(", ")}.
+          {profile.recentMatches?.length === 0
+            ? " Lịch sử trận sẽ hiển thị sau khi tham gia giải."
+            : ""}
+        </Alert>
       )}
 
       {isAccountOnlyProfile && (
@@ -507,7 +533,10 @@ export default function PlayerProfile() {
               <PickVnRatingPanel
                 player={player}
                 clubId={profileClubId}
-                authUserId={player.authUserId || (isSelfProfile ? user?.id : null)}
+                authUserId={player.authUserId || profile.authUserId || (isSelfProfile ? user?.id : null)}
+                athleteId={player.athleteId || profile.athlete?.id || null}
+                membershipClubId={profileClubId}
+                requireMembershipClub={Boolean(profileClubId) && isClubStorageV2Enabled()}
               />
             ) : (
               <Box sx={{ p: 2 }}>

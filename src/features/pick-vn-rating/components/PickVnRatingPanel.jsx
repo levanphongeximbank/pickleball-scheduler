@@ -34,6 +34,9 @@ export default function PickVnRatingPanel({
   player,
   clubId,
   authUserId = null,
+  athleteId = null,
+  membershipClubId = null,
+  requireMembershipClub = false,
 }) {
   const { user, can } = useAuth();
   const [verifyRating, setVerifyRating] = useState(
@@ -113,6 +116,9 @@ export default function PickVnRatingPanel({
       verifiedBy: user?.id || user?.email || null,
       note: verifyNote,
       authUserId,
+      athleteId: athleteId || player?.athleteId || null,
+      membershipClubId: membershipClubId || clubId,
+      requireMembershipClub,
     });
     if (!result.ok) {
       setMessage({ type: "error", text: result.error });
