@@ -7,8 +7,13 @@
 | Branch | `feature/private-pairing-rules-v2` |
 | Baseline | `add62869e558fc65ac9a08fdea32cea896a1e857` |
 | PR-1 docs commit | `51ee143` — docs(pairing): add Private Pairing Rules V2 PR-1 audit |
+| PR-2 commits | `26a8818` feat types/validation · `38d3d5b` tests · `0ac03b5` docs |
 | Runtime change | **None** — types/validation/conflict only |
 | Production | **OFF** |
+| Lint (PR-2 paths) | PASS (`npx eslint` on changed files) |
+| Lint (full repo) | FAIL — 125 pre-existing errors unrelated to this branch |
+| Build | PASS |
+| Targeted tests | 231 pass (PR-2 + CC rules/pairing/policy) |
 
 ---
 
