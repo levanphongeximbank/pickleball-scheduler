@@ -174,3 +174,9 @@ legacy consumer
 - Private Pairing is the first mandatory consumer.
 - Daily Play / Tournament / Athlete list remain legacy until follow-up PRs.
 - Player mapping backfill is a separate owner-gated runbook: `PRIVATE_PAIRING_RULES_V2_PR425_BACKFILL_PLAN.md`.
+
+---
+
+## 12. PR-4.26 consumer migration
+
+Daily Play, Tournament participant pickers, and Athlete list consume `canonicalPlayerPickerAdapter` / `*Aware` helpers when flags ON. Inventory and remaining satellite blob call sites: `PRIVATE_PAIRING_RULES_V2_PR426_CONSUMER_MIGRATION.md`.

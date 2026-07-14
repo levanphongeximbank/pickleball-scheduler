@@ -197,3 +197,9 @@ Stop after staging report. No Production until owner GO.
 See [`PRIVATE_PAIRING_RULES_V2_PR425_QA.md`](./PRIVATE_PAIRING_RULES_V2_PR425_QA.md).
 
 Mandatory: ACCC cloud-only fixture + club/membership/player/private-pairing adapter tests (22). Production flags stay OFF.
+
+---
+
+## 16. PR-4.26 Consumer Parity QA
+
+See [`PRIVATE_PAIRING_RULES_V2_PR426_PARITY_QA.md`](./PRIVATE_PAIRING_RULES_V2_PR426_PARITY_QA.md). Cross-consumer ACCC selectable playerId parity required when flags ON.

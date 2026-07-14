@@ -56,10 +56,12 @@ Production must stay OFF until owner GO for enablement.
 |----------|--------|
 | Private Pairing club source | Migrated (via picker adapter) |
 | Private Pairing primary/target selectors | Migrated |
-| Shared picker adapter | Added |
-| Daily Play | Legacy — follow-up PR |
-| Tournament participant picker | Legacy — follow-up PR |
-| Athlete list | Legacy — follow-up PR |
+| Shared picker adapter | Added in PR-4.25; generalized in PR-4.26 (`canonicalPlayerPickerAdapter`) |
+| Daily Play | Migrated in **PR-4.26** (`useClubPlayerPool`) |
+| Tournament participant picker | Migrated in **PR-4.26** (internal/official/team/registration + roster filter) |
+| Athlete list | Migrated in **PR-4.26** (club list + platform aware) |
+
+See `PRIVATE_PAIRING_RULES_V2_PR426_CONSUMER_MIGRATION.md` for remaining satellite legacy call sites.
 
 ## Default club
 
