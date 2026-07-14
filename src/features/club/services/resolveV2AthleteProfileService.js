@@ -2,14 +2,78 @@ import { normalizeUser } from "../../../models/user.js";
 import { normalizePlayers } from "../../../models/player.js";
 import { isClubStorageV2Enabled } from "../config/clubRegistryFlags.js";
 import {
-  buildAccountOnlyPlayerId,
+  buildCanonicalProfileRouteId,
   enrichAccountOnlyAthlete,
   loadAccountOnlyAthleteProfile,
   parsePlatformAthleteRouteId,
 } from "./accountOnlyAthleteService.js";
 import { getSupabaseAuthClient } from "../../../auth/supabaseClient.js";
-import { rpcPlatformResolveAthleteProfile } from "./clubStorageV2RpcService.js";
+import {
+  rpcPlatformResolveAthleteById,
+  rpcPlatformResolveAthleteProfile,
+} from "./clubStorageV2RpcService.js";
 import { loadPlayerHistoryProfileResolved } from "../../../tournament/engines/playerHistoryEngine.js";
+
+const V2_ERROR_MESSAGES = {
+  NOT_FOUND: "Không tìm thấy vận động viên.",
+  ATHLETE_NOT_FOUND: "Không tìm thấy vận động viên.",
+  ATHLETE_NOT_LINKED: "Hồ sơ vận động viên chưa được liên kết đầy đủ.",
+  FORBIDDEN: "Bạn không có quyền xem hồ sơ vận động viên này.",
+  NOT_AUTHENTICATED: "Bạn cần đăng nhập để xem hồ sơ vận động viên.",
+  MISSING_AUTH_USER: "Không tìm thấy tài khoản liên kết với vận động viên.",
+  VALIDATION: "Đường dẫn hồ sơ vận động viên không hợp lệ.",
+};
+
+function friendlyV2Error(code, fallback) {
+  return V2_ERROR_MESSAGES[code] || fallback || "Không tải được hồ sơ vận động viên.";
+}
+
+// --- Test seams (mirror accountOnlyAthleteService convention) --------------
+let clubStorageV2EnabledImpl = isClubStorageV2Enabled;
+let resolveAthleteByIdImpl = rpcPlatformResolveAthleteById;
+let resolveAthleteByUserImpl = rpcPlatformResolveAthleteProfile;
+let supabaseClientProvider = getSupabaseAuthClient;
+
+export function __setResolveV2DepsForTests(overrides = {}) {
+  if (overrides.isClubStorageV2Enabled) clubStorageV2EnabledImpl = overrides.isClubStorageV2Enabled;
+  if (overrides.rpcResolveAthleteById) resolveAthleteByIdImpl = overrides.rpcResolveAthleteById;
+  if (overrides.rpcResolveAthleteProfile) resolveAthleteByUserImpl = overrides.rpcResolveAthleteProfile;
+  if (overrides.getSupabaseAuthClient) supabaseClientProvider = overrides.getSupabaseAuthClient;
+}
+
+export function __resetResolveV2DepsForTests() {
+  clubStorageV2EnabledImpl = isClubStorageV2Enabled;
+  resolveAthleteByIdImpl = rpcPlatformResolveAthleteById;
+  resolveAthleteByUserImpl = rpcPlatformResolveAthleteProfile;
+  supabaseClientProvider = getSupabaseAuthClient;
+}
+
+/**
+ * Client fallback: map athlete id → auth user id via RLS-scoped SELECT.
+ * Used only when the by-athlete RPC is not deployed yet.
+ */
+async function lookupAuthUserIdByAthleteId(athleteId) {
+  const client = supabaseClientProvider();
+  if (!client) {
+    return { ok: false, code: "NO_SUPABASE", error: "Supabase chưa sẵn sàng." };
+  }
+  const { data, error } = await client
+    .from("athletes")
+    .select("id, user_id")
+    .eq("id", athleteId)
+    .maybeSingle();
+  if (error) {
+    return { ok: false, code: "ATHLETE_QUERY_FAILED", error: error.message };
+  }
+  if (!data) {
+    // RLS may hide rows the caller cannot see; treat as not found / no access.
+    return { ok: false, code: "NOT_FOUND", error: friendlyV2Error("NOT_FOUND") };
+  }
+  if (!data.user_id) {
+    return { ok: false, code: "ATHLETE_NOT_LINKED", error: friendlyV2Error("ATHLETE_NOT_LINKED") };
+  }
+  return { ok: true, authUserId: data.user_id };
+}
 
 /**
  * Resolve player profile for platform/admin UI using Club Storage V2 SSOT:
@@ -18,7 +82,7 @@ import { loadPlayerHistoryProfileResolved } from "../../../tournament/engines/pl
 
 /** Fallback when platform_resolve_athlete_profile RPC is not deployed yet. */
 async function resolveV2AthleteProfileViaTables(authUserId) {
-  const client = getSupabaseAuthClient();
+  const client = supabaseClientProvider();
   if (!client) {
     return { ok: false, code: "NO_SUPABASE", error: "Supabase chưa sẵn sàng." };
   }
@@ -97,9 +161,9 @@ function mapResolvedPlayer({
   const clubId = membership?.club_id || membership?.clubId || null;
   const clubName = membership?.club_name || membership?.clubName || "";
   const athleteId = athlete?.id || membership?.athlete_id || membership?.athleteId || null;
-  const routeId = athleteId
-    ? `athlete-${athleteId}`
-    : buildAccountOnlyPlayerId(authUserId);
+  // Canonical route id is always profile-{auth_user_id} (one athlete per user);
+  // athlete-{id} remains resolvable for legacy bookmarks via the loader.
+  const routeId = buildCanonicalProfileRouteId(authUserId);
 
   const base = {
     ...(enrichedPlayer || {}),
@@ -143,9 +207,9 @@ export async function resolveV2AthleteProfile({
   fallbackAuthUserId = null,
 } = {}) {
   const route = parsePlatformAthleteRouteId(routePlayerId);
-  const authUserId = route.authUserId || fallbackAuthUserId || null;
+  let authUserId = route.authUserId || fallbackAuthUserId || null;
 
-  if (!isClubStorageV2Enabled()) {
+  if (!clubStorageV2EnabledImpl()) {
     const roster = loadPlayerHistoryProfileResolved(
       {
         primaryClubId: preferredClubId,
@@ -169,6 +233,52 @@ export async function resolveV2AthleteProfile({
     };
   }
 
+  // Phase 42N.1 — athlete-{athlete_id} route: map to auth user server-side.
+  // The by-athlete RPC (SECURITY DEFINER) reuses the same authorization as the
+  // by-user resolver, so FORBIDDEN vs NOT_FOUND stay accurate. If the RPC is not
+  // deployed yet, fall back to an RLS-scoped client lookup.
+  let resolved = null;
+  let resolveSource = "v2_rpc";
+  if (!authUserId && route.athleteId) {
+    const byAthlete = await resolveAthleteByIdImpl(route.athleteId);
+    if (byAthlete.ok) {
+      resolved = { ok: true, data: byAthlete.data };
+      authUserId = byAthlete.data?.auth_user_id || null;
+      resolveSource = "v2_rpc_by_athlete";
+    } else if (byAthlete.code === "RPC_NOT_DEPLOYED" || byAthlete.code === "NO_SUPABASE") {
+      const looked = await lookupAuthUserIdByAthleteId(route.athleteId);
+      if (looked.ok) {
+        authUserId = looked.authUserId;
+      } else {
+        return {
+          ok: false,
+          code: looked.code,
+          error:
+            looked.code === "NO_SUPABASE"
+              ? friendlyV2Error("MISSING_AUTH_USER", looked.error)
+              : looked.error || friendlyV2Error(looked.code),
+          source: "v2_athlete_lookup",
+        };
+      }
+    } else {
+      return {
+        ok: false,
+        code: byAthlete.code,
+        error: friendlyV2Error(byAthlete.code, byAthlete.error),
+        source: "v2_rpc_by_athlete",
+      };
+    }
+
+    if (!authUserId) {
+      return {
+        ok: false,
+        code: "ATHLETE_NOT_LINKED",
+        error: friendlyV2Error("ATHLETE_NOT_LINKED"),
+        source: "v2_rpc_by_athlete",
+      };
+    }
+  }
+
   if (!authUserId && !route.isAccountOnly) {
     const roster = loadPlayerHistoryProfileResolved(
       {
@@ -185,38 +295,39 @@ export async function resolveV2AthleteProfile({
   }
 
   if (!authUserId) {
-    return { ok: false, error: "Thiếu auth user để resolve hồ sơ V2." };
+    return { ok: false, code: "MISSING_AUTH_USER", error: friendlyV2Error("MISSING_AUTH_USER") };
   }
 
-  let resolved = await rpcPlatformResolveAthleteProfile(authUserId);
-  let resolveSource = "v2_rpc";
-  if (!resolved.ok && (resolved.code === "RPC_NOT_DEPLOYED" || resolved.code === "NO_SUPABASE")) {
-    const tableResolved = await resolveV2AthleteProfileViaTables(authUserId);
-    if (tableResolved.ok) {
-      resolved = tableResolved;
-      resolveSource = "v2_tables_fallback";
-    } else if (resolved.code === "NO_SUPABASE") {
-      const accountProfile = await loadAccountOnlyAthleteProfile(authUserId);
-      return {
-        ...accountProfile,
-        source: "v2_rpc_unavailable_account_only",
-        warning: resolved.error,
-      };
-    } else {
+  if (!resolved) {
+    resolved = await resolveAthleteByUserImpl(authUserId);
+    if (!resolved.ok && (resolved.code === "RPC_NOT_DEPLOYED" || resolved.code === "NO_SUPABASE")) {
+      const tableResolved = await resolveV2AthleteProfileViaTables(authUserId);
+      if (tableResolved.ok) {
+        resolved = tableResolved;
+        resolveSource = "v2_tables_fallback";
+      } else if (resolved.code === "NO_SUPABASE") {
+        const accountProfile = await loadAccountOnlyAthleteProfile(authUserId);
+        return {
+          ...accountProfile,
+          source: "v2_rpc_unavailable_account_only",
+          warning: resolved.error,
+        };
+      } else {
+        return {
+          ok: false,
+          error: friendlyV2Error(tableResolved.code || resolved.code, tableResolved.error || resolved.error),
+          code: tableResolved.code || resolved.code,
+          source: "v2_tables_fallback",
+        };
+      }
+    } else if (!resolved.ok) {
       return {
         ok: false,
-        error: tableResolved.error || resolved.error || "Không resolve được hồ sơ VĐV V2.",
-        code: tableResolved.code || resolved.code,
-        source: "v2_tables_fallback",
+        error: friendlyV2Error(resolved.code, resolved.error),
+        code: resolved.code,
+        source: "v2_rpc",
       };
     }
-  } else if (!resolved.ok) {
-    return {
-      ok: false,
-      error: resolved.error || "Không resolve được hồ sơ VĐV V2.",
-      code: resolved.code,
-      source: "v2_rpc",
-    };
   }
 
   const data = resolved.data || {};

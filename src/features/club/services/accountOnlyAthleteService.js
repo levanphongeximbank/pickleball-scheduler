@@ -11,6 +11,7 @@ import { getPickVnRatingByAuthUserId } from "../../pick-vn-rating/services/pickV
 import { rpcPickVnGetRatingByAuthUser } from "../../pick-vn-rating/services/pickVnRatingRpcService.js";
 
 const PROFILE_ROUTE_PREFIX = "profile-";
+const ATHLETE_ROUTE_PREFIX = "athlete-";
 const ACCOUNT_ONLY_LINK_STATUS = "account_only";
 
 let fetchProfileByUserIdImpl = defaultFetchProfileByUserId;
@@ -27,17 +28,44 @@ export function buildAccountOnlyPlayerId(authUserId) {
   return `${PROFILE_ROUTE_PREFIX}${String(authUserId || "").trim()}`;
 }
 
+/** Canonical profile route id — one auth user has at most one athlete. */
+export function buildCanonicalProfileRouteId(authUserId) {
+  return buildAccountOnlyPlayerId(authUserId);
+}
+
+export function buildAthleteRouteId(athleteId) {
+  return `${ATHLETE_ROUTE_PREFIX}${String(athleteId || "").trim()}`;
+}
+
+/**
+ * Parse a /players/profile/:playerId route param.
+ * Supports:
+ *   • profile-{auth_user_id}  → { authUserId, isAccountOnly:true }
+ *   • athlete-{athlete_id}    → { athleteId }
+ *   • legacy id (no prefix)   → { playerId }
+ */
 export function parsePlatformAthleteRouteId(playerId) {
   const raw = String(playerId || "").trim();
-  if (!raw.startsWith(PROFILE_ROUTE_PREFIX)) {
-    return { playerId: raw, authUserId: null, isAccountOnly: false };
+
+  if (raw.startsWith(PROFILE_ROUTE_PREFIX)) {
+    return {
+      playerId: raw,
+      authUserId: raw.slice(PROFILE_ROUTE_PREFIX.length).trim() || null,
+      athleteId: null,
+      isAccountOnly: true,
+    };
   }
 
-  return {
-    playerId: raw,
-    authUserId: raw.slice(PROFILE_ROUTE_PREFIX.length),
-    isAccountOnly: true,
-  };
+  if (raw.startsWith(ATHLETE_ROUTE_PREFIX)) {
+    return {
+      playerId: raw,
+      authUserId: null,
+      athleteId: raw.slice(ATHLETE_ROUTE_PREFIX.length).trim() || null,
+      isAccountOnly: false,
+    };
+  }
+
+  return { playerId: raw, authUserId: null, athleteId: null, isAccountOnly: false };
 }
 
 export function resolveAthleteGender(profile, ratingRecord = null) {

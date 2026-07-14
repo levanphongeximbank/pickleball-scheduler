@@ -189,7 +189,8 @@ export function verifyClubPlayerRating(
     return {
       ok: true,
       player: {
-        id: athleteId ? `athlete-${athleteId}` : `profile-${resolvedAuthUserId}`,
+        // Canonical profile route (athlete-{id} bookmarks still resolve via loader).
+        id: resolvedAuthUserId ? `profile-${resolvedAuthUserId}` : `athlete-${athleteId}`,
         authUserId: resolvedAuthUserId,
         athleteId,
         current_rating: snapped,
