@@ -12,7 +12,7 @@
 Private Pairing Rules V2 was reopened from `FEATURE COMPLETE — NOT RELEASED` for a **Staging Release Candidate**. No new features were added; the PR chain is closed. This RC-1 re-verifies the branch, the build, the test freeze, the staging database migration, feature-flag posture, security, and rollback.
 
 - **Staging RC-1 verdict: GREEN** — code, DB schema/RLS/RPC, and security posture all verified on live staging.
-- **RC-1a (2026-07-15) — live SA browser smoke found and fixed one blocker:** the player picker showed no athletes with real cloud data because the picker resolved canonical mapping via `profiles.player_id` but nothing loaded that index at runtime (the `club_list_members` RPC does not return `player_id`). Fixed in commit `d22e19d` (wire `fetchProfilesByUserIds` into the adapter). Staging test club `club-smoke-42i1` mapping topped up (6/7 members mapped). Redeployed Preview. See §9a.
+- **RC-1a/1b (2026-07-15) — live SA browser smoke found and fixed two blockers:** (a) the player picker showed no athletes with real cloud data because it resolved canonical mapping via `profiles.player_id` but nothing loaded that index at runtime (`club_list_members` RPC returns no `player_id`) — fixed in `d22e19d` + staging mapping top-up (6/7 members); (b) saving a rule hit DB check `private_pairing_rules_other_reason_chk` because the form allowed empty `reason_text` while `reason_category = OTHER` — fixed in `438a3c6` (UI validation). Redeployed Preview. See §9a.
 - **Production verdict: NO-GO (now)** — by owner constraint (no Production actions in this GO) and because owner-manual gates remain (finish live SUPER_ADMIN browser smoke on the RC-1a Preview, PITR/backup confirmation, explicit separate Production GO). Deferred non-goals (legacy migration, Apply-to-live, disclosure UI) are out of scope and do not block Staging.
 
 ---
@@ -128,7 +128,8 @@ Evidence: `docs/v5/qa-evidence/phase-private-pairing-staging/STAGING_SECURITY_VE
 |------|-------|
 | Stable alias (project default / flags OFF) | `https://pickleball-scheduler-levanphongeximbank-pickleball-scheduler.vercel.app` — **feature switch OFF here** (project default build); menu correctly hidden |
 | **Fresh Preview (RC-1, flags ON)** | `https://pickleball-scheduler-6aip3pn6u-pickleball-scheduler.vercel.app` — deployed 2026-07-15, `target: null` (Preview, not production), HTTP 200 open |
-| **RC-1a Preview (with picker fix)** | `https://pickleball-scheduler-4jxit5zj9-pickleball-scheduler.vercel.app` — **current** (2026-07-15, commit `d22e19d`), `readyState: READY`, `target: null` (Preview). Use this URL for the SA browser smoke. |
+| RC-1a Preview (picker fix) | `https://pickleball-scheduler-4jxit5zj9-pickleball-scheduler.vercel.app` — superseded (commit `d22e19d`) |
+| **RC-1b Preview (picker + reason_text fix)** | `https://pickleball-scheduler-hqbfot4a0-pickleball-scheduler.vercel.app` — **current** (2026-07-15, commit `438a3c6`), `readyState: READY`, `target: null` (Preview). Use this URL for the SA browser smoke. |
 | Preview env flags | `VITE_PRIVATE_PAIRING_RULES_ENABLED`, `VITE_UNIFIED_CONSTRAINT_ENGINE_ENABLED`, `VITE_RBAC_ENABLED` all set in **Preview** scope (encrypted) |
 | Route | `/admin/ai-pairing/private-rules` |
 | Menu | Quản trị → Quy tắc ghép cặp riêng (`admin-private-pairing-rules`) |
@@ -172,8 +173,16 @@ During the owner's live SUPER_ADMIN browser smoke on the Preview, the **"Thêm R
 
 ### Status
 
-- Picker fix: **DONE**, awaiting owner re-test on the RC-1a Preview.
+- Picker fix: **DONE**, awaiting owner re-test on the current Preview.
 - Expected: source club **CLB Smoke 42I1** now lists **6 selectable athletes**, enabling the full create → add rule → simulate (Top N) → activate → audit flow.
+
+### RC-1b — second finding: reason_text constraint (commit `438a3c6`)
+
+On the next attempt, saving a rule failed with `new row for relation "private_pairing_rules" violates check constraint "private_pairing_rules_other_reason_chk"`.
+
+- **Root cause:** constraint requires `reason_category IS DISTINCT FROM 'OTHER' OR reason_text` non-empty. The "Thêm Rule" form defaults `reason_category = OTHER` but allowed an empty `reason_text`, so the DB rejected the insert with a raw error.
+- **Fix (UI):** `handleSaveRule` now blocks with a friendly message, the Save button is gated via `canSaveRule`, and the Reason text field is marked `required`/`error` with helper text when category = OTHER. No schema change.
+- **Re-verify:** PR-5 UI + picker tests **17/17 PASS**; build **PASS**; redeployed Preview (`hqbfot4a0`, READY).
 
 ---
 
