@@ -2,12 +2,14 @@
 
 | Field | Value |
 |-------|-------|
-| Status | Plan from PR-1; PR-2 unit coverage added; full execution in PR-7 |
+| Status | Plan from PR-1; PR-2/PR-3 unit coverage added; full Staging QA in PR-7 |
 | Spec | [`PRIVATE_PAIRING_RULES_V2_SPEC.md`](./PRIVATE_PAIRING_RULES_V2_SPEC.md) |
 | PR-2 | [`PRIVATE_PAIRING_RULES_V2_PR2_CANONICAL_CONFLICT.md`](./PRIVATE_PAIRING_RULES_V2_PR2_CANONICAL_CONFLICT.md) |
+| PR-3 | [`PRIVATE_PAIRING_RULES_V2_PR3_RUNTIME.md`](./PRIVATE_PAIRING_RULES_V2_PR3_RUNTIME.md) |
 | Security | [`PRIVATE_PAIRING_RULES_V2_SECURITY.md`](./PRIVATE_PAIRING_RULES_V2_SECURITY.md) |
 | Migration | [`PRIVATE_PAIRING_RULES_V2_MIGRATION.md`](./PRIVATE_PAIRING_RULES_V2_MIGRATION.md) |
 | PR-2 suite | `tests/private-pairing-rules-pr2.test.js` |
+| PR-3 suite | `tests/private-pairing-rules-pr3-runtime.test.js` |
 
 ---
 
@@ -32,6 +34,17 @@
 - [x] Deterministic + non-mutating detector
 - [x] Feature flags default OFF
 - [x] Competition Core + legacy pairing regression suites PASS
+
+## 1c. PR-3 runtime coverage (done in PR-3)
+
+- [x] Hard MUST_PARTNER / MUST_NOT_PARTNER / MUST_OPPONENT / MUST_NOT_OPPONENT
+- [x] Soft prefer/avoid ranking effect
+- [x] ANY_OF vs ALL_OF (capacity block)
+- [x] Scope/time + certified policy gate
+- [x] Determinism + non-mutation
+- [x] Legacy adapter + flags OFF unchanged path
+- [x] AI score hard reject without -120 when flags ON
+- [x] Benchmark guards 8/16/32 players
 
 ## 2. Permission tests
 

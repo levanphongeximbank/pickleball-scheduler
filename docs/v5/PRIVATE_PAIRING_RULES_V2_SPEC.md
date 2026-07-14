@@ -5,13 +5,14 @@
 | UI name (VI) | **Quy tắc ghép cặp riêng** |
 | Module name | Private Pairing Rules Engine |
 | Access | SUPER_ADMIN only |
-| Status | PR-1 audit + **PR-2 canonical types/conflict detector complete** |
+| Status | PR-1 audit + PR-2 types/conflicts + **PR-3 unified runtime (flag-gated)** |
 | Audit | [`PRIVATE_PAIRING_RULES_V2_PR1_AUDIT.md`](./PRIVATE_PAIRING_RULES_V2_PR1_AUDIT.md) |
 | PR-2 | [`PRIVATE_PAIRING_RULES_V2_PR2_CANONICAL_CONFLICT.md`](./PRIVATE_PAIRING_RULES_V2_PR2_CANONICAL_CONFLICT.md) |
+| PR-3 | [`PRIVATE_PAIRING_RULES_V2_PR3_RUNTIME.md`](./PRIVATE_PAIRING_RULES_V2_PR3_RUNTIME.md) |
 | Security | [`PRIVATE_PAIRING_RULES_V2_SECURITY.md`](./PRIVATE_PAIRING_RULES_V2_SECURITY.md) |
 | Migration | [`PRIVATE_PAIRING_RULES_V2_MIGRATION.md`](./PRIVATE_PAIRING_RULES_V2_MIGRATION.md) |
 | QA | [`PRIVATE_PAIRING_RULES_V2_QA.md`](./PRIVATE_PAIRING_RULES_V2_QA.md) |
-| Code module | `src/features/private-pairing-rules/` (extends Competition Core types) |
+| Code module | `src/features/private-pairing-rules/` (+ `runtime/`) |
 
 ---
 
@@ -282,8 +283,9 @@ Player exists & in scope; no self-link; no duplicate targets; hard feasibility; 
 | PR | Deliverable |
 |----|-------------|
 | PR-1 | Audit + these docs (done) |
-| PR-2 | Canonical types + conflict detector (**done** — logic only, no runtime wire-up) |
-| PR-3 | Unified runtime (hard/soft/explain/version) |
+| PR-2 | Canonical types + conflict detector (done) |
+| PR-3 | Unified runtime hard/soft/explain (**done**, flag-gated; teamPairingEngine + AI scoring) |
+| PR-4 | DB/RLS/RPC/audit — staging only |
 | PR-4 | DB/RLS/RPC/audit — staging only |
 | PR-5 | SUPER_ADMIN UI + simulator |
 | PR-6 | Legacy migration + parity |
