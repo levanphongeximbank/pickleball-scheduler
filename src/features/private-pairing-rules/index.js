@@ -74,3 +74,36 @@ export {
   evaluatePrivatePairingCandidate,
   evaluatePrivatePairingMatchOption,
 } from "./runtime/index.js";
+
+export {
+  PRIVATE_PAIRING_DB_CODE,
+  PRIVATE_PAIRING_TABLES,
+  PRIVATE_PAIRING_RPC,
+} from "./constants/dbCodes.js";
+
+export {
+  mapDbRuleToCanonical,
+  mapDbRuleSetPayload,
+} from "./repository/mapDbRuleToCanonical.js";
+
+export {
+  setPrivatePairingRpcClientForTests,
+  listPrivatePairingRuleSets,
+  getPrivatePairingRuleSet,
+  getActivePrivatePairingRulesForScope,
+  createPrivatePairingRuleSet,
+  createPrivatePairingRule as createPrivatePairingRuleViaRpc,
+  updatePrivatePairingRule as updatePrivatePairingRuleViaRpc,
+  disablePrivatePairingRule as disablePrivatePairingRuleViaRpc,
+  clonePrivatePairingRuleSetVersion,
+  activatePrivatePairingRuleSet as activatePrivatePairingRuleSetViaRpc,
+  rollbackPrivatePairingRuleSet,
+  listPrivatePairingAuditLogs,
+} from "./repository/privatePairingRulesRepository.js";
+
+export {
+  buildRuleSetHashPayload,
+  computeRuleSetContentHashFromDbRules,
+  activatePrivatePairingRuleSetWithPreflight,
+  loadActivePrivatePairingRulesForRuntime,
+} from "./services/privatePairingRulesService.js";
