@@ -1,0 +1,64 @@
+{
+  "reportId": "S1H_PLAYER_PORTAL_UX_QA",
+  "sprint": "Tournament V5 Sprint 1",
+  "batch": "S1-H",
+  "date": "2026-07-14",
+  "environment": "local",
+  "verdict": "PASS_PENDING_OWNER_REVIEW",
+  "gapsClosed": [
+    "S1-GAP-091",
+    "S1-GAP-092",
+    "S1-GAP-093",
+    "S1-GAP-094"
+  ],
+  "automatedTests": {
+    "individual-tournament-player-portal.test.js": {
+      "total": 8,
+      "passed": 8,
+      "cases": [
+        "T-S1-H01",
+        "T-S1-H02",
+        "T-S1-H03",
+        "T-S1-H04",
+        "T-S1-H05",
+        "v5 menu includes individual player portal route",
+        "standings panel uses VĐV labels",
+        "player portal page + public page exist"
+      ]
+    },
+    "s1SprintRegressionBundle": {
+      "total": 86,
+      "passed": 86,
+      "note": "S1-A through S1-H + tournament-engine + regression + v5-menu-audit"
+    }
+  },
+  "routes": [
+    "/tournament/my",
+    "/tournament/my/:tournamentId",
+    "/tournament/:tournamentId/public"
+  ],
+  "notifications": [
+    "match_assigned",
+    "schedule_changed",
+    "walkover_notice",
+    "result_published",
+    "tournament_completed"
+  ],
+  "manualChecklist": {
+    "status": "NOT_RUN",
+    "ownerSignOffRequired": true,
+    "items": [
+      "M1 Open /tournament/my while enrolled",
+      "M2 Upcoming matches + schedule tab",
+      "M3 Standings VĐV labels",
+      "M4 Bracket tab after draw publish",
+      "M5 Notifications unread → mark read",
+      "M6 Public page read-only",
+      "M7 Mobile 375px portal tabs scroll",
+      "M8 Organizer full journey smoke (test plan M1–M11)"
+    ]
+  },
+  "deployed": false,
+  "merged": false,
+  "sprintComplete": true
+}

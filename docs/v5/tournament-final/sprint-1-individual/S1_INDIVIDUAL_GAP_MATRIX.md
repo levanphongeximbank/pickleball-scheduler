@@ -144,14 +144,14 @@ Priority: **P0** = pilot blocker · **P1** = production blocker or core DoD · *
 |------|--------|--------|
 | BTC desktop | PARTIAL | — |
 | BTC mobile | PARTIAL | S1-GAP-090 |
-| VĐV mobile | NOT STARTED | S1-GAP-091 |
-| Trang công khai | NOT STARTED | S1-GAP-092 |
-| Empty / loading / error state | PARTIAL | S1-GAP-093 |
+| VĐV mobile | COMPLETE (S1-H portal) | S1-GAP-091 |
+| Trang công khai | COMPLETE (S1-H read-only) | S1-GAP-092 |
+| Empty / loading / error state | COMPLETE (S1-H) | S1-GAP-093 |
 | Confirmation dialog | PARTIAL | — |
 | Touch target | PARTIAL | — |
 | Responsive | PARTIAL | — |
 | Bracket readability | PARTIAL | — |
-| Bảng xếp hạng dễ hiểu | PARTIAL | S1-GAP-094 |
+| Bảng xếp hạng dễ hiểu | COMPLETE (S1-H VĐV labels) | S1-GAP-094 |
 
 ---
 
@@ -163,7 +163,7 @@ Priority: **P0** = pilot blocker · **P1** = production blocker or core DoD · *
 | Cross-tenant isolation | PARTIAL | — |
 | Organizer permission | PARTIAL | — |
 | Referee permission | PARTIAL | S1-GAP-100 |
-| Player self-scope | PARTIAL | S1-GAP-091 |
+| Player self-scope | COMPLETE (S1-H portal) | S1-GAP-091 |
 | Result correction permission | NOT STARTED | S1-GAP-067 |
 | Realtime | PARTIAL | S1-GAP-101 |
 | Reconnect / polling fallback | PARTIAL | S1-GAP-101 |
@@ -228,8 +228,10 @@ Priority: **P0** = pilot blocker · **P1** = production blocker or core DoD · *
 | **S1-GAP-076** | ~~STANDINGS_V2 shadow-only~~ **CLOSED S1-D** | Legacy sort in UI | `individualStandingsAdapter.js` | ✅ Canonical-primary when flags on; legacy fallback | T-S1-D03–D05 | None | No | Yes |
 | **S1-GAP-082** | Post-match legacy Elo not Rating V5 | Rating drift vs Pick_VN | `tournamentLifecycle.js` | Route finalize → Rating V5 RPC | Rating event tests | S1-GAP-083 | No | Yes |
 | **S1-GAP-083** | Rating idempotency flag-gated | Duplicate rating events | `ratingIdempotencyStore.js` | Default-on for certified events | Idempotency tests | S1-GAP-082 | No | Yes |
-| **S1-GAP-091** | No individual player mobile portal | VĐV không self-service | `TeamPortal.jsx` | Individual portal routes | Mobile E2E | S1-GAP-005 | No | Yes |
-| **S1-GAP-092** | No public spectator page | Không trang công khai bracket | — | Public read-only route | Public smoke | S1-GAP-303,502 | No | No |
+| **S1-GAP-091** | ~~No individual player mobile portal~~ **CLOSED S1-H** | VĐV không self-service | `IndividualPlayerPortalPage.jsx` | ✅ `/tournament/my` dashboard | T-S1-H01–H05 | S1-GAP-005 | No | Yes |
+| **S1-GAP-092** | ~~No public spectator page~~ **CLOSED S1-H** | Không trang công khai bracket | `IndividualTournamentPublicPage.jsx` | ✅ `/tournament/:id/public` read-only | portal public test | S1-GAP-303,502 | No | No |
+| **S1-GAP-093** | ~~Empty/loading/error paths~~ **CLOSED S1-H** | UX thiếu trạng thái | `TournamentUiState.jsx` | ✅ Shared empty/loading/error + a11y | portal tests | — | No | No |
+| **S1-GAP-094** | ~~Standings labels~~ **CLOSED S1-H** | "ĐỘI" confusing for individual | `BracketGroupStandingsPanel.jsx` | ✅ VĐV / Cặp labels | T-S1-H standings label | — | No | No |
 | **S1-GAP-101** | Referee polls 4s not realtime | Lag on scoreboard | `matchLiveSync.js` | TT6 pattern for individual live | Multi-device test | S1-GAP-062 | No | Yes |
 | **S1-GAP-102** | No version conflict on blob save | Last-write-wins | club blob save | Optimistic version like team | Version conflict tests | S1-GAP-001 | No | Yes |
 
@@ -247,8 +249,6 @@ Priority: **P0** = pilot blocker · **P1** = production blocker or core DoD · *
 | S1-GAP-075 | Configurable tied ranks | `rankStandingsRows` |
 | S1-GAP-084 | Reliability in tournament ops UI | Rating V5 |
 | S1-GAP-090 | Individual mobile QA (TT9 parity) | mobile UI |
-| S1-GAP-093 | Mock config load/error paths | config pages |
-| S1-GAP-094 | Standings labels ("ĐỘI" → VĐV) | `BracketGroupStandingsPanel.jsx` |
 | S1-GAP-103 | Offline score queue | `offlineQueue.js` |
 
 ### P3 / Document only

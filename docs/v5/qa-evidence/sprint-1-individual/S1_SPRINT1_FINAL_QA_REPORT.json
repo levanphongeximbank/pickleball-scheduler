@@ -1,0 +1,37 @@
+{
+  "reportId": "S1_SPRINT1_FINAL_QA",
+  "sprint": "Tournament V5 Sprint 1",
+  "scope": "Individual Tournament S1-A through S1-H",
+  "date": "2026-07-14",
+  "environment": "local",
+  "verdict": "PASS_PENDING_OWNER_REVIEW",
+  "batches": {
+    "S1-A": "PASS_PENDING_OWNER_REVIEW",
+    "S1-B": "PASS_PENDING_OWNER_REVIEW",
+    "S1-C": "PASS_PENDING_OWNER_REVIEW",
+    "S1-D": "PASS_PENDING_OWNER_REVIEW",
+    "S1-E": "PASS_PENDING_OWNER_REVIEW",
+    "S1-F": "PASS_PENDING_OWNER_REVIEW",
+    "S1-G": "PASS_PENDING_OWNER_REVIEW",
+    "S1-H": "PASS_PENDING_OWNER_REVIEW"
+  },
+  "automatedTests": {
+    "command": "node --test tests/individual-tournament-*.test.js tests/tournament-engine.test.js tests/tournament-regression.test.js tests/v5-menu-audit.test.js",
+    "total": 86,
+    "passed": 86,
+    "failed": 0
+  },
+  "v5MenuAudit": {
+    "coveragePercent": 100,
+    "live": 109,
+    "partial": 0,
+    "planned": 0
+  },
+  "stagingSmoke": {
+    "status": "NOT_RUN",
+    "checklist": "docs/v5/tournament-final/sprint-1-individual/S1_INDIVIDUAL_TEST_PLAN.md M1-M26"
+  },
+  "deployed": false,
+  "merged": false,
+  "production": false
+}
