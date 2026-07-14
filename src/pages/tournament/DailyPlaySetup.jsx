@@ -1,5 +1,6 @@
 import { useMemo, useState } from "react";
 import { Link as RouterLink, useNavigate, useParams } from "react-router-dom";
+import { useClubPlayerPool } from "../../features/club/hooks/useClubPlayerPool.js";
 
 import {
   Alert,
@@ -19,7 +20,6 @@ import {
   TextField,
   Typography,
 } from "@mui/material";
-import ArrowBackIcon from "@mui/icons-material/ArrowBack";
 import LockIcon from "@mui/icons-material/Lock";
 import LockOpenIcon from "@mui/icons-material/LockOpen";
 
@@ -27,12 +27,13 @@ import { getDirectorState, lockCourt, unlockCourt } from "../../ai/director.js";
 import { useClub } from "../../context/ClubContext.jsx";
 import { useAuth } from "../../context/AuthContext.jsx";
 import { canViewPlayerSkillLevel } from "../../auth/rbac.js";
-import { loadCourtsForClub, loadPlayersForClub } from "../../domain/clubStorage.js";
+import { loadCourtsForClub } from "../../domain/clubStorage.js";
 import {
   getTournament,
   setTournamentStatus,
   updateTournament,
 } from "../../domain/tournamentService.js";
+import { TOURNAMENT_MODE, TOURNAMENT_STATUS } from "../../models/tournament/index.js";
 import { getCourtDisplayName } from "../../models/court.js";
 import TournamentCourtSchedulePanel from "../../components/tournament/TournamentCourtSchedulePanel.jsx";
 import { formatOrganizerPlayerMeta } from "../../utils/skillLevelVisibility.js";
@@ -104,10 +105,7 @@ export default function DailyPlaySetup() {
     [activeClubId, tournamentId, localRevision]
   );
 
-  const players = useMemo(
-    () => loadPlayersForClub(activeClubId),
-    [activeClubId, localRevision]
-  );
+  const { players } = useClubPlayerPool(activeClubId, { revision: localRevision });
 
   const courts = useMemo(
     () => loadCourtsForClub(activeClubId),
