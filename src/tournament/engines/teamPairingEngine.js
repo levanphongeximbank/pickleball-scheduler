@@ -3,6 +3,10 @@ import { getPlayerGenderKey } from "../../models/player.js";
 import { EVENT_TYPE } from "../../models/tournament/constants.js";
 import { createEntryRecord } from "../../models/tournament/entry.js";
 import { optimizeTeamsWithConstraints } from "../../features/pairing-constraints/engines/constraintPairingEngine.js";
+import {
+  isPrivatePairingRuntimeEnabled,
+  runPrivatePairingRuntime,
+} from "../../features/private-pairing-rules/runtime/index.js";
 
 function playerRating(player) {
   return Number(player?.rating ?? player?.level ?? 3.5);
@@ -76,6 +80,7 @@ export function suggestTeamsFromPlayers(players = [], eventType, options = {}) {
   const filtered = filterPlayersForEventType(players, eventType);
   const mode = options.mode || "skill_controlled";
   const constraints = options.pairingConstraints || [];
+  const privateRules = options.privatePairingRules || [];
 
   let teams;
   if (eventType === EVENT_TYPE.MIXED_DOUBLE) {
@@ -87,8 +92,49 @@ export function suggestTeamsFromPlayers(players = [], eventType, options = {}) {
     });
   }
 
-  if (constraints.length === 0) {
+  if (constraints.length === 0 && privateRules.length === 0) {
     return teams;
+  }
+
+  if (isPrivatePairingRuntimeEnabled(options.envSource)) {
+    const runtime = runPrivatePairingRuntime({
+      players: filtered,
+      rules: privateRules,
+      legacyConstraints: constraints,
+      mixedDoubles: eventType === EVENT_TYPE.MIXED_DOUBLE,
+      context: {
+        teamSize: 2,
+        clubId: options.clubId,
+        tournamentId: options.tournamentId,
+        eventId: options.eventId,
+        competitionClass: options.competitionClass,
+        allowedByPublishedRules: options.allowedByPublishedRules,
+        contextTime: options.contextTime,
+        seed: options.seed,
+        ruleSetVersion: options.ruleSetVersion,
+      },
+      seed: options.seed ?? 1,
+      envSource: options.envSource,
+      maxCandidates: options.maxCandidates,
+      maxIterations: options.maxIterations,
+      history: options.pairingHistory,
+    });
+
+    options.privatePairingRuntime = runtime;
+    options.constraintWarnings = runtime.ok
+      ? (runtime.warnings || []).map((item) => item.code || item.messageKey || String(item))
+      : [runtime.errorCode || "NO_FEASIBLE_PAIRING"];
+    options.constraintEvaluation = {
+      ok: runtime.ok,
+      score: runtime.constraintScore,
+      hardViolations: runtime.ok ? [] : [{ message: runtime.errorCode }],
+      satisfied: runtime.softConstraintsSatisfied,
+    };
+
+    if (!runtime.ok || !runtime.selectedCandidate?.teams) {
+      return [];
+    }
+    return runtime.selectedCandidate.teams;
   }
 
   const playersById = new Map(filtered.map((player) => [String(player.id), player]));
