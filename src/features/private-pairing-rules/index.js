@@ -57,3 +57,20 @@ export {
 } from "./conflicts/detectPrivatePairingConflicts.js";
 
 export { timeRangesOverlap, scopesOverlap, rulesOverlapInContext } from "./conflicts/scopeTimeOverlap.js";
+
+export {
+  PRIVATE_PAIRING_RUNTIME_CODE,
+  PRIVATE_PAIRING_RUNTIME_VERSION,
+  isPrivatePairingRuntimeEnabled,
+  createSeededRng,
+  seededShuffle,
+  resolveActivePrivatePairingRules,
+  dedupeEquivalentRules,
+  evaluateHardPrivatePairingRules,
+  scoreSoftPrivatePairingRules,
+  generateTeamPairingCandidates,
+  createMatchCandidate,
+  runPrivatePairingRuntime,
+  evaluatePrivatePairingCandidate,
+  evaluatePrivatePairingMatchOption,
+} from "./runtime/index.js";

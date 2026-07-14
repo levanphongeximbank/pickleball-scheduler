@@ -1,0 +1,31 @@
+import {
+  isPrivatePairingRulesEnabled,
+  isUnifiedConstraintEngineEnabled,
+} from "../constants/codes.js";
+
+export const PRIVATE_PAIRING_RUNTIME_CODE = Object.freeze({
+  NO_FEASIBLE_PAIRING: "NO_FEASIBLE_PAIRING",
+  PAIRING_SEARCH_LIMIT_REACHED: "PAIRING_SEARCH_LIMIT_REACHED",
+  RULE_SET_CONFLICT: "RULE_SET_CONFLICT",
+  RULE_VALIDATION_FAILED: "RULE_VALIDATION_FAILED",
+  PRIVATE_RULE_BLOCKED_BY_POLICY: "PRIVATE_RULE_BLOCKED_BY_POLICY",
+  VIOLATES_MUST_PARTNER: "VIOLATES_MUST_PARTNER",
+  VIOLATES_MUST_NOT_PARTNER: "VIOLATES_MUST_NOT_PARTNER",
+  VIOLATES_MUST_OPPONENT: "VIOLATES_MUST_OPPONENT",
+  VIOLATES_MUST_NOT_OPPONENT: "VIOLATES_MUST_NOT_OPPONENT",
+  PLAYER_NOT_ELIGIBLE: "PLAYER_NOT_ELIGIBLE",
+  TEAM_CAPACITY_EXCEEDED: "TEAM_CAPACITY_EXCEEDED",
+});
+
+export const PRIVATE_PAIRING_RUNTIME_VERSION = "ppr-runtime-v1";
+
+/**
+ * Both feature flags must be ON for unified private pairing runtime.
+ * @param {Record<string, unknown>|undefined|null} [envSource]
+ * @returns {boolean}
+ */
+export function isPrivatePairingRuntimeEnabled(envSource) {
+  return (
+    isPrivatePairingRulesEnabled(envSource) && isUnifiedConstraintEngineEnabled(envSource)
+  );
+}
