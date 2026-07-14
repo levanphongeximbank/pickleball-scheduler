@@ -1,185 +1,94 @@
 import { useMemo, useState } from "react";
+import { Link as RouterLink, useSearchParams } from "react-router-dom";
 
-import {
-  Alert,
-  Box,
-  Button,
-  Paper,
-  Stack,
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableRow,
-  TextField,
-  Typography,
-} from "@mui/material";
+import { Alert, Button, Stack } from "@mui/material";
 
+import { useClub } from "../../context/ClubContext.jsx";
+import { useAuth } from "../../context/AuthContext.jsx";
 import {
-  addTeamToTournament,
-  initializeTeamTournamentData,
-} from "../../features/team-tournament/engines/teamTournamentEngine.js";
-import {
-  approveWithdrawal,
-  listPendingWithdrawals,
-  listWithdrawalHistory,
-  rejectWithdrawal,
-  requestWithdrawal,
-} from "../../features/team-tournament/engines/withdrawalEngine.js";
+  getTournament,
+  listTournaments,
+  updateTournament,
+} from "../../domain/tournamentService.js";
+import { isIndividualTournament, TOURNAMENT_ROUTES } from "../../config/tournamentRoutes.js";
 import TournamentConfigPageShell from "../../components/tournament/TournamentConfigPageShell.jsx";
+import IndividualTournamentSelector from "../../components/tournament/IndividualTournamentSelector.jsx";
+import WithdrawalManagementPanel from "../../components/tournament/WithdrawalManagementPanel.jsx";
 
-function buildDemoTeamData() {
-  let teamData = initializeTeamTournamentData();
-  teamData = addTeamToTournament(teamData, { id: "team-a", name: "Future Arena", playerIds: [] });
-  teamData = addTeamToTournament(teamData, { id: "team-b", name: "Elite Club", playerIds: [] });
-  return teamData;
-}
-
+/**
+ * Dedicated withdrawal route — individual loader (no team demo).
+ * Full results-ops hub also available at /tournament/awards?tab=withdrawal.
+ */
 export default function TournamentWithdrawalPage() {
-  const [teamData, setTeamData] = useState(() => buildDemoTeamData());
-  const [selectedTeamId, setSelectedTeamId] = useState("team-a");
-  const [reason, setReason] = useState("");
+  const [searchParams, setSearchParams] = useSearchParams();
+  const tournamentId = searchParams.get("tournamentId") || "";
+  const { activeClubId, revision, refreshClubs } = useClub();
+  const { user } = useAuth();
   const [message, setMessage] = useState(null);
 
-  const pending = useMemo(() => listPendingWithdrawals(teamData), [teamData]);
-  const history = useMemo(() => listWithdrawalHistory(teamData), [teamData]);
+  const tournaments = useMemo(
+    () => listTournaments(activeClubId).filter(isIndividualTournament),
+    [activeClubId, revision]
+  );
 
-  const submitRequest = () => {
-    const result = requestWithdrawal(teamData, {
-      teamId: selectedTeamId,
-      reason,
+  const tournament = useMemo(() => {
+    if (!tournamentId || !activeClubId) return null;
+    return getTournament(activeClubId, tournamentId);
+  }, [activeClubId, tournamentId, revision]);
+
+  const persistTournament = (nextTournament) => {
+    if (!activeClubId || !tournamentId || !nextTournament) return false;
+    const result = updateTournament(activeClubId, tournamentId, {
+      settings: nextTournament.settings,
+      events: nextTournament.events,
+      status: nextTournament.status,
     });
     if (!result.ok) {
-      setMessage({ type: "error", text: result.error });
-      return;
+      setMessage({ type: "error", text: result.error || "Không lưu được." });
+      return false;
     }
-    setTeamData(result.teamData);
-    setReason("");
-    setMessage({ type: "success", text: "Đã gửi yêu cầu rút lui." });
-  };
-
-  const approve = (withdrawalId) => {
-    const result = approveWithdrawal(teamData, withdrawalId);
-    if (!result.ok) {
-      setMessage({ type: "error", text: result.error });
-      return;
-    }
-    setTeamData(result.teamData);
-    setMessage({ type: "success", text: "Đã duyệt rút lui." });
-  };
-
-  const reject = (withdrawalId) => {
-    const result = rejectWithdrawal(teamData, withdrawalId, { reason: "Không đủ điều kiện" });
-    if (!result.ok) {
-      setMessage({ type: "error", text: result.error });
-      return;
-    }
-    setTeamData(result.teamData);
-    setMessage({ type: "info", text: "Đã từ chối yêu cầu." });
+    refreshClubs();
+    return true;
   };
 
   return (
     <TournamentConfigPageShell
       title="Xử lý rút lui / bỏ cuộc"
-      description="Tiếp nhận và duyệt yêu cầu rút lui của đội."
+      description="Rút lui trước/trong giải, chấn thương, thay thế — giải cá nhân."
       noCard
     >
+      <Stack direction="row" spacing={1} sx={{ mb: 2 }}>
+        <Button
+          component={RouterLink}
+          to={`${TOURNAMENT_ROUTES.awards}?tournamentId=${encodeURIComponent(tournamentId)}&tab=withdrawal`}
+          size="small"
+        >
+          Mở hub Kết quả & trao giải
+        </Button>
+      </Stack>
+
+      <IndividualTournamentSelector
+        tournaments={tournaments}
+        tournamentId={tournamentId}
+        onSelect={(id) => {
+          const next = new URLSearchParams(searchParams);
+          if (id) next.set("tournamentId", id);
+          else next.delete("tournamentId");
+          setSearchParams(next);
+        }}
+      />
+
       {message ? (
         <Alert severity={message.type} sx={{ mb: 2 }} onClose={() => setMessage(null)}>
           {message.text}
         </Alert>
       ) : null}
 
-      <Paper sx={{ p: 2, mb: 3 }}>
-        <Stack spacing={2} sx={{ maxWidth: 480 }}>
-          <TextField
-            select
-            label="Đội"
-            value={selectedTeamId}
-            onChange={(event) => setSelectedTeamId(event.target.value)}
-            SelectProps={{ native: true }}
-          >
-            {teamData.teams.map((team) => (
-              <option key={team.id} value={team.id}>
-                {team.name}
-              </option>
-            ))}
-          </TextField>
-          <TextField
-            label="Lý do"
-            multiline
-            minRows={2}
-            value={reason}
-            onChange={(event) => setReason(event.target.value)}
-          />
-          <Button variant="contained" onClick={submitRequest}>
-            Gửi yêu cầu rút lui
-          </Button>
-        </Stack>
-      </Paper>
-
-      <Typography variant="subtitle1" fontWeight={700} sx={{ mb: 1 }}>
-        Chờ duyệt ({pending.length})
-      </Typography>
-      <Paper sx={{ overflowX: "auto", mb: 3 }}>
-        <Table size="small">
-          <TableHead>
-            <TableRow>
-              <TableCell>Đội</TableCell>
-              <TableCell>Lý do</TableCell>
-              <TableCell>Thao tác</TableCell>
-            </TableRow>
-          </TableHead>
-          <TableBody>
-            {pending.length === 0 ? (
-              <TableRow>
-                <TableCell colSpan={3}>Không có yêu cầu chờ duyệt.</TableCell>
-              </TableRow>
-            ) : (
-              pending.map((item) => (
-                <TableRow key={item.id}>
-                  <TableCell>{item.teamId}</TableCell>
-                  <TableCell>{item.reason || "—"}</TableCell>
-                  <TableCell>
-                    <Stack direction="row" spacing={1}>
-                      <Button size="small" variant="contained" onClick={() => approve(item.id)}>
-                        Duyệt
-                      </Button>
-                      <Button size="small" variant="outlined" onClick={() => reject(item.id)}>
-                        Từ chối
-                      </Button>
-                    </Stack>
-                  </TableCell>
-                </TableRow>
-              ))
-            )}
-          </TableBody>
-        </Table>
-      </Paper>
-
-      <Typography variant="subtitle1" fontWeight={700} sx={{ mb: 1 }}>
-        Lịch sử
-      </Typography>
-      <Paper sx={{ overflowX: "auto" }}>
-        <Table size="small">
-          <TableHead>
-            <TableRow>
-              <TableCell>Đội</TableCell>
-              <TableCell>Trạng thái</TableCell>
-              <TableCell>Lý do</TableCell>
-            </TableRow>
-          </TableHead>
-          <TableBody>
-            {history.map((item) => (
-              <TableRow key={item.id}>
-                <TableCell>{item.teamId}</TableCell>
-                <TableCell>{item.status}</TableCell>
-                <TableCell>{item.reason || item.rejectReason || "—"}</TableCell>
-              </TableRow>
-            ))}
-          </TableBody>
-        </Table>
-      </Paper>
+      <WithdrawalManagementPanel
+        tournament={tournament}
+        actor={user}
+        onTournamentChange={persistTournament}
+      />
     </TournamentConfigPageShell>
   );
 }

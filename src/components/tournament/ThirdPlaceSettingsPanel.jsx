@@ -5,16 +5,9 @@ import {
   Button,
   Chip,
   FormControlLabel,
-  MenuItem,
   Paper,
   Stack,
   Switch,
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableRow,
-  TextField,
   Typography,
 } from "@mui/material";
 

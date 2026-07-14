@@ -42,6 +42,7 @@ import { buildIndividualAllGroupStandings } from "../../features/individual-tour
 import PlayerSeedStandingsPanel from "../../components/tournament/PlayerSeedStandingsPanel.jsx";
 import PlayerSchedulePanel from "../../components/tournament/PlayerSchedulePanel.jsx";
 import PlayerLiveResultsPanel from "../../components/tournament/PlayerLiveResultsPanel.jsx";
+import PlayerFinalResultsPanel from "../../components/tournament/PlayerFinalResultsPanel.jsx";
 import { getTournamentSetupPath } from "../../utils/tournamentNavigation.js";
 
 function resolveIsSingle(eventType) {
@@ -357,6 +358,12 @@ export default function IndividualRegistrationPage() {
       {tournament ? (
         <Box sx={{ mb: 2 }}>
           <PlayerLiveResultsPanel tournament={tournament} eventId={event?.id || ""} />
+        </Box>
+      ) : null}
+
+      {tournament && myEntry ? (
+        <Box sx={{ mb: 2 }}>
+          <PlayerFinalResultsPanel tournament={tournament} eventId={event?.id || ""} />
         </Box>
       ) : null}
 

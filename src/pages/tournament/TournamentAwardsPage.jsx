@@ -1,100 +1,157 @@
 import { useMemo, useState } from "react";
+import { useSearchParams } from "react-router-dom";
 
-import {
-  Box,
-  Chip,
-  Paper,
-  Stack,
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableRow,
-  Typography,
-} from "@mui/material";
-import EmojiEventsIcon from "@mui/icons-material/EmojiEvents";
+import { Alert, Box, Tab, Tabs, Typography } from "@mui/material";
 
+import { useClub } from "../../context/ClubContext.jsx";
+import { useAuth } from "../../context/AuthContext.jsx";
 import {
-  addTeamToTournament,
-  buildRoundRobinMatchups,
-  initializeTeamTournamentData,
-} from "../../features/team-tournament/engines/teamTournamentEngine.js";
-import { recordSubMatchResult } from "../../features/team-tournament/engines/teamResultEngine.js";
-import { getAwardsPreview } from "../../features/team-tournament/engines/awardsEngine.js";
+  getTournament,
+  listTournaments,
+  updateTournament,
+} from "../../domain/tournamentService.js";
+import { isIndividualTournament } from "../../config/tournamentRoutes.js";
 import TournamentConfigPageShell from "../../components/tournament/TournamentConfigPageShell.jsx";
+import IndividualTournamentSelector from "../../components/tournament/IndividualTournamentSelector.jsx";
+import WalkoverManagementPanel from "../../components/tournament/WalkoverManagementPanel.jsx";
+import WithdrawalManagementPanel from "../../components/tournament/WithdrawalManagementPanel.jsx";
+import ThirdPlaceSettingsPanel from "../../components/tournament/ThirdPlaceSettingsPanel.jsx";
+import AwardManagerPanel from "../../components/tournament/AwardManagerPanel.jsx";
+import CloseTournamentPanel from "../../components/tournament/CloseTournamentPanel.jsx";
+import PlayerFinalResultsPanel from "../../components/tournament/PlayerFinalResultsPanel.jsx";
 
-function buildDemoTeamData() {
-  let teamData = initializeTeamTournamentData();
-  teamData = addTeamToTournament(teamData, { id: "team-a", name: "Future Arena", playerIds: [] });
-  teamData = addTeamToTournament(teamData, { id: "team-b", name: "Elite Club", playerIds: [] });
-  teamData = addTeamToTournament(teamData, { id: "team-c", name: "Rising Stars", playerIds: [] });
-  teamData = buildRoundRobinMatchups(teamData);
-  return teamData;
-}
+const TABS = [
+  { id: "walkover", label: "Walkover" },
+  { id: "withdrawal", label: "Rút lui" },
+  { id: "third", label: "Hạng 3" },
+  { id: "awards", label: "Trao giải" },
+  { id: "close", label: "Đóng giải" },
+  { id: "player", label: "Kết quả VĐV" },
+];
 
 export default function TournamentAwardsPage() {
-  const [teamData] = useState(() => {
-    let data = buildDemoTeamData();
-    const matchup = data.matchups[0];
-    for (const subMatch of matchup.subMatches) {
-      data = recordSubMatchResult(data, {
-        matchupId: matchup.id,
-        subMatchId: subMatch.id,
-        winnerTeamId: matchup.teamAId,
-        score: { teamA: 11, teamB: 5 },
-      }).teamData;
-    }
-    return data;
-  });
+  const [searchParams, setSearchParams] = useSearchParams();
+  const tournamentId = searchParams.get("tournamentId") || "";
+  const tabParam = searchParams.get("tab") || "awards";
+  const { activeClubId, revision, refreshClubs } = useClub();
+  const { user } = useAuth();
+  const [message, setMessage] = useState(null);
+  const [tab, setTab] = useState(
+    TABS.some((t) => t.id === tabParam) ? tabParam : "awards"
+  );
 
-  const preview = useMemo(() => getAwardsPreview(teamData), [teamData]);
+  const tournaments = useMemo(
+    () => listTournaments(activeClubId).filter(isIndividualTournament),
+    [activeClubId, revision]
+  );
+
+  const tournament = useMemo(() => {
+    if (!tournamentId || !activeClubId) return null;
+    return getTournament(activeClubId, tournamentId);
+  }, [activeClubId, tournamentId, revision]);
+
+  const persistTournament = (nextTournament) => {
+    if (!activeClubId || !tournamentId || !nextTournament) return false;
+    const result = updateTournament(activeClubId, tournamentId, {
+      settings: nextTournament.settings,
+      events: nextTournament.events,
+      status: nextTournament.status,
+    });
+    if (!result.ok) {
+      setMessage({ type: "error", text: result.error || "Không lưu được." });
+      return false;
+    }
+    refreshClubs();
+    return true;
+  };
+
+  const handleSelect = (id) => {
+    const next = new URLSearchParams(searchParams);
+    if (id) next.set("tournamentId", id);
+    else next.delete("tournamentId");
+    setSearchParams(next);
+  };
+
+  const handleTab = (_e, value) => {
+    setTab(value);
+    const next = new URLSearchParams(searchParams);
+    next.set("tab", value);
+    setSearchParams(next);
+  };
 
   return (
     <TournamentConfigPageShell
-      title="Trao giải"
-      description="Bảng trao giải tự động từ BXH đồng đội."
+      title="Kết quả & trao giải (Individual)"
+      description="Walkover, rút lui, tranh hạng ba, trao giải, đóng giải — giải cá nhân."
       noCard
     >
-      <Stack spacing={2}>
-        {preview.awards.map((award) => (
-          <Paper key={award.key} sx={{ p: 2 }}>
-            <Stack direction="row" spacing={1} alignItems="center">
-              <EmojiEventsIcon color="warning" />
-              <Typography fontWeight={700}>{award.label}</Typography>
-              {award.auto ? <Chip size="small" label="Tự động" /> : null}
-            </Stack>
-            <Typography sx={{ mt: 1 }}>
-              {award.teamName || "Chưa xác định"}
-            </Typography>
-          </Paper>
-        ))}
-      </Stack>
+      <IndividualTournamentSelector
+        tournaments={tournaments}
+        tournamentId={tournamentId}
+        onSelect={handleSelect}
+      />
 
-      <Typography variant="subtitle1" fontWeight={700} sx={{ mt: 3, mb: 1 }}>
-        BXH tham chiếu
-      </Typography>
-      <Paper sx={{ overflowX: "auto" }}>
-        <Table size="small">
-          <TableHead>
-            <TableRow>
-              <TableCell>Hạng</TableCell>
-              <TableCell>Đội</TableCell>
-              <TableCell>Thắng</TableCell>
-              <TableCell>Thua</TableCell>
-            </TableRow>
-          </TableHead>
-          <TableBody>
-            {preview.standings.map((row) => (
-              <TableRow key={row.teamId}>
-                <TableCell>{row.rank}</TableCell>
-                <TableCell>{row.teamName}</TableCell>
-                <TableCell>{row.wins}</TableCell>
-                <TableCell>{row.losses}</TableCell>
-              </TableRow>
+      {message ? (
+        <Alert severity={message.type} sx={{ mb: 2 }} onClose={() => setMessage(null)}>
+          {message.text}
+        </Alert>
+      ) : null}
+
+      {!tournamentId ? (
+        <Alert severity="info">Chọn giải cá nhân (không dùng dữ liệu demo đồng đội).</Alert>
+      ) : (
+        <>
+          <Tabs value={tab} onChange={handleTab} variant="scrollable" scrollButtons="auto" sx={{ mb: 2 }}>
+            {TABS.map((item) => (
+              <Tab key={item.id} value={item.id} label={item.label} />
             ))}
-          </TableBody>
-        </Table>
-      </Paper>
+          </Tabs>
+          <Box>
+            {tab === "walkover" ? (
+              <WalkoverManagementPanel
+                tournament={tournament}
+                actor={user}
+                onTournamentChange={persistTournament}
+              />
+            ) : null}
+            {tab === "withdrawal" ? (
+              <WithdrawalManagementPanel
+                tournament={tournament}
+                actor={user}
+                onTournamentChange={persistTournament}
+              />
+            ) : null}
+            {tab === "third" ? (
+              <ThirdPlaceSettingsPanel
+                tournament={tournament}
+                actor={user}
+                onTournamentChange={persistTournament}
+              />
+            ) : null}
+            {tab === "awards" ? (
+              <AwardManagerPanel
+                tournament={tournament}
+                actor={user}
+                onTournamentChange={persistTournament}
+              />
+            ) : null}
+            {tab === "close" ? (
+              <CloseTournamentPanel
+                tournament={tournament}
+                actor={user}
+                onTournamentChange={persistTournament}
+              />
+            ) : null}
+            {tab === "player" ? (
+              <PlayerFinalResultsPanel tournament={tournament} />
+            ) : null}
+          </Box>
+          <Typography variant="caption" color="text.secondary" sx={{ mt: 2, display: "block" }}>
+            Audit: settings.resultsOps.auditLog · Awards: settings.awards · Withdrawals:
+            settings.withdrawals
+          </Typography>
+        </>
+      )}
     </TournamentConfigPageShell>
   );
 }
