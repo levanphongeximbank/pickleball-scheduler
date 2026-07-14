@@ -48,7 +48,7 @@ import {
   runPrivatePairingRuntime,
   SCOPES_REQUIRING_ID,
   updatePrivatePairingRule,
-} from "./privatePairingAdminApi.js";
+} from "../ui/privatePairingAdminApi.js";
 import {
   CONSTRAINT_TYPE_LABELS,
   CONSTRAINT_TYPE_OPTIONS,
@@ -64,7 +64,7 @@ import {
   SEVERITY_OPTIONS,
   STATUS_CHIP_COLOR,
   VISIBILITY_OPTIONS,
-} from "./privatePairingAdminHelpers.js";
+} from "../ui/privatePairingAdminHelpers.js";
 
 function errMsg(result) {
   return result?.message || result?.code || "Thao tác thất bại";
