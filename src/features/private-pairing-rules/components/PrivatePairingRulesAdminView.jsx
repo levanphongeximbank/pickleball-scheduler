@@ -29,10 +29,13 @@ import {
 import AdminPanelSettingsIcon from "@mui/icons-material/AdminPanelSettings";
 import RefreshIcon from "@mui/icons-material/Refresh";
 
+import ClubSwitcher from "../../../components/ClubSwitcher.jsx";
+import TenantSwitcher from "../../../components/TenantSwitcher.jsx";
 import { useAuth } from "../../../context/AuthContext.jsx";
 import { useClub } from "../../../context/ClubContext.jsx";
 import { useTenant } from "../../../context/TenantContext.jsx";
 import { loadPlayersForClub } from "../../../domain/clubStorage.js";
+import { getExplicitTenantIdForClub } from "../../tenant/index.js";
 import SuperAdminFeatureGate from "../../pairing-constraints/components/SuperAdminFeatureGate.jsx";
 import {
   activatePrivatePairingRuleSetWithPreflight,
@@ -44,6 +47,7 @@ import {
   isPrivatePairingRulesEnabled,
   listPrivatePairingAuditLogs,
   listPrivatePairingRuleSets,
+  PRIVATE_PAIRING_SCOPE,
   rollbackPrivatePairingRuleSet,
   runPrivatePairingRuntime,
   SCOPES_REQUIRING_ID,
@@ -68,6 +72,35 @@ import {
 
 function errMsg(result) {
   return result?.message || result?.code || "Thao tác thất bại";
+}
+
+/** RPC always requires tenant_id — SYSTEM/GLOBAL without tenant is not allowed. */
+const SYSTEM_SCOPE_ALLOWED_WITHOUT_TENANT = false;
+
+const NO_CLUB_TENANT_MESSAGE = "Vui lòng chọn CLB trước khi tạo Rule Set.";
+
+function resolveAdminTenantId(currentTenantId, activeClubId) {
+  const fromTenant = String(currentTenantId || "").trim();
+  if (fromTenant) return fromTenant;
+  const fromClub = String(getExplicitTenantIdForClub(activeClubId) || "").trim();
+  return fromClub || null;
+}
+
+function resolveCreateScopeId(scopeType, formScopeId, resolvedTenantId, activeClubId) {
+  const manual = String(formScopeId || "").trim();
+  if (manual) return manual;
+
+  if (scopeType === PRIVATE_PAIRING_SCOPE.CLUB) {
+    // Product: CLB scope auto-fills scope_id from tenant context (no manual input).
+    return String(resolvedTenantId || "").trim() || null;
+  }
+  if (scopeType === PRIVATE_PAIRING_SCOPE.TENANT) {
+    return String(resolvedTenantId || "").trim() || null;
+  }
+  if (SCOPES_REQUIRING_ID.includes(scopeType)) {
+    return String(activeClubId || "").trim() || null;
+  }
+  return null;
 }
 
 function RuleSetStatusChip({ status }) {
@@ -115,6 +148,32 @@ function PrivatePairingRulesAdminInner() {
   const [simulatorOut, setSimulatorOut] = useState(null);
 
   const featureOn = isPrivatePairingRulesEnabled();
+
+  const resolvedTenantId = useMemo(
+    () => resolveAdminTenantId(currentTenantId, activeClubId),
+    [currentTenantId, activeClubId]
+  );
+
+  /** SYSTEM == GLOBAL in scope enum. RPC still requires tenant_id. */
+  const systemScopeAllowed =
+    SYSTEM_SCOPE_ALLOWED_WITHOUT_TENANT || Boolean(resolvedTenantId);
+
+  const createScopeId = useMemo(
+    () =>
+      resolveCreateScopeId(
+        createForm.scopeType,
+        createForm.scopeId,
+        resolvedTenantId,
+        activeClubId
+      ),
+    [createForm.scopeType, createForm.scopeId, resolvedTenantId, activeClubId]
+  );
+
+  const canCreateRuleSet =
+    Boolean(resolvedTenantId) &&
+    Boolean(String(createForm.name || "").trim()) &&
+    (createForm.scopeType !== PRIVATE_PAIRING_SCOPE.GLOBAL || systemScopeAllowed) &&
+    (!SCOPES_REQUIRING_ID.includes(createForm.scopeType) || Boolean(createScopeId));
 
   const players = useMemo(() => {
     try {
@@ -179,6 +238,21 @@ function PrivatePairingRulesAdminInner() {
   useEffect(() => {
     if (featureOn) refreshList();
   }, [featureOn, refreshList]);
+
+  useEffect(() => {
+    if (!resolvedTenantId) return;
+    if (error && /tenant_id\s*required/i.test(String(error))) {
+      setError(null);
+    }
+  }, [resolvedTenantId, error]);
+
+  useEffect(() => {
+    if (!createOpen) return;
+    if (createForm.scopeType !== PRIVATE_PAIRING_SCOPE.CLUB) return;
+    if (String(createForm.scopeId || "").trim()) return;
+    if (!resolvedTenantId) return;
+    setCreateForm((f) => ({ ...f, scopeId: resolvedTenantId }));
+  }, [createOpen, createForm.scopeType, createForm.scopeId, resolvedTenantId]);
 
   useEffect(() => {
     if (selectedRuleSetId) {
@@ -325,18 +399,51 @@ function PrivatePairingRulesAdminInner() {
     await refreshAudit(selectedRuleSetId);
   };
 
+  const openCreateDialog = () => {
+    setCreateForm({
+      name: "",
+      description: "",
+      scopeType: PRIVATE_PAIRING_SCOPE.CLUB,
+      scopeId: resolvedTenantId || "",
+      reason: "create-rule-set",
+    });
+    setCreateOpen(true);
+  };
+
   const handleCreateRuleSet = async () => {
     setError(null);
-    const needsId = SCOPES_REQUIRING_ID.includes(createForm.scopeType);
-    const scopeId = needsId
-      ? createForm.scopeId || activeClubId || null
-      : createForm.scopeId || null;
+    if (!resolvedTenantId) {
+      setError(NO_CLUB_TENANT_MESSAGE);
+      return;
+    }
+    if (
+      createForm.scopeType === PRIVATE_PAIRING_SCOPE.GLOBAL &&
+      !systemScopeAllowed
+    ) {
+      setError(
+        "Scope GLOBAL (toàn hệ thống) không dùng được khi thiếu tenant_id. Chọn CLB/tenant trước."
+      );
+      return;
+    }
+
+    const scopeId = resolveCreateScopeId(
+      createForm.scopeType,
+      createForm.scopeId,
+      resolvedTenantId,
+      activeClubId
+    );
+    if (SCOPES_REQUIRING_ID.includes(createForm.scopeType) && !scopeId) {
+      setError(NO_CLUB_TENANT_MESSAGE);
+      return;
+    }
+
     const result = await createPrivatePairingRuleSet({
       name: createForm.name,
       description: createForm.description || null,
       scopeType: createForm.scopeType,
-      scopeId,
-      tenantId: currentTenantId || null,
+      scopeId:
+        createForm.scopeType === PRIVATE_PAIRING_SCOPE.GLOBAL ? null : scopeId,
+      tenantId: resolvedTenantId,
       reason: createForm.reason || "create-rule-set",
     });
     if (!result.ok) {
@@ -443,6 +550,28 @@ function PrivatePairingRulesAdminInner() {
         Actor: {user?.email || user?.id || "—"}.
       </Typography>
 
+      {!resolvedTenantId ? (
+        <Alert severity="warning" sx={{ mb: 1 }}>
+          <Typography variant="body2" sx={{ mb: 1 }}>
+            {NO_CLUB_TENANT_MESSAGE}
+          </Typography>
+          <Stack direction={{ xs: "column", sm: "row" }} spacing={1}>
+            <TenantSwitcher variant="context" minWidth={220} />
+            <ClubSwitcher variant="context" minWidth={200} />
+          </Stack>
+        </Alert>
+      ) : (
+        <Alert severity="info" sx={{ mb: 1 }}>
+          Tenant: <code>{resolvedTenantId}</code>
+          {activeClubId ? (
+            <>
+              {" "}
+              · CLB: <code>{activeClubId}</code>
+            </>
+          ) : null}
+        </Alert>
+      )}
+
       {error && (
         <Alert severity="error" sx={{ mb: 1 }} onClose={() => setError(null)}>
           {error}
@@ -494,7 +623,11 @@ function PrivatePairingRulesAdminInner() {
           <Button startIcon={<RefreshIcon />} onClick={refreshList} disabled={loading}>
             Làm mới
           </Button>
-          <Button variant="contained" onClick={() => setCreateOpen(true)}>
+          <Button
+            variant="contained"
+            onClick={openCreateDialog}
+            disabled={!resolvedTenantId}
+          >
             Tạo Rule Set
           </Button>
         </Stack>
@@ -811,6 +944,17 @@ function PrivatePairingRulesAdminInner() {
         <DialogTitle>Tạo Rule Set</DialogTitle>
         <DialogContent>
           <Stack spacing={1.5} sx={{ mt: 1 }}>
+            {!resolvedTenantId && (
+              <Alert severity="warning">
+                <Typography variant="body2" sx={{ mb: 1 }}>
+                  {NO_CLUB_TENANT_MESSAGE}
+                </Typography>
+                <Stack direction={{ xs: "column", sm: "row" }} spacing={1}>
+                  <TenantSwitcher variant="context" minWidth={220} />
+                  <ClubSwitcher variant="context" minWidth={200} />
+                </Stack>
+              </Alert>
+            )}
             <TextField
               label="Tên"
               value={createForm.name}
@@ -829,25 +973,72 @@ function PrivatePairingRulesAdminInner() {
               <Select
                 label="Scope"
                 value={createForm.scopeType}
-                onChange={(e) => setCreateForm((f) => ({ ...f, scopeType: e.target.value }))}
+                onChange={(e) => {
+                  const nextScope = e.target.value;
+                  setCreateForm((f) => ({
+                    ...f,
+                    scopeType: nextScope,
+                    scopeId:
+                      nextScope === PRIVATE_PAIRING_SCOPE.CLUB ||
+                      nextScope === PRIVATE_PAIRING_SCOPE.TENANT
+                        ? f.scopeId || resolvedTenantId || ""
+                        : nextScope === PRIVATE_PAIRING_SCOPE.GLOBAL
+                          ? ""
+                          : f.scopeId,
+                  }));
+                }}
               >
-                {SCOPE_OPTIONS.map((s) => (
-                  <MenuItem key={s} value={s}>
-                    {SCOPE_LABELS[s] || s}
-                  </MenuItem>
-                ))}
+                {SCOPE_OPTIONS.map((s) => {
+                  const isSystemScope = s === PRIVATE_PAIRING_SCOPE.GLOBAL;
+                  const disabled = isSystemScope && !systemScopeAllowed;
+                  return (
+                    <MenuItem key={s} value={s} disabled={disabled}>
+                      {SCOPE_LABELS[s] || s}
+                      {disabled
+                        ? " — cần chọn CLB/tenant (RPC bắt buộc tenant_id)"
+                        : ""}
+                    </MenuItem>
+                  );
+                })}
               </Select>
             </FormControl>
+            {!systemScopeAllowed && (
+              <Alert severity="info">
+                Scope GLOBAL (toàn hệ thống / SYSTEM) không khả dụng khi thiếu tenant —
+                RPC PR-4 luôn yêu cầu <code>tenant_id</code>. Chọn CLB hoặc tenant trước.
+              </Alert>
+            )}
+            {createForm.scopeType === PRIVATE_PAIRING_SCOPE.CLUB ? (
+              <TextField
+                label="Scope ID (CLB)"
+                value={createScopeId || ""}
+                helperText="Tự điền từ tenant đang chọn — không cần nhập tay."
+                fullWidth
+                InputProps={{ readOnly: true }}
+              />
+            ) : createForm.scopeType !== PRIVATE_PAIRING_SCOPE.GLOBAL ? (
+              <TextField
+                label="Scope ID"
+                helperText={
+                  SCOPES_REQUIRING_ID.includes(createForm.scopeType)
+                    ? `Bắt buộc — gợi ý: ${createScopeId || activeClubId || resolvedTenantId || "—"}`
+                    : "Tùy scope"
+                }
+                value={createForm.scopeId}
+                onChange={(e) => setCreateForm((f) => ({ ...f, scopeId: e.target.value }))}
+                fullWidth
+              />
+            ) : null}
             <TextField
-              label="Scope ID"
+              label="Tenant ID"
+              value={resolvedTenantId || ""}
               helperText={
-                SCOPES_REQUIRING_ID.includes(createForm.scopeType)
-                  ? `Bắt buộc — mặc định gợi ý CLB: ${activeClubId || "—"}`
-                  : "Tùy scope"
+                resolvedTenantId
+                  ? "Tự lấy từ tenant / CLB đang chọn."
+                  : NO_CLUB_TENANT_MESSAGE
               }
-              value={createForm.scopeId}
-              onChange={(e) => setCreateForm((f) => ({ ...f, scopeId: e.target.value }))}
               fullWidth
+              InputProps={{ readOnly: true }}
             />
             <TextField
               label="Lý do audit"
@@ -859,7 +1050,7 @@ function PrivatePairingRulesAdminInner() {
         </DialogContent>
         <DialogActions>
           <Button onClick={() => setCreateOpen(false)}>Hủy</Button>
-          <Button variant="contained" onClick={handleCreateRuleSet} disabled={!createForm.name}>
+          <Button variant="contained" onClick={handleCreateRuleSet} disabled={!canCreateRuleSet}>
             Tạo
           </Button>
         </DialogActions>
