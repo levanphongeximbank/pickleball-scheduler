@@ -44,10 +44,11 @@ Deprecate reliance on unused `platform.pairing_override` for this feature; map o
 
 | Layer | Requirement | PR |
 |-------|-------------|----|
-| Sidebar / menu | Visible only with `.view` | PR-5 |
-| Route `/admin/ai-pairing/private-rules` | Guard → `403_FORBIDDEN` | PR-5 |
-| Component | Fail-closed gate | PR-5 |
-| Service (client) | Permission helper; no-op/deny | PR-5 |
+| Sidebar / menu | Visible only with `.view` + `requiresFeature: privatePairingRules` | **PR-5 done** |
+| Route `/admin/ai-pairing/private-rules` | `ROUTE_PERMISSIONS` + SuperAdminRouteGuard → `403_FORBIDDEN` | **PR-5 done** |
+| Component | Fail-closed gate | **PR-5 done** |
+| Service (client) | `privatePairingPermissions.js` helpers | **PR-5 done** |
+
 | RPC/API | AuthZ on every mutate & read | PR-4 |
 | Supabase RLS | Deny all except SUPER_ADMIN (and service role migrations) | PR-4 |
 | Realtime | Do not subscribe clients to private rule tables | PR-4 |

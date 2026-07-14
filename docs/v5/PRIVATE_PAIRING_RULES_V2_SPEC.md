@@ -150,6 +150,8 @@ EVENT_OPERATION | SPECIAL_GUEST | OTHER
 
 ## 10. SUPER_ADMIN UI
 
+Implemented in PR-5 on worktree path (see `PRIVATE_PAIRING_RULES_V2_PR5_UI.md`). Route `/admin/ai-pairing/private-rules`, panels for list/editor/conflict/version/simulation/audit. Simulation is read-only Top N (PR-4.5); **no Apply-to-live**.
+
 - Route: `/admin/ai-pairing/private-rules`
 - Menu: Quản trị hệ thống → AI & Ghép cặp → Quy tắc ghép cặp riêng
 
