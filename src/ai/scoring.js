@@ -7,6 +7,10 @@ Decision Engine
 
 import { AI_CONFIG } from "./config.js";
 import { evaluateLegacyAiPairScore } from "../features/competition-core/constraints/adapters/constraintsEvaluationBridge.js";
+import {
+  evaluatePrivatePairingMatchOption,
+  isPrivatePairingRuntimeEnabled,
+} from "../features/private-pairing-rules/runtime/index.js";
 
 function getTeamTotal(team) {
   return team.reduce(
@@ -245,6 +249,7 @@ function isBlockedByFounderAvoid(policy, allPolicies) {
 
 function calculatePolicyScore(option = {}, context = {}) {
   const policies = context.policies || [];
+  const skipFounderHardPenalty = isPrivatePairingRuntimeEnabled(context.envSource);
 
   return policies.reduce((score, policy) => {
     if (!policy || policy.enabled === false) {
@@ -253,6 +258,10 @@ function calculatePolicyScore(option = {}, context = {}) {
 
     if (policy.type === "prefer_teammate") {
       if (policy.source !== "founder" && isBlockedByFounderAvoid(policy, policies)) {
+        return score;
+      }
+      // When unified private pairing runtime is ON, founder prefer is scored there.
+      if (skipFounderHardPenalty && policy.source === "founder") {
         return score;
       }
 
@@ -286,6 +295,10 @@ function calculatePolicyScore(option = {}, context = {}) {
     }
 
     if (policy.type === "avoid_teammate") {
+      if (skipFounderHardPenalty && policy.source === "founder") {
+        return score;
+      }
+
       const hasPair = policy.playerA && policy.playerB;
       const inTeamAPlayerA = option.teamA?.some((player) => player.id === policy.playerA);
       const inTeamAPlayerB = option.teamA?.some((player) => player.id === policy.playerB);
@@ -316,10 +329,69 @@ function calculatePolicyScore(option = {}, context = {}) {
   }, 0);
 }
 
+function founderPoliciesToLegacyConstraints(policies = []) {
+  return (policies || [])
+    .filter((policy) => policy && policy.enabled !== false && policy.source === "founder")
+    .map((policy, index) => ({
+      id: policy.id || policy.sourceId || `founder-policy-${index + 1}`,
+      type: policy.type === "avoid_teammate" ? "avoid_partner" : "prefer_partner",
+      mode: policy.type === "avoid_teammate" && policy.priority === "HIGH" ? "hard" : "soft",
+      anchorPlayerId: policy.playerA,
+      targetPlayerIds: [policy.playerB],
+      enabled: true,
+    }));
+}
+
 export function calculatePairScore(
   option,
   context = {}
 ) {
+  let privateConstraintScore = 0;
+  let privateMeta = null;
+
+  if (isPrivatePairingRuntimeEnabled(context.envSource)) {
+    const legacyFromPolicies = founderPoliciesToLegacyConstraints(context.policies);
+    const privateEval = evaluatePrivatePairingMatchOption(option, {
+      envSource: context.envSource,
+      rules: context.privatePairingRules,
+      legacyConstraints:
+        context.legacyPairingConstraints ||
+        context.founderPairingConstraints ||
+        legacyFromPolicies,
+      context: context.privatePairingContext || {
+        clubId: context.clubId,
+        tournamentId: context.tournamentId,
+        competitionClass: context.competitionClass,
+        allowedByPublishedRules: context.allowedByPublishedRules,
+        contextTime: context.contextTime,
+      },
+      history: context.privatePairingHistory || context.history,
+    });
+    privateMeta = privateEval;
+    if (privateEval.rejected) {
+      const teamATotal = getTeamTotal(option.teamA);
+      const teamBTotal = getTeamTotal(option.teamB);
+      const diff = Math.abs(teamATotal - teamBTotal);
+      return {
+        totalScore: Number.NEGATIVE_INFINITY,
+        levelScore: 0,
+        historyScore: 0,
+        waitingScore: 0,
+        ruleScore: 0,
+        policyScore: 0,
+        competitionScore: 0,
+        constraintScore: 0,
+        teamATotal,
+        teamBTotal,
+        diff,
+        rejected: true,
+        rejectionCodes: privateEval.rejectionCodes,
+        privatePairing: privateEval,
+      };
+    }
+    privateConstraintScore = Number(privateEval.constraintScore) || 0;
+  }
+
   const bridged = evaluateLegacyAiPairScore(option, context, {
     levelDiffAllowed: AI_CONFIG.thresholds.levelDiffAllowed,
     envSource: context.envSource,
@@ -340,10 +412,12 @@ export function calculatePairScore(
         ruleScore: 0,
         policyScore: 0,
         competitionScore: 0,
+        constraintScore: privateConstraintScore,
         teamATotal,
         teamBTotal,
         diff,
         decisionTrace: bridged.trace,
+        privatePairing: privateMeta,
       };
     }
 
@@ -354,15 +428,23 @@ export function calculatePairScore(
 
     return {
       ...legacy,
-      totalScore: legacy.totalScore + bridged.result.canonicalSoftDelta,
+      totalScore: legacy.totalScore + bridged.result.canonicalSoftDelta + privateConstraintScore,
       policyScore: bridged.result.canonicalSoftDelta,
+      constraintScore: privateConstraintScore,
       ruleScore: 100,
       competitionScore: 100,
       decisionTrace: bridged.trace,
+      privatePairing: privateMeta,
     };
   }
 
-  return bridged.result;
+  const result = bridged.result;
+  return {
+    ...result,
+    totalScore: (result.totalScore || 0) + privateConstraintScore,
+    constraintScore: privateConstraintScore,
+    privatePairing: privateMeta,
+  };
 }
 
 function calculatePairScoreLegacy(
