@@ -1,0 +1,21 @@
+{
+  "phase": "R2-2F",
+  "branch": "feature/referee-v5-rally-scoring",
+  "head": "6c1600e28ea1bcef5fa014ce3e3b859f8d24a834",
+  "requiredCommit": "6c1600e28ea1bcef5fa014ce3e3b859f8d24a834",
+  "headMatchesRequired": true,
+  "workingTreeClean": false,
+  "noteWorkingTreeDirtyAllowedForR22FArtifacts": true,
+  "originHasCommit": true,
+  "stagingRef": "qyewbxjsiiyufanzcjcq",
+  "productionRef": "expuvcohlcjzvrrauvud",
+  "stagingUrlIncludesStaging": true,
+  "stagingUrlIncludesProduction": false,
+  "credentials": {
+    "SUPABASE_ACCESS_TOKEN": "PRESENT",
+    "STAGING_SUPABASE_ANON_KEY": "PRESENT",
+    "STAGING_SUPABASE_SERVICE_ROLE_KEY": "PRESENT"
+  },
+  "envFilesGitignored": true,
+  "timestamp": "2026-07-14T00:29:05.091Z"
+}

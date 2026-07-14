@@ -31,7 +31,7 @@ export function useRefereeRemoteMatchController({
   const [connectionMode, setConnectionMode] = useState("remote");
   const [loaded, setLoaded] = useState(false);
 
-  const resolvedTenantId = REFEREE_V5_STAGING.TENANT_A;
+  const resolvedTenantId = fixture.tenantId || REFEREE_V5_STAGING.TENANT_A;
   const resolvedTournamentId = tournamentId || fixture.tournamentId;
   const resolvedMatchId = matchId || fixture.matchId;
   const edgeBaseUrl = getRefereeV5EdgeBaseUrl();

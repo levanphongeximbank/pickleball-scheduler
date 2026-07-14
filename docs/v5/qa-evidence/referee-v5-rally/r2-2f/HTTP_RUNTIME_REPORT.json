@@ -1,0 +1,137 @@
+{
+  "stagingRef": "qyewbxjsiiyufanzcjcq",
+  "endpoint": "https://qyewbxjsiiyufanzcjcq.supabase.co/functions/v1/referee-v5-match",
+  "results": [
+    {
+      "id": "http_01_no_auth_rejected",
+      "pass": true,
+      "expected": 401,
+      "actual": 401
+    },
+    {
+      "id": "http_02_invalid_jwt_rejected",
+      "pass": true,
+      "expected": "401/err",
+      "actual": "401/UNAUTHORIZED_LEGACY_JWT"
+    },
+    {
+      "id": "http_03_assigned_referee_accepted",
+      "pass": true,
+      "expected": true,
+      "actual": true
+    },
+    {
+      "id": "http_04_unassigned_rejected",
+      "pass": true,
+      "expected": "REFEREE_NOT_ASSIGNED",
+      "actual": "REFEREE_NOT_ASSIGNED"
+    },
+    {
+      "id": "http_05_revoked_rejected",
+      "pass": true,
+      "expected": "ASSIGNMENT_REVOKED",
+      "actual": "ASSIGNMENT_REVOKED"
+    },
+    {
+      "id": "http_06_expired_rejected",
+      "pass": true,
+      "expected": "ASSIGNMENT_EXPIRED",
+      "actual": "ASSIGNMENT_EXPIRED"
+    },
+    {
+      "id": "http_07_missing_format_rejected",
+      "pass": true,
+      "expected": "SCORING_FORMAT_REQUIRED",
+      "actual": "SCORING_FORMAT_REQUIRED"
+    },
+    {
+      "id": "http_08_unsupported_variant_rejected",
+      "pass": true,
+      "expected": "UNSUPPORTED_SCORING_VARIANT",
+      "actual": "UNSUPPORTED_SCORING_VARIANT"
+    },
+    {
+      "id": "http_09_singles_rally_rejected",
+      "pass": true,
+      "expected": "UNSUPPORTED_SCORING_VARIANT",
+      "actual": "UNSUPPORTED_SCORING_VARIANT"
+    },
+    {
+      "id": "http_10_normal_scoring",
+      "pass": true,
+      "expected": 1,
+      "actual": 1
+    },
+    {
+      "id": "http_11_service_possession",
+      "pass": true,
+      "expected": "team-b",
+      "actual": "team-b"
+    },
+    {
+      "id": "http_12_positions",
+      "pass": true,
+      "expected": 2,
+      "actual": 2
+    },
+    {
+      "id": "http_13_server_receiver",
+      "pass": true,
+      "expected": true,
+      "actual": "C/A"
+    },
+    {
+      "id": "http_14_switch_ends",
+      "pass": true,
+      "expected": "swapped",
+      "actual": "FAR_END/NEAR_END"
+    },
+    {
+      "id": "http_15_undo",
+      "pass": true,
+      "expected": true,
+      "actual": true
+    },
+    {
+      "id": "http_16_stale_version",
+      "pass": true,
+      "expected": "MATCH_STATE_CONFLICT",
+      "actual": "MATCH_STATE_CONFLICT"
+    },
+    {
+      "id": "http_17_idempotent_same",
+      "pass": true,
+      "expected": true,
+      "actual": true
+    },
+    {
+      "id": "http_18_idempotent_mismatch",
+      "pass": true,
+      "expected": "IDEMPOTENCY_KEY_REUSE_MISMATCH",
+      "actual": "IDEMPOTENCY_KEY_REUSE_MISMATCH"
+    },
+    {
+      "id": "http_19_finalize",
+      "pass": true,
+      "expected": true,
+      "actual": true
+    },
+    {
+      "id": "http_19b_finalize_retry",
+      "pass": true,
+      "expected": true,
+      "actual": true
+    },
+    {
+      "id": "http_20_post_finalize_blocked",
+      "pass": true,
+      "expected": "MATCH_LOCKED",
+      "actual": "MATCH_LOCKED"
+    }
+  ],
+  "summary": {
+    "pass": 21,
+    "total": 21
+  },
+  "timestamp": "2026-07-14T00:32:01.318Z"
+}
