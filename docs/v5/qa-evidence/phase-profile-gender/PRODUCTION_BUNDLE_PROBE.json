@@ -1,0 +1,42 @@
+{
+  "base": "https://pickleball-scheduler-eight.vercel.app",
+  "scripts": [
+    "/assets/index-DOVupvlT.js"
+  ],
+  "chunks": [
+    {
+      "asset": "/assets/AthleteSelfProfilePage-BNynzIA9",
+      "status": 200,
+      "bytes": 5271,
+      "hasMaleFemaleOther": false,
+      "hasNormalize": false,
+      "hasProfileReady": false,
+      "hasLegacyNamValue": false
+    },
+    {
+      "asset": "/assets/AthleteSelfProfilePage-BNynzIA9.js",
+      "status": 200,
+      "bytes": 9955,
+      "hasMaleFemaleOther": false,
+      "hasNormalize": false,
+      "hasProfileReady": true,
+      "hasLegacyNamValue": false
+    },
+    {
+      "asset": "/assets/AthleteSelfProfilePage-DQ7srz-M.js",
+      "status": 404,
+      "bytes": 79,
+      "hasMaleFemaleOther": false,
+      "hasNormalize": false,
+      "hasProfileReady": false,
+      "hasLegacyNamValue": false
+    }
+  ],
+  "lazyCandidates": [
+    "/assets/AthleteSelfProfilePage-BNynzIA9",
+    "/assets/AthleteSelfProfilePage-BNynzIA9.js"
+  ],
+  "localDist": [
+    "AthleteSelfProfilePage-DQ7srz-M.js"
+  ]
+}

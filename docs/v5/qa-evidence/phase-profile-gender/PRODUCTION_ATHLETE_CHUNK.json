@@ -1,0 +1,26 @@
+{
+  "asset": "/assets/AthleteSelfProfilePage-BNynzIA9.js",
+  "bytes": 9955,
+  "includes": {
+    "male": false,
+    "female": false,
+    "other": false,
+    "Nam": true,
+    "profileReady": true,
+    "gioiTinh": true
+  },
+  "sampleMatches": [
+    {
+      "t": "Nam",
+      "i": 5511
+    },
+    {
+      "t": "Nam",
+      "i": 5912
+    },
+    {
+      "t": "Nam",
+      "i": 7310
+    }
+  ]
+}
