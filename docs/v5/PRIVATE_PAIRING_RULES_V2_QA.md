@@ -2,10 +2,12 @@
 
 | Field | Value |
 |-------|-------|
-| Status | Plan from PR-1; execution in PR-7 |
+| Status | Plan from PR-1; PR-2 unit coverage added; full execution in PR-7 |
 | Spec | [`PRIVATE_PAIRING_RULES_V2_SPEC.md`](./PRIVATE_PAIRING_RULES_V2_SPEC.md) |
+| PR-2 | [`PRIVATE_PAIRING_RULES_V2_PR2_CANONICAL_CONFLICT.md`](./PRIVATE_PAIRING_RULES_V2_PR2_CANONICAL_CONFLICT.md) |
 | Security | [`PRIVATE_PAIRING_RULES_V2_SECURITY.md`](./PRIVATE_PAIRING_RULES_V2_SECURITY.md) |
 | Migration | [`PRIVATE_PAIRING_RULES_V2_MIGRATION.md`](./PRIVATE_PAIRING_RULES_V2_MIGRATION.md) |
+| PR-2 suite | `tests/private-pairing-rules-pr2.test.js` |
 
 ---
 
@@ -20,6 +22,16 @@
 | Production | **Blocked** until owner GO |
 
 ---
+
+## 1b. PR-2 unit coverage (done in PR-2)
+
+- [x] Canonical types accepted / unknown rejected
+- [x] Legacy mapping prefer/avoid/teammate/same_group
+- [x] Validation: self/duplicate/empty/scope/time/weight/ALL_OF/certified
+- [x] Conflicts: must±partner, must±opponent, partner vs opponent, chain, soft-soft, hard-soft, scope/time isolation, ANY_OF≠ALL_OF
+- [x] Deterministic + non-mutating detector
+- [x] Feature flags default OFF
+- [x] Competition Core + legacy pairing regression suites PASS
 
 ## 2. Permission tests
 
