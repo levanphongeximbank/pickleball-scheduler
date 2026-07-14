@@ -208,9 +208,15 @@ export const ADMIN_MENU_ROOT = menuFolder({
 
       match: "admin-private-pairing-rules",
 
+      permissions: [PERMISSIONS.PAIRING_PRIVATE_RULES_VIEW],
+
       roles: [ROLES.PLATFORM_ADMIN, ROLES.SUPER_ADMIN],
 
+      requiresFeature: "privatePairingRules",
+
       featureStatus: FEATURE_STATUS.LIVE,
+
+      featureNote: "AI & Ghép cặp · Chỉ SUPER_ADMIN",
 
     }),
 

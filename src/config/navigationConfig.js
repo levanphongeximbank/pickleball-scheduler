@@ -579,7 +579,7 @@ export const ROUTE_PERMISSIONS = Object.freeze({
   "/403": [],
   "/admin/tenants": [PERMISSIONS.TENANT_VIEW, PERMISSIONS.ROLE_MANAGE],
   "/admin/court-clusters": [PERMISSIONS.CLUSTER_MANAGE],
-  "/admin/ai-pairing/private-rules": [],
+  "/admin/ai-pairing/private-rules": [PERMISSIONS.PAIRING_PRIVATE_RULES_VIEW],
   "/support": [PERMISSIONS.SUPPORT_TICKET_MANAGE, PERMISSIONS.BILLING_VIEW],
   "/marketplace": [PERMISSIONS.MARKETPLACE_VIEW],
   "/marketplace/orders": [PERMISSIONS.MARKETPLACE_VIEW],
