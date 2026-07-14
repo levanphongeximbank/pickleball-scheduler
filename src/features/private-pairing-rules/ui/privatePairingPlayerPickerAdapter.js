@@ -6,6 +6,11 @@
 import { loadPlayersForClub } from "../../../domain/clubStorage.js";
 import { listClubsForTenant as legacyListClubsForTenant } from "../../tenant/guards/tenantGuard.js";
 import {
+  getSupabaseAuthClient,
+  hasSupabaseConfig,
+  PROFILES_TABLE,
+} from "../../../auth/supabaseClient.js";
+import {
   createCanonicalClubRepository,
   createCanonicalPlayerRepository,
   isCanonicalClubRepositoryEnabled,
@@ -14,6 +19,42 @@ import {
   MAPPING_STATUS,
   CANONICAL_WARNING_CODE,
 } from "../../club/repositories/index.js";
+
+/**
+ * Load profiles (id, player_id, display_name) for the given member user ids from Supabase.
+ * Needed because club_list_members RPC does not return player_id, and the picker resolves
+ * canonical mapping via profiles.player_id. SUPER_ADMIN can read all profiles via RLS.
+ * Returns [] on any failure so callers fall back to prior (unmapped) behavior with no crash.
+ *
+ * @param {string[]} userIds
+ * @returns {Promise<Array<{ id: string, player_id: string|null, display_name: string|null }>>}
+ */
+export async function fetchProfilesByUserIds(userIds) {
+  const ids = Array.from(
+    new Set((userIds || []).map((value) => String(value || "").trim()).filter(Boolean))
+  );
+  if (ids.length === 0 || !hasSupabaseConfig()) {
+    return [];
+  }
+
+  const supabase = getSupabaseAuthClient();
+  if (!supabase) {
+    return [];
+  }
+
+  try {
+    const { data, error } = await supabase
+      .from(PROFILES_TABLE)
+      .select("id, player_id, display_name")
+      .in("id", ids);
+    if (error) {
+      return [];
+    }
+    return Array.isArray(data) ? data : [];
+  } catch {
+    return [];
+  }
+}
 const NO_SOURCE_CLUB_MESSAGE = "Vui lòng chọn CLB nguồn trước.";
 const NO_CLUB_MESSAGE = "Vui lòng chọn CLB trước khi tạo Rule Set.";
 const NO_PLAYERS_IN_CLUB_MESSAGE = "CLB này chưa có vận động viên.";
@@ -111,7 +152,10 @@ export function createPrivatePairingPlayerPickerAdapter(deps = {}) {
   const {
     envSource = null,
     clubRepository = createCanonicalClubRepository({ envSource }),
-    playerRepository = createCanonicalPlayerRepository({ envSource }),
+    playerRepository = createCanonicalPlayerRepository({
+      envSource,
+      loadProfilesByUserIds: fetchProfilesByUserIds,
+    }),
     isClubCanonical = () => isCanonicalClubRepositoryEnabled(envSource),
     isPlayerCanonical = () => isCanonicalPlayerRepositoryEnabled(envSource),
     legacyListClubs = legacyListClubsForTenant,
