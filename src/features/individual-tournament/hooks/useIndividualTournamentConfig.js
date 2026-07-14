@@ -1,9 +1,9 @@
 import { useCallback, useMemo, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 
-import { useClub } from "../../context/ClubContext.jsx";
-import { getTournament, updateTournament, listTournaments } from "../../domain/tournamentService.js";
-import { isIndividualTournament } from "../../config/tournamentRoutes.js";
+import { useClub } from "../../../context/ClubContext.jsx";
+import { getTournament, updateTournament, listTournaments } from "../../../domain/tournamentService.js";
+import { isIndividualTournament } from "../../../config/tournamentRoutes.js";
 
 /**
  * Load/persist individual tournament settings for config pages (S1-C).
