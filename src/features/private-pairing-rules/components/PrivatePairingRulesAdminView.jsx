@@ -36,21 +36,26 @@ import SuperAdminFeatureGate from "../../pairing-constraints/components/SuperAdm
 import { getExplicitTenantIdForClub } from "../../tenant/index.js";
 import {
   activatePrivatePairingRuleSetWithPreflight,
+  canAuditPrivatePairingRules,
+  canManagePrivatePairingRules,
+  canSimulatePrivatePairingRules,
   clonePrivatePairingRuleSetVersion,
   createPrivatePairingRule,
   createPrivatePairingRuleSet,
+  detectPrivatePairingConflicts,
   disablePrivatePairingRule,
   getPrivatePairingRuleSet,
   isPrivatePairingRulesEnabled,
+  isPrivatePairingSimulationEnabled,
   listPrivatePairingAuditLogs,
   listPrivatePairingRuleSets,
   PRIVATE_PAIRING_SCOPE,
   rollbackPrivatePairingRuleSet,
-  runPrivatePairingRuntime,
   SCOPES_REQUIRING_ID,
   updatePrivatePairingRule,
 } from "../ui/privatePairingAdminApi.js";
 import {
+  CONSTRAINT_TYPE_GROUPS,
   CONSTRAINT_TYPE_LABELS,
   CONSTRAINT_TYPE_OPTIONS,
   emptyRuleDraft,
@@ -71,6 +76,11 @@ import {
   privatePairingPlayerPickerAdapter,
   PRIVATE_PAIRING_PICKER_MESSAGES,
 } from "../ui/privatePairingPlayerPickerAdapter.js";
+import PrivatePairingRuleSetList from "./panels/PrivatePairingRuleSetList.jsx";
+import PrivatePairingConflictPanel from "./panels/PrivatePairingConflictPanel.jsx";
+import PrivatePairingSimulationPanel from "./panels/PrivatePairingSimulationPanel.jsx";
+import PrivatePairingAuditLog from "./panels/PrivatePairingAuditLog.jsx";
+import PrivatePairingVersionHistory from "./panels/PrivatePairingVersionHistory.jsx";
 
 function errMsg(result) {
   return result?.message || result?.code || "Thao tác thất bại";
@@ -138,7 +148,7 @@ function PrivatePairingRulesAdminInner() {
   const [ruleDraft, setRuleDraft] = useState(emptyRuleDraft());
 
   const [actionReason, setActionReason] = useState("");
-  const [simulatorOut, setSimulatorOut] = useState(null);
+  const [conflictResult, setConflictResult] = useState(null);
 
   const [playerSourceClubId, setPlayerSourceClubId] = useState("");
   const [playerLoadTick, setPlayerLoadTick] = useState(0);
@@ -149,6 +159,10 @@ function PrivatePairingRulesAdminInner() {
   const [playerSelectorEmptyMessage, setPlayerSelectorEmptyMessage] = useState(null);
 
   const featureOn = isPrivatePairingRulesEnabled();
+  const simulationFlagOn = isPrivatePairingSimulationEnabled();
+  const canManage = canManagePrivatePairingRules(user);
+  const canAudit = canAuditPrivatePairingRules(user);
+  const canSimulate = canSimulatePrivatePairingRules(user);
   const resolvedTenantId = useMemo(
     () => resolveAdminTenantId(currentTenantId, activeClubId),
     [currentTenantId, activeClubId]
@@ -562,46 +576,58 @@ function PrivatePairingRulesAdminInner() {
     if (newId) setSelectedRuleSetId(newId);
   };
 
-  const handleSimulate = () => {
-    const sample = playerOptions.slice(0, 8).map((option) => ({
-      id: option.id,
-      name: option.name || option.id,
-    }));
-    if (sample.length < 4) {
-      setSimulatorOut({
-        ok: false,
-        message: "Cần ≥4 VĐV đã map playerId trong CLB nguồn để mô phỏng.",
-      });
-      return;
-    }
-    const result = runPrivatePairingRuntime({
-      players: sample,
-      rules: rules.filter((r) => r.active !== false),
+  const handleConflictCheck = () => {
+    const result = detectPrivatePairingConflicts(rules.filter((r) => r.active !== false), {
       teamSize: 2,
-      maxTeams: 2,
+      competitionClass: null,
+      allowedByPublishedRules: false,
     });
-    setSimulatorOut(result);
+    setConflictResult(result);
   };
+
+  const versionHistoryRows = useMemo(() => {
+    const meta = selectedRuleSetMeta;
+    if (!meta) return [];
+    const scopeType = meta.scope_type || meta.scopeType;
+    const scopeId = meta.scope_id ?? meta.scopeId ?? "";
+    return ruleSets.filter(
+      (item) =>
+        String(item.scope_type || item.scopeType) === String(scopeType) &&
+        String(item.scope_id ?? item.scopeId ?? "") === String(scopeId)
+    );
+  }, [ruleSets, selectedRuleSetMeta]);
 
   if (!featureOn) {
     return (
       <Alert severity="warning">
-        Feature flag <code>VITE_PRIVATE_PAIRING_RULES_ENABLED</code> đang tắt. Bật flag để dùng UI.
+        Feature flag <code>VITE_PRIVATE_PAIRING_RULES_ENABLED</code> đang tắt. Menu và route admin bị
+        ẩn/không khả dụng.
       </Alert>
     );
   }
 
   return (
     <Box sx={{ p: { xs: 1.5, md: 2 } }}>
-      <Stack direction="row" spacing={1} alignItems="center" sx={{ mb: 2 }}>
+      <Stack direction="row" spacing={1} alignItems="center" sx={{ mb: 1 }} flexWrap="wrap">
         <AdminPanelSettingsIcon color="warning" />
         <Typography variant="h5" fontWeight={700}>
           Quy tắc ghép cặp riêng
         </Typography>
-        <Chip size="small" color="warning" label="SUPER_ADMIN" />
+        <Chip size="small" color="warning" label="Chỉ SUPER_ADMIN" />
+        <Chip
+          size="small"
+          variant="outlined"
+          label={featureOn ? "Flag ON" : "Flag OFF"}
+          color={featureOn ? "success" : "default"}
+        />
+        <Chip
+          size="small"
+          variant="outlined"
+          label={simulationFlagOn ? "Sim ON" : "Sim OFF"}
+        />
       </Stack>
       <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-        Chỉ SUPER_ADMIN. Mọi thao tác qua RPC PR-4 — không truy cập trực tiếp bảng.
+        Thiết lập điều kiện ưu tiên và ràng buộc cho AI ghép cặp. Không dùng để dàn xếp kết quả.
         Actor: {user?.email || user?.id || "—"}.
       </Typography>
 
@@ -653,65 +679,43 @@ function PrivatePairingRulesAdminInner() {
               ))}
             </Select>
           </FormControl>
-          <Button startIcon={<RefreshIcon />} onClick={refreshList} disabled={loading}>
+          <Button startIcon={<RefreshIcon />} onClick={refreshList} disabled={loading} aria-label="Làm mới">
             Làm mới
           </Button>
-          <Button variant="contained" onClick={() => setCreateOpen(true)}>
-            Tạo Rule Set
-          </Button>
+          {canManage && (
+            <Button variant="contained" onClick={() => setCreateOpen(true)} aria-label="Tạo bộ quy tắc">
+              Tạo bộ quy tắc
+            </Button>
+          )}
         </Stack>
       </Paper>
 
       <Stack direction={{ xs: "column", lg: "row" }} spacing={2} alignItems="stretch">
-        <Paper variant="outlined" sx={{ flex: 1, minWidth: 280, maxHeight: 480, overflow: "auto" }}>
-          <Table size="small" stickyHeader>
-            <TableHead>
-              <TableRow>
-                <TableCell>Tên</TableCell>
-                <TableCell>Ver</TableCell>
-                <TableCell>Scope</TableCell>
-                <TableCell>Status</TableCell>
-              </TableRow>
-            </TableHead>
-            <TableBody>
-              {filteredRuleSets.map((rs) => {
-                const id = rs.id;
-                const selected = id === selectedRuleSetId;
-                return (
-                  <TableRow
-                    key={id}
-                    hover
-                    selected={selected}
-                    sx={{ cursor: "pointer" }}
-                    onClick={() => setSelectedRuleSetId(id)}
-                  >
-                    <TableCell>{rs.name}</TableCell>
-                    <TableCell>{rs.version}</TableCell>
-                    <TableCell>
-                      {SCOPE_LABELS[rs.scope_type || rs.scopeType] || rs.scope_type}
-                      {(rs.scope_id || rs.scopeId) && (
-                        <Typography variant="caption" display="block">
-                          {rs.scope_id || rs.scopeId}
-                        </Typography>
-                      )}
-                    </TableCell>
-                    <TableCell>
-                      <RuleSetStatusChip status={rs.status} />
-                    </TableCell>
-                  </TableRow>
-                );
-              })}
-              {!filteredRuleSets.length && (
-                <TableRow>
-                  <TableCell colSpan={4}>
-                    <Typography variant="body2" color="text.secondary">
-                      Không có Rule Set.
-                    </Typography>
-                  </TableCell>
-                </TableRow>
-              )}
-            </TableBody>
-          </Table>
+        <Paper variant="outlined" sx={{ flex: 1, minWidth: 280, maxHeight: 560, overflow: "auto", p: 1 }}>
+          <PrivatePairingRuleSetList
+            ruleSets={filteredRuleSets}
+            selectedId={selectedRuleSetId}
+            loading={loading}
+            canManage={canManage}
+            onSelect={setSelectedRuleSetId}
+            onOpenCreate={() => setCreateOpen(true)}
+            onClone={async (id) => {
+              setSelectedRuleSetId(id);
+              const result = await clonePrivatePairingRuleSetVersion({
+                sourceRuleSetId: id,
+                reason: actionReason || "clone-version",
+              });
+              if (!result.ok) {
+                setError(errMsg(result));
+                return;
+              }
+              setMessage("Đã clone version (draft mới).");
+              await refreshList();
+              const newId = result.rule_set?.id || result.ruleSet?.id;
+              if (newId) setSelectedRuleSetId(newId);
+            }}
+            onSimulateTab={() => setTab(2)}
+          />
         </Paper>
 
         <Paper variant="outlined" sx={{ flex: 2, p: 1.5 }}>
@@ -746,24 +750,30 @@ function PrivatePairingRulesAdminInner() {
                   onChange={(e) => setActionReason(e.target.value)}
                   sx={{ minWidth: 220 }}
                 />
-                <Button onClick={handleClone}>Clone Version</Button>
+                {canManage && <Button onClick={handleClone}>Clone Version</Button>}
+                {canManage && (
                 <Button
                   variant="contained"
                   color="success"
-                  disabled={!isDraft}
+                  disabled={!isDraft || (conflictResult?.fatalConflicts || []).length > 0}
                   onClick={handleActivate}
+                  aria-label="Kích hoạt bộ quy tắc"
                 >
-                  Activate Version
+                  Kích hoạt bộ quy tắc
                 </Button>
-                <Button color="warning" onClick={handleRollback}>
-                  Rollback Version
-                </Button>
+                )}
+                {canManage && (
+                  <Button color="warning" onClick={handleRollback}>
+                    Rollback Version
+                  </Button>
+                )}
               </Stack>
 
               <Tabs value={tab} onChange={(_, v) => setTab(v)} sx={{ mb: 1 }}>
                 <Tab label="Rules" />
-                <Tab label="Audit Logs" />
+                <Tab label="Xung đột / Version" />
                 <Tab label="Mô phỏng" />
+                <Tab label="Audit Logs" disabled={!canAudit} />
               </Tabs>
 
               {tab === 0 && (
@@ -816,13 +826,16 @@ function PrivatePairingRulesAdminInner() {
                         <MenuItem value="0">Tất cả</MenuItem>
                       </Select>
                     </FormControl>
-                    <Button
-                      variant="contained"
-                      disabled={!isDraft}
-                      onClick={openCreateRule}
-                    >
-                      Thêm Rule
-                    </Button>
+                    {canManage && (
+                      <Button
+                        variant="contained"
+                        disabled={!isDraft}
+                        onClick={openCreateRule}
+                        aria-label="Thêm Rule"
+                      >
+                        Thêm Rule
+                      </Button>
+                    )}
                   </Stack>
 
                   <Table size="small">
@@ -906,64 +919,47 @@ function PrivatePairingRulesAdminInner() {
               )}
 
               {tab === 1 && (
-                <Table size="small">
-                  <TableHead>
-                    <TableRow>
-                      <TableCell>Thời gian</TableCell>
-                      <TableCell>Action</TableCell>
-                      <TableCell>Actor</TableCell>
-                      <TableCell>Rule</TableCell>
-                      <TableCell>Reason</TableCell>
-                    </TableRow>
-                  </TableHead>
-                  <TableBody>
-                    {auditLogs.map((log, idx) => (
-                      <TableRow key={log.id || idx}>
-                        <TableCell>{log.created_at || log.createdAt || "—"}</TableCell>
-                        <TableCell>{log.action}</TableCell>
-                        <TableCell>{log.actor_user_id || log.actorUserId || "—"}</TableCell>
-                        <TableCell>{log.rule_id || log.ruleId || "—"}</TableCell>
-                        <TableCell>{log.reason || "—"}</TableCell>
-                      </TableRow>
-                    ))}
-                    {!auditLogs.length && (
-                      <TableRow>
-                        <TableCell colSpan={5}>
-                          <Typography variant="body2" color="text.secondary">
-                            Chưa có audit log.
-                          </Typography>
-                        </TableCell>
-                      </TableRow>
-                    )}
-                  </TableBody>
-                </Table>
+                <Stack spacing={2}>
+                  <PrivatePairingConflictPanel
+                    result={conflictResult}
+                    onCheck={handleConflictCheck}
+                    canActivate={canManage && isDraft}
+                    onActivate={handleActivate}
+                  />
+                  <PrivatePairingVersionHistory
+                    versions={versionHistoryRows}
+                    selectedId={selectedRuleSetId}
+                    canManage={canManage}
+                    isActiveReadOnly={!isDraft}
+                    onSelect={setSelectedRuleSetId}
+                    onClone={(id) => {
+                      setSelectedRuleSetId(id);
+                      void handleClone();
+                    }}
+                    onRollback={(id) => {
+                      setSelectedRuleSetId(id);
+                      void handleRollback();
+                    }}
+                  />
+                </Stack>
               )}
 
               {tab === 2 && (
-                <Box>
-                  <Button variant="outlined" onClick={handleSimulate}>
-                    Mô phỏng ghép cặp
-                  </Button>
-                  <Typography variant="caption" display="block" sx={{ mt: 1 }}>
-                    Dùng rules đang load + VĐV CLB active (in-memory runtime PR-3). Không ghi DB.
-                  </Typography>
-                  {simulatorOut && (
-                    <Box
-                      component="pre"
-                      sx={{
-                        mt: 1,
-                        p: 1,
-                        bgcolor: "action.hover",
-                        overflow: "auto",
-                        maxHeight: 320,
-                        fontSize: 12,
-                      }}
-                    >
-                      {JSON.stringify(simulatorOut, null, 2)}
-                    </Box>
-                  )}
-                </Box>
+                <PrivatePairingSimulationPanel
+                  enabled={simulationFlagOn}
+                  canSimulate={canSimulate}
+                  rules={rules}
+                  playerOptions={playerOptions}
+                  mappingSummary={pickerMappingSummary}
+                  pickerWarnings={pickerWarnings}
+                  sourceClubId={effectivePlayerClubId || ""}
+                  scopeType={selectedRuleSetScope}
+                  scopeId={selectedRuleSetMeta?.scope_id || selectedRuleSetMeta?.scopeId}
+                  tenantId={resolvedTenantId}
+                />
               )}
+
+              {tab === 3 && <PrivatePairingAuditLog logs={auditLogs} canView={canAudit} />}
             </>
           )}
         </Paper>
@@ -1134,11 +1130,16 @@ function PrivatePairingRulesAdminInner() {
                 value={ruleDraft.constraintType}
                 onChange={(e) => setRuleDraft((d) => ({ ...d, constraintType: e.target.value }))}
               >
-                {CONSTRAINT_TYPE_OPTIONS.map((t) => (
-                  <MenuItem key={t} value={t}>
-                    {CONSTRAINT_TYPE_LABELS[t] || t}
-                  </MenuItem>
-                ))}
+                {CONSTRAINT_TYPE_GROUPS.map((group) => [
+                  <MenuItem key={`g-${group.id}`} disabled dense>
+                    — {group.label} —
+                  </MenuItem>,
+                  ...group.types.map((t) => (
+                    <MenuItem key={t} value={t}>
+                      {CONSTRAINT_TYPE_LABELS[t] || t}
+                    </MenuItem>
+                  )),
+                ])}
               </Select>
             </FormControl>
             <Autocomplete
@@ -1188,8 +1189,11 @@ function PrivatePairingRulesAdminInner() {
                 label="Weight (soft)"
                 type="number"
                 disabled={ruleDraft.severity !== "soft"}
+                required={ruleDraft.severity === "soft"}
                 value={ruleDraft.weight}
                 onChange={(e) => setRuleDraft((d) => ({ ...d, weight: e.target.value }))}
+                inputProps={{ min: 1, max: 100, "aria-label": "Weight soft 1-100" }}
+                helperText={ruleDraft.severity === "hard" ? "Hard không dùng weight" : "1–100"}
                 fullWidth
               />
               <FormControl fullWidth>
@@ -1201,12 +1205,25 @@ function PrivatePairingRulesAdminInner() {
                 >
                   {RELATION_MODE_OPTIONS.map((m) => (
                     <MenuItem key={m} value={m}>
-                      {m}
+                      {m === "ANY_OF"
+                        ? "ANY_OF — ít nhất một VĐV"
+                        : m === "ALL_OF"
+                          ? "ALL_OF — toàn bộ VĐV"
+                          : m}
                     </MenuItem>
                   ))}
                 </Select>
               </FormControl>
             </Stack>
+            {ruleDraft.severity === "hard" ? (
+              <Alert severity="warning">
+                Hard — Vi phạm quy tắc này sẽ làm phương án bị loại.
+              </Alert>
+            ) : (
+              <Alert severity="info">
+                Soft — AI sẽ ưu tiên nhưng có thể không đáp ứng nếu có phương án công bằng hơn.
+              </Alert>
+            )}
             <Stack direction={{ xs: "column", sm: "row" }} spacing={1}>
               <FormControl fullWidth>
                 <InputLabel>Priority</InputLabel>
@@ -1309,8 +1326,8 @@ export default function PrivatePairingRulesAdminView() {
   return (
     <SuperAdminFeatureGate
       fallback={
-        <Alert severity="error" sx={{ m: 2 }}>
-          Chỉ SUPER_ADMIN mới được xem và quản lý Private Pairing Rules.
+        <Alert severity="error" sx={{ m: 2 }} data-testid="private-pairing-forbidden">
+          403_FORBIDDEN — Chỉ SUPER_ADMIN mới được xem và quản lý Quy tắc ghép cặp riêng.
         </Alert>
       }
     >

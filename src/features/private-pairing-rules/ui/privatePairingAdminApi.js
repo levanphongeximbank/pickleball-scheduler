@@ -22,5 +22,18 @@ export {
   RULE_PRIORITY,
   REASON_CATEGORY,
   isPrivatePairingRulesEnabled,
+  isPrivatePairingSimulationEnabled,
   runPrivatePairingRuntime,
+  simulatePrivatePairing,
+  detectPrivatePairingConflicts,
+  validatePrivatePairingRules,
 } from "../index.js";
+
+export {
+  canViewPrivatePairingRules,
+  canManagePrivatePairingRules,
+  canAuditPrivatePairingRules,
+  canSimulatePrivatePairingRules,
+  PRIVATE_PAIRING_UI_PERMISSIONS,
+  privatePairingForbiddenResult,
+} from "./privatePairingPermissions.js";
