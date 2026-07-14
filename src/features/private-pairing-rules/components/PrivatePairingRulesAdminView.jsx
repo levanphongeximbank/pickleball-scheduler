@@ -950,18 +950,73 @@ function PrivatePairingRulesAdminInner() {
               )}
 
               {tab === 2 && (
-                <PrivatePairingSimulationPanel
-                  enabled={simulationFlagOn}
-                  canSimulate={canSimulate}
-                  rules={rules}
-                  playerOptions={playerOptions}
-                  mappingSummary={pickerMappingSummary}
-                  pickerWarnings={pickerWarnings}
-                  sourceClubId={effectivePlayerClubId || ""}
-                  scopeType={selectedRuleSetScope}
-                  scopeId={selectedRuleSetMeta?.scope_id || selectedRuleSetMeta?.scopeId}
-                  tenantId={resolvedTenantId}
-                />
+                <Stack spacing={1.5}>
+                  {isGlobalRuleSet ? (
+                    <Stack
+                      direction={{ xs: "column", sm: "row" }}
+                      spacing={1}
+                      alignItems={{ sm: "center" }}
+                    >
+                      <FormControl fullWidth required>
+                        <InputLabel>CLB nguồn (mô phỏng)</InputLabel>
+                        <Select
+                          label="CLB nguồn (mô phỏng)"
+                          value={
+                            sourceClubChoices.some(
+                              (club) => String(club.id) === String(playerSourceClubId)
+                            )
+                              ? playerSourceClubId
+                              : ""
+                          }
+                          onChange={(e) => setPlayerSourceClubId(e.target.value)}
+                        >
+                          <MenuItem value="" disabled>
+                            <em>Chọn CLB nguồn…</em>
+                          </MenuItem>
+                          {sourceClubChoices.map((club) => (
+                            <MenuItem key={club.id} value={club.id}>
+                              {club.name || club.id}
+                            </MenuItem>
+                          ))}
+                        </Select>
+                      </FormControl>
+                      <Button
+                        variant="outlined"
+                        startIcon={<RefreshIcon />}
+                        disabled={!playerSourceClubId}
+                        onClick={() => setPlayerLoadTick((n) => n + 1)}
+                        sx={{ whiteSpace: "nowrap" }}
+                      >
+                        Tải lại VĐV
+                      </Button>
+                    </Stack>
+                  ) : (
+                    <Alert severity="info">
+                      Nguồn VĐV mô phỏng:{" "}
+                      <strong>
+                        {clubNameById.get(String(activeClubId)) || activeClubId || "—"}
+                      </strong>
+                      . Đổi CLB ở header/context nếu cần.
+                    </Alert>
+                  )}
+
+                  {playerSelectorEmptyMessage && (
+                    <Alert severity="warning">{playerSelectorEmptyMessage}</Alert>
+                  )}
+
+                  <PrivatePairingSimulationPanel
+                    enabled={simulationFlagOn}
+                    canSimulate={canSimulate}
+                    rules={rules}
+                    playerOptions={playerOptions}
+                    mappingSummary={pickerMappingSummary}
+                    pickerWarnings={pickerWarnings}
+                    sourceClubId={effectivePlayerClubId || ""}
+                    scopeType={selectedRuleSetScope}
+                    scopeId={selectedRuleSetMeta?.scope_id || selectedRuleSetMeta?.scopeId}
+                    tenantId={resolvedTenantId}
+                  />
+                </Stack>
               )}
 
               {tab === 3 && <PrivatePairingAuditLog logs={auditLogs} canView={canAudit} />}

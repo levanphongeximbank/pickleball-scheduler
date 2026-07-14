@@ -18,6 +18,29 @@ import { simulatePrivatePairing } from "../../ui/privatePairingAdminApi.js";
 import { MAPPING_STATUS } from "../../../club/repositories/canonicalRepositoryTypes.js";
 import PrivatePairingCandidateCard from "./PrivatePairingCandidateCard.jsx";
 
+const SIM_ERROR_MESSAGES = {
+  SIMULATION_FEATURE_DISABLED:
+    "Tính năng mô phỏng đang tắt (thiếu cờ VITE_PRIVATE_PAIRING_SIMULATION_ENABLED).",
+  SIMULATION_RUNTIME_DISABLED: "Runtime mô phỏng đang tắt.",
+  SIMULATION_INVALID_INPUT: "Dữ liệu đầu vào không hợp lệ.",
+  NEED_MAPPED_PLAYERS:
+    "Cần ít nhất 4 vận động viên đã ánh xạ (MAPPED/DERIVED). Hãy chọn CLB nguồn có đủ VĐV.",
+  NO_ELIGIBLE_PLAYERS:
+    "Không có vận động viên hợp lệ để ghép. Hãy chọn CLB nguồn có VĐV đã ánh xạ.",
+  NO_FEASIBLE_PAIRING:
+    "Không tìm được phương án ghép cặp khả thi với các quy tắc hiện tại.",
+  SEARCH_LIMIT_REACHED:
+    "Đã đạt giới hạn tìm kiếm — thử tăng Max candidates hoặc đổi seed.",
+  CONSTRAINT_CONFLICT:
+    "Các quy tắc đang xung đột (hard rule mâu thuẫn). Kiểm tra tab Xung đột.",
+  SIMULATION_FAILED: "Mô phỏng thất bại. Vui lòng thử lại.",
+};
+
+function humanizeSimError(code) {
+  if (!code) return "";
+  return SIM_ERROR_MESSAGES[code] || code;
+}
+
 /**
  * PR-4.5 simulation UI — read-only Top N. No Apply-to-live.
  */
@@ -194,8 +217,8 @@ export default function PrivatePairingSimulationPanel({
 
       {error && (
         <Alert severity="warning" sx={{ mb: 1 }} onClose={() => setError(null)}>
-          {error}
-          {result?.summary?.searchLimitReached ? " · searchLimitReached" : ""}
+          {humanizeSimError(error)}
+          {result?.summary?.searchLimitReached ? " · Đã đạt giới hạn tìm kiếm" : ""}
         </Alert>
       )}
       {copyNote && (
