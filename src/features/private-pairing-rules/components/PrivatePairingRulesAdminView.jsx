@@ -32,8 +32,8 @@ import RefreshIcon from "@mui/icons-material/Refresh";
 import { useAuth } from "../../../context/AuthContext.jsx";
 import { useClub } from "../../../context/ClubContext.jsx";
 import { useTenant } from "../../../context/TenantContext.jsx";
-import { loadPlayersForClub } from "../../../domain/clubStorage.js";
 import SuperAdminFeatureGate from "../../pairing-constraints/components/SuperAdminFeatureGate.jsx";
+import { getExplicitTenantIdForClub } from "../../tenant/index.js";
 import {
   activatePrivatePairingRuleSetWithPreflight,
   clonePrivatePairingRuleSetVersion,
@@ -44,6 +44,7 @@ import {
   isPrivatePairingRulesEnabled,
   listPrivatePairingAuditLogs,
   listPrivatePairingRuleSets,
+  PRIVATE_PAIRING_SCOPE,
   rollbackPrivatePairingRuleSet,
   runPrivatePairingRuntime,
   SCOPES_REQUIRING_ID,
@@ -65,9 +66,34 @@ import {
   STATUS_CHIP_COLOR,
   VISIBILITY_OPTIONS,
 } from "../ui/privatePairingAdminHelpers.js";
+import {
+  assertPairingPlayerIdsAreCanonical,
+  privatePairingPlayerPickerAdapter,
+  PRIVATE_PAIRING_PICKER_MESSAGES,
+} from "../ui/privatePairingPlayerPickerAdapter.js";
 
 function errMsg(result) {
   return result?.message || result?.code || "Thao tác thất bại";
+}
+
+/** Resolve tenant_id for RPC — never confuse with club_id. */
+function resolveAdminTenantId(currentTenantId, activeClubId) {
+  const fromTenant = String(currentTenantId || "").trim();
+  if (fromTenant) return fromTenant;
+  return String(getExplicitTenantIdForClub(activeClubId) || "").trim() || null;
+}
+
+/** CLUB scope_id must be club_id — never tenant/venue id. */
+function resolveCreateScopeId(scopeType, formScopeId, activeClubId) {
+  const manual = String(formScopeId || "").trim();
+  if (manual) return manual;
+  if (scopeType === PRIVATE_PAIRING_SCOPE.CLUB) {
+    return String(activeClubId || "").trim() || null;
+  }
+  if (SCOPES_REQUIRING_ID.includes(scopeType)) {
+    return String(activeClubId || "").trim() || null;
+  }
+  return null;
 }
 
 function RuleSetStatusChip({ status }) {
@@ -77,7 +103,7 @@ function RuleSetStatusChip({ status }) {
 
 function PrivatePairingRulesAdminInner() {
   const { user } = useAuth();
-  const { activeClubId } = useClub();
+  const { clubs, activeClubId } = useClub();
   const { currentTenantId } = useTenant();
 
   const [tab, setTab] = useState(0);
@@ -114,25 +140,131 @@ function PrivatePairingRulesAdminInner() {
   const [actionReason, setActionReason] = useState("");
   const [simulatorOut, setSimulatorOut] = useState(null);
 
-  const featureOn = isPrivatePairingRulesEnabled();
+  const [playerSourceClubId, setPlayerSourceClubId] = useState("");
+  const [playerLoadTick, setPlayerLoadTick] = useState(0);
+  const [sourceClubChoices, setSourceClubChoices] = useState([]);
+  const [playerOptions, setPlayerOptions] = useState([]);
+  const [pickerWarnings, setPickerWarnings] = useState([]);
+  const [pickerMappingSummary, setPickerMappingSummary] = useState(null);
+  const [playerSelectorEmptyMessage, setPlayerSelectorEmptyMessage] = useState(null);
 
-  const players = useMemo(() => {
-    try {
-      return loadPlayersForClub(activeClubId) || [];
-    } catch {
-      return [];
+  const featureOn = isPrivatePairingRulesEnabled();
+  const resolvedTenantId = useMemo(
+    () => resolveAdminTenantId(currentTenantId, activeClubId),
+    [currentTenantId, activeClubId]
+  );
+
+  const selectedRuleSetMeta = detail?.ruleSet || detail?.rule_set || null;
+  const selectedRuleSetScope = String(
+    selectedRuleSetMeta?.scope_type || selectedRuleSetMeta?.scopeType || ""
+  );
+  const isGlobalRuleSet = selectedRuleSetScope === PRIVATE_PAIRING_SCOPE.GLOBAL;
+  const isClubRuleSet = selectedRuleSetScope === PRIVATE_PAIRING_SCOPE.CLUB;
+
+  const effectivePlayerClubId = useMemo(() => {
+    if (isGlobalRuleSet) {
+      return String(playerSourceClubId || "").trim() || null;
     }
-  }, [activeClubId]);
+    return String(activeClubId || "").trim() || null;
+  }, [isGlobalRuleSet, playerSourceClubId, activeClubId]);
+
+  const clubNameById = useMemo(() => {
+    const map = new Map();
+    for (const club of [...(clubs || []), ...sourceClubChoices]) {
+      if (!club?.id) continue;
+      map.set(String(club.id), club.name || club.id);
+    }
+    return map;
+  }, [clubs, sourceClubChoices]);
 
   const playersById = useMemo(
-    () => new Map(players.map((p) => [String(p.id), p])),
-    [players]
+    () => new Map(playerOptions.map((p) => [String(p.id), { id: p.id, name: p.name }])),
+    [playerOptions]
   );
 
-  const playerOptions = useMemo(
-    () => players.map((p) => ({ id: String(p.id), name: p.name || p.id })),
-    [players]
+  const targetPlayerOptions = useMemo(() => {
+    const primaryId = String(ruleDraft.primaryPlayerId || "").trim();
+    if (!primaryId) return playerOptions;
+    return playerOptions.filter((option) => option.id !== primaryId);
+  }, [playerOptions, ruleDraft.primaryPlayerId]);
+
+  const primaryOptionSelected = useMemo(() => {
+    const primaryId = String(ruleDraft.primaryPlayerId || "").trim();
+    if (!primaryId) return null;
+    return playerOptions.find((option) => option.id === primaryId) || null;
+  }, [playerOptions, ruleDraft.primaryPlayerId]);
+
+  const targetOptionsSelected = useMemo(() => {
+    const ids = new Set((ruleDraft.targetPlayerIds || []).map(String));
+    return targetPlayerOptions.filter((option) => ids.has(option.id));
+  }, [targetPlayerOptions, ruleDraft.targetPlayerIds]);
+
+  const canSaveRule = Boolean(
+    selectedRuleSetId &&
+      effectivePlayerClubId &&
+      primaryOptionSelected &&
+      targetOptionsSelected.length > 0 &&
+      !(
+        ruleDraft.severity === "soft" &&
+        (ruleDraft.weight === "" || Number.isNaN(Number(ruleDraft.weight)))
+      )
   );
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      const result = await privatePairingPlayerPickerAdapter.listSourceClubs({
+        tenantId: resolvedTenantId,
+        userContext: { user, isPlatformAdmin: true },
+      });
+      if (cancelled) return;
+      if (result.ok) {
+        setSourceClubChoices(Array.isArray(result.data) ? result.data : []);
+      } else {
+        setSourceClubChoices([]);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [resolvedTenantId, user, playerLoadTick]);
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      if (!effectivePlayerClubId) {
+        setPlayerOptions([]);
+        setPickerWarnings([]);
+        setPickerMappingSummary(null);
+        setPlayerSelectorEmptyMessage(
+          isGlobalRuleSet
+            ? PRIVATE_PAIRING_PICKER_MESSAGES.NO_SOURCE_CLUB_MESSAGE
+            : PRIVATE_PAIRING_PICKER_MESSAGES.NO_CLUB_MESSAGE
+        );
+        return;
+      }
+      const result = await privatePairingPlayerPickerAdapter.listPickerPlayers({
+        clubId: effectivePlayerClubId,
+        tenantId: resolvedTenantId,
+        userContext: { user, isPlatformAdmin: true },
+      });
+      if (cancelled) return;
+      if (!result.ok) {
+        setPlayerOptions([]);
+        setPickerWarnings(result.warnings || []);
+        setPickerMappingSummary(null);
+        setPlayerSelectorEmptyMessage(result.message || errMsg(result));
+        return;
+      }
+      setPlayerOptions(result.options || []);
+      setPickerWarnings(result.warnings || []);
+      setPickerMappingSummary(result.mappingSummary || null);
+      setPlayerSelectorEmptyMessage(result.emptyMessage || null);
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [effectivePlayerClubId, resolvedTenantId, user, playerLoadTick, isGlobalRuleSet]);
 
   const refreshList = useCallback(async () => {
     setLoading(true);
@@ -225,12 +357,20 @@ function PrivatePairingRulesAdminInner() {
     [rules, ruleSearch, ruleSeverity, ruleType, ruleActiveOnly]
   );
 
-  const selectedRuleSetMeta = detail?.ruleSet || detail?.rule_set || null;
   const isDraft = String(selectedRuleSetMeta?.status || "") === "draft";
+
+  const resolveDefaultSourceClubId = useCallback(() => {
+    const active = String(activeClubId || "").trim();
+    if (active && sourceClubChoices.some((club) => String(club.id) === active)) {
+      return active;
+    }
+    return String(sourceClubChoices[0]?.id || "").trim();
+  }, [activeClubId, sourceClubChoices]);
 
   const openCreateRule = () => {
     setEditingRuleId(null);
     setRuleDraft(emptyRuleDraft());
+    setPlayerSourceClubId(isGlobalRuleSet ? resolveDefaultSourceClubId() : String(activeClubId || ""));
     setRuleDialogOpen(true);
   };
 
@@ -253,18 +393,23 @@ function PrivatePairingRulesAdminInner() {
       reason: "update-rule",
       _dbId: db?.id || rule.id,
     });
+    setPlayerSourceClubId(isGlobalRuleSet ? resolveDefaultSourceClubId() : String(activeClubId || ""));
     setRuleDialogOpen(true);
   };
 
   const handleSaveRule = async () => {
     if (!selectedRuleSetId) return;
-    const targets = (ruleDraft.targetPlayerIds || []).map(String).filter(Boolean);
-    if (!String(ruleDraft.primaryPlayerId || "").trim()) {
-      setError("Chọn VĐV chính.");
+    if (!effectivePlayerClubId) {
+      setError(
+        isGlobalRuleSet
+          ? PRIVATE_PAIRING_PICKER_MESSAGES.NO_SOURCE_CLUB_MESSAGE
+          : PRIVATE_PAIRING_PICKER_MESSAGES.NO_CLUB_MESSAGE
+      );
       return;
     }
-    if (!targets.length) {
-      setError("Chọn ít nhất một target player.");
+    const idCheck = assertPairingPlayerIdsAreCanonical(ruleDraft, playerOptions);
+    if (!idCheck.ok) {
+      setError(idCheck.message || idCheck.code);
       return;
     }
     if (ruleDraft.severity === "soft" && (ruleDraft.weight === "" || Number.isNaN(Number(ruleDraft.weight)))) {
@@ -274,13 +419,13 @@ function PrivatePairingRulesAdminInner() {
     setError(null);
     setMessage(null);
     const payloadBase = {
-      primaryPlayerId: String(ruleDraft.primaryPlayerId || "").trim(),
+      primaryPlayerId: idCheck.primaryPlayerId,
       constraintType: ruleDraft.constraintType,
       severity: ruleDraft.severity,
       weight: ruleDraft.severity === "soft" ? Number(ruleDraft.weight) : null,
       priority: ruleDraft.priority,
       relationMode: ruleDraft.relationMode,
-      targetPlayerIds: targets,
+      targetPlayerIds: idCheck.targetPlayerIds,
       reasonCategory: ruleDraft.reasonCategory,
       reasonText: ruleDraft.reasonText || null,
       visibility: ruleDraft.visibility,
@@ -327,16 +472,30 @@ function PrivatePairingRulesAdminInner() {
 
   const handleCreateRuleSet = async () => {
     setError(null);
-    const needsId = SCOPES_REQUIRING_ID.includes(createForm.scopeType);
-    const scopeId = needsId
-      ? createForm.scopeId || activeClubId || null
-      : createForm.scopeId || null;
+    const scopeId = resolveCreateScopeId(
+      createForm.scopeType,
+      createForm.scopeId,
+      activeClubId
+    );
+    const tenantId = resolvedTenantId;
+    if (!tenantId) {
+      setError(PRIVATE_PAIRING_PICKER_MESSAGES.NO_CLUB_MESSAGE);
+      return;
+    }
+    if (
+      SCOPES_REQUIRING_ID.includes(createForm.scopeType) &&
+      createForm.scopeType === PRIVATE_PAIRING_SCOPE.CLUB &&
+      !scopeId
+    ) {
+      setError("CLUB scope yêu cầu club_id (không dùng tenant_id).");
+      return;
+    }
     const result = await createPrivatePairingRuleSet({
       name: createForm.name,
       description: createForm.description || null,
       scopeType: createForm.scopeType,
       scopeId,
-      tenantId: currentTenantId || null,
+      tenantId,
       reason: createForm.reason || "create-rule-set",
     });
     if (!result.ok) {
@@ -404,11 +563,14 @@ function PrivatePairingRulesAdminInner() {
   };
 
   const handleSimulate = () => {
-    const sample = players.slice(0, 8);
+    const sample = playerOptions.slice(0, 8).map((option) => ({
+      id: option.id,
+      name: option.name || option.id,
+    }));
     if (sample.length < 4) {
       setSimulatorOut({
         ok: false,
-        message: "Cần ≥4 VĐV trong CLB đang chọn để mô phỏng.",
+        message: "Cần ≥4 VĐV đã map playerId trong CLB nguồn để mô phỏng.",
       });
       return;
     }
@@ -869,28 +1031,101 @@ function PrivatePairingRulesAdminInner() {
         <DialogTitle>{editingRuleId ? "Sửa Rule" : "Thêm Rule"}</DialogTitle>
         <DialogContent>
           <Stack spacing={1.5} sx={{ mt: 1 }}>
+            {isGlobalRuleSet ? (
+              <Stack direction={{ xs: "column", sm: "row" }} spacing={1} alignItems={{ sm: "center" }}>
+                <FormControl fullWidth required>
+                  <InputLabel>CLB nguồn</InputLabel>
+                  <Select
+                    label="CLB nguồn"
+                    value={
+                      sourceClubChoices.some(
+                        (club) => String(club.id) === String(playerSourceClubId)
+                      )
+                        ? playerSourceClubId
+                        : ""
+                    }
+                    onChange={(e) => {
+                      const nextClubId = e.target.value;
+                      setPlayerSourceClubId(nextClubId);
+                      setRuleDraft((d) => ({
+                        ...d,
+                        primaryPlayerId: "",
+                        targetPlayerIds: [],
+                      }));
+                    }}
+                  >
+                    <MenuItem value="" disabled>
+                      <em>Chọn CLB nguồn…</em>
+                    </MenuItem>
+                    {sourceClubChoices.map((club) => (
+                      <MenuItem key={club.id} value={club.id}>
+                        {club.name || club.id}
+                      </MenuItem>
+                    ))}
+                  </Select>
+                </FormControl>
+                <Button
+                  variant="outlined"
+                  startIcon={<RefreshIcon />}
+                  disabled={!playerSourceClubId}
+                  onClick={() => setPlayerLoadTick((n) => n + 1)}
+                  sx={{ whiteSpace: "nowrap" }}
+                >
+                  Tải lại VĐV
+                </Button>
+              </Stack>
+            ) : (
+              <Alert severity="info">
+                {isClubRuleSet ? "Scope CLB" : `Scope ${selectedRuleSetScope || "—"}`}
+                {" — "}
+                nguồn VĐV:{" "}
+                <strong>{clubNameById.get(String(activeClubId)) || activeClubId || "—"}</strong>.
+                Đổi CLB ở header/context nếu cần.
+              </Alert>
+            )}
+
+            {playerSelectorEmptyMessage && (
+              <Alert severity="warning">{playerSelectorEmptyMessage}</Alert>
+            )}
+
+            {pickerMappingSummary && (
+              <Alert severity={pickerWarnings.length ? "warning" : "info"}>
+                Thành viên active: {pickerMappingSummary.activeMembers ?? "—"} · đã map:{" "}
+                {pickerMappingSummary.mappedPlayers ?? 0} · derived:{" "}
+                {pickerMappingSummary.derivedPlayers ?? 0} · chưa map:{" "}
+                {pickerMappingSummary.unmappedMembers ?? 0}
+                {pickerWarnings.length
+                  ? ` · warnings: ${pickerWarnings.length}`
+                  : ""}
+              </Alert>
+            )}
+
             <Autocomplete
               options={playerOptions}
-              getOptionLabel={(o) => (typeof o === "string" ? o : `${o.name} (${o.id})`)}
-              value={
-                playerOptions.find((p) => p.id === String(ruleDraft.primaryPlayerId)) ||
-                (ruleDraft.primaryPlayerId
-                  ? { id: ruleDraft.primaryPlayerId, name: ruleDraft.primaryPlayerId }
-                  : null)
-              }
+              getOptionLabel={(o) => o.label || `${o.name} (${o.id})`}
+              isOptionEqualToValue={(a, b) => String(a?.id) === String(b?.id)}
+              value={primaryOptionSelected}
               onChange={(_, v) =>
-                setRuleDraft((d) => ({
-                  ...d,
-                  primaryPlayerId: v?.id || "",
-                }))
+                setRuleDraft((d) => {
+                  const nextPrimary = v?.id || "";
+                  return {
+                    ...d,
+                    primaryPlayerId: nextPrimary,
+                    targetPlayerIds: (d.targetPlayerIds || []).filter(
+                      (id) => String(id) !== String(nextPrimary)
+                    ),
+                  };
+                })
               }
-              freeSolo
-              onInputChange={(_, value, reason) => {
-                if (reason === "input") {
-                  setRuleDraft((d) => ({ ...d, primaryPlayerId: value }));
-                }
-              }}
-              renderInput={(params) => <TextField {...params} label="VĐV chính (primary)" />}
+              disabled={!effectivePlayerClubId || playerOptions.length === 0}
+              renderInput={(params) => (
+                <TextField
+                  {...params}
+                  label="VĐV chính (primary)"
+                  required
+                  helperText="Chỉ chọn từ danh sách — lưu player_id."
+                />
+              )}
             />
             <FormControl fullWidth>
               <InputLabel>Loại quy tắc</InputLabel>
@@ -908,19 +1143,30 @@ function PrivatePairingRulesAdminInner() {
             </FormControl>
             <Autocomplete
               multiple
-              options={playerOptions}
-              getOptionLabel={(o) => `${o.name} (${o.id})`}
-              value={playerOptions.filter((p) =>
-                (ruleDraft.targetPlayerIds || []).includes(p.id)
-              )}
-              onChange={(_, v) =>
-                setRuleDraft((d) => ({
-                  ...d,
-                  targetPlayerIds: v.map((x) => x.id),
-                }))
-              }
+              options={targetPlayerOptions}
+              getOptionLabel={(o) => o.label || `${o.name} (${o.id})`}
+              isOptionEqualToValue={(a, b) => String(a?.id) === String(b?.id)}
+              value={targetOptionsSelected}
+              onChange={(_, v) => {
+                const unique = [];
+                const seen = new Set();
+                for (const option of v || []) {
+                  const id = String(option?.id || "").trim();
+                  if (!id || seen.has(id)) continue;
+                  if (id === String(ruleDraft.primaryPlayerId || "")) continue;
+                  seen.add(id);
+                  unique.push(id);
+                }
+                setRuleDraft((d) => ({ ...d, targetPlayerIds: unique }));
+              }}
+              disabled={!effectivePlayerClubId || targetPlayerOptions.length === 0}
               renderInput={(params) => (
-                <TextField {...params} label="Target players" helperText="Quản lý danh sách đích" />
+                <TextField
+                  {...params}
+                  label="Target players"
+                  required
+                  helperText="Loại trừ VĐV chính; lưu player_id."
+                />
               )}
             />
             <Stack direction={{ xs: "column", sm: "row" }} spacing={1}>
@@ -1046,7 +1292,7 @@ function PrivatePairingRulesAdminInner() {
         </DialogContent>
         <DialogActions>
           <Button onClick={() => setRuleDialogOpen(false)}>Hủy</Button>
-          <Button variant="contained" onClick={handleSaveRule}>
+          <Button variant="contained" onClick={handleSaveRule} disabled={!canSaveRule}>
             Lưu
           </Button>
         </DialogActions>
