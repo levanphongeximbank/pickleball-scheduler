@@ -9,7 +9,7 @@
 | Staging project | `qyewbxjsiiyufanzcjcq` |
 | Merge | **NOT READY until owner browser SA matrix signed** |
 | Production | **NOT READY** |
-| Preview deployment | https://pickleball-scheduler-mtdpnr961-pickleball-scheduler.vercel.app |
+| Preview deployment | https://pickleball-scheduler-c9g7jkawk-pickleball-scheduler.vercel.app |
 | Preview alias | https://pickleball-scheduler-levanphongeximbank-pickleball-scheduler.vercel.app |
 
 ---

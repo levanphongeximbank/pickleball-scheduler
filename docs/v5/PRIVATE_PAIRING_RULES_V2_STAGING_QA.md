@@ -58,7 +58,7 @@ Evidence:
 | Item | Value |
 |------|-------|
 | Stable alias | https://pickleball-scheduler-levanphongeximbank-pickleball-scheduler.vercel.app |
-| Deployment URL (matches HEAD `59b3069`) | https://pickleball-scheduler-mtdpnr961-pickleball-scheduler.vercel.app |
+| Deployment URL (matches HEAD after finalize redeploy) | https://pickleball-scheduler-c9g7jkawk-pickleball-scheduler.vercel.app |
 | Route baked in build | `/admin/ai-pairing/private-rules` (`PrivatePairingRulesAdminPage-*.js`) |
 | Menu config | Quản trị → Quy tắc ghép cặp riêng (`admin-private-pairing-rules`) |
 
