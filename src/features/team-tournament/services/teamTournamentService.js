@@ -45,9 +45,49 @@ import {
 import { addTeamToTournament } from "../engines/teamTournamentEngine.js";
 import {
   assertTeamScope,
+  canApproveSubstitution,
   canManageTeam,
+  canRequestSubstitution,
 } from "../engines/teamPermissionEngine.js";
-import { normalizeTeamData, getLineup, createTeamRecord } from "../models/index.js";
+import {
+  generateTeamKnockoutMatchups,
+  canGenerateTeamKnockout,
+} from "../engines/teamKnockoutEngine.js";
+import {
+  buildClonedTeamForTournament,
+  listExistingTeamCatalog,
+} from "../engines/existingTeamCatalogEngine.js";
+import {
+  applyRosterSubstitution,
+  getSubstitutionGate,
+  listSubstitutionLog,
+} from "../engines/substitutionEngine.js";
+import {
+  freezeTiebreakOrder,
+  setTiebreakOrder,
+} from "../engines/teamStandingsEngine.js";
+import {
+  assignAward,
+  autoAssignAwardsFromRanking,
+  updateAwardsConfig,
+} from "../engines/awardsEngine.js";
+import {
+  assertTeamTournamentOpen,
+  closeTeamTournament,
+  getTeamTournamentSummary,
+  isTeamTournamentClosed,
+  previewCloseReadiness,
+} from "../engines/teamClosingEngine.js";
+import {
+  buildProductionUntouchedInventory,
+  buildStagingInventoryFromTt5Final,
+  evaluateTt5OpsReadiness,
+  getS2FSoftGapDisposition,
+  summarizeMatchupRefereeOps,
+} from "../engines/teamRefereeOpsReadinessEngine.js";
+import { buildRealtimeEnableGatesReport } from "../engines/teamRealtimeEnableGatesEngine.js";
+import { readTeamTournamentRealtimeEnv } from "../realtime/realtimeFlags.js";
+import { normalizeTeamData, getLineup, createTeamRecord, findTeam } from "../models/index.js";
 import { appendTeamAuditLog } from "./teamAuditService.js";
 import {
   cloudAssignMember,
@@ -575,6 +615,82 @@ function guardTeamManage(clubId) {
   return guardClubAction(clubId, PERMISSIONS.TOURNAMENT_UPDATE);
 }
 
+function guardExistingTeamView(clubId) {
+  const manage = guardTeamManage(clubId);
+  if (manage.ok) {
+    return manage;
+  }
+  const select = guardClubAction(clubId, PERMISSIONS.EXISTING_TEAM_SELECT);
+  if (select.ok) {
+    return select;
+  }
+  const view = guardClubAction(clubId, PERMISSIONS.EXISTING_TEAM_VIEW);
+  if (view.ok) {
+    return view;
+  }
+  return guardClubAction(clubId, PERMISSIONS.TOURNAMENT_VIEW);
+}
+
+function guardExistingTeamSelect(clubId) {
+  const manage = guardTeamManage(clubId);
+  if (manage.ok) {
+    return manage;
+  }
+  const select = guardClubAction(clubId, PERMISSIONS.EXISTING_TEAM_SELECT);
+  if (select.ok) {
+    return select;
+  }
+  return guardClubAction(clubId, PERMISSIONS.EXISTING_TEAM_MANAGE);
+}
+
+async function mirrorClonedTeamToCloud(tournament, teamRecord) {
+  const save = await mirrorMutationToCloud(
+    () => cloudSaveTeam(tournament.id, teamRecord),
+    {
+      ...tournament,
+      clubId: tournament.clubId,
+      tenantId: tournament.tenantId,
+    }
+  );
+  if (!save.ok && save.usedCloud) {
+    return save;
+  }
+  if (!shouldUseTeamTournamentCloud()) {
+    return { ok: true, usedCloud: false };
+  }
+
+  for (const playerId of teamRecord.playerIds || []) {
+    const assign = await cloudAssignMember(tournament.id, teamRecord.id, playerId);
+    if (!assign.ok && assign.usedCloud) {
+      return {
+        ok: false,
+        usedCloud: true,
+        error: assign.error || "Không gán được thành viên lên cloud.",
+        code: assign.code,
+      };
+    }
+  }
+
+  if (teamRecord.captainPlayerId) {
+    const captain = await cloudSetCaptain(
+      tournament.id,
+      teamRecord.id,
+      teamRecord.captainPlayerId,
+      teamRecord.deputyPlayerIds || []
+    );
+    if (!captain.ok && captain.usedCloud) {
+      return {
+        ok: false,
+        usedCloud: true,
+        error: captain.error || "Không gán được đội trưởng lên cloud.",
+        code: captain.code,
+      };
+    }
+  }
+
+  return { ok: true, usedCloud: true };
+}
+
 function applyTeamDataPatch(clubId, tournamentId, mutator) {
   const check = guardTeamManage(clubId);
   if (!check.ok) {
@@ -592,6 +708,243 @@ function applyTeamDataPatch(clubId, tournamentId, mutator) {
       tournament: attachTeamDataToTournament(tournament, result.teamData),
       audit: result.audit,
     };
+  });
+}
+
+/**
+ * S2-D — Generate group → knockout bracket (keeps RR matchups).
+ */
+export function generateTeamKnockoutBracket(clubId, tournamentId, options = {}) {
+  const check = guardTeamManage(clubId);
+  if (!check.ok) {
+    return check;
+  }
+
+  const tournament = getTeamTournamentById(clubId, tournamentId);
+  if (!tournament) {
+    return { ok: false, error: "Không tìm thấy giải đấu." };
+  }
+
+  const open = assertTeamTournamentOpen(getTeamData(tournament), "tạo knockout");
+  if (!open.ok) {
+    return open;
+  }
+
+  const built = generateTeamKnockoutMatchups(getTeamData(tournament), options);
+  if (!built.ok) {
+    return built;
+  }
+
+  return updateTournament(clubId, tournamentId, (current) => {
+    appendTeamAuditLog({
+      action: TEAM_AUDIT_ACTIONS.KNOCKOUT_GENERATE,
+      targetId: current.id,
+      metadata: {
+        qualifiersPerGroup: options.qualifiersPerGroup || 2,
+        knockoutMatchCount: built.knockoutMatchCount,
+        qualifiedCount: (built.qualified || []).length,
+      },
+    });
+
+    return {
+      ok: true,
+      tournament: attachTeamDataToTournament(current, built.teamData),
+      qualified: built.qualified,
+      knockoutMatchCount: built.knockoutMatchCount,
+    };
+  });
+}
+
+export function previewTeamKnockoutGate(clubId, tournamentId, options = {}) {
+  const tournament = getTeamTournamentById(clubId, tournamentId);
+  if (!tournament) {
+    return { ok: false, allowed: false, error: "Không tìm thấy giải đấu." };
+  }
+  return canGenerateTeamKnockout(getTeamData(tournament), options);
+}
+
+/**
+ * S2-E — Update / freeze tie-break order (blocked after knockout generate).
+ */
+export function updateTeamTiebreakOrder(clubId, tournamentId, tiebreakOrder = []) {
+  return applyTeamDataPatch(clubId, tournamentId, (teamData, tournament) => {
+    const result = setTiebreakOrder(teamData, tiebreakOrder);
+    if (!result.ok) {
+      return result;
+    }
+
+    appendTeamAuditLog({
+      action: TEAM_AUDIT_ACTIONS.TEAM_UPDATE,
+      targetId: tournament.id,
+      metadata: { tiebreakOrder, field: "tiebreakOrder" },
+    });
+
+    return { ok: true, teamData: result.teamData };
+  });
+}
+
+export function freezeTeamTiebreakOrder(clubId, tournamentId, options = {}) {
+  return applyTeamDataPatch(clubId, tournamentId, (teamData, tournament) => {
+    const result = freezeTiebreakOrder(teamData, options);
+    if (!result.ok) {
+      return result;
+    }
+
+    appendTeamAuditLog({
+      action: TEAM_AUDIT_ACTIONS.TEAM_UPDATE,
+      targetId: tournament.id,
+      metadata: { field: "tiebreakFrozen", reason: options.reason || "manual" },
+    });
+
+    return { ok: true, teamData: result.teamData };
+  });
+}
+
+/**
+ * S2-H — Awards config / assign / auto / close.
+ */
+export function updateTeamAwardsConfig(clubId, tournamentId, patch = {}) {
+  return applyTeamDataPatch(clubId, tournamentId, (teamData, tournament) => {
+    const result = updateAwardsConfig(teamData, patch);
+    if (!result.ok) {
+      return result;
+    }
+    appendTeamAuditLog({
+      action: TEAM_AUDIT_ACTIONS.AWARDS_UPDATE,
+      targetId: tournament.id,
+      metadata: { patchKeys: Object.keys(patch || {}) },
+    });
+    return { ok: true, teamData: result.teamData, awardsConfig: result.awardsConfig };
+  });
+}
+
+export function assignTeamAward(clubId, tournamentId, awardKey, teamId) {
+  return applyTeamDataPatch(clubId, tournamentId, (teamData, tournament) => {
+    const result = assignAward(teamData, awardKey, teamId);
+    if (!result.ok) {
+      return result;
+    }
+    appendTeamAuditLog({
+      action: TEAM_AUDIT_ACTIONS.AWARDS_ASSIGN,
+      targetId: tournament.id,
+      metadata: { awardKey, teamId },
+    });
+    return { ok: true, teamData: result.teamData };
+  });
+}
+
+export function autoAssignTeamAwards(clubId, tournamentId, options = {}) {
+  return applyTeamDataPatch(clubId, tournamentId, (teamData, tournament) => {
+    const result = autoAssignAwardsFromRanking(teamData, options);
+    if (!result.ok) {
+      return result;
+    }
+    appendTeamAuditLog({
+      action: TEAM_AUDIT_ACTIONS.AWARDS_ASSIGN,
+      targetId: tournament.id,
+      metadata: { mode: "auto", count: (result.awards || []).length },
+    });
+    return {
+      ok: true,
+      teamData: result.teamData,
+      awards: result.awards,
+      ranking: result.ranking,
+    };
+  });
+}
+
+export function closeTeamTournamentForClub(clubId, tournamentId, options = {}) {
+  const check = guardTeamManage(clubId);
+  if (!check.ok) {
+    return check;
+  }
+
+  const tournament = getTeamTournamentById(clubId, tournamentId);
+  if (!tournament) {
+    return { ok: false, error: "Không tìm thấy giải đấu." };
+  }
+
+  return updateTournament(clubId, tournamentId, (current) => {
+    const closed = closeTeamTournament(getTeamData(current), {
+      ...options,
+      tournamentId: current.id,
+      tournamentName: current.name || "",
+    });
+    if (!closed.ok) {
+      return closed;
+    }
+
+    appendTeamAuditLog({
+      action: TEAM_AUDIT_ACTIONS.TOURNAMENT_CLOSE,
+      targetId: current.id,
+      metadata: {
+        championTeamId: closed.summary?.champion?.teamId || "",
+        completedMatchupCount: closed.summary?.completedMatchupCount || 0,
+      },
+    });
+
+    return {
+      ok: true,
+      tournament: {
+        ...attachTeamDataToTournament(current, closed.teamData),
+        status: "completed",
+      },
+      summary: closed.summary,
+    };
+  });
+}
+
+export function getTeamClosePreview(clubId, tournamentId) {
+  const tournament = getTeamTournamentById(clubId, tournamentId);
+  if (!tournament) {
+    return { ok: false, error: "Không tìm thấy giải đấu." };
+  }
+  const teamData = getTeamData(tournament);
+  return {
+    ok: true,
+    closed: isTeamTournamentClosed(teamData),
+    summary: getTeamTournamentSummary(teamData),
+    readiness: previewCloseReadiness(teamData),
+  };
+}
+
+/**
+ * S2-F — TT-5 ops readiness report (inventory evaluate; never applies Production SQL).
+ */
+export function getTeamRefereeOpsReadinessReport(clubId, tournamentId, options = {}) {
+  const tournament = tournamentId
+    ? getTeamTournamentById(clubId, tournamentId)
+    : null;
+  const teamData = tournament ? getTeamData(tournament) : null;
+
+  const staging = evaluateTt5OpsReadiness(
+    options.stagingInventory || buildStagingInventoryFromTt5Final(options.stagingFlags || {})
+  );
+  const production = evaluateTt5OpsReadiness(
+    options.productionInventory || buildProductionUntouchedInventory(options.productionFlags || {})
+  );
+
+  return {
+    ok: true,
+    productionSqlApplyAllowed: false,
+    staging,
+    production,
+    softGaps: getS2FSoftGapDisposition(),
+    liveOps: teamData ? summarizeMatchupRefereeOps(teamData) : null,
+    legacyDeprecation: staging.legacyDeprecation,
+  };
+}
+
+/**
+ * S2-G — Realtime enable gates report (Production flag remains Owner-gated).
+ */
+export function getTeamRealtimeEnableGatesReport(options = {}) {
+  return buildRealtimeEnableGatesReport({
+    env: options.env || readTeamTournamentRealtimeEnv(),
+    stage: options.stage,
+    ownerProductionOverride: options.ownerProductionOverride,
+    assumeCaptainEvidencePass: options.assumeCaptainEvidencePass,
+    captainSecurityVerdict: options.captainSecurityVerdict,
   });
 }
 
@@ -634,6 +987,119 @@ export async function createTeamInTournament(clubId, tournamentId, options = {})
       tournament: attachTeamDataToTournament(current, teamData),
     };
   });
+}
+
+/**
+ * S2-B — Catalog of teams already created in other (or all) team tournaments of this club.
+ */
+export function listExistingTeamsForClub(clubId, options = {}) {
+  const check = guardExistingTeamView(clubId);
+  if (!check.ok) {
+    return { ok: false, error: check.error, code: check.code, entries: [] };
+  }
+
+  const data = loadClubData(clubId);
+  const tournaments = (data.tournaments || [])
+    .filter((item) => isTeamTournament(item))
+    .map((item) => ({
+      ...item,
+      teamData: getTeamData(item),
+    }));
+
+  const entries = listExistingTeamCatalog(tournaments, {
+    excludeTournamentId: options.excludeTournamentId,
+    includeEmpty: options.includeEmpty === true,
+  });
+
+  return { ok: true, entries };
+}
+
+/**
+ * S2-B — Clone an existing team (roster + captain) into the target tournament.
+ * Does not share a live registry — creates a new tournament-local team id.
+ */
+export async function cloneExistingTeamIntoTournament(
+  clubId,
+  targetTournamentId,
+  options = {}
+) {
+  const check = guardExistingTeamSelect(clubId);
+  if (!check.ok) {
+    return check;
+  }
+
+  const sourceTournamentId = options.sourceTournamentId
+    ? String(options.sourceTournamentId)
+    : "";
+  const sourceTeamId = options.sourceTeamId ? String(options.sourceTeamId) : "";
+  if (!sourceTournamentId || !sourceTeamId) {
+    return { ok: false, error: "Thiếu đội nguồn để sao chép.", code: "SOURCE_REQUIRED" };
+  }
+
+  const target = getTeamTournamentById(clubId, targetTournamentId);
+  if (!target) {
+    return { ok: false, error: "Không tìm thấy giải đích.", code: "TARGET_MISSING" };
+  }
+
+  const sourceTournament = getTeamTournamentById(clubId, sourceTournamentId);
+  if (!sourceTournament) {
+    return { ok: false, error: "Không tìm thấy giải nguồn.", code: "SOURCE_TOURNAMENT_MISSING" };
+  }
+
+  const sourceTeam = findTeam(getTeamData(sourceTournament), sourceTeamId);
+  if (!sourceTeam) {
+    return { ok: false, error: "Không tìm thấy đội nguồn.", code: "SOURCE_TEAM_MISSING" };
+  }
+
+  const built = buildClonedTeamForTournament(sourceTeam, getTeamData(target), {
+    name: options.name,
+    sourceTournamentId,
+    clonedAt: new Date().toISOString(),
+  });
+  if (!built.ok) {
+    return built;
+  }
+
+  const teamRecord = built.teamRecord;
+  const cloudCheck = await mirrorClonedTeamToCloud(
+    { ...target, clubId, tenantId: target.tenantId },
+    teamRecord
+  );
+  if (!cloudCheck.ok && cloudCheck.usedCloud) {
+    return { ok: false, error: cloudCheck.error, code: cloudCheck.code };
+  }
+
+  const saved = updateTournament(clubId, targetTournamentId, (current) => {
+    const teamData = addTeamToTournament(getTeamData(current), teamRecord);
+
+    appendTeamAuditLog({
+      action: TEAM_AUDIT_ACTIONS.TEAM_CLONE,
+      targetId: current.id,
+      metadata: {
+        teamId: teamRecord.id,
+        teamName: teamRecord.name,
+        sourceTournamentId,
+        sourceTeamId,
+        skippedPlayerIds: built.skippedPlayerIds,
+      },
+    });
+
+    return {
+      ok: true,
+      tournament: attachTeamDataToTournament(current, teamData),
+    };
+  });
+
+  if (!saved.ok) {
+    return saved;
+  }
+
+  return {
+    ...saved,
+    team: teamRecord,
+    warnings: built.warnings,
+    skippedPlayerIds: built.skippedPlayerIds,
+  };
 }
 
 export function updateTeamDetails(clubId, tournamentId, { teamId, patch = {} }) {
@@ -702,6 +1168,148 @@ export async function removePlayerFromTeamRoster(clubId, tournamentId, { teamId,
 
     return { ...result, audit: TEAM_AUDIT_ACTIONS.TEAM_PLAYER_REMOVE };
   });
+}
+
+/**
+ * S2-C — Replace outPlayer with inPlayer on roster before lineup lock/publish.
+ * Captain (request) on own team or BTC (approve/manage).
+ */
+export async function substituteTeamPlayer(clubId, tournamentId, payload = {}) {
+  const tournament = getTeamTournamentById(clubId, tournamentId);
+  if (!tournament) {
+    return { ok: false, error: "Không tìm thấy giải đồng đội." };
+  }
+
+  const open = assertTeamTournamentOpen(getTeamData(tournament), "thay người");
+  if (!open.ok) {
+    return open;
+  }
+
+  const { user } = getAuthOptions();
+  const permissions = getPermissionsForRole(user?.role || "");
+  const actorPlayerId = user?.playerId ? String(user.playerId) : "";
+  const teamId = payload.teamId ? String(payload.teamId) : "";
+  const isBtc =
+    canApproveSubstitution({ permissions }) || canManageTeam({ permissions });
+
+  if (isBtc) {
+    const manage = guardTeamManage(clubId);
+    if (!manage.ok) {
+      const approve = guardClubAction(clubId, PERMISSIONS.TEAM_SUBSTITUTION_APPROVE);
+      if (!approve.ok) {
+        return approve;
+      }
+    }
+  } else {
+    if (!canRequestSubstitution({ permissions })) {
+      return guardClubAction(clubId, PERMISSIONS.TEAM_SUBSTITUTION_REQUEST);
+    }
+    const scope = assertTeamScope(
+      getTeamData(tournament),
+      teamId,
+      actorPlayerId,
+      permissions
+    );
+    if (!scope.ok) {
+      return scope;
+    }
+  }
+
+  const players = loadPlayersForClub(clubId);
+  const built = applyRosterSubstitution(
+    getTeamData(tournament),
+    {
+      teamId,
+      outPlayerId: payload.outPlayerId,
+      inPlayerId: payload.inPlayerId,
+      reason: payload.reason,
+      actorRole: isBtc ? "btc" : "captain",
+      actorPlayerId,
+    },
+    players
+  );
+  if (!built.ok) {
+    return built;
+  }
+
+  const nextTeam = findTeam(built.teamData, teamId);
+  if (shouldUseTeamTournamentCloud()) {
+    const remove = await mirrorMutationToCloud(
+      () => cloudRemoveMember(tournamentId, teamId, String(payload.outPlayerId)),
+      { ...tournament, clubId, tenantId: tournament.tenantId }
+    );
+    if (!remove.ok && remove.usedCloud) {
+      return { ok: false, error: remove.error, code: remove.code };
+    }
+    const assign = await mirrorMutationToCloud(
+      () => cloudAssignMember(tournamentId, teamId, String(payload.inPlayerId)),
+      { ...tournament, clubId, tenantId: tournament.tenantId }
+    );
+    if (!assign.ok && assign.usedCloud) {
+      return { ok: false, error: assign.error, code: assign.code };
+    }
+    if (built.entry?.captainChanged && nextTeam?.captainPlayerId) {
+      const captain = await mirrorMutationToCloud(
+        () =>
+          cloudSetCaptain(
+            tournamentId,
+            teamId,
+            nextTeam.captainPlayerId,
+            nextTeam.deputyPlayerIds || []
+          ),
+        { ...tournament, clubId, tenantId: tournament.tenantId }
+      );
+      if (!captain.ok && captain.usedCloud) {
+        return { ok: false, error: captain.error, code: captain.code };
+      }
+    }
+  }
+
+  const saved = updateTournament(clubId, tournamentId, (current) => {
+    appendTeamAuditLog({
+      action: TEAM_AUDIT_ACTIONS.TEAM_SUBSTITUTION,
+      targetId: current.id,
+      metadata: {
+        teamId,
+        outPlayerId: payload.outPlayerId,
+        inPlayerId: payload.inPlayerId,
+        reason: payload.reason || "",
+        actorRole: isBtc ? "btc" : "captain",
+        substitutionId: built.entry?.id,
+      },
+    });
+
+    return {
+      ok: true,
+      tournament: attachTeamDataToTournament(current, built.teamData),
+    };
+  });
+
+  if (!saved.ok) {
+    return saved;
+  }
+
+  return {
+    ...saved,
+    entry: built.entry,
+    warnings: built.warnings,
+  };
+}
+
+export function getTeamSubstitutionGate(clubId, tournamentId, teamId) {
+  const tournament = getTeamTournamentById(clubId, tournamentId);
+  if (!tournament) {
+    return { ok: false, allowed: false, error: "Không tìm thấy giải đồng đội." };
+  }
+  return getSubstitutionGate(getTeamData(tournament), teamId);
+}
+
+export function getTeamSubstitutionLog(clubId, tournamentId, teamId = "") {
+  const tournament = getTeamTournamentById(clubId, tournamentId);
+  if (!tournament) {
+    return [];
+  }
+  return listSubstitutionLog(getTeamData(tournament), teamId);
 }
 
 export async function assignCaptainToTeam(clubId, tournamentId, { teamId, playerId }) {

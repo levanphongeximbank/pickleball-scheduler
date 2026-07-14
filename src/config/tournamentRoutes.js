@@ -60,6 +60,7 @@ export const TEAM_TAB_QUERY = Object.freeze({
   disciplines: "disciplines",
   matchups: "matchups",
   standings: "standings",
+  awards: "awards",
   diagram: "diagram",
 });
 

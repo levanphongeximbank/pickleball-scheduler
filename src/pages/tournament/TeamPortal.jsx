@@ -60,6 +60,7 @@ import {
   isTeamTournament,
 } from "../../features/team-tournament/engines/teamTournamentEngine.js";
 import TournamentSetupShell from "../../components/tournament/TournamentSetupShell.jsx";
+import TeamSubstitutionPanel from "../../components/tournament/TeamSubstitutionPanel.jsx";
 import { findTeam, getLineup } from "../../features/team-tournament/models/index.js";
 import { captainSubmitDreambreakerOrder } from "../../features/team-tournament/services/teamTournamentService.js";
 import { useTeamTournamentPage } from "../../features/team-tournament/ui/useTeamTournamentPage.js";
@@ -73,6 +74,7 @@ import {
 import { buildUiCommandScope } from "../../features/team-tournament/ui/teamTournamentUiCommandKeys.js";
 import { resolveEffectiveTenantId } from "../../features/tenant/services/tenantService.js";
 import { fetchProfileByUserId } from "../../auth/profileService.js";
+import { getPermissionsForRole } from "../../features/identity/matrix/rolePermissions.js";
 
 
 function canEditLineup(lineup) {
@@ -716,6 +718,14 @@ export default function TeamPortal() {
     [effectiveClubId, dataVersion]
   );
 
+  const permissions = useMemo(
+    () => getPermissionsForRole(user?.role || ""),
+    [user?.role]
+  );
+
+  const [subMessage, setSubMessage] = useState(null);
+  const [subError, setSubError] = useState(null);
+
   const matchups = useMemo(() => {
     if (!access.captainTeam) {
       return { upcoming: [], past: [], pending: [], done: [] };
@@ -886,6 +896,37 @@ export default function TeamPortal() {
           deadlineStatus={deadlineStatus}
           isCloudPrimary={isCloudPrimary}
         />
+
+        {access.captainTeam ? (
+          <>
+            {subMessage ? (
+              <Alert severity="success" onClose={() => setSubMessage(null)}>
+                {subMessage}
+              </Alert>
+            ) : null}
+            {subError ? (
+              <Alert severity="error" onClose={() => setSubError(null)}>
+                {subError}
+              </Alert>
+            ) : null}
+            <TeamSubstitutionPanel
+              clubId={effectiveClubId}
+              tournamentId={tournamentId}
+              team={access.captainTeam}
+              teamData={teamData}
+              players={players}
+              permissions={permissions}
+              mode="captain"
+              dense
+              onUpdated={() => reload()}
+              onError={(text) => setSubError(text)}
+              onMessage={(text) => {
+                setSubError(null);
+                setSubMessage(text);
+              }}
+            />
+          </>
+        ) : null}
 
         {dbMessage ? (
           <Alert severity={dbMessage.type} onClose={() => setDbMessage(null)}>

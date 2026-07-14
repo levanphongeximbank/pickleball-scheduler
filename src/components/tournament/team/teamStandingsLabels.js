@@ -16,6 +16,8 @@ export const TIEBREAK_LABELS = {
   wins: "Thắng",
   subMatchDiff: "HS trận con",
   pointsScored: "Điểm ghi",
+  headToHead: "Đối đầu trực tiếp",
+  miniTable: "Mini-table (3+ đội)",
   manual: "BTC quyết định",
 };
 

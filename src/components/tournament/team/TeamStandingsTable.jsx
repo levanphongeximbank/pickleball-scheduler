@@ -67,6 +67,8 @@ export default function TeamStandingsTable({
   matchupsTotal = 0,
   dreambreakerPending = 0,
   scheduleLabel = "Vòng tròn",
+  title = "BXH giải đồng đội",
+  compact = false,
 }) {
   const subtitle = tournamentName
     ? `${tournamentName}${scheduleLabel ? ` — ${scheduleLabel}` : ""}`
@@ -75,8 +77,8 @@ export default function TeamStandingsTable({
 
   return (
     <TournamentSectionCard
-      title="BXH giải đồng đội"
-      subtitle={subtitle}
+      title={title}
+      subtitle={compact ? scheduleLabel || subtitle : subtitle}
       badge={
         <StandingsHeaderChips formatPreset={formatPreset} teamCount={standings.length} />
       }

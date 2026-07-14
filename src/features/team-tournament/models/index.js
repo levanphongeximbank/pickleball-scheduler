@@ -191,6 +191,9 @@ export function normalizeTeam(team, index = 0) {
     avgLevel: Number(team.avgLevel) > 0 ? Number(team.avgLevel) : 0,
     topPlayerRating: Number(team.topPlayerRating) > 0 ? Number(team.topPlayerRating) : 0,
     totalRating: Number(team.totalRating) > 0 ? Number(team.totalRating) : 0,
+    ...(team.clonedFrom && typeof team.clonedFrom === "object"
+      ? { clonedFrom: team.clonedFrom }
+      : {}),
   };
 }
 
@@ -219,6 +222,7 @@ export function createTeamRecord(options = {}) {
     avgLevel: options.avgLevel,
     topPlayerRating: options.topPlayerRating,
     totalRating: options.totalRating,
+    ...(options.clonedFrom ? { clonedFrom: options.clonedFrom } : {}),
   });
 }
 
@@ -292,6 +296,16 @@ export function normalizeMatchup(matchup) {
     matchNumberInRound:
       Number(matchup.matchNumberInRound) > 0 ? Number(matchup.matchNumberInRound) : 0,
     status,
+    /** S2-D — `group` (default) or `knockout` */
+    stage: matchup.stage ? String(matchup.stage).trim() : "",
+    bracketMatchId: matchup.bracketMatchId
+      ? String(matchup.bracketMatchId).trim()
+      : "",
+    nextMatchupId: matchup.nextMatchupId ? String(matchup.nextMatchupId).trim() : "",
+    nextSlot: matchup.nextSlot === "B" ? "B" : matchup.nextSlot === "A" ? "A" : "",
+    bracketRoundLabel: matchup.bracketRoundLabel
+      ? String(matchup.bracketRoundLabel).trim()
+      : "",
     subMatches: normalizeSubMatches(matchup.subMatches || []),
     result:
       matchup.result && typeof matchup.result === "object"
@@ -354,6 +368,11 @@ export function createMatchupRecord(teamAId, teamBId, options = {}) {
     matchNumberInRound:
       Number(options.matchNumberInRound) > 0 ? Number(options.matchNumberInRound) : 0,
     status: options.status || MATCHUP_STATUS.LINEUP_OPEN,
+    stage: options.stage || "",
+    bracketMatchId: options.bracketMatchId || "",
+    nextMatchupId: options.nextMatchupId || "",
+    nextSlot: options.nextSlot || "",
+    bracketRoundLabel: options.bracketRoundLabel || "",
     subMatches,
     result: null,
   });
@@ -487,6 +506,12 @@ export function normalizeTeamData(teamData = {}) {
     regulations: rawSettings.regulations || null,
   };
 
+  const substitutionLog = Array.isArray(teamData.substitutionLog)
+    ? teamData.substitutionLog
+    : Array.isArray(settings.substitutionLog)
+      ? settings.substitutionLog
+      : [];
+
   return {
     disciplines: normalizeDisciplines(teamData.disciplines || []),
     teams: normalizeTeams(teamData.teams || []),
@@ -494,7 +519,16 @@ export function normalizeTeamData(teamData = {}) {
     matchups: normalizeMatchups(teamData.matchups || []),
     lineups: normalizeLineups(teamData.lineups || {}),
     standings: normalizeStandings(teamData.standings || []),
-    settings,
+    settings: {
+      ...settings,
+      substitutionLog,
+    },
+    substitutionLog,
+    /** S2-D knockout metadata (null when none) */
+    knockout:
+      teamData.knockout && typeof teamData.knockout === "object"
+        ? teamData.knockout
+        : null,
   };
 }
 
