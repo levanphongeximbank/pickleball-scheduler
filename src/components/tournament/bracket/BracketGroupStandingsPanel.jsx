@@ -49,19 +49,19 @@ function GroupStandingCard({ groupStanding, courts = [], matches = [] }) {
           ) : null}
         </Stack>
         <Typography variant="caption" className="tournament-group-standing-card__teams">
-          {teamCount} ĐỘI
+          {teamCount} VĐV/CẶP
         </Typography>
       </Stack>
 
       <TableContainer>
-        <Table size="small" className="tournament-group-standing-card__table">
+        <Table size="small" className="tournament-group-standing-card__table" aria-label={`Bảng xếp hạng ${groupStanding.group}`}>
           <TableHead>
             <TableRow>
-              {["#", "Đội / Cặp", "Thắng", "Thua", "Ghi", "Bị", "±"].map((label) => (
+              {["#", "VĐV / Cặp", "Thắng", "Thua", "Ghi", "Bị", "±"].map((label) => (
                 <TableCell
                   key={label}
                   sx={tournamentTableHeadSx}
-                  align={label === "Đội / Cặp" ? "left" : "center"}
+                  align={label === "VĐV / Cặp" ? "left" : "center"}
                 >
                   {label}
                 </TableCell>
@@ -160,8 +160,14 @@ export default function BracketGroupStandingsPanel({
 }) {
   if (!standings.length) {
     return (
-      <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-        Chưa có kết quả vòng bảng.
+      <Typography
+        variant="body2"
+        color="text.secondary"
+        sx={{ mb: 2 }}
+        role="status"
+        aria-live="polite"
+      >
+        Chưa có kết quả vòng bảng cho VĐV / cặp.
       </Typography>
     );
   }

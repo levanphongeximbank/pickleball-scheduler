@@ -208,3 +208,24 @@ export {
   buildTournamentSummary,
   reopenClosedTournament,
 } from "./engines/tournamentClosingEngine.js";
+
+export {
+  findPlayerEntries,
+  listUpcomingMatchesForEntry,
+  listMatchHistoryForEntry,
+  resolvePlayerStanding,
+  buildScheduleViewForEntry,
+  buildBracketViewSummary,
+  buildPlayerPortalDashboard,
+  listPlayerTournaments,
+} from "./engines/playerPortalEngine.js";
+
+export {
+  PLAYER_NOTIFICATION_TYPE,
+  buildPlayerNotifications,
+  markNotificationsRead,
+  markAllNotificationsRead,
+  dismissNotification,
+  bumpPortalOptimisticVersion,
+  getPortalOptimisticVersion,
+} from "./engines/playerNotificationEngine.js";

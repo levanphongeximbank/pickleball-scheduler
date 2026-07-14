@@ -91,6 +91,9 @@ export const TOURNAMENT_IN_PAGE_NAV = Object.freeze({
           leaf("tournament-register", "Đăng ký VĐV", TOURNAMENT_ROUTES.register, {
             permissions: MANAGE,
           }),
+          leaf("tournament-player-portal", "Cổng VĐV (Individual)", TOURNAMENT_ROUTES.playerPortal, {
+            featureStatus: FEATURE_STATUS.LIVE,
+          }),
           leaf("tournament-athlete-list", "Danh sách VĐV", TOURNAMENT_ROUTES.register, {
             featureStatus: FEATURE_STATUS.LIVE,
           }),

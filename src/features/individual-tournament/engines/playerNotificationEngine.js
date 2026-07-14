@@ -92,9 +92,7 @@ export function buildPlayerNotifications(tournament, options = {}) {
   (schedule.auditLog || []).forEach((entry) => {
     if (
       entry.action === SCHEDULE_AUDIT_ACTIONS.PUBLISHED ||
-      entry.action === SCHEDULE_AUDIT_ACTIONS.FORCE_PUBLISH ||
-      entry.action === "schedule_force_publish" ||
-      entry.action === "schedule_published"
+      entry.action === SCHEDULE_AUDIT_ACTIONS.FORCE_PUBLISH
     ) {
       items.push({
         id: `notif-sched-${entry.id || entry.timestamp}`,

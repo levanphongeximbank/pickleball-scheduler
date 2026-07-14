@@ -194,6 +194,12 @@ const TournamentAwardsPage = lazy(() => import("./pages/tournament/TournamentAwa
 const TournamentWithdrawalPage = lazy(() =>
   import("./pages/tournament/TournamentWithdrawalPage.jsx")
 );
+const IndividualPlayerPortalPage = lazy(() =>
+  import("./pages/tournament/IndividualPlayerPortalPage.jsx")
+);
+const IndividualTournamentPublicPage = lazy(() =>
+  import("./pages/tournament/IndividualTournamentPublicPage.jsx")
+);
 const TournamentPublishSchedulePage = lazy(() =>
   import("./pages/tournament/TournamentPublishSchedulePage.jsx")
 );
@@ -507,6 +513,12 @@ export default function Router() {
             <Route path="/tournament/operations" element={<TournamentOperationsHubPage />} />
             <Route path="/tournament/results" element={<TournamentResultsHubPage />} />
             <Route path="/tournament/register" element={<TournamentRegisterHub />} />
+            <Route path="/tournament/my" element={<IndividualPlayerPortalPage />} />
+            <Route path="/tournament/my/:tournamentId" element={<IndividualPlayerPortalPage />} />
+            <Route
+              path="/tournament/:tournamentId/public"
+              element={<IndividualTournamentPublicPage />}
+            />
             <Route
               path="/tournament/:tournamentId/register"
               element={<IndividualRegistrationPage />}

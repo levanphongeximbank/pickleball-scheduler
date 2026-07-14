@@ -48,6 +48,8 @@ export const TOURNAMENT_ROUTES = Object.freeze({
   refereeAssign: "/tournament/referee-assign",
   awards: "/tournament/awards",
   withdrawal: "/tournament/withdrawal",
+  /** S1-H player portal */
+  playerPortal: "/tournament/my",
   reportsHub: "/reports",
   aiHub: "/ai",
   supportHub: "/support",
@@ -118,6 +120,16 @@ export function isRegistrationManageableTournament(tournament) {
 export function individualPlayerRegistrationPath(tournamentId) {
   if (!tournamentId) return TOURNAMENT_ROUTES.register;
   return `/tournament/${tournamentId}/register`;
+}
+
+export function individualPlayerPortalPath(tournamentId = "") {
+  if (!tournamentId) return TOURNAMENT_ROUTES.playerPortal;
+  return `/tournament/my/${tournamentId}`;
+}
+
+export function individualPublicTournamentPath(tournamentId) {
+  if (!tournamentId) return TOURNAMENT_ROUTES.list;
+  return `/tournament/${tournamentId}/public`;
 }
 
 export function isSchedulableTournament(tournament) {
