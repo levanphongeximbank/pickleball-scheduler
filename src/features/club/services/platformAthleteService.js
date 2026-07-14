@@ -11,6 +11,11 @@ import {
 import { listUsers } from "../../identity/services/userManagementService.js";
 import { getCurrentUser, isDevAuthAllowed, listDevUsers } from "../../../auth/authService.js";
 import { normalizeUser } from "../../../models/user.js";
+import { isCanonicalPlayerRepositoryEnabled } from "../config/canonicalRepositoryFlags.js";
+import {
+  listPlayersForClubAware,
+  listSourceClubsAware,
+} from "../repositories/canonicalPlayerPickerAdapter.js";
 
 export const PLATFORM_ATHLETE_LINK_STATUS = Object.freeze({
   LINKED: "linked",
@@ -181,13 +186,95 @@ async function fetchPlayerProfiles() {
   };
 }
 
-export async function getPlatformAthletes() {
+/**
+ * Platform roster half — membership SSOT when canonical player flag ON.
+ */
+export async function getClubPlayersPlatformWideAware(options = {}) {
+  if (!isCanonicalPlayerRepositoryEnabled(options.envSource)) {
+    return {
+      ok: true,
+      players: getClubPlayersPlatformWide(),
+      source: "legacy_blob",
+      mappingSummary: null,
+      warnings: [],
+    };
+  }
+
+  const clubsResult = await listSourceClubsAware({
+    tenantId: options.tenantId || null,
+    userContext: options.userContext || { isPlatformAdmin: true },
+  });
+  if (!clubsResult.ok) {
+    return { ok: false, error: clubsResult.message || clubsResult.code, players: [] };
+  }
+
+  const byId = new Map();
+  const warnings = [...(clubsResult.warnings || [])];
+  let mappedPlayers = 0;
+  let unmappedMembers = 0;
+  let derivedPlayers = 0;
+  let duplicatesRemoved = 0;
+
+  for (const club of clubsResult.data || []) {
+    const playersResult = await listPlayersForClubAware(club.id, {
+      tenantId: club.tenantId || options.tenantId || null,
+      userContext: options.userContext || { isPlatformAdmin: true },
+      profilesByUserId: options.profilesByUserId,
+      includeUnmappedInData: true,
+    });
+    if (!playersResult.ok) {
+      warnings.push({
+        code: playersResult.code || "PLAYER_LIST_FAILED",
+        meta: { clubId: club.id },
+      });
+      continue;
+    }
+    warnings.push(...(playersResult.warnings || []));
+    mappedPlayers += playersResult.mappingSummary?.mappedPlayers || 0;
+    unmappedMembers += playersResult.mappingSummary?.unmappedMembers || 0;
+    derivedPlayers += playersResult.mappingSummary?.derivedPlayers || 0;
+    duplicatesRemoved += playersResult.mappingSummary?.duplicatesRemoved || 0;
+
+    for (const player of playersResult.legacyPlayers || []) {
+      if (byId.has(player.id)) continue;
+      byId.set(player.id, {
+        ...player,
+        sourceClubId: club.id,
+        clubName: player.clubName || club.name,
+        linkStatus: PLATFORM_ATHLETE_LINK_STATUS.LINKED,
+      });
+    }
+  }
+
+  return {
+    ok: true,
+    players: normalizePlayers(Array.from(byId.values())),
+    source: "membership_ssot",
+    warnings,
+    mappingSummary: {
+      mappedPlayers,
+      unmappedMembers,
+      derivedPlayers,
+      duplicatesRemoved,
+      activeMembers: mappedPlayers + unmappedMembers + derivedPlayers,
+    },
+  };
+}
+
+export async function getPlatformAthletes(options = {}) {
   const currentUser = getCurrentUser();
   if (!isPlatformAthleteViewer(currentUser?.role)) {
     return { ok: false, error: "Không có quyền xem VĐV toàn hệ thống.", code: "FORBIDDEN" };
   }
 
-  const rosterPlayers = getClubPlayersPlatformWide();
+  const rosterResult = await getClubPlayersPlatformWideAware({
+    ...options,
+    userContext: { user: currentUser, isPlatformAdmin: true },
+  });
+  if (!rosterResult.ok) {
+    return rosterResult;
+  }
+  const rosterPlayers = rosterResult.players || [];
   const profileResult = await fetchPlayerProfiles();
 
   if (!profileResult.ok) {
@@ -200,6 +287,11 @@ export async function getPlatformAthletes() {
   );
   const players = sortByName([...rosterPlayers, ...orphanPlayers]);
 
+  const unmappedNote =
+    rosterResult.mappingSummary?.unmappedMembers > 0
+      ? ` · ${rosterResult.mappingSummary.unmappedMembers} thành viên active chưa map playerId`
+      : "";
+
   return {
     ok: true,
     players,
@@ -208,8 +300,14 @@ export async function getPlatformAthletes() {
       rosterCount: rosterPlayers.length,
       accountOnlyCount: orphanPlayers.length,
       linkedCount: rosterPlayers.length,
+      mappedPlayers: rosterResult.mappingSummary?.mappedPlayers,
+      unmappedMembers: rosterResult.mappingSummary?.unmappedMembers,
+      derivedPlayers: rosterResult.mappingSummary?.derivedPlayers,
     },
+    mappingSummary: rosterResult.mappingSummary || null,
+    source: rosterResult.source || null,
+    warnings: rosterResult.warnings || [],
     partial: Boolean(profileResult.partial),
-    warning: profileResult.warning || null,
+    warning: `${profileResult.warning || ""}${unmappedNote}`.trim() || null,
   };
 }

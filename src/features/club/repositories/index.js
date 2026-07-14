@@ -36,3 +36,12 @@ export {
   resolvePlayerForMembership,
   resolvePlayerForProfile,
 } from "./canonicalPlayerRepository.js";
+
+export {
+  canonicalPlayerPickerAdapter,
+  createCanonicalPlayerPickerAdapter,
+  listPlayersForClubAware,
+  listPlayersForTenantAware,
+  listSourceClubsAware,
+  toLegacyPickerPlayer,
+} from "./canonicalPlayerPickerAdapter.js";

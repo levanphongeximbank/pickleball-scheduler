@@ -7,9 +7,11 @@ import { TOURNAMENT_MODE, TOURNAMENT_STATUS } from "../../../models/tournament/c
 import { normalizeTournaments } from "../../../models/tournament/index.js";
 import { getClubMembers, getClubMembersForTournamentInvite } from "./clubMemberService.js";
 import { getClubById as getRegistryClubById } from "../../../domain/clubService.js";
-import { getTenantPlayers } from "./clubTenantService.js";
+import { getTenantPlayers, getTenantPlayersAware } from "./clubTenantService.js";
 import { CLUB_MEMBER_STATUSES } from "../constants/clubMemberRoles.js";
 import { CLUB_STATUSES } from "../constants/clubStatus.js";
+import { isCanonicalPlayerRepositoryEnabled } from "../config/canonicalRepositoryFlags.js";
+import { listPlayersForClubAware } from "../repositories/canonicalPlayerPickerAdapter.js";
 
 export function getClubTournaments(clubId, tenantId) {
   if (tenantId) {
@@ -93,4 +95,46 @@ export function getClubInternalTournamentPlayerPool(clubId, tenantId, options = 
 export function getClubInternalTournamentPlayers(clubId, tenantId, options = {}) {
   const poolIds = new Set(getClubInternalTournamentPlayerPool(clubId, tenantId, options));
   return getTenantPlayers(tenantId).filter((p) => poolIds.has(p.id));
+}
+
+/**
+ * Flag-aware club_internal participant pool.
+ * Canonical ON: active membership SSOT for the club (no blob dependence).
+ * Canonical OFF: legacy member ids ∩ tenant blob players.
+ */
+export async function getClubInternalTournamentPlayersAware(clubId, tenantId, options = {}) {
+  if (!isCanonicalPlayerRepositoryEnabled(options.envSource)) {
+    const legacy = getClubInternalTournamentPlayers(clubId, tenantId, options);
+    return {
+      ok: true,
+      data: legacy,
+      legacyPlayers: legacy,
+      selectablePlayers: legacy,
+      source: "legacy_blob",
+      warnings: [],
+      mappingSummary: {
+        mappedPlayers: legacy.length,
+        unmappedMembers: 0,
+        activeMembers: legacy.length,
+      },
+    };
+  }
+
+  // Membership SSOT for the club — do not substitute tenantId for clubId
+  const result = await listPlayersForClubAware(clubId, {
+    tenantId,
+    userContext: options.userContext,
+    profilesByUserId: options.profilesByUserId,
+  });
+  if (!result.ok) return result;
+
+  return {
+    ...result,
+    data: result.legacyPlayers || [],
+  };
+}
+
+/** Tenant-wide official/open picker pool (async, flag-aware). */
+export async function getTournamentParticipantPlayersAware(tenantId, options = {}) {
+  return getTenantPlayersAware(tenantId, options);
 }

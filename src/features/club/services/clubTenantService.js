@@ -22,7 +22,9 @@ import {
 } from "./clubGovernanceService.js";
 import { persistClubToCloud } from "./clubRegistryCloudService.js";
 import { isClubStorageV2Enabled } from "../config/clubRegistryFlags.js";
+import { isCanonicalPlayerRepositoryEnabled } from "../config/canonicalRepositoryFlags.js";
 import { rpcV2ClubCreate } from "./clubStorageV2RpcService.js";
+import { listPlayersForTenantAware } from "../repositories/canonicalPlayerPickerAdapter.js";
 
 function resolveTenantIdForCreate(user) {
   if (!isRbacEnabled() || !user) {
@@ -355,11 +357,15 @@ export function deleteClubSoft(clubId, tenantId) {
   return deactivateClub(clubId, tenantId);
 }
 
-export function getTenantPlayers(tenantId) {
+/** Synchronous legacy blob tenant player aggregate (flag OFF or sync callers). */
+export function getTenantPlayersLegacy(tenantId) {
   const clubs = getClubsByTenant(tenantId);
   const byId = new Map();
 
   for (const club of clubs) {
+    if (club?.isDefault || club?.id === "default-club") {
+      continue;
+    }
     const data = loadClubData(club.id);
     for (const player of data.players || []) {
       if (!byId.has(player.id)) {
@@ -373,6 +379,40 @@ export function getTenantPlayers(tenantId) {
   }
 
   return Array.from(byId.values());
+}
+
+/**
+ * Sync tenant players — always legacy blob aggregate for backward-compatible sync callers.
+ * Migrated UIs should use getTenantPlayersAware / useTenantPlayerPool when canonical flags ON.
+ */
+export function getTenantPlayers(tenantId) {
+  return getTenantPlayersLegacy(tenantId);
+}
+
+/**
+ * Flag-aware async tenant player pool (legacy UI shape).
+ * @param {string} tenantId
+ * @param {object} [options]
+ */
+export async function getTenantPlayersAware(tenantId, options = {}) {
+  if (!isCanonicalPlayerRepositoryEnabled(options.envSource)) {
+    const legacy = getTenantPlayersLegacy(tenantId);
+    return {
+      ok: true,
+      data: legacy,
+      legacyPlayers: legacy,
+      selectablePlayers: legacy,
+      source: "legacy_blob",
+      warnings: [],
+      mappingSummary: {
+        mappedPlayers: legacy.length,
+        unmappedMembers: 0,
+        activeMembers: legacy.length,
+      },
+    };
+  }
+
+  return listPlayersForTenantAware(tenantId, options);
 }
 
 export function purgeClubManagementData(clubId) {

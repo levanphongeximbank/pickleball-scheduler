@@ -10,6 +10,8 @@ export {
   deactivateClub,
   deleteClubSoft,
   getTenantPlayers,
+  getTenantPlayersLegacy,
+  getTenantPlayersAware,
 } from "./services/clubTenantService.js";
 
 export {
@@ -110,6 +112,8 @@ export {
   createClubInternalTournament,
   getClubInternalTournamentPlayerPool,
   getClubInternalTournamentPlayers,
+  getClubInternalTournamentPlayersAware,
+  getTournamentParticipantPlayersAware,
 } from "./services/clubTournamentService.js";
 
 export { applyClubMatchElo, applyClubMatchEloById } from "./services/clubEloService.js";
@@ -241,6 +245,7 @@ export {
   PLATFORM_ATHLETE_LINK_STATUS,
   isPlatformAthleteViewer,
   getClubPlayersPlatformWide,
+  getClubPlayersPlatformWideAware,
   buildOrphanProfileAthletes,
   getPlatformAthletes,
 } from "./services/platformAthleteService.js";
