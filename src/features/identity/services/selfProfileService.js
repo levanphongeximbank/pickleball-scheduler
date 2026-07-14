@@ -1,5 +1,5 @@
 import { getCurrentUser } from "../../../auth/authService.js";
-import { fetchProfileByUserId, upsertProfileRow } from "../../../auth/profileService.js";
+import { fetchProfileByUserId, updateProfileRowById } from "../../../auth/profileService.js";
 import { hasSupabaseConfig } from "../../../auth/supabaseClient.js";
 import { normalizeUser } from "../../../models/user.js";
 import { saveAuthSession, saveAuthSessionFromCloudProfile } from "../../../auth/authStorage.js";
@@ -41,7 +41,8 @@ function resolveBirthYear(value) {
   return Number.isFinite(year) ? year : null;
 }
 
-function buildSelfProfileRow(user, existingProfile, patch) {
+/** Self-editable columns only — never rewrite role/venue/status via upsert insert path. */
+export function buildSelfProfileUpdatePatch(existingProfile, patch) {
   const nextGender =
     patch.gender !== undefined
       ? patch.gender
@@ -53,17 +54,9 @@ function buildSelfProfileRow(user, existingProfile, patch) {
       : existingProfile?.birth_year ?? null;
 
   return {
-    id: user.id,
-    email: user.email,
     display_name: patch.displayName,
     phone: patch.phone,
     avatar_url: patch.avatarUrl,
-    role: existingProfile?.role,
-    venue_id: existingProfile?.venue_id,
-    club_id: existingProfile?.club_id,
-    player_id: existingProfile?.player_id,
-    status: existingProfile?.status,
-    // Always send demographics so a partial upsert cannot null them out.
     gender: nextGender,
     birth_year: nextBirthYear,
     updated_at: new Date().toISOString(),
@@ -158,10 +151,10 @@ export async function updateSelfProfile({
       return { ok: false, error: "Không thể cập nhật hồ sơ người khác.", code: "FORBIDDEN" };
     }
 
-    const row = buildSelfProfileRow(user, existing.profile, patch);
+    const row = buildSelfProfileUpdatePatch(existing.profile, patch);
     logQaPayload("updateSelfProfile:request", row);
 
-    const result = await upsertProfileRow(row);
+    const result = await updateProfileRowById(user.id, row);
     logQaPayload("updateSelfProfile:response", row, result);
     if (!result.ok) {
       return result;

@@ -79,6 +79,37 @@ test("SELF_EDITABLE_PROFILE_FIELDS includes gender and birth_year", () => {
   assert.ok(SELF_EDITABLE_PROFILE_FIELDS.includes("phone"));
 });
 
+test("self-profile UPDATE patch omits privileged columns (Production RLS safe)", async () => {
+  const { buildSelfProfileUpdatePatch } = await import(
+    "../src/features/identity/services/selfProfileService.js"
+  );
+  const patch = buildSelfProfileUpdatePatch(
+    {
+      gender: "female",
+      birth_year: 1991,
+      role: "PLAYER",
+      venue_id: "venue-x",
+      club_id: "club-x",
+      status: "active",
+    },
+    {
+      displayName: "QA",
+      phone: "090",
+      avatarUrl: "",
+      gender: "male",
+      birthYear: 1992,
+    }
+  );
+  assert.equal(patch.gender, "male");
+  assert.equal(patch.birth_year, 1992);
+  assert.equal(patch.display_name, "QA");
+  assert.equal(patch.role, undefined);
+  assert.equal(patch.venue_id, undefined);
+  assert.equal(patch.club_id, undefined);
+  assert.equal(patch.status, undefined);
+  assert.equal(patch.id, undefined);
+});
+
 test("updateSelfProfile includes normalized gender in submit payload (dev)", async () => {
   globalThis.localStorage = createLocalStorageMock();
   enableRbac(false);

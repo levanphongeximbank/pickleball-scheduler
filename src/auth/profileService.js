@@ -162,6 +162,36 @@ export async function upsertProfileRow(profile) {
 }
 
 /**
+ * Self-profile UPDATE only (no INSERT path). Avoids upsert RLS failures on Production
+ * when profiles_self_insert is not granted to authenticated self-updates.
+ */
+export async function updateProfileRowById(userId, patch) {
+  const client = getSupabaseAuthClient();
+
+  if (!client) {
+    return { ok: false, error: "Supabase chưa cấu hình.", code: "NO_SUPABASE" };
+  }
+
+  const targetId = String(userId || "").trim();
+  if (!targetId) {
+    return { ok: false, error: "Thiếu user id.", code: "INVALID_USER" };
+  }
+
+  const { data, error } = await client
+    .from(PROFILES_TABLE)
+    .update(patch)
+    .eq("id", targetId)
+    .select("*")
+    .single();
+
+  if (error) {
+    return { ok: false, error: error.message, code: "PROFILE_UPDATE_FAILED" };
+  }
+
+  return { ok: true, user: mapProfileRowToUser(data), profile: data };
+}
+
+/**
  * Quyết định user app từ Supabase auth + profile row.
  * RBAC bật → bắt buộc profile hợp lệ (không fallback PLAYER/metadata).
  */
