@@ -198,6 +198,24 @@ export const ADMIN_MENU_ROOT = menuFolder({
 
     menuLeaf({
 
+      key: "admin-private-pairing-rules",
+
+      icon: "ai-pairing",
+
+      text: "Quy tắc ghép cặp riêng",
+
+      path: "/admin/ai-pairing/private-rules",
+
+      match: "admin-private-pairing-rules",
+
+      roles: [ROLES.PLATFORM_ADMIN, ROLES.SUPER_ADMIN],
+
+      featureStatus: FEATURE_STATUS.LIVE,
+
+    }),
+
+    menuLeaf({
+
       key: "support-settings",
 
       icon: "settings",

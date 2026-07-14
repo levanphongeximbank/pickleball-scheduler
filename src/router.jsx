@@ -245,6 +245,9 @@ const AdminIntegrationMonitoringPage = lazy(() =>
 );
 const BillingPage = lazy(() => import("./pages/billing/BillingPage"));
 const AdminBillingPage = lazy(() => import("./pages/admin/AdminBillingPage"));
+const PrivatePairingRulesAdminPage = lazy(
+  () => import("./pages/admin/PrivatePairingRulesAdminPage")
+);
 const VenueHoursPage = lazy(() => import("./pages/admin/VenueHoursPage"));
 const SkillLevelRequestsPage = lazy(() => import("./pages/admin/SkillLevelRequestsPage"));
 const MyClubPage = lazy(() => import("./pages/player/MyClubPage.jsx"));
@@ -673,6 +676,14 @@ export default function Router() {
             <Route path="/admin/billing/invoices" element={<AdminBillingPage view="invoices" />} />
             <Route path="/admin/billing/payments" element={<AdminBillingPage view="payments" />} />
             <Route path="/admin/billing/audit" element={<AdminBillingPage view="audit" />} />
+            <Route
+              path="/admin/ai-pairing/private-rules"
+              element={
+                <SuperAdminRouteGuard>
+                  <PrivatePairingRulesAdminPage />
+                </SuperAdminRouteGuard>
+              }
+            />
 
             <Route path="/mobile" element={<MobileRouteGate />}>
               <Route path="check-in" element={<CheckInDashboardPage />} />

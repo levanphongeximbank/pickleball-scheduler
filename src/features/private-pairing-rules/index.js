@@ -107,3 +107,10 @@ export {
   activatePrivatePairingRuleSetWithPreflight,
   loadActivePrivatePairingRulesForRuntime,
 } from "./services/privatePairingRulesService.js";
+
+export {
+  CONSTRAINT_TYPE_LABELS,
+  SCOPE_LABELS,
+  filterRules,
+  filterRuleSets,
+} from "./ui/privatePairingAdminHelpers.js";

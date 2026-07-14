@@ -286,6 +286,10 @@ export const NAV_ROUTE_ALIASES = Object.freeze({
   "/discover-clubs": { label: "Khám phá CLB", group: MENU_GROUP_IDS.CLUB },
   "/daily-play": { label: "Vui chơi mỗi ngày", group: MENU_GROUP_IDS.CLUB },
   "/statistics": { label: "Kết quả & Xếp hạng", group: MENU_GROUP_IDS.TOURNAMENT },
+  "/admin/ai-pairing/private-rules": {
+    label: "Quy tắc ghép cặp riêng",
+    group: MENU_GROUP_IDS.ADMIN,
+  },
 });
 
 /** `future` = ẩn hoàn toàn; `coming-soon` = hiện menu + badge, route placeholder. */
@@ -571,6 +575,7 @@ export const ROUTE_PERMISSIONS = Object.freeze({
   "/403": [],
   "/admin/tenants": [PERMISSIONS.TENANT_VIEW, PERMISSIONS.ROLE_MANAGE],
   "/admin/court-clusters": [PERMISSIONS.CLUSTER_MANAGE],
+  "/admin/ai-pairing/private-rules": [],
   "/support": [PERMISSIONS.SUPPORT_TICKET_MANAGE, PERMISSIONS.BILLING_VIEW],
   "/marketplace": [PERMISSIONS.MARKETPLACE_VIEW],
   "/marketplace/orders": [PERMISSIONS.MARKETPLACE_VIEW],
