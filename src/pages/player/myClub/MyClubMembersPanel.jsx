@@ -1,10 +1,11 @@
-import { useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Link as RouterLink } from "react-router-dom";
 import {
   Alert,
   Box,
   Button,
   Chip,
+  CircularProgress,
   Paper,
   Stack,
   Table,
@@ -27,11 +28,16 @@ import {
   getClubMembers,
   getTenantPlayers,
   getVicePresidentUserIds,
+  rpcV2ClubListMembers,
 } from "../../../features/club/index.js";
+import { isClubStorageV2Enabled } from "../../../features/club/config/clubRegistryFlags.js";
 import { ClubEmptyState, GovernanceRoleChip } from "../../../features/club/ui/index.js";
 import { loadPlayersForClub } from "../../../domain/clubStorage.js";
 import { findUserIdByPlayerId } from "../../../features/club/storage/athleteClubLinkStore.js";
-import { resolveMemberGovernanceRole } from "./myClubViewLogic.js";
+import {
+  buildMemberRowsFromV2Members,
+  resolveMemberGovernanceRole,
+} from "./myClubViewLogic.js";
 
 function mapGovernanceChip(governanceRole) {
   if (!governanceRole) {
@@ -92,6 +98,41 @@ export default function MyClubMembersPanel({
       !isAuthenticated ||
       can(PERMISSIONS.PLAYER_UPDATE, { clubId, venueId: tenantId }));
 
+  const v2Enabled = isClubStorageV2Enabled();
+
+  // Phase 42N: the member list is server-owned (Supabase club_members). Legacy
+  // local-storage rosters are empty in production, which previously made this
+  // panel show 0 while the home card (V2 RPC) showed the real count.
+  const [v2, setV2] = useState({ status: "idle", members: [], error: null });
+
+  useEffect(() => {
+    if (!v2Enabled || !fullAccess || !clubId) {
+      setV2({ status: "idle", members: [], error: null });
+      return undefined;
+    }
+    let cancelled = false;
+    setV2((prev) => ({ ...prev, status: "loading" }));
+    rpcV2ClubListMembers(clubId)
+      .then((result) => {
+        if (cancelled) {
+          return;
+        }
+        if (result.ok) {
+          setV2({ status: "ready", members: result.members || [], error: null });
+        } else {
+          setV2({ status: "error", members: [], error: result.error || result.code || "RPC_FAILED" });
+        }
+      })
+      .catch((error) => {
+        if (!cancelled) {
+          setV2({ status: "error", members: [], error: String(error?.message || error) });
+        }
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [v2Enabled, fullAccess, clubId, revision]);
+
   const members = useMemo(() => {
     void revision;
     if (!fullAccess || !clubId) {
@@ -105,7 +146,7 @@ export default function MyClubMembersPanel({
     return new Map(players.map((player) => [player.id, player]));
   }, [tenantId, revision]);
 
-  const rows = useMemo(() => {
+  const legacyRows = useMemo(() => {
     if (!clubRecord) {
       return [];
     }
@@ -137,6 +178,15 @@ export default function MyClubMembersPanel({
       })
       .sort((a, b) => a.name.localeCompare(b.name, "vi"));
   }, [members, playersById, clubRecord, clubId]);
+
+  const v2Rows = useMemo(
+    () => buildMemberRowsFromV2Members(v2.members, clubRecord?.governance, getVicePresidentUserIds),
+    [v2.members, clubRecord]
+  );
+
+  const loading = v2Enabled && fullAccess && (v2.status === "idle" || v2.status === "loading");
+  const rows = v2Enabled && v2.status === "ready" ? v2Rows : legacyRows;
+  const v2Unavailable = v2Enabled && v2.status === "error";
 
   const activeCount = rows.filter((row) => row.isActive).length;
 
@@ -173,9 +223,21 @@ export default function MyClubMembersPanel({
         </Alert>
       )}
 
-      {fullAccess && rows.length === 0 && <ClubEmptyState preset="members" />}
+      {fullAccess && v2Unavailable && rows.length === 0 && (
+        <Alert severity="warning" sx={{ mb: 2 }}>
+          Không tải được danh sách thành viên từ máy chủ. Vui lòng thử lại sau.
+        </Alert>
+      )}
 
-      {fullAccess && rows.length > 0 && isMobile ? (
+      {fullAccess && loading && (
+        <Stack alignItems="center" sx={{ py: 4 }}>
+          <CircularProgress size={28} aria-label="Đang tải thành viên" />
+        </Stack>
+      )}
+
+      {fullAccess && !loading && rows.length === 0 && <ClubEmptyState preset="members" />}
+
+      {fullAccess && !loading && rows.length > 0 && isMobile ? (
         <Stack spacing={1.5}>
           {rows.map((row) => (
             <Paper key={row.id} variant="outlined" sx={{ p: 2, borderRadius: 2 }}>
@@ -185,7 +247,7 @@ export default function MyClubMembersPanel({
         </Stack>
       ) : null}
 
-      {fullAccess && rows.length > 0 && !isMobile ? (
+      {fullAccess && !loading && rows.length > 0 && !isMobile ? (
         <TableContainer component={Paper} variant="outlined" sx={{ borderRadius: 2 }}>
           <Table size="small">
             <TableHead>
