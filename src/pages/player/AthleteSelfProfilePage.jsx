@@ -58,12 +58,14 @@ export default function AthleteSelfProfilePage() {
   const [confirmPassword, setConfirmPassword] = useState("");
   const [message, setMessage] = useState(null);
   const [loading, setLoading] = useState(false);
+  const [profileReady, setProfileReady] = useState(false);
   const [ratingTick, setRatingTick] = useState(0);
 
   useEffect(() => {
     let cancelled = false;
 
     const load = async () => {
+      setProfileReady(false);
       const result = await fetchSelfProfile();
       if (cancelled || !result.ok) {
         return;
@@ -73,6 +75,7 @@ export default function AthleteSelfProfilePage() {
       setGender(toProfileGenderFormValue(result.user.gender));
       setBirthYear(result.user.birthYear ? String(result.user.birthYear) : "");
       setAvatarUrl(result.user.avatarUrl || "");
+      setProfileReady(true);
     };
 
     load();
@@ -94,6 +97,11 @@ export default function AthleteSelfProfilePage() {
   }, [currentTenantId, user?.clubId]);
 
   const handleSaveProfile = async () => {
+    if (!profileReady) {
+      setMessage({ type: "error", text: "Đang tải hồ sơ — thử lại sau giây lát." });
+      return;
+    }
+
     setLoading(true);
     setMessage(null);
 
@@ -255,7 +263,11 @@ export default function AthleteSelfProfilePage() {
                     fullWidth
                   />
                   <TextField label="Email" value={user.email || ""} disabled fullWidth />
-                  <Button variant="contained" onClick={handleSaveProfile} disabled={loading}>
+                  <Button
+                    variant="contained"
+                    onClick={handleSaveProfile}
+                    disabled={loading || !profileReady}
+                  >
                     Lưu hồ sơ
                   </Button>
                 </Stack>
