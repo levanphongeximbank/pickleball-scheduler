@@ -124,7 +124,8 @@ async function getV2MembershipLinkedPlayers() {
         userId,
         normalizePlayers([
           {
-            id: athleteId ? `athlete-${athleteId}` : `profile-${userId}`,
+            // Canonical profile route (athlete-{id} bookmarks still resolve via loader).
+            id: `profile-${userId}`,
             name: member.display_name || member.email || "VĐV",
             email: member.email || "",
             authUserId: userId,
