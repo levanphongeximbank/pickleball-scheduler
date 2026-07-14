@@ -221,7 +221,8 @@ function PrivatePairingRulesAdminInner() {
       !(
         ruleDraft.severity === "soft" &&
         (ruleDraft.weight === "" || Number.isNaN(Number(ruleDraft.weight)))
-      )
+      ) &&
+      !(ruleDraft.reasonCategory === "OTHER" && !String(ruleDraft.reasonText || "").trim())
   );
 
   useEffect(() => {
@@ -428,6 +429,10 @@ function PrivatePairingRulesAdminInner() {
     }
     if (ruleDraft.severity === "soft" && (ruleDraft.weight === "" || Number.isNaN(Number(ruleDraft.weight)))) {
       setError("Soft rule cần weight hợp lệ.");
+      return;
+    }
+    if (ruleDraft.reasonCategory === "OTHER" && !String(ruleDraft.reasonText || "").trim()) {
+      setError('Khi "Reason category" là OTHER, bắt buộc nhập "Reason text".');
       return;
     }
     setError(null);
@@ -1275,6 +1280,13 @@ function PrivatePairingRulesAdminInner() {
               fullWidth
               multiline
               minRows={2}
+              required={ruleDraft.reasonCategory === "OTHER"}
+              error={ruleDraft.reasonCategory === "OTHER" && !String(ruleDraft.reasonText || "").trim()}
+              helperText={
+                ruleDraft.reasonCategory === "OTHER"
+                  ? 'Bắt buộc khi Reason category = OTHER.'
+                  : "Tùy chọn."
+              }
             />
             <Stack direction={{ xs: "column", sm: "row" }} spacing={1}>
               <TextField
