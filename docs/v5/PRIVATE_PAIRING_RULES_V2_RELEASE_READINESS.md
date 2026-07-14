@@ -5,10 +5,12 @@
 | Date | 2026-07-14 |
 | Branch | `feature/private-pairing-rules-v2` |
 | Baseline PR-5 tip | `43b43c7` (UI) + later finalize commits |
-| Staging complete HEAD | filled at commit time |
+| Staging complete HEAD | `59b3069a802ac632cd75f663dfac21de31a48429` |
 | Staging project | `qyewbxjsiiyufanzcjcq` |
 | Merge | **NOT READY until owner browser SA matrix signed** |
 | Production | **NOT READY** |
+| Preview deployment | https://pickleball-scheduler-mtdpnr961-pickleball-scheduler.vercel.app |
+| Preview alias | https://pickleball-scheduler-levanphongeximbank-pickleball-scheduler.vercel.app |
 
 ---
 

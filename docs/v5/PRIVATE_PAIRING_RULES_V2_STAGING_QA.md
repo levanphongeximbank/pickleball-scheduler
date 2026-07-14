@@ -4,7 +4,7 @@
 |-------|-------|
 | Date | 2026-07-14 |
 | Branch | `feature/private-pairing-rules-v2` |
-| Committed HEAD (at staging complete) | see RELEASE_READINESS (updated on finalize commit) |
+| Committed HEAD (staging complete) | `59b3069a802ac632cd75f663dfac21de31a48429` |
 | Staging project | `qyewbxjsiiyufanzcjcq` |
 | Production | **NOT touched** |
 | Preview | Staging Preview (Vercel Preview env) |
@@ -58,7 +58,7 @@ Evidence:
 | Item | Value |
 |------|-------|
 | Stable alias | https://pickleball-scheduler-levanphongeximbank-pickleball-scheduler.vercel.app |
-| Deployment URL (post-flag redeploy; re-check after finalize commit) | see RELEASE_READINESS |
+| Deployment URL (matches HEAD `59b3069`) | https://pickleball-scheduler-mtdpnr961-pickleball-scheduler.vercel.app |
 | Route baked in build | `/admin/ai-pairing/private-rules` (`PrivatePairingRulesAdminPage-*.js`) |
 | Menu config | Quản trị → Quy tắc ghép cặp riêng (`admin-private-pairing-rules`) |
 
