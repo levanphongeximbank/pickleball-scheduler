@@ -189,3 +189,11 @@ Production status: NOT DEPLOYED — awaiting owner GO
 ```
 
 Stop after staging report. No Production until owner GO.
+
+---
+
+## 15. PR-4.25 Canonical Repository QA
+
+See [`PRIVATE_PAIRING_RULES_V2_PR425_QA.md`](./PRIVATE_PAIRING_RULES_V2_PR425_QA.md).
+
+Mandatory: ACCC cloud-only fixture + club/membership/player/private-pairing adapter tests (22). Production flags stay OFF.

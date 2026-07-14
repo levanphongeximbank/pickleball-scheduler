@@ -158,3 +158,19 @@ Legacy `founderPairingConstraints` is **unchanged** in PR-4. Data migrate job is
 - Inferring ALL_OF from multi-target lists
 - Promoting private rules into certified disclosure automatically
 - Deleting Founder panel before PR-5/6 complete
+
+---
+
+## 11. PR-4.25 repository migration path
+
+```
+legacy consumer
+  → privatePairingPlayerPickerAdapter / Canonical*Repository
+    → V2 RPC (flags ON)
+    → legacy loadClubs / loadPlayersForClub (flags OFF)
+```
+
+- Do **not** delete `loadClubs` / `loadPlayersForClub` / `ClubContext` in PR-4.25.
+- Private Pairing is the first mandatory consumer.
+- Daily Play / Tournament / Athlete list remain legacy until follow-up PRs.
+- Player mapping backfill is a separate owner-gated runbook: `PRIVATE_PAIRING_RULES_V2_PR425_BACKFILL_PLAN.md`.

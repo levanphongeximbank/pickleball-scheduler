@@ -322,3 +322,19 @@ Details: [`PRIVATE_PAIRING_RULES_V2_MIGRATION.md`](./PRIVATE_PAIRING_RULES_V2_MI
 | Code module (proposed) | `src/features/private-pairing-rules/` (or evolve `pairing-constraints` in place — decide in PR-2) |
 | Storage field (legacy) | `founderPairingConstraints` — keep until migration complete |
 | Canonical SoT | `private_pairing_rule_sets` + rules/targets |
+
+---
+
+## 23. PR-4.25 — Canonical Club & Player Repository
+
+Shared repositories (not per-module) resolve club / membership / player identity for Private Pairing selectors.
+
+| Flag | Default |
+|------|---------|
+| `VITE_CANONICAL_CLUB_REPOSITORY_ENABLED` | `false` |
+| `VITE_CANONICAL_PLAYER_REPOSITORY_ENABLED` | `false` |
+
+- Club SSOT: `public.clubs` (RPC). Membership SSOT: `club_members`.
+- Player ids: `profiles.player_id` or derived `player-auth-{userId}` policy — never profile id in rule `primary_player_id`.
+- Docs: `PRIVATE_PAIRING_RULES_V2_PR425_*.md`.
+- Verdict target: Private Pairing CONSISTENT with flags ON; system-wide still PARTIALLY CONSISTENT until Daily Play / Tournament migrate.
