@@ -1,11 +1,50 @@
 # Phase 42 — Club Platform Rebuild — CLOSEOUT
 
 **Status:** **Phase 42 CLOSED**  
-**Close date:** 2026-07-11  
-**Final Production commit (42M UI):** `13955f9b5ba0b5c28955246fea9ae1379ec931b9`  
+**Close date (platform rebuild):** 2026-07-11  
+**Owner reconfirmation:** 2026-07-14  
 **Production URL:** https://pickleball-scheduler-eight.vercel.app  
-**Production deployment (42M):** `dpl_GiuiviLhLAvc3tBRn6tBhqndcCKE`  
+**Branch:** `v5-platform-edition`
+
+| Milestone | Commit | Production deployment |
+|-----------|--------|------------------------|
+| 42M UI (initial close) | `13955f9b5ba0b5c28955246fea9ae1379ec931b9` | `dpl_GiuiviLhLAvc3tBRn6tBhqndcCKE` |
+| Post-close CLB hotfix (members / detail / re-apply) | `e7eda71e0478b0cca65a7e7896f095d185aa89ba` | `dpl_2NYfug8cmycVPKwx7Qk5KFNQ4xEN` |
+
+**Rollback readiness (post-hotfix):** READY, **not used** — previous Production tip `dpl_G7djdS9ay5YWeRzda6mmXS4BhkLW`  
 **Rollback reference (pre-42M):** `dpl_2UDJ7MTYw9AgJFn4fGLWWE6Z5yas`
+
+---
+
+## 0. Owner reconfirmation (2026-07-14)
+
+Phase 42 remains **CLOSED**. Owner waived Preview Owner QA for the CLB hotfix and authorized safe Production continuation.
+
+| # | Fact | Status |
+|---|------|--------|
+| 1 | Phase **42K** CLOSED earlier (`PHASE_42K_PRODUCTION_CLOSEOUT.md`, 2026-07-11) | Confirmed |
+| 2 | Hotfix CLB `e7eda71` merged into `v5-platform-edition` and deployed Production | Confirmed |
+| 3 | Merge scope = **1 commit**, **exactly 8 CLB files** — no Rating V5, Tournament, TT-9, or Referee V5 | Confirmed |
+| 4 | Build + technical bundle probe | **PASS** (deep JS graph: members / `Gửi lại` / detail V2 markers present) |
+| 5 | Proven P0/P1 on Production | **None** |
+| 6 | Business smoke for 3 club functions (members count, club detail, rejected re-apply) | **BLOCKED** — not FAIL (missing `SUPABASE_SERVICE_ROLE_KEY` for magic-link automation) |
+| 7 | Rollback readiness | **READY**, unused |
+
+Evidence: `docs/v5/qa-evidence/club-hotfix-production/CLUB_HOTFIX_PRODUCTION_SMOKE_REPORT.json`  
+Verdict automation: **BLOCKED** (`pass=1` bundle, `fail=0`, authenticated cases unverified).
+
+**Hotfix files (`e7eda71`):**
+
+1. `src/features/club/index.js`
+2. `src/features/club/services/clubMemberService.js`
+3. `src/features/club/ui/ClubCard.jsx`
+4. `src/features/club/ui/clubCardCtaLogic.js`
+5. `src/pages/clubs/ClubDetailPage.jsx`
+6. `src/pages/clubs/tabs/ClubMembersTab.jsx`
+7. `src/pages/player/myClub/MyClubMembersPanel.jsx`
+8. `tests/phase42m-club-ui.test.js`
+
+**No further deploy. No rollback executed** as part of this closeout reconfirmation.
 
 ---
 
@@ -134,10 +173,11 @@ Production rebaseline PASS: `docs/v5/qa-evidence/phase42l-production/PHASE_42L_P
 | Staging reset | `PHASE_42_BACKUP_2026-07-10_STAGING.md`, `PHASE_42E_RESET.sql` |
 | Production backup | `PHASE_42_BACKUP_2026-07-10_PRODUCTION.md` |
 | Client V2 GO | `PHASE_42F_CLIENT_V2.md` |
-| Registry 42K | `PHASE_42K_PRODUCTION_CLOSEOUT.md` |
+| Registry 42K | `PHASE_42K_PRODUCTION_CLOSEOUT.md` (**CLOSED** 2026-07-11) |
 | 42L nav Production | commit `0153dbf`, deployment `dpl_2UDJ7MTYw9AgJFn4fGLWWE6Z5yas` |
 | **42M UI Production** | commit `13955f9`, deployment `dpl_GiuiviLhLAvc3tBRn6tBhqndcCKE` |
 | Preview 42M | `dpl_Ev83SXFLFwQsCxonbfETyMSL92ZT` |
+| **Post-close CLB hotfix** | commit `e7eda71`, deployment `dpl_2NYfug8cmycVPKwx7Qk5KFNQ4xEN` |
 | Branch | `v5-platform-edition` |
 
 ---
@@ -176,6 +216,19 @@ Production rebaseline PASS: `docs/v5/qa-evidence/phase42l-production/PHASE_42L_P
 
 Separate probe confirms `VITE_CLUB_STORAGE_V2=true`, `VITE_RBAC_ENABLED=true` on Production bundle (`bundle-env-probe.mjs`).
 
+### Production CLB hotfix smoke (2026-07-14) — BLOCKED (not FAIL)
+
+| | |
+|---|---|
+| Report | `docs/v5/qa-evidence/club-hotfix-production/CLUB_HOTFIX_PRODUCTION_SMOKE_REPORT.json` |
+| Bundle / technical markers | **PASS** (lazy-chunk deep scan; `club_list_members`, `Gửi lại`, detail V2) |
+| Members list ≠ false zero | **BLOCKED / UNVERIFIED** — no Production `SUPABASE_SERVICE_ROLE_KEY` for magic-link login |
+| Club detail page loads | **BLOCKED / UNVERIFIED** — same |
+| Rejected applicant re-apply flow | **BLOCKED / UNVERIFIED** — same |
+| Overall verdict | **BLOCKED** (`fail=0`) — **not** treated as Production defect |
+| Proven P0/P1 | None |
+| Redeploy / rollback after this smoke | **Not performed** |
+
 ---
 
 ## 15. Known limitations (Phase 42N / 42Z audit)
@@ -196,16 +249,21 @@ Phase 42 **closed Club domain rebuild** — **not** whole-app architecture compl
 
 ## 16. Rollback references
 
-| Target | Deployment ID |
-|--------|---------------|
-| Pre-42M Production (42L) | `dpl_2UDJ7MTYw9AgJFn4fGLWWE6Z5yas` |
-| Current 42M Production | `dpl_GiuiviLhLAvc3tBRn6tBhqndcCKE` |
+| Target | Deployment ID | Notes |
+|--------|---------------|-------|
+| Pre-42M Production (42L) | `dpl_2UDJ7MTYw9AgJFn4fGLWWE6Z5yas` | Historical |
+| 42M UI Production | `dpl_GiuiviLhLAvc3tBRn6tBhqndcCKE` | Initial close |
+| Pre-hotfix tip (before `e7eda71`) | `dpl_G7djdS9ay5YWeRzda6mmXS4BhkLW` | Rollback READY for current hotfix deploy |
+| Current Production (hotfix) | `dpl_2NYfug8cmycVPKwx7Qk5KFNQ4xEN` | Live tip as of 2026-07-14 reconfirmation |
 
 ```text
-vercel rollback dpl_2UDJ7MTYw9AgJFn4fGLWWE6Z5yas
+# Prefer promote of known-good prior tip (client-only):
+npx vercel promote dpl_G7djdS9ay5YWeRzda6mmXS4BhkLW --yes
 ```
 
-Database: Phase 42 schema/RPC already on Production — rollback is **client-only** unless Owner runs SQL rollback (not part of 42M).
+**Status on closeout reconfirmation:** rollback **READY**, **not used** (no proven P0/P1; business smoke BLOCKED only).
+
+Database: Phase 42 schema/RPC already on Production — rollback is **client-only** unless Owner runs SQL rollback (not part of 42M / hotfix).
 
 Phase docs: `PHASE_42J_ROLLBACK.md`, `PHASE_42J1_ROLLBACK.md`
 
@@ -216,12 +274,17 @@ Phase docs: `PHASE_42J_ROLLBACK.md`, `PHASE_42J1_ROLLBACK.md`
 ```text
 ╔══════════════════════════════════════╗
 ║   PHASE 42 — CLUB PLATFORM REBUILD   ║
-║            STATUS: CLOSED              ║
+║            STATUS: CLOSED            ║
+║   Reconfirmed: 2026-07-14            ║
 ╚══════════════════════════════════════╝
 ```
 
-**Gate open for:** Phase 43A implementation (`GO PHASE 43A IMPLEMENT`)  
-**Not open for:** Phase 43B operational SSOT, Phase 43T pilot coding — until 43A safety PASS
+- Phase **42K**: CLOSED (2026-07-11) — no re-open  
+- Phase **42** (A–M rebuild): CLOSED (2026-07-11), **reconfirmed CLOSED** (2026-07-14) after Production CLB hotfix `e7eda71`  
+- Business smoke for hotfix ACCC flows: **BLOCKED** documentation debt only (service role), not a reopen signal  
+
+**Gate open for:** Phase 43A (and later V5 work on separate branches) when Owner directs — this closeout does **not** authorize additional Phase 42 deploy  
+**Not open for:** reopening Phase 42 scope; Rating V5 / Tournament / TT-9 / Referee must not ride Club closeout deploys
 
 ---
 
@@ -234,7 +297,8 @@ Phase docs: `PHASE_42J_ROLLBACK.md`, `PHASE_42J1_ROLLBACK.md`
 | 42G | Club create / owner |
 | 42H | Orphan profile links |
 | 42I / 42J / 42J2 | Membership flow, redirect, RPC dedup, landing |
-| 42K | Registry read model |
+| 42K | Registry read model (**CLOSED**) |
 | 42L | Navigation matrix Production |
 | 42M | Professional Club UI |
+| Post-close hotfix | `e7eda71` members / detail / re-apply (8 files) |
 | 42N / 42Z | Architecture audit (post-close reference) |

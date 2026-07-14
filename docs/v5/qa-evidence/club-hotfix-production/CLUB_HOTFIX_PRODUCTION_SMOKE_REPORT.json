@@ -1,0 +1,59 @@
+{
+  "phase": "club-hotfix-production-smoke",
+  "productionUrl": "https://pickleball-scheduler-eight.vercel.app",
+  "commit": "e7eda71",
+  "deploymentId": "dpl_2NYfug8cmycVPKwx7Qk5KFNQ4xEN",
+  "rollbackDeploymentId": "dpl_G7djdS9ay5YWeRzda6mmXS4BhkLW",
+  "supabaseRef": "expuvcohlcjzvrrauvud",
+  "cases": [
+    {
+      "case": "bundle_hotfix_markers",
+      "verdict": "PASS",
+      "evidence": "listMembers=true reapply=true detailV2=true prodRef=true assets=334"
+    },
+    {
+      "case": "authenticated_browser",
+      "verdict": "BLOCKED",
+      "evidence": "Missing SUPABASE_SERVICE_ROLE_KEY — authenticated cases not run"
+    },
+    {
+      "case": "members_list_nonzero",
+      "verdict": "BLOCKED",
+      "evidence": "UNVERIFIED: needs magic-link login (president) — no Production service role in env"
+    },
+    {
+      "case": "club_detail_loads",
+      "verdict": "BLOCKED",
+      "evidence": "UNVERIFIED: needs magic-link login (president) — no Production service role in env"
+    },
+    {
+      "case": "rejected_reapply_flow",
+      "verdict": "BLOCKED",
+      "evidence": "UNVERIFIED: needs magic-link login (rejected applicant) — no Production service role in env"
+    }
+  ],
+  "envProbe": {
+    "listMembers": true,
+    "reapply": true,
+    "detailV2": true,
+    "prodRef": true,
+    "assetCount": 334
+  },
+  "pageErrors": [],
+  "blockers": [
+    "authenticated_browser: Missing SUPABASE_SERVICE_ROLE_KEY — authenticated cases not run",
+    "members_list_nonzero: UNVERIFIED: needs magic-link login (president) — no Production service role in env",
+    "club_detail_loads: UNVERIFIED: needs magic-link login (president) — no Production service role in env",
+    "rejected_reapply_flow: UNVERIFIED: needs magic-link login (rejected applicant) — no Production service role in env"
+  ],
+  "verdict": "BLOCKED",
+  "serviceRoleKeyPresent": false,
+  "summary": {
+    "pass": 1,
+    "fail": 0,
+    "blocked": 4,
+    "partial": 0,
+    "pageErrors": 0,
+    "total": 5
+  }
+}
