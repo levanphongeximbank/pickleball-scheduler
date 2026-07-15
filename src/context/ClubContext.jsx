@@ -1,13 +1,19 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
 import { Alert, Snackbar } from "@mui/material";
 
-import { getActiveClub, getActiveClubId, loadClubs } from "../data/club.js";
+import {
+  getActiveClub,
+  getActiveClubId,
+  getActiveClubIdPreference,
+  loadClubs,
+} from "../data/club.js";
 import {
   createClub,
   deleteClub,
   getClubSummary,
   renameClub,
   switchActiveClub,
+  switchActiveClubCanonical,
 } from "../domain/clubService.js";
 import { ensureMonthlySkillLevelProposals } from "../domain/skillLevelService.js";
 import { useAuth } from "./AuthContext.jsx";
@@ -27,17 +33,48 @@ import { ensureWritableClubForVenueOwner } from "../features/club/services/venue
 import { invalidateMyActiveClubMembershipCache } from "../features/club/services/clubActiveMembershipService.js";
 import { hydrateClubScope, clearClubScope } from "../auth/clubScopeResolver.js";
 import { hydrateGovernanceScope, clearGovernanceScope } from "../auth/governanceScopeResolver.js";
+import { canonicalClubRepository } from "../features/club/repositories/index.js";
+import { isCanonicalClubRepositoryEnabled } from "../features/club/config/canonicalRepositoryFlags.js";
+import { hasSupabaseConfig } from "../auth/supabaseClient.js";
+import { API_ERROR_CODES } from "../features/api/constants/apiErrors.js";
+import {
+  CLUB_READ_STATE,
+  filterAccessibleCanonicalClubs,
+  isCanonicalClubReadEnabled,
+  resolveActiveClubSelection,
+  toClubReadSnapshot,
+} from "../features/club/context/clubCanonicalReadModel.js";
 
 const ClubContext = createContext(null);
 
 export function ClubProvider({ children }) {
   const { user, rbacEnabled, isAuthenticated } = useAuth();
   const { currentTenantId } = useTenant();
+
+  // Phase 45A.1 — canonical Club READ cutover. When ON (flag + cloud backend),
+  // canonicalClubRepository is the single Club-entity read gateway. When OFF
+  // (Production default) or offline/no-Supabase, the legacy registry read path
+  // is preserved unchanged for rollback and explicit local mode.
+  const canonicalRead = isCanonicalClubReadEnabled({
+    canonicalEnabled: isCanonicalClubRepositoryEnabled(),
+    hasSupabase: hasSupabaseConfig(),
+  });
+
   const [clubs, setClubs] = useState(() => loadClubs());
-  const [activeClubId, setActiveClubId] = useState(() => getActiveClubId());
+  const [activeClubId, setActiveClubId] = useState(() =>
+    canonicalRead ? getActiveClubIdPreference() : getActiveClubId()
+  );
   const [revision, setRevision] = useState(0);
   const [syncConflictMessage, setSyncConflictMessage] = useState(null);
   const [clubScopeStatus, setClubScopeStatus] = useState("idle");
+
+  // Canonical read snapshot (only authoritative when canonicalRead === true).
+  const [canonicalClubs, setCanonicalClubs] = useState([]);
+  const [clubReadState, setClubReadState] = useState(
+    canonicalRead ? CLUB_READ_STATE.IDLE : CLUB_READ_STATE.READY
+  );
+  const [clubReadErrorCode, setClubReadErrorCode] = useState(null);
+  const [canonicalReloadNonce, setCanonicalReloadNonce] = useState(0);
 
   // Phase 44C.1 — hydrate the canonical allowed-club scope once per authenticated
   // user/tenant context. Cleared first so a tenant/user switch cannot temporarily
@@ -74,7 +111,70 @@ export function ClubProvider({ children }) {
     };
   }, [isAuthenticated, user, currentTenantId, rbacEnabled]);
 
+  // Phase 45A.1 — hydrate the Club-entity list from the canonical repository.
+  // Snapshot is cleared on logout / user switch / tenant switch so a previous
+  // context can never leak clubs. A cloud error/loading NEVER falls back to the
+  // local registry (visibleClubs stays empty until READY).
+  useEffect(() => {
+    if (!canonicalRead) {
+      return undefined;
+    }
+
+    if (!isAuthenticated || !user?.id) {
+      setCanonicalClubs([]);
+      setClubReadState(CLUB_READ_STATE.IDLE);
+      setClubReadErrorCode(null);
+      return undefined;
+    }
+
+    let cancelled = false;
+    setCanonicalClubs([]);
+    setClubReadState(CLUB_READ_STATE.LOADING);
+    setClubReadErrorCode(null);
+
+    void canonicalClubRepository
+      .listClubsForCurrentScope({ user, tenantId: currentTenantId, rbacEnabled })
+      .then((result) => {
+        if (cancelled) {
+          return;
+        }
+        const snapshot = toClubReadSnapshot(result);
+        setCanonicalClubs(snapshot.clubs);
+        setClubReadState(snapshot.state);
+        setClubReadErrorCode(snapshot.errorCode);
+        setRevision((value) => value + 1);
+      })
+      .catch(() => {
+        if (cancelled) {
+          return;
+        }
+        setCanonicalClubs([]);
+        setClubReadState(CLUB_READ_STATE.ERROR);
+        setClubReadErrorCode(API_ERROR_CODES.INTERNAL_ERROR);
+        setRevision((value) => value + 1);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [canonicalRead, isAuthenticated, user, currentTenantId, rbacEnabled, canonicalReloadNonce]);
+
   const visibleClubs = useMemo(() => {
+    if (canonicalRead) {
+      // Cloud-authoritative canonical read: only expose clubs when READY.
+      // Loading/error never leaks the legacy registry.
+      if (clubReadState !== CLUB_READ_STATE.READY) {
+        return [];
+      }
+      return filterAccessibleCanonicalClubs({
+        clubs: canonicalClubs,
+        user,
+        rbacEnabled,
+        isAuthenticated,
+        canAccessClub,
+      });
+    }
+
     if (!rbacEnabled || !isAuthenticated || !currentTenantId) {
       return clubs;
     }
@@ -100,9 +200,21 @@ export function ClubProvider({ children }) {
     }
 
     return visible;
-  }, [clubs, currentTenantId, isAuthenticated, rbacEnabled, user]);
+  }, [
+    canonicalRead,
+    canonicalClubs,
+    clubReadState,
+    clubs,
+    currentTenantId,
+    isAuthenticated,
+    rbacEnabled,
+    user,
+  ]);
 
   useEffect(() => {
+    if (canonicalRead) {
+      return undefined;
+    }
     if (!isAuthenticated || !user?.id || !isClubRegistryCloudEnabled()) {
       return undefined;
     }
@@ -118,9 +230,14 @@ export function ClubProvider({ children }) {
     return () => {
       cancelled = true;
     };
-  }, [isAuthenticated, user, currentTenantId]);
+  }, [canonicalRead, isAuthenticated, user, currentTenantId]);
 
   useEffect(() => {
+    // Legacy blob-registry auto-provisioning/selection. In canonical read mode
+    // active-club selection is handled by the canonical validation effect below.
+    if (canonicalRead) {
+      return;
+    }
     if (!rbacEnabled || !isAuthenticated || !currentTenantId) {
       return;
     }
@@ -154,9 +271,14 @@ export function ClubProvider({ children }) {
         setRevision((value) => value + 1);
       }
     }
-  }, [activeClubId, currentTenantId, isAuthenticated, rbacEnabled, user]);
+  }, [canonicalRead, activeClubId, currentTenantId, isAuthenticated, rbacEnabled, user]);
 
   useEffect(() => {
+    // Legacy profiles.club_id-driven active switch. Not authoritative in
+    // canonical read mode (membership SSOT is public.club_members).
+    if (canonicalRead) {
+      return;
+    }
     if (!rbacEnabled || !isAuthenticated || !user?.clubId) {
       return;
     }
@@ -179,7 +301,7 @@ export function ClubProvider({ children }) {
       setActiveClubId(user.clubId);
       setRevision((value) => value + 1);
     }
-  }, [activeClubId, isAuthenticated, rbacEnabled, user, visibleClubs]);
+  }, [canonicalRead, activeClubId, isAuthenticated, rbacEnabled, user, visibleClubs]);
 
   useEffect(() => {
     if (!activeClubId || !isAuthenticated || !isAiAutoCloudSyncEnabled()) {
@@ -242,12 +364,25 @@ export function ClubProvider({ children }) {
   }, [activeClubId]);
 
   const refreshClubs = useCallback(() => {
-    setClubs(loadClubs());
-    setActiveClubId(getActiveClubId());
+    if (canonicalRead) {
+      setCanonicalReloadNonce((value) => value + 1);
+      setActiveClubId(getActiveClubIdPreference());
+    } else {
+      setClubs(loadClubs());
+      setActiveClubId(getActiveClubId());
+    }
     setRevision((value) => value + 1);
-  }, []);
+  }, [canonicalRead]);
 
   const activeClub = useMemo(() => {
+    if (canonicalRead) {
+      // Existence/selection comes only from the canonical visible set.
+      return resolveActiveClubSelection({
+        preferredClubId: activeClubId,
+        visibleClubs,
+      }).activeClub;
+    }
+
     const matched = visibleClubs.find((club) => club.id === activeClubId);
     if (matched) {
       return matched;
@@ -258,9 +393,46 @@ export function ClubProvider({ children }) {
     }
 
     return visibleClubs[0] || null;
-  }, [visibleClubs, activeClubId, rbacEnabled, isAuthenticated]);
+  }, [canonicalRead, visibleClubs, activeClubId, rbacEnabled, isAuthenticated]);
 
+  // Canonical active-club validation: a stale/absent activeClubId is replaced
+  // deterministically (first visible canonical club) or cleared. Never selects a
+  // club absent from the canonical cloud registry.
   useEffect(() => {
+    if (!canonicalRead) {
+      return;
+    }
+    if (clubReadState !== CLUB_READ_STATE.READY) {
+      return;
+    }
+
+    const selection = resolveActiveClubSelection({
+      preferredClubId: activeClubId,
+      visibleClubs,
+    });
+
+    if (selection.activeClubId === activeClubId) {
+      return;
+    }
+
+    if (!selection.activeClubId) {
+      setActiveClubId(null);
+      setRevision((value) => value + 1);
+      return;
+    }
+
+    const result = switchActiveClubCanonical(selection.activeClubId);
+    if (result.ok) {
+      setActiveClubId(selection.activeClubId);
+      setRevision((value) => value + 1);
+    }
+  }, [canonicalRead, clubReadState, activeClubId, visibleClubs]);
+
+  // Legacy active-club validation (blob registry). Skipped in canonical mode.
+  useEffect(() => {
+    if (canonicalRead) {
+      return;
+    }
     if (!rbacEnabled || !isAuthenticated) {
       return;
     }
@@ -284,7 +456,7 @@ export function ClubProvider({ children }) {
       setActiveClubId(targetId);
       setRevision((value) => value + 1);
     }
-  }, [activeClubId, isAuthenticated, rbacEnabled, user, visibleClubs]);
+  }, [canonicalRead, activeClubId, isAuthenticated, rbacEnabled, user, visibleClubs]);
 
   const summary = useMemo(
     () => getClubSummary(activeClub?.id || activeClubId),
@@ -295,7 +467,33 @@ export function ClubProvider({ children }) {
     (clubId) => {
       const trimmed = String(clubId || "").trim();
       if (!trimmed) {
-        return { ok: false, error: "CLB không hợp lệ.", code: "CLUB_INVALID" };
+        return {
+          ok: false,
+          error: "CLB không hợp lệ.",
+          code: API_ERROR_CODES.CLUB_REQUIRED,
+        };
+      }
+
+      if (canonicalRead) {
+        const allowed = visibleClubs.some((club) => club.id === trimmed);
+        if (!allowed) {
+          return {
+            ok: false,
+            error: "CLB không nằm trong phạm vi cho phép.",
+            code: API_ERROR_CODES.CLUB_OUT_OF_SCOPE,
+          };
+        }
+
+        invalidateMyActiveClubMembershipCache(user?.id || null);
+
+        const result = switchActiveClubCanonical(trimmed);
+        if (!result.ok) {
+          return result;
+        }
+
+        setActiveClubId(trimmed);
+        setRevision((value) => value + 1);
+        return result;
       }
 
       if (rbacEnabled && isAuthenticated) {
@@ -304,7 +502,7 @@ export function ClubProvider({ children }) {
           return {
             ok: false,
             error: "CLB không nằm trong phạm vi cho phép.",
-            code: "CLUB_OUT_OF_SCOPE",
+            code: API_ERROR_CODES.CLUB_OUT_OF_SCOPE,
           };
         }
       }
@@ -321,33 +519,50 @@ export function ClubProvider({ children }) {
       setRevision((value) => value + 1);
       return result;
     },
-    [isAuthenticated, rbacEnabled, user?.id, visibleClubs]
+    [canonicalRead, isAuthenticated, rbacEnabled, user?.id, visibleClubs]
   );
 
-  const handleCreateClub = useCallback((name) => {
-    const result = createClub(name);
+  // Create/rename/delete remain blob commands in 45A.1 (command cutover = 45A.3).
+  // After a command we re-hydrate the canonical read snapshot so the read
+  // gateway stays the single source for the displayed list.
+  const handleCreateClub = useCallback(
+    (name) => {
+      const result = createClub(name);
 
-    if (!result.ok) {
+      if (!result.ok) {
+        return result;
+      }
+
+      if (canonicalRead) {
+        setCanonicalReloadNonce((value) => value + 1);
+      } else {
+        setClubs(loadClubs());
+      }
+      setActiveClubId(result.club.id);
+      setRevision((value) => value + 1);
       return result;
-    }
+    },
+    [canonicalRead]
+  );
 
-    setClubs(loadClubs());
-    setActiveClubId(result.club.id);
-    setRevision((value) => value + 1);
-    return result;
-  }, []);
+  const handleRenameClub = useCallback(
+    (clubId, name) => {
+      const result = renameClub(clubId, name);
 
-  const handleRenameClub = useCallback((clubId, name) => {
-    const result = renameClub(clubId, name);
+      if (!result.ok) {
+        return result;
+      }
 
-    if (!result.ok) {
+      if (canonicalRead) {
+        setCanonicalReloadNonce((value) => value + 1);
+      } else {
+        setClubs(loadClubs());
+      }
+      setRevision((value) => value + 1);
       return result;
-    }
-
-    setClubs(loadClubs());
-    setRevision((value) => value + 1);
-    return result;
-  }, []);
+    },
+    [canonicalRead]
+  );
 
   const handleDeleteClub = useCallback(
     (clubId) => {
@@ -357,24 +572,34 @@ export function ClubProvider({ children }) {
         return result;
       }
 
-      setClubs(loadClubs());
-      setActiveClubId(getActiveClubId());
+      if (canonicalRead) {
+        setCanonicalReloadNonce((value) => value + 1);
+        setActiveClubId(getActiveClubIdPreference());
+      } else {
+        setClubs(loadClubs());
+        setActiveClubId(getActiveClubId());
+      }
       setRevision((value) => value + 1);
       return result;
     },
-    []
+    [canonicalRead]
   );
 
   const value = useMemo(
     () => ({
       clubs: visibleClubs,
-      allClubs: clubs,
+      allClubs: canonicalRead ? canonicalClubs : clubs,
       activeClub,
       activeClubId,
       revision,
       summary,
       clubScopeStatus,
       clubScopeReady: clubScopeStatus === "ready",
+      // Phase 45A.1 — canonical read state surface.
+      canonicalClubRead: canonicalRead,
+      clubReadState,
+      clubReadReady: canonicalRead ? clubReadState === CLUB_READ_STATE.READY : true,
+      clubReadError: clubReadErrorCode,
       refreshClubs,
       switchClub: handleSwitchClub,
       createClub: handleCreateClub,
@@ -382,6 +607,8 @@ export function ClubProvider({ children }) {
       deleteClub: handleDeleteClub,
     }),
     [
+      canonicalRead,
+      canonicalClubs,
       clubs,
       visibleClubs,
       activeClub,
@@ -389,6 +616,8 @@ export function ClubProvider({ children }) {
       revision,
       summary,
       clubScopeStatus,
+      clubReadState,
+      clubReadErrorCode,
       refreshClubs,
       handleSwitchClub,
       handleCreateClub,

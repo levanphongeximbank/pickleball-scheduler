@@ -4,6 +4,7 @@ import {
   loadClubs,
   saveClubs,
   setActiveClubId,
+  setActiveClubIdPreference,
 } from "../data/club.js";
 import { loadActiveTenantId } from "../data/tenantSession.js";
 import { PERMISSIONS } from "../auth/permissions.js";
@@ -225,6 +226,35 @@ export function switchActiveClub(clubId) {
     return { ok: false, error: "Khong the chuyen CLB." };
   }
 
+  loadClubData(clubId);
+  return { ok: true, clubId };
+}
+
+/**
+ * Phase 45A.1 — canonical-read active-club switch.
+ *
+ * Selection variant for canonical read mode: the canonical visible set (cloud
+ * registry) is the club existence authority, so this does NOT require the club
+ * to exist in the local blob (setActiveClubId would reject cloud-only clubs).
+ * Authorization is still enforced via the canonical guards, and the club data
+ * blob is loaded for the scheduling/data domain. localStorage holds the id as a
+ * preference only. Callers MUST validate `clubId` against the canonical visible
+ * set before calling this.
+ *
+ * @param {string} clubId
+ */
+export function switchActiveClubCanonical(clubId) {
+  const access = guardClubAccess(clubId);
+  if (!access.ok) {
+    return access;
+  }
+
+  const viewCheck = guardClubAction(clubId, PERMISSIONS.CLUB_VIEW);
+  if (!viewCheck.ok) {
+    return viewCheck;
+  }
+
+  setActiveClubIdPreference(clubId);
   loadClubData(clubId);
   return { ok: true, clubId };
 }

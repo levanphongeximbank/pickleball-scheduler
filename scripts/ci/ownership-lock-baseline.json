@@ -27,6 +27,26 @@
       "description": "Analytics/reporting modules must remain read-only (no table mutations)."
     },
     {
+      "id": "authorization-legacy-club-registry",
+      "description": "Club-scope authorization / API guards must resolve scope via clubScopeResolver (canonical cloud registry), never loadClubs()/pickleball-clubs-v1."
+    },
+    {
+      "id": "authorization-raw-role-compare",
+      "description": "Club-scope authorization code must use rbac role helpers (rolesEqual/isXScopedRole/rbac.can*), not raw role-string comparisons."
+    },
+    {
+      "id": "governance-legacy-registry-read",
+      "description": "Governance authorization paths must decide elevation via governanceScopeResolver (canonical club_governance_assignments / phase42_has_gov_role), never the local registry (getClubById/loadClubs/pickleball-clubs-v1)."
+    },
+    {
+      "id": "governance-elevation-owner",
+      "description": "PLAYER→CLUB_MANAGER governance elevation logic may only be DEFINED in the canonical governanceScopeResolver; other modules must import it, not reimplement it."
+    },
+    {
+      "id": "club-entity-registry-read-in-ui",
+      "description": "Club-entity registry list/get reads in the UI/context layer must go through canonicalClubRepository (Phase 45A.1 read cutover): no loadClubs()/pickleball-clubs-v1/direct club-registry RPC bypass."
+    },
+    {
       "id": "global-unregistered-error-code",
       "description": "New string-literal error codes in the API layer must be registered in API_ERROR_CODES."
     }
@@ -40,6 +60,24 @@
       "fingerprint": "aa1f9773e9fb22c1",
       "reason": "Realtime match-live sync constructs a dedicated no-persist ANON client instead of the canonical client; predates canonical realtime wiring.",
       "removalPhase": "44B Realtime/Authorization cutover"
+    },
+    {
+      "rule": "club-entity-registry-read-in-ui",
+      "file": "src/context/ClubContext.jsx",
+      "symbol": "loadClubs(",
+      "count": 10,
+      "fingerprint": "eb42367df4a1c129",
+      "reason": "Legacy blob-registry read path retained behind VITE_CANONICAL_CLUB_REPOSITORY_ENABLED=false for rollback / explicit offline mode. Canonical read gateway (canonicalClubRepository) is wired in Phase 45A.1 but not yet Production-authoritative (flag OFF).",
+      "removalPhase": "45A.5 blob/localStorage retirement"
+    },
+    {
+      "rule": "club-entity-registry-read-in-ui",
+      "file": "src/pages/Players.jsx",
+      "symbol": "loadClubs(",
+      "count": 1,
+      "fingerprint": "28420d5b3a276206",
+      "reason": "Player→club display mapping reads the club blob directly; migrate to the canonical club read after the ClubContext cutover is Production-verified.",
+      "removalPhase": "45A.5 blob/localStorage retirement"
     }
   ]
 }

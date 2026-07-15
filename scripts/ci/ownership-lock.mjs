@@ -204,6 +204,21 @@ const RULES = [
       c.match(/function\s+(?:resolveGovernanceElevatedRole|hasClubGovernanceManagerAccess)\b/g) || [],
   },
   {
+    id: "club-entity-registry-read-in-ui",
+    description:
+      "Club-entity registry list/get reads in the UI/context layer must go through canonicalClubRepository (Phase 45A.1 read cutover): no loadClubs()/pickleball-clubs-v1/direct club-registry RPC bypass.",
+    // Scoped to the app UI/consumer surface. The canonical read gateway
+    // (src/features/club/repositories/) and the offline authz resolver
+    // (src/auth/clubScopeResolver.js) are NOT in these dirs → never scanned.
+    onlyIn: ["src/context/", "src/pages/", "src/components/"],
+    match: (c) => [
+      ...(c.match(/\bloadClubs\s*\(/g) || []),
+      ...(c.match(/pickleball-clubs-v1/g) || []),
+      ...(c.match(/\brpcV2ClubListRegistry\s*\(/g) || []),
+      ...(c.match(/\brpcV2ClubGet\s*\(/g) || []),
+    ],
+  },
+  {
     id: "global-unregistered-error-code",
     description:
       "New string-literal error codes in the API layer must be registered in API_ERROR_CODES.",
@@ -304,6 +319,16 @@ const DEBT_META = {
     reason:
       "Realtime match-live sync constructs a dedicated no-persist ANON client instead of the canonical client; predates canonical realtime wiring.",
     removalPhase: "44B Realtime/Authorization cutover",
+  },
+  "club-entity-registry-read-in-ui::src/context/ClubContext.jsx": {
+    reason:
+      "Legacy blob-registry read path retained behind VITE_CANONICAL_CLUB_REPOSITORY_ENABLED=false for rollback / explicit offline mode. Canonical read gateway (canonicalClubRepository) is wired in Phase 45A.1 but not yet Production-authoritative (flag OFF).",
+    removalPhase: "45A.5 blob/localStorage retirement",
+  },
+  "club-entity-registry-read-in-ui::src/pages/Players.jsx": {
+    reason:
+      "Player→club display mapping reads the club blob directly; migrate to the canonical club read after the ClubContext cutover is Production-verified.",
+    removalPhase: "45A.5 blob/localStorage retirement",
   },
 };
 
