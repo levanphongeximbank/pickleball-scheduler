@@ -125,6 +125,10 @@ import {
   getTournamentPairingConstraints,
   logConstraintChange,
 } from "../../features/pairing-constraints/index.js";
+import {
+  COMPETITION_CLASS,
+  prepareLivePrivatePairingOptions,
+} from "../../features/private-pairing-rules/index.js";
 import DrawPublishControls from "../../components/tournament/DrawPublishControls.jsx";
 import RegistrationOpsPanel from "../../components/tournament/RegistrationOpsPanel.jsx";
 import {
@@ -513,12 +517,15 @@ export default function OfficialTournamentSetup() {
 
   const applyConstraintWarnings = (pairingOptions) => {
     const constraintWarnings = pairingOptions?.constraintWarnings || [];
-    if (constraintWarnings.length > 0) {
-      setWarnings(
-        constraintWarnings.map((item) =>
-          typeof item === "string" ? item : item.message || String(item)
-        )
-      );
+    const structured = pairingOptions?.privatePairingError;
+    const nextWarnings = constraintWarnings.map((item) =>
+      typeof item === "string" ? item : item.message || String(item)
+    );
+    if (structured?.code) {
+      nextWarnings.unshift(structured.code);
+    }
+    if (nextWarnings.length > 0) {
+      setWarnings(nextWarnings);
     }
   };
 
@@ -759,19 +766,45 @@ export default function OfficialTournamentSetup() {
     setPreviewEntries([]);
   };
 
-  const handleSuggestAiPairs = () => {
+  const handleSuggestAiPairs = async () => {
     setError(null);
     setWarnings([]);
 
+    const prepared = await prepareLivePrivatePairingOptions({
+      clubId: activeClubId,
+      tournamentId,
+      eventId: savedEvent?.id || `event-${tournamentId}`,
+      competitionClass: COMPETITION_CLASS.OFFICIAL,
+      pairingConstraints: founderConstraints,
+      allowedByPublishedRules: false,
+    });
+
+    if (!prepared.ok) {
+      setError(prepared.error?.message || "Không thể ghép cặp theo quy tắc riêng.");
+      setWarnings(
+        (prepared.error?.fatalConflicts || prepared.error?.blockedByPolicy || []).map(
+          (item) => item.code || item.message || String(item)
+        )
+      );
+      return;
+    }
+
     const pairingOptions = {
+      ...prepared.pairingOptions,
       tournamentId,
       eventId: savedEvent?.id || `event-${tournamentId}`,
       pairingConstraints: founderConstraints,
+      competitionClass: COMPETITION_CLASS.OFFICIAL,
     };
 
     const entries = suggestBalancedEntriesFromIndividuals(selectedPlayers, eventType, pairingOptions);
 
     applyConstraintWarnings(pairingOptions);
+
+    if (pairingOptions.privatePairingError) {
+      setError(pairingOptions.privatePairingError.message);
+      return;
+    }
 
     if (entries.length === 0) {
       setError("Khong tao duoc cap/VDV nao. Kiem tra gioi tinh va so luong da chon.");
@@ -795,24 +828,48 @@ export default function OfficialTournamentSetup() {
     );
   };
 
-  const handleBuildAiGroups = () => {
+  const handleBuildAiGroups = async () => {
     setError(null);
     setWarnings([]);
     setMessage(null);
 
-    const pairingOptions = {
-      tournamentId,
-      eventId: savedEvent?.id || `event-${tournamentId}`,
-      pairingConstraints: founderConstraints,
-    };
-
-    const entries =
-      previewEntries.length > 0
-        ? previewEntries
-        : suggestBalancedEntriesFromIndividuals(selectedPlayers, eventType, pairingOptions);
-
+    let entries = previewEntries;
     if (previewEntries.length === 0) {
+      const prepared = await prepareLivePrivatePairingOptions({
+        clubId: activeClubId,
+        tournamentId,
+        eventId: savedEvent?.id || `event-${tournamentId}`,
+        competitionClass: COMPETITION_CLASS.OFFICIAL,
+        pairingConstraints: founderConstraints,
+        allowedByPublishedRules: false,
+      });
+
+      if (!prepared.ok) {
+        setError(prepared.error?.message || "Không thể ghép cặp theo quy tắc riêng.");
+        setWarnings(
+          (prepared.error?.fatalConflicts || prepared.error?.blockedByPolicy || []).map(
+            (item) => item.code || item.message || String(item)
+          )
+        );
+        return;
+      }
+
+      const pairingOptions = {
+        ...prepared.pairingOptions,
+        tournamentId,
+        eventId: savedEvent?.id || `event-${tournamentId}`,
+        pairingConstraints: founderConstraints,
+        competitionClass: COMPETITION_CLASS.OFFICIAL,
+      };
+
+      entries = suggestBalancedEntriesFromIndividuals(selectedPlayers, eventType, pairingOptions);
+
       applyConstraintWarnings(pairingOptions);
+
+      if (pairingOptions.privatePairingError) {
+        setError(pairingOptions.privatePairingError.message);
+        return;
+      }
     }
 
     const plan = buildOfficialAiBalancePlan({

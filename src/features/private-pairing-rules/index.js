@@ -67,6 +67,7 @@ export {
   seededShuffle,
   resolveActivePrivatePairingRules,
   dedupeEquivalentRules,
+  splitHardAndSoftRules,
   evaluateHardPrivatePairingRules,
   scoreSoftPrivatePairingRules,
   generateTeamPairingCandidates,
@@ -74,6 +75,9 @@ export {
   runPrivatePairingRuntime,
   evaluatePrivatePairingCandidate,
   evaluatePrivatePairingMatchOption,
+  loadActiveRulesForLiveScope,
+  prepareLivePrivatePairingOptions,
+  buildPrivatePairingRuntimeError,
 } from "./runtime/index.js";
 
 export {

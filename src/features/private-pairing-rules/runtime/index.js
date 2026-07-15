@@ -39,3 +39,9 @@ export {
   evaluatePrivatePairingCandidate,
   evaluatePrivatePairingMatchOption,
 } from "./runPrivatePairingRuntime.js";
+
+export {
+  loadActiveRulesForLiveScope,
+  prepareLivePrivatePairingOptions,
+  buildPrivatePairingRuntimeError,
+} from "./prepareLivePrivatePairingOptions.js";

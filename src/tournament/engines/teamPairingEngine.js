@@ -4,6 +4,7 @@ import { EVENT_TYPE } from "../../models/tournament/constants.js";
 import { createEntryRecord } from "../../models/tournament/entry.js";
 import { optimizeTeamsWithConstraints } from "../../features/pairing-constraints/engines/constraintPairingEngine.js";
 import {
+  buildPrivatePairingRuntimeError,
   isPrivatePairingRuntimeEnabled,
   runPrivatePairingRuntime,
 } from "../../features/private-pairing-rules/runtime/index.js";
@@ -81,6 +82,7 @@ export function suggestTeamsFromPlayers(players = [], eventType, options = {}) {
   const mode = options.mode || "skill_controlled";
   const constraints = options.pairingConstraints || [];
   const privateRules = options.privatePairingRules || [];
+  const runtimeEnabled = isPrivatePairingRuntimeEnabled(options.envSource);
 
   let teams;
   if (eventType === EVENT_TYPE.MIXED_DOUBLE) {
@@ -92,61 +94,74 @@ export function suggestTeamsFromPlayers(players = [], eventType, options = {}) {
     });
   }
 
-  if (constraints.length === 0 && privateRules.length === 0) {
+  // Flags OFF → legacy founder optimizer only (unchanged behavior).
+  if (!runtimeEnabled) {
+    if (constraints.length === 0) {
+      return teams;
+    }
+
+    const playersById = new Map(filtered.map((player) => [String(player.id), player]));
+    const optimized = optimizeTeamsWithConstraints(teams, constraints, {
+      playersById,
+      maxAttempts: options.constraintMaxAttempts,
+    });
+
+    options.constraintWarnings = optimized.warnings;
+    options.constraintEvaluation = optimized.evaluation;
+    options.privatePairingError = null;
+    return optimized.teams;
+  }
+
+  // Flags ON, no rules and no founder constraints → baseline pairs (no private apply).
+  if (constraints.length === 0 && privateRules.length === 0 && !options.forcePrivateRuntime) {
+    options.privatePairingError = null;
     return teams;
   }
 
-  if (isPrivatePairingRuntimeEnabled(options.envSource)) {
-    const runtime = runPrivatePairingRuntime({
-      players: filtered,
-      rules: privateRules,
-      legacyConstraints: constraints,
-      mixedDoubles: eventType === EVENT_TYPE.MIXED_DOUBLE,
-      context: {
-        teamSize: 2,
-        clubId: options.clubId,
-        tournamentId: options.tournamentId,
-        eventId: options.eventId,
-        competitionClass: options.competitionClass,
-        allowedByPublishedRules: options.allowedByPublishedRules,
-        contextTime: options.contextTime,
-        seed: options.seed,
-        ruleSetVersion: options.ruleSetVersion,
-      },
-      seed: options.seed ?? 1,
-      envSource: options.envSource,
-      maxCandidates: options.maxCandidates,
-      maxIterations: options.maxIterations,
-      history: options.pairingHistory,
-    });
-
-    options.privatePairingRuntime = runtime;
-    options.constraintWarnings = runtime.ok
-      ? (runtime.warnings || []).map((item) => item.code || item.messageKey || String(item))
-      : [runtime.errorCode || "NO_FEASIBLE_PAIRING"];
-    options.constraintEvaluation = {
-      ok: runtime.ok,
-      score: runtime.constraintScore,
-      hardViolations: runtime.ok ? [] : [{ message: runtime.errorCode }],
-      satisfied: runtime.softConstraintsSatisfied,
-    };
-
-    if (!runtime.ok || !runtime.selectedCandidate?.teams) {
-      return [];
-    }
-    return runtime.selectedCandidate.teams;
-  }
-
-  const playersById = new Map(filtered.map((player) => [String(player.id), player]));
-  const optimized = optimizeTeamsWithConstraints(teams, constraints, {
-    playersById,
-    maxAttempts: options.constraintMaxAttempts,
+  // Unified runtime: founder constraints are remapped via legacyConstraints only
+  // (no second pass through optimizeTeamsWithConstraints → no double scoring).
+  const runtime = runPrivatePairingRuntime({
+    players: filtered,
+    rules: privateRules,
+    legacyConstraints: constraints,
+    mixedDoubles: eventType === EVENT_TYPE.MIXED_DOUBLE,
+    context: {
+      teamSize: 2,
+      clubId: options.clubId,
+      tournamentId: options.tournamentId,
+      eventId: options.eventId,
+      competitionClass: options.competitionClass,
+      allowedByPublishedRules: options.allowedByPublishedRules,
+      contextTime: options.contextTime,
+      seed: options.seed,
+      ruleSetVersion: options.ruleSetVersion,
+    },
+    seed: options.seed ?? 1,
+    envSource: options.envSource,
+    maxCandidates: options.maxCandidates,
+    maxIterations: options.maxIterations,
+    history: options.pairingHistory,
   });
 
-  options.constraintWarnings = optimized.warnings;
-  options.constraintEvaluation = optimized.evaluation;
+  options.privatePairingRuntime = runtime;
+  options.constraintWarnings = runtime.ok
+    ? (runtime.warnings || []).map((item) => item.code || item.messageKey || String(item))
+    : [runtime.errorCode || "NO_FEASIBLE_PAIRING"];
+  options.constraintEvaluation = {
+    ok: runtime.ok,
+    score: runtime.constraintScore,
+    hardViolations: runtime.ok ? [] : [{ message: runtime.errorCode }],
+    satisfied: runtime.softConstraintsSatisfied,
+  };
 
-  return optimized.teams;
+  if (!runtime.ok || !runtime.selectedCandidate?.teams) {
+    // No silent legacy fallback when unified runtime is enabled.
+    options.privatePairingError = buildPrivatePairingRuntimeError(runtime);
+    return [];
+  }
+
+  options.privatePairingError = null;
+  return runtime.selectedCandidate.teams;
 }
 
 export function teamToEntry(team, options = {}) {

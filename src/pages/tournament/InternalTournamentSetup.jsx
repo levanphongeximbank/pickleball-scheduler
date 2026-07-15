@@ -113,6 +113,10 @@ import {
   getTournamentPairingConstraints,
   logConstraintChange,
 } from "../../features/pairing-constraints/index.js";
+import {
+  COMPETITION_CLASS,
+  prepareLivePrivatePairingOptions,
+} from "../../features/private-pairing-rules/index.js";
 import DrawPublishControls from "../../components/tournament/DrawPublishControls.jsx";
 import RegistrationOpsPanel from "../../components/tournament/RegistrationOpsPanel.jsx";
 import {
@@ -516,12 +520,15 @@ export default function InternalTournamentSetup() {
 
   const applyConstraintWarnings = (pairingOptions) => {
     const constraintWarnings = pairingOptions?.constraintWarnings || [];
-    if (constraintWarnings.length > 0) {
-      setWarnings(
-        constraintWarnings.map((item) =>
-          typeof item === "string" ? item : item.message || String(item)
-        )
-      );
+    const structured = pairingOptions?.privatePairingError;
+    const nextWarnings = constraintWarnings.map((item) =>
+      typeof item === "string" ? item : item.message || String(item)
+    );
+    if (structured?.code) {
+      nextWarnings.unshift(structured.code);
+    }
+    if (nextWarnings.length > 0) {
+      setWarnings(nextWarnings);
     }
   };
 
@@ -771,11 +778,30 @@ export default function InternalTournamentSetup() {
     }
   };
 
-  const handleSuggestPairs = () => {
+  const handleSuggestPairs = async () => {
     setError(null);
     setWarnings([]);
 
+    const prepared = await prepareLivePrivatePairingOptions({
+      clubId: tournamentClubId,
+      tournamentId,
+      eventId: savedEvent?.id || `event-${tournamentId}`,
+      competitionClass: COMPETITION_CLASS.INTERNAL,
+      pairingConstraints: founderConstraints,
+    });
+
+    if (!prepared.ok) {
+      setError(prepared.error?.message || "Không thể ghép cặp theo quy tắc riêng.");
+      setWarnings(
+        (prepared.error?.fatalConflicts || prepared.error?.blockedByPolicy || []).map(
+          (item) => item.code || item.message || String(item)
+        )
+      );
+      return;
+    }
+
     const pairingOptions = {
+      ...prepared.pairingOptions,
       tournamentId,
       eventId: savedEvent?.id || `event-${tournamentId}`,
       pairingConstraints: founderConstraints,
@@ -788,6 +814,11 @@ export default function InternalTournamentSetup() {
     );
 
     applyConstraintWarnings(pairingOptions);
+
+    if (pairingOptions.privatePairingError) {
+      setError(pairingOptions.privatePairingError.message);
+      return;
+    }
 
     if (entries.length === 0) {
       setError(
@@ -823,7 +854,7 @@ export default function InternalTournamentSetup() {
     );
   };
 
-  const handleBuildGroups = () => {
+  const handleBuildGroups = async () => {
     setError(null);
     setWarnings([]);
     setMessage(null);
@@ -834,23 +865,45 @@ export default function InternalTournamentSetup() {
       return;
     }
 
-    const pairingOptions = {
-      tournamentId,
-      eventId: savedEvent?.id || `event-${tournamentId}`,
-      pairingConstraints: founderConstraints,
-    };
-
-    const entries =
-      previewEntries.length > 0
-        ? previewEntries
-        : suggestEntriesFromPlayers(
-            players.filter((player) => selectedPlayerIds.includes(String(player.id))),
-            eventType,
-            pairingOptions
-          );
-
+    let entries = previewEntries;
     if (previewEntries.length === 0) {
+      const prepared = await prepareLivePrivatePairingOptions({
+        clubId: tournamentClubId,
+        tournamentId,
+        eventId: savedEvent?.id || `event-${tournamentId}`,
+        competitionClass: COMPETITION_CLASS.INTERNAL,
+        pairingConstraints: founderConstraints,
+      });
+
+      if (!prepared.ok) {
+        setError(prepared.error?.message || "Không thể ghép cặp theo quy tắc riêng.");
+        setWarnings(
+          (prepared.error?.fatalConflicts || prepared.error?.blockedByPolicy || []).map(
+            (item) => item.code || item.message || String(item)
+          )
+        );
+        return;
+      }
+
+      const pairingOptions = {
+        ...prepared.pairingOptions,
+        tournamentId,
+        eventId: savedEvent?.id || `event-${tournamentId}`,
+        pairingConstraints: founderConstraints,
+      };
+
+      entries = suggestEntriesFromPlayers(
+        players.filter((player) => selectedPlayerIds.includes(String(player.id))),
+        eventType,
+        pairingOptions
+      );
+
       applyConstraintWarnings(pairingOptions);
+
+      if (pairingOptions.privatePairingError) {
+        setError(pairingOptions.privatePairingError.message);
+        return;
+      }
     }
 
     const plan = buildInternalTournamentPlan({
