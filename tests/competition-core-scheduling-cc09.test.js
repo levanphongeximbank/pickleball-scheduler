@@ -1,6 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 
+import { assertTestModuleAvailable } from "./helpers/testModuleAvailability.js";
 import { buildGroupStageSchedule } from "../src/tournament/engines/scheduleEngine.js";
 import { buildRoundRobinRounds } from "../src/pages/tournament.fixtures.logic.js";
 import { generateSchedule } from "../src/features/tournament-engine/engines/scheduleEngine.js";
@@ -411,26 +412,26 @@ test("33. deterministic output", () => {
   );
 });
 
-test("34. existing TT-4 tests import surface remains available", async () => {
-  assert.ok(await import("../tests/team-tournament-tt4.test.js"));
+test("34. existing TT-4 tests import surface remains available", () => {
+  assertTestModuleAvailable("../tests/team-tournament-tt4.test.js", import.meta.url);
 });
 
-test("35. existing CC-08 tests import surface remains available", async () => {
-  assert.ok(await import("../tests/competition-core-standings-cc08.test.js"));
+test("35. existing CC-08 tests import surface remains available", () => {
+  assertTestModuleAvailable("../tests/competition-core-standings-cc08.test.js", import.meta.url);
 });
 
-test("36. existing CC-07 tests import surface remains available", async () => {
-  assert.ok(await import("../tests/competition-core-rules-cc07.test.js"));
+test("36. existing CC-07 tests import surface remains available", () => {
+  assertTestModuleAvailable("../tests/competition-core-rules-cc07.test.js", import.meta.url);
 });
 
-test("37. existing CC-04/05/06 tests import surface remains available", async () => {
-  assert.ok(await import("../tests/competition-core-draw-cc04e.test.js"));
-  assert.ok(await import("../tests/competition-core-formation-cc05c.test.js"));
-  assert.ok(await import("../tests/competition-core-matchmaking-cc06.test.js"));
+test("37. existing CC-04/05/06 tests import surface remains available", () => {
+  assertTestModuleAvailable("../tests/competition-core-draw-cc04e.test.js", import.meta.url);
+  assertTestModuleAvailable("../tests/competition-core-formation-cc05c.test.js", import.meta.url);
+  assertTestModuleAvailable("../tests/competition-core-matchmaking-cc06.test.js", import.meta.url);
 });
 
-test("38. rating V2 tests import surface remains available", async () => {
-  assert.ok(await import("../tests/competition-core-feature-flags.test.js"));
+test("38. rating V2 tests import surface remains available", () => {
+  assertTestModuleAvailable("../tests/competition-core-feature-flags.test.js", import.meta.url);
 });
 
 test("engine v2 availability for scheduling", () => {
