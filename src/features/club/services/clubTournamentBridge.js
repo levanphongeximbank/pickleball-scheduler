@@ -1,5 +1,5 @@
 import { getActiveClubIdPreference, loadClubs } from "../../../data/club.js";
-import { CLUB_DATA_KEY, loadClubData } from "../../../domain/clubStorage.js";
+import { CLUB_DATA_KEY } from "../../../domain/clubStorage.js";
 import { eventMatchToRecord } from "../../../tournament/engines/playerHistoryEngine.js";
 import { resolveTenantIdForClub } from "../../tenant/guards/tenantGuard.js";
 import { CLUB_MATCH_TYPES } from "../models/clubMatch.js";
