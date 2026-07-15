@@ -815,16 +815,18 @@ export default function TeamTournamentSetup() {
     return (
       <Box sx={{ p: 3 }}>
         <Stack spacing={2}>
-          <Alert severity="warning">
-            Không tìm thấy giải đồng đội này trên CLB/blob hiện tại. Preview thường lưu dữ liệu
-            theo trình duyệt — ID cũ (`{tournamentId}`) có thể đã mất sau khi redeploy hoặc đổi
-            CLB. Hãy tạo lại giải trên Preview hiện tại.
+          <Alert severity="error">
+            {loadError ||
+              `Không tìm thấy giải đồng đội này trên CLB/blob hiện tại. Preview thường lưu dữ liệu theo trình duyệt — ID cũ (\`${tournamentId}\`) có thể đã mất sau khi redeploy hoặc đổi CLB. Hãy tạo lại giải trên Preview hiện tại.`}
           </Alert>
           <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
-            <Button component={RouterLink} to="/tournament/create" variant="contained">
+            <Button variant="contained" onClick={() => reload()}>
+              Thử lại
+            </Button>
+            <Button component={RouterLink} to="/tournament/create" variant="outlined">
               Tạo giải đồng đội mới
             </Button>
-            <Button component={RouterLink} to="/tournament" variant="outlined">
+            <Button component={RouterLink} to="/tournament" variant="text">
               Về trang Giải đấu
             </Button>
           </Stack>

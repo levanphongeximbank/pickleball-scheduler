@@ -214,18 +214,24 @@ export default function TournamentHome({ section = "overview" }) {
       return;
     }
 
+    const clubId = String(activeClubId || "").trim();
+    if (!clubId) {
+      setError("Chưa chọn CLB — hãy chọn CLB trước khi tạo giải.");
+      return;
+    }
+
     setError(null);
     setMessage(null);
 
     const result =
       option.mode === TOURNAMENT_MODE.TEAM_TOURNAMENT
-        ? createTeamTournament(activeClubId, {
+        ? createTeamTournament(clubId, {
             name: buildDefaultName(option.title),
             seasonId: activeSeason?.id,
             leagueId: activeLeague?.id,
             formatPreset: "mlp_4",
           })
-        : createTournament(activeClubId, {
+        : createTournament(clubId, {
             name: buildDefaultName(option.title),
             mode: option.mode,
             officialMode:
@@ -240,8 +246,15 @@ export default function TournamentHome({ section = "overview" }) {
             leagueId: activeLeague?.id,
           });
 
-    if (!result.ok) {
+    if (!result.ok || !result.tournament?.id) {
       setError(result.error || "Không thể tạo giải.");
+      return;
+    }
+
+    // Team MLP: only navigate after create verified the draft in the same club blob.
+    if (option.mode === TOURNAMENT_MODE.TEAM_TOURNAMENT) {
+      refreshClubs();
+      navigate(`/tournament/team/${result.tournament.id}`);
       return;
     }
 
@@ -265,10 +278,6 @@ export default function TournamentHome({ section = "overview" }) {
           ? `/tournament/official/${result.tournament.id}?event=${preselectedEvent}`
           : `/tournament/official/${result.tournament.id}`
       );
-      return;
-    }
-    if (option.mode === TOURNAMENT_MODE.TEAM_TOURNAMENT) {
-      navigate(`/tournament/team/${result.tournament.id}`);
       return;
     }
 

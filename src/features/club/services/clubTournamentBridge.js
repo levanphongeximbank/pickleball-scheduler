@@ -1,4 +1,4 @@
-import { loadClubs } from "../../../data/club.js";
+import { getActiveClubIdPreference, loadClubs } from "../../../data/club.js";
 import { loadClubData } from "../../../domain/clubStorage.js";
 import { eventMatchToRecord } from "../../../tournament/engines/playerHistoryEngine.js";
 import { resolveTenantIdForClub } from "../../tenant/guards/tenantGuard.js";
@@ -97,16 +97,45 @@ export function processClubInternalMatchCompletion(
   return { ok: true, match: clubMatch, skipped: !winnerTeam };
 }
 
+function clubBlobContainsTournament(clubId, tournamentId) {
+  const resolvedClubId = String(clubId || "").trim();
+  const id = String(tournamentId || "").trim();
+  if (!resolvedClubId || !id) {
+    return false;
+  }
+  try {
+    const data = loadClubData(resolvedClubId);
+    return (data.tournaments || []).some((item) => String(item.id) === id);
+  } catch {
+    return false;
+  }
+}
+
 export function findTournamentClubId(tournamentId) {
   const id = String(tournamentId || "").trim();
   if (!id) {
     return null;
   }
 
+  const scanned = new Set();
+
   for (const club of loadClubs()) {
-    const data = loadClubData(club.id);
-    if ((data.tournaments || []).some((t) => String(t.id) === id)) {
-      return club.id;
+    const clubId = String(club?.id || "").trim();
+    if (!clubId || scanned.has(clubId)) {
+      continue;
+    }
+    scanned.add(clubId);
+    if (clubBlobContainsTournament(clubId, id)) {
+      return clubId;
+    }
+  }
+
+  // Canonical preference may point at a club outside pickleball-clubs-v1.
+  // Use preference only — getActiveClubId() can coerce/overwrite missing registry entries.
+  const preferredClubId = String(getActiveClubIdPreference() || "").trim();
+  if (preferredClubId && !scanned.has(preferredClubId)) {
+    if (clubBlobContainsTournament(preferredClubId, id)) {
+      return preferredClubId;
     }
   }
 

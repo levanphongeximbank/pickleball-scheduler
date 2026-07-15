@@ -218,29 +218,79 @@ function guardCaptainLineupAction(clubId, tournamentId, teamId) {
   return assertTeamScope(getTeamData(tournament), teamId, playerId, permissions);
 }
 
+/**
+ * Create a Team Tournament draft and verify it is readable from the club blob
+ * before returning OK. Callers must not navigate until this returns ok:true.
+ */
 export function createTeamTournament(clubId, options = {}) {
-  const check = guardClubAction(clubId, PERMISSIONS.TOURNAMENT_CREATE);
+  const resolvedClubId = String(clubId || "").trim();
+  if (!resolvedClubId) {
+    return {
+      ok: false,
+      error: "Chưa chọn CLB — không thể tạo giải đồng đội.",
+      code: "CLUB_REQUIRED",
+    };
+  }
+
+  const check = guardClubAction(resolvedClubId, PERMISSIONS.TOURNAMENT_CREATE);
   if (!check.ok) {
     return check;
   }
 
-  const data = loadClubData(clubId);
-  const tournament = createTeamTournamentShell(clubId, {
+  let data;
+  try {
+    data = loadClubData(resolvedClubId);
+  } catch (error) {
+    return {
+      ok: false,
+      error: error?.message || "Không đọc được dữ liệu CLB để tạo giải.",
+      code: "LOAD_FAILED",
+    };
+  }
+
+  const tournament = createTeamTournamentShell(resolvedClubId, {
     ...options,
     seasonId: options.seasonId || data.active?.seasonId || "",
     leagueId: options.leagueId || data.active?.leagueId || "",
   });
 
+  if (!tournament?.id || !isTeamTournament(tournament)) {
+    return {
+      ok: false,
+      error: "Không tạo được bản nháp giải đồng đội (object không hợp lệ).",
+      code: "SHELL_INVALID",
+    };
+  }
+
   data.tournaments = [...(data.tournaments || []), tournament];
-  saveClubData(clubId, data);
+
+  try {
+    saveClubData(resolvedClubId, data);
+  } catch (error) {
+    return {
+      ok: false,
+      error: error?.message || "Lưu giải đồng đội thất bại — chưa điều hướng.",
+      code: "SAVE_FAILED",
+    };
+  }
+
+  const saved = getTeamTournamentById(resolvedClubId, tournament.id);
+  if (!saved) {
+    return {
+      ok: false,
+      error:
+        "Đã ghi nháp nhưng không đọc lại được từ CLB/blob. Không mở trang chi tiết.",
+      code: "PERSIST_VERIFY_FAILED",
+    };
+  }
 
   appendTeamAuditLog({
     action: TEAM_AUDIT_ACTIONS.TEAM_CREATE,
-    targetId: tournament.id,
-    metadata: { name: tournament.name, mode: TOURNAMENT_MODE.TEAM_TOURNAMENT },
+    targetId: saved.id,
+    metadata: { name: saved.name, mode: TOURNAMENT_MODE.TEAM_TOURNAMENT },
   });
 
-  return { ok: true, tournament };
+  return { ok: true, tournament: saved, clubId: resolvedClubId };
 }
 
 export function patchTeamTournament(clubId, tournamentId, patch = {}) {

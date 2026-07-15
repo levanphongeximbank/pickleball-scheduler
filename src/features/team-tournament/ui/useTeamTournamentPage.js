@@ -108,14 +108,27 @@ export function useTeamTournamentPage({
   const reload = useCallback(
     async ({ silent = false } = {}) => {
       if (!tournamentId) {
+        const missing = { ok: false, error: "Thiếu tournamentId.", code: "MISSING_ID" };
+        applyLoadResult(missing);
         setLoading(false);
-        return { ok: false, error: "Thiếu tournamentId." };
+        return missing;
       }
 
-      const loadClubId =
-        resolveTournamentClubId(clubId, tournamentId) ||
-        String(clubId || "").trim() ||
-        tournamentId;
+      // Never fall back to tournamentId as clubId — that creates a dead deep-link load.
+      const loadClubId = resolveTeamTournamentLoadClubId(clubId, tournamentId);
+
+      if (!loadClubId) {
+        const missingClub = {
+          ok: false,
+          code: REPOSITORY_ERROR_CODES.NOT_FOUND,
+          error: buildTournamentNotFoundMessage(tournamentId, {
+            kind: "giải đồng đội",
+          }),
+        };
+        applyLoadResult(missingClub);
+        setLoading(false);
+        return missingClub;
+      }
 
       if (loadingRef.current && !silent) {
         return { ok: false, error: "Đang tải..." };
