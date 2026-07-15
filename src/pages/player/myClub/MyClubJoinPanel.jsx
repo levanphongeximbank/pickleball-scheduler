@@ -70,13 +70,13 @@ export default function MyClubJoinPanel({ tenantId, user, onRevision }) {
     onRevision?.();
   };
 
-  const handleSubmitJoin = () => {
+  const handleSubmitJoin = async () => {
     if (!joinClub) {
       return;
     }
 
     const clubTenantId = resolveTenantIdForClub(joinClub.id);
-    const result = submitClubMembershipRequest(joinClub.id, clubTenantId, user, {
+    const result = await submitClubMembershipRequest(joinClub.id, clubTenantId, user, {
       message: joinMessage,
     });
 
@@ -91,8 +91,10 @@ export default function MyClubJoinPanel({ tenantId, user, onRevision }) {
     bumpRevision();
   };
 
-  const handleCancelRequest = (request) => {
-    const result = cancelClubMembershipRequest(request.clubId, request.id, user.id);
+  const handleCancelRequest = async (request) => {
+    const result = await cancelClubMembershipRequest(request.clubId, request.id, user.id, {
+      expectedVersion: request.version,
+    });
     if (!result.ok) {
       setMessage({ type: "error", text: result.error });
       return;

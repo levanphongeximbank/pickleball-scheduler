@@ -386,6 +386,106 @@ const RULES = [
     ],
   },
   {
+    id: "membership-request-command-rpc-bypass-in-ui",
+    description:
+      "Phase 45A.4B — UI/context must not call Membership request/leave RPCs or wrappers directly; go through clubMembershipRequestService.",
+    onlyIn: ["src/context/", "src/pages/", "src/components/"],
+    match: (c) => [
+      ...(c.match(/\brpcV2ClubSubmitMembershipRequest\s*\(/g) || []),
+      ...(c.match(/\brpcV2ClubCancelMembershipRequest\s*\(/g) || []),
+      ...(c.match(/\brpcV2ClubReviewMembershipRequest\s*\(/g) || []),
+      ...(c.match(/\brpcV2ClubLeaveMembership\s*\(/g) || []),
+      ...(c.match(/\brpcV2ClubListMyRequests\s*\(/g) || []),
+      ...(c.match(/\brpcV2ClubListPendingRequests\s*\(/g) || []),
+      ...(c.match(/\.rpc\(\s*["']club_submit_membership_request["']/g) || []),
+      ...(c.match(/\.rpc\(\s*["']club_cancel_membership_request["']/g) || []),
+      ...(c.match(/\.rpc\(\s*["']club_review_membership_request["']/g) || []),
+      ...(c.match(/\.rpc\(\s*["']club_leave_membership["']/g) || []),
+      ...(c.match(/\.rpc\(\s*["']club_list_my_requests["']/g) || []),
+      ...(c.match(/\.rpc\(\s*["']club_list_pending_requests["']/g) || []),
+      ...(c.match(/clubMembershipRequestRpcService/g) || []),
+    ],
+  },
+  {
+    id: "membership-request-rpc-transport-only",
+    description:
+      "Phase 45A.4B — Membership request/leave RPC callRpc/.rpc names may only live in clubStorageV2RpcService (V2 transport). Phase31 service is exempt for its own legacy definitions only.",
+    allow: [
+      "src/features/club/services/clubStorageV2RpcService.js",
+      "src/features/club/services/clubMembershipRequestRpcService.js",
+    ],
+    match: (c) => [
+      ...(c.match(/callRpc\(\s*["']club_submit_membership_request["']/g) || []),
+      ...(c.match(/callRpc\(\s*["']club_cancel_membership_request["']/g) || []),
+      ...(c.match(/callRpc\(\s*["']club_review_membership_request["']/g) || []),
+      ...(c.match(/callRpc\(\s*["']club_leave_membership["']/g) || []),
+      ...(c.match(/callRpc\(\s*["']club_list_my_requests["']/g) || []),
+      ...(c.match(/callRpc\(\s*["']club_list_pending_requests["']/g) || []),
+      ...(c.match(/\.rpc\(\s*["']club_submit_membership_request["']/g) || []),
+      ...(c.match(/\.rpc\(\s*["']club_cancel_membership_request["']/g) || []),
+      ...(c.match(/\.rpc\(\s*["']club_review_membership_request["']/g) || []),
+      ...(c.match(/\.rpc\(\s*["']club_leave_membership["']/g) || []),
+      ...(c.match(/\.rpc\(\s*["']club_list_my_requests["']/g) || []),
+      ...(c.match(/\.rpc\(\s*["']club_list_pending_requests["']/g) || []),
+      ...(c.match(/\.rpc\(\s*["']club_leave_my_membership["']/g) || []),
+    ],
+  },
+  {
+    id: "membership-request-rpcV2-orchestrator-only",
+    description:
+      "Phase 45A.4B — rpcV2 Membership request/leave wrappers may only be invoked from clubMembershipRequestService (definitions allowed in transport).",
+    allow: [
+      "src/features/club/services/clubMembershipRequestService.js",
+      "src/features/club/services/clubStorageV2RpcService.js",
+    ],
+    match: (c) => [
+      ...(c.match(/\brpcV2ClubSubmitMembershipRequest\s*\(/g) || []),
+      ...(c.match(/\brpcV2ClubCancelMembershipRequest\s*\(/g) || []),
+      ...(c.match(/\brpcV2ClubReviewMembershipRequest\s*\(/g) || []),
+      ...(c.match(/\brpcV2ClubLeaveMembership\s*\(/g) || []),
+      ...(c.match(/\brpcV2ClubListMyRequests\s*\(/g) || []),
+      ...(c.match(/\brpcV2ClubListPendingRequests\s*\(/g) || []),
+    ],
+  },
+  {
+    id: "membership-request-phase31-ui-ban",
+    description:
+      "Phase 45A.4B — UI must not import Phase31 clubMembershipRequestRpcService; V2 Production uses SECURITY DEFINER V2 RPCs only.",
+    onlyIn: ["src/context/", "src/pages/", "src/components/"],
+    match: (c) => c.match(/clubMembershipRequestRpcService/g) || [],
+  },
+  {
+    id: "membership-request-blob-write-in-ui",
+    description:
+      "Phase 45A.4B — UI must not write membership request blobs (saveClubExtension / membershipRequests mutation).",
+    onlyIn: ["src/context/", "src/pages/", "src/components/"],
+    match: (c) => [
+      ...(c.match(/\bsaveMembershipRequests\s*\(/g) || []),
+      ...(c.match(/\bsaveClubExtension\s*\(/g) || []),
+    ],
+  },
+  {
+    id: "membership-request-repository-readonly",
+    description:
+      "Phase 45A.4B — canonicalMembershipRepository remains read-only; Membership commands must not be added here.",
+    onlyIn: ["src/features/club/repositories/canonicalMembershipRepository.js"],
+    match: (c) => [
+      ...(c.match(/\brpcV2ClubSubmitMembershipRequest\s*\(/g) || []),
+      ...(c.match(/\brpcV2ClubCancelMembershipRequest\s*\(/g) || []),
+      ...(c.match(/\brpcV2ClubReviewMembershipRequest\s*\(/g) || []),
+      ...(c.match(/\brpcV2ClubLeaveMembership\s*\(/g) || []),
+      ...(c.match(/\baddMemberToClub\s*\(/g) || []),
+      ...(c.match(/\bsaveMembershipRequests\s*\(/g) || []),
+      ...(c.match(/callRpc\(\s*["']club_(?:submit|cancel|review)_membership/g) || []),
+      ...(c.match(
+        /\.from\(\s*["']club_members["']\s*\)[\s\S]{0,240}?\.(insert|update|upsert|delete)\s*\(/g
+      ) || []),
+      ...(c.match(
+        /\.from\(\s*["']club_membership_requests_v42["']\s*\)[\s\S]{0,240}?\.(insert|update|upsert|delete)\s*\(/g
+      ) || []),
+    ],
+  },
+  {
     id: "global-unregistered-error-code",
     description:
       "New string-literal error codes in the API layer must be registered in API_ERROR_CODES.",

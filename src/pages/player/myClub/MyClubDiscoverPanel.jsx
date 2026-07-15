@@ -17,8 +17,8 @@ import {
   isClubStorageV2Enabled,
   listDiscoverableClubs,
   listMyMembershipRequestsAll,
+  listMyMembershipRequestsCanonical,
   rpcV2ClubListDiscoverable,
-  rpcV2ClubListMyRequests,
 } from "../../../features/club/index.js";
 import { syncClubRegistryForUser } from "../../../features/club/services/clubRegistryCloudSync.js";
 import JoinClubDialog from "./JoinClubDialog.jsx";
@@ -65,7 +65,7 @@ export default function MyClubDiscoverPanel({
     setLoading(true);
     void Promise.all([
       rpcV2ClubListDiscoverable({ search, limit: 200 }),
-      rpcV2ClubListMyRequests(),
+      listMyMembershipRequestsCanonical(user.id),
     ]).then(([clubsResult, requestsResult]) => {
       if (cancelled) {
         return;
@@ -78,6 +78,11 @@ export default function MyClubDiscoverPanel({
       }
       if (requestsResult.ok) {
         setV2Requests(requestsResult.requests || []);
+      } else {
+        onMessage?.({
+          type: "error",
+          text: requestsResult.error || "Không tải được yêu cầu gia nhập.",
+        });
       }
     });
 
@@ -90,12 +95,12 @@ export default function MyClubDiscoverPanel({
     if (storageV2) {
       return (v2Requests || []).map((request) => ({
         id: request.id,
-        clubId: request.club_id,
-        userId: request.user_id,
+        clubId: request.clubId || request.club_id,
+        userId: request.userId || request.user_id,
         status: request.status,
         message: request.message,
         version: request.version,
-        requestedAt: request.created_at,
+        requestedAt: request.requestedAt || request.created_at,
       }));
     }
     void revision;

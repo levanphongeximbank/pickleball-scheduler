@@ -141,6 +141,8 @@ export {
   listDiscoverableClubs,
   getClubDiscoverySummary,
   listMyMembershipRequestsAll,
+  listMyMembershipRequestsCanonical,
+  probeMembershipReviewAccess,
   approveClubMembershipRequest,
   rejectClubMembershipRequest,
   getMyClubSummary,
