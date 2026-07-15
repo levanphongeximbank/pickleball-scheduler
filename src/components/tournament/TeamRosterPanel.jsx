@@ -5,6 +5,8 @@ import {
   resolveClubPlayerPoolFromAwareResult,
   resolveFlowPlayersWithClubFallback,
 } from "../../features/club/hooks/useClubPlayerPool.js";
+import { loadSelectPlayersCandidatePool } from "../../features/pairing-candidates/index.js";
+import { selectHostClubAthletesForTeamMlp } from "../../features/team-tournament/ui/selectHostClubAthletesForTeamMlp.js";
 import {
   Alert,
   Autocomplete,
@@ -529,12 +531,53 @@ export default function TeamRosterPanel({
 }) {
   const [teamName, setTeamName] = useState("");
   const [aiPairingOpen, setAiPairingOpen] = useState(false);
+  const [mlpAthletePool, setMlpAthletePool] = useState([]);
+  const [mlpPoolState, setMlpPoolState] = useState({
+    status: "idle",
+    message: null,
+  });
 
   const permissions = useMemo(() => {
     const { user } = getAuthOptions();
     return getPermissionsForRole(user?.role || "");
   }, []);
 
+  useEffect(() => {
+    let cancelled = false;
+    if (!clubId) {
+      setMlpAthletePool([]);
+      setMlpPoolState({ status: "idle", message: null });
+      return undefined;
+    }
+
+    setMlpPoolState({ status: "loading", message: null });
+    (async () => {
+      const result = await loadSelectPlayersCandidatePool(clubId);
+      if (cancelled) return;
+      if (!result.ok) {
+        setMlpAthletePool([]);
+        setMlpPoolState({
+          status: "error",
+          message:
+            result.message ||
+            "Không tải được Athlete canonical cho ghép đội. Không dùng roster blob.",
+        });
+        return;
+      }
+      const hostAthletes = selectHostClubAthletesForTeamMlp(result.players, clubId);
+      setMlpAthletePool(hostAthletes);
+      setMlpPoolState({
+        status: result.empty || hostAthletes.length === 0 ? "empty" : "ready",
+        message: result.empty ? result.message : null,
+      });
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [clubId, tournamentId]);
+
+  /** Roster/substitution may still merge legacy pools; MLP AI uses canonical host club only. */
   const drawPlayerPool = useMemo(() => {
     const pool = new Map();
     [...allTenantPlayers, ...clubPlayers].forEach((player) => {
@@ -544,6 +587,11 @@ export default function TeamRosterPanel({
     });
     return [...pool.values()];
   }, [allTenantPlayers, clubPlayers]);
+
+  const mlpPairingPool = useMemo(
+    () => selectHostClubAthletesForTeamMlp(mlpAthletePool, clubId),
+    [mlpAthletePool, clubId]
+  );
 
   const hostClubName = useMemo(
     () => clubs.find((club) => String(club.id) === String(clubId))?.name || "",
@@ -618,13 +666,38 @@ export default function TeamRosterPanel({
             {isMlp ? (
               <Button
                 variant="outlined"
-                onClick={() => setAiPairingOpen(true)}
+                onClick={() => {
+                  if (mlpPoolState.status === "error") {
+                    onError?.(
+                      mlpPoolState.message ||
+                        "Không tải được Athlete canonical cho ghép đội."
+                    );
+                    return;
+                  }
+                  if (mlpPairingPool.length === 0) {
+                    onError?.(
+                      mlpPoolState.message ||
+                        "Chưa có Athlete đủ điều kiện của CLB này để ghép đội MLP."
+                    );
+                    return;
+                  }
+                  setAiPairingOpen(true);
+                }}
                 sx={{ minHeight: { xs: 44, md: 36 } }}
               >
                 AI ghép đội
               </Button>
             ) : null}
           </Stack>
+          {isMlp && mlpPoolState.status === "error" ? (
+            <Alert severity="error">{mlpPoolState.message}</Alert>
+          ) : null}
+          {isMlp && mlpPoolState.status === "ready" ? (
+            <Alert severity="info">
+              Pool ghép đội MLP: {mlpPairingPool.length} Athlete canonical của CLB hiện
+              tại (không dùng blob / CLB khác).
+            </Alert>
+          ) : null}
           <ExistingTeamClonePanel
             clubId={clubId}
             targetTournamentId={tournamentId}
@@ -674,7 +747,7 @@ export default function TeamRosterPanel({
         open={aiPairingOpen}
         onClose={() => setAiPairingOpen(false)}
         teamData={teamData}
-        players={drawPlayerPool}
+        players={mlpPairingPool}
         clubs={clubs}
         clubId={clubId}
         tournamentId={tournamentId}
