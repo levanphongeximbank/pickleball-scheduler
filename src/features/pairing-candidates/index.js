@@ -41,3 +41,11 @@ export {
   createPairingCandidateService,
   pairingCandidateService,
 } from "./pairingCandidateService.js";
+
+export {
+  loadSelectPlayersCandidatePool,
+  listSelectPlayersScopeRows,
+  toLegacySelectPlayersPlayer,
+  fetchProfilesForPairingCandidates,
+  fetchAthletesForPairingCandidates,
+} from "./selectPlayersCandidateAdapter.js";

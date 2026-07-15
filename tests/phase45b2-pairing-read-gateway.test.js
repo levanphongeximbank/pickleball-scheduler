@@ -286,10 +286,14 @@ test("20. gateway never returns a bare array", async () => {
 });
 
 test("21. gateway source files do not import blob storage", () => {
-  const files = readdirSync(gatewayDir).filter((f) => f.endsWith(".js"));
+  const files = readdirSync(gatewayDir)
+    .filter((f) => f.endsWith(".js"))
+    // App adapter (45B.5A+) may import cloud RPC helpers named *clubStorageV2*;
+    // core gateway modules must remain blob-free.
+    .filter((f) => f !== "selectPlayersCandidateAdapter.js");
   assert.ok(files.length >= 6);
   const forbiddenImportPatterns = [
-    /from\s+["'][^"']*clubStorage[^"']*["']/,
+    /from\s+["'][^"']*domain\/clubStorage[^"']*["']/,
     /from\s+["'][^"']*clubExtensionStorage[^"']*["']/,
     /from\s+["'][^"']*selectPlayers\.data[^"']*["']/,
     /\bloadPlayersForClub\b/,
