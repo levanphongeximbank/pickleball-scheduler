@@ -1,35 +1,22 @@
 import { ROLES, normalizeRole } from "../../../auth/roles.js";
-import { getClubById } from "../../../domain/clubService.js";
 import { normalizeUser } from "../../../models/user.js";
 import { rpcAdminUpdateUser } from "../../identity/services/identityRpcService.js";
 import { getVicePresidentUserIds } from "../models/clubGovernance.js";
 import { loadAthleteClubLink } from "../storage/athleteClubLinkStore.js";
+import {
+  hasClubGovernanceManagerAccess,
+  resolveGovernanceElevatedRole,
+} from "../../../auth/governanceScopeResolver.js";
+
+// Phase 44C.1A — canonical governance elevation is owned by governanceScopeResolver
+// (the single authorization-layer place allowed to read the local club registry).
+// Re-exported here so existing importers keep working; this file no longer reads
+// the registry (loadClubs/getClubById) for a governance authorization decision.
+export { hasClubGovernanceManagerAccess, resolveGovernanceElevatedRole };
 
 function sameUserId(a, b) {
   if (!a || !b) return false;
   return String(a) === String(b);
-}
-
-function resolveClubForGovernance(user, club = null) {
-  const clubId = user?.clubId || user?.club_id;
-  if (!clubId) {
-    return null;
-  }
-
-  if (club?.id === clubId) {
-    return club;
-  }
-
-  if (typeof globalThis.localStorage === "undefined") {
-    return null;
-  }
-
-  try {
-    const resolved = getClubById(clubId);
-    return resolved?.id === clubId ? resolved : null;
-  } catch {
-    return null;
-  }
 }
 
 export function isClubPresident(user, club) {
@@ -44,40 +31,6 @@ export function isClubVicePresident(user, club) {
     return false;
   }
   return getVicePresidentUserIds(club?.governance).some((id) => sameUserId(user.id, id));
-}
-
-/**
- * Chủ tịch / Phó chủ tịch VĐV — quyền hệ thống như Quản lý CLB (spec V5 §4).
- */
-export function hasClubGovernanceManagerAccess(user, club = null) {
-  if (!user?.id) {
-    return false;
-  }
-
-  const resolvedClub = resolveClubForGovernance(user, club);
-  if (!resolvedClub) {
-    return false;
-  }
-
-  return isClubPresident(user, resolvedClub) || isClubVicePresident(user, resolvedClub);
-}
-
-/** PLAYER + governance Chủ tịch/VP → CLUB_MANAGER cho RBAC; ngược lại giữ role gốc. */
-export function resolveGovernanceElevatedRole(user) {
-  if (!user?.role) {
-    return null;
-  }
-
-  const role = normalizeRole(user.role);
-  if (role !== ROLES.PLAYER) {
-    return role;
-  }
-
-  if (hasClubGovernanceManagerAccess(user)) {
-    return ROLES.CLUB_MANAGER;
-  }
-
-  return role;
 }
 
 function shouldRetainClubManagerRole(userId, governance) {

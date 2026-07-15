@@ -16,6 +16,8 @@ import {
   subscribeToSupabaseAuth,
 } from "../auth/authService.js";
 import { getSupabaseConfigError, hasSupabaseConfig } from "../auth/supabaseClient.js";
+import { clearClubScope } from "../auth/clubScopeResolver.js";
+import { clearGovernanceScope } from "../auth/governanceScopeResolver.js";
 
 const AuthContext = createContext(null);
 
@@ -142,6 +144,9 @@ export function AuthProvider({ children }) {
     (email) => {
       const result = signInDev(email);
       if (result.ok) {
+        // User switch → drop any previous user's canonical club + governance scope.
+        clearClubScope();
+        clearGovernanceScope();
         refresh();
       }
       return result;
@@ -153,6 +158,8 @@ export function AuthProvider({ children }) {
     (user) => {
       const result = signInAs(user);
       if (result.ok) {
+        clearClubScope();
+        clearGovernanceScope();
         refresh();
       }
       return result;
@@ -162,6 +169,9 @@ export function AuthProvider({ children }) {
 
   const handleSignOut = useCallback(async () => {
     await signOut();
+    // Logout → clear canonical allowed-club + governance scope (no stale grant/elevation).
+    clearClubScope();
+    clearGovernanceScope();
     refresh();
     return { ok: true };
   }, [refresh]);
@@ -170,6 +180,8 @@ export function AuthProvider({ children }) {
     async (email, password) => {
       const result = await signInWithPassword(email, password);
       if (result.ok) {
+        clearClubScope();
+        clearGovernanceScope();
         refresh();
       }
       return result;

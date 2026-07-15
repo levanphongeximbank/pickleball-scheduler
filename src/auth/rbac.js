@@ -13,10 +13,9 @@ import {
 import { getPermissionScopes, PERMISSION_SCOPE, PERMISSIONS } from "./permissions.js";
 import { roleHasPermission } from "./rolePermissions.js";
 import { getEffectivePermissionsForTenantRole } from "../features/identity/services/tenantRolePermissionService.js";
-import { resolveGovernanceElevatedRole } from "../features/club/services/governanceRoleElevation.js";
+import { resolveGovernanceElevatedRole } from "./governanceScopeResolver.js";
 import { isUserActive } from "../models/user.js";
-import { loadClubs } from "../data/club.js";
-import { getExplicitTenantIdForClub } from "../features/tenant/guards/tenantGuard.js";
+import { getClubMetaForAuthz } from "./clubScopeResolver.js";
 import {
   canUserAccessCluster,
   isOrgWideClusterRole,
@@ -162,20 +161,35 @@ export function canAccessClub(user, clubId, clubMeta = {}, options = {}) {
       return false;
     }
 
-    const club = loadClubs().find((item) => item.id === clubId);
-    const registryVenueId = club?.venueId || clubVenueId || null;
+    const { meta, cloudAuthoritative, ready } = getClubMetaForAuthz(clubId, {
+      user,
+      tenantId: user.tenantId || user.venueId,
+      rbacEnabled,
+    });
+
+    // Canonical deny-by-default: when the cloud registry is authoritative but the
+    // scope is not resolved (loading / error), never grant from stale/local data.
+    if (cloudAuthoritative && !ready) {
+      return false;
+    }
+
+    // Cloud authoritative + resolved: the club must be present in the canonical
+    // scope. Do not trust a caller-supplied venueId for an out-of-scope club.
+    const registryVenueId = meta?.venueId ?? (cloudAuthoritative ? null : clubVenueId) ?? null;
 
     if (registryVenueId === user.venueId) {
       return true;
     }
 
-    const explicitTenant = getExplicitTenantIdForClub(clubId);
+    const explicitTenant = meta?.tenantId ?? null;
     if (explicitTenant === user.venueId) {
       return true;
     }
 
     if (!registryVenueId && !explicitTenant) {
-      return true;
+      // Unassigned/global club (e.g. default club). Offline keeps legacy grant;
+      // cloud grants only when the club is actually present in canonical scope.
+      return cloudAuthoritative ? Boolean(meta) : true;
     }
 
     return false;

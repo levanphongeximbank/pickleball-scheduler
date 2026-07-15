@@ -1,9 +1,9 @@
-import { loadClubs } from "../data/club.js";
 import { bindClubVenueRegistry } from "../domain/clubService.js";
 import { loadActiveTenantId } from "../data/tenantSession.js";
 import { PERMISSIONS } from "./permissions.js";
 import { getCurrentUser, isRbacEnabled } from "./authService.js";
 import { assertCan, can, canAccessClub, isRbacEnforced } from "./rbac.js";
+import { getClubMetaForAuthz } from "./clubScopeResolver.js";
 import { guardSubscriptionForClub } from "./subscriptionGuard.js";
 import { isClubScopedRole, isGlobalRole, isVenueScopedRole } from "./roles.js";
 import {
@@ -23,11 +23,14 @@ export function getAuthOptions() {
 }
 
 export function scopeForClubId(clubId, clusterId = null) {
-  const club = loadClubs().find((item) => item.id === clubId);
-  const tenantId = resolveTenantIdForClub(clubId);
+  const { meta } = getClubMetaForAuthz(clubId, {
+    user: getCurrentUser(),
+    rbacEnabled: isRbacEnabled(),
+  });
+  const tenantId = meta?.tenantId || resolveTenantIdForClub(clubId);
   return {
     clubId: clubId || null,
-    venueId: club?.venueId || tenantId || null,
+    venueId: meta?.venueId || tenantId || null,
     tenantId,
     clusterId: clusterId || null,
   };
@@ -57,7 +60,12 @@ export function guardClubAccess(clubId, options = {}) {
     return { ok: true };
   }
 
-  const club = loadClubs().find((item) => item.id === clubId);
+  const { meta } = getClubMetaForAuthz(clubId, {
+    user,
+    tenantId: user?.tenantId || user?.venueId,
+    rbacEnabled,
+  });
+  const club = meta ? { id: clubId, venueId: meta.venueId, isDefault: meta.isDefault } : null;
   const profileVenueId =
     user && isVenueScopedRole(user.role) ? user.venueId || user.tenantId : null;
   const scope = scopeForClubId(clubId);
