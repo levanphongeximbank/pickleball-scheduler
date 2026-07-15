@@ -29,9 +29,9 @@ import { useTenant } from "../../context/TenantContext.jsx";
 import { PERMISSIONS } from "../../auth/permissions.js";
 import { assertTournamentAccess } from "../../domain/tournamentService.js";
 import {
-  useClubPlayerPool,
-  useTenantPlayerPool,
-} from "../../features/club/hooks/useClubPlayerPool.js";
+  useClubPairingCandidatePool,
+  useTenantPairingCandidatePool,
+} from "../../features/pairing-candidates/index.js";
 import { resolveTenantIdForClub } from "../../features/tenant/guards/tenantGuard.js";
 import {
   buildRoundRobinMatchups,
@@ -263,13 +263,20 @@ export default function TeamTournamentSetup() {
     [tournament?.tenantId, activeClubId, currentTenantId]
   );
   const teamDataView = teamData || { teams: [], disciplines: [], matchups: [], standings: [] };
-  const { players } = useClubPlayerPool(activeClubId, {
+  const {
+    players,
+    error: clubPlayersError,
+  } = useClubPairingCandidatePool(activeClubId, {
     tenantId,
     revision: dataVersion,
   });
-  const { players: allTenantPlayers } = useTenantPlayerPool(tenantId, {
+  const {
+    players: allTenantPlayers,
+    error: tenantPlayersError,
+  } = useTenantPairingCandidatePool(tenantId, {
     revision: dataVersion,
   });
+  const playersLoadError = clubPlayersError || tenantPlayersError;
   const lineupPlayers = useMemo(() => {
     const pool = new Map();
     [...allTenantPlayers, ...players].forEach((player) => {
@@ -846,6 +853,11 @@ export default function TeamTournamentSetup() {
             onReconnect={reconnectRealtime}
           />
           {hubBanner ? <Alert severity="info" sx={{ mb: 2 }}>{hubBanner}</Alert> : null}
+          {playersLoadError ? (
+            <Alert severity="error" sx={{ mb: 2 }}>
+              {playersLoadError.message}
+            </Alert>
+          ) : null}
           {message ? <Alert severity="success" sx={{ mb: 2 }} onClose={() => setMessage("")}>{message}</Alert> : null}
           {error ? <Alert severity="error" sx={{ mb: 2 }} onClose={() => setError("")}>{error}</Alert> : null}
         </>

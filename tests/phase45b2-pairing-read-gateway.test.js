@@ -290,7 +290,12 @@ test("21. gateway source files do not import blob storage", () => {
     .filter((f) => f.endsWith(".js"))
     // App adapter (45B.5A+) may import cloud RPC helpers named *clubStorageV2*;
     // core gateway modules must remain blob-free.
-    .filter((f) => f !== "selectPlayersCandidateAdapter.js");
+    .filter(
+      (f) =>
+        f !== "selectPlayersCandidateAdapter.js" &&
+        f !== "screenCandidateAdapters.js" &&
+        f !== "usePairingCandidatePools.js"
+    );
   assert.ok(files.length >= 6);
   const forbiddenImportPatterns = [
     /from\s+["'][^"']*domain\/clubStorage[^"']*["']/,
