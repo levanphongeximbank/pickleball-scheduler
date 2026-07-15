@@ -3,17 +3,12 @@ import {
   PARTNER_RELATION_TYPES,
   PRIVATE_PAIRING_CONSTRAINT_TYPE,
 } from "../constants/constraintTypes.js";
+import { GROUP_RELATION_TYPES } from "./stageRuleFilters.js";
 
 /** Soft partner-history repeat rules applicable during team formation. */
 const TEAM_FORMATION_REPEAT_TYPES = Object.freeze([
   PRIVATE_PAIRING_CONSTRAINT_TYPE.MAX_PARTNER_REPEAT,
   PRIVATE_PAIRING_CONSTRAINT_TYPE.MIN_PARTNER_REPEAT,
-]);
-
-/** Group placement rules — deferred to group draw, not team composition. */
-const GROUP_RELATION_TYPES = Object.freeze([
-  PRIVATE_PAIRING_CONSTRAINT_TYPE.SAME_GROUP,
-  PRIVATE_PAIRING_CONSTRAINT_TYPE.DIFFERENT_GROUP,
 ]);
 
 const TEAM_FORMATION_TYPE_SET = new Set([

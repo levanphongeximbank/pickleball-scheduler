@@ -865,26 +865,26 @@ export default function InternalTournamentSetup() {
       return;
     }
 
+    const prepared = await prepareLivePrivatePairingOptions({
+      clubId: tournamentClubId,
+      tournamentId,
+      eventId: savedEvent?.id || `event-${tournamentId}`,
+      competitionClass: COMPETITION_CLASS.INTERNAL,
+      pairingConstraints: founderConstraints,
+    });
+
+    if (!prepared.ok) {
+      setError(prepared.error?.message || "Không thể áp dụng quy tắc riêng.");
+      setWarnings(
+        (prepared.error?.fatalConflicts || prepared.error?.blockedByPolicy || []).map(
+          (item) => item.code || item.message || String(item)
+        )
+      );
+      return;
+    }
+
     let entries = previewEntries;
     if (previewEntries.length === 0) {
-      const prepared = await prepareLivePrivatePairingOptions({
-        clubId: tournamentClubId,
-        tournamentId,
-        eventId: savedEvent?.id || `event-${tournamentId}`,
-        competitionClass: COMPETITION_CLASS.INTERNAL,
-        pairingConstraints: founderConstraints,
-      });
-
-      if (!prepared.ok) {
-        setError(prepared.error?.message || "Không thể ghép cặp theo quy tắc riêng.");
-        setWarnings(
-          (prepared.error?.fatalConflicts || prepared.error?.blockedByPolicy || []).map(
-            (item) => item.code || item.message || String(item)
-          )
-        );
-        return;
-      }
-
       const pairingOptions = {
         ...prepared.pairingOptions,
         tournamentId,
@@ -914,10 +914,17 @@ export default function InternalTournamentSetup() {
       groupCount,
       manualEntries: entries,
       pairingConstraints: founderConstraints,
+      privatePairingRules: prepared.pairingOptions?.privatePairingRules || [],
+      clubId: tournamentClubId,
+      competitionClass: COMPETITION_CLASS.INTERNAL,
+      envSource: prepared.pairingOptions?.envSource,
+      seed: prepared.pairingOptions?.seed,
+      allowedByPublishedRules: prepared.pairingOptions?.allowedByPublishedRules,
+      contextTime: prepared.pairingOptions?.contextTime,
     });
 
     if (!plan.ok) {
-      setError(plan.errors?.join(" "));
+      setError(plan.privatePairingError?.message || plan.errors?.join(" "));
       setWarnings(plan.warnings || []);
       return;
     }

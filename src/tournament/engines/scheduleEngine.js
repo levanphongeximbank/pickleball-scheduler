@@ -2,6 +2,10 @@ import { buildRoundRobinRounds } from "../../pages/tournament.fixtures.logic.js"
 import { MATCH_STAGE, MATCH_STATUS } from "../../models/tournament/constants.js";
 import { createMatchRecord } from "../../models/tournament/match.js";
 import { entriesToTeams } from "./teamPairingEngine.js";
+import {
+  applyOpponentRulesToGroupStageSchedule,
+  isPrivatePairingRuntimeEnabled,
+} from "../../features/private-pairing-rules/runtime/index.js";
 
 function buildMatchId(groupLabel, roundNumber, index) {
   return `G${groupLabel}-R${roundNumber}-M${index + 1}`;
@@ -52,7 +56,7 @@ export function buildGroupStageSchedule(groups = [], options = {}) {
     allMatches.push(...schedule.matches);
   });
 
-  return {
+  const baseSchedule = {
     groups: nextGroups,
     matches: allMatches,
     roundCount: nextGroups.reduce((max, group) => {
@@ -62,6 +66,55 @@ export function buildGroupStageSchedule(groups = [], options = {}) {
       );
       return Math.max(max, groupMax);
     }, 0),
+    ok: true,
+    privatePairingError: null,
+  };
+
+  if (!isPrivatePairingRuntimeEnabled(options.envSource)) {
+    return baseSchedule;
+  }
+
+  if (!(options.privatePairingRules || []).length && !options.forceOpponentStage) {
+    return baseSchedule;
+  }
+
+  const applied = applyOpponentRulesToGroupStageSchedule(baseSchedule, {
+    players: options.players || [],
+    privatePairingRules: options.privatePairingRules || [],
+    legacyConstraints: options.pairingConstraints || [],
+    clubId: options.clubId || null,
+    tournamentId: options.tournamentId || null,
+    eventId: options.eventId || null,
+    competitionClass: options.competitionClass,
+    envSource: options.envSource,
+    allowedByPublishedRules: options.allowedByPublishedRules === true,
+    contextTime: options.contextTime,
+    history: options.pairingHistory || options.history || {},
+    requireCompleteSet: options.requireCompleteSet !== false,
+  });
+
+  if (!applied.ok) {
+    return {
+      groups: [],
+      matches: [],
+      roundCount: 0,
+      ok: false,
+      privatePairingError: applied.privatePairingError,
+    };
+  }
+
+  return {
+    groups: applied.groups,
+    matches: applied.matches,
+    roundCount: applied.groups.reduce((max, group) => {
+      const groupMax = (group.matches || []).reduce(
+        (inner, match) => Math.max(inner, Number(match.round || 0)),
+        0
+      );
+      return Math.max(max, groupMax);
+    }, 0),
+    ok: true,
+    privatePairingError: null,
   };
 }
 

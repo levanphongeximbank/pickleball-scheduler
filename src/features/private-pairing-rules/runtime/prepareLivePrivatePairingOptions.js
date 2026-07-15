@@ -174,6 +174,10 @@ export function buildPrivatePairingRuntimeError(runtime = {}) {
     message = "Bộ quy tắc ghép cặp không hợp lệ.";
   } else if (code === PRIVATE_PAIRING_RUNTIME_CODE.NO_FEASIBLE_PAIRING) {
     message = "Không tìm được phương án ghép cặp thỏa hard rules.";
+  } else if (code === PRIVATE_PAIRING_RUNTIME_CODE.NO_FEASIBLE_GROUP_PLAN) {
+    message = "Không tìm được phương án chia bảng thỏa hard rules.";
+  } else if (code === PRIVATE_PAIRING_RUNTIME_CODE.NO_FEASIBLE_MATCHUP) {
+    message = "Không tìm được lịch đấu / trận đối đầu thỏa hard rules.";
   } else if (code === PRIVATE_PAIRING_RUNTIME_CODE.PAIRING_SEARCH_LIMIT_REACHED) {
     message = "Đã đạt giới hạn tìm kiếm ghép cặp — không có phương án hợp lệ.";
   }

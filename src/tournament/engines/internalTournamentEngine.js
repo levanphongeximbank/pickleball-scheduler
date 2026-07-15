@@ -1,7 +1,10 @@
 import { createEventRecord } from "../../models/tournament/event.js";
 import { EVENT_TYPE, TOURNAMENT_MODE } from "../../models/tournament/constants.js";
-import { assignGroupsWithConstraints } from "../../features/pairing-constraints/engines/constraintGroupEngine.js";
 import { runLegacyDrawWithCanonicalAdapter } from "../../features/competition-core/draw/adapters/drawRuntimeAdapter.js";
+import {
+  COMPETITION_CLASS,
+  assignGroupsWithPrivatePairingRules,
+} from "../../features/private-pairing-rules/index.js";
 import { validateGroupDrawInput } from "./validationEngine.js";
 import { suggestEntriesFromPlayers } from "./teamPairingEngine.js";
 import { summarizeGroupBalance } from "./seededGroupEngine.js";
@@ -40,6 +43,13 @@ export function buildInternalTournamentPlan({
   groupCount = 4,
   manualEntries = null,
   pairingConstraints = [],
+  privatePairingRules = [],
+  clubId = null,
+  competitionClass = COMPETITION_CLASS.INTERNAL,
+  envSource,
+  seed,
+  allowedByPublishedRules = false,
+  contextTime,
   pointsConfig = { win: 2, loss: 1, forfeit: 0 },
 } = {}) {
   const event = ensureInternalEvent(tournament, eventType);
@@ -51,6 +61,13 @@ export function buildInternalTournamentPlan({
     tournamentId: tournament.id,
     eventId: event.id,
     pairingConstraints,
+    privatePairingRules,
+    clubId,
+    competitionClass,
+    envSource,
+    seed,
+    allowedByPublishedRules,
+    contextTime,
   };
 
   const entries =
@@ -59,6 +76,15 @@ export function buildInternalTournamentPlan({
       : suggestEntriesFromPlayers(selectedPlayers, eventType, pairingOptions);
 
   const constraintWarnings = pairingOptions.constraintWarnings || [];
+
+  if (pairingOptions.privatePairingError) {
+    return {
+      ok: false,
+      errors: [pairingOptions.privatePairingError.message],
+      warnings: constraintWarnings,
+      privatePairingError: pairingOptions.privatePairingError,
+    };
+  }
 
   const validation = validateGroupDrawInput({
     entries,
@@ -80,6 +106,7 @@ export function buildInternalTournamentPlan({
   const groupResult = runLegacyDrawWithCanonicalAdapter({
     consumer: "internal_tournament",
     strategyKey: "skill_controlled",
+    envSource,
     legacyPayload: {
       tournamentId: tournament.id,
       eventId: event.id,
@@ -87,17 +114,49 @@ export function buildInternalTournamentPlan({
       groupCount,
       players: selectedPlayers,
       constraints: pairingConstraints,
+      privatePairingRules,
+      clubId,
+      competitionClass,
+      envSource,
+      seed,
+      allowedByPublishedRules,
+      contextTime,
     },
     legacyExecutor: (payload) =>
-      assignGroupsWithConstraints(
+      assignGroupsWithPrivatePairingRules(
         payload.entries,
         payload.groupCount,
         payload.players,
-        payload.constraints
+        {
+          pairingConstraints: payload.constraints,
+          privatePairingRules: payload.privatePairingRules,
+          clubId: payload.clubId,
+          tournamentId: payload.tournamentId,
+          eventId: payload.eventId,
+          competitionClass: payload.competitionClass,
+          envSource: payload.envSource,
+          seed: payload.seed,
+          allowedByPublishedRules: payload.allowedByPublishedRules,
+          contextTime: payload.contextTime,
+        }
       ),
   });
 
-  const groups = groupResult.groups.map((group) => ({
+  if (groupResult.ok === false || groupResult.privatePairingError) {
+    const error =
+      groupResult.privatePairingError ||
+      ({
+        message: (groupResult.errors || ["Không chia được bảng."])[0],
+      });
+    return {
+      ok: false,
+      errors: [error.message || "Không chia được bảng."],
+      warnings: groupResult.warnings || [],
+      privatePairingError: groupResult.privatePairingError || null,
+    };
+  }
+
+  const groups = (groupResult.groups || []).map((group) => ({
     ...group,
     tournamentId: tournament.id,
     eventId: event.id,
@@ -108,7 +167,31 @@ export function buildInternalTournamentPlan({
     tournamentId: tournament.id,
     eventId: event.id,
     players: selectedPlayers,
+    privatePairingRules,
+    pairingConstraints,
+    clubId,
+    competitionClass,
+    envSource,
+    seed,
+    allowedByPublishedRules,
+    contextTime,
   });
+
+  if (schedule.ok === false || schedule.privatePairingError) {
+    return {
+      ok: false,
+      errors: [
+        schedule.privatePairingError?.message ||
+          "Không tạo được lịch vòng bảng thỏa quy tắc đối đầu.",
+      ],
+      warnings: [
+        ...(validation.warnings || []),
+        ...(constraintWarnings || []),
+        ...(groupResult.warnings || []),
+      ],
+      privatePairingError: schedule.privatePairingError || null,
+    };
+  }
 
   const balance = summarizeGroupBalance(schedule.groups);
 
@@ -128,6 +211,7 @@ export function buildInternalTournamentPlan({
     ],
     balance,
     matchCount: countGroupStageMatches(schedule.groups),
+    privatePairingError: null,
   };
 }
 
@@ -135,8 +219,9 @@ export function applyInternalTournamentPlan(tournament, plan) {
   if (!plan?.ok || !plan.event) {
     return {
       ok: false,
-      error: plan?.errors?.[0] || "Khong the ap dung ke hoach giai.",
+      error: plan?.errors?.[0] || "Khong the ap dung ke hoach bảng.",
       errors: plan?.errors || [],
+      privatePairingError: plan?.privatePairingError || null,
     };
   }
 

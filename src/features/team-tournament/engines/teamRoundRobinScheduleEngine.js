@@ -1,5 +1,9 @@
 import { buildRoundRobinRounds } from "../../../pages/tournament.fixtures.logic.js";
 import { createId } from "../../../utils/id.js";
+import {
+  buildMatchOptionFromSides,
+  filterAndRankMatchupsByOpponentRules,
+} from "../../private-pairing-rules/runtime/index.js";
 import { MATCHUP_STATUS } from "../constants.js";
 import {
   createMatchupRecord,
@@ -290,9 +294,50 @@ export function buildStructuredRoundRobinMatchups(teamData, options = {}) {
     });
   });
 
+  const ranked = filterAndRankMatchupsByOpponentRules(
+    matchups,
+    (matchup) => {
+      const teamA = (prepared.teams || []).find(
+        (team) => String(team.id) === String(matchup.teamAId)
+      );
+      const teamB = (prepared.teams || []).find(
+        (team) => String(team.id) === String(matchup.teamBId)
+      );
+      if (!teamA || !teamB) {
+        return null;
+      }
+      const sideA = (teamA.playerIds || []).map((id) => ({ id }));
+      const sideB = (teamB.playerIds || []).map((id) => ({ id }));
+      return buildMatchOptionFromSides(sideA, sideB);
+    },
+    {
+      privatePairingRules: options.privatePairingRules || [],
+      pairingConstraints: options.pairingConstraints || [],
+      clubId: options.clubId || null,
+      tournamentId: options.tournamentId || null,
+      eventId: options.eventId || null,
+      competitionClass: options.competitionClass,
+      envSource: options.envSource,
+      allowedByPublishedRules: options.allowedByPublishedRules === true,
+      contextTime: options.contextTime,
+      history: options.pairingHistory || {},
+      requireCompleteSet: options.requireCompleteSet !== false,
+    }
+  );
+
+  if (ranked.ok === false) {
+    const errorData = normalizeTeamData({
+      ...prepared,
+      matchups: [],
+    });
+    errorData.ok = false;
+    errorData.privatePairingError = ranked.privatePairingError;
+    return errorData;
+  }
+
   return normalizeTeamData({
     ...prepared,
-    matchups,
+    matchups: ranked.matchups,
   });
 }
 

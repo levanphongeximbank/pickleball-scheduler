@@ -833,27 +833,27 @@ export default function OfficialTournamentSetup() {
     setWarnings([]);
     setMessage(null);
 
+    const prepared = await prepareLivePrivatePairingOptions({
+      clubId: activeClubId,
+      tournamentId,
+      eventId: savedEvent?.id || `event-${tournamentId}`,
+      competitionClass: COMPETITION_CLASS.OFFICIAL,
+      pairingConstraints: founderConstraints,
+      allowedByPublishedRules: false,
+    });
+
+    if (!prepared.ok) {
+      setError(prepared.error?.message || "Không thể áp dụng quy tắc riêng.");
+      setWarnings(
+        (prepared.error?.fatalConflicts || prepared.error?.blockedByPolicy || []).map(
+          (item) => item.code || item.message || String(item)
+        )
+      );
+      return;
+    }
+
     let entries = previewEntries;
     if (previewEntries.length === 0) {
-      const prepared = await prepareLivePrivatePairingOptions({
-        clubId: activeClubId,
-        tournamentId,
-        eventId: savedEvent?.id || `event-${tournamentId}`,
-        competitionClass: COMPETITION_CLASS.OFFICIAL,
-        pairingConstraints: founderConstraints,
-        allowedByPublishedRules: false,
-      });
-
-      if (!prepared.ok) {
-        setError(prepared.error?.message || "Không thể ghép cặp theo quy tắc riêng.");
-        setWarnings(
-          (prepared.error?.fatalConflicts || prepared.error?.blockedByPolicy || []).map(
-            (item) => item.code || item.message || String(item)
-          )
-        );
-        return;
-      }
-
       const pairingOptions = {
         ...prepared.pairingOptions,
         tournamentId,
@@ -882,10 +882,17 @@ export default function OfficialTournamentSetup() {
       manualEntries: entries,
       individualRegistration: true,
       pairingConstraints: founderConstraints,
+      privatePairingRules: prepared.pairingOptions?.privatePairingRules || [],
+      clubId: activeClubId,
+      competitionClass: COMPETITION_CLASS.OFFICIAL,
+      envSource: prepared.pairingOptions?.envSource,
+      seed: prepared.pairingOptions?.seed,
+      allowedByPublishedRules: prepared.pairingOptions?.allowedByPublishedRules,
+      contextTime: prepared.pairingOptions?.contextTime,
     });
 
     if (!plan.ok) {
-      setError(plan.errors?.join(" "));
+      setError(plan.privatePairingError?.message || plan.errors?.join(" "));
       setWarnings(plan.warnings || []);
       return;
     }

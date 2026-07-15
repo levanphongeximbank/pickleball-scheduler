@@ -4,11 +4,16 @@ import { COMPETITION_CLASS, RESTRICTED_COMPETITION_CLASSES } from "../../private
 import {
   buildPrivatePairingRuntimeError,
   createSeededRng,
+  evaluateHardPrivatePairingRules,
   evaluatePrivatePairingCandidate,
+  filterRulesForGroupStage,
   filterRulesForTeamFormation,
   isPrivatePairingRuntimeEnabled,
   PRIVATE_PAIRING_RUNTIME_CODE,
   resolveActivePrivatePairingRules,
+  scoreSoftPrivatePairingRules,
+  splitHardAndSoftRules,
+  gateResolvedForStage,
 } from "../../private-pairing-rules/runtime/index.js";
 import { FORMAT_PRESET, TEAM_GROUP_SEEDING } from "../constants.js";
 import {
@@ -408,13 +413,35 @@ export function summarizeSeededGroupBalance(groups = [], teams = [], options = {
   };
 }
 
+function teamGroupsToPrivateCandidate(groups = [], teams = []) {
+  const teamById = new Map((teams || []).map((team) => [String(team.id), team]));
+  return (groups || []).map((group) => {
+    const playerIds = [];
+    (group.teamIds || []).forEach((teamId) => {
+      const team = teamById.get(String(teamId));
+      (team?.playerIds || []).forEach((id) => playerIds.push(String(id)));
+      (team?.members || []).forEach((member) => {
+        const id = typeof member === "object" ? String(member.id || "") : String(member);
+        if (id) playerIds.push(id);
+      });
+    });
+    return {
+      id: group.id,
+      label: group.name,
+      playerIds: [...new Set(playerIds)],
+    };
+  });
+}
+
 /**
  * Assign existing teams to groups using configured seeding mode + snake distribution.
+ * When private pairing runtime is ON, hard-filters / soft-ranks group plans with
+ * group-stage rules only (never teammate/opponent rules).
  */
 export function assignSeededTeamsToGroups(teamData, options = {}) {
   const teams = teamData?.teams || [];
   if (teams.length < 2) {
-    return { teamData, balance: null, warnings: [] };
+    return { teamData, balance: null, warnings: [], ok: true, privatePairingError: null };
   }
 
   const seedingMode = resolveGroupSeedingMode(
@@ -424,38 +451,140 @@ export function assignSeededTeamsToGroups(teamData, options = {}) {
   const randomFn = typeof options.randomFn === "function" ? options.randomFn : Math.random;
   const warnings = [];
 
-  let preparedTeams;
-  if (seedingMode === TEAM_GROUP_SEEDING.OFF) {
-    preparedTeams = shuffleTeamsForOpenDraw(teams, randomFn);
-  } else {
-    preparedTeams = sortTeamsForGroupSeeding(teams, players, seedingMode);
-    if (
-      seedingMode === TEAM_GROUP_SEEDING.TOP_PLAYER_THEN_TOTAL &&
-      players.length === 0
-    ) {
-      warnings.push(
-        "Thiếu danh sách VĐV — xếp hạt giống fallback theo trung bình đội đã lưu."
-      );
+  const buildLegacyPlan = (shuffleSalt = 0) => {
+    let preparedTeams;
+    if (seedingMode === TEAM_GROUP_SEEDING.OFF) {
+      preparedTeams = shuffleTeamsForOpenDraw(teams, randomFn);
+    } else if (shuffleSalt > 0) {
+      const rng = createSeededRng(`${options.seed || 1}-${shuffleSalt}`);
+      const baseSorted = sortTeamsForGroupSeeding(teams, players, seedingMode);
+      // light rotation to explore alternate snake starts without Math.random fallback
+      const offset = Math.floor(rng() * baseSorted.length);
+      preparedTeams = [...baseSorted.slice(offset), ...baseSorted.slice(0, offset)];
+    } else {
+      preparedTeams = sortTeamsForGroupSeeding(teams, players, seedingMode);
+      if (
+        seedingMode === TEAM_GROUP_SEEDING.TOP_PLAYER_THEN_TOTAL &&
+        players.length === 0
+      ) {
+        warnings.push(
+          "Thiếu danh sách VĐV — xếp hạt giống fallback theo trung bình đội đã lưu."
+        );
+      }
     }
+
+    const recommendedSizes = recommendGroupSizes(teams.length);
+    const groupCount =
+      Number(options.groupCount) ||
+      (recommendedSizes ? recommendedSizes.length : Math.min(2, teams.length));
+
+    const groups = buildSnakeGroupsFromSortedTeams(preparedTeams, groupCount);
+    return { preparedTeams, groups, groupCount };
+  };
+
+  if (!isPrivatePairingRuntimeEnabled(options.envSource)) {
+    const { preparedTeams, groups } = buildLegacyPlan(0);
+    const nextTeamData = normalizeTeamData({
+      ...teamData,
+      teams: preparedTeams,
+      groups,
+    });
+    return {
+      ok: true,
+      teamData: nextTeamData,
+      balance: summarizeSeededGroupBalance(groups, preparedTeams, { seedingMode }),
+      warnings,
+      privatePairingError: null,
+    };
   }
 
-  const recommendedSizes = recommendGroupSizes(teams.length);
-  const groupCount =
-    Number(options.groupCount) ||
-    (recommendedSizes ? recommendedSizes.length : Math.min(2, teams.length));
+  const competitionClass = options.competitionClass || COMPETITION_CLASS.INTERNAL;
+  const resolved = resolveActivePrivatePairingRules({
+    rules: options.privatePairingRules || [],
+    legacyConstraints: options.pairingConstraints || [],
+    context: {
+      clubId: options.clubId || null,
+      tournamentId: options.tournamentId || null,
+      eventId: options.eventId || null,
+      competitionClass,
+      allowedByPublishedRules: options.allowedByPublishedRules === true,
+      contextTime: options.contextTime,
+    },
+  });
 
-  const groups = buildSnakeGroupsFromSortedTeams(preparedTeams, groupCount);
+  const gate = gateResolvedForStage(resolved, competitionClass);
+  if (!gate.ok) {
+    return {
+      ok: false,
+      teamData,
+      balance: null,
+      warnings,
+      privatePairingError: gate.error,
+    };
+  }
 
+  const stageRules = filterRulesForGroupStage(resolved.rules || []);
+  const { hard, soft } = splitHardAndSoftRules(stageRules);
+
+  if (!hard.length && !soft.length) {
+    const { preparedTeams, groups } = buildLegacyPlan(0);
+    const nextTeamData = normalizeTeamData({
+      ...teamData,
+      teams: preparedTeams,
+      groups,
+    });
+    return {
+      ok: true,
+      teamData: nextTeamData,
+      balance: summarizeSeededGroupBalance(groups, preparedTeams, { seedingMode }),
+      warnings,
+      privatePairingError: null,
+    };
+  }
+
+  const maxCandidates = Math.max(4, Number(options.maxCandidates) || 12);
+  const scored = [];
+  for (let salt = 0; salt < maxCandidates; salt += 1) {
+    const plan = buildLegacyPlan(salt);
+    const candidateGroups = teamGroupsToPrivateCandidate(plan.groups, plan.preparedTeams);
+    const hardResult = evaluateHardPrivatePairingRules({ groups: candidateGroups }, hard);
+    if (!hardResult.feasible) {
+      continue;
+    }
+    const softResult = scoreSoftPrivatePairingRules({ groups: candidateGroups }, soft);
+    scored.push({
+      ...plan,
+      constraintScore: softResult.constraintScore,
+    });
+  }
+
+  if (!scored.length) {
+    return {
+      ok: false,
+      teamData,
+      balance: null,
+      warnings,
+      privatePairingError: buildPrivatePairingRuntimeError({
+        errorCode: PRIVATE_PAIRING_RUNTIME_CODE.NO_FEASIBLE_GROUP_PLAN,
+      }),
+    };
+  }
+
+  scored.sort((a, b) => b.constraintScore - a.constraintScore);
+  const best = scored[0];
   const nextTeamData = normalizeTeamData({
     ...teamData,
-    teams: preparedTeams,
-    groups,
+    teams: best.preparedTeams,
+    groups: best.groups,
   });
 
   return {
+    ok: true,
     teamData: nextTeamData,
-    balance: summarizeSeededGroupBalance(groups, preparedTeams, { seedingMode }),
+    balance: summarizeSeededGroupBalance(best.groups, best.preparedTeams, { seedingMode }),
     warnings,
+    privatePairingError: null,
+    constraintScore: best.constraintScore,
   };
 }
 
@@ -812,16 +941,28 @@ export function applyMlpAutoDraw(teamData, players = [], options = {}) {
     matchups: [],
   });
 
-  const { teamData: grouped, balance, warnings: groupWarnings } = assignSeededTeamsToGroups(next, {
+  const groupResult = assignSeededTeamsToGroups(next, {
     ...options,
     players,
   });
 
+  if (groupResult.ok === false || groupResult.privatePairingError) {
+    return {
+      ok: false,
+      error:
+        groupResult.privatePairingError?.message ||
+        "Không chia được bảng theo quy tắc riêng.",
+      warnings: [...suggestion.warnings, ...(groupResult.warnings || [])],
+      privatePairingError: groupResult.privatePairingError || null,
+    };
+  }
+
   return {
     ok: true,
-    teamData: grouped,
-    balance,
-    warnings: [...suggestion.warnings, ...(groupWarnings || [])],
+    teamData: groupResult.teamData,
+    balance: groupResult.balance,
+    warnings: [...suggestion.warnings, ...(groupResult.warnings || [])],
     teamCount: suggestion.teams.length,
+    privatePairingError: null,
   };
 }

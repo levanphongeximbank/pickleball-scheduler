@@ -2,8 +2,10 @@ import { PRIVATE_PAIRING_CONSTRAINT_TYPE } from "../constants/constraintTypes.js
 import { RELATION_MODE } from "../constants/enums.js";
 import {
   areOpponents,
+  normalizeGroupsToPlayerIds,
   normalizeTeamsToIdMatrix,
   playerIdOf,
+  shareGroup,
   shareTeam,
 } from "./evaluateHardOnCandidate.js";
 
@@ -58,6 +60,8 @@ export function scoreSoftPrivatePairingRules(candidate, softRules = [], history 
       ]
     );
   const matchOption = candidate.matchOption || null;
+  const groups =
+    candidate.groupsIdMatrix || normalizeGroupsToPlayerIds(candidate.groups || []);
   const partnerRepeats = history.partnerRepeatCounts || {};
   const opponentRepeats = history.opponentRepeatCounts || {};
 
@@ -107,6 +111,25 @@ export function scoreSoftPrivatePairingRules(candidate, softRules = [], history 
         constraintScore += violated ? -w : Math.round(w * 0.25);
         break;
       }
+      case PRIVATE_PAIRING_CONSTRAINT_TYPE.SAME_GROUP: {
+        if (!groups.length) {
+          applicable = false;
+          break;
+        }
+        satisfied = anyOrAll(rule, (target) => shareGroup(primary, target, groups));
+        constraintScore += satisfied ? w : -Math.round(w * 0.35);
+        break;
+      }
+      case PRIVATE_PAIRING_CONSTRAINT_TYPE.DIFFERENT_GROUP: {
+        if (!groups.length) {
+          applicable = false;
+          break;
+        }
+        const violated = anyOrAll(rule, (target) => shareGroup(primary, target, groups));
+        satisfied = !violated;
+        constraintScore += violated ? -w : Math.round(w * 0.25);
+        break;
+      }
       case PRIVATE_PAIRING_CONSTRAINT_TYPE.MAX_PARTNER_REPEAT: {
         const limit = Number(rule.metadata?.maxCount ?? 1);
         let exceeded = false;
@@ -137,6 +160,22 @@ export function scoreSoftPrivatePairingRules(candidate, softRules = [], history 
         });
         satisfied = !exceeded;
         constraintScore += exceeded ? -w : Math.round(w * 0.2);
+        break;
+      }
+      case PRIVATE_PAIRING_CONSTRAINT_TYPE.MIN_OPPONENT_REPEAT: {
+        const minCount = Number(rule.metadata?.minCount ?? 1);
+        let below = false;
+        (rule.targetPlayerIds || []).forEach((target) => {
+          const count =
+            opponentRepeats[primary]?.[String(target)] ??
+            opponentRepeats[String(target)]?.[primary] ??
+            0;
+          if (count < minCount) {
+            below = true;
+          }
+        });
+        satisfied = !below;
+        constraintScore += below ? -w : Math.round(w * 0.2);
         break;
       }
       default:
