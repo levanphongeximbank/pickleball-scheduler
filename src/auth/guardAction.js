@@ -14,6 +14,7 @@ import {
 import { resolveEffectiveTenantId } from "../features/tenant/services/tenantService.js";
 import { canAccessCluster } from "./rbac.js";
 import { getClusterById } from "../features/court-cluster/services/courtClusterService.js";
+import { isClubCloudCommandAuthoritative } from "../features/club/services/clubLegacyWriteGuard.js";
 
 export function getAuthOptions() {
   return {
@@ -73,7 +74,13 @@ export function guardClubAccess(clubId, options = {}) {
     venueId: profileVenueId || club?.venueId || scope.venueId || null,
   };
 
-  if (profileVenueId && club && !club.isDefault && !club.venueId) {
+  if (
+    profileVenueId &&
+    club &&
+    !club.isDefault &&
+    !club.venueId &&
+    !isClubCloudCommandAuthoritative()
+  ) {
     bindClubVenueRegistry(clubId, profileVenueId, { skipGuard: true });
     clubMeta.venueId = profileVenueId;
   }
@@ -94,7 +101,12 @@ export function guardClubAccess(clubId, options = {}) {
     };
   }
 
-  if (profileVenueId && club && !club.isDefault) {
+  if (
+    profileVenueId &&
+    club &&
+    !club.isDefault &&
+    !isClubCloudCommandAuthoritative()
+  ) {
     const explicitTenant = getExplicitTenantIdForClub(clubId);
     if (club.venueId === profileVenueId && explicitTenant !== profileVenueId) {
       bindClubVenueRegistry(clubId, profileVenueId, { skipGuard: true });

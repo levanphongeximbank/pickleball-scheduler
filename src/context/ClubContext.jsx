@@ -8,7 +8,6 @@ import {
   loadClubs,
 } from "../data/club.js";
 import {
-  deleteClub,
   getClubSummary,
   switchActiveClub,
   switchActiveClubCanonical,
@@ -16,6 +15,7 @@ import {
 import {
   createClub as createClubOffline,
   renameClub as renameClubOffline,
+  deleteClub as deleteClubOffline,
 } from "../features/club/services/clubOfflineCommandAdapter.js";
 import {
   createClub as createClubCommand,
@@ -26,6 +26,7 @@ import {
   isClubRegistryCloudEnabled,
   isClubStorageV2Enabled,
 } from "../features/club/config/clubRegistryFlags.js";
+import { isClubCloudCommandAuthoritative } from "../features/club/services/clubLegacyWriteGuard.js";
 import { isClubDataDirty } from "../domain/clubSyncMetadata.js";
 import { PERMISSIONS } from "../auth/permissions.js";
 import { pullClubFromCloud } from "../ai/cloudSync.js";
@@ -595,7 +596,17 @@ export function ClubProvider({ children }) {
 
   const handleDeleteClub = useCallback(
     (clubId) => {
-      const result = deleteClub(clubId);
+      // Phase 45A.3E — hard-delete deferred under V2 cloud; offline adapter blocks.
+      if (isClubCloudCommandAuthoritative()) {
+        return {
+          ok: false,
+          code: API_ERROR_CODES.FEATURE_DISABLED,
+          error:
+            "Xóa CLB trên cloud chưa hỗ trợ. Dùng vô hiệu hóa (status) hoặc chờ phase archive/delete.",
+        };
+      }
+
+      const result = deleteClubOffline(clubId);
 
       if (!result.ok) {
         return result;

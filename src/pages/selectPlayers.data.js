@@ -25,9 +25,9 @@ export function loadCourtsFromStorage(clubId) {
 
 
 export function loadPlayersFromStorage(clubId) {
-
+  // NOTE (45B.5A): SelectPlayers discovery no longer uses this path.
+  // Remaining callers (Statistics/Dashboard/Players, etc.) still blob-based until later cutovers.
   return loadPlayersForClub(clubId);
-
 }
 
 

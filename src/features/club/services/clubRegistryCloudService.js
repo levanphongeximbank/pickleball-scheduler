@@ -5,8 +5,14 @@ import { sanitizeBillingTenantId } from "../../billing/services/billingTenantRes
 import { resolveCloudVenueIdForClusterOps } from "../../court-cluster/utils/clusterCloudResolver.js";
 import { isValidProfileUserId } from "../../court-cluster/utils/profileUserId.js";
 import { updateClubMeta } from "../../../domain/clubService.js";
+import { assertLegacyClubEntityWriteAllowed } from "./clubLegacyWriteGuard.js";
 import { rpcClubUpsertRegistry } from "./clubRegistryRpcService.js";
 import { syncClubRegistryForUser } from "./clubRegistryCloudSync.js";
+
+/**
+ * Phase 45A.3E — persistClubToCloud / club_upsert_registry are V2-OFF /
+ * offline dual-write only. Hard-blocked when Club Storage V2 is authoritative.
+ */
 
 function clubToRpcPayload(club, cloudVenueId) {
   const normalized = normalizeClub(club);
@@ -28,6 +34,13 @@ function clubToRpcPayload(club, cloudVenueId) {
 }
 
 export async function persistClubToCloud(club, { venueId = null, actor = getCurrentUser() } = {}) {
+  const legacyGate = assertLegacyClubEntityWriteAllowed({
+    operation: "persistClubToCloud / club_upsert_registry",
+  });
+  if (!legacyGate.ok) {
+    return legacyGate;
+  }
+
   if (!club?.id) {
     return { ok: false, code: "CLUB_ID_REQUIRED", error: "Thiếu id CLB." };
   }
@@ -96,6 +109,13 @@ export async function syncClubsForVenueToCloud({
   venueId = null,
   actor = getCurrentUser(),
 } = {}) {
+  const legacyGate = assertLegacyClubEntityWriteAllowed({
+    operation: "syncClubsForVenueToCloud",
+  });
+  if (!legacyGate.ok) {
+    return legacyGate;
+  }
+
   const scoped = (clubs || []).filter((club) => club?.id && !club.isDefault);
   if (scoped.length === 0) {
     return { ok: false, code: "NO_CLUBS", error: "Không có CLB để đồng bộ." };

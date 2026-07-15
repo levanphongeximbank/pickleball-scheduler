@@ -237,10 +237,10 @@ const RULES = [
   {
     id: "club-entity-command-domain-in-ui",
     description:
-      "Club CREATE/RENAME entity commands in UI/context must go through clubTenantService (Phase 45A.3D). Direct domain/clubService.createClub|renameClub imports are blocked; offline adapters live under clubOfflineCommandAdapter.",
+      "Club CREATE/RENAME/DELETE entity commands in UI/context must go through clubTenantService or clubOfflineCommandAdapter (Phase 45A.3E). Direct domain/clubService writer imports are blocked.",
     onlyIn: ["src/context/", "src/pages/", "src/components/"],
     match: (c) => {
-      // Match imports of createClub/renameClub from domain/clubService specifically.
+      // Match imports of createClub/renameClub/deleteClub from domain/clubService specifically.
       const out = [];
       const importRe =
         /import\s*\{([^}]*)\}\s*from\s*["'][^"']*domain\/clubService\.js["']/g;
@@ -249,6 +249,8 @@ const RULES = [
         const names = m[1];
         if (/\bcreateClub\b/.test(names)) out.push("createClub from domain/clubService");
         if (/\brenameClub\b/.test(names)) out.push("renameClub from domain/clubService");
+        if (/\bdeleteClub\b/.test(names)) out.push("deleteClub from domain/clubService");
+        if (/\bupdateClubMeta\b/.test(names)) out.push("updateClubMeta from domain/clubService");
       }
       return out;
     },
@@ -278,11 +280,297 @@ const RULES = [
   {
     id: "club-entity-legacy-dual-write-in-ui",
     description:
-      "UI/context must not dual-write Club entities via persistClubToCloud / club_upsert_registry (legacy registry).",
+      "UI/context must not dual-write Club entities via persistClubToCloud / club_upsert_registry / syncClubsForVenueToCloud (legacy registry).",
     onlyIn: ["src/context/", "src/pages/", "src/components/"],
     match: (c) => [
       ...(c.match(/\bpersistClubToCloud\s*\(/g) || []),
       ...(c.match(/\brpcClubUpsertRegistry\s*\(/g) || []),
+      ...(c.match(/\bsyncClubsForVenueToCloud\s*\(/g) || []),
+    ],
+  },
+  {
+    id: "club-entity-saveClubs-outside-offline",
+    description:
+      "saveClubs() Club registry writes must stay in the low-level data store, domain offline writers, V2-OFF rollback orchestrators, or explicit seed tools — never as a Production cloud command path.",
+    allow: [
+      "src/data/club.js",
+      "src/domain/clubService.js",
+      "src/features/club/services/clubTenantService.js",
+      "src/features/club/services/clubRegistryCloudSync.js",
+      "src/features/club/seed/",
+      "src/features/tenant/seed/",
+      "src/demo/seed/",
+    ],
+    match: (c) => c.match(/\bsaveClubs\s*\(/g) || [],
+  },
+  {
+    id: "club-entity-legacy-upsert-surface",
+    description:
+      "club_upsert_registry / rpcClubUpsertRegistry may only be invoked from the legacy registry cloud service (hard-blocked under V2 at runtime).",
+    allow: [
+      "src/features/club/services/clubRegistryRpcService.js",
+      "src/features/club/services/clubRegistryCloudService.js",
+    ],
+    match: (c) => [
+      ...(c.match(/\brpcClubUpsertRegistry\s*\(/g) || []),
+      ...(c.match(/["']club_upsert_registry["']/g) || []),
+    ],
+  },
+  {
+    id: "club-governance-table-direct-write",
+    description:
+      "Direct public.club_governance mutations are banned in client code (use approved RPCs when governance command cutover lands).",
+    match: (c) =>
+      c.match(
+        /\.from\(\s*["']club_governance["']\s*\)[\s\S]{0,240}?\.(insert|update|upsert|delete)\s*\(/g
+      ) || [],
+  },
+  {
+    id: "club-entity-pickleball-clubs-key-mutate",
+    description:
+      "Direct localStorage mutation of pickleball-clubs-v1 must stay in src/data/club.js (or explicit seed scripts outside scanned allowlists).",
+    allow: ["src/data/club.js", "src/features/club/seed/", "src/features/tenant/seed/", "src/demo/seed/"],
+    match: (c) => c.match(/localStorage\.(setItem|removeItem)\s*\(\s*["']pickleball-clubs-v1["']/g) || [],
+  },
+  {
+    id: "club-entity-rpc-transport-only",
+    description:
+      "Phase 45A.3F — club_create / club_update RPC invocations may only live in clubStorageV2RpcService (approved transport).",
+    allow: ["src/features/club/services/clubStorageV2RpcService.js"],
+    match: (c) => [
+      ...(c.match(/callRpc\(\s*["']club_create["']/g) || []),
+      ...(c.match(/callRpc\(\s*["']club_update["']/g) || []),
+      ...(c.match(/\.rpc\(\s*["']club_create["']/g) || []),
+      ...(c.match(/\.rpc\(\s*["']club_update["']/g) || []),
+    ],
+  },
+  {
+    id: "club-entity-rpcV2-orchestrator-only",
+    description:
+      "Phase 45A.3F — rpcV2ClubCreate / rpcV2ClubUpdate may only be invoked from clubTenantService (definitions allowed in transport).",
+    allow: [
+      "src/features/club/services/clubTenantService.js",
+      "src/features/club/services/clubStorageV2RpcService.js",
+    ],
+    match: (c) => [
+      ...(c.match(/\brpcV2ClubCreate\s*\(/g) || []),
+      ...(c.match(/\brpcV2ClubUpdate\s*\(/g) || []),
+    ],
+  },
+  {
+    id: "club-entity-legacy-persist-call-surface",
+    description:
+      "Phase 45A.3F — persistClubToCloud may only appear in legacy registry + V2-OFF orchestrators (hard-blocked under V2 at runtime).",
+    allow: [
+      "src/features/club/services/clubRegistryCloudService.js",
+      "src/features/club/services/clubTenantService.js",
+      "src/features/club/services/clubGovernanceService.js",
+    ],
+    match: (c) => c.match(/\bpersistClubToCloud\s*\(/g) || [],
+  },
+  {
+    id: "club-entity-repository-readonly",
+    description:
+      "Phase 45A.3F — canonicalClubRepository must remain read-only; Club entity commands must not be added here.",
+    onlyIn: ["src/features/club/repositories/canonicalClubRepository.js"],
+    match: (c) => [
+      ...(c.match(/\bsaveClubs\s*\(/g) || []),
+      ...(c.match(/\bpersistClubToCloud\s*\(/g) || []),
+      ...(c.match(/\bupdateClubMeta\s*\(/g) || []),
+      ...(c.match(/\brpcV2ClubCreate\s*\(/g) || []),
+      ...(c.match(/\brpcV2ClubUpdate\s*\(/g) || []),
+      ...(c.match(/callRpc\(\s*["']club_(?:create|update)["']/g) || []),
+      ...(c.match(
+        /\.from\(\s*["']clubs["']\s*\)[\s\S]{0,240}?\.(insert|update|upsert|delete)\s*\(/g
+      ) || []),
+    ],
+  },
+  {
+    id: "membership-request-command-rpc-bypass-in-ui",
+    description:
+      "Phase 45A.4B — UI/context must not call Membership request/leave RPCs or wrappers directly; go through clubMembershipRequestService.",
+    onlyIn: ["src/context/", "src/pages/", "src/components/"],
+    match: (c) => [
+      ...(c.match(/\brpcV2ClubSubmitMembershipRequest\s*\(/g) || []),
+      ...(c.match(/\brpcV2ClubCancelMembershipRequest\s*\(/g) || []),
+      ...(c.match(/\brpcV2ClubReviewMembershipRequest\s*\(/g) || []),
+      ...(c.match(/\brpcV2ClubLeaveMembership\s*\(/g) || []),
+      ...(c.match(/\brpcV2ClubListMyRequests\s*\(/g) || []),
+      ...(c.match(/\brpcV2ClubListPendingRequests\s*\(/g) || []),
+      ...(c.match(/\.rpc\(\s*["']club_submit_membership_request["']/g) || []),
+      ...(c.match(/\.rpc\(\s*["']club_cancel_membership_request["']/g) || []),
+      ...(c.match(/\.rpc\(\s*["']club_review_membership_request["']/g) || []),
+      ...(c.match(/\.rpc\(\s*["']club_leave_membership["']/g) || []),
+      ...(c.match(/\.rpc\(\s*["']club_list_my_requests["']/g) || []),
+      ...(c.match(/\.rpc\(\s*["']club_list_pending_requests["']/g) || []),
+      ...(c.match(/clubMembershipRequestRpcService/g) || []),
+    ],
+  },
+  {
+    id: "membership-request-rpc-transport-only",
+    description:
+      "Phase 45A.4B — Membership request/leave RPC callRpc/.rpc names may only live in clubStorageV2RpcService (V2 transport). Phase31 service is exempt for its own legacy definitions only.",
+    allow: [
+      "src/features/club/services/clubStorageV2RpcService.js",
+      "src/features/club/services/clubMembershipRequestRpcService.js",
+    ],
+    match: (c) => [
+      ...(c.match(/callRpc\(\s*["']club_submit_membership_request["']/g) || []),
+      ...(c.match(/callRpc\(\s*["']club_cancel_membership_request["']/g) || []),
+      ...(c.match(/callRpc\(\s*["']club_review_membership_request["']/g) || []),
+      ...(c.match(/callRpc\(\s*["']club_leave_membership["']/g) || []),
+      ...(c.match(/callRpc\(\s*["']club_list_my_requests["']/g) || []),
+      ...(c.match(/callRpc\(\s*["']club_list_pending_requests["']/g) || []),
+      ...(c.match(/\.rpc\(\s*["']club_submit_membership_request["']/g) || []),
+      ...(c.match(/\.rpc\(\s*["']club_cancel_membership_request["']/g) || []),
+      ...(c.match(/\.rpc\(\s*["']club_review_membership_request["']/g) || []),
+      ...(c.match(/\.rpc\(\s*["']club_leave_membership["']/g) || []),
+      ...(c.match(/\.rpc\(\s*["']club_list_my_requests["']/g) || []),
+      ...(c.match(/\.rpc\(\s*["']club_list_pending_requests["']/g) || []),
+      ...(c.match(/\.rpc\(\s*["']club_leave_my_membership["']/g) || []),
+    ],
+  },
+  {
+    id: "membership-request-rpcV2-orchestrator-only",
+    description:
+      "Phase 45A.4B — rpcV2 Membership request/leave wrappers may only be invoked from clubMembershipRequestService (definitions allowed in transport).",
+    allow: [
+      "src/features/club/services/clubMembershipRequestService.js",
+      "src/features/club/services/clubStorageV2RpcService.js",
+    ],
+    match: (c) => [
+      ...(c.match(/\brpcV2ClubSubmitMembershipRequest\s*\(/g) || []),
+      ...(c.match(/\brpcV2ClubCancelMembershipRequest\s*\(/g) || []),
+      ...(c.match(/\brpcV2ClubReviewMembershipRequest\s*\(/g) || []),
+      ...(c.match(/\brpcV2ClubLeaveMembership\s*\(/g) || []),
+      ...(c.match(/\brpcV2ClubListMyRequests\s*\(/g) || []),
+      ...(c.match(/\brpcV2ClubListPendingRequests\s*\(/g) || []),
+    ],
+  },
+  {
+    id: "membership-request-phase31-ui-ban",
+    description:
+      "Phase 45A.4B — UI must not import Phase31 clubMembershipRequestRpcService; V2 Production uses SECURITY DEFINER V2 RPCs only.",
+    onlyIn: ["src/context/", "src/pages/", "src/components/"],
+    match: (c) => c.match(/clubMembershipRequestRpcService/g) || [],
+  },
+  {
+    id: "membership-request-blob-write-in-ui",
+    description:
+      "Phase 45A.4B — UI must not write membership request blobs (saveClubExtension / membershipRequests mutation).",
+    onlyIn: ["src/context/", "src/pages/", "src/components/"],
+    match: (c) => [
+      ...(c.match(/\bsaveMembershipRequests\s*\(/g) || []),
+      ...(c.match(/\bsaveClubExtension\s*\(/g) || []),
+    ],
+  },
+  {
+    id: "membership-request-repository-readonly",
+    description:
+      "Phase 45A.4B — canonicalMembershipRepository remains read-only; Membership commands must not be added here.",
+    onlyIn: ["src/features/club/repositories/canonicalMembershipRepository.js"],
+    match: (c) => [
+      ...(c.match(/\brpcV2ClubSubmitMembershipRequest\s*\(/g) || []),
+      ...(c.match(/\brpcV2ClubCancelMembershipRequest\s*\(/g) || []),
+      ...(c.match(/\brpcV2ClubReviewMembershipRequest\s*\(/g) || []),
+      ...(c.match(/\brpcV2ClubLeaveMembership\s*\(/g) || []),
+      ...(c.match(/\brpcV2ClubAddMember\s*\(/g) || []),
+      ...(c.match(/\brpcV2ClubRemoveMember\s*\(/g) || []),
+      ...(c.match(/\baddMemberToClub\s*\(/g) || []),
+      ...(c.match(/\bremoveMemberFromClub\s*\(/g) || []),
+      ...(c.match(/\bsaveMembershipRequests\s*\(/g) || []),
+      ...(c.match(/callRpc\(\s*["']club_(?:submit|cancel|review)_membership/g) || []),
+      ...(c.match(/callRpc\(\s*["']club_(?:add|remove)_member["']/g) || []),
+      ...(c.match(
+        /\.from\(\s*["']club_members["']\s*\)[\s\S]{0,240}?\.(insert|update|upsert|delete)\s*\(/g
+      ) || []),
+      ...(c.match(
+        /\.from\(\s*["']club_membership_requests_v42["']\s*\)[\s\S]{0,240}?\.(insert|update|upsert|delete)\s*\(/g
+      ) || []),
+    ],
+  },
+  {
+    id: "member-command-rpc-bypass-in-ui",
+    description:
+      "Phase 45A.4C.4 — UI must not call add/remove member RPCs or wrappers directly; go through clubMemberService.",
+    onlyIn: ["src/context/", "src/pages/", "src/components/"],
+    match: (c) => [
+      ...(c.match(/\brpcV2ClubAddMember\s*\(/g) || []),
+      ...(c.match(/\brpcV2ClubRemoveMember\s*\(/g) || []),
+      ...(c.match(/\.rpc\(\s*["']club_add_member["']/g) || []),
+      ...(c.match(/\.rpc\(\s*["']club_remove_member["']/g) || []),
+      ...(c.match(/callRpc\(\s*["']club_add_member["']/g) || []),
+      ...(c.match(/callRpc\(\s*["']club_remove_member["']/g) || []),
+    ],
+  },
+  {
+    id: "member-command-rpc-transport-only",
+    description:
+      "Phase 45A.4C.4 — club_add_member / club_remove_member callRpc/.rpc may only live in clubStorageV2RpcService.",
+    allow: ["src/features/club/services/clubStorageV2RpcService.js"],
+    match: (c) => [
+      ...(c.match(/callRpc\(\s*["']club_add_member["']/g) || []),
+      ...(c.match(/callRpc\(\s*["']club_remove_member["']/g) || []),
+      ...(c.match(/\.rpc\(\s*["']club_add_member["']/g) || []),
+      ...(c.match(/\.rpc\(\s*["']club_remove_member["']/g) || []),
+    ],
+  },
+  {
+    id: "member-command-rpcV2-orchestrator-only",
+    description:
+      "Phase 45A.4C.4 — rpcV2ClubAddMember/RemoveMember may only be invoked from clubMemberService (definitions in transport).",
+    allow: [
+      "src/features/club/services/clubMemberService.js",
+      "src/features/club/services/clubStorageV2RpcService.js",
+    ],
+    match: (c) => [
+      ...(c.match(/\brpcV2ClubAddMember\s*\(/g) || []),
+      ...(c.match(/\brpcV2ClubRemoveMember\s*\(/g) || []),
+    ],
+  },
+  {
+    id: "member-blob-legacy-helpers-orchestrator-only",
+    description:
+      "Phase 45A.4C.5 — addMemberToClubLegacy / removeMemberFromClubLegacy may only exist in clubMemberService (offline adapter).",
+    allow: ["src/features/club/services/clubMemberService.js"],
+    match: (c) => [
+      ...(c.match(/\baddMemberToClubLegacy\s*\(/g) || []),
+      ...(c.match(/\bremoveMemberFromClubLegacy\s*\(/g) || []),
+    ],
+  },
+  {
+    id: "member-blob-ensure-player-offline-only",
+    description:
+      "Phase 45A.4C.5 — ensurePlayerInClubBlob is V2-OFF debt; must not leave clubMembershipRequestService or be imported by UI.",
+    allow: ["src/features/club/services/clubMembershipRequestService.js"],
+    match: (c) => c.match(/\bensurePlayerInClubBlob\s*\(/g) || [],
+  },
+  {
+    id: "member-blob-add-remove-bypass-in-ui",
+    description:
+      "Phase 45A.4C.5 — UI must not call legacy blob membership writers or ensurePlayerInClubBlob; go through clubMemberService / membership request commands.",
+    onlyIn: ["src/context/", "src/pages/", "src/components/"],
+    match: (c) => [
+      ...(c.match(/\baddMemberToClubLegacy\s*\(/g) || []),
+      ...(c.match(/\bremoveMemberFromClubLegacy\s*\(/g) || []),
+      ...(c.match(/\bensurePlayerInClubBlob\s*\(/g) || []),
+      ...(c.match(/\bsaveClubExtension\s*\(/g) || []),
+      ...(c.match(/\bsyncMembersFromBlob\s*\(/g) || []),
+    ],
+  },
+  {
+    id: "member-profiles-club-id-phase31-not-authority",
+    description:
+      "Phase 45A.4C.5 — Phase31 clubMembershipRequestRpcService must not be used as Membership authority under V2; keep allowlisted in request service for V2-OFF only.",
+    onlyIn: ["src/context/", "src/pages/", "src/components/", "src/features/"],
+    allow: [
+      "src/features/club/services/clubMembershipRequestService.js",
+      "src/features/club/services/clubMembershipRequestRpcService.js",
+    ],
+    match: (c) => [
+      ...(c.match(/\brpcReviewClubMembershipRequest\s*\(/g) || []),
+      ...(c.match(/\brpcLeaveMyClub\s*\(/g) || []),
+      ...(c.match(/clubMembershipRequestRpcService/g) || []),
     ],
   },
   {

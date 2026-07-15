@@ -185,7 +185,8 @@ export async function createClub(data = {}) {
     };
   }
 
-  // Phase 45A.3D — Cloud SSOT create (authoritative). No blob dual-write, no legacy bootstrap.
+  // Phase 45A.3D/3E — Cloud SSOT create (authoritative). No blob dual-write,
+  // no legacy bootstrap, no persistClubToCloud, no saveClubs. Failure = error.
   if (isClubStorageV2Enabled()) {
     const cloud = await rpcV2ClubCreate({
       tenantId,
@@ -266,7 +267,7 @@ export async function createClub(data = {}) {
     String(governance.presidentUserId || "") === String(user.id);
 
   if (isSelfRegister) {
-    const boot = bootstrapSelfRegisteredPresident(club.id, user, tenantId);
+    const boot = await bootstrapSelfRegisteredPresident(club.id, user, tenantId);
     if (!boot.ok) {
       saveClubs(loadClubs().filter((item) => item.id !== club.id));
       purgeClubExtension(club.id);
@@ -311,12 +312,13 @@ export async function createClub(data = {}) {
 }
 
 /**
- * Canonical Club UPDATE orchestrator (Phase 45A.3D).
+ * Canonical Club UPDATE orchestrator (Phase 45A.3D / 45A.3E).
  *
  * V2 ON: public.club_update via rpcV2ClubUpdate — no saveClubs / updateClubMeta /
- * persistClubToCloud. Blob-only metadata (note/timezone/slug/logo/…) is NOT accepted here.
+ * persistClubToCloud / club_upsert_registry. Blob-only metadata (note/timezone/
+ * slug/logo/…) is NOT accepted here.
  *
- * V2 OFF: legacy blob + optional cloud dual-write.
+ * V2 OFF: legacy blob + optional cloud dual-write rollback adapter only.
  */
 export async function updateClub(clubId, data = {}, tenantId) {
   const trimmedId = String(clubId || "").trim();

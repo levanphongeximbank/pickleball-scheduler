@@ -1,0 +1,29 @@
+/**
+ * PHASE 45B.2 — Pairing candidate eligibility reason codes.
+ * Portable. No React / storage / UI imports.
+ */
+
+export const PAIRING_CANDIDATE_REASON_CODES = Object.freeze({
+  ATHLETE_INACTIVE: "ATHLETE_INACTIVE",
+  MISSING_MEMBERSHIP: "MISSING_MEMBERSHIP",
+  MEMBERSHIP_INACTIVE: "MEMBERSHIP_INACTIVE",
+  WRONG_SCOPE: "WRONG_SCOPE",
+  NOT_REGISTERED: "NOT_REGISTERED",
+  WITHDRAWN: "WITHDRAWN",
+  MISSING_GENDER: "MISSING_GENDER",
+  MISSING_RATING: "MISSING_RATING",
+  MISSING_IDENTITY_LINK: "MISSING_IDENTITY_LINK",
+  ALREADY_ASSIGNED: "ALREADY_ASSIGNED",
+  BUSY: "BUSY",
+  HARD_RULE_FAILED: "HARD_RULE_FAILED",
+  POLICY_BLOCKED: "POLICY_BLOCKED",
+  FATAL_RULE_CONFLICT: "FATAL_RULE_CONFLICT",
+});
+
+/**
+ * @param {string} code
+ * @returns {boolean}
+ */
+export function isPairingCandidateReasonCode(code) {
+  return Object.values(PAIRING_CANDIDATE_REASON_CODES).includes(String(code || ""));
+}

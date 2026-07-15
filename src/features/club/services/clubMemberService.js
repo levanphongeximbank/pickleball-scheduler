@@ -4,6 +4,7 @@ import { getCurrentUser } from "../../../auth/authService.js";
 import { getClubById as getRegistryClubById } from "../../../domain/clubService.js";
 import { loadPlayersForClub } from "../../../domain/clubStorage.js";
 import { guardClubTenant } from "../../tenant/guards/tenantGuard.js";
+import { API_ERROR_CODES } from "../../api/constants/apiErrors.js";
 import {
   CLUB_MEMBER_STATUSES,
   normalizeClubMemberStatus,
@@ -16,6 +17,20 @@ import {
 import { loadClubExtension, saveClubExtension } from "../storage/clubExtensionStorage.js";
 import { createDefaultClubRating } from "../models/clubPlayerRating.js";
 import { getTenantPlayers } from "./clubTenantService.js";
+import { isClubStorageV2Enabled } from "../config/clubRegistryFlags.js";
+import { findUserIdByPlayerId } from "../storage/athleteClubLinkStore.js";
+import { invalidateAllClubRegistryCache } from "../registry/clubRegistryCache.js";
+import { invalidateMyActiveClubMembershipCache } from "./clubActiveMembershipService.js";
+import { mapClubCommandError } from "./clubCommandErrorMap.js";
+import { assertLegacyMembershipRosterWriteAllowed } from "./clubLegacyWriteGuard.js";
+import {
+  rpcV2ClubAddMember,
+  rpcV2ClubRemoveMember,
+  rpcV2ClubListMembers,
+} from "./clubStorageV2RpcService.js";
+
+const UUID_RE =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
 /**
  * Map a Phase 42 `club_list_members` RPC row → canonical member UI shape.
@@ -53,9 +68,120 @@ function guardClubMemberAccess(clubId, tenantId, permission) {
   return guardClubAction(clubId, permission);
 }
 
+function invalidateAfterMemberCommand(userId = null) {
+  invalidateAllClubRegistryCache();
+  invalidateMyActiveClubMembershipCache(userId);
+}
+
+function mapMemberCommandError(result, fallbackError) {
+  return mapClubCommandError(result, {
+    fallbackCode: API_ERROR_CODES.INTERNAL_ERROR,
+    fallbackError,
+  });
+}
+
+/**
+ * Resolve canonical auth user_id for add/remove RPCs.
+ * Never pass blob playerId as user_id unless it is already a UUID.
+ *
+ * Priority:
+ * 1. options.targetUserId / member.userId
+ * 2. tenant player.authUserId for playerId
+ * 3. athleteClubLinkStore findUserIdByPlayerId
+ * 4. playerId if it is already a UUID (V2 row playerId === user_id)
+ */
+export function resolveTargetUserIdForMemberCommand({
+  playerId = null,
+  targetUserId = null,
+  tenantId = null,
+} = {}) {
+  const direct = String(targetUserId || "").trim();
+  if (direct) {
+    if (!UUID_RE.test(direct)) {
+      return {
+        ok: false,
+        code: API_ERROR_CODES.VALIDATION_ERROR,
+        error: "target_user_id không hợp lệ.",
+        serverCode: "VALIDATION",
+      };
+    }
+    return { ok: true, userId: direct };
+  }
+
+  const trimmedPlayerId = String(playerId || "").trim();
+  if (!trimmedPlayerId) {
+    return {
+      ok: false,
+      code: API_ERROR_CODES.VALIDATION_ERROR,
+      error: "Thiếu player hoặc user đích.",
+      serverCode: "VALIDATION",
+    };
+  }
+
+  if (tenantId) {
+    const player = getTenantPlayers(tenantId).find((p) => p.id === trimmedPlayerId);
+    const authUserId = String(player?.authUserId || "").trim();
+    if (authUserId && UUID_RE.test(authUserId)) {
+      return { ok: true, userId: authUserId };
+    }
+  }
+
+  const linked = String(findUserIdByPlayerId(trimmedPlayerId) || "").trim();
+  if (linked && UUID_RE.test(linked)) {
+    return { ok: true, userId: linked };
+  }
+
+  if (UUID_RE.test(trimmedPlayerId)) {
+    return { ok: true, userId: trimmedPlayerId };
+  }
+
+  return {
+    ok: false,
+    code: API_ERROR_CODES.VALIDATION_ERROR,
+    error: "Player chưa liên kết tài khoản đăng nhập. Không thể thêm/gỡ qua cloud.",
+    serverCode: "VALIDATION",
+  };
+}
+
+/**
+ * Probe whether cloud membership mutation RPCs are reachable.
+ * Uses list-members as a non-mutating transport/deployment probe.
+ */
+export async function probeClubMemberMutationAccess(clubId) {
+  const trimmed = String(clubId || "").trim();
+  if (!trimmed) {
+    return {
+      ok: false,
+      code: API_ERROR_CODES.VALIDATION_ERROR,
+      error: "Thiếu club id.",
+    };
+  }
+  if (!isClubStorageV2Enabled()) {
+    return { ok: true, provider: "blob" };
+  }
+  const result = await rpcV2ClubListMembers(trimmed);
+  if (!result.ok) {
+    if (result.code === "RPC_NOT_DEPLOYED" || result.code === "NO_SUPABASE") {
+      return mapMemberCommandError(result, "Lệnh thành viên cloud chưa sẵn sàng.");
+    }
+    // Auth/forbidden on list still proves transport; mutation authz is enforced on write.
+    if (result.code === "FORBIDDEN" || result.code === "NOT_AUTHENTICATED") {
+      return { ok: true, provider: "v2-rpc", listCode: result.code };
+    }
+    return mapMemberCommandError(result, "Không kiểm tra được lệnh thành viên cloud.");
+  }
+  return { ok: true, provider: "v2-rpc" };
+}
+
 function syncMembersFromBlob(clubId, tenantId) {
   const ext = loadClubExtension(clubId);
   if (ext.members.length > 0) {
+    return ext;
+  }
+
+  // Phase 45A.4C.5 — never hydrate/write blob roster while Membership V2 is authoritative.
+  // Cloud roster lives in public.club_members; empty local extension is not Membership authority.
+  if (isClubStorageV2Enabled()) {
     return ext;
   }
 
@@ -103,7 +229,19 @@ export function getClubMembersForTournamentInvite(clubId, tenantId) {
   return getClubMembers(clubId, tenantId, { skipGovernanceGuard: true });
 }
 
-export function addMemberToClub(clubId, playerId, tenantId, options = {}) {
+/**
+ * LEGACY / OFFLINE ONLY — blob roster add via clubExtension.members.
+ * Reachable only when Club Storage V2 is OFF (see addMemberToClub early-return).
+ * Hard-blocked under V2 as defense-in-depth (Phase 45A.4C.5).
+ */
+function addMemberToClubLegacy(clubId, playerId, tenantId, options = {}) {
+  const legacyGate = assertLegacyMembershipRosterWriteAllowed({
+    operation: "addMemberToClubLegacy",
+  });
+  if (!legacyGate.ok) {
+    return legacyGate;
+  }
+
   if (!options.skipPermissionGuard) {
     const check = guardClubMemberAccess(clubId, tenantId, PERMISSIONS.PLAYER_UPDATE);
     if (!check.ok) {
@@ -172,7 +310,19 @@ export function addMemberToClub(clubId, playerId, tenantId, options = {}) {
   return { ok: true, member: members.find((m) => m.playerId === trimmedPlayerId) };
 }
 
-export function removeMemberFromClub(clubId, playerId, tenantId, options = {}) {
+/**
+ * LEGACY / OFFLINE ONLY — blob roster soft-remove via clubExtension.members.
+ * Reachable only when Club Storage V2 is OFF.
+ * Hard-blocked under V2 as defense-in-depth (Phase 45A.4C.5).
+ */
+function removeMemberFromClubLegacy(clubId, playerId, tenantId, options = {}) {
+  const legacyGate = assertLegacyMembershipRosterWriteAllowed({
+    operation: "removeMemberFromClubLegacy",
+  });
+  if (!legacyGate.ok) {
+    return legacyGate;
+  }
+
   if (!options.skipPermissionGuard) {
     const club = getRegistryClubById(clubId);
     const user = getCurrentUser();
@@ -215,7 +365,124 @@ export function removeMemberFromClub(clubId, playerId, tenantId, options = {}) {
   return { ok: true };
 }
 
+/**
+ * Phase 45A.4C.4 — V2: club_add_member via clubStorageV2RpcService.
+ * V2-OFF: legacy blob roster write.
+ *
+ * @param {string} clubId
+ * @param {string|null} playerId blob player id OR (under V2) may be omitted when targetUserId set
+ * @param {string|null} tenantId
+ * @param {{ skipPermissionGuard?: boolean, targetUserId?: string, membershipType?: string, expectedVersion?: number|null, role?: string }} [options]
+ */
+export async function addMemberToClub(clubId, playerId, tenantId, options = {}) {
+  if (isClubStorageV2Enabled()) {
+    if (!options.skipPermissionGuard) {
+      const check = guardClubMemberAccess(clubId, tenantId, PERMISSIONS.PLAYER_UPDATE);
+      if (!check.ok) {
+        return check;
+      }
+    }
+
+    const resolved = resolveTargetUserIdForMemberCommand({
+      playerId,
+      targetUserId: options.targetUserId,
+      tenantId,
+    });
+    if (!resolved.ok) {
+      return resolved;
+    }
+
+    const added = await rpcV2ClubAddMember({
+      clubId,
+      targetUserId: resolved.userId,
+      membershipType: options.membershipType || "regular",
+      expectedVersion: options.expectedVersion ?? null,
+    });
+    if (!added.ok) {
+      return mapMemberCommandError(added, "Không thêm được thành viên trên cloud.");
+    }
+
+    invalidateAfterMemberCommand(resolved.userId);
+    return {
+      ok: true,
+      member: added.member,
+      version: added.version,
+      provider: "v2-rpc",
+      userId: resolved.userId,
+    };
+  }
+
+  return addMemberToClubLegacy(clubId, playerId, tenantId, options);
+}
+
+/**
+ * Phase 45A.4C.4 — V2: club_remove_member via clubStorageV2RpcService.
+ * V2-OFF: legacy blob soft-inactive.
+ */
+export async function removeMemberFromClub(clubId, playerId, tenantId, options = {}) {
+  if (isClubStorageV2Enabled()) {
+    if (!options.skipPermissionGuard) {
+      const club = getRegistryClubById(clubId);
+      const user = getCurrentUser();
+      if (club && user && !canDeleteClubMembers(user, club)) {
+        return {
+          ok: false,
+          code: API_ERROR_CODES.FORBIDDEN,
+          error: "Không có quyền xóa thành viên CLB.",
+        };
+      }
+
+      const check = guardClubMemberAccess(clubId, tenantId, PERMISSIONS.PLAYER_UPDATE);
+      if (!check.ok) {
+        return check;
+      }
+    } else if (tenantId) {
+      const tenantCheck = guardClubTenant(clubId, tenantId);
+      if (!tenantCheck.ok) {
+        return tenantCheck;
+      }
+    }
+
+    const resolved = resolveTargetUserIdForMemberCommand({
+      playerId,
+      targetUserId: options.targetUserId,
+      tenantId,
+    });
+    if (!resolved.ok) {
+      return resolved;
+    }
+
+    const removed = await rpcV2ClubRemoveMember({
+      clubId,
+      targetUserId: resolved.userId,
+      expectedVersion: options.expectedVersion ?? null,
+    });
+    if (!removed.ok) {
+      return mapMemberCommandError(removed, "Không gỡ được thành viên trên cloud.");
+    }
+
+    invalidateAfterMemberCommand(resolved.userId);
+    return {
+      ok: true,
+      member: removed.member,
+      version: removed.version,
+      provider: "v2-rpc",
+      userId: resolved.userId,
+    };
+  }
+
+  return removeMemberFromClubLegacy(clubId, playerId, tenantId, options);
+}
+
 export function updateClubMemberRole(clubId, playerId, role, tenantId) {
+  if (isClubStorageV2Enabled()) {
+    return {
+      ok: false,
+      code: API_ERROR_CODES.FORBIDDEN,
+      error: "Đổi vai trò thành viên chưa hỗ trợ trên cloud (chờ RPC role).",
+    };
+  }
+
   const check = guardClubMemberAccess(clubId, tenantId, PERMISSIONS.PLAYER_UPDATE);
   if (!check.ok) {
     return check;
@@ -240,6 +507,14 @@ export function updateClubMemberRole(clubId, playerId, role, tenantId) {
 }
 
 export function updateClubMemberStatus(clubId, playerId, status, tenantId) {
+  if (isClubStorageV2Enabled()) {
+    return {
+      ok: false,
+      code: API_ERROR_CODES.FORBIDDEN,
+      error: "Đổi trạng thái thành viên chưa hỗ trợ trên cloud (chờ RPC status).",
+    };
+  }
+
   const check = guardClubMemberAccess(clubId, tenantId, PERMISSIONS.PLAYER_UPDATE);
   if (!check.ok) {
     return check;
@@ -267,4 +542,9 @@ export function updateClubMemberStatus(clubId, playerId, status, tenantId) {
 
   saveClubExtension(clubId, { ...ext, members });
   return { ok: true, member: members[index] };
+}
+
+export function isProtectedGovernanceMember(member = {}) {
+  const roles = Array.isArray(member.governanceRoles) ? member.governanceRoles : [];
+  return roles.some((r) => r === "president" || r === "club_owner");
 }

@@ -1,5 +1,13 @@
 import { getSupabaseAuthClient } from "../../../auth/supabaseClient.js";
 
+/**
+ * Phase 31 legacy Membership Request RPC transport (V2-OFF / offline debt only).
+ *
+ * Phase 45A.4B — Under VITE_CLUB_STORAGE_V2=true, Production commands MUST go through
+ * clubMembershipRequestService → clubStorageV2RpcService. This module is not part of
+ * the V2 canonical command path (wrong live PostgREST signatures).
+ */
+
 function isMissingRpcError(error) {
   const message = String(error?.message || error?.code || "").toLowerCase();
   return (
