@@ -27,3 +27,6 @@ dist-ssr
 *.sln
 *.sw?
 .env*
+
+tmp-dpl.json
+tmp-inspect.json
