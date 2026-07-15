@@ -36,7 +36,8 @@ import {
 import { useClub } from "../context/ClubContext.jsx";
 import { useSeasonLeague } from "../context/SeasonContext.jsx";
 import { DEFAULT_CLUB } from "../data/club.js";
-import { importFullClubData, updateClubMeta } from "../domain/clubService.js";
+import { importFullClubData } from "../domain/clubService.js";
+import { updateClubMeta } from "../features/club/services/clubOfflineCommandAdapter.js";
 import {
   buildFullClubExport,
   CLUB_SCHEMA_VERSION,
@@ -134,13 +135,13 @@ export default function ClubManagement() {
     [leagues, leagueSeasonId, activeSeasonId]
   );
 
-  const handleCreateClub = () => {
+  const handleCreateClub = async () => {
     if (!accessAllowed) {
       setMessage({ type: "error", text: "Runtime platform chặn thao tác quản lý CLB." });
       return;
     }
 
-    const result = createClub(newClubName);
+    const result = await createClub(newClubName);
 
     if (!result.ok) {
       setMessage({ type: "error", text: result.error });
@@ -151,19 +152,20 @@ export default function ClubManagement() {
     setMessage({ type: "success", text: `Đã tạo CLB ${result.club.name}.` });
   };
 
-  const handleSaveClubMeta = () => {
+  const handleSaveClubMeta = async () => {
     if (!accessAllowed) {
       setMessage({ type: "error", text: "Runtime platform chặn thao tác quản lý CLB." });
       return;
     }
 
-    const result = renameClub(activeClubId, renameValue);
+    const result = await renameClub(activeClubId, renameValue);
 
     if (!result.ok) {
       setMessage({ type: "error", text: result.error });
       return;
     }
 
+    // note is blob-only metadata — deferred from public.clubs; keep on local adapter.
     updateClubMeta(activeClubId, { note: noteValue });
     refreshClubs();
     setMessage({ type: "success", text: "Đã cập nhật thông tin CLB." });

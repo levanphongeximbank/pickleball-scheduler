@@ -92,18 +92,29 @@ function CourtEngineAccessGate({ children }) {
       return;
     }
 
-    const ensured = ensureWritableClubForVenueOwner(user, { activeClubId });
-    if (!ensured.ok) {
-      setBootstrapError(ensured.error || "Không thể khởi tạo CLB cho cơ sở.");
-      setBootstrapReady(true);
-      return;
-    }
+    let cancelled = false;
+    void Promise.resolve(ensureWritableClubForVenueOwner(user, { activeClubId })).then(
+      (ensured) => {
+        if (cancelled) {
+          return;
+        }
+        if (!ensured.ok) {
+          setBootstrapError(ensured.error || "Không thể khởi tạo CLB cho cơ sở.");
+          setBootstrapReady(true);
+          return;
+        }
 
-    if (ensured.created) {
-      refreshClubs();
-    }
-    setBootstrapError(null);
-    setBootstrapReady(true);
+        if (ensured.created) {
+          refreshClubs();
+        }
+        setBootstrapError(null);
+        setBootstrapReady(true);
+      }
+    );
+
+    return () => {
+      cancelled = true;
+    };
   }, [activeClubId, isAuthenticated, rbacEnabled, refreshClubs, user]);
 
   const scope = resolveRouteAccessScope({ user, activeClubId, activeClub });

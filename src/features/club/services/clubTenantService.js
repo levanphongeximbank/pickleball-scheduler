@@ -23,9 +23,17 @@ import {
 import { persistClubToCloud } from "./clubRegistryCloudService.js";
 import { isClubStorageV2Enabled } from "../config/clubRegistryFlags.js";
 import { isCanonicalPlayerRepositoryEnabled } from "../config/canonicalRepositoryFlags.js";
-import { rpcV2ClubCreate } from "./clubStorageV2RpcService.js";
+import { rpcV2ClubCreate, rpcV2ClubUpdate } from "./clubStorageV2RpcService.js";
+import { mapClubCommandError } from "./clubCommandErrorMap.js";
+import { invalidateAllClubRegistryCache } from "../registry/clubRegistryCache.js";
+import { invalidateMyActiveClubMembershipCache } from "./clubActiveMembershipService.js";
+import { API_ERROR_CODES } from "../../api/constants/apiErrors.js";
 import { listPlayersForTenantAware } from "../repositories/canonicalPlayerPickerAdapter.js";
 
+function invalidateAfterClubCommand(userId = null) {
+  invalidateAllClubRegistryCache();
+  invalidateMyActiveClubMembershipCache(userId);
+}
 function resolveTenantIdForCreate(user) {
   if (!isRbacEnabled() || !user) {
     return null;
@@ -145,7 +153,11 @@ export function getClubStats(clubId, tenantId) {
 export async function createClub(data = {}) {
   const name = String(data.name || "").trim();
   if (!name) {
-    return { ok: false, error: "Tên CLB bắt buộc." };
+    return {
+      ok: false,
+      code: API_ERROR_CODES.VALIDATION_ERROR,
+      error: "Tên CLB bắt buộc.",
+    };
   }
 
   const user = getCurrentUser();
@@ -153,7 +165,7 @@ export async function createClub(data = {}) {
   if (isRbacEnabled()) {
     const tenantCheck = assertTenantForMutation(tenantId);
     if (!tenantCheck.ok) {
-      return tenantCheck;
+      return { ...tenantCheck, code: API_ERROR_CODES.TENANT_MISMATCH };
     }
   }
 
@@ -166,26 +178,36 @@ export async function createClub(data = {}) {
   }
 
   if (!tenantId) {
-    return { ok: false, error: "Thiếu tenant/venue để tạo CLB." };
+    return {
+      ok: false,
+      code: API_ERROR_CODES.TENANT_MISMATCH,
+      error: "Thiếu tenant/venue để tạo CLB.",
+    };
   }
 
-  // Phase 42F — Cloud SSOT create (no local SoT, no dual-write).
+  // Phase 45A.3D — Cloud SSOT create (authoritative). No blob dual-write, no legacy bootstrap.
   if (isClubStorageV2Enabled()) {
     const cloud = await rpcV2ClubCreate({
       tenantId,
       name,
       code: data.code || null,
       description: data.description || "",
-      registeredClusterId: data.governance?.registeredClusterId || data.registeredClusterId || null,
+      registeredClusterId:
+        data.governance?.registeredClusterId || data.registeredClusterId || null,
     });
     if (!cloud.ok) {
-      return {
-        ok: false,
-        code: cloud.code || "CLOUD_CREATE_FAILED",
-        error: cloud.error || "Không tạo được CLB trên cloud.",
-      };
+      return mapClubCommandError(cloud, {
+        fallbackCode: API_ERROR_CODES.INTERNAL_ERROR,
+        fallbackError: "Không tạo được CLB trên cloud.",
+      });
     }
-    return { ok: true, club: cloud.club, provider: "v2-rpc", version: cloud.version };
+    invalidateAfterClubCommand(user?.id || null);
+    return {
+      ok: true,
+      club: cloud.club,
+      provider: "v2-rpc",
+      version: cloud.version,
+    };
   }
 
   if (tenantId) {
@@ -197,18 +219,30 @@ export async function createClub(data = {}) {
 
   const tenantClubs = getClubsByTenant(tenantId);
   if (findDuplicateName(tenantClubs, name)) {
-    return { ok: false, error: "Tên CLB đã tồn tại trong tenant này." };
+    return {
+      ok: false,
+      code: API_ERROR_CODES.CONFLICT,
+      error: "Tên CLB đã tồn tại trong tenant này.",
+    };
   }
 
   if (data.code && findDuplicateCode(tenantClubs, data.code)) {
-    return { ok: false, error: "Mã CLB đã tồn tại trong tenant này." };
+    return {
+      ok: false,
+      code: API_ERROR_CODES.CONFLICT,
+      error: "Mã CLB đã tồn tại trong tenant này.",
+    };
   }
 
   const clubs = loadClubs();
   const { governance, status } = resolveGovernanceForCreate(data, user);
 
   if (!governance.presidentUserId) {
-    return { ok: false, error: "Chủ tịch CLB bắt buộc (presidentUserId)." };
+    return {
+      ok: false,
+      code: API_ERROR_CODES.VALIDATION_ERROR,
+      error: "Chủ tịch CLB bắt buộc (presidentUserId).",
+    };
   }
 
   const club = createClubRecord(name, {
@@ -276,26 +310,141 @@ export async function createClub(data = {}) {
   return { ok: true, club, cloudSynced: cloudResult.ok };
 }
 
-export function updateClub(clubId, data = {}, tenantId) {
-  const club = getClubById(clubId, tenantId);
-  if (!club) {
-    return { ok: false, error: "Không tìm thấy CLB." };
+/**
+ * Canonical Club UPDATE orchestrator (Phase 45A.3D).
+ *
+ * V2 ON: public.club_update via rpcV2ClubUpdate — no saveClubs / updateClubMeta /
+ * persistClubToCloud. Blob-only metadata (note/timezone/slug/logo/…) is NOT accepted here.
+ *
+ * V2 OFF: legacy blob + optional cloud dual-write.
+ */
+export async function updateClub(clubId, data = {}, tenantId) {
+  const trimmedId = String(clubId || "").trim();
+  if (!trimmedId) {
+    return {
+      ok: false,
+      code: API_ERROR_CODES.CLUB_REQUIRED,
+      error: "Thiếu id CLB.",
+    };
   }
 
-  const check = guardClubAction(clubId, PERMISSIONS.CLUB_UPDATE);
+  const check = guardClubAction(trimmedId, PERMISSIONS.CLUB_UPDATE);
   if (!check.ok) {
     return check;
+  }
+
+  if (isClubStorageV2Enabled()) {
+    const incoming = data.governance || {};
+    const hasBlobOnlyMeta =
+      data.note !== undefined ||
+      data.timezone !== undefined ||
+      data.slug !== undefined ||
+      data.logo !== undefined ||
+      data.address !== undefined ||
+      data.phone !== undefined ||
+      incoming.registeredCourtIds !== undefined;
+
+    // Blob-only / deferred fields must not be silently applied under V2.
+    void hasBlobOnlyMeta;
+
+    const payload = {
+      clubId: trimmedId,
+      expectedClubVersion:
+        data.expectedClubVersion ?? data.version ?? null,
+    };
+
+    if (payload.expectedClubVersion == null) {
+      // Prefer caller-supplied version; fall back to a local registry tip if present.
+      const tip = getRegistryClubById(trimmedId);
+      payload.expectedClubVersion = tip?.version ?? 1;
+    }
+
+    if (data.name !== undefined) payload.name = data.name;
+    if (data.code !== undefined) payload.code = data.code;
+    if (data.description !== undefined) payload.description = data.description;
+    if (data.status !== undefined) payload.status = data.status;
+
+    const cluster =
+      data.registeredClusterId !== undefined
+        ? data.registeredClusterId
+        : incoming.registeredClusterId !== undefined
+          ? incoming.registeredClusterId
+          : undefined;
+    if (cluster !== undefined) {
+      payload.registeredClusterId = cluster;
+    }
+
+    const hasEntityField =
+      payload.name !== undefined ||
+      payload.code !== undefined ||
+      payload.description !== undefined ||
+      payload.status !== undefined ||
+      payload.registeredClusterId !== undefined;
+
+    if (!hasEntityField) {
+      // Governance-only patches (president/owner/VP) stay on the governance service.
+      if (data.governance !== undefined) {
+        const governancePatch = {};
+        if (incoming.presidentUserId !== undefined) {
+          governancePatch.presidentUserId = incoming.presidentUserId;
+        }
+        if (incoming.vicePresidentUserId !== undefined) {
+          governancePatch.vicePresidentUserId = incoming.vicePresidentUserId;
+        }
+        if (incoming.ownerUserId !== undefined) {
+          governancePatch.ownerUserId = incoming.ownerUserId;
+        }
+        if (Object.keys(governancePatch).length > 0) {
+          return updateClubGovernance(trimmedId, governancePatch, tenantId);
+        }
+      }
+      const tip = getRegistryClubById(trimmedId) || getClubById(trimmedId, tenantId);
+      return { ok: true, club: tip };
+    }
+
+    const cloud = await rpcV2ClubUpdate(payload);
+    if (!cloud.ok) {
+      return mapClubCommandError(cloud, {
+        fallbackCode: API_ERROR_CODES.INTERNAL_ERROR,
+        fallbackError: "Không cập nhật được CLB trên cloud.",
+      });
+    }
+
+    invalidateAfterClubCommand(getCurrentUser()?.id || null);
+    return {
+      ok: true,
+      club: cloud.club,
+      provider: "v2-rpc",
+      version: cloud.version,
+    };
+  }
+
+  const club = getClubById(trimmedId, tenantId);
+  if (!club) {
+    return {
+      ok: false,
+      code: API_ERROR_CODES.NOT_FOUND,
+      error: "Không tìm thấy CLB.",
+    };
   }
 
   const effectiveTenantId = tenantId || club.tenantId || club.venueId;
   const tenantClubs = getClubsByTenant(effectiveTenantId);
 
-  if (data.name && findDuplicateName(tenantClubs, data.name, clubId)) {
-    return { ok: false, error: "Tên CLB đã tồn tại trong tenant này." };
+  if (data.name && findDuplicateName(tenantClubs, data.name, trimmedId)) {
+    return {
+      ok: false,
+      code: API_ERROR_CODES.CONFLICT,
+      error: "Tên CLB đã tồn tại trong tenant này.",
+    };
   }
 
-  if (data.code && findDuplicateCode(tenantClubs, data.code, clubId)) {
-    return { ok: false, error: "Mã CLB đã tồn tại trong tenant này." };
+  if (data.code && findDuplicateCode(tenantClubs, data.code, trimmedId)) {
+    return {
+      ok: false,
+      code: API_ERROR_CODES.CONFLICT,
+      error: "Mã CLB đã tồn tại trong tenant này.",
+    };
   }
 
   const patch = {};
@@ -326,7 +475,7 @@ export function updateClub(clubId, data = {}, tenantId) {
 
     if (Object.keys(governancePatch).length > 0) {
       const governanceResult = updateClubGovernance(
-        clubId,
+        trimmedId,
         governancePatch,
         effectiveTenantId
       );
@@ -337,23 +486,23 @@ export function updateClub(clubId, data = {}, tenantId) {
   }
 
   if (Object.keys(patch).length === 0) {
-    const unchanged = getRegistryClubById(clubId);
+    const unchanged = getRegistryClubById(trimmedId);
     void persistClubToCloud(unchanged, { venueId: effectiveTenantId });
     return { ok: true, club: unchanged };
   }
 
-  const result = updateClubMeta(clubId, patch);
+  const result = updateClubMeta(trimmedId, patch);
   if (result.ok) {
     void persistClubToCloud(result.club, { venueId: effectiveTenantId });
   }
   return result;
 }
 
-export function deactivateClub(clubId, tenantId) {
+export async function deactivateClub(clubId, tenantId) {
   return updateClub(clubId, { status: CLUB_STATUSES.INACTIVE }, tenantId);
 }
 
-export function deleteClubSoft(clubId, tenantId) {
+export async function deleteClubSoft(clubId, tenantId) {
   return deactivateClub(clubId, tenantId);
 }
 
