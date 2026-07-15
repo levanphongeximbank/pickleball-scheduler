@@ -1,6 +1,6 @@
 import { loadClubs } from "../../../data/club.js";
 import { getCurrentUser, isRbacEnabled } from "../../../auth/authService.js";
-import { isGlobalRole } from "../../../auth/roles.js";
+import { isGlobalRole, isPlatformWideRole } from "../../../auth/roles.js";
 import { tenantIdFromRecord } from "../../../models/tenant.js";
 import { listClubsForTenant as legacyListClubsForTenant } from "../../tenant/guards/tenantGuard.js";
 import { isCanonicalClubRepositoryEnabled } from "../config/canonicalRepositoryFlags.js";
@@ -34,6 +34,16 @@ function normalizeClub(row) {
     venueId: tenantId,
     isDefault: Boolean(row.isDefault) || id === LOCAL_DEFAULT_CLUB_ID,
     activeMemberCount: row.activeMemberCount ?? row.active_member_count ?? null,
+    // Preserve UI-shape fields so ClubContext/Switcher consumers keep the same
+    // public club shape when reading through the canonical gateway (governance
+    // org-chart, timestamps, description). Additive: legacy consumers unaffected.
+    governance: row.governance ?? null,
+    description: row.description ?? null,
+    createdAt: row.createdAt ?? row.created_at ?? null,
+    updatedAt: row.updatedAt ?? row.updated_at ?? null,
+    version: row.version ?? null,
+    ownerLabel: row.ownerLabel ?? null,
+    presidentLabel: row.presidentLabel ?? null,
     source: row.source || null,
     raw: row,
   };
@@ -173,6 +183,39 @@ export function createCanonicalClubRepository(deps = {}) {
     });
   }
 
+  /**
+   * Resolve the Club-entity list for the current user/tenant scope.
+   * Platform-wide roles read the whole registry (tenantId=null); other roles
+   * are scoped to their tenant. Delegates to listClubsForTenant (V2 RPC gateway
+   * when enabled, legacy adapter otherwise). This is the single read entry point
+   * ClubContext uses in canonical mode.
+   */
+  async function listClubsForCurrentScope(options = {}) {
+    const user = options.user ?? getCurrentUser();
+    const rbacEnabled = options.rbacEnabled ?? isRbacEnabled();
+    const platformWide =
+      options.isPlatformWide ?? (user ? isPlatformWideRole(user.role) : false);
+    const effectiveTenantId = platformWide
+      ? null
+      : String(
+          options.tenantId ||
+            tenantIdFromRecord(user) ||
+            user?.tenantId ||
+            user?.venueId ||
+            ""
+        ).trim() || null;
+
+    return listClubsForTenant(effectiveTenantId, {
+      includeInactive: Boolean(options.includeInactive),
+      userContext: {
+        user,
+        rbacEnabled,
+        tenantId: effectiveTenantId,
+        isPlatformAdmin: platformWide,
+      },
+    });
+  }
+
   async function getClubById(clubId, options = {}) {
     const id = String(clubId || "").trim();
     if (!id) {
@@ -307,6 +350,7 @@ export function createCanonicalClubRepository(deps = {}) {
 
   return {
     listClubsForTenant,
+    listClubsForCurrentScope,
     getClubById,
     getMyActiveClubMembership,
     resolveActiveClubForUser,

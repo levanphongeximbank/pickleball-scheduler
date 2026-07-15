@@ -125,6 +125,35 @@ export function setActiveClubId(clubId) {
   return false;
 }
 
+/**
+ * Read the persisted active-club id as a PREFERENCE only (no local-blob
+ * existence check, no default-club coercion). Canonical read mode validates
+ * this against the canonical visible set — localStorage never grants existence.
+ * @returns {string|null}
+ */
+export function getActiveClubIdPreference() {
+  const raw = localStorage.getItem(ACTIVE_CLUB_KEY);
+  const trimmed = String(raw || "").trim();
+  return trimmed || null;
+}
+
+/**
+ * Persist the active-club id as a PREFERENCE only. Unlike setActiveClubId this
+ * does NOT require the club to exist in the local blob, so canonical (cloud-only)
+ * clubs can be selected. The canonical visible set remains the existence/access
+ * authority; this is a UI preference write.
+ * @param {string} clubId
+ * @returns {boolean}
+ */
+export function setActiveClubIdPreference(clubId) {
+  const normalizedId = String(clubId || "").trim();
+  if (!normalizedId) {
+    return false;
+  }
+  localStorage.setItem(ACTIVE_CLUB_KEY, normalizedId);
+  return true;
+}
+
 export function getActiveClub() {
   const activeId = getActiveClubId();
   return loadClubs().find((club) => club.id === activeId) || DEFAULT_CLUB;

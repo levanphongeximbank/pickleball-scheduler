@@ -3,6 +3,7 @@ import { FormControl, InputLabel, MenuItem, Select, Stack } from "@mui/material"
 import { useClub } from "../context/ClubContext.jsx";
 import { useAuth } from "../context/AuthContext.jsx";
 import { SHELL_COLORS } from "./shell/shellTokens.js";
+import { CLUB_READ_STATE } from "../features/club/context/clubCanonicalReadModel.js";
 
 const VARIANT_STYLES = {
   dark: {
@@ -20,9 +21,44 @@ const VARIANT_STYLES = {
 };
 
 export default function ClubSwitcher({ size = "small", minWidth = 140, variant = "dark" }) {
-  const { clubs, activeClubId, switchClub } = useClub();
+  const { clubs, activeClubId, switchClub, canonicalClubRead, clubReadState } = useClub();
   const { rbacEnabled, isAuthenticated, canAccessClub } = useAuth();
   const styles = VARIANT_STYLES[variant] || VARIANT_STYLES.dark;
+
+  // Phase 45A.1 — in canonical cloud read mode the switcher renders explicit
+  // loading/error states and never falls back to a stale local-only club list.
+  if (canonicalClubRead && clubReadState === CLUB_READ_STATE.LOADING) {
+    return (
+      <FormControl size={size} sx={{ minWidth }} disabled>
+        <InputLabel
+          id="header-club-label"
+          sx={variant !== "dark" ? { color: SHELL_COLORS.textSecondary } : undefined}
+        >
+          CLB
+        </InputLabel>
+        <Select
+          labelId="header-club-label"
+          value=""
+          label="CLB"
+          sx={{
+            bgcolor: styles.bgcolor,
+            color: styles.color,
+            borderRadius: 1.5,
+            ".MuiOutlinedInput-notchedOutline": { borderColor: styles.outline },
+            ".MuiSvgIcon-root": { color: styles.icon },
+          }}
+        >
+          <MenuItem value="">
+            <em>Đang tải…</em>
+          </MenuItem>
+        </Select>
+      </FormControl>
+    );
+  }
+
+  if (canonicalClubRead && clubReadState === CLUB_READ_STATE.ERROR) {
+    return null;
+  }
 
   const visibleClubs =
     rbacEnabled && isAuthenticated
