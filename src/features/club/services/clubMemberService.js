@@ -4,7 +4,10 @@ import { getCurrentUser } from "../../../auth/authService.js";
 import { getClubById as getRegistryClubById } from "../../../domain/clubService.js";
 import { loadPlayersForClub } from "../../../domain/clubStorage.js";
 import { guardClubTenant } from "../../tenant/guards/tenantGuard.js";
-import { CLUB_MEMBER_STATUSES } from "../constants/clubMemberRoles.js";
+import {
+  CLUB_MEMBER_STATUSES,
+  normalizeClubMemberStatus,
+} from "../constants/clubMemberRoles.js";
 import { canViewFullClubMembers, canDeleteClubMembers } from "./clubGovernanceService.js";
 import {
   createClubMemberRecord,
@@ -13,6 +16,32 @@ import {
 import { loadClubExtension, saveClubExtension } from "../storage/clubExtensionStorage.js";
 import { createDefaultClubRating } from "../models/clubPlayerRating.js";
 import { getTenantPlayers } from "./clubTenantService.js";
+
+/**
+ * Map a Phase 42 `club_list_members` RPC row → canonical member UI shape.
+ * Pure mapper for the Club Storage V2 member contract (status via the shared
+ * active rule). Fetching stays in `clubStorageV2RpcService.rpcV2ClubListMembers`.
+ */
+export function mapV2MemberRowToUi(row = {}) {
+  const roles = Array.isArray(row.governance_roles)
+    ? row.governance_roles.map((r) => String(r || "").trim()).filter(Boolean)
+    : [];
+  const status = normalizeClubMemberStatus(row.status);
+
+  return {
+    id: String(row.id || ""),
+    playerId: String(row.user_id || row.player_id || ""),
+    userId: String(row.user_id || "").trim() || null,
+    displayName: String(row.display_name || "").trim(),
+    email: String(row.email || "").trim() || null,
+    status,
+    role: "member",
+    membershipType: row.membership_type || "regular",
+    governanceRoles: roles,
+    version: row.version ?? null,
+    source: "v2-rpc",
+  };
+}
 
 function guardClubMemberAccess(clubId, tenantId, permission) {
   if (tenantId) {

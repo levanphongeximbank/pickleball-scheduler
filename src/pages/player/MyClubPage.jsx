@@ -74,6 +74,10 @@ function MyClubPageContent() {
     if (!clubId) {
       return null;
     }
+    // V2 SoT: never fall back to localStorage registry for My Club.
+    if (isClubStorageV2Enabled()) {
+      return membership.club?.id === clubId ? membership.club : null;
+    }
     if (membership.club?.id === clubId) {
       return membership.club;
     }
@@ -85,7 +89,13 @@ function MyClubPageContent() {
     if (!clubId) {
       return null;
     }
-    if (isClubStorageV2Enabled() && membership.club?.id === clubId) {
+    if (isClubStorageV2Enabled()) {
+      if (membership.club?.id === clubId) {
+        return buildMyClubSummaryFromClub(membership.club);
+      }
+      return null;
+    }
+    if (membership.club?.id === clubId) {
       const fromRpc = buildMyClubSummaryFromClub(membership.club);
       if (fromRpc) {
         return fromRpc;
@@ -95,7 +105,8 @@ function MyClubPageContent() {
   }, [clubId, tenantId, revision, membership.club]);
 
   const clubStats = useMemo(() => {
-    if (!clubId) {
+    if (!clubId || isClubStorageV2Enabled()) {
+      // V2: member counts / ratings must not come from local club extension.
       return null;
     }
     return getClubStats(clubId, tenantId);
@@ -137,7 +148,12 @@ function MyClubPageContent() {
 
   const governanceLabels = clubSummary
     ? getGovernanceDisplayLabels(
-        { id: clubId, governance: clubSummary.governance },
+        {
+          id: clubId,
+          governance: clubSummary.governance,
+          ownerLabel: clubSummary.ownerLabel || clubRecord?.ownerLabel || null,
+          presidentLabel: clubSummary.presidentLabel || clubRecord?.presidentLabel || null,
+        },
         tenantId,
         nameHints
       )
@@ -156,10 +172,17 @@ function MyClubPageContent() {
     user &&
     (canManageClubGovernance(user, clubRecord) || canDeleteClub(user, clubRecord));
 
-  const manageHref =
-    clubId && user && canViewFullClubMembers(user, clubRecord)
-      ? `/manage/clubs/${clubId}`
-      : null;
+  const membersAccessClub =
+    clubRecord || (clubId ? { id: clubId, governance: clubSummary?.governance || {} } : null);
+  const canViewMembers = Boolean(
+    clubId &&
+      user &&
+      canViewFullClubMembers(user, membersAccessClub, {
+        activeMembershipClubId: hasClub ? clubId : null,
+      })
+  );
+
+  const manageHref = canViewMembers ? `/manage/clubs/${clubId}` : null;
 
   const showRequestsLink =
     Boolean(clubRecord && user && canApproveClubMembershipRequests(user, clubRecord));
@@ -213,10 +236,11 @@ function MyClubPageContent() {
         <MyClubMembersPanel
           clubId={clubId}
           tenantId={tenantId}
-          clubRecord={clubRecord}
+          clubRecord={clubRecord || membersAccessClub}
           user={user}
           manageHref={manageHref}
           revision={revision}
+          activeMembershipClubId={hasClub ? clubId : null}
         />
       ) : clubSummary ? (
         <>

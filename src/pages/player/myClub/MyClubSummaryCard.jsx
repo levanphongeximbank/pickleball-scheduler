@@ -16,6 +16,7 @@ import WorkspacePremiumIcon from "@mui/icons-material/WorkspacePremium";
 import {
   canAssignClubOwner,
   listClubGovernanceCandidates,
+  resolveMyClubHomeMemberCount,
 } from "../../../features/club/index.js";
 import { ClubAvatar, ClubStatusBadge } from "../../../features/club/ui/index.js";
 import AssignClubOwnerDialog from "./AssignClubOwnerDialog.jsx";
@@ -50,6 +51,7 @@ export default function MyClubSummaryCard({
     canAssign,
   });
   const presidentLabel = resolvePresidentDisplayLabel(governanceLabels);
+  const memberCount = resolveMyClubHomeMemberCount({ clubSummary, clubStats });
 
   const candidates = useMemo(
     () => (clubId ? listClubGovernanceCandidates(clubId, tenantId) : []),
@@ -91,7 +93,7 @@ export default function MyClubSummaryCard({
                     Thành viên
                   </Typography>
                   <Typography variant="body1" fontWeight={600}>
-                    {clubStats?.activeMemberCount ?? clubSummary.memberCount}
+                    {memberCount}
                   </Typography>
                 </Box>
               </Stack>

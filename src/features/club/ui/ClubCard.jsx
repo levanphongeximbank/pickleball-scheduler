@@ -40,7 +40,7 @@ export default function ClubCard({
     if (event.key !== "Enter" && event.key !== " ") {
       return;
     }
-    if (isYourClub || isPending || isRejected || disabled) {
+    if (isYourClub || isPending || disabled || !cta.showJoin) {
       return;
     }
     event.preventDefault();
@@ -100,7 +100,7 @@ export default function ClubCard({
             <Stack direction="row" spacing={1} flexWrap="wrap">
               {cta.showJoin && (
                 <Button variant="contained" size="small" onClick={onJoin}>
-                  Xin tham gia
+                  {cta.joinLabel || (isRejected ? "Gửi lại" : "Xin tham gia")}
                 </Button>
               )}
               {cta.showCancel && (

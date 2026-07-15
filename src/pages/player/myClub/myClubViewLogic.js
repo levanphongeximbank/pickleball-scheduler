@@ -1,4 +1,9 @@
-﻿import { CLUB_MEMBER_ROLE_LABELS } from "../../../features/club/constants/clubMemberRoles.js";
+﻿import {
+  CLUB_MEMBER_ROLE_LABELS,
+  getClubMemberStatusLabel,
+  isClubMemberStatusActive,
+} from "../../../features/club/constants/clubMemberRoles.js";
+import { mapV2MemberRowToUi } from "../../../features/club/services/clubMemberService.js";
 
 export const MY_CLUB_VIEWS = ["home", "schedule", "members"];
 
@@ -93,24 +98,30 @@ export function mapV2GovernanceRoleCodes(roles) {
 
 /**
  * Build member table rows from Phase 42 `club_list_members` RPC rows.
- * Governance is derived from the club record first (owner/president stored on
- * clubs), then falls back to per-member governance assignment codes.
+ *
+ * Row normalization (status, displayName, membershipType, governance codes) is
+ * delegated to the canonical row mapper `mapV2MemberRowToUi`. This function is
+ * the display-row builder on top of it: it resolves the VN governance role
+ * (club record first, then per-member codes), the member-role label and the
+ * name fallback. Status normalization / active rule stay single-sourced in
+ * `clubMemberRoles.js`.
  */
 export function buildMemberRowsFromV2Members(members, clubGovernance, getVicePresidentUserIds) {
   return (Array.isArray(members) ? members : [])
-    .map((member) => {
+    .map((rawMember) => {
+      const member = mapV2MemberRowToUi(rawMember);
       const govFromClub = resolveMemberGovernanceRole(
-        member.user_id,
+        member.userId,
         clubGovernance,
         getVicePresidentUserIds
       );
       const governanceRole =
-        govFromClub || mapV2GovernanceRoleCodes(member.governance_roles);
-      const membershipType = String(member.membership_type || "regular").toLowerCase();
+        govFromClub || mapV2GovernanceRoleCodes(member.governanceRoles);
+      const membershipType = String(member.membershipType || "regular").toLowerCase();
       const memberRole =
         CLUB_MEMBER_ROLE_LABELS[membershipType] || CLUB_MEMBER_ROLE_LABELS.member;
       const name =
-        member.display_name || member.email || String(member.user_id || "").trim() || "VĐV";
+        member.displayName || member.email || String(member.userId || "").trim() || "VĐV";
 
       return {
         id: member.id,
@@ -118,7 +129,8 @@ export function buildMemberRowsFromV2Members(members, clubGovernance, getVicePre
         governanceRole,
         memberRole,
         status: member.status,
-        isActive: String(member.status || "").toLowerCase() === "active",
+        statusLabel: getClubMemberStatusLabel(member.status),
+        isActive: isClubMemberStatusActive(member.status),
       };
     })
     .sort((a, b) => String(a.name).localeCompare(String(b.name), "vi"));

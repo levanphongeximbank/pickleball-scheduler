@@ -136,7 +136,15 @@ export function resolveClubGovernanceTitle(user, club) {
   return null;
 }
 
-export function canViewFullClubMembers(user, club) {
+/**
+ * @param {object} user
+ * @param {object} club
+ * @param {{ activeMembershipClubId?: string|null }} [options]
+ *   When Club Storage V2 is on, pass the caller's active membership club id
+ *   (from club_get_my_active_membership). profiles.club_id is null under V2,
+ *   so legacy user.clubId checks must not gate My Club member visibility.
+ */
+export function canViewFullClubMembers(user, club, options = {}) {
   if (!club) {
     return false;
   }
@@ -149,11 +157,18 @@ export function canViewFullClubMembers(user, club) {
     return true;
   }
 
+  if (isClubStorageV2Enabled()) {
+    const activeClubId = String(options.activeMembershipClubId || "").trim();
+    if (activeClubId && sameUserId(activeClubId, club.id)) {
+      return true;
+    }
+  }
+
   if (isClubPresident(user, club) || isClubVicePresident(user, club) || isClubOwner(user, club)) {
     return true;
   }
 
-  if (isClubScopedRole(user.role) && user.clubId === club.id) {
+  if (!isClubStorageV2Enabled() && isClubScopedRole(user.role) && user.clubId === club.id) {
     return true;
   }
 
@@ -1492,16 +1507,38 @@ export function updateClubGovernance(clubId, patch = {}, tenantId = null) {
   return result;
 }
 
+function resolvePreferredGovernanceLabel(userId, club, clubId, tenantId, nameHints, cloudLabel) {
+  const trimmedCloud = String(cloudLabel || "").trim();
+  if (trimmedCloud && !isPlaceholderGovernanceLabel(trimmedCloud, userId)) {
+    return trimmedCloud;
+  }
+  return resolveGovernanceUserLabel(userId, clubId, tenantId, nameHints);
+}
+
 export function getGovernanceDisplayLabels(club, tenantId = null, nameHints = null) {
   const gov = club?.governance || {};
   const clubId = club?.id || null;
   const effectiveTenantId = tenantId || club?.tenantId || club?.venueId || null;
 
   const ownerLabel = gov.ownerUserId
-    ? resolveGovernanceUserLabel(gov.ownerUserId, clubId, effectiveTenantId, nameHints)
+    ? resolvePreferredGovernanceLabel(
+        gov.ownerUserId,
+        club,
+        clubId,
+        effectiveTenantId,
+        nameHints,
+        club?.ownerLabel
+      )
     : "Chưa gán";
   const presidentLabel = gov.presidentUserId
-    ? resolveGovernanceUserLabel(gov.presidentUserId, clubId, effectiveTenantId, nameHints)
+    ? resolvePreferredGovernanceLabel(
+        gov.presidentUserId,
+        club,
+        clubId,
+        effectiveTenantId,
+        nameHints,
+        club?.presidentLabel
+      )
     : "Chưa gán";
   const viceIds = getVicePresidentUserIds(gov);
   const viceLabels = viceIds.map((id) =>
@@ -1514,8 +1551,12 @@ export function getGovernanceDisplayLabels(club, tenantId = null, nameHints = nu
     gov.presidentUserId &&
     sameUserId(gov.ownerUserId, gov.presidentUserId)
   ) {
+    const combinedBase =
+      (!isPlaceholderGovernanceLabel(presidentLabel, gov.presidentUserId) && presidentLabel) ||
+      (!isPlaceholderGovernanceLabel(ownerLabel, gov.ownerUserId) && ownerLabel) ||
+      presidentLabel;
     return {
-      ownerLabel: `${presidentLabel} (Chủ sở hữu & Chủ tịch)`,
+      ownerLabel: `${combinedBase} (Chủ sở hữu & Chủ tịch)`,
       presidentLabel: null,
       vicePresidentLabel: viceLabel,
       vicePresidentLabels: viceLabels,

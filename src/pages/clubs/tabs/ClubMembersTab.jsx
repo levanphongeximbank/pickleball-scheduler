@@ -4,6 +4,7 @@ import {
   Box,
   Button,
   Chip,
+  CircularProgress,
   Dialog,
   DialogActions,
   DialogContent,
@@ -40,7 +41,13 @@ import {
   canViewFullClubMembers,
   canDeleteClubMembers,
   canApproveClubMembershipRequests,
+  countActiveClubMembers,
+  getClubMemberStatusLabel,
+  isClubMemberStatusActive,
+  isClubStorageV2Enabled,
   listPendingMembershipRequests,
+  mapV2MemberRowToUi,
+  rpcV2ClubListMembers,
   approveClubMembershipRequest,
   rejectClubMembershipRequest,
 } from "../../../features/club/index.js";
@@ -59,9 +66,11 @@ export default function ClubMembersTab({ club, tenantId, onRefresh }) {
   const [requestMessage, setRequestMessage] = useState(null);
   const [pendingMembershipRequests, setPendingMembershipRequests] = useState([]);
   const [loadingPendingRequests, setLoadingPendingRequests] = useState(false);
+  const [memberState, setMemberState] = useState({ status: "idle", list: [], error: null });
 
   const fullAccess = canViewFullClubMembers(user, club);
   const canApproveRequests = canApproveClubMembershipRequests(user, club);
+  const v2Enabled = isClubStorageV2Enabled();
 
   useEffect(() => {
     let cancelled = false;
@@ -97,12 +106,62 @@ export default function ClubMembersTab({ club, tenantId, onRefresh }) {
       !isAuthenticated ||
       can(PERMISSIONS.PLAYER_UPDATE, { clubId: club.id, venueId: tenantId }));
 
-  const canRemoveMembers = canDeleteClubMembers(user, club) && canManage;
+  // Phase 43B.1 — member list is server-owned under Club Storage V2 (club_list_members RPC).
+  // Mutation controls (add/remove/role/status) still write the legacy local blob, so they are
+  // gated OFF when V2 is on until the mutation path is migrated to V2 commands.
+  const mutationsEnabled = canManage && !v2Enabled;
 
-  const members = useMemo(
-    () => getClubMembers(club.id, tenantId),
-    [club.id, tenantId, revision]
-  );
+  const canRemoveMembers = canDeleteClubMembers(user, club) && mutationsEnabled;
+
+  useEffect(() => {
+    let cancelled = false;
+
+    if (!fullAccess) {
+      setMemberState({ status: "idle", list: [], error: null });
+      return undefined;
+    }
+
+    if (!v2Enabled) {
+      setMemberState({ status: "ready", list: getClubMembers(club.id, tenantId), error: null });
+      return undefined;
+    }
+
+    setMemberState((prev) => ({ ...prev, status: "loading" }));
+    rpcV2ClubListMembers(club.id)
+      .then((result) => {
+        if (cancelled) {
+          return;
+        }
+        if (result.ok) {
+          setMemberState({
+            status: "ready",
+            list: (result.members || []).map(mapV2MemberRowToUi),
+            error: null,
+          });
+        } else {
+          // V2 SoT: never backfill from the empty local blob when the RPC fails.
+          setMemberState({
+            status: "error",
+            list: [],
+            error: result.error || result.code || "Không tải được danh sách thành viên.",
+          });
+        }
+      })
+      .catch((err) => {
+        if (!cancelled) {
+          setMemberState({ status: "error", list: [], error: String(err?.message || err) });
+        }
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [club.id, tenantId, revision, v2Enabled, fullAccess]);
+
+  const members = memberState.list;
+  const membersLoading =
+    v2Enabled && fullAccess && (memberState.status === "idle" || memberState.status === "loading");
+  const membersError = memberState.status === "error" ? memberState.error : null;
 
   const ratings = useMemo(
     () => getClubRatings(club.id, tenantId),
@@ -341,20 +400,39 @@ export default function ClubMembersTab({ club, tenantId, onRefresh }) {
         </Box>
       )}
 
+      {v2Enabled && canManage && (
+        <Alert severity="info" sx={{ mb: 2 }}>
+          Danh sách thành viên lấy trực tiếp từ máy chủ (Club Storage V2). Thao tác thêm / xóa /
+          đổi vai trò tạm thời tắt ở màn hình này cho đến khi chuyển sang lệnh V2.
+        </Alert>
+      )}
+
+      {membersError && (
+        <Alert severity="warning" sx={{ mb: 2 }}>
+          {membersError}
+        </Alert>
+      )}
+
       <Stack direction="row" justifyContent="space-between" mb={2}>
         <Typography variant="subtitle1" fontWeight={600}>
-          {members.length} thành viên
+          {countActiveClubMembers(members)} thành viên đang hoạt động
         </Typography>
-        {canManage && (
+        {mutationsEnabled && (
           <Button startIcon={<AddIcon />} variant="contained" size="small" onClick={() => setAddOpen(true)}>
             Thêm thành viên
           </Button>
         )}
       </Stack>
 
-      {members.length === 0 ? (
+      {membersLoading ? (
+        <Stack alignItems="center" sx={{ py: 4 }}>
+          <CircularProgress size={28} aria-label="Đang tải thành viên" />
+        </Stack>
+      ) : members.length === 0 ? (
         <Paper sx={{ p: 3, textAlign: "center" }}>
-          <Typography color="text.secondary">CLB chưa có thành viên.</Typography>
+          <Typography color="text.secondary">
+            {membersError ? "Không tải được danh sách thành viên." : "CLB chưa có thành viên."}
+          </Typography>
         </Paper>
       ) : (
         <TableContainer component={Paper}>
@@ -386,7 +464,7 @@ export default function ClubMembersTab({ club, tenantId, onRefresh }) {
                     <TableCell>{player?.level ?? rating?.level ?? "—"}</TableCell>
                     <TableCell align="right">{rating?.elo ?? "—"}</TableCell>
                     <TableCell>
-                      {canManage ? (
+                      {mutationsEnabled ? (
                         <TextField
                           select
                           size="small"
@@ -405,19 +483,27 @@ export default function ClubMembersTab({ club, tenantId, onRefresh }) {
                       )}
                     </TableCell>
                     <TableCell>
-                      {new Date(member.joinedAt).toLocaleDateString("vi-VN")}
+                      {member.joinedAt
+                        ? new Date(member.joinedAt).toLocaleDateString("vi-VN")
+                        : "—"}
                     </TableCell>
                     <TableCell>
                       <Chip
                         size="small"
-                        label={member.status === CLUB_MEMBER_STATUSES.ACTIVE ? "Active" : "Inactive"}
-                        color={member.status === CLUB_MEMBER_STATUSES.ACTIVE ? "success" : "default"}
-                        onClick={canManage ? () => handleStatusToggle(member) : undefined}
+                        label={getClubMemberStatusLabel(member.status)}
+                        color={isClubMemberStatusActive(member.status) ? "success" : "default"}
+                        onClick={
+                          mutationsEnabled &&
+                          (isClubMemberStatusActive(member.status) ||
+                            member.status === CLUB_MEMBER_STATUSES.INACTIVE)
+                            ? () => handleStatusToggle(member)
+                            : undefined
+                        }
                       />
                     </TableCell>
                     {canRemoveMembers && (
                       <TableCell align="right">
-                        {member.status === CLUB_MEMBER_STATUSES.ACTIVE && (
+                        {isClubMemberStatusActive(member.status) && (
                           <Tooltip title="Xóa khỏi CLB">
                             <IconButton size="small" color="error" onClick={() => setRemoveTarget(member)}>
                               <PersonRemoveIcon fontSize="small" />
