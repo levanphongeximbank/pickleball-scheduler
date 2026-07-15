@@ -1,4 +1,5 @@
 import { getSupabaseAuthClient } from "../../../auth/supabaseClient.js";
+import { assertLegacyClubEntityWriteAllowed } from "./clubLegacyWriteGuard.js";
 
 function isMissingRpcError(error) {
   const message = String(error?.message || error?.code || "").toLowerCase();
@@ -20,6 +21,13 @@ function parseRpcJson(data) {
 }
 
 export async function rpcClubUpsertRegistry({ club } = {}) {
+  const legacyGate = assertLegacyClubEntityWriteAllowed({
+    operation: "rpcClubUpsertRegistry",
+  });
+  if (!legacyGate.ok) {
+    return legacyGate;
+  }
+
   const client = getSupabaseAuthClient();
   if (!client) {
     return { ok: false, code: "NO_SUPABASE", error: "Supabase chưa sẵn sàng." };
@@ -39,8 +47,18 @@ export async function rpcClubUpsertRegistry({ club } = {}) {
   return parseRpcJson(data);
 }
 
-/** Chủ tịch tự nhận CLB sau khi registry đã upsert lên cloud. */
+/**
+ * Chủ tịch tự nhận CLB sau khi registry đã upsert lên cloud.
+ * Phase 45A.3E — V2 create uses club_create (canonical); claim is V2-OFF only.
+ */
 export async function rpcClubClaimSelfRegistration(clubId) {
+  const legacyGate = assertLegacyClubEntityWriteAllowed({
+    operation: "rpcClubClaimSelfRegistration",
+  });
+  if (!legacyGate.ok) {
+    return legacyGate;
+  }
+
   const client = getSupabaseAuthClient();
   if (!client) {
     return { ok: false, code: "NO_SUPABASE", error: "Supabase chưa sẵn sàng." };

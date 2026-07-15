@@ -15,7 +15,14 @@ import { canDeleteClub } from "../features/club/services/clubGovernanceService.j
 import { resolveEffectiveTenantId } from "../features/tenant/services/tenantService.js";
 import { guardMaxClubs } from "../auth/subscriptionGuard.js";
 import { createClubRecord, normalizeClub } from "../models/club.js";
+import { assertLegacyClubEntityWriteAllowed } from "../features/club/services/clubLegacyWriteGuard.js";
 import { loadClubData, purgeClubData, saveClubData } from "./clubStorage.js";
+
+/**
+ * Phase 45A.3E — domain Club writers are offline / V2-OFF / no-Supabase
+ * implementation only. UI must import via clubOfflineCommandAdapter.
+ * Cloud authority: clubTenantService → club_create / club_update.
+ */
 
 export function listClubs() {
   return loadClubs();
@@ -26,6 +33,9 @@ export function getClubById(clubId) {
 }
 
 export function createClub(name) {
+  const legacyGate = assertLegacyClubEntityWriteAllowed({ operation: "domain.createClub" });
+  if (!legacyGate.ok) return legacyGate;
+
   const trimmed = String(name || "").trim();
 
   if (trimmed === "") {
@@ -76,6 +86,9 @@ export function createClub(name) {
 }
 
 export function renameClub(clubId, name) {
+  const legacyGate = assertLegacyClubEntityWriteAllowed({ operation: "domain.renameClub" });
+  if (!legacyGate.ok) return legacyGate;
+
   const trimmed = String(name || "").trim();
 
   if (trimmed === "") {
@@ -109,6 +122,11 @@ export function renameClub(clubId, name) {
 }
 
 export function bindClubVenueRegistry(clubId, venueId, options = {}) {
+  const legacyGate = assertLegacyClubEntityWriteAllowed({
+    operation: "domain.bindClubVenueRegistry",
+  });
+  if (!legacyGate.ok) return legacyGate;
+
   const { skipGuard = false } = options;
 
   if (!clubId || !venueId) {
@@ -145,6 +163,8 @@ export function bindClubVenueRegistry(clubId, venueId, options = {}) {
 }
 
 export function updateClubMeta(clubId, patch = {}) {
+  // Phase 45A.3E — not Club entity create/update authority under V2.
+  // Retained for: offline rollback, governance/VP deferred writers, blob-only note.
   const check = guardClubAction(clubId, PERMISSIONS.CLUB_UPDATE);
   if (!check.ok) {
     return check;
@@ -174,6 +194,12 @@ export function updateClubMeta(clubId, patch = {}) {
 }
 
 export function deleteClub(clubId) {
+  const legacyGate = assertLegacyClubEntityWriteAllowed({
+    operation: "domain.deleteClub",
+    deferred: true,
+  });
+  if (!legacyGate.ok) return legacyGate;
+
   if (clubId === DEFAULT_CLUB.id) {
     return { ok: false, error: "Khong the xoa CLB mac dinh." };
   }

@@ -123,6 +123,7 @@ test("ClubContext routes create/rename via clubTenantService under V2", () => {
   assert.match(ctx, /clubOfflineCommandAdapter/);
   assert.match(ctx, /createClubCommand/);
   assert.match(ctx, /updateClubCommand/);
+  assert.match(ctx, /deleteClubOffline/);
   assert.match(ctx, /isClubStorageV2Enabled\(\)/);
   assert.doesNotMatch(
     ctx,
@@ -131,6 +132,10 @@ test("ClubContext routes create/rename via clubTenantService under V2", () => {
   assert.doesNotMatch(
     ctx,
     /import\s*\{[^}]*\brenameClub\b[^}]*\}\s*from\s*["'][^"']*domain\/clubService\.js["']/
+  );
+  assert.doesNotMatch(
+    ctx,
+    /import\s*\{[^}]*\bdeleteClub\b[^}]*\}\s*from\s*["'][^"']*domain\/clubService\.js["']/
   );
 });
 

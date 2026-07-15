@@ -16,6 +16,7 @@ import {
 } from "../models/subscription.js";
 import { renewSubscriptionPeriod } from "../features/subscription/index.js";
 import { updateClubMeta, getClubById } from "./clubService.js";
+import { assertLegacyClubEntityWriteAllowed } from "../features/club/services/clubLegacyWriteGuard.js";
 import { guardMaxClubs } from "../auth/subscriptionGuard.js";
 import {
   BILLING_STORE_MODES,
@@ -177,6 +178,21 @@ export function assignClubToVenue(clubId, venueId) {
     if (!limitCheck.ok) {
       return limitCheck;
     }
+  }
+
+  // Phase 45A.3E — venueId bind via blob is offline-only. Under V2, public.clubs
+  // tenant_id is set by club_create / club_update; do not dual-write the registry.
+  const legacyGate = assertLegacyClubEntityWriteAllowed({
+    operation: "assignClubToVenue → updateClubMeta(venueId)",
+  });
+  if (!legacyGate.ok) {
+    return {
+      ok: true,
+      skipped: true,
+      provider: "v2-no-blob-bind",
+      clubId,
+      venueId,
+    };
   }
 
   return updateClubMeta(clubId, { venueId });
