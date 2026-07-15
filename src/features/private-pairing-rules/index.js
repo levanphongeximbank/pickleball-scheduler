@@ -81,6 +81,10 @@ export {
   filterRulesForTeamFormation,
   isTeamFormationConstraintType,
   isExcludedFromTeamFormation,
+  founderCourtPoliciesToLegacyConstraints,
+  gatePrivatePairingForRunAi,
+  isNoFeasibleAiPairing,
+  collectAiPairingRejectionCodes,
 } from "./runtime/index.js";
 
 export {

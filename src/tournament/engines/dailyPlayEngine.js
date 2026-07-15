@@ -14,6 +14,10 @@ import {
 import { startMatch, submitMatchScore } from "./matchEngine.js";
 import { isRulesV2Enabled } from "../../features/competition-core/config/featureFlags.js";
 import { evaluateLegacyDailyPlayPlayer } from "../../features/competition-core/constraints/adapters/constraintsEvaluationBridge.js";
+import {
+  COMPETITION_CLASS,
+  prepareLivePrivatePairingOptions,
+} from "../../features/private-pairing-rules/index.js";
 
 export const DAILY_MATCH_TYPE = {
   MEN_DOUBLE: "men_double",
@@ -246,12 +250,17 @@ function courtResultToDailyMatch(courtResult, options = {}) {
   };
 }
 
-export function createFairDailyMatches({
+export async function createFairDailyMatches({
   players = [],
   settings = {},
   tournamentId = "",
+  clubId = null,
+  competitionClass = COMPETITION_CLASS.DAILY_PLAY,
   matchCount = 1,
   skipScore = false,
+  envSource,
+  privatePairingRules = null,
+  skipPrivatePairingPrepare = false,
 } = {}) {
   const normalized = normalizeDailyPlaySettings(settings);
   const eligible = getEligibleDailyPlayers({ players, settings: normalized });
@@ -266,6 +275,31 @@ export function createFairDailyMatches({
       error: "Khong du VDV check-in de tao tran.",
       competitionType,
     };
+  }
+
+  let loadedPrivatePairingRules = Array.isArray(privatePairingRules)
+    ? privatePairingRules
+    : [];
+
+  if (!skipPrivatePairingPrepare && privatePairingRules == null) {
+    const prepared = await prepareLivePrivatePairingOptions({
+      clubId,
+      tournamentId: tournamentId || null,
+      competitionClass: competitionClass || COMPETITION_CLASS.DAILY_PLAY,
+      envSource,
+    });
+
+    if (!prepared.ok) {
+      return {
+        ok: false,
+        error: prepared.error?.message || "Không tải được quy tắc ghép cặp.",
+        errors: [prepared.error?.message || "PRIVATE_PAIRING_LOAD_FAILED"],
+        privatePairingError: prepared.error,
+        competitionType,
+      };
+    }
+
+    loadedPrivatePairingRules = prepared.pairingOptions?.privatePairingRules || [];
   }
 
   const playersPerCourt = 4;
@@ -292,13 +326,23 @@ export function createFairDailyMatches({
       persist: false,
       lockedCourts: [],
       lockedPlayers: [],
+      clubId,
+      tournamentId: tournamentId || null,
+      competitionClass: competitionClass || COMPETITION_CLASS.DAILY_PLAY,
+      privatePairingRules: loadedPrivatePairingRules,
+      envSource,
     });
 
-    if (aiResult.errors?.length) {
+    if (aiResult.privatePairingError || aiResult.errors?.length) {
       if (createdMatches.length === 0) {
         return {
           ok: false,
-          errors: aiResult.errors,
+          errors: aiResult.errors || [aiResult.privatePairingError?.message],
+          error:
+            aiResult.privatePairingError?.message ||
+            aiResult.errors?.join(" ") ||
+            "Không tạo được trận theo quy tắc riêng.",
+          privatePairingError: aiResult.privatePairingError || null,
           competitionType,
         };
       }

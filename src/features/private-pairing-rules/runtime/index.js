@@ -53,3 +53,10 @@ export {
   TEAM_FORMATION_TYPE_SET,
   EXCLUDED_FROM_TEAM_FORMATION,
 } from "./teamFormationRuleFilter.js";
+
+export {
+  founderCourtPoliciesToLegacyConstraints,
+  gatePrivatePairingForRunAi,
+  isNoFeasibleAiPairing,
+  collectAiPairingRejectionCodes,
+} from "./applyPrivatePairingToAiRuntime.js";

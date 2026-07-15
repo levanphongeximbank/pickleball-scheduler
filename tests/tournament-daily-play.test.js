@@ -85,7 +85,7 @@ test("getBusyPlayerIdsFromDailyMatches tracks active players", () => {
   assert.equal(busy.has("5"), false);
 });
 
-test("createFairDailyMatches builds waiting matches for mixed doubles", () => {
+test("createFairDailyMatches builds waiting matches for mixed doubles", async () => {
   const settings = {
     ...getDefaultDailyPlaySettings(),
     checkedInPlayerIds: players.map((player) => String(player.id)),
@@ -93,7 +93,7 @@ test("createFairDailyMatches builds waiting matches for mixed doubles", () => {
     genderFilter: DAILY_GENDER_FILTER.ALL,
   };
 
-  const result = createFairDailyMatches({
+  const result = await createFairDailyMatches({
     players,
     settings,
     tournamentId: "t1",
@@ -107,7 +107,7 @@ test("createFairDailyMatches builds waiting matches for mixed doubles", () => {
   assert.equal(result.matches[0].teamBPlayerIds.length, 2);
 });
 
-test("createFairDailyMatches does not reuse busy players", () => {
+test("createFairDailyMatches does not reuse busy players", async () => {
   const settings = {
     ...getDefaultDailyPlaySettings(),
     checkedInPlayerIds: players.map((player) => String(player.id)),
@@ -122,7 +122,7 @@ test("createFairDailyMatches does not reuse busy players", () => {
     ],
   };
 
-  const result = createFairDailyMatches({
+  const result = await createFairDailyMatches({
     players,
     settings,
     tournamentId: "t1",

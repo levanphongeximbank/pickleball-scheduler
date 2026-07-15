@@ -217,22 +217,28 @@ export default function DailyPlaySetup() {
     setMessage("Đã cập nhật danh sách trọng tài.");
   };
 
-  const handleCreateMatches = () => {
+  const handleCreateMatches = async () => {
     setError(null);
     const availableCourts = courtStates.filter(
       (court) => court.status === "available" && !court.locked
     ).length;
 
-    const result = createFairDailyMatches({
+    const result = await createFairDailyMatches({
       players,
       settings: dailySettings,
       tournamentId,
+      clubId: activeClubId,
       matchCount: Math.max(1, availableCourts || 1),
       skipScore: dailySettings.skipScore,
     });
 
     if (!result.ok) {
-      setError(result.error || result.errors?.join(" ") || "Khong tao duoc tran.");
+      setError(
+        result.privatePairingError?.message ||
+          result.error ||
+          result.errors?.join(" ") ||
+          "Khong tao duoc tran."
+      );
       return;
     }
 
