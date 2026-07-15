@@ -138,8 +138,14 @@ export function createPairingCandidateService(deps = {}) {
     }
 
     const rows = Array.isArray(repoResult.rows) ? repoResult.rows : [];
-    const { seeds, excluded: identityExcluded, identityCoverage } =
-      mapPairingIdentities(rows);
+    const {
+      seeds,
+      excluded: identityExcluded,
+      identityCoverage,
+      aliasDiagnostics,
+      warnings: identityWarnings = [],
+    } = mapPairingIdentities(rows);
+    warnings.push(...identityWarnings);
 
     const { candidates: eligibleSeeds, excluded: eligibilityExcluded } =
       evaluateAllPairingEligibility(seeds, query);
@@ -198,6 +204,11 @@ export function createPairingCandidateService(deps = {}) {
         scope,
         identityCoverage,
         sourceBreakdown,
+        aliasDiagnostics: aliasDiagnostics || {
+          duplicateAliases: [],
+          mismatchedAliasCount: 0,
+          ignoredPrimaryClaimCount: 0,
+        },
         gatewayVersion: PAIRING_CANDIDATE_GATEWAY_VERSION,
         warnings,
         ...(blockedError ? { error: blockedError } : {}),

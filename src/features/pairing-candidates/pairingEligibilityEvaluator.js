@@ -19,12 +19,16 @@ function idSet(values) {
 }
 
 function candidateKeys(seed) {
+  const aliasIds = Array.isArray(seed.metadata?.aliasIds)
+    ? seed.metadata.aliasIds.map(normalizeId)
+    : [];
   return [
     normalizeId(seed.pairingIdentityId),
     normalizeId(seed.athleteId),
     normalizeId(seed.userId),
     normalizeId(seed.metadata?.legacyPlayerId),
     normalizeId(seed.metadata?.profilePlayerId),
+    ...aliasIds,
   ].filter(Boolean);
 }
 

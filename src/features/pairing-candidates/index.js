@@ -1,8 +1,8 @@
 /**
- * PHASE 45B.2 — Pairing candidates gateway public surface.
+ * PHASE 45B.3 — Pairing candidates gateway public surface.
  *
- * Portable core: reason codes, contract, identity mapper, eligibility evaluator.
- * App adapters: canonicalAthleteRepository injectables + pairingCandidateService.
+ * Portable core: reason codes, contract, identity mapper (athletes.id primary),
+ * eligibility evaluator. App adapters: canonicalAthleteRepository + service.
  */
 
 export {
@@ -22,6 +22,11 @@ export {
 export {
   mapPairingIdentity,
   mapPairingIdentities,
+  extractAthleteId,
+  collectLegacyAliases,
+  classifyIdentityCoverage,
+  buildPairingIdentityIndex,
+  resolvePairingIdentityId,
 } from "./pairingIdentityMapper.js";
 
 export {
