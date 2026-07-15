@@ -418,6 +418,9 @@ function buildPlayerIdForAuthUser(userId) {
 
 /** Sau tự đăng ký CLB: thêm VĐV vào roster, link session, promote CLUB_MANAGER.
  * Phase 45A.3E — V2-OFF companion only (canonical create ends after club_create).
+ * Phase 45A.4C.5 — under V2, assertLegacyClubEntityWriteAllowed blocks this whole path;
+ * Membership for the president is created by the canonical club_create / governance
+ * transaction — never by blob addMemberToClub.
  */
 export async function bootstrapSelfRegisteredPresident(clubId, user, tenantId) {
   const legacyGate = assertLegacyClubEntityWriteAllowed({

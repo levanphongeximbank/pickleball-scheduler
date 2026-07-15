@@ -22,6 +22,7 @@ import { findUserIdByPlayerId } from "../storage/athleteClubLinkStore.js";
 import { invalidateAllClubRegistryCache } from "../registry/clubRegistryCache.js";
 import { invalidateMyActiveClubMembershipCache } from "./clubActiveMembershipService.js";
 import { mapClubCommandError } from "./clubCommandErrorMap.js";
+import { assertLegacyMembershipRosterWriteAllowed } from "./clubLegacyWriteGuard.js";
 import {
   rpcV2ClubAddMember,
   rpcV2ClubRemoveMember,
@@ -178,6 +179,12 @@ function syncMembersFromBlob(clubId, tenantId) {
     return ext;
   }
 
+  // Phase 45A.4C.5 — never hydrate/write blob roster while Membership V2 is authoritative.
+  // Cloud roster lives in public.club_members; empty local extension is not Membership authority.
+  if (isClubStorageV2Enabled()) {
+    return ext;
+  }
+
   const players = loadPlayersForClub(clubId);
   if (!players.length) {
     return ext;
@@ -222,7 +229,19 @@ export function getClubMembersForTournamentInvite(clubId, tenantId) {
   return getClubMembers(clubId, tenantId, { skipGovernanceGuard: true });
 }
 
+/**
+ * LEGACY / OFFLINE ONLY — blob roster add via clubExtension.members.
+ * Reachable only when Club Storage V2 is OFF (see addMemberToClub early-return).
+ * Hard-blocked under V2 as defense-in-depth (Phase 45A.4C.5).
+ */
 function addMemberToClubLegacy(clubId, playerId, tenantId, options = {}) {
+  const legacyGate = assertLegacyMembershipRosterWriteAllowed({
+    operation: "addMemberToClubLegacy",
+  });
+  if (!legacyGate.ok) {
+    return legacyGate;
+  }
+
   if (!options.skipPermissionGuard) {
     const check = guardClubMemberAccess(clubId, tenantId, PERMISSIONS.PLAYER_UPDATE);
     if (!check.ok) {
@@ -291,7 +310,19 @@ function addMemberToClubLegacy(clubId, playerId, tenantId, options = {}) {
   return { ok: true, member: members.find((m) => m.playerId === trimmedPlayerId) };
 }
 
+/**
+ * LEGACY / OFFLINE ONLY — blob roster soft-remove via clubExtension.members.
+ * Reachable only when Club Storage V2 is OFF.
+ * Hard-blocked under V2 as defense-in-depth (Phase 45A.4C.5).
+ */
 function removeMemberFromClubLegacy(clubId, playerId, tenantId, options = {}) {
+  const legacyGate = assertLegacyMembershipRosterWriteAllowed({
+    operation: "removeMemberFromClubLegacy",
+  });
+  if (!legacyGate.ok) {
+    return legacyGate;
+  }
+
   if (!options.skipPermissionGuard) {
     const club = getRegistryClubById(clubId);
     const user = getCurrentUser();

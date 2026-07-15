@@ -529,6 +529,51 @@ const RULES = [
     ],
   },
   {
+    id: "member-blob-legacy-helpers-orchestrator-only",
+    description:
+      "Phase 45A.4C.5 — addMemberToClubLegacy / removeMemberFromClubLegacy may only exist in clubMemberService (offline adapter).",
+    allow: ["src/features/club/services/clubMemberService.js"],
+    match: (c) => [
+      ...(c.match(/\baddMemberToClubLegacy\s*\(/g) || []),
+      ...(c.match(/\bremoveMemberFromClubLegacy\s*\(/g) || []),
+    ],
+  },
+  {
+    id: "member-blob-ensure-player-offline-only",
+    description:
+      "Phase 45A.4C.5 — ensurePlayerInClubBlob is V2-OFF debt; must not leave clubMembershipRequestService or be imported by UI.",
+    allow: ["src/features/club/services/clubMembershipRequestService.js"],
+    match: (c) => c.match(/\bensurePlayerInClubBlob\s*\(/g) || [],
+  },
+  {
+    id: "member-blob-add-remove-bypass-in-ui",
+    description:
+      "Phase 45A.4C.5 — UI must not call legacy blob membership writers or ensurePlayerInClubBlob; go through clubMemberService / membership request commands.",
+    onlyIn: ["src/context/", "src/pages/", "src/components/"],
+    match: (c) => [
+      ...(c.match(/\baddMemberToClubLegacy\s*\(/g) || []),
+      ...(c.match(/\bremoveMemberFromClubLegacy\s*\(/g) || []),
+      ...(c.match(/\bensurePlayerInClubBlob\s*\(/g) || []),
+      ...(c.match(/\bsaveClubExtension\s*\(/g) || []),
+      ...(c.match(/\bsyncMembersFromBlob\s*\(/g) || []),
+    ],
+  },
+  {
+    id: "member-profiles-club-id-phase31-not-authority",
+    description:
+      "Phase 45A.4C.5 — Phase31 clubMembershipRequestRpcService must not be used as Membership authority under V2; keep allowlisted in request service for V2-OFF only.",
+    onlyIn: ["src/context/", "src/pages/", "src/components/", "src/features/"],
+    allow: [
+      "src/features/club/services/clubMembershipRequestService.js",
+      "src/features/club/services/clubMembershipRequestRpcService.js",
+    ],
+    match: (c) => [
+      ...(c.match(/\brpcReviewClubMembershipRequest\s*\(/g) || []),
+      ...(c.match(/\brpcLeaveMyClub\s*\(/g) || []),
+      ...(c.match(/clubMembershipRequestRpcService/g) || []),
+    ],
+  },
+  {
     id: "global-unregistered-error-code",
     description:
       "New string-literal error codes in the API layer must be registered in API_ERROR_CODES.",
