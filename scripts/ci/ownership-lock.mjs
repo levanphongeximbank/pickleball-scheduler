@@ -474,15 +474,58 @@ const RULES = [
       ...(c.match(/\brpcV2ClubCancelMembershipRequest\s*\(/g) || []),
       ...(c.match(/\brpcV2ClubReviewMembershipRequest\s*\(/g) || []),
       ...(c.match(/\brpcV2ClubLeaveMembership\s*\(/g) || []),
+      ...(c.match(/\brpcV2ClubAddMember\s*\(/g) || []),
+      ...(c.match(/\brpcV2ClubRemoveMember\s*\(/g) || []),
       ...(c.match(/\baddMemberToClub\s*\(/g) || []),
+      ...(c.match(/\bremoveMemberFromClub\s*\(/g) || []),
       ...(c.match(/\bsaveMembershipRequests\s*\(/g) || []),
       ...(c.match(/callRpc\(\s*["']club_(?:submit|cancel|review)_membership/g) || []),
+      ...(c.match(/callRpc\(\s*["']club_(?:add|remove)_member["']/g) || []),
       ...(c.match(
         /\.from\(\s*["']club_members["']\s*\)[\s\S]{0,240}?\.(insert|update|upsert|delete)\s*\(/g
       ) || []),
       ...(c.match(
         /\.from\(\s*["']club_membership_requests_v42["']\s*\)[\s\S]{0,240}?\.(insert|update|upsert|delete)\s*\(/g
       ) || []),
+    ],
+  },
+  {
+    id: "member-command-rpc-bypass-in-ui",
+    description:
+      "Phase 45A.4C.4 — UI must not call add/remove member RPCs or wrappers directly; go through clubMemberService.",
+    onlyIn: ["src/context/", "src/pages/", "src/components/"],
+    match: (c) => [
+      ...(c.match(/\brpcV2ClubAddMember\s*\(/g) || []),
+      ...(c.match(/\brpcV2ClubRemoveMember\s*\(/g) || []),
+      ...(c.match(/\.rpc\(\s*["']club_add_member["']/g) || []),
+      ...(c.match(/\.rpc\(\s*["']club_remove_member["']/g) || []),
+      ...(c.match(/callRpc\(\s*["']club_add_member["']/g) || []),
+      ...(c.match(/callRpc\(\s*["']club_remove_member["']/g) || []),
+    ],
+  },
+  {
+    id: "member-command-rpc-transport-only",
+    description:
+      "Phase 45A.4C.4 — club_add_member / club_remove_member callRpc/.rpc may only live in clubStorageV2RpcService.",
+    allow: ["src/features/club/services/clubStorageV2RpcService.js"],
+    match: (c) => [
+      ...(c.match(/callRpc\(\s*["']club_add_member["']/g) || []),
+      ...(c.match(/callRpc\(\s*["']club_remove_member["']/g) || []),
+      ...(c.match(/\.rpc\(\s*["']club_add_member["']/g) || []),
+      ...(c.match(/\.rpc\(\s*["']club_remove_member["']/g) || []),
+    ],
+  },
+  {
+    id: "member-command-rpcV2-orchestrator-only",
+    description:
+      "Phase 45A.4C.4 — rpcV2ClubAddMember/RemoveMember may only be invoked from clubMemberService (definitions in transport).",
+    allow: [
+      "src/features/club/services/clubMemberService.js",
+      "src/features/club/services/clubStorageV2RpcService.js",
+    ],
+    match: (c) => [
+      ...(c.match(/\brpcV2ClubAddMember\s*\(/g) || []),
+      ...(c.match(/\brpcV2ClubRemoveMember\s*\(/g) || []),
     ],
   },
   {

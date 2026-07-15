@@ -290,7 +290,7 @@ export async function leaveMyClub({ user, tenantId = null, clubId: clubIdOverrid
   const resolvedTenantId =
     tenantId || club.venueId || club.tenantId || athlete.tenantId || athlete.venueId || null;
 
-  const memberResult = removeMemberFromClub(clubId, playerId, resolvedTenantId, {
+  const memberResult = await removeMemberFromClub(clubId, playerId, resolvedTenantId, {
     skipPermissionGuard: true,
   });
 
@@ -321,6 +321,33 @@ export async function adminLinkAccountOnlyAthleteToClub({ clubId, user, tenantId
   const club = getRegistryClubById(trimmedClubId);
   const resolvedTenantId =
     tenantId || club?.venueId || club?.tenantId || normalizedUser.tenantId || normalizedUser.venueId || null;
+
+  // Phase 45A.4C.4 — V2: canonical club_add_member by auth user_id; no blob roster write.
+  if (isClubStorageV2Enabled()) {
+    const memberResult = await addMemberToClub(trimmedClubId, null, resolvedTenantId, {
+      skipPermissionGuard: true,
+      targetUserId: normalizedUser.id,
+    });
+    if (!memberResult.ok) {
+      return memberResult;
+    }
+    const linkResult = await linkAthleteProfile({
+      userId: normalizedUser.id,
+      clubId: trimmedClubId,
+      playerId: normalizedUser.id,
+    });
+    if (!linkResult.ok) {
+      return linkResult;
+    }
+    return {
+      ok: true,
+      playerId: normalizedUser.id,
+      clubId: trimmedClubId,
+      memberId: memberResult.member?.id || null,
+      provider: "v2-rpc",
+      created: true,
+    };
+  }
 
   const ensureResult = ensurePlayerInClubBlob({
     clubId: trimmedClubId,
@@ -752,7 +779,7 @@ export async function approveClubMembershipRequest(clubId, requestId, tenantId, 
     return playerResult;
   }
 
-  const memberResult = addMemberToClub(clubId, playerResult.player.id, tenantId, {
+  const memberResult = await addMemberToClub(clubId, playerResult.player.id, tenantId, {
     skipPermissionGuard: true,
   });
 

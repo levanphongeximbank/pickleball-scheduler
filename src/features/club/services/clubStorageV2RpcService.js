@@ -324,6 +324,60 @@ export async function rpcV2ClubLeaveMembership({
   });
 }
 
+/**
+ * Phase 45A.4C.4 — canonical admin add / reactivate-left member.
+ * Signature: club_add_member(uuid, text, uuid, text, integer)
+ */
+export async function rpcV2ClubAddMember({
+  clubId,
+  targetUserId,
+  membershipType = "regular",
+  expectedVersion = null,
+  requestId = newRequestId(),
+} = {}) {
+  const result = await callRpc("club_add_member", {
+    p_request_id: requestId,
+    p_club_id: clubId,
+    p_target_user_id: targetUserId,
+    p_membership_type: membershipType ?? "regular",
+    p_expected_version: expectedVersion ?? null,
+  });
+  if (!result.ok) {
+    return result;
+  }
+  return {
+    ok: true,
+    member: result.data || null,
+    version: result.version ?? null,
+  };
+}
+
+/**
+ * Phase 45A.4C.4 — canonical admin soft-remove member (status='removed').
+ * Signature: club_remove_member(uuid, text, uuid, integer)
+ */
+export async function rpcV2ClubRemoveMember({
+  clubId,
+  targetUserId,
+  expectedVersion = null,
+  requestId = newRequestId(),
+} = {}) {
+  const result = await callRpc("club_remove_member", {
+    p_request_id: requestId,
+    p_club_id: clubId,
+    p_target_user_id: targetUserId,
+    p_expected_version: expectedVersion ?? null,
+  });
+  if (!result.ok) {
+    return result;
+  }
+  return {
+    ok: true,
+    member: result.data || null,
+    version: result.version ?? null,
+  };
+}
+
 export async function rpcV2GetMyActiveMembership() {
   const result = await callRpc("club_get_my_active_membership", {});
   if (!result.ok) {

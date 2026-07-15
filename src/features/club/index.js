@@ -97,6 +97,9 @@ export {
   removeMemberFromClub,
   updateClubMemberRole,
   updateClubMemberStatus,
+  resolveTargetUserIdForMemberCommand,
+  probeClubMemberMutationAccess,
+  isProtectedGovernanceMember,
 } from "./services/clubMemberService.js";
 
 export {
@@ -168,6 +171,8 @@ export {
   rpcV2ClubClearOwner,
   rpcV2ClubTransferPresident,
   rpcV2ClubLeaveMembership,
+  rpcV2ClubAddMember,
+  rpcV2ClubRemoveMember,
   rpcV2GetMyActiveMembership,
   mapV2ClubToUiClub,
 } from "./services/clubStorageV2RpcService.js";

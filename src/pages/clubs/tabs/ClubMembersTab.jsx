@@ -49,6 +49,8 @@ import {
   mapV2MemberRowToUi,
   approveClubMembershipRequest,
   rejectClubMembershipRequest,
+  probeClubMemberMutationAccess,
+  isProtectedGovernanceMember,
 } from "../../../features/club/index.js";
 import { canonicalMembershipRepository } from "../../../features/club/repositories/index.js";
 import { isCanonicalClubRepositoryEnabled } from "../../../features/club/config/canonicalRepositoryFlags.js";
@@ -78,6 +80,8 @@ export default function ClubMembersTab({ club, tenantId, onRefresh }) {
     list: [],
     errorCode: null,
   });
+  const [memberCommandReady, setMemberCommandReady] = useState(!isClubStorageV2Enabled());
+  const [mutationBusy, setMutationBusy] = useState(false);
 
   const fullAccess = canViewFullClubMembers(user, club);
   const canApproveRequests = canApproveClubMembershipRequests(user, club);
@@ -124,12 +128,28 @@ export default function ClubMembersTab({ club, tenantId, onRefresh }) {
       !isAuthenticated ||
       can(PERMISSIONS.PLAYER_UPDATE, { clubId: club.id, venueId: tenantId }));
 
-  // Phase 43B.1 / 45A.2 — member list is server-owned when cloud membership is authoritative.
-  // Mutation controls (add/remove/role/status) still write the legacy local blob, so they are
-  // gated OFF in canonical mode until the Membership command cutover (Phase 45A.4).
-  const mutationsEnabled = canManage && !canonicalMembershipRead;
+  // Phase 45A.4C.4 — add/remove enabled under V2 when mutation RPC probe passes.
+  // Role/status remain legacy-only (disabled while canonical membership read is on).
+  const addRemoveEnabled = canManage && (canonicalMembershipRead ? memberCommandReady : true);
+  const roleStatusEnabled = canManage && !canonicalMembershipRead;
+  const canRemoveMembers = canDeleteClubMembers(user, club) && addRemoveEnabled;
 
-  const canRemoveMembers = canDeleteClubMembers(user, club) && mutationsEnabled;
+  useEffect(() => {
+    let cancelled = false;
+    if (!canonicalMembershipRead) {
+      setMemberCommandReady(true);
+      return undefined;
+    }
+    setMemberCommandReady(false);
+    void probeClubMemberMutationAccess(club.id).then((result) => {
+      if (!cancelled) {
+        setMemberCommandReady(Boolean(result?.ok));
+      }
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [club.id, canonicalMembershipRead]);
 
   useEffect(() => {
     let cancelled = false;
@@ -202,41 +222,72 @@ export default function ClubMembersTab({ club, tenantId, onRefresh }) {
     [ratings]
   );
 
-  const existingMemberIds = useMemo(
-    () => new Set(members.filter((m) => m.status === CLUB_MEMBER_STATUSES.ACTIVE).map((m) => m.playerId)),
-    [members]
-  );
-
-  const availablePlayers = useMemo(
-    () => getTenantPlayers(tenantId).filter((p) => !existingMemberIds.has(p.id)),
-    [tenantId, existingMemberIds, revision]
-  );
-
-  const handleAdd = () => {
-    const result = addMemberToClub(club.id, selectedPlayerId, tenantId);
-    if (!result.ok) {
-      setError(result.error);
-      return;
+  const existingMemberIds = useMemo(() => {
+    const ids = new Set();
+    for (const m of members) {
+      if (m.status !== CLUB_MEMBER_STATUSES.ACTIVE) continue;
+      if (m.userId) ids.add(m.userId);
+      if (m.playerId) ids.add(m.playerId);
     }
-    setAddOpen(false);
-    setSelectedPlayerId("");
-    setRevision((v) => v + 1);
-    onRefresh?.();
+    return ids;
+  }, [members]);
+
+  const availablePlayers = useMemo(() => {
+    return getTenantPlayers(tenantId).filter((p) => {
+      if (existingMemberIds.has(p.id)) return false;
+      const authId = String(p.authUserId || "").trim();
+      if (authId && existingMemberIds.has(authId)) return false;
+      return true;
+    });
+  }, [tenantId, existingMemberIds, revision]);
+
+  const handleAdd = async () => {
+    if (!selectedPlayerId || mutationBusy) return;
+    setError(null);
+    setMutationBusy(true);
+    try {
+      const result = await addMemberToClub(club.id, selectedPlayerId, tenantId);
+      if (!result.ok) {
+        setError(result.error || "Không thêm được thành viên.");
+        return;
+      }
+      setAddOpen(false);
+      setSelectedPlayerId("");
+      setRevision((v) => v + 1);
+      onRefresh?.();
+    } finally {
+      setMutationBusy(false);
+    }
   };
 
-  const handleRemove = () => {
-    if (!removeTarget) return;
-    const result = removeMemberFromClub(club.id, removeTarget.playerId, tenantId);
-    if (!result.ok) {
-      setError(result.error);
+  const handleRemove = async () => {
+    if (!removeTarget || mutationBusy) return;
+    if (isProtectedGovernanceMember(removeTarget)) {
+      setError("Chủ tịch/Chủ sở hữu phải chuyển quyền trước khi bị gỡ.");
+      setRemoveTarget(null);
       return;
     }
-    setRemoveTarget(null);
-    setRevision((v) => v + 1);
-    onRefresh?.();
+    setError(null);
+    setMutationBusy(true);
+    try {
+      const result = await removeMemberFromClub(club.id, removeTarget.playerId, tenantId, {
+        targetUserId: removeTarget.userId || null,
+        expectedVersion: removeTarget.version ?? null,
+      });
+      if (!result.ok) {
+        setError(result.error || "Không gỡ được thành viên.");
+        return;
+      }
+      setRemoveTarget(null);
+      setRevision((v) => v + 1);
+      onRefresh?.();
+    } finally {
+      setMutationBusy(false);
+    }
   };
 
   const handleRoleChange = (playerId, role) => {
+    if (!roleStatusEnabled) return;
     const result = updateClubMemberRole(club.id, playerId, role, tenantId);
     if (!result.ok) {
       setError(result.error);
@@ -247,6 +298,7 @@ export default function ClubMembersTab({ club, tenantId, onRefresh }) {
   };
 
   const handleStatusToggle = (member) => {
+    if (!roleStatusEnabled) return;
     const nextStatus =
       member.status === CLUB_MEMBER_STATUSES.ACTIVE
         ? CLUB_MEMBER_STATUSES.INACTIVE
@@ -424,10 +476,16 @@ export default function ClubMembersTab({ club, tenantId, onRefresh }) {
         </Box>
       )}
 
-      {canonicalMembershipRead && canManage && (
+      {canonicalMembershipRead && canManage && !addRemoveEnabled && (
         <Alert severity="info" sx={{ mb: 2 }}>
-          Danh sách thành viên lấy trực tiếp từ máy chủ (Club Storage V2). Thao tác thêm / xóa /
-          đổi vai trò tạm thời tắt ở màn hình này cho đến khi chuyển sang lệnh V2.
+          Danh sách thành viên lấy từ máy chủ (Club Storage V2). Đang kiểm tra lệnh thêm/gỡ
+          thành viên cloud…
+        </Alert>
+      )}
+      {canonicalMembershipRead && canManage && addRemoveEnabled && (
+        <Alert severity="info" sx={{ mb: 2 }}>
+          Danh sách thành viên lấy từ máy chủ (Club Storage V2). Thêm / gỡ thành viên chạy qua
+          lệnh cloud. Đổi vai trò / trạng thái tạm thời tắt.
         </Alert>
       )}
 
@@ -441,8 +499,14 @@ export default function ClubMembersTab({ club, tenantId, onRefresh }) {
         <Typography variant="subtitle1" fontWeight={600}>
           {countActiveClubMembers(members)} thành viên đang hoạt động
         </Typography>
-        {mutationsEnabled && (
-          <Button startIcon={<AddIcon />} variant="contained" size="small" onClick={() => setAddOpen(true)}>
+        {addRemoveEnabled && (
+          <Button
+            startIcon={<AddIcon />}
+            variant="contained"
+            size="small"
+            disabled={mutationBusy}
+            onClick={() => setAddOpen(true)}
+          >
             Thêm thành viên
           </Button>
         )}
@@ -482,13 +546,13 @@ export default function ClubMembersTab({ club, tenantId, onRefresh }) {
                 const rating = ratingByPlayer.get(member.playerId);
                 return (
                   <TableRow key={member.id} hover>
-                    <TableCell>{player?.name || member.playerId}</TableCell>
+                    <TableCell>{member.displayName || player?.name || member.playerId}</TableCell>
                     <TableCell>{player?.phone || "—"}</TableCell>
                     <TableCell>{player?.gender || "—"}</TableCell>
                     <TableCell>{player?.level ?? rating?.level ?? "—"}</TableCell>
                     <TableCell align="right">{rating?.elo ?? "—"}</TableCell>
                     <TableCell>
-                      {mutationsEnabled ? (
+                      {roleStatusEnabled ? (
                         <TextField
                           select
                           size="small"
@@ -503,7 +567,10 @@ export default function ClubMembersTab({ club, tenantId, onRefresh }) {
                           ))}
                         </TextField>
                       ) : (
-                        CLUB_MEMBER_ROLE_LABELS[member.role] || member.role
+                        CLUB_MEMBER_ROLE_LABELS[member.role] ||
+                        (Array.isArray(member.governanceRoles) && member.governanceRoles.length
+                          ? member.governanceRoles.join(", ")
+                          : "Thành viên")
                       )}
                     </TableCell>
                     <TableCell>
@@ -517,7 +584,7 @@ export default function ClubMembersTab({ club, tenantId, onRefresh }) {
                         label={getClubMemberStatusLabel(member.status)}
                         color={isClubMemberStatusActive(member.status) ? "success" : "default"}
                         onClick={
-                          mutationsEnabled &&
+                          roleStatusEnabled &&
                           (isClubMemberStatusActive(member.status) ||
                             member.status === CLUB_MEMBER_STATUSES.INACTIVE)
                             ? () => handleStatusToggle(member)
@@ -527,11 +594,19 @@ export default function ClubMembersTab({ club, tenantId, onRefresh }) {
                     </TableCell>
                     {canRemoveMembers && (
                       <TableCell align="right">
-                        {isClubMemberStatusActive(member.status) && (
+                        {isClubMemberStatusActive(member.status) &&
+                          !isProtectedGovernanceMember(member) && (
                           <Tooltip title="Xóa khỏi CLB">
-                            <IconButton size="small" color="error" onClick={() => setRemoveTarget(member)}>
-                              <PersonRemoveIcon fontSize="small" />
-                            </IconButton>
+                            <span>
+                              <IconButton
+                                size="small"
+                                color="error"
+                                disabled={mutationBusy}
+                                onClick={() => setRemoveTarget(member)}
+                              >
+                                <PersonRemoveIcon fontSize="small" />
+                              </IconButton>
+                            </span>
                           </Tooltip>
                         )}
                       </TableCell>
@@ -566,26 +641,38 @@ export default function ClubMembersTab({ club, tenantId, onRefresh }) {
           </TextField>
         </DialogContent>
         <DialogActions>
-          <Button onClick={() => setAddOpen(false)}>Hủy</Button>
-          <Button variant="contained" disabled={!selectedPlayerId} onClick={handleAdd}>
-            Thêm
+          <Button onClick={() => setAddOpen(false)} disabled={mutationBusy}>
+            Hủy
+          </Button>
+          <Button
+            variant="contained"
+            disabled={!selectedPlayerId || mutationBusy}
+            onClick={handleAdd}
+          >
+            {mutationBusy ? "Đang thêm…" : "Thêm"}
           </Button>
         </DialogActions>
       </Dialog>
 
-      <Dialog open={Boolean(removeTarget)} onClose={() => setRemoveTarget(null)}>
+      <Dialog open={Boolean(removeTarget)} onClose={() => !mutationBusy && setRemoveTarget(null)}>
         <DialogTitle>Xóa thành viên</DialogTitle>
         <DialogContent>
           <Typography>
             Xóa{" "}
-            <strong>{playersById.get(removeTarget?.playerId)?.name || removeTarget?.playerId}</strong>{" "}
+            <strong>
+              {removeTarget?.displayName ||
+                playersById.get(removeTarget?.playerId)?.name ||
+                removeTarget?.playerId}
+            </strong>{" "}
             khỏi CLB?
           </Typography>
         </DialogContent>
         <DialogActions>
-          <Button onClick={() => setRemoveTarget(null)}>Hủy</Button>
-          <Button color="error" variant="contained" onClick={handleRemove}>
-            Xóa
+          <Button onClick={() => setRemoveTarget(null)} disabled={mutationBusy}>
+            Hủy
+          </Button>
+          <Button color="error" variant="contained" disabled={mutationBusy} onClick={handleRemove}>
+            {mutationBusy ? "Đang gỡ…" : "Xóa"}
           </Button>
         </DialogActions>
       </Dialog>
