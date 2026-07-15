@@ -40,6 +40,7 @@ export const PRIVATE_PAIRING_RPC = Object.freeze({
   DISABLE_RULE: "private_pairing_disable_rule",
   CLONE_RULE_SET: "private_pairing_clone_rule_set_version",
   ACTIVATE_RULE_SET: "private_pairing_activate_rule_set",
+  ARCHIVE_RULE_SET: "private_pairing_archive_rule_set",
   ROLLBACK_RULE_SET: "private_pairing_rollback_rule_set",
   LIST_AUDIT_LOGS: "private_pairing_list_audit_logs",
   GET_ACTIVE_FOR_SCOPE: "private_pairing_get_active_rules_for_scope",

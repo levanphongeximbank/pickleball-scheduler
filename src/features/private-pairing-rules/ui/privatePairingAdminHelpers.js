@@ -130,6 +130,13 @@ export function filterRuleSets(ruleSets, filters = {}) {
   const q = String(filters.search || "").trim().toLowerCase();
   return (ruleSets || []).filter((rs) => {
     if (filters.status && String(rs.status) !== filters.status) return false;
+    if (
+      filters.hideArchived &&
+      filters.status !== "archived" &&
+      String(rs.status) === "archived"
+    ) {
+      return false;
+    }
     if (filters.scopeType && String(rs.scope_type || rs.scopeType) !== filters.scopeType) {
       return false;
     }

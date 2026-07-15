@@ -251,6 +251,21 @@ export async function activatePrivatePairingRuleSet(
   );
 }
 
+export async function archivePrivatePairingRuleSet(
+  { ruleSetId, reason, requestId = null },
+  envSource
+) {
+  return callRpc(
+    PRIVATE_PAIRING_RPC.ARCHIVE_RULE_SET,
+    {
+      p_rule_set_id: ruleSetId,
+      p_reason: reason,
+      p_request_id: requestId,
+    },
+    envSource
+  );
+}
+
 export async function rollbackPrivatePairingRuleSet(
   { sourceRuleSetId, reason, requestId = null },
   envSource

@@ -9,6 +9,7 @@ export {
   updatePrivatePairingRuleViaRpc as updatePrivatePairingRule,
   disablePrivatePairingRuleViaRpc as disablePrivatePairingRule,
   clonePrivatePairingRuleSetVersion,
+  archivePrivatePairingRuleSet,
   rollbackPrivatePairingRuleSet,
   listPrivatePairingAuditLogs,
   activatePrivatePairingRuleSetWithPreflight,

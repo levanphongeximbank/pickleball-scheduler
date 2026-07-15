@@ -4,6 +4,7 @@ import {
   Autocomplete,
   Box,
   Button,
+  Checkbox,
   Chip,
   Dialog,
   DialogActions,
@@ -11,6 +12,7 @@ import {
   DialogTitle,
   Divider,
   FormControl,
+  FormControlLabel,
   InputLabel,
   MenuItem,
   Paper,
@@ -27,6 +29,7 @@ import {
   Typography,
 } from "@mui/material";
 import AdminPanelSettingsIcon from "@mui/icons-material/AdminPanelSettings";
+import ArchiveIcon from "@mui/icons-material/Archive";
 import RefreshIcon from "@mui/icons-material/Refresh";
 
 import { useAuth } from "../../../context/AuthContext.jsx";
@@ -36,6 +39,7 @@ import SuperAdminFeatureGate from "../../pairing-constraints/components/SuperAdm
 import { getExplicitTenantIdForClub } from "../../tenant/index.js";
 import {
   activatePrivatePairingRuleSetWithPreflight,
+  archivePrivatePairingRuleSet,
   canAuditPrivatePairingRules,
   canManagePrivatePairingRules,
   canSimulatePrivatePairingRules,
@@ -128,6 +132,7 @@ function PrivatePairingRulesAdminInner() {
   const [listSearch, setListSearch] = useState("");
   const [listStatus, setListStatus] = useState("");
   const [listScopeType, setListScopeType] = useState("");
+  const [hideArchived, setHideArchived] = useState(true);
 
   const [ruleSearch, setRuleSearch] = useState("");
   const [ruleSeverity, setRuleSeverity] = useState("");
@@ -340,8 +345,9 @@ function PrivatePairingRulesAdminInner() {
         search: listSearch,
         status: listStatus,
         scopeType: listScopeType,
+        hideArchived,
       }),
-    [ruleSets, listSearch, listStatus, listScopeType]
+    [ruleSets, listSearch, listStatus, listScopeType, hideArchived]
   );
 
   const activeVersionForScope = useMemo(() => {
@@ -581,6 +587,35 @@ function PrivatePairingRulesAdminInner() {
     if (newId) setSelectedRuleSetId(newId);
   };
 
+  const handleArchiveRuleSet = async () => {
+    if (!selectedRuleSetId) return;
+    const reason =
+      (actionReason && actionReason.trim()) ||
+      (window.prompt("Lý do lưu trữ / ẩn bộ quy tắc:", "archive-rule-set") || "").trim();
+    if (!reason) {
+      setError("Cần nhập lý do để lưu trữ / ẩn bộ quy tắc.");
+      return;
+    }
+    if (
+      !window.confirm(
+        "Lưu trữ sẽ ẩn bộ quy tắc khỏi danh sách (xóa mềm — vẫn giữ lịch sử, không xóa cứng). Tiếp tục?"
+      )
+    ) {
+      return;
+    }
+    const result = await archivePrivatePairingRuleSet({
+      ruleSetId: selectedRuleSetId,
+      reason,
+    });
+    if (!result.ok) {
+      setError(errMsg(result));
+      return;
+    }
+    setMessage("Đã lưu trữ / ẩn bộ quy tắc (xóa mềm).");
+    setSelectedRuleSetId(null);
+    await refreshList();
+  };
+
   const handleConflictCheck = () => {
     const result = detectPrivatePairingConflicts(rules.filter((r) => r.active !== false), {
       teamSize: 2,
@@ -684,6 +719,16 @@ function PrivatePairingRulesAdminInner() {
               ))}
             </Select>
           </FormControl>
+          <FormControlLabel
+            control={
+              <Checkbox
+                size="small"
+                checked={hideArchived}
+                onChange={(e) => setHideArchived(e.target.checked)}
+              />
+            }
+            label="Ẩn mục đã lưu trữ"
+          />
           <Button startIcon={<RefreshIcon />} onClick={refreshList} disabled={loading} aria-label="Làm mới">
             Làm mới
           </Button>
@@ -770,6 +815,17 @@ function PrivatePairingRulesAdminInner() {
                 {canManage && (
                   <Button color="warning" onClick={handleRollback}>
                     Rollback Version
+                  </Button>
+                )}
+                {canManage && selectedRuleSetMeta.status !== "archived" && (
+                  <Button
+                    color="error"
+                    variant="outlined"
+                    startIcon={<ArchiveIcon />}
+                    onClick={handleArchiveRuleSet}
+                    aria-label="Lưu trữ / ẩn bộ quy tắc"
+                  >
+                    Lưu trữ / Ẩn
                   </Button>
                 )}
               </Stack>

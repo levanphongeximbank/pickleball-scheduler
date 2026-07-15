@@ -98,6 +98,7 @@ export {
   disablePrivatePairingRule as disablePrivatePairingRuleViaRpc,
   clonePrivatePairingRuleSetVersion,
   activatePrivatePairingRuleSet as activatePrivatePairingRuleSetViaRpc,
+  archivePrivatePairingRuleSet,
   rollbackPrivatePairingRuleSet,
   listPrivatePairingAuditLogs,
 } from "./repository/privatePairingRulesRepository.js";
