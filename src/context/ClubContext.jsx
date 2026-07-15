@@ -8,23 +8,24 @@ import {
   loadClubs,
 } from "../data/club.js";
 import {
-  createClub,
   deleteClub,
   getClubSummary,
-  renameClub,
   switchActiveClub,
   switchActiveClubCanonical,
 } from "../domain/clubService.js";
-import { ensureMonthlySkillLevelProposals } from "../domain/skillLevelService.js";
-import { useAuth } from "./AuthContext.jsx";
-import { useTenant } from "./TenantContext.jsx";
-import { canAccessClub } from "../auth/rbac.js";
 import {
-  listClubsForTenant,
-} from "../features/tenant/guards/tenantGuard.js";
-import { autoPullOnClubActivate, isAiAutoCloudSyncEnabled } from "../ai/autoCloudSync.js";
+  createClub as createClubOffline,
+  renameClub as renameClubOffline,
+} from "../features/club/services/clubOfflineCommandAdapter.js";
+import {
+  createClub as createClubCommand,
+  updateClub as updateClubCommand,
+} from "../features/club/services/clubTenantService.js";
 import { syncClubRegistryForUser } from "../features/club/services/clubRegistryCloudSync.js";
-import { isClubRegistryCloudEnabled } from "../features/club/config/clubRegistryFlags.js";
+import {
+  isClubRegistryCloudEnabled,
+  isClubStorageV2Enabled,
+} from "../features/club/config/clubRegistryFlags.js";
 import { isClubDataDirty } from "../domain/clubSyncMetadata.js";
 import { PERMISSIONS } from "../auth/permissions.js";
 import { pullClubFromCloud } from "../ai/cloudSync.js";
@@ -44,6 +45,14 @@ import {
   resolveActiveClubSelection,
   toClubReadSnapshot,
 } from "../features/club/context/clubCanonicalReadModel.js";
+import { ensureMonthlySkillLevelProposals } from "../domain/skillLevelService.js";
+import { useAuth } from "./AuthContext.jsx";
+import { useTenant } from "./TenantContext.jsx";
+import { canAccessClub } from "../auth/rbac.js";
+import {
+  listClubsForTenant,
+} from "../features/tenant/guards/tenantGuard.js";
+import { autoPullOnClubActivate, isAiAutoCloudSyncEnabled } from "../ai/autoCloudSync.js";
 
 const ClubContext = createContext(null);
 
@@ -245,15 +254,22 @@ export function ClubProvider({ children }) {
     const tenantClubs = listClubsForTenant(currentTenantId);
     if (tenantClubs.length === 0) {
       if (user && isVenueScopedRole(user.role)) {
-        const ensured = ensureWritableClubForVenueOwner(user, { activeClubId });
-        if (ensured.ok && ensured.clubId && ensured.clubId !== activeClubId) {
-          setClubs(loadClubs());
-          setActiveClubId(ensured.clubId);
-          setRevision((value) => value + 1);
-        } else if (ensured.ok && ensured.created) {
-          setClubs(loadClubs());
-          setRevision((value) => value + 1);
-        }
+        void Promise.resolve(ensureWritableClubForVenueOwner(user, { activeClubId })).then(
+          (ensured) => {
+            if (!ensured?.ok) {
+              return;
+            }
+            if (ensured.clubId && ensured.clubId !== activeClubId) {
+              setClubs(loadClubs());
+              setActiveClubId(ensured.clubId);
+              setRevision((value) => value + 1);
+            } else if (ensured.created) {
+              setClubs(loadClubs());
+              setCanonicalReloadNonce((value) => value + 1);
+              setRevision((value) => value + 1);
+            }
+          }
+        );
       }
       return;
     }
@@ -522,23 +538,26 @@ export function ClubProvider({ children }) {
     [canonicalRead, isAuthenticated, rbacEnabled, user?.id, visibleClubs]
   );
 
-  // Create/rename/delete remain blob commands in 45A.1 (command cutover = 45A.3).
-  // After a command we re-hydrate the canonical read snapshot so the read
-  // gateway stays the single source for the displayed list.
+  // Phase 45A.3D — create/rename route through clubTenantService under V2.
+  // Offline/V2-OFF keeps domain/clubService adapters.
   const handleCreateClub = useCallback(
-    (name) => {
-      const result = createClub(name);
+    async (name) => {
+      const result = isClubStorageV2Enabled()
+        ? await createClubCommand({ name })
+        : createClubOffline(name);
 
       if (!result.ok) {
         return result;
       }
 
-      if (canonicalRead) {
+      if (canonicalRead || isClubStorageV2Enabled()) {
         setCanonicalReloadNonce((value) => value + 1);
       } else {
         setClubs(loadClubs());
       }
-      setActiveClubId(result.club.id);
+      if (result.club?.id) {
+        setActiveClubId(result.club.id);
+      }
       setRevision((value) => value + 1);
       return result;
     },
@@ -546,14 +565,24 @@ export function ClubProvider({ children }) {
   );
 
   const handleRenameClub = useCallback(
-    (clubId, name) => {
-      const result = renameClub(clubId, name);
+    async (clubId, name) => {
+      const result = isClubStorageV2Enabled()
+        ? await updateClubCommand(clubId, {
+            name,
+            expectedClubVersion:
+              (canonicalRead
+                ? canonicalClubs.find((c) => c.id === clubId)?.version
+                : null) ??
+              clubs.find((c) => c.id === clubId)?.version ??
+              undefined,
+          })
+        : renameClubOffline(clubId, name);
 
       if (!result.ok) {
         return result;
       }
 
-      if (canonicalRead) {
+      if (canonicalRead || isClubStorageV2Enabled()) {
         setCanonicalReloadNonce((value) => value + 1);
       } else {
         setClubs(loadClubs());
@@ -561,7 +590,7 @@ export function ClubProvider({ children }) {
       setRevision((value) => value + 1);
       return result;
     },
-    [canonicalRead]
+    [canonicalRead, canonicalClubs, clubs]
   );
 
   const handleDeleteClub = useCallback(

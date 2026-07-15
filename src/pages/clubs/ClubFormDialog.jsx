@@ -209,16 +209,20 @@ export default function ClubFormDialog({
 
     const payload = {
       name: form.name.trim(),
-      code: form.code.trim() || null,
+      // Edit: empty string clears nullable code (club_update semantics).
+      // Create: empty → null.
+      code: isEdit ? form.code.trim() : form.code.trim() || null,
       description: form.description.trim(),
       status: form.status,
       tenantId,
       assignOwnerToCreator: form.assignOwnerToCreator,
+      expectedClubVersion: club?.version,
       governance,
+      registeredClusterId,
     };
 
     const result = isEdit
-      ? updateClub(club.id, payload, tenantId)
+      ? await updateClub(club.id, payload, tenantId)
       : await createClub(payload);
 
     setSaving(false);

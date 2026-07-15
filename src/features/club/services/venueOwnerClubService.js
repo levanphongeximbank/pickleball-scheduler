@@ -4,7 +4,6 @@ import { canAccessClub } from "../../../auth/rbac.js";
 import { isVenueScopedRole } from "../../../auth/roles.js";
 import {
   bindClubVenueRegistry,
-  createClub,
   getClubById,
   switchActiveClub,
 } from "../../../domain/clubService.js";
@@ -14,6 +13,10 @@ import {
   listClubsForTenant,
 } from "../../tenant/guards/tenantGuard.js";
 import { loadClubs } from "../../../data/club.js";
+import { createClub as createClubOffline } from "./clubOfflineCommandAdapter.js";
+import { createClub as createClubCommand } from "./clubTenantService.js";
+import { isClubStorageV2Enabled } from "../config/clubRegistryFlags.js";
+import { API_ERROR_CODES } from "../../api/constants/apiErrors.js";
 
 function findClubForVenue(venueId) {
   return loadClubs().find((club) => {
@@ -54,9 +57,10 @@ function isClubWritableForVenueOwner(user, clubId, venueId) {
 }
 
 /**
- * Đảm bảo chủ sân có CLB writable thuộc venue — tạo mới hoặc đồng bộ tenant nếu cần.
+ * Ensure a venue owner has a writable club — create or bind when needed.
+ * Phase 45A.3D: under V2, create goes through clubTenantService → club_create.
  */
-export function ensureWritableClubForVenueOwner(user, options = {}) {
+export async function ensureWritableClubForVenueOwner(user, options = {}) {
   const { activeClubId = getActiveClubId(), switchIfNeeded = true } = options;
 
   if (!isRbacEnabled() || !user || !isVenueScopedRole(user.role)) {
@@ -68,7 +72,7 @@ export function ensureWritableClubForVenueOwner(user, options = {}) {
     return {
       ok: false,
       error: "Tài khoản chưa được gán cơ sở. Liên hệ quản trị viên.",
-      code: "VENUE_UNASSIGNED",
+      code: API_ERROR_CODES.TENANT_MISMATCH,
     };
   }
 
@@ -78,13 +82,23 @@ export function ensureWritableClubForVenueOwner(user, options = {}) {
   if (!targetClub) {
     const venue = getVenueById(venueId);
     const clubName = venue?.name ? `CLB ${venue.name}` : "CLB chính";
-    const created = createClub(clubName);
+    const created = isClubStorageV2Enabled()
+      ? await createClubCommand({ name: clubName, tenantId: venueId })
+      : createClubOffline(clubName);
     if (!created.ok) {
       return created;
     }
     targetClub = created.club;
     wasCreated = true;
-  } else {
+
+    if (!isClubStorageV2Enabled() && targetClub?.id) {
+      const bound = syncClubVenueBinding(targetClub.id, venueId);
+      if (!bound.ok) {
+        return bound;
+      }
+      targetClub = bound.club || getClubById(targetClub.id) || targetClub;
+    }
+  } else if (!isClubStorageV2Enabled()) {
     const synced = syncClubVenueBinding(targetClub.id, venueId);
     if (!synced.ok) {
       return synced;
@@ -92,24 +106,33 @@ export function ensureWritableClubForVenueOwner(user, options = {}) {
     targetClub = synced.club || getClubById(targetClub.id) || targetClub;
   }
 
-  if (!isClubWritableForVenueOwner(user, targetClub.id, venueId)) {
-    return {
-      ok: false,
-      error: "Không có quyền truy cập CLB này.",
-      code: "FORBIDDEN",
-    };
+  // Under V2, cloud-created clubs may not yet be in local blob — skip blob access gate.
+  if (!isClubStorageV2Enabled()) {
+    if (!isClubWritableForVenueOwner(user, targetClub.id, venueId)) {
+      return {
+        ok: false,
+        error: "Không có quyền truy cập CLB này.",
+        code: API_ERROR_CODES.FORBIDDEN,
+      };
+    }
   }
 
   const tenantClubs = listClubsForTenant(venueId);
   const activeWritable =
     activeClubId &&
-    tenantClubs.some((club) => club.id === activeClubId) &&
-    isClubWritableForVenueOwner(user, activeClubId, venueId);
+    (isClubStorageV2Enabled()
+      ? activeClubId === targetClub.id
+      : tenantClubs.some((club) => club.id === activeClubId) &&
+        isClubWritableForVenueOwner(user, activeClubId, venueId));
 
   if (switchIfNeeded && !activeWritable && targetClub.id !== activeClubId) {
-    const switched = switchActiveClub(targetClub.id);
-    if (!switched.ok) {
-      return switched;
+    if (isClubStorageV2Enabled()) {
+      // Selection is revalidated by ClubContext after canonical rehydrate.
+    } else {
+      const switched = switchActiveClub(targetClub.id);
+      if (!switched.ok) {
+        return switched;
+      }
     }
   }
 
@@ -117,5 +140,6 @@ export function ensureWritableClubForVenueOwner(user, options = {}) {
     ok: true,
     clubId: activeWritable ? activeClubId : targetClub.id,
     created: wasCreated,
+    club: targetClub,
   };
 }

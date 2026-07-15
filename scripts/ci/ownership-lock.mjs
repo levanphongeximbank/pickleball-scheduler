@@ -235,6 +235,57 @@ const RULES = [
     ],
   },
   {
+    id: "club-entity-command-domain-in-ui",
+    description:
+      "Club CREATE/RENAME entity commands in UI/context must go through clubTenantService (Phase 45A.3D). Direct domain/clubService.createClub|renameClub imports are blocked; offline adapters live under clubOfflineCommandAdapter.",
+    onlyIn: ["src/context/", "src/pages/", "src/components/"],
+    match: (c) => {
+      // Match imports of createClub/renameClub from domain/clubService specifically.
+      const out = [];
+      const importRe =
+        /import\s*\{([^}]*)\}\s*from\s*["'][^"']*domain\/clubService\.js["']/g;
+      let m;
+      while ((m = importRe.exec(c)) !== null) {
+        const names = m[1];
+        if (/\bcreateClub\b/.test(names)) out.push("createClub from domain/clubService");
+        if (/\brenameClub\b/.test(names)) out.push("renameClub from domain/clubService");
+      }
+      return out;
+    },
+  },
+  {
+    id: "club-entity-command-rpc-bypass-in-ui",
+    description:
+      "UI/context must not call club_create/club_update or rpcV2ClubCreate/rpcV2ClubUpdate directly — go through clubTenantService.",
+    onlyIn: ["src/context/", "src/pages/", "src/components/"],
+    match: (c) => [
+      ...(c.match(/\brpcV2ClubCreate\s*\(/g) || []),
+      ...(c.match(/\brpcV2ClubUpdate\s*\(/g) || []),
+      ...(c.match(/\.rpc\(\s*["']club_create["']/g) || []),
+      ...(c.match(/\.rpc\(\s*["']club_update["']/g) || []),
+    ],
+  },
+  {
+    id: "club-entity-direct-table-write",
+    description:
+      "Direct public.clubs mutations must go through clubStorageV2RpcService (SECURITY DEFINER RPCs).",
+    allow: ["src/features/club/services/clubStorageV2RpcService.js"],
+    match: (c) =>
+      c.match(
+        /\.from\(\s*["']clubs["']\s*\)[\s\S]{0,240}?\.(insert|update|upsert|delete)\s*\(/g
+      ) || [],
+  },
+  {
+    id: "club-entity-legacy-dual-write-in-ui",
+    description:
+      "UI/context must not dual-write Club entities via persistClubToCloud / club_upsert_registry (legacy registry).",
+    onlyIn: ["src/context/", "src/pages/", "src/components/"],
+    match: (c) => [
+      ...(c.match(/\bpersistClubToCloud\s*\(/g) || []),
+      ...(c.match(/\brpcClubUpsertRegistry\s*\(/g) || []),
+    ],
+  },
+  {
     id: "global-unregistered-error-code",
     description:
       "New string-literal error codes in the API layer must be registered in API_ERROR_CODES.",

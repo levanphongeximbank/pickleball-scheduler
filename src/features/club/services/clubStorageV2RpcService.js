@@ -98,6 +98,64 @@ export async function rpcV2ClubCreate({
   };
 }
 
+/**
+ * Phase 45A.3D — canonical Club UPDATE transport.
+ *
+ * NULL-vs-empty semantics (must match public.club_update):
+ * - omitted / undefined argument → field NOT sent → SQL DEFAULT null → leave unchanged
+ * - explicit null → leave unchanged
+ * - empty string for code / registeredClusterId → clear to NULL
+ * - empty string for name → rejected by server (NAME_REQUIRED)
+ *
+ * Never writes blob / legacy club_governance.
+ */
+export async function rpcV2ClubUpdate({
+  clubId,
+  expectedClubVersion,
+  name,
+  code,
+  description,
+  status,
+  registeredClusterId,
+  requestId = newRequestId(),
+} = {}) {
+  const id = String(clubId || "").trim();
+  if (!id) {
+    return { ok: false, code: "CLUB_REQUIRED", error: "Thiếu id CLB." };
+  }
+  if (expectedClubVersion == null || !Number.isFinite(Number(expectedClubVersion))) {
+    return {
+      ok: false,
+      code: "VERSION_CONFLICT",
+      error: "Thiếu phiên bản CLB (expectedClubVersion).",
+    };
+  }
+
+  const args = {
+    p_request_id: requestId,
+    p_club_id: id,
+    p_expected_club_version: Number(expectedClubVersion),
+  };
+
+  // Only include changed fields so omitted = unchanged (PostgREST DEFAULT null).
+  if (name !== undefined) args.p_name = name;
+  if (code !== undefined) args.p_code = code;
+  if (description !== undefined) args.p_description = description;
+  if (status !== undefined) args.p_status = status;
+  if (registeredClusterId !== undefined) args.p_registered_cluster_id = registeredClusterId;
+
+  const result = await callRpc("club_update", args);
+  if (!result.ok) {
+    return result;
+  }
+  return {
+    ok: true,
+    club: mapV2ClubToUiClub(result.data),
+    version: result.version,
+    requestId,
+  };
+}
+
 export async function rpcV2ClubGet(clubId) {
   const result = await callRpc("club_get", { p_club_id: clubId });
   if (!result.ok) {

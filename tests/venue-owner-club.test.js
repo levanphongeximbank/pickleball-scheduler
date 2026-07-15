@@ -131,7 +131,7 @@ test("saveCourts — venue owner lưu sân khi club.venueId khớp profile", () 
   assert.equal(result.ok, true);
 });
 
-test("ensureWritableClubForVenueOwner — tạo CLB khi chưa có club thuộc venue", () => {
+test("ensureWritableClubForVenueOwner — tạo CLB khi chưa có club thuộc venue", async () => {
   saveClubs([DEFAULT_CLUB]);
   saveClubData(DEFAULT_CLUB.id, getDefaultClubData(DEFAULT_CLUB.id));
 
@@ -139,7 +139,9 @@ test("ensureWritableClubForVenueOwner — tạo CLB khi chưa có club thuộc v
   const owner = venueOwner();
   signInAs(owner);
 
-  const ensured = ensureWritableClubForVenueOwner(owner, { activeClubId: DEFAULT_CLUB.id });
+  const ensured = await ensureWritableClubForVenueOwner(owner, {
+    activeClubId: DEFAULT_CLUB.id,
+  });
   assert.equal(ensured.ok, true);
   assert.ok(ensured.clubId);
   assert.equal(ensured.created, true);

@@ -211,9 +211,9 @@ export default function ClubListPage() {
     bumpList();
   };
 
-  const handleDeactivate = () => {
+  const handleDeactivate = async () => {
     if (!deactivateTarget) return;
-    const result = deactivateClub(deactivateTarget.id, currentTenantId);
+    const result = await deactivateClub(deactivateTarget.id, currentTenantId);
     if (!result.ok) {
       setError(result.error);
       return;

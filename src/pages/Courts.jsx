@@ -97,19 +97,30 @@ export default function Courts() {
       return;
     }
 
-    const ensured = ensureWritableClubForVenueOwner(user, { activeClubId });
-    if (!ensured.ok) {
-      setClubBootstrapError(ensured.error || "Không thể khởi tạo CLB cho cơ sở.");
-      return;
-    }
+    let cancelled = false;
+    void Promise.resolve(ensureWritableClubForVenueOwner(user, { activeClubId })).then(
+      (ensured) => {
+        if (cancelled) {
+          return;
+        }
+        if (!ensured.ok) {
+          setClubBootstrapError(ensured.error || "Không thể khởi tạo CLB cho cơ sở.");
+          return;
+        }
 
-    setClubBootstrapError(null);
-    if (ensured.clubId) {
-      setWritableClubId(ensured.clubId);
-      if (ensured.created) {
-        refreshClubs();
+        setClubBootstrapError(null);
+        if (ensured.clubId) {
+          setWritableClubId(ensured.clubId);
+          if (ensured.created) {
+            refreshClubs();
+          }
+        }
       }
-    }
+    );
+
+    return () => {
+      cancelled = true;
+    };
   }, [activeClubId, isAuthenticated, rbacEnabled, refreshClubs, user]);
 
   useEffect(() => {
