@@ -1,13 +1,20 @@
 # Private Pairing Rules V2 — RC-1 Staging Release Candidate Report
 
-**Phase:** RC-1 — Staging Release Candidate (feature reopened for release)
+**Phase:** RC-1 → **RC-1e Production Go-Live** (owner reopened for full release)
 **Date:** 2026-07-15
 **Prepared by:** Release engineering (agent, isolated worktree)
-**Scope of this GO:** Staging only. **No** Production deploy / flags / migration / merge.
+**Scope of this GO:** Staging RC-1 **plus** owner-approved Production integration, deploy, and feature-flag enablement (RC-1e below).
 
 ---
 
 ## 0. Executive summary
+
+> **UPDATE — RC-1e Production Go-Live (2026-07-15):** Owner approved (a) integrating `main` into the feature branch, (b) merging to `main` + deploying Production, and (c) enabling all three feature flags on Production.
+> - **Integration merge:** `main` (`00c7345`) merged into `feature/private-pairing-rules-v2` (`7d0f6a4`) → merge commit `ec33adb`. Two conflicts resolved preserving both sides (`platformAthleteService.js`: canonical-aware with main's blob+V2 legacy fallback; `PrivatePairingRulesAdminView.jsx`: RC-1 version that already covers main's tenant/source-club fixes and keeps `CLUB scope_id = club_id`). Two pre-existing red tests aligned with shipped behavior. Build OK; `test:unit` **2277/2277**; private-pairing/canonical/athlete **140/140**; no new lint errors.
+> - **Merge to main:** `origin/main` fast-forwarded `00c7345 → ec33adb` (no force). Branch now 0 behind / ahead of main.
+> - **Production deploy:** Vercel Production build `1p35qdcas` **Ready**, aliased to `https://pickleball-scheduler-eight.vercel.app` (HTTP 200).
+> - **Production feature flags = ON (verified `true`):** `VITE_PRIVATE_PAIRING_RULES_ENABLED`, `VITE_UNIFIED_CONSTRAINT_ENGINE_ENABLED`, `VITE_PRIVATE_PAIRING_SIMULATION_ENABLED`. RBAC already ON by Production build default. Canonical repository flags remain OFF.
+> - **Note:** `VITE_UNIFIED_CONSTRAINT_ENGINE_ENABLED=true` means active private pairing rules will influence live pairing once created/activated (Production currently has 0 rule sets → no immediate behavioral change). Pending: owner SUPER_ADMIN UI smoke on Production.
 
 Private Pairing Rules V2 was reopened from `FEATURE COMPLETE — NOT RELEASED` for a **Staging Release Candidate**. No new features were added; the PR chain is closed. This RC-1 re-verifies the branch, the build, the test freeze, the staging database migration, feature-flag posture, security, and rollback.
 
@@ -23,8 +30,8 @@ Private Pairing Rules V2 was reopened from `FEATURE COMPLETE — NOT RELEASED` f
 
 | Item | Value |
 |------|-------|
-| Branch | `feature/private-pairing-rules-v2` |
-| Merged to production branch | **No** (forbidden this GO) |
+| Branch | `feature/private-pairing-rules-v2` (HEAD `ec33adb`) |
+| Merged to production branch | **Yes (RC-1e)** — `origin/main` fast-forwarded `00c7345 → ec33adb` on 2026-07-15 (owner-approved) |
 | PR chain | Closed at PR-5 (no PR-6; no new features) |
 
 ---
@@ -114,14 +121,15 @@ Evidence: `docs/v5/qa-evidence/phase-private-pairing-staging/STAGING_SECURITY_VE
 
 | Flag | Code default | Staging / Preview | Production |
 |------|--------------|-------------------|------------|
-| `VITE_PRIVATE_PAIRING_RULES_ENABLED` | `false` | `true` (set 2026-07-14, Preview) | **OFF / not set by this GO** |
-| `VITE_UNIFIED_CONSTRAINT_ENGINE_ENABLED` | `false` | `true` (set 2026-07-14, Preview) | **OFF / not set by this GO** |
-| `VITE_PRIVATE_PAIRING_SIMULATION_ENABLED` | `false` | `true` (set 2026-07-15, Preview — read-only sim for RC-1 E2E) | **OFF / not set by this GO** |
+| `VITE_PRIVATE_PAIRING_RULES_ENABLED` | `false` | `true` (Preview) | **`true` (RC-1e, 2026-07-15, verified)** |
+| `VITE_UNIFIED_CONSTRAINT_ENGINE_ENABLED` | `false` | `true` (Preview) | **`true` (RC-1e, 2026-07-15, verified)** |
+| `VITE_PRIVATE_PAIRING_SIMULATION_ENABLED` | `false` | `true` (Preview) | **`true` (RC-1e, 2026-07-15, verified)** |
 | `VITE_CANONICAL_CLUB_REPOSITORY_ENABLED` | `false` | dev/preview only | **OFF** |
 | `VITE_CANONICAL_PLAYER_REPOSITORY_ENABLED` | `false` | dev/preview only | **OFF** |
+| `VITE_RBAC_ENABLED` | prod default ON | ON | **ON (prod build default; empty env → `import.meta.env.PROD`)** |
 
 - Defaults verified OFF in `src/features/private-pairing-rules/constants/codes.js` and by test `feature flags default OFF`.
-- Vercel treats these as Sensitive; plaintext value confirmation on Preview is owner-manual (`vercel env pull` shows placeholders).
+- **RC-1e:** the three Production flags were re-stored as **Non-sensitive** (`VITE_*` flags are embedded in the client bundle, not secrets) so their values are auditable; `vercel env pull --environment=production` confirms all three `="true"`. Production build `1p35qdcas` was rebuilt after setting the flags so the values are baked in.
 
 ---
 
