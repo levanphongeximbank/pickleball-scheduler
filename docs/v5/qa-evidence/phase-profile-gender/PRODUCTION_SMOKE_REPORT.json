@@ -1,0 +1,161 @@
+{
+  "phase": "profile-gender-production-smoke",
+  "generatedAt": "2026-07-14T10:35:07.004Z",
+  "productionUrl": "https://pickleball-scheduler-eight.vercel.app",
+  "deploymentId": "dpl_A6fjxaa4SkTALu7xarFtGPX9GNim",
+  "sourceFixCommit": "3ca133132f7661825e353cdbc64b3ee432d619bf",
+  "raisePatchCommit": "04a648389821bde789ec7377c3055f55dac94c87",
+  "mainHeadCommit": "04a648389821bde789ec7377c3055f55dac94c87",
+  "qaEmail": "player@gmail.com",
+  "cases": [
+    {
+      "id": "LOGIN",
+      "verdict": "PASS",
+      "evidence": "magic-link player@gmail.com"
+    },
+    {
+      "id": "CASE_A",
+      "verdict": "PASS",
+      "evidence": "db=male ui=true",
+      "mutations": 1,
+      "payloadGender": [
+        "male"
+      ]
+    },
+    {
+      "id": "CASE_B",
+      "verdict": "PASS",
+      "evidence": "db=female ui=true",
+      "mutations": 1
+    },
+    {
+      "id": "CASE_C",
+      "verdict": "PASS",
+      "evidence": "db=other ui=true",
+      "mutations": 1
+    },
+    {
+      "id": "CASE_D",
+      "verdict": "PASS",
+      "evidence": "gender=other nameOk=true phoneOk=true",
+      "mutations": 1
+    },
+    {
+      "id": "CASE_E",
+      "verdict": "PASS",
+      "evidence": "gender=male fieldsPreserved=true",
+      "mutations": 1
+    },
+    {
+      "id": "NETWORK",
+      "verdict": "PASS",
+      "evidence": "mutations=5 stagingLeak=false"
+    },
+    {
+      "id": "PAGEERROR",
+      "verdict": "PASS",
+      "evidence": "count=0"
+    }
+  ],
+  "network": [
+    {
+      "at": "2026-07-14T10:35:16.210Z",
+      "method": "PATCH",
+      "host": "expuvcohlcjzvrrauvud.supabase.co",
+      "gender": "male",
+      "birth_year": 1990,
+      "keys": [
+        "display_name",
+        "phone",
+        "avatar_url",
+        "gender",
+        "birth_year",
+        "updated_at"
+      ]
+    },
+    {
+      "at": "2026-07-14T10:35:19.908Z",
+      "method": "PATCH",
+      "host": "expuvcohlcjzvrrauvud.supabase.co",
+      "gender": "female",
+      "birth_year": 1990,
+      "keys": [
+        "display_name",
+        "phone",
+        "avatar_url",
+        "gender",
+        "birth_year",
+        "updated_at"
+      ]
+    },
+    {
+      "at": "2026-07-14T10:35:25.828Z",
+      "method": "PATCH",
+      "host": "expuvcohlcjzvrrauvud.supabase.co",
+      "gender": "other",
+      "birth_year": 1990,
+      "keys": [
+        "display_name",
+        "phone",
+        "avatar_url",
+        "gender",
+        "birth_year",
+        "updated_at"
+      ]
+    },
+    {
+      "at": "2026-07-14T10:35:30.801Z",
+      "method": "PATCH",
+      "host": "expuvcohlcjzvrrauvud.supabase.co",
+      "gender": "other",
+      "birth_year": 1990,
+      "keys": [
+        "display_name",
+        "phone",
+        "avatar_url",
+        "gender",
+        "birth_year",
+        "updated_at"
+      ]
+    },
+    {
+      "at": "2026-07-14T10:35:34.748Z",
+      "method": "PATCH",
+      "host": "expuvcohlcjzvrrauvud.supabase.co",
+      "gender": "male",
+      "birth_year": 1990,
+      "keys": [
+        "display_name",
+        "phone",
+        "avatar_url",
+        "gender",
+        "birth_year",
+        "updated_at"
+      ]
+    }
+  ],
+  "pageErrors": [],
+  "productionDeployed": true,
+  "noSchemaChange": true,
+  "noRpcChange": true,
+  "noRlsChange": true,
+  "noMigration": true,
+  "verdict": "PASS",
+  "dbBefore": {
+    "id": "62933147-54e9-44c1-bb53-9fb62554b36d",
+    "email": "player@gmail.com",
+    "display_name": "player",
+    "phone": "",
+    "avatar_url": "",
+    "gender": null,
+    "birth_year": 1990,
+    "updated_at": "2026-07-11T11:10:13.353897+00:00"
+  },
+  "dbAfter": {
+    "gender": "male",
+    "birth_year": 1990,
+    "display_name": "player PG0307",
+    "phone": "[set]",
+    "avatar_url": ""
+  }
+}

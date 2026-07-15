@@ -7,6 +7,14 @@ import {
   Box,
   Button,
   Chip,
+  Dialog,
+  DialogActions,
+  DialogContent,
+  DialogTitle,
+  FormControl,
+  InputLabel,
+  MenuItem,
+  Select,
   Stack,
   Tab,
   Tabs,
@@ -32,7 +40,14 @@ import {
   updateMatchupInTournament,
 } from "../../features/team-tournament/engines/teamTournamentEngine.js";
 import { canManageTeam } from "../../features/team-tournament/engines/teamPermissionEngine.js";
-import { getStandingsTable } from "../../features/team-tournament/engines/teamStandingsEngine.js";
+import {
+  getGroupStandingsTables,
+  getStandingsTable,
+} from "../../features/team-tournament/engines/teamStandingsEngine.js";
+import TeamTiebreakConfigPanel from "../../components/tournament/team/TeamTiebreakConfigPanel.jsx";
+import TeamAwardsClosePanel from "../../components/tournament/team/TeamAwardsClosePanel.jsx";
+import TeamRefereeOpsReadinessPanel from "../../components/tournament/team/TeamRefereeOpsReadinessPanel.jsx";
+import TeamRealtimeEnableGatesPanel from "../../components/tournament/team/TeamRealtimeEnableGatesPanel.jsx";
 import { MISSING_LINEUP_POLICY } from "../../features/team-tournament/constants.js";
 import { getLineup } from "../../features/team-tournament/models/index.js";
 import { resolveLineupVersions } from "../../features/team-tournament/engines/atomicPublishWorkflowEngine.js";
@@ -44,6 +59,7 @@ import { normalizeMissingLineupPolicy } from "../../features/team-tournament/eng
 import {
   organizerLockDreambreakerOrders,
   organizerSyncDreambreaker,
+  generateTeamKnockoutBracket,
 } from "../../features/team-tournament/services/teamTournamentService.js";
 import { useTeamTournamentPage } from "../../features/team-tournament/ui/useTeamTournamentPage.js";
 import RealtimeConnectionStatus from "../../features/team-tournament/ui/RealtimeConnectionStatus.jsx";
@@ -82,6 +98,9 @@ function buildVisibleTabs(canManage) {
     tabs.push({ key: TEAM_TAB_QUERY.matchups, label: "Lịch đối đầu" });
   }
   tabs.push({ key: TEAM_TAB_QUERY.standings, label: "BXH" });
+  if (canManage) {
+    tabs.push({ key: TEAM_TAB_QUERY.awards, label: "Trao giải" });
+  }
   tabs.push({ key: TEAM_TAB_QUERY.diagram, label: "Sơ đồ" });
   return tabs;
 }
@@ -208,6 +227,9 @@ export default function TeamTournamentSetup() {
   const [error, setError] = useState("");
   const [scheduleDialogOpen, setScheduleDialogOpen] = useState(false);
   const [schedulePreviewOpen, setSchedulePreviewOpen] = useState(false);
+  const [knockoutDialogOpen, setKnockoutDialogOpen] = useState(false);
+  const [qualifiersPerGroup, setQualifiersPerGroup] = useState(2);
+  const [knockoutBusy, setKnockoutBusy] = useState(false);
   const [hubBanner, setHubBanner] = useState("");
   const [mutationBusy, setMutationBusy] = useState(false);
   const [overrideDialog, setOverrideDialog] = useState(null);
@@ -258,6 +280,7 @@ export default function TeamTournamentSetup() {
   const td = teamData || teamDataView;
 
   const standings = useMemo(() => getStandingsTable(td), [td]);
+  const groupStandings = useMemo(() => getGroupStandingsTables(td), [td]);
   const workflow = useMemo(() => computeTeamTournamentWorkflow(td), [td]);
   const allMatchupsPublished = useMemo(
     () =>
@@ -349,6 +372,31 @@ export default function TeamTournamentSetup() {
     if (saveTeamData(next)) {
       setScheduleDialogOpen(false);
       setMessage("Đã tạo lịch vòng tròn. Gửi link portal cho đội trưởng.");
+    }
+  }
+
+  function handleGenerateKnockout() {
+    if (!access.canManage || !activeClubId || !tournamentId) {
+      return;
+    }
+    setKnockoutBusy(true);
+    setError("");
+    try {
+      const result = generateTeamKnockoutBracket(activeClubId, tournamentId, {
+        qualifiersPerGroup: Number(qualifiersPerGroup) || 2,
+      });
+      if (!result.ok) {
+        setError(result.error || "Không tạo được nhánh knockout.");
+        return;
+      }
+      setKnockoutDialogOpen(false);
+      reload({ silent: true });
+      const qualifiedCount = (result.qualified || []).length;
+      setMessage(
+        `Đã tạo nhánh knockout (${result.knockoutMatchCount || 0} trận) — ${qualifiedCount} đội vượt qua vòng bảng.`
+      );
+    } finally {
+      setKnockoutBusy(false);
     }
   }
 
@@ -878,6 +926,12 @@ export default function TeamTournamentSetup() {
 
         {access.canManage && activeTabKey === TEAM_TAB_QUERY.matchups ? (
           <Stack spacing={2}>
+            <TeamRefereeOpsReadinessPanel
+              teamData={td}
+              canManage={access.canManage}
+              environmentHint="staging"
+            />
+            <TeamRealtimeEnableGatesPanel canManage={access.canManage} />
             {allMatchupsPublished ? (
               <Alert severity="success">
                 Đã khóa và công bố đội hình. Mở portal trọng tài để nhập điểm từng trận con.
@@ -957,6 +1011,14 @@ export default function TeamTournamentSetup() {
               >
                 {td.matchups.length > 0 ? "Tạo lại lịch vòng tròn" : "Tạo lịch vòng tròn"}
               </Button>
+              {(td.groups?.length > 0) ? (
+                <Button
+                  variant="outlined"
+                  onClick={() => setKnockoutDialogOpen(true)}
+                >
+                  Tạo nhánh knockout
+                </Button>
+              ) : null}
             </TournamentActionBar>
             {workflow.hints[0] && !allMatchupsPublished ? (
               <Alert severity="info">{workflow.hints[0]}</Alert>
@@ -965,15 +1027,57 @@ export default function TeamTournamentSetup() {
         ) : null}
 
         {activeTabKey === TEAM_TAB_QUERY.standings ? (
-          <TeamStandingsTable
-            standings={standings}
+          <Stack spacing={2}>
+            <TeamTiebreakConfigPanel
+              clubId={activeClubId}
+              tournamentId={tournamentId}
+              teamData={td}
+              canManage={access.canManage}
+              onUpdated={() => reload({ silent: true })}
+              onError={setError}
+              onMessage={setMessage}
+            />
+            {(td.groups || []).length > 0
+              ? groupStandings.map((group) => (
+                  <TeamStandingsTable
+                    key={group.groupId || "all"}
+                    title={`BXH ${group.groupName}`}
+                    compact
+                    standings={group.standing}
+                    tournamentName={tournament?.name || ""}
+                    formatPreset={td.settings?.formatPreset}
+                    tiebreakOrder={td.settings?.tiebreakOrder}
+                    matchupsDone={countMatchupsWithSubResults(td.matchups)}
+                    matchupsTotal={td.matchups.length}
+                    dreambreakerPending={countDreambreakerPendingMatchups(td)}
+                    scheduleLabel="Vòng bảng"
+                  />
+                ))
+              : (
+                  <TeamStandingsTable
+                    standings={standings}
+                    tournamentName={tournament?.name || ""}
+                    formatPreset={td.settings?.formatPreset}
+                    tiebreakOrder={td.settings?.tiebreakOrder}
+                    matchupsDone={countMatchupsWithSubResults(td.matchups)}
+                    matchupsTotal={td.matchups.length}
+                    dreambreakerPending={countDreambreakerPendingMatchups(td)}
+                    scheduleLabel="Vòng tròn"
+                  />
+                )}
+          </Stack>
+        ) : null}
+
+        {access.canManage && activeTabKey === TEAM_TAB_QUERY.awards ? (
+          <TeamAwardsClosePanel
+            clubId={activeClubId}
+            tournamentId={tournamentId}
+            teamData={td}
             tournamentName={tournament?.name || ""}
-            formatPreset={td.settings?.formatPreset}
-            tiebreakOrder={td.settings?.tiebreakOrder}
-            matchupsDone={countMatchupsWithSubResults(td.matchups)}
-            matchupsTotal={td.matchups.length}
-            dreambreakerPending={countDreambreakerPendingMatchups(td)}
-            scheduleLabel={td.groups?.length > 0 ? "Vòng tròn theo bảng" : "Vòng tròn"}
+            canManage={access.canManage}
+            onUpdated={() => reload({ silent: true })}
+            onError={setError}
+            onMessage={setMessage}
           />
         ) : null}
 
@@ -996,6 +1100,46 @@ export default function TeamTournamentSetup() {
           setSchedulePreviewOpen(true);
         }}
       />
+
+      <Dialog
+        open={knockoutDialogOpen}
+        onClose={() => !knockoutBusy && setKnockoutDialogOpen(false)}
+        fullWidth
+        maxWidth="xs"
+      >
+        <DialogTitle>Tạo nhánh knockout</DialogTitle>
+        <DialogContent>
+          <Stack spacing={2} sx={{ pt: 1 }}>
+            <Alert severity="info">
+              Chỉ áp dụng nhóm → knockout. Giữ nguyên lịch vòng tròn bảng.
+            </Alert>
+            <FormControl fullWidth size="small">
+              <InputLabel id="s2d-qualifiers">Số đội vượt qua mỗi bảng</InputLabel>
+              <Select
+                labelId="s2d-qualifiers"
+                label="Số đội vượt qua mỗi bảng"
+                value={qualifiersPerGroup}
+                onChange={(e) => setQualifiersPerGroup(Number(e.target.value))}
+              >
+                <MenuItem value={1}>1 đội / bảng</MenuItem>
+                <MenuItem value={2}>2 đội / bảng</MenuItem>
+              </Select>
+            </FormControl>
+          </Stack>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setKnockoutDialogOpen(false)} disabled={knockoutBusy}>
+            Huỷ
+          </Button>
+          <Button
+            variant="contained"
+            onClick={handleGenerateKnockout}
+            disabled={knockoutBusy}
+          >
+            Tạo knockout
+          </Button>
+        </DialogActions>
+      </Dialog>
 
       <TeamSchedulePreviewDialog
         open={schedulePreviewOpen}

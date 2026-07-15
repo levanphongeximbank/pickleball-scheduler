@@ -280,4 +280,36 @@ export async function rpcV2GetMyActiveMembership() {
   };
 }
 
+/** Phase 42N — resolve profiles + athletes + active club_members by auth user. */
+export async function rpcPlatformResolveAthleteProfile(authUserId) {
+  const result = await callRpc("platform_resolve_athlete_profile", {
+    p_auth_user_id: authUserId,
+  });
+  if (!result.ok) {
+    return result;
+  }
+  return {
+    ok: true,
+    data: result.data || null,
+  };
+}
+
+/**
+ * Phase 42N.1 — resolve by athlete id (server maps athlete → user_id, then
+ * applies the same authorization as platform_resolve_athlete_profile).
+ * Returns explicit codes: NOT_FOUND, ATHLETE_NOT_LINKED, FORBIDDEN, ...
+ */
+export async function rpcPlatformResolveAthleteById(athleteId) {
+  const result = await callRpc("platform_resolve_athlete_by_id", {
+    p_athlete_id: athleteId,
+  });
+  if (!result.ok) {
+    return result;
+  }
+  return {
+    ok: true,
+    data: result.data || null,
+  };
+}
+
 export { newRequestId };

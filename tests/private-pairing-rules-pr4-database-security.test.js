@@ -16,6 +16,13 @@ import {
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const sqlPath = join(__dirname, "../docs/v5/PHASE_PRIVATE_PAIRING_RULES_V2_PR4.sql");
 const sql = readFileSync(sqlPath, "utf8");
+// RC-1d shipped the archive RPC as an additive migration in a separate file.
+const archiveSqlPath = join(
+  __dirname,
+  "../docs/v5/PHASE_PRIVATE_PAIRING_RULES_V2_RC1_ARCHIVE.sql"
+);
+const archiveSql = readFileSync(archiveSqlPath, "utf8");
+const rpcSql = `${sql}\n${archiveSql}`;
 
 describe("PR-4 private pairing — SQL security contract", () => {
   it("creates the four private tables", () => {
@@ -56,7 +63,7 @@ describe("PR-4 private pairing — SQL security contract", () => {
 
   it("defines required RPCs as SECURITY DEFINER with fixed search_path", () => {
     for (const rpc of Object.values(PRIVATE_PAIRING_RPC)) {
-      assert.match(sql, new RegExp(`function public\\.${rpc}`));
+      assert.match(rpcSql, new RegExp(`function public\\.${rpc}`));
     }
     assert.match(sql, /security definer/i);
     assert.match(sql, /set search_path = public, pg_temp/);

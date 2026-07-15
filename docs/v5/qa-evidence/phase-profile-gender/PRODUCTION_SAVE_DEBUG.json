@@ -1,0 +1,70 @@
+{
+  "before": {
+    "url": "https://pickleball-scheduler-eight.vercel.app/player/profile",
+    "radios": [
+      {
+        "value": "male",
+        "checked": false
+      },
+      {
+        "value": "female",
+        "checked": false
+      },
+      {
+        "value": "other",
+        "checked": false
+      }
+    ],
+    "saveDisabled": false,
+    "alerts": []
+  },
+  "after": {
+    "radios": [
+      {
+        "value": "male",
+        "checked": true
+      },
+      {
+        "value": "female",
+        "checked": false
+      },
+      {
+        "value": "other",
+        "checked": false
+      }
+    ],
+    "alerts": [
+      "new row violates row-level security policy for table \"profiles\"",
+      "new row violates row-level security policy for table \"profiles\""
+    ],
+    "bodySnippet": "Pickleball Scheduler Pro\nV5.0\nCLB & Huấn luyện\nGiải đấu\nVĐV\nHồ sơ cá nhân\nĐiểm trình độ\nĐánh giá trình độ lần đầu\nĐánh giá V5 (shadow)\nTrang của tôi\nHồ sơ của tôi\n© 2026 Pickleball Scheduler Pro V5.0\n​\n0\nPL\n\nplayer\n\nVận động viên\nHồ sơ của tôi\nnew row violates row-level security policy for table \"profiles\"\nPL\nHình đại diện\nChọn ảnh\nJPG, PNG hoặc WebP — tối đa 2 MB\nURL ảnh\nURL ảnh\n\nTùy chọn — dán link ảnh hoặc upload ở trên, rồi bấm Lưu hồ sơ\n\nplayer\nVận động viên\nThông tin cá nhân\nHọ tên\nHọ tên\nSố điện thoại\nSố điện thoại\nGiới tính\nNam\nNữ\nKhác\nNăm sinh\nNăm sinh\nEmail\nEmail\nLưu hồ sơ\nTrình độ Pick_VN\n\nChưa có điểm trình độ. Hoàn thành bài đánh giá kỹ năng để hệ thống gợi ý mức Pick_VN phù hợp (1.0–8.0).\n\nBắt đầu đánh giá\nCLB của tôi\n\nChưa gia nhập CLB\n\nXem CLB\nBảo mật\nMật khẩu hiện tại\nMật khẩu hiện tại\nMật khẩu mới\nMật khẩu mới\nXác nhận mật khẩu mới\nXác nhận mật khẩu mới\nĐổi mật khẩu"
+  },
+  "nets": [
+    {
+      "type": "req",
+      "method": "POST",
+      "gender": "male",
+      "keys": [
+        "id",
+        "email",
+        "display_name",
+        "phone",
+        "avatar_url",
+        "role",
+        "venue_id",
+        "club_id",
+        "player_id",
+        "status",
+        "gender",
+        "birth_year",
+        "updated_at"
+      ]
+    },
+    {
+      "type": "res",
+      "status": 403,
+      "gender": null,
+      "message": "new row violates row-level security policy for table \"profiles\""
+    }
+  ]
+}

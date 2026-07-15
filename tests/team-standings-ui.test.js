@@ -18,7 +18,7 @@ test("formatFormatPresetLabel maps MLP preset", () => {
 
 test("buildTiebreakLegend joins configured order", () => {
   const legend = buildTiebreakLegend(["wins", "subMatchDiff", "headToHead"]);
-  assert.equal(legend, "Tie-break: Thắng → HS trận con");
+  assert.equal(legend, "Tie-break: Thắng → HS trận con → Đối đầu trực tiếp");
 });
 
 test("countMatchupsWithSubResults counts ties with sub-match wins", () => {

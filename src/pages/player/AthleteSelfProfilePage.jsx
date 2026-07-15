@@ -28,7 +28,6 @@ import { resolveSelfProfileRoleLabel } from "../../features/identity/utils/selfP
 import {
   fetchSelfProfile,
   updateSelfProfile,
-  updateSelfDemographics,
 } from "../../features/identity/services/selfProfileService.js";
 import { changePassword } from "../../features/identity/services/passwordService.js";
 import AvatarPicker from "../../features/identity/components/AvatarPicker.jsx";
@@ -38,12 +37,10 @@ import { getPickVnRatingByAuthUserId } from "../../features/pick-vn-rating/servi
 import { RATING_STATUS } from "../../features/pick-vn-rating/constants/ratingStatus.js";
 import { getMyClubSummary } from "../../features/club/services/clubMembershipRequestService.js";
 import { CLUB_STATUS_LABELS } from "../../features/club/constants/clubStatus.js";
-
-const GENDER_OPTIONS = [
-  { value: "Nam", label: "Nam" },
-  { value: "Nữ", label: "Nữ" },
-  { value: "Khác", label: "Khác" },
-];
+import {
+  PROFILE_GENDER_OPTIONS,
+  toProfileGenderFormValue,
+} from "../../features/identity/utils/profileGender.js";
 
 const CURRENT_YEAR = new Date().getFullYear();
 
@@ -61,21 +58,24 @@ export default function AthleteSelfProfilePage() {
   const [confirmPassword, setConfirmPassword] = useState("");
   const [message, setMessage] = useState(null);
   const [loading, setLoading] = useState(false);
+  const [profileReady, setProfileReady] = useState(false);
   const [ratingTick, setRatingTick] = useState(0);
 
   useEffect(() => {
     let cancelled = false;
 
     const load = async () => {
+      setProfileReady(false);
       const result = await fetchSelfProfile();
       if (cancelled || !result.ok) {
         return;
       }
       setDisplayName(result.user.displayName || "");
       setPhone(result.user.phone || "");
-      setGender(result.user.gender || "");
+      setGender(toProfileGenderFormValue(result.user.gender));
       setBirthYear(result.user.birthYear ? String(result.user.birthYear) : "");
       setAvatarUrl(result.user.avatarUrl || "");
+      setProfileReady(true);
     };
 
     load();
@@ -97,28 +97,33 @@ export default function AthleteSelfProfilePage() {
   }, [currentTenantId, user?.clubId]);
 
   const handleSaveProfile = async () => {
-    setLoading(true);
-    setMessage(null);
-
-    const profileResult = await updateSelfProfile({ displayName, phone, avatarUrl });
-    if (!profileResult.ok) {
-      setLoading(false);
-      setMessage({ type: "error", text: profileResult.error });
+    if (!profileReady) {
+      setMessage({ type: "error", text: "Đang tải hồ sơ — thử lại sau giây lát." });
       return;
     }
 
-    const demoResult = await updateSelfDemographics({
+    setLoading(true);
+    setMessage(null);
+
+    const profileResult = await updateSelfProfile({
+      displayName,
+      phone,
+      avatarUrl,
       gender,
-      birthYear: birthYear ? Number(birthYear) : null,
+      birthYear: birthYear === "" ? null : birthYear ? Number(birthYear) : null,
     });
 
     setLoading(false);
 
-    if (!demoResult.ok) {
-      setMessage({ type: "error", text: demoResult.error });
+    if (!profileResult.ok) {
+      setMessage({ type: "error", text: profileResult.error });
       return;
     }
 
+    setGender(toProfileGenderFormValue(profileResult.user?.gender ?? gender));
+    setBirthYear(
+      profileResult.user?.birthYear != null ? String(profileResult.user.birthYear) : birthYear
+    );
     refresh();
     setRatingTick((value) => value + 1);
     setMessage({ type: "success", text: "Đã cập nhật hồ sơ." });
@@ -239,7 +244,7 @@ export default function AthleteSelfProfilePage() {
                       value={gender}
                       onChange={(e) => setGender(e.target.value)}
                     >
-                      {GENDER_OPTIONS.map((option) => (
+                      {PROFILE_GENDER_OPTIONS.map((option) => (
                         <FormControlLabel
                           key={option.value}
                           value={option.value}
@@ -258,7 +263,11 @@ export default function AthleteSelfProfilePage() {
                     fullWidth
                   />
                   <TextField label="Email" value={user.email || ""} disabled fullWidth />
-                  <Button variant="contained" onClick={handleSaveProfile} disabled={loading}>
+                  <Button
+                    variant="contained"
+                    onClick={handleSaveProfile}
+                    disabled={loading || !profileReady}
+                  >
                     Lưu hồ sơ
                   </Button>
                 </Stack>

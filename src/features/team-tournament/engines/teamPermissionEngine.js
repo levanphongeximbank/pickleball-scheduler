@@ -121,6 +121,49 @@ export function canManageTeamMatchResult({ permissions = [] } = {}) {
   );
 }
 
+/** S2-B — view existing teams catalog */
+export function canViewExistingTeams({ permissions = [] } = {}) {
+  if (canManageTeam({ permissions })) {
+    return true;
+  }
+  return (
+    permissions.includes(PERMISSIONS.EXISTING_TEAM_VIEW) ||
+    permissions.includes(PERMISSIONS.EXISTING_TEAM_SELECT) ||
+    permissions.includes(PERMISSIONS.EXISTING_TEAM_MANAGE) ||
+    permissions.includes(PERMISSIONS.TOURNAMENT_VIEW)
+  );
+}
+
+/** S2-B — clone / select existing team into a tournament */
+export function canSelectExistingTeam({ permissions = [] } = {}) {
+  if (canManageTeam({ permissions })) {
+    return true;
+  }
+  return (
+    permissions.includes(PERMISSIONS.EXISTING_TEAM_SELECT) ||
+    permissions.includes(PERMISSIONS.EXISTING_TEAM_MANAGE)
+  );
+}
+
+/** S2-C — captain may request / apply pre-lock substitution on own team */
+export function canRequestSubstitution({ permissions = [] } = {}) {
+  if (canManageTeam({ permissions })) {
+    return true;
+  }
+  return (
+    permissions.includes(PERMISSIONS.TEAM_SUBSTITUTION_REQUEST) ||
+    permissions.includes(PERMISSIONS.TEAM_SUBSTITUTION_APPROVE)
+  );
+}
+
+/** S2-C — BTC may approve / apply pre-lock substitution */
+export function canApproveSubstitution({ permissions = [] } = {}) {
+  if (canManageTeam({ permissions })) {
+    return true;
+  }
+  return permissions.includes(PERMISSIONS.TEAM_SUBSTITUTION_APPROVE);
+}
+
 export function canViewTeamMatchResults({ permissions = [] } = {}) {
   return (
     canViewTeam({ permissions }) ||

@@ -1,0 +1,447 @@
+{
+  "phase": "profile-gender-preview-qa",
+  "generatedAt": "2026-07-14T10:15:07.144Z",
+  "previewUrl": "https://pickleball-scheduler-git-fix-profil-f85a48-pickleball-scheduler.vercel.app",
+  "deploymentId": "dpl_Gw8kUQCE6jxtSSf9ZxpFycLBaKpA",
+  "commitExpected": "3ca133132f7661825e353cdbc64b3ee432d619bf",
+  "commitDeployed": null,
+  "commitContainsFix": true,
+  "qaEmail": "player@staging.local",
+  "stagingRef": "qyewbxjsiiyufanzcjcq",
+  "productionDeployed": false,
+  "cases": [
+    {
+      "id": "LOGIN",
+      "verdict": "PASS",
+      "evidence": "password login ok (player@staging.local)"
+    },
+    {
+      "id": "CASE_A",
+      "verdict": "PASS",
+      "evidence": "db=male uiNam=true mutations=1",
+      "db": "male",
+      "networkGender": [
+        "male",
+        "male"
+      ],
+      "mutations": 1
+    },
+    {
+      "id": "CASE_B",
+      "verdict": "PASS",
+      "evidence": "db=female uiNu=true mutations=1",
+      "db": "female",
+      "mutations": 1
+    },
+    {
+      "id": "CASE_C",
+      "verdict": "PASS",
+      "evidence": "db=other otherTabKhac=true mutations=1",
+      "db": "other",
+      "mutations": 1
+    },
+    {
+      "id": "CASE_D",
+      "verdict": "PASS",
+      "evidence": "gender=other uiKhac=true nameOk=true phoneOk=true",
+      "dbGender": "other",
+      "mutations": 1,
+      "payloadGender": [
+        "other"
+      ]
+    },
+    {
+      "id": "CASE_E",
+      "verdict": "PASS",
+      "evidence": "gender=male nameKept=true phoneKept=true avatarKept=true birthKept=true",
+      "before": {
+        "display_name": "QA-G9514 QA-G6703",
+        "phone": "[set]",
+        "avatar_url": "",
+        "birth_year": null,
+        "gender": "other"
+      },
+      "after": {
+        "display_name": "QA-G9514 QA-G6703",
+        "phone": "[set]",
+        "avatar_url": "",
+        "birth_year": null,
+        "gender": "male"
+      },
+      "mutations": 1
+    },
+    {
+      "id": "NETWORK",
+      "verdict": "PASS",
+      "evidence": "mutations=5 dualWriteSuspect=false",
+      "sample": [
+        {
+          "at": "2026-07-14T10:15:18.883Z",
+          "method": "POST",
+          "url": "https://qyewbxjsiiyufanzcjcq.supabase.co/rest/v1/profiles",
+          "payload": {
+            "keys": [
+              "id",
+              "email",
+              "display_name",
+              "phone",
+              "avatar_url",
+              "role",
+              "venue_id",
+              "club_id",
+              "player_id",
+              "status",
+              "gender",
+              "birth_year",
+              "updated_at"
+            ],
+            "gender": "male",
+            "birth_year": null,
+            "display_name": "[set]",
+            "phone": "[set]",
+            "avatar_url": "[set]",
+            "hasRole": true
+          }
+        },
+        {
+          "at": "2026-07-14T10:15:24.548Z",
+          "method": "POST",
+          "url": "https://qyewbxjsiiyufanzcjcq.supabase.co/rest/v1/profiles",
+          "payload": {
+            "keys": [
+              "id",
+              "email",
+              "display_name",
+              "phone",
+              "avatar_url",
+              "role",
+              "venue_id",
+              "club_id",
+              "player_id",
+              "status",
+              "gender",
+              "birth_year",
+              "updated_at"
+            ],
+            "gender": "female",
+            "birth_year": null,
+            "display_name": "[set]",
+            "phone": "[set]",
+            "avatar_url": "[set]",
+            "hasRole": true
+          }
+        },
+        {
+          "at": "2026-07-14T10:15:31.136Z",
+          "method": "POST",
+          "url": "https://qyewbxjsiiyufanzcjcq.supabase.co/rest/v1/profiles",
+          "payload": {
+            "keys": [
+              "id",
+              "email",
+              "display_name",
+              "phone",
+              "avatar_url",
+              "role",
+              "venue_id",
+              "club_id",
+              "player_id",
+              "status",
+              "gender",
+              "birth_year",
+              "updated_at"
+            ],
+            "gender": "other",
+            "birth_year": null,
+            "display_name": "[set]",
+            "phone": "[set]",
+            "avatar_url": "[set]",
+            "hasRole": true
+          }
+        },
+        {
+          "at": "2026-07-14T10:15:36.984Z",
+          "method": "POST",
+          "url": "https://qyewbxjsiiyufanzcjcq.supabase.co/rest/v1/profiles",
+          "payload": {
+            "keys": [
+              "id",
+              "email",
+              "display_name",
+              "phone",
+              "avatar_url",
+              "role",
+              "venue_id",
+              "club_id",
+              "player_id",
+              "status",
+              "gender",
+              "birth_year",
+              "updated_at"
+            ],
+            "gender": "other",
+            "birth_year": null,
+            "display_name": "[set]",
+            "phone": "[set]",
+            "avatar_url": "[set]",
+            "hasRole": true
+          }
+        },
+        {
+          "at": "2026-07-14T10:15:42.499Z",
+          "method": "POST",
+          "url": "https://qyewbxjsiiyufanzcjcq.supabase.co/rest/v1/profiles",
+          "payload": {
+            "keys": [
+              "id",
+              "email",
+              "display_name",
+              "phone",
+              "avatar_url",
+              "role",
+              "venue_id",
+              "club_id",
+              "player_id",
+              "status",
+              "gender",
+              "birth_year",
+              "updated_at"
+            ],
+            "gender": "male",
+            "birth_year": null,
+            "display_name": "[set]",
+            "phone": "[set]",
+            "avatar_url": "[set]",
+            "hasRole": true
+          }
+        }
+      ]
+    },
+    {
+      "id": "PAGEERROR",
+      "verdict": "PASS",
+      "evidence": "pageErrors=0",
+      "pageErrors": []
+    },
+    {
+      "id": "UNIT_TESTS",
+      "verdict": "PASS",
+      "evidence": "self-profile-gender tests pass"
+    }
+  ],
+  "network": [
+    {
+      "at": "2026-07-14T10:15:18.883Z",
+      "method": "POST",
+      "url": "https://qyewbxjsiiyufanzcjcq.supabase.co/rest/v1/profiles",
+      "payload": {
+        "keys": [
+          "id",
+          "email",
+          "display_name",
+          "phone",
+          "avatar_url",
+          "role",
+          "venue_id",
+          "club_id",
+          "player_id",
+          "status",
+          "gender",
+          "birth_year",
+          "updated_at"
+        ],
+        "gender": "male",
+        "birth_year": null,
+        "display_name": "[set]",
+        "phone": "[set]",
+        "avatar_url": "[set]",
+        "hasRole": true
+      }
+    },
+    {
+      "at": "2026-07-14T10:15:19.112Z",
+      "type": "response",
+      "status": 200,
+      "url": "https://qyewbxjsiiyufanzcjcq.supabase.co/rest/v1/profiles",
+      "canonicalGender": "male",
+      "canonicalBirthYear": null
+    },
+    {
+      "at": "2026-07-14T10:15:24.548Z",
+      "method": "POST",
+      "url": "https://qyewbxjsiiyufanzcjcq.supabase.co/rest/v1/profiles",
+      "payload": {
+        "keys": [
+          "id",
+          "email",
+          "display_name",
+          "phone",
+          "avatar_url",
+          "role",
+          "venue_id",
+          "club_id",
+          "player_id",
+          "status",
+          "gender",
+          "birth_year",
+          "updated_at"
+        ],
+        "gender": "female",
+        "birth_year": null,
+        "display_name": "[set]",
+        "phone": "[set]",
+        "avatar_url": "[set]",
+        "hasRole": true
+      }
+    },
+    {
+      "at": "2026-07-14T10:15:24.711Z",
+      "type": "response",
+      "status": 200,
+      "url": "https://qyewbxjsiiyufanzcjcq.supabase.co/rest/v1/profiles",
+      "canonicalGender": "female",
+      "canonicalBirthYear": null
+    },
+    {
+      "at": "2026-07-14T10:15:31.136Z",
+      "method": "POST",
+      "url": "https://qyewbxjsiiyufanzcjcq.supabase.co/rest/v1/profiles",
+      "payload": {
+        "keys": [
+          "id",
+          "email",
+          "display_name",
+          "phone",
+          "avatar_url",
+          "role",
+          "venue_id",
+          "club_id",
+          "player_id",
+          "status",
+          "gender",
+          "birth_year",
+          "updated_at"
+        ],
+        "gender": "other",
+        "birth_year": null,
+        "display_name": "[set]",
+        "phone": "[set]",
+        "avatar_url": "[set]",
+        "hasRole": true
+      }
+    },
+    {
+      "at": "2026-07-14T10:15:31.305Z",
+      "type": "response",
+      "status": 200,
+      "url": "https://qyewbxjsiiyufanzcjcq.supabase.co/rest/v1/profiles",
+      "canonicalGender": "other",
+      "canonicalBirthYear": null
+    },
+    {
+      "at": "2026-07-14T10:15:36.984Z",
+      "method": "POST",
+      "url": "https://qyewbxjsiiyufanzcjcq.supabase.co/rest/v1/profiles",
+      "payload": {
+        "keys": [
+          "id",
+          "email",
+          "display_name",
+          "phone",
+          "avatar_url",
+          "role",
+          "venue_id",
+          "club_id",
+          "player_id",
+          "status",
+          "gender",
+          "birth_year",
+          "updated_at"
+        ],
+        "gender": "other",
+        "birth_year": null,
+        "display_name": "[set]",
+        "phone": "[set]",
+        "avatar_url": "[set]",
+        "hasRole": true
+      }
+    },
+    {
+      "at": "2026-07-14T10:15:37.159Z",
+      "type": "response",
+      "status": 200,
+      "url": "https://qyewbxjsiiyufanzcjcq.supabase.co/rest/v1/profiles",
+      "canonicalGender": "other",
+      "canonicalBirthYear": null
+    },
+    {
+      "at": "2026-07-14T10:15:42.499Z",
+      "method": "POST",
+      "url": "https://qyewbxjsiiyufanzcjcq.supabase.co/rest/v1/profiles",
+      "payload": {
+        "keys": [
+          "id",
+          "email",
+          "display_name",
+          "phone",
+          "avatar_url",
+          "role",
+          "venue_id",
+          "club_id",
+          "player_id",
+          "status",
+          "gender",
+          "birth_year",
+          "updated_at"
+        ],
+        "gender": "male",
+        "birth_year": null,
+        "display_name": "[set]",
+        "phone": "[set]",
+        "avatar_url": "[set]",
+        "hasRole": true
+      }
+    },
+    {
+      "at": "2026-07-14T10:15:42.663Z",
+      "type": "response",
+      "status": 200,
+      "url": "https://qyewbxjsiiyufanzcjcq.supabase.co/rest/v1/profiles",
+      "canonicalGender": "male",
+      "canonicalBirthYear": null
+    }
+  ],
+  "pageErrors": [],
+  "consoleErrors": [],
+  "tests": {
+    "unit": {
+      "ok": true,
+      "summary": [
+        "ℹ tests 9",
+        "ℹ suites 0",
+        "ℹ pass 9",
+        "ℹ fail 0",
+        "ℹ cancelled 0",
+        "ℹ skipped 0",
+        "ℹ todo 0",
+        "ℹ duration_ms 179.8277"
+      ]
+    },
+    "build": null
+  },
+  "verdict": "PASS",
+  "dbBefore": {
+    "gender": "male",
+    "birth_year": null,
+    "display_name": "QA-G9514",
+    "phone": "[set]",
+    "avatar_url": ""
+  },
+  "dbAfter": {
+    "gender": "male",
+    "birth_year": null,
+    "display_name": "QA-G9514 QA-G6703",
+    "phone": "[set]",
+    "avatar_url": ""
+  }
+}

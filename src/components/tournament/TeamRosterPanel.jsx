@@ -41,7 +41,11 @@ import {
 } from "../../features/team-tournament/services/teamTournamentService.js";
 import TeamAiPairingDialog from "../tournament/team/TeamAiPairingDialog.jsx";
 import TournamentPlayerQuickAddDialog from "./TournamentPlayerQuickAddDialog.jsx";
+import ExistingTeamClonePanel from "./ExistingTeamClonePanel.jsx";
+import TeamSubstitutionPanel from "./TeamSubstitutionPanel.jsx";
 import { FORMAT_PRESET } from "../../features/team-tournament/constants.js";
+import { getAuthOptions } from "../../auth/guardAction.js";
+import { getPermissionsForRole } from "../../features/identity/matrix/rolePermissions.js";
 
 const ALL_CLUBS_FILTER = "__all__";
 
@@ -507,6 +511,11 @@ export default function TeamRosterPanel({
   const [teamName, setTeamName] = useState("");
   const [aiPairingOpen, setAiPairingOpen] = useState(false);
 
+  const permissions = useMemo(() => {
+    const { user } = getAuthOptions();
+    return getPermissionsForRole(user?.role || "");
+  }, []);
+
   const drawPlayerPool = useMemo(() => {
     const pool = new Map();
     [...allTenantPlayers, ...clubPlayers].forEach((player) => {
@@ -571,22 +580,52 @@ export default function TeamRosterPanel({
       ) : null}
 
       {canManage ? (
-        <Stack direction={{ xs: "column", sm: "row" }} spacing={1} flexWrap="wrap" useFlexGap>
-          <TextField
-            label="Tên đội mới"
-            value={teamName}
-            onChange={(event) => setTeamName(event.target.value)}
-            fullWidth
-            sx={{ flex: 1, minWidth: 200 }}
-          />
-          <Button variant="contained" onClick={handleCreateTeam}>
-            Tạo đội
-          </Button>
-          {isMlp ? (
-            <Button variant="outlined" onClick={() => setAiPairingOpen(true)}>
-              AI ghép đội
+        <Stack spacing={2}>
+          <Stack direction={{ xs: "column", sm: "row" }} spacing={1} flexWrap="wrap" useFlexGap>
+            <TextField
+              label="Tên đội mới"
+              value={teamName}
+              onChange={(event) => setTeamName(event.target.value)}
+              fullWidth
+              sx={{ flex: 1, minWidth: 200 }}
+            />
+            <Button
+              variant="contained"
+              onClick={handleCreateTeam}
+              sx={{ minHeight: { xs: 44, md: 36 } }}
+            >
+              Tạo đội
             </Button>
-          ) : null}
+            {isMlp ? (
+              <Button
+                variant="outlined"
+                onClick={() => setAiPairingOpen(true)}
+                sx={{ minHeight: { xs: 44, md: 36 } }}
+              >
+                AI ghép đội
+              </Button>
+            ) : null}
+          </Stack>
+          <ExistingTeamClonePanel
+            clubId={clubId}
+            targetTournamentId={tournamentId}
+            permissions={permissions}
+            dense
+            onUpdated={onUpdated}
+            onError={onError}
+            onMessage={onMessage}
+          />
+          <TeamSubstitutionPanel
+            clubId={clubId}
+            tournamentId={tournamentId}
+            teamData={teamData}
+            players={drawPlayerPool}
+            permissions={permissions}
+            mode="btc"
+            onUpdated={onUpdated}
+            onError={onError}
+            onMessage={onMessage}
+          />
         </Stack>
       ) : null}
 

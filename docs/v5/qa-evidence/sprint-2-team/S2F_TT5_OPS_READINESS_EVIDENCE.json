@@ -1,0 +1,49 @@
+{
+  "reportType": "S2F_TT5_OPS_READINESS",
+  "generatedAt": "2026-07-14T13:45:00.000Z",
+  "batch": "S2-F",
+  "gapId": "S2-GAP-050",
+  "productionSqlApplyAllowed": false,
+  "mcpLiveInventory": {
+    "attempted": true,
+    "status": "UNAVAILABLE",
+    "note": "Supabase MCP execute_sql failed with client-registration error after mcp_auth; evaluation used TT-5 canonical evidence + policy inventories instead."
+  },
+  "staging": {
+    "source": "tt5_final_report_derived",
+    "verdict": "READY",
+    "sqlApplied": true,
+    "e2ePassed": true,
+    "evidencePaths": [
+      "docs/v5/qa-evidence/phase-tt5/TT5_FINAL_REPORT.json",
+      "docs/v5/team-tournament/tt5/TT5_FINAL_REPORT.md"
+    ]
+  },
+  "production": {
+    "source": "production_untouched_policy",
+    "verdict": "PRODUCTION_NOT_APPLIED",
+    "sqlApplied": false,
+    "e2ePassed": false,
+    "note": "Owner Production GO required — outside S2-F"
+  },
+  "softGaps": [
+    {
+      "id": "S2-GAP-050",
+      "disposition": "CLOSED_STAGING_WAIVE_PRODUCTION"
+    },
+    {
+      "id": "S2-GAP-051",
+      "disposition": "WAIVED_DEFERRED",
+      "mapsTo": "TT5 P1-4 legacy route fallback"
+    },
+    {
+      "id": "S2-GAP-052",
+      "disposition": "WAIVED_DEFERRED",
+      "mapsTo": "TT5 P1-5 correction UX polish"
+    }
+  ],
+  "unitTests": {
+    "file": "tests/team-tournament-referee-ops-readiness.test.js",
+    "ids": ["T-S2-F01", "T-S2-F02", "T-S2-F03", "T-S2-F04", "T-S2-F05", "T-S2-F06"]
+  }
+}

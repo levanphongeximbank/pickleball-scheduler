@@ -5,6 +5,7 @@ import {
 } from "../models/index.js";
 import { maybeActivateDreambreaker } from "./dreambreakerEngine.js";
 import { isMlpFormat } from "./mlpPresetEngine.js";
+import { maybeAdvanceKnockoutAfterResult } from "./teamKnockoutEngine.js";
 
 function resolveWinner(score, teamAId, teamBId) {
   if (!score) {
@@ -212,6 +213,13 @@ export function computeMatchupResult(teamData, matchupId) {
   if (needsDreambreaker) {
     const activation = maybeActivateDreambreaker(nextData, matchupId);
     nextData = activation.teamData;
+  }
+
+  if (allCompleted && winnerTeamId) {
+    const advanced = maybeAdvanceKnockoutAfterResult(nextData, matchupId);
+    if (advanced.ok && advanced.teamData) {
+      nextData = advanced.teamData;
+    }
   }
 
   const finalMatchup = findMatchup(nextData, matchupId);
