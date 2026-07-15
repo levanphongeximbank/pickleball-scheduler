@@ -59,7 +59,6 @@ export {
   canSelfRegisterClub,
   bootstrapSelfRegisteredPresident,
   finalizeSelfRegisteredClubCloud,
-  reclaimLocalPresidentClubForUser,
   listLocalPresidentClubsForUser,
   canTransferClubOwnership,
   transferClubOwnership,
@@ -222,7 +221,9 @@ export {
 export { ensureStorageSchemaV42 } from "./storage/storageSchemaV42.js";
 
 export { pullClubRegistryForUser, mergeClubsIntoLocal, cloudRowToClubRecord, syncClubRegistryForUser, pushPendingLocalClubsToCloud, listLocalClubsEligibleForCloudPush } from "./services/clubRegistryCloudSync.js";
-export { persistClubToCloud, syncClubsForVenueToCloud } from "./services/clubRegistryCloudService.js";
+// Phase 45A.3F — persistClubToCloud / syncClubsForVenueToCloud are not part of the
+// public Club command surface. Import from clubRegistryCloudService or
+// clubOfflineCommandAdapter only for V2-OFF rollback.
 
 export {
   CLUB_REGISTRY_SCOPE,
