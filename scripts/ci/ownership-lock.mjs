@@ -333,6 +333,59 @@ const RULES = [
     match: (c) => c.match(/localStorage\.(setItem|removeItem)\s*\(\s*["']pickleball-clubs-v1["']/g) || [],
   },
   {
+    id: "club-entity-rpc-transport-only",
+    description:
+      "Phase 45A.3F — club_create / club_update RPC invocations may only live in clubStorageV2RpcService (approved transport).",
+    allow: ["src/features/club/services/clubStorageV2RpcService.js"],
+    match: (c) => [
+      ...(c.match(/callRpc\(\s*["']club_create["']/g) || []),
+      ...(c.match(/callRpc\(\s*["']club_update["']/g) || []),
+      ...(c.match(/\.rpc\(\s*["']club_create["']/g) || []),
+      ...(c.match(/\.rpc\(\s*["']club_update["']/g) || []),
+    ],
+  },
+  {
+    id: "club-entity-rpcV2-orchestrator-only",
+    description:
+      "Phase 45A.3F — rpcV2ClubCreate / rpcV2ClubUpdate may only be invoked from clubTenantService (definitions allowed in transport).",
+    allow: [
+      "src/features/club/services/clubTenantService.js",
+      "src/features/club/services/clubStorageV2RpcService.js",
+    ],
+    match: (c) => [
+      ...(c.match(/\brpcV2ClubCreate\s*\(/g) || []),
+      ...(c.match(/\brpcV2ClubUpdate\s*\(/g) || []),
+    ],
+  },
+  {
+    id: "club-entity-legacy-persist-call-surface",
+    description:
+      "Phase 45A.3F — persistClubToCloud may only appear in legacy registry + V2-OFF orchestrators (hard-blocked under V2 at runtime).",
+    allow: [
+      "src/features/club/services/clubRegistryCloudService.js",
+      "src/features/club/services/clubTenantService.js",
+      "src/features/club/services/clubGovernanceService.js",
+    ],
+    match: (c) => c.match(/\bpersistClubToCloud\s*\(/g) || [],
+  },
+  {
+    id: "club-entity-repository-readonly",
+    description:
+      "Phase 45A.3F — canonicalClubRepository must remain read-only; Club entity commands must not be added here.",
+    onlyIn: ["src/features/club/repositories/canonicalClubRepository.js"],
+    match: (c) => [
+      ...(c.match(/\bsaveClubs\s*\(/g) || []),
+      ...(c.match(/\bpersistClubToCloud\s*\(/g) || []),
+      ...(c.match(/\bupdateClubMeta\s*\(/g) || []),
+      ...(c.match(/\brpcV2ClubCreate\s*\(/g) || []),
+      ...(c.match(/\brpcV2ClubUpdate\s*\(/g) || []),
+      ...(c.match(/callRpc\(\s*["']club_(?:create|update)["']/g) || []),
+      ...(c.match(
+        /\.from\(\s*["']clubs["']\s*\)[\s\S]{0,240}?\.(insert|update|upsert|delete)\s*\(/g
+      ) || []),
+    ],
+  },
+  {
     id: "global-unregistered-error-code",
     description:
       "New string-literal error codes in the API layer must be registered in API_ERROR_CODES.",
