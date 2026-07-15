@@ -1,0 +1,21 @@
+{
+  "phase": "R2-2G",
+  "local": {
+    "r22gUnit": "PASS (team-tournament-r22g-rally-integration.test.js)",
+    "tt5Bridge": "PASS (tt5b/tt5c/tt5d)",
+    "teamTournamentCore": "34/34 PASS",
+    "refereeV5Domain": "238/238 PASS",
+    "uiRefereeRelated": "52/52 PASS",
+    "uiFullSuite": "86/87 PASS (1 pre-existing app-shell failure unrelated to R2-2G)",
+    "lintChanged": "PASS",
+    "lintRefereeV5": "PASS",
+    "build": "PASS"
+  },
+  "staging": {
+    "sqlApply": "R2-2G_PROVISION_MAP.sql APPLIED",
+    "e2e": "13/13 PASS — GO",
+    "probeRestoredToSideOut": true
+  },
+  "production": "UNTOUCHED",
+  "timestamp": "2026-07-14T02:00:00.000Z"
+}

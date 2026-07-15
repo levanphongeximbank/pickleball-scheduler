@@ -1,0 +1,50 @@
+{
+  "stagingRef": "qyewbxjsiiyufanzcjcq",
+  "results": [
+    {
+      "id": "ui_remote_mode",
+      "pass": true,
+      "detail": "Remote staging — staging-rally-doubles"
+    },
+    {
+      "id": "ui_rally_label",
+      "pass": true,
+      "detail": "Game 1 · Doubles / USAP Rally Scoring · Chưa bắt đầu"
+    },
+    {
+      "id": "ui_server_number_hidden",
+      "pass": true,
+      "detail": "false"
+    },
+    {
+      "id": "ui_server_receiver",
+      "pass": true,
+      "detail": "Lê Văn C/Nguyễn Văn A"
+    },
+    {
+      "id": "ui_positions",
+      "pass": true,
+      "detail": "A=true,D=true"
+    },
+    {
+      "id": "ui_arrow",
+      "pass": true,
+      "detail": "true"
+    },
+    {
+      "id": "ui_no_local_fallback",
+      "pass": true,
+      "detail": "false"
+    },
+    {
+      "id": "ui_connection_status",
+      "pass": true,
+      "detail": "Đã đồng bộ"
+    }
+  ],
+  "summary": {
+    "pass": 8,
+    "total": 8
+  },
+  "timestamp": "2026-07-14T00:53:21.261Z"
+}

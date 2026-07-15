@@ -1,0 +1,28 @@
+{
+  "stagingRef": "qyewbxjsiiyufanzcjcq",
+  "productionRef": "expuvcohlcjzvrrauvud",
+  "prefix": "REFEREE_V5_RALLY_TEST_",
+  "tenant": "REFEREE_V5_RALLY_TEST_TENANT",
+  "tournament": "REFEREE_V5_RALLY_TEST_TOURNAMENT",
+  "matches": [
+    "REFEREE_V5_RALLY_TEST_MATCH_DOUBLES",
+    "REFEREE_V5_RALLY_TEST_MATCH_MISSING_FORMAT",
+    "REFEREE_V5_RALLY_TEST_MATCH_BAD_VARIANT",
+    "REFEREE_V5_RALLY_TEST_MATCH_SINGLES",
+    "REFEREE_V5_RALLY_TEST_MATCH_EXPIRED",
+    "REFEREE_V5_RALLY_TEST_MATCH_REVOKED_HOST",
+    "REFEREE_V5_RALLY_TEST_MATCH_UNASSIGNED"
+  ],
+  "format": {
+    "scoringSystem": "RALLY",
+    "scoringVariant": "USAP_2026_PROVISIONAL_RALLY",
+    "matchType": "doubles",
+    "pointsToWin": 11,
+    "winBy": 2,
+    "freezeRule": "NONE",
+    "serverNumberRule": "NONE"
+  },
+  "linkedToRealTournament": false,
+  "applied": true,
+  "timestamp": "2026-07-14T00:51:39.347Z"
+}

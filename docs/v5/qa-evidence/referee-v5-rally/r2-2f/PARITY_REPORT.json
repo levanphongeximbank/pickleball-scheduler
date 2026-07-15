@@ -1,0 +1,64 @@
+{
+  "stagingRef": "qyewbxjsiiyufanzcjcq",
+  "results": [
+    {
+      "id": "parity_scoreA",
+      "pass": true,
+      "expected": 1,
+      "actual": "1/1"
+    },
+    {
+      "id": "parity_scoreB",
+      "pass": true,
+      "expected": 1,
+      "actual": "1/1"
+    },
+    {
+      "id": "parity_serving",
+      "pass": true,
+      "expected": "C",
+      "actual": "C/C"
+    },
+    {
+      "id": "parity_receiving",
+      "pass": true,
+      "expected": "A",
+      "actual": "A/A"
+    },
+    {
+      "id": "parity_courtA",
+      "pass": true,
+      "expected": "FAR_END",
+      "actual": "FAR_END/FAR_END"
+    },
+    {
+      "id": "parity_status",
+      "pass": true,
+      "expected": "in_progress",
+      "actual": "in_progress/in_progress"
+    },
+    {
+      "id": "parity_hash",
+      "pass": true,
+      "expected": "h7ad0665d",
+      "actual": "h7ad0665d/h7ad0665d"
+    },
+    {
+      "id": "parity_format",
+      "pass": true,
+      "expected": "RALLY/USAP",
+      "actual": "RALLY/USAP_2026_PROVISIONAL_RALLY"
+    },
+    {
+      "id": "parity_replay",
+      "pass": true,
+      "expected": true,
+      "actual": true
+    }
+  ],
+  "summary": {
+    "pass": 9,
+    "total": 9
+  },
+  "timestamp": "2026-07-14T00:32:01.318Z"
+}

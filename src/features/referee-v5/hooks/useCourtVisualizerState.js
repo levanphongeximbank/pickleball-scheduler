@@ -4,25 +4,15 @@ import { COURT_END } from "../constants/courtEnds.js";
 import { LOGICAL_SERVICE_SIDE } from "../constants/courtSides.js";
 import { MATCH_STATUS } from "../constants/eventTypes.js";
 import { MATCH_TYPE } from "../constants/matchTypes.js";
-import { SCORING_FORMAT } from "../constants/scoringFormats.js";
 import { logicalPositionToScreenPosition } from "../engines/courtPositionEngine.js";
 import { getTeamSideKey } from "../domain/matchState.js";
-import { buildServeContext, formatSideOutScoreLine } from "../selectors/scoreboardSelector.js";
+import { buildServeContext } from "../selectors/scoreboardSelector.js";
+import { buildPresentationModel } from "../selectors/presentationSelector.js";
 import { buildArrowGeometry } from "../selectors/serveArrowSelector.js";
 import { getPlayerDisplayName } from "../prototype/refereeV5PrototypeFixtures.js";
 
 function logicalSideLabel(side) {
   return side === LOGICAL_SERVICE_SIDE.RIGHT_SERVICE_COURT ? "Ô phải" : "Ô trái";
-}
-
-function formatLabel(state) {
-  if (state.matchType === MATCH_TYPE.SINGLES) {
-    return "Singles / Side-out";
-  }
-  if (state.scoringFormat === SCORING_FORMAT.RALLY) {
-    return "Doubles / Basic rally";
-  }
-  return "Doubles / Side-out";
 }
 
 function statusLabel(status) {
@@ -43,7 +33,11 @@ const EMPTY_VISUAL_STATE = Object.freeze({
   scoreA: 0,
   scoreB: 0,
   sideOutLine: "",
+  scoreLine: "",
   formatLabel: "",
+  scoringLabel: "",
+  showServerNumber: true,
+  scoreLineMode: "",
   statusLabel: "Đang tải",
   servingTeamSide: "teamA",
   isDoubles: true,
@@ -60,6 +54,7 @@ export function useCourtVisualizerState(matchState, teamNames = {}) {
       return EMPTY_VISUAL_STATE;
     }
 
+    const presentation = buildPresentationModel(matchState);
     const serveContext = buildServeContext(matchState);
     const arrow = buildArrowGeometry(serveContext);
 
@@ -69,6 +64,7 @@ export function useCourtVisualizerState(matchState, teamNames = {}) {
       const teamName = teamNames[side] || team.teamName || (side === "teamA" ? "Đội A" : "Đội B");
 
       for (const player of team.players) {
+        const isServer = String(player.playerId) === String(matchState.servingPlayerId);
         players.push({
           playerId: player.playerId,
           displayName: getPlayerDisplayName(player.playerId),
@@ -83,8 +79,11 @@ export function useCourtVisualizerState(matchState, teamNames = {}) {
             courtEnd: team.courtEnd,
             logicalServiceSide: player.logicalServiceSide,
           }),
-          isServer: String(player.playerId) === String(matchState.servingPlayerId),
+          isServer,
           isReceiver: String(player.playerId) === String(matchState.receivingPlayerId),
+          showServerNumber: presentation.showServerNumber,
+          serverNumber:
+            presentation.showServerNumber && isServer ? matchState.serverNumber : null,
         });
       }
     }
@@ -97,8 +96,14 @@ export function useCourtVisualizerState(matchState, teamNames = {}) {
       arrow,
       scoreA: matchState.teams.teamA.score,
       scoreB: matchState.teams.teamB.score,
-      sideOutLine: formatSideOutScoreLine(matchState),
-      formatLabel: formatLabel(matchState),
+      sideOutLine: presentation.scoreLine,
+      scoreLine: presentation.scoreLine,
+      formatLabel: presentation.scoringLabel,
+      scoringLabel: presentation.scoringLabel,
+      showServerNumber: presentation.showServerNumber,
+      scoreLineMode: presentation.scoreLineMode,
+      scoringSystem: presentation.scoringSystem,
+      scoringVariant: presentation.scoringVariant,
       statusLabel: statusLabel(matchState.status),
       servingTeamSide: servingTeamKey,
       isDoubles: matchState.matchType === MATCH_TYPE.DOUBLES,

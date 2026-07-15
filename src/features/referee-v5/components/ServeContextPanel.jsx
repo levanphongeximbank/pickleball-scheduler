@@ -33,10 +33,10 @@ export default function ServeContextPanel({ visualState }) {
         <span className="rv5-serve-context-label">Đội giao: </span>
         <strong>{visualState.servingTeamName}</strong>
       </p>
-      {!visualState.isSingles ? (
+      {!visualState.isSingles && visualState.showServerNumber ? (
         <p className="rv5-serve-context-row">
           <span className="rv5-serve-context-label">Server: </span>
-          <strong data-testid="serve-context-server-number">{ctx.serverNumber ?? "—"}</strong>
+          <strong data-testid="serve-context-server-number">{ctx.serverNumber}</strong>
         </p>
       ) : null}
       <p className="rv5-serve-context-row">

@@ -1,6 +1,12 @@
 export { isRefereeV5Enabled } from "./flags.js";
 export { initializeMatchState } from "./engines/initializeMatchState.js";
 export { applyMatchEvent, buildRuleConfig } from "./engines/matchStateEngine.js";
+export { ScoringStrategyRegistry } from "./engines/scoring/ScoringStrategyRegistry.js";
+export {
+  SCORING_SYSTEM,
+  SCORING_VARIANT,
+  RULE_SET_ID,
+} from "./constants/scoringStrategy.js";
 export {
   dispatchMatchCommand,
   applyMatchEventWithUndo,
@@ -9,9 +15,22 @@ export { resolveReceivingPlayer, recomputeServeContext } from "./engines/receive
 export { resolveServeDirection, SERVE_DIRECTION } from "./selectors/serveContextSelector.js";
 export { logicalPositionToScreenPosition } from "./engines/courtPositionEngine.js";
 export { applySwitchEnds } from "./engines/switchEndsEngine.js";
-export { rebuildMatchState } from "./engines/stateReplayEngine.js";
+export {
+  rebuildMatchState,
+  statesEqual,
+  domainStatesEqual,
+} from "./engines/stateReplayEngine.js";
 export { undoLastEvent } from "./engines/undoEngine.js";
+export {
+  extractMatchFormatSnapshot,
+  assertEventDoesNotMutateFormat,
+  IMMUTABLE_MATCH_FORMAT_FIELDS,
+} from "./engines/scoring/matchFormatIntegrity.js";
 export { buildServeContext, formatSideOutScoreLine } from "./selectors/scoreboardSelector.js";
+export {
+  buildPresentationModel,
+  isUsap2026ProvisionalRallyDoubles,
+} from "./selectors/presentationSelector.js";
 export { buildArrowGeometry, describeServeDirectionVi } from "./selectors/serveArrowSelector.js";
 export { buildTimelineEntries } from "./selectors/timelineSelector.js";
 export { RALLY_VARIANT } from "./constants/scoringFormats.js";

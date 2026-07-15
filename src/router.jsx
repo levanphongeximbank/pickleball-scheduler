@@ -209,6 +209,8 @@ const RefereeHub = lazy(() => import("./pages/referee/RefereeHub"));
 
 const RefereeV5TeamMatchPage = lazy(() => import("./pages/referee/RefereeV5TeamMatchPage"));
 
+const RefereeV5PreviewPage = lazy(() => import("./pages/dev/RefereeV5PreviewPage"));
+
 const CourtEnginePage = lazy(() => import("./pages/CourtEnginePage"));
 
 const Statistics = lazy(() => import("./features/statistics"));
@@ -427,6 +429,14 @@ export default function Router() {
               element={
                 <SuperAdminRouteGuard>
                   <PairingInterventionPreviewPage />
+                </SuperAdminRouteGuard>
+              }
+            />
+            <Route
+              path="/dev/referee-v5"
+              element={
+                <SuperAdminRouteGuard>
+                  <RefereeV5PreviewPage />
                 </SuperAdminRouteGuard>
               }
             />

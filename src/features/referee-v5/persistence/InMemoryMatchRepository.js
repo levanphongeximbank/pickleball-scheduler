@@ -17,6 +17,59 @@ export class InMemoryMatchRepository {
     this.auditLog = [];
     this.outbox = [];
     this.appendOnlyEnforced = true;
+    /** Test-only fault injection for atomic rollback coverage (never Production). */
+    this.testFault = null;
+  }
+
+  setTestFault(fault) {
+    this.testFault = fault;
+  }
+
+  clearTestFault() {
+    this.testFault = null;
+  }
+
+  _checkpointMatch(matchStateId) {
+    const live = this.liveStates.get(matchStateId);
+    const events = this.events.get(matchStateId) || [];
+    const idempotencyEntries = [...this.idempotency.entries()].filter(([key]) =>
+      key.startsWith(`${matchStateId}::`)
+    );
+    return {
+      live: live
+        ? {
+            ...live,
+            statePayload: live.statePayload,
+            initialStatePayload: live.initialStatePayload,
+          }
+        : null,
+      events: events.map((event) => ({ ...event })),
+      idempotencyEntries,
+      results: [...this.results.entries()],
+      outbox: this.outbox.map((item) => ({ ...item })),
+    };
+  }
+
+  _restoreCheckpoint(matchStateId, checkpoint) {
+    if (!checkpoint.live) {
+      this.liveStates.delete(matchStateId);
+    } else {
+      this.liveStates.set(matchStateId, { ...checkpoint.live });
+    }
+    this.events.set(matchStateId, checkpoint.events.map((event) => ({ ...event })));
+    for (const key of [...this.idempotency.keys()]) {
+      if (key.startsWith(`${matchStateId}::`)) {
+        this.idempotency.delete(key);
+      }
+    }
+    for (const [key, value] of checkpoint.idempotencyEntries) {
+      this.idempotency.set(key, { ...value });
+    }
+    this.results.clear();
+    for (const [key, value] of checkpoint.results) {
+      this.results.set(key, { ...value });
+    }
+    this.outbox = checkpoint.outbox.map((item) => ({ ...item }));
   }
 
   findAssignmentByUserAndMatch({ userId, tournamentId, matchId }) {
@@ -139,21 +192,93 @@ export class InMemoryMatchRepository {
       return createPersistenceError(REFEREE_V5_ERROR.EVENT_SEQUENCE_CONFLICT);
     }
 
-    events.push({ ...eventRecord });
-    this.events.set(matchStateId, events);
+    const checkpoint = this._checkpointMatch(matchStateId);
 
-    live.stateVersion = nextState.version;
-    live.lastEventSequence = nextState.lastEventSequence;
-    live.status = nextState.status;
-    live.statePayload = serializeMatchState(nextState);
-    live.stateHash = hashMatchState(nextState);
-    live.updatedAt = new Date().toISOString();
+    try {
+      events.push({ ...eventRecord });
+      this.events.set(matchStateId, events);
 
-    if (idempotencyRecord) {
-      this.saveIdempotency(idempotencyRecord);
+      if (this.testFault === "after_event_insert") {
+        throw new Error("TEST_FAULT_AFTER_EVENT_INSERT");
+      }
+
+      live.stateVersion = nextState.version;
+      live.lastEventSequence = nextState.lastEventSequence;
+      live.status = nextState.status;
+      live.statePayload = serializeMatchState(nextState);
+      live.stateHash = hashMatchState(nextState);
+      live.updatedAt = new Date().toISOString();
+
+      if (this.testFault === "after_snapshot_update") {
+        throw new Error("TEST_FAULT_AFTER_SNAPSHOT_UPDATE");
+      }
+
+      if (this.testFault === "before_idempotency_completion") {
+        throw new Error("TEST_FAULT_BEFORE_IDEMPOTENCY");
+      }
+
+      if (idempotencyRecord) {
+        this.saveIdempotency(idempotencyRecord);
+      }
+
+      return { ok: true, live, events };
+    } catch (error) {
+      this._restoreCheckpoint(matchStateId, checkpoint);
+      return createPersistenceError(
+        REFEREE_V5_ERROR.ATOMIC_COMMIT_ABORTED,
+        error.message
+      );
     }
+  }
 
-    return { ok: true, live, events };
+  commitFinalizationMutation({
+    matchStateId,
+    revision,
+    actorId,
+    outboxEvents = [],
+    idempotencyRecord,
+  }) {
+    const checkpoint = this._checkpointMatch(matchStateId);
+
+    try {
+      const saved = this.saveResultRevision(revision);
+      if (!saved.ok && !saved.duplicate) {
+        throw new Error("RESULT_REVISION_FAILED");
+      }
+
+      if (this.testFault === "after_result_revision") {
+        throw new Error("TEST_FAULT_AFTER_RESULT_REVISION");
+      }
+
+      const locked = this.lockLiveState(matchStateId, actorId);
+      if (!locked.ok) {
+        throw new Error(locked.error || "LOCK_FAILED");
+      }
+
+      if (this.testFault === "after_state_lock") {
+        throw new Error("TEST_FAULT_AFTER_STATE_LOCK");
+      }
+
+      for (const outbox of outboxEvents) {
+        this.appendOutbox(outbox);
+      }
+
+      if (this.testFault === "after_outbox") {
+        throw new Error("TEST_FAULT_AFTER_OUTBOX");
+      }
+
+      if (idempotencyRecord) {
+        this.saveIdempotency(idempotencyRecord);
+      }
+
+      return { ok: true, revision: saved.revision || revision };
+    } catch (error) {
+      this._restoreCheckpoint(matchStateId, checkpoint);
+      return createPersistenceError(
+        REFEREE_V5_ERROR.ATOMIC_COMMIT_ABORTED,
+        error.message
+      );
+    }
   }
 
   getEvents(matchStateId) {

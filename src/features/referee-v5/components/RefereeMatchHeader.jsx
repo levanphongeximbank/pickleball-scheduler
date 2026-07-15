@@ -6,7 +6,7 @@ export default function RefereeMatchHeader({ meta, visualState, showPrototypeBad
       <p className="rv5-header-meta">
         {meta?.eventName} · {meta?.matchCode} · {meta?.courtName}
       </p>
-      <p className="rv5-header-meta">
+      <p className="rv5-header-meta" data-testid="scoring-format-label">
         Game {visualState.currentGameNumber} · {visualState.formatLabel} · {visualState.statusLabel}
       </p>
     </header>

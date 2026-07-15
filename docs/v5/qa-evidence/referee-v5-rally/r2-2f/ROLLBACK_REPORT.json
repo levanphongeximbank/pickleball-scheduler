@@ -1,0 +1,31 @@
+{
+  "phase": "R2-2F",
+  "stagingOnly": true,
+  "productionImpact": "NONE",
+  "steps": [
+    {
+      "id": "redeploy_previous_bundle",
+      "status": "DOCUMENTED",
+      "detail": "node scripts/bundle-referee-v5-edge-shared.mjs from last known Side-Out-only commit then deploy-referee-v5-edge-staging.mjs"
+    },
+    {
+      "id": "disable_rally_fixture",
+      "status": "PASS",
+      "detail": "REFEREE_V5_RALLY_TEST_* matches are isolated; Side-Out REFEREE_V5_TEST_* untouched"
+    },
+    {
+      "id": "side_out_usable",
+      "status": "PASS",
+      "detail": "legacy Side-Out staging fixtures remain"
+    },
+    {
+      "id": "edge_options_probe",
+      "status": "PASS"
+    },
+    {
+      "id": "production_untouched",
+      "status": "PASS"
+    }
+  ],
+  "timestamp": "2026-07-14T00:53:42.087Z"
+}

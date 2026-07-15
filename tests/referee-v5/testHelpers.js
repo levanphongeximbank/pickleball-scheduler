@@ -3,6 +3,11 @@ import { LOGICAL_SERVICE_SIDE } from "../../src/features/referee-v5/constants/co
 import { MATCH_EVENT_TYPE } from "../../src/features/referee-v5/constants/eventTypes.js";
 import { MATCH_TYPE } from "../../src/features/referee-v5/constants/matchTypes.js";
 import { SCORING_FORMAT } from "../../src/features/referee-v5/constants/scoringFormats.js";
+import {
+  RULE_SET_ID,
+  SCORING_SYSTEM,
+  SCORING_VARIANT,
+} from "../../src/features/referee-v5/constants/scoringStrategy.js";
 import { initializeMatchState } from "../../src/features/referee-v5/engines/initializeMatchState.js";
 import { applyMatchEvent } from "../../src/features/referee-v5/engines/matchStateEngine.js";
 
@@ -35,6 +40,24 @@ export function buildDoublesSideOutConfig(overrides = {}) {
     firstServingPlayerId: "A",
     ...overrides,
   };
+}
+
+export function buildDoublesUsapRallyConfig(overrides = {}) {
+  return buildDoublesSideOutConfig({
+    scoringFormat: SCORING_FORMAT.RALLY,
+    scoringSystem: SCORING_SYSTEM.RALLY,
+    scoringVariant: SCORING_VARIANT.USAP_2026_PROVISIONAL_RALLY,
+    ruleSetId: RULE_SET_ID.RALLY_USAP_2026_PROVISIONAL_DOUBLES_V1,
+    pointsToWin: 11,
+    winBy: 2,
+    freezeRule: "NONE",
+    serverNumberRule: "NONE",
+    ...overrides,
+  });
+}
+
+export function initStartedUsapRallyMatch(overrides = {}) {
+  return initStartedMatch(buildDoublesUsapRallyConfig(overrides));
 }
 
 export function buildSinglesConfig(overrides = {}) {

@@ -1,0 +1,18 @@
+{
+  "phase": "R2-2F",
+  "local": {
+    "refereeV5Domain": "238/238 PASS",
+    "ui": "52/52 PASS",
+    "legacyReferee": "19/19 PASS",
+    "lint": "PASS",
+    "build": "PASS",
+    "r22eParity": "included in 238"
+  },
+  "staging": {
+    "http": { "pass": 21, "total": 21 },
+    "parity": { "pass": 9, "total": 9 },
+    "realtime": { "pass": 8, "total": 8 },
+    "browser": { "pass": 8, "total": 8 }
+  },
+  "timestamp": "2026-07-14T00:55:00.000Z"
+}

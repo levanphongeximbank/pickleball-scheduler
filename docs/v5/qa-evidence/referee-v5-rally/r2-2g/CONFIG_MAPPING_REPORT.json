@@ -1,0 +1,37 @@
+{
+  "phase": "R2-2G",
+  "generatedAt": "2026-07-14T02:00:00.000Z",
+  "audit": {
+    "tournamentScoringConfig": "src/features/team-tournament/constants.js DEFAULT_TEAM_TOURNAMENT_SETTINGS.scoringFormat + team_tournaments.settings",
+    "disciplineScoringConfig": "src/features/team-tournament/models/index.js normalizeDiscipline.scoringFormat",
+    "subMatchCreation": "src/features/team-tournament/engines/teamTournamentEngine.js + cloud RPCs",
+    "refereeV5ProvisionFlow": "docs/v5/team-tournament/tt5/TT5-B_PROVISION_RPC.sql → patched by R2-2G_PROVISION_MAP.sql; client teamRefereeV5BridgeEngine.js / teamRefereeV5FormatMapper.js",
+    "teamSubMatchRefereeLinks": "docs/v5/team-tournament/tt5/TT5-B_BRIDGE_SCHEMA.sql team_sub_match_referee_links",
+    "officialResultConsumer": "docs/v5/team-tournament/tt5/TT5-C_RESULT_PROPAGATION.sql team_tournament_consume_referee_v5_outbox",
+    "resultRevisionHandling": "TT5-C apply + TT5-D correction RPCs; client applyOfficialResultRevision",
+    "standingsUpdate": "TT5-C_STANDINGS_RECOMPUTE.sql team_tournament_recompute_standings_cache (format-agnostic)",
+    "legacyRefereeLock": "TT5-B_LEGACY_LOCK_GUARD.sql team_tournament_sub_match_score_ops",
+    "duplicateResultPrevention": "inbox uniqueness + last_result_revision_id / revision_already_applied",
+    "rollbackDisable": "docs/v5/team-tournament/tt5/R2-2G_ROLLBACK.sql + VITE_TT5_REFEREE_V5_RALLY_ENABLED=false"
+  },
+  "overrideOrder": ["sub-match", "discipline", "tournament-default"],
+  "p0_06_fix": {
+    "before": "shell read pointsToWin + scoringFormat → Rally with targetScore silently became Side-Out @ 11",
+    "after": "maps scoringSystem/targetScore → scoringSystem/scoringVariant/pointsToWin/winBy/bestOf/freezeRule/serverNumberRule"
+  },
+  "rallyScope": {
+    "scoringSystem": "RALLY",
+    "scoringVariant": "USAP_2026_PROVISIONAL_RALLY",
+    "matchType": "doubles",
+    "pointsToWin": 11,
+    "winBy": 2,
+    "freezeRule": "NONE",
+    "serverNumberRule": "NONE"
+  },
+  "featureFlag": {
+    "name": "VITE_TT5_REFEREE_V5_RALLY_ENABLED",
+    "default": false
+  },
+  "stagingSql": "docs/v5/team-tournament/tt5/R2-2G_PROVISION_MAP.sql APPLIED on qyewbxjsiiyufanzcjcq",
+  "verdict": "PASS"
+}

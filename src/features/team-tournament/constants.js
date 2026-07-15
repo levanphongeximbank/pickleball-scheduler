@@ -116,6 +116,8 @@ export const DEFAULT_TEAM_TOURNAMENT_SETTINGS = {
   rosterRules: null,
   tiebreakOrder: [...DEFAULT_TIE_BREAK_ORDER],
   regulations: null,
+  /** Optional tournament-default scoring; overridden by discipline / sub-match. */
+  scoringFormat: null,
 };
 
 export const TEAM_AUDIT_ACTIONS = {

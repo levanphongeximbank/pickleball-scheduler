@@ -1,5 +1,6 @@
 import { MATCH_EVENT_TYPE } from "../constants/eventTypes.js";
 import { RALLY_VARIANT } from "../constants/scoringFormats.js";
+import { IMMUTABLE_MATCH_FORMAT_FIELDS } from "../engines/scoring/matchFormatIntegrity.js";
 import { REFEREE_V5_ERROR, createPersistenceError } from "./errors.js";
 
 const FORBIDDEN_PAYLOAD_KEYS = Object.freeze([
@@ -25,6 +26,8 @@ const FORBIDDEN_PAYLOAD_KEYS = Object.freeze([
   "officialResult",
   "official_score",
   "officialScore",
+  // Official format is locked after start — never accept client mutations.
+  ...IMMUTABLE_MATCH_FORMAT_FIELDS,
 ]);
 
 export function validateMatchCommandPayload(commandType, payload = {}) {
@@ -38,7 +41,18 @@ export function validateMatchCommandPayload(commandType, payload = {}) {
   }
 
   if (payload && typeof payload === "object") {
+    for (const key of IMMUTABLE_MATCH_FORMAT_FIELDS) {
+      if (Object.prototype.hasOwnProperty.call(payload, key)) {
+        return createPersistenceError(
+          REFEREE_V5_ERROR.SCORING_FORMAT_IMMUTABLE,
+          `Client không được đổi format field: ${key}`
+        );
+      }
+    }
     for (const key of FORBIDDEN_PAYLOAD_KEYS) {
+      if (IMMUTABLE_MATCH_FORMAT_FIELDS.includes(key)) {
+        continue;
+      }
       if (Object.prototype.hasOwnProperty.call(payload, key)) {
         return createPersistenceError(
           REFEREE_V5_ERROR.INVALID_MATCH_COMMAND,

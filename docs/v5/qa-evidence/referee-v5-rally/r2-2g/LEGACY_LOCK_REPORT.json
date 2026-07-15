@@ -1,0 +1,15 @@
+{
+  "phase": "R2-2G",
+  "cases": [
+    {
+      "id": "LEGACY-DRAFT-BLOCKED",
+      "pass": true,
+      "detail": {
+        "ok": false,
+        "code": "referee_v5_linked_legacy_write_blocked",
+        "error": "Trận con đang dùng Referee V5 — legacy score entry bị khóa."
+      }
+    }
+  ],
+  "verdict": "PASS"
+}

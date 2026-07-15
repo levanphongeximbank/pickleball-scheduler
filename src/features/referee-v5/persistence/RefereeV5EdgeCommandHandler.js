@@ -14,6 +14,7 @@ import {
   REFEREE_V5_ERROR,
   createPersistenceError,
   createPersistenceSuccess,
+  mapEngineErrorToPersistence,
 } from "./errors.js";
 import {
   deriveUserIdFromVerifiedToken,
@@ -144,13 +145,7 @@ export class RefereeV5EdgeCommandHandler {
     });
 
     if (!engineResult.ok) {
-      const code =
-        engineResult.code === "VERSION_CONFLICT"
-          ? REFEREE_V5_ERROR.MATCH_STATE_CONFLICT
-          : engineResult.code === "SEQUENCE_GAP"
-            ? REFEREE_V5_ERROR.EVENT_SEQUENCE_CONFLICT
-            : REFEREE_V5_ERROR.INVALID_MATCH_COMMAND;
-      return createPersistenceError(code, engineResult.error, {
+      return mapEngineErrorToPersistence(engineResult, {
         currentVersion: currentLive.stateVersion,
         currentSequence: currentLive.lastEventSequence,
       });
@@ -286,6 +281,13 @@ export class RefereeV5EdgeCommandHandler {
       overrideReason,
       createdBy: trusted.actor.userId,
       createdAt: new Date().toISOString(),
+      // Scoring-system agnostic format metadata (Rally/Side-Out).
+      scoringFormat: state.scoringFormat ?? null,
+      scoringSystem: state.scoringSystem ?? null,
+      scoringVariant: state.scoringVariant ?? null,
+      ruleSetId: state.ruleSetId ?? null,
+      pointsToWin: state.pointsToWin ?? null,
+      winBy: state.winBy ?? null,
     };
 
     const requestHash = buildCommandRequestHash({

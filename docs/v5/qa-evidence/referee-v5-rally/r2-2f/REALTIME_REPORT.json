@@ -1,0 +1,52 @@
+{
+  "stagingRef": "qyewbxjsiiyufanzcjcq",
+  "fixture": "staging-rally-doubles",
+  "notificationOnly": true,
+  "results": [
+    {
+      "id": "realtime_contexts_loaded",
+      "pass": true,
+      "detail": "A+B ready"
+    },
+    {
+      "id": "rt_a_to_b_score",
+      "pass": true,
+      "detail": "{\"teamA\":1,\"teamB\":0}"
+    },
+    {
+      "id": "rt_b_to_a_score",
+      "pass": true,
+      "detail": "{\"teamA\":1,\"teamB\":1}"
+    },
+    {
+      "id": "rt_switch_ends",
+      "pass": true,
+      "detail": "switch ends issued"
+    },
+    {
+      "id": "rt_undo",
+      "pass": true,
+      "detail": "{\"teamA\":1,\"teamB\":1}"
+    },
+    {
+      "id": "rt_reload_convergence",
+      "pass": true,
+      "detail": "{\"scoreA\":{\"teamA\":2,\"teamB\":1},\"scoreB\":{\"teamA\":2,\"teamB\":1}}"
+    },
+    {
+      "id": "rt_conflict_path",
+      "pass": true,
+      "detail": "version-aware reload after remote advance"
+    },
+    {
+      "id": "rt_reconnect_convergence",
+      "pass": true,
+      "detail": "{\"reconnectA\":{\"teamA\":2,\"teamB\":1},\"reconnectB\":{\"teamA\":2,\"teamB\":1}}"
+    }
+  ],
+  "summary": {
+    "pass": 8,
+    "total": 8
+  },
+  "timestamp": "2026-07-14T00:53:21.261Z"
+}
