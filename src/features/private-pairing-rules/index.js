@@ -78,6 +78,9 @@ export {
   loadActiveRulesForLiveScope,
   prepareLivePrivatePairingOptions,
   buildPrivatePairingRuntimeError,
+  filterRulesForTeamFormation,
+  isTeamFormationConstraintType,
+  isExcludedFromTeamFormation,
 } from "./runtime/index.js";
 
 export {

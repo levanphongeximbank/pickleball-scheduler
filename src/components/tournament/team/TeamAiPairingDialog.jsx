@@ -24,6 +24,10 @@ import {
 import { FORMAT_PRESET } from "../../../features/team-tournament/constants.js";
 import { applyTeamPairing } from "../../../features/team-tournament/engines/teamAutoDrawEngine.js";
 import { runTeamFormationWithCanonicalAdapter } from "../../../features/competition-core/formation/adapters/teamFormationAdapter.js";
+import {
+  COMPETITION_CLASS,
+  prepareLivePrivatePairingOptions,
+} from "../../../features/private-pairing-rules/index.js";
 import TournamentPlayerPickerPanel from "../TournamentPlayerPickerPanel.jsx";
 import TournamentPlayerQuickAddDialog from "../TournamentPlayerQuickAddDialog.jsx";
 import { ALL_CLUBS_FILTER, formatPlayerPickerMeta } from "../../../utils/tournamentPlayerPicker.js";
@@ -44,6 +48,8 @@ export default function TeamAiPairingDialog({
   players = [],
   clubs = [],
   clubId = "",
+  tournamentId = "",
+  competitionClass = COMPETITION_CLASS.INTERNAL,
   defaultClubName = "",
   onPlayersRefresh,
   onMessage,
@@ -147,22 +153,57 @@ export default function TeamAiPairingDialog({
     onMessage?.(`Đã thêm và chọn ${player.name}.`);
   }
 
-  function handlePairTeams() {
+  async function handlePairTeams() {
+    const resolvedCompetitionClass =
+      competitionClass ||
+      teamData?.settings?.competitionClass ||
+      COMPETITION_CLASS.INTERNAL;
+
+    const prepared = await prepareLivePrivatePairingOptions({
+      clubId,
+      tournamentId: tournamentId || null,
+      competitionClass: resolvedCompetitionClass,
+      pairingConstraints: [],
+    });
+
+    if (!prepared.ok) {
+      setPairingResult(null);
+      onError?.(prepared.error?.message || "Không thể ghép đội theo quy tắc riêng.");
+      return;
+    }
+
     const pairing = runTeamFormationWithCanonicalAdapter({
       players: pickerPlayers,
       selectedPlayerIds: selectedIds,
       teamCount,
       teamNames,
       formatPreset: teamData?.settings?.formatPreset,
+      privatePairingRules: prepared.pairingOptions?.privatePairingRules || [],
+      competitionClass: resolvedCompetitionClass,
+      clubId,
+      tournamentId: tournamentId || null,
+      seed: 1,
     });
+
+    if (pairing.privatePairingError || pairing.ok === false) {
+      setPairingResult(null);
+      onError?.(
+        pairing.privatePairingError?.message ||
+          pairing.warnings?.[0] ||
+          "Không thể ghép đội thỏa quy tắc bắt buộc."
+      );
+      return;
+    }
+
     setPairingResult({
       teams: pairing.teams,
       waitingPlayerIds: pairing.waitingPlayerIds,
       warnings: pairing.warnings,
+      privatePairingMeta: pairing.privatePairingMeta,
     });
 
     const initialCaptains = {};
-    pairing.teams.forEach((team) => {
+    (pairing.teams || []).forEach((team) => {
       initialCaptains[team.id] = "";
     });
     setCaptains(initialCaptains);

@@ -1,5 +1,15 @@
 import { getPlayerGenderKey, getPlayerRatingInternal } from "../../../models/player.js";
 import { createId } from "../../../utils/id.js";
+import { COMPETITION_CLASS, RESTRICTED_COMPETITION_CLASSES } from "../../private-pairing-rules/constants/enums.js";
+import {
+  buildPrivatePairingRuntimeError,
+  createSeededRng,
+  evaluatePrivatePairingCandidate,
+  filterRulesForTeamFormation,
+  isPrivatePairingRuntimeEnabled,
+  PRIVATE_PAIRING_RUNTIME_CODE,
+  resolveActivePrivatePairingRules,
+} from "../../private-pairing-rules/runtime/index.js";
 import { FORMAT_PRESET, TEAM_GROUP_SEEDING } from "../constants.js";
 import {
   createTeamRecord,
@@ -14,6 +24,32 @@ import {
 import {
   recommendGroupSizes,
 } from "./teamRoundRobinScheduleEngine.js";
+
+function isRestrictedCompetitionClass(competitionClass) {
+  return RESTRICTED_COMPETITION_CLASSES.has(String(competitionClass || "").toUpperCase());
+}
+
+function formationQualityScore(teams = []) {
+  const levels = teams.map((team) => Number(team.avgLevel) || 0);
+  if (levels.length < 2) {
+    return 100;
+  }
+  const spread = Math.max(...levels) - Math.min(...levels);
+  return Math.max(0, Math.round(100 - spread * 100));
+}
+
+function compareFormationCandidates(left, right) {
+  if (left.rankScore !== right.rankScore) {
+    return right.rankScore - left.rankScore;
+  }
+  if (left.constraintScore !== right.constraintScore) {
+    return right.constraintScore - left.constraintScore;
+  }
+  if (left.formationQuality !== right.formationQuality) {
+    return right.formationQuality - left.formationQuality;
+  }
+  return String(left.id).localeCompare(String(right.id));
+}
 
 const MLP_MEMBERS_PER_TEAM = 4;
 const MLP_MALES_PER_TEAM = 2;
@@ -426,6 +462,10 @@ export function assignSeededTeamsToGroups(teamData, options = {}) {
 /**
  * Pair balanced teams from a selected player pool (wizard step 1).
  * MLP: fixed 4 VĐV/đội (2 nam + 2 nữ); does not assign group placement.
+ *
+ * When Private Pairing runtime flags are ON and teammate rules are present,
+ * generates multiple seeded MLP candidates, hard-filters with canonical rules,
+ * then ranks by soft constraint score + formation-quality (rating balance).
  */
 export function pairTeamsFromSelectedPlayers({
   players = [],
@@ -434,6 +474,17 @@ export function pairTeamsFromSelectedPlayers({
   teamNames = [],
   formatPreset,
   randomFn,
+  privatePairingRules = [],
+  competitionClass = COMPETITION_CLASS.INTERNAL,
+  clubId = null,
+  tournamentId = null,
+  eventId = null,
+  envSource,
+  seed = 1,
+  maxCandidates = 24,
+  pairingHistory = null,
+  allowedByPublishedRules = false,
+  contextTime,
 } = {}) {
   const selectedSet = new Set((selectedPlayerIds || []).map((id) => String(id)));
   const pool = (Array.isArray(players) ? players : []).filter((player) =>
@@ -442,20 +493,27 @@ export function pairTeamsFromSelectedPlayers({
   const warnings = [];
   const requestedCount = Math.max(2, Number(teamCount) || 2);
   const names = resolveTeamNames(teamNames, requestedCount);
+  const playersById = Object.fromEntries(
+    pool.map((player) => [String(player.id), player])
+  );
 
   if (!pool.length) {
     return {
+      ok: false,
       teams: [],
       waitingPlayerIds: [],
       warnings: ["Chọn ít nhất một VĐV để ghép đội."],
+      privatePairingError: null,
     };
   }
 
   if (!isMlpFormatPreset(formatPreset)) {
     return {
+      ok: false,
       teams: [],
       waitingPlayerIds: pool.map((player) => player.id),
       warnings: ["AI ghép đội hiện chỉ hỗ trợ preset MLP 4 người."],
+      privatePairingError: null,
     };
   }
 
@@ -474,9 +532,11 @@ export function pairTeamsFromSelectedPlayers({
 
   if (effectiveTeamCount < 1) {
     return {
+      ok: false,
       teams: [],
       waitingPlayerIds: pool.map((player) => player.id),
       warnings: ["Cần ít nhất 2 nam và 2 nữ để ghép 1 đội MLP."],
+      privatePairingError: null,
     };
   }
 
@@ -488,34 +548,222 @@ export function pairTeamsFromSelectedPlayers({
 
   const requiredMales = effectiveTeamCount * MLP_MALES_PER_TEAM;
   const requiredFemales = effectiveTeamCount * MLP_FEMALES_PER_TEAM;
-  const buckets = buildMlpTeamsFourStep({
-    males: males.slice(0, requiredMales),
-    females: females.slice(0, requiredFemales),
-    teamCount: effectiveTeamCount,
-    randomFn,
+  const malePool = males.slice(0, requiredMales);
+  const femalePool = females.slice(0, requiredFemales);
+
+  const buildLegacyResult = (rng) => {
+    const buckets = buildMlpTeamsFourStep({
+      males: malePool,
+      females: femalePool,
+      teamCount: effectiveTeamCount,
+      randomFn: rng,
+    });
+
+    let teams = buildTeamRecordsFromBuckets(buckets, names.slice(0, effectiveTeamCount));
+    teams = assignSeedsByAvgLevel(teams);
+
+    const usedIds = new Set(teams.flatMap((team) => team.playerIds));
+    const waitingPlayerIds = pool
+      .filter((player) => !usedIds.has(player.id))
+      .map((player) => player.id);
+
+    const nextWarnings = [...warnings];
+    if (waitingPlayerIds.length) {
+      nextWarnings.push(`${waitingPlayerIds.length} VĐV sẽ ở trạng thái chờ.`);
+    }
+    const spreadWarning = buildTeamSpreadWarning(teams);
+    if (spreadWarning) {
+      nextWarnings.push(spreadWarning);
+    }
+
+    return { teams, waitingPlayerIds, warnings: nextWarnings };
+  };
+
+  const runtimeEnabled = isPrivatePairingRuntimeEnabled(envSource);
+  const formationRulesInput = filterRulesForTeamFormation(privatePairingRules || []);
+
+  // Flags OFF or no teammate rules → legacy MLP path (unchanged behavior).
+  if (!runtimeEnabled || formationRulesInput.length === 0) {
+    const legacy = buildLegacyResult(typeof randomFn === "function" ? randomFn : Math.random);
+    return {
+      ok: true,
+      ...legacy,
+      privatePairingError: null,
+      privatePairingMeta: {
+        runtimeEnabled,
+        formationRulesApplied: 0,
+        opponentOrGroupRulesIgnored: (privatePairingRules || []).length - formationRulesInput.length,
+      },
+    };
+  }
+
+  const context = {
+    teamSize: MLP_MEMBERS_PER_TEAM,
+    clubId,
+    tournamentId,
+    eventId,
+    competitionClass,
+    allowedByPublishedRules,
+    contextTime,
+    playersById,
+  };
+
+  const resolved = resolveActivePrivatePairingRules({
+    rules: formationRulesInput,
+    legacyConstraints: [],
+    context,
   });
 
-  let teams = buildTeamRecordsFromBuckets(buckets, names.slice(0, effectiveTeamCount));
-  teams = assignSeedsByAvgLevel(teams);
-
-  const usedIds = new Set(teams.flatMap((team) => team.playerIds));
-  const waitingPlayerIds = pool
-    .filter((player) => !usedIds.has(player.id))
-    .map((player) => player.id);
-
-  if (waitingPlayerIds.length) {
-    warnings.push(`${waitingPlayerIds.length} VĐV sẽ ở trạng thái chờ.`);
+  if (resolved.validationErrors?.length) {
+    const error = buildPrivatePairingRuntimeError({
+      errorCode: PRIVATE_PAIRING_RUNTIME_CODE.RULE_VALIDATION_FAILED,
+      meta: { validationErrors: resolved.validationErrors },
+    });
+    return {
+      ok: false,
+      teams: [],
+      waitingPlayerIds: pool.map((player) => player.id),
+      warnings: [error.message],
+      privatePairingError: error,
+      privatePairingMeta: { runtimeEnabled: true, formationRulesApplied: 0 },
+    };
   }
 
-  const spreadWarning = buildTeamSpreadWarning(teams);
-  if (spreadWarning) {
-    warnings.push(spreadWarning);
+  if (resolved.fatalConflicts?.length) {
+    const error = buildPrivatePairingRuntimeError({
+      errorCode: PRIVATE_PAIRING_RUNTIME_CODE.RULE_SET_CONFLICT,
+      meta: { fatalConflicts: resolved.fatalConflicts },
+    });
+    return {
+      ok: false,
+      teams: [],
+      waitingPlayerIds: pool.map((player) => player.id),
+      warnings: [error.message, error.code],
+      privatePairingError: error,
+      privatePairingMeta: { runtimeEnabled: true, formationRulesApplied: 0 },
+    };
   }
 
+  if (
+    isRestrictedCompetitionClass(competitionClass) &&
+    (resolved.blockedByPolicy || []).length > 0
+  ) {
+    const error = buildPrivatePairingRuntimeError({
+      errorCode: PRIVATE_PAIRING_RUNTIME_CODE.PRIVATE_RULE_BLOCKED_BY_POLICY,
+      meta: {
+        blockedByPolicy: resolved.blockedByPolicy,
+        blockedByPolicyCount: resolved.blockedByPolicy.length,
+      },
+    });
+    return {
+      ok: false,
+      teams: [],
+      waitingPlayerIds: pool.map((player) => player.id),
+      warnings: [error.message, error.code],
+      privatePairingError: error,
+      privatePairingMeta: { runtimeEnabled: true, formationRulesApplied: 0 },
+    };
+  }
+
+  const formationResolved = {
+    ...resolved,
+    rules: filterRulesForTeamFormation(resolved.rules),
+  };
+
+  const rng = createSeededRng(seed);
+  const candidateLimit = Math.max(1, Math.min(64, Number(maxCandidates) || 24));
+  const scored = [];
+
+  for (let index = 0; index < candidateLimit; index += 1) {
+    const draft = buildLegacyResult(rng);
+    const candidateTeams = (draft.teams || []).map((team) => ({
+      ...team,
+      members: (team.playerIds || [])
+        .map((id) => playersById[String(id)])
+        .filter(Boolean),
+    }));
+
+    const evaluated = evaluatePrivatePairingCandidate(
+      {
+        id: `mlp-cand-${index + 1}`,
+        teams: candidateTeams,
+      },
+      {
+        resolved: formationResolved,
+        context,
+        history: pairingHistory || {},
+      }
+    );
+
+    const quality = formationQualityScore(draft.teams);
+    const rankScore = evaluated.feasible
+      ? evaluated.constraintScore * 1000 +
+        (evaluated.balanceScore || 0) * 10 +
+        quality
+      : Number.NEGATIVE_INFINITY;
+
+    scored.push({
+      id: evaluated.id,
+      feasible: evaluated.feasible,
+      rejectionCodes: evaluated.rejectionCodes,
+      constraintScore: evaluated.constraintScore,
+      balanceScore: evaluated.balanceScore,
+      formationQuality: quality,
+      rankScore,
+      teams: draft.teams,
+      waitingPlayerIds: draft.waitingPlayerIds,
+      warnings: draft.warnings,
+      softConstraintsSatisfied: evaluated.softConstraintsSatisfied,
+      softConstraintsMissed: evaluated.softConstraintsMissed,
+    });
+  }
+
+  const feasible = scored.filter((item) => item.feasible).sort(compareFormationCandidates);
+  if (!feasible.length) {
+    const error = buildPrivatePairingRuntimeError({
+      errorCode: PRIVATE_PAIRING_RUNTIME_CODE.NO_FEASIBLE_PAIRING,
+      meta: {
+        rejectedCandidateCount: scored.length,
+        rejectionSamples: scored.slice(0, 5).map((item) => ({
+          id: item.id,
+          codes: item.rejectionCodes,
+        })),
+      },
+    });
+    return {
+      ok: false,
+      teams: [],
+      waitingPlayerIds: pool.map((player) => player.id),
+      warnings: [error.message, error.code],
+      privatePairingError: error,
+      privatePairingMeta: {
+        runtimeEnabled: true,
+        formationRulesApplied: formationResolved.rules.length,
+        candidateCount: scored.length,
+        rejectedCandidateCount: scored.length,
+      },
+    };
+  }
+
+  const best = feasible[0];
   return {
-    teams,
-    waitingPlayerIds,
-    warnings,
+    ok: true,
+    teams: best.teams,
+    waitingPlayerIds: best.waitingPlayerIds,
+    warnings: best.warnings,
+    privatePairingError: null,
+    privatePairingMeta: {
+      runtimeEnabled: true,
+      formationRulesApplied: formationResolved.rules.length,
+      candidateCount: scored.length,
+      selectedCandidateId: best.id,
+      constraintScore: best.constraintScore,
+      // formation-quality = MLP rating balance; canonical soft = constraintScore
+      formationQualityScore: best.formationQuality,
+      balanceScore: best.balanceScore,
+      softConstraintsSatisfied: best.softConstraintsSatisfied,
+      softConstraintsMissed: best.softConstraintsMissed,
+    },
   };
 }
 

@@ -658,6 +658,7 @@ export default function TeamRosterPanel({
         players={drawPlayerPool}
         clubs={clubs}
         clubId={clubId}
+        tournamentId={tournamentId}
         defaultClubName={hostClubName}
         onPlayersRefresh={onUpdated}
         onMessage={onMessage}
