@@ -37,8 +37,8 @@ import { buildLockToggleState } from "./selectPlayers.director.logic";
 import {
   loadCourtsFromStorage,
   loadInitialSelectedCourts,
-  loadPlayersFromStorage,
 } from "./selectPlayers.data";
+import { loadSelectPlayersCandidatePool } from "../features/pairing-candidates/index.js";
 import {
   getCapacityStatusMessage,
   getOverCapacityMessage,
@@ -173,7 +173,11 @@ export default function SelectPlayers() {
     loadInitialSelectedCourts(loadCourtsFromStorage())
   );
 
-  const [players, setPlayers] = useState(() => loadPlayersFromStorage());
+  const [players, setPlayers] = useState([]);
+  const [playersLoadState, setPlayersLoadState] = useState({
+    status: "loading",
+    message: null,
+  });
 
   const competitionConfig = useMemo(
     () => getCompetitionTypeConfig(competitionType),
@@ -182,11 +186,10 @@ export default function SelectPlayers() {
   const competitionOptions = useMemo(() => getCompetitionTypeOptions(), []);
 
   useEffect(() => {
+    let cancelled = false;
     const nextCourts = loadCourtsFromStorage(activeClubId);
-    const nextPlayers = loadPlayersFromStorage(activeClubId);
 
     setCourts(nextCourts);
-    setPlayers(nextPlayers);
     setSelectedCourts(loadInitialSelectedCourts(nextCourts));
     setSelectedPlayers([]);
     setScheduleResult(null);
@@ -195,6 +198,48 @@ export default function SelectPlayers() {
     setLockedPlayers(getDirectorState(activeClubId).lockedPlayers || []);
     setFounderConstraints(getClubPairingConstraints(loadClubData(activeClubId)));
     refreshDirectorConfig();
+    setPlayers([]);
+    setPlayersLoadState({ status: "loading", message: null });
+    setFormMessage(null);
+
+    (async () => {
+      const result = await loadSelectPlayersCandidatePool(activeClubId);
+      if (cancelled) return;
+
+      if (!result.ok) {
+        setPlayers([]);
+        setPlayersLoadState({
+          status: "error",
+          message: result.message || "Không tải được danh sách VĐV.",
+          code: result.code || "ERROR",
+        });
+        setFormMessage({
+          type: "error",
+          text:
+            result.message ||
+            "Không tải được danh sách VĐV canonical. Không dùng roster blob.",
+        });
+        return;
+      }
+
+      setPlayers(Array.isArray(result.players) ? result.players : []);
+      setPlayersLoadState({
+        status: "ready",
+        message: result.empty ? result.message : null,
+        code: result.code || null,
+        excludedCount: result.gatewayResult?.summary?.excludedCount || 0,
+      });
+      if (result.empty) {
+        setFormMessage({
+          type: "error",
+          text: result.message || "Không có VĐV đủ điều kiện để xếp sân.",
+        });
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
   }, [activeClubId, revision]);
 
   useEffect(() => {
@@ -579,6 +624,16 @@ export default function SelectPlayers() {
           playersPerCourt={competitionConfig.playersPerCourt}
         />
       </Box>
+
+      {playersLoadState.status === "loading" && (
+        <Card sx={{ mb: 3 }}>
+          <CardContent>
+            <Typography color="text.secondary">
+              Đang tải danh sách VĐV canonical…
+            </Typography>
+          </CardContent>
+        </Card>
+      )}
 
       {formMessage && (
         <Card sx={{ mb: 3, bgcolor: formMessage.type === "error" ? "error.50" : "success.50" }}>
