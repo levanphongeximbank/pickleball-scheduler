@@ -33,11 +33,14 @@ import {
   rpcV2ClubCancelMembershipRequest,
   rpcV2ClubLeaveMembership,
   rpcV2ClubSubmitMembershipRequest,
+  rpcV2ClubListMyRequests,
   rpcV2ClubListPendingRequests,
   rpcV2ClubReviewMembershipRequest,
   rpcV2ClubGet,
 } from "./clubStorageV2RpcService.js";
+import { mapClubCommandError } from "./clubCommandErrorMap.js";
 import { invalidateAllClubRegistryCache } from "../registry/clubRegistryCache.js";
+import { invalidateMyActiveClubMembershipCache } from "./clubActiveMembershipService.js";
 import { syncRatingToClubPlayer } from "../../pick-vn-rating/services/pickVnRatingService.js";
 import { rpcReviewClubMembershipRequest, rpcLeaveMyClub } from "./clubMembershipRequestRpcService.js";
 import { removeMemberFromClub } from "./clubMemberService.js";
@@ -45,6 +48,20 @@ import {
   isClubPresident,
   isClubVicePresident,
 } from "./clubGovernanceService.js";
+import { API_ERROR_CODES } from "../../api/constants/apiErrors.js";
+
+/** Phase 45A.4B — invalidate request / roster / club summary caches after command success. */
+function invalidateAfterMembershipCommand(userId = null) {
+  invalidateAllClubRegistryCache();
+  invalidateMyActiveClubMembershipCache(userId);
+}
+
+function mapMembershipCommandError(result, fallbackError) {
+  return mapClubCommandError(result, {
+    fallbackCode: API_ERROR_CODES.INTERNAL_ERROR,
+    fallbackError,
+  });
+}
 
 function mapV2MembershipRequestRow(row, clubId) {
   if (!row) {
@@ -171,6 +188,12 @@ async function linkAthleteProfile({ userId, clubId, playerId }) {
     saveAuthSession(nextUser, { provider: session.provider || "dev" });
   }
 
+  // Phase 45A.4B — legacy profile-link RPC is V2-OFF only. Under V2, membership SSOT
+  // is club_members via club_review_membership_request; never invoke Phase31 here.
+  if (isClubStorageV2Enabled()) {
+    return { ok: true, playerId, clubId };
+  }
+
   const rpcResult = await rpcReviewClubMembershipRequest({
     userId,
     clubId,
@@ -221,19 +244,29 @@ export async function leaveMyClub({ user, tenantId = null, clubId: clubIdOverrid
   const playerId = athlete?.playerId || athlete?.player_id || null;
 
   if (!athlete?.id) {
-    return { ok: false, error: "Chưa đăng nhập." };
+    return {
+      ok: false,
+      code: API_ERROR_CODES.FORBIDDEN,
+      error: "Chưa đăng nhập.",
+    };
   }
 
   if (!clubId) {
-    return { ok: false, error: "Bạn chưa thuộc CLB nào." };
+    return {
+      ok: false,
+      code: API_ERROR_CODES.CLUB_REQUIRED,
+      error: "Bạn chưa thuộc CLB nào.",
+    };
   }
 
   if (isClubStorageV2Enabled()) {
     const left = await rpcV2ClubLeaveMembership({ clubId });
     if (!left.ok) {
-      return left;
+      return mapMembershipCommandError(left, "Không rời được câu lạc bộ.");
     }
+    // Session/local athlete-link cleanup only — not membership authority (SSOT = club_members).
     await unlinkAthleteProfile({ userId: athlete.id, skipLegacyRpc: true });
+    invalidateAfterMembershipCommand(athlete.id);
     return { ok: true, clubId, provider: "v2-rpc" };
   }
 
@@ -249,6 +282,7 @@ export async function leaveMyClub({ user, tenantId = null, clubId: clubIdOverrid
   if (isClubPresident(athlete, club) || isClubVicePresident(athlete, club)) {
     return {
       ok: false,
+      code: API_ERROR_CODES.FORBIDDEN,
       error: "Chuyển vai trò Chủ tịch / Phó chủ tịch trước khi rời CLB.",
     };
   }
@@ -440,6 +474,63 @@ export async function listPendingMembershipRequests(clubId, tenantId, user = get
   );
 }
 
+/**
+ * Phase 45A.4B — orchestrator probe for review access (UI must not call list-pending RPC).
+ * Returns `{ ok: true }` when the pending-list RPC succeeds (includes empty list).
+ */
+export async function probeMembershipReviewAccess(clubId) {
+  const trimmedClubId = String(clubId || "").trim();
+  if (!trimmedClubId) {
+    return { ok: false, code: API_ERROR_CODES.CLUB_REQUIRED, error: "Thiếu CLB." };
+  }
+
+  if (!isClubStorageV2Enabled()) {
+    return { ok: true, provider: "blob" };
+  }
+
+  const result = await rpcV2ClubListPendingRequests(trimmedClubId);
+  if (!result.ok) {
+    return mapMembershipCommandError(result, "Không kiểm tra được quyền duyệt.");
+  }
+  return { ok: true, provider: "v2-rpc" };
+}
+
+/**
+ * Phase 45A.4B — list caller's membership requests via orchestrator (no UI→RPC bypass).
+ */
+export async function listMyMembershipRequestsCanonical(userId) {
+  const trimmedUserId = String(userId || "").trim();
+
+  if (isClubStorageV2Enabled()) {
+    const result = await rpcV2ClubListMyRequests();
+    if (!result.ok) {
+      return mapMembershipCommandError(result, "Không tải được yêu cầu gia nhập.");
+    }
+    const requests = (result.requests || []).map((row) => ({
+      id: row.id,
+      clubId: row.club_id,
+      userId: row.user_id,
+      status: row.status,
+      message: row.message || "",
+      version: row.version,
+      requestedAt: row.created_at,
+      club_id: row.club_id,
+      user_id: row.user_id,
+      created_at: row.created_at,
+    }));
+    return { ok: true, requests, provider: "v2-rpc" };
+  }
+
+  if (!trimmedUserId) {
+    return { ok: true, requests: [], provider: "blob" };
+  }
+  return {
+    ok: true,
+    requests: listMyMembershipRequestsAll(trimmedUserId),
+    provider: "blob",
+  };
+}
+
 function resolveMembershipRequestTenantCheck(clubId, clubTenantId, user) {
   const role = normalizeRole(user?.role);
   if (role === ROLES.PLAYER || role === ROLES.CUSTOMER) {
@@ -454,26 +545,29 @@ export async function submitClubMembershipRequest(clubId, tenantId, user, option
   const athlete = user || getCurrentUser();
 
   if (!athlete?.id) {
-    return { ok: false, error: "Chưa đăng nhập." };
-  }
-
-  if (resolveUserClubId(athlete)) {
-    return { ok: false, error: "Bạn đã thuộc một CLB." };
+    return {
+      ok: false,
+      code: API_ERROR_CODES.FORBIDDEN,
+      error: "Chưa đăng nhập.",
+    };
   }
 
   if (isClubStorageV2Enabled()) {
+    // Membership authority is club_members / requests_v42 (server ALREADY_MEMBER / PENDING_EXISTS).
+    // Do not gate on legacy session club fields under V2.
     const result = await rpcV2ClubSubmitMembershipRequest({
       clubId: trimmedClubId,
       message: options.message || "",
     });
     if (!result.ok) {
-      return {
-        ok: false,
-        code: result.code,
-        error: result.error || "Không gửi được yêu cầu gia nhập.",
-      };
+      return mapMembershipCommandError(result, "Không gửi được yêu cầu gia nhập.");
     }
+    invalidateAfterMembershipCommand(athlete.id);
     return { ok: true, request: result.data, provider: "v2-rpc" };
+  }
+
+  if (resolveUserClubId(athlete)) {
+    return { ok: false, error: "Bạn đã thuộc một CLB." };
   }
 
   const club = getRegistryClubById(trimmedClubId);
@@ -529,10 +623,15 @@ export async function cancelClubMembershipRequest(clubId, requestId, userId, opt
   const trimmedUserId = String(userId || "").trim();
 
   if (isClubStorageV2Enabled()) {
-    return rpcV2ClubCancelMembershipRequest({
+    const result = await rpcV2ClubCancelMembershipRequest({
       membershipRequestId: trimmedRequestId,
       expectedVersion: options.expectedVersion ?? null,
     });
+    if (!result.ok) {
+      return mapMembershipCommandError(result, "Không hủy được yêu cầu gia nhập.");
+    }
+    invalidateAfterMembershipCommand(trimmedUserId || null);
+    return { ok: true, ...result, provider: "v2-rpc" };
   }
 
   const ext = loadClubExtension(trimmedClubId);
@@ -582,11 +681,19 @@ export async function approveClubMembershipRequest(clubId, requestId, tenantId, 
   const user = options.user || getCurrentUser();
   const club = await resolveClubForMembershipReview(clubId);
   if (!club) {
-    return { ok: false, error: "Không tìm thấy CLB." };
+    return {
+      ok: false,
+      code: API_ERROR_CODES.NOT_FOUND,
+      error: "Không tìm thấy CLB.",
+    };
   }
 
   if (!canApproveClubMembershipRequests(user, club)) {
-    return { ok: false, error: "Chỉ Chủ tịch / Phó chủ tịch / Chủ sở hữu CLB được duyệt." };
+    return {
+      ok: false,
+      code: API_ERROR_CODES.FORBIDDEN,
+      error: "Chỉ Chủ tịch / Phó chủ tịch / Chủ sở hữu CLB được duyệt.",
+    };
   }
 
   const tenantCheck = guardClubTenant(clubId, tenantId, { user });
@@ -602,14 +709,11 @@ export async function approveClubMembershipRequest(clubId, requestId, tenantId, 
       expectedVersion: options.expectedVersion ?? null,
     });
     if (!reviewed.ok) {
-      return {
-        ok: false,
-        code: reviewed.code,
-        error: reviewed.error || "Không duyệt được yêu cầu gia nhập.",
-      };
+      return mapMembershipCommandError(reviewed, "Không duyệt được yêu cầu gia nhập.");
     }
     const request = mapV2ReviewResult(reviewed.data, clubId);
-    invalidateAllClubRegistryCache();
+    // Member row is created by the server review transaction — no client roster/profile write.
+    invalidateAfterMembershipCommand(reviewed.data?.user_id || null);
     return {
       ok: true,
       request,
@@ -693,11 +797,19 @@ export async function rejectClubMembershipRequest(clubId, requestId, tenantId, o
   const user = options.user || getCurrentUser();
   const club = await resolveClubForMembershipReview(clubId);
   if (!club) {
-    return { ok: false, error: "Không tìm thấy CLB." };
+    return {
+      ok: false,
+      code: API_ERROR_CODES.NOT_FOUND,
+      error: "Không tìm thấy CLB.",
+    };
   }
 
   if (!canApproveClubMembershipRequests(user, club)) {
-    return { ok: false, error: "Chỉ Chủ tịch / Phó chủ tịch / Chủ sở hữu CLB được từ chối." };
+    return {
+      ok: false,
+      code: API_ERROR_CODES.FORBIDDEN,
+      error: "Chỉ Chủ tịch / Phó chủ tịch / Chủ sở hữu CLB được từ chối.",
+    };
   }
 
   const tenantCheck = guardClubTenant(clubId, tenantId, { user });
@@ -713,12 +825,9 @@ export async function rejectClubMembershipRequest(clubId, requestId, tenantId, o
       expectedVersion: options.expectedVersion ?? null,
     });
     if (!reviewed.ok) {
-      return {
-        ok: false,
-        code: reviewed.code,
-        error: reviewed.error || "Không từ chối được yêu cầu gia nhập.",
-      };
+      return mapMembershipCommandError(reviewed, "Không từ chối được yêu cầu gia nhập.");
     }
+    invalidateAfterMembershipCommand(reviewed.data?.user_id || null);
     return {
       ok: true,
       request: mapV2ReviewResult(reviewed.data, clubId),

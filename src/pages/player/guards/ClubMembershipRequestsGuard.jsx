@@ -4,10 +4,9 @@ import { useEffect, useState } from "react";
 
 import { useAuth } from "../../../context/AuthContext.jsx";
 import { useTenant } from "../../../context/TenantContext.jsx";
-import { canApproveClubMembershipRequests } from "../../../features/club/index.js";
+import { canApproveClubMembershipRequests, probeMembershipReviewAccess } from "../../../features/club/index.js";
 import { useRequiredMyClubMembership } from "../../../features/club/hooks/MyClubMembershipContext.jsx";
 import { useResolvedClubRecord } from "../../../features/club/hooks/useResolvedClubRecord.js";
-import { rpcV2ClubListPendingRequests } from "../../../features/club/services/clubStorageV2RpcService.js";
 import {
   CLUB_LANDING_STATE,
   CLUB_ROUTE_PATHS,
@@ -17,6 +16,7 @@ import {
 /**
  * Phase 42J.1 — /my-club/requests guard.
  * Phase 42J.2 — shared membership context (no duplicate RPC).
+ * Phase 45A.4B — probe via clubMembershipRequestService (no UI→RPC bypass).
  */
 export default function ClubMembershipRequestsGuard({ children }) {
   const { user } = useAuth();
@@ -36,7 +36,7 @@ export default function ClubMembershipRequestsGuard({ children }) {
     }
 
     let cancelled = false;
-    void rpcV2ClubListPendingRequests(clubId).then((result) => {
+    void probeMembershipReviewAccess(clubId).then((result) => {
       if (!cancelled) {
         setReviewRpcOk(Boolean(result.ok));
       }

@@ -60,7 +60,8 @@ test("submitClubMembershipRequest routes rejected re-apply through the V2 comman
   assert.ok(legacyWrite === -1 || v2Return < legacyWrite);
 
   // No profiles.club_id write anywhere in the submit flow.
-  assert.doesNotMatch(fn, /profiles/);
+  assert.doesNotMatch(fn, /\.from\(\s*["']profiles["']/);
+  assert.doesNotMatch(fn, /club_id\s*:/);
 });
 
 // 3. V2 command payload carries club_id + message; the authenticated user is derived server-side.
