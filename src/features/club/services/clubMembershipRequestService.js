@@ -39,6 +39,7 @@ import {
   rpcV2ClubGet,
 } from "./clubStorageV2RpcService.js";
 import { mapClubCommandError } from "./clubCommandErrorMap.js";
+import { assertLegacyMembershipRosterWriteAllowed } from "./clubLegacyWriteGuard.js";
 import { invalidateAllClubRegistryCache } from "../registry/clubRegistryCache.js";
 import { invalidateMyActiveClubMembershipCache } from "./clubActiveMembershipService.js";
 import { syncRatingToClubPlayer } from "../../pick-vn-rating/services/pickVnRatingService.js";
@@ -136,6 +137,15 @@ function findPlayerByAuthUserId(clubId, authUserId) {
 }
 
 function ensurePlayerInClubBlob({ clubId, tenantId, user, displayName, pickVnRating }) {
+  // Phase 45A.4C.5 — blob player ensure is V2-OFF / offline only. Never create local
+  // roster players under cloud Membership (SSOT = public.club_members).
+  const legacyGate = assertLegacyMembershipRosterWriteAllowed({
+    operation: "ensurePlayerInClubBlob",
+  });
+  if (!legacyGate.ok) {
+    return legacyGate;
+  }
+
   const club = getRegistryClubById(clubId);
   const data = loadClubData(clubId);
   const players = [...(data.players || [])];
@@ -310,7 +320,11 @@ export async function adminLinkAccountOnlyAthleteToClub({ clubId, user, tenantId
   const trimmedClubId = String(clubId || "").trim();
   const normalizedUser = normalizeUser(user);
   if (!trimmedClubId || !normalizedUser?.id) {
-    return { ok: false, error: "Thiếu CLB hoặc user." };
+    return {
+      ok: false,
+      code: API_ERROR_CODES.VALIDATION_ERROR,
+      error: "Thiếu CLB hoặc user_id canonical. Không tạo tài khoản giả.",
+    };
   }
 
   const tenantCheck = guardClubTenant(trimmedClubId, tenantId || normalizedUser.tenantId || normalizedUser.venueId);
@@ -322,7 +336,9 @@ export async function adminLinkAccountOnlyAthleteToClub({ clubId, user, tenantId
   const resolvedTenantId =
     tenantId || club?.venueId || club?.tenantId || normalizedUser.tenantId || normalizedUser.venueId || null;
 
-  // Phase 45A.4C.4 — V2: canonical club_add_member by auth user_id; no blob roster write.
+  // Phase 45A.4C.5 — V2: canonical club_add_member only. Never ensurePlayerInClubBlob.
+  // Session/athlete-link is display cleanup only — Membership SSOT remains club_members.
+  // profiles.club_id is NOT written as Membership authority under V2 (Phase31 skipped).
   if (isClubStorageV2Enabled()) {
     const memberResult = await addMemberToClub(trimmedClubId, null, resolvedTenantId, {
       skipPermissionGuard: true,
