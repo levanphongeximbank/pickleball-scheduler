@@ -24,6 +24,12 @@ import ArrowBackIcon from "@mui/icons-material/ArrowBack";
 import { useClub } from "../../context/ClubContext.jsx";
 import { loadCourtsForClub } from "../../domain/clubStorage.js";
 import { listPlayersForClubAware } from "../../features/club/repositories/canonicalPlayerPickerAdapter.js";
+import {
+  loadLegacyClubPlayersSafe,
+  resolveClubPlayerPoolFromAwareResult,
+  resolveTenantPlayerPoolFromAwareResult,
+  loadLegacyTenantPlayersSafe,
+} from "../../features/club/hooks/useClubPlayerPool.js";
 import TournamentCourtSchedulePanel from "../../components/tournament/TournamentCourtSchedulePanel.jsx";
 import {
   getTournament,
@@ -214,26 +220,38 @@ export default function InternalTournamentSetup() {
         if (!cancelled) setPlayers([]);
         return;
       }
-      if (isClubInternal) {
-        const club = getClubById(sourceClubId, playerTenantId);
-        const forTournamentInvite = Boolean(
-          club && user && !canViewFullClubMembers(user, club)
-        );
-        const result = await getClubInternalTournamentPlayersAware(
-          sourceClubId,
-          playerTenantId,
-          { forTournamentInvite }
-        );
-        if (!cancelled) {
-          setPlayers(result.ok ? result.legacyPlayers || result.data || [] : []);
-        }
-        return;
+      const seed = loadLegacyClubPlayersSafe(sourceClubId);
+      if (!cancelled && seed.length) {
+        setPlayers(seed);
       }
-      const result = await listPlayersForClubAware(sourceClubId, {
-        tenantId: playerTenantId,
-      });
-      if (!cancelled) {
-        setPlayers(result.ok ? result.legacyPlayers || [] : []);
+      try {
+        if (isClubInternal) {
+          const club = getClubById(sourceClubId, playerTenantId);
+          const forTournamentInvite = Boolean(
+            club && user && !canViewFullClubMembers(user, club)
+          );
+          const result = await getClubInternalTournamentPlayersAware(
+            sourceClubId,
+            playerTenantId,
+            { forTournamentInvite }
+          );
+          if (!cancelled) {
+            const resolved = resolveClubPlayerPoolFromAwareResult(result, sourceClubId);
+            setPlayers(resolved.players);
+          }
+          return;
+        }
+        const result = await listPlayersForClubAware(sourceClubId, {
+          tenantId: playerTenantId,
+        });
+        if (!cancelled) {
+          const resolved = resolveClubPlayerPoolFromAwareResult(result, sourceClubId);
+          setPlayers(resolved.players);
+        }
+      } catch {
+        if (!cancelled) {
+          setPlayers(seed.length ? seed : loadLegacyClubPlayersSafe(sourceClubId));
+        }
       }
     })();
     return () => {
@@ -247,11 +265,22 @@ export default function InternalTournamentSetup() {
       setTenantPlayers([]);
       return undefined;
     }
-    getTenantPlayersAware(playerTenantId).then((result) => {
-      if (!cancelled) {
-        setTenantPlayers(result.ok ? result.legacyPlayers || result.data || [] : []);
-      }
-    });
+    const seed = loadLegacyTenantPlayersSafe(playerTenantId);
+    if (seed.length) {
+      setTenantPlayers(seed);
+    }
+    getTenantPlayersAware(playerTenantId)
+      .then((result) => {
+        if (!cancelled) {
+          const resolved = resolveTenantPlayerPoolFromAwareResult(result, playerTenantId);
+          setTenantPlayers(resolved.players);
+        }
+      })
+      .catch(() => {
+        if (!cancelled) {
+          setTenantPlayers(seed.length ? seed : loadLegacyTenantPlayersSafe(playerTenantId));
+        }
+      });
     return () => {
       cancelled = true;
     };

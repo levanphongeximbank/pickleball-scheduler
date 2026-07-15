@@ -115,6 +115,8 @@ export { createFriendlyClubMatch, getRecentClubActivity } from "./services/clubA
 export {
   processClubInternalMatchCompletion,
   findTournamentClubId,
+  resolveTournamentClubId,
+  buildTournamentNotFoundMessage,
 } from "./services/clubTournamentBridge.js";
 
 export {

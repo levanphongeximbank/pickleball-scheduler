@@ -29,6 +29,7 @@ import { useTenant } from "../../context/TenantContext.jsx";
 import { PERMISSIONS } from "../../auth/permissions.js";
 import { assertTournamentAccess } from "../../domain/tournamentService.js";
 import {
+  mergeLegacyPlayerPools,
   useClubPlayerPool,
   useTenantPlayerPool,
 } from "../../features/club/hooks/useClubPlayerPool.js";
@@ -270,13 +271,10 @@ export default function TeamTournamentSetup() {
   const { players: allTenantPlayers } = useTenantPlayerPool(tenantId, {
     revision: dataVersion,
   });
-  const lineupPlayers = useMemo(() => {
-    const pool = new Map();
-    [...allTenantPlayers, ...players].forEach((player) => {
-      pool.set(String(player.id), player);
-    });
-    return [...pool.values()];
-  }, [allTenantPlayers, players]);
+  const lineupPlayers = useMemo(
+    () => mergeLegacyPlayerPools(allTenantPlayers, players),
+    [allTenantPlayers, players]
+  );
   const td = teamData || teamDataView;
 
   const standings = useMemo(() => getStandingsTable(td), [td]);
@@ -763,9 +761,17 @@ export default function TeamTournamentSetup() {
       <Box sx={{ p: 3 }}>
         <Stack spacing={2}>
           <Alert severity="error">{loadError}</Alert>
-          <Button variant="contained" onClick={() => reload()}>
-            Thử lại
-          </Button>
+          <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
+            <Button variant="contained" onClick={() => reload()}>
+              Thử lại
+            </Button>
+            <Button component={RouterLink} to="/tournament/create" variant="outlined">
+              Tạo giải đồng đội mới
+            </Button>
+            <Button component={RouterLink} to="/tournament" variant="text">
+              Về trang Giải đấu
+            </Button>
+          </Stack>
         </Stack>
       </Box>
     );
@@ -774,7 +780,21 @@ export default function TeamTournamentSetup() {
   if (!tournament || !isTeamTournament(tournament)) {
     return (
       <Box sx={{ p: 3 }}>
-        <Alert severity="warning">Không tìm thấy giải đồng đội.</Alert>
+        <Stack spacing={2}>
+          <Alert severity="warning">
+            Không tìm thấy giải đồng đội này trên CLB/blob hiện tại. Preview thường lưu dữ liệu
+            theo trình duyệt — ID cũ (`{tournamentId}`) có thể đã mất sau khi redeploy hoặc đổi
+            CLB. Hãy tạo lại giải trên Preview hiện tại.
+          </Alert>
+          <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
+            <Button component={RouterLink} to="/tournament/create" variant="contained">
+              Tạo giải đồng đội mới
+            </Button>
+            <Button component={RouterLink} to="/tournament" variant="outlined">
+              Về trang Giải đấu
+            </Button>
+          </Stack>
+        </Stack>
       </Box>
     );
   }

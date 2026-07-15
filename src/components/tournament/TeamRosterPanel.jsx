@@ -1,6 +1,11 @@
 import { useEffect, useMemo, useState } from "react";
 import { listPlayersForClubAware } from "../../features/club/repositories/canonicalPlayerPickerAdapter.js";
 import {
+  loadLegacyClubPlayersSafe,
+  resolveClubPlayerPoolFromAwareResult,
+  resolveFlowPlayersWithClubFallback,
+} from "../../features/club/hooks/useClubPlayerPool.js";
+import {
   Alert,
   Autocomplete,
   Box,
@@ -116,11 +121,24 @@ function TeamCard({
       setFilteredClubPlayers([]);
       return undefined;
     }
-    listPlayersForClubAware(sourceClubFilter).then((result) => {
-      if (!cancelled) {
-        setFilteredClubPlayers(result.ok ? result.legacyPlayers || [] : []);
-      }
-    });
+    const seed = loadLegacyClubPlayersSafe(sourceClubFilter);
+    if (seed.length) {
+      setFilteredClubPlayers(seed);
+    }
+    listPlayersForClubAware(sourceClubFilter)
+      .then((result) => {
+        if (!cancelled) {
+          const resolved = resolveClubPlayerPoolFromAwareResult(result, sourceClubFilter);
+          setFilteredClubPlayers(resolved.players);
+        }
+      })
+      .catch(() => {
+        if (!cancelled) {
+          setFilteredClubPlayers(
+            seed.length ? seed : loadLegacyClubPlayersSafe(sourceClubFilter)
+          );
+        }
+      });
     return () => {
       cancelled = true;
     };
@@ -128,7 +146,7 @@ function TeamCard({
 
   const pickerPlayers = useMemo(() => {
     if (sourceClubFilter === ALL_CLUBS_FILTER) {
-      return allTenantPlayers.length > 0 ? allTenantPlayers : clubPlayers;
+      return resolveFlowPlayersWithClubFallback(allTenantPlayers, clubPlayers);
     }
     return filteredClubPlayers;
   }, [sourceClubFilter, allTenantPlayers, clubPlayers, filteredClubPlayers]);

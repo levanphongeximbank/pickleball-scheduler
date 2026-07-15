@@ -1,14 +1,43 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { findTournamentClubId } from "../../club/services/clubTournamentBridge.js";
+import {
+  buildTournamentNotFoundMessage,
+  resolveTournamentClubId,
+} from "../../club/services/clubTournamentBridge.js";
 import {
   getTeamTournamentUiOrchestrator,
   mapRepositoryResultToUi,
+  UI_MUTATION_ERROR,
 } from "./teamTournamentUiOrchestrator.js";
-import { REPOSITORY_REALTIME_FALLBACK } from "../repositories/teamTournamentRepositoryTypes.js";
+import {
+  REPOSITORY_ERROR_CODES,
+  REPOSITORY_REALTIME_FALLBACK,
+} from "../repositories/teamTournamentRepositoryTypes.js";
 import { syncDreambreakerForAllMatchups } from "../engines/dreambreakerEngine.js";
 import { useTeamTournamentRealtime } from "./useTeamTournamentRealtime.js";
 
 const DEFAULT_POLL_MS = REPOSITORY_REALTIME_FALLBACK.pollingIntervalMs;
+
+function isTeamTournamentNotFound(result) {
+  const code = String(result?.code || "");
+  return (
+    code === REPOSITORY_ERROR_CODES.NOT_FOUND ||
+    code === UI_MUTATION_ERROR.NOT_FOUND ||
+    code === "NOT_FOUND"
+  );
+}
+
+/**
+ * Pure helper for tests: resolve club for Team detail load (preferred → scan).
+ * @param {string|null|undefined} preferredClubId
+ * @param {string|null|undefined} tournamentId
+ */
+export function resolveTeamTournamentLoadClubId(preferredClubId, tournamentId) {
+  return (
+    resolveTournamentClubId(preferredClubId, tournamentId) ||
+    String(preferredClubId || "").trim() ||
+    null
+  );
+}
 
 /**
  * TT-1C page hook — repository read path + polling + mutation helpers.
@@ -78,13 +107,15 @@ export function useTeamTournamentPage({
 
   const reload = useCallback(
     async ({ silent = false } = {}) => {
-      const effectiveClubId = clubId || findTournamentClubId(tournamentId);
       if (!tournamentId) {
         setLoading(false);
-        return { ok: false, error: "Thiếu clubId hoặc tournamentId." };
+        return { ok: false, error: "Thiếu tournamentId." };
       }
 
-      const loadClubId = effectiveClubId || tournamentId;
+      const loadClubId =
+        resolveTournamentClubId(clubId, tournamentId) ||
+        String(clubId || "").trim() ||
+        tournamentId;
 
       if (loadingRef.current && !silent) {
         return { ok: false, error: "Đang tải..." };
@@ -95,7 +126,25 @@ export function useTeamTournamentPage({
         setLoading(true);
       }
 
-      const result = await orchestrator.loadTournament(loadClubId, tournamentId);
+      let result = await orchestrator.loadTournament(loadClubId, tournamentId);
+
+      // Preferred activeClub may still miss (race / stale cache): rescan once.
+      if (!result.ok && isTeamTournamentNotFound(result)) {
+        const rescannedClubId = resolveTournamentClubId(null, tournamentId);
+        if (rescannedClubId && rescannedClubId !== loadClubId) {
+          result = await orchestrator.loadTournament(rescannedClubId, tournamentId);
+        }
+      }
+
+      if (!result.ok && isTeamTournamentNotFound(result)) {
+        result = {
+          ...result,
+          error: buildTournamentNotFoundMessage(tournamentId, {
+            kind: "giải đồng đội",
+          }),
+        };
+      }
+
       applyLoadResult(result);
       setLoading(false);
       loadingRef.current = false;

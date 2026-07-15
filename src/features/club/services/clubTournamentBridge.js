@@ -112,3 +112,49 @@ export function findTournamentClubId(tournamentId) {
 
   return null;
 }
+
+/**
+ * Resolve which club blob holds a tournament id.
+ * Prefer the caller's club when it actually contains the tournament; otherwise scan
+ * all clubs (parity with InternalTournamentSetup deep-link behavior).
+ *
+ * @param {string|null|undefined} preferredClubId
+ * @param {string|null|undefined} tournamentId
+ * @returns {string|null}
+ */
+export function resolveTournamentClubId(preferredClubId, tournamentId) {
+  const id = String(tournamentId || "").trim();
+  if (!id) {
+    return null;
+  }
+
+  const preferred = String(preferredClubId || "").trim();
+  if (preferred) {
+    try {
+      const data = loadClubData(preferred);
+      if ((data.tournaments || []).some((item) => String(item.id) === id)) {
+        return preferred;
+      }
+    } catch {
+      // fall through to full scan
+    }
+  }
+
+  return findTournamentClubId(id) || preferred || null;
+}
+
+/**
+ * Empty-state copy when a tournament id is missing from the active origin's storage.
+ * Preview/localStorage is origin-scoped — do not invent cross-origin lookups.
+ * @param {string} tournamentId
+ * @param {{ kind?: string }} [options]
+ */
+export function buildTournamentNotFoundMessage(tournamentId, options = {}) {
+  const id = String(tournamentId || "").trim() || "(thiếu id)";
+  const kind = options.kind || "giải";
+  return (
+    `Không tìm thấy ${kind} này trên CLB/blob hiện tại. ` +
+    `Preview thường lưu dữ liệu theo trình duyệt — ID cũ (\`${id}\`) có thể đã mất sau khi redeploy, đổi domain Preview, hoặc đổi CLB. ` +
+    `Hãy tạo lại giải trên Preview hiện tại (không dùng deep-link từ Preview cũ).`
+  );
+}

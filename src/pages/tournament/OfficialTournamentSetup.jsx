@@ -24,6 +24,7 @@ import {
 import { useClub } from "../../context/ClubContext.jsx";
 import { loadCourtsForClub } from "../../domain/clubStorage.js";
 import {
+  resolveFlowPlayersWithClubFallback,
   useClubPlayerPool,
   useTenantPlayerPool,
 } from "../../features/club/hooks/useClubPlayerPool.js";
@@ -214,24 +215,54 @@ export default function OfficialTournamentSetup() {
     [tournament?.tenantId, activeClubId, currentTenantId]
   );
 
-  const { players: allTenantPlayers } = useTenantPlayerPool(tenantId, {
+  const {
+    players: allTenantPlayers,
+    warnings: tenantPoolWarnings,
+    source: tenantPoolSource,
+  } = useTenantPlayerPool(tenantId, {
     revision: localRevision,
   });
-  const { players } = useClubPlayerPool(activeClubId, {
+  const { players, warnings: clubPoolWarnings } = useClubPlayerPool(activeClubId, {
     tenantId,
     revision: localRevision,
   });
 
   const isAiBalance = officialMode === OFFICIAL_MODE.AI_BALANCE;
 
+  // Tenant-first (Official open/AI multi-CLB); host-club fallback = /players parity.
+  const flowPlayers = useMemo(
+    () => resolveFlowPlayersWithClubFallback(allTenantPlayers, players),
+    [allTenantPlayers, players]
+  );
+
+  const playerPoolWarnings = useMemo(() => {
+    const notes = [...(tenantPoolWarnings || []), ...(clubPoolWarnings || [])];
+    if (
+      (!allTenantPlayers || allTenantPlayers.length === 0) &&
+      players.length > 0 &&
+      tenantPoolSource !== "legacy_fallback"
+    ) {
+      notes.push({
+        code: "PLAYER_POOL_HOST_CLUB_FALLBACK",
+        message:
+          "Tenant pool trống — dùng danh sách VĐV CLB chủ nhà (cùng nguồn với /players).",
+      });
+    }
+    return notes;
+  }, [
+    allTenantPlayers,
+    clubPoolWarnings,
+    players.length,
+    tenantPoolSource,
+    tenantPoolWarnings,
+  ]);
+
   const selectedPlayers = useMemo(() => {
-    const pool = new Map(allTenantPlayers.map((player) => [String(player.id), player]));
+    const pool = new Map(flowPlayers.map((player) => [String(player.id), player]));
     return selectedPlayerIds
       .map((id) => pool.get(String(id)))
       .filter(Boolean);
-  }, [selectedPlayerIds, allTenantPlayers]);
-
-  const flowPlayers = allTenantPlayers;
+  }, [selectedPlayerIds, flowPlayers]);
 
   const courts = useMemo(
     () => loadCourtsForClub(activeClubId),
@@ -267,14 +298,14 @@ export default function OfficialTournamentSetup() {
 
   const openFilteredPlayers = useMemo(
     () =>
-      filterTournamentPickerPlayers(allTenantPlayers, {
+      filterTournamentPickerPlayers(flowPlayers, {
         clubFilter: openClubFilter,
         genderFilter: pickerGenderFilter,
         search: pickerSearch,
         eventType,
         excludePlayerIds: registeredPlayerIds,
       }),
-    [allTenantPlayers, openClubFilter, pickerGenderFilter, pickerSearch, eventType, registeredPlayerIds]
+    [flowPlayers, openClubFilter, pickerGenderFilter, pickerSearch, eventType, registeredPlayerIds]
   );
 
   const groupStandings = useMemo(
@@ -955,7 +986,7 @@ export default function OfficialTournamentSetup() {
     setError(null);
     const player =
       playerOverride ||
-      allTenantPlayers.find((item) => String(item.id) === String(playerId));
+      flowPlayers.find((item) => String(item.id) === String(playerId));
     if (!player) {
       return;
     }
@@ -965,8 +996,8 @@ export default function OfficialTournamentSetup() {
 
   const handleRegisterPair = () => {
     setError(null);
-    const playerA = allTenantPlayers.find((item) => String(item.id) === String(pairPlayerAId));
-    const playerB = allTenantPlayers.find((item) => String(item.id) === String(pairPlayerBId));
+    const playerA = flowPlayers.find((item) => String(item.id) === String(pairPlayerAId));
+    const playerB = flowPlayers.find((item) => String(item.id) === String(pairPlayerBId));
 
     if (!playerA || !playerB) {
       setError("Chon du 2 VDV de dang ky cap.");
@@ -1325,10 +1356,18 @@ export default function OfficialTournamentSetup() {
   if (!tournament) {
     return (
       <Box>
-        <Alert severity="error">Khong tim thay giai.</Alert>
-        <Button component={RouterLink} to="/tournament" sx={{ mt: 2 }}>
-          Quay lai
-        </Button>
+        <Alert severity="error" sx={{ mb: 2 }}>
+          Không tìm thấy giải Official này trên CLB hiện tại. Preview thường lưu giải theo
+          trình duyệt — ID cũ (`{tournamentId}`) có thể đã mất sau khi redeploy hoặc đổi CLB.
+        </Alert>
+        <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
+          <Button component={RouterLink} to="/tournament" variant="contained">
+            Về trang Giải đấu
+          </Button>
+          <Button component={RouterLink} to="/tournament/create" variant="outlined">
+            Tạo giải mới
+          </Button>
+        </Stack>
       </Box>
     );
   }
@@ -1466,6 +1505,14 @@ export default function OfficialTournamentSetup() {
         />
       ) : (
       <>
+      {playerPoolWarnings.length > 0 ? (
+        <Alert severity="warning" sx={{ mb: 2 }}>
+          {playerPoolWarnings
+            .map((item) => item.message || item.code)
+            .filter(Boolean)
+            .join(" · ")}
+        </Alert>
+      ) : null}
       <Grid container spacing={2} sx={{ mb: 2 }}>
         <Grid size={{ xs: 12 }}>
           <RefereeRosterPanel roster={refereeRoster} onChange={handleRefereeRosterChange} />
@@ -1565,7 +1612,7 @@ export default function OfficialTournamentSetup() {
             <Paper variant="outlined" sx={{ p: 1.5, mb: 2 }}>
               <TournamentPlayerPickerPanel
                 title="Chọn VĐV đăng ký cá nhân"
-                players={allTenantPlayers}
+                players={flowPlayers}
                 selectedIds={selectedPlayerIds}
                 onToggle={toggleAiPlayer}
                 onSelectAll={handleSelectAllAiPlayers}
@@ -1723,7 +1770,7 @@ export default function OfficialTournamentSetup() {
               isSingleEventType(eventType) ? (
                 <TournamentPlayerPickerPanel
                   title=""
-                  players={allTenantPlayers}
+                  players={flowPlayers}
                   mode="register"
                   onRegister={handleRegisterSingle}
                   clubFilter={openClubFilter}
@@ -1744,7 +1791,7 @@ export default function OfficialTournamentSetup() {
                 <Stack spacing={1.5}>
                   <TournamentPlayerPickerPanel
                     title=""
-                    players={allTenantPlayers}
+                    players={flowPlayers}
                     clubFilter={openClubFilter}
                     onClubFilterChange={setOpenClubFilter}
                     clubs={clubs}
@@ -1877,7 +1924,7 @@ export default function OfficialTournamentSetup() {
                           {entry.clubName || entry.representativeClubName || "Chua ro CLB"}
                         </Typography>
                         <TournamentRegistrationRatingPanel
-                          players={resolveTournamentEntryPlayers(entry, allTenantPlayers)}
+                          players={resolveTournamentEntryPlayers(entry, flowPlayers)}
                           tournamentId={tournamentId}
                           hostClubId={activeClubId}
                           compact
