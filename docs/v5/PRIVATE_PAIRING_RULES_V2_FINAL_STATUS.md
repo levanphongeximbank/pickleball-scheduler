@@ -1,5 +1,14 @@
 # Private Pairing Rules V2 — Final Status
 
+> ⚠️ **HISTORICAL / SUPERSEDED (corrected 2026-07-15, Phase 44B.0).**
+> The "NOT RELEASED / Merged to main: No" claim below is **outdated**. Private Pairing V2 code
+> **is merged into `origin/main`** (`ec33adb`/`b932463` are ancestors of tip `4c29c0f`) and the
+> Production database contains the four `private_pairing_*` tables with audit rows.
+> **Live Production feature-flag values are UNKNOWN** (not re-verified this session) and the
+> authenticated Production runtime smoke is **NOT signed**.
+> The authoritative current status is **`PRIVATE_PAIRING_RULES_V2_STATUS_RECONCILED.md`**.
+> This file is retained only as the historical PR-5 freeze record.
+
 **Status:** FEATURE COMPLETE — NOT RELEASED  
 **Closed at:** PR-5 (SUPER_ADMIN UI)  
 **Date:** 2026-07-14  
