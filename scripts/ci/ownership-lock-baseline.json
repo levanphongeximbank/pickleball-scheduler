@@ -1,0 +1,45 @@
+{
+  "note": "Phase 44B.0.1 baseline — TEMPORARY DEBT only. Lock fails on NEW files, count increases, or fingerprint changes. Legitimate server/gateway files live in SCOPE_ALLOWLIST inside ownership-lock.mjs, not here. No wildcards.",
+  "generatedAt": "2026-07-15",
+  "rules": [
+    {
+      "id": "auth-supabase-client-boundary",
+      "description": "createClient()/@supabase/supabase-js may only be used by approved gateways/server files."
+    },
+    {
+      "id": "profile-direct-write-boundary",
+      "description": "Writes to public.profiles must go through the profile/identity gateway."
+    },
+    {
+      "id": "venue-direct-write-boundary",
+      "description": "Writes to public.venues must go through the venue service gateway."
+    },
+    {
+      "id": "billing-direct-write-boundary",
+      "description": "Billing table writes must go through the billing repository gateway."
+    },
+    {
+      "id": "secret-service-role-in-client-boundary",
+      "description": "Service-role secrets must not be READ in client bundle code (server/edge only). Name-only mentions in strings are allowed."
+    },
+    {
+      "id": "reporting-read-only",
+      "description": "Analytics/reporting modules must remain read-only (no table mutations)."
+    },
+    {
+      "id": "global-unregistered-error-code",
+      "description": "New string-literal error codes in the API layer must be registered in API_ERROR_CODES."
+    }
+  ],
+  "exceptions": [
+    {
+      "rule": "auth-supabase-client-boundary",
+      "file": "src/domain/matchLiveSync.js",
+      "symbol": "createClient( | from \"@supabase/supabase-js\"",
+      "count": 2,
+      "fingerprint": "aa1f9773e9fb22c1",
+      "reason": "Realtime match-live sync constructs a dedicated no-persist ANON client instead of the canonical client; predates canonical realtime wiring.",
+      "removalPhase": "44B Realtime/Authorization cutover"
+    }
+  ]
+}

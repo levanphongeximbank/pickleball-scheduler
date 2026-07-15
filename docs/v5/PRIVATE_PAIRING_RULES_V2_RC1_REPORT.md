@@ -1,5 +1,16 @@
 # Private Pairing Rules V2 — RC-1 Staging Release Candidate Report
 
+> ⚠️ **HISTORICAL — INTERNALLY CONTRADICTORY; CORRECTED 2026-07-15 (Phase 44B.0).**
+> This report contradicts itself on Production status: **§0/§1/§7** claim "merged to main +
+> Production deploy + flags **ON** (verified)", while **§11/§12/§13** claim Production flags are
+> **empty/OFF** (verified) and declare **NO-GO / not merged**. Both cannot be true.
+> Evidence-backed reconciliation (Git + Phase 43Z.1 production audit): code **is merged to `main`**
+> and the schema/audit rows exist in Production, **but the live Production feature-flag values are
+> UNKNOWN** (the §7-vs-§11 conflict is unresolved and was not re-verified this session) and the
+> authenticated Production runtime smoke is **NOT signed**.
+> The authoritative current status is **`PRIVATE_PAIRING_RULES_V2_STATUS_RECONCILED.md`**.
+> The RC-1→RC-1e narrative below is kept as a historical work log only.
+
 **Phase:** RC-1 → **RC-1e Production Go-Live** (owner reopened for full release)
 **Date:** 2026-07-15
 **Prepared by:** Release engineering (agent, isolated worktree)
@@ -118,6 +129,11 @@ Evidence: `docs/v5/qa-evidence/phase-private-pairing-staging/STAGING_SECURITY_VE
 ---
 
 ## 7. Feature flags
+
+> ⚠️ **CORRECTION (44B.0):** the "Production = `true` (verified)" values in this table **conflict**
+> with §11 ("Production flag posture … `VITE_PRIVATE_PAIRING_RULES_ENABLED=""` … feature fully OFF").
+> The conflict is unresolved and was not re-verified this session, so the authoritative status treats
+> **live Production feature-flag values as UNKNOWN**. See `PRIVATE_PAIRING_RULES_V2_STATUS_RECONCILED.md`.
 
 | Flag | Code default | Staging / Preview | Production |
 |------|--------------|-------------------|------------|
@@ -265,6 +281,11 @@ Security verdict: **PASS** on staging.
 ---
 
 ## 11. Rollback
+
+> ⚠️ **CORRECTION (44B.0):** the "Production flag posture … empty/OFF (Verified 2026-07-15)" row
+> below **conflicts** with §0/§7 ("flags ON, verified `true`"). Because the two claims are mutually
+> exclusive and neither was re-verified this session, live Production feature-flag values are
+> **UNKNOWN** in the authoritative status. See `PRIVATE_PAIRING_RULES_V2_STATUS_RECONCILED.md`.
 
 | Layer | Mechanism | Status |
 |-------|-----------|--------|

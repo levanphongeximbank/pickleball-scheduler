@@ -22,6 +22,12 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      # Phase 44B.0 Foundation Lock — mandatory pre-deploy gate.
+      # Runs the canonical error-registry check + ownership boundary lock.
+      # Any violation exits non-zero and blocks the deploy job.
+      - name: Foundation Lock (error registry + ownership boundaries)
+        run: npm run ci:foundation-lock
+
       - name: Lint
         run: npm run lint
 
