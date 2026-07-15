@@ -13,6 +13,7 @@ import { runLegacyDrawWithCanonicalAdapter } from "../../features/competition-co
 import {
   COMPETITION_CLASS,
   assignGroupsWithPrivatePairingRules,
+  assignOpenGroupsWithPrivatePairingRules,
 } from "../../features/private-pairing-rules/index.js";
 import { summarizeGroupBalance } from "./seededGroupEngine.js";
 import { buildGroupStageSchedule, countGroupStageMatches } from "./scheduleEngine.js";
@@ -263,6 +264,14 @@ export function buildOfficialOpenPlan({
     };
   }
 
+  const openOptions = {
+    hostClubName: tournament.hostClubName || tournament.settings?.hostClubName || "",
+    splitUnits,
+    playersById,
+    randomFn,
+    pointsConfig,
+  };
+
   const draw = runLegacyDrawWithCanonicalAdapter({
     consumer: "official_open",
     strategyKey: "official_open",
@@ -271,23 +280,45 @@ export function buildOfficialOpenPlan({
       eventId: event.id,
       entries: normalizedEntries,
       groupCount,
-      options: {
-        hostClubName: tournament.hostClubName || tournament.settings?.hostClubName || "",
-        splitUnits,
-        playersById,
-        randomFn,
-        pointsConfig,
-      },
+      options: openOptions,
+      privatePairingRules,
+      pairingConstraints,
+      competitionClass,
+      envSource,
+      seed,
+      clubId,
+      allowedByPublishedRules,
+      contextTime,
     },
     legacyExecutor: (payload) =>
-      assignEntriesOpenConditional(payload.entries, payload.groupCount, payload.options),
+      assignOpenGroupsWithPrivatePairingRules({
+        openAssigner: assignEntriesOpenConditional,
+        entries: payload.entries,
+        groupCount: payload.groupCount,
+        openOptions: payload.options || {},
+        privatePairingRules: payload.privatePairingRules || privatePairingRules,
+        pairingConstraints: payload.pairingConstraints || pairingConstraints,
+        competitionClass: payload.competitionClass || competitionClass,
+        envSource: payload.envSource || envSource,
+        seed: payload.seed ?? seed ?? `${tournament.id}:${event.id}`,
+        clubId: payload.clubId ?? clubId,
+        tournamentId: tournament.id,
+        eventId: event.id,
+        allowedByPublishedRules:
+          payload.allowedByPublishedRules ?? allowedByPublishedRules,
+        contextTime: payload.contextTime ?? contextTime,
+      }),
   });
 
   if (!draw.ok) {
+    const gateMessage = draw.privatePairingError?.message;
     return {
       ok: false,
-      errors: draw.errors || ["Khong the chia bang open."],
+      errors: gateMessage
+        ? [gateMessage]
+        : draw.errors || ["Khong the chia bang open."],
       warnings: draw.warnings || [],
+      privatePairingError: draw.privatePairingError || null,
     };
   }
 

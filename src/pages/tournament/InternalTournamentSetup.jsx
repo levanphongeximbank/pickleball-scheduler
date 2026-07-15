@@ -165,6 +165,11 @@ export default function InternalTournamentSetup() {
   const [bracketAdvanceAnim, setBracketAdvanceAnim] = useState(null);
   const anim = useTournamentAnimation();
   const pendingPlanRef = useRef(null);
+  const guidedPairingRef = useRef({
+    ok: true,
+    skipped: true,
+    pairingOptions: { privatePairingRules: [] },
+  });
 
   const canViewSkillInSetup = useMemo(
     () =>
@@ -581,6 +586,7 @@ export default function InternalTournamentSetup() {
         setLocalRevision,
         refreshClubs,
         persistEvent,
+        getPrivatePairingOptions: () => guidedPairingRef.current,
       }),
     [
       tournament,
@@ -790,6 +796,26 @@ export default function InternalTournamentSetup() {
     setError(null);
     setWarnings([]);
     setMessage(null);
+
+    const prepared = await prepareLivePrivatePairingOptions({
+      clubId: tournamentClubId,
+      tournamentId,
+      eventId: savedEvent?.id || `event-${tournamentId}`,
+      competitionClass: COMPETITION_CLASS.INTERNAL,
+      pairingConstraints: founderConstraints,
+    });
+
+    if (!prepared.ok) {
+      setError(prepared.error?.message || "Không thể bắt đầu trình chiếu theo quy tắc riêng.");
+      setWarnings(
+        (prepared.error?.fatalConflicts || prepared.error?.blockedByPolicy || []).map(
+          (item) => item.code || item.message || String(item)
+        )
+      );
+      return;
+    }
+
+    guidedPairingRef.current = prepared;
 
     if (broadcastFeatureEnabled && broadcast.shouldBroadcastWithFlow) {
       const broadcastResult = await broadcast.startBroadcast();

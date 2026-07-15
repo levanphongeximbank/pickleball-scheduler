@@ -89,6 +89,7 @@ export {
   isExcludedFromGroupStage,
   gateResolvedForStage,
   assignGroupsWithPrivatePairingRules,
+  assignOpenGroupsWithPrivatePairingRules,
   buildMatchOptionFromSides,
   evaluateOpponentMatchupCandidate,
   filterAndRankMatchupsByOpponentRules,
@@ -138,6 +139,13 @@ export {
 export {
   CONSTRAINT_TYPE_LABELS,
   SCOPE_LABELS,
+  CONSTRAINT_TYPE_GROUPS,
+  CONSTRAINT_TYPE_OPTIONS,
+  CONSTRAINT_TYPE_OPTIONS_FOR_CREATE,
+  RUNTIME_UNSUPPORTED_PRIVATE_CONSTRAINT_TYPES,
+  isRuntimeUnsupportedPrivateConstraintType,
+  listUnsupportedRuntimeRules,
+  getRuntimeSupportedPrivateConstraintTypes,
   filterRules,
   filterRuleSets,
 } from "./ui/privatePairingAdminHelpers.js";

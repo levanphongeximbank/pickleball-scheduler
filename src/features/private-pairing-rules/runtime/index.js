@@ -78,6 +78,8 @@ export {
   scoreGroupPlan,
 } from "./applyPrivatePairingToGroupDivision.js";
 
+export { assignOpenGroupsWithPrivatePairingRules } from "./applyPrivatePairingToOpenDraw.js";
+
 export {
   buildMatchOptionFromSides,
   evaluateOpponentMatchupCandidate,

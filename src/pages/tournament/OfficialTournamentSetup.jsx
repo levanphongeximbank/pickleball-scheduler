@@ -188,6 +188,12 @@ export default function OfficialTournamentSetup() {
   const [bracketAdvanceAnim, setBracketAdvanceAnim] = useState(null);
   const anim = useTournamentAnimation();
   const pendingPlanRef = useRef(null);
+  /** Preloaded prepareLive result for sync guided-flow adapters (flags OFF → empty rules). */
+  const guidedPairingRef = useRef({
+    ok: true,
+    skipped: true,
+    pairingOptions: { privatePairingRules: [] },
+  });
 
   const canViewSkillInSetup = useMemo(
     () =>
@@ -585,13 +591,31 @@ export default function OfficialTournamentSetup() {
       return createOfficialFlowAdapters({
         ...shared,
         variant: "ai_balance",
-        suggestEntries: (selected, et) =>
-          suggestBalancedEntriesFromIndividuals(selected, et, {
+        suggestEntries: (selected, et) => {
+          const prepared = guidedPairingRef.current;
+          if (prepared?.ok === false) {
+            return [];
+          }
+          return suggestBalancedEntriesFromIndividuals(selected, et, {
             tournamentId,
             eventId: savedEvent?.id || `event-${tournamentId}`,
-          }),
-        buildPlan: ({ manualEntries }) =>
-          buildOfficialAiBalancePlan({
+            ...(prepared?.pairingOptions || {}),
+            pairingConstraints: founderConstraints,
+            competitionClass: COMPETITION_CLASS.OFFICIAL,
+          });
+        },
+        buildPlan: ({ manualEntries }) => {
+          const prepared = guidedPairingRef.current;
+          if (prepared?.ok === false) {
+            return {
+              ok: false,
+              errors: [
+                prepared.error?.message || "Không lập được kế hoạch theo quy tắc riêng.",
+              ],
+              privatePairingError: prepared.error || null,
+            };
+          }
+          return buildOfficialAiBalancePlan({
             tournament,
             eventId: savedEvent?.id,
             players: flowPlayers,
@@ -600,7 +624,15 @@ export default function OfficialTournamentSetup() {
             groupCount,
             manualEntries,
             individualRegistration: true,
-          }),
+            privatePairingRules: prepared?.pairingOptions?.privatePairingRules || [],
+            pairingConstraints: founderConstraints,
+            competitionClass: COMPETITION_CLASS.OFFICIAL,
+            clubId: activeClubId,
+            tournamentId,
+            allowedByPublishedRules: false,
+            ...(prepared?.pairingOptions || {}),
+          });
+        },
         buildPatch: buildOfficialAiBalancePatch,
       });
     }
@@ -610,8 +642,18 @@ export default function OfficialTournamentSetup() {
       variant: "open",
       isAiBalance: false,
       suggestEntries: () => displayEntries,
-      buildPlan: () =>
-        buildOfficialOpenPlan({
+      buildPlan: () => {
+        const prepared = guidedPairingRef.current;
+        if (prepared?.ok === false) {
+          return {
+            ok: false,
+            errors: [
+              prepared.error?.message || "Không lập được kế hoạch theo quy tắc riêng.",
+            ],
+            privatePairingError: prepared.error || null,
+          };
+        }
+        return buildOfficialOpenPlan({
           tournament: {
             ...tournament,
             hostClubName: tournament.hostClubName || activeClub?.name || "",
@@ -622,7 +664,15 @@ export default function OfficialTournamentSetup() {
           groupCount,
           players: flowPlayers,
           splitUnits,
-        }),
+          privatePairingRules: prepared?.pairingOptions?.privatePairingRules || [],
+          pairingConstraints: founderConstraints,
+          competitionClass: COMPETITION_CLASS.OFFICIAL,
+          clubId: activeClubId,
+          tournamentId,
+          allowedByPublishedRules: false,
+          ...(prepared?.pairingOptions || {}),
+        });
+      },
       buildPatch: buildOfficialOpenPatch,
     });
   }, [
@@ -638,6 +688,8 @@ export default function OfficialTournamentSetup() {
     splitUnits,
     activeClub,
     tournamentId,
+    activeClubId,
+    founderConstraints,
     refreshClubs,
     persistTournament,
     persistEvent,
@@ -667,6 +719,27 @@ export default function OfficialTournamentSetup() {
     setError(null);
     setWarnings([]);
     setMessage(null);
+
+    const prepared = await prepareLivePrivatePairingOptions({
+      clubId: activeClubId,
+      tournamentId,
+      eventId: savedEvent?.id || `event-${tournamentId}`,
+      competitionClass: COMPETITION_CLASS.OFFICIAL,
+      pairingConstraints: founderConstraints,
+      allowedByPublishedRules: false,
+    });
+
+    if (!prepared.ok) {
+      setError(prepared.error?.message || "Không thể bắt đầu trình chiếu theo quy tắc riêng.");
+      setWarnings(
+        (prepared.error?.fatalConflicts || prepared.error?.blockedByPolicy || []).map(
+          (item) => item.code || item.message || String(item)
+        )
+      );
+      return;
+    }
+
+    guidedPairingRef.current = prepared;
 
     if (broadcastFeatureEnabled && broadcast.shouldBroadcastWithFlow) {
       const broadcastResult = await broadcast.startBroadcast();
