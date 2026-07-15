@@ -13,7 +13,9 @@ Private Pairing Rules V2 was reopened from `FEATURE COMPLETE — NOT RELEASED` f
 
 - **Staging RC-1 verdict: GREEN** — code, DB schema/RLS/RPC, and security posture all verified on live staging.
 - **RC-1a/1b (2026-07-15) — live SA browser smoke found and fixed two blockers:** (a) the player picker showed no athletes with real cloud data because it resolved canonical mapping via `profiles.player_id` but nothing loaded that index at runtime (`club_list_members` RPC returns no `player_id`) — fixed in `d22e19d` + staging mapping top-up (6/7 members); (b) saving a rule hit DB check `private_pairing_rules_other_reason_chk` because the form allowed empty `reason_text` while `reason_category = OTHER` — fixed in `438a3c6` (UI validation). Redeployed Preview. See §9a.
-- **Production verdict: NO-GO (now)** — by owner constraint (no Production actions in this GO) and because owner-manual gates remain (finish live SUPER_ADMIN browser smoke on the RC-1a Preview, PITR/backup confirmation, explicit separate Production GO). Deferred non-goals (legacy migration, Apply-to-live, disclosure UI) are out of scope and do not block Staging.
+- **RC-1c (2026-07-15) — simulation activation & source-club UX:** enabled `VITE_PRIVATE_PAIRING_SIMULATION_ENABLED=true` on Preview; fixed the Mô phỏng tab which had no source-club selector for GLOBAL rule sets (so no players loaded) — added the selector + human-readable error messages (`dabcabd`). Owner confirmed Top-N simulation working live. See §9b.
+- **RC-1d (2026-07-15) — owner-approved usability: archive/hide + staging cleanup.** Owner requested the ability to remove unused rules. Added a soft **Archive** path (respects the no-hard-delete audit principle): new RPC `private_pairing_archive_rule_set` (staging-only), "Lưu trữ / Ẩn" button, and default hiding of archived rule sets + already-hidden disabled rules (`709899b`). Also hard-deleted the 20 staging QA test rule sets (owner-approved one-off; guard triggers restored). See §9c.
+- **Production verdict: NO-GO (now)** — by owner constraint (no Production actions in this GO) and because owner-manual gates remain (PITR/backup confirmation, explicit separate Production GO, and the archive RPC must be included when Production SQL is eventually applied). Deferred non-goals (legacy migration, Apply-to-live, disclosure UI) are out of scope and do not block Staging.
 
 ---
 
@@ -31,7 +33,7 @@ Private Pairing Rules V2 was reopened from `FEATURE COMPLETE — NOT RELEASED` f
 
 | Item | Value |
 |------|-------|
-| HEAD commit | `d22e19d` (RC-1a picker fix) on top of `58f3506` (final-status doc) / PR-5 tip `1fbc1ae` |
+| HEAD commit | `709899b` (RC-1d archive/hide) on top of `dabcabd` (RC-1c sim UX) / `438a3c6` (RC-1b) / `d22e19d` (RC-1a) / PR-5 tip `1fbc1ae` |
 | Working tree at start | Clean |
 
 ---
@@ -85,9 +87,10 @@ Full-suite lint baseline unchanged from PR-5 freeze (0 new errors); this RC did 
 |------|--------|
 | Migration file | `docs/v5/PHASE_PRIVATE_PAIRING_RULES_V2_PR4.sql` |
 | Raise patch | `docs/v5/PHASE_PRIVATE_PAIRING_RULES_V2_PR4_RAISE_PATCH.sql` |
-| Staging apply | **Already applied** (2026-07-14, Management API) — re-verified live this RC-1 |
+| **RC-1d archive RPC** | `docs/v5/PHASE_PRIVATE_PAIRING_RULES_V2_RC1_ARCHIVE.sql` — **applied on Staging 2026-07-15** (MCP `apply_migration`, name `private_pairing_rc1_archive_rule_set`); additive (no schema/table change) |
+| Staging apply | **Already applied** (2026-07-14, Management API) — re-verified live this RC-1; archive RPC applied 2026-07-15 |
 | Idempotency | Safe re-apply (`create table if not exists`, `create or replace`) |
-| Production apply | **NOT applied** (forbidden this GO) |
+| Production apply | **NOT applied** (forbidden this GO). Note: when Production SQL is eventually approved, apply PR4 + RAISE_PATCH + **RC1_ARCHIVE** together. |
 
 ### Live staging schema verification (2026-07-15, Management API, staging ref `qyewbxjsiiyufanzcjcq`)
 
@@ -130,7 +133,9 @@ Evidence: `docs/v5/qa-evidence/phase-private-pairing-staging/STAGING_SECURITY_VE
 | **Fresh Preview (RC-1, flags ON)** | `https://pickleball-scheduler-6aip3pn6u-pickleball-scheduler.vercel.app` — deployed 2026-07-15, `target: null` (Preview, not production), HTTP 200 open |
 | RC-1a Preview (picker fix) | `https://pickleball-scheduler-4jxit5zj9-pickleball-scheduler.vercel.app` — superseded (commit `d22e19d`) |
 | RC-1b Preview (picker + reason_text fix) | `https://pickleball-scheduler-hqbfot4a0-pickleball-scheduler.vercel.app` — superseded (commit `438a3c6`) |
-| **RC-1c Preview (+ simulation flag ON)** | `https://pickleball-scheduler-cp7ytzkyx-pickleball-scheduler.vercel.app` — **current** (2026-07-15), `readyState: READY`, `target: null` (Preview), `VITE_PRIVATE_PAIRING_SIMULATION_ENABLED=true` on Preview. Use this URL for the SA browser smoke incl. Top-N simulation. |
+| RC-1c Preview (+ simulation flag ON) | `https://pickleball-scheduler-cp7ytzkyx-pickleball-scheduler.vercel.app` — superseded |
+| RC-1c Preview (sim source-club UX) | `https://pickleball-scheduler-8ajnsy0aw-pickleball-scheduler.vercel.app` — superseded (commit `dabcabd`) |
+| **RC-1d Preview (archive/hide)** | `https://pickleball-scheduler-1uktb2jdk-pickleball-scheduler.vercel.app` — **current** (2026-07-15), Preview, all RC flags ON incl. `VITE_PRIVATE_PAIRING_SIMULATION_ENABLED=true`. Use this URL for the SA browser smoke incl. Top-N simulation and archive/hide. |
 | Preview env flags | `VITE_PRIVATE_PAIRING_RULES_ENABLED`, `VITE_UNIFIED_CONSTRAINT_ENGINE_ENABLED`, `VITE_RBAC_ENABLED` all set in **Preview** scope (encrypted) |
 | Route | `/admin/ai-pairing/private-rules` |
 | Menu | Quản trị → Quy tắc ghép cặp riêng (`admin-private-pairing-rules`) |
@@ -187,6 +192,36 @@ On the next attempt, saving a rule failed with `new row for relation "private_pa
 
 ---
 
+## 9b. RC-1c — Simulation activation & source-club UX (2026-07-15, commit `dabcabd`)
+
+Owner reported "không mô phỏng được" (simulation would not run) after the flag was enabled.
+
+- **Root cause:** the Mô phỏng tab derives its player list from `effectivePlayerClubId`. For a **GLOBAL** rule set that resolves to `playerSourceClubId`, which was only ever set inside the "Thêm Rule" dialog — the simulation tab itself had **no source-club selector**, so on a fresh session no players loaded and `handleRun` returned raw `NEED_MAPPED_PLAYERS`.
+- **Fix (UI-only):** added a **"CLB nguồn (mô phỏng)"** selector (+ "Tải lại VĐV") to the Mô phỏng tab for GLOBAL rule sets (CLUB-scoped sets keep using the header club), and mapped raw simulation codes to Vietnamese messages. No engine/DB change; read-only preserved (no Apply-to-live).
+- **Re-verify:** simulation + PR-5 UI tests **28/28 PASS**; build **PASS**; redeployed Preview (`8ajnsy0aw`).
+- **Owner outcome:** confirmed live — Top-N simulation returns feasible candidates (e.g. "Nhận 6 · Hợp lệ 6 · Generated 45 · Feasible") with explanations, read-only badge shown.
+
+---
+
+## 9c. RC-1d — Archive/Hide + staging test-data cleanup (2026-07-15, commit `709899b`)
+
+Owner requested being able to remove rules/rule sets they no longer use. Implemented as **soft archive** to keep the "no hard delete" audit principle intact.
+
+### Feature (Staging)
+
+- **New RPC** `private_pairing_archive_rule_set(uuid, text, uuid)` — SECURITY DEFINER, gated by `private_pairing_can('pairing.private_rules.manage')` (SUPER_ADMIN), sets `status='archived'` + `archived_at`, writes `ARCHIVE_RULE_SET` audit, idempotent, **no hard delete**. Execute revoked from `public`/`anon`, granted to `authenticated`. File: `PHASE_PRIVATE_PAIRING_RULES_V2_RC1_ARCHIVE.sql`.
+- **UI:** "Lưu trữ / Ẩn" button on a selected rule set; "Ẩn mục đã lưu trữ" checkbox (on by default) hides archived sets from the list; disabled rules already hidden by the default "Chỉ active" rule filter.
+- **Wiring:** repository `archivePrivatePairingRuleSet`, `PRIVATE_PAIRING_RPC.ARCHIVE_RULE_SET`, index/adminApi re-exports, `filterRuleSets({ hideArchived })`.
+- **Re-verify:** PR-5 UI + repository + permissions tests **21/21 PASS** (all private-pairing suites green); build **PASS**; deployed Preview `1uktb2jdk`.
+
+### Staging test-data cleanup (owner-approved one-off)
+
+- Wiped 20 QA test rule sets ("set 1", "111", "1111"×many, "Phong/Phong1/phong2/Phong3", …) plus their rules/targets/audit rows.
+- Mechanism: inside one transaction, temporarily disabled the two guard triggers (`private_pairing_rules_no_hard_delete_trg`, `private_pairing_audit_no_delete_trg`), deleted rows, **re-enabled** the triggers.
+- **Post-state verified:** `rule_sets=0, rules=0, targets=0, audit_logs=0`; both guard triggers back to `enabled`. Staging only — Production untouched.
+
+---
+
 ## 10. Security QA
 
 Fresh live staging probe (2026-07-15, read-only, Management API):
@@ -205,18 +240,35 @@ Fresh live staging probe (2026-07-15, read-only, Management API):
 
 Security verdict: **PASS** on staging.
 
+### Fresh re-verification after RC-1d (2026-07-15, MCP `execute_sql`, read-only)
+
+| Check | Result |
+|-------|--------|
+| RLS enabled on all 4 tables | **PASS** (`rls_enabled=true` × 4) |
+| `anon` table grants | **none** |
+| `authenticated` table grants | **SELECT only** on all 4 tables |
+| Mutation/query RPCs SECURITY DEFINER | **PASS** (all `prosecdef=true`) |
+| **New `private_pairing_archive_rule_set`** | SECURITY DEFINER; `anon` execute = **false**; `authenticated` execute = true |
+| RBAC gate helpers present | `is_super_admin`, `user_has_permission`, `user_role`, `user_venue_id` — all SECURITY DEFINER |
+| Guard triggers enabled | audit `no_delete` + `no_update`, rules `no_hard_delete`, targets `validate` — **all enabled** |
+
+**Observation (not a blocker):** the older RPCs (pre-RC-1d) still carry a `PUBLIC`/`anon` EXECUTE grant, but every one gates internally via `auth.uid() IS NULL` + `is_super_admin()` + `user_has_permission()`, so `anon` calls only get `PERMISSION_DENIED` (no data). The new archive RPC is stricter (anon execute revoked). Optional pre-Production hardening: `revoke execute ... from public, anon` on all `private_pairing_*` RPCs for defense-in-depth.
+
 ---
 
 ## 11. Rollback
 
 | Layer | Mechanism | Status |
 |-------|-----------|--------|
-| Feature (fast) | Set `VITE_PRIVATE_PAIRING_RULES_ENABLED=false` + `VITE_UNIFIED_CONSTRAINT_ENGINE_ENABLED=false`, redeploy | **Verified** — repository adapter returns `FEATURE_DISABLED` and performs no query when flag OFF (unit tests: “does not query when feature flag is OFF”, “createRuleSet returns FEATURE_DISABLED when flag OFF”) |
+| Feature (fast) | Set `VITE_PRIVATE_PAIRING_RULES_ENABLED=false` + `VITE_UNIFIED_CONSTRAINT_ENGINE_ENABLED=false`, redeploy | **Verified** — repository `callRpc` checks `isPrivatePairingRulesEnabled` first and returns `FEATURE_DISABLED` before any DB call, so **archive/create/update/simulate all become inert** when flag OFF (unit tests: "does not query when feature flag is OFF", "createRuleSet returns FEATURE_DISABLED when flag OFF") |
+| Production flag posture | `vercel env pull --environment=production` | **Verified 2026-07-15** — `VITE_PRIVATE_PAIRING_RULES_ENABLED=""`, `VITE_RBAC_ENABLED=""`; no simulation/canonical flags → feature fully OFF in Production |
+| Archive RPC (RC-1d) | `drop function if exists public.private_pairing_archive_rule_set(uuid, text, uuid);` | **Verified safe** — additive, **0 dependents** (pg_depend), no schema change; dropping it leaves the rest of the feature intact |
 | Migration re-apply | Idempotent DDL | **Verified** by SQL construction (`if not exists` / `create or replace`) |
 | Schema rollback (staging) | Drop RPCs/triggers/policies/tables + remove `pairing.private_rules.%` grants | Documented in `PRIVATE_PAIRING_RULES_V2_PRODUCTION_RUNBOOK.md` §4 — **not executed** (destructive; not needed; staging kept intact) |
+| Guard triggers after cleanup | Re-enabled in same transaction | **Verified enabled** (no-hard-delete + audit append-only) |
 | Production | No Production DB applied → nothing to roll back | N/A |
 
-Rollback verdict: **PASS** (flag-off is sufficient to make the feature inert).
+Rollback verdict: **PASS** (flag-off is sufficient to make the feature inert; Production flags confirmed empty/OFF; archive RPC additive and safely droppable).
 
 ---
 
@@ -236,7 +288,7 @@ Rollback verdict: **PASS** (flag-off is sufficient to make the feature inert).
 
 ## 13. Conclusion — GO / NO-GO for Production
 
-**Staging RC-1: GO (GREEN).** The build, tests, migration, RLS/RPC security, feature-flag posture, and flag-off rollback are all verified on staging; Production remains untouched with all flags OFF.
+**Staging RC-1: GO (GREEN).** The build, tests, migration (incl. the RC-1d archive RPC), RLS/RPC security, feature-flag posture, and flag-off rollback are all verified on staging; Production remains untouched with all flags OFF. The owner-approved RC-1c (simulation UX) and RC-1d (archive/hide + test-data cleanup) changes are Staging-only and covered by the re-verified security and rollback checks above.
 
 **Production: NO-GO (now).**
 
@@ -244,7 +296,7 @@ Production is blocked by owner-gated conditions, not by defects. Promote to Prod
 
 1. Live SUPER_ADMIN browser smoke on Preview signed PASS (menu, direct route, create draft → add rules → ANY_OF/ALL_OF → clone → activate → rollback → audit; non-SA denied).
 2. Owner GO to merge `feature/private-pairing-rules-v2` into the release/main branch.
-3. Owner GO to apply `PHASE_PRIVATE_PAIRING_RULES_V2_PR4.sql` on Production, with PITR/backup confirmed, then re-run the verification SQL against Production.
+3. Owner GO to apply `PHASE_PRIVATE_PAIRING_RULES_V2_PR4.sql` + `..._PR4_RAISE_PATCH.sql` + `..._RC1_ARCHIVE.sql` on Production, with PITR/backup confirmed, then re-run the verification SQL against Production.
 4. Owner GO to enable Production flags (`VITE_PRIVATE_PAIRING_RULES_ENABLED`, `VITE_UNIFIED_CONSTRAINT_ENGINE_ENABLED`) after a Production UI smoke.
 5. Explicit decision on the deferred non-goals (legacy `founderPairingConstraints` migration, Apply-to-live, disclosure UI) — each is a separate owner-gated step.
 
@@ -252,6 +304,6 @@ Production is blocked by owner-gated conditions, not by defects. Promote to Prod
 
 ## Kết luận (tóm tắt tiếng Việt)
 
-- **Staging (RC-1): GO** — build PASS, test 124/124 PASS, migration đã áp trên staging và xác minh lại (4 bảng, 11 RPC, RLS chỉ SELECT, realtime tắt, audit append-only), phân quyền chỉ cho SUPER_ADMIN/PLATFORM_ADMIN, anon không có quyền. Rollback bằng tắt cờ đã kiểm chứng.
-- **Production: NO-GO (chưa)** — không phải vì lỗi, mà vì đang bị chặn theo đúng yêu cầu (không đụng Production) và còn các bước cần chủ sở hữu duyệt: smoke UI SUPER_ADMIN trên Preview, xác nhận backup/PITR, và các lệnh GO riêng để merge / apply SQL / bật cờ Production.
+- **Staging (RC-1): GO** — build PASS, test private-pairing PASS, migration đã áp trên staging (gồm cả RPC lưu trữ RC-1d) và xác minh lại (4 bảng, RLS chỉ SELECT, audit append-only, guard trigger bật đủ), phân quyền chỉ cho SUPER_ADMIN, anon không có quyền. Mô phỏng Top-N chạy được (chủ sở hữu xác nhận). Chức năng **Lưu trữ / Ẩn** đã thêm (xóa mềm, giữ lịch sử) + đã dọn sạch 20 bộ quy tắc test trên staging. Rollback bằng tắt cờ đã kiểm chứng; cờ Production xác nhận đang tắt.
+- **Production: NO-GO (chưa)** — không phải vì lỗi, mà vì đang bị chặn theo đúng yêu cầu (không đụng Production) và còn các bước cần chủ sở hữu duyệt: xác nhận backup/PITR, và các lệnh GO riêng để merge / apply SQL (PR4 + RAISE_PATCH + RC1_ARCHIVE) / bật cờ Production.
 - Không có thay đổi nào chạm Production trong RC-1 này.
