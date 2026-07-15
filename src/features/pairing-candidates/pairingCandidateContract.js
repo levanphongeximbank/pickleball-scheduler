@@ -3,7 +3,7 @@
  * Portable. No React / storage / UI imports.
  */
 
-export const PAIRING_CANDIDATE_GATEWAY_VERSION = "45B.2.0";
+export const PAIRING_CANDIDATE_GATEWAY_VERSION = "45B.3.0";
 
 export const PAIRING_CANDIDATE_STATUS = Object.freeze({
   READY: "ready",
@@ -80,6 +80,19 @@ export function buildPairingCandidateResponse(partial = {}) {
     sourceBreakdown: {
       ...emptySourceBreakdown(),
       ...(partial.diagnostics?.sourceBreakdown || {}),
+    },
+    aliasDiagnostics: {
+      duplicateAliases: Array.isArray(
+        partial.diagnostics?.aliasDiagnostics?.duplicateAliases
+      )
+        ? [...partial.diagnostics.aliasDiagnostics.duplicateAliases]
+        : [],
+      mismatchedAliasCount: Number(
+        partial.diagnostics?.aliasDiagnostics?.mismatchedAliasCount || 0
+      ),
+      ignoredPrimaryClaimCount: Number(
+        partial.diagnostics?.aliasDiagnostics?.ignoredPrimaryClaimCount || 0
+      ),
     },
     gatewayVersion:
       partial.diagnostics?.gatewayVersion || PAIRING_CANDIDATE_GATEWAY_VERSION,
