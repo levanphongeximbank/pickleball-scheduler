@@ -237,10 +237,10 @@ const RULES = [
   {
     id: "club-entity-command-domain-in-ui",
     description:
-      "Club CREATE/RENAME entity commands in UI/context must go through clubTenantService (Phase 45A.3D). Direct domain/clubService.createClub|renameClub imports are blocked; offline adapters live under clubOfflineCommandAdapter.",
+      "Club CREATE/RENAME/DELETE entity commands in UI/context must go through clubTenantService or clubOfflineCommandAdapter (Phase 45A.3E). Direct domain/clubService writer imports are blocked.",
     onlyIn: ["src/context/", "src/pages/", "src/components/"],
     match: (c) => {
-      // Match imports of createClub/renameClub from domain/clubService specifically.
+      // Match imports of createClub/renameClub/deleteClub from domain/clubService specifically.
       const out = [];
       const importRe =
         /import\s*\{([^}]*)\}\s*from\s*["'][^"']*domain\/clubService\.js["']/g;
@@ -249,6 +249,8 @@ const RULES = [
         const names = m[1];
         if (/\bcreateClub\b/.test(names)) out.push("createClub from domain/clubService");
         if (/\brenameClub\b/.test(names)) out.push("renameClub from domain/clubService");
+        if (/\bdeleteClub\b/.test(names)) out.push("deleteClub from domain/clubService");
+        if (/\bupdateClubMeta\b/.test(names)) out.push("updateClubMeta from domain/clubService");
       }
       return out;
     },
@@ -278,12 +280,57 @@ const RULES = [
   {
     id: "club-entity-legacy-dual-write-in-ui",
     description:
-      "UI/context must not dual-write Club entities via persistClubToCloud / club_upsert_registry (legacy registry).",
+      "UI/context must not dual-write Club entities via persistClubToCloud / club_upsert_registry / syncClubsForVenueToCloud (legacy registry).",
     onlyIn: ["src/context/", "src/pages/", "src/components/"],
     match: (c) => [
       ...(c.match(/\bpersistClubToCloud\s*\(/g) || []),
       ...(c.match(/\brpcClubUpsertRegistry\s*\(/g) || []),
+      ...(c.match(/\bsyncClubsForVenueToCloud\s*\(/g) || []),
     ],
+  },
+  {
+    id: "club-entity-saveClubs-outside-offline",
+    description:
+      "saveClubs() Club registry writes must stay in the low-level data store, domain offline writers, V2-OFF rollback orchestrators, or explicit seed tools — never as a Production cloud command path.",
+    allow: [
+      "src/data/club.js",
+      "src/domain/clubService.js",
+      "src/features/club/services/clubTenantService.js",
+      "src/features/club/services/clubRegistryCloudSync.js",
+      "src/features/club/seed/",
+      "src/features/tenant/seed/",
+      "src/demo/seed/",
+    ],
+    match: (c) => c.match(/\bsaveClubs\s*\(/g) || [],
+  },
+  {
+    id: "club-entity-legacy-upsert-surface",
+    description:
+      "club_upsert_registry / rpcClubUpsertRegistry may only be invoked from the legacy registry cloud service (hard-blocked under V2 at runtime).",
+    allow: [
+      "src/features/club/services/clubRegistryRpcService.js",
+      "src/features/club/services/clubRegistryCloudService.js",
+    ],
+    match: (c) => [
+      ...(c.match(/\brpcClubUpsertRegistry\s*\(/g) || []),
+      ...(c.match(/["']club_upsert_registry["']/g) || []),
+    ],
+  },
+  {
+    id: "club-governance-table-direct-write",
+    description:
+      "Direct public.club_governance mutations are banned in client code (use approved RPCs when governance command cutover lands).",
+    match: (c) =>
+      c.match(
+        /\.from\(\s*["']club_governance["']\s*\)[\s\S]{0,240}?\.(insert|update|upsert|delete)\s*\(/g
+      ) || [],
+  },
+  {
+    id: "club-entity-pickleball-clubs-key-mutate",
+    description:
+      "Direct localStorage mutation of pickleball-clubs-v1 must stay in src/data/club.js (or explicit seed scripts outside scanned allowlists).",
+    allow: ["src/data/club.js", "src/features/club/seed/", "src/features/tenant/seed/", "src/demo/seed/"],
+    match: (c) => c.match(/localStorage\.(setItem|removeItem)\s*\(\s*["']pickleball-clubs-v1["']/g) || [],
   },
   {
     id: "global-unregistered-error-code",

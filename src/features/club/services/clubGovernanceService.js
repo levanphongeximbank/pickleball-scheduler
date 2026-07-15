@@ -35,6 +35,7 @@ import { rpcAdminUpdateUser } from "../../identity/services/identityRpcService.j
 import { fetchProfileByUserId, mapProfileRowToUser } from "../../../auth/profileService.js";
 import { persistClubToCloud } from "./clubRegistryCloudService.js";
 import { rpcClubClaimSelfRegistration } from "./clubRegistryRpcService.js";
+import { assertLegacyClubEntityWriteAllowed } from "./clubLegacyWriteGuard.js";
 import { isClubStorageV2Enabled } from "../config/clubRegistryFlags.js";
 import {
   rpcV2ClubAssignOwner,
@@ -415,8 +416,15 @@ function buildPlayerIdForAuthUser(userId) {
   return `player-auth-${safe}`;
 }
 
-/** Sau tự đăng ký CLB: thêm VĐV vào roster, link session, promote CLUB_MANAGER. */
+/** Sau tự đăng ký CLB: thêm VĐV vào roster, link session, promote CLUB_MANAGER.
+ * Phase 45A.3E — V2-OFF companion only (canonical create ends after club_create).
+ */
 export function bootstrapSelfRegisteredPresident(clubId, user, tenantId) {
+  const legacyGate = assertLegacyClubEntityWriteAllowed({
+    operation: "bootstrapSelfRegisteredPresident",
+  });
+  if (!legacyGate.ok) return legacyGate;
+
   const trimmedClubId = String(clubId || "").trim();
   const normalizedUser = normalizeUser(user);
   if (!trimmedClubId || !normalizedUser?.id) {
@@ -500,6 +508,7 @@ export function bootstrapSelfRegisteredPresident(clubId, user, tenantId) {
 /**
  * Đẩy CLB lên cloud rồi gắn profiles.club_id / venue_id / CLUB_MANAGER cho Chủ tịch.
  * Gọi sau bootstrapSelfRegisteredPresident (local) khi tạo CLB tự đăng ký.
+ * Phase 45A.3E — V2-OFF / offline only (persistClubToCloud hard-blocks under V2).
  */
 export async function finalizeSelfRegisteredClubCloud(clubId, user, tenantId) {
   const trimmedClubId = String(clubId || "").trim();

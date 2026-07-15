@@ -50,7 +50,7 @@ import {
 import { CLUB_REGISTRY_SCOPE } from "../../features/club/registry/clubRegistryCache.js";
 import { useClubRegistry } from "../../features/club/hooks/useClubRegistry.js";
 import { syncClubRegistryForUser } from "../../features/club/services/clubRegistryCloudSync.js";
-import { syncClubsForVenueToCloud } from "../../features/club/services/clubRegistryCloudService.js";
+import { syncClubsToLegacyRegistry } from "../../features/club/services/clubOfflineCommandAdapter.js";
 import ClubFormDialog from "./ClubFormDialog.jsx";
 import ClubDeactivateDialog from "./ClubDeactivateDialog.jsx";
 
@@ -241,12 +241,19 @@ export default function ClubListPage() {
   };
 
   const handleSyncToCloud = async () => {
+    if (storageV2) {
+      setError(
+        "Đồng bộ legacy club_upsert_registry đã nghỉ hưu khi Club Storage V2 bật."
+      );
+      return;
+    }
+
     setError(null);
     setMessage(null);
     setSyncSaving(true);
 
     const clubs = clubsWithStats.map(({ club }) => club);
-    const result = await syncClubsForVenueToCloud({
+    const result = await syncClubsToLegacyRegistry({
       clubs,
       venueId: canSyncCloud ? null : currentTenantId,
       actor: user,
