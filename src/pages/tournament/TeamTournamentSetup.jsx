@@ -197,6 +197,10 @@ export default function TeamTournamentSetup() {
   const { activeClubId, clubs } = useClub();
   const { currentTenantId } = useTenant();
 
+  // Create flow stamps ?club= so detail survives activeClub refresh/coerce.
+  const clubFromQuery = String(searchParams.get("club") || "").trim();
+  const loadClubId = clubFromQuery || activeClubId;
+
   const {
     loading,
     tournament,
@@ -217,12 +221,20 @@ export default function TeamTournamentSetup() {
     subscriptionError,
     pollingFallbackActive,
   } = useTeamTournamentPage({
-    clubId: activeClubId,
+    clubId: loadClubId,
     tournamentId,
     pollingEnabled: true,
   });
 
-  const access = useTeamTournamentAccess({ tournament, activeClubId, tournamentId });
+  const effectiveClubId = String(
+    tournament?.clubId || loadClubId || activeClubId || ""
+  ).trim();
+
+  const access = useTeamTournamentAccess({
+    tournament,
+    activeClubId: effectiveClubId || activeClubId,
+    tournamentId,
+  });
   const visibleTabs = useMemo(
     () => buildVisibleTabs(access.canManage),
     [access.canManage]
@@ -264,11 +276,15 @@ export default function TeamTournamentSetup() {
   }, [searchParams, setSearchParams, visibleTabs]);
 
   const tenantId = useMemo(
-    () => tournament?.tenantId || resolveTenantIdForClub(activeClubId) || currentTenantId || "",
-    [tournament?.tenantId, activeClubId, currentTenantId]
+    () =>
+      tournament?.tenantId ||
+      resolveTenantIdForClub(effectiveClubId || activeClubId) ||
+      currentTenantId ||
+      "",
+    [tournament?.tenantId, effectiveClubId, activeClubId, currentTenantId]
   );
   const teamDataView = teamData || { teams: [], disciplines: [], matchups: [], standings: [] };
-  const { players } = useClubPlayerPool(activeClubId, {
+  const { players } = useClubPlayerPool(effectiveClubId || activeClubId, {
     tenantId,
     revision: dataVersion,
   });
@@ -359,7 +375,7 @@ export default function TeamTournamentSetup() {
     }
 
     const prepared = await prepareLivePrivatePairingOptions({
-      clubId: activeClubId || null,
+      clubId: effectiveClubId || activeClubId || null,
       tournamentId: tournamentId || null,
       eventId: tournamentId ? `event-${tournamentId}` : null,
       competitionClass: COMPETITION_CLASS.INTERNAL,
@@ -375,7 +391,7 @@ export default function TeamTournamentSetup() {
       ...prepared.pairingOptions,
       privatePairingRules: prepared.pairingOptions?.privatePairingRules || [],
       competitionClass: COMPETITION_CLASS.INTERNAL,
-      clubId: activeClubId || null,
+      clubId: effectiveClubId || activeClubId || null,
       tournamentId: tournamentId || null,
     };
 
@@ -408,13 +424,14 @@ export default function TeamTournamentSetup() {
   }
 
   function handleGenerateKnockout() {
-    if (!access.canManage || !activeClubId || !tournamentId) {
+    const clubIdForOps = effectiveClubId || activeClubId;
+    if (!access.canManage || !clubIdForOps || !tournamentId) {
       return;
     }
     setKnockoutBusy(true);
     setError("");
     try {
-      const result = generateTeamKnockoutBracket(activeClubId, tournamentId, {
+      const result = generateTeamKnockoutBracket(clubIdForOps, tournamentId, {
         qualifiersPerGroup: Number(qualifiersPerGroup) || 2,
       });
       if (!result.ok) {
@@ -743,7 +760,10 @@ export default function TeamTournamentSetup() {
 
   async function handleSyncDreambreaker() {
     setError("");
-    const result = await organizerSyncDreambreaker(activeClubId, tournamentId);
+    const result = await organizerSyncDreambreaker(
+      effectiveClubId || activeClubId,
+      tournamentId
+    );
     if (!result.ok) {
       setError(result.error);
       return;
@@ -758,7 +778,10 @@ export default function TeamTournamentSetup() {
 
   async function handleLockDreambreaker(matchupId) {
     setError("");
-    const result = await organizerLockDreambreakerOrders(activeClubId, tournamentId, {
+    const result = await organizerLockDreambreakerOrders(
+      effectiveClubId || activeClubId,
+      tournamentId,
+      {
       matchupId,
     });
     if (!result.ok) {
@@ -912,7 +935,7 @@ export default function TeamTournamentSetup() {
 
         {access.canManage ? (
           <TournamentVprPanel
-            clubId={activeClubId}
+            clubId={effectiveClubId || activeClubId}
             tournament={tournament}
             onUpdated={() => reload({ silent: true })}
           />
@@ -927,7 +950,7 @@ export default function TeamTournamentSetup() {
         {activeTabKey === TEAM_TAB_QUERY.teams ? (
           <Stack spacing={2}>
             <TeamRosterPanel
-              clubId={activeClubId}
+              clubId={effectiveClubId || activeClubId}
               tournamentId={tournamentId}
               teamData={td}
               clubPlayers={players}
@@ -963,7 +986,7 @@ export default function TeamTournamentSetup() {
                 teamData={td}
                 clubPlayers={players}
                 canManage={access.canManage}
-                clubId={activeClubId}
+                clubId={effectiveClubId || activeClubId}
                 tournamentId={tournamentId}
                 competitionClass={COMPETITION_CLASS.INTERNAL}
                 onSave={saveTeamData}
@@ -1088,7 +1111,7 @@ export default function TeamTournamentSetup() {
         {activeTabKey === TEAM_TAB_QUERY.standings ? (
           <Stack spacing={2}>
             <TeamTiebreakConfigPanel
-              clubId={activeClubId}
+              clubId={effectiveClubId || activeClubId}
               tournamentId={tournamentId}
               teamData={td}
               canManage={access.canManage}
@@ -1129,7 +1152,7 @@ export default function TeamTournamentSetup() {
 
         {access.canManage && activeTabKey === TEAM_TAB_QUERY.awards ? (
           <TeamAwardsClosePanel
-            clubId={activeClubId}
+            clubId={effectiveClubId || activeClubId}
             tournamentId={tournamentId}
             teamData={td}
             tournamentName={tournament?.name || ""}

@@ -32,11 +32,8 @@ function isTeamTournamentNotFound(result) {
  * @param {string|null|undefined} tournamentId
  */
 export function resolveTeamTournamentLoadClubId(preferredClubId, tournamentId) {
-  return (
-    resolveTournamentClubId(preferredClubId, tournamentId) ||
-    String(preferredClubId || "").trim() ||
-    null
-  );
+  // Only return a club that actually hosts the tournament (never a guess).
+  return resolveTournamentClubId(preferredClubId, tournamentId);
 }
 
 /**

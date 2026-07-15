@@ -35,6 +35,12 @@ function createLocalStorageMock(seed = {}) {
     clear() {
       store.clear();
     },
+    key(index) {
+      return [...store.keys()][index] ?? null;
+    },
+    get length() {
+      return store.size;
+    },
   };
 }
 
@@ -177,5 +183,38 @@ describe("Team Tournament create → persist → detail load", () => {
       resolveTeamTournamentLoadClubId(null, created.tournament.id),
       preferredClubId
     );
+  });
+
+  it("after activeClub coerce, blob-key scan still finds host club", () => {
+    const hostClubId = "club-host-orphan";
+    saveClubs([{ id: "default-club", name: "Default", tenantId: "tenant-1" }]);
+    setActiveClubIdPreference("default-club");
+    saveClubData(hostClubId, getDefaultClubData(hostClubId));
+
+    const created = createTeamTournament(hostClubId, {
+      name: "Orphan host MLP",
+      formatPreset: "mlp_4",
+    });
+    assert.equal(created.ok, true);
+
+    // Simulate refreshClubs coerce: active preference points at empty default club.
+    assert.equal(
+      resolveTournamentClubId("default-club", created.tournament.id),
+      hostClubId,
+      "must not stick to wrong preferred club"
+    );
+    assert.equal(findTournamentClubId(created.tournament.id), hostClubId);
+  });
+
+  it("create navigate target includes ?club= host id", () => {
+    const clubId = "club-nav-query";
+    saveClubs([{ id: clubId, name: "Nav", tenantId: "tenant-1" }]);
+    saveClubData(clubId, getDefaultClubData(clubId));
+    const created = createTeamTournament(clubId, {
+      name: "Nav MLP",
+      formatPreset: "mlp_4",
+    });
+    const href = `/tournament/team/${created.tournament.id}?club=${encodeURIComponent(created.clubId)}`;
+    assert.match(href, new RegExp(`/tournament/team/${created.tournament.id}\\?club=${clubId}`));
   });
 });

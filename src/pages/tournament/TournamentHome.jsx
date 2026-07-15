@@ -251,10 +251,14 @@ export default function TournamentHome({ section = "overview" }) {
       return;
     }
 
-    // Team MLP: only navigate after create verified the draft in the same club blob.
+    // Team MLP: navigate with hosting clubId so detail does not depend on
+    // refreshClubs()/activeClub coerce (Preview create→detail race).
     if (option.mode === TOURNAMENT_MODE.TEAM_TOURNAMENT) {
+      const hostClubId = String(result.clubId || clubId).trim();
+      navigate(
+        `/tournament/team/${result.tournament.id}?club=${encodeURIComponent(hostClubId)}`
+      );
       refreshClubs();
-      navigate(`/tournament/team/${result.tournament.id}`);
       return;
     }
 

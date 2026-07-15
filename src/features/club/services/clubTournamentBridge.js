@@ -1,5 +1,5 @@
 import { getActiveClubIdPreference, loadClubs } from "../../../data/club.js";
-import { loadClubData } from "../../../domain/clubStorage.js";
+import { CLUB_DATA_KEY, loadClubData } from "../../../domain/clubStorage.js";
 import { eventMatchToRecord } from "../../../tournament/engines/playerHistoryEngine.js";
 import { resolveTenantIdForClub } from "../../tenant/guards/tenantGuard.js";
 import { CLUB_MATCH_TYPES } from "../models/clubMatch.js";
@@ -97,18 +97,44 @@ export function processClubInternalMatchCompletion(
   return { ok: true, match: clubMatch, skipped: !winnerTeam };
 }
 
-function clubBlobContainsTournament(clubId, tournamentId) {
+/**
+ * Raw localStorage check — never call loadClubData here (that migrates/writes empty blobs).
+ */
+function rawClubBlobContainsTournament(clubId, tournamentId) {
   const resolvedClubId = String(clubId || "").trim();
   const id = String(tournamentId || "").trim();
-  if (!resolvedClubId || !id) {
+  if (!resolvedClubId || !id || typeof localStorage === "undefined") {
     return false;
   }
   try {
-    const data = loadClubData(resolvedClubId);
-    return (data.tournaments || []).some((item) => String(item.id) === id);
+    const raw = localStorage.getItem(`${CLUB_DATA_KEY}::${resolvedClubId}`);
+    if (!raw) {
+      return false;
+    }
+    const parsed = JSON.parse(raw);
+    return (parsed?.tournaments || []).some((item) => String(item?.id) === id);
   } catch {
     return false;
   }
+}
+
+function listLocalClubBlobIds() {
+  if (typeof localStorage === "undefined") {
+    return [];
+  }
+  const prefix = `${CLUB_DATA_KEY}::`;
+  const ids = [];
+  for (let index = 0; index < localStorage.length; index += 1) {
+    const key = localStorage.key(index);
+    if (!key || !key.startsWith(prefix)) {
+      continue;
+    }
+    const clubId = key.slice(prefix.length).trim();
+    if (clubId) {
+      ids.push(clubId);
+    }
+  }
+  return ids;
 }
 
 export function findTournamentClubId(tournamentId) {
@@ -125,17 +151,29 @@ export function findTournamentClubId(tournamentId) {
       continue;
     }
     scanned.add(clubId);
-    if (clubBlobContainsTournament(clubId, id)) {
+    if (rawClubBlobContainsTournament(clubId, id)) {
       return clubId;
     }
   }
 
   // Canonical preference may point at a club outside pickleball-clubs-v1.
-  // Use preference only — getActiveClubId() can coerce/overwrite missing registry entries.
   const preferredClubId = String(getActiveClubIdPreference() || "").trim();
   if (preferredClubId && !scanned.has(preferredClubId)) {
-    if (clubBlobContainsTournament(preferredClubId, id)) {
+    scanned.add(preferredClubId);
+    if (rawClubBlobContainsTournament(preferredClubId, id)) {
       return preferredClubId;
+    }
+  }
+
+  // Preview/canonical: hosting blob may exist under an id not in registry/preference
+  // (e.g. after refreshClubs coerces activeClub). Scan every local club blob key.
+  for (const clubId of listLocalClubBlobIds()) {
+    if (scanned.has(clubId)) {
+      continue;
+    }
+    scanned.add(clubId);
+    if (rawClubBlobContainsTournament(clubId, id)) {
+      return clubId;
     }
   }
 
@@ -146,6 +184,7 @@ export function findTournamentClubId(tournamentId) {
  * Resolve which club blob holds a tournament id.
  * Prefer the caller's club when it actually contains the tournament; otherwise scan
  * all clubs (parity with InternalTournamentSetup deep-link behavior).
+ * Never returns a club that does not contain the tournament.
  *
  * @param {string|null|undefined} preferredClubId
  * @param {string|null|undefined} tournamentId
@@ -158,18 +197,11 @@ export function resolveTournamentClubId(preferredClubId, tournamentId) {
   }
 
   const preferred = String(preferredClubId || "").trim();
-  if (preferred) {
-    try {
-      const data = loadClubData(preferred);
-      if ((data.tournaments || []).some((item) => String(item.id) === id)) {
-        return preferred;
-      }
-    } catch {
-      // fall through to full scan
-    }
+  if (preferred && rawClubBlobContainsTournament(preferred, id)) {
+    return preferred;
   }
 
-  return findTournamentClubId(id) || preferred || null;
+  return findTournamentClubId(id);
 }
 
 /**
