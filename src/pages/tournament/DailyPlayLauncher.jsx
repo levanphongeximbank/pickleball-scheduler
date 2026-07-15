@@ -21,6 +21,11 @@ export default function DailyPlayLauncher() {
   });
 
   useEffect(() => {
+    if (!activeClubId) {
+      setError("Chưa chọn CLB. Hãy chọn CLB ở header rồi mở lại Vui chơi mỗi ngày.");
+      return;
+    }
+
     const result = resolveDailyPlayEntry(activeClubId, {
       seasonId: activeSeason?.id,
       leagueId: activeLeague?.id,

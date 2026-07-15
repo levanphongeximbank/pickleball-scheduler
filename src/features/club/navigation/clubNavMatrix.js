@@ -167,8 +167,9 @@ export function isClubNavItemVisible(itemKey, ctx) {
       return ctx.isTenantStaff || ctx.isSa;
 
     case CLUB_NAV_ITEM_KEYS.DAILY_PLAY:
+      // SUPER_ADMIN / PLATFORM_ADMIN operate via active club switcher — keep Daily Play reachable for Staging QA.
+      if (ctx.isSa) return true;
       if (ctx.isPlayerLike && !ctx.hasGovernanceRole) return false;
-      if (ctx.saNoMembership) return false;
       return ctx.hasGovernanceRole || ctx.isTenantStaff;
 
     case CLUB_NAV_ITEM_KEYS.PLATFORM_ALL:

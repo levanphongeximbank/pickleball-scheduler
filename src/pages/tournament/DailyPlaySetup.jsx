@@ -350,10 +350,18 @@ export default function DailyPlaySetup() {
   if (!tournament) {
     return (
       <Box>
-        <Alert severity="error">Khong tim thay giai Daily Play.</Alert>
-        <Button component={RouterLink} to="/tournament" sx={{ mt: 2 }}>
-          Quay lai
-        </Button>
+        <Alert severity="error" sx={{ mb: 2 }}>
+          Không tìm thấy buổi Daily Play này trên CLB hiện tại. Preview thường lưu giải theo
+          trình duyệt — ID cũ (`{tournamentId}`) có thể đã mất sau khi redeploy hoặc đổi CLB.
+        </Alert>
+        <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
+          <Button component={RouterLink} to="/daily-play" variant="contained">
+            Mở / tạo buổi chơi vui mới
+          </Button>
+          <Button component={RouterLink} to="/tournament" variant="outlined">
+            Về trang Giải đấu
+          </Button>
+        </Stack>
       </Box>
     );
   }

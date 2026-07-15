@@ -16,6 +16,7 @@ import {
 import GroupsIcon from "@mui/icons-material/Groups";
 import EmojiEventsIcon from "@mui/icons-material/EmojiEvents";
 import Diversity3Icon from "@mui/icons-material/Diversity3";
+import SportsIcon from "@mui/icons-material/Sports";
 
 import { useAuth } from "../../context/AuthContext.jsx";
 import { useClub } from "../../context/ClubContext.jsx";
@@ -56,6 +57,13 @@ const SECTION_META = {
 };
 
 const CREATE_TOURNAMENT_MODE_OPTIONS = [
+  {
+    mode: TOURNAMENT_MODE.DAILY_PLAY,
+    title: "Chơi vui / Daily Play",
+    description: "Check-in trong ngày, ghép trận công bằng và xếp sân nhanh cho buổi chơi vui.",
+    icon: <SportsIcon sx={{ fontSize: 18 }} />,
+    badge: "Daily",
+  },
   {
     mode: TOURNAMENT_MODE.INTERNAL_TOURNAMENT,
     title: "Giải nội bộ CLB",
