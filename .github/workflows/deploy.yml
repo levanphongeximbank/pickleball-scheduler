@@ -1,13 +1,33 @@
-name: Deploy Production
+name: Production CI Gate
+
+# Phase 44C.3 — Production CI Gate (VERIFICATION ONLY).
+#
+# Deployment authority: Vercel Git Integration (auto-deploys Production on push to main).
+# This workflow does NOT run `vercel --prod`; keeping two Production deployers would create
+# two unclear authorities. Instead it is the trustworthy quality gate that must stay green.
+#
+# The SAME gates (Foundation Lock + lint no-new) also run inside the repository build
+# command (`npm run build` -> `prebuild`), so a violation ALSO blocks the Vercel Production
+# build itself. This workflow is the human-visible verification of that same contract and
+# additionally runs the full unit suite.
+#
+# Runs on push to main/master (post-merge verification) and on pull_request to main/master
+# (pre-merge canary — this is what proves the lint baseline is valid on Linux BEFORE a
+# change can reach Production).
 
 on:
   push:
     branches:
       - main
       - master
+  pull_request:
+    branches:
+      - main
+      - master
 
 jobs:
-  deploy:
+  verify:
+    name: verify
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -19,21 +39,25 @@ jobs:
           node-version: 22
           cache: npm
 
+      # 1. Install
       - name: Install dependencies
         run: npm ci
 
-      # Phase 44B.0 Foundation Lock — mandatory pre-deploy gate.
-      # Runs the canonical error-registry check + ownership boundary lock.
-      # Any violation exits non-zero and blocks the deploy job.
+      # 2. Foundation Lock — canonical error-registry + ownership boundary lock.
       - name: Foundation Lock (error registry + ownership boundaries)
         run: npm run ci:foundation-lock
 
-      - name: Lint
-        run: npm run lint
+      # 3. Lint no-new gate — baseline-controlled; fails on any NEW/increased violation.
+      #    Lint is NOT disabled and severities are NOT lowered; pre-existing debt is
+      #    recorded in scripts/ci/lint-baseline.json and burned down over time.
+      - name: Lint no-new gate (baseline-controlled)
+        run: npm run lint:no-new
 
+      # 4. Full unit tests.
       - name: Unit tests
         run: npm run test:unit
 
+      # 5. Build (exercises the real prebuild gate: Foundation Lock + lint no-new).
       - name: Build
         run: npm run build
         env:
@@ -43,11 +67,10 @@ jobs:
           VITE_RBAC_ENABLED: ${{ vars.VITE_RBAC_ENABLED || 'true' }}
           VITE_PAYMENT_MODE: ${{ vars.VITE_PAYMENT_MODE || 'dev' }}
 
-      - name: Deploy to Vercel
-        uses: amondnet/vercel-action@v25
-        with:
-          vercel-token: ${{ secrets.VERCEL_TOKEN }}
-          vercel-org-id: ${{ secrets.VERCEL_ORG_ID }}
-          vercel-project-id: ${{ secrets.VERCEL_PROJECT_ID }}
-          working-directory: ./
-          vercel-args: --prod
+      # 6. Deployment verification (authority = Vercel Git Integration; no deploy here).
+      - name: Deployment authority note
+        run: |
+          echo "Production deployment authority: Vercel Git Integration (push to main)."
+          echo "This workflow is verification-only and intentionally does NOT run 'vercel --prod'."
+          echo "Vercel builds with 'npm run build'; its prebuild enforces Foundation Lock + lint:no-new,"
+          echo "so any Foundation Lock or new-lint violation blocks the Production build at Vercel."

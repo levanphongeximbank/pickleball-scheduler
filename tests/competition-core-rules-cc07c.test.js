@@ -1,6 +1,10 @@
 import test from "node:test";
 import assert from "node:assert/strict";
+import { readFileSync, readdirSync } from "node:fs";
+import { fileURLToPath } from "node:url";
+import { join } from "node:path";
 
+import { assertTestModuleAvailable } from "./helpers/testModuleAvailability.js";
 import { AI_CONFIG } from "../src/ai/config.js";
 import { calculatePairScore } from "../src/ai/scoring.js";
 import {
@@ -293,27 +297,38 @@ test("20. shadow comparison reports resolved duplicates", () => {
   assert.equal(typeof shadow.comparison.duplicateResolved, "boolean");
 });
 
-test("21. CC-07 regression import surface remains available", async () => {
-  const mod = await import("../tests/competition-core-rules-cc07.test.js");
-  assert.ok(mod);
+test("21. CC-07 regression import surface remains available", () => {
+  assertTestModuleAvailable("../tests/competition-core-rules-cc07.test.js", import.meta.url);
 });
 
-test("22. CC-06 regression import surface remains available", async () => {
-  const mod = await import("../tests/competition-core-matchmaking-cc06.test.js");
-  assert.ok(mod);
+test("22. CC-06 regression import surface remains available", () => {
+  assertTestModuleAvailable("../tests/competition-core-matchmaking-cc06.test.js", import.meta.url);
 });
 
-test("23. team tournament seed tests remain importable", async () => {
-  const mod = await import("../tests/team-tournament-seed.test.js");
-  assert.ok(mod);
+test("23. team tournament seed tests remain importable", () => {
+  assertTestModuleAvailable("../tests/team-tournament-seed.test.js", import.meta.url);
 });
 
-test("24. rules engine tests remain importable", async () => {
-  const mod = await import("../tests/competition-core-rules-engine.test.js");
-  assert.ok(mod);
+test("24. rules engine tests remain importable", () => {
+  assertTestModuleAvailable("../tests/competition-core-rules-engine.test.js", import.meta.url);
 });
 
-test("25. draw foundation tests remain importable", async () => {
-  const mod = await import("../tests/competition-core-draw-foundation.test.js");
-  assert.ok(mod);
+test("25. draw foundation tests remain importable", () => {
+  assertTestModuleAvailable("../tests/competition-core-draw-foundation.test.js", import.meta.url);
+});
+
+test("26. no test file dynamically imports another *.test file (subtest-leak guard)", () => {
+  const testsDir = fileURLToPath(new URL("../tests/", import.meta.url));
+  const dynamicTestImport = /import\(\s*["'][^"']*\.test\.[cm]?jsx?["']\s*\)/;
+  const offenders = readdirSync(testsDir, { recursive: true })
+    .map((entry) => String(entry))
+    .filter((name) => /\.test\.[cm]?jsx?$/.test(name.replace(/\\/g, "/")))
+    .filter((name) => dynamicTestImport.test(readFileSync(join(testsDir, name), "utf8")))
+    .map((name) => name.replace(/\\/g, "/"))
+    .sort();
+  assert.deepEqual(
+    offenders,
+    [],
+    `A running test that dynamically imports a *.test file registers foreign subtests, which node:test cancels on Node 22. Use assertTestModuleAvailable() instead in: ${offenders.join(", ")}`
+  );
 });

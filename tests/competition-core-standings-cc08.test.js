@@ -1,6 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 
+import { assertTestModuleAvailable } from "./helpers/testModuleAvailability.js";
 import { buildGroupStandingFromMatches } from "../src/tournament/engines/rankingEngine.js";
 import { computeTeamStandings } from "../src/features/team-tournament/engines/teamStandingsEngine.js";
 import { MATCHUP_STATUS } from "../src/features/team-tournament/constants.js";
@@ -569,26 +570,22 @@ test("32. team tournament standings via legacy mapper", () => {
   assert.equal(result.rows.find((row) => row.entryId === "team-a").wins, 1);
 });
 
-test("33. existing TT-4 tests import surface remains available", async () => {
-  const mod = await import("../tests/team-tournament-tt4.test.js");
-  assert.ok(mod);
+test("33. existing TT-4 tests import surface remains available", () => {
+  assertTestModuleAvailable("../tests/team-tournament-tt4.test.js", import.meta.url);
 });
 
-test("34. existing CC-07 tests import surface remains available", async () => {
-  const mod = await import("../tests/competition-core-rules-cc07.test.js");
-  assert.ok(mod);
+test("34. existing CC-07 tests import surface remains available", () => {
+  assertTestModuleAvailable("../tests/competition-core-rules-cc07.test.js", import.meta.url);
 });
 
-test("35. existing CC-04/05/06 tests import surface remains available", async () => {
-  const cc04 = await import("../tests/competition-core-draw-cc04e.test.js");
-  const cc05 = await import("../tests/competition-core-formation-cc05c.test.js");
-  const cc06 = await import("../tests/competition-core-matchmaking-cc06.test.js");
-  assert.ok(cc04 && cc05 && cc06);
+test("35. existing CC-04/05/06 tests import surface remains available", () => {
+  assertTestModuleAvailable("../tests/competition-core-draw-cc04e.test.js", import.meta.url);
+  assertTestModuleAvailable("../tests/competition-core-formation-cc05c.test.js", import.meta.url);
+  assertTestModuleAvailable("../tests/competition-core-matchmaking-cc06.test.js", import.meta.url);
 });
 
-test("36. existing Rating V2 tests import surface remains available", async () => {
-  const mod = await import("../tests/competition-core-feature-flags.test.js");
-  assert.ok(mod);
+test("36. existing Rating V2 tests import surface remains available", () => {
+  assertTestModuleAvailable("../tests/competition-core-feature-flags.test.js", import.meta.url);
 });
 
 test("draw-lot token is deterministic", () => {

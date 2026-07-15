@@ -2,6 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 
+import { assertTestModuleAvailable } from "./helpers/testModuleAvailability.js";
 import { buildGroupStandingFromMatches } from "../src/tournament/engines/rankingEngine.js";
 import { buildGroupStandingFromSessions } from "../src/pages/tournament.standings.logic.js";
 import { computeTeamStandings } from "../src/features/team-tournament/engines/teamStandingsEngine.js";
@@ -345,26 +346,22 @@ test("CC08D unsupported standings consumers remain legacy-primary with STANDINGS
   assert.notEqual(sessionBridge.executionPath, "canonical-primary");
 });
 
-test("CC08C-16 existing CC-07 tests import surface remains available", async () => {
-  const mod = await import("../tests/competition-core-rules-cc07.test.js");
-  assert.ok(mod);
+test("CC08C-16 existing CC-07 tests import surface remains available", () => {
+  assertTestModuleAvailable("../tests/competition-core-rules-cc07.test.js", import.meta.url);
 });
 
-test("CC08C-17 existing CC-06 tests import surface remains available", async () => {
-  const mod = await import("../tests/competition-core-matchmaking-cc06.test.js");
-  assert.ok(mod);
+test("CC08C-17 existing CC-06 tests import surface remains available", () => {
+  assertTestModuleAvailable("../tests/competition-core-matchmaking-cc06.test.js", import.meta.url);
 });
 
-test("CC08C-18 existing TT-4 tests import surface remains available", async () => {
-  const mod = await import("../tests/team-tournament-tt4.test.js");
-  assert.ok(mod);
+test("CC08C-18 existing TT-4 tests import surface remains available", () => {
+  assertTestModuleAvailable("../tests/team-tournament-tt4.test.js", import.meta.url);
 });
 
-test("CC08C-19 existing Draw/Formation/Rating tests import surface remains available", async () => {
-  const draw = await import("../tests/competition-core-draw-cc04e.test.js");
-  const formation = await import("../tests/competition-core-formation-cc05c.test.js");
-  const flags = await import("../tests/competition-core-feature-flags.test.js");
-  assert.ok(draw && formation && flags);
+test("CC08C-19 existing Draw/Formation/Rating tests import surface remains available", () => {
+  assertTestModuleAvailable("../tests/competition-core-draw-cc04e.test.js", import.meta.url);
+  assertTestModuleAvailable("../tests/competition-core-formation-cc05c.test.js", import.meta.url);
+  assertTestModuleAvailable("../tests/competition-core-feature-flags.test.js", import.meta.url);
 });
 
 test("CC08C-20 package test runner contains CC-08C test file", () => {
