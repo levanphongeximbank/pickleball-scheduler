@@ -1,8 +1,11 @@
 /**
- * PHASE 45B.2 — Canonical Athlete repository for pairing scope reads.
+ * PHASE 45B.3 — Canonical Athlete repository for pairing scope reads.
  *
  * Athlete SSOT: public.athletes (via injectable loaders — no SQL in this phase).
  * Membership SSOT: public.club_members.
+ *
+ * Identity: athletes.id is the only pairing primary. profiles.player_id /
+ * blob player ids are stored as aliases on the scope row only.
  *
  * No blob or browser storage. No writes. Dependency-injected for unit tests.
  *
@@ -27,8 +30,21 @@ function normalizeStatus(value, fallback = null) {
  * @param {object} partial
  */
 export function normalizeAthleteMembershipScopeRow(partial = {}) {
+  // Never promote player_id / blob id / row.id into athleteId.
+  const athleteId = normalizeId(partial.athleteId || partial.athlete_id) || null;
+  const profilePlayerId =
+    normalizeId(partial.profilePlayerId || partial.profile_player_id || partial.player_id) ||
+    null;
+  const legacyPlayerId =
+    normalizeId(
+      partial.legacyPlayerId ||
+        partial.legacy_player_id ||
+        partial.blobPlayerId ||
+        partial.localPlayerId
+    ) || null;
+
   return {
-    athleteId: normalizeId(partial.athleteId || partial.athlete_id) || null,
+    athleteId,
     userId: normalizeId(partial.userId || partial.user_id) || null,
     displayName: String(
       partial.displayName || partial.display_name || partial.name || ""
@@ -44,9 +60,9 @@ export function normalizeAthleteMembershipScopeRow(partial = {}) {
     clubId: normalizeId(partial.clubId || partial.club_id) || null,
     tenantId: normalizeId(partial.tenantId || partial.tenant_id) || null,
     profilePlayerId:
-      normalizeId(partial.profilePlayerId || partial.profile_player_id || partial.player_id) ||
-      null,
-    legacyPlayerId: normalizeId(partial.legacyPlayerId || partial.legacy_player_id) || null,
+      profilePlayerId && profilePlayerId !== athleteId ? profilePlayerId : null,
+    legacyPlayerId:
+      legacyPlayerId && legacyPlayerId !== athleteId ? legacyPlayerId : null,
     registrationStatus: partial.registrationStatus || partial.registration_status || null,
   };
 }
