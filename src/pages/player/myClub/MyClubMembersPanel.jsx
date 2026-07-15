@@ -31,9 +31,16 @@ import {
   getVicePresidentUserIds,
   isClubMemberStatusActive,
   normalizeClubMemberStatus,
-  rpcV2ClubListMembers,
 } from "../../../features/club/index.js";
+import { canonicalMembershipRepository } from "../../../features/club/repositories/index.js";
 import { isClubStorageV2Enabled } from "../../../features/club/config/clubRegistryFlags.js";
+import { isCanonicalClubRepositoryEnabled } from "../../../features/club/config/canonicalRepositoryFlags.js";
+import { hasSupabaseConfig } from "../../../auth/supabaseClient.js";
+import {
+  MEMBERSHIP_READ_STATE,
+  isCanonicalMembershipReadEnabled,
+  toMembershipReadSnapshot,
+} from "../../../features/club/context/membershipCanonicalReadModel.js";
 import { ClubEmptyState, GovernanceRoleChip } from "../../../features/club/ui/index.js";
 import { loadPlayersForClub } from "../../../domain/clubStorage.js";
 import { findUserIdByPlayerId } from "../../../features/club/storage/athleteClubLinkStore.js";
@@ -108,48 +115,56 @@ export default function MyClubMembersPanel({
       !isAuthenticated ||
       can(PERMISSIONS.PLAYER_UPDATE, { clubId, venueId: tenantId }));
 
-  const v2Enabled = isClubStorageV2Enabled();
+  // Phase 45A.2 — Membership canonical READ cutover. The member roster is read
+  // through canonicalMembershipRepository (V2 RPC gateway → public.club_members)
+  // whenever cloud membership is authoritative (canonical flag OR Club Storage V2).
+  // A cloud loading/error state NEVER falls back to the legacy blob roster. The
+  // legacy blob join below is used only in explicit offline / no-Supabase mode.
+  const canonicalMembershipRead = isCanonicalMembershipReadEnabled({
+    canonicalEnabled: isCanonicalClubRepositoryEnabled(),
+    v2StorageEnabled: isClubStorageV2Enabled(),
+    hasSupabase: hasSupabaseConfig(),
+  });
 
-  // Phase 42N: the member list is server-owned (Supabase club_members). Legacy
-  // local-storage rosters are empty in production, which previously made this
-  // panel show 0 while the home card (V2 RPC) showed the real count.
-  const [v2, setV2] = useState({ status: "idle", members: [], error: null });
+  const [remote, setRemote] = useState({
+    state: MEMBERSHIP_READ_STATE.IDLE,
+    members: [],
+    errorCode: null,
+  });
 
   useEffect(() => {
-    if (!v2Enabled || !fullAccess || !clubId) {
-      setV2({ status: "idle", members: [], error: null });
+    if (!canonicalMembershipRead || !fullAccess || !clubId) {
+      setRemote({ state: MEMBERSHIP_READ_STATE.IDLE, members: [], errorCode: null });
       return undefined;
     }
     let cancelled = false;
-    setV2((prev) => ({ ...prev, status: "loading" }));
-    rpcV2ClubListMembers(clubId)
+    setRemote((prev) => ({ ...prev, state: MEMBERSHIP_READ_STATE.LOADING }));
+    canonicalMembershipRepository
+      .listActiveClubMembers(clubId, { includeInactive: true })
       .then((result) => {
         if (cancelled) {
           return;
         }
-        if (result.ok) {
-          setV2({ status: "ready", members: result.members || [], error: null });
-        } else {
-          setV2({ status: "error", members: [], error: result.error || result.code || "RPC_FAILED" });
-        }
+        setRemote(toMembershipReadSnapshot(result));
       })
-      .catch((error) => {
+      .catch(() => {
         if (!cancelled) {
-          setV2({ status: "error", members: [], error: String(error?.message || error) });
+          setRemote(toMembershipReadSnapshot(null));
         }
       });
     return () => {
       cancelled = true;
     };
-  }, [v2Enabled, fullAccess, clubId, revision]);
+  }, [canonicalMembershipRead, fullAccess, clubId, revision]);
 
   const members = useMemo(() => {
     void revision;
-    if (!fullAccess || !clubId) {
+    // Offline / no-Supabase only. Never a fallback while canonical read is on.
+    if (canonicalMembershipRead || !fullAccess || !clubId) {
       return [];
     }
     return getClubMembers(clubId, tenantId);
-  }, [clubId, tenantId, revision, fullAccess]);
+  }, [clubId, tenantId, revision, fullAccess, canonicalMembershipRead]);
 
   const playersById = useMemo(() => {
     const players = getTenantPlayers(tenantId);
@@ -190,14 +205,19 @@ export default function MyClubMembersPanel({
       .sort((a, b) => a.name.localeCompare(b.name, "vi"));
   }, [members, playersById, clubRecord, clubId]);
 
-  const v2Rows = useMemo(
-    () => buildMemberRowsFromV2Members(v2.members, clubRecord?.governance, getVicePresidentUserIds),
-    [v2.members, clubRecord]
+  const canonicalRows = useMemo(
+    () => buildMemberRowsFromV2Members(remote.members, clubRecord?.governance, getVicePresidentUserIds),
+    [remote.members, clubRecord]
   );
 
-  const loading = v2Enabled && fullAccess && (v2.status === "idle" || v2.status === "loading");
-  const rows = v2Enabled && v2.status === "ready" ? v2Rows : legacyRows;
-  const v2Unavailable = v2Enabled && v2.status === "error";
+  const loading =
+    canonicalMembershipRead &&
+    fullAccess &&
+    (remote.state === MEMBERSHIP_READ_STATE.IDLE || remote.state === MEMBERSHIP_READ_STATE.LOADING);
+  // Cloud mode is authoritative: rows come only from the canonical snapshot (never
+  // the legacy blob). Offline mode uses the blob join.
+  const rows = canonicalMembershipRead ? canonicalRows : legacyRows;
+  const v2Unavailable = canonicalMembershipRead && remote.state === MEMBERSHIP_READ_STATE.ERROR;
 
   const activeCount = countActiveClubMembers(rows);
 

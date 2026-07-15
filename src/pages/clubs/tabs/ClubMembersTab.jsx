@@ -47,10 +47,17 @@ import {
   isClubStorageV2Enabled,
   listPendingMembershipRequests,
   mapV2MemberRowToUi,
-  rpcV2ClubListMembers,
   approveClubMembershipRequest,
   rejectClubMembershipRequest,
 } from "../../../features/club/index.js";
+import { canonicalMembershipRepository } from "../../../features/club/repositories/index.js";
+import { isCanonicalClubRepositoryEnabled } from "../../../features/club/config/canonicalRepositoryFlags.js";
+import { hasSupabaseConfig } from "../../../auth/supabaseClient.js";
+import {
+  MEMBERSHIP_READ_STATE,
+  isCanonicalMembershipReadEnabled,
+  toMembershipReadSnapshot,
+} from "../../../features/club/context/membershipCanonicalReadModel.js";
 import { formatPickVnRating } from "../../../features/pick-vn-rating/constants/pickVnRatingScale.js";
 import { writeAuditLog, AUDIT_ACTIONS } from "../../../features/identity/services/auditService.js";
 import { getCurrentUser } from "../../../auth/authService.js";
@@ -66,11 +73,22 @@ export default function ClubMembersTab({ club, tenantId, onRefresh }) {
   const [requestMessage, setRequestMessage] = useState(null);
   const [pendingMembershipRequests, setPendingMembershipRequests] = useState([]);
   const [loadingPendingRequests, setLoadingPendingRequests] = useState(false);
-  const [memberState, setMemberState] = useState({ status: "idle", list: [], error: null });
+  const [memberState, setMemberState] = useState({
+    state: MEMBERSHIP_READ_STATE.IDLE,
+    list: [],
+    errorCode: null,
+  });
 
   const fullAccess = canViewFullClubMembers(user, club);
   const canApproveRequests = canApproveClubMembershipRequests(user, club);
-  const v2Enabled = isClubStorageV2Enabled();
+  // Phase 45A.2 — member roster reads flow through canonicalMembershipRepository
+  // whenever cloud membership is authoritative (Club Storage V2 OR canonical repo flag).
+  // The legacy blob join is used only in explicit offline/no-Supabase mode.
+  const canonicalMembershipRead = isCanonicalMembershipReadEnabled({
+    canonicalEnabled: isCanonicalClubRepositoryEnabled(),
+    v2StorageEnabled: isClubStorageV2Enabled(),
+    hasSupabase: hasSupabaseConfig(),
+  });
 
   useEffect(() => {
     let cancelled = false;
@@ -106,10 +124,10 @@ export default function ClubMembersTab({ club, tenantId, onRefresh }) {
       !isAuthenticated ||
       can(PERMISSIONS.PLAYER_UPDATE, { clubId: club.id, venueId: tenantId }));
 
-  // Phase 43B.1 — member list is server-owned under Club Storage V2 (club_list_members RPC).
+  // Phase 43B.1 / 45A.2 — member list is server-owned when cloud membership is authoritative.
   // Mutation controls (add/remove/role/status) still write the legacy local blob, so they are
-  // gated OFF when V2 is on until the mutation path is migrated to V2 commands.
-  const mutationsEnabled = canManage && !v2Enabled;
+  // gated OFF in canonical mode until the Membership command cutover (Phase 45A.4).
+  const mutationsEnabled = canManage && !canonicalMembershipRead;
 
   const canRemoveMembers = canDeleteClubMembers(user, club) && mutationsEnabled;
 
@@ -117,51 +135,57 @@ export default function ClubMembersTab({ club, tenantId, onRefresh }) {
     let cancelled = false;
 
     if (!fullAccess) {
-      setMemberState({ status: "idle", list: [], error: null });
+      setMemberState({ state: MEMBERSHIP_READ_STATE.IDLE, list: [], errorCode: null });
       return undefined;
     }
 
-    if (!v2Enabled) {
-      setMemberState({ status: "ready", list: getClubMembers(club.id, tenantId), error: null });
+    if (!canonicalMembershipRead) {
+      // Explicit offline / no-Supabase mode: legacy blob join is the read path.
+      setMemberState({
+        state: MEMBERSHIP_READ_STATE.READY,
+        list: getClubMembers(club.id, tenantId),
+        errorCode: null,
+      });
       return undefined;
     }
 
-    setMemberState((prev) => ({ ...prev, status: "loading" }));
-    rpcV2ClubListMembers(club.id)
+    setMemberState((prev) => ({ ...prev, state: MEMBERSHIP_READ_STATE.LOADING }));
+    canonicalMembershipRepository
+      .listActiveClubMembers(club.id, { includeInactive: true })
       .then((result) => {
         if (cancelled) {
           return;
         }
-        if (result.ok) {
-          setMemberState({
-            status: "ready",
-            list: (result.members || []).map(mapV2MemberRowToUi),
-            error: null,
-          });
-        } else {
-          // V2 SoT: never backfill from the empty local blob when the RPC fails.
-          setMemberState({
-            status: "error",
-            list: [],
-            error: result.error || result.code || "Không tải được danh sách thành viên.",
-          });
-        }
+        // Cloud is authoritative: loading/error NEVER backfills from the local blob.
+        const snapshot = toMembershipReadSnapshot(result);
+        setMemberState({
+          state: snapshot.state,
+          list: snapshot.members.map(mapV2MemberRowToUi),
+          errorCode: snapshot.errorCode,
+        });
       })
-      .catch((err) => {
+      .catch(() => {
         if (!cancelled) {
-          setMemberState({ status: "error", list: [], error: String(err?.message || err) });
+          const snapshot = toMembershipReadSnapshot(null);
+          setMemberState({ state: snapshot.state, list: [], errorCode: snapshot.errorCode });
         }
       });
 
     return () => {
       cancelled = true;
     };
-  }, [club.id, tenantId, revision, v2Enabled, fullAccess]);
+  }, [club.id, tenantId, revision, canonicalMembershipRead, fullAccess]);
 
   const members = memberState.list;
   const membersLoading =
-    v2Enabled && fullAccess && (memberState.status === "idle" || memberState.status === "loading");
-  const membersError = memberState.status === "error" ? memberState.error : null;
+    canonicalMembershipRead &&
+    fullAccess &&
+    (memberState.state === MEMBERSHIP_READ_STATE.IDLE ||
+      memberState.state === MEMBERSHIP_READ_STATE.LOADING);
+  const membersError =
+    memberState.state === MEMBERSHIP_READ_STATE.ERROR
+      ? "Không tải được danh sách thành viên. Vui lòng thử lại."
+      : null;
 
   const ratings = useMemo(
     () => getClubRatings(club.id, tenantId),
@@ -400,7 +424,7 @@ export default function ClubMembersTab({ club, tenantId, onRefresh }) {
         </Box>
       )}
 
-      {v2Enabled && canManage && (
+      {canonicalMembershipRead && canManage && (
         <Alert severity="info" sx={{ mb: 2 }}>
           Danh sách thành viên lấy trực tiếp từ máy chủ (Club Storage V2). Thao tác thêm / xóa /
           đổi vai trò tạm thời tắt ở màn hình này cho đến khi chuyển sang lệnh V2.

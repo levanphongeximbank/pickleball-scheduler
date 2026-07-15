@@ -219,6 +219,22 @@ const RULES = [
     ],
   },
   {
+    id: "membership-roster-read-in-ui",
+    description:
+      "Club member ROSTER reads in the UI/context layer must go through canonicalMembershipRepository (Phase 45A.2 read cutover): no direct rpcV2ClubListMembers, no getClubMembers/blob roster, no clubExtension roster read, no direct .from(\"club_members\") select.",
+    // Scoped to the app UI/consumer surface (same surface as the club-entity read lock).
+    // The canonical read gateway (src/features/club/repositories/), the V2 RPC gateway
+    // (src/features/club/services/) and the offline/activity/tournament services are NOT in
+    // these dirs → never scanned. Command paths (add/remove/role/status) belong to 45A.4.
+    onlyIn: ["src/context/", "src/pages/", "src/components/"],
+    match: (c) => [
+      ...(c.match(/\brpcV2ClubListMembers\s*\(/g) || []),
+      ...(c.match(/\bgetClubMembers\s*\(/g) || []),
+      ...(c.match(/\bloadClubExtension\s*\(/g) || []),
+      ...(c.match(/\.from\(\s*["']club_members["']\s*\)/g) || []),
+    ],
+  },
+  {
     id: "global-unregistered-error-code",
     description:
       "New string-literal error codes in the API layer must be registered in API_ERROR_CODES.",
@@ -329,6 +345,26 @@ const DEBT_META = {
     reason:
       "Player→club display mapping reads the club blob directly; migrate to the canonical club read after the ClubContext cutover is Production-verified.",
     removalPhase: "45A.5 blob/localStorage retirement",
+  },
+  "membership-roster-read-in-ui::src/pages/player/myClub/MyClubMembersPanel.jsx": {
+    reason:
+      "Explicit offline/no-Supabase legacy blob roster fallback, guarded by !canonicalMembershipRead. Canonical read (canonicalMembershipRepository) is authoritative whenever cloud membership is on (Club Storage V2 OR canonical repo flag); the blob is never the read authority in cloud mode.",
+    removalPhase: "45A.5 blob/localStorage retirement",
+  },
+  "membership-roster-read-in-ui::src/pages/clubs/tabs/ClubMembersTab.jsx": {
+    reason:
+      "Explicit offline/no-Supabase legacy blob roster fallback, guarded by !canonicalMembershipRead. Canonical read is authoritative in cloud mode; blob mutations stay gated off until the Membership command cutover (45A.4).",
+    removalPhase: "45A.5 blob/localStorage retirement",
+  },
+  "membership-roster-read-in-ui::src/pages/clubs/tabs/ClubOverviewTab.jsx": {
+    reason:
+      "Separate activity/rating display domain: member skill-level distribution reads the local roster for a histogram, not as the Membership read authority. Migrates with the Rating/Activity canonical cutover.",
+    removalPhase: "Rating/Activity canonical cutover",
+  },
+  "membership-roster-read-in-ui::src/pages/clubs/tabs/ClubMatchHistoryTab.jsx": {
+    reason:
+      "Separate history/tournament domain: match-creation player dropdown reads the local roster, not as the Membership read authority. Migrates with the Tournament canonical cutover.",
+    removalPhase: "Tournament canonical cutover",
   },
 };
 

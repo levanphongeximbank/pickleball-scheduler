@@ -16,17 +16,22 @@ const readSrc = (rel) => readFileSync(path.join(root, rel), "utf8");
 
 const TAB = "src/pages/clubs/tabs/ClubMembersTab.jsx";
 
-test("Manage members tab reads member list from club_list_members V2 RPC", () => {
+// Phase 45A.2 — Manage members tab reads the roster through the canonical
+// Membership repository (single application read gateway), not a direct RPC.
+test("Manage members tab reads member list from canonicalMembershipRepository", () => {
   const src = readSrc(TAB);
-  assert.match(src, /rpcV2ClubListMembers\(club\.id\)/);
+  assert.match(src, /canonicalMembershipRepository/);
+  assert.match(src, /\.listActiveClubMembers\(\s*club\.id,\s*\{\s*includeInactive:\s*true\s*\}\s*\)/);
   assert.match(src, /\.map\(mapV2MemberRowToUi\)/);
-  assert.match(src, /isClubStorageV2Enabled\(\)/);
+  assert.match(src, /isCanonicalMembershipReadEnabled/);
+  // The direct RPC read must be gone from the UI after the cutover.
+  assert.doesNotMatch(src, /rpcV2ClubListMembers\s*\(/);
 });
 
-test("Manage members tab keeps the legacy blob read behind a !v2 guard only", () => {
+test("Manage members tab keeps the legacy blob read behind a !canonical guard only", () => {
   const src = readSrc(TAB);
-  assert.match(src, /if \(!v2Enabled\)\s*\{[\s\S]*getClubMembers\(club\.id, tenantId\)/);
-  // Must not read the blob unconditionally as the member SoT anymore.
+  assert.match(src, /if \(!canonicalMembershipRead\)\s*\{[\s\S]*getClubMembers\(club\.id, tenantId\)/);
+  // Must not read the blob unconditionally as the member SoT.
   assert.doesNotMatch(src, /useMemo\(\s*\(\)\s*=>\s*getClubMembers\(club\.id, tenantId\)/);
 });
 
@@ -36,22 +41,25 @@ test("Manage members tab renders loading / empty / error states", () => {
   assert.match(src, /membersError/);
   assert.match(src, /CircularProgress/);
   assert.match(src, /CLB chưa có thành viên/);
-  // V2 RPC failure must not silently backfill from blob.
-  assert.match(src, /status: "error",\s*list: \[\],/);
+  // Cloud read maps through the explicit snapshot: an error/loading NEVER backfills the blob.
+  assert.match(src, /toMembershipReadSnapshot/);
+  assert.match(src, /MEMBERSHIP_READ_STATE\.ERROR/);
+  assert.match(src, /list:\s*\[\]/);
 });
 
-test("Manage members mutations are gated off under V2 (read-only, legacy blob)", () => {
+test("Manage members mutations are gated off in canonical mode (read-only, legacy blob)", () => {
   const src = readSrc(TAB);
-  assert.match(src, /mutationsEnabled\s*=\s*canManage\s*&&\s*!v2Enabled/);
+  assert.match(src, /mutationsEnabled\s*=\s*canManage\s*&&\s*!canonicalMembershipRead/);
   assert.match(src, /\{mutationsEnabled && \(/);
   assert.match(src, /\{mutationsEnabled \? \(/);
 });
 
 test("Manage members tab introduces no direct Supabase call and no new gateway", () => {
   const src = readSrc(TAB);
-  assert.doesNotMatch(src, /supabaseClient/);
+  // hasSupabaseConfig (a config predicate) is allowed; a direct client/rpc is not.
   assert.doesNotMatch(src, /createClient/);
   assert.doesNotMatch(src, /\.rpc\(/);
+  assert.doesNotMatch(src, /supabaseClient\.(from|rpc|auth)/);
   assert.doesNotMatch(src, /listClubMembersAsync/);
   assert.doesNotMatch(src, /clubExtensionStorage/);
 });
