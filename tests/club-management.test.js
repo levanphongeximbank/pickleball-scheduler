@@ -104,12 +104,12 @@ describe("club management sprint 3", () => {
     assert.equal(rating.elo, 1500);
   });
 
-  it("rejects adding player from another tenant", () => {
-    const result = addMemberToClub(CLUB_A, "player-b1", TENANT_A);
+  it("rejects adding player from another tenant", async () => {
+    const result = await addMemberToClub(CLUB_A, "player-b1", TENANT_A);
     assert.equal(result.ok, false);
   });
 
-  it("allows player in multiple clubs within same tenant", () => {
+  it("allows player in multiple clubs within same tenant", async () => {
     const clubC = createClubRecord("CLB Test C", {
       id: "club-test-c",
       tenantId: TENANT_A,
@@ -118,7 +118,7 @@ describe("club management sprint 3", () => {
     saveClubs([...loadClubs(), clubC]);
     saveClubData("club-test-c", { ...getDefaultClubData("club-test-c"), players: [], tenantId: TENANT_A });
 
-    const result = addMemberToClub("club-test-c", "player-a1", TENANT_A);
+    const result = await addMemberToClub("club-test-c", "player-a1", TENANT_A);
     assert.equal(result.ok, true);
 
     const membersA = getClubMembers(CLUB_A, TENANT_A);

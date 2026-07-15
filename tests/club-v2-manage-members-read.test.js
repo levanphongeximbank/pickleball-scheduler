@@ -47,11 +47,14 @@ test("Manage members tab renders loading / empty / error states", () => {
   assert.match(src, /list:\s*\[\]/);
 });
 
-test("Manage members mutations are gated off in canonical mode (read-only, legacy blob)", () => {
+// Phase 45A.4C.4 — add/remove may enable under canonical read when mutation RPCs
+// are probed ready; role/status remain legacy-only (disabled in canonical mode).
+test("Manage members role/status stay gated off in canonical mode; add/remove use probe", () => {
   const src = readSrc(TAB);
-  assert.match(src, /mutationsEnabled\s*=\s*canManage\s*&&\s*!canonicalMembershipRead/);
-  assert.match(src, /\{mutationsEnabled && \(/);
-  assert.match(src, /\{mutationsEnabled \? \(/);
+  assert.match(src, /addRemoveEnabled\s*=\s*canManage\s*&&\s*\(canonicalMembershipRead\s*\?\s*memberCommandReady\s*:\s*true\)/);
+  assert.match(src, /roleStatusEnabled\s*=\s*canManage\s*&&\s*!canonicalMembershipRead/);
+  assert.match(src, /probeClubMemberMutationAccess/);
+  assert.doesNotMatch(src, /mutationsEnabled/);
 });
 
 test("Manage members tab introduces no direct Supabase call and no new gateway", () => {

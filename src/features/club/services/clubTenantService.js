@@ -267,7 +267,7 @@ export async function createClub(data = {}) {
     String(governance.presidentUserId || "") === String(user.id);
 
   if (isSelfRegister) {
-    const boot = bootstrapSelfRegisteredPresident(club.id, user, tenantId);
+    const boot = await bootstrapSelfRegisteredPresident(club.id, user, tenantId);
     if (!boot.ok) {
       saveClubs(loadClubs().filter((item) => item.id !== club.id));
       purgeClubExtension(club.id);

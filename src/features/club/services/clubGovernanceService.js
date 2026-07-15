@@ -419,7 +419,7 @@ function buildPlayerIdForAuthUser(userId) {
 /** Sau tự đăng ký CLB: thêm VĐV vào roster, link session, promote CLUB_MANAGER.
  * Phase 45A.3E — V2-OFF companion only (canonical create ends after club_create).
  */
-export function bootstrapSelfRegisteredPresident(clubId, user, tenantId) {
+export async function bootstrapSelfRegisteredPresident(clubId, user, tenantId) {
   const legacyGate = assertLegacyClubEntityWriteAllowed({
     operation: "bootstrapSelfRegisteredPresident",
   });
@@ -480,7 +480,7 @@ export function bootstrapSelfRegisteredPresident(clubId, user, tenantId) {
     }
   }
 
-  const memberResult = addMemberToClub(trimmedClubId, player.id, effectiveTenantId, {
+  const memberResult = await addMemberToClub(trimmedClubId, player.id, effectiveTenantId, {
     skipPermissionGuard: true,
   });
   if (!memberResult.ok) {
