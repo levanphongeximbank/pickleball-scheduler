@@ -9,6 +9,9 @@ import {
 } from "./canonicalRepositoryTypes.js";
 import { rpcV2ClubListMembers, rpcV2GetMyActiveMembership } from "../services/clubStorageV2RpcService.js";
 import { isCanonicalClubRepositoryEnabled } from "../config/canonicalRepositoryFlags.js";
+import { isClubStorageV2Enabled } from "../config/clubRegistryFlags.js";
+import { hasSupabaseConfig } from "../../../auth/supabaseClient.js";
+import { isCanonicalMembershipReadEnabled } from "../context/membershipCanonicalReadModel.js";
 
 const STATUS_RANK = Object.freeze({
   active: 100,
@@ -209,6 +212,45 @@ export function createCanonicalMembershipRepository(deps = {}) {
     });
   }
 
+  /**
+   * Resolve a single logical membership (any status) for a user in a club.
+   * @param {string} clubId
+   * @param {string} userId
+   * @param {{ includeInactive?: boolean }} [options]
+   */
+  async function getMemberByUserId(clubId, userId, options = {}) {
+    const includeInactive = options.includeInactive !== false;
+    const result = await listActiveClubMembers(clubId, { includeInactive });
+    if (!result.ok) return result;
+    const uid = String(userId || "").trim();
+    const hit = (result.data || []).find((m) => membershipKey(m) === uid) || null;
+    return buildRepoResult({
+      data: hit,
+      source: result.source,
+      warnings: result.warnings,
+      mappingSummary: result.mappingSummary,
+      execution: { ...result.execution, userId: uid },
+    });
+  }
+
+  /**
+   * Canonical active-member count (active-only club_members semantics).
+   * Single shared count contract for My Club / Manage Club surfaces (§6).
+   * @param {string} clubId
+   * @returns {Promise<object>} repo result with numeric `data`
+   */
+  async function countActiveMembers(clubId) {
+    const result = await listActiveClubMembers(clubId, { includeInactive: false });
+    if (!result.ok) return result;
+    return buildRepoResult({
+      data: (result.data || []).length,
+      source: result.source,
+      warnings: result.warnings,
+      mappingSummary: result.mappingSummary,
+      execution: { ...result.execution, counted: "active" },
+    });
+  }
+
   async function getMyActiveMembership() {
     if (!isV2Enabled()) {
       return buildRepoResult({
@@ -239,11 +281,31 @@ export function createCanonicalMembershipRepository(deps = {}) {
 
   return {
     listActiveClubMembers,
+    // Contract alias (Phase 45A.2 §3): listMembersByClub === listActiveClubMembers.
+    listMembersByClub: listActiveClubMembers,
     getActiveMembershipForUser,
+    getMemberByUserId,
+    countActiveMembers,
     getMyActiveMembership,
     dedupeMembershipHistory,
     resolveMembershipStatus,
   };
 }
 
-export const canonicalMembershipRepository = createCanonicalMembershipRepository();
+/**
+ * App-facing singleton — the single Membership READ gateway for UI/context/service.
+ *
+ * Cloud-authoritative (V2 RPC gateway → public.club_members) whenever the canonical
+ * repository flag is ON or Club Storage V2 is ON; legacy blob only in explicit
+ * offline / no-Supabase mode. Uses the same gate as the read-model consumers so the
+ * repository never silently returns an empty/blob roster while the UI believes it is
+ * in canonical cloud mode. See membershipCanonicalReadModel.isCanonicalMembershipReadEnabled.
+ */
+export const canonicalMembershipRepository = createCanonicalMembershipRepository({
+  isV2Enabled: () =>
+    isCanonicalMembershipReadEnabled({
+      canonicalEnabled: isCanonicalClubRepositoryEnabled(),
+      v2StorageEnabled: isClubStorageV2Enabled(),
+      hasSupabase: hasSupabaseConfig(),
+    }),
+});
