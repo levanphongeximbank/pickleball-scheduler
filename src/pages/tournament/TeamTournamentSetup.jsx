@@ -40,6 +40,10 @@ import {
   isTeamTournament,
   updateMatchupInTournament,
 } from "../../features/team-tournament/engines/teamTournamentEngine.js";
+import {
+  COMPETITION_CLASS,
+  prepareLivePrivatePairingOptions,
+} from "../../features/private-pairing-rules/index.js";
 import { canManageTeam } from "../../features/team-tournament/engines/teamPermissionEngine.js";
 import {
   getGroupStandingsTables,
@@ -341,7 +345,7 @@ export default function TeamTournamentSetup() {
     return true;
   }
 
-  function handleBuildScheduleConfirm(options) {
+  async function handleBuildScheduleConfirm(options) {
     if (!access.canManage) {
       return;
     }
@@ -354,6 +358,27 @@ export default function TeamTournamentSetup() {
       return;
     }
 
+    const prepared = await prepareLivePrivatePairingOptions({
+      clubId: activeClubId || null,
+      tournamentId: tournamentId || null,
+      eventId: tournamentId ? `event-${tournamentId}` : null,
+      competitionClass: COMPETITION_CLASS.INTERNAL,
+    });
+
+    if (!prepared.ok) {
+      setError(prepared.error?.message || "Không tạo được lịch theo quy tắc riêng.");
+      return;
+    }
+
+    const scheduleOptions = {
+      ...options,
+      ...prepared.pairingOptions,
+      privatePairingRules: prepared.pairingOptions?.privatePairingRules || [],
+      competitionClass: COMPETITION_CLASS.INTERNAL,
+      clubId: activeClubId || null,
+      tournamentId: tournamentId || null,
+    };
+
     const next = buildRoundRobinMatchups(
       searchParams.get("random") === "1" &&
         td.settings?.missingLineupPolicy !== MISSING_LINEUP_POLICY.RANDOM
@@ -365,8 +390,17 @@ export default function TeamTournamentSetup() {
             },
           }
         : td,
-      options
+      scheduleOptions
     );
+
+    if (next?.ok === false || next?.privatePairingError) {
+      setError(
+        next.privatePairingError?.message ||
+          "Không tạo được lịch / trận đối đầu thỏa hard rules."
+      );
+      return;
+    }
+
     if (saveTeamData(next)) {
       setScheduleDialogOpen(false);
       setMessage("Đã tạo lịch vòng tròn. Gửi link portal cho đội trưởng.");
@@ -927,6 +961,9 @@ export default function TeamTournamentSetup() {
                 teamData={td}
                 clubPlayers={players}
                 canManage={access.canManage}
+                clubId={activeClubId}
+                tournamentId={tournamentId}
+                competitionClass={COMPETITION_CLASS.INTERNAL}
                 onSave={saveTeamData}
                 onError={setError}
                 onMessage={setMessage}

@@ -1040,7 +1040,7 @@ export default function OfficialTournamentSetup() {
     setRegisteredEntries(displayEntries.filter((entry) => entry.id !== entryId));
   };
 
-  const handleDrawGroups = (isRedraw = false) => {
+  const handleDrawGroups = async (isRedraw = false) => {
     setError(null);
     setWarnings([]);
     setMessage(null);
@@ -1058,6 +1058,25 @@ export default function OfficialTournamentSetup() {
       return;
     }
 
+    const prepared = await prepareLivePrivatePairingOptions({
+      clubId: activeClubId,
+      tournamentId,
+      eventId: savedEvent?.id || `event-${tournamentId}`,
+      competitionClass: COMPETITION_CLASS.OFFICIAL,
+      pairingConstraints: founderConstraints,
+      allowedByPublishedRules: false,
+    });
+
+    if (!prepared.ok) {
+      setError(prepared.error?.message || "Không chia được bảng theo quy tắc riêng.");
+      setWarnings(
+        (prepared.error?.fatalConflicts || prepared.error?.blockedByPolicy || []).map(
+          (item) => item.code || item.message || String(item)
+        )
+      );
+      return;
+    }
+
     const plan = buildOfficialOpenPlan({
       tournament: {
         ...tournament,
@@ -1069,10 +1088,18 @@ export default function OfficialTournamentSetup() {
       groupCount,
       players: flowPlayers,
       splitUnits,
+      privatePairingRules: prepared.pairingOptions?.privatePairingRules || [],
+      competitionClass: COMPETITION_CLASS.OFFICIAL,
+      pairingConstraints: founderConstraints,
+      clubId: activeClubId,
+      tournamentId,
+      allowedByPublishedRules: false,
     });
 
     if (!plan.ok) {
-      setError(plan.errors?.join(" "));
+      setError(
+        plan.privatePairingError?.message || plan.errors?.join(" ") || "Không chia được bảng."
+      );
       setWarnings(plan.warnings || []);
       return;
     }

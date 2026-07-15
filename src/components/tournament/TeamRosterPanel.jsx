@@ -49,6 +49,7 @@ import TournamentPlayerQuickAddDialog from "./TournamentPlayerQuickAddDialog.jsx
 import ExistingTeamClonePanel from "./ExistingTeamClonePanel.jsx";
 import TeamSubstitutionPanel from "./TeamSubstitutionPanel.jsx";
 import { FORMAT_PRESET } from "../../features/team-tournament/constants.js";
+import { COMPETITION_CLASS } from "../../features/private-pairing-rules/index.js";
 import { getAuthOptions } from "../../auth/guardAction.js";
 import { getPermissionsForRole } from "../../features/identity/matrix/rolePermissions.js";
 
@@ -677,6 +678,7 @@ export default function TeamRosterPanel({
         clubs={clubs}
         clubId={clubId}
         tournamentId={tournamentId}
+        competitionClass={COMPETITION_CLASS.INTERNAL}
         defaultClubName={hostClubName}
         onPlayersRefresh={onUpdated}
         onMessage={onMessage}

@@ -90,6 +90,7 @@ import TournamentManageGate from "../../components/tournament/TournamentManageGa
 import TournamentSetupShell from "../../components/tournament/TournamentSetupShell.jsx";
 import TournamentSelectedPlayersPanel from "../../components/tournament/TournamentSelectedPlayersPanel.jsx";
 import {
+  buildTournamentNotFoundMessage,
   findTournamentClubId,
   getClubById,
   getClubInternalTournamentPlayersAware,
@@ -1091,10 +1092,17 @@ export default function InternalTournamentSetup() {
   if (!tournament) {
     return (
       <Box>
-        <Alert severity="error">Khong tim thay giai.</Alert>
-        <Button component={RouterLink} to="/tournament" sx={{ mt: 2 }}>
-          Quay lai
-        </Button>
+        <Alert severity="error">
+          {buildTournamentNotFoundMessage(tournamentId, { kind: "giải nội bộ" })}
+        </Alert>
+        <Stack direction="row" spacing={1} sx={{ mt: 2 }} flexWrap="wrap" useFlexGap>
+          <Button component={RouterLink} to="/tournament" variant="outlined">
+            Quay lại danh sách giải
+          </Button>
+          <Button component={RouterLink} to="/tournament" variant="contained">
+            Tạo lại giải trên Preview hiện tại
+          </Button>
+        </Stack>
       </Box>
     );
   }

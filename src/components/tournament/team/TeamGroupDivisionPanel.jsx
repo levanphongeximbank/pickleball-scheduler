@@ -23,6 +23,10 @@ import { runTeamDrawWithCanonicalAdapter } from "../../../features/competition-c
 import {
   clearTeamGroups,
 } from "../../../features/team-tournament/engines/teamTournamentEngine.js";
+import {
+  COMPETITION_CLASS,
+  prepareLivePrivatePairingOptions,
+} from "../../../features/private-pairing-rules/index.js";
 
 const MIN_TEAMS_FOR_GROUPS = 6;
 
@@ -52,6 +56,9 @@ export default function TeamGroupDivisionPanel({
   teamData,
   clubPlayers = [],
   canManage = false,
+  clubId = "",
+  tournamentId = "",
+  competitionClass = COMPETITION_CLASS.INTERNAL,
   onSave,
   onError,
   onMessage,
@@ -108,16 +115,48 @@ export default function TeamGroupDivisionPanel({
     persistTeamData(nextTeamData);
   }
 
-  function runGroupAssignment(options = {}) {
-    const { teamData: next, balance: nextBalance, warnings = [] } = runTeamDrawWithCanonicalAdapter({
+  async function runGroupAssignment(options = {}) {
+    const prepared = await prepareLivePrivatePairingOptions({
+      clubId: clubId || null,
+      tournamentId: tournamentId || null,
+      eventId: tournamentId ? `event-${tournamentId}` : null,
+      competitionClass,
+      allowedByPublishedRules: competitionClass === COMPETITION_CLASS.OFFICIAL ? false : undefined,
+    });
+
+    if (!prepared.ok) {
+      onError?.(prepared.error?.message || "Không chia được bảng theo quy tắc riêng.");
+      return null;
+    }
+
+    const {
+      ok,
+      teamData: next,
+      balance: nextBalance,
+      warnings = [],
+      privatePairingError,
+    } = runTeamDrawWithCanonicalAdapter({
       teamData,
       players: clubPlayers,
       seedingMode,
       groupCount: options.groupCount,
       randomFn: options.randomFn,
+      privatePairingRules: prepared.pairingOptions?.privatePairingRules || [],
+      competitionClass:
+        prepared.pairingOptions?.competitionClass || competitionClass,
+      clubId: clubId || null,
+      tournamentId: tournamentId || null,
+      eventId: tournamentId ? `event-${tournamentId}` : null,
     });
 
-    if (!next.groups?.length) {
+    if (ok === false || privatePairingError) {
+      onError?.(
+        privatePairingError?.message || "Không chia được bảng theo quy tắc riêng."
+      );
+      return null;
+    }
+
+    if (!next?.groups?.length) {
       onError?.("Không chia được bảng.");
       return null;
     }
@@ -129,12 +168,12 @@ export default function TeamGroupDivisionPanel({
     return { next, nextBalance };
   }
 
-  function handleAutoAssignGroups() {
+  async function handleAutoAssignGroups() {
     if (!canManage) {
       return;
     }
 
-    const result = runGroupAssignment();
+    const result = await runGroupAssignment();
     if (!result) {
       return;
     }
@@ -151,7 +190,7 @@ export default function TeamGroupDivisionPanel({
     );
   }
 
-  function handleAssignGroups() {
+  async function handleAssignGroups() {
     if (!canManage) {
       return;
     }
@@ -164,7 +203,7 @@ export default function TeamGroupDivisionPanel({
       return;
     }
 
-    const result = runGroupAssignment({ groupCount });
+    const result = await runGroupAssignment({ groupCount });
     if (!result) {
       return;
     }

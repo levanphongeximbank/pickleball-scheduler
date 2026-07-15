@@ -172,8 +172,12 @@ export function buildPrivatePairingRuntimeError(runtime = {}) {
       "Quy tắc cá nhân bị chặn bởi policy giải chính thức — không tiếp tục ghép cặp.";
   } else if (code === PRIVATE_PAIRING_RUNTIME_CODE.RULE_VALIDATION_FAILED) {
     message = "Bộ quy tắc ghép cặp không hợp lệ.";
-  } else if (code === PRIVATE_PAIRING_RUNTIME_CODE.NO_FEASIBLE_PAIRING) {
-    message = "Không tìm được phương án ghép cặp thỏa hard rules.";
+  } else if (
+    code === PRIVATE_PAIRING_RUNTIME_CODE.NO_FEASIBLE_PAIRING ||
+    code === "NO_FEASIBLE_TEAM_FORMATION"
+  ) {
+    // Docs/QA alias — runtime emits NO_FEASIBLE_PAIRING for team MLP infeasibility.
+    message = "Không tìm được phương án ghép cặp/đội thỏa hard rules.";
   } else if (code === PRIVATE_PAIRING_RUNTIME_CODE.NO_FEASIBLE_GROUP_PLAN) {
     message = "Không tìm được phương án chia bảng thỏa hard rules.";
   } else if (code === PRIVATE_PAIRING_RUNTIME_CODE.NO_FEASIBLE_MATCHUP) {
