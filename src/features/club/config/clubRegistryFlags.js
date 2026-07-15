@@ -1,5 +1,15 @@
 import { hasSupabaseConfig } from "../../../auth/supabaseClient.js";
 
+function readViteFlag(name) {
+  const fromMeta =
+    typeof import.meta !== "undefined" && import.meta.env
+      ? import.meta.env[name]
+      : undefined;
+  const fromProcess =
+    typeof globalThis.process !== "undefined" ? globalThis.process.env?.[name] : undefined;
+  return String(fromMeta || fromProcess || "").toLowerCase();
+}
+
 /**
  * Phase 42F — Club Storage V2 (Cloud SSOT).
  * Chỉ bật khi VITE_CLUB_STORAGE_V2=true.
@@ -9,7 +19,7 @@ export function isClubStorageV2Enabled() {
   if (!hasSupabaseConfig()) {
     return false;
   }
-  return String(import.meta.env?.VITE_CLUB_STORAGE_V2 || "").toLowerCase() === "true";
+  return readViteFlag("VITE_CLUB_STORAGE_V2") === "true";
 }
 
 /** Club registry (danh sách CLB) sync với Supabase club_governance (legacy V1). */
@@ -23,7 +33,7 @@ export function isClubRegistryCloudEnabled() {
     return false;
   }
 
-  const explicit = String(import.meta.env?.VITE_CLUB_REGISTRY_CLOUD || "").toLowerCase();
+  const explicit = readViteFlag("VITE_CLUB_REGISTRY_CLOUD");
   if (explicit === "false") {
     return false;
   }

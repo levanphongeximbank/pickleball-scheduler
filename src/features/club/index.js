@@ -1,4 +1,13 @@
-export { CLUB_MEMBER_ROLES, CLUB_MEMBER_ROLE_LABELS, CLUB_MEMBER_STATUSES } from "./constants/clubMemberRoles.js";
+export {
+  CLUB_MEMBER_ROLES,
+  CLUB_MEMBER_ROLE_LABELS,
+  CLUB_MEMBER_STATUSES,
+  CLUB_MEMBER_STATUS_LABELS,
+  normalizeClubMemberStatus,
+  isClubMemberStatusActive,
+  getClubMemberStatusLabel,
+  countActiveClubMembers,
+} from "./constants/clubMemberRoles.js";
 export { CLUB_STATUSES, CLUB_STATUS_LABELS, DEFAULT_CLUB_ELO } from "./constants/clubStatus.js";
 
 export {
@@ -84,6 +93,7 @@ export {
 export {
   getClubMembers,
   getClubMembersForTournamentInvite,
+  mapV2MemberRowToUi,
   addMemberToClub,
   removeMemberFromClub,
   updateClubMemberRole,
@@ -168,6 +178,7 @@ export {
   canShowLeaveClub,
   stripLegacyProfileClubFields,
   buildMyClubSummaryFromClub,
+  resolveMyClubHomeMemberCount,
   getCachedMembershipSnapshot,
   resetMyActiveClubMembershipCache,
   invalidateMyActiveClubMembershipCache,

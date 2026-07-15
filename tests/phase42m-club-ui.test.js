@@ -97,31 +97,34 @@ describe("Phase 42M — ClubCard CTA contract (no wrong-state buttons)", () => {
     assert.deepEqual(resolveClubCardCta({ variant: "joinable" }), {
       showJoin: true,
       showCancel: false,
+      joinLabel: "Xin tham gia",
     });
   });
 
-  it("hides join for your-club, pending, rejected, disabled", () => {
+  it("hides join for your-club, pending, disabled; allows re-apply when rejected", () => {
     assert.deepEqual(resolveClubCardCta({ variant: "your-club" }), {
       showJoin: false,
       showCancel: false,
+      joinLabel: null,
     });
     assert.deepEqual(
       resolveClubCardCta({
         variant: "pending",
         requestStatus: CLUB_MEMBERSHIP_REQUEST_STATUSES.PENDING,
       }),
-      { showJoin: false, showCancel: true }
+      { showJoin: false, showCancel: true, joinLabel: null }
     );
     assert.deepEqual(
       resolveClubCardCta({
         variant: "rejected",
         requestStatus: CLUB_MEMBERSHIP_REQUEST_STATUSES.REJECTED,
       }),
-      { showJoin: false, showCancel: false }
+      { showJoin: true, showCancel: false, joinLabel: "Gửi lại" }
     );
     assert.deepEqual(resolveClubCardCta({ variant: "joinable", disabled: true }), {
       showJoin: false,
       showCancel: false,
+      joinLabel: null,
     });
   });
 
@@ -131,7 +134,7 @@ describe("Phase 42M — ClubCard CTA contract (no wrong-state buttons)", () => {
         variant: "joinable",
         requestStatus: CLUB_MEMBERSHIP_REQUEST_STATUSES.PENDING,
       }),
-      { showJoin: false, showCancel: true }
+      { showJoin: false, showCancel: true, joinLabel: null }
     );
   });
 });

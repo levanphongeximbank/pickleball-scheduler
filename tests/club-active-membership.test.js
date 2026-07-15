@@ -70,8 +70,10 @@ test("no active membership → hide leave club", () => {
 
 test("MyClubPage uses membership resolver not profiles.club_id", () => {
   const page = readSrc("src/pages/player/MyClubPage.jsx");
-  assert.match(page, /resolveMyActiveClubMembership/);
+  assert.match(page, /useRequiredMyClubMembership|resolveMyActiveClubMembership/);
   assert.match(page, /hasActiveMembership/);
+  assert.match(page, /isClubStorageV2Enabled/);
+  assert.match(page, /buildMyClubSummaryFromClub/);
   assert.doesNotMatch(page, /const clubId = user\?\.clubId \|\| user\?\.club_id/);
 });
 

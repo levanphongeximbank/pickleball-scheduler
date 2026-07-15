@@ -23,11 +23,14 @@ import { useAuth } from "../../../context/AuthContext.jsx";
 import { PERMISSIONS } from "../../../auth/permissions.js";
 import {
   CLUB_MEMBER_ROLE_LABELS,
-  CLUB_MEMBER_STATUSES,
   canViewFullClubMembers,
+  countActiveClubMembers,
   getClubMembers,
+  getClubMemberStatusLabel,
   getTenantPlayers,
   getVicePresidentUserIds,
+  isClubMemberStatusActive,
+  normalizeClubMemberStatus,
   rpcV2ClubListMembers,
 } from "../../../features/club/index.js";
 import { isClubStorageV2Enabled } from "../../../features/club/config/clubRegistryFlags.js";
@@ -68,9 +71,9 @@ function MemberRowContent({ row }) {
         <GovernanceRoleChip role="member" label={row.memberRole} />
         <Chip
           size="small"
-          label={row.isActive ? "Đang hoạt động" : "Không hoạt động"}
+          label={row.statusLabel}
           color={row.isActive ? "success" : "default"}
-          aria-label={row.isActive ? "Đang hoạt động" : "Không hoạt động"}
+          aria-label={row.statusLabel}
         />
       </Stack>
     </>
@@ -84,12 +87,19 @@ export default function MyClubMembersPanel({
   user,
   manageHref = null,
   revision = 0,
+  activeMembershipClubId = null,
 }) {
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down("md"));
   const { can, rbacEnabled, isAuthenticated } = useAuth();
 
-  const fullAccess = clubRecord && user && canViewFullClubMembers(user, clubRecord);
+  const fullAccess = Boolean(
+    clubId &&
+      user &&
+      canViewFullClubMembers(user, clubRecord || { id: clubId }, {
+        activeMembershipClubId,
+      })
+  );
 
   const canManage =
     fullAccess &&
@@ -172,8 +182,9 @@ export default function MyClubMembersPanel({
           name: player?.name || member.playerId,
           governanceRole,
           memberRole: CLUB_MEMBER_ROLE_LABELS[member.role] || member.role,
-          status: member.status,
-          isActive: member.status === CLUB_MEMBER_STATUSES.ACTIVE,
+          status: normalizeClubMemberStatus(member.status),
+          statusLabel: getClubMemberStatusLabel(member.status),
+          isActive: isClubMemberStatusActive(member.status),
         };
       })
       .sort((a, b) => a.name.localeCompare(b.name, "vi"));
@@ -188,7 +199,7 @@ export default function MyClubMembersPanel({
   const rows = v2Enabled && v2.status === "ready" ? v2Rows : legacyRows;
   const v2Unavailable = v2Enabled && v2.status === "error";
 
-  const activeCount = rows.filter((row) => row.isActive).length;
+  const activeCount = countActiveClubMembers(rows);
 
   return (
     <Box>
@@ -274,7 +285,7 @@ export default function MyClubMembersPanel({
                     <TableCell>
                       <Chip
                         size="small"
-                        label={row.isActive ? "Đang hoạt động" : "Không hoạt động"}
+                        label={row.statusLabel}
                         color={row.isActive ? "success" : "default"}
                       />
                     </TableCell>
