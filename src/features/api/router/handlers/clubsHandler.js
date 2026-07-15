@@ -1,17 +1,26 @@
 import { API_SCOPES } from "../../constants/apiScopes.js";
 import { filterByTenant } from "../../../tenant/guards/tenantGuard.js";
-import { loadClubs } from "../../../../data/club.js";
+import { getScopedClubsForAuthz } from "../../../../auth/clubScopeResolver.js";
+import { hydrateApiClubScope } from "../../services/clubScopeService.js";
 
-export function handleClubsList(ctx) {
+export async function handleClubsList(ctx) {
+  await hydrateApiClubScope(ctx);
   const tenantId = ctx.auth?.tenantId;
-  const clubs = filterByTenant(loadClubs(), tenantId);
+  const { clubs, cloudAuthoritative, ready } = getScopedClubsForAuthz({
+    user: ctx.auth?.user,
+    tenantId,
+  });
+
+  // Cloud registry authoritative but unresolved → return no clubs (deny-by-default).
+  const scoped = cloudAuthoritative && !ready ? [] : filterByTenant(clubs, tenantId);
+
   return {
-    items: clubs.map((c) => ({
+    items: scoped.map((c) => ({
       id: c.id,
       name: c.name,
       tenantId: c.tenantId || tenantId,
     })),
-    total: clubs.length,
+    total: scoped.length,
   };
 }
 

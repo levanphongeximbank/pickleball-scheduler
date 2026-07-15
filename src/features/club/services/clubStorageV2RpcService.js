@@ -281,6 +281,36 @@ export async function rpcV2GetMyActiveMembership() {
   };
 }
 
+/**
+ * Phase 44C.1A — canonical governance-role predicate for the CURRENT auth user.
+ *
+ * Reuses the production RPC `public.phase42_has_gov_role(p_club_id, p_roles[])`
+ * (canonical SSOT `club_governance_assignments`, auth.uid()-scoped, SECURITY
+ * DEFINER, EXECUTE granted to authenticated). Returns a bare SQL boolean, so it
+ * must NOT go through parseRpcJson (which treats `false` as an empty response).
+ */
+export async function rpcV2HasClubGovernanceRole(clubId, roles = ["president", "vice_president"]) {
+  const client = getSupabaseAuthClient();
+  if (!client) {
+    return { ok: false, code: "NO_SUPABASE", error: "Supabase chưa sẵn sàng." };
+  }
+  const id = String(clubId || "").trim();
+  if (!id) {
+    return { ok: true, allowed: false };
+  }
+  const { data, error } = await client.rpc("phase42_has_gov_role", {
+    p_club_id: id,
+    p_roles: roles,
+  });
+  if (error) {
+    if (isMissingRpcError(error)) {
+      return { ok: false, code: "RPC_NOT_DEPLOYED", error: error.message };
+    }
+    return { ok: false, code: "RPC_FAILED", error: error.message };
+  }
+  return { ok: true, allowed: Boolean(data) };
+}
+
 /** Phase 42N — resolve profiles + athletes + active club_members by auth user. */
 export async function rpcPlatformResolveAthleteProfile(authUserId) {
   const result = await callRpc("platform_resolve_athlete_profile", {

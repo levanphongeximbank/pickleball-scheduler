@@ -145,6 +145,65 @@ const RULES = [
     match: (c) => c.match(/\.(insert|update|upsert|delete)\s*\(/g) || [],
   },
   {
+    id: "authorization-legacy-club-registry",
+    description:
+      "Club-scope authorization / API guards must resolve scope via clubScopeResolver (canonical cloud registry), never loadClubs()/pickleball-clubs-v1.",
+    // Scoped to the club-scope authorization decision surface (Phase 44C.1 cutover).
+    // The single allowed reader of the local registry is src/auth/clubScopeResolver.js
+    // (NOT listed here, so it is never scanned by this rule).
+    onlyIn: [
+      "src/auth/rbac.js",
+      "src/auth/guardAction.js",
+      "src/features/api/services/clubScopeService.js",
+      "src/features/api/router/handlers/clubsHandler.js",
+      "src/features/api/router/handlers/playersHandler.js",
+      "src/features/api/router/handlers/courtsHandler.js",
+    ],
+    match: (c) => [
+      ...(c.match(/\bloadClubs\s*\(/g) || []),
+      ...(c.match(/pickleball-clubs-v1/g) || []),
+    ],
+  },
+  {
+    id: "authorization-raw-role-compare",
+    description:
+      "Club-scope authorization code must use rbac role helpers (rolesEqual/isXScopedRole/rbac.can*), not raw role-string comparisons.",
+    onlyIn: [
+      "src/auth/rbac.js",
+      "src/auth/guardAction.js",
+      "src/features/api/services/clubScopeService.js",
+      "src/features/api/router/handlers/clubsHandler.js",
+      "src/features/api/router/handlers/playersHandler.js",
+      "src/features/api/router/handlers/courtsHandler.js",
+    ],
+    match: (c) => c.match(/\.role\s*(?:===|==|!==|!=)\s*["'][A-Za-z_]+["']/g) || [],
+  },
+  {
+    id: "governance-legacy-registry-read",
+    description:
+      "Governance authorization paths must decide elevation via governanceScopeResolver (canonical club_governance_assignments / phase42_has_gov_role), never the local registry (getClubById/loadClubs/pickleball-clubs-v1).",
+    // Scoped to the governance authorization surface (Phase 44C.1A cutover).
+    // The single allowed reader of the local registry for governance is
+    // src/auth/governanceScopeResolver.js (NOT listed here → never scanned).
+    onlyIn: [
+      "src/features/club/services/governanceRoleElevation.js",
+      "src/auth/menuAccess.js",
+    ],
+    match: (c) => [
+      ...(c.match(/\bgetClubById\s*\(/g) || []),
+      ...(c.match(/\bloadClubs\s*\(/g) || []),
+      ...(c.match(/pickleball-clubs-v1/g) || []),
+    ],
+  },
+  {
+    id: "governance-elevation-owner",
+    description:
+      "PLAYER→CLUB_MANAGER governance elevation logic may only be DEFINED in the canonical governanceScopeResolver; other modules must import it, not reimplement it.",
+    allow: ["src/auth/governanceScopeResolver.js"],
+    match: (c) =>
+      c.match(/function\s+(?:resolveGovernanceElevatedRole|hasClubGovernanceManagerAccess)\b/g) || [],
+  },
+  {
     id: "global-unregistered-error-code",
     description:
       "New string-literal error codes in the API layer must be registered in API_ERROR_CODES.",
@@ -248,87 +307,98 @@ const DEBT_META = {
   },
 };
 
-const mode = process.argv.includes("--init")
-  ? "init"
-  : process.argv.includes("--report")
-    ? "report"
-    : "check";
+function runCli() {
+  const mode = process.argv.includes("--init")
+    ? "init"
+    : process.argv.includes("--report")
+      ? "report"
+      : "check";
 
-const current = collectViolations();
-const sortedKeys = [...current.keys()].sort();
+  const current = collectViolations();
+  const sortedKeys = [...current.keys()].sort();
 
-if (mode === "init") {
-  const exceptions = sortedKeys.map((k) => {
-    const v = current.get(k);
-    const meta = DEBT_META[k] || {};
-    return {
-      rule: v.rule,
-      file: v.file,
-      symbol: v.symbol,
-      count: v.count,
-      fingerprint: v.fingerprint,
-      reason: meta.reason || "TODO: classify",
-      removalPhase: meta.removalPhase || "unknown",
-    };
-  });
-  writeFileSync(
-    BASELINE_PATH,
-    JSON.stringify(
-      {
-        note: "Phase 44B.0.1 baseline — TEMPORARY DEBT only. Lock fails on NEW files, count increases, or fingerprint changes. Legitimate server/gateway files live in SCOPE_ALLOWLIST inside ownership-lock.mjs, not here. No wildcards.",
-        generatedAt: new Date().toISOString().slice(0, 10),
-        rules: RULES.map((r) => ({ id: r.id, description: r.description })),
-        exceptions,
-      },
-      null,
-      2
-    ) + "\n"
-  );
-  console.log(`ownership-lock: baseline written with ${exceptions.length} debt exception(s) → ${rel(BASELINE_PATH)}`);
-  process.exit(0);
-}
+  if (mode === "init") {
+    const exceptions = sortedKeys.map((k) => {
+      const v = current.get(k);
+      const meta = DEBT_META[k] || {};
+      return {
+        rule: v.rule,
+        file: v.file,
+        symbol: v.symbol,
+        count: v.count,
+        fingerprint: v.fingerprint,
+        reason: meta.reason || "TODO: classify",
+        removalPhase: meta.removalPhase || "unknown",
+      };
+    });
+    writeFileSync(
+      BASELINE_PATH,
+      JSON.stringify(
+        {
+          note: "Phase 44B.0.1 baseline — TEMPORARY DEBT only. Lock fails on NEW files, count increases, or fingerprint changes. Legitimate server/gateway files live in SCOPE_ALLOWLIST inside ownership-lock.mjs, not here. No wildcards.",
+          generatedAt: new Date().toISOString().slice(0, 10),
+          rules: RULES.map((r) => ({ id: r.id, description: r.description })),
+          exceptions,
+        },
+        null,
+        2
+      ) + "\n"
+    );
+    console.log(`ownership-lock: baseline written with ${exceptions.length} debt exception(s) → ${rel(BASELINE_PATH)}`);
+    process.exit(0);
+  }
 
-if (mode === "report") {
-  console.log(`ownership-lock: ${sortedKeys.length} current violation(s)`);
+  if (mode === "report") {
+    console.log(`ownership-lock: ${sortedKeys.length} current violation(s)`);
+    for (const k of sortedKeys) {
+      const v = current.get(k);
+      console.log(`  - ${k}  (count=${v.count}, fp=${v.fingerprint}, symbol=${v.symbol})`);
+    }
+    process.exit(0);
+  }
+
+  const baseline = loadBaseline();
+  if (!baseline) {
+    console.error("ownership-lock: FAIL — baseline missing. Run `node scripts/ci/ownership-lock.mjs --init`.");
+    process.exit(1);
+  }
+
+  const failures = [];
   for (const k of sortedKeys) {
     const v = current.get(k);
-    console.log(`  - ${k}  (count=${v.count}, fp=${v.fingerprint}, symbol=${v.symbol})`);
+    const base = baseline.get(k);
+    if (!base) {
+      failures.push(`NEW violation: ${k} (count=${v.count}, symbol=${v.symbol})`);
+      continue;
+    }
+    if (v.count > base.count) {
+      failures.push(`NEW occurrence in baselined file: ${k} (was ${base.count}, now ${v.count})`);
+      continue;
+    }
+    if (v.count === base.count && v.fingerprint !== base.fingerprint) {
+      failures.push(`CHANGED occurrence in baselined file: ${k} (fingerprint ${base.fingerprint} → ${v.fingerprint})`);
+    }
   }
+
+  const resolved = [...baseline.keys()].filter((k) => !current.has(k));
+
+  if (failures.length > 0) {
+    console.error(`ownership-lock: FAIL — ${failures.length} issue(s):`);
+    for (const f of failures) console.error(`  + ${f}`);
+    process.exit(1);
+  }
+
+  console.log(
+    `ownership-lock: OK — 0 new/changed violation(s) (debt baseline: ${baseline.size}${resolved.length ? `, resolved: ${resolved.length}` : ""})`
+  );
   process.exit(0);
 }
 
-const baseline = loadBaseline();
-if (!baseline) {
-  console.error("ownership-lock: FAIL — baseline missing. Run `node scripts/ci/ownership-lock.mjs --init`.");
-  process.exit(1);
+// Only execute the CLI when run directly (not when imported by tests).
+const invokedPath = process.argv[1] ? path.resolve(process.argv[1]) : "";
+const selfPath = fileURLToPath(import.meta.url);
+if (invokedPath && selfPath === invokedPath) {
+  runCli();
 }
 
-const failures = [];
-for (const k of sortedKeys) {
-  const v = current.get(k);
-  const base = baseline.get(k);
-  if (!base) {
-    failures.push(`NEW violation: ${k} (count=${v.count}, symbol=${v.symbol})`);
-    continue;
-  }
-  if (v.count > base.count) {
-    failures.push(`NEW occurrence in baselined file: ${k} (was ${base.count}, now ${v.count})`);
-    continue;
-  }
-  if (v.count === base.count && v.fingerprint !== base.fingerprint) {
-    failures.push(`CHANGED occurrence in baselined file: ${k} (fingerprint ${base.fingerprint} → ${v.fingerprint})`);
-  }
-}
-
-const resolved = [...baseline.keys()].filter((k) => !current.has(k));
-
-if (failures.length > 0) {
-  console.error(`ownership-lock: FAIL — ${failures.length} issue(s):`);
-  for (const f of failures) console.error(`  + ${f}`);
-  process.exit(1);
-}
-
-console.log(
-  `ownership-lock: OK — 0 new/changed violation(s) (debt baseline: ${baseline.size}${resolved.length ? `, resolved: ${resolved.length}` : ""})`
-);
-process.exit(0);
+export { RULES, collectViolations };

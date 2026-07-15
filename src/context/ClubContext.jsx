@@ -25,6 +25,8 @@ import { pullClubFromCloud } from "../ai/cloudSync.js";
 import { isVenueScopedRole, isClubScopedRole, isPlatformWideRole } from "../auth/roles.js";
 import { ensureWritableClubForVenueOwner } from "../features/club/services/venueOwnerClubService.js";
 import { invalidateMyActiveClubMembershipCache } from "../features/club/services/clubActiveMembershipService.js";
+import { hydrateClubScope, clearClubScope } from "../auth/clubScopeResolver.js";
+import { hydrateGovernanceScope, clearGovernanceScope } from "../auth/governanceScopeResolver.js";
 
 const ClubContext = createContext(null);
 
@@ -35,6 +37,42 @@ export function ClubProvider({ children }) {
   const [activeClubId, setActiveClubId] = useState(() => getActiveClubId());
   const [revision, setRevision] = useState(0);
   const [syncConflictMessage, setSyncConflictMessage] = useState(null);
+  const [clubScopeStatus, setClubScopeStatus] = useState("idle");
+
+  // Phase 44C.1 — hydrate the canonical allowed-club scope once per authenticated
+  // user/tenant context. Cleared first so a tenant/user switch cannot temporarily
+  // grant access from a previous context; protected guards deny until ready.
+  useEffect(() => {
+    if (!isAuthenticated || !user?.id) {
+      clearClubScope();
+      clearGovernanceScope();
+      setClubScopeStatus("idle");
+      return undefined;
+    }
+
+    let cancelled = false;
+    clearClubScope();
+    clearGovernanceScope();
+    setClubScopeStatus("loading");
+
+    // Phase 44C.1A — hydrate canonical governance elevation alongside club scope so
+    // PLAYER president/vice-president elevation is decided by the cloud SSOT, never
+    // by the local registry. Deny-by-default (no elevation) until ready.
+    void Promise.all([
+      hydrateClubScope({ user, tenantId: currentTenantId, rbacEnabled }),
+      hydrateGovernanceScope({ user }),
+    ]).then(([clubResult]) => {
+      if (cancelled) {
+        return;
+      }
+      setClubScopeStatus(clubResult?.ok ? "ready" : "error");
+      setRevision((value) => value + 1);
+    });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [isAuthenticated, user, currentTenantId, rbacEnabled]);
 
   const visibleClubs = useMemo(() => {
     if (!rbacEnabled || !isAuthenticated || !currentTenantId) {
@@ -335,6 +373,8 @@ export function ClubProvider({ children }) {
       activeClubId,
       revision,
       summary,
+      clubScopeStatus,
+      clubScopeReady: clubScopeStatus === "ready",
       refreshClubs,
       switchClub: handleSwitchClub,
       createClub: handleCreateClub,
@@ -348,6 +388,7 @@ export function ClubProvider({ children }) {
       activeClubId,
       revision,
       summary,
+      clubScopeStatus,
       refreshClubs,
       handleSwitchClub,
       handleCreateClub,

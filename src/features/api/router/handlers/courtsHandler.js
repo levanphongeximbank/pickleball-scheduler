@@ -1,8 +1,9 @@
 import { API_SCOPES } from "../../constants/apiScopes.js";
 import { loadAIData } from "../../../../ai/storage.js";
-import { resolveScopedClubId } from "../../services/clubScopeService.js";
+import { resolveScopedClubId, hydrateApiClubScope } from "../../services/clubScopeService.js";
 
-export function handleCourtsList(ctx) {
+export async function handleCourtsList(ctx) {
+  await hydrateApiClubScope(ctx);
   const clubId = resolveScopedClubId(ctx);
 
   if (!clubId) {
