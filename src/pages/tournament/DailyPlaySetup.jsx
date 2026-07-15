@@ -105,7 +105,12 @@ export default function DailyPlaySetup() {
     [activeClubId, tournamentId, localRevision]
   );
 
-  const { players } = useClubPlayerPool(activeClubId, { revision: localRevision });
+  const {
+    players,
+    loading: playersLoading,
+    warnings: playerPoolWarnings,
+    source: playerPoolSource,
+  } = useClubPlayerPool(activeClubId, { revision: localRevision });
 
   const courts = useMemo(
     () => loadCourtsForClub(activeClubId),
@@ -451,10 +456,30 @@ export default function DailyPlaySetup() {
         <Grid size={{ xs: 12, lg: 5 }}>
           <Paper variant="outlined" sx={{ p: 1.5 }}>
             <Typography variant="subtitle1" fontWeight="bold" sx={{ mb: 1 }}>
-              Check-in hôm nay ({dailySettings.checkedInPlayerIds.length})
+              Check-in hôm nay ({dailySettings.checkedInPlayerIds.length}/{players.length}
+              {playersLoading ? " · đang tải…" : ""})
             </Typography>
+            {playerPoolWarnings?.length > 0 && (
+              <Alert severity="warning" sx={{ mb: 1 }}>
+                {playerPoolWarnings
+                  .map((item) => item.message || item.code || String(item))
+                  .join(" · ")}
+                {playerPoolSource ? ` (${playerPoolSource})` : ""}
+              </Alert>
+            )}
+            {!playersLoading && players.length === 0 && (
+              <Alert severity="info" sx={{ mb: 1 }}>
+                Chưa có VĐV trong pool CLB này. Mở trang Người chơi để thêm VĐV, hoặc kiểm
+                tra đúng CLB đang chọn.
+              </Alert>
+            )}
             <Stack direction="row" spacing={1} sx={{ mb: 1 }}>
-              <Button size="small" variant="contained" onClick={handleSelectAllCheckIn}>
+              <Button
+                size="small"
+                variant="contained"
+                onClick={handleSelectAllCheckIn}
+                disabled={players.length === 0}
+              >
                 Chọn tất cả
               </Button>
               <Button
