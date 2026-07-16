@@ -228,5 +228,6 @@
   "tests/tt-v6-p1_3-complete-browser-hash.test.js",
   "tests/tt-v6-group-draw-workflow.test.js",
   "tests/tt-v6-group-save-rules-version.test.js",
-  "tests/tt-v6-save-draft-mutation.test.js"
+  "tests/tt-v6-save-draft-mutation.test.js",
+  "tests/tt-v6-p1_5a-showcase.test.js"
 ]

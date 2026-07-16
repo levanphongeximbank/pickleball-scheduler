@@ -97,6 +97,18 @@ import { getPermissionsForRole } from "../../features/identity/matrix/rolePermis
 import { TEAM_TAB_QUERY } from "../../config/tournamentRoutes.js";
 import { logTeamRosterHydrationTransition } from "../../features/team-tournament/engines/teamRosterHydrationDiagnostics.js";
 import TournamentVprPanel from "../../features/vpr-ranking/components/TournamentVprPanel.jsx";
+import {
+  SHOWCASE_COPY,
+  SHOWCASE_MODE,
+  buildShowcasePreflight,
+  canShowShowcaseEntry,
+  canShowShowcaseReplay,
+} from "../../features/team-tournament/showcase/index.js";
+import TeamTournamentShowcase from "../../features/team-tournament/showcase/TeamTournamentShowcase.jsx";
+import { isSetupMutationFoundationEnabled } from "../../features/team-tournament/setup/setupMutationFeatureGate.js";
+import { isGroupDivisionEditable } from "../../features/team-tournament/engines/teamGroupDivisionPolicy.js";
+import { DEFAULT_ENGINE_VERSION } from "../../features/team-tournament/canonical/teamTournamentMutationEnvelope.js";
+import { TT_V6_TT32_FIXTURE } from "../../features/team-tournament/fixtures/ttV6Tt32StagingFixture.js";
 import TournamentActionBar from "../../components/tournament/TournamentActionBar.jsx";
 
 function buildVisibleTabs(canManage) {
@@ -226,6 +238,9 @@ export default function TeamTournamentSetup() {
     reconnectRealtime,
     subscriptionError,
     pollingFallbackActive,
+    setupBlocked,
+    setupBlockCode,
+    snapshotMeta,
   } = useTeamTournamentPage({
     clubId: loadClubId,
     tournamentId,
@@ -258,6 +273,11 @@ export default function TeamTournamentSetup() {
   const [overrideDialog, setOverrideDialog] = useState(null);
   const [forfeitDialog, setForfeitDialog] = useState(null);
   const [withdrawDialog, setWithdrawDialog] = useState(null);
+  const [showcaseOpen, setShowcaseOpen] = useState(false);
+  const [showcaseMode, setShowcaseMode] = useState(SHOWCASE_MODE.LIVE);
+  const [showcasePreflight, setShowcasePreflight] = useState(null);
+  const [showcaseRulesVersion, setShowcaseRulesVersion] = useState("");
+  const [showcaseBusy, setShowcaseBusy] = useState(false);
   const requestedTab = searchParams.get("tab") || TEAM_TAB_QUERY.teams;
   const activeTabKey = visibleTabs.some((tab) => tab.key === requestedTab)
     ? requestedTab
@@ -452,6 +472,112 @@ export default function TeamTournamentSetup() {
         ? `Bản nháp giải đã ở trạng thái mới nhất (${draftLabel}).`
         : `Đã lưu nháp giải (${draftLabel}). Bạn có thể đóng tab và quay lại tiếp tục thiết lập sau — không công bố.`
     );
+  }
+
+  const clubNameForShowcase =
+    clubs?.find((club) => String(club.id) === String(effectiveClubId || activeClubId))
+      ?.name ||
+    effectiveClubId ||
+    activeClubId ||
+    "—";
+
+  const showcaseEntryVisible = canShowShowcaseEntry({
+    canManage: access.canManage,
+    tournamentEditable: isGroupDivisionEditable(td, { canManage: access.canManage }),
+    athletes: players,
+    athletePoolLoaded: !clubPool.loadingInitial,
+    athleteRepositoryError: clubPool.error || tenantPool.error,
+    setupBlocked,
+    setupMutationGate: isSetupMutationFoundationEnabled(),
+  });
+
+  const showcaseReplayVisible = canShowShowcaseReplay({
+    canManage: access.canManage,
+    teamData: td,
+  });
+
+  async function openShowcaseCeremony(nextMode = SHOWCASE_MODE.LIVE) {
+    if (!access.canManage) {
+      setError("Chỉ BTC / Super Admin mới mở lễ bốc thăm.");
+      return;
+    }
+    setShowcaseBusy(true);
+    setError("");
+    try {
+      const prepared = await prepareLivePrivatePairingOptions({
+        tournament: tournament || null,
+        clubId: effectiveClubId || activeClubId || null,
+        clubFromQuery,
+        activeClubId,
+        tournamentId: tournamentId || null,
+        tenantId:
+          tournament?.tenantId ||
+          clubPool.tenantId ||
+          tenantPool.tenantId ||
+          currentTenantId ||
+          null,
+        eventId: tournamentId ? `event-${tournamentId}` : null,
+        competitionClass: COMPETITION_CLASS.INTERNAL,
+      });
+
+      const rulesVersion = prepared.ok
+        ? String(
+            prepared.rulesVersion || prepared.pairingOptions?.rulesVersion || ""
+          ).trim()
+        : "";
+
+      const preflight = buildShowcasePreflight({
+        athletes: players,
+        tournamentName: tournament?.name,
+        clubName: clubNameForShowcase,
+        clubId: effectiveClubId || activeClubId,
+        requestedTeamCount: 8,
+        rulesVersion,
+        engineVersion: snapshotMeta?.engineVersion || DEFAULT_ENGINE_VERSION,
+        requireRulesVersion: nextMode === SHOWCASE_MODE.LIVE,
+        fatalConflicts: prepared.ok === false && prepared.code === "FATAL_CONFLICTS",
+        blockedByPolicy: prepared.blockedByPolicy === true,
+        athleteRepositoryError: clubPool.error || tenantPool.error,
+        setupBlocked,
+        setupBlockCode,
+        canManage: access.canManage,
+        tournamentEditable: isGroupDivisionEditable(td, { canManage: access.canManage }),
+        setupMutationGate: isSetupMutationFoundationEnabled(),
+        softRuleSummary: {
+          applied: Number(prepared.softConstraintsSatisfied || 0),
+          missed: Number(prepared.softConstraintsMissed || 0),
+        },
+        hardRuleResult: prepared.ok ? "PASS" : "FAIL",
+        envSource: import.meta.env,
+      });
+
+      if (nextMode === SHOWCASE_MODE.LIVE && !preflight.ok) {
+        setShowcasePreflight(preflight);
+        setShowcaseRulesVersion(rulesVersion);
+        setShowcaseMode(SHOWCASE_MODE.LIVE);
+        setShowcaseOpen(true);
+        setError(preflight.blockers[0] || "Không đủ điều kiện bắt đầu lễ bốc thăm.");
+        return;
+      }
+
+      if (!prepared.ok && nextMode === SHOWCASE_MODE.LIVE) {
+        setError(
+          prepared.error?.message ||
+            prepared.message ||
+            "Không chuẩn bị được quy tắc pairing cho lễ bốc thăm."
+        );
+        return;
+      }
+
+      setShowcasePreflight(preflight);
+      setShowcaseRulesVersion(rulesVersion || snapshotMeta?.rulesVersion || "");
+      setShowcaseMode(nextMode);
+      setShowcaseOpen(true);
+    } catch (err) {
+      setError(err?.message || "Không mở được lễ bốc thăm.");
+    } finally {
+      setShowcaseBusy(false);
+    }
   }
 
   function goToGroupsStep() {
@@ -1183,6 +1309,49 @@ export default function TeamTournamentSetup() {
               onError={setError}
               onMessage={setMessage}
             />
+            {access.canManage && (showcaseEntryVisible || showcaseReplayVisible) ? (
+              <Alert
+                severity="success"
+                sx={{
+                  bgcolor: "rgba(7, 17, 31, 0.92)",
+                  color: "#f4f7fb",
+                  border: "1px solid rgba(124,255,178,0.35)",
+                  "& .MuiAlert-icon": { color: "#7CFFB2" },
+                }}
+              >
+                <Stack spacing={1.25}>
+                  <Box fontWeight={800} fontSize="1.05rem">
+                    Lễ bốc thăm AI (P1.5A Showcase)
+                  </Box>
+                  <Box>
+                    Trình chiếu công bố đội / bảng trên máy chiếu. Kết quả AI được chốt một lần rồi
+                    lưu qua persistence canonical — không đổi engine hiện có.
+                  </Box>
+                  <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
+                    {showcaseEntryVisible ? (
+                      <Button
+                        variant="contained"
+                        color="success"
+                        disabled={showcaseBusy}
+                        onClick={() => openShowcaseCeremony(SHOWCASE_MODE.LIVE)}
+                      >
+                        {SHOWCASE_COPY.start}
+                      </Button>
+                    ) : null}
+                    {showcaseReplayVisible ? (
+                      <Button
+                        variant="outlined"
+                        color="inherit"
+                        disabled={showcaseBusy}
+                        onClick={() => openShowcaseCeremony(SHOWCASE_MODE.REPLAY)}
+                      >
+                        {SHOWCASE_COPY.replay}
+                      </Button>
+                    ) : null}
+                  </Stack>
+                </Stack>
+              </Alert>
+            ) : null}
             {access.canManage ? (
               <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
                 {td.teams
@@ -1551,6 +1720,37 @@ export default function TeamTournamentSetup() {
         busy={mutationBusy}
         onConfirm={handleWithdrawConfirm}
       />
+
+      {showcaseOpen ? (
+        <TeamTournamentShowcase
+          open={showcaseOpen}
+          mode={showcaseMode}
+          onClose={() => setShowcaseOpen(false)}
+          preflight={showcasePreflight}
+          players={players}
+          teamNamePrefix={
+            String(effectiveClubId || "").includes("tt32")
+              ? TT_V6_TT32_FIXTURE.teamNamePrefix
+              : "Đội"
+          }
+          requestedTeamCount={8}
+          baseTeamData={td}
+          persistedTeamData={td}
+          rulesVersion={showcaseRulesVersion}
+          engineVersion={snapshotMeta?.engineVersion || DEFAULT_ENGINE_VERSION}
+          tournamentName={tournament?.name || ""}
+          clubId={effectiveClubId || activeClubId}
+          tournamentId={tournamentId}
+          persistSetupTeamData={persistSetupTeamData}
+          reload={reload}
+          expectedTournamentVersion={version}
+          previousTeamData={td}
+          teamsAlreadyPersisted={false}
+          draftStatus={workflow.draftStatusLabel || "Nháp"}
+          onContinueSetup={goToNextSetupTab}
+          onBackTournament={() => setShowcaseOpen(false)}
+        />
+      ) : null}
     </TournamentSetupShell>
   );
 }
