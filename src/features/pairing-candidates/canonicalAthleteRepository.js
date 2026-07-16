@@ -14,6 +14,10 @@
  * - Pairing gateway keys on athletes.id and must never import blob storage.
  */
 
+import {
+  projectCanonicalRatingFields,
+} from "./canonicalAthleteRating.js";
+
 function normalizeId(value) {
   return String(value || "").trim();
 }
@@ -43,6 +47,18 @@ export function normalizeAthleteMembershipScopeRow(partial = {}) {
         partial.localPlayerId
     ) || null;
 
+  const canonical = projectCanonicalRatingFields({
+    currentRating: partial.currentRating ?? partial.current_rating,
+    provisionalRating: partial.provisionalRating ?? partial.provisional_rating,
+    selfDeclaredRating: partial.selfDeclaredRating ?? partial.self_declared_rating,
+    ratingValue: partial.ratingValue,
+    ratingLabel: partial.ratingLabel,
+    ratingSource: partial.ratingSource,
+    rating: partial.rating,
+    level: partial.level,
+    skillLevel: partial.skillLevel ?? partial.skill_level,
+  });
+
   return {
     athleteId,
     userId: normalizeId(partial.userId || partial.user_id) || null,
@@ -50,7 +66,14 @@ export function normalizeAthleteMembershipScopeRow(partial = {}) {
       partial.displayName || partial.display_name || partial.name || ""
     ).trim(),
     gender: partial.gender ?? null,
-    rating: partial.rating ?? partial.level ?? null,
+    rating: canonical.ratingValue,
+    level: canonical.ratingValue,
+    currentRating: canonical.currentRating,
+    provisionalRating: canonical.provisionalRating,
+    selfDeclaredRating: canonical.selfDeclaredRating,
+    ratingValue: canonical.ratingValue,
+    ratingLabel: canonical.ratingLabel,
+    ratingSource: canonical.ratingSource,
     athleteStatus: normalizeStatus(partial.athleteStatus || partial.athlete_status, "active"),
     membershipId: normalizeId(partial.membershipId || partial.membership_id) || null,
     membershipStatus:

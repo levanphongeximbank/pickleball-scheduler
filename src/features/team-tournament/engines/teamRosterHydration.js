@@ -11,6 +11,7 @@
  */
 
 import { getPlayerGenderKey } from "../../../models/player.js";
+import { projectCanonicalRatingFields } from "../../pairing-candidates/canonicalAthleteRating.js";
 
 export const ROSTER_HYDRATION_STATUS = Object.freeze({
   LOADING: "loading",
@@ -277,25 +278,12 @@ export function normalizeRosterRating(athlete) {
     return { ratingValue: null, ratingLabel: ROSTER_MISSING_RATING_LABEL };
   }
 
-  const candidates = [
-    athlete.currentRating,
-    athlete.current_rating,
-    athlete.vprRating,
-    athlete.vpr_rating,
-    athlete.rating,
-    athlete.level,
-    athlete.skillLevel,
-  ];
-
-  for (const raw of candidates) {
-    if (raw === null || raw === undefined || raw === "") continue;
-    const num = typeof raw === "number" ? raw : Number(raw);
-    if (Number.isFinite(num)) {
-      return {
-        ratingValue: num,
-        ratingLabel: String(num),
-      };
-    }
+  const canonical = projectCanonicalRatingFields(athlete);
+  if (canonical.ratingValue !== null && canonical.ratingValue !== undefined) {
+    return {
+      ratingValue: canonical.ratingValue,
+      ratingLabel: canonical.ratingLabel || String(canonical.ratingValue),
+    };
   }
 
   return { ratingValue: null, ratingLabel: ROSTER_MISSING_RATING_LABEL };

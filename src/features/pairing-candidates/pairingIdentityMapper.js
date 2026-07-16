@@ -16,6 +16,7 @@
 
 import { PAIRING_CANDIDATE_REASON_CODES } from "./pairingCandidateReasonCodes.js";
 import { emptyIdentityCoverage } from "./pairingCandidateContract.js";
+import { projectCanonicalRatingFields } from "./canonicalAthleteRating.js";
 
 function normalizeId(value) {
   return String(value || "").trim() || null;
@@ -147,6 +148,7 @@ export function mapPairingIdentity(row = {}) {
   // athletes.id always wins — discard conflicting pairingIdentityId / id claims.
   const pairingIdentityId = athleteId;
   const coverageBucket = classifyIdentityCoverage(aliases);
+  const ratingFields = projectCanonicalRatingFields(row);
 
   return {
     ok: true,
@@ -157,7 +159,14 @@ export function mapPairingIdentity(row = {}) {
       pairingIdentityId,
       displayName: String(row.displayName || row.display_name || athleteId).trim(),
       gender: row.gender ?? null,
-      rating: row.rating ?? row.level ?? null,
+      rating: ratingFields.ratingValue,
+      level: ratingFields.ratingValue,
+      currentRating: ratingFields.currentRating,
+      provisionalRating: ratingFields.provisionalRating,
+      selfDeclaredRating: ratingFields.selfDeclaredRating,
+      ratingValue: ratingFields.ratingValue,
+      ratingLabel: ratingFields.ratingLabel,
+      ratingSource: ratingFields.ratingSource,
       athleteStatus: String(row.athleteStatus || row.athlete_status || "active")
         .trim()
         .toLowerCase(),

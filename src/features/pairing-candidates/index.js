@@ -53,7 +53,16 @@ export {
   toLegacySelectPlayersPlayer,
   fetchProfilesForPairingCandidates,
   fetchAthletesForPairingCandidates,
+  fetchPickVnRatingsForPairingCandidates,
 } from "./selectPlayersCandidateAdapter.js";
+
+export {
+  CANONICAL_RATING_SOURCE,
+  buildPickVnRatingIndex,
+  resolveCanonicalAthleteRating,
+  attachCanonicalRatingToScopeRow,
+  projectCanonicalRatingFields,
+} from "./canonicalAthleteRating.js";
 
 export {
   toLegacyScreenPickerPlayer,
