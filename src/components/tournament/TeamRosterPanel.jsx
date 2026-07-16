@@ -540,11 +540,14 @@ function TeamCard({
 export default function TeamRosterPanel({
   clubId,
   tournamentId,
+  tournament = null,
   teamData,
   clubPlayers = [],
   allTenantPlayers = [],
   clubs = [],
   tenantId = null,
+  clubFromQuery = null,
+  activeClubId = null,
   canManage = false,
   canViewAll = false,
   viewerPlayerId = null,
@@ -796,6 +799,10 @@ export default function TeamRosterPanel({
         clubs={clubs}
         clubId={clubId}
         tournamentId={tournamentId}
+        tournament={tournament}
+        tenantId={tenantId}
+        clubFromQuery={clubFromQuery}
+        activeClubId={activeClubId}
         competitionClass={COMPETITION_CLASS.INTERNAL}
         defaultClubName={hostClubName}
         onPlayersRefresh={onUpdated}

@@ -294,6 +294,7 @@ describe("TT-V6-1 — live private pairing wire", () => {
     );
 
     const prepared = await prepareLivePrivatePairingOptions({
+      tenantId: "venue-test",
       tournamentId: "t1",
       clubId: "club-A",
       competitionClass: COMPETITION_CLASS.OFFICIAL,
@@ -427,6 +428,7 @@ describe("TT-V6-1 — live private pairing wire", () => {
     );
 
     const prepared = await prepareLivePrivatePairingOptions({
+      tenantId: "venue-test",
       tournamentId: "t-off",
       clubId: "club-A",
       competitionClass: COMPETITION_CLASS.OFFICIAL,

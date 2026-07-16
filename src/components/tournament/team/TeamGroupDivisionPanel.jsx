@@ -58,6 +58,10 @@ export default function TeamGroupDivisionPanel({
   canManage = false,
   clubId = "",
   tournamentId = "",
+  tournament = null,
+  tenantId = null,
+  clubFromQuery = null,
+  activeClubId = null,
   competitionClass = COMPETITION_CLASS.INTERNAL,
   onSave,
   onError,
@@ -117,8 +121,16 @@ export default function TeamGroupDivisionPanel({
 
   async function runGroupAssignment(options = {}) {
     const prepared = await prepareLivePrivatePairingOptions({
-      clubId: clubId || null,
-      tournamentId: tournamentId || null,
+      tournament: tournament || null,
+      clubId: clubId || tournament?.clubId || null,
+      clubFromQuery,
+      activeClubId,
+      tournamentId: tournamentId || tournament?.id || null,
+      tenantId:
+        tenantId ||
+        tournament?.tenantId ||
+        teamData?.settings?.tenantId ||
+        null,
       eventId: tournamentId ? `event-${tournamentId}` : null,
       competitionClass,
       allowedByPublishedRules: competitionClass === COMPETITION_CLASS.OFFICIAL ? false : undefined,

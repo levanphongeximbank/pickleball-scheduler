@@ -8,15 +8,23 @@ import {
 } from "@mui/material";
 import CheckCircleIcon from "@mui/icons-material/CheckCircle";
 
-import { TOURNAMENT_STATUS } from "../../../models/tournament/constants.js";
+import { TOURNAMENT_MODE, TOURNAMENT_STATUS } from "../../../models/tournament/constants.js";
 import { updateTournament } from "../../../domain/tournamentService.js";
 import { useAuth } from "../../../context/AuthContext.jsx";
+import { updateTeamTournamentClassification } from "../../team-tournament/services/teamTournamentService.js";
 import TournamentLevelSelect from "./TournamentLevelSelect.jsx";
 import {
   applyTournamentLevelPatch,
   confirmTournamentResults,
   onTournamentSaved,
 } from "../services/vprTournamentBridge.js";
+
+function isTeamTournamentMode(tournament) {
+  return (
+    String(tournament?.mode || "") === TOURNAMENT_MODE.TEAM_TOURNAMENT ||
+    Boolean(tournament?.teamData)
+  );
+}
 
 export default function TournamentVprPanel({
   clubId,
@@ -35,6 +43,39 @@ export default function TournamentVprPanel({
 
   const handleLevelChange = async (nextLevel) => {
     setError(null);
+    setMessage(null);
+
+    if (isTeamTournamentMode(tournament)) {
+      const result = await updateTeamTournamentClassification(
+        clubId,
+        tournament.id,
+        nextLevel
+      );
+      if (!result.ok) {
+        setError(
+          result.error ||
+            "Không lưu được phân loại giải. Cloud chưa ghi nhận — không báo thành công."
+        );
+        return;
+      }
+      // cloud_primary: never claim success without durable cloud write.
+      if (result.cloudSynced !== true && result.cloudRequired === true) {
+        setError(
+          result.error ||
+            "Không lưu được phân loại giải lên cloud — không báo thành công local-only."
+        );
+        return;
+      }
+      onUpdated?.(result.tournament);
+      await onTournamentSaved(clubId, result.tournament);
+      setMessage(
+        result.cloudSynced
+          ? "Đã lưu phân loại giải lên cloud."
+          : "Đã lưu phân loại giải (local)."
+      );
+      return;
+    }
+
     const patch = applyTournamentLevelPatch(tournament, nextLevel);
     const result = updateTournament(clubId, tournament.id, patch);
     if (!result.ok) {
@@ -84,7 +125,7 @@ export default function TournamentVprPanel({
           onChange={handleLevelChange}
           certificationStatus={tournament.certificationStatus}
           rankingEnabled={tournament.rankingEnabled}
-          disabled={!canEdit}
+          disabled={!canEdit || busy}
         />
         {tournament.resultsConfirmation?.confirmed && (
           <Alert severity="success" variant="outlined">

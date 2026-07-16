@@ -47,6 +47,10 @@ export {
   prepareLivePrivatePairingOptions,
   buildPrivatePairingRuntimeError,
 } from "./prepareLivePrivatePairingOptions.js";
+export {
+  resolveLivePairingScope,
+  ensureRulesHaveScopeIds,
+} from "./resolveLivePairingScope.js";
 
 export {
   filterRulesForTeamFormation,

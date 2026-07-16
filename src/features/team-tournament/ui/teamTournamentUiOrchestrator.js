@@ -36,6 +36,8 @@ export function aggregateToTournamentView(aggregate) {
     return null;
   }
 
+  const settings = aggregate.settings || aggregate.teamData?.settings || {};
+
   return attachTeamDataToTournament(
     {
       id: aggregate.id,
@@ -44,7 +46,15 @@ export function aggregateToTournamentView(aggregate) {
       mode: aggregate.mode || TOURNAMENT_MODE.TEAM_TOURNAMENT,
       status: aggregate.status,
       version: aggregate.version,
-      name: aggregate.settings?.name || aggregate.teamData?.settings?.name,
+      name: settings?.name || aggregate.teamData?.settings?.name,
+      tournamentLevel:
+        aggregate.tournamentLevel || settings.tournamentLevel || undefined,
+      certificationStatus:
+        aggregate.certificationStatus ||
+        settings.certificationStatus ||
+        undefined,
+      rankingEnabled:
+        aggregate.rankingEnabled ?? settings.rankingEnabled ?? undefined,
     },
     aggregate.teamData || {
       teams: aggregate.teams,

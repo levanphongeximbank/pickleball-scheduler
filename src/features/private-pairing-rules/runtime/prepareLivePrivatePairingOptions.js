@@ -6,6 +6,10 @@ import {
   PRIVATE_PAIRING_RUNTIME_CODE,
   isPrivatePairingRuntimeEnabled,
 } from "./runtimeCodes.js";
+import {
+  ensureRulesHaveScopeIds,
+  resolveLivePairingScope,
+} from "./resolveLivePairingScope.js";
 
 function isRestrictedCompetitionClass(competitionClass) {
   return RESTRICTED_COMPETITION_CLASSES.has(String(competitionClass || "").toUpperCase());
@@ -184,6 +188,10 @@ export function buildPrivatePairingRuntimeError(runtime = {}) {
     message = "Không tìm được lịch đấu / trận đối đầu thỏa hard rules.";
   } else if (code === PRIVATE_PAIRING_RUNTIME_CODE.PAIRING_SEARCH_LIMIT_REACHED) {
     message = "Đã đạt giới hạn tìm kiếm ghép cặp — không có phương án hợp lệ.";
+  } else if (code === "SCOPE_ID_REQUIRED") {
+    message =
+      runtime.message ||
+      "Thiếu phạm vi (tenantId / scopeId) để tải quy tắc ghép cặp. Kiểm tra CLB chủ nhà và venue.";
   }
 
   return {
@@ -205,10 +213,7 @@ export function buildPrivatePairingRuntimeError(runtime = {}) {
  */
 export async function prepareLivePrivatePairingOptions(input = {}) {
   const {
-    clubId = null,
-    tournamentId = null,
     eventId = null,
-    tenantId = null,
     competitionClass = COMPETITION_CLASS.INTERNAL,
     pairingConstraints = [],
     envSource,
@@ -216,6 +221,11 @@ export async function prepareLivePrivatePairingOptions(input = {}) {
     allowedByPublishedRules = false,
     contextTime,
   } = input;
+
+  const scope = resolveLivePairingScope(input);
+  const clubId = scope.clubId;
+  const tournamentId = scope.tournamentId;
+  const tenantId = scope.tenantId;
 
   if (!isPrivatePairingRuntimeEnabled(envSource)) {
     return {
@@ -228,6 +238,7 @@ export async function prepareLivePrivatePairingOptions(input = {}) {
         clubId,
         tournamentId,
         eventId,
+        tenantId,
         competitionClass,
         pairingConstraints,
         privatePairingRules: [],
@@ -236,6 +247,19 @@ export async function prepareLivePrivatePairingOptions(input = {}) {
         allowedByPublishedRules,
         contextTime,
       },
+    };
+  }
+
+  if (!scope.ok) {
+    return {
+      ok: false,
+      error: {
+        code: "SCOPE_ID_REQUIRED",
+        message: scope.diagnosticMessage,
+        missing: scope.missing,
+        details: scope,
+      },
+      pairingOptions: null,
     };
   }
 
@@ -248,39 +272,57 @@ export async function prepareLivePrivatePairingOptions(input = {}) {
   });
 
   if (!loaded.ok) {
+    const code = loaded.code || "PRIVATE_PAIRING_LOAD_FAILED";
     return {
       ok: false,
       error: {
-        code: loaded.code || "PRIVATE_PAIRING_LOAD_FAILED",
-        message: loaded.message || "Không tải được bộ quy tắc ghép cặp.",
+        code,
+        message:
+          code === "SCOPE_ID_REQUIRED"
+            ? `Thiếu phạm vi khi tải quy tắc ghép cặp (tenantId=${tenantId || "—"}; tournamentId=${tournamentId || "—"}; clubId=${clubId || "—"}).`
+            : loaded.message || "Không tải được bộ quy tắc ghép cặp.",
         details: loaded.details || loaded,
       },
       pairingOptions: null,
     };
   }
 
+  const rulesWithScope = ensureRulesHaveScopeIds(loaded.rules || [], {
+    scopeType: loaded.scopeType,
+    tournamentId,
+    clubId,
+  });
+
   const context = {
     teamSize: 2,
     clubId,
     tournamentId,
     eventId,
+    tenantId,
     competitionClass,
     allowedByPublishedRules,
     contextTime,
   };
 
   const resolved = resolveActivePrivatePairingRules({
-    rules: loaded.rules || [],
+    rules: rulesWithScope,
     legacyConstraints: pairingConstraints,
     context,
   });
 
   if (resolved.validationErrors?.length) {
+    const scopeErr = resolved.validationErrors.find(
+      (item) => item?.code === "SCOPE_ID_REQUIRED"
+    );
     return {
       ok: false,
       error: {
-        code: PRIVATE_PAIRING_RUNTIME_CODE.RULE_VALIDATION_FAILED,
-        message: "Bộ quy tắc ghép cặp không hợp lệ.",
+        code: scopeErr
+          ? "SCOPE_ID_REQUIRED"
+          : PRIVATE_PAIRING_RUNTIME_CODE.RULE_VALIDATION_FAILED,
+        message: scopeErr
+          ? `Quy tắc thiếu scopeId (field=${scopeErr.field || "scopeId"}). tournamentId=${tournamentId || "—"}; clubId=${clubId || "—"}.`
+          : "Bộ quy tắc ghép cặp không hợp lệ.",
         validationErrors: resolved.validationErrors,
       },
       pairingOptions: null,
@@ -325,9 +367,10 @@ export async function prepareLivePrivatePairingOptions(input = {}) {
       clubId,
       tournamentId,
       eventId,
+      tenantId,
       competitionClass,
       pairingConstraints,
-      privatePairingRules: loaded.rules || [],
+      privatePairingRules: rulesWithScope,
       envSource,
       seed,
       allowedByPublishedRules,

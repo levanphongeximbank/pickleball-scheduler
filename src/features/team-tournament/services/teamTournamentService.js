@@ -366,6 +366,76 @@ export async function createTeamTournamentForUi(clubId, options = {}) {
   };
 }
 
+/**
+ * Persist tournament classification (Phân loại giải) for Team Tournament.
+ * Cloud_primary: writes header.settings.tournamentLevel (durable) — fail closed.
+ */
+export async function updateTeamTournamentClassification(
+  clubId,
+  tournamentId,
+  tournamentLevel
+) {
+  const check = guardClubAction(clubId, PERMISSIONS.TOURNAMENT_UPDATE);
+  if (!check.ok) {
+    return check;
+  }
+
+  const { resolveCertificationForLevel } = await import(
+    "../../../models/tournament/tournament.js"
+  );
+
+  const local = updateTournament(clubId, tournamentId, (tournament) => {
+    const cert = resolveCertificationForLevel(tournamentLevel, tournament);
+    const nextSettings = {
+      ...(tournament.teamData?.settings || {}),
+      tournamentLevel: cert.tournamentLevel,
+      certificationStatus: cert.certificationStatus,
+      rankingEnabled: cert.rankingEnabled,
+    };
+    return {
+      ...tournament,
+      ...cert,
+      teamData: {
+        ...(tournament.teamData || {}),
+        settings: nextSettings,
+      },
+    };
+  });
+
+  if (!local.ok) {
+    return local;
+  }
+
+  if (!shouldUseTeamTournamentCloud()) {
+    return { ...local, cloudSynced: false, cloudRequired: false };
+  }
+
+  const header = await cloudEnsureTournamentHeader({
+    ...local.tournament,
+    clubId: local.tournament?.clubId || clubId,
+  });
+
+  if (!header.ok) {
+    return {
+      ok: false,
+      error:
+        header.error ||
+        "Không lưu được phân loại giải lên cloud — không báo thành công local-only.",
+      code: header.code || "CLOUD_HEADER_FAILED",
+      tournament: local.tournament,
+      cloudSynced: false,
+      cloudRequired: true,
+    };
+  }
+
+  return {
+    ...local,
+    cloudSynced: true,
+    cloudRequired: true,
+    tenantId: header.tenantId || local.tournament?.tenantId || null,
+  };
+}
+
 export function patchTeamTournament(clubId, tournamentId, patch = {}) {
   const check = guardClubAction(clubId, PERMISSIONS.TOURNAMENT_UPDATE);
   if (!check.ok) {

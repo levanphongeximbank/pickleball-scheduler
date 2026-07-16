@@ -183,6 +183,7 @@ describe("TT-V6-FINAL-GAPS — guided flow + Open group + unsupported types", ()
       })
     );
     const prepared = await prepareLivePrivatePairingOptions({
+      tenantId: "venue-test",
       clubId: "club-1",
       tournamentId: "tour-guided",
       competitionClass: COMPETITION_CLASS.OFFICIAL,
@@ -219,6 +220,7 @@ describe("TT-V6-FINAL-GAPS — guided flow + Open group + unsupported types", ()
       }))
     );
     const prepared = await prepareLivePrivatePairingOptions({
+      tenantId: "venue-test",
       clubId: "c1",
       tournamentId: "t1",
       competitionClass: COMPETITION_CLASS.OFFICIAL,
@@ -259,6 +261,7 @@ describe("TT-V6-FINAL-GAPS — guided flow + Open group + unsupported types", ()
       }))
     );
     const prepared = await prepareLivePrivatePairingOptions({
+      tenantId: "venue-test",
       clubId: "c1",
       tournamentId: "t1",
       competitionClass: COMPETITION_CLASS.INTERNAL,

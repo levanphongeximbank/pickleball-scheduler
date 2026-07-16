@@ -49,6 +49,10 @@ export default function TeamAiPairingDialog({
   clubs = [],
   clubId = "",
   tournamentId = "",
+  tournament = null,
+  tenantId = null,
+  clubFromQuery = null,
+  activeClubId = null,
   competitionClass = COMPETITION_CLASS.INTERNAL,
   defaultClubName = "",
   onPlayersRefresh,
@@ -160,8 +164,12 @@ export default function TeamAiPairingDialog({
       COMPETITION_CLASS.INTERNAL;
 
     const prepared = await prepareLivePrivatePairingOptions({
-      clubId,
-      tournamentId: tournamentId || null,
+      tournament: tournament || { id: tournamentId, clubId, tenantId },
+      tournamentId: tournamentId || tournament?.id || null,
+      clubId: clubId || tournament?.clubId || null,
+      clubFromQuery,
+      activeClubId,
+      tenantId: tenantId || tournament?.tenantId || null,
       competitionClass: resolvedCompetitionClass,
       pairingConstraints: [],
     });
@@ -172,6 +180,10 @@ export default function TeamAiPairingDialog({
       return;
     }
 
+    const resolvedClubId = prepared.pairingOptions?.clubId || clubId || null;
+    const resolvedTournamentId =
+      prepared.pairingOptions?.tournamentId || tournamentId || null;
+
     const pairing = runTeamFormationWithCanonicalAdapter({
       players: pickerPlayers,
       selectedPlayerIds: selectedIds,
@@ -180,15 +192,17 @@ export default function TeamAiPairingDialog({
       formatPreset: teamData?.settings?.formatPreset,
       privatePairingRules: prepared.pairingOptions?.privatePairingRules || [],
       competitionClass: resolvedCompetitionClass,
-      clubId,
-      tournamentId: tournamentId || null,
+      clubId: resolvedClubId,
+      tournamentId: resolvedTournamentId,
       seed: 1,
     });
 
     if (pairing.privatePairingError || pairing.ok === false) {
       setPairingResult(null);
+      const code = pairing.privatePairingError?.code;
       onError?.(
         pairing.privatePairingError?.message ||
+          (code ? `${pairing.warnings?.[0] || "Không thể ghép đội"} (${code})` : null) ||
           pairing.warnings?.[0] ||
           "Không thể ghép đội thỏa quy tắc bắt buộc."
       );

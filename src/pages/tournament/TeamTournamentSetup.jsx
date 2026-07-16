@@ -390,8 +390,17 @@ export default function TeamTournamentSetup() {
     }
 
     const prepared = await prepareLivePrivatePairingOptions({
+      tournament: tournament || null,
       clubId: effectiveClubId || activeClubId || null,
+      clubFromQuery,
+      activeClubId,
       tournamentId: tournamentId || null,
+      tenantId:
+        tournament?.tenantId ||
+        clubPool.tenantId ||
+        tenantPool.tenantId ||
+        currentTenantId ||
+        null,
       eventId: tournamentId ? `event-${tournamentId}` : null,
       competitionClass: COMPETITION_CLASS.INTERNAL,
     });
@@ -988,11 +997,19 @@ export default function TeamTournamentSetup() {
             <TeamRosterPanel
               clubId={effectiveClubId || activeClubId}
               tournamentId={tournamentId}
+              tournament={tournament}
               teamData={td}
               clubPlayers={players}
               allTenantPlayers={allTenantPlayers}
               clubs={clubs}
-              tenantId={clubPool.tenantId || tenantPool.tenantId}
+              tenantId={
+                tournament?.tenantId ||
+                clubPool.tenantId ||
+                tenantPool.tenantId ||
+                currentTenantId
+              }
+              clubFromQuery={clubFromQuery}
+              activeClubId={activeClubId}
               canManage={access.canManage}
               canViewAll={access.canViewAll}
               viewerPlayerId={access.viewerPlayerId}
@@ -1025,6 +1042,15 @@ export default function TeamTournamentSetup() {
                 canManage={access.canManage}
                 clubId={effectiveClubId || activeClubId}
                 tournamentId={tournamentId}
+                tournament={tournament}
+                tenantId={
+                  tournament?.tenantId ||
+                  clubPool.tenantId ||
+                  tenantPool.tenantId ||
+                  currentTenantId
+                }
+                clubFromQuery={clubFromQuery}
+                activeClubId={activeClubId}
                 competitionClass={COMPETITION_CLASS.INTERNAL}
                 onSave={saveTeamData}
                 onError={setError}

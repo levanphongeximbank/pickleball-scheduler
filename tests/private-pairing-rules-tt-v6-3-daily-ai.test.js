@@ -196,6 +196,7 @@ describe("TT-V6-3 — Daily Play / runAI private rules", () => {
     );
 
     const prepared = await prepareLivePrivatePairingOptions({
+      tenantId: "venue-test",
       clubId: "club-A",
       tournamentId: "t-good",
       competitionClass: COMPETITION_CLASS.DAILY_PLAY,
@@ -429,6 +430,7 @@ describe("TT-V6-3 — Daily Play / runAI private rules", () => {
       }))
     );
     const prepared = await prepareLivePrivatePairingOptions({
+      tenantId: "venue-test",
       clubId: "club-A",
       competitionClass: COMPETITION_CLASS.DAILY_PLAY,
       envSource: FLAGS_ON,

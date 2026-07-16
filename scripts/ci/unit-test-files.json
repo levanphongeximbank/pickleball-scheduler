@@ -209,5 +209,6 @@
   "tests/team-tournament-preview-blocker-regression.test.js",
   "tests/team-tournament-final-blocker-regression.test.js",
   "tests/team-tournament-unified-athlete-pool.test.js",
-  "tests/phase45b5b-daily-team-tournament-candidate-cutover.test.js"
+  "tests/phase45b5b-daily-team-tournament-candidate-cutover.test.js",
+  "tests/tt-v6-scope-and-classification.test.js"
 ]
