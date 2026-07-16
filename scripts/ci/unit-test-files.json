@@ -226,9 +226,15 @@
   "tests/tt-v6-p1_3-hash-snapshot-reload.test.js",
   "tests/tt-v6-p1_3-async-hash-browser.test.js",
   "tests/tt-v6-p1_3-complete-browser-hash.test.js",
+  "tests/tt-v6-createhash-browser-hotfix.test.js",
   "tests/tt-v6-group-draw-workflow.test.js",
   "tests/tt-v6-group-save-rules-version.test.js",
   "tests/tt-v6-save-draft-mutation.test.js",
   "tests/tt-v6-p1_5a-showcase.test.js",
-  "tests/tt-v6-p1_5a-showcase-setup.test.js"
+  "tests/tt-v6-p1_5a-showcase-setup.test.js",
+  "tests/tt-v6-p1_5a-showcase-control-center.test.js",
+  "tests/tt-v6-p1_5a-showcase-athlete-input-align.test.js",
+  "tests/tt-v6-p1_5a-showcase-reveal.test.js",
+  "tests/tt-v6-ai-pairing-reveal.test.js",
+  "tests/tt-v6-ai-group-reveal.test.js"
 ]

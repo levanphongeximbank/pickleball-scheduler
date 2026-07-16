@@ -96,7 +96,7 @@ export function compareSnapshotHashes(leftHash, rightHash) {
 }
 
 /**
- * Browser-safe SHA-256 via SubtleCrypto (Node falls back to createHash).
+ * Browser-safe SHA-256 via SubtleCrypto async or pure sync digest (no node:crypto).
  * @param {unknown} snapshot
  * @returns {Promise<string>}
  */
