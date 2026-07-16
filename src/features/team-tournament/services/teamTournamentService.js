@@ -105,6 +105,10 @@ import {
   cloudSyncStandingsAfterMutation,
   shouldUseTeamTournamentCloud,
 } from "./teamTournamentCloudSync.js";
+import {
+  resolveUiTeamTournamentDataMode,
+  TEAM_TOURNAMENT_DATA_MODES,
+} from "../repositories/teamTournamentRepositoryFactory.js";
 
 function findTournament(data, tournamentId) {
   return (data.tournaments || []).find((item) => item.id === String(tournamentId)) || null;
@@ -221,6 +225,9 @@ function guardCaptainLineupAction(clubId, tournamentId, teamId) {
 /**
  * Create a Team Tournament draft and verify it is readable from the club blob
  * before returning OK. Callers must not navigate until this returns ok:true.
+ *
+ * Sync local persist only. Preview/cloud_primary UIs must use
+ * createTeamTournamentForUi so the cloud header exists before detail load.
  */
 export function createTeamTournament(clubId, options = {}) {
   const resolvedClubId = String(clubId || "").trim();
@@ -291,6 +298,69 @@ export function createTeamTournament(clubId, options = {}) {
   });
 
   return { ok: true, tournament: saved, clubId: resolvedClubId };
+}
+
+function resolveCreateRequiresCloudHeader() {
+  try {
+    const mode = resolveUiTeamTournamentDataMode();
+    return (
+      mode === TEAM_TOURNAMENT_DATA_MODES.CLOUD_PRIMARY ||
+      mode === TEAM_TOURNAMENT_DATA_MODES.CLOUD_ONLY
+    );
+  } catch {
+    return shouldUseTeamTournamentCloud();
+  }
+}
+
+/**
+ * UI create entry: local persist first, then ensure cloud header when store/cloud
+ * is enabled. In cloud_primary/cloud_only, cloud header failure blocks navigate
+ * (no fake success). Shadow mode keeps local OK and surfaces a warning.
+ */
+export async function createTeamTournamentForUi(clubId, options = {}) {
+  const local = createTeamTournament(clubId, options);
+  if (!local.ok) {
+    return local;
+  }
+
+  if (!shouldUseTeamTournamentCloud()) {
+    return local;
+  }
+
+  const header = await cloudEnsureTournamentHeader({
+    ...local.tournament,
+    clubId: local.clubId || local.tournament?.clubId || clubId,
+  });
+
+  if (header.ok) {
+    return {
+      ...local,
+      cloudSynced: true,
+      tenantId: header.tenantId || local.tournament?.tenantId || null,
+    };
+  }
+
+  const requiresCloud = resolveCreateRequiresCloudHeader();
+  if (requiresCloud) {
+    return {
+      ok: false,
+      error:
+        header.error ||
+        "Đã lưu nháp local nhưng chưa đồng bộ cloud — không mở trang chi tiết (cloud_primary).",
+      code: header.code || "CLOUD_HEADER_FAILED",
+      tournament: local.tournament,
+      clubId: local.clubId,
+      persistedLocally: true,
+      cloudSynced: false,
+    };
+  }
+
+  return {
+    ...local,
+    warning: header.error || "Đồng bộ cloud tạm thất bại — giải vẫn mở từ blob.",
+    cloudSyncFailed: true,
+    cloudSynced: false,
+  };
 }
 
 export function patchTeamTournament(clubId, tournamentId, patch = {}) {

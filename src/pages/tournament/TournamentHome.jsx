@@ -35,7 +35,7 @@ import PermissionGate from "../../components/auth/PermissionGate.jsx";
 import ClubAssignmentBanner from "../../components/auth/ClubAssignmentBanner.jsx";
 import { PERMISSIONS } from "../../auth/permissions.js";
 import { usePageRuntimeAccess } from "../../core/platform/app/usePageRuntimeAccess.js";
-import { createTeamTournament } from "../../features/team-tournament/services/teamTournamentService.js";
+import { createTeamTournamentForUi } from "../../features/team-tournament/services/teamTournamentService.js";
 import { getTeamData } from "../../features/team-tournament/engines/teamTournamentEngine.js";
 import { findTeamForCaptain } from "../../features/team-tournament/engines/teamPermissionEngine.js";
 import { TOURNAMENT_LAYOUT } from "../../components/tournament/tournamentLayout.js";
@@ -208,7 +208,7 @@ export default function TournamentHome({ section = "overview" }) {
     }
   };
 
-  const handleStartMode = (option) => {
+  const handleStartMode = async (option) => {
     if (!accessAllowed) {
       setError("Runtime platform chặn thao tác quản lý giải đấu.");
       return;
@@ -225,7 +225,7 @@ export default function TournamentHome({ section = "overview" }) {
 
     const result =
       option.mode === TOURNAMENT_MODE.TEAM_TOURNAMENT
-        ? createTeamTournament(clubId, {
+        ? await createTeamTournamentForUi(clubId, {
             name: buildDefaultName(option.title),
             seasonId: activeSeason?.id,
             leagueId: activeLeague?.id,

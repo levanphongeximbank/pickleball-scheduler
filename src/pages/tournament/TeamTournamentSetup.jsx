@@ -286,6 +286,7 @@ export default function TeamTournamentSetup() {
   const {
     players,
     error: clubPlayersError,
+    emptyMessage: clubPlayersEmptyMessage,
   } = useClubPairingCandidatePool(effectiveClubId || activeClubId, {
     tenantId,
     revision: dataVersion,
@@ -293,10 +294,12 @@ export default function TeamTournamentSetup() {
   const {
     players: allTenantPlayers,
     error: tenantPlayersError,
+    emptyMessage: tenantPlayersEmptyMessage,
   } = useTenantPairingCandidatePool(tenantId, {
     revision: dataVersion,
   });
   const playersLoadError = clubPlayersError || tenantPlayersError;
+  const playersEmptyMessage = clubPlayersEmptyMessage || tenantPlayersEmptyMessage;
   const lineupPlayers = useMemo(() => {
     const pool = new Map();
     [...allTenantPlayers, ...players].forEach((player) => {
@@ -937,6 +940,11 @@ export default function TeamTournamentSetup() {
           {playersLoadError ? (
             <Alert severity="error" sx={{ mb: 2 }}>
               {playersLoadError.message}
+            </Alert>
+          ) : null}
+          {!playersLoadError && playersEmptyMessage ? (
+            <Alert severity="warning" sx={{ mb: 2 }}>
+              {playersEmptyMessage}
             </Alert>
           ) : null}
           {message ? <Alert severity="success" sx={{ mb: 2 }} onClose={() => setMessage("")}>{message}</Alert> : null}

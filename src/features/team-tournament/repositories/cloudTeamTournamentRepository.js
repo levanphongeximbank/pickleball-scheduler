@@ -40,8 +40,25 @@ import {
 } from "./teamTournamentRpcGuards.js";
 import { REPOSITORY_ERROR_CODES } from "./teamTournamentRepositoryTypes.js";
 import { subscribeCloudTournament } from "./teamTournamentRealtimeRepository.js";
+import { loadClubData } from "../../../domain/clubStorage.js";
+import { isTeamTournament } from "../engines/teamTournamentEngine.js";
 
 const replayCache = new Map();
+
+function readLocalTournamentFallback(clubId, tournamentId) {
+  const resolvedClubId = String(clubId || "").trim();
+  const id = String(tournamentId || "").trim();
+  if (!resolvedClubId || !id) {
+    return null;
+  }
+  try {
+    const data = loadClubData(resolvedClubId);
+    const found = (data.tournaments || []).find((item) => String(item?.id) === id);
+    return found && isTeamTournament(found) ? found : null;
+  } catch {
+    return null;
+  }
+}
 
 function rejectUndeployedRpcGuard(methodName) {
   if (isTeamTournamentRpcGuardDeployed(methodName)) {
@@ -127,7 +144,7 @@ export function createCloudTeamTournamentRepository() {
   return {
     getProvider: () => "cloud",
 
-    async getTournament(_clubId, tournamentId, readOptions = {}) {
+    async getTournament(clubId, tournamentId, readOptions = {}) {
       const viewerError = rejectClientViewerTeamIdForCloud(readOptions, "cloud");
       if (viewerError) {
         return viewerError;
@@ -135,6 +152,29 @@ export function createCloudTeamTournamentRepository() {
 
       const result = await rpcTeamTournamentGetSetup(tournamentId, null);
       if (!result.ok) {
+        // Create→detail / refresh safety: if cloud header is missing but the
+        // hosting club blob already has the draft, serve local copy instead of
+        // a hard NOT_FOUND (still cloud-primary; local is temporary fallback).
+        const local = readLocalTournamentFallback(clubId, tournamentId);
+        if (local) {
+          const aggregate = mapTournamentToAggregate(local, "cloud");
+          if (readOptions.includeSchedule === false) {
+            aggregate.schedule = [];
+          }
+          return repositorySuccess(aggregate, {
+            provider: "cloud",
+            version: aggregate.version,
+            serverTime: null,
+            warnings: [
+              {
+                code: "CLOUD_SETUP_FALLBACK_BLOB",
+                message:
+                  result.error ||
+                  "Cloud setup chưa có bản ghi — đang mở nháp local vừa tạo.",
+              },
+            ],
+          });
+        }
         return normalizeRepositoryResult(result, { provider: "cloud" });
       }
 

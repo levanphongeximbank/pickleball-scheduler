@@ -56,12 +56,40 @@ export function toLegacyScreenPickerPlayer(candidate, extras = {}) {
   };
 }
 
+const EXCLUSION_REASON_LABELS = Object.freeze({
+  [PAIRING_CANDIDATE_REASON_CODES.MISSING_IDENTITY_LINK]:
+    "thiếu liên kết Athlete (athletes.id)",
+  [PAIRING_CANDIDATE_REASON_CODES.MISSING_MEMBERSHIP]: "thiếu membership",
+  [PAIRING_CANDIDATE_REASON_CODES.MEMBERSHIP_INACTIVE]: "membership không active",
+  [PAIRING_CANDIDATE_REASON_CODES.ATHLETE_INACTIVE]: "athlete không active",
+  [PAIRING_CANDIDATE_REASON_CODES.WRONG_SCOPE]: "sai phạm vi CLB/tenant",
+  [PAIRING_CANDIDATE_REASON_CODES.MISSING_GENDER]: "thiếu giới tính",
+  [PAIRING_CANDIDATE_REASON_CODES.MISSING_RATING]: "thiếu trình độ",
+  [PAIRING_CANDIDATE_REASON_CODES.NOT_REGISTERED]: "chưa đăng ký giải",
+  [PAIRING_CANDIDATE_REASON_CODES.WITHDRAWN]: "đã rút lui",
+  [PAIRING_CANDIDATE_REASON_CODES.BUSY]: "đang bận",
+  [PAIRING_CANDIDATE_REASON_CODES.ALREADY_ASSIGNED]: "đã được gán đội",
+});
+
 function formatExclusionSummary(gatewayResult, label = "VĐV") {
+  const sourceCount = Number(gatewayResult?.summary?.sourceCount || 0);
   const byReason = gatewayResult?.summary?.byReason || {};
-  const parts = Object.entries(byReason).map(([code, count]) => `${code}:${count}`);
+  const parts = Object.entries(byReason).map(([code, count]) => {
+    const human = EXCLUSION_REASON_LABELS[code] || code;
+    return `${human}:${count}`;
+  });
+
+  if (sourceCount === 0 && parts.length === 0) {
+    return (
+      `Không có nguồn ${label} canonical cho CLB này (sourceCount=0). ` +
+      `Không kết luận “chưa có thành viên” — kiểm tra membership RPC / môi trường Supabase.`
+    );
+  }
+
   if (parts.length === 0) {
     return `Không có ${label} đủ điều kiện.`;
   }
+
   return `Không có ${label} đủ điều kiện (loại trừ: ${parts.join(", ")}).`;
 }
 

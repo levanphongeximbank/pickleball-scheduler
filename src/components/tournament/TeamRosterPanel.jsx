@@ -115,18 +115,21 @@ function TeamCard({
 
   const [filteredClubPlayers, setFilteredClubPlayers] = useState([]);
   const [filteredClubError, setFilteredClubError] = useState(null);
+  const [filteredClubEmptyMessage, setFilteredClubEmptyMessage] = useState(null);
 
   useEffect(() => {
     let cancelled = false;
     if (sourceClubFilter === ALL_CLUBS_FILTER || !sourceClubFilter) {
       setFilteredClubPlayers([]);
       setFilteredClubError(null);
+      setFilteredClubEmptyMessage(null);
       return undefined;
     }
     loadTeamBuilderClubCandidatePool(sourceClubFilter).then((result) => {
       if (cancelled) return;
       if (!result.ok) {
         setFilteredClubPlayers([]);
+        setFilteredClubEmptyMessage(null);
         setFilteredClubError(
           result.message ||
             "Không tải được danh sách VĐV CLB. Không dùng roster blob."
@@ -135,6 +138,7 @@ function TeamCard({
       }
       setFilteredClubPlayers(result.players || []);
       setFilteredClubError(null);
+      setFilteredClubEmptyMessage(result.empty ? result.message || null : null);
     });
     return () => {
       cancelled = true;
@@ -283,6 +287,11 @@ function TeamCard({
           <Alert severity="info">
             MLP: tối đa 4 VĐV (2 nam + 2 nữ). Mỗi VĐV đánh 2 trận/tie.
           </Alert>
+        ) : null}
+
+        {filteredClubError ? <Alert severity="error">{filteredClubError}</Alert> : null}
+        {!filteredClubError && filteredClubEmptyMessage ? (
+          <Alert severity="warning">{filteredClubEmptyMessage}</Alert>
         ) : null}
 
         {warnings.map((warning) => (
@@ -689,6 +698,12 @@ export default function TeamRosterPanel({
           </Stack>
           {isMlp && mlpPoolState.status === "error" ? (
             <Alert severity="error">{mlpPoolState.message}</Alert>
+          ) : null}
+          {isMlp && mlpPoolState.status === "empty" ? (
+            <Alert severity="warning">
+              {mlpPoolState.message ||
+                "Chưa có Athlete đủ điều kiện của CLB này để ghép đội MLP."}
+            </Alert>
           ) : null}
           {isMlp && mlpPoolState.status === "ready" ? (
             <Alert severity="info">

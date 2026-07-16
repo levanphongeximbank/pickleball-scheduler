@@ -236,8 +236,13 @@ export default function InternalTournamentSetup() {
         return;
       }
       setPlayers(result.players || []);
-      setPlayersLoadError(null);
       if (result.empty && result.message) {
+        setPlayersLoadError({
+          code: result.code || "NO_ELIGIBLE_CANDIDATES",
+          message: result.message,
+          severity: "warning",
+        });
+      } else {
         setPlayersLoadError(null);
       }
     })();
@@ -1160,7 +1165,10 @@ export default function InternalTournamentSetup() {
             </Alert>
           )}
           {playersLoadError && (
-            <Alert severity="error" sx={{ mb: 2 }}>
+            <Alert
+              severity={playersLoadError.severity === "warning" ? "warning" : "error"}
+              sx={{ mb: 2 }}
+            >
               {playersLoadError.message}
             </Alert>
           )}
@@ -1341,15 +1349,21 @@ export default function InternalTournamentSetup() {
                 </Typography>
               ) : eligiblePlayers.length === 0 ? (
                 <Typography variant="body2" color="text.secondary">
-                  CLB này chưa có thành viên. Thêm tại{" "}
-                  <Link
-                    component={RouterLink}
-                    to={`/clubs/${sourceClubId}?tab=members`}
-                    underline="hover"
-                  >
-                    Quản lý CLB → Thành viên
-                  </Link>
-                  .
+                  {playersLoadError?.message ? (
+                    playersLoadError.message
+                  ) : (
+                    <>
+                      CLB này chưa có thành viên. Thêm tại{" "}
+                      <Link
+                        component={RouterLink}
+                        to={`/clubs/${sourceClubId}?tab=members`}
+                        underline="hover"
+                      >
+                        Quản lý CLB → Thành viên
+                      </Link>
+                      .
+                    </>
+                  )}
                 </Typography>
               ) : (
                 eligiblePlayers.map((player) => {
