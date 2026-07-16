@@ -22,6 +22,13 @@ import {
   buildUiCommandScope,
   endUiCommandKey,
 } from "./teamTournamentUiCommandKeys.js";
+import {
+  attachSnapshotPackageToPayload,
+  buildSetupMutationFromTeamDataDiff,
+  buildSetupMutationSnapshotPackage,
+  isSetupMutationFoundationEnabled,
+  runSetupMutation,
+} from "../setup/index.js";
 
 export const UI_MUTATION_ERROR = Object.freeze({
   VERSION_CONFLICT: "version_conflict",
@@ -197,7 +204,15 @@ export function createTeamTournamentUiOrchestrator(options = {}) {
         mode === TEAM_TOURNAMENT_DATA_MODES.CLOUD_ONLY;
 
       try {
-        const result = await repo.getTournament(clubId, tournamentId, readOptions);
+        const setupReadOptions = { ...readOptions };
+        if (
+          isCloudPrimary &&
+          isSetupMutationFoundationEnabled() &&
+          setupReadOptions.schemaVersion == null
+        ) {
+          setupReadOptions.schemaVersion = 7;
+        }
+        const result = await repo.getTournament(clubId, tournamentId, setupReadOptions);
 
         if (!result.ok) {
           return mapRepositoryResultToUi(result);
@@ -350,16 +365,127 @@ export function createTeamTournamentUiOrchestrator(options = {}) {
         mode === TEAM_TOURNAMENT_DATA_MODES.CLOUD_PRIMARY ||
         mode === TEAM_TOURNAMENT_DATA_MODES.CLOUD_ONLY
       ) {
+        const gateHint = isSetupMutationFoundationEnabled()
+          ? "Dùng persistSetupTeamData để ghi bằng P1.3 domain RPC."
+          : "Bật VITE_TEAM_TOURNAMENT_SETUP_MUTATION_V7 sau khi P1.3 được Staging-certified.";
         return {
           ok: false,
-          code: REPOSITORY_ERROR_CODES.NOT_IMPLEMENTED,
+          code: isSetupMutationFoundationEnabled()
+            ? "SETUP_MUTATION_REQUIRED"
+            : REPOSITORY_ERROR_CODES.NOT_IMPLEMENTED,
           error:
-            "BLOCKED BY CLOUD SCHEMA: thiếu RPC team_tournament_save_discipline / team_tournament_remove_discipline (và matchup/schedule write). Không ghi local khi cloud_primary — tránh fake success mất sau refresh.",
+            `Cloud setup không ghi blob/localStorage. ${gateHint}`,
         };
       }
 
       const result = legacyPatchTeamData(clubId, tournamentId, patch);
-      return mapRepositoryResultToUi(result);
+      const uiResult = mapRepositoryResultToUi(result);
+      if (uiResult.ok && result.reloadResult?.ok) {
+        return {
+          ...uiResult,
+          version: result.version ?? result.reloadResult.version,
+          tournament: result.reloadResult.tournament,
+          teamData: result.reloadResult.teamData,
+          aggregate: result.reloadResult.aggregate,
+        };
+      }
+      return uiResult;
+    },
+
+    async persistSetupTeamData(clubId, tournamentId, nextTeamData, options = {}) {
+      const isCloud =
+        mode === TEAM_TOURNAMENT_DATA_MODES.CLOUD_PRIMARY ||
+        mode === TEAM_TOURNAMENT_DATA_MODES.CLOUD_ONLY;
+      if (!isCloud) {
+        return this.patchTeamData(clubId, tournamentId, { teamData: nextTeamData });
+      }
+      if (!isSetupMutationFoundationEnabled(options.envSource)) {
+        return mapRepositoryResultToUi({
+          ok: false,
+          code: "GATE_OFF",
+          error:
+            "Setup mutation v7 đang tắt. Bật VITE_TEAM_TOURNAMENT_SETUP_MUTATION_V7 sau khi P1.3 được Staging-certified.",
+        });
+      }
+
+      const current =
+        options.aggregate ||
+        (await repo.getTournament(clubId, tournamentId, { schemaVersion: 7 }));
+      const aggregate = current?.data || current?.aggregate || current;
+      if (!aggregate?.id && !aggregate?.teamData) {
+        return mapRepositoryResultToUi(current);
+      }
+
+      const previousTeamData = options.previousTeamData || aggregate.teamData || {};
+      const expectedTournamentVersion = Number(
+        options.expectedTournamentVersion ?? aggregate.version ?? 1
+      );
+      const inferred = buildSetupMutationFromTeamDataDiff({
+        previous: previousTeamData,
+        next: nextTeamData,
+        tournamentId,
+        expectedTournamentVersion,
+        rulesVersion: options.rulesVersion || aggregate.rulesVersion || "",
+      });
+      if (!inferred.commandName) {
+        return mapRepositoryResultToUi({
+          ok: false,
+          code: inferred.error || "SETUP_MUTATION_REQUIRED",
+          error: "Không tìm thấy thay đổi setup domain có thể ghi bằng P1.3.",
+        });
+      }
+
+      const matchups = nextTeamData.matchups || [];
+      const snapshot = buildSetupMutationSnapshotPackage({
+        tournament: options.tournament || aggregateToTournamentView(aggregate) || { id: tournamentId },
+        teams: nextTeamData.teams || aggregate.teams || [],
+        disciplines: nextTeamData.disciplines || [],
+        groups: nextTeamData.groups || [],
+        matchups,
+        subMatches: matchups.flatMap((matchup) => matchup.subMatches || []),
+        schedule: nextTeamData.schedule || matchups,
+        schedulePublish: nextTeamData.schedulePublish || aggregate.schedulePublish || {},
+        settings: nextTeamData.settings || aggregate.settings || {},
+        formatPreset: nextTeamData.settings?.formatPreset || aggregate.formatPreset,
+        rosterRules: nextTeamData.settings?.rosterRules || aggregate.rosterRules,
+        engineInput: inferred.engineInput,
+        engineOutput: inferred.engineOutput,
+        expectedTournamentVersion,
+        generatedAt: options.generatedAt,
+      });
+
+      const result = await runSetupMutation({
+        method: inferred.commandName,
+        commandName: inferred.commandName,
+        tournamentId,
+        expectedTournamentVersion,
+        latestTournamentVersion: expectedTournamentVersion,
+        payload: attachSnapshotPackageToPayload(inferred.payload, snapshot),
+        engineInput: inferred.engineInput,
+        engineOutput: inferred.engineOutput,
+        rulesVersion: inferred.rulesVersion,
+        confirmDestructive:
+          options.confirmDestructive === true || inferred.confirmDestructive === true,
+        confirmed: true,
+        repository: repo,
+        dataMode: mode,
+        envSource: options.envSource,
+        reload: (reloadOptions) => this.loadTournament(clubId, tournamentId, reloadOptions),
+        driftDetected: options.driftDetected,
+        diagnostic: options.diagnostic,
+        reloadAcknowledged: options.reloadAcknowledged,
+      });
+      const uiResult = mapRepositoryResultToUi(result);
+      if (uiResult.ok && result.reloadResult?.ok) {
+        return {
+          ...uiResult,
+          version: result.version ?? result.reloadResult.version,
+          tournament: result.reloadResult.tournament,
+          teamData: result.reloadResult.teamData,
+          aggregate: result.reloadResult.aggregate,
+        };
+      }
+      return uiResult;
     },
 
     /** Referee draft score — legacy adapter until cloud RPC exists. */

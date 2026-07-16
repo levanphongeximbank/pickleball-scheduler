@@ -18,6 +18,7 @@ import {
   computeTournamentRosterSetupSignature,
 } from "../engines/teamRosterHydrationCache.js";
 import { logTeamRosterHydrationTransition } from "../engines/teamRosterHydrationDiagnostics.js";
+import { isSetupMutationFoundationEnabled } from "../setup/setupMutationFeatureGate.js";
 
 const DEFAULT_POLL_MS = REPOSITORY_REALTIME_FALLBACK.pollingIntervalMs;
 
@@ -187,6 +188,11 @@ export function useTeamTournamentPage({
       const readOptions = {};
       if (readSchemaVersion != null) {
         readOptions.schemaVersion = Number(readSchemaVersion);
+      } else if (
+        isSetupMutationFoundationEnabled() &&
+        ["cloud_primary", "cloud_only"].includes(orchestrator.getMode())
+      ) {
+        readOptions.schemaVersion = 7;
       }
       if (readDiagnostic === true) {
         readOptions.diagnostic = true;
@@ -296,6 +302,39 @@ export function useTeamTournamentPage({
     [clubId, orchestrator, reload, tournamentId]
   );
 
+  const persistSetupTeamData = useCallback(
+    async (nextTeamData, options = {}) => {
+      if (!clubId || !tournamentId) {
+        return { ok: false, error: "Thiếu clubId hoặc tournamentId." };
+      }
+      const result = await orchestrator.persistSetupTeamData(clubId, tournamentId, nextTeamData, {
+        previousTeamData: teamData,
+        tournament,
+        expectedTournamentVersion: version,
+        ...options,
+      });
+      if (result.ok) {
+        const loaded = result.tournament
+          ? result
+          : await reload({ silent: true, schemaVersion: 7 });
+        if (loaded.ok) {
+          applyLoadResult(loaded);
+        }
+      }
+      return result;
+    },
+    [
+      applyLoadResult,
+      clubId,
+      orchestrator,
+      reload,
+      teamData,
+      tournament,
+      tournamentId,
+      version,
+    ]
+  );
+
   const getVisibleLineups = useCallback(
     async (matchupId, readOptions = {}) => {
       if (!clubId || !tournamentId) {
@@ -387,6 +426,7 @@ export function useTeamTournamentPage({
     saveSubMatchDraft: (payload, commandOptions) =>
       orchestrator.saveSubMatchDraft(clubId, tournamentId, payload, commandOptions),
     patchTeamData,
+    persistSetupTeamData,
     getVisibleLineups,
     getLineupOverrideOps: (matchupId, teamId) =>
       orchestrator.getLineupOverrideOps(clubId, tournamentId, { matchupId, teamId }),

@@ -1,13 +1,11 @@
 /**
- * P1.2 S1-D — future setup-domain RPC registry (names only).
- * No domain RPC is deployed in this milestone.
+ * P1.3 — deployed setup-domain RPC registry.
  */
 
 import { SETUP_COMMAND_NAMES } from "../canonical/teamTournamentCanonicalRules.js";
 
 /**
- * Locked future RPC names — registered for fail-closed transport.
- * Deployed flag stays false until Discipline+ SQL lands.
+ * Owner-locked setup RPC names.
  */
 export const SETUP_MUTATION_RPC_BY_COMMAND = Object.freeze({
   "discipline.save": "team_tournament_save_discipline",
@@ -16,8 +14,8 @@ export const SETUP_MUTATION_RPC_BY_COMMAND = Object.freeze({
   "groups.replace": "team_tournament_replace_groups",
   "groups.clear": "team_tournament_clear_groups",
   "matchups.replace": "team_tournament_replace_matchups",
-  "schedule.update": "team_tournament_update_schedule",
-  "schedule.batch": "team_tournament_batch_schedule",
+  "schedule.update": "team_tournament_update_matchup_schedule",
+  "schedule.batch": "team_tournament_apply_schedule_batch",
   "schedule.publish": "team_tournament_publish_schedule",
   "schedule.lock": "team_tournament_lock_schedule",
   "deputies.set": "team_tournament_set_deputies",
@@ -46,13 +44,24 @@ export function resolveSetupMutationRpcName(commandName) {
 }
 
 /**
- * S1-D/S1-E: no setup domain RPC is deployed.
- * Future: gate via env / migration catalog — never silent success.
- * @param {string} [_rpcName]
+ * P1.3 deploys discipline, groups, matchups, and schedule setup RPCs.
+ * Later domains remain fail-closed until their owning phases deploy them.
+ * @param {string} rpcName
  * @returns {boolean}
  */
-export function isSetupMutationRpcDeployed() {
-  return false;
+export function isSetupMutationRpcDeployed(rpcName) {
+  return new Set([
+    SETUP_MUTATION_RPC_BY_COMMAND["discipline.save"],
+    SETUP_MUTATION_RPC_BY_COMMAND["discipline.remove"],
+    SETUP_MUTATION_RPC_BY_COMMAND["discipline.reorder"],
+    SETUP_MUTATION_RPC_BY_COMMAND["groups.replace"],
+    SETUP_MUTATION_RPC_BY_COMMAND["groups.clear"],
+    SETUP_MUTATION_RPC_BY_COMMAND["matchups.replace"],
+    SETUP_MUTATION_RPC_BY_COMMAND["schedule.update"],
+    SETUP_MUTATION_RPC_BY_COMMAND["schedule.batch"],
+    SETUP_MUTATION_RPC_BY_COMMAND["schedule.publish"],
+    SETUP_MUTATION_RPC_BY_COMMAND["schedule.lock"],
+  ]).has(String(rpcName || "").trim());
 }
 
 /**
@@ -66,5 +75,5 @@ export function listRegisteredSetupCommands() {
  * @returns {boolean}
  */
 export function isSetupDomainWriteMethodActive() {
-  return false;
+  return true;
 }

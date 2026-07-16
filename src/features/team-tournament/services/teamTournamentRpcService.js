@@ -365,6 +365,19 @@ async function callTeamTournamentRpc(rpcName, args = {}) {
     const passthrough = [
       "version_conflict",
       "idempotency_payload_mismatch",
+      "COURT_CONFLICT",
+      "CONFIRM_DESTRUCTIVE_REQUIRED",
+      "SCHEDULE_LOCKED",
+      "DUPLICATE_GROUP_TEAM",
+      "UNKNOWN_TEAM",
+      "UNKNOWN_DISCIPLINE",
+      "TOURNAMENT_CLOSED",
+      "PAYLOAD_HASH_MISMATCH",
+      "VALIDATION_ERROR",
+      "IDEMPOTENCY_KEY_REUSED",
+      "SNAPSHOT_HASH_MISMATCH",
+      "SETUP_SNAPSHOT_DRIFT",
+      "GATE_OFF",
       "VALIDATION",
       "LOCKED",
       "lineup_locked",
@@ -444,6 +457,21 @@ export async function rpcTeamTournamentGetSetup(
     }
   }
   return callTeamTournamentRpc("team_tournament_get_setup", params);
+}
+
+/**
+ * Execute one owner-locked P1.3 setup domain mutation.
+ * @param {string} rpcName
+ * @param {{ tournamentId: string, envelope: object }} params
+ */
+export async function rpcTeamTournamentExecuteSetupMutation(rpcName, params = {}) {
+  const envelope = params.envelope || {};
+  return callTeamTournamentRpc(String(rpcName), {
+    p_tournament_id: String(params.tournamentId || envelope.tournamentId || ""),
+    p_envelope: envelope,
+    p_expected_version: envelope.expectedTournamentVersion,
+    p_idempotency_key: envelope.idempotencyKey,
+  });
 }
 
 export async function rpcTeamTournamentGetVisibleLineups(

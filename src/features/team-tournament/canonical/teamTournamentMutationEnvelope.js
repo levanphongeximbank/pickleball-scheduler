@@ -81,7 +81,13 @@ export function validateSetupMutationEnvelope(envelope) {
       return { ok: false, code: "VALIDATION_ERROR", error: "Thiếu engineVersion." };
     }
 
-    const pairingCommands = new Set(["groups.replace", "matchups.replace", "schedule.batch"]);
+    const pairingCommands = new Set([
+      "groups.replace",
+      "groups.clear",
+      "matchups.replace",
+      "schedule.batch",
+      "schedule.publish",
+    ]);
     if (pairingCommands.has(value.commandName) && !value.rulesVersion) {
       return { ok: false, code: "VALIDATION_ERROR", error: "Thiếu rulesVersion cho lệnh pairing." };
     }

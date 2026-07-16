@@ -60,6 +60,7 @@ test("payloadHash excludes its own field", () => {
     expectedTournamentVersion: 2,
     idempotencyKey: "idem-clear",
     engineVersion: "team-tournament-engines@1.0.0",
+    rulesVersion: "pairing-rules@1",
     engineInputHash: hashEngineInput({}),
     engineOutputHash: hashEngineOutput({}),
     payload: {},

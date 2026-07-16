@@ -16,6 +16,7 @@ import {
   rpcTeamTournamentSaveLineupDraft,
   rpcTeamTournamentSubmitLineup,
   rpcTeamTournamentUpsertStandings,
+  rpcTeamTournamentExecuteSetupMutation,
 } from "../services/teamTournamentRpcService.js";
 import { computeTeamStandings } from "../engines/teamStandingsEngine.js";
 import {
@@ -565,15 +566,17 @@ export function createCloudTeamTournamentRepository() {
       return subscribeCloudTournament(this, clubId, tournamentId, handlers);
     },
 
-    /**
-     * P1.2 S1-D foundation — fail-closed until domain RPCs deploy.
-     * @param {{ rpcName?: string, tournamentId: string, envelope: object }} params
-     */
+    /** @param {{ rpcName?: string, tournamentId: string, envelope: object }} params */
     async executeSetupMutation(params = {}) {
       return executeSetupMutationFoundation({
         ...params,
         provider: "cloud",
         envSource: params.envSource,
+        callRpc: (rpcName, args) =>
+          rpcTeamTournamentExecuteSetupMutation(rpcName, {
+            tournamentId: args.p_tournament_id,
+            envelope: args.p_envelope,
+          }),
       });
     },
   };

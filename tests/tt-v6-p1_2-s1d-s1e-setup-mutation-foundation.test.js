@@ -121,7 +121,7 @@ describe("P1.2 S1-D — preview / confirm orchestration", () => {
     assert.equal(built.envelope.engineVersion, DEFAULT_ENGINE_VERSION);
   });
 
-  it("undeployed domain RPC fails closed with no blob fallback", async () => {
+  it("deployed domain RPC requires cloud transport and never falls back to blob", async () => {
     const cloud = createCloudTeamTournamentRepository();
     const blob = createBlobTeamTournamentRepository();
     const built = buildSetupMutationPayload(baseParams({ idempotencyKey: "key-rpc-1" }));
@@ -132,8 +132,7 @@ describe("P1.2 S1-D — preview / confirm orchestration", () => {
       envSource: GATE_ON,
     });
     assert.equal(cloudResult.ok, false);
-    assert.equal(cloudResult.code, "REPOSITORY_RPC_GUARD_NOT_DEPLOYED");
-    assert.ok(String(cloudResult.details?.rpcName || "").includes("team_tournament_"));
+    assert.equal(cloudResult.code, "NO_SUPABASE");
 
     const blobResult = await blob.executeSetupMutation({
       tournamentId: "tt-foundation-1",
@@ -144,7 +143,7 @@ describe("P1.2 S1-D — preview / confirm orchestration", () => {
     assert.equal(blobResult.code, SETUP_MUTATION_CODES.BLOB_FALLBACK_FORBIDDEN);
   });
 
-  it("executeSetupMutation shared helper fails closed when gate on", async () => {
+  it("executeSetupMutation shared helper requires a deployed transport when gate on", async () => {
     const built = buildSetupMutationPayload(baseParams({ idempotencyKey: "key-exec-1" }));
     const result = await executeSetupMutation({
       provider: "cloud",
@@ -153,7 +152,7 @@ describe("P1.2 S1-D — preview / confirm orchestration", () => {
       envSource: GATE_ON,
     });
     assert.equal(result.ok, false);
-    assert.equal(result.code, "REPOSITORY_RPC_GUARD_NOT_DEPLOYED");
+    assert.equal(result.code, SETUP_MUTATION_CODES.NOT_IMPLEMENTED);
   });
 
   it("VERSION_CONFLICT reloads once and does not auto-resubmit", async () => {
@@ -391,11 +390,13 @@ describe("P1.2 S1-E — runtime defaults and scope guards", () => {
     assert.equal(result.rpcCalled, false);
   });
 
-  it("no Discipline/Groups/Matchups write method is active", () => {
-    assert.equal(isSetupDomainWriteMethodActive(), false);
-    assert.equal(isSetupMutationRpcDeployed(resolveSetupMutationRpcName("discipline.save")), false);
-    assert.equal(isSetupMutationRpcDeployed(resolveSetupMutationRpcName("groups.replace")), false);
-    assert.equal(isSetupMutationRpcDeployed(resolveSetupMutationRpcName("matchups.replace")), false);
+  it("P1.3 Discipline/Groups/Matchups writes are active while later domains remain off", () => {
+    assert.equal(isSetupDomainWriteMethodActive(), true);
+    assert.equal(isSetupMutationRpcDeployed(resolveSetupMutationRpcName("discipline.save")), true);
+    assert.equal(isSetupMutationRpcDeployed(resolveSetupMutationRpcName("groups.replace")), true);
+    assert.equal(isSetupMutationRpcDeployed(resolveSetupMutationRpcName("matchups.replace")), true);
+    assert.equal(isSetupMutationRpcDeployed(resolveSetupMutationRpcName("awards.update")), false);
+    assert.equal(isSetupMutationRpcDeployed(resolveSetupMutationRpcName("deputies.set")), false);
   });
 
   it("cloud repository does not expose discipline write methods", () => {

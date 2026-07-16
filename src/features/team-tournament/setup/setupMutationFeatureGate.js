@@ -3,7 +3,7 @@
  *
  * Default: OFF
  * Ownership: Team Tournament V6 / P1.2 foundation
- * Retirement: after domain setup RPCs (Discipline+) are Staging-certified
+ * Retirement: after P1.3 domain setup RPCs are Staging-certified
  *             and Production apply is explicitly approved — then remove this
  *             gate or flip default ON only for Production-approved surfaces.
  *
@@ -21,7 +21,7 @@ export const SETUP_MUTATION_GATE_META = Object.freeze({
   default: "OFF",
   ownership: "Team Tournament V6 — P1.2 S1-D/S1-E foundation",
   retirementPoint:
-    "Retire after Discipline/Groups/Matchups domain RPCs pass Staging QA and Production apply is owner-approved.",
+    "Retire after P1.3 Discipline/Groups/Matchups/Schedule domain RPCs pass Staging QA and Production apply is owner-approved.",
 });
 
 function readEnvFlag(name, envSource) {

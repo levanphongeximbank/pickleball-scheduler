@@ -215,7 +215,10 @@ describe("Team Tournament final blockers — disciplines cloud_primary", () => {
     });
 
     assert.equal(result.ok, false);
-    assert.match(String(result.error || ""), /BLOCKED BY CLOUD SCHEMA|save_discipline/i);
+    assert.match(
+      String(result.error || ""),
+      /BLOCKED BY CLOUD SCHEMA|save_discipline|Cloud setup|SETUP_MUTATION|persistSetupTeamData|VITE_TEAM_TOURNAMENT_SETUP_MUTATION_V7/i
+    );
   });
 
   it("cloud failure path never reports ok for discipline patch", () => {

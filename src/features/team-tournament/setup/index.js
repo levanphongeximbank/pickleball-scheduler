@@ -34,6 +34,15 @@ export {
 } from "./executeSetupMutation.js";
 
 export {
+  buildSetupMutationSnapshotPackage,
+  attachSnapshotPackageToPayload,
+} from "./buildSetupMutationSnapshotPackage.js";
+
+export {
+  buildSetupMutationFromTeamDataDiff,
+} from "./inferSetupMutationCommand.js";
+
+export {
   buildSetupMutationPayload,
   previewSetupMutation,
   confirmSetupMutation,

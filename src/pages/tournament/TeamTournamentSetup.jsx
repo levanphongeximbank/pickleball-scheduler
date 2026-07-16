@@ -211,6 +211,7 @@ export default function TeamTournamentSetup() {
     reload,
     runMutation,
     patchTeamData,
+    persistSetupTeamData,
     rosterSetupRevision,
     getLineupOverrideOps,
     connectionState,
@@ -373,13 +374,14 @@ export default function TeamTournamentSetup() {
     );
   };
 
-  function saveTeamData(nextTeamData) {
-    const result = patchTeamData({ teamData: nextTeamData });
+  async function saveTeamData(nextTeamData, options = {}) {
+    const result = persistSetupTeamData
+      ? await persistSetupTeamData(nextTeamData, options)
+      : patchTeamData({ teamData: nextTeamData });
     if (!result.ok) {
       setError(result.error || "Không lưu được dữ liệu giải đồng đội.");
       return false;
     }
-    reload({ silent: true });
     setMessage("Đã lưu.");
     setError("");
     return true;
@@ -450,7 +452,11 @@ export default function TeamTournamentSetup() {
       return;
     }
 
-    if (saveTeamData(next)) {
+    if (
+      await saveTeamData(next, {
+        confirmDestructive: td.matchups.length > 0,
+      })
+    ) {
       setScheduleDialogOpen(false);
       setMessage("Đã tạo lịch vòng tròn. Gửi link portal cho đội trưởng.");
     }
@@ -482,9 +488,9 @@ export default function TeamTournamentSetup() {
     }
   }
 
-  function handleUpdateMatchup(matchupId, patch) {
+  async function handleUpdateMatchup(matchupId, patch) {
     const next = updateMatchupInTournament(td, matchupId, patch);
-    saveTeamData(next);
+    await saveTeamData(next);
   }
 
   async function handleLock(matchupId) {
