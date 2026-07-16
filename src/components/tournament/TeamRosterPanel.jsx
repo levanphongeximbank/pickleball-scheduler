@@ -35,10 +35,10 @@ import {
 import { isMlpFormat } from "../../features/team-tournament/engines/mlpPresetEngine.js";
 import {
   addPlayerToTeamRoster,
+  applyAiGeneratedTeamsToTournament,
   assignCaptainToTeam,
   assignDeputiesToTeam,
   createTeamInTournament,
-  patchTeamTournament,
   removePlayerFromTeamRoster,
   updateTeamDetails,
 } from "../../features/team-tournament/services/teamTournamentService.js";
@@ -809,15 +809,56 @@ export default function TeamRosterPanel({
         onMessage={onMessage}
         onError={onError}
         onApply={async (nextTeamData) => {
-          const result = await patchTeamTournament(clubId, tournamentId, {
-            teamData: nextTeamData,
-          });
+          const result = await applyAiGeneratedTeamsToTournament(
+            clubId,
+            tournamentId,
+            nextTeamData
+          );
           if (!result.ok) {
-            onError(result.error || "Không áp dụng được ghép đội.");
-            return;
+            onError(
+              result.error ||
+                "Không áp dụng được ghép đội — cloud/local chưa ghi nhận."
+            );
+            return { ok: false, ...result };
           }
-          onMessage?.("Đã AI ghép đội và lưu danh sách đội.");
-          onUpdated?.();
+
+          const reloaded =
+            typeof onUpdated === "function" ? await onUpdated() : null;
+          const teamsAfterReload =
+            reloaded?.teamData?.teams ||
+            reloaded?.tournament?.teamData?.teams ||
+            result.teamData?.teams ||
+            result.tournament?.teamData?.teams ||
+            [];
+
+          if (!Array.isArray(teamsAfterReload) || teamsAfterReload.length === 0) {
+            onError(
+              "Đã lưu đội nhưng danh sách trống sau khi tải lại — không báo thành công."
+            );
+            return { ok: false, code: "RELOAD_EMPTY_TEAMS" };
+          }
+
+          const expectedIds = new Set(
+            (result.teamData?.teams || []).map((team) => String(team.id))
+          );
+          const visibleExpected = teamsAfterReload.filter((team) =>
+            expectedIds.has(String(team.id))
+          );
+          if (expectedIds.size > 0 && visibleExpected.length === 0) {
+            onError(
+              "Đã lưu đội nhưng UI không đọc được đội vừa tạo sau khi tải lại."
+            );
+            return { ok: false, code: "RELOAD_MISSING_TEAMS" };
+          }
+
+          onMessage?.(
+            `Đã AI ghép đội và lưu danh sách đội (${teamsAfterReload.length} đội).`
+          );
+          return {
+            ok: true,
+            teamCount: teamsAfterReload.length,
+            tournament: result.tournament,
+          };
         }}
       />
     </Stack>

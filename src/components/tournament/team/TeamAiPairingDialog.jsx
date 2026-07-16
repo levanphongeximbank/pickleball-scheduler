@@ -72,6 +72,7 @@ export default function TeamAiPairingDialog({
   const [search, setSearch] = useState("");
   const [pairingResult, setPairingResult] = useState(null);
   const [captains, setCaptains] = useState({});
+  const [applying, setApplying] = useState(false);
   const [quickAddOpen, setQuickAddOpen] = useState(false);
   const [localAddedPlayers, setLocalAddedPlayers] = useState([]);
 
@@ -238,7 +239,10 @@ export default function TeamAiPairingDialog({
     }));
   }
 
-  function handleApply() {
+  async function handleApply() {
+    if (applying) {
+      return;
+    }
     if (!pairingResult?.teams?.length) {
       onError?.("Không có đội để áp dụng.");
       return;
@@ -263,8 +267,19 @@ export default function TeamAiPairingDialog({
       return;
     }
 
-    onApply?.(result.teamData, result);
-    onClose?.();
+    setApplying(true);
+    try {
+      const applyResult = await onApply?.(result.teamData, result);
+      if (applyResult?.ok === false) {
+        return;
+      }
+      // Parent may return undefined on success for legacy callers — only close when not explicit fail.
+      if (applyResult == null || applyResult.ok !== false) {
+        onClose?.();
+      }
+    } finally {
+      setApplying(false);
+    }
   }
 
   const waitingPlayers = useMemo(() => {
@@ -524,10 +539,10 @@ export default function TeamAiPairingDialog({
         ) : (
           <Button
             variant="contained"
-            disabled={!allCaptainsSelected}
+            disabled={!allCaptainsSelected || applying}
             onClick={handleApply}
           >
-            Xác nhận
+            {applying ? "Đang lưu..." : "Xác nhận"}
           </Button>
         )}
       </DialogActions>

@@ -1183,6 +1183,117 @@ export async function createTeamInTournament(clubId, tournamentId, options = {})
 }
 
 /**
+ * Persist AI-generated team list (replace teams, clear groups/matchups).
+ * cloud_primary: mirrors each team via save_team + members + captain, then verifies get_setup.
+ * Never reports success when durable cloud write/verify fails.
+ */
+export async function applyAiGeneratedTeamsToTournament(
+  clubId,
+  tournamentId,
+  nextTeamData
+) {
+  const check = guardTeamManage(clubId);
+  if (!check.ok) {
+    return check;
+  }
+
+  const tournament = getTeamTournamentById(clubId, tournamentId);
+  if (!tournament) {
+    return { ok: false, error: "Không tìm thấy giải đấu." };
+  }
+
+  const teamData = normalizeTeamData({
+    ...getTeamData(tournament),
+    ...(nextTeamData && typeof nextTeamData === "object" ? nextTeamData : {}),
+    groups: [],
+    matchups: [],
+  });
+  const teams = teamData.teams || [];
+  if (!teams.length) {
+    return { ok: false, error: "Không có đội để lưu.", code: "EMPTY_TEAMS" };
+  }
+
+  const cloudRequired = shouldUseTeamTournamentCloud();
+  if (cloudRequired) {
+    for (const teamRecord of teams) {
+      const mirrored = await mirrorClonedTeamToCloud(
+        { ...tournament, clubId, tenantId: tournament.tenantId },
+        teamRecord
+      );
+      if (!mirrored.ok && mirrored.usedCloud) {
+        return {
+          ok: false,
+          error:
+            mirrored.error ||
+            `Không lưu được đội ${teamRecord.name || teamRecord.id} lên cloud.`,
+          code: mirrored.code || "CLOUD_TEAM_SAVE_FAILED",
+          cloudSynced: false,
+          cloudRequired: true,
+        };
+      }
+    }
+
+    const verified = await cloudGetTeamTournamentSetup(tournamentId);
+    if (!verified.ok) {
+      return {
+        ok: false,
+        error:
+          verified.error ||
+          "Không xác minh được danh sách đội trên cloud sau khi lưu.",
+        code: verified.code || "CLOUD_VERIFY_FAILED",
+        cloudSynced: false,
+        cloudRequired: true,
+      };
+    }
+
+    const loadedTeams = verified.tournament?.teamData?.teams || [];
+    const loadedById = new Map(
+      loadedTeams.map((team) => [String(team.id), team])
+    );
+    const missing = teams.filter((team) => !loadedById.has(String(team.id)));
+    if (missing.length) {
+      return {
+        ok: false,
+        error: `Cloud thiếu ${missing.length} đội sau khi lưu — không báo thành công local-only.`,
+        code: "CLOUD_TEAMS_MISSING_AFTER_SAVE",
+        cloudSynced: false,
+        cloudRequired: true,
+        missingTeamIds: missing.map((team) => team.id),
+      };
+    }
+  }
+
+  const local = updateTournament(clubId, tournamentId, (current) => {
+    appendTeamAuditLog({
+      action: TEAM_AUDIT_ACTIONS.TEAM_CREATE,
+      targetId: current.id,
+      metadata: {
+        source: "ai_pairing",
+        teamCount: teams.length,
+        teamIds: teams.map((team) => team.id),
+      },
+    });
+
+    return {
+      ok: true,
+      tournament: attachTeamDataToTournament(current, teamData),
+    };
+  });
+
+  if (!local.ok) {
+    return local;
+  }
+
+  return {
+    ...local,
+    teamData,
+    teamCount: teams.length,
+    cloudSynced: cloudRequired,
+    cloudRequired,
+  };
+}
+
+/**
  * S2-B — Catalog of teams already created in other (or all) team tournaments of this club.
  */
 export function listExistingTeamsForClub(clubId, options = {}) {
