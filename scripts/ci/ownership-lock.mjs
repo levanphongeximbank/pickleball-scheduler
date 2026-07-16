@@ -624,8 +624,16 @@ const RULES = [
   {
     id: "team-tournament-browser-async-hash",
     description:
-      "P1.3 — browser UI/pages must not call Node-only sync hash helpers; use Async SubtleCrypto variants via setup/canonical.",
-    onlyIn: ["src/features/team-tournament/ui/", "src/pages/tournament/"],
+      "P1.3 — browser-bundled modules must not call Node-only sync hash helpers; use Async SubtleCrypto variants.",
+    onlyIn: [
+      "src/features/team-tournament/ui/",
+      "src/features/team-tournament/setup/executeSetupMutation.js",
+      "src/features/team-tournament/repositories/cloudTeamTournamentRepository.js",
+      "src/features/team-tournament/repositories/blobTeamTournamentRepository.js",
+      "src/features/team-tournament/repositories/shadowTeamTournamentRepository.js",
+      "src/pages/tournament/",
+      "src/components/tournament/team/",
+    ],
     match: (c) => [
       ...(c.match(/\bhashUtf8Sha256Sync\b/g) || []),
       ...(c.match(/\bhashCanonicalSetupSnapshot\s*\(/g) || []),

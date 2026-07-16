@@ -59,6 +59,8 @@
     "seed:team-tournament-cloud": "node scripts/seed-team-tournament-cloud.mjs",
     "seed:team-tournament-cloud:dry-run": "node scripts/seed-team-tournament-cloud.mjs --dry-run",
     "verify:p1_3-domain-persistence-staging": "node scripts/verify-p1_3-domain-persistence-staging.mjs",
+    "seed:tt-v6-tt32-staging": "node scripts/seed-tt-v6-tt32-staging-fixture.mjs",
+    "verify:tt-v6-tt32-staging": "node scripts/verify-tt-v6-tt32-staging-fixture.mjs",
     "test:team-tournament-tt1b": "node --test tests/team-tournament-idempotency.test.js tests/team-tournament-version-conflict.test.js tests/team-tournament-lineup-security.test.js tests/team-tournament-repository.test.js tests/team-tournament-rpc-overload.test.js",
     "migrate:team-tournament-blob-to-cloud:dry-run": "node scripts/migrate-team-tournament-blob-to-cloud.mjs --dry-run",
     "compare:team-tournament-blob-cloud": "node scripts/compare-team-tournament-blob-cloud.mjs",

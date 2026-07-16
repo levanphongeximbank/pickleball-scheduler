@@ -89,14 +89,18 @@ export default function TeamGroupDivisionPanel({
   const teamNameById = new Map(teams.map((team) => [team.id, team.name]));
   const teamById = new Map(teams.map((team) => [team.id, team]));
 
-  function persistTeamData(nextTeamData, message) {
-    onSave?.(nextTeamData);
+  async function persistTeamData(nextTeamData, message) {
+    const ok = await onSave?.(nextTeamData);
+    if (ok === false) {
+      return false;
+    }
     if (message) {
       onMessage?.(message);
     }
+    return true;
   }
 
-  function handleSeedingModeChange(event) {
+  async function handleSeedingModeChange(event) {
     if (!canManage) {
       return;
     }
@@ -110,13 +114,16 @@ export default function TeamGroupDivisionPanel({
       },
     };
 
+    const ok = await persistTeamData(nextTeamData);
+    if (!ok) {
+      return;
+    }
+
     if (groups.length > 0 && nextMode !== seedingMode) {
       onMessage?.(
         `Đã đổi chế độ hạt giống sang "${getSeedingLabel(nextMode)}". Chia lại bảng để áp dụng.`
       );
     }
-
-    persistTeamData(nextTeamData);
   }
 
   async function runGroupAssignment(options = {}) {
@@ -194,7 +201,7 @@ export default function TeamGroupDivisionPanel({
     const label = recommendedLabel || `${next.groups.length} bảng`;
     const balanceLabel = nextBalance?.balanced ? "cân bằng" : "lệch nhẹ";
     const modeLabel = getSeedingLabel(seedingMode);
-    persistTeamData(
+    await persistTeamData(
       next,
       seedingEnabled
         ? `Đã chia bảng (${modeLabel}): ${label} (${balanceLabel}).`
@@ -220,14 +227,14 @@ export default function TeamGroupDivisionPanel({
       return;
     }
 
-    persistTeamData(result.next, `Đã chia ${groupCount} bảng (${getSeedingLabel(seedingMode)}).`);
+    await persistTeamData(result.next, `Đã chia ${groupCount} bảng (${getSeedingLabel(seedingMode)}).`);
   }
 
-  function handleClearGroups() {
+  async function handleClearGroups() {
     if (!canManage) {
       return;
     }
-    persistTeamData(clearTeamGroups(teamData), "Đã xóa chia bảng.");
+    await persistTeamData(clearTeamGroups(teamData), "Đã xóa chia bảng.");
   }
 
   function formatTeamSeedLine(teamId) {

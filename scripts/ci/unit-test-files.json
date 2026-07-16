@@ -224,5 +224,6 @@
   "tests/tt-v6-p1_2-s1d-s1e-setup-mutation-foundation.test.js",
   "tests/tt-v6-p1_3-domain-persistence.test.js",
   "tests/tt-v6-p1_3-hash-snapshot-reload.test.js",
-  "tests/tt-v6-p1_3-async-hash-browser.test.js"
+  "tests/tt-v6-p1_3-async-hash-browser.test.js",
+  "tests/tt-v6-p1_3-complete-browser-hash.test.js"
 ]

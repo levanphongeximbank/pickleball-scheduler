@@ -51,7 +51,7 @@ function previewKey(tournamentId, idempotencyKey) {
 function mapHashRuntimeFailure(error) {
   const message = error?.message || "Không tính được hash setup mutation.";
   const isHashRuntime =
-    /hashUtf8Sha256Sync is unavailable|SubtleCrypto|digest/i.test(message) ||
+    /unavailable in browser runtime|SubtleCrypto|digest/i.test(message) ||
     error?.code === SETUP_MUTATION_CODES.HASH_RUNTIME_ERROR;
   return {
     ok: false,

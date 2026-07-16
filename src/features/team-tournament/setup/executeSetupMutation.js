@@ -1,10 +1,11 @@
 /**
  * P1.2 S1-D — repository executeSetupMutation transport foundation.
  * Fail-closed for undeployed domain RPCs. No blob fallback. No fake success.
+ * Browser-safe: envelope re-validation uses async SubtleCrypto hashing only.
  */
 
 import {
-  validateSetupMutationEnvelope,
+  validateSetupMutationEnvelopeAsync,
 } from "../canonical/teamTournamentMutationEnvelope.js";
 import {
   repositoryFailure,
@@ -88,7 +89,19 @@ export async function executeSetupMutation(params = {}) {
     );
   }
 
-  const validated = validateSetupMutationEnvelope(envelope);
+  let validated;
+  try {
+    validated = await validateSetupMutationEnvelopeAsync(envelope);
+  } catch (error) {
+    const message = error?.message || "Không xác thực được envelope setup mutation.";
+    return repositoryFailure(
+      /unavailable in browser runtime|SubtleCrypto|digest|HASH_RUNTIME/i.test(message)
+        ? SETUP_MUTATION_CODES.HASH_RUNTIME_ERROR
+        : SETUP_MUTATION_CODES.VALIDATION_ERROR,
+      message,
+      { provider }
+    );
+  }
   if (!validated.ok) {
     return repositoryFailure(validated.code || SETUP_MUTATION_CODES.VALIDATION_ERROR, validated.error, {
       provider,

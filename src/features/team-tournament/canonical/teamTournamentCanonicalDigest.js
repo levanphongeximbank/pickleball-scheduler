@@ -11,7 +11,9 @@ export function bytesToSha256Hex(bytes) {
 }
 
 /**
- * SHA-256 hex digest for UTF-8 text. Browser-safe (SubtleCrypto) with Node fallback.
+ * SHA-256 hex digest for UTF-8 text.
+ * Browser: SubtleCrypto only (no sync / no insecure fallback).
+ * Node: SubtleCrypto when present, else createHash.
  * @param {string} text
  * @returns {Promise<string>}
  */
@@ -22,7 +24,13 @@ export async function hashUtf8Sha256Async(text) {
     const digest = await globalThis.crypto.subtle.digest("SHA-256", data);
     return bytesToSha256Hex(new Uint8Array(digest));
   }
-  return createHash("sha256").update(payload, "utf8").digest("hex");
+  const nodeProcess = globalThis.process;
+  if (nodeProcess?.versions?.node) {
+    return createHash("sha256").update(payload, "utf8").digest("hex");
+  }
+  throw new Error(
+    "hashUtf8Sha256Async requires SubtleCrypto in browser runtime (HASH_RUNTIME_ERROR)."
+  );
 }
 
 /**
