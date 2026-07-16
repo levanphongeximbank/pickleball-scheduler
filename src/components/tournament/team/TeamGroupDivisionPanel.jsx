@@ -1,8 +1,12 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import {
   Alert,
   Button,
   Chip,
+  Dialog,
+  DialogActions,
+  DialogContent,
+  DialogTitle,
   FormControl,
   InputLabel,
   MenuItem,
@@ -15,20 +19,22 @@ import {
 
 import { TEAM_GROUP_SEEDING } from "../../../features/team-tournament/constants.js";
 import {
-  describeGroupSplit,
+  GROUP_REDRAW_DESTRUCTIVE_MESSAGE,
+  hasDependentMatchupsOrSchedule,
+  isGroupDivisionEditable,
+  listGroupDivisionOptions,
+  MIN_TEAMS_FOR_EXPLICIT_GROUPS,
   recommendGroupSizes,
-} from "../../../features/team-tournament/engines/teamRoundRobinScheduleEngine.js";
+} from "../../../features/team-tournament/engines/teamGroupDivisionPolicy.js";
+import { describeGroupSplit } from "../../../features/team-tournament/engines/teamRoundRobinScheduleEngine.js";
 import { summarizeSeededGroupBalance } from "../../../features/team-tournament/engines/teamAutoDrawEngine.js";
 import { runTeamDrawWithCanonicalAdapter } from "../../../features/competition-core/draw/adapters/teamDrawAdapter.js";
-import {
-  clearTeamGroups,
-} from "../../../features/team-tournament/engines/teamTournamentEngine.js";
+import { clearTeamGroups } from "../../../features/team-tournament/engines/teamTournamentEngine.js";
+import { buildGroupDivisionPreviewPackage } from "../../../features/team-tournament/setup/buildGroupDivisionPreview.js";
 import {
   COMPETITION_CLASS,
   prepareLivePrivatePairingOptions,
 } from "../../../features/private-pairing-rules/index.js";
-
-const MIN_TEAMS_FOR_GROUPS = 6;
 
 const GROUP_SEEDING_OPTIONS = [
   {
@@ -66,13 +72,23 @@ export default function TeamGroupDivisionPanel({
   onSave,
   onError,
   onMessage,
+  onContinueSetup,
 }) {
   const teams = teamData?.teams || [];
   const groups = teamData?.groups || [];
   const seedingMode = teamData?.settings?.groupSeeding || TEAM_GROUP_SEEDING.AVG_LEVEL;
   const seedingEnabled = seedingMode !== TEAM_GROUP_SEEDING.OFF;
   const useTopPlayerMode = seedingMode === TEAM_GROUP_SEEDING.TOP_PLAYER_THEN_TOTAL;
-  const [groupCount, setGroupCount] = useState(Math.max(2, groups.length || 2));
+  const divisionOptions = useMemo(() => listGroupDivisionOptions(teams.length), [teams.length]);
+  const defaultGroupCount =
+    divisionOptions[0]?.groupCount || Math.max(2, groups.length || 2);
+  const [groupCount, setGroupCount] = useState(defaultGroupCount);
+  const [preview, setPreview] = useState(null);
+  const [previewBusy, setPreviewBusy] = useState(false);
+  const [confirmBusy, setConfirmBusy] = useState(false);
+  const [destructiveOpen, setDestructiveOpen] = useState(false);
+  const [pendingConfirm, setPendingConfirm] = useState(null);
+
   const recommendedSizes = recommendGroupSizes(teams.length);
   const recommendedLabel = describeGroupSplit(teams.length);
   const balance = groups.length
@@ -81,16 +97,18 @@ export default function TeamGroupDivisionPanel({
   const selectedSeedingOption =
     GROUP_SEEDING_OPTIONS.find((option) => option.value === seedingMode) ||
     GROUP_SEEDING_OPTIONS[2];
+  const editable = isGroupDivisionEditable(teamData, { canManage });
+  const teamsInsufficient = teams.length < MIN_TEAMS_FOR_EXPLICIT_GROUPS;
 
-  if (teams.length < MIN_TEAMS_FOR_GROUPS) {
+  if (teamsInsufficient && !canManage) {
     return null;
   }
 
   const teamNameById = new Map(teams.map((team) => [team.id, team.name]));
   const teamById = new Map(teams.map((team) => [team.id, team]));
 
-  async function persistTeamData(nextTeamData, message) {
-    const ok = await onSave?.(nextTeamData);
+  async function persistTeamData(nextTeamData, message, options = {}) {
+    const ok = await onSave?.(nextTeamData, options);
     if (ok === false) {
       return false;
     }
@@ -101,7 +119,7 @@ export default function TeamGroupDivisionPanel({
   }
 
   async function handleSeedingModeChange(event) {
-    if (!canManage) {
+    if (!editable) {
       return;
     }
 
@@ -187,54 +205,160 @@ export default function TeamGroupDivisionPanel({
     return { next, nextBalance };
   }
 
-  async function handleAutoAssignGroups() {
-    if (!canManage) {
-      return;
-    }
-
-    const result = await runGroupAssignment();
-    if (!result) {
-      return;
-    }
-
-    const { next, nextBalance } = result;
-    const label = recommendedLabel || `${next.groups.length} bảng`;
-    const balanceLabel = nextBalance?.balanced ? "cân bằng" : "lệch nhẹ";
-    const modeLabel = getSeedingLabel(seedingMode);
-    await persistTeamData(
-      next,
-      seedingEnabled
-        ? `Đã chia bảng (${modeLabel}): ${label} (${balanceLabel}).`
-        : `Đã chia bảng ngẫu nhiên: ${label} (${balanceLabel}).`
-    );
+  async function buildPreviewPackage(nextTeamData, nextBalance, modeLabel) {
+    return buildGroupDivisionPreviewPackage({
+      nextTeamData,
+      nextBalance,
+      seedingMode,
+      modeLabel,
+    });
   }
 
-  async function handleAssignGroups() {
-    if (!canManage) {
+  async function handlePreview(options = {}) {
+    if (!editable || teamsInsufficient) {
       return;
     }
-    if (groupCount < 2) {
+    const resolvedCount = Number(options.groupCount) || groupCount;
+    if (resolvedCount < 2) {
       onError?.("Cần ít nhất 2 bảng.");
       return;
     }
-    if (groupCount > teams.length) {
+    if (resolvedCount > teams.length) {
       onError?.("Số bảng không được lớn hơn số đội.");
       return;
     }
 
-    const result = await runGroupAssignment({ groupCount });
-    if (!result) {
+    setPreviewBusy(true);
+    try {
+      const result = await runGroupAssignment({ groupCount: resolvedCount });
+      if (!result) {
+        return;
+      }
+      const modeLabel = options.auto
+        ? seedingEnabled
+          ? "auto-seeded"
+          : "auto-random"
+        : "manual";
+      const packagePreview = await buildPreviewPackage(
+        result.next,
+        result.nextBalance,
+        modeLabel
+      );
+      setPreview(packagePreview);
+      onMessage?.("Xem trước chia bảng — chưa ghi database. Bấm Xác nhận lưu để lưu.");
+    } finally {
+      setPreviewBusy(false);
+    }
+  }
+
+  async function commitPreview(forceDestructive = false) {
+    if (!preview?.nextTeamData || !editable) {
       return;
     }
 
-    await persistTeamData(result.next, `Đã chia ${groupCount} bảng (${getSeedingLabel(seedingMode)}).`);
+    const dependent = hasDependentMatchupsOrSchedule(teamData);
+    if (dependent && !forceDestructive) {
+      setPendingConfirm({ type: "replace" });
+      setDestructiveOpen(true);
+      return;
+    }
+
+    setConfirmBusy(true);
+    try {
+      let next = {
+        ...preview.nextTeamData,
+      };
+
+      if (dependent) {
+        // Clear dependent matchups/schedule locally; persist cascade as:
+        // 1) matchups.replace (empty) when needed, then 2) groups.replace.
+        next = {
+          ...next,
+          matchups: [],
+          schedule: undefined,
+        };
+
+        if ((teamData.matchups || []).length > 0) {
+          const cleared = {
+            ...teamData,
+            matchups: [],
+            schedule: undefined,
+            groups: teamData.groups || [],
+          };
+          const clearedOk = await persistTeamData(cleared, null, {
+            confirmDestructive: true,
+          });
+          if (!clearedOk) {
+            return;
+          }
+        }
+      }
+
+      const ok = await persistTeamData(
+        {
+          ...next,
+          // Keep matchups empty after cascade clear.
+          matchups: dependent ? [] : next.matchups || teamData.matchups || [],
+        },
+        `Đã lưu chia bảng (${preview.rows.length} bảng).`,
+        { confirmDestructive: dependent }
+      );
+      if (!ok) {
+        return;
+      }
+      setPreview(null);
+      setDestructiveOpen(false);
+      setPendingConfirm(null);
+    } finally {
+      setConfirmBusy(false);
+    }
   }
 
   async function handleClearGroups() {
-    if (!canManage) {
+    if (!editable) {
       return;
     }
+    if (hasDependentMatchupsOrSchedule(teamData)) {
+      setPendingConfirm({ type: "clear" });
+      setDestructiveOpen(true);
+      return;
+    }
+    setPreview(null);
     await persistTeamData(clearTeamGroups(teamData), "Đã xóa chia bảng.");
+  }
+
+  async function handleDestructiveConfirm() {
+    if (pendingConfirm?.type === "clear") {
+      setDestructiveOpen(false);
+      setConfirmBusy(true);
+      try {
+        if ((teamData.matchups || []).length > 0) {
+          const clearedMatchups = {
+            ...teamData,
+            matchups: [],
+            schedule: undefined,
+          };
+          const okClear = await persistTeamData(clearedMatchups, null, {
+            confirmDestructive: true,
+          });
+          if (!okClear) {
+            return;
+          }
+        }
+        await persistTeamData(clearTeamGroups({ ...teamData, matchups: [] }), "Đã xóa chia bảng.");
+        setPreview(null);
+      } finally {
+        setConfirmBusy(false);
+        setPendingConfirm(null);
+      }
+      return;
+    }
+    await commitPreview(true);
+  }
+
+  function handleDestructiveCancel() {
+    setDestructiveOpen(false);
+    setPendingConfirm(null);
   }
 
   function formatTeamSeedLine(teamId) {
@@ -258,17 +382,28 @@ export default function TeamGroupDivisionPanel({
             Chia bảng đấu
           </Typography>
           <Chip size="small" label={`${teams.length} đội`} />
+          {groups.length > 0 ? (
+            <Chip size="small" color="success" label={`${groups.length} bảng`} />
+          ) : null}
         </Stack>
 
-        <Alert severity="info">
-          Giải từ {MIN_TEAMS_FOR_GROUPS} đội trở lên cần chia 2 bảng trước khi tạo lịch.
-          {recommendedLabel ? ` Gợi ý: ${recommendedLabel}.` : ""}
-          {" "}
-          {selectedSeedingOption.description}
-        </Alert>
+        {teamsInsufficient ? (
+          <Alert severity="warning">
+            Cần ít nhất {MIN_TEAMS_FOR_EXPLICIT_GROUPS} đội để chia bảng. Hiện có {teams.length} đội.
+          </Alert>
+        ) : (
+          <Alert severity="info">
+            Chia bảng là bước bắt buộc trước khi tạo lịch (không tự chia khi tạo lịch).
+            {recommendedLabel ? ` Gợi ý mặc định: ${recommendedLabel}.` : ""}
+            {" "}
+            Với 8 đội có thể chọn 2 bảng × 4 hoặc 4 bảng × 2.
+            {" "}
+            {selectedSeedingOption.description}
+          </Alert>
+        )}
 
         {canManage ? (
-          <FormControl fullWidth size="small" sx={{ maxWidth: 420 }}>
+          <FormControl fullWidth size="small" sx={{ maxWidth: 420 }} disabled={!editable || teamsInsufficient}>
             <InputLabel>Chế độ hạt giống</InputLabel>
             <Select
               label="Chế độ hạt giống"
@@ -288,32 +423,119 @@ export default function TeamGroupDivisionPanel({
 
         {canManage ? (
           <Stack direction={{ xs: "column", sm: "row" }} spacing={1} alignItems={{ sm: "center" }} flexWrap="wrap" useFlexGap>
-            {recommendedSizes || teams.length >= 6 ? (
-              <Button variant="contained" onClick={handleAutoAssignGroups}>
-                {seedingEnabled ? "Chia bảng tự động (hạt giống)" : "Chia bảng ngẫu nhiên"}
-              </Button>
-            ) : null}
             <TextField
               size="small"
-              type="number"
-              label="Số bảng (thủ công)"
+              select
+              label="Số bảng"
               value={groupCount}
-              inputProps={{ min: 2, max: teams.length }}
+              disabled={!editable || teamsInsufficient}
               onChange={(event) => setGroupCount(Number(event.target.value) || 2)}
-              sx={{ width: { xs: "100%", sm: 160 } }}
-            />
-            <Button variant="outlined" onClick={handleAssignGroups}>
+              sx={{ width: { xs: "100%", sm: 180 } }}
+            >
+              {(divisionOptions.length
+                ? divisionOptions
+                : [{ groupCount: 2, label: "2 bảng" }, { groupCount: 4, label: "4 bảng" }]
+              ).map((option) => (
+                <MenuItem key={option.groupCount} value={option.groupCount}>
+                  {option.label}
+                </MenuItem>
+              ))}
+              {!divisionOptions.some((option) => option.groupCount === groupCount) ? (
+                <MenuItem value={groupCount}>{groupCount} bảng</MenuItem>
+              ) : null}
+            </TextField>
+            <Button
+              variant="contained"
+              disabled={!editable || teamsInsufficient || previewBusy}
+              onClick={() => handlePreview({ auto: true, groupCount: recommendedSizes?.length || groupCount })}
+            >
+              Chia bảng tự động
+            </Button>
+            <Button
+              variant="outlined"
+              disabled={!editable || teamsInsufficient || previewBusy}
+              onClick={() => handlePreview({ auto: false, groupCount })}
+            >
               Chia bảng thủ công
             </Button>
+            <Button
+              variant="outlined"
+              disabled={!editable || teamsInsufficient || previewBusy}
+              onClick={() => handlePreview({ auto: false, groupCount })}
+            >
+              Xem trước
+            </Button>
+            {preview ? (
+              <Button
+                variant="contained"
+                color="success"
+                disabled={!editable || confirmBusy}
+                onClick={() => commitPreview(false)}
+              >
+                Xác nhận lưu
+              </Button>
+            ) : null}
             {groups.length > 0 ? (
-              <Button variant="outlined" color="warning" onClick={handleClearGroups}>
-                Xóa chia bảng
+              <>
+                <Button
+                  variant="outlined"
+                  disabled={!editable || previewBusy}
+                  onClick={() => handlePreview({ auto: true, groupCount })}
+                >
+                  Chia lại bảng
+                </Button>
+                <Button
+                  variant="outlined"
+                  color="warning"
+                  disabled={!editable}
+                  onClick={handleClearGroups}
+                >
+                  Xóa chia bảng
+                </Button>
+              </>
+            ) : null}
+            {onContinueSetup ? (
+              <Button variant="text" onClick={onContinueSetup}>
+                Tiếp tục thiết lập
               </Button>
             ) : null}
           </Stack>
         ) : null}
 
-        {balance?.groups?.length ? (
+        {preview ? (
+          <Paper variant="outlined" sx={{ p: 1.5, bgcolor: "action.hover" }}>
+            <Stack spacing={1.25}>
+              <Typography fontWeight={700}>Xem trước chia bảng (chưa ghi DB)</Typography>
+              {preview.rows.map((row) => (
+                <Paper key={row.id || row.name} variant="outlined" sx={{ p: 1 }}>
+                  <Stack direction="row" justifyContent="space-between" spacing={1}>
+                    <Typography fontWeight={600}>{row.name}</Typography>
+                    <Chip size="small" label={`${row.teamCount} đội · TB ${row.avgRating || "—"}`} />
+                  </Stack>
+                  <Typography variant="body2" color="text.secondary">
+                    {row.teamNames.join(" · ") || "Chưa có đội"}
+                  </Typography>
+                </Paper>
+              ))}
+              <Alert severity={preview.diagnostics.complete ? "success" : "warning"}>
+                {preview.diagnostics.complete
+                  ? "Không thiếu / trùng đội."
+                  : `Thiếu: ${preview.diagnostics.missingTeamIds.length}, trùng: ${preview.diagnostics.duplicateTeamIds.length}.`}
+                {" "}
+                {preview.balancingExplanation}
+              </Alert>
+              <Typography variant="caption" color="text.secondary" component="div">
+                engineVersion: {preview.engineVersion}
+                <br />
+                engineInputHash: {preview.engineInputHash}
+                <br />
+                engineOutputHash: {preview.engineOutputHash}
+              </Typography>
+            </Stack>
+          </Paper>
+        ) : null}
+
+        {balance?.groups?.length && !preview ? (
           <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
             {balance.groups.map((group) => (
               <Chip
@@ -335,11 +557,13 @@ export default function TeamGroupDivisionPanel({
           </Stack>
         ) : null}
 
-        {groups.length === 0 ? (
+        {groups.length === 0 && !preview ? (
           <Typography variant="body2" color="text.secondary">
-            Chưa chia bảng. Bấm &quot;Chia bảng tự động&quot; hoặc chọn số bảng rồi chia thủ công.
+            Chưa chia bảng. Chọn số bảng, xem trước, rồi xác nhận lưu.
           </Typography>
-        ) : (
+        ) : null}
+
+        {groups.length > 0 && !preview ? (
           <Stack spacing={1}>
             {groups.map((group) => (
               <Paper key={group.id} variant="outlined" sx={{ p: 1.25 }}>
@@ -354,8 +578,30 @@ export default function TeamGroupDivisionPanel({
               </Paper>
             ))}
           </Stack>
-        )}
+        ) : null}
       </Stack>
+
+      <Dialog open={destructiveOpen} onClose={handleDestructiveCancel} fullWidth maxWidth="xs">
+        <DialogTitle>Xác nhận chia lại bảng</DialogTitle>
+        <DialogContent>
+          <Alert severity="warning" sx={{ mt: 1 }}>
+            {GROUP_REDRAW_DESTRUCTIVE_MESSAGE}
+          </Alert>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={handleDestructiveCancel} disabled={confirmBusy}>
+            Huỷ
+          </Button>
+          <Button
+            color="warning"
+            variant="contained"
+            onClick={handleDestructiveConfirm}
+            disabled={confirmBusy}
+          >
+            Tiếp tục
+          </Button>
+        </DialogActions>
+      </Dialog>
     </Paper>
   );
 }

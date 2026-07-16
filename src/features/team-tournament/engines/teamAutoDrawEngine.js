@@ -934,12 +934,29 @@ export function applyMlpAutoDraw(teamData, players = [], options = {}) {
     };
   }
 
+  // Owner workflow: AI team creation must NOT auto-divide groups.
+  // Groups are an explicit BTC step (preview → confirm → groups.replace).
+  const skipGroups = options.assignGroups !== true;
   let next = normalizeTeamData({
     ...teamData,
     teams: suggestion.teams,
-    groups: [],
+    groups: skipGroups ? [] : teamData.groups || [],
     matchups: [],
   });
+
+  if (skipGroups) {
+    return {
+      ok: true,
+      teamData: next,
+      balance: null,
+      warnings: [
+        ...suggestion.warnings,
+        "Đã tạo đội — chưa chia bảng. Hãy dùng bước Chia bảng đấu.",
+      ],
+      teamCount: suggestion.teams.length,
+      privatePairingError: null,
+    };
+  }
 
   const groupResult = assignSeededTeamsToGroups(next, {
     ...options,

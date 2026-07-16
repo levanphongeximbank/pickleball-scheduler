@@ -39,6 +39,10 @@ import {
   updateMatchupInTournament,
 } from "../../features/team-tournament/engines/teamTournamentEngine.js";
 import {
+  assertGroupsReadyForSchedule,
+  GROUPS_REQUIRED,
+} from "../../features/team-tournament/engines/teamGroupDivisionPolicy.js";
+import {
   COMPETITION_CLASS,
   prepareLivePrivatePairingOptions,
 } from "../../features/private-pairing-rules/index.js";
@@ -316,7 +320,12 @@ export default function TeamTournamentSetup() {
 
   const standings = useMemo(() => getStandingsTable(td), [td]);
   const groupStandings = useMemo(() => getGroupStandingsTables(td), [td]);
-  const workflow = useMemo(() => computeTeamTournamentWorkflow(td), [td]);
+  const workflow = useMemo(
+    () => computeTeamTournamentWorkflow(td, tournament),
+    [td, tournament]
+  );
+  const groupsGate = useMemo(() => assertGroupsReadyForSchedule(td), [td]);
+  const scheduleBlockedByGroups = groupsGate.ok === false;
   const allMatchupsPublished = useMemo(
     () =>
       td.matchups.length > 0 &&
@@ -387,6 +396,54 @@ export default function TeamTournamentSetup() {
     return true;
   }
 
+  async function handleSaveDraft() {
+    if (!access.canManage) {
+      return;
+    }
+    setError("");
+    const reloadResult = await reload({ silent: true, reason: "SAVE_DRAFT" });
+    if (reloadResult?.ok === false) {
+      setError(reloadResult.error || "Không tải lại được bản nháp từ get_setup v7.");
+      return;
+    }
+    const draftLabel =
+      workflow.draftStatusLabel || "Nháp";
+    setMessage(
+      `Đã lưu nháp giải (${draftLabel}). Bạn có thể đóng tab và quay lại tiếp tục thiết lập sau — không công bố.`
+    );
+  }
+
+  function goToGroupsStep() {
+    setSearchParams(
+      (prev) => {
+        const next = new URLSearchParams(prev);
+        next.set("tab", TEAM_TAB_QUERY.teams);
+        return next;
+      },
+      { replace: true }
+    );
+    setScheduleDialogOpen(false);
+    setMessage("Hãy thực hiện Chia bảng đấu trước khi tạo lịch.");
+  }
+
+  function goToNextSetupTab() {
+    const stage = workflow.stage;
+    let tab = TEAM_TAB_QUERY.teams;
+    if (stage === "disciplines") {
+      tab = TEAM_TAB_QUERY.disciplines;
+    } else if (stage === "matchups" || stage === "schedule") {
+      tab = TEAM_TAB_QUERY.matchups;
+    }
+    setSearchParams(
+      (prev) => {
+        const next = new URLSearchParams(prev);
+        next.set("tab", tab);
+        return next;
+      },
+      { replace: true }
+    );
+  }
+
   async function handleBuildScheduleConfirm(options) {
     if (!access.canManage) {
       return;
@@ -397,6 +454,14 @@ export default function TeamTournamentSetup() {
     }
     if (td.disciplines.length === 0) {
       setError("Cần ít nhất 1 nội dung thi đấu.");
+      return;
+    }
+
+    const groupReady = assertGroupsReadyForSchedule(td);
+    if (!groupReady.ok) {
+      setError(groupReady.error);
+      setScheduleDialogOpen(false);
+      goToGroupsStep();
       return;
     }
 
@@ -445,10 +510,24 @@ export default function TeamTournamentSetup() {
     );
 
     if (next?.ok === false || next?.privatePairingError) {
+      const code = next?.code || next?.privatePairingError?.code;
       setError(
         next.privatePairingError?.message ||
+          next.error ||
           "Không tạo được lịch / trận đối đầu thỏa hard rules."
       );
+      if (code === GROUPS_REQUIRED) {
+        setScheduleDialogOpen(false);
+        goToGroupsStep();
+      }
+      return;
+    }
+
+    // Schedule generation must never invent groups — reject if engine mutated groups.
+    const beforeGroupCount = (td.groups || []).length;
+    const afterGroupCount = (next.groups || []).length;
+    if (beforeGroupCount === 0 && afterGroupCount > 0) {
+      setError("Tạo lịch không được tự chia bảng. Hãy chia bảng tường minh trước.");
       return;
     }
 
@@ -991,7 +1070,26 @@ export default function TeamTournamentSetup() {
       }
     >
       <Stack spacing={2}>
-        <TeamTournamentWorkflowBar teamData={td} />
+        <TeamTournamentWorkflowBar teamData={td} tournament={tournament} />
+
+        {access.canManage ? (
+          <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap alignItems="center">
+            <Chip
+              size="small"
+              color="primary"
+              variant="outlined"
+              label={workflow.draftStatusLabel || "Nháp"}
+            />
+            <Chip
+              size="small"
+              variant="outlined"
+              label={`Bước: ${workflow.nextAction?.label || "Thiết lập"}`}
+            />
+            <Button size="small" variant="outlined" onClick={handleSaveDraft}>
+              Lưu giải
+            </Button>
+          </Stack>
+        ) : null}
 
         {access.canManage ? (
           <TournamentVprPanel
@@ -1061,6 +1159,56 @@ export default function TeamTournamentSetup() {
                   ))}
               </Stack>
             ) : null}
+            {access.canManage && td.teams.length > 0 ? (
+              <Alert severity="info">
+                <Stack spacing={1}>
+                  <Box fontWeight={700}>
+                    Bước tiếp theo: {workflow.nextAction?.label || "Thiết lập"}
+                  </Box>
+                  <Box>{workflow.nextAction?.hint || workflow.hints?.[0] || ""}</Box>
+                  <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
+                    <Button
+                      size="small"
+                      variant="contained"
+                      disabled={!workflow.nextAction?.groupActionsEnabled}
+                      onClick={() =>
+                        setMessage(
+                          workflow.nextAction?.groupActionsDisabledReason ||
+                            "Dùng khối Chia bảng đấu bên dưới: Chia bảng tự động → Xem trước → Xác nhận lưu."
+                        )
+                      }
+                    >
+                      Chia bảng tự động
+                    </Button>
+                    <Button
+                      size="small"
+                      variant="outlined"
+                      disabled={!workflow.nextAction?.groupActionsEnabled}
+                      onClick={() =>
+                        setMessage(
+                          workflow.nextAction?.groupActionsDisabledReason ||
+                            "Chọn Số bảng rồi bấm Chia bảng thủ công / Xem trước."
+                        )
+                      }
+                    >
+                      Chia bảng thủ công
+                    </Button>
+                    <Button size="small" variant="outlined" onClick={handleSaveDraft}>
+                      Lưu giải
+                    </Button>
+                    <Button size="small" variant="text" onClick={goToNextSetupTab}>
+                      Tiếp tục thiết lập
+                    </Button>
+                  </Stack>
+                  {!workflow.nextAction?.groupActionsEnabled &&
+                  workflow.nextAction?.groupActionsDisabledReason ? (
+                    <Box color="text.secondary" fontSize="0.875rem">
+                      {workflow.nextAction.groupActionsDisabledReason}
+                    </Box>
+                  ) : null}
+                </Stack>
+              </Alert>
+            ) : null}
             {access.canManage ? (
               <TeamGroupDivisionPanel
                 teamData={td}
@@ -1081,6 +1229,7 @@ export default function TeamTournamentSetup() {
                 onSave={saveTeamData}
                 onError={setError}
                 onMessage={setMessage}
+                onContinueSetup={goToNextSetupTab}
               />
             ) : null}
           </Stack>
@@ -1129,6 +1278,13 @@ export default function TeamTournamentSetup() {
             {td.groups?.length > 0 ? (
               <Alert severity="info">
                 Đã chia {td.groups.length} bảng — lịch vòng tròn chỉ tạo trận trong từng bảng.
+              </Alert>
+            ) : scheduleBlockedByGroups ? (
+              <Alert severity="warning">
+                Giải chưa được chia bảng. Vui lòng quay lại bước Đội và thực hiện Chia bảng đấu trước khi tạo lịch.
+                <Button size="small" sx={{ ml: 1 }} onClick={goToGroupsStep}>
+                  Về bước Chia bảng
+                </Button>
               </Alert>
             ) : null}
             {td.matchups.length === 0 ? (
@@ -1179,6 +1335,7 @@ export default function TeamTournamentSetup() {
               <Button
                 variant={td.matchups.length > 0 ? "outlined" : "contained"}
                 onClick={() => setScheduleDialogOpen(true)}
+                disabled={scheduleBlockedByGroups}
               >
                 {td.matchups.length > 0 ? "Tạo lại lịch vòng tròn" : "Tạo lịch vòng tròn"}
               </Button>
@@ -1266,6 +1423,7 @@ export default function TeamTournamentSetup() {
         onConfirm={handleBuildScheduleConfirm}
         teamData={td}
         hasExistingResults={countMatchupsWithSubResults(td.matchups) > 0}
+        onGoToGroups={goToGroupsStep}
         onPreview={() => {
           setScheduleDialogOpen(false);
           setSchedulePreviewOpen(true);
