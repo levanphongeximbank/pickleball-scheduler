@@ -163,6 +163,7 @@ describe("P0 roster hydration — identity mapper", () => {
     assert.equal(hydrated.members.length, 1);
     assert.equal(hydrated.members[0].resolved, false);
     assert.match(hydrated.members[0].displayName, /thiếu identity/);
+    assert.equal(hydrated.members[0].displayName.includes("ghost-player-99"), false);
     assert.match(hydrated.members[0].diagnostic, /missing_identity/);
     assert.equal(hydrated.unresolvedCount, 1);
     assert.ok(hydrated.diagnostics.includes("missing_identity:ghost-player-99"));
@@ -347,7 +348,8 @@ describe("P0 roster hydration — shared consumers", () => {
       path.join(ROOT, "src/components/tournament/TeamRosterPanel.jsx"),
       "utf8"
     );
-    assert.match(source, /hydrateTeamRoster\(\{ team, athletePool \}\)/);
+    assert.match(source, /hydrateTeamRoster\(\{/);
+    assert.match(source, /athletePoolLoading/);
     assert.match(source, /teamMembers\.map/);
     assert.match(source, /thiếu identity/);
     assert.doesNotMatch(

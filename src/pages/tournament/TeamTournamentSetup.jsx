@@ -1013,6 +1013,12 @@ export default function TeamTournamentSetup() {
               canManage={access.canManage}
               canViewAll={access.canViewAll}
               viewerPlayerId={access.viewerPlayerId}
+              athletePoolLoading={
+                clubPool.loading ||
+                (Boolean(clubPool.tenantId) && tenantPool.loading)
+              }
+              athletePoolError={clubPool.error || tenantPool.error}
+              setupReady={Boolean(tournament && td)}
               onUpdated={() => reload({ silent: true })}
               onError={setError}
               onMessage={setMessage}

@@ -1,17 +1,49 @@
 /**
- * P0 — Shared Team Tournament roster identity hydration.
+ * P0 / P0.1 — Shared Team Tournament roster identity hydration.
  *
  * Canonical: athletes.id is the primary athlete identity.
  * Cloud member player_id / athlete_id / aliases resolve through ONE mapper.
  * user_id may resolve an athlete when needed.
  * profile/blob IDs are aliases only.
- * Unresolved members are NEVER silently dropped.
+ * Unresolved members are NEVER silently dropped after pool is ready.
+ *
+ * P0.1: do not treat empty/loading pool as final missing_identity.
  */
 
 import { getPlayerGenderKey } from "../../../models/player.js";
 
+export const ROSTER_HYDRATION_STATUS = Object.freeze({
+  LOADING: "loading",
+  READY: "ready",
+  PARTIAL: "partial",
+  ERROR: "error",
+});
+
+export const ROSTER_LOADING_MESSAGE = "Đang tải thông tin VĐV trong đội…";
+export const ROSTER_MISSING_RATING_LABEL = "Chưa có trình";
+export const ROSTER_UNRESOLVED_NAME = "VĐV chưa xác định (thiếu identity)";
+export const ROSTER_MISSING_NAME = "VĐV chưa xác định (thiếu tên)";
+
 function normalizeId(value) {
   return String(value || "").trim();
+}
+
+/**
+ * Opaque cloud ids / UUIDs must never be shown as athlete names.
+ * @param {string} value
+ */
+export function looksLikeOpaqueRosterId(value) {
+  const s = String(value || "").trim();
+  if (!s) return false;
+  if (/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(s)) {
+    return true;
+  }
+  if (/^[0-9a-f]{32}$/i.test(s)) return true;
+  if (/^(ath-|player-|qa-mlp-|blob-)/i.test(s) && s.length >= 12) {
+    // slug-like stored ids — still not human display names
+    return !/\s/.test(s) && !/[àáạảãâầấậẩẫăằắặẳẵèéẹẻẽêềếệểễìíịỉĩòóọỏõôồốộổỗơờớợởỡùúụủũưừứựửữỳýỵỷỹđ]/i.test(s);
+  }
+  return false;
 }
 
 /**
@@ -106,15 +138,6 @@ export function buildRosterAthleteIndex(athletePool = []) {
  * @param {string} rawId
  * @param {{ byAthleteId: Map, byKey: Map }} index
  * @param {{ userId?: string|null }} [hints]
- * @returns {{
- *   ok: boolean,
- *   athleteId: string|null,
- *   athlete: object|null,
- *   via: "athlete"|"alias"|"user"|null,
- *   ambiguous?: boolean,
- *   athleteIds?: string[],
- *   diagnostic: string|null
- * }}
  */
 export function resolveRosterMemberIdentity(rawId, index, hints = {}) {
   const id = normalizeId(rawId);
@@ -196,6 +219,130 @@ export function resolveRosterMemberIdentity(rawId, index, hints = {}) {
   };
 }
 
+/**
+ * Locked display-name precedence. Never returns cloud player_id / UUID.
+ *
+ * 1. athlete.displayName / fullName / name
+ * 2. linked profile full name
+ * 3. email / nickname fallback
+ * 4. explicit unresolved placeholder (only when allowUnresolvedPlaceholder)
+ *
+ * @param {object|null} athlete
+ * @param {{ allowUnresolvedPlaceholder?: boolean, missingKind?: "identity"|"name" }} [options]
+ * @returns {string|null}
+ */
+export function resolveCanonicalRosterDisplayName(athlete, options = {}) {
+  const allowUnresolvedPlaceholder = options.allowUnresolvedPlaceholder !== false;
+  const missingKind = options.missingKind || "identity";
+
+  if (!athlete) {
+    return allowUnresolvedPlaceholder ? ROSTER_UNRESOLVED_NAME : null;
+  }
+
+  const candidates = [
+    athlete.displayName,
+    athlete.fullName,
+    athlete.name,
+    athlete.profileFullName,
+    athlete.profile_full_name,
+    athlete.profile?.fullName,
+    athlete.profile?.display_name,
+    athlete.profile?.displayName,
+    athlete.email,
+    athlete.nickname,
+  ];
+
+  for (const candidate of candidates) {
+    const text = String(candidate || "").trim();
+    if (!text) continue;
+    if (looksLikeOpaqueRosterId(text)) continue;
+    const athleteId = getRosterAthleteId(athlete);
+    if (athleteId && text === athleteId) continue;
+    return text;
+  }
+
+  if (!allowUnresolvedPlaceholder) return null;
+  return missingKind === "name" ? ROSTER_MISSING_NAME : ROSTER_UNRESOLVED_NAME;
+}
+
+/**
+ * Normalize canonical rating fields once.
+ * Preserves numeric 0 (no truthy/falsy loss).
+ *
+ * @param {object|null} athlete
+ * @returns {{ ratingValue: number|null, ratingLabel: string }}
+ */
+export function normalizeRosterRating(athlete) {
+  if (!athlete) {
+    return { ratingValue: null, ratingLabel: ROSTER_MISSING_RATING_LABEL };
+  }
+
+  const candidates = [
+    athlete.currentRating,
+    athlete.current_rating,
+    athlete.vprRating,
+    athlete.vpr_rating,
+    athlete.rating,
+    athlete.level,
+    athlete.skillLevel,
+  ];
+
+  for (const raw of candidates) {
+    if (raw === null || raw === undefined || raw === "") continue;
+    const num = typeof raw === "number" ? raw : Number(raw);
+    if (Number.isFinite(num)) {
+      return {
+        ratingValue: num,
+        ratingLabel: String(num),
+      };
+    }
+  }
+
+  return { ratingValue: null, ratingLabel: ROSTER_MISSING_RATING_LABEL };
+}
+
+/**
+ * Resolve overall roster hydration status from setup + pool readiness.
+ *
+ * @param {{
+ *   setupReady?: boolean,
+ *   athletePoolLoading?: boolean,
+ *   athletePoolError?: object|null|boolean,
+ *   unresolvedCount?: number,
+ * }} input
+ * @returns {"loading"|"ready"|"partial"|"error"}
+ */
+export function resolveRosterHydrationStatus({
+  setupReady = true,
+  athletePoolLoading = false,
+  athletePoolError = null,
+  unresolvedCount = 0,
+} = {}) {
+  if (athletePoolError) {
+    return ROSTER_HYDRATION_STATUS.ERROR;
+  }
+  if (!setupReady || athletePoolLoading) {
+    return ROSTER_HYDRATION_STATUS.LOADING;
+  }
+  if (Number(unresolvedCount) > 0) {
+    return ROSTER_HYDRATION_STATUS.PARTIAL;
+  }
+  return ROSTER_HYDRATION_STATUS.READY;
+}
+
+/**
+ * Visible roster row label: NAME · gender · ratingLabel
+ * @param {object} member
+ */
+export function formatHydratedMemberLabel(member) {
+  if (!member) return "";
+  if (member.pending) return ROSTER_LOADING_MESSAGE;
+  const parts = [member.displayName];
+  if (member.gender) parts.push(String(member.gender));
+  if (member.ratingLabel) parts.push(String(member.ratingLabel));
+  return parts.filter(Boolean).join(" · ");
+}
+
 function extractMemberSourceRows(team, teamMemberRows) {
   if (Array.isArray(teamMemberRows) && teamMemberRows.length > 0) {
     return teamMemberRows.map((row, index) => ({
@@ -245,23 +392,42 @@ function resolveDeputyAthleteIds(team, index) {
   return { athleteIds, storedIds };
 }
 
-function memberDisplayName(athlete, storedPlayerId, resolved) {
-  if (!resolved.ok || !athlete) {
-    const id = storedPlayerId || "unknown";
-    return `${id} (thiếu identity)`;
-  }
-  const name = String(athlete.name || athlete.displayName || "").trim();
-  if (!name) {
-    return `${resolved.athleteId} (thiếu tên)`;
-  }
-  return name;
-}
-
 function inferRole({ isCaptain, isDeputy, explicitRole }) {
   if (explicitRole) return explicitRole;
   if (isCaptain) return "captain";
   if (isDeputy) return "deputy";
   return "member";
+}
+
+function buildPendingMembers(sourceRows, team) {
+  const captainStored = normalizeId(team?.captainPlayerId);
+  const deputyStored = new Set(
+    (team?.deputyPlayerIds || []).map((id) => normalizeId(id)).filter(Boolean)
+  );
+
+  return sourceRows.map((row) => {
+    const storedPlayerId = row.storedPlayerId || `missing-${row.sourceIndex}`;
+    const isCaptain = Boolean(captainStored && storedPlayerId === captainStored);
+    const isDeputy = deputyStored.has(storedPlayerId);
+    return {
+      athleteId: null,
+      userId: row.userId,
+      displayName: "",
+      gender: null,
+      rating: null,
+      ratingValue: null,
+      ratingLabel: "",
+      role: inferRole({ isCaptain, isDeputy, explicitRole: row.role }),
+      isCaptain,
+      isDeputy,
+      resolved: false,
+      pending: true,
+      storedPlayerId,
+      via: null,
+      diagnostic: null,
+      player: null,
+    };
+  });
 }
 
 /**
@@ -271,39 +437,67 @@ function inferRole({ isCaptain, isDeputy, explicitRole }) {
  *   team: object,
  *   teamMemberRows?: object[],
  *   athletePool?: object[],
+ *   poolStatus?: "loading"|"ready"|"error",
+ *   setupReady?: boolean,
+ *   athletePoolLoading?: boolean,
+ *   athletePoolError?: object|null|boolean,
  * }} input
- * @returns {{
- *   teamId: string,
- *   name: string,
- *   members: Array<{
- *     athleteId: string|null,
- *     userId: string|null,
- *     displayName: string,
- *     gender: string|null,
- *     rating: number|null,
- *     role: string,
- *     isCaptain: boolean,
- *     isDeputy: boolean,
- *     resolved: boolean,
- *     storedPlayerId: string,
- *     via: string|null,
- *     diagnostic: string|null,
- *     player: object|null
- *   }>,
- *   unresolvedCount: number,
- *   duplicateAliases: Array<{ aliasId: string, athleteIds: string[] }>,
- *   diagnostics: string[]
- * }}
  */
 export function hydrateTeamRoster({
   team = {},
   teamMemberRows = null,
   athletePool = [],
+  poolStatus = null,
+  setupReady = true,
+  athletePoolLoading = false,
+  athletePoolError = null,
 } = {}) {
+  const sourceRows = extractMemberSourceRows(team, teamMemberRows);
+  const effectivePoolStatus =
+    poolStatus ||
+    (athletePoolError
+      ? "error"
+      : athletePoolLoading || !setupReady
+        ? "loading"
+        : "ready");
+
+  if (effectivePoolStatus === "loading") {
+    return {
+      teamId: normalizeId(team?.id) || "",
+      name: String(team?.name || "").trim(),
+      members: buildPendingMembers(sourceRows, team),
+      memberCount: sourceRows.length,
+      unresolvedCount: 0,
+      duplicateAliases: [],
+      diagnostics: [],
+      status: ROSTER_HYDRATION_STATUS.LOADING,
+      loadingMessage: ROSTER_LOADING_MESSAGE,
+    };
+  }
+
+  if (effectivePoolStatus === "error") {
+    return {
+      teamId: normalizeId(team?.id) || "",
+      name: String(team?.name || "").trim(),
+      members: buildPendingMembers(sourceRows, team).map((member) => ({
+        ...member,
+        pending: false,
+        displayName: ROSTER_UNRESOLVED_NAME,
+        ratingLabel: ROSTER_MISSING_RATING_LABEL,
+        diagnostic: "athlete_pool_error",
+      })),
+      memberCount: sourceRows.length,
+      unresolvedCount: sourceRows.length,
+      duplicateAliases: [],
+      diagnostics: ["athlete_pool_error"],
+      status: ROSTER_HYDRATION_STATUS.ERROR,
+      loadingMessage: null,
+    };
+  }
+
   const index = buildRosterAthleteIndex(athletePool);
   const captain = resolveCaptainAthleteId(team, index);
   const deputies = resolveDeputyAthleteIds(team, index);
-  const sourceRows = extractMemberSourceRows(team, teamMemberRows);
   const diagnostics = [];
 
   if (index.duplicateAliases.length > 0) {
@@ -334,15 +528,30 @@ export function hydrateTeamRoster({
       diagnostics.push(resolved.diagnostic);
     }
 
+    const displayName = resolveCanonicalRosterDisplayName(athlete, {
+      allowUnresolvedPlaceholder: true,
+      missingKind: resolved.ok ? "name" : "identity",
+    });
+
+    // Never leak stored player_id / UUID into the visible name.
+    const safeDisplayName =
+      displayName && !looksLikeOpaqueRosterId(displayName)
+        ? displayName
+        : resolved.ok
+          ? ROSTER_MISSING_NAME
+          : ROSTER_UNRESOLVED_NAME;
+
     const genderRaw = athlete?.gender ?? null;
-    const ratingRaw = athlete?.rating ?? athlete?.level ?? null;
+    const { ratingValue, ratingLabel } = normalizeRosterRating(athlete);
 
     return {
       athleteId,
       userId,
-      displayName: memberDisplayName(athlete, storedPlayerId, resolved),
+      displayName: safeDisplayName,
       gender: genderRaw,
-      rating: ratingRaw != null && ratingRaw !== "" ? Number(ratingRaw) || ratingRaw : null,
+      rating: ratingValue,
+      ratingValue,
+      ratingLabel,
       role: inferRole({
         isCaptain,
         isDeputy,
@@ -351,6 +560,7 @@ export function hydrateTeamRoster({
       isCaptain,
       isDeputy,
       resolved: resolved.ok === true,
+      pending: false,
       storedPlayerId: storedPlayerId || `missing-${row.sourceIndex}`,
       via: resolved.via,
       diagnostic: resolved.diagnostic,
@@ -359,68 +569,79 @@ export function hydrateTeamRoster({
             ...athlete,
             id: storedPlayerId || athleteId,
             athleteId: athleteId || athlete?.athleteId || null,
-            name: memberDisplayName(athlete, storedPlayerId, resolved),
+            name: safeDisplayName,
+            displayName: safeDisplayName,
             gender: genderRaw,
-            rating: ratingRaw,
-            level: athlete?.level ?? ratingRaw,
+            rating: ratingValue,
+            ratingValue,
+            ratingLabel,
+            level: athlete?.level ?? ratingValue,
           }
         : null,
     };
+  });
+
+  const unresolvedCount = members.filter((member) => !member.resolved).length;
+  const status = resolveRosterHydrationStatus({
+    setupReady: true,
+    athletePoolLoading: false,
+    athletePoolError: null,
+    unresolvedCount,
   });
 
   return {
     teamId: normalizeId(team?.id) || "",
     name: String(team?.name || "").trim(),
     members,
-    unresolvedCount: members.filter((member) => !member.resolved).length,
+    memberCount: members.length,
+    unresolvedCount,
     duplicateAliases: index.duplicateAliases,
     diagnostics: [...new Set(diagnostics)],
+    status,
+    loadingMessage: null,
   };
 }
 
 /**
  * Hydrate every team in a tournament teamData blob.
- *
- * @param {object} teamData
- * @param {object[]} athletePool
- * @returns {ReturnType<typeof hydrateTeamRoster>[]}
  */
-export function hydrateAllTeamRosters(teamData, athletePool = []) {
+export function hydrateAllTeamRosters(teamData, athletePool = [], options = {}) {
   return (teamData?.teams || []).map((team) =>
-    hydrateTeamRoster({ team, athletePool })
+    hydrateTeamRoster({ team, athletePool, ...options })
   );
 }
 
 /**
  * Stats from a hydrated roster (badge count === rendered members).
- *
- * @param {ReturnType<typeof hydrateTeamRoster>|null} hydrated
- * @returns {{ total: number, males: number, females: number, unresolvedCount: number }}
+ * While loading, gender stays 0 only when no members; UI should hide gender during loading.
  */
 export function computeHydratedRosterStats(hydrated) {
   let males = 0;
   let females = 0;
   const members = hydrated?.members || [];
+  const pending = hydrated?.status === ROSTER_HYDRATION_STATUS.LOADING;
 
-  for (const member of members) {
-    const gender = getPlayerGenderKey(member.gender);
-    if (gender === "male") males += 1;
-    else if (gender === "female") females += 1;
+  if (!pending) {
+    for (const member of members) {
+      if (member.pending) continue;
+      const gender = getPlayerGenderKey(member.gender);
+      if (gender === "male") males += 1;
+      else if (gender === "female") females += 1;
+    }
   }
 
   return {
-    total: members.length,
-    males,
-    females,
-    unresolvedCount: hydrated?.unresolvedCount || 0,
+    total: hydrated?.memberCount ?? members.length,
+    males: pending ? 0 : males,
+    females: pending ? 0 : females,
+    unresolvedCount: pending ? 0 : hydrated?.unresolvedCount || 0,
+    pending,
+    status: hydrated?.status || ROSTER_HYDRATION_STATUS.READY,
   };
 }
 
 /**
  * Identity-aware membership set for picker / already-assigned filters.
- *
- * @param {ReturnType<typeof hydrateTeamRoster>|null} hydrated
- * @returns {Set<string>}
  */
 export function collectHydratedMemberKeys(hydrated) {
   const keys = new Set();
@@ -440,22 +661,22 @@ export function collectHydratedMemberKeys(hydrated) {
 
 /**
  * Project hydrated members to legacy player rows for lineup selectors.
- * `id` stays the stored cloud player_id so membership checks keep working.
- *
- * @param {ReturnType<typeof hydrateTeamRoster>|null} hydrated
- * @returns {object[]}
  */
 export function hydratedMembersAsPlayers(hydrated) {
-  return (hydrated?.members || []).map((member) => {
-    if (member.player) return member.player;
-    return {
-      id: member.storedPlayerId,
-      athleteId: member.athleteId,
-      name: member.displayName,
-      gender: member.gender || "",
-      rating: member.rating,
-      unresolved: true,
-      diagnostic: member.diagnostic,
-    };
-  });
+  return (hydrated?.members || [])
+    .filter((member) => !member.pending)
+    .map((member) => {
+      if (member.player) return member.player;
+      return {
+        id: member.storedPlayerId,
+        athleteId: member.athleteId,
+        name: member.displayName,
+        gender: member.gender || "",
+        rating: member.ratingValue,
+        ratingValue: member.ratingValue,
+        ratingLabel: member.ratingLabel,
+        unresolved: true,
+        diagnostic: member.diagnostic,
+      };
+    });
 }
