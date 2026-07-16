@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { listPlayersForClubAware } from "../../features/club/repositories/canonicalPlayerPickerAdapter.js";
+import { loadTeamBuilderClubCandidatePool } from "../../features/pairing-candidates/index.js";
 import {
   Alert,
   Autocomplete,
@@ -109,17 +109,27 @@ function TeamCard({
   );
 
   const [filteredClubPlayers, setFilteredClubPlayers] = useState([]);
+  const [filteredClubError, setFilteredClubError] = useState(null);
 
   useEffect(() => {
     let cancelled = false;
     if (sourceClubFilter === ALL_CLUBS_FILTER || !sourceClubFilter) {
       setFilteredClubPlayers([]);
+      setFilteredClubError(null);
       return undefined;
     }
-    listPlayersForClubAware(sourceClubFilter).then((result) => {
-      if (!cancelled) {
-        setFilteredClubPlayers(result.ok ? result.legacyPlayers || [] : []);
+    loadTeamBuilderClubCandidatePool(sourceClubFilter).then((result) => {
+      if (cancelled) return;
+      if (!result.ok) {
+        setFilteredClubPlayers([]);
+        setFilteredClubError(
+          result.message ||
+            "Không tải được danh sách VĐV CLB. Không dùng roster blob."
+        );
+        return;
       }
+      setFilteredClubPlayers(result.players || []);
+      setFilteredClubError(null);
     });
     return () => {
       cancelled = true;
@@ -275,6 +285,10 @@ function TeamCard({
             {warning}
           </Alert>
         ))}
+
+        {filteredClubError ? (
+          <Alert severity="error">{filteredClubError}</Alert>
+        ) : null}
 
         {canManage ? (
           <>

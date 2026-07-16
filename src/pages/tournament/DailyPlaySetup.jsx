@@ -1,6 +1,6 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Link as RouterLink, useNavigate, useParams } from "react-router-dom";
-import { useClubPlayerPool } from "../../features/club/hooks/useClubPlayerPool.js";
+import { useClubPairingCandidatePool } from "../../features/pairing-candidates/index.js";
 
 import {
   Alert,
@@ -105,7 +105,17 @@ export default function DailyPlaySetup() {
     [activeClubId, tournamentId, localRevision]
   );
 
-  const { players } = useClubPlayerPool(activeClubId, { revision: localRevision });
+  const {
+    players,
+    error: playersLoadError,
+    emptyMessage: playersEmptyMessage,
+  } = useClubPairingCandidatePool(activeClubId, { revision: localRevision });
+
+  useEffect(() => {
+    if (playersLoadError?.message) {
+      setError(playersLoadError.message);
+    }
+  }, [playersLoadError]);
 
   const courts = useMemo(
     () => loadCourtsForClub(activeClubId),
@@ -382,6 +392,11 @@ export default function DailyPlaySetup() {
           {error && (
             <Alert severity="error" sx={{ mb: 2 }} onClose={() => setError(null)}>
               {error}
+            </Alert>
+          )}
+          {!error && playersEmptyMessage && (
+            <Alert severity="warning" sx={{ mb: 2 }}>
+              {playersEmptyMessage}
             </Alert>
           )}
         </>

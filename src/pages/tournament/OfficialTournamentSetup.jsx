@@ -24,9 +24,9 @@ import {
 import { useClub } from "../../context/ClubContext.jsx";
 import { loadCourtsForClub } from "../../domain/clubStorage.js";
 import {
-  useClubPlayerPool,
-  useTenantPlayerPool,
-} from "../../features/club/hooks/useClubPlayerPool.js";
+  useClubPairingCandidatePool,
+  useTenantPairingCandidatePool,
+} from "../../features/pairing-candidates/index.js";
 import TournamentVprPanel from "../../features/vpr-ranking/components/TournamentVprPanel.jsx";
 import {
   getTournament,
@@ -210,13 +210,20 @@ export default function OfficialTournamentSetup() {
     [tournament?.tenantId, activeClubId, currentTenantId]
   );
 
-  const { players: allTenantPlayers } = useTenantPlayerPool(tenantId, {
+  const {
+    players: allTenantPlayers,
+    error: tenantPlayersError,
+  } = useTenantPairingCandidatePool(tenantId, {
     revision: localRevision,
   });
-  const { players } = useClubPlayerPool(activeClubId, {
+  const {
+    players,
+    error: clubPlayersError,
+  } = useClubPairingCandidatePool(activeClubId, {
     tenantId,
     revision: localRevision,
   });
+  const playersLoadError = clubPlayersError || tenantPlayersError;
 
   const isAiBalance = officialMode === OFFICIAL_MODE.AI_BALANCE;
 
@@ -1316,6 +1323,11 @@ export default function OfficialTournamentSetup() {
           {message && (
             <Alert severity="success" sx={{ mb: 2 }} onClose={() => setMessage(null)}>
               {message}
+            </Alert>
+          )}
+          {playersLoadError && (
+            <Alert severity="error" sx={{ mb: 2 }}>
+              {playersLoadError.message}
             </Alert>
           )}
           {error && (

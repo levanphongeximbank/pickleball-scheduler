@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { useClubPlayerPool } from "../../features/club/hooks/useClubPlayerPool.js";
+import { useClubPairingCandidatePool } from "../../features/pairing-candidates/index.js";
 import { Link as RouterLink, useNavigate, useParams, useSearchParams } from "react-router-dom";
 
 import {
@@ -67,7 +67,10 @@ export default function IndividualRegistrationPage() {
     [activeClubId, tournamentId, revision]
   );
 
-  const { players } = useClubPlayerPool(activeClubId, { revision });
+  const {
+    players,
+    error: playersLoadError,
+  } = useClubPairingCandidatePool(activeClubId, { revision });
   const event = tournament?.events?.[0] || null;
   const isSingle = resolveIsSingle(event?.eventType);
   const linkedPlayerId = user?.playerId ? String(user.playerId) : "";
@@ -282,6 +285,11 @@ export default function IndividualRegistrationPage() {
       {error && (
         <Alert severity="error" sx={{ mb: 1 }} onClose={() => setError(null)}>
           {error}
+        </Alert>
+      )}
+      {playersLoadError && (
+        <Alert severity="error" sx={{ mb: 1 }}>
+          {playersLoadError.message}
         </Alert>
       )}
       {message && (

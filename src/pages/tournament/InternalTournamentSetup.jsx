@@ -23,7 +23,10 @@ import ArrowBackIcon from "@mui/icons-material/ArrowBack";
 
 import { useClub } from "../../context/ClubContext.jsx";
 import { loadCourtsForClub } from "../../domain/clubStorage.js";
-import { listPlayersForClubAware } from "../../features/club/repositories/canonicalPlayerPickerAdapter.js";
+import {
+  loadTournamentPickerClubCandidatePool,
+  loadTournamentPickerTenantCandidatePool,
+} from "../../features/pairing-candidates/index.js";
 import TournamentCourtSchedulePanel from "../../components/tournament/TournamentCourtSchedulePanel.jsx";
 import {
   getTournament,
@@ -85,10 +88,6 @@ import TournamentSetupShell from "../../components/tournament/TournamentSetupShe
 import TournamentSelectedPlayersPanel from "../../components/tournament/TournamentSelectedPlayersPanel.jsx";
 import {
   findTournamentClubId,
-  getClubById,
-  getClubInternalTournamentPlayersAware,
-  getTenantPlayersAware,
-  canViewFullClubMembers,
 } from "../../features/club/index.js";
 import { resolveTenantIdForClub } from "../../features/tenant/guards/tenantGuard.js";
 import { isAiEngineEnabled } from "../../features/ai-assistant/index.js";
@@ -193,8 +192,6 @@ export default function InternalTournamentSetup() {
     }
   }, [tournament?.id, tournament?.founderPairingConstraints]);
 
-  const isClubInternal = tournament?.type === "club_internal";
-
   const playerTenantId = useMemo(
     () => tournament?.tenantId || resolveTenantIdForClub(sourceClubId || tournamentClubId),
     [tournament?.tenantId, sourceClubId, tournamentClubId]
@@ -202,40 +199,42 @@ export default function InternalTournamentSetup() {
 
   const [players, setPlayers] = useState([]);
   const [tenantPlayers, setTenantPlayers] = useState([]);
+  const [playersLoadError, setPlayersLoadError] = useState(null);
 
   useEffect(() => {
     let cancelled = false;
     (async () => {
       if (!sourceClubId) {
-        if (!cancelled) setPlayers([]);
-        return;
-      }
-      if (isClubInternal) {
-        const club = getClubById(sourceClubId, playerTenantId);
-        const forTournamentInvite = Boolean(
-          club && user && !canViewFullClubMembers(user, club)
-        );
-        const result = await getClubInternalTournamentPlayersAware(
-          sourceClubId,
-          playerTenantId,
-          { forTournamentInvite }
-        );
         if (!cancelled) {
-          setPlayers(result.ok ? result.legacyPlayers || result.data || [] : []);
+          setPlayers([]);
+          setPlayersLoadError(null);
         }
         return;
       }
-      const result = await listPlayersForClubAware(sourceClubId, {
+      const result = await loadTournamentPickerClubCandidatePool(sourceClubId, {
         tenantId: playerTenantId,
       });
-      if (!cancelled) {
-        setPlayers(result.ok ? result.legacyPlayers || [] : []);
+      if (cancelled) return;
+      if (!result.ok) {
+        setPlayers([]);
+        setPlayersLoadError({
+          code: result.code || "REPOSITORY_ERROR",
+          message:
+            result.message ||
+            "Không tải được danh sách VĐV canonical. Không dùng roster blob.",
+        });
+        return;
+      }
+      setPlayers(result.players || []);
+      setPlayersLoadError(null);
+      if (result.empty && result.message) {
+        setPlayersLoadError(null);
       }
     })();
     return () => {
       cancelled = true;
     };
-  }, [isClubInternal, sourceClubId, localRevision, user, playerTenantId]);
+  }, [sourceClubId, localRevision, playerTenantId]);
 
   useEffect(() => {
     let cancelled = false;
@@ -243,10 +242,21 @@ export default function InternalTournamentSetup() {
       setTenantPlayers([]);
       return undefined;
     }
-    getTenantPlayersAware(playerTenantId).then((result) => {
-      if (!cancelled) {
-        setTenantPlayers(result.ok ? result.legacyPlayers || result.data || [] : []);
+    loadTournamentPickerTenantCandidatePool(playerTenantId).then((result) => {
+      if (cancelled) return;
+      if (!result.ok) {
+        setTenantPlayers([]);
+        setPlayersLoadError((prev) =>
+          prev || {
+            code: result.code || "REPOSITORY_ERROR",
+            message:
+              result.message ||
+              "Không tải được danh sách VĐV tenant. Không dùng roster blob.",
+          }
+        );
+        return;
       }
+      setTenantPlayers(result.players || []);
     });
     return () => {
       cancelled = true;
@@ -1053,6 +1063,11 @@ export default function InternalTournamentSetup() {
           {error && (
             <Alert severity="error" sx={{ mb: 2 }} onClose={() => setError(null)}>
               {error}
+            </Alert>
+          )}
+          {playersLoadError && (
+            <Alert severity="error" sx={{ mb: 2 }}>
+              {playersLoadError.message}
             </Alert>
           )}
           {warnings.length > 0 && (
