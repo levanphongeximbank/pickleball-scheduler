@@ -68,6 +68,14 @@ export function useTeamTournamentPage({
   const [canSaveDraft, setCanSaveDraft] = useState(null);
   const [canSubmit, setCanSubmit] = useState(null);
   const [deadlineStatus, setDeadlineStatus] = useState(null);
+  const [schemaVersion, setSchemaVersion] = useState(null);
+  const [snapshotMeta, setSnapshotMeta] = useState(null);
+  const [diagnostic, setDiagnostic] = useState(null);
+  const [driftDetected, setDriftDetected] = useState(false);
+  const [setupBlocked, setSetupBlocked] = useState(false);
+  const [setupBlockCode, setSetupBlockCode] = useState(null);
+  const [setupMutationStatus, setSetupMutationStatus] = useState("idle");
+  const [latestTournamentVersion, setLatestTournamentVersion] = useState(1);
   const rosterSignatureRef = useRef("");
   const pollRef = useRef(null);
   const loadingRef = useRef(false);
@@ -84,6 +92,12 @@ export function useTeamTournamentPage({
       setCanSaveDraft(null);
       setCanSubmit(null);
       setDeadlineStatus(null);
+      setSchemaVersion(null);
+      setSnapshotMeta(null);
+      setDiagnostic(null);
+      setDriftDetected(false);
+      setSetupBlocked(false);
+      setSetupBlockCode(null);
       return false;
     }
 
@@ -93,6 +107,13 @@ export function useTeamTournamentPage({
     setAggregate(result.aggregate);
     setVersion(result.version ?? 1);
     setProvider(result.provider);
+    setSchemaVersion(result.schemaVersion ?? null);
+    setSnapshotMeta(result.snapshotMeta ?? null);
+    setDiagnostic(result.diagnostic ?? null);
+    setDriftDetected(result.driftDetected === true);
+    setSetupBlocked(result.setupBlocked === true);
+    setSetupBlockCode(result.setupBlockCode ?? null);
+    setLatestTournamentVersion(result.latestTournamentVersion ?? result.version ?? 1);
 
     const rawTeamData = result.teamData || result.aggregate?.teamData;
     const synced = rawTeamData
@@ -123,7 +144,7 @@ export function useTeamTournamentPage({
   }, []);
 
   const reload = useCallback(
-    async ({ silent = false } = {}) => {
+    async ({ silent = false, schemaVersion: readSchemaVersion, diagnostic: readDiagnostic } = {}) => {
       if (!tournamentId) {
         const missing = { ok: false, error: "Thiếu tournamentId.", code: "MISSING_ID" };
         applyLoadResult(missing);
@@ -163,13 +184,21 @@ export function useTeamTournamentPage({
         reloadTrigger: silent ? "silent" : "explicit",
       });
 
-      let result = await orchestrator.loadTournament(loadClubId, tournamentId);
+      const readOptions = {};
+      if (readSchemaVersion != null) {
+        readOptions.schemaVersion = Number(readSchemaVersion);
+      }
+      if (readDiagnostic === true) {
+        readOptions.diagnostic = true;
+      }
+
+      let result = await orchestrator.loadTournament(loadClubId, tournamentId, readOptions);
 
       // Preferred activeClub may still miss (race / stale cache): rescan once.
       if (!result.ok && isTeamTournamentNotFound(result)) {
         const rescannedClubId = resolveTournamentClubId(null, tournamentId);
         if (rescannedClubId && rescannedClubId !== loadClubId) {
-          result = await orchestrator.loadTournament(rescannedClubId, tournamentId);
+          result = await orchestrator.loadTournament(rescannedClubId, tournamentId, readOptions);
         }
       }
 
@@ -344,6 +373,15 @@ export function useTeamTournamentPage({
     canSaveDraft,
     canSubmit,
     deadlineStatus,
+    schemaVersion,
+    snapshotMeta,
+    diagnostic,
+    driftDetected,
+    setupBlocked,
+    setupBlockCode,
+    setupMutationStatus,
+    latestTournamentVersion,
+    setSetupMutationStatus,
     reload,
     runMutation,
     saveSubMatchDraft: (payload, commandOptions) =>

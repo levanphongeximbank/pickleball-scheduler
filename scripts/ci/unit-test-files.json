@@ -220,5 +220,6 @@
   "tests/tt-v6-p1_2-hash-parity.test.js",
   "tests/tt-v6-p1_2-mutation-envelope.test.js",
   "tests/tt-v6-p1_2-s1b-snapshot-schema-contract.test.js",
-  "tests/tt-v6-p1_2-s1c-get-setup-v7.test.js"
+  "tests/tt-v6-p1_2-s1c-get-setup-v7.test.js",
+  "tests/tt-v6-p1_2-s1d-s1e-setup-mutation-foundation.test.js"
 ]

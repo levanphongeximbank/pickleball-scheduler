@@ -47,6 +47,7 @@ import { REPOSITORY_ERROR_CODES } from "./teamTournamentRepositoryTypes.js";
 import { subscribeCloudTournament } from "./teamTournamentRealtimeRepository.js";
 import { loadClubData } from "../../../domain/clubStorage.js";
 import { isTeamTournament } from "../engines/teamTournamentEngine.js";
+import { executeSetupMutation as executeSetupMutationFoundation } from "../setup/executeSetupMutation.js";
 
 const replayCache = new Map();
 
@@ -562,6 +563,18 @@ export function createCloudTeamTournamentRepository() {
 
     async subscribeTournament(clubId, tournamentId, handlers = {}) {
       return subscribeCloudTournament(this, clubId, tournamentId, handlers);
+    },
+
+    /**
+     * P1.2 S1-D foundation — fail-closed until domain RPCs deploy.
+     * @param {{ rpcName?: string, tournamentId: string, envelope: object }} params
+     */
+    async executeSetupMutation(params = {}) {
+      return executeSetupMutationFoundation({
+        ...params,
+        provider: "cloud",
+        envSource: params.envSource,
+      });
     },
   };
 }

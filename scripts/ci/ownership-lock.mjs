@@ -598,6 +598,7 @@ const RULES = [
       "src/features/team-tournament/repositories/teamTournamentCanonical.js",
       "src/features/team-tournament/repositories/teamTournamentIdempotency.js",
       "src/features/team-tournament/repositories/teamTournamentCompare.js",
+      "src/features/team-tournament/setup/",
       "scripts/lib/team-tournament-shadow-compare-report.mjs",
     ],
     match: (c) => [

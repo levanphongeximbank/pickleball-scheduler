@@ -155,5 +155,9 @@ export function createShadowTeamTournamentRepository(options = {}) {
     subscribeTournament(clubId, tournamentId, handlers) {
       return cloud.subscribeTournament(clubId, tournamentId, handlers);
     },
+
+    executeSetupMutation(params = {}) {
+      return cloud.executeSetupMutation(params);
+    },
   };
 }

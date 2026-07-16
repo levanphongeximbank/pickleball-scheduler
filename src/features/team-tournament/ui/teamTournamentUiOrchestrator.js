@@ -224,6 +224,16 @@ export function createTeamTournamentUiOrchestrator(options = {}) {
           canSubmit: result.canSubmit ?? null,
           deadlineStatus: result.deadlineStatus ?? null,
           viewerTeamId: result.viewerTeamId ?? null,
+          schemaVersion: result.schemaVersion ?? null,
+          snapshotMeta: result.snapshot ?? null,
+          diagnostic: result.diagnostic ?? null,
+          driftDetected: result.driftDetected === true,
+          setupBlocked: result.setupBlocked === true,
+          setupBlockCode: result.diagnostic?.driftCode || null,
+          latestTournamentVersion: result.version ?? result.data?.version ?? 1,
+          viewer: result.viewer ?? null,
+          permissions: result.permissions ?? null,
+          operations: result.operations ?? null,
         };
       } catch (error) {
         logger.error("[TT-1C] loadTournament failed", error);
