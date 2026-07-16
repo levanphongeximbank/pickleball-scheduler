@@ -141,6 +141,7 @@ export function mergeShowcaseAthletePool({
   scopeMode = SHOWCASE_CLUB_SCOPE.CLUB,
   clubAthletes = [],
   tenantAthletes = [],
+  clubs = [],
   selectedClubId = "",
   hostClubId = "",
 } = {}) {
@@ -156,17 +157,24 @@ export function mergeShowcaseAthletePool({
         ? normalizeId(selectedClubId)
         : "";
 
+  const clubNamesById = new Map(
+    asList(clubs)
+      .map((club) => [normalizeId(club?.id), String(club?.name || "").trim()])
+      .filter(([clubId, clubName]) => clubId && clubName)
+  );
   const byId = new Map();
   for (const athlete of source) {
     const id = normalizeId(athlete?.athleteId || athlete?.id);
     if (!id) continue;
 
     const existing = byId.get(id);
+    const athleteClubId = normalizeId(athlete.clubId || athlete.membershipClubId);
     const clubLabel =
       athlete.clubName ||
       athlete.club?.name ||
       athlete.membershipClubName ||
       athlete.hostClubName ||
+      clubNamesById.get(athleteClubId) ||
       "";
     const next = {
       ...athlete,

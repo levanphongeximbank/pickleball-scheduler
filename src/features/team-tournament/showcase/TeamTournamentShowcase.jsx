@@ -225,6 +225,16 @@ export default function TeamTournamentShowcase({
       });
       return;
     }
+    const tenantScopeDefault =
+      canSelectTenantScope &&
+      (tournament?.settings?.athleteScopeMode === "tenant" ||
+        tournament?.settings?.allowTenantAthleteScope === true);
+    const initialAthletes = tenantScopeDefault
+      ? tenantAthletes
+      : clubAthletes.length
+        ? clubAthletes
+        : players;
+
     dispatch({
       type: "OPEN_LIVE",
       payload: {
@@ -233,12 +243,15 @@ export default function TeamTournamentShowcase({
         setupConfig: {
           teamCount: requestedTeamCount || SHOWCASE_DEFAULT_TEAM_COUNT,
           groupCount: 2,
-          selectedAthleteIds: (clubAthletes.length ? clubAthletes : players)
+          selectedAthleteIds: initialAthletes
             .map((player) => String(player?.id || player?.athleteId || ""))
             .filter(Boolean),
-          scopeMode: tournament?.clubId && !tournament?.settings?.allowTenantAthleteScope
-            ? "host"
-            : "club",
+          scopeMode: tenantScopeDefault
+            ? "tenant"
+            : tournament?.clubId &&
+                tournament?.settings?.allowTenantAthleteScope !== true
+              ? "host"
+              : "club",
           selectedClubId: clubId || tournament?.clubId || "",
           athletesPerTeam: 4,
         },

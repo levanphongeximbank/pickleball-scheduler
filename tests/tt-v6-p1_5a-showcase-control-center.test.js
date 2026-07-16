@@ -15,6 +15,7 @@ import {
   mergeShowcaseAthletePool,
   reduceShowcaseState,
   createInitialShowcaseState,
+  resolveShowcaseClubScopeConfig,
   selectAllEligibleShowcaseAthletes,
 } from "../src/features/team-tournament/showcase/index.js";
 import {
@@ -58,6 +59,32 @@ test("club scope: tenant merge dedupes athletes.id", () => {
   });
   assert.equal(merged.length, 32);
   assert.equal(new Set(merged.map((row) => row.id)).size, 32);
+});
+
+test("explicit tenant policy enables all-club scope and resolves club names", () => {
+  const athlete = {
+    ...toPlayers().at(0),
+    clubName: "",
+  };
+  const clubs = [{ id: TT_V6_TT32_FIXTURE.clubId, name: TT_V6_TT32_FIXTURE.clubName }];
+  const scope = resolveShowcaseClubScopeConfig({
+    tournament: {
+      clubId: TT_V6_TT32_FIXTURE.clubId,
+      settings: { athleteScopeMode: "tenant", allowTenantAthleteScope: true },
+    },
+    clubs,
+    canSelectTenantScope: true,
+    scopeMode: SHOWCASE_CLUB_SCOPE.TENANT,
+  });
+  const merged = mergeShowcaseAthletePool({
+    scopeMode: scope.scopeMode,
+    tenantAthletes: [athlete],
+    clubs,
+  });
+
+  assert.equal(scope.locked, false);
+  assert.equal(scope.scopeMode, SHOWCASE_CLUB_SCOPE.TENANT);
+  assert.equal(merged.at(0).clubName, TT_V6_TT32_FIXTURE.clubName);
 });
 
 test("select all / clear all behavior", () => {

@@ -482,12 +482,17 @@ export default function TeamTournamentSetup() {
     );
   }
 
+  const showcaseClubId = String(effectiveClubId || activeClubId || "");
+  const showcaseClubAthlete = [...players, ...allTenantPlayers].find(
+    (player) =>
+      String(player?.clubId || player?.sourceClubId || "") === showcaseClubId &&
+      String(player?.clubName || "").trim()
+  );
   const clubNameForShowcase =
-    clubs?.find((club) => String(club.id) === String(effectiveClubId || activeClubId))
-      ?.name ||
-    effectiveClubId ||
-    activeClubId ||
-    "—";
+    clubs?.find((club) => String(club.id) === showcaseClubId)?.name ||
+    showcaseClubAthlete?.clubName ||
+    tournament?.clubName ||
+    "CLB chủ quản";
 
   const showcaseEntryVisible = canShowShowcaseEntry({
     canManage: access.canManage,
