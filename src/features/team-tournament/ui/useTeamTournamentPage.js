@@ -1,14 +1,45 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { findTournamentClubId } from "../../club/services/clubTournamentBridge.js";
+import {
+  buildTournamentNotFoundMessage,
+  resolveTournamentClubId,
+} from "../../club/services/clubTournamentBridge.js";
 import {
   getTeamTournamentUiOrchestrator,
   mapRepositoryResultToUi,
+  UI_MUTATION_ERROR,
 } from "./teamTournamentUiOrchestrator.js";
-import { REPOSITORY_REALTIME_FALLBACK } from "../repositories/teamTournamentRepositoryTypes.js";
+import {
+  REPOSITORY_ERROR_CODES,
+  REPOSITORY_REALTIME_FALLBACK,
+} from "../repositories/teamTournamentRepositoryTypes.js";
 import { syncDreambreakerForAllMatchups } from "../engines/dreambreakerEngine.js";
 import { useTeamTournamentRealtime } from "./useTeamTournamentRealtime.js";
+import {
+  computeTournamentRosterSetupSignature,
+} from "../engines/teamRosterHydrationCache.js";
+import { logTeamRosterHydrationTransition } from "../engines/teamRosterHydrationDiagnostics.js";
+import { isSetupMutationFoundationEnabled } from "../setup/setupMutationFeatureGate.js";
 
 const DEFAULT_POLL_MS = REPOSITORY_REALTIME_FALLBACK.pollingIntervalMs;
+
+function isTeamTournamentNotFound(result) {
+  const code = String(result?.code || "");
+  return (
+    code === REPOSITORY_ERROR_CODES.NOT_FOUND ||
+    code === UI_MUTATION_ERROR.NOT_FOUND ||
+    code === "NOT_FOUND"
+  );
+}
+
+/**
+ * Pure helper for tests: resolve club for Team detail load (preferred → scan).
+ * @param {string|null|undefined} preferredClubId
+ * @param {string|null|undefined} tournamentId
+ */
+export function resolveTeamTournamentLoadClubId(preferredClubId, tournamentId) {
+  // Only return a club that actually hosts the tournament (never a guess).
+  return resolveTournamentClubId(preferredClubId, tournamentId);
+}
 
 /**
  * TT-1C page hook — repository read path + polling + mutation helpers.
@@ -31,12 +62,22 @@ export function useTeamTournamentPage({
   const [provider, setProvider] = useState(null);
   const [error, setError] = useState(null);
   const [dataVersion, setDataVersion] = useState(0);
+  const [rosterSetupRevision, setRosterSetupRevision] = useState(0);
   const [versionConflict, setVersionConflict] = useState(false);
   const [serverTime, setServerTime] = useState(null);
   const [lineupDeadline, setLineupDeadline] = useState(null);
   const [canSaveDraft, setCanSaveDraft] = useState(null);
   const [canSubmit, setCanSubmit] = useState(null);
   const [deadlineStatus, setDeadlineStatus] = useState(null);
+  const [schemaVersion, setSchemaVersion] = useState(null);
+  const [snapshotMeta, setSnapshotMeta] = useState(null);
+  const [diagnostic, setDiagnostic] = useState(null);
+  const [driftDetected, setDriftDetected] = useState(false);
+  const [setupBlocked, setSetupBlocked] = useState(false);
+  const [setupBlockCode, setSetupBlockCode] = useState(null);
+  const [setupMutationStatus, setSetupMutationStatus] = useState("idle");
+  const [latestTournamentVersion, setLatestTournamentVersion] = useState(1);
+  const rosterSignatureRef = useRef("");
   const pollRef = useRef(null);
   const loadingRef = useRef(false);
   const reloadFnRef = useRef(null);
@@ -52,6 +93,12 @@ export function useTeamTournamentPage({
       setCanSaveDraft(null);
       setCanSubmit(null);
       setDeadlineStatus(null);
+      setSchemaVersion(null);
+      setSnapshotMeta(null);
+      setDiagnostic(null);
+      setDriftDetected(false);
+      setSetupBlocked(false);
+      setSetupBlockCode(null);
       return false;
     }
 
@@ -61,11 +108,32 @@ export function useTeamTournamentPage({
     setAggregate(result.aggregate);
     setVersion(result.version ?? 1);
     setProvider(result.provider);
+    setSchemaVersion(result.schemaVersion ?? null);
+    setSnapshotMeta(result.snapshotMeta ?? null);
+    setDiagnostic(result.diagnostic ?? null);
+    setDriftDetected(result.driftDetected === true);
+    setSetupBlocked(result.setupBlocked === true);
+    setSetupBlockCode(result.setupBlockCode ?? null);
+    setLatestTournamentVersion(result.latestTournamentVersion ?? result.version ?? 1);
 
     const rawTeamData = result.teamData || result.aggregate?.teamData;
     const synced = rawTeamData
       ? syncDreambreakerForAllMatchups(rawTeamData).teamData
       : null;
+
+    const nextRosterSignature = computeTournamentRosterSetupSignature(synced);
+    const rosterChanged = nextRosterSignature !== rosterSignatureRef.current;
+    if (rosterChanged) {
+      rosterSignatureRef.current = nextRosterSignature;
+      setRosterSetupRevision((v) => v + 1);
+      logTeamRosterHydrationTransition("useTeamTournamentPage.rosterSetupRevision", {
+        tournamentId: result.tournament?.id,
+        setupVersion: result.version,
+        rosterChanged: true,
+        reloadTrigger: "applyLoadResult",
+      });
+    }
+
     setTeamData(synced);
     setDataVersion((v) => v + 1);
     setServerTime(result.serverTime ?? null);
@@ -77,14 +145,29 @@ export function useTeamTournamentPage({
   }, []);
 
   const reload = useCallback(
-    async ({ silent = false } = {}) => {
-      const effectiveClubId = clubId || findTournamentClubId(tournamentId);
+    async ({ silent = false, schemaVersion: readSchemaVersion, diagnostic: readDiagnostic } = {}) => {
       if (!tournamentId) {
+        const missing = { ok: false, error: "Thiếu tournamentId.", code: "MISSING_ID" };
+        applyLoadResult(missing);
         setLoading(false);
-        return { ok: false, error: "Thiếu clubId hoặc tournamentId." };
+        return missing;
       }
 
-      const loadClubId = effectiveClubId || tournamentId;
+      // Never fall back to tournamentId as clubId — that creates a dead deep-link load.
+      const loadClubId = resolveTeamTournamentLoadClubId(clubId, tournamentId);
+
+      if (!loadClubId) {
+        const missingClub = {
+          ok: false,
+          code: REPOSITORY_ERROR_CODES.NOT_FOUND,
+          error: buildTournamentNotFoundMessage(tournamentId, {
+            kind: "giải đồng đội",
+          }),
+        };
+        applyLoadResult(missingClub);
+        setLoading(false);
+        return missingClub;
+      }
 
       if (loadingRef.current && !silent) {
         return { ok: false, error: "Đang tải..." };
@@ -95,10 +178,54 @@ export function useTeamTournamentPage({
         setLoading(true);
       }
 
-      const result = await orchestrator.loadTournament(loadClubId, tournamentId);
+      logTeamRosterHydrationTransition("useTeamTournamentPage.reload.start", {
+        tournamentId,
+        clubId: loadClubId,
+        silent,
+        reloadTrigger: silent ? "silent" : "explicit",
+      });
+
+      const readOptions = {};
+      if (readSchemaVersion != null) {
+        readOptions.schemaVersion = Number(readSchemaVersion);
+      } else if (
+        isSetupMutationFoundationEnabled() &&
+        ["cloud_primary", "cloud_only"].includes(orchestrator.getMode())
+      ) {
+        readOptions.schemaVersion = 7;
+      }
+      if (readDiagnostic === true) {
+        readOptions.diagnostic = true;
+      }
+
+      let result = await orchestrator.loadTournament(loadClubId, tournamentId, readOptions);
+
+      // Preferred activeClub may still miss (race / stale cache): rescan once.
+      if (!result.ok && isTeamTournamentNotFound(result)) {
+        const rescannedClubId = resolveTournamentClubId(null, tournamentId);
+        if (rescannedClubId && rescannedClubId !== loadClubId) {
+          result = await orchestrator.loadTournament(rescannedClubId, tournamentId, readOptions);
+        }
+      }
+
+      if (!result.ok && isTeamTournamentNotFound(result)) {
+        result = {
+          ...result,
+          error: buildTournamentNotFoundMessage(tournamentId, {
+            kind: "giải đồng đội",
+          }),
+        };
+      }
+
       applyLoadResult(result);
       setLoading(false);
       loadingRef.current = false;
+      logTeamRosterHydrationTransition("useTeamTournamentPage.reload.done", {
+        tournamentId,
+        ok: result.ok,
+        silent,
+        setupVersion: result.version,
+      });
       return result;
     },
     [applyLoadResult, clubId, orchestrator, tournamentId]
@@ -147,6 +274,11 @@ export function useTeamTournamentPage({
           setTeamData(synced);
           setAggregate(result.aggregate);
           setVersion(result.version ?? version);
+          const nextSignature = computeTournamentRosterSetupSignature(synced);
+          if (nextSignature !== rosterSignatureRef.current) {
+            rosterSignatureRef.current = nextSignature;
+            setRosterSetupRevision((v) => v + 1);
+          }
           setDataVersion((v) => v + 1);
         }
       }
@@ -168,6 +300,79 @@ export function useTeamTournamentPage({
       return result;
     },
     [clubId, orchestrator, reload, tournamentId]
+  );
+
+  const persistSetupTeamData = useCallback(
+    async (nextTeamData, options = {}) => {
+      if (!clubId || !tournamentId) {
+        return { ok: false, error: "Thiếu clubId hoặc tournamentId." };
+      }
+      const result = await orchestrator.persistSetupTeamData(clubId, tournamentId, nextTeamData, {
+        previousTeamData: teamData,
+        tournament,
+        expectedTournamentVersion: version,
+        ...options,
+      });
+      if (result.ok) {
+        const loaded = result.tournament
+          ? result
+          : await reload({ silent: true, schemaVersion: 7 });
+        if (loaded.ok) {
+          applyLoadResult(loaded);
+        }
+      }
+      return result;
+    },
+    [
+      applyLoadResult,
+      clubId,
+      orchestrator,
+      reload,
+      teamData,
+      tournament,
+      tournamentId,
+      version,
+    ]
+  );
+
+  const saveDraft = useCallback(
+    async (options = {}) => {
+      if (!clubId || !tournamentId) {
+        return { ok: false, error: "Thiếu clubId hoặc tournamentId." };
+      }
+      const result = await orchestrator.saveDraft(clubId, tournamentId, {
+        teamData,
+        tournament,
+        aggregate,
+        expectedTournamentVersion: version,
+        ...options,
+      });
+      if (result.isVersionConflict) {
+        setVersionConflict(true);
+        await reload({ silent: true, schemaVersion: 7 });
+        return result;
+      }
+      if (result.ok) {
+        const loaded = result.tournament
+          ? result
+          : await reload({ silent: true, schemaVersion: 7 });
+        if (loaded.ok) {
+          applyLoadResult(loaded);
+        }
+      }
+      return result;
+    },
+    [
+      aggregate,
+      applyLoadResult,
+      clubId,
+      orchestrator,
+      reload,
+      teamData,
+      tournament,
+      tournamentId,
+      version,
+    ]
   );
 
   const getVisibleLineups = useCallback(
@@ -240,17 +445,29 @@ export function useTeamTournamentPage({
     isCloudPrimary: orchestrator.getMode() === "cloud_primary",
     error,
     dataVersion,
+    rosterSetupRevision,
     versionConflict,
     serverTime,
     lineupDeadline,
     canSaveDraft,
     canSubmit,
     deadlineStatus,
+    schemaVersion,
+    snapshotMeta,
+    diagnostic,
+    driftDetected,
+    setupBlocked,
+    setupBlockCode,
+    setupMutationStatus,
+    latestTournamentVersion,
+    setSetupMutationStatus,
     reload,
     runMutation,
     saveSubMatchDraft: (payload, commandOptions) =>
       orchestrator.saveSubMatchDraft(clubId, tournamentId, payload, commandOptions),
     patchTeamData,
+    persistSetupTeamData,
+    saveDraft,
     getVisibleLineups,
     getLineupOverrideOps: (matchupId, teamId) =>
       orchestrator.getLineupOverrideOps(clubId, tournamentId, { matchupId, teamId }),

@@ -44,6 +44,15 @@ export function mapTournamentToAggregate(tournament, provider = "blob") {
   const teamData = normalizeTeamData(tournament?.teamData || tournament || {});
   const matchups = teamData.matchups || [];
 
+  const headerSettings =
+    tournament?.settings && typeof tournament.settings === "object"
+      ? tournament.settings
+      : {};
+  const mergedSettings = {
+    ...headerSettings,
+    ...(teamData.settings || {}),
+  };
+
   const aggregate = {
     id: String(tournament?.id || ""),
     clubId: String(tournament?.clubId || ""),
@@ -64,8 +73,19 @@ export function mapTournamentToAggregate(tournament, provider = "blob") {
     schedule: extractScheduleFromMatchups(matchups),
     disciplines: teamData.disciplines || [],
     groups: teamData.groups || [],
-    settings: teamData.settings || {},
-    teamData,
+    settings: mergedSettings,
+    tournamentLevel:
+      tournament?.tournamentLevel || mergedSettings.tournamentLevel || undefined,
+    certificationStatus:
+      tournament?.certificationStatus ||
+      mergedSettings.certificationStatus ||
+      undefined,
+    rankingEnabled:
+      tournament?.rankingEnabled ?? mergedSettings.rankingEnabled ?? undefined,
+    teamData: {
+      ...teamData,
+      settings: mergedSettings,
+    },
   };
 
   return aggregate;

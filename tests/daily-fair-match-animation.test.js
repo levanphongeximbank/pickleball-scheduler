@@ -70,18 +70,20 @@ function buildSettings(playerIds, extra = {}) {
   };
 }
 
-function createResult(players, matchCount) {
+async function createResult(players, matchCount) {
   return createFairDailyMatches({
     players,
     settings: buildSettings(players.map((player) => String(player.id))),
     tournamentId: "daily-1",
     matchCount,
+    skipPrivatePairingPrepare: true,
+    privatePairingRules: [],
   });
 }
 
 describe("daily fair match animation utils", () => {
-  it("buildDailyFairMatchSteps mirrors engine matches for 16 players and 4 courts", () => {
-    const result = createResult(menPlayers, 4);
+  it("buildDailyFairMatchSteps mirrors engine matches for 16 players and 4 courts", async () => {
+    const result = await createResult(menPlayers, 4);
     assert.equal(result.ok, true);
     assert.equal(result.matches.length, 4);
 
@@ -92,8 +94,8 @@ describe("daily fair match animation utils", () => {
     assert.equal(steps[0].courtLabel, "Chưa xếp sân");
   });
 
-  it("15 players leaves remainder in waiting next round", () => {
-    const result = createResult(fifteenPlayers, 3);
+  it("15 players leaves remainder in waiting next round", async () => {
+    const result = await createResult(fifteenPlayers, 3);
     assert.equal(result.ok, true);
     assert.equal(result.matches.length, 3);
     assert.equal(result.waitingPlayers.length, 3);
@@ -112,8 +114,8 @@ describe("daily fair match animation utils", () => {
     assert.ok(waitingNext.length > 0);
   });
 
-  it("doubles match uses 4 players per match", () => {
-    const result = createResult(menPlayers, 1);
+  it("doubles match uses 4 players per match", async () => {
+    const result = await createResult(menPlayers, 1);
     const step = buildDailyFairMatchSteps(result.matches, menPlayers)[0];
     assert.equal(step.teamA.players.length + step.teamB.players.length, 4);
   });
@@ -163,8 +165,8 @@ describe("daily fair match animation utils", () => {
     assert.equal(resolveDailyMatchDisplayStatus(assignedMatch, 0, 1), "on_court");
   });
 
-  it("buildDailyFairMatchAnimationPayload keeps engine team ids", () => {
-    const result = createResult(menPlayers, 2);
+  it("buildDailyFairMatchAnimationPayload keeps engine team ids", async () => {
+    const result = await createResult(menPlayers, 2);
     const payload = buildDailyFairMatchAnimationPayload({
       result,
       players: menPlayers,
@@ -270,7 +272,7 @@ describe("daily fair match animation modes", () => {
     const { FAIR_MATCH_CONTROL_MODES } = await import(
       "../src/components/tournament/animation/daily/useFairMatchSequence.js"
     );
-    const result = createResult(menPlayers, 2);
+    const result = await createResult(menPlayers, 2);
     const steps = buildDailyFairMatchSteps(result.matches, menPlayers);
 
     assert.equal(steps.length, 2);
@@ -282,8 +284,8 @@ describe("daily fair match animation modes", () => {
     );
   });
 
-  it("skip and replay do not mutate engine match data", () => {
-    const result = createResult(menPlayers, 2);
+  it("skip and replay do not mutate engine match data", async () => {
+    const result = await createResult(menPlayers, 2);
     const engineSnapshot = JSON.stringify(result.matches);
     const steps = buildDailyFairMatchSteps(result.matches, menPlayers);
 

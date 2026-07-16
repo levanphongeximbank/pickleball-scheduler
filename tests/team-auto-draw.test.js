@@ -249,11 +249,23 @@ test("assignSeededTeamsToGroups — 4 đội chia 2 bảng skill snake", () => {
   assert.equal(balance.groups.length, 2);
 });
 
-test("applyMlpAutoDraw — ghép đội và chia bảng", () => {
+test("applyMlpAutoDraw — ghép đội không tự chia bảng", () => {
   const teamData = initializeTeamTournamentData({
     settings: { formatPreset: "mlp_4" },
   });
   const result = applyMlpAutoDraw(teamData, makePlayers(12));
+
+  assert.equal(result.ok, true);
+  assert.equal(result.teamData.teams.length, 3);
+  assert.equal((result.teamData.groups || []).length, 0);
+  assert.ok((result.warnings || []).some((warning) => /chưa chia bảng/i.test(warning)));
+});
+
+test("applyMlpAutoDraw — opt-in assignGroups vẫn chia bảng khi yêu cầu", () => {
+  const teamData = initializeTeamTournamentData({
+    settings: { formatPreset: "mlp_4" },
+  });
+  const result = applyMlpAutoDraw(teamData, makePlayers(12), { assignGroups: true });
 
   assert.equal(result.ok, true);
   assert.equal(result.teamData.teams.length, 3);

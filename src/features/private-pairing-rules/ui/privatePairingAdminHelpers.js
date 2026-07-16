@@ -60,15 +60,61 @@ export const CONSTRAINT_TYPE_GROUPS = Object.freeze([
   },
   {
     id: "group",
-    label: "Nhóm/đội",
+    label: "Nhóm",
     types: [
       PRIVATE_PAIRING_CONSTRAINT_TYPE.SAME_GROUP,
       PRIVATE_PAIRING_CONSTRAINT_TYPE.DIFFERENT_GROUP,
-      PRIVATE_PAIRING_CONSTRAINT_TYPE.SAME_TEAM,
-      PRIVATE_PAIRING_CONSTRAINT_TYPE.DIFFERENT_TEAM,
     ],
   },
 ]);
+
+/**
+ * Types listed in Admin historically but not evaluated by private pairing hard/soft runtime.
+ * Existing saved rules are kept; activate / create treat them as unsupported.
+ * Competition Core may still define these — do not invent new private types here.
+ */
+export const RUNTIME_UNSUPPORTED_PRIVATE_CONSTRAINT_TYPES = Object.freeze([
+  PRIVATE_PAIRING_CONSTRAINT_TYPE.SAME_TEAM,
+  PRIVATE_PAIRING_CONSTRAINT_TYPE.DIFFERENT_TEAM,
+]);
+
+export const RUNTIME_UNSUPPORTED_PRIVATE_CONSTRAINT_TYPE_SET = new Set(
+  RUNTIME_UNSUPPORTED_PRIVATE_CONSTRAINT_TYPES
+);
+
+/** Selectable types when creating a new rule (unsupported types excluded). */
+export const CONSTRAINT_TYPE_OPTIONS_FOR_CREATE = Object.freeze(
+  Object.values(PRIVATE_PAIRING_CONSTRAINT_TYPE).filter(
+    (type) => !RUNTIME_UNSUPPORTED_PRIVATE_CONSTRAINT_TYPE_SET.has(type)
+  )
+);
+
+export function isRuntimeUnsupportedPrivateConstraintType(constraintType) {
+  return RUNTIME_UNSUPPORTED_PRIVATE_CONSTRAINT_TYPE_SET.has(String(constraintType || ""));
+}
+
+/**
+ * @param {Array<{ constraintType?: string, active?: boolean }>} [rules]
+ * @returns {Array<{ constraintType: string, label: string, message: string }>}
+ */
+export function listUnsupportedRuntimeRules(rules = []) {
+  return (rules || [])
+    .filter((rule) => isRuntimeUnsupportedPrivateConstraintType(rule?.constraintType))
+    .map((rule) => ({
+      id: rule.id,
+      constraintType: rule.constraintType,
+      label: CONSTRAINT_TYPE_LABELS[rule.constraintType] || rule.constraintType,
+      active: rule.active !== false,
+      message: `Loại "${CONSTRAINT_TYPE_LABELS[rule.constraintType] || rule.constraintType}" chưa được runtime hỗ trợ — không được kích hoạt như rule hoạt động.`,
+    }));
+}
+
+/**
+ * Types safe to treat as executable for activate preflight.
+ */
+export function getRuntimeSupportedPrivateConstraintTypes() {
+  return [...CONSTRAINT_TYPE_OPTIONS_FOR_CREATE];
+}
 
 export const SCOPE_LABELS = Object.freeze({
   [PRIVATE_PAIRING_SCOPE.GLOBAL]: "Toàn hệ thống",

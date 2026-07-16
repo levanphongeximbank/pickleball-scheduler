@@ -1,5 +1,8 @@
 import { useEffect, useMemo, useState } from "react";
-import { loadTeamBuilderClubCandidatePool } from "../../features/pairing-candidates/index.js";
+import {
+  listAvailableAthletes,
+  TEAM_TOURNAMENT_ATHLETE_SCOPE,
+} from "../../features/team-tournament/services/teamTournamentAthletePoolService.js";
 import {
   Alert,
   Autocomplete,
@@ -24,18 +27,31 @@ import AddIcon from "@mui/icons-material/Add";
 
 import { getPlayerGenderKey } from "../../models/player.js";
 import {
-  computeTeamRosterStats,
-  findPlayerTeam,
+  findPlayerTeamInPool,
   getTeamRosterWarnings,
   getVisibleTeams,
 } from "../../features/team-tournament/engines/teamRosterEngine.js";
+import {
+  ROSTER_HYDRATION_STATUS,
+  ROSTER_LOADING_MESSAGE,
+  collectHydratedMemberKeys,
+  computeHydratedRosterStats,
+  formatHydratedMemberLabel,
+  hydrateTeamRoster,
+} from "../../features/team-tournament/engines/teamRosterHydration.js";
+import {
+  ROSTER_BACKGROUND_REFRESH_MESSAGE,
+  ROSTER_LIFECYCLE_STATUS,
+  resolveTeamRosterHydrationState,
+} from "../../features/team-tournament/engines/teamRosterHydrationCache.js";
+import { logTeamRosterHydrationTransition } from "../../features/team-tournament/engines/teamRosterHydrationDiagnostics.js";
 import { isMlpFormat } from "../../features/team-tournament/engines/mlpPresetEngine.js";
 import {
   addPlayerToTeamRoster,
+  applyAiGeneratedTeamsToTournament,
   assignCaptainToTeam,
   assignDeputiesToTeam,
   createTeamInTournament,
-  patchTeamTournament,
   removePlayerFromTeamRoster,
   updateTeamDetails,
 } from "../../features/team-tournament/services/teamTournamentService.js";
@@ -44,6 +60,7 @@ import TournamentPlayerQuickAddDialog from "./TournamentPlayerQuickAddDialog.jsx
 import ExistingTeamClonePanel from "./ExistingTeamClonePanel.jsx";
 import TeamSubstitutionPanel from "./TeamSubstitutionPanel.jsx";
 import { FORMAT_PRESET } from "../../features/team-tournament/constants.js";
+import { COMPETITION_CLASS } from "../../features/private-pairing-rules/index.js";
 import { getAuthOptions } from "../../auth/guardAction.js";
 import { getPermissionsForRole } from "../../features/identity/matrix/rolePermissions.js";
 
@@ -60,7 +77,19 @@ function playerLabel(player) {
     return "";
   }
   const gender = player.gender ? ` · ${player.gender}` : "";
-  return `${player.name || player.id}${gender}`;
+  const ratingLabel =
+    player.ratingLabel ||
+    (player.ratingValue != null
+      ? String(player.ratingValue)
+      : player.rating != null && player.rating !== ""
+        ? String(player.rating)
+        : "");
+  const rating = ratingLabel ? ` · ${ratingLabel}` : "";
+  return `${player.name || player.displayName || "VĐV"}${gender}${rating}`;
+}
+
+function memberLabel(member) {
+  return formatHydratedMemberLabel(member);
 }
 
 function TeamCard({
@@ -72,7 +101,13 @@ function TeamCard({
   canManage,
   clubId,
   tournamentId,
+  tenantId = null,
   defaultClubName = "",
+  setupVersion = 0,
+  athletePoolLoadingInitial = false,
+  athletePoolRefreshing = false,
+  athletePoolError = null,
+  setupReady = true,
   onUpdated,
   onError,
   onMessage,
@@ -87,54 +122,83 @@ function TeamCard({
   const [genderFilter, setGenderFilter] = useState("all");
   const [quickAddOpen, setQuickAddOpen] = useState(false);
 
-  const playerById = useMemo(() => {
-    const map = new Map();
-    [...allTenantPlayers, ...clubPlayers].forEach((player) => {
-      map.set(String(player.id), player);
-    });
-    return map;
-  }, [allTenantPlayers, clubPlayers]);
-
-  const rosterPlayers = useMemo(
-    () => [...playerById.values()],
-    [playerById]
+  const athletePool = useMemo(
+    () => [...allTenantPlayers, ...clubPlayers],
+    [allTenantPlayers, clubPlayers]
   );
 
-  const teamPlayers = useMemo(
+  const hydratedRoster = useMemo(
     () =>
-      team.playerIds
-        .map((playerId) => playerById.get(String(playerId)))
-        .filter(Boolean),
-    [playerById, team.playerIds]
+      resolveTeamRosterHydrationState({
+        tournamentId,
+        setupVersion,
+        team,
+        athletePool,
+        setupReady,
+        poolLoadingInitial: athletePoolLoadingInitial,
+        poolRefreshing: athletePoolRefreshing,
+        athletePoolError,
+      }),
+    [
+      tournamentId,
+      setupVersion,
+      team,
+      athletePool,
+      setupReady,
+      athletePoolLoadingInitial,
+      athletePoolRefreshing,
+      athletePoolError,
+    ]
+  );
+
+  const rosterLoading =
+    hydratedRoster.lifecycleStatus === ROSTER_LIFECYCLE_STATUS.LOADING_INITIAL;
+  const backgroundRefreshing = hydratedRoster.backgroundRefreshing === true;
+  const teamMembers = rosterLoading
+    ? []
+    : hydratedRoster.members.filter((member) => !member.pending);
+  const assignedMemberKeys = useMemo(
+    () => collectHydratedMemberKeys(hydratedRoster),
+    [hydratedRoster]
   );
 
   const [filteredClubPlayers, setFilteredClubPlayers] = useState([]);
   const [filteredClubError, setFilteredClubError] = useState(null);
+  const [filteredClubEmptyMessage, setFilteredClubEmptyMessage] = useState(null);
 
   useEffect(() => {
     let cancelled = false;
     if (sourceClubFilter === ALL_CLUBS_FILTER || !sourceClubFilter) {
       setFilteredClubPlayers([]);
       setFilteredClubError(null);
+      setFilteredClubEmptyMessage(null);
       return undefined;
     }
-    loadTeamBuilderClubCandidatePool(sourceClubFilter).then((result) => {
+    listAvailableAthletes({
+      tournamentId,
+      clubId: sourceClubFilter,
+      tenantId,
+      scopeMode: TEAM_TOURNAMENT_ATHLETE_SCOPE.CLUB,
+      callerName: "TeamRosterPanel.TeamCard.clubFilter",
+    }).then((result) => {
       if (cancelled) return;
       if (!result.ok) {
         setFilteredClubPlayers([]);
+        setFilteredClubEmptyMessage(null);
         setFilteredClubError(
           result.message ||
             "Không tải được danh sách VĐV CLB. Không dùng roster blob."
         );
         return;
       }
-      setFilteredClubPlayers(result.players || []);
+      setFilteredClubPlayers(result.athletes || []);
       setFilteredClubError(null);
+      setFilteredClubEmptyMessage(result.empty ? result.emptyMessage || null : null);
     });
     return () => {
       cancelled = true;
     };
-  }, [sourceClubFilter]);
+  }, [sourceClubFilter, tournamentId, tenantId]);
 
   const pickerPlayers = useMemo(() => {
     if (sourceClubFilter === ALL_CLUBS_FILTER) {
@@ -144,20 +208,24 @@ function TeamCard({
   }, [sourceClubFilter, allTenantPlayers, clubPlayers, filteredClubPlayers]);
 
   const stats = useMemo(
-    () => computeTeamRosterStats(team, rosterPlayers),
-    [team, rosterPlayers]
+    () => computeHydratedRosterStats(hydratedRoster),
+    [hydratedRoster]
   );
-  const warnings = useMemo(
-    () => getTeamRosterWarnings(team, teamData, rosterPlayers),
-    [team, teamData, rosterPlayers]
-  );
+  const warnings = useMemo(() => {
+    if (rosterLoading) return [];
+    return getTeamRosterWarnings(team, teamData, athletePool);
+  }, [rosterLoading, team, teamData, athletePool]);
   const mlpRoster = isMlpFormat(teamData);
 
   const availablePlayers = useMemo(() => {
     const allowCrossTeam = teamData.settings?.allowPlayerCrossTeam === true;
     return pickerPlayers.filter((player) => {
       const playerId = String(player.id);
-      if (team.playerIds.includes(playerId)) {
+      const athleteId = String(player.athleteId || player.pairingIdentityId || "");
+      if (
+        assignedMemberKeys.has(playerId) ||
+        (athleteId && assignedMemberKeys.has(athleteId))
+      ) {
         return false;
       }
       if (genderFilter === "male" && getPlayerGenderKey(player.gender) !== "male") {
@@ -169,9 +237,18 @@ function TeamCard({
       if (allowCrossTeam) {
         return true;
       }
-      return !findPlayerTeam(teamData, playerId);
+      return !findPlayerTeamInPool(teamData, playerId, athletePool);
     });
-  }, [pickerPlayers, team.playerIds, teamData, genderFilter]);
+  }, [pickerPlayers, assignedMemberKeys, teamData, genderFilter, athletePool]);
+
+  const availableEmptyText = useMemo(() => {
+    if (filteredClubError) return filteredClubError;
+    if (filteredClubEmptyMessage) return filteredClubEmptyMessage;
+    if (availablePlayers.length === 0) {
+      return "Không có VĐV phù hợp — xem diagnostics trên trang giải.";
+    }
+    return "Không có VĐV phù hợp";
+  }, [filteredClubError, filteredClubEmptyMessage, availablePlayers.length]);
 
   async function handleResult(action, successMessage) {
     const result = await action;
@@ -267,8 +344,16 @@ function TeamCard({
             {team.name}
           </Typography>
           <Chip size="small" label={`${stats.total} VĐV`} />
-          <Chip size="small" color="info" label={`${stats.males} nam`} />
-          <Chip size="small" color="secondary" label={`${stats.females} nữ`} />
+          {rosterLoading ? (
+            <Chip size="small" label="Đang tải VĐV…" />
+          ) : backgroundRefreshing ? (
+            <Chip size="small" variant="outlined" label={ROSTER_BACKGROUND_REFRESH_MESSAGE} />
+          ) : (
+            <>
+              <Chip size="small" color="info" label={`${stats.males} nam`} />
+              <Chip size="small" color="secondary" label={`${stats.females} nữ`} />
+            </>
+          )}
           {mlpRoster ? (
             <Chip size="small" color="success" label="MLP 4 người" variant="outlined" />
           ) : null}
@@ -280,15 +365,34 @@ function TeamCard({
           </Alert>
         ) : null}
 
+        {rosterLoading ? (
+          <Alert severity="info">{ROSTER_LOADING_MESSAGE}</Alert>
+        ) : backgroundRefreshing ? (
+          <Alert severity="info" icon={false}>
+            {hydratedRoster.refreshMessage || ROSTER_BACKGROUND_REFRESH_MESSAGE}
+          </Alert>
+        ) : null}
+
+        {!rosterLoading && hydratedRoster.unresolvedCount > 0 ? (
+          <Alert severity="warning">
+            {hydratedRoster.unresolvedCount} VĐV thiếu identity canonical
+            {hydratedRoster.diagnostics.length > 0
+              ? ` (${hydratedRoster.diagnostics.slice(0, 3).join(", ")})`
+              : ""}
+            . Không dùng roster blob làm nguồn thay thế.
+          </Alert>
+        ) : null}
+
+        {filteredClubError ? <Alert severity="error">{filteredClubError}</Alert> : null}
+        {!filteredClubError && filteredClubEmptyMessage ? (
+          <Alert severity="warning">{filteredClubEmptyMessage}</Alert>
+        ) : null}
+
         {warnings.map((warning) => (
           <Alert key={warning} severity="warning">
             {warning}
           </Alert>
         ))}
-
-        {filteredClubError ? (
-          <Alert severity="error">{filteredClubError}</Alert>
-        ) : null}
 
         {canManage ? (
           <>
@@ -379,7 +483,7 @@ function TeamCard({
                 getOptionLabel={(option) => playerLabel(option)}
                 renderInput={(params) => <TextField {...params} label="Thêm VĐV vào đội" />}
                 sx={{ flex: 1 }}
-                noOptionsText="Không có VĐV phù hợp"
+                noOptionsText={availableEmptyText}
               />
               <Button
                 startIcon={<PersonAddIcon />}
@@ -418,9 +522,12 @@ function TeamCard({
                   <MenuItem value="">
                     <em>Chưa chọn</em>
                   </MenuItem>
-                  {teamPlayers.map((player) => (
-                    <MenuItem key={player.id} value={String(player.id)}>
-                      {playerLabel(player)}
+                  {teamMembers.map((member) => (
+                    <MenuItem
+                      key={member.storedPlayerId}
+                      value={String(member.storedPlayerId)}
+                    >
+                      {memberLabel(member)}
                     </MenuItem>
                   ))}
                 </Select>
@@ -439,15 +546,26 @@ function TeamCard({
                 onChange={(event) => setDeputyIds(event.target.value)}
                 renderValue={(selected) =>
                   selected
-                    .map((id) => playerLabel(teamPlayers.find((player) => String(player.id) === String(id))))
+                    .map((id) =>
+                      memberLabel(
+                        teamMembers.find(
+                          (member) => String(member.storedPlayerId) === String(id)
+                        )
+                      )
+                    )
                     .join(", ")
                 }
               >
-                {teamPlayers
-                  .filter((player) => String(player.id) !== String(captainId))
-                  .map((player) => (
-                    <MenuItem key={player.id} value={String(player.id)}>
-                      {playerLabel(player)}
+                {teamMembers
+                  .filter(
+                    (member) => String(member.storedPlayerId) !== String(captainId)
+                  )
+                  .map((member) => (
+                    <MenuItem
+                      key={member.storedPlayerId}
+                      value={String(member.storedPlayerId)}
+                    >
+                      {memberLabel(member)}
                     </MenuItem>
                   ))}
               </Select>
@@ -458,9 +576,15 @@ function TeamCard({
           </>
         ) : (
           <Typography variant="body2" color="text.secondary">
-            Đội trưởng: {team.captainPlayerId || "Chưa gán"}
-            {(team.deputyPlayerIds || []).length > 0
-              ? ` · Đội phó: ${team.deputyPlayerIds.join(", ")}`
+            Đội trưởng:{" "}
+            {teamMembers.find((member) => member.isCaptain)?.displayName ||
+              team.captainPlayerId ||
+              "Chưa gán"}
+            {teamMembers.some((member) => member.isDeputy)
+              ? ` · Đội phó: ${teamMembers
+                  .filter((member) => member.isDeputy)
+                  .map((member) => member.displayName)
+                  .join(", ")}`
               : ""}
           </Typography>
         )}
@@ -468,26 +592,35 @@ function TeamCard({
         <Divider />
 
         <Typography variant="subtitle2">Danh sách VĐV</Typography>
-        {teamPlayers.length === 0 ? (
+        {rosterLoading ? (
+          <Typography variant="body2" color="text.secondary">
+            {ROSTER_LOADING_MESSAGE}
+          </Typography>
+        ) : teamMembers.length === 0 ? (
           <Typography variant="body2" color="text.secondary">
             Chưa có VĐV trong đội.
           </Typography>
         ) : (
-          teamPlayers.map((player) => (
+          teamMembers.map((member) => (
             <Stack
-              key={player.id}
+              key={member.storedPlayerId}
               direction="row"
               alignItems="center"
               justifyContent="space-between"
               sx={{ py: 0.5 }}
             >
-              <Stack direction="row" spacing={1} alignItems="center">
-                <Typography>{playerLabel(player)}</Typography>
-                {String(team.captainPlayerId) === String(player.id) ? (
+              <Stack direction="row" spacing={1} alignItems="center" flexWrap="wrap" useFlexGap>
+                <Typography>{memberLabel(member)}</Typography>
+                {member.isCaptain ? (
                   <Chip size="small" color="primary" label="Đội trưởng" />
                 ) : null}
-                {(team.deputyPlayerIds || []).includes(String(player.id)) ? (
-                  <Chip size="small" label="Đội phó" />
+                {member.isDeputy ? <Chip size="small" label="Đội phó" /> : null}
+                {!member.resolved ? (
+                  <Chip
+                    size="small"
+                    color="warning"
+                    label={member.diagnostic || "thiếu identity"}
+                  />
                 ) : null}
               </Stack>
               {canManage ? (
@@ -495,7 +628,7 @@ function TeamCard({
                   size="small"
                   color="error"
                   aria-label="Xóa VĐV"
-                  onClick={() => handleRemovePlayer(player.id)}
+                  onClick={() => handleRemovePlayer(member.storedPlayerId)}
                 >
                   <DeleteOutlinedIcon fontSize="small" />
                 </IconButton>
@@ -511,25 +644,105 @@ function TeamCard({
 export default function TeamRosterPanel({
   clubId,
   tournamentId,
+  tournament = null,
   teamData,
   clubPlayers = [],
   allTenantPlayers = [],
   clubs = [],
+  tenantId = null,
+  clubFromQuery = null,
+  activeClubId = null,
   canManage = false,
   canViewAll = false,
   viewerPlayerId = null,
+  setupVersion = 0,
+  athletePoolLoadingInitial = false,
+  athletePoolRefreshing = false,
+  athletePoolError = null,
+  setupReady = true,
   onUpdated,
   onError,
   onMessage,
 }) {
   const [teamName, setTeamName] = useState("");
   const [aiPairingOpen, setAiPairingOpen] = useState(false);
+  const [mlpAthletePool, setMlpAthletePool] = useState([]);
+  const [mlpPoolState, setMlpPoolState] = useState({
+    status: "idle",
+    message: null,
+  });
+  const [mlpDiagnostics, setMlpDiagnostics] = useState(null);
 
   const permissions = useMemo(() => {
     const { user } = getAuthOptions();
     return getPermissionsForRole(user?.role || "");
   }, []);
 
+  useEffect(() => {
+    logTeamRosterHydrationTransition("TeamRosterPanel.mount", {
+      tournamentId,
+      clubId,
+      setupVersion,
+      setupReady,
+      activeTab: "teams",
+    });
+    return () => {
+      logTeamRosterHydrationTransition("TeamRosterPanel.unmount", {
+        tournamentId,
+        clubId,
+        setupVersion,
+      });
+    };
+  }, [tournamentId, clubId, setupVersion, setupReady]);
+
+  useEffect(() => {
+    let cancelled = false;
+    // AI “Toàn bộ CLB” uses the same tenant pool as manual; fall back to club scope.
+    const scopeMode = tenantId
+      ? TEAM_TOURNAMENT_ATHLETE_SCOPE.TENANT
+      : TEAM_TOURNAMENT_ATHLETE_SCOPE.CLUB;
+    if (!clubId && scopeMode === TEAM_TOURNAMENT_ATHLETE_SCOPE.CLUB) {
+      setMlpAthletePool([]);
+      setMlpDiagnostics(null);
+      setMlpPoolState({ status: "idle", message: null });
+      return undefined;
+    }
+
+    setMlpPoolState({ status: "loading", message: null });
+    (async () => {
+      const result = await listAvailableAthletes({
+        tournamentId,
+        clubId,
+        tenantId,
+        scopeMode,
+        callerName: "TeamRosterPanel.aiPairing",
+      });
+      if (cancelled) return;
+      setMlpDiagnostics(result.diagnostics || null);
+      if (!result.ok) {
+        setMlpAthletePool([]);
+        setMlpPoolState({
+          status: "error",
+          message:
+            result.message ||
+            "Không tải được Athlete canonical cho ghép đội. Không dùng roster blob.",
+        });
+        return;
+      }
+      const athletes = result.athletes || [];
+      setMlpAthletePool(athletes);
+      setMlpPoolState({
+        status: result.empty || athletes.length === 0 ? "empty" : "ready",
+        message: result.empty ? result.emptyMessage || result.message : null,
+      });
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [clubId, tournamentId, tenantId]);
+
+  /** Shared unified pool for substitution + AI (same base IDs as manual). */
   const drawPlayerPool = useMemo(() => {
     const pool = new Map();
     [...allTenantPlayers, ...clubPlayers].forEach((player) => {
@@ -539,6 +752,11 @@ export default function TeamRosterPanel({
     });
     return [...pool.values()];
   }, [allTenantPlayers, clubPlayers]);
+
+  const mlpPairingPool = useMemo(() => {
+    if (mlpAthletePool.length > 0) return mlpAthletePool;
+    return drawPlayerPool;
+  }, [mlpAthletePool, drawPlayerPool]);
 
   const hostClubName = useMemo(
     () => clubs.find((club) => String(club.id) === String(clubId))?.name || "",
@@ -613,13 +831,46 @@ export default function TeamRosterPanel({
             {isMlp ? (
               <Button
                 variant="outlined"
-                onClick={() => setAiPairingOpen(true)}
+                onClick={() => {
+                  if (mlpPoolState.status === "error") {
+                    onError?.(
+                      mlpPoolState.message ||
+                        "Không tải được Athlete canonical cho ghép đội."
+                    );
+                    return;
+                  }
+                  if (mlpPairingPool.length === 0) {
+                    onError?.(
+                      mlpPoolState.message ||
+                        "Chưa có Athlete đủ điều kiện của CLB này để ghép đội MLP."
+                    );
+                    return;
+                  }
+                  setAiPairingOpen(true);
+                }}
                 sx={{ minHeight: { xs: 44, md: 36 } }}
               >
                 AI ghép đội
               </Button>
             ) : null}
           </Stack>
+          {isMlp && mlpPoolState.status === "error" ? (
+            <Alert severity="error">{mlpPoolState.message}</Alert>
+          ) : null}
+          {isMlp && mlpPoolState.status === "empty" ? (
+            <Alert severity="warning">
+              {mlpPoolState.message ||
+                "Chưa có Athlete đủ điều kiện của CLB này để ghép đội MLP."}
+            </Alert>
+          ) : null}
+          {isMlp && mlpPoolState.status === "ready" ? (
+            <Alert severity="info">
+              Pool ghép đội MLP (unified): {mlpPairingPool.length} Athlete
+              {mlpDiagnostics
+                ? ` · source=${mlpDiagnostics.sourceCount} eligible=${mlpDiagnostics.eligibleCount} WRONG_SCOPE=${mlpDiagnostics.WRONG_SCOPE}`
+                : ""}
+            </Alert>
+          ) : null}
           <ExistingTeamClonePanel
             clubId={clubId}
             targetTournamentId={tournamentId}
@@ -657,7 +908,13 @@ export default function TeamRosterPanel({
             canManage={canManage}
             clubId={clubId}
             tournamentId={tournamentId}
+            tenantId={tenantId}
             defaultClubName={hostClubName}
+            setupVersion={setupVersion}
+            athletePoolLoadingInitial={athletePoolLoadingInitial}
+            athletePoolRefreshing={athletePoolRefreshing}
+            athletePoolError={athletePoolError}
+            setupReady={setupReady}
             onUpdated={onUpdated}
             onError={onError}
             onMessage={onMessage}
@@ -669,23 +926,108 @@ export default function TeamRosterPanel({
         open={aiPairingOpen}
         onClose={() => setAiPairingOpen(false)}
         teamData={teamData}
-        players={drawPlayerPool}
+        players={mlpPairingPool}
         clubs={clubs}
         clubId={clubId}
+        tournamentId={tournamentId}
+        tournament={tournament}
+        tenantId={tenantId}
+        clubFromQuery={clubFromQuery}
+        activeClubId={activeClubId}
+        competitionClass={COMPETITION_CLASS.INTERNAL}
         defaultClubName={hostClubName}
         onPlayersRefresh={onUpdated}
         onMessage={onMessage}
         onError={onError}
         onApply={async (nextTeamData) => {
-          const result = await patchTeamTournament(clubId, tournamentId, {
-            teamData: nextTeamData,
-          });
+          const result = await applyAiGeneratedTeamsToTournament(
+            clubId,
+            tournamentId,
+            nextTeamData
+          );
           if (!result.ok) {
-            onError(result.error || "Không áp dụng được ghép đội.");
-            return;
+            onError(
+              result.error ||
+                "Không áp dụng được ghép đội — cloud/local chưa ghi nhận."
+            );
+            return { ok: false, ...result };
           }
-          onMessage?.("Đã AI ghép đội và lưu danh sách đội.");
-          onUpdated?.();
+
+          // 1) Await cloud setup reload.
+          const reloaded =
+            typeof onUpdated === "function" ? await onUpdated() : null;
+          const teamsAfterReload =
+            reloaded?.teamData?.teams ||
+            reloaded?.tournament?.teamData?.teams ||
+            result.teamData?.teams ||
+            result.tournament?.teamData?.teams ||
+            [];
+
+          if (!Array.isArray(teamsAfterReload) || teamsAfterReload.length === 0) {
+            onError(
+              "Đã lưu đội nhưng danh sách trống sau khi tải lại — không báo thành công."
+            );
+            return { ok: false, code: "RELOAD_EMPTY_TEAMS" };
+          }
+
+          const expectedIds = new Set(
+            (result.teamData?.teams || []).map((team) => String(team.id))
+          );
+          const visibleExpected = teamsAfterReload.filter((team) =>
+            expectedIds.has(String(team.id))
+          );
+          if (expectedIds.size > 0 && visibleExpected.length === 0) {
+            onError(
+              "Đã lưu đội nhưng UI không đọc được đội vừa tạo sau khi tải lại."
+            );
+            return { ok: false, code: "RELOAD_MISSING_TEAMS" };
+          }
+
+          // 2) Await canonical athlete pool refresh before claiming full completion.
+          const scopeMode = tenantId
+            ? TEAM_TOURNAMENT_ATHLETE_SCOPE.TENANT
+            : TEAM_TOURNAMENT_ATHLETE_SCOPE.CLUB;
+          const poolResult = await listAvailableAthletes({
+            tournamentId,
+            clubId,
+            tenantId,
+            scopeMode,
+            callerName: "TeamRosterPanel.aiPairing.afterPersist",
+          });
+
+          if (!poolResult.ok) {
+            onMessage?.(
+              `Đã lưu ${teamsAfterReload.length} đội. ${ROSTER_LOADING_MESSAGE}`
+            );
+            return {
+              ok: true,
+              teamCount: teamsAfterReload.length,
+              tournament: result.tournament,
+              hydrationStatus: ROSTER_HYDRATION_STATUS.LOADING,
+              code: "HYDRATION_POOL_PENDING",
+            };
+          }
+
+          const poolAthletes = poolResult.athletes || [];
+          const sampleTeam = teamsAfterReload[0];
+          const hydratedSample = hydrateTeamRoster({
+            team: sampleTeam,
+            athletePool: poolAthletes,
+            setupReady: true,
+            athletePoolLoading: false,
+            athletePoolError: null,
+          });
+
+          onMessage?.(
+            `Đã AI ghép đội và tải thông tin VĐV (${teamsAfterReload.length} đội).`
+          );
+          return {
+            ok: true,
+            teamCount: teamsAfterReload.length,
+            tournament: result.tournament,
+            hydrationStatus: hydratedSample.status,
+            unresolvedCount: hydratedSample.unresolvedCount,
+          };
         }}
       />
     </Stack>

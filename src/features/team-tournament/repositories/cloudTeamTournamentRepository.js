@@ -16,6 +16,7 @@ import {
   rpcTeamTournamentSaveLineupDraft,
   rpcTeamTournamentSubmitLineup,
   rpcTeamTournamentUpsertStandings,
+  rpcTeamTournamentExecuteSetupMutation,
 } from "../services/teamTournamentRpcService.js";
 import { computeTeamStandings } from "../engines/teamStandingsEngine.js";
 import {
@@ -24,6 +25,11 @@ import {
 } from "./teamTournamentIdempotency.js";
 import { mapSetupDeadlineMeta } from "../services/lineupDeadlineService.js";
 import { mapTournamentToAggregate } from "./teamTournamentRepositoryAggregate.js";
+import {
+  isGetSetupV7Payload,
+  mapGetSetupV7Meta,
+  normalizeV7TournamentForAggregate,
+} from "./mapGetSetupV7.js";
 import {
   notImplemented,
   normalizeRepositoryResult,
@@ -40,8 +46,26 @@ import {
 } from "./teamTournamentRpcGuards.js";
 import { REPOSITORY_ERROR_CODES } from "./teamTournamentRepositoryTypes.js";
 import { subscribeCloudTournament } from "./teamTournamentRealtimeRepository.js";
+import { loadClubData } from "../../../domain/clubStorage.js";
+import { isTeamTournament } from "../engines/teamTournamentEngine.js";
+import { executeSetupMutation as executeSetupMutationFoundation } from "../setup/executeSetupMutation.js";
 
 const replayCache = new Map();
+
+function readLocalTournamentFallback(clubId, tournamentId) {
+  const resolvedClubId = String(clubId || "").trim();
+  const id = String(tournamentId || "").trim();
+  if (!resolvedClubId || !id) {
+    return null;
+  }
+  try {
+    const data = loadClubData(resolvedClubId);
+    const found = (data.tournaments || []).find((item) => String(item?.id) === id);
+    return found && isTeamTournament(found) ? found : null;
+  } catch {
+    return null;
+  }
+}
 
 function rejectUndeployedRpcGuard(methodName) {
   if (isTeamTournamentRpcGuardDeployed(methodName)) {
@@ -127,23 +151,61 @@ export function createCloudTeamTournamentRepository() {
   return {
     getProvider: () => "cloud",
 
-    async getTournament(_clubId, tournamentId, readOptions = {}) {
+    async getTournament(clubId, tournamentId, readOptions = {}) {
       const viewerError = rejectClientViewerTeamIdForCloud(readOptions, "cloud");
       if (viewerError) {
         return viewerError;
       }
 
-      const result = await rpcTeamTournamentGetSetup(tournamentId, null);
+      const setupOptions = {};
+      if (readOptions.schemaVersion != null) {
+        setupOptions.schemaVersion = Number(readOptions.schemaVersion);
+      }
+      if (readOptions.diagnostic === true) {
+        setupOptions.diagnostic = true;
+        if (setupOptions.schemaVersion == null) {
+          setupOptions.schemaVersion = 7;
+        }
+      }
+
+      const result = await rpcTeamTournamentGetSetup(tournamentId, null, setupOptions);
       if (!result.ok) {
+        // Create→detail / refresh safety: if cloud header is missing but the
+        // hosting club blob already has the draft, serve local copy instead of
+        // a hard NOT_FOUND (still cloud-primary; local is temporary fallback).
+        const local = readLocalTournamentFallback(clubId, tournamentId);
+        if (local) {
+          const aggregate = mapTournamentToAggregate(local, "cloud");
+          if (readOptions.includeSchedule === false) {
+            aggregate.schedule = [];
+          }
+          return repositorySuccess(aggregate, {
+            provider: "cloud",
+            version: aggregate.version,
+            serverTime: null,
+            warnings: [
+              {
+                code: "CLOUD_SETUP_FALLBACK_BLOB",
+                message:
+                  result.error ||
+                  "Cloud setup chưa có bản ghi — đang mở nháp local vừa tạo.",
+              },
+            ],
+          });
+        }
         return normalizeRepositoryResult(result, { provider: "cloud" });
       }
 
-      const aggregate = mapTournamentToAggregate(result.tournament, "cloud");
+      const tournamentInput = isGetSetupV7Payload(result)
+        ? normalizeV7TournamentForAggregate(result.tournament)
+        : result.tournament;
+      const aggregate = mapTournamentToAggregate(tournamentInput, "cloud");
       if (readOptions.includeSchedule === false) {
         aggregate.schedule = [];
       }
 
       const deadlineMeta = mapSetupDeadlineMeta(result);
+      const v7Meta = mapGetSetupV7Meta(result);
 
       return repositorySuccess(aggregate, {
         provider: "cloud",
@@ -154,6 +216,14 @@ export function createCloudTeamTournamentRepository() {
         canSubmit: result.canSubmit ?? deadlineMeta?.canSubmit ?? null,
         deadlineStatus: result.deadlineStatus ?? deadlineMeta?.deadlineStatus ?? null,
         viewerTeamId: result.viewerTeamId ?? deadlineMeta?.viewerTeamId ?? null,
+        schemaVersion: v7Meta.schemaVersion,
+        snapshot: v7Meta.snapshot,
+        diagnostic: v7Meta.diagnostic,
+        setupBlocked: v7Meta.setupBlocked,
+        driftDetected: v7Meta.driftDetected,
+        viewer: v7Meta.viewer,
+        permissions: v7Meta.permissions,
+        operations: v7Meta.operations,
       });
     },
 
@@ -494,6 +564,20 @@ export function createCloudTeamTournamentRepository() {
 
     async subscribeTournament(clubId, tournamentId, handlers = {}) {
       return subscribeCloudTournament(this, clubId, tournamentId, handlers);
+    },
+
+    /** @param {{ rpcName?: string, tournamentId: string, envelope: object }} params */
+    async executeSetupMutation(params = {}) {
+      return executeSetupMutationFoundation({
+        ...params,
+        provider: "cloud",
+        envSource: params.envSource,
+        callRpc: (rpcName, args) =>
+          rpcTeamTournamentExecuteSetupMutation(rpcName, {
+            tournamentId: args.p_tournament_id,
+            envelope: args.p_envelope,
+          }),
+      });
     },
   };
 }

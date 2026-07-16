@@ -125,6 +125,10 @@ import {
   getTournamentPairingConstraints,
   logConstraintChange,
 } from "../../features/pairing-constraints/index.js";
+import {
+  COMPETITION_CLASS,
+  prepareLivePrivatePairingOptions,
+} from "../../features/private-pairing-rules/index.js";
 import DrawPublishControls from "../../components/tournament/DrawPublishControls.jsx";
 import RegistrationOpsPanel from "../../components/tournament/RegistrationOpsPanel.jsx";
 import {
@@ -183,6 +187,12 @@ export default function OfficialTournamentSetup() {
   const [bracketAdvanceAnim, setBracketAdvanceAnim] = useState(null);
   const anim = useTournamentAnimation();
   const pendingPlanRef = useRef(null);
+  /** Preloaded prepareLive result for sync guided-flow adapters (flags OFF → empty rules). */
+  const guidedPairingRef = useRef({
+    ok: true,
+    skipped: true,
+    pairingOptions: { privatePairingRules: [] },
+  });
 
   const canViewSkillInSetup = useMemo(
     () =>
@@ -227,14 +237,14 @@ export default function OfficialTournamentSetup() {
 
   const isAiBalance = officialMode === OFFICIAL_MODE.AI_BALANCE;
 
+  const flowPlayers = allTenantPlayers;
+
   const selectedPlayers = useMemo(() => {
-    const pool = new Map(allTenantPlayers.map((player) => [String(player.id), player]));
+    const pool = new Map(flowPlayers.map((player) => [String(player.id), player]));
     return selectedPlayerIds
       .map((id) => pool.get(String(id)))
       .filter(Boolean);
-  }, [selectedPlayerIds, allTenantPlayers]);
-
-  const flowPlayers = allTenantPlayers;
+  }, [selectedPlayerIds, flowPlayers]);
 
   const courts = useMemo(
     () => loadCourtsForClub(activeClubId),
@@ -270,14 +280,14 @@ export default function OfficialTournamentSetup() {
 
   const openFilteredPlayers = useMemo(
     () =>
-      filterTournamentPickerPlayers(allTenantPlayers, {
+      filterTournamentPickerPlayers(flowPlayers, {
         clubFilter: openClubFilter,
         genderFilter: pickerGenderFilter,
         search: pickerSearch,
         eventType,
         excludePlayerIds: registeredPlayerIds,
       }),
-    [allTenantPlayers, openClubFilter, pickerGenderFilter, pickerSearch, eventType, registeredPlayerIds]
+    [flowPlayers, openClubFilter, pickerGenderFilter, pickerSearch, eventType, registeredPlayerIds]
   );
 
   const groupStandings = useMemo(
@@ -520,12 +530,15 @@ export default function OfficialTournamentSetup() {
 
   const applyConstraintWarnings = (pairingOptions) => {
     const constraintWarnings = pairingOptions?.constraintWarnings || [];
-    if (constraintWarnings.length > 0) {
-      setWarnings(
-        constraintWarnings.map((item) =>
-          typeof item === "string" ? item : item.message || String(item)
-        )
-      );
+    const structured = pairingOptions?.privatePairingError;
+    const nextWarnings = constraintWarnings.map((item) =>
+      typeof item === "string" ? item : item.message || String(item)
+    );
+    if (structured?.code) {
+      nextWarnings.unshift(structured.code);
+    }
+    if (nextWarnings.length > 0) {
+      setWarnings(nextWarnings);
     }
   };
 
@@ -554,13 +567,31 @@ export default function OfficialTournamentSetup() {
       return createOfficialFlowAdapters({
         ...shared,
         variant: "ai_balance",
-        suggestEntries: (selected, et) =>
-          suggestBalancedEntriesFromIndividuals(selected, et, {
+        suggestEntries: (selected, et) => {
+          const prepared = guidedPairingRef.current;
+          if (prepared?.ok === false) {
+            return [];
+          }
+          return suggestBalancedEntriesFromIndividuals(selected, et, {
             tournamentId,
             eventId: savedEvent?.id || `event-${tournamentId}`,
-          }),
-        buildPlan: ({ manualEntries }) =>
-          buildOfficialAiBalancePlan({
+            ...(prepared?.pairingOptions || {}),
+            pairingConstraints: founderConstraints,
+            competitionClass: COMPETITION_CLASS.OFFICIAL,
+          });
+        },
+        buildPlan: ({ manualEntries }) => {
+          const prepared = guidedPairingRef.current;
+          if (prepared?.ok === false) {
+            return {
+              ok: false,
+              errors: [
+                prepared.error?.message || "Không lập được kế hoạch theo quy tắc riêng.",
+              ],
+              privatePairingError: prepared.error || null,
+            };
+          }
+          return buildOfficialAiBalancePlan({
             tournament,
             eventId: savedEvent?.id,
             players: flowPlayers,
@@ -569,7 +600,15 @@ export default function OfficialTournamentSetup() {
             groupCount,
             manualEntries,
             individualRegistration: true,
-          }),
+            privatePairingRules: prepared?.pairingOptions?.privatePairingRules || [],
+            pairingConstraints: founderConstraints,
+            competitionClass: COMPETITION_CLASS.OFFICIAL,
+            clubId: activeClubId,
+            tournamentId,
+            allowedByPublishedRules: false,
+            ...(prepared?.pairingOptions || {}),
+          });
+        },
         buildPatch: buildOfficialAiBalancePatch,
       });
     }
@@ -579,8 +618,18 @@ export default function OfficialTournamentSetup() {
       variant: "open",
       isAiBalance: false,
       suggestEntries: () => displayEntries,
-      buildPlan: () =>
-        buildOfficialOpenPlan({
+      buildPlan: () => {
+        const prepared = guidedPairingRef.current;
+        if (prepared?.ok === false) {
+          return {
+            ok: false,
+            errors: [
+              prepared.error?.message || "Không lập được kế hoạch theo quy tắc riêng.",
+            ],
+            privatePairingError: prepared.error || null,
+          };
+        }
+        return buildOfficialOpenPlan({
           tournament: {
             ...tournament,
             hostClubName: tournament.hostClubName || activeClub?.name || "",
@@ -591,7 +640,15 @@ export default function OfficialTournamentSetup() {
           groupCount,
           players: flowPlayers,
           splitUnits,
-        }),
+          privatePairingRules: prepared?.pairingOptions?.privatePairingRules || [],
+          pairingConstraints: founderConstraints,
+          competitionClass: COMPETITION_CLASS.OFFICIAL,
+          clubId: activeClubId,
+          tournamentId,
+          allowedByPublishedRules: false,
+          ...(prepared?.pairingOptions || {}),
+        });
+      },
       buildPatch: buildOfficialOpenPatch,
     });
   }, [
@@ -607,6 +664,8 @@ export default function OfficialTournamentSetup() {
     splitUnits,
     activeClub,
     tournamentId,
+    activeClubId,
+    founderConstraints,
     refreshClubs,
     persistTournament,
     persistEvent,
@@ -636,6 +695,27 @@ export default function OfficialTournamentSetup() {
     setError(null);
     setWarnings([]);
     setMessage(null);
+
+    const prepared = await prepareLivePrivatePairingOptions({
+      clubId: activeClubId,
+      tournamentId,
+      eventId: savedEvent?.id || `event-${tournamentId}`,
+      competitionClass: COMPETITION_CLASS.OFFICIAL,
+      pairingConstraints: founderConstraints,
+      allowedByPublishedRules: false,
+    });
+
+    if (!prepared.ok) {
+      setError(prepared.error?.message || "Không thể bắt đầu trình chiếu theo quy tắc riêng.");
+      setWarnings(
+        (prepared.error?.fatalConflicts || prepared.error?.blockedByPolicy || []).map(
+          (item) => item.code || item.message || String(item)
+        )
+      );
+      return;
+    }
+
+    guidedPairingRef.current = prepared;
 
     if (broadcastFeatureEnabled && broadcast.shouldBroadcastWithFlow) {
       const broadcastResult = await broadcast.startBroadcast();
@@ -766,19 +846,45 @@ export default function OfficialTournamentSetup() {
     setPreviewEntries([]);
   };
 
-  const handleSuggestAiPairs = () => {
+  const handleSuggestAiPairs = async () => {
     setError(null);
     setWarnings([]);
 
+    const prepared = await prepareLivePrivatePairingOptions({
+      clubId: activeClubId,
+      tournamentId,
+      eventId: savedEvent?.id || `event-${tournamentId}`,
+      competitionClass: COMPETITION_CLASS.OFFICIAL,
+      pairingConstraints: founderConstraints,
+      allowedByPublishedRules: false,
+    });
+
+    if (!prepared.ok) {
+      setError(prepared.error?.message || "Không thể ghép cặp theo quy tắc riêng.");
+      setWarnings(
+        (prepared.error?.fatalConflicts || prepared.error?.blockedByPolicy || []).map(
+          (item) => item.code || item.message || String(item)
+        )
+      );
+      return;
+    }
+
     const pairingOptions = {
+      ...prepared.pairingOptions,
       tournamentId,
       eventId: savedEvent?.id || `event-${tournamentId}`,
       pairingConstraints: founderConstraints,
+      competitionClass: COMPETITION_CLASS.OFFICIAL,
     };
 
     const entries = suggestBalancedEntriesFromIndividuals(selectedPlayers, eventType, pairingOptions);
 
     applyConstraintWarnings(pairingOptions);
+
+    if (pairingOptions.privatePairingError) {
+      setError(pairingOptions.privatePairingError.message);
+      return;
+    }
 
     if (entries.length === 0) {
       setError("Khong tao duoc cap/VDV nao. Kiem tra gioi tinh va so luong da chon.");
@@ -802,24 +908,48 @@ export default function OfficialTournamentSetup() {
     );
   };
 
-  const handleBuildAiGroups = () => {
+  const handleBuildAiGroups = async () => {
     setError(null);
     setWarnings([]);
     setMessage(null);
 
-    const pairingOptions = {
+    const prepared = await prepareLivePrivatePairingOptions({
+      clubId: activeClubId,
       tournamentId,
       eventId: savedEvent?.id || `event-${tournamentId}`,
+      competitionClass: COMPETITION_CLASS.OFFICIAL,
       pairingConstraints: founderConstraints,
-    };
+      allowedByPublishedRules: false,
+    });
 
-    const entries =
-      previewEntries.length > 0
-        ? previewEntries
-        : suggestBalancedEntriesFromIndividuals(selectedPlayers, eventType, pairingOptions);
+    if (!prepared.ok) {
+      setError(prepared.error?.message || "Không thể áp dụng quy tắc riêng.");
+      setWarnings(
+        (prepared.error?.fatalConflicts || prepared.error?.blockedByPolicy || []).map(
+          (item) => item.code || item.message || String(item)
+        )
+      );
+      return;
+    }
 
+    let entries = previewEntries;
     if (previewEntries.length === 0) {
+      const pairingOptions = {
+        ...prepared.pairingOptions,
+        tournamentId,
+        eventId: savedEvent?.id || `event-${tournamentId}`,
+        pairingConstraints: founderConstraints,
+        competitionClass: COMPETITION_CLASS.OFFICIAL,
+      };
+
+      entries = suggestBalancedEntriesFromIndividuals(selectedPlayers, eventType, pairingOptions);
+
       applyConstraintWarnings(pairingOptions);
+
+      if (pairingOptions.privatePairingError) {
+        setError(pairingOptions.privatePairingError.message);
+        return;
+      }
     }
 
     const plan = buildOfficialAiBalancePlan({
@@ -832,10 +962,17 @@ export default function OfficialTournamentSetup() {
       manualEntries: entries,
       individualRegistration: true,
       pairingConstraints: founderConstraints,
+      privatePairingRules: prepared.pairingOptions?.privatePairingRules || [],
+      clubId: activeClubId,
+      competitionClass: COMPETITION_CLASS.OFFICIAL,
+      envSource: prepared.pairingOptions?.envSource,
+      seed: prepared.pairingOptions?.seed,
+      allowedByPublishedRules: prepared.pairingOptions?.allowedByPublishedRules,
+      contextTime: prepared.pairingOptions?.contextTime,
     });
 
     if (!plan.ok) {
-      setError(plan.errors?.join(" "));
+      setError(plan.privatePairingError?.message || plan.errors?.join(" "));
       setWarnings(plan.warnings || []);
       return;
     }
@@ -898,7 +1035,7 @@ export default function OfficialTournamentSetup() {
     setError(null);
     const player =
       playerOverride ||
-      allTenantPlayers.find((item) => String(item.id) === String(playerId));
+      flowPlayers.find((item) => String(item.id) === String(playerId));
     if (!player) {
       return;
     }
@@ -908,8 +1045,8 @@ export default function OfficialTournamentSetup() {
 
   const handleRegisterPair = () => {
     setError(null);
-    const playerA = allTenantPlayers.find((item) => String(item.id) === String(pairPlayerAId));
-    const playerB = allTenantPlayers.find((item) => String(item.id) === String(pairPlayerBId));
+    const playerA = flowPlayers.find((item) => String(item.id) === String(pairPlayerAId));
+    const playerB = flowPlayers.find((item) => String(item.id) === String(pairPlayerBId));
 
     if (!playerA || !playerB) {
       setError("Chon du 2 VDV de dang ky cap.");
@@ -952,7 +1089,7 @@ export default function OfficialTournamentSetup() {
     setRegisteredEntries(displayEntries.filter((entry) => entry.id !== entryId));
   };
 
-  const handleDrawGroups = (isRedraw = false) => {
+  const handleDrawGroups = async (isRedraw = false) => {
     setError(null);
     setWarnings([]);
     setMessage(null);
@@ -970,6 +1107,25 @@ export default function OfficialTournamentSetup() {
       return;
     }
 
+    const prepared = await prepareLivePrivatePairingOptions({
+      clubId: activeClubId,
+      tournamentId,
+      eventId: savedEvent?.id || `event-${tournamentId}`,
+      competitionClass: COMPETITION_CLASS.OFFICIAL,
+      pairingConstraints: founderConstraints,
+      allowedByPublishedRules: false,
+    });
+
+    if (!prepared.ok) {
+      setError(prepared.error?.message || "Không chia được bảng theo quy tắc riêng.");
+      setWarnings(
+        (prepared.error?.fatalConflicts || prepared.error?.blockedByPolicy || []).map(
+          (item) => item.code || item.message || String(item)
+        )
+      );
+      return;
+    }
+
     const plan = buildOfficialOpenPlan({
       tournament: {
         ...tournament,
@@ -981,10 +1137,18 @@ export default function OfficialTournamentSetup() {
       groupCount,
       players: flowPlayers,
       splitUnits,
+      privatePairingRules: prepared.pairingOptions?.privatePairingRules || [],
+      competitionClass: COMPETITION_CLASS.OFFICIAL,
+      pairingConstraints: founderConstraints,
+      clubId: activeClubId,
+      tournamentId,
+      allowedByPublishedRules: false,
     });
 
     if (!plan.ok) {
-      setError(plan.errors?.join(" "));
+      setError(
+        plan.privatePairingError?.message || plan.errors?.join(" ") || "Không chia được bảng."
+      );
       setWarnings(plan.warnings || []);
       return;
     }
@@ -1268,10 +1432,18 @@ export default function OfficialTournamentSetup() {
   if (!tournament) {
     return (
       <Box>
-        <Alert severity="error">Khong tim thay giai.</Alert>
-        <Button component={RouterLink} to="/tournament" sx={{ mt: 2 }}>
-          Quay lai
-        </Button>
+        <Alert severity="error" sx={{ mb: 2 }}>
+          Không tìm thấy giải Official này trên CLB hiện tại. Preview thường lưu giải theo
+          trình duyệt — ID cũ (`{tournamentId}`) có thể đã mất sau khi redeploy hoặc đổi CLB.
+        </Alert>
+        <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
+          <Button component={RouterLink} to="/tournament" variant="contained">
+            Về trang Giải đấu
+          </Button>
+          <Button component={RouterLink} to="/tournament/create" variant="outlined">
+            Tạo giải mới
+          </Button>
+        </Stack>
       </Box>
     );
   }
@@ -1513,7 +1685,7 @@ export default function OfficialTournamentSetup() {
             <Paper variant="outlined" sx={{ p: 1.5, mb: 2 }}>
               <TournamentPlayerPickerPanel
                 title="Chọn VĐV đăng ký cá nhân"
-                players={allTenantPlayers}
+                players={flowPlayers}
                 selectedIds={selectedPlayerIds}
                 onToggle={toggleAiPlayer}
                 onSelectAll={handleSelectAllAiPlayers}
@@ -1671,7 +1843,7 @@ export default function OfficialTournamentSetup() {
               isSingleEventType(eventType) ? (
                 <TournamentPlayerPickerPanel
                   title=""
-                  players={allTenantPlayers}
+                  players={flowPlayers}
                   mode="register"
                   onRegister={handleRegisterSingle}
                   clubFilter={openClubFilter}
@@ -1692,7 +1864,7 @@ export default function OfficialTournamentSetup() {
                 <Stack spacing={1.5}>
                   <TournamentPlayerPickerPanel
                     title=""
-                    players={allTenantPlayers}
+                    players={flowPlayers}
                     clubFilter={openClubFilter}
                     onClubFilterChange={setOpenClubFilter}
                     clubs={clubs}
@@ -1825,7 +1997,7 @@ export default function OfficialTournamentSetup() {
                           {entry.clubName || entry.representativeClubName || "Chua ro CLB"}
                         </Typography>
                         <TournamentRegistrationRatingPanel
-                          players={resolveTournamentEntryPlayers(entry, allTenantPlayers)}
+                          players={resolveTournamentEntryPlayers(entry, flowPlayers)}
                           tournamentId={tournamentId}
                           hostClubId={activeClubId}
                           compact

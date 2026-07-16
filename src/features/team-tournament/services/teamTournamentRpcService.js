@@ -365,6 +365,19 @@ async function callTeamTournamentRpc(rpcName, args = {}) {
     const passthrough = [
       "version_conflict",
       "idempotency_payload_mismatch",
+      "COURT_CONFLICT",
+      "CONFIRM_DESTRUCTIVE_REQUIRED",
+      "SCHEDULE_LOCKED",
+      "DUPLICATE_GROUP_TEAM",
+      "UNKNOWN_TEAM",
+      "UNKNOWN_DISCIPLINE",
+      "TOURNAMENT_CLOSED",
+      "PAYLOAD_HASH_MISMATCH",
+      "VALIDATION_ERROR",
+      "IDEMPOTENCY_KEY_REUSED",
+      "SNAPSHOT_HASH_MISMATCH",
+      "SETUP_SNAPSHOT_DRIFT",
+      "GATE_OFF",
       "VALIDATION",
       "LOCKED",
       "lineup_locked",
@@ -420,10 +433,44 @@ function normalizeCommandParams(params, legacyArgs) {
   return legacyArgs;
 }
 
-export async function rpcTeamTournamentGetSetup(tournamentId, viewerTeamId = null) {
-  return callTeamTournamentRpc("team_tournament_get_setup", {
+/**
+ * @param {string} tournamentId
+ * @param {string|null} [viewerTeamId]
+ * @param {{ schemaVersion?: number|null, diagnostic?: boolean }} [options]
+ */
+export async function rpcTeamTournamentGetSetup(
+  tournamentId,
+  viewerTeamId = null,
+  options = {}
+) {
+  const params = {
     p_tournament_id: String(tournamentId),
     p_viewer_team_id: viewerTeamId ? String(viewerTeamId) : null,
+  };
+  if (options.schemaVersion != null) {
+    params.p_schema_version = Number(options.schemaVersion);
+  }
+  if (options.diagnostic === true) {
+    params.p_diagnostic = true;
+    if (params.p_schema_version == null) {
+      params.p_schema_version = 7;
+    }
+  }
+  return callTeamTournamentRpc("team_tournament_get_setup", params);
+}
+
+/**
+ * Execute one owner-locked P1.3 setup domain mutation.
+ * @param {string} rpcName
+ * @param {{ tournamentId: string, envelope: object }} params
+ */
+export async function rpcTeamTournamentExecuteSetupMutation(rpcName, params = {}) {
+  const envelope = params.envelope || {};
+  return callTeamTournamentRpc(String(rpcName), {
+    p_tournament_id: String(params.tournamentId || envelope.tournamentId || ""),
+    p_envelope: envelope,
+    p_expected_version: envelope.expectedTournamentVersion,
+    p_idempotency_key: envelope.idempotencyKey,
   });
 }
 

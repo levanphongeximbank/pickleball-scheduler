@@ -8,21 +8,29 @@ import { evaluateCanonicalDraw } from "./drawRuntimeAdapter.js";
  * @property {string} [seedingMode]
  * @property {number} [groupCount]
  * @property {() => number} [randomFn]
+ * @property {Array<Record<string, unknown>>} [privatePairingRules]
+ * @property {string} [competitionClass]
+ * @property {string|null} [clubId]
+ * @property {string|null} [tournamentId]
+ * @property {string|null} [eventId]
  * @property {Record<string, unknown>|undefined|null} [envSource]
  */
 
 /**
  * Wrap team draw engine output for canonical adapter envelope.
  *
- * @param {{ teamData?: Record<string, unknown>, balance?: Record<string, unknown>|null, warnings?: string[] }} result
+ * @param {{ ok?: boolean, teamData?: Record<string, unknown>, balance?: Record<string, unknown>|null, warnings?: string[], privatePairingError?: object|null }} result
  */
 export function wrapTeamDrawLegacyResult(result = {}) {
+  const engineOk = result.ok !== false;
+  const hasGroups = Boolean(result.teamData?.groups?.length);
   return {
-    ok: Boolean(result.teamData?.groups?.length),
+    ok: engineOk && hasGroups,
     groups: result.teamData?.groups || [],
     teamData: result.teamData,
     balance: result.balance ?? null,
     warnings: result.warnings || [],
+    privatePairingError: result.privatePairingError || null,
   };
 }
 
@@ -33,9 +41,11 @@ export function wrapTeamDrawLegacyResult(result = {}) {
  */
 export function unwrapTeamDrawLegacyResult(legacyResult = {}) {
   return {
+    ok: legacyResult.ok !== false,
     teamData: legacyResult.teamData,
     balance: legacyResult.balance ?? null,
     warnings: legacyResult.warnings || [],
+    privatePairingError: legacyResult.privatePairingError || null,
   };
 }
 
@@ -55,6 +65,12 @@ export function buildTeamDrawLegacyPayload(input = {}) {
       players: input.players || [],
       seedingMode: input.seedingMode,
       randomFn: input.randomFn,
+      privatePairingRules: input.privatePairingRules || [],
+      competitionClass: input.competitionClass,
+      clubId: input.clubId || null,
+      tournamentId: input.tournamentId || null,
+      eventId: input.eventId || null,
+      envSource: input.envSource,
     },
   };
 }
@@ -79,6 +95,12 @@ export function runTeamDrawWithCanonicalAdapter(input = {}) {
           players: payload.options?.players || payload.players || [],
           seedingMode: payload.options?.seedingMode,
           randomFn: payload.options?.randomFn,
+          privatePairingRules: payload.options?.privatePairingRules || [],
+          competitionClass: payload.options?.competitionClass,
+          clubId: payload.options?.clubId || null,
+          tournamentId: payload.options?.tournamentId || null,
+          eventId: payload.options?.eventId || null,
+          envSource: payload.options?.envSource,
         })
       ),
   });

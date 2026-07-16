@@ -233,8 +233,8 @@ test("screens no longer discover via useClubPlayerPool / listPlayersForClubAware
     );
     assert.match(
       src,
-      /pairing-candidates|PairingCandidate|CandidatePool/,
-      `${rel} must use pairing candidate gateway`
+      /pairing-candidates|PairingCandidate|CandidatePool|teamTournamentAthletePool|listAvailableAthletes/,
+      `${rel} must use pairing candidate gateway or unified TT athlete pool`
     );
   }
 });

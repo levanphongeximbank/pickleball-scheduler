@@ -1,0 +1,209 @@
+{
+  "schemaVersion": 1,
+  "vectors": [
+    {
+      "id": "key-order-equivalence",
+      "description": "Same object, different key order",
+      "input": {
+        "b": 2,
+        "a": 1,
+        "nested": {
+          "z": 2,
+          "y": 1
+        }
+      },
+      "inputAlt": {
+        "a": 1,
+        "b": 2,
+        "nested": {
+          "y": 1,
+          "z": 2
+        }
+      },
+      "expectedCanonical": "{\"a\":1,\"b\":2,\"nested\":{\"y\":1,\"z\":2}}",
+      "expectedHash": "9c6512d7e3242e01c211cf7ec16d983cab79fab09fefde8657a2f841ad9aeff9"
+    },
+    {
+      "id": "uuid-case",
+      "description": "UUID lowercase normalization",
+      "input": {
+        "id": "a1b2c3d4-e5f6-4789-a456-426614174000"
+      },
+      "inputAlt": {
+        "id": "A1B2C3D4-E5F6-4789-A456-426614174000"
+      },
+      "expectedCanonical": "{\"id\":\"a1b2c3d4-e5f6-4789-a456-426614174000\"}",
+      "expectedHash": "4d4d33f4fe1efeac58d24a324b31a17f99ea25a880983704edf3b083e54e5e18"
+    },
+    {
+      "id": "unicode-nfc",
+      "description": "Unicode NFC normalization",
+      "input": {
+        "name": "é"
+      },
+      "inputAlt": {
+        "name": "é"
+      },
+      "expectedCanonical": "{\"name\":\"é\"}",
+      "expectedHash": "2f16b8477146a1b2ba7d6bb7cf7c9979c191cc2838a107dbf5f0d920b4cb3ba1"
+    },
+    {
+      "id": "timestamp-utc",
+      "description": "Timestamp timezone equivalence",
+      "input": {
+        "at": "2026-07-16T09:00:00.000Z"
+      },
+      "inputAlt": {
+        "at": "2026-07-16T09:00:00.000Z"
+      },
+      "expectedCanonical": "{\"at\":\"2026-07-16T09:00:00.000Z\"}",
+      "expectedHash": "872242265d888452b07d86251213af48e6a61210d008f27b62371dd094f5201f"
+    },
+    {
+      "id": "rating-rounding",
+      "description": "Rating 3.800 vs 3.8",
+      "input": {
+        "teams": [
+          {
+            "id": "t1",
+            "avgLevel": 3.8
+          }
+        ]
+      },
+      "inputAlt": {
+        "tournament": {
+          "id": "t-1",
+          "version": 1
+        },
+        "teams": [
+          {
+            "id": "t1",
+            "avgLevel": 3.8
+          }
+        ],
+        "generatedAt": "2026-07-16T09:00:00.000Z"
+      },
+      "expectedCanonical": "{\"rating\":3.8}",
+      "snapshotHash": "342960f26ef45b8f0490ea1537c91d9a5d4824e5387a0edbb2da861f0634fc7b"
+    },
+    {
+      "id": "numeric-zero",
+      "description": "Preserve numeric zero",
+      "input": {
+        "wins": 0,
+        "losses": 0
+      },
+      "expectedCanonical": "{\"losses\":0,\"wins\":0}",
+      "expectedHash": "1693cc99882d4bdb6ceff2f2b5a510feae91e44a70b7c42a9fdc8c447ac78237"
+    },
+    {
+      "id": "teams-sort-by-id",
+      "description": "Teams sorted by id",
+      "input": {
+        "teams": [
+          {
+            "id": "team-b"
+          },
+          {
+            "id": "team-a"
+          }
+        ]
+      },
+      "expectedTeamOrder": [
+        "team-a",
+        "team-b"
+      ],
+      "snapshotHash": "3ca32d54ac28758604837d8d0593346772964224413380917223986198b58006"
+    },
+    {
+      "id": "disciplines-sort",
+      "description": "Disciplines by sortOrder then id",
+      "input": [
+        "d1",
+        "d2"
+      ],
+      "expectedOrder": [
+        "d1",
+        "d2"
+      ],
+      "snapshotHash": "60cd71a93ac2f01f949e0551970d86532c32fad8b12ec37f701e7728f10203eb"
+    },
+    {
+      "id": "group-teamids-dedupe-sort",
+      "description": "Group teamIds dedupe and sort",
+      "input": [
+        "t2",
+        "t1",
+        "t2"
+      ],
+      "expectedTeamIds": [
+        "t1",
+        "t2"
+      ],
+      "snapshotHash": "5064b913c165dbf36e4e69c3d70fadcdf9126ba51c2edcee37e5c8496a567f16"
+    },
+    {
+      "id": "matchup-null-scheduled-last",
+      "description": "Null scheduledAt sorts last",
+      "input": [
+        "m-early",
+        "m-null"
+      ],
+      "expectedOrder": [
+        "m-early",
+        "m-null"
+      ],
+      "snapshotHash": "f4ec34e67e57784b8263ed1c52bf0f18793d38364b9251aab967a9cd23dcfe16"
+    },
+    {
+      "id": "meaningful-array-order",
+      "description": "Unsorted domain arrays remain hash-sensitive",
+      "input": {
+        "order": [
+          "first",
+          "second"
+        ]
+      },
+      "inputAlt": {
+        "order": [
+          "second",
+          "first"
+        ]
+      },
+      "hashA": "2246fda456da35cb14d36c66284d9a425cd34897dc19fcbddc8976fb1ebf46c7",
+      "hashB": "816d76ddc5df120ebcd8b23df39ef35da7f926d7467a762ebbde82ec793dfdbc"
+    },
+    {
+      "id": "roster-member-change",
+      "description": "Snapshot hash changes when roster member changes",
+      "hashBase": "c131785e30d6760d0d802a02f1ea353435f892127f1954db1ccc362ff0f42942",
+      "hashChanged": "c332d8c767d38836d7073fc08a978b7d778d73bcba7333940b226101c622b604"
+    },
+    {
+      "id": "engine-input-output-differ",
+      "description": "Engine input hash differs from output hash",
+      "engineInputHash": "c93317b12d05565fc6b93e1e789028c9b273e0a50750b1c07b7dd72f5c33681b",
+      "engineOutputHash": "fcc6a6c26e4c51a90ff4c67a62931ef1a1c002a14c68aa65991424a54b8341a9"
+    },
+    {
+      "id": "payload-hash-self-exclusion",
+      "description": "payloadHash excludes itself",
+      "envelope": {
+        "commandName": "groups.clear",
+        "tournamentId": "t-1",
+        "expectedTournamentVersion": 3,
+        "idempotencyKey": "idem-1",
+        "engineVersion": "team-tournament-engines@1.0.0",
+        "rulesVersion": "",
+        "engineInputHash": "44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a",
+        "engineOutputHash": "44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a",
+        "generatedAt": "2026-07-16T09:22:49.650Z",
+        "generationMetadata": {},
+        "confirmDestructive": false,
+        "payload": {},
+        "payloadHash": "7417f84dfba1e655363e855d2c5c199b77991fdbda8f761a86b47563f2c96360"
+      },
+      "payloadHash": "7417f84dfba1e655363e855d2c5c199b77991fdbda8f761a86b47563f2c96360"
+    }
+  ]
+}

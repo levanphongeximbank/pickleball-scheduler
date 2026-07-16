@@ -12,9 +12,10 @@ import {
 } from "@mui/material";
 
 import {
+  assertGroupsReadyForSchedule,
   defaultCourtCountForPool,
   describeSchedulePreview,
-  recommendGroupSizes,
+  GROUPS_REQUIRED_SCHEDULE_DIALOG_MESSAGE,
 } from "../../../features/team-tournament/engines/teamRoundRobinScheduleEngine.js";
 
 function toLocalInputValue(isoString) {
@@ -61,6 +62,7 @@ export default function BuildScheduleDialog({
   teamData,
   hasExistingResults = false,
   onPreview,
+  onGoToGroups,
 }) {
   const defaultLock = toLocalInputValue(new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString());
   const defaultSchedule = toLocalInputValue(new Date(Date.now() + 48 * 60 * 60 * 1000).toISOString());
@@ -85,15 +87,18 @@ export default function BuildScheduleDialog({
     [courtCount, roundIntervalMinutes]
   );
 
+  const groupsGate = useMemo(() => assertGroupsReadyForSchedule(teamData), [teamData]);
+  const groupsBlocked = groupsGate.ok === false;
+
   const schedulePreview = useMemo(
-    () => describeSchedulePreview(teamData, previewOptions),
-    [teamData, previewOptions]
+    () => (groupsBlocked ? "" : describeSchedulePreview(teamData, previewOptions)),
+    [teamData, previewOptions, groupsBlocked]
   );
 
-  const teamCount = teamData?.teams?.length || 0;
-  const needsGroups = teamCount >= 6 && recommendGroupSizes(teamCount);
-
   function handleConfirm() {
+    if (groupsBlocked) {
+      return;
+    }
     const scheduleIso = fromLocalInputValue(scheduledAt);
     const lockIso =
       fromLocalInputValue(lineupLockAt) ||
@@ -121,13 +126,15 @@ export default function BuildScheduleDialog({
             </Alert>
           ) : null}
 
-          {needsGroups && !(teamData?.groups || []).length ? (
-            <Alert severity="info">
-              Giải {teamCount} đội sẽ tự chia 2 bảng khi tạo lịch nếu chưa chia bảng.
+          {groupsBlocked ? (
+            <Alert severity="warning">
+              {GROUPS_REQUIRED_SCHEDULE_DIALOG_MESSAGE}
             </Alert>
           ) : null}
 
-          <Alert severity="info">{schedulePreview}</Alert>
+          {!groupsBlocked && schedulePreview ? (
+            <Alert severity="info">{schedulePreview}</Alert>
+          ) : null}
 
           <TextField
             label="Hạn nộp đội hình (vòng 1)"
@@ -135,6 +142,7 @@ export default function BuildScheduleDialog({
             value={lineupLockAt}
             onChange={(event) => setLineupLockAt(event.target.value)}
             fullWidth
+            disabled={groupsBlocked}
             InputLabelProps={{ shrink: true }}
             helperText="Mặc định 15 phút trước giờ thi đấu vòng 1 (MLP)."
           />
@@ -144,6 +152,7 @@ export default function BuildScheduleDialog({
             value={scheduledAt}
             onChange={(event) => setScheduledAt(event.target.value)}
             fullWidth
+            disabled={groupsBlocked}
             InputLabelProps={{ shrink: true }}
           />
           <TextField
@@ -152,6 +161,7 @@ export default function BuildScheduleDialog({
             value={courtCount}
             onChange={(event) => setCourtCount(Number(event.target.value))}
             fullWidth
+            disabled={groupsBlocked}
           >
             <MenuItem value={1}>1 sân</MenuItem>
             <MenuItem value={2}>2 sân</MenuItem>
@@ -163,12 +173,14 @@ export default function BuildScheduleDialog({
             inputProps={{ min: 15, step: 15 }}
             onChange={(event) => setRoundIntervalMinutes(Number(event.target.value) || 90)}
             fullWidth
+            disabled={groupsBlocked}
           />
           <TextField
             label="Tiền tố tên sân (tuỳ chọn)"
             value={courtLabel}
             onChange={(event) => setCourtLabel(event.target.value)}
             fullWidth
+            disabled={groupsBlocked}
             placeholder="VD: Sân chính"
             helperText="Mỗi trận sẽ gắn Sân 1 / Sân 2 trong vòng."
           />
@@ -176,10 +188,22 @@ export default function BuildScheduleDialog({
       </DialogContent>
       <DialogActions>
         <Button onClick={onClose}>Huỷ</Button>
-        {onPreview && (teamData?.matchups?.length || 0) > 0 ? (
+        {groupsBlocked && onGoToGroups ? (
+          <Button
+            variant="contained"
+            color="warning"
+            onClick={() => {
+              onClose?.();
+              onGoToGroups();
+            }}
+          >
+            Về bước Chia bảng
+          </Button>
+        ) : null}
+        {onPreview && (teamData?.matchups?.length || 0) > 0 && !groupsBlocked ? (
           <Button onClick={onPreview}>Xem sơ đồ trước</Button>
         ) : null}
-        <Button variant="contained" onClick={handleConfirm}>
+        <Button variant="contained" onClick={handleConfirm} disabled={groupsBlocked}>
           Tạo lịch
         </Button>
       </DialogActions>

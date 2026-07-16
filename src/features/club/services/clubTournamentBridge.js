@@ -1,5 +1,5 @@
-import { loadClubs } from "../../../data/club.js";
-import { loadClubData } from "../../../domain/clubStorage.js";
+import { getActiveClubIdPreference, loadClubs } from "../../../data/club.js";
+import { CLUB_DATA_KEY, loadClubData } from "../../../domain/clubStorage.js";
 import { eventMatchToRecord } from "../../../tournament/engines/playerHistoryEngine.js";
 import { resolveTenantIdForClub } from "../../tenant/guards/tenantGuard.js";
 import { CLUB_MATCH_TYPES } from "../models/clubMatch.js";
@@ -97,18 +97,161 @@ export function processClubInternalMatchCompletion(
   return { ok: true, match: clubMatch, skipped: !winnerTeam };
 }
 
+/**
+ * Raw localStorage check — never call loadClubData here (that migrates/writes empty blobs).
+ */
+function rawClubBlobContainsTournament(clubId, tournamentId) {
+  const resolvedClubId = String(clubId || "").trim();
+  const id = String(tournamentId || "").trim();
+  if (!resolvedClubId || !id || typeof localStorage === "undefined") {
+    return false;
+  }
+  try {
+    const raw = localStorage.getItem(`${CLUB_DATA_KEY}::${resolvedClubId}`);
+    if (!raw) {
+      return false;
+    }
+    const parsed = JSON.parse(raw);
+    return (parsed?.tournaments || []).some((item) => String(item?.id) === id);
+  } catch {
+    return false;
+  }
+}
+
+function listLocalClubBlobIds() {
+  if (typeof localStorage === "undefined") {
+    return [];
+  }
+  const prefix = `${CLUB_DATA_KEY}::`;
+  const ids = [];
+  for (let index = 0; index < localStorage.length; index += 1) {
+    const key = localStorage.key(index);
+    if (!key || !key.startsWith(prefix)) {
+      continue;
+    }
+    const clubId = key.slice(prefix.length).trim();
+    if (clubId) {
+      ids.push(clubId);
+    }
+  }
+  return ids;
+}
+
 export function findTournamentClubId(tournamentId) {
   const id = String(tournamentId || "").trim();
   if (!id) {
     return null;
   }
 
+  const scanned = new Set();
+
   for (const club of loadClubs()) {
-    const data = loadClubData(club.id);
-    if ((data.tournaments || []).some((t) => String(t.id) === id)) {
-      return club.id;
+    const clubId = String(club?.id || "").trim();
+    if (!clubId || scanned.has(clubId)) {
+      continue;
+    }
+    scanned.add(clubId);
+    if (rawClubBlobContainsTournament(clubId, id)) {
+      return clubId;
+    }
+  }
+
+  // Canonical preference may point at a club outside pickleball-clubs-v1.
+  const preferredClubId = String(getActiveClubIdPreference() || "").trim();
+  if (preferredClubId && !scanned.has(preferredClubId)) {
+    scanned.add(preferredClubId);
+    if (rawClubBlobContainsTournament(preferredClubId, id)) {
+      return preferredClubId;
+    }
+  }
+
+  // Preview/canonical: hosting blob may exist under an id not in registry/preference
+  // (e.g. after refreshClubs coerces activeClub). Scan every local club blob key.
+  for (const clubId of listLocalClubBlobIds()) {
+    if (scanned.has(clubId)) {
+      continue;
+    }
+    scanned.add(clubId);
+    if (rawClubBlobContainsTournament(clubId, id)) {
+      return clubId;
     }
   }
 
   return null;
+}
+
+/**
+ * Preferred/?club= path: raw miss → one normalized loadClubData check.
+ * Only when the blob key already exists and parses (never migrate/write empty blobs).
+ */
+function preferredNormalizedContainsTournament(clubId, tournamentId) {
+  const resolvedClubId = String(clubId || "").trim();
+  const id = String(tournamentId || "").trim();
+  if (!resolvedClubId || !id || typeof localStorage === "undefined") {
+    return false;
+  }
+  const raw = localStorage.getItem(`${CLUB_DATA_KEY}::${resolvedClubId}`);
+  if (!raw) {
+    return false;
+  }
+  try {
+    const parsed = JSON.parse(raw);
+    if (!parsed || typeof parsed !== "object") {
+      return false;
+    }
+  } catch {
+    // Corrupt raw — do not call loadClubData (that migrates/writes).
+    return false;
+  }
+  try {
+    const data = loadClubData(resolvedClubId);
+    return (data.tournaments || []).some((item) => String(item?.id) === id);
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Resolve which club blob holds a tournament id.
+ * Prefer the caller's club when it actually contains the tournament; otherwise scan
+ * all clubs (parity with InternalTournamentSetup deep-link behavior).
+ * Never returns a club that does not contain the tournament.
+ *
+ * @param {string|null|undefined} preferredClubId
+ * @param {string|null|undefined} tournamentId
+ * @returns {string|null}
+ */
+export function resolveTournamentClubId(preferredClubId, tournamentId) {
+  const id = String(tournamentId || "").trim();
+  if (!id) {
+    return null;
+  }
+
+  const preferred = String(preferredClubId || "").trim();
+  if (preferred && rawClubBlobContainsTournament(preferred, id)) {
+    return preferred;
+  }
+
+  // B: preferred/?club= present, raw miss → one loadClubData(preferred) if key exists.
+  if (preferred && preferredNormalizedContainsTournament(preferred, id)) {
+    return preferred;
+  }
+
+  return findTournamentClubId(id);
+}
+
+/**
+ * Empty-state copy when a tournament id is missing from the active origin's storage.
+ * Preview/localStorage is origin-scoped — do not invent cross-origin lookups.
+ * @param {string} tournamentId
+ * @param {{ kind?: string }} [options]
+ */
+export function buildTournamentNotFoundMessage(tournamentId, options = {}) {
+  const id = String(tournamentId || "").trim() || "(thiếu id)";
+  const kind = options.kind || "giải";
+  return (
+    `Không tìm thấy ${kind} này trên CLB/blob hiện tại. ` +
+    `Preview thường lưu dữ liệu theo trình duyệt — ID cũ (\`${id}\`) có thể đã mất sau khi redeploy, đổi domain Preview, hoặc đổi CLB. ` +
+    `Hãy tạo lại giải trên Preview hiện tại (không dùng deep-link từ Preview cũ).`
+  );
 }

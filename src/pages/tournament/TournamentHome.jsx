@@ -16,6 +16,7 @@ import {
 import GroupsIcon from "@mui/icons-material/Groups";
 import EmojiEventsIcon from "@mui/icons-material/EmojiEvents";
 import Diversity3Icon from "@mui/icons-material/Diversity3";
+import SportsIcon from "@mui/icons-material/Sports";
 
 import { useAuth } from "../../context/AuthContext.jsx";
 import { useClub } from "../../context/ClubContext.jsx";
@@ -34,7 +35,7 @@ import PermissionGate from "../../components/auth/PermissionGate.jsx";
 import ClubAssignmentBanner from "../../components/auth/ClubAssignmentBanner.jsx";
 import { PERMISSIONS } from "../../auth/permissions.js";
 import { usePageRuntimeAccess } from "../../core/platform/app/usePageRuntimeAccess.js";
-import { createTeamTournament } from "../../features/team-tournament/services/teamTournamentService.js";
+import { createTeamTournamentForUi } from "../../features/team-tournament/services/teamTournamentService.js";
 import { getTeamData } from "../../features/team-tournament/engines/teamTournamentEngine.js";
 import { findTeamForCaptain } from "../../features/team-tournament/engines/teamPermissionEngine.js";
 import { TOURNAMENT_LAYOUT } from "../../components/tournament/tournamentLayout.js";
@@ -56,6 +57,13 @@ const SECTION_META = {
 };
 
 const CREATE_TOURNAMENT_MODE_OPTIONS = [
+  {
+    mode: TOURNAMENT_MODE.DAILY_PLAY,
+    title: "Chơi vui / Daily Play",
+    description: "Check-in trong ngày, ghép trận công bằng và xếp sân nhanh cho buổi chơi vui.",
+    icon: <SportsIcon sx={{ fontSize: 18 }} />,
+    badge: "Daily",
+  },
   {
     mode: TOURNAMENT_MODE.INTERNAL_TOURNAMENT,
     title: "Giải nội bộ CLB",
@@ -200,9 +208,15 @@ export default function TournamentHome({ section = "overview" }) {
     }
   };
 
-  const handleStartMode = (option) => {
+  const handleStartMode = async (option) => {
     if (!accessAllowed) {
       setError("Runtime platform chặn thao tác quản lý giải đấu.");
+      return;
+    }
+
+    const clubId = String(activeClubId || "").trim();
+    if (!clubId) {
+      setError("Chưa chọn CLB — hãy chọn CLB trước khi tạo giải.");
       return;
     }
 
@@ -211,13 +225,13 @@ export default function TournamentHome({ section = "overview" }) {
 
     const result =
       option.mode === TOURNAMENT_MODE.TEAM_TOURNAMENT
-        ? createTeamTournament(activeClubId, {
+        ? await createTeamTournamentForUi(clubId, {
             name: buildDefaultName(option.title),
             seasonId: activeSeason?.id,
             leagueId: activeLeague?.id,
             formatPreset: "mlp_4",
           })
-        : createTournament(activeClubId, {
+        : createTournament(clubId, {
             name: buildDefaultName(option.title),
             mode: option.mode,
             officialMode:
@@ -232,8 +246,19 @@ export default function TournamentHome({ section = "overview" }) {
             leagueId: activeLeague?.id,
           });
 
-    if (!result.ok) {
+    if (!result.ok || !result.tournament?.id) {
       setError(result.error || "Không thể tạo giải.");
+      return;
+    }
+
+    // Team MLP: navigate with hosting clubId so detail does not depend on
+    // refreshClubs()/activeClub coerce (Preview create→detail race).
+    if (option.mode === TOURNAMENT_MODE.TEAM_TOURNAMENT) {
+      const hostClubId = String(result.clubId || clubId).trim();
+      navigate(
+        `/tournament/team/${result.tournament.id}?club=${encodeURIComponent(hostClubId)}`
+      );
+      refreshClubs();
       return;
     }
 
@@ -257,10 +282,6 @@ export default function TournamentHome({ section = "overview" }) {
           ? `/tournament/official/${result.tournament.id}?event=${preselectedEvent}`
           : `/tournament/official/${result.tournament.id}`
       );
-      return;
-    }
-    if (option.mode === TOURNAMENT_MODE.TEAM_TOURNAMENT) {
-      navigate(`/tournament/team/${result.tournament.id}`);
       return;
     }
 

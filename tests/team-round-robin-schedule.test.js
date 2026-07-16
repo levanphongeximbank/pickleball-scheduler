@@ -115,8 +115,20 @@ test("buildStructuredRoundRobinMatchups — gắn roundNumber và Sân 1/2", () 
   assert.equal(round2[0].scheduledAt, "2099-06-01T09:00:00.000Z");
 });
 
-test("buildRoundRobinMatchups — 6 đội tự chia 2 bảng 3 đội", () => {
+test("buildRoundRobinMatchups — 6 đội without groups → GROUPS_REQUIRED", () => {
   let teamData = addTeams(initializeTeamTournamentData(), 6);
+  teamData = buildRoundRobinMatchups(teamData, {
+    scheduledAt: "2099-06-01T08:00:00.000Z",
+  });
+
+  assert.equal(teamData.ok, false);
+  assert.equal(teamData.code, "GROUPS_REQUIRED");
+  assert.equal((teamData.groups || []).length, 0);
+});
+
+test("buildRoundRobinMatchups — 6 đội with explicit groups builds matchups", () => {
+  let teamData = addTeams(initializeTeamTournamentData(), 6);
+  teamData = assignTeamsToGroupsBySizes(teamData, [3, 3]);
   teamData = buildRoundRobinMatchups(teamData, {
     scheduledAt: "2099-06-01T08:00:00.000Z",
   });
@@ -155,6 +167,7 @@ test("buildTeamTournamentScheduleDiagram — đánh số trận toàn cục", ()
 
 test("buildUnifiedScheduleDiagram — gộp theo khung giờ", () => {
   let teamData = addTeams(initializeTeamTournamentData(), 6);
+  teamData = assignTeamsToGroupsBySizes(teamData, [3, 3]);
   teamData = buildRoundRobinMatchups(teamData, {
     scheduledAt: "2099-06-01T08:00:00.000Z",
     roundIntervalMinutes: 60,

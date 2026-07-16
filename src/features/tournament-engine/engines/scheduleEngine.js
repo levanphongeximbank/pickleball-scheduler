@@ -164,8 +164,31 @@ export function generateSchedule(context = {}, options = {}) {
     const schedule = buildGroupStageSchedule(context.groups, {
       tournamentId: context.tournamentId,
       eventId: context.eventId,
-      players: [],
+      players: context.players || [],
+      privatePairingRules:
+        context.privatePairingRules || options.privatePairingRules || [],
+      pairingConstraints:
+        context.pairingConstraints || options.pairingConstraints || [],
+      competitionClass: context.competitionClass || options.competitionClass,
+      clubId: context.clubId || options.clubId || null,
+      envSource: context.envSource || options.envSource,
+      allowedByPublishedRules:
+        context.allowedByPublishedRules === true ||
+        options.allowedByPublishedRules === true,
+      seed: context.seed ?? options.seed,
+      contextTime: context.contextTime || options.contextTime,
     });
+    if (schedule.ok === false || schedule.privatePairingError) {
+      return {
+        ok: false,
+        errors: [
+          schedule.privatePairingError?.message ||
+            "Không tạo được lịch vòng bảng thỏa quy tắc đối đầu.",
+        ],
+        warnings,
+        privatePairingError: schedule.privatePairingError || null,
+      };
+    }
     matches = schedule.matches;
     explain.push("Tạo trận vòng bảng round-robin từ bảng draw.");
   }

@@ -13,6 +13,7 @@ import {
 } from "./TeamTournamentRepository.interface.js";
 import { REPOSITORY_ERROR_CODES } from "./teamTournamentRepositoryTypes.js";
 import { subscribeBlobTournamentPollingOnly } from "./teamTournamentRealtimeRepository.js";
+import { executeSetupMutation as executeSetupMutationFoundation } from "../setup/executeSetupMutation.js";
 
 function findBlobTournament(clubId, tournamentId) {
   const data = loadClubData(clubId);
@@ -172,6 +173,18 @@ export function createBlobTeamTournamentRepository() {
 
     async subscribeTournament(clubId, tournamentId, handlers = {}) {
       return subscribeBlobTournamentPollingOnly(this, clubId, tournamentId, handlers);
+    },
+
+    /**
+     * P1.2 S1-D — setup mutation never falls back to blob writes.
+     * @param {{ rpcName?: string, tournamentId: string, envelope: object }} params
+     */
+    async executeSetupMutation(params = {}) {
+      return executeSetupMutationFoundation({
+        ...params,
+        provider: "blob",
+        envSource: params.envSource,
+      });
     },
   };
 }

@@ -5,10 +5,36 @@ import {
 } from "../../../features/team-tournament/constants.js";
 import { countDreambreakerPendingMatchups } from "../../../features/team-tournament/engines/matchupTieEngine.js";
 import { getLineup } from "../../../features/team-tournament/models/index.js";
+import {
+  buildWorkflowStageProjection,
+  deriveDraftStatusLabel,
+  deriveNextWorkflowAction,
+  deriveWorkflowStage,
+  WORKFLOW_STAGE,
+  WORKFLOW_STAGE_LABELS,
+  WORKFLOW_STAGE_ORDER,
+} from "../../../features/team-tournament/engines/teamTournamentWorkflowStage.js";
+import {
+  hasExplicitGroups,
+  tournamentRequiresExplicitGroups,
+} from "../../../features/team-tournament/engines/teamGroupDivisionPolicy.js";
 
+export {
+  deriveWorkflowStage,
+  deriveDraftStatusLabel,
+  deriveNextWorkflowAction,
+  buildWorkflowStageProjection,
+  WORKFLOW_STAGE,
+  WORKFLOW_STAGE_LABELS,
+  WORKFLOW_STAGE_ORDER,
+};
+
+/** UI stepper — includes explicit Groups stage. */
 export const WORKFLOW_STEPS = [
   { id: "teams", label: "Đội" },
+  { id: "groups", label: "Chia bảng" },
   { id: "disciplines", label: "Nội dung" },
+  { id: "matchups", label: "Cặp đấu" },
   { id: "schedule", label: "Lịch" },
   { id: "lineups", label: "Đội hình" },
   { id: "results", label: "Kết quả" },
@@ -52,10 +78,16 @@ function hasResultsActivity(matchup) {
   );
 }
 
-export function computeTeamTournamentWorkflow(teamData) {
+export function computeTeamTournamentWorkflow(teamData, tournament = null) {
   const teams = teamData?.teams?.length || 0;
   const disciplines = teamData?.disciplines?.length || 0;
   const matchups = teamData?.matchups || [];
+  const needsGroups = tournamentRequiresExplicitGroups(teams);
+  const groupsReady = !needsGroups || hasExplicitGroups(teamData);
+  const hasMatchups = matchups.length > 0;
+  const hasSchedule = matchups.some(
+    (matchup) => Boolean(matchup.scheduledAt) || Boolean(matchup.courtLabel)
+  );
 
   const lineupDoneCount = matchups.filter((matchup) =>
     isLineupPhaseDone(teamData, matchup)
@@ -69,24 +101,32 @@ export function computeTeamTournamentWorkflow(teamData) {
 
   const stepComplete = [
     teams >= 2,
+    groupsReady,
     disciplines >= 1,
-    matchups.length > 0,
-    matchups.length > 0 && lineupDoneCount === matchups.length,
-    matchups.length > 0 && resultsDoneCount === matchups.length,
+    hasMatchups,
+    hasMatchups && hasSchedule,
+    hasMatchups && lineupDoneCount === matchups.length,
+    hasMatchups && resultsDoneCount === matchups.length,
   ];
 
   const dreambreakerPending = countDreambreakerPendingMatchups(teamData) > 0;
+  const stageProjection = buildWorkflowStageProjection(teamData, tournament);
+  const nextAction = stageProjection.nextAction;
 
   const hints = [];
   if (!stepComplete[0]) {
     hints.push("Thêm ít nhất 2 đội (MLP: 4 VĐV/đội, 2 nam + 2 nữ).");
   } else if (!stepComplete[1]) {
-    hints.push("Cấu hình ít nhất 1 nội dung thi đấu.");
+    hints.push("Chia bảng đấu trước khi tạo cặp đấu / lịch thi đấu.");
   } else if (!stepComplete[2]) {
-    hints.push("Tạo lịch vòng tròn để mở giai đoạn nộp đội hình.");
-  } else if (!stepComplete[3] && lineupDoneCount === 0) {
-    hints.push("Xem tab Sơ đồ để duyệt lịch trước khi khóa đội hình.");
+    hints.push("Cấu hình ít nhất 1 nội dung thi đấu.");
   } else if (!stepComplete[3]) {
+    hints.push("Tạo cặp đấu / lịch vòng tròn theo bảng đã chia.");
+  } else if (!stepComplete[4]) {
+    hints.push("Gắn giờ và sân cho các cặp đấu, rồi kiểm tra sơ đồ.");
+  } else if (!stepComplete[5] && lineupDoneCount === 0) {
+    hints.push("Xem tab Sơ đồ để duyệt lịch trước khi khóa đội hình.");
+  } else if (!stepComplete[5]) {
     if (lineupDoneCount > 0) {
       hints.push(
         `Đã công bố đội hình ${lineupDoneCount}/${matchups.length} lượt. Khóa và công bố các lượt còn lại.`
@@ -98,7 +138,7 @@ export function computeTeamTournamentWorkflow(teamData) {
     hints.push(
       "Tỷ số trận con 2–2 — bước Dreambreaker (đấu đơn luân lưu): nộp thứ tự đội trưởng, trọng tài ghi điểm."
     );
-  } else if (!stepComplete[4]) {
+  } else if (!stepComplete[6]) {
     if (resultsStarted) {
       hints.push(
         `Đang nhập kết quả (${resultsDoneCount}/${matchups.length} lượt hoàn tất). Tiếp tục trên portal trọng tài.`
@@ -115,11 +155,14 @@ export function computeTeamTournamentWorkflow(teamData) {
     steps: WORKFLOW_STEPS,
     stepComplete,
     currentStep: activeStep,
-    hints,
+    hints: hints.length ? hints : stageProjection.hints,
     allComplete: stepComplete.every(Boolean),
     progress: {
       lineups: { done: lineupDoneCount, total: matchups.length },
       results: { done: resultsDoneCount, total: matchups.length },
     },
+    stage: stageProjection.stage,
+    draftStatusLabel: stageProjection.draftStatusLabel,
+    nextAction,
   };
 }

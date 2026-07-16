@@ -316,7 +316,7 @@ test("scope and time filtering", () => {
   assert.equal(expired.ok, true);
 });
 
-test("certified policy blocks private personal preference", () => {
+test("certified/official policy hard-stops when personal preference is blocked", () => {
   const blocked = runPrivatePairingRuntime({
     players: players(8),
     rules: [
@@ -334,8 +334,14 @@ test("certified policy blocks private personal preference", () => {
       allowedByPublishedRules: false,
     },
   });
-  // Rule blocked by policy → no hard rules applied → ok baseline
-  assert.equal(blocked.meta.blockedByPolicyCount >= 1 || blocked.ok === true, true);
+  // TT-V6-1: official/certified must not continue baseline after policy block
+  assert.equal(blocked.ok, false);
+  assert.equal(
+    blocked.errorCode,
+    PRIVATE_PAIRING_RUNTIME_CODE.PRIVATE_RULE_BLOCKED_BY_POLICY
+  );
+  assert.equal(blocked.meta.blockedByPolicyCount >= 1, true);
+  assert.equal(blocked.selectedCandidate, null);
 
   const allowed = evaluatePrivatePairingMatchOption(
     {

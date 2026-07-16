@@ -17,6 +17,13 @@ import { buildCourtExplanation } from "./explain.js";
 import { DEFAULT_COMPETITION_TYPE, getCompetitionTypeConfig } from "./competition.js";
 import { getCourtDisplayName } from "../models/court.js";
 import { appendDebugTrace, createDebugTrace } from "./debug.js";
+import {
+  PRIVATE_PAIRING_RUNTIME_CODE,
+  buildPrivatePairingRuntimeError,
+  collectAiPairingRejectionCodes,
+  gatePrivatePairingForRunAi,
+  isNoFeasibleAiPairing,
+} from "../features/private-pairing-rules/runtime/index.js";
 
 function buildSessionMeta(options, competitionType) {
   return {
@@ -299,6 +306,30 @@ export function runAI(players, options = {}) {
     })
   );
 
+  const privateGate = gatePrivatePairingForRunAi(options, competition);
+  if (!privateGate.ok) {
+    const error = privateGate.error;
+    trace = appendDebugTrace(
+      trace,
+      createDebugTrace("privatePairing.gate", {
+        ok: false,
+        code: error?.code || null,
+      })
+    );
+    return finalizeResult(
+      {
+        courts: [],
+        waiting: normalizedInput.players,
+        aiScore: { total: 0 },
+        errors: [error?.message || "Không thể xếp sân theo quy tắc riêng."],
+        privatePairingError: error,
+        competitionType,
+        persisted: false,
+      },
+      trace
+    );
+  }
+
   const context = {
     history: aiData.history || {},
     policies: [
@@ -309,6 +340,7 @@ export function runAI(players, options = {}) {
     competition,
     waitingSnapshot: waitingResult.waitingSnapshot || {},
     waitingData: waitingResult.waitingSnapshot || {},
+    ...(privateGate.injection || {}),
   };
 
   const balanceResult = runBalanceEngine(waitingResult.playingPlayers, {
@@ -334,11 +366,44 @@ export function runAI(players, options = {}) {
   });
   const bestPairing = pairingCandidates[0] || { options: [] };
 
+  if (isNoFeasibleAiPairing(pairingCandidates)) {
+    const rejectionCodes = collectAiPairingRejectionCodes(pairingCandidates);
+    const error = buildPrivatePairingRuntimeError({
+      errorCode: PRIVATE_PAIRING_RUNTIME_CODE.NO_FEASIBLE_PAIRING,
+      meta: { rejectionCodes },
+    });
+    trace = appendDebugTrace(
+      trace,
+      createDebugTrace("privatePairing.noFeasible", {
+        candidateCount: pairingCandidates.length,
+        rejectionCodes,
+      })
+    );
+    return finalizeResult(
+      {
+        courts: [],
+        waiting: [
+          ...lockedPlayers,
+          ...(waitingResult.waitingPlayers || []),
+          ...(balanceResult.waitingPlayers || []),
+          ...(waitingResult.playingPlayers || []),
+        ],
+        aiScore: { total: 0 },
+        errors: [error.message],
+        privatePairingError: error,
+        competitionType,
+        persisted: false,
+      },
+      trace
+    );
+  }
+
   trace = appendDebugTrace(
     trace,
     createDebugTrace("pairing.score", {
       candidateCount: pairingCandidates.length,
       bestScore: bestPairing.totalScore || 0,
+      privatePairingRuntime: privateGate.skipped !== true,
     })
   );
 

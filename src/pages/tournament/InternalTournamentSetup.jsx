@@ -24,9 +24,11 @@ import ArrowBackIcon from "@mui/icons-material/ArrowBack";
 import { useClub } from "../../context/ClubContext.jsx";
 import { loadCourtsForClub } from "../../domain/clubStorage.js";
 import {
-  loadTournamentPickerClubCandidatePool,
-  loadTournamentPickerTenantCandidatePool,
-} from "../../features/pairing-candidates/index.js";
+  listAvailableAthletes,
+  resolveTeamTournamentAthleteClubId,
+  resolveTeamTournamentAthleteTenantId,
+  TEAM_TOURNAMENT_ATHLETE_SCOPE,
+} from "../../features/team-tournament/services/teamTournamentAthletePoolService.js";
 import TournamentCourtSchedulePanel from "../../components/tournament/TournamentCourtSchedulePanel.jsx";
 import {
   getTournament,
@@ -87,9 +89,9 @@ import TournamentManageGate from "../../components/tournament/TournamentManageGa
 import TournamentSetupShell from "../../components/tournament/TournamentSetupShell.jsx";
 import TournamentSelectedPlayersPanel from "../../components/tournament/TournamentSelectedPlayersPanel.jsx";
 import {
+  buildTournamentNotFoundMessage,
   findTournamentClubId,
 } from "../../features/club/index.js";
-import { resolveTenantIdForClub } from "../../features/tenant/guards/tenantGuard.js";
 import { isAiEngineEnabled } from "../../features/ai-assistant/index.js";
 import TournamentAiAssistantPanel from "../../components/tournament/ai/TournamentAiAssistantPanel.jsx";
 import { useAuth } from "../../context/AuthContext.jsx";
@@ -112,6 +114,10 @@ import {
   getTournamentPairingConstraints,
   logConstraintChange,
 } from "../../features/pairing-constraints/index.js";
+import {
+  COMPETITION_CLASS,
+  prepareLivePrivatePairingOptions,
+} from "../../features/private-pairing-rules/index.js";
 import DrawPublishControls from "../../components/tournament/DrawPublishControls.jsx";
 import RegistrationOpsPanel from "../../components/tournament/RegistrationOpsPanel.jsx";
 import {
@@ -153,6 +159,11 @@ export default function InternalTournamentSetup() {
   const [bracketAdvanceAnim, setBracketAdvanceAnim] = useState(null);
   const anim = useTournamentAnimation();
   const pendingPlanRef = useRef(null);
+  const guidedPairingRef = useRef({
+    ok: true,
+    skipped: true,
+    pairingOptions: { privatePairingRules: [] },
+  });
 
   const canViewSkillInSetup = useMemo(
     () =>
@@ -164,9 +175,13 @@ export default function InternalTournamentSetup() {
     [user, activeClubId, tournamentId, rbacEnabled]
   );
 
+  const clubFromQuery = String(searchParams.get("club") || "").trim();
   const tournamentClubId = useMemo(
-    () => findTournamentClubId(tournamentId) || activeClubId,
-    [tournamentId, activeClubId]
+    () =>
+      clubFromQuery ||
+      findTournamentClubId(tournamentId) ||
+      activeClubId,
+    [clubFromQuery, tournamentId, activeClubId]
   );
 
   useEffect(() => {
@@ -192,29 +207,66 @@ export default function InternalTournamentSetup() {
     }
   }, [tournament?.id, tournament?.founderPairingConstraints]);
 
+  const hostClubRecord = useMemo(
+    () =>
+      clubs.find(
+        (club) =>
+          String(club?.id || "").trim() ===
+          String(sourceClubId || tournamentClubId || "").trim()
+      ) || null,
+    [clubs, sourceClubId, tournamentClubId]
+  );
+
   const playerTenantId = useMemo(
-    () => tournament?.tenantId || resolveTenantIdForClub(sourceClubId || tournamentClubId),
-    [tournament?.tenantId, sourceClubId, tournamentClubId]
+    () =>
+      resolveTeamTournamentAthleteTenantId({
+        tournament,
+        club: hostClubRecord,
+        clubId: sourceClubId || tournamentClubId,
+        clubs,
+        currentTenantId,
+      }),
+    [
+      tournament,
+      hostClubRecord,
+      sourceClubId,
+      tournamentClubId,
+      clubs,
+      currentTenantId,
+    ]
   );
 
   const [players, setPlayers] = useState([]);
   const [tenantPlayers, setTenantPlayers] = useState([]);
   const [playersLoadError, setPlayersLoadError] = useState(null);
+  const [playerDiagnostics, setPlayerDiagnostics] = useState(null);
 
   useEffect(() => {
     let cancelled = false;
     (async () => {
-      if (!sourceClubId) {
+      const clubId = resolveTeamTournamentAthleteClubId({
+        tournamentClubId: tournament?.clubId || tournamentClubId,
+        clubFromQuery: String(searchParams.get("club") || "").trim(),
+        selectedClubId: sourceClubId,
+        activeClubId,
+      });
+      if (!clubId) {
         if (!cancelled) {
           setPlayers([]);
           setPlayersLoadError(null);
+          setPlayerDiagnostics(null);
         }
         return;
       }
-      const result = await loadTournamentPickerClubCandidatePool(sourceClubId, {
+      const result = await listAvailableAthletes({
+        tournamentId,
+        clubId,
         tenantId: playerTenantId,
+        scopeMode: TEAM_TOURNAMENT_ATHLETE_SCOPE.CLUB,
+        callerName: "InternalTournamentSetup.club",
       });
       if (cancelled) return;
+      setPlayerDiagnostics(result.diagnostics || null);
       if (!result.ok) {
         setPlayers([]);
         setPlayersLoadError({
@@ -225,16 +277,30 @@ export default function InternalTournamentSetup() {
         });
         return;
       }
-      setPlayers(result.players || []);
-      setPlayersLoadError(null);
-      if (result.empty && result.message) {
+      setPlayers(result.athletes || []);
+      if (result.empty && result.emptyMessage) {
+        setPlayersLoadError({
+          code: result.code || "NO_ELIGIBLE_CANDIDATES",
+          message: result.emptyMessage,
+          severity: "warning",
+        });
+      } else {
         setPlayersLoadError(null);
       }
     })();
     return () => {
       cancelled = true;
     };
-  }, [sourceClubId, localRevision, playerTenantId]);
+  }, [
+    sourceClubId,
+    localRevision,
+    playerTenantId,
+    tournament?.clubId,
+    tournamentClubId,
+    tournamentId,
+    activeClubId,
+    searchParams,
+  ]);
 
   useEffect(() => {
     let cancelled = false;
@@ -242,7 +308,13 @@ export default function InternalTournamentSetup() {
       setTenantPlayers([]);
       return undefined;
     }
-    loadTournamentPickerTenantCandidatePool(playerTenantId).then((result) => {
+    listAvailableAthletes({
+      tournamentId,
+      clubId: sourceClubId || tournamentClubId,
+      tenantId: playerTenantId,
+      scopeMode: TEAM_TOURNAMENT_ATHLETE_SCOPE.TENANT,
+      callerName: "InternalTournamentSetup.tenant",
+    }).then((result) => {
       if (cancelled) return;
       if (!result.ok) {
         setTenantPlayers([]);
@@ -256,12 +328,12 @@ export default function InternalTournamentSetup() {
         );
         return;
       }
-      setTenantPlayers(result.players || []);
+      setTenantPlayers(result.athletes || []);
     });
     return () => {
       cancelled = true;
     };
-  }, [playerTenantId, localRevision]);
+  }, [playerTenantId, localRevision, tournamentId, sourceClubId, tournamentClubId]);
 
   const courts = useMemo(
     () => loadCourtsForClub(tournamentClubId),
@@ -526,12 +598,15 @@ export default function InternalTournamentSetup() {
 
   const applyConstraintWarnings = (pairingOptions) => {
     const constraintWarnings = pairingOptions?.constraintWarnings || [];
-    if (constraintWarnings.length > 0) {
-      setWarnings(
-        constraintWarnings.map((item) =>
-          typeof item === "string" ? item : item.message || String(item)
-        )
-      );
+    const structured = pairingOptions?.privatePairingError;
+    const nextWarnings = constraintWarnings.map((item) =>
+      typeof item === "string" ? item : item.message || String(item)
+    );
+    if (structured?.code) {
+      nextWarnings.unshift(structured.code);
+    }
+    if (nextWarnings.length > 0) {
+      setWarnings(nextWarnings);
     }
   };
 
@@ -554,6 +629,7 @@ export default function InternalTournamentSetup() {
         setLocalRevision,
         refreshClubs,
         persistEvent,
+        getPrivatePairingOptions: () => guidedPairingRef.current,
       }),
     [
       tournament,
@@ -764,6 +840,26 @@ export default function InternalTournamentSetup() {
     setWarnings([]);
     setMessage(null);
 
+    const prepared = await prepareLivePrivatePairingOptions({
+      clubId: tournamentClubId,
+      tournamentId,
+      eventId: savedEvent?.id || `event-${tournamentId}`,
+      competitionClass: COMPETITION_CLASS.INTERNAL,
+      pairingConstraints: founderConstraints,
+    });
+
+    if (!prepared.ok) {
+      setError(prepared.error?.message || "Không thể bắt đầu trình chiếu theo quy tắc riêng.");
+      setWarnings(
+        (prepared.error?.fatalConflicts || prepared.error?.blockedByPolicy || []).map(
+          (item) => item.code || item.message || String(item)
+        )
+      );
+      return;
+    }
+
+    guidedPairingRef.current = prepared;
+
     if (broadcastFeatureEnabled && broadcast.shouldBroadcastWithFlow) {
       const broadcastResult = await broadcast.startBroadcast();
       if (broadcastResult?.ok === false) {
@@ -781,11 +877,30 @@ export default function InternalTournamentSetup() {
     }
   };
 
-  const handleSuggestPairs = () => {
+  const handleSuggestPairs = async () => {
     setError(null);
     setWarnings([]);
 
+    const prepared = await prepareLivePrivatePairingOptions({
+      clubId: tournamentClubId,
+      tournamentId,
+      eventId: savedEvent?.id || `event-${tournamentId}`,
+      competitionClass: COMPETITION_CLASS.INTERNAL,
+      pairingConstraints: founderConstraints,
+    });
+
+    if (!prepared.ok) {
+      setError(prepared.error?.message || "Không thể ghép cặp theo quy tắc riêng.");
+      setWarnings(
+        (prepared.error?.fatalConflicts || prepared.error?.blockedByPolicy || []).map(
+          (item) => item.code || item.message || String(item)
+        )
+      );
+      return;
+    }
+
     const pairingOptions = {
+      ...prepared.pairingOptions,
       tournamentId,
       eventId: savedEvent?.id || `event-${tournamentId}`,
       pairingConstraints: founderConstraints,
@@ -798,6 +913,11 @@ export default function InternalTournamentSetup() {
     );
 
     applyConstraintWarnings(pairingOptions);
+
+    if (pairingOptions.privatePairingError) {
+      setError(pairingOptions.privatePairingError.message);
+      return;
+    }
 
     if (entries.length === 0) {
       setError(
@@ -833,7 +953,7 @@ export default function InternalTournamentSetup() {
     );
   };
 
-  const handleBuildGroups = () => {
+  const handleBuildGroups = async () => {
     setError(null);
     setWarnings([]);
     setMessage(null);
@@ -844,23 +964,45 @@ export default function InternalTournamentSetup() {
       return;
     }
 
-    const pairingOptions = {
+    const prepared = await prepareLivePrivatePairingOptions({
+      clubId: tournamentClubId,
       tournamentId,
       eventId: savedEvent?.id || `event-${tournamentId}`,
+      competitionClass: COMPETITION_CLASS.INTERNAL,
       pairingConstraints: founderConstraints,
-    };
+    });
 
-    const entries =
-      previewEntries.length > 0
-        ? previewEntries
-        : suggestEntriesFromPlayers(
-            players.filter((player) => selectedPlayerIds.includes(String(player.id))),
-            eventType,
-            pairingOptions
-          );
+    if (!prepared.ok) {
+      setError(prepared.error?.message || "Không thể áp dụng quy tắc riêng.");
+      setWarnings(
+        (prepared.error?.fatalConflicts || prepared.error?.blockedByPolicy || []).map(
+          (item) => item.code || item.message || String(item)
+        )
+      );
+      return;
+    }
 
+    let entries = previewEntries;
     if (previewEntries.length === 0) {
+      const pairingOptions = {
+        ...prepared.pairingOptions,
+        tournamentId,
+        eventId: savedEvent?.id || `event-${tournamentId}`,
+        pairingConstraints: founderConstraints,
+      };
+
+      entries = suggestEntriesFromPlayers(
+        players.filter((player) => selectedPlayerIds.includes(String(player.id))),
+        eventType,
+        pairingOptions
+      );
+
       applyConstraintWarnings(pairingOptions);
+
+      if (pairingOptions.privatePairingError) {
+        setError(pairingOptions.privatePairingError.message);
+        return;
+      }
     }
 
     const plan = buildInternalTournamentPlan({
@@ -871,10 +1013,17 @@ export default function InternalTournamentSetup() {
       groupCount,
       manualEntries: entries,
       pairingConstraints: founderConstraints,
+      privatePairingRules: prepared.pairingOptions?.privatePairingRules || [],
+      clubId: tournamentClubId,
+      competitionClass: COMPETITION_CLASS.INTERNAL,
+      envSource: prepared.pairingOptions?.envSource,
+      seed: prepared.pairingOptions?.seed,
+      allowedByPublishedRules: prepared.pairingOptions?.allowedByPublishedRules,
+      contextTime: prepared.pairingOptions?.contextTime,
     });
 
     if (!plan.ok) {
-      setError(plan.errors?.join(" "));
+      setError(plan.privatePairingError?.message || plan.errors?.join(" "));
       setWarnings(plan.warnings || []);
       return;
     }
@@ -1012,10 +1161,17 @@ export default function InternalTournamentSetup() {
   if (!tournament) {
     return (
       <Box>
-        <Alert severity="error">Khong tim thay giai.</Alert>
-        <Button component={RouterLink} to="/tournament" sx={{ mt: 2 }}>
-          Quay lai
-        </Button>
+        <Alert severity="error">
+          {buildTournamentNotFoundMessage(tournamentId, { kind: "giải nội bộ" })}
+        </Alert>
+        <Stack direction="row" spacing={1} sx={{ mt: 2 }} flexWrap="wrap" useFlexGap>
+          <Button component={RouterLink} to="/tournament" variant="outlined">
+            Quay lại danh sách giải
+          </Button>
+          <Button component={RouterLink} to="/tournament" variant="contained">
+            Tạo lại giải trên Preview hiện tại
+          </Button>
+        </Stack>
       </Box>
     );
   }
@@ -1066,10 +1222,24 @@ export default function InternalTournamentSetup() {
             </Alert>
           )}
           {playersLoadError && (
-            <Alert severity="error" sx={{ mb: 2 }}>
+            <Alert
+              severity={playersLoadError.severity === "warning" ? "warning" : "error"}
+              sx={{ mb: 2 }}
+            >
               {playersLoadError.message}
             </Alert>
           )}
+          {playerDiagnostics ? (
+            <Alert severity="info" sx={{ mb: 2 }}>
+              Candidate diagnostics: sourceCount={playerDiagnostics.sourceCount},
+              membershipCount={playerDiagnostics.membershipCount},
+              activeMembershipCount={playerDiagnostics.activeMembershipCount},
+              eligibleCount={playerDiagnostics.eligibleCount},
+              WRONG_SCOPE={playerDiagnostics.WRONG_SCOPE},
+              MEMBERSHIP_INACTIVE={playerDiagnostics.MEMBERSHIP_INACTIVE},
+              MISSING_IDENTITY_LINK={playerDiagnostics.MISSING_IDENTITY_LINK}
+            </Alert>
+          ) : null}
           {warnings.length > 0 && (
             <Alert severity="warning" sx={{ mb: 2 }}>
               {warnings.join(" ")}
@@ -1085,7 +1255,16 @@ export default function InternalTournamentSetup() {
         <TournamentAiAssistantPanel
           tournamentId={tournamentId}
           clubId={tournamentClubId}
-          tenantId={currentTenantId || tournament?.tenantId || resolveTenantIdForClub(tournamentClubId)}
+          tenantId={
+            currentTenantId ||
+            tournament?.tenantId ||
+            resolveTeamTournamentAthleteTenantId({
+              tournament,
+              clubId: tournamentClubId,
+              clubs,
+              currentTenantId,
+            })
+          }
           players={players}
           courts={courts}
           userId={user?.id || ""}
@@ -1247,15 +1426,21 @@ export default function InternalTournamentSetup() {
                 </Typography>
               ) : eligiblePlayers.length === 0 ? (
                 <Typography variant="body2" color="text.secondary">
-                  CLB này chưa có thành viên. Thêm tại{" "}
-                  <Link
-                    component={RouterLink}
-                    to={`/clubs/${sourceClubId}?tab=members`}
-                    underline="hover"
-                  >
-                    Quản lý CLB → Thành viên
-                  </Link>
-                  .
+                  {playersLoadError?.message ? (
+                    playersLoadError.message
+                  ) : (
+                    <>
+                      CLB này chưa có thành viên. Thêm tại{" "}
+                      <Link
+                        component={RouterLink}
+                        to={`/clubs/${sourceClubId}?tab=members`}
+                        underline="hover"
+                      >
+                        Quản lý CLB → Thành viên
+                      </Link>
+                      .
+                    </>
+                  )}
                 </Typography>
               ) : (
                 eligiblePlayers.map((player) => {

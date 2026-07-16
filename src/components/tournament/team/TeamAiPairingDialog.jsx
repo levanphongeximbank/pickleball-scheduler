@@ -24,6 +24,10 @@ import {
 import { FORMAT_PRESET } from "../../../features/team-tournament/constants.js";
 import { applyTeamPairing } from "../../../features/team-tournament/engines/teamAutoDrawEngine.js";
 import { runTeamFormationWithCanonicalAdapter } from "../../../features/competition-core/formation/adapters/teamFormationAdapter.js";
+import {
+  COMPETITION_CLASS,
+  prepareLivePrivatePairingOptions,
+} from "../../../features/private-pairing-rules/index.js";
 import TournamentPlayerPickerPanel from "../TournamentPlayerPickerPanel.jsx";
 import TournamentPlayerQuickAddDialog from "../TournamentPlayerQuickAddDialog.jsx";
 import { ALL_CLUBS_FILTER, formatPlayerPickerMeta } from "../../../utils/tournamentPlayerPicker.js";
@@ -44,6 +48,12 @@ export default function TeamAiPairingDialog({
   players = [],
   clubs = [],
   clubId = "",
+  tournamentId = "",
+  tournament = null,
+  tenantId = null,
+  clubFromQuery = null,
+  activeClubId = null,
+  competitionClass = COMPETITION_CLASS.INTERNAL,
   defaultClubName = "",
   onPlayersRefresh,
   onMessage,
@@ -62,6 +72,7 @@ export default function TeamAiPairingDialog({
   const [search, setSearch] = useState("");
   const [pairingResult, setPairingResult] = useState(null);
   const [captains, setCaptains] = useState({});
+  const [applying, setApplying] = useState(false);
   const [quickAddOpen, setQuickAddOpen] = useState(false);
   const [localAddedPlayers, setLocalAddedPlayers] = useState([]);
 
@@ -147,22 +158,67 @@ export default function TeamAiPairingDialog({
     onMessage?.(`Đã thêm và chọn ${player.name}.`);
   }
 
-  function handlePairTeams() {
+  async function handlePairTeams() {
+    const resolvedCompetitionClass =
+      competitionClass ||
+      teamData?.settings?.competitionClass ||
+      COMPETITION_CLASS.INTERNAL;
+
+    const prepared = await prepareLivePrivatePairingOptions({
+      tournament: tournament || { id: tournamentId, clubId, tenantId },
+      tournamentId: tournamentId || tournament?.id || null,
+      clubId: clubId || tournament?.clubId || null,
+      clubFromQuery,
+      activeClubId,
+      tenantId: tenantId || tournament?.tenantId || null,
+      competitionClass: resolvedCompetitionClass,
+      pairingConstraints: [],
+    });
+
+    if (!prepared.ok) {
+      setPairingResult(null);
+      onError?.(prepared.error?.message || "Không thể ghép đội theo quy tắc riêng.");
+      return;
+    }
+
+    const resolvedClubId = prepared.pairingOptions?.clubId || clubId || null;
+    const resolvedTournamentId =
+      prepared.pairingOptions?.tournamentId || tournamentId || null;
+
     const pairing = runTeamFormationWithCanonicalAdapter({
       players: pickerPlayers,
       selectedPlayerIds: selectedIds,
       teamCount,
       teamNames,
       formatPreset: teamData?.settings?.formatPreset,
+      privatePairingRules: prepared.pairingOptions?.privatePairingRules || [],
+      competitionClass: resolvedCompetitionClass,
+      clubId: resolvedClubId,
+      tournamentId: resolvedTournamentId,
+      seed: 1,
     });
+
+    if (pairing.privatePairingError || pairing.ok === false) {
+      setPairingResult(null);
+      const code = pairing.privatePairingError?.code;
+      onError?.(
+        pairing.privatePairingError?.message ||
+          (code ? `${pairing.warnings?.[0] || "Không thể ghép đội"} (${code})` : null) ||
+          pairing.warnings?.[0] ||
+          "Không thể ghép đội thỏa quy tắc bắt buộc."
+      );
+      return;
+    }
+
     setPairingResult({
       teams: pairing.teams,
       waitingPlayerIds: pairing.waitingPlayerIds,
       warnings: pairing.warnings,
+      privatePairingMeta: pairing.privatePairingMeta,
     });
 
     const initialCaptains = {};
-    pairing.teams.forEach((team) => {
+    (pairing.teams || []).forEach((team) => {
       initialCaptains[team.id] = "";
     });
     setCaptains(initialCaptains);
@@ -183,7 +239,10 @@ export default function TeamAiPairingDialog({
     }));
   }
 
-  function handleApply() {
+  async function handleApply() {
+    if (applying) {
+      return;
+    }
     if (!pairingResult?.teams?.length) {
       onError?.("Không có đội để áp dụng.");
       return;
@@ -208,8 +267,19 @@ export default function TeamAiPairingDialog({
       return;
     }
 
-    onApply?.(result.teamData, result);
-    onClose?.();
+    setApplying(true);
+    try {
+      const applyResult = await onApply?.(result.teamData, result);
+      if (applyResult?.ok === false) {
+        return;
+      }
+      // Parent may return undefined on success for legacy callers — only close when not explicit fail.
+      if (applyResult == null || applyResult.ok !== false) {
+        onClose?.();
+      }
+    } finally {
+      setApplying(false);
+    }
   }
 
   const waitingPlayers = useMemo(() => {
@@ -469,10 +539,10 @@ export default function TeamAiPairingDialog({
         ) : (
           <Button
             variant="contained"
-            disabled={!allCaptainsSelected}
+            disabled={!allCaptainsSelected || applying}
             onClick={handleApply}
           >
-            Xác nhận
+            {applying ? "Đang lưu..." : "Xác nhận"}
           </Button>
         )}
       </DialogActions>

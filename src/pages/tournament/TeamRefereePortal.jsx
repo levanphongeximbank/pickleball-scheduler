@@ -24,10 +24,14 @@ import SportsIcon from "@mui/icons-material/Sports";
 import { useAuth } from "../../context/AuthContext.jsx";
 import { useClub } from "../../context/ClubContext.jsx";
 import { useTenant } from "../../context/TenantContext.jsx";
-import { loadPlayersForClub } from "../../domain/clubStorage.js";
 import { assertTournamentPortalAccess } from "../../domain/tournamentService.js";
 import { findTournamentClubId } from "../../features/club/services/clubTournamentBridge.js";
 import { getPermissionsForRole } from "../../features/identity/matrix/rolePermissions.js";
+import {
+  TEAM_TOURNAMENT_ATHLETE_SCOPE,
+} from "../../features/team-tournament/services/teamTournamentAthletePoolService.js";
+import { hydrateTeamRoster } from "../../features/team-tournament/engines/teamRosterHydration.js";
+import { useTeamTournamentAthletePool } from "../../features/team-tournament/ui/useTeamTournamentAthletePool.js";
 import {
   MATCHUP_STATUS,
   SUB_MATCH_STATUS,
@@ -535,7 +539,7 @@ function MatchupCard({
 export default function TeamRefereePortal() {
   const { tournamentId } = useParams();
   const [searchParams] = useSearchParams();
-  const { activeClubId } = useClub();
+  const { activeClubId, clubs = [] } = useClub();
   const { rbacEnabled, isAuthenticated, user } = useAuth();
   const { currentTenantId } = useTenant();
 
@@ -556,6 +560,7 @@ export default function TeamRefereePortal() {
     tournament,
     teamData,
     version,
+    dataVersion,
     reload,
     runMutation,
     saveSubMatchDraft,
@@ -637,10 +642,24 @@ export default function TeamRefereePortal() {
     tournamentId,
   ]);
 
-  const players = useMemo(
-    () => (effectiveClubId ? loadPlayersForClub(effectiveClubId) : []),
-    [effectiveClubId]
-  );
+  const athletePool = useTeamTournamentAthletePool({
+    tournament,
+    activeClubId: effectiveClubId,
+    clubs,
+    currentTenantId,
+    scopeMode: TEAM_TOURNAMENT_ATHLETE_SCOPE.CLUB,
+    callerName: "TeamRefereePortal",
+    revision: dataVersion,
+    enabled: Boolean(effectiveClubId && tournament),
+  });
+  const players = athletePool.players;
+
+  const hydratedTeams = useMemo(() => {
+    if (!teamData?.teams) return [];
+    return teamData.teams.map((team) =>
+      hydrateTeamRoster({ team, athletePool: players })
+    );
+  }, [teamData, players]);
 
   const dreambreakerPendingCount = useMemo(
     () => (teamData ? countDreambreakerPendingMatchups(teamData) : 0),
@@ -942,6 +961,17 @@ export default function TeamRefereePortal() {
           {message}
         </Alert>
       )}
+      {athletePool.error ? (
+        <Alert severity="warning" sx={{ mb: 2 }}>
+          {athletePool.error.message ||
+            "Không tải được pool VĐV canonical. Tên VĐV thiếu identity sẽ được đánh dấu rõ."}
+        </Alert>
+      ) : null}
+      {hydratedTeams.some((team) => team.unresolvedCount > 0) ? (
+        <Alert severity="warning" sx={{ mb: 2 }}>
+          Một số VĐV trên đội thiếu identity canonical — tên hiển thị kèm diagnostic, không fallback blob.
+        </Alert>
+      ) : null}
 
       <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap sx={{ mb: 2 }}>
         {[

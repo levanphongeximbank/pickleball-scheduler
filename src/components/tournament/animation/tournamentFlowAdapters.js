@@ -110,29 +110,60 @@ export function createInternalFlowAdapters(deps) {
     setLocalRevision,
     refreshClubs,
     persistEvent,
+    getPrivatePairingOptions,
   } = deps;
+
+  function resolvePrivatePairingOptions() {
+    const prepared = typeof getPrivatePairingOptions === "function" ? getPrivatePairingOptions() : null;
+    if (prepared?.ok === false) {
+      return prepared;
+    }
+    return {
+      ok: true,
+      pairingOptions: prepared?.pairingOptions || {
+        privatePairingRules: [],
+        competitionClass: prepared?.pairingOptions?.competitionClass,
+      },
+    };
+  }
 
   function getFreshSavedEvent() {
     return getTournament(tournamentClubId, tournamentId)?.events?.[0] || null;
   }
 
   function resolveEntries(ctx) {
-    return (
-      ctx.entries ||
-      suggestEntriesFromPlayers(
-        players.filter((player) => selectedPlayerIds.includes(String(player.id))),
-        eventType,
-        {
-          tournamentId,
-          eventId: getFreshSavedEvent()?.id || `event-${tournamentId}`,
-        }
-      )
+    if (ctx.entries) {
+      return ctx.entries;
+    }
+    const prepared = resolvePrivatePairingOptions();
+    if (prepared.ok === false) {
+      return [];
+    }
+    return suggestEntriesFromPlayers(
+      players.filter((player) => selectedPlayerIds.includes(String(player.id))),
+      eventType,
+      {
+        tournamentId,
+        eventId: getFreshSavedEvent()?.id || `event-${tournamentId}`,
+        ...(prepared.pairingOptions || {}),
+      }
     );
   }
 
   function resolvePlan(ctx) {
     if (ctx.plan?.ok) {
       return ctx.plan;
+    }
+
+    const prepared = resolvePrivatePairingOptions();
+    if (prepared.ok === false) {
+      return {
+        ok: false,
+        errors: [
+          prepared.error?.message || "Không lập được kế hoạch theo quy tắc riêng.",
+        ],
+        privatePairingError: prepared.error || null,
+      };
     }
 
     const entries = resolveEntries(ctx);
@@ -143,6 +174,7 @@ export function createInternalFlowAdapters(deps) {
       eventType,
       groupCount,
       manualEntries: entries,
+      ...(prepared.pairingOptions || {}),
     });
   }
 
@@ -180,7 +212,13 @@ export function createInternalFlowAdapters(deps) {
 
       const plan = resolvePlan({ ...ctx, entries });
       if (!plan.ok) {
-        return { ok: false, error: plan.errors?.join(" ") || "Không lập được kế hoạch giải." };
+        return {
+          ok: false,
+          error:
+            plan.privatePairingError?.message ||
+            plan.errors?.join(" ") ||
+            "Không lập được kế hoạch giải.",
+        };
       }
 
       ctx.entries = entries;
@@ -425,7 +463,13 @@ export function createOfficialFlowAdapters(deps) {
 
       const plan = resolvePlan({ ...ctx, entries });
       if (!plan.ok) {
-        return { ok: false, error: plan.errors?.join(" ") || "Không lập được kế hoạch giải." };
+        return {
+          ok: false,
+          error:
+            plan.privatePairingError?.message ||
+            plan.errors?.join(" ") ||
+            "Không lập được kế hoạch giải.",
+        };
       }
 
       ctx.entries = entries;

@@ -173,6 +173,8 @@ describe("Phase 42L — clubNavMatrix", () => {
     assert.equal(isClubNavItemVisible(CLUB_NAV_ITEM_KEYS.PLATFORM_ALL, ctx), true);
     assert.equal(isClubNavItemVisible(CLUB_NAV_ITEM_KEYS.MANAGE_LIST, ctx), true);
     assert.equal(isClubNavItemVisible(CLUB_NAV_ITEM_KEYS.DISCOVER, ctx), false);
+    // Staging QA / SA club-switcher must still reach Daily Play launcher
+    assert.equal(isClubNavItemVisible(CLUB_NAV_ITEM_KEYS.DAILY_PLAY, ctx), true);
   });
 
   it("Super Admin with membership — my-club + platform", () => {

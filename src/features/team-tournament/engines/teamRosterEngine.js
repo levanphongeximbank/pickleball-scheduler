@@ -1,10 +1,14 @@
-import { getPlayerGenderKey } from "../../../models/player.js";
 import { GENDER_REQUIREMENT } from "../constants.js";
 import {
   findTeam,
 } from "../models/index.js";
 import { isMlpFormat } from "./mlpPresetEngine.js";
 import { updateTeamInTournament } from "./teamTournamentEngine.js";
+import {
+  collectHydratedMemberKeys,
+  computeHydratedRosterStats,
+  hydrateTeamRoster,
+} from "./teamRosterHydration.js";
 
 function normalizePlayerId(value) {
   return value ? String(value).trim() : "";
@@ -18,35 +22,37 @@ export function findPlayerTeam(teamData, playerId) {
 
   return (
     (teamData?.teams || []).find((team) =>
-      team.playerIds.includes(normalized)
+      (team.playerIds || []).includes(normalized)
     ) || null
   );
 }
 
+/**
+ * Identity-aware find — resolves aliases via athlete pool.
+ * @param {object} teamData
+ * @param {string} playerId
+ * @param {object[]} [athletePool]
+ */
+export function findPlayerTeamInPool(teamData, playerId, athletePool = []) {
+  const normalized = normalizePlayerId(playerId);
+  if (!normalized) {
+    return null;
+  }
+
+  const direct = findPlayerTeam(teamData, normalized);
+  if (direct) return direct;
+
+  return (
+    (teamData?.teams || []).find((team) => {
+      const hydrated = hydrateTeamRoster({ team, athletePool });
+      return collectHydratedMemberKeys(hydrated).has(normalized);
+    }) || null
+  );
+}
+
 export function computeTeamRosterStats(team, players = []) {
-  const playerMap = new Map(players.map((player) => [String(player.id), player]));
-  let males = 0;
-  let females = 0;
-
-  (team?.playerIds || []).forEach((playerId) => {
-    const player = playerMap.get(String(playerId));
-    if (!player) {
-      return;
-    }
-
-    const gender = getPlayerGenderKey(player.gender);
-    if (gender === "male") {
-      males += 1;
-    } else if (gender === "female") {
-      females += 1;
-    }
-  });
-
-  return {
-    total: team?.playerIds?.length || 0,
-    males,
-    females,
-  };
+  const hydrated = hydrateTeamRoster({ team, athletePool: players });
+  return computeHydratedRosterStats(hydrated);
 }
 
 export function getTeamRosterWarnings(team, teamData, players = []) {

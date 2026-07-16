@@ -1,12 +1,22 @@
-import { Alert, Box, Step, StepLabel, Stepper, Typography } from "@mui/material";
+import { Alert, Box, Chip, Step, StepLabel, Stepper, Typography } from "@mui/material";
 
 import { computeTeamTournamentWorkflow } from "./teamTournamentWorkflow.js";
 
-export default function TeamTournamentWorkflowBar({ teamData }) {
-  const workflow = computeTeamTournamentWorkflow(teamData);
+export default function TeamTournamentWorkflowBar({ teamData, tournament = null }) {
+  const workflow = computeTeamTournamentWorkflow(teamData, tournament);
 
   return (
     <Box sx={{ mb: 2 }}>
+      {workflow.draftStatusLabel ? (
+        <Chip
+          size="small"
+          color="primary"
+          variant="outlined"
+          label={workflow.draftStatusLabel}
+          sx={{ mb: 1.5 }}
+        />
+      ) : null}
+
       <Stepper
         activeStep={workflow.currentStep}
         alternativeLabel

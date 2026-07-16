@@ -65,6 +65,8 @@ import {
   emptyRuleDraft,
   filterRuleSets,
   filterRules,
+  isRuntimeUnsupportedPrivateConstraintType,
+  listUnsupportedRuntimeRules,
   playerLabel,
   PRIORITY_OPTIONS,
   REASON_CATEGORY_OPTIONS,
@@ -553,6 +555,15 @@ function PrivatePairingRulesAdminInner() {
 
   const handleActivate = async () => {
     if (!selectedRuleSetId) return;
+    const unsupportedActive = listUnsupportedRuntimeRules(rules).filter((item) => item.active);
+    if (unsupportedActive.length) {
+      setError(
+        `Không kích hoạt: ${unsupportedActive
+          .map((item) => item.label)
+          .join(", ")} chưa được runtime hỗ trợ. Disable các rule này trước khi activate.`
+      );
+      return;
+    }
     const reason = actionReason || "activate-version";
     const result = await activatePrivatePairingRuleSetWithPreflight({
       ruleSetId: selectedRuleSetId,
@@ -839,6 +850,13 @@ function PrivatePairingRulesAdminInner() {
 
               {tab === 0 && (
                 <>
+                  {listUnsupportedRuntimeRules(rules).length > 0 ? (
+                    <Alert severity="warning" sx={{ mb: 1 }}>
+                      Rule lưu sẵn loại same_team / different_team vẫn hiển thị nhưng{" "}
+                      <strong>chưa được runtime hỗ trợ</strong> — không kích hoạt version khi còn
+                      rule active thuộc loại này. Dùng must_partner / must_not_partner thay thế.
+                    </Alert>
+                  ) : null}
                   <Stack direction={{ xs: "column", md: "row" }} spacing={1} sx={{ mb: 1 }}>
                     <TextField
                       size="small"
@@ -917,7 +935,18 @@ function PrivatePairingRulesAdminInner() {
                             {playerLabel(playersById, rule.primaryPlayerId)}
                           </TableCell>
                           <TableCell>
-                            {CONSTRAINT_TYPE_LABELS[rule.constraintType] || rule.constraintType}
+                            <Stack direction="row" spacing={0.5} alignItems="center" flexWrap="wrap" useFlexGap>
+                              <span>
+                                {CONSTRAINT_TYPE_LABELS[rule.constraintType] || rule.constraintType}
+                              </span>
+                              {isRuntimeUnsupportedPrivateConstraintType(rule.constraintType) ? (
+                                <Chip
+                                  size="small"
+                                  color="warning"
+                                  label="Chưa được runtime hỗ trợ"
+                                />
+                              ) : null}
+                            </Stack>
                           </TableCell>
                           <TableCell>
                             {(rule.targetPlayerIds || [])

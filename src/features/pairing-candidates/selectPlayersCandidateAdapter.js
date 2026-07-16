@@ -10,6 +10,15 @@ import { rpcV2ClubListMembers } from "../club/services/clubStorageV2RpcService.j
 import { createPairingCandidateService } from "./pairingCandidateService.js";
 import { PAIRING_CANDIDATE_STATUS } from "./pairingCandidateContract.js";
 import { PAIRING_CANDIDATE_REASON_CODES } from "./pairingCandidateReasonCodes.js";
+import {
+  isActiveMembershipStatus,
+  readMembershipStatus,
+} from "./pairingMembershipStatus.js";
+import {
+  attachCanonicalRatingToScopeRow,
+  buildPickVnRatingIndex,
+  projectCanonicalRatingFields,
+} from "./canonicalAthleteRating.js";
 
 function normalizeId(value) {
   return String(value || "").trim();
@@ -112,6 +121,48 @@ export async function fetchAthletesForPairingCandidates(userIds, deps = {}) {
 }
 
 /**
+ * Batch Pick_VN rating fetch — keyed by auth_user_id (= profiles.id).
+ * @param {string[]} userIds
+ * @param {object} [deps]
+ */
+export async function fetchPickVnRatingsForPairingCandidates(userIds, deps = {}) {
+  const ids = Array.from(
+    new Set((userIds || []).map((v) => normalizeId(v)).filter(Boolean))
+  );
+  if (ids.length === 0) {
+    return { ok: true, ratings: [] };
+  }
+  if (typeof deps.fetchPickVnRatings === "function") {
+    return deps.fetchPickVnRatings(ids);
+  }
+  if (!hasSupabaseConfig()) {
+    return { ok: true, ratings: [] };
+  }
+  const client = getSupabaseAuthClient();
+  if (!client) {
+    return { ok: true, ratings: [] };
+  }
+  try {
+    const { data, error } = await client
+      .from("pick_vn_player_ratings")
+      .select(
+        "id, auth_user_id, current_rating, provisional_rating, self_declared_rating, rating_status, last_rating_updated_at, updated_at"
+      )
+      .in("auth_user_id", ids);
+    if (error) {
+      return { ok: false, code: "RATINGS_READ_FAILED", error: error.message };
+    }
+    return { ok: true, ratings: Array.isArray(data) ? data : [] };
+  } catch (err) {
+    return {
+      ok: false,
+      code: "RATINGS_READ_FAILED",
+      error: String(err?.message || err || "Pick_VN ratings read failed"),
+    };
+  }
+}
+
+/**
  * Build gateway scope rows from cloud membership + athlete + profile reads.
  * @param {string} clubId
  * @param {object} [deps]
@@ -159,8 +210,8 @@ export async function listSelectPlayersScopeRows(clubId, deps = {}) {
       sourceBreakdown: {
         athleteRows: 0,
         membershipRows: members.length,
-        activeMembershipRows: members.filter(
-          (m) => String(m.status || "").toLowerCase() === "active"
+        activeMembershipRows: members.filter((m) =>
+          isActiveMembershipStatus(readMembershipStatus(m))
         ).length,
       },
     };
@@ -178,8 +229,8 @@ export async function listSelectPlayersScopeRows(clubId, deps = {}) {
       sourceBreakdown: {
         athleteRows: 0,
         membershipRows: members.length,
-        activeMembershipRows: members.filter(
-          (m) => String(m.status || "").toLowerCase() === "active"
+        activeMembershipRows: members.filter((m) =>
+          isActiveMembershipStatus(readMembershipStatus(m))
         ).length,
       },
     };
@@ -192,6 +243,27 @@ export async function listSelectPlayersScopeRows(clubId, deps = {}) {
     (athletesResult.athletes || []).map((a) => [normalizeId(a.user_id || a.userId), a])
   );
 
+  const ratingsResult = await fetchPickVnRatingsForPairingCandidates(userIds, deps);
+  if (!ratingsResult.ok) {
+    return {
+      ok: false,
+      error: {
+        code: ratingsResult.code || "RATINGS_READ_FAILED",
+        message: ratingsResult.error || "Không tải được trình độ Pick_VN.",
+      },
+      rows: [],
+      sourceBreakdown: {
+        athleteRows: athletesResult.athletes?.length ?? 0,
+        membershipRows: members.length,
+        activeMembershipRows: members.filter((m) =>
+          isActiveMembershipStatus(readMembershipStatus(m))
+        ).length,
+      },
+    };
+  }
+
+  const ratingByUser = buildPickVnRatingIndex(ratingsResult.ratings || []);
+
   const rows = members.map((member) => {
     const userId = normalizeId(member.user_id || member.userId);
     const profile = profilesByUser.get(userId) || null;
@@ -199,27 +271,32 @@ export async function listSelectPlayersScopeRows(clubId, deps = {}) {
     const athleteId =
       normalizeId(athlete?.id || member.athlete_id || member.athleteId) || null;
 
-    return {
-      athleteId,
-      userId: userId || null,
-      displayName:
-        athlete?.display_name ||
-        member.display_name ||
-        profile?.display_name ||
-        userId ||
-        athleteId ||
-        "",
-      gender: profile?.gender ?? member.gender ?? null,
-      rating: member.rating ?? athlete?.rating ?? null,
-      athleteStatus: athlete?.status || (athleteId ? "active" : "active"),
-      membershipId: member.id || member.membershipId || null,
-      membershipStatus: member.status || member.membershipStatus || null,
-      clubId: id,
-      tenantId: member.tenant_id || member.tenantId || athlete?.tenant_id || null,
-      profilePlayerId: profile?.player_id || null,
-      legacyPlayerId: null,
-      registrationStatus: null,
-    };
+    return attachCanonicalRatingToScopeRow(
+      {
+        athleteId,
+        userId: userId || null,
+        displayName:
+          athlete?.display_name ||
+          member.display_name ||
+          profile?.display_name ||
+          userId ||
+          athleteId ||
+          "",
+        gender: profile?.gender ?? member.gender ?? null,
+        rating: member.rating ?? athlete?.rating ?? profile?.rating ?? null,
+        level: member.level ?? athlete?.level ?? profile?.level ?? null,
+        skillLevel: member.skill_level ?? profile?.skill_level ?? null,
+        athleteStatus: athlete?.status || (athleteId ? "active" : "active"),
+        membershipId: member.id || member.membershipId || null,
+        membershipStatus: readMembershipStatus(member),
+        clubId: id,
+        tenantId: member.tenant_id || member.tenantId || athlete?.tenant_id || null,
+        profilePlayerId: profile?.player_id || null,
+        legacyPlayerId: null,
+        registrationStatus: null,
+      },
+      ratingByUser.get(userId) || null
+    );
   });
 
   return {
@@ -228,8 +305,8 @@ export async function listSelectPlayersScopeRows(clubId, deps = {}) {
     sourceBreakdown: {
       athleteRows: athletesResult.athletes?.length ?? 0,
       membershipRows: members.length,
-      activeMembershipRows: members.filter(
-        (m) => String(m.status || "").toLowerCase() === "active"
+      activeMembershipRows: members.filter((m) =>
+        isActiveMembershipStatus(readMembershipStatus(m))
       ).length,
     },
   };
@@ -246,12 +323,20 @@ export function toLegacySelectPlayersPlayer(candidate) {
   const pairingIdentityId = normalizeId(candidate.pairingIdentityId || candidate.athleteId);
   if (!pairingIdentityId) return null;
 
+  const ratingFields = projectCanonicalRatingFields(candidate);
+
   return {
     id: pairingIdentityId,
     name: candidate.displayName || pairingIdentityId,
     gender: candidate.gender ?? "",
-    level: candidate.rating ?? null,
-    rating: candidate.rating ?? null,
+    level: ratingFields.ratingValue,
+    rating: ratingFields.ratingValue,
+    currentRating: ratingFields.currentRating,
+    provisionalRating: ratingFields.provisionalRating,
+    selfDeclaredRating: ratingFields.selfDeclaredRating,
+    ratingValue: ratingFields.ratingValue,
+    ratingLabel: ratingFields.ratingLabel,
+    ratingSource: ratingFields.ratingSource,
     active: String(candidate.athleteStatus || "active").toLowerCase() === "active",
     clubId: candidate.clubId || null,
     athleteId: candidate.athleteId || pairingIdentityId,

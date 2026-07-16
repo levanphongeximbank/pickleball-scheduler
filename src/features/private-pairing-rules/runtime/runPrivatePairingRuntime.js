@@ -1,3 +1,4 @@
+import { RESTRICTED_COMPETITION_CLASSES } from "../constants/enums.js";
 import {
   resolveActivePrivatePairingRules,
   splitHardAndSoftRules,
@@ -15,6 +16,10 @@ import {
   PRIVATE_PAIRING_RUNTIME_VERSION,
   isPrivatePairingRuntimeEnabled,
 } from "./runtimeCodes.js";
+
+function isRestrictedCompetitionClass(competitionClass) {
+  return RESTRICTED_COMPETITION_CLASSES.has(String(competitionClass || "").toUpperCase());
+}
 
 /**
  * @typedef {Object} PrivatePairingRuntimeResult
@@ -219,6 +224,37 @@ export function runPrivatePairingRuntime(input = {}) {
     };
   }
 
+  // Official / certified / VPR: do not drop blocked personal rules and continue baseline.
+  if (
+    isRestrictedCompetitionClass(input.context?.competitionClass) &&
+    resolved.blockedByPolicy.length > 0
+  ) {
+    return {
+      ok: false,
+      errorCode: PRIVATE_PAIRING_RUNTIME_CODE.PRIVATE_RULE_BLOCKED_BY_POLICY,
+      selectedCandidate: null,
+      rejectedCandidateCount: 0,
+      hardConstraintsApplied: [],
+      softConstraintsSatisfied: [],
+      softConstraintsMissed: [],
+      balanceScore: 0,
+      fairnessScore: 0,
+      historyScore: 0,
+      constraintScore: 0,
+      finalScore: 0,
+      ruleSetVersion: resolved.ruleSetVersion,
+      warnings: resolved.warnings,
+      rejectedSamples: [],
+      meta: {
+        runtimeEnabled: true,
+        runtimeVersion: PRIVATE_PAIRING_RUNTIME_VERSION,
+        blockedByPolicy: resolved.blockedByPolicy,
+        blockedByPolicyCount: resolved.blockedByPolicy.length,
+        elapsedMs: Date.now() - startedAt,
+      },
+    };
+  }
+
   const generation = generateTeamPairingCandidates({
     players: input.players,
     teamSize: input.context?.teamSize ?? 2,
@@ -355,6 +391,23 @@ export function evaluatePrivatePairingMatchOption(matchOption, options = {}) {
       softConstraintsMissed: [],
       rejectionCodes: [PRIVATE_PAIRING_RUNTIME_CODE.RULE_SET_CONFLICT],
       ruleSetVersion: resolved.ruleSetVersion,
+      fatalConflicts: resolved.fatalConflicts,
+    };
+  }
+
+  if (
+    isRestrictedCompetitionClass(options.context?.competitionClass) &&
+    (resolved.blockedByPolicy || []).length > 0
+  ) {
+    return {
+      enabled: true,
+      rejected: true,
+      constraintScore: 0,
+      softConstraintsSatisfied: [],
+      softConstraintsMissed: [],
+      rejectionCodes: [PRIVATE_PAIRING_RUNTIME_CODE.PRIVATE_RULE_BLOCKED_BY_POLICY],
+      ruleSetVersion: resolved.ruleSetVersion,
+      blockedByPolicy: resolved.blockedByPolicy,
     };
   }
 

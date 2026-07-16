@@ -33,20 +33,23 @@ export default function TeamDisciplinesPanel({
   const [editingId, setEditingId] = useState("");
   const [editingName, setEditingName] = useState("");
 
-  function handleAdd() {
+  async function handleAdd() {
     const trimmed = disciplineName.trim();
     if (!trimmed) {
       onError?.("Nhập tên nội dung.");
       return;
     }
     const next = addDisciplineToTournament(teamData, { name: trimmed, playerCount: 2 });
-    onSave?.(next);
+    const ok = await onSave?.(next);
+    if (ok === false) {
+      return;
+    }
     setDisciplineName("");
   }
 
-  function handleDelete(disciplineId) {
+  async function handleDelete(disciplineId) {
     const next = removeDisciplineFromTournament(teamData, disciplineId);
-    onSave?.(next);
+    await onSave?.(next);
   }
 
   function startEdit(discipline) {
@@ -54,14 +57,17 @@ export default function TeamDisciplinesPanel({
     setEditingName(discipline.name);
   }
 
-  function handleSaveEdit(disciplineId) {
+  async function handleSaveEdit(disciplineId) {
     const trimmed = editingName.trim();
     if (!trimmed) {
       onError?.("Tên nội dung không được trống.");
       return;
     }
     const next = updateDisciplineInTournament(teamData, disciplineId, { name: trimmed });
-    onSave?.(next);
+    const ok = await onSave?.(next);
+    if (ok === false) {
+      return;
+    }
     setEditingId("");
     setEditingName("");
   }

@@ -16,12 +16,31 @@ import {
   setClubCloudVersion,
   validateClubPayloadForSync,
 } from "../domain/clubStorage.js";
-import { markClubDataSynced } from "../domain/clubSyncMetadata.js";
+import { isClubDataDirty, markClubDataSynced } from "../domain/clubSyncMetadata.js";
 import { loadAIData, saveAIData } from "./storage.js";
 import {
   hydrateClubPlayersPickVnRatings,
   pushClubPlayersPickVnRatings,
 } from "../features/pick-vn-rating/services/pickVnClubSyncService.js";
+
+/**
+ * Abort applying a remote club snapshot when local blob has unsynced writes
+ * (e.g. MLP draft just created). Prevents in-flight pull from wiping drafts.
+ */
+function abortPullIfLocalDirty(clubId, provider) {
+  if (!isClubDataDirty(clubId)) {
+    return null;
+  }
+  return {
+    ok: false,
+    provider,
+    clubId,
+    error:
+      "Abort cloud pull: local club blob có thay đổi chưa đồng bộ (ví dụ draft giải đồng đội).",
+    code: "LOCAL_DIRTY_ABORT",
+    aborted: true,
+  };
+}
 
 const CLOUD_DB_KEY = "pickleball-cloud-db-v1";
 const SUPABASE_TABLE = "club_ai_data";
@@ -237,16 +256,33 @@ async function pullFromSupabase(clubId) {
   const clubPayload = row.data?.data || row.data;
 
   if (clubPayload?.data) {
+    const dirtyAbort = abortPullIfLocalDirty(clubId, "supabase");
+    if (dirtyAbort) {
+      return dirtyAbort;
+    }
     const validated = validateClubPayloadForSync(clubPayload.data, clubId);
+    // Re-check immediately before overwrite (create may mark dirty mid-fetch).
+    const dirtyAbortImmediate = abortPullIfLocalDirty(clubId, "supabase");
+    if (dirtyAbortImmediate) {
+      return dirtyAbortImmediate;
+    }
     saveClubData(clubId, validated.data, { source: "cloud" });
   }
 
   if (clubPayload?.aiData) {
+    const dirtyAbortAi = abortPullIfLocalDirty(clubId, "supabase");
+    if (dirtyAbortAi) {
+      return dirtyAbortAi;
+    }
     saveAIData(clubPayload.aiData, clubId);
   }
 
   if (row.version != null) {
     setClubCloudVersion(clubId, Number(row.version) || 0);
+  }
+  // Never clear dirty after an aborted overwrite path; only mark synced when applied.
+  if (isClubDataDirty(clubId)) {
+    return abortPullIfLocalDirty(clubId, "supabase");
   }
   markClubDataSynced(clubId, { pull: true });
 
@@ -392,6 +428,7 @@ export async function syncClubToCloud(options = {}) {
   };
 
   saveCloudDatabase(db);
+  markClubDataSynced(clubId, { push: true });
 
   return {
     ok: true,
@@ -430,9 +467,18 @@ export async function pullClubFromCloud(options = {}) {
     };
   }
 
-  saveClubData(clubId, validateClubPayloadForSync(payload.data, clubId).data, {
-    source: "cloud",
-  });
+  const dirtyAbort = abortPullIfLocalDirty(clubId, "local");
+  if (dirtyAbort) {
+    return dirtyAbort;
+  }
+
+  const validated = validateClubPayloadForSync(payload.data, clubId);
+  // Re-check immediately before overwrite (MLP create may mark dirty mid-pull).
+  const dirtyAbortImmediate = abortPullIfLocalDirty(clubId, "local");
+  if (dirtyAbortImmediate) {
+    return dirtyAbortImmediate;
+  }
+  saveClubData(clubId, validated.data, { source: "cloud" });
   if (payload.aiData) {
     saveAIData(payload.aiData, clubId);
   }

@@ -65,6 +65,10 @@ import {
   logConstraintChange,
 } from "../features/pairing-constraints/index.js";
 import {
+  COMPETITION_CLASS,
+  prepareLivePrivatePairingOptions,
+} from "../features/private-pairing-rules/index.js";
+import {
   Box,
   Button,
   Card,
@@ -342,7 +346,7 @@ export default function SelectPlayers() {
     setPendingScheduleResult(null);
   };
 
-  const handleStart = () => {
+  const handleStart = async () => {
     setFormMessage(null);
 
     const errors = buildStartValidationErrors({
@@ -376,6 +380,27 @@ export default function SelectPlayers() {
       selectedActiveCourts.includes(court.id) && court.active !== false
     );
 
+    const sessionContext = getSessionContextMeta(
+      activeClubId,
+      activeSeasonId,
+      activeLeagueId
+    );
+
+    const prepared = await prepareLivePrivatePairingOptions({
+      clubId: activeClubId,
+      tournamentId: sessionContext?.tournamentId || null,
+      competitionClass: COMPETITION_CLASS.DAILY_PLAY,
+      pairingConstraints: founderConstraints,
+    });
+
+    if (!prepared.ok) {
+      setFormMessage({
+        type: "error",
+        text: prepared.error?.message || "Không tải được quy tắc ghép cặp.",
+      });
+      return;
+    }
+
     const result = runAI(playersSelected, {
       enabledCourts,
       courtCount: enabledCourts.length,
@@ -388,9 +413,25 @@ export default function SelectPlayers() {
       activeClub,
       competitionType,
       persist: scheduleMode === "auto",
-      sessionContext: getSessionContextMeta(activeClubId, activeSeasonId, activeLeagueId),
+      sessionContext,
       founderCourtPolicies,
+      clubId: activeClubId,
+      tournamentId: sessionContext?.tournamentId || null,
+      competitionClass: COMPETITION_CLASS.DAILY_PLAY,
+      privatePairingRules: prepared.pairingOptions?.privatePairingRules || [],
+      pairingConstraints: founderConstraints,
     });
+
+    if (result.privatePairingError || result.errors?.length) {
+      setFormMessage({
+        type: "error",
+        text:
+          result.privatePairingError?.message ||
+          result.errors?.join(" ") ||
+          "Không xếp được sân theo quy tắc riêng.",
+      });
+      return;
+    }
 
     setPendingScheduleResult(result);
     setPreludeContext({

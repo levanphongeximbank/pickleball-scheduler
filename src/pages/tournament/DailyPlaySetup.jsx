@@ -227,22 +227,28 @@ export default function DailyPlaySetup() {
     setMessage("Đã cập nhật danh sách trọng tài.");
   };
 
-  const handleCreateMatches = () => {
+  const handleCreateMatches = async () => {
     setError(null);
     const availableCourts = courtStates.filter(
       (court) => court.status === "available" && !court.locked
     ).length;
 
-    const result = createFairDailyMatches({
+    const result = await createFairDailyMatches({
       players,
       settings: dailySettings,
       tournamentId,
+      clubId: activeClubId,
       matchCount: Math.max(1, availableCourts || 1),
       skipScore: dailySettings.skipScore,
     });
 
     if (!result.ok) {
-      setError(result.error || result.errors?.join(" ") || "Khong tao duoc tran.");
+      setError(
+        result.privatePairingError?.message ||
+          result.error ||
+          result.errors?.join(" ") ||
+          "Khong tao duoc tran."
+      );
       return;
     }
 
@@ -349,10 +355,18 @@ export default function DailyPlaySetup() {
   if (!tournament) {
     return (
       <Box>
-        <Alert severity="error">Khong tim thay giai Daily Play.</Alert>
-        <Button component={RouterLink} to="/tournament" sx={{ mt: 2 }}>
-          Quay lai
-        </Button>
+        <Alert severity="error" sx={{ mb: 2 }}>
+          Không tìm thấy buổi Daily Play này trên CLB hiện tại. Preview thường lưu giải theo
+          trình duyệt — ID cũ (`{tournamentId}`) có thể đã mất sau khi redeploy hoặc đổi CLB.
+        </Alert>
+        <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
+          <Button component={RouterLink} to="/daily-play" variant="contained">
+            Mở / tạo buổi chơi vui mới
+          </Button>
+          <Button component={RouterLink} to="/tournament" variant="outlined">
+            Về trang Giải đấu
+          </Button>
+        </Stack>
       </Box>
     );
   }
@@ -460,10 +474,15 @@ export default function DailyPlaySetup() {
         <Grid size={{ xs: 12, lg: 5 }}>
           <Paper variant="outlined" sx={{ p: 1.5 }}>
             <Typography variant="subtitle1" fontWeight="bold" sx={{ mb: 1 }}>
-              Check-in hôm nay ({dailySettings.checkedInPlayerIds.length})
+              Check-in hôm nay ({dailySettings.checkedInPlayerIds.length}/{players.length})
             </Typography>
             <Stack direction="row" spacing={1} sx={{ mb: 1 }}>
-              <Button size="small" variant="contained" onClick={handleSelectAllCheckIn}>
+              <Button
+                size="small"
+                variant="contained"
+                onClick={handleSelectAllCheckIn}
+                disabled={players.length === 0}
+              >
                 Chọn tất cả
               </Button>
               <Button

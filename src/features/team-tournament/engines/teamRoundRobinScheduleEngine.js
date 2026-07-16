@@ -1,14 +1,36 @@
 import { buildRoundRobinRounds } from "../../../pages/tournament.fixtures.logic.js";
 import { createId } from "../../../utils/id.js";
+import {
+  buildMatchOptionFromSides,
+  filterAndRankMatchupsByOpponentRules,
+} from "../../private-pairing-rules/runtime/index.js";
 import { MATCHUP_STATUS } from "../constants.js";
 import {
   createMatchupRecord,
   normalizeTeamData,
 } from "../models/index.js";
 import {
+  assertGroupsReadyForSchedule,
+  recommendGroupSizes as recommendGroupSizesFromPolicy,
+} from "./teamGroupDivisionPolicy.js";
+import {
   computeLineupLockAt,
   isMlpFormat,
 } from "./mlpPresetEngine.js";
+
+export {
+  GROUPS_REQUIRED,
+  GROUPS_REQUIRED_MESSAGE,
+  listGroupDivisionOptions,
+  tournamentRequiresExplicitGroups,
+  assertGroupsReadyForSchedule,
+  hasExplicitGroups,
+  hasDependentMatchupsOrSchedule,
+  buildGroupDivisionDiagnostics,
+  GROUP_REDRAW_DESTRUCTIVE_MESSAGE,
+  GROUPS_REQUIRED_SCHEDULE_DIALOG_MESSAGE,
+  MIN_TEAMS_FOR_EXPLICIT_GROUPS,
+} from "./teamGroupDivisionPolicy.js";
 
 /** Fixed round-robin pairings by team index within a pool (matches user spec for 3/4/5). */
 const ROUND_ROBIN_TEMPLATES = Object.freeze({
@@ -31,20 +53,8 @@ const ROUND_ROBIN_TEMPLATES = Object.freeze({
   ],
 });
 
-const GROUP_SIZE_BY_TEAM_COUNT = Object.freeze({
-  6: [3, 3],
-  7: [3, 4],
-  8: [4, 4],
-  9: [4, 5],
-  10: [5, 5],
-});
-
 export function recommendGroupSizes(teamCount) {
-  const count = Number(teamCount) || 0;
-  if (count < 6 || count > 10) {
-    return null;
-  }
-  return GROUP_SIZE_BY_TEAM_COUNT[count] || null;
+  return recommendGroupSizesFromPolicy(teamCount);
 }
 
 export function describeGroupSplit(teamCount) {
@@ -200,24 +210,26 @@ export function assignTeamsToGroupsBySizes(teamData, sizes = []) {
   });
 }
 
+/**
+ * @deprecated Do not call from schedule / matchup / publish paths.
+ * Explicit Owner/BTC group division is required — never auto-create groups.
+ * Kept only for legacy tests that assert the pure size-assignment helper.
+ */
 export function ensureGroupsForTeamCount(teamData) {
-  const teamCount = teamData.teams?.length || 0;
-  const sizes = recommendGroupSizes(teamCount);
-
-  if (!sizes) {
+  const gate = assertGroupsReadyForSchedule(teamData);
+  if (!gate.ok) {
     return teamData;
   }
-
-  const existingGroups = (teamData.groups || []).filter((group) => group.teamIds?.length >= 2);
-  if (existingGroups.length > 0) {
-    return teamData;
-  }
-
-  return assignTeamsToGroupsBySizes(teamData, sizes);
+  return teamData;
 }
 
 export function describeSchedulePreview(teamData, options = {}) {
-  const groups = resolveGroupsForSchedule(ensureGroupsForTeamCount(teamData));
+  const gate = assertGroupsReadyForSchedule(teamData);
+  if (!gate.ok) {
+    return gate.error;
+  }
+
+  const groups = resolveGroupsForSchedule(teamData);
   if (!groups.length) {
     return "Chưa đủ đội để tạo lịch.";
   }
@@ -231,8 +243,26 @@ export function describeSchedulePreview(teamData, options = {}) {
   return parts.join(" · ");
 }
 
+/**
+ * Build round-robin matchups. Never silently creates groups.
+ * When explicit groups are required but missing, returns ok:false + GROUPS_REQUIRED.
+ */
 export function buildStructuredRoundRobinMatchups(teamData, options = {}) {
-  const prepared = ensureGroupsForTeamCount(teamData);
+  const gate = assertGroupsReadyForSchedule(teamData);
+  if (!gate.ok) {
+    const errorData = normalizeTeamData({
+      ...teamData,
+      matchups: teamData?.matchups || [],
+      groups: teamData?.groups || [],
+    });
+    errorData.ok = false;
+    errorData.code = gate.code;
+    errorData.error = gate.error;
+    errorData.privatePairingError = { code: gate.code, message: gate.error };
+    return errorData;
+  }
+
+  const prepared = normalizeTeamData(teamData);
   const groups = resolveGroupsForSchedule(prepared);
   const leadMinutes = isMlpFormat(prepared)
     ? prepared.settings?.lineupLockLeadMinutes || 15
@@ -290,9 +320,50 @@ export function buildStructuredRoundRobinMatchups(teamData, options = {}) {
     });
   });
 
+  const ranked = filterAndRankMatchupsByOpponentRules(
+    matchups,
+    (matchup) => {
+      const teamA = (prepared.teams || []).find(
+        (team) => String(team.id) === String(matchup.teamAId)
+      );
+      const teamB = (prepared.teams || []).find(
+        (team) => String(team.id) === String(matchup.teamBId)
+      );
+      if (!teamA || !teamB) {
+        return null;
+      }
+      const sideA = (teamA.playerIds || []).map((id) => ({ id }));
+      const sideB = (teamB.playerIds || []).map((id) => ({ id }));
+      return buildMatchOptionFromSides(sideA, sideB);
+    },
+    {
+      privatePairingRules: options.privatePairingRules || [],
+      pairingConstraints: options.pairingConstraints || [],
+      clubId: options.clubId || null,
+      tournamentId: options.tournamentId || null,
+      eventId: options.eventId || null,
+      competitionClass: options.competitionClass,
+      envSource: options.envSource,
+      allowedByPublishedRules: options.allowedByPublishedRules === true,
+      contextTime: options.contextTime,
+      history: options.pairingHistory || {},
+      requireCompleteSet: options.requireCompleteSet !== false,
+    }
+  );
+
+  if (ranked.ok === false) {
+    const errorData = normalizeTeamData({
+      ...prepared,
+      matchups: [],
+    });
+    errorData.ok = false;
+    errorData.privatePairingError = ranked.privatePairingError;
+    return errorData;
+  }
+
   return normalizeTeamData({
     ...prepared,
-    matchups,
+    matchups: ranked.matchups,
   });
 }
 

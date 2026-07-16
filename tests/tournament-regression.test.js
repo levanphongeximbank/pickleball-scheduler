@@ -110,7 +110,7 @@ function completeAllGroupMatches(event) {
   };
 }
 
-test("regression Test 1: daily play mixed doubles with 12 men, 8 women, 4 courts", () => {
+test("regression Test 1: daily play mixed doubles with 12 men, 8 women, 4 courts", async () => {
   const players = buildGenderedPlayers(12, 8);
   const courts = [1, 2, 3, 4].map((id) => ({ id, name: `San ${id}`, active: true }));
   const settings = {
@@ -120,7 +120,7 @@ test("regression Test 1: daily play mixed doubles with 12 men, 8 women, 4 courts
     genderFilter: DAILY_GENDER_FILTER.ALL,
   };
 
-  const created = createFairDailyMatches({
+  const created = await createFairDailyMatches({
     players,
     settings,
     tournamentId: "t-daily",

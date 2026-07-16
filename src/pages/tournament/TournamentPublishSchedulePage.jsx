@@ -32,7 +32,18 @@ import {
 } from "../../tournament/engines/publishScheduleEngine.js";
 import { isDrawPublished } from "../../tournament/engines/publishDrawEngine.js";
 import { generateSchedule } from "../../features/tournament-engine/engines/scheduleEngine.js";
+import {
+  COMPETITION_CLASS,
+  prepareLivePrivatePairingOptions,
+} from "../../features/private-pairing-rules/index.js";
 import { useAuth } from "../../context/AuthContext.jsx";
+
+/**
+ * Classification (TT-V6-FINAL-GAPS):
+ * - Lock/publish/reopen: read/lifecycle on existing matches — N/A for private rules.
+ * - "Tạo lịch" / "Tạo lại": court/time allocation; when matches are empty it materializes
+ *   RR matchups from groups → must pass opponent private rules (prepareLive below).
+ */
 
 export default function TournamentPublishSchedulePage() {
   const [searchParams, setSearchParams] = useSearchParams();
@@ -107,7 +118,7 @@ export default function TournamentPublishSchedulePage() {
     return true;
   };
 
-  const handleGenerate = (regenerate = false) => {
+  const handleGenerate = async (regenerate = false) => {
     if (!tournament) return;
     const editCheck = canRegenerateSchedule(tournament);
     if (!editCheck.ok) {
@@ -122,12 +133,39 @@ export default function TournamentPublishSchedulePage() {
     const existingMatches =
       tournament.settings?.engineV4?.matches || tournament.events?.[0]?.matches || [];
     const groups = tournament.events?.[0]?.groups || [];
+    const eventId = tournament.events?.[0]?.id || `event-${tournament.id}`;
+
+    let privatePairingRules = [];
+    let pairingOptions = {};
+    // Materializing RR matches from groups is a runtime opponent-stage path.
+    if (!existingMatches.length && groups.length > 0) {
+      const prepared = await prepareLivePrivatePairingOptions({
+        clubId: activeClubId,
+        tournamentId: tournament.id,
+        eventId,
+        competitionClass: COMPETITION_CLASS.INTERNAL,
+        allowedByPublishedRules: false,
+      });
+      if (!prepared.ok) {
+        setMessage({
+          type: "error",
+          text: prepared.error?.message || "Không tải được bộ quy tắc ghép cặp.",
+        });
+        return;
+      }
+      privatePairingRules = prepared.pairingOptions?.privatePairingRules || [];
+      pairingOptions = prepared.pairingOptions || {};
+    }
 
     const result = generateSchedule(
       {
         tournamentId: tournament.id,
+        eventId,
         matches: existingMatches,
         groups,
+        privatePairingRules,
+        competitionClass: pairingOptions.competitionClass || COMPETITION_CLASS.INTERNAL,
+        clubId: activeClubId,
         courts: courts.map((c, index) => ({
           id: String(c.id),
           name: c.name || `Sân ${index + 1}`,
@@ -145,13 +183,22 @@ export default function TournamentPublishSchedulePage() {
           sessions: tournament.settings?.engineV4?.scheduleConfig?.sessions,
         },
       },
-      { regenerate, strictRest: true }
+      {
+        regenerate,
+        strictRest: true,
+        privatePairingRules,
+        competitionClass: pairingOptions.competitionClass || COMPETITION_CLASS.INTERNAL,
+        clubId: activeClubId,
+        ...pairingOptions,
+      }
     );
 
     if (!result.ok) {
       setMessage({
         type: "error",
-        text: (result.errors || ["Không tạo được lịch."]).join(" "),
+        text:
+          result.privatePairingError?.message ||
+          (result.errors || ["Không tạo được lịch."]).join(" "),
       });
       return;
     }

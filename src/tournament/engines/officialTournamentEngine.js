@@ -8,9 +8,13 @@ import {
 } from "../../models/tournament/constants.js";
 import { getPlayerGenderKey } from "../../models/player.js";
 import { validateEntryForEvent, validateGroupDrawInput } from "./validationEngine.js";
-import { assignGroupsWithConstraints } from "../../features/pairing-constraints/engines/constraintGroupEngine.js";
 import { assignEntriesOpenConditional } from "./openConditionalRandomEngine.js";
 import { runLegacyDrawWithCanonicalAdapter } from "../../features/competition-core/draw/adapters/drawRuntimeAdapter.js";
+import {
+  COMPETITION_CLASS,
+  assignGroupsWithPrivatePairingRules,
+  assignOpenGroupsWithPrivatePairingRules,
+} from "../../features/private-pairing-rules/index.js";
 import { summarizeGroupBalance } from "./seededGroupEngine.js";
 import { buildGroupStageSchedule, countGroupStageMatches } from "./scheduleEngine.js";
 import {
@@ -228,6 +232,14 @@ export function buildOfficialOpenPlan({
   players = [],
   splitUnits = true,
   randomFn,
+  privatePairingRules = [],
+  clubId = null,
+  competitionClass = COMPETITION_CLASS.OFFICIAL,
+  envSource,
+  seed,
+  allowedByPublishedRules = false,
+  contextTime,
+  pairingConstraints = [],
   pointsConfig = { win: 2, loss: 1, forfeit: 0 },
 } = {}) {
   const event = ensureOfficialEvent(tournament, eventType, eventId);
@@ -252,6 +264,14 @@ export function buildOfficialOpenPlan({
     };
   }
 
+  const openOptions = {
+    hostClubName: tournament.hostClubName || tournament.settings?.hostClubName || "",
+    splitUnits,
+    playersById,
+    randomFn,
+    pointsConfig,
+  };
+
   const draw = runLegacyDrawWithCanonicalAdapter({
     consumer: "official_open",
     strategyKey: "official_open",
@@ -260,23 +280,45 @@ export function buildOfficialOpenPlan({
       eventId: event.id,
       entries: normalizedEntries,
       groupCount,
-      options: {
-        hostClubName: tournament.hostClubName || tournament.settings?.hostClubName || "",
-        splitUnits,
-        playersById,
-        randomFn,
-        pointsConfig,
-      },
+      options: openOptions,
+      privatePairingRules,
+      pairingConstraints,
+      competitionClass,
+      envSource,
+      seed,
+      clubId,
+      allowedByPublishedRules,
+      contextTime,
     },
     legacyExecutor: (payload) =>
-      assignEntriesOpenConditional(payload.entries, payload.groupCount, payload.options),
+      assignOpenGroupsWithPrivatePairingRules({
+        openAssigner: assignEntriesOpenConditional,
+        entries: payload.entries,
+        groupCount: payload.groupCount,
+        openOptions: payload.options || {},
+        privatePairingRules: payload.privatePairingRules || privatePairingRules,
+        pairingConstraints: payload.pairingConstraints || pairingConstraints,
+        competitionClass: payload.competitionClass || competitionClass,
+        envSource: payload.envSource || envSource,
+        seed: payload.seed ?? seed ?? `${tournament.id}:${event.id}`,
+        clubId: payload.clubId ?? clubId,
+        tournamentId: tournament.id,
+        eventId: event.id,
+        allowedByPublishedRules:
+          payload.allowedByPublishedRules ?? allowedByPublishedRules,
+        contextTime: payload.contextTime ?? contextTime,
+      }),
   });
 
   if (!draw.ok) {
+    const gateMessage = draw.privatePairingError?.message;
     return {
       ok: false,
-      errors: draw.errors || ["Khong the chia bang open."],
+      errors: gateMessage
+        ? [gateMessage]
+        : draw.errors || ["Khong the chia bang open."],
       warnings: draw.warnings || [],
+      privatePairingError: draw.privatePairingError || null,
     };
   }
 
@@ -291,7 +333,27 @@ export function buildOfficialOpenPlan({
     tournamentId: tournament.id,
     eventId: event.id,
     players,
+    privatePairingRules,
+    pairingConstraints,
+    clubId,
+    competitionClass,
+    envSource,
+    seed,
+    allowedByPublishedRules,
+    contextTime,
   });
+
+  if (schedule.ok === false || schedule.privatePairingError) {
+    return {
+      ok: false,
+      errors: [
+        schedule.privatePairingError?.message ||
+          "Không tạo được lịch vòng bảng thỏa quy tắc đối đầu.",
+      ],
+      warnings: [...validation.warnings, ...draw.warnings],
+      privatePairingError: schedule.privatePairingError || null,
+    };
+  }
 
   return {
     ok: true,
@@ -306,6 +368,7 @@ export function buildOfficialOpenPlan({
     balance: draw.balance,
     matchCount: countGroupStageMatches(schedule.groups),
     drawScore: draw.score,
+    privatePairingError: null,
   };
 }
 
@@ -363,6 +426,13 @@ export function buildOfficialAiBalancePlan({
   manualEntries = null,
   individualRegistration = true,
   pairingConstraints = [],
+  privatePairingRules = [],
+  clubId = null,
+  competitionClass = COMPETITION_CLASS.OFFICIAL,
+  envSource,
+  seed,
+  allowedByPublishedRules = false,
+  contextTime,
   pointsConfig = { win: 2, loss: 1, forfeit: 0 },
 } = {}) {
   const event = ensureOfficialEvent(tournament, eventType, eventId);
@@ -375,6 +445,13 @@ export function buildOfficialAiBalancePlan({
     eventId: event.id,
     mode: "skill_controlled",
     pairingConstraints,
+    privatePairingRules,
+    clubId,
+    competitionClass,
+    envSource,
+    seed,
+    allowedByPublishedRules,
+    contextTime,
   };
 
   const baseEntries =
@@ -385,6 +462,15 @@ export function buildOfficialAiBalancePlan({
         : suggestEntriesFromPlayers(selectedPlayers, eventType, pairingOptions);
 
   const constraintWarnings = pairingOptions.constraintWarnings || [];
+
+  if (pairingOptions.privatePairingError) {
+    return {
+      ok: false,
+      errors: [pairingOptions.privatePairingError.message],
+      warnings: constraintWarnings,
+      privatePairingError: pairingOptions.privatePairingError,
+    };
+  }
 
   const entries = assignSeedsToEntries(baseEntries, selectedPlayers);
 
@@ -409,6 +495,7 @@ export function buildOfficialAiBalancePlan({
   const groupResult = runLegacyDrawWithCanonicalAdapter({
     consumer: "official_ai_balance",
     strategyKey: "official_ai_balance",
+    envSource,
     legacyPayload: {
       tournamentId: tournament.id,
       eventId: event.id,
@@ -416,17 +503,49 @@ export function buildOfficialAiBalancePlan({
       groupCount,
       players: selectedPlayers,
       constraints: pairingConstraints,
+      privatePairingRules,
+      clubId,
+      competitionClass,
+      envSource,
+      seed,
+      allowedByPublishedRules,
+      contextTime,
     },
     legacyExecutor: (payload) =>
-      assignGroupsWithConstraints(
+      assignGroupsWithPrivatePairingRules(
         payload.entries,
         payload.groupCount,
         payload.players,
-        payload.constraints
+        {
+          pairingConstraints: payload.constraints,
+          privatePairingRules: payload.privatePairingRules,
+          clubId: payload.clubId,
+          tournamentId: payload.tournamentId,
+          eventId: payload.eventId,
+          competitionClass: payload.competitionClass,
+          envSource: payload.envSource,
+          seed: payload.seed,
+          allowedByPublishedRules: payload.allowedByPublishedRules,
+          contextTime: payload.contextTime,
+        }
       ),
   });
 
-  const groups = groupResult.groups.map((group) => ({
+  if (groupResult.ok === false || groupResult.privatePairingError) {
+    const error =
+      groupResult.privatePairingError ||
+      ({
+        message: (groupResult.errors || ["Không chia được bảng."])[0],
+      });
+    return {
+      ok: false,
+      errors: [error.message || "Không chia được bảng."],
+      warnings: groupResult.warnings || [],
+      privatePairingError: groupResult.privatePairingError || null,
+    };
+  }
+
+  const groups = (groupResult.groups || []).map((group) => ({
     ...group,
     tournamentId: tournament.id,
     eventId: event.id,
@@ -437,7 +556,31 @@ export function buildOfficialAiBalancePlan({
     tournamentId: tournament.id,
     eventId: event.id,
     players: selectedPlayers,
+    privatePairingRules,
+    pairingConstraints,
+    clubId,
+    competitionClass,
+    envSource,
+    seed,
+    allowedByPublishedRules,
+    contextTime,
   });
+
+  if (schedule.ok === false || schedule.privatePairingError) {
+    return {
+      ok: false,
+      errors: [
+        schedule.privatePairingError?.message ||
+          "Không tạo được lịch vòng bảng thỏa quy tắc đối đầu.",
+      ],
+      warnings: [
+        ...(validation.warnings || []),
+        ...(constraintWarnings || []),
+        ...(groupResult.warnings || []),
+      ],
+      privatePairingError: schedule.privatePairingError || null,
+    };
+  }
 
   const balance = summarizeGroupBalance(schedule.groups);
 
@@ -458,6 +601,7 @@ export function buildOfficialAiBalancePlan({
     ],
     balance,
     matchCount: countGroupStageMatches(schedule.groups),
+    privatePairingError: null,
   };
 }
 

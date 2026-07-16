@@ -69,6 +69,11 @@ function mapCloudTournamentToLocal(cloudTournament) {
     return null;
   }
 
+  const settings =
+    cloudTournament.settings && typeof cloudTournament.settings === "object"
+      ? cloudTournament.settings
+      : {};
+
   return {
     id: cloudTournament.id,
     clubId: cloudTournament.clubId,
@@ -77,7 +82,15 @@ function mapCloudTournamentToLocal(cloudTournament) {
     mode: TOURNAMENT_MODE.TEAM_TOURNAMENT,
     status: cloudTournament.status,
     events: [],
-    settings: cloudTournament.settings || {},
+    settings,
+    tournamentLevel:
+      cloudTournament.tournamentLevel || settings.tournamentLevel || undefined,
+    certificationStatus:
+      cloudTournament.certificationStatus ||
+      settings.certificationStatus ||
+      undefined,
+    rankingEnabled:
+      cloudTournament.rankingEnabled ?? settings.rankingEnabled ?? undefined,
     teamData: normalizeTeamData(cloudTournament.teamData || {}),
   };
 }
@@ -190,6 +203,33 @@ export async function cloudEnsureTournamentHeader(tournament) {
   }
 
   const teamData = tournament?.teamData || {};
+  const { data: existingHeader } = await client
+    .from("team_tournaments")
+    .select("settings")
+    .eq("tenant_id", tenantId)
+    .eq("club_id", clubId)
+    .eq("tournament_id", tournamentId)
+    .maybeSingle();
+
+  const baseSettings = {
+    ...(existingHeader?.settings && typeof existingHeader.settings === "object"
+      ? existingHeader.settings
+      : {}),
+    ...(teamData.settings && typeof teamData.settings === "object"
+      ? teamData.settings
+      : {}),
+  };
+  // Classification / VPR fields live in header.settings (no new SQL column).
+  if (tournament?.tournamentLevel != null) {
+    baseSettings.tournamentLevel = tournament.tournamentLevel;
+  }
+  if (tournament?.certificationStatus != null) {
+    baseSettings.certificationStatus = tournament.certificationStatus;
+  }
+  if (tournament?.rankingEnabled != null) {
+    baseSettings.rankingEnabled = tournament.rankingEnabled;
+  }
+
   const { data, error } = await client
     .from("team_tournaments")
     .upsert(
@@ -199,10 +239,7 @@ export async function cloudEnsureTournamentHeader(tournament) {
         tournament_id: tournamentId,
         name: String(tournament?.name || "Giải đồng đội").trim(),
         status: String(tournament?.status || "draft").trim(),
-        settings:
-          teamData.settings && typeof teamData.settings === "object"
-            ? teamData.settings
-            : {},
+        settings: baseSettings,
       },
       { onConflict: "tenant_id,club_id,tournament_id" }
     )
