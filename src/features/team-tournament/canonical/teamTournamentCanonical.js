@@ -21,8 +21,11 @@ export { buildCanonicalSetupSnapshot, validateCanonicalSetupSnapshot } from "./t
 
 export {
   buildSetupMutationEnvelope,
+  buildSetupMutationEnvelopeAsync,
   validateSetupMutationEnvelope,
+  validateSetupMutationEnvelopeAsync,
   calculateSetupMutationPayloadHash,
+  calculateSetupMutationPayloadHashAsync,
   DEFAULT_ENGINE_VERSION,
 } from "./teamTournamentMutationEnvelope.js";
 
@@ -45,6 +48,7 @@ export function serializeCanonicalSetupSnapshot(snapshot) {
 }
 
 /**
+ * Node/tests/scripts only — browser UI must use hashCanonicalSetupSnapshotAsync.
  * @param {unknown} snapshot
  * @returns {string}
  */
@@ -53,6 +57,7 @@ export function hashCanonicalSetupSnapshot(snapshot) {
 }
 
 /**
+ * Node/tests/scripts only — browser UI must use hashEngineInputAsync.
  * @param {unknown} engineInput
  * @returns {string}
  */
@@ -61,6 +66,7 @@ export function hashEngineInput(engineInput) {
 }
 
 /**
+ * Node/tests/scripts only — browser UI must use hashEngineOutputAsync.
  * @param {unknown} engineOutput
  * @returns {string}
  */
@@ -90,9 +96,26 @@ export function compareSnapshotHashes(leftHash, rightHash) {
 }
 
 /**
+ * Browser-safe SHA-256 via SubtleCrypto (Node falls back to createHash).
  * @param {unknown} snapshot
  * @returns {Promise<string>}
  */
 export async function hashCanonicalSetupSnapshotAsync(snapshot) {
   return hashUtf8Sha256Async(serializeCanonicalSetupSnapshot(snapshot));
+}
+
+/**
+ * @param {unknown} engineInput
+ * @returns {Promise<string>}
+ */
+export async function hashEngineInputAsync(engineInput) {
+  return hashUtf8Sha256Async(stableCanonicalStringify(engineInput));
+}
+
+/**
+ * @param {unknown} engineOutput
+ * @returns {Promise<string>}
+ */
+export async function hashEngineOutputAsync(engineOutput) {
+  return hashUtf8Sha256Async(stableCanonicalStringify(engineOutput));
 }

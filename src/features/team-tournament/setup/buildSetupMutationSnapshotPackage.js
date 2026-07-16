@@ -1,14 +1,15 @@
 import {
   buildCanonicalSetupSnapshot,
   hashCanonicalSetupSnapshot,
+  hashCanonicalSetupSnapshotAsync,
   serializeCanonicalSetupSnapshot,
 } from "../canonical/teamTournamentCanonical.js";
 
 /**
- * Build the client-side canonical snapshot required by P1.3 setup RPCs.
- * The server independently hashes its normalized database read model.
+ * @param {object} params
+ * @returns {object}
  */
-export function buildSetupMutationSnapshotPackage({
+function buildCanonicalSnapshotJson({
   tournament = {},
   teams = [],
   disciplines = [],
@@ -28,7 +29,7 @@ export function buildSetupMutationSnapshotPackage({
   engineOutput,
   generatedAt,
 } = {}) {
-  const snapshotJson = buildCanonicalSetupSnapshot({
+  return buildCanonicalSetupSnapshot({
     tournament: {
       ...tournament,
       version: Number(expectedTournamentVersion) + 1,
@@ -48,8 +49,40 @@ export function buildSetupMutationSnapshotPackage({
     actor,
     generatedAt,
   });
+}
+
+/**
+ * Build the client-side canonical snapshot required by P1.3 setup RPCs.
+ * Node/tests/scripts only — browser UI must use buildSetupMutationSnapshotPackageAsync.
+ * The server independently hashes its normalized database read model.
+ */
+export function buildSetupMutationSnapshotPackage(params = {}) {
+  const snapshotJson = buildCanonicalSnapshotJson(params);
   const snapshotCanonicalText = serializeCanonicalSetupSnapshot(snapshotJson);
   const snapshotHash = hashCanonicalSetupSnapshot(snapshotJson);
+
+  return {
+    snapshotJson,
+    snapshotCanonicalText,
+    snapshotHash,
+    normalizedReadHash: snapshotHash,
+  };
+}
+
+/**
+ * Browser-safe snapshot package (SubtleCrypto SHA-256).
+ * @param {object} params
+ * @returns {Promise<{
+ *   snapshotJson: object,
+ *   snapshotCanonicalText: string,
+ *   snapshotHash: string,
+ *   normalizedReadHash: string,
+ * }>}
+ */
+export async function buildSetupMutationSnapshotPackageAsync(params = {}) {
+  const snapshotJson = buildCanonicalSnapshotJson(params);
+  const snapshotCanonicalText = serializeCanonicalSetupSnapshot(snapshotJson);
+  const snapshotHash = await hashCanonicalSetupSnapshotAsync(snapshotJson);
 
   return {
     snapshotJson,

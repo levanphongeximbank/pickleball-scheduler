@@ -35,6 +35,7 @@ export {
 
 export {
   buildSetupMutationSnapshotPackage,
+  buildSetupMutationSnapshotPackageAsync,
   attachSnapshotPackageToPayload,
 } from "./buildSetupMutationSnapshotPackage.js";
 
@@ -44,7 +45,9 @@ export {
 
 export {
   buildSetupMutationPayload,
+  buildSetupMutationPayloadAsync,
   previewSetupMutation,
+  previewSetupMutationAsync,
   confirmSetupMutation,
   runSetupMutation,
   handleSetupMutationConflict,

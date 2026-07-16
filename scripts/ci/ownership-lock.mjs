@@ -602,11 +602,12 @@ const RULES = [
       "scripts/lib/team-tournament-shadow-compare-report.mjs",
     ],
     match: (c) => [
-      ...(c.match(/\bhashCanonicalSetupSnapshot\s*\(/g) || []),
-      ...(c.match(/\bhashEngineInput\s*\(/g) || []),
-      ...(c.match(/\bhashEngineOutput\s*\(/g) || []),
-      ...(c.match(/\bbuildSetupMutationEnvelope\s*\(/g) || []),
-      ...(c.match(/\bvalidateSetupMutationEnvelope\s*\(/g) || []),
+      ...(c.match(/\bhashCanonicalSetupSnapshot(?:Async)?\s*\(/g) || []),
+      ...(c.match(/\bhashEngineInput(?:Async)?\s*\(/g) || []),
+      ...(c.match(/\bhashEngineOutput(?:Async)?\s*\(/g) || []),
+      ...(c.match(/\bbuildSetupMutationEnvelope(?:Async)?\s*\(/g) || []),
+      ...(c.match(/\bvalidateSetupMutationEnvelope(?:Async)?\s*\(/g) || []),
+      ...(c.match(/\bcalculateSetupMutationPayloadHash(?:Async)?\s*\(/g) || []),
     ],
   },
   {
@@ -619,6 +620,38 @@ const RULES = [
       "src/features/team-tournament/canonical/teamTournamentCanonicalLegacy.js",
     ],
     match: (c) => c.match(/from\s+["']node:crypto["']/g) || [],
+  },
+  {
+    id: "team-tournament-browser-async-hash",
+    description:
+      "P1.3 — browser UI/pages must not call Node-only sync hash helpers; use Async SubtleCrypto variants via setup/canonical.",
+    onlyIn: ["src/features/team-tournament/ui/", "src/pages/tournament/"],
+    match: (c) => [
+      ...(c.match(/\bhashUtf8Sha256Sync\b/g) || []),
+      ...(c.match(/\bhashCanonicalSetupSnapshot\s*\(/g) || []),
+      ...(c.match(/\bhashEngineInput\s*\(/g) || []),
+      ...(c.match(/\bhashEngineOutput\s*\(/g) || []),
+      ...(c.match(/\bcalculateSetupMutationPayloadHash\s*\(/g) || []),
+      ...(c.match(/\bbuildSetupMutationEnvelope\s*\(/g) || []),
+      ...(c.match(/\bvalidateSetupMutationEnvelope\s*\(/g) || []),
+      ...(c.match(/\bbuildSetupMutationPayload\s*\(/g) || []),
+      ...(c.match(/\bbuildSetupMutationSnapshotPackage\s*\(/g) || []),
+      ...(c.match(/\bpreviewSetupMutation\s*\(/g) || []),
+    ],
+  },
+  {
+    id: "team-tournament-hash-implementation-boundary",
+    description:
+      "P1.3 — SHA-256 for Team Tournament setup must only be implemented in canonical digest (no second browser hasher).",
+    onlyIn: ["src/features/team-tournament/"],
+    allow: [
+      "src/features/team-tournament/canonical/teamTournamentCanonicalDigest.js",
+      "src/features/team-tournament/canonical/teamTournamentCanonicalLegacy.js",
+    ],
+    match: (c) => [
+      ...(c.match(/crypto\.subtle\.digest\s*\(/g) || []),
+      ...(c.match(/createHash\s*\(\s*["']sha256["']\s*\)/gi) || []),
+    ],
   },
 ];
 

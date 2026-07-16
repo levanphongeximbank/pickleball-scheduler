@@ -25,9 +25,10 @@ import {
 import {
   attachSnapshotPackageToPayload,
   buildSetupMutationFromTeamDataDiff,
-  buildSetupMutationSnapshotPackage,
+  buildSetupMutationSnapshotPackageAsync,
   isSetupMutationFoundationEnabled,
   runSetupMutation,
+  SETUP_MUTATION_CODES,
 } from "../setup/index.js";
 
 export const UI_MUTATION_ERROR = Object.freeze({
@@ -436,23 +437,34 @@ export function createTeamTournamentUiOrchestrator(options = {}) {
       }
 
       const matchups = nextTeamData.matchups || [];
-      const snapshot = buildSetupMutationSnapshotPackage({
-        tournament: options.tournament || aggregateToTournamentView(aggregate) || { id: tournamentId },
-        teams: nextTeamData.teams || aggregate.teams || [],
-        disciplines: nextTeamData.disciplines || [],
-        groups: nextTeamData.groups || [],
-        matchups,
-        subMatches: matchups.flatMap((matchup) => matchup.subMatches || []),
-        schedule: nextTeamData.schedule || matchups,
-        schedulePublish: nextTeamData.schedulePublish || aggregate.schedulePublish || {},
-        settings: nextTeamData.settings || aggregate.settings || {},
-        formatPreset: nextTeamData.settings?.formatPreset || aggregate.formatPreset,
-        rosterRules: nextTeamData.settings?.rosterRules || aggregate.rosterRules,
-        engineInput: inferred.engineInput,
-        engineOutput: inferred.engineOutput,
-        expectedTournamentVersion,
-        generatedAt: options.generatedAt,
-      });
+      let snapshot;
+      try {
+        snapshot = await buildSetupMutationSnapshotPackageAsync({
+          tournament: options.tournament || aggregateToTournamentView(aggregate) || { id: tournamentId },
+          teams: nextTeamData.teams || aggregate.teams || [],
+          disciplines: nextTeamData.disciplines || [],
+          groups: nextTeamData.groups || [],
+          matchups,
+          subMatches: matchups.flatMap((matchup) => matchup.subMatches || []),
+          schedule: nextTeamData.schedule || matchups,
+          schedulePublish: nextTeamData.schedulePublish || aggregate.schedulePublish || {},
+          settings: nextTeamData.settings || aggregate.settings || {},
+          formatPreset: nextTeamData.settings?.formatPreset || aggregate.formatPreset,
+          rosterRules: nextTeamData.settings?.rosterRules || aggregate.rosterRules,
+          engineInput: inferred.engineInput,
+          engineOutput: inferred.engineOutput,
+          expectedTournamentVersion,
+          generatedAt: options.generatedAt,
+        });
+      } catch (error) {
+        return mapRepositoryResultToUi({
+          ok: false,
+          code: SETUP_MUTATION_CODES.HASH_RUNTIME_ERROR,
+          error:
+            error?.message ||
+            "Không tính được hash snapshot setup. Không ghi discipline/groups/matchups/schedule.",
+        });
+      }
 
       const result = await runSetupMutation({
         method: inferred.commandName,

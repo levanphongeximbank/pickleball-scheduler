@@ -6,12 +6,16 @@
 
 import {
   buildSetupMutationEnvelope,
+  buildSetupMutationEnvelopeAsync,
   DEFAULT_ENGINE_VERSION,
   validateSetupMutationEnvelope,
+  validateSetupMutationEnvelopeAsync,
 } from "../canonical/teamTournamentMutationEnvelope.js";
 import {
   hashEngineInput,
+  hashEngineInputAsync,
   hashEngineOutput,
+  hashEngineOutputAsync,
 } from "../canonical/teamTournamentCanonical.js";
 import { createTeamTournamentIdempotencyKey } from "../services/teamTournamentRpcService.js";
 import {
@@ -44,45 +48,21 @@ function previewKey(tournamentId, idempotencyKey) {
   return `${String(tournamentId)}::${String(idempotencyKey)}`;
 }
 
-/**
- * @param {object} params
- */
-export function buildSetupMutationPayload(params = {}) {
-  const commandName = params.commandName || params.method;
-  const tournamentId = String(params.tournamentId || "").trim();
-  const expectedTournamentVersion = Number(
-    params.expectedTournamentVersion ?? params.latestTournamentVersion ?? params.version
-  );
-  const idempotencyKey = String(
-    params.idempotencyKey || createTeamTournamentIdempotencyKey("tt-setup")
-  ).trim();
+function mapHashRuntimeFailure(error) {
+  const message = error?.message || "Không tính được hash setup mutation.";
+  const isHashRuntime =
+    /hashUtf8Sha256Sync is unavailable|SubtleCrypto|digest/i.test(message) ||
+    error?.code === SETUP_MUTATION_CODES.HASH_RUNTIME_ERROR;
+  return {
+    ok: false,
+    code: isHashRuntime
+      ? SETUP_MUTATION_CODES.HASH_RUNTIME_ERROR
+      : SETUP_MUTATION_CODES.VALIDATION_ERROR,
+    error: message,
+  };
+}
 
-  const engineInput = params.engineInput ?? {};
-  const engineOutput = params.engineOutput ?? {};
-  const engineInputHash = params.engineInputHash || hashEngineInput(engineInput);
-  const engineOutputHash = params.engineOutputHash || hashEngineOutput(engineOutput);
-  const engineVersion = params.engineVersion || DEFAULT_ENGINE_VERSION;
-  const rulesVersion = params.rulesVersion || "";
-
-  const envelope = buildSetupMutationEnvelope({
-    commandName,
-    tournamentId,
-    expectedTournamentVersion,
-    idempotencyKey,
-    engineVersion,
-    rulesVersion,
-    engineInputHash,
-    engineOutputHash,
-    generatedAt: params.generatedAt,
-    generationMetadata: params.generationMetadata || {
-      source: "runSetupMutation",
-      method: params.method || commandName,
-    },
-    confirmDestructive: params.confirmDestructive === true,
-    payload: params.payload ?? {},
-  });
-
-  const validation = validateSetupMutationEnvelope(envelope);
+function finishBuiltPayload(validation, engineInputHash, engineOutputHash, engineVersion, rulesVersion) {
   if (!validation.ok) {
     return {
       ok: false,
@@ -104,20 +84,110 @@ export function buildSetupMutationPayload(params = {}) {
 }
 
 /**
- * Preview-only — builds envelope, never calls repository/RPC.
+ * Node/tests/scripts only — browser UI path uses buildSetupMutationPayloadAsync.
  * @param {object} params
  */
-export function previewSetupMutation(params = {}) {
-  const gateError = rejectIfSetupMutationGateOff(params.envSource);
-  if (gateError) {
-    return { ...gateError, status: SETUP_MUTATION_STATUS.BLOCKED };
-  }
+export function buildSetupMutationPayload(params = {}) {
+  try {
+    const commandName = params.commandName || params.method;
+    const tournamentId = String(params.tournamentId || "").trim();
+    const expectedTournamentVersion = Number(
+      params.expectedTournamentVersion ?? params.latestTournamentVersion ?? params.version
+    );
+    const idempotencyKey = String(
+      params.idempotencyKey || createTeamTournamentIdempotencyKey("tt-setup")
+    ).trim();
 
-  const built = buildSetupMutationPayload(params);
-  if (!built.ok) {
-    return { ...built, status: SETUP_MUTATION_STATUS.FAILED };
-  }
+    const engineInput = params.engineInput ?? {};
+    const engineOutput = params.engineOutput ?? {};
+    const engineInputHash = params.engineInputHash || hashEngineInput(engineInput);
+    const engineOutputHash = params.engineOutputHash || hashEngineOutput(engineOutput);
+    const engineVersion = params.engineVersion || DEFAULT_ENGINE_VERSION;
+    const rulesVersion = params.rulesVersion || "";
 
+    const envelope = buildSetupMutationEnvelope({
+      commandName,
+      tournamentId,
+      expectedTournamentVersion,
+      idempotencyKey,
+      engineVersion,
+      rulesVersion,
+      engineInputHash,
+      engineOutputHash,
+      generatedAt: params.generatedAt,
+      generationMetadata: params.generationMetadata || {
+        source: "runSetupMutation",
+        method: params.method || commandName,
+      },
+      confirmDestructive: params.confirmDestructive === true,
+      payload: params.payload ?? {},
+    });
+
+    return finishBuiltPayload(
+      validateSetupMutationEnvelope(envelope),
+      engineInputHash,
+      engineOutputHash,
+      engineVersion,
+      rulesVersion
+    );
+  } catch (error) {
+    return mapHashRuntimeFailure(error);
+  }
+}
+
+/**
+ * Browser-safe payload/envelope builder (SubtleCrypto SHA-256).
+ * @param {object} params
+ */
+export async function buildSetupMutationPayloadAsync(params = {}) {
+  try {
+    const commandName = params.commandName || params.method;
+    const tournamentId = String(params.tournamentId || "").trim();
+    const expectedTournamentVersion = Number(
+      params.expectedTournamentVersion ?? params.latestTournamentVersion ?? params.version
+    );
+    const idempotencyKey = String(
+      params.idempotencyKey || createTeamTournamentIdempotencyKey("tt-setup")
+    ).trim();
+
+    const engineInput = params.engineInput ?? {};
+    const engineOutput = params.engineOutput ?? {};
+    const engineInputHash = params.engineInputHash || (await hashEngineInputAsync(engineInput));
+    const engineOutputHash = params.engineOutputHash || (await hashEngineOutputAsync(engineOutput));
+    const engineVersion = params.engineVersion || DEFAULT_ENGINE_VERSION;
+    const rulesVersion = params.rulesVersion || "";
+
+    const envelope = await buildSetupMutationEnvelopeAsync({
+      commandName,
+      tournamentId,
+      expectedTournamentVersion,
+      idempotencyKey,
+      engineVersion,
+      rulesVersion,
+      engineInputHash,
+      engineOutputHash,
+      generatedAt: params.generatedAt,
+      generationMetadata: params.generationMetadata || {
+        source: "runSetupMutation",
+        method: params.method || commandName,
+      },
+      confirmDestructive: params.confirmDestructive === true,
+      payload: params.payload ?? {},
+    });
+
+    return finishBuiltPayload(
+      await validateSetupMutationEnvelopeAsync(envelope),
+      engineInputHash,
+      engineOutputHash,
+      engineVersion,
+      rulesVersion
+    );
+  } catch (error) {
+    return mapHashRuntimeFailure(error);
+  }
+}
+
+function registerPreviewSession(built) {
   const key = previewKey(built.envelope.tournamentId, built.envelope.idempotencyKey);
   previewSessions.set(key, {
     envelope: built.envelope,
@@ -125,7 +195,7 @@ export function previewSetupMutation(params = {}) {
     tournamentVersion: built.envelope.expectedTournamentVersion,
   });
 
-  const preview = {
+  return {
     ok: true,
     status: SETUP_MUTATION_STATUS.PREVIEW,
     mode: "preview",
@@ -140,11 +210,50 @@ export function previewSetupMutation(params = {}) {
     rpcName: built.rpcName,
     domainWriteActive: isSetupDomainWriteMethodActive(),
   };
+}
 
+/**
+ * Preview-only — builds envelope, never calls repository/RPC.
+ * Node/tests only — browser UI path uses previewSetupMutationAsync.
+ * @param {object} params
+ */
+export function previewSetupMutation(params = {}) {
+  const gateError = rejectIfSetupMutationGateOff(params.envSource);
+  if (gateError) {
+    return { ...gateError, status: SETUP_MUTATION_STATUS.BLOCKED };
+  }
+
+  const built = buildSetupMutationPayload(params);
+  if (!built.ok) {
+    return { ...built, status: SETUP_MUTATION_STATUS.FAILED };
+  }
+
+  const preview = registerPreviewSession(built);
   if (typeof params.onPreview === "function") {
     params.onPreview(preview);
   }
+  return preview;
+}
 
+/**
+ * Browser-safe preview (async hashing). Never calls repository/RPC.
+ * @param {object} params
+ */
+export async function previewSetupMutationAsync(params = {}) {
+  const gateError = rejectIfSetupMutationGateOff(params.envSource);
+  if (gateError) {
+    return { ...gateError, status: SETUP_MUTATION_STATUS.BLOCKED };
+  }
+
+  const built = await buildSetupMutationPayloadAsync(params);
+  if (!built.ok) {
+    return { ...built, status: SETUP_MUTATION_STATUS.FAILED };
+  }
+
+  const preview = registerPreviewSession(built);
+  if (typeof params.onPreview === "function") {
+    params.onPreview(preview);
+  }
   return preview;
 }
 
@@ -280,14 +389,14 @@ export async function confirmSetupMutation(params = {}) {
 
   let envelope = params.envelope;
   if (!envelope) {
-    const built = buildSetupMutationPayload(params);
+    const built = await buildSetupMutationPayloadAsync(params);
     if (!built.ok) {
       return { ...built, status: SETUP_MUTATION_STATUS.FAILED, rpcCalled: false };
     }
     envelope = built.envelope;
   }
 
-  const validated = validateSetupMutationEnvelope(envelope);
+  const validated = await validateSetupMutationEnvelopeAsync(envelope);
   if (!validated.ok) {
     return {
       ok: false,
@@ -491,7 +600,7 @@ export async function runSetupMutation(params = {}) {
     params.idempotencyKey ||
     beginUiCommandKey(scope);
 
-  const preview = previewSetupMutation({
+  const preview = await previewSetupMutationAsync({
     ...params,
     method: params.method || params.commandName,
     commandName: params.commandName || params.method,
