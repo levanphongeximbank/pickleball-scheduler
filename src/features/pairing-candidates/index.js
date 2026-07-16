@@ -57,6 +57,7 @@ export {
 
 export {
   toLegacyScreenPickerPlayer,
+  buildCandidateDiagnosticCounts,
   loadClubPairingCandidatePool,
   loadTenantPairingCandidatePool,
   listClubsForPairingTenant,
@@ -66,6 +67,17 @@ export {
   loadTournamentPickerClubCandidatePool,
   loadTournamentPickerTenantCandidatePool,
 } from "./screenCandidateAdapters.js";
+
+export {
+  resolvePairingScopeTenantId,
+  isPlaceholderTenantId,
+} from "./pairingScopeResolver.js";
+
+export {
+  isActiveMembershipStatus,
+  normalizeMembershipStatus,
+  readMembershipStatus,
+} from "./pairingMembershipStatus.js";
 
 export {
   useClubPairingCandidatePool,

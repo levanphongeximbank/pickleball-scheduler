@@ -4,6 +4,8 @@
  */
 
 import { PAIRING_CANDIDATE_REASON_CODES as RC } from "./pairingCandidateReasonCodes.js";
+import { isActiveMembershipStatus } from "./pairingMembershipStatus.js";
+import { isPlaceholderTenantId } from "./pairingScopeResolver.js";
 
 function normalizeId(value) {
   return String(value || "").trim();
@@ -76,13 +78,14 @@ export function evaluatePairingEligibility(seed, query = {}) {
     };
   }
 
-  const membershipStatus = String(membershipStatusRaw).toLowerCase();
-  if (membershipStatus !== "active") {
+  if (!isActiveMembershipStatus(membershipStatusRaw)) {
     return {
       athleteId: seed.athleteId,
       pairingIdentityId: seed.pairingIdentityId,
       reasonCode: RC.MEMBERSHIP_INACTIVE,
-      details: { membershipStatus },
+      details: {
+        membershipStatus: String(membershipStatusRaw || "").trim().toLowerCase(),
+      },
     };
   }
 
@@ -97,9 +100,20 @@ export function evaluatePairingEligibility(seed, query = {}) {
     };
   }
 
+  // Club-scoped discovery: matching club membership is sufficient authority.
+  // Placeholder tenant ("default-tenant") must never exclude real athletes.
+  const clubScopeMatched = Boolean(
+    scopeClubId && seedClubId && scopeClubId === seedClubId
+  );
   const scopeTenantId = normalizeId(query.tenantId);
   const seedTenantId = normalizeId(seed.tenantId);
-  if (scopeTenantId && seedTenantId && scopeTenantId !== seedTenantId) {
+  if (
+    !clubScopeMatched &&
+    scopeTenantId &&
+    !isPlaceholderTenantId(scopeTenantId) &&
+    seedTenantId &&
+    scopeTenantId !== seedTenantId
+  ) {
     return {
       athleteId: seed.athleteId,
       pairingIdentityId: seed.pairingIdentityId,

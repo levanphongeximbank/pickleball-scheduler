@@ -26,6 +26,7 @@ import { loadCourtsForClub } from "../../domain/clubStorage.js";
 import {
   loadTournamentPickerClubCandidatePool,
   loadTournamentPickerTenantCandidatePool,
+  resolvePairingScopeTenantId,
 } from "../../features/pairing-candidates/index.js";
 import TournamentCourtSchedulePanel from "../../components/tournament/TournamentCourtSchedulePanel.jsx";
 import {
@@ -90,7 +91,6 @@ import {
   buildTournamentNotFoundMessage,
   findTournamentClubId,
 } from "../../features/club/index.js";
-import { resolveTenantIdForClub } from "../../features/tenant/guards/tenantGuard.js";
 import { isAiEngineEnabled } from "../../features/ai-assistant/index.js";
 import TournamentAiAssistantPanel from "../../components/tournament/ai/TournamentAiAssistantPanel.jsx";
 import { useAuth } from "../../context/AuthContext.jsx";
@@ -174,9 +174,13 @@ export default function InternalTournamentSetup() {
     [user, activeClubId, tournamentId, rbacEnabled]
   );
 
+  const clubFromQuery = String(searchParams.get("club") || "").trim();
   const tournamentClubId = useMemo(
-    () => findTournamentClubId(tournamentId) || activeClubId,
-    [tournamentId, activeClubId]
+    () =>
+      clubFromQuery ||
+      findTournamentClubId(tournamentId) ||
+      activeClubId,
+    [clubFromQuery, tournamentId, activeClubId]
   );
 
   useEffect(() => {
@@ -202,9 +206,33 @@ export default function InternalTournamentSetup() {
     }
   }, [tournament?.id, tournament?.founderPairingConstraints]);
 
+  const hostClubRecord = useMemo(
+    () =>
+      clubs.find(
+        (club) =>
+          String(club?.id || "").trim() ===
+          String(sourceClubId || tournamentClubId || "").trim()
+      ) || null,
+    [clubs, sourceClubId, tournamentClubId]
+  );
+
   const playerTenantId = useMemo(
-    () => tournament?.tenantId || resolveTenantIdForClub(sourceClubId || tournamentClubId),
-    [tournament?.tenantId, sourceClubId, tournamentClubId]
+    () =>
+      resolvePairingScopeTenantId({
+        tournamentTenantId: tournament?.tenantId,
+        club: hostClubRecord,
+        clubId: sourceClubId || tournamentClubId,
+        clubs,
+        currentTenantId,
+      }),
+    [
+      tournament?.tenantId,
+      hostClubRecord,
+      sourceClubId,
+      tournamentClubId,
+      clubs,
+      currentTenantId,
+    ]
   );
 
   const [players, setPlayers] = useState([]);
@@ -1187,7 +1215,16 @@ export default function InternalTournamentSetup() {
         <TournamentAiAssistantPanel
           tournamentId={tournamentId}
           clubId={tournamentClubId}
-          tenantId={currentTenantId || tournament?.tenantId || resolveTenantIdForClub(tournamentClubId)}
+          tenantId={
+            currentTenantId ||
+            tournament?.tenantId ||
+            resolvePairingScopeTenantId({
+              tournamentTenantId: tournament?.tenantId,
+              clubId: tournamentClubId,
+              clubs,
+              currentTenantId,
+            })
+          }
           players={players}
           courts={courts}
           userId={user?.id || ""}

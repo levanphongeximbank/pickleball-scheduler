@@ -31,8 +31,8 @@ import { assertTournamentAccess } from "../../domain/tournamentService.js";
 import {
   useClubPairingCandidatePool,
   useTenantPairingCandidatePool,
+  resolvePairingScopeTenantId,
 } from "../../features/pairing-candidates/index.js";
-import { resolveTenantIdForClub } from "../../features/tenant/guards/tenantGuard.js";
 import {
   buildRoundRobinMatchups,
   getTeamData,
@@ -197,6 +197,7 @@ export default function TeamTournamentSetup() {
   const { currentTenantId } = useTenant();
 
   // Create flow stamps ?club= so detail survives activeClub refresh/coerce.
+  // tournament.clubId (after load) + ?club= are SSOT — never prefer stale activeClubId.
   const clubFromQuery = String(searchParams.get("club") || "").trim();
   const loadClubId = clubFromQuery || activeClubId;
 
@@ -274,20 +275,29 @@ export default function TeamTournamentSetup() {
     }
   }, [searchParams, setSearchParams, visibleTabs]);
 
+  const hostClubRecord = useMemo(
+    () => clubs.find((club) => String(club?.id || "").trim() === effectiveClubId) || null,
+    [clubs, effectiveClubId]
+  );
+
   const tenantId = useMemo(
     () =>
-      tournament?.tenantId ||
-      resolveTenantIdForClub(effectiveClubId || activeClubId) ||
-      currentTenantId ||
-      "",
-    [tournament?.tenantId, effectiveClubId, activeClubId, currentTenantId]
+      resolvePairingScopeTenantId({
+        tournamentTenantId: tournament?.tenantId,
+        club: hostClubRecord,
+        clubId: effectiveClubId,
+        clubs,
+        currentTenantId,
+      }),
+    [tournament?.tenantId, hostClubRecord, effectiveClubId, clubs, currentTenantId]
   );
   const teamDataView = teamData || { teams: [], disciplines: [], matchups: [], standings: [] };
   const {
     players,
     error: clubPlayersError,
     emptyMessage: clubPlayersEmptyMessage,
-  } = useClubPairingCandidatePool(effectiveClubId || activeClubId, {
+    diagnostics: clubCandidateDiagnostics,
+  } = useClubPairingCandidatePool(effectiveClubId, {
     tenantId,
     revision: dataVersion,
   });
@@ -300,6 +310,7 @@ export default function TeamTournamentSetup() {
   });
   const playersLoadError = clubPlayersError || tenantPlayersError;
   const playersEmptyMessage = clubPlayersEmptyMessage || tenantPlayersEmptyMessage;
+  const candidateDiagnostics = clubCandidateDiagnostics;
   const lineupPlayers = useMemo(() => {
     const pool = new Map();
     [...allTenantPlayers, ...players].forEach((player) => {
@@ -945,6 +956,17 @@ export default function TeamTournamentSetup() {
           {!playersLoadError && playersEmptyMessage ? (
             <Alert severity="warning" sx={{ mb: 2 }}>
               {playersEmptyMessage}
+            </Alert>
+          ) : null}
+          {candidateDiagnostics ? (
+            <Alert severity="info" sx={{ mb: 2 }}>
+              Candidate diagnostics: sourceCount={candidateDiagnostics.sourceCount},
+              membershipCount={candidateDiagnostics.membershipCount},
+              activeMembershipCount={candidateDiagnostics.activeMembershipCount},
+              eligibleCount={candidateDiagnostics.eligibleCount},
+              WRONG_SCOPE={candidateDiagnostics.wrongScopeCount},
+              MEMBERSHIP_INACTIVE={candidateDiagnostics.membershipInactiveCount},
+              MISSING_IDENTITY_LINK={candidateDiagnostics.missingIdentityCount}
             </Alert>
           ) : null}
           {message ? <Alert severity="success" sx={{ mb: 2 }} onClose={() => setMessage("")}>{message}</Alert> : null}

@@ -334,7 +334,7 @@ export function createTeamTournamentUiOrchestrator(options = {}) {
           ok: false,
           code: REPOSITORY_ERROR_CODES.NOT_IMPLEMENTED,
           error:
-            "Chỉnh sửa cấu hình local (đội/lịch) không khả dụng khi cloud_primary. Dùng legacy/shadow để cấu hình hoặc migrate trước.",
+            "BLOCKED BY CLOUD SCHEMA: thiếu RPC team_tournament_save_discipline / team_tournament_remove_discipline (và matchup/schedule write). Không ghi local khi cloud_primary — tránh fake success mất sau refresh.",
         };
       }
 

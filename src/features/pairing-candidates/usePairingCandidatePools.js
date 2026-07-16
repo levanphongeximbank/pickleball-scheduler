@@ -19,6 +19,8 @@ export function useClubPairingCandidatePool(clubId, options = {}) {
   const [loading, setLoading] = useState(Boolean(clubId));
   const [error, setError] = useState(null);
   const [emptyMessage, setEmptyMessage] = useState(null);
+  const [gatewayResult, setGatewayResult] = useState(null);
+  const [diagnostics, setDiagnostics] = useState(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -28,6 +30,8 @@ export function useClubPairingCandidatePool(clubId, options = {}) {
       setLoading(false);
       setError(null);
       setEmptyMessage(null);
+      setGatewayResult(null);
+      setDiagnostics(null);
       return undefined;
     }
 
@@ -46,12 +50,16 @@ export function useClubPairingCandidatePool(clubId, options = {}) {
             "Không tải được danh sách VĐV canonical. Không dùng roster blob.",
         });
         setEmptyMessage(null);
+        setGatewayResult(result.gatewayResult || null);
+        setDiagnostics(result.diagnostics || null);
         setLoading(false);
         return;
       }
       setPlayers(Array.isArray(result.players) ? result.players : []);
       setError(null);
       setEmptyMessage(result.empty ? result.message || null : null);
+      setGatewayResult(result.gatewayResult || null);
+      setDiagnostics(result.diagnostics || null);
       setLoading(false);
     });
 
@@ -60,7 +68,15 @@ export function useClubPairingCandidatePool(clubId, options = {}) {
     };
   }, [clubId, tenantId, revision]);
 
-  return { players, loading, error, emptyMessage, source: "pairing-candidate-gateway" };
+  return {
+    players,
+    loading,
+    error,
+    emptyMessage,
+    gatewayResult,
+    diagnostics,
+    source: "pairing-candidate-gateway",
+  };
 }
 
 /**

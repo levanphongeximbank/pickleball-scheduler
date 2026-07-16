@@ -12,6 +12,7 @@ import { rpcV2ClubListRegistry } from "../club/services/clubStorageV2RpcService.
 import { createPairingCandidateService } from "./pairingCandidateService.js";
 import { PAIRING_CANDIDATE_STATUS } from "./pairingCandidateContract.js";
 import { PAIRING_CANDIDATE_REASON_CODES } from "./pairingCandidateReasonCodes.js";
+import { isPlaceholderTenantId } from "./pairingScopeResolver.js";
 import {
   listSelectPlayersScopeRows,
   toLegacySelectPlayersPlayer,
@@ -72,25 +73,81 @@ const EXCLUSION_REASON_LABELS = Object.freeze({
 });
 
 function formatExclusionSummary(gatewayResult, label = "VĐV") {
-  const sourceCount = Number(gatewayResult?.summary?.sourceCount || 0);
+  const diagnostics = buildCandidateDiagnosticCounts(gatewayResult);
+  const parts = [];
+  if (diagnostics.wrongScopeCount > 0) {
+    parts.push(`WRONG_SCOPE:${diagnostics.wrongScopeCount}`);
+  }
+  if (diagnostics.membershipInactiveCount > 0) {
+    parts.push(`MEMBERSHIP_INACTIVE:${diagnostics.membershipInactiveCount}`);
+  }
+  if (diagnostics.missingIdentityCount > 0) {
+    parts.push(`MISSING_IDENTITY_LINK:${diagnostics.missingIdentityCount}`);
+  }
   const byReason = gatewayResult?.summary?.byReason || {};
-  const parts = Object.entries(byReason).map(([code, count]) => {
+  for (const [code, count] of Object.entries(byReason)) {
+    if (
+      code === PAIRING_CANDIDATE_REASON_CODES.WRONG_SCOPE ||
+      code === PAIRING_CANDIDATE_REASON_CODES.MEMBERSHIP_INACTIVE ||
+      code === PAIRING_CANDIDATE_REASON_CODES.MISSING_IDENTITY_LINK
+    ) {
+      continue;
+    }
     const human = EXCLUSION_REASON_LABELS[code] || code;
-    return `${human}:${count}`;
-  });
+    parts.push(`${human}:${count}`);
+  }
 
-  if (sourceCount === 0 && parts.length === 0) {
+  const counts =
+    `sourceCount=${diagnostics.sourceCount}, ` +
+    `membershipCount=${diagnostics.membershipCount}, ` +
+    `activeMembershipCount=${diagnostics.activeMembershipCount}, ` +
+    `eligibleCount=${diagnostics.eligibleCount}`;
+
+  if (diagnostics.sourceCount === 0 && parts.length === 0) {
     return (
-      `Không có nguồn ${label} canonical cho CLB này (sourceCount=0). ` +
+      `Không có nguồn ${label} canonical cho CLB này (${counts}). ` +
       `Không kết luận “chưa có thành viên” — kiểm tra membership RPC / môi trường Supabase.`
     );
   }
 
   if (parts.length === 0) {
-    return `Không có ${label} đủ điều kiện.`;
+    return `Không có ${label} đủ điều kiện (${counts}).`;
   }
 
-  return `Không có ${label} đủ điều kiện (loại trừ: ${parts.join(", ")}).`;
+  return `Không có ${label} đủ điều kiện (${counts}; loại trừ: ${parts.join(", ")}).`;
+}
+
+/**
+ * Exact candidate diagnostics for UI / QA.
+ *
+ * @param {object|null|undefined} gatewayResult
+ * @returns {{
+ *   sourceCount: number,
+ *   membershipCount: number,
+ *   activeMembershipCount: number,
+ *   eligibleCount: number,
+ *   wrongScopeCount: number,
+ *   membershipInactiveCount: number,
+ *   missingIdentityCount: number,
+ * }}
+ */
+export function buildCandidateDiagnosticCounts(gatewayResult) {
+  const summary = gatewayResult?.summary || {};
+  const breakdown = gatewayResult?.diagnostics?.sourceBreakdown || {};
+  const byReason = summary.byReason || {};
+  return {
+    sourceCount: Number(summary.sourceCount || 0),
+    membershipCount: Number(breakdown.membershipRows || 0),
+    activeMembershipCount: Number(breakdown.activeMembershipRows || 0),
+    eligibleCount: Number(summary.eligibleCount || 0),
+    wrongScopeCount: Number(byReason[PAIRING_CANDIDATE_REASON_CODES.WRONG_SCOPE] || 0),
+    membershipInactiveCount: Number(
+      byReason[PAIRING_CANDIDATE_REASON_CODES.MEMBERSHIP_INACTIVE] || 0
+    ),
+    missingIdentityCount: Number(
+      byReason[PAIRING_CANDIDATE_REASON_CODES.MISSING_IDENTITY_LINK] || 0
+    ),
+  };
 }
 
 /**
@@ -120,10 +177,14 @@ export async function loadClubPairingCandidatePool(clubId, deps = {}) {
         listSelectPlayersScopeRows(scope.clubId || id, deps),
     });
 
+  const scopeTenantId = isPlaceholderTenantId(deps.tenantId)
+    ? null
+    : deps.tenantId || null;
+
   const gatewayResult = await service.listCandidates(
     {
       clubId: id,
-      tenantId: deps.tenantId || null,
+      tenantId: scopeTenantId,
       eventType: deps.eventType || null,
       genderMode: deps.genderMode || null,
       ratingBand: deps.ratingBand || null,
@@ -161,6 +222,7 @@ export async function loadClubPairingCandidatePool(clubId, deps = {}) {
       empty: true,
       code: "NO_ELIGIBLE_CANDIDATES",
       message: formatExclusionSummary(gatewayResult),
+      diagnostics: buildCandidateDiagnosticCounts(gatewayResult),
       players: [],
       legacyPlayers: [],
       gatewayResult,
@@ -172,6 +234,7 @@ export async function loadClubPairingCandidatePool(clubId, deps = {}) {
     empty: false,
     players,
     legacyPlayers: players,
+    diagnostics: buildCandidateDiagnosticCounts(gatewayResult),
     gatewayResult,
   };
 }
@@ -216,11 +279,12 @@ export async function listClubsForPairingTenant(tenantId, deps = {}) {
  */
 export async function loadTenantPairingCandidatePool(tenantId, deps = {}) {
   const tid = normalizeId(tenantId);
-  if (!tid) {
+  if (!tid || isPlaceholderTenantId(tid)) {
     return {
       ok: false,
       code: PAIRING_CANDIDATE_REASON_CODES.WRONG_SCOPE,
-      message: "Chưa chọn tenant để tải danh sách VĐV.",
+      message:
+        "Chưa có tenant hợp lệ để tải Toàn bộ CLB (không dùng default-tenant).",
       players: [],
       legacyPlayers: [],
       gatewayResults: [],

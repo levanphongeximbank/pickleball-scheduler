@@ -10,6 +10,10 @@ import { rpcV2ClubListMembers } from "../club/services/clubStorageV2RpcService.j
 import { createPairingCandidateService } from "./pairingCandidateService.js";
 import { PAIRING_CANDIDATE_STATUS } from "./pairingCandidateContract.js";
 import { PAIRING_CANDIDATE_REASON_CODES } from "./pairingCandidateReasonCodes.js";
+import {
+  isActiveMembershipStatus,
+  readMembershipStatus,
+} from "./pairingMembershipStatus.js";
 
 function normalizeId(value) {
   return String(value || "").trim();
@@ -159,8 +163,8 @@ export async function listSelectPlayersScopeRows(clubId, deps = {}) {
       sourceBreakdown: {
         athleteRows: 0,
         membershipRows: members.length,
-        activeMembershipRows: members.filter(
-          (m) => String(m.status || "").toLowerCase() === "active"
+        activeMembershipRows: members.filter((m) =>
+          isActiveMembershipStatus(readMembershipStatus(m))
         ).length,
       },
     };
@@ -178,8 +182,8 @@ export async function listSelectPlayersScopeRows(clubId, deps = {}) {
       sourceBreakdown: {
         athleteRows: 0,
         membershipRows: members.length,
-        activeMembershipRows: members.filter(
-          (m) => String(m.status || "").toLowerCase() === "active"
+        activeMembershipRows: members.filter((m) =>
+          isActiveMembershipStatus(readMembershipStatus(m))
         ).length,
       },
     };
@@ -213,7 +217,7 @@ export async function listSelectPlayersScopeRows(clubId, deps = {}) {
       rating: member.rating ?? athlete?.rating ?? null,
       athleteStatus: athlete?.status || (athleteId ? "active" : "active"),
       membershipId: member.id || member.membershipId || null,
-      membershipStatus: member.status || member.membershipStatus || null,
+      membershipStatus: readMembershipStatus(member),
       clubId: id,
       tenantId: member.tenant_id || member.tenantId || athlete?.tenant_id || null,
       profilePlayerId: profile?.player_id || null,
@@ -228,8 +232,8 @@ export async function listSelectPlayersScopeRows(clubId, deps = {}) {
     sourceBreakdown: {
       athleteRows: athletesResult.athletes?.length ?? 0,
       membershipRows: members.length,
-      activeMembershipRows: members.filter(
-        (m) => String(m.status || "").toLowerCase() === "active"
+      activeMembershipRows: members.filter((m) =>
+        isActiveMembershipStatus(readMembershipStatus(m))
       ).length,
     },
   };
