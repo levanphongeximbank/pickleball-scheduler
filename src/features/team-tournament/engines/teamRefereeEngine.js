@@ -392,8 +392,19 @@ export function listRefereeMatchups(teamData) {
 
 function resolvePlayerNames(playerIds = [], players = []) {
   return playerIds.map((playerId) => {
-    const player = players.find((item) => item.id === playerId);
-    return player?.name || playerId;
+    const id = String(playerId || "").trim();
+    if (!id) return "—";
+    const player = (players || []).find(
+      (item) =>
+        String(item?.id || "") === id ||
+        String(item?.athleteId || "") === id ||
+        String(item?.pairingIdentityId || "") === id
+    );
+    if (!player) {
+      return `${id} (thiếu identity)`;
+    }
+    const name = String(player.name || player.displayName || "").trim();
+    return name || `${id} (thiếu tên)`;
   });
 }
 

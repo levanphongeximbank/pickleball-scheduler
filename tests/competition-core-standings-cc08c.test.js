@@ -366,7 +366,18 @@ test("CC08C-19 existing Draw/Formation/Rating tests import surface remains avail
 
 test("CC08C-20 package test runner contains CC-08C test file", () => {
   const pkg = JSON.parse(readFileSync(new URL("../package.json", import.meta.url), "utf8"));
-  assert.match(pkg.scripts["test:unit"], /competition-core-standings-cc08c\.test\.js/);
+  const unitScript = String(pkg.scripts["test:unit"] || "");
+  if (unitScript.includes("run-unit-tests.mjs")) {
+    const manifest = JSON.parse(
+      readFileSync(new URL("../scripts/ci/unit-test-files.json", import.meta.url), "utf8")
+    );
+    assert.ok(
+      manifest.includes("tests/competition-core-standings-cc08c.test.js"),
+      "unit-test-files.json must list competition-core-standings-cc08c.test.js"
+    );
+    return;
+  }
+  assert.match(unitScript, /competition-core-standings-cc08c\.test\.js/);
 });
 
 test("CC08C shadow — forfeit group match parity", () => {

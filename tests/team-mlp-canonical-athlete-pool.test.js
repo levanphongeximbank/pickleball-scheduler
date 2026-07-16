@@ -4,8 +4,11 @@ import { readFileSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
-import { selectHostClubAthletesForTeamMlp } from "../src/features/team-tournament/ui/selectHostClubAthletesForTeamMlp.js";
-import { loadSelectPlayersCandidatePool } from "../src/features/pairing-candidates/index.js";
+import { listAvailableAthletes } from "../src/features/team-tournament/services/teamTournamentAthletePoolService.js";
+import {
+  loadSelectPlayersCandidatePool,
+  PAIRING_CANDIDATE_STATUS,
+} from "../src/features/pairing-candidates/index.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const rosterSource = readFileSync(
@@ -14,53 +17,71 @@ const rosterSource = readFileSync(
 );
 
 describe("Team MLP — canonical host-club athlete pool", () => {
-  it("TeamRosterPanel loads MLP pool via pairing-candidates gateway", () => {
-    assert.match(rosterSource, /loadSelectPlayersCandidatePool/);
+  it("TeamRosterPanel loads MLP pool via unified Team Tournament athlete service", () => {
+    assert.match(rosterSource, /listAvailableAthletes/);
+    assert.match(rosterSource, /teamTournamentAthletePoolService/);
     assert.match(rosterSource, /mlpPairingPool/);
     assert.match(rosterSource, /players=\{mlpPairingPool\}/);
     assert.match(
       rosterSource,
       /TeamAiPairingDialog[\s\S]*players=\{mlpPairingPool\}/
     );
+    assert.doesNotMatch(rosterSource, /loadSelectPlayersCandidatePool/);
+    assert.doesNotMatch(rosterSource, /loadTeamBuilderClubCandidatePool/);
+    assert.doesNotMatch(rosterSource, /selectHostClubAthletesForTeamMlp/);
   });
 
-  it("selectHostClubAthletesForTeamMlp keeps host athletes only", () => {
-    const players = [
-      {
-        id: "ath-1",
-        athleteId: "ath-1",
-        clubId: "club-a",
-        name: "A",
-        gender: "Nam",
-        rating: 4,
-        active: true,
+  it("club-scoped listAvailableAthletes is the host MLP filter (no orphan helper)", async () => {
+    const result = await listAvailableAthletes({
+      clubId: "club-a",
+      tenantId: "tenant-shared",
+      scopeMode: "club",
+      callerName: "team-mlp-test",
+      deps: {
+        service: {
+          async listCandidates(query) {
+            const rows = [
+              {
+                athleteId: "ath-1",
+                pairingIdentityId: "ath-1",
+                displayName: "A",
+                clubId: "club-a",
+                athleteStatus: "active",
+                membershipStatus: "active",
+                gender: "male",
+                tenantId: "tenant-shared",
+              },
+              {
+                athleteId: "ath-2",
+                pairingIdentityId: "ath-2",
+                displayName: "B",
+                clubId: "club-b",
+                athleteStatus: "active",
+                membershipStatus: "active",
+                gender: "female",
+                tenantId: "tenant-shared",
+              },
+            ].filter((r) => r.clubId === query.clubId);
+            return {
+              status: PAIRING_CANDIDATE_STATUS.READY,
+              candidates: rows,
+              excluded: [],
+              summary: {
+                sourceCount: rows.length,
+                eligibleCount: rows.length,
+                excludedCount: 0,
+                byReason: {},
+              },
+              diagnostics: {},
+            };
+          },
+        },
       },
-      {
-        id: "ath-2",
-        athleteId: "ath-2",
-        clubId: "club-b",
-        name: "B",
-        gender: "Nữ",
-        rating: 3.5,
-        active: true,
-      },
-      {
-        id: "blob-1",
-        clubId: "club-a",
-        name: "No athlete id",
-        active: true,
-      },
-      {
-        id: "ath-3",
-        athleteId: "ath-3",
-        clubId: "club-a",
-        name: "Inactive",
-        active: false,
-      },
-    ];
-    const filtered = selectHostClubAthletesForTeamMlp(players, "club-a");
+    });
+
+    assert.equal(result.ok, true);
     assert.deepEqual(
-      filtered.map((p) => p.id),
+      result.athletes.map((a) => a.id || a.athleteId),
       ["ath-1"]
     );
   });
@@ -111,9 +132,5 @@ describe("Team MLP — canonical host-club athlete pool", () => {
     assert.equal(result.players[0].clubId, "club-a");
     assert.equal(result.players[0].source, "pairing-candidate-gateway");
     assert.notEqual(result.players[0].id, "legacy-blob-id");
-
-    const mlp = selectHostClubAthletesForTeamMlp(result.players, "club-a");
-    assert.equal(mlp.length, 1);
-    assert.equal(mlp[0].athleteId, "ath-host");
   });
 });

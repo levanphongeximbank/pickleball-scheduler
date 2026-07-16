@@ -14,7 +14,7 @@ import {
   Typography,
 } from "@mui/material";
 
-import { savePlayersForClub, loadPlayersForClub } from "../../domain/clubStorage.js";
+import { appendGuestPlayerToClubBlobLegacy } from "../../domain/legacyGuestPlayerBlobWriteAdapter.js";
 import { normalizePlayer } from "../../models/player.js";
 import { PICK_VN_MAX, PICK_VN_MIN } from "../../features/pick-vn-rating/constants/pickVnRatingScale.js";
 import { PLAYER_TYPE } from "../../models/tournament/constants.js";
@@ -27,6 +27,12 @@ const defaultForm = {
   phone: "",
 };
 
+/**
+ * Guest create dialog — does not discover / populate athlete pools.
+ * Parent screens must feed pickers from teamTournamentAthletePoolService
+ * (or pairing adapters outside Team Tournament). Blob write is isolated
+ * via appendGuestPlayerToClubBlobLegacy (non-discovery).
+ */
 export default function TournamentPlayerQuickAddDialog({
   open,
   onClose,
@@ -79,9 +85,14 @@ export default function TournamentPlayerQuickAddDialog({
       return;
     }
 
-    const existing = loadPlayersForClub(hostClubId);
-    savePlayersForClub([...existing, player], hostClubId);
-    onSaved?.(player);
+    const written = appendGuestPlayerToClubBlobLegacy(hostClubId, player);
+    if (!written.ok) {
+      setError(written.error || "Không lưu được VĐV khách (legacy write).");
+      return;
+    }
+
+    // Guest object is session-local for the open picker; not athlete-pool SSOT.
+    onSaved?.(written.player);
     onClose?.();
   };
 
@@ -92,7 +103,10 @@ export default function TournamentPlayerQuickAddDialog({
         <Stack spacing={2} sx={{ mt: 1 }}>
           {error ? <Alert severity="error">{error}</Alert> : null}
           <Typography variant="body2" color="text.secondary">
-            VĐV sẽ được lưu vào CLB chủ nhà giải với loại khách (guest) và có thể dùng lại ở giải sau.
+            VĐV khách được ghi tạm vào blob CLB chủ nhà (legacy write, không phải
+            athlete-pool SSOT). Danh sách ghép cặp / roster vẫn lấy từ pool
+            canonical; khách mới chỉ hiện trong phiên picker hiện tại cho đến khi
+            được map identity.
           </Typography>
           <TextField
             label="Họ tên"

@@ -24,10 +24,11 @@ import ArrowBackIcon from "@mui/icons-material/ArrowBack";
 import { useClub } from "../../context/ClubContext.jsx";
 import { loadCourtsForClub } from "../../domain/clubStorage.js";
 import {
-  loadTournamentPickerClubCandidatePool,
-  loadTournamentPickerTenantCandidatePool,
-  resolvePairingScopeTenantId,
-} from "../../features/pairing-candidates/index.js";
+  listAvailableAthletes,
+  resolveTeamTournamentAthleteClubId,
+  resolveTeamTournamentAthleteTenantId,
+  TEAM_TOURNAMENT_ATHLETE_SCOPE,
+} from "../../features/team-tournament/services/teamTournamentAthletePoolService.js";
 import TournamentCourtSchedulePanel from "../../components/tournament/TournamentCourtSchedulePanel.jsx";
 import {
   getTournament,
@@ -218,15 +219,15 @@ export default function InternalTournamentSetup() {
 
   const playerTenantId = useMemo(
     () =>
-      resolvePairingScopeTenantId({
-        tournamentTenantId: tournament?.tenantId,
+      resolveTeamTournamentAthleteTenantId({
+        tournament,
         club: hostClubRecord,
         clubId: sourceClubId || tournamentClubId,
         clubs,
         currentTenantId,
       }),
     [
-      tournament?.tenantId,
+      tournament,
       hostClubRecord,
       sourceClubId,
       tournamentClubId,
@@ -238,21 +239,34 @@ export default function InternalTournamentSetup() {
   const [players, setPlayers] = useState([]);
   const [tenantPlayers, setTenantPlayers] = useState([]);
   const [playersLoadError, setPlayersLoadError] = useState(null);
+  const [playerDiagnostics, setPlayerDiagnostics] = useState(null);
 
   useEffect(() => {
     let cancelled = false;
     (async () => {
-      if (!sourceClubId) {
+      const clubId = resolveTeamTournamentAthleteClubId({
+        tournamentClubId: tournament?.clubId || tournamentClubId,
+        clubFromQuery: String(searchParams.get("club") || "").trim(),
+        selectedClubId: sourceClubId,
+        activeClubId,
+      });
+      if (!clubId) {
         if (!cancelled) {
           setPlayers([]);
           setPlayersLoadError(null);
+          setPlayerDiagnostics(null);
         }
         return;
       }
-      const result = await loadTournamentPickerClubCandidatePool(sourceClubId, {
+      const result = await listAvailableAthletes({
+        tournamentId,
+        clubId,
         tenantId: playerTenantId,
+        scopeMode: TEAM_TOURNAMENT_ATHLETE_SCOPE.CLUB,
+        callerName: "InternalTournamentSetup.club",
       });
       if (cancelled) return;
+      setPlayerDiagnostics(result.diagnostics || null);
       if (!result.ok) {
         setPlayers([]);
         setPlayersLoadError({
@@ -263,11 +277,11 @@ export default function InternalTournamentSetup() {
         });
         return;
       }
-      setPlayers(result.players || []);
-      if (result.empty && result.message) {
+      setPlayers(result.athletes || []);
+      if (result.empty && result.emptyMessage) {
         setPlayersLoadError({
           code: result.code || "NO_ELIGIBLE_CANDIDATES",
-          message: result.message,
+          message: result.emptyMessage,
           severity: "warning",
         });
       } else {
@@ -277,7 +291,16 @@ export default function InternalTournamentSetup() {
     return () => {
       cancelled = true;
     };
-  }, [sourceClubId, localRevision, playerTenantId]);
+  }, [
+    sourceClubId,
+    localRevision,
+    playerTenantId,
+    tournament?.clubId,
+    tournamentClubId,
+    tournamentId,
+    activeClubId,
+    searchParams,
+  ]);
 
   useEffect(() => {
     let cancelled = false;
@@ -285,7 +308,13 @@ export default function InternalTournamentSetup() {
       setTenantPlayers([]);
       return undefined;
     }
-    loadTournamentPickerTenantCandidatePool(playerTenantId).then((result) => {
+    listAvailableAthletes({
+      tournamentId,
+      clubId: sourceClubId || tournamentClubId,
+      tenantId: playerTenantId,
+      scopeMode: TEAM_TOURNAMENT_ATHLETE_SCOPE.TENANT,
+      callerName: "InternalTournamentSetup.tenant",
+    }).then((result) => {
       if (cancelled) return;
       if (!result.ok) {
         setTenantPlayers([]);
@@ -299,12 +328,12 @@ export default function InternalTournamentSetup() {
         );
         return;
       }
-      setTenantPlayers(result.players || []);
+      setTenantPlayers(result.athletes || []);
     });
     return () => {
       cancelled = true;
     };
-  }, [playerTenantId, localRevision]);
+  }, [playerTenantId, localRevision, tournamentId, sourceClubId, tournamentClubId]);
 
   const courts = useMemo(
     () => loadCourtsForClub(tournamentClubId),
@@ -1200,6 +1229,17 @@ export default function InternalTournamentSetup() {
               {playersLoadError.message}
             </Alert>
           )}
+          {playerDiagnostics ? (
+            <Alert severity="info" sx={{ mb: 2 }}>
+              Candidate diagnostics: sourceCount={playerDiagnostics.sourceCount},
+              membershipCount={playerDiagnostics.membershipCount},
+              activeMembershipCount={playerDiagnostics.activeMembershipCount},
+              eligibleCount={playerDiagnostics.eligibleCount},
+              WRONG_SCOPE={playerDiagnostics.WRONG_SCOPE},
+              MEMBERSHIP_INACTIVE={playerDiagnostics.MEMBERSHIP_INACTIVE},
+              MISSING_IDENTITY_LINK={playerDiagnostics.MISSING_IDENTITY_LINK}
+            </Alert>
+          ) : null}
           {warnings.length > 0 && (
             <Alert severity="warning" sx={{ mb: 2 }}>
               {warnings.join(" ")}
@@ -1218,8 +1258,8 @@ export default function InternalTournamentSetup() {
           tenantId={
             currentTenantId ||
             tournament?.tenantId ||
-            resolvePairingScopeTenantId({
-              tournamentTenantId: tournament?.tenantId,
+            resolveTeamTournamentAthleteTenantId({
+              tournament,
               clubId: tournamentClubId,
               clubs,
               currentTenantId,

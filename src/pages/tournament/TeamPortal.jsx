@@ -22,8 +22,12 @@ import VisibilityIcon from "@mui/icons-material/Visibility";
 import { useAuth } from "../../context/AuthContext.jsx";
 import { useClub } from "../../context/ClubContext.jsx";
 import { useTenant } from "../../context/TenantContext.jsx";
-import { loadPlayersForClub } from "../../domain/clubStorage.js";
 import { assertTournamentPortalAccess } from "../../domain/tournamentService.js";
+import {
+  resolveAthleteDisplayName,
+  TEAM_TOURNAMENT_ATHLETE_SCOPE,
+} from "../../features/team-tournament/services/teamTournamentAthletePoolService.js";
+import { useTeamTournamentAthletePool } from "../../features/team-tournament/ui/useTeamTournamentAthletePool.js";
 import { guardRecordTenant } from "../../features/tenant/guards/tenantGuard.js";
 import { findTournamentClubId } from "../../features/club/services/clubTournamentBridge.js";
 import { LINEUP_STATUS, MATCHUP_STATUS } from "../../features/team-tournament/constants.js";
@@ -223,8 +227,7 @@ function buildInitialSelections(teamData, matchupId, teamId) {
 }
 
 function playerName(players, playerId) {
-  const player = players.find((item) => String(item.id) === String(playerId));
-  return player?.name || playerId;
+  return resolveAthleteDisplayName(players, playerId);
 }
 
 function deadlineBlockedMessage(permissions) {
@@ -645,8 +648,9 @@ function MatchupLineupCard({
 export default function TeamPortal() {
   const { tournamentId } = useParams();
   const navigate = useNavigate();
-  const { activeClubId } = useClub();
+  const { activeClubId, clubs = [] } = useClub();
   const { user } = useAuth();
+  const { currentTenantId } = useTenant();
   const captainIdentity = useResolvedCaptainPlayerId(user);
   const viewerPlayerId = captainIdentity.playerId;
 
@@ -713,10 +717,17 @@ export default function TeamPortal() {
     return raw;
   }, [hookTeamData]);
 
-  const players = useMemo(
-    () => (effectiveClubId ? loadPlayersForClub(effectiveClubId) : []),
-    [effectiveClubId, dataVersion]
-  );
+  const athletePool = useTeamTournamentAthletePool({
+    tournament,
+    activeClubId: effectiveClubId,
+    clubs,
+    currentTenantId,
+    scopeMode: TEAM_TOURNAMENT_ATHLETE_SCOPE.CLUB,
+    callerName: "TeamPortal",
+    revision: dataVersion,
+    enabled: Boolean(effectiveClubId && tournament),
+  });
+  const players = athletePool.players;
 
   const permissions = useMemo(
     () => getPermissionsForRole(user?.role || ""),
@@ -899,6 +910,12 @@ export default function TeamPortal() {
 
         {access.captainTeam ? (
           <>
+            {athletePool.error ? (
+              <Alert severity="warning">
+                {athletePool.error.message ||
+                  "Không tải được pool VĐV canonical. Tên VĐV có thể hiện thiếu identity."}
+              </Alert>
+            ) : null}
             {subMessage ? (
               <Alert severity="success" onClose={() => setSubMessage(null)}>
                 {subMessage}

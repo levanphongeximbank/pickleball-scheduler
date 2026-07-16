@@ -29,10 +29,9 @@ import { useTenant } from "../../context/TenantContext.jsx";
 import { PERMISSIONS } from "../../auth/permissions.js";
 import { assertTournamentAccess } from "../../domain/tournamentService.js";
 import {
-  useClubPairingCandidatePool,
-  useTenantPairingCandidatePool,
-  resolvePairingScopeTenantId,
-} from "../../features/pairing-candidates/index.js";
+  useTeamTournamentAthletePool,
+} from "../../features/team-tournament/ui/useTeamTournamentAthletePool.js";
+import { TEAM_TOURNAMENT_ATHLETE_SCOPE } from "../../features/team-tournament/services/teamTournamentAthletePoolService.js";
 import {
   buildRoundRobinMatchups,
   getTeamData,
@@ -275,42 +274,35 @@ export default function TeamTournamentSetup() {
     }
   }, [searchParams, setSearchParams, visibleTabs]);
 
-  const hostClubRecord = useMemo(
-    () => clubs.find((club) => String(club?.id || "").trim() === effectiveClubId) || null,
-    [clubs, effectiveClubId]
-  );
-
-  const tenantId = useMemo(
-    () =>
-      resolvePairingScopeTenantId({
-        tournamentTenantId: tournament?.tenantId,
-        club: hostClubRecord,
-        clubId: effectiveClubId,
-        clubs,
-        currentTenantId,
-      }),
-    [tournament?.tenantId, hostClubRecord, effectiveClubId, clubs, currentTenantId]
-  );
   const teamDataView = teamData || { teams: [], disciplines: [], matchups: [], standings: [] };
-  const {
-    players,
-    error: clubPlayersError,
-    emptyMessage: clubPlayersEmptyMessage,
-    diagnostics: clubCandidateDiagnostics,
-  } = useClubPairingCandidatePool(effectiveClubId, {
-    tenantId,
+
+  const clubPool = useTeamTournamentAthletePool({
+    tournament,
+    clubFromQuery,
+    activeClubId,
+    clubs,
+    currentTenantId,
+    scopeMode: TEAM_TOURNAMENT_ATHLETE_SCOPE.CLUB,
+    callerName: "TeamTournamentSetup.club",
     revision: dataVersion,
   });
-  const {
-    players: allTenantPlayers,
-    error: tenantPlayersError,
-    emptyMessage: tenantPlayersEmptyMessage,
-  } = useTenantPairingCandidatePool(tenantId, {
+  const tenantPool = useTeamTournamentAthletePool({
+    tournament,
+    clubFromQuery,
+    activeClubId,
+    clubs,
+    currentTenantId,
+    scopeMode: TEAM_TOURNAMENT_ATHLETE_SCOPE.TENANT,
+    callerName: "TeamTournamentSetup.tenant",
     revision: dataVersion,
+    enabled: Boolean(clubPool.tenantId),
   });
-  const playersLoadError = clubPlayersError || tenantPlayersError;
-  const playersEmptyMessage = clubPlayersEmptyMessage || tenantPlayersEmptyMessage;
-  const candidateDiagnostics = clubCandidateDiagnostics;
+
+  const players = clubPool.players;
+  const allTenantPlayers = tenantPool.players;
+  const playersLoadError = clubPool.error || tenantPool.error;
+  const playersEmptyMessage = clubPool.emptyMessage || tenantPool.emptyMessage;
+  const candidateDiagnostics = clubPool.diagnostics || tenantPool.diagnostics;
   const lineupPlayers = useMemo(() => {
     const pool = new Map();
     [...allTenantPlayers, ...players].forEach((player) => {
@@ -1000,6 +992,7 @@ export default function TeamTournamentSetup() {
               clubPlayers={players}
               allTenantPlayers={allTenantPlayers}
               clubs={clubs}
+              tenantId={clubPool.tenantId || tenantPool.tenantId}
               canManage={access.canManage}
               canViewAll={access.canViewAll}
               viewerPlayerId={access.viewerPlayerId}

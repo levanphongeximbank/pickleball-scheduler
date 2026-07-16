@@ -1,9 +1,12 @@
 import { TOURNAMENT_MODE } from "../../../models/tournament/constants.js";
-import { loadClubData, saveClubData, loadPlayersForClub } from "../../../domain/clubStorage.js";
+import { loadClubData, saveClubData } from "../../../domain/clubStorage.js";
 import { getAuthOptions, guardClubAction } from "../../../auth/guardAction.js";
 import { PERMISSIONS } from "../../identity/constants/permissions.js";
 import { getPermissionsForRole } from "../../identity/matrix/rolePermissions.js";
 import { TEAM_AUDIT_ACTIONS, LINEUP_STATUS, SUB_MATCH_STATUS } from "../constants.js";
+import {
+  loadAthletesForTeamTournamentMutation,
+} from "./teamTournamentAthletePoolService.js";
 import {
   attachTeamDataToTournament,
   createTeamTournamentShell,
@@ -1248,16 +1251,29 @@ export async function addPlayerToTeamRoster(clubId, tournamentId, { teamId, play
     return { ok: false, error: cloudCheck.error, code: cloudCheck.code };
   }
 
-  return applyTeamDataPatch(clubId, tournamentId, (teamData, tournament) => {
-    const players = loadPlayersForClub(clubId);
-    const result = addPlayerToTeam(teamData, teamId, playerId, players);
+  const tournament = getTeamTournamentById(clubId, tournamentId);
+  const athleteLookup = await loadAthletesForTeamTournamentMutation(clubId, {
+    tenantId: tournament?.tenantId || null,
+    tournamentId,
+    callerName: "teamTournamentService.addPlayerToTeamRoster",
+  });
+  if (!athleteLookup.ok) {
+    return {
+      ok: false,
+      error: athleteLookup.error || "Không tải được VĐV canonical để thêm vào đội.",
+      code: athleteLookup.code || "ATHLETE_POOL_ERROR",
+    };
+  }
+
+  return applyTeamDataPatch(clubId, tournamentId, (teamData, tournamentRow) => {
+    const result = addPlayerToTeam(teamData, teamId, playerId, athleteLookup.athletes);
     if (!result.ok) {
       return result;
     }
 
     appendTeamAuditLog({
       action: TEAM_AUDIT_ACTIONS.TEAM_PLAYER_ADD,
-      targetId: tournament.id,
+      targetId: tournamentRow.id,
       metadata: { teamId, playerId: result.playerId },
     });
 
@@ -1335,7 +1351,19 @@ export async function substituteTeamPlayer(clubId, tournamentId, payload = {}) {
     }
   }
 
-  const players = loadPlayersForClub(clubId);
+  const athleteLookup = await loadAthletesForTeamTournamentMutation(clubId, {
+    tenantId: tournament?.tenantId || null,
+    tournamentId,
+    callerName: "teamTournamentService.substituteTeamPlayer",
+  });
+  if (!athleteLookup.ok) {
+    return {
+      ok: false,
+      error: athleteLookup.error || "Không tải được VĐV canonical để thay người.",
+      code: athleteLookup.code || "ATHLETE_POOL_ERROR",
+    };
+  }
+
   const built = applyRosterSubstitution(
     getTeamData(tournament),
     {
@@ -1346,7 +1374,7 @@ export async function substituteTeamPlayer(clubId, tournamentId, payload = {}) {
       actorRole: isBtc ? "btc" : "captain",
       actorPlayerId,
     },
-    players
+    athleteLookup.athletes
   );
   if (!built.ok) {
     return built;
