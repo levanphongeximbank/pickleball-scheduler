@@ -217,4 +217,78 @@ describe("Team Tournament create → persist → detail load", () => {
     const href = `/tournament/team/${created.tournament.id}?club=${encodeURIComponent(created.clubId)}`;
     assert.match(href, new RegExp(`/tournament/team/${created.tournament.id}\\?club=${clubId}`));
   });
+
+  it("detail load with ?club=host resolves immediately after create", async () => {
+    const hostClubId = "club-detail-query";
+    saveClubs([{ id: hostClubId, name: "Detail", tenantId: "tenant-1" }]);
+    saveClubData(hostClubId, getDefaultClubData(hostClubId));
+    const created = createTeamTournament(hostClubId, {
+      name: "Detail MLP",
+      formatPreset: "mlp_4",
+    });
+    assert.equal(created.ok, true);
+
+    const loadClub = resolveTeamTournamentLoadClubId(hostClubId, created.tournament.id);
+    assert.equal(loadClub, hostClubId);
+
+    const repo = createTeamTournamentRepository({ forceNew: true, allowFutureModes: true });
+    const orch = createTeamTournamentUiOrchestrator({ repository: repo, forceNew: true });
+    const loaded = await orch.loadTournament(loadClub, created.tournament.id);
+    assert.equal(loaded.ok, true);
+    assert.equal(loaded.tournament.id, created.tournament.id);
+  });
+
+  it("same-origin refresh-style reload still finds draft", async () => {
+    const clubId = "club-same-origin-refresh";
+    saveClubs([{ id: clubId, name: "Refresh2", tenantId: "tenant-1" }]);
+    saveClubData(clubId, getDefaultClubData(clubId));
+    const created = createTeamTournament(clubId, {
+      name: "Refresh2 MLP",
+      formatPreset: "mlp_4",
+    });
+
+    const loadClub = resolveTournamentClubId(clubId, created.tournament.id);
+    assert.equal(loadClub, clubId);
+
+    const repo = createTeamTournamentRepository({ forceNew: true, allowFutureModes: true });
+    const again = await repo.getTournament(clubId, created.tournament.id);
+    assert.equal(again.ok, true);
+    assert.equal(again.data.id, created.tournament.id);
+  });
+
+  it("wrong preferred club does not load blank preferred", () => {
+    const hostClubId = "club-host-only";
+    const wrongClubId = "club-wrong-preferred";
+    saveClubs([
+      { id: hostClubId, name: "Host", tenantId: "tenant-1" },
+      { id: wrongClubId, name: "Wrong", tenantId: "tenant-1" },
+    ]);
+    saveClubData(hostClubId, getDefaultClubData(hostClubId));
+    saveClubData(wrongClubId, getDefaultClubData(wrongClubId));
+
+    const created = createTeamTournament(hostClubId, {
+      name: "Host only",
+      formatPreset: "mlp_4",
+    });
+    assert.equal(resolveTournamentClubId(wrongClubId, created.tournament.id), hostClubId);
+    assert.equal(
+      resolveTeamTournamentLoadClubId(wrongClubId, created.tournament.id),
+      hostClubId
+    );
+  });
+
+  it("B: preferred without raw key does not write empty blob", () => {
+    const ghost = "club-ghost-preferred";
+    const key = `pickleball-club-data-v3::${ghost}`;
+    assert.equal(localStorage.getItem(key), null);
+    assert.equal(resolveTournamentClubId(ghost, "team-tournament-missing-xyz"), null);
+    assert.equal(localStorage.getItem(key), null);
+  });
+
+  it("persist verify failure does not invent navigable tournament", () => {
+    const result = createTeamTournament("", { name: "No club", formatPreset: "mlp_4" });
+    assert.equal(result.ok, false);
+    assert.equal(result.code, "CLUB_REQUIRED");
+    assert.equal(result.tournament, undefined);
+  });
 });

@@ -1,5 +1,5 @@
 import { getActiveClubIdPreference, loadClubs } from "../../../data/club.js";
-import { CLUB_DATA_KEY } from "../../../domain/clubStorage.js";
+import { CLUB_DATA_KEY, loadClubData } from "../../../domain/clubStorage.js";
 import { eventMatchToRecord } from "../../../tournament/engines/playerHistoryEngine.js";
 import { resolveTenantIdForClub } from "../../tenant/guards/tenantGuard.js";
 import { CLUB_MATCH_TYPES } from "../models/clubMatch.js";
@@ -181,6 +181,37 @@ export function findTournamentClubId(tournamentId) {
 }
 
 /**
+ * Preferred/?club= path: raw miss → one normalized loadClubData check.
+ * Only when the blob key already exists and parses (never migrate/write empty blobs).
+ */
+function preferredNormalizedContainsTournament(clubId, tournamentId) {
+  const resolvedClubId = String(clubId || "").trim();
+  const id = String(tournamentId || "").trim();
+  if (!resolvedClubId || !id || typeof localStorage === "undefined") {
+    return false;
+  }
+  const raw = localStorage.getItem(`${CLUB_DATA_KEY}::${resolvedClubId}`);
+  if (!raw) {
+    return false;
+  }
+  try {
+    const parsed = JSON.parse(raw);
+    if (!parsed || typeof parsed !== "object") {
+      return false;
+    }
+  } catch {
+    // Corrupt raw — do not call loadClubData (that migrates/writes).
+    return false;
+  }
+  try {
+    const data = loadClubData(resolvedClubId);
+    return (data.tournaments || []).some((item) => String(item?.id) === id);
+  } catch {
+    return false;
+  }
+}
+
+/**
  * Resolve which club blob holds a tournament id.
  * Prefer the caller's club when it actually contains the tournament; otherwise scan
  * all clubs (parity with InternalTournamentSetup deep-link behavior).
@@ -198,6 +229,11 @@ export function resolveTournamentClubId(preferredClubId, tournamentId) {
 
   const preferred = String(preferredClubId || "").trim();
   if (preferred && rawClubBlobContainsTournament(preferred, id)) {
+    return preferred;
+  }
+
+  // B: preferred/?club= present, raw miss → one loadClubData(preferred) if key exists.
+  if (preferred && preferredNormalizedContainsTournament(preferred, id)) {
     return preferred;
   }
 
