@@ -420,11 +420,30 @@ function normalizeCommandParams(params, legacyArgs) {
   return legacyArgs;
 }
 
-export async function rpcTeamTournamentGetSetup(tournamentId, viewerTeamId = null) {
-  return callTeamTournamentRpc("team_tournament_get_setup", {
+/**
+ * @param {string} tournamentId
+ * @param {string|null} [viewerTeamId]
+ * @param {{ schemaVersion?: number|null, diagnostic?: boolean }} [options]
+ */
+export async function rpcTeamTournamentGetSetup(
+  tournamentId,
+  viewerTeamId = null,
+  options = {}
+) {
+  const params = {
     p_tournament_id: String(tournamentId),
     p_viewer_team_id: viewerTeamId ? String(viewerTeamId) : null,
-  });
+  };
+  if (options.schemaVersion != null) {
+    params.p_schema_version = Number(options.schemaVersion);
+  }
+  if (options.diagnostic === true) {
+    params.p_diagnostic = true;
+    if (params.p_schema_version == null) {
+      params.p_schema_version = 7;
+    }
+  }
+  return callTeamTournamentRpc("team_tournament_get_setup", params);
 }
 
 export async function rpcTeamTournamentGetVisibleLineups(

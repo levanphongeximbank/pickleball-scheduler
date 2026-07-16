@@ -25,6 +25,11 @@ import {
 import { mapSetupDeadlineMeta } from "../services/lineupDeadlineService.js";
 import { mapTournamentToAggregate } from "./teamTournamentRepositoryAggregate.js";
 import {
+  isGetSetupV7Payload,
+  mapGetSetupV7Meta,
+  normalizeV7TournamentForAggregate,
+} from "./mapGetSetupV7.js";
+import {
   notImplemented,
   normalizeRepositoryResult,
   rejectClientViewerTeamIdForCloud,
@@ -150,7 +155,18 @@ export function createCloudTeamTournamentRepository() {
         return viewerError;
       }
 
-      const result = await rpcTeamTournamentGetSetup(tournamentId, null);
+      const setupOptions = {};
+      if (readOptions.schemaVersion != null) {
+        setupOptions.schemaVersion = Number(readOptions.schemaVersion);
+      }
+      if (readOptions.diagnostic === true) {
+        setupOptions.diagnostic = true;
+        if (setupOptions.schemaVersion == null) {
+          setupOptions.schemaVersion = 7;
+        }
+      }
+
+      const result = await rpcTeamTournamentGetSetup(tournamentId, null, setupOptions);
       if (!result.ok) {
         // Create→detail / refresh safety: if cloud header is missing but the
         // hosting club blob already has the draft, serve local copy instead of
@@ -178,12 +194,16 @@ export function createCloudTeamTournamentRepository() {
         return normalizeRepositoryResult(result, { provider: "cloud" });
       }
 
-      const aggregate = mapTournamentToAggregate(result.tournament, "cloud");
+      const tournamentInput = isGetSetupV7Payload(result)
+        ? normalizeV7TournamentForAggregate(result.tournament)
+        : result.tournament;
+      const aggregate = mapTournamentToAggregate(tournamentInput, "cloud");
       if (readOptions.includeSchedule === false) {
         aggregate.schedule = [];
       }
 
       const deadlineMeta = mapSetupDeadlineMeta(result);
+      const v7Meta = mapGetSetupV7Meta(result);
 
       return repositorySuccess(aggregate, {
         provider: "cloud",
@@ -194,6 +214,14 @@ export function createCloudTeamTournamentRepository() {
         canSubmit: result.canSubmit ?? deadlineMeta?.canSubmit ?? null,
         deadlineStatus: result.deadlineStatus ?? deadlineMeta?.deadlineStatus ?? null,
         viewerTeamId: result.viewerTeamId ?? deadlineMeta?.viewerTeamId ?? null,
+        schemaVersion: v7Meta.schemaVersion,
+        snapshot: v7Meta.snapshot,
+        diagnostic: v7Meta.diagnostic,
+        setupBlocked: v7Meta.setupBlocked,
+        driftDetected: v7Meta.driftDetected,
+        viewer: v7Meta.viewer,
+        permissions: v7Meta.permissions,
+        operations: v7Meta.operations,
       });
     },
 
