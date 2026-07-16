@@ -14,6 +14,10 @@ import {
 } from "../repositories/teamTournamentRepositoryTypes.js";
 import { syncDreambreakerForAllMatchups } from "../engines/dreambreakerEngine.js";
 import { useTeamTournamentRealtime } from "./useTeamTournamentRealtime.js";
+import {
+  computeTournamentRosterSetupSignature,
+} from "../engines/teamRosterHydrationCache.js";
+import { logTeamRosterHydrationTransition } from "../engines/teamRosterHydrationDiagnostics.js";
 
 const DEFAULT_POLL_MS = REPOSITORY_REALTIME_FALLBACK.pollingIntervalMs;
 
@@ -57,12 +61,14 @@ export function useTeamTournamentPage({
   const [provider, setProvider] = useState(null);
   const [error, setError] = useState(null);
   const [dataVersion, setDataVersion] = useState(0);
+  const [rosterSetupRevision, setRosterSetupRevision] = useState(0);
   const [versionConflict, setVersionConflict] = useState(false);
   const [serverTime, setServerTime] = useState(null);
   const [lineupDeadline, setLineupDeadline] = useState(null);
   const [canSaveDraft, setCanSaveDraft] = useState(null);
   const [canSubmit, setCanSubmit] = useState(null);
   const [deadlineStatus, setDeadlineStatus] = useState(null);
+  const rosterSignatureRef = useRef("");
   const pollRef = useRef(null);
   const loadingRef = useRef(false);
   const reloadFnRef = useRef(null);
@@ -92,6 +98,20 @@ export function useTeamTournamentPage({
     const synced = rawTeamData
       ? syncDreambreakerForAllMatchups(rawTeamData).teamData
       : null;
+
+    const nextRosterSignature = computeTournamentRosterSetupSignature(synced);
+    const rosterChanged = nextRosterSignature !== rosterSignatureRef.current;
+    if (rosterChanged) {
+      rosterSignatureRef.current = nextRosterSignature;
+      setRosterSetupRevision((v) => v + 1);
+      logTeamRosterHydrationTransition("useTeamTournamentPage.rosterSetupRevision", {
+        tournamentId: result.tournament?.id,
+        setupVersion: result.version,
+        rosterChanged: true,
+        reloadTrigger: "applyLoadResult",
+      });
+    }
+
     setTeamData(synced);
     setDataVersion((v) => v + 1);
     setServerTime(result.serverTime ?? null);
@@ -136,6 +156,13 @@ export function useTeamTournamentPage({
         setLoading(true);
       }
 
+      logTeamRosterHydrationTransition("useTeamTournamentPage.reload.start", {
+        tournamentId,
+        clubId: loadClubId,
+        silent,
+        reloadTrigger: silent ? "silent" : "explicit",
+      });
+
       let result = await orchestrator.loadTournament(loadClubId, tournamentId);
 
       // Preferred activeClub may still miss (race / stale cache): rescan once.
@@ -158,6 +185,12 @@ export function useTeamTournamentPage({
       applyLoadResult(result);
       setLoading(false);
       loadingRef.current = false;
+      logTeamRosterHydrationTransition("useTeamTournamentPage.reload.done", {
+        tournamentId,
+        ok: result.ok,
+        silent,
+        setupVersion: result.version,
+      });
       return result;
     },
     [applyLoadResult, clubId, orchestrator, tournamentId]
@@ -206,6 +239,11 @@ export function useTeamTournamentPage({
           setTeamData(synced);
           setAggregate(result.aggregate);
           setVersion(result.version ?? version);
+          const nextSignature = computeTournamentRosterSetupSignature(synced);
+          if (nextSignature !== rosterSignatureRef.current) {
+            rosterSignatureRef.current = nextSignature;
+            setRosterSetupRevision((v) => v + 1);
+          }
           setDataVersion((v) => v + 1);
         }
       }
@@ -299,6 +337,7 @@ export function useTeamTournamentPage({
     isCloudPrimary: orchestrator.getMode() === "cloud_primary",
     error,
     dataVersion,
+    rosterSetupRevision,
     versionConflict,
     serverTime,
     lineupDeadline,

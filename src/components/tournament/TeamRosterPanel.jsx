@@ -39,6 +39,12 @@ import {
   formatHydratedMemberLabel,
   hydrateTeamRoster,
 } from "../../features/team-tournament/engines/teamRosterHydration.js";
+import {
+  ROSTER_BACKGROUND_REFRESH_MESSAGE,
+  ROSTER_LIFECYCLE_STATUS,
+  resolveTeamRosterHydrationState,
+} from "../../features/team-tournament/engines/teamRosterHydrationCache.js";
+import { logTeamRosterHydrationTransition } from "../../features/team-tournament/engines/teamRosterHydrationDiagnostics.js";
 import { isMlpFormat } from "../../features/team-tournament/engines/mlpPresetEngine.js";
 import {
   addPlayerToTeamRoster,
@@ -97,7 +103,9 @@ function TeamCard({
   tournamentId,
   tenantId = null,
   defaultClubName = "",
-  athletePoolLoading = false,
+  setupVersion = 0,
+  athletePoolLoadingInitial = false,
+  athletePoolRefreshing = false,
   athletePoolError = null,
   setupReady = true,
   onUpdated,
@@ -121,18 +129,31 @@ function TeamCard({
 
   const hydratedRoster = useMemo(
     () =>
-      hydrateTeamRoster({
+      resolveTeamRosterHydrationState({
+        tournamentId,
+        setupVersion,
         team,
         athletePool,
         setupReady,
-        athletePoolLoading,
+        poolLoadingInitial: athletePoolLoadingInitial,
+        poolRefreshing: athletePoolRefreshing,
         athletePoolError,
       }),
-    [team, athletePool, setupReady, athletePoolLoading, athletePoolError]
+    [
+      tournamentId,
+      setupVersion,
+      team,
+      athletePool,
+      setupReady,
+      athletePoolLoadingInitial,
+      athletePoolRefreshing,
+      athletePoolError,
+    ]
   );
 
-  const rosterStatus = hydratedRoster.status || ROSTER_HYDRATION_STATUS.READY;
-  const rosterLoading = rosterStatus === ROSTER_HYDRATION_STATUS.LOADING;
+  const rosterLoading =
+    hydratedRoster.lifecycleStatus === ROSTER_LIFECYCLE_STATUS.LOADING_INITIAL;
+  const backgroundRefreshing = hydratedRoster.backgroundRefreshing === true;
   const teamMembers = rosterLoading
     ? []
     : hydratedRoster.members.filter((member) => !member.pending);
@@ -325,6 +346,8 @@ function TeamCard({
           <Chip size="small" label={`${stats.total} VĐV`} />
           {rosterLoading ? (
             <Chip size="small" label="Đang tải VĐV…" />
+          ) : backgroundRefreshing ? (
+            <Chip size="small" variant="outlined" label={ROSTER_BACKGROUND_REFRESH_MESSAGE} />
           ) : (
             <>
               <Chip size="small" color="info" label={`${stats.males} nam`} />
@@ -344,6 +367,10 @@ function TeamCard({
 
         {rosterLoading ? (
           <Alert severity="info">{ROSTER_LOADING_MESSAGE}</Alert>
+        ) : backgroundRefreshing ? (
+          <Alert severity="info" icon={false}>
+            {hydratedRoster.refreshMessage || ROSTER_BACKGROUND_REFRESH_MESSAGE}
+          </Alert>
         ) : null}
 
         {!rosterLoading && hydratedRoster.unresolvedCount > 0 ? (
@@ -628,7 +655,9 @@ export default function TeamRosterPanel({
   canManage = false,
   canViewAll = false,
   viewerPlayerId = null,
-  athletePoolLoading = false,
+  setupVersion = 0,
+  athletePoolLoadingInitial = false,
+  athletePoolRefreshing = false,
   athletePoolError = null,
   setupReady = true,
   onUpdated,
@@ -648,6 +677,23 @@ export default function TeamRosterPanel({
     const { user } = getAuthOptions();
     return getPermissionsForRole(user?.role || "");
   }, []);
+
+  useEffect(() => {
+    logTeamRosterHydrationTransition("TeamRosterPanel.mount", {
+      tournamentId,
+      clubId,
+      setupVersion,
+      setupReady,
+      activeTab: "teams",
+    });
+    return () => {
+      logTeamRosterHydrationTransition("TeamRosterPanel.unmount", {
+        tournamentId,
+        clubId,
+        setupVersion,
+      });
+    };
+  }, [tournamentId, clubId, setupVersion, setupReady]);
 
   useEffect(() => {
     let cancelled = false;
@@ -864,7 +910,9 @@ export default function TeamRosterPanel({
             tournamentId={tournamentId}
             tenantId={tenantId}
             defaultClubName={hostClubName}
-            athletePoolLoading={athletePoolLoading}
+            setupVersion={setupVersion}
+            athletePoolLoadingInitial={athletePoolLoadingInitial}
+            athletePoolRefreshing={athletePoolRefreshing}
             athletePoolError={athletePoolError}
             setupReady={setupReady}
             onUpdated={onUpdated}

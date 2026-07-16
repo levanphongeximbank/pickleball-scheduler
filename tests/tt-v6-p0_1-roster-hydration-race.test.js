@@ -314,7 +314,8 @@ describe("P0.1 TeamRosterPanel wiring", () => {
       path.join(ROOT, "src/pages/tournament/TeamTournamentSetup.jsx"),
       "utf8"
     );
-    assert.match(src, /athletePoolLoading=\{/);
-    assert.match(src, /clubPool\.loading/);
+    assert.match(src, /athletePoolLoadingInitial=\{/);
+    assert.match(src, /athletePoolRefreshing=\{/);
+    assert.match(src, /clubPool\.loadingInitial/);
   });
 });

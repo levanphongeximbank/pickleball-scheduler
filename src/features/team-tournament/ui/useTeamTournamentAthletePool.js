@@ -1,14 +1,64 @@
 /**
  * React hook — single Team Tournament athlete pool entry for UI screens.
+ *
+ * P0.2: separates initial load from background refresh; dedupes in-flight requests;
+ * stale responses are ignored; unmounted components cannot commit state.
  */
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   listAvailableAthletes,
   resolveTeamTournamentAthleteClubId,
   resolveTeamTournamentAthleteTenantId,
   TEAM_TOURNAMENT_ATHLETE_SCOPE,
 } from "../services/teamTournamentAthletePoolService.js";
+import { logTeamRosterHydrationTransition } from "../engines/teamRosterHydrationDiagnostics.js";
+
+/** @type {Map<string, Promise<object>>} */
+const inFlightPoolRequests = new Map();
+
+function normalizeId(value) {
+  return String(value || "").trim();
+}
+
+function buildPoolRequestKey({
+  tournamentId,
+  clubId,
+  tenantId,
+  scopeMode,
+  gender,
+  assignedKey,
+  callerName,
+}) {
+  return [
+    normalizeId(tournamentId),
+    normalizeId(clubId),
+    normalizeId(tenantId),
+    scopeMode,
+    gender,
+    assignedKey,
+    callerName,
+  ].join("::");
+}
+
+async function fetchAthletePoolDeduped(key, fetcher) {
+  if (inFlightPoolRequests.has(key)) {
+    return inFlightPoolRequests.get(key);
+  }
+  const promise = fetcher().finally(() => {
+    inFlightPoolRequests.delete(key);
+  });
+  inFlightPoolRequests.set(key, promise);
+  return promise;
+}
+
+export function __resetTeamTournamentAthletePoolRequestsForTests() {
+  inFlightPoolRequests.clear();
+}
+
+export function __getTeamTournamentAthletePoolInFlightCountForTests() {
+  return inFlightPoolRequests.size;
+}
 
 /**
  * @param {{
@@ -42,6 +92,8 @@ export function useTeamTournamentAthletePool(options = {}) {
     enabled = true,
   } = options;
 
+  const tournamentId = normalizeId(tournament?.id);
+
   const clubId = useMemo(
     () =>
       resolveTeamTournamentAthleteClubId({
@@ -54,7 +106,7 @@ export function useTeamTournamentAthletePool(options = {}) {
   );
 
   const hostClub = useMemo(
-    () => clubs.find((c) => String(c?.id || "").trim() === clubId) || null,
+    () => clubs.find((c) => normalizeId(c?.id) === clubId) || null,
     [clubs, clubId]
   );
 
@@ -73,67 +125,151 @@ export function useTeamTournamentAthletePool(options = {}) {
   const assignedKey = useMemo(
     () =>
       (assignedAthleteIds || [])
-        .map((id) => String(id || "").trim())
+        .map((id) => normalizeId(id))
         .filter(Boolean)
         .sort()
         .join("|"),
     [assignedAthleteIds]
   );
 
+  const requestKey = useMemo(
+    () =>
+      buildPoolRequestKey({
+        tournamentId,
+        clubId,
+        tenantId,
+        scopeMode,
+        gender,
+        assignedKey,
+        callerName,
+      }),
+    [tournamentId, clubId, tenantId, scopeMode, gender, assignedKey, callerName]
+  );
+
   const [athletes, setAthletes] = useState([]);
-  const [loading, setLoading] = useState(Boolean(enabled));
+  const [loadingInitial, setLoadingInitial] = useState(Boolean(enabled));
+  const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState(null);
   const [emptyMessage, setEmptyMessage] = useState(null);
   const [diagnostics, setDiagnostics] = useState(null);
+  const [requestId, setRequestId] = useState(0);
+
+  const sequenceRef = useRef(0);
+  const mountedRef = useRef(true);
+  const athletesRef = useRef([]);
 
   useEffect(() => {
-    let cancelled = false;
+    mountedRef.current = true;
+    return () => {
+      mountedRef.current = false;
+    };
+  }, []);
+
+  useEffect(() => {
+    athletesRef.current = athletes;
+  }, [athletes]);
+
+  useEffect(() => {
     if (!enabled) {
       setAthletes([]);
-      setLoading(false);
+      setLoadingInitial(false);
+      setRefreshing(false);
       setError(null);
       setEmptyMessage(null);
       setDiagnostics(null);
       return undefined;
     }
 
-    setLoading(true);
-    setError(null);
-    setEmptyMessage(null);
+    const seq = ++sequenceRef.current;
+    const hasCachedAthletes = athletesRef.current.length > 0;
 
-    listAvailableAthletes({
-      tournamentId: tournament?.id || null,
+    if (!hasCachedAthletes) {
+      setLoadingInitial(true);
+      setRefreshing(false);
+    } else {
+      setLoadingInitial(false);
+      setRefreshing(true);
+    }
+    setError(null);
+
+    logTeamRosterHydrationTransition("useTeamTournamentAthletePool.fetch.start", {
+      callerName,
+      tournamentId,
       clubId,
       tenantId,
-      scopeMode,
-      gender,
-      assignedAthleteIds: assignedKey ? assignedKey.split("|") : [],
-      callerName,
-    }).then((result) => {
-      if (cancelled) return;
+      revision,
+      requestKey,
+      requestId: seq,
+      hasCachedAthletes,
+      reloadTrigger: "effect",
+    });
+
+    fetchAthletePoolDeduped(requestKey, () =>
+      listAvailableAthletes({
+        tournamentId: tournamentId || null,
+        clubId,
+        tenantId,
+        scopeMode,
+        gender,
+        assignedAthleteIds: assignedKey ? assignedKey.split("|") : [],
+        callerName,
+      })
+    ).then((result) => {
+      if (!mountedRef.current) {
+        logTeamRosterHydrationTransition("useTeamTournamentAthletePool.stale.unmounted", {
+          requestId: seq,
+          latestSequence: sequenceRef.current,
+        });
+        return;
+      }
+      if (seq !== sequenceRef.current) {
+        logTeamRosterHydrationTransition("useTeamRosterHydrationPool.stale.sequence", {
+          requestId: seq,
+          latestSequence: sequenceRef.current,
+        });
+        return;
+      }
+
+      setRequestId(seq);
       setDiagnostics(result.diagnostics || null);
+
       if (!result.ok) {
-        setAthletes([]);
+        if (!hasCachedAthletes) {
+          setAthletes([]);
+        }
         setError({
           code: result.code || "REPOSITORY_ERROR",
           message: result.message || "Không tải được VĐV.",
         });
         setEmptyMessage(null);
-        setLoading(false);
+        setLoadingInitial(false);
+        setRefreshing(false);
+        logTeamRosterHydrationTransition("useTeamTournamentAthletePool.fetch.error", {
+          requestId: seq,
+          code: result.code,
+          keptCachedAthletes: hasCachedAthletes,
+        });
         return;
       }
-      setAthletes(Array.isArray(result.athletes) ? result.athletes : []);
+
+      const nextAthletes = Array.isArray(result.athletes) ? result.athletes : [];
+      setAthletes(nextAthletes);
       setError(null);
       setEmptyMessage(result.empty ? result.emptyMessage || result.message || null : null);
-      setLoading(false);
+      setLoadingInitial(false);
+      setRefreshing(false);
+
+      logTeamRosterHydrationTransition("useTeamTournamentAthletePool.fetch.ready", {
+        requestId: seq,
+        athleteCount: nextAthletes.length,
+        wasBackgroundRefresh: hasCachedAthletes,
+      });
     });
 
-    return () => {
-      cancelled = true;
-    };
+    return undefined;
   }, [
     enabled,
-    tournament?.id,
+    tournamentId,
     clubId,
     tenantId,
     scopeMode,
@@ -141,18 +277,22 @@ export function useTeamTournamentAthletePool(options = {}) {
     assignedKey,
     callerName,
     revision,
+    requestKey,
   ]);
 
   return {
     athletes,
     players: athletes,
-    loading,
+    loading: loadingInitial,
+    loadingInitial,
+    refreshing,
     error,
     emptyMessage,
     diagnostics,
     clubId,
     tenantId,
     scopeMode,
+    requestId,
     source: "team-tournament-athlete-pool",
   };
 }

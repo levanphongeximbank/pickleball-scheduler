@@ -132,6 +132,7 @@
   "tests/team-tournament-roster.test.js",
   "tests/tt-v6-p0-roster-hydration.test.js",
   "tests/tt-v6-p0_1-roster-hydration-race.test.js",
+  "tests/tt-v6-p0_2-roster-hydration-loop.test.js",
   "tests/team-tournament-portal.test.js",
   "tests/team-tournament-referee.test.js",
   "tests/team-tournament-cloud.test.js",

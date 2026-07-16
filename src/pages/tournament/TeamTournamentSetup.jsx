@@ -91,6 +91,7 @@ import { computeTeamTournamentWorkflow } from "../../components/tournament/team/
 import { MATCHUP_STATUS } from "../../features/team-tournament/constants.js";
 import { getPermissionsForRole } from "../../features/identity/matrix/rolePermissions.js";
 import { TEAM_TAB_QUERY } from "../../config/tournamentRoutes.js";
+import { logTeamRosterHydrationTransition } from "../../features/team-tournament/engines/teamRosterHydrationDiagnostics.js";
 import TournamentVprPanel from "../../features/vpr-ranking/components/TournamentVprPanel.jsx";
 import TournamentActionBar from "../../components/tournament/TournamentActionBar.jsx";
 
@@ -210,7 +211,7 @@ export default function TeamTournamentSetup() {
     reload,
     runMutation,
     patchTeamData,
-    dataVersion,
+    rosterSetupRevision,
     getLineupOverrideOps,
     connectionState,
     isRealtime,
@@ -284,7 +285,7 @@ export default function TeamTournamentSetup() {
     currentTenantId,
     scopeMode: TEAM_TOURNAMENT_ATHLETE_SCOPE.CLUB,
     callerName: "TeamTournamentSetup.club",
-    revision: dataVersion,
+    revision: rosterSetupRevision,
   });
   const tenantPool = useTeamTournamentAthletePool({
     tournament,
@@ -294,7 +295,7 @@ export default function TeamTournamentSetup() {
     currentTenantId,
     scopeMode: TEAM_TOURNAMENT_ATHLETE_SCOPE.TENANT,
     callerName: "TeamTournamentSetup.tenant",
-    revision: dataVersion,
+    revision: rosterSetupRevision,
     enabled: Boolean(clubPool.tenantId),
   });
 
@@ -354,6 +355,14 @@ export default function TeamTournamentSetup() {
     if (!nextKey) {
       return;
     }
+    logTeamRosterHydrationTransition("TeamTournamentSetup.tabChange", {
+      tournamentId,
+      clubId: effectiveClubId || activeClubId,
+      activeTab: nextKey,
+      setupVersion: version,
+      rosterSetupRevision,
+      setupReady: Boolean(tournament && td),
+    });
     setSearchParams(
       (prev) => {
         const next = new URLSearchParams(prev);
@@ -1013,9 +1022,14 @@ export default function TeamTournamentSetup() {
               canManage={access.canManage}
               canViewAll={access.canViewAll}
               viewerPlayerId={access.viewerPlayerId}
-              athletePoolLoading={
-                clubPool.loading ||
-                (Boolean(clubPool.tenantId) && tenantPool.loading)
+              setupVersion={version ?? 0}
+              athletePoolLoadingInitial={
+                clubPool.loadingInitial ||
+                (Boolean(clubPool.tenantId) && tenantPool.loadingInitial)
+              }
+              athletePoolRefreshing={
+                clubPool.refreshing ||
+                (Boolean(clubPool.tenantId) && tenantPool.refreshing)
               }
               athletePoolError={clubPool.error || tenantPool.error}
               setupReady={Boolean(tournament && td)}
