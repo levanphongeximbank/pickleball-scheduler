@@ -1,4 +1,4 @@
-import { useEffect, useReducer, useRef } from "react";
+import { useEffect, useMemo, useReducer, useRef } from "react";
 import { Box, Button, Chip, IconButton, Stack } from "@mui/material";
 import CloseIcon from "@mui/icons-material/Close";
 import VolumeOffIcon from "@mui/icons-material/VolumeOff";
@@ -26,6 +26,7 @@ import {
   buildReplayShowcaseSession,
 } from "./showcaseDrawSession.js";
 import { confirmShowcasePersistence } from "./showcasePersistenceAdapter.js";
+import { buildShowcasePreflight } from "./showcasePreflight.js";
 import {
   playShowcaseTone,
   prefersReducedMotion,
@@ -33,6 +34,7 @@ import {
   showcaseShellSx,
 } from "./showcaseStyles.js";
 import ShowcasePreflight from "./ShowcasePreflight.jsx";
+import ShowcaseSetup from "./ShowcaseSetup.jsx";
 import ShowcaseCountdown from "./ShowcaseCountdown.jsx";
 import ShowcaseProcessing from "./ShowcaseProcessing.jsx";
 import ShowcaseTeamReveal from "./ShowcaseTeamReveal.jsx";
@@ -59,6 +61,7 @@ export default function TeamTournamentShowcase({
   rulesVersion = "",
   engineVersion = DEFAULT_ENGINE_VERSION,
   tournamentName = "",
+  clubName = "",
   clubId,
   tournamentId,
   persistSetupTeamData,
@@ -85,6 +88,57 @@ export default function TeamTournamentShowcase({
     null,
     () => createInitialShowcaseState()
   );
+  const selectedPlayers = useMemo(() => {
+    const selected = new Set(
+      (state.setupConfig?.selectedAthleteIds || []).map(String)
+    );
+    return players.filter((player) => {
+      const athleteId = String(player?.id || "");
+      return !athleteId || selected.has(athleteId);
+    });
+  }, [players, state.setupConfig?.selectedAthleteIds]);
+  const setupPreflight = useMemo(() => {
+    const baseBlockers = preflight?.blockers || [];
+    return buildShowcasePreflight({
+      athletes: selectedPlayers,
+      tournamentName: preflight?.summary?.tournamentName || tournamentName,
+      clubName: preflight?.summary?.clubName || clubName || clubId,
+      requestedTeamCount:
+        Number(state.setupConfig?.teamCount) || state.setupConfig?.teamCount || 0,
+      rulesVersion: rulesVersion || preflight?.summary?.rulesVersion || "",
+      engineVersion: engineVersion || preflight?.summary?.engineVersion,
+      fatalConflicts: baseBlockers.some((item) =>
+        String(item).includes("fatalConflicts")
+      ),
+      blockedByPolicy: baseBlockers.some(
+        (item) =>
+          String(item).includes("blockedByPolicy") ||
+          String(item).includes("chính sách pairing")
+      ),
+      setupBlocked: baseBlockers.some((item) =>
+        String(item).includes("Setup bị khóa")
+      ),
+      canManage: !baseBlockers.some((item) =>
+        String(item).includes("BTC / Super Admin")
+      ),
+      tournamentEditable: !baseBlockers.some((item) =>
+        String(item).includes("không còn chỉnh sửa")
+      ),
+      setupMutationGate: !baseBlockers.some((item) =>
+        String(item).includes("Setup mutation v7 đang tắt")
+      ),
+      softRuleSummary: preflight?.summary?.softRuleSummary,
+    });
+  }, [
+    clubId,
+    clubName,
+    engineVersion,
+    preflight,
+    rulesVersion,
+    selectedPlayers,
+    state.setupConfig?.teamCount,
+    tournamentName,
+  ]);
 
   // Open / sync from parent
   useEffect(() => {
@@ -118,7 +172,17 @@ export default function TeamTournamentShowcase({
     }
     dispatch({
       type: "OPEN_LIVE",
-      payload: { preflight, reducedMotion: reduced },
+      payload: {
+        preflight,
+        reducedMotion: reduced,
+        setupConfig: {
+          teamCount: requestedTeamCount || SHOWCASE_DEFAULT_TEAM_COUNT,
+          groupCount: 2,
+          selectedAthleteIds: players
+            .map((player) => String(player?.id || ""))
+            .filter(Boolean),
+        },
+      },
     });
   }, [open, mode]); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -180,10 +244,14 @@ export default function TeamTournamentShowcase({
 
   function beginProcessing() {
     // Run engine exactly once here (after countdown), freeze session.
+    const teamCount =
+      Number(state.setupConfig?.teamCount) ||
+      requestedTeamCount ||
+      SHOWCASE_DEFAULT_TEAM_COUNT;
     if (!fixedSessionRef.current) {
       const generated = generateShowcaseTeamDraw({
-        players,
-        teamCount: requestedTeamCount,
+        players: selectedPlayers,
+        teamCount,
         teamNamePrefix,
         baseTeamData,
         engineVersion,
@@ -199,7 +267,7 @@ export default function TeamTournamentShowcase({
             blockers: [generated.error || "Không tạo được kết quả đội."],
           },
         });
-        dispatch({ type: "GO_STAGE", payload: { stage: SHOWCASE_STAGE.PREFLIGHT } });
+        dispatch({ type: "GO_STAGE", payload: { stage: SHOWCASE_STAGE.SETUP } });
         return;
       }
       fixedSessionRef.current = generated.session;
@@ -212,6 +280,29 @@ export default function TeamTournamentShowcase({
     });
   }
   beginProcessingRef.current = beginProcessing;
+
+  function handleStartFromSetup(config = {}) {
+    const nextConfig = {
+      teamCount: Number(config.teamCount) || state.setupConfig?.teamCount || 8,
+      groupCount: Number(config.groupCount) || state.setupConfig?.groupCount || 2,
+      selectedAthleteIds: Array.isArray(config.selectedAthleteIds)
+        ? config.selectedAthleteIds.map(String)
+        : state.setupConfig?.selectedAthleteIds || [],
+    };
+    dispatch({ type: "SET_SETUP_CONFIG", payload: nextConfig });
+
+    if (!setupPreflight.ok) {
+      return;
+    }
+
+    dispatch({
+      type: "GO_STAGE",
+      payload: {
+        stage: SHOWCASE_STAGE.COUNTDOWN,
+        countdownValue: SHOWCASE_COUNTDOWN_SECONDS,
+      },
+    });
+  }
 
   function handleStartFromPreflight() {
     if (!preflight?.ok && !state.preflight?.ok) return;
@@ -417,10 +508,28 @@ export default function TeamTournamentShowcase({
           </Stack>
         </Stack>
 
+        {state.stage === SHOWCASE_STAGE.SETUP ? (
+          <ShowcaseSetup
+            clubName={clubName || preflight?.summary?.clubName || clubId || "—"}
+            players={players}
+            selectedAthleteIds={state.setupConfig?.selectedAthleteIds || []}
+            teamCount={state.setupConfig?.teamCount ?? requestedTeamCount}
+            groupCount={state.setupConfig?.groupCount || 2}
+            preflight={setupPreflight}
+            onChange={(config) =>
+              dispatch({ type: "SET_SETUP_CONFIG", payload: config })
+            }
+            onBack={() => onClose?.()}
+            onStart={handleStartFromSetup}
+          />
+        ) : null}
+
         {state.stage === SHOWCASE_STAGE.PREFLIGHT ? (
           <ShowcasePreflight
             preflight={activePreflight}
-            onBack={() => onClose?.()}
+            onBack={() =>
+              dispatch({ type: "GO_STAGE", payload: { stage: SHOWCASE_STAGE.SETUP } })
+            }
             onStart={handleStartFromPreflight}
           />
         ) : null}
@@ -515,14 +624,24 @@ export default function TeamTournamentShowcase({
             onBack={() =>
               dispatch({ type: "GO_STAGE", payload: { stage: SHOWCASE_STAGE.TEAM_REVEAL } })
             }
-            onContinue={() =>
+            onContinue={() => {
+              if (isReplay) {
+                dispatch({
+                  type: "GO_STAGE",
+                  payload: { stage: SHOWCASE_STAGE.GROUP_REVEAL },
+                });
+                return;
+              }
+              const presetGroupCount = Number(state.setupConfig?.groupCount) || 0;
+              if (presetGroupCount >= 2) {
+                handleSelectGroupFormat({ groupCount: presetGroupCount });
+                return;
+              }
               dispatch({
                 type: "GO_STAGE",
-                payload: {
-                  stage: isReplay ? SHOWCASE_STAGE.GROUP_REVEAL : SHOWCASE_STAGE.GROUP_FORMAT,
-                },
-              })
-            }
+                payload: { stage: SHOWCASE_STAGE.GROUP_FORMAT },
+              });
+            }}
           />
         ) : null}
 

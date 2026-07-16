@@ -154,6 +154,14 @@ test("5+6. Countdown/processing machine stages create no write side-effect", () 
     type: "OPEN_LIVE",
     payload: { preflight: { ok: true } },
   });
+  assert.equal(state.stage, SHOWCASE_STAGE.SETUP);
+  assert.equal(state.setupConfig.groupCount, 2);
+  assert.equal(state.setupConfig.teamCount, 8);
+  state = reduceShowcaseState(state, {
+    type: "SET_SETUP_CONFIG",
+    payload: { groupCount: 4, teamCount: 8 },
+  });
+  assert.equal(state.setupConfig.groupCount, 4);
   state = reduceShowcaseState(state, {
     type: "GO_STAGE",
     payload: { stage: SHOWCASE_STAGE.COUNTDOWN, countdownValue: 10 },
@@ -494,6 +502,7 @@ test("23. Reduced-motion mode is honored by machine state", () => {
     payload: { preflight: { ok: true }, reducedMotion: true },
   });
   assert.equal(state.reducedMotion, true);
+  assert.equal(state.stage, SHOWCASE_STAGE.SETUP);
   state = reduceShowcaseState(state, { type: "SET_REDUCED_MOTION", payload: false });
   assert.equal(state.reducedMotion, false);
 });

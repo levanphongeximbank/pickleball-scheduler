@@ -21,6 +21,11 @@ export function createInitialShowcaseState(overrides = {}) {
     groupRevealIndex: 0,
     session: null,
     preflight: null,
+    setupConfig: {
+      teamCount: 8,
+      groupCount: 2,
+      selectedAthleteIds: [],
+    },
     saveError: null,
     saving: false,
     savedAt: null,
@@ -43,8 +48,15 @@ export function reduceShowcaseState(state, action) {
         ...createInitialShowcaseState(),
         open: true,
         mode: SHOWCASE_MODE.LIVE,
-        stage: SHOWCASE_STAGE.PREFLIGHT,
+        stage: SHOWCASE_STAGE.SETUP,
         preflight: payload?.preflight || null,
+        setupConfig: {
+          teamCount: Number(payload?.setupConfig?.teamCount) || 8,
+          groupCount: Number(payload?.setupConfig?.groupCount) || 2,
+          selectedAthleteIds: Array.isArray(payload?.setupConfig?.selectedAthleteIds)
+            ? payload.setupConfig.selectedAthleteIds.map(String)
+            : [],
+        },
         reducedMotion: Boolean(payload?.reducedMotion),
         projector: Boolean(payload?.projector),
       };
@@ -67,6 +79,15 @@ export function reduceShowcaseState(state, action) {
 
     case "SET_PREFLIGHT":
       return { ...state, preflight: payload };
+
+    case "SET_SETUP_CONFIG":
+      return {
+        ...state,
+        setupConfig: {
+          ...state.setupConfig,
+          ...(payload || {}),
+        },
+      };
 
     case "SET_SESSION":
       return { ...state, session: payload };
@@ -171,6 +192,7 @@ export function reduceShowcaseState(state, action) {
 export function showcaseAllowsCancel(state) {
   if (state.mode === SHOWCASE_MODE.REPLAY) return true;
   return (
+    state.stage === SHOWCASE_STAGE.SETUP ||
     state.stage === SHOWCASE_STAGE.PREFLIGHT ||
     state.stage === SHOWCASE_STAGE.COUNTDOWN ||
     state.stage === SHOWCASE_STAGE.PROCESSING

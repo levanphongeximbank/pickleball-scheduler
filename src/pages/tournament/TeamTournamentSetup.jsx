@@ -1739,6 +1739,7 @@ export default function TeamTournamentSetup() {
           rulesVersion={showcaseRulesVersion}
           engineVersion={snapshotMeta?.engineVersion || DEFAULT_ENGINE_VERSION}
           tournamentName={tournament?.name || ""}
+          clubName={clubNameForShowcase}
           clubId={effectiveClubId || activeClubId}
           tournamentId={tournamentId}
           persistSetupTeamData={persistSetupTeamData}

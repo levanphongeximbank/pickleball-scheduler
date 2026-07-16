@@ -29,6 +29,10 @@ export function buildShowcasePreflight(input = {}) {
     Number(input.requestedTeamCount ?? SHOWCASE_DEFAULT_TEAM_COUNT) || 0
   );
 
+  if (athletes.length === 0) {
+    blockers.push("Chưa chọn vận động viên cho lễ bốc thăm.");
+  }
+
   const missingIdentity = athletes.filter((athlete) => !String(athlete?.id || "").trim());
   if (missingIdentity.length) {
     blockers.push(`Thiếu athletes.id cho ${missingIdentity.length} vận động viên.`);

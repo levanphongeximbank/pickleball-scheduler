@@ -5,6 +5,7 @@
 
 export const SHOWCASE_STAGE = Object.freeze({
   IDLE: "idle",
+  SETUP: "setup",
   PREFLIGHT: "preflight",
   COUNTDOWN: "countdown",
   PROCESSING: "processing",
@@ -31,6 +32,7 @@ export const PROCESSING_STAGES = Object.freeze([
 ]);
 
 export const SHOWCASE_COPY = Object.freeze({
+  setupTitle: "Thiết lập lễ bốc thăm",
   start: "Bắt đầu lễ bốc thăm",
   replay: "Xem lại lễ bốc thăm",
   projectorOn: "Chế độ trình chiếu",
@@ -41,6 +43,7 @@ export const SHOWCASE_COPY = Object.freeze({
   replayBadge: "Chế độ xem lại",
   missingCaptain: "Chưa chỉ định đội trưởng",
   backEdit: "Quay lại chỉnh sửa",
+  back: "Quay lại",
   confirmSave: "Xác nhận và lưu",
   cancelUnsaved: "Hủy kết quả chưa lưu",
 });
