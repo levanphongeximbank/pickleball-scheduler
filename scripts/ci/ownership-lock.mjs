@@ -589,6 +589,36 @@ const RULES = [
       return out;
     },
   },
+  {
+    id: "team-tournament-setup-canonical-gateway",
+    description:
+      "P1.2 S1-A — Team Tournament setup semantic hashes/envelopes must go through canonical/teamTournamentCanonical.js (or repositories shim).",
+    allow: [
+      "src/features/team-tournament/canonical/",
+      "src/features/team-tournament/repositories/teamTournamentCanonical.js",
+      "src/features/team-tournament/repositories/teamTournamentIdempotency.js",
+      "src/features/team-tournament/repositories/teamTournamentCompare.js",
+      "scripts/lib/team-tournament-shadow-compare-report.mjs",
+    ],
+    match: (c) => [
+      ...(c.match(/\bhashCanonicalSetupSnapshot\s*\(/g) || []),
+      ...(c.match(/\bhashEngineInput\s*\(/g) || []),
+      ...(c.match(/\bhashEngineOutput\s*\(/g) || []),
+      ...(c.match(/\bbuildSetupMutationEnvelope\s*\(/g) || []),
+      ...(c.match(/\bvalidateSetupMutationEnvelope\s*\(/g) || []),
+    ],
+  },
+  {
+    id: "team-tournament-node-crypto-boundary",
+    description:
+      "P1.2 S1-A — node:crypto under team-tournament is limited to canonical digest/legacy modules.",
+    onlyIn: ["src/features/team-tournament/"],
+    allow: [
+      "src/features/team-tournament/canonical/teamTournamentCanonicalDigest.js",
+      "src/features/team-tournament/canonical/teamTournamentCanonicalLegacy.js",
+    ],
+    match: (c) => c.match(/from\s+["']node:crypto["']/g) || [],
+  },
 ];
 
 function rel(abs) {

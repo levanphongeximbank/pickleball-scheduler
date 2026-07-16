@@ -215,5 +215,8 @@
   "tests/team-tournament-unified-athlete-pool.test.js",
   "tests/phase45b5b-daily-team-tournament-candidate-cutover.test.js",
   "tests/tt-v6-scope-and-classification.test.js",
-  "tests/tt-v6-post-ai-team-list-render.test.js"
+  "tests/tt-v6-post-ai-team-list-render.test.js",
+  "tests/tt-v6-p1_2-canonical-vectors.test.js",
+  "tests/tt-v6-p1_2-hash-parity.test.js",
+  "tests/tt-v6-p1_2-mutation-envelope.test.js"
 ]
