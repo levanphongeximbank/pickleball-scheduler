@@ -110,6 +110,8 @@ import { isGroupDivisionEditable } from "../../features/team-tournament/engines/
 import { DEFAULT_ENGINE_VERSION } from "../../features/team-tournament/canonical/teamTournamentMutationEnvelope.js";
 import { TT_V6_TT32_FIXTURE } from "../../features/team-tournament/fixtures/ttV6Tt32StagingFixture.js";
 import TournamentActionBar from "../../components/tournament/TournamentActionBar.jsx";
+import { isGlobalRole } from "../../features/identity/constants/roles.js";
+import { canManageClubGovernance } from "../../features/club/services/clubGovernanceService.js";
 
 function buildVisibleTabs(canManage) {
   const tabs = [{ key: TEAM_TAB_QUERY.teams, label: "Đội" }];
@@ -211,6 +213,7 @@ export default function TeamTournamentSetup() {
   const [searchParams, setSearchParams] = useSearchParams();
   const { activeClubId, clubs } = useClub();
   const { currentTenantId } = useTenant();
+  const { user } = useAuth();
 
   // Create flow stamps ?club= so detail survives activeClub refresh/coerce.
   // tournament.clubId (after load) + ?club= are SSOT — never prefer stale activeClubId.
@@ -256,6 +259,11 @@ export default function TeamTournamentSetup() {
     activeClubId: effectiveClubId || activeClubId,
     tournamentId,
   });
+
+  const showcaseCanSelectTenantScope = useMemo(() => {
+    if (!access.canManage) return false;
+    return isGlobalRole(user?.role);
+  }, [access.canManage, user?.role]);
   const visibleTabs = useMemo(
     () => buildVisibleTabs(access.canManage),
     [access.canManage]
@@ -1728,6 +1736,15 @@ export default function TeamTournamentSetup() {
           onClose={() => setShowcaseOpen(false)}
           preflight={showcasePreflight}
           players={players}
+          clubAthletes={players}
+          tenantAthletes={allTenantPlayers}
+          clubs={clubs}
+          tournament={tournament}
+          user={user}
+          canSelectTenantScope={showcaseCanSelectTenantScope}
+          canManageClub={canManageClubGovernance}
+          poolLoading={clubPool.loadingInitial || tenantPool.loadingInitial}
+          poolError={playersLoadError}
           teamNamePrefix={
             String(effectiveClubId || "").includes("tt32")
               ? TT_V6_TT32_FIXTURE.teamNamePrefix
@@ -1750,6 +1767,13 @@ export default function TeamTournamentSetup() {
           draftStatus={workflow.draftStatusLabel || "Nháp"}
           onContinueSetup={goToNextSetupTab}
           onBackTournament={() => setShowcaseOpen(false)}
+          onContinueSchedule={() => {
+            setSearchParams((prev) => {
+              const next = new URLSearchParams(prev);
+              next.set("tab", TEAM_TAB_QUERY.matchups);
+              return next;
+            });
+          }}
         />
       ) : null}
     </TournamentSetupShell>

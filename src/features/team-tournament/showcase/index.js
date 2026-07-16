@@ -14,6 +14,22 @@ export {
 } from "./showcasePreflight.js";
 
 export {
+  SHOWCASE_CLUB_SCOPE,
+  mergeShowcaseAthletePool,
+  buildShowcaseAthleteCounters,
+  buildShowcaseTeamConfiguration,
+  buildShowcaseTeamPreviewDiagnostics,
+  buildShowcaseGroupPreviewDiagnostics,
+  buildShowcaseActionGates,
+  selectAllEligibleShowcaseAthletes,
+  clearShowcaseAthleteSelection,
+  assignShowcaseCaptain,
+  resolveShowcaseClubScopeConfig,
+} from "./showcaseSetupModel.js";
+
+export { canTransitionShowcaseStage } from "./showcaseStateGuards.js";
+
+export {
   generateShowcaseTeamDraw,
   generateShowcaseGroupDraw,
   buildReplayShowcaseSession,
@@ -21,6 +37,8 @@ export {
   assertGroupMembershipUnchanged,
   cloneShowcaseSession,
 } from "./showcaseDrawSession.js";
+
+export { generateShowcaseMatchupPreview } from "./showcaseMatchupSession.js";
 
 export {
   createInitialShowcaseState,
@@ -32,6 +50,7 @@ export {
 
 export {
   confirmShowcasePersistence,
+  confirmShowcaseMatchupPersistence,
   assertNoShowcaseWrite,
 } from "./showcasePersistenceAdapter.js";
 

@@ -1,4 +1,4 @@
-import { Box, Button, Stack, Typography } from "@mui/material";
+import { Box, Button, FormControl, MenuItem, Select, Stack, Typography } from "@mui/material";
 import {
   showcaseActionsSx,
   showcaseBadgeSx,
@@ -8,7 +8,13 @@ import {
 } from "./showcaseStyles.js";
 import { SHOWCASE_COPY } from "./showcaseConstants.js";
 
-export default function ShowcaseCaptainReveal({ teamCards = [], onContinue, onBack }) {
+export default function ShowcaseCaptainReveal({
+  teamCards = [],
+  onContinue,
+  onBack,
+  onAssignCaptain,
+  readOnly = false,
+}) {
   return (
     <Stack spacing={3}>
       <Typography component="h1" sx={showcaseTitleSx}>
@@ -24,7 +30,7 @@ export default function ShowcaseCaptainReveal({ teamCards = [], onContinue, onBa
                 justifyContent="space-between"
                 spacing={1}
               >
-                <Box>
+                <Box sx={{ flex: 1 }}>
                   <Typography fontWeight={800} fontSize="1.25rem">
                     {team.name}
                   </Typography>
@@ -32,9 +38,31 @@ export default function ShowcaseCaptainReveal({ teamCards = [], onContinue, onBa
                     {(team.athletes || []).map((a) => a.name).join(" · ")}
                   </Box>
                 </Box>
-                <Box sx={showcaseBadgeSx}>
-                  {captain?.name || SHOWCASE_COPY.missingCaptain}
-                </Box>
+                <Stack spacing={1} alignItems={{ xs: "stretch", sm: "flex-end" }}>
+                  <Box sx={showcaseBadgeSx}>
+                    {captain?.name || SHOWCASE_COPY.missingCaptain}
+                  </Box>
+                  {!readOnly && onAssignCaptain ? (
+                    <FormControl size="small" sx={{ minWidth: 180 }}>
+                      <Select
+                        value={team.captainPlayerId || captain?.id || ""}
+                        displayEmpty
+                        onChange={(event) =>
+                          onAssignCaptain(team.id, event.target.value)
+                        }
+                      >
+                        <MenuItem value="" disabled>
+                          Đổi đội trưởng
+                        </MenuItem>
+                        {(team.athletes || []).map((athlete) => (
+                          <MenuItem key={athlete.id} value={athlete.id}>
+                            {athlete.name}
+                          </MenuItem>
+                        ))}
+                      </Select>
+                    </FormControl>
+                  ) : null}
+                </Stack>
               </Stack>
             </Box>
           );

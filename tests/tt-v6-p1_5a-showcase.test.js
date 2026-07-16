@@ -149,31 +149,34 @@ test("4. Replay confirm does not save", async () => {
 });
 
 test("5+6. Countdown/processing machine stages create no write side-effect", () => {
+  const { session } = generateShowcaseTeamDraw({
+    players: toPlayers(),
+    teamCount: 8,
+    randomFn: fixedRandom(),
+    rulesVersion: "rv-test-1",
+  });
   let state = createInitialShowcaseState();
   state = reduceShowcaseState(state, {
     type: "OPEN_LIVE",
     payload: { preflight: { ok: true } },
   });
   assert.equal(state.stage, SHOWCASE_STAGE.SETUP);
-  assert.equal(state.setupConfig.groupCount, 2);
-  assert.equal(state.setupConfig.teamCount, 8);
   state = reduceShowcaseState(state, {
-    type: "SET_SETUP_CONFIG",
-    payload: { groupCount: 4, teamCount: 8 },
+    type: "SET_SESSION",
+    payload: session,
   });
-  assert.equal(state.setupConfig.groupCount, 4);
   state = reduceShowcaseState(state, {
     type: "GO_STAGE",
-    payload: { stage: SHOWCASE_STAGE.COUNTDOWN, countdownValue: 10 },
+    payload: { stage: SHOWCASE_STAGE.COUNTDOWN, countdownValue: 10, session },
   });
   assert.equal(state.stage, SHOWCASE_STAGE.COUNTDOWN);
   state = reduceShowcaseState(state, {
     type: "GO_STAGE",
-    payload: { stage: SHOWCASE_STAGE.PROCESSING },
+    payload: { stage: SHOWCASE_STAGE.PROCESSING, session },
   });
   assert.equal(state.stage, SHOWCASE_STAGE.PROCESSING);
   assert.equal(state.saving, false);
-  assert.equal(state.session, null);
+  assert.equal(state.session?.teamCards?.length, 8);
 });
 
 test("7. Team reveal supports 8 teams", () => {

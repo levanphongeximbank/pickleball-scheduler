@@ -166,6 +166,105 @@ export async function confirmShowcasePersistence(params = {}) {
 }
 
 /**
+ * Persist matchups separately after explicit Owner action.
+ */
+export async function confirmShowcaseMatchupPersistence(params = {}) {
+  const {
+    session,
+    matchupPreview,
+    persistSetupTeamData,
+    rulesVersion,
+    expectedTournamentVersion,
+    previousTeamData,
+  } = params;
+
+  if (session?.mode === SHOWCASE_MODE.REPLAY) {
+    return {
+      ok: false,
+      code: "REPLAY_READ_ONLY",
+      error: "Chế độ xem lại không ghi cặp đấu.",
+      writeAttempted: false,
+    };
+  }
+
+  const matchups = matchupPreview?.matchups || [];
+  if (!matchups.length) {
+    return {
+      ok: false,
+      code: "NO_MATCHUP_PREVIEW",
+      error: "Chưa có preview cặp đấu.",
+      writeAttempted: false,
+    };
+  }
+
+  const resolvedRules = String(rulesVersion || session?.rulesVersion || "").trim();
+  if (!resolvedRules) {
+    return {
+      ok: false,
+      code: "MISSING_RULES_VERSION",
+      error: "Thiếu rulesVersion cho lệnh matchup.",
+      writeAttempted: false,
+    };
+  }
+
+  if (typeof persistSetupTeamData !== "function") {
+    return {
+      ok: false,
+      code: "NO_PERSIST_ADAPTER",
+      error: "Thiếu adapter persistence canonical.",
+      writeAttempted: false,
+    };
+  }
+
+  const nextTeamData = {
+    ...session.teamData,
+    matchups,
+  };
+
+  const result = await persistSetupTeamData(nextTeamData, {
+    rulesVersion: resolvedRules,
+    confirmDestructive: Boolean(previousTeamData?.matchups?.length),
+    expectedTournamentVersion,
+    previousTeamData: previousTeamData || session.teamData,
+    engineVersion: session.engineVersion,
+  });
+
+  if (!result?.ok) {
+    return {
+      ok: false,
+      code: result?.code || "MATCHUP_SAVE_FAILED",
+      error: result?.error || "Không lưu được cặp đấu.",
+      writeAttempted: true,
+    };
+  }
+
+  const readbackMatchups =
+    result.readback?.teamData?.matchups ||
+    result.teamData?.matchups ||
+    result.aggregate?.teamData?.matchups ||
+    [];
+
+  if (!readbackMatchups.length && !result.readbackVerified) {
+    return {
+      ok: false,
+      code: "READBACK_FAILED",
+      error: "Lưu cặp đấu xong nhưng không đọc lại được từ get_setup v7.",
+      writeAttempted: true,
+    };
+  }
+
+  return {
+    ok: true,
+    writeAttempted: true,
+    writeCount: 1,
+    rulesVersion: resolvedRules,
+    savedAt: new Date().toISOString(),
+    result,
+    persistedMatchups: readbackMatchups,
+  };
+}
+
+/**
  * Guard: replay and animation paths must never call this.
  */
 export function assertNoShowcaseWrite(context = {}) {
