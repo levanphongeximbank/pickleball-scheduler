@@ -15,6 +15,10 @@ import {
   PAIRING_CANDIDATE_REASON_CODES,
 } from "../../pairing-candidates/index.js";
 import { getPlayerGenderKey } from "../../../models/player.js";
+import {
+  buildRosterAthleteIndex,
+  resolveRosterMemberIdentity,
+} from "../engines/teamRosterHydration.js";
 
 export const TEAM_TOURNAMENT_ATHLETE_SCOPE = Object.freeze({
   CLUB: "club",
@@ -379,23 +383,16 @@ export async function loadAthletesForTeamTournamentMutation(clubId, options = {}
 }
 
 /**
- * Match athletes.id (primary) or alias fields.
+ * Match athletes.id (primary) or alias / user_id fields via shared roster mapper.
  * @param {object[]} athletes
  * @param {string} athleteId
  */
 export function findAthleteInPool(athletes = [], athleteId) {
   const id = normalizeId(athleteId);
   if (!id) return null;
-  return (
-    (athletes || []).find((row) => {
-      if (!row) return false;
-      return (
-        normalizeId(row.id) === id ||
-        normalizeId(row.athleteId) === id ||
-        normalizeId(row.pairingIdentityId) === id
-      );
-    }) || null
-  );
+  const index = buildRosterAthleteIndex(athletes);
+  const resolved = resolveRosterMemberIdentity(id, index);
+  return resolved.ok ? resolved.athlete : null;
 }
 
 /**

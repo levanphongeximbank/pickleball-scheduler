@@ -14,9 +14,38 @@ import {
   validationFailure,
   validationSuccess,
 } from "./lineupValidationContract.js";
+import {
+  hydrateTeamRoster,
+  hydratedMembersAsPlayers,
+  buildRosterAthleteIndex,
+  resolveRosterMemberIdentity,
+} from "./teamRosterHydration.js";
 
 function playerMap(players = []) {
-  return new Map(players.map((player) => [String(player.id), player]));
+  const exact = new Map(
+    (players || []).map((player) => [String(player.id), player])
+  );
+  const index = buildRosterAthleteIndex(players);
+  return {
+    get(id) {
+      const key = String(id || "").trim();
+      if (!key) return undefined;
+      if (exact.has(key)) return exact.get(key);
+      const resolved = resolveRosterMemberIdentity(key, index);
+      if (resolved.ok && resolved.athlete) {
+        return {
+          ...resolved.athlete,
+          id: key,
+          athleteId: resolved.athleteId,
+          name:
+            resolved.athlete.name ||
+            resolved.athlete.displayName ||
+            resolved.athleteId,
+        };
+      }
+      return undefined;
+    },
+  };
 }
 
 function isPlayerAvailable(team, playerId) {
@@ -530,13 +559,12 @@ export function filterEligiblePlayersForDiscipline({
     return [];
   }
 
-  const playersById = playerMap(players);
+  const hydrated = hydrateTeamRoster({ team, athletePool: players });
+  const rosterPlayers = hydratedMembersAsPlayers(hydrated);
   const absent = new Set((team.absentPlayerIds || []).map(String));
   const locked = new Set((team.lockedPlayerIds || []).map(String));
 
-  return team.playerIds
-    .map((id) => playersById.get(String(id)))
-    .filter(Boolean)
+  return rosterPlayers
     .filter((player) => !absent.has(String(player.id)) && !locked.has(String(player.id)))
     .filter((player) => {
       if (allowReuse || !usedPlayerIds.has(String(player.id))) {

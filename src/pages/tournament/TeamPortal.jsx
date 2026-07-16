@@ -27,6 +27,7 @@ import {
   resolveAthleteDisplayName,
   TEAM_TOURNAMENT_ATHLETE_SCOPE,
 } from "../../features/team-tournament/services/teamTournamentAthletePoolService.js";
+import { hydrateTeamRoster } from "../../features/team-tournament/engines/teamRosterHydration.js";
 import { useTeamTournamentAthletePool } from "../../features/team-tournament/ui/useTeamTournamentAthletePool.js";
 import { guardRecordTenant } from "../../features/tenant/guards/tenantGuard.js";
 import { findTournamentClubId } from "../../features/club/services/clubTournamentBridge.js";
@@ -230,6 +231,10 @@ function playerName(players, playerId) {
   return resolveAthleteDisplayName(players, playerId);
 }
 
+function hydratePortalTeamRoster(team, players) {
+  return hydrateTeamRoster({ team, athletePool: players || [] });
+}
+
 function deadlineBlockedMessage(permissions) {
   if (permissions.deadlineStatus === DEADLINE_STATUS.LOCKED) {
     return "Đội hình đã khóa, không thể chỉnh sửa.";
@@ -316,6 +321,10 @@ function MatchupLineupCard({
   }, [getVisibleLineups, matchup.id, useCloudVisibleLineups, dataVersion]);
 
   const allowReuse = teamData.settings?.allowPlayerReusePerMatchup === true;
+  const hydratedTeam = useMemo(
+    () => hydratePortalTeamRoster(team, players),
+    [team, players]
+  );
   const visible =
     useCloudVisibleLineups && cloudVisible?.lineups
       ? {
@@ -509,6 +518,15 @@ function MatchupLineupCard({
 
         {message ? <Alert severity="success">{message}</Alert> : null}
         {error ? <Alert severity="error">{error}</Alert> : null}
+        {hydratedTeam.unresolvedCount > 0 ? (
+          <Alert severity="warning">
+            {hydratedTeam.unresolvedCount} VĐV thiếu identity
+            {hydratedTeam.diagnostics.length > 0
+              ? ` (${hydratedTeam.diagnostics.slice(0, 2).join(", ")})`
+              : ""}
+            .
+          </Alert>
+        ) : null}
 
         {!editable ? (
           <Alert severity="info" icon={<LockIcon />}>

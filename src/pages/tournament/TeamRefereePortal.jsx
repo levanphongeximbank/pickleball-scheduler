@@ -30,6 +30,7 @@ import { getPermissionsForRole } from "../../features/identity/matrix/rolePermis
 import {
   TEAM_TOURNAMENT_ATHLETE_SCOPE,
 } from "../../features/team-tournament/services/teamTournamentAthletePoolService.js";
+import { hydrateTeamRoster } from "../../features/team-tournament/engines/teamRosterHydration.js";
 import { useTeamTournamentAthletePool } from "../../features/team-tournament/ui/useTeamTournamentAthletePool.js";
 import {
   MATCHUP_STATUS,
@@ -653,6 +654,13 @@ export default function TeamRefereePortal() {
   });
   const players = athletePool.players;
 
+  const hydratedTeams = useMemo(() => {
+    if (!teamData?.teams) return [];
+    return teamData.teams.map((team) =>
+      hydrateTeamRoster({ team, athletePool: players })
+    );
+  }, [teamData, players]);
+
   const dreambreakerPendingCount = useMemo(
     () => (teamData ? countDreambreakerPendingMatchups(teamData) : 0),
     [teamData]
@@ -957,6 +965,11 @@ export default function TeamRefereePortal() {
         <Alert severity="warning" sx={{ mb: 2 }}>
           {athletePool.error.message ||
             "Không tải được pool VĐV canonical. Tên VĐV thiếu identity sẽ được đánh dấu rõ."}
+        </Alert>
+      ) : null}
+      {hydratedTeams.some((team) => team.unresolvedCount > 0) ? (
+        <Alert severity="warning" sx={{ mb: 2 }}>
+          Một số VĐV trên đội thiếu identity canonical — tên hiển thị kèm diagnostic, không fallback blob.
         </Alert>
       ) : null}
 

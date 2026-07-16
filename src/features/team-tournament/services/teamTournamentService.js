@@ -45,6 +45,10 @@ import {
   removePlayerFromTeam,
   updateTeamProfile,
 } from "../engines/teamRosterEngine.js";
+import {
+  hydrateAllTeamRosters,
+  hydrateTeamRoster,
+} from "../engines/teamRosterHydration.js";
 import { addTeamToTournament } from "../engines/teamTournamentEngine.js";
 import {
   assertTeamScope,
@@ -1698,6 +1702,41 @@ export function getTeamTournamentById(clubId, tournamentId) {
     return null;
   }
   return tournament;
+}
+
+/**
+ * P0 read-model helper — hydrate every team roster against the canonical athlete pool.
+ * Never treats blob roster as identity authority.
+ *
+ * @param {object|null} teamData
+ * @param {object[]} athletePool
+ * @param {{ teamMemberRowsByTeamId?: Record<string, object[]> }} [options]
+ */
+export function buildHydratedTeamRosterReadModel(
+  teamData,
+  athletePool = [],
+  options = {}
+) {
+  const rowsByTeam = options.teamMemberRowsByTeamId || {};
+  const teams = (teamData?.teams || []).map((team) =>
+    hydrateTeamRoster({
+      team,
+      teamMemberRows: rowsByTeam[String(team.id)] || null,
+      athletePool,
+    })
+  );
+  return {
+    teams,
+    unresolvedCount: teams.reduce((sum, team) => sum + team.unresolvedCount, 0),
+    memberCount: teams.reduce((sum, team) => sum + team.members.length, 0),
+  };
+}
+
+/**
+ * Convenience wrapper around hydrateAllTeamRosters for service consumers.
+ */
+export function hydrateTeamTournamentRosters(teamData, athletePool = []) {
+  return hydrateAllTeamRosters(teamData, athletePool);
 }
 
 export async function getTeamTournamentByIdCloud(clubId, tournamentId, viewerTeamId = null) {

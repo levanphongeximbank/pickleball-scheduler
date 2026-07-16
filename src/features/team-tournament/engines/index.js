@@ -5,6 +5,7 @@ export * from "./teamResultEngine.js";
 export * from "./teamStandingsEngine.js";
 export * from "./teamPermissionEngine.js";
 export * from "./teamRosterEngine.js";
+export * from "./teamRosterHydration.js";
 export * from "./teamTournamentEngine.js";
 export * from "./teamRefereeEngine.js";
 export * from "./eligibilityEngine.js";

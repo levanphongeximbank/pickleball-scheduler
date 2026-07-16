@@ -130,6 +130,7 @@
   "tests/billing-tenant-mapping.test.js",
   "tests/team-tournament.test.js",
   "tests/team-tournament-roster.test.js",
+  "tests/tt-v6-p0-roster-hydration.test.js",
   "tests/team-tournament-portal.test.js",
   "tests/team-tournament-referee.test.js",
   "tests/team-tournament-cloud.test.js",

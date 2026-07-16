@@ -28,10 +28,14 @@ import AddIcon from "@mui/icons-material/Add";
 import { getPlayerGenderKey } from "../../models/player.js";
 import {
   computeTeamRosterStats,
-  findPlayerTeam,
+  findPlayerTeamInPool,
   getTeamRosterWarnings,
   getVisibleTeams,
 } from "../../features/team-tournament/engines/teamRosterEngine.js";
+import {
+  collectHydratedMemberKeys,
+  hydrateTeamRoster,
+} from "../../features/team-tournament/engines/teamRosterHydration.js";
 import { isMlpFormat } from "../../features/team-tournament/engines/mlpPresetEngine.js";
 import {
   addPlayerToTeamRoster,
@@ -64,7 +68,17 @@ function playerLabel(player) {
     return "";
   }
   const gender = player.gender ? ` · ${player.gender}` : "";
-  return `${player.name || player.id}${gender}`;
+  return `${player.name || player.displayName || player.id}${gender}`;
+}
+
+function memberLabel(member) {
+  if (!member) return "";
+  const gender = member.gender ? ` · ${member.gender}` : "";
+  const rating =
+    member.rating != null && member.rating !== ""
+      ? ` · ${member.rating}`
+      : "";
+  return `${member.displayName}${gender}${rating}`;
 }
 
 function TeamCard({
@@ -92,25 +106,20 @@ function TeamCard({
   const [genderFilter, setGenderFilter] = useState("all");
   const [quickAddOpen, setQuickAddOpen] = useState(false);
 
-  const playerById = useMemo(() => {
-    const map = new Map();
-    [...allTenantPlayers, ...clubPlayers].forEach((player) => {
-      map.set(String(player.id), player);
-    });
-    return map;
-  }, [allTenantPlayers, clubPlayers]);
-
-  const rosterPlayers = useMemo(
-    () => [...playerById.values()],
-    [playerById]
+  const athletePool = useMemo(
+    () => [...allTenantPlayers, ...clubPlayers],
+    [allTenantPlayers, clubPlayers]
   );
 
-  const teamPlayers = useMemo(
-    () =>
-      team.playerIds
-        .map((playerId) => playerById.get(String(playerId)))
-        .filter(Boolean),
-    [playerById, team.playerIds]
+  const hydratedRoster = useMemo(
+    () => hydrateTeamRoster({ team, athletePool }),
+    [team, athletePool]
+  );
+
+  const teamMembers = hydratedRoster.members;
+  const assignedMemberKeys = useMemo(
+    () => collectHydratedMemberKeys(hydratedRoster),
+    [hydratedRoster]
   );
 
   const [filteredClubPlayers, setFilteredClubPlayers] = useState([]);
@@ -159,12 +168,12 @@ function TeamCard({
   }, [sourceClubFilter, allTenantPlayers, clubPlayers, filteredClubPlayers]);
 
   const stats = useMemo(
-    () => computeTeamRosterStats(team, rosterPlayers),
-    [team, rosterPlayers]
+    () => computeTeamRosterStats(team, athletePool),
+    [team, athletePool]
   );
   const warnings = useMemo(
-    () => getTeamRosterWarnings(team, teamData, rosterPlayers),
-    [team, teamData, rosterPlayers]
+    () => getTeamRosterWarnings(team, teamData, athletePool),
+    [team, teamData, athletePool]
   );
   const mlpRoster = isMlpFormat(teamData);
 
@@ -172,7 +181,11 @@ function TeamCard({
     const allowCrossTeam = teamData.settings?.allowPlayerCrossTeam === true;
     return pickerPlayers.filter((player) => {
       const playerId = String(player.id);
-      if (team.playerIds.includes(playerId)) {
+      const athleteId = String(player.athleteId || player.pairingIdentityId || "");
+      if (
+        assignedMemberKeys.has(playerId) ||
+        (athleteId && assignedMemberKeys.has(athleteId))
+      ) {
         return false;
       }
       if (genderFilter === "male" && getPlayerGenderKey(player.gender) !== "male") {
@@ -184,9 +197,9 @@ function TeamCard({
       if (allowCrossTeam) {
         return true;
       }
-      return !findPlayerTeam(teamData, playerId);
+      return !findPlayerTeamInPool(teamData, playerId, athletePool);
     });
-  }, [pickerPlayers, team.playerIds, teamData, genderFilter]);
+  }, [pickerPlayers, assignedMemberKeys, teamData, genderFilter, athletePool]);
 
   const availableEmptyText = useMemo(() => {
     if (filteredClubError) return filteredClubError;
@@ -304,6 +317,16 @@ function TeamCard({
           </Alert>
         ) : null}
 
+        {hydratedRoster.unresolvedCount > 0 ? (
+          <Alert severity="warning">
+            {hydratedRoster.unresolvedCount} VĐV thiếu identity canonical
+            {hydratedRoster.diagnostics.length > 0
+              ? ` (${hydratedRoster.diagnostics.slice(0, 3).join(", ")})`
+              : ""}
+            . Không dùng roster blob làm nguồn thay thế.
+          </Alert>
+        ) : null}
+
         {filteredClubError ? <Alert severity="error">{filteredClubError}</Alert> : null}
         {!filteredClubError && filteredClubEmptyMessage ? (
           <Alert severity="warning">{filteredClubEmptyMessage}</Alert>
@@ -314,10 +337,6 @@ function TeamCard({
             {warning}
           </Alert>
         ))}
-
-        {filteredClubError ? (
-          <Alert severity="error">{filteredClubError}</Alert>
-        ) : null}
 
         {canManage ? (
           <>
@@ -447,9 +466,12 @@ function TeamCard({
                   <MenuItem value="">
                     <em>Chưa chọn</em>
                   </MenuItem>
-                  {teamPlayers.map((player) => (
-                    <MenuItem key={player.id} value={String(player.id)}>
-                      {playerLabel(player)}
+                  {teamMembers.map((member) => (
+                    <MenuItem
+                      key={member.storedPlayerId}
+                      value={String(member.storedPlayerId)}
+                    >
+                      {memberLabel(member)}
                     </MenuItem>
                   ))}
                 </Select>
@@ -468,15 +490,26 @@ function TeamCard({
                 onChange={(event) => setDeputyIds(event.target.value)}
                 renderValue={(selected) =>
                   selected
-                    .map((id) => playerLabel(teamPlayers.find((player) => String(player.id) === String(id))))
+                    .map((id) =>
+                      memberLabel(
+                        teamMembers.find(
+                          (member) => String(member.storedPlayerId) === String(id)
+                        )
+                      )
+                    )
                     .join(", ")
                 }
               >
-                {teamPlayers
-                  .filter((player) => String(player.id) !== String(captainId))
-                  .map((player) => (
-                    <MenuItem key={player.id} value={String(player.id)}>
-                      {playerLabel(player)}
+                {teamMembers
+                  .filter(
+                    (member) => String(member.storedPlayerId) !== String(captainId)
+                  )
+                  .map((member) => (
+                    <MenuItem
+                      key={member.storedPlayerId}
+                      value={String(member.storedPlayerId)}
+                    >
+                      {memberLabel(member)}
                     </MenuItem>
                   ))}
               </Select>
@@ -487,9 +520,15 @@ function TeamCard({
           </>
         ) : (
           <Typography variant="body2" color="text.secondary">
-            Đội trưởng: {team.captainPlayerId || "Chưa gán"}
-            {(team.deputyPlayerIds || []).length > 0
-              ? ` · Đội phó: ${team.deputyPlayerIds.join(", ")}`
+            Đội trưởng:{" "}
+            {teamMembers.find((member) => member.isCaptain)?.displayName ||
+              team.captainPlayerId ||
+              "Chưa gán"}
+            {teamMembers.some((member) => member.isDeputy)
+              ? ` · Đội phó: ${teamMembers
+                  .filter((member) => member.isDeputy)
+                  .map((member) => member.displayName)
+                  .join(", ")}`
               : ""}
           </Typography>
         )}
@@ -497,26 +536,31 @@ function TeamCard({
         <Divider />
 
         <Typography variant="subtitle2">Danh sách VĐV</Typography>
-        {teamPlayers.length === 0 ? (
+        {teamMembers.length === 0 ? (
           <Typography variant="body2" color="text.secondary">
             Chưa có VĐV trong đội.
           </Typography>
         ) : (
-          teamPlayers.map((player) => (
+          teamMembers.map((member) => (
             <Stack
-              key={player.id}
+              key={member.storedPlayerId}
               direction="row"
               alignItems="center"
               justifyContent="space-between"
               sx={{ py: 0.5 }}
             >
-              <Stack direction="row" spacing={1} alignItems="center">
-                <Typography>{playerLabel(player)}</Typography>
-                {String(team.captainPlayerId) === String(player.id) ? (
+              <Stack direction="row" spacing={1} alignItems="center" flexWrap="wrap" useFlexGap>
+                <Typography>{memberLabel(member)}</Typography>
+                {member.isCaptain ? (
                   <Chip size="small" color="primary" label="Đội trưởng" />
                 ) : null}
-                {(team.deputyPlayerIds || []).includes(String(player.id)) ? (
-                  <Chip size="small" label="Đội phó" />
+                {member.isDeputy ? <Chip size="small" label="Đội phó" /> : null}
+                {!member.resolved ? (
+                  <Chip
+                    size="small"
+                    color="warning"
+                    label={member.diagnostic || "thiếu identity"}
+                  />
                 ) : null}
               </Stack>
               {canManage ? (
@@ -524,7 +568,7 @@ function TeamCard({
                   size="small"
                   color="error"
                   aria-label="Xóa VĐV"
-                  onClick={() => handleRemovePlayer(player.id)}
+                  onClick={() => handleRemovePlayer(member.storedPlayerId)}
                 >
                   <DeleteOutlinedIcon fontSize="small" />
                 </IconButton>

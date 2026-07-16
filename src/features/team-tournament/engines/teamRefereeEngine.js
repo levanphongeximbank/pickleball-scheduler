@@ -13,6 +13,10 @@ import {
 import { canManageTeam } from "./teamPermissionEngine.js";
 import { computeMatchupResult } from "./teamResultEngine.js";
 import { isRallyScoring, validateRallyScore } from "./rallyScoringEngine.js";
+import {
+  buildRosterAthleteIndex,
+  resolveRosterMemberIdentity,
+} from "./teamRosterHydration.js";
 
 export const MATCH_FORMAT = {
   BEST_OF_1: "best_of_1",
@@ -391,20 +395,18 @@ export function listRefereeMatchups(teamData) {
 }
 
 function resolvePlayerNames(playerIds = [], players = []) {
+  const index = buildRosterAthleteIndex(players);
   return playerIds.map((playerId) => {
     const id = String(playerId || "").trim();
     if (!id) return "—";
-    const player = (players || []).find(
-      (item) =>
-        String(item?.id || "") === id ||
-        String(item?.athleteId || "") === id ||
-        String(item?.pairingIdentityId || "") === id
-    );
-    if (!player) {
+    const resolved = resolveRosterMemberIdentity(id, index);
+    if (!resolved.ok || !resolved.athlete) {
       return `${id} (thiếu identity)`;
     }
-    const name = String(player.name || player.displayName || "").trim();
-    return name || `${id} (thiếu tên)`;
+    const name = String(
+      resolved.athlete.name || resolved.athlete.displayName || ""
+    ).trim();
+    return name || `${resolved.athleteId} (thiếu tên)`;
   });
 }
 
