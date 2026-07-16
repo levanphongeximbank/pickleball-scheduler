@@ -228,12 +228,19 @@ export async function prepareLivePrivatePairingOptions(input = {}) {
   const tenantId = scope.tenantId;
 
   if (!isPrivatePairingRuntimeEnabled(envSource)) {
+    // Runtime off: no private rules apply, but the canonical resolver still
+    // yields the active rule-set version for an empty rule set (never invented).
+    const skippedRulesVersion = resolveActivePrivatePairingRules({
+      rules: [],
+      context: { clubId, tournamentId, tenantId, competitionClass, contextTime },
+    }).ruleSetVersion;
     return {
       ok: true,
       skipped: true,
       scopeType: null,
       ruleSet: null,
       usedClubFallback: false,
+      rulesVersion: skippedRulesVersion,
       pairingOptions: {
         clubId,
         tournamentId,
@@ -242,6 +249,7 @@ export async function prepareLivePrivatePairingOptions(input = {}) {
         competitionClass,
         pairingConstraints,
         privatePairingRules: [],
+        rulesVersion: skippedRulesVersion,
         envSource,
         seed,
         allowedByPublishedRules,
@@ -357,12 +365,26 @@ export async function prepareLivePrivatePairingOptions(input = {}) {
     };
   }
 
+  // Prefer active rule-set version from mapDbRuleSetPayload when present;
+  // otherwise use resolveActivePrivatePairingRules (never invent a UI constant).
+  const ruleSetVersionRaw =
+    loaded.ruleSet?.version ??
+    loaded.ruleSet?.rule_set_version ??
+    loaded.ruleSet?.ruleSetVersion ??
+    null;
+  const rulesVersion = String(
+    ruleSetVersionRaw != null && String(ruleSetVersionRaw).trim() !== ""
+      ? ruleSetVersionRaw
+      : resolved.ruleSetVersion || ""
+  ).trim();
+
   return {
     ok: true,
     skipped: false,
     scopeType: loaded.scopeType,
     ruleSet: loaded.ruleSet,
     usedClubFallback: loaded.usedClubFallback === true,
+    rulesVersion,
     pairingOptions: {
       clubId,
       tournamentId,
@@ -371,6 +393,7 @@ export async function prepareLivePrivatePairingOptions(input = {}) {
       competitionClass,
       pairingConstraints,
       privatePairingRules: rulesWithScope,
+      rulesVersion,
       envSource,
       seed,
       allowedByPublishedRules,

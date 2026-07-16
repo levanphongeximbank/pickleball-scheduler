@@ -144,8 +144,8 @@ export default function TeamGroupDivisionPanel({
     }
   }
 
-  async function runGroupAssignment(options = {}) {
-    const prepared = await prepareLivePrivatePairingOptions({
+  async function resolveCanonicalPairing() {
+    return prepareLivePrivatePairingOptions({
       tournament: tournament || null,
       clubId: clubId || tournament?.clubId || null,
       clubFromQuery,
@@ -160,11 +160,17 @@ export default function TeamGroupDivisionPanel({
       competitionClass,
       allowedByPublishedRules: competitionClass === COMPETITION_CLASS.OFFICIAL ? false : undefined,
     });
+  }
+
+  async function runGroupAssignment(options = {}) {
+    const prepared = await resolveCanonicalPairing();
 
     if (!prepared.ok) {
       onError?.(prepared.error?.message || "Không chia được bảng theo quy tắc riêng.");
       return null;
     }
+
+    const rulesVersion = prepared.rulesVersion || prepared.pairingOptions?.rulesVersion || "";
 
     const {
       ok,
@@ -202,15 +208,16 @@ export default function TeamGroupDivisionPanel({
       onMessage?.(warnings.join(" "));
     }
 
-    return { next, nextBalance };
+    return { next, nextBalance, rulesVersion };
   }
 
-  async function buildPreviewPackage(nextTeamData, nextBalance, modeLabel) {
+  async function buildPreviewPackage(nextTeamData, nextBalance, modeLabel, rulesVersion) {
     return buildGroupDivisionPreviewPackage({
       nextTeamData,
       nextBalance,
       seedingMode,
       modeLabel,
+      rulesVersion,
     });
   }
 
@@ -242,7 +249,8 @@ export default function TeamGroupDivisionPanel({
       const packagePreview = await buildPreviewPackage(
         result.next,
         result.nextBalance,
-        modeLabel
+        modeLabel,
+        result.rulesVersion
       );
       setPreview(packagePreview);
       onMessage?.("Xem trước chia bảng — chưa ghi database. Bấm Xác nhận lưu để lưu.");
@@ -260,6 +268,15 @@ export default function TeamGroupDivisionPanel({
     if (dependent && !forceDestructive) {
       setPendingConfirm({ type: "replace" });
       setDestructiveOpen(true);
+      return;
+    }
+
+    // Preview and confirmed save must use the same canonical rules version.
+    const rulesVersion = String(preview.rulesVersion || "").trim();
+    if (!rulesVersion) {
+      onError?.(
+        "Thiếu rulesVersion cho lệnh pairing. Xem trước lại để lấy phiên bản quy tắc canonical trước khi lưu."
+      );
       return;
     }
 
@@ -287,8 +304,10 @@ export default function TeamGroupDivisionPanel({
           };
           const clearedOk = await persistTeamData(cleared, null, {
             confirmDestructive: true,
+            rulesVersion,
           });
           if (!clearedOk) {
+            // Keep preview visible — no fake success, no clear.
             return;
           }
         }
@@ -301,9 +320,10 @@ export default function TeamGroupDivisionPanel({
           matchups: dependent ? [] : next.matchups || teamData.matchups || [],
         },
         `Đã lưu chia bảng (${preview.rows.length} bảng).`,
-        { confirmDestructive: dependent }
+        { confirmDestructive: dependent, rulesVersion }
       );
       if (!ok) {
+        // Keep preview visible on RPC/read-back failure.
         return;
       }
       setPreview(null);
@@ -323,13 +343,26 @@ export default function TeamGroupDivisionPanel({
       setDestructiveOpen(true);
       return;
     }
+    const prepared = await resolveCanonicalPairing();
+    if (!prepared.ok) {
+      onError?.(prepared.error?.message || "Không xóa được chia bảng theo quy tắc riêng.");
+      return;
+    }
+    const rulesVersion = prepared.rulesVersion || prepared.pairingOptions?.rulesVersion || "";
     setPreview(null);
-    await persistTeamData(clearTeamGroups(teamData), "Đã xóa chia bảng.");
+    await persistTeamData(clearTeamGroups(teamData), "Đã xóa chia bảng.", { rulesVersion });
   }
 
   async function handleDestructiveConfirm() {
     if (pendingConfirm?.type === "clear") {
       setDestructiveOpen(false);
+      const prepared = await resolveCanonicalPairing();
+      if (!prepared.ok) {
+        onError?.(prepared.error?.message || "Không xóa được chia bảng theo quy tắc riêng.");
+        setPendingConfirm(null);
+        return;
+      }
+      const rulesVersion = prepared.rulesVersion || prepared.pairingOptions?.rulesVersion || "";
       setConfirmBusy(true);
       try {
         if ((teamData.matchups || []).length > 0) {
@@ -340,12 +373,15 @@ export default function TeamGroupDivisionPanel({
           };
           const okClear = await persistTeamData(clearedMatchups, null, {
             confirmDestructive: true,
+            rulesVersion,
           });
           if (!okClear) {
             return;
           }
         }
-        await persistTeamData(clearTeamGroups({ ...teamData, matchups: [] }), "Đã xóa chia bảng.");
+        await persistTeamData(clearTeamGroups({ ...teamData, matchups: [] }), "Đã xóa chia bảng.", {
+          rulesVersion,
+        });
         setPreview(null);
       } finally {
         setConfirmBusy(false);
@@ -526,6 +562,8 @@ export default function TeamGroupDivisionPanel({
               </Alert>
               <Typography variant="caption" color="text.secondary" component="div">
                 engineVersion: {preview.engineVersion}
+                <br />
+                rulesVersion: {preview.rulesVersion || "—"}
                 <br />
                 engineInputHash: {preview.engineInputHash}
                 <br />

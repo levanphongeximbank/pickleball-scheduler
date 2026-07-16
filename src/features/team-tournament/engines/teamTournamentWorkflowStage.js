@@ -47,6 +47,8 @@ const DRAFT_STATUS = Object.freeze({
   NO_TEAMS: "Nháp — chưa có đội",
   HAS_TEAMS: "Nháp — đã có đội",
   HAS_GROUPS: "Nháp — đã chia bảng",
+  HAS_DISCIPLINES: "Nháp — đã có nội dung",
+  HAS_MATCHUPS: "Nháp — đã tạo cặp đấu",
   HAS_SCHEDULE: "Nháp — đã tạo lịch",
   PUBLISHED: "Đã công bố",
 });
@@ -138,6 +140,7 @@ export function deriveWorkflowStage(teamData, tournament = null) {
 
 /**
  * Human-readable draft / publish status for BTC.
+ * Highest completed milestone — reconstructable from get_setup v7 domain rows.
  * @param {object} teamData
  * @param {object} [tournament]
  */
@@ -145,20 +148,59 @@ export function deriveDraftStatusLabel(teamData, tournament = null) {
   if (isSchedulePublished(teamData) || String(tournament?.status || "").toLowerCase() === "published") {
     return DRAFT_STATUS.PUBLISHED;
   }
+  if (isTournamentClosed(teamData, tournament)) {
+    return DRAFT_STATUS.PUBLISHED;
+  }
 
   const teams = teamData?.teams || [];
   const matchups = teamData?.matchups || [];
+  const disciplines = teamData?.disciplines || [];
+  const groupsReady = hasExplicitGroups(teamData);
 
-  if (hasScheduledMatchups(matchups) || matchups.length > 0) {
+  if (hasScheduledMatchups(matchups)) {
     return DRAFT_STATUS.HAS_SCHEDULE;
   }
-  if (hasExplicitGroups(teamData)) {
+  if (matchups.length > 0) {
+    return DRAFT_STATUS.HAS_MATCHUPS;
+  }
+  if (groupsReady && disciplines.length > 0) {
+    return DRAFT_STATUS.HAS_DISCIPLINES;
+  }
+  if (groupsReady) {
     return DRAFT_STATUS.HAS_GROUPS;
   }
   if (teams.length > 0) {
     return DRAFT_STATUS.HAS_TEAMS;
   }
   return DRAFT_STATUS.NO_TEAMS;
+}
+
+/**
+ * Canonical draft-state payload persisted by the tournament.save_draft mutation.
+ * Reconstructable from get_setup v7 — never a blob copy of domain data.
+ * @param {object} teamData
+ * @param {object} [tournament]
+ * @param {{ engineVersion?: string, rulesVersion?: string, setupVersion?: number }} [meta]
+ */
+export function buildTeamTournamentDraftState(teamData, tournament = null, meta = {}) {
+  const stage = deriveWorkflowStage(teamData, tournament);
+  const stageIndex = WORKFLOW_STAGE_ORDER.indexOf(stage);
+  const lastCompletedStage =
+    stageIndex > 0 ? WORKFLOW_STAGE_ORDER[stageIndex - 1] : null;
+  const next = deriveNextWorkflowAction(teamData, tournament);
+
+  return {
+    draftStatus: deriveDraftStatusLabel(teamData, tournament),
+    workflowStage: stage,
+    lastCompletedStage,
+    nextRequiredStage: stage,
+    nextActionId: next.actionId || null,
+    nextActionLabel: next.label || null,
+    engineVersion: meta.engineVersion || null,
+    rulesVersion: meta.rulesVersion || null,
+    setupVersion:
+      meta.setupVersion != null ? Number(meta.setupVersion) : null,
+  };
 }
 
 /**

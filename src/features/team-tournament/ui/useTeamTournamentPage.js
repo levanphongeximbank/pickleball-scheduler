@@ -335,6 +335,46 @@ export function useTeamTournamentPage({
     ]
   );
 
+  const saveDraft = useCallback(
+    async (options = {}) => {
+      if (!clubId || !tournamentId) {
+        return { ok: false, error: "Thiếu clubId hoặc tournamentId." };
+      }
+      const result = await orchestrator.saveDraft(clubId, tournamentId, {
+        teamData,
+        tournament,
+        aggregate,
+        expectedTournamentVersion: version,
+        ...options,
+      });
+      if (result.isVersionConflict) {
+        setVersionConflict(true);
+        await reload({ silent: true, schemaVersion: 7 });
+        return result;
+      }
+      if (result.ok) {
+        const loaded = result.tournament
+          ? result
+          : await reload({ silent: true, schemaVersion: 7 });
+        if (loaded.ok) {
+          applyLoadResult(loaded);
+        }
+      }
+      return result;
+    },
+    [
+      aggregate,
+      applyLoadResult,
+      clubId,
+      orchestrator,
+      reload,
+      teamData,
+      tournament,
+      tournamentId,
+      version,
+    ]
+  );
+
   const getVisibleLineups = useCallback(
     async (matchupId, readOptions = {}) => {
       if (!clubId || !tournamentId) {
@@ -427,6 +467,7 @@ export function useTeamTournamentPage({
       orchestrator.saveSubMatchDraft(clubId, tournamentId, payload, commandOptions),
     patchTeamData,
     persistSetupTeamData,
+    saveDraft,
     getVisibleLineups,
     getLineupOverrideOps: (matchupId, teamId) =>
       orchestrator.getLineupOverrideOps(clubId, tournamentId, { matchupId, teamId }),

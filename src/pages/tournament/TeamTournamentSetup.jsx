@@ -216,6 +216,7 @@ export default function TeamTournamentSetup() {
     runMutation,
     patchTeamData,
     persistSetupTeamData,
+    saveDraft,
     rosterSetupRevision,
     getLineupOverrideOps,
     connectionState,
@@ -401,15 +402,55 @@ export default function TeamTournamentSetup() {
       return;
     }
     setError("");
-    const reloadResult = await reload({ silent: true, reason: "SAVE_DRAFT" });
-    if (reloadResult?.ok === false) {
-      setError(reloadResult.error || "Không tải lại được bản nháp từ get_setup v7.");
+
+    if (typeof saveDraft !== "function") {
+      setError("Chức năng Lưu giải chưa khả dụng trên môi trường này.");
       return;
     }
+
+    let rulesVersion = "";
+    try {
+      const prepared = await prepareLivePrivatePairingOptions({
+        tournament: tournament || null,
+        clubId: effectiveClubId || activeClubId || null,
+        clubFromQuery,
+        activeClubId,
+        tournamentId: tournamentId || null,
+        tenantId:
+          tournament?.tenantId ||
+          clubPool.tenantId ||
+          tenantPool.tenantId ||
+          currentTenantId ||
+          null,
+        eventId: tournamentId ? `event-${tournamentId}` : null,
+        competitionClass: COMPETITION_CLASS.INTERNAL,
+      });
+      if (prepared.ok) {
+        rulesVersion = String(
+          prepared.rulesVersion || prepared.pairingOptions?.rulesVersion || ""
+        ).trim();
+      }
+    } catch (error) {
+      setError(
+        error?.message ||
+          "Không lấy được rulesVersion canonical — không lưu nháp giải."
+      );
+      return;
+    }
+
+    const result = await saveDraft({ rulesVersion });
+    if (!result.ok) {
+      setError(result.error || "Không lưu được bản nháp giải.");
+      return;
+    }
+
+    // Success only after get_setup v7 read-back verification.
     const draftLabel =
-      workflow.draftStatusLabel || "Nháp";
+      result.draftState?.draftStatus || workflow.draftStatusLabel || "Nháp";
     setMessage(
-      `Đã lưu nháp giải (${draftLabel}). Bạn có thể đóng tab và quay lại tiếp tục thiết lập sau — không công bố.`
+      result.replayed
+        ? `Bản nháp giải đã ở trạng thái mới nhất (${draftLabel}).`
+        : `Đã lưu nháp giải (${draftLabel}). Bạn có thể đóng tab và quay lại tiếp tục thiết lập sau — không công bố.`
     );
   }
 
@@ -534,6 +575,7 @@ export default function TeamTournamentSetup() {
     if (
       await saveTeamData(next, {
         confirmDestructive: td.matchups.length > 0,
+        rulesVersion: prepared.rulesVersion || prepared.pairingOptions?.rulesVersion || "",
       })
     ) {
       setScheduleDialogOpen(false);

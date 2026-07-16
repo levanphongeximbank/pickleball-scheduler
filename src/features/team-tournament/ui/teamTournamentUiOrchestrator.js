@@ -5,6 +5,8 @@ import {
 } from "../repositories/teamTournamentRepositoryFactory.js";
 import { REPOSITORY_ERROR_CODES, REPOSITORY_REALTIME_FALLBACK } from "../repositories/teamTournamentRepositoryTypes.js";
 import { attachTeamDataToTournament, getTeamData } from "../engines/teamTournamentEngine.js";
+import { buildTeamTournamentDraftState } from "../engines/teamTournamentWorkflowStage.js";
+import { DEFAULT_ENGINE_VERSION } from "../canonical/teamTournamentMutationEnvelope.js";
 import { TOURNAMENT_MODE } from "../../../models/tournament/constants.js";
 import { mirrorAggregateToBlob } from "./teamTournamentBlobMirror.js";
 import {
@@ -453,6 +455,7 @@ export function createTeamTournamentUiOrchestrator(options = {}) {
           rosterRules: nextTeamData.settings?.rosterRules || aggregate.rosterRules,
           engineInput: inferred.engineInput,
           engineOutput: inferred.engineOutput,
+          rules: inferred.rulesVersion ? { rulesVersion: inferred.rulesVersion } : {},
           expectedTournamentVersion,
           generatedAt: options.generatedAt,
         });
@@ -488,6 +491,7 @@ export function createTeamTournamentUiOrchestrator(options = {}) {
         reloadAcknowledged: options.reloadAcknowledged,
       });
       const uiResult = mapRepositoryResultToUi(result);
+      // Success only after get_setup v7 read-back verification.
       if (uiResult.ok && result.reloadResult?.ok) {
         return {
           ...uiResult,
@@ -496,6 +500,138 @@ export function createTeamTournamentUiOrchestrator(options = {}) {
           teamData: result.reloadResult.teamData,
           aggregate: result.reloadResult.aggregate,
         };
+      }
+      if (uiResult.ok && !result.reloadResult?.ok) {
+        return mapRepositoryResultToUi({
+          ok: false,
+          code: "READBACK_FAILED",
+          error:
+            result.reloadResult?.error ||
+            "RPC thành công nhưng get_setup v7 không đọc lại được. Không coi là đã lưu.",
+        });
+      }
+      return uiResult;
+    },
+
+    /**
+     * Real "Lưu giải" draft mutation — tournament.save_draft.
+     * Persists canonical draft/workflow state in normalized settings (not a blob),
+     * bumps version once, creates one snapshot, then reloads through get_setup v7.
+     */
+    async saveDraft(clubId, tournamentId, options = {}) {
+      const isCloud =
+        mode === TEAM_TOURNAMENT_DATA_MODES.CLOUD_PRIMARY ||
+        mode === TEAM_TOURNAMENT_DATA_MODES.CLOUD_ONLY;
+      if (!isCloud) {
+        return mapRepositoryResultToUi({
+          ok: false,
+          code: REPOSITORY_ERROR_CODES.NOT_IMPLEMENTED,
+          error: "Lưu giải cloud chỉ khả dụng trên cloud repository.",
+        });
+      }
+      if (!isSetupMutationFoundationEnabled(options.envSource)) {
+        return mapRepositoryResultToUi({
+          ok: false,
+          code: "GATE_OFF",
+          error:
+            "Setup mutation v7 đang tắt. Bật VITE_TEAM_TOURNAMENT_SETUP_MUTATION_V7 sau khi được Staging-certified.",
+        });
+      }
+
+      const current =
+        options.aggregate ||
+        (await repo.getTournament(clubId, tournamentId, { schemaVersion: 7 }));
+      const aggregate = current?.data || current?.aggregate || current;
+      if (!aggregate?.id && !aggregate?.teamData) {
+        return mapRepositoryResultToUi(current);
+      }
+
+      const teamData = options.teamData || aggregate.teamData || {};
+      const tournamentView =
+        options.tournament || aggregateToTournamentView(aggregate) || { id: tournamentId };
+      const expectedTournamentVersion = Number(
+        options.expectedTournamentVersion ?? aggregate.version ?? 1
+      );
+      const rulesVersion = options.rulesVersion || aggregate.rulesVersion || "";
+      const engineVersion = options.engineVersion || DEFAULT_ENGINE_VERSION;
+
+      const draftState = buildTeamTournamentDraftState(teamData, tournamentView, {
+        engineVersion,
+        rulesVersion,
+        setupVersion: expectedTournamentVersion,
+      });
+
+      const matchups = teamData.matchups || [];
+      let snapshot;
+      try {
+        snapshot = await buildSetupMutationSnapshotPackageAsync({
+          tournament: tournamentView,
+          teams: teamData.teams || aggregate.teams || [],
+          disciplines: teamData.disciplines || [],
+          groups: teamData.groups || [],
+          matchups,
+          subMatches: matchups.flatMap((matchup) => matchup.subMatches || []),
+          schedule: teamData.schedule || matchups,
+          schedulePublish: teamData.schedulePublish || aggregate.schedulePublish || {},
+          settings: teamData.settings || aggregate.settings || {},
+          formatPreset: teamData.settings?.formatPreset || aggregate.formatPreset,
+          rosterRules: teamData.settings?.rosterRules || aggregate.rosterRules,
+          engineInput: { command: "tournament.save_draft", stage: draftState.workflowStage },
+          engineOutput: draftState,
+          rules: rulesVersion ? { rulesVersion } : {},
+          expectedTournamentVersion,
+          generatedAt: options.generatedAt,
+        });
+      } catch (error) {
+        return mapRepositoryResultToUi({
+          ok: false,
+          code: SETUP_MUTATION_CODES.HASH_RUNTIME_ERROR,
+          error: error?.message || "Không tính được hash snapshot lưu giải.",
+        });
+      }
+
+      const result = await runSetupMutation({
+        method: "tournament.save_draft",
+        commandName: "tournament.save_draft",
+        tournamentId,
+        expectedTournamentVersion,
+        latestTournamentVersion: expectedTournamentVersion,
+        payload: attachSnapshotPackageToPayload({ draftState }, snapshot),
+        engineInput: { command: "tournament.save_draft", stage: draftState.workflowStage },
+        engineOutput: draftState,
+        rulesVersion,
+        confirmed: true,
+        repository: repo,
+        dataMode: mode,
+        envSource: options.envSource,
+        reload: (reloadOptions) => this.loadTournament(clubId, tournamentId, reloadOptions),
+        driftDetected: options.driftDetected,
+        diagnostic: options.diagnostic,
+        reloadAcknowledged: options.reloadAcknowledged,
+        idempotencyKey: options.idempotencyKey,
+      });
+
+      const uiResult = mapRepositoryResultToUi(result);
+      // Success only after get_setup v7 read-back verification.
+      if (uiResult.ok && result.reloadResult?.ok) {
+        return {
+          ...uiResult,
+          replayed: result.replayed === true,
+          draftState,
+          version: result.version ?? result.reloadResult.version,
+          tournament: result.reloadResult.tournament,
+          teamData: result.reloadResult.teamData,
+          aggregate: result.reloadResult.aggregate,
+        };
+      }
+      if (uiResult.ok && !result.reloadResult?.ok) {
+        return mapRepositoryResultToUi({
+          ok: false,
+          code: "READBACK_FAILED",
+          error:
+            result.reloadResult?.error ||
+            "RPC lưu nháp thành công nhưng get_setup v7 không đọc lại được. Không coi là đã lưu.",
+        });
       }
       return uiResult;
     },

@@ -153,11 +153,17 @@ test("6. confirmed group save infers groups.replace (version +1 path)", () => {
 test("7. draft save preserves teams/groups in derived status", () => {
   let teamData = withEightTeams();
   teamData = assignTeamsToGroupsBySizes(teamData, [4, 4]);
-  assert.equal(deriveDraftStatusLabel(teamData), "Nháp — đã chia bảng");
-  // Default disciplines already exist on initializeTeamTournamentData → next is matchups.
+  // Default disciplines already exist on initializeTeamTournamentData →
+  // completed milestone includes nội dung; next stage is matchups.
+  assert.equal(deriveDraftStatusLabel(teamData), "Nháp — đã có nội dung");
   assert.equal(deriveWorkflowStage(teamData), WORKFLOW_STAGE.MATCHUPS);
   assert.equal((teamData.teams || []).length, 8);
   assert.equal((teamData.groups || []).length, 2);
+
+  const groupsOnly = { ...teamData, disciplines: [] };
+  assert.equal(deriveDraftStatusLabel(groupsOnly), "Nháp — đã chia bảng");
+  assert.equal(deriveWorkflowStage(groupsOnly), WORKFLOW_STAGE.DISCIPLINES);
+  assert.equal(deriveNextWorkflowAction(groupsOnly).label, "Cấu hình nội dung");
 });
 
 test("8. reopening resumes at correct step", () => {
@@ -210,9 +216,15 @@ test("9. saved draft survives reload projection (F5 / new session)", () => {
   };
   const workflow = computeTeamTournamentWorkflow(reloaded);
   assert.equal(workflow.stage, WORKFLOW_STAGE.MATCHUPS);
-  assert.equal(workflow.draftStatusLabel, "Nháp — đã chia bảng");
+  assert.equal(workflow.draftStatusLabel, "Nháp — đã có nội dung");
   assert.equal(reloaded.groups.length, 2);
   assert.equal(reloaded.teams.length, 8);
+
+  const groupsOnlyReload = { ...reloaded, disciplines: [] };
+  const groupsWorkflow = computeTeamTournamentWorkflow(groupsOnlyReload);
+  assert.equal(groupsWorkflow.stage, WORKFLOW_STAGE.DISCIPLINES);
+  assert.equal(groupsWorkflow.draftStatusLabel, "Nháp — đã chia bảng");
+  assert.match(groupsWorkflow.nextAction.label, /nội dung/i);
 });
 
 test("10. changing groups after schedule requires destructive confirmation flag", () => {

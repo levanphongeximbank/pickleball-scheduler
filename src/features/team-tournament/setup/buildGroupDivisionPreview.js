@@ -58,6 +58,7 @@ export async function buildGroupDivisionPreviewPackage({
   nextBalance = null,
   seedingMode = "",
   modeLabel = "preview",
+  rulesVersion = "",
 } = {}) {
   const diagnostics = buildGroupDivisionDiagnostics(
     nextTeamData,
@@ -91,6 +92,7 @@ export async function buildGroupDivisionPreviewPackage({
     engineVersion: DEFAULT_ENGINE_VERSION,
     engineInputHash,
     engineOutputHash,
+    rulesVersion,
     modeLabel,
     written: false,
   };
