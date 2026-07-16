@@ -29,10 +29,9 @@ import { useTenant } from "../../context/TenantContext.jsx";
 import { PERMISSIONS } from "../../auth/permissions.js";
 import { assertTournamentAccess } from "../../domain/tournamentService.js";
 import {
-  mergeLegacyPlayerPools,
-  useClubPlayerPool,
-  useTenantPlayerPool,
-} from "../../features/club/hooks/useClubPlayerPool.js";
+  useClubPairingCandidatePool,
+  useTenantPairingCandidatePool,
+} from "../../features/pairing-candidates/index.js";
 import { resolveTenantIdForClub } from "../../features/tenant/guards/tenantGuard.js";
 import {
   buildRoundRobinMatchups,
@@ -284,17 +283,27 @@ export default function TeamTournamentSetup() {
     [tournament?.tenantId, effectiveClubId, activeClubId, currentTenantId]
   );
   const teamDataView = teamData || { teams: [], disciplines: [], matchups: [], standings: [] };
-  const { players } = useClubPlayerPool(effectiveClubId || activeClubId, {
+  const {
+    players,
+    error: clubPlayersError,
+  } = useClubPairingCandidatePool(effectiveClubId || activeClubId, {
     tenantId,
     revision: dataVersion,
   });
-  const { players: allTenantPlayers } = useTenantPlayerPool(tenantId, {
+  const {
+    players: allTenantPlayers,
+    error: tenantPlayersError,
+  } = useTenantPairingCandidatePool(tenantId, {
     revision: dataVersion,
   });
-  const lineupPlayers = useMemo(
-    () => mergeLegacyPlayerPools(allTenantPlayers, players),
-    [allTenantPlayers, players]
-  );
+  const playersLoadError = clubPlayersError || tenantPlayersError;
+  const lineupPlayers = useMemo(() => {
+    const pool = new Map();
+    [...allTenantPlayers, ...players].forEach((player) => {
+      pool.set(String(player.id), player);
+    });
+    return [...pool.values()];
+  }, [allTenantPlayers, players]);
   const td = teamData || teamDataView;
 
   const standings = useMemo(() => getStandingsTable(td), [td]);
@@ -925,6 +934,11 @@ export default function TeamTournamentSetup() {
             onReconnect={reconnectRealtime}
           />
           {hubBanner ? <Alert severity="info" sx={{ mb: 2 }}>{hubBanner}</Alert> : null}
+          {playersLoadError ? (
+            <Alert severity="error" sx={{ mb: 2 }}>
+              {playersLoadError.message}
+            </Alert>
+          ) : null}
           {message ? <Alert severity="success" sx={{ mb: 2 }} onClose={() => setMessage("")}>{message}</Alert> : null}
           {error ? <Alert severity="error" sx={{ mb: 2 }} onClose={() => setError("")}>{error}</Alert> : null}
         </>

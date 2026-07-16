@@ -1,11 +1,8 @@
 import { useEffect, useMemo, useState } from "react";
-import { listPlayersForClubAware } from "../../features/club/repositories/canonicalPlayerPickerAdapter.js";
 import {
-  loadLegacyClubPlayersSafe,
-  resolveClubPlayerPoolFromAwareResult,
-  resolveFlowPlayersWithClubFallback,
-} from "../../features/club/hooks/useClubPlayerPool.js";
-import { loadSelectPlayersCandidatePool } from "../../features/pairing-candidates/index.js";
+  loadSelectPlayersCandidatePool,
+  loadTeamBuilderClubCandidatePool,
+} from "../../features/pairing-candidates/index.js";
 import { selectHostClubAthletesForTeamMlp } from "../../features/team-tournament/ui/selectHostClubAthletesForTeamMlp.js";
 import {
   Alert,
@@ -117,31 +114,28 @@ function TeamCard({
   );
 
   const [filteredClubPlayers, setFilteredClubPlayers] = useState([]);
+  const [filteredClubError, setFilteredClubError] = useState(null);
 
   useEffect(() => {
     let cancelled = false;
     if (sourceClubFilter === ALL_CLUBS_FILTER || !sourceClubFilter) {
       setFilteredClubPlayers([]);
+      setFilteredClubError(null);
       return undefined;
     }
-    const seed = loadLegacyClubPlayersSafe(sourceClubFilter);
-    if (seed.length) {
-      setFilteredClubPlayers(seed);
-    }
-    listPlayersForClubAware(sourceClubFilter)
-      .then((result) => {
-        if (!cancelled) {
-          const resolved = resolveClubPlayerPoolFromAwareResult(result, sourceClubFilter);
-          setFilteredClubPlayers(resolved.players);
-        }
-      })
-      .catch(() => {
-        if (!cancelled) {
-          setFilteredClubPlayers(
-            seed.length ? seed : loadLegacyClubPlayersSafe(sourceClubFilter)
-          );
-        }
-      });
+    loadTeamBuilderClubCandidatePool(sourceClubFilter).then((result) => {
+      if (cancelled) return;
+      if (!result.ok) {
+        setFilteredClubPlayers([]);
+        setFilteredClubError(
+          result.message ||
+            "Không tải được danh sách VĐV CLB. Không dùng roster blob."
+        );
+        return;
+      }
+      setFilteredClubPlayers(result.players || []);
+      setFilteredClubError(null);
+    });
     return () => {
       cancelled = true;
     };
@@ -149,7 +143,7 @@ function TeamCard({
 
   const pickerPlayers = useMemo(() => {
     if (sourceClubFilter === ALL_CLUBS_FILTER) {
-      return resolveFlowPlayersWithClubFallback(allTenantPlayers, clubPlayers);
+      return allTenantPlayers.length > 0 ? allTenantPlayers : clubPlayers;
     }
     return filteredClubPlayers;
   }, [sourceClubFilter, allTenantPlayers, clubPlayers, filteredClubPlayers]);
@@ -296,6 +290,10 @@ function TeamCard({
             {warning}
           </Alert>
         ))}
+
+        {filteredClubError ? (
+          <Alert severity="error">{filteredClubError}</Alert>
+        ) : null}
 
         {canManage ? (
           <>

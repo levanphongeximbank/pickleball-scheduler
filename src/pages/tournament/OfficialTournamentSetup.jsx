@@ -24,10 +24,9 @@ import {
 import { useClub } from "../../context/ClubContext.jsx";
 import { loadCourtsForClub } from "../../domain/clubStorage.js";
 import {
-  resolveFlowPlayersWithClubFallback,
-  useClubPlayerPool,
-  useTenantPlayerPool,
-} from "../../features/club/hooks/useClubPlayerPool.js";
+  useClubPairingCandidatePool,
+  useTenantPairingCandidatePool,
+} from "../../features/pairing-candidates/index.js";
 import TournamentVprPanel from "../../features/vpr-ranking/components/TournamentVprPanel.jsx";
 import {
   getTournament,
@@ -223,45 +222,22 @@ export default function OfficialTournamentSetup() {
 
   const {
     players: allTenantPlayers,
-    warnings: tenantPoolWarnings,
-    source: tenantPoolSource,
-  } = useTenantPlayerPool(tenantId, {
+    error: tenantPlayersError,
+  } = useTenantPairingCandidatePool(tenantId, {
     revision: localRevision,
   });
-  const { players, warnings: clubPoolWarnings } = useClubPlayerPool(activeClubId, {
+  const {
+    players,
+    error: clubPlayersError,
+  } = useClubPairingCandidatePool(activeClubId, {
     tenantId,
     revision: localRevision,
   });
+  const playersLoadError = clubPlayersError || tenantPlayersError;
 
   const isAiBalance = officialMode === OFFICIAL_MODE.AI_BALANCE;
 
-  // Tenant-first (Official open/AI multi-CLB); host-club fallback = /players parity.
-  const flowPlayers = useMemo(
-    () => resolveFlowPlayersWithClubFallback(allTenantPlayers, players),
-    [allTenantPlayers, players]
-  );
-
-  const playerPoolWarnings = useMemo(() => {
-    const notes = [...(tenantPoolWarnings || []), ...(clubPoolWarnings || [])];
-    if (
-      (!allTenantPlayers || allTenantPlayers.length === 0) &&
-      players.length > 0 &&
-      tenantPoolSource !== "legacy_fallback"
-    ) {
-      notes.push({
-        code: "PLAYER_POOL_HOST_CLUB_FALLBACK",
-        message:
-          "Tenant pool trống — dùng danh sách VĐV CLB chủ nhà (cùng nguồn với /players).",
-      });
-    }
-    return notes;
-  }, [
-    allTenantPlayers,
-    clubPoolWarnings,
-    players.length,
-    tenantPoolSource,
-    tenantPoolWarnings,
-  ]);
+  const flowPlayers = allTenantPlayers;
 
   const selectedPlayers = useMemo(() => {
     const pool = new Map(flowPlayers.map((player) => [String(player.id), player]));
@@ -1521,6 +1497,11 @@ export default function OfficialTournamentSetup() {
               {message}
             </Alert>
           )}
+          {playersLoadError && (
+            <Alert severity="error" sx={{ mb: 2 }}>
+              {playersLoadError.message}
+            </Alert>
+          )}
           {error && (
             <Alert severity="error" sx={{ mb: 2 }} onClose={() => setError(null)}>
               {error}
@@ -1605,14 +1586,6 @@ export default function OfficialTournamentSetup() {
         />
       ) : (
       <>
-      {playerPoolWarnings.length > 0 ? (
-        <Alert severity="warning" sx={{ mb: 2 }}>
-          {playerPoolWarnings
-            .map((item) => item.message || item.code)
-            .filter(Boolean)
-            .join(" · ")}
-        </Alert>
-      ) : null}
       <Grid container spacing={2} sx={{ mb: 2 }}>
         <Grid size={{ xs: 12 }}>
           <RefereeRosterPanel roster={refereeRoster} onChange={handleRefereeRosterChange} />

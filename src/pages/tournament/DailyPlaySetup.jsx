@@ -1,6 +1,6 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Link as RouterLink, useNavigate, useParams } from "react-router-dom";
-import { useClubPlayerPool } from "../../features/club/hooks/useClubPlayerPool.js";
+import { useClubPairingCandidatePool } from "../../features/pairing-candidates/index.js";
 
 import {
   Alert,
@@ -107,10 +107,15 @@ export default function DailyPlaySetup() {
 
   const {
     players,
-    loading: playersLoading,
-    warnings: playerPoolWarnings,
-    source: playerPoolSource,
-  } = useClubPlayerPool(activeClubId, { revision: localRevision });
+    error: playersLoadError,
+    emptyMessage: playersEmptyMessage,
+  } = useClubPairingCandidatePool(activeClubId, { revision: localRevision });
+
+  useEffect(() => {
+    if (playersLoadError?.message) {
+      setError(playersLoadError.message);
+    }
+  }, [playersLoadError]);
 
   const courts = useMemo(
     () => loadCourtsForClub(activeClubId),
@@ -403,6 +408,11 @@ export default function DailyPlaySetup() {
               {error}
             </Alert>
           )}
+          {!error && playersEmptyMessage && (
+            <Alert severity="warning" sx={{ mb: 2 }}>
+              {playersEmptyMessage}
+            </Alert>
+          )}
         </>
       }
     >
@@ -464,23 +474,8 @@ export default function DailyPlaySetup() {
         <Grid size={{ xs: 12, lg: 5 }}>
           <Paper variant="outlined" sx={{ p: 1.5 }}>
             <Typography variant="subtitle1" fontWeight="bold" sx={{ mb: 1 }}>
-              Check-in hôm nay ({dailySettings.checkedInPlayerIds.length}/{players.length}
-              {playersLoading ? " · đang tải…" : ""})
+              Check-in hôm nay ({dailySettings.checkedInPlayerIds.length}/{players.length})
             </Typography>
-            {playerPoolWarnings?.length > 0 && (
-              <Alert severity="warning" sx={{ mb: 1 }}>
-                {playerPoolWarnings
-                  .map((item) => item.message || item.code || String(item))
-                  .join(" · ")}
-                {playerPoolSource ? ` (${playerPoolSource})` : ""}
-              </Alert>
-            )}
-            {!playersLoading && players.length === 0 && (
-              <Alert severity="info" sx={{ mb: 1 }}>
-                Chưa có VĐV trong pool CLB này. Mở trang Người chơi để thêm VĐV, hoặc kiểm
-                tra đúng CLB đang chọn.
-              </Alert>
-            )}
             <Stack direction="row" spacing={1} sx={{ mb: 1 }}>
               <Button
                 size="small"
