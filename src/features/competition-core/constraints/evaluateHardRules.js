@@ -2,6 +2,15 @@ import { COMPETITION_CONSTRAINT_TYPE } from "../constants/constraintType.js";
 import { CONSTRAINT_SEVERITY } from "../constants/constraintSeverity.js";
 import { createEngineExplanation } from "../contracts/engineContracts.js";
 import { RULE_ERROR_CODE } from "./ruleConstants.js";
+import {
+  OPPONENT_GEOMETRY_TYPES,
+  GROUP_GEOMETRY_TYPES,
+  SUPPORTED_HARD_CONSTRAINT_TYPES,
+} from "./constraintSupport.js";
+
+const HARD_SUPPORT_SET = new Set(SUPPORTED_HARD_CONSTRAINT_TYPES);
+const OPPONENT_SET = new Set(OPPONENT_GEOMETRY_TYPES);
+const GROUP_SET = new Set(GROUP_GEOMETRY_TYPES);
 
 /**
  * @typedef {import('../types/index.js').ConstraintDefinition} ConstraintDefinition
@@ -125,6 +134,35 @@ function evaluateGroupAnchorTargetRule(constraint, groups = []) {
   return violations;
 }
 
+function areOpponentsOnTeams(playerA, playerB, teams) {
+  if (!Array.isArray(teams) || teams.length < 2) {
+    return false;
+  }
+  const indexA = findTeamIndexForPlayer(teams, playerA);
+  const indexB = findTeamIndexForPlayer(teams, playerB);
+  return indexA >= 0 && indexB >= 0 && indexA !== indexB;
+}
+
+function missingContextViolation(constraint, reason) {
+  return createEngineExplanation({
+    code: RULE_ERROR_CODE.RULE_NOT_APPLICABLE,
+    message: `Constraint ${constraint.type} cannot be evaluated: ${reason}.`,
+    details: {
+      constraintId: constraint.id,
+      type: constraint.type,
+      missingContext: reason,
+    },
+  });
+}
+
+function unsupportedHardViolation(constraint) {
+  return createEngineExplanation({
+    code: RULE_ERROR_CODE.UNSUPPORTED_CONSTRAINT_EVALUATION,
+    message: `Hard constraint type "${constraint.type}" is not evaluated by Competition Core.`,
+    details: { constraintId: constraint.id, type: constraint.type },
+  });
+}
+
 function evaluatePartnerHardRule(constraint, teams) {
   const { anchor, targets } = getPartnerParams(constraint);
   if (!anchor || !targets.length) {
@@ -137,10 +175,18 @@ function evaluatePartnerHardRule(constraint, teams) {
   targets.forEach((target) => {
     const sameTeam = shareTeam(anchor, target, teams);
 
-    if (constraint.type === COMPETITION_CONSTRAINT_TYPE.MUST_PARTNER && !sameTeam) {
+    const mustTogether =
+      constraint.type === COMPETITION_CONSTRAINT_TYPE.MUST_PARTNER ||
+      constraint.type === COMPETITION_CONSTRAINT_TYPE.PREFER_PARTNER ||
+      constraint.type === COMPETITION_CONSTRAINT_TYPE.SAME_TEAM;
+
+    if (mustTogether && !sameTeam) {
       violations.push(
         createEngineExplanation({
-          code: RULE_ERROR_CODE.MUST_PARTNER_UNSATISFIED,
+          code:
+            constraint.type === COMPETITION_CONSTRAINT_TYPE.SAME_TEAM
+              ? RULE_ERROR_CODE.SAME_TEAM_VIOLATED
+              : RULE_ERROR_CODE.MUST_PARTNER_UNSATISFIED,
           message: `${anchor} and ${target} must share a team.`,
           details: { constraintId: constraint.id, anchor, target },
         })
@@ -149,15 +195,19 @@ function evaluatePartnerHardRule(constraint, teams) {
 
     const mustBeApart =
       constraint.type === COMPETITION_CONSTRAINT_TYPE.MUST_NOT_PARTNER ||
-      constraint.type === COMPETITION_CONSTRAINT_TYPE.AVOID_PARTNER;
+      constraint.type === COMPETITION_CONSTRAINT_TYPE.AVOID_PARTNER ||
+      constraint.type === COMPETITION_CONSTRAINT_TYPE.DIFFERENT_TEAM;
 
     if (mustBeApart && sameTeam) {
+      const code =
+        constraint.type === COMPETITION_CONSTRAINT_TYPE.MUST_NOT_PARTNER
+          ? RULE_ERROR_CODE.MUST_NOT_PARTNER_VIOLATED
+          : constraint.type === COMPETITION_CONSTRAINT_TYPE.DIFFERENT_TEAM
+            ? RULE_ERROR_CODE.DIFFERENT_TEAM_VIOLATED
+            : RULE_ERROR_CODE.AVOID_PARTNER_VIOLATED;
       violations.push(
         createEngineExplanation({
-          code:
-            constraint.type === COMPETITION_CONSTRAINT_TYPE.MUST_NOT_PARTNER
-              ? RULE_ERROR_CODE.MUST_NOT_PARTNER_VIOLATED
-              : RULE_ERROR_CODE.AVOID_PARTNER_VIOLATED,
+          code,
           message: `${anchor} and ${target} must not share a team.`,
           details: { constraintId: constraint.id, anchor, target },
         })
@@ -165,6 +215,213 @@ function evaluatePartnerHardRule(constraint, teams) {
     }
   });
 
+  return violations;
+}
+
+function evaluateOpponentHardRule(constraint, teams) {
+  const { anchor, targets } = getPartnerParams(constraint);
+  if (!anchor || !targets.length) {
+    return [];
+  }
+  if (!Array.isArray(teams) || teams.length < 2) {
+    return [missingContextViolation(constraint, "missing_opponent_geometry")];
+  }
+
+  /** @type {EngineExplanation[]} */
+  const violations = [];
+  targets.forEach((target) => {
+    const opposing = areOpponentsOnTeams(anchor, target, teams);
+    if (
+      (constraint.type === COMPETITION_CONSTRAINT_TYPE.MUST_OPPONENT ||
+        constraint.type === COMPETITION_CONSTRAINT_TYPE.PREFER_OPPONENT) &&
+      !opposing
+    ) {
+      violations.push(
+        createEngineExplanation({
+          code: RULE_ERROR_CODE.MUST_OPPONENT_UNSATISFIED,
+          message: `${anchor} and ${target} must be opponents.`,
+          details: { constraintId: constraint.id, anchor, target },
+        })
+      );
+    }
+    if (
+      (constraint.type === COMPETITION_CONSTRAINT_TYPE.MUST_NOT_OPPONENT ||
+        constraint.type === COMPETITION_CONSTRAINT_TYPE.AVOID_OPPONENT) &&
+      opposing
+    ) {
+      violations.push(
+        createEngineExplanation({
+          code:
+            constraint.type === COMPETITION_CONSTRAINT_TYPE.MUST_NOT_OPPONENT
+              ? RULE_ERROR_CODE.MUST_NOT_OPPONENT_VIOLATED
+              : RULE_ERROR_CODE.AVOID_OPPONENT_VIOLATED,
+          message: `${anchor} and ${target} must not be opponents.`,
+          details: { constraintId: constraint.id, anchor, target },
+        })
+      );
+    }
+  });
+  return violations;
+}
+
+function evaluateGroupMembershipHardRule(constraint, groups) {
+  const { anchor, targets } = getPartnerParams(constraint);
+  if (!anchor || !targets.length) {
+    return [];
+  }
+  if (!Array.isArray(groups) || !groups.length) {
+    return [missingContextViolation(constraint, "missing_groups_context")];
+  }
+
+  /** @type {EngineExplanation[]} */
+  const violations = [];
+  targets.forEach((target) => {
+    const together = shareGroup(anchor, target, groups);
+    if (constraint.type === COMPETITION_CONSTRAINT_TYPE.SAME_GROUP && !together) {
+      violations.push(
+        createEngineExplanation({
+          code: RULE_ERROR_CODE.SAME_GROUP_VIOLATED,
+          message: `${anchor} and ${target} must share a group.`,
+          details: { constraintId: constraint.id, anchor, target },
+        })
+      );
+    }
+    if (constraint.type === COMPETITION_CONSTRAINT_TYPE.DIFFERENT_GROUP && together) {
+      violations.push(
+        createEngineExplanation({
+          code: RULE_ERROR_CODE.DIFFERENT_GROUP_VIOLATED,
+          message: `${anchor} and ${target} must not share a group.`,
+          details: { constraintId: constraint.id, anchor, target },
+        })
+      );
+    }
+  });
+  return violations;
+}
+
+function getRepeatCount(store, playerA, playerB) {
+  const a = String(playerA);
+  const b = String(playerB);
+  return Number(store?.[a]?.[b] ?? store?.[b]?.[a] ?? 0);
+}
+
+function evaluateRepeatHardRule(constraint, context, teams) {
+  const { anchor, targets } = getPartnerParams(constraint);
+  const isPartner =
+    constraint.type === COMPETITION_CONSTRAINT_TYPE.MAX_PARTNER_REPEAT ||
+    constraint.type === COMPETITION_CONSTRAINT_TYPE.MIN_PARTNER_REPEAT;
+  const store = isPartner
+    ? context.partnerRepeatCounts
+    : context.opponentRepeatCounts;
+  const limitKey =
+    constraint.type === COMPETITION_CONSTRAINT_TYPE.MAX_PARTNER_REPEAT ||
+    constraint.type === COMPETITION_CONSTRAINT_TYPE.MAX_OPPONENT_REPEAT
+      ? "max"
+      : "min";
+  const limit = Number(
+    constraint.params?.[limitKey === "max" ? "maxRepeat" : "minRepeat"] ??
+      constraint.params?.maxCount ??
+      constraint.params?.minCount ??
+      1
+  );
+
+  /** @type {EngineExplanation[]} */
+  const violations = [];
+
+  if (isPartner) {
+    const pairs = [];
+    if (anchor && targets.length) {
+      targets.forEach((target) => pairs.push([anchor, target]));
+    } else {
+      (teams || []).forEach((team) => {
+        for (let i = 0; i < team.length; i += 1) {
+          for (let j = i + 1; j < team.length; j += 1) {
+            pairs.push([team[i], team[j]]);
+          }
+        }
+      });
+    }
+    pairs.forEach(([a, b]) => {
+      const count = getRepeatCount(store, a, b);
+      if (limitKey === "max" && count > limit) {
+        violations.push(
+          createEngineExplanation({
+            code: RULE_ERROR_CODE.MAX_PARTNER_REPEAT_EXCEEDED,
+            message: `${a} and ${b} exceeded partner repeat limit.`,
+            details: { constraintId: constraint.id, count, limit },
+          })
+        );
+      }
+      if (limitKey === "min" && count < limit) {
+        violations.push(
+          createEngineExplanation({
+            code: RULE_ERROR_CODE.MIN_PARTNER_REPEAT_UNSATISFIED,
+            message: `${a} and ${b} below minimum partner repeat.`,
+            details: { constraintId: constraint.id, count, limit },
+          })
+        );
+      }
+    });
+    return violations;
+  }
+
+  if (!Array.isArray(teams) || teams.length < 2) {
+    return [missingContextViolation(constraint, "missing_opponent_geometry")];
+  }
+  const pairs = [];
+  if (anchor && targets.length) {
+    targets.forEach((target) => pairs.push([anchor, target]));
+  } else {
+    teams[0].forEach((a) => {
+      teams[1].forEach((b) => pairs.push([a, b]));
+    });
+  }
+  pairs.forEach(([a, b]) => {
+    const count = getRepeatCount(store, a, b);
+    if (limitKey === "max" && count > limit) {
+      violations.push(
+        createEngineExplanation({
+          code: RULE_ERROR_CODE.MAX_OPPONENT_REPEAT_EXCEEDED,
+          message: `${a} and ${b} exceeded opponent repeat limit.`,
+          details: { constraintId: constraint.id, count, limit },
+        })
+      );
+    }
+    if (limitKey === "min" && count < limit) {
+      violations.push(
+        createEngineExplanation({
+          code: RULE_ERROR_CODE.MIN_OPPONENT_REPEAT_UNSATISFIED,
+          message: `${a} and ${b} below minimum opponent repeat.`,
+          details: { constraintId: constraint.id, count, limit },
+        })
+      );
+    }
+  });
+  return violations;
+}
+
+function evaluateMinRestHardRule(constraint, context, teams) {
+  const minMinutes = Number(constraint.params?.minMinutes ?? 30);
+  const evaluatedAt = Date.parse(String(context.evaluatedAt || "")) || Date.now();
+  const playersById = context.playersById || {};
+  /** @type {EngineExplanation[]} */
+  const violations = [];
+  (teams || []).flat().forEach((playerId) => {
+    const last = Date.parse(String(playersById[String(playerId)]?.lastMatchAt || ""));
+    if (!Number.isFinite(last)) {
+      return;
+    }
+    const elapsed = (evaluatedAt - last) / 60000;
+    if (elapsed < minMinutes) {
+      violations.push(
+        createEngineExplanation({
+          code: RULE_ERROR_CODE.MIN_REST_TIME_VIOLATED,
+          message: `Player ${playerId} has insufficient rest.`,
+          details: { constraintId: constraint.id, playerId, elapsed, minMinutes },
+        })
+      );
+    }
+  });
   return violations;
 }
 
@@ -476,8 +733,15 @@ export function evaluateHardRules(constraints = [], context) {
   const violations = [];
 
   active.forEach((constraint) => {
+    if (!HARD_SUPPORT_SET.has(constraint.type)) {
+      violations.push(unsupportedHardViolation(constraint));
+      return;
+    }
+
     switch (constraint.type) {
       case COMPETITION_CONSTRAINT_TYPE.MUST_PARTNER:
+      case COMPETITION_CONSTRAINT_TYPE.PREFER_PARTNER:
+      case COMPETITION_CONSTRAINT_TYPE.SAME_TEAM:
         violations.push(...(evaluatePartnerHardRule(constraint, teams) || []));
         break;
       case COMPETITION_CONSTRAINT_TYPE.MUST_NOT_PARTNER:
@@ -487,6 +751,19 @@ export function evaluateHardRules(constraints = [], context) {
         } else {
           violations.push(...(evaluatePartnerHardRule(constraint, teams) || []));
         }
+        break;
+      case COMPETITION_CONSTRAINT_TYPE.DIFFERENT_TEAM:
+        violations.push(...(evaluatePartnerHardRule(constraint, teams) || []));
+        break;
+      case COMPETITION_CONSTRAINT_TYPE.MUST_OPPONENT:
+      case COMPETITION_CONSTRAINT_TYPE.PREFER_OPPONENT:
+      case COMPETITION_CONSTRAINT_TYPE.MUST_NOT_OPPONENT:
+      case COMPETITION_CONSTRAINT_TYPE.AVOID_OPPONENT:
+        violations.push(...evaluateOpponentHardRule(constraint, teams));
+        break;
+      case COMPETITION_CONSTRAINT_TYPE.SAME_GROUP:
+      case COMPETITION_CONSTRAINT_TYPE.DIFFERENT_GROUP:
+        violations.push(...evaluateGroupMembershipHardRule(constraint, groups));
         break;
       case COMPETITION_CONSTRAINT_TYPE.GENDER_ELIGIBILITY:
         violations.push(...evaluateGenderEligibility(constraint, context));
@@ -514,7 +791,7 @@ export function evaluateHardRules(constraints = [], context) {
         violations.push(...evaluateEntryEligibility(constraint, context));
         break;
       case COMPETITION_CONSTRAINT_TYPE.SAME_CLUB_SEPARATION:
-        if (context.scope === "group" && groups.length) {
+        if (groups.length) {
           violations.push(
             ...evaluateSeparationRule(
               constraint,
@@ -527,10 +804,12 @@ export function evaluateHardRules(constraints = [], context) {
               context.playersById || {}
             )
           );
+        } else if (GROUP_SET.has(constraint.type)) {
+          violations.push(missingContextViolation(constraint, "missing_groups_context"));
         }
         break;
       case COMPETITION_CONSTRAINT_TYPE.SAME_ORGANIZATION_SEPARATION:
-        if (context.scope === "group" && groups.length) {
+        if (groups.length) {
           violations.push(
             ...evaluateSeparationRule(
               constraint,
@@ -540,9 +819,26 @@ export function evaluateHardRules(constraints = [], context) {
               context.playersById || {}
             )
           );
+        } else {
+          violations.push(missingContextViolation(constraint, "missing_groups_context"));
         }
         break;
+      case COMPETITION_CONSTRAINT_TYPE.MAX_PARTNER_REPEAT:
+      case COMPETITION_CONSTRAINT_TYPE.MAX_OPPONENT_REPEAT:
+      case COMPETITION_CONSTRAINT_TYPE.MIN_PARTNER_REPEAT:
+      case COMPETITION_CONSTRAINT_TYPE.MIN_OPPONENT_REPEAT:
+        violations.push(...evaluateRepeatHardRule(constraint, context, teams));
+        break;
+      case COMPETITION_CONSTRAINT_TYPE.MIN_REST_TIME:
+        violations.push(...evaluateMinRestHardRule(constraint, context, teams));
+        break;
       default:
+        // Known support-set members must have an explicit case above.
+        if (OPPONENT_SET.has(constraint.type)) {
+          violations.push(missingContextViolation(constraint, "unhandled_opponent_case"));
+        } else {
+          violations.push(unsupportedHardViolation(constraint));
+        }
         break;
     }
   });

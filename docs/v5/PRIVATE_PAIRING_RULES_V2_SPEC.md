@@ -50,6 +50,10 @@ Unauthorized URL/API → `403_FORBIDDEN`. Never embed private rule payloads in n
 
 ## 3. Canonical constraint types
 
+Types are a curated subset of Competition Core `COMPETITION_CONSTRAINT_TYPE`
+(no duplicate registry). Full coverage matrix:
+`docs/v5/COMPETITION_CONSTRAINT_TYPE_COVERAGE_MATRIX.md`.
+
 ```text
 PREFER_PARTNER | MUST_PARTNER | AVOID_PARTNER | MUST_NOT_PARTNER
 PREFER_OPPONENT | MUST_OPPONENT | AVOID_OPPONENT | MUST_NOT_OPPONENT
@@ -57,18 +61,33 @@ MAX_PARTNER_REPEAT | MAX_OPPONENT_REPEAT | MIN_PARTNER_REPEAT | MIN_OPPONENT_REP
 SAME_GROUP | DIFFERENT_GROUP | SAME_TEAM | DIFFERENT_TEAM
 ```
 
-### Semantics (partner / opponent)
+### Semantics
 
-| Type | Soft default | Hard default | Meaning |
-|------|--------------|--------------|---------|
-| PREFER_PARTNER | soft | — | Prefer same team; miss allowed |
-| MUST_PARTNER | — | hard | Same team required; infeasible → engine error, no silent skip |
-| AVOID_PARTNER | soft | optional hard | Prefer not same team |
-| MUST_NOT_PARTNER | — | hard | Never same team; reject before ranking |
-| PREFER_OPPONENT | soft | — | Prefer opposite sides |
-| MUST_OPPONENT | — | hard | Must be opponents in applicable match |
-| AVOID_OPPONENT | soft | optional hard | Prefer not meet |
-| MUST_NOT_OPPONENT | — | hard | Never opponents in same match |
+| Type | Default | Hard / Soft support | Evaluator | Meaning |
+|------|---------|---------------------|-----------|---------|
+| PREFER_PARTNER | soft | Soft (hard override → partner must) | CC + PP soft/hard | Prefer same team |
+| MUST_PARTNER | hard | Hard only (default) | CC + PP hard | Same team required |
+| AVOID_PARTNER | soft | Soft + hard override | CC + PP | Prefer / never same team |
+| MUST_NOT_PARTNER | hard | Hard | CC + PP hard | Never same team |
+| PREFER_OPPONENT | soft | Soft | CC + PP soft | Prefer opposite sides |
+| MUST_OPPONENT | hard | Hard | CC + PP hard | Must be opponents when match present |
+| AVOID_OPPONENT | soft | Soft + hard override | CC + PP | Prefer / never opponents |
+| MUST_NOT_OPPONENT | hard | Hard | CC + PP hard | Never opponents |
+| SAME_TEAM | soft | Soft + hard override | CC + PP | Prefer / require same team |
+| DIFFERENT_TEAM | soft | Soft + hard override | CC + PP | Prefer / require different team |
+| SAME_GROUP | soft | Soft + hard override | CC + PP | Prefer / require same group |
+| DIFFERENT_GROUP | soft | Soft + hard override | CC + PP | Prefer / require different group |
+| MAX_*_REPEAT | soft | Soft + hard override | CC + PP | Cap repeat count |
+| MIN_*_REPEAT | soft | Soft + hard override | CC + PP | Floor repeat count |
+
+Unsupported / unknown type → explicit code
+(`UNSUPPORTED_HARD_CONSTRAINT` / `UNSUPPORTED_SOFT_CONSTRAINT` / CC
+`UNSUPPORTED_CONSTRAINT_EVALUATION`) — **never** silently ignored.
+
+Missing match/group context → `CONSTRAINT_CONTEXT_MISSING` (PP deferred) or
+`RULE_NOT_APPLICABLE` (CC) — still visible in result.
+
+Consumers: PP Unified runtime + simulation; Competition Core Rules V2 when flags ON.
 
 ---
 
@@ -77,7 +96,10 @@ SAME_GROUP | DIFFERENT_GROUP | SAME_TEAM | DIFFERENT_TEAM
 Every rule has `severity: hard | soft`.
 
 - **Hard:** violation → **eliminate candidate**. Never encode as `-100/-120/-200` alone.
-- **Soft:** `weight: 1–100`, `priority: low | medium | high | critical` → score delta only.
+- **Soft:** `weight: 1–100` → score delta only.
+- **`priority: low | medium | high | critical`:** stored/validated/UI only —
+  **not wired into ranking** in this release. Ranking order remains
+  **Hard → Soft → Weight**.
 
 ### Engine pipeline (mandatory order)
 
