@@ -4,10 +4,17 @@ import { createEngineExplanation } from "../contracts/engineContracts.js";
 import { createEngineScoreBreakdown } from "../contracts/engineContracts.js";
 import { RULE_ERROR_CODE, RULE_SOFT_SCORE } from "./ruleConstants.js";
 import {
+  OPPONENT_GEOMETRY_TYPES,
+  SUPPORTED_SOFT_CONSTRAINT_TYPES,
+} from "./constraintSupport.js";
+import {
   getPartnerParams,
   shareGroup,
   shareTeam,
 } from "./evaluateHardRules.js";
+
+const SOFT_SUPPORT_SET = new Set(SUPPORTED_SOFT_CONSTRAINT_TYPES);
+const OPPONENT_SOFT_SET = new Set(OPPONENT_GEOMETRY_TYPES);
 
 /**
  * @typedef {import('./evaluateHardRules.js').RuleEvaluationContext} RuleEvaluationContext
@@ -206,17 +213,36 @@ export function scoreSoftRules(constraints = [], context) {
       return;
     }
 
-    if (constraint.type === COMPETITION_CONSTRAINT_TYPE.AVOID_OPPONENT && teams.length >= 2) {
+    if (
+      (constraint.type === COMPETITION_CONSTRAINT_TYPE.PREFER_OPPONENT ||
+        constraint.type === COMPETITION_CONSTRAINT_TYPE.AVOID_OPPONENT) &&
+      teams.length >= 2
+    ) {
       const { anchor, targets } = getPartnerParams(constraint);
       if (!anchor || !targets.length) {
         return;
       }
-      let penalty = 0;
+      let delta = 0;
       targets.forEach((target) => {
         const anchorTeam = findTeamIndexForPlayer(teams, anchor);
         const targetTeam = findTeamIndexForPlayer(teams, target);
-        if (anchorTeam >= 0 && targetTeam >= 0 && anchorTeam !== targetTeam) {
-          penalty -= RULE_SOFT_SCORE.avoidOpponentViolationPenalty;
+        const opposing =
+          anchorTeam >= 0 && targetTeam >= 0 && anchorTeam !== targetTeam;
+        if (constraint.type === COMPETITION_CONSTRAINT_TYPE.PREFER_OPPONENT) {
+          if (opposing) {
+            delta += RULE_SOFT_SCORE.preferOpponentMatchBonus;
+          } else {
+            delta -= RULE_SOFT_SCORE.preferOpponentMissPenalty;
+            notes.push(
+              createEngineExplanation({
+                code: RULE_ERROR_CODE.PREFER_OPPONENT_MISSED,
+                message: `${anchor} preferred opponent ${target} not matched.`,
+                details: { constraintId: constraint.id, soft: true },
+              })
+            );
+          }
+        } else if (opposing) {
+          delta -= RULE_SOFT_SCORE.avoidOpponentViolationPenalty;
           notes.push(
             createEngineExplanation({
               code: RULE_ERROR_CODE.AVOID_OPPONENT_VIOLATED,
@@ -226,8 +252,102 @@ export function scoreSoftRules(constraints = [], context) {
           );
         }
       });
-      components[key] = penalty;
-      total += penalty;
+      components[key] = (components[key] || 0) + delta;
+      total += delta;
+      return;
+    }
+
+    if (
+      constraint.type === COMPETITION_CONSTRAINT_TYPE.SAME_TEAM ||
+      constraint.type === COMPETITION_CONSTRAINT_TYPE.DIFFERENT_TEAM
+    ) {
+      const { anchor, targets } = getPartnerParams(constraint);
+      if (!anchor || !targets.length) {
+        return;
+      }
+      let delta = 0;
+      targets.forEach((target) => {
+        const together = shareTeam(anchor, target, teams);
+        if (constraint.type === COMPETITION_CONSTRAINT_TYPE.SAME_TEAM) {
+          if (together) {
+            delta += RULE_SOFT_SCORE.sameTeamBonus;
+          } else {
+            delta -= RULE_SOFT_SCORE.sameTeamMissPenalty;
+            notes.push(
+              createEngineExplanation({
+                code: RULE_ERROR_CODE.SAME_TEAM_VIOLATED,
+                message: `${anchor} preferred same team as ${target}.`,
+                details: { constraintId: constraint.id, soft: true },
+              })
+            );
+          }
+        } else if (together) {
+          delta -= RULE_SOFT_SCORE.differentTeamViolationPenalty;
+          notes.push(
+            createEngineExplanation({
+              code: RULE_ERROR_CODE.DIFFERENT_TEAM_VIOLATED,
+              message: `${anchor} should be on a different team from ${target}.`,
+              details: { constraintId: constraint.id, soft: true },
+            })
+          );
+        }
+      });
+      components[key] = (components[key] || 0) + delta;
+      total += delta;
+      return;
+    }
+
+    if (
+      constraint.type === COMPETITION_CONSTRAINT_TYPE.SAME_GROUP ||
+      constraint.type === COMPETITION_CONSTRAINT_TYPE.DIFFERENT_GROUP
+    ) {
+      const { anchor, targets } = getPartnerParams(constraint);
+      if (!anchor || !targets.length) {
+        return;
+      }
+      if (!groups.length) {
+        notes.push(
+          createEngineExplanation({
+            code: RULE_ERROR_CODE.RULE_NOT_APPLICABLE,
+            message: `Soft ${constraint.type} skipped: missing groups context.`,
+            details: {
+              constraintId: constraint.id,
+              missingContext: "missing_groups_context",
+              soft: true,
+            },
+          })
+        );
+        return;
+      }
+      let delta = 0;
+      targets.forEach((target) => {
+        const together = shareGroup(anchor, target, groups);
+        if (constraint.type === COMPETITION_CONSTRAINT_TYPE.SAME_GROUP) {
+          if (together) {
+            delta += RULE_SOFT_SCORE.sameGroupBonus;
+          } else {
+            delta -= RULE_SOFT_SCORE.sameGroupMissPenalty;
+            notes.push(
+              createEngineExplanation({
+                code: RULE_ERROR_CODE.SAME_GROUP_VIOLATED,
+                message: `${anchor} preferred same group as ${target}.`,
+                details: { constraintId: constraint.id, soft: true },
+              })
+            );
+          }
+        } else if (together) {
+          delta -= RULE_SOFT_SCORE.differentGroupViolationPenalty;
+          notes.push(
+            createEngineExplanation({
+              code: RULE_ERROR_CODE.DIFFERENT_GROUP_VIOLATED,
+              message: `${anchor} should be in a different group from ${target}.`,
+              details: { constraintId: constraint.id, soft: true },
+            })
+          );
+        }
+      });
+      components[key] = (components[key] || 0) + delta;
+      total += delta;
       return;
     }
 
@@ -283,6 +403,74 @@ export function scoreSoftRules(constraints = [], context) {
       return;
     }
 
+    if (constraint.type === COMPETITION_CONSTRAINT_TYPE.MIN_PARTNER_REPEAT) {
+      const minRepeat = Number(
+        constraint.params?.minRepeat ?? constraint.params?.minCount ?? 1
+      );
+      const { anchor, targets } = getPartnerParams(constraint);
+      let penalty = 0;
+      const pairs = [];
+      if (anchor && targets.length) {
+        targets.forEach((target) => pairs.push([anchor, target]));
+      } else {
+        teams.forEach((team) => {
+          for (let i = 0; i < team.length; i += 1) {
+            for (let j = i + 1; j < team.length; j += 1) {
+              pairs.push([team[i], team[j]]);
+            }
+          }
+        });
+      }
+      pairs.forEach(([a, b]) => {
+        const count = getRepeatCount(context.partnerRepeatCounts, a, b);
+        if (count < minRepeat) {
+          penalty -= RULE_SOFT_SCORE.minPartnerRepeatMissPenalty * (minRepeat - count);
+          notes.push(
+            createEngineExplanation({
+              code: RULE_ERROR_CODE.MIN_PARTNER_REPEAT_UNSATISFIED,
+              message: `${a} and ${b} below minimum partner repeat.`,
+              details: { constraintId: constraint.id, count, minRepeat, soft: true },
+            })
+          );
+        }
+      });
+      components[key] = penalty;
+      total += penalty;
+      return;
+    }
+
+    if (constraint.type === COMPETITION_CONSTRAINT_TYPE.MIN_OPPONENT_REPEAT && teams.length >= 2) {
+      const minRepeat = Number(
+        constraint.params?.minRepeat ?? constraint.params?.minCount ?? 1
+      );
+      const { anchor, targets } = getPartnerParams(constraint);
+      let penalty = 0;
+      const pairs = [];
+      if (anchor && targets.length) {
+        targets.forEach((target) => pairs.push([anchor, target]));
+      } else {
+        teams[0].forEach((a) => {
+          teams[1].forEach((b) => pairs.push([a, b]));
+        });
+      }
+      pairs.forEach(([a, b]) => {
+        const count = getRepeatCount(context.opponentRepeatCounts, a, b);
+        if (count < minRepeat) {
+          penalty -= RULE_SOFT_SCORE.minOpponentRepeatMissPenalty * (minRepeat - count);
+          notes.push(
+            createEngineExplanation({
+              code: RULE_ERROR_CODE.MIN_OPPONENT_REPEAT_UNSATISFIED,
+              message: `${a} and ${b} below minimum opponent repeat.`,
+              details: { constraintId: constraint.id, count, minRepeat, soft: true },
+            })
+          );
+        }
+      });
+      components[key] = penalty;
+      total += penalty;
+      return;
+    }
+
     if (constraint.type === COMPETITION_CONSTRAINT_TYPE.MIN_REST_TIME) {
       const minMinutes = Number(constraint.params?.minMinutes ?? 30);
       const evaluatedAt = parseTime(context.evaluatedAt) ?? Date.now();
@@ -305,7 +493,47 @@ export function scoreSoftRules(constraints = [], context) {
       });
       components[key] = penalty;
       total += penalty;
+      return;
     }
+
+    let missingContext = null;
+    if (OPPONENT_SOFT_SET.has(constraint.type) && teams.length < 2) {
+      missingContext = "missing_opponent_geometry";
+    } else if (
+      (constraint.type === COMPETITION_CONSTRAINT_TYPE.SAME_CLUB_SEPARATION ||
+        constraint.type === COMPETITION_CONSTRAINT_TYPE.SAME_ORGANIZATION_SEPARATION) &&
+      !groups.length
+    ) {
+      missingContext = "missing_groups_context";
+    } else if (
+      constraint.type === COMPETITION_CONSTRAINT_TYPE.TEAM_SKILL_DIFFERENCE &&
+      teams.length < 2
+    ) {
+      missingContext = "missing_team_geometry";
+    }
+
+    if (missingContext) {
+      notes.push(
+        createEngineExplanation({
+          code: RULE_ERROR_CODE.RULE_NOT_APPLICABLE,
+          message: `Soft ${constraint.type} skipped: ${missingContext}.`,
+          details: { constraintId: constraint.id, missingContext, soft: true },
+        })
+      );
+      components[key] = 0;
+      return;
+    }
+
+    notes.push(
+      createEngineExplanation({
+        code: RULE_ERROR_CODE.UNSUPPORTED_CONSTRAINT_EVALUATION,
+        message: SOFT_SUPPORT_SET.has(constraint.type)
+          ? `Soft constraint type "${constraint.type}" had no applicable scoring path.`
+          : `Soft constraint type "${constraint.type}" is not scored by Competition Core.`,
+        details: { constraintId: constraint.id, type: constraint.type, soft: true },
+      })
+    );
+    components[key] = 0;
   });
 
   return {

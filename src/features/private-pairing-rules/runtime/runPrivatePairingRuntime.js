@@ -71,13 +71,18 @@ export function evaluatePrivatePairingCandidate(candidate, options = {}) {
     context: options.context,
   });
   const { hard, soft } = splitHardAndSoftRules(resolved.rules);
-  const hardResult = evaluateHardPrivatePairingRules(candidate, hard);
+  const hardResult = evaluateHardPrivatePairingRules(
+    candidate,
+    hard,
+    options.history || {}
+  );
   if (!hardResult.feasible) {
     return {
       id: candidate.id,
       feasible: false,
       rejectionCodes: hardResult.violations.map((item) => item.code),
       violations: hardResult.violations,
+      deferredHardRules: hardResult.deferred || [],
       balanceScore: 0,
       fairnessScore: 0,
       historyScore: 0,
@@ -108,6 +113,8 @@ export function evaluatePrivatePairingCandidate(candidate, options = {}) {
     feasible: true,
     rejectionCodes: [],
     violations: [],
+    deferredHardRules: hardResult.deferred || [],
+    unsupportedSoftRules: softResult.unsupportedSoftRules || [],
     balanceScore,
     fairnessScore,
     historyScore,
