@@ -48,6 +48,44 @@ import {
 import ShowcaseGroupReveal from "../../../features/team-tournament/showcase/ShowcaseGroupReveal.jsx";
 import { buildReplayShowcaseSession } from "../../../features/team-tournament/showcase/showcaseDrawSession.js";
 import { prefersReducedMotion } from "../../../features/team-tournament/showcase/showcaseStyles.js";
+import { createId } from "../../../utils/id.js";
+
+function buildEmptyManualGroups(count) {
+  const groupCount = Math.max(2, Number(count) || 2);
+  return Array.from({ length: groupCount }, (_, index) => ({
+    id: createId("grp"),
+    name: `Bảng ${String.fromCharCode(65 + index)}`,
+    teamIds: [],
+  }));
+}
+
+function buildManualAssignmentMap(teams = [], groups = []) {
+  const map = {};
+  (teams || []).forEach((team) => {
+    map[String(team.id)] = "";
+  });
+  (groups || []).forEach((group) => {
+    (group.teamIds || []).forEach((teamId) => {
+      map[String(teamId)] = String(group.id);
+    });
+  });
+  return map;
+}
+
+function applyManualAssignmentsToGroups(emptyGroups, assignmentMap) {
+  const groups = emptyGroups.map((group) => ({
+    ...group,
+    teamIds: [],
+  }));
+  const byId = new Map(groups.map((group) => [String(group.id), group]));
+  Object.entries(assignmentMap || {}).forEach(([teamId, groupId]) => {
+    const target = byId.get(String(groupId || ""));
+    if (target) {
+      target.teamIds.push(String(teamId));
+    }
+  });
+  return groups;
+}
 
 const GROUP_SEEDING_OPTIONS = [
   {
@@ -104,6 +142,10 @@ export default function TeamGroupDivisionPanel({
   const [groupRevealOpen, setGroupRevealOpen] = useState(false);
   const [groupRevealSession, setGroupRevealSession] = useState(null);
   const [reducedMotion, setReducedMotion] = useState(false);
+  const [manualOpen, setManualOpen] = useState(false);
+  const [manualGroups, setManualGroups] = useState([]);
+  const [manualAssignments, setManualAssignments] = useState({});
+  const [manualBusy, setManualBusy] = useState(false);
 
   const recommendedSizes = recommendGroupSizes(teams.length);
   const recommendedLabel = describeGroupSplit(teams.length);
@@ -267,17 +309,19 @@ export default function TeamGroupDivisionPanel({
       return;
     }
 
+    // Manual: open assignment UI — never call the auto draw engine.
+    if (options.auto === false) {
+      openManualEditor(resolvedCount);
+      return;
+    }
+
     setPreviewBusy(true);
     try {
       const result = await runGroupAssignment({ groupCount: resolvedCount });
       if (!result) {
         return;
       }
-      const modeLabel = options.auto
-        ? seedingEnabled
-          ? "auto-seeded"
-          : "auto-random"
-        : "manual";
+      const modeLabel = seedingEnabled ? "auto-seeded" : "auto-random";
       const packagePreview = await buildPreviewPackage(
         result.next,
         result.nextBalance,
@@ -291,19 +335,119 @@ export default function TeamGroupDivisionPanel({
       );
       setPreview(packagePreview);
 
-      const revealSession = buildReplayShowcaseSession({
-        teamData: result.next,
-        players: clubPlayers,
-        rulesVersion: result.rulesVersion,
-        seedingMode,
-        engineVersion: packagePreview.engineVersion,
-      });
-      setGroupRevealSession(revealSession);
-      setReducedMotion(prefersReducedMotion());
-      setGroupRevealOpen(true);
+      if (!options.skipCeremony) {
+        const revealSession = buildReplayShowcaseSession({
+          teamData: result.next,
+          players: clubPlayers,
+          rulesVersion: result.rulesVersion,
+          seedingMode,
+          engineVersion: packagePreview.engineVersion,
+        });
+        setGroupRevealSession(revealSession);
+        setReducedMotion(prefersReducedMotion());
+        setGroupRevealOpen(true);
+      }
       onMessage?.("Xem trước chia bảng — chưa ghi database. Bấm Xác nhận lưu để lưu.");
     } finally {
       setPreviewBusy(false);
+    }
+  }
+
+  function openManualEditor(resolvedCount = groupCount) {
+    if (!editable || teamsInsufficient) {
+      return;
+    }
+    const count = Number(resolvedCount) || groupCount;
+    if (count < 2) {
+      onError?.("Cần ít nhất 2 bảng.");
+      return;
+    }
+    if (count > teams.length) {
+      onError?.("Số bảng không được lớn hơn số đội.");
+      return;
+    }
+
+    const emptyGroups = buildEmptyManualGroups(count);
+    const existing =
+      groups.length === count
+        ? groups.map((group) => ({
+            id: group.id,
+            name: group.name,
+            teamIds: [...(group.teamIds || [])],
+          }))
+        : emptyGroups;
+    setManualGroups(existing);
+    setManualAssignments(buildManualAssignmentMap(teams, existing));
+    setManualOpen(true);
+  }
+
+  function handleManualAssignmentChange(teamId, groupId) {
+    setManualAssignments((prev) => ({
+      ...prev,
+      [String(teamId)]: String(groupId || ""),
+    }));
+  }
+
+  async function commitManualAssignments() {
+    if (!editable) {
+      return;
+    }
+
+    const assignedIds = Object.entries(manualAssignments)
+      .filter(([, groupId]) => Boolean(groupId))
+      .map(([teamId]) => String(teamId));
+    const uniqueAssigned = new Set(assignedIds);
+
+    if (assignedIds.length !== teams.length || uniqueAssigned.size !== teams.length) {
+      onError?.("Mỗi đội phải được gán đúng một bảng trước khi xem trước.");
+      return;
+    }
+
+    const emptyGroups = manualGroups.length
+      ? manualGroups
+      : buildEmptyManualGroups(groupCount);
+    const nextGroups = applyManualAssignmentsToGroups(emptyGroups, manualAssignments);
+    const emptyGroup = nextGroups.find((group) => !(group.teamIds || []).length);
+    if (emptyGroup) {
+      onError?.(`Bảng «${emptyGroup.name}» chưa có đội. Gán ít nhất 1 đội mỗi bảng.`);
+      return;
+    }
+
+    setManualBusy(true);
+    try {
+      const prepared = await resolveCanonicalPairing();
+      if (!prepared.ok) {
+        onError?.(prepared.error?.message || "Không chia được bảng theo quy tắc riêng.");
+        return;
+      }
+
+      const nextTeamData = {
+        ...teamData,
+        groups: nextGroups,
+        settings: {
+          ...teamData.settings,
+          groupSeeding: TEAM_GROUP_SEEDING.OFF,
+        },
+      };
+      const nextBalance = summarizeSeededGroupBalance(nextGroups, teams, {
+        seedingMode: TEAM_GROUP_SEEDING.OFF,
+      });
+      const packagePreview = await buildPreviewPackage(
+        nextTeamData,
+        nextBalance,
+        "manual",
+        prepared.rulesVersion || prepared.pairingOptions?.rulesVersion || "",
+        {
+          algorithmVersion: AI_DRAW_ALGORITHM_VERSION,
+        }
+      );
+      setPreview(packagePreview);
+      setManualOpen(false);
+      onMessage?.(
+        "Đã gán bảng thủ công — xem trước bên dưới. Bấm Xác nhận lưu để lưu (không chạy chia tự động)."
+      );
+    } finally {
+      setManualBusy(false);
     }
   }
 
@@ -556,17 +700,19 @@ export default function TeamGroupDivisionPanel({
             </Button>
             <Button
               variant="outlined"
-              disabled={!editable || teamsInsufficient || previewBusy}
-              onClick={() => handlePreview({ auto: false, groupCount })}
+              disabled={!editable || teamsInsufficient || previewBusy || manualBusy}
+              onClick={() => openManualEditor(groupCount)}
             >
               Chia bảng thủ công
             </Button>
             <Button
               variant="outlined"
               disabled={!editable || teamsInsufficient || previewBusy}
-              onClick={() => handlePreview({ auto: false, groupCount })}
+              onClick={() =>
+                handlePreview({ auto: true, groupCount, skipCeremony: true })
+              }
             >
-              Xem trước
+              Xem trước (tự động)
             </Button>
             {preview ? (
               <Button
@@ -704,6 +850,74 @@ export default function TeamGroupDivisionPanel({
             disabled={confirmBusy}
           >
             Tiếp tục
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      <Dialog
+        open={manualOpen}
+        onClose={() => {
+          if (!manualBusy) setManualOpen(false);
+        }}
+        fullWidth
+        maxWidth="sm"
+      >
+        <DialogTitle>Chia bảng thủ công</DialogTitle>
+        <DialogContent>
+          <Stack spacing={2} sx={{ mt: 1 }}>
+            <Alert severity="info">
+              Gán từng đội vào bảng. Không chạy thuật toán chia tự động.
+            </Alert>
+            {teams.map((team) => (
+              <FormControl key={team.id} fullWidth size="small">
+                <InputLabel>{team.name || team.id}</InputLabel>
+                <Select
+                  label={team.name || team.id}
+                  value={manualAssignments[String(team.id)] || ""}
+                  disabled={manualBusy}
+                  onChange={(event) =>
+                    handleManualAssignmentChange(team.id, event.target.value)
+                  }
+                >
+                  <MenuItem value="">
+                    <em>Chưa gán</em>
+                  </MenuItem>
+                  {manualGroups.map((group) => (
+                    <MenuItem key={group.id} value={group.id}>
+                      {group.name}
+                    </MenuItem>
+                  ))}
+                </Select>
+              </FormControl>
+            ))}
+            <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
+              {manualGroups.map((group) => {
+                const count = Object.values(manualAssignments).filter(
+                  (groupId) => String(groupId) === String(group.id)
+                ).length;
+                return (
+                  <Chip
+                    key={group.id}
+                    size="small"
+                    label={`${group.name}: ${count} đội`}
+                    color={count > 0 ? "success" : "default"}
+                    variant="outlined"
+                  />
+                );
+              })}
+            </Stack>
+          </Stack>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setManualOpen(false)} disabled={manualBusy}>
+            Huỷ
+          </Button>
+          <Button
+            variant="contained"
+            disabled={manualBusy}
+            onClick={commitManualAssignments}
+          >
+            Xem trước kết quả thủ công
           </Button>
         </DialogActions>
       </Dialog>
