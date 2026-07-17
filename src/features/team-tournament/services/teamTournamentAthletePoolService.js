@@ -171,12 +171,8 @@ export function applyTeamTournamentAthletePostFilters(athletes = [], options = {
     }
 
     if (gender === "male" || gender === "female") {
-      const g = getPlayerGenderKey(athlete);
-      if (g && g !== gender) {
-        genderFilteredCount += 1;
-        continue;
-      }
-      if (!g) {
+      const g = getPlayerGenderKey(athlete?.gender ?? athlete);
+      if (g !== gender) {
         genderFilteredCount += 1;
         continue;
       }
@@ -341,6 +337,52 @@ export function listTenantAvailableAthletes(tenantId, options = {}) {
     ...options,
     tenantId,
     scopeMode: TEAM_TOURNAMENT_ATHLETE_SCOPE.TENANT,
+  });
+}
+
+/**
+ * Canonical athlete pool used by AI “ghép đội” and Unified Showcase.
+ *
+ * Scope matches TeamRosterPanel.aiPairing:
+ * - valid tenantId → TENANT (“Toàn bộ CLB” / “Tất cả CLB”)
+ * - otherwise → CLUB
+ *
+ * Does not invent a second repository — delegates to listAvailableAthletes.
+ *
+ * @param {object} input
+ * @returns {Promise<object>}
+ */
+export async function getCanonicalAiPairingAthletePool(input = {}) {
+  const tournament = input.tournament || null;
+  const tenantId =
+    resolveTeamTournamentAthleteTenantId({
+      tournamentTenantId: tournament?.tenantId || input.tournamentTenantId,
+      club: input.club,
+      clubId: input.clubId,
+      clubs: input.clubs,
+      currentTenantId: input.tenantId || input.currentTenantId,
+    }) ||
+    (isPlaceholderTenantId(input.tenantId) ? null : normalizeId(input.tenantId)) ||
+    null;
+  const clubId =
+    resolveTeamTournamentAthleteClubId({
+      tournamentClubId: tournament?.clubId || input.tournamentClubId,
+      clubFromQuery: input.clubFromQuery,
+      selectedClubId: input.selectedClubId,
+      activeClubId: input.activeClubId || input.clubId,
+    }) || normalizeId(input.clubId);
+
+  const scopeMode = tenantId
+    ? TEAM_TOURNAMENT_ATHLETE_SCOPE.TENANT
+    : TEAM_TOURNAMENT_ATHLETE_SCOPE.CLUB;
+
+  return listAvailableAthletes({
+    ...input,
+    tournamentId: input.tournamentId || tournament?.id || null,
+    clubId,
+    tenantId,
+    scopeMode,
+    callerName: input.callerName || "getCanonicalAiPairingAthletePool",
   });
 }
 

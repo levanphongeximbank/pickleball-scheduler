@@ -234,6 +234,7 @@
   "tests/tt-v6-p1_5a-showcase-setup.test.js",
   "tests/tt-v6-p1_5a-showcase-control-center.test.js",
   "tests/tt-v6-p1_5a-showcase-athlete-input-align.test.js",
+  "tests/tt-v6-gender-filter-engine-input-hotfix.test.js",
   "tests/tt-v6-p1_5a-showcase-reveal.test.js",
   "tests/tt-v6-ai-pairing-reveal.test.js",
   "tests/tt-v6-ai-group-reveal.test.js"

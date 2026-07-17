@@ -2,7 +2,7 @@
  * P1.5A Showcase — pre-flight validation (no DB write, no engine run).
  */
 
-import { getPlayerGenderKey } from "../../../models/player.js";
+import { normalizeAthleteGender } from "../../../models/player.js";
 import { listGroupDivisionOptions } from "../engines/teamGroupDivisionPolicy.js";
 import { DEFAULT_ENGINE_VERSION } from "../canonical/teamTournamentMutationEnvelope.js";
 import { isSetupMutationFoundationEnabled } from "../setup/setupMutationFeatureGate.js";
@@ -44,8 +44,12 @@ export function buildShowcasePreflight(input = {}) {
     );
   }
 
-  const males = athletes.filter((a) => getPlayerGenderKey(a.gender) === "male");
-  const females = athletes.filter((a) => getPlayerGenderKey(a.gender) === "female");
+  const males = athletes.filter((a) => normalizeAthleteGender(a) === "male");
+  const females = athletes.filter((a) => normalizeAthleteGender(a) === "female");
+  const unknownGender = athletes.filter((a) => normalizeAthleteGender(a) === "unknown");
+  if (unknownGender.length) {
+    blockers.push(`Có ${unknownGender.length} VĐV giới tính unknown — không thể bắt đầu lễ MLP.`);
+  }
   const expectedTeamCount = Math.min(
     requestedTeamCount,
     Math.floor(males.length / 2),
@@ -157,18 +161,17 @@ export function buildShowcasePreflight(input = {}) {
 
 /**
  * Entry CTA visibility for Team Tournament setup.
+ *
+ * Gate VITE_TEAM_TOURNAMENT_SETUP_MUTATION_V7 blocks persistence / ceremony
+ * start via buildShowcasePreflight — it must NOT hide the control-center entry.
+ * Athlete selection happens inside Showcase Setup (same pool as AI ghép đội).
  */
 export function canShowShowcaseEntry(input = {}) {
   if (input.canManage !== true) return false;
   if (input.tournamentEditable === false) return false;
   if (input.setupBlocked === true) return false;
-  const athletes = asList(input.athletes || input.players);
-  if (!athletes.length || input.athletePoolLoaded === false) return false;
+  if (input.athletePoolLoaded === false) return false;
   if (input.athleteRepositoryError) return false;
-  const gateOn =
-    input.setupMutationGate === true ||
-    isSetupMutationFoundationEnabled(input.envSource);
-  if (!gateOn) return false;
   return true;
 }
 

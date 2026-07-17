@@ -167,10 +167,24 @@ export function generateShowcaseTeamDraw({
     });
     teams = suggested.teams || [];
     warnings = suggested.warnings || [];
-    const used = new Set(teams.flatMap((t) => t.playerIds || []));
-    waitingPlayerIds = pool.filter((p) => !used.has(p.id)).map((p) => p.id);
     if (teams.length > teamCount) {
-      teams = teams.slice(0, teamCount);
+      const kept = teams.slice(0, teamCount);
+      const dropped = teams.slice(teamCount);
+      const droppedIds = dropped.flatMap((t) => t.playerIds || []);
+      teams = kept;
+      const used = new Set(teams.flatMap((t) => t.playerIds || []));
+      waitingPlayerIds = [
+        ...pool.filter((p) => !used.has(p.id)).map((p) => p.id),
+        ...droppedIds.filter((id) => !used.has(id)),
+      ];
+      waitingPlayerIds = [...new Set(waitingPlayerIds.map(String))];
+      warnings = [
+        ...warnings,
+        `Đã cắt từ ${suggested.teams.length} đội xuống ${teamCount} đội — ${droppedIds.length} VĐV chuyển waiting (không bỏ im lặng).`,
+      ];
+    } else {
+      const used = new Set(teams.flatMap((t) => t.playerIds || []));
+      waitingPlayerIds = pool.filter((p) => !used.has(p.id)).map((p) => p.id);
     }
   } else {
     const paired = pairTeamsFromSelectedPlayers({
@@ -323,6 +337,7 @@ export function buildReplayShowcaseSession({
   players = [],
   engineVersion = DEFAULT_ENGINE_VERSION,
   rulesVersion = "",
+  seedingMode = TEAM_GROUP_SEEDING.AVG_LEVEL,
   generatedAt = null,
 } = {}) {
   const td = cloneJson(teamData || { teams: [], groups: [] });
@@ -364,7 +379,7 @@ export function buildReplayShowcaseSession({
     groupOptions: listGroupDivisionOptions((td.teams || []).length),
     groupSession: {
       groupCount: (td.groups || []).length,
-      seedingMode: TEAM_GROUP_SEEDING.AVG_LEVEL,
+      seedingMode,
       balance: null,
       diagnostics: buildGroupDivisionDiagnostics(td, td.groups || []),
       groupCards,

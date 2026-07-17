@@ -32,6 +32,7 @@ import {
   confirmShowcasePersistence,
 } from "./showcasePersistenceAdapter.js";
 import { buildShowcasePreflight } from "./showcasePreflight.js";
+import { reconcileSelectedAthletesForEngineInput } from "./reconcileSelectedAthletesForEngineInput.js";
 import {
   assignShowcaseCaptain,
   buildShowcaseGroupPreviewDiagnostics,
@@ -48,6 +49,9 @@ import ShowcasePreflight from "./ShowcasePreflight.jsx";
 import ShowcaseSetup from "./ShowcaseSetup.jsx";
 import ShowcaseTeamPreview from "./ShowcaseTeamPreview.jsx";
 import ShowcaseGroupPreview from "./ShowcaseGroupPreview.jsx";
+import EffectPreludeScreen from "../../../components/tournament/animation/shared/EffectPreludeScreen.jsx";
+import { EFFECT_PRELUDE_SCOPE } from "../../../components/tournament/animation/shared/effectPreludeConfig.js";
+import { ANIMATION_MODES } from "../../../components/tournament/animation/animationUtils.js";
 import ShowcaseCountdown from "./ShowcaseCountdown.jsx";
 import ShowcaseProcessing from "./ShowcaseProcessing.jsx";
 import ShowcaseTeamReveal from "./ShowcaseTeamReveal.jsx";
@@ -101,10 +105,11 @@ export default function TeamTournamentShowcase({
   const fixedSessionRef = useRef(null);
   const membershipRef = useRef(null);
   const groupFingerprintRef = useRef(null);
-  const showAllTeamsRef = useRef(false);
   const showAllGroupsRef = useRef(false);
   const idempotencyRef = useRef(null);
   const beginProcessingRef = useRef(null);
+  const pendingTeamGenerateRef = useRef(null);
+  const pendingGroupGenerateRef = useRef(null);
   const [regenerateConfirmOpen, setRegenerateConfirmOpen] = useState(false);
   const [pendingRegenerate, setPendingRegenerate] = useState(null);
 
@@ -118,6 +123,7 @@ export default function TeamTournamentShowcase({
       scopeMode: state.setupConfig?.scopeMode || "club",
       clubAthletes: clubAthletes.length ? clubAthletes : players,
       tenantAthletes,
+      clubs,
       selectedClubId: state.setupConfig?.selectedClubId || clubId,
       hostClubId: tournament?.clubId || clubId,
     });
@@ -125,6 +131,7 @@ export default function TeamTournamentShowcase({
   }, [
     clubAthletes,
     tenantAthletes,
+    clubs,
     players,
     state.setupConfig?.scopeMode,
     state.setupConfig?.selectedClubId,
@@ -154,7 +161,15 @@ export default function TeamTournamentShowcase({
   }, [state.session]);
   const setupPreflight = useMemo(() => {
     const baseBlockers = preflight?.blockers || [];
-    return buildShowcasePreflight({
+    const reconciliation = reconcileSelectedAthletesForEngineInput({
+      athletes: scopeAthletes,
+      selectedAthleteIds: state.setupConfig?.selectedAthleteIds || [],
+      requestedTeamCount:
+        Number(state.setupConfig?.teamCount) || requestedTeamCount || SHOWCASE_DEFAULT_TEAM_COUNT,
+      athletesPerTeam: Number(state.setupConfig?.athletesPerTeam) || 4,
+      requireMlpBalance: true,
+    });
+    const built = buildShowcasePreflight({
       athletes: selectedPlayers,
       tournamentName: preflight?.summary?.tournamentName || tournamentName,
       clubName: preflight?.summary?.clubName || clubName || clubId,
@@ -184,13 +199,26 @@ export default function TeamTournamentShowcase({
       ),
       softRuleSummary: preflight?.summary?.softRuleSummary,
     });
+    return {
+      ...built,
+      ok: built.ok && reconciliation.ok,
+      blockers: [
+        ...built.blockers,
+        ...reconciliation.blockers,
+      ],
+      reconciliation,
+    };
   }, [
     clubId,
     clubName,
     engineVersion,
     preflight,
+    requestedTeamCount,
     rulesVersion,
+    scopeAthletes,
     selectedPlayers,
+    state.setupConfig?.athletesPerTeam,
+    state.setupConfig?.selectedAthleteIds,
     state.setupConfig?.teamCount,
     tournamentName,
   ]);
@@ -225,12 +253,21 @@ export default function TeamTournamentShowcase({
       });
       return;
     }
-    const tenantScopeDefault =
-      canSelectTenantScope &&
-      (tournament?.settings?.athleteScopeMode === "tenant" ||
-        tournament?.settings?.allowTenantAthleteScope === true);
+    const hostRestricted =
+      tournament?.settings?.hostClubAthletesOnly === true ||
+      tournament?.settings?.allowTenantAthleteScope === false ||
+      ["host", "host_club_only"].includes(
+        String(tournament?.settings?.athleteScopeMode || "")
+          .trim()
+          .toLowerCase()
+      );
+    const tenantScopeDefault = Boolean(canSelectTenantScope) && !hostRestricted;
     const initialAthletes = tenantScopeDefault
-      ? tenantAthletes
+      ? tenantAthletes.length
+        ? tenantAthletes
+        : clubAthletes.length
+          ? clubAthletes
+          : players
       : clubAthletes.length
         ? clubAthletes
         : players;
@@ -248,11 +285,13 @@ export default function TeamTournamentShowcase({
             .filter(Boolean),
           scopeMode: tenantScopeDefault
             ? "tenant"
-            : tournament?.clubId &&
-                tournament?.settings?.allowTenantAthleteScope !== true
+            : hostRestricted
               ? "host"
               : "club",
           selectedClubId: clubId || tournament?.clubId || "",
+          clubFilter: "all",
+          genderFilter: "all",
+          search: "",
           athletesPerTeam: 4,
         },
       },
@@ -338,67 +377,128 @@ export default function TeamTournamentShowcase({
   const runTeamGeneration = useCallback(
     (discardPrevious = false) => {
       if (state.mode === SHOWCASE_MODE.REPLAY) return;
-      const teamCount =
-        Number(state.setupConfig?.teamCount) ||
-        requestedTeamCount ||
-        SHOWCASE_DEFAULT_TEAM_COUNT;
-      const selectedIds = (state.setupConfig?.selectedAthleteIds || []).map(String);
-
+      pendingTeamGenerateRef.current = { discardPrevious: Boolean(discardPrevious) };
       dispatch({ type: "GO_STAGE", payload: { stage: SHOWCASE_STAGE.TEAM_GENERATING } });
-
-      const generated = generateShowcaseTeamDraw({
-        players: scopeAthletes,
-        selectedPlayerIds: selectedIds,
-        teamCount,
-        teamNamePrefix,
-        baseTeamData,
-        engineVersion,
-        rulesVersion: rulesVersion || preflight?.summary?.rulesVersion || "",
-        randomFn: Math.random,
-      });
-
-      if (!generated.ok) {
-        dispatch({
-          type: "SET_PREFLIGHT",
-          payload: {
-            ...(preflight || {}),
-            ok: false,
-            blockers: [generated.error || "Không tạo được kết quả đội."],
-          },
-        });
-        dispatch({ type: "GO_STAGE", payload: { stage: SHOWCASE_STAGE.SETUP } });
-        return;
-      }
-
-      if (discardPrevious) {
-        fixedSessionRef.current = null;
-      }
-
-      fixedSessionRef.current = annotateShowcaseSessionEngineHashes(generated.session, {
-        players: scopeAthletes,
-        selectedPlayerIds: selectedIds,
-        teamCount,
-        rulesVersion: rulesVersion || preflight?.summary?.rulesVersion || "",
-      });
-      membershipRef.current = fixedSessionRef.current.membershipFingerprint;
-      dispatch({ type: "SET_SESSION", payload: fixedSessionRef.current });
-      dispatch({ type: "GO_STAGE", payload: { stage: SHOWCASE_STAGE.TEAM_PREVIEW } });
     },
-    [
-      baseTeamData,
-      engineVersion,
-      preflight,
-      requestedTeamCount,
-      rulesVersion,
-      scopeAthletes,
-      state.mode,
-      state.setupConfig?.selectedAthleteIds,
-      state.setupConfig?.teamCount,
-      teamNamePrefix,
-    ]
+    [state.mode]
   );
 
+  const completeTeamGenerationEffect = useCallback(async () => {
+    if (state.mode === SHOWCASE_MODE.REPLAY) return;
+    const pending = pendingTeamGenerateRef.current || { discardPrevious: false };
+    pendingTeamGenerateRef.current = null;
+
+    const teamCount =
+      Number(state.setupConfig?.teamCount) ||
+      requestedTeamCount ||
+      SHOWCASE_DEFAULT_TEAM_COUNT;
+    const selectedIds = (state.setupConfig?.selectedAthleteIds || []).map(String);
+
+    const reconciliation = reconcileSelectedAthletesForEngineInput({
+      athletes: scopeAthletes,
+      selectedAthleteIds: selectedIds,
+      requestedTeamCount: teamCount,
+      athletesPerTeam: Number(state.setupConfig?.athletesPerTeam) || 4,
+      requireMlpBalance: true,
+    });
+
+    if (!reconciliation.ok) {
+      const removalLines = reconciliation.removals.map(
+        (row) =>
+          `${row.athleteName} (${row.athleteId}) · ${row.removalReason} · raw=${String(row.rawGender)} → ${row.normalizedGender}`
+      );
+      dispatch({
+        type: "SET_PREFLIGHT",
+        payload: {
+          ...(preflight || {}),
+          ok: false,
+          blockers: [
+            reconciliation.message ||
+              `Bạn đã chọn ${reconciliation.selectedCount} VĐV nhưng hệ thống chỉ xác nhận ${reconciliation.finalEngineInputCount} VĐV hợp lệ.`,
+            ...removalLines.slice(0, 20),
+            ...reconciliation.blockers.filter((item) => item !== reconciliation.message),
+          ],
+          reconciliation,
+        },
+      });
+      dispatch({ type: "GO_STAGE", payload: { stage: SHOWCASE_STAGE.SETUP } });
+      return;
+    }
+
+    const generated = generateShowcaseTeamDraw({
+      players: reconciliation.finalAthletes,
+      selectedPlayerIds: reconciliation.finalAthletes.map((athlete) => String(athlete.id)),
+      teamCount,
+      teamNamePrefix,
+      baseTeamData,
+      engineVersion,
+      rulesVersion: rulesVersion || preflight?.summary?.rulesVersion || "",
+      randomFn: Math.random,
+    });
+
+    if (!generated.ok) {
+      dispatch({
+        type: "SET_PREFLIGHT",
+        payload: {
+          ...(preflight || {}),
+          ok: false,
+          blockers: [generated.error || "Không tạo được kết quả đội."],
+        },
+      });
+      dispatch({ type: "GO_STAGE", payload: { stage: SHOWCASE_STAGE.SETUP } });
+      return;
+    }
+
+    const usedIds = new Set(
+      (generated.session?.teamData?.teams || []).flatMap((team) =>
+        (team.playerIds || []).map(String)
+      )
+    );
+    if (usedIds.size !== reconciliation.finalEngineInputCount) {
+      dispatch({
+        type: "SET_PREFLIGHT",
+        payload: {
+          ...(preflight || {}),
+          ok: false,
+          blockers: [
+            `Bạn đã chọn ${reconciliation.selectedCount} VĐV nhưng hệ thống chỉ xác nhận ${usedIds.size} VĐV hợp lệ trong lễ.`,
+            `finalEngineInputCount=${reconciliation.finalEngineInputCount}; ceremonyAthletes=${usedIds.size}.`,
+          ],
+        },
+      });
+      dispatch({ type: "GO_STAGE", payload: { stage: SHOWCASE_STAGE.SETUP } });
+      return;
+    }
+
+    if (pending.discardPrevious) {
+      fixedSessionRef.current = null;
+    }
+
+    fixedSessionRef.current = await annotateShowcaseSessionEngineHashes(generated.session, {
+      players: reconciliation.finalAthletes,
+      selectedPlayerIds: reconciliation.finalAthletes.map((athlete) => String(athlete.id)),
+      teamCount,
+      rulesVersion: rulesVersion || preflight?.summary?.rulesVersion || "",
+    });
+    membershipRef.current = fixedSessionRef.current.membershipFingerprint;
+    dispatch({ type: "SET_SESSION", payload: fixedSessionRef.current });
+    dispatch({ type: "GO_STAGE", payload: { stage: SHOWCASE_STAGE.TEAM_REVEAL } });
+  }, [
+    baseTeamData,
+    engineVersion,
+    preflight,
+    requestedTeamCount,
+    rulesVersion,
+    scopeAthletes,
+    state.mode,
+    state.setupConfig?.athletesPerTeam,
+    state.setupConfig?.selectedAthleteIds,
+    state.setupConfig?.teamCount,
+    teamNamePrefix,
+  ]);
+
   function handleGenerateTeams() {
+    requestShowcaseFullscreen();
     runTeamGeneration(false);
   }
 
@@ -429,11 +529,28 @@ export default function TeamTournamentShowcase({
   function handleGenerateGroups({ groupCount, discardPrevious = false } = {}) {
     const base = fixedSessionRef.current || state.session;
     if (!base) return;
-
+    requestShowcaseFullscreen();
+    pendingGroupGenerateRef.current = {
+      groupCount: Number(groupCount) || Number(state.setupConfig?.groupCount) || 2,
+      discardPrevious: Boolean(discardPrevious),
+    };
     dispatch({ type: "GO_STAGE", payload: { stage: SHOWCASE_STAGE.GROUP_GENERATING } });
+  }
+
+  const completeGroupGenerationEffect = useCallback(() => {
+    const base = fixedSessionRef.current || state.session;
+    const pending = pendingGroupGenerateRef.current || {
+      groupCount: Number(state.setupConfig?.groupCount) || 2,
+      discardPrevious: false,
+    };
+    pendingGroupGenerateRef.current = null;
+    if (!base) {
+      dispatch({ type: "GO_STAGE", payload: { stage: SHOWCASE_STAGE.SETUP } });
+      return;
+    }
 
     const generated = generateShowcaseGroupDraw(base, {
-      groupCount: Number(groupCount) || Number(state.setupConfig?.groupCount) || 2,
+      groupCount: Number(pending.groupCount) || 2,
       seedingMode: TEAM_GROUP_SEEDING.AVG_LEVEL,
       rulesVersion: rulesVersion || base.rulesVersion || "",
       randomFn: Math.random,
@@ -456,18 +573,19 @@ export default function TeamTournamentShowcase({
         type: "SAVE_FAILED",
         payload: { error: "Kết quả đội bị thay đổi — đã hủy chia bảng." },
       });
+      dispatch({ type: "GO_STAGE", payload: { stage: SHOWCASE_STAGE.SETUP } });
       return;
     }
 
-    if (discardPrevious) {
+    if (pending.discardPrevious) {
       showAllGroupsRef.current = false;
     }
 
     fixedSessionRef.current = generated.session;
     groupFingerprintRef.current = generated.session.groupSession?.groupFingerprint;
     dispatch({ type: "SET_SESSION", payload: generated.session });
-    dispatch({ type: "GO_STAGE", payload: { stage: SHOWCASE_STAGE.GROUP_PREVIEW } });
-  }
+    dispatch({ type: "GO_STAGE", payload: { stage: SHOWCASE_STAGE.GROUP_REVEAL } });
+  }, [rulesVersion, state.session, state.setupConfig?.groupCount]);
 
   function handleGenerateMatchups() {
     const session = fixedSessionRef.current || state.session;
@@ -525,6 +643,7 @@ export default function TeamTournamentShowcase({
 
   function handleStartTeamReveal() {
     if (!fixedSessionRef.current && !state.session) return;
+    requestShowcaseFullscreen();
     dispatch({
       type: "GO_STAGE",
       payload: {
@@ -537,6 +656,7 @@ export default function TeamTournamentShowcase({
   function handleStartGroupReveal() {
     if (!fixedSessionRef.current?.groupSession && !state.session?.groupSession) return;
     showAllGroupsRef.current = false;
+    requestShowcaseFullscreen();
     dispatch({
       type: "GO_STAGE",
       payload: { stage: SHOWCASE_STAGE.GROUP_REVEAL, groupRevealIndex: 0 },
@@ -545,6 +665,7 @@ export default function TeamTournamentShowcase({
 
   function handleStartFromPreflight() {
     if (!preflight?.ok && !state.preflight?.ok) return;
+    requestShowcaseFullscreen();
     dispatch({
       type: "GO_STAGE",
       payload: {
@@ -557,6 +678,7 @@ export default function TeamTournamentShowcase({
   function handleSelectGroupFormat(option) {
     const base = fixedSessionRef.current || state.session;
     if (!base) return;
+    requestShowcaseFullscreen();
     const generated = generateShowcaseGroupDraw(base, {
       groupCount: option.groupCount,
       seedingMode: TEAM_GROUP_SEEDING.AVG_LEVEL,
@@ -646,6 +768,51 @@ export default function TeamTournamentShowcase({
     }
   }
 
+  // Request browser fullscreen directly from a user gesture (click) so the
+  // browser allows it. Best-effort; the showcase shell already fills the screen.
+  function requestShowcaseFullscreen() {
+    const el = shellRef.current;
+    if (!el || document.fullscreenElement) return;
+    try {
+      const result = el.requestFullscreen?.();
+      if (result && typeof result.then === "function") {
+        result
+          .then(() => dispatch({ type: "SET_PROJECTOR", payload: true }))
+          .catch(() => {});
+      } else {
+        dispatch({ type: "SET_PROJECTOR", payload: true });
+      }
+    } catch {
+      // Fullscreen may be blocked; presentation still runs in the shell.
+    }
+  }
+
+  // Manual "Đóng" on a reveal projector: stop the animation but keep the frozen
+  // session. Exits browser fullscreen and returns to a safe non-animating stage.
+  function handleExitTeamReveal() {
+    if (document.fullscreenElement) {
+      document.exitFullscreen?.().catch(() => {});
+      dispatch({ type: "SET_PROJECTOR", payload: false });
+    }
+    if (state.mode === SHOWCASE_MODE.REPLAY) {
+      onClose?.();
+      return;
+    }
+    dispatch({ type: "GO_STAGE", payload: { stage: SHOWCASE_STAGE.TEAM_PREVIEW } });
+  }
+
+  function handleExitGroupReveal() {
+    if (document.fullscreenElement) {
+      document.exitFullscreen?.().catch(() => {});
+      dispatch({ type: "SET_PROJECTOR", payload: false });
+    }
+    if (state.mode === SHOWCASE_MODE.REPLAY) {
+      onClose?.();
+      return;
+    }
+    dispatch({ type: "GO_STAGE", payload: { stage: SHOWCASE_STAGE.GROUP_PREVIEW } });
+  }
+
   if (!open && !state.open) {
     return null;
   }
@@ -700,9 +867,10 @@ export default function TeamTournamentShowcase({
                 <Button
                   size="small"
                   color="inherit"
-                  onClick={() =>
+                  onClick={() => {
+                    requestShowcaseFullscreen();
                     dispatch({ type: "GO_STAGE", payload: { stage: SHOWCASE_STAGE.TEAM_REVEAL } })
-                  }
+                  }}
                 >
                   Đội
                 </Button>
@@ -721,12 +889,13 @@ export default function TeamTournamentShowcase({
                 <Button
                   size="small"
                   color="inherit"
-                  onClick={() =>
+                  onClick={() => {
+                    requestShowcaseFullscreen();
                     dispatch({
                       type: "GO_STAGE",
                       payload: { stage: SHOWCASE_STAGE.GROUP_REVEAL },
                     })
-                  }
+                  }}
                 >
                   Bảng
                 </Button>
@@ -747,9 +916,63 @@ export default function TeamTournamentShowcase({
           </Stack>
         </Stack>
 
-        {state.stage === SHOWCASE_STAGE.SETUP ||
-        state.stage === SHOWCASE_STAGE.TEAM_GENERATING ||
-        state.stage === SHOWCASE_STAGE.GROUP_GENERATING ? (
+        {state.stage === SHOWCASE_STAGE.TEAM_GENERATING ? (
+          <Box
+            sx={{
+              borderRadius: 2,
+              border: "1px solid rgba(124,255,178,0.35)",
+              bgcolor: "rgba(7, 17, 31, 0.92)",
+              px: 1,
+              py: 1,
+            }}
+          >
+            <EffectPreludeScreen
+              presetKey={EFFECT_PRELUDE_SCOPE.TEAM_MLP_PAIRING}
+              context={{
+                playerCount: (state.setupConfig?.selectedAthleteIds || []).length,
+                teamCount:
+                  Number(state.setupConfig?.teamCount) ||
+                  requestedTeamCount ||
+                  SHOWCASE_DEFAULT_TEAM_COUNT,
+                players: selectedPlayers.slice(0, 16),
+              }}
+              active
+              compact
+              participants={selectedPlayers.slice(0, 16)}
+              onComplete={completeTeamGenerationEffect}
+              onSkip={completeTeamGenerationEffect}
+            />
+          </Box>
+        ) : null}
+
+        {state.stage === SHOWCASE_STAGE.GROUP_GENERATING ? (
+          <Box
+            sx={{
+              borderRadius: 2,
+              border: "1px solid rgba(124,255,178,0.35)",
+              bgcolor: "rgba(7, 17, 31, 0.92)",
+              px: 1,
+              py: 1,
+            }}
+          >
+            <EffectPreludeScreen
+              presetKey={ANIMATION_MODES.SNAKE_GROUP}
+              context={{
+                playerCount: (fixedSessionRef.current || state.session)?.teamCards?.length || 0,
+                groupCount:
+                  Number(pendingGroupGenerateRef.current?.groupCount) ||
+                  Number(state.setupConfig?.groupCount) ||
+                  2,
+              }}
+              active
+              compact
+              onComplete={completeGroupGenerationEffect}
+              onSkip={completeGroupGenerationEffect}
+            />
+          </Box>
+        ) : null}
+
+        {state.stage === SHOWCASE_STAGE.SETUP ? (
           <ShowcaseSetup
             tournament={tournament}
             clubs={clubs}
@@ -871,63 +1094,16 @@ export default function TeamTournamentShowcase({
 
         {state.stage === SHOWCASE_STAGE.TEAM_REVEAL ? (
           <ShowcaseTeamReveal
-            teamCards={session?.teamCards || []}
-            teamIndex={state.teamRevealIndex}
-            athleteIndex={state.athleteRevealIndex}
-            showAll={showAllTeamsRef.current}
-            paused={state.paused}
-            onPause={() => dispatch({ type: "PAUSE" })}
-            onResume={() => dispatch({ type: "RESUME" })}
-            onPrev={() =>
-              dispatch({
-                type: "SET_TEAM_REVEAL",
-                payload: {
-                  teamRevealIndex: Math.max(0, state.teamRevealIndex - 1),
-                  athleteRevealIndex: 4,
-                },
-              })
-            }
-            onNext={() => {
-              if (state.athleteRevealIndex < 4) {
-                dispatch({
-                  type: "SET_TEAM_REVEAL",
-                  payload: { athleteRevealIndex: state.athleteRevealIndex + 1 },
-                });
-                return;
-              }
-              dispatch({
-                type: "SET_TEAM_REVEAL",
-                payload: {
-                  teamRevealIndex: Math.min(
-                    (session?.teamCards?.length || 1) - 1,
-                    state.teamRevealIndex + 1
-                  ),
-                  athleteRevealIndex: 0,
-                },
-              });
-            }}
-            onShowAll={() => {
-              showAllTeamsRef.current = true;
-              dispatch({
-                type: "SET_TEAM_REVEAL",
-                payload: {
-                  teamRevealIndex: (session?.teamCards?.length || 1) - 1,
-                  athleteRevealIndex: 4,
-                },
-              });
-            }}
-            onReplayTeam={() =>
-              dispatch({
-                type: "SET_TEAM_REVEAL",
-                payload: { athleteRevealIndex: 0 },
-              })
-            }
+            session={session}
+            reducedMotion={state.reducedMotion}
+            continueLabel="Tiếp tục — công bố đội trưởng"
             onContinue={() =>
               dispatch({
                 type: "GO_STAGE",
                 payload: { stage: SHOWCASE_STAGE.CAPTAIN_REVEAL },
               })
             }
+            onClose={handleExitTeamReveal}
           />
         ) : null}
 
@@ -984,38 +1160,12 @@ export default function TeamTournamentShowcase({
 
         {state.stage === SHOWCASE_STAGE.GROUP_REVEAL ? (
           <ShowcaseGroupReveal
-            groupCards={session?.groupSession?.groupCards || []}
-            groupIndex={state.groupRevealIndex}
-            showAll={showAllGroupsRef.current}
-            diagnostics={session?.groupSession?.diagnostics}
+            session={session}
             seedingMode={session?.groupSession?.seedingMode}
             engineVersion={session?.engineVersion || engineVersion}
             rulesVersion={session?.rulesVersion || rulesVersion}
-            paused={state.paused}
-            onPause={() => dispatch({ type: "PAUSE" })}
-            onResume={() => dispatch({ type: "RESUME" })}
-            onPrev={() =>
-              dispatch({
-                type: "SET_GROUP_REVEAL",
-                payload: Math.max(0, state.groupRevealIndex - 1),
-              })
-            }
-            onNext={() =>
-              dispatch({
-                type: "SET_GROUP_REVEAL",
-                payload: Math.min(
-                  (session?.groupSession?.groupCards?.length || 1) - 1,
-                  state.groupRevealIndex + 1
-                ),
-              })
-            }
-            onShowAll={() => {
-              showAllGroupsRef.current = true;
-              dispatch({
-                type: "SET_GROUP_REVEAL",
-                payload: (session?.groupSession?.groupCards?.length || 1) - 1,
-              });
-            }}
+            reducedMotion={state.reducedMotion}
+            continueLabel={isReplay ? "Xem kết quả" : "Xem lại trước khi lưu"}
             onReselectFormat={
               isReplay
                 ? undefined
@@ -1033,6 +1183,7 @@ export default function TeamTournamentShowcase({
                 },
               })
             }
+            onClose={handleExitGroupReveal}
           />
         ) : null}
 
@@ -1061,12 +1212,13 @@ export default function TeamTournamentShowcase({
             savedAt={state.savedAt}
             draftStatus={draftStatus}
             onFullscreen={toggleProjector}
-            onReplay={() =>
+            onReplay={() => {
+              requestShowcaseFullscreen();
               dispatch({
                 type: "GO_STAGE",
                 payload: { stage: SHOWCASE_STAGE.TEAM_REVEAL, teamRevealIndex: 0 },
               })
-            }
+            }}
             onBackTournament={() => {
               onBackTournament?.();
               onClose?.();
