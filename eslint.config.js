@@ -42,4 +42,20 @@ export default defineConfig([
       globals: globals.node,
     },
   },
+  {
+    files: ['src/features/competition-core/**/*.{js,jsx}'],
+    rules: {
+      'no-restricted-imports': [
+        'error',
+        {
+          patterns: [
+            {
+              group: ['**/pages/**', 'react', 'react-dom', 'react/*', '@mui/*'],
+              message: 'competition-core must not import UI or page logic (Phase 2A boundary).',
+            },
+          ],
+        },
+      ],
+    },
+  },
 ])

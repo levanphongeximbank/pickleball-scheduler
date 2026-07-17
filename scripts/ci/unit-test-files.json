@@ -1,4 +1,5 @@
 [
+  "tests/competition-architecture-boundaries.test.js",
   "tests/competition-core-constants.test.js",
   "tests/competition-core-feature-flags.test.js",
   "tests/competition-core-contracts.test.js",

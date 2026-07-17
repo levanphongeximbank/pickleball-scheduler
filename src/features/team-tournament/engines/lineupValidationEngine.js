@@ -1,6 +1,8 @@
 import { getPlayerGenderKey } from "../../../models/player.js";
-import { evaluateLegacyTeamLineupValidation } from "../../competition-core/constraints/adapters/teamTournamentRulesBridge.js";
-import { isRulesV2Enabled } from "../../competition-core/config/featureFlags.js";
+import {
+  evaluateLegacyTeamLineupValidation,
+  isRulesV2Enabled,
+} from "../../competition-core/index.js";
 import {
   DISCIPLINE_CATEGORY,
   GENDER_REQUIREMENT,

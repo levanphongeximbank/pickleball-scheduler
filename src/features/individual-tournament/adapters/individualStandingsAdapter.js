@@ -2,8 +2,10 @@
  * Individual tournament standings (S1-D) — CC-08 STANDINGS_V2 primary when flags on.
  * Does not modify team tournament standings path.
  */
-import { isStandingsV2Enabled } from "../../competition-core/config/featureFlags.js";
-import { evaluateCanonicalStandingsRuntime } from "../../competition-core/standings/adapters/standingsRuntimeAdapter.js";
+import {
+  evaluateCanonicalStandingsRuntime,
+  isStandingsV2Enabled,
+} from "../../competition-core/index.js";
 import {
   buildAllGroupStandings,
   buildGroupStandingFromMatches,

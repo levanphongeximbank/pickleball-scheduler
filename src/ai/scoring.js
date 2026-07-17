@@ -6,7 +6,7 @@ Decision Engine
 */
 
 import { AI_CONFIG } from "./config.js";
-import { evaluateLegacyAiPairScore } from "../features/competition-core/constraints/adapters/constraintsEvaluationBridge.js";
+import { evaluateLegacyAiPairScore } from "../features/competition-core/index.js";
 import {
   evaluatePrivatePairingMatchOption,
   isPrivatePairingRuntimeEnabled,
