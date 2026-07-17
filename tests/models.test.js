@@ -67,7 +67,8 @@ test("getPlayerGenderKey supports Vietnamese and English values", () => {
   assert.equal(getPlayerGenderKey("Nam"), "male");
   assert.equal(getPlayerGenderKey("Nữ"), "female");
   assert.equal(getPlayerGenderKey("male"), "male");
-  assert.equal(getPlayerGenderKey("other"), "other");
+  assert.equal(getPlayerGenderKey("other"), "unknown");
+  assert.equal(getPlayerGenderKey("khác"), "unknown");
 });
 
 test("normalizePlayer keeps extended v3.3 fields", () => {

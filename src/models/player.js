@@ -16,22 +16,50 @@ function toNumber(value, fallback = 0) {
   return Number.isFinite(parsed) ? parsed : fallback;
 }
 
-export function getPlayerGenderKey(gender) {
-  const raw = String(gender || "").trim().toLowerCase();
+/**
+ * Canonical athlete gender for display, filters, counters, MLP, and engines.
+ * Accepts raw strings or athlete-like objects (`gender` / `sex` / `gioiTinh`).
+ * Output is exactly: "male" | "female" | "unknown".
+ * @param {unknown} value
+ * @returns {"male"|"female"|"unknown"}
+ */
+export function normalizeAthleteGender(value) {
+  const source =
+    value && typeof value === "object" && !Array.isArray(value)
+      ? value.gender ?? value.sex ?? value.gioiTinh ?? value.gioi_tinh ?? ""
+      : value;
+  const raw = String(source ?? "")
+    .trim()
+    .toLowerCase()
+    .normalize("NFC");
+  if (!raw) return "unknown";
 
-  if (["nam", "male", "m"].includes(raw)) {
+  const ascii = raw.normalize("NFD").replace(/\p{M}/gu, "");
+
+  if (["nam", "male", "m", "boy", "man"].includes(raw) || ascii === "nam") {
     return "male";
   }
-
-  if (["nữ", "nu", "female", "f"].includes(raw)) {
+  if (
+    ["nữ", "nu", "female", "f", "girl", "woman"].includes(raw) ||
+    ascii === "nu"
+  ) {
     return "female";
   }
 
-  if (["other", "khac", "khác"].includes(raw)) {
-    return "other";
-  }
-
+  // legacy "other" / "khác" collapse to unknown for MLP eligibility
   return "unknown";
+}
+
+/** @deprecated Prefer normalizeAthleteGender — same canonical male|female|unknown output. */
+export function getPlayerGenderKey(gender) {
+  return normalizeAthleteGender(gender);
+}
+
+export function athleteGenderDisplayLabel(value) {
+  const key = normalizeAthleteGender(value);
+  if (key === "male") return "Nam";
+  if (key === "female") return "Nữ";
+  return "—";
 }
 
 function normalizePlayerType(value) {

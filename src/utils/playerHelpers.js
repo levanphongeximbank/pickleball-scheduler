@@ -3,6 +3,7 @@ import { loadPlayerHistoryProfileForClub } from "../tournament/engines/playerHis
 import { TOURNAMENT_MODE } from "../models/tournament/constants.js";
 import { todayIsoDate } from "../pages/courtManagement/courtManagement.constants.js";
 import { RATING_STATUS } from "../features/pick-vn-rating/constants/ratingStatus.js";
+import { normalizeAthleteGender } from "../models/player.js";
 
 export function isPlayerUnrated(player) {
   if (!player) {
@@ -250,7 +251,13 @@ export function filterPlayers(players, filters = {}) {
         .filter(Boolean)
         .some((value) => String(value).toLowerCase().includes(keyword));
 
-    const matchesGender = genderFilter === "all" || player.gender === genderFilter;
+    const filterGender = normalizeAthleteGender(genderFilter);
+    const matchesGender =
+      genderFilter === "all" ||
+      genderFilter === "" ||
+      genderFilter == null ||
+      (filterGender !== "unknown" &&
+        normalizeAthleteGender(player.gender) === filterGender);
 
     const matchesLevel =
       isPlayerUnrated(player) ||

@@ -4,6 +4,8 @@ export {
   SHOWCASE_COPY,
   SHOWCASE_DEFAULT_TEAM_COUNT,
   SHOWCASE_COUNTDOWN_SECONDS,
+  SHOWCASE_REVEAL_STEP_MS,
+  SHOWCASE_REVEAL_STEP_MS_REDUCED,
   PROCESSING_STAGES,
 } from "./showcaseConstants.js";
 
@@ -22,10 +24,20 @@ export {
   buildShowcaseGroupPreviewDiagnostics,
   buildShowcaseActionGates,
   selectAllEligibleShowcaseAthletes,
+  selectEligibleShowcaseAthletesInFilter,
+  clearFilteredShowcaseAthleteSelection,
   clearShowcaseAthleteSelection,
   assignShowcaseCaptain,
   resolveShowcaseClubScopeConfig,
+  resolveShowcasePermittedClubs,
+  tournamentAllowsTenantAthleteScope,
+  isShowcaseHostClubRestricted,
+  isTournamentHostClubAthletesOnly,
+  canShowcaseSelectTenantAthleteScope,
+  filterShowcaseAthletesForDisplay,
 } from "./showcaseSetupModel.js";
+
+export { reconcileSelectedAthletesForEngineInput } from "./reconcileSelectedAthletesForEngineInput.js";
 
 export { canTransitionShowcaseStage } from "./showcaseStateGuards.js";
 
@@ -37,6 +49,19 @@ export {
   assertGroupMembershipUnchanged,
   cloneShowcaseSession,
 } from "./showcaseDrawSession.js";
+
+export {
+  buildShowcaseTeamRevealSteps,
+  buildShowcaseGroupRevealSteps,
+  assertTeamRevealParity,
+  assertGroupRevealParity,
+  selectRevealedTeamState,
+  selectRevealedGroupState,
+} from "./showcaseRevealSteps.js";
+
+export { buildAiPairingRevealSession } from "./buildAiPairingRevealSession.js";
+
+export { buildAiGroupRevealSession } from "./buildAiGroupRevealSession.js";
 
 export { generateShowcaseMatchupPreview } from "./showcaseMatchupSession.js";
 

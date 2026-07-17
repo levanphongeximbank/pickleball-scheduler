@@ -17,22 +17,24 @@ import {
   Typography,
 } from "@mui/material";
 import { resolveCanonicalAthleteRating } from "../../pairing-candidates/canonicalAthleteRating.js";
-import { getPlayerGenderKey } from "../../../models/player.js";
+import { athleteGenderDisplayLabel } from "../../../models/player.js";
 import { listGroupDivisionOptions } from "../engines/teamGroupDivisionPolicy.js";
 import {
   SHOWCASE_CLUB_SCOPE,
   buildShowcaseActionGates,
   buildShowcaseAthleteCounters,
   buildShowcaseTeamConfiguration,
+  clearFilteredShowcaseAthleteSelection,
   clearShowcaseAthleteSelection,
   filterShowcaseAthletesForDisplay,
   mergeShowcaseAthletePool,
   resolveShowcaseClubScopeConfig,
-  selectAllEligibleShowcaseAthletes,
+  selectEligibleShowcaseAthletesInFilter,
   selectShowcaseAthletesByClub,
   selectShowcaseAthletesByGender,
   toggleShowcaseAthleteSelection,
 } from "./showcaseSetupModel.js";
+import { reconcileSelectedAthletesForEngineInput } from "./reconcileSelectedAthletesForEngineInput.js";
 import ShowcaseMatchupSection from "./ShowcaseMatchupSection.jsx";
 import {
   showcaseActionsSx,
@@ -146,9 +148,36 @@ export default function ShowcaseSetup({
   const teamCount = Number(setupConfig.teamCount) || SHOWCASE_DEFAULT_TEAM_COUNT;
   const groupCount = Number(setupConfig.groupCount) || 2;
 
+  const displayAthletes = useMemo(
+    () =>
+      filterShowcaseAthletesForDisplay(athletes, {
+        search: setupConfig.search,
+        genderFilter: setupConfig.genderFilter,
+        clubFilter: setupConfig.clubFilter,
+        showSelectedOnly: setupConfig.showSelectedOnly,
+        selectedAthleteIds,
+      }),
+    [athletes, setupConfig, selectedAthleteIds]
+  );
+
   const counters = useMemo(
-    () => buildShowcaseAthleteCounters(athletes, selectedAthleteIds),
-    [athletes, selectedAthleteIds]
+    () =>
+      buildShowcaseAthleteCounters(athletes, selectedAthleteIds, {
+        displayedCount: displayAthletes.length,
+      }),
+    [athletes, selectedAthleteIds, displayAthletes]
+  );
+
+  const inputReconciliation = useMemo(
+    () =>
+      reconcileSelectedAthletesForEngineInput({
+        athletes,
+        selectedAthleteIds,
+        requestedTeamCount: teamCount,
+        athletesPerTeam: setupConfig.athletesPerTeam || 4,
+        requireMlpBalance: true,
+      }),
+    [athletes, selectedAthleteIds, teamCount, setupConfig.athletesPerTeam]
   );
 
   const teamConfig = useMemo(
@@ -163,18 +192,6 @@ export default function ShowcaseSetup({
     [athletes, selectedAthleteIds, teamCount, setupConfig.athletesPerTeam, setupConfig.formatPreset]
   );
 
-  const displayAthletes = useMemo(
-    () =>
-      filterShowcaseAthletesForDisplay(athletes, {
-        search: setupConfig.search,
-        genderFilter: setupConfig.genderFilter,
-        clubFilter: setupConfig.clubFilter,
-        showSelectedOnly: setupConfig.showSelectedOnly,
-        selectedAthleteIds,
-      }),
-    [athletes, setupConfig, selectedAthleteIds]
-  );
-
   const groupOptions = useMemo(
     () => listGroupDivisionOptions(teamConfig.expectedTeamCount || teamCount),
     [teamConfig.expectedTeamCount, teamCount]
@@ -182,13 +199,21 @@ export default function ShowcaseSetup({
 
   const clubOptionsForFilter = useMemo(() => {
     const seen = new Map();
+    for (const club of scopeConfig.permittedClubs || []) {
+      const clubId = String(club?.id || "").trim();
+      const clubName = String(club?.name || "").trim();
+      if (clubId) seen.set(clubId, clubName || clubId);
+    }
     for (const athlete of athletes) {
-      const clubId = String(athlete.clubId || athlete.membershipClubId || "").trim();
+      const clubId = String(
+        athlete.clubId || athlete.sourceClubId || athlete.membershipClubId || ""
+      ).trim();
       const clubName = athlete.clubName || clubId;
-      if (clubId) seen.set(clubId, clubName);
+      if (clubId && !seen.has(clubId)) seen.set(clubId, clubName);
+      else if (clubId && clubName && clubName !== clubId) seen.set(clubId, clubName);
     }
     return [...seen.entries()].map(([id, name]) => ({ id, name }));
-  }, [athletes]);
+  }, [athletes, scopeConfig.permittedClubs]);
 
   const gates = buildShowcaseActionGates({
     counters,
@@ -255,9 +280,7 @@ export default function ShowcaseSetup({
               }}
             >
               {scopeConfig.canSelectTenantScope ? (
-                <MenuItem value={SHOWCASE_CLUB_SCOPE.TENANT}>
-                  Tất cả CLB được phép quản lý
-                </MenuItem>
+                <MenuItem value={SHOWCASE_CLUB_SCOPE.TENANT}>Tất cả CLB</MenuItem>
               ) : null}
               {scopeConfig.permittedClubs.map((club) => (
                 <MenuItem key={club.id} value={club.id}>
@@ -280,11 +303,41 @@ export default function ShowcaseSetup({
               reason={gates.selectAll.reason}
               onClick={() =>
                 emit({
-                  selectedAthleteIds: selectAllEligibleShowcaseAthletes(athletes),
+                  selectedAthleteIds: selectEligibleShowcaseAthletesInFilter(
+                    athletes,
+                    selectedAthleteIds,
+                    {
+                      search: setupConfig.search,
+                      genderFilter: setupConfig.genderFilter,
+                      clubFilter: setupConfig.clubFilter,
+                    }
+                  ),
                 })
               }
             >
-              Chọn tất cả
+              Chọn đang hiện
+            </DisabledButton>
+            <DisabledButton
+              size="small"
+              variant="outlined"
+              color="inherit"
+              disabled={gates.clearAll.disabled}
+              reason={gates.clearAll.reason}
+              onClick={() =>
+                emit({
+                  selectedAthleteIds: clearFilteredShowcaseAthleteSelection(
+                    athletes,
+                    selectedAthleteIds,
+                    {
+                      search: setupConfig.search,
+                      genderFilter: setupConfig.genderFilter,
+                      clubFilter: setupConfig.clubFilter,
+                    }
+                  ),
+                })
+              }
+            >
+              Bỏ chọn đang hiện
             </DisabledButton>
             <DisabledButton
               size="small"
@@ -357,6 +410,19 @@ export default function ShowcaseSetup({
               onChange={(event) => emit({ search: event.target.value })}
               fullWidth
             />
+            <FormControl size="small" sx={{ minWidth: 160 }}>
+              <Select
+                value={setupConfig.clubFilter || "all"}
+                onChange={(event) => emit({ clubFilter: event.target.value })}
+              >
+                <MenuItem value="all">Tất cả CLB</MenuItem>
+                {clubOptionsForFilter.map((club) => (
+                  <MenuItem key={club.id} value={club.id}>
+                    {club.name || club.id}
+                  </MenuItem>
+                ))}
+              </Select>
+            </FormControl>
             <FormControl size="small" sx={{ minWidth: 140 }}>
               <Select
                 value={setupConfig.genderFilter || "all"}
@@ -379,7 +445,8 @@ export default function ShowcaseSetup({
           </Stack>
 
           <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
-            <Chip label={`Tổng: ${counters.totalAvailable}`} size="small" />
+            <Chip label={`Tổng VĐV: ${counters.totalAvailable}`} size="small" />
+            <Chip label={`Đang hiển thị: ${counters.displayedCount}`} size="small" />
             <Chip label={`Đã chọn: ${counters.selectedCount}`} size="small" color="success" />
             <Chip label={`Nam: ${counters.selectedMale}`} size="small" />
             <Chip label={`Nữ: ${counters.selectedFemale}`} size="small" />
@@ -389,6 +456,18 @@ export default function ShowcaseSetup({
             <Chip label={`Thiếu identity: ${counters.selectedMissingIdentity}`} size="small" />
             <Chip label={`Không đủ ĐK: ${counters.selectedIneligible}`} size="small" />
           </Stack>
+
+          {!inputReconciliation.ok ? (
+            <Alert severity="warning">
+              <Box fontWeight={700}>{inputReconciliation.message}</Box>
+              {inputReconciliation.removals.slice(0, 12).map((row) => (
+                <Box key={`${row.athleteId}-${row.removalReason}`} sx={{ mt: 0.5, fontSize: "0.85rem" }}>
+                  {row.athleteName} ({row.athleteId}) · raw={String(row.rawGender)} ·{" "}
+                  {row.normalizedGender} · {row.club || "—"} · {row.removalReason}
+                </Box>
+              ))}
+            </Alert>
+          ) : null}
 
           <Box
             sx={{
@@ -405,9 +484,7 @@ export default function ShowcaseSetup({
             {displayAthletes.map((athlete, index) => {
               const athleteId = String(athlete?.id || "");
               const rating = resolveCanonicalAthleteRating(athlete);
-              const gender = getPlayerGenderKey(athlete.gender);
-              const genderLabel =
-                gender === "male" ? "Nam" : gender === "female" ? "Nữ" : "—";
+              const genderLabel = athleteGenderDisplayLabel(athlete);
               return (
                 <FormControlLabel
                   key={athleteId || `row-${index}`}

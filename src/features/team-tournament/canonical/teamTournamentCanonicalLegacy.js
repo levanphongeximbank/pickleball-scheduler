@@ -1,4 +1,4 @@
-import { createHash } from "node:crypto";
+import { hashUtf8Sha256Sync } from "./teamTournamentCanonicalDigest.js";
 
 /**
  * Legacy canonical serialization (TT-1B idempotency + shadow compare).
@@ -55,7 +55,5 @@ export function stableStringifyTeamTournamentValue(value) {
  * @returns {string}
  */
 export function hashTeamTournamentCanonicalValue(value) {
-  return createHash("sha256")
-    .update(stableStringifyTeamTournamentValue(value))
-    .digest("hex");
+  return hashUtf8Sha256Sync(stableStringifyTeamTournamentValue(value));
 }

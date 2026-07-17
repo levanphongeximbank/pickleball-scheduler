@@ -222,7 +222,7 @@ describe("P1.3 async hash parity (browser SubtleCrypto)", () => {
     assert.equal(asyncBuilt.engineOutputHash, syncBuilt.engineOutputHash);
   });
 
-  it("SubtleCrypto async digest matches Node sync createHash", async () => {
+  it("SubtleCrypto async digest matches pure sync SHA-256", async () => {
     const text = '{"a":1,"b":2}';
     assert.equal(await hashUtf8Sha256Async(text), hashUtf8Sha256Sync(text));
   });
@@ -306,10 +306,9 @@ describe("P1.3 browser mutation path never uses sync hash", () => {
     });
 
     try {
-      assert.throws(
-        () => hashUtf8Sha256Sync("probe"),
-        /unavailable in browser runtime/
-      );
+      const syncHash = hashUtf8Sha256Sync("probe");
+      assert.match(syncHash, /^[a-f0-9]{64}$/);
+      assert.equal(syncHash, hashUtf8Sha256Sync("probe"));
 
       const result = await orch.persistSetupTeamData(
         "club-1",

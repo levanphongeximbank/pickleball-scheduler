@@ -510,7 +510,7 @@ test("23. Reduced-motion mode is honored by machine state", () => {
   assert.equal(state.reducedMotion, false);
 });
 
-test("24. Existing entry gates leave normal setup available when showcase hidden", () => {
+test("24. Entry CTA visible without mutation gate; preflight still blocks LIVE persist", () => {
   assert.equal(
     canShowShowcaseEntry({
       canManage: true,
@@ -518,7 +518,7 @@ test("24. Existing entry gates leave normal setup available when showcase hidden
       athletePoolLoaded: true,
       setupMutationGate: false,
     }),
-    false
+    true
   );
   assert.equal(
     canShowShowcaseEntry({
@@ -537,6 +537,16 @@ test("24. Existing entry gates leave normal setup available when showcase hidden
       setupMutationGate: true,
     }),
     true
+  );
+  const blockedPreflight = buildShowcasePreflight({
+    athletes: toPlayers(),
+    requestedTeamCount: 8,
+    rulesVersion: "rv-test-1",
+    setupMutationGate: false,
+  });
+  assert.equal(blockedPreflight.ok, false);
+  assert.ok(
+    blockedPreflight.blockers.some((item) => item.includes("Setup mutation v7"))
   );
 });
 
