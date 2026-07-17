@@ -15,6 +15,21 @@ export {
 } from "./resolveActiveRules.js";
 
 export {
+  PRIVATE_PAIRING_SOURCE,
+  PRIVATE_PAIRING_SOURCE_VALUES,
+  PRIVATE_PAIRING_SOURCE_PRIORITY,
+  PRIVATE_PAIRING_SOURCE_ORDER,
+  PRIVATE_PAIRING_OPERATION,
+  PRIVATE_PAIRING_OPERATION_VALUES,
+  isPrivatePairingSource,
+  derivePrivatePairingSource,
+  resolveRuleSourcePriority,
+  derivePrivatePairingOperations,
+  ruleMatchesOperation,
+  compareRuleAuthority,
+} from "./privatePairingSource.js";
+
+export {
   evaluateHardPrivatePairingRules,
   shareTeam,
   shareGroup,
@@ -75,6 +90,21 @@ export {
 } from "./stageRuleFilters.js";
 
 export { gateResolvedForStage } from "./stageRuntimeGate.js";
+
+export {
+  buildRuleResolutionMetadata,
+  emptyRuleResolutionMetadata,
+} from "./ruleResolutionMetadata.js";
+
+export {
+  buildScoreBreakdown,
+  normalizeScoreBreakdown,
+  getCandidateScoreBreakdown,
+  buildOptimizationRuleScore,
+  compareOptimizationCandidates,
+  normalizeOptimizationRuleScore,
+  sortCandidatesByOptimizationRank,
+} from "./optimizationCandidateComparator.js";
 
 export {
   assignGroupsWithPrivatePairingRules,

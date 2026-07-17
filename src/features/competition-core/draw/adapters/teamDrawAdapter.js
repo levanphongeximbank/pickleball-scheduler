@@ -31,6 +31,8 @@ export function wrapTeamDrawLegacyResult(result = {}) {
     balance: result.balance ?? null,
     warnings: result.warnings || [],
     privatePairingError: result.privatePairingError || null,
+    scoreBreakdown: result.scoreBreakdown || null,
+    ruleResolution: result.ruleResolution || null,
   };
 }
 
@@ -46,6 +48,8 @@ export function unwrapTeamDrawLegacyResult(legacyResult = {}) {
     balance: legacyResult.balance ?? null,
     warnings: legacyResult.warnings || [],
     privatePairingError: legacyResult.privatePairingError || null,
+    scoreBreakdown: legacyResult.scoreBreakdown || null,
+    ruleResolution: legacyResult.ruleResolution || null,
   };
 }
 
@@ -65,6 +69,7 @@ export function buildTeamDrawLegacyPayload(input = {}) {
       players: input.players || [],
       seedingMode: input.seedingMode,
       randomFn: input.randomFn,
+      seed: input.seed,
       privatePairingRules: input.privatePairingRules || [],
       competitionClass: input.competitionClass,
       clubId: input.clubId || null,
@@ -95,6 +100,7 @@ export function runTeamDrawWithCanonicalAdapter(input = {}) {
           players: payload.options?.players || payload.players || [],
           seedingMode: payload.options?.seedingMode,
           randomFn: payload.options?.randomFn,
+          seed: payload.options?.seed,
           privatePairingRules: payload.options?.privatePairingRules || [],
           competitionClass: payload.options?.competitionClass,
           clubId: payload.options?.clubId || null,

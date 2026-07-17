@@ -28,13 +28,26 @@ import {
 } from "../../../features/team-tournament/engines/teamGroupDivisionPolicy.js";
 import { describeGroupSplit } from "../../../features/team-tournament/engines/teamRoundRobinScheduleEngine.js";
 import { summarizeSeededGroupBalance } from "../../../features/team-tournament/engines/teamAutoDrawEngine.js";
+import {
+  AI_DRAW_ALGORITHM_VERSION,
+  AI_DRAW_CHANGE_REASON,
+  attachAiDrawPublishMetadata,
+  createAiDrawRandomSeed,
+  getPublishedAiDrawState,
+  snapshotGroupDrawResult,
+} from "../../../features/team-tournament/engines/aiDrawSeedAudit.js";
 import { runTeamDrawWithCanonicalAdapter } from "../../../features/competition-core/draw/adapters/teamDrawAdapter.js";
 import { clearTeamGroups } from "../../../features/team-tournament/engines/teamTournamentEngine.js";
 import { buildGroupDivisionPreviewPackage } from "../../../features/team-tournament/setup/buildGroupDivisionPreview.js";
 import {
   COMPETITION_CLASS,
+  PRIVATE_PAIRING_OPERATION,
   prepareLivePrivatePairingOptions,
+  createSeededRng,
 } from "../../../features/private-pairing-rules/index.js";
+import ShowcaseGroupReveal from "../../../features/team-tournament/showcase/ShowcaseGroupReveal.jsx";
+import { buildReplayShowcaseSession } from "../../../features/team-tournament/showcase/showcaseDrawSession.js";
+import { prefersReducedMotion } from "../../../features/team-tournament/showcase/showcaseStyles.js";
 
 const GROUP_SEEDING_OPTIONS = [
   {
@@ -88,6 +101,9 @@ export default function TeamGroupDivisionPanel({
   const [confirmBusy, setConfirmBusy] = useState(false);
   const [destructiveOpen, setDestructiveOpen] = useState(false);
   const [pendingConfirm, setPendingConfirm] = useState(null);
+  const [groupRevealOpen, setGroupRevealOpen] = useState(false);
+  const [groupRevealSession, setGroupRevealSession] = useState(null);
+  const [reducedMotion, setReducedMotion] = useState(false);
 
   const recommendedSizes = recommendGroupSizes(teams.length);
   const recommendedLabel = describeGroupSplit(teams.length);
@@ -171,6 +187,10 @@ export default function TeamGroupDivisionPanel({
     }
 
     const rulesVersion = prepared.rulesVersion || prepared.pairingOptions?.rulesVersion || "";
+    const published = getPublishedAiDrawState(teamData, PRIVATE_PAIRING_OPERATION.GROUP_DRAW);
+    const randomSeed =
+      options.randomSeed || createAiDrawRandomSeed(published?.randomSeed);
+    const seededRng = createSeededRng(randomSeed);
 
     const {
       ok,
@@ -178,12 +198,14 @@ export default function TeamGroupDivisionPanel({
       balance: nextBalance,
       warnings = [],
       privatePairingError,
+      scoreBreakdown,
     } = runTeamDrawWithCanonicalAdapter({
       teamData,
       players: clubPlayers,
       seedingMode,
       groupCount: options.groupCount,
-      randomFn: options.randomFn,
+      randomFn: seededRng,
+      seed: randomSeed,
       privatePairingRules: prepared.pairingOptions?.privatePairingRules || [],
       competitionClass:
         prepared.pairingOptions?.competitionClass || competitionClass,
@@ -208,16 +230,26 @@ export default function TeamGroupDivisionPanel({
       onMessage?.(warnings.join(" "));
     }
 
-    return { next, nextBalance, rulesVersion };
+    return {
+      next,
+      nextBalance,
+      rulesVersion,
+      randomSeed,
+      algorithmVersion: AI_DRAW_ALGORITHM_VERSION,
+      scoreBreakdown: scoreBreakdown || null,
+    };
   }
 
-  async function buildPreviewPackage(nextTeamData, nextBalance, modeLabel, rulesVersion) {
+  async function buildPreviewPackage(nextTeamData, nextBalance, modeLabel, rulesVersion, extra = {}) {
     return buildGroupDivisionPreviewPackage({
       nextTeamData,
       nextBalance,
       seedingMode,
       modeLabel,
       rulesVersion,
+      randomSeed: extra.randomSeed,
+      algorithmVersion: extra.algorithmVersion,
+      scoreBreakdown: extra.scoreBreakdown,
     });
   }
 
@@ -250,9 +282,25 @@ export default function TeamGroupDivisionPanel({
         result.next,
         result.nextBalance,
         modeLabel,
-        result.rulesVersion
+        result.rulesVersion,
+        {
+          randomSeed: result.randomSeed,
+          algorithmVersion: result.algorithmVersion,
+          scoreBreakdown: result.scoreBreakdown,
+        }
       );
       setPreview(packagePreview);
+
+      const revealSession = buildReplayShowcaseSession({
+        teamData: result.next,
+        players: clubPlayers,
+        rulesVersion: result.rulesVersion,
+        seedingMode,
+        engineVersion: packagePreview.engineVersion,
+      });
+      setGroupRevealSession(revealSession);
+      setReducedMotion(prefersReducedMotion());
+      setGroupRevealOpen(true);
       onMessage?.("Xem trước chia bảng — chưa ghi database. Bấm Xác nhận lưu để lưu.");
     } finally {
       setPreviewBusy(false);
@@ -313,11 +361,30 @@ export default function TeamGroupDivisionPanel({
         }
       }
 
+      const published = getPublishedAiDrawState(
+        teamData,
+        PRIVATE_PAIRING_OPERATION.GROUP_DRAW
+      );
+      const randomSeed =
+        preview.randomSeed || createAiDrawRandomSeed(published?.randomSeed);
+      const nextWithMeta = attachAiDrawPublishMetadata(next, {
+        operation: PRIVATE_PAIRING_OPERATION.GROUP_DRAW,
+        reason: published?.randomSeed
+          ? AI_DRAW_CHANGE_REASON.USER_REARRANGE
+          : AI_DRAW_CHANGE_REASON.INITIAL_DRAW,
+        randomSeed,
+        previousResult: snapshotGroupDrawResult(teamData?.groups || []),
+        nextResult: snapshotGroupDrawResult(next?.groups || []),
+        scoreBreakdown: preview.scoreBreakdown || null,
+        algorithmVersion: preview.algorithmVersion || AI_DRAW_ALGORITHM_VERSION,
+        rulesVersion,
+      });
+
       const ok = await persistTeamData(
         {
-          ...next,
+          ...nextWithMeta,
           // Keep matchups empty after cascade clear.
-          matchups: dependent ? [] : next.matchups || teamData.matchups || [],
+          matchups: dependent ? [] : nextWithMeta.matchups || teamData.matchups || [],
         },
         `Đã lưu chia bảng (${preview.rows.length} bảng).`,
         { confirmDestructive: dependent, rulesVersion }
@@ -639,6 +706,46 @@ export default function TeamGroupDivisionPanel({
             Tiếp tục
           </Button>
         </DialogActions>
+      </Dialog>
+
+      <Dialog
+        open={groupRevealOpen && Boolean(groupRevealSession)}
+        fullScreen
+        disableEscapeKeyDown
+        onClose={() => {}}
+        PaperProps={{
+          sx: {
+            bgcolor: "#07111f",
+            color: "#f4f7fb",
+            backgroundImage:
+              "radial-gradient(ellipse at top, rgba(46, 204, 113, 0.12), transparent 55%), linear-gradient(180deg, #0a1628 0%, #07111f 45%, #050b14 100%)",
+          },
+        }}
+      >
+        <DialogContent
+          sx={{
+            maxWidth: 1200,
+            mx: "auto",
+            width: "100%",
+            py: { xs: 3, md: 5 },
+            px: { xs: 2, md: 4 },
+          }}
+        >
+          <ShowcaseGroupReveal
+            session={groupRevealSession}
+            seedingMode={groupRevealSession?.groupSession?.seedingMode || seedingMode}
+            engineVersion={groupRevealSession?.engineVersion}
+            rulesVersion={groupRevealSession?.rulesVersion}
+            reducedMotion={reducedMotion}
+            continueLabel="Xác nhận lưu"
+            closeLabel="Đóng xem trước"
+            onContinue={() => {
+              setGroupRevealOpen(false);
+              commitPreview(false);
+            }}
+            onClose={() => setGroupRevealOpen(false)}
+          />
+        </DialogContent>
       </Dialog>
     </Paper>
   );

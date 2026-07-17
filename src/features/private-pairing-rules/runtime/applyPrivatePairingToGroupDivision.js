@@ -3,8 +3,7 @@ import { assignGroupsWithConstraints } from "../../pairing-constraints/engines/c
 import { assignEntriesToGroupsSnake } from "../../../tournament/engines/seededGroupEngine.js";
 import { createSeededRng, seededShuffle } from "./seededRng.js";
 import { resolveActivePrivatePairingRules, splitHardAndSoftRules } from "./resolveActiveRules.js";
-import { evaluateHardPrivatePairingRules } from "./evaluateHardOnCandidate.js";
-import { scoreSoftPrivatePairingRules } from "./scoreSoftOnCandidate.js";
+import { evaluatePrivatePairingCandidate } from "./runPrivatePairingRuntime.js";
 import { filterRulesForGroupStage } from "./stageRuleFilters.js";
 import { buildPrivatePairingRuntimeError } from "./prepareLivePrivatePairingOptions.js";
 import {
@@ -12,7 +11,9 @@ import {
   isPrivatePairingRuntimeEnabled,
 } from "./runtimeCodes.js";
 import { PRIVATE_PAIRING_CONSTRAINT_TYPE } from "../constants/constraintTypes.js";
+import { PRIVATE_PAIRING_OPERATION } from "./privatePairingSource.js";
 import { gateResolvedForStage } from "./stageRuntimeGate.js";
+import { sortCandidatesByOptimizationRank } from "./optimizationCandidateComparator.js";
 
 function groupsSignature(groups = []) {
   return groups
@@ -40,25 +41,42 @@ function mapDifferentGroupRulesToLegacy(rules = []) {
     }));
 }
 
-function scoreGroupPlan(groups, hardRules, softRules) {
-  const candidate = { groups };
-  const hardResult = evaluateHardPrivatePairingRules(candidate, hardRules);
-  if (!hardResult.feasible) {
+function scoreGroupPlan(groups, hardRules, softRules, resolved = null, context = {}, extra = {}) {
+  const candidate = { id: groupsSignature(groups), groups };
+  const evaluated = evaluatePrivatePairingCandidate(candidate, {
+    resolved: resolved
+      ? {
+          ...resolved,
+          hardRules: hardRules,
+          softRules: softRules,
+          rules: [...hardRules, ...softRules],
+        }
+      : undefined,
+    rules: [...hardRules, ...softRules],
+    context: {
+      ...context,
+      operation: PRIVATE_PAIRING_OPERATION.GROUP_DRAW,
+    },
+    openBalanceScore: extra.openBalanceScore,
+  });
+  if (!evaluated.feasible) {
     return {
       feasible: false,
       groups,
-      rejectionCodes: hardResult.violations.map((item) => item.code),
+      rejectionCodes: evaluated.rejectionCodes,
       constraintScore: Number.NEGATIVE_INFINITY,
+      scoreBreakdown: evaluated.scoreBreakdown,
     };
   }
-  const softResult = scoreSoftPrivatePairingRules(candidate, softRules);
   return {
     feasible: true,
     groups,
     rejectionCodes: [],
-    constraintScore: softResult.constraintScore,
-    softConstraintsSatisfied: softResult.softConstraintsSatisfied,
-    softConstraintsMissed: softResult.softConstraintsMissed,
+    constraintScore: evaluated.constraintScore,
+    scoreBreakdown: evaluated.scoreBreakdown,
+    optimizationRuleScore: evaluated.scoreBreakdown,
+    softConstraintsSatisfied: evaluated.softConstraintsSatisfied,
+    softConstraintsMissed: evaluated.softConstraintsMissed,
   };
 }
 
@@ -102,6 +120,7 @@ export function assignGroupsWithPrivatePairingRules(
     competitionClass,
     allowedByPublishedRules: options.allowedByPublishedRules === true,
     contextTime: options.contextTime,
+    operation: PRIVATE_PAIRING_OPERATION.GROUP_DRAW,
   };
 
   const resolved = resolveActivePrivatePairingRules({
@@ -122,7 +141,12 @@ export function assignGroupsWithPrivatePairingRules(
   }
 
   const stageRules = filterRulesForGroupStage(resolved.rules || []);
-  const { hard, soft } = splitHardAndSoftRules(stageRules);
+  const hard = filterRulesForGroupStage(
+    resolved.hardRules || splitHardAndSoftRules(resolved.rules).hard
+  );
+  const soft = filterRulesForGroupStage(
+    resolved.softRules || splitHardAndSoftRules(resolved.rules).soft
+  );
 
   const legacyGroupConstraints = [
     ...pairingConstraints.filter((item) => item?.type === "avoid_same_group"),
@@ -173,7 +197,7 @@ export function assignGroupsWithPrivatePairingRules(
 
   const scored = rawPlans
     .map((plan) => ({
-      ...scoreGroupPlan(plan.groups, hard, soft),
+      ...scoreGroupPlan(plan.groups, hard, soft, resolved, context),
       warnings: plan.warnings || [],
     }))
     .filter((item) => item.feasible);
@@ -190,14 +214,8 @@ export function assignGroupsWithPrivatePairingRules(
     };
   }
 
-  scored.sort((a, b) => {
-    if (a.constraintScore !== b.constraintScore) {
-      return b.constraintScore - a.constraintScore;
-    }
-    return groupsSignature(a.groups).localeCompare(groupsSignature(b.groups));
-  });
-
-  const best = scored[0];
+  const ranked = sortCandidatesByOptimizationRank(scored);
+  const best = ranked[0];
   return {
     ok: true,
     groups: best.groups,
@@ -205,8 +223,11 @@ export function assignGroupsWithPrivatePairingRules(
     privatePairingError: null,
     usedCanonicalGroupRules: true,
     constraintScore: best.constraintScore,
+    scoreBreakdown: best.scoreBreakdown,
+    optimizationRuleScore: best.scoreBreakdown,
     softConstraintsSatisfied: best.softConstraintsSatisfied,
     softConstraintsMissed: best.softConstraintsMissed,
+    ruleResolution: resolved.ruleResolution,
   };
 }
 

@@ -2,10 +2,112 @@ import { CONSTRAINT_SEVERITY } from "../../competition-core/constants/constraint
 import { PRIVATE_PAIRING_SCOPE } from "../constants/scopes.js";
 import { COMPETITION_CLASS, RESTRICTED_COMPETITION_CLASSES, RULE_VISIBILITY } from "../constants/enums.js";
 import { PERSONAL_PREFERENCE_CONSTRAINT_TYPES } from "../constants/constraintTypes.js";
+import { PRIVATE_PAIRING_CONFLICT_CODE } from "../constants/codes.js";
 import { normalizePrivatePairingRules } from "../contracts/normalizePrivatePairingRule.js";
 import { mapLegacyFounderConstraint } from "../mappers/legacyFounderMapping.js";
 import { validatePrivatePairingRules } from "../validation/validatePrivatePairingRule.js";
 import { detectPrivatePairingConflicts } from "../conflicts/detectPrivatePairingConflicts.js";
+import {
+  compareRuleAuthority,
+  resolveRuleSourcePriority,
+  PRIVATE_PAIRING_SOURCE_ORDER,
+  PRIVATE_PAIRING_OPERATION,
+  ruleMatchesOperation,
+} from "./privatePairingSource.js";
+import { buildRuleResolutionMetadata } from "./ruleResolutionMetadata.js";
+
+/**
+ * Hard-vs-hard opposing conflicts that a higher SOURCE may override.
+ * Structural conflicts (capacity/chain/duplicate id) are never source-resolvable.
+ */
+const OVERRIDABLE_HARD_CONFLICT_CODES = new Set([
+  PRIVATE_PAIRING_CONFLICT_CODE.MUST_AND_MUST_NOT_PARTNER,
+  PRIVATE_PAIRING_CONFLICT_CODE.MUST_AND_MUST_NOT_OPPONENT,
+  PRIVATE_PAIRING_CONFLICT_CODE.PARTNER_AND_OPPONENT_CONFLICT,
+  PRIVATE_PAIRING_CONFLICT_CODE.MUST_AND_MUST_NOT_GROUP,
+]);
+
+/** @typedef {{ ruleId: string, overriddenByRuleId: string, reason: string }} OverriddenRuleEntry */
+
+/**
+ * Resolve cross-source authority: a higher SOURCE rule overrides a lower one on
+ * conflict. Same-priority hard conflicts stay fatal (no arbitrary pick).
+ *
+ * @param {object[]} rules validated + allowed rules
+ * @param {Array<{ code: string, ruleIds: string[] }>} fatalConflicts
+ * @param {Array<{ code: string, ruleIds: string[] }>} softWarnings
+ */
+function resolveAuthorityOverrides(rules, fatalConflicts, softWarnings) {
+  const rulesById = new Map(rules.map((rule) => [rule.id, rule]));
+  /** @type {Map<string, OverriddenRuleEntry>} */
+  const overridesByLoser = new Map();
+  /** @type {Map<string, number>} */
+  const winnerPriorityByLoser = new Map();
+  const remainingFatal = [];
+
+  const recordOverride = (loser, winner, reason) => {
+    const winnerPriority = resolveRuleSourcePriority(winner);
+    const existingPriority = winnerPriorityByLoser.get(loser.id);
+    if (existingPriority == null || winnerPriority > existingPriority) {
+      overridesByLoser.set(loser.id, {
+        ruleId: loser.id,
+        overriddenByRuleId: winner.id,
+        reason,
+      });
+      winnerPriorityByLoser.set(loser.id, winnerPriority);
+    }
+  };
+
+  fatalConflicts.forEach((conflict) => {
+    if (
+      OVERRIDABLE_HARD_CONFLICT_CODES.has(conflict.code) &&
+      conflict.ruleIds.length === 2
+    ) {
+      const ruleA = rulesById.get(conflict.ruleIds[0]);
+      const ruleB = rulesById.get(conflict.ruleIds[1]);
+      if (ruleA && ruleB) {
+        const priorityA = resolveRuleSourcePriority(ruleA);
+        const priorityB = resolveRuleSourcePriority(ruleB);
+        if (priorityA !== priorityB) {
+          const winner = priorityA > priorityB ? ruleA : ruleB;
+          const loser = priorityA > priorityB ? ruleB : ruleA;
+          recordOverride(loser, winner, `${conflict.code}:SOURCE_PRIORITY`);
+          return;
+        }
+      }
+    }
+    remainingFatal.push(conflict);
+  });
+
+  softWarnings.forEach((warning) => {
+    if (!Array.isArray(warning.ruleIds) || warning.ruleIds.length !== 2) {
+      return;
+    }
+    const ruleA = rulesById.get(warning.ruleIds[0]);
+    const ruleB = rulesById.get(warning.ruleIds[1]);
+    if (!ruleA || !ruleB) {
+      return;
+    }
+    if (warning.code === PRIVATE_PAIRING_CONFLICT_CODE.HARD_RULE_OVERRIDES_SOFT_RULE) {
+      const hard = ruleA.severity === CONSTRAINT_SEVERITY.HARD ? ruleA : ruleB;
+      const soft = ruleA.severity === CONSTRAINT_SEVERITY.HARD ? ruleB : ruleA;
+      if (hard.severity === CONSTRAINT_SEVERITY.HARD && soft.severity === CONSTRAINT_SEVERITY.SOFT) {
+        recordOverride(soft, hard, warning.code);
+      }
+    } else if (warning.code === PRIVATE_PAIRING_CONFLICT_CODE.SOFT_SOFT_OPPOSITE_PREFERENCE) {
+      const winner = compareRuleAuthority(ruleA, ruleB) >= 0 ? ruleA : ruleB;
+      const loser = winner === ruleA ? ruleB : ruleA;
+      recordOverride(loser, winner, `${warning.code}:SOURCE_PRIORITY`);
+    }
+  });
+
+  const overriddenRules = [...overridesByLoser.values()].sort((a, b) =>
+    a.ruleId.localeCompare(b.ruleId)
+  );
+  const overriddenIds = new Set(overriddenRules.map((entry) => entry.ruleId));
+
+  return { overriddenRules, overriddenIds, remainingFatal };
+}
 
 const SCOPE_SPECIFICITY = Object.freeze({
   [PRIVATE_PAIRING_SCOPE.GLOBAL]: 0,
@@ -193,9 +295,20 @@ export function resolveActivePrivatePairingRules(input = {}) {
     }));
 
   const merged = dedupeEquivalentRules([...fromCanonical, ...fromLegacy]);
-  const scoped = merged.filter(
-    (rule) => isRuleActiveAt(rule, contextTimeMs) && doesRuleMatchScope(rule, context)
-  );
+  const operation = context.operation || null;
+
+  /** @type {Array<{ ruleId: string, reason: string }>} */
+  const operationIgnored = [];
+  const scoped = merged.filter((rule) => {
+    if (!isRuleActiveAt(rule, contextTimeMs) || !doesRuleMatchScope(rule, context)) {
+      return false;
+    }
+    if (operation && operation !== PRIVATE_PAIRING_OPERATION.ALL && !ruleMatchesOperation(rule, operation)) {
+      operationIgnored.push({ ruleId: rule.id, reason: "WRONG_OPERATION" });
+      return false;
+    }
+    return true;
+  });
 
   const blockedByPolicy = [];
   const allowed = [];
@@ -215,20 +328,115 @@ export function resolveActivePrivatePairingRules(input = {}) {
     playersById: context.playersById,
   });
 
-  const conflicts = detectPrivatePairingConflicts(validation.rules, { teamSize });
+  const conflicts = detectPrivatePairingConflicts(validation.rules, {
+    teamSize,
+    context,
+  });
+
+  const { overriddenRules, overriddenIds, remainingFatal } = resolveAuthorityOverrides(
+    validation.rules,
+    conflicts.fatalConflicts,
+    conflicts.warnings
+  );
+
+  const effectiveRules = validation.rules.filter((rule) => !overriddenIds.has(rule.id));
+  const { hard: hardRules, soft: softRules } = splitHardAndSoftRules(effectiveRules);
+
+  const ignoredRules = buildIgnoredRules({
+    merged,
+    allowed,
+    validationRules: validation.rules,
+    overriddenRules,
+    operationIgnored,
+    context,
+    contextTimeMs,
+  });
 
   const versions = validation.rules.map((rule) => String(rule.ruleSetVersion || "1"));
   const ruleSetVersion = versions.sort().slice(-1)[0] || String(context.ruleSetVersion || "1");
+  const operationLabel = operation || "";
 
-  return {
-    ok: validation.ok && conflicts.ok,
-    rules: validation.rules,
+  const resolutionBase = {
+    ok: validation.ok && remainingFatal.length === 0,
+    rules: effectiveRules,
+    effectiveRules,
+    hardRules,
+    softRules,
+    overriddenRules,
+    ignoredRules,
     blockedByPolicy,
     validationErrors: validation.errors,
-    fatalConflicts: conflicts.fatalConflicts,
+    fatalConflicts: remainingFatal,
     warnings: [...validation.warnings, ...conflicts.warnings],
     ruleSetVersion,
+    priorityOrder: PRIVATE_PAIRING_SOURCE_ORDER,
+    operation: operationLabel,
   };
+
+  return {
+    ...resolutionBase,
+    ruleResolution: buildRuleResolutionMetadata(resolutionBase, operationLabel),
+  };
+}
+
+/**
+ * Assemble the ignoredRules audit list with canonical reason codes.
+ *
+ * @param {{
+ *   merged: object[],
+ *   allowed: object[],
+ *   validationRules: object[],
+ *   overriddenRules: OverriddenRuleEntry[],
+ *   operationIgnored?: Array<{ ruleId: string, reason: string }>,
+ *   context: Record<string, unknown>,
+ *   contextTimeMs: number,
+ * }} args
+ * @returns {Array<{ ruleId: string, reason: string }>}
+ */
+function buildIgnoredRules({
+  merged,
+  allowed,
+  validationRules,
+  overriddenRules,
+  operationIgnored = [],
+  context,
+  contextTimeMs,
+}) {
+  const validIds = new Set(validationRules.map((rule) => rule.id));
+  /** @type {Map<string, string>} */
+  const byRuleId = new Map();
+  const claim = (ruleId, reason) => {
+    if (!byRuleId.has(ruleId)) {
+      byRuleId.set(ruleId, reason);
+    }
+  };
+
+  merged.forEach((rule) => {
+    if (!isRuleActiveAt(rule, contextTimeMs)) {
+      claim(rule.id, "INACTIVE");
+    } else if (!doesRuleMatchScope(rule, context)) {
+      claim(rule.id, "OUT_OF_SCOPE");
+    }
+  });
+
+  allowed.forEach((rule) => {
+    if (!validIds.has(rule.id)) {
+      claim(rule.id, "INVALID_PAYLOAD");
+    }
+  });
+
+  operationIgnored.forEach((entry) => {
+    byRuleId.set(entry.ruleId, entry.reason);
+  });
+
+  overriddenRules.forEach((entry) => {
+    // Override supersedes any earlier soft reason for the same rule.
+    byRuleId.set(entry.ruleId, "OVERRIDDEN");
+  });
+
+  return [...byRuleId.entries()]
+    .map(([ruleId, reason]) => ({ ruleId, reason }))
+    .sort((a, b) => a.ruleId.localeCompare(b.ruleId));
 }
 
 /**

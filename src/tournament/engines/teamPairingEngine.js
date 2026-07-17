@@ -7,6 +7,7 @@ import {
   buildPrivatePairingRuntimeError,
   isPrivatePairingRuntimeEnabled,
   runPrivatePairingRuntime,
+  PRIVATE_PAIRING_OPERATION,
 } from "../../features/private-pairing-rules/runtime/index.js";
 
 function playerRating(player) {
@@ -135,6 +136,7 @@ export function suggestTeamsFromPlayers(players = [], eventType, options = {}) {
       contextTime: options.contextTime,
       seed: options.seed,
       ruleSetVersion: options.ruleSetVersion,
+      operation: PRIVATE_PAIRING_OPERATION.PARTNER_PAIRING,
     },
     seed: options.seed ?? 1,
     envSource: options.envSource,
@@ -161,6 +163,7 @@ export function suggestTeamsFromPlayers(players = [], eventType, options = {}) {
   }
 
   options.privatePairingError = null;
+  options.scoreBreakdown = runtime.scoreBreakdown || runtime.meta?.scoreBreakdown || null;
   return runtime.selectedCandidate.teams;
 }
 

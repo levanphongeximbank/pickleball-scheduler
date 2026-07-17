@@ -11,6 +11,14 @@ export {
 } from "./ruleConstants.js";
 
 export {
+  SUPPORTED_HARD_CONSTRAINT_TYPES,
+  SUPPORTED_SOFT_CONSTRAINT_TYPES,
+  OPPONENT_GEOMETRY_TYPES,
+  GROUP_GEOMETRY_TYPES,
+  isConstraintTypeEvaluated,
+} from "./constraintSupport.js";
+
+export {
   createRuleSet,
   normalizeRuleSet,
   normalizeRuleDefinition,

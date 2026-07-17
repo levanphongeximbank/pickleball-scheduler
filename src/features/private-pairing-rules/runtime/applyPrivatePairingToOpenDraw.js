@@ -9,6 +9,8 @@ import {
   isPrivatePairingRuntimeEnabled,
 } from "./runtimeCodes.js";
 import { createSeededRng } from "./seededRng.js";
+import { PRIVATE_PAIRING_OPERATION } from "./privatePairingSource.js";
+import { sortCandidatesByOptimizationRank } from "./optimizationCandidateComparator.js";
 
 function openGroupsSignature(groups = []) {
   return (groups || [])
@@ -87,6 +89,7 @@ export function assignOpenGroupsWithPrivatePairingRules({
       competitionClass,
       allowedByPublishedRules: allowedByPublishedRules === true,
       contextTime,
+      operation: PRIVATE_PAIRING_OPERATION.GROUP_DRAW,
     },
   });
 
@@ -102,8 +105,12 @@ export function assignOpenGroupsWithPrivatePairingRules({
     };
   }
 
-  const stageRules = filterRulesForGroupStage(resolved.rules || []);
-  const { hard, soft } = splitHardAndSoftRules(stageRules);
+  const hard = filterRulesForGroupStage(
+    resolved.hardRules || splitHardAndSoftRules(resolved.rules).hard
+  );
+  const soft = filterRulesForGroupStage(
+    resolved.softRules || splitHardAndSoftRules(resolved.rules).soft
+  );
 
   if (!hard.length && !soft.length) {
     const legacy = openAssigner(entries, groupCount, openOptions);
@@ -135,15 +142,26 @@ export function assignOpenGroupsWithPrivatePairingRules({
     }
     seen.add(key);
 
-    const ranked = scoreGroupPlan(candidate.groups, hard, soft);
+    const ranked = scoreGroupPlan(candidate.groups, hard, soft, resolved, {
+      clubId,
+      tournamentId,
+      eventId,
+      competitionClass,
+    }, {
+      openBalanceScore: candidate.score,
+    });
     if (!ranked.feasible) {
       continue;
     }
     scored.push({
       ...candidate,
       constraintScore: ranked.constraintScore,
+      scoreBreakdown: ranked.scoreBreakdown,
+      optimizationRuleScore: ranked.scoreBreakdown,
       softConstraintsSatisfied: ranked.softConstraintsSatisfied,
       softConstraintsMissed: ranked.softConstraintsMissed,
+      feasible: ranked.feasible,
+      id: openGroupsSignature(candidate.groups),
     });
   }
 
@@ -160,20 +178,8 @@ export function assignOpenGroupsWithPrivatePairingRules({
     };
   }
 
-  scored.sort((a, b) => {
-    if (a.constraintScore !== b.constraintScore) {
-      return b.constraintScore - a.constraintScore;
-    }
-    // Prefer better (lower) Open club-balance score when constraint scores tie.
-    const scoreA = Number(a.score);
-    const scoreB = Number(b.score);
-    if (Number.isFinite(scoreA) && Number.isFinite(scoreB) && scoreA !== scoreB) {
-      return scoreA - scoreB;
-    }
-    return openGroupsSignature(a.groups).localeCompare(openGroupsSignature(b.groups));
-  });
-
-  const best = scored[0];
+  const rankedPlans = sortCandidatesByOptimizationRank(scored);
+  const best = rankedPlans[0];
   return {
     ok: true,
     groups: best.groups,
@@ -183,7 +189,10 @@ export function assignOpenGroupsWithPrivatePairingRules({
     privatePairingError: null,
     usedCanonicalGroupRules: true,
     constraintScore: best.constraintScore,
+    scoreBreakdown: best.scoreBreakdown,
+    optimizationRuleScore: best.scoreBreakdown,
     softConstraintsSatisfied: best.softConstraintsSatisfied,
     softConstraintsMissed: best.softConstraintsMissed,
+    ruleResolution: resolved.ruleResolution,
   };
 }

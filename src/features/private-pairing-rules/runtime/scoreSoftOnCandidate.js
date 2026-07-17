@@ -1,5 +1,6 @@
 import { PRIVATE_PAIRING_CONSTRAINT_TYPE } from "../constants/constraintTypes.js";
 import { RELATION_MODE } from "../constants/enums.js";
+import { derivePrivatePairingSource, PRIVATE_PAIRING_SOURCE } from "./privatePairingSource.js";
 import {
   areOpponents,
   normalizeGroupsToPlayerIds,
@@ -48,6 +49,8 @@ function anyOrAll(rule, predicate) {
  *   constraintScore: number,
  *   softConstraintsSatisfied: Array<{ ruleId: string, constraintType: string }>,
  *   softConstraintsMissed: Array<{ ruleId: string, constraintType: string }>,
+ *   penaltyBySource: Record<string, number>,
+ *   privatePairingSoftPenalty: number,
  * }}
  */
 export function scoreSoftPrivatePairingRules(candidate, softRules = [], history = {}) {
@@ -66,6 +69,14 @@ export function scoreSoftPrivatePairingRules(candidate, softRules = [], history 
   const opponentRepeats = history.opponentRepeatCounts || {};
 
   let constraintScore = 0;
+  /** @type {Record<string, number>} */
+  const penaltyBySource = {
+    [PRIVATE_PAIRING_SOURCE.SUPER_ADMIN]: 0,
+    [PRIVATE_PAIRING_SOURCE.TOURNAMENT]: 0,
+    [PRIVATE_PAIRING_SOURCE.CLUB]: 0,
+    [PRIVATE_PAIRING_SOURCE.SESSION]: 0,
+    [PRIVATE_PAIRING_SOURCE.DEFAULT]: 0,
+  };
   /** @type {Array<{ ruleId: string, constraintType: string }>} */
   const softConstraintsSatisfied = [];
   /** @type {Array<{ ruleId: string, constraintType: string }>} */
@@ -186,15 +197,29 @@ export function scoreSoftPrivatePairingRules(candidate, softRules = [], history 
     if (!applicable) {
       return;
     }
+    const source = derivePrivatePairingSource(rule);
     const entry = { ruleId: rule.id, constraintType: rule.constraintType };
     if (satisfied) {
       softConstraintsSatisfied.push(entry);
     } else {
       softConstraintsMissed.push(entry);
+      const missPenalty = Math.max(1, Math.round(w));
+      penaltyBySource[source] = (penaltyBySource[source] || 0) + missPenalty;
     }
   });
 
-  return { constraintScore, softConstraintsSatisfied, softConstraintsMissed };
+  const privatePairingSoftPenalty = Object.values(penaltyBySource).reduce(
+    (sum, value) => sum + (Number(value) || 0),
+    0
+  );
+
+  return {
+    constraintScore,
+    softConstraintsSatisfied,
+    softConstraintsMissed,
+    penaltyBySource,
+    privatePairingSoftPenalty,
+  };
 }
 
 /**

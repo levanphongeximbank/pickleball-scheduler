@@ -72,21 +72,30 @@
 
 ## 3. Hard constraint tests
 
-- [ ] MUST_PARTNER always satisfied when feasible
-- [ ] MUST_NOT_PARTNER never violated in selected result
-- [ ] MUST_OPPONENT satisfied when feasible
-- [ ] MUST_NOT_OPPONENT never violated
-- [ ] No feasible candidate → clear engine error (not silent soft pick)
-- [ ] Hard never encoded only as large negative score when Unified ON
+Coverage matrix: `docs/v5/COMPETITION_CONSTRAINT_TYPE_COVERAGE_MATRIX.md`.
+Automated: `tests/competition-constraint-coverage.test.js` + PR-2/PR-3 suites.
+
+- [x] MUST_PARTNER always satisfied when feasible
+- [x] MUST_NOT_PARTNER never violated in selected result
+- [x] MUST_OPPONENT satisfied when feasible (matchOption present)
+- [x] MUST_NOT_OPPONENT never violated
+- [x] SAME_TEAM / DIFFERENT_TEAM / SAME_GROUP / DIFFERENT_GROUP hard reject
+- [x] MIN/MAX partner & opponent repeat hard override
+- [x] Unsupported hard type → `UNSUPPORTED_HARD_CONSTRAINT` (no silent ignore)
+- [x] No feasible candidate → clear engine error (not silent soft pick)
+- [x] Hard never encoded only as large negative score when Unified ON
+- [x] Hard > Soft
 
 ---
 
 ## 4. Soft constraint tests
 
-- [ ] PREFER_PARTNER increases ranking when feasible
-- [ ] AVOID_PARTNER decreases ranking
-- [ ] Soft never overrides hard reject
-- [ ] Higher weight dominates lower weight (same priority band)
+- [x] PREFER_PARTNER increases ranking when feasible
+- [x] AVOID_PARTNER decreases ranking
+- [x] PREFER_OPPONENT / AVOID_OPPONENT / group / team / min-repeat soft score
+- [x] Soft never overrides hard reject
+- [x] Higher weight dominates lower weight (**RULE_PRIORITY not wired**)
+- [x] Unsupported soft type → `UNSUPPORTED_SOFT_CONSTRAINT`
 
 ---
 

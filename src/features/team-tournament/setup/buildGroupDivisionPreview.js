@@ -59,6 +59,9 @@ export async function buildGroupDivisionPreviewPackage({
   seedingMode = "",
   modeLabel = "preview",
   rulesVersion = "",
+  randomSeed = "",
+  algorithmVersion = "",
+  scoreBreakdown = null,
 } = {}) {
   const diagnostics = buildGroupDivisionDiagnostics(
     nextTeamData,
@@ -70,11 +73,14 @@ export async function buildGroupDivisionPreviewPackage({
     groupCount: (nextTeamData?.groups || []).length,
     seedingMode,
     mode: modeLabel,
+    randomSeed: randomSeed || undefined,
+    algorithmVersion: algorithmVersion || undefined,
   };
   const engineOutput = {
     groups: nextTeamData?.groups || [],
     balance: nextBalance,
     diagnostics,
+    scoreBreakdown: scoreBreakdown || undefined,
   };
   const [engineInputHash, engineOutputHash] = await Promise.all([
     hashEngineInputAsync(engineInput),
@@ -94,6 +100,9 @@ export async function buildGroupDivisionPreviewPackage({
     engineOutputHash,
     rulesVersion,
     modeLabel,
+    randomSeed: randomSeed || "",
+    algorithmVersion: algorithmVersion || "",
+    scoreBreakdown: scoreBreakdown || null,
     written: false,
   };
 }
