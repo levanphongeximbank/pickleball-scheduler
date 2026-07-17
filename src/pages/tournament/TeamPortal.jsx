@@ -80,6 +80,10 @@ import { buildUiCommandScope } from "../../features/team-tournament/ui/teamTourn
 import { resolveEffectiveTenantId } from "../../features/tenant/services/tenantService.js";
 import { fetchProfileByUserId } from "../../auth/profileService.js";
 import { getPermissionsForRole } from "../../features/identity/matrix/rolePermissions.js";
+import {
+  COMPETITION_CLASS,
+  prepareLivePrivatePairingOptions,
+} from "../../features/private-pairing-rules/index.js";
 
 
 function canEditLineup(lineup) {
@@ -253,6 +257,10 @@ function MatchupLineupCard({
   team,
   teamData,
   players,
+  tournament,
+  effectiveClubId,
+  activeClubId,
+  currentTenantId,
   tournamentId,
   dataVersion,
   tournamentVersion,
@@ -434,12 +442,37 @@ function MatchupLineupCard({
       return;
     }
 
+    const prepared = await prepareLivePrivatePairingOptions({
+      tournament: tournament || null,
+      clubId: effectiveClubId || activeClubId || null,
+      activeClubId,
+      tournamentId: tournamentId || null,
+      tenantId:
+        tournament?.tenantId ||
+        currentTenantId ||
+        null,
+      eventId: tournamentId ? `event-${tournamentId}` : null,
+      competitionClass: COMPETITION_CLASS.INTERNAL,
+      contextTime: new Date().toISOString(),
+    });
+
+    if (!prepared.ok) {
+      setError(prepared.error?.message || "Không nộp được đội hình theo quy tắc ưu tiên.");
+      setBusy(false);
+      return;
+    }
+
     const result = await runMutation({
       method: "submitLineup",
       payload: {
         matchupId: matchup.id,
         teamId: team.id,
         selections,
+        ...(prepared.pairingOptions || {}),
+        privatePairingRules: prepared.pairingOptions?.privatePairingRules || [],
+        competitionClass: COMPETITION_CLASS.INTERNAL,
+        clubId: effectiveClubId || activeClubId || null,
+        tournamentId: tournamentId || null,
       },
       actionScope: buildUiCommandScope("submit", tournamentId, `${matchup.id}:${team.id}`),
       expectedVersion: tournamentVersion,
@@ -865,6 +898,10 @@ export default function TeamPortal() {
     : "";
 
   const lineupCardProps = {
+    tournament,
+    effectiveClubId,
+    activeClubId,
+    currentTenantId,
     tournamentId,
     dataVersion,
     tournamentVersion: version,

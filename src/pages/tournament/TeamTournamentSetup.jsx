@@ -91,6 +91,7 @@ import {
   buildRefereePortalUrl,
   copyTextToClipboard,
 } from "../../components/tournament/team/copyPortalLink.js";
+import { mintV6OptimizationSeed } from "../../features/team-tournament/private-pairing/index.js";
 import { computeTeamTournamentWorkflow } from "../../components/tournament/team/teamTournamentWorkflow.js";
 import { MATCHUP_STATUS } from "../../features/team-tournament/constants.js";
 import { getPermissionsForRole } from "../../features/identity/matrix/rolePermissions.js";
@@ -757,9 +758,43 @@ export default function TeamTournamentSetup() {
     const matchup = td.matchups.find((item) => item.id === matchupId);
     setError("");
     setMutationBusy(true);
+
+    const prepared = await prepareLivePrivatePairingOptions({
+      tournament: tournament || null,
+      clubId: effectiveClubId || activeClubId || null,
+      clubFromQuery,
+      activeClubId,
+      tournamentId: tournamentId || null,
+      tenantId:
+        tournament?.tenantId ||
+        clubPool.tenantId ||
+        tenantPool.tenantId ||
+        currentTenantId ||
+        null,
+      eventId: tournamentId ? `event-${tournamentId}` : null,
+      competitionClass: COMPETITION_CLASS.INTERNAL,
+      contextTime: new Date().toISOString(),
+    });
+
+    if (!prepared.ok) {
+      setMutationBusy(false);
+      setError(prepared.error?.message || "Không khóa được đội hình theo quy tắc ưu tiên.");
+      return;
+    }
+
     const result = await runMutation({
       method: "lockLineup",
-      payload: { matchupId, players: lineupPlayers, now: new Date().toISOString() },
+      payload: {
+        matchupId,
+        players: lineupPlayers,
+        now: new Date().toISOString(),
+        randomSeed: mintV6OptimizationSeed(),
+        ...(prepared.pairingOptions || {}),
+        privatePairingRules: prepared.pairingOptions?.privatePairingRules || [],
+        competitionClass: COMPETITION_CLASS.INTERNAL,
+        clubId: effectiveClubId || activeClubId || null,
+        tournamentId: tournamentId || null,
+      },
       actionScope: buildUiCommandScope("lock", tournamentId, matchupId),
       expectedVersion: matchup?.version ?? version,
     });
@@ -790,9 +825,42 @@ export default function TeamTournamentSetup() {
     const lineup = getLineup(td, matchupId, teamId);
     setError("");
     setMutationBusy(true);
+
+    const prepared = await prepareLivePrivatePairingOptions({
+      tournament: tournament || null,
+      clubId: effectiveClubId || activeClubId || null,
+      clubFromQuery,
+      activeClubId,
+      tournamentId: tournamentId || null,
+      tenantId:
+        tournament?.tenantId ||
+        clubPool.tenantId ||
+        tenantPool.tenantId ||
+        currentTenantId ||
+        null,
+      eventId: tournamentId ? `event-${tournamentId}` : null,
+      competitionClass: COMPETITION_CLASS.INTERNAL,
+      contextTime: new Date().toISOString(),
+    });
+
+    if (!prepared.ok) {
+      setMutationBusy(false);
+      setError(prepared.error?.message || "Không random được đội hình theo quy tắc ưu tiên.");
+      return;
+    }
+
     const result = await runMutation({
       method: "randomizeLineup",
-      payload: { matchupId, teamId },
+      payload: {
+        matchupId,
+        teamId,
+        randomSeed: mintV6OptimizationSeed(),
+        ...(prepared.pairingOptions || {}),
+        privatePairingRules: prepared.pairingOptions?.privatePairingRules || [],
+        competitionClass: COMPETITION_CLASS.INTERNAL,
+        clubId: effectiveClubId || activeClubId || null,
+        tournamentId: tournamentId || null,
+      },
       actionScope: buildUiCommandScope("randomize", tournamentId, `${matchupId}:${teamId}`),
       expectedVersion: lineup?.version ?? 1,
     });

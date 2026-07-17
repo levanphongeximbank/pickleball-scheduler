@@ -54,6 +54,10 @@ export function evaluateOpponentMatchupCandidate(matchOption, options = {}) {
     allowedByPublishedRules: options.allowedByPublishedRules === true,
     contextTime: options.contextTime,
     ...(options.playersById ? { playersById: options.playersById } : {}),
+    operation:
+      options.operation ||
+      options.context?.operation ||
+      "MATCHUP_PAIRING",
   };
 
   const resolved = options.resolved ||
@@ -174,6 +178,10 @@ export function filterAndRankMatchupsByOpponentRules(
     competitionClass,
     allowedByPublishedRules: options.allowedByPublishedRules === true,
     contextTime: options.contextTime,
+    operation:
+      options.operation ||
+      options.context?.operation ||
+      "MATCHUP_PAIRING",
   };
 
   const resolved = resolveActivePrivatePairingRules({

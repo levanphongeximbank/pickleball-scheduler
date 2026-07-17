@@ -46,7 +46,12 @@ export const PRIVATE_PAIRING_SOURCE_ORDER = Object.freeze([
 export const PRIVATE_PAIRING_OPERATION = Object.freeze({
   TEAM_FORMATION: "TEAM_FORMATION",
   PARTNER_PAIRING: "PARTNER_PAIRING",
+  LINEUP_FORMATION: "LINEUP_FORMATION",
+  MATCHUP_PAIRING: "MATCHUP_PAIRING",
   GROUP_DRAW: "GROUP_DRAW",
+  SCHEDULE_ASSIGNMENT: "SCHEDULE_ASSIGNMENT",
+  COURT_ASSIGNMENT: "COURT_ASSIGNMENT",
+  SEED_ASSIGNMENT: "SEED_ASSIGNMENT",
   ALL: "ALL",
 });
 
@@ -132,18 +137,33 @@ const GROUP_DRAW_TYPES = new Set([
  * @param {string} constraintType
  * @returns {string[]}
  */
+/**
+ * Constraint → operations mapping (declarative).
+ * V6 lineup uses partner-relation constraints; matchup uses opponent relations.
+ * SCHEDULE / COURT / SEED have no dedicated constraint types yet (no DB migration):
+ * they only receive rules that declare those operations explicitly, or ALL.
+ */
 export function derivePrivatePairingOperations(constraintType) {
   const operations = [];
   if (TEAM_FORMATION_TYPES.has(constraintType)) {
     operations.push(PRIVATE_PAIRING_OPERATION.TEAM_FORMATION);
+    operations.push(PRIVATE_PAIRING_OPERATION.LINEUP_FORMATION);
   }
   if (PARTNER_PAIRING_TYPES.has(constraintType)) {
     operations.push(PRIVATE_PAIRING_OPERATION.PARTNER_PAIRING);
   }
+  if (
+    OPPONENT_RELATION_TYPES.includes(constraintType) ||
+    constraintType === PRIVATE_PAIRING_CONSTRAINT_TYPE.MAX_OPPONENT_REPEAT ||
+    constraintType === PRIVATE_PAIRING_CONSTRAINT_TYPE.MIN_OPPONENT_REPEAT
+  ) {
+    operations.push(PRIVATE_PAIRING_OPERATION.MATCHUP_PAIRING);
+  }
   if (GROUP_DRAW_TYPES.has(constraintType)) {
     operations.push(PRIVATE_PAIRING_OPERATION.GROUP_DRAW);
+    operations.push(PRIVATE_PAIRING_OPERATION.SEED_ASSIGNMENT);
   }
-  return operations;
+  return [...new Set(operations)];
 }
 
 /**

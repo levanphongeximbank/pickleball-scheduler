@@ -3,6 +3,7 @@ import { loadClubData, saveClubData } from "../../../domain/clubStorage.js";
 import { getAuthOptions, guardClubAction } from "../../../auth/guardAction.js";
 import { PERMISSIONS } from "../../identity/constants/permissions.js";
 import { getPermissionsForRole } from "../../identity/matrix/rolePermissions.js";
+import { COMPETITION_CLASS } from "../../private-pairing-rules/index.js";
 import { TEAM_AUDIT_ACTIONS, LINEUP_STATUS, SUB_MATCH_STATUS } from "../constants.js";
 import {
   loadAthletesForTeamTournamentMutation,
@@ -510,8 +511,15 @@ export async function captainSubmitLineup(clubId, tournamentId, payload = {}) {
     return scopeCheck;
   }
 
+  const enrichedPayload = {
+    ...payload,
+    clubId: payload.clubId || clubId || null,
+    tournamentId: payload.tournamentId || tournamentId || null,
+    competitionClass: payload.competitionClass || COMPETITION_CLASS.INTERNAL,
+  };
+
   const cloudCheck = await mirrorMutationToCloud(
-    () => cloudCaptainSubmitLineup(tournamentId, payload),
+    () => cloudCaptainSubmitLineup(tournamentId, enrichedPayload),
     getTeamTournamentById(clubId, tournamentId)
   );
   if (!cloudCheck.ok && cloudCheck.usedCloud) {
@@ -519,10 +527,10 @@ export async function captainSubmitLineup(clubId, tournamentId, payload = {}) {
   }
 
   return updateTournament(clubId, tournamentId, (tournament) => {
-    const existing = getLineup(getTeamData(tournament), payload.matchupId, payload.teamId);
+    const existing = getLineup(getTeamData(tournament), enrichedPayload.matchupId, enrichedPayload.teamId);
     const wasSubmitted = existing?.status === LINEUP_STATUS.SUBMITTED;
 
-    const result = submitLineup(getTeamData(tournament), payload);
+    const result = submitLineup(getTeamData(tournament), enrichedPayload);
     if (!result.ok) {
       return { ok: false, error: result.error };
     }
@@ -532,8 +540,8 @@ export async function captainSubmitLineup(clubId, tournamentId, payload = {}) {
         action: TEAM_AUDIT_ACTIONS.LINEUP_UPDATE,
         targetId: tournament.id,
         metadata: {
-          matchupId: payload.matchupId,
-          teamId: payload.teamId,
+          matchupId: enrichedPayload.matchupId,
+          teamId: enrichedPayload.teamId,
           status: "edit_before_lock",
         },
       });
@@ -543,8 +551,8 @@ export async function captainSubmitLineup(clubId, tournamentId, payload = {}) {
       action: TEAM_AUDIT_ACTIONS.LINEUP_SUBMIT,
       targetId: tournament.id,
       metadata: {
-        matchupId: payload.matchupId,
-        teamId: payload.teamId,
+        matchupId: enrichedPayload.matchupId,
+        teamId: enrichedPayload.teamId,
       },
     });
 
@@ -561,12 +569,19 @@ export async function organizerLockLineups(clubId, tournamentId, payload = {}) {
     return check;
   }
 
+  const enrichedPayload = {
+    ...payload,
+    clubId: payload.clubId || clubId || null,
+    tournamentId: payload.tournamentId || tournamentId || null,
+    competitionClass: payload.competitionClass || COMPETITION_CLASS.INTERNAL,
+  };
+
   return applyOrganizerMutationLocalFirst({
     clubId,
     tournamentId,
-    cloudCall: () => cloudOrganizerLockLineups(tournamentId, payload),
+    cloudCall: () => cloudOrganizerLockLineups(tournamentId, enrichedPayload),
     applyLocal: (tournament) => {
-      const result = lockMatchupLineups(getTeamData(tournament), payload);
+      const result = lockMatchupLineups(getTeamData(tournament), enrichedPayload);
       if (!result.ok) {
         return { ok: false, error: result.error };
       }
@@ -577,7 +592,7 @@ export async function organizerLockLineups(clubId, tournamentId, payload = {}) {
             ? TEAM_AUDIT_ACTIONS.LINEUP_RANDOM
             : TEAM_AUDIT_ACTIONS.LINEUP_LOCK,
           targetId: tournament.id,
-          metadata: { matchupId: payload.matchupId, message },
+          metadata: { matchupId: enrichedPayload.matchupId, message },
         });
       });
 

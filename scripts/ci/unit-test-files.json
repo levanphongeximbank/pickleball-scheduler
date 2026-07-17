@@ -212,6 +212,7 @@
   "tests/competition-optimizer-mlp4-global.test.js",
   "tests/competition-optimizer-partner-pairing.test.js",
   "tests/competition-optimizer-group-draw.test.js",
+  "tests/v6-private-pairing-integration.test.js",
   "tests/tt-v6-ai-draw-random-seed.test.js",
   "tests/team-mlp-canonical-athlete-pool.test.js",
   "tests/team-tournament-create-persist-load.test.js",

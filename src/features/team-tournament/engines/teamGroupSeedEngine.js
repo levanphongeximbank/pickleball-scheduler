@@ -1,6 +1,15 @@
 import { getPlayerRatingInternal } from "../../../models/player.js";
 import { createId } from "../../../utils/id.js";
 import { TEAM_GROUP_SEEDING } from "../constants.js";
+import { createSeededRng } from "../../private-pairing-rules/runtime/seededRng.js";
+import {
+  PRIVATE_PAIRING_OPERATION,
+  attachV6CompetitionOptimizationAudit,
+  buildV6PrivatePairingResolveContext,
+  resolveV6PrivatePairing,
+  V6_OPTIMIZATION_ACTION,
+  V6_PRIVATE_PAIRING_ALGORITHM_VERSION,
+} from "../private-pairing/index.js";
 
 function roundRating(value) {
   return Math.round(Number(value) * 100) / 100;
@@ -75,7 +84,7 @@ export function sortTeamsForGroupSeeding(teams = [], players = [], seedingMode) 
   }));
 }
 
-export function shuffleTeamsForOpenDraw(teams = [], randomFn = Math.random) {
+export function shuffleTeamsForOpenDraw(teams = [], randomFn = createSeededRng(1)) {
   const shuffled = [...teams];
 
   for (let index = shuffled.length - 1; index > 0; index -= 1) {
@@ -89,6 +98,63 @@ export function shuffleTeamsForOpenDraw(teams = [], randomFn = Math.random) {
     ...team,
     seed: 0,
   }));
+}
+
+/**
+ * Seed assignment with shared Private Pairing resolve context (SEED_ASSIGNMENT).
+ * Baseline ordering remains deterministic compareTeamsForSeed; resolver gates fatal conflicts.
+ */
+export function assignSeedsWithPrivatePairing(teams = [], players = [], options = {}) {
+  const context = buildV6PrivatePairingResolveContext({
+    ...options,
+    operation: PRIVATE_PAIRING_OPERATION.SEED_ASSIGNMENT,
+  });
+  const gate = resolveV6PrivatePairing({
+    ...options,
+    operation: PRIVATE_PAIRING_OPERATION.SEED_ASSIGNMENT,
+    privatePairingRules: options.privatePairingRules || [],
+  });
+
+  if (!gate.ok) {
+    return {
+      ok: false,
+      teams: [],
+      error: gate.message,
+      code: gate.code,
+      context,
+      resolved: gate.resolved,
+    };
+  }
+
+  const sorted = sortTeamsForGroupSeeding(
+    teams,
+    players,
+    options.seedingMode
+  );
+
+  let teamData = options.teamData || null;
+  if (teamData) {
+    teamData = attachV6CompetitionOptimizationAudit(teamData, {
+      operation: PRIVATE_PAIRING_OPERATION.SEED_ASSIGNMENT,
+      context,
+      ruleResolution: gate.resolved?.ruleResolution || null,
+      algorithmVersion: V6_PRIVATE_PAIRING_ALGORITHM_VERSION,
+      randomSeed: options.randomSeed != null ? String(options.randomSeed) : null,
+      resultSnapshot: sorted.map((team) => ({
+        id: String(team.id),
+        seed: team.seed,
+      })),
+      action: V6_OPTIMIZATION_ACTION.INITIAL_GENERATE,
+    });
+  }
+
+  return {
+    ok: true,
+    teams: sorted,
+    teamData,
+    context,
+    ruleResolution: gate.resolved?.ruleResolution || null,
+  };
 }
 
 export function buildSnakeGroupsFromSortedTeams(teams = [], groupCount = 2) {

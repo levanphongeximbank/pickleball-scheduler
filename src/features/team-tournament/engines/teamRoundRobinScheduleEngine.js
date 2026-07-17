@@ -3,7 +3,14 @@ import { createId } from "../../../utils/id.js";
 import {
   buildMatchOptionFromSides,
   filterAndRankMatchupsByOpponentRules,
+  PRIVATE_PAIRING_OPERATION,
 } from "../../private-pairing-rules/runtime/index.js";
+import {
+  attachV6CompetitionOptimizationAudit,
+  buildV6PrivatePairingResolveContext,
+  V6_OPTIMIZATION_ACTION,
+  V6_PRIVATE_PAIRING_ALGORITHM_VERSION,
+} from "../private-pairing/index.js";
 import { MATCHUP_STATUS } from "../constants.js";
 import {
   createMatchupRecord,
@@ -348,6 +355,7 @@ export function buildStructuredRoundRobinMatchups(teamData, options = {}) {
       contextTime: options.contextTime,
       history: options.pairingHistory || {},
       requireCompleteSet: options.requireCompleteSet !== false,
+      operation: PRIVATE_PAIRING_OPERATION.MATCHUP_PAIRING,
     }
   );
 
@@ -361,10 +369,71 @@ export function buildStructuredRoundRobinMatchups(teamData, options = {}) {
     return errorData;
   }
 
-  return normalizeTeamData({
+  const scheduleContext = buildV6PrivatePairingResolveContext({
+    clubId: options.clubId || null,
+    tournamentId: options.tournamentId || null,
+    eventId: options.eventId || null,
+    competitionClass: options.competitionClass,
+    operation: PRIVATE_PAIRING_OPERATION.SCHEDULE_ASSIGNMENT,
+    contextTime: options.contextTime,
+  });
+
+  let next = normalizeTeamData({
     ...prepared,
     matchups: ranked.matchups,
   });
+
+  next = attachV6CompetitionOptimizationAudit(next, {
+    operation: PRIVATE_PAIRING_OPERATION.MATCHUP_PAIRING,
+    context: {
+      ...scheduleContext,
+      operation: PRIVATE_PAIRING_OPERATION.MATCHUP_PAIRING,
+    },
+    algorithmVersion: V6_PRIVATE_PAIRING_ALGORITHM_VERSION,
+    randomSeed: options.randomSeed != null ? String(options.randomSeed) : null,
+    diagnostics: {
+      matchupCount: ranked.matchups?.length || 0,
+      removedCount: ranked.removed?.length || 0,
+    },
+    resultSnapshot: (ranked.matchups || []).map((m) => ({
+      id: m.id,
+      teamAId: m.teamAId,
+      teamBId: m.teamBId,
+      roundNumber: m.roundNumber,
+      courtLabel: m.courtLabel,
+      scheduledAt: m.scheduledAt,
+    })),
+    action: V6_OPTIMIZATION_ACTION.INITIAL_GENERATE,
+  });
+
+  next = attachV6CompetitionOptimizationAudit(next, {
+    operation: PRIVATE_PAIRING_OPERATION.SCHEDULE_ASSIGNMENT,
+    context: scheduleContext,
+    algorithmVersion: V6_PRIVATE_PAIRING_ALGORITHM_VERSION,
+    randomSeed: options.randomSeed != null ? String(options.randomSeed) : null,
+    resultSnapshot: (ranked.matchups || []).map((m) => ({
+      id: m.id,
+      scheduledAt: m.scheduledAt,
+      roundNumber: m.roundNumber,
+    })),
+    action: V6_OPTIMIZATION_ACTION.INITIAL_GENERATE,
+  });
+
+  next = attachV6CompetitionOptimizationAudit(next, {
+    operation: PRIVATE_PAIRING_OPERATION.COURT_ASSIGNMENT,
+    context: {
+      ...scheduleContext,
+      operation: PRIVATE_PAIRING_OPERATION.COURT_ASSIGNMENT,
+    },
+    algorithmVersion: V6_PRIVATE_PAIRING_ALGORITHM_VERSION,
+    resultSnapshot: (ranked.matchups || []).map((m) => ({
+      id: m.id,
+      courtLabel: m.courtLabel,
+    })),
+    action: V6_OPTIMIZATION_ACTION.INITIAL_GENERATE,
+  });
+
+  return next;
 }
 
 function buildGroupDiagramFromRounds(groupName, groupId, teamRecords, matchups) {

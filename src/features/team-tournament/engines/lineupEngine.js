@@ -21,6 +21,10 @@ import {
   canCaptainEditLineupStatus,
   evaluateLineupDeadline,
 } from "./lineupStateMachine.js";
+import {
+  PRIVATE_PAIRING_OPERATION,
+  evaluateV6PrivatePairingCandidate,
+} from "../private-pairing/index.js";
 
 function isBeforeLock(matchup, now = new Date()) {
   const check = evaluateLineupDeadline({
@@ -111,7 +115,22 @@ export function saveLineupDraft(teamData, { matchupId, teamId, selections, playe
   };
 }
 
-export function submitLineup(teamData, { matchupId, teamId, selections, players = [], now = new Date() }) {
+export function submitLineup(
+  teamData,
+  {
+    matchupId,
+    teamId,
+    selections,
+    players = [],
+    now = new Date(),
+    privatePairingRules = [],
+    clubId = null,
+    tournamentId = null,
+    eventId = null,
+    competitionClass = null,
+    envSource,
+  } = {}
+) {
   const matchup = findMatchup(teamData, matchupId);
   if (!matchup) {
     return { ok: false, error: "Không tìm thấy lượt đối đầu." };
@@ -147,6 +166,55 @@ export function submitLineup(teamData, { matchupId, teamId, selections, players 
     return { ok: false, error: validation.errors.join(" ") };
   }
 
+  // Private pairing hard rules on partner selections (LINEUP_FORMATION).
+  if ((privatePairingRules || []).length > 0) {
+    if (!tournamentId && !clubId) {
+      return {
+        ok: false,
+        error: "Thiếu context giải/CLB khi kiểm tra quy tắc ưu tiên đội hình.",
+        code: "PRIVATE_PAIRING_CONTEXT_REQUIRED",
+      };
+    }
+
+    const playersById = Object.fromEntries(
+      (players || []).map((player) => [String(player.id), player])
+    );
+    for (const [disciplineId, playerIds] of Object.entries(validation.selections || {})) {
+      if (!Array.isArray(playerIds) || playerIds.length < 2) {
+        continue;
+      }
+      const members = playerIds
+        .map((id) => playersById[String(id)])
+        .filter(Boolean);
+      const scored = evaluateV6PrivatePairingCandidate(
+        {
+          id: `submit-lineup-${disciplineId}`,
+          teams: [{ playerIds: playerIds.map(String), members }],
+        },
+        {
+          operation: PRIVATE_PAIRING_OPERATION.LINEUP_FORMATION,
+          privatePairingRules,
+          clubId,
+          tournamentId,
+          eventId,
+          teamId,
+          matchupId,
+          competitionClass,
+          envSource,
+          playersById,
+        }
+      );
+      if (scored.feasible === false) {
+        return {
+          ok: false,
+          error: "Đội hình vi phạm điều kiện bắt buộc của quy tắc ưu tiên.",
+          code: scored.rejectionCodes?.[0] || "LINEUP_PRIVATE_PAIRING_HARD",
+          rejectionCodes: scored.rejectionCodes,
+        };
+      }
+    }
+  }
+
   const lineup = normalizeLineup({
     matchupId,
     teamId,
@@ -169,7 +237,22 @@ export function submitLineup(teamData, { matchupId, teamId, selections, players 
   };
 }
 
-export function lockMatchupLineups(teamData, { matchupId, players = [], now = new Date() }) {
+export function lockMatchupLineups(
+  teamData,
+  {
+    matchupId,
+    players = [],
+    now = new Date(),
+    privatePairingRules = [],
+    clubId = null,
+    tournamentId = null,
+    eventId = null,
+    competitionClass = null,
+    envSource,
+    randomSeed = null,
+    actorId = null,
+  } = {}
+) {
   const matchup = findMatchup(teamData, matchupId);
   if (!matchup) {
     return { ok: false, error: "Không tìm thấy lượt đối đầu." };
@@ -197,6 +280,14 @@ export function lockMatchupLineups(teamData, { matchupId, players = [], now = ne
           teamId,
           players,
           now,
+          privatePairingRules,
+          clubId,
+          tournamentId,
+          eventId,
+          competitionClass,
+          envSource,
+          randomSeed,
+          actorId,
         });
 
         if (!randomResult.ok) {

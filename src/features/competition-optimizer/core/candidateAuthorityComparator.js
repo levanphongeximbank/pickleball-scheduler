@@ -17,6 +17,7 @@ const SOFT_KEYS = Object.freeze([
   "tournamentPenalty",
   "clubPenalty",
   "sessionPenalty",
+  "v6FormatPenalty",
   "defaultPenalty",
 ]);
 

@@ -12,8 +12,9 @@
  *   3. TOURNAMENT penalty
  *   4. CLUB penalty
  *   5. SESSION penalty
- *   6. Default optimizer penalty
- *   7. Stable seeded tie-break (id)
+ *   6. V6 format soft penalty
+ *   7. Default optimizer penalty
+ *   8. Stable seeded tie-break (id)
  *
  * `totalPenalty` is display-only and MUST NOT be used for ranking.
  */
@@ -24,6 +25,7 @@
  * @property {number} tournamentPenalty
  * @property {number} clubPenalty
  * @property {number} sessionPenalty
+ * @property {number} v6FormatPenalty
  * @property {number} defaultPenalty
  * @property {number} totalPenalty
  */
@@ -43,6 +45,9 @@ export function normalizeScoreBreakdown(score = {}) {
   const sessionPenalty = Number(
     score.sessionPenalty ?? score.sessionSoftPenalty
   ) || 0;
+  const v6FormatPenalty = Number(
+    score.v6FormatPenalty ?? score.v6FormatSoftPenalty
+  ) || 0;
   const defaultPenalty = Number(
     score.defaultPenalty ?? score.defaultOptimizationPenalty
   ) || 0;
@@ -54,6 +59,7 @@ export function normalizeScoreBreakdown(score = {}) {
         tournamentPenalty +
         clubPenalty +
         sessionPenalty +
+        v6FormatPenalty +
         defaultPenalty;
 
   return {
@@ -61,6 +67,7 @@ export function normalizeScoreBreakdown(score = {}) {
     tournamentPenalty,
     clubPenalty,
     sessionPenalty,
+    v6FormatPenalty,
     defaultPenalty,
     totalPenalty,
   };
@@ -77,6 +84,7 @@ export function normalizeScoreBreakdown(score = {}) {
  * @param {number} [args.formationQuality]
  * @param {number} [args.openBalanceScore]
  * @param {number} [args.defaultPenalty]
+ * @param {number} [args.v6FormatPenalty]
  * @returns {ScoreBreakdown}
  */
 export function buildScoreBreakdown({
@@ -86,11 +94,15 @@ export function buildScoreBreakdown({
   formationQuality = 0,
   openBalanceScore,
   defaultPenalty: explicitDefault,
+  v6FormatPenalty: explicitV6Format,
 } = {}) {
   const superAdminPenalty = Number(penaltyBySource.SUPER_ADMIN) || 0;
   const tournamentPenalty = Number(penaltyBySource.TOURNAMENT) || 0;
   const clubPenalty = Number(penaltyBySource.CLUB) || 0;
   const sessionPenalty = Number(penaltyBySource.SESSION) || 0;
+  const v6FormatPenalty = Number.isFinite(Number(explicitV6Format))
+    ? Math.max(0, Number(explicitV6Format))
+    : Number(penaltyBySource.V6_FORMAT) || 0;
 
   let defaultPenalty;
   if (Number.isFinite(Number(explicitDefault))) {
@@ -111,6 +123,7 @@ export function buildScoreBreakdown({
     tournamentPenalty,
     clubPenalty,
     sessionPenalty,
+    v6FormatPenalty,
     defaultPenalty,
   });
 }
@@ -121,6 +134,7 @@ const LEXICOGRAPHIC_KEYS = Object.freeze([
   "tournamentPenalty",
   "clubPenalty",
   "sessionPenalty",
+  "v6FormatPenalty",
   "defaultPenalty",
 ]);
 
