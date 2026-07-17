@@ -613,12 +613,9 @@ const RULES = [
   {
     id: "team-tournament-node-crypto-boundary",
     description:
-      "P1.2 S1-A — node:crypto under team-tournament is limited to canonical digest/legacy modules.",
+      "P1.2 S1-A — node:crypto under team-tournament is forbidden (use canonical digest pure SHA-256).",
     onlyIn: ["src/features/team-tournament/"],
-    allow: [
-      "src/features/team-tournament/canonical/teamTournamentCanonicalDigest.js",
-      "src/features/team-tournament/canonical/teamTournamentCanonicalLegacy.js",
-    ],
+    allow: [],
     match: (c) => c.match(/from\s+["']node:crypto["']/g) || [],
   },
   {
@@ -654,7 +651,6 @@ const RULES = [
     onlyIn: ["src/features/team-tournament/"],
     allow: [
       "src/features/team-tournament/canonical/teamTournamentCanonicalDigest.js",
-      "src/features/team-tournament/canonical/teamTournamentCanonicalLegacy.js",
     ],
     match: (c) => [
       ...(c.match(/crypto\.subtle\.digest\s*\(/g) || []),

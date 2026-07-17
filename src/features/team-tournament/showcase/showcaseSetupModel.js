@@ -3,7 +3,7 @@
  * No engines, no persistence, no React.
  */
 
-import { getPlayerGenderKey } from "../../../models/player.js";
+import { normalizeAthleteGender } from "../../../models/player.js";
 import { resolveCanonicalAthleteRating } from "../../pairing-candidates/canonicalAthleteRating.js";
 import { FORMAT_PRESET } from "../constants.js";
 import { listGroupDivisionOptions } from "../engines/teamGroupDivisionPolicy.js";
@@ -28,6 +28,29 @@ function asList(value) {
 }
 
 /**
+ * Explicit host-club-only tournament policy.
+ *
+ * Controlling fields (any one is enough):
+ * - settings.hostClubAthletesOnly === true
+ * - settings.allowTenantAthleteScope === false
+ * - settings.athleteScopeMode === "host" | "host_club_only"
+ *
+ * tournament.clubId alone must NOT force host lock.
+ *
+ * @param {object} input
+ * @returns {boolean}
+ */
+export function isTournamentHostClubAthletesOnly(input = {}) {
+  const settings = input.tournament?.settings || input.settings || {};
+  if (settings.hostClubAthletesOnly === true) return true;
+  if (settings.allowTenantAthleteScope === false) return true;
+  const mode = String(settings.athleteScopeMode || "")
+    .trim()
+    .toLowerCase();
+  return mode === "host" || mode === "host_club_only";
+}
+
+/**
  * @param {object} input
  * @returns {boolean}
  */
@@ -36,7 +59,7 @@ export function tournamentAllowsTenantAthleteScope(input = {}) {
   if (!tournament) return true;
   if (tournament.settings?.allowTenantAthleteScope === true) return true;
   if (tournament.settings?.athleteScopeMode === "tenant") return true;
-  return !normalizeId(tournament.clubId);
+  return !isTournamentHostClubAthletesOnly(input);
 }
 
 /**
@@ -44,9 +67,33 @@ export function tournamentAllowsTenantAthleteScope(input = {}) {
  * @returns {boolean}
  */
 export function isShowcaseHostClubRestricted(input = {}) {
-  const hostClubId = normalizeId(input.hostClubId || input.tournament?.clubId);
-  if (!hostClubId) return false;
-  return !tournamentAllowsTenantAthleteScope(input);
+  return isTournamentHostClubAthletesOnly(input);
+}
+
+/**
+ * Owner / BTC / Super Admin may open “Tất cả CLB” when AI pairing permits tenant scope.
+ * Club Manager stays limited to managed clubs.
+ *
+ * @param {{ user?: object|null, canManage?: boolean }} input
+ */
+export function canShowcaseSelectTenantAthleteScope(input = {}) {
+  if (input.canManage === false) return false;
+  const role = String(input.user?.role || "")
+    .trim()
+    .toUpperCase();
+  if (!role) return input.canManage === true;
+  if (
+    role === "PLATFORM_ADMIN" ||
+    role === "SUPER_ADMIN" ||
+    role === "TENANT_OWNER" ||
+    role === "COURT_OWNER" ||
+    role === "VENUE_OWNER" ||
+    role === "OWNER" ||
+    role === "TOURNAMENT_MANAGER"
+  ) {
+    return true;
+  }
+  return false;
 }
 
 /**
@@ -81,8 +128,10 @@ export function resolveShowcaseClubScopeConfig(input = {}) {
   const canSelectTenantScope =
     input.canSelectTenantScope === true && !hostRestricted;
 
-  const requestedScope = normalizeId(input.scopeMode) || SHOWCASE_CLUB_SCOPE.CLUB;
-  let scopeMode = requestedScope;
+  const requestedScope = normalizeId(input.scopeMode);
+  let scopeMode =
+    requestedScope ||
+    (canSelectTenantScope ? SHOWCASE_CLUB_SCOPE.TENANT : SHOWCASE_CLUB_SCOPE.CLUB);
   let locked = false;
   let lockReason = "";
 
@@ -91,10 +140,17 @@ export function resolveShowcaseClubScopeConfig(input = {}) {
     locked = true;
     lockReason = "Giải này chỉ sử dụng VĐV thuộc CLB chủ quản.";
   } else if (scopeMode === SHOWCASE_CLUB_SCOPE.TENANT && !canSelectTenantScope) {
-    scopeMode = hostClubId ? SHOWCASE_CLUB_SCOPE.HOST : SHOWCASE_CLUB_SCOPE.CLUB;
-    locked = Boolean(hostClubId);
-    lockReason = locked ? lockReason : "";
+    scopeMode = SHOWCASE_CLUB_SCOPE.CLUB;
+  } else if (scopeMode === SHOWCASE_CLUB_SCOPE.HOST && !hostRestricted) {
+    // Host lock is explicit-policy only; otherwise treat as ordinary club pick.
+    scopeMode = canSelectTenantScope
+      ? SHOWCASE_CLUB_SCOPE.TENANT
+      : SHOWCASE_CLUB_SCOPE.CLUB;
   }
+
+  const hostClubName =
+    asList(input.clubs).find((club) => normalizeId(club?.id) === hostClubId)?.name ||
+    "";
 
   const selectedClubId =
     scopeMode === SHOWCASE_CLUB_SCOPE.TENANT
@@ -108,25 +164,26 @@ export function resolveShowcaseClubScopeConfig(input = {}) {
     scopeMode,
     selectedClubId,
     hostClubId,
+    hostClubName,
     permittedClubs,
     canSelectTenantScope,
     locked,
     lockReason,
     scopeOptions: [
       ...(canSelectTenantScope
-        ? [{ value: SHOWCASE_CLUB_SCOPE.TENANT, label: "Tất cả CLB được phép quản lý" }]
+        ? [{ value: SHOWCASE_CLUB_SCOPE.TENANT, label: "Tất cả CLB" }]
         : []),
       ...permittedClubs.map((club) => ({
         value: SHOWCASE_CLUB_SCOPE.CLUB,
         clubId: normalizeId(club.id),
         label: club.name || club.id,
       })),
-      ...(hostClubId
+      ...(hostRestricted && hostClubId
         ? [
             {
               value: SHOWCASE_CLUB_SCOPE.HOST,
               clubId: hostClubId,
-              label: "CLB chủ quản giải",
+              label: hostClubName || "CLB chủ quản giải",
             },
           ]
         : []),
@@ -134,8 +191,19 @@ export function resolveShowcaseClubScopeConfig(input = {}) {
   };
 }
 
+function athleteClubIdOf(athlete = {}) {
+  return normalizeId(
+    athlete.clubId ||
+      athlete.sourceClubId ||
+      athlete.membershipClubId ||
+      athlete.club?.id
+  );
+}
+
 /**
  * Merge + dedupe athletes by athletes.id for showcase pool.
+ * Uses the same canonical tenant/club pools as AI ghép đội; club/host scopes
+ * filter that shared pool (never a second repository).
  */
 export function mergeShowcaseAthletePool({
   scopeMode = SHOWCASE_CLUB_SCOPE.CLUB,
@@ -145,17 +213,22 @@ export function mergeShowcaseAthletePool({
   selectedClubId = "",
   hostClubId = "",
 } = {}) {
-  const source =
-    scopeMode === SHOWCASE_CLUB_SCOPE.TENANT
-      ? [...asList(tenantAthletes), ...asList(clubAthletes)]
-      : asList(clubAthletes);
-
+  const combined = [...asList(tenantAthletes), ...asList(clubAthletes)];
   const effectiveClubId =
     scopeMode === SHOWCASE_CLUB_SCOPE.HOST
       ? normalizeId(hostClubId)
       : scopeMode === SHOWCASE_CLUB_SCOPE.CLUB
         ? normalizeId(selectedClubId)
         : "";
+
+  const source =
+    scopeMode === SHOWCASE_CLUB_SCOPE.TENANT
+      ? combined
+      : effectiveClubId
+        ? combined.filter((athlete) => athleteClubIdOf(athlete) === effectiveClubId)
+        : asList(clubAthletes).length
+          ? asList(clubAthletes)
+          : combined;
 
   const clubNamesById = new Map(
     asList(clubs)
@@ -168,7 +241,7 @@ export function mergeShowcaseAthletePool({
     if (!id) continue;
 
     const existing = byId.get(id);
-    const athleteClubId = normalizeId(athlete.clubId || athlete.membershipClubId);
+    const athleteClubId = athleteClubIdOf(athlete);
     const clubLabel =
       athlete.clubName ||
       athlete.club?.name ||
@@ -180,6 +253,7 @@ export function mergeShowcaseAthletePool({
       ...athlete,
       id,
       athleteId: id,
+      clubId: athleteClubId || athlete.clubId || existing?.clubId || "",
       clubName: clubLabel || existing?.clubName || "",
       membershipStatus:
         athlete.membershipStatus || athlete.status || existing?.membershipStatus || "active",
@@ -190,7 +264,7 @@ export function mergeShowcaseAthletePool({
       continue;
     }
 
-    if (effectiveClubId && normalizeId(athlete.clubId) === effectiveClubId) {
+    if (effectiveClubId && athleteClubId === effectiveClubId) {
       byId.set(id, { ...existing, ...next, clubName: next.clubName || existing.clubName });
     }
   }
@@ -210,8 +284,11 @@ function athleteEligible(athlete) {
 
 /**
  * Live athlete counters for setup UI.
+ * @param {object[]} athletes
+ * @param {string[]} selectedAthleteIds
+ * @param {{ displayedCount?: number }} [options]
  */
-export function buildShowcaseAthleteCounters(athletes = [], selectedAthleteIds = []) {
+export function buildShowcaseAthleteCounters(athletes = [], selectedAthleteIds = [], options = {}) {
   const selected = new Set(asList(selectedAthleteIds).map(normalizeId).filter(Boolean));
   const pool = asList(athletes);
 
@@ -236,7 +313,7 @@ export function buildShowcaseAthleteCounters(athletes = [], selectedAthleteIds =
     }
     availableEligible += 1;
 
-    const gender = getPlayerGenderKey(athlete.gender);
+    const gender = normalizeAthleteGender(athlete);
     if (gender === "male") male += 1;
     else if (gender === "female") female += 1;
     else unknownGender += 1;
@@ -268,7 +345,7 @@ export function buildShowcaseAthleteCounters(athletes = [], selectedAthleteIds =
       selectedIneligible += 1;
       continue;
     }
-    const gender = getPlayerGenderKey(athlete.gender);
+    const gender = normalizeAthleteGender(athlete);
     if (gender === "male") selectedMale += 1;
     else if (gender === "female") selectedFemale += 1;
     else selectedUnknown += 1;
@@ -283,6 +360,9 @@ export function buildShowcaseAthleteCounters(athletes = [], selectedAthleteIds =
 
   return {
     totalAvailable: pool.length,
+    displayedCount: Number.isFinite(Number(options.displayedCount))
+      ? Number(options.displayedCount)
+      : pool.length,
     availableEligible,
     selectedCount: selected.size,
     male,
@@ -325,12 +405,12 @@ export function filterShowcaseAthletesForDisplay(
     if (showSelectedOnly && !isSelected) return false;
 
     if (genderFilter === "male" || genderFilter === "female") {
-      const gender = getPlayerGenderKey(athlete.gender);
+      const gender = normalizeAthleteGender(athlete);
       if (!isSelected && gender !== genderFilter) return false;
     }
 
-    if (clubFilter !== "all") {
-      const clubId = normalizeId(athlete.clubId || athlete.membershipClubId);
+    if (clubFilter !== "all" && clubFilter !== "__all__") {
+      const clubId = athleteClubIdOf(athlete);
       if (!isSelected && clubId !== normalizeId(clubFilter)) return false;
     }
 
@@ -358,6 +438,49 @@ export function selectAllEligibleShowcaseAthletes(athletes = []) {
   return [...new Set(eligibleIds)];
 }
 
+/**
+ * Select eligible athletes visible in the current filter; preserve other selections.
+ */
+export function selectEligibleShowcaseAthletesInFilter(
+  athletes = [],
+  selectedAthleteIds = [],
+  filterOptions = {}
+) {
+  const visible = filterShowcaseAthletesForDisplay(athletes, {
+    ...filterOptions,
+    selectedAthleteIds: [],
+    showSelectedOnly: false,
+  });
+  const next = new Set(asList(selectedAthleteIds).map(normalizeId).filter(Boolean));
+  for (const athlete of visible) {
+    if (!athleteEligible(athlete)) continue;
+    const id = normalizeId(athlete?.athleteId || athlete?.id);
+    if (id) next.add(id);
+  }
+  return [...next];
+}
+
+/**
+ * Clear only athletes currently visible in the filter; keep hidden selections.
+ */
+export function clearFilteredShowcaseAthleteSelection(
+  athletes = [],
+  selectedAthleteIds = [],
+  filterOptions = {}
+) {
+  const visible = filterShowcaseAthletesForDisplay(athletes, {
+    ...filterOptions,
+    selectedAthleteIds: [],
+    showSelectedOnly: false,
+  });
+  const visibleIds = new Set(
+    visible.map((athlete) => normalizeId(athlete?.athleteId || athlete?.id)).filter(Boolean)
+  );
+  return asList(selectedAthleteIds)
+    .map(normalizeId)
+    .filter((id) => id && !visibleIds.has(id));
+}
+
 export function clearShowcaseAthleteSelection() {
   return [];
 }
@@ -376,7 +499,7 @@ export function selectShowcaseAthletesByClub(athletes = [], selectedAthleteIds =
   const targetClub = normalizeId(clubId);
   for (const athlete of asList(athletes)) {
     if (!athleteEligible(athlete)) continue;
-    const athleteClubId = normalizeId(athlete.clubId || athlete.membershipClubId);
+    const athleteClubId = athleteClubIdOf(athlete);
     const id = normalizeId(athlete?.athleteId || athlete?.id);
     if (id && athleteClubId === targetClub) next.add(id);
   }
@@ -390,7 +513,7 @@ export function selectShowcaseAthletesByGender(athletes = [], selectedAthleteIds
     if (!athleteEligible(athlete)) continue;
     const id = normalizeId(athlete?.athleteId || athlete?.id);
     if (!id) continue;
-    if (getPlayerGenderKey(athlete.gender) === target) next.add(id);
+    if (normalizeAthleteGender(athlete) === target) next.add(id);
   }
   return [...next];
 }
@@ -412,9 +535,9 @@ export function buildShowcaseTeamConfiguration({
   );
 
   const eligibleSelected = selected.filter(athleteEligible);
-  const males = eligibleSelected.filter((a) => getPlayerGenderKey(a.gender) === "male");
-  const females = eligibleSelected.filter((a) => getPlayerGenderKey(a.gender) === "female");
-  const unknownGender = eligibleSelected.filter((a) => !getPlayerGenderKey(a.gender));
+  const males = eligibleSelected.filter((a) => normalizeAthleteGender(a) === "male");
+  const females = eligibleSelected.filter((a) => normalizeAthleteGender(a) === "female");
+  const unknownGender = eligibleSelected.filter((a) => normalizeAthleteGender(a) === "unknown");
 
   const malePerTeam =
     formatPreset === FORMAT_PRESET.MLP_4 ? SHOWCASE_MLP_MALE_PER_TEAM : Math.ceil(athletesPerTeam / 2);

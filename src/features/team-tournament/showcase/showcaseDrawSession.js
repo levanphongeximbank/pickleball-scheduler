@@ -3,13 +3,12 @@
  * Runs real engines once, freezes membership; animation must not mutate.
  */
 
-import { getPlayerGenderKey } from "../../../models/player.js";
+import { normalizeAthleteGender } from "../../../models/player.js";
 import { resolveCanonicalAthleteRating } from "../../pairing-candidates/canonicalAthleteRating.js";
 import {
   applyTeamPairing,
   assignSeededTeamsToGroups,
   pairTeamsFromSelectedPlayers,
-  suggestMlpTeamsFromPlayers,
 } from "../engines/teamAutoDrawEngine.js";
 import {
   buildGroupDivisionDiagnostics,
@@ -94,7 +93,7 @@ function annotateAthletes(playersById, team) {
   return (team.playerIds || []).map((id) => {
     const player = playersById.get(String(id)) || { id };
     const rating = resolveCanonicalAthleteRating(player);
-    const genderKey = getPlayerGenderKey(player.gender);
+    const genderKey = normalizeAthleteGender(player);
     return {
       id: String(id),
       name: player.name || player.displayName || String(id),
@@ -160,41 +159,37 @@ export function generateShowcaseTeamDraw({
   let waitingPlayerIds;
   let warnings;
 
-  if (ids.length === pool.length && !teamNames.length) {
-    const suggested = suggestMlpTeamsFromPlayers(pool, {
-      teamNamePrefix,
-      randomFn,
-    });
-    teams = suggested.teams || [];
-    warnings = suggested.warnings || [];
-    const used = new Set(teams.flatMap((t) => t.playerIds || []));
-    waitingPlayerIds = pool.filter((p) => !used.has(p.id)).map((p) => p.id);
-    if (teams.length > teamCount) {
-      teams = teams.slice(0, teamCount);
-    }
-  } else {
-    const paired = pairTeamsFromSelectedPlayers({
-      players: pool,
-      selectedPlayerIds: ids,
-      teamCount,
-      teamNames:
-        teamNames.length > 0
-          ? teamNames
-          : Array.from({ length: teamCount }, (_, i) => `${teamNamePrefix} ${i + 1}`),
-      formatPreset: FORMAT_PRESET.MLP_4,
-      randomFn,
-    });
-    if (!paired.ok) {
-      return {
-        ok: false,
-        error: paired.warnings?.[0] || "Không ghép được đội cho lễ bốc thăm.",
-        privatePairingError: paired.privatePairingError || null,
-      };
-    }
-    const playersById = new Map(pool.map((p) => [String(p.id), p]));
-    teams = ensureCaptainsFromRoster(paired.teams, playersById);
-    waitingPlayerIds = paired.waitingPlayerIds || [];
-    warnings = paired.warnings || [];
+  const paired = pairTeamsFromSelectedPlayers({
+    players: pool,
+    selectedPlayerIds: ids,
+    teamCount,
+    teamNames:
+      teamNames.length > 0
+        ? teamNames
+        : Array.from({ length: teamCount }, (_, i) => `${teamNamePrefix} ${i + 1}`),
+    formatPreset: FORMAT_PRESET.MLP_4,
+    randomFn,
+    requireFullFill: true,
+  });
+  if (!paired.ok) {
+    return {
+      ok: false,
+      error: paired.warnings?.[0] || "Không ghép được đội cho lễ bốc thăm.",
+      privatePairingError: paired.privatePairingError || null,
+    };
+  }
+  const playersById = new Map(pool.map((p) => [String(p.id), p]));
+  teams = ensureCaptainsFromRoster(paired.teams, playersById);
+  waitingPlayerIds = paired.waitingPlayerIds || [];
+  warnings = paired.warnings || [];
+
+  const usedCount = teams.flatMap((team) => team.playerIds || []).length;
+  if (usedCount !== pool.length || teams.length !== Number(teamCount)) {
+    return {
+      ok: false,
+      error:
+        `Bạn đã chọn ${pool.length} VĐV nhưng hệ thống chỉ xếp được ${usedCount} VĐV vào ${teams.length}/${teamCount} đội.`,
+    };
   }
 
   if (!teams.length) {
@@ -208,7 +203,6 @@ export function generateShowcaseTeamDraw({
     return { ok: false, error: applied.error || "Không áp dụng được đội." };
   }
 
-  const playersById = new Map(pool.map((p) => [String(p.id), p]));
   const teamCards = buildTeamRevealCards(applied.teamData.teams, playersById);
   const membershipFingerprint = buildMembershipFingerprint(applied.teamData.teams);
 
@@ -323,6 +317,7 @@ export function buildReplayShowcaseSession({
   players = [],
   engineVersion = DEFAULT_ENGINE_VERSION,
   rulesVersion = "",
+  seedingMode = TEAM_GROUP_SEEDING.AVG_LEVEL,
   generatedAt = null,
 } = {}) {
   const td = cloneJson(teamData || { teams: [], groups: [] });
@@ -364,7 +359,7 @@ export function buildReplayShowcaseSession({
     groupOptions: listGroupDivisionOptions((td.teams || []).length),
     groupSession: {
       groupCount: (td.groups || []).length,
-      seedingMode: TEAM_GROUP_SEEDING.AVG_LEVEL,
+      seedingMode,
       balance: null,
       diagnostics: buildGroupDivisionDiagnostics(td, td.groups || []),
       groupCards,

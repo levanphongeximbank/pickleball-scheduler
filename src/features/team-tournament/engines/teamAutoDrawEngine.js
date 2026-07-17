@@ -1,4 +1,4 @@
-import { getPlayerGenderKey, getPlayerRatingInternal } from "../../../models/player.js";
+import { getPlayerGenderKey, getPlayerRatingInternal, normalizeAthleteGender } from "../../../models/player.js";
 import { createId } from "../../../utils/id.js";
 import { COMPETITION_CLASS, RESTRICTED_COMPETITION_CLASSES } from "../../private-pairing-rules/constants/enums.js";
 import {
@@ -297,10 +297,10 @@ function pickCaptainPlayerId(players = []) {
 export function suggestMlpTeamsFromPlayers(players = [], options = {}) {
   const pool = Array.isArray(players) ? players : [];
   const males = sortByRatingDesc(
-    pool.filter((player) => getPlayerGenderKey(player.gender) === "male")
+    pool.filter((player) => normalizeAthleteGender(player) === "male")
   );
   const females = sortByRatingDesc(
-    pool.filter((player) => getPlayerGenderKey(player.gender) === "female")
+    pool.filter((player) => normalizeAthleteGender(player) === "female")
   );
 
   const teamCount = Math.min(Math.floor(males.length / 2), Math.floor(females.length / 2));
@@ -630,6 +630,7 @@ export function pairTeamsFromSelectedPlayers({
   pairingHistory = null,
   allowedByPublishedRules = false,
   contextTime,
+  requireFullFill = false,
 } = {}) {
   const selectedSet = new Set((selectedPlayerIds || []).map((id) => String(id)));
   const pool = (Array.isArray(players) ? players : []).filter((player) =>
@@ -663,10 +664,13 @@ export function pairTeamsFromSelectedPlayers({
   }
 
   const males = sortByRatingDesc(
-    pool.filter((player) => getPlayerGenderKey(player.gender) === "male")
+    pool.filter((player) => normalizeAthleteGender(player) === "male")
   );
   const females = sortByRatingDesc(
-    pool.filter((player) => getPlayerGenderKey(player.gender) === "female")
+    pool.filter((player) => normalizeAthleteGender(player) === "female")
+  );
+  const unknownGender = pool.filter(
+    (player) => normalizeAthleteGender(player) === "unknown"
   );
 
   const maxPossibleTeams = Math.min(
@@ -686,9 +690,25 @@ export function pairTeamsFromSelectedPlayers({
   }
 
   if (effectiveTeamCount < requestedCount) {
-    warnings.push(
-      `Chỉ ghép được ${effectiveTeamCount}/${requestedCount} đội (thiếu nam/nữ hoặc VĐV).`
-    );
+    const shortageMessage =
+      `Không đủ nam/nữ để tạo ${requestedCount} đội MLP ` +
+      `(chỉ đủ ${effectiveTeamCount} đội = ${effectiveTeamCount * 4} VĐV; ` +
+      `hiện ${males.length} nam / ${females.length} nữ` +
+      (unknownGender.length ? ` / ${unknownGender.length} unknown` : "") +
+      `).`;
+    if (requireFullFill) {
+      return {
+        ok: false,
+        teams: [],
+        waitingPlayerIds: pool.map((player) => player.id),
+        warnings: [shortageMessage],
+        privatePairingError: null,
+        maleCount: males.length,
+        femaleCount: females.length,
+        unknownGenderCount: unknownGender.length,
+      };
+    }
+    warnings.push(shortageMessage);
   }
 
   const requiredMales = effectiveTeamCount * MLP_MALES_PER_TEAM;
@@ -732,6 +752,32 @@ export function pairTeamsFromSelectedPlayers({
     const legacy = buildLegacyResult(
       typeof randomFn === "function" ? randomFn : createSeededRng(seed ?? 1)
     );
+    if (requireFullFill) {
+      const usedCount = legacy.teams.flatMap((team) => team.playerIds || []).length;
+      const expectedAthletes = requestedCount * MLP_MEMBERS_PER_TEAM;
+      if (
+        legacy.teams.length !== requestedCount ||
+        usedCount !== expectedAthletes ||
+        (legacy.waitingPlayerIds || []).length > 0
+      ) {
+        return {
+          ok: false,
+          teams: [],
+          waitingPlayerIds: pool.map((player) => player.id),
+          warnings: [
+            `Bạn đã chọn ${pool.length} VĐV nhưng hệ thống chỉ xếp được ${usedCount} VĐV vào ${legacy.teams.length}/${requestedCount} đội.`,
+            `Chi tiết: ${males.length} nam / ${females.length} nữ` +
+              (unknownGender.length ? ` / ${unknownGender.length} unknown` : "") +
+              `.`,
+            ...(legacy.warnings || []),
+          ],
+          privatePairingError: null,
+          maleCount: males.length,
+          femaleCount: females.length,
+          unknownGenderCount: unknownGender.length,
+        };
+      }
+    }
     return {
       ok: true,
       ...legacy,
@@ -894,6 +940,28 @@ export function pairTeamsFromSelectedPlayers({
   }
 
   const best = feasible[0];
+  if (requireFullFill) {
+    const usedCount = (best.teams || []).flatMap((team) => team.playerIds || []).length;
+    const expectedAthletes = requestedCount * MLP_MEMBERS_PER_TEAM;
+    if (
+      (best.teams || []).length !== requestedCount ||
+      usedCount !== expectedAthletes ||
+      (best.waitingPlayerIds || []).length > 0
+    ) {
+      return {
+        ok: false,
+        teams: [],
+        waitingPlayerIds: pool.map((player) => player.id),
+        warnings: [
+          `Bạn đã chọn ${pool.length} VĐV nhưng hệ thống chỉ xếp được ${usedCount} VĐV vào ${(best.teams || []).length}/${requestedCount} đội.`,
+        ],
+        privatePairingError: null,
+        maleCount: males.length,
+        femaleCount: females.length,
+        unknownGenderCount: unknownGender.length,
+      };
+    }
+  }
   return {
     ok: true,
     teams: best.teams,

@@ -39,6 +39,7 @@ export function buildTeamFormationLegacyPayload(input = {}) {
       pairingHistory: input.pairingHistory,
       allowedByPublishedRules: input.allowedByPublishedRules,
       contextTime: input.contextTime,
+      requireFullFill: input.requireFullFill === true,
     },
     randomFn: input.randomFn,
   };
@@ -76,6 +77,7 @@ export function runTeamFormationWithCanonicalAdapter(input = {}) {
         pairingHistory: payload.options?.pairingHistory,
         allowedByPublishedRules: payload.options?.allowedByPublishedRules,
         contextTime: payload.options?.contextTime,
+        requireFullFill: payload.options?.requireFullFill === true,
       }),
   });
 
@@ -109,5 +111,6 @@ export function runDirectTeamFormation(input = {}) {
     pairingHistory: input.pairingHistory,
     allowedByPublishedRules: input.allowedByPublishedRules,
     contextTime: input.contextTime,
+    requireFullFill: input.requireFullFill === true,
   });
 }
