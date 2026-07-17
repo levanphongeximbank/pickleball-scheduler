@@ -1,0 +1,158 @@
+{
+  "note": "Phase 2A baseline — TEMPORARY DEBT only. Lock fails on NEW files, count increases, or fingerprint changes.",
+  "generatedAt": "2026-07-17",
+  "phase": "2A",
+  "rules": [
+    {
+      "id": "cc-no-format-module",
+      "description": "competition-core must not import format modules (team-tournament, individual-tournament, tournament-engine)."
+    },
+    {
+      "id": "cc-no-legacy-tournament-engines",
+      "description": "competition-core must not import legacy tournament engines under src/tournament/engines/."
+    },
+    {
+      "id": "cc-no-page-logic",
+      "description": "competition-core must not import page logic or pages/ UI modules."
+    },
+    {
+      "id": "cc-no-react-ui",
+      "description": "competition-core must not import React or MUI."
+    },
+    {
+      "id": "cc-no-supabase-gateway",
+      "description": "competition-core domain/application must not import Supabase client gateways directly."
+    },
+    {
+      "id": "cc-no-domain-persistence",
+      "description": "competition-core must not import domain persistence (clubStorage) — use ports in Phase 2B+."
+    },
+    {
+      "id": "engine-no-page-logic",
+      "description": "Domain engines must not import page logic (pages/*.logic.js)."
+    },
+    {
+      "id": "engine-no-react-ui",
+      "description": "Domain engines must not import React components."
+    }
+  ],
+  "exceptions": [
+    {
+      "rule": "cc-no-domain-persistence",
+      "file": "src/features/competition-core/rating/ratingAtomicApply.js",
+      "symbol": "../../../domain/clubStorage.js",
+      "count": 1,
+      "fingerprint": "f4c8005f1451ec0a",
+      "reason": "Blob rating apply path uses clubStorage during V2 migration.",
+      "removalPhase": "Phase 2B (persistence ports)"
+    },
+    {
+      "rule": "cc-no-domain-persistence",
+      "file": "src/features/competition-core/rating/ratingServiceV2.js",
+      "symbol": "../../../domain/clubStorage.js",
+      "count": 1,
+      "fingerprint": "f4c8005f1451ec0a",
+      "reason": "Rating service V2 reads/writes club blob via clubStorage during migration.",
+      "removalPhase": "Phase 2B (persistence ports)"
+    },
+    {
+      "rule": "cc-no-format-module",
+      "file": "src/features/competition-core/constraints/adapters/teamTournamentRulesBridge.js",
+      "symbol": "../../../team-tournament/engines/lineupValidationContract.js",
+      "count": 1,
+      "fingerprint": "d84be1865ed60921",
+      "reason": "Inverted adapter — core imports TT lineup contract; invert via port in Phase 3A/4.",
+      "removalPhase": "Phase 2B–3 (draw/formation/rules adapter inversion)"
+    },
+    {
+      "rule": "cc-no-format-module",
+      "file": "src/features/competition-core/draw/adapters/teamDrawAdapter.js",
+      "symbol": "../../../team-tournament/engines/teamAutoDrawEngine.js",
+      "count": 1,
+      "fingerprint": "4d9c2e012bd4c4bd",
+      "reason": "Transitional strangler adapter delegates to teamAutoDrawEngine legacy executor.",
+      "removalPhase": "Phase 3C (draw adapter inversion + DI legacyExecutor)"
+    },
+    {
+      "rule": "cc-no-format-module",
+      "file": "src/features/competition-core/formation/adapters/teamFormationAdapter.js",
+      "symbol": "../../../team-tournament/engines/teamAutoDrawEngine.js",
+      "count": 1,
+      "fingerprint": "4d9c2e012bd4c4bd",
+      "reason": "Transitional strangler adapter delegates to teamAutoDrawEngine legacy executor.",
+      "removalPhase": "Phase 3C (formation adapter inversion)"
+    },
+    {
+      "rule": "cc-no-legacy-tournament-engines",
+      "file": "src/features/competition-core/rating/competitionEloEngine.js",
+      "symbol": "../../../tournament/engines/eloEngine.js",
+      "count": 1,
+      "fingerprint": "e803a0a6e9c80696",
+      "reason": "Rating bridge reads legacy eloEngine constants/helpers during strangler migration.",
+      "removalPhase": "Phase 2B (rating port extraction)"
+    },
+    {
+      "rule": "cc-no-legacy-tournament-engines",
+      "file": "src/features/competition-core/rating/monthlyReviewV2.js",
+      "symbol": "../../../tournament/engines/skillLevelEngine.js",
+      "count": 1,
+      "fingerprint": "334fd0f3e6008fa4",
+      "reason": "Monthly review bridge uses skillLevelEngine during rating V2 migration.",
+      "removalPhase": "Phase 2B (rating port extraction)"
+    },
+    {
+      "rule": "cc-no-supabase-gateway",
+      "file": "src/features/competition-core/rating/ratingRpcService.js",
+      "symbol": "../../../auth/supabaseClient.js",
+      "count": 1,
+      "fingerprint": "67d1c58b6d55131d",
+      "reason": "Rating RPC adapter reads hasSupabaseConfig and calls injected supabase.rpc — move to persistence port.",
+      "removalPhase": "Phase 2B (RatingRepository port)"
+    },
+    {
+      "rule": "engine-no-page-logic",
+      "file": "src/features/team-tournament/engines/teamRoundRobinScheduleEngine.js",
+      "symbol": "../../../pages/tournament.fixtures.logic.js",
+      "count": 1,
+      "fingerprint": "8170a5f61ccc9925",
+      "reason": "TT schedule engine imports fixtures page logic; extract to shared domain scheduling.",
+      "removalPhase": "Phase 3G (scheduling adapter + fixtures extraction)"
+    },
+    {
+      "rule": "engine-no-page-logic",
+      "file": "src/tournament/engines/bracketEngine.js",
+      "symbol": "../../pages/tournament.bracket.logic.js",
+      "count": 1,
+      "fingerprint": "b639dd88c93cdb94",
+      "reason": "Legacy engine imports bracket page logic; extract to domain module.",
+      "removalPhase": "Phase 2B–3 (extract pages/*.logic to domain)"
+    },
+    {
+      "rule": "engine-no-page-logic",
+      "file": "src/tournament/engines/scheduleEngine.js",
+      "symbol": "../../pages/tournament.fixtures.logic.js",
+      "count": 1,
+      "fingerprint": "5c1cbfc1e7a2aeb6",
+      "reason": "Legacy engine imports fixtures page logic; extract to domain module.",
+      "removalPhase": "Phase 2B–3 (extract tournament.fixtures.logic)"
+    },
+    {
+      "rule": "engine-no-page-logic",
+      "file": "src/tournament/engines/seededGroupEngine.js",
+      "symbol": "../../pages/tournament.seeding.logic.js",
+      "count": 1,
+      "fingerprint": "afea25535f6ba471",
+      "reason": "Legacy engine imports seeding page logic; extract to domain module.",
+      "removalPhase": "Phase 2B–3 (extract tournament.seeding.logic)"
+    },
+    {
+      "rule": "engine-no-page-logic",
+      "file": "src/tournament/engines/teamPairingEngine.js",
+      "symbol": "../../pages/tournament.seeding.logic.js",
+      "count": 1,
+      "fingerprint": "afea25535f6ba471",
+      "reason": "Legacy engine imports seeding page logic; extract to domain module.",
+      "removalPhase": "Phase 2B–3 (extract tournament.seeding.logic)"
+    }
+  ]
+}
