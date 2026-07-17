@@ -3,6 +3,8 @@ import {
   showcaseActionsSx,
   showcaseCardSx,
   showcaseMutedSx,
+  showcaseOutlinedButtonSx,
+  showcasePrimaryButtonSx,
 } from "./showcaseStyles.js";
 import { SHOWCASE_COPY } from "./showcaseConstants.js";
 
@@ -61,25 +63,29 @@ export default function ShowcaseMatchupSection({
       <Box sx={showcaseActionsSx}>
         <Button
           variant="outlined"
-          color="inherit"
           disabled={generateDisabled}
           title={generateReason || ""}
           onClick={onGenerate}
+          sx={showcaseOutlinedButtonSx}
         >
           {SHOWCASE_COPY.generateMatchups}
         </Button>
         <Button
           variant="contained"
-          color="success"
           disabled={confirmDisabled || saving}
           title={confirmReason || ""}
           onClick={onConfirm}
+          sx={showcasePrimaryButtonSx}
         >
           {SHOWCASE_COPY.confirmMatchups}
         </Button>
         {onContinueSchedule ? (
-          <Button variant="text" color="inherit" onClick={onContinueSchedule}>
-            {SHOWCASE_COPY.continueMatchups}
+          <Button
+            variant="outlined"
+            onClick={onContinueSchedule}
+            sx={showcaseOutlinedButtonSx}
+          >
+            {SHOWCASE_COPY.continueSchedule}
           </Button>
         ) : null}
       </Box>

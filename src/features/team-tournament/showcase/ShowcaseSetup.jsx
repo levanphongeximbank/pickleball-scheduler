@@ -39,14 +39,24 @@ import ShowcaseMatchupSection from "./ShowcaseMatchupSection.jsx";
 import {
   showcaseActionsSx,
   showcaseCardSx,
+  showcaseFieldSx,
   showcaseMutedSx,
+  showcaseOutlinedButtonSx,
+  showcasePrimaryButtonSx,
+  showcaseRadioSx,
   showcaseTitleSx,
 } from "./showcaseStyles.js";
 import { SHOWCASE_COPY, SHOWCASE_DEFAULT_TEAM_COUNT } from "./showcaseConstants.js";
 
-function DisabledButton({ disabled, reason, children, ...props }) {
+function mergeButtonSx(variant, sx) {
+  const base =
+    variant === "contained" ? showcasePrimaryButtonSx : showcaseOutlinedButtonSx;
+  return sx ? [base, sx] : base;
+}
+
+function DisabledButton({ disabled, reason, children, variant = "outlined", sx, ...props }) {
   const button = (
-    <Button disabled={disabled} {...props}>
+    <Button disabled={disabled} variant={variant} sx={mergeButtonSx(variant, sx)} {...props}>
       {children}
     </Button>
   );
@@ -56,6 +66,10 @@ function DisabledButton({ disabled, reason, children, ...props }) {
       <span>{button}</span>
     </Tooltip>
   );
+}
+
+function ShowcaseOutlinedButton({ sx, ...props }) {
+  return <Button variant="outlined" sx={mergeButtonSx("outlined", sx)} {...props} />;
 }
 
 /**
@@ -272,12 +286,7 @@ export default function ShowcaseSetup({
                   selectedClubId: value,
                 });
               }}
-              sx={{
-                color: "#f4f7fb",
-                ".MuiOutlinedInput-notchedOutline": {
-                  borderColor: "rgba(124,255,178,0.35)",
-                },
-              }}
+              sx={showcaseFieldSx}
             >
               {scopeConfig.canSelectTenantScope ? (
                 <MenuItem value={SHOWCASE_CLUB_SCOPE.TENANT}>Tất cả CLB</MenuItem>
@@ -298,7 +307,6 @@ export default function ShowcaseSetup({
             <DisabledButton
               size="small"
               variant="outlined"
-              color="inherit"
               disabled={gates.selectAll.disabled}
               reason={gates.selectAll.reason}
               onClick={() =>
@@ -320,7 +328,6 @@ export default function ShowcaseSetup({
             <DisabledButton
               size="small"
               variant="outlined"
-              color="inherit"
               disabled={gates.clearAll.disabled}
               reason={gates.clearAll.reason}
               onClick={() =>
@@ -342,17 +349,14 @@ export default function ShowcaseSetup({
             <DisabledButton
               size="small"
               variant="outlined"
-              color="inherit"
               disabled={gates.clearAll.disabled}
               reason={gates.clearAll.reason}
               onClick={() => emit({ selectedAthleteIds: clearShowcaseAthleteSelection() })}
             >
               Bỏ chọn tất cả
             </DisabledButton>
-            <Button
+            <ShowcaseOutlinedButton
               size="small"
-              variant="outlined"
-              color="inherit"
               onClick={() =>
                 emit({
                   selectedAthleteIds: selectShowcaseAthletesByGender(
@@ -364,11 +368,9 @@ export default function ShowcaseSetup({
               }
             >
               Chọn nam
-            </Button>
-            <Button
+            </ShowcaseOutlinedButton>
+            <ShowcaseOutlinedButton
               size="small"
-              variant="outlined"
-              color="inherit"
               onClick={() =>
                 emit({
                   selectedAthleteIds: selectShowcaseAthletesByGender(
@@ -380,13 +382,11 @@ export default function ShowcaseSetup({
               }
             >
               Chọn nữ
-            </Button>
+            </ShowcaseOutlinedButton>
             {clubOptionsForFilter.map((club) => (
-              <Button
+              <ShowcaseOutlinedButton
                 key={club.id}
                 size="small"
-                variant="text"
-                color="inherit"
                 onClick={() =>
                   emit({
                     selectedAthleteIds: selectShowcaseAthletesByClub(
@@ -398,7 +398,7 @@ export default function ShowcaseSetup({
                 }
               >
                 Chọn theo {club.name}
-              </Button>
+              </ShowcaseOutlinedButton>
             ))}
           </Stack>
 
@@ -409,8 +409,9 @@ export default function ShowcaseSetup({
               value={setupConfig.search || ""}
               onChange={(event) => emit({ search: event.target.value })}
               fullWidth
+              sx={showcaseFieldSx}
             />
-            <FormControl size="small" sx={{ minWidth: 160 }}>
+            <FormControl size="small" sx={{ minWidth: 160, ...showcaseFieldSx }}>
               <Select
                 value={setupConfig.clubFilter || "all"}
                 onChange={(event) => emit({ clubFilter: event.target.value })}
@@ -423,7 +424,7 @@ export default function ShowcaseSetup({
                 ))}
               </Select>
             </FormControl>
-            <FormControl size="small" sx={{ minWidth: 140 }}>
+            <FormControl size="small" sx={{ minWidth: 140, ...showcaseFieldSx }}>
               <Select
                 value={setupConfig.genderFilter || "all"}
                 onChange={(event) => emit({ genderFilter: event.target.value })}
@@ -438,9 +439,11 @@ export default function ShowcaseSetup({
                 <Checkbox
                   checked={Boolean(setupConfig.showSelectedOnly)}
                   onChange={(event) => emit({ showSelectedOnly: event.target.checked })}
+                  sx={showcaseRadioSx}
                 />
               }
               label="Chỉ hiển thị VĐV đã chọn"
+              sx={{ color: "rgba(244,247,251,0.88)", ml: 0.5 }}
             />
           </Stack>
 
@@ -529,6 +532,7 @@ export default function ShowcaseSetup({
               type="number"
               value={teamCount}
               inputProps={{ min: 2, max: 16 }}
+              sx={showcaseFieldSx}
               onChange={(event) => {
                 const next = Number(event.target.value);
                 const options = listGroupDivisionOptions(next);
@@ -547,8 +551,14 @@ export default function ShowcaseSetup({
               value={setupConfig.athletesPerTeam || 4}
               disabled
               InputProps={{ readOnly: true }}
+              sx={showcaseFieldSx}
             />
-            <TextField label="Preset giải" value="MLP 4 người" disabled />
+            <TextField
+              label="Preset giải"
+              value="MLP 4 người"
+              disabled
+              sx={showcaseFieldSx}
+            />
           </Stack>
           <Stack spacing={0.5} sx={showcaseMutedSx}>
             <Box>
@@ -566,7 +576,6 @@ export default function ShowcaseSetup({
           <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
             <DisabledButton
               variant="contained"
-              color="success"
               disabled={gates.generateTeams.disabled}
               reason={gates.generateTeams.reason}
               onClick={onGenerateTeams}
@@ -575,19 +584,17 @@ export default function ShowcaseSetup({
             </DisabledButton>
             <DisabledButton
               variant="outlined"
-              color="warning"
               disabled={gates.regenerateTeams.disabled}
               reason={gates.regenerateTeams.reason}
               onClick={onRegenerateTeams}
             >
               {SHOWCASE_COPY.regenerateTeams}
             </DisabledButton>
-            <Button variant="outlined" color="inherit" onClick={onPreviewTeams} disabled={!hasTeamPreview}>
+            <ShowcaseOutlinedButton onClick={onPreviewTeams} disabled={!hasTeamPreview}>
               {SHOWCASE_COPY.previewTeams}
-            </Button>
+            </ShowcaseOutlinedButton>
             <DisabledButton
               variant="contained"
-              color="primary"
               disabled={gates.startTeamReveal.disabled}
               reason={gates.startTeamReveal.reason}
               onClick={onStartTeamReveal}
@@ -617,9 +624,10 @@ export default function ShowcaseSetup({
                 <FormControlLabel
                   key={option.groupCount}
                   value={String(option.groupCount)}
-                  control={<Radio />}
+                  control={<Radio sx={showcaseRadioSx} />}
                   label={option.label}
                   disabled={!hasTeamPreview}
+                  sx={{ color: "rgba(244,247,251,0.88)" }}
                 />
               ))}
             </RadioGroup>
@@ -627,7 +635,6 @@ export default function ShowcaseSetup({
           <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
             <DisabledButton
               variant="outlined"
-              color="inherit"
               disabled={gates.generateGroups.disabled}
               reason={gates.generateGroups.reason}
               onClick={() => onGenerateGroups?.({ groupCount, auto: true })}
@@ -636,28 +643,22 @@ export default function ShowcaseSetup({
             </DisabledButton>
             <Tooltip title="Tính năng chia bảng thủ công đang hoàn thiện.">
               <span>
-                <Button
-                  variant="outlined"
-                  color="inherit"
-                  disabled
-                  aria-disabled="true"
-                >
+                <ShowcaseOutlinedButton disabled aria-disabled="true">
                   Chia bảng thủ công
-                </Button>
+                </ShowcaseOutlinedButton>
               </span>
             </Tooltip>
             <Box sx={showcaseMutedSx}>
               Tính năng chia bảng thủ công đang hoàn thiện.
             </Box>
-            <Button variant="outlined" color="warning" disabled={!hasGroupPreview} onClick={onRegenerateGroups}>
+            <ShowcaseOutlinedButton disabled={!hasGroupPreview} onClick={onRegenerateGroups}>
               Chia lại bảng
-            </Button>
-            <Button variant="outlined" color="inherit" disabled={!hasGroupPreview} onClick={onPreviewGroups}>
+            </ShowcaseOutlinedButton>
+            <ShowcaseOutlinedButton disabled={!hasGroupPreview} onClick={onPreviewGroups}>
               {SHOWCASE_COPY.previewGroups}
-            </Button>
+            </ShowcaseOutlinedButton>
             <DisabledButton
               variant="contained"
-              color="primary"
               disabled={gates.startGroupReveal.disabled}
               reason={gates.startGroupReveal.reason}
               onClick={onStartGroupReveal}
@@ -694,18 +695,17 @@ export default function ShowcaseSetup({
       ))}
 
       <Box sx={showcaseActionsSx}>
-        <Button variant="outlined" color="inherit" onClick={onBack}>
+        <ShowcaseOutlinedButton onClick={onBack}>
           Quay lại
-        </Button>
-        <Button variant="outlined" color="warning" onClick={onCancelPreview}>
+        </ShowcaseOutlinedButton>
+        <ShowcaseOutlinedButton onClick={onCancelPreview}>
           {SHOWCASE_COPY.cancelUnsaved}
-        </Button>
-        <Button variant="outlined" color="inherit" onClick={onSaveDraftContinue}>
+        </ShowcaseOutlinedButton>
+        <ShowcaseOutlinedButton onClick={onSaveDraftContinue}>
           {SHOWCASE_COPY.saveDraftContinue}
-        </Button>
+        </ShowcaseOutlinedButton>
         <DisabledButton
           variant="contained"
-          color="success"
           disabled={gates.confirmSave.disabled}
           reason={gates.confirmSave.reason}
           onClick={onConfirmSave}

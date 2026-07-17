@@ -14,8 +14,82 @@
   animation: effect-prelude-shimmer 1.4s ease-in-out infinite;
 }
 
+.effect-prelude-dark-compact {
+  color: #f4f7fb;
+}
+
+.effect-prelude-portrait-row {
+  width: 100%;
+}
+
+.effect-prelude-portrait-card {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  padding: 10px 6px;
+  border-radius: 14px;
+  border: 1px solid rgba(124, 255, 178, 0.28);
+  background: linear-gradient(180deg, rgba(12, 32, 52, 0.95), rgba(7, 17, 31, 0.98));
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.28);
+  animation: effect-prelude-fade-in 0.45s ease-out both;
+}
+
+.effect-prelude-portrait-avatar {
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  overflow: hidden;
+  display: grid;
+  place-items: center;
+  background: linear-gradient(135deg, #1b5e4a, #0d47a1);
+  border: 2px solid rgba(124, 255, 178, 0.45);
+}
+
+.effect-prelude-portrait-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: top center;
+  display: block;
+}
+
+.effect-prelude-portrait-initials {
+  font-size: 0.95rem;
+  font-weight: 800;
+  letter-spacing: 0.02em;
+  color: #e8fff4;
+}
+
+.effect-prelude-portrait-name {
+  width: 100%;
+  text-align: center;
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: #f4f7fb;
+  line-height: 1.2;
+}
+
+.effect-prelude-portrait-rating {
+  font-size: 0.68rem;
+  font-weight: 700;
+  color: #7cffb2;
+  background: rgba(124, 255, 178, 0.12);
+  border: 1px solid rgba(124, 255, 178, 0.35);
+  border-radius: 999px;
+  padding: 1px 8px;
+}
+
 .effect-prelude-player-chip {
   animation: effect-prelude-fade-in 0.45s ease-out both;
+}
+
+.effect-prelude-player-chip--dark {
+  color: #f4f7fb !important;
+  background: rgba(124, 255, 178, 0.1) !important;
+  border: 1px solid rgba(124, 255, 178, 0.28);
 }
 
 .effect-prelude-skeleton-line {
@@ -60,7 +134,8 @@
   .effect-prelude-countdown__value,
   .effect-prelude-court-slot,
   .effect-prelude-skeleton-line,
-  .effect-prelude-player-chip {
+  .effect-prelude-player-chip,
+  .effect-prelude-portrait-card {
     animation: none !important;
   }
 }

@@ -43,6 +43,7 @@ import {
   playShowcaseTone,
   prefersReducedMotion,
   showcaseInnerSx,
+  showcaseOutlinedButtonSx,
   showcaseShellSx,
 } from "./showcaseStyles.js";
 import ShowcasePreflight from "./ShowcasePreflight.jsx";
@@ -51,6 +52,32 @@ import ShowcaseTeamPreview from "./ShowcaseTeamPreview.jsx";
 import ShowcaseGroupPreview from "./ShowcaseGroupPreview.jsx";
 import EffectPreludeScreen from "../../../components/tournament/animation/shared/EffectPreludeScreen.jsx";
 import { ANIMATION_MODES } from "../../../components/tournament/animation/animationUtils.js";
+import { resolveCanonicalAthleteRating } from "../../pairing-candidates/canonicalAthleteRating.js";
+
+function mapAthleteForPrelude(player) {
+  if (!player) return null;
+  const rating = resolveCanonicalAthleteRating(player);
+  const ratingValue =
+    Number.isFinite(rating?.ratingValue) && rating.ratingValue > 0
+      ? rating.ratingValue
+      : Number(player.rating ?? player.level ?? player.ratingValue) || null;
+  return {
+    id: String(player.id || player.athleteId || ""),
+    name: String(player.name || player.displayName || player.id || "VĐV"),
+    gender: player.gender,
+    rating: ratingValue,
+    ratingValue,
+    level: ratingValue,
+    avatarUrl: String(
+      player.avatarUrl ||
+        player.avatar_url ||
+        player.photoUrl ||
+        player.photo_url ||
+        player.imageUrl ||
+        ""
+    ).trim(),
+  };
+}
 import ShowcaseCountdown from "./ShowcaseCountdown.jsx";
 import ShowcaseProcessing from "./ShowcaseProcessing.jsx";
 import ShowcaseTeamReveal from "./ShowcaseTeamReveal.jsx";
@@ -148,6 +175,20 @@ export default function TeamTournamentShowcase({
       return athleteId && selected.has(athleteId);
     });
   }, [scopeAthletes, state.setupConfig?.selectedAthleteIds]);
+
+  const preludeParticipants = useMemo(
+    () => selectedPlayers.map(mapAthleteForPrelude).filter(Boolean).slice(0, 16),
+    [selectedPlayers]
+  );
+
+  const groupPreludeParticipants = useMemo(() => {
+    const session = fixedSessionRef.current || state.session;
+    const fromTeams = (session?.teamCards || []).flatMap((team) => team.athletes || []);
+    if (fromTeams.length) {
+      return fromTeams.map(mapAthleteForPrelude).filter(Boolean).slice(0, 16);
+    }
+    return preludeParticipants;
+  }, [state.session, preludeParticipants]);
 
   const teamPreviewDiagnostics = useMemo(() => {
     const session = fixedSessionRef.current || state.session;
@@ -846,14 +887,14 @@ export default function TeamTournamentShowcase({
             >
               {state.soundEnabled ? <VolumeUpIcon /> : <VolumeOffIcon />}
             </IconButton>
-            <Button size="small" color="inherit" onClick={toggleProjector}>
+            <Button size="small" onClick={toggleProjector} sx={showcaseOutlinedButtonSx}>
               {state.projector ? SHOWCASE_COPY.projectorOff : SHOWCASE_COPY.projectorOn}
             </Button>
             {isReplay ? (
               <Stack direction="row" spacing={0.5}>
                 <Button
                   size="small"
-                  color="inherit"
+                  sx={showcaseOutlinedButtonSx}
                   onClick={() =>
                     dispatch({
                       type: "GO_STAGE",
@@ -865,7 +906,7 @@ export default function TeamTournamentShowcase({
                 </Button>
                 <Button
                   size="small"
-                  color="inherit"
+                  sx={showcaseOutlinedButtonSx}
                   onClick={() => {
                     requestShowcaseFullscreen();
                     dispatch({ type: "GO_STAGE", payload: { stage: SHOWCASE_STAGE.TEAM_REVEAL } })
@@ -875,7 +916,7 @@ export default function TeamTournamentShowcase({
                 </Button>
                 <Button
                   size="small"
-                  color="inherit"
+                  sx={showcaseOutlinedButtonSx}
                   onClick={() =>
                     dispatch({
                       type: "GO_STAGE",
@@ -887,7 +928,7 @@ export default function TeamTournamentShowcase({
                 </Button>
                 <Button
                   size="small"
-                  color="inherit"
+                  sx={showcaseOutlinedButtonSx}
                   onClick={() => {
                     requestShowcaseFullscreen();
                     dispatch({
@@ -900,7 +941,7 @@ export default function TeamTournamentShowcase({
                 </Button>
                 <Button
                   size="small"
-                  color="inherit"
+                  sx={showcaseOutlinedButtonSx}
                   onClick={() =>
                     dispatch({ type: "GO_STAGE", payload: { stage: SHOWCASE_STAGE.RESULTS } })
                   }
@@ -928,16 +969,16 @@ export default function TeamTournamentShowcase({
             <EffectPreludeScreen
               presetKey={ANIMATION_MODES.PAIRING_REVEAL}
               context={{
-                playerCount: (state.setupConfig?.selectedAthleteIds || []).length,
+                playerCount: preludeParticipants.length,
                 teamCount:
                   Number(state.setupConfig?.teamCount) ||
                   requestedTeamCount ||
                   SHOWCASE_DEFAULT_TEAM_COUNT,
-                players: selectedPlayers.slice(0, 16),
+                players: preludeParticipants,
               }}
               active
               compact
-              participants={selectedPlayers.slice(0, 16)}
+              participants={preludeParticipants}
               onComplete={completeTeamGenerationEffect}
               onSkip={completeTeamGenerationEffect}
             />
@@ -957,14 +998,16 @@ export default function TeamTournamentShowcase({
             <EffectPreludeScreen
               presetKey={ANIMATION_MODES.SNAKE_GROUP}
               context={{
-                playerCount: (fixedSessionRef.current || state.session)?.teamCards?.length || 0,
+                playerCount: groupPreludeParticipants.length,
                 groupCount:
                   Number(pendingGroupGenerateRef.current?.groupCount) ||
                   Number(state.setupConfig?.groupCount) ||
                   2,
+                players: groupPreludeParticipants,
               }}
               active
               compact
+              participants={groupPreludeParticipants}
               onComplete={completeGroupGenerationEffect}
               onSkip={completeGroupGenerationEffect}
             />

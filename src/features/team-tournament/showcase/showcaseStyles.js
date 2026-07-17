@@ -94,6 +94,85 @@ export const showcaseMutedSx = {
   fontSize: "0.95rem",
 };
 
+/** Outlined actions on dark shell — stay readable when disabled. */
+export const showcaseOutlinedButtonSx = {
+  color: "rgba(244,247,251,0.92)",
+  borderColor: "rgba(244,247,251,0.45)",
+  textTransform: "none",
+  fontWeight: 700,
+  "&:hover": {
+    borderColor: "rgba(124,255,178,0.75)",
+    bgcolor: "rgba(124,255,178,0.08)",
+    color: "#f4f7fb",
+  },
+  "&.Mui-disabled": {
+    opacity: 1,
+    color: "rgba(244,247,251,0.55)",
+    borderColor: "rgba(244,247,251,0.28)",
+  },
+};
+
+/** Primary / contained accent on dark shell. */
+export const showcasePrimaryButtonSx = {
+  bgcolor: "#7CFFB2",
+  color: "#061018",
+  textTransform: "none",
+  fontWeight: 800,
+  "&:hover": {
+    bgcolor: "#9affc6",
+  },
+  "&.Mui-disabled": {
+    opacity: 1,
+    bgcolor: "rgba(124,255,178,0.28)",
+    color: "rgba(6,16,24,0.55)",
+  },
+};
+
+/** Text / select fields on dark cards. */
+export const showcaseFieldSx = {
+  "& .MuiInputLabel-root": {
+    color: "rgba(244,247,251,0.72)",
+  },
+  "& .MuiInputLabel-root.Mui-focused": {
+    color: "#7CFFB2",
+  },
+  "& .MuiInputLabel-root.Mui-disabled": {
+    color: "rgba(244,247,251,0.5)",
+  },
+  "& .MuiOutlinedInput-root": {
+    color: "#f4f7fb",
+    bgcolor: "rgba(7, 17, 31, 0.55)",
+    "& fieldset": {
+      borderColor: "rgba(244,247,251,0.28)",
+    },
+    "&:hover fieldset": {
+      borderColor: "rgba(124,255,178,0.45)",
+    },
+    "&.Mui-focused fieldset": {
+      borderColor: "rgba(124,255,178,0.75)",
+    },
+    "&.Mui-disabled": {
+      color: "rgba(244,247,251,0.55)",
+      "& fieldset": {
+        borderColor: "rgba(244,247,251,0.2)",
+      },
+    },
+  },
+  "& .MuiSelect-icon": {
+    color: "rgba(244,247,251,0.7)",
+  },
+};
+
+export const showcaseRadioSx = {
+  color: "rgba(244,247,251,0.55)",
+  "&.Mui-checked": {
+    color: "#7CFFB2",
+  },
+  "&.Mui-disabled": {
+    color: "rgba(244,247,251,0.35)",
+  },
+};
+
 /** Optional simple UI tone (no copyrighted music). */
 export function playShowcaseTone(enabled) {
   if (!enabled || typeof window === "undefined") return;
