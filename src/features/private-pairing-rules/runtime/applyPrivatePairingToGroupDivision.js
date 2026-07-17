@@ -14,6 +14,7 @@ import { PRIVATE_PAIRING_CONSTRAINT_TYPE } from "../constants/constraintTypes.js
 import { PRIVATE_PAIRING_OPERATION } from "./privatePairingSource.js";
 import { gateResolvedForStage } from "./stageRuntimeGate.js";
 import { sortCandidatesByOptimizationRank } from "./optimizationCandidateComparator.js";
+import { runGroupDrawGlobalOptimizer } from "../../competition-optimizer/group-draw/groupDrawGlobalOptimizer.js";
 
 function groupsSignature(groups = []) {
   return groups
@@ -193,6 +194,51 @@ export function assignGroupsWithPrivatePairingRules(
     const base = assignEntriesToGroupsSnake(shuffled, groupCount, players);
     pushPlan(assignGroupsWithConstraints(shuffled, groupCount, players, legacyGroupConstraints));
     pushPlan({ groups: base, warnings: [] });
+  }
+
+  if (options.useGlobalOptimizer !== false) {
+    const entryById = new Map((entries || []).map((entry) => [String(entry.id), entry]));
+    const pseudoTeams = (entries || []).map((entry) => ({
+      id: String(entry.id),
+      playerIds: (entry.playerIds || entry.members || [entry.playerId || entry.id])
+        .map((value) => String(typeof value === "object" ? value.id : value))
+        .filter(Boolean),
+      avgLevel: Number(entry.avgLevel ?? entry.rating ?? entry.level) || 0,
+    }));
+    const baselinePlans = rawPlans.map((plan) => ({
+      groups: plan.groups.map((group) => ({
+        id: group.id,
+        name: group.name || group.label,
+        teamIds: (group.entryIds || group.entries?.map((entry) => entry.id) || []).map(String),
+      })),
+    }));
+    const optimized = runGroupDrawGlobalOptimizer({
+      teams: pseudoTeams,
+      groupCount,
+      baselinePlans,
+      formationResolved: { ...resolved, rules: stageRules, hardRules: hard, softRules: soft },
+      context,
+      seed: options.seed ?? 1,
+      budget: options.optimizationBudget,
+    });
+    if (optimized.ok && optimized.bestCandidate) {
+      const groups = optimized.bestCandidate.groups.map((group) => ({
+        ...group,
+        entryIds: [...group.teamIds],
+        entries: group.teamIds.map((id) => entryById.get(String(id))).filter(Boolean),
+      }));
+      return {
+        ok: true, groups, warnings: [], privatePairingError: null,
+        usedCanonicalGroupRules: true,
+        constraintScore: optimized.bestCandidate.constraintScore,
+        scoreBreakdown: optimized.bestCandidate.scoreBreakdown,
+        optimizationRuleScore: optimized.bestCandidate.scoreBreakdown,
+        softConstraintsSatisfied: optimized.bestCandidate.softConstraintsSatisfied,
+        softConstraintsMissed: optimized.bestCandidate.softConstraintsMissed,
+        ruleResolution: resolved.ruleResolution,
+        optimizer: optimized,
+      };
+    }
   }
 
   const scored = rawPlans

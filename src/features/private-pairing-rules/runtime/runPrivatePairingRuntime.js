@@ -21,6 +21,7 @@ import {
   buildScoreBreakdown,
   sortCandidatesByOptimizationRank,
 } from "./optimizationCandidateComparator.js";
+import { runPartnerPairingGlobalOptimizer } from "../../competition-optimizer/partner-pairing/partnerPairingGlobalOptimizer.js";
 
 function isRestrictedCompetitionClass(competitionClass) {
   return RESTRICTED_COMPETITION_CLASSES.has(String(competitionClass || "").toUpperCase());
@@ -269,6 +270,66 @@ export function runPrivatePairingRuntime(input = {}) {
     };
   }
 
+  const hard = resolved.hardRules || splitHardAndSoftRules(resolved.rules).hard;
+  if (input.useGlobalOptimizer !== false) {
+    const optimized = runPartnerPairingGlobalOptimizer({
+      players: input.players || [],
+      formationResolved: resolved,
+      context: {
+        ...(input.context || {}),
+        operation: input.context?.operation || PRIVATE_PAIRING_OPERATION.PARTNER_PAIRING,
+      },
+      history: input.history,
+      seed: input.seed ?? input.context?.seed ?? 1,
+      maxCandidates: input.maxCandidates ?? 64,
+      maxIterations: input.maxIterations ?? 128,
+      mixedDoubles: input.mixedDoubles === true,
+      budget: input.budget,
+    });
+    const selected = optimized.bestCandidate;
+    const rejectedCandidateCount = optimized.diagnostics?.rejectedHardViolationCount || 0;
+    if (!optimized.ok || !selected) {
+      return {
+        ok: false,
+        errorCode: PRIVATE_PAIRING_RUNTIME_CODE.NO_FEASIBLE_PAIRING,
+        selectedCandidate: null,
+        rejectedCandidateCount,
+        hardConstraintsApplied: hard.map((r) => ({ ruleId: r.id, constraintType: r.constraintType })),
+        softConstraintsSatisfied: [],
+        softConstraintsMissed: [],
+        balanceScore: 0, fairnessScore: 0, historyScore: 0, constraintScore: 0, finalScore: 0,
+        ruleSetVersion: resolved.ruleSetVersion,
+        warnings: resolved.warnings,
+        rejectedSamples: [],
+        meta: {
+          runtimeEnabled: true, runtimeVersion: PRIVATE_PAIRING_RUNTIME_VERSION,
+          elapsedMs: Date.now() - startedAt, optimizer: optimized,
+          ruleResolution: resolved.ruleResolution,
+        },
+      };
+    }
+    return {
+      ok: true, errorCode: null, selectedCandidate: selected, rejectedCandidateCount,
+      hardConstraintsApplied: hard.map((r) => ({ ruleId: r.id, constraintType: r.constraintType })),
+      softConstraintsSatisfied: selected.softConstraintsSatisfied || [],
+      softConstraintsMissed: selected.softConstraintsMissed || [],
+      balanceScore: selected.balanceScore || 0, fairnessScore: selected.fairnessScore || 0,
+      historyScore: selected.historyScore || 0, constraintScore: selected.constraintScore || 0,
+      finalScore: selected.finalScore || 0, scoreBreakdown: selected.scoreBreakdown,
+      optimizationRuleScore: selected.scoreBreakdown, ruleSetVersion: resolved.ruleSetVersion,
+      warnings: resolved.warnings, rejectedSamples: [],
+      meta: {
+        runtimeEnabled: true, runtimeVersion: PRIVATE_PAIRING_RUNTIME_VERSION,
+        candidateCount: optimized.diagnostics?.initialCandidateCount || 0,
+        iterations: optimized.diagnostics?.acceptedMoveCount || 0,
+        truncated: false, elapsedMs: Date.now() - startedAt,
+        blockedByPolicyCount: resolved.blockedByPolicy.length,
+        ruleResolution: resolved.ruleResolution, optimizer: optimized,
+        scoreBreakdown: selected.scoreBreakdown, optimizationRuleScore: selected.scoreBreakdown,
+      },
+    };
+  }
+
   const generation = generateTeamPairingCandidates({
     players: input.players,
     teamSize: input.context?.teamSize ?? 2,
@@ -278,7 +339,6 @@ export function runPrivatePairingRuntime(input = {}) {
     mixedDoubles: input.mixedDoubles === true,
   });
 
-  const hard = resolved.hardRules || splitHardAndSoftRules(resolved.rules).hard;
   const evaluated = [];
   const rejectedSamples = [];
 

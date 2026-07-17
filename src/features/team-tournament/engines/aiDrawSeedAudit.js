@@ -99,6 +99,7 @@ export function buildAiDrawRearrangeAuditEntry(input = {}) {
     previousResult: input.previousResult ?? null,
     nextResult: input.nextResult ?? null,
     scoreBreakdown: input.scoreBreakdown || null,
+    diagnostics: input.diagnostics || null,
     algorithmVersion: input.algorithmVersion || AI_DRAW_ALGORITHM_VERSION,
     rulesVersion: input.rulesVersion ? String(input.rulesVersion) : "",
     actorId: user.id ? String(user.id) : null,
@@ -136,6 +137,7 @@ export function attachAiDrawPublishMetadata(teamData, input = {}) {
     rulesVersion: input.rulesVersion || previous?.rulesVersion || "",
     actor: input.actor,
     createdAt: input.createdAt,
+    diagnostics: input.diagnostics || null,
   });
 
   const published = {
@@ -143,6 +145,7 @@ export function attachAiDrawPublishMetadata(teamData, input = {}) {
     algorithmVersion: auditEntry.algorithmVersion,
     rulesVersion: auditEntry.rulesVersion,
     scoreBreakdown: input.scoreBreakdown || null,
+    diagnostics: input.diagnostics || null,
     resultSnapshot: input.nextResult ?? null,
     publishedAt: auditEntry.createdAt,
     lastReason: reason,

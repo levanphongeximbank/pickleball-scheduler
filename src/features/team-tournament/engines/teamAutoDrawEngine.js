@@ -29,6 +29,9 @@ import {
 import {
   recommendGroupSizes,
 } from "./teamRoundRobinScheduleEngine.js";
+import { runGroupDrawGlobalOptimizer } from "../../competition-optimizer/group-draw/groupDrawGlobalOptimizer.js";
+import { runMlpFourGlobalOptimizer } from "../../competition-optimizer/team-formation/mlpFourGlobalOptimizer.js";
+import { MLP4_GLOBAL_ALGORITHM_VERSION } from "../../competition-optimizer/core/optimizationTypes.js";
 
 function isRestrictedCompetitionClass(competitionClass) {
   return RESTRICTED_COMPETITION_CLASSES.has(String(competitionClass || "").toUpperCase());
@@ -190,7 +193,11 @@ function assignGreedy(buckets, player, eligibleTeamIndexes, scoreFn) {
  * 3) First female per team (balanced roster average)
  * 4) Second female per team (balanced roster average)
  */
-function buildMlpTeamsFourStep({
+/**
+ * Baseline MLP 4-step heuristic (kept as generator / budget-zero fallback).
+ * Global optimizer imports this — do not delete while mlp4-global-optimizer-v1 is active.
+ */
+export function buildMlpTeamsFourStep({
   males = [],
   females = [],
   teamCount = 0,
@@ -541,6 +548,49 @@ export function assignSeededTeamsToGroups(teamData, options = {}) {
     };
   }
 
+  if (options.useGlobalOptimizer !== false) {
+    const baselinePlans = [];
+    const maxCandidates = Math.max(4, Number(options.maxCandidates) || 12);
+    for (let salt = 0; salt < maxCandidates; salt += 1) {
+      baselinePlans.push(buildLegacyPlan(salt));
+    }
+    const optimized = runGroupDrawGlobalOptimizer({
+      teams,
+      groupCount: baselinePlans[0]?.groupCount,
+      baselinePlans,
+      formationResolved: { ...resolved, rules: stageRules, hardRules: hard, softRules: soft },
+      context: {
+        clubId: options.clubId || null,
+        tournamentId: options.tournamentId || null,
+        eventId: options.eventId || null,
+        competitionClass,
+        operation: PRIVATE_PAIRING_OPERATION.GROUP_DRAW,
+      },
+      seed: options.seed ?? 1,
+      budget: options.optimizationBudget,
+    });
+    if (!optimized.ok || !optimized.bestCandidate) {
+      return {
+        ok: false, teamData, balance: null, warnings,
+        privatePairingError: buildPrivatePairingRuntimeError({
+          errorCode: PRIVATE_PAIRING_RUNTIME_CODE.NO_FEASIBLE_GROUP_PLAN,
+        }),
+      };
+    }
+    const best = optimized.bestCandidate;
+    const nextTeamData = normalizeTeamData({ ...teamData, teams, groups: best.groups });
+    return {
+      ok: true, teamData: nextTeamData,
+      balance: summarizeSeededGroupBalance(best.groups, teams, { seedingMode }),
+      warnings, privatePairingError: null,
+      constraintScore: best.constraintScore,
+      scoreBreakdown: best.scoreBreakdown,
+      optimizationRuleScore: best.scoreBreakdown,
+      ruleResolution: resolved.ruleResolution,
+      optimizer: optimized,
+    };
+  }
+
   const maxCandidates = Math.max(4, Number(options.maxCandidates) || 12);
   const scored = [];
   for (let salt = 0; salt < maxCandidates; salt += 1) {
@@ -630,6 +680,8 @@ export function pairTeamsFromSelectedPlayers({
   pairingHistory = null,
   allowedByPublishedRules = false,
   contextTime,
+  useGlobalOptimizer = true,
+  optimizationBudget = undefined,
 } = {}) {
   const selectedSet = new Set((selectedPlayerIds || []).map((id) => String(id)));
   const pool = (Array.isArray(players) ? players : []).filter((player) =>
@@ -662,6 +714,22 @@ export function pairTeamsFromSelectedPlayers({
     };
   }
 
+  const unknownGender = pool.filter((player) => {
+    const key = getPlayerGenderKey(player.gender);
+    return key !== "male" && key !== "female";
+  });
+  if (unknownGender.length) {
+    return {
+      ok: false,
+      teams: [],
+      waitingPlayerIds: pool.map((player) => player.id),
+      warnings: [
+        `Có ${unknownGender.length} VĐV giới tính unknown/null/invalid — không thể ghép MLP 4.`,
+      ],
+      privatePairingError: null,
+    };
+  }
+
   const males = sortByRatingDesc(
     pool.filter((player) => getPlayerGenderKey(player.gender) === "male")
   );
@@ -673,24 +741,25 @@ export function pairTeamsFromSelectedPlayers({
     Math.floor(males.length / MLP_MALES_PER_TEAM),
     Math.floor(females.length / MLP_FEMALES_PER_TEAM)
   );
-  const effectiveTeamCount = Math.min(requestedCount, maxPossibleTeams);
 
-  if (effectiveTeamCount < 1) {
+  // Exact team count required — never silently shrink.
+  if (maxPossibleTeams < requestedCount) {
+    const codes = [];
+    if (males.length < requestedCount * MLP_MALES_PER_TEAM) codes.push("INSUFFICIENT_MALES");
+    if (females.length < requestedCount * MLP_FEMALES_PER_TEAM) codes.push("INSUFFICIENT_FEMALES");
     return {
       ok: false,
       teams: [],
       waitingPlayerIds: pool.map((player) => player.id),
-      warnings: ["Cần ít nhất 2 nam và 2 nữ để ghép 1 đội MLP."],
+      warnings: [
+        `Không đủ nam/nữ để ghép đúng ${requestedCount} đội MLP (tối đa ${maxPossibleTeams}).`,
+        ...codes,
+      ],
       privatePairingError: null,
     };
   }
 
-  if (effectiveTeamCount < requestedCount) {
-    warnings.push(
-      `Chỉ ghép được ${effectiveTeamCount}/${requestedCount} đội (thiếu nam/nữ hoặc VĐV).`
-    );
-  }
-
+  const effectiveTeamCount = requestedCount;
   const requiredMales = effectiveTeamCount * MLP_MALES_PER_TEAM;
   const requiredFemales = effectiveTeamCount * MLP_FEMALES_PER_TEAM;
   const malePool = males.slice(0, requiredMales);
@@ -820,6 +889,101 @@ export function pairTeamsFromSelectedPlayers({
     softRules: filterRulesForTeamFormation(resolved.softRules || []),
   };
 
+  // Prefer Global Optimizer (default on). Budget-zero falls back to four-step baseline.
+  if (useGlobalOptimizer !== false) {
+    const optimized = runMlpFourGlobalOptimizer({
+      players: [...malePool, ...femalePool],
+      playersById,
+      teamCount: effectiveTeamCount,
+      teamNames: names.slice(0, effectiveTeamCount),
+      randomSeed: seed,
+      fourStepBuilder: buildMlpTeamsFourStep,
+      formationResolved,
+      context,
+      pairingHistory,
+      privatePairingEnabled: true,
+      budget: optimizationBudget,
+    });
+
+    if (!optimized.ok || !optimized.bestCandidate?.feasible) {
+      const error = buildPrivatePairingRuntimeError({
+        errorCode: PRIVATE_PAIRING_RUNTIME_CODE.NO_FEASIBLE_PAIRING,
+        meta: {
+          errorCodes: optimized.errorCodes || [],
+          diagnostics: optimized.diagnostics,
+          rejectedCandidateCount:
+            optimized.diagnostics?.rejectedHardViolationCount || 0,
+        },
+      });
+      return {
+        ok: false,
+        teams: [],
+        waitingPlayerIds: pool.map((player) => player.id),
+        warnings: [error.message, error.code, ...(optimized.errorCodes || [])],
+        privatePairingError: error,
+        privatePairingMeta: {
+          runtimeEnabled: true,
+          formationRulesApplied: formationResolved.rules.length,
+          algorithmVersion: MLP4_GLOBAL_ALGORITHM_VERSION,
+          diagnostics: optimized.diagnostics,
+          scoreBreakdown: optimized.scoreBreakdown,
+          ruleResolution: formationResolved.ruleResolution,
+        },
+      };
+    }
+
+    const bestTeams = (optimized.bestCandidate.teams || []).map((team, index) =>
+      createTeamRecord({
+        id: createId("team"),
+        name: names[index] || team.name || `Đội ${index + 1}`,
+        playerIds: [...(team.playerIds || [])].map(String),
+        captainPlayerId: "",
+        seed: index + 1,
+        avgLevel: team.avgLevel || computeTeamAvgLevel(
+          (team.playerIds || []).map((id) => playersById[String(id)]).filter(Boolean)
+        ),
+      })
+    );
+    assignSeedsByAvgLevel(bestTeams);
+    const usedIds = new Set(bestTeams.flatMap((team) => team.playerIds));
+    const waitingPlayerIds = pool
+      .filter((player) => !usedIds.has(String(player.id)))
+      .map((player) => player.id);
+    const nextWarnings = [...warnings];
+    if (waitingPlayerIds.length) {
+      nextWarnings.push(`${waitingPlayerIds.length} VĐV sẽ ở trạng thái chờ.`);
+    }
+    const spreadWarning = buildTeamSpreadWarning(bestTeams);
+    if (spreadWarning) nextWarnings.push(spreadWarning);
+
+    return {
+      ok: true,
+      teams: bestTeams,
+      waitingPlayerIds,
+      warnings: nextWarnings,
+      privatePairingError: null,
+      privatePairingMeta: {
+        runtimeEnabled: true,
+        formationRulesApplied: formationResolved.rules.length,
+        algorithmVersion: optimized.algorithmVersion || MLP4_GLOBAL_ALGORITHM_VERSION,
+        randomSeed: optimized.randomSeed,
+        candidateCount: optimized.diagnostics?.evaluatedCandidateCount || 0,
+        selectedCandidateId: optimized.bestCandidate.id,
+        constraintScore: optimized.bestCandidate.constraintScore,
+        formationQualityScore: optimized.bestCandidate.formationQuality,
+        balanceScore: optimized.bestCandidate.balanceScore,
+        softConstraintsSatisfied: optimized.bestCandidate.softConstraintsSatisfied,
+        softConstraintsMissed: optimized.bestCandidate.softConstraintsMissed,
+        scoreBreakdown: optimized.scoreBreakdown,
+        optimizationRuleScore: optimized.scoreBreakdown,
+        diagnostics: optimized.diagnostics,
+        ruleResolution: formationResolved.ruleResolution,
+        baselineSignature: optimized.baseline?.signature || null,
+      },
+    };
+  }
+
+  // Controlled non-optimizer path (explicit useGlobalOptimizer=false): seeded multi-start four-step.
   const rng =
     typeof randomFn === "function" ? randomFn : createSeededRng(seed ?? 1);
   const candidateLimit = Math.max(1, Math.min(64, Number(maxCandidates) || 24));
@@ -906,7 +1070,6 @@ export function pairTeamsFromSelectedPlayers({
       candidateCount: scored.length,
       selectedCandidateId: best.id,
       constraintScore: best.constraintScore,
-      // formation-quality = MLP rating balance; canonical soft = constraintScore
       formationQualityScore: best.formationQuality,
       balanceScore: best.balanceScore,
       softConstraintsSatisfied: best.softConstraintsSatisfied,

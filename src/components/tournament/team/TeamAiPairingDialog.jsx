@@ -233,12 +233,14 @@ export default function TeamAiPairingDialog({
       warnings: pairing.warnings,
       privatePairingMeta: pairing.privatePairingMeta,
       randomSeed,
-      algorithmVersion: AI_DRAW_ALGORITHM_VERSION,
+      algorithmVersion:
+        pairing.privatePairingMeta?.algorithmVersion || AI_DRAW_ALGORITHM_VERSION,
       rulesVersion: prepared.rulesVersion || prepared.pairingOptions?.rulesVersion || "",
       scoreBreakdown:
         pairing.privatePairingMeta?.scoreBreakdown ||
         pairing.privatePairingMeta?.optimizationRuleScore ||
         null,
+      diagnostics: pairing.privatePairingMeta?.diagnostics || null,
     });
 
     const initialCaptains = {};
@@ -307,6 +309,7 @@ export default function TeamAiPairingDialog({
       scoreBreakdown: pairingResult.scoreBreakdown || null,
       algorithmVersion: pairingResult.algorithmVersion || AI_DRAW_ALGORITHM_VERSION,
       rulesVersion: pairingResult.rulesVersion || "",
+      diagnostics: pairingResult.diagnostics || null,
     });
 
     setApplying(true);
