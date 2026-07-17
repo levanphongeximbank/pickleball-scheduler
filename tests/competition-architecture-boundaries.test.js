@@ -17,6 +17,9 @@ import {
   evaluateLegacyAiPairScore,
   isRulesV2Enabled,
   isStandingsV2Enabled,
+  createCompetitionParticipant,
+  validateCompetitionEntry,
+  PARTICIPANT_REFERENCE_KIND,
 } from "../src/features/competition-core/index.js";
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
@@ -35,6 +38,9 @@ test("competition-core public API exports contracts usable by format modules", (
   assert.equal(typeof evaluateLegacyAiPairScore, "function");
   assert.equal(typeof isRulesV2Enabled, "function");
   assert.equal(typeof isStandingsV2Enabled, "function");
+  assert.equal(typeof createCompetitionParticipant, "function");
+  assert.equal(typeof validateCompetitionEntry, "function");
+  assert.equal(typeof PARTICIPANT_REFERENCE_KIND.GUEST, "string");
 });
 
 test("competition core feature flags remain default OFF", () => {
