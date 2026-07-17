@@ -1,6 +1,6 @@
 import { PRIVATE_PAIRING_CONSTRAINT_TYPE } from "../constants/constraintTypes.js";
 import { RELATION_MODE } from "../constants/enums.js";
-import { PRIVATE_PAIRING_RUNTIME_CODE } from "./runtimeCodes.js";
+import { derivePrivatePairingSource, PRIVATE_PAIRING_SOURCE } from "./privatePairingSource.js";
 import {
   areOpponents,
   normalizeGroupsToPlayerIds,
@@ -9,24 +9,6 @@ import {
   shareGroup,
   shareTeam,
 } from "./evaluateHardOnCandidate.js";
-
-/** Soft types with an explicit scorer path. */
-export const PP_SOFT_SCORED_TYPES = Object.freeze([
-  PRIVATE_PAIRING_CONSTRAINT_TYPE.PREFER_PARTNER,
-  PRIVATE_PAIRING_CONSTRAINT_TYPE.AVOID_PARTNER,
-  PRIVATE_PAIRING_CONSTRAINT_TYPE.PREFER_OPPONENT,
-  PRIVATE_PAIRING_CONSTRAINT_TYPE.AVOID_OPPONENT,
-  PRIVATE_PAIRING_CONSTRAINT_TYPE.SAME_TEAM,
-  PRIVATE_PAIRING_CONSTRAINT_TYPE.DIFFERENT_TEAM,
-  PRIVATE_PAIRING_CONSTRAINT_TYPE.SAME_GROUP,
-  PRIVATE_PAIRING_CONSTRAINT_TYPE.DIFFERENT_GROUP,
-  PRIVATE_PAIRING_CONSTRAINT_TYPE.MAX_PARTNER_REPEAT,
-  PRIVATE_PAIRING_CONSTRAINT_TYPE.MAX_OPPONENT_REPEAT,
-  PRIVATE_PAIRING_CONSTRAINT_TYPE.MIN_PARTNER_REPEAT,
-  PRIVATE_PAIRING_CONSTRAINT_TYPE.MIN_OPPONENT_REPEAT,
-]);
-
-const PP_SOFT_SET = new Set(PP_SOFT_SCORED_TYPES);
 
 /**
  * @param {number|null|undefined} weight
@@ -61,11 +43,14 @@ function anyOrAll(rule, predicate) {
  * @param {Object} candidate
  * @param {import('../contracts/normalizePrivatePairingRule.js').PrivatePairingRule[]} softRules
  * @param {Object} [history]
+ * @param {Record<string, Record<string, number>>} [history.partnerRepeatCounts]
+ * @param {Record<string, Record<string, number>>} [history.opponentRepeatCounts]
  * @returns {{
  *   constraintScore: number,
  *   softConstraintsSatisfied: Array<{ ruleId: string, constraintType: string }>,
  *   softConstraintsMissed: Array<{ ruleId: string, constraintType: string }>,
- *   unsupportedSoftRules: Array<{ ruleId: string, constraintType: string, code: string }>
+ *   penaltyBySource: Record<string, number>,
+ *   privatePairingSoftPenalty: number,
  * }}
  */
 export function scoreSoftPrivatePairingRules(candidate, softRules = [], history = {}) {
@@ -84,40 +69,35 @@ export function scoreSoftPrivatePairingRules(candidate, softRules = [], history 
   const opponentRepeats = history.opponentRepeatCounts || {};
 
   let constraintScore = 0;
+  /** @type {Record<string, number>} */
+  const penaltyBySource = {
+    [PRIVATE_PAIRING_SOURCE.SUPER_ADMIN]: 0,
+    [PRIVATE_PAIRING_SOURCE.TOURNAMENT]: 0,
+    [PRIVATE_PAIRING_SOURCE.CLUB]: 0,
+    [PRIVATE_PAIRING_SOURCE.SESSION]: 0,
+    [PRIVATE_PAIRING_SOURCE.DEFAULT]: 0,
+  };
   /** @type {Array<{ ruleId: string, constraintType: string }>} */
   const softConstraintsSatisfied = [];
   /** @type {Array<{ ruleId: string, constraintType: string }>} */
   const softConstraintsMissed = [];
-  /** @type {Array<{ ruleId: string, constraintType: string, code: string }>} */
-  const unsupportedSoftRules = [];
 
   softRules.forEach((rule) => {
     const primary = String(rule.primaryPlayerId || "");
     if (!primary) {
       return;
     }
-    if (!PP_SOFT_SET.has(rule.constraintType)) {
-      unsupportedSoftRules.push({
-        ruleId: rule.id,
-        constraintType: rule.constraintType,
-        code: PRIVATE_PAIRING_RUNTIME_CODE.UNSUPPORTED_SOFT_CONSTRAINT,
-      });
-      return;
-    }
-
     const w = weightOf(rule.weight);
     let satisfied = false;
     let applicable = true;
 
     switch (rule.constraintType) {
-      case PRIVATE_PAIRING_CONSTRAINT_TYPE.PREFER_PARTNER:
-      case PRIVATE_PAIRING_CONSTRAINT_TYPE.SAME_TEAM: {
+      case PRIVATE_PAIRING_CONSTRAINT_TYPE.PREFER_PARTNER: {
         satisfied = anyOrAll(rule, (target) => shareTeam(primary, target, teams));
         constraintScore += satisfied ? w : -Math.round(w * 0.35);
         break;
       }
-      case PRIVATE_PAIRING_CONSTRAINT_TYPE.AVOID_PARTNER:
-      case PRIVATE_PAIRING_CONSTRAINT_TYPE.DIFFERENT_TEAM: {
+      case PRIVATE_PAIRING_CONSTRAINT_TYPE.AVOID_PARTNER: {
         const violated = anyOrAll(rule, (target) => shareTeam(primary, target, teams));
         satisfied = !violated;
         constraintScore += violated ? -w : Math.round(w * 0.25);
@@ -126,11 +106,6 @@ export function scoreSoftPrivatePairingRules(candidate, softRules = [], history 
       case PRIVATE_PAIRING_CONSTRAINT_TYPE.PREFER_OPPONENT: {
         if (!matchOption) {
           applicable = false;
-          unsupportedSoftRules.push({
-            ruleId: rule.id,
-            constraintType: rule.constraintType,
-            code: PRIVATE_PAIRING_RUNTIME_CODE.CONSTRAINT_CONTEXT_MISSING,
-          });
           break;
         }
         satisfied = anyOrAll(rule, (target) => areOpponents(primary, target, matchOption));
@@ -140,11 +115,6 @@ export function scoreSoftPrivatePairingRules(candidate, softRules = [], history 
       case PRIVATE_PAIRING_CONSTRAINT_TYPE.AVOID_OPPONENT: {
         if (!matchOption) {
           applicable = false;
-          unsupportedSoftRules.push({
-            ruleId: rule.id,
-            constraintType: rule.constraintType,
-            code: PRIVATE_PAIRING_RUNTIME_CODE.CONSTRAINT_CONTEXT_MISSING,
-          });
           break;
         }
         const violated = anyOrAll(rule, (target) => areOpponents(primary, target, matchOption));
@@ -155,11 +125,6 @@ export function scoreSoftPrivatePairingRules(candidate, softRules = [], history 
       case PRIVATE_PAIRING_CONSTRAINT_TYPE.SAME_GROUP: {
         if (!groups.length) {
           applicable = false;
-          unsupportedSoftRules.push({
-            ruleId: rule.id,
-            constraintType: rule.constraintType,
-            code: PRIVATE_PAIRING_RUNTIME_CODE.CONSTRAINT_CONTEXT_MISSING,
-          });
           break;
         }
         satisfied = anyOrAll(rule, (target) => shareGroup(primary, target, groups));
@@ -169,11 +134,6 @@ export function scoreSoftPrivatePairingRules(candidate, softRules = [], history 
       case PRIVATE_PAIRING_CONSTRAINT_TYPE.DIFFERENT_GROUP: {
         if (!groups.length) {
           applicable = false;
-          unsupportedSoftRules.push({
-            ruleId: rule.id,
-            constraintType: rule.constraintType,
-            code: PRIVATE_PAIRING_RUNTIME_CODE.CONSTRAINT_CONTEXT_MISSING,
-          });
           break;
         }
         const violated = anyOrAll(rule, (target) => shareGroup(primary, target, groups));
@@ -213,31 +173,15 @@ export function scoreSoftPrivatePairingRules(candidate, softRules = [], history 
         constraintScore += exceeded ? -w : Math.round(w * 0.2);
         break;
       }
-      case PRIVATE_PAIRING_CONSTRAINT_TYPE.MIN_PARTNER_REPEAT: {
-        const limit = Number(rule.metadata?.minCount ?? 1);
-        let below = false;
-        (rule.targetPlayerIds || []).forEach((target) => {
-          const count =
-            partnerRepeats[primary]?.[String(target)] ??
-            partnerRepeats[String(target)]?.[primary] ??
-            0;
-          if (count < limit) {
-            below = true;
-          }
-        });
-        satisfied = !below;
-        constraintScore += below ? -w : Math.round(w * 0.2);
-        break;
-      }
       case PRIVATE_PAIRING_CONSTRAINT_TYPE.MIN_OPPONENT_REPEAT: {
-        const limit = Number(rule.metadata?.minCount ?? 1);
+        const minCount = Number(rule.metadata?.minCount ?? 1);
         let below = false;
         (rule.targetPlayerIds || []).forEach((target) => {
           const count =
             opponentRepeats[primary]?.[String(target)] ??
             opponentRepeats[String(target)]?.[primary] ??
             0;
-          if (count < limit) {
+          if (count < minCount) {
             below = true;
           }
         });
@@ -247,30 +191,34 @@ export function scoreSoftPrivatePairingRules(candidate, softRules = [], history 
       }
       default:
         applicable = false;
-        unsupportedSoftRules.push({
-          ruleId: rule.id,
-          constraintType: rule.constraintType,
-          code: PRIVATE_PAIRING_RUNTIME_CODE.UNSUPPORTED_SOFT_CONSTRAINT,
-        });
         break;
     }
 
     if (!applicable) {
       return;
     }
+    const source = derivePrivatePairingSource(rule);
     const entry = { ruleId: rule.id, constraintType: rule.constraintType };
     if (satisfied) {
       softConstraintsSatisfied.push(entry);
     } else {
       softConstraintsMissed.push(entry);
+      const missPenalty = Math.max(1, Math.round(w));
+      penaltyBySource[source] = (penaltyBySource[source] || 0) + missPenalty;
     }
   });
+
+  const privatePairingSoftPenalty = Object.values(penaltyBySource).reduce(
+    (sum, value) => sum + (Number(value) || 0),
+    0
+  );
 
   return {
     constraintScore,
     softConstraintsSatisfied,
     softConstraintsMissed,
-    unsupportedSoftRules,
+    penaltyBySource,
+    privatePairingSoftPenalty,
   };
 }
 
@@ -307,6 +255,8 @@ export function computeFairnessScore(teams) {
 }
 
 export function computeHistoryScore(softResult) {
+  // History contribution is folded into constraintScore for repeat rules;
+  // expose a non-negative summary for explanation.
   const missed = softResult.softConstraintsMissed.filter((item) =>
     String(item.constraintType).includes("repeat")
   ).length;

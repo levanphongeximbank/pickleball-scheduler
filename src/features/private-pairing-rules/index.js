@@ -57,7 +57,7 @@ export {
   createPrivatePairingConflict,
 } from "./conflicts/detectPrivatePairingConflicts.js";
 
-export { timeRangesOverlap, scopesOverlap, rulesOverlapInContext } from "./conflicts/scopeTimeOverlap.js";
+export { timeRangesOverlap, scopesOverlap, scopesOverlapInContext, rulesOverlapInContext } from "./conflicts/scopeTimeOverlap.js";
 
 export {
   PRIVATE_PAIRING_RUNTIME_CODE,
@@ -68,6 +68,22 @@ export {
   resolveActivePrivatePairingRules,
   dedupeEquivalentRules,
   splitHardAndSoftRules,
+  PRIVATE_PAIRING_SOURCE,
+  PRIVATE_PAIRING_SOURCE_PRIORITY,
+  PRIVATE_PAIRING_SOURCE_ORDER,
+  PRIVATE_PAIRING_OPERATION,
+  isPrivatePairingSource,
+  derivePrivatePairingSource,
+  resolveRuleSourcePriority,
+  derivePrivatePairingOperations,
+  ruleMatchesOperation,
+  compareRuleAuthority,
+  buildRuleResolutionMetadata,
+  emptyRuleResolutionMetadata,
+  buildScoreBreakdown,
+  buildOptimizationRuleScore,
+  compareOptimizationCandidates,
+  sortCandidatesByOptimizationRank,
   evaluateHardPrivatePairingRules,
   scoreSoftPrivatePairingRules,
   generateTeamPairingCandidates,

@@ -23,9 +23,19 @@ import {
 
 import { FORMAT_PRESET } from "../../../features/team-tournament/constants.js";
 import { applyTeamPairing } from "../../../features/team-tournament/engines/teamAutoDrawEngine.js";
+import {
+  AI_DRAW_ALGORITHM_VERSION,
+  AI_DRAW_CHANGE_REASON,
+  attachAiDrawPublishMetadata,
+  createAiDrawRandomSeed,
+  getPublishedAiDrawState,
+  snapshotTeamFormationResult,
+} from "../../../features/team-tournament/engines/aiDrawSeedAudit.js";
 import { runTeamFormationWithCanonicalAdapter } from "../../../features/competition-core/formation/adapters/teamFormationAdapter.js";
 import {
   COMPETITION_CLASS,
+  createSeededRng,
+  PRIVATE_PAIRING_OPERATION,
   prepareLivePrivatePairingOptions,
 } from "../../../features/private-pairing-rules/index.js";
 import TournamentPlayerPickerPanel from "../TournamentPlayerPickerPanel.jsx";
@@ -184,6 +194,12 @@ export default function TeamAiPairingDialog({
     const resolvedClubId = prepared.pairingOptions?.clubId || clubId || null;
     const resolvedTournamentId =
       prepared.pairingOptions?.tournamentId || tournamentId || null;
+    // Each explicit rearrange gets a fresh seed. Reopening the dialog never runs this path.
+    const published = getPublishedAiDrawState(
+      teamData,
+      PRIVATE_PAIRING_OPERATION.TEAM_FORMATION
+    );
+    const randomSeed = createAiDrawRandomSeed(published?.randomSeed);
 
     const pairing = runTeamFormationWithCanonicalAdapter({
       players: pickerPlayers,
@@ -195,7 +211,8 @@ export default function TeamAiPairingDialog({
       competitionClass: resolvedCompetitionClass,
       clubId: resolvedClubId,
       tournamentId: resolvedTournamentId,
-      seed: 1,
+      seed: randomSeed,
+      randomFn: createSeededRng(randomSeed),
     });
 
     if (pairing.privatePairingError || pairing.ok === false) {
@@ -215,6 +232,13 @@ export default function TeamAiPairingDialog({
       waitingPlayerIds: pairing.waitingPlayerIds,
       warnings: pairing.warnings,
       privatePairingMeta: pairing.privatePairingMeta,
+      randomSeed,
+      algorithmVersion: AI_DRAW_ALGORITHM_VERSION,
+      rulesVersion: prepared.rulesVersion || prepared.pairingOptions?.rulesVersion || "",
+      scoreBreakdown:
+        pairing.privatePairingMeta?.scoreBreakdown ||
+        pairing.privatePairingMeta?.optimizationRuleScore ||
+        null,
     });
 
     const initialCaptains = {};
@@ -266,10 +290,33 @@ export default function TeamAiPairingDialog({
       onError?.(result.error);
       return;
     }
+    const published = getPublishedAiDrawState(
+      teamData,
+      PRIVATE_PAIRING_OPERATION.TEAM_FORMATION
+    );
+    const randomSeed =
+      pairingResult.randomSeed || createAiDrawRandomSeed(published?.randomSeed);
+    const nextTeamData = attachAiDrawPublishMetadata(result.teamData, {
+      operation: PRIVATE_PAIRING_OPERATION.TEAM_FORMATION,
+      reason: published?.randomSeed
+        ? AI_DRAW_CHANGE_REASON.USER_REARRANGE
+        : AI_DRAW_CHANGE_REASON.INITIAL_DRAW,
+      randomSeed,
+      previousResult: snapshotTeamFormationResult(teamData?.teams || []),
+      nextResult: snapshotTeamFormationResult(teamsWithCaptains),
+      scoreBreakdown: pairingResult.scoreBreakdown || null,
+      algorithmVersion: pairingResult.algorithmVersion || AI_DRAW_ALGORITHM_VERSION,
+      rulesVersion: pairingResult.rulesVersion || "",
+    });
 
     setApplying(true);
     try {
-      const applyResult = await onApply?.(result.teamData, result);
+      const applyResult = await onApply?.(nextTeamData, {
+        ...result,
+        teamData: nextTeamData,
+        randomSeed,
+        scoreBreakdown: pairingResult.scoreBreakdown || null,
+      });
       if (applyResult?.ok === false) {
         return;
       }
@@ -399,7 +446,7 @@ export default function TeamAiPairingDialog({
                 onClick={handlePairTeams}
                 disabled={!isMlp || selectedIds.length < 4}
               >
-                Ghép đội
+                {hasExistingTeams ? "AI sắp xếp lại" : "Ghép đội"}
               </Button>
 
               {pairingResult?.warnings?.map((warning) => (

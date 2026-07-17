@@ -4,14 +4,14 @@ import { COMPETITION_CLASS, RESTRICTED_COMPETITION_CLASSES } from "../../private
 import {
   buildPrivatePairingRuntimeError,
   createSeededRng,
-  evaluateHardPrivatePairingRules,
   evaluatePrivatePairingCandidate,
   filterRulesForGroupStage,
   filterRulesForTeamFormation,
   isPrivatePairingRuntimeEnabled,
   PRIVATE_PAIRING_RUNTIME_CODE,
+  PRIVATE_PAIRING_OPERATION,
   resolveActivePrivatePairingRules,
-  scoreSoftPrivatePairingRules,
+  sortCandidatesByOptimizationRank,
   splitHardAndSoftRules,
   gateResolvedForStage,
 } from "../../private-pairing-rules/runtime/index.js";
@@ -41,19 +41,6 @@ function formationQualityScore(teams = []) {
   }
   const spread = Math.max(...levels) - Math.min(...levels);
   return Math.max(0, Math.round(100 - spread * 100));
-}
-
-function compareFormationCandidates(left, right) {
-  if (left.rankScore !== right.rankScore) {
-    return right.rankScore - left.rankScore;
-  }
-  if (left.constraintScore !== right.constraintScore) {
-    return right.constraintScore - left.constraintScore;
-  }
-  if (left.formationQuality !== right.formationQuality) {
-    return right.formationQuality - left.formationQuality;
-  }
-  return String(left.id).localeCompare(String(right.id));
 }
 
 const MLP_MEMBERS_PER_TEAM = 4;
@@ -87,7 +74,7 @@ function sortByRatingDesc(players = []) {
   return [...players].sort((left, right) => playerRating(right) - playerRating(left));
 }
 
-function shuffleIndices(count, randomFn = Math.random) {
+function shuffleIndices(count, randomFn = createSeededRng(1)) {
   const indices = Array.from({ length: count }, (_, index) => index);
 
   for (let index = indices.length - 1; index > 0; index -= 1) {
@@ -207,7 +194,7 @@ function buildMlpTeamsFourStep({
   males = [],
   females = [],
   teamCount = 0,
-  randomFn = Math.random,
+  randomFn = createSeededRng(1),
 }) {
   const buckets = Array.from({ length: teamCount }, () => []);
 
@@ -337,7 +324,10 @@ export function suggestMlpTeamsFromPlayers(players = [], options = {}) {
     males,
     females,
     teamCount,
-    randomFn: options.randomFn,
+    randomFn:
+      typeof options.randomFn === "function"
+        ? options.randomFn
+        : createSeededRng(options.seed ?? 1),
   });
 
   let teams = buildTeamRecordsFromBuckets(buckets, teamNames, { assignCaptain: true });
@@ -448,7 +438,10 @@ export function assignSeededTeamsToGroups(teamData, options = {}) {
     options.seedingMode ?? teamData?.settings?.groupSeeding
   );
   const players = options.players ?? [];
-  const randomFn = typeof options.randomFn === "function" ? options.randomFn : Math.random;
+  const randomFn =
+    typeof options.randomFn === "function"
+      ? options.randomFn
+      : createSeededRng(options.seed ?? 1);
   const warnings = [];
 
   const buildLegacyPlan = (shuffleSalt = 0) => {
@@ -509,6 +502,7 @@ export function assignSeededTeamsToGroups(teamData, options = {}) {
       competitionClass,
       allowedByPublishedRules: options.allowedByPublishedRules === true,
       contextTime: options.contextTime,
+      operation: PRIVATE_PAIRING_OPERATION.GROUP_DRAW,
     },
   });
 
@@ -524,7 +518,12 @@ export function assignSeededTeamsToGroups(teamData, options = {}) {
   }
 
   const stageRules = filterRulesForGroupStage(resolved.rules || []);
-  const { hard, soft } = splitHardAndSoftRules(stageRules);
+  const hard = filterRulesForGroupStage(
+    resolved.hardRules || splitHardAndSoftRules(resolved.rules || []).hard
+  );
+  const soft = filterRulesForGroupStage(
+    resolved.softRules || splitHardAndSoftRules(resolved.rules || []).soft
+  );
 
   if (!hard.length && !soft.length) {
     const { preparedTeams, groups } = buildLegacyPlan(0);
@@ -547,14 +546,29 @@ export function assignSeededTeamsToGroups(teamData, options = {}) {
   for (let salt = 0; salt < maxCandidates; salt += 1) {
     const plan = buildLegacyPlan(salt);
     const candidateGroups = teamGroupsToPrivateCandidate(plan.groups, plan.preparedTeams);
-    const hardResult = evaluateHardPrivatePairingRules({ groups: candidateGroups }, hard);
-    if (!hardResult.feasible) {
+    const evaluated = evaluatePrivatePairingCandidate(
+      { id: `group-cand-${salt + 1}`, groups: candidateGroups },
+      {
+        resolved: { ...resolved, rules: stageRules, hardRules: hard, softRules: soft },
+        context: {
+          clubId: options.clubId || null,
+          tournamentId: options.tournamentId || null,
+          eventId: options.eventId || null,
+          competitionClass,
+          operation: PRIVATE_PAIRING_OPERATION.GROUP_DRAW,
+        },
+      }
+    );
+    if (!evaluated.feasible) {
       continue;
     }
-    const softResult = scoreSoftPrivatePairingRules({ groups: candidateGroups }, soft);
     scored.push({
       ...plan,
-      constraintScore: softResult.constraintScore,
+      id: evaluated.id,
+      feasible: true,
+      constraintScore: evaluated.constraintScore,
+      scoreBreakdown: evaluated.scoreBreakdown,
+      optimizationRuleScore: evaluated.scoreBreakdown,
     });
   }
 
@@ -570,8 +584,7 @@ export function assignSeededTeamsToGroups(teamData, options = {}) {
     };
   }
 
-  scored.sort((a, b) => b.constraintScore - a.constraintScore);
-  const best = scored[0];
+  const best = sortCandidatesByOptimizationRank(scored)[0];
   const nextTeamData = normalizeTeamData({
     ...teamData,
     teams: best.preparedTeams,
@@ -585,6 +598,9 @@ export function assignSeededTeamsToGroups(teamData, options = {}) {
     warnings,
     privatePairingError: null,
     constraintScore: best.constraintScore,
+    scoreBreakdown: best.scoreBreakdown,
+    optimizationRuleScore: best.scoreBreakdown,
+    ruleResolution: resolved.ruleResolution,
   };
 }
 
@@ -713,7 +729,9 @@ export function pairTeamsFromSelectedPlayers({
 
   // Flags OFF or no teammate rules → legacy MLP path (unchanged behavior).
   if (!runtimeEnabled || formationRulesInput.length === 0) {
-    const legacy = buildLegacyResult(typeof randomFn === "function" ? randomFn : Math.random);
+    const legacy = buildLegacyResult(
+      typeof randomFn === "function" ? randomFn : createSeededRng(seed ?? 1)
+    );
     return {
       ok: true,
       ...legacy,
@@ -735,10 +753,11 @@ export function pairTeamsFromSelectedPlayers({
     allowedByPublishedRules,
     contextTime,
     playersById,
+    operation: PRIVATE_PAIRING_OPERATION.TEAM_FORMATION,
   };
 
   const resolved = resolveActivePrivatePairingRules({
-    rules: formationRulesInput,
+    rules: privatePairingRules || [],
     legacyConstraints: [],
     context,
   });
@@ -797,9 +816,12 @@ export function pairTeamsFromSelectedPlayers({
   const formationResolved = {
     ...resolved,
     rules: filterRulesForTeamFormation(resolved.rules),
+    hardRules: filterRulesForTeamFormation(resolved.hardRules || []),
+    softRules: filterRulesForTeamFormation(resolved.softRules || []),
   };
 
-  const rng = createSeededRng(seed);
+  const rng =
+    typeof randomFn === "function" ? randomFn : createSeededRng(seed ?? 1);
   const candidateLimit = Math.max(1, Math.min(64, Number(maxCandidates) || 24));
   const scored = [];
 
@@ -825,12 +847,6 @@ export function pairTeamsFromSelectedPlayers({
     );
 
     const quality = formationQualityScore(draft.teams);
-    const rankScore = evaluated.feasible
-      ? evaluated.constraintScore * 1000 +
-        (evaluated.balanceScore || 0) * 10 +
-        quality
-      : Number.NEGATIVE_INFINITY;
-
     scored.push({
       id: evaluated.id,
       feasible: evaluated.feasible,
@@ -838,7 +854,8 @@ export function pairTeamsFromSelectedPlayers({
       constraintScore: evaluated.constraintScore,
       balanceScore: evaluated.balanceScore,
       formationQuality: quality,
-      rankScore,
+      scoreBreakdown: evaluated.scoreBreakdown,
+      optimizationRuleScore: evaluated.scoreBreakdown,
       teams: draft.teams,
       waitingPlayerIds: draft.waitingPlayerIds,
       warnings: draft.warnings,
@@ -847,7 +864,9 @@ export function pairTeamsFromSelectedPlayers({
     });
   }
 
-  const feasible = scored.filter((item) => item.feasible).sort(compareFormationCandidates);
+  const feasible = sortCandidatesByOptimizationRank(
+    scored.filter((item) => item.feasible)
+  );
   if (!feasible.length) {
     const error = buildPrivatePairingRuntimeError({
       errorCode: PRIVATE_PAIRING_RUNTIME_CODE.NO_FEASIBLE_PAIRING,
@@ -892,6 +911,9 @@ export function pairTeamsFromSelectedPlayers({
       balanceScore: best.balanceScore,
       softConstraintsSatisfied: best.softConstraintsSatisfied,
       softConstraintsMissed: best.softConstraintsMissed,
+      scoreBreakdown: best.scoreBreakdown,
+      optimizationRuleScore: best.scoreBreakdown,
+      ruleResolution: formationResolved.ruleResolution,
     },
   };
 }

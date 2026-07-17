@@ -131,13 +131,14 @@ class UnionFind {
  * Pure, deterministic conflict detector. Does not mutate input.
  *
  * @param {Array<Record<string, unknown>>} rulesInput
- * @param {Partial<{ teamSize: number }>} [context]
+ * @param {Partial<{ teamSize: number, context: Record<string, unknown> }>} [options]
  * @returns {PrivatePairingConflictResult}
  */
-export function detectPrivatePairingConflicts(rulesInput = [], context = {}) {
+export function detectPrivatePairingConflicts(rulesInput = [], options = {}) {
   const inputCopy = Array.isArray(rulesInput) ? rulesInput.map((item) => ({ ...item })) : [];
   const rules = normalizePrivatePairingRules(inputCopy).filter(isActive);
-  const teamSize = Number(context.teamSize ?? 2);
+  const teamSize = Number(options.teamSize ?? 2);
+  const overlapContext = options.context || {};
 
   /** @type {PrivatePairingConflict[]} */
   const fatalConflicts = [];
@@ -193,10 +194,31 @@ export function detectPrivatePairingConflicts(rulesInput = [], context = {}) {
     const avoidPartner = get(PRIVATE_PAIRING_CONSTRAINT_TYPE.AVOID_PARTNER);
     const mustOpponent = get(PRIVATE_PAIRING_CONSTRAINT_TYPE.MUST_OPPONENT);
     const mustNotOpponent = get(PRIVATE_PAIRING_CONSTRAINT_TYPE.MUST_NOT_OPPONENT);
+    const sameGroup = get(PRIVATE_PAIRING_CONSTRAINT_TYPE.SAME_GROUP);
+    const differentGroup = get(PRIVATE_PAIRING_CONSTRAINT_TYPE.DIFFERENT_GROUP);
+
+    sameGroup.forEach((m) => {
+      differentGroup.forEach((n) => {
+        if (!rulesOverlapInContext(m.rule, n.rule, overlapContext)) {
+          return;
+        }
+        fatalConflicts.push(
+          createPrivatePairingConflict({
+            code: PRIVATE_PAIRING_CONFLICT_CODE.MUST_AND_MUST_NOT_GROUP,
+            severity: "fatal",
+            ruleIds: [m.rule.id, n.rule.id],
+            playerIds: [playerA, playerB],
+            scope: { scopeType: m.rule.scopeType, scopeId: m.rule.scopeId },
+            messageKey: PRIVATE_PAIRING_CONFLICT_CODE.MUST_AND_MUST_NOT_GROUP,
+            suggestedResolution: "Remove or disable one of the contradictory group rules.",
+          })
+        );
+      });
+    });
 
     mustPartner.forEach((m) => {
       mustNotPartner.forEach((n) => {
-        if (!rulesOverlapInContext(m.rule, n.rule)) {
+        if (!rulesOverlapInContext(m.rule, n.rule, overlapContext)) {
           return;
         }
         fatalConflicts.push(
@@ -213,7 +235,7 @@ export function detectPrivatePairingConflicts(rulesInput = [], context = {}) {
       });
 
       mustOpponent.forEach((o) => {
-        if (!rulesOverlapInContext(m.rule, o.rule)) {
+        if (!rulesOverlapInContext(m.rule, o.rule, overlapContext)) {
           return;
         }
         fatalConflicts.push(
@@ -230,7 +252,7 @@ export function detectPrivatePairingConflicts(rulesInput = [], context = {}) {
       });
 
       avoidPartner.forEach((a) => {
-        if (!rulesOverlapInContext(m.rule, a.rule)) {
+        if (!rulesOverlapInContext(m.rule, a.rule, overlapContext)) {
           return;
         }
         if (a.rule.severity === CONSTRAINT_SEVERITY.SOFT) {
@@ -255,7 +277,7 @@ export function detectPrivatePairingConflicts(rulesInput = [], context = {}) {
 
     mustOpponent.forEach((m) => {
       mustNotOpponent.forEach((n) => {
-        if (!rulesOverlapInContext(m.rule, n.rule)) {
+        if (!rulesOverlapInContext(m.rule, n.rule, overlapContext)) {
           return;
         }
         fatalConflicts.push(
@@ -274,7 +296,7 @@ export function detectPrivatePairingConflicts(rulesInput = [], context = {}) {
 
     preferPartner.forEach((p) => {
       avoidPartner.forEach((a) => {
-        if (!rulesOverlapInContext(p.rule, a.rule)) {
+        if (!rulesOverlapInContext(p.rule, a.rule, overlapContext)) {
           return;
         }
         if (
@@ -297,7 +319,7 @@ export function detectPrivatePairingConflicts(rulesInput = [], context = {}) {
       });
 
       mustNotPartner.forEach((n) => {
-        if (!rulesOverlapInContext(p.rule, n.rule)) {
+        if (!rulesOverlapInContext(p.rule, n.rule, overlapContext)) {
           return;
         }
         warnings.push(
@@ -357,7 +379,7 @@ export function detectPrivatePairingConflicts(rulesInput = [], context = {}) {
     const forcedTargets = new Set();
     const involvedIds = [];
     bucket.forEach((rule) => {
-      const peers = bucket.filter((other) => rulesOverlapInContext(rule, other));
+      const peers = bucket.filter((other) => rulesOverlapInContext(rule, other, overlapContext));
       if (!peers.length) {
         return;
       }
@@ -409,7 +431,7 @@ export function detectPrivatePairingConflicts(rulesInput = [], context = {}) {
     // For chain detection we union all forced edges that pairwise overlap in scope/time with
     // at least one other must rule OR stand alone (self chain within ALL_OF).
     const related = mustPartnerRules.filter(
-      (other) => other.id === rule.id || rulesOverlapInContext(rule, other)
+      (other) => other.id === rule.id || rulesOverlapInContext(rule, other, overlapContext)
     );
     if (!related.length) {
       return;

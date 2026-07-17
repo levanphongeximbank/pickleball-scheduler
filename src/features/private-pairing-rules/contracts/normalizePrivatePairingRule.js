@@ -12,6 +12,12 @@ import {
   isReasonCategory,
 } from "../constants/enums.js";
 import { PRIVATE_PAIRING_SCOPE, isPrivatePairingScope } from "../constants/scopes.js";
+import {
+  derivePrivatePairingSource,
+  derivePrivatePairingOperations,
+  isPrivatePairingSource,
+  PRIVATE_PAIRING_SOURCE_PRIORITY,
+} from "../runtime/privatePairingSource.js";
 
 /**
  * @typedef {Object} PrivatePairingRule
@@ -22,6 +28,9 @@ import { PRIVATE_PAIRING_SCOPE, isPrivatePairingScope } from "../constants/scope
  * @property {'hard'|'soft'} severity
  * @property {number|null} weight
  * @property {string} priority
+ * @property {string} source
+ * @property {number} sourcePriority
+ * @property {string[]} operations
  * @property {string} primaryPlayerId
  * @property {string[]} targetPlayerIds
  * @property {'ANY_OF'|'ALL_OF'} relationMode
@@ -32,6 +41,7 @@ import { PRIVATE_PAIRING_SCOPE, isPrivatePairingScope } from "../constants/scope
  * @property {string} visibility
  * @property {string} reasonCategory
  * @property {string} reasonText
+ * @property {string|null} updatedAt
  * @property {boolean} active
  * @property {Record<string, unknown>} metadata
  */
@@ -90,6 +100,15 @@ export function normalizePrivatePairingRule(input, index = 0) {
     weight = Number.isFinite(parsed) ? parsed : null;
   }
 
+  const source = isPrivatePairingSource(input.source)
+    ? input.source
+    : derivePrivatePairingSource(scopeType);
+  const explicitSourcePriority = Number(input.sourcePriority);
+  const sourcePriority = Number.isFinite(explicitSourcePriority)
+    ? explicitSourcePriority
+    : PRIVATE_PAIRING_SOURCE_PRIORITY[source] ?? 0;
+  const operations = derivePrivatePairingOperations(constraintType);
+
   return {
     id: String(input.id || `private-rule-${index + 1}`),
     ruleSetId: String(input.ruleSetId || "private-pairing-default"),
@@ -98,6 +117,9 @@ export function normalizePrivatePairingRule(input, index = 0) {
     severity,
     weight,
     priority,
+    source,
+    sourcePriority,
+    operations,
     primaryPlayerId,
     targetPlayerIds,
     relationMode,
@@ -108,6 +130,7 @@ export function normalizePrivatePairingRule(input, index = 0) {
     visibility,
     reasonCategory,
     reasonText: String(input.reasonText || input.note || "").trim(),
+    updatedAt: input.updatedAt ? String(input.updatedAt) : null,
     active: input.active !== false && input.enabled !== false,
     metadata: input.metadata && typeof input.metadata === "object" ? { ...input.metadata } : {},
   };

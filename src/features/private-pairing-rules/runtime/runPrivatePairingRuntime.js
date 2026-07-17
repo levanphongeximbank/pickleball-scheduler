@@ -16,6 +16,11 @@ import {
   PRIVATE_PAIRING_RUNTIME_VERSION,
   isPrivatePairingRuntimeEnabled,
 } from "./runtimeCodes.js";
+import { PRIVATE_PAIRING_OPERATION } from "./privatePairingSource.js";
+import {
+  buildScoreBreakdown,
+  sortCandidatesByOptimizationRank,
+} from "./optimizationCandidateComparator.js";
 
 function isRestrictedCompetitionClass(competitionClass) {
   return RESTRICTED_COMPETITION_CLASSES.has(String(competitionClass || "").toUpperCase());
@@ -41,48 +46,34 @@ function isRestrictedCompetitionClass(competitionClass) {
  * @property {Object} meta
  */
 
-function compareCandidates(a, b) {
-  if (a.finalScore !== b.finalScore) {
-    return b.finalScore - a.finalScore;
-  }
-  if (a.balanceScore !== b.balanceScore) {
-    return b.balanceScore - a.balanceScore;
-  }
-  if (a.fairnessScore !== b.fairnessScore) {
-    return b.fairnessScore - a.fairnessScore;
-  }
-  if (a.constraintScore !== b.constraintScore) {
-    return b.constraintScore - a.constraintScore;
-  }
-  return String(a.id).localeCompare(String(b.id));
-}
-
 /**
  * Score a single already-built candidate (teams and/or matchOption).
+ * Ranking uses shared lexicographic comparator via `scoreBreakdown` — never totalPenalty.
  *
  * @param {Object} candidate
  * @param {Object} options
  * @returns {Object}
  */
 export function evaluatePrivatePairingCandidate(candidate, options = {}) {
+  const resolveContext = {
+    ...(options.context || {}),
+    operation: options.context?.operation || options.operation || PRIVATE_PAIRING_OPERATION.PARTNER_PAIRING,
+  };
   const resolved = options.resolved || resolveActivePrivatePairingRules({
     rules: options.rules,
     legacyConstraints: options.legacyConstraints,
-    context: options.context,
+    context: resolveContext,
   });
-  const { hard, soft } = splitHardAndSoftRules(resolved.rules);
-  const hardResult = evaluateHardPrivatePairingRules(
-    candidate,
-    hard,
-    options.history || {}
-  );
+  const hard = resolved.hardRules || splitHardAndSoftRules(resolved.rules).hard;
+  const soft = resolved.softRules || splitHardAndSoftRules(resolved.rules).soft;
+  const hardResult = evaluateHardPrivatePairingRules(candidate, hard);
   if (!hardResult.feasible) {
+    const scoreBreakdown = buildScoreBreakdown({});
     return {
       id: candidate.id,
       feasible: false,
       rejectionCodes: hardResult.violations.map((item) => item.code),
       violations: hardResult.violations,
-      deferredHardRules: hardResult.deferred || [],
       balanceScore: 0,
       fairnessScore: 0,
       historyScore: 0,
@@ -90,8 +81,11 @@ export function evaluatePrivatePairingCandidate(candidate, options = {}) {
       finalScore: Number.NEGATIVE_INFINITY,
       softConstraintsSatisfied: [],
       softConstraintsMissed: [],
+      scoreBreakdown,
+      optimizationRuleScore: scoreBreakdown,
       teams: candidate.teams,
       matchOption: candidate.matchOption,
+      groups: candidate.groups,
     };
   }
 
@@ -101,7 +95,14 @@ export function evaluatePrivatePairingCandidate(candidate, options = {}) {
   const fairnessScore = computeFairnessScore(candidate.teams || []);
   const historyScore = computeHistoryScore(softResult);
   const constraintScore = softResult.constraintScore;
-  // Ranking: feasibility already true; prefer fairness, balance, then soft constraints
+  const scoreBreakdown = buildScoreBreakdown({
+    penaltyBySource: softResult.penaltyBySource,
+    balanceScore,
+    fairnessScore,
+    formationQuality: options.formationQuality,
+    openBalanceScore: options.openBalanceScore,
+  });
+  // finalScore kept for display/legacy explanation only — ranking uses scoreBreakdown.
   const finalScore =
     fairnessScore * 100000 +
     balanceScore * 1000 +
@@ -113,17 +114,20 @@ export function evaluatePrivatePairingCandidate(candidate, options = {}) {
     feasible: true,
     rejectionCodes: [],
     violations: [],
-    deferredHardRules: hardResult.deferred || [],
-    unsupportedSoftRules: softResult.unsupportedSoftRules || [],
     balanceScore,
     fairnessScore,
     historyScore,
     constraintScore,
     finalScore,
+    scoreBreakdown,
+    optimizationRuleScore: scoreBreakdown,
     softConstraintsSatisfied: softResult.softConstraintsSatisfied,
     softConstraintsMissed: softResult.softConstraintsMissed,
+    penaltyBySource: softResult.penaltyBySource,
+    privatePairingSoftPenalty: softResult.privatePairingSoftPenalty,
     teams: candidate.teams,
     matchOption: candidate.matchOption,
+    groups: candidate.groups,
   };
 }
 
@@ -174,7 +178,10 @@ export function runPrivatePairingRuntime(input = {}) {
   const resolved = resolveActivePrivatePairingRules({
     rules: input.rules,
     legacyConstraints: input.legacyConstraints,
-    context: input.context,
+    context: {
+      ...(input.context || {}),
+      operation: input.context?.operation || PRIVATE_PAIRING_OPERATION.PARTNER_PAIRING,
+    },
   });
 
   if (resolved.validationErrors.length) {
@@ -271,7 +278,7 @@ export function runPrivatePairingRuntime(input = {}) {
     mixedDoubles: input.mixedDoubles === true,
   });
 
-  const { hard } = splitHardAndSoftRules(resolved.rules);
+  const hard = resolved.hardRules || splitHardAndSoftRules(resolved.rules).hard;
   const evaluated = [];
   const rejectedSamples = [];
 
@@ -280,6 +287,7 @@ export function runPrivatePairingRuntime(input = {}) {
       resolved,
       context: {
         ...(input.context || {}),
+        operation: input.context?.operation || PRIVATE_PAIRING_OPERATION.PARTNER_PAIRING,
         playersById:
           input.context?.playersById ||
           Object.fromEntries((input.players || []).map((p) => [String(p.id), p])),
@@ -295,7 +303,9 @@ export function runPrivatePairingRuntime(input = {}) {
     }
   });
 
-  const feasible = evaluated.filter((item) => item.feasible).sort(compareCandidates);
+  const feasible = sortCandidatesByOptimizationRank(
+    evaluated.filter((item) => item.feasible)
+  );
   const rejectedCandidateCount = evaluated.length - feasible.length;
   const elapsedMs = Date.now() - startedAt;
 
@@ -330,6 +340,7 @@ export function runPrivatePairingRuntime(input = {}) {
         truncated: generation.truncated,
         elapsedMs,
         blockedByPolicyCount: resolved.blockedByPolicy.length,
+        ruleResolution: resolved.ruleResolution,
       },
     };
   }
@@ -351,6 +362,8 @@ export function runPrivatePairingRuntime(input = {}) {
     historyScore: selected.historyScore,
     constraintScore: selected.constraintScore,
     finalScore: selected.finalScore,
+    scoreBreakdown: selected.scoreBreakdown,
+    optimizationRuleScore: selected.scoreBreakdown,
     ruleSetVersion: resolved.ruleSetVersion,
     warnings: resolved.warnings,
     rejectedSamples,
@@ -362,6 +375,9 @@ export function runPrivatePairingRuntime(input = {}) {
       truncated: generation.truncated,
       elapsedMs,
       blockedByPolicyCount: resolved.blockedByPolicy.length,
+      ruleResolution: resolved.ruleResolution,
+      scoreBreakdown: selected.scoreBreakdown,
+      optimizationRuleScore: selected.scoreBreakdown,
     },
   };
 }

@@ -36,7 +36,7 @@ import {
 import { PRIVATE_PAIRING_RPC } from "../src/features/private-pairing-rules/constants/dbCodes.js";
 import { buildInternalTournamentPlan } from "../src/tournament/engines/internalTournamentEngine.js";
 import { buildGroupStageSchedule } from "../src/tournament/engines/scheduleEngine.js";
-import { suggestEntriesFromPlayers } from "../src/tournament/engines/teamPairingEngine.js";
+import { suggestEntriesFromPlayers, suggestTeamsFromPlayers } from "../src/tournament/engines/teamPairingEngine.js";
 
 const FLAGS_ON = {
   [FEATURE_FLAG_KEYS.PRIVATE_PAIRING_RULES]: "true",
@@ -646,16 +646,16 @@ describe("TT-V6-4 — opponent + group stage wiring", () => {
       envSource: FLAGS_ON,
       privatePairingRules: [
         rule({
-          id: "must",
+          id: "must-same",
           severity: "hard",
-          constraintType: PRIVATE_PAIRING_CONSTRAINT_TYPE.MUST_OPPONENT,
+          constraintType: PRIVATE_PAIRING_CONSTRAINT_TYPE.SAME_GROUP,
           primaryPlayerId: "male-1",
           targetPlayerIds: ["male-2"],
         }),
         rule({
-          id: "must-not",
+          id: "must-diff",
           severity: "hard",
-          constraintType: PRIVATE_PAIRING_CONSTRAINT_TYPE.MUST_NOT_OPPONENT,
+          constraintType: PRIVATE_PAIRING_CONSTRAINT_TYPE.DIFFERENT_GROUP,
           primaryPlayerId: "male-1",
           targetPlayerIds: ["male-2"],
         }),
@@ -666,7 +666,7 @@ describe("TT-V6-4 — opponent + group stage wiring", () => {
     assert.equal(result.groups.length, 0);
   });
 
-  it("blockedByPolicy blocks Official group division", () => {
+  it("opponent personal rules are WRONG_OPERATION for group division", () => {
     const players = buildMixedPlayers(4, 4);
     const entries = suggestEntriesFromPlayers(players, EVENT_TYPE.MIXED_DOUBLE, {
       tournamentId: "t1",
@@ -688,9 +688,33 @@ describe("TT-V6-4 — opponent + group stage wiring", () => {
         }),
       ],
     });
-    assert.equal(result.ok, false);
+    assert.equal(result.ok, true);
+    assert.equal(result.privatePairingError, null);
+  });
+
+  it("blockedByPolicy blocks Official partner pairing", () => {
+    const players = buildMixedPlayers(4, 4);
+    const opts = {
+      envSource: FLAGS_ON,
+      competitionClass: COMPETITION_CLASS.OFFICIAL,
+      allowedByPublishedRules: false,
+      forcePrivateRuntime: true,
+      privatePairingRules: [
+        rule({
+          severity: "soft",
+          weight: 40,
+          visibility: RULE_VISIBILITY.PRIVATE,
+          constraintType: PRIVATE_PAIRING_CONSTRAINT_TYPE.PREFER_OPPONENT,
+          primaryPlayerId: "male-1",
+          targetPlayerIds: ["male-2"],
+          reasonCategory: REASON_CATEGORY.PERSONAL_PREFERENCE,
+        }),
+      ],
+    };
+    const teams = suggestTeamsFromPlayers(players, EVENT_TYPE.MIXED_DOUBLE, opts);
+    assert.equal(teams.length, 0);
     assert.equal(
-      result.privatePairingError.code,
+      opts.privatePairingError?.code,
       PRIVATE_PAIRING_RUNTIME_CODE.PRIVATE_RULE_BLOCKED_BY_POLICY
     );
   });
