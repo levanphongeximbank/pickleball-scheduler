@@ -70,3 +70,7 @@ export const SHOWCASE_COPY = Object.freeze({
 export const SHOWCASE_DEFAULT_TEAM_COUNT = 8;
 
 export const SHOWCASE_COUNTDOWN_SECONDS = 10;
+
+/** Full-screen reveal pacing: ~2.8s per athlete/team, faster when reduced motion. */
+export const SHOWCASE_REVEAL_STEP_MS = 2800;
+export const SHOWCASE_REVEAL_STEP_MS_REDUCED = 120;

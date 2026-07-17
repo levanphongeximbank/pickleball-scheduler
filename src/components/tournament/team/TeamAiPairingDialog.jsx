@@ -31,6 +31,7 @@ import { buildAiGroupRevealSession } from "../../../features/team-tournament/sho
 import { SHOWCASE_REVEAL_STEP_MS } from "../../../features/team-tournament/showcase/showcaseConstants.js";
 import { prefersReducedMotion } from "../../../features/team-tournament/showcase/showcaseStyles.js";
 import { getPlayerGenderKey } from "../../../models/player.js";
+import { reconcileSelectedAthletesForEngineInput } from "../../../features/team-tournament/showcase/reconcileSelectedAthletesForEngineInput.js";
 import TeamAiPairingConfigBoard, {
   DarkDialogHeader,
 } from "./TeamAiPairingConfigBoard.jsx";
@@ -294,17 +295,46 @@ export default function TeamAiPairingDialog({
       return;
     }
 
+    const reconciliation = reconcileSelectedAthletesForEngineInput({
+      athletes: pickerPlayers,
+      selectedAthleteIds: selectedIds,
+      requestedTeamCount: teamCount,
+      athletesPerTeam: 4,
+      requireMlpBalance: true,
+    });
+    if (!reconciliation.ok) {
+      const removalLines = reconciliation.removals
+        .slice(0, 12)
+        .map(
+          (row) =>
+            `${row.athleteName} (${row.athleteId}) · ${row.removalReason} · raw=${String(row.rawGender)} → ${row.normalizedGender}`
+        )
+        .join("\n");
+      onError?.(
+        [
+          reconciliation.message ||
+            `Bạn đã chọn ${reconciliation.selectedCount} VĐV nhưng hệ thống chỉ xác nhận ${reconciliation.finalEngineInputCount} VĐV hợp lệ.`,
+          ...reconciliation.blockers.filter((item) => item !== reconciliation.message),
+          removalLines,
+        ]
+          .filter(Boolean)
+          .join("\n")
+      );
+      return;
+    }
+
     const pairing = runTeamFormationWithCanonicalAdapter({
-      players: pickerPlayers,
-      selectedPlayerIds: selectedIds,
+      players: reconciliation.finalAthletes,
+      selectedPlayerIds: reconciliation.finalAthletes.map((athlete) => String(athlete.id)),
       teamCount,
       teamNames,
-      formatPreset: teamData?.settings?.formatPreset,
+      formatPreset: teamData?.settings?.formatPreset || FORMAT_PRESET.MLP_4,
       privatePairingRules: prepared.pairingOptions?.privatePairingRules || [],
       competitionClass: resolvedCompetitionClass,
       clubId: prepared.pairingOptions?.clubId || clubId || null,
       tournamentId: prepared.pairingOptions?.tournamentId || tournamentId || null,
       seed: 1,
+      requireFullFill: true,
     });
 
     if (pairing.privatePairingError || pairing.ok === false) {
@@ -318,12 +348,36 @@ export default function TeamAiPairingDialog({
       return;
     }
 
+    const usedIds = (pairing.teams || []).flatMap((team) =>
+      (team.playerIds || []).map(String)
+    );
+    if (
+      usedIds.length !== reconciliation.finalEngineInputCount ||
+      new Set(usedIds).size !== usedIds.length ||
+      (pairing.teams || []).length !== Number(teamCount)
+    ) {
+      onError?.(
+        `Bạn đã chọn ${reconciliation.selectedCount} VĐV nhưng hệ thống chỉ xếp được ${usedIds.length} VĐV vào ${(pairing.teams || []).length}/${teamCount} đội.`
+      );
+      return;
+    }
+
     const reveal = buildAiPairingRevealSession({
       teams: pairing.teams,
-      players: pickerPlayers,
+      players: reconciliation.finalAthletes,
     });
     if (!reveal.ok) {
       onError?.(reveal.error || "Không thể trình chiếu kết quả ghép đội.");
+      return;
+    }
+
+    const revealAthletes = (reveal.session?.teamCards || []).flatMap(
+      (team) => team.athletes || []
+    );
+    if (revealAthletes.length !== reconciliation.finalEngineInputCount) {
+      onError?.(
+        `Lễ công bố chỉ có ${revealAthletes.length}/${reconciliation.finalEngineInputCount} VĐV — đã chặn để tránh mất VĐV im lặng.`
+      );
       return;
     }
 

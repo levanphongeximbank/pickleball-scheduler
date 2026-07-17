@@ -15,6 +15,11 @@ import {
 } from "../src/features/team-tournament/showcase/showcaseSetupModel.js";
 import { reconcileSelectedAthletesForEngineInput } from "../src/features/team-tournament/showcase/reconcileSelectedAthletesForEngineInput.js";
 import { generateShowcaseTeamDraw } from "../src/features/team-tournament/showcase/showcaseDrawSession.js";
+import { pairTeamsFromSelectedPlayers } from "../src/features/team-tournament/engines/teamAutoDrawEngine.js";
+import { runTeamFormationWithCanonicalAdapter } from "../src/features/competition-core/formation/adapters/teamFormationAdapter.js";
+import { buildAiPairingRevealSession } from "../src/features/team-tournament/showcase/buildAiPairingRevealSession.js";
+import { FORMAT_PRESET } from "../src/features/team-tournament/constants.js";
+import { buildShowcaseTeamRevealSteps } from "../src/features/team-tournament/showcase/showcaseRevealSteps.js";
 
 const mixedPool = [
   { id: "m1", name: "A", gender: "male", ratingValue: 4 },
@@ -180,4 +185,88 @@ test("identical normalized gender values across AI picker and Showcase filter", 
     showcaseFemale.map((row) => row.id).sort(),
     aiFemale.map((row) => row.id).sort()
   );
+});
+
+test("AI pairing requireFullFill blocks silent 32→28 shrink (14F shortage)", () => {
+  const athletes = [];
+  for (let i = 0; i < 18; i += 1) {
+    athletes.push({ id: `m${i}`, name: `Nam ${i}`, gender: "male", ratingValue: 4 });
+  }
+  for (let i = 0; i < 14; i += 1) {
+    athletes.push({ id: `f${i}`, name: `Nu ${i}`, gender: "female", ratingValue: 4 });
+  }
+  assert.equal(athletes.length, 32);
+
+  const silent = pairTeamsFromSelectedPlayers({
+    players: athletes,
+    selectedPlayerIds: athletes.map((row) => row.id),
+    teamCount: 8,
+    formatPreset: FORMAT_PRESET.MLP_4,
+    randomFn: () => 0.42,
+    requireFullFill: false,
+  });
+  assert.equal(silent.ok, true);
+  assert.equal(silent.teams.length, 7);
+  assert.equal(silent.teams.flatMap((team) => team.playerIds).length, 28);
+
+  const blocked = pairTeamsFromSelectedPlayers({
+    players: athletes,
+    selectedPlayerIds: athletes.map((row) => row.id),
+    teamCount: 8,
+    formatPreset: FORMAT_PRESET.MLP_4,
+    randomFn: () => 0.42,
+    requireFullFill: true,
+  });
+  assert.equal(blocked.ok, false);
+  assert.match(blocked.warnings.join(" "), /chỉ đủ 7 đội = 28 VĐV/);
+
+  const adapter = runTeamFormationWithCanonicalAdapter({
+    players: athletes,
+    selectedPlayerIds: athletes.map((row) => row.id),
+    teamCount: 8,
+    formatPreset: FORMAT_PRESET.MLP_4,
+    randomFn: () => 0.42,
+    requireFullFill: true,
+  });
+  assert.equal(adapter.ok, false);
+});
+
+test("AI pairing balanced 32 yields ceremony progress total 32", () => {
+  const athletes = [];
+  for (let i = 0; i < 16; i += 1) {
+    athletes.push({
+      id: `m${i}`,
+      name: `Nam ${i}`,
+      gender: i % 2 ? "Nam" : "male",
+      ratingValue: 4 + (i % 3) * 0.1,
+    });
+  }
+  for (let i = 0; i < 16; i += 1) {
+    athletes.push({
+      id: `f${i}`,
+      name: `Nu ${i}`,
+      gender: i % 2 ? "Nữ" : "female",
+      ratingValue: 4 + (i % 3) * 0.1,
+    });
+  }
+
+  const pairing = runTeamFormationWithCanonicalAdapter({
+    players: athletes,
+    selectedPlayerIds: athletes.map((row) => row.id),
+    teamCount: 8,
+    formatPreset: FORMAT_PRESET.MLP_4,
+    randomFn: () => 0.42,
+    requireFullFill: true,
+  });
+  assert.equal(pairing.ok, true);
+  assert.equal(pairing.teams.length, 8);
+
+  const reveal = buildAiPairingRevealSession({
+    teams: pairing.teams,
+    players: athletes,
+  });
+  assert.equal(reveal.ok, true);
+  const steps = buildShowcaseTeamRevealSteps(reveal.session);
+  assert.equal(steps.ok, true);
+  assert.equal(steps.steps.length, 32);
 });
