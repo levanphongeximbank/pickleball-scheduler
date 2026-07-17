@@ -8,9 +8,17 @@ import {
 import {
   attachV6CompetitionOptimizationAudit,
   buildV6PrivatePairingResolveContext,
+  resolveV6PrivatePairing,
   V6_OPTIMIZATION_ACTION,
-  V6_PRIVATE_PAIRING_ALGORITHM_VERSION,
 } from "../private-pairing/index.js";
+import {
+  COURT_GLOBAL_ALGORITHM_VERSION,
+  MATCHUP_GLOBAL_ALGORITHM_VERSION,
+  SCHEDULE_GLOBAL_ALGORITHM_VERSION,
+  runCourtGlobalOptimizer,
+  runMatchupGlobalOptimizer,
+  runScheduleGlobalOptimizer,
+} from "../../competition-optimizer/index.js";
 import { MATCHUP_STATUS } from "../constants.js";
 import {
   createMatchupRecord,
@@ -250,10 +258,276 @@ export function describeSchedulePreview(teamData, options = {}) {
   return parts.join(" · ");
 }
 
-/**
- * Build round-robin matchups. Never silently creates groups.
- * When explicit groups are required but missing, returns ok:false + GROUPS_REQUIRED.
- */
+function synthesizeCourts(courtCount, options = {}) {
+  const count = Math.max(1, Number(courtCount) || 1);
+  const prefix = options.courtLabelPrefix?.trim() || options.courtLabel?.trim() || "";
+  return Array.from({ length: count }, (_, index) => ({
+    id: `court-${index + 1}`,
+    label: courtLabelForSlot(index, count, { courtLabelPrefix: prefix }),
+    active: true,
+    isCentral: index === 0,
+    capacity: 1,
+  }));
+}
+
+function resolveOptimizerBudget(options = {}, fallback = {}) {
+  return {
+    maxInitialCandidates: 40,
+    maxEvaluations: 400,
+    maxIterations: 80,
+    maxDurationMs: 800,
+    stagnationLimit: 40,
+    ...(fallback || {}),
+    ...(options.budget || {}),
+  };
+}
+
+function mergeOptimizedMatchups(baseMatchups, optimizedRows) {
+  const byId = new Map((optimizedRows || []).map((row) => [String(row.id), row]));
+  return (baseMatchups || []).map((matchup) => {
+    const optimized = byId.get(String(matchup.id));
+    if (!optimized) return matchup;
+    return {
+      ...matchup,
+      teamAId: optimized.teamAId || matchup.teamAId,
+      teamBId: optimized.teamBId || matchup.teamBId,
+      roundNumber: optimized.roundNumber || matchup.roundNumber,
+      matchNumberInRound: optimized.matchNumberInRound || matchup.matchNumberInRound,
+    };
+  });
+}
+
+function applyScheduleAssignments(matchups, assignments, baseScheduledAt, roundIntervalMinutes) {
+  const byId = new Map((assignments || []).map((row) => [String(row.id), row]));
+  return (matchups || []).map((matchup) => {
+    const row = byId.get(String(matchup.id));
+    if (!row) return matchup;
+    const scheduledAt =
+      row.scheduledAt ||
+      (baseScheduledAt
+        ? addMinutes(baseScheduledAt, (Number(row.slotIndex) || 0) * roundIntervalMinutes)
+        : matchup.scheduledAt);
+    return {
+      ...matchup,
+      scheduledAt,
+      roundNumber: row.roundNumber || matchup.roundNumber,
+    };
+  });
+}
+
+function applyCourtAssignments(matchups, assignments) {
+  const byId = new Map((assignments || []).map((row) => [String(row.id), row]));
+  return (matchups || []).map((matchup) => {
+    const row = byId.get(String(matchup.id));
+    if (!row) return matchup;
+    return {
+      ...matchup,
+      courtLabel: row.courtLabel || matchup.courtLabel,
+      courtId: row.courtId || matchup.courtId,
+    };
+  });
+}
+
+function runRoundRobinGlobalOptimizers(matchups, input = {}) {
+  const randomSeed = input.randomSeed ?? 1;
+  const budget = resolveOptimizerBudget(input);
+  const pairingResolve = resolveV6PrivatePairing({
+    privatePairingRules: input.privatePairingRules,
+    pairingConstraints: input.pairingConstraints,
+    clubId: input.clubId,
+    tournamentId: input.tournamentId,
+    eventId: input.eventId,
+    competitionClass: input.competitionClass,
+    envSource: input.envSource,
+    operation: PRIVATE_PAIRING_OPERATION.MATCHUP_PAIRING,
+    contextTime: input.contextTime,
+  });
+
+  if (!pairingResolve.ok) {
+    return {
+      ok: false,
+      privatePairingError: {
+        code: pairingResolve.code,
+        message: pairingResolve.message,
+      },
+    };
+  }
+
+  const groups = input.groups || [];
+  let optimizedMatchups = [...matchups];
+  let matchupResult = null;
+
+  if (groups.length > 0) {
+    const merged = [];
+    for (const group of groups) {
+      const groupMatchups = optimizedMatchups.filter(
+        (matchup) => String(matchup.groupId) === String(group.groupId)
+      );
+      matchupResult = runMatchupGlobalOptimizer({
+        matchups: groupMatchups,
+        teamIds: (group.teamRecords || []).map((team) => team.id),
+        teams: input.teams,
+        groupId: group.groupId,
+        privatePairingRules: input.privatePairingRules,
+        pairingConstraints: input.pairingConstraints,
+        resolved: pairingResolve.resolved,
+        history: input.pairingHistory,
+        randomSeed,
+        budget,
+        clubId: input.clubId,
+        tournamentId: input.tournamentId,
+        context: pairingResolve.context,
+      });
+      if (!matchupResult.ok) {
+        return {
+          ok: false,
+          privatePairingError: {
+            code: "MATCHUP_OPTIMIZER_FAILED",
+            message: "Không tìm được lịch đối đầu hợp lệ.",
+            rejectionCodes: matchupResult.rejectionCodes,
+          },
+          matchupResult,
+        };
+      }
+      merged.push(...mergeOptimizedMatchups(groupMatchups, matchupResult.matchups));
+    }
+    optimizedMatchups = merged;
+  } else {
+    matchupResult = runMatchupGlobalOptimizer({
+      matchups: optimizedMatchups,
+      teams: input.teams,
+      privatePairingRules: input.privatePairingRules,
+      pairingConstraints: input.pairingConstraints,
+      resolved: pairingResolve.resolved,
+      history: input.pairingHistory,
+      randomSeed,
+      budget,
+      clubId: input.clubId,
+      tournamentId: input.tournamentId,
+      context: pairingResolve.context,
+    });
+    if (!matchupResult.ok) {
+      return {
+        ok: false,
+        privatePairingError: {
+          code: "MATCHUP_OPTIMIZER_FAILED",
+          message: "Không tìm được lịch đối đầu hợp lệ.",
+          rejectionCodes: matchupResult.rejectionCodes,
+        },
+        matchupResult,
+      };
+    }
+    optimizedMatchups = mergeOptimizedMatchups(optimizedMatchups, matchupResult.matchups);
+  }
+
+  const roundNumbers = [
+    ...new Set(optimizedMatchups.map((matchup) => Number(matchup.roundNumber) || 0)),
+  ].filter((value) => value > 0);
+  const slotCount = Math.max(1, roundNumbers.length);
+
+  const scheduleResolve = resolveV6PrivatePairing({
+    ...input,
+    operation: PRIVATE_PAIRING_OPERATION.SCHEDULE_ASSIGNMENT,
+  });
+
+  const scheduleResult = runScheduleGlobalOptimizer({
+    matchups: optimizedMatchups,
+    slotCount,
+    baseScheduledAt: input.baseScheduledAt,
+    roundIntervalMinutes: input.roundIntervalMinutes,
+    privatePairingRules: input.privatePairingRules,
+    pairingConstraints: input.pairingConstraints,
+    resolved: scheduleResolve.resolved,
+    history: input.pairingHistory,
+    randomSeed,
+    budget,
+    context: scheduleResolve.context,
+  });
+
+  if (!scheduleResult.ok) {
+    return {
+      ok: false,
+      privatePairingError: {
+        code: "SCHEDULE_OPTIMIZER_FAILED",
+        message: "Không tìm được lịch thi đấu hợp lệ.",
+        rejectionCodes: scheduleResult.rejectionCodes,
+      },
+      matchupResult,
+      scheduleResult,
+    };
+  }
+
+  optimizedMatchups = applyScheduleAssignments(
+    optimizedMatchups,
+    scheduleResult.assignments,
+    input.baseScheduledAt,
+    input.roundIntervalMinutes
+  );
+
+  const slotConcurrency = new Map();
+  for (const matchup of optimizedMatchups) {
+    const key = Number(matchup.roundNumber) || 0;
+    slotConcurrency.set(key, (slotConcurrency.get(key) || 0) + 1);
+  }
+  const maxCourtCount = Math.max(1, Number(input.courtCount) || 1);
+  const requiredCourts = Math.max(
+    1,
+    maxCourtCount,
+    ...slotConcurrency.values()
+  );
+
+  const courts =
+    input.courts?.length > 0
+      ? input.courts
+      : synthesizeCourts(requiredCourts, {
+          courtLabelPrefix: input.courtLabelPrefix,
+          courtLabel: input.courtLabel,
+        });
+
+  const courtResolve = resolveV6PrivatePairing({
+    ...input,
+    operation: PRIVATE_PAIRING_OPERATION.COURT_ASSIGNMENT,
+  });
+
+  const courtResult = runCourtGlobalOptimizer({
+    matchups: optimizedMatchups,
+    scheduleAssignments: scheduleResult.assignments,
+    courts,
+    privatePairingRules: input.privatePairingRules,
+    pairingConstraints: input.pairingConstraints,
+    resolved: courtResolve.resolved,
+    history: input.pairingHistory,
+    randomSeed,
+    budget,
+    context: courtResolve.context,
+    preferCentralForHighStakes: input.preferCentralForHighStakes === true,
+  });
+
+  if (!courtResult.ok) {
+    return {
+      ok: false,
+      privatePairingError: {
+        code: "COURT_OPTIMIZER_FAILED",
+        message: "Không gán được sân hợp lệ.",
+        rejectionCodes: courtResult.rejectionCodes,
+      },
+      matchupResult,
+      scheduleResult,
+      courtResult,
+    };
+  }
+
+  optimizedMatchups = applyCourtAssignments(optimizedMatchups, courtResult.assignments);
+
+  return {
+    ok: true,
+    matchups: optimizedMatchups,
+    matchupResult,
+    scheduleResult,
+    courtResult,
+  };
+}
+
 export function buildStructuredRoundRobinMatchups(teamData, options = {}) {
   const gate = assertGroupsReadyForSchedule(teamData);
   if (!gate.ok) {
@@ -369,6 +643,76 @@ export function buildStructuredRoundRobinMatchups(teamData, options = {}) {
     return errorData;
   }
 
+  const randomSeed = options.randomSeed ?? 1;
+  const useGlobalOptimizer = options.useGlobalOptimizer !== false;
+  let finalMatchups = ranked.matchups;
+  let matchupResult = null;
+  let scheduleResult = null;
+  let courtResult = null;
+
+  if (useGlobalOptimizer) {
+    const maxCourtCount = Math.max(
+      1,
+      ...groups.map((group) =>
+        Math.min(
+          Math.max(
+            1,
+            Number(options.courtCount) || defaultCourtCountForPool(group.teamRecords.length)
+          ),
+          2
+        )
+      )
+    );
+
+    const optimized = runRoundRobinGlobalOptimizers(ranked.matchups, {
+      groups,
+      teams: prepared.teams,
+      privatePairingRules: options.privatePairingRules || [],
+      pairingConstraints: options.pairingConstraints || [],
+      clubId: options.clubId || null,
+      tournamentId: options.tournamentId || null,
+      eventId: options.eventId || null,
+      competitionClass: options.competitionClass,
+      envSource: options.envSource,
+      contextTime: options.contextTime,
+      pairingHistory: options.pairingHistory || {},
+      randomSeed,
+      budget: options.budget,
+      baseScheduledAt,
+      roundIntervalMinutes,
+      courtCount: maxCourtCount,
+      courtLabelPrefix,
+      courts: options.courts,
+      preferCentralForHighStakes: options.preferCentralForHighStakes,
+    });
+
+    if (!optimized.ok) {
+      const errorData = normalizeTeamData({
+        ...prepared,
+        matchups: [],
+      });
+      errorData.ok = false;
+      errorData.privatePairingError = optimized.privatePairingError;
+      return errorData;
+    }
+
+    finalMatchups = optimized.matchups;
+    matchupResult = optimized.matchupResult;
+    scheduleResult = optimized.scheduleResult;
+    courtResult = optimized.courtResult;
+
+    // Re-apply lineup lock times after schedule optimization
+    finalMatchups = finalMatchups.map((matchup) => {
+      if (!baseScheduledAt || !leadMinutes) {
+        return matchup;
+      }
+      return {
+        ...matchup,
+        lineupLockAt: computeLineupLockAt(matchup.scheduledAt, leadMinutes),
+      };
+    });
+  }
+
   const scheduleContext = buildV6PrivatePairingResolveContext({
     clubId: options.clubId || null,
     tournamentId: options.tournamentId || null,
@@ -380,7 +724,7 @@ export function buildStructuredRoundRobinMatchups(teamData, options = {}) {
 
   let next = normalizeTeamData({
     ...prepared,
-    matchups: ranked.matchups,
+    matchups: finalMatchups,
   });
 
   next = attachV6CompetitionOptimizationAudit(next, {
@@ -389,13 +733,16 @@ export function buildStructuredRoundRobinMatchups(teamData, options = {}) {
       ...scheduleContext,
       operation: PRIVATE_PAIRING_OPERATION.MATCHUP_PAIRING,
     },
-    algorithmVersion: V6_PRIVATE_PAIRING_ALGORITHM_VERSION,
-    randomSeed: options.randomSeed != null ? String(options.randomSeed) : null,
-    diagnostics: {
-      matchupCount: ranked.matchups?.length || 0,
+    algorithmVersion: useGlobalOptimizer
+      ? MATCHUP_GLOBAL_ALGORITHM_VERSION
+      : matchupResult?.algorithmVersion || MATCHUP_GLOBAL_ALGORITHM_VERSION,
+    randomSeed: String(randomSeed),
+    scoreBreakdown: matchupResult?.scoreBreakdown || null,
+    diagnostics: matchupResult?.diagnostics || {
+      matchupCount: finalMatchups?.length || 0,
       removedCount: ranked.removed?.length || 0,
     },
-    resultSnapshot: (ranked.matchups || []).map((m) => ({
+    resultSnapshot: (finalMatchups || []).map((m) => ({
       id: m.id,
       teamAId: m.teamAId,
       teamBId: m.teamBId,
@@ -409,9 +756,13 @@ export function buildStructuredRoundRobinMatchups(teamData, options = {}) {
   next = attachV6CompetitionOptimizationAudit(next, {
     operation: PRIVATE_PAIRING_OPERATION.SCHEDULE_ASSIGNMENT,
     context: scheduleContext,
-    algorithmVersion: V6_PRIVATE_PAIRING_ALGORITHM_VERSION,
-    randomSeed: options.randomSeed != null ? String(options.randomSeed) : null,
-    resultSnapshot: (ranked.matchups || []).map((m) => ({
+    algorithmVersion: useGlobalOptimizer
+      ? SCHEDULE_GLOBAL_ALGORITHM_VERSION
+      : scheduleResult?.algorithmVersion || SCHEDULE_GLOBAL_ALGORITHM_VERSION,
+    randomSeed: String(randomSeed),
+    scoreBreakdown: scheduleResult?.scoreBreakdown || null,
+    diagnostics: scheduleResult?.diagnostics || null,
+    resultSnapshot: (finalMatchups || []).map((m) => ({
       id: m.id,
       scheduledAt: m.scheduledAt,
       roundNumber: m.roundNumber,
@@ -425,8 +776,13 @@ export function buildStructuredRoundRobinMatchups(teamData, options = {}) {
       ...scheduleContext,
       operation: PRIVATE_PAIRING_OPERATION.COURT_ASSIGNMENT,
     },
-    algorithmVersion: V6_PRIVATE_PAIRING_ALGORITHM_VERSION,
-    resultSnapshot: (ranked.matchups || []).map((m) => ({
+    algorithmVersion: useGlobalOptimizer
+      ? COURT_GLOBAL_ALGORITHM_VERSION
+      : courtResult?.algorithmVersion || COURT_GLOBAL_ALGORITHM_VERSION,
+    randomSeed: String(randomSeed),
+    scoreBreakdown: courtResult?.scoreBreakdown || null,
+    diagnostics: courtResult?.diagnostics || null,
+    resultSnapshot: (finalMatchups || []).map((m) => ({
       id: m.id,
       courtLabel: m.courtLabel,
     })),

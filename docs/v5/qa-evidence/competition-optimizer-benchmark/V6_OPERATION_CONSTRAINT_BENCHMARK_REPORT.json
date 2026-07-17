@@ -1,0 +1,41 @@
+{
+  "generatedAt": "2026-07-17T11:24:48.811Z",
+  "budget": {
+    "maxInitialCandidates": 40,
+    "maxEvaluations": 600,
+    "maxIterations": 120,
+    "maxDurationMs": 800,
+    "stagnationLimit": 40
+  },
+  "operations": {
+    "LINEUP_FORMATION": {
+      "ok": true,
+      "evaluated": 145,
+      "durationMs": 6,
+      "stopReason": "STAGNATION",
+      "hardRejectCount": 38,
+      "hadHardRule": true
+    },
+    "MATCHUP_PAIRING": {
+      "ok": true,
+      "evaluated": 159,
+      "durationMs": 3,
+      "stopReason": "MAX_ITERATIONS"
+    },
+    "SCHEDULE_ASSIGNMENT": {
+      "ok": true,
+      "evaluated": 52,
+      "durationMs": 2,
+      "stopReason": "STAGNATION"
+    },
+    "COURT_ASSIGNMENT": {
+      "ok": true,
+      "evaluated": 159,
+      "durationMs": 3,
+      "stopReason": "MAX_ITERATIONS"
+    }
+  },
+  "gate": {
+    "pass": true
+  }
+}

@@ -1,0 +1,57 @@
+{
+  "generatedAt": "2026-07-17T11:24:22.517Z",
+  "algorithm": "v6-court-global-optimizer-v1",
+  "seeds": 50,
+  "budget": {
+    "maxInitialCandidates": 50,
+    "maxEvaluations": 1200,
+    "maxIterations": 300,
+    "maxDurationMs": 1200,
+    "stagnationLimit": 80
+  },
+  "authorityRegressions": 0,
+  "hardRegressions": 0,
+  "gate": {
+    "hardRuleRegressions": 0,
+    "authorityRegressions": 0,
+    "pass": true
+  },
+  "rows": [
+    {
+      "teamCount": 3,
+      "courtCount": 1,
+      "seeds": 50,
+      "feasibleRate": 1,
+      "notWorseRate": 1,
+      "improvedRate": 0,
+      "baselinePenalty": 0
+    },
+    {
+      "teamCount": 4,
+      "courtCount": 2,
+      "seeds": 50,
+      "feasibleRate": 1,
+      "notWorseRate": 1,
+      "improvedRate": 0,
+      "baselinePenalty": 40
+    },
+    {
+      "teamCount": 5,
+      "courtCount": 2,
+      "seeds": 50,
+      "feasibleRate": 1,
+      "notWorseRate": 1,
+      "improvedRate": 1,
+      "baselinePenalty": 90
+    },
+    {
+      "teamCount": 6,
+      "courtCount": 3,
+      "seeds": 50,
+      "feasibleRate": 1,
+      "notWorseRate": 1,
+      "improvedRate": 1,
+      "baselinePenalty": 160
+    }
+  ]
+}

@@ -5,10 +5,11 @@
  * All resolve calls go through resolveActivePrivatePairingRules.
  *
  * Coverage note:
- * - TEAM_FORMATION / PARTNER_PAIRING / GROUP_DRAW use the full Global Optimizer.
- * - LINEUP / MATCHUP / SEED / SCHEDULE / COURT currently use this adapter for
- *   resolver, hard-rule filtering/ranking, seeded RNG, and audit metadata only.
- *   They are not full multi-start optimizer flows yet.
+ * - TEAM_FORMATION / PARTNER_PAIRING / GROUP_DRAW / LINEUP_FORMATION /
+ *   MATCHUP_PAIRING / SCHEDULE_ASSIGNMENT / COURT_ASSIGNMENT use the full
+ *   Global Optimizer (multi-start search) via run*GlobalOptimizer entry points.
+ * - SEED remains adapter-only (resolver, hard-rule filtering/ranking, seeded RNG,
+ *   and audit metadata) until a dedicated Global Optimizer module is wired.
  */
 
 import {

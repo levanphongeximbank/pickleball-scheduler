@@ -38,6 +38,70 @@ export function groupDrawSignature(groups = [], idKey = "teamIds") {
 }
 
 /**
+ * Signature for lineup selections: disciplineId → sorted player ids (order preserved for slots).
+ * @param {Record<string, string[]>} selections
+ */
+export function lineupFormationSignature(selections = {}) {
+  return Object.keys(selections || {})
+    .map(String)
+    .sort()
+    .map((disciplineId) => {
+      const ids = (selections[disciplineId] || []).map(String);
+      return `${disciplineId}:${ids.join(",")}`;
+    })
+    .join("|");
+}
+
+/**
+ * Signature for matchup set (unordered edges + round).
+ * @param {Array<{ teamAId?: string, teamBId?: string, roundNumber?: number }>} matchups
+ */
+export function matchupPairingSignature(matchups = []) {
+  return (matchups || [])
+    .map((matchup) => {
+      const a = String(matchup.teamAId || "");
+      const b = String(matchup.teamBId || "");
+      const edge = [a, b].sort().join("-");
+      return `${Number(matchup.roundNumber) || 0}:${edge}`;
+    })
+    .sort()
+    .join("|");
+}
+
+/**
+ * Signature for schedule assignment: matchId → slot/time.
+ * @param {Array<{ id?: string, matchupId?: string, scheduledAt?: string|null, slotIndex?: number }>} assignments
+ */
+export function scheduleAssignmentSignature(assignments = []) {
+  return (assignments || [])
+    .map((row) => {
+      const id = String(row.id || row.matchupId || "");
+      const slot =
+        row.slotIndex != null
+          ? String(row.slotIndex)
+          : String(row.scheduledAt || "");
+      return `${id}@${slot}`;
+    })
+    .sort()
+    .join("|");
+}
+
+/**
+ * Signature for court assignment: matchId → court.
+ * @param {Array<{ id?: string, matchupId?: string, courtId?: string, courtLabel?: string }>} assignments
+ */
+export function courtAssignmentSignature(assignments = []) {
+  return (assignments || [])
+    .map((row) => {
+      const id = String(row.id || row.matchupId || "");
+      const court = String(row.courtId || row.courtLabel || "");
+      return `${id}->${court}`;
+    })
+    .sort()
+    .join("|");
+}
+
+/**
  * @returns {{ seen: Set<string>, add: (sig: string) => boolean, size: () => number }}
  */
 export function createCandidateDeduper() {

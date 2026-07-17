@@ -1,0 +1,46 @@
+{
+  "generatedAt": "2026-07-17T11:24:52.352Z",
+  "algorithm": "v6-schedule-global-optimizer-v1",
+  "seeds": 50,
+  "budget": {
+    "maxInitialCandidates": 60,
+    "maxEvaluations": 1500,
+    "maxIterations": 350,
+    "maxDurationMs": 1500,
+    "stagnationLimit": 90
+  },
+  "rows": [
+    {
+      "teamCount": 3,
+      "slotCount": 3,
+      "seeds": 50,
+      "notWorseRate": 1,
+      "improvedRate": 0,
+      "baselinePenalty": 22
+    },
+    {
+      "teamCount": 4,
+      "slotCount": 3,
+      "seeds": 50,
+      "notWorseRate": 1,
+      "improvedRate": 0,
+      "baselinePenalty": 28
+    },
+    {
+      "teamCount": 5,
+      "slotCount": 5,
+      "seeds": 50,
+      "notWorseRate": 1,
+      "improvedRate": 0,
+      "baselinePenalty": 80
+    },
+    {
+      "teamCount": 6,
+      "slotCount": 5,
+      "seeds": 50,
+      "notWorseRate": 1,
+      "improvedRate": 0,
+      "baselinePenalty": 92
+    }
+  ]
+}

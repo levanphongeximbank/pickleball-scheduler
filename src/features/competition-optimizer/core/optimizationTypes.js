@@ -7,6 +7,10 @@ export const OPTIMIZATION_OPERATION = Object.freeze({
   TEAM_FORMATION: "TEAM_FORMATION",
   PARTNER_PAIRING: "PARTNER_PAIRING",
   GROUP_DRAW: "GROUP_DRAW",
+  LINEUP_FORMATION: "LINEUP_FORMATION",
+  MATCHUP_PAIRING: "MATCHUP_PAIRING",
+  SCHEDULE_ASSIGNMENT: "SCHEDULE_ASSIGNMENT",
+  COURT_ASSIGNMENT: "COURT_ASSIGNMENT",
 });
 
 export const OPTIMIZATION_STOP_REASON = Object.freeze({
@@ -24,6 +28,11 @@ export const PARTNER_PAIRING_GLOBAL_ALGORITHM_VERSION =
   "partner-pairing-global-optimizer-v1";
 export const GROUP_DRAW_GLOBAL_ALGORITHM_VERSION =
   "group-draw-global-optimizer-v1";
+export const LINEUP_GLOBAL_ALGORITHM_VERSION = "v6-lineup-global-optimizer-v1";
+export const MATCHUP_GLOBAL_ALGORITHM_VERSION = "v6-matchup-global-optimizer-v1";
+export const SCHEDULE_GLOBAL_ALGORITHM_VERSION =
+  "v6-schedule-global-optimizer-v1";
+export const COURT_GLOBAL_ALGORITHM_VERSION = "v6-court-global-optimizer-v1";
 
 /**
  * @typedef {Object} OptimizationBudget

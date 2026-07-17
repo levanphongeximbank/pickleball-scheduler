@@ -16,10 +16,13 @@ import {
   mintV6OptimizationSeed,
   snapshotLineupSelections,
   V6_OPTIMIZATION_ACTION,
-  V6_PRIVATE_PAIRING_ALGORITHM_VERSION,
 } from "../private-pairing/index.js";
 import { seededShuffle } from "../../private-pairing-rules/runtime/seededRng.js";
 import { buildScoreBreakdown } from "../../private-pairing-rules/index.js";
+import {
+  LINEUP_GLOBAL_ALGORITHM_VERSION,
+  runLineupGlobalOptimizer,
+} from "../../competition-optimizer/index.js";
 
 function shuffle(array = [], rng = null) {
   if (typeof rng === "function") {
@@ -461,6 +464,7 @@ export function randomizeMissingLineups(
     envSource,
     pairingHistory = null,
     actorId = null,
+    budget = undefined,
   } = {}
 ) {
   const team = findTeam(teamData, teamId);
@@ -480,108 +484,141 @@ export function randomizeMissingLineups(
   }
 
   const seed = randomSeed || mintV6OptimizationSeed(existing?.randomSeed);
-  const rng = createV6SeededRng(seed);
-
-  const pairingOptions = {
-    privatePairingRules,
-    clubId,
-    tournamentId,
-    eventId,
-    teamId,
-    matchupId,
-    competitionClass,
-    envSource,
-    pairingHistory,
-  };
-
+  const playersById = Object.fromEntries(
+    (players || []).map((player) => [String(player.id), player])
+  );
   const configuredReuse = teamData.settings?.allowPlayerReusePerMatchup === true;
-  const attempts = configuredReuse ? [true] : [false, true];
+  const previousSelections =
+    teamData.lineups?.[lineupKey(matchupId, teamId)]?.selections || null;
 
-  let lastErrors = [];
+  const optimized = runLineupGlobalOptimizer({
+    team,
+    disciplines: teamData.disciplines || [],
+    players,
+    playersById,
+    matchupId,
+    teamId,
+    randomSeed: seed,
+    allowReuse: configuredReuse,
+    allowReuseFallback: !configuredReuse,
+    previousSelections,
+    privatePairingRules,
+    rules: privatePairingRules,
+    pairingHistory,
+    history: pairingHistory,
+    context: {
+      clubId,
+      tournamentId,
+      eventId,
+      competitionClass,
+      teamId,
+      matchupId,
+      operation: PRIVATE_PAIRING_OPERATION.LINEUP_FORMATION,
+    },
+    budget,
+  });
 
-  for (const allowReuse of attempts) {
-    const built = buildRandomSelections(
+  if (!optimized.ok || !optimized.selections) {
+    const baselineErrors = ["Không tìm được đội hình hợp lệ theo Global Optimizer."];
+    // Keep greedy baseline as diagnostic fallback message only — do not persist it.
+    const rng = createV6SeededRng(seed);
+    const diagnostic = buildRandomSelections(
       team,
       teamData,
       players,
-      allowReuse,
+      configuredReuse,
       rng,
-      pairingOptions
-    );
-    if (built.ok) {
-      const usedReuseFallback = allowReuse && !configuredReuse;
-      const lockTime = new Date(now).toISOString();
-      const timeLabel = new Date(now).toLocaleTimeString("vi-VN", {
-        hour: "2-digit",
-        minute: "2-digit",
-      });
-      const reuseNote = usedReuseFallback
-        ? " Một số VĐV được xếp cho nhiều nội dung vì đội thiếu người."
-        : "";
-      const auditNote = `Đội ${team.name} không nộp đội hình trước hạn. Hệ thống đã tự động chọn đội hình lúc ${timeLabel}.${reuseNote}`;
-
-      const lineup = normalizeLineup({
-        matchupId,
+      {
+        privatePairingRules,
+        clubId,
+        tournamentId,
+        eventId,
         teamId,
-        status: LINEUP_STATUS.LOCKED,
-        selections: built.selections,
-        lockedAt: lockTime,
-        source: LINEUP_SOURCE.RANDOM,
-        auditNote,
-      });
-
-      const key = lineupKey(matchupId, teamId);
-      let nextTeamData = normalizeTeamData({
-        ...teamData,
-        lineups: {
-          ...teamData.lineups,
-          [key]: lineup,
-        },
-      });
-
-      nextTeamData = attachV6CompetitionOptimizationAudit(nextTeamData, {
-        operation: PRIVATE_PAIRING_OPERATION.LINEUP_FORMATION,
-        context: {
-          matchupId,
-          teamId,
-          tournamentId,
-          clubId,
-          operation: PRIVATE_PAIRING_OPERATION.LINEUP_FORMATION,
-        },
-        algorithmVersion: V6_PRIVATE_PAIRING_ALGORITHM_VERSION,
-        randomSeed: seed,
-        scoreBreakdown: built.scoreBreakdown,
-        diagnostics: {
-          evaluatedCandidateCount: 1,
-          usedReuseFallback,
-        },
-        previousSnapshot: snapshotLineupSelections(
-          teamData.lineups?.[key] || null
-        ),
-        resultSnapshot: snapshotLineupSelections(lineup),
-        actorId,
-        action: V6_OPTIMIZATION_ACTION.AUTO_DEADLINE_GENERATE,
-        lockStatus: LINEUP_STATUS.LOCKED,
-        revealStatus: null,
-      });
-
-      return {
-        ok: true,
-        teamData: nextTeamData,
-        lineup,
-        auditNote,
-        randomSeed: seed,
-        algorithmVersion: V6_PRIVATE_PAIRING_ALGORITHM_VERSION,
-        scoreBreakdown: built.scoreBreakdown,
-      };
-    }
-
-    lastErrors = built.errors;
+        matchupId,
+        competitionClass,
+        envSource,
+        pairingHistory,
+      }
+    );
+    return {
+      ok: false,
+      error: formatRandomLineupFailure(
+        team,
+        players,
+        diagnostic.ok ? baselineErrors : diagnostic.errors || baselineErrors
+      ),
+      code: "NO_FEASIBLE_LINEUP",
+      diagnostics: optimized.diagnostics || null,
+      rejectionCodes: optimized.rejectionCodes || [],
+    };
   }
 
+  const usedReuseFallback =
+    optimized.bestCandidate?.allowReuse === true && !configuredReuse;
+  const lockTime = new Date(now).toISOString();
+  const timeLabel = new Date(now).toLocaleTimeString("vi-VN", {
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+  const reuseNote = usedReuseFallback
+    ? " Một số VĐV được xếp cho nhiều nội dung vì đội thiếu người."
+    : "";
+  const auditNote = `Đội ${team.name} không nộp đội hình trước hạn. Hệ thống đã tự động chọn đội hình lúc ${timeLabel}.${reuseNote}`;
+
+  const lineup = normalizeLineup({
+    matchupId,
+    teamId,
+    status: LINEUP_STATUS.LOCKED,
+    selections: optimized.selections,
+    lockedAt: lockTime,
+    source: LINEUP_SOURCE.RANDOM,
+    auditNote,
+  });
+
+  const key = lineupKey(matchupId, teamId);
+  let nextTeamData = normalizeTeamData({
+    ...teamData,
+    lineups: {
+      ...teamData.lineups,
+      [key]: lineup,
+    },
+  });
+
+  nextTeamData = attachV6CompetitionOptimizationAudit(nextTeamData, {
+    operation: PRIVATE_PAIRING_OPERATION.LINEUP_FORMATION,
+    context: {
+      matchupId,
+      teamId,
+      tournamentId,
+      clubId,
+      operation: PRIVATE_PAIRING_OPERATION.LINEUP_FORMATION,
+    },
+    algorithmVersion: LINEUP_GLOBAL_ALGORITHM_VERSION,
+    randomSeed: seed,
+    scoreBreakdown: optimized.scoreBreakdown,
+    diagnostics: {
+      ...(optimized.diagnostics || {}),
+      usedReuseFallback,
+      baselineFeasible: optimized.baseline?.feasible === true,
+    },
+    previousSnapshot: snapshotLineupSelections(teamData.lineups?.[key] || null),
+    resultSnapshot: snapshotLineupSelections(lineup),
+    actorId,
+    action: V6_OPTIMIZATION_ACTION.AUTO_DEADLINE_GENERATE,
+    lockStatus: LINEUP_STATUS.LOCKED,
+    revealStatus: null,
+  });
+
   return {
-    ok: false,
-    error: formatRandomLineupFailure(team, players, lastErrors),
+    ok: true,
+    teamData: nextTeamData,
+    lineup,
+    auditNote,
+    randomSeed: seed,
+    algorithmVersion: LINEUP_GLOBAL_ALGORITHM_VERSION,
+    scoreBreakdown: optimized.scoreBreakdown,
+    diagnostics: optimized.diagnostics,
+    authorityScore: optimized.authorityScore,
   };
 }
 

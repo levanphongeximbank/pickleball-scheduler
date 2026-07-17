@@ -1,0 +1,42 @@
+{
+  "generatedAt": "2026-07-17T11:24:51.295Z",
+  "algorithm": "v6-matchup-global-optimizer-v1",
+  "seeds": 50,
+  "budget": {
+    "maxInitialCandidates": 60,
+    "maxEvaluations": 1200,
+    "maxIterations": 300,
+    "maxDurationMs": 1200,
+    "stagnationLimit": 80
+  },
+  "rows": [
+    {
+      "teamCount": 3,
+      "seeds": 50,
+      "notWorseRate": 1,
+      "improvedRate": 0,
+      "baselinePenalty": 20.400000000000002
+    },
+    {
+      "teamCount": 4,
+      "seeds": 50,
+      "notWorseRate": 1,
+      "improvedRate": 0,
+      "baselinePenalty": 16.200000000000003
+    },
+    {
+      "teamCount": 5,
+      "seeds": 50,
+      "notWorseRate": 1,
+      "improvedRate": 0,
+      "baselinePenalty": 14.400000000000002
+    },
+    {
+      "teamCount": 6,
+      "seeds": 50,
+      "notWorseRate": 1,
+      "improvedRate": 0,
+      "baselinePenalty": 13.8
+    }
+  ]
+}
