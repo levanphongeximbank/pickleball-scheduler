@@ -38,6 +38,7 @@ import { usePageRuntimeAccess } from "../../core/platform/app/usePageRuntimeAcce
 import { createTeamTournamentForUi } from "../../features/team-tournament/services/teamTournamentService.js";
 import { getTeamData } from "../../features/team-tournament/engines/teamTournamentEngine.js";
 import { findTeamForCaptain } from "../../features/team-tournament/engines/teamPermissionEngine.js";
+import { buildCaptainPortalPath } from "../../components/tournament/team/copyPortalLink.js";
 import { TOURNAMENT_LAYOUT } from "../../components/tournament/tournamentLayout.js";
 import { resolveEventTypeFromQuery } from "../../features/individual-tournament/index.js";
 import { EVENT_TYPE_LABELS } from "../../models/tournament/index.js";
@@ -368,7 +369,13 @@ export default function TournamentHome({ section = "overview" }) {
             onDeleteSelected={() => setDeleteDialogOpen(true)}
             canDeleteTournament={canDeleteTournament}
             showCaptainPortal={isCaptainForTeamTournament}
-            onCaptainPortal={(tournament) => navigate(`/team-portal/${tournament.id}`)}
+            onCaptainPortal={(tournament) =>
+              navigate(
+                buildCaptainPortalPath(tournament.id, {
+                  clubId: tournament.clubId || activeClubId || null,
+                })
+              )
+            }
           />
         </Box>
       ) : null}

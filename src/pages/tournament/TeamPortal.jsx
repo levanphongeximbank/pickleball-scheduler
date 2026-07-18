@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { Link as RouterLink, useNavigate, useParams } from "react-router-dom";
+import { Link as RouterLink, useNavigate, useParams, useSearchParams } from "react-router-dom";
 import {
   Alert,
   Box,
@@ -666,6 +666,7 @@ function MatchupLineupCard({
 
 export default function TeamPortal() {
   const { tournamentId } = useParams();
+  const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   const { activeClubId, clubs = [] } = useClub();
   const { user } = useAuth();
@@ -673,15 +674,20 @@ export default function TeamPortal() {
   const membership = useMyClubMembership();
   const captainIdentity = useResolvedCaptainPlayerId(user);
   const viewerPlayerId = captainIdentity.playerId;
+  const clubFromQuery = String(searchParams.get("club") || "").trim();
 
+  // Query club (from BTC link) → local blob host → V2 membership → active club.
   const resolvedClubId = useMemo(
     () =>
+      clubFromQuery ||
       findTournamentClubId(tournamentId) ||
       membership.clubId ||
       activeClubId ||
       null,
-    [tournamentId, membership.clubId, activeClubId]
+    [clubFromQuery, tournamentId, membership.clubId, activeClubId]
   );
+
+  const membershipPending = Boolean(membership.loading && !resolvedClubId);
 
   const {
     loading,
@@ -816,7 +822,7 @@ export default function TeamPortal() {
     setDbMessage({ type: "success", text: "Đã nộp thứ tự Dreambreaker." });
   }
 
-  if (loading || (tournament && captainIdentity.resolving)) {
+  if (membershipPending || loading || (tournament && captainIdentity.resolving)) {
     return (
       <Box sx={{ p: 3 }}>
         <Alert severity="info">Đang tải giải đồng đội…</Alert>
