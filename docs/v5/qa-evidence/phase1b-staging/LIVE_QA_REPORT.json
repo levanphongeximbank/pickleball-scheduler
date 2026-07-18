@@ -1,0 +1,7 @@
+{
+  "status": "BLOCKED_NON_STAGING_URL",
+  "error": "URL must include staging ref qyewbxjsiiyufanzcjcq",
+  "productionTouched": false,
+  "stagingRef": "qyewbxjsiiyufanzcjcq",
+  "productionRef": "expuvcohlcjzvrrauvud"
+}

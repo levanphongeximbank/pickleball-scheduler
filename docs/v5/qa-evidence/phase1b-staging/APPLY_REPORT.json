@@ -1,0 +1,12 @@
+{
+  "phase": "1B",
+  "stagingRef": "qyewbxjsiiyufanzcjcq",
+  "productionRef": "expuvcohlcjzvrrauvud",
+  "productionTouched": false,
+  "commit": "a52d62aeccb62620a1894f46ca641aa6691bd68d",
+  "startedAt": "2026-07-18T09:25:06.483Z",
+  "files": [],
+  "verify": null,
+  "status": "BLOCKED_NO_TOKEN",
+  "error": "SUPABASE_ACCESS_TOKEN missing — cannot apply or verify Staging via Management API."
+}

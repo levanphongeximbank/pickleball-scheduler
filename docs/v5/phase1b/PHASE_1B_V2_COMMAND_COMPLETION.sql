@@ -155,7 +155,58 @@ end;
 $$;
 
 -- ---------------------------------------------------------------------
--- 3. public.club_assign_vice_president — add one VP (max 2 active)
+-- 3. phase42_can_manage_vice_presidents — narrow authz (Phase 1B security gate)
+--    ALLOW: platform super admin
+--           active club_owner / president on this club
+--           tenant_owner (tenant_members.role_code) OR profile role
+--             VENUE_OWNER / COURT_OWNER / TENANT_OWNER on club.tenant_id
+--             AND user_has_permission('club.update')
+--    DENY:  bare tenant_members rows (tenant_staff / ordinary staff)
+--           vice_president alone
+--           ordinary club members / PLAYER without gov role
+-- ---------------------------------------------------------------------
+create or replace function public.phase42_can_manage_vice_presidents(p_club_id text)
+returns boolean
+language sql
+stable
+security definer
+set search_path = public
+as $$
+  select
+    public.phase42_is_platform_super_admin()
+    or public.phase42_has_gov_role(p_club_id, array['club_owner', 'president'])
+    or exists (
+      select 1
+      from public.clubs c
+      where c.id = p_club_id
+        and c.deleted_at is null
+        and public.user_has_permission('club.update')
+        and (
+          exists (
+            select 1
+            from public.tenant_members tm
+            where tm.tenant_id = c.tenant_id
+              and tm.user_id = auth.uid()
+              and tm.status = 'active'
+              and tm.role_code = 'tenant_owner'
+          )
+          or exists (
+            select 1
+            from public.profiles p
+            where p.id = auth.uid()
+              and p.venue_id = c.tenant_id
+              and upper(coalesce(p.role, '')) in (
+                'VENUE_OWNER', 'COURT_OWNER', 'TENANT_OWNER'
+              )
+          )
+        )
+    );
+$$;
+
+grant execute on function public.phase42_can_manage_vice_presidents(text) to authenticated;
+
+-- ---------------------------------------------------------------------
+-- 4. public.club_assign_vice_president — add one VP (max 2 active)
 -- ---------------------------------------------------------------------
 create or replace function public.club_assign_vice_president(
   p_request_id uuid,
@@ -203,11 +254,8 @@ begin
     return public.phase42_err('VERSION_CONFLICT', 'Xung đột phiên bản CLB.');
   end if;
 
-  if not (
-    public.phase42_is_platform_super_admin()
-    or public.phase42_has_gov_role(v_club.id, array['club_owner', 'president'])
-    or public.phase42_is_tenant_member(v_club.tenant_id)
-  ) then
+  -- Security gate: never authorize via bare tenant-member helper.
+  if not public.phase42_can_manage_vice_presidents(v_club.id) then
     return public.phase42_err('FORBIDDEN', 'Không có quyền gán Phó chủ tịch.');
   end if;
 
@@ -291,7 +339,7 @@ $$;
 grant execute on function public.club_assign_vice_president(uuid, text, uuid, integer) to authenticated;
 
 -- ---------------------------------------------------------------------
--- 4. public.club_clear_vice_president — clear one VP or all (null user)
+-- 5. public.club_clear_vice_president — clear one VP or all (null user)
 -- ---------------------------------------------------------------------
 create or replace function public.club_clear_vice_president(
   p_request_id uuid,
@@ -334,11 +382,8 @@ begin
     return public.phase42_err('VERSION_CONFLICT', 'Xung đột phiên bản CLB.');
   end if;
 
-  if not (
-    public.phase42_is_platform_super_admin()
-    or public.phase42_has_gov_role(v_club.id, array['club_owner', 'president'])
-    or public.phase42_is_tenant_member(v_club.tenant_id)
-  ) then
+  -- Security gate: never authorize via bare tenant-member helper.
+  if not public.phase42_can_manage_vice_presidents(v_club.id) then
     return public.phase42_err('FORBIDDEN', 'Không có quyền gỡ Phó chủ tịch.');
   end if;
 
