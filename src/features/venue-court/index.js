@@ -10,3 +10,4 @@ export {
   getCourtAvailability,
   AVAILABILITY_REASON,
 } from "./services/courtAvailabilityService.js";
+export { getCompetitionCourtAvailability } from "./adapters/competitionCourtAvailabilityAdapter.js";
