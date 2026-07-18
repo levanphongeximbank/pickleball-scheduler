@@ -1,5 +1,8 @@
 import { validateNotificationEventEnvelope } from "../contracts/notificationEventEnvelope.js";
 import { createInboxNotificationRecord } from "../models/inboxNotification.js";
+import { getEventClassification } from "../constants/eventClassification.js";
+import { NOTIFICATION_CATEGORIES } from "../constants/notificationCategories.js";
+import { NOTIFICATION_PRIORITIES } from "../constants/notificationPriorities.js";
 import {
   loadIdempotencyIndex,
   loadInboxRecords,
@@ -9,23 +12,8 @@ import {
 } from "../storage/notificationInboxStorage.js";
 
 /**
- * Emit a domain notification event into the Notification Module.
- * Domain modules should call only this entry point — never providers/storage.
- *
- * Idempotency: same tenantId + idempotencyKey returns the existing record
- * without creating a duplicate.
- *
- * @param {Partial<import("../contracts/notificationEventEnvelope.js").NotificationEventEnvelope>} input
- * @returns {{
- *   ok: true,
- *   duplicate: boolean,
- *   event: import("../contracts/notificationEventEnvelope.js").NotificationEventEnvelope,
- *   notification: object
- * } | {
- *   ok: false,
- *   code: string,
- *   error: string
- * }}
+ * Phase 1.1 low-level emit (single record, no recipient fan-out).
+ * Prefer `emitDomainNotificationEvent` for domain pilots (Phase 1.2+).
  */
 export function emitNotificationEvent(input = {}) {
   const validated = validateNotificationEventEnvelope(input);
@@ -40,7 +28,7 @@ export function emitNotificationEvent(input = {}) {
 
   if (existingId) {
     const records = loadInboxRecords();
-    const existing = records.find((r) => r.id === existingId);
+    const existing = records.find((r) => (r.notificationId || r.id) === existingId);
     if (existing) {
       return {
         ok: true,
@@ -51,12 +39,35 @@ export function emitNotificationEvent(input = {}) {
     }
   }
 
-  const notification = createInboxNotificationRecord({ event });
+  const classification =
+    getEventClassification(event.eventType) || {
+      category: NOTIFICATION_CATEGORIES.SYSTEM,
+      priority: NOTIFICATION_PRIORITIES.NORMAL,
+    };
+
+  const title =
+    (event.payload && (event.payload.title || event.payload.subject)) ||
+    event.eventType;
+  const message =
+    (event.payload && (event.payload.message || event.payload.body)) ||
+    event.eventType;
+
+  const notification = createInboxNotificationRecord({
+    event,
+    category: classification.category,
+    priority: classification.priority,
+    title: String(title),
+    message: String(message),
+    sourceEntityType: event.payload?.sourceEntityType || null,
+    sourceEntityId: event.payload?.sourceEntityId || null,
+    idempotencyKey: event.idempotencyKey,
+  });
+
   const records = loadInboxRecords();
   records.unshift(notification);
   saveInboxRecords(records);
 
-  index[indexKey] = notification.id;
+  index[indexKey] = notification.notificationId || notification.id;
   saveIdempotencyIndex(index);
 
   return {

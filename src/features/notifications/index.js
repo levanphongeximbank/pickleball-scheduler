@@ -1,12 +1,16 @@
 /**
- * PICK_VN Notification Module — public API (Phase 1.1 Source of Truth).
+ * PICK_VN Notification Module — public API (Phase 1.2).
  *
  * Domain modules may import only from this barrel.
  * Providers and storage implementations are intentionally NOT exported.
  */
 
-// --- Phase 1.1 canonical public API ---
+// --- Canonical public API ---
 export { emitNotificationEvent } from "./services/notificationEmitService.js";
+export {
+  emitDomainNotificationEvent,
+  DOMAIN_EMIT_OUTCOMES,
+} from "./services/domainNotificationAdapter.js";
 export {
   listInbox,
   markNotificationRead,
@@ -27,11 +31,47 @@ export {
 } from "./constants/notificationStatuses.js";
 
 export {
+  NOTIFICATION_PRIORITIES,
+  NOTIFICATION_PRIORITY_VALUES,
+  isValidNotificationPriority,
+} from "./constants/notificationPriorities.js";
+
+export {
+  NOTIFICATION_CATEGORIES,
+  NOTIFICATION_CATEGORY_VALUES,
+  isValidNotificationCategory,
+} from "./constants/notificationCategories.js";
+
+export {
+  EVENT_CLASSIFICATION,
+  getEventClassification,
+} from "./constants/eventClassification.js";
+
+export {
   validateNotificationEventEnvelope,
   createNotificationEventEnvelope,
   ENVELOPE_ERROR_CODES,
   getEmptyRecipientHints,
 } from "./contracts/notificationEventEnvelope.js";
+
+export {
+  buildNotificationIdempotencyKey,
+  buildRecipientIdempotencyKey,
+} from "./utils/idempotencyKey.js";
+
+export {
+  createMemoryRecipientDirectory,
+  createEmptyRecipientDirectory,
+  setRecipientDirectory,
+  resetRecipientDirectory,
+  getRecipientDirectory,
+} from "./recipients/recipientDirectory.js";
+
+export { resolveNotificationRecipients } from "./recipients/resolveRecipients.js";
+
+export { emitMatchScheduledFromBoundary } from "./adapters/competitionMatchScheduledAdapter.js";
+export { emitBookingLifecycleNotification } from "./adapters/bookingNotificationPilot.js";
+export { emitPaymentLifecycleNotification } from "./adapters/paymentNotificationPilot.js";
 
 export { NOTIFICATION_COMPATIBILITY } from "./COMPATIBILITY.js";
 

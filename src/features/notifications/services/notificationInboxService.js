@@ -4,9 +4,20 @@ import {
   saveInboxRecords,
 } from "../storage/notificationInboxStorage.js";
 
+function recordMatchesUser(record, userId) {
+  if (!userId) return true;
+  const uid = String(userId);
+  if (record.recipientUserId) {
+    return String(record.recipientUserId) === uid;
+  }
+  const hints = record.recipientHints || {};
+  const userIds = Array.isArray(hints.userIds) ? hints.userIds : [];
+  // Empty userIds = broadcast within tenant (Phase 1.1 skeleton behaviour)
+  return userIds.length === 0 || userIds.includes(uid);
+}
+
 /**
  * List inbox notification records for a tenant (and optional user filter).
- * @param {{ tenantId: string, userId?: string|null, status?: string|null, limit?: number }} options
  */
 export function listInbox({
   tenantId,
@@ -21,12 +32,7 @@ export function listInbox({
   let items = loadInboxRecords().filter((r) => r.tenantId === tenantId);
 
   if (userId) {
-    items = items.filter((r) => {
-      const hints = r.recipientHints || {};
-      const userIds = Array.isArray(hints.userIds) ? hints.userIds : [];
-      // Empty userIds = broadcast within tenant (skeleton behaviour)
-      return userIds.length === 0 || userIds.includes(String(userId));
-    });
+    items = items.filter((r) => recordMatchesUser(r, userId));
   }
 
   if (status) {
@@ -37,10 +43,6 @@ export function listInbox({
   return { ok: true, items: items.slice(0, capped) };
 }
 
-/**
- * Mark a single notification as READ.
- * @param {{ tenantId: string, notificationId: string, userId?: string|null }} input
- */
 export function markNotificationRead({
   tenantId,
   notificationId,
@@ -51,19 +53,17 @@ export function markNotificationRead({
   }
 
   const records = loadInboxRecords();
-  const idx = records.findIndex(
-    (r) => r.id === notificationId && r.tenantId === tenantId
-  );
+  const idx = records.findIndex((r) => {
+    const id = r.notificationId || r.id;
+    return id === notificationId && r.tenantId === tenantId;
+  });
   if (idx < 0) {
     return { ok: false, error: "Notification not found." };
   }
 
   const current = records[idx];
-  if (userId) {
-    const userIds = current.recipientHints?.userIds || [];
-    if (userIds.length > 0 && !userIds.includes(String(userId))) {
-      return { ok: false, error: "Notification not found for user." };
-    }
+  if (userId && !recordMatchesUser(current, userId)) {
+    return { ok: false, error: "Notification not found for user." };
   }
 
   if (current.status === NOTIFICATION_STATUSES.READ) {
@@ -82,10 +82,6 @@ export function markNotificationRead({
   return { ok: true, notification: updated, alreadyRead: false };
 }
 
-/**
- * Mark all unread inbox notifications for a tenant (and optional user) as READ.
- * @param {{ tenantId: string, userId?: string|null }} input
- */
 export function markAllNotificationsRead({ tenantId, userId = null } = {}) {
   if (!tenantId) {
     return { ok: false, error: "tenantId is required.", updatedCount: 0 };
@@ -98,13 +94,7 @@ export function markAllNotificationsRead({ tenantId, userId = null } = {}) {
   const next = records.map((r) => {
     if (r.tenantId !== tenantId) return r;
     if (r.status === NOTIFICATION_STATUSES.READ) return r;
-
-    if (userId) {
-      const userIds = r.recipientHints?.userIds || [];
-      if (userIds.length > 0 && !userIds.includes(String(userId))) {
-        return r;
-      }
-    }
+    if (userId && !recordMatchesUser(r, userId)) return r;
 
     updatedCount += 1;
     return {

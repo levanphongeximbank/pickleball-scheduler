@@ -1,38 +1,49 @@
 /**
- * Compatibility notes for PICK_VN Notification Phase 1.1
+ * Compatibility notes for PICK_VN Notification Phase 1.2
  * ======================================================
  *
- * Source of Truth (new):
- *   `src/features/notifications/` public API via `index.js`
- *   Domain modules must emit via `emitNotificationEvent` only.
+ * Source of Truth:
+ *   `src/features/notifications/` via `index.js`
+ *   Domain pilots must use `emitDomainNotificationEvent` (or domain pilot adapters).
  *
- * Intentionally preserved (do not delete in Phase 1.1):
- *   - `src/features/mobile/services/notificationService.js` — mobile inbox / push prefs
- *   - `src/features/mobile/services/notificationDispatchService.js` — mobile event dispatch
- *   - `src/core/platform` workflow notification dispatcher — platform workflow notify
- *   - `src/features/club/services/clubScheduleNotificationBridge.js` — club → mobile bridge
- *   - `src/features/individual-tournament/engines/playerNotificationEngine.js` — portal derived
- *   - `src/domain/bookingReminderService.js` — booking reminders
- *   - CRM messaging under `src/features/crm/`
- *   - Legacy channel job/log path:
- *       `services/notificationService.js` (sendNotification / templates)
- *       `providers/*` (Email / SMS / Zalo / Mock)
- *       `storage/notificationStorage.js`
+ * Phase 1.2 pilots wired:
+ *   - Club schedule → `notifyClubMembers` → canonical inbox (no mobile dual-write)
+ *   - Booking create/cancel → `bookingService` → booking pilot adapter
+ *   - Payment callback → paymentsHandler → payment pilot (no forceMock email)
+ *   - MATCH_SCHEDULED → competition boundary adapter only (engine untouched)
  *
- * Deprecation direction (Phase 1.2+):
- *   - Migrate domain callers to `emitNotificationEvent`
- *   - Route mobile / club / booking / billing bridges through adapters
- *   - Keep legacy `sendNotification` as integration-admin tooling until
- *     delivery orchestration owns Email/SMS/Zalo/Push
+ * Booking reminder vs booking event:
+ *   - Event: BOOKING_CREATED / BOOKING_CANCELLED (lifecycle, this module)
+ *   - Reminder: `src/domain/bookingReminderService.js` browser "sắp tới" (unchanged)
+ *
+ * Intentionally NOT migrated yet:
+ *   - Mobile push dispatch / Web Push
+ *   - Player Portal derived feed
+ *   - CRM campaign messaging
+ *   - Club governance mobile notifications (`notifyClubGovernanceChange`)
+ *   - Legacy `sendNotification` channel jobs (admin/integration tooling)
+ *   - Live Email / SMS / Zalo providers
+ *
+ * Deprecation:
+ *   - Prefer `emitDomainNotificationEvent` over `emitNotificationEvent` for new callers
+ *   - Prefer pilot adapters over direct provider calls
  *
  * Security:
- *   - Do not put SMTP / SMS / Zalo / VAPID secrets in `VITE_*`
- *   - Phase 1.1 does not enable live delivery channels
- *   - Public API must not export provider or storage implementations
+ *   - No SMTP / SMS / Zalo / VAPID secrets in `VITE_*`
+ *   - No live delivery channels in Phase 1.2
+ *   - Public API does not export providers or inbox storage
  */
 export const NOTIFICATION_COMPATIBILITY = Object.freeze({
-  phase: "1.1",
+  phase: "1.2",
   sourceOfTruth: "src/features/notifications",
   legacyPreserved: true,
   liveDeliveryEnabled: false,
+  pilots: Object.freeze([
+    "CLUB_SCHEDULE_UPDATED",
+    "BOOKING_CREATED",
+    "BOOKING_CANCELLED",
+    "PAYMENT_CONFIRMED",
+    "PAYMENT_FAILED",
+    "MATCH_SCHEDULED",
+  ]),
 });

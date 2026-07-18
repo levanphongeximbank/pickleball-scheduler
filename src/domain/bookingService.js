@@ -36,6 +36,9 @@ import {
   expandRecurringSeriesToBookings,
 } from "./recurringBookingService.js";
 import { getCourtDisplayName } from "../models/court.js";
+import { resolveTenantIdForClub } from "../features/tenant/guards/tenantGuard.js";
+import { emitBookingLifecycleNotification } from "../features/notifications/adapters/bookingNotificationPilot.js";
+import { NOTIFICATION_EVENT_TYPES } from "../features/notifications/constants/notificationEvents.js";
 
 export function loadCourtManagementData(clubId) {
   return {
@@ -105,6 +108,19 @@ export function saveBooking(booking, clubId, { excludeId = null } = {}) {
   saveBookingsForClub(nextBookings, clubId);
   upsertCustomerFromBooking(enriched, clubId, { isNew: existingIndex < 0 });
 
+  // Phase 1.2 pilot — booking lifecycle event (not start reminder).
+  if (existingIndex < 0) {
+    const tenantId = resolveTenantIdForClub(clubId);
+    if (tenantId) {
+      emitBookingLifecycleNotification(NOTIFICATION_EVENT_TYPES.BOOKING_CREATED, {
+        tenantId,
+        clubId,
+        booking: enriched,
+        version: enriched.createdAt || enriched.id,
+      });
+    }
+  }
+
   return { ok: true, booking: enriched, bookings: nextBookings };
 }
 
@@ -126,7 +142,7 @@ export function updateBookingStatus(bookingId, nextStatus, clubId) {
     return { ok: false, message: "Không tìm thấy booking." };
   }
 
-  return saveBooking(
+  const result = saveBooking(
     {
       ...booking,
       bookingStatus: nextStatus,
@@ -134,6 +150,25 @@ export function updateBookingStatus(bookingId, nextStatus, clubId) {
     clubId,
     { excludeId: bookingId }
   );
+
+  // Phase 1.2 pilot — cancellation event (browser start reminder remains separate).
+  if (
+    result.ok &&
+    nextStatus === "cancelled" &&
+    booking.bookingStatus !== "cancelled"
+  ) {
+    const tenantId = resolveTenantIdForClub(clubId);
+    if (tenantId) {
+      emitBookingLifecycleNotification(NOTIFICATION_EVENT_TYPES.BOOKING_CANCELLED, {
+        tenantId,
+        clubId,
+        booking: result.booking,
+        version: result.booking?.updatedAt || `cancelled:${bookingId}`,
+      });
+    }
+  }
+
+  return result;
 }
 
 export function updateBookingPayment(bookingId, paymentUpdate, clubId) {
