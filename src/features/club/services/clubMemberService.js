@@ -26,6 +26,7 @@ import { assertLegacyMembershipRosterWriteAllowed } from "./clubLegacyWriteGuard
 import {
   rpcV2ClubAddMember,
   rpcV2ClubRemoveMember,
+  rpcV2ClubRestoreMember,
   rpcV2ClubListMembers,
 } from "./clubStorageV2RpcService.js";
 
@@ -472,6 +473,54 @@ export async function removeMemberFromClub(clubId, playerId, tenantId, options =
   }
 
   return removeMemberFromClubLegacy(clubId, playerId, tenantId, options);
+}
+
+/**
+ * Phase 1B — V2: club_restore_member (removed → active).
+ * V2-OFF: not supported (legacy used inactive toggle, not removed).
+ */
+export async function restoreMemberToClub(clubId, playerId, tenantId, options = {}) {
+  if (!isClubStorageV2Enabled()) {
+    return {
+      ok: false,
+      code: API_ERROR_CODES.FEATURE_DISABLED,
+      error: "Khôi phục thành viên chỉ hỗ trợ khi Club Storage V2 bật.",
+    };
+  }
+
+  if (!options.skipPermissionGuard) {
+    const check = guardClubMemberAccess(clubId, tenantId, PERMISSIONS.PLAYER_UPDATE);
+    if (!check.ok) {
+      return check;
+    }
+  }
+
+  const resolved = resolveTargetUserIdForMemberCommand({
+    playerId,
+    targetUserId: options.targetUserId,
+    tenantId,
+  });
+  if (!resolved.ok) {
+    return resolved;
+  }
+
+  const restored = await rpcV2ClubRestoreMember({
+    clubId,
+    targetUserId: resolved.userId,
+    expectedVersion: options.expectedVersion ?? null,
+  });
+  if (!restored.ok) {
+    return mapMemberCommandError(restored, "Không khôi phục được thành viên trên cloud.");
+  }
+
+  invalidateAfterMemberCommand(resolved.userId);
+  return {
+    ok: true,
+    member: restored.member,
+    version: restored.version,
+    provider: "v2-rpc",
+    userId: resolved.userId,
+  };
 }
 
 export function updateClubMemberRole(clubId, playerId, role, tenantId) {

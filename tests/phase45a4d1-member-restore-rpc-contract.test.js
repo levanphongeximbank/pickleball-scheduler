@@ -78,13 +78,14 @@ describe("Phase 45A.4D.1 — club_restore_member SQL contract", () => {
     );
   });
 
-  it("whitelists club.member.restore and preserves add/remove audit actions", () => {
-    assert.match(sql, /alter table public\.audit_logs drop constraint if exists audit_logs_action_check/);
-    assert.match(sql, /'club\.member\.restore'/);
-    assert.match(sql, /'club\.member\.add'/);
-    assert.match(sql, /'club\.member\.remove'/);
-    assert.match(sql, /'club\.leave_membership'/);
-    assert.match(sql, /'club\.assign_owner'/);
+  it("defers audit whitelist to additive prerequisite (no fixed DROP/ADD)", () => {
+    assert.match(sql, /PHASE_1B_AUDIT_WHITELIST_ADDITIVE\.sql/);
+    assert.doesNotMatch(
+      sql,
+      /alter table public\.audit_logs drop constraint if exists audit_logs_action_check/
+    );
+    assert.doesNotMatch(sql, /add constraint\s+audit_logs_action_check/i);
+    assert.match(sql, /phase42_write_audit\(\s*'club\.member\.restore'/);
   });
 
   it("enforces auth, request_id, idempotency, and add-class authz", () => {
