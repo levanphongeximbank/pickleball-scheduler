@@ -6,3 +6,7 @@ export {
   legacyImportUserMessage,
   LEGACY_IMPORT_REASON,
 } from "./services/venueOperatingHoursService.js";
+export {
+  getCourtAvailability,
+  AVAILABILITY_REASON,
+} from "./services/courtAvailabilityService.js";

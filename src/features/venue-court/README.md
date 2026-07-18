@@ -2,7 +2,7 @@
 
 ## Purpose
 
-Facade cho Venue & Court master inventory và operating hours.
+Facade cho Venue & Court master inventory, operating hours, và availability contract.
 
 ## Current SSOT
 
@@ -12,6 +12,12 @@ Facade cho Venue & Court master inventory và operating hours.
 club_data_v3.data.courts[]
 ```
 
+### Bookings
+
+```text
+club_data_v3.data.bookings[]
+```
+
 ### Operating hours (Phase 1C)
 
 ```text
@@ -19,37 +25,24 @@ club_data_v3.data.courtManagement.openHour
 club_data_v3.data.courtManagement.closeHour
 ```
 
-Legacy key `pickleball-venue-hours-v1::{tenantId}` is **compatibility-only**:
-
-* Read-once import **only** when all safe-eligibility rules pass (identical 7-day whole-hour schedule).
-* **No dual-write.**
-* Unsafe legacy → `legacyImport.status = "not_imported"` + reason; CM unchanged.
-
 ## Ownership
 
-Venue & Court sở hữu Court master inventory và operating hours SSOT.
+Venue & Court sở hữu Court master inventory, bookings substrate access for availability, và operating hours SSOT.
 
 ## Non-ownership
 
-* Booking availability
 * Court Engine runtime
-* Competition assignment
-* Match lifecycle
+* Competition assignment / match lifecycle
 * AI court suggestions
 
 ## Allowed dependencies
 
 ```text
 venue-court → domain courtService
-venue-court → domain clubStorage.loadCourtsForClub
+venue-court → domain clubStorage (courts/bookings read)
 venue-court → domain courtManagementSettings
+venue-court → domain courtBookingEngine (pure conflict helpers)
 venue-court → data/club.loadClubs
-```
-
-API courts handler (Phase 1D) may depend on this facade only:
-
-```text
-courtsHandler → venue-court listCourts
 ```
 
 ## Forbidden dependencies
@@ -59,23 +52,21 @@ venue-court → Competition Engine
 venue-court → Court Engine runtime
 venue-court → AI store
 venue-court → localStorage (except documented legacy hours helper)
-courtsHandler → loadAIData / AI store / clubStorage / localStorage
 ```
 
 ## Public API
 
 * `listCourts` / `getCourtById`
-* `getVenueOperatingHours({ clubId, venueId|tenantId })`
-* `updateVenueOperatingHours({ openHour, closeHour }, { clubId, venueId|tenantId })`
-* `shouldWarnLegacyImport(legacyImport)`
-* `LEGACY_IMPORT_REASON`
+* `getVenueOperatingHours` / `updateVenueOperatingHours`
+* `getCourtAvailability({ clubId, venueId?, date, startTime, endTime, courtId?, courtIds?, clusterId?, context?, includeUnavailable? })`
+* `AVAILABILITY_REASON`
 
 ## Phase status
 
 ```text
-PHASE 1D — COURTS API SOURCE CORRECTION
+PHASE 1E — CANONICAL COURT AVAILABILITY CONTRACT
 ```
 
-`GET /api/v1/courts` reads Club V3 inventory via `listCourts` (not `loadAIData().courts`).
+`getCourtAvailability` is **read-only**. Overlap semantics delegate to `courtBookingEngine` (half-open intervals). Overnight/cross-day requests are rejected.
 
-Multi-club callers must pass `query.clubId` (handler returns **400** `CLUB_REQUIRED` if omitted when more than one club is allowed).
+`includeUnavailable` (boolean, default `true`): when omitted/true, returns available and unavailable courts; when `false`, omits unavailable results from `courts` (may be `[]`). Filtering does not mutate source data and does not bypass scope/time validation or load failures.
