@@ -14,59 +14,108 @@ import {
   TextField,
   Typography,
 } from "@mui/material";
-import AddIcon from "@mui/icons-material/Add";
+import SaveIcon from "@mui/icons-material/Save";
 
 import { useTenant } from "../../context/TenantContext.jsx";
-
-const STORAGE_KEY = "pickleball-venue-hours-v1";
-
-function readHours(tenantId) {
-  try {
-    const raw = localStorage.getItem(`${STORAGE_KEY}::${tenantId}`);
-    return raw ? JSON.parse(raw) : [];
-  } catch {
-    return [];
-  }
-}
-
-function writeHours(tenantId, rows) {
-  localStorage.setItem(`${STORAGE_KEY}::${tenantId}`, JSON.stringify(rows));
-}
-
-const DAY_LABELS = ["CN", "T2", "T3", "T4", "T5", "T6", "T7"];
+import { useClub } from "../../context/ClubContext.jsx";
+import {
+  getVenueOperatingHours,
+  updateVenueOperatingHours,
+  shouldWarnLegacyImport,
+} from "../../features/venue-court/index.js";
 
 export default function VenueHoursPage() {
   const { currentTenantId } = useTenant();
-  const [rows, setRows] = useState([]);
-  const [draft, setDraft] = useState({ dayOfWeek: "1", openTime: "06:00", closeTime: "22:00", label: "" });
+  const { activeClubId, activeClub } = useClub();
+  const [draft, setDraft] = useState({ openTime: "06:00", closeTime: "22:00" });
+  const [savedHours, setSavedHours] = useState(null);
+  const [message, setMessage] = useState(null);
+  const [error, setError] = useState(null);
+  const [compatWarning, setCompatWarning] = useState(null);
 
-  useEffect(() => {
-    if (!currentTenantId) {
-      setRows([]);
-      return;
-    }
-    setRows(readHours(currentTenantId));
-  }, [currentTenantId]);
-
-  const sortedRows = useMemo(
-    () => [...rows].sort((a, b) => Number(a.dayOfWeek) - Number(b.dayOfWeek)),
-    [rows]
+  const clubBelongsToTenant = Boolean(
+    currentTenantId && activeClubId && activeClub?.venueId === currentTenantId
   );
 
-  const handleAdd = () => {
-    if (!currentTenantId) return;
-    const next = [
-      ...rows,
+  useEffect(() => {
+    setMessage(null);
+    setError(null);
+    setCompatWarning(null);
+
+    if (!currentTenantId) {
+      setSavedHours(null);
+      return;
+    }
+
+    if (!activeClubId || !clubBelongsToTenant) {
+      setSavedHours(null);
+      return;
+    }
+
+    try {
+      const hours = getVenueOperatingHours({
+        clubId: activeClubId,
+        tenantId: currentTenantId,
+      });
+      setSavedHours(hours);
+      setDraft({
+        openTime: hours.openHour,
+        closeTime: hours.closeHour,
+      });
+      if (shouldWarnLegacyImport(hours.legacyImport)) {
+        setCompatWarning(
+          hours.legacyImport?.message ||
+            "Giờ hoạt động cũ có lịch khác nhau theo ngày hoặc có phút lẻ nên không thể tự chuyển. Hệ thống chưa thay đổi dữ liệu cũ."
+        );
+      }
+    } catch (loadError) {
+      setSavedHours(null);
+      setError(loadError?.message || "Không tải được giờ mở cửa.");
+    }
+  }, [currentTenantId, activeClubId, clubBelongsToTenant]);
+
+  const displayRows = useMemo(() => {
+    if (!savedHours) {
+      return [];
+    }
+    return [
       {
-        id: `hours-${Date.now()}`,
-        dayOfWeek: draft.dayOfWeek,
-        openTime: draft.openTime,
-        closeTime: draft.closeTime,
-        label: draft.label || DAY_LABELS[Number(draft.dayOfWeek)] || "Ngày",
+        id: "operating-hours-ssot",
+        label: "Mọi ngày",
+        openTime: savedHours.openHour,
+        closeTime: savedHours.closeHour,
       },
     ];
-    writeHours(currentTenantId, next);
-    setRows(next);
+  }, [savedHours]);
+
+  const handleSave = () => {
+    setMessage(null);
+    setError(null);
+
+    if (!currentTenantId || !activeClubId || !clubBelongsToTenant) {
+      return;
+    }
+
+    try {
+      const result = updateVenueOperatingHours(
+        { openHour: draft.openTime, closeHour: draft.closeTime },
+        { clubId: activeClubId, tenantId: currentTenantId }
+      );
+
+      if (!result.ok) {
+        setError(result.message || "Giờ mở cửa không hợp lệ.");
+        return;
+      }
+
+      setSavedHours(result.hours);
+      setDraft({
+        openTime: result.hours.openHour,
+        closeTime: result.hours.closeHour,
+      });
+      setMessage("Đã lưu giờ mở cửa vào Court Management.");
+    } catch (saveError) {
+      setError(saveError?.message || "Không lưu được giờ mở cửa.");
+    }
   };
 
   return (
@@ -79,28 +128,53 @@ export default function VenueHoursPage() {
       </Typography>
 
       {!currentTenantId ? <Alert severity="info">Chọn cơ sở để cấu hình giờ mở cửa.</Alert> : null}
+      {currentTenantId && !clubBelongsToTenant ? (
+        <Alert severity="info" sx={{ mb: 2 }}>
+          Chọn CLB thuộc cơ sở hiện tại để cấu hình giờ mở cửa.
+        </Alert>
+      ) : null}
+      {compatWarning ? (
+        <Alert severity="warning" sx={{ mb: 2 }}>
+          {compatWarning}
+        </Alert>
+      ) : null}
+      {error ? (
+        <Alert severity="error" sx={{ mb: 2 }}>
+          {error}
+        </Alert>
+      ) : null}
+      {message ? (
+        <Alert severity="success" sx={{ mb: 2 }}>
+          {message}
+        </Alert>
+      ) : null}
 
       <Paper variant="outlined" sx={{ p: 2, mb: 2 }}>
         <Stack direction={{ xs: "column", md: "row" }} spacing={2} alignItems={{ md: "center" }}>
           <TextField
-            select
-            label="Ngày"
-            value={draft.dayOfWeek}
-            onChange={(e) => setDraft((prev) => ({ ...prev, dayOfWeek: e.target.value }))}
-            SelectProps={{ native: true }}
-            sx={{ minWidth: 120 }}
+            label="Mở cửa"
+            value={draft.openTime}
+            onChange={(e) => setDraft((prev) => ({ ...prev, openTime: e.target.value }))}
+            disabled={!clubBelongsToTenant}
+          />
+          <TextField
+            label="Đóng cửa"
+            value={draft.closeTime}
+            onChange={(e) => setDraft((prev) => ({ ...prev, closeTime: e.target.value }))}
+            disabled={!clubBelongsToTenant}
+          />
+          <Button
+            startIcon={<SaveIcon />}
+            variant="contained"
+            onClick={handleSave}
+            disabled={!clubBelongsToTenant}
           >
-            {DAY_LABELS.map((label, index) => (
-              <option key={label} value={String(index)}>{label}</option>
-            ))}
-          </TextField>
-          <TextField label="Mở cửa" value={draft.openTime} onChange={(e) => setDraft((prev) => ({ ...prev, openTime: e.target.value }))} />
-          <TextField label="Đóng cửa" value={draft.closeTime} onChange={(e) => setDraft((prev) => ({ ...prev, closeTime: e.target.value }))} />
-          <TextField label="Nhãn" value={draft.label} onChange={(e) => setDraft((prev) => ({ ...prev, label: e.target.value }))} />
-          <Button startIcon={<AddIcon />} variant="contained" onClick={handleAdd} disabled={!currentTenantId}>
-            Thêm khung
+            Lưu
           </Button>
         </Stack>
+        <Typography variant="caption" color="text.secondary" sx={{ display: "block", mt: 1.5 }}>
+          Nguồn: Court Management (openHour/closeHour). Chỉ hỗ trợ giờ tròn HH:00.
+        </Typography>
       </Paper>
 
       <TableContainer component={Paper} variant="outlined">
@@ -114,17 +188,19 @@ export default function VenueHoursPage() {
             </TableRow>
           </TableHead>
           <TableBody>
-            {sortedRows.length === 0 ? (
+            {displayRows.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={4} align="center">Chưa có khung giờ.</TableCell>
+                <TableCell colSpan={4} align="center">
+                  Chưa có khung giờ.
+                </TableCell>
               </TableRow>
             ) : (
-              sortedRows.map((row) => (
+              displayRows.map((row) => (
                 <TableRow key={row.id}>
-                  <TableCell>{row.label || DAY_LABELS[Number(row.dayOfWeek)] || row.dayOfWeek}</TableCell>
+                  <TableCell>{row.label}</TableCell>
                   <TableCell>{row.openTime}</TableCell>
                   <TableCell>{row.closeTime}</TableCell>
-                  <TableCell>{row.label || "—"}</TableCell>
+                  <TableCell>{row.label}</TableCell>
                 </TableRow>
               ))
             )}

@@ -99,7 +99,36 @@ export function normalizeCourtManagementSettings(raw = {}) {
     peakHourRules: normalizePeakHourRules(raw.peakHourRules || {}),
     notificationSettings: normalizeNotificationSettings(raw.notificationSettings || {}),
     automationSettings: normalizeAutomationSettings(raw.automationSettings || {}),
+    // Phase 1C: one-shot legacy venue-hours import marker (do not dual-write legacy key).
+    ...(raw.legacyVenueHoursImportedAt
+      ? { legacyVenueHoursImportedAt: String(raw.legacyVenueHoursImportedAt) }
+      : {}),
   };
+}
+
+/**
+ * Validate integer operating hours used by Court Management / booking slots.
+ * Overnight ranges are not supported (openHour must be strictly less than closeHour).
+ *
+ * @returns {{ ok: true, openHour: number, closeHour: number } | { ok: false, message: string }}
+ */
+export function validateOperatingHourIntegers(openHour, closeHour) {
+  const open = Number(openHour);
+  const close = Number(closeHour);
+
+  if (!Number.isInteger(open) || open < 0 || open > 23) {
+    return { ok: false, message: "Giờ mở cửa phải là số nguyên từ 0 đến 23." };
+  }
+
+  if (!Number.isInteger(close) || close < 1 || close > 24) {
+    return { ok: false, message: "Giờ đóng cửa phải là số nguyên từ 1 đến 24." };
+  }
+
+  if (open >= close) {
+    return { ok: false, message: "Giờ mở cửa phải nhỏ hơn giờ đóng cửa (không hỗ trợ qua đêm)." };
+  }
+
+  return { ok: true, openHour: open, closeHour: close };
 }
 
 export function loadCourtManagementSettings(clubId) {
