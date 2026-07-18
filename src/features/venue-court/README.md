@@ -63,7 +63,7 @@ Competition consumer
   → inventory / bookings / operating hours
 ```
 
-Venue & Court must not import Competition. Phase 1F adapter is **not** wired into Competition runtime.
+Venue & Court must not import Competition. Phase 2B wires Competition consumers → this adapter (read-only gate).
 
 ## Public API
 
@@ -77,16 +77,13 @@ Venue & Court must not import Competition. Phase 1F adapter is **not** wired int
 ## Phase status
 
 ```text
-PHASE 1G — FINAL QA AND RELEASE READINESS
+PHASE 2B — COMPETITION AVAILABILITY WIRING
 ```
-
-Phase 1 tip commit: `7ce80ff` (1F). See:
-
-* `docs/venue-court/PHASE_1G_FINAL_QA_REPORT.md`
-* `docs/venue-court/PHASE_1_RELEASE_READINESS.md`
 
 `getCourtAvailability` is **read-only**. Overlap semantics delegate to `courtBookingEngine` (half-open intervals). Overnight/cross-day requests are rejected.
 
 `includeUnavailable` (boolean, default `true`): when omitted/true, returns available and unavailable courts; when `false`, omits unavailable results from `courts` (may be `[]`). Filtering does not mutate source data and does not bypass scope/time validation or load failures.
 
 `getCompetitionCourtAvailability` is a thin Competition-facing adapter over that contract. It returns `availableCourtIds` (deterministic inventory/`courtIds` order) plus optional `unavailableCourts` reasons. It does not assign, reserve, or persist courts.
+
+Phase 2B consumers (Tournament Engine `generateSchedule` / `assignCourts`, Director `assignTournamentMatchToAvailableCourt`) call the adapter as a **pre-assign gate** when `clubId` + civil window are present. Algorithms are unchanged.

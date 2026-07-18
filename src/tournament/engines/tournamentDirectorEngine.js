@@ -19,6 +19,10 @@ import {
   partitionDailyMatches,
   submitDailyPlayMatchScore,
 } from "./dailyPlayEngine.js";
+import {
+  createCompetitionAvailabilityChecker,
+  resolveMatchCivilWindow,
+} from "../../features/tournament-engine/services/competitionAvailabilityGuard.js";
 
 const WAITING_STATUSES = new Set([
   MATCH_STATUS.WAITING,
@@ -101,6 +105,12 @@ export function assignTournamentMatchToAvailableCourt({
   matchId,
   lockedCourtIds = [],
   autoStart = true,
+  clubId = null,
+  venueId = null,
+  date = null,
+  startTime = null,
+  endTime = null,
+  availabilityContext = null,
 } = {}) {
   const match = (matches || []).find((item) => String(item.id) === String(matchId));
   if (!match) {
@@ -108,9 +118,53 @@ export function assignTournamentMatchToAvailableCourt({
   }
 
   const courtStates = buildCourtRuntimeStates(courts, matches, { lockedCourtIds });
-  const availableCourts = getAvailableCourts(courtStates);
+  let availableCourts = getAvailableCourts(courtStates);
   if (!availableCourts.length) {
     return { ok: false, error: "Khong co san trong." };
+  }
+
+  const venueAvailability = createCompetitionAvailabilityChecker({
+    clubId,
+    venueId,
+    courtIds: (courts || []).map((court) => court.id),
+    context: availabilityContext,
+  });
+
+  const explicitWindow =
+    date && startTime && endTime
+      ? { date: String(date), startTime: String(startTime), endTime: String(endTime) }
+      : null;
+  const matchWindow = resolveMatchCivilWindow(match, date) || explicitWindow;
+
+  if (venueAvailability.enabled && matchWindow) {
+    try {
+      availableCourts = availableCourts.filter((court) =>
+        venueAvailability.isCourtAvailable(
+          court.id,
+          matchWindow.date,
+          matchWindow.startTime,
+          matchWindow.endTime
+        )
+      );
+    } catch (error) {
+      const code = error?.code || "DATA_UNAVAILABLE";
+      return {
+        ok: false,
+        error:
+          code === "DATA_UNAVAILABLE"
+            ? "Không tải được availability từ Venue & Court (DATA_UNAVAILABLE)."
+            : error?.message || "Lỗi availability Venue & Court.",
+        code,
+      };
+    }
+
+    if (!availableCourts.length) {
+      return {
+        ok: false,
+        error:
+          "Khong co san trong theo Venue & Court (booking / gio hoat dong / khoa / bao tri).",
+      };
+    }
   }
 
   const courtId = availableCourts[0].id;

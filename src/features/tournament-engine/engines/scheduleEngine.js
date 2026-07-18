@@ -5,6 +5,7 @@ import {
   findMinimumRestViolations,
   validateScheduleConflicts,
 } from "../../individual-tournament/engines/restTimeEngine.js";
+import { createCompetitionAvailabilityChecker } from "../services/competitionAvailabilityGuard.js";
 
 const COMPLETED_STATUSES = new Set(["completed", "forfeit"]);
 
@@ -149,6 +150,16 @@ export function generateSchedule(context = {}, options = {}) {
   const sessions = resolveSessions(config);
   const strictRest = options.strictRest !== false && config.strictRest !== false;
 
+  const venueAvailability = createCompetitionAvailabilityChecker({
+    clubId: context.clubId || options.clubId || null,
+    venueId: context.venueId || options.venueId || null,
+    courtIds: courts.map((court) => court.id),
+    context: options.availabilityContext || context.availabilityContext || null,
+  });
+  if (venueAvailability.enabled) {
+    explain.push("Venue & Court availability: bật (lọc sân theo booking / giờ / trạng thái).");
+  }
+
   const availabilityErrors = validateCourtAvailability(courts, sessions);
   if (availabilityErrors.length) {
     return {
@@ -245,8 +256,13 @@ export function generateSchedule(context = {}, options = {}) {
 
   let globalSlotIndex = 0;
   const dayEnd = Math.max(...sessions.map((s) => s.endMinutes));
+  let availabilityFatalError = null;
 
   pending.forEach((match, index) => {
+    if (availabilityFatalError) {
+      return;
+    }
+
     if (match.scheduledStart && match.manualScheduleLock) {
       scheduled.push(match);
       const restCheck = findMinimumRestViolations(
@@ -263,7 +279,12 @@ export function generateSchedule(context = {}, options = {}) {
     let attempts = 0;
     let cursorMinutes = sessions[0].startMinutes;
 
-    while (!assigned && attempts < 2000 && cursorMinutes + matchDuration <= dayEnd + slotDuration) {
+    while (
+      !assigned &&
+      !availabilityFatalError &&
+      attempts < 2000 &&
+      cursorMinutes + matchDuration <= dayEnd + slotDuration
+    ) {
       const session = sessionForMinutes(sessions, cursorMinutes);
       if (!session || cursorMinutes + matchDuration > session.endMinutes) {
         const nextSession = sessions.find((s) => s.startMinutes > cursorMinutes);
@@ -298,6 +319,26 @@ export function generateSchedule(context = {}, options = {}) {
           continue;
         }
 
+        if (venueAvailability.enabled) {
+          const slotStart = minutesToTimeString(cursorMinutes);
+          const slotEnd = minutesToTimeString(endMinutes);
+          try {
+            if (
+              !venueAvailability.isCourtAvailable(
+                court.id,
+                date,
+                slotStart,
+                slotEnd
+              )
+            ) {
+              continue;
+            }
+          } catch (error) {
+            availabilityFatalError = error;
+            break;
+          }
+        }
+
         const scheduledMatch = {
           ...match,
           matchOrder: match.matchOrder ?? index + 1,
@@ -330,6 +371,10 @@ export function generateSchedule(context = {}, options = {}) {
       }
     }
 
+    if (availabilityFatalError) {
+      return;
+    }
+
     if (!assigned) {
       const message = `Không xếp được slot cho trận ${match.id || index + 1} (nghỉ tối thiểu ${minRestMinutes} phút / sân).`;
       if (strictRest) {
@@ -341,6 +386,19 @@ export function generateSchedule(context = {}, options = {}) {
     }
   });
 
+  if (availabilityFatalError) {
+    const code = availabilityFatalError?.code || "DATA_UNAVAILABLE";
+    return {
+      ok: false,
+      errors: [
+        code === "DATA_UNAVAILABLE"
+          ? "Không tải được availability từ Venue & Court (DATA_UNAVAILABLE)."
+          : availabilityFatalError?.message || "Lỗi availability Venue & Court.",
+      ],
+      warnings,
+      explain,
+    };
+  }
   explain.push(
     `${courtCount} sân (ưu tiên), nghỉ tối thiểu ${minRestMinutes} phút, slot ~${slotDuration} phút.`,
     `Phiên: ${sessions.map((s) => s.label || s.id).join(", ")}.`
