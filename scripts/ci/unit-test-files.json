@@ -100,6 +100,8 @@
   "tests/referee-v5/referee-v5-d1.test.js",
   "tests/referee-v5/referee-v5-e1-realtime.test.js",
   "tests/score-history.test.js",
+  "tests/player-management-phase-1b-facade.test.js",
+  "tests/player-management-phase-1c-profile-fields.test.js",
   "tests/player-history.test.js",
   "tests/tournament-mobile.test.js",
   "tests/tournament-regression.test.js",
