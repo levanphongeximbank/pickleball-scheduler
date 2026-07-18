@@ -22,7 +22,7 @@ import { normalizeUser } from "../../../models/user.js";
 import { saveAuthSession, loadAuthSession } from "../../../auth/authStorage.js";
 import { getPickVnRatingByAuthUserId, syncRatingToClubPlayer } from "../../pick-vn-rating/services/pickVnRatingService.js";
 import { getClubMembers, addMemberToClub } from "./clubMemberService.js";
-import { CLUB_MEMBER_STATUSES } from "../constants/clubMemberRoles.js";
+import { CLUB_MEMBER_STATUSES, normalizeClubMemberStatus } from "../constants/clubMemberRoles.js";
 import {
   findUserIdByPlayerId,
   loadAthleteClubLink,
@@ -41,6 +41,7 @@ import {
   rpcV2ClubAssignOwner,
   rpcV2ClubClearOwner,
   rpcV2ClubGet,
+  rpcV2ClubListMembers,
   rpcV2ClubTransferPresident,
   rpcV2ClubAssignVicePresident,
   rpcV2ClubClearVicePresident,
@@ -672,6 +673,19 @@ function assertClubMemberUser(clubId, tenantId, userId) {
     return { ok: false, error: "Thiếu user thành viên." };
   }
 
+  // V2: sync blob roster is empty; membership is enforced by Phase 1B RPCs.
+  // Soft-accept here so V1-only callers do not false-reject under V2.
+  if (isClubStorageV2Enabled()) {
+    return {
+      ok: true,
+      candidate: {
+        userId: trimmed,
+        playerId: trimmed,
+        displayName: `User ${trimmed.slice(0, 8)}`,
+      },
+    };
+  }
+
   const candidates = listClubGovernanceCandidates(clubId, tenantId);
   const matched = candidates.find((item) => sameUserId(item.userId, trimmed));
   if (!matched) {
@@ -819,7 +833,15 @@ function resolveGovernanceUserLabel(userId, clubId, tenantId, nameHints = null) 
   return `User ${trimmed.slice(0, 8)}`;
 }
 
+/**
+ * Sync candidate picker — V1 blob/registry only.
+ * Under Club Storage V2 this returns [] (use listClubGovernanceCandidatesAsync).
+ */
 export function listClubGovernanceCandidates(clubId, tenantId) {
+  if (isClubStorageV2Enabled()) {
+    return [];
+  }
+
   const club = getRegistryClubById(clubId);
   if (!club) {
     return [];
@@ -914,6 +936,52 @@ export function listClubGovernanceCandidates(clubId, tenantId) {
     const player =
       players.find((item) => sameUserId(item.authUserId, governanceUserId)) || null;
     addCandidate(governanceUserId, player?.id || null);
+  }
+
+  return Array.from(candidateMap.values()).sort((a, b) =>
+    a.displayName.localeCompare(b.displayName, "vi")
+  );
+}
+
+/**
+ * Governance candidate picker.
+ * V2 ON: active club_members with valid user_id only (excludes left/removed; deduped).
+ * V2 OFF: legacy blob/registry sync list.
+ */
+export async function listClubGovernanceCandidatesAsync(clubId, tenantId) {
+  if (!isClubStorageV2Enabled()) {
+    return listClubGovernanceCandidates(clubId, tenantId);
+  }
+
+  const trimmedClubId = String(clubId || "").trim();
+  if (!trimmedClubId) {
+    return [];
+  }
+
+  const result = await rpcV2ClubListMembers(trimmedClubId);
+  if (!result.ok) {
+    return [];
+  }
+
+  const candidateMap = new Map();
+  for (const row of result.members || []) {
+    if (normalizeClubMemberStatus(row.status) !== CLUB_MEMBER_STATUSES.ACTIVE) {
+      continue;
+    }
+    const userId = String(row.user_id || "").trim();
+    if (!userId) {
+      continue;
+    }
+    if (candidateMap.has(userId)) {
+      continue;
+    }
+    const displayName =
+      String(row.display_name || "").trim() || `User ${userId.slice(0, 8)}`;
+    candidateMap.set(userId, {
+      userId,
+      playerId: String(row.player_id || row.user_id || "").trim() || null,
+      displayName,
+    });
   }
 
   return Array.from(candidateMap.values()).sort((a, b) =>

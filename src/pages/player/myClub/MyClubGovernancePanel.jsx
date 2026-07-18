@@ -35,7 +35,8 @@ import {
   getGovernanceDisplayLabels,
   getRegisteredClusterLabel,
   getVicePresidentUserIds,
-  listClubGovernanceCandidates,
+  isClubStorageV2Enabled,
+  listClubGovernanceCandidatesAsync,
   setClubVicePresidents,
   transferClubOwnership,
   transferClubPresident,
@@ -43,7 +44,24 @@ import {
 } from "../../../features/club/index.js";
 import { listClustersForVenue } from "../../../features/court-cluster/services/courtClusterService.js";
 
-export default function MyClubGovernancePanel({ clubId, tenantId, revision = 0, onRefresh }) {
+function mapGovernanceError(result) {
+  const serverCode = String(result?.serverCode || "").trim();
+  if (serverCode === "VERSION_CONFLICT") {
+    return "Dữ liệu CLB đã thay đổi trên máy chủ. Vui lòng tải lại rồi thử lại.";
+  }
+  if (serverCode === "FORBIDDEN") {
+    return result?.error || "Bạn không có quyền chỉnh sửa quản trị CLB.";
+  }
+  return result?.error || "Không cập nhật được quản trị CLB.";
+}
+
+export default function MyClubGovernancePanel({
+  clubId,
+  tenantId,
+  clubRecord: clubRecordProp = null,
+  revision = 0,
+  onRefresh,
+}) {
   const navigate = useNavigate();
   const { user } = useAuth();
   const [error, setError] = useState(null);
@@ -51,15 +69,34 @@ export default function MyClubGovernancePanel({ clubId, tenantId, revision = 0, 
   const [busy, setBusy] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [nameHints, setNameHints] = useState({});
+  const [candidates, setCandidates] = useState([]);
   const [nextPresidentId, setNextPresidentId] = useState("");
   const [nextOwnerId, setNextOwnerId] = useState("");
   const [vicePresidentIds, setVicePresidentIds] = useState(["", ""]);
   const [registeredClusterId, setRegisteredClusterId] = useState("");
 
-  const club = useMemo(
-    () => getClubById(clubId, tenantId),
-    [clubId, tenantId, revision]
-  );
+  const club = useMemo(() => {
+    if (clubRecordProp?.id === clubId) {
+      return clubRecordProp;
+    }
+    if (isClubStorageV2Enabled()) {
+      return clubRecordProp || null;
+    }
+    return getClubById(clubId, tenantId);
+  }, [clubRecordProp, clubId, tenantId, revision]);
+
+  useEffect(() => {
+    if (!club) return;
+    const viceIds = getVicePresidentUserIds(club.governance);
+    setVicePresidentIds([viceIds[0] || "", viceIds[1] || ""]);
+    setRegisteredClusterId(club.governance?.registeredClusterId || "");
+  }, [
+    club?.id,
+    club?.governance?.vicePresidentUserId,
+    club?.governance?.vicePresidentUserIds,
+    club?.governance?.registeredClusterId,
+    revision,
+  ]);
 
   useEffect(() => {
     let cancelled = false;
@@ -88,10 +125,17 @@ export default function MyClubGovernancePanel({ clubId, tenantId, revision = 0, 
     revision,
   ]);
 
-  const candidates = useMemo(
-    () => listClubGovernanceCandidates(clubId, tenantId),
-    [clubId, tenantId, revision]
-  );
+  useEffect(() => {
+    let cancelled = false;
+    void listClubGovernanceCandidatesAsync(clubId, tenantId).then((rows) => {
+      if (!cancelled) {
+        setCandidates(rows);
+      }
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [clubId, tenantId, revision]);
 
   const labels = useMemo(
     () => (club ? getGovernanceDisplayLabels(club, tenantId, nameHints) : null),
@@ -101,10 +145,7 @@ export default function MyClubGovernancePanel({ clubId, tenantId, revision = 0, 
     () => (club ? getRegisteredClusterLabel(club, tenantId) : null),
     [club, tenantId]
   );
-  const venueClusters = useMemo(
-    () => listClustersForVenue(tenantId),
-    [tenantId]
-  );
+  const venueClusters = useMemo(() => listClustersForVenue(tenantId), [tenantId]);
 
   if (!club) {
     return null;
@@ -126,7 +167,8 @@ export default function MyClubGovernancePanel({ clubId, tenantId, revision = 0, 
     const result = await transferClubPresident(clubId, nextPresidentId, tenantId);
     setBusy(false);
     if (!result.ok) {
-      setError(result.error);
+      setError(mapGovernanceError(result));
+      onRefresh?.();
       return;
     }
     setMessage({ type: "success", text: "Đã chuyển Chủ tịch CLB." });
@@ -156,6 +198,13 @@ export default function MyClubGovernancePanel({ clubId, tenantId, revision = 0, 
     const nextViceIds = vicePresidentIds.map((id) => String(id || "").trim()).filter(Boolean);
     const currentCluster = club.governance?.registeredClusterId || "";
     const nextCluster = registeredClusterId.trim();
+    const presidentId = club.governance?.presidentUserId || "";
+
+    if (nextViceIds.includes(presidentId)) {
+      setBusy(false);
+      setError("Chủ tịch không thể đồng thời là Phó chủ tịch.");
+      return;
+    }
 
     const viceChanged =
       currentViceIds.length !== nextViceIds.length ||
@@ -165,7 +214,8 @@ export default function MyClubGovernancePanel({ clubId, tenantId, revision = 0, 
       const viceResult = await setClubVicePresidents(clubId, nextViceIds, tenantId);
       if (!viceResult.ok) {
         setBusy(false);
-        setError(viceResult.error);
+        setError(mapGovernanceError(viceResult));
+        onRefresh?.();
         return;
       }
     }
@@ -227,10 +277,17 @@ export default function MyClubGovernancePanel({ clubId, tenantId, revision = 0, 
             <strong>Chủ tịch:</strong> {labels.presidentLabel}
           </Typography>
         )}
-        <Typography variant="body2">
-          <strong>Phó chủ tịch:</strong>{" "}
-          {(labels?.vicePresidentLabels || []).filter(Boolean).join(", ") || "—"}
-        </Typography>
+        {[0, 1].map((index) => (
+          <Typography key={index} variant="body2">
+            <strong>Phó chủ tịch {index + 1}:</strong>{" "}
+            {(labels?.vicePresidentLabels || [])[index] || "—"}
+          </Typography>
+        ))}
+        {club.version != null && (
+          <Typography variant="caption" color="text.secondary">
+            Phiên bản CLB: {club.version}
+          </Typography>
+        )}
         {registeredCluster && (
           <Typography variant="body2" color="text.secondary">
             Cụm sân: {registeredCluster.name}
@@ -244,7 +301,7 @@ export default function MyClubGovernancePanel({ clubId, tenantId, revision = 0, 
             <GovernanceMemberSelect
               key={index}
               label={`Phó chủ tịch ${index + 1}`}
-              value={vicePresidentIds[index] || getVicePresidentUserIds(club.governance)[index] || ""}
+              value={vicePresidentIds[index] || ""}
               onChange={(value) =>
                 setVicePresidentIds((prev) => {
                   const next = [...prev];
@@ -266,8 +323,13 @@ export default function MyClubGovernancePanel({ clubId, tenantId, revision = 0, 
               emptyLabel="Không có"
             />
           ))}
+          <Stack direction="row" spacing={1}>
+            <Button size="small" onClick={() => setVicePresidentIds(["", ""])}>
+              Xóa hết Phó CT
+            </Button>
+          </Stack>
           <Typography variant="caption" color="text.secondary">
-            Tối đa 2 Phó chủ tịch; phải là vận động viên trong danh sách CLB.
+            Tối đa 2 Phó chủ tịch; phải là thành viên đang hoạt động trong CLB.
           </Typography>
 
           <FormControl fullWidth>

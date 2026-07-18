@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { Link as RouterLink } from "react-router-dom";
 import {
   Box,
@@ -15,7 +15,7 @@ import WorkspacePremiumIcon from "@mui/icons-material/WorkspacePremium";
 
 import {
   canAssignClubOwner,
-  listClubGovernanceCandidates,
+  listClubGovernanceCandidatesAsync,
   resolveMyClubHomeMemberCount,
 } from "../../../features/club/index.js";
 import { ClubAvatar, ClubStatusBadge } from "../../../features/club/ui/index.js";
@@ -43,6 +43,7 @@ export default function MyClubSummaryCard({
   onMessage,
 }) {
   const [assignOpen, setAssignOpen] = useState(false);
+  const [candidates, setCandidates] = useState([]);
 
   const canAssign = canAssignClubOwner(user);
   const ownerStat = resolveOwnerStatContent({
@@ -53,10 +54,21 @@ export default function MyClubSummaryCard({
   const presidentLabel = resolvePresidentDisplayLabel(governanceLabels);
   const memberCount = resolveMyClubHomeMemberCount({ clubSummary, clubStats });
 
-  const candidates = useMemo(
-    () => (clubId ? listClubGovernanceCandidates(clubId, tenantId) : []),
-    [clubId, tenantId, clubRecord?.governance?.ownerUserId]
-  );
+  useEffect(() => {
+    let cancelled = false;
+    if (!clubId) {
+      setCandidates([]);
+      return undefined;
+    }
+    void listClubGovernanceCandidatesAsync(clubId, tenantId).then((rows) => {
+      if (!cancelled) {
+        setCandidates(rows);
+      }
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [clubId, tenantId, clubRecord?.governance?.ownerUserId]);
 
   return (
     <>

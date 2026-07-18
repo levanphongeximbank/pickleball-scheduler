@@ -25,7 +25,8 @@ import {
   getClubStats,
   getGovernanceDisplayLabels,
   getVicePresidentUserIds,
-  listClubGovernanceCandidates,
+  isClubStorageV2Enabled,
+  listClubGovernanceCandidatesAsync,
   transferClubPresident,
 } from "../../../features/club/index.js";
 import { miniGovernanceCardSx } from "./myClubUiStyles.js";
@@ -52,10 +53,21 @@ function GovernanceMiniCard({ accent, icon, title, value, action = null }) {
   );
 }
 
+function resolveActiveMemberCount(clubRecord, clubId, tenantId) {
+  if (isClubStorageV2Enabled()) {
+    if (clubRecord && clubRecord.activeMemberCount != null) {
+      return Number(clubRecord.activeMemberCount) || 0;
+    }
+    return 0;
+  }
+  return getClubStats(clubId, tenantId)?.activeMemberCount ?? 0;
+}
+
 export default function MyClubOrgChart({
   clubId,
   tenantId,
   user,
+  clubRecord: clubRecordProp = null,
   revision = 0,
   onRefresh,
   onMessage,
@@ -64,8 +76,17 @@ export default function MyClubOrgChart({
   const [transferOpen, setTransferOpen] = useState(false);
   const [busy, setBusy] = useState(false);
   const [nameHints, setNameHints] = useState({});
+  const [candidates, setCandidates] = useState([]);
 
-  const club = useMemo(() => getClubById(clubId, tenantId), [clubId, tenantId, revision]);
+  const club = useMemo(() => {
+    if (clubRecordProp?.id === clubId) {
+      return clubRecordProp;
+    }
+    if (isClubStorageV2Enabled()) {
+      return clubRecordProp || null;
+    }
+    return getClubById(clubId, tenantId);
+  }, [clubRecordProp, clubId, tenantId, revision]);
 
   useEffect(() => {
     let cancelled = false;
@@ -94,14 +115,25 @@ export default function MyClubOrgChart({
     revision,
   ]);
 
+  useEffect(() => {
+    let cancelled = false;
+    void listClubGovernanceCandidatesAsync(clubId, tenantId).then((rows) => {
+      if (!cancelled) {
+        setCandidates(rows);
+      }
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [clubId, tenantId, revision]);
+
   const labels = useMemo(
     () => (club ? getGovernanceDisplayLabels(club, tenantId, nameHints) : null),
     [club, tenantId, nameHints, revision]
   );
-  const stats = useMemo(() => getClubStats(clubId, tenantId), [clubId, tenantId, revision]);
-  const candidates = useMemo(
-    () => listClubGovernanceCandidates(clubId, tenantId),
-    [clubId, tenantId, revision]
+  const activeMemberCount = useMemo(
+    () => resolveActiveMemberCount(club, clubId, tenantId),
+    [club, clubId, tenantId, revision]
   );
 
   if (!club || !labels) {
@@ -122,28 +154,41 @@ export default function MyClubOrgChart({
     const result = await transferClubPresident(clubId, nextPresidentId, tenantId);
     setBusy(false);
     if (!result.ok) {
-      onMessage?.({ type: "error", text: result.error });
+      const serverCode = String(result.serverCode || "").trim();
+      const text =
+        serverCode === "VERSION_CONFLICT"
+          ? "Dữ liệu CLB đã thay đổi trên máy chủ. Vui lòng tải lại rồi thử lại."
+          : result.error || "Không chuyển được Chủ tịch.";
+      onMessage?.({ type: "error", text });
+      onRefresh?.();
       return;
     }
-    onMessage?.({ type: "success", text: "Đã chuyển Chủ tịch CLB." });
-    setNextPresidentId("");
     setTransferOpen(false);
+    setNextPresidentId("");
+    onMessage?.({ type: "success", text: "Đã chuyển Chủ tịch CLB." });
     onRefresh?.();
   };
 
   return (
-    <Card variant="outlined" sx={{ borderRadius: 2, height: "100%" }}>
+    <Card variant="outlined" sx={{ height: "100%" }}>
       <CardContent>
-        <Typography variant="subtitle1" fontWeight={700} gutterBottom>
-          Cấu trúc CLB
+        <Typography variant="subtitle1" fontWeight={600} gutterBottom>
+          Sơ đồ tổ chức
         </Typography>
 
-        <Stack spacing={1.5}>
+        <Stack spacing={1.25}>
+          <GovernanceMiniCard
+            accent="owner"
+            icon={<WorkspacePremiumIcon color="warning" fontSize="small" />}
+            title="Chủ sở hữu"
+            value={labels.ownerLabel || "(trống)"}
+          />
+
           <GovernanceMiniCard
             accent="president"
-            icon={<WorkspacePremiumIcon color="warning" fontSize="small" />}
+            icon={<StarIcon color="secondary" fontSize="small" />}
             title="Chủ tịch"
-            value={presidentLabel}
+            value={presidentLabel || "(trống)"}
             action={
               canTransfer ? (
                 <Button
@@ -172,7 +217,7 @@ export default function MyClubOrgChart({
             accent="members"
             icon={<GroupsIcon color="action" fontSize="small" />}
             title="Thành viên"
-            value={`${stats?.activeMemberCount ?? 0} thành viên`}
+            value={`${activeMemberCount} thành viên`}
           />
 
           {canManage && viceIds.length < 2 && (

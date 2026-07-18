@@ -66,6 +66,7 @@ export {
   assignClubVicePresident,
   setClubVicePresidents,
   listClubGovernanceCandidates,
+  listClubGovernanceCandidatesAsync,
   deleteClubAsOwner,
 } from "./services/clubGovernanceService.js";
 
@@ -100,6 +101,7 @@ export {
   updateClubMemberStatus,
   resolveTargetUserIdForMemberCommand,
   probeClubMemberMutationAccess,
+  formatMemberCommandUserError,
   isProtectedGovernanceMember,
 } from "./services/clubMemberService.js";
 
