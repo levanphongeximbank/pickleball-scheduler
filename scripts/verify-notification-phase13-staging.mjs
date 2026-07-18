@@ -6,6 +6,7 @@
  * Requires (.env.local or .env.staging-qa.local — gitignored):
  *   STAGING_SUPABASE_URL / VITE_SUPABASE_URL
  *   STAGING_SUPABASE_ANON_KEY / VITE_SUPABASE_ANON_KEY
+ *   STAGING_OWNER_A_EMAIL / STAGING_OWNER_B_EMAIL
  *   STAGING_OWNER_A_PASSWORD / STAGING_OWNER_B_PASSWORD (or PHASE42L_QA_PASSWORD)
  * Optional:
  *   STAGING_SUPABASE_SERVICE_ROLE_KEY — schema probes only (not used for RLS verdicts)
@@ -15,7 +16,7 @@
  */
 import { createClient } from "@supabase/supabase-js";
 import { getStagingSupabaseEnv, loadProjectEnv } from "./load-env.mjs";
-import { signInStagingUser } from "./staging-auth-resolve.mjs";
+import { getStagingOwnerEmails, signInStagingUser } from "./staging-auth-resolve.mjs";
 
 const STAGING_REF = "qyewbxjsiiyufanzcjcq";
 const PRODUCTION_REF = "expuvcohlcjzvrrauvud";
@@ -451,8 +452,16 @@ async function main() {
   const admin = await adminClient(env.url, env.serviceKey);
   await probeSchema(admin);
 
-  const userA = await signInStagingUser("owner@staging.local");
-  const userB = await signInStagingUser("owner-b@staging.local");
+  const { ownerA, ownerB } = getStagingOwnerEmails();
+  if (!ownerA || !ownerB) {
+    failHard("Missing STAGING_OWNER_A_EMAIL / STAGING_OWNER_B_EMAIL.");
+  }
+  if (ownerA.toLowerCase() === ownerB.toLowerCase()) {
+    failHard("STAGING_OWNER_A_EMAIL and STAGING_OWNER_B_EMAIL must differ.");
+  }
+
+  const userA = await signInStagingUser(ownerA);
+  const userB = await signInStagingUser(ownerB);
 
   if (userA.error || !userA.client) {
     failHard(`Cannot sign in User A: ${userA.error}`);
