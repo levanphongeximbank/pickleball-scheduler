@@ -25,8 +25,14 @@ describe("Phase 1B — RLS / audit / flag ON-OFF regression contracts", () => {
     assert.doesNotMatch(sql, /^\s*drop table\b/im);
   });
 
-  it("audit whitelist includes club.update, member.*, and VP actions", () => {
-    const sql = read("../docs/v5/phase1b/PHASE_1B_V2_COMMAND_COMPLETION.sql");
+  it("VP RPCs emit audit actions; whitelist lives in additive prerequisite SQL", () => {
+    const vpSql = read("../docs/v5/phase1b/PHASE_1B_V2_COMMAND_COMPLETION.sql");
+    assert.match(vpSql, /PHASE_1B_AUDIT_WHITELIST_ADDITIVE\.sql/);
+    assert.doesNotMatch(vpSql, /add constraint\s+audit_logs_action_check/i);
+    assert.match(vpSql, /phase42_write_audit\(\s*'club\.assign_vice_president'/);
+    assert.match(vpSql, /phase42_write_audit\(\s*'club\.clear_vice_president'/);
+
+    const additive = read("../docs/v5/phase1b/PHASE_1B_AUDIT_WHITELIST_ADDITIVE.sql");
     for (const action of [
       "club.update",
       "club.member.add",
@@ -35,9 +41,13 @@ describe("Phase 1B — RLS / audit / flag ON-OFF regression contracts", () => {
       "club.assign_vice_president",
       "club.clear_vice_president",
       "club.vice_president.assign",
+      "pairing_override",
+      "group_override",
     ]) {
-      assert.match(sql, new RegExp(`'${action.replace(/\./g, "\\.")}'`));
+      assert.match(additive, new RegExp(`'${action.replace(/\./g, "\\.")}'`));
     }
+    assert.match(additive, /select distinct action/i);
+    assert.match(additive, /union/i);
   });
 
   it("notification bridge uses club_list_members under V2 and blob path under V1", () => {

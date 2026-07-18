@@ -3,20 +3,21 @@
 -- =====================================================================
 --
 -- Purpose (Staging apply only — DO NOT run on Production from this PR):
---   1. Extend audit_logs_action_check for VP + member restore actions
---   2. Hydrate vice presidents into public.phase42_club_canonical
---   3. Create club_assign_vice_president / club_clear_vice_president
+--   1. Hydrate vice presidents into public.phase42_club_canonical
+--   2. Create phase42_can_manage_vice_presidents + VP assign/clear RPCs
 --
--- Companion SQL already authored (apply BEFORE or WITH this file on Staging):
+-- Companion SQL (apply BEFORE this file on Staging):
+--   docs/v5/phase1b/PHASE_1B_AUDIT_WHITELIST_ADDITIVE.sql   → audit prerequisite
 --   docs/v5/phase45a3c/PHASE_45A3C_CLUB_UPDATE_RPC.sql          → club_update
 --   docs/v5/phase45a4c1/PHASE_45A4C1_MEMBER_RPC.sql               → add/remove
 --   docs/v5/phase45a4d1/PHASE_45A4D1_MEMBER_RESTORE_RPC.sql       → restore
 --
 -- Recommended Staging apply order:
+--   0) PHASE_1B_AUDIT_WHITELIST_ADDITIVE.sql
 --   1) PHASE_45A3C_CLUB_UPDATE_RPC.sql
 --   2) PHASE_45A4C1_MEMBER_RPC.sql
 --   3) PHASE_45A4D1_MEMBER_RESTORE_RPC.sql
---   4) THIS FILE (canonical VP hydrate + VP RPCs + final audit whitelist)
+--   4) THIS FILE (canonical VP hydrate + VP RPCs)
 --
 -- Writes ONLY:
 --   public.club_governance_assignments (VP roles)
@@ -28,37 +29,10 @@
 -- =====================================================================
 
 -- ---------------------------------------------------------------------
--- 1. Audit action whitelist (superset — safe to re-apply)
+-- 1. Audit whitelist prerequisite
+--    DO NOT drop/recreate audit_logs_action_check here (23514 risk).
+--    Apply first: docs/v5/phase1b/PHASE_1B_AUDIT_WHITELIST_ADDITIVE.sql
 -- ---------------------------------------------------------------------
-alter table public.audit_logs drop constraint if exists audit_logs_action_check;
-
-alter table public.audit_logs
-  add constraint audit_logs_action_check
-  check (action in (
-    'login', 'login_failed', 'logout',
-    'create', 'update', 'delete',
-    'assign_role', 'permission_change',
-    'password_change', 'reset_password',
-    'club.create',
-    'club.update',
-    'club.leave_membership',
-    'club.delete',
-    'club.membership_request.submit',
-    'club.membership_request.review',
-    'club.membership_request.correction',
-    'club.member.add',
-    'club.member.remove',
-    'club.member.restore',
-    'club.assign_owner',
-    'club.clear_owner',
-    'club.transfer_president',
-    'club.assign_vice_president',
-    'club.clear_vice_president',
-    -- Client audit bridge (legacy V1 / dual-write labels)
-    'club.owner.transfer',
-    'club.president.transfer',
-    'club.vice_president.assign'
-  ));
 
 -- ---------------------------------------------------------------------
 -- 2. phase42_club_canonical — hydrate vice presidents (max product: 2)

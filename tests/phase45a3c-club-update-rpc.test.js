@@ -95,19 +95,10 @@ describe("Phase 45A.3C — canonical club_update RPC (SQL contract)", () => {
     assert.match(body, /FORBIDDEN/);
   });
 
-  it("emits the canonical club.update audit action and whitelists it", () => {
+  it("emits club.update audit action and defers whitelist to additive prerequisite", () => {
     assert.match(body, /phase42_write_audit\(\s*'club\.update'/);
-    // Whitelist patch must add club.update while preserving the existing set.
-    assert.match(sql, /add constraint\s+audit_logs_action_check/i);
-    for (const action of [
-      "'club.update'",
-      "'club.create'",
-      "'club.assign_owner'",
-      "'club.clear_owner'",
-      "'club.transfer_president'",
-    ]) {
-      assert.ok(sql.includes(action), `audit whitelist missing ${action}`);
-    }
+    assert.match(sql, /PHASE_1B_AUDIT_WHITELIST_ADDITIVE\.sql/);
+    assert.doesNotMatch(sql, /add constraint\s+audit_logs_action_check/i);
   });
 
   it("returns the canonical response envelope", () => {
@@ -148,15 +139,11 @@ describe("Phase 45A.3C — canonical club_update RPC (SQL contract)", () => {
     assert.match(body, /NAME_REQUIRED/);
   });
 
-  it("adds no destructive DDL beyond the documented audit-constraint swap", () => {
+  it("adds no destructive DDL and no audit constraint swap", () => {
     assert.doesNotMatch(sql, /drop\s+function/i);
     assert.doesNotMatch(sql, /drop\s+table/i);
     assert.doesNotMatch(sql, /truncate/i);
     assert.doesNotMatch(sql, /delete\s+from/i);
-    // The only ALTER TABLE permitted is the audit_logs constraint swap.
-    const alters = sql.match(/alter table[^\n;]*/gi) || [];
-    for (const alter of alters) {
-      assert.match(alter, /public\.audit_logs/i, `unexpected ALTER TABLE: ${alter}`);
-    }
+    assert.doesNotMatch(sql, /alter table/i);
   });
 });

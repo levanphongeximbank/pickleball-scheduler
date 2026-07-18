@@ -28,10 +28,11 @@
 --
 -- Deployment status: NOT DEPLOYED to Production (Phase 1B Staging-ready).
 --   Runtime client already wires rpcV2ClubAddMember / rpcV2ClubRemoveMember.
---   Applying on Staging: (1) extends audit_logs_action_check with 'club.member.add'
---   and 'club.member.remove', and (2) creates the two new functions. It adds
---   NO blob writes, NO profiles.club_id authority, and NO hard DELETE of
---   club_members rows. Prefer Phase 1B audit whitelist when bundling apply.
+--   Applying on Staging: creates club_add_member / club_remove_member only
+--   (no audit DROP/ADD here). Audit prerequisite (must apply first):
+--     docs/v5/phase1b/PHASE_1B_AUDIT_WHITELIST_ADDITIVE.sql
+--   Adds NO blob writes, NO profiles.club_id authority, and NO hard DELETE of
+--   club_members rows.
 --
 -- Out of scope (intentionally NOT authored here):
 --   club_restore_member, club_set_member_role, club_set_member_status,
@@ -74,41 +75,10 @@
 -- =====================================================================
 
 -- ---------------------------------------------------------------------
--- 1. Audit action whitelist — add club.member.add / club.member.remove
---    Mirrors PHASE_45A3C / PHASE_42KA. Preserves the full existing action
---    set; adds only the two new membership-member actions.
+-- 1. Audit whitelist prerequisite
+--    DO NOT drop/recreate audit_logs_action_check here (23514 risk).
+--    Apply first: docs/v5/phase1b/PHASE_1B_AUDIT_WHITELIST_ADDITIVE.sql
 -- ---------------------------------------------------------------------
-alter table public.audit_logs drop constraint if exists audit_logs_action_check;
-
-alter table public.audit_logs
-  add constraint audit_logs_action_check
-  check (action in (
-    -- Identity / admin
-    'login', 'login_failed', 'logout',
-    'create', 'update', 'delete',
-    'assign_role', 'permission_change',
-    'password_change', 'reset_password',
-    -- Phase 42 club lifecycle (RPC + client)
-    'club.create',
-    'club.update',
-    'club.leave_membership',
-    'club.delete',
-    -- Membership requests
-    'club.membership_request.submit',
-    'club.membership_request.review',
-    'club.membership_request.correction',
-    -- Membership member commands (Phase 45A.4C.1)
-    'club.member.add',
-    'club.member.remove',
-    -- Governance (RPC canonical)
-    'club.assign_owner',
-    'club.clear_owner',
-    'club.transfer_president',
-    -- Governance (client audit bridge — legacy V1 paths)
-    'club.owner.transfer',
-    'club.president.transfer',
-    'club.vice_president.assign'
-  ));
 
 -- ---------------------------------------------------------------------
 -- 2. public.club_add_member — admin admit / re-admit after voluntary leave

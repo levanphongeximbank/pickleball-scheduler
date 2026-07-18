@@ -3,10 +3,22 @@
   "stagingRef": "qyewbxjsiiyufanzcjcq",
   "productionRef": "expuvcohlcjzvrrauvud",
   "productionTouched": false,
-  "commit": "a52d62aeccb62620a1894f46ca641aa6691bd68d",
-  "startedAt": "2026-07-18T09:25:06.483Z",
-  "files": [],
+  "commit": "12aea34af7bc5eee22decfe120d781bd8df75e43",
+  "startedAt": "2026-07-18T10:42:23.850Z",
+  "files": [
+    {
+      "order": 1,
+      "file": "docs/v5/phase45a3c/PHASE_45A3C_CLUB_UPDATE_RPC.sql",
+      "checksum": "b1379c13c45dfb43e469dddb8cc8b66bf96acab3b8e5e1fbd07f2dd737b28b20",
+      "startStatus": "APPLYING",
+      "startedAt": "2026-07-18T10:42:23.853Z",
+      "result": "FAIL",
+      "warning": null,
+      "error": "docs/v5/phase45a3c/PHASE_45A3C_CLUB_UPDATE_RPC.sql: Failed to run sql query: ERROR:  23514: check constraint \"audit_logs_action_check\" of relation \"audit_logs\" is violated by some row\n",
+      "finishedAt": "2026-07-18T10:42:25.043Z"
+    }
+  ],
   "verify": null,
-  "status": "BLOCKED_NO_TOKEN",
-  "error": "SUPABASE_ACCESS_TOKEN missing — cannot apply or verify Staging via Management API."
+  "status": "FAILED",
+  "finishedAt": "2026-07-18T10:42:25.043Z"
 }

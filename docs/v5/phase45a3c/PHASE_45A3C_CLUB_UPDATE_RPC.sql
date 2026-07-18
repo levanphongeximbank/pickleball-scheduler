@@ -29,12 +29,11 @@
 --
 -- Deployment status: NOT DEPLOYED to Production (Phase 1B Staging-ready).
 --   Runtime client already wires rpcV2ClubUpdate via clubTenantService.
---   Applying on Staging: (1) extends the audit action check constraint with
---   'club.update' and (2) creates the new function. It adds NO new API error
---   codes, writes ONLY to public.clubs, and performs NO club_governance /
---   club_governance_assignments / blob writes.
---   Prefer final audit whitelist from docs/v5/phase1b/PHASE_1B_V2_COMMAND_COMPLETION.sql
---   when applying the full Phase 1B bundle on Staging.
+--   Applying on Staging: creates public.club_update only (no audit DROP/ADD here).
+--   Audit prerequisite (must apply first):
+--     docs/v5/phase1b/PHASE_1B_AUDIT_WHITELIST_ADDITIVE.sql
+--   Adds NO new API error codes, writes ONLY to public.clubs, and performs NO
+--   club_governance / club_governance_assignments / blob writes.
 --
 -- Prerequisites (already deployed; NOT (re)defined here):
 --   Tables:  public.clubs, public.audit_logs, public.idempotency_requests
@@ -70,39 +69,12 @@
 -- =====================================================================
 
 -- ---------------------------------------------------------------------
--- 1. Audit action whitelist — add canonical 'club.update'
---    Mirrors PHASE_42KA_GOVERNANCE_AUDIT_PATCH.sql. Preserves the full
---    existing action set; adds only 'club.update'. Constraint-only change,
---    no data mutation.
+-- 1. Audit whitelist prerequisite
+--    DO NOT drop/recreate audit_logs_action_check here.
+--    A fixed IN-list previously failed Staging with 23514 when historical
+--    audit_logs.action values were outside that list.
+--    Apply first: docs/v5/phase1b/PHASE_1B_AUDIT_WHITELIST_ADDITIVE.sql
 -- ---------------------------------------------------------------------
-alter table public.audit_logs drop constraint if exists audit_logs_action_check;
-
-alter table public.audit_logs
-  add constraint audit_logs_action_check
-  check (action in (
-    -- Identity / admin
-    'login', 'login_failed', 'logout',
-    'create', 'update', 'delete',
-    'assign_role', 'permission_change',
-    'password_change', 'reset_password',
-    -- Phase 42 club lifecycle (RPC + client)
-    'club.create',
-    'club.update',
-    'club.leave_membership',
-    'club.delete',
-    -- Membership requests
-    'club.membership_request.submit',
-    'club.membership_request.review',
-    'club.membership_request.correction',
-    -- Governance (RPC canonical)
-    'club.assign_owner',
-    'club.clear_owner',
-    'club.transfer_president',
-    -- Governance (client audit bridge — legacy V1 paths)
-    'club.owner.transfer',
-    'club.president.transfer',
-    'club.vice_president.assign'
-  ));
 
 -- ---------------------------------------------------------------------
 -- 2. public.club_update — canonical Club metadata command
