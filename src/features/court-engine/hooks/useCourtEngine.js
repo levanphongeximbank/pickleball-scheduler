@@ -48,6 +48,21 @@ import {
   resolveTimerStatus,
 } from "../services/courtEngineService.js";
 import { SESSION_STATUS } from "../constants/statuses.js";
+import { buildLocalCivilWindow } from "../services/courtEngineAvailabilityGuard.js";
+
+function resolveSessionAvailabilityWindow(session) {
+  const duration = Number(session?.config?.defaultMatchMinutes) || 20;
+  const built = buildLocalCivilWindow(duration);
+  if (!built.ok) {
+    return { ok: false, error: built.error, code: built.code };
+  }
+  return {
+    ok: true,
+    date: built.date,
+    startTime: built.startTime,
+    endTime: built.endTime,
+  };
+}
 
 export function useCourtEngine() {
   const { user, rbacEnabled } = useAuth();
@@ -288,18 +303,59 @@ export function useCourtEngine() {
         handleResult(performSetQueueLocked(activeClubId, session, playerId, locked)),
       previewAutoAssign: () => {
         if (!session) return;
-        const result = previewAutoAssign(session, { courts, players, refereeList });
+        if (!activeClubId) {
+          setError("Thiếu clubId — không thể ghép sân (Venue & Court).");
+          return;
+        }
+        const window = resolveSessionAvailabilityWindow(session);
+        if (!window.ok) {
+          setError(window.error);
+          return;
+        }
+        const result = previewAutoAssign(session, {
+          courts,
+          players,
+          refereeList,
+          clubId: activeClubId,
+          date: window.date,
+          startTime: window.startTime,
+          endTime: window.endTime,
+        });
+        if (result.ok === false) {
+          setError(result.error || result.warnings?.[0] || "Không ghép được sân.");
+          setPreview(null);
+          return;
+        }
         setPreview(result);
         logAutoAssignPreview(activeClubId, session, result);
         bump();
       },
       confirmAutoAssign: () => {
         if (!session || !preview?.assignments?.length) return;
-        handleResult(
-          confirmAutoAssign(activeClubId, session, preview.assignments),
-          `Đã xác nhận ${preview.assignments.length} trận.`
+        if (!activeClubId) {
+          setError("Thiếu clubId — không thể xác nhận assignment.");
+          return;
+        }
+        const window = resolveSessionAvailabilityWindow(session);
+        if (!window.ok) {
+          setError(window.error);
+          return;
+        }
+        const result = confirmAutoAssign(
+          activeClubId,
+          session,
+          preview.assignments,
+          null,
+          {
+            date: window.date,
+            startTime: window.startTime,
+            endTime: window.endTime,
+          }
         );
-        setPreview(null);
+        handleResult(result, `Đã xác nhận ${preview.assignments.length} trận.`);
+        if (result?.ok) {
+          setPreview(null);
+        }
       },
       startMatch: (assignmentId) =>
         session &&
@@ -313,12 +369,28 @@ export function useCourtEngine() {
       endMatch: (assignmentId) =>
         session &&
         handleResult(performEndMatch(activeClubId, session, assignmentId), "Trận đã kết thúc."),
-      transfer: (assignmentId, toCourtId, reason) =>
-        session &&
-        handleResult(
-          performTransfer(activeClubId, session, assignmentId, toCourtId, { reason }),
+      transfer: (assignmentId, toCourtId, reason) => {
+        if (!session) return;
+        if (!activeClubId) {
+          setError("Thiếu clubId — không thể chuyển sân.");
+          return;
+        }
+        const window = resolveSessionAvailabilityWindow(session);
+        if (!window.ok) {
+          setError(window.error);
+          return;
+        }
+        return handleResult(
+          performTransfer(activeClubId, session, assignmentId, toCourtId, {
+            reason,
+            clubId: activeClubId,
+            date: window.date,
+            startTime: window.startTime,
+            endTime: window.endTime,
+          }),
           "Chuyển sân thành công."
-        ),
+        );
+      },
       lockCourt: (courtId, locked) =>
         session && handleResult(performCourtLock(activeClubId, session, courtId, locked)),
       maintenanceCourt: (courtId, maintenance) =>
