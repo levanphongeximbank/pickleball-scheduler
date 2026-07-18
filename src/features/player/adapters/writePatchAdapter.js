@@ -5,7 +5,6 @@
 import { normalizePlayerGender } from "./genderAdapter.js";
 import { validateHandedness } from "./handednessAdapter.js";
 import { validateActivityRegion } from "./activityRegionAdapter.js";
-import { validateVerificationStatus } from "./verificationAdapter.js";
 import { validatePrivacySettings } from "../constants/privacy.js";
 import {
   PLAYER_FORBIDDEN_WRITE_FIELDS,
@@ -164,11 +163,8 @@ export function normalizeAndValidateWritePatch(patch, options = {}) {
     else normalized.privacySettings = r.value;
   }
 
-  if ("verificationStatus" in patch) {
-    const r = validateVerificationStatus(patch.verificationStatus);
-    if (!r.ok) errors.push(...r.errors);
-    else normalized.verificationStatus = r.value;
-  }
+  // verificationStatus / identityVerificationStatus are forbidden on this path
+  // (see PLAYER_PRIVILEGED_WRITE_FIELDS). Privileged admin updates are deferred.
 
   if (errors.length) {
     return {

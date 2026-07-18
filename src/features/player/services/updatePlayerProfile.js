@@ -4,6 +4,10 @@
  * Resolves canonical identity, validates ownership + field contracts,
  * then persists through a replaceable repository interface.
  * Never creates a second player identity.
+ *
+ * Durable persistence: inject createSupabaseProfilesPlayerWriteRepository()
+ * (or a test double). Default remains unconfigured (no silent durable write).
+ * identityVerificationStatus is forbidden here — privileged admin path deferred.
  */
 import { RESOLUTION_OUTCOME } from "../constants/resolutionOutcomes.js";
 import { WRITE_ERROR_CODES } from "../constants/writableFields.js";

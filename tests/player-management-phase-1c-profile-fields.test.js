@@ -167,19 +167,28 @@ test("1C privacy fail-closed defaults", () => {
   assert.equal(DEFAULT_PRIVACY_SETTINGS.showPhone, false);
 });
 
-test("1C identity verification separate from rating verification", async () => {
+test("1C identity verification is forbidden on normal updatePlayerProfile", async () => {
   const repo = createMemoryPlayerProfileWriteRepository({
     "player-1": { playerId: "player-1" },
   });
   const findPlayerById = directory({ "player-1": { id: "player-1" } });
 
-  const ok = await updatePlayerProfile(
+  const forbidden = await updatePlayerProfile(
     "player-1",
     { verificationStatus: "verified" },
     { findPlayerById, writeRepository: repo }
   );
-  assert.equal(ok.ok, true);
-  assert.equal(ok.profile.verificationStatus, "verified");
+  assert.equal(forbidden.ok, false);
+  assert.equal(forbidden.code, "FORBIDDEN_FIELD");
+  assert.ok(forbidden.forbiddenFields.includes("verificationStatus"));
+
+  const snakeAlias = await updatePlayerProfile(
+    "player-1",
+    { identity_verification_status: "pending" },
+    { findPlayerById, writeRepository: repo }
+  );
+  assert.equal(snakeAlias.ok, false);
+  assert.equal(snakeAlias.code, "FORBIDDEN_FIELD");
 
   const ratingStatus = await updatePlayerProfile(
     "player-1",
@@ -187,7 +196,7 @@ test("1C identity verification separate from rating verification", async () => {
     { findPlayerById, writeRepository: repo }
   );
   assert.equal(ratingStatus.ok, false);
-  assert.ok(ratingStatus.errors.some((e) => e.code === "RATING_VERIFICATION_NOT_ALLOWED"));
+  assert.equal(ratingStatus.code, "FORBIDDEN_FIELD");
 });
 
 test("1C successful write through single write service", async () => {
@@ -201,7 +210,6 @@ test("1C successful write through single write service", async () => {
       birthDate: "2002-03-04",
       activityRegion: { countryCode: "VN", provinceName: "Đà Nẵng" },
       privacySettings: { showBirthYear: true },
-      verificationStatus: "pending",
     },
     {
       findPlayerById: directory({ "player-1": { id: "player-1", name: "Lan" } }),
@@ -215,7 +223,6 @@ test("1C successful write through single write service", async () => {
   assert.equal(result.profile.handedness, "left");
   assert.equal(result.profile.birthDate, "2002-03-04");
   assert.equal(result.profile.birthYear, 2002);
-  assert.equal(result.profile.verificationStatus, "pending");
   assert.equal(result.profile.privacySettings.showBirthYear, true);
   assert.equal(result.profile.privacySettings.showPhone, false);
 });
