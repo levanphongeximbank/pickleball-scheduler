@@ -58,12 +58,18 @@ Canonical `active_member_count` matches `club_list_members` active list; VP/pres
 - Phase 1B + 45A.3C/4C1/4D1 + related club governance/membership/runtime contracts: **139/139 pass** (filtered CI manifest subset).
 - Additional: `phase1b-audit-whitelist-preflight` **6/6**.
 
+## Closure status
+
+- Phase 1B Staging behavioral QA: **PASS**
+- Owner-approved for closure
+- PR #51 opened: `feat(club): complete Phase 1B V2 command and governance layer`
+- Production not deployed (`expuvcohlcjzvrrauvud` untouched)
+
 ## Gaps / notes
 1. No Playwright screenshots for My Club / Org chart / Governance panel UI.
 2. Blob-only exclusion validated via SSOT + source contract (no injected blob-only fixture).
 3. Seeded ephemeral PLAYER users remain in Auth (club membership soft-removed).
-4. `club_update` allows any `phase42_is_tenant_member` by design — unauthorized update tested with unrelated non-tenant user.
-5. Phase 1B **not closed** — awaiting Owner approval before 1C / push / PR.
+4. At the time of this behavioral run (commit `dbb968b`), `club_update` still allowed any `phase42_is_tenant_member`; unauthorized update was tested with an unrelated non-tenant user. Narrow `phase42_can_update_club` authz was applied afterward and verified separately (`CLUB_UPDATE_AUTHZ_GATE_REPORT.json`).
 
 ## Production
-**Untouched.**
+**Untouched / not deployed.**
