@@ -124,6 +124,7 @@
   "tests/ai-assistant-cloud.test.js",
   "tests/ai-auto-sync.test.js",
   "tests/sprint10-integrations.test.js",
+  "tests/notification-phase-1-1-foundation.test.js",
   "tests/phase11a-marketplace-api-foundation.test.js",
   "tests/phase11b-marketplace-api-staging.test.js",
   "tests/phase11c-edge-api-key-guard.test.js",
