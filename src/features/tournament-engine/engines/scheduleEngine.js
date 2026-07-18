@@ -5,7 +5,13 @@ import {
   findMinimumRestViolations,
   validateScheduleConflicts,
 } from "../../individual-tournament/engines/restTimeEngine.js";
-import { createCompetitionAvailabilityChecker } from "../services/competitionAvailabilityGuard.js";
+import {
+  AVAILABILITY_MODE,
+  assertRuntimeAvailabilityScope,
+  createCompetitionAvailabilityChecker,
+  resolveAvailabilityMode,
+  resolveScheduleConfigWindow,
+} from "../services/competitionAvailabilityGuard.js";
 
 const COMPLETED_STATUSES = new Set(["completed", "forfeit"]);
 
@@ -146,15 +152,51 @@ export function generateSchedule(context = {}, options = {}) {
     config.minRestMinutes ?? config.restMinutes ?? buffer
   );
   const slotDuration = matchDuration + buffer;
-  const date = config.date || new Date().toISOString().slice(0, 10);
+  const availabilityMode = resolveAvailabilityMode(options, context);
+  const clubId = context.clubId || options.clubId || null;
+
+  const scope = assertRuntimeAvailabilityScope({
+    clubId,
+    scheduleConfig: config,
+    mode: availabilityMode,
+    requireWindow: true,
+  });
+  if (!scope.ok) {
+    return {
+      ok: false,
+      errors: scope.errors,
+      code: scope.code,
+      warnings,
+    };
+  }
+
+  const scheduleWindow = resolveScheduleConfigWindow(config);
+  const date =
+    scheduleWindow?.date ||
+    (availabilityMode === AVAILABILITY_MODE.LEGACY
+      ? config.date || new Date().toISOString().slice(0, 10)
+      : null);
+  if (!date) {
+    return {
+      ok: false,
+      errors: [
+        "Thiếu scheduleConfig.date (YYYY-MM-DD) — bắt buộc cho Venue & Court availability.",
+      ],
+      code: "SCHEDULE_WINDOW_MISSING",
+      warnings,
+    };
+  }
+
   const sessions = resolveSessions(config);
   const strictRest = options.strictRest !== false && config.strictRest !== false;
 
   const venueAvailability = createCompetitionAvailabilityChecker({
-    clubId: context.clubId || options.clubId || null,
+    clubId: scope.clubId,
     venueId: context.venueId || options.venueId || null,
     courtIds: courts.map((court) => court.id),
+    clusterId: context.clusterId || options.clusterId || null,
     context: options.availabilityContext || context.availabilityContext || null,
+    mode: availabilityMode,
   });
   if (venueAvailability.enabled) {
     explain.push("Venue & Court availability: bật (lọc sân theo booking / giờ / trạng thái).");

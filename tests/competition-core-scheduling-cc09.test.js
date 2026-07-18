@@ -159,7 +159,7 @@ test("8. TE 4.0 base schedule parity", () => {
     consumer: "tournament_engine",
     envSource: v2Env,
     legacyPayload: { ...context, scheduleConfig: context.scheduleConfig, consumer: "tournament_engine" },
-    legacyExecutor: () => generateSchedule(context),
+    legacyExecutor: () => generateSchedule(context, { legacyAvailability: true }),
   });
   assert.equal(bridge.usedCanonical, true);
   assert.ok(Array.isArray(bridge.legacyResult.data?.matches || bridge.legacyResult.matches));

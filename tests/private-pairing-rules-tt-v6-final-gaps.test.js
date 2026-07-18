@@ -596,7 +596,7 @@ describe("TT-V6-FINAL-GAPS — guided flow + Open group + unsupported types", ()
           minRestMinutes: 15,
         },
       },
-      { regenerate: false, strictRest: true, envSource: FLAGS_ON }
+      { regenerate: false, strictRest: true, envSource: FLAGS_ON, legacyAvailability: true }
     );
     assert.equal(blocked.ok, false);
     assert.ok(

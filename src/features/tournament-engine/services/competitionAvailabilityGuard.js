@@ -3,12 +3,28 @@
  *
  * Filters courts via getCompetitionCourtAvailability before schedule/assign.
  * Does not change assignment algorithms; availability is an input gate only.
+ *
+ * Default mode is fail-closed (REQUIRED): missing clubId / civil window → error.
+ * LEGACY mode is for isolated unit tests / documented non-runtime callers only.
  */
 
 import { getCompetitionCourtAvailability as getCompetitionCourtAvailabilityDefault } from "../../venue-court/index.js";
 
 const HHMM_RE = /^([01]\d|2[0-3]):([0-5]\d)$/;
 const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
+
+export const AVAILABILITY_MODE = Object.freeze({
+  /** Production / Phase 2B runtime — require clubId + civil window; never silent legacy. */
+  REQUIRED: "required",
+  /** Isolated unit tests / documented non-runtime callers only. */
+  LEGACY: "legacy",
+});
+
+export const AVAILABILITY_ERROR_CODE = Object.freeze({
+  CLUB_SCOPE_MISSING: "CLUB_SCOPE_MISSING",
+  SCHEDULE_WINDOW_MISSING: "SCHEDULE_WINDOW_MISSING",
+  DATA_UNAVAILABLE: "DATA_UNAVAILABLE",
+});
 
 const defaultDeps = Object.freeze({
   getCompetitionCourtAvailability: getCompetitionCourtAvailabilityDefault,
@@ -26,6 +42,22 @@ export function __resetCompetitionAvailabilityGuardDepsForTests() {
   deps = { ...defaultDeps };
 }
 
+/**
+ * Resolve availability mode from options / context.
+ * Default: REQUIRED (fail-closed).
+ */
+export function resolveAvailabilityMode(options = {}, context = {}) {
+  const raw =
+    options.legacyAvailability === true
+      ? AVAILABILITY_MODE.LEGACY
+      : options.availabilityMode ||
+        context.availabilityMode ||
+        AVAILABILITY_MODE.REQUIRED;
+  return raw === AVAILABILITY_MODE.LEGACY
+    ? AVAILABILITY_MODE.LEGACY
+    : AVAILABILITY_MODE.REQUIRED;
+}
+
 function minutesToTimeString(totalMinutes) {
   const wrapped = ((Number(totalMinutes) % 1440) + 1440) % 1440;
   const h = Math.floor(wrapped / 60);
@@ -36,6 +68,53 @@ function minutesToTimeString(totalMinutes) {
 function parseTimeToMinutes(timeStr) {
   const [h, m] = String(timeStr || "00:00").split(":").map(Number);
   return (h || 0) * 60 + (m || 0);
+}
+
+function stableCourtIdsKey(courtIds) {
+  if (!Array.isArray(courtIds) || courtIds.length === 0) {
+    return "";
+  }
+  return courtIds.map(String).join(",");
+}
+
+function stableContextKey(context) {
+  if (context == null) {
+    return "";
+  }
+  if (typeof context !== "object") {
+    return String(context);
+  }
+  // Only keys that affect availability evaluation (excludeBookingId, etc.)
+  const excludeBookingId =
+    context.excludeBookingId != null ? String(context.excludeBookingId) : "";
+  const clusterId = context.clusterId != null ? String(context.clusterId) : "";
+  return `ex:${excludeBookingId}|cl:${clusterId}`;
+}
+
+/**
+ * Cache key must include every input that affects availability results.
+ * One club/window/filter must never reuse another club/window/filter result.
+ */
+export function buildAvailabilityCacheKey({
+  clubId,
+  venueId = null,
+  date,
+  startTime,
+  endTime,
+  courtIds = null,
+  clusterId = null,
+  context = null,
+} = {}) {
+  return [
+    `club:${String(clubId || "")}`,
+    `venue:${String(venueId || "")}`,
+    `date:${String(date || "")}`,
+    `start:${String(startTime || "")}`,
+    `end:${String(endTime || "")}`,
+    `courts:${stableCourtIdsKey(courtIds)}`,
+    `cluster:${String(clusterId || "")}`,
+    `ctx:${stableContextKey(context)}`,
+  ].join("|");
 }
 
 /**
@@ -111,9 +190,8 @@ export function resolveScheduleConfigWindow(scheduleConfig = {}) {
 export function resolveMatchCivilWindow(match = {}, fallbackDate = null) {
   const dateCandidate =
     (fallbackDate && DATE_RE.test(String(fallbackDate).trim()) && String(fallbackDate).trim()) ||
-    (match.scheduledStart && String(match.scheduledStart).slice(0, 10)) ||
     null;
-  if (!dateCandidate || !DATE_RE.test(dateCandidate)) {
+  if (!dateCandidate) {
     return null;
   }
 
@@ -129,22 +207,103 @@ export function resolveMatchCivilWindow(match = {}, fallbackDate = null) {
 }
 
 /**
+ * Resolve Director assign window: match ISO times on civil date, else explicit block window.
+ */
+export function resolveDirectorAssignWindow({
+  match = null,
+  date = null,
+  startTime = null,
+  endTime = null,
+} = {}) {
+  const civilDate =
+    date && DATE_RE.test(String(date).trim()) ? String(date).trim() : null;
+
+  if (match?.scheduledStart && civilDate) {
+    const fromMatch = resolveMatchCivilWindow(match, civilDate);
+    if (fromMatch) {
+      return fromMatch;
+    }
+  }
+
+  const start = String(startTime || "").trim();
+  const end = String(endTime || "").trim();
+  if (civilDate && HHMM_RE.test(start) && HHMM_RE.test(end) && parseTimeToMinutes(end) > parseTimeToMinutes(start)) {
+    return { date: civilDate, startTime: start, endTime: end };
+  }
+
+  return null;
+}
+
+/**
+ * Fail-closed precondition check for Phase 2B runtime engines.
+ * @returns {{ ok: true, clubId: string, mode: string } | { ok: false, errors: string[], code: string }}
+ */
+export function assertRuntimeAvailabilityScope({
+  clubId,
+  scheduleConfig = null,
+  matchWindow = null,
+  mode = AVAILABILITY_MODE.REQUIRED,
+  requireWindow = true,
+} = {}) {
+  if (mode === AVAILABILITY_MODE.LEGACY) {
+    return { ok: true, clubId: clubId || null, mode };
+  }
+
+  const resolvedClubId =
+    clubId != null && String(clubId).trim() !== "" ? String(clubId).trim() : null;
+  if (!resolvedClubId) {
+    return {
+      ok: false,
+      code: AVAILABILITY_ERROR_CODE.CLUB_SCOPE_MISSING,
+      errors: [
+        "Thiếu clubId — bắt buộc cho Venue & Court availability (không dùng legacy fallback).",
+      ],
+    };
+  }
+
+  if (requireWindow) {
+    const window =
+      matchWindow ||
+      (scheduleConfig ? resolveScheduleConfigWindow(scheduleConfig) : null);
+    if (!window) {
+      return {
+        ok: false,
+        code: AVAILABILITY_ERROR_CODE.SCHEDULE_WINDOW_MISSING,
+        errors: [
+          "Thiếu khung giờ dân sự (date + startTime + endTime) — bắt buộc cho Venue & Court availability.",
+        ],
+      };
+    }
+  }
+
+  return { ok: true, clubId: resolvedClubId, mode };
+}
+
+/**
  * Create a cached per-window availability checker.
  *
- * When clubId is missing → enabled:false (legacy behavior; no VC gate).
- * When enabled and getCompetitionCourtAvailability throws DATA_UNAVAILABLE /
- * validation errors → caller should treat as hard failure (do not fall back).
+ * REQUIRED mode without clubId → enabled:false is NOT used; callers must
+ * assertRuntimeAvailabilityScope first and fail closed.
+ * LEGACY mode without clubId → enabled:false (skip VC).
  */
 export function createCompetitionAvailabilityChecker({
   clubId,
   venueId = null,
   courtIds = null,
+  clusterId = null,
   context = null,
+  mode = AVAILABILITY_MODE.REQUIRED,
 } = {}) {
   const resolvedClubId =
     clubId != null && String(clubId).trim() !== "" ? String(clubId).trim() : null;
   const resolvedVenueId =
     venueId != null && String(venueId).trim() !== "" ? String(venueId).trim() : null;
+  const resolvedClusterId =
+    clusterId != null && String(clusterId).trim() !== ""
+      ? String(clusterId).trim()
+      : context?.clusterId != null
+        ? String(context.clusterId)
+        : null;
   const courtIdList = Array.isArray(courtIds)
     ? courtIds.map((id) => String(id)).filter(Boolean)
     : null;
@@ -155,9 +314,12 @@ export function createCompetitionAvailabilityChecker({
   if (!resolvedClubId) {
     return {
       enabled: false,
-      skippedReason: "CLUB_SCOPE_MISSING",
+      skippedReason: AVAILABILITY_ERROR_CODE.CLUB_SCOPE_MISSING,
+      mode,
       warnings,
+      cache,
       isCourtAvailable() {
+        // LEGACY only path reaches here without clubId.
         return true;
       },
       filterCourts(courts = []) {
@@ -167,7 +329,16 @@ export function createCompetitionAvailabilityChecker({
   }
 
   function loadWindow(date, startTime, endTime) {
-    const key = `${date}|${startTime}|${endTime}`;
+    const key = buildAvailabilityCacheKey({
+      clubId: resolvedClubId,
+      venueId: resolvedVenueId,
+      date,
+      startTime,
+      endTime,
+      courtIds: courtIdList,
+      clusterId: resolvedClusterId,
+      context,
+    });
     if (cache.has(key)) {
       return cache.get(key);
     }
@@ -179,12 +350,14 @@ export function createCompetitionAvailabilityChecker({
       startTime,
       endTime,
       courtIds: courtIdList || undefined,
+      clusterId: resolvedClusterId || undefined,
       context: context || undefined,
       includeUnavailable: true,
     });
 
     const available = new Set((result.availableCourtIds || []).map(String));
     const entry = {
+      key,
       available,
       unavailableCourts: result.unavailableCourts || [],
     };
@@ -195,20 +368,30 @@ export function createCompetitionAvailabilityChecker({
   return {
     enabled: true,
     skippedReason: null,
+    mode,
     warnings,
+    cache,
     isCourtAvailable(courtId, date, startTime, endTime) {
       if (!courtId || !date || !startTime || !endTime) {
-        return true;
+        // Fail-closed: incomplete window is never "available".
+        return false;
       }
       const entry = loadWindow(date, startTime, endTime);
       return entry.available.has(String(courtId));
     },
-    /**
-     * Filter a court list for one civil window.
-     * @returns {{ ok: boolean, courts: object[], availableCourtIds: string[], unavailableCourts?: object[], errors?: string[], warnings?: string[] }}
-     */
     filterCourts(courts = [], date, startTime, endTime) {
       try {
+        if (!date || !startTime || !endTime) {
+          return {
+            ok: false,
+            courts: [],
+            availableCourtIds: [],
+            code: AVAILABILITY_ERROR_CODE.SCHEDULE_WINDOW_MISSING,
+            errors: [
+              "Thiếu khung giờ dân sự (date + startTime + endTime) — bắt buộc cho Venue & Court availability.",
+            ],
+          };
+        }
         const entry = loadWindow(date, startTime, endTime);
         const filtered = (courts || []).filter((court) =>
           entry.available.has(String(court.id))
@@ -232,13 +415,13 @@ export function createCompetitionAvailabilityChecker({
           warnings: warningsOut,
         };
       } catch (error) {
-        const code = error?.code || "DATA_UNAVAILABLE";
+        const code = error?.code || AVAILABILITY_ERROR_CODE.DATA_UNAVAILABLE;
         return {
           ok: false,
           courts: [],
           availableCourtIds: [],
           errors: [
-            code === "DATA_UNAVAILABLE"
+            code === AVAILABILITY_ERROR_CODE.DATA_UNAVAILABLE
               ? "Không tải được availability từ Venue & Court (DATA_UNAVAILABLE)."
               : error?.message || "Lỗi availability Venue & Court.",
           ],
@@ -250,7 +433,8 @@ export function createCompetitionAvailabilityChecker({
 }
 
 /**
- * Pre-filter courts for a known schedule window (used by generateSchedule).
+ * Pre-filter courts for a known schedule window.
+ * REQUIRED mode fails closed on missing clubId/window.
  */
 export function filterCourtsForScheduleWindow({
   clubId,
@@ -258,15 +442,22 @@ export function filterCourtsForScheduleWindow({
   courts = [],
   scheduleConfig = {},
   context = null,
+  clusterId = null,
+  availabilityMode = AVAILABILITY_MODE.REQUIRED,
+  legacyAvailability = false,
 } = {}) {
-  const checker = createCompetitionAvailabilityChecker({
+  const mode = resolveAvailabilityMode({ availabilityMode, legacyAvailability });
+  const scope = assertRuntimeAvailabilityScope({
     clubId,
-    venueId,
-    courtIds: (courts || []).map((c) => c.id),
-    context,
+    scheduleConfig,
+    mode,
+    requireWindow: true,
   });
+  if (!scope.ok) {
+    return scope;
+  }
 
-  if (!checker.enabled) {
+  if (mode === AVAILABILITY_MODE.LEGACY && !scope.clubId) {
     return {
       ok: true,
       courts: [...(courts || [])],
@@ -275,17 +466,15 @@ export function filterCourtsForScheduleWindow({
     };
   }
 
-  const window = resolveScheduleConfigWindow(scheduleConfig);
-  if (!window) {
-    return {
-      ok: true,
-      courts: [...(courts || [])],
-      skipped: true,
-      warnings: [
-        "Bỏ qua Venue & Court availability: thiếu date/startTime/endTime hợp lệ trên scheduleConfig.",
-      ],
-    };
-  }
+  const checker = createCompetitionAvailabilityChecker({
+    clubId: scope.clubId,
+    venueId,
+    courtIds: (courts || []).map((c) => c.id),
+    clusterId,
+    context,
+    mode,
+  });
 
+  const window = resolveScheduleConfigWindow(scheduleConfig);
   return checker.filterCourts(courts, window.date, window.startTime, window.endTime);
 }

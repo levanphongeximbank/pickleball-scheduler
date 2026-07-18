@@ -1,7 +1,10 @@
 import { MATCH_STAGE } from "../../../models/tournament/constants.js";
 import { validateCourtAssignmentInput } from "../validation/tournamentValidation.js";
 import {
+  AVAILABILITY_MODE,
+  assertRuntimeAvailabilityScope,
   createCompetitionAvailabilityChecker,
+  resolveAvailabilityMode,
   resolveMatchCivilWindow,
   resolveScheduleConfigWindow,
 } from "../services/competitionAvailabilityGuard.js";
@@ -62,13 +65,60 @@ export function assignCourts(context = {}, options = {}) {
   const assignments = [];
   const conflicts = [];
 
+  const availabilityMode = resolveAvailabilityMode(options, context);
+  const clubId = context.clubId || options.clubId || null;
+  const configWindow = resolveScheduleConfigWindow(context.scheduleConfig || {});
+
+  const scope = assertRuntimeAvailabilityScope({
+    clubId,
+    scheduleConfig: context.scheduleConfig || {},
+    matchWindow: configWindow,
+    mode: availabilityMode,
+    // Window may come per-match; require clubId always in REQUIRED mode.
+    // Per-match window checked below before assign.
+    requireWindow: false,
+  });
+  if (!scope.ok) {
+    return {
+      ok: false,
+      errors: scope.errors,
+      code: scope.code,
+      warnings,
+      explain,
+    };
+  }
+
+  if (availabilityMode === AVAILABILITY_MODE.REQUIRED && !configWindow) {
+    const sample = (context.matches || []).find(
+      (m) => m?.scheduledStart && !COMPLETED_STATUSES.has(m.status)
+    );
+    const sampleWindow = sample
+      ? resolveMatchCivilWindow(
+          sample,
+          context.scheduleConfig?.date || null
+        )
+      : null;
+    if (!sampleWindow && !(context.matches || []).some((m) => m?.scheduledStart)) {
+      return {
+        ok: false,
+        code: "SCHEDULE_WINDOW_MISSING",
+        errors: [
+          "Thiếu khung giờ dân sự (scheduleConfig hoặc scheduledStart/End) — bắt buộc cho Venue & Court availability.",
+        ],
+        warnings,
+        explain,
+      };
+    }
+  }
+
   const venueAvailability = createCompetitionAvailabilityChecker({
-    clubId: context.clubId || options.clubId || null,
+    clubId: scope.clubId,
     venueId: context.venueId || options.venueId || null,
     courtIds: courts.map((court) => court.id),
+    clusterId: context.clusterId || options.clusterId || null,
     context: options.availabilityContext || context.availabilityContext || null,
+    mode: availabilityMode,
   });
-  const configWindow = resolveScheduleConfigWindow(context.scheduleConfig || {});
   if (venueAvailability.enabled) {
     explain.push("Venue & Court availability: bật (lọc sân theo booking / giờ / trạng thái).");
   }
@@ -98,7 +148,29 @@ export function assignCourts(context = {}, options = {}) {
     let assignedCourt = null;
     let reason = "";
     const matchWindow =
-      resolveMatchCivilWindow(match, configWindow?.date) || configWindow;
+      resolveMatchCivilWindow(
+        match,
+        configWindow?.date || context.scheduleConfig?.date || null
+      ) || configWindow;
+
+    if (availabilityMode === AVAILABILITY_MODE.REQUIRED && venueAvailability.enabled) {
+      if (!matchWindow) {
+        return {
+          ok: false,
+          code: "SCHEDULE_WINDOW_MISSING",
+          errors: [
+            `Trận ${match.id}: thiếu khung giờ dân sự — không gán sân (fail-closed).`,
+          ],
+          warnings,
+          explain,
+          data: {
+            assignments,
+            matches: context.matches || [],
+            conflicts,
+          },
+        };
+      }
+    }
 
     for (const court of courts) {
       const scheduled = courtSchedule.get(court.id) || [];
@@ -128,6 +200,7 @@ export function assignCourts(context = {}, options = {}) {
                 ? "Không tải được availability từ Venue & Court (DATA_UNAVAILABLE)."
                 : error?.message || "Lỗi availability Venue & Court.",
             ],
+            code,
             warnings,
             explain,
             data: {
