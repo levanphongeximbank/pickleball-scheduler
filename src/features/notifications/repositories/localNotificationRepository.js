@@ -1,15 +1,15 @@
 import {
-  loadIdempotencyIndex,
   loadInboxRecords,
   makeIdempotencyIndexKey,
+  loadIdempotencyIndex,
   saveIdempotencyIndex,
   saveInboxRecords,
   clearNotificationInboxStorage,
 } from "../storage/notificationInboxStorage.js";
-import { NOTIFICATION_STATUSES } from "../constants/notificationStatuses.js";
 import { createMemoryNotificationRepository } from "./memoryNotificationRepository.js";
 
 const JOBS_KEY = "pickleball-notification-delivery-jobs-v1";
+const ATTEMPTS_KEY = "pickleball-notification-delivery-attempts-v1";
 
 function readJobs() {
   try {
@@ -27,27 +27,52 @@ function writeJobs(jobs) {
   localStorage.setItem(JOBS_KEY, JSON.stringify(jobs));
 }
 
+function readAttempts() {
+  try {
+    if (typeof localStorage === "undefined") return [];
+    const raw = localStorage.getItem(ATTEMPTS_KEY);
+    const parsed = raw ? JSON.parse(raw) : [];
+    return Array.isArray(parsed) ? parsed : [];
+  } catch {
+    return [];
+  }
+}
+
+function writeAttempts(attempts) {
+  if (typeof localStorage === "undefined") return;
+  localStorage.setItem(ATTEMPTS_KEY, JSON.stringify(attempts));
+}
+
+function hydrateMemoryRepo() {
+  const repo = createMemoryNotificationRepository(loadInboxRecords());
+  for (const job of readJobs()) {
+    repo._seedJob(job);
+  }
+  for (const attempt of readAttempts()) {
+    repo._seedAttempt(attempt);
+  }
+  return repo;
+}
+
+function persistRepo(repo) {
+  const state = repo._dump();
+  saveInboxRecords(state.records);
+  writeJobs(state.jobs);
+  writeAttempts(state.attempts);
+}
+
 /**
- * LocalStorage-backed repository — mirrors Phase 1.1/1.2 inbox keys + delivery jobs.
- * Used when Supabase is not configured.
+ * LocalStorage-backed repository — Phase 1.5 worker methods via hydrated memory.
  */
 export function createLocalNotificationRepository() {
-  const memory = createMemoryNotificationRepository([
-    ...loadInboxRecords(),
-  ]);
-
-  // Seed jobs from localStorage into memory wrapper by replaying through enqueue is awkward;
-  // instead decorate memory methods to sync persistence.
-
   return {
     mode: "local",
 
     async create(record) {
-      const result = await memory.create(record);
+      const repo = hydrateMemoryRepo();
+      const result = await repo.create(record);
       if (!result.duplicate) {
-        const records = loadInboxRecords();
-        records.unshift(result.notification);
-        saveInboxRecords(records);
+        persistRepo(repo);
         const index = loadIdempotencyIndex();
         index[
           makeIdempotencyIndexKey(
@@ -61,138 +86,105 @@ export function createLocalNotificationRepository() {
     },
 
     async list(filters) {
-      // Prefer persisted snapshot for list freshness across instances
-      const persisted = createMemoryNotificationRepository(loadInboxRecords());
-      return persisted.list(filters);
+      return hydrateMemoryRepo().list(filters);
+    },
+
+    async getInboxById(input) {
+      return hydrateMemoryRepo().getInboxById(input);
     },
 
     async markRead(input) {
-      const persisted = createMemoryNotificationRepository(loadInboxRecords());
-      const result = await persisted.markRead(input);
-      if (result.ok) {
-        saveInboxRecords(persisted._dump().records);
-      }
+      const repo = hydrateMemoryRepo();
+      const result = await repo.markRead(input);
+      if (result.ok) persistRepo(repo);
       return result;
     },
 
     async markAllRead(input) {
-      const persisted = createMemoryNotificationRepository(loadInboxRecords());
-      const result = await persisted.markAllRead(input);
-      if (result.ok) {
-        saveInboxRecords(persisted._dump().records);
-      }
+      const repo = hydrateMemoryRepo();
+      const result = await repo.markAllRead(input);
+      if (result.ok) persistRepo(repo);
       return result;
     },
 
     async countUnread(input) {
-      const persisted = createMemoryNotificationRepository(loadInboxRecords());
-      return persisted.countUnread(input);
+      return hydrateMemoryRepo().countUnread(input);
     },
 
     async findByIdempotencyKey(input) {
-      const persisted = createMemoryNotificationRepository(loadInboxRecords());
-      return persisted.findByIdempotencyKey(input);
+      return hydrateMemoryRepo().findByIdempotencyKey(input);
     },
 
     async enqueueDeliveryJob(input) {
-      const jobs = readJobs();
-      const existing = jobs.find(
-        (j) =>
-          j.notificationId === input.notificationId &&
-          j.channel === (input.channel || "in_app")
-      );
-      if (existing) {
-        return { ok: true, duplicate: true, job: existing };
-      }
-      const now = new Date().toISOString();
-      const job = {
-        id: `ndel_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
-        notificationId: input.notificationId,
-        tenantId: input.tenantId,
-        channel: input.channel || "in_app",
-        status: NOTIFICATION_STATUSES.QUEUED,
-        attempts: 0,
-        lastError: null,
-        providerMessageId: null,
-        scheduledAt: now,
-        processedAt: null,
-        createdAt: now,
-        updatedAt: now,
-      };
-      jobs.unshift(job);
-      writeJobs(jobs);
-
-      const records = loadInboxRecords();
-      const idx = records.findIndex(
-        (r) => (r.notificationId || r.id) === input.notificationId
-      );
-      if (idx >= 0 && records[idx].status === NOTIFICATION_STATUSES.CREATED) {
-        records[idx] = {
-          ...records[idx],
-          status: NOTIFICATION_STATUSES.QUEUED,
-          updatedAt: now,
-        };
-        saveInboxRecords(records);
-      }
-
-      return { ok: true, duplicate: false, job };
+      const repo = hydrateMemoryRepo();
+      const result = await repo.enqueueDeliveryJob(input);
+      if (result.ok) persistRepo(repo);
+      return result;
     },
 
-    async listDeliveryJobs({ tenantId, status = null, limit = 100 } = {}) {
-      let items = readJobs();
-      if (tenantId) items = items.filter((j) => j.tenantId === tenantId);
-      if (status) items = items.filter((j) => j.status === status);
-      return { ok: true, items: items.slice(0, Math.max(0, Number(limit) || 100)) };
+    async listDeliveryJobs(input) {
+      return hydrateMemoryRepo().listDeliveryJobs(input);
     },
 
-    async markDeliveryJobStatus({
-      jobId,
-      status,
-      lastError = null,
-      providerMessageId = null,
-    } = {}) {
-      const jobs = readJobs();
-      const idx = jobs.findIndex((j) => j.id === jobId);
-      if (idx < 0) return { ok: false, error: "Delivery job not found." };
-      const now = new Date().toISOString();
-      const updated = {
-        ...jobs[idx],
-        status,
-        lastError,
-        providerMessageId:
-          providerMessageId !== null ? providerMessageId : jobs[idx].providerMessageId,
-        attempts: (jobs[idx].attempts || 0) + 1,
-        processedAt:
-          status === "SENT" || status === "FAILED" ? now : jobs[idx].processedAt,
-        updatedAt: now,
-      };
-      jobs[idx] = updated;
-      writeJobs(jobs);
+    async claimDeliveryJobs(input) {
+      const repo = hydrateMemoryRepo();
+      const result = await repo.claimDeliveryJobs(input);
+      if (result.ok) persistRepo(repo);
+      return result;
+    },
 
-      if (status === "SENT" || status === "FAILED") {
-        const records = loadInboxRecords();
-        const nIdx = records.findIndex(
-          (r) => (r.notificationId || r.id) === updated.notificationId
-        );
-        if (nIdx >= 0 && records[nIdx].status !== NOTIFICATION_STATUSES.READ) {
-          records[nIdx] = {
-            ...records[nIdx],
-            status,
-            updatedAt: now,
-          };
-          saveInboxRecords(records);
-        }
-      }
+    async createDeliveryAttempt(attempt) {
+      const repo = hydrateMemoryRepo();
+      const result = await repo.createDeliveryAttempt(attempt);
+      if (result.ok) persistRepo(repo);
+      return result;
+    },
 
-      return { ok: true, job: updated };
+    async completeDeliveryAttempt(attempt) {
+      const repo = hydrateMemoryRepo();
+      const result = await repo.completeDeliveryAttempt(attempt);
+      if (result.ok) persistRepo(repo);
+      return result;
+    },
+
+    async listDeliveryAttempts(input) {
+      return hydrateMemoryRepo().listDeliveryAttempts(input);
+    },
+
+    async completeDeliveryJob(input) {
+      const repo = hydrateMemoryRepo();
+      const result = await repo.completeDeliveryJob(input);
+      if (result.ok) persistRepo(repo);
+      return result;
+    },
+
+    async markInboxDelivered(input) {
+      const repo = hydrateMemoryRepo();
+      const result = await repo.markInboxDelivered(input);
+      if (result.ok) persistRepo(repo);
+      return result;
+    },
+
+    async markDeliveryJobStatus(input) {
+      const repo = hydrateMemoryRepo();
+      const result = await repo.markDeliveryJobStatus(input);
+      if (result.ok) persistRepo(repo);
+      return result;
+    },
+
+    async cleanupNamespacedQaRows(input) {
+      const repo = hydrateMemoryRepo();
+      const result = await repo.cleanupNamespacedQaRows(input);
+      if (result.ok) persistRepo(repo);
+      return result;
     },
 
     clear() {
       clearNotificationInboxStorage();
       if (typeof localStorage !== "undefined") {
         localStorage.removeItem(JOBS_KEY);
+        localStorage.removeItem(ATTEMPTS_KEY);
       }
-      memory.clear();
     },
   };
 }
@@ -200,4 +192,5 @@ export function createLocalNotificationRepository() {
 export function clearLocalDeliveryJobsStorage() {
   if (typeof localStorage === "undefined") return;
   localStorage.removeItem(JOBS_KEY);
+  localStorage.removeItem(ATTEMPTS_KEY);
 }

@@ -1,8 +1,9 @@
 /**
- * PICK_VN Notification Module — public API (Phase 1.4).
+ * PICK_VN Notification Module — public API (Phase 1.5).
  *
  * Domain modules may import only from this barrel.
  * Providers and storage implementations are intentionally NOT exported.
+ * Worker entry is exported for server-side runners only (no secrets).
  */
 
 // --- Canonical public API ---
@@ -29,6 +30,23 @@ export {
 } from "./services/notificationQueueService.js";
 
 export {
+  DELIVERY_JOB_STATES,
+  DELIVERY_JOB_STATE_VALUES,
+  TERMINAL_DELIVERY_JOB_STATES,
+  WORKER_ONLY_DELIVERY_JOB_STATES,
+  assertDeliveryJobTransition,
+  isValidDeliveryJobState,
+  isTerminalDeliveryJobState,
+  isWorkerOnlyDeliveryJobState,
+  getAllowedDeliveryJobTransitions,
+} from "./constants/deliveryJobStates.js";
+
+export {
+  runNotificationWorkerOnce,
+  processClaimedDeliveryJob,
+} from "./workers/notificationDeliveryWorker.js";
+
+export {
   createNotificationRepository,
   getNotificationRepository,
   setNotificationRepository,
@@ -37,6 +55,7 @@ export {
   NOTIFICATION_STORE_MODES,
 } from "./repositories/notificationRepository.js";
 
+export { createMemoryNotificationRepository } from "./repositories/memoryNotificationRepository.js";
 export {
   bootstrapNotificationRuntime,
   getNotificationRuntimeStatus,

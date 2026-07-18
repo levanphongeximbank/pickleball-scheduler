@@ -1,4 +1,13 @@
-import { NOTIFICATION_STATUSES } from "../constants/notificationStatuses.js";
+/**
+ * Queue + delivery job helpers — Phase 1.5.
+ * Enqueue remains available to domain emitters.
+ * Claim / terminal state updates are worker-only.
+ */
+
+import {
+  DELIVERY_JOB_STATES,
+  isWorkerOnlyDeliveryJobState,
+} from "../constants/deliveryJobStates.js";
 import { getNotificationRepository } from "../repositories/notificationRepository.js";
 
 export const DELIVERY_CHANNELS = Object.freeze({
@@ -9,11 +18,16 @@ export const DELIVERY_CHANNELS = Object.freeze({
   PUSH: "push",
 });
 
+/** @deprecated Prefer DELIVERY_JOB_STATES from deliveryJobStates.js */
 export const DELIVERY_JOB_STATUSES = Object.freeze({
-  CREATED: NOTIFICATION_STATUSES.CREATED,
-  QUEUED: NOTIFICATION_STATUSES.QUEUED,
-  SENT: NOTIFICATION_STATUSES.SENT,
-  FAILED: NOTIFICATION_STATUSES.FAILED,
+  CREATED: DELIVERY_JOB_STATES.CREATED,
+  QUEUED: DELIVERY_JOB_STATES.QUEUED,
+  PROCESSING: DELIVERY_JOB_STATES.PROCESSING,
+  SENT: DELIVERY_JOB_STATES.SENT,
+  RETRY_SCHEDULED: DELIVERY_JOB_STATES.RETRY_SCHEDULED,
+  FAILED: DELIVERY_JOB_STATES.FAILED,
+  DEAD_LETTERED: DELIVERY_JOB_STATES.DEAD_LETTERED,
+  CANCELLED: DELIVERY_JOB_STATES.CANCELLED,
 });
 
 /**
@@ -44,14 +58,14 @@ export async function listQueuedDeliveryJobs({
   const repo = repository || getNotificationRepository();
   return repo.listDeliveryJobs({
     tenantId,
-    status: DELIVERY_JOB_STATUSES.QUEUED,
+    status: DELIVERY_JOB_STATES.QUEUED,
     limit,
   });
 }
 
 /**
  * Mark job terminal status. Does NOT call live providers.
- * Used by future workers / tests.
+ * Browser callers cannot set worker-only states.
  */
 export async function markDeliveryJobResult({
   jobId,
@@ -59,15 +73,28 @@ export async function markDeliveryJobResult({
   lastError = null,
   providerMessageId = null,
   repository = null,
+  caller = "worker",
+  explicitRetry = false,
 } = {}) {
   if (!jobId) {
     return { ok: false, error: "jobId is required." };
   }
-  if (
-    status !== DELIVERY_JOB_STATUSES.SENT &&
-    status !== DELIVERY_JOB_STATUSES.FAILED
-  ) {
-    return { ok: false, error: "status must be SENT or FAILED." };
+  if (caller === "browser" && isWorkerOnlyDeliveryJobState(status)) {
+    return {
+      ok: false,
+      error: "browser_cannot_set_worker_states",
+      code: "forbidden",
+    };
+  }
+  const allowed = [
+    DELIVERY_JOB_STATES.SENT,
+    DELIVERY_JOB_STATES.FAILED,
+    DELIVERY_JOB_STATES.RETRY_SCHEDULED,
+    DELIVERY_JOB_STATES.DEAD_LETTERED,
+    DELIVERY_JOB_STATES.CANCELLED,
+  ];
+  if (!allowed.includes(status)) {
+    return { ok: false, error: "status not allowed for markDeliveryJobResult." };
   }
   const repo = repository || getNotificationRepository();
   return repo.markDeliveryJobStatus({
@@ -75,5 +102,7 @@ export async function markDeliveryJobResult({
     status,
     lastError,
     providerMessageId,
+    caller,
+    explicitRetry,
   });
 }

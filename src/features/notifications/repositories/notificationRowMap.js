@@ -69,11 +69,42 @@ export function rowToDeliveryJob(row) {
     channel: row.channel,
     status: row.status,
     attempts: row.attempts ?? 0,
+    maxAttempts: row.max_attempts ?? 5,
+    priority: row.priority ?? 100,
     lastError: row.last_error ?? null,
     providerMessageId: row.provider_message_id ?? null,
     scheduledAt: row.scheduled_at,
+    nextAttemptAt: row.next_attempt_at ?? row.scheduled_at ?? null,
+    workerId: row.worker_id ?? null,
+    claimedAt: row.claimed_at ?? null,
+    leaseExpiresAt: row.lease_expires_at ?? null,
+    claimToken: row.claim_token ?? null,
+    deliveryMode: row.delivery_mode ?? null,
+    deliveryIdempotencyKey: row.delivery_idempotency_key ?? null,
     processedAt: row.processed_at ?? null,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
+  };
+}
+
+export function rowToDeliveryAttempt(row) {
+  if (!row) return null;
+  return {
+    attemptId: row.id,
+    jobId: row.job_id,
+    attemptNumber: row.attempt_number,
+    workerId: row.worker_id,
+    channel: row.channel,
+    provider: row.provider,
+    startedAt: row.started_at,
+    completedAt: row.completed_at ?? null,
+    result: row.result,
+    errorCode: row.error_code ?? null,
+    sanitizedErrorMessage: row.sanitized_error_message ?? null,
+    retryable: !!row.retryable,
+    nextAttemptAt: row.next_attempt_at ?? null,
+    providerMessageId: row.provider_message_id ?? null,
+    deliveryMode: row.delivery_mode ?? "sandbox",
+    createdAt: row.created_at,
   };
 }

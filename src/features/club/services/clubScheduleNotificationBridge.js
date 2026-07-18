@@ -1,9 +1,10 @@
 /**
- * Club schedule notification bridge — Phase 1.2 pilot.
+ * Club schedule notification bridge — Phase 1.2 pilot / Phase 1.5 retirement notes.
  *
  * CLUB_SCHEDULE_UPDATED goes to the canonical Notification Module only
  * (no parallel write to mobile local inbox for this path).
  *
+ * @deprecated Dual-write to mobile inbox for schedule events is retired.
  * Governance notifications still use the legacy mobile path until migrated.
  */
 import { createLocalNotification } from "../../mobile/services/notificationService.js";

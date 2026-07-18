@@ -42,6 +42,8 @@
     "test:verify-billing-tenant-mapping": "node scripts/verify-billing-tenant-mapping-staging.mjs",
     "test:verify-tenant-isolation": "node scripts/run-tenant-isolation-qa-staging.mjs",
     "notification:verify:phase14s": "node scripts/verify-notification-phase14s-cloud-sync-staging.mjs",
+    "notification:apply:phase15": "node scripts/apply-notification-phase15-staging-sql.mjs",
+    "notification:verify:phase15": "node scripts/verify-notification-phase15-delivery-worker-staging.mjs",
     "seed:tenant-isolation-staging": "node scripts/seed-tenant-isolation-staging.mjs",
     "upgrade:staging-enterprise": "node scripts/upgrade-staging-enterprise.mjs",
     "apply:phase22-cloud-staging-sql": "node scripts/apply-phase22-cloud-staging-sql.mjs",

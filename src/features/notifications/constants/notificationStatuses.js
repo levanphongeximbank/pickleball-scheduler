@@ -5,8 +5,9 @@
  *   CREATED → QUEUED → SENT | FAILED
  *   any unread → READ (via inbox mark-read APIs)
  *
- * Delivery jobs use CREATED | QUEUED | SENT | FAILED (no READ).
- * Phase 1.3 enqueues in_app jobs to QUEUED; live channel workers are Phase 1.4+.
+ * Delivery jobs use the Phase 1.5 state machine in deliveryJobStates.js
+ * (CREATED, QUEUED, PROCESSING, SENT, RETRY_SCHEDULED, FAILED, DEAD_LETTERED, CANCELLED).
+ * Live channel workers remain blocked; sandbox/in_app only.
  */
 export const NOTIFICATION_STATUSES = Object.freeze({
   CREATED: "CREATED",

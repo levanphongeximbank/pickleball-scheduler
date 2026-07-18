@@ -1,13 +1,16 @@
 import { NOTIFICATION_STATUSES } from "../constants/notificationStatuses.js";
+import { isWorkerOnlyDeliveryJobState } from "../constants/deliveryJobStates.js";
 import {
   inboxRecordToRpcArgs,
+  rowToDeliveryAttempt,
   rowToDeliveryJob,
   rowToInboxRecord,
 } from "./notificationRowMap.js";
 
 /**
  * Supabase-backed notification repository (canonical SoT).
- * Uses SECURITY DEFINER RPCs for create/enqueue; direct table for read/update own rows.
+ * Create/enqueue via SECURITY DEFINER RPCs.
+ * Claim/complete require service_role client (worker only).
  */
 export function createSupabaseNotificationRepository(client) {
   if (!client) {
@@ -68,6 +71,20 @@ export function createSupabaseNotificationRepository(client) {
       };
     },
 
+    async getInboxById({ notificationId, tenantId } = {}) {
+      if (!notificationId) return { ok: true, notification: null };
+      let query = client
+        .from("notification_inbox")
+        .select("*")
+        .eq("id", notificationId);
+      if (tenantId) query = query.eq("tenant_id", tenantId);
+      const { data, error } = await query.maybeSingle();
+      if (error) {
+        return { ok: false, error: error.message || String(error), notification: null };
+      }
+      return { ok: true, notification: rowToInboxRecord(data) };
+    },
+
     async markRead({ tenantId, notificationId, userId = null } = {}) {
       if (!tenantId || !notificationId) {
         return { ok: false, error: "tenantId and notificationId are required." };
@@ -81,26 +98,13 @@ export function createSupabaseNotificationRepository(client) {
           updated_at: now,
         })
         .eq("id", notificationId)
-        .eq("tenant_id", tenantId)
-        .select("*")
-        .maybeSingle();
+        .eq("tenant_id", tenantId);
 
       if (userId) {
-        query = client
-          .from("notification_inbox")
-          .update({
-            status: NOTIFICATION_STATUSES.READ,
-            read_at: now,
-            updated_at: now,
-          })
-          .eq("id", notificationId)
-          .eq("tenant_id", tenantId)
-          .eq("recipient_user_id", userId)
-          .select("*")
-          .maybeSingle();
+        query = query.eq("recipient_user_id", userId);
       }
 
-      const { data, error } = await query;
+      const { data, error } = await query.select("*").maybeSingle();
       if (error) {
         return { ok: false, error: error.message || String(error) };
       }
@@ -111,7 +115,8 @@ export function createSupabaseNotificationRepository(client) {
       return {
         ok: true,
         notification,
-        alreadyRead: notification.status === NOTIFICATION_STATUSES.READ && !!notification.readAt,
+        alreadyRead:
+          notification.status === NOTIFICATION_STATUSES.READ && !!notification.readAt,
       };
     },
 
@@ -210,53 +215,150 @@ export function createSupabaseNotificationRepository(client) {
       return { ok: true, items: (data || []).map(rowToDeliveryJob) };
     },
 
-    async markDeliveryJobStatus({
-      jobId,
-      status,
-      lastError = null,
-      providerMessageId = null,
+    async claimDeliveryJobs({
+      workerId,
+      batchSize = 10,
+      leaseSeconds = 60,
+      tenantId = null,
     } = {}) {
-      const { data: current, error: readError } = await client
-        .from("notification_delivery_jobs")
-        .select("*")
-        .eq("id", jobId)
-        .maybeSingle();
-      if (readError) {
-        return { ok: false, error: readError.message || String(readError) };
+      const { data, error } = await client.rpc("notification_delivery_claim_jobs", {
+        p_worker_id: workerId,
+        p_batch_size: batchSize,
+        p_lease_seconds: leaseSeconds,
+        p_tenant_id: tenantId,
+      });
+      if (error) {
+        return { ok: false, error: error.message || String(error), jobs: [] };
       }
-      if (!current) {
-        return { ok: false, error: "Delivery job not found." };
-      }
+      const rows = Array.isArray(data) ? data : data ? [data] : [];
+      return { ok: true, jobs: rows.map(rowToDeliveryJob) };
+    },
 
-      const now = new Date().toISOString();
-      const { data: updated, error } = await client
-        .from("notification_delivery_jobs")
-        .update({
-          status,
-          last_error: lastError,
-          provider_message_id: providerMessageId,
-          attempts: (current.attempts || 0) + 1,
-          processed_at:
-            status === "SENT" || status === "FAILED" ? now : current.processed_at,
-          updated_at: now,
-        })
-        .eq("id", jobId)
-        .select("*")
-        .maybeSingle();
+    async createDeliveryAttempt(attempt) {
+      return this.completeDeliveryAttempt(attempt);
+    },
 
+    async completeDeliveryAttempt(attempt) {
+      const { data, error } = await client.rpc("notification_delivery_record_attempt", {
+        p_job_id: attempt.jobId,
+        p_attempt_number: attempt.attemptNumber,
+        p_worker_id: attempt.workerId,
+        p_channel: attempt.channel,
+        p_provider: attempt.provider,
+        p_result: attempt.result || "STARTED",
+        p_error_code: attempt.errorCode || null,
+        p_sanitized_error_message: attempt.sanitizedErrorMessage || null,
+        p_retryable: !!attempt.retryable,
+        p_next_attempt_at: attempt.nextAttemptAt || null,
+        p_provider_message_id: attempt.providerMessageId || null,
+        p_delivery_mode: attempt.deliveryMode || "sandbox",
+        p_started_at: attempt.startedAt || null,
+        p_completed_at: attempt.completedAt || null,
+      });
       if (error) {
         return { ok: false, error: error.message || String(error) };
       }
+      return { ok: true, attempt: rowToDeliveryAttempt(data) };
+    },
 
-      if (status === "SENT" || status === "FAILED") {
-        await client
-          .from("notification_inbox")
-          .update({ status, updated_at: now })
-          .eq("id", updated.notification_id)
-          .neq("status", NOTIFICATION_STATUSES.READ);
+    async completeDeliveryJob({
+      jobId,
+      claimToken = null,
+      workerId = null,
+      status,
+      providerMessageId = null,
+      lastError = null,
+      nextAttemptAt = null,
+      deliveryMode = null,
+      deliveryIdempotencyKey = null,
+      attemptNumber = null,
+      explicitRetry = false,
+    } = {}) {
+      const { data, error } = await client.rpc("notification_delivery_complete_job", {
+        p_job_id: jobId,
+        p_claim_token: claimToken,
+        p_worker_id: workerId,
+        p_status: status,
+        p_provider_message_id: providerMessageId,
+        p_last_error: lastError,
+        p_next_attempt_at: nextAttemptAt,
+        p_delivery_mode: deliveryMode,
+        p_delivery_idempotency_key: deliveryIdempotencyKey,
+        p_attempt_number: attemptNumber,
+        p_explicit_retry: explicitRetry,
+      });
+      if (error) {
+        return { ok: false, error: error.message || String(error) };
       }
+      return { ok: true, job: rowToDeliveryJob(data) };
+    },
 
-      return { ok: true, job: rowToDeliveryJob(updated) };
+    async markInboxDelivered({ notificationId, tenantId } = {}) {
+      const now = new Date().toISOString();
+      let query = client
+        .from("notification_inbox")
+        .update({ status: NOTIFICATION_STATUSES.SENT, updated_at: now })
+        .eq("id", notificationId)
+        .neq("status", NOTIFICATION_STATUSES.READ);
+      if (tenantId) query = query.eq("tenant_id", tenantId);
+      const { data, error } = await query.select("*").maybeSingle();
+      if (error) {
+        return { ok: false, error: error.message || String(error) };
+      }
+      return { ok: true, notification: rowToInboxRecord(data) };
+    },
+
+    async cleanupNamespacedQaRows({
+      tenantId,
+      namespacePrefix,
+      ids = [],
+      expectedProjectRef = "qyewbxjsiiyufanzcjcq",
+    } = {}) {
+      const { data, error } = await client.rpc(
+        "notification_qa_cleanup_namespaced_inbox",
+        {
+          p_tenant_id: tenantId,
+          p_namespace_prefix: namespacePrefix,
+          p_ids: ids,
+          p_expected_project_ref: expectedProjectRef,
+        }
+      );
+      if (error) {
+        return { ok: false, error: error.message || String(error), deleted: 0 };
+      }
+      const rows = Array.isArray(data) ? data : data ? [data] : [];
+      return {
+        ok: true,
+        deleted: rows.length,
+        ids: rows.map((r) => r.deleted_id || r),
+      };
+    },
+
+    async markDeliveryJobStatus({
+      jobId,
+      status,
+      caller = "worker",
+    } = {}) {
+      if (caller === "browser" && isWorkerOnlyDeliveryJobState(status)) {
+        return {
+          ok: false,
+          error: "browser_cannot_set_worker_states",
+          code: "forbidden",
+        };
+      }
+      if (caller === "browser") {
+        return {
+          ok: false,
+          error: "browser_cannot_mutate_delivery_jobs",
+          code: "forbidden",
+        };
+      }
+      return {
+        ok: false,
+        error: "use_completeDeliveryJob_with_claim",
+        code: "forbidden",
+        hint: { jobId, status },
+      };
     },
   };
 }

@@ -165,7 +165,8 @@ async function signOut(client) {
 
 /**
  * Delete only rows created by this run for the authenticated recipient+tenant.
- * Never broad-deletes by tenant alone.
+ * Uses staging-only SECURITY DEFINER RPC (Phase 1.5) — never broad DELETE policy.
+ * Never uses service_role in browser/smoke path.
  */
 async function cleanupRunRows(client, { tenantId, userId, runId }) {
   if (!client || !tenantId || !userId) {
@@ -177,34 +178,115 @@ async function cleanupRunRows(client, { tenantId, userId, runId }) {
   }
 
   const prefix = `${QA_NAMESPACE}:${runId}:`;
-  const { data, error } = await client
-    .from("notification_inbox")
-    .delete()
-    .eq("tenant_id", tenantId)
-    .eq("recipient_user_id", userId)
-    .in("id", uniqueIds)
-    .like("idempotency_key", `${prefix}%`)
-    .select("id");
 
-  if (error) {
+  // Prove unrelated rows are never deleted: insert a sentinel outside tracked set,
+  // attempt cleanup, then assert sentinel remains.
+  const sentinelKey = `${prefix}sentinel-unrelated-${Date.now()}`;
+  const { data: sentinelRow, error: sentinelErr } = await client.rpc(
+    "notification_inbox_create",
+    {
+      p_event_id: `evt-sentinel-${runId}`,
+      p_event_type: "SYSTEM_TEST",
+      p_category: "SYSTEM",
+      p_priority: "LOW",
+      p_tenant_id: tenantId,
+      p_recipient_user_id: userId,
+      p_title: "phase14s cleanup sentinel (must remain if not tracked)",
+      p_message: "unrelated to tracked cleanup ids",
+      p_idempotency_key: sentinelKey,
+    }
+  );
+  if (sentinelErr) {
     return {
       ok: false,
       deleted: 0,
-      reason: error.message || String(error),
+      reason: `sentinel_create_failed:${sentinelErr.message}`,
       attempted: uniqueIds.length,
     };
   }
+  const sentinelId = sentinelRow?.id;
+  // Intentionally do NOT add sentinelId to uniqueIds / createdInboxIds.
 
-  const deleted = Array.isArray(data) ? data.length : 0;
+  const { data, error } = await client.rpc("notification_qa_cleanup_namespaced_inbox", {
+    p_tenant_id: tenantId,
+    p_namespace_prefix: prefix,
+    p_ids: uniqueIds,
+    p_expected_project_ref: STAGING_REF,
+  });
+
+  if (error) {
+    // Fallback: legacy direct DELETE may still be RLS-blocked.
+    const legacy = await client
+      .from("notification_inbox")
+      .delete()
+      .eq("tenant_id", tenantId)
+      .eq("recipient_user_id", userId)
+      .in("id", uniqueIds)
+      .like("idempotency_key", `${prefix}%`)
+      .select("id");
+
+    if (legacy.error) {
+      return {
+        ok: false,
+        deleted: 0,
+        reason: error.message || String(error),
+        attempted: uniqueIds.length,
+        sentinelId,
+      };
+    }
+    const deleted = Array.isArray(legacy.data) ? legacy.data.length : 0;
+    return {
+      ok: deleted > 0,
+      deleted,
+      attempted: uniqueIds.length,
+      reason: deleted === 0 ? "rls_or_no_matching_rows" : "legacy_delete",
+      sentinelId,
+    };
+  }
+
+  const rows = Array.isArray(data) ? data : data ? [data] : [];
+  const deleted = rows.length;
+
+  // Assert sentinel was not deleted
+  const { data: sentinelCheck } = await client
+    .from("notification_inbox")
+    .select("id")
+    .eq("id", sentinelId)
+    .maybeSingle();
+
+  if (!sentinelCheck?.id) {
+    return {
+      ok: false,
+      deleted,
+      attempted: uniqueIds.length,
+      reason: "sentinel_incorrectly_deleted",
+      sentinelId,
+    };
+  }
+
+  // Clean sentinel itself via RPC (now tracked)
+  await client.rpc("notification_qa_cleanup_namespaced_inbox", {
+    p_tenant_id: tenantId,
+    p_namespace_prefix: prefix,
+    p_ids: [sentinelId],
+    p_expected_project_ref: STAGING_REF,
+  });
+
   if (deleted === 0 && uniqueIds.length > 0) {
     return {
       ok: false,
       deleted: 0,
-      reason: "rls_or_no_matching_rows",
+      reason: "rpc_no_matching_rows",
       attempted: uniqueIds.length,
+      sentinelPreserved: true,
     };
   }
-  return { ok: true, deleted, attempted: uniqueIds.length };
+  return {
+    ok: true,
+    deleted,
+    attempted: uniqueIds.length,
+    sentinelPreserved: true,
+  };
 }
 
 async function main() {
@@ -542,16 +624,19 @@ async function main() {
   record(
     "cleanup",
     "delete_only_this_run_rows",
-    "tenant+recipient+tracked ids + namespace prefix",
+    "tenant+recipient+tracked ids + namespace prefix via QA RPC",
     cleanup.ok
-      ? `deleted=${cleanup.deleted}/${cleanup.attempted || cleanup.deleted}`
+      ? `deleted=${cleanup.deleted}/${cleanup.attempted || cleanup.deleted} sentinelPreserved=${cleanup.sentinelPreserved === true}`
       : `SKIP/FAIL: ${cleanup.reason} (attempted=${cleanup.attempted || 0})`,
-    // RLS may deny DELETE; treat successful delete OR explicit policy skip as non-blocker.
-    cleanup.ok || /policy|permission|rls|42501/i.test(String(cleanup.reason || ""))
+    cleanup.ok === true
   );
-  if (!cleanup.ok && /policy|permission|rls|42501/i.test(String(cleanup.reason || ""))) {
-    console.log(
-      "ℹ️  Cleanup DELETE blocked by RLS (expected if no delete policy). Rows remain namespaced under this run id."
+  if (cleanup.sentinelPreserved) {
+    record(
+      "cleanup",
+      "unrelated_sentinel_preserved",
+      "untracked namespaced row not deleted",
+      "sentinel preserved then cleaned separately",
+      true
     );
   }
 
@@ -568,14 +653,14 @@ async function main() {
   console.log(`Tracked created ids: ${createdInboxIds.length}`);
 
   if (blockers > 0) {
-    console.log("\n🛑 NO-GO for Phase 1.5 — blockers present.");
+    console.log("\n🛑 NO-GO — blockers present.");
     process.exit(2);
   }
   if (failures > 0) {
-    console.log("\n❌ FAIL — fix defects before Phase 1.5.");
+    console.log("\n❌ FAIL — fix defects.");
     process.exit(1);
   }
-  console.log("\n✅ Phase 1.4S Staging cloud sync smoke PASS — GO candidate for Phase 1.5.");
+  console.log("\n✅ Phase 1.4S Staging cloud sync smoke PASS (cleanup via Phase 1.5 QA RPC).");
 }
 
 main().catch((error) => {
