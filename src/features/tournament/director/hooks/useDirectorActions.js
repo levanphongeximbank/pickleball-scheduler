@@ -250,11 +250,21 @@ export function useDirectorActions(state) {
         return;
       }
 
+      if (!activeClubId) {
+        setError("Thiếu clubId — không thể xếp sân (Venue & Court).");
+        return;
+      }
+
+      const courtSchedule = tournament?.courtSchedule || {};
       const result = assignTournamentMatchToAvailableCourt({
         matches: activeEvent.matches,
         courts,
         matchId: match.id,
         lockedCourtIds,
+        clubId: activeClubId,
+        date: courtSchedule.date || null,
+        startTime: courtSchedule.startTime || null,
+        endTime: courtSchedule.endTime || null,
       });
 
       if (!result.ok) {
@@ -269,6 +279,7 @@ export function useDirectorActions(state) {
       }
     },
     [
+      activeClubId,
       activeEvent,
       courts,
       isDaily,

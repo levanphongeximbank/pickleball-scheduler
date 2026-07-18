@@ -137,7 +137,7 @@ test("schedule engine avoids same-team double booking in slot", () => {
       bufferMinutes: 5,
       date: "2026-06-30",
     },
-  });
+  }, { legacyAvailability: true });
   assert.equal(result.ok, true);
   const m1 = result.data.matches.find((m) => m.id === "m1");
   const m2 = result.data.matches.find((m) => m.id === "m2");
@@ -167,7 +167,7 @@ test("schedule engine keeps completed matches on regenerate", () => {
       courts: [{ id: "c1", name: "Sân 1" }],
       scheduleConfig: { startTime: "08:00", endTime: "22:00", averageMatchMinutes: 20 },
     },
-    { regenerate: true }
+    { regenerate: true, legacyAvailability: true }
   );
   assert.equal(result.ok, true);
   const kept = result.data.matches.find((m) => m.id === "done");
@@ -182,7 +182,7 @@ test("court assignment skips locked courts", () => {
       { id: "c1", name: "Sân 1", locked: true, priority: 10 },
       { id: "c2", name: "Sân 2", locked: false, priority: 5 },
     ],
-  });
+  }, { legacyAvailability: true });
   assert.equal(result.ok, true);
   assert.equal(result.data.assignments[0].courtId, "c2");
 });
@@ -200,7 +200,7 @@ test("court assignment does not override manual lock", () => {
       ],
       courts: [{ id: "c2", name: "Sân 2" }],
     },
-    { overrideManual: false }
+    { overrideManual: false, legacyAvailability: true }
   );
   assert.equal(result.data.assignments.length, 0);
 });

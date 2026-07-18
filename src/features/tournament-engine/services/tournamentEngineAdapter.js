@@ -153,9 +153,15 @@ export function buildEngineContext({
     scheduleConfig: {
       ...DEFAULT_SCHEDULE_CONFIG,
       ...settings.scheduleConfig,
-      date: courtSchedule?.date || settings.scheduleConfig?.date,
-      startTime: courtSchedule?.startTime || settings.scheduleConfig?.startTime,
-      endTime: courtSchedule?.endTime || settings.scheduleConfig?.endTime,
+      date: courtSchedule?.date || settings.scheduleConfig?.date || undefined,
+      startTime:
+        courtSchedule?.startTime ||
+        settings.scheduleConfig?.startTime ||
+        DEFAULT_SCHEDULE_CONFIG.startTime,
+      endTime:
+        courtSchedule?.endTime ||
+        settings.scheduleConfig?.endTime ||
+        DEFAULT_SCHEDULE_CONFIG.endTime,
       minRestMinutes:
         schedulePublish.minRestMinutes ??
         settings.scheduleConfig?.minRestMinutes ??

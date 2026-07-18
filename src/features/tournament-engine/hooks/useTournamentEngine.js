@@ -403,8 +403,16 @@ export function useTournamentEngineState(tournamentId) {
       }
     }
     return runWithLoading(() => {
+      if (!activeClubId) {
+        return {
+          ok: false,
+          errors: ["Thiếu clubId — bắt buộc cho Venue & Court availability."],
+          code: "CLUB_SCOPE_MISSING",
+        };
+      }
       const scheduleContext = {
         ...context,
+        clubId: activeClubId,
         participants:
           engineState?.seedResult?.participants ||
           tournament?.settings?.engineV4?.seedResult?.participants ||
@@ -412,6 +420,15 @@ export function useTournamentEngineState(tournamentId) {
         groups: engineState?.groups || context.groups || [],
         matches: engineState?.matches || context.matches || [],
       };
+      if (!scheduleContext.scheduleConfig?.date) {
+        return {
+          ok: false,
+          errors: [
+            "Thiếu ngày lịch (courtSchedule.date / scheduleConfig.date) — bắt buộc trước khi tạo lịch.",
+          ],
+          code: "SCHEDULE_WINDOW_MISSING",
+        };
+      }
       const beforeMatches = scheduleContext.matches || [];
       const result = runScheduleEngine(
         scheduleContext,
@@ -469,10 +486,30 @@ export function useTournamentEngineState(tournamentId) {
       return { ok: false };
     }
     return runWithLoading(() => {
+      if (!activeClubId) {
+        return {
+          ok: false,
+          errors: ["Thiếu clubId — bắt buộc cho Venue & Court availability."],
+          code: "CLUB_SCOPE_MISSING",
+        };
+      }
       const courtContext = {
         ...context,
+        clubId: activeClubId,
         matches: engineState?.matches || context.matches || [],
       };
+      if (
+        !courtContext.scheduleConfig?.date &&
+        !(courtContext.matches || []).some((m) => m?.scheduledStart)
+      ) {
+        return {
+          ok: false,
+          errors: [
+            "Thiếu khung giờ dân sự (scheduleConfig.date hoặc scheduledStart) — bắt buộc trước khi gán sân.",
+          ],
+          code: "SCHEDULE_WINDOW_MISSING",
+        };
+      }
       const result = runCourtAssignmentEngine(
         courtContext,
         {},
@@ -569,8 +606,24 @@ export function useTournamentEngineState(tournamentId) {
     }
 
     return runWithLoading(() => {
+      if (!activeClubId) {
+        return {
+          ok: false,
+          errors: ["Thiếu clubId — bắt buộc cho Venue & Court availability."],
+          code: "CLUB_SCOPE_MISSING",
+        };
+      }
+      if (!context.scheduleConfig?.date) {
+        return {
+          ok: false,
+          errors: [
+            "Thiếu ngày lịch (courtSchedule.date / scheduleConfig.date) — bắt buộc trước khi chạy full plan.",
+          ],
+          code: "SCHEDULE_WINDOW_MISSING",
+        };
+      }
       const result = runFullTournamentPlan(
-        context,
+        { ...context, clubId: activeClubId },
         buildLogOptions(activeClubId, user, null, null, "full-plan")
       );
       if (result.ok) {

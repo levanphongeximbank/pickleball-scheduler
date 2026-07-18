@@ -1,5 +1,13 @@
 import { MATCH_STAGE } from "../../../models/tournament/constants.js";
 import { validateCourtAssignmentInput } from "../validation/tournamentValidation.js";
+import {
+  AVAILABILITY_MODE,
+  assertRuntimeAvailabilityScope,
+  createCompetitionAvailabilityChecker,
+  resolveAvailabilityMode,
+  resolveMatchCivilWindow,
+  resolveScheduleConfigWindow,
+} from "../services/competitionAvailabilityGuard.js";
 
 const COMPLETED_STATUSES = new Set(["completed", "forfeit"]);
 
@@ -57,44 +65,161 @@ export function assignCourts(context = {}, options = {}) {
   const assignments = [];
   const conflicts = [];
 
+  const availabilityMode = resolveAvailabilityMode(options, context);
+  const clubId = context.clubId || options.clubId || null;
+  const configWindow = resolveScheduleConfigWindow(context.scheduleConfig || {});
+
+  const scope = assertRuntimeAvailabilityScope({
+    clubId,
+    scheduleConfig: context.scheduleConfig || {},
+    matchWindow: configWindow,
+    mode: availabilityMode,
+    // Window may come per-match; require clubId always in REQUIRED mode.
+    // Per-match window checked below before assign.
+    requireWindow: false,
+  });
+  if (!scope.ok) {
+    return {
+      ok: false,
+      errors: scope.errors,
+      code: scope.code,
+      warnings,
+      explain,
+    };
+  }
+
+  if (availabilityMode === AVAILABILITY_MODE.REQUIRED && !configWindow) {
+    const sample = (context.matches || []).find(
+      (m) => m?.scheduledStart && !COMPLETED_STATUSES.has(m.status)
+    );
+    const sampleWindow = sample
+      ? resolveMatchCivilWindow(
+          sample,
+          context.scheduleConfig?.date || null
+        )
+      : null;
+    if (!sampleWindow && !(context.matches || []).some((m) => m?.scheduledStart)) {
+      return {
+        ok: false,
+        code: "SCHEDULE_WINDOW_MISSING",
+        errors: [
+          "Thiếu khung giờ dân sự (scheduleConfig hoặc scheduledStart/End) — bắt buộc cho Venue & Court availability.",
+        ],
+        warnings,
+        explain,
+      };
+    }
+  }
+
+  const venueAvailability = createCompetitionAvailabilityChecker({
+    clubId: scope.clubId,
+    venueId: context.venueId || options.venueId || null,
+    courtIds: courts.map((court) => court.id),
+    clusterId: context.clusterId || options.clusterId || null,
+    context: options.availabilityContext || context.availabilityContext || null,
+    mode: availabilityMode,
+  });
+  if (venueAvailability.enabled) {
+    explain.push("Venue & Court availability: bật (lọc sân theo booking / giờ / trạng thái).");
+  }
+
   const matches = [...(context.matches || [])].sort(
     (a, b) => matchImportance(b) - matchImportance(a)
   );
 
   const courtSchedule = new Map();
 
-  matches.forEach((match) => {
+  for (const match of matches) {
     if (COMPLETED_STATUSES.has(match.status)) {
       if (match.courtId) {
         const list = courtSchedule.get(match.courtId) || [];
         list.push(match);
         courtSchedule.set(match.courtId, list);
       }
-      return;
+      continue;
     }
 
     if (match.manualCourtLock && match.courtId && !overrideManual) {
       explain.push(`Trận ${match.id}: giữ sân thủ công (${match.courtId}).`);
-      return;
+      continue;
     }
 
     const importance = matchImportance(match);
     let assignedCourt = null;
     let reason = "";
+    const matchWindow =
+      resolveMatchCivilWindow(
+        match,
+        configWindow?.date || context.scheduleConfig?.date || null
+      ) || configWindow;
+
+    if (availabilityMode === AVAILABILITY_MODE.REQUIRED && venueAvailability.enabled) {
+      if (!matchWindow) {
+        return {
+          ok: false,
+          code: "SCHEDULE_WINDOW_MISSING",
+          errors: [
+            `Trận ${match.id}: thiếu khung giờ dân sự — không gán sân (fail-closed).`,
+          ],
+          warnings,
+          explain,
+          data: {
+            assignments,
+            matches: context.matches || [],
+            conflicts,
+          },
+        };
+      }
+    }
 
     for (const court of courts) {
       const scheduled = courtSchedule.get(court.id) || [];
       const overlap = scheduled.some((other) => timeOverlaps(match, other));
-      if (!overlap) {
-        assignedCourt = court;
-        reason =
-          importance >= 70
-            ? `Trận quan trọng → sân ưu tiên ${court.name}`
-            : `Sân trống phù hợp: ${court.name}`;
-        scheduled.push({ ...match, courtId: court.id });
-        courtSchedule.set(court.id, scheduled);
-        break;
+      if (overlap) {
+        continue;
       }
+
+      if (venueAvailability.enabled && matchWindow) {
+        try {
+          if (
+            !venueAvailability.isCourtAvailable(
+              court.id,
+              matchWindow.date,
+              matchWindow.startTime,
+              matchWindow.endTime
+            )
+          ) {
+            continue;
+          }
+        } catch (error) {
+          const code = error?.code || "DATA_UNAVAILABLE";
+          return {
+            ok: false,
+            errors: [
+              code === "DATA_UNAVAILABLE"
+                ? "Không tải được availability từ Venue & Court (DATA_UNAVAILABLE)."
+                : error?.message || "Lỗi availability Venue & Court.",
+            ],
+            code,
+            warnings,
+            explain,
+            data: {
+              assignments,
+              matches: context.matches || [],
+              conflicts,
+            },
+          };
+        }
+      }
+
+      assignedCourt = court;
+      reason =
+        importance >= 70
+          ? `Trận quan trọng → sân ưu tiên ${court.name}`
+          : `Sân trống phù hợp: ${court.name}`;
+      scheduled.push({ ...match, courtId: court.id });
+      courtSchedule.set(court.id, scheduled);
+      break;
     }
 
     if (!assignedCourt) {
@@ -103,7 +228,7 @@ export function assignCourts(context = {}, options = {}) {
         message: "Không có sân trống trong khung giờ trận đấu.",
       });
       warnings.push(`Trận ${match.id}: không gán được sân.`);
-      return;
+      continue;
     }
 
     assignments.push({
@@ -113,7 +238,7 @@ export function assignCourts(context = {}, options = {}) {
       reason,
       importance,
     });
-  });
+  }
 
   explain.push(`${assignments.length} trận được gán sân tự động.`);
 
