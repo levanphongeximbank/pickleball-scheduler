@@ -102,6 +102,7 @@
   "tests/score-history.test.js",
   "tests/player-management-phase-1b-facade.test.js",
   "tests/player-management-phase-1c-profile-fields.test.js",
+  "tests/player-management-phase-1c-guard-auth-hotfix.test.js",
   "tests/player-history.test.js",
   "tests/tournament-mobile.test.js",
   "tests/tournament-regression.test.js",
