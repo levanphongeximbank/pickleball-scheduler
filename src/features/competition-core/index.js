@@ -654,6 +654,30 @@ export {
   mapLegacyPlayerToCompetitionParticipant,
 } from "./participants/index.js";
 
+/** Phase 3D Integrator Wave 2 — Team / Roster Resolution Runtime public surface. */
+export {
+  createTeamResolver,
+  createRosterResolver,
+  createLegacyTeamAdapter,
+  createLegacyRosterAdapter,
+  buildTeamIdentityKey,
+  createTeamIdentity,
+  buildRosterIdentityKey,
+  createRosterIdentity,
+  buildRosterMemberIdentityKey,
+  createRosterMemberIdentity,
+  formatParticipantReferenceToken,
+  TEAM_RUNTIME_ERROR_CODE,
+  TeamRuntimeError,
+  isTeamRuntimeError,
+  createTeamRuntimeError,
+  TEAM_ADAPTER_ID,
+  ROSTER_ADAPTER_ID,
+  TEAM_SOURCE_TYPE,
+  mapLegacyTeamToCompetitionTeam,
+  mapLegacyRosterToCompetitionRoster,
+} from "./teams/index.js";
+
 /** Phase 3A.1 — Runtime Control Plane foundation (decision-only, no executor dispatch). */
 export {
   RUNTIME_CONTROL_VERSION,

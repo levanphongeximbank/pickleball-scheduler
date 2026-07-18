@@ -125,15 +125,19 @@ test("3D architecture: Production safety defaults unchanged", () => {
   assert.equal(resolveShadowEligibility({}).eligible, false);
 });
 
-test("3D architecture: root index NOT modified with Team Runtime exports", () => {
+test("3D architecture: root index re-exports Team Runtime public surface (Integrator Wave 2)", () => {
   const indexPath = path.join(ROOT, "src/features/competition-core/index.js");
   const content = readFileSync(indexPath, "utf8");
-  assert.doesNotMatch(content, /createTeamResolver/);
-  assert.doesNotMatch(content, /createRosterResolver/);
-  assert.doesNotMatch(content, /teams\/index/);
+  assert.match(content, /createTeamResolver/);
+  assert.match(content, /createRosterResolver/);
+  assert.match(content, /from "\.\/teams\/index\.js"/);
+  // Still no Production wiring / registry / flag flips in root index
+  assert.doesNotMatch(content, /registerTeamCapability|registerRosterCapability/);
+  assert.doesNotMatch(content, /VITE_ENABLE.*TEAM.*=.*true/);
+  assert.doesNotMatch(content, /from "\.\/registrations\//);
 });
 
-test("3D architecture: phase-3d manifest exists; official manifest NOT edited", () => {
+test("3D architecture: official unit-test-files.json includes Phase 3D tests (Integrator Wave 2)", () => {
   const phaseManifest = path.join(
     ROOT,
     "scripts/ci/unit-test-files.phase-3d.json"
@@ -149,11 +153,17 @@ test("3D architecture: phase-3d manifest exists; official manifest NOT edited", 
   );
   for (const entry of phase) {
     assert.equal(
-      official.includes(entry),
-      false,
-      `official must not include ${entry} until Integrator Wave`
+      official.filter((f) => f === entry).length,
+      1,
+      `official must include exactly once: ${entry}`
     );
   }
+  assert.equal(
+    official.filter(
+      (f) => f === "tests/competition-core-team-integrator-3d-wave2.test.js"
+    ).length,
+    1
+  );
 });
 
 test("3D architecture: no Production page/API callers of Team Runtime", () => {
