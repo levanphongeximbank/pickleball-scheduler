@@ -77,8 +77,10 @@ Venue & Court must not import Competition. Phase 2B wires Competition consumers 
 ## Phase status
 
 ```text
-PHASE 2B — COMPETITION AVAILABILITY WIRING
+PHASE 2C — TOURNAMENT BOOKING BRIDGE HARDENING
 ```
+
+See `docs/venue-court/PHASE_2C_BOOKING_BRIDGE.md` for booking bridge ownership, sync lifecycle, idempotency, and fail-closed conflict rules.
 
 `getCourtAvailability` is **read-only**. Overlap semantics delegate to `courtBookingEngine` (half-open intervals). Overnight/cross-day requests are rejected.
 
