@@ -21,6 +21,7 @@ import { createParticipantReference } from "./identity.js";
  * @property {number|null} [seed]
  * @property {import('./identity.js').ParticipantReference|null} [captainRef]
  * @property {import('./identity.js').ParticipantReference[]} [deputyRefs]
+ * @property {string|null} [identityKey] — competitionId::TEAM::stableTeamId (Phase 3D)
  * @property {import('./shared.js').FormatExtension|null} [extensions]
  * @property {import('./shared.js').AuditMetadata} [audit]
  */
@@ -41,6 +42,10 @@ export function createCompetitionTeam(partial = {}) {
     deputyRefs: Array.isArray(partial.deputyRefs)
       ? partial.deputyRefs.map((r) => createParticipantReference(r || {}))
       : [],
+    identityKey:
+      partial.identityKey != null && partial.identityKey !== ""
+        ? String(partial.identityKey)
+        : null,
     extensions: createFormatExtension(partial.extensions),
     audit: createAuditMetadata(partial.audit),
   };
@@ -122,6 +127,7 @@ export function createRosterSubstitutionReference(partial = {}) {
  * @property {string|null} [lockReason]
  * @property {number|null} [maxSize]
  * @property {RosterSubstitutionReference[]} [amendments]
+ * @property {string|null} [identityKey] — competitionId::ROSTER::teamId (Phase 3D)
  * @property {import('./shared.js').FormatExtension|null} [extensions]
  * @property {import('./shared.js').AuditMetadata} [audit]
  */
@@ -146,6 +152,10 @@ export function createCompetitionRoster(partial = {}) {
     amendments: Array.isArray(partial.amendments)
       ? partial.amendments.map((a) => createRosterSubstitutionReference(a || {}))
       : [],
+    identityKey:
+      partial.identityKey != null && partial.identityKey !== ""
+        ? String(partial.identityKey)
+        : null,
     extensions: createFormatExtension(partial.extensions),
     audit: createAuditMetadata(partial.audit),
   };
