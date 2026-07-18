@@ -1,7 +1,7 @@
 # Phase 1B — Minimal Facade Foundation
 
-**Status:** Implemented (source uncommitted — awaiting Owner review)  
-**Date:** 2026-07-18  
+**Status:** Committed — `73e3738`
+**Date:** 2026-07-18
 **Depends on:** Phase 1A commit `docs(venue-court): define phase 1 foundation architecture`
 
 ## Delivered

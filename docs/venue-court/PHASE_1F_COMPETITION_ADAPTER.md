@@ -1,8 +1,8 @@
 # Phase 1F — Competition Court Availability Adapter
 
-**Status:** Implemented (awaiting Owner review — not committed)  
-**Date:** 2026-07-18  
-**Branch:** `feature/venue-court-phase-1-foundation`  
+**Status:** Committed — `7ce80ff` (adapter only; Competition runtime **not** wired)
+**Date:** 2026-07-18
+**Branch:** `feature/venue-court-phase-1-foundation`
 **Depends on:** Phase 1E `23363b19ff7a54fb29cddab5e939c543516590d5`
 
 ---

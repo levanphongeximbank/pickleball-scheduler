@@ -63,12 +63,13 @@ Competition consumer
   → inventory / bookings / operating hours
 ```
 
-Venue & Court must not import Competition. Phase 1F does **not** wire Competition runtime.
+Venue & Court must not import Competition. Phase 1F adapter is **not** wired into Competition runtime.
 
 ## Public API
 
 * `listCourts` / `getCourtById`
 * `getVenueOperatingHours` / `updateVenueOperatingHours`
+* `shouldWarnLegacyImport` / `legacyImportUserMessage` / `LEGACY_IMPORT_REASON`
 * `getCourtAvailability({ clubId, venueId?, date, startTime, endTime, courtId?, courtIds?, clusterId?, context?, includeUnavailable? })`
 * `AVAILABILITY_REASON`
 * `getCompetitionCourtAvailability({ clubId, venueId?, date, startTime, endTime, courtIds?, clusterId?, context?, includeUnavailable? })`
@@ -76,8 +77,13 @@ Venue & Court must not import Competition. Phase 1F does **not** wire Competitio
 ## Phase status
 
 ```text
-PHASE 1F — COMPETITION COURT AVAILABILITY ADAPTER
+PHASE 1G — FINAL QA AND RELEASE READINESS
 ```
+
+Phase 1 tip commit: `7ce80ff` (1F). See:
+
+* `docs/venue-court/PHASE_1G_FINAL_QA_REPORT.md`
+* `docs/venue-court/PHASE_1_RELEASE_READINESS.md`
 
 `getCourtAvailability` is **read-only**. Overlap semantics delegate to `courtBookingEngine` (half-open intervals). Overnight/cross-day requests are rejected.
 

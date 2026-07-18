@@ -1,8 +1,8 @@
 # Phase 1E — Canonical Court Availability Contract
 
-**Status:** Implemented (awaiting Owner review — not committed)  
-**Date:** 2026-07-18  
-**Branch:** `feature/venue-court-phase-1-foundation`  
+**Status:** Committed — `23363b1`
+**Date:** 2026-07-18
+**Branch:** `feature/venue-court-phase-1-foundation`
 **Depends on:** Phase 1D `e39fbfcd495189455a772deedd7a41b96a3012b2`
 
 ---

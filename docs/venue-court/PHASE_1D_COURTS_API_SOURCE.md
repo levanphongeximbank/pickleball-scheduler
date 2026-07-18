@@ -1,7 +1,7 @@
 # Phase 1D — Courts API Source Correction
 
-**Status:** Scope remediation complete (awaiting Owner review — not committed)  
-**Date:** 2026-07-18  
+**Status:** Committed — `e39fbfc`
+**Date:** 2026-07-18
 **Branch:** `feature/venue-court-phase-1-foundation`
 
 ---

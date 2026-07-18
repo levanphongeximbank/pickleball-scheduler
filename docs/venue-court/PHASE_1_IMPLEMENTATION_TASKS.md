@@ -204,6 +204,13 @@ Implement read-only `getCourtAvailability` per `PHASE_1A_AVAILABILITY_CONTRACT.m
 
 Competition consumes availability/inventory **only** through `competitionCourtAdapter`. No direct Club V3 reads. **No** change to `match.courtId` semantics or assignment algorithm rewrite.
 
+### Delivery note (as implemented / committed `7ce80ff`)
+
+- Implemented file: `src/features/venue-court/adapters/competitionCourtAvailabilityAdapter.js`
+- Public export: `getCompetitionCourtAvailability`
+- **No Competition runtime wiring** in Phase 1F (Owner decision); adapter validated and exported only
+- See `PHASE_1F_COMPETITION_ADAPTER.md`
+
 ### File dự kiến sửa
 
 - `src/features/venue-court/adapters/competitionCourtAdapter.js` (new)

@@ -1,7 +1,7 @@
 # Phase 1C — Operating Hours Consolidation
 
-**Status:** Remediation complete (awaiting Owner review — not committed)  
-**Date:** 2026-07-18  
+**Status:** Committed — `733e814`
+**Date:** 2026-07-18
 **Branch:** `feature/venue-court-phase-1-foundation`
 
 ---
@@ -74,16 +74,16 @@ Failure reasons: `VENUE_SCOPE_MISSING`, `CLUB_SCOPE_MISSING`, `CLUB_VENUE_MISMAT
 
 ## Safe legacy import eligibility (all required)
 
-1. venueId present  
-2. active clubId present  
-3. club belongs to venue  
-4. CM hours exactly defaults `0` / `24`  
-5. no `legacyVenueHoursImportedAt`  
-6. legacy JSON exists and parses to an array  
-7. **all seven** days `"0"`–`"6"` present exactly once  
-8. every day same `openTime`  
-9. every day same `closeTime`  
-10. all times minute `00`  
+1. venueId present
+2. active clubId present
+3. club belongs to venue
+4. CM hours exactly defaults `0` / `24`
+5. no `legacyVenueHoursImportedAt`
+6. legacy JSON exists and parses to an array
+7. **all seven** days `"0"`–`"6"` present exactly once
+8. every day same `openTime`
+9. every day same `closeTime`
+10. all times minute `00`
 11. resulting integers satisfy `openHour < closeHour`
 
 On success: write CM once, set marker, **no** legacy write/delete.
