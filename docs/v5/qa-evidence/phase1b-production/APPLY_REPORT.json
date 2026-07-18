@@ -1,0 +1,246 @@
+{
+  "phase": "1B",
+  "kind": "PRODUCTION_SQL_APPLY",
+  "productionRef": "expuvcohlcjzvrrauvud",
+  "stagingRef": "qyewbxjsiiyufanzcjcq",
+  "approvedMainSha": "959c8067ea756aa32e50b549a97cd4e762786ff7",
+  "originMainSha": "959c8067ea756aa32e50b549a97cd4e762786ff7",
+  "startedAt": "2026-07-18T15:33:54.315Z",
+  "preflight": {
+    "constraintDef": "CHECK ((action = ANY (ARRAY['approve'::text, 'assign_role'::text, 'audit.view'::text, 'club.assign_owner'::text, 'club.assign_vice_president'::text, 'club.clear_owner'::text, 'club.clear_vice_president'::text, 'club.create'::text, 'club.delete'::text, 'club.leave_membership'::text, 'club.member.add'::text, 'club.member.remove'::text, 'club.member.restore'::text, 'club.membership_request.correction'::text, 'club.membership_request.review'::text, 'club.membership_request.submit'::text, 'club.owner.transfer'::text, 'club.president.transfer'::text, 'club.transfer_president'::text, 'club.update'::text, 'club.vice_president.assign'::text, 'create'::text, 'delete'::text, 'group_override'::text, 'login'::text, 'login_failed'::text, 'logout'::text, 'pairing_override'::text, 'password_change'::text, 'payment_success'::text, 'permission_change'::text, 'rating.propose'::text, 'rating.verify'::text, 'reset_password'::text, 'update'::text, 'user.manage.denied'::text, 'user.manage.status-change'::text, 'workflow.notification'::text])))",
+    "currentAcceptedActions": [
+      "approve",
+      "assign_role",
+      "audit.view",
+      "club.assign_owner",
+      "club.assign_vice_president",
+      "club.clear_owner",
+      "club.clear_vice_president",
+      "club.create",
+      "club.delete",
+      "club.leave_membership",
+      "club.member.add",
+      "club.member.remove",
+      "club.member.restore",
+      "club.membership_request.correction",
+      "club.membership_request.review",
+      "club.membership_request.submit",
+      "club.owner.transfer",
+      "club.president.transfer",
+      "club.transfer_president",
+      "club.update",
+      "club.vice_president.assign",
+      "create",
+      "delete",
+      "group_override",
+      "login",
+      "login_failed",
+      "logout",
+      "pairing_override",
+      "password_change",
+      "payment_success",
+      "permission_change",
+      "rating.propose",
+      "rating.verify",
+      "reset_password",
+      "update",
+      "user.manage.denied",
+      "user.manage.status-change",
+      "workflow.notification"
+    ],
+    "existingDistinctActions": [
+      "assign_role",
+      "club.leave_membership",
+      "club.membership_request.correction",
+      "club.membership_request.review",
+      "club.membership_request.submit",
+      "create",
+      "login",
+      "password_change",
+      "reset_password",
+      "update"
+    ],
+    "proposedMissingValues": [
+      "approve",
+      "audit.view",
+      "club.assign_owner",
+      "club.assign_vice_president",
+      "club.clear_owner",
+      "club.clear_vice_president",
+      "club.create",
+      "club.delete",
+      "club.member.add",
+      "club.member.remove",
+      "club.member.restore",
+      "club.owner.transfer",
+      "club.president.transfer",
+      "club.transfer_president",
+      "club.update",
+      "club.vice_president.assign",
+      "delete",
+      "group_override",
+      "login_failed",
+      "logout",
+      "pairing_override",
+      "payment_success",
+      "permission_change",
+      "rating.propose",
+      "rating.verify",
+      "user.manage.denied",
+      "user.manage.status-change",
+      "workflow.notification"
+    ],
+    "incompatibleHistoricalValues": [],
+    "incompatibleWithFixedLegacyList": [],
+    "wouldRejectExistingRows": false,
+    "block": false,
+    "blockReason": null,
+    "safeToApplyAdditive": true,
+    "rls_enabled": [
+      {
+        "table": "audit_logs",
+        "rls_enabled": true
+      },
+      {
+        "table": "club_governance_assignments",
+        "rls_enabled": true
+      },
+      {
+        "table": "club_members",
+        "rls_enabled": true
+      },
+      {
+        "table": "clubs",
+        "rls_enabled": true
+      }
+    ]
+  },
+  "files": [
+    {
+      "order": 1,
+      "file": "docs/v5/phase1b/PHASE_1B_AUDIT_WHITELIST_ADDITIVE.sql",
+      "checksum": "a7ccaed15c465fff6a81bfc9ef78637d0a51ea056630792a3d1cf8ebd9f67103",
+      "startedAt": "2026-07-18T15:33:55.419Z",
+      "result": "PASS",
+      "error": null,
+      "finishedAt": "2026-07-18T15:33:56.419Z"
+    },
+    {
+      "order": 2,
+      "file": "docs/v5/phase45a3c/PHASE_45A3C_CLUB_UPDATE_RPC.sql",
+      "checksum": "c98a233cf851fdccb15dd96ceb3346782a77275147c9ffbc7335b325514bcbdd",
+      "startedAt": "2026-07-18T15:33:56.419Z",
+      "result": "PASS",
+      "error": null,
+      "finishedAt": "2026-07-18T15:33:57.137Z"
+    },
+    {
+      "order": 3,
+      "file": "docs/v5/phase45a4c1/PHASE_45A4C1_MEMBER_RPC.sql",
+      "checksum": "967a107a8c8b4d277a61b8e99add33862a461e6a8437d694b5501ca5c7c69b27",
+      "startedAt": "2026-07-18T15:33:57.138Z",
+      "result": "PASS",
+      "error": null,
+      "finishedAt": "2026-07-18T15:33:57.930Z"
+    },
+    {
+      "order": 4,
+      "file": "docs/v5/phase45a4d1/PHASE_45A4D1_MEMBER_RESTORE_RPC.sql",
+      "checksum": "36b0d521a8351ceeeaac2d154fb7dfaf8c49b8c5711b6a0e0cd8ca40d4653cce",
+      "startedAt": "2026-07-18T15:33:57.930Z",
+      "result": "PASS",
+      "error": null,
+      "finishedAt": "2026-07-18T15:33:58.661Z"
+    },
+    {
+      "order": 5,
+      "file": "docs/v5/phase1b/PHASE_1B_V2_COMMAND_COMPLETION.sql",
+      "checksum": "6ed9de92707a0dd987c6c269e01c5adb8b0bf70394e48db1f076c1b6d2c3e4f7",
+      "startedAt": "2026-07-18T15:33:58.662Z",
+      "result": "PASS",
+      "error": null,
+      "finishedAt": "2026-07-18T15:33:59.602Z"
+    },
+    {
+      "order": 6,
+      "file": "docs/v5/phase1b/PHASE_1B_CLUB_UPDATE_AUTHZ_SECURITY_GATE.sql",
+      "checksum": "de68a529b98ad8113a805a048f112c367186a3bb644abe33ec8b5fcc2bcc983e",
+      "startedAt": "2026-07-18T15:33:59.602Z",
+      "result": "PASS",
+      "error": null,
+      "finishedAt": "2026-07-18T15:34:00.344Z"
+    }
+  ],
+  "verify": {
+    "functions": [
+      {
+        "proname": "club_add_member",
+        "args": "p_request_id uuid, p_club_id text, p_target_user_id uuid, p_membership_type text, p_expected_version integer",
+        "security_definer": true,
+        "search_path": "public"
+      },
+      {
+        "proname": "club_assign_vice_president",
+        "args": "p_request_id uuid, p_club_id text, p_member_user_id uuid, p_expected_club_version integer",
+        "security_definer": true,
+        "search_path": "public"
+      },
+      {
+        "proname": "club_clear_vice_president",
+        "args": "p_request_id uuid, p_club_id text, p_expected_club_version integer, p_member_user_id uuid",
+        "security_definer": true,
+        "search_path": "public"
+      },
+      {
+        "proname": "club_remove_member",
+        "args": "p_request_id uuid, p_club_id text, p_target_user_id uuid, p_expected_version integer",
+        "security_definer": true,
+        "search_path": "public"
+      },
+      {
+        "proname": "club_restore_member",
+        "args": "p_request_id uuid, p_club_id text, p_target_user_id uuid, p_expected_version integer",
+        "security_definer": true,
+        "search_path": "public"
+      },
+      {
+        "proname": "club_update",
+        "args": "p_request_id uuid, p_club_id text, p_expected_club_version integer, p_name text, p_code text, p_description text, p_status text, p_registered_cluster_id text",
+        "security_definer": true,
+        "search_path": "public"
+      },
+      {
+        "proname": "phase42_can_manage_vice_presidents",
+        "args": "p_club_id text",
+        "security_definer": true,
+        "search_path": "public"
+      },
+      {
+        "proname": "phase42_can_update_club",
+        "args": "p_club_id text",
+        "security_definer": true,
+        "search_path": "public"
+      },
+      {
+        "proname": "phase42_club_canonical",
+        "args": "p_club_id text",
+        "security_definer": true,
+        "search_path": "public"
+      }
+    ],
+    "audit_actions": "CHECK ((action = ANY (ARRAY['approve'::text, 'assign_role'::text, 'audit.view'::text, 'club.assign_owner'::text, 'club.assign_vice_president'::text, 'club.clear_owner'::text, 'club.clear_vice_president'::text, 'club.create'::text, 'club.delete'::text, 'club.leave_membership'::text, 'club.member.add'::text, 'club.member.remove'::text, 'club.member.restore'::text, 'club.membership_request.correction'::text, 'club.membership_request.review'::text, 'club.membership_request.submit'::text, 'club.owner.transfer'::text, 'club.president.transfer'::text, 'club.transfer_president'::text, 'club.update'::text, 'club.vice_president.assign'::text, 'create'::text, 'delete'::text, 'group_override'::text, 'login'::text, 'login_failed'::text, 'logout'::text, 'pairing_override'::text, 'password_change'::text, 'payment_success'::text, 'permission_change'::text, 'rating.propose'::text, 'rating.verify'::text, 'reset_password'::text, 'update'::text, 'user.manage.denied'::text, 'user.manage.status-change'::text, 'workflow.notification'::text])))",
+    "canonical_has_vp": true,
+    "vp_auth_uses_narrow_helper": true,
+    "club_update_uses_narrow_helper": true,
+    "helpers_exist": {
+      "phase42_can_update_club": true,
+      "phase42_can_manage_vice_presidents": true,
+      "club_clear_vice_president": true
+    },
+    "rls_still_enabled": true
+  },
+  "status": "APPLIED_AND_VERIFIED",
+  "productionSqlApplied": true,
+  "verifyOk": true,
+  "finishedAt": "2026-07-18T15:34:01.079Z"
+}
