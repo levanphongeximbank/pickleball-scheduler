@@ -91,6 +91,47 @@ export function getClubPlayersPlatformWide() {
   return normalizePlayers(Array.from(byId.values()));
 }
 
+/** Normalize club_list_members row → auth user id (snake/camel). */
+export function resolveMembershipAuthUserId(member = {}) {
+  return String(
+    member.user_id || member.userId || member.authUserId || member.auth_user_id || ""
+  ).trim();
+}
+
+function isActiveMembershipStatus(status) {
+  return String(status || "").trim().toLowerCase() === "active";
+}
+
+function collectLinkedUserIdsFromPlayers(players = []) {
+  const linkedUserIds = new Set();
+  for (const player of players) {
+    const authUserId = String(player?.authUserId || "").trim();
+    if (authUserId) {
+      linkedUserIds.add(authUserId);
+    }
+    const id = String(player?.id || "").trim();
+    if (id.startsWith("profile-")) {
+      const fromId = id.slice("profile-".length).trim();
+      if (fromId) {
+        linkedUserIds.add(fromId);
+      }
+    }
+  }
+  return linkedUserIds;
+}
+
+function mergeLinkedUserIdSets(...sets) {
+  const merged = new Set();
+  for (const set of sets) {
+    if (!set) continue;
+    for (const value of set) {
+      const id = String(value || "").trim();
+      if (id) merged.add(id);
+    }
+  }
+  return merged;
+}
+
 async function getV2MembershipLinkedPlayers() {
   if (!isClubStorageV2Enabled()) {
     return { players: [], linkedUserIds: new Set() };
@@ -103,6 +144,7 @@ async function getV2MembershipLinkedPlayers() {
 
   const byAuthUser = new Map();
   const linkedUserIds = new Set();
+  const memberErrors = [];
 
   for (const club of registry.clubs || []) {
     if (!club?.id || club.isDefault) {
@@ -110,13 +152,14 @@ async function getV2MembershipLinkedPlayers() {
     }
     const membersResult = await rpcV2ClubListMembers(club.id);
     if (!membersResult.ok) {
+      memberErrors.push(membersResult.error || `club_list_members failed (${club.id})`);
       continue;
     }
     for (const member of membersResult.members || []) {
-      if (String(member.status || "").toLowerCase() !== "active") {
+      if (!isActiveMembershipStatus(member.status || member.membershipStatus)) {
         continue;
       }
-      const userId = String(member.user_id || "").trim();
+      const userId = resolveMembershipAuthUserId(member);
       if (!userId) {
         continue;
       }
@@ -124,14 +167,18 @@ async function getV2MembershipLinkedPlayers() {
       if (byAuthUser.has(userId)) {
         continue;
       }
-      const athleteId = member.athlete_id || null;
+      const athleteId = member.athlete_id || member.athleteId || null;
       byAuthUser.set(
         userId,
         normalizePlayers([
           {
             // Canonical profile route (athlete-{id} bookmarks still resolve via loader).
             id: `profile-${userId}`,
-            name: member.display_name || member.email || "VĐV",
+            name:
+              member.display_name ||
+              member.displayName ||
+              member.email ||
+              "VĐV",
             email: member.email || "",
             authUserId: userId,
             athleteId,
@@ -140,7 +187,7 @@ async function getV2MembershipLinkedPlayers() {
             clubName: club.name,
             tenantId: club.venueId || club.tenantId || null,
             linkStatus: PLATFORM_ATHLETE_LINK_STATUS.LINKED,
-            membershipStatus: member.status,
+            membershipStatus: member.status || member.membershipStatus || "active",
             membershipId: member.id,
             rating_status: "unrated",
             level: null,
@@ -153,12 +200,20 @@ async function getV2MembershipLinkedPlayers() {
     }
   }
 
-  return { players: Array.from(byAuthUser.values()), linkedUserIds };
+  return {
+    players: Array.from(byAuthUser.values()),
+    linkedUserIds,
+    warning: memberErrors.length ? memberErrors[0] : null,
+  };
 }
 
 function buildPlayerIdForUser(userId) {
   const safe = String(userId || "").trim().replace(/[^a-zA-Z0-9_-]/g, "");
   return `player-auth-${safe}`;
+}
+
+function normalizeEmailKey(value) {
+  return String(value || "").trim().toLowerCase();
 }
 
 function isProfileLinkedToRoster(profile, rosterPlayers, linkedUserIds = null) {
@@ -171,16 +226,21 @@ function isProfileLinkedToRoster(profile, rosterPlayers, linkedUserIds = null) {
     return true;
   }
 
-  const profilePlayerId = String(profile?.playerId || "").trim();
+  const profilePlayerId = String(profile?.playerId || profile?.player_id || "").trim();
   const expectedPlayerId = buildPlayerIdForUser(userId);
+  const profileEmail = normalizeEmailKey(profile?.email);
+  const profileRouteId = `profile-${userId}`;
 
   return rosterPlayers.some((player) => {
     const authUserId = String(player.authUserId || "").trim();
     const playerId = String(player.id || "").trim();
+    const playerEmail = normalizeEmailKey(player.email);
     return (
       (authUserId && authUserId === userId) ||
+      playerId === profileRouteId ||
       (profilePlayerId && playerId === profilePlayerId) ||
-      playerId === expectedPlayerId
+      playerId === expectedPlayerId ||
+      (profileEmail && playerEmail && profileEmail === playerEmail)
     );
   });
 }
@@ -263,18 +323,23 @@ async function fetchPlayerProfiles() {
 
 /**
  * Platform roster half — membership SSOT when canonical player flag ON.
+ * Always merge Club Storage V2 active members so linkStatus is not blob-only.
  */
 export async function getClubPlayersPlatformWideAware(options = {}) {
+  const v2 = await getV2MembershipLinkedPlayers();
+
   if (!isCanonicalPlayerRepositoryEnabled(options.envSource)) {
     // Legacy path (canonical flag OFF, Production default): blob roster merged
     // with V2 membership so V2-only athletes still resolve without legacy blob.
     const blobRoster = getClubPlayersPlatformWide();
-    const v2 = await getV2MembershipLinkedPlayers();
     const rosterByKey = new Map();
 
     for (const player of blobRoster) {
       const key = player.authUserId || player.id;
-      rosterByKey.set(String(key), player);
+      rosterByKey.set(String(key), {
+        ...player,
+        linkStatus: PLATFORM_ATHLETE_LINK_STATUS.LINKED,
+      });
     }
     for (const player of v2.players) {
       const key = player.authUserId || player.id;
@@ -288,17 +353,23 @@ export async function getClubPlayersPlatformWideAware(options = {}) {
           linkStatus: PLATFORM_ATHLETE_LINK_STATUS.LINKED,
           athleteId: player.athleteId || existing.athleteId || null,
           clubName: existing.clubName || player.clubName,
+          email: existing.email || player.email || "",
+          authUserId: existing.authUserId || player.authUserId || null,
         });
       }
     }
 
+    const players = Array.from(rosterByKey.values());
     return {
       ok: true,
-      players: Array.from(rosterByKey.values()),
-      source: "legacy_blob",
+      players,
+      source: v2.players.length ? "legacy_blob+v2_membership" : "legacy_blob",
       mappingSummary: null,
       warnings: [],
-      linkedUserIds: v2.linkedUserIds || new Set(),
+      linkedUserIds: mergeLinkedUserIdSets(
+        v2.linkedUserIds,
+        collectLinkedUserIdsFromPlayers(players)
+      ),
       v2Warning: v2.warning || null,
     };
   }
@@ -308,6 +379,23 @@ export async function getClubPlayersPlatformWideAware(options = {}) {
     userContext: options.userContext || { isPlatformAdmin: true },
   });
   if (!clubsResult.ok) {
+    // Fall back to V2 membership roster so members are not mislabeled account_only.
+    if (v2.players.length > 0) {
+      return {
+        ok: true,
+        players: v2.players,
+        source: "v2_membership_fallback",
+        mappingSummary: null,
+        warnings: [
+          {
+            code: clubsResult.code || "CLUB_LIST_FAILED",
+            meta: { message: clubsResult.message || clubsResult.error },
+          },
+        ],
+        linkedUserIds: mergeLinkedUserIdSets(v2.linkedUserIds),
+        v2Warning: v2.warning || clubsResult.message || clubsResult.error || null,
+      };
+    }
     return { ok: false, error: clubsResult.message || clubsResult.code, players: [] };
   }
 
@@ -349,9 +437,40 @@ export async function getClubPlayersPlatformWideAware(options = {}) {
     }
   }
 
+  for (const player of v2.players) {
+    let matchedExistingId = null;
+    for (const [existingId, existing] of byId.entries()) {
+      if (
+        (existing.authUserId &&
+          player.authUserId &&
+          existing.authUserId === player.authUserId) ||
+        existing.id === player.id
+      ) {
+        matchedExistingId = existingId;
+        break;
+      }
+    }
+    if (matchedExistingId) {
+      const existing = byId.get(matchedExistingId);
+      byId.set(matchedExistingId, {
+        ...existing,
+        ...player,
+        id: existing.id,
+        linkStatus: PLATFORM_ATHLETE_LINK_STATUS.LINKED,
+        athleteId: player.athleteId || existing.athleteId || null,
+        clubName: existing.clubName || player.clubName,
+        email: existing.email || player.email || "",
+        authUserId: existing.authUserId || player.authUserId || null,
+      });
+      continue;
+    }
+    byId.set(player.id, player);
+  }
+
+  const players = normalizePlayers(Array.from(byId.values()));
   return {
     ok: true,
-    players: normalizePlayers(Array.from(byId.values())),
+    players,
     source: "membership_ssot",
     warnings,
     mappingSummary: {
@@ -361,9 +480,11 @@ export async function getClubPlayersPlatformWideAware(options = {}) {
       duplicatesRemoved,
       activeMembers: mappedPlayers + unmappedMembers + derivedPlayers,
     },
-    // Canonical roster already includes linked members; orphan exclusion relies
-    // on roster presence, so no extra linkedUserIds set is required here.
-    linkedUserIds: new Set(),
+    linkedUserIds: mergeLinkedUserIdSets(
+      v2.linkedUserIds,
+      collectLinkedUserIdsFromPlayers(players)
+    ),
+    v2Warning: v2.warning || null,
   };
 }
 
@@ -381,7 +502,10 @@ export async function getPlatformAthletes(options = {}) {
     return rosterResult;
   }
   const rosterPlayers = rosterResult.players || [];
-  const linkedUserIds = rosterResult.linkedUserIds || new Set();
+  const linkedUserIds = mergeLinkedUserIdSets(
+    rosterResult.linkedUserIds,
+    collectLinkedUserIdsFromPlayers(rosterPlayers)
+  );
   const profileResult = await fetchPlayerProfiles();
 
   if (!profileResult.ok) {
@@ -393,7 +517,23 @@ export async function getPlatformAthletes(options = {}) {
     rosterPlayers,
     linkedUserIds
   );
-  const players = sortByName([...rosterPlayers, ...orphanPlayers]);
+
+  // Prefer membership/roster rows over orphan account_only when ids collide.
+  const byId = new Map();
+  for (const player of orphanPlayers) {
+    byId.set(String(player.id), player);
+  }
+  for (const player of rosterPlayers) {
+    byId.set(String(player.id), {
+      ...player,
+      linkStatus: PLATFORM_ATHLETE_LINK_STATUS.LINKED,
+    });
+  }
+  const players = sortByName(Array.from(byId.values()));
+  const accountOnlyCount = players.filter(
+    (player) => player.linkStatus === PLATFORM_ATHLETE_LINK_STATUS.ACCOUNT_ONLY
+  ).length;
+  const linkedCount = players.length - accountOnlyCount;
 
   const unmappedNote =
     rosterResult.mappingSummary?.unmappedMembers > 0
@@ -406,8 +546,8 @@ export async function getPlatformAthletes(options = {}) {
     stats: {
       total: players.length,
       rosterCount: rosterPlayers.length,
-      accountOnlyCount: orphanPlayers.length,
-      linkedCount: rosterPlayers.length,
+      accountOnlyCount,
+      linkedCount,
       mappedPlayers: rosterResult.mappingSummary?.mappedPlayers,
       unmappedMembers: rosterResult.mappingSummary?.unmappedMembers,
       derivedPlayers: rosterResult.mappingSummary?.derivedPlayers,

@@ -31,6 +31,7 @@ import { hydrateTeamRoster } from "../../features/team-tournament/engines/teamRo
 import { useTeamTournamentAthletePool } from "../../features/team-tournament/ui/useTeamTournamentAthletePool.js";
 import { guardRecordTenant } from "../../features/tenant/guards/tenantGuard.js";
 import { findTournamentClubId } from "../../features/club/services/clubTournamentBridge.js";
+import { useMyClubMembership } from "../../features/club/hooks/useMyClubMembership.js";
 import { LINEUP_STATUS, MATCHUP_STATUS } from "../../features/team-tournament/constants.js";
 import { CaptainDreambreakerPanel } from "../../components/tournament/team/DreambreakerPanel.jsx";
 import { listDreambreakerMatchups } from "../../features/team-tournament/engines/dreambreakerEngine.js";
@@ -669,12 +670,17 @@ export default function TeamPortal() {
   const { activeClubId, clubs = [] } = useClub();
   const { user } = useAuth();
   const { currentTenantId } = useTenant();
+  const membership = useMyClubMembership();
   const captainIdentity = useResolvedCaptainPlayerId(user);
   const viewerPlayerId = captainIdentity.playerId;
 
   const resolvedClubId = useMemo(
-    () => findTournamentClubId(tournamentId) || activeClubId,
-    [tournamentId, activeClubId]
+    () =>
+      findTournamentClubId(tournamentId) ||
+      membership.clubId ||
+      activeClubId ||
+      null,
+    [tournamentId, membership.clubId, activeClubId]
   );
 
   const {

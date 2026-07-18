@@ -285,6 +285,18 @@ describe("Team Tournament create → persist → detail load", () => {
     assert.equal(localStorage.getItem(key), null);
   });
 
+  it("B2: load helper keeps preferred club when blob scan misses (V2 captain portal)", () => {
+    const membershipClubId = "club-membership-only";
+    assert.equal(
+      resolveTournamentClubId(membershipClubId, "team-tournament-missing-xyz"),
+      null
+    );
+    assert.equal(
+      resolveTeamTournamentLoadClubId(membershipClubId, "team-tournament-missing-xyz"),
+      membershipClubId
+    );
+  });
+
   it("persist verify failure does not invent navigable tournament", () => {
     const result = createTeamTournament("", { name: "No club", formatPreset: "mlp_4" });
     assert.equal(result.ok, false);

@@ -11,6 +11,7 @@ import {
   getPlatformAthletes,
   isPlatformAthleteViewer,
   PLATFORM_ATHLETE_LINK_STATUS,
+  resolveMembershipAuthUserId,
 } from "../src/features/club/services/platformAthleteService.js";
 import { ensureMultiTenantSeed } from "../src/features/tenant/seed/multiTenantSeed.js";
 
@@ -96,6 +97,54 @@ test("buildOrphanProfileAthletes — tài khoản chưa gắn CLB", () => {
   assert.equal(orphans[0].linkStatus, PLATFORM_ATHLETE_LINK_STATUS.ACCOUNT_ONLY);
 });
 
+test("buildOrphanProfileAthletes — linkedUserIds từ membership loại trừ orphan", () => {
+  const profiles = [
+    createUserRecord({
+      id: "user-member",
+      email: "member@example.com",
+      displayName: "Member Athlete",
+      role: ROLES.PLAYER,
+    }),
+    createUserRecord({
+      id: "user-orphan",
+      email: "orphan@example.com",
+      displayName: "Orphan Athlete",
+      role: ROLES.PLAYER,
+    }),
+  ];
+
+  const orphans = buildOrphanProfileAthletes(profiles, [], new Set(["user-member"]));
+  assert.equal(orphans.length, 1);
+  assert.equal(orphans[0].id, "profile-user-orphan");
+});
+
+test("buildOrphanProfileAthletes — khớp email với roster cũng không orphan", () => {
+  const rosterPlayers = [
+    {
+      id: "local-player-1",
+      name: "Email Linked",
+      email: "linked@example.com",
+      linkStatus: PLATFORM_ATHLETE_LINK_STATUS.LINKED,
+    },
+  ];
+  const profiles = [
+    createUserRecord({
+      id: "auth-1",
+      email: "linked@example.com",
+      displayName: "Email Linked",
+      role: ROLES.PLAYER,
+    }),
+  ];
+  const orphans = buildOrphanProfileAthletes(profiles, rosterPlayers);
+  assert.equal(orphans.length, 0);
+});
+
+test("resolveMembershipAuthUserId — snake/camel", () => {
+  assert.equal(resolveMembershipAuthUserId({ user_id: "u1" }), "u1");
+  assert.equal(resolveMembershipAuthUserId({ userId: "u2" }), "u2");
+  assert.equal(resolveMembershipAuthUserId({ authUserId: "u3" }), "u3");
+});
+
 test("getPlatformAthletes — dedupe profile khi đã có trong roster", async () => {
   const authUserId = "athlete-linked-1";
   savePlayersForClub(
@@ -148,4 +197,6 @@ test("getPlatformAthletes — dedupe profile khi đã có trong roster", async (
     1
   );
   assert.ok(result.stats.accountOnlyCount >= 1);
+  const linked = result.players.find((player) => player.authUserId === authUserId);
+  assert.equal(linked.linkStatus, PLATFORM_ATHLETE_LINK_STATUS.LINKED);
 });

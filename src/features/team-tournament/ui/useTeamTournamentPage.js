@@ -32,13 +32,19 @@ function isTeamTournamentNotFound(result) {
 }
 
 /**
- * Pure helper for tests: resolve club for Team detail load (preferred → scan).
+ * Pure helper for tests: resolve club for Team detail load (preferred → scan → preferred fallback).
+ * Preferred fallback covers V2 membership captains whose browser has no hosting blob yet;
+ * cloud repository still returns NOT_FOUND when the club/tournament pair is wrong.
  * @param {string|null|undefined} preferredClubId
  * @param {string|null|undefined} tournamentId
  */
 export function resolveTeamTournamentLoadClubId(preferredClubId, tournamentId) {
-  // Only return a club that actually hosts the tournament (never a guess).
-  return resolveTournamentClubId(preferredClubId, tournamentId);
+  const resolved = resolveTournamentClubId(preferredClubId, tournamentId);
+  if (resolved) {
+    return resolved;
+  }
+  const preferred = String(preferredClubId || "").trim();
+  return preferred || null;
 }
 
 /**

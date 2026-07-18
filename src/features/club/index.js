@@ -269,6 +269,7 @@ export {
   getClubPlayersPlatformWideAware,
   buildOrphanProfileAthletes,
   getPlatformAthletes,
+  resolveMembershipAuthUserId,
 } from "./services/platformAthleteService.js";
 
 export {
