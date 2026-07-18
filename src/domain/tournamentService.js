@@ -460,6 +460,10 @@ export function cancelTournament(clubId, tournamentId) {
   return setTournamentStatus(clubId, tournamentId, TOURNAMENT_STATUS.CANCELLED);
 }
 
+/**
+ * Persist courtSchedule only after booking bridge sync succeeds (fail-closed).
+ * Does not leave tournament.courtSchedule updated when bookings cannot be locked.
+ */
 export function setTournamentCourtSchedule(clubId, tournamentId, scheduleInput) {
   const data = loadClubData(clubId);
   const index = findTournamentIndex(data.tournaments || [], tournamentId);
@@ -477,7 +481,7 @@ export function setTournamentCourtSchedule(clubId, tournamentId, scheduleInput) 
   }
 
   const current = data.tournaments[index];
-  const updated = normalizeTournament({
+  const pending = normalizeTournament({
     ...current,
     courtSchedule: {
       ...courtSchedule,
@@ -488,24 +492,90 @@ export function setTournamentCourtSchedule(clubId, tournamentId, scheduleInput) 
     updatedAt: new Date().toISOString(),
   });
 
-  data.tournaments[index] = updated;
-  saveClubData(clubId, data);
-
   const courts = loadCourtsForClub(clubId);
-  const syncResult = syncTournamentCourtBookings(updated, clubId, courts);
+  const syncResult = syncTournamentCourtBookings(pending, clubId, courts);
 
   if (!syncResult.ok) {
     return {
       ok: false,
       error: syncResult.message,
-      tournament: updated,
+      code: syncResult.code || null,
+      tournament: current,
       ...syncResult,
     };
   }
 
+  // Reload after booking writes so we do not clobber bookings with a stale club blob.
+  const fresh = loadClubData(clubId);
+  const freshIndex = findTournamentIndex(fresh.tournaments || [], tournamentId);
+  if (freshIndex < 0) {
+    return {
+      ok: false,
+      error: "Không tìm thấy giải sau khi đồng bộ booking.",
+      code: "TOURNAMENT_MISSING_AFTER_SYNC",
+      ...syncResult,
+    };
+  }
+
+  fresh.tournaments[freshIndex] = pending;
+  saveClubData(clubId, fresh);
+
+  return {
+    ok: true,
+    tournament: pending,
+    ...syncResult,
+  };
+}
+
+/**
+ * Clear tournament.courtSchedule and cancel only bridge-owned tournament bookings.
+ */
+export function clearTournamentCourtSchedule(clubId, tournamentId) {
+  const data = loadClubData(clubId);
+  const index = findTournamentIndex(data.tournaments || [], tournamentId);
+
+  if (index < 0) {
+    return { ok: false, error: "Không tìm thấy giải." };
+  }
+
+  const cancelResult = cancelTournamentCourtBookings(clubId, tournamentId);
+  if (!cancelResult.ok) {
+    return {
+      ok: false,
+      error: cancelResult.message,
+      code: cancelResult.code || null,
+      tournament: data.tournaments[index],
+      ...cancelResult,
+    };
+  }
+
+  // Reload after booking cancels so a stale blob cannot restore cancelled rows.
+  const fresh = loadClubData(clubId);
+  const freshIndex = findTournamentIndex(fresh.tournaments || [], tournamentId);
+  if (freshIndex < 0) {
+    return {
+      ok: false,
+      error: "Không tìm thấy giải sau khi hủy booking.",
+      ...cancelResult,
+    };
+  }
+
+  const current = fresh.tournaments[freshIndex];
+  const updated = normalizeTournament({
+    ...current,
+    courtSchedule: null,
+    id: tournamentId,
+    clubId,
+    updatedAt: new Date().toISOString(),
+  });
+
+  fresh.tournaments[freshIndex] = updated;
+  saveClubData(clubId, fresh);
+
   return {
     ok: true,
     tournament: updated,
-    ...syncResult,
+    ...cancelResult,
+    message: `Đã gỡ khóa sân giải (${cancelResult.cancelled?.length || 0} booking).`,
   };
 }
