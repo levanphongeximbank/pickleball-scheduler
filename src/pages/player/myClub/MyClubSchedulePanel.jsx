@@ -21,6 +21,7 @@ export default function MyClubSchedulePanel({
             clubId={clubId}
             tenantId={tenantId}
             user={user}
+            clubRecord={clubRecord}
             revision={revision}
             onRefresh={onRevision}
             onMessage={onMessage}

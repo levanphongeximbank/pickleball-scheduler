@@ -61,11 +61,13 @@ export {
   finalizeSelfRegisteredClubCloud,
   listLocalPresidentClubsForUser,
   canTransferClubOwnership,
+  canShowTransferClubOwnership,
   transferClubOwnership,
   transferClubPresident,
   assignClubVicePresident,
   setClubVicePresidents,
   listClubGovernanceCandidates,
+  listClubGovernanceCandidatesAsync,
   deleteClubAsOwner,
 } from "./services/clubGovernanceService.js";
 
@@ -100,6 +102,7 @@ export {
   updateClubMemberStatus,
   resolveTargetUserIdForMemberCommand,
   probeClubMemberMutationAccess,
+  formatMemberCommandUserError,
   isProtectedGovernanceMember,
 } from "./services/clubMemberService.js";
 

@@ -25,7 +25,11 @@ import {
   cacheRegisterableClusterLocally,
   listRegisterableClusters,
 } from "../../features/court-cluster/services/courtClusterDiscoveryService.js";
-import { CLUB_STATUSES, listClubGovernanceCandidates, canSelfRegisterClub } from "../../features/club/index.js";
+import {
+  CLUB_STATUSES,
+  listClubGovernanceCandidatesAsync,
+  canSelfRegisterClub,
+} from "../../features/club/index.js";
 import { createClub, updateClub } from "../../features/club/index.js";
 
 const SEARCH_DEBOUNCE_MS = 300;
@@ -69,6 +73,7 @@ export default function ClubFormDialog({
   const [clusterSearchInput, setClusterSearchInput] = useState("");
   const [clusterSearch, setClusterSearch] = useState("");
   const [clusterLoading, setClusterLoading] = useState(false);
+  const [governanceCandidates, setGovernanceCandidates] = useState([]);
 
   const isEdit = Boolean(club?.id);
   const isCourtOwner = normalizeRole(user?.role) === ROLES.TENANT_OWNER;
@@ -81,10 +86,21 @@ export default function ClubFormDialog({
 
   const useCloudClusterPicker = !isEdit && (localVenueClusters.length === 0 || isSelfRegister);
 
-  const governanceCandidates = useMemo(
-    () => (isEdit && club?.id ? listClubGovernanceCandidates(club.id, tenantId) : []),
-    [isEdit, club?.id, tenantId]
-  );
+  useEffect(() => {
+    let cancelled = false;
+    if (!isEdit || !club?.id) {
+      setGovernanceCandidates([]);
+      return undefined;
+    }
+    void listClubGovernanceCandidatesAsync(club.id, tenantId).then((rows) => {
+      if (!cancelled) {
+        setGovernanceCandidates(rows);
+      }
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [isEdit, club?.id, tenantId, open]);
 
   useEffect(() => {
     const timer = setTimeout(() => {
