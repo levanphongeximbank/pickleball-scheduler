@@ -45,6 +45,19 @@ export function resolveNotificationStoreMode() {
   return NOTIFICATION_STORE_MODES.LOCAL;
 }
 
+function requireSupabaseOrThrow(client) {
+  const required =
+    String(readEnvFlag("VITE_NOTIFICATION_REQUIRE_SUPABASE") || "").toLowerCase() ===
+      "true" ||
+    String(readEnvFlag("VITE_NOTIFICATION_STORE_MODE") || "") ===
+      NOTIFICATION_STORE_MODES.SUPABASE;
+  if (!client && required) {
+    throw new Error(
+      "Notification Supabase repository required but client is unavailable. Refusing silent local fallback."
+    );
+  }
+}
+
 let sharedRepository = null;
 
 export function createNotificationRepository({ mode, client, seed } = {}) {
@@ -54,6 +67,7 @@ export function createNotificationRepository({ mode, client, seed } = {}) {
       return createMemoryNotificationRepository(seed);
     case NOTIFICATION_STORE_MODES.SUPABASE: {
       const supabaseClient = client || getSupabaseAuthClient();
+      requireSupabaseOrThrow(supabaseClient);
       if (!supabaseClient) {
         return createLocalNotificationRepository();
       }
