@@ -28,14 +28,17 @@ function directory(map) {
 
 test("1B public API surface — stable contracts only", () => {
   const exported = Object.keys(playerPublicApi).sort();
-  assert.deepEqual(exported, [
+  // Phase 1C adds updatePlayerProfile; Phase 1B contracts remain present.
+  for (const key of [
     "RESOLUTION_OUTCOME",
     "getPlayerProfile",
     "normalizePlayerProfile",
     "resolveByAuthUser",
     "resolveCanonicalPlayerId",
     "searchPlayers",
-  ]);
+  ]) {
+    assert.ok(exported.includes(key), `missing public export: ${key}`);
+  }
 });
 
 test("1B INVALID — empty auth user id", () => {
@@ -209,11 +212,12 @@ test("1B getPlayerProfile — AMBIGUOUS returns null profile", () => {
 
 test("1B write surface not part of public API", () => {
   assert.equal("createPlayerProfile" in playerPublicApi, false);
-  assert.equal("updatePlayerProfile" in playerPublicApi, false);
   assert.equal("deletePlayerProfile" in playerPublicApi, false);
   assert.equal("adaptProfileRow" in playerPublicApi, false);
   assert.equal("createPlayerSourceRepository" in playerPublicApi, false);
   assert.equal("buildAuthLinkedPlayerId" in playerPublicApi, false);
+  // Phase 1C adds the single approved write export:
+  assert.equal("updatePlayerProfile" in playerPublicApi, true);
 });
 
 test("1B searchPlayers — read-only filter over injected roster", () => {

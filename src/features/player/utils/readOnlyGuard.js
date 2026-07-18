@@ -1,34 +1,27 @@
 /**
- * Phase 1B write surface guard — facade is read-only.
- * Intentionally no create/update/delete exports from this module.
+ * Phase 1B/1C write surface notes.
+ * create/delete remain closed. updatePlayerProfile lives in services/ (Phase 1C).
  */
 
 export const PLAYER_FACADE_MODE = Object.freeze({
-  READ_ONLY: "read_only",
-  PHASE: "1B",
+  READ_ONLY_CREATE_DELETE: "read_only_create_delete",
+  PHASE: "1C",
 });
 
 /**
  * @returns {{ allowed: false, reason: string }}
  */
-export function assertReadOnlyFacade(operation = "write") {
+export function assertCreateDeleteClosed(operation = "write") {
   return {
     allowed: false,
-    reason: `Player Management Phase 1B is read-only; '${operation}' is not available.`,
+    reason: `Player Management does not allow '${operation}' in Phase 1C; use updatePlayerProfile for owned field patches only.`,
   };
 }
 
-/**
- * Explicit no-op stubs so accidental write imports fail closed.
- */
 export function createPlayerProfile() {
-  return assertReadOnlyFacade("createPlayerProfile");
-}
-
-export function updatePlayerProfile() {
-  return assertReadOnlyFacade("updatePlayerProfile");
+  return assertCreateDeleteClosed("createPlayerProfile");
 }
 
 export function deletePlayerProfile() {
-  return assertReadOnlyFacade("deletePlayerProfile");
+  return assertCreateDeleteClosed("deletePlayerProfile");
 }
