@@ -1,5 +1,5 @@
 import { PARTICIPANT_REFERENCE_KIND } from "../enums/identityKinds.js";
-import { PARTICIPANT_SCHEMA_VERSION, createAuditMetadata } from "./shared.js";
+import { PARTICIPANT_SCHEMA_VERSION, createAuditMetadata, isNonEmptyString } from "./shared.js";
 
 /**
  * Discriminated person reference — kinds are distinct ID spaces (OD-01).
@@ -15,6 +15,71 @@ import { PARTICIPANT_SCHEMA_VERSION, createAuditMetadata } from "./shared.js";
  * @property {string|null} [externalKey]
  * @property {Record<string, unknown>|null} [snapshotMetadata]
  */
+
+/**
+ * Stable competition-scoped identity (Phase 3B).
+ * Deterministic, immutable key — kinds remain distinct ID spaces (OD-01).
+ * Does not replace ParticipantReference; used by Participant Resolution Runtime.
+ *
+ * @typedef {Object} ParticipantIdentity
+ * @property {string} schemaVersion
+ * @property {string} competitionId
+ * @property {string} kind
+ * @property {string} id
+ * @property {string} key
+ */
+
+/**
+ * Build deterministic identity key: competitionId::kind::id
+ * @param {{ competitionId?: string, kind?: string, id?: string }} parts
+ * @returns {string}
+ */
+export function buildParticipantIdentityKey(parts = {}) {
+  const competitionId = String(parts.competitionId || "").trim();
+  const kind = String(parts.kind || "").trim();
+  const id = String(parts.id || "").trim();
+  return `${competitionId}::${kind}::${id}`;
+}
+
+/**
+ * @param {Partial<ParticipantIdentity>} partial
+ * @returns {ParticipantIdentity}
+ */
+export function createParticipantIdentity(partial = {}) {
+  const competitionId = String(partial.competitionId || "");
+  const kind = String(partial.kind || PARTICIPANT_REFERENCE_KIND.GUEST);
+  const id = String(partial.id || "");
+  const key =
+    isNonEmptyString(partial.key) && String(partial.key).includes("::")
+      ? String(partial.key)
+      : buildParticipantIdentityKey({ competitionId, kind, id });
+  return Object.freeze({
+    schemaVersion: String(partial.schemaVersion ?? PARTICIPANT_SCHEMA_VERSION),
+    competitionId,
+    kind,
+    id,
+    key,
+  });
+}
+
+/**
+ * Derive ParticipantIdentity from a CompetitionParticipant-like object.
+ * @param {{ competitionId?: string, person?: { kind?: string, id?: string } }|null|undefined} participant
+ * @returns {ParticipantIdentity|null}
+ */
+export function identityFromCompetitionParticipant(participant) {
+  if (!participant || typeof participant !== "object") return null;
+  const person = participant.person;
+  if (!person || typeof person !== "object") return null;
+  if (!isNonEmptyString(participant.competitionId) || !isNonEmptyString(person.kind) || !isNonEmptyString(person.id)) {
+    return null;
+  }
+  return createParticipantIdentity({
+    competitionId: participant.competitionId,
+    kind: person.kind,
+    id: person.id,
+  });
+}
 
 /**
  * @param {Partial<ParticipantReference>} partial
