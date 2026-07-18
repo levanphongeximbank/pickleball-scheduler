@@ -1,43 +1,31 @@
 /**
- * Compatibility notes for PICK_VN Notification Phase 1.2
+ * Compatibility notes for PICK_VN Notification Phase 1.3
  * ======================================================
  *
  * Source of Truth:
- *   `src/features/notifications/` via `index.js`
- *   Domain pilots must use `emitDomainNotificationEvent` (or domain pilot adapters).
+ *   Supabase `public.notification_inbox` (+ `notification_delivery_jobs`)
+ *   App access via Notification Repository (memory / local / supabase).
+ *   Legacy mobile `public.notifications` table remains for mobile sprint9.
  *
- * Phase 1.2 pilots wired:
- *   - Club schedule → `notifyClubMembers` → canonical inbox (no mobile dual-write)
- *   - Booking create/cancel → `bookingService` → booking pilot adapter
- *   - Payment callback → paymentsHandler → payment pilot (no forceMock email)
- *   - MATCH_SCHEDULED → competition boundary adapter only (engine untouched)
+ * Phase 1.3 adds:
+ *   - Repository: create, list, markRead, markAllRead, countUnread
+ *   - Identity/Membership RecipientDirectory
+ *   - Delivery queue foundation (CREATED → QUEUED → SENT|FAILED) — no live workers
  *
- * Booking reminder vs booking event:
- *   - Event: BOOKING_CREATED / BOOKING_CANCELLED (lifecycle, this module)
- *   - Reminder: `src/domain/bookingReminderService.js` browser "sắp tới" (unchanged)
+ * Still NOT live:
+ *   Email / SMS / Zalo / Web Push providers
  *
- * Intentionally NOT migrated yet:
- *   - Mobile push dispatch / Web Push
- *   - Player Portal derived feed
- *   - CRM campaign messaging
- *   - Club governance mobile notifications (`notifyClubGovernanceChange`)
- *   - Legacy `sendNotification` channel jobs (admin/integration tooling)
- *   - Live Email / SMS / Zalo providers
- *
- * Deprecation:
- *   - Prefer `emitDomainNotificationEvent` over `emitNotificationEvent` for new callers
- *   - Prefer pilot adapters over direct provider calls
- *
- * Security:
- *   - No SMTP / SMS / Zalo / VAPID secrets in `VITE_*`
- *   - No live delivery channels in Phase 1.2
- *   - Public API does not export providers or inbox storage
+ * Not migrated:
+ *   Player Portal derived feed, CRM campaigns, Competition Engine internals,
+ *   club governance mobile path, browser booking start reminders
  */
 export const NOTIFICATION_COMPATIBILITY = Object.freeze({
-  phase: "1.2",
-  sourceOfTruth: "src/features/notifications",
+  phase: "1.3",
+  sourceOfTruth: "supabase.notification_inbox",
+  repositoryModes: Object.freeze(["memory", "local", "supabase"]),
   legacyPreserved: true,
   liveDeliveryEnabled: false,
+  queueEnabled: true,
   pilots: Object.freeze([
     "CLUB_SCHEDULE_UPDATED",
     "BOOKING_CREATED",

@@ -91,8 +91,8 @@ export const paymentsRoutes = [
       const transactionId =
         result.transaction?.id || ctx.body?.transactionId || null;
       if (tenantId && transactionId) {
-        // Phase 1.2 pilot — canonical inbox event (no live email / forceMock).
-        emitPaymentLifecycleNotification(
+        // Phase 1.3 pilot — canonical inbox + queue (no live email / forceMock).
+        await emitPaymentLifecycleNotification(
           result.ok
             ? NOTIFICATION_EVENT_TYPES.PAYMENT_CONFIRMED
             : NOTIFICATION_EVENT_TYPES.PAYMENT_FAILED,

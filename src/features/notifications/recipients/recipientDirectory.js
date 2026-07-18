@@ -93,10 +93,27 @@ export function setRecipientDirectory(directory) {
   activeDirectory = directory || null;
 }
 
+/** @type {import("./recipientDirectory.js").RecipientDirectory|null} */
+let defaultIdentityDirectory = null;
+
+/**
+ * Phase 1.3 default: identity/membership directory when no override is set.
+ * Lazy-loaded to avoid circular imports at module init.
+ */
 export function getRecipientDirectory() {
-  return activeDirectory || createEmptyRecipientDirectory();
+  if (activeDirectory) return activeDirectory;
+  if (!defaultIdentityDirectory) {
+    // Dynamic import pattern avoided — factory injected via ensureDefaultIdentityDirectory.
+    defaultIdentityDirectory = createEmptyRecipientDirectory();
+  }
+  return defaultIdentityDirectory;
+}
+
+export function setDefaultRecipientDirectory(directory) {
+  defaultIdentityDirectory = directory || null;
 }
 
 export function resetRecipientDirectory() {
   activeDirectory = null;
+  defaultIdentityDirectory = null;
 }

@@ -22,7 +22,7 @@ const BOOKING_STAFF_ROLES = Object.freeze([
  * @param {'BOOKING_CREATED'|'BOOKING_CANCELLED'} eventType
  * @param {object} input
  */
-export function emitBookingLifecycleNotification(eventType, input = {}) {
+export async function emitBookingLifecycleNotification(eventType, input = {}) {
   const {
     tenantId,
     clubId = null,

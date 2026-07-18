@@ -2,11 +2,11 @@ import { NOTIFICATION_STATUSES } from "../constants/notificationStatuses.js";
 import { NOTIFICATION_PRIORITIES } from "../constants/notificationPriorities.js";
 import { NOTIFICATION_CATEGORIES } from "../constants/notificationCategories.js";
 
-function createId(prefix) {
+function createId() {
   if (typeof crypto !== "undefined" && typeof crypto.randomUUID === "function") {
-    return `${prefix}_${crypto.randomUUID()}`;
+    return crypto.randomUUID();
   }
-  return `${prefix}_${Date.now()}_${Math.random().toString(36).slice(2, 10)}`;
+  return `nrec_${Date.now()}_${Math.random().toString(36).slice(2, 10)}`;
 }
 
 /**
@@ -42,7 +42,7 @@ export function createInboxNotificationRecord({
     throw new Error("event is required to create an inbox notification record.");
   }
   const now = new Date().toISOString();
-  const notificationId = createId("nrec");
+  const notificationId = createId();
 
   return {
     notificationId,

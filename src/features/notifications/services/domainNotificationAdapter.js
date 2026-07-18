@@ -9,13 +9,11 @@ import { resolveNotificationRecipients } from "../recipients/resolveRecipients.j
 import { renderNotificationContent } from "./notificationPresentation.js";
 import { createInboxNotificationRecord } from "../models/inboxNotification.js";
 import { buildRecipientIdempotencyKey } from "../utils/idempotencyKey.js";
+import { getNotificationRepository } from "../repositories/notificationRepository.js";
 import {
-  loadIdempotencyIndex,
-  loadInboxRecords,
-  makeIdempotencyIndexKey,
-  saveIdempotencyIndex,
-  saveInboxRecords,
-} from "../storage/notificationInboxStorage.js";
+  DELIVERY_CHANNELS,
+  enqueueNotificationDelivery,
+} from "./notificationQueueService.js";
 
 export const DOMAIN_EMIT_OUTCOMES = Object.freeze({
   CREATED: "created",
@@ -63,23 +61,12 @@ function resolveClassification(eventType, { priority, category } = {}) {
 }
 
 /**
- * Canonical domain → notification adapter (Phase 1.2).
- * Domain modules should call this instead of providers/storage.
+ * Canonical domain → notification adapter (Phase 1.3).
+ * Persists via Notification Repository and enqueues delivery jobs (no live channels).
  *
- * @param {object} input — envelope fields + optional priority/category/source metadata
- * @returns {{
- *   ok: boolean,
- *   outcome: 'created'|'duplicate'|'skipped'|'failed',
- *   code?: string,
- *   error?: string,
- *   event?: object,
- *   notifications?: object[],
- *   createdCount?: number,
- *   duplicateCount?: number,
- *   rejectedRecipientIds?: string[],
- * }}
+ * @param {object} input
  */
-export function emitDomainNotificationEvent(input = {}) {
+export async function emitDomainNotificationEvent(input = {}) {
   const validated = validateNotificationEventEnvelope(input);
   if (!validated.ok) {
     return {
@@ -162,8 +149,9 @@ export function emitDomainNotificationEvent(input = {}) {
     domainSource: input.domainSource || null,
   };
 
-  const index = loadIdempotencyIndex();
-  const records = loadInboxRecords();
+  const repo = input.repository || getNotificationRepository();
+  const enqueue =
+    input.enqueueDelivery !== false && input.skipQueue !== true;
   const created = [];
   const duplicates = [];
 
@@ -172,21 +160,17 @@ export function emitDomainNotificationEvent(input = {}) {
       event.idempotencyKey,
       recipient.userId
     );
-    const indexKey = makeIdempotencyIndexKey(event.tenantId, recipientKey);
-    const existingId = index[indexKey];
 
-    if (existingId) {
-      const existing =
-        records.find(
-          (r) => (r.notificationId || r.id) === existingId
-        ) || null;
-      if (existing) {
-        duplicates.push(existing);
-        continue;
-      }
+    const existing = await repo.findByIdempotencyKey({
+      tenantId: event.tenantId,
+      idempotencyKey: recipientKey,
+    });
+    if (existing.notification) {
+      duplicates.push(existing.notification);
+      continue;
     }
 
-    const notification = createInboxNotificationRecord({
+    const draft = createInboxNotificationRecord({
       event,
       recipientUserId: recipient.userId,
       category: classification.category,
@@ -199,14 +183,45 @@ export function emitDomainNotificationEvent(input = {}) {
       idempotencyKey: recipientKey,
     });
 
-    records.unshift(notification);
-    index[indexKey] = notification.notificationId;
-    created.push(notification);
-  }
+    const saved = await repo.create(draft);
+    if (!saved.ok) {
+      return {
+        ok: false,
+        outcome: DOMAIN_EMIT_OUTCOMES.FAILED,
+        error: saved.error || "Failed to create notification.",
+        notifications: [...created, ...duplicates],
+        createdCount: created.length,
+        duplicateCount: duplicates.length,
+        rejectedRecipientIds: resolved.rejected,
+      };
+    }
 
-  if (created.length > 0) {
-    saveInboxRecords(records);
-    saveIdempotencyIndex(index);
+    if (saved.duplicate) {
+      duplicates.push(saved.notification);
+      continue;
+    }
+
+    let notification = saved.notification;
+    if (enqueue) {
+      const jobResult = await enqueueNotificationDelivery({
+        notificationId: notification.notificationId || notification.id,
+        tenantId: event.tenantId,
+        channel: input.deliveryChannel || DELIVERY_CHANNELS.IN_APP,
+        repository: repo,
+      });
+      if (jobResult.ok && !jobResult.duplicate) {
+        // Reflect QUEUED status when repository updated the row.
+        const listed = await repo.findByIdempotencyKey({
+          tenantId: event.tenantId,
+          idempotencyKey: recipientKey,
+        });
+        if (listed.notification) {
+          notification = listed.notification;
+        }
+      }
+    }
+
+    created.push(notification);
   }
 
   if (created.length === 0 && duplicates.length > 0) {

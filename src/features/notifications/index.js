@@ -1,5 +1,5 @@
 /**
- * PICK_VN Notification Module — public API (Phase 1.2).
+ * PICK_VN Notification Module — public API (Phase 1.3).
  *
  * Domain modules may import only from this barrel.
  * Providers and storage implementations are intentionally NOT exported.
@@ -15,8 +15,26 @@ export {
   listInbox,
   markNotificationRead,
   markAllNotificationsRead,
+  countUnreadNotifications,
 } from "./services/notificationInboxService.js";
 export { getNotificationPreferences } from "./services/notificationPreferencesService.js";
+
+export {
+  enqueueNotificationDelivery,
+  listQueuedDeliveryJobs,
+  markDeliveryJobResult,
+  DELIVERY_CHANNELS,
+  DELIVERY_JOB_STATUSES,
+} from "./services/notificationQueueService.js";
+
+export {
+  createNotificationRepository,
+  getNotificationRepository,
+  setNotificationRepository,
+  resetNotificationRepository,
+  resolveNotificationStoreMode,
+  NOTIFICATION_STORE_MODES,
+} from "./repositories/notificationRepository.js";
 
 export {
   NOTIFICATION_EVENT_TYPES,
@@ -66,6 +84,15 @@ export {
   resetRecipientDirectory,
   getRecipientDirectory,
 } from "./recipients/recipientDirectory.js";
+
+export {
+  createIdentityMembershipDirectory,
+  createDefaultIdentityDirectory,
+} from "./recipients/identityMembershipDirectory.js";
+
+export {
+  ensureIdentityRecipientDirectory,
+} from "./recipients/recipientBootstrap.js";
 
 export { resolveNotificationRecipients } from "./recipients/resolveRecipients.js";
 

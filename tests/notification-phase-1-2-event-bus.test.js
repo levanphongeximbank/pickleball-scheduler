@@ -18,12 +18,17 @@ import {
   createMemoryRecipientDirectory,
   setRecipientDirectory,
   resetRecipientDirectory,
+  createNotificationRepository,
+  setNotificationRepository,
+  resetNotificationRepository,
+  NOTIFICATION_STORE_MODES,
   emitMatchScheduledFromBoundary,
   emitBookingLifecycleNotification,
   emitPaymentLifecycleNotification,
   emitNotificationEvent,
 } from "../src/features/notifications/index.js";
 import { clearNotificationInboxStorage } from "../src/features/notifications/storage/notificationInboxStorage.js";
+import { clearLocalDeliveryJobsStorage } from "../src/features/notifications/repositories/localNotificationRepository.js";
 import { clearNotificationPreferencesStorage } from "../src/features/notifications/services/notificationPreferencesService.js";
 import { notifyClubMembers } from "../src/features/club/services/clubScheduleNotificationBridge.js";
 
@@ -70,19 +75,25 @@ function walkJsFiles(dir, out = []) {
 beforeEach(() => {
   globalThis.localStorage = createLocalStorageMock();
   clearNotificationInboxStorage();
+  clearLocalDeliveryJobsStorage();
   clearNotificationPreferencesStorage();
   resetRecipientDirectory();
+  setNotificationRepository(
+    createNotificationRepository({ mode: NOTIFICATION_STORE_MODES.MEMORY })
+  );
 });
 
 afterEach(() => {
+  resetNotificationRepository();
   clearNotificationInboxStorage();
+  clearLocalDeliveryJobsStorage();
   clearNotificationPreferencesStorage();
   resetRecipientDirectory();
   delete globalThis.localStorage;
 });
 
 describe("Notification Phase 1.2 — priority/category", () => {
-  it("provides defaults per event type", () => {
+  it("provides defaults per event type", async () => {
     assert.deepEqual(getEventClassification(NOTIFICATION_EVENT_TYPES.MATCH_SCHEDULED), {
       category: NOTIFICATION_CATEGORIES.COMPETITION,
       priority: NOTIFICATION_PRIORITIES.NORMAL,
@@ -97,8 +108,8 @@ describe("Notification Phase 1.2 — priority/category", () => {
     });
   });
 
-  it("rejects invalid priority override", () => {
-    const result = emitDomainNotificationEvent({
+  it("rejects invalid priority override", async () => {
+    const result = await emitDomainNotificationEvent({
       tenantId: "t1",
       eventType: NOTIFICATION_EVENT_TYPES.BOOKING_CREATED,
       idempotencyKey: "t1:BOOKING_CREATED:b1:v1",
@@ -111,8 +122,8 @@ describe("Notification Phase 1.2 — priority/category", () => {
     assert.match(result.error, /Invalid priority/);
   });
 
-  it("rejects mismatched category override", () => {
-    const result = emitDomainNotificationEvent({
+  it("rejects mismatched category override", async () => {
+    const result = await emitDomainNotificationEvent({
       tenantId: "t1",
       eventType: NOTIFICATION_EVENT_TYPES.BOOKING_CREATED,
       idempotencyKey: "t1:BOOKING_CREATED:b1:v1",
@@ -124,8 +135,8 @@ describe("Notification Phase 1.2 — priority/category", () => {
     assert.match(result.error, /does not match catalogue default/);
   });
 
-  it("allows valid priority override", () => {
-    const result = emitDomainNotificationEvent({
+  it("allows valid priority override", async () => {
+    const result = await emitDomainNotificationEvent({
       tenantId: "t1",
       eventType: NOTIFICATION_EVENT_TYPES.BOOKING_CREATED,
       idempotencyKey: "t1:BOOKING_CREATED:b1:v1",
@@ -140,14 +151,14 @@ describe("Notification Phase 1.2 — priority/category", () => {
 });
 
 describe("Notification Phase 1.2 — recipient resolution", () => {
-  it("resolves explicit userIds", () => {
+  it("resolves explicit userIds", async () => {
     setRecipientDirectory(
       createMemoryRecipientDirectory([
         { userId: "u1", tenantId: "t1" },
         { userId: "u2", tenantId: "t1" },
       ])
     );
-    const result = emitDomainNotificationEvent({
+    const result = await emitDomainNotificationEvent({
       tenantId: "t1",
       eventType: NOTIFICATION_EVENT_TYPES.PAYMENT_CONFIRMED,
       idempotencyKey: "t1:PAYMENT_CONFIRMED:tx1:confirmed",
@@ -160,7 +171,7 @@ describe("Notification Phase 1.2 — recipient resolution", () => {
     assert.deepEqual(ids, ["u1", "u2"]);
   });
 
-  it("resolves roles within tenant scope", () => {
+  it("resolves roles within tenant scope", async () => {
     setRecipientDirectory(
       createMemoryRecipientDirectory([
         { userId: "owner-a", tenantId: "t1", role: "COURT_OWNER", venueId: "t1" },
@@ -168,7 +179,7 @@ describe("Notification Phase 1.2 — recipient resolution", () => {
         { userId: "owner-b", tenantId: "t2", role: "COURT_OWNER", venueId: "t2" },
       ])
     );
-    const result = emitDomainNotificationEvent({
+    const result = await emitDomainNotificationEvent({
       tenantId: "t1",
       venueId: "t1",
       eventType: NOTIFICATION_EVENT_TYPES.BOOKING_CREATED,
@@ -181,14 +192,14 @@ describe("Notification Phase 1.2 — recipient resolution", () => {
     assert.deepEqual(ids, ["cashier-a", "owner-a"]);
   });
 
-  it("rejects cross-tenant recipients", () => {
+  it("rejects cross-tenant recipients", async () => {
     setRecipientDirectory(
       createMemoryRecipientDirectory([
         { userId: "u-other", tenantId: "t2" },
         { userId: "u-ok", tenantId: "t1" },
       ])
     );
-    const result = emitDomainNotificationEvent({
+    const result = await emitDomainNotificationEvent({
       tenantId: "t1",
       eventType: NOTIFICATION_EVENT_TYPES.PAYMENT_CONFIRMED,
       idempotencyKey: "t1:PAYMENT_CONFIRMED:tx2:confirmed",
@@ -200,13 +211,13 @@ describe("Notification Phase 1.2 — recipient resolution", () => {
     assert.ok(result.rejectedRecipientIds.includes("u-other"));
   });
 
-  it("deduplicates duplicate recipient hints", () => {
+  it("deduplicates duplicate recipient hints", async () => {
     setRecipientDirectory(
       createMemoryRecipientDirectory([
         { userId: "u1", tenantId: "t1", role: "COURT_OWNER" },
       ])
     );
-    const result = emitDomainNotificationEvent({
+    const result = await emitDomainNotificationEvent({
       tenantId: "t1",
       eventType: NOTIFICATION_EVENT_TYPES.BOOKING_CANCELLED,
       idempotencyKey: "t1:BOOKING_CANCELLED:b3:v1",
@@ -221,21 +232,21 @@ describe("Notification Phase 1.2 — recipient resolution", () => {
 });
 
 describe("Notification Phase 1.2 — idempotency", () => {
-  it("same idempotencyKey does not create duplicate per recipient", () => {
+  it("same idempotencyKey does not create duplicate per recipient", async () => {
     const key = buildNotificationIdempotencyKey({
       tenantId: "t1",
       eventType: NOTIFICATION_EVENT_TYPES.MATCH_SCHEDULED,
       entityId: "m1",
       version: "2026-07-18T10:00:00.000Z",
     });
-    const first = emitDomainNotificationEvent({
+    const first = await emitDomainNotificationEvent({
       tenantId: "t1",
       eventType: NOTIFICATION_EVENT_TYPES.MATCH_SCHEDULED,
       idempotencyKey: key,
       recipientHints: { userIds: ["u1", "u2"] },
       payload: { matchId: "m1", matchLabel: "Bán kết", scheduledAt: "10:00" },
     });
-    const second = emitDomainNotificationEvent({
+    const second = await emitDomainNotificationEvent({
       tenantId: "t1",
       eventType: NOTIFICATION_EVENT_TYPES.MATCH_SCHEDULED,
       idempotencyKey: key,
@@ -245,17 +256,17 @@ describe("Notification Phase 1.2 — idempotency", () => {
     assert.equal(first.createdCount, 2);
     assert.equal(second.outcome, DOMAIN_EMIT_OUTCOMES.DUPLICATE);
     assert.equal(second.createdCount, 0);
-    assert.equal(listInbox({ tenantId: "t1" }).items.length, 2);
+    assert.equal((await listInbox({ tenantId: "t1" })).items.length, 2);
   });
 
-  it("two recipients get two inbox records", () => {
+  it("two recipients get two inbox records", async () => {
     const key = buildNotificationIdempotencyKey({
       tenantId: "t1",
       eventType: NOTIFICATION_EVENT_TYPES.PAYMENT_CONFIRMED,
       entityId: "tx9",
       version: "confirmed",
     });
-    const result = emitDomainNotificationEvent({
+    const result = await emitDomainNotificationEvent({
       tenantId: "t1",
       eventType: NOTIFICATION_EVENT_TYPES.PAYMENT_CONFIRMED,
       idempotencyKey: key,
@@ -265,42 +276,42 @@ describe("Notification Phase 1.2 — idempotency", () => {
     assert.equal(result.createdCount, 2);
   });
 
-  it("same entity with different version creates new notifications", () => {
-    emitDomainNotificationEvent({
+  it("same entity with different version creates new notifications", async () => {
+    await emitDomainNotificationEvent({
       tenantId: "t1",
       eventType: NOTIFICATION_EVENT_TYPES.MATCH_SCHEDULED,
       idempotencyKey: "t1:MATCH_SCHEDULED:m1:v1",
       recipientHints: { userIds: ["u1"] },
       payload: { matchId: "m1", scheduledAt: "09:00" },
     });
-    emitDomainNotificationEvent({
+    await emitDomainNotificationEvent({
       tenantId: "t1",
       eventType: NOTIFICATION_EVENT_TYPES.MATCH_SCHEDULED,
       idempotencyKey: "t1:MATCH_SCHEDULED:m1:v2",
       recipientHints: { userIds: ["u1"] },
       payload: { matchId: "m1", scheduledAt: "11:00" },
     });
-    assert.equal(listInbox({ tenantId: "t1", userId: "u1" }).items.length, 2);
+    assert.equal((await listInbox({ tenantId: "t1", userId: "u1" })).items.length, 2);
   });
 
-  it("different tenants are not treated as duplicates", () => {
+  it("different tenants are not treated as duplicates", async () => {
     const shared = "BOOKING_CREATED:b99:v1";
-    emitDomainNotificationEvent({
+    await emitDomainNotificationEvent({
       tenantId: "t1",
       eventType: NOTIFICATION_EVENT_TYPES.BOOKING_CREATED,
       idempotencyKey: `t1:${shared}`,
       recipientHints: { userIds: ["u1"] },
       payload: { customerName: "A", courtName: "1" },
     });
-    emitDomainNotificationEvent({
+    await emitDomainNotificationEvent({
       tenantId: "t2",
       eventType: NOTIFICATION_EVENT_TYPES.BOOKING_CREATED,
       idempotencyKey: `t2:${shared}`,
       recipientHints: { userIds: ["u1"] },
       payload: { customerName: "A", courtName: "1" },
     });
-    assert.equal(listInbox({ tenantId: "t1" }).items.length, 1);
-    assert.equal(listInbox({ tenantId: "t2" }).items.length, 1);
+    assert.equal((await listInbox({ tenantId: "t1" })).items.length, 1);
+    assert.equal((await listInbox({ tenantId: "t2" })).items.length, 1);
   });
 });
 
@@ -325,7 +336,7 @@ describe("Notification Phase 1.2 — pilots", () => {
       entityId: "sess-1",
       version: "v1",
     });
-    const a = emitDomainNotificationEvent({
+    const a = await emitDomainNotificationEvent({
       tenantId: "tenant-club",
       clubId: "club-x",
       eventType: NOTIFICATION_EVENT_TYPES.CLUB_SCHEDULE_UPDATED,
@@ -336,7 +347,7 @@ describe("Notification Phase 1.2 — pilots", () => {
         message: "Đã thêm buổi sinh hoạt.",
       },
     });
-    const b = emitDomainNotificationEvent({
+    const b = await emitDomainNotificationEvent({
       tenantId: "tenant-club",
       clubId: "club-x",
       eventType: NOTIFICATION_EVENT_TYPES.CLUB_SCHEDULE_UPDATED,
@@ -349,17 +360,17 @@ describe("Notification Phase 1.2 — pilots", () => {
     });
     assert.equal(a.createdCount, 1);
     assert.equal(b.outcome, DOMAIN_EMIT_OUTCOMES.DUPLICATE);
-    assert.equal(listInbox({ tenantId: "tenant-club" }).items.length, 1);
+    assert.equal((await listInbox({ tenantId: "tenant-club" })).items.length, 1);
     assert.ok(first.ok === true || first.outcome === DOMAIN_EMIT_OUTCOMES.SKIPPED);
   });
 
-  it("booking created/cancelled events", () => {
+  it("booking created/cancelled events", async () => {
     setRecipientDirectory(
       createMemoryRecipientDirectory([
         { userId: "staff-1", tenantId: "t1", role: "COURT_OWNER" },
       ])
     );
-    const created = emitBookingLifecycleNotification(
+    const created = await emitBookingLifecycleNotification(
       NOTIFICATION_EVENT_TYPES.BOOKING_CREATED,
       {
         tenantId: "t1",
@@ -373,7 +384,7 @@ describe("Notification Phase 1.2 — pilots", () => {
         },
       }
     );
-    const cancelled = emitBookingLifecycleNotification(
+    const cancelled = await emitBookingLifecycleNotification(
       NOTIFICATION_EVENT_TYPES.BOOKING_CANCELLED,
       {
         tenantId: "t1",
@@ -393,8 +404,8 @@ describe("Notification Phase 1.2 — pilots", () => {
     assert.equal(cancelled.notifications[0].eventType, "BOOKING_CANCELLED");
   });
 
-  it("payment confirmed/failed events without forceMock providers", () => {
-    const confirmed = emitPaymentLifecycleNotification(
+  it("payment confirmed/failed events without forceMock providers", async () => {
+    const confirmed = await emitPaymentLifecycleNotification(
       NOTIFICATION_EVENT_TYPES.PAYMENT_CONFIRMED,
       {
         tenantId: "t1",
@@ -403,7 +414,7 @@ describe("Notification Phase 1.2 — pilots", () => {
         amount: 120000,
       }
     );
-    const failed = emitPaymentLifecycleNotification(
+    const failed = await emitPaymentLifecycleNotification(
       NOTIFICATION_EVENT_TYPES.PAYMENT_FAILED,
       {
         tenantId: "t1",
@@ -418,8 +429,8 @@ describe("Notification Phase 1.2 — pilots", () => {
     assert.match(failed.notifications[0].message, /insufficient funds/);
   });
 
-  it("MATCH_SCHEDULED boundary adapter works without Competition Engine", () => {
-    const result = emitMatchScheduledFromBoundary({
+  it("MATCH_SCHEDULED boundary adapter works without Competition Engine", async () => {
+    const result = await emitMatchScheduledFromBoundary({
       tenantId: "t1",
       matchId: "match-55",
       scheduleVersion: "2026-07-18T09:00:00.000Z",
@@ -433,12 +444,12 @@ describe("Notification Phase 1.2 — pilots", () => {
     assert.equal(result.outcome, DOMAIN_EMIT_OUTCOMES.CREATED);
     assert.equal(result.notifications[0].eventType, "MATCH_SCHEDULED");
     assert.equal(result.notifications[0].sourceEntityType, "match");
-    assert.equal(result.notifications[0].status, NOTIFICATION_STATUSES.CREATED);
+    assert.equal(result.notifications[0].status, NOTIFICATION_STATUSES.QUEUED);
   });
 });
 
 describe("Notification Phase 1.2 — boundaries", () => {
-  it("public API does not expose providers", () => {
+  it("public API does not expose providers", async () => {
     for (const name of [
       "EmailProvider",
       "SmsProvider",
@@ -451,7 +462,7 @@ describe("Notification Phase 1.2 — boundaries", () => {
     assert.equal(typeof notificationsPublicApi.emitDomainNotificationEvent, "function");
   });
 
-  it("Competition Engine does not import notification providers", () => {
+  it("Competition Engine does not import notification providers", async () => {
     const dirs = [
       path.join(ROOT, "src", "features", "competition-core"),
       path.join(ROOT, "src", "features", "tournament-engine"),
@@ -476,8 +487,8 @@ describe("Notification Phase 1.2 — boundaries", () => {
     assert.deepEqual(offenders, []);
   });
 
-  it("Phase 1.1 emitNotificationEvent still works", () => {
-    const result = emitNotificationEvent({
+  it("Phase 1.1 emitNotificationEvent still works", async () => {
+    const result = await emitNotificationEvent({
       tenantId: "t-legacy",
       eventType: NOTIFICATION_EVENT_TYPES.SCORE_SUBMITTED,
       idempotencyKey: "legacy-1",

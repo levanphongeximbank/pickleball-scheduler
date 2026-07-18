@@ -108,16 +108,16 @@ export function saveBooking(booking, clubId, { excludeId = null } = {}) {
   saveBookingsForClub(nextBookings, clubId);
   upsertCustomerFromBooking(enriched, clubId, { isNew: existingIndex < 0 });
 
-  // Phase 1.2 pilot — booking lifecycle event (not start reminder).
+  // Phase 1.2/1.3 pilot — booking lifecycle event (not start reminder).
   if (existingIndex < 0) {
     const tenantId = resolveTenantIdForClub(clubId);
     if (tenantId) {
-      emitBookingLifecycleNotification(NOTIFICATION_EVENT_TYPES.BOOKING_CREATED, {
+      void emitBookingLifecycleNotification(NOTIFICATION_EVENT_TYPES.BOOKING_CREATED, {
         tenantId,
         clubId,
         booking: enriched,
         version: enriched.createdAt || enriched.id,
-      });
+      }).catch(() => {});
     }
   }
 
@@ -151,7 +151,7 @@ export function updateBookingStatus(bookingId, nextStatus, clubId) {
     { excludeId: bookingId }
   );
 
-  // Phase 1.2 pilot — cancellation event (browser start reminder remains separate).
+  // Phase 1.2/1.3 pilot — cancellation event (browser start reminder remains separate).
   if (
     result.ok &&
     nextStatus === "cancelled" &&
@@ -159,12 +159,12 @@ export function updateBookingStatus(bookingId, nextStatus, clubId) {
   ) {
     const tenantId = resolveTenantIdForClub(clubId);
     if (tenantId) {
-      emitBookingLifecycleNotification(NOTIFICATION_EVENT_TYPES.BOOKING_CANCELLED, {
+      void emitBookingLifecycleNotification(NOTIFICATION_EVENT_TYPES.BOOKING_CANCELLED, {
         tenantId,
         clubId,
         booking: result.booking,
         version: result.booking?.updatedAt || `cancelled:${bookingId}`,
-      });
+      }).catch(() => {});
     }
   }
 

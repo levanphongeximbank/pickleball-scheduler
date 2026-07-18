@@ -3,40 +3,32 @@ import { createInboxNotificationRecord } from "../models/inboxNotification.js";
 import { getEventClassification } from "../constants/eventClassification.js";
 import { NOTIFICATION_CATEGORIES } from "../constants/notificationCategories.js";
 import { NOTIFICATION_PRIORITIES } from "../constants/notificationPriorities.js";
-import {
-  loadIdempotencyIndex,
-  loadInboxRecords,
-  makeIdempotencyIndexKey,
-  saveIdempotencyIndex,
-  saveInboxRecords,
-} from "../storage/notificationInboxStorage.js";
+import { getNotificationRepository } from "../repositories/notificationRepository.js";
 
 /**
  * Phase 1.1 low-level emit (single record, no recipient fan-out).
- * Prefer `emitDomainNotificationEvent` for domain pilots (Phase 1.2+).
+ * Prefer `emitDomainNotificationEvent` for domain pilots.
  */
-export function emitNotificationEvent(input = {}) {
+export async function emitNotificationEvent(input = {}) {
   const validated = validateNotificationEventEnvelope(input);
   if (!validated.ok) {
     return { ok: false, code: validated.code, error: validated.error };
   }
 
   const event = validated.event;
-  const indexKey = makeIdempotencyIndexKey(event.tenantId, event.idempotencyKey);
-  const index = loadIdempotencyIndex();
-  const existingId = index[indexKey];
+  const repo = input.repository || getNotificationRepository();
 
-  if (existingId) {
-    const records = loadInboxRecords();
-    const existing = records.find((r) => (r.notificationId || r.id) === existingId);
-    if (existing) {
-      return {
-        ok: true,
-        duplicate: true,
-        event,
-        notification: existing,
-      };
-    }
+  const existing = await repo.findByIdempotencyKey({
+    tenantId: event.tenantId,
+    idempotencyKey: event.idempotencyKey,
+  });
+  if (existing.notification) {
+    return {
+      ok: true,
+      duplicate: true,
+      event,
+      notification: existing.notification,
+    };
   }
 
   const classification =
@@ -52,7 +44,7 @@ export function emitNotificationEvent(input = {}) {
     (event.payload && (event.payload.message || event.payload.body)) ||
     event.eventType;
 
-  const notification = createInboxNotificationRecord({
+  const draft = createInboxNotificationRecord({
     event,
     category: classification.category,
     priority: classification.priority,
@@ -63,17 +55,15 @@ export function emitNotificationEvent(input = {}) {
     idempotencyKey: event.idempotencyKey,
   });
 
-  const records = loadInboxRecords();
-  records.unshift(notification);
-  saveInboxRecords(records);
-
-  index[indexKey] = notification.notificationId || notification.id;
-  saveIdempotencyIndex(index);
+  const saved = await repo.create(draft);
+  if (!saved.ok) {
+    return { ok: false, error: saved.error || "Failed to create notification." };
+  }
 
   return {
     ok: true,
-    duplicate: false,
+    duplicate: Boolean(saved.duplicate),
     event,
-    notification,
+    notification: saved.notification,
   };
 }

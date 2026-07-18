@@ -1,4 +1,8 @@
 import { getRecipientDirectory } from "./recipientDirectory.js";
+import { ensureIdentityRecipientDirectory } from "./recipientBootstrap.js";
+
+// Ensure Phase 1.3 identity directory is the default when nothing is injected.
+ensureIdentityRecipientDirectory({ allowUnverifiedUserIds: true });
 
 /**
  * Resolve recipientHints → unique tenant-scoped userIds.

@@ -13,7 +13,7 @@ import { buildNotificationIdempotencyKey } from "../utils/idempotencyKey.js";
  * @param {'PAYMENT_CONFIRMED'|'PAYMENT_FAILED'} eventType
  * @param {object} input
  */
-export function emitPaymentLifecycleNotification(eventType, input = {}) {
+export async function emitPaymentLifecycleNotification(eventType, input = {}) {
   const {
     tenantId,
     transactionId,

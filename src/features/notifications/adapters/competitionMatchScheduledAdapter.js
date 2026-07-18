@@ -26,7 +26,7 @@ import { buildNotificationIdempotencyKey } from "../utils/idempotencyKey.js";
  * @param {{ userIds?: string[], roles?: string[], entryIds?: string[] }} [input.recipientHints]
  * @param {import("../recipients/recipientDirectory.js").RecipientDirectory} [input.directory]
  */
-export function emitMatchScheduledFromBoundary(input = {}) {
+export async function emitMatchScheduledFromBoundary(input = {}) {
   const {
     tenantId,
     matchId,

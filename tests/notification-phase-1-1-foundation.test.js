@@ -16,10 +16,15 @@ import {
   NOTIFICATION_EVENT_TYPES,
   NOTIFICATION_EVENT_CATALOGUE,
   NOTIFICATION_STATUSES,
+  createNotificationRepository,
+  setNotificationRepository,
+  resetNotificationRepository,
+  NOTIFICATION_STORE_MODES,
 } from "../src/features/notifications/index.js";
 import { clearNotificationInboxStorage } from "../src/features/notifications/storage/notificationInboxStorage.js";
 import { clearNotificationPreferencesStorage } from "../src/features/notifications/services/notificationPreferencesService.js";
 import { clearNotificationStorage } from "../src/features/notifications/storage/notificationStorage.js";
+import { clearLocalDeliveryJobsStorage } from "../src/features/notifications/repositories/localNotificationRepository.js";
 import {
   sendNotification,
   seedDefaultTemplates,
@@ -84,12 +89,18 @@ function fileImportsNotificationProvider(filePath) {
 beforeEach(() => {
   globalThis.localStorage = createLocalStorageMock();
   clearNotificationInboxStorage();
+  clearLocalDeliveryJobsStorage();
   clearNotificationPreferencesStorage();
   clearNotificationStorage();
+  setNotificationRepository(
+    createNotificationRepository({ mode: NOTIFICATION_STORE_MODES.MEMORY })
+  );
 });
 
 afterEach(() => {
+  resetNotificationRepository();
   clearNotificationInboxStorage();
+  clearLocalDeliveryJobsStorage();
   clearNotificationPreferencesStorage();
   clearNotificationStorage();
   delete globalThis.localStorage;
@@ -151,8 +162,8 @@ describe("Notification Phase 1.1 — event envelope validation", () => {
 });
 
 describe("Notification Phase 1.1 — emit + idempotency + inbox", () => {
-  it("emitNotificationEvent creates a CREATED inbox record", () => {
-    const result = emitNotificationEvent({
+  it("emitNotificationEvent creates a CREATED inbox record", async () => {
+    const result = await emitNotificationEvent({
       tenantId: "tenant-a",
       eventType: NOTIFICATION_EVENT_TYPES.REGISTRATION_CONFIRMED,
       idempotencyKey: "reg-42",
@@ -165,19 +176,19 @@ describe("Notification Phase 1.1 — emit + idempotency + inbox", () => {
     assert.equal(result.notification.status, NOTIFICATION_STATUSES.CREATED);
     assert.equal(result.notification.idempotencyKey, "reg-42");
 
-    const inbox = listInbox({ tenantId: "tenant-a" });
+    const inbox = await listInbox({ tenantId: "tenant-a" });
     assert.equal(inbox.ok, true);
     assert.equal(inbox.items.length, 1);
   });
 
-  it("same tenantId + idempotencyKey does not create duplicate records", () => {
-    const first = emitNotificationEvent({
+  it("same tenantId + idempotencyKey does not create duplicate records", async () => {
+    const first = await emitNotificationEvent({
       tenantId: "tenant-a",
       eventType: NOTIFICATION_EVENT_TYPES.COURT_CHANGED,
       idempotencyKey: "court-change-7",
       payload: { courtId: "c1" },
     });
-    const second = emitNotificationEvent({
+    const second = await emitNotificationEvent({
       tenantId: "tenant-a",
       eventType: NOTIFICATION_EVENT_TYPES.COURT_CHANGED,
       idempotencyKey: "court-change-7",
@@ -190,41 +201,41 @@ describe("Notification Phase 1.1 — emit + idempotency + inbox", () => {
     assert.equal(second.duplicate, true);
     assert.equal(second.notification.id, first.notification.id);
 
-    const inbox = listInbox({ tenantId: "tenant-a" });
+    const inbox = await listInbox({ tenantId: "tenant-a" });
     assert.equal(inbox.items.length, 1);
   });
 
-  it("different tenants may reuse the same idempotencyKey", () => {
-    emitNotificationEvent({
+  it("different tenants may reuse the same idempotencyKey", async () => {
+    await emitNotificationEvent({
       tenantId: "tenant-a",
       eventType: NOTIFICATION_EVENT_TYPES.PAYMENT_FAILED,
       idempotencyKey: "pay-dup-key",
     });
-    emitNotificationEvent({
+    await emitNotificationEvent({
       tenantId: "tenant-b",
       eventType: NOTIFICATION_EVENT_TYPES.PAYMENT_FAILED,
       idempotencyKey: "pay-dup-key",
     });
 
-    assert.equal(listInbox({ tenantId: "tenant-a" }).items.length, 1);
-    assert.equal(listInbox({ tenantId: "tenant-b" }).items.length, 1);
+    assert.equal((await listInbox({ tenantId: "tenant-a" })).items.length, 1);
+    assert.equal((await listInbox({ tenantId: "tenant-b" })).items.length, 1);
   });
 
-  it("markNotificationRead and markAllNotificationsRead update status to READ", () => {
-    const a = emitNotificationEvent({
+  it("markNotificationRead and markAllNotificationsRead update status to READ", async () => {
+    const a = await emitNotificationEvent({
       tenantId: "tenant-a",
       eventType: NOTIFICATION_EVENT_TYPES.MATCH_STARTING_SOON,
       idempotencyKey: "soon-1",
       recipientHints: { userIds: ["u-1"] },
     });
-    emitNotificationEvent({
+    await emitNotificationEvent({
       tenantId: "tenant-a",
       eventType: NOTIFICATION_EVENT_TYPES.SCORE_SUBMITTED,
       idempotencyKey: "score-1",
       recipientHints: { userIds: ["u-1"] },
     });
 
-    const marked = markNotificationRead({
+    const marked = await markNotificationRead({
       tenantId: "tenant-a",
       notificationId: a.notification.id,
       userId: "u-1",
@@ -232,11 +243,11 @@ describe("Notification Phase 1.1 — emit + idempotency + inbox", () => {
     assert.equal(marked.ok, true);
     assert.equal(marked.notification.status, NOTIFICATION_STATUSES.READ);
 
-    const all = markAllNotificationsRead({ tenantId: "tenant-a", userId: "u-1" });
+    const all = await markAllNotificationsRead({ tenantId: "tenant-a", userId: "u-1" });
     assert.equal(all.ok, true);
     assert.equal(all.updatedCount, 1);
 
-    const unread = listInbox({
+    const unread = await listInbox({
       tenantId: "tenant-a",
       userId: "u-1",
       status: NOTIFICATION_STATUSES.CREATED,

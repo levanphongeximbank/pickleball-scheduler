@@ -107,7 +107,7 @@ export async function notifyClubMembers({
     version: String(version),
   });
 
-  const result = emitDomainNotificationEvent({
+  const result = await emitDomainNotificationEvent({
     tenantId,
     clubId,
     eventType: NOTIFICATION_EVENT_TYPES.CLUB_SCHEDULE_UPDATED,
