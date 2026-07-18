@@ -424,8 +424,22 @@ test("fixture matrix performance baseline", () => {
           legacyExecutor: mlpExecutor,
         }),
     });
+
+    // Reporting-only baseline: require a finite non-negative timing report.
+    // Do NOT assert shadowDurationMs >= legacyDurationMs — single wall-clock
+    // samples are nondeterministic under JIT/timer noise (CI flake).
+    assert.equal(typeof report.legacyDurationMs, "number");
+    assert.equal(typeof report.shadowDurationMs, "number");
+    assert.equal(typeof report.adapterDurationMs, "number");
+    assert.ok(Number.isFinite(report.legacyDurationMs));
+    assert.ok(Number.isFinite(report.shadowDurationMs));
+    assert.ok(Number.isFinite(report.adapterDurationMs));
     assert.ok(report.legacyDurationMs >= 0);
-    assert.ok(report.shadowDurationMs >= report.legacyDurationMs);
+    assert.ok(report.shadowDurationMs >= 0);
+    assert.ok(report.adapterDurationMs >= 0);
+    assert.equal(typeof report.candidateCount, "number");
+    assert.ok(report.candidateCount >= 0);
+    assert.equal(typeof report.memoryNote, "string");
   }
 });
 
