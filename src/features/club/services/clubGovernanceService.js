@@ -1108,7 +1108,6 @@ export async function setClubVicePresidents(clubId, userIds = [], tenantId) {
         return cleared;
       }
       nextClub = cleared.club;
-      version = cleared.version ?? version;
     } else {
       for (const removeId of toRemove) {
         const cleared = await rpcV2ClubClearVicePresident({
