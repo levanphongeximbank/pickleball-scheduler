@@ -190,6 +190,7 @@ export default function MyClubSummaryCard({
         onClose={() => setAssignOpen(false)}
         clubId={clubId}
         tenantId={tenantId}
+        clubVersion={clubRecord?.version ?? null}
         candidates={candidates}
         onSuccess={() => {
           onMessage?.({ type: "success", text: "Đã gắn Chủ sở hữu CLB." });

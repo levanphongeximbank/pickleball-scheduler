@@ -12,11 +12,23 @@ import {
 import GovernanceMemberSelect from "../../../components/club/GovernanceMemberSelect.jsx";
 import { assignClubOwner } from "../../../features/club/index.js";
 
+function mapOwnerAssignError(result) {
+  const serverCode = String(result?.serverCode || "").trim();
+  if (serverCode === "VERSION_CONFLICT") {
+    return "Dữ liệu CLB đã thay đổi trên máy chủ. Vui lòng tải lại rồi thử lại.";
+  }
+  if (serverCode === "FORBIDDEN") {
+    return result?.error || "Bạn không có quyền gán Chủ sở hữu CLB.";
+  }
+  return result?.error || "Không gán được Chủ sở hữu.";
+}
+
 export default function AssignClubOwnerDialog({
   open,
   onClose,
   clubId,
   tenantId,
+  clubVersion = null,
   candidates = [],
   onSuccess,
   onError,
@@ -37,10 +49,12 @@ export default function AssignClubOwnerDialog({
       return;
     }
     setBusy(true);
-    const result = await assignClubOwner(clubId, ownerUserId, tenantId);
+    const result = await assignClubOwner(clubId, ownerUserId, tenantId, {
+      expectedClubVersion: clubVersion,
+    });
     setBusy(false);
     if (!result.ok) {
-      onError?.(result.error);
+      onError?.(mapOwnerAssignError(result));
       return;
     }
     setOwnerUserId("");

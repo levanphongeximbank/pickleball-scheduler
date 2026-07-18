@@ -37,6 +37,9 @@ import { persistClubToCloud } from "./clubRegistryCloudService.js";
 import { rpcClubClaimSelfRegistration } from "./clubRegistryRpcService.js";
 import { assertLegacyClubEntityWriteAllowed } from "./clubLegacyWriteGuard.js";
 import { isClubStorageV2Enabled } from "../config/clubRegistryFlags.js";
+import { mapClubCommandError } from "./clubCommandErrorMap.js";
+import { API_ERROR_CODES } from "../../api/constants/apiErrors.js";
+import { invalidateMyActiveClubMembershipCache } from "./clubActiveMembershipService.js";
 import {
   rpcV2ClubAssignOwner,
   rpcV2ClubClearOwner,
@@ -408,10 +411,18 @@ async function resolveClubForGovernance(clubId) {
   return getRegistryClubById(clubId);
 }
 
-function invalidateRegistryAfterGovernanceMutation() {
+function invalidateRegistryAfterGovernanceMutation(userId = null) {
   if (isClubStorageV2Enabled()) {
     invalidateAllClubRegistryCache();
+    invalidateMyActiveClubMembershipCache(userId);
   }
+}
+
+function mapGovernanceCommandError(result, fallbackError) {
+  return mapClubCommandError(result, {
+    fallbackCode: API_ERROR_CODES.INTERNAL_ERROR,
+    fallbackError,
+  });
 }
 
 function buildPlayerIdForAuthUser(userId) {
@@ -989,8 +1000,72 @@ export async function listClubGovernanceCandidatesAsync(clubId, tenantId) {
   );
 }
 
-export function transferClubOwnership(clubId, nextOwnerUserId, tenantId) {
+/**
+ * Transfer club ownership to another active member.
+ * V2 ON: club_assign_owner RPC (expected version); never local registry write.
+ * V2 OFF: legacy updateClubMeta registry path.
+ * Client gate: canTransferClubOwnership (current owner). RPC remains final authz.
+ */
+export async function transferClubOwnership(clubId, nextOwnerUserId, tenantId, options = {}) {
   const user = getCurrentUser();
+  const trimmed = String(nextOwnerUserId || "").trim();
+  if (!trimmed) {
+    return { ok: false, error: "Chọn thành viên nhận quyền sở hữu." };
+  }
+
+  if (sameUserId(user?.id, trimmed)) {
+    return { ok: false, error: "Không thể chuyển quyền sở hữu cho chính mình." };
+  }
+
+  if (isClubStorageV2Enabled()) {
+    const club = await resolveClubForGovernance(clubId);
+    if (!club) {
+      return { ok: false, error: "Không tìm thấy CLB." };
+    }
+
+    if (!canTransferClubOwnership(user, club)) {
+      return { ok: false, error: "Chỉ Chủ sở hữu hiện tại được chuyển quyền sở hữu." };
+    }
+
+    const previousOwnerUserId = club.governance?.ownerUserId || null;
+    const expectedClubVersion =
+      options.expectedClubVersion ?? club.version ?? 1;
+
+    const assigned = await rpcV2ClubAssignOwner({
+      clubId,
+      memberUserId: trimmed,
+      expectedClubVersion,
+    });
+    if (!assigned.ok) {
+      return mapGovernanceCommandError(
+        assigned,
+        "Không chuyển được quyền sở hữu trên cloud."
+      );
+    }
+
+    invalidateRegistryAfterGovernanceMutation(user?.id);
+    void writeAuditLog({
+      action: "club.owner.transfer",
+      resourceType: "club",
+      resourceId: clubId,
+      venueId: tenantId || club.venueId || club.tenantId,
+      clubId,
+      metadata: {
+        previousOwnerUserId,
+        nextOwnerUserId: trimmed,
+        provider: "v2-rpc",
+        version: assigned.version ?? null,
+      },
+    });
+
+    return {
+      ok: true,
+      club: assigned.club,
+      version: assigned.version,
+      provider: "v2-rpc",
+    };
+  }
+
   const club = getRegistryClubById(clubId);
   if (!club) {
     return { ok: false, error: "Không tìm thấy CLB." };
@@ -998,15 +1073,6 @@ export function transferClubOwnership(clubId, nextOwnerUserId, tenantId) {
 
   if (!canTransferClubOwnership(user, club)) {
     return { ok: false, error: "Chỉ Chủ sở hữu hiện tại được chuyển quyền sở hữu." };
-  }
-
-  const trimmed = String(nextOwnerUserId || "").trim();
-  if (!trimmed) {
-    return { ok: false, error: "Chọn thành viên nhận quyền sở hữu." };
-  }
-
-  if (sameUserId(user.id, trimmed)) {
-    return { ok: false, error: "Không thể chuyển quyền sở hữu cho chính mình." };
   }
 
   const memberCheck = assertClubMemberUser(clubId, tenantId, trimmed);
@@ -1361,7 +1427,7 @@ export function resolveGovernanceForCreate(data = {}, user = getCurrentUser()) {
   return { governance: nextGovernance, status };
 }
 
-export async function assignClubOwner(clubId, ownerUserId, tenantId) {
+export async function assignClubOwner(clubId, ownerUserId, tenantId, options = {}) {
   const user = getCurrentUser();
   if (!canAssignClubOwner(user)) {
     return { ok: false, error: "Chỉ chủ sân hoặc quản trị hệ thống được gán Chủ sở hữu CLB." };
@@ -1382,30 +1448,31 @@ export async function assignClubOwner(clubId, ownerUserId, tenantId) {
   }
 
   const trimmed = ownerUserId ? String(ownerUserId).trim() : null;
+  const expectedClubVersion = options.expectedClubVersion ?? club.version ?? 1;
 
   if (isClubStorageV2Enabled()) {
     if (!trimmed) {
       const cleared = await rpcV2ClubClearOwner({
         clubId,
-        expectedClubVersion: club.version ?? 1,
+        expectedClubVersion,
       });
       if (!cleared.ok) {
-        return cleared;
+        return mapGovernanceCommandError(cleared, "Không xóa được Chủ sở hữu trên cloud.");
       }
-      invalidateRegistryAfterGovernanceMutation();
-      return { ok: true, club: cleared.club, provider: "v2-rpc" };
+      invalidateRegistryAfterGovernanceMutation(user?.id);
+      return { ok: true, club: cleared.club, version: cleared.version, provider: "v2-rpc" };
     }
 
     const assigned = await rpcV2ClubAssignOwner({
       clubId,
       memberUserId: trimmed,
-      expectedClubVersion: club.version ?? 1,
+      expectedClubVersion,
     });
     if (!assigned.ok) {
-      return assigned;
+      return mapGovernanceCommandError(assigned, "Không gán được Chủ sở hữu trên cloud.");
     }
-    invalidateRegistryAfterGovernanceMutation();
-    return { ok: true, club: assigned.club, provider: "v2-rpc" };
+    invalidateRegistryAfterGovernanceMutation(user?.id);
+    return { ok: true, club: assigned.club, version: assigned.version, provider: "v2-rpc" };
   }
 
   const governance = {

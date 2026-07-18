@@ -176,13 +176,16 @@ export default function MyClubGovernancePanel({
     onRefresh?.();
   };
 
-  const handleTransferOwner = () => {
+  const handleTransferOwner = async () => {
     setBusy(true);
     setError(null);
-    const result = transferClubOwnership(clubId, nextOwnerId, tenantId);
+    const result = await transferClubOwnership(clubId, nextOwnerId, tenantId, {
+      expectedClubVersion: club.version ?? null,
+    });
     setBusy(false);
     if (!result.ok) {
-      setError(result.error);
+      setError(mapGovernanceError(result));
+      onRefresh?.();
       return;
     }
     setMessage({ type: "success", text: "Đã chuyển quyền sở hữu CLB." });

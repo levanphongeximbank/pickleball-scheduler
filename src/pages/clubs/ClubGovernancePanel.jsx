@@ -190,11 +190,13 @@ export default function ClubGovernancePanel({ club, tenantId, onRefresh }) {
       const ownerResult = await assignClubOwner(
         club.id,
         form.ownerUserId.trim() || null,
-        tenantId
+        tenantId,
+        { expectedClubVersion: club.version ?? null }
       );
       if (!ownerResult.ok) {
         setBusy(false);
         setError(mapGovernanceError(ownerResult));
+        onRefresh?.();
         return;
       }
     }

@@ -67,9 +67,13 @@
 
 RPC remains final enforcement.
 
-### Version
-- [ ] Club version shown where useful (detail / governance / members)
-- [ ] Mutations send expected version when available
+### Owner change (Phase 1C final gap)
+- [ ] Current Owner transfer (My Club Governance) uses V2 RPC when flag ON (no local-only update)
+- [ ] Tenant admin assign/clear owner (Manage / Assign dialog) uses V2 RPC when flag ON
+- [ ] After success, Owner label matches across Home, Governance, Org Chart, Manage Detail
+- [ ] Stale version → conflict message + reload guidance
+- [ ] Unauthorized role cannot see/use ownership controls
+- [ ] Flag OFF: legacy registry transfer still works
 
 ---
 

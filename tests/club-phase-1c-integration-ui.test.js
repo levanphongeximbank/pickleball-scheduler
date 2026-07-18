@@ -236,4 +236,48 @@ describe("Phase 1C — wiring source contracts", () => {
       /FORBIDDEN[\s\S]{0,80}return \{ ok: true, provider: "v2-rpc"/
     );
   });
+
+  it("transferClubOwnership V2 uses rpcV2ClubAssignOwner, not updateClubMeta", () => {
+    const src = readSrc("src/features/club/services/clubGovernanceService.js");
+    const start = src.indexOf("export async function transferClubOwnership");
+    assert.ok(start >= 0, "transferClubOwnership must be async");
+    const nextExport = src.indexOf("\nexport async function transferClubPresident", start + 1);
+    const body = src.slice(start, nextExport > start ? nextExport : start + 3500);
+    assert.match(body, /isClubStorageV2Enabled\(\)/);
+    assert.match(body, /rpcV2ClubAssignOwner/);
+    assert.match(body, /expectedClubVersion/);
+    assert.match(body, /club\.owner\.transfer/);
+    assert.match(body, /provider: "v2-rpc"/);
+    // V2 branch must not write registry meta
+    const v2Branch = body.slice(0, body.indexOf("getRegistryClubById"));
+    assert.doesNotMatch(v2Branch, /updateClubMeta/);
+    // V1 fallback still present
+    assert.match(body, /updateClubMeta/);
+  });
+
+  it("assignClubOwner V2 maps VERSION_CONFLICT/FORBIDDEN and passes expected version", () => {
+    const src = readSrc("src/features/club/services/clubGovernanceService.js");
+    const start = src.indexOf("export async function assignClubOwner");
+    const next = src.indexOf("\nexport function approveClubRegistration", start + 1);
+    const body = src.slice(start, next > start ? next : start + 2500);
+    assert.match(body, /rpcV2ClubAssignOwner/);
+    assert.match(body, /rpcV2ClubClearOwner/);
+    assert.match(body, /mapGovernanceCommandError/);
+    assert.match(body, /expectedClubVersion/);
+  });
+
+  it("My Club transfer owner awaits V2 path and reloads on conflict", () => {
+    const src = readSrc("src/pages/player/myClub/MyClubGovernancePanel.jsx");
+    assert.match(src, /await transferClubOwnership/);
+    assert.match(src, /expectedClubVersion:\s*club\.version/);
+    assert.match(src, /mapGovernanceError\(result\)/);
+  });
+
+  it("AssignClubOwnerDialog and Manage panel pass expectedClubVersion", () => {
+    const dialog = readSrc("src/pages/player/myClub/AssignClubOwnerDialog.jsx");
+    const manage = readSrc("src/pages/clubs/ClubGovernancePanel.jsx");
+    assert.match(dialog, /expectedClubVersion:\s*clubVersion/);
+    assert.match(dialog, /VERSION_CONFLICT/);
+    assert.match(manage, /expectedClubVersion:\s*club\.version/);
+  });
 });
