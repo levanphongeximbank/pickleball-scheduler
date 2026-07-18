@@ -1,0 +1,702 @@
+{
+  "phase": "1B",
+  "kind": "PRODUCTION_PREFLIGHT_READONLY",
+  "generatedAt": "2026-07-18T15:27:46.570Z",
+  "productionTouched": false,
+  "sqlApplied": false,
+  "codeDeployed": false,
+  "targetSafety": {
+    "productionRef": "expuvcohlcjzvrrauvud",
+    "stagingRef": "qyewbxjsiiyufanzcjcq",
+    "stagingQueried": false,
+    "approvedMainSha": "959c8067ea756aa32e50b549a97cd4e762786ff7",
+    "approvedMainShaOnOrigin": "959c8067ea756aa32e50b549a97cd4e762786ff7",
+    "headSha": "39ee04458496796f6a256f413bfcf21d71ea8026"
+  },
+  "snapshot": {
+    "target_safety": {
+      "expected_production_ref": "expuvcohlcjzvrrauvud",
+      "staging_ref_must_not_be_used": "qyewbxjsiiyufanzcjcq",
+      "approved_main_sha": "959c8067ea756aa32e50b549a97cd4e762786ff7"
+    },
+    "audit": {
+      "constraint_exists": true,
+      "constraint_def": "CHECK ((action = ANY (ARRAY['login'::text, 'login_failed'::text, 'logout'::text, 'create'::text, 'update'::text, 'delete'::text, 'assign_role'::text, 'permission_change'::text, 'password_change'::text, 'reset_password'::text, 'club.create'::text, 'club.update'::text, 'club.leave_membership'::text, 'club.delete'::text, 'club.membership_request.submit'::text, 'club.membership_request.review'::text, 'club.membership_request.correction'::text, 'club.member.add'::text, 'club.member.remove'::text, 'club.member.restore'::text, 'club.assign_owner'::text, 'club.clear_owner'::text, 'club.transfer_president'::text, 'club.owner.transfer'::text, 'club.president.transfer'::text, 'club.vice_president.assign'::text])))",
+      "distinct_actions": [
+        {
+          "action": "assign_role",
+          "row_count": 3
+        },
+        {
+          "action": "club.leave_membership",
+          "row_count": 1
+        },
+        {
+          "action": "club.membership_request.correction",
+          "row_count": 1
+        },
+        {
+          "action": "club.membership_request.review",
+          "row_count": 33
+        },
+        {
+          "action": "club.membership_request.submit",
+          "row_count": 32
+        },
+        {
+          "action": "create",
+          "row_count": 32
+        },
+        {
+          "action": "login",
+          "row_count": 194
+        },
+        {
+          "action": "password_change",
+          "row_count": 6
+        },
+        {
+          "action": "reset_password",
+          "row_count": 11
+        },
+        {
+          "action": "update",
+          "row_count": 112
+        }
+      ],
+      "null_action_rows": 0
+    },
+    "rpc_inventory": [
+      {
+        "proname": "club_add_member",
+        "identity_args": "p_request_id uuid, p_club_id text, p_target_user_id uuid, p_membership_type text, p_expected_version integer",
+        "result": "json",
+        "security_definer": true,
+        "proconfig": [
+          "search_path=public"
+        ],
+        "search_path_from_config": "public",
+        "oid": "20850"
+      },
+      {
+        "proname": "club_assign_vice_president",
+        "identity_args": "p_request_id uuid, p_club_id text, p_member_user_id uuid, p_expected_club_version integer",
+        "result": "json",
+        "security_definer": true,
+        "proconfig": [
+          "search_path=public"
+        ],
+        "search_path_from_config": "public",
+        "oid": "19974"
+      },
+      {
+        "proname": "club_list_members",
+        "identity_args": "p_club_id text",
+        "result": "json",
+        "security_definer": true,
+        "proconfig": [
+          "search_path=public"
+        ],
+        "search_path_from_config": "public",
+        "oid": "19964"
+      },
+      {
+        "proname": "club_remove_member",
+        "identity_args": "p_request_id uuid, p_club_id text, p_target_user_id uuid, p_expected_version integer",
+        "result": "json",
+        "security_definer": true,
+        "proconfig": [
+          "search_path=public"
+        ],
+        "search_path_from_config": "public",
+        "oid": "20853"
+      },
+      {
+        "proname": "club_restore_member",
+        "identity_args": "p_request_id uuid, p_club_id text, p_target_user_id uuid, p_expected_version integer",
+        "result": "json",
+        "security_definer": true,
+        "proconfig": [
+          "search_path=public"
+        ],
+        "search_path_from_config": "public",
+        "oid": "20856"
+      },
+      {
+        "proname": "club_update",
+        "identity_args": "p_request_id uuid, p_club_id text, p_expected_club_version integer, p_name text, p_code text, p_description text, p_status text, p_registered_cluster_id text",
+        "result": "json",
+        "security_definer": true,
+        "proconfig": [
+          "search_path=public"
+        ],
+        "search_path_from_config": "public",
+        "oid": "20845"
+      },
+      {
+        "proname": "phase42_club_canonical",
+        "identity_args": "p_club_id text",
+        "result": "jsonb",
+        "security_definer": true,
+        "proconfig": [
+          "search_path=public"
+        ],
+        "search_path_from_config": "public",
+        "oid": "19951"
+      },
+      {
+        "proname": "phase42_is_tenant_member",
+        "identity_args": "p_tenant_id text",
+        "result": "boolean",
+        "security_definer": true,
+        "proconfig": [
+          "search_path=public"
+        ],
+        "search_path_from_config": "public",
+        "oid": "19945"
+      },
+      {
+        "proname": "phase42_write_audit",
+        "identity_args": "p_action text, p_resource_type text, p_resource_id text, p_tenant_id text, p_club_id text, p_metadata jsonb",
+        "result": "void",
+        "security_definer": true,
+        "proconfig": [
+          "search_path=public"
+        ],
+        "search_path_from_config": "public",
+        "oid": "19948"
+      }
+    ],
+    "rpc_body_checks": {
+      "club_update_exists": true,
+      "club_update_uses_can_update_club": false,
+      "club_update_uses_bare_tenant_member": true,
+      "vp_assign_exists": true,
+      "canonical_has_vp_fields": false
+    },
+    "schema": {
+      "clubs_columns": [
+        {
+          "column_name": "id",
+          "data_type": "text",
+          "udt_name": "text",
+          "is_nullable": "NO"
+        },
+        {
+          "column_name": "tenant_id",
+          "data_type": "text",
+          "udt_name": "text",
+          "is_nullable": "NO"
+        },
+        {
+          "column_name": "name",
+          "data_type": "text",
+          "udt_name": "text",
+          "is_nullable": "NO"
+        },
+        {
+          "column_name": "code",
+          "data_type": "text",
+          "udt_name": "text",
+          "is_nullable": "YES"
+        },
+        {
+          "column_name": "description",
+          "data_type": "text",
+          "udt_name": "text",
+          "is_nullable": "NO"
+        },
+        {
+          "column_name": "status",
+          "data_type": "text",
+          "udt_name": "text",
+          "is_nullable": "NO"
+        },
+        {
+          "column_name": "registered_cluster_id",
+          "data_type": "text",
+          "udt_name": "text",
+          "is_nullable": "YES"
+        },
+        {
+          "column_name": "version",
+          "data_type": "integer",
+          "udt_name": "int4",
+          "is_nullable": "NO"
+        },
+        {
+          "column_name": "created_by_user_id",
+          "data_type": "uuid",
+          "udt_name": "uuid",
+          "is_nullable": "YES"
+        },
+        {
+          "column_name": "created_at",
+          "data_type": "timestamp with time zone",
+          "udt_name": "timestamptz",
+          "is_nullable": "NO"
+        },
+        {
+          "column_name": "updated_at",
+          "data_type": "timestamp with time zone",
+          "udt_name": "timestamptz",
+          "is_nullable": "NO"
+        },
+        {
+          "column_name": "deleted_at",
+          "data_type": "timestamp with time zone",
+          "udt_name": "timestamptz",
+          "is_nullable": "YES"
+        }
+      ],
+      "club_members_columns": [
+        {
+          "column_name": "id",
+          "data_type": "uuid",
+          "udt_name": "uuid",
+          "is_nullable": "NO"
+        },
+        {
+          "column_name": "tenant_id",
+          "data_type": "text",
+          "udt_name": "text",
+          "is_nullable": "NO"
+        },
+        {
+          "column_name": "club_id",
+          "data_type": "text",
+          "udt_name": "text",
+          "is_nullable": "NO"
+        },
+        {
+          "column_name": "user_id",
+          "data_type": "uuid",
+          "udt_name": "uuid",
+          "is_nullable": "NO"
+        },
+        {
+          "column_name": "athlete_id",
+          "data_type": "uuid",
+          "udt_name": "uuid",
+          "is_nullable": "YES"
+        },
+        {
+          "column_name": "membership_type",
+          "data_type": "text",
+          "udt_name": "text",
+          "is_nullable": "NO"
+        },
+        {
+          "column_name": "status",
+          "data_type": "text",
+          "udt_name": "text",
+          "is_nullable": "NO"
+        },
+        {
+          "column_name": "joined_at",
+          "data_type": "timestamp with time zone",
+          "udt_name": "timestamptz",
+          "is_nullable": "NO"
+        },
+        {
+          "column_name": "left_at",
+          "data_type": "timestamp with time zone",
+          "udt_name": "timestamptz",
+          "is_nullable": "YES"
+        },
+        {
+          "column_name": "version",
+          "data_type": "integer",
+          "udt_name": "int4",
+          "is_nullable": "NO"
+        },
+        {
+          "column_name": "created_at",
+          "data_type": "timestamp with time zone",
+          "udt_name": "timestamptz",
+          "is_nullable": "NO"
+        },
+        {
+          "column_name": "updated_at",
+          "data_type": "timestamp with time zone",
+          "udt_name": "timestamptz",
+          "is_nullable": "NO"
+        }
+      ],
+      "tables_exist": {
+        "clubs": true,
+        "club_members": true,
+        "club_governance_assignments": true,
+        "audit_logs": true
+      }
+    },
+    "rls": [
+      {
+        "schemaname": "public",
+        "tablename": "audit_logs",
+        "policyname": "audit_logs_insert_authenticated",
+        "cmd": "INSERT",
+        "permissive": "PERMISSIVE",
+        "roles": [
+          "authenticated"
+        ],
+        "qual": null,
+        "with_check": "((actor_id = auth.uid()) OR is_super_admin())"
+      },
+      {
+        "schemaname": "public",
+        "tablename": "audit_logs",
+        "policyname": "audit_logs_self_select",
+        "cmd": "SELECT",
+        "permissive": "PERMISSIVE",
+        "roles": [
+          "authenticated"
+        ],
+        "qual": "(actor_id = auth.uid())",
+        "with_check": null
+      },
+      {
+        "schemaname": "public",
+        "tablename": "audit_logs",
+        "policyname": "audit_logs_super_admin_select",
+        "cmd": "SELECT",
+        "permissive": "PERMISSIVE",
+        "roles": [
+          "authenticated"
+        ],
+        "qual": "is_super_admin()",
+        "with_check": null
+      },
+      {
+        "schemaname": "public",
+        "tablename": "audit_logs",
+        "policyname": "audit_logs_venue_manager_select",
+        "cmd": "SELECT",
+        "permissive": "PERMISSIVE",
+        "roles": [
+          "authenticated"
+        ],
+        "qual": "(user_has_permission('user.manage'::text) AND (venue_id IS NOT NULL) AND (venue_id = user_venue_id()))",
+        "with_check": null
+      },
+      {
+        "schemaname": "public",
+        "tablename": "club_governance_assignments",
+        "policyname": "club_gov_select",
+        "cmd": "SELECT",
+        "permissive": "PERMISSIVE",
+        "roles": [
+          "authenticated"
+        ],
+        "qual": "(phase42_is_platform_super_admin() OR phase42_is_tenant_member(tenant_id) OR (EXISTS ( SELECT 1\n   FROM club_members cm\n  WHERE ((cm.club_id = club_governance_assignments.club_id) AND (cm.user_id = auth.uid()) AND (cm.status = 'active'::text)))))",
+        "with_check": null
+      },
+      {
+        "schemaname": "public",
+        "tablename": "club_members",
+        "policyname": "club_members_select",
+        "cmd": "SELECT",
+        "permissive": "PERMISSIVE",
+        "roles": [
+          "authenticated"
+        ],
+        "qual": "(phase42_is_platform_super_admin() OR (user_id = auth.uid()) OR phase42_is_tenant_member(tenant_id) OR (EXISTS ( SELECT 1\n   FROM club_members self\n  WHERE ((self.club_id = club_members.club_id) AND (self.user_id = auth.uid()) AND (self.status = 'active'::text)))))",
+        "with_check": null
+      },
+      {
+        "schemaname": "public",
+        "tablename": "clubs",
+        "policyname": "clubs_select",
+        "cmd": "SELECT",
+        "permissive": "PERMISSIVE",
+        "roles": [
+          "authenticated"
+        ],
+        "qual": "((deleted_at IS NULL) AND (phase42_is_platform_super_admin() OR phase42_is_tenant_member(tenant_id) OR (status = 'active'::text) OR (EXISTS ( SELECT 1\n   FROM club_members cm\n  WHERE ((cm.club_id = clubs.id) AND (cm.user_id = auth.uid()) AND (cm.status = 'active'::text))))))",
+        "with_check": null
+      }
+    ],
+    "rls_enabled": [
+      {
+        "table": "audit_logs",
+        "rls_enabled": true,
+        "rls_forced": false
+      },
+      {
+        "table": "club_governance_assignments",
+        "rls_enabled": true,
+        "rls_forced": false
+      },
+      {
+        "table": "club_members",
+        "rls_enabled": true,
+        "rls_forced": false
+      },
+      {
+        "table": "clubs",
+        "rls_enabled": true,
+        "rls_forced": false
+      }
+    ],
+    "data": {
+      "club_status_counts": [
+        {
+          "status": "active",
+          "row_count": 1
+        }
+      ],
+      "club_null_tenant": 0,
+      "club_total": 1,
+      "member_status_counts": [
+        {
+          "status": "active",
+          "row_count": 34
+        },
+        {
+          "status": "left",
+          "row_count": 1
+        },
+        {
+          "status": "removed",
+          "row_count": 1
+        }
+      ],
+      "member_null_tenant": 0,
+      "member_total": 36,
+      "duplicate_active_memberships": [],
+      "duplicate_active_count": 0,
+      "vp_assignments_active": 0,
+      "vp_assignments_by_status": [],
+      "clubs_with_gt_2_active_vp": []
+    }
+  },
+  "auditAssessment": {
+    "constraintDef": "CHECK ((action = ANY (ARRAY['login'::text, 'login_failed'::text, 'logout'::text, 'create'::text, 'update'::text, 'delete'::text, 'assign_role'::text, 'permission_change'::text, 'password_change'::text, 'reset_password'::text, 'club.create'::text, 'club.update'::text, 'club.leave_membership'::text, 'club.delete'::text, 'club.membership_request.submit'::text, 'club.membership_request.review'::text, 'club.membership_request.correction'::text, 'club.member.add'::text, 'club.member.remove'::text, 'club.member.restore'::text, 'club.assign_owner'::text, 'club.clear_owner'::text, 'club.transfer_president'::text, 'club.owner.transfer'::text, 'club.president.transfer'::text, 'club.vice_president.assign'::text])))",
+    "currentAcceptedActions": [
+      "login",
+      "login_failed",
+      "logout",
+      "create",
+      "update",
+      "delete",
+      "assign_role",
+      "permission_change",
+      "password_change",
+      "reset_password",
+      "club.create",
+      "club.update",
+      "club.leave_membership",
+      "club.delete",
+      "club.membership_request.submit",
+      "club.membership_request.review",
+      "club.membership_request.correction",
+      "club.member.add",
+      "club.member.remove",
+      "club.member.restore",
+      "club.assign_owner",
+      "club.clear_owner",
+      "club.transfer_president",
+      "club.owner.transfer",
+      "club.president.transfer",
+      "club.vice_president.assign"
+    ],
+    "existingDistinctActions": [
+      "assign_role",
+      "club.leave_membership",
+      "club.membership_request.correction",
+      "club.membership_request.review",
+      "club.membership_request.submit",
+      "create",
+      "login",
+      "password_change",
+      "reset_password",
+      "update"
+    ],
+    "proposedMissingValues": [
+      "approve",
+      "audit.view",
+      "club.assign_owner",
+      "club.assign_vice_president",
+      "club.clear_owner",
+      "club.clear_vice_president",
+      "club.create",
+      "club.delete",
+      "club.member.add",
+      "club.member.remove",
+      "club.member.restore",
+      "club.owner.transfer",
+      "club.president.transfer",
+      "club.transfer_president",
+      "club.update",
+      "club.vice_president.assign",
+      "delete",
+      "group_override",
+      "login_failed",
+      "logout",
+      "pairing_override",
+      "payment_success",
+      "permission_change",
+      "rating.propose",
+      "rating.verify",
+      "user.manage.denied",
+      "user.manage.status-change",
+      "workflow.notification"
+    ],
+    "incompatibleHistoricalValues": [],
+    "incompatibleWithFixedLegacyList": [],
+    "wouldRejectExistingRows": false,
+    "block": false,
+    "blockReason": null,
+    "safeToApplyAdditive": true,
+    "incompatibleWithFixedLegacy": []
+  },
+  "partialDeployment": {
+    "anyPhase1bObjectsPresent": true,
+    "objects": {
+      "club_update": true,
+      "club_add_member": true,
+      "club_remove_member": true,
+      "club_restore_member": true,
+      "club_assign_vice_president": true,
+      "club_clear_vice_president": false,
+      "phase42_can_update_club": false,
+      "phase42_can_manage_vice_presidents": false,
+      "phase42_club_canonical": true,
+      "club_list_members": true
+    },
+    "bodyChecks": {
+      "club_update_exists": true,
+      "club_update_uses_can_update_club": false,
+      "club_update_uses_bare_tenant_member": true,
+      "vp_assign_exists": true,
+      "canonical_has_vp_fields": false
+    }
+  },
+  "proposedSqlOrder": [
+    {
+      "file": "docs/v5/phase1b/PHASE_1B_AUDIT_WHITELIST_ADDITIVE.sql",
+      "purpose": "Additive audit_logs_action_check union (preserves history)"
+    },
+    {
+      "file": "docs/v5/phase45a3c/PHASE_45A3C_CLUB_UPDATE_RPC.sql",
+      "purpose": "phase42_can_update_club + club_update"
+    },
+    {
+      "file": "docs/v5/phase45a4c1/PHASE_45A4C1_MEMBER_RPC.sql",
+      "purpose": "club_add_member / club_remove_member"
+    },
+    {
+      "file": "docs/v5/phase45a4d1/PHASE_45A4D1_MEMBER_RESTORE_RPC.sql",
+      "purpose": "club_restore_member"
+    },
+    {
+      "file": "docs/v5/phase1b/PHASE_1B_V2_COMMAND_COMPLETION.sql",
+      "purpose": "VP hydrate + phase42_can_manage_vice_presidents + VP RPCs"
+    },
+    {
+      "file": "docs/v5/phase1b/PHASE_1B_CLUB_UPDATE_AUTHZ_SECURITY_GATE.sql",
+      "purpose": "Idempotent club_update authz gate (safe if already in 45A.3C)"
+    },
+    {
+      "file": "(catalog verification SELECT)",
+      "purpose": "Verify functions, auth predicates, audit constraint, canonical VP fields"
+    },
+    {
+      "file": "(code deploy) main@959c8067ea756aa32e50b549a97cd4e762786ff7",
+      "purpose": "Deploy application code after SQL verify; no Phase 1C"
+    }
+  ],
+  "orderSafeForProductionState": "YES — proposed order matches Staging-proven sequence; additive audit first remains mandatory",
+  "rollbackPlan": {
+    "database": [
+      "Prefer CREATE OR REPLACE reverse of prior known-good function bodies if available; do not DROP tables.",
+      "Audit whitelist: do not DROP constraint to a narrower fixed list; leave additive union in place (preserves history).",
+      "If a single RPC misbehaves: replace that function only; leave others.",
+      "FORBIDDEN: DELETE/TRUNCATE audit_logs, clubs, club_members, club_governance_assignments."
+    ],
+    "code": [
+      "Redeploy previous production app SHA (pre-Phase-1B client cutover) if client regressions appear.",
+      "Approved Phase 1B code SHA to roll forward: 959c8067ea756aa32e50b549a97cd4e762786ff7",
+      "Feature-flag Club Storage V2 OFF restores V1 fallbacks for add/remove where present."
+    ],
+    "conditions": [
+      "Authz allow/deny matrix fails smoke tests",
+      "Audit inserts fail (23514) despite additive apply",
+      "Home/Members count divergence after restore/add",
+      "Unexpected PRODUCTION data mutation outside RPC envelopes"
+    ],
+    "auditPreservation": "Never delete or truncate audit_logs. Additive constraint must remain a superset of historical actions."
+  },
+  "smokeTestPlan": {
+    "productionRef": "expuvcohlcjzvrrauvud",
+    "codeSha": "959c8067ea756aa32e50b549a97cd4e762786ff7",
+    "cases": [
+      "club profile update (authorized) + version increment + club.update audit",
+      "stale expected version → VERSION_CONFLICT",
+      "ordinary tenant member club_update → FORBIDDEN",
+      "VP assign (1 then 2) + clear one + clear all",
+      "third VP → rejection",
+      "president-as-VP → rejection",
+      "member add / duplicate ALREADY_MEMBER / remove / restore",
+      "Home active_member_count == club_list_members active length",
+      "notification recipients: active+user_id only; no left/removed",
+      "audits: club.update, club.member.add/remove/restore, club.assign_vice_president, club.clear_vice_president",
+      "V1 flag-OFF: legacy add/remove paths still reachable; restore remains V2-only"
+    ],
+    "note": "Use dedicated Production smoke club; restore name/state after tests; no truncate."
+  },
+  "verdict": {
+    "verdict": "READY_WITH_WARNINGS",
+    "blockers": [],
+    "warnings": [
+      "club_members.role_code not found — confirm member role column naming before apply",
+      "Some Phase 1B RPC/helper objects already exist on Production (partial or prior apply)"
+    ],
+    "clubCols": {
+      "required": [
+        "id",
+        "tenant_id",
+        "name",
+        "code",
+        "description",
+        "status",
+        "registered_cluster_id",
+        "version"
+      ],
+      "missing": [],
+      "present": [
+        "id",
+        "tenant_id",
+        "name",
+        "code",
+        "description",
+        "status",
+        "registered_cluster_id",
+        "version"
+      ]
+    },
+    "memberCols": {
+      "required": [
+        "id",
+        "tenant_id",
+        "club_id",
+        "user_id",
+        "status",
+        "version",
+        "role_code"
+      ],
+      "missing": [
+        "role_code"
+      ],
+      "present": [
+        "id",
+        "tenant_id",
+        "club_id",
+        "user_id",
+        "status",
+        "version"
+      ]
+    }
+  },
+  "error": null
+}

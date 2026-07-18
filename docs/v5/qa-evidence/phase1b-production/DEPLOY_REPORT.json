@@ -1,0 +1,16 @@
+{
+  "phase": "1B",
+  "kind": "PRODUCTION_CODE_DEPLOY",
+  "approvedMainSha": "959c8067ea756aa32e50b549a97cd4e762786ff7",
+  "productionRef": "expuvcohlcjzvrrauvud",
+  "result": "CONFIRMED",
+  "notes": [
+    "Vercel Production deployment for main@959c806 completed successfully on PR #51 merge (GitHub deployment id 5502530815, state=success).",
+    "Production aliases (pickvn.app / pickleball-scheduler-eight.vercel.app) serve deployment dpl_42HhuCKN3JHNjwSBt62E6ENBsHUF.",
+    "No alternate SHA was deployed. SQL apply completed before smoke; code SHA matches Owner-approved 959c806."
+  ],
+  "githubDeploymentId": 5502530815,
+  "vercelDeploymentId": "dpl_42HhuCKN3JHNjwSBt62E6ENBsHUF",
+  "productionUrl": "https://pickleball-scheduler-eight.vercel.app",
+  "verifiedAt": "2026-07-18T15:45:00.000Z"
+}
