@@ -31,9 +31,10 @@ const body = (() => {
 })();
 
 describe("Phase 45A.3C — canonical club_update RPC (SQL contract)", () => {
-  it("authors exactly one new RPC (only club_update)", () => {
+  it("authors club_update plus phase42_can_update_club helper only", () => {
     const createFns = sql.match(/create or replace function/gi) || [];
-    assert.equal(createFns.length, 1, "expected exactly one CREATE OR REPLACE FUNCTION");
+    assert.equal(createFns.length, 2, "expected helper + club_update");
+    assert.match(sql, /create or replace function\s+public\.phase42_can_update_club\(/i);
     assert.match(sql, /create or replace function\s+public\.club_update\(/i);
 
     // No sibling / out-of-scope RPCs may leak in.
@@ -88,10 +89,10 @@ describe("Phase 45A.3C — canonical club_update RPC (SQL contract)", () => {
     assert.match(normBody, /set name = v_name.*version = version \+ 1 where id = v_club\.id/);
   });
 
-  it("uses the canonical Club-write authorization set", () => {
-    assert.match(body, /phase42_is_platform_super_admin\(\)/);
-    assert.match(body, /phase42_has_gov_role\(v_club\.id, array\['club_owner', 'president'\]\)/);
-    assert.match(body, /phase42_is_tenant_member\(v_club\.tenant_id\)/);
+  it("uses narrow phase42_can_update_club authorization (not bare tenant membership)", () => {
+    assert.match(body, /phase42_can_update_club\(v_club\.id\)/);
+    assert.doesNotMatch(body, /phase42_is_tenant_member\s*\(/);
+    assert.match(sql, /create or replace function\s+public\.phase42_can_update_club\(/i);
     assert.match(body, /FORBIDDEN/);
   });
 

@@ -100,6 +100,7 @@ const SQL_FILES = [
   "docs/v5/phase45a4c1/PHASE_45A4C1_MEMBER_RPC.sql",
   "docs/v5/phase45a4d1/PHASE_45A4D1_MEMBER_RESTORE_RPC.sql",
   "docs/v5/phase1b/PHASE_1B_V2_COMMAND_COMPLETION.sql",
+  "docs/v5/phase1b/PHASE_1B_CLUB_UPDATE_AUTHZ_SECURITY_GATE.sql",
 ];
 
 const PREFLIGHT_SQL = `
@@ -154,6 +155,7 @@ select json_build_object(
     where n.nspname = 'public'
       and p.proname in (
         'club_update',
+        'phase42_can_update_club',
         'club_add_member',
         'club_remove_member',
         'club_restore_member',
@@ -185,6 +187,14 @@ select json_build_object(
     from pg_proc p
     join pg_namespace n on n.oid = p.pronamespace
     where n.nspname = 'public' and p.proname = 'club_assign_vice_president'
+    limit 1
+  ),
+  'club_update_uses_narrow_helper', (
+    select pg_get_functiondef(p.oid) ilike '%phase42_can_update_club%'
+      and pg_get_functiondef(p.oid) not ilike '%phase42_is_tenant_member%'
+    from pg_proc p
+    join pg_namespace n on n.oid = p.pronamespace
+    where n.nspname = 'public' and p.proname = 'club_update'
     limit 1
   )
 ) as verify;

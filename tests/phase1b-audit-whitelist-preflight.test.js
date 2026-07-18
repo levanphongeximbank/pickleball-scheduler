@@ -57,9 +57,12 @@ describe("Phase 1B — additive audit whitelist + apply preflight", () => {
     const script = read("../scripts/apply-phase1b-staging-sql.mjs");
     const filesBlock = script.slice(script.indexOf("const SQL_FILES"), script.indexOf("];") + 2);
     assert.match(filesBlock, /PHASE_1B_AUDIT_WHITELIST_ADDITIVE\.sql/);
+    assert.match(filesBlock, /PHASE_1B_CLUB_UPDATE_AUTHZ_SECURITY_GATE\.sql/);
     const additivePos = filesBlock.indexOf("PHASE_1B_AUDIT_WHITELIST_ADDITIVE.sql");
     const updatePos = filesBlock.indexOf("PHASE_45A3C_CLUB_UPDATE_RPC.sql");
+    const gatePos = filesBlock.indexOf("PHASE_1B_CLUB_UPDATE_AUTHZ_SECURITY_GATE.sql");
     assert.ok(additivePos >= 0 && updatePos > additivePos);
+    assert.ok(gatePos > updatePos);
     assert.match(script, /PREFLIGHT_SQL/);
     assert.match(script, /process\.exitCode/);
     assert.doesNotMatch(
