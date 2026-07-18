@@ -46,6 +46,12 @@ venue-court → domain courtManagementSettings
 venue-court → data/club.loadClubs
 ```
 
+API courts handler (Phase 1D) may depend on this facade only:
+
+```text
+courtsHandler → venue-court listCourts
+```
+
 ## Forbidden dependencies
 
 ```text
@@ -53,6 +59,7 @@ venue-court → Competition Engine
 venue-court → Court Engine runtime
 venue-court → AI store
 venue-court → localStorage (except documented legacy hours helper)
+courtsHandler → loadAIData / AI store / clubStorage / localStorage
 ```
 
 ## Public API
@@ -66,5 +73,9 @@ venue-court → localStorage (except documented legacy hours helper)
 ## Phase status
 
 ```text
-PHASE 1C — OPERATING HOURS CONSOLIDATION (safe legacy import)
+PHASE 1D — COURTS API SOURCE CORRECTION
 ```
+
+`GET /api/v1/courts` reads Club V3 inventory via `listCourts` (not `loadAIData().courts`).
+
+Multi-club callers must pass `query.clubId` (handler returns **400** `CLUB_REQUIRED` if omitted when more than one club is allowed).
