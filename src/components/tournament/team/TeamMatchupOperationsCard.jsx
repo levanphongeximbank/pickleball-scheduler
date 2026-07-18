@@ -104,6 +104,7 @@ export default function TeamMatchupOperationsCard({
   teamA,
   teamB,
   tournamentId,
+  clubId = null,
   canManage,
   mutationBusy = false,
   serverTime = null,
@@ -182,7 +183,7 @@ export default function TeamMatchupOperationsCard({
     !matchup.dreambreaker?.ordersLockedAt;
 
   async function handleCopyPortalLink() {
-    const url = buildCaptainPortalUrl(tournamentId);
+    const url = buildCaptainPortalUrl(tournamentId, { clubId });
     const ok = await copyTextToClipboard(url);
     if (ok) {
       setCopyOk(true);
@@ -371,7 +372,7 @@ export default function TeamMatchupOperationsCard({
               <Button
                 size="small"
                 variant="outlined"
-                href={buildCaptainPortalUrl(tournamentId)}
+                href={buildCaptainPortalUrl(tournamentId, { clubId })}
                 target="_blank"
                 rel="noopener noreferrer"
               >

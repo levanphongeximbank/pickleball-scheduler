@@ -88,6 +88,7 @@ import { countDreambreakerPendingMatchups } from "../../features/team-tournament
 import TeamTournamentWorkflowBar from "../../components/tournament/team/TeamTournamentWorkflowBar.jsx";
 import {
   buildCaptainPortalUrl,
+  buildCaptainPortalPath,
   buildRefereePortalUrl,
   copyTextToClipboard,
 } from "../../components/tournament/team/copyPortalLink.js";
@@ -1096,7 +1097,10 @@ export default function TeamTournamentSetup() {
   }
 
   async function handleCopyCaptainLink() {
-    const ok = await copyTextToClipboard(buildCaptainPortalUrl(tournamentId));
+    const hostClubId = effectiveClubId || activeClubId || clubFromQuery || null;
+    const ok = await copyTextToClipboard(
+      buildCaptainPortalUrl(tournamentId, { clubId: hostClubId })
+    );
     if (ok) {
       setMessage("Đã sao chép link portal đội trưởng.");
     } else {
@@ -1192,7 +1196,9 @@ export default function TeamTournamentSetup() {
           {access.isCaptain || access.canManage ? (
             <Button
               component={RouterLink}
-              to={`/team-portal/${tournamentId}`}
+              to={buildCaptainPortalPath(tournamentId, {
+                clubId: effectiveClubId || activeClubId || clubFromQuery || null,
+              })}
               variant="outlined"
               size="small"
               startIcon={<SportsIcon />}
@@ -1527,6 +1533,7 @@ export default function TeamTournamentSetup() {
                     teamA={teamA}
                     teamB={teamB}
                     tournamentId={tournamentId}
+                    clubId={effectiveClubId || activeClubId || clubFromQuery || null}
                     canManage={access.canManage}
                     mutationBusy={mutationBusy}
                     serverTime={serverTime}

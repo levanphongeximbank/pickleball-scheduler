@@ -31,6 +31,10 @@ function isTeamTournamentNotFound(result) {
   );
 }
 
+function isCloudPrimaryMode(mode) {
+  return ["cloud_primary", "cloud_only"].includes(String(mode || ""));
+}
+
 /**
  * Pure helper for tests: resolve club for Team detail load (preferred → scan → preferred fallback).
  * Preferred fallback covers V2 membership captains whose browser has no hosting blob yet;
@@ -45,6 +49,14 @@ export function resolveTeamTournamentLoadClubId(preferredClubId, tournamentId) {
   }
   const preferred = String(preferredClubId || "").trim();
   return preferred || null;
+}
+
+/**
+ * Whether page load may proceed without a resolved local clubId (cloud get_setup is tournament-id keyed).
+ * @param {string|null|undefined} mode
+ */
+export function canLoadTeamTournamentWithoutLocalClub(mode) {
+  return isCloudPrimaryMode(mode);
 }
 
 /**
@@ -160,9 +172,11 @@ export function useTeamTournamentPage({
       }
 
       // Never fall back to tournamentId as clubId — that creates a dead deep-link load.
+      const mode = orchestrator.getMode();
       const loadClubId = resolveTeamTournamentLoadClubId(clubId, tournamentId);
+      const allowCloudWithoutClub = canLoadTeamTournamentWithoutLocalClub(mode);
 
-      if (!loadClubId) {
+      if (!loadClubId && !allowCloudWithoutClub) {
         const missingClub = {
           ok: false,
           code: REPOSITORY_ERROR_CODES.NOT_FOUND,
@@ -184,11 +198,15 @@ export function useTeamTournamentPage({
         setLoading(true);
       }
 
+      // Cloud get_setup is tournament-id keyed; empty clubId only disables local blob fallback.
+      const effectiveLoadClubId = loadClubId || "";
+
       logTeamRosterHydrationTransition("useTeamTournamentPage.reload.start", {
         tournamentId,
-        clubId: loadClubId,
+        clubId: effectiveLoadClubId || null,
         silent,
         reloadTrigger: silent ? "silent" : "explicit",
+        cloudWithoutClub: !loadClubId && allowCloudWithoutClub,
       });
 
       const readOptions = {};
@@ -196,7 +214,7 @@ export function useTeamTournamentPage({
         readOptions.schemaVersion = Number(readSchemaVersion);
       } else if (
         isSetupMutationFoundationEnabled() &&
-        ["cloud_primary", "cloud_only"].includes(orchestrator.getMode())
+        isCloudPrimaryMode(mode)
       ) {
         readOptions.schemaVersion = 7;
       }
@@ -204,22 +222,43 @@ export function useTeamTournamentPage({
         readOptions.diagnostic = true;
       }
 
-      let result = await orchestrator.loadTournament(loadClubId, tournamentId, readOptions);
+      let result = await orchestrator.loadTournament(
+        effectiveLoadClubId,
+        tournamentId,
+        readOptions
+      );
 
       // Preferred activeClub may still miss (race / stale cache): rescan once.
       if (!result.ok && isTeamTournamentNotFound(result)) {
         const rescannedClubId = resolveTournamentClubId(null, tournamentId);
-        if (rescannedClubId && rescannedClubId !== loadClubId) {
-          result = await orchestrator.loadTournament(rescannedClubId, tournamentId, readOptions);
+        if (rescannedClubId && rescannedClubId !== effectiveLoadClubId) {
+          result = await orchestrator.loadTournament(
+            rescannedClubId,
+            tournamentId,
+            readOptions
+          );
         }
       }
 
-      if (!result.ok && isTeamTournamentNotFound(result)) {
+      // Only rewrite to Preview/blob copy when we never reached cloud (local modes).
+      // Cloud NOT_FOUND / FORBIDDEN keep the RPC message so captains see the real cause.
+      if (
+        !result.ok &&
+        isTeamTournamentNotFound(result) &&
+        !allowCloudWithoutClub
+      ) {
         result = {
           ...result,
           error: buildTournamentNotFoundMessage(tournamentId, {
             kind: "giải đồng đội",
           }),
+        };
+      } else if (!result.ok && isTeamTournamentNotFound(result) && allowCloudWithoutClub) {
+        result = {
+          ...result,
+          error:
+            result.error ||
+            `Không tìm thấy giải đồng đội trên cloud (id: ${tournamentId}).`,
         };
       }
 

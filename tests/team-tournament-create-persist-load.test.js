@@ -19,6 +19,7 @@ import {
   createTeamTournamentUiOrchestrator,
 } from "../src/features/team-tournament/ui/teamTournamentUiOrchestrator.js";
 import { resolveTeamTournamentLoadClubId } from "../src/features/team-tournament/ui/useTeamTournamentPage.js";
+import { canLoadTeamTournamentWithoutLocalClub } from "../src/features/team-tournament/ui/useTeamTournamentPage.js";
 
 function createLocalStorageMock(seed = {}) {
   const store = new Map(Object.entries(seed));
@@ -295,6 +296,14 @@ describe("Team Tournament create → persist → detail load", () => {
       resolveTeamTournamentLoadClubId(membershipClubId, "team-tournament-missing-xyz"),
       membershipClubId
     );
+  });
+
+  it("B3: cloud modes may load without local clubId", () => {
+    assert.equal(canLoadTeamTournamentWithoutLocalClub("cloud_primary"), true);
+    assert.equal(canLoadTeamTournamentWithoutLocalClub("cloud_only"), true);
+    assert.equal(canLoadTeamTournamentWithoutLocalClub("blob"), false);
+    assert.equal(canLoadTeamTournamentWithoutLocalClub("legacy"), false);
+    assert.equal(canLoadTeamTournamentWithoutLocalClub(null), false);
   });
 
   it("persist verify failure does not invent navigable tournament", () => {

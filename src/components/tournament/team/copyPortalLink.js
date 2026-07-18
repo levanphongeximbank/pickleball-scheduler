@@ -1,6 +1,16 @@
-export function buildCaptainPortalUrl(tournamentId) {
+export function buildCaptainPortalPath(tournamentId, options = {}) {
+  const id = String(tournamentId || "").trim();
+  const base = `/team-portal/${id}`;
+  const clubId = String(options?.clubId || "").trim();
+  if (!clubId) {
+    return base;
+  }
+  return `${base}?club=${encodeURIComponent(clubId)}`;
+}
+
+export function buildCaptainPortalUrl(tournamentId, options = {}) {
   const origin = typeof window !== "undefined" ? window.location.origin : "";
-  return `${origin}/team-portal/${tournamentId}`;
+  return `${origin}${buildCaptainPortalPath(tournamentId, options)}`;
 }
 
 export function buildRefereePortalUrl(tournamentId, matchupId) {
