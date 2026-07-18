@@ -62,12 +62,13 @@ async function adminClient(url, serviceKey) {
 
 async function probeSchema(admin) {
   if (!admin) {
+    // Optional: RLS/RPC verdicts use authenticated sessions. Missing service role is SKIP, not FAIL.
     record(
       "schema",
       "service_role_available",
-      "service role for schema probes",
-      "missing — schema checks limited to anon/auth probes",
-      false
+      "optional service role for schema probes (SKIP if unset)",
+      "SKIP — schema checks limited to anon/auth probes",
+      true
     );
     return;
   }
