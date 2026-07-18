@@ -678,6 +678,24 @@ export function canTransferClubOwnership(user, club) {
   return isClubOwner(user, club);
 }
 
+/**
+ * UI visibility for ownership transfer control.
+ * V2 ON: RPC club_assign_owner does not authorize Club Owner alone
+ * (bare phase42_is_tenant_member / pending Owner GO for club_owner).
+ * Hide transfer unless the caller is also an authorized tenant assigner,
+ * so UI does not imply a capability the RPC will FORBIDDEN.
+ * V2 OFF: legacy — current Club Owner may transfer via registry.
+ */
+export function canShowTransferClubOwnership(user, club) {
+  if (!canTransferClubOwnership(user, club)) {
+    return false;
+  }
+  if (!isClubStorageV2Enabled()) {
+    return true;
+  }
+  return canAssignClubOwner(user);
+}
+
 function assertClubMemberUser(clubId, tenantId, userId) {
   const trimmed = String(userId || "").trim();
   if (!trimmed) {

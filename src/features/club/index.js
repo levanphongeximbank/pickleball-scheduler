@@ -61,6 +61,7 @@ export {
   finalizeSelfRegisteredClubCloud,
   listLocalPresidentClubsForUser,
   canTransferClubOwnership,
+  canShowTransferClubOwnership,
   transferClubOwnership,
   transferClubPresident,
   assignClubVicePresident,

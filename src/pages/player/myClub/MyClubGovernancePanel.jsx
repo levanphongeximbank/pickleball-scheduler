@@ -28,7 +28,7 @@ import {
   canChangeClubPresident,
   canDeleteClub,
   canManageClubGovernance,
-  canTransferClubOwnership,
+  canShowTransferClubOwnership,
   deleteClubAsOwner,
   fetchGovernanceNameHints,
   getClubById,
@@ -154,7 +154,7 @@ export default function MyClubGovernancePanel({
   const canManage = canManageClubGovernance(user, club);
   const canAssignOwner = canAssignClubOwner(user);
   const canChangePresident = canChangeClubPresident(user, club);
-  const canTransferOwner = canTransferClubOwnership(user, club);
+  const canTransferOwner = canShowTransferClubOwnership(user, club);
   const canDelete = canDeleteClub(user, club);
 
   if (!canManage && !canDelete) {

@@ -67,13 +67,11 @@
 
 RPC remains final enforcement.
 
-### Owner change (Phase 1C final gap)
-- [ ] Current Owner transfer (My Club Governance) uses V2 RPC when flag ON (no local-only update)
-- [ ] Tenant admin assign/clear owner (Manage / Assign dialog) uses V2 RPC when flag ON
-- [ ] After success, Owner label matches across Home, Governance, Org Chart, Manage Detail
-- [ ] Stale version → conflict message + reload guidance
-- [ ] Unauthorized role cannot see/use ownership controls
-- [ ] Flag OFF: legacy registry transfer still works
+### Owner assign authorization security gate
+- [ ] SECURITY BLOCKER documented: bare `phase42_is_tenant_member` allows `tenant_staff`
+- [ ] Staging gate SQL prepared (not Production-applied): `docs/v5/phase1c/PHASE_1C_CLUB_OWNER_ASSIGN_AUTHZ_SECURITY_GATE.sql`
+- [ ] After Staging apply (Owner GO): tenant_staff DENY; tenant_owner ALLOW; Club Owner alone DENY until optional GO
+- [ ] V2 UI: Club Owner–only transfer control hidden (`canShowTransferClubOwnership`)
 
 ---
 

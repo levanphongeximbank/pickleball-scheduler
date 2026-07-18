@@ -8,6 +8,9 @@ import {
   listClubGovernanceCandidates,
   canManageClubGovernance,
   canDeleteClubMembers,
+  canTransferClubOwnership,
+  canShowTransferClubOwnership,
+  canAssignClubOwner,
 } from "../src/features/club/services/clubGovernanceService.js";
 import {
   getVicePresidentUserIds,
@@ -72,15 +75,36 @@ describe("Phase 1C — V2 governance candidates + member UX helpers", () => {
 
   beforeEach(() => {
     previousLocalStorage = globalThis.localStorage;
-    previousEnv = { ...process.env };
+    previousEnv = {
+      VITE_SUPABASE_URL: process.env.VITE_SUPABASE_URL,
+      VITE_SUPABASE_ANON_KEY: process.env.VITE_SUPABASE_ANON_KEY,
+      VITE_CLUB_STORAGE_V2: process.env.VITE_CLUB_STORAGE_V2,
+      VITE_RBAC_ENABLED: process.env.VITE_RBAC_ENABLED,
+    };
     globalThis.localStorage = createLocalStorageMock();
+    process.env.VITE_SUPABASE_URL = "https://qyewbxjsiiyufanzcjcq.supabase.co";
+    process.env.VITE_SUPABASE_ANON_KEY =
+      "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJyb2xlIjoiYW5vbiJ9.test";
     process.env.VITE_CLUB_STORAGE_V2 = "true";
+    process.env.VITE_RBAC_ENABLED = "true";
+    if (typeof import.meta !== "undefined" && import.meta.env) {
+      import.meta.env.VITE_SUPABASE_URL = process.env.VITE_SUPABASE_URL;
+      import.meta.env.VITE_SUPABASE_ANON_KEY = process.env.VITE_SUPABASE_ANON_KEY;
+      import.meta.env.VITE_CLUB_STORAGE_V2 = "true";
+      import.meta.env.VITE_RBAC_ENABLED = "true";
+    }
     enableRbac(true);
   });
 
   afterEach(() => {
     globalThis.localStorage = previousLocalStorage;
-    process.env = previousEnv;
+    for (const [key, value] of Object.entries(previousEnv)) {
+      if (value == null) {
+        delete process.env[key];
+      } else {
+        process.env[key] = value;
+      }
+    }
   });
 
   it("V2 ON: sync listClubGovernanceCandidates returns empty (forces async path)", () => {
@@ -155,6 +179,36 @@ describe("Phase 1C — V2 governance candidates + member UX helpers", () => {
     assert.equal(canDeleteClubMembers(vp, club), false);
     assert.equal(canManageClubGovernance(president, club), true);
     assert.equal(canManageClubGovernance(ordinary, club), false);
+  });
+
+  it("V2 ON: Club Owner alone cannot see transfer control (RPC eligibility mismatch)", () => {
+    process.env.VITE_CLUB_STORAGE_V2 = "true";
+    const club = {
+      id: "club-1",
+      governance: { ownerUserId: "owner-1", presidentUserId: "pres-1" },
+    };
+    const clubOwnerOnly = { id: "owner-1", role: ROLES.PLAYER };
+    const tenantOwnerAlsoClubOwner = { id: "owner-1", role: ROLES.TENANT_OWNER };
+
+    assert.equal(canTransferClubOwnership(clubOwnerOnly, club), true);
+    assert.equal(canAssignClubOwner(clubOwnerOnly), false);
+    assert.equal(canShowTransferClubOwnership(clubOwnerOnly, club), false);
+
+    assert.equal(canAssignClubOwner(tenantOwnerAlsoClubOwner), true);
+    assert.equal(canShowTransferClubOwnership(tenantOwnerAlsoClubOwner, club), true);
+  });
+
+  it("V2 OFF: Club Owner alone still sees legacy transfer control", () => {
+    process.env.VITE_CLUB_STORAGE_V2 = "false";
+    if (typeof import.meta !== "undefined" && import.meta.env) {
+      import.meta.env.VITE_CLUB_STORAGE_V2 = "false";
+    }
+    const club = {
+      id: "club-1",
+      governance: { ownerUserId: "owner-1", presidentUserId: "pres-1" },
+    };
+    const clubOwnerOnly = { id: "owner-1", role: ROLES.PLAYER };
+    assert.equal(canShowTransferClubOwnership(clubOwnerOnly, club), true);
   });
 
   it("dual VP normalize caps at two ids", () => {
@@ -279,5 +333,21 @@ describe("Phase 1C — wiring source contracts", () => {
     assert.match(dialog, /expectedClubVersion:\s*clubVersion/);
     assert.match(dialog, /VERSION_CONFLICT/);
     assert.match(manage, /expectedClubVersion:\s*club\.version/);
+  });
+
+  it("My Club Governance uses canShowTransferClubOwnership under V2 alignment", () => {
+    const src = readSrc("src/pages/player/myClub/MyClubGovernancePanel.jsx");
+    assert.match(src, /canShowTransferClubOwnership/);
+    assert.doesNotMatch(src, /canTransferOwner = canTransferClubOwnership/);
+  });
+
+  it("security gate SQL narrows assign/clear owner away from bare tenant_member", () => {
+    const gate = readSrc(
+      "docs/v5/phase1c/PHASE_1C_CLUB_OWNER_ASSIGN_AUTHZ_SECURITY_GATE.sql"
+    );
+    assert.match(gate, /phase42_can_assign_club_owner/);
+    assert.match(gate, /role_code = 'tenant_owner'/);
+    assert.doesNotMatch(gate, /phase42_is_tenant_member\(v_club\.tenant_id\)/);
+    assert.match(gate, /OPTIONAL \(Owner GO required\)/);
   });
 });
