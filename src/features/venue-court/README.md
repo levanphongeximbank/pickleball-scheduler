@@ -54,16 +54,16 @@ venue-court → AI store
 venue-court → localStorage (except documented legacy hours helper)
 ```
 
-## Dependency direction (Competition)
+## Dependency direction (Court Engine)
 
 ```text
-Competition consumer
-  → getCompetitionCourtAvailability (adapter)
+Court Engine consumer
+  → courtEngineAvailabilityGuard (adapter)
   → getCourtAvailability (Phase 1E)
   → inventory / bookings / operating hours
 ```
 
-Venue & Court must not import Competition. Phase 2B wires Competition consumers → this adapter (read-only gate).
+Venue & Court must not import Court Engine. Phase 2D wires CE confirm/transfer/preview as a **read-only guard**.
 
 ## Public API
 
@@ -77,10 +77,12 @@ Venue & Court must not import Competition. Phase 2B wires Competition consumers 
 ## Phase status
 
 ```text
-PHASE 2C — TOURNAMENT BOOKING BRIDGE HARDENING
+PHASE 2D — COURT ENGINE AVAILABILITY GUARD
 ```
 
-See `docs/venue-court/PHASE_2C_BOOKING_BRIDGE.md` for booking bridge ownership, sync lifecycle, idempotency, and fail-closed conflict rules.
+See `docs/venue-court/PHASE_2D_COURT_ENGINE_GUARD.md` for ownership boundary, fail-closed policy, preview vs confirm re-check, transfer/batch safety, and reason mapping.
+
+Phase 2C booking bridge docs remain in `docs/venue-court/PHASE_2C_BOOKING_BRIDGE.md`.
 
 `getCourtAvailability` is **read-only**. Overlap semantics delegate to `courtBookingEngine` (half-open intervals). Overnight/cross-day requests are rejected.
 
@@ -89,3 +91,5 @@ See `docs/venue-court/PHASE_2C_BOOKING_BRIDGE.md` for booking bridge ownership, 
 `getCompetitionCourtAvailability` is a thin Competition-facing adapter over that contract. It returns `availableCourtIds` (deterministic inventory/`courtIds` order) plus optional `unavailableCourts` reasons. It does not assign, reserve, or persist courts.
 
 Phase 2B consumers (Tournament Engine `generateSchedule` / `assignCourts`, Director `assignTournamentMatchToAvailableCourt`) call the adapter as a **pre-assign gate** when `clubId` + civil window are present. Algorithms are unchanged.
+
+Phase 2D Court Engine paths (`confirmAssignments`, `transferAssignment`, preview filter) call `getCourtAvailability` through `courtEngineAvailabilityGuard` with explicit `clubId` + civil window. Confirmation always re-checks. No booking writes from Court Engine.

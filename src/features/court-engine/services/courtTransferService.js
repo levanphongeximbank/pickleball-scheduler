@@ -1,5 +1,6 @@
 import { COURT_RUNTIME_STATUS, EVENT_TYPE } from "../constants/statuses.js";
 import { transferMatchToCourt } from "../../../tournament/engines/courtEngine.js";
+import { validateCourtsForCourtEngine } from "./courtEngineAvailabilityGuard.js";
 
 function createTransferLogId() {
   return `tf-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
@@ -29,19 +30,41 @@ export function transferAssignment(session, assignmentId, toCourtId, options = {
     return { ok: false, error: "Sân đích trùng sân hiện tại." };
   }
 
+  // Venue & Court destination check BEFORE mutating source.
+  const gate = validateCourtsForCourtEngine({
+    clubId: options.clubId || session.clubId || null,
+    venueId: options.venueId || session.venueId || null,
+    date: options.date,
+    startTime: options.startTime,
+    endTime: options.endTime,
+    courtIds: [targetCourtId],
+    clusterId: options.clusterId || null,
+    context: options.availabilityContext || null,
+    options,
+  });
+  if (!gate.ok) {
+    return {
+      ok: false,
+      code: gate.code,
+      error: gate.error || "Sân đích không khả dụng theo Venue & Court.",
+      unavailable: gate.unavailable || [],
+      session,
+    };
+  }
+
   const courtStates = session.courtStates || {};
   const targetState = courtStates[targetCourtId] || { status: COURT_RUNTIME_STATUS.EMPTY };
 
   if (targetState.status === COURT_RUNTIME_STATUS.PLAYING || targetState.status === COURT_RUNTIME_STATUS.ASSIGNED) {
-    return { ok: false, error: "Sân đích đang bận." };
+    return { ok: false, error: "Sân đích đang bận.", session };
   }
 
   if (targetState.locked || targetState.status === COURT_RUNTIME_STATUS.LOCKED) {
-    return { ok: false, error: "Sân đích đang bị khóa." };
+    return { ok: false, error: "Sân đích đang bị khóa.", session };
   }
 
   if (targetState.status === COURT_RUNTIME_STATUS.MAINTENANCE) {
-    return { ok: false, error: "Sân đích đang bảo trì." };
+    return { ok: false, error: "Sân đích đang bảo trì.", session };
   }
 
   const activeOnTarget = (session.assignments || []).find(
@@ -51,7 +74,7 @@ export function transferAssignment(session, assignmentId, toCourtId, options = {
       String(item.id) !== String(assignmentId)
   );
   if (activeOnTarget) {
-    return { ok: false, error: "Sân đích đang có trận khác." };
+    return { ok: false, error: "Sân đích đang có trận khác.", session };
   }
 
   const now = new Date().toISOString();

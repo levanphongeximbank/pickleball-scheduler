@@ -143,6 +143,7 @@
   "tests/phase11d-supabase-api-key-runtime.test.js",
   "tests/phase11e-integration-audit.test.js",
   "tests/court-engine.test.js",
+  "tests/venue-court-phase-2d-court-engine-guard.test.js",
   "tests/court-engine-storage.test.js",
   "tests/court-engine-cloud.test.js",
   "tests/billing-phase9.test.js",

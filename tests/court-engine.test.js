@@ -60,6 +60,8 @@ const courts = [
   { id: "2", name: "Sân 2", active: true },
 ];
 
+/** Phase 2D: existing CE suite opts into LEGACY (isolated from Venue & Court). */
+const LEGACY_CE_AVAILABILITY = { legacyAvailability: true };
 
 function buildSessionWithQueue(playerIds) {
   let session = createCourtSession({ clubId: "club-1", name: "Test" });
@@ -128,6 +130,7 @@ test("auto assignment: 1 court 4 players", () => {
     players,
     config: { playMode: PLAY_MODE.DOUBLES },
     courtStates: {},
+    ...LEGACY_CE_AVAILABILITY,
   });
 
   assert.equal(result.assignments.length, 1);
@@ -142,6 +145,7 @@ test("auto assignment: 2 courts 8 players", () => {
     queueEntries: getActiveQueueEntries(session),
     players,
     config: { playMode: PLAY_MODE.DOUBLES },
+    ...LEGACY_CE_AVAILABILITY,
   });
 
   assert.equal(result.assignments.length, 2);
@@ -158,6 +162,7 @@ test("auto assignment: locked court skipped", () => {
       2: { status: COURT_RUNTIME_STATUS.EMPTY },
     },
     config: { playMode: PLAY_MODE.DOUBLES },
+    ...LEGACY_CE_AVAILABILITY,
   });
 
   assert.equal(result.assignments.length, 1);
@@ -174,12 +179,13 @@ test("occupied court skipped on second auto-assign", () => {
     activeAssignments: session.assignments || [],
     courtStates: session.courtStates || {},
     config: { playMode: PLAY_MODE.DOUBLES },
+    ...LEGACY_CE_AVAILABILITY,
   });
 
   assert.equal(firstPreview.assignments.length, 1);
   const firstCourtId = String(firstPreview.assignments[0].courtId);
 
-  const confirmed = confirmAssignments(session, firstPreview.assignments);
+  const confirmed = confirmAssignments(session, firstPreview.assignments, LEGACY_CE_AVAILABILITY);
   assert.ok(confirmed.ok);
   session = confirmed.session;
   assert.equal(session.courtStates[firstCourtId]?.status, COURT_RUNTIME_STATUS.ASSIGNED);
@@ -197,6 +203,7 @@ test("occupied court skipped on second auto-assign", () => {
     activeAssignments: session.assignments || [],
     courtStates: session.courtStates || {},
     config: { playMode: PLAY_MODE.DOUBLES },
+    ...LEGACY_CE_AVAILABILITY,
   });
 
   assert.equal(secondPreview.assignments.length, 1);
@@ -222,8 +229,9 @@ test("occupied court skipped when only one court busy and one free", () => {
     queueEntries: getActiveQueueEntries(session),
     players,
     config: { playMode: PLAY_MODE.DOUBLES },
+    ...LEGACY_CE_AVAILABILITY,
   });
-  session = confirmAssignments(session, preview.assignments).session;
+  session = confirmAssignments(session, preview.assignments, LEGACY_CE_AVAILABILITY).session;
 
   ["p5", "p6", "p7", "p8"].forEach((playerId) => {
     session = checkInPlayer(session, playerId).session;
@@ -237,6 +245,7 @@ test("occupied court skipped when only one court busy and one free", () => {
     activeAssignments: session.assignments || [],
     courtStates: session.courtStates || {},
     config: { playMode: PLAY_MODE.DOUBLES },
+    ...LEGACY_CE_AVAILABILITY,
   });
 
   assert.equal(second.assignments.length, 1);
@@ -250,8 +259,9 @@ test("occupied court blocks assign when all courts busy", () => {
     queueEntries: getActiveQueueEntries(session),
     players,
     config: { playMode: PLAY_MODE.DOUBLES },
+    ...LEGACY_CE_AVAILABILITY,
   });
-  session = confirmAssignments(session, first.assignments).session;
+  session = confirmAssignments(session, first.assignments, LEGACY_CE_AVAILABILITY).session;
 
   ["p5", "p6", "p7", "p8"].forEach((playerId) => {
     session = checkInPlayer(session, playerId).session;
@@ -265,6 +275,7 @@ test("occupied court blocks assign when all courts busy", () => {
     activeAssignments: session.assignments || [],
     courtStates: session.courtStates || {},
     config: { playMode: PLAY_MODE.DOUBLES },
+    ...LEGACY_CE_AVAILABILITY,
   });
 
   assert.equal(second.assignments.length, 0);
@@ -278,8 +289,9 @@ test("start match syncs courtStates to playing", () => {
     queueEntries: getActiveQueueEntries(session),
     players,
     config: { playMode: PLAY_MODE.DOUBLES },
+    ...LEGACY_CE_AVAILABILITY,
   });
-  session = confirmAssignments(session, preview.assignments).session;
+  session = confirmAssignments(session, preview.assignments, LEGACY_CE_AVAILABILITY).session;
   const assignmentId = session.assignments[0].id;
 
   const started = startMatchTimer(session, assignmentId);
@@ -293,6 +305,7 @@ test("start match syncs courtStates to playing", () => {
     activeAssignments: started.session.assignments || [],
     courtStates: started.session.courtStates || {},
     config: { playMode: PLAY_MODE.DOUBLES },
+    ...LEGACY_CE_AVAILABILITY,
   });
   assert.equal(blocked.assignments.length, 0);
 });
@@ -304,8 +317,9 @@ test("end match restores courtStates to empty", () => {
     queueEntries: getActiveQueueEntries(session),
     players,
     config: { playMode: PLAY_MODE.DOUBLES },
+    ...LEGACY_CE_AVAILABILITY,
   });
-  session = confirmAssignments(session, preview.assignments).session;
+  session = confirmAssignments(session, preview.assignments, LEGACY_CE_AVAILABILITY).session;
   session = startMatchTimer(session, session.assignments[0].id).session;
 
   const ended = endMatchTimer(session, session.assignments[0].id);
@@ -322,6 +336,7 @@ test("auto assignment: locked player excluded", () => {
     players,
     lockedPlayerIds: ["p1"],
     config: { playMode: PLAY_MODE.DOUBLES },
+    ...LEGACY_CE_AVAILABILITY,
   });
 
   assert.equal(result.assignments.length, 0);
@@ -336,6 +351,7 @@ test("auto assignment: not enough players warns", () => {
     queueEntries: getActiveQueueEntries(session),
     players,
     config: { playMode: PLAY_MODE.DOUBLES },
+    ...LEGACY_CE_AVAILABILITY,
   });
 
   assert.equal(result.assignments.length, 0);
@@ -349,11 +365,12 @@ test("confirm assignments does not mutate preview queue until confirm", () => {
     queueEntries: getActiveQueueEntries(session),
     players,
     config: { playMode: PLAY_MODE.DOUBLES },
+    ...LEGACY_CE_AVAILABILITY,
   });
 
   assert.equal(getActiveQueueEntries(session).length, 4);
 
-  const confirmed = confirmAssignments(session, preview.assignments);
+  const confirmed = confirmAssignments(session, preview.assignments, LEGACY_CE_AVAILABILITY);
   assert.ok(confirmed.ok);
   assert.equal(getActiveQueueEntries(confirmed.session).length, 0);
 });
@@ -433,7 +450,10 @@ test("court transfer preserves timer", () => {
     },
   };
 
-  const result = transferAssignment(session, "a1", "2", { reason: "Sân hỏng đèn" });
+  const result = transferAssignment(session, "a1", "2", {
+    reason: "Sân hỏng đèn",
+    legacyAvailability: true,
+  });
   assert.equal(result.ok, true);
   assert.equal(result.session.assignments[0].courtId, "2");
   assert.equal(result.session.assignments[0].startedAt, startedAt);
@@ -454,7 +474,10 @@ test("court transfer rejects busy target", () => {
     },
   };
 
-  const result = transferAssignment(session, "a1", "2", { reason: "Test" });
+  const result = transferAssignment(session, "a1", "2", {
+    reason: "Test",
+    legacyAvailability: true,
+  });
   assert.equal(result.ok, false);
 });
 
@@ -466,7 +489,10 @@ test("court transfer requires reason", () => {
     courtStates: { 1: { status: COURT_RUNTIME_STATUS.PLAYING }, 2: { status: COURT_RUNTIME_STATUS.EMPTY } },
   };
 
-  const result = transferAssignment(session, "a1", "2", { reason: "" });
+  const result = transferAssignment(session, "a1", "2", {
+    reason: "",
+    legacyAvailability: true,
+  });
   assert.equal(result.ok, false);
 });
 
