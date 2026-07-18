@@ -1,9 +1,18 @@
 /**
- * Normalized Player Profile read model (Phase 1B).
+ * Normalized Player Profile read model (Phase 1B + 1C field support).
  * Missing fields remain null — do not invent data.
+ * ageGroup is derived on read when enough context exists.
  */
 import { normalizePlayerGender } from "../adapters/genderAdapter.js";
-import { DEFAULT_PRIVACY_SETTINGS } from "../constants/privacy.js";
+import { normalizeHandedness } from "../adapters/handednessAdapter.js";
+import { normalizeActivityRegion } from "../adapters/activityRegionAdapter.js";
+import { normalizeVerificationStatus } from "../adapters/verificationAdapter.js";
+import { DEFAULT_PRIVACY_SETTINGS, normalizePrivacySettings } from "../constants/privacy.js";
+import {
+  deriveAgeGroup,
+  deriveBirthYearForRead,
+  parseIsoDateOnly,
+} from "../utils/birthDate.js";
 import { trimId } from "../utils/playerId.js";
 
 /**
@@ -54,12 +63,11 @@ function asNumberOrNull(value) {
 }
 
 /**
- * Normalize a partial profile from adapters. Does not invent missing values.
- * Gender is always canonical when present (including unknown).
- *
  * @param {object} [partial]
  * @param {object} [options]
- * @param {boolean} [options.applyDefaultPrivacy=false] — Phase 1B default false (null until stored)
+ * @param {boolean} [options.applyDefaultPrivacy=false]
+ * @param {Date|string} [options.referenceDate] — ageGroup reference (UTC calendar day)
+ * @param {boolean} [options.deriveAgeGroup=true]
  * @returns {object}
  */
 export function normalizePlayerProfile(partial = {}, options = {}) {
@@ -67,12 +75,41 @@ export function normalizePlayerProfile(partial = {}, options = {}) {
   const genderRaw = partial.gender;
   const hasGender = genderRaw !== undefined && genderRaw !== null && String(genderRaw).trim() !== "";
 
-  const privacySettings =
-    partial.privacySettings && typeof partial.privacySettings === "object"
-      ? { ...DEFAULT_PRIVACY_SETTINGS, ...partial.privacySettings }
-      : options.applyDefaultPrivacy
-        ? { ...DEFAULT_PRIVACY_SETTINGS }
-        : null;
+  const handednessRaw = partial.handedness;
+  const hasHandedness =
+    handednessRaw !== undefined && handednessRaw !== null && String(handednessRaw).trim() !== "";
+
+  const verificationRaw = partial.verificationStatus ?? partial.verification_status;
+  const hasVerification =
+    verificationRaw !== undefined && verificationRaw !== null && String(verificationRaw).trim() !== "";
+
+  let privacySettings = null;
+  if (partial.privacySettings && typeof partial.privacySettings === "object") {
+    privacySettings = normalizePrivacySettings(partial.privacySettings);
+  } else if (options.applyDefaultPrivacy) {
+    privacySettings = { ...DEFAULT_PRIVACY_SETTINGS };
+  }
+
+  const birthDateRaw = nullIfEmpty(partial.birthDate ?? partial.birth_date) || null;
+  // Never invent birthDate from birthYear; keep only valid ISO calendar dates
+  const safeBirthDate = birthDateRaw && parseIsoDateOnly(birthDateRaw) ? birthDateRaw : null;
+  const rawBirthYear = asNumberOrNull(partial.birthYear ?? partial.birth_year);
+  const birthYear = deriveBirthYearForRead(safeBirthDate, rawBirthYear);
+
+  const hasRegionField =
+    partial.activityRegion !== undefined || partial.activity_region !== undefined;
+  const activityRegion = hasRegionField
+    ? normalizeActivityRegion(partial.activityRegion ?? partial.activity_region)
+    : null;
+
+  const derive = options.deriveAgeGroup !== false;
+  const ageGroup = derive
+    ? deriveAgeGroup({
+        birthDate: safeBirthDate,
+        birthYear,
+        referenceDate: options.referenceDate,
+      })
+    : nullIfEmpty(partial.ageGroup ?? partial.age_group) || null;
 
   return {
     ...base,
@@ -85,14 +122,14 @@ export function normalizePlayerProfile(partial = {}, options = {}) {
     email: nullIfEmpty(partial.email) || null,
     avatarUrl: nullIfEmpty(partial.avatarUrl ?? partial.avatar_url) || null,
     gender: hasGender ? normalizePlayerGender(genderRaw) : null,
-    birthDate: nullIfEmpty(partial.birthDate ?? partial.birth_date) || null,
-    birthYear: asNumberOrNull(partial.birthYear ?? partial.birth_year),
-    ageGroup: nullIfEmpty(partial.ageGroup ?? partial.age_group) || null,
-    handedness: nullIfEmpty(partial.handedness) || null,
-    activityRegion: nullIfEmpty(partial.activityRegion ?? partial.activity_region) || null,
+    birthDate: safeBirthDate,
+    birthYear,
+    ageGroup,
+    handedness: hasHandedness ? normalizeHandedness(handednessRaw) : null,
+    activityRegion,
     profileStatus: nullIfEmpty(partial.profileStatus ?? partial.status) || null,
     accountStatus: nullIfEmpty(partial.accountStatus ?? partial.account_status) || null,
-    verificationStatus: nullIfEmpty(partial.verificationStatus ?? partial.verification_status) || null,
+    verificationStatus: hasVerification ? normalizeVerificationStatus(verificationRaw) : null,
     privacySettings,
     clubMembershipReferences: Array.isArray(partial.clubMembershipReferences)
       ? partial.clubMembershipReferences
@@ -116,9 +153,9 @@ export function mergePlayerProfileParts(...parts) {
 
   for (const part of parts) {
     if (!part || typeof part !== "object") continue;
-    const normalized = normalizePlayerProfile(part);
+    const normalized = normalizePlayerProfile(part, { deriveAgeGroup: false });
     for (const key of Object.keys(merged)) {
-      if (key === "sourceReferences" || key.endsWith("References")) continue;
+      if (key === "sourceReferences" || key.endsWith("References") || key === "ageGroup") continue;
       const current = merged[key];
       const next = normalized[key];
       if ((current == null || current === "") && next != null && next !== "") {

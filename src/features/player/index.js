@@ -1,10 +1,8 @@
 /**
- * Player Management — Phase 1B public facade (read-first).
+ * Player Management — public facade.
  *
- * Stable public contracts only. Adapters, repositories, guards, and
- * player-id helpers remain internal modules.
- *
- * No new identity store. No migrations. No write path. No production cutover.
+ * Phase 1B read contracts + Phase 1C single write export.
+ * Adapters, repositories, validators remain internal.
  */
 export { RESOLUTION_OUTCOME } from "./constants/resolutionOutcomes.js";
 
@@ -14,3 +12,4 @@ export { resolveByAuthUser } from "./services/resolveByAuthUser.js";
 export { resolveCanonicalPlayerId } from "./services/resolveCanonicalPlayerId.js";
 export { getPlayerProfile } from "./services/getPlayerProfile.js";
 export { searchPlayers } from "./services/searchPlayers.js";
+export { updatePlayerProfile } from "./services/updatePlayerProfile.js";
