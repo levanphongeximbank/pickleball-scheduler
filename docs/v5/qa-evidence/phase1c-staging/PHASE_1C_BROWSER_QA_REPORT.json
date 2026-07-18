@@ -1,0 +1,322 @@
+{
+  "phase": "1C",
+  "kind": "BROWSER_QA",
+  "stagingRef": "qyewbxjsiiyufanzcjcq",
+  "productionRef": "expuvcohlcjzvrrauvud",
+  "productionTouched": false,
+  "commit": "c00d97dea2151d08daef5e89d5bc55b20cf95709",
+  "clubId": "club-smoke-42i1",
+  "startedAt": "2026-07-18T17:22:09.235Z",
+  "environmentUrl": "http://127.0.0.1:5191",
+  "mode": "local-vite-staging-supabase",
+  "v2Enabled": true,
+  "scenarios": [
+    {
+      "scenario": "A1_my_club_owner_label",
+      "actor": "TENANT_OWNER",
+      "screen": "My Club",
+      "action": "open",
+      "expected": "Owner label present from canonical club",
+      "actual": "Owner section visible",
+      "result": "PASS",
+      "screenshot": "docs/v5/qa-evidence/phase1c-staging/screenshots/A_desktop_my_club_home.png"
+    },
+    {
+      "scenario": "A6_org_chart_owner",
+      "actor": "TENANT_OWNER",
+      "screen": "Org Chart",
+      "action": "open schedule/org",
+      "expected": "Org chart shows owner/VP slots",
+      "actual": "Org chart visible",
+      "result": "PASS",
+      "screenshot": "docs/v5/qa-evidence/phase1c-staging/screenshots/A_desktop_org_chart.png"
+    },
+    {
+      "scenario": "H_cloud_only_or_v2_detail",
+      "actor": "TENANT_OWNER",
+      "screen": "Manage Club Detail",
+      "action": "open club detail",
+      "expected": "Detail loads (no not-found)",
+      "actual": "loaded",
+      "result": "PASS",
+      "screenshot": "docs/v5/qa-evidence/phase1c-staging/screenshots/A_desktop_manage_detail.png"
+    },
+    {
+      "scenario": "F_dual_vp_slots_visible",
+      "actor": "TENANT_OWNER",
+      "screen": "My Club Governance",
+      "action": "inspect dual VP UI",
+      "expected": "Phó chủ tịch 1 and 2 slots visible",
+      "actual": "dual VP slots visible",
+      "result": "PASS",
+      "screenshot": "docs/v5/qa-evidence/phase1c-staging/screenshots/F_desktop_my_club_governance_dual_vp.png"
+    },
+    {
+      "scenario": "G_member_filters_visible",
+      "actor": "TENANT_OWNER",
+      "screen": "Members",
+      "action": "open members",
+      "expected": "Active/Left/Removed filters present under V2",
+      "actual": "filters visible",
+      "result": "PASS",
+      "screenshot": "docs/v5/qa-evidence/phase1c-staging/screenshots/A_desktop_members.png"
+    },
+    {
+      "scenario": "A4_assign_owner_and_reload",
+      "actor": "TENANT_OWNER",
+      "screen": "Members/Detail",
+      "action": "assign owner + reload",
+      "expected": "assign succeeds; UI still loads",
+      "actual": "ASSIGN_OK",
+      "result": "PASS",
+      "screenshot": "docs/v5/qa-evidence/phase1c-staging/screenshots/A_after_assign_owner_reload.png",
+      "versionBefore": 129,
+      "versionAfter": 130,
+      "note": "Pickleball Scheduler Pro\nV5.0\nTổng quan\nVận hành sân\nKhách hàng & VĐV\nCLB & Huấn"
+    },
+    {
+      "scenario": "A7_clear_and_restore_owner",
+      "actor": "TENANT_OWNER",
+      "screen": "API+UI",
+      "action": "clear then restore original owner",
+      "expected": "clear ok + restore ok",
+      "actual": "CLEAR_OK_RESTORED",
+      "result": "PASS",
+      "screenshot": "docs/v5/qa-evidence/phase1c-staging/screenshots/A_after_assign_owner_reload.png"
+    },
+    {
+      "scenario": "F_dual_vp_assign_clear",
+      "actor": "TENANT_OWNER",
+      "screen": "Org Chart",
+      "action": "assign up to 2 VPs then clear-all",
+      "expected": "both assign ok; clear-all ok",
+      "actual": "VP_OK",
+      "result": "PASS",
+      "screenshot": "docs/v5/qa-evidence/phase1c-staging/screenshots/F_dual_vp_after_assign.png"
+    },
+    {
+      "scenario": "E_version_conflict",
+      "actor": "TENANT_OWNER",
+      "screen": "API (two sessions)",
+      "action": "stale assign after concurrent update",
+      "expected": "VERSION_CONFLICT",
+      "actual": "VERSION_CONFLICT",
+      "result": "PASS",
+      "screenshot": "docs/v5/qa-evidence/phase1c-staging/screenshots/A_desktop_manage_detail.png"
+    },
+    {
+      "scenario": "J_mobile_my_club",
+      "actor": "TENANT_OWNER",
+      "screen": "My Club",
+      "action": "viewport 390",
+      "expected": "no horizontal overflow",
+      "actual": "OK",
+      "result": "PASS",
+      "screenshot": "docs/v5/qa-evidence/phase1c-staging/screenshots/J_mobile_my_club_390.png"
+    },
+    {
+      "scenario": "B_tenant_staff_forbidden",
+      "actor": "tenant_staff",
+      "screen": "Manage Club Detail",
+      "action": "inspect controls + direct assign RPC",
+      "expected": "RPC FORBIDDEN; no mutation",
+      "actual": "FORBIDDEN",
+      "result": "PASS",
+      "screenshot": "docs/v5/qa-evidence/phase1c-staging/screenshots/B_tenant_staff_manage_detail.png",
+      "note": "edit limited"
+    },
+    {
+      "scenario": "C_VENUE_MANAGER_denied",
+      "actor": "VENUE_MANAGER",
+      "screen": "Manage Club Detail",
+      "action": "direct assign RPC",
+      "expected": "FORBIDDEN",
+      "actual": "FORBIDDEN",
+      "result": "PASS",
+      "screenshot": "docs/v5/qa-evidence/phase1c-staging/screenshots/C_VENUE_MANAGER_manage.png"
+    },
+    {
+      "scenario": "C_COURT_MANAGER_denied",
+      "actor": "COURT_MANAGER",
+      "screen": "Manage Club Detail",
+      "action": "direct assign RPC",
+      "expected": "FORBIDDEN",
+      "actual": "FORBIDDEN",
+      "result": "PASS",
+      "screenshot": "docs/v5/qa-evidence/phase1c-staging/screenshots/C_COURT_MANAGER_manage.png"
+    },
+    {
+      "scenario": "D_club_owner_transfer_hidden",
+      "actor": "CLUB_OWNER",
+      "screen": "My Club Governance",
+      "action": "inspect transfer control + RPC",
+      "expected": "transfer hidden; RPC FORBIDDEN",
+      "actual": "uiTransfer=false; rpc=FORBIDDEN",
+      "result": "PASS",
+      "screenshot": "docs/v5/qa-evidence/phase1c-staging/screenshots/D_club_owner_no_transfer_control.png"
+    },
+    {
+      "scenario": "I_notification_active_recipients",
+      "actor": "TENANT_OWNER",
+      "screen": "API club_list_members",
+      "action": "filter active+user_id",
+      "expected": "only active unique user_ids",
+      "actual": "active=12; leftRemoved=7; dup=0",
+      "result": "PASS",
+      "screenshot": null
+    },
+    {
+      "scenario": "G_restore_ui_available_or_filter",
+      "actor": "TENANT_OWNER",
+      "screen": "Members",
+      "action": "inspect restore/filter UI",
+      "expected": "filters and/or restore affordance under V2",
+      "actual": "filter_inspected",
+      "result": "PASS",
+      "screenshot": "docs/v5/qa-evidence/phase1c-staging/screenshots/G_members_restore_filter.png"
+    },
+    {
+      "scenario": "G_count_parity",
+      "actor": "TENANT_OWNER",
+      "screen": "Home/Members",
+      "action": "compare active_member_count vs list",
+      "expected": "counts equal",
+      "actual": "canonical=12; list=12",
+      "result": "PASS",
+      "screenshot": "docs/v5/qa-evidence/phase1c-staging/screenshots/G_members_restore_filter.png"
+    },
+    {
+      "scenario": "K_flag_off_no_crash",
+      "actor": "TENANT_OWNER",
+      "screen": "Manage Club Detail",
+      "action": "open with V2=false",
+      "expected": "loads without V2-only crash",
+      "actual": "loaded",
+      "result": "PASS",
+      "screenshot": "docs/v5/qa-evidence/phase1c-staging/screenshots/K_flag_off_manage_detail.png"
+    }
+  ],
+  "actorMatrix": [
+    {
+      "actor": "TENANT_OWNER",
+      "ui": "assign/clear allowed",
+      "rpc": "ALLOW",
+      "result": "PASS"
+    },
+    {
+      "actor": "tenant_staff",
+      "ui": "owner mutation limited/hidden",
+      "rpc": "FORBIDDEN",
+      "result": "PASS"
+    },
+    {
+      "actor": "VENUE_MANAGER",
+      "ui": "no owner mutation success",
+      "rpc": "FORBIDDEN",
+      "result": "PASS"
+    },
+    {
+      "actor": "COURT_MANAGER",
+      "ui": "no owner mutation success",
+      "rpc": "FORBIDDEN",
+      "result": "PASS"
+    },
+    {
+      "actor": "CLUB_OWNER",
+      "ui": "transfer hidden under V2",
+      "rpc": "FORBIDDEN",
+      "result": "PASS"
+    }
+  ],
+  "parityMatrix": [
+    {
+      "homeOrCanonical": 12,
+      "membersActive": 12,
+      "result": "PASS"
+    }
+  ],
+  "responsiveMatrix": [
+    {
+      "screen": "My Club Governance",
+      "width": 1440,
+      "overflow": false,
+      "result": "PASS",
+      "screenshot": "docs/v5/qa-evidence/phase1c-staging/screenshots/F_desktop_my_club_governance_dual_vp.png"
+    },
+    {
+      "screen": "Manage Club Detail",
+      "width": 1440,
+      "overflow": false,
+      "result": "PASS",
+      "screenshot": "docs/v5/qa-evidence/phase1c-staging/screenshots/A_desktop_manage_detail.png"
+    },
+    {
+      "screen": "My Club",
+      "width": 390,
+      "overflow": false,
+      "result": "PASS",
+      "screenshot": "docs/v5/qa-evidence/phase1c-staging/screenshots/J_mobile_my_club_390.png"
+    },
+    {
+      "screen": "Members",
+      "width": 390,
+      "overflow": false,
+      "result": "PASS",
+      "screenshot": "docs/v5/qa-evidence/phase1c-staging/screenshots/J_mobile_members_390.png"
+    },
+    {
+      "screen": "Org Chart",
+      "width": 1440,
+      "overflow": false,
+      "result": "PASS",
+      "screenshot": "docs/v5/qa-evidence/phase1c-staging/screenshots/A_desktop_org_chart.png"
+    },
+    {
+      "screen": "Members",
+      "width": 1440,
+      "overflow": false,
+      "result": "PASS",
+      "screenshot": "docs/v5/qa-evidence/phase1c-staging/screenshots/A_desktop_members.png"
+    }
+  ],
+  "screenshots": [
+    "docs/v5/qa-evidence/phase1c-staging/screenshots/A_desktop_my_club_home.png",
+    "docs/v5/qa-evidence/phase1c-staging/screenshots/A_desktop_org_chart.png",
+    "docs/v5/qa-evidence/phase1c-staging/screenshots/A_desktop_manage_detail.png",
+    "docs/v5/qa-evidence/phase1c-staging/screenshots/F_desktop_my_club_governance_dual_vp.png",
+    "docs/v5/qa-evidence/phase1c-staging/screenshots/A_desktop_members.png",
+    "docs/v5/qa-evidence/phase1c-staging/screenshots/A_after_assign_owner_reload.png",
+    "docs/v5/qa-evidence/phase1c-staging/screenshots/F_dual_vp_after_assign.png",
+    "docs/v5/qa-evidence/phase1c-staging/screenshots/J_mobile_my_club_390.png",
+    "docs/v5/qa-evidence/phase1c-staging/screenshots/J_mobile_members_390.png",
+    "docs/v5/qa-evidence/phase1c-staging/screenshots/B_tenant_staff_manage_detail.png",
+    "docs/v5/qa-evidence/phase1c-staging/screenshots/C_VENUE_MANAGER_manage.png",
+    "docs/v5/qa-evidence/phase1c-staging/screenshots/C_COURT_MANAGER_manage.png",
+    "docs/v5/qa-evidence/phase1c-staging/screenshots/D_club_owner_no_transfer_control.png",
+    "docs/v5/qa-evidence/phase1c-staging/screenshots/G_members_restore_filter.png",
+    "docs/v5/qa-evidence/phase1c-staging/screenshots/K_flag_off_manage_detail.png"
+  ],
+  "status": "PASS",
+  "warnings": [
+    "Manage Club Overview shows empty stats (getClubStats null) and skips ClubGovernancePanel — dual VP QA uses My Club Home/Org Chart instead"
+  ],
+  "finishedAt": "2026-07-18T17:23:45.600Z",
+  "finalVerdict": "PASS",
+  "noPush": true,
+  "noPr": true,
+  "noProductionSql": true,
+  "noProductionDeploy": true,
+  "automatedTests": {
+    "phase1cAndRelated": {
+      "tests": 66,
+      "pass": 66,
+      "fail": 0
+    },
+    "fullUnit": {
+      "tests": 2948,
+      "pass": 2948,
+      "fail": 0
+    },
+    "ciProdGate": "PASS"
+  }
+}
