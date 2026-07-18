@@ -1,0 +1,5 @@
+[
+  "tests/competition-core-participant-runtime-3b.test.js",
+  "tests/competition-core-participant-runtime-3b-architecture.test.js",
+  "tests/competition-core-participant-integrator-3b-wave1.test.js"
+]

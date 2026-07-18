@@ -23,3 +23,9 @@ export {
   isCapabilityExecutorRegistryFrozen,
   resetCapabilityExecutorRegistryForTests,
 } from "./capabilityExecutors.js";
+
+export {
+  PARTICIPANT_CAPABILITY_WAVE1_VERSION,
+  PARTICIPANT_CAPABILITY_MODULE_PATHS,
+  registerParticipantCapabilityWave1,
+} from "./participantCapabilityRegistration.js";
