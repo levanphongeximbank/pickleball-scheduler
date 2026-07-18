@@ -94,6 +94,10 @@ export {
   freezeCapabilityExecutorRegistry,
   isCapabilityExecutorRegistryFrozen,
   resetCapabilityExecutorRegistryForTests,
+  /** Phase 3B Integrator Wave 1 — explicit Participant capability registration. */
+  PARTICIPANT_CAPABILITY_WAVE1_VERSION,
+  PARTICIPANT_CAPABILITY_MODULE_PATHS,
+  registerParticipantCapabilityWave1,
 } from "./registries/index.js";
 
 /** Phase 3A.2 — Shadow Infrastructure (contracts / pure resolvers only). */

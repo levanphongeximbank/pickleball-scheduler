@@ -116,14 +116,17 @@ test("3B architecture: Production safety defaults unchanged", () => {
   assert.equal(resolveShadowEligibility({}).eligible, false);
 });
 
-test("3B architecture: root index does not re-export participant runtime yet", () => {
+test("3B architecture: root index re-exports Participant Runtime public surface (Integrator Wave 1)", () => {
   const indexPath = path.join(ROOT, "src/features/competition-core/index.js");
   const content = readFileSync(indexPath, "utf8");
-  assert.doesNotMatch(content, /participants\/runtime/);
-  assert.doesNotMatch(content, /createParticipantResolver/);
+  assert.match(content, /createParticipantResolver/);
+  assert.match(content, /registerParticipantCapabilityWave1/);
+  // Still no Production wiring / flag flips in root index
+  assert.doesNotMatch(content, /VITE_ENABLE.*PARTICIPANT.*=.*true/);
+  assert.doesNotMatch(content, /registerParticipantCapabilityWave1\s*\(\s*\)/);
 });
 
-test("3B architecture: official unit-test-files.json not modified by phase-3b obligation", () => {
+test("3B architecture: official unit-test-files.json includes Phase 3B tests (Integrator Wave 1)", () => {
   const phaseManifest = path.join(
     ROOT,
     "scripts/ci/unit-test-files.phase-3b.json"
@@ -133,13 +136,15 @@ test("3B architecture: official unit-test-files.json not modified by phase-3b ob
     readFileSync(path.join(ROOT, "scripts/ci/unit-test-files.json"), "utf8")
   );
   const phase = JSON.parse(readFileSync(phaseManifest, "utf8"));
-  // Capability chat ships sub-manifest; Integrator merges later.
   for (const entry of phase) {
     assert.equal(typeof entry, "string");
     assert.equal(existsSync(path.join(ROOT, entry)), true, `missing ${entry}`);
+    assert.equal(
+      official.filter((f) => f === entry).length,
+      1,
+      `official must include exactly once: ${entry}`
+    );
   }
-  // Document that official may not yet include phase entries (Integrator duty).
-  assert.ok(Array.isArray(official));
 });
 
 test("3B architecture: shared-file ownership for sample 3b paths is clean", async () => {

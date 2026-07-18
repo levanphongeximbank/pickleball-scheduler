@@ -13,6 +13,9 @@ export {
   linkParticipantReferenceAlias,
   createParticipantSnapshot,
   createSeedLockedRatingSnapshot,
+  buildParticipantIdentityKey,
+  createParticipantIdentity,
+  identityFromCompetitionParticipant,
 } from "./identity.js";
 
 export { createCompetitionParticipant } from "./competitionParticipant.js";

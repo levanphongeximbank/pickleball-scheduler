@@ -41,3 +41,4 @@ Production behavior is unchanged. Legacy remains the only executor. No Canonical
 - Phase 3A.3 registries (Integrator): `docs/competition-engine/phase-3a3/`
 - Phase 3P ownership: `docs/competition-engine/phase-3p/`
 - Entry criteria: `docs/competition-engine/phase-3a3/phase-3b-entry-criteria.md`
+- Integrator Wave 1: `docs/competition-engine/phase-3b/integration/`

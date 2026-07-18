@@ -12,3 +12,24 @@ export {
   validationError,
   validationWarning,
 } from "./results/validationResult.js";
+
+/** Phase 3B — Participant Resolution Runtime (public surface; Integrator-owned barrel). */
+export {
+  createParticipantResolver,
+  createLegacyParticipantAdapter,
+  createParticipantResolveRequest,
+  createParticipantResolveResult,
+  resolveOk,
+  resolveFail,
+  PARTICIPANT_ADAPTER_ID,
+  isParticipantAdapter,
+  PARTICIPANT_RUNTIME_ERROR_CODE,
+  PARTICIPANT_RUNTIME_ERROR_CODE_VALUES,
+  isParticipantRuntimeErrorCode,
+  ParticipantRuntimeError,
+  isParticipantRuntimeError,
+  createParticipantRuntimeError,
+  LEGACY_PLAYER_SOURCE_TYPE,
+  isLegacyPlayerSource,
+  mapLegacyPlayerToCompetitionParticipant,
+} from "./runtime/index.js";
