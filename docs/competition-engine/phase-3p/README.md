@@ -95,3 +95,4 @@ Source/test/CI/package files MUST NOT be modified
 - Capability matrix: `docs/competition-engine/phase-3/03_CAPABILITY_MIGRATION_MATRIX.md`
 - Phase 3A.1: `docs/competition-engine/phase-3a1/`
 - Phase 3A.2: `docs/competition-engine/phase-3a2/`
+- Phase 3A.3 (Wave 0): `docs/competition-engine/phase-3a3/`
