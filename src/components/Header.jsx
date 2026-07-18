@@ -1,10 +1,11 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   AppBar,
   Badge,
   Box,
   Button,
+  CircularProgress,
   Divider,
   IconButton,
   Menu,
@@ -20,58 +21,61 @@ import HelpOutlineOutlinedIcon from "@mui/icons-material/HelpOutlineOutlined";
 import GlobalSearch from "./GlobalSearch.jsx";
 import AccountMenu from "./shell/AccountMenu.jsx";
 import TenantSwitcher from "./TenantSwitcher.jsx";
-import { usePlatformRuntime } from "../core/platform/app/usePlatformRuntime.js";
 import { useIsMobile } from "../features/mobile/hooks/useIsMobile.js";
 import { useTenant } from "../context/TenantContext.jsx";
+import { useAuth } from "../context/AuthContext.jsx";
 import { SHELL_COLORS, SHELL_LAYOUT } from "./shell/shellTokens.js";
+import { useNotificationInbox } from "../features/notifications/runtime/useNotificationInbox.js";
+import { NOTIFICATION_STATUSES } from "../features/notifications/constants/notificationStatuses.js";
 
 export default function Header({ onMenuClick }) {
   const isMobile = useIsMobile();
-  const { isSuperAdmin } = useTenant();
-  const runtime = usePlatformRuntime();
+  const { isSuperAdmin, currentTenantId } = useTenant();
+  const { user } = useAuth();
   const navigate = useNavigate();
-  const [unreadNotificationCount, setUnreadNotificationCount] = useState(0);
   const [notificationAnchorEl, setNotificationAnchorEl] = useState(null);
 
-  const syncNotificationCount = useCallback(() => {
-    const notifications = runtime?.notificationService?.list?.() || [];
-    const unread = notifications.filter(
-      (notification) => !(notification?.read || notification?.status === "read")
-    ).length;
-    setUnreadNotificationCount(unread);
-  }, [runtime?.notificationService]);
+  const tenantId = currentTenantId || user?.venueId || null;
+  const userId = user?.id || null;
+  const inboxEnabled = Boolean(tenantId && userId);
 
-  useEffect(() => {
-    syncNotificationCount();
-    const intervalId = window.setInterval(syncNotificationCount, 2000);
-    return () => window.clearInterval(intervalId);
-  }, [syncNotificationCount]);
+  const {
+    items,
+    unreadCount,
+    loading,
+    error,
+    refresh,
+    markRead,
+    markAllRead,
+  } = useNotificationInbox({
+    tenantId,
+    userId,
+    pollMs: 5000,
+    enabled: inboxEnabled,
+  });
 
-  const notificationItems = useMemo(() => {
-    const notifications = runtime?.notificationService?.list?.() || [];
-    return notifications.slice().reverse().slice(0, 6);
-  }, [runtime?.notificationService, unreadNotificationCount]);
+  const notificationItems = useMemo(() => (items || []).slice(0, 6), [items]);
 
   const handleNotificationOpen = (event) => {
     setNotificationAnchorEl(event.currentTarget);
+    void refresh();
   };
 
   const handleNotificationClose = () => {
     setNotificationAnchorEl(null);
   };
 
-  const handleNotificationClick = (notification) => {
-    if (!(notification?.read || notification?.status === "read")) {
-      runtime?.notificationService?.markAsRead?.(notification.id);
-      syncNotificationCount();
+  const handleNotificationClick = async (notification) => {
+    const isUnread = notification?.status !== NOTIFICATION_STATUSES.READ;
+    if (isUnread) {
+      await markRead(notification.id || notification.notificationId);
     }
     handleNotificationClose();
-    navigate("/tournament");
+    navigate("/notifications");
   };
 
-  const handleMarkAllNotificationsAsRead = () => {
-    runtime?.notificationService?.markAllAsRead?.();
-    syncNotificationCount();
+  const handleMarkAllNotificationsAsRead = async () => {
+    await markAllRead();
     handleNotificationClose();
   };
 
@@ -141,10 +145,10 @@ export default function Header({ onMenuClick }) {
             }}
           >
             <Badge
-              badgeContent={unreadNotificationCount}
+              badgeContent={unreadCount}
               color="error"
               max={99}
-              invisible={unreadNotificationCount === 0}
+              invisible={unreadCount === 0}
             >
               <NotificationsIcon fontSize="small" />
             </Badge>
@@ -186,23 +190,47 @@ export default function Header({ onMenuClick }) {
               Thông báo
             </Typography>
             <Typography variant="caption" color="text.secondary">
-              {unreadNotificationCount} chưa đọc
+              {loading ? "…" : `${unreadCount} chưa đọc`}
             </Typography>
           </Box>
-          {unreadNotificationCount > 0 && (
+          {unreadCount > 0 && (
             <Button size="small" variant="text" onClick={handleMarkAllNotificationsAsRead} sx={{ px: 0, mt: 0.25 }}>
               Đánh dấu tất cả đã đọc
             </Button>
           )}
+          <Button
+            size="small"
+            variant="text"
+            onClick={() => {
+              handleNotificationClose();
+              navigate("/notifications");
+            }}
+            sx={{ px: 0, display: "block" }}
+          >
+            Xem tất cả
+          </Button>
         </Box>
         <Divider />
-        {notificationItems.length > 0 ? (
+        {error ? (
+          <Box sx={{ px: 2, py: 2 }}>
+            <Typography variant="body2" color="error">
+              {error}
+            </Typography>
+            <Button size="small" onClick={() => void refresh()} sx={{ mt: 1, px: 0 }}>
+              Thử lại
+            </Button>
+          </Box>
+        ) : loading && notificationItems.length === 0 ? (
+          <Box sx={{ px: 2, py: 2, display: "flex", justifyContent: "center" }}>
+            <CircularProgress size={22} />
+          </Box>
+        ) : notificationItems.length > 0 ? (
           notificationItems.map((notification) => {
-            const isUnread = !(notification?.read || notification?.status === "read");
+            const isUnread = notification?.status !== NOTIFICATION_STATUSES.READ;
             return (
               <MenuItem
-                key={notification.id || `${notification.title}-${notification.created_at}`}
-                onClick={() => handleNotificationClick(notification)}
+                key={notification.id || notification.notificationId}
+                onClick={() => void handleNotificationClick(notification)}
                 sx={{
                   alignItems: "flex-start",
                   py: 1.2,
@@ -214,11 +242,11 @@ export default function Header({ onMenuClick }) {
                     {notification.title || "Thông báo hệ thống"}
                   </Typography>
                   <Typography variant="caption" color="text.secondary" sx={{ display: "block", mb: 0.25 }}>
-                    {notification.body || notification.detail || "Không có chi tiết"}
+                    {notification.message || notification.body || "Không có chi tiết"}
                   </Typography>
                   <Typography variant="caption" color="text.secondary">
                     {new Date(
-                      notification.created_at || notification.createdAt || new Date().toISOString()
+                      notification.createdAt || notification.created_at || new Date().toISOString()
                     ).toLocaleString("vi-VN")}
                   </Typography>
                 </Box>

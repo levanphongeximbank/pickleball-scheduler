@@ -42,3 +42,51 @@ export async function countUnreadNotifications({
   const repo = repository || getNotificationRepository();
   return repo.countUnread({ tenantId, userId });
 }
+
+/**
+ * Refresh inbox snapshot (list + unread) from the canonical repository.
+ * Used by Header badge, Notification Center, and polling hooks.
+ */
+export async function refreshInbox({
+  tenantId,
+  userId = null,
+  status = null,
+  limit = 100,
+  repository = null,
+} = {}) {
+  if (!tenantId) {
+    return { ok: false, error: "tenantId is required.", items: [], unreadCount: 0 };
+  }
+  if (!userId) {
+    return { ok: false, error: "userId is required.", items: [], unreadCount: 0 };
+  }
+
+  const repo = repository || getNotificationRepository();
+  const [listResult, countResult] = await Promise.all([
+    repo.list({ tenantId, userId, status, limit }),
+    repo.countUnread({ tenantId, userId }),
+  ]);
+
+  if (!listResult.ok) {
+    return {
+      ok: false,
+      error: listResult.error || "Failed to list inbox.",
+      items: [],
+      unreadCount: 0,
+    };
+  }
+  if (!countResult.ok) {
+    return {
+      ok: false,
+      error: countResult.error || "Failed to count unread.",
+      items: listResult.items || [],
+      unreadCount: 0,
+    };
+  }
+
+  return {
+    ok: true,
+    items: listResult.items || [],
+    unreadCount: countResult.count ?? 0,
+  };
+}

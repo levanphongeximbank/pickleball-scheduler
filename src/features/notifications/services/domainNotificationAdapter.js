@@ -136,6 +136,7 @@ export async function emitDomainNotificationEvent(input = {}) {
       createdCount: 0,
       duplicateCount: 0,
       rejectedRecipientIds: resolved.rejected,
+      skippedRecipients: resolved.skipped || [],
       error: "No valid recipients after resolution.",
     };
   }
@@ -233,6 +234,7 @@ export async function emitDomainNotificationEvent(input = {}) {
       createdCount: 0,
       duplicateCount: duplicates.length,
       rejectedRecipientIds: resolved.rejected,
+      skippedRecipients: resolved.skipped || [],
     };
   }
 
@@ -247,5 +249,6 @@ export async function emitDomainNotificationEvent(input = {}) {
     createdCount: created.length,
     duplicateCount: duplicates.length,
     rejectedRecipientIds: resolved.rejected,
+    skippedRecipients: resolved.skipped || [],
   };
 }

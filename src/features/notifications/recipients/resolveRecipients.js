@@ -32,6 +32,7 @@ export function resolveNotificationRecipients({
   const hints = recipientHints || {};
   const collected = [];
   const rejected = [];
+  const skipped = [];
 
   const userIds = Array.isArray(hints.userIds) ? hints.userIds : [];
   const roles = Array.isArray(hints.roles) ? hints.roles : [];
@@ -77,7 +78,20 @@ export function resolveNotificationRecipients({
       competitionId,
       entryIds,
     });
-    for (const user of resolved) {
+    const resolvedEntryIds = new Set(
+      (resolved || []).map((u) => String(u.entryId || "")).filter(Boolean)
+    );
+    for (const raw of entryIds) {
+      const entryId = String(raw);
+      const hasUserForEntry = (resolved || []).some(
+        (u) => String(u.entryId || "") === entryId && u.userId
+      );
+      if (!hasUserForEntry && !resolvedEntryIds.has(entryId)) {
+        skipped.push({ entryId, reason: "unresolved_entry_or_no_linked_user" });
+        rejected.push(`entry:${entryId}`);
+      }
+    }
+    for (const user of resolved || []) {
       if (!user.userId || user.tenantId !== tenantId) {
         if (user.userId) rejected.push(user.userId);
         continue;
@@ -100,5 +114,10 @@ export function resolveNotificationRecipients({
     recipients.push({ userId, tenantId });
   }
 
-  return { ok: true, recipients, rejected: [...new Set(rejected)] };
+  return {
+    ok: true,
+    recipients,
+    rejected: [...new Set(rejected)],
+    skipped,
+  };
 }

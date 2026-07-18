@@ -17,7 +17,7 @@ import {
  */
 export function ensureIdentityRecipientDirectory(options = {}) {
   const current = getRecipientDirectory();
-  if (current?.kind === "identity-membership") {
+  if (current?.kind === "identity-membership" && options.force !== true) {
     return current;
   }
   const directory = createIdentityMembershipDirectory(options);

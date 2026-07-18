@@ -1,5 +1,5 @@
 /**
- * PICK_VN Notification Module — public API (Phase 1.3).
+ * PICK_VN Notification Module — public API (Phase 1.4).
  *
  * Domain modules may import only from this barrel.
  * Providers and storage implementations are intentionally NOT exported.
@@ -16,6 +16,7 @@ export {
   markNotificationRead,
   markAllNotificationsRead,
   countUnreadNotifications,
+  refreshInbox,
 } from "./services/notificationInboxService.js";
 export { getNotificationPreferences } from "./services/notificationPreferencesService.js";
 
@@ -35,6 +36,13 @@ export {
   resolveNotificationStoreMode,
   NOTIFICATION_STORE_MODES,
 } from "./repositories/notificationRepository.js";
+
+export {
+  bootstrapNotificationRuntime,
+  getNotificationRuntimeStatus,
+  resetNotificationRuntime,
+  setNotificationRuntimeAuthenticated,
+} from "./runtime/notificationRuntime.js";
 
 export {
   NOTIFICATION_EVENT_TYPES,
@@ -91,12 +99,22 @@ export {
 } from "./recipients/identityMembershipDirectory.js";
 
 export {
+  createCompetitionEntryResolver,
+  explainUnresolvedEntryIds,
+} from "./recipients/competitionEntryResolver.js";
+
+export {
   ensureIdentityRecipientDirectory,
 } from "./recipients/recipientBootstrap.js";
 
 export { resolveNotificationRecipients } from "./recipients/resolveRecipients.js";
 
 export { emitMatchScheduledFromBoundary } from "./adapters/competitionMatchScheduledAdapter.js";
+export { emitMatchScheduledAfterSchedulePublish } from "./adapters/tournamentSchedulePublishBridge.js";
+export {
+  listMobileCompatibleInbox,
+  markMobileCompatibleRead,
+} from "./adapters/mobileInboxCompatAdapter.js";
 export { emitBookingLifecycleNotification } from "./adapters/bookingNotificationPilot.js";
 export { emitPaymentLifecycleNotification } from "./adapters/paymentNotificationPilot.js";
 
