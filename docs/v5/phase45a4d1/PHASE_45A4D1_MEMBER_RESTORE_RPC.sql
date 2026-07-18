@@ -24,10 +24,11 @@
 --   docs/v5/PHASE_42B_SCHEMA.sql status domain +
 --   docs/v5/phase45a4c1/PHASE_45A4C1_MEMBER_RPC.sql conventions)
 --
--- Deployment status: NOT DEPLOYED (new). This file has NOT been executed
---   on Staging or Production. Applying it: (1) extends audit_logs_action_check
---   with 'club.member.restore', and (2) creates public.club_restore_member.
---   No blob writes. No profiles.club_id authority. No hard DELETE.
+-- Deployment status: NOT DEPLOYED to Production (Phase 1B Staging-ready).
+--   Runtime client wires rpcV2ClubRestoreMember / restoreMemberToClub.
+--   Applying on Staging: (1) extends audit_logs_action_check with 'club.member.restore',
+--   and (2) creates public.club_restore_member. No blob writes. No
+--   profiles.club_id authority. No hard DELETE.
 --
 -- Out of scope (intentionally NOT authored here):
 --   club_update_member_role, club_update_member_status,

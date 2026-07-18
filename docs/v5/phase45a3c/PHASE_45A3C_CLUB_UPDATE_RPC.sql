@@ -27,11 +27,14 @@
 --   - audit action whitelist convention:
 --       docs/v5/PHASE_42KA_GOVERNANCE_AUDIT_PATCH.sql
 --
--- Deployment status: NOT DEPLOYED (new). This file has NOT been executed on
---   Production or Staging. Applying it: (1) extends the audit action check
---   constraint with 'club.update' and (2) creates the new function. It adds
---   NO new API error codes, writes ONLY to public.clubs, and performs NO
---   club_governance / club_governance_assignments / blob writes.
+-- Deployment status: NOT DEPLOYED to Production (Phase 1B Staging-ready).
+--   Runtime client already wires rpcV2ClubUpdate via clubTenantService.
+--   Applying on Staging: (1) extends the audit action check constraint with
+--   'club.update' and (2) creates the new function. It adds NO new API error
+--   codes, writes ONLY to public.clubs, and performs NO club_governance /
+--   club_governance_assignments / blob writes.
+--   Prefer final audit whitelist from docs/v5/phase1b/PHASE_1B_V2_COMMAND_COMPLETION.sql
+--   when applying the full Phase 1B bundle on Staging.
 --
 -- Prerequisites (already deployed; NOT (re)defined here):
 --   Tables:  public.clubs, public.audit_logs, public.idempotency_requests

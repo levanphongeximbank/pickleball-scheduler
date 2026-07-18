@@ -42,6 +42,8 @@ import {
   rpcV2ClubClearOwner,
   rpcV2ClubGet,
   rpcV2ClubTransferPresident,
+  rpcV2ClubAssignVicePresident,
+  rpcV2ClubClearVicePresident,
 } from "./clubStorageV2RpcService.js";
 import { invalidateAllClubRegistryCache } from "../registry/clubRegistryCache.js";
 import {
@@ -1048,6 +1050,110 @@ export async function transferClubPresident(clubId, nextPresidentUserId, tenantI
 
 export async function setClubVicePresidents(clubId, userIds = [], tenantId) {
   const user = getCurrentUser();
+
+  if (isClubStorageV2Enabled()) {
+    const club = await resolveClubForGovernance(clubId);
+    if (!club) {
+      return { ok: false, error: "Không tìm thấy CLB." };
+    }
+
+    if (!canManageClubGovernance(user, club)) {
+      return { ok: false, error: "Không có quyền cập nhật quản trị CLB." };
+    }
+
+    const trimmed = [...new Set(userIds.map((id) => String(id || "").trim()).filter(Boolean))].slice(
+      0,
+      MAX_VICE_PRESIDENTS
+    );
+
+    if (userIds.length > MAX_VICE_PRESIDENTS) {
+      return { ok: false, error: `Tối đa ${MAX_VICE_PRESIDENTS} Phó chủ tịch.` };
+    }
+
+    const presidentId = club.governance?.presidentUserId || null;
+    if (trimmed.some((id) => sameUserId(id, presidentId))) {
+      return { ok: false, error: "Phó chủ tịch không thể trùng Chủ tịch." };
+    }
+
+    if (trimmed.length !== new Set(trimmed).size) {
+      return { ok: false, error: "Không thể gán trùng Phó chủ tịch." };
+    }
+
+    const currentIds = getVicePresidentUserIds(club.governance);
+    const unchanged =
+      currentIds.length === trimmed.length &&
+      currentIds.every((id, index) => sameUserId(id, trimmed[index]));
+
+    if (unchanged) {
+      return { ok: true, club, skipped: true, provider: "v2-rpc" };
+    }
+
+    let version = club.version ?? 1;
+    let nextClub = club;
+
+    const toRemove = currentIds.filter(
+      (id) => !trimmed.some((nextId) => sameUserId(id, nextId))
+    );
+    const toAdd = trimmed.filter(
+      (id) => !currentIds.some((currentId) => sameUserId(id, currentId))
+    );
+
+    if (trimmed.length === 0 && currentIds.length > 0) {
+      const cleared = await rpcV2ClubClearVicePresident({
+        clubId,
+        expectedClubVersion: version,
+        memberUserId: null,
+      });
+      if (!cleared.ok) {
+        return cleared;
+      }
+      nextClub = cleared.club;
+      version = cleared.version ?? version;
+    } else {
+      for (const removeId of toRemove) {
+        const cleared = await rpcV2ClubClearVicePresident({
+          clubId,
+          expectedClubVersion: version,
+          memberUserId: removeId,
+        });
+        if (!cleared.ok) {
+          return cleared;
+        }
+        nextClub = cleared.club;
+        version = cleared.version ?? version;
+      }
+
+      for (const addId of toAdd) {
+        const assigned = await rpcV2ClubAssignVicePresident({
+          clubId,
+          memberUserId: addId,
+          expectedClubVersion: version,
+        });
+        if (!assigned.ok) {
+          return assigned;
+        }
+        nextClub = assigned.club;
+        version = assigned.version ?? version;
+      }
+    }
+
+    invalidateRegistryAfterGovernanceMutation();
+    void writeAuditLog({
+      action: "club.vice_president.assign",
+      resourceType: "club",
+      resourceId: clubId,
+      venueId: tenantId || club.venueId || club.tenantId,
+      clubId,
+      metadata: {
+        previousVicePresidentUserIds: currentIds,
+        nextVicePresidentUserIds: trimmed,
+        provider: "v2-rpc",
+      },
+    });
+
+    return { ok: true, club: nextClub, provider: "v2-rpc" };
+  }
+
   const club = getRegistryClubById(clubId);
   if (!club) {
     return { ok: false, error: "Không tìm thấy CLB." };

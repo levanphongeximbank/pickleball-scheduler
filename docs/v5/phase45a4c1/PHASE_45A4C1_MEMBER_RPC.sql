@@ -26,11 +26,12 @@
 --       docs/v5/phase45a3c/PHASE_45A3C_CLUB_UPDATE_RPC.sql
 --       docs/v5/PHASE_42C_RLS_RPC.sql
 --
--- Deployment status: NOT DEPLOYED (new). This file has NOT been executed
---   on Production or Staging. Applying it: (1) extends audit_logs_action_check
---   with 'club.member.add' and 'club.member.remove', and (2) creates the two
---   new functions. It adds NO blob writes, NO profiles.club_id authority,
---   and NO hard DELETE of club_members rows.
+-- Deployment status: NOT DEPLOYED to Production (Phase 1B Staging-ready).
+--   Runtime client already wires rpcV2ClubAddMember / rpcV2ClubRemoveMember.
+--   Applying on Staging: (1) extends audit_logs_action_check with 'club.member.add'
+--   and 'club.member.remove', and (2) creates the two new functions. It adds
+--   NO blob writes, NO profiles.club_id authority, and NO hard DELETE of
+--   club_members rows. Prefer Phase 1B audit whitelist when bundling apply.
 --
 -- Out of scope (intentionally NOT authored here):
 --   club_restore_member, club_set_member_role, club_set_member_status,
