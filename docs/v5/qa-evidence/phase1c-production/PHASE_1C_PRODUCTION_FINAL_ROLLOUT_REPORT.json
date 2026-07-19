@@ -1,0 +1,98 @@
+{
+  "phase": "1C",
+  "kind": "PRODUCTION_FINAL_ROLLOUT",
+  "productionRef": "expuvcohlcjzvrrauvud",
+  "approvedAppSha": "d7a13982bd3b40913436466a227cc04d1649dcfb",
+  "phase1cMergeSha": "827a71c50eaf744c77b1e31afbfc774c6241d388",
+  "gateSqlChecksum": "8a512ec1a4dfbb7e52e54d2b71d8fe4c5643a9f7b32e2f4c2e662e74e0cae83e",
+  "applyStatus": "PASS",
+  "smokeStatus": "PASS",
+  "rollbackApplied": false,
+  "appRedeployed": false,
+  "optionalClubOwnerSelfTransfer": false,
+  "catalog": {
+    "helper_exists": true,
+    "assign_uses_narrow_helper": true,
+    "clear_uses_narrow_helper": true,
+    "assign_no_bare_tenant_member": true,
+    "clear_no_bare_tenant_member": true,
+    "helper_no_bare_tenant_member": true,
+    "helper_no_club_owner_gov": true,
+    "helper_no_venue_manager": true,
+    "helper_no_tenant_staff": true,
+    "assign_security": "DEFINER",
+    "clear_security": "DEFINER",
+    "grant_assign": true,
+    "grant_clear": true,
+    "rls": {
+      "clubs": true,
+      "club_members": true,
+      "club_governance_assignments": true
+    },
+    "afterChecksums": {
+      "assign": "8df6b49530a972ad02246e53c68024ff77f1ab1973495a8fa267670a5064599c",
+      "clear": "610b86d78c672efe6c295b2a61f651a6f68dee03d49daa571934c18537c59585",
+      "helper": "b42a95ce2352b7c32e9bc963f83cf71ad74bb7b7643fdc67cf6f464f74f9389d"
+    },
+    "assignAuthzSnippet": "if not found then"
+  },
+  "proof": {
+    "tenant_staff_denied": true,
+    "venue_manager_denied": true,
+    "court_manager_denied": true,
+    "optional_club_owner_path_disabled": true
+  },
+  "ownerRestore": {
+    "restore_ok": true,
+    "original_owner": "4cf24ed0-99f8-4997-b803-3c7ff8e32014",
+    "final_owner": "4cf24ed0-99f8-4997-b803-3c7ff8e32014",
+    "restored": true,
+    "final_version": 38
+  },
+  "versionAudit": {
+    "assign_ok": true,
+    "clear_ok": true,
+    "version_before": 35,
+    "version_after_assign": 36,
+    "version_after_clear": 37,
+    "assign_bumped": true,
+    "clear_bumped": true,
+    "owner_before": "4cf24ed0-99f8-4997-b803-3c7ff8e32014",
+    "owner_after_assign": "c820bfaf-d958-4b1b-be39-4772a81f7e2e",
+    "owner_after_clear": null,
+    "owner_changed_on_assign": true,
+    "owner_cleared": true,
+    "assign_audit": true,
+    "clear_audit": true
+  },
+  "unrelatedRetest": {
+    "emailDomain": "@prod-qa.local",
+    "assignCode": "FORBIDDEN",
+    "clearCode": "FORBIDDEN",
+    "assignOk": true,
+    "clearOk": true,
+    "versionUnchanged": true,
+    "ownerUnchanged": true
+  },
+  "rls": {
+    "clubs": true,
+    "club_members": true,
+    "club_governance_assignments": true
+  },
+  "finalHealthVerdict": "HEALTHY_GATE_APPLIED",
+  "mergeFreezeMayRelease": true,
+  "finishedAt": "2026-07-19T04:01:23.916Z",
+  "automatedTests": {
+    "phase1cRelated": {
+      "tests": 66,
+      "pass": 66,
+      "fail": 0
+    },
+    "fullUnit": {
+      "tests": 2948,
+      "pass": 2948,
+      "fail": 0
+    },
+    "ciProdGate": "PASS"
+  }
+}

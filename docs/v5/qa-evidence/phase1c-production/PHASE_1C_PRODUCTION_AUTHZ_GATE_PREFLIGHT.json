@@ -1,0 +1,206 @@
+{
+  "phase": "1C",
+  "kind": "PRODUCTION_PREFLIGHT_READONLY",
+  "startedAt": "2026-07-18T22:24:12.819Z",
+  "productionTouched": false,
+  "sqlApplied": false,
+  "deployPerformed": false,
+  "mutationsPerformed": false,
+  "target": {
+    "productionRef": "expuvcohlcjzvrrauvud",
+    "stagingRefMustNotBeUsed": "qyewbxjsiiyufanzcjcq",
+    "identity": {
+      "ref": "expuvcohlcjzvrrauvud",
+      "name": "pickleball-scheduler-production",
+      "region": "ap-northeast-1",
+      "status": "ACTIVE_HEALTHY"
+    },
+    "confirmedProduction": true,
+    "confirmedNotStaging": true
+  },
+  "app": {
+    "approvedSha": "827a71c50eaf744c77b1e31afbfc774c6241d388",
+    "originMainSha": "827a71c50eaf744c77b1e31afbfc774c6241d388",
+    "localHeadSha": "c0fd4f4987fd73cc2887c640ac47f06b63fc10bb",
+    "matchesApproved": true,
+    "note": "Vercel Git Integration auto-deploys Production app on push to main; Phase 1C gate SQL not applied"
+  },
+  "currentRpcAuthorization": {
+    "club_assign_owner": {
+      "exists": true,
+      "securityDefiner": true,
+      "usesBarePhase42IsTenantMember": true,
+      "usesNarrowHelper": false,
+      "executeGrantAuthenticated": true
+    },
+    "club_clear_owner": {
+      "exists": true,
+      "securityDefiner": true,
+      "usesBarePhase42IsTenantMember": true,
+      "usesNarrowHelper": false,
+      "executeGrantAuthenticated": true
+    },
+    "phase42_can_assign_club_owner": {
+      "exists": false,
+      "securityDefiner": null,
+      "usedByAssignClear": false
+    },
+    "phase42_is_tenant_member": {
+      "exists": true,
+      "securityDefiner": true,
+      "includesManagersAndStaff": true,
+      "definitionSummary": "any active tenant_members OR profiles VENUE_OWNER|COURT_OWNER|VENUE_MANAGER|COURT_MANAGER|TENANT_OWNER"
+    },
+    "rls": {
+      "clubs_rls_enabled": true,
+      "club_members_rls_enabled": true,
+      "club_governance_assignments_rls_enabled": true
+    },
+    "gateAppliedOnProduction": false
+  },
+  "catalogComparisonVsStaging": {
+    "stagingEvidencePath": "docs/v5/qa-evidence/phase1c-staging/CLUB_OWNER_ASSIGN_AUTHZ_GATE_REPORT.json",
+    "stagingStatus": "PASS",
+    "stagingProductionTouched": false,
+    "stagingHelperWired": null,
+    "productionHelperExists": false,
+    "productionStillBroad": true,
+    "note": "Staging has gate PASS; Production still broad until Owner GO apply",
+    "stagingCatalogPresent": true
+  },
+  "compatibility": {
+    "tables": {
+      "clubs": true,
+      "club_members": true,
+      "club_governance_assignments": true,
+      "tenant_members": true,
+      "profiles": true,
+      "audit_logs": true
+    },
+    "columns": {
+      "clubs_id": true,
+      "clubs_tenant_id": true,
+      "clubs_version": true,
+      "clubs_deleted_at": true,
+      "club_members_user_id": true,
+      "club_members_status": true,
+      "tenant_members_role_code": true,
+      "profiles_role": true,
+      "profiles_venue_id": true,
+      "gov_role_code": true,
+      "gov_status": true
+    },
+    "columnsOk": true,
+    "tablesOk": true,
+    "depsOk": true,
+    "rolesPresent": {
+      "tenant_owner_in_tenant_members": true,
+      "tenant_staff_in_tenant_members": true,
+      "venue_owner_profiles": true,
+      "venue_manager_profiles": false,
+      "court_manager_profiles": false
+    },
+    "compatCounts": {
+      "clubs_active": 1,
+      "club_members_active": 34,
+      "gov_owner_active": 1
+    },
+    "dataRewriteRequired": false,
+    "createOrReplaceSafe": true
+  },
+  "audit": {
+    "constraint_name": "audit_logs_action_check",
+    "definition": "CHECK ((action = ANY (ARRAY['approve'::text, 'assign_role'::text, 'audit.view'::text, 'club.assign_owner'::text, 'club.assign_vice_president'::text, 'club.clear_owner'::text, 'club.clear_vice_president'::text, 'club.create'::text, 'club.delete'::text, 'club.leave_membership'::text, 'club.member.add'::text, 'club.member.remove'::text, 'club.member.restore'::text, 'club.membership_request.correction'::text, 'club.membership_request.review'::text, 'club.membership_request.submit'::text, 'club.owner.transfer'::text, 'club.president.transfer'::text, 'club.transfer_president'::text, 'club.update'::text, 'club.vice_president.assign'::text, 'create'::text, 'delete'::text, 'group_override'::text, 'login'::text, 'login_failed'::text, 'logout'::text, 'pairing_override'::text, 'password_change'::text, 'payment_success'::text, 'permission_change'::text, 'rating.propose'::text, 'rating.verify'::text, 'reset_password'::text, 'update'::text, 'user.manage.denied'::text, 'user.manage.status-change'::text, 'workflow.notification'::text])))",
+    "accepts_club_assign_owner": true,
+    "accepts_club_clear_owner": true,
+    "compatible": true
+  },
+  "gateSqlSafety": {
+    "file": "docs/v5/phase1c/PHASE_1C_CLUB_OWNER_ASSIGN_AUTHZ_SECURITY_GATE.sql",
+    "hasCreateOrReplace": true,
+    "hasDelete": false,
+    "hasTruncate": false,
+    "hasDropTable": false,
+    "hasRlsDisable": false,
+    "hasAuditCleanup": false,
+    "usesNarrowHelper": true,
+    "usesBareTenantMemberInActiveBody": false,
+    "optionalClubOwnerEnabled": false,
+    "sqlSafe": true
+  },
+  "rollback": {
+    "file": "docs/v5/phase1c/PHASE_1C_CLUB_OWNER_ASSIGN_AUTHZ_ROLLBACK.sql",
+    "restoresAssign": true,
+    "restoresClear": true,
+    "dropsHelper": true,
+    "restoresBareTenantMember": true,
+    "hasDelete": false,
+    "hasTruncate": false,
+    "hasDropTable": false,
+    "hasAuditCleanup": false,
+    "revertsAppCode": false,
+    "ready": true,
+    "note": "Rollback restores vulnerable broad authz — break-glass only"
+  },
+  "currentExpectedAuthorization": {
+    "SUPER_ADMIN": "ALLOW (phase42_is_platform_super_admin)",
+    "tenant_owner": "ALLOW (tenant_members.role_code=tenant_owner via phase42_is_tenant_member)",
+    "approved_tenant_admin": "ALLOW (VENUE_OWNER/COURT_OWNER/TENANT_OWNER profile via phase42_is_tenant_member)",
+    "tenant_staff": "ALLOW (EXCESSIVE — any active tenant_members including tenant_staff)",
+    "VENUE_MANAGER_profile_fallback": "ALLOW (EXCESSIVE — profiles.role VENUE_MANAGER in phase42_is_tenant_member)",
+    "COURT_MANAGER_profile_fallback": "ALLOW (EXCESSIVE — profiles.role COURT_MANAGER in phase42_is_tenant_member)",
+    "club_owner_without_tenant_admin": "FORBIDDEN unless also tenant_member/manager profile",
+    "president": "FORBIDDEN unless also tenant_member/manager profile",
+    "vice_president": "FORBIDDEN unless also tenant_member/manager profile",
+    "ordinary_player": "FORBIDDEN unless also tenant_member/manager profile",
+    "unrelated_authenticated": "FORBIDDEN",
+    "anonymous": "NOT_AUTHENTICATED"
+  },
+  "excessiveAccessActors": [
+    "tenant_staff",
+    "VENUE_MANAGER (profile fallback)",
+    "COURT_MANAGER (profile fallback)"
+  ],
+  "postGateExpectedAuthorization": {
+    "SUPER_ADMIN": "ALLOW",
+    "tenant_owner": "ALLOW",
+    "approved_tenant_admin": "ALLOW (VENUE_OWNER/COURT_OWNER/TENANT_OWNER + permission)",
+    "tenant_staff": "FORBIDDEN",
+    "VENUE_MANAGER_profile_fallback": "FORBIDDEN",
+    "COURT_MANAGER_profile_fallback": "FORBIDDEN",
+    "club_owner_without_tenant_admin": "FORBIDDEN (optional path disabled)",
+    "president": "FORBIDDEN",
+    "vice_president": "FORBIDDEN",
+    "ordinary_player": "FORBIDDEN",
+    "unrelated_authenticated": "FORBIDDEN",
+    "anonymous": "NOT_AUTHENTICATED"
+  },
+  "uiDbConsistency": {
+    "appServesApprovedSha": true,
+    "uiExpectsNarrowAuthz": true,
+    "dbStillBroad": true,
+    "classification": "UI_NARROW_EXPECTATION_VS_DB_BROAD_AUTHZ"
+  },
+  "applyPlanDoNotExecute": [
+    "1. Capture current Production function definitions (club_assign_owner, club_clear_owner, phase42_can_assign_club_owner if any)",
+    "2. Apply docs/v5/phase1c/PHASE_1C_CLUB_OWNER_ASSIGN_AUTHZ_SECURITY_GATE.sql to Production ONLY after Owner GO",
+    "3. Catalog verification: helper exists; assign/clear use phase42_can_assign_club_owner; no bare phase42_is_tenant_member; optional club_owner path absent; RLS still enabled",
+    "4. Live authorization smoke (ALLOW: SUPER_ADMIN, tenant_owner, approved tenant admin; DENY: tenant_staff, VENUE_MANAGER, COURT_MANAGER, Club Owner alone, President, VP, player, unrelated, anonymous)",
+    "5. Verify VERSION_CONFLICT + MEMBER_REQUIRED + version bump + audit for assign/clear",
+    "6. Confirm app UI consistency (transfer hidden for Club Owner alone; assign/clear succeed for tenant owner/SA)",
+    "7. Roll back with PHASE_1C_CLUB_OWNER_ASSIGN_AUTHZ_ROLLBACK.sql only if allowed actor incorrectly denied or system mutation fails"
+  ],
+  "rolloutVerdict": "READY_WITH_WARNINGS",
+  "warnings": [
+    "SECURITY RISK ACTIVE: Production assign/clear still broad via phase42_is_tenant_member"
+  ],
+  "finishedAt": "2026-07-18T22:24:12.820Z",
+  "definitionFingerprints": {
+    "club_assign_owner_len": 2472,
+    "club_clear_owner_len": 1903,
+    "phase42_is_tenant_member_len": 618,
+    "helper_len": 0,
+    "assign_authz_snippet": "if not (public.phase42_is_platform_super_admin() or public.phase42_is_tenant_member(v_club.tenant_id)) then",
+    "clear_authz_snippet": "if not (public.phase42_is_platform_super_admin() or public.phase42_is_tenant_member(v_club.tenant_id)) then"
+  }
+}
