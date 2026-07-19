@@ -19,6 +19,10 @@ import {
   bootstrapSelfRegisteredPresident,
   finalizeSelfRegisteredClubCloud,
   updateClubGovernance,
+  assignClubOwner,
+  transferClubPresident,
+  assignClubVicePresident,
+  setClubVicePresidents,
 } from "./clubGovernanceService.js";
 import { persistClubToCloud } from "./clubRegistryCloudService.js";
 import { isClubStorageV2Enabled } from "../config/clubRegistryFlags.js";
@@ -29,6 +33,40 @@ import { invalidateAllClubRegistryCache } from "../registry/clubRegistryCache.js
 import { invalidateMyActiveClubMembershipCache } from "./clubActiveMembershipService.js";
 import { API_ERROR_CODES } from "../../api/constants/apiErrors.js";
 import { listPlayersForTenantAware } from "../repositories/canonicalPlayerPickerAdapter.js";
+
+async function applyGovernanceRolePatchV2(clubId, governancePatch, tenantId) {
+  if (governancePatch.ownerUserId !== undefined) {
+    return assignClubOwner(clubId, governancePatch.ownerUserId, tenantId);
+  }
+  if (governancePatch.presidentUserId !== undefined) {
+    const next = governancePatch.presidentUserId;
+    if (!next) {
+      return {
+        ok: false,
+        code: API_ERROR_CODES.VALIDATION_ERROR,
+        error:
+          "Không xóa Chủ tịch trên CLB đang hoạt động — dùng chuyển giao Chủ tịch.",
+        serverCode: "PRESIDENT_CLEAR_VIA_TRANSFER_ONLY",
+      };
+    }
+    return transferClubPresident(clubId, next, tenantId);
+  }
+  if (governancePatch.vicePresidentUserIds !== undefined) {
+    return setClubVicePresidents(
+      clubId,
+      governancePatch.vicePresidentUserIds || [],
+      tenantId
+    );
+  }
+  if (governancePatch.vicePresidentUserId !== undefined) {
+    return assignClubVicePresident(
+      clubId,
+      governancePatch.vicePresidentUserId,
+      tenantId
+    );
+  }
+  return { ok: true };
+}
 
 function invalidateAfterClubCommand(userId = null) {
   invalidateAllClubRegistryCache();
@@ -397,7 +435,8 @@ export async function updateClub(clubId, data = {}, tenantId) {
           governancePatch.ownerUserId = incoming.ownerUserId;
         }
         if (Object.keys(governancePatch).length > 0) {
-          return updateClubGovernance(trimmedId, governancePatch, tenantId);
+          // Phase 2D — route role patches to canonical governance RPCs (never blob).
+          return applyGovernanceRolePatchV2(trimmedId, governancePatch, tenantId);
         }
       }
       const tip = getRegistryClubById(trimmedId) || getClubById(trimmedId, tenantId);

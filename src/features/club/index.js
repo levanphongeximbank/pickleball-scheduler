@@ -48,6 +48,7 @@ export {
   canApproveClubMembershipRequests,
   canManageClubGovernance,
   assignClubOwner,
+  clearClubPresident,
   updateClubGovernance,
   getGovernanceDisplayLabels,
   fetchGovernanceNameHints,
@@ -126,6 +127,18 @@ export {
   joinRequestListMine,
 } from "./api/joinRequestApi.js";
 
+/** Phase 2D — freeze-named governance.* ports */
+export {
+  governanceGet,
+  governanceAssignOwner,
+  governanceClearOwner,
+  governanceAssignPresident,
+  governanceClearPresident,
+  governanceAssignVp,
+  governanceClearVp,
+  governanceTransferOwnership,
+} from "./api/governanceApi.js";
+
 export {
   MEMBERSHIP_AUDIT_EVENTS,
   JOIN_REQUEST_AUDIT_EVENTS,
@@ -133,6 +146,13 @@ export {
   resolveServerMembershipAuditAction,
   resolveFreezeMembershipAuditEvents,
 } from "./constants/membershipAuditEvents.js";
+
+export {
+  GOVERNANCE_AUDIT_EVENTS,
+  SERVER_GOVERNANCE_AUDIT_ALIASES,
+  resolveServerGovernanceAuditAction,
+  resolveFreezeGovernanceAuditEvents,
+} from "./constants/governanceAuditEvents.js";
 
 export {
   CANONICAL_MEMBERSHIP_STATUSES,
@@ -210,11 +230,8 @@ export {
   rpcV2ClubListPendingRequests,
   rpcV2ClubCancelMembershipRequest,
   rpcV2ClubReviewMembershipRequest,
-  rpcV2ClubAssignOwner,
-  rpcV2ClubClearOwner,
-  rpcV2ClubTransferPresident,
-  rpcV2ClubAssignVicePresident,
-  rpcV2ClubClearVicePresident,
+  // Phase 2D — governance RPCs are internal (clubGovernanceService / governanceApi).
+  // Do not re-export raw mutating governance RPCs from the Club barrel.
   rpcV2ClubLeaveMembership,
   rpcV2ClubAddMember,
   rpcV2ClubRemoveMember,

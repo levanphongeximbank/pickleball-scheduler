@@ -73,3 +73,23 @@ export function assertLegacyMembershipRosterWriteAllowed({ operation } = {}) {
     error: `${label} đã nghỉ hưu khi Club Storage V2 bật. Membership SSOT = public.club_members (club_add_member / club_remove_member).`,
   };
 }
+
+/**
+ * Phase 2D — hard-block blob / registry governance role writers under V2.
+ * Owner / president / VP SoT = club_governance_assignments via assign/clear/transfer RPCs.
+ *
+ * @param {{ operation: string }} options
+ * @returns {{ ok: true } | { ok: false, code: string, error: string }}
+ */
+export function assertLegacyGovernanceRoleWriteAllowed({ operation } = {}) {
+  if (!isClubMembershipCloudAuthoritative()) {
+    return { ok: true };
+  }
+
+  const label = String(operation || "legacy governance role write").trim();
+  return {
+    ok: false,
+    code: API_ERROR_CODES.FEATURE_DISABLED,
+    error: `${label} đã nghỉ hưu khi Club Storage V2 bật. Governance SSOT = club_assign_owner / club_clear_owner / club_transfer_president / VP RPCs.`,
+  };
+}

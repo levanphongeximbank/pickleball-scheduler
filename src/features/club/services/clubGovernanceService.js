@@ -35,7 +35,10 @@ import { rpcAdminUpdateUser } from "../../identity/services/identityRpcService.j
 import { fetchProfileByUserId, mapProfileRowToUser } from "../../../auth/profileService.js";
 import { persistClubToCloud } from "./clubRegistryCloudService.js";
 import { rpcClubClaimSelfRegistration } from "./clubRegistryRpcService.js";
-import { assertLegacyClubEntityWriteAllowed } from "./clubLegacyWriteGuard.js";
+import {
+  assertLegacyClubEntityWriteAllowed,
+  assertLegacyGovernanceRoleWriteAllowed,
+} from "./clubLegacyWriteGuard.js";
 import { isClubStorageV2Enabled } from "../config/clubRegistryFlags.js";
 import { mapClubCommandError } from "./clubCommandErrorMap.js";
 import { API_ERROR_CODES } from "../../api/constants/apiErrors.js";
@@ -1077,6 +1080,7 @@ export async function transferClubOwnership(clubId, nextOwnerUserId, tenantId, o
       clubId,
       memberUserId: trimmed,
       expectedClubVersion,
+      requestId: options.requestId || options.idempotencyKey,
     });
     if (!assigned.ok) {
       return mapGovernanceCommandError(
@@ -1086,6 +1090,7 @@ export async function transferClubOwnership(clubId, nextOwnerUserId, tenantId, o
     }
 
     invalidateRegistryAfterGovernanceMutation(user?.id);
+    // Server phase42_write_audit is authoritative under V2; client log is local UX only.
     void writeAuditLog({
       action: "club.owner.transfer",
       resourceType: "club",
@@ -1097,6 +1102,7 @@ export async function transferClubOwnership(clubId, nextOwnerUserId, tenantId, o
         nextOwnerUserId: trimmed,
         provider: "v2-rpc",
         version: assigned.version ?? null,
+        requestId: options.requestId || options.idempotencyKey || null,
       },
     });
 
@@ -1154,7 +1160,12 @@ export async function transferClubOwnership(clubId, nextOwnerUserId, tenantId, o
   return { ok: true, club: getRegistryClubById(clubId) };
 }
 
-export async function transferClubPresident(clubId, nextPresidentUserId, tenantId) {
+export async function transferClubPresident(
+  clubId,
+  nextPresidentUserId,
+  tenantId,
+  options = {}
+) {
   const user = getCurrentUser();
   const club = await resolveClubForGovernance(clubId);
   if (!club) {
@@ -1179,10 +1190,14 @@ export async function transferClubPresident(clubId, nextPresidentUserId, tenantI
     const transferred = await rpcV2ClubTransferPresident({
       clubId,
       nextUserId: trimmed,
-      expectedClubVersion: club.version ?? 1,
+      expectedClubVersion: options.expectedClubVersion ?? club.version ?? 1,
+      requestId: options.requestId || options.idempotencyKey,
     });
     if (!transferred.ok) {
-      return transferred;
+      return mapGovernanceCommandError(
+        transferred,
+        "Không chuyển được Chủ tịch trên cloud."
+      );
     }
     invalidateRegistryAfterGovernanceMutation();
     void writeAuditLog({
@@ -1194,9 +1209,15 @@ export async function transferClubPresident(clubId, nextPresidentUserId, tenantI
       metadata: {
         previousPresidentUserId: currentPresident,
         nextPresidentUserId: trimmed,
+        requestId: options.requestId || options.idempotencyKey || null,
       },
     });
-    return { ok: true, club: transferred.club, provider: "v2-rpc" };
+    return {
+      ok: true,
+      club: transferred.club,
+      version: transferred.version,
+      provider: "v2-rpc",
+    };
   }
 
   const memberCheck = assertClubAthleteUser(clubId, tenantId, trimmed);
@@ -1224,7 +1245,7 @@ export async function transferClubPresident(clubId, nextPresidentUserId, tenantI
   return { ok: true, club: getRegistryClubById(clubId) };
 }
 
-export async function setClubVicePresidents(clubId, userIds = [], tenantId) {
+export async function setClubVicePresidents(clubId, userIds = [], tenantId, options = {}) {
   const user = getCurrentUser();
 
   if (isClubStorageV2Enabled()) {
@@ -1234,7 +1255,11 @@ export async function setClubVicePresidents(clubId, userIds = [], tenantId) {
     }
 
     if (!canManageClubGovernance(user, club)) {
-      return { ok: false, error: "Không có quyền cập nhật quản trị CLB." };
+      return {
+        ok: false,
+        code: API_ERROR_CODES.FORBIDDEN,
+        error: "Không có quyền cập nhật quản trị CLB.",
+      };
     }
 
     const trimmed = [...new Set(userIds.map((id) => String(id || "").trim()).filter(Boolean))].slice(
@@ -1264,8 +1289,9 @@ export async function setClubVicePresidents(clubId, userIds = [], tenantId) {
       return { ok: true, club, skipped: true, provider: "v2-rpc" };
     }
 
-    let version = club.version ?? 1;
+    let version = options.expectedClubVersion ?? club.version ?? 1;
     let nextClub = club;
+    const baseRequestId = options.requestId || options.idempotencyKey || null;
 
     const toRemove = currentIds.filter(
       (id) => !trimmed.some((nextId) => sameUserId(id, nextId))
@@ -1279,9 +1305,10 @@ export async function setClubVicePresidents(clubId, userIds = [], tenantId) {
         clubId,
         expectedClubVersion: version,
         memberUserId: null,
+        requestId: baseRequestId,
       });
       if (!cleared.ok) {
-        return cleared;
+        return mapGovernanceCommandError(cleared, "Không gỡ được Phó chủ tịch trên cloud.");
       }
       nextClub = cleared.club;
     } else {
@@ -1292,7 +1319,7 @@ export async function setClubVicePresidents(clubId, userIds = [], tenantId) {
           memberUserId: removeId,
         });
         if (!cleared.ok) {
-          return cleared;
+          return mapGovernanceCommandError(cleared, "Không gỡ được Phó chủ tịch trên cloud.");
         }
         nextClub = cleared.club;
         version = cleared.version ?? version;
@@ -1303,9 +1330,10 @@ export async function setClubVicePresidents(clubId, userIds = [], tenantId) {
           clubId,
           memberUserId: addId,
           expectedClubVersion: version,
+          requestId: toAdd.length === 1 && toRemove.length === 0 ? baseRequestId : undefined,
         });
         if (!assigned.ok) {
-          return assigned;
+          return mapGovernanceCommandError(assigned, "Không gán được Phó chủ tịch trên cloud.");
         }
         nextClub = assigned.club;
         version = assigned.version ?? version;
@@ -1399,9 +1427,36 @@ export async function setClubVicePresidents(clubId, userIds = [], tenantId) {
   return { ok: true, club: getRegistryClubById(clubId) };
 }
 
-export async function assignClubVicePresident(clubId, nextVicePresidentUserId, tenantId) {
+export async function assignClubVicePresident(
+  clubId,
+  nextVicePresidentUserId,
+  tenantId,
+  options = {}
+) {
   const trimmed = String(nextVicePresidentUserId || "").trim();
-  return setClubVicePresidents(clubId, trimmed ? [trimmed] : [], tenantId);
+  return setClubVicePresidents(clubId, trimmed ? [trimmed] : [], tenantId, options);
+}
+
+/**
+ * Phase 2D — clear president is transfer-only under V2 (no empty president on active clubs).
+ */
+export async function clearClubPresident(clubId, tenantId = null) {
+  if (isClubStorageV2Enabled()) {
+    return {
+      ok: false,
+      code: API_ERROR_CODES.VALIDATION_ERROR,
+      error:
+        "Không xóa Chủ tịch trên CLB đang hoạt động — dùng chuyển giao (governance.assignPresident).",
+      serverCode: "PRESIDENT_CLEAR_VIA_TRANSFER_ONLY",
+    };
+  }
+
+  const club = getRegistryClubById(clubId);
+  if (!club) {
+    return { ok: false, error: "Không tìm thấy CLB." };
+  }
+
+  return updateClubGovernance(clubId, { presidentUserId: null }, tenantId);
 }
 
 export function deleteClubAsOwner(clubId, tenantId) {
@@ -1497,6 +1552,7 @@ export async function assignClubOwner(clubId, ownerUserId, tenantId, options = {
       const cleared = await rpcV2ClubClearOwner({
         clubId,
         expectedClubVersion,
+        requestId: options.requestId || options.idempotencyKey,
       });
       if (!cleared.ok) {
         return mapGovernanceCommandError(cleared, "Không xóa được Chủ sở hữu trên cloud.");
@@ -1509,6 +1565,7 @@ export async function assignClubOwner(clubId, ownerUserId, tenantId, options = {
       clubId,
       memberUserId: trimmed,
       expectedClubVersion,
+      requestId: options.requestId || options.idempotencyKey,
     });
     if (!assigned.ok) {
       return mapGovernanceCommandError(assigned, "Không gán được Chủ sở hữu trên cloud.");
@@ -1626,6 +1683,21 @@ export function getRegisteredCourtsLabels(club, tenantId) {
 }
 
 export function updateClubGovernance(clubId, patch = {}, tenantId = null) {
+  const roleKeysTouched =
+    patch.ownerUserId !== undefined ||
+    patch.presidentUserId !== undefined ||
+    patch.vicePresidentUserId !== undefined ||
+    patch.vicePresidentUserIds !== undefined;
+
+  if (roleKeysTouched) {
+    const legacyGate = assertLegacyGovernanceRoleWriteAllowed({
+      operation: "updateClubGovernance (owner/president/VP)",
+    });
+    if (!legacyGate.ok) {
+      return legacyGate;
+    }
+  }
+
   const club = getRegistryClubById(clubId);
   if (!club) {
     return { ok: false, error: "Không tìm thấy CLB." };
