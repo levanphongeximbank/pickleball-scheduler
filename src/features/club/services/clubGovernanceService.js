@@ -15,6 +15,7 @@ import { guardClubTenant, resolveTenantIdForClub } from "../../tenant/guards/ten
 import { PERMISSIONS } from "../../../auth/permissions.js";
 import { CLUB_STATUSES } from "../constants/clubStatus.js";
 import { hasClubPresident, normalizeClubGovernance, getVicePresidentUserIds, MAX_VICE_PRESIDENTS } from "../models/clubGovernance.js";
+import { toGovernanceReadModel } from "../context/governanceCanonicalReadModel.js";
 import { loadCourtsForVenueScoped } from "../../../domain/courtService.js";
 import { loadClubData, loadPlayersForClub, saveClubData } from "../../../domain/clubStorage.js";
 import { normalizePlayers } from "../../../models/player.js";
@@ -25,7 +26,6 @@ import { getClubMembers, addMemberToClub } from "./clubMemberService.js";
 import { CLUB_MEMBER_STATUSES, normalizeClubMemberStatus } from "../constants/clubMemberRoles.js";
 import {
   findUserIdByPlayerId,
-  loadAthleteClubLink,
   saveAthleteClubLink,
   clearAthleteClubLink,
 } from "../storage/athleteClubLinkStore.js";
@@ -831,62 +831,6 @@ function isPlaceholderGovernanceLabel(label, userId) {
     return false;
   }
   return text === `User ${trimmedId.slice(0, 8)}`;
-}
-
-function resolvePlayerNameForAuthUser(clubId, userId) {
-  const trimmed = String(userId || "").trim();
-  if (!trimmed || !clubId) {
-    return null;
-  }
-
-  const players = loadPlayersForClub(clubId);
-  const byAuth = players.find((item) => sameUserId(item.authUserId, trimmed));
-  if (byAuth?.name) {
-    return String(byAuth.name).trim() || null;
-  }
-
-  const link = loadAthleteClubLink(trimmed);
-  if (link?.playerId) {
-    const player = players.find((item) => item.id === link.playerId);
-    if (player?.name) {
-      return String(player.name).trim() || null;
-    }
-  }
-
-  return null;
-}
-
-function resolveGovernanceUserLabel(userId, clubId, tenantId, nameHints = null) {
-  const trimmed = String(userId || "").trim();
-  if (!trimmed) {
-    return null;
-  }
-
-  const hinted = nameHints?.[trimmed] || nameHints?.[String(trimmed).toLowerCase()];
-  if (hinted && String(hinted).trim()) {
-    return String(hinted).trim();
-  }
-
-  const current = getCurrentUser();
-  if (sameUserId(current?.id, trimmed)) {
-    const selfName = String(current.displayName || current.email || "").trim();
-    if (selfName) {
-      return selfName;
-    }
-  }
-
-  const playerName = resolvePlayerNameForAuthUser(clubId, trimmed);
-  if (playerName) {
-    return playerName;
-  }
-
-  const candidates = listClubGovernanceCandidates(clubId, tenantId);
-  const matched = candidates.find((item) => sameUserId(item.userId, trimmed));
-  if (matched?.displayName && !isPlaceholderGovernanceLabel(matched.displayName, trimmed)) {
-    return matched.displayName;
-  }
-
-  return `User ${trimmed.slice(0, 8)}`;
 }
 
 /**
@@ -1873,70 +1817,30 @@ export function updateClubGovernance(clubId, patch = {}, tenantId = null) {
   return result;
 }
 
-function resolvePreferredGovernanceLabel(userId, club, clubId, tenantId, nameHints, cloudLabel) {
-  const trimmedCloud = String(cloudLabel || "").trim();
-  if (trimmedCloud && !isPlaceholderGovernanceLabel(trimmedCloud, userId)) {
-    return trimmedCloud;
-  }
-  return resolveGovernanceUserLabel(userId, clubId, tenantId, nameHints);
-}
-
+/**
+ * Display labels for Owner / President / VP.
+ * Phase 2E: single canonical read-model → consistent VN labels across Club UI.
+ * Under V2, legacy blob player names are not used as authority or silent promotion.
+ */
 export function getGovernanceDisplayLabels(club, tenantId = null, nameHints = null) {
-  const gov = club?.governance || {};
-  const clubId = club?.id || null;
   const effectiveTenantId = tenantId || club?.tenantId || club?.venueId || null;
-
-  const ownerLabel = gov.ownerUserId
-    ? resolvePreferredGovernanceLabel(
-        gov.ownerUserId,
-        club,
-        clubId,
-        effectiveTenantId,
-        nameHints,
-        club?.ownerLabel
-      )
-    : "Chưa gán";
-  const presidentLabel = gov.presidentUserId
-    ? resolvePreferredGovernanceLabel(
-        gov.presidentUserId,
-        club,
-        clubId,
-        effectiveTenantId,
-        nameHints,
-        club?.presidentLabel
-      )
-    : "Chưa gán";
-  const viceIds = getVicePresidentUserIds(gov);
-  const viceLabels = viceIds.map((id) =>
-    resolveGovernanceUserLabel(id, clubId, effectiveTenantId, nameHints)
-  );
-  const viceLabel = viceLabels.length ? viceLabels.join(", ") : "—";
-
-  if (
-    gov.ownerUserId &&
-    gov.presidentUserId &&
-    sameUserId(gov.ownerUserId, gov.presidentUserId)
-  ) {
-    const combinedBase =
-      (!isPlaceholderGovernanceLabel(presidentLabel, gov.presidentUserId) && presidentLabel) ||
-      (!isPlaceholderGovernanceLabel(ownerLabel, gov.ownerUserId) && ownerLabel) ||
-      presidentLabel;
-    return {
-      ownerLabel: `${combinedBase} (Chủ sở hữu & Chủ tịch)`,
-      presidentLabel: null,
-      vicePresidentLabel: viceLabel,
-      vicePresidentLabels: viceLabels,
-      combinedOwnerPresident: true,
-    };
+  const profileByUserId = {};
+  if (nameHints && typeof nameHints === "object") {
+    for (const [userId, name] of Object.entries(nameHints)) {
+      profileByUserId[userId] = { displayName: name, avatarUrl: null, clubId: null };
+    }
   }
 
-  return {
-    ownerLabel,
-    presidentLabel,
-    vicePresidentLabel: viceLabel,
-    vicePresidentLabels: viceLabels,
-    combinedOwnerPresident: false,
-  };
+  // Phase 2E: single canonical read-model → display labels for all Club UI surfaces.
+  const readModel = toGovernanceReadModel({
+    club: club
+      ? { ...club, tenantId: club.tenantId || club.venueId || effectiveTenantId }
+      : null,
+    profileByUserId,
+    v2Enabled: isClubStorageV2Enabled(),
+    legacyBlobRoles: null,
+  });
+  return readModel.labels;
 }
 
 /** Lấy display_name từ profiles (Super Admin / venue staff / chính mình) để hiển thị Chủ tịch / Chủ sở hữu. */

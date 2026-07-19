@@ -26,8 +26,6 @@ import {
   canAssignClubOwner,
   canChangeClubPresident,
   canManageClubGovernance,
-  fetchGovernanceNameHints,
-  getGovernanceDisplayLabels,
   getRegisteredClusterLabel,
   getVicePresidentUserIds,
   listClubGovernanceCandidatesAsync,
@@ -36,6 +34,12 @@ import {
   setClubVicePresidents,
   transferClubPresident,
 } from "../../features/club/index.js";
+import { useGovernanceReadModel } from "../../features/club/hooks/useGovernanceReadModel.js";
+import {
+  GOVERNANCE_NO_VP_LABEL,
+  GOVERNANCE_READ_STATE,
+  GOVERNANCE_UNASSIGNED_LABEL,
+} from "../../features/club/context/governanceCanonicalReadModel.js";
 
 function mapGovernanceError(result) {
   const serverCode = String(result?.serverCode || "").trim();
@@ -52,7 +56,6 @@ export default function ClubGovernancePanel({ club, tenantId, onRefresh }) {
   const { user } = useAuth();
   const [editOpen, setEditOpen] = useState(false);
   const [error, setError] = useState(null);
-  const [nameHints, setNameHints] = useState({});
   const [candidates, setCandidates] = useState([]);
   const [busy, setBusy] = useState(false);
   const [form, setForm] = useState({
@@ -61,32 +64,23 @@ export default function ClubGovernancePanel({ club, tenantId, onRefresh }) {
     ownerUserId: "",
     registeredClusterId: "",
   });
+  const [localRevision, setLocalRevision] = useState(0);
 
-  useEffect(() => {
-    let cancelled = false;
-    const gov = club?.governance || {};
-    const ids = [
-      gov.presidentUserId,
-      gov.ownerUserId,
-      ...getVicePresidentUserIds(gov),
-    ].filter(Boolean);
-
-    void fetchGovernanceNameHints(ids).then((hints) => {
-      if (!cancelled) {
-        setNameHints(hints);
-      }
-    });
-
-    return () => {
-      cancelled = true;
-    };
-  }, [
-    club?.id,
-    club?.governance?.presidentUserId,
-    club?.governance?.ownerUserId,
-    club?.governance?.vicePresidentUserId,
-    club?.governance?.vicePresidentUserIds,
-  ]);
+  // Phase 2E — management screen consumes canonical governance read model.
+  const governanceRead = useGovernanceReadModel({
+    clubId: club?.id,
+    clubSeed: club,
+    revision: localRevision,
+    hydrateProfiles: true,
+    enabled: Boolean(club?.id),
+  });
+  const labels = governanceRead.labels || {
+    ownerLabel: GOVERNANCE_UNASSIGNED_LABEL,
+    presidentLabel: GOVERNANCE_UNASSIGNED_LABEL,
+    vicePresidentLabel: GOVERNANCE_NO_VP_LABEL,
+    vicePresidentLabels: [],
+    combinedOwnerPresident: false,
+  };
 
   useEffect(() => {
     let cancelled = false;
@@ -100,10 +94,11 @@ export default function ClubGovernancePanel({ club, tenantId, onRefresh }) {
     };
   }, [club.id, tenantId, club?.governance?.presidentUserId, club?.governance?.vicePresidentUserIds]);
 
-  const labels = useMemo(
-    () => getGovernanceDisplayLabels(club, tenantId, nameHints),
-    [club, tenantId, nameHints]
-  );
+  const refreshAll = () => {
+    setLocalRevision((n) => n + 1);
+    void governanceRead.reload();
+    onRefresh?.();
+  };
   const registeredCluster = useMemo(
     () => getRegisteredClusterLabel(club, tenantId),
     [club, tenantId]
@@ -151,10 +146,15 @@ export default function ClubGovernancePanel({ club, tenantId, onRefresh }) {
     }
 
     if (canChangePresident && nextPresident !== currentPresident) {
-      const presResult = await transferClubPresident(club.id, nextPresident, tenantId);
+      const presResult = await transferClubPresident(club.id, nextPresident, tenantId, {
+        expectedClubVersion: club.version ?? governanceRead.version ?? null,
+      });
       if (!presResult.ok) {
         setBusy(false);
         setError(mapGovernanceError(presResult));
+        if (String(presResult.serverCode || "").trim() === "VERSION_CONFLICT") {
+          refreshAll();
+        }
         return;
       }
     }
@@ -164,11 +164,13 @@ export default function ClubGovernancePanel({ club, tenantId, onRefresh }) {
       currentViceIds.some((id, index) => String(id) !== String(nextViceIds[index] || ""));
 
     if (viceChanged) {
-      const viceResult = await setClubVicePresidents(club.id, nextViceIds, tenantId);
+      const viceResult = await setClubVicePresidents(club.id, nextViceIds, tenantId, {
+        expectedClubVersion: club.version ?? governanceRead.version ?? null,
+      });
       if (!viceResult.ok) {
         setBusy(false);
         setError(mapGovernanceError(viceResult));
-        onRefresh?.();
+        refreshAll();
         return;
       }
     }
@@ -191,19 +193,19 @@ export default function ClubGovernancePanel({ club, tenantId, onRefresh }) {
         club.id,
         form.ownerUserId.trim() || null,
         tenantId,
-        { expectedClubVersion: club.version ?? null }
+        { expectedClubVersion: club.version ?? governanceRead.version ?? null }
       );
       if (!ownerResult.ok) {
         setBusy(false);
         setError(mapGovernanceError(ownerResult));
-        onRefresh?.();
+        refreshAll();
         return;
       }
     }
 
     setBusy(false);
     setEditOpen(false);
-    onRefresh?.();
+    refreshAll();
   };
 
   return (
@@ -219,6 +221,25 @@ export default function ClubGovernancePanel({ club, tenantId, onRefresh }) {
         )}
       </Stack>
 
+      {governanceRead.state === GOVERNANCE_READ_STATE.LOADING && !governanceRead.labels && (
+        <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
+          Đang tải thông tin quản trị…
+        </Typography>
+      )}
+      {governanceRead.error && (
+        <Alert
+          severity="error"
+          sx={{ mb: 1 }}
+          action={
+            <Button color="inherit" size="small" onClick={() => void governanceRead.reload()}>
+              Thử lại
+            </Button>
+          }
+        >
+          {governanceRead.errorMessage || "Không tải được quản trị CLB."}
+        </Alert>
+      )}
+
       <Stack spacing={0.5}>
         <Typography variant="body2">
           <strong>Chủ sở hữu:</strong>{" "}
@@ -231,12 +252,13 @@ export default function ClubGovernancePanel({ club, tenantId, onRefresh }) {
         )}
         {[0, 1].map((index) => (
           <Typography key={index} variant="body2">
-            <strong>Phó chủ tịch {index + 1}:</strong> {viceLabels[index] || "—"}
+            <strong>Phó chủ tịch {index + 1}:</strong>{" "}
+            {viceLabels[index] || GOVERNANCE_NO_VP_LABEL}
           </Typography>
         ))}
-        {club.version != null && (
+        {(governanceRead.version ?? club.version) != null && (
           <Typography variant="caption" color="text.secondary">
-            Phiên bản CLB: {club.version}
+            Phiên bản CLB: {governanceRead.version ?? club.version}
           </Typography>
         )}
         <Box sx={{ mt: 1 }}>
