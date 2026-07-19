@@ -9,17 +9,31 @@ import {
   isCompetitionRosterMemberStatus,
   isCompetitionLineupStatus,
   isCompetitionTeamStatus,
+  isCompetitionEntryType,
   ACTIVE_ENTRY_STATUSES,
+  isActiveCompetitionEntryStatus,
+  isTerminalCompetitionEntryStatus,
   COMPETITION_REGISTRATION_STATUS,
   COMPETITION_ROSTER_STATUS,
   COMPETITION_LINEUP_STATUS,
   COMPETITION_ENTRY_STATUS,
+  COMPETITION_ENTRY_TYPE,
 } from "../enums/index.js";
 import {
   isNonEmptyString,
   isSchemaVersionV1,
   isJsonSafe,
 } from "../contracts/shared.js";
+import {
+  buildEntryIdentityKey,
+  buildStableEntrySourceIdentity,
+  memberReferenceToken,
+} from "../contracts/entryIdentity.js";
+import { isValidCompetitionTeamReference } from "../contracts/teamReference.js";
+import {
+  compareEntryTenantScopes,
+  createEntryTenantScope,
+} from "../contracts/tenantScope.js";
 import {
   validationError,
   validationFail,
@@ -130,7 +144,15 @@ export function validateCompetitionParticipant(input) {
 
 /**
  * @param {unknown} input
- * @param {{ requireDivisionId?: boolean, requireCategoryId?: boolean, requireEntryRole?: boolean }} [context]
+ * @param {{
+ *   requireDivisionId?: boolean,
+ *   requireCategoryId?: boolean,
+ *   requireEntryRole?: boolean,
+ *   requireEntryType?: boolean,
+ *   expectedCompetitionId?: string|null,
+ *   expectedTenantScope?: import('../contracts/tenantScope.js').EntryTenantScope|null,
+ *   requireTenantScope?: boolean,
+ * }} [context]
  * @returns {import('../results/validationResult.js').ParticipantValidationResult}
  */
 export function validateCompetitionEntry(input, context = {}) {
@@ -167,7 +189,40 @@ export function validateCompetitionEntry(input, context = {}) {
     PARTICIPANT_ERROR_CODE.INVALID_STATUS,
     "Invalid CompetitionEntry.status"
   );
-  if (!Array.isArray(input.memberRefs) || input.memberRefs.length < 1) {
+
+  const entryType =
+    input.entryType != null && String(input.entryType).trim() !== ""
+      ? String(input.entryType).trim()
+      : null;
+
+  if (context.requireEntryType === true && !entryType) {
+    errors.push(
+      validationError(
+        PARTICIPANT_ERROR_CODE.INVALID_ENTRY_TYPE,
+        "entryType",
+        "CompetitionEntry.entryType is required by policy context"
+      )
+    );
+  }
+
+  if (entryType != null) {
+    if (!isCompetitionEntryType(entryType)) {
+      errors.push(
+        validationError(
+          PARTICIPANT_ERROR_CODE.INVALID_ENTRY_TYPE,
+          "entryType",
+          "CompetitionEntry.entryType must be COMPETITION_ENTRY_TYPE",
+          { value: entryType }
+        )
+      );
+    } else {
+      const structure = validateCompetitionEntryTypeStructure(input);
+      if (!structure.valid) {
+        errors.push(...structure.errors);
+      }
+    }
+  } else if (!Array.isArray(input.memberRefs) || input.memberRefs.length < 1) {
+    // Legacy path (pre–Core-02): entries without entryType still require ≥1 memberRef.
     errors.push(
       validationError(
         PARTICIPANT_ERROR_CODE.REQUIRED,
@@ -185,6 +240,63 @@ export function validateCompetitionEntry(input, context = {}) {
       }
     });
   }
+
+  if (input.representativeRef != null) {
+    const rep = validateParticipantReference(input.representativeRef);
+    if (!rep.valid) {
+      errors.push(
+        validationError(
+          PARTICIPANT_ERROR_CODE.INVALID_REPRESENTATIVE_REF,
+          "representativeRef",
+          "representativeRef must be a valid ParticipantReference"
+        )
+      );
+      for (const err of rep.errors) {
+        errors.push({
+          ...err,
+          path: `representativeRef.${err.path}`.replace(/\.$/, ""),
+        });
+      }
+    }
+  }
+
+  if (isNonEmptyString(context.expectedCompetitionId)) {
+    if (
+      isNonEmptyString(input.competitionId) &&
+      String(input.competitionId).trim() !== String(context.expectedCompetitionId).trim()
+    ) {
+      errors.push(
+        validationError(
+          PARTICIPANT_ERROR_CODE.COMPETITION_SCOPE_CONFLICT,
+          "competitionId",
+          "Entry competitionId conflicts with expected competition scope",
+          {
+            expected: context.expectedCompetitionId,
+            actual: input.competitionId,
+          }
+        )
+      );
+    }
+  }
+
+  const tenantCheck = validateEntryTenantIsolation(input, {
+    expectedTenantScope: context.expectedTenantScope,
+    requireTenantScope: context.requireTenantScope === true,
+  });
+  if (!tenantCheck.valid) {
+    errors.push(...tenantCheck.errors);
+  }
+
+  if (entryType && isCompetitionEntryType(entryType) && isNonEmptyString(input.competitionId)) {
+    const identityCheck = validateCompetitionEntryIdentityConsistency(input);
+    if (!identityCheck.valid) {
+      errors.push(...identityCheck.errors);
+    }
+  }
+
+  // Metadata / extensions must not be treated as authority for type/tenant/eligibility.
+  assertMetadataIsNotAuthority(input, errors);
+
   if (context.requireDivisionId) {
     requireNonEmptyString(input.divisionId, "divisionId", errors);
   }
@@ -195,6 +307,396 @@ export function validateCompetitionEntry(input, context = {}) {
     requireNonEmptyString(input.entryRole, "entryRole", errors);
   }
   return errors.length ? validationFail(errors) : validationOk();
+}
+
+/**
+ * Structural invariants for COMPETITION_ENTRY_TYPE (Core-02).
+ * @param {unknown} input
+ * @returns {import('../results/validationResult.js').ParticipantValidationResult}
+ */
+export function validateCompetitionEntryTypeStructure(input) {
+  const errors = [];
+  if (!input || typeof input !== "object") {
+    return validationFail([
+      validationError(PARTICIPANT_ERROR_CODE.INVALID_TYPE, "", "CompetitionEntry must be an object"),
+    ]);
+  }
+
+  const entryType = String(input.entryType || "").trim();
+  if (!isCompetitionEntryType(entryType)) {
+    return validationFail([
+      validationError(
+        PARTICIPANT_ERROR_CODE.INVALID_ENTRY_TYPE,
+        "entryType",
+        "Invalid COMPETITION_ENTRY_TYPE"
+      ),
+    ]);
+  }
+
+  const memberRefs = Array.isArray(input.memberRefs) ? input.memberRefs : [];
+  const teamRef = input.teamRef;
+
+  for (let index = 0; index < memberRefs.length; index += 1) {
+    const result = validateParticipantReference(memberRefs[index]);
+    if (!result.valid) {
+      for (const err of result.errors) {
+        errors.push({ ...err, path: `memberRefs[${index}].${err.path}`.replace(/\.$/, "") });
+      }
+    }
+  }
+
+  if (entryType === COMPETITION_ENTRY_TYPE.INDIVIDUAL) {
+    if (teamRef != null && isValidCompetitionTeamReference(teamRef)) {
+      errors.push(
+        validationError(
+          PARTICIPANT_ERROR_CODE.ENTRY_TYPE_STRUCTURE_CONFLICT,
+          "teamRef",
+          "INDIVIDUAL entry cannot carry a teamRef"
+        )
+      );
+    }
+    if (memberRefs.length !== 1) {
+      errors.push(
+        validationError(
+          PARTICIPANT_ERROR_CODE.ENTRY_TYPE_MEMBERSHIP,
+          "memberRefs",
+          "INDIVIDUAL entry requires exactly one memberRef",
+          { count: memberRefs.length }
+        )
+      );
+    }
+  } else if (entryType === COMPETITION_ENTRY_TYPE.PAIR) {
+    if (teamRef != null && isValidCompetitionTeamReference(teamRef)) {
+      errors.push(
+        validationError(
+          PARTICIPANT_ERROR_CODE.ENTRY_TYPE_STRUCTURE_CONFLICT,
+          "teamRef",
+          "PAIR entry cannot carry a teamRef"
+        )
+      );
+    }
+    if (memberRefs.length !== 2) {
+      errors.push(
+        validationError(
+          PARTICIPANT_ERROR_CODE.ENTRY_TYPE_MEMBERSHIP,
+          "memberRefs",
+          "PAIR entry requires exactly two memberRefs",
+          { count: memberRefs.length }
+        )
+      );
+    } else {
+      const a = memberReferenceToken(memberRefs[0]);
+      const b = memberReferenceToken(memberRefs[1]);
+      if (!a || !b) {
+        errors.push(
+          validationError(
+            PARTICIPANT_ERROR_CODE.ENTRY_TYPE_MEMBERSHIP,
+            "memberRefs",
+            "PAIR members must be valid ParticipantReferences"
+          )
+        );
+      } else if (a === b) {
+        errors.push(
+          validationError(
+            PARTICIPANT_ERROR_CODE.ENTRY_TYPE_MEMBERSHIP,
+            "memberRefs",
+            "PAIR members must be distinct"
+          )
+        );
+      }
+    }
+  } else if (entryType === COMPETITION_ENTRY_TYPE.TEAM) {
+    if (!isValidCompetitionTeamReference(teamRef)) {
+      errors.push(
+        validationError(
+          PARTICIPANT_ERROR_CODE.INVALID_TEAM_REF,
+          "teamRef",
+          "TEAM entry requires a valid teamRef"
+        )
+      );
+    }
+    // Optional bridge: memberRefs may be empty. Conflicting INDIVIDUAL/PAIR-only
+    // structure without teamRef is already rejected above. Reject TEAM that also
+    // claims pair/individual competing-unit shape via missing teamRef only.
+    if (
+      !isValidCompetitionTeamReference(teamRef) &&
+      (memberRefs.length === 1 || memberRefs.length === 2)
+    ) {
+      errors.push(
+        validationError(
+          PARTICIPANT_ERROR_CODE.ENTRY_TYPE_STRUCTURE_CONFLICT,
+          "entryType",
+          "TEAM entry cannot use individual/pair membership as a substitute for teamRef"
+        )
+      );
+    }
+    if (teamRef && isNonEmptyString(teamRef.competitionId) && isNonEmptyString(input.competitionId)) {
+      if (String(teamRef.competitionId).trim() !== String(input.competitionId).trim()) {
+        errors.push(
+          validationError(
+            PARTICIPANT_ERROR_CODE.COMPETITION_SCOPE_CONFLICT,
+            "teamRef.competitionId",
+            "teamRef.competitionId conflicts with entry.competitionId"
+          )
+        );
+      }
+    }
+  }
+
+  return errors.length ? validationFail(errors) : validationOk();
+}
+
+/**
+ * @param {unknown} input
+ * @returns {import('../results/validationResult.js').ParticipantValidationResult}
+ */
+export function validateCompetitionEntryIdentityConsistency(input) {
+  if (!input || typeof input !== "object") {
+    return validationFail([
+      validationError(PARTICIPANT_ERROR_CODE.INVALID_TYPE, "", "CompetitionEntry must be an object"),
+    ]);
+  }
+  if (!isCompetitionEntryType(input.entryType) || !isNonEmptyString(input.competitionId)) {
+    return validationOk();
+  }
+
+  const expectedStable = buildStableEntrySourceIdentity({
+    entryType: input.entryType,
+    memberRefs: input.memberRefs,
+    teamRef: input.teamRef,
+  });
+  if (!isNonEmptyString(expectedStable)) {
+    return validationFail([
+      validationError(
+        PARTICIPANT_ERROR_CODE.ENTRY_IDENTITY_INVALID,
+        "identityKey",
+        "Cannot derive stableSourceIdentity for entry"
+      ),
+    ]);
+  }
+
+  const expectedKey = buildEntryIdentityKey({
+    competitionId: input.competitionId,
+    entryType: input.entryType,
+    stableSourceIdentity: expectedStable,
+    memberRefs: input.memberRefs,
+    teamRef: input.teamRef,
+  });
+
+  if (isNonEmptyString(input.identityKey) && String(input.identityKey).trim() !== expectedKey) {
+    return validationFail([
+      validationError(
+        PARTICIPANT_ERROR_CODE.ENTRY_IDENTITY_MISMATCH,
+        "identityKey",
+        "identityKey does not match deterministic construction",
+        { expected: expectedKey, actual: input.identityKey }
+      ),
+    ]);
+  }
+
+  return validationOk();
+}
+
+/**
+ * @param {unknown} input
+ * @param {{
+ *   expectedTenantScope?: import('../contracts/tenantScope.js').EntryTenantScope|null,
+ *   requireTenantScope?: boolean,
+ * }} [context]
+ * @returns {import('../results/validationResult.js').ParticipantValidationResult}
+ */
+export function validateEntryTenantIsolation(input, context = {}) {
+  const errors = [];
+  if (!input || typeof input !== "object") {
+    return validationFail([
+      validationError(PARTICIPANT_ERROR_CODE.INVALID_TYPE, "", "CompetitionEntry must be an object"),
+    ]);
+  }
+
+  const entryScope = createEntryTenantScope(input.tenantScope);
+  const expected = createEntryTenantScope(context.expectedTenantScope);
+
+  if (context.requireTenantScope === true && !entryScope) {
+    errors.push(
+      validationError(
+        PARTICIPANT_ERROR_CODE.TENANT_SCOPE_MISSING,
+        "tenantScope",
+        "tenantScope is required; missing scope must not fall back to a default tenant"
+      )
+    );
+  }
+
+  if (entryScope && expected) {
+    const cmp = compareEntryTenantScopes(entryScope, expected);
+    if (cmp.conflict) {
+      errors.push(
+        validationError(
+          PARTICIPANT_ERROR_CODE.TENANT_SCOPE_CONFLICT,
+          `tenantScope.${cmp.field}`,
+          "Cross-tenant entry reference rejected",
+          cmp
+        )
+      );
+    }
+  }
+
+  return errors.length ? validationFail(errors) : validationOk();
+}
+
+/**
+ * @param {unknown} input
+ * @param {import('../results/validationResult.js').ParticipantValidationIssue[]} errors
+ */
+function assertMetadataIsNotAuthority(input, errors) {
+  if (!input || typeof input !== "object") return;
+  const meta = input.metadata;
+  if (!meta || typeof meta !== "object" || Array.isArray(meta)) return;
+
+  const forbiddenAuthorityKeys = [
+    "entryType",
+    "tenantId",
+    "clubId",
+    "organizationId",
+    "eligible",
+    "eligibility",
+    "authorized",
+    "authorization",
+    "identityKey",
+  ];
+  for (const key of forbiddenAuthorityKeys) {
+    if (Object.prototype.hasOwnProperty.call(meta, key) && meta[key] != null) {
+      // Soft structural signal: metadata may *carry* copies for diagnostics, but
+      // must not be the sole controller — emit typed code when metadata claims
+      // authority fields while canonical fields disagree or are missing.
+      const canonical =
+        key === "entryType"
+          ? input.entryType
+          : key === "identityKey"
+            ? input.identityKey
+            : input.tenantScope?.[key === "tenantId" || key === "clubId" || key === "organizationId" ? key : ""];
+
+      if (
+        (key === "entryType" || key === "identityKey") &&
+        meta[key] != null &&
+        (canonical == null || String(canonical) === "") &&
+        String(meta[key]) !== ""
+      ) {
+        errors.push(
+          validationError(
+            PARTICIPANT_ERROR_CODE.METADATA_NOT_AUTHORITY,
+            `metadata.${key}`,
+            "Metadata cannot control entry type, tenant ownership, eligibility or identity"
+          )
+        );
+      }
+      if (
+        (key === "tenantId" || key === "clubId" || key === "organizationId") &&
+        meta[key] != null &&
+        (!input.tenantScope || input.tenantScope[key] == null || input.tenantScope[key] === "")
+      ) {
+        errors.push(
+          validationError(
+            PARTICIPANT_ERROR_CODE.METADATA_NOT_AUTHORITY,
+            `metadata.${key}`,
+            "Metadata cannot control tenant ownership"
+          )
+        );
+      }
+      if (
+        (key === "eligible" ||
+          key === "eligibility" ||
+          key === "authorized" ||
+          key === "authorization") &&
+        meta[key] != null
+      ) {
+        errors.push(
+          validationError(
+            PARTICIPANT_ERROR_CODE.METADATA_NOT_AUTHORITY,
+            `metadata.${key}`,
+            "Metadata cannot control authorization or eligibility"
+          )
+        );
+      }
+    }
+  }
+}
+
+/**
+ * OD-02 + Core-02: detect duplicate active entries by identityKey when present.
+ * Terminal statuses are ignored. Pure lookup — no Production persistence.
+ *
+ * @param {unknown[]} entries
+ * @param {{ allowDuplicateIdentity?: boolean }} [policy]
+ * @returns {import('../results/validationResult.js').ParticipantValidationResult}
+ */
+export function detectDuplicateActiveEntryIdentities(entries, policy = {}) {
+  if (policy.allowDuplicateIdentity === true) {
+    return validationOk();
+  }
+  if (!Array.isArray(entries)) {
+    return validationFail([
+      validationError(PARTICIPANT_ERROR_CODE.INVALID_TYPE, "", "entries must be an array"),
+    ]);
+  }
+  const errors = [];
+  /** @type {Map<string, string>} */
+  const seen = new Map();
+  for (const entry of entries) {
+    if (!entry || typeof entry !== "object") continue;
+    if (!isActiveCompetitionEntryStatus(entry.status)) continue;
+    if (isTerminalCompetitionEntryStatus(entry.status)) continue;
+    const key = isNonEmptyString(entry.identityKey)
+      ? String(entry.identityKey).trim()
+      : null;
+    if (!key) continue;
+    if (seen.has(key)) {
+      errors.push(
+        validationError(
+          PARTICIPANT_ERROR_CODE.DUPLICATE_ACTIVE_ENTRY_IDENTITY,
+          "identityKey",
+          "Duplicate active entry identityKey",
+          {
+            identityKey: key,
+            existingEntryId: seen.get(key),
+            duplicateEntryId: entry.id,
+          }
+        )
+      );
+    } else {
+      seen.set(key, String(entry.id || ""));
+    }
+  }
+  return errors.length ? validationFail(errors) : validationOk();
+}
+
+/**
+ * In-memory active-entry identity registry for tests / shadow callers.
+ * @returns {{
+ *   list: () => unknown[],
+ *   register: (entry: unknown) => import('../results/validationResult.js').ParticipantValidationResult,
+ *   detectDuplicates: () => import('../results/validationResult.js').ParticipantValidationResult,
+ * }}
+ */
+export function createInMemoryActiveEntryIdentityRegistry() {
+  /** @type {unknown[]} */
+  const store = [];
+  return {
+    list() {
+      return [...store];
+    },
+    register(entry) {
+      const next = [...store, entry];
+      const result = detectDuplicateActiveEntryIdentities(next);
+      if (!result.valid) {
+        return result;
+      }
+      store.push(entry);
+      return validationOk();
+    },
+    detectDuplicates() {
+      return detectDuplicateActiveEntryIdentities(store);
+    },
+  };
 }
 
 /**

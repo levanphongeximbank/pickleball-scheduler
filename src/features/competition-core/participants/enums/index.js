@@ -5,6 +5,12 @@ export {
 } from "./identityKinds.js";
 
 export {
+  COMPETITION_ENTRY_TYPE,
+  COMPETITION_ENTRY_TYPE_VALUES,
+  isCompetitionEntryType,
+} from "./entryTypes.js";
+
+export {
   COMPETITION_PARTICIPANT_STATUS,
   COMPETITION_PARTICIPANT_STATUS_VALUES,
   isCompetitionParticipantStatus,
@@ -15,6 +21,9 @@ export {
   COMPETITION_ENTRY_STATUS_VALUES,
   isCompetitionEntryStatus,
   ACTIVE_ENTRY_STATUSES,
+  TERMINAL_ENTRY_STATUSES,
+  isActiveCompetitionEntryStatus,
+  isTerminalCompetitionEntryStatus,
   ELIGIBILITY_DECISION_STATUS,
   ELIGIBILITY_DECISION_STATUS_VALUES,
   isEligibilityDecisionStatus,
