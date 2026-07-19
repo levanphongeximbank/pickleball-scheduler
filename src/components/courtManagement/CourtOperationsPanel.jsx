@@ -19,6 +19,7 @@ import {
   getTodayUpcomingBookings,
 } from "../../domain/courtBookingEngine.js";
 import { formatTimeRange, todayIsoDate } from "../../pages/courtManagement/courtManagement.constants.js";
+import { resolveVenueTimezoneForClub } from "../../domain/civilTime.js";
 
 function MiniStat({ label, value }) {
   return (
@@ -34,17 +35,29 @@ function MiniStat({ label, value }) {
 }
 
 export default function CourtOperationsPanel({ clubId, revision = 0 }) {
-  const today = todayIsoDate();
+  const tz = resolveVenueTimezoneForClub(clubId);
+  const today = tz.ok
+    ? todayIsoDate({ timezone: tz.timezone })
+    : todayIsoDate({ allowBrowserLocal: true });
   const now = useMemo(() => new Date(), [revision, today]);
 
   const { summary, debtSummary, upcoming } = useMemo(() => {
     const bookings = loadBookingsForClub(clubId);
+    if (!tz.ok) {
+      return {
+        summary: computeDailyRevenue(bookings, today),
+        debtSummary: { totalDebt: 0, bookingCount: 0 },
+        upcoming: [],
+      };
+    }
     return {
       summary: computeDailyRevenue(bookings, today),
-      debtSummary: computeDebtSummary(bookings),
-      upcoming: getTodayUpcomingBookings(bookings, today, now),
+      debtSummary: computeDebtSummary(bookings, { today }),
+      upcoming: getTodayUpcomingBookings(bookings, today, now, {
+        timezone: tz.timezone,
+      }),
     };
-  }, [clubId, revision, today, now]);
+  }, [clubId, revision, today, now, tz.ok, tz.timezone]);
 
   return (
     <Card variant="outlined">

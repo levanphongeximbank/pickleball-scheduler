@@ -4,6 +4,22 @@ import {
   timeToMinutes,
 } from "../domain/courtBookingEngine.js";
 import { todayIsoDate } from "../pages/courtManagement/courtManagement.constants.js";
+import {
+  civilDateTimeToUtcMs,
+  civilTimeToMinutes,
+  resolveVenueTimezoneForClub,
+} from "../domain/civilTime.js";
+
+function resolveOpsTimezone(options = {}) {
+  if (options.timezone) {
+    return String(options.timezone).trim();
+  }
+  if (options.clubId) {
+    const tz = resolveVenueTimezoneForClub(options.clubId, options);
+    if (tz.ok) return tz.timezone;
+  }
+  return null;
+}
 
 export function getCourtOperationalStatus(court, currentBooking) {
   if (court?.status === "maintenance") {
@@ -75,8 +91,20 @@ export function getCourtStatusMeta(status) {
   return map[status] || map.empty;
 }
 
-export function computeCourtDashboardStats(courts = [], bookings = [], now = new Date()) {
-  const today = todayIsoDate();
+export function computeCourtDashboardStats(courts = [], bookings = [], now = new Date(), options = {}) {
+  const timezone = resolveOpsTimezone(options);
+  if (!timezone) {
+    return {
+      empty: 0,
+      playing: 0,
+      maintenance: 0,
+      pending: 0,
+      activeMatches: 0,
+      error: "TIMEZONE_REQUIRED",
+    };
+  }
+  const today = options.date || todayIsoDate({ timezone, now });
+  const tzOpts = { timezone };
   let empty = 0;
   let playing = 0;
   let maintenance = 0;
@@ -84,7 +112,7 @@ export function computeCourtDashboardStats(courts = [], bookings = [], now = new
   let activeMatches = 0;
 
   courts.forEach((court) => {
-    const current = getCurrentBookingForCourt(court, bookings, today, now);
+    const current = getCurrentBookingForCourt(court, bookings, today, now, tzOpts);
     const status = getCourtOperationalStatus(court, current);
 
     if (status === "empty") empty += 1;
@@ -103,7 +131,7 @@ export function computeCourtDashboardStats(courts = [], bookings = [], now = new
       b.date === today &&
       ["confirmed", "checked_in"].includes(b.bookingStatus) &&
       !courts.some((court) => {
-        const current = getCurrentBookingForCourt(court, bookings, today, now);
+        const current = getCurrentBookingForCourt(court, bookings, today, now, tzOpts);
         return current?.id === b.id;
       })
   ).length;
@@ -119,20 +147,25 @@ export function computeCourtDashboardStats(courts = [], bookings = [], now = new
   };
 }
 
-export function getMatchElapsedMinutes(booking, now = new Date()) {
+export function getMatchElapsedMinutes(booking, now = new Date(), options = {}) {
   if (!booking?.startTime || !booking?.date) return 0;
+  const timezone = resolveOpsTimezone(options);
+  if (!timezone) return 0;
 
-  const [year, month, day] = booking.date.split("-").map(Number);
-  const [hours, minutes] = booking.startTime.split(":").map(Number);
-  const start = new Date(year, month - 1, day, hours, minutes);
-
-  if (Number.isNaN(start.getTime())) return 0;
-
-  const diff = Math.floor((now.getTime() - start.getTime()) / 60000);
-  return Math.max(0, diff);
+  try {
+    const startMs = civilDateTimeToUtcMs(
+      booking.date,
+      civilTimeToMinutes(booking.startTime),
+      timezone
+    );
+    const diff = Math.floor((now.getTime() - startMs) / 60000);
+    return Math.max(0, diff);
+  } catch {
+    return 0;
+  }
 }
 
-export function getMatchDurationProgress(booking, now = new Date()) {
+export function getMatchDurationProgress(booking, now = new Date(), options = {}) {
   if (!booking?.startTime || !booking?.endTime) return 0;
 
   const start = timeToMinutes(booking.startTime);
@@ -141,7 +174,7 @@ export function getMatchDurationProgress(booking, now = new Date()) {
 
   if (total <= 0) return 0;
 
-  const elapsed = getMatchElapsedMinutes(booking, now);
+  const elapsed = getMatchElapsedMinutes(booking, now, options);
   return Math.min(100, Math.round((elapsed / total) * 100));
 }
 
@@ -152,9 +185,27 @@ export function formatElapsedTime(minutes) {
   return m > 0 ? `${h}h ${m}p` : `${h}h`;
 }
 
-export function generateDirectorSuggestions({ courts = [], bookings = [], now = new Date() }) {
-  const today = todayIsoDate();
-  const stats = computeCourtDashboardStats(courts, bookings, now);
+export function generateDirectorSuggestions({
+  courts = [],
+  bookings = [],
+  now = new Date(),
+  clubId = null,
+  timezone = null,
+} = {}) {
+  const opts = { clubId, timezone };
+  const tz = resolveOpsTimezone(opts);
+  if (!tz) {
+    return [
+      {
+        type: "timezone",
+        priority: "high",
+        text: "Thiếu venue.timezone — không đánh giá trạng thái sân theo giờ venue.",
+      },
+    ];
+  }
+  const tzOpts = { timezone: tz };
+  const today = todayIsoDate({ timezone: tz, now });
+  const stats = computeCourtDashboardStats(courts, bookings, now, opts);
   const suggestions = [];
 
   if (stats.waiting > 0) {
@@ -166,7 +217,7 @@ export function generateDirectorSuggestions({ courts = [], bookings = [], now = 
   }
 
   const emptyCourts = courts.filter((court) => {
-    const current = getCurrentBookingForCourt(court, bookings, today, now);
+    const current = getCurrentBookingForCourt(court, bookings, today, now, tzOpts);
     return getCourtOperationalStatus(court, current) === "empty";
   });
 
@@ -186,10 +237,10 @@ export function generateDirectorSuggestions({ courts = [], bookings = [], now = 
 
   const longMatches = [];
   courts.forEach((court) => {
-    const current = getCurrentBookingForCourt(court, bookings, today, now);
+    const current = getCurrentBookingForCourt(court, bookings, today, now, tzOpts);
     if (current?.bookingStatus !== "playing") return;
 
-    const elapsed = getMatchElapsedMinutes(current, now);
+    const elapsed = getMatchElapsedMinutes(current, now, tzOpts);
     const planned = timeToMinutes(current.endTime) - timeToMinutes(current.startTime);
 
     if (planned > 0 && elapsed > planned * 1.15) {
@@ -224,12 +275,27 @@ export function generateDirectorSuggestions({ courts = [], bookings = [], now = 
   return suggestions;
 }
 
-export function buildCourtBoardData(courts, bookings, now = new Date()) {
-  const today = todayIsoDate();
+export function buildCourtBoardData(courts, bookings, now = new Date(), options = {}) {
+  const timezone = resolveOpsTimezone(options);
+  if (!timezone) {
+    return (courts || []).map((court, index) => ({
+      court,
+      index,
+      currentBooking: null,
+      nextBooking: null,
+      status: "empty",
+      statusMeta: getCourtStatusMeta("empty"),
+      elapsedMinutes: 0,
+      progress: 0,
+      error: "TIMEZONE_REQUIRED",
+    }));
+  }
+  const tzOpts = { timezone };
+  const today = options.date || todayIsoDate({ timezone, now });
 
   return courts.map((court, index) => {
-    const currentBooking = getCurrentBookingForCourt(court, bookings, today, now);
-    const nextBooking = getNextBookingForCourt(court, bookings, today, now);
+    const currentBooking = getCurrentBookingForCourt(court, bookings, today, now, tzOpts);
+    const nextBooking = getNextBookingForCourt(court, bookings, today, now, tzOpts);
     const status = getCourtOperationalStatus(court, currentBooking);
     const statusMeta = getCourtStatusMeta(status);
 
@@ -240,8 +306,12 @@ export function buildCourtBoardData(courts, bookings, now = new Date()) {
       nextBooking,
       status,
       statusMeta,
-      elapsedMinutes: currentBooking ? getMatchElapsedMinutes(currentBooking, now) : 0,
-      progress: currentBooking ? getMatchDurationProgress(currentBooking, now) : 0,
+      elapsedMinutes: currentBooking
+        ? getMatchElapsedMinutes(currentBooking, now, tzOpts)
+        : 0,
+      progress: currentBooking
+        ? getMatchDurationProgress(currentBooking, now, tzOpts)
+        : 0,
     };
   });
 }

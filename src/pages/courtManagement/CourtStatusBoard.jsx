@@ -17,12 +17,12 @@ export default function CourtStatusBoard({
 }) {
   const [formDefaults, setFormDefaults] = useState(null);
   const [detailBooking, setDetailBooking] = useState(null);
-  const today = todayIsoDate();
+  const today = todayIsoDate({ clubId });
   const now = useMemo(() => new Date(), [bookings, courts]);
 
   const boardData = useMemo(
-    () => buildCourtBoardData(courts, bookings, now),
-    [courts, bookings, now]
+    () => buildCourtBoardData(courts, bookings, now, { clubId }),
+    [courts, bookings, now, clubId]
   );
 
   const handleLockToggle = (court) => {

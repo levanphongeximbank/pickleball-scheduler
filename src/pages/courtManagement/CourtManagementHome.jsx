@@ -20,15 +20,15 @@ export default function CourtManagementHome() {
   const now = useMemo(() => new Date(), [bookings, courts]);
 
   const stats = useMemo(
-    () => computeCourtDashboardStats(courts, bookings, now),
-    [courts, bookings, now]
+    () => computeCourtDashboardStats(courts, bookings, now, { clubId }),
+    [courts, bookings, now, clubId]
   );
 
   const players = useMemo(() => loadPlayersForClub(clubId), [clubId]);
 
   const suggestions = useMemo(
-    () => generateDirectorSuggestions({ courts, bookings, players, now }),
-    [courts, bookings, players, now]
+    () => generateDirectorSuggestions({ courts, bookings, players, now, clubId }),
+    [courts, bookings, players, now, clubId]
   );
 
   return (

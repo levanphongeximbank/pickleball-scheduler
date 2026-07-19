@@ -504,7 +504,9 @@ test("getUpcomingReminders finds bookings starting soon", async () => {
   );
 
   const now = new Date("2026-06-28T18:00:00");
-  const reminders = getUpcomingReminders(DEFAULT_CLUB.id, now);
+  const reminders = getUpcomingReminders(DEFAULT_CLUB.id, now, {
+    timezone: "Asia/Ho_Chi_Minh",
+  });
 
   assert.equal(reminders.length, 1);
   assert.equal(reminders[0].customerName, "Anh Nam");
@@ -527,7 +529,7 @@ test("computeDebtSummary lists bookings with remaining balance", async () => {
   );
 
   const bookings = loadBookingsForClub(DEFAULT_CLUB.id);
-  const summary = computeDebtSummary(bookings);
+  const summary = computeDebtSummary(bookings, { today: "2026-06-28" });
 
   assert.equal(summary.bookingCount, 1);
   assert.equal(summary.totalDebt, 300000);
@@ -572,7 +574,9 @@ test("getTodayUpcomingBookings returns future bookings today", async () => {
 
   const bookings = loadBookingsForClub(DEFAULT_CLUB.id);
   const now = new Date("2026-06-28T18:00:00");
-  const upcoming = getTodayUpcomingBookings(bookings, "2026-06-28", now);
+  const upcoming = getTodayUpcomingBookings(bookings, "2026-06-28", now, {
+    timezone: "Asia/Ho_Chi_Minh",
+  });
 
   assert.equal(upcoming.length, 1);
   assert.equal(upcoming[0].startTime, "20:00");
@@ -692,7 +696,9 @@ test("autoCompletePastBookings marks overdue bookings completed", async () => {
   );
 
   const now = new Date("2026-06-28T10:00:00");
-  const result = autoCompletePastBookings(DEFAULT_CLUB.id, now);
+  const result = autoCompletePastBookings(DEFAULT_CLUB.id, now, {
+    timezone: "Asia/Ho_Chi_Minh",
+  });
 
   assert.equal(result.ok, true);
   assert.equal(result.updatedCount, 1);
@@ -737,7 +743,9 @@ test("summarizeTodayOperations aggregates daily and debt stats", async () => {
 
   const bookings = loadBookingsForClub(DEFAULT_CLUB.id);
   const now = new Date("2026-06-28T18:00:00");
-  const summary = summarizeTodayOperations(bookings, "2026-06-28", now);
+  const summary = summarizeTodayOperations(bookings, "2026-06-28", now, {
+    timezone: "Asia/Ho_Chi_Minh",
+  });
 
   assert.equal(summary.totalBookings, 1);
   assert.equal(summary.upcomingCount, 1);
@@ -842,7 +850,9 @@ test("autoStartDueBookings marks in-window bookings as playing", async () => {
   );
 
   const now = new Date("2026-06-28T18:30:00");
-  const result = autoStartDueBookings(DEFAULT_CLUB.id, now);
+  const result = autoStartDueBookings(DEFAULT_CLUB.id, now, {
+    timezone: "Asia/Ho_Chi_Minh",
+  });
 
   assert.equal(result.updatedCount, 1);
   assert.equal(loadBookingsForClub(DEFAULT_CLUB.id)[0].bookingStatus, "playing");

@@ -23,6 +23,13 @@ import {
   calculateBookingAmount,
 } from "./courtBookingEngine.js";
 import {
+  addDaysToCivilDate,
+  absoluteToCivilDate,
+  absoluteToCivilMinutes,
+  resolveVenueTimezoneForClub,
+  CIVIL_TIME_ERROR,
+} from "./civilTime.js";
+import {
   createBookingRecord,
   derivePaymentStatus,
   normalizeBooking,
@@ -347,10 +354,20 @@ export function createMaintenanceBooking(input, clubId) {
   }, clubId);
 }
 
-export function autoCompletePastBookings(clubId, now = new Date()) {
+export function autoCompletePastBookings(clubId, now = new Date(), options = {}) {
+  const tz = resolveVenueTimezoneForClub(clubId, options);
+  if (!tz.ok) {
+    return {
+      ok: false,
+      code: tz.code || CIVIL_TIME_ERROR.TIMEZONE_REQUIRED,
+      updatedCount: 0,
+      message: tz.error || "Thiếu venue.timezone — không thể auto-complete.",
+    };
+  }
+
   const bookings = loadBookingsForClub(clubId);
-  const today = now.toISOString().slice(0, 10);
-  const nowMinutes = now.getHours() * 60 + now.getMinutes();
+  const today = absoluteToCivilDate(now, tz.timezone);
+  const nowMinutes = absoluteToCivilMinutes(now, tz.timezone);
   const autoStatuses = new Set(["confirmed", "checked_in", "playing"]);
   let updatedCount = 0;
   const timestamp = now.toISOString();
@@ -391,10 +408,20 @@ export function autoCompletePastBookings(clubId, now = new Date()) {
   };
 }
 
-export function autoStartDueBookings(clubId, now = new Date()) {
+export function autoStartDueBookings(clubId, now = new Date(), options = {}) {
+  const tz = resolveVenueTimezoneForClub(clubId, options);
+  if (!tz.ok) {
+    return {
+      ok: false,
+      code: tz.code || CIVIL_TIME_ERROR.TIMEZONE_REQUIRED,
+      updatedCount: 0,
+      message: tz.error || "Thiếu venue.timezone — không thể auto-start.",
+    };
+  }
+
   const bookings = loadBookingsForClub(clubId);
-  const today = now.toISOString().slice(0, 10);
-  const nowMinutes = now.getHours() * 60 + now.getMinutes();
+  const today = absoluteToCivilDate(now, tz.timezone);
+  const nowMinutes = absoluteToCivilMinutes(now, tz.timezone);
   const startStatuses = new Set(["confirmed", "checked_in"]);
   let updatedCount = 0;
   const timestamp = now.toISOString();
@@ -465,13 +492,11 @@ export function duplicateBooking(bookingId, clubId, overrides = {}) {
   const nextDate =
     overrides.date ||
     (() => {
-      const [year, month, day] = booking.date.split("-").map(Number);
-      const cursor = new Date(year, month - 1, day);
-      cursor.setDate(cursor.getDate() + 7);
-      const y = cursor.getFullYear();
-      const m = String(cursor.getMonth() + 1).padStart(2, "0");
-      const d = String(cursor.getDate()).padStart(2, "0");
-      return `${y}-${m}-${d}`;
+      try {
+        return addDaysToCivilDate(booking.date, 7);
+      } catch {
+        return booking.date;
+      }
     })();
 
   return createBooking(

@@ -11,7 +11,13 @@ import {
   createCompetitionAvailabilityChecker,
   resolveAvailabilityMode,
   resolveScheduleConfigWindow,
+  isoToCivilHhmm,
 } from "../services/competitionAvailabilityGuard.js";
+import {
+  absoluteToCivilDate,
+  civilDateTimeToUtcMs,
+  resolveVenueTimezoneForClub,
+} from "../../../domain/civilTime.js";
 
 const COMPLETED_STATUSES = new Set(["completed", "forfeit"]);
 
@@ -32,18 +38,35 @@ function minutesToTimeString(totalMinutes) {
   return `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}`;
 }
 
-function addMinutesToIso(dateStr, startMinutes, durationMinutes) {
-  const base = dateStr ? new Date(`${dateStr}T00:00:00`) : new Date();
-  base.setMinutes(startMinutes + durationMinutes);
-  return base.toISOString();
+function addMinutesToIso(dateStr, startMinutes, durationMinutes, timezone) {
+  if (!timezone) {
+    throw Object.assign(
+      new Error("addMinutesToIso yêu cầu timezone IANA — không mint ISO từ giờ máy chủ."),
+      { code: "TIMEZONE_REQUIRED" }
+    );
+  }
+  const total = startMinutes + durationMinutes;
+  const dayOffset = Math.floor(total / 1440);
+  const mins = ((total % 1440) + 1440) % 1440;
+  let date = dateStr;
+  if (dayOffset !== 0) {
+    const [y, m, d] = dateStr.split("-").map(Number);
+    const cursor = new Date(Date.UTC(y, m - 1, d));
+    cursor.setUTCDate(cursor.getUTCDate() + dayOffset);
+    date = `${cursor.getUTCFullYear()}-${String(cursor.getUTCMonth() + 1).padStart(2, "0")}-${String(cursor.getUTCDate()).padStart(2, "0")}`;
+  }
+  return new Date(civilDateTimeToUtcMs(date, mins, timezone)).toISOString();
 }
 
-function isoToMinutesOnDate(iso, dateStr) {
-  if (!iso) return null;
-  const start = new Date(iso).getTime();
-  if (!Number.isFinite(start)) return null;
-  const base = new Date(`${dateStr || new Date(iso).toISOString().slice(0, 10)}T00:00:00`).getTime();
-  return Math.round((start - base) / 60000);
+function isoToMinutesOnDate(iso, dateStr, timezone) {
+  if (!iso || !dateStr || !timezone) return null;
+  try {
+    const hhmm = isoToCivilHhmm(iso, dateStr, { timezone });
+    if (!hhmm) return null;
+    return parseTimeToMinutes(hhmm);
+  } catch {
+    return null;
+  }
 }
 
 function getParticipantIds(match) {
@@ -171,10 +194,41 @@ export function generateSchedule(context = {}, options = {}) {
   }
 
   const scheduleWindow = resolveScheduleConfigWindow(config);
-  const date =
+  const dateCandidate =
     scheduleWindow?.date ||
+    (availabilityMode === AVAILABILITY_MODE.LEGACY ? config.date || null : null);
+
+  if (!dateCandidate && availabilityMode === AVAILABILITY_MODE.REQUIRED) {
+    return {
+      ok: false,
+      errors: [
+        "Thiếu scheduleConfig.date (YYYY-MM-DD) — bắt buộc cho Venue & Court availability.",
+      ],
+      code: "SCHEDULE_WINDOW_MISSING",
+      warnings,
+    };
+  }
+
+  const tzResolve = resolveVenueTimezoneForClub(clubId, {
+    timezone: context.timezone || options.timezone || config.timezone,
+  });
+  if (!tzResolve.ok) {
+    return {
+      ok: false,
+      errors: [
+        tzResolve.error ||
+          "Thiếu venue.timezone (IANA) — bắt buộc để tạo/đọc lịch ISO dân sự.",
+      ],
+      code: "TIMEZONE_REQUIRED",
+      warnings,
+    };
+  }
+  const venueTimezone = tzResolve.timezone;
+
+  const date =
+    dateCandidate ||
     (availabilityMode === AVAILABILITY_MODE.LEGACY
-      ? config.date || new Date().toISOString().slice(0, 10)
+      ? absoluteToCivilDate(new Date(), venueTimezone)
       : null);
   if (!date) {
     return {
@@ -279,10 +333,10 @@ export function generateSchedule(context = {}, options = {}) {
 
   scheduled.forEach((match) => {
     if (!match.scheduledStart) return;
-    const start = isoToMinutesOnDate(match.scheduledStart, date);
+    const start = isoToMinutesOnDate(match.scheduledStart, date, venueTimezone);
     if (start == null) return;
     const end =
-      isoToMinutesOnDate(match.scheduledEnd, date) ?? start + matchDuration;
+      isoToMinutesOnDate(match.scheduledEnd, date, venueTimezone) ?? start + matchDuration;
 
     getParticipantIds(match).forEach((pid) => {
       const list = busyByParticipant.get(pid) || [];
@@ -387,8 +441,8 @@ export function generateSchedule(context = {}, options = {}) {
           courtId: court.id,
           slot: globalSlotIndex,
           session: session.id,
-          scheduledStart: addMinutesToIso(date, cursorMinutes, 0),
-          scheduledEnd: addMinutesToIso(date, cursorMinutes, matchDuration),
+          scheduledStart: addMinutesToIso(date, cursorMinutes, 0, venueTimezone),
+          scheduledEnd: addMinutesToIso(date, cursorMinutes, matchDuration, venueTimezone),
           status: match.status || MATCH_STATUS.WAITING,
         };
 
@@ -469,7 +523,12 @@ export function generateSchedule(context = {}, options = {}) {
             sessions[0].startMinutes,
             ...scheduled
               .filter((m) => m.scheduledEnd)
-              .map((m) => parseTimeToMinutes(new Date(m.scheduledEnd).toISOString().slice(11, 16)))
+              .map((m) => {
+                const hhmm = isoToCivilHhmm(m.scheduledEnd, date, {
+                  timezone: venueTimezone,
+                });
+                return hhmm != null ? parseTimeToMinutes(hhmm) : sessions[0].startMinutes;
+              })
           )
         ),
       },
@@ -489,7 +548,12 @@ export function generateSchedule(context = {}, options = {}) {
           sessions[0].startMinutes,
           ...scheduled
             .filter((m) => m.scheduledEnd)
-            .map((m) => parseTimeToMinutes(new Date(m.scheduledEnd).toISOString().slice(11, 16))),
+            .map((m) => {
+              const hhmm = isoToCivilHhmm(m.scheduledEnd, date, {
+                timezone: venueTimezone,
+              });
+              return hhmm != null ? parseTimeToMinutes(hhmm) : sessions[0].startMinutes;
+            }),
           sessions[sessions.length - 1].endMinutes
         )
       ),

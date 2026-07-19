@@ -106,7 +106,7 @@ test("T-S1-E01 Min rest violation fails schedule generation", () => {
         strictRest: true,
       },
     },
-    { strictRest: true, legacyAvailability: true }
+    { strictRest: true, legacyAvailability: true, timezone: "Asia/Ho_Chi_Minh" }
   );
 
   assert.equal(result.ok, false);
@@ -146,7 +146,7 @@ test("T-S1-E01b generateSchedule auto-adjusts to satisfy min rest", () => {
       minRestMinutes: 30,
       date: "2026-07-14",
     },
-  }, { legacyAvailability: true });
+  }, { legacyAvailability: true, timezone: "Asia/Ho_Chi_Minh" });
 
   assert.equal(result.ok, true);
   const m1 = result.data.matches.find((m) => m.id === "m1");
@@ -310,7 +310,7 @@ test("sessions + court priority respected", () => {
       minRestMinutes: 15,
       date: "2026-07-14",
     },
-  }, { legacyAvailability: true });
+  }, { legacyAvailability: true, timezone: "Asia/Ho_Chi_Minh" });
   assert.equal(result.ok, true);
   assert.equal(result.data.matches[0].courtId, "c-high");
   assert.equal(result.data.matches[0].session, "morning");

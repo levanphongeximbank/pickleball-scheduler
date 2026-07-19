@@ -9,9 +9,11 @@
 
 import { getCourtAvailability as getCourtAvailabilityDefault } from "../../venue-court/index.js";
 import { AVAILABILITY_REASON } from "../../venue-court/services/courtAvailabilityService.js";
-
-const HHMM_RE = /^([01]\d|2[0-3]):([0-5]\d)$/;
-const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
+import {
+  CIVIL_TIME_ERROR,
+  buildVenueCivilWindow,
+  normalizeCivilWindow as normalizeCivilWindowCore,
+} from "../../../domain/civilTime.js";
 
 export const CE_AVAILABILITY_MODE = Object.freeze({
   REQUIRED: "required",
@@ -21,6 +23,7 @@ export const CE_AVAILABILITY_MODE = Object.freeze({
 export const CE_AVAILABILITY_ERROR = Object.freeze({
   CLUB_REQUIRED: "CLUB_REQUIRED",
   INVALID_TIME_WINDOW: "INVALID_TIME_WINDOW",
+  TIMEZONE_REQUIRED: "TIMEZONE_REQUIRED",
   DATA_UNAVAILABLE: "DATA_UNAVAILABLE",
   BOOKING_CONFLICT: "BOOKING_CONFLICT",
   TOURNAMENT_BOOKING_CONFLICT: "TOURNAMENT_BOOKING_CONFLICT",
@@ -75,53 +78,35 @@ export function resolveCeAvailabilityMode(options = {}) {
   return CE_AVAILABILITY_MODE.REQUIRED;
 }
 
-function minutesToHhmm(totalMinutes) {
-  const wrapped = ((Number(totalMinutes) % 1440) + 1440) % 1440;
-  const h = Math.floor(wrapped / 60);
-  const m = wrapped % 60;
-  return `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}`;
-}
-
 /**
- * Build venue-local civil window from a Date using local getters (not UTC slice).
- * Overnight windows are rejected (Phase 2E owns broader time cleanup).
+ * Build venue-local civil window from an absolute instant + IANA timezone.
+ * Overnight windows are rejected (Phase 2E overnight policy).
  */
-export function buildLocalCivilWindow(durationMinutes = 20, now = new Date()) {
-  const y = now.getFullYear();
-  const mo = String(now.getMonth() + 1).padStart(2, "0");
-  const d = String(now.getDate()).padStart(2, "0");
-  const date = `${y}-${mo}-${d}`;
-  const startMins = now.getHours() * 60 + now.getMinutes();
-  const duration = Math.max(1, Number(durationMinutes) || 20);
-  const endMins = startMins + duration;
-  if (endMins > 24 * 60 - 1) {
+export function buildLocalCivilWindow(durationMinutes = 20, now = new Date(), timezone) {
+  if (timezone == null || String(timezone).trim() === "") {
     return {
       ok: false,
-      code: CE_AVAILABILITY_ERROR.INVALID_TIME_WINDOW,
-      error: "Khung giờ vượt quá ngày dân sự — không hỗ trợ overnight trong Phase 2D.",
+      code: CE_AVAILABILITY_ERROR.TIMEZONE_REQUIRED,
+      error:
+        "Thiếu timezone IANA — Court Engine không dùng giờ máy chủ/trình duyệt cho khung dân sự.",
     };
   }
-  return {
-    ok: true,
-    date,
-    startTime: minutesToHhmm(startMins),
-    endTime: minutesToHhmm(endMins),
-  };
+  const built = buildVenueCivilWindow(durationMinutes, now, timezone);
+  if (!built.ok) {
+    return {
+      ok: false,
+      code:
+        built.code === CIVIL_TIME_ERROR.TIMEZONE_REQUIRED
+          ? CE_AVAILABILITY_ERROR.TIMEZONE_REQUIRED
+          : CE_AVAILABILITY_ERROR.INVALID_TIME_WINDOW,
+      error: built.error,
+    };
+  }
+  return built;
 }
 
 export function normalizeCivilWindow({ date, startTime, endTime } = {}) {
-  const d = date != null ? String(date).trim() : "";
-  const start = startTime != null ? String(startTime).trim() : "";
-  const end = endTime != null ? String(endTime).trim() : "";
-  if (!DATE_RE.test(d) || !HHMM_RE.test(start) || !HHMM_RE.test(end)) {
-    return null;
-  }
-  const [sh, sm] = start.split(":").map(Number);
-  const [eh, em] = end.split(":").map(Number);
-  if (eh * 60 + em <= sh * 60 + sm) {
-    return null;
-  }
-  return { date: d, startTime: start, endTime: end };
+  return normalizeCivilWindowCore({ date, startTime, endTime });
 }
 
 export function mapVenueReasonToCeError(codeOrReason) {
@@ -203,9 +188,12 @@ export function resolveCourtEngineAvailabilityContext({
           ? durationMinutes
           : session?.config?.defaultMatchMinutes;
       const duration = Number(rawDuration);
+      const timezone =
+        (options.timezone != null && String(options.timezone).trim()) || null;
       const built = buildLocalCivilWindow(
         Number.isFinite(duration) && duration > 0 ? duration : 20,
-        now || new Date()
+        now || new Date(),
+        timezone
       );
       if (!built.ok) {
         return { ok: false, mode, code: built.code, error: built.error };
