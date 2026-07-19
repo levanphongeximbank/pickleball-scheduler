@@ -43,6 +43,7 @@ export const PHASE_1B_KNOWN_AUDIT_ACTIONS = Object.freeze([
   "club.membership_request.submit",
   "club.membership_request.review",
   "club.membership_request.correction",
+  "club.membership_request.cancel",
   "club.member.add",
   "club.member.remove",
   "club.member.restore",

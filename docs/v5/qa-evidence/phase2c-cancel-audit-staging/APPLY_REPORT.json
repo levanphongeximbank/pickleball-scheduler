@@ -1,0 +1,12 @@
+{
+  "phase": "2C-cancel-audit",
+  "stagingRef": "qyewbxjsiiyufanzcjcq",
+  "productionRef": "expuvcohlcjzvrrauvud",
+  "productionTouched": false,
+  "commit": "625284a7069cd6e5f3519daed7fc9ad4ab3fbae6",
+  "sqlFile": "docs/v5/phase2c-cancel-audit/PHASE_2C_CANCEL_MEMBERSHIP_REQUEST_AUDIT.sql",
+  "sqlSha256": "d65271903896a80e2aeb5703f49993d19f282c63a07d1e39ce78768bb989de10",
+  "startedAt": "2026-07-19T14:01:56.948Z",
+  "status": "APPLIED",
+  "finishedAt": "2026-07-19T14:01:58.519Z"
+}

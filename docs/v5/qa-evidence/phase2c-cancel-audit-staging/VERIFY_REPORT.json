@@ -1,0 +1,21 @@
+{
+  "phase": "2C-cancel-audit-verify",
+  "stagingRef": "qyewbxjsiiyufanzcjcq",
+  "productionTouched": false,
+  "commit": "625284a7069cd6e5f3519daed7fc9ad4ab3fbae6",
+  "startedAt": "2026-07-19T14:02:16.733Z",
+  "checks": {
+    "cancelActionWhitelisted": true,
+    "submitStillWhitelisted": true,
+    "reviewStillWhitelisted": true,
+    "rpcWritesCancelAudit": true,
+    "rpcOwnRequestAuthz": true,
+    "rpcPendingOnly": true,
+    "rpcVersionConflict": true,
+    "rpcIdempotencyEarlyReturn": true
+  },
+  "status": "PASS",
+  "constraintSnippet": "CHECK ((action = ANY (ARRAY['approve'::text, 'assign_role'::text, 'audit.view'::text, 'club.assign_owner'::text, 'club.assign_vice_president'::text, 'club.clear_owner'::text, 'club.clear_vice_president'::text, 'club.create'::text, 'club.delete'::text, 'club.leave_membership'::text, 'club.member.add'::text, 'club.member.remove'::text, 'club.member.restore'::text, 'club.membership_request.cancel'::text, 'club.membership_request.correction'::text, 'club.membership_request.review'::text, 'club.membe",
+  "failedChecks": [],
+  "finishedAt": "2026-07-19T14:02:18.068Z"
+}

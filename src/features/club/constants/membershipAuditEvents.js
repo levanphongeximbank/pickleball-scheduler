@@ -3,7 +3,9 @@
  *
  * Server RPCs historically emit Phase 42 names (`club.member.*`).
  * This map is the client/docs alias contract: freeze name ≡ server name for G-AUDIT.
- * SQL rename is deferred (Owner GO) — no Production whitelist churn in 2C.
+ * SQL rename is deferred for historical actions — cancel action is now
+ * authored in docs/v5/phase2c-cancel-audit/PHASE_2C_CANCEL_MEMBERSHIP_REQUEST_AUDIT.sql
+ * (Staging first). No Production whitelist churn from the original 2C merge alone.
  */
 
 export const MEMBERSHIP_AUDIT_EVENTS = Object.freeze({

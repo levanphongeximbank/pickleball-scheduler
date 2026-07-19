@@ -59,6 +59,7 @@ begin
       'club.membership_request.submit',
       'club.membership_request.review',
       'club.membership_request.correction',
+      'club.membership_request.cancel',
       -- Member commands (Phase 45A.4C / 45A.4D / 1B)
       'club.member.add',
       'club.member.remove',
