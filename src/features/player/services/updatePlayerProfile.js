@@ -5,16 +5,17 @@
  * then persists through a replaceable repository interface.
  * Never creates a second player identity.
  *
- * Durable persistence: inject createSupabaseProfilesPlayerWriteRepository()
- * (or a test double). Default remains unconfigured (no silent durable write).
+ * Runtime default: createDefaultPlayerProfileWriteRepository()
+ * (durable Supabase writer when anon/session client is configured;
+ * otherwise unconfigured). Tests may inject writeRepository doubles.
  * identityVerificationStatus is forbidden here — privileged admin path deferred.
  */
 import { RESOLUTION_OUTCOME } from "../constants/resolutionOutcomes.js";
 import { WRITE_ERROR_CODES } from "../constants/writableFields.js";
 import { normalizeAndValidateWritePatch } from "../adapters/writePatchAdapter.js";
 import { normalizePlayerProfile } from "../models/playerProfile.js";
+import { createDefaultPlayerProfileWriteRepository } from "../bootstrap/playerProfileWriteBootstrap.js";
 import { resolveCanonicalPlayerId } from "./resolveCanonicalPlayerId.js";
-import { createUnconfiguredPlayerProfileWriteRepository } from "../repositories/playerProfileWriteRepository.js";
 import { trimId } from "../utils/playerId.js";
 
 /**
@@ -97,14 +98,14 @@ export async function updatePlayerProfile(playerId, patch, options = {}) {
   }
 
   const writeRepository =
-    options.writeRepository || createUnconfiguredPlayerProfileWriteRepository();
+    options.writeRepository || createDefaultPlayerProfileWriteRepository();
 
   const existing =
     options.existingProfile ||
     (await writeRepository.getByPlayerId?.(canonicalId)) ||
     normalizePlayerProfile({
       playerId: canonicalId,
-      authUserId: resolution.authUserId,
+      authUserId: resolution.authUserId || options.authUserId || options.authContext?.userId,
     });
 
   const validated = normalizeAndValidateWritePatch(patch, {
@@ -130,7 +131,11 @@ export async function updatePlayerProfile(playerId, patch, options = {}) {
     canonicalId,
     validated.normalized,
     {
-      authUserId: resolution.authUserId,
+      authUserId:
+        resolution.authUserId ||
+        trimId(options.authUserId) ||
+        trimId(options.authContext?.userId) ||
+        null,
       tenantContext: options.tenantContext || null,
       authContext: options.authContext || null,
       clubId: options.clubId || null,

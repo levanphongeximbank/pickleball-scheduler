@@ -2,7 +2,7 @@
  * Player Management — public facade.
  *
  * Phase 1B read contracts + Phase 1C single write export.
- * Adapters, repositories, validators remain internal.
+ * Adapters, repositories, validators, bootstrap remain internal.
  */
 export { RESOLUTION_OUTCOME } from "./constants/resolutionOutcomes.js";
 
