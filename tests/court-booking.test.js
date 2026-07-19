@@ -503,7 +503,9 @@ test("getUpcomingReminders finds bookings starting soon", async () => {
     DEFAULT_CLUB.id
   );
 
-  const now = new Date("2026-06-28T18:00:00");
+  // Venue-local 18:00 on 2026-06-28 in Asia/Ho_Chi_Minh (= 11:00Z).
+  // Do not use timezone-less Date strings — those follow the host TZ (UTC in CI).
+  const now = new Date("2026-06-28T11:00:00.000Z");
   const reminders = getUpcomingReminders(DEFAULT_CLUB.id, now, {
     timezone: "Asia/Ho_Chi_Minh",
   });
@@ -573,7 +575,8 @@ test("getTodayUpcomingBookings returns future bookings today", async () => {
   );
 
   const bookings = loadBookingsForClub(DEFAULT_CLUB.id);
-  const now = new Date("2026-06-28T18:00:00");
+  // Venue-local 18:00 Asia/Ho_Chi_Minh on 2026-06-28
+  const now = new Date("2026-06-28T11:00:00.000Z");
   const upcoming = getTodayUpcomingBookings(bookings, "2026-06-28", now, {
     timezone: "Asia/Ho_Chi_Minh",
   });
@@ -695,7 +698,8 @@ test("autoCompletePastBookings marks overdue bookings completed", async () => {
     DEFAULT_CLUB.id
   );
 
-  const now = new Date("2026-06-28T10:00:00");
+  // Venue-local 10:00 Asia/Ho_Chi_Minh on 2026-06-28 (= 03:00Z)
+  const now = new Date("2026-06-28T03:00:00.000Z");
   const result = autoCompletePastBookings(DEFAULT_CLUB.id, now, {
     timezone: "Asia/Ho_Chi_Minh",
   });
@@ -742,7 +746,8 @@ test("summarizeTodayOperations aggregates daily and debt stats", async () => {
   );
 
   const bookings = loadBookingsForClub(DEFAULT_CLUB.id);
-  const now = new Date("2026-06-28T18:00:00");
+  // Venue-local 18:00 Asia/Ho_Chi_Minh on 2026-06-28
+  const now = new Date("2026-06-28T11:00:00.000Z");
   const summary = summarizeTodayOperations(bookings, "2026-06-28", now, {
     timezone: "Asia/Ho_Chi_Minh",
   });
@@ -849,7 +854,8 @@ test("autoStartDueBookings marks in-window bookings as playing", async () => {
     DEFAULT_CLUB.id
   );
 
-  const now = new Date("2026-06-28T18:30:00");
+  // Venue-local 18:30 Asia/Ho_Chi_Minh on 2026-06-28 (= 11:30Z)
+  const now = new Date("2026-06-28T11:30:00.000Z");
   const result = autoStartDueBookings(DEFAULT_CLUB.id, now, {
     timezone: "Asia/Ho_Chi_Minh",
   });
