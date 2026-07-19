@@ -35,8 +35,12 @@ import {
   buildWorkerLogEntry,
   assertLogHasNoSecrets,
 } from "../utils/safeWorkerLog.js";
+import {
+  PRODUCTION_PROJECT_REF,
+  resolveProductionWorkerGate,
+} from "../config/productionSafetyConfig.js";
 
-const PRODUCTION_REF = "expuvcohlcjzvrrauvud";
+const PRODUCTION_REF = PRODUCTION_PROJECT_REF;
 
 function emptySummary() {
   return {
@@ -77,6 +81,11 @@ function assertServerSideWorker(options = {}) {
   return { ok: true };
 }
 
+/**
+ * Environment + Production dual-flag gate (Phase 2B).
+ * Production worker requires environment=production + enable + rollout + tenant + namespace
+ * and concurrency > 0. Phase 2B keeps concurrency default 0 (structurally disabled).
+ */
 function assertEnvironmentAllowed(options = {}) {
   const env = globalThis.process?.env || {};
   const envName = normalizeNotificationEnvironment(
@@ -89,17 +98,37 @@ function assertEnvironmentAllowed(options = {}) {
       ""
   ).trim();
 
-  if (projectRef === PRODUCTION_REF || envName === NOTIFICATION_ENVIRONMENTS.PRODUCTION) {
-    if (options.allowProductionWorker !== true) {
-      return {
-        ok: false,
-        error: "production_worker_blocked",
-        environment: envName,
-        projectRef,
-      };
-    }
+  const isProductionTarget =
+    projectRef === PRODUCTION_REF || envName === NOTIFICATION_ENVIRONMENTS.PRODUCTION;
+
+  if (!isProductionTarget) {
+    return { ok: true, environment: envName, projectRef };
   }
-  return { ok: true, environment: envName, projectRef };
+
+  const gate = resolveProductionWorkerGate({
+    ...options,
+    environment: envName,
+    projectRef,
+    allowProductionWorker: options.allowProductionWorker === true,
+    productionWorkerEnable: options.productionWorkerEnable === true,
+    productionRolloutApproved: options.productionRolloutApproved === true,
+    tenantId: options.tenantId,
+    runNamespace: options.runNamespace,
+    workerConcurrency: options.workerConcurrency,
+    env,
+  });
+
+  if (!gate.workerAllowed) {
+    return {
+      ok: false,
+      error: gate.error || "production_worker_blocked",
+      environment: envName,
+      projectRef,
+      reason: gate.reason,
+    };
+  }
+
+  return { ok: true, environment: envName, projectRef, concurrency: gate.concurrency };
 }
 
 function resolveNow(nowFn) {

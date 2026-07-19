@@ -1,0 +1,23 @@
+-- PICK_VN Notification Phase 2B — Production SQL Pack MANIFEST
+-- PRODUCTION ONLY. Project ref: expuvcohlcjzvrrauvud
+-- DO NOT execute this file as SQL — it is an ordered index.
+-- Apply via: node scripts/apply-notification-phase2b-production-sql.mjs --dry-run
+-- Explicit apply: NOTIFICATION_PHASE2B_PRODUCTION_GO=1 ... --apply
+--
+-- Ordered apply (deterministic):
+--   1. docs/supabase-notification-phase2b-production-13-foundation.sql
+--   2. docs/supabase-notification-phase2b-production-13-rpc-hardening.sql
+--   3. docs/supabase-notification-phase2b-production-15-delivery-worker.sql
+--   4. docs/supabase-notification-phase2b-production-16-ops.sql
+--   5. docs/supabase-notification-phase2b-production-runtime-config.sql  (re-assert fail-closed)
+--   6. docs/supabase-notification-phase2b-production-security-hardening.sql
+--
+-- NEVER apply:
+--   Staging QA profile bootstrap SQL
+--   Staging phase15/phase16 SQL (seeds allow_worker/allow_qa_cleanup=true)
+--
+-- Rollback:
+--   docs/supabase-notification-phase2b-production-rollback.sql
+--
+-- Verify:
+--   node scripts/verify-notification-phase2b-production.mjs
