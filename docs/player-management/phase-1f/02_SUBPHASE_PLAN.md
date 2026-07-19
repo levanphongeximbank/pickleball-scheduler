@@ -32,6 +32,12 @@ Do not open public/directory work that bypasses the projector.
 | Directory / search filtering | No raw `profiles` exposure |
 | Optional public route | Only if projector-backed |
 
+**Plan freeze:** Owner `APPROVE_PHASE_1F_B_PLAN` — see `04_PHASE_1F_B_PLAN_FREEZE.md`.  
+**Branch:** `feature/player-phase-1f-b-privacy-public-projector`  
+**Sub-order:** 1F-B1 (projector) → 1F-B2 (facade wire-up) → 1F-B3 (optional public UI).
+
+**Status:** Plan frozen; implementation not started at plan-freeze commit.
+
 ## Deferred (post–1F)
 
 | Item | Original label / note |
