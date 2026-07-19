@@ -18,6 +18,11 @@ import { createParticipantReference } from "./identity.js";
  * @property {string} competitionId
  * @property {string} name
  * @property {string} status
+ * @property {string|null} [tenantId] — Core-05; required when classification demands tenant isolation
+ * @property {string|null} [divisionId] — opaque Core-04 reference
+ * @property {string|null} [divisionCategoryId] — opaque Core-04 lane reference
+ * @property {string|null} [entryId] — required before activateTeam (Core-05)
+ * @property {string|null} [shortName]
  * @property {number|null} [seed]
  * @property {import('./identity.js').ParticipantReference|null} [captainRef]
  * @property {import('./identity.js').ParticipantReference[]} [deputyRefs]
@@ -37,6 +42,27 @@ export function createCompetitionTeam(partial = {}) {
     competitionId: String(partial.competitionId || ""),
     name: String(partial.name || ""),
     status: String(partial.status || COMPETITION_TEAM_STATUS.DRAFT),
+    tenantId:
+      partial.tenantId != null && String(partial.tenantId).trim() !== ""
+        ? String(partial.tenantId).trim()
+        : null,
+    divisionId:
+      partial.divisionId != null && String(partial.divisionId).trim() !== ""
+        ? String(partial.divisionId).trim()
+        : null,
+    divisionCategoryId:
+      partial.divisionCategoryId != null &&
+      String(partial.divisionCategoryId).trim() !== ""
+        ? String(partial.divisionCategoryId).trim()
+        : null,
+    entryId:
+      partial.entryId != null && String(partial.entryId).trim() !== ""
+        ? String(partial.entryId).trim()
+        : null,
+    shortName:
+      partial.shortName != null && String(partial.shortName).trim() !== ""
+        ? String(partial.shortName).trim()
+        : null,
     seed: typeof partial.seed === "number" ? partial.seed : null,
     captainRef: partial.captainRef ? createParticipantReference(partial.captainRef) : null,
     deputyRefs: Array.isArray(partial.deputyRefs)
@@ -60,6 +86,9 @@ export function createCompetitionTeam(partial = {}) {
  * @property {string} status
  * @property {string|null} [role]
  * @property {string|null} [joinedAt]
+ * @property {string|null} [removedAt] — Core-05 soft-remove timestamp
+ * @property {string|null} [replacedMemberId] — Core-05 replacement trail
+ * @property {string|null} [replacementReason]
  * @property {import('./shared.js').FormatExtension|null} [extensions]
  */
 
@@ -76,6 +105,17 @@ export function createCompetitionRosterMember(partial = {}) {
     status: String(partial.status || COMPETITION_ROSTER_MEMBER_STATUS.ACTIVE),
     role: partial.role ?? null,
     joinedAt: partial.joinedAt ?? null,
+    removedAt: partial.removedAt ?? null,
+    replacedMemberId:
+      partial.replacedMemberId != null &&
+      String(partial.replacedMemberId).trim() !== ""
+        ? String(partial.replacedMemberId).trim()
+        : null,
+    replacementReason:
+      partial.replacementReason != null &&
+      String(partial.replacementReason).trim() !== ""
+        ? String(partial.replacementReason).trim()
+        : null,
     extensions: createFormatExtension(partial.extensions),
   };
 }
@@ -123,9 +163,14 @@ export function createRosterSubstitutionReference(partial = {}) {
  * @property {string} teamId
  * @property {CompetitionRosterMember[]} members
  * @property {string} status
+ * @property {string|null} [tenantId]
+ * @property {string|null} [divisionId]
+ * @property {string|null} [divisionCategoryId]
  * @property {string|null} [lockedAt]
  * @property {string|null} [lockReason]
+ * @property {number|null} [minSize]
  * @property {number|null} [maxSize]
+ * @property {number} [rosterVersion] — Core-05 monotonic version
  * @property {RosterSubstitutionReference[]} [amendments]
  * @property {string|null} [identityKey] — competitionId::ROSTER::teamId (Phase 3D)
  * @property {import('./shared.js').FormatExtension|null} [extensions]
@@ -146,9 +191,28 @@ export function createCompetitionRoster(partial = {}) {
       ? partial.members.map((m) => createCompetitionRosterMember(m || {}))
       : [],
     status: String(partial.status || COMPETITION_ROSTER_STATUS.DRAFT),
+    tenantId:
+      partial.tenantId != null && String(partial.tenantId).trim() !== ""
+        ? String(partial.tenantId).trim()
+        : null,
+    divisionId:
+      partial.divisionId != null && String(partial.divisionId).trim() !== ""
+        ? String(partial.divisionId).trim()
+        : null,
+    divisionCategoryId:
+      partial.divisionCategoryId != null &&
+      String(partial.divisionCategoryId).trim() !== ""
+        ? String(partial.divisionCategoryId).trim()
+        : null,
     lockedAt: partial.lockedAt ?? null,
     lockReason: partial.lockReason ?? null,
+    minSize: typeof partial.minSize === "number" ? partial.minSize : null,
     maxSize: typeof partial.maxSize === "number" ? partial.maxSize : null,
+    rosterVersion:
+      typeof partial.rosterVersion === "number" &&
+      Number.isFinite(partial.rosterVersion)
+        ? Math.max(0, Math.floor(partial.rosterVersion))
+        : 0,
     amendments: Array.isArray(partial.amendments)
       ? partial.amendments.map((a) => createRosterSubstitutionReference(a || {}))
       : [],
