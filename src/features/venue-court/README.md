@@ -78,12 +78,14 @@ Venue & Court must not import Court Engine. Phase 2D wires CE confirm/transfer/p
 ## Phase status
 
 ```text
-PHASE 2E — RUNTIME TIME MODEL CLEANUP
+PHASE 2F — MULTI-VENUE RUNTIME READINESS
 ```
 
-See `docs/venue-court/PHASE_2E_TIME_MODEL.md` for the canonical civil/absolute time model.
+See `docs/venue-court/PHASE_2F_MULTI_VENUE_RUNTIME.md`.
 
-**Timezone rule (Phase 2E remediation):** venue-local “now” decisions require explicit IANA `venue.timezone` (via `resolveVenueTimezoneForClub`). Browser/server local timezone is never a venue fallback. Overnight windows remain rejected.
+**Scope rule (Phase 2F):** engines require explicit `clubId`. No silent first-club fallback when multiple clubs exist. Court Engine sessions load **club inventory only** (never venue-union into a club-keyed session). `clusterId` is a filter only. Venue switcher is a UI pointer — not automatic engine ownership. Phase 2E IANA timezone rules remain authoritative per venue.
+
+Phase 2E time model docs remain in `docs/venue-court/PHASE_2E_TIME_MODEL.md`.
 
 Phase 2D Court Engine guard docs remain in `docs/venue-court/PHASE_2D_COURT_ENGINE_GUARD.md`.
 

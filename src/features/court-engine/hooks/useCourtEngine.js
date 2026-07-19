@@ -1,14 +1,9 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 
-import { useAuth } from "../../../context/AuthContext.jsx";
 import { useClub } from "../../../context/ClubContext.jsx";
 import { useTenant } from "../../../context/TenantContext.jsx";
-import { isVenueScopedRole } from "../../../auth/roles.js";
 import { loadPlayersForClub } from "../../../domain/clubStorage.js";
-import {
-  loadCourtsForClubScoped,
-  loadCourtsForVenueScoped,
-} from "../../../domain/courtService.js";
+import { loadCourtsForClubScoped } from "../../../domain/courtService.js";
 import { loadStaffForVenue } from "../../../data/staff.js";
 import {
   isCourtEngineCloudEnabled,
@@ -71,7 +66,6 @@ function resolveSessionAvailabilityWindow(session, clubId) {
 }
 
 export function useCourtEngine() {
-  const { user, rbacEnabled } = useAuth();
   const { activeClubId, activeClub, revision } = useClub();
   const { currentTenantId } = useTenant();
   const [localRevision, setLocalRevision] = useState(0);
@@ -103,22 +97,9 @@ export function useCourtEngine() {
   const courts = useMemo(() => {
     void revision;
     void localRevision;
-    const venueId = activeClub?.venueId || currentTenantId;
-
-    if (rbacEnabled && user && isVenueScopedRole(user.role) && venueId) {
-      return loadCourtsForVenueScoped(venueId, currentTenantId);
-    }
-
+    // Phase 2F: CE session is club-keyed — never load venue-union courts into this session.
     return loadCourtsForClubScoped(activeClubId, currentTenantId);
-  }, [
-    activeClubId,
-    activeClub?.venueId,
-    currentTenantId,
-    rbacEnabled,
-    user,
-    revision,
-    localRevision,
-  ]);
+  }, [activeClubId, currentTenantId, revision, localRevision]);
 
   const refereeList = useMemo(() => {
     const venueId = activeClub?.venueId || currentTenantId;

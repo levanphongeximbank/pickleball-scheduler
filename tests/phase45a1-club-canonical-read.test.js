@@ -71,10 +71,20 @@ test("resolveActiveClubSelection keeps a valid preferred id", () => {
   assert.equal(sel.stale, false);
 });
 
-test("resolveActiveClubSelection rejects stale local-only id → first canonical club", () => {
+test("resolveActiveClubSelection rejects stale local-only id → clear (no first-of-many)", () => {
   const sel = resolveActiveClubSelection({
     preferredClubId: "club-local-only",
     visibleClubs: [{ id: "club-a" }, { id: "club-b" }],
+  });
+  assert.equal(sel.activeClubId, null);
+  assert.equal(sel.activeClub, null);
+  assert.equal(sel.stale, true);
+});
+
+test("resolveActiveClubSelection auto-selects only when exactly one club is visible", () => {
+  const sel = resolveActiveClubSelection({
+    preferredClubId: "club-local-only",
+    visibleClubs: [{ id: "club-a" }],
   });
   assert.equal(sel.activeClubId, "club-a");
   assert.equal(sel.stale, true);
@@ -217,7 +227,8 @@ test("stale local-only club is neither visible nor selectable in cloud mode", ()
     preferredClubId: "club-local-ghost",
     visibleClubs: visible,
   });
-  assert.equal(sel.activeClubId, "club-a");
+  assert.equal(sel.activeClubId, null);
+  assert.equal(sel.stale, true);
 });
 
 // --- 9 & 15 & 16. CI ownership lock detects new UI Club-entity reads ---

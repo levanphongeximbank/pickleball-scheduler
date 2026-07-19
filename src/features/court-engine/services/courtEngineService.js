@@ -37,6 +37,7 @@ import {
   setCourtLocked,
   setCourtMaintenance,
 } from "./courtTransferService.js";
+import { assertCourtOwnedByClub } from "../../venue-court/services/venueCourtScopeService.js";
 import {
   assignRefereeToCourt,
   releaseRefereeFromCourt,
@@ -292,10 +293,33 @@ export function performTransfer(clubId, session, assignmentId, toCourtId, option
   );
 }
 
+function guardCourtOwnedByClub(clubId, courtId, options = {}) {
+  const ownership = assertCourtOwnedByClub({
+    clubId,
+    courtId,
+    venueId: options.venueId,
+    tenantId: options.tenantId,
+    clusterId: options.clusterId,
+  });
+  if (!ownership.ok) {
+    return {
+      ok: false,
+      error: ownership.error,
+      code: ownership.code,
+    };
+  }
+  return { ok: true };
+}
+
 export function performCourtLock(clubId, session, courtId, locked, options = {}) {
   const access = guardSchedulingAction(clubId, options);
   if (!access.ok) {
     return access;
+  }
+
+  const ownership = guardCourtOwnedByClub(clubId, courtId, options);
+  if (!ownership.ok) {
+    return ownership;
   }
 
   return applyAction(clubId, session, setCourtLocked(session, courtId, locked, options));
@@ -307,6 +331,11 @@ export function performCourtMaintenance(clubId, session, courtId, maintenance, o
     return access;
   }
 
+  const ownership = guardCourtOwnedByClub(clubId, courtId, options);
+  if (!ownership.ok) {
+    return ownership;
+  }
+
   return applyAction(clubId, session, setCourtMaintenance(session, courtId, maintenance, options));
 }
 
@@ -316,6 +345,11 @@ export function performAssignReferee(clubId, session, payload, options = {}) {
     return access;
   }
 
+  const ownership = guardCourtOwnedByClub(clubId, payload?.courtId, options);
+  if (!ownership.ok) {
+    return ownership;
+  }
+
   return applyAction(clubId, session, assignRefereeToCourt(session, payload, options));
 }
 
@@ -323,6 +357,11 @@ export function performReleaseReferee(clubId, session, courtId, options = {}) {
   const access = guardSchedulingAction(clubId, options);
   if (!access.ok) {
     return access;
+  }
+
+  const ownership = guardCourtOwnedByClub(clubId, courtId, options);
+  if (!ownership.ok) {
+    return ownership;
   }
 
   return applyAction(clubId, session, releaseRefereeFromCourt(session, courtId, options));

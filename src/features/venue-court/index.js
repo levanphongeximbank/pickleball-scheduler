@@ -12,6 +12,13 @@ export {
 } from "./services/courtAvailabilityService.js";
 export { getCompetitionCourtAvailability } from "./adapters/competitionCourtAvailabilityAdapter.js";
 export {
+  VENUE_COURT_SCOPE_ERROR,
+  assertClubVenueScope,
+  assertCourtOwnedByClub,
+  filterCourtsToClubScope,
+  applyClusterFilterOnly,
+} from "./services/venueCourtScopeService.js";
+export {
   CIVIL_TIME_ERROR,
   CIVIL_DATE_RE,
   CIVIL_HHMM_RE,

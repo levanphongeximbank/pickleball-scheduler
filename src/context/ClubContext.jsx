@@ -279,14 +279,27 @@ export function ClubProvider({ children }) {
       return;
     }
 
-    const nextClubId = tenantClubs[0].id;
     const activeInTenant = tenantClubs.some((club) => club.id === activeClubId);
-    if (!activeInTenant && nextClubId !== activeClubId) {
-      const result = switchActiveClub(nextClubId);
-      if (result.ok) {
-        setActiveClubId((current) => (current === nextClubId ? current : nextClubId));
-        setRevision((value) => value + 1);
+    if (activeInTenant) {
+      return;
+    }
+
+    // Phase 2F: no silent first-of-many. Unique club may auto-select; otherwise clear.
+    if (tenantClubs.length === 1) {
+      const nextClubId = tenantClubs[0].id;
+      if (nextClubId !== activeClubId) {
+        const result = switchActiveClub(nextClubId);
+        if (result.ok) {
+          setActiveClubId((current) => (current === nextClubId ? current : nextClubId));
+          setRevision((value) => value + 1);
+        }
       }
+      return;
+    }
+
+    if (activeClubId) {
+      setActiveClubId(null);
+      setRevision((value) => value + 1);
     }
   }, [canonicalRead, activeClubId, currentTenantId, isAuthenticated, rbacEnabled, user]);
 
@@ -409,7 +422,11 @@ export function ClubProvider({ children }) {
       return getActiveClub();
     }
 
-    return visibleClubs[0] || null;
+    // Phase 2F: no silent first-of-many for display fallback.
+    if (visibleClubs.length === 1) {
+      return visibleClubs[0];
+    }
+    return null;
   }, [canonicalRead, visibleClubs, activeClubId, rbacEnabled, isAuthenticated]);
 
   // Canonical active-club validation: a stale/absent activeClubId is replaced
@@ -459,12 +476,23 @@ export function ClubProvider({ children }) {
       return;
     }
 
-    const targetId =
-      user?.clubId && visibleClubs.some((club) => club.id === user.clubId)
-        ? user.clubId
-        : visibleClubs[0]?.id;
+    // Phase 2F: prefer profile club if visible; else unique visible club; else clear.
+    let targetId = null;
+    if (user?.clubId && visibleClubs.some((club) => club.id === user.clubId)) {
+      targetId = user.clubId;
+    } else if (visibleClubs.length === 1) {
+      targetId = visibleClubs[0]?.id;
+    }
 
-    if (!targetId || targetId === activeClubId) {
+    if (!targetId) {
+      if (activeClubId) {
+        setActiveClubId(null);
+        setRevision((value) => value + 1);
+      }
+      return;
+    }
+
+    if (targetId === activeClubId) {
       return;
     }
 

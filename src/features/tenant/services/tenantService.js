@@ -153,7 +153,11 @@ export function renameTenant(tenantId, name) {
 
 export function getPrimaryClubIdForTenant(tenantId) {
   const clubs = listClubsForTenant(tenantId);
-  return clubs[0]?.id || null;
+  // Phase 2F: no silent first-club when multiple clubs exist under a tenant.
+  if (clubs.length === 1) {
+    return clubs[0]?.id || null;
+  }
+  return null;
 }
 
 export function resolveEffectiveTenantId(user, overrideTenantId = null) {
