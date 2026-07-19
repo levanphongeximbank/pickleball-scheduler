@@ -64,9 +64,33 @@ import {
   isCanonicalMembershipReadEnabled,
   toMembershipReadSnapshot,
 } from "../../../features/club/context/membershipCanonicalReadModel.js";
+import {
+  GOVERNANCE_MISSING_PROFILE_LABEL,
+  GOVERNANCE_ROLE_LABELS,
+  resolveMemberGovernanceRoleLabel,
+} from "../../../features/club/context/governanceCanonicalReadModel.js";
+import GovernanceRoleChip from "../../../features/club/ui/GovernanceRoleChip.jsx";
 import { formatPickVnRating } from "../../../features/pick-vn-rating/constants/pickVnRatingScale.js";
 import { writeAuditLog, AUDIT_ACTIONS } from "../../../features/identity/services/auditService.js";
 import { getCurrentUser } from "../../../auth/authService.js";
+
+function mapGovernanceChipRole(label) {
+  if (!label) return null;
+  if (label === GOVERNANCE_ROLE_LABELS.owner_and_president) {
+    return { role: "president", label };
+  }
+  if (label === GOVERNANCE_ROLE_LABELS.president) return { role: "president" };
+  if (label === GOVERNANCE_ROLE_LABELS.owner) return { role: "owner" };
+  if (label === GOVERNANCE_ROLE_LABELS.vice_president) return { role: "vice" };
+  return { role: "member", label };
+}
+
+function resolveSafeMemberDisplayName(member, player) {
+  const name =
+    String(member?.displayName || "").trim() ||
+    String(player?.name || "").trim();
+  return name || GOVERNANCE_MISSING_PROFILE_LABEL;
+}
 
 export default function ClubMembersTab({ club, tenantId, onRefresh }) {
   const { can, rbacEnabled, isAuthenticated, user } = useAuth();
@@ -633,9 +657,17 @@ export default function ClubMembersTab({ club, tenantId, onRefresh }) {
                   canRestoreMembers &&
                   (member.status === CLUB_MEMBER_STATUSES.LEFT ||
                     member.status === CLUB_MEMBER_STATUSES.REMOVED);
+                const governanceLabel = resolveMemberGovernanceRoleLabel(
+                  member.userId,
+                  club?.governance,
+                  member.governanceRoles
+                );
+                const governanceChip = mapGovernanceChipRole(governanceLabel);
+                const membershipLabel =
+                  CLUB_MEMBER_ROLE_LABELS[member.role] || CLUB_MEMBER_ROLE_LABELS.member;
                 return (
                   <TableRow key={member.id} hover>
-                    <TableCell>{member.displayName || player?.name || member.playerId}</TableCell>
+                    <TableCell>{resolveSafeMemberDisplayName(member, player)}</TableCell>
                     <TableCell>{player?.phone || "—"}</TableCell>
                     <TableCell>{player?.gender || "—"}</TableCell>
                     <TableCell>{player?.level ?? rating?.level ?? "—"}</TableCell>
@@ -648,6 +680,7 @@ export default function ClubMembersTab({ club, tenantId, onRefresh }) {
                           value={member.role}
                           onChange={(e) => handleRoleChange(member.playerId, e.target.value)}
                           sx={{ minWidth: 120 }}
+                          aria-label="Vai trò thành viên"
                         >
                           {Object.entries(CLUB_MEMBER_ROLE_LABELS).map(([value, label]) => (
                             <MenuItem key={value} value={value}>
@@ -656,10 +689,15 @@ export default function ClubMembersTab({ club, tenantId, onRefresh }) {
                           ))}
                         </TextField>
                       ) : (
-                        CLUB_MEMBER_ROLE_LABELS[member.role] ||
-                        (Array.isArray(member.governanceRoles) && member.governanceRoles.length
-                          ? member.governanceRoles.join(", ")
-                          : "Thành viên")
+                        <Stack direction="row" spacing={0.5} flexWrap="wrap" useFlexGap>
+                          {governanceChip && (
+                            <GovernanceRoleChip
+                              role={governanceChip.role}
+                              label={governanceChip.label}
+                            />
+                          )}
+                          <GovernanceRoleChip role="member" label={membershipLabel} />
+                        </Stack>
                       )}
                     </TableCell>
                     <TableCell>

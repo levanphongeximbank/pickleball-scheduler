@@ -1,9 +1,11 @@
 import { useEffect, useMemo, useState } from "react";
 import {
+  Alert,
   Box,
   Button,
   Card,
   CardContent,
+  CircularProgress,
   Dialog,
   DialogActions,
   DialogContent,
@@ -18,16 +20,18 @@ import SwapHorizIcon from "@mui/icons-material/SwapHoriz";
 
 import GovernanceMemberSelect from "../../../components/club/GovernanceMemberSelect.jsx";
 import {
+  GOVERNANCE_NO_VP_LABEL,
+  GOVERNANCE_READ_STATE,
+  GOVERNANCE_UNASSIGNED_LABEL,
   canRelinquishClubPresident,
   canManageClubGovernance,
-  fetchGovernanceNameHints,
   getClubById,
   getClubStats,
-  getGovernanceDisplayLabels,
   getVicePresidentUserIds,
   isClubStorageV2Enabled,
   listClubGovernanceCandidatesAsync,
   transferClubPresident,
+  useGovernanceReadModel,
 } from "../../../features/club/index.js";
 import { miniGovernanceCardSx } from "./myClubUiStyles.js";
 import { resolvePresidentDisplayLabel } from "./myClubViewLogic.js";
@@ -38,11 +42,11 @@ function GovernanceMiniCard({ accent, icon, title, value, action = null }) {
       <Stack direction="row" justifyContent="space-between" alignItems="flex-start" spacing={1}>
         <Stack direction="row" spacing={1} alignItems="flex-start">
           {icon}
-          <Box>
+          <Box sx={{ minWidth: 0 }}>
             <Typography variant="caption" color="text.secondary">
               {title}
             </Typography>
-            <Typography variant="body2" fontWeight={600}>
+            <Typography variant="body2" fontWeight={600} sx={{ wordBreak: "break-word" }}>
               {value}
             </Typography>
           </Box>
@@ -75,7 +79,6 @@ export default function MyClubOrgChart({
   const [nextPresidentId, setNextPresidentId] = useState("");
   const [transferOpen, setTransferOpen] = useState(false);
   const [busy, setBusy] = useState(false);
-  const [nameHints, setNameHints] = useState({});
   const [candidates, setCandidates] = useState([]);
 
   const club = useMemo(() => {
@@ -88,32 +91,13 @@ export default function MyClubOrgChart({
     return getClubById(clubId, tenantId);
   }, [clubRecordProp, clubId, tenantId, revision]);
 
-  useEffect(() => {
-    let cancelled = false;
-    const gov = club?.governance || {};
-    const ids = [
-      gov.presidentUserId,
-      gov.ownerUserId,
-      ...getVicePresidentUserIds(gov),
-    ].filter(Boolean);
-
-    void fetchGovernanceNameHints(ids).then((hints) => {
-      if (!cancelled) {
-        setNameHints(hints);
-      }
-    });
-
-    return () => {
-      cancelled = true;
-    };
-  }, [
-    club?.id,
-    club?.governance?.presidentUserId,
-    club?.governance?.ownerUserId,
-    club?.governance?.vicePresidentUserId,
-    club?.governance?.vicePresidentUserIds,
+  const governanceRead = useGovernanceReadModel({
+    clubId,
+    clubSeed: club,
     revision,
-  ]);
+    hydrateProfiles: true,
+    enabled: Boolean(clubId),
+  });
 
   useEffect(() => {
     let cancelled = false;
@@ -127,16 +111,51 @@ export default function MyClubOrgChart({
     };
   }, [clubId, tenantId, revision]);
 
-  const labels = useMemo(
-    () => (club ? getGovernanceDisplayLabels(club, tenantId, nameHints) : null),
-    [club, tenantId, nameHints, revision]
-  );
+  const labels = governanceRead.labels;
   const activeMemberCount = useMemo(
     () => resolveActiveMemberCount(club, clubId, tenantId),
     [club, clubId, tenantId, revision]
   );
 
-  if (!club || !labels) {
+  if (!club) {
+    return null;
+  }
+
+  if (governanceRead.state === GOVERNANCE_READ_STATE.LOADING && !labels) {
+    return (
+      <Card variant="outlined" sx={{ height: "100%" }}>
+        <CardContent>
+          <Stack direction="row" spacing={1} alignItems="center">
+            <CircularProgress size={18} aria-label="Đang tải sơ đồ tổ chức" />
+            <Typography variant="body2" color="text.secondary">
+              Đang tải sơ đồ tổ chức…
+            </Typography>
+          </Stack>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  if (governanceRead.error && !labels) {
+    return (
+      <Card variant="outlined" sx={{ height: "100%" }}>
+        <CardContent>
+          <Alert
+            severity="error"
+            action={
+              <Button color="inherit" size="small" onClick={() => void governanceRead.reload()}>
+                Thử lại
+              </Button>
+            }
+          >
+            {governanceRead.errorMessage || "Không tải được sơ đồ tổ chức."}
+          </Alert>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  if (!labels) {
     return null;
   }
 
@@ -160,12 +179,14 @@ export default function MyClubOrgChart({
           ? "Dữ liệu CLB đã thay đổi trên máy chủ. Vui lòng tải lại rồi thử lại."
           : result.error || "Không chuyển được Chủ tịch.";
       onMessage?.({ type: "error", text });
+      void governanceRead.handleMutationResult(result);
       onRefresh?.();
       return;
     }
     setTransferOpen(false);
     setNextPresidentId("");
     onMessage?.({ type: "success", text: "Đã chuyển Chủ tịch CLB." });
+    void governanceRead.handleMutationResult(result);
     onRefresh?.();
   };
 
@@ -179,16 +200,16 @@ export default function MyClubOrgChart({
         <Stack spacing={1.25}>
           <GovernanceMiniCard
             accent="owner"
-            icon={<WorkspacePremiumIcon color="warning" fontSize="small" />}
+            icon={<WorkspacePremiumIcon color="warning" fontSize="small" aria-hidden />}
             title="Chủ sở hữu"
-            value={labels.ownerLabel || "(trống)"}
+            value={labels.ownerLabel || GOVERNANCE_UNASSIGNED_LABEL}
           />
 
           <GovernanceMiniCard
             accent="president"
-            icon={<StarIcon color="secondary" fontSize="small" />}
+            icon={<StarIcon color="secondary" fontSize="small" aria-hidden />}
             title="Chủ tịch"
-            value={presidentLabel || "(trống)"}
+            value={presidentLabel || GOVERNANCE_UNASSIGNED_LABEL}
             action={
               canTransfer ? (
                 <Button
@@ -196,6 +217,7 @@ export default function MyClubOrgChart({
                   variant="outlined"
                   startIcon={<SwapHorizIcon />}
                   onClick={() => setTransferOpen(true)}
+                  aria-label="Nhường chức Chủ tịch"
                 >
                   Nhường chức
                 </Button>
@@ -207,15 +229,15 @@ export default function MyClubOrgChart({
             <GovernanceMiniCard
               key={index}
               accent="vice"
-              icon={<StarIcon color="primary" fontSize="small" />}
-              title={`Phó CT ${index + 1}`}
-              value={viceLabels[index] || "(trống)"}
+              icon={<StarIcon color="primary" fontSize="small" aria-hidden />}
+              title={`Phó chủ tịch ${index + 1}`}
+              value={viceLabels[index] || GOVERNANCE_NO_VP_LABEL}
             />
           ))}
 
           <GovernanceMiniCard
             accent="members"
-            icon={<GroupsIcon color="action" fontSize="small" />}
+            icon={<GroupsIcon color="action" fontSize="small" aria-hidden />}
             title="Thành viên"
             value={`${activeMemberCount} thành viên`}
           />
@@ -250,6 +272,7 @@ export default function MyClubOrgChart({
             variant="contained"
             onClick={handleTransferPresident}
             disabled={busy || !nextPresidentId}
+            aria-label="Xác nhận chuyển Chủ tịch"
           >
             Xác nhận chuyển
           </Button>
