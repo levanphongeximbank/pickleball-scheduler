@@ -108,5 +108,9 @@ export function getPlayerProfileByAuthUser(authUserId, options = {}) {
   return getPlayerProfile(resolution.playerId, {
     ...options,
     profile: options.profile,
+    // When auth resolution already accepted a cloud mapping without a blob row,
+    // do not fail the second directory probe as UNMAPPED.
+    trustUnknownExistence:
+      options.trustUnknownExistence === true || options.requirePlayerRow === false,
   });
 }

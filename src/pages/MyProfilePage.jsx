@@ -21,6 +21,8 @@ import {
 } from "../features/identity/services/selfProfileService.js";
 import { changePassword } from "../features/identity/services/passwordService.js";
 import AvatarPicker from "../features/identity/components/AvatarPicker.jsx";
+import { useAuthenticatedSelfPlayerProfile } from "../features/player/hooks/useAuthenticatedSelfPlayerProfile.js";
+import SelfPlayerProfileFoundationRead from "../features/player/components/SelfPlayerProfileFoundationRead.jsx";
 
 const STATUS_LABELS = {
   [USER_STATUS.ACTIVE]: "Đang hoạt động",
@@ -38,6 +40,11 @@ export default function MyProfilePage() {
   const [confirmPassword, setConfirmPassword] = useState("");
   const [message, setMessage] = useState(null);
   const [loading, setLoading] = useState(false);
+
+  const playerProfileRead = useAuthenticatedSelfPlayerProfile({
+    authUserId: user?.id || null,
+    enabled: Boolean(user?.id),
+  });
 
   useEffect(() => {
     let cancelled = false;
@@ -70,6 +77,7 @@ export default function MyProfilePage() {
     }
 
     refresh();
+    playerProfileRead.reload();
     setMessage({ type: "success", text: "Đã cập nhật hồ sơ." });
   };
 
@@ -161,6 +169,17 @@ export default function MyProfilePage() {
                   Lưu hồ sơ
                 </Button>
               </Stack>
+            </CardContent>
+          </Card>
+
+          <Card sx={{ mt: 2 }}>
+            <CardContent>
+              <SelfPlayerProfileFoundationRead
+                status={playerProfileRead.status}
+                message={playerProfileRead.message}
+                fields={playerProfileRead.fields}
+                onRetry={playerProfileRead.reload}
+              />
             </CardContent>
           </Card>
         </Grid>

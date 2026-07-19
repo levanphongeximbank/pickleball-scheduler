@@ -28,7 +28,18 @@ function directory(map) {
 
 const APPROVED_EXPORTS = [
   "RESOLUTION_OUTCOME",
+  "SELF_PLAYER_PROFILE_READ_STATUS",
+  "UNKNOWN_LABEL",
+  "buildSelfFoundationFieldView",
+  "formatActivityRegionDisplay",
+  "formatBirthDateDisplay",
+  "formatBirthYearDisplay",
+  "formatHandednessDisplay",
+  "formatPrivacySettingsDisplay",
+  "formatVerificationStatusDisplay",
+  "getAuthenticatedSelfPlayerProfile",
   "getPlayerProfile",
+  "getPlayerProfileByAuthUser",
   "normalizePlayerProfile",
   "resolveByAuthUser",
   "resolveCanonicalPlayerId",
@@ -36,7 +47,7 @@ const APPROVED_EXPORTS = [
   "updatePlayerProfile",
 ];
 
-test("1C public API — Phase 1B contracts + updatePlayerProfile only", () => {
+test("1C public API — Phase 1B/1C contracts + Phase 1F-A self read exports", () => {
   assert.deepEqual(Object.keys(playerPublicApi).sort(), [...APPROVED_EXPORTS].sort());
 });
 
