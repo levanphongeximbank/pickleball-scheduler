@@ -70,6 +70,7 @@ test("1E preflight script requires Production confirmation and refuses Staging",
   assert.match(src, /appliedSql:\s*false/);
   assert.match(src, /mutatedProduction:\s*false/);
   assert.match(src, /classifyPhase1eProductionPreflight/);
+  assert.match(src, /buildProfileCountsSelectSql/);
   assert.doesNotMatch(src, /PHASE_1D_PLAYER_PROFILE_MIGRATION\.sql[\s\S]{0,80}client\.query/);
   assert.doesNotMatch(src, /\.query\(\s*[`'"]\s*(alter|update|insert|delete|drop)/i);
 });

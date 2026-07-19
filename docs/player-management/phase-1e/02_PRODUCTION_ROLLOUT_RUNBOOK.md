@@ -17,14 +17,19 @@
    - `CONFIRM_PRODUCTION_PLAYER_PROFILE_PREFLIGHT=YES`
    - `PRODUCTION_SUPABASE_PROJECT_REF=expuvcohlcjzvrrauvud`
    - `SUPABASE_DB_URL=<production>`
-3. Run either:
-   - SQL Editor: paste `docs/v5/PHASE_1E_PLAYER_PROFILE_PRODUCTION_PREFLIGHT.sql`
-   - or CLI: `node scripts/verify-phase-1e-player-profile-production-preflight.mjs`
-4. Record classification: `NOT_APPLIED` | `PARTIALLY_APPLIED` | `ALREADY_READY` | `BLOCKED_UNSAFE`
+3. Run the **official** Gate A command only:
+   - `node scripts/verify-phase-1e-player-profile-production-preflight.mjs`
+   - Optional supplement (inventory SQL only): `docs/v5/PHASE_1E_PLAYER_PROFILE_PRODUCTION_PREFLIGHT.sql`
+4. Do **not** use manual workarounds or ad-hoc SELECT scripts for Gate A classification.
+5. The official script is column-aware: it inventories columns first and never queries missing Phase 1D columns (e.g. `privacy_settings`) by name.
+6. Record classification: `NOT_APPLIED` | `PARTIALLY_APPLIED` | `ALREADY_READY` | `BLOCKED_UNSAFE`
+7. Missing-column dependent counts are reported as `NOT_APPLICABLE_COLUMN_MISSING` (not crashes).
 
-**Stop if:** `BLOCKED_UNSAFE`, wrong project, credentials missing/ambiguous.
+**Stop if:** `BLOCKED_UNSAFE`, wrong project, credentials missing/ambiguous, or the official script fails.
 
 If `ALREADY_READY`: skip Gate E apply; still complete evidence + Gate G smoke as needed.
+
+**Note:** An unmigrated Production with a legacy unsafe guard (`current_user = 'postgres'`) classifies as `BLOCKED_UNSAFE` even when Phase 1D columns are absent. Owner-approved Gate E apply of `PHASE_1D_PLAYER_PROFILE_MIGRATION.sql` both adds columns and replaces the guard with the hotfixed body.
 
 ---
 
