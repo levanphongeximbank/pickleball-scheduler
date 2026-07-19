@@ -1,0 +1,8 @@
+{
+  "phase": "2C-cancel-audit-production-fixture",
+  "productionRef": "expuvcohlcjzvrrauvud",
+  "productionTouched": true,
+  "qaEmail": "qa42l-prod-player-nomember@pickleball-scheduler.qa",
+  "status": "PASS_WITHOUT_LIVE_FIXTURE",
+  "reason": "QA profile unavailable: Missing VITE_SUPABASE_URL or VITE_SUPABASE_ANON_KEY"
+}
