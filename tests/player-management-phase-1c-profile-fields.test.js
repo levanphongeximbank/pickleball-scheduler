@@ -27,9 +27,12 @@ function directory(map) {
 }
 
 const APPROVED_EXPORTS = [
+  "DEFAULT_PRIVACY_SETTINGS",
+  "PUBLIC_PROFILE_HIDE_REASON",
   "RESOLUTION_OUTCOME",
   "SELF_PLAYER_PROFILE_READ_STATUS",
   "UNKNOWN_LABEL",
+  "buildOpaquePublicPlayerProfile",
   "buildSelfFoundationFieldView",
   "formatActivityRegionDisplay",
   "formatBirthDateDisplay",
@@ -41,13 +44,16 @@ const APPROVED_EXPORTS = [
   "getPlayerProfile",
   "getPlayerProfileByAuthUser",
   "normalizePlayerProfile",
+  "normalizePrivacySettings",
+  "projectPublicPlayerProfile",
   "resolveByAuthUser",
   "resolveCanonicalPlayerId",
   "searchPlayers",
   "updatePlayerProfile",
+  "validatePrivacySettings",
 ];
 
-test("1C public API — Phase 1B/1C contracts + Phase 1F-A self read exports", () => {
+test("1C public API — Phase 1B/1C/1F-A/1F-B1 exports", () => {
   assert.deepEqual(Object.keys(playerPublicApi).sort(), [...APPROVED_EXPORTS].sort());
 });
 
