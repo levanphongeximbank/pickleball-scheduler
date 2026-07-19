@@ -1,0 +1,94 @@
+{
+  "phase": "1C",
+  "kind": "PRODUCTION_AUTHZ_GATE_APPLY",
+  "productionRef": "expuvcohlcjzvrrauvud",
+  "stagingRefBlocked": "qyewbxjsiiyufanzcjcq",
+  "approvedAppSha": "d7a13982bd3b40913436466a227cc04d1649dcfb",
+  "originMainSha": "d7a13982bd3b40913436466a227cc04d1649dcfb",
+  "appRedeployed": false,
+  "optionalClubOwnerSelfTransfer": false,
+  "startedAt": "2026-07-19T03:58:29.625Z",
+  "target": {
+    "ref": "expuvcohlcjzvrrauvud",
+    "name": "pickleball-scheduler-production",
+    "region": "ap-northeast-1",
+    "status": "ACTIVE_HEALTHY",
+    "confirmedProduction": true,
+    "confirmedNotStaging": true
+  },
+  "baseline": {
+    "assignChecksum": "8f2e698b7acdebae3ac2ac54aa73c4ef4880beb6da727d0d23445a9e285a7555",
+    "clearChecksum": "297df4d685b4525f36a2a1f5fb1d18455d98f04b91fb8f74efd708d430946793",
+    "tenantMemberChecksum": "3fdb156c3131e776f79182447229e3e3205f10a572547f18a6f4515d0822b0bc",
+    "helperExists": false,
+    "grantAssign": true,
+    "grantClear": true,
+    "rls": {
+      "clubs": true,
+      "club_members": true,
+      "club_governance_assignments": true
+    },
+    "clubId": "club-219e4a7cbd73437eb6271f02a53314c3",
+    "clubVersion": 23,
+    "ownerUserId": "4cf24ed0-99f8-4997-b803-3c7ff8e32014",
+    "assignUsesBareTenantMember": true,
+    "clearUsesBareTenantMember": true,
+    "assignAuthzSnippet": "if not (public.phase42_is_platform_super_admin() or public.phase42_is_tenant_member(v_club.tenant_id)) then"
+  },
+  "apply": {
+    "file": "docs/v5/phase1c/PHASE_1C_CLUB_OWNER_ASSIGN_AUTHZ_SECURITY_GATE.sql",
+    "checksum": "8a512ec1a4dfbb7e52e54d2b71d8fe4c5643a9f7b32e2f4c2e662e74e0cae83e",
+    "result": "PASS",
+    "finishedAt": "2026-07-19T03:58:32.770Z"
+  },
+  "catalog": {
+    "helper_exists": true,
+    "assign_uses_narrow_helper": true,
+    "clear_uses_narrow_helper": true,
+    "assign_no_bare_tenant_member": true,
+    "clear_no_bare_tenant_member": true,
+    "helper_no_bare_tenant_member": true,
+    "helper_no_club_owner_gov": true,
+    "helper_no_venue_manager": true,
+    "helper_no_tenant_staff": true,
+    "assign_security": "DEFINER",
+    "clear_security": "DEFINER",
+    "grant_assign": true,
+    "grant_clear": true,
+    "rls": {
+      "clubs": true,
+      "club_members": true,
+      "club_governance_assignments": true
+    },
+    "afterChecksums": {
+      "assign": "8df6b49530a972ad02246e53c68024ff77f1ab1973495a8fa267670a5064599c",
+      "clear": "610b86d78c672efe6c295b2a61f651a6f68dee03d49daa571934c18537c59585",
+      "helper": "b42a95ce2352b7c32e9bc963f83cf71ad74bb7b7643fdc67cf6f464f74f9389d"
+    },
+    "assignAuthzSnippet": "if not found then"
+  },
+  "rollbackApplied": false,
+  "status": "PASS",
+  "warnings": [
+    "Unrelated actor retested after Email not confirmed fixture issue."
+  ],
+  "productionVercelSha": "d7a13982bd3b40913436466a227cc04d1649dcfb",
+  "phase1cAncestorProof": {
+    "phase1cMergeSha": "827a71c50eaf744c77b1e31afbfc774c6241d388",
+    "approvedAppSha": "d7a13982bd3b40913436466a227cc04d1649dcfb",
+    "isAncestor": true
+  },
+  "gateSqlUnchangedAfterPhase1c": true,
+  "gateSqlChecksum": "8a512ec1a4dfbb7e52e54d2b71d8fe4c5643a9f7b32e2f4c2e662e74e0cae83e",
+  "stagingApprovedChecksum": "8a512ec1a4dfbb7e52e54d2b71d8fe4c5643a9f7b32e2f4c2e662e74e0cae83e",
+  "checksumMatchesStagingApproved": true,
+  "sqlReview": {
+    "helperRoleSpecific": true,
+    "noBareTenantMemberAuthz": true,
+    "deniesManagers": true,
+    "optionalClubOwnerDisabled": true,
+    "noDestructive": true,
+    "createOrReplace": true
+  },
+  "finishedAt": "2026-07-19T04:01:23.916Z"
+}
