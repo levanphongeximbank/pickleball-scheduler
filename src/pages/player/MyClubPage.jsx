@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { Alert, Box, Button } from "@mui/material";
+import { Alert, Box, Button, CircularProgress, Typography } from "@mui/material";
 import { useNavigate, useSearchParams } from "react-router-dom";
 
 import { useAuth } from "../../context/AuthContext.jsx";
@@ -9,16 +9,15 @@ import {
   canDeleteClub,
   canManageClubGovernance,
   canViewFullClubMembers,
-  fetchGovernanceNameHints,
   getClubById,
   getClubStats,
-  getGovernanceDisplayLabels,
   getMyClubSummary,
   getRegisteredClusterLabel,
-  getVicePresidentUserIds,
   leaveMyClub,
 } from "../../features/club/index.js";
 import { useRequiredMyClubMembership } from "../../features/club/hooks/MyClubMembershipContext.jsx";
+import { useGovernanceReadModel } from "../../features/club/hooks/useGovernanceReadModel.js";
+import { GOVERNANCE_READ_STATE } from "../../features/club/context/governanceCanonicalReadModel.js";
 import { buildMyClubSummaryFromClub } from "../../features/club/services/clubActiveMembershipService.js";
 import { isClubStorageV2Enabled } from "../../features/club/config/clubRegistryFlags.js";
 import { CLUB_ROUTE_PATHS } from "../../features/club/routing/clubMembershipRouteLogic.js";
@@ -50,7 +49,6 @@ function MyClubPageContent() {
   const [message, setMessage] = useState(null);
   const [leaveLoading, setLeaveLoading] = useState(false);
   const [leaveConfirmOpen, setLeaveConfirmOpen] = useState(false);
-  const [nameHints, setNameHints] = useState({});
 
   const [view, setView] = useState(() => resolveInitialView(true, searchParams));
 
@@ -112,54 +110,16 @@ function MyClubPageContent() {
     return getClubStats(clubId, tenantId);
   }, [clubId, tenantId, revision]);
 
-  useEffect(() => {
-    let cancelled = false;
-    const gov = clubSummary?.governance || clubRecord?.governance || {};
-    const ids = [
-      gov.presidentUserId,
-      gov.ownerUserId,
-      ...getVicePresidentUserIds(gov),
-    ].filter(Boolean);
-
-    if (ids.length === 0) {
-      setNameHints({});
-      return undefined;
-    }
-
-    void fetchGovernanceNameHints(ids).then((hints) => {
-      if (!cancelled) {
-        setNameHints(hints);
-      }
-    });
-
-    return () => {
-      cancelled = true;
-    };
-  }, [
+  // Phase 2E — single canonical governance read path for Club Home.
+  const governanceRead = useGovernanceReadModel({
     clubId,
-    clubSummary?.governance?.presidentUserId,
-    clubSummary?.governance?.ownerUserId,
-    clubSummary?.governance?.vicePresidentUserId,
-    clubSummary?.governance?.vicePresidentUserIds,
-    clubRecord?.governance?.presidentUserId,
-    clubRecord?.governance?.ownerUserId,
+    clubSeed: clubRecord,
     revision,
-  ]);
+    hydrateProfiles: true,
+    enabled: Boolean(clubId),
+  });
 
-  const governanceLabels = clubSummary
-    ? getGovernanceDisplayLabels(
-        {
-          id: clubId,
-          governance: clubSummary.governance,
-          ownerLabel: clubSummary.ownerLabel || clubRecord?.ownerLabel || null,
-          presidentLabel: clubSummary.presidentLabel || clubRecord?.presidentLabel || null,
-        },
-        tenantId,
-        nameHints
-      )
-    : clubRecord
-      ? getGovernanceDisplayLabels(clubRecord, tenantId, nameHints)
-      : null;
+  const governanceLabels = governanceRead.labels;
 
   const registeredCluster = clubSummary
     ? getRegisteredClusterLabel({ governance: clubSummary.governance }, tenantId)
@@ -205,6 +165,11 @@ function MyClubPageContent() {
     }
   };
 
+  const handleGovernanceRefresh = () => {
+    bumpRevision();
+    void governanceRead.reload();
+  };
+
   return (
     <ClubPageShell
       title="CLB của tôi"
@@ -244,6 +209,27 @@ function MyClubPageContent() {
         />
       ) : clubSummary ? (
         <>
+          {governanceRead.state === GOVERNANCE_READ_STATE.LOADING && !governanceLabels && (
+            <Box sx={{ display: "flex", alignItems: "center", gap: 1, mb: 2 }}>
+              <CircularProgress size={18} />
+              <Typography variant="body2" color="text.secondary">
+                Đang tải thông tin quản trị…
+              </Typography>
+            </Box>
+          )}
+          {governanceRead.error && (
+            <Alert
+              severity="error"
+              sx={{ mb: 2 }}
+              action={
+                <Button color="inherit" size="small" onClick={() => void governanceRead.reload()}>
+                  Thử lại
+                </Button>
+              }
+            >
+              {governanceRead.errorMessage || "Không tải được thông tin Chủ tịch / Phó chủ tịch."}
+            </Alert>
+          )}
           <MyClubSummaryCard
             clubSummary={clubSummary}
             clubStats={clubStats}
@@ -254,7 +240,7 @@ function MyClubPageContent() {
             clubId={clubId}
             tenantId={tenantId}
             clubRecord={clubRecord}
-            onRefresh={bumpRevision}
+            onRefresh={handleGovernanceRefresh}
             onMessage={setMessage}
           />
 
@@ -275,7 +261,7 @@ function MyClubPageContent() {
                 tenantId={tenantId}
                 clubRecord={clubRecord}
                 revision={revision}
-                onRefresh={bumpRevision}
+                onRefresh={handleGovernanceRefresh}
               />
             </Box>
           )}

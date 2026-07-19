@@ -139,6 +139,33 @@ export {
   governanceTransferOwnership,
 } from "./api/governanceApi.js";
 
+/** Phase 2E — canonical governance read model */
+export {
+  GOVERNANCE_READ_STATE,
+  GOVERNANCE_ROLE_LABELS,
+  GOVERNANCE_MISSING_PROFILE_LABEL,
+  GOVERNANCE_UNASSIGNED_LABEL,
+  GOVERNANCE_NO_VP_LABEL,
+  isCanonicalGovernanceReadEnabled,
+  toGovernanceReadModel,
+  toGovernanceDisplayLabels,
+  toGovernanceReadSnapshot,
+  mapGovernanceRoleCodesToLabel,
+  resolveMemberGovernanceRoleLabel,
+  countUniqueActiveGovernancePersons,
+  shouldRefetchGovernanceOnConflict,
+  resolveGovernanceRefreshAction,
+} from "./context/governanceCanonicalReadModel.js";
+
+export {
+  readClubGovernance,
+  buildGovernanceReadModelFromClub,
+  refreshClubGovernanceReadModel,
+  hydrateGovernanceDisplayProfiles,
+} from "./services/governanceReadService.js";
+
+export { useGovernanceReadModel } from "./hooks/useGovernanceReadModel.js";
+
 export {
   MEMBERSHIP_AUDIT_EVENTS,
   JOIN_REQUEST_AUDIT_EVENTS,

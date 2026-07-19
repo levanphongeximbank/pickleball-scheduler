@@ -4,6 +4,12 @@
   isClubMemberStatusActive,
 } from "../../../features/club/constants/clubMemberRoles.js";
 import { mapV2MemberRowToUi } from "../../../features/club/services/clubMemberService.js";
+import {
+  GOVERNANCE_ROLE_LABELS,
+  GOVERNANCE_UNASSIGNED_LABEL,
+  mapGovernanceRoleCodesToLabel,
+  resolveMemberGovernanceRoleLabel,
+} from "../../../features/club/context/governanceCanonicalReadModel.js";
 
 export const MY_CLUB_VIEWS = ["home", "schedule", "members"];
 
@@ -20,15 +26,18 @@ export function resolveInitialView(_hasClub, searchParams) {
 
 export function resolvePresidentDisplayLabel(governanceLabels) {
   if (!governanceLabels) {
-    return "Chưa gán";
+    return GOVERNANCE_UNASSIGNED_LABEL;
   }
   if (governanceLabels.presidentLabel) {
     return governanceLabels.presidentLabel;
   }
   if (governanceLabels.combinedOwnerPresident && governanceLabels.ownerLabel) {
-    return governanceLabels.ownerLabel.replace(" (Chủ sở hữu & Chủ tịch)", "");
+    return governanceLabels.ownerLabel.replace(
+      ` (${GOVERNANCE_ROLE_LABELS.owner_and_president})`,
+      ""
+    );
   }
-  return "Chưa gán";
+  return GOVERNANCE_UNASSIGNED_LABEL;
 }
 
 export function resolveOwnerStatContent({ club, governanceLabels, canAssign }) {
@@ -36,7 +45,7 @@ export function resolveOwnerStatContent({ club, governanceLabels, canAssign }) {
   if (hasOwner) {
     return {
       mode: "assigned",
-      label: governanceLabels?.ownerLabel || "—",
+      label: governanceLabels?.ownerLabel || GOVERNANCE_UNASSIGNED_LABEL,
     };
   }
   if (canAssign) {
@@ -45,87 +54,43 @@ export function resolveOwnerStatContent({ club, governanceLabels, canAssign }) {
   return { mode: "unassigned" };
 }
 
+/** @deprecated prefer resolveMemberGovernanceRoleLabel from governanceCanonicalReadModel */
 export function resolveMemberGovernanceRole(userId, governance, getVicePresidentUserIds) {
-  if (!userId || !governance) {
-    return null;
-  }
-
-  const same = (a, b) => Boolean(a && b && String(a).trim() === String(b).trim());
-  const viceIds = getVicePresidentUserIds(governance);
-  const isPresident = same(userId, governance.presidentUserId);
-  const isOwner = same(userId, governance.ownerUserId);
-  const isVice = viceIds.some((id) => same(userId, id));
-
-  if (isPresident && isOwner) {
-    return "Chủ sở hữu & Chủ tịch";
-  }
-  if (isPresident) {
-    return "Chủ tịch";
-  }
-  if (isVice) {
-    return "Phó chủ tịch";
-  }
-  if (isOwner) {
-    return "Chủ sở hữu";
-  }
-  return null;
+  void getVicePresidentUserIds;
+  return resolveMemberGovernanceRoleLabel(userId, governance, null);
 }
 
-/** Map Phase 42 governance role codes (club_governance_assignments) → VN label. */
+/** Map Phase 42 governance role codes → VN label (canonical). */
 export function mapV2GovernanceRoleCodes(roles) {
-  const list = (Array.isArray(roles) ? roles : []).map((role) =>
-    String(role || "").trim().toLowerCase()
-  );
-  const has = (role) => list.includes(role);
-  const isPresident = has("president") || has("club_president");
-  const isOwner = has("club_owner") || has("owner");
-  const isVice = has("vice_president") || has("club_vice_president");
-
-  if (isPresident && isOwner) {
-    return "Chủ sở hữu & Chủ tịch";
-  }
-  if (isPresident) {
-    return "Chủ tịch";
-  }
-  if (isVice) {
-    return "Phó chủ tịch";
-  }
-  if (isOwner) {
-    return "Chủ sở hữu";
-  }
-  return null;
+  return mapGovernanceRoleCodesToLabel(roles);
 }
 
 /**
  * Build member table rows from Phase 42 `club_list_members` RPC rows.
- *
- * Row normalization (status, displayName, membershipType, governance codes) is
- * delegated to the canonical row mapper `mapV2MemberRowToUi`. This function is
- * the display-row builder on top of it: it resolves the VN governance role
- * (club record first, then per-member codes), the member-role label and the
- * name fallback. Status normalization / active rule stay single-sourced in
- * `clubMemberRoles.js`.
+ * Governance badges use the Phase 2E canonical role-label resolver.
  */
 export function buildMemberRowsFromV2Members(members, clubGovernance, getVicePresidentUserIds) {
+  void getVicePresidentUserIds;
   return (Array.isArray(members) ? members : [])
     .map((rawMember) => {
       const member = mapV2MemberRowToUi(rawMember);
-      const govFromClub = resolveMemberGovernanceRole(
+      const governanceRole = resolveMemberGovernanceRoleLabel(
         member.userId,
         clubGovernance,
-        getVicePresidentUserIds
+        member.governanceRoles
       );
-      const governanceRole =
-        govFromClub || mapV2GovernanceRoleCodes(member.governanceRoles);
       const membershipType = String(member.membershipType || "regular").toLowerCase();
       const memberRole =
         CLUB_MEMBER_ROLE_LABELS[membershipType] || CLUB_MEMBER_ROLE_LABELS.member;
-      const name =
-        member.displayName || member.email || String(member.userId || "").trim() || "VĐV";
+      // displayName → email → VĐV; never raw uuid fragment.
+      const safeName =
+        String(member.displayName || "").trim() ||
+        String(member.email || "").trim() ||
+        "VĐV";
 
       return {
         id: member.id,
-        name,
+        name: safeName,
         governanceRole,
         memberRole,
         status: member.status,

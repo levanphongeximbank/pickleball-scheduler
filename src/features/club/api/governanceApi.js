@@ -11,6 +11,7 @@ import { getClubById as getRegistryClubById } from "../../../domain/clubService.
 import { API_ERROR_CODES } from "../../api/constants/apiErrors.js";
 import { GOVERNANCE_AUDIT_EVENTS } from "../constants/governanceAuditEvents.js";
 import { isClubStorageV2Enabled } from "../config/clubRegistryFlags.js";
+import { toGovernanceReadModel } from "../context/governanceCanonicalReadModel.js";
 import {
   assignClubOwner,
   assignClubVicePresident,
@@ -22,7 +23,8 @@ import {
 import { rpcV2ClubGet } from "../services/clubStorageV2RpcService.js";
 
 /**
- * governance.get — references only (peer-safe read).
+ * governance.get — references + Phase 2E normalized read model (peer-safe read).
+ * Additive fields only; existing callers keep governance / version / clubId.
  */
 export async function governanceGet(clubId, options = {}) {
   const id = String(clubId || "").trim();
@@ -43,12 +45,22 @@ export async function governanceGet(clubId, options = {}) {
         error: rpc.error || "Không tải được quản trị CLB.",
       };
     }
+    const club = rpc.club || null;
+    const readModel = toGovernanceReadModel({
+      club,
+      profileByUserId: options.profileByUserId || null,
+      membershipByUserId: options.membershipByUserId || null,
+      v2Enabled: true,
+      legacyBlobRoles: null,
+    });
     return {
       ok: true,
-      governance: rpc.club?.governance || null,
-      version: rpc.version ?? rpc.club?.version ?? null,
+      governance: club?.governance || null,
+      version: rpc.version ?? club?.version ?? null,
       clubId: id,
       provider: "v2-rpc",
+      readModel,
+      tenantId: club?.tenantId || club?.venueId || null,
     };
   }
 
@@ -61,12 +73,24 @@ export async function governanceGet(clubId, options = {}) {
     };
   }
 
+  const readModel = toGovernanceReadModel({
+    club,
+    profileByUserId: options.profileByUserId || null,
+    membershipByUserId: options.membershipByUserId || null,
+    v2Enabled: false,
+    legacyBlobRoles: options.legacyBlobRoles || null,
+  });
+
   return {
     ok: true,
     governance: club.governance || null,
     version: club.version ?? null,
     clubId: id,
     provider: "legacy-registry",
+    readModel,
+    tenantId: club.tenantId || club.venueId || null,
+    /** V2 OFF fallback — not Production authority. */
+    fallback: "legacy-registry",
   };
 }
 
