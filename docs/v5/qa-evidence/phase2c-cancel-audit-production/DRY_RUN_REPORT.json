@@ -1,0 +1,62 @@
+{
+  "phase": "2C-cancel-audit-production",
+  "mode": "apply",
+  "productionRef": "expuvcohlcjzvrrauvud",
+  "stagingRef": "qyewbxjsiiyufanzcjcq",
+  "commit": "96889bda132e9e3383061738b347958ece6a9652",
+  "patchCommit": "2ed296293e90d1894b81ea10b1fd508c83a0fad8",
+  "sqlFile": "docs/v5/phase2c-cancel-audit/PHASE_2C_CANCEL_MEMBERSHIP_REQUEST_AUDIT.sql",
+  "sqlSha256": "ee4f671b0ae55b892b78a593fd97e3044bcf11e56989b971a29b2bca7360110f",
+  "expectedSha256": "ee4f671b0ae55b892b78a593fd97e3044bcf11e56989b971a29b2bca7360110f",
+  "startedAt": "2026-07-19T14:59:37.615Z",
+  "productionTouched": false,
+  "status": "PASS",
+  "identity": {
+    "productionRef": "expuvcohlcjzvrrauvud",
+    "productionHost": "https://expuvcohlcjzvrrauvud.supabase.co",
+    "evidence": [
+      "scripts/phase42k-production-helpers.mjs PRODUCTION_REF",
+      "docs/v5/GATE_3_PRODUCTION_RUNTIME_PREFLIGHT.md",
+      "docs/v5/V5_SAAS_COMPLETION_ROADMAP.md topology",
+      "Management API queries scoped exclusively to PRODUCTION_REF"
+    ],
+    "notStaging": true,
+    "notPreview": true
+  },
+  "preflight": {
+    "checks": {
+      "cancelFnExists": true,
+      "signatureOk": true,
+      "securityDefiner": true,
+      "searchPathPublic": true,
+      "grantAuthenticated": true,
+      "writeAuditExists": true,
+      "submitWhitelisted": true,
+      "reviewWhitelisted": true,
+      "correctionWhitelisted": true,
+      "cancelAlreadyWhitelisted": false,
+      "cancelAlreadyAudits": false
+    },
+    "alreadyApplied": false,
+    "drift": false,
+    "fnSnippet": "CREATE OR REPLACE FUNCTION public.club_cancel_membership_request(p_request_id uuid, p_membership_request_id uuid, p_expected_version integer)\n RETURNS json\n LANGUAGE plpgsql\n SECURITY DEFINER\n SET search_path TO 'public'\nAS $function$\ndeclare v_cached jsonb; v_row public.club_membership_requests_v42%rowtype; v_resp jsonb;\nbegin\n  if auth.uid() is null then return public.phase42_err('NOT_AUTHENTICA",
+    "raw": {
+      "cancel_args": "p_request_id uuid, p_membership_request_id uuid, p_expected_version integer",
+      "cancel_security_definer": true,
+      "cancel_search_path": "public",
+      "cancel_in_constraint": false,
+      "submit_in_constraint": true,
+      "review_in_constraint": true,
+      "correction_in_constraint": true
+    }
+  },
+  "dryRun": {
+    "sqlParsesLocally": true,
+    "additiveWhitelist": true,
+    "singleRpcReplace": true,
+    "grantPreserved": true,
+    "noDestructiveDml": true,
+    "checksumOk": true
+  },
+  "dryRunVerdict": "PASS"
+}
