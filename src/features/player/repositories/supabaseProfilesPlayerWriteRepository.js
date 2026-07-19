@@ -24,11 +24,15 @@ const PRIVILEGED_VERIFICATION_KEYS = Object.freeze([
 /**
  * @param {object} [deps]
  * @param {() => object|null} [deps.getClient]
+ * @param {object} [deps.supabase] — authenticated session/anon client (preferred runtime injection)
  * @param {(userId: string, patch: object) => Promise<object>} [deps.updateProfileRowById]
  * @param {() => boolean} [deps.hasConfig]
  */
 export function createSupabaseProfilesPlayerWriteRepository(deps = {}) {
-  const getClient = deps.getClient || getSupabaseAuthClient;
+  const getClient =
+    deps.getClient ||
+    (deps.supabase ? () => deps.supabase : null) ||
+    getSupabaseAuthClient;
   const updateRow = deps.updateProfileRowById || updateProfileRowById;
   const hasConfig = deps.hasConfig || hasSupabaseConfig;
 

@@ -1,14 +1,10 @@
 import { getCurrentUser } from "../../../auth/authService.js";
-import { fetchProfileByUserId, updateProfileRowById } from "../../../auth/profileService.js";
+import { fetchProfileByUserId } from "../../../auth/profileService.js";
 import { hasSupabaseConfig } from "../../../auth/supabaseClient.js";
 import { normalizeUser } from "../../../models/user.js";
-import { saveAuthSession, saveAuthSessionFromCloudProfile } from "../../../auth/authStorage.js";
+import { saveAuthSession } from "../../../auth/authStorage.js";
 import { writeAuditLog, AUDIT_ACTIONS } from "./auditService.js";
-import {
-  normalizeProfileGender,
-  sanitizeProfileWritePayload,
-  shouldLogProfileQa,
-} from "../utils/profileGender.js";
+import { normalizeProfileGender } from "../utils/profileGender.js";
 
 const DEV_REGISTRY_KEY = "pickleball-dev-user-registry-v1";
 
@@ -63,20 +59,6 @@ export function buildSelfProfileUpdatePatch(existingProfile, patch) {
   };
 }
 
-function logQaPayload(label, payload, result = null) {
-  if (!shouldLogProfileQa() || typeof console === "undefined") {
-    return;
-  }
-  console.info(`[profile-qa] ${label}`, {
-    payload: sanitizeProfileWritePayload(payload),
-    ok: result?.ok ?? null,
-    code: result?.code ?? null,
-    affected: result?.profile ? 1 : result?.ok ? 1 : 0,
-    canonicalGender: result?.profile?.gender ?? result?.user?.gender ?? null,
-    canonicalBirthYear: result?.profile?.birth_year ?? result?.user?.birthYear ?? null,
-  });
-}
-
 export async function fetchSelfProfile() {
   const user = getCurrentUser();
   if (!user?.id) {
@@ -121,6 +103,10 @@ export async function updateSelfProfile({
   avatarUrl,
   gender,
   birthYear,
+  birthDate,
+  handedness,
+  activityRegion,
+  privacySettings,
 } = {}) {
   const user = getCurrentUser();
   if (!user?.id) {
@@ -139,48 +125,17 @@ export async function updateSelfProfile({
   if (birthYear !== undefined) {
     patch.birthYear = resolveBirthYear(birthYear);
   }
+  if (birthDate !== undefined) patch.birthDate = birthDate;
+  if (handedness !== undefined) patch.handedness = handedness;
+  if (activityRegion !== undefined) patch.activityRegion = activityRegion;
+  if (privacySettings !== undefined) patch.privacySettings = privacySettings;
 
+  // Canonical authenticated runtime path — Player Management durable write (RLS/session).
   if (hasSupabaseConfig()) {
-    const existing = await fetchProfileByUserId(user.id);
-    if (!existing.ok) {
-      return existing;
-    }
-
-    // Self-only mutation — never allow writing another user's id.
-    if (String(existing.profile?.id || "") !== String(user.id)) {
-      return { ok: false, error: "Không thể cập nhật hồ sơ người khác.", code: "FORBIDDEN" };
-    }
-
-    const row = buildSelfProfileUpdatePatch(existing.profile, patch);
-    logQaPayload("updateSelfProfile:request", row);
-
-    const result = await updateProfileRowById(user.id, row);
-    logQaPayload("updateSelfProfile:response", row, result);
-    if (!result.ok) {
-      return result;
-    }
-
-    await writeAuditLog({
-      action: AUDIT_ACTIONS.UPDATE,
-      resourceType: "profile",
-      resourceId: user.id,
-    });
-
-    const merged = normalizeUser({
-      ...result.user,
-      phone: result.profile?.phone || patch.phone,
-      avatarUrl: result.profile?.avatar_url || patch.avatarUrl,
-      gender: normalizeProfileGender(result.profile?.gender) || result.profile?.gender || "",
-      birthYear: result.profile?.birth_year ?? null,
-    });
-    // Replace session with canonical cloud row — avoid stale gender snapshot.
-    saveAuthSessionFromCloudProfile(merged, { provider: "supabase" });
-
-    return {
-      ok: true,
-      user: merged,
-      profile: result.profile,
-    };
+    const { updateAuthenticatedSelfPlayerProfile } = await import(
+      "../../player/services/updateAuthenticatedSelfPlayerProfile.js"
+    );
+    return updateAuthenticatedSelfPlayerProfile(patch);
   }
 
   const devUpdated = updateDevSelfProfile(user.id, patch);

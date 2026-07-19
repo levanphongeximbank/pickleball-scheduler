@@ -227,13 +227,22 @@ test("1C successful write through single write service", async () => {
   assert.equal(result.profile.privacySettings.showPhone, false);
 });
 
-test("1C default write path is not configured (no silent durable persistence)", async () => {
+test("1C default write path is unconfigured when Supabase is not available", async () => {
+  const { createDefaultPlayerProfileWriteRepository } = await import(
+    "../src/features/player/bootstrap/playerProfileWriteBootstrap.js"
+  );
+  const defaultRepo = createDefaultPlayerProfileWriteRepository({
+    hasConfig: () => false,
+    getClient: () => null,
+  });
+  assert.equal(defaultRepo.kind, "unconfigured");
+
   const result = await updatePlayerProfile(
     "player-1",
     { handedness: "right" },
     {
       findPlayerById: directory({ "player-1": { id: "player-1" } }),
-      // intentionally no writeRepository
+      writeRepository: defaultRepo,
     }
   );
   assert.equal(result.ok, false);
