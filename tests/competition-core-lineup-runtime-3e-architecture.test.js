@@ -126,15 +126,17 @@ test("3E architecture: Production safety defaults unchanged", () => {
   assert.equal(resolveShadowEligibility({}).eligible, false);
 });
 
-test("3E architecture: root index does NOT re-export Lineup Runtime yet (Integrator-owned)", () => {
+test("3E architecture: root index re-exports Lineup Runtime public surface (Integrator Wave)", () => {
   const indexPath = path.join(ROOT, "src/features/competition-core/index.js");
   const content = readFileSync(indexPath, "utf8");
-  assert.doesNotMatch(content, /createLineupResolver/);
-  assert.doesNotMatch(content, /from "\.\/lineups\//);
-  assert.doesNotMatch(content, /LINEUP_RUNTIME_ERROR_CODE/);
+  assert.match(content, /createLineupResolver/);
+  assert.match(content, /from "\.\/lineups\/index\.js"/);
+  assert.match(content, /LINEUP_RUNTIME_ERROR_CODE/);
+  assert.doesNotMatch(content, /registerLineupCapability/);
+  assert.doesNotMatch(content, /VITE_ENABLE.*LINEUP.*=.*true/);
 });
 
-test("3E architecture: phase-3e sub-manifest exists; official manifest ownership Integrator", () => {
+test("3E architecture: official unit-test-files.json includes Phase 3E tests (Integrator Wave)", () => {
   const phaseManifest = path.join(
     ROOT,
     "scripts/ci/unit-test-files.phase-3e.json"
@@ -150,14 +152,19 @@ test("3E architecture: phase-3e sub-manifest exists; official manifest ownership
   const official = JSON.parse(
     readFileSync(path.join(ROOT, "scripts/ci/unit-test-files.json"), "utf8")
   );
-  // Capability branch must not merge into official — Integrator owns that.
   for (const entry of phase) {
     assert.equal(
-      official.includes(entry),
-      false,
-      `official must not include ${entry} until Integrator Wave`
+      official.filter((f) => f === entry).length,
+      1,
+      `official must include exactly once: ${entry}`
     );
   }
+  assert.equal(
+    official.filter(
+      (f) => f === "tests/competition-core-lineup-integrator-3e.test.js"
+    ).length,
+    1
+  );
 });
 
 test("3E architecture: no Production page/API callers of Lineup Runtime", () => {

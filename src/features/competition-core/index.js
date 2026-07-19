@@ -678,6 +678,23 @@ export {
   mapLegacyRosterToCompetitionRoster,
 } from "./teams/index.js";
 
+/** Phase 3E Integrator Wave — Lineup Resolution Runtime public surface. */
+export {
+  createLineupResolver,
+  createLegacyLineupAdapter,
+  buildLineupIdentityKey,
+  buildLineupSlotId,
+  createLineupIdentity,
+  LINEUP_RUNTIME_ERROR_CODE,
+  LineupRuntimeError,
+  isLineupRuntimeError,
+  createLineupRuntimeError,
+  LINEUP_ADAPTER_ID,
+  LINEUP_SOURCE_TYPE,
+  mapLegacyLineupToCompetitionLineup,
+  createNoopLineupPolicy,
+} from "./lineups/index.js";
+
 /** Phase 3A.1 — Runtime Control Plane foundation (decision-only, no executor dispatch). */
 export {
   RUNTIME_CONTROL_VERSION,

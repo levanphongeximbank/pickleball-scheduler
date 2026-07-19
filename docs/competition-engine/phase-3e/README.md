@@ -1,16 +1,17 @@
 # Phase 3E — Lineup Resolution Runtime
 
-**Status:** Capability implemented (isolated). Integrator Wave not started.  
-**Branch:** `feature/competition-engine-phase-3e-lineup-runtime`  
+**Status:** Capability implemented. Integrator Wave complete (root export + official CI).  
+**Integrator branch:** `integration/competition-engine-phase-3e-wave-1`  
 **Production callers:** NONE
 
 ## Capability root
 
 `src/features/competition-core/lineups/**`
 
-## Public surface (capability-local)
+## Public surface
 
-`lineups/index.js` — Option B. Root `competition-core/index.js` is **not** modified.
+- Capability-local: `lineups/index.js`
+- Root (Integrator): `competition-core/index.js` re-exports approved allowlist only
 
 ## Identity (Owner-locked)
 
@@ -29,10 +30,12 @@ SLOT id            = lineupIdentityKey::disciplineOrSideKey::index
 | Persistence | OFF |
 | Runtime cutover | NOT PERFORMED |
 | UI / API / SQL / RPC / Supabase | NONE |
+| Runtime-control registration | NONE |
+| Shared API error registry | NOT mirrored |
 
-## Integrator handoff (later)
+## Integrator Wave (done)
 
-1. Re-export from `competition-core/index.js`
-2. Merge `scripts/ci/unit-test-files.phase-3e.json` into official manifest
-3. Optional shared error-registry mirror
-4. Do **not** enable flags, Shadow, Production callers, or persistence
+1. Re-export allowlist from `competition-core/index.js`
+2. Merge Phase 3E tests + integrator smoke into official `unit-test-files.json`
+3. Shared error-registry mirror: skipped (capability-local + root typed errors only)
+4. Flags / Shadow / Production callers / persistence: unchanged OFF
