@@ -242,6 +242,7 @@
   "tests/club-phase-2c-membership-parity.test.js",
   "tests/club-phase-2d-governance-writer.test.js",
   "tests/club-phase-2e-governance-read-model.test.js",
+  "tests/club-phase-2f-governance-ui-certification.test.js",
   "tests/phase45a4d1-member-restore-rpc-contract.test.js",
   "tests/phase1b-home-members-count-parity.test.js",
   "tests/phase1b-vp-assign-remove-reload.test.js",
