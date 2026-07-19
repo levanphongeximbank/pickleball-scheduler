@@ -115,3 +115,49 @@ export {
   evaluateCanonicalRules,
   preflightRuleSet,
 } from "./evaluateCanonicalRules.js";
+
+/* ── CORE-01 Rule Engine Foundation (local barrel only) ── */
+
+export {
+  RULE_SOURCE,
+  RULE_SOURCE_VALUES,
+  RULE_SOURCE_PRIORITY,
+  RULE_SOURCE_ORDER,
+  isRuleSource,
+  deriveRuleSource,
+  resolveRuleSourcePriority,
+  RULE_PRIORITY,
+  RULE_PRIORITY_VALUES,
+  RULE_PRIORITY_RANK,
+  isRulePriority,
+  resolveRulePriorityRank,
+  normalizeRuleAuthority,
+  compareRuleAuthority,
+} from "./authority/index.js";
+
+export {
+  RULE_OPERATION,
+  RULE_OPERATION_VALUES,
+  RULE_OPERATION_ALIASES,
+  isRuleOperation,
+  resolveCanonicalOperation,
+  matchRuleOperation,
+} from "./operations/index.js";
+
+export {
+  RULE_RESOLUTION_REASON,
+  buildRuleResolutionTrace,
+  cloneRule,
+  resolveApplicableRules,
+  resolveCompetitionId,
+  resolveRulesDeterministic,
+} from "./resolution/index.js";
+
+export {
+  createNullParticipantLookupPort,
+  createInMemoryParticipantLookupPort,
+  createNullEntryLookupPort,
+  createInMemoryEntryLookupPort,
+  createNullDivisionLookupPort,
+  createInMemoryDivisionLookupPort,
+} from "./ports/index.js";

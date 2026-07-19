@@ -1,7 +1,6 @@
 /**
  * @typedef {import('./constraintScope.js').ConstraintScopeValue} ConstraintScopeValue
  * @typedef {import('./ruleSetStatus.js').RuleSetStatusValue} RuleSetStatusValue
- */
  * @typedef {import('./engineType.js').CompetitionEngineTypeValue} CompetitionEngineTypeValue
  * @typedef {import('./constraintType.js').CompetitionConstraintTypeValue} CompetitionConstraintTypeValue
  * @typedef {import('./constraintSeverity.js').ConstraintSeverityValue} ConstraintSeverityValue
@@ -9,6 +8,7 @@
  * @typedef {import('./ratingStatus.js').CompetitionRatingStatusValue} CompetitionRatingStatusValue
  * @typedef {import('./ratingEligibilityStatus.js').RatingEligibilityStatusValue} RatingEligibilityStatusValue
  * @typedef {import('./engineRunStatus.js').EngineRunStatusValue} EngineRunStatusValue
+ * @typedef {import('./drawMode.js').DrawModeValue} DrawModeValue
  */
 
 /**
@@ -25,6 +25,7 @@
  * @property {string} [tenantId]
  * @property {string} [clubId]
  * @property {string} [tournamentId]
+ * @property {string} [competitionId]
  * @property {string} [eventId]
  * @property {string} [sessionId]
  * @property {string} [venueId]
@@ -46,6 +47,14 @@
  * @property {ConstraintScopeValue} [scope]
  * @property {ConstraintApplicability} [applicability]
  * @property {Record<string, unknown>} [params]
+ * @property {string[]} [operations]
+ * @property {string} [source]
+ * @property {number} [sourcePriority]
+ * @property {string|number} [priority]
+ * @property {string} [ruleSetId]
+ * @property {string} [ruleSetVersion]
+ * @property {string} [updatedAt]
+ * @property {Record<string, unknown>} [metadata]
  */
 
 /**
@@ -115,6 +124,7 @@
  * @property {string} [tenantId]
  * @property {string} [clubId]
  * @property {string} [tournamentId]
+ * @property {string} [competitionId]
  * @property {string} [eventId]
  * @property {string} [sessionId]
  * @property {string} [venueId]
@@ -142,6 +152,8 @@
  * @property {string} [lockedAt]
  * @property {ConstraintDefinition[]} constraints
  * @property {Record<string, unknown>} [metadata]
+ * @property {string} [source]
+ * @property {number} [sourcePriority]
  */
 
 /**

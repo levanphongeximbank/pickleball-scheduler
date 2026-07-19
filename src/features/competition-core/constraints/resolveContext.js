@@ -19,6 +19,7 @@ export function resolveContext(raw = {}) {
     tenantId: raw.tenantId ? String(raw.tenantId) : undefined,
     clubId: raw.clubId ? String(raw.clubId) : undefined,
     tournamentId: raw.tournamentId ? String(raw.tournamentId) : undefined,
+    competitionId: raw.competitionId ? String(raw.competitionId) : undefined,
     eventId: raw.eventId ? String(raw.eventId) : undefined,
     sessionId: raw.sessionId ? String(raw.sessionId) : undefined,
     venueId: raw.venueId ? String(raw.venueId) : undefined,

@@ -8,6 +8,9 @@ import {
   DEFAULT_SEVERITY_BY_CONSTRAINT_TYPE,
   LEGACY_CONSTRAINT_TYPE_ALIASES,
 } from "./ruleConstants.js";
+import { deriveRuleSource, isRuleSource, resolveRuleSourcePriority } from "./authority/ruleSource.js";
+import { isRulePriority } from "./authority/rulePriority.js";
+import { resolveCanonicalOperation } from "./operations/ruleOperations.js";
 
 /**
  * @typedef {import('../types/index.js').ConstraintDefinition} ConstraintDefinition
@@ -93,6 +96,7 @@ function normalizeApplicability(raw) {
     "tenantId",
     "clubId",
     "tournamentId",
+    "competitionId",
     "eventId",
     "sessionId",
     "venueId",
@@ -135,7 +139,8 @@ export function normalizeRuleDefinition(raw, index = 0) {
 
   const id = String(raw.id || `rule-${index + 1}-${canonicalType}`);
 
-  return {
+  /** @type {import('../types/index.js').ConstraintDefinition} */
+  const normalized = {
     id,
     type: canonicalType,
     severity: resolveSeverity(canonicalType, raw),
@@ -144,6 +149,48 @@ export function normalizeRuleDefinition(raw, index = 0) {
     applicability: normalizeApplicability(raw.applicability),
     params: normalizeParams(raw, canonicalType),
   };
+
+  // CORE-01 optional authority / operation fields — only when provided (backward compatible).
+  if (raw.source != null || raw.sourcePriority != null) {
+    const source = isRuleSource(raw.source) ? raw.source : deriveRuleSource(raw);
+    normalized.source = source;
+    const explicitPriority = Number(raw.sourcePriority);
+    normalized.sourcePriority = Number.isFinite(explicitPriority)
+      ? explicitPriority
+      : resolveRuleSourcePriority({ ...raw, source });
+  }
+
+  if (isRulePriority(raw.priority) || (typeof raw.priority === "number" && Number.isFinite(raw.priority))) {
+    normalized.priority = raw.priority;
+  }
+
+  if (Array.isArray(raw.operations)) {
+    const ops = [];
+    for (let i = 0; i < raw.operations.length; i += 1) {
+      const resolved = resolveCanonicalOperation(raw.operations[i]);
+      if (resolved && !ops.includes(resolved)) {
+        ops.push(resolved);
+      }
+    }
+    if (ops.length) {
+      normalized.operations = ops;
+    }
+  }
+
+  if (raw.ruleSetId != null) {
+    normalized.ruleSetId = String(raw.ruleSetId);
+  }
+  if (raw.ruleSetVersion != null) {
+    normalized.ruleSetVersion = String(raw.ruleSetVersion);
+  }
+  if (raw.updatedAt != null) {
+    normalized.updatedAt = String(raw.updatedAt);
+  }
+  if (raw.metadata && typeof raw.metadata === "object") {
+    normalized.metadata = { ...raw.metadata };
+  }
+
+  return normalized;
 }
 
 /**
@@ -166,7 +213,8 @@ export function normalizeRuleDefinitions(rules = []) {
  */
 export function createRuleSet(partial = {}) {
   const status = isRuleSetStatus(partial.status) ? partial.status : RULE_SET_STATUS.ACTIVE;
-  return {
+  /** @type {import('../types/index.js').RuleSet} */
+  const ruleSet = {
     id: String(partial.id || DEFAULT_RULE_SET_ID),
     version: String(partial.version || DEFAULT_RULE_SET_VERSION),
     status,
@@ -175,6 +223,17 @@ export function createRuleSet(partial = {}) {
     constraints: normalizeRuleDefinitions(partial.constraints || []),
     metadata: partial.metadata && typeof partial.metadata === "object" ? { ...partial.metadata } : {},
   };
+
+  // Optional set-level authority metadata — does not change lifecycle semantics.
+  if (isRuleSource(partial.source)) {
+    ruleSet.source = partial.source;
+  }
+  const setPriority = Number(partial.sourcePriority);
+  if (Number.isFinite(setPriority)) {
+    ruleSet.sourcePriority = setPriority;
+  }
+
+  return ruleSet;
 }
 
 /**
