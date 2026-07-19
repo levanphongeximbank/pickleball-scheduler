@@ -248,7 +248,13 @@ async function unlinkAthleteProfile({ userId, skipLegacyRpc = false } = {}) {
   return { ok: true };
 }
 
-export async function leaveMyClub({ user, tenantId = null, clubId: clubIdOverride = null } = {}) {
+export async function leaveMyClub({
+  user,
+  tenantId = null,
+  clubId: clubIdOverride = null,
+  idempotencyKey = null,
+  requestId = null,
+} = {}) {
   const athlete = normalizeUser(user || getCurrentUser());
   const clubId = clubIdOverride || resolveUserClubId(athlete);
   const playerId = athlete?.playerId || athlete?.player_id || null;
@@ -270,7 +276,10 @@ export async function leaveMyClub({ user, tenantId = null, clubId: clubIdOverrid
   }
 
   if (isClubStorageV2Enabled()) {
-    const left = await rpcV2ClubLeaveMembership({ clubId });
+    const left = await rpcV2ClubLeaveMembership({
+      clubId,
+      requestId: idempotencyKey || requestId,
+    });
     if (!left.ok) {
       return mapMembershipCommandError(left, "Không rời được câu lạc bộ.");
     }
@@ -601,6 +610,7 @@ export async function submitClubMembershipRequest(clubId, tenantId, user, option
     const result = await rpcV2ClubSubmitMembershipRequest({
       clubId: trimmedClubId,
       message: options.message || "",
+      requestId: options.idempotencyKey || options.requestId,
     });
     if (!result.ok) {
       return mapMembershipCommandError(result, "Không gửi được yêu cầu gia nhập.");
@@ -669,6 +679,7 @@ export async function cancelClubMembershipRequest(clubId, requestId, userId, opt
     const result = await rpcV2ClubCancelMembershipRequest({
       membershipRequestId: trimmedRequestId,
       expectedVersion: options.expectedVersion ?? null,
+      requestId: options.idempotencyKey || options.requestId,
     });
     if (!result.ok) {
       return mapMembershipCommandError(result, "Không hủy được yêu cầu gia nhập.");
@@ -750,6 +761,7 @@ export async function approveClubMembershipRequest(clubId, requestId, tenantId, 
       decision: "approved",
       reviewNote: options.reviewNote || null,
       expectedVersion: options.expectedVersion ?? null,
+      requestId: options.idempotencyKey || options.requestId,
     });
     if (!reviewed.ok) {
       return mapMembershipCommandError(reviewed, "Không duyệt được yêu cầu gia nhập.");
@@ -866,6 +878,7 @@ export async function rejectClubMembershipRequest(clubId, requestId, tenantId, o
       decision: "rejected",
       reviewNote: options.reviewNote || null,
       expectedVersion: options.expectedVersion ?? null,
+      requestId: options.idempotencyKey || options.requestId,
     });
     if (!reviewed.ok) {
       return mapMembershipCommandError(reviewed, "Không từ chối được yêu cầu gia nhập.");

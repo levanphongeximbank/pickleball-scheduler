@@ -278,6 +278,30 @@ export function canDeleteClubMembers(user, club) {
   return true;
 }
 
+/**
+ * Phase 2C — Owner / President (not VP) may add or restore members.
+ * Aligns with role matrix: VP may review join requests but not mutate roster via add/remove.
+ */
+export function canAddClubMembers(user, club) {
+  if (!club) {
+    return false;
+  }
+
+  if (!isRbacEnabled() || !user) {
+    return true;
+  }
+
+  if (isClubVicePresident(user, club) && !isClubOwner(user, club) && !isClubPresident(user, club)) {
+    return false;
+  }
+
+  if (isGlobalRole(user.role)) {
+    return true;
+  }
+
+  return isClubPresident(user, club) || isClubOwner(user, club) || canAssignClubOwner(user);
+}
+
 export function canApproveClubMembershipRequests(user, club) {
   if (!club || !user?.id) {
     return false;

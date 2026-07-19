@@ -3,7 +3,7 @@
 **Status:** FROZEN / **LOCKED** recommendation (documentation only)  
 **Date:** 2026-07-19  
 **Authority:** Phase 2B Domain & API Freeze  
-**Phase status:** 2A CLOSED · 2B LOCKED · **Next: 2C** (implementation not started)  
+**Phase status:** 2A CLOSED · 2B LOCKED · **2C IMPLEMENTED** (awaiting Owner gate) · **Next: 2D**  
 **Product decisions:** Invitation GO · Captain/Coach GO (0..N; optional primary Captain) · Committee **EXCLUDED**
 
 ---
@@ -11,17 +11,17 @@
 ## 1. Sequence (approved)
 
 ```text
-2B  Domain & API freeze              ← LOCKED (docs only; no impl started)
+2B  Domain & API freeze              ← LOCKED (docs only)
  ↓
-2C  Membership & roster parity       ← NEXT implementation phase
+2C  Membership & roster parity       ← IMPLEMENTED (WS-A branch; Owner gate)
  ↓
-2D  Governance writer certification
+2D  Governance writer certification  ← NEXT
  ↓
-2E  Invitation + Captain/Coach SoT   ← cardinality 0..N; optional primary Captain
+2E  Invitation + Captain/Coach SoT
  ↓
-2F  Module boundary cutovers         ← Rating + activity-schedule ownership decisions
+2F  Module boundary cutovers
  ↓
-2G  Legacy writer / blob retirement  ← no peer blob access after cutover
+2G  Legacy writer / blob retirement
  ↓
 2H  Final production certification
 ```

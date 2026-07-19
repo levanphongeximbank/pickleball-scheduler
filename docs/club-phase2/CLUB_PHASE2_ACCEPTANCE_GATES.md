@@ -3,9 +3,10 @@
 **Status:** FROZEN / **LOCKED** (documentation only)  
 **Date:** 2026-07-19  
 **Authority:** Phase 2B Domain & API Freeze  
-**Phase status:** 2A CLOSED · 2B LOCKED · Next: **2C** (not started)  
+**Phase status:** 2A CLOSED · 2B LOCKED · **2C IMPLEMENTED** (`feature/v5-club-phase-2c-membership`, Owner gate review) · Next: **2D**  
 **Use:** Explicit GO / NO-GO before exiting each phase  
-**Cardinality:** Captain 0..N + optional primary · Coach 0..N · Committee excluded
+**Cardinality:** Captain 0..N + optional primary · Coach 0..N · Committee excluded  
+**2C evidence:** [CLUB_PHASE2C_MEMBERSHIP_CERTIFICATION.md](./CLUB_PHASE2C_MEMBERSHIP_CERTIFICATION.md) · [CLUB_PHASE2C_OWNER_REPORT.md](./CLUB_PHASE2C_OWNER_REPORT.md)
 
 ---
 

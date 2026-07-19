@@ -9,7 +9,7 @@ import {
   CLUB_MEMBER_STATUSES,
   normalizeClubMemberStatus,
 } from "../constants/clubMemberRoles.js";
-import { canViewFullClubMembers, canDeleteClubMembers } from "./clubGovernanceService.js";
+import { canViewFullClubMembers, canDeleteClubMembers, canAddClubMembers } from "./clubGovernanceService.js";
 import {
   createClubMemberRecord,
   normalizeClubMember,
@@ -188,6 +188,9 @@ export function formatMemberCommandUserError(result, fallback = "Không thực h
   const serverCode = String(result.serverCode || "").trim();
   if (serverCode === "VERSION_CONFLICT") {
     return "Dữ liệu CLB đã thay đổi trên máy chủ. Vui lòng tải lại rồi thử lại.";
+  }
+  if (serverCode === "IDEMPOTENCY_CONFLICT") {
+    return result.error || "Yêu cầu trùng khóa nhưng khác nội dung. Vui lòng thử lại với khóa mới.";
   }
   if (serverCode === "ALREADY_MEMBER") {
     return result.error || "Thành viên này đã có trong CLB.";
@@ -397,11 +400,21 @@ function removeMemberFromClubLegacy(clubId, playerId, tenantId, options = {}) {
  * @param {string} clubId
  * @param {string|null} playerId blob player id OR (under V2) may be omitted when targetUserId set
  * @param {string|null} tenantId
- * @param {{ skipPermissionGuard?: boolean, targetUserId?: string, membershipType?: string, expectedVersion?: number|null, role?: string }} [options]
+ * @param {{ skipPermissionGuard?: boolean, targetUserId?: string, membershipType?: string, expectedVersion?: number|null, idempotencyKey?: string, requestId?: string, role?: string }} [options]
  */
 export async function addMemberToClub(clubId, playerId, tenantId, options = {}) {
   if (isClubStorageV2Enabled()) {
     if (!options.skipPermissionGuard) {
+      const club = getRegistryClubById(clubId);
+      const user = getCurrentUser();
+      if (club && user && !canAddClubMembers(user, club)) {
+        return {
+          ok: false,
+          code: API_ERROR_CODES.FORBIDDEN,
+          error: "Không có quyền thêm thành viên CLB (Phó chủ tịch không được thêm trực tiếp).",
+        };
+      }
+
       const check = guardClubMemberAccess(clubId, tenantId, PERMISSIONS.PLAYER_UPDATE);
       if (!check.ok) {
         return check;
@@ -422,6 +435,7 @@ export async function addMemberToClub(clubId, playerId, tenantId, options = {}) 
       targetUserId: resolved.userId,
       membershipType: options.membershipType || "regular",
       expectedVersion: options.expectedVersion ?? null,
+      requestId: options.idempotencyKey || options.requestId,
     });
     if (!added.ok) {
       return mapMemberCommandError(added, "Không thêm được thành viên trên cloud.");
@@ -481,6 +495,7 @@ export async function removeMemberFromClub(clubId, playerId, tenantId, options =
       clubId,
       targetUserId: resolved.userId,
       expectedVersion: options.expectedVersion ?? null,
+      requestId: options.idempotencyKey || options.requestId,
     });
     if (!removed.ok) {
       return mapMemberCommandError(removed, "Không gỡ được thành viên trên cloud.");
@@ -513,6 +528,16 @@ export async function restoreMemberToClub(clubId, playerId, tenantId, options = 
   }
 
   if (!options.skipPermissionGuard) {
+    const club = getRegistryClubById(clubId);
+    const user = getCurrentUser();
+    if (club && user && !canAddClubMembers(user, club)) {
+      return {
+        ok: false,
+        code: API_ERROR_CODES.FORBIDDEN,
+        error: "Không có quyền khôi phục thành viên CLB.",
+      };
+    }
+
     const check = guardClubMemberAccess(clubId, tenantId, PERMISSIONS.PLAYER_UPDATE);
     if (!check.ok) {
       return check;
@@ -532,6 +557,7 @@ export async function restoreMemberToClub(clubId, playerId, tenantId, options = 
     clubId,
     targetUserId: resolved.userId,
     expectedVersion: options.expectedVersion ?? null,
+    requestId: options.idempotencyKey || options.requestId,
   });
   if (!restored.ok) {
     return mapMemberCommandError(restored, "Không khôi phục được thành viên trên cloud.");
