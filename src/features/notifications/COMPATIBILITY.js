@@ -24,7 +24,12 @@
  * Still NOT live:
  *   Email / SMS / Zalo / Web Push providers
  *   Production worker execution (structurally present, blocked)
- *   Production SQL apply / Production deployment
+ *   Production SQL apply / Production deployment (Phase 2B remediates; Phase 2C may apply)
+ *
+ * Phase 2B (Production Safety Remediation):
+ *   - Dedicated Production SQL pack with fail-closed seeds
+ *   - Dual-flag Production worker gate (still disabled by default)
+ *   - Apply/verify/rollback/ops tooling (dry-run default; no live apply)
  *
  * Legacy path classification (Phase 1.7):
  *   - header.localNotificationService → deprecated-write (retired)
@@ -41,6 +46,7 @@
 
 export const NOTIFICATION_COMPATIBILITY = Object.freeze({
   phase: "1.7",
+  productionSafetyPhase: "2B",
   sourceOfTruth: "supabase.notification_inbox",
   repositoryModes: Object.freeze(["memory", "local", "supabase"]),
   legacyPreserved: true,
@@ -51,6 +57,8 @@ export const NOTIFICATION_COMPATIBILITY = Object.freeze({
   workerOpsEnabled: true,
   environmentIsolation: true,
   productionWorkerBlocked: true,
+  productionSafetyRemediated: true,
+  productionSqlPackReady: true,
   foundationFinalized: true,
   deliveryModes: Object.freeze(["sandbox", "disabled"]),
   runtimeBootstrap: true,

@@ -283,6 +283,15 @@ export function createMemoryNotificationRepository(seed = []) {
       if (env === NOTIFICATION_ENVIRONMENTS.PRODUCTION && !allowProduction) {
         return { ok: false, error: "production_execution_blocked", jobs: [] };
       }
+      // Phase 2B: Production claim fails closed without tenant + namespace
+      if (env === NOTIFICATION_ENVIRONMENTS.PRODUCTION) {
+        if (!tenantId || !String(tenantId).trim()) {
+          return { ok: false, error: "tenant_scope_required", jobs: [] };
+        }
+        if (!runNamespace || !String(runNamespace).trim()) {
+          return { ok: false, error: "namespace_scope_required", jobs: [] };
+        }
+      }
       const ts = nowIso(now);
       const tsMs = toMs(ts);
       const leaseMs = Math.max(5, Number(leaseSeconds) || 60) * 1000;
@@ -798,6 +807,10 @@ export function createMemoryNotificationRepository(seed = []) {
         return { ok: false, error: "queue_health_forbidden", health: null };
       }
       const env = normalizeNotificationEnvironment(environment);
+      // Phase 2B: Production queue health fails closed without tenant (no cross-tenant leak)
+      if (env === NOTIFICATION_ENVIRONMENTS.PRODUCTION && (!tenantId || !String(tenantId).trim())) {
+        return { ok: false, error: "tenant_scope_required", health: null };
+      }
       const tsMs = toMs(nowIso(now));
       const scoped = jobs.filter((j) => {
         if (normalizeNotificationEnvironment(j.environment || env) !== env) return false;
@@ -879,6 +892,7 @@ export function createMemoryNotificationRepository(seed = []) {
       cancelledBy = "ops",
       reason,
       environment = NOTIFICATION_ENVIRONMENTS.STAGING,
+      tenantId = null,
       forceLeased = false,
       now = null,
       allowProduction = false,
@@ -894,6 +908,9 @@ export function createMemoryNotificationRepository(seed = []) {
       const job = jobs[idx];
       if (normalizeNotificationEnvironment(job.environment || env) !== env) {
         return { ok: false, error: "environment_mismatch" };
+      }
+      if (tenantId && job.tenantId !== tenantId) {
+        return { ok: false, error: "cross_tenant_forbidden" };
       }
       if (
         [
@@ -946,14 +963,11 @@ export function createMemoryNotificationRepository(seed = []) {
       replayedBy = "ops",
       reason,
       environment = NOTIFICATION_ENVIRONMENTS.STAGING,
+      tenantId = null,
       maxReplayCount = DEFAULT_MAX_REPLAY,
       now = null,
-      allowProduction = false,
     } = {}) {
       const env = normalizeNotificationEnvironment(environment);
-      if (env === NOTIFICATION_ENVIRONMENTS.PRODUCTION || allowProduction !== true && env === "production") {
-        return { ok: false, error: "production_replay_blocked_phase16" };
-      }
       if (env === NOTIFICATION_ENVIRONMENTS.PRODUCTION) {
         return { ok: false, error: "production_replay_blocked_phase16" };
       }
@@ -964,6 +978,9 @@ export function createMemoryNotificationRepository(seed = []) {
       const job = jobs[idx];
       if (normalizeNotificationEnvironment(job.environment || env) !== env) {
         return { ok: false, error: "environment_mismatch" };
+      }
+      if (tenantId && job.tenantId !== tenantId) {
+        return { ok: false, error: "cross_tenant_forbidden" };
       }
       if (
         job.status !== DELIVERY_JOB_STATES.DEAD_LETTERED &&
@@ -1102,6 +1119,18 @@ export function createMemoryNotificationRepository(seed = []) {
       const env = normalizeNotificationEnvironment(environment);
       if (env === NOTIFICATION_ENVIRONMENTS.PRODUCTION && !allowProduction) {
         return { ok: false, error: "qa_cleanup_disabled_in_production" };
+      }
+      // Staging cleanup must never target Production jobs
+      if (env === NOTIFICATION_ENVIRONMENTS.STAGING || env === NOTIFICATION_ENVIRONMENTS.TEST) {
+        const hasProdJobs = jobs.some(
+          (j) =>
+            normalizeNotificationEnvironment(j.environment) ===
+              NOTIFICATION_ENVIRONMENTS.PRODUCTION &&
+            j.runNamespace === runNamespace
+        );
+        if (hasProdJobs) {
+          return { ok: false, error: "qa_cleanup_cannot_target_production" };
+        }
       }
       if (env !== NOTIFICATION_ENVIRONMENTS.STAGING && env !== NOTIFICATION_ENVIRONMENTS.TEST) {
         return { ok: false, error: "qa_cleanup_staging_only" };
