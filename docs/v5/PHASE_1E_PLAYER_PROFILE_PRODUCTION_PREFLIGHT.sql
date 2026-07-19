@@ -91,19 +91,33 @@ where tgrelid = 'public.profiles'::regclass
   and tgtype & 16 = 16 -- UPDATE
 order by tgname;
 
--- 8) Null / invalid value sanity
+-- 8) Null / invalid value sanity — COLUMN-AWARE
+-- Do NOT filter on Phase 1D columns by name here: they may be absent on unmigrated Production
+-- (PostgreSQL rejects missing-column references at parse time).
+-- Official Gate A counts come from:
+--   node scripts/verify-phase-1e-player-profile-production-preflight.mjs
+-- which inventories columns first and only SELECTs existing ones.
 select
-  count(*)::bigint as total_profiles,
-  count(*) filter (where privacy_settings is null)::bigint as privacy_null,
-  count(*) filter (where identity_verification_status is null)::bigint as verification_null,
-  count(*) filter (
-    where handedness is not null
-      and handedness not in ('right', 'left', 'ambidextrous', 'unknown')
-  )::bigint as invalid_handedness,
-  count(*) filter (
-    where identity_verification_status is not null
-      and identity_verification_status not in ('unverified', 'pending', 'verified', 'rejected')
-  )::bigint as invalid_verification
+  count(*) filter (where column_name = 'birth_date') > 0 as has_birth_date,
+  count(*) filter (where column_name = 'handedness') > 0 as has_handedness,
+  count(*) filter (where column_name = 'activity_region') > 0 as has_activity_region,
+  count(*) filter (where column_name = 'privacy_settings') > 0 as has_privacy_settings,
+  count(*) filter (where column_name = 'identity_verification_status') > 0
+    as has_identity_verification_status,
+  count(*) filter (where column_name = 'birth_year') > 0 as has_birth_year
+from information_schema.columns
+where table_schema = 'public'
+  and table_name = 'profiles'
+  and column_name in (
+    'birth_date',
+    'handedness',
+    'activity_region',
+    'privacy_settings',
+    'identity_verification_status',
+    'birth_year'
+  );
+
+select count(*)::bigint as total_profiles
 from public.profiles;
 
 -- 9) RLS enabled + policy names (inventory only; compare to baseline in runbook)

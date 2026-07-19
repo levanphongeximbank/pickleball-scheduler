@@ -5,6 +5,8 @@
  * Does NOT apply PHASE_1D_PLAYER_PROFILE_MIGRATION.sql.
  * Does NOT deploy. Does NOT mutate Production.
  *
+ * Column-aware: inventories columns first; never SELECTs a missing Phase 1D column.
+ *
  * Required environment confirmation (fail-closed):
  *   CONFIRM_PRODUCTION_PLAYER_PROFILE_PREFLIGHT=YES
  *   PRODUCTION_SUPABASE_PROJECT_REF=expuvcohlcjzvrrauvud
@@ -26,6 +28,8 @@ import { fileURLToPath } from "node:url";
 import pg from "pg";
 
 import {
+  buildConditionalProfileCounts,
+  buildProfileCountsSelectSql,
   classifyPhase1eProductionPreflight,
   PHASE_1E_REQUIRED_COLUMNS,
   PHASE_1E_REQUIRED_CONSTRAINTS,
@@ -42,6 +46,17 @@ const VERIFY_SQL = "docs/v5/PHASE_1D_PLAYER_PROFILE_MIGRATION_VERIFY.sql";
 const ROLLBACK_SQL = "docs/v5/PHASE_1D_PLAYER_PROFILE_MIGRATION_ROLLBACK.sql";
 const PREFLIGHT_SQL = "docs/v5/PHASE_1E_PLAYER_PROFILE_PRODUCTION_PREFLIGHT.sql";
 
+function stripQuotes(value) {
+  const s = String(value ?? "").trim();
+  if (
+    (s.startsWith('"') && s.endsWith('"')) ||
+    (s.startsWith("'") && s.endsWith("'"))
+  ) {
+    return s.slice(1, -1);
+  }
+  return s;
+}
+
 function loadEnvFile(file) {
   if (!fs.existsSync(file)) return {};
   const out = {};
@@ -49,7 +64,7 @@ function loadEnvFile(file) {
     if (!line || line.startsWith("#")) continue;
     const i = line.indexOf("=");
     if (i < 0) continue;
-    out[line.slice(0, i).trim()] = line.slice(i + 1).trim();
+    out[line.slice(0, i).trim()] = stripQuotes(line.slice(i + 1));
   }
   return out;
 }
@@ -66,6 +81,7 @@ function fail(code, message, extra = {}) {
         ok: false,
         mode: "production_preflight_read_only",
         appliedSql: false,
+        mutatedProduction: false,
         classification: "BLOCKED_UNSAFE",
         error: message,
         ...extra,
@@ -82,17 +98,19 @@ const fileEnv = {
   ...loadEnvFile(path.join(root, ".env.production.local")),
 };
 
-const confirm = String(
+const confirm = stripQuotes(
   process.env.CONFIRM_PRODUCTION_PLAYER_PROFILE_PREFLIGHT ||
     fileEnv.CONFIRM_PRODUCTION_PLAYER_PROFILE_PREFLIGHT ||
     ""
-).trim();
-const expectedRef = String(
+);
+const expectedRef = stripQuotes(
   process.env.PRODUCTION_SUPABASE_PROJECT_REF ||
     fileEnv.PRODUCTION_SUPABASE_PROJECT_REF ||
     ""
-).trim();
-const dbUrl = String(process.env.SUPABASE_DB_URL || fileEnv.SUPABASE_DB_URL || "").trim();
+);
+const dbUrl = stripQuotes(
+  process.env.SUPABASE_DB_URL || fileEnv.SUPABASE_DB_URL || ""
+);
 
 if (confirm !== "YES") {
   fail(10, "Missing CONFIRM_PRODUCTION_PLAYER_PROFILE_PREFLIGHT=YES (fail-closed)");
@@ -112,12 +130,10 @@ if (!dbUrl) {
 if (dbUrl.includes(STAGING_REF)) {
   fail(14, "SUPABASE_DB_URL appears to target Staging — refusing Production preflight");
 }
-if (!dbUrl.includes(EXPECTED_PRODUCTION_REF) && !dbUrl.includes("expuvcohlcjzvrrauvud")) {
-  // pooler URLs sometimes omit project ref in host; require explicit PROJECT_REF already matched
-  // and an additional PRODUCTION_DB_HOST_HINT when ref is absent from URL.
-  const hostHint = String(
+if (!dbUrl.includes(EXPECTED_PRODUCTION_REF)) {
+  const hostHint = stripQuotes(
     process.env.PRODUCTION_DB_HOST_HINT || fileEnv.PRODUCTION_DB_HOST_HINT || ""
-  ).trim();
+  );
   if (!hostHint || !dbUrl.includes(hostHint)) {
     fail(
       15,
@@ -134,6 +150,7 @@ const client = new pg.Client({
 await client.connect();
 
 try {
+  // 1) Inventory columns FIRST — never query missing Phase 1D columns by name.
   const cols = await client.query(
     `
     select column_name
@@ -145,6 +162,7 @@ try {
   `,
     [PHASE_1E_REQUIRED_COLUMNS]
   );
+  const presentColumns = cols.rows.map((r) => r.column_name);
 
   const constraints = await client.query(
     `
@@ -217,38 +235,28 @@ try {
     [PHASE_1E_GUARD_TRIGGER]
   );
 
-  const counts = await client.query(`
-    select
-      count(*)::int as total,
-      count(*) filter (where privacy_settings is null)::int as privacy_null,
-      count(*) filter (where identity_verification_status is null)::int as verification_null,
-      count(*) filter (
-        where handedness is not null
-          and handedness not in ('right', 'left', 'ambidextrous', 'unknown')
-      )::int as invalid_handedness,
-      count(*) filter (
-        where identity_verification_status is not null
-          and identity_verification_status not in ('unverified', 'pending', 'verified', 'rejected')
-      )::int as invalid_verification
-    from public.profiles
-  `);
+  // 2) Conditional counts — SQL only references columns that exist.
+  const { selectSql } = buildProfileCountsSelectSql(presentColumns);
+  const countsResult = await client.query(selectSql);
+  const counts = buildConditionalProfileCounts(presentColumns, countsResult.rows[0] || {});
 
   const guardRow = guard.rows[0] || null;
   const snapshot = {
-    columns: cols.rows.map((r) => r.column_name),
+    columns: presentColumns,
     constraints: constraints.rows.map((r) => r.conname),
     indexes: indexes.rows.map((r) => r.indexname),
     triggers: triggers.rows.map((r) => r.tgname),
     guardFunctionExists: Boolean(guardRow),
     guardHasCurrentUserPostgresBypass: guardRow ? guardRow.unsafe_bypass === true : false,
     guardHasSelfVerificationBlock: guardRow ? guardRow.self_block === true : false,
-    privacyNullCount: counts.rows[0].privacy_null,
-    verificationNullCount: counts.rows[0].verification_null,
-    invalidHandednessCount: counts.rows[0].invalid_handedness,
-    invalidVerificationCount: counts.rows[0].invalid_verification,
+    counts,
+    // Legacy numeric mirrors for classifier compatibility
+    privacyNullCount: counts.privacy_null,
+    verificationNullCount: counts.verification_null,
+    invalidHandednessCount: counts.invalid_handedness,
+    invalidVerificationCount: counts.invalid_verification,
     duplicateConstraintCount: duplicateConstraints.rows[0].n,
     conflictingTriggerCount: conflictingTriggers.rows[0].n,
-    // Baseline comparison is documented/manual in runbook Gate A; default true for inventory-only.
     rlsPoliciesMatchBaseline: true,
     grantsMatchBaseline: true,
   };
@@ -265,7 +273,7 @@ try {
     reasons: classified.reasons,
     blockers: classified.blockers,
     snapshot,
-    counts: counts.rows[0],
+    counts,
     packageChecksums: {
       [FORWARD_SQL]: sha256File(FORWARD_SQL),
       [VERIFY_SQL]: sha256File(VERIFY_SQL),
@@ -278,7 +286,7 @@ try {
         : classified.classification === "NOT_APPLIED" ||
             classified.classification === "PARTIALLY_APPLIED"
           ? "Complete Gates B–D, then Owner-approved Gate E apply using PHASE_1D forward SQL."
-          : "STOP — resolve BLOCKED_UNSAFE before any Production apply.",
+          : "STOP — resolve BLOCKED_UNSAFE before any Production apply. Phase 1D forward SQL replaces the unsafe legacy guard when Owner-approved.",
   };
 
   console.log(JSON.stringify(report, null, 2));
