@@ -13,6 +13,18 @@ export {
   validationWarning,
 } from "./results/validationResult.js";
 
+/** Core-02 — shadow compatibility adapters (participants-local; not mega-barrel). */
+export {
+  inferCompetitionEntryType,
+  mapLegacyIndividualStatusToEntryStatus,
+  mapLegacyIndividualEntryToCompetitionEntry,
+  mapTeamTournamentTeamToOptionalEntry,
+  mapDailyPlayPlayerWithoutEntry,
+  assertDailyPlayMapsWithoutEntries,
+  mapPlayerProfileToParticipantReference,
+  mapClubScopeToEntryTenantScope,
+} from "./compatibility/index.js";
+
 /** Phase 3B — Participant Resolution Runtime (public surface; Integrator-owned barrel). */
 export {
   createParticipantResolver,

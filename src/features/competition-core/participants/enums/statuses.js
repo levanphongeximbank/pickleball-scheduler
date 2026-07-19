@@ -74,6 +74,32 @@ export const ACTIVE_ENTRY_STATUSES = Object.freeze([
   COMPETITION_ENTRY_STATUS.ACTIVE,
 ]);
 
+/**
+ * Terminal / inactive Entry statuses — never treated as active (Core-02).
+ * WAITLISTED is Registration-owned (OD-10) and is intentionally absent here.
+ */
+export const TERMINAL_ENTRY_STATUSES = Object.freeze([
+  COMPETITION_ENTRY_STATUS.WITHDRAWN,
+  COMPETITION_ENTRY_STATUS.DISQUALIFIED,
+  COMPETITION_ENTRY_STATUS.COMPLETED,
+]);
+
+/**
+ * @param {unknown} value
+ * @returns {boolean}
+ */
+export function isActiveCompetitionEntryStatus(value) {
+  return typeof value === "string" && ACTIVE_ENTRY_STATUSES.includes(value);
+}
+
+/**
+ * @param {unknown} value
+ * @returns {boolean}
+ */
+export function isTerminalCompetitionEntryStatus(value) {
+  return typeof value === "string" && TERMINAL_ENTRY_STATUSES.includes(value);
+}
+
 export const ELIGIBILITY_DECISION_STATUS = Object.freeze({
   PENDING: "PENDING",
   ELIGIBLE: "ELIGIBLE",

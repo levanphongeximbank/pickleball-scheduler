@@ -2,16 +2,32 @@ import {
   COMPETITION_ENTRY_STATUS,
   COMPETITION_REGISTRATION_STATUS,
 } from "../enums/statuses.js";
+import { isCompetitionEntryType } from "../enums/entryTypes.js";
 import {
   PARTICIPANT_SCHEMA_VERSION,
   createAuditMetadata,
   createFormatExtension,
+  isNonEmptyString,
 } from "./shared.js";
 import { createParticipantReference, createParticipantSnapshot } from "./identity.js";
+import { createCompetitionTeamReference } from "./teamReference.js";
+import { createEntryTenantScope } from "./tenantScope.js";
+import {
+  buildEntryIdentityKey,
+  buildStableEntrySourceIdentity,
+} from "./entryIdentity.js";
 
 /**
  * CompetitionEntry always belongs to a competition (OD-03).
  * Waitlist is NOT owned here (OD-10).
+ *
+ * Core-02 additive fields (all optional for backward compatibility):
+ * entryType, identityKey, teamRef, representativeRef, tenantScope,
+ * sourceSystem, sourceType, sourceId, participantSnapshot.
+ * ratingSnapshot already existed.
+ *
+ * entryType is NEVER silently defaulted — ambiguous legacy input must use
+ * an explicit compatibility mapper (fail closed).
  *
  * @typedef {Object} CompetitionEntry
  * @property {string} schemaVersion
@@ -19,14 +35,24 @@ import { createParticipantReference, createParticipantSnapshot } from "./identit
  * @property {string} competitionId
  * @property {string} status
  * @property {import('./identity.js').ParticipantReference[]} memberRefs
+ * @property {string|null} [entryType] — COMPETITION_ENTRY_TYPE when set
+ * @property {string|null} [identityKey]
+ * @property {import('./teamReference.js').CompetitionTeamReference|null} [teamRef]
+ * @property {import('./identity.js').ParticipantReference|null} [representativeRef]
+ * @property {import('./tenantScope.js').EntryTenantScope|null} [tenantScope]
+ * @property {string|null} [sourceSystem]
+ * @property {string|null} [sourceType]
+ * @property {string|null} [sourceId]
  * @property {string|null} [participantId]
- * @property {string|null} [divisionId]
- * @property {string|null} [categoryId]
+ * @property {string|null} [divisionId] — opaque Core-04 reference only
+ * @property {string|null} [categoryId] — opaque Core-04 reference only
  * @property {string|null} [entryRole]
  * @property {string|null} [name]
  * @property {number|null} [seed]
  * @property {import('./identity.js').ParticipantSnapshot|null} [ratingSnapshot]
+ * @property {import('./identity.js').ParticipantSnapshot|null} [participantSnapshot]
  * @property {string|null} [groupId]
+ * @property {Record<string, unknown>|null} [metadata] — non-authority
  * @property {import('./shared.js').FormatExtension|null} [extensions]
  * @property {import('./shared.js').AuditMetadata} [audit]
  */
@@ -39,12 +65,61 @@ export function createCompetitionEntry(partial = {}) {
   const memberRefs = Array.isArray(partial.memberRefs)
     ? partial.memberRefs.map((ref) => createParticipantReference(ref || {}))
     : [];
+
+  const entryType =
+    partial.entryType != null && String(partial.entryType).trim() !== ""
+      ? String(partial.entryType).trim()
+      : null;
+
+  const teamRef = createCompetitionTeamReference(partial.teamRef);
+  const representativeRef = partial.representativeRef
+    ? createParticipantReference(partial.representativeRef)
+    : null;
+  const tenantScope = createEntryTenantScope(partial.tenantScope);
+
+  let identityKey = null;
+  if (partial.identityKey != null && String(partial.identityKey).trim() !== "") {
+    identityKey = String(partial.identityKey).trim();
+  } else if (entryType && isCompetitionEntryType(entryType) && isNonEmptyString(partial.competitionId)) {
+    const stable = buildStableEntrySourceIdentity({
+      entryType,
+      memberRefs,
+      teamRef,
+    });
+    if (isNonEmptyString(stable)) {
+      identityKey = buildEntryIdentityKey({
+        competitionId: partial.competitionId,
+        entryType,
+        stableSourceIdentity: stable,
+        memberRefs,
+        teamRef,
+      });
+    }
+  }
+
   return {
     schemaVersion: String(partial.schemaVersion ?? PARTICIPANT_SCHEMA_VERSION),
     id: String(partial.id || ""),
     competitionId: String(partial.competitionId || ""),
     status: String(partial.status || COMPETITION_ENTRY_STATUS.DRAFT),
     memberRefs,
+    entryType,
+    identityKey,
+    teamRef,
+    representativeRef,
+    tenantScope,
+    sourceSystem:
+      partial.sourceSystem != null && String(partial.sourceSystem).trim() !== ""
+        ? String(partial.sourceSystem).trim()
+        : null,
+    sourceType:
+      partial.sourceType != null && String(partial.sourceType).trim() !== ""
+        ? String(partial.sourceType).trim()
+        : null,
+    sourceId:
+      partial.sourceId != null && String(partial.sourceId).trim() !== ""
+        ? String(partial.sourceId).trim()
+        : null,
     participantId: partial.participantId ?? null,
     divisionId: partial.divisionId ?? null,
     categoryId: partial.categoryId ?? null,
@@ -54,7 +129,14 @@ export function createCompetitionEntry(partial = {}) {
     ratingSnapshot: partial.ratingSnapshot
       ? createParticipantSnapshot(partial.ratingSnapshot)
       : null,
+    participantSnapshot: partial.participantSnapshot
+      ? createParticipantSnapshot(partial.participantSnapshot)
+      : null,
     groupId: partial.groupId ?? null,
+    metadata:
+      partial.metadata && typeof partial.metadata === "object" && !Array.isArray(partial.metadata)
+        ? { ...partial.metadata }
+        : null,
     extensions: createFormatExtension(partial.extensions),
     audit: createAuditMetadata(partial.audit),
   };

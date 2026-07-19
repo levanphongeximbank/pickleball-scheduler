@@ -18,6 +18,28 @@ export {
   identityFromCompetitionParticipant,
 } from "./identity.js";
 
+export {
+  ENTRY_IDENTITY_KIND,
+  memberReferenceToken,
+  canonicalizeMemberReferenceTokens,
+  buildStableEntrySourceIdentity,
+  buildEntryIdentityKey,
+  createEntryIdentity,
+  validateEntryIdentity,
+  identityFromCompetitionEntry,
+} from "./entryIdentity.js";
+
+export {
+  createCompetitionTeamReference,
+  isValidCompetitionTeamReference,
+} from "./teamReference.js";
+
+export {
+  createEntryTenantScope,
+  hasEntryTenantScope,
+  compareEntryTenantScopes,
+} from "./tenantScope.js";
+
 export { createCompetitionParticipant } from "./competitionParticipant.js";
 
 export {
