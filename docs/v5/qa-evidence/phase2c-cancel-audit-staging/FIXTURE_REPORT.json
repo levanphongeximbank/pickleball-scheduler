@@ -1,0 +1,74 @@
+{
+  "phase": "2C-cancel-fixture",
+  "stagingRef": "qyewbxjsiiyufanzcjcq",
+  "productionTouched": false,
+  "fixture": {
+    "clubId": "club-staging-b",
+    "tenantId": "venue-staging-b",
+    "userId": "4c3c0474-563d-43ff-8cda-63365094a785",
+    "requestId": "c379767e-e663-4808-8107-38325424dacc",
+    "idempotencyKey": "ccd7a7b5-c423-45a5-8827-7b57e1c238e2",
+    "cancelResult": {
+      "ok": true,
+      "data": {
+        "id": "c379767e-e663-4808-8107-38325424dacc",
+        "status": "cancelled",
+        "club_id": "club-staging-b",
+        "user_id": "4c3c0474-563d-43ff-8cda-63365094a785"
+      },
+      "version": 2
+    },
+    "requestAfter": {
+      "id": "c379767e-e663-4808-8107-38325424dacc",
+      "status": "cancelled",
+      "club_id": "club-staging-b",
+      "user_id": "4c3c0474-563d-43ff-8cda-63365094a785",
+      "version": 2,
+      "tenant_id": "venue-staging-b"
+    },
+    "auditCount": 1,
+    "audits": [
+      {
+        "id": "9e8752de-20b9-413d-8bb5-0129d9370f5b",
+        "action": "club.membership_request.cancel",
+        "club_id": "club-staging-b",
+        "actor_id": "4c3c0474-563d-43ff-8cda-63365094a785",
+        "metadata": {
+          "club_id": "club-staging-b",
+          "user_id": "4c3c0474-563d-43ff-8cda-63365094a785",
+          "actor_id": "4c3c0474-563d-43ff-8cda-63365094a785",
+          "tenant_id": "venue-staging-b",
+          "to_status": "cancelled",
+          "request_id": "ccd7a7b5-c423-45a5-8827-7b57e1c238e2",
+          "to_version": 2,
+          "from_status": "pending",
+          "from_version": 1,
+          "membership_request_id": "c379767e-e663-4808-8107-38325424dacc"
+        },
+        "venue_id": "venue-staging-b",
+        "created_at": "2026-07-19T14:03:37.727863+00:00",
+        "resource_id": "c379767e-e663-4808-8107-38325424dacc"
+      }
+    ],
+    "auditCountAfterReplay": 1,
+    "forbiddenResult": {
+      "ok": false,
+      "code": "FORBIDDEN",
+      "error": "Không hủy được yêu cầu của người khác."
+    },
+    "staleResult": {
+      "ok": false,
+      "code": "VERSION_CONFLICT",
+      "error": "Xung đột phiên bản."
+    }
+  },
+  "checks": {
+    "okCancel": true,
+    "okAuditMeta": true,
+    "forbOk": true,
+    "staleOk": true,
+    "replayNoDupAudit": true
+  },
+  "status": "PASS",
+  "finishedAt": "2026-07-19T14:03:45.989Z"
+}

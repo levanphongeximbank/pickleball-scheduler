@@ -234,6 +234,7 @@
   "tests/phase45a3e-retire-club-legacy-writes.test.js",
   "tests/phase45a3f-club-command-certification.test.js",
   "tests/phase45a4a-membership-request-rpc-reconciliation.test.js",
+  "tests/phase2c-cancel-membership-request-audit.test.js",
   "tests/phase45a4b-membership-request-command.test.js",
   "tests/phase45a4c1-member-rpc-contract.test.js",
   "tests/phase45a4c4-member-add-remove-runtime.test.js",
