@@ -1,7 +1,9 @@
 # Phase 1E — Production Rollout Readiness (Package Only)
 
 **Branch:** `feature/player-phase-1e-production-rollout-readiness`  
-**Status:** READINESS ONLY — does **not** apply Production SQL, does **not** deploy, does **not** merge  
+**Status:** READINESS ONLY (historical package) — original package did **not** auto-apply Production SQL, deploy, or merge  
+
+**Production closure:** see `docs/player-management/phase-1e/05_PHASE_1E_PRODUCTION_CLOSURE.md` (`PHASE_1E_PRODUCTION_CLOSED`).
 
 ## Context
 
@@ -10,7 +12,8 @@
 | Phase 1C runtime bootstrap | Merged |
 | Phase 1D migration + Staging readiness | Merged (PR #72; source `dde2a46`) |
 | Staging schema + hotfixed guard | Present (`ready=true`) |
-| Production SQL | **Not applied** |
+| Production SQL (at readiness authoring) | Not applied |
+| Production SQL (after Gate E) | Applied — see closure doc |
 | Production deploy | **Not performed** |
 
 ## Package contents
