@@ -44,6 +44,7 @@ export {
   canRelinquishClubPresident,
   canDeleteClub,
   canDeleteClubMembers,
+  canAddClubMembers,
   canApproveClubMembershipRequests,
   canManageClubGovernance,
   assignClubOwner,
@@ -105,6 +106,42 @@ export {
   formatMemberCommandUserError,
   isProtectedGovernanceMember,
 } from "./services/clubMemberService.js";
+
+/** Phase 2C — freeze-named membership.* / joinRequest.* ports */
+export {
+  membershipList,
+  membershipListActiveRoster,
+  membershipAdd,
+  membershipRemove,
+  membershipRestore,
+  membershipLeave,
+} from "./api/membershipApi.js";
+
+export {
+  joinRequestCreate,
+  joinRequestApprove,
+  joinRequestReject,
+  joinRequestCancel,
+  joinRequestListPending,
+  joinRequestListMine,
+} from "./api/joinRequestApi.js";
+
+export {
+  MEMBERSHIP_AUDIT_EVENTS,
+  JOIN_REQUEST_AUDIT_EVENTS,
+  SERVER_MEMBERSHIP_AUDIT_ALIASES,
+  resolveServerMembershipAuditAction,
+  resolveFreezeMembershipAuditEvents,
+} from "./constants/membershipAuditEvents.js";
+
+export {
+  CANONICAL_MEMBERSHIP_STATUSES,
+  MEMBERSHIP_TRANSITIONS,
+  toCanonicalMembershipStatus,
+  isCanonicalMembershipActive,
+  assertMembershipTransition,
+  toActiveRosterMemberDto,
+} from "./membership/membershipLifecycle.js";
 
 export {
   getClubRatings,

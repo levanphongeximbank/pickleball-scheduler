@@ -1,4 +1,6 @@
 import { getSupabaseAuthClient } from "../../../auth/supabaseClient.js";
+import { API_ERROR_CODES } from "../../api/constants/apiErrors.js";
+import { isClubStorageV2Enabled } from "../config/clubRegistryFlags.js";
 
 /**
  * Phase 31 legacy Membership Request RPC transport (V2-OFF / offline debt only).
@@ -6,7 +8,22 @@ import { getSupabaseAuthClient } from "../../../auth/supabaseClient.js";
  * Phase 45A.4B — Under VITE_CLUB_STORAGE_V2=true, Production commands MUST go through
  * clubMembershipRequestService → clubStorageV2RpcService. This module is not part of
  * the V2 canonical command path (wrong live PostgREST signatures).
+ *
+ * Phase 2C G-FLAG — hard-dead on V2 ON: every export returns FEATURE_DISABLED
+ * (no network call). Callers must not use this module when Club Storage V2 is authoritative.
  */
+
+function assertPhase31Allowed(operation) {
+  if (!isClubStorageV2Enabled()) {
+    return { ok: true };
+  }
+  return {
+    ok: false,
+    code: API_ERROR_CODES.FEATURE_DISABLED,
+    error: `Phase 31 RPC (${operation}) bị tắt khi Club Storage V2 bật. Dùng clubStorageV2RpcService.`,
+    serverCode: "FEATURE_DISABLED",
+  };
+}
 
 function isMissingRpcError(error) {
   const message = String(error?.message || error?.code || "").toLowerCase();
@@ -38,6 +55,11 @@ export async function rpcReviewClubMembershipRequest({
   action,
   reviewNote = "",
 }) {
+  const gate = assertPhase31Allowed("club_review_membership_request");
+  if (!gate.ok) {
+    return gate;
+  }
+
   const client = getSupabaseAuthClient();
   if (!client) {
     return { ok: false, code: "NO_SUPABASE", error: "Supabase chưa sẵn sàng." };
@@ -66,6 +88,11 @@ export async function rpcSubmitClubMembershipRequest({
   message = "",
   pickVnRating = null,
 }) {
+  const gate = assertPhase31Allowed("club_submit_membership_request");
+  if (!gate.ok) {
+    return gate;
+  }
+
   const client = getSupabaseAuthClient();
   if (!client) {
     return { ok: false, code: "NO_SUPABASE", error: "Supabase chưa sẵn sàng." };
@@ -92,6 +119,11 @@ export async function rpcSubmitClubMembershipRequest({
  * Fallback local khi RPC chưa deploy.
  */
 export async function rpcLeaveMyClub() {
+  const gate = assertPhase31Allowed("club_leave_my_membership");
+  if (!gate.ok) {
+    return gate;
+  }
+
   const client = getSupabaseAuthClient();
   if (!client) {
     return { ok: false, code: "NO_SUPABASE", error: "Supabase chưa sẵn sàng." };
