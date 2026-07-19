@@ -1,19 +1,24 @@
 # 03 — Production Hold Gate (Phase 1D)
 
-**Production SQL apply: FORBIDDEN in this wave.**
+**Production SQL apply was FORBIDDEN in Phase 1D.**
 
-## Hold conditions (all must remain true until Owner lifts)
+Phase 1E packages the Owner-controlled Production rollout readiness materials:
 
-1. Staging verify SQL green (`PHASE_1D_PLAYER_PROFILE_MIGRATION_VERIFY.sql`)
-2. Staging JWT smoke: self verification DENIED; self demographics ALLOWED
-3. Guard confirms **no** `current_user = 'postgres'` bypass
-4. Player Management unit + Phase 1B/1C/1D static tests green on the merge SHA
-5. Explicit Owner written approval for Production apply (separate task)
-6. Production backup / rollback window scheduled
+- Runbook: `docs/player-management/phase-1e/02_PRODUCTION_ROLLOUT_RUNBOOK.md`
+- Preflight: `docs/v5/PHASE_1E_PLAYER_PROFILE_PRODUCTION_PREFLIGHT.sql`
+- Evidence template: `docs/player-management/phase-1e/03_PRODUCTION_EVIDENCE_TEMPLATE.md`
 
-## Explicitly out of scope here
+## Hold conditions until Owner executes Phase 1E Gates D–E
 
-- Production apply
+1. Staging verify remains green
+2. Phase 1E preflight completed (or scheduled) with explicit Production confirmation
+3. Backup confirmed
+4. Explicit Owner written approval for Production apply
+5. No automatic CI apply
+
+## Still out of scope without separate Owner decision
+
+- Unattended Production apply
 - Production deploy
-- Phase 1E
+- Phase 1F
 - Competition Engine / Venue / Club / Notification / Finance / Ranking changes

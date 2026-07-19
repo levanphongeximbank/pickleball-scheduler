@@ -112,6 +112,7 @@
   "tests/player-management-phase-1c-durable-persistence.test.js",
   "tests/player-management-phase-1c-runtime-bootstrap.test.js",
   "tests/player-management-phase-1d-migration.test.js",
+  "tests/player-management-phase-1e-production-readiness.test.js",
   "tests/player-management-phase-1c-guard-auth-hotfix.test.js",
   "tests/player-history.test.js",
   "tests/tournament-mobile.test.js",
