@@ -4,9 +4,11 @@
  * - Unconfigured default: explicit operational failure (no silent durable write)
  * - Memory double: tests / explicitly injected non-production only
  * - Phase1C deferred: optional Identity birthYear writer; gap fields fail closed
- *   with SCHEMA_MIGRATION_REQUIRED (no SQL applied, no localStorage store)
+ *   with SCHEMA_MIGRATION_REQUIRED (legacy path; prefer supabase durable repo)
+ * - Durable: createSupabaseProfilesPlayerWriteRepository (separate module)
  *
  * Does not create a second player identity store.
+ * Privileged identity verification updates are not part of this normal write path.
  */
 import { WRITE_ERROR_CODES } from "../constants/writableFields.js";
 import { normalizePlayerProfile } from "../models/playerProfile.js";
@@ -24,6 +26,8 @@ export const SCHEMA_GAP_FIELDS = Object.freeze([
  * Default production-safe repository: no writer configured.
  * Never persists; never invents durable success.
  */
+export { createSupabaseProfilesPlayerWriteRepository } from "./supabaseProfilesPlayerWriteRepository.js";
+
 export function createUnconfiguredPlayerProfileWriteRepository() {
   return {
     kind: "unconfigured",
