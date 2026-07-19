@@ -158,6 +158,7 @@
   "tests/notification-phase-1-5-delivery-worker.test.js",
   "tests/notification-phase-1-6-worker-ops.test.js",
   "tests/notification-phase-2b-production-safety.test.js",
+  "tests/notification-phase-2c-production-schema-rollout.test.js",
   "tests/phase11a-marketplace-api-foundation.test.js",
   "tests/phase11b-marketplace-api-staging.test.js",
   "tests/phase11c-edge-api-key-guard.test.js",
