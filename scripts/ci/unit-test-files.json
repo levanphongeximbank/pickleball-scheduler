@@ -130,6 +130,7 @@
   "tests/notification-phase-1-3s-store-safety.test.js",
   "tests/notification-phase-1-4-runtime.test.js",
   "tests/notification-phase-1-5-delivery-worker.test.js",
+  "tests/notification-phase-1-6-worker-ops.test.js",
   "tests/phase11a-marketplace-api-foundation.test.js",
   "tests/phase11b-marketplace-api-staging.test.js",
   "tests/phase11c-edge-api-key-guard.test.js",

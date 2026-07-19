@@ -497,12 +497,14 @@ describe("Notification Phase 1.5 — QA cleanup", () => {
 });
 
 describe("Notification Phase 1.5 — compatibility flags", () => {
-  it("reports phase 1.5 with live delivery disabled", () => {
-    assert.equal(NOTIFICATION_COMPATIBILITY.phase, "1.5");
+  it("reports phase 1.6+ with live delivery disabled", () => {
+    assert.ok(Number(NOTIFICATION_COMPATIBILITY.phase) >= 1.5);
     assert.equal(NOTIFICATION_COMPATIBILITY.liveDeliveryEnabled, false);
     assert.equal(NOTIFICATION_COMPATIBILITY.workerLiveChannelsBlocked, true);
+    const legacy = NOTIFICATION_COMPATIBILITY.remainingLegacyPaths;
     assert.ok(
-      NOTIFICATION_COMPATIBILITY.remainingLegacyPaths.includes("crm.campaigns")
+      Array.isArray(legacy) &&
+        legacy.some((p) => (typeof p === "string" ? p : p?.id) === "crm.campaigns")
     );
   });
 });

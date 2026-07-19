@@ -1,5 +1,5 @@
 /**
- * PICK_VN Notification Module — public API (Phase 1.5).
+ * PICK_VN Notification Module — public API (Phase 1.6).
  *
  * Domain modules may import only from this barrel.
  * Providers and storage implementations are intentionally NOT exported.
@@ -30,6 +30,16 @@ export {
 } from "./services/notificationQueueService.js";
 
 export {
+  getNotificationQueueHealth,
+  cancelNotificationDeliveryJob,
+  replayNotificationDeliveryJob,
+  recoverStaleNotificationLeases,
+  listDeadLetterNotificationJobs,
+  cleanupNotificationQaRunNamespace,
+  markAbandonedNotificationWorkerRuns,
+} from "./services/queueOpsService.js";
+
+export {
   DELIVERY_JOB_STATES,
   DELIVERY_JOB_STATE_VALUES,
   TERMINAL_DELIVERY_JOB_STATES,
@@ -40,6 +50,22 @@ export {
   isWorkerOnlyDeliveryJobState,
   getAllowedDeliveryJobTransitions,
 } from "./constants/deliveryJobStates.js";
+
+export {
+  NOTIFICATION_ENVIRONMENTS,
+  NOTIFICATION_ENVIRONMENT_VALUES,
+  isValidNotificationEnvironment,
+  normalizeNotificationEnvironment,
+  QA_NAMESPACE_PREFIXES,
+  isAllowedQaNamespacePrefix,
+} from "./constants/notificationEnvironments.js";
+
+export {
+  WORKER_RUN_STATUSES,
+  WORKER_RUN_STATUS_VALUES,
+  isValidWorkerRunStatus,
+  isActiveWorkerRunStatus,
+} from "./constants/workerRunStatuses.js";
 
 export {
   runNotificationWorkerOnce,
@@ -103,6 +129,13 @@ export {
   buildNotificationIdempotencyKey,
   buildRecipientIdempotencyKey,
 } from "./utils/idempotencyKey.js";
+
+export {
+  buildWorkerLogEntry,
+  redactSecrets,
+  assertLogHasNoSecrets,
+  truncateSafeId,
+} from "./utils/safeWorkerLog.js";
 
 export {
   createMemoryRecipientDirectory,

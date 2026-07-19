@@ -1,8 +1,9 @@
 /**
- * Notification delivery worker — Phase 1.5 foundation.
+ * Notification delivery worker — Phase 1.5 foundation + Phase 1.6 ops.
  *
  * Server-side only. Browser must not import secrets or claim jobs.
  * Live Email/SMS/Zalo/Web Push are blocked; sandbox/in_app only.
+ * Environment isolation + worker-run audit + structured safe logs.
  */
 
 import {
@@ -25,6 +26,15 @@ import {
 import { buildDeliveryIdempotencyKey } from "../utils/deliveryIdempotency.js";
 import { getNotificationRepository } from "../repositories/notificationRepository.js";
 import { NOTIFICATION_STATUSES } from "../constants/notificationStatuses.js";
+import {
+  NOTIFICATION_ENVIRONMENTS,
+  normalizeNotificationEnvironment,
+} from "../constants/notificationEnvironments.js";
+import { resolveWorkerRunTerminalStatus } from "../constants/workerRunStatuses.js";
+import {
+  buildWorkerLogEntry,
+  assertLogHasNoSecrets,
+} from "../utils/safeWorkerLog.js";
 
 const PRODUCTION_REF = "expuvcohlcjzvrrauvud";
 
@@ -46,7 +56,6 @@ function assertServerSideWorker(options = {}) {
     return { ok: true };
   }
   const g = globalThis;
-  // Soft guard: Vite client bundles set import.meta.env.SSR === false.
   try {
     if (
       typeof import.meta !== "undefined" &&
@@ -55,7 +64,6 @@ function assertServerSideWorker(options = {}) {
       options.requireServer !== false &&
       !options._testBypassEnvGuard
     ) {
-      // Still allow Node unit tests (no window) and explicit server runners.
       if (typeof g.window !== "undefined") {
         return { ok: false, error: "browser_worker_forbidden" };
       }
@@ -71,9 +79,9 @@ function assertServerSideWorker(options = {}) {
 
 function assertEnvironmentAllowed(options = {}) {
   const env = globalThis.process?.env || {};
-  const envName = String(options.environment || env.NOTIFICATION_WORKER_ENV || "staging")
-    .trim()
-    .toLowerCase();
+  const envName = normalizeNotificationEnvironment(
+    options.environment || env.NOTIFICATION_WORKER_ENV || NOTIFICATION_ENVIRONMENTS.STAGING
+  );
   const projectRef = String(
     options.projectRef ||
       env.NOTIFICATION_PROJECT_REF ||
@@ -81,7 +89,7 @@ function assertEnvironmentAllowed(options = {}) {
       ""
   ).trim();
 
-  if (projectRef === PRODUCTION_REF || envName === "production") {
+  if (projectRef === PRODUCTION_REF || envName === NOTIFICATION_ENVIRONMENTS.PRODUCTION) {
     if (options.allowProductionWorker !== true) {
       return {
         ok: false,
@@ -92,6 +100,11 @@ function assertEnvironmentAllowed(options = {}) {
     }
   }
   return { ok: true, environment: envName, projectRef };
+}
+
+function resolveNow(nowFn) {
+  const v = typeof nowFn === "function" ? nowFn() : nowFn || new Date();
+  return v instanceof Date ? v : new Date(v);
 }
 
 async function loadInboxForJob(repository, job) {
@@ -124,9 +137,29 @@ export async function processClaimedDeliveryJob(job, options = {}) {
   const policy = options.retryPolicy || DEFAULT_RETRY_POLICY;
   const deliveryMode = options.deliveryMode || DELIVERY_MODES.SANDBOX;
   const summaryPatch = { status: null };
+  const startedMs = resolveNow(nowFn).getTime();
 
   if (!job?.id) {
     return { ok: false, error: "job_required", summaryPatch };
+  }
+
+  if (job.cancelRequested) {
+    if (typeof repository.cancelDeliveryJob === "function") {
+      await repository.cancelDeliveryJob({
+        jobId: job.id,
+        cancelledBy: workerId,
+        reason: job.cancellationReason || "cancel_requested",
+        environment: job.environment || options.environment,
+        forceLeased: true,
+        now: nowFn,
+      });
+    }
+    return {
+      ok: true,
+      cancelled: true,
+      job,
+      summaryPatch: { status: "cancelled" },
+    };
   }
 
   if (isTerminalDeliveryJobState(job.status) && job.status === DELIVERY_JOB_STATES.SENT) {
@@ -154,7 +187,6 @@ export async function processClaimedDeliveryJob(job, options = {}) {
             : `${job.channel}_sandbox`,
     });
 
-  // Idempotent prior success
   if (job.status === DELIVERY_JOB_STATES.SENT || job.providerMessageId) {
     if (job.status === DELIVERY_JOB_STATES.SENT) {
       return {
@@ -169,8 +201,7 @@ export async function processClaimedDeliveryJob(job, options = {}) {
 
   const adapter = resolveWorkerProviderAdapter(job.channel, { mode: deliveryMode });
   const attemptNumber = (job.attempts || 0) + 1;
-  const startedAt = (typeof nowFn === "function" ? nowFn() : nowFn).toISOString?.()
-    || new Date(nowFn()).toISOString();
+  const startedAt = resolveNow(nowFn).toISOString();
 
   let attemptRecord = {
     attemptId: `att_${job.id}_${attemptNumber}`,
@@ -188,6 +219,7 @@ export async function processClaimedDeliveryJob(job, options = {}) {
     nextAttemptAt: null,
     providerMessageId: null,
     deliveryMode: adapter.deliveryMode,
+    environment: job.environment || options.environment || null,
   };
 
   if (typeof repository.createDeliveryAttempt === "function") {
@@ -220,8 +252,8 @@ export async function processClaimedDeliveryJob(job, options = {}) {
     };
   }
 
-  const completedAt = (typeof nowFn === "function" ? nowFn() : nowFn).toISOString?.()
-    || new Date(nowFn()).toISOString();
+  const completedAt = resolveNow(nowFn).toISOString();
+  const durationMs = resolveNow(nowFn).getTime() - startedMs;
 
   if (providerResult?.ok) {
     const transition = assertDeliveryJobTransition(
@@ -257,7 +289,6 @@ export async function processClaimedDeliveryJob(job, options = {}) {
       attemptNumber,
     });
 
-    // in_app: mark inbox SENT without creating a new row (idempotent reuse)
     if (job.channel === "in_app" && inbox && typeof repository.markInboxDelivered === "function") {
       await repository.markInboxDelivered({
         notificationId: job.notificationId,
@@ -278,11 +309,24 @@ export async function processClaimedDeliveryJob(job, options = {}) {
       }
     }
 
+    const log = buildWorkerLogEntry({
+      runId: options.runId,
+      workerId,
+      environment: options.environment,
+      jobId: job.id,
+      transition: "PROCESSING->SENT",
+      result: "SUCCESS",
+      durationMs,
+      retryDecision: "none",
+    });
+    options.onLog?.(log);
+
     return {
       ok: true,
       job: complete?.job || { ...job, status: DELIVERY_JOB_STATES.SENT },
       attempt: attemptRecord,
       summaryPatch: { status: "sent" },
+      log,
     };
   }
 
@@ -351,16 +395,30 @@ export async function processClaimedDeliveryJob(job, options = {}) {
         ? "deadLettered"
         : "failed";
 
+  const log = buildWorkerLogEntry({
+    runId: options.runId,
+    workerId,
+    environment: options.environment,
+    jobId: job.id,
+    transition: `PROCESSING->${outcome.nextStatus}`,
+    result: failureClass,
+    durationMs,
+    retryDecision: statusKey,
+    message: sanitized,
+  });
+  options.onLog?.(log);
+
   return {
     ok: true,
     job: complete?.job || { ...job, status: outcome.nextStatus },
     attempt: attemptRecord,
     summaryPatch: { status: statusKey },
+    log,
   };
 }
 
 /**
- * Run one worker poll cycle: claim → process → summarize.
+ * Run one worker poll cycle: claim → process → summarize (+ run audit).
  */
 export async function runNotificationWorkerOnce(options = {}) {
   const guard = assertServerSideWorker(options);
@@ -377,9 +435,14 @@ export async function runNotificationWorkerOnce(options = {}) {
   const workerId =
     options.workerId ||
     `worker_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 8)}`;
+  const runId =
+    options.runId ||
+    `run_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 8)}`;
   const batchSize = Math.min(50, Math.max(1, Number(options.batchSize) || 10));
   const leaseSeconds = Math.min(300, Math.max(5, Number(options.leaseSeconds) || 60));
   const summary = emptySummary();
+  const logs = [];
+  const startedAt = resolveNow(options.now || (() => new Date()));
 
   if (typeof repository.claimDeliveryJobs !== "function") {
     return {
@@ -389,17 +452,51 @@ export async function runNotificationWorkerOnce(options = {}) {
     };
   }
 
+  if (typeof repository.startWorkerRun === "function") {
+    await repository.startWorkerRun({
+      runId,
+      workerId,
+      environment: envGuard.environment,
+      runNamespace: options.runNamespace || null,
+      tenantId: options.tenantId || null,
+      jobSource: options.jobSource || null,
+      batchSize,
+      now: options.now,
+      allowProduction: options.allowProductionWorker === true,
+    });
+  }
+
   const claim = await repository.claimDeliveryJobs({
     workerId,
     batchSize,
     leaseSeconds,
     tenantId: options.tenantId || null,
+    environment: envGuard.environment,
+    runNamespace: options.runNamespace || null,
+    jobSource: options.jobSource || null,
     now: options.now,
+    allowProduction: options.allowProductionWorker === true,
   });
 
   if (!claim?.ok) {
     summary.errors.push(sanitizeDeliveryErrorMessage(claim?.error || "claim_failed"));
-    return { ok: false, error: claim?.error || "claim_failed", summary, workerId };
+    if (typeof repository.completeWorkerRun === "function") {
+      await repository.completeWorkerRun({
+        runId,
+        status: resolveWorkerRunTerminalStatus({
+          errorCount: 1,
+          claimed: 0,
+          ok: false,
+        }),
+        summary: { ...summary, sanitizedErrorCount: 1 },
+        now: options.now,
+      });
+    }
+    return { ok: false, error: claim?.error || "claim_failed", summary, workerId, runId };
+  }
+
+  if (typeof repository.heartbeatWorkerRun === "function") {
+    await repository.heartbeatWorkerRun({ runId, now: options.now });
   }
 
   const jobs = Array.isArray(claim.jobs) ? claim.jobs : [];
@@ -411,9 +508,20 @@ export async function runNotificationWorkerOnce(options = {}) {
         ...options,
         repository,
         workerId,
+        runId,
+        environment: envGuard.environment,
+        onLog: (entry) => {
+          if (assertLogHasNoSecrets(entry).ok) logs.push(entry);
+          options.onLog?.(entry);
+        },
       });
+      if (result.log) logs.push(result.log);
       if (result.skipped) {
         summary.skipped += 1;
+        continue;
+      }
+      if (result.cancelled) {
+        summary.cancelled += 1;
         continue;
       }
       if (!result.ok) {
@@ -429,11 +537,41 @@ export async function runNotificationWorkerOnce(options = {}) {
     }
   }
 
+  if (typeof repository.heartbeatWorkerRun === "function") {
+    await repository.heartbeatWorkerRun({ runId, now: options.now });
+  }
+
+  const durationMs = resolveNow(options.now || (() => new Date())).getTime() - startedAt.getTime();
+  const terminalStatus = resolveWorkerRunTerminalStatus({
+    errorCount: summary.errors.length,
+    claimed: summary.claimed,
+    ok: true,
+  });
+
+  let workerRun = null;
+  if (typeof repository.completeWorkerRun === "function") {
+    const completed = await repository.completeWorkerRun({
+      runId,
+      status: terminalStatus,
+      summary: {
+        ...summary,
+        sanitizedErrorCount: summary.errors.length,
+        durationMs,
+      },
+      now: options.now,
+    });
+    workerRun = completed?.run || null;
+  }
+
   return {
     ok: true,
     workerId,
+    runId,
     environment: envGuard.environment,
+    runNamespace: options.runNamespace || null,
     summary,
+    workerRun,
+    logs,
   };
 }
 

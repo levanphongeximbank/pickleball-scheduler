@@ -82,6 +82,18 @@ export function rowToDeliveryJob(row) {
     deliveryMode: row.delivery_mode ?? null,
     deliveryIdempotencyKey: row.delivery_idempotency_key ?? null,
     processedAt: row.processed_at ?? null,
+    environment: row.environment ?? null,
+    runNamespace: row.run_namespace ?? null,
+    jobSource: row.job_source ?? null,
+    cancelRequested: !!row.cancel_requested,
+    cancelledAt: row.cancelled_at ?? null,
+    cancelledBy: row.cancelled_by ?? null,
+    cancellationReason: row.cancellation_reason ?? null,
+    replayedFromJobId: row.replayed_from_job_id ?? null,
+    replayRequestedBy: row.replay_requested_by ?? null,
+    replayReason: row.replay_reason ?? null,
+    replayGeneration: row.replay_generation ?? 0,
+    recoveryCount: row.recovery_count ?? 0,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
   };
@@ -105,6 +117,36 @@ export function rowToDeliveryAttempt(row) {
     nextAttemptAt: row.next_attempt_at ?? null,
     providerMessageId: row.provider_message_id ?? null,
     deliveryMode: row.delivery_mode ?? "sandbox",
+    environment: row.environment ?? null,
     createdAt: row.created_at,
+  };
+}
+
+export function rowToWorkerRun(row) {
+  if (!row) return null;
+  return {
+    id: row.id,
+    runId: row.run_id,
+    workerId: row.worker_id,
+    environment: row.environment,
+    runNamespace: row.run_namespace ?? null,
+    tenantId: row.tenant_id ?? null,
+    jobSource: row.job_source ?? null,
+    status: row.status,
+    startedAt: row.started_at,
+    completedAt: row.completed_at ?? null,
+    heartbeatAt: row.heartbeat_at,
+    claimedCount: row.claimed_count ?? 0,
+    sentCount: row.sent_count ?? 0,
+    retryScheduledCount: row.retry_scheduled_count ?? 0,
+    failedCount: row.failed_count ?? 0,
+    deadLetteredCount: row.dead_lettered_count ?? 0,
+    cancelledCount: row.cancelled_count ?? 0,
+    skippedCount: row.skipped_count ?? 0,
+    sanitizedErrorCount: row.sanitized_error_count ?? 0,
+    durationMs: row.duration_ms ?? null,
+    batchSize: row.batch_size ?? null,
+    createdAt: row.created_at,
+    updatedAt: row.updated_at,
   };
 }

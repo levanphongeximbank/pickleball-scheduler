@@ -5,6 +5,7 @@ import {
   rowToDeliveryAttempt,
   rowToDeliveryJob,
   rowToInboxRecord,
+  rowToWorkerRun,
 } from "./notificationRowMap.js";
 
 /**
@@ -188,11 +189,15 @@ export function createSupabaseNotificationRepository(client) {
       notificationId,
       tenantId,
       channel = "in_app",
+      runNamespace = null,
+      jobSource = null,
     } = {}) {
       const { data, error } = await client.rpc("notification_delivery_enqueue", {
         p_notification_id: notificationId,
         p_tenant_id: tenantId,
         p_channel: channel || "in_app",
+        p_run_namespace: runNamespace || null,
+        p_job_source: jobSource || null,
       });
       if (error) {
         return { ok: false, error: error.message || String(error) };
@@ -220,12 +225,18 @@ export function createSupabaseNotificationRepository(client) {
       batchSize = 10,
       leaseSeconds = 60,
       tenantId = null,
+      environment = null,
+      runNamespace = null,
+      jobSource = null,
     } = {}) {
       const { data, error } = await client.rpc("notification_delivery_claim_jobs", {
         p_worker_id: workerId,
         p_batch_size: batchSize,
         p_lease_seconds: leaseSeconds,
         p_tenant_id: tenantId,
+        p_environment: environment,
+        p_run_namespace: runNamespace,
+        p_job_source: jobSource,
       });
       if (error) {
         return { ok: false, error: error.message || String(error), jobs: [] };
@@ -331,6 +342,187 @@ export function createSupabaseNotificationRepository(client) {
         ok: true,
         deleted: rows.length,
         ids: rows.map((r) => r.deleted_id || r),
+      };
+    },
+
+    async startWorkerRun(args = {}) {
+      const { data, error } = await client.rpc("notification_worker_run_start", {
+        p_run_id: args.runId,
+        p_worker_id: args.workerId,
+        p_environment: args.environment,
+        p_run_namespace: args.runNamespace || null,
+        p_tenant_id: args.tenantId || null,
+        p_job_source: args.jobSource || null,
+        p_batch_size: args.batchSize ?? null,
+      });
+      if (error) return { ok: false, error: error.message || String(error) };
+      return { ok: true, run: rowToWorkerRun(data) };
+    },
+
+    async heartbeatWorkerRun({ runId } = {}) {
+      const { data, error } = await client.rpc("notification_worker_run_heartbeat", {
+        p_run_id: runId,
+      });
+      if (error) return { ok: false, error: error.message || String(error) };
+      return { ok: true, run: rowToWorkerRun(data) };
+    },
+
+    async completeWorkerRun({ runId, status, summary = {} } = {}) {
+      const { data, error } = await client.rpc("notification_worker_run_complete", {
+        p_run_id: runId,
+        p_status: status,
+        p_claimed_count: summary.claimed ?? 0,
+        p_sent_count: summary.sent ?? 0,
+        p_retry_scheduled_count: summary.retryScheduled ?? 0,
+        p_failed_count: summary.failed ?? 0,
+        p_dead_lettered_count: summary.deadLettered ?? 0,
+        p_cancelled_count: summary.cancelled ?? 0,
+        p_skipped_count: summary.skipped ?? 0,
+        p_sanitized_error_count: summary.sanitizedErrorCount ?? 0,
+        p_duration_ms: summary.durationMs ?? null,
+      });
+      if (error) return { ok: false, error: error.message || String(error) };
+      return { ok: true, run: rowToWorkerRun(data) };
+    },
+
+    async markAbandonedWorkerRuns({ environment = null, staleMs = null } = {}) {
+      const { data, error } = await client.rpc("notification_worker_mark_abandoned_runs", {
+        p_environment: environment,
+        p_stale_seconds: staleMs == null ? null : Math.floor(Number(staleMs) / 1000),
+      });
+      if (error) return { ok: false, error: error.message || String(error), runs: [] };
+      const rows = Array.isArray(data) ? data : data ? [data] : [];
+      return { ok: true, runs: rows };
+    },
+
+    async getQueueHealth({ environment = null, tenantId = null } = {}) {
+      const { data, error } = await client.rpc("notification_queue_health", {
+        p_environment: environment,
+        p_tenant_id: tenantId,
+      });
+      if (error) {
+        return { ok: false, error: error.message || String(error), health: null };
+      }
+      return { ok: true, health: data };
+    },
+
+    async cancelDeliveryJob({
+      jobId,
+      cancelledBy,
+      reason,
+      environment = null,
+      forceLeased = false,
+    } = {}) {
+      const { data, error } = await client.rpc("notification_delivery_cancel_job", {
+        p_job_id: jobId,
+        p_cancelled_by: cancelledBy,
+        p_reason: reason,
+        p_environment: environment,
+        p_force_leased: forceLeased,
+      });
+      if (error) return { ok: false, error: error.message || String(error) };
+      const job = rowToDeliveryJob(data);
+      return {
+        ok: true,
+        cancelRequested: !!job?.cancelRequested && job.status !== "CANCELLED",
+        job,
+      };
+    },
+
+    async replayDeliveryJob({
+      jobId,
+      replayedBy,
+      reason,
+      environment = null,
+    } = {}) {
+      const { data, error } = await client.rpc("notification_delivery_replay_job", {
+        p_job_id: jobId,
+        p_replayed_by: replayedBy,
+        p_reason: reason,
+        p_environment: environment,
+      });
+      if (error) return { ok: false, error: error.message || String(error) };
+      return { ok: true, job: rowToDeliveryJob(data), originalJobId: jobId };
+    },
+
+    async recoverStaleLeases({
+      environment = null,
+      tenantId = null,
+      runNamespace = null,
+      limit = 50,
+    } = {}) {
+      const { data, error } = await client.rpc(
+        "notification_delivery_recover_stale_leases",
+        {
+          p_environment: environment,
+          p_tenant_id: tenantId,
+          p_run_namespace: runNamespace,
+          p_limit: limit,
+        }
+      );
+      if (error) {
+        return { ok: false, error: error.message || String(error), recovered: [] };
+      }
+      const rows = Array.isArray(data) ? data : data ? [data] : [];
+      return {
+        ok: true,
+        recovered: rows.map((r) => ({
+          jobId: r.job_id,
+          previousWorkerId: r.previous_worker_id,
+          recoveryCount: r.recovery_count,
+        })),
+      };
+    },
+
+    async cleanupQaRunNamespace({
+      environment,
+      runNamespace,
+      tenantId = null,
+      dryRun = true,
+      expectedProjectRef = "qyewbxjsiiyufanzcjcq",
+    } = {}) {
+      const { data, error } = await client.rpc("notification_qa_cleanup_run_namespace", {
+        p_environment: environment,
+        p_run_namespace: runNamespace,
+        p_tenant_id: tenantId,
+        p_expected_project_ref: expectedProjectRef,
+        p_dry_run: dryRun !== false,
+      });
+      if (error) return { ok: false, error: error.message || String(error) };
+      return { ok: true, ...(data || {}) };
+    },
+
+    async listDeadLetterJobs({
+      environment = null,
+      tenantId = null,
+      limit = 20,
+    } = {}) {
+      const { data, error } = await client.rpc(
+        "notification_delivery_list_dead_letters",
+        {
+          p_environment: environment,
+          p_tenant_id: tenantId,
+          p_limit: limit,
+        }
+      );
+      if (error) {
+        return { ok: false, error: error.message || String(error), items: [] };
+      }
+      const rows = Array.isArray(data) ? data : data ? [data] : [];
+      return {
+        ok: true,
+        items: rows.map((r) => ({
+          id: r.id,
+          tenantId: r.tenant_id,
+          channel: r.channel,
+          status: r.status,
+          environment: r.environment,
+          runNamespace: r.run_namespace,
+          attempts: r.attempts,
+          lastError: r.last_error,
+          replayGeneration: r.replay_generation,
+          updatedAt: r.updated_at,
+        })),
       };
     },
 
