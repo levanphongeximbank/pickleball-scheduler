@@ -51,6 +51,12 @@ export const RULE_ERROR_CODE = Object.freeze({
   RULES_V2_UNSUPPORTED_LEGACY_RULE: "rules_v2_unsupported_legacy_rule",
   RULES_V2_DUPLICATE_DECISION: "rules_v2_duplicate_decision",
   RULES_V2_DOUBLE_COUNT_DETECTED: "rules_v2_double_count_detected",
+  /** CORE-01 additive fail-closed / resolution codes */
+  RULE_AUTHORITY_CONFLICT: "rule_authority_conflict",
+  RULE_TENANT_CONTEXT_REQUIRED: "rule_tenant_context_required",
+  RULE_COMPETITION_CONTEXT_REQUIRED: "rule_competition_context_required",
+  RULE_OPERATION_UNSUPPORTED: "rule_operation_unsupported",
+  RULE_RESOLUTION_AMBIGUOUS: "rule_resolution_ambiguous",
 });
 
 export const RULE_ENGINE_VERSION = "cc03a-v2";

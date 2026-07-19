@@ -58,6 +58,10 @@ export function isRuleApplicable(applicability, context) {
     matchesField(applicability.tenantId, context.tenantId) &&
     matchesField(applicability.clubId, context.clubId) &&
     matchesField(applicability.tournamentId, context.tournamentId) &&
+    matchesField(
+      applicability.competitionId,
+      context.competitionId ?? context.tournamentId
+    ) &&
     matchesField(applicability.eventId, context.eventId) &&
     matchesField(applicability.sessionId, context.sessionId) &&
     matchesField(applicability.venueId, context.venueId) &&
