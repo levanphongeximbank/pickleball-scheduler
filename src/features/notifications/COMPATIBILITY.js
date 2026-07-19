@@ -1,5 +1,5 @@
 /**
- * Compatibility notes for PICK_VN Notification Phase 1.6
+ * Compatibility notes for PICK_VN Notification Phase 1.7
  * ======================================================
  *
  * Source of Truth:
@@ -8,7 +8,11 @@
  *   Worker runs: `notification_worker_runs`
  *   Worker: server-side `runNotificationWorkerOnce()` (sandbox / in_app only)
  *
- * Phase 1.6 adds:
+ * Phase 1.7 finalizes Phase 1.1–1.6 foundation readiness (docs, rollback
+ * consistency, regression evidence, remote sync / PR readiness). No new
+ * live delivery channels.
+ *
+ * Phase 1.6 added:
  *   - Strict environment isolation (local|test|staging|production)
  *   - Worker scope: environment + tenant + run_namespace + job_source
  *   - Worker-run audit + heartbeat + abandoned detection
@@ -20,8 +24,9 @@
  * Still NOT live:
  *   Email / SMS / Zalo / Web Push providers
  *   Production worker execution (structurally present, blocked)
+ *   Production SQL apply / Production deployment
  *
- * Legacy path classification (Phase 1.6):
+ * Legacy path classification (Phase 1.7):
  *   - header.localNotificationService → deprecated-write (retired)
  *   - clubSchedule.dualWriteToMobileInbox → deprecated-write (retired for schedule pilot)
  *   - clubSchedule.canonical emit → canonicalized
@@ -35,7 +40,7 @@
  */
 
 export const NOTIFICATION_COMPATIBILITY = Object.freeze({
-  phase: "1.6",
+  phase: "1.7",
   sourceOfTruth: "supabase.notification_inbox",
   repositoryModes: Object.freeze(["memory", "local", "supabase"]),
   legacyPreserved: true,
@@ -46,6 +51,7 @@ export const NOTIFICATION_COMPATIBILITY = Object.freeze({
   workerOpsEnabled: true,
   environmentIsolation: true,
   productionWorkerBlocked: true,
+  foundationFinalized: true,
   deliveryModes: Object.freeze(["sandbox", "disabled"]),
   runtimeBootstrap: true,
   headerUsesCanonicalInbox: true,

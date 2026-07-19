@@ -493,10 +493,11 @@ describe("Notification Phase 1.6 — QA cleanup + logging", () => {
     assert.ok(redactSecrets("postgresql://u:p@host/db").includes("[REDACTED]"));
   });
 
-  it("Compatibility flags phase 1.6 with live delivery disabled", () => {
-    assert.equal(NOTIFICATION_COMPATIBILITY.phase, "1.6");
+  it("Compatibility flags phase 1.7 with live delivery disabled", () => {
+    assert.equal(NOTIFICATION_COMPATIBILITY.phase, "1.7");
     assert.equal(NOTIFICATION_COMPATIBILITY.liveDeliveryEnabled, false);
     assert.equal(NOTIFICATION_COMPATIBILITY.environmentIsolation, true);
     assert.equal(NOTIFICATION_COMPATIBILITY.productionWorkerBlocked, true);
+    assert.equal(NOTIFICATION_COMPATIBILITY.foundationFinalized, true);
   });
 });

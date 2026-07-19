@@ -1,5 +1,5 @@
 /**
- * PICK_VN Notification Module — public API (Phase 1.6).
+ * PICK_VN Notification Module — public API (Phase 1.7).
  *
  * Domain modules may import only from this barrel.
  * Providers and storage implementations are intentionally NOT exported.

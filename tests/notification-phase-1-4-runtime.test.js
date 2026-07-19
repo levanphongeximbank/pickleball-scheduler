@@ -191,7 +191,7 @@ describe("Notification Phase 1.4 — Header uses canonical repository", () => {
   it("compatibility flags Header on canonical inbox", () => {
     assert.equal(NOTIFICATION_COMPATIBILITY.headerUsesCanonicalInbox, true);
     assert.ok(
-      ["1.4", "1.5", "1.6"].includes(NOTIFICATION_COMPATIBILITY.phase),
+      ["1.4", "1.5", "1.6", "1.7"].includes(NOTIFICATION_COMPATIBILITY.phase),
       `expected phase 1.4+ got ${NOTIFICATION_COMPATIBILITY.phase}`
     );
   });

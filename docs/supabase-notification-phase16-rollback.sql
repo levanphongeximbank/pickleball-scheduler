@@ -27,6 +27,26 @@ DROP INDEX IF EXISTS idx_notification_delivery_jobs_dead_letter;
 DROP INDEX IF EXISTS idx_notification_delivery_jobs_run_namespace;
 DROP INDEX IF EXISTS idx_notification_delivery_jobs_env_claim;
 
+-- Restore Phase 1.3 absolute uniqueness on (notification_id, channel) when safe.
+-- Forward Phase 1.6 replaced this with a partial unique on active statuses only.
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1
+    FROM public.notification_delivery_jobs
+    GROUP BY notification_id, channel
+    HAVING count(*) > 1
+  ) THEN
+    ALTER TABLE public.notification_delivery_jobs
+      DROP CONSTRAINT IF EXISTS notification_delivery_jobs_notification_channel_uq;
+    ALTER TABLE public.notification_delivery_jobs
+      ADD CONSTRAINT notification_delivery_jobs_notification_channel_uq
+      UNIQUE (notification_id, channel);
+  ELSE
+    RAISE NOTICE 'phase16_rollback: skipped absolute unique restore — duplicate (notification_id, channel) rows exist; clean then re-apply constraint manually';
+  END IF;
+END $$;
+
 -- Restore Phase 1.5 claim signature (4 args)
 DROP FUNCTION IF EXISTS public.notification_delivery_claim_jobs(text, integer, integer, text, text, text, text);
 
@@ -106,8 +126,105 @@ $$;
 REVOKE ALL ON FUNCTION public.notification_delivery_claim_jobs(text, integer, integer, text) FROM PUBLIC;
 GRANT EXECUTE ON FUNCTION public.notification_delivery_claim_jobs(text, integer, integer, text) TO service_role;
 
--- Restore Phase 1.5 enqueue (3 args) — re-apply from phase15.sql if needed
+-- Restore Phase 1.5 enqueue (3 args) — body matches docs/supabase-notification-phase15.sql
 DROP FUNCTION IF EXISTS public.notification_delivery_enqueue(uuid, text, text, text, text);
+
+CREATE OR REPLACE FUNCTION public.notification_delivery_enqueue(
+  p_notification_id uuid,
+  p_tenant_id text,
+  p_channel text DEFAULT 'in_app'
+)
+RETURNS public.notification_delivery_jobs
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+DECLARE
+  v_job public.notification_delivery_jobs;
+  v_channel text;
+  v_inbox public.notification_inbox;
+  v_caller_venue text;
+  v_priority integer := 100;
+BEGIN
+  IF auth.uid() IS NULL THEN
+    RAISE EXCEPTION 'not_authenticated';
+  END IF;
+
+  SELECT p.venue_id INTO v_caller_venue
+  FROM public.profiles p
+  WHERE p.id = auth.uid()
+    AND coalesce(p.status, 'active') = 'active';
+
+  IF v_caller_venue IS NULL OR v_caller_venue IS DISTINCT FROM p_tenant_id THEN
+    RAISE EXCEPTION 'tenant_scope_denied';
+  END IF;
+
+  SELECT * INTO v_inbox
+  FROM public.notification_inbox
+  WHERE id = p_notification_id;
+
+  IF NOT FOUND THEN
+    RAISE EXCEPTION 'notification_not_found';
+  END IF;
+
+  IF v_inbox.tenant_id IS DISTINCT FROM p_tenant_id THEN
+    RAISE EXCEPTION 'notification_tenant_mismatch';
+  END IF;
+
+  v_channel := COALESCE(NULLIF(trim(p_channel), ''), 'in_app');
+
+  IF upper(COALESCE(v_inbox.priority, 'NORMAL')) IN ('URGENT', 'CRITICAL') THEN
+    v_priority := 10;
+  ELSIF upper(COALESCE(v_inbox.priority, 'NORMAL')) = 'HIGH' THEN
+    v_priority := 30;
+  ELSIF upper(COALESCE(v_inbox.priority, 'NORMAL')) = 'LOW' THEN
+    v_priority := 200;
+  ELSE
+    v_priority := 100;
+  END IF;
+
+  SELECT * INTO v_job
+  FROM public.notification_delivery_jobs
+  WHERE notification_id = p_notification_id
+    AND channel = v_channel;
+
+  IF FOUND THEN
+    RETURN v_job;
+  END IF;
+
+  INSERT INTO public.notification_delivery_jobs (
+    notification_id,
+    tenant_id,
+    channel,
+    status,
+    scheduled_at,
+    next_attempt_at,
+    priority,
+    max_attempts
+  ) VALUES (
+    p_notification_id,
+    p_tenant_id,
+    v_channel,
+    'QUEUED',
+    now(),
+    now(),
+    v_priority,
+    5
+  )
+  RETURNING * INTO v_job;
+
+  UPDATE public.notification_inbox
+  SET status = 'QUEUED',
+      updated_at = now()
+  WHERE id = p_notification_id
+    AND status = 'CREATED';
+
+  RETURN v_job;
+END;
+$$;
+
+REVOKE ALL ON FUNCTION public.notification_delivery_enqueue(uuid, text, text) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION public.notification_delivery_enqueue(uuid, text, text) TO authenticated;
 
 -- Restore QA cleanup to phase14s-only (re-apply phase15 body)
 CREATE OR REPLACE FUNCTION public.notification_qa_cleanup_namespaced_inbox(
@@ -179,4 +296,4 @@ WHERE key IN (
 );
 
 -- NOTE: environment / run_namespace / cancel / replay columns on jobs are retained
--- (non-destructive). Re-apply docs/supabase-notification-phase15.sql enqueue if dropped.
+-- (non-destructive). Phase 1.5 claim + enqueue signatures are restored above.
