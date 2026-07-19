@@ -1,0 +1,132 @@
+/**
+ * Phase 3H — Draw Runtime (capability-local public surface).
+ * Integrator owns root competition-core/index.js re-exports — do not edit that here.
+ */
+
+export {
+  createDrawResolver,
+  DrawResolver,
+} from "./DrawResolver.js";
+
+export {
+  createLegacyDrawAdapter,
+  LegacyDrawAdapter,
+} from "./adapters/index.js";
+
+export {
+  createDrawResolveRequest,
+  createDrawRequest,
+  createDrawResolveResult,
+  drawResolveOk,
+  drawResolveFail,
+  createDrawResult,
+  DRAW_ADAPTER_ID,
+  isDrawAdapter,
+  DRAW_IDENTITY_KIND,
+  DRAW_CANDIDATE_IDENTITY_KIND,
+  DRAW_GROUP_IDENTITY_KIND,
+  DRAW_BRACKET_IDENTITY_KIND,
+  DRAW_SLOT_IDENTITY_KIND,
+  DRAW_PLACEMENT_IDENTITY_KIND,
+  DRAW_BYE_IDENTITY_KIND,
+  buildDrawIdentityKey,
+  buildCandidateIdentityKey,
+  buildGroupIdentityKey,
+  buildBracketIdentityKey,
+  buildSlotIdentityKey,
+  buildPlacementIdentityKey,
+  buildByeIdentityKey,
+  createDrawIdentity,
+  createDrawCandidate,
+  createDrawSeedReference,
+  mapSeedAssignmentToReference,
+  createDrawPlacement,
+  createDrawGroup,
+  createDrawBracket,
+  createDrawBye,
+  createDrawSnapshot,
+  createDrawPolicyResult,
+  isDrawPolicy,
+} from "./contracts/index.js";
+
+export {
+  DRAW_RUNTIME_ERROR_CODE,
+  DRAW_RUNTIME_ERROR_CODE_VALUES,
+  isDrawRuntimeErrorCode,
+  DrawRuntimeError,
+  isDrawRuntimeError,
+  createDrawRuntimeError,
+} from "./errors/index.js";
+
+export {
+  DRAW_MODE,
+  DRAW_MODE_VALUES,
+  isDrawMode,
+  GROUP_DRAW_MODES,
+  BRACKET_DRAW_MODES,
+  LAYOUT_TYPE,
+  LAYOUT_TYPE_VALUES,
+  isLayoutType,
+  PLACEMENT_TYPE,
+  PLACEMENT_TYPE_VALUES,
+  isPlacementType,
+  PLACEMENT_REASON,
+  PLACEMENT_REASON_VALUES,
+  isPlacementReason,
+  CANDIDATE_TYPE,
+  CANDIDATE_TYPE_VALUES,
+  isCandidateType,
+} from "./enums/index.js";
+
+export {
+  isLegacyDrawSource,
+  mapLegacyDrawToCandidates,
+} from "./mappers/index.js";
+
+export {
+  DRAW_PERSISTENCE_PORT_METHODS,
+  matchesDrawPersistencePort,
+  createInMemoryDrawPersistencePort,
+  createNoopDrawPersistencePort,
+} from "./ports/index.js";
+
+export {
+  createNoopDrawPolicy,
+  NOOP_DRAW_POLICY_ID,
+} from "./policies/index.js";
+
+export {
+  createDrawIdentityLookup,
+  requireDrawIdentity,
+  normalizeCandidates,
+  mergeCandidatesAndSeeds,
+  validateCandidates,
+  validateGroupParams,
+  validateBracketParams,
+  validateManualAndProtected,
+  isPowerOfTwo,
+  orderByIdentity,
+  orderBySeedNumber,
+  orderCandidatesForDraw,
+  deterministicOrdering,
+  hashStringToUint32,
+  createMulberry32,
+  createDeterministicRandomFromSeed,
+  deterministicShuffle,
+  buildGroups,
+  attachPlacementsToGroups,
+  getSnakeGroupIndex,
+  getSerpentineGroupIndex,
+  getSeededGroupIndex,
+  assignSnakeGroups,
+  assignSerpentineGroups,
+  assignSeededGroups,
+  assignPotGroups,
+  assignOpenRandomGroups,
+  assignManualGroupsOnly,
+  buildSeededBracketSlotOrder,
+  calculateByeCount,
+  selectByeSlots,
+  assignBracketSlots,
+  assignByes,
+} from "./services/index.js";

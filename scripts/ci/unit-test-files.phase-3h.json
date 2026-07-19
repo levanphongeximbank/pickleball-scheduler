@@ -1,0 +1,4 @@
+[
+  "tests/competition-core-draw-runtime-3h.test.js",
+  "tests/competition-core-draw-runtime-3h-architecture.test.js"
+]
