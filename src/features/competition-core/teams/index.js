@@ -18,6 +18,9 @@ export {
   LegacyTeamAdapter,
   createLegacyRosterAdapter,
   LegacyRosterAdapter,
+  mapTtV6TeamToCompetitionTeam,
+  mapTtV6TeamToCompetitionRoster,
+  mapTtV6TeamBundle,
 } from "./adapters/index.js";
 
 export {
@@ -45,8 +48,9 @@ export {
   formatParticipantReferenceToken,
   buildRosterMemberIdentityKey,
   createRosterMemberIdentity,
+  createTeamRosterSnapshot,
+  buildRosterSnapshotContentHash,
 } from "./contracts/index.js";
-
 export {
   TEAM_RUNTIME_ERROR_CODE,
   TEAM_RUNTIME_ERROR_CODE_VALUES,
@@ -85,6 +89,22 @@ export {
   createInMemoryRosterPersistencePort,
   createNoopTeamPersistencePort,
   createNoopRosterPersistencePort,
+  TEAM_ROSTER_AUTH_ACTION,
+  matchesAuthorizationAdapter,
+  createDenyAuthorizationAdapter,
+  createAllowlistAuthorizationAdapter,
+  matchesRuleAdapter,
+  createDefaultDenyCrossTeamRuleAdapter,
+  createRuleAdapter,
+  matchesEligibilityAdapter,
+  createFailClosedEligibilityAdapter,
+  createEligibilityAdapter,
+  matchesAuditAdapter,
+  createNoopAuditAdapter,
+  createAuditAdapter,
+  matchesClassificationAdapter,
+  createOptionalClassificationAdapter,
+  createClassificationAdapter,
 } from "./ports/index.js";
 
 export {
@@ -94,4 +114,17 @@ export {
   requireRosterIdentity,
   normalizeAndValidateTeam,
   normalizeAndValidateRoster,
+  createTeamRosterService,
+  sortDomainIssues,
+  domainIssue,
+  personTokenOf,
+  listActiveMembers,
+  validateIsolationContext,
+  validateUniqueActiveMembers,
+  validateRosterSize,
+  validateCaptainOnRoster,
+  validateRosterNotLocked,
+  validateRosterInvariants,
 } from "./services/index.js";
+
+export { createInMemoryTeamRosterRepository } from "./repositories/inMemoryTeamRosterRepository.js";

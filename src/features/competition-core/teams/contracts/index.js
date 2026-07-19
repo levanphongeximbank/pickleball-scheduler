@@ -20,6 +20,11 @@ export {
 } from "./rosterMemberIdentity.js";
 
 export {
+  createTeamRosterSnapshot,
+  buildRosterSnapshotContentHash,
+} from "./rosterSnapshot.js";
+
+export {
   createTeamResolveRequest,
   createRosterResolveRequest,
 } from "./resolveRequest.js";
