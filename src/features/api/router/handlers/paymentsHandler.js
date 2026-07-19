@@ -6,7 +6,8 @@ import {
 } from "../../../payments/services/paymentGatewayService.js";
 import { API_SCOPES } from "../../constants/apiScopes.js";
 import { recordWebhookEvent, markWebhookProcessed } from "../../../integrations/services/webhookEventService.js";
-import { sendNotification } from "../../../notifications/services/notificationService.js";
+import { emitPaymentLifecycleNotification } from "../../../notifications/adapters/paymentNotificationPilot.js";
+import { NOTIFICATION_EVENT_TYPES } from "../../../notifications/constants/notificationEvents.js";
 
 export const paymentsRoutes = [
   {
@@ -85,15 +86,27 @@ export const paymentsRoutes = [
         errorMessage: result.error || null,
       });
 
-      if (result.ok) {
-        await sendNotification({
-          tenantId: ctx.body?.tenantId,
-          channel: "email",
-          templateKey: "payment_success",
-          recipientId: ctx.body?.buyerUserId,
-          variables: { name: "Khách hàng", message: "Thanh toán thành công." },
-          forceMock: true,
-        });
+      const tenantId =
+        ctx.body?.tenantId || ctx.auth?.tenantId || result.transaction?.tenantId;
+      const transactionId =
+        result.transaction?.id || ctx.body?.transactionId || null;
+      if (tenantId && transactionId) {
+        // Phase 1.3 pilot — canonical inbox + queue (no live email / forceMock).
+        await emitPaymentLifecycleNotification(
+          result.ok
+            ? NOTIFICATION_EVENT_TYPES.PAYMENT_CONFIRMED
+            : NOTIFICATION_EVENT_TYPES.PAYMENT_FAILED,
+          {
+            tenantId,
+            transactionId,
+            orderId: result.transaction?.orderId || ctx.body?.orderId || null,
+            amount: result.transaction?.amount ?? ctx.body?.amount ?? null,
+            currency: result.transaction?.currency || ctx.body?.currency || "VND",
+            buyerUserId: ctx.body?.buyerUserId || null,
+            reason: result.error || null,
+            version: result.ok ? "confirmed" : "failed",
+          }
+        );
       }
 
       if (!result.ok) {

@@ -31,6 +31,7 @@ import {
   filterNotificationsByRole,
   listNotifications,
 } from "../../features/mobile/services/notificationService.js";
+import { listMobileCompatibleInbox } from "../../features/notifications/adapters/mobileInboxCompatAdapter.js";
 import { loadPlayerMobileHome } from "../../features/mobile/services/playerMobileService.js";
 import { createQrToken } from "../../features/mobile/services/qrTokenService.js";
 import { QR_ENTITY_TYPES } from "../../features/mobile/constants/qrEntityTypes.js";
@@ -105,12 +106,29 @@ export default function PlayerHomePage() {
     }
 
     const [notifResult, checkinResult] = await Promise.all([
-      listNotifications({ tenantId: currentTenantId, userId }),
+      listMobileCompatibleInbox({
+        tenantId: currentTenantId,
+        userId,
+        listLegacy: listNotifications,
+        limit: 50,
+      }),
       getCheckinDashboard({ tenantId: currentTenantId }),
     ]);
 
     if (notifResult.ok) {
-      const filtered = filterNotificationsByRole(notifResult.notifications, {
+      const legacyShaped = (notifResult.items || []).map((item) => ({
+        id: item.id,
+        title: item.title,
+        body: item.body || item.message,
+        type: item.eventType || item.category,
+        status: item.read ? "read" : "unread",
+        created_at: item.createdAt || item.created_at,
+        tenant_id: item.tenantId,
+        user_id: item.recipientUserId,
+        payload_json: item.raw?.payload || item.raw?.payload_json || {},
+        _source: item.source,
+      }));
+      const filtered = filterNotificationsByRole(legacyShaped, {
         user: auth.user,
         clubId: activeClubId,
       });

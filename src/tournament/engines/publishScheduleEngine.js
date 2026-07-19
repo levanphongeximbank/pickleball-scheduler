@@ -303,13 +303,56 @@ export function publishSchedule(tournament, matches = [], options = {}) {
     options
   );
 
+  const publishedTournament = audited.tournament;
+  if (options.emitNotifications !== false) {
+    void notifyMatchScheduledAfterPublish(publishedTournament, snapshot, {
+      ...options,
+      now,
+    });
+  }
+
   return {
     ok: true,
-    tournament: audited.tournament,
-    schedulePublish: getSchedulePublishStatus(audited.tournament),
+    tournament: publishedTournament,
+    schedulePublish: getSchedulePublishStatus(publishedTournament),
     snapshot,
     auditEntry: audited.auditEntry,
   };
+}
+
+/**
+ * Fire-and-forget MATCH_SCHEDULED emit after successful publish.
+ * Safe tournament-layer boundary — does not modify Competition Engine.
+ */
+export function notifyMatchScheduledAfterPublish(tournament, matches = [], options = {}) {
+  const tenantId =
+    options.tenantId ||
+    tournament?.tenantId ||
+    tournament?.venueId ||
+    null;
+  const actorUserId = options.userId || options.actor?.id || null;
+  const scheduleVersion =
+    getSchedulePublishStatus(tournament)?.publishedAt ||
+    options.now ||
+    new Date().toISOString();
+
+  return import("../../features/notifications/adapters/tournamentSchedulePublishBridge.js")
+    .then(({ emitMatchScheduledAfterSchedulePublish }) =>
+      emitMatchScheduledAfterSchedulePublish({
+        tournament,
+        matches,
+        tenantId,
+        actorUserId,
+        scheduleVersion,
+      })
+    )
+    .catch((error) => ({
+      ok: false,
+      error: error?.message || String(error),
+      emitted: 0,
+      skipped: 0,
+      results: [],
+    }));
 }
 
 export function canReopenSchedule(tournament, options = {}) {

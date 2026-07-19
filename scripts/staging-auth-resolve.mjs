@@ -8,6 +8,18 @@ import { getStagingSupabaseEnv, loadProjectEnv } from "./load-env.mjs";
 const QA_PASSWORD = String(process.env.PHASE42L_QA_PASSWORD || "PickleStaging!358").trim();
 
 function passwordForEmail(email) {
+  const normalized = String(email || "").trim().toLowerCase();
+  const ownerA = String(process.env.STAGING_OWNER_A_EMAIL || "").trim().toLowerCase();
+  const ownerB = String(process.env.STAGING_OWNER_B_EMAIL || "").trim().toLowerCase();
+
+  // Prefer env-configured QA Owner emails (Phase 1.3S+) over hard-coded staging.local.
+  if (ownerA && normalized === ownerA) {
+    return String(process.env.STAGING_OWNER_A_PASSWORD || "").trim() || QA_PASSWORD;
+  }
+  if (ownerB && normalized === ownerB) {
+    return String(process.env.STAGING_OWNER_B_PASSWORD || "").trim() || QA_PASSWORD;
+  }
+
   const map = {
     "owner@staging.local": "STAGING_OWNER_A_PASSWORD",
     "owner-b@staging.local": "STAGING_OWNER_B_PASSWORD",
@@ -15,9 +27,17 @@ function passwordForEmail(email) {
     "manager@staging.local": "STAGING_MANAGER_PASSWORD",
     "club@staging.local": "STAGING_CLUB_PASSWORD",
   };
-  const envKey = map[email];
+  const envKey = map[normalized];
   const fromEnv = envKey ? String(process.env[envKey] || "").trim() : "";
   return fromEnv || QA_PASSWORD;
+}
+
+/** Resolve QA Owner A/B emails from env (required for Notification Phase 1.3S). */
+export function getStagingOwnerEmails() {
+  loadProjectEnv();
+  const ownerA = String(process.env.STAGING_OWNER_A_EMAIL || "").trim();
+  const ownerB = String(process.env.STAGING_OWNER_B_EMAIL || "").trim();
+  return { ownerA, ownerB };
 }
 
 export async function signInStagingUser(email, options = {}) {

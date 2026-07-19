@@ -116,7 +116,12 @@ export async function createClubActivitySession(clubId, tenantId, input = {}, op
     excludeUserId: user?.id,
     title: "Lịch sinh hoạt CLB",
     body: `Đã thêm buổi sinh hoạt ${summary.dayLabel} ${summary.startTime}–${summary.endTime}.`,
-    payload: { clubId, sessionId: session.id, action: "created" },
+    payload: {
+      clubId,
+      sessionId: session.id,
+      action: "created",
+      version: session.createdAt || session.id,
+    },
   });
 
   return { ok: true, session: summary };
@@ -170,7 +175,12 @@ export async function updateClubActivitySession(clubId, sessionId, tenantId, inp
     excludeUserId: user?.id,
     title: "Cập nhật lịch sinh hoạt",
     body: `Lịch ${summary.dayLabel} đã được cập nhật (${summary.startTime}–${summary.endTime}).`,
-    payload: { clubId, sessionId: next.id, action: "updated" },
+    payload: {
+      clubId,
+      sessionId: next.id,
+      action: "updated",
+      version: next.updatedAt || next.id,
+    },
   });
 
   return { ok: true, session: summary };
@@ -211,7 +221,12 @@ export async function deleteClubActivitySession(clubId, sessionId, tenantId, opt
     excludeUserId: user?.id,
     title: "Hủy buổi sinh hoạt",
     body: `Buổi sinh hoạt ${summary.dayLabel} ${summary.startTime}–${summary.endTime} đã bị hủy.`,
-    payload: { clubId, sessionId: target.id, action: "deleted" },
+    payload: {
+      clubId,
+      sessionId: target.id,
+      action: "deleted",
+      version: `deleted:${target.id}`,
+    },
   });
 
   return { ok: true, session: summary };
