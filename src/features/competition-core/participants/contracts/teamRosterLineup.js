@@ -194,6 +194,7 @@ export function createCompetitionRoster(partial = {}) {
  * @property {string} contextId
  * @property {string} status
  * @property {number} revision
+ * @property {string|null} [rosterId]
  * @property {string|null} [previousRevisionId]
  * @property {string|null} [submittedAt]
  * @property {string|null} [submittedBy]
@@ -202,6 +203,7 @@ export function createCompetitionRoster(partial = {}) {
  * @property {string|null} [reason]
  * @property {CompetitionLineupSlot[]} slots
  * @property {CompetitionLineupRevision[]} [revisions]
+ * @property {string|null} [identityKey] — competitionId::LINEUP::contextId::teamId (Phase 3E)
  * @property {import('./shared.js').FormatExtension|null} [extensions]
  * @property {import('./shared.js').AuditMetadata} [audit]
  */
@@ -256,6 +258,10 @@ export function createCompetitionLineup(partial = {}) {
     contextId: String(partial.contextId || ""),
     status: String(partial.status || COMPETITION_LINEUP_STATUS.DRAFT),
     revision: typeof partial.revision === "number" ? partial.revision : 1,
+    rosterId:
+      partial.rosterId != null && partial.rosterId !== ""
+        ? String(partial.rosterId)
+        : null,
     previousRevisionId: partial.previousRevisionId ?? null,
     submittedAt: partial.submittedAt ?? null,
     submittedBy: partial.submittedBy ?? null,
@@ -266,6 +272,10 @@ export function createCompetitionLineup(partial = {}) {
     revisions: Array.isArray(partial.revisions)
       ? partial.revisions.map((r) => createCompetitionLineupRevision(r || {}))
       : [],
+    identityKey:
+      partial.identityKey != null && partial.identityKey !== ""
+        ? String(partial.identityKey)
+        : null,
     extensions: createFormatExtension(partial.extensions),
     audit: createAuditMetadata(partial.audit),
   };
