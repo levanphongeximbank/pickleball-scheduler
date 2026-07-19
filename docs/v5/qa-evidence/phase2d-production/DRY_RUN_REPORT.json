@@ -1,0 +1,82 @@
+{
+  "phase": "2D-transfer-president-authz-production",
+  "mode": "apply",
+  "productionRef": "expuvcohlcjzvrrauvud",
+  "stagingRef": "qyewbxjsiiyufanzcjcq",
+  "commit": "853fba3a567fbf6bd8706142d6a16b2444f999dd",
+  "patchCommit": "d8ef55907bb884c9b36a678eb024c2c952b229e0",
+  "sqlFile": "docs/v5/phase2d/PHASE_2D_TRANSFER_PRESIDENT_AUTHZ_GATE.sql",
+  "rollbackFile": "docs/v5/phase2d/PHASE_2D_TRANSFER_PRESIDENT_AUTHZ_ROLLBACK.sql",
+  "sqlSha256": "ea0b3bc6dcead6c749d2562f27f5675ab9ad760e7815a823d4ad273e79c819d8",
+  "expectedSha256": "ea0b3bc6dcead6c749d2562f27f5675ab9ad760e7815a823d4ad273e79c819d8",
+  "startedAt": "2026-07-19T16:19:25.579Z",
+  "productionTouched": false,
+  "status": "DRY_RUN_PASS",
+  "identity": {
+    "productionRef": "expuvcohlcjzvrrauvud",
+    "productionHost": "https://expuvcohlcjzvrrauvud.supabase.co",
+    "evidence": [
+      "scripts/phase42k-production-helpers.mjs PRODUCTION_REF",
+      "docs/v5/qa-evidence/phase2c-cancel-audit-production/PRODUCTION_ROLLOUT_REPORT.md",
+      "docs/player-management/phase-1e/04_ENVIRONMENT_SAFEGUARDS.md",
+      "Management API queries scoped exclusively to PRODUCTION_REF"
+    ],
+    "notStaging": true,
+    "notPreview": true,
+    "stagingRefRemains": "qyewbxjsiiyufanzcjcq"
+  },
+  "ownerChecklist": {
+    "productionIdentity": true,
+    "patchOnMain": true,
+    "sqlPath": "docs/v5/phase2d/PHASE_2D_TRANSFER_PRESIDENT_AUTHZ_GATE.sql",
+    "sqlChecksum": true,
+    "stagingApplyPass": true,
+    "stagingSchemaVerifyPass": true,
+    "backupPitrAssumedPlatform": true,
+    "rollbackExists": true,
+    "noUnrelatedMigrations": true
+  },
+  "preflight": {
+    "checks": {
+      "transferFnExists": true,
+      "signatureOk": true,
+      "securityDefiner": true,
+      "searchPathPublic": true,
+      "grantAuthenticated": true,
+      "writeAuditExists": true,
+      "hasGovRoleExists": true,
+      "tenantMemberExists": true,
+      "helperExists": false,
+      "usesHelper": false,
+      "usesBareTenantMember": true,
+      "hasAudit": true,
+      "hasVersion": true,
+      "hasIdempotency": true,
+      "hasMemberRequired": true
+    },
+    "alreadyApplied": false,
+    "drift": false,
+    "needsPatch": true,
+    "fnSnippet": "CREATE OR REPLACE FUNCTION public.club_transfer_president(p_request_id uuid, p_club_id text, p_next_user_id uuid, p_expected_club_version integer)\n RETURNS json\n LANGUAGE plpgsql\n SECURITY DEFINER\n SET search_path TO 'public'\nAS $function$\ndeclare v_cached jsonb; v_club public.clubs%rowtype; v_member public.club_members%rowtype; v_resp jsonb;\nbegin\n  if auth.uid() is null then return public.phase42_err('NOT_AUTHENTICATED', 'Chưa đăng nhập.'); end if;\n  if p_request_id is null then return public.",
+    "raw": {
+      "transfer_args": "p_request_id uuid, p_club_id text, p_next_user_id uuid, p_expected_club_version integer",
+      "transfer_security_definer": true,
+      "transfer_search_path": "public",
+      "helper_exists": false,
+      "transfer_grant_authenticated": true
+    }
+  },
+  "dryRun": {
+    "result": {
+      "helper_exists": true,
+      "transfer_uses_helper": true,
+      "transfer_no_bare_tenant_member": true,
+      "has_audit": true,
+      "has_version": true,
+      "has_idempotency": true
+    },
+    "ok": true,
+    "rolledBack": true,
+    "postDryNeedsPatch": true
+  }
+}
