@@ -2,6 +2,11 @@ import {
   DEFAULT_CLOSE_HOUR,
   DEFAULT_OPEN_HOUR,
 } from "../../domain/courtBookingEngine.js";
+import {
+  absoluteToCivilDate,
+  getBrowserDisplayCivilDate,
+  resolveVenueTimezoneForClub,
+} from "../../domain/civilTime.js";
 import { CALENDAR_CELL_TONES } from "./calendar/courtCalendarTokens.js";
 
 export function buildTimeOptions(
@@ -80,8 +85,29 @@ export const COURT_STATUS_LABELS = {
   maintenance: "Bảo trì",
 };
 
-export function todayIsoDate() {
-  return new Date().toISOString().slice(0, 10);
+export function todayIsoDate(options = {}) {
+  if (options && typeof options === "object") {
+    if (options.timezone || options.clubId) {
+      const tz = options.timezone
+        ? { ok: true, timezone: String(options.timezone).trim() }
+        : resolveVenueTimezoneForClub(options.clubId, options);
+      if (tz.ok) {
+        return absoluteToCivilDate(options.now || new Date(), tz.timezone);
+      }
+      if (options.allowBrowserLocal === true) {
+        return getBrowserDisplayCivilDate(options.now || new Date());
+      }
+      throw Object.assign(new Error(tz.error || "TIMEZONE_REQUIRED"), {
+        code: tz.code || "TIMEZONE_REQUIRED",
+      });
+    }
+    if (options.allowBrowserLocal === true) {
+      return getBrowserDisplayCivilDate(options.now || new Date());
+    }
+  }
+  // Legacy no-arg calls remain display-only (browser local). Venue decision
+  // paths must pass clubId or timezone explicitly.
+  return getBrowserDisplayCivilDate();
 }
 
 export function formatDisplayDate(isoDate) {

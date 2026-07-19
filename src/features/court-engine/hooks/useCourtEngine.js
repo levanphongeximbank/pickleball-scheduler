@@ -49,10 +49,15 @@ import {
 } from "../services/courtEngineService.js";
 import { SESSION_STATUS } from "../constants/statuses.js";
 import { buildLocalCivilWindow } from "../services/courtEngineAvailabilityGuard.js";
+import { resolveVenueTimezoneForClub } from "../../../domain/civilTime.js";
 
-function resolveSessionAvailabilityWindow(session) {
+function resolveSessionAvailabilityWindow(session, clubId) {
   const duration = Number(session?.config?.defaultMatchMinutes) || 20;
-  const built = buildLocalCivilWindow(duration);
+  const tz = resolveVenueTimezoneForClub(clubId);
+  if (!tz.ok) {
+    return { ok: false, error: tz.error, code: tz.code };
+  }
+  const built = buildLocalCivilWindow(duration, new Date(), tz.timezone);
   if (!built.ok) {
     return { ok: false, error: built.error, code: built.code };
   }
@@ -61,6 +66,7 @@ function resolveSessionAvailabilityWindow(session) {
     date: built.date,
     startTime: built.startTime,
     endTime: built.endTime,
+    timezone: tz.timezone,
   };
 }
 
@@ -307,7 +313,7 @@ export function useCourtEngine() {
           setError("Thiếu clubId — không thể ghép sân (Venue & Court).");
           return;
         }
-        const window = resolveSessionAvailabilityWindow(session);
+        const window = resolveSessionAvailabilityWindow(session, activeClubId);
         if (!window.ok) {
           setError(window.error);
           return;
@@ -336,7 +342,7 @@ export function useCourtEngine() {
           setError("Thiếu clubId — không thể xác nhận assignment.");
           return;
         }
-        const window = resolveSessionAvailabilityWindow(session);
+        const window = resolveSessionAvailabilityWindow(session, activeClubId);
         if (!window.ok) {
           setError(window.error);
           return;
@@ -375,7 +381,7 @@ export function useCourtEngine() {
           setError("Thiếu clubId — không thể chuyển sân.");
           return;
         }
-        const window = resolveSessionAvailabilityWindow(session);
+        const window = resolveSessionAvailabilityWindow(session, activeClubId);
         if (!window.ok) {
           setError(window.error);
           return;

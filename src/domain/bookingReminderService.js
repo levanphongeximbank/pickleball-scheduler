@@ -2,10 +2,15 @@ import { isActiveBookingStatus } from "../models/booking.js";
 import { loadBookingsForClub, saveBookingsForClub } from "./clubStorage.js";
 import { loadCourtManagementSettings } from "./courtManagementSettings.js";
 import { timeToMinutes } from "./courtBookingEngine.js";
+import {
+  absoluteToCivilDate,
+  absoluteToCivilMinutes,
+  resolveVenueTimezoneForClub,
+} from "./civilTime.js";
 
 const SKIP_BOOKING_TYPES = new Set(["maintenance", "tournament"]);
 
-export function getUpcomingReminders(clubId, now = new Date()) {
+export function getUpcomingReminders(clubId, now = new Date(), options = {}) {
   const settings = loadCourtManagementSettings(clubId);
   const notificationSettings = settings.notificationSettings || {};
 
@@ -13,10 +18,16 @@ export function getUpcomingReminders(clubId, now = new Date()) {
     return [];
   }
 
+  const tz = resolveVenueTimezoneForClub(clubId, options);
+  if (!tz.ok) {
+    // Fail closed: do not evaluate reminders against host timezone.
+    return [];
+  }
+
   const minutesBefore = notificationSettings.minutesBefore || 30;
   const bookings = loadBookingsForClub(clubId);
-  const today = now.toISOString().slice(0, 10);
-  const nowMinutes = now.getHours() * 60 + now.getMinutes();
+  const today = absoluteToCivilDate(now, tz.timezone);
+  const nowMinutes = absoluteToCivilMinutes(now, tz.timezone);
 
   return bookings.filter((booking) => {
     if (!isActiveBookingStatus(booking.bookingStatus)) {
@@ -83,10 +94,10 @@ export async function requestBrowserNotificationPermission() {
   return Notification.requestPermission();
 }
 
-export function processBookingReminders(clubId, now = new Date()) {
+export function processBookingReminders(clubId, now = new Date(), options = {}) {
   const settings = loadCourtManagementSettings(clubId);
   const notificationSettings = settings.notificationSettings || {};
-  const reminders = getUpcomingReminders(clubId, now);
+  const reminders = getUpcomingReminders(clubId, now, options);
 
   reminders.forEach((booking) => {
     if (notificationSettings.browserNotify) {

@@ -18,11 +18,13 @@ import {
 import { MEMBERSHIP_PLANS } from "../../models/customer.js";
 import { createCustomer, updateCustomer } from "../../domain/customerService.js";
 
+import { getLocalCivilDate } from "../../domain/civilTime.js";
+
 function toDateInputValue(isoValue) {
   if (!isoValue) return "";
   const date = new Date(isoValue);
   if (Number.isNaN(date.getTime())) return "";
-  return date.toISOString().slice(0, 10);
+  return getLocalCivilDate(date);
 }
 
 export default function MemberFormDialog({

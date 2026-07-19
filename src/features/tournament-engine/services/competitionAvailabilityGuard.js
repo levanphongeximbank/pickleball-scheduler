@@ -9,9 +9,12 @@
  */
 
 import { getCompetitionCourtAvailability as getCompetitionCourtAvailabilityDefault } from "../../venue-court/index.js";
-
-const HHMM_RE = /^([01]\d|2[0-3]):([0-5]\d)$/;
-const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
+import {
+  CIVIL_DATE_RE,
+  CIVIL_HHMM_RE,
+  civilTimeToMinutes,
+  isoToCivilHhmmOnDate,
+} from "../../../domain/civilTime.js";
 
 export const AVAILABILITY_MODE = Object.freeze({
   /** Production / Phase 2B runtime — require clubId + civil window; never silent legacy. */
@@ -58,16 +61,12 @@ export function resolveAvailabilityMode(options = {}, context = {}) {
     : AVAILABILITY_MODE.REQUIRED;
 }
 
-function minutesToTimeString(totalMinutes) {
-  const wrapped = ((Number(totalMinutes) % 1440) + 1440) % 1440;
-  const h = Math.floor(wrapped / 60);
-  const m = wrapped % 60;
-  return `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}`;
-}
-
 function parseTimeToMinutes(timeStr) {
-  const [h, m] = String(timeStr || "00:00").split(":").map(Number);
-  return (h || 0) * 60 + (m || 0);
+  try {
+    return civilTimeToMinutes(timeStr);
+  } catch {
+    return 0;
+  }
 }
 
 function stableCourtIdsKey(courtIds) {
@@ -119,25 +118,17 @@ export function buildAvailabilityCacheKey({
 
 /**
  * Convert ISO instant to venue-local civil HH:mm on a known civil date.
- * Uses the same local-midnight basis as scheduleEngine (no invented timezone).
+ * Requires options.timezone (IANA). Never uses host local timezone.
  */
-export function isoToCivilHhmm(iso, dateStr) {
-  if (!iso || !dateStr || !DATE_RE.test(String(dateStr))) {
+export function isoToCivilHhmm(iso, dateStr, options = {}) {
+  try {
+    return isoToCivilHhmmOnDate(iso, dateStr, options);
+  } catch (error) {
+    if (error?.code === "TIMEZONE_REQUIRED") {
+      throw error;
+    }
     return null;
   }
-  const start = new Date(iso).getTime();
-  if (!Number.isFinite(start)) {
-    return null;
-  }
-  const base = new Date(`${dateStr}T00:00:00`).getTime();
-  if (!Number.isFinite(base)) {
-    return null;
-  }
-  const minutes = Math.round((start - base) / 60000);
-  if (!Number.isFinite(minutes) || minutes < 0 || minutes >= 1440) {
-    return null;
-  }
-  return minutesToTimeString(minutes);
 }
 
 /**
@@ -146,7 +137,7 @@ export function isoToCivilHhmm(iso, dateStr) {
  */
 export function resolveScheduleConfigWindow(scheduleConfig = {}) {
   const date =
-    scheduleConfig.date && DATE_RE.test(String(scheduleConfig.date).trim())
+    scheduleConfig.date && CIVIL_DATE_RE.test(String(scheduleConfig.date).trim())
       ? String(scheduleConfig.date).trim()
       : null;
   if (!date) {
@@ -156,10 +147,10 @@ export function resolveScheduleConfigWindow(scheduleConfig = {}) {
   if (Array.isArray(scheduleConfig.sessions) && scheduleConfig.sessions.length > 0) {
     const starts = scheduleConfig.sessions
       .map((s) => s?.startTime)
-      .filter((t) => HHMM_RE.test(String(t || "").trim()));
+      .filter((t) => CIVIL_HHMM_RE.test(String(t || "").trim()));
     const ends = scheduleConfig.sessions
       .map((s) => s?.endTime)
-      .filter((t) => HHMM_RE.test(String(t || "").trim()));
+      .filter((t) => CIVIL_HHMM_RE.test(String(t || "").trim()));
     if (starts.length && ends.length) {
       const startTime = starts.reduce((a, b) =>
         parseTimeToMinutes(a) <= parseTimeToMinutes(b) ? a : b
@@ -175,7 +166,7 @@ export function resolveScheduleConfigWindow(scheduleConfig = {}) {
 
   const startTime = String(scheduleConfig.startTime || "").trim();
   const endTime = String(scheduleConfig.endTime || "").trim();
-  if (!HHMM_RE.test(startTime) || !HHMM_RE.test(endTime)) {
+  if (!CIVIL_HHMM_RE.test(startTime) || !CIVIL_HHMM_RE.test(endTime)) {
     return null;
   }
   if (parseTimeToMinutes(endTime) <= parseTimeToMinutes(startTime)) {
@@ -186,17 +177,28 @@ export function resolveScheduleConfigWindow(scheduleConfig = {}) {
 
 /**
  * Resolve a per-match civil window from ISO scheduledStart/End + civil date.
+ * Requires options.timezone for absolute→civil conversion.
  */
-export function resolveMatchCivilWindow(match = {}, fallbackDate = null) {
+export function resolveMatchCivilWindow(match = {}, fallbackDate = null, options = {}) {
   const dateCandidate =
-    (fallbackDate && DATE_RE.test(String(fallbackDate).trim()) && String(fallbackDate).trim()) ||
+    (fallbackDate && CIVIL_DATE_RE.test(String(fallbackDate).trim()) && String(fallbackDate).trim()) ||
     null;
   if (!dateCandidate) {
     return null;
   }
 
-  const startTime = isoToCivilHhmm(match.scheduledStart, dateCandidate);
-  const endTime = isoToCivilHhmm(match.scheduledEnd || match.scheduledStart, dateCandidate);
+  if (options.timezone == null || String(options.timezone).trim() === "") {
+    return null;
+  }
+
+  let startTime;
+  let endTime;
+  try {
+    startTime = isoToCivilHhmm(match.scheduledStart, dateCandidate, options);
+    endTime = isoToCivilHhmm(match.scheduledEnd || match.scheduledStart, dateCandidate, options);
+  } catch {
+    return null;
+  }
   if (!startTime || !endTime) {
     return null;
   }
@@ -214,12 +216,13 @@ export function resolveDirectorAssignWindow({
   date = null,
   startTime = null,
   endTime = null,
+  timezone = null,
 } = {}) {
   const civilDate =
-    date && DATE_RE.test(String(date).trim()) ? String(date).trim() : null;
+    date && CIVIL_DATE_RE.test(String(date).trim()) ? String(date).trim() : null;
 
-  if (match?.scheduledStart && civilDate) {
-    const fromMatch = resolveMatchCivilWindow(match, civilDate);
+  if (match?.scheduledStart && civilDate && timezone) {
+    const fromMatch = resolveMatchCivilWindow(match, civilDate, { timezone });
     if (fromMatch) {
       return fromMatch;
     }
@@ -227,7 +230,7 @@ export function resolveDirectorAssignWindow({
 
   const start = String(startTime || "").trim();
   const end = String(endTime || "").trim();
-  if (civilDate && HHMM_RE.test(start) && HHMM_RE.test(end) && parseTimeToMinutes(end) > parseTimeToMinutes(start)) {
+  if (civilDate && CIVIL_HHMM_RE.test(start) && CIVIL_HHMM_RE.test(end) && parseTimeToMinutes(end) > parseTimeToMinutes(start)) {
     return { date: civilDate, startTime: start, endTime: end };
   }
 

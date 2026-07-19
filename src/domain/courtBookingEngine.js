@@ -5,6 +5,22 @@ import {
   isActiveBookingStatus,
   normalizeBooking,
 } from "../models/booking.js";
+import {
+  absoluteToCivilDate,
+  absoluteToCivilMinutes,
+  CIVIL_TIME_ERROR,
+} from "./civilTime.js";
+
+function requireTimezone(options = {}) {
+  const timezone = options.timezone != null ? String(options.timezone).trim() : "";
+  if (!timezone) {
+    throw Object.assign(
+      new Error("Thiếu timezone IANA cho truy vấn booking theo giờ venue."),
+      { code: CIVIL_TIME_ERROR.TIMEZONE_REQUIRED }
+    );
+  }
+  return timezone;
+}
 
 export const DEFAULT_OPEN_HOUR = 0;
 export const DEFAULT_CLOSE_HOUR = 24;
@@ -156,10 +172,18 @@ export function isPeakMinute(minuteOfDay, peakRules, dateIso) {
   }
 
   if (dateIso) {
-    const weekday = new Date(`${dateIso}T12:00:00`).getDay();
+    const [y, m, d] = String(dateIso).split("-").map(Number);
+    const weekday = Number.isFinite(y)
+      ? new Date(Date.UTC(y, m - 1, d, 12, 0, 0)).getUTCDay()
+      : null;
     const weekdays = peakRules.weekdays;
 
-    if (Array.isArray(weekdays) && weekdays.length > 0 && !weekdays.includes(weekday)) {
+    if (
+      weekday != null &&
+      Array.isArray(weekdays) &&
+      weekdays.length > 0 &&
+      !weekdays.includes(weekday)
+    ) {
       return false;
     }
   }
@@ -326,9 +350,10 @@ export function buildDayGridBlocks(
   return blocks;
 }
 
-export function getCurrentBookingForCourt(court, bookings, date, now = new Date()) {
-  const today = date || now.toISOString().slice(0, 10);
-  const currentTime = minutesToTime(now.getHours() * 60 + now.getMinutes());
+export function getCurrentBookingForCourt(court, bookings, date, now = new Date(), options = {}) {
+  const timezone = requireTimezone(options);
+  const today = date || absoluteToCivilDate(now, timezone);
+  const currentTime = minutesToTime(absoluteToCivilMinutes(now, timezone));
 
   const courtBookings = getBookingsByCourt(bookings, court.id, today)
     .filter(isBookingBlocking)
@@ -339,9 +364,10 @@ export function getCurrentBookingForCourt(court, bookings, date, now = new Date(
   return courtBookings[0] || null;
 }
 
-export function getNextBookingForCourt(court, bookings, date, now = new Date()) {
-  const today = date || now.toISOString().slice(0, 10);
-  const currentMinutes = now.getHours() * 60 + now.getMinutes();
+export function getNextBookingForCourt(court, bookings, date, now = new Date(), options = {}) {
+  const timezone = requireTimezone(options);
+  const today = date || absoluteToCivilDate(now, timezone);
+  const currentMinutes = absoluteToCivilMinutes(now, timezone);
 
   const upcoming = getBookingsByCourt(bookings, court.id, today)
     .filter(isBookingBlocking)
@@ -521,8 +547,17 @@ export function computeRangeRevenue(bookings, fromDate, toDate) {
   };
 }
 
-export function getDebtBookings(bookings, { includePast = true, today } = {}) {
-  const todayDate = today || new Date().toISOString().slice(0, 10);
+export function getDebtBookings(bookings, { includePast = true, today, timezone } = {}) {
+  const todayDate =
+    today ||
+    (timezone
+      ? absoluteToCivilDate(new Date(), timezone)
+      : (() => {
+          throw Object.assign(
+            new Error("getDebtBookings yêu cầu today hoặc timezone IANA."),
+            { code: CIVIL_TIME_ERROR.TIMEZONE_REQUIRED }
+          );
+        })());
 
   return (bookings || []).filter((booking) => {
     if (CANCELLED_STATUSES.has(booking.bookingStatus)) {
@@ -705,23 +740,32 @@ export function computeCourtUtilization(
 
 export function getTodayUpcomingBookings(
   bookings,
-  date = new Date().toISOString().slice(0, 10),
-  now = new Date()
+  date,
+  now = new Date(),
+  options = {}
 ) {
-  const nowMinutes = now.getHours() * 60 + now.getMinutes();
+  const timezone = requireTimezone(options);
+  const civilDate = date || absoluteToCivilDate(now, timezone);
+  const nowMinutes = absoluteToCivilMinutes(now, timezone);
 
   return (bookings || [])
-    .filter((booking) => booking.date === date)
+    .filter((booking) => booking.date === civilDate)
     .filter((booking) => isActiveBookingStatus(booking.bookingStatus))
     .filter((booking) => timeToMinutes(booking.startTime) >= nowMinutes)
     .sort((a, b) => timeToMinutes(a.startTime) - timeToMinutes(b.startTime))
     .slice(0, 5);
 }
 
-export function getMonthRange(isoDate = new Date().toISOString().slice(0, 10)) {
+export function getMonthRange(isoDate) {
+  if (!isoDate) {
+    throw Object.assign(
+      new Error("getMonthRange yêu cầu civil date YYYY-MM-DD (không suy từ host TZ)."),
+      { code: CIVIL_TIME_ERROR.INVALID_DATE }
+    );
+  }
   const [year, month] = isoDate.split("-").map(Number);
   const fromDate = `${year}-${String(month).padStart(2, "0")}-01`;
-  const lastDay = new Date(year, month, 0).getDate();
+  const lastDay = new Date(Date.UTC(year, month, 0)).getUTCDate();
   const toDate = `${year}-${String(month).padStart(2, "0")}-${String(lastDay).padStart(2, "0")}`;
 
   return { fromDate, toDate };
@@ -780,10 +824,16 @@ export function findAvailableSlots({
   });
 }
 
-export function summarizeTodayOperations(bookings, date = new Date().toISOString().slice(0, 10), now = new Date()) {
+export function summarizeTodayOperations(bookings, date, now = new Date(), options = {}) {
+  if (!date) {
+    throw Object.assign(
+      new Error("summarizeTodayOperations yêu cầu civil date YYYY-MM-DD."),
+      { code: CIVIL_TIME_ERROR.INVALID_DATE }
+    );
+  }
   const daySummary = computeDailyRevenue(bookings, date);
   const debtSummary = computeDebtSummary(bookings, { includePast: true, today: date });
-  const upcoming = getTodayUpcomingBookings(bookings, date, now);
+  const upcoming = getTodayUpcomingBookings(bookings, date, now, options);
 
   return {
     date,

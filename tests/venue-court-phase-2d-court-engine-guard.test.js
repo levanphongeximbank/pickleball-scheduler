@@ -312,9 +312,17 @@ test("7. missing or invalid time window fails closed", () => {
   assert.equal(inverted.ok, false);
   assert.equal(inverted.code, CE_AVAILABILITY_ERROR.INVALID_TIME_WINDOW);
 
-  const overnight = buildLocalCivilWindow(120, new Date(2026, 6, 18, 23, 30, 0));
+  const overnight = buildLocalCivilWindow(
+    120,
+    new Date("2026-07-18T16:30:00.000Z"),
+    "Asia/Ho_Chi_Minh"
+  );
   assert.equal(overnight.ok, false);
   assert.equal(overnight.code, CE_AVAILABILITY_ERROR.INVALID_TIME_WINDOW);
+
+  const missingTz = buildLocalCivilWindow(20, new Date());
+  assert.equal(missingTz.ok, false);
+  assert.equal(missingTz.code, CE_AVAILABILITY_ERROR.TIMEZONE_REQUIRED);
 });
 
 test("8. DATA_UNAVAILABLE fails closed", () => {

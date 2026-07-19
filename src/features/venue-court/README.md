@@ -73,14 +73,19 @@ Venue & Court must not import Court Engine. Phase 2D wires CE confirm/transfer/p
 * `getCourtAvailability({ clubId, venueId?, date, startTime, endTime, courtId?, courtIds?, clusterId?, context?, includeUnavailable? })`
 * `AVAILABILITY_REASON`
 * `getCompetitionCourtAvailability({ clubId, venueId?, date, startTime, endTime, courtIds?, clusterId?, context?, includeUnavailable? })`
+* Civil time helpers (Phase 2E): `getLocalCivilDate`, `normalizeCivilWindow`, `isoToCivilHhmmOnDate`, `CIVIL_TIME_ERROR`, …
 
 ## Phase status
 
 ```text
-PHASE 2D — COURT ENGINE AVAILABILITY GUARD
+PHASE 2E — RUNTIME TIME MODEL CLEANUP
 ```
 
-See `docs/venue-court/PHASE_2D_COURT_ENGINE_GUARD.md` for ownership boundary, fail-closed policy, preview vs confirm re-check, transfer/batch safety, and reason mapping.
+See `docs/venue-court/PHASE_2E_TIME_MODEL.md` for the canonical civil/absolute time model.
+
+**Timezone rule (Phase 2E remediation):** venue-local “now” decisions require explicit IANA `venue.timezone` (via `resolveVenueTimezoneForClub`). Browser/server local timezone is never a venue fallback. Overnight windows remain rejected.
+
+Phase 2D Court Engine guard docs remain in `docs/venue-court/PHASE_2D_COURT_ENGINE_GUARD.md`.
 
 Phase 2C booking bridge docs remain in `docs/venue-court/PHASE_2C_BOOKING_BRIDGE.md`.
 

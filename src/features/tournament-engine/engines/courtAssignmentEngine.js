@@ -8,6 +8,7 @@ import {
   resolveMatchCivilWindow,
   resolveScheduleConfigWindow,
 } from "../services/competitionAvailabilityGuard.js";
+import { resolveVenueTimezoneForClub } from "../../../domain/civilTime.js";
 
 const COMPLETED_STATUSES = new Set(["completed", "forfeit"]);
 
@@ -68,6 +69,11 @@ export function assignCourts(context = {}, options = {}) {
   const availabilityMode = resolveAvailabilityMode(options, context);
   const clubId = context.clubId || options.clubId || null;
   const configWindow = resolveScheduleConfigWindow(context.scheduleConfig || {});
+  const tzResolve = resolveVenueTimezoneForClub(clubId, {
+    timezone: context.timezone || options.timezone || context.scheduleConfig?.timezone,
+  });
+  const venueTimezone = tzResolve.ok ? tzResolve.timezone : null;
+  const matchTzOptions = venueTimezone ? { timezone: venueTimezone } : {};
 
   const scope = assertRuntimeAvailabilityScope({
     clubId,
@@ -95,7 +101,8 @@ export function assignCourts(context = {}, options = {}) {
     const sampleWindow = sample
       ? resolveMatchCivilWindow(
           sample,
-          context.scheduleConfig?.date || null
+          context.scheduleConfig?.date || null,
+          matchTzOptions
         )
       : null;
     if (!sampleWindow && !(context.matches || []).some((m) => m?.scheduledStart)) {
@@ -150,7 +157,8 @@ export function assignCourts(context = {}, options = {}) {
     const matchWindow =
       resolveMatchCivilWindow(
         match,
-        configWindow?.date || context.scheduleConfig?.date || null
+        configWindow?.date || context.scheduleConfig?.date || null,
+        matchTzOptions
       ) || configWindow;
 
     if (availabilityMode === AVAILABILITY_MODE.REQUIRED && venueAvailability.enabled) {

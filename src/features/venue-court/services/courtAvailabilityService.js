@@ -12,6 +12,11 @@ import {
   checkBookingConflict,
   timeToMinutes,
 } from "../../../domain/courtBookingEngine.js";
+import {
+  CIVIL_TIME_ERROR,
+  parseCivilDateStrict,
+  parseCivilTimeStrict,
+} from "../../../domain/civilTime.js";
 import { loadClubs } from "../../../data/club.js";
 import { isCourtBookable } from "../../../models/court.js";
 
@@ -31,9 +36,6 @@ export const AVAILABILITY_REASON = Object.freeze({
   CLUB_SCOPE_MISSING: "CLUB_SCOPE_MISSING",
   DATA_UNAVAILABLE: "DATA_UNAVAILABLE",
 });
-
-const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
-const HHMM_RE = /^([01]\d|2[0-3]):([0-5]\d)$/;
 
 const defaultDeps = Object.freeze({
   listCourts,
@@ -67,19 +69,27 @@ function createLoadError(message, cause) {
 }
 
 function parseHhmmStrict(value, label) {
-  const text = String(value || "").trim();
-  if (!HHMM_RE.test(text)) {
-    throw createValidationError(`${label} phải có dạng HH:mm.`);
+  try {
+    return parseCivilTimeStrict(value, label);
+  } catch (error) {
+    throw createValidationError(
+      error?.message || `${label} phải có dạng HH:mm.`,
+      error?.code === CIVIL_TIME_ERROR.INVALID_TIME
+        ? AVAILABILITY_REASON.INVALID_TIME_RANGE
+        : AVAILABILITY_REASON.INVALID_TIME_RANGE
+    );
   }
-  return text;
 }
 
 function parseDateStrict(value) {
-  const text = String(value || "").trim();
-  if (!DATE_RE.test(text)) {
-    throw createValidationError("date phải có dạng YYYY-MM-DD.");
+  try {
+    return parseCivilDateStrict(value);
+  } catch (error) {
+    throw createValidationError(
+      error?.message || "date phải có dạng YYYY-MM-DD.",
+      AVAILABILITY_REASON.INVALID_TIME_RANGE
+    );
   }
-  return text;
 }
 
 function resolveScope(options = {}) {

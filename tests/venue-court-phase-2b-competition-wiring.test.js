@@ -146,6 +146,7 @@ test("REQUIRED generateSchedule fails closed without civil window", () => {
   const result = generateSchedule({
     tournamentId: "t1",
     clubId: "club-1",
+    timezone: "Asia/Ho_Chi_Minh",
     matches: [
       { id: "m1", entryAId: "p1", entryBId: "p2", status: MATCH_STATUS.WAITING },
     ],
@@ -181,6 +182,7 @@ test("production-shaped generateSchedule passes clubId+window and invokes adapte
   const result = generateSchedule({
     tournamentId: "t1",
     clubId: "club-runtime",
+    timezone: "Asia/Ho_Chi_Minh",
     matches: [
       {
         id: "m1",
@@ -218,6 +220,7 @@ test("REQUIRED generateSchedule DATA_UNAVAILABLE cannot fall back to legacy", ()
   const result = generateSchedule({
     tournamentId: "t1",
     clubId: "club-1",
+    timezone: "Asia/Ho_Chi_Minh",
     matches: [
       { id: "m1", entryAId: "p1", entryBId: "p2", status: MATCH_STATUS.WAITING },
     ],
@@ -249,10 +252,9 @@ test("REQUIRED assignCourts fails closed without clubId", () => {
 });
 
 test("REQUIRED assignCourts skips unavailable courts for match window", () => {
-  const start = new Date("2026-07-18T00:00:00");
-  start.setMinutes(10 * 60);
-  const end = new Date("2026-07-18T00:00:00");
-  end.setMinutes(10 * 60 + 25);
+  // 10:00–10:25 Asia/Ho_Chi_Minh on 2026-07-18
+  const startIso = new Date(Date.UTC(2026, 6, 18, 3, 0, 0)).toISOString();
+  const endIso = new Date(Date.UTC(2026, 6, 18, 3, 25, 0)).toISOString();
 
   __setCompetitionAvailabilityGuardDepsForTests({
     getCompetitionCourtAvailability(options) {
@@ -269,6 +271,7 @@ test("REQUIRED assignCourts skips unavailable courts for match window", () => {
 
   const result = assignCourts({
     clubId: "club-1",
+    timezone: "Asia/Ho_Chi_Minh",
     scheduleConfig: {
       date: "2026-07-18",
       startTime: "08:00",
@@ -280,8 +283,8 @@ test("REQUIRED assignCourts skips unavailable courts for match window", () => {
         entryAId: "a",
         entryBId: "b",
         status: MATCH_STATUS.WAITING,
-        scheduledStart: start.toISOString(),
-        scheduledEnd: end.toISOString(),
+        scheduledStart: startIso,
+        scheduledEnd: endIso,
       },
     ],
     courts: [
@@ -429,18 +432,21 @@ test("LEGACY-only Director path remains isolated when opted in", () => {
 });
 
 test("resolveDirectorAssignWindow prefers match ISO on civil date", () => {
-  const start = new Date("2026-07-18T00:00:00");
-  start.setMinutes(9 * 60);
-  const end = new Date("2026-07-18T00:00:00");
-  end.setMinutes(9 * 60 + 30);
+  const timezone = "Asia/Ho_Chi_Minh";
+  // 09:00–09:30 venue-local on 2026-07-18
+  const startIso = new Date(
+    Date.UTC(2026, 6, 18, 2, 0, 0)
+  ).toISOString(); // 09:00 HCM
+  const endIso = new Date(Date.UTC(2026, 6, 18, 2, 30, 0)).toISOString();
   const window = resolveDirectorAssignWindow({
     match: {
-      scheduledStart: start.toISOString(),
-      scheduledEnd: end.toISOString(),
+      scheduledStart: startIso,
+      scheduledEnd: endIso,
     },
     date: "2026-07-18",
     startTime: "08:00",
     endTime: "22:00",
+    timezone,
   });
   assert.deepEqual(window, {
     date: "2026-07-18",
