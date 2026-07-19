@@ -22,7 +22,7 @@ import { calculateBookingAmount, formatCurrency } from "../../domain/courtBookin
 import { createBooking, saveBooking } from "../../domain/bookingService.js";
 import { loadCustomersForClub } from "../../domain/clubStorage.js";
 import { loadCourtManagementSettings } from "../../domain/courtManagementSettings.js";
-import { buildEndTimeOptions, buildTimeOptions } from "./courtManagement.constants.js";
+import { buildEndTimeOptions, buildTimeOptions, todayIsoDate } from "./courtManagement.constants.js";
 
 function toNumber(value) {
   const parsed = Number(String(value).replace(/[^\d]/g, ""));
@@ -40,7 +40,7 @@ export default function BookingForm({
 }) {
   const [customerName, setCustomerName] = useState(initialValues.customerName || "");
   const [customerPhone, setCustomerPhone] = useState(initialValues.customerPhone || "");
-  const [date, setDate] = useState(initialValues.date || new Date().toISOString().slice(0, 10));
+  const [date, setDate] = useState(initialValues.date || todayIsoDate({ clubId, allowBrowserLocal: !clubId }));
   const [courtId, setCourtId] = useState(initialValues.courtId || courts[0]?.id || "");
   const [startTime, setStartTime] = useState(initialValues.startTime || "18:00");
   const [endTime, setEndTime] = useState(initialValues.endTime || "20:00");
@@ -75,7 +75,7 @@ export default function BookingForm({
 
     setCustomerName(initialValues.customerName || editingBooking?.customerName || "");
     setCustomerPhone(initialValues.customerPhone || editingBooking?.customerPhone || "");
-    setDate(initialValues.date || editingBooking?.date || new Date().toISOString().slice(0, 10));
+    setDate(initialValues.date || editingBooking?.date || todayIsoDate({ clubId, allowBrowserLocal: !clubId }));
     setCourtId(initialValues.courtId || editingBooking?.courtId || courts[0]?.id || "");
     setStartTime(initialValues.startTime || editingBooking?.startTime || "18:00");
     setEndTime(initialValues.endTime || editingBooking?.endTime || "20:00");
@@ -103,7 +103,7 @@ export default function BookingForm({
     setNote(initialValues.note || editingBooking?.note || "");
     setSelectedCustomerId("");
     setError(null);
-  }, [open, initialValues, editingBooking, courts]);
+  }, [open, initialValues, editingBooking, courts, clubId]);
 
   const selectedCourt = useMemo(
     () => courts.find((court) => court.id === courtId),

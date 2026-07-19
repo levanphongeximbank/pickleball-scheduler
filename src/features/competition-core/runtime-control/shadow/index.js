@@ -81,3 +81,40 @@ export { normalizeShadowPayload } from "./resolvers/normalizeShadowPayload.js";
 export { compareShadowResults } from "./resolvers/compareShadowResults.js";
 export { summarizeShadowReport } from "./resolvers/summarizeShadowReport.js";
 export { buildShadowDiagnostics } from "./resolvers/buildShadowDiagnostics.js";
+
+/** Phase 3A.3 — empty registry stubs (Integrator registers; Shadow stays deny). */
+export {
+  SHADOW_COMPARATOR_REGISTRY_VERSION,
+  createShadowComparatorRegistry,
+  defaultShadowComparatorRegistry,
+  getShadowComparatorRegistration,
+  listShadowComparatorRegistrations,
+  isShadowComparatorRegistryEmpty,
+  registerShadowComparator,
+  resolveShadowComparator,
+  unregisterShadowComparator,
+  resetShadowComparatorRegistryForTests,
+  SHADOW_NORMALIZER_REGISTRY_VERSION,
+  createShadowNormalizerRegistry,
+  defaultShadowNormalizerRegistry,
+  getShadowNormalizerRegistration,
+  listShadowNormalizerRegistrations,
+  isShadowNormalizerRegistryEmpty,
+  registerShadowNormalizer,
+  resolveShadowNormalizer,
+  unregisterShadowNormalizer,
+  resetShadowNormalizerRegistryForTests,
+  SHADOW_ELIGIBILITY_ALLOWLIST_REGISTRY_VERSION,
+  createEligibilityAllowlistRegistry,
+  defaultEligibilityAllowlistRegistry,
+  getDefaultCapabilityAllowlist,
+  getDefaultOperationAllowlist,
+  getEligibilityAllowlistRegistration,
+  resolveEligibilityAllowlist,
+  resolveEligibilityAllowlistsFromRegistry,
+  listEligibilityAllowlistRegistrations,
+  isEligibilityAllowlistRegistryEmpty,
+  registerEligibilityAllowlist,
+  unregisterEligibilityAllowlist,
+  resetEligibilityAllowlistRegistryForTests,
+} from "./registries/index.js";

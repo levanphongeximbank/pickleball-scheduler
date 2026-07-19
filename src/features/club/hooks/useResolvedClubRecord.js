@@ -1,80 +1,108 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 
 import { getClubById } from "../services/clubTenantService.js";
 import { isClubStorageV2Enabled } from "../config/clubRegistryFlags.js";
 import { rpcV2ClubGet } from "../services/clubStorageV2RpcService.js";
 
 /**
- * Resolve club record for active membership (V2 RPC fallback when local registry empty).
+ * Resolve a single club record for UI surfaces.
+ *
+ * V2 ON: never fall back to local registry/blob for identity/governance/count.
+ *   Prefer seedClub (e.g. membership.club), otherwise rpcV2ClubGet.
+ * V2 OFF: legacy getClubById registry behavior.
+ *
+ * Supports:
+ *   useResolvedClubRecord(membership, tenantId)  — My Club / guards
+ *   useResolvedClubRecord({ clubId, seedClub, tenantId, revision })
  */
-export function useResolvedClubRecord(membership, tenantId) {
-  const clubId = membership?.clubId || null;
+export function useResolvedClubRecord(membershipOrOptions, tenantIdArg) {
+  const isExplicitOptions =
+    membershipOrOptions &&
+    typeof membershipOrOptions === "object" &&
+    !("hasActiveMembership" in membershipOrOptions) &&
+    ("seedClub" in membershipOrOptions ||
+      ("clubId" in membershipOrOptions && !("club" in membershipOrOptions)));
 
-  const seedClub = useMemo(() => {
-    if (!clubId) {
-      return null;
-    }
-    if (membership?.club?.id === clubId) {
-      return membership.club;
-    }
+  const options = isExplicitOptions ? membershipOrOptions : null;
+  const membership = options ? null : membershipOrOptions;
+
+  const clubId = String(
+    options?.clubId || membership?.clubId || membership?.club?.id || ""
+  ).trim() || null;
+  const tenantId = options?.tenantId ?? tenantIdArg ?? null;
+  const revision = options?.revision ?? 0;
+  const seedClub =
+    options?.seedClub ||
+    (membership?.club?.id && membership.club.id === clubId ? membership.club : null);
+
+  const [clubRecord, setClubRecord] = useState(() => {
+    if (seedClub) return seedClub;
+    if (!clubId) return null;
+    if (isClubStorageV2Enabled()) return null;
     return getClubById(clubId, tenantId);
-  }, [clubId, tenantId, membership?.club]);
-
-  const [clubRecord, setClubRecord] = useState(seedClub);
+  });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
 
-  useEffect(() => {
-    setClubRecord(seedClub);
-    if (seedClub || !clubId || !isClubStorageV2Enabled()) {
-      setLoading(false);
-      setError(null);
-      return undefined;
-    }
-
-    let cancelled = false;
-    setLoading(true);
-    setError(null);
-
-    void rpcV2ClubGet(clubId).then((result) => {
-      if (cancelled) {
-        return;
-      }
-      if (!result.ok) {
+  const applySeedOrFetch = useCallback(
+    (forceFetch = false) => {
+      if (!clubId) {
         setClubRecord(null);
-        setError(result.error || "Không tải được thông tin CLB.");
         setLoading(false);
-        return;
+        setError(null);
+        return undefined;
       }
-      setClubRecord(result.club || null);
-      setLoading(false);
-    });
 
-    return () => {
-      cancelled = true;
-    };
-  }, [clubId, seedClub]);
+      if (!isClubStorageV2Enabled()) {
+        setClubRecord(getClubById(clubId, tenantId));
+        setLoading(false);
+        setError(null);
+        return undefined;
+      }
 
-  const reload = () => {
-    if (seedClub) {
-      setClubRecord(seedClub);
+      if (seedClub && !forceFetch) {
+        setClubRecord(seedClub);
+        setLoading(false);
+        setError(null);
+        return undefined;
+      }
+
+      let cancelled = false;
+      setLoading(true);
+      setError(null);
+      void rpcV2ClubGet(clubId).then((result) => {
+        if (cancelled) return;
+        if (!result.ok) {
+          setClubRecord(seedClub || null);
+          setError(result.error || "Không tải được thông tin CLB.");
+          setLoading(false);
+          return;
+        }
+        setClubRecord(result.club || null);
+        setLoading(false);
+      });
+      return () => {
+        cancelled = true;
+      };
+    },
+    [clubId, tenantId, seedClub]
+  );
+
+  useEffect(() => {
+    return applySeedOrFetch(false);
+  }, [applySeedOrFetch, revision]);
+
+  const reload = useCallback(() => {
+    if (isClubStorageV2Enabled()) {
+      applySeedOrFetch(true);
       return;
     }
     if (!clubId) {
+      setClubRecord(null);
       return;
     }
-    setLoading(true);
-    setError(null);
-    void rpcV2ClubGet(clubId).then((result) => {
-      if (!result.ok) {
-        setClubRecord(null);
-        setError(result.error || "Không tải được thông tin CLB.");
-      } else {
-        setClubRecord(result.club || null);
-      }
-      setLoading(false);
-    });
-  };
+    setClubRecord(getClubById(clubId, tenantId));
+  }, [applySeedOrFetch, clubId, tenantId]);
 
   return { clubRecord, clubLoading: loading, clubError: error, reload };
 }

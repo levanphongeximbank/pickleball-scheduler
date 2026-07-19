@@ -1,5 +1,6 @@
 import { doTimesOverlap } from "./courtBookingEngine.js";
 import { createBookingRecord } from "../models/booking.js";
+import { listCivilDatesForWeekday } from "./civilTime.js";
 
 export const WEEKDAY_LABELS = [
   "Chủ nhật",
@@ -32,27 +33,15 @@ export function createRecurringBookingSeries(input = {}) {
   };
 }
 
-function toIsoDate(date) {
-  return date.toISOString().slice(0, 10);
-}
-
 export function listDatesForWeekday(startDate, endDate, weekday) {
   if (!startDate || !endDate) {
     return [];
   }
-
-  const dates = [];
-  const cursor = new Date(`${startDate}T12:00:00`);
-  const end = new Date(`${endDate}T12:00:00`);
-
-  while (cursor <= end) {
-    if (cursor.getDay() === weekday) {
-      dates.push(toIsoDate(cursor));
-    }
-    cursor.setDate(cursor.getDate() + 1);
+  try {
+    return listCivilDatesForWeekday(startDate, endDate, weekday);
+  } catch {
+    return [];
   }
-
-  return dates;
 }
 
 export function expandRecurringSeriesToBookings(series, options = {}) {

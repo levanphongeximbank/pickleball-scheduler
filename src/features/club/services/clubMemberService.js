@@ -26,6 +26,7 @@ import { assertLegacyMembershipRosterWriteAllowed } from "./clubLegacyWriteGuard
 import {
   rpcV2ClubAddMember,
   rpcV2ClubRemoveMember,
+  rpcV2ClubRestoreMember,
   rpcV2ClubListMembers,
 } from "./clubStorageV2RpcService.js";
 
@@ -147,6 +148,11 @@ export function resolveTargetUserIdForMemberCommand({
  * Probe whether cloud membership mutation RPCs are reachable.
  * Uses list-members as a non-mutating transport/deployment probe.
  */
+/**
+ * Soft probe for member mutation transport readiness.
+ * Phase 1C: do NOT treat FORBIDDEN list access as write-ready.
+ * Write button visibility must also use canManageClubGovernance / canDeleteClubMembers.
+ */
 export async function probeClubMemberMutationAccess(clubId) {
   const trimmed = String(clubId || "").trim();
   if (!trimmed) {
@@ -164,13 +170,32 @@ export async function probeClubMemberMutationAccess(clubId) {
     if (result.code === "RPC_NOT_DEPLOYED" || result.code === "NO_SUPABASE") {
       return mapMemberCommandError(result, "Lệnh thành viên cloud chưa sẵn sàng.");
     }
-    // Auth/forbidden on list still proves transport; mutation authz is enforced on write.
     if (result.code === "FORBIDDEN" || result.code === "NOT_AUTHENTICATED") {
-      return { ok: true, provider: "v2-rpc", listCode: result.code };
+      return mapMemberCommandError(result, "Bạn không có quyền thao tác thành viên CLB này.");
     }
     return mapMemberCommandError(result, "Không kiểm tra được lệnh thành viên cloud.");
   }
   return { ok: true, provider: "v2-rpc" };
+}
+
+/**
+ * User-facing message for member command failures (no stack traces).
+ */
+export function formatMemberCommandUserError(result, fallback = "Không thực hiện được thao tác thành viên.") {
+  if (!result || result.ok) {
+    return null;
+  }
+  const serverCode = String(result.serverCode || "").trim();
+  if (serverCode === "VERSION_CONFLICT") {
+    return "Dữ liệu CLB đã thay đổi trên máy chủ. Vui lòng tải lại rồi thử lại.";
+  }
+  if (serverCode === "ALREADY_MEMBER") {
+    return result.error || "Thành viên này đã có trong CLB.";
+  }
+  if (serverCode === "FORBIDDEN" || result.code === API_ERROR_CODES.FORBIDDEN) {
+    return result.error || "Bạn không có quyền thực hiện thao tác này.";
+  }
+  return result.error || fallback;
 }
 
 function syncMembersFromBlob(clubId, tenantId) {
@@ -472,6 +497,54 @@ export async function removeMemberFromClub(clubId, playerId, tenantId, options =
   }
 
   return removeMemberFromClubLegacy(clubId, playerId, tenantId, options);
+}
+
+/**
+ * Phase 1B — V2: club_restore_member (removed → active).
+ * V2-OFF: not supported (legacy used inactive toggle, not removed).
+ */
+export async function restoreMemberToClub(clubId, playerId, tenantId, options = {}) {
+  if (!isClubStorageV2Enabled()) {
+    return {
+      ok: false,
+      code: API_ERROR_CODES.FEATURE_DISABLED,
+      error: "Khôi phục thành viên chỉ hỗ trợ khi Club Storage V2 bật.",
+    };
+  }
+
+  if (!options.skipPermissionGuard) {
+    const check = guardClubMemberAccess(clubId, tenantId, PERMISSIONS.PLAYER_UPDATE);
+    if (!check.ok) {
+      return check;
+    }
+  }
+
+  const resolved = resolveTargetUserIdForMemberCommand({
+    playerId,
+    targetUserId: options.targetUserId,
+    tenantId,
+  });
+  if (!resolved.ok) {
+    return resolved;
+  }
+
+  const restored = await rpcV2ClubRestoreMember({
+    clubId,
+    targetUserId: resolved.userId,
+    expectedVersion: options.expectedVersion ?? null,
+  });
+  if (!restored.ok) {
+    return mapMemberCommandError(restored, "Không khôi phục được thành viên trên cloud.");
+  }
+
+  invalidateAfterMemberCommand(resolved.userId);
+  return {
+    ok: true,
+    member: restored.member,
+    version: restored.version,
+    provider: "v2-rpc",
+    userId: resolved.userId,
+  };
 }
 
 export function updateClubMemberRole(clubId, playerId, role, tenantId) {

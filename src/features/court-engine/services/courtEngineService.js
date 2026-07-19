@@ -37,6 +37,7 @@ import {
   setCourtLocked,
   setCourtMaintenance,
 } from "./courtTransferService.js";
+import { assertCourtOwnedByClub } from "../../venue-court/services/venueCourtScopeService.js";
 import {
   assignRefereeToCourt,
   releaseRefereeFromCourt,
@@ -98,6 +99,16 @@ export function previewAutoAssign(session, context = {}) {
   const queueEntries = getActiveQueueEntries(session);
   const result = generateCourtAssignments({
     sessionId: session.id,
+    session,
+    clubId: context.clubId || session.clubId || null,
+    venueId: context.venueId || session.venueId || null,
+    date: context.date,
+    startTime: context.startTime,
+    endTime: context.endTime,
+    clusterId: context.clusterId || null,
+    availabilityContext: context.availabilityContext || null,
+    legacyAvailability: context.legacyAvailability,
+    availabilityMode: context.availabilityMode,
     courts: context.courts || [],
     queueEntries,
     players: context.players || [],
@@ -116,13 +127,34 @@ export function previewAutoAssign(session, context = {}) {
   };
 }
 
-export function confirmAutoAssign(clubId, session, proposedAssignments, actor = null) {
+export function confirmAutoAssign(
+  clubId,
+  session,
+  proposedAssignments,
+  actor = null,
+  availabilityOptions = {}
+) {
   const access = guardSchedulingAction(clubId);
   if (!access.ok) {
     return access;
   }
 
-  const confirmResult = confirmAssignments(session, proposedAssignments, { actor });
+  const confirmResult = confirmAssignments(session, proposedAssignments, {
+    actor,
+    clubId,
+    venueId: availabilityOptions.venueId || session.venueId || null,
+    date: availabilityOptions.date,
+    startTime: availabilityOptions.startTime,
+    endTime: availabilityOptions.endTime,
+    clusterId: availabilityOptions.clusterId || null,
+    availabilityContext: availabilityOptions.availabilityContext || null,
+    legacyAvailability: availabilityOptions.legacyAvailability,
+    availabilityMode: availabilityOptions.availabilityMode,
+  });
+  if (!confirmResult.ok) {
+    return confirmResult;
+  }
+
   let next = appendEvent(confirmResult.session, {
     eventType: EVENT_TYPE.AUTO_ASSIGN_CONFIRM,
     message: `Xác nhận ${proposedAssignments.length} trận auto assignment`,
@@ -251,13 +283,43 @@ export function performTransfer(clubId, session, assignmentId, toCourtId, option
     return access;
   }
 
-  return applyAction(clubId, session, transferAssignment(session, assignmentId, toCourtId, options));
+  return applyAction(
+    clubId,
+    session,
+    transferAssignment(session, assignmentId, toCourtId, {
+      ...options,
+      clubId: options.clubId || clubId,
+    })
+  );
+}
+
+function guardCourtOwnedByClub(clubId, courtId, options = {}) {
+  const ownership = assertCourtOwnedByClub({
+    clubId,
+    courtId,
+    venueId: options.venueId,
+    tenantId: options.tenantId,
+    clusterId: options.clusterId,
+  });
+  if (!ownership.ok) {
+    return {
+      ok: false,
+      error: ownership.error,
+      code: ownership.code,
+    };
+  }
+  return { ok: true };
 }
 
 export function performCourtLock(clubId, session, courtId, locked, options = {}) {
   const access = guardSchedulingAction(clubId, options);
   if (!access.ok) {
     return access;
+  }
+
+  const ownership = guardCourtOwnedByClub(clubId, courtId, options);
+  if (!ownership.ok) {
+    return ownership;
   }
 
   return applyAction(clubId, session, setCourtLocked(session, courtId, locked, options));
@@ -269,6 +331,11 @@ export function performCourtMaintenance(clubId, session, courtId, maintenance, o
     return access;
   }
 
+  const ownership = guardCourtOwnedByClub(clubId, courtId, options);
+  if (!ownership.ok) {
+    return ownership;
+  }
+
   return applyAction(clubId, session, setCourtMaintenance(session, courtId, maintenance, options));
 }
 
@@ -278,6 +345,11 @@ export function performAssignReferee(clubId, session, payload, options = {}) {
     return access;
   }
 
+  const ownership = guardCourtOwnedByClub(clubId, payload?.courtId, options);
+  if (!ownership.ok) {
+    return ownership;
+  }
+
   return applyAction(clubId, session, assignRefereeToCourt(session, payload, options));
 }
 
@@ -285,6 +357,11 @@ export function performReleaseReferee(clubId, session, courtId, options = {}) {
   const access = guardSchedulingAction(clubId, options);
   if (!access.ok) {
     return access;
+  }
+
+  const ownership = guardCourtOwnedByClub(clubId, courtId, options);
+  if (!ownership.ok) {
+    return ownership;
   }
 
   return applyAction(clubId, session, releaseRefereeFromCourt(session, courtId, options));

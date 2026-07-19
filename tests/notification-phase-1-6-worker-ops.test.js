@@ -78,11 +78,32 @@ async function seedInboxAndJob(repo, overrides = {}) {
   if (!enq?.ok) {
     throw new Error(`enqueue failed: ${enq?.error || "unknown"}`);
   }
-  if (overrides.status || overrides.nextAttemptAt || overrides.maxAttempts) {
+  // Align scheduled/nextAttempt timestamps when tests inject a fixed `now`
+  // (avoids wall-clock enqueue racing past a frozen claim clock).
+  const seededNow =
+    overrides.now == null
+      ? null
+      : typeof overrides.now === "function"
+        ? overrides.now()
+        : overrides.now;
+  const seededNowIso =
+    seededNow instanceof Date
+      ? seededNow.toISOString()
+      : seededNow
+        ? String(seededNow)
+        : null;
+  if (
+    overrides.status ||
+    overrides.nextAttemptAt ||
+    overrides.maxAttempts ||
+    seededNowIso
+  ) {
     repo._seedJob({
       ...enq.job,
       status: overrides.status || enq.job.status,
-      nextAttemptAt: overrides.nextAttemptAt || enq.job.nextAttemptAt,
+      nextAttemptAt:
+        overrides.nextAttemptAt || seededNowIso || enq.job.nextAttemptAt,
+      scheduledAt: seededNowIso || enq.job.scheduledAt,
       maxAttempts: overrides.maxAttempts || enq.job.maxAttempts,
       attempts: overrides.attempts ?? enq.job.attempts,
       environment: env,
@@ -180,7 +201,7 @@ describe("Notification Phase 1.6 — worker-run audit + heartbeat", () => {
   });
 
   it("Worker-run audit created and heartbeat updated", async () => {
-    await seedInboxAndJob(repo);
+    await seedInboxAndJob(repo, { now: () => clock });
     const result = await runNotificationWorkerOnce({
       repository: repo,
       workerId: "w-audit",

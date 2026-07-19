@@ -5,6 +5,19 @@ import {
   findMinimumRestViolations,
   validateScheduleConflicts,
 } from "../../individual-tournament/engines/restTimeEngine.js";
+import {
+  AVAILABILITY_MODE,
+  assertRuntimeAvailabilityScope,
+  createCompetitionAvailabilityChecker,
+  resolveAvailabilityMode,
+  resolveScheduleConfigWindow,
+  isoToCivilHhmm,
+} from "../services/competitionAvailabilityGuard.js";
+import {
+  absoluteToCivilDate,
+  civilDateTimeToUtcMs,
+  resolveVenueTimezoneForClub,
+} from "../../../domain/civilTime.js";
 
 const COMPLETED_STATUSES = new Set(["completed", "forfeit"]);
 
@@ -25,18 +38,35 @@ function minutesToTimeString(totalMinutes) {
   return `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}`;
 }
 
-function addMinutesToIso(dateStr, startMinutes, durationMinutes) {
-  const base = dateStr ? new Date(`${dateStr}T00:00:00`) : new Date();
-  base.setMinutes(startMinutes + durationMinutes);
-  return base.toISOString();
+function addMinutesToIso(dateStr, startMinutes, durationMinutes, timezone) {
+  if (!timezone) {
+    throw Object.assign(
+      new Error("addMinutesToIso yêu cầu timezone IANA — không mint ISO từ giờ máy chủ."),
+      { code: "TIMEZONE_REQUIRED" }
+    );
+  }
+  const total = startMinutes + durationMinutes;
+  const dayOffset = Math.floor(total / 1440);
+  const mins = ((total % 1440) + 1440) % 1440;
+  let date = dateStr;
+  if (dayOffset !== 0) {
+    const [y, m, d] = dateStr.split("-").map(Number);
+    const cursor = new Date(Date.UTC(y, m - 1, d));
+    cursor.setUTCDate(cursor.getUTCDate() + dayOffset);
+    date = `${cursor.getUTCFullYear()}-${String(cursor.getUTCMonth() + 1).padStart(2, "0")}-${String(cursor.getUTCDate()).padStart(2, "0")}`;
+  }
+  return new Date(civilDateTimeToUtcMs(date, mins, timezone)).toISOString();
 }
 
-function isoToMinutesOnDate(iso, dateStr) {
-  if (!iso) return null;
-  const start = new Date(iso).getTime();
-  if (!Number.isFinite(start)) return null;
-  const base = new Date(`${dateStr || new Date(iso).toISOString().slice(0, 10)}T00:00:00`).getTime();
-  return Math.round((start - base) / 60000);
+function isoToMinutesOnDate(iso, dateStr, timezone) {
+  if (!iso || !dateStr || !timezone) return null;
+  try {
+    const hhmm = isoToCivilHhmm(iso, dateStr, { timezone });
+    if (!hhmm) return null;
+    return parseTimeToMinutes(hhmm);
+  } catch {
+    return null;
+  }
 }
 
 function getParticipantIds(match) {
@@ -145,9 +175,86 @@ export function generateSchedule(context = {}, options = {}) {
     config.minRestMinutes ?? config.restMinutes ?? buffer
   );
   const slotDuration = matchDuration + buffer;
-  const date = config.date || new Date().toISOString().slice(0, 10);
+  const availabilityMode = resolveAvailabilityMode(options, context);
+  const clubId = context.clubId || options.clubId || null;
+
+  const scope = assertRuntimeAvailabilityScope({
+    clubId,
+    scheduleConfig: config,
+    mode: availabilityMode,
+    requireWindow: true,
+  });
+  if (!scope.ok) {
+    return {
+      ok: false,
+      errors: scope.errors,
+      code: scope.code,
+      warnings,
+    };
+  }
+
+  const scheduleWindow = resolveScheduleConfigWindow(config);
+  const dateCandidate =
+    scheduleWindow?.date ||
+    (availabilityMode === AVAILABILITY_MODE.LEGACY ? config.date || null : null);
+
+  if (!dateCandidate && availabilityMode === AVAILABILITY_MODE.REQUIRED) {
+    return {
+      ok: false,
+      errors: [
+        "Thiếu scheduleConfig.date (YYYY-MM-DD) — bắt buộc cho Venue & Court availability.",
+      ],
+      code: "SCHEDULE_WINDOW_MISSING",
+      warnings,
+    };
+  }
+
+  const tzResolve = resolveVenueTimezoneForClub(clubId, {
+    timezone: context.timezone || options.timezone || config.timezone,
+  });
+  if (!tzResolve.ok) {
+    return {
+      ok: false,
+      errors: [
+        tzResolve.error ||
+          "Thiếu venue.timezone (IANA) — bắt buộc để tạo/đọc lịch ISO dân sự.",
+      ],
+      code: "TIMEZONE_REQUIRED",
+      warnings,
+    };
+  }
+  const venueTimezone = tzResolve.timezone;
+
+  const date =
+    dateCandidate ||
+    (availabilityMode === AVAILABILITY_MODE.LEGACY
+      ? absoluteToCivilDate(new Date(), venueTimezone)
+      : null);
+  if (!date) {
+    return {
+      ok: false,
+      errors: [
+        "Thiếu scheduleConfig.date (YYYY-MM-DD) — bắt buộc cho Venue & Court availability.",
+      ],
+      code: "SCHEDULE_WINDOW_MISSING",
+      warnings,
+    };
+  }
+
   const sessions = resolveSessions(config);
   const strictRest = options.strictRest !== false && config.strictRest !== false;
+
+  const venueAvailability = createCompetitionAvailabilityChecker({
+    clubId: scope.clubId,
+    venueId: context.venueId || options.venueId || null,
+    courtIds: courts.map((court) => court.id),
+    clusterId: context.clusterId || options.clusterId || null,
+    context: options.availabilityContext || context.availabilityContext || null,
+    mode: availabilityMode,
+  });
+  if (venueAvailability.enabled) {
+    explain.push("Venue & Court availability: bật (lọc sân theo booking / giờ / trạng thái).");
+  }
 
   const availabilityErrors = validateCourtAvailability(courts, sessions);
   if (availabilityErrors.length) {
@@ -226,10 +333,10 @@ export function generateSchedule(context = {}, options = {}) {
 
   scheduled.forEach((match) => {
     if (!match.scheduledStart) return;
-    const start = isoToMinutesOnDate(match.scheduledStart, date);
+    const start = isoToMinutesOnDate(match.scheduledStart, date, venueTimezone);
     if (start == null) return;
     const end =
-      isoToMinutesOnDate(match.scheduledEnd, date) ?? start + matchDuration;
+      isoToMinutesOnDate(match.scheduledEnd, date, venueTimezone) ?? start + matchDuration;
 
     getParticipantIds(match).forEach((pid) => {
       const list = busyByParticipant.get(pid) || [];
@@ -245,8 +352,13 @@ export function generateSchedule(context = {}, options = {}) {
 
   let globalSlotIndex = 0;
   const dayEnd = Math.max(...sessions.map((s) => s.endMinutes));
+  let availabilityFatalError = null;
 
   pending.forEach((match, index) => {
+    if (availabilityFatalError) {
+      return;
+    }
+
     if (match.scheduledStart && match.manualScheduleLock) {
       scheduled.push(match);
       const restCheck = findMinimumRestViolations(
@@ -263,7 +375,12 @@ export function generateSchedule(context = {}, options = {}) {
     let attempts = 0;
     let cursorMinutes = sessions[0].startMinutes;
 
-    while (!assigned && attempts < 2000 && cursorMinutes + matchDuration <= dayEnd + slotDuration) {
+    while (
+      !assigned &&
+      !availabilityFatalError &&
+      attempts < 2000 &&
+      cursorMinutes + matchDuration <= dayEnd + slotDuration
+    ) {
       const session = sessionForMinutes(sessions, cursorMinutes);
       if (!session || cursorMinutes + matchDuration > session.endMinutes) {
         const nextSession = sessions.find((s) => s.startMinutes > cursorMinutes);
@@ -298,14 +415,34 @@ export function generateSchedule(context = {}, options = {}) {
           continue;
         }
 
+        if (venueAvailability.enabled) {
+          const slotStart = minutesToTimeString(cursorMinutes);
+          const slotEnd = minutesToTimeString(endMinutes);
+          try {
+            if (
+              !venueAvailability.isCourtAvailable(
+                court.id,
+                date,
+                slotStart,
+                slotEnd
+              )
+            ) {
+              continue;
+            }
+          } catch (error) {
+            availabilityFatalError = error;
+            break;
+          }
+        }
+
         const scheduledMatch = {
           ...match,
           matchOrder: match.matchOrder ?? index + 1,
           courtId: court.id,
           slot: globalSlotIndex,
           session: session.id,
-          scheduledStart: addMinutesToIso(date, cursorMinutes, 0),
-          scheduledEnd: addMinutesToIso(date, cursorMinutes, matchDuration),
+          scheduledStart: addMinutesToIso(date, cursorMinutes, 0, venueTimezone),
+          scheduledEnd: addMinutesToIso(date, cursorMinutes, matchDuration, venueTimezone),
           status: match.status || MATCH_STATUS.WAITING,
         };
 
@@ -330,6 +467,10 @@ export function generateSchedule(context = {}, options = {}) {
       }
     }
 
+    if (availabilityFatalError) {
+      return;
+    }
+
     if (!assigned) {
       const message = `Không xếp được slot cho trận ${match.id || index + 1} (nghỉ tối thiểu ${minRestMinutes} phút / sân).`;
       if (strictRest) {
@@ -341,6 +482,19 @@ export function generateSchedule(context = {}, options = {}) {
     }
   });
 
+  if (availabilityFatalError) {
+    const code = availabilityFatalError?.code || "DATA_UNAVAILABLE";
+    return {
+      ok: false,
+      errors: [
+        code === "DATA_UNAVAILABLE"
+          ? "Không tải được availability từ Venue & Court (DATA_UNAVAILABLE)."
+          : availabilityFatalError?.message || "Lỗi availability Venue & Court.",
+      ],
+      warnings,
+      explain,
+    };
+  }
   explain.push(
     `${courtCount} sân (ưu tiên), nghỉ tối thiểu ${minRestMinutes} phút, slot ~${slotDuration} phút.`,
     `Phiên: ${sessions.map((s) => s.label || s.id).join(", ")}.`
@@ -369,7 +523,12 @@ export function generateSchedule(context = {}, options = {}) {
             sessions[0].startMinutes,
             ...scheduled
               .filter((m) => m.scheduledEnd)
-              .map((m) => parseTimeToMinutes(new Date(m.scheduledEnd).toISOString().slice(11, 16)))
+              .map((m) => {
+                const hhmm = isoToCivilHhmm(m.scheduledEnd, date, {
+                  timezone: venueTimezone,
+                });
+                return hhmm != null ? parseTimeToMinutes(hhmm) : sessions[0].startMinutes;
+              })
           )
         ),
       },
@@ -389,7 +548,12 @@ export function generateSchedule(context = {}, options = {}) {
           sessions[0].startMinutes,
           ...scheduled
             .filter((m) => m.scheduledEnd)
-            .map((m) => parseTimeToMinutes(new Date(m.scheduledEnd).toISOString().slice(11, 16))),
+            .map((m) => {
+              const hhmm = isoToCivilHhmm(m.scheduledEnd, date, {
+                timezone: venueTimezone,
+              });
+              return hhmm != null ? parseTimeToMinutes(hhmm) : sessions[0].startMinutes;
+            }),
           sessions[sessions.length - 1].endMinutes
         )
       ),

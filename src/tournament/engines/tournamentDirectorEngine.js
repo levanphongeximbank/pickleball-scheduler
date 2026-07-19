@@ -19,6 +19,13 @@ import {
   partitionDailyMatches,
   submitDailyPlayMatchScore,
 } from "./dailyPlayEngine.js";
+import {
+  AVAILABILITY_MODE,
+  assertRuntimeAvailabilityScope,
+  createCompetitionAvailabilityChecker,
+  resolveAvailabilityMode,
+  resolveDirectorAssignWindow,
+} from "../../features/tournament-engine/services/competitionAvailabilityGuard.js";
 
 const WAITING_STATUSES = new Set([
   MATCH_STATUS.WAITING,
@@ -101,16 +108,97 @@ export function assignTournamentMatchToAvailableCourt({
   matchId,
   lockedCourtIds = [],
   autoStart = true,
+  clubId = null,
+  venueId = null,
+  date = null,
+  startTime = null,
+  endTime = null,
+  availabilityContext = null,
+  clusterId = null,
+  legacyAvailability = false,
+  availabilityMode = null,
 } = {}) {
   const match = (matches || []).find((item) => String(item.id) === String(matchId));
   if (!match) {
     return { ok: false, error: "Khong tim thay tran." };
   }
 
+  const mode = resolveAvailabilityMode(
+    { legacyAvailability, availabilityMode },
+    {}
+  );
+
+  const matchWindow = resolveDirectorAssignWindow({
+    match,
+    date,
+    startTime,
+    endTime,
+  });
+
+  const scope = assertRuntimeAvailabilityScope({
+    clubId,
+    matchWindow,
+    mode,
+    requireWindow: true,
+  });
+  if (!scope.ok) {
+    return {
+      ok: false,
+      error: (scope.errors || []).join(" "),
+      code: scope.code,
+      errors: scope.errors,
+    };
+  }
+
   const courtStates = buildCourtRuntimeStates(courts, matches, { lockedCourtIds });
-  const availableCourts = getAvailableCourts(courtStates);
+  let availableCourts = getAvailableCourts(courtStates);
   if (!availableCourts.length) {
     return { ok: false, error: "Khong co san trong." };
+  }
+
+  if (mode === AVAILABILITY_MODE.LEGACY && !scope.clubId) {
+    // Documented legacy-only path (unit tests).
+  } else {
+    const venueAvailability = createCompetitionAvailabilityChecker({
+      clubId: scope.clubId,
+      venueId,
+      courtIds: (courts || []).map((court) => court.id),
+      clusterId,
+      context: availabilityContext,
+      mode,
+    });
+
+    if (venueAvailability.enabled) {
+      try {
+        availableCourts = availableCourts.filter((court) =>
+          venueAvailability.isCourtAvailable(
+            court.id,
+            matchWindow.date,
+            matchWindow.startTime,
+            matchWindow.endTime
+          )
+        );
+      } catch (error) {
+        const code = error?.code || "DATA_UNAVAILABLE";
+        return {
+          ok: false,
+          error:
+            code === "DATA_UNAVAILABLE"
+              ? "Không tải được availability từ Venue & Court (DATA_UNAVAILABLE)."
+              : error?.message || "Lỗi availability Venue & Court.",
+          code,
+        };
+      }
+
+      if (!availableCourts.length) {
+        return {
+          ok: false,
+          error:
+            "Khong co san trong theo Venue & Court (booking / gio hoat dong / khoa / bao tri).",
+          code: "NO_AVAILABLE_COURT",
+        };
+      }
+    }
   }
 
   const courtId = availableCourts[0].id;

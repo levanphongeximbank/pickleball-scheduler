@@ -1,0 +1,496 @@
+{
+  "phase": "1B",
+  "kind": "BEHAVIORAL_LIVE_QA",
+  "stagingRef": "qyewbxjsiiyufanzcjcq",
+  "productionRef": "expuvcohlcjzvrrauvud",
+  "productionTouched": false,
+  "commit": "dbb968bc4c3321a32640b9ef93df61b87719a128",
+  "approvedCommit": "dbb968bc4c3321a32640b9ef93df61b87719a128",
+  "startedAt": "2026-07-18T11:41:34.742Z",
+  "actors": [
+    {
+      "role": "Club Owner",
+      "emailDomain": "staging.local",
+      "userIdPrefix": "7b381912",
+      "primary": true
+    },
+    {
+      "role": "SUPER_ADMIN",
+      "emailDomain": "staging.local",
+      "userIdPrefix": "d6f8f458"
+    },
+    {
+      "role": "Club President",
+      "emailDomain": "staging.local",
+      "userIdPrefix": "7b381912"
+    },
+    {
+      "role": "Authorized tenant administrator",
+      "emailDomain": "staging.local",
+      "userIdPrefix": "13e0968b"
+    },
+    {
+      "role": "Ordinary tenant member",
+      "emailDomain": "staging.local",
+      "userIdPrefix": "c1db2b6a"
+    },
+    {
+      "role": "Ordinary club member",
+      "emailDomain": "staging.local",
+      "userIdPrefix": "416fb93e"
+    },
+    {
+      "role": "Unrelated authenticated user",
+      "emailDomain": "staging.local",
+      "userIdPrefix": "c53681eb"
+    },
+    {
+      "role": "Vice President",
+      "emailDomain": "staging.local",
+      "userIdPrefix": "c1db2b6a"
+    },
+    {
+      "role": "Ephemeral member target (PLAYER)",
+      "emailDomain": "staging.local",
+      "userIdPrefix": "6e7f53ee"
+    }
+  ],
+  "clubId": "club-smoke-42i1",
+  "matrices": {
+    "clubUpdate": [
+      {
+        "id": "A0_club_get",
+        "ok": true,
+        "expected": "ok payload",
+        "actual": "ok",
+        "version": 76
+      },
+      {
+        "id": "A1_authorized_update",
+        "ok": true,
+        "expected": "ok:true",
+        "actual": true,
+        "beforeVersion": 76,
+        "afterVersion": 77
+      },
+      {
+        "id": "A2_reload_persistence",
+        "ok": true,
+        "expected": "HACK [1BQA mrqaquwh]",
+        "actual": "HACK [1BQA mrqaquwh]"
+      },
+      {
+        "id": "A3_canonical_reread",
+        "ok": true,
+        "expected": "phase42 via club_get",
+        "actual": "HACK [1BQA mrqaquwh]"
+      },
+      {
+        "id": "A4_version_increment",
+        "ok": true,
+        "expected": 77,
+        "actual": 77
+      },
+      {
+        "id": "A5_stale_version_reject",
+        "ok": true,
+        "expected": "CONFLICT/VERSION_CONFLICT",
+        "actual": "VERSION_CONFLICT"
+      },
+      {
+        "id": "A6_unauthorized_member_deny",
+        "ok": true,
+        "expected": "FORBIDDEN (unrelated non-tenant user)",
+        "actual": "FORBIDDEN"
+      }
+    ],
+    "vpLifecycle": [
+      {
+        "id": "B1_assign_first_vp",
+        "ok": true,
+        "expected": "ok",
+        "actual": true
+      },
+      {
+        "id": "B2_reload_canonical_first",
+        "ok": true,
+        "expected": "c1db2b6a",
+        "actual": [
+          "c1db2b6a"
+        ]
+      },
+      {
+        "id": "B3_assign_second_vp",
+        "ok": true,
+        "expected": "ok",
+        "actual": true
+      },
+      {
+        "id": "B4_both_vps_after_reload",
+        "ok": true,
+        "expected": "2 VPs",
+        "actual": [
+          "c1db2b6a",
+          "13e0968b"
+        ]
+      },
+      {
+        "id": "B5_reject_third_vp",
+        "ok": true,
+        "expected": "reject",
+        "actual": "VALIDATION"
+      },
+      {
+        "id": "B6_reject_president_as_vp",
+        "ok": true,
+        "expected": "reject",
+        "actual": "VALIDATION"
+      },
+      {
+        "id": "B7_reject_inactive_member",
+        "ok": true,
+        "expected": "reject",
+        "actual": "MEMBER_REQUIRED",
+        "status": "removed"
+      },
+      {
+        "id": "B8_clear_one_vp",
+        "ok": true,
+        "expected": "ok",
+        "actual": true
+      },
+      {
+        "id": "B9_reload_one_remains",
+        "ok": true,
+        "expected": "1 remaining VP",
+        "actual": [
+          "13e0968b"
+        ]
+      },
+      {
+        "id": "B10_clear_all_vp_null",
+        "ok": true,
+        "expected": "ok",
+        "actual": true
+      },
+      {
+        "id": "B11_reload_none_remain",
+        "ok": true,
+        "expected": [],
+        "actual": []
+      }
+    ],
+    "authorization": [
+      {
+        "id": "C_assign_SUPER_ADMIN",
+        "ok": true,
+        "expected": "ALLOW",
+        "actual": "ALLOW"
+      },
+      {
+        "id": "C_clear_SUPER_ADMIN",
+        "ok": true,
+        "expected": "ALLOW",
+        "actual": "ALLOW"
+      },
+      {
+        "id": "C_assign_Club Owner",
+        "ok": true,
+        "expected": "ALLOW",
+        "actual": "ALLOW"
+      },
+      {
+        "id": "C_clear_Club Owner",
+        "ok": true,
+        "expected": "ALLOW",
+        "actual": "ALLOW"
+      },
+      {
+        "id": "C_assign_Club President",
+        "ok": true,
+        "expected": "ALLOW",
+        "actual": "ALLOW"
+      },
+      {
+        "id": "C_clear_Club President",
+        "ok": true,
+        "expected": "ALLOW",
+        "actual": "ALLOW"
+      },
+      {
+        "id": "C_assign_Authorized tenant administrator",
+        "ok": true,
+        "expected": "ALLOW",
+        "actual": "ALLOW"
+      },
+      {
+        "id": "C_clear_Authorized tenant administrator",
+        "ok": true,
+        "expected": "ALLOW",
+        "actual": "ALLOW"
+      },
+      {
+        "id": "C_assign_Ordinary tenant member",
+        "ok": true,
+        "expected": "DENY",
+        "actual": "DENY:FORBIDDEN"
+      },
+      {
+        "id": "C_clear_Ordinary tenant member",
+        "ok": true,
+        "expected": "DENY",
+        "actual": "DENY:FORBIDDEN"
+      },
+      {
+        "id": "C_assign_Ordinary club member",
+        "ok": true,
+        "expected": "DENY",
+        "actual": "DENY:FORBIDDEN"
+      },
+      {
+        "id": "C_clear_Ordinary club member",
+        "ok": true,
+        "expected": "DENY",
+        "actual": "DENY:FORBIDDEN"
+      },
+      {
+        "id": "C_assign_Unrelated authenticated user",
+        "ok": true,
+        "expected": "DENY",
+        "actual": "DENY:FORBIDDEN"
+      },
+      {
+        "id": "C_clear_Unrelated authenticated user",
+        "ok": true,
+        "expected": "DENY",
+        "actual": "DENY:FORBIDDEN"
+      },
+      {
+        "id": "C_assign_Vice President",
+        "ok": true,
+        "expected": "DENY",
+        "actual": "DENY:FORBIDDEN"
+      },
+      {
+        "id": "C_clear_Vice President",
+        "ok": true,
+        "expected": "DENY",
+        "actual": "DENY:FORBIDDEN"
+      }
+    ],
+    "memberAdmin": [
+      {
+        "id": "D1_add_member",
+        "ok": true,
+        "expected": "ok",
+        "actual": true
+      },
+      {
+        "id": "D2_row_active",
+        "ok": true,
+        "expected": "active",
+        "actual": "active"
+      },
+      {
+        "id": "D3_home_count_plus_one",
+        "ok": true,
+        "expected": 11,
+        "actual": 11
+      },
+      {
+        "id": "D4_members_list_plus_one",
+        "ok": true,
+        "expected": 11,
+        "actual": 11
+      },
+      {
+        "id": "D5_duplicate_add_reject",
+        "ok": true,
+        "expected": "reject",
+        "actual": "ALREADY_MEMBER"
+      },
+      {
+        "id": "D6_remove_member",
+        "ok": true,
+        "expected": "ok",
+        "actual": true,
+        "memberVersion": 1
+      },
+      {
+        "id": "D7_status_and_count_down",
+        "ok": true,
+        "expected": {
+          "status": "removed",
+          "count": 10
+        },
+        "actual": {
+          "status": "removed",
+          "count": 10
+        }
+      },
+      {
+        "id": "D8_restore_member",
+        "ok": true,
+        "expected": "ok",
+        "actual": true,
+        "memberVersion": 2
+      },
+      {
+        "id": "D9_count_and_list_up",
+        "ok": true,
+        "expected": {
+          "count": 11,
+          "list": 11
+        },
+        "actual": {
+          "count": 11,
+          "list": 11
+        }
+      },
+      {
+        "id": "D10_stale_version",
+        "ok": true,
+        "expected": "reject",
+        "actual": "VERSION_CONFLICT"
+      },
+      {
+        "id": "D11_unauthorized_deny",
+        "ok": true,
+        "expected": "FORBIDDEN",
+        "actual": "FORBIDDEN"
+      }
+    ],
+    "notification": [
+      {
+        "id": "E1_v2_from_club_list_members",
+        "ok": true,
+        "expected": "list payload",
+        "actual": 15
+      },
+      {
+        "id": "E2_include_active_with_user_id",
+        "ok": true,
+        "expected": ">0 unique active",
+        "actual": 10
+      },
+      {
+        "id": "E3_exclude_left",
+        "ok": true,
+        "expected": "no left in active set",
+        "actual": {
+          "left": 0,
+          "overlap": 0
+        }
+      },
+      {
+        "id": "E4_exclude_removed",
+        "ok": true,
+        "expected": "no removed in active set",
+        "actual": {
+          "removed": 5,
+          "overlap": 0
+        }
+      },
+      {
+        "id": "E6_no_duplicate_recipients",
+        "ok": true,
+        "expected": "deduped",
+        "actual": {
+          "raw": 10,
+          "unique": 10
+        }
+      },
+      {
+        "id": "E5_exclude_null_user_id_rows",
+        "ok": true,
+        "expected": 0,
+        "actual": 0,
+        "note": "V2 path filters active+user_id; blob-only players are not in club_members"
+      },
+      {
+        "id": "E7_v1_legacy_fallback_unchanged",
+        "ok": true,
+        "expected": "V2 club_list_members + V1 getClubMembers/loadPlayersForClub",
+        "actual": "source contract present"
+      }
+    ],
+    "parity": [
+      {
+        "id": "F1_home_vs_members_count",
+        "ok": true,
+        "expected": 10,
+        "actual": 10
+      },
+      {
+        "id": "F2_canonical_has_gov_fields",
+        "ok": true,
+        "expected": "president + vp fields",
+        "actual": {
+          "president": "7b381912-2190-415c-b099-6b1e87567b7a",
+          "vps": [
+            "c1db2b6a-b26b-4d44-8295-9898c92066cd"
+          ]
+        }
+      },
+      {
+        "id": "F3_version_present",
+        "ok": true,
+        "expected": "version number",
+        "actual": 97
+      }
+    ],
+    "audit": [
+      {
+        "id": "A7_audit_club_update",
+        "ok": true,
+        "expected": ">=1 club.update row",
+        "actual": 3
+      },
+      {
+        "id": "B12_audit_assign_vp",
+        "ok": true,
+        "expected": ">=1",
+        "actual": 19
+      },
+      {
+        "id": "B12_audit_clear_vp",
+        "ok": true,
+        "expected": ">=1",
+        "actual": 28
+      },
+      {
+        "id": "D12_audit_club.member.add",
+        "ok": true,
+        "expected": ">=1",
+        "actual": 10
+      },
+      {
+        "id": "D12_audit_club.member.remove",
+        "ok": true,
+        "expected": ">=1",
+        "actual": 7
+      },
+      {
+        "id": "D12_audit_club.member.restore",
+        "ok": true,
+        "expected": ">=1",
+        "actual": 3
+      }
+    ]
+  },
+  "warnings": [
+    "seeded_ordinary_player_member"
+  ],
+  "status": "PASS",
+  "clubName": "HACK [1BQA mrqanj8w]",
+  "tenantId": "venue-staging-a",
+  "baselineVersion": 76,
+  "authorizedActorRole": "Club Owner",
+  "totals": {
+    "total": 61,
+    "passed": 61,
+    "failed": 0
+  },
+  "failedIds": [],
+  "finishedAt": "2026-07-18T11:42:30.243Z"
+}

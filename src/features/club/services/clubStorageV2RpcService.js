@@ -42,11 +42,39 @@ async function callRpc(fnName, args) {
   return parseRpcJson(data);
 }
 
+/** Normalize VP user id list from phase42_club_canonical payload. */
+function mapVicePresidentUserIds(row = {}) {
+  const fromArray = Array.isArray(row.vice_president_user_ids)
+    ? row.vice_president_user_ids
+    : [];
+  const ids = fromArray
+    .map((id) => String(id || "").trim())
+    .filter(Boolean);
+  if (ids.length) {
+    return [...new Set(ids)].slice(0, 2);
+  }
+  const single = String(row.vice_president_user_id || "").trim();
+  return single ? [single] : [];
+}
+
+function mapVicePresidentLabels(row = {}, vicePresidentUserIds = []) {
+  const fromArray = Array.isArray(row.vice_president_labels)
+    ? row.vice_president_labels.map((label) => String(label || "").trim())
+    : [];
+  if (fromArray.length) {
+    return fromArray.slice(0, Math.max(vicePresidentUserIds.length, 2));
+  }
+  const single = String(row.vice_president_label || "").trim();
+  return single ? [single] : [];
+}
+
 /** Map Phase 42 canonical club JSON → UI club shape (compat with existing pages). */
 export function mapV2ClubToUiClub(row) {
   if (!row) {
     return null;
   }
+  const vicePresidentUserIds = mapVicePresidentUserIds(row);
+  const vicePresidentLabels = mapVicePresidentLabels(row, vicePresidentUserIds);
   return {
     id: row.id,
     name: row.name,
@@ -59,10 +87,14 @@ export function mapV2ClubToUiClub(row) {
     governance: {
       ownerUserId: row.owner_user_id || null,
       presidentUserId: row.president_user_id || null,
+      vicePresidentUserId: vicePresidentUserIds[0] || null,
+      vicePresidentUserIds,
       registeredClusterId: row.registered_cluster_id || null,
     },
     ownerLabel: row.owner_label || null,
     presidentLabel: row.president_label || null,
+    vicePresidentLabel: vicePresidentLabels[0] || null,
+    vicePresidentLabels,
     activeMemberCount: row.active_member_count ?? 0,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
@@ -314,6 +346,55 @@ export async function rpcV2ClubTransferPresident({
   return { ok: true, club: mapV2ClubToUiClub(result.data), version: result.version };
 }
 
+/**
+ * Phase 1B — assign one vice president (max 2 active on server).
+ * Signature: club_assign_vice_president(uuid, text, uuid, integer)
+ */
+export async function rpcV2ClubAssignVicePresident({
+  clubId,
+  memberUserId,
+  expectedClubVersion,
+  requestId = newRequestId(),
+} = {}) {
+  const result = await callRpc("club_assign_vice_president", {
+    p_request_id: requestId,
+    p_club_id: clubId,
+    p_member_user_id: memberUserId,
+    p_expected_club_version: expectedClubVersion,
+  });
+  if (!result.ok) {
+    return result;
+  }
+  return {
+    ok: true,
+    club: mapV2ClubToUiClub(result.data),
+    version: result.version,
+    skipped: Boolean(result.skipped),
+  };
+}
+
+/**
+ * Phase 1B — clear one VP (memberUserId set) or all VPs (memberUserId null).
+ * Signature: club_clear_vice_president(uuid, text, integer, uuid)
+ */
+export async function rpcV2ClubClearVicePresident({
+  clubId,
+  expectedClubVersion,
+  memberUserId = null,
+  requestId = newRequestId(),
+} = {}) {
+  const result = await callRpc("club_clear_vice_president", {
+    p_request_id: requestId,
+    p_club_id: clubId,
+    p_expected_club_version: expectedClubVersion,
+    p_member_user_id: memberUserId,
+  });
+  if (!result.ok) {
+    return result;
+  }
+  return { ok: true, club: mapV2ClubToUiClub(result.data), version: result.version };
+}
+
 export async function rpcV2ClubLeaveMembership({
   clubId,
   requestId = newRequestId(),
@@ -363,6 +444,32 @@ export async function rpcV2ClubRemoveMember({
   requestId = newRequestId(),
 } = {}) {
   const result = await callRpc("club_remove_member", {
+    p_request_id: requestId,
+    p_club_id: clubId,
+    p_target_user_id: targetUserId,
+    p_expected_version: expectedVersion ?? null,
+  });
+  if (!result.ok) {
+    return result;
+  }
+  return {
+    ok: true,
+    member: result.data || null,
+    version: result.version ?? null,
+  };
+}
+
+/**
+ * Phase 1B / 45A.4D — restore admin-removed member (status removed → active).
+ * Signature: club_restore_member(uuid, text, uuid, integer)
+ */
+export async function rpcV2ClubRestoreMember({
+  clubId,
+  targetUserId,
+  expectedVersion = null,
+  requestId = newRequestId(),
+} = {}) {
+  const result = await callRpc("club_restore_member", {
     p_request_id: requestId,
     p_club_id: clubId,
     p_target_user_id: targetUserId,

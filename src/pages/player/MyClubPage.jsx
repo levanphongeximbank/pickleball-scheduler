@@ -273,6 +273,7 @@ function MyClubPageContent() {
               <MyClubGovernancePanel
                 clubId={clubId}
                 tenantId={tenantId}
+                clubRecord={clubRecord}
                 revision={revision}
                 onRefresh={bumpRevision}
               />

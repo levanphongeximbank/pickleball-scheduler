@@ -10,8 +10,13 @@
 import { createLocalNotification } from "../../mobile/services/notificationService.js";
 import { NOTIFICATION_TYPES } from "../../mobile/constants/notificationTypes.js";
 import { loadPlayersForClub } from "../../../domain/clubStorage.js";
-import { CLUB_MEMBER_STATUSES } from "../constants/clubMemberRoles.js";
+import {
+  CLUB_MEMBER_STATUSES,
+  isClubMemberStatusActive,
+} from "../constants/clubMemberRoles.js";
+import { isClubStorageV2Enabled } from "../config/clubRegistryFlags.js";
 import { getClubMembers } from "./clubMemberService.js";
+import { rpcV2ClubListMembers } from "./clubStorageV2RpcService.js";
 import { findUserIdByPlayerId } from "../storage/athleteClubLinkStore.js";
 import {
   emitDomainNotificationEvent,
@@ -19,7 +24,30 @@ import {
 import { NOTIFICATION_EVENT_TYPES } from "../../notifications/constants/notificationEvents.js";
 import { buildNotificationIdempotencyKey } from "../../notifications/utils/idempotencyKey.js";
 
-function listClubMemberAuthUserIds(clubId, tenantId) {
+/**
+ * Resolve auth user ids for active club members.
+ * V2 ON: public.club_members via club_list_members (SSOT) — never blob.
+ * V2 OFF: legacy extension roster + player auth links.
+ */
+async function listClubMemberAuthUserIds(clubId, tenantId) {
+  if (isClubStorageV2Enabled()) {
+    const result = await rpcV2ClubListMembers(clubId);
+    if (!result.ok) {
+      return [];
+    }
+    const userIds = new Set();
+    for (const row of result.members || []) {
+      if (!isClubMemberStatusActive(row?.status)) {
+        continue;
+      }
+      const userId = String(row.user_id || "").trim();
+      if (userId) {
+        userIds.add(userId);
+      }
+    }
+    return [...userIds];
+  }
+
   const members = getClubMembers(clubId, tenantId, { skipGovernanceGuard: true }).filter(
     (member) => member.status === CLUB_MEMBER_STATUSES.ACTIVE
   );
@@ -89,7 +117,7 @@ export async function notifyClubMembers({
     return { ok: false, error: "tenantId is required." };
   }
 
-  let userIds = listClubMemberAuthUserIds(clubId, tenantId);
+  let userIds = await listClubMemberAuthUserIds(clubId, tenantId);
   if (excludeUserId) {
     userIds = userIds.filter((id) => String(id) !== String(excludeUserId));
   }

@@ -31,9 +31,10 @@ const body = (() => {
 })();
 
 describe("Phase 45A.3C — canonical club_update RPC (SQL contract)", () => {
-  it("authors exactly one new RPC (only club_update)", () => {
+  it("authors club_update plus phase42_can_update_club helper only", () => {
     const createFns = sql.match(/create or replace function/gi) || [];
-    assert.equal(createFns.length, 1, "expected exactly one CREATE OR REPLACE FUNCTION");
+    assert.equal(createFns.length, 2, "expected helper + club_update");
+    assert.match(sql, /create or replace function\s+public\.phase42_can_update_club\(/i);
     assert.match(sql, /create or replace function\s+public\.club_update\(/i);
 
     // No sibling / out-of-scope RPCs may leak in.
@@ -88,26 +89,17 @@ describe("Phase 45A.3C — canonical club_update RPC (SQL contract)", () => {
     assert.match(normBody, /set name = v_name.*version = version \+ 1 where id = v_club\.id/);
   });
 
-  it("uses the canonical Club-write authorization set", () => {
-    assert.match(body, /phase42_is_platform_super_admin\(\)/);
-    assert.match(body, /phase42_has_gov_role\(v_club\.id, array\['club_owner', 'president'\]\)/);
-    assert.match(body, /phase42_is_tenant_member\(v_club\.tenant_id\)/);
+  it("uses narrow phase42_can_update_club authorization (not bare tenant membership)", () => {
+    assert.match(body, /phase42_can_update_club\(v_club\.id\)/);
+    assert.doesNotMatch(body, /phase42_is_tenant_member\s*\(/);
+    assert.match(sql, /create or replace function\s+public\.phase42_can_update_club\(/i);
     assert.match(body, /FORBIDDEN/);
   });
 
-  it("emits the canonical club.update audit action and whitelists it", () => {
+  it("emits club.update audit action and defers whitelist to additive prerequisite", () => {
     assert.match(body, /phase42_write_audit\(\s*'club\.update'/);
-    // Whitelist patch must add club.update while preserving the existing set.
-    assert.match(sql, /add constraint\s+audit_logs_action_check/i);
-    for (const action of [
-      "'club.update'",
-      "'club.create'",
-      "'club.assign_owner'",
-      "'club.clear_owner'",
-      "'club.transfer_president'",
-    ]) {
-      assert.ok(sql.includes(action), `audit whitelist missing ${action}`);
-    }
+    assert.match(sql, /PHASE_1B_AUDIT_WHITELIST_ADDITIVE\.sql/);
+    assert.doesNotMatch(sql, /add constraint\s+audit_logs_action_check/i);
   });
 
   it("returns the canonical response envelope", () => {
@@ -148,15 +140,11 @@ describe("Phase 45A.3C — canonical club_update RPC (SQL contract)", () => {
     assert.match(body, /NAME_REQUIRED/);
   });
 
-  it("adds no destructive DDL beyond the documented audit-constraint swap", () => {
+  it("adds no destructive DDL and no audit constraint swap", () => {
     assert.doesNotMatch(sql, /drop\s+function/i);
     assert.doesNotMatch(sql, /drop\s+table/i);
     assert.doesNotMatch(sql, /truncate/i);
     assert.doesNotMatch(sql, /delete\s+from/i);
-    // The only ALTER TABLE permitted is the audit_logs constraint swap.
-    const alters = sql.match(/alter table[^\n;]*/gi) || [];
-    for (const alter of alters) {
-      assert.match(alter, /public\.audit_logs/i, `unexpected ALTER TABLE: ${alter}`);
-    }
+    assert.doesNotMatch(sql, /alter table/i);
   });
 });

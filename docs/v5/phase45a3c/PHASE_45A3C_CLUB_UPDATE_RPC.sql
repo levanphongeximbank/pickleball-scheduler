@@ -27,10 +27,14 @@
 --   - audit action whitelist convention:
 --       docs/v5/PHASE_42KA_GOVERNANCE_AUDIT_PATCH.sql
 --
--- Deployment status: NOT DEPLOYED (new). This file has NOT been executed on
---   Production or Staging. Applying it: (1) extends the audit action check
---   constraint with 'club.update' and (2) creates the new function. It adds
---   NO new API error codes, writes ONLY to public.clubs, and performs NO
+-- Deployment status: NOT DEPLOYED to Production (Phase 1B Staging-ready).
+--   Runtime client already wires rpcV2ClubUpdate via clubTenantService.
+--   Applying on Staging: creates phase42_can_update_club + public.club_update
+--   (no audit DROP/ADD here). Audit prerequisite (must apply first):
+--     docs/v5/phase1b/PHASE_1B_AUDIT_WHITELIST_ADDITIVE.sql
+--   Authz security gate (narrow tenant admin — NOT bare tenant_member):
+--     docs/v5/phase1b/PHASE_1B_CLUB_UPDATE_AUTHZ_SECURITY_GATE.sql
+--   Adds NO new API error codes, writes ONLY to public.clubs, and performs NO
 --   club_governance / club_governance_assignments / blob writes.
 --
 -- Prerequisites (already deployed; NOT (re)defined here):
@@ -41,8 +45,8 @@
 --            public.phase42_write_audit(text, text, text, text, text, jsonb)
 --            public.phase42_club_canonical(text)
 --            public.phase42_is_platform_super_admin()
---            public.phase42_is_tenant_member(text)
 --            public.phase42_has_gov_role(text, text[])
+--            public.user_has_permission(text)
 --   Trigger: trg_clubs_updated (BEFORE UPDATE → public.set_updated_at())
 --            maintains public.clubs.updated_at automatically.
 --
@@ -67,39 +71,65 @@
 -- =====================================================================
 
 -- ---------------------------------------------------------------------
--- 1. Audit action whitelist — add canonical 'club.update'
---    Mirrors PHASE_42KA_GOVERNANCE_AUDIT_PATCH.sql. Preserves the full
---    existing action set; adds only 'club.update'. Constraint-only change,
---    no data mutation.
+-- 1. Audit whitelist prerequisite
+--    DO NOT drop/recreate audit_logs_action_check here.
+--    A fixed IN-list previously failed Staging with 23514 when historical
+--    audit_logs.action values were outside that list.
+--    Apply first: docs/v5/phase1b/PHASE_1B_AUDIT_WHITELIST_ADDITIVE.sql
 -- ---------------------------------------------------------------------
-alter table public.audit_logs drop constraint if exists audit_logs_action_check;
 
-alter table public.audit_logs
-  add constraint audit_logs_action_check
-  check (action in (
-    -- Identity / admin
-    'login', 'login_failed', 'logout',
-    'create', 'update', 'delete',
-    'assign_role', 'permission_change',
-    'password_change', 'reset_password',
-    -- Phase 42 club lifecycle (RPC + client)
-    'club.create',
-    'club.update',
-    'club.leave_membership',
-    'club.delete',
-    -- Membership requests
-    'club.membership_request.submit',
-    'club.membership_request.review',
-    'club.membership_request.correction',
-    -- Governance (RPC canonical)
-    'club.assign_owner',
-    'club.clear_owner',
-    'club.transfer_president',
-    -- Governance (client audit bridge — legacy V1 paths)
-    'club.owner.transfer',
-    'club.president.transfer',
-    'club.vice_president.assign'
-  ));
+-- ---------------------------------------------------------------------
+-- 1b. phase42_can_update_club — narrow Club UPDATE authorization
+--    ALLOW: platform super admin
+--           active club_owner / president on this club
+--           tenant_owner (tenant_members.role_code) OR profile role
+--             VENUE_OWNER / COURT_OWNER / TENANT_OWNER on club.tenant_id
+--             AND user_has_permission('club.update')
+--    DENY:  bare phase42_is_tenant_member / tenant_staff
+--           vice_president alone
+--           ordinary club members / PLAYER without gov or tenant-admin role
+--    (Same allow shape as phase42_can_manage_vice_presidents; separate helper
+--     so VP authz can evolve independently.)
+-- ---------------------------------------------------------------------
+create or replace function public.phase42_can_update_club(p_club_id text)
+returns boolean
+language sql
+stable
+security definer
+set search_path = public
+as $$
+  select
+    public.phase42_is_platform_super_admin()
+    or public.phase42_has_gov_role(p_club_id, array['club_owner', 'president'])
+    or exists (
+      select 1
+      from public.clubs c
+      where c.id = p_club_id
+        and c.deleted_at is null
+        and public.user_has_permission('club.update')
+        and (
+          exists (
+            select 1
+            from public.tenant_members tm
+            where tm.tenant_id = c.tenant_id
+              and tm.user_id = auth.uid()
+              and tm.status = 'active'
+              and tm.role_code = 'tenant_owner'
+          )
+          or exists (
+            select 1
+            from public.profiles p
+            where p.id = auth.uid()
+              and p.venue_id = c.tenant_id
+              and upper(coalesce(p.role, '')) in (
+                'VENUE_OWNER', 'COURT_OWNER', 'TENANT_OWNER'
+              )
+          )
+        )
+    );
+$$;
+
+grant execute on function public.phase42_can_update_club(text) to authenticated;
 
 -- ---------------------------------------------------------------------
 -- 2. public.club_update — canonical Club metadata command
@@ -160,12 +190,8 @@ begin
     return public.phase42_err('VERSION_CONFLICT', 'Xung đột phiên bản CLB.');
   end if;
 
-  -- Authorization: platform super admin, club_owner/president, or tenant owner/staff
-  if not (
-    public.phase42_is_platform_super_admin()
-    or public.phase42_has_gov_role(v_club.id, array['club_owner', 'president'])
-    or public.phase42_is_tenant_member(v_club.tenant_id)
-  ) then
+  -- Authorization: narrow Club UPDATE gate (NOT bare tenant membership)
+  if not public.phase42_can_update_club(v_club.id) then
     return public.phase42_err('FORBIDDEN', 'Không có quyền cập nhật CLB.');
   end if;
 
@@ -258,5 +284,6 @@ $$;
 grant execute on function public.club_update(uuid, text, integer, text, text, text, text, text) to authenticated;
 
 -- =====================================================================
--- END — PHASE 45A.3C (1 new RPC + 1 audit-whitelist constraint patch)
+-- END — PHASE 45A.3C (phase42_can_update_club + club_update)
+-- Production deployment status: NOT APPLIED
 -- =====================================================================

@@ -1,0 +1,271 @@
+{
+  "phase": "1C",
+  "kind": "PRODUCTION_AUTHZ_GATE_SMOKE",
+  "productionRef": "expuvcohlcjzvrrauvud",
+  "approvedAppSha": "d7a13982bd3b40913436466a227cc04d1649dcfb",
+  "startedAt": "2026-07-19T03:58:29.626Z",
+  "assignMatrix": [
+    {
+      "id": "ASSIGN_SUPER_ADMIN",
+      "ok": true,
+      "expected": "ALLOW",
+      "actual": "ALLOW",
+      "note": null,
+      "versionBefore": 23,
+      "versionAfter": 24,
+      "ownerUnchangedOnDeny": null
+    },
+    {
+      "id": "ASSIGN_Tenant owner",
+      "ok": true,
+      "expected": "ALLOW",
+      "actual": "ALLOW",
+      "note": null,
+      "versionBefore": 25,
+      "versionAfter": 26,
+      "ownerUnchangedOnDeny": null
+    },
+    {
+      "id": "ASSIGN_Approved tenant admin (TENANT_OWNER profile path)",
+      "ok": true,
+      "expected": "ALLOW",
+      "actual": "ALLOW",
+      "note": "same fixture as tenant_owner when profile path overlaps",
+      "versionBefore": 27,
+      "versionAfter": 28,
+      "ownerUnchangedOnDeny": null
+    },
+    {
+      "id": "ASSIGN_Ordinary tenant_staff",
+      "ok": true,
+      "expected": "FORBIDDEN",
+      "actual": "FORBIDDEN",
+      "note": null,
+      "versionBefore": 29,
+      "versionAfter": 29,
+      "ownerUnchangedOnDeny": true
+    },
+    {
+      "id": "ASSIGN_VENUE_MANAGER profile fallback only",
+      "ok": true,
+      "expected": "FORBIDDEN",
+      "actual": "FORBIDDEN",
+      "note": null,
+      "versionBefore": 29,
+      "versionAfter": 29,
+      "ownerUnchangedOnDeny": true
+    },
+    {
+      "id": "ASSIGN_COURT_MANAGER profile fallback only",
+      "ok": true,
+      "expected": "FORBIDDEN",
+      "actual": "FORBIDDEN",
+      "note": null,
+      "versionBefore": 29,
+      "versionAfter": 29,
+      "ownerUnchangedOnDeny": true
+    },
+    {
+      "id": "ASSIGN_Club Owner without approved tenant-admin role",
+      "ok": true,
+      "expected": "FORBIDDEN",
+      "actual": "FORBIDDEN",
+      "note": null,
+      "versionBefore": 29,
+      "versionAfter": 29,
+      "ownerUnchangedOnDeny": true
+    },
+    {
+      "id": "ASSIGN_Club President",
+      "ok": true,
+      "expected": "FORBIDDEN",
+      "actual": "FORBIDDEN",
+      "note": null,
+      "versionBefore": 29,
+      "versionAfter": 29,
+      "ownerUnchangedOnDeny": true
+    },
+    {
+      "id": "ASSIGN_Vice President",
+      "ok": true,
+      "expected": "FORBIDDEN",
+      "actual": "FORBIDDEN",
+      "note": null,
+      "versionBefore": 29,
+      "versionAfter": 29,
+      "ownerUnchangedOnDeny": true
+    },
+    {
+      "id": "ASSIGN_Ordinary club player",
+      "ok": true,
+      "expected": "FORBIDDEN",
+      "actual": "FORBIDDEN",
+      "note": null,
+      "versionBefore": 29,
+      "versionAfter": 29,
+      "ownerUnchangedOnDeny": true
+    },
+    {
+      "id": "ASSIGN_Unrelated authenticated user",
+      "ok": true,
+      "expected": "FORBIDDEN",
+      "actual": "FORBIDDEN",
+      "note": "retested with email_confirm=true ephemeral unrelated user",
+      "versionBefore": 38,
+      "versionAfter": 38,
+      "ownerUnchangedOnDeny": true
+    },
+    {
+      "id": "ASSIGN_Anonymous",
+      "ok": true,
+      "expected": "NOT_AUTHENTICATED",
+      "actual": "NOT_AUTHENTICATED"
+    },
+    {
+      "id": "ASSIGN_stale_version",
+      "ok": true,
+      "expected": "VERSION_CONFLICT",
+      "actual": "VERSION_CONFLICT"
+    }
+  ],
+  "clearMatrix": [
+    {
+      "id": "CLEAR_SUPER_ADMIN",
+      "ok": true,
+      "expected": "ALLOW",
+      "actual": "ALLOW"
+    },
+    {
+      "id": "CLEAR_Tenant owner",
+      "ok": true,
+      "expected": "ALLOW",
+      "actual": "ALLOW"
+    },
+    {
+      "id": "CLEAR_Approved tenant admin",
+      "ok": true,
+      "expected": "ALLOW",
+      "actual": "ALLOW"
+    },
+    {
+      "id": "CLEAR_Ordinary tenant_staff",
+      "ok": true,
+      "expected": "FORBIDDEN",
+      "actual": "FORBIDDEN"
+    },
+    {
+      "id": "CLEAR_VENUE_MANAGER profile fallback only",
+      "ok": true,
+      "expected": "FORBIDDEN",
+      "actual": "FORBIDDEN"
+    },
+    {
+      "id": "CLEAR_COURT_MANAGER profile fallback only",
+      "ok": true,
+      "expected": "FORBIDDEN",
+      "actual": "FORBIDDEN"
+    },
+    {
+      "id": "CLEAR_Club Owner without approved tenant-admin role",
+      "ok": true,
+      "expected": "FORBIDDEN",
+      "actual": "FORBIDDEN"
+    },
+    {
+      "id": "CLEAR_Club President",
+      "ok": true,
+      "expected": "FORBIDDEN",
+      "actual": "FORBIDDEN"
+    },
+    {
+      "id": "CLEAR_Vice President",
+      "ok": true,
+      "expected": "FORBIDDEN",
+      "actual": "FORBIDDEN"
+    },
+    {
+      "id": "CLEAR_Ordinary club player",
+      "ok": true,
+      "expected": "FORBIDDEN",
+      "actual": "FORBIDDEN"
+    },
+    {
+      "id": "CLEAR_Unrelated authenticated user",
+      "ok": true,
+      "expected": "FORBIDDEN",
+      "actual": "FORBIDDEN",
+      "note": "retested with email_confirm=true ephemeral unrelated user"
+    },
+    {
+      "id": "CLEAR_Anonymous",
+      "ok": true,
+      "expected": "NOT_AUTHENTICATED",
+      "actual": "NOT_AUTHENTICATED"
+    },
+    {
+      "id": "CLEAR_stale_version",
+      "ok": true,
+      "expected": "VERSION_CONFLICT",
+      "actual": "VERSION_CONFLICT"
+    }
+  ],
+  "memberRequired": {
+    "expected": "MEMBER_REQUIRED",
+    "actual": "MEMBER_REQUIRED",
+    "ok": true
+  },
+  "versionAudit": {
+    "assign_ok": true,
+    "clear_ok": true,
+    "version_before": 35,
+    "version_after_assign": 36,
+    "version_after_clear": 37,
+    "assign_bumped": true,
+    "clear_bumped": true,
+    "owner_before": "4cf24ed0-99f8-4997-b803-3c7ff8e32014",
+    "owner_after_assign": "c820bfaf-d958-4b1b-be39-4772a81f7e2e",
+    "owner_after_clear": null,
+    "owner_changed_on_assign": true,
+    "owner_cleared": true,
+    "assign_audit": true,
+    "clear_audit": true
+  },
+  "ownerRestore": {
+    "restore_ok": true,
+    "original_owner": "4cf24ed0-99f8-4997-b803-3c7ff8e32014",
+    "final_owner": "4cf24ed0-99f8-4997-b803-3c7ff8e32014",
+    "restored": true,
+    "final_version": 38
+  },
+  "uiConsistency": {
+    "mode": "canonical_rpc_club_get_no_redeploy",
+    "club_get_ok": true,
+    "owner_matches_restored": true,
+    "owner_user_id": "4cf24ed0-99f8-4997-b803-3c7ff8e32014",
+    "note": "App not redeployed; UI surfaces read same V2 club_get/canonical owner as RPC"
+  },
+  "status": "PASS",
+  "warnings": [
+    "Initial unrelated fixture failed sign-in (Email not confirmed); retested with confirmed ephemeral user."
+  ],
+  "clubId": "club-219e4a7cbd73437eb6271f02a53314c3",
+  "tenantId": "venue-prod-main",
+  "originalOwnerUserId": "4cf24ed0-99f8-4997-b803-3c7ff8e32014",
+  "originalVersion": 23,
+  "finishedAt": "2026-07-19T04:01:23.915Z",
+  "proof": {
+    "tenant_staff_denied": true,
+    "venue_manager_denied": true,
+    "court_manager_denied": true,
+    "optional_club_owner_path_disabled": true
+  },
+  "unrelatedRetest": {
+    "emailDomain": "@prod-qa.local",
+    "assignCode": "FORBIDDEN",
+    "clearCode": "FORBIDDEN",
+    "assignOk": true,
+    "clearOk": true,
+    "versionUnchanged": true,
+    "ownerUnchanged": true
+  }
+}

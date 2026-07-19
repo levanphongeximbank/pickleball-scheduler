@@ -1,4 +1,7 @@
-import { COMPETITION_ENTRY_STATUS } from "../enums/statuses.js";
+import {
+  COMPETITION_ENTRY_STATUS,
+  COMPETITION_REGISTRATION_STATUS,
+} from "../enums/statuses.js";
 import {
   PARTICIPANT_SCHEMA_VERSION,
   createAuditMetadata,
@@ -60,11 +63,19 @@ export function createCompetitionEntry(partial = {}) {
 /**
  * Registration owns waitlist (OD-10). Waitlisted ≠ active Entry.
  *
+ * Phase 3C adds deterministic identity + source provenance fields (optional for
+ * backward-compatible callers; Registration Runtime always populates them).
+ *
  * @typedef {Object} CompetitionRegistration
  * @property {string} schemaVersion
  * @property {string} id
  * @property {string} competitionId
  * @property {string} status
+ * @property {string|null} [registrationKind] — INDIVIDUAL | TEAM (Owner-locked)
+ * @property {string|null} [sourceType]
+ * @property {string|null} [sourceId]
+ * @property {string|null} [identityKey] — competitionId::kind::stableSourceIdentity
+ * @property {import('./identity.js').ParticipantReference[]} [memberRefs]
  * @property {string|null} [entryId]
  * @property {number|null} [waitlistPosition]
  * @property {string|null} [participantId]
@@ -74,6 +85,7 @@ export function createCompetitionEntry(partial = {}) {
  * @property {string|null} [decidedBy]
  * @property {string|null} [rejectionReason]
  * @property {string|null} [registeredByPlatformUserId]
+ * @property {Record<string, unknown>|null} [metadata] — pair/guest/captain/UI-adjacent non-identity
  * @property {import('./shared.js').FormatExtension|null} [extensions]
  * @property {import('./shared.js').AuditMetadata} [audit]
  */
@@ -83,11 +95,31 @@ export function createCompetitionEntry(partial = {}) {
  * @returns {CompetitionRegistration}
  */
 export function createCompetitionRegistration(partial = {}) {
+  const memberRefs = Array.isArray(partial.memberRefs)
+    ? partial.memberRefs.map((ref) => createParticipantReference(ref || {}))
+    : [];
   return {
     schemaVersion: String(partial.schemaVersion ?? PARTICIPANT_SCHEMA_VERSION),
     id: String(partial.id || ""),
     competitionId: String(partial.competitionId || ""),
-    status: String(partial.status || "DRAFT"),
+    status: String(partial.status || COMPETITION_REGISTRATION_STATUS.DRAFT),
+    registrationKind:
+      partial.registrationKind != null && partial.registrationKind !== ""
+        ? String(partial.registrationKind)
+        : null,
+    sourceType:
+      partial.sourceType != null && partial.sourceType !== ""
+        ? String(partial.sourceType)
+        : null,
+    sourceId:
+      partial.sourceId != null && partial.sourceId !== ""
+        ? String(partial.sourceId)
+        : null,
+    identityKey:
+      partial.identityKey != null && partial.identityKey !== ""
+        ? String(partial.identityKey)
+        : null,
+    memberRefs,
     entryId: partial.entryId ?? null,
     waitlistPosition:
       typeof partial.waitlistPosition === "number" ? partial.waitlistPosition : null,
@@ -98,6 +130,10 @@ export function createCompetitionRegistration(partial = {}) {
     decidedBy: partial.decidedBy ?? null,
     rejectionReason: partial.rejectionReason ?? null,
     registeredByPlatformUserId: partial.registeredByPlatformUserId ?? null,
+    metadata:
+      partial.metadata && typeof partial.metadata === "object" && !Array.isArray(partial.metadata)
+        ? { ...partial.metadata }
+        : null,
     extensions: createFormatExtension(partial.extensions),
     audit: createAuditMetadata(partial.audit),
   };

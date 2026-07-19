@@ -1,0 +1,20 @@
+{
+  "phase": "1B",
+  "gate": "VP_AUTHORIZATION_SECURITY",
+  "verdict": "PASS_AFTER_FIX",
+  "finding": "Original Phase 1B VP RPCs authorized via phase42_is_tenant_member(tenant_id), which allows ANY active tenant_members row (including tenant_staff) plus broad profile venue roles. That violated the Owner rule that ordinary tenant members must not assign/clear VPs.",
+  "fix": "Introduced public.phase42_can_manage_vice_presidents(p_club_id) and wired both club_assign_vice_president and club_clear_vice_president to that helper only.",
+  "exactPredicate": {
+    "helper": "public.phase42_can_manage_vice_presidents(p_club_id text)",
+    "sql": "phase42_is_platform_super_admin() OR phase42_has_gov_role(p_club_id, array['club_owner','president']) OR (user_has_permission('club.update') AND (tenant_members.role_code='tenant_owner' OR profiles.role IN ('VENUE_OWNER','COURT_OWNER','TENANT_OWNER') for club.tenant_id))",
+    "denied": [
+      "bare phase42_is_tenant_member(...)",
+      "tenant_staff",
+      "ordinary club members / PLAYER without gov role",
+      "vice_president alone"
+    ]
+  },
+  "productionTouched": false,
+  "stagingApplied": false,
+  "blockedReason": "SUPABASE_ACCESS_TOKEN and staging QA env credentials are not available in this workspace session"
+}

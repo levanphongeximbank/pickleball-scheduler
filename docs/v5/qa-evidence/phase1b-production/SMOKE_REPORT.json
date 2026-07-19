@@ -1,0 +1,261 @@
+{
+  "phase": "1B",
+  "kind": "PRODUCTION_SMOKE",
+  "productionRef": "expuvcohlcjzvrrauvud",
+  "stagingRef": "qyewbxjsiiyufanzcjcq",
+  "approvedMainSha": "959c8067ea756aa32e50b549a97cd4e762786ff7",
+  "startedAt": "2026-07-18T15:41:17.410Z",
+  "actors": [
+    {
+      "role": "Owner",
+      "emailDomain": "gmail.com",
+      "userIdPrefix": "4cf24ed0"
+    },
+    {
+      "role": "Owner",
+      "emailDomain": "gmail.com",
+      "userIdPrefix": "4cf24ed0"
+    },
+    {
+      "role": "President",
+      "emailDomain": "gmail.com",
+      "userIdPrefix": "4cf24ed0"
+    },
+    {
+      "role": "Tenant admin",
+      "emailDomain": "gmail.com",
+      "userIdPrefix": "6e90bbf2"
+    },
+    {
+      "role": "Ordinary tenant",
+      "emailDomain": "pickleball-scheduler.qa",
+      "userIdPrefix": "057c1f18"
+    },
+    {
+      "role": "Player",
+      "emailDomain": "gmail.com",
+      "userIdPrefix": "c820bfaf"
+    },
+    {
+      "role": "Unrelated",
+      "emailDomain": "pickleball-scheduler.qa",
+      "userIdPrefix": "43d1f04d"
+    },
+    {
+      "role": "Owner",
+      "emailDomain": "gmail.com",
+      "userIdPrefix": "4cf24ed0"
+    },
+    {
+      "role": "Owner",
+      "emailDomain": "gmail.com",
+      "userIdPrefix": "4cf24ed0"
+    },
+    {
+      "role": "Unrelated",
+      "emailDomain": "pickleball-scheduler.qa",
+      "userIdPrefix": "43d1f04d"
+    }
+  ],
+  "matrices": {
+    "clubUpdate": [
+      {
+        "id": "UPDATE_Owner",
+        "ok": true,
+        "expected": "ALLOW",
+        "actual": "ALLOW"
+      },
+      {
+        "id": "UPDATE_President",
+        "ok": true,
+        "expected": "ALLOW",
+        "actual": "ALLOW"
+      },
+      {
+        "id": "UPDATE_Tenant admin",
+        "ok": true,
+        "expected": "ALLOW",
+        "actual": "ALLOW"
+      },
+      {
+        "id": "UPDATE_Ordinary tenant",
+        "ok": true,
+        "expected": "DENY",
+        "actual": "DENY"
+      },
+      {
+        "id": "UPDATE_Player",
+        "ok": true,
+        "expected": "DENY",
+        "actual": "DENY"
+      },
+      {
+        "id": "UPDATE_Unrelated",
+        "ok": true,
+        "expected": "DENY",
+        "actual": "DENY"
+      },
+      {
+        "id": "UPDATE_restore_name",
+        "ok": true,
+        "expected": "ALLOW",
+        "actual": "ALLOW"
+      },
+      {
+        "id": "UPDATE_stale_version",
+        "ok": true,
+        "expected": "VERSION_CONFLICT",
+        "actual": "VERSION_CONFLICT"
+      }
+    ],
+    "vpLifecycle": [
+      {
+        "id": "VP_assign_1",
+        "ok": true,
+        "expected": "ALLOW",
+        "actual": "ALLOW"
+      },
+      {
+        "id": "VP_assign_2",
+        "ok": true,
+        "expected": "ALLOW",
+        "actual": "ALLOW"
+      },
+      {
+        "id": "VP_reject_third",
+        "ok": true,
+        "expected": "DENY",
+        "actual": "Tối đa 2 Phó chủ tịch."
+      },
+      {
+        "id": "VP_reject_president",
+        "ok": true,
+        "expected": "DENY",
+        "actual": "Phó chủ tịch không thể trùng Chủ tịch."
+      },
+      {
+        "id": "VP_clear_one",
+        "ok": true,
+        "expected": "ALLOW",
+        "actual": "ALLOW"
+      },
+      {
+        "id": "VP_clear_all",
+        "ok": true,
+        "expected": "ALLOW_EMPTY",
+        "actual": "ALLOW vp=0"
+      }
+    ],
+    "memberAdmin": [
+      {
+        "id": "member_add",
+        "ok": true,
+        "expected": "ALLOW",
+        "actual": "ALLOW"
+      },
+      {
+        "id": "member_duplicate",
+        "ok": true,
+        "expected": "ALREADY_MEMBER",
+        "actual": "ALREADY_MEMBER"
+      },
+      {
+        "id": "member_remove",
+        "ok": true,
+        "expected": "ALLOW",
+        "actual": "ALLOW"
+      },
+      {
+        "id": "member_restore",
+        "ok": true,
+        "expected": "ALLOW",
+        "actual": "ALLOW"
+      },
+      {
+        "id": "member_version_conflict",
+        "ok": true,
+        "expected": "VERSION_CONFLICT",
+        "actual": "VERSION_CONFLICT"
+      },
+      {
+        "id": "member_unauthorized",
+        "ok": true,
+        "expected": "DENY",
+        "actual": "DENY"
+      }
+    ],
+    "parity": [
+      {
+        "id": "home_members_canonical",
+        "ok": true,
+        "expected": "counts_match",
+        "actual": "home=34 list=34 version=23 vp=0"
+      }
+    ],
+    "notification": [
+      {
+        "id": "V2_recipients_active_userid",
+        "ok": true,
+        "expected": "active+user_id only",
+        "actual": "active=34 recipients=34"
+      },
+      {
+        "id": "V1_fallback_source_contract",
+        "ok": true,
+        "expected": "legacy path present under flag OFF",
+        "actual": "PRESENT"
+      }
+    ],
+    "audit": [
+      {
+        "id": "audit_club.update",
+        "ok": true,
+        "expected": "PRESENT",
+        "actual": "PRESENT"
+      },
+      {
+        "id": "audit_club.assign_vice_president",
+        "ok": true,
+        "expected": "PRESENT",
+        "actual": "PRESENT"
+      },
+      {
+        "id": "audit_club.clear_vice_president",
+        "ok": true,
+        "expected": "PRESENT",
+        "actual": "PRESENT"
+      },
+      {
+        "id": "audit_club.member.add",
+        "ok": true,
+        "expected": "PRESENT",
+        "actual": "PRESENT"
+      },
+      {
+        "id": "audit_club.member.remove",
+        "ok": true,
+        "expected": "PRESENT",
+        "actual": "PRESENT"
+      },
+      {
+        "id": "audit_club.member.restore",
+        "ok": true,
+        "expected": "PRESENT",
+        "actual": "PRESENT"
+      }
+    ]
+  },
+  "totals": {
+    "pass": 29,
+    "fail": 0
+  },
+  "warnings": [
+    "Ephemeral Unrelated actor seeded for DENY matrix",
+    "Ephemeral Auth user created for member smoke (soft-remove after)"
+  ],
+  "status": "PASS",
+  "clubId": "club-219e4a7cbd73437eb6271f02a53314c3",
+  "clubName": "CLB ACCC",
+  "baselineVersion": 14,
+  "finishedAt": "2026-07-18T15:41:33.344Z"
+}

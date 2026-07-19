@@ -72,6 +72,7 @@ test("assignTournamentMatchToAvailableCourt assigns and starts match", () => {
     matches,
     courts,
     matchId: "m1",
+    legacyAvailability: true,
   });
 
   assert.equal(result.ok, true);

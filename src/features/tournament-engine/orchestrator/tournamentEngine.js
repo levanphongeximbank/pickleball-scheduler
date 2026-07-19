@@ -1,4 +1,3 @@
-import { getActiveClubId } from "../../../data/club.js";
 import { ENGINE_TYPE } from "../constants/defaults.js";
 import { generateSeed } from "../engines/seedEngine.js";
 import { generateDraw } from "../engines/drawEngine.js";
@@ -13,7 +12,12 @@ function wrapEngineRun(engineType, context, result, options = {}) {
     return result;
   }
 
-  const clubId = options.clubId || getActiveClubId();
+  // Phase 2F: never fall back to getActiveClubId() — require explicit club scope.
+  const clubId = options.clubId || context?.clubId || null;
+  if (!clubId) {
+    return result;
+  }
+
   appendEngineRun(clubId, context.tournamentId, {
     engineType,
     action: options.action || engineType,

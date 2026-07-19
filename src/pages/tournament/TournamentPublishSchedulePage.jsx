@@ -129,6 +129,20 @@ export default function TournamentPublishSchedulePage() {
       setMessage({ type: "error", text: "Cần công bố bốc thăm trước khi tạo lịch chính thức." });
       return;
     }
+    if (!activeClubId) {
+      setMessage({
+        type: "error",
+        text: "Thiếu clubId — không thể tạo lịch (Venue & Court).",
+      });
+      return;
+    }
+    if (!tournament.courtSchedule?.date) {
+      setMessage({
+        type: "error",
+        text: "Cần chọn ngày khóa sân (courtSchedule.date) trước khi tạo lịch.",
+      });
+      return;
+    }
 
     const existingMatches =
       tournament.settings?.engineV4?.matches || tournament.events?.[0]?.matches || [];
@@ -176,7 +190,7 @@ export default function TournamentPublishSchedulePage() {
         scheduleConfig: {
           startTime: tournament.courtSchedule?.startTime || "08:00",
           endTime: tournament.courtSchedule?.endTime || "22:00",
-          date: tournament.courtSchedule?.date || new Date().toISOString().slice(0, 10),
+          date: tournament.courtSchedule.date,
           averageMatchMinutes: 25,
           bufferMinutes: 5,
           minRestMinutes,

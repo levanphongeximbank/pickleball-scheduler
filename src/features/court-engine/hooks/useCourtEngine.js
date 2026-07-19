@@ -1,14 +1,9 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 
-import { useAuth } from "../../../context/AuthContext.jsx";
 import { useClub } from "../../../context/ClubContext.jsx";
 import { useTenant } from "../../../context/TenantContext.jsx";
-import { isVenueScopedRole } from "../../../auth/roles.js";
 import { loadPlayersForClub } from "../../../domain/clubStorage.js";
-import {
-  loadCourtsForClubScoped,
-  loadCourtsForVenueScoped,
-} from "../../../domain/courtService.js";
+import { loadCourtsForClubScoped } from "../../../domain/courtService.js";
 import { loadStaffForVenue } from "../../../data/staff.js";
 import {
   isCourtEngineCloudEnabled,
@@ -48,9 +43,29 @@ import {
   resolveTimerStatus,
 } from "../services/courtEngineService.js";
 import { SESSION_STATUS } from "../constants/statuses.js";
+import { buildLocalCivilWindow } from "../services/courtEngineAvailabilityGuard.js";
+import { resolveVenueTimezoneForClub } from "../../../domain/civilTime.js";
+
+function resolveSessionAvailabilityWindow(session, clubId) {
+  const duration = Number(session?.config?.defaultMatchMinutes) || 20;
+  const tz = resolveVenueTimezoneForClub(clubId);
+  if (!tz.ok) {
+    return { ok: false, error: tz.error, code: tz.code };
+  }
+  const built = buildLocalCivilWindow(duration, new Date(), tz.timezone);
+  if (!built.ok) {
+    return { ok: false, error: built.error, code: built.code };
+  }
+  return {
+    ok: true,
+    date: built.date,
+    startTime: built.startTime,
+    endTime: built.endTime,
+    timezone: tz.timezone,
+  };
+}
 
 export function useCourtEngine() {
-  const { user, rbacEnabled } = useAuth();
   const { activeClubId, activeClub, revision } = useClub();
   const { currentTenantId } = useTenant();
   const [localRevision, setLocalRevision] = useState(0);
@@ -82,22 +97,9 @@ export function useCourtEngine() {
   const courts = useMemo(() => {
     void revision;
     void localRevision;
-    const venueId = activeClub?.venueId || currentTenantId;
-
-    if (rbacEnabled && user && isVenueScopedRole(user.role) && venueId) {
-      return loadCourtsForVenueScoped(venueId, currentTenantId);
-    }
-
+    // Phase 2F: CE session is club-keyed — never load venue-union courts into this session.
     return loadCourtsForClubScoped(activeClubId, currentTenantId);
-  }, [
-    activeClubId,
-    activeClub?.venueId,
-    currentTenantId,
-    rbacEnabled,
-    user,
-    revision,
-    localRevision,
-  ]);
+  }, [activeClubId, currentTenantId, revision, localRevision]);
 
   const refereeList = useMemo(() => {
     const venueId = activeClub?.venueId || currentTenantId;
@@ -288,18 +290,59 @@ export function useCourtEngine() {
         handleResult(performSetQueueLocked(activeClubId, session, playerId, locked)),
       previewAutoAssign: () => {
         if (!session) return;
-        const result = previewAutoAssign(session, { courts, players, refereeList });
+        if (!activeClubId) {
+          setError("Thiếu clubId — không thể ghép sân (Venue & Court).");
+          return;
+        }
+        const window = resolveSessionAvailabilityWindow(session, activeClubId);
+        if (!window.ok) {
+          setError(window.error);
+          return;
+        }
+        const result = previewAutoAssign(session, {
+          courts,
+          players,
+          refereeList,
+          clubId: activeClubId,
+          date: window.date,
+          startTime: window.startTime,
+          endTime: window.endTime,
+        });
+        if (result.ok === false) {
+          setError(result.error || result.warnings?.[0] || "Không ghép được sân.");
+          setPreview(null);
+          return;
+        }
         setPreview(result);
         logAutoAssignPreview(activeClubId, session, result);
         bump();
       },
       confirmAutoAssign: () => {
         if (!session || !preview?.assignments?.length) return;
-        handleResult(
-          confirmAutoAssign(activeClubId, session, preview.assignments),
-          `Đã xác nhận ${preview.assignments.length} trận.`
+        if (!activeClubId) {
+          setError("Thiếu clubId — không thể xác nhận assignment.");
+          return;
+        }
+        const window = resolveSessionAvailabilityWindow(session, activeClubId);
+        if (!window.ok) {
+          setError(window.error);
+          return;
+        }
+        const result = confirmAutoAssign(
+          activeClubId,
+          session,
+          preview.assignments,
+          null,
+          {
+            date: window.date,
+            startTime: window.startTime,
+            endTime: window.endTime,
+          }
         );
-        setPreview(null);
+        handleResult(result, `Đã xác nhận ${preview.assignments.length} trận.`);
+        if (result?.ok) {
+          setPreview(null);
+        }
       },
       startMatch: (assignmentId) =>
         session &&
@@ -313,12 +356,28 @@ export function useCourtEngine() {
       endMatch: (assignmentId) =>
         session &&
         handleResult(performEndMatch(activeClubId, session, assignmentId), "Trận đã kết thúc."),
-      transfer: (assignmentId, toCourtId, reason) =>
-        session &&
-        handleResult(
-          performTransfer(activeClubId, session, assignmentId, toCourtId, { reason }),
+      transfer: (assignmentId, toCourtId, reason) => {
+        if (!session) return;
+        if (!activeClubId) {
+          setError("Thiếu clubId — không thể chuyển sân.");
+          return;
+        }
+        const window = resolveSessionAvailabilityWindow(session, activeClubId);
+        if (!window.ok) {
+          setError(window.error);
+          return;
+        }
+        return handleResult(
+          performTransfer(activeClubId, session, assignmentId, toCourtId, {
+            reason,
+            clubId: activeClubId,
+            date: window.date,
+            startTime: window.startTime,
+            endTime: window.endTime,
+          }),
           "Chuyển sân thành công."
-        ),
+        );
+      },
       lockCourt: (courtId, locked) =>
         session && handleResult(performCourtLock(activeClubId, session, courtId, locked)),
       maintenanceCourt: (courtId, maintenance) =>

@@ -77,6 +77,29 @@ export {
 } from "./resolvers/resolveFlagPrecedence.js";
 export { resolveRuntimeDecision } from "./resolvers/resolveRuntimeDecision.js";
 
+/** Phase 3A.3 — Integration Bootstrap (empty registries; Integrator-owned). */
+export {
+  REGISTRY_REASON_CODE,
+  REGISTRY_REASON_CODE_VALUES,
+  isRegistryReasonCode,
+  CAPABILITY_EXECUTOR_REGISTRY_VERSION,
+  createCapabilityExecutorRegistry,
+  defaultCapabilityExecutorRegistry,
+  registerCapabilityExecutor,
+  resolveCapabilityExecutor,
+  getCapabilityExecutorRegistration,
+  listCapabilityExecutorRegistrations,
+  isCapabilityExecutorRegistryEmpty,
+  unregisterCapabilityExecutor,
+  freezeCapabilityExecutorRegistry,
+  isCapabilityExecutorRegistryFrozen,
+  resetCapabilityExecutorRegistryForTests,
+  /** Phase 3B Integrator Wave 1 — explicit Participant capability registration. */
+  PARTICIPANT_CAPABILITY_WAVE1_VERSION,
+  PARTICIPANT_CAPABILITY_MODULE_PATHS,
+  registerParticipantCapabilityWave1,
+} from "./registries/index.js";
+
 /** Phase 3A.2 — Shadow Infrastructure (contracts / pure resolvers only). */
 export {
   SHADOW_REASON_CODE,
@@ -122,4 +145,37 @@ export {
   compareShadowResults,
   summarizeShadowReport,
   buildShadowDiagnostics,
+  SHADOW_COMPARATOR_REGISTRY_VERSION,
+  createShadowComparatorRegistry,
+  defaultShadowComparatorRegistry,
+  getShadowComparatorRegistration,
+  listShadowComparatorRegistrations,
+  isShadowComparatorRegistryEmpty,
+  registerShadowComparator,
+  resolveShadowComparator,
+  unregisterShadowComparator,
+  resetShadowComparatorRegistryForTests,
+  SHADOW_NORMALIZER_REGISTRY_VERSION,
+  createShadowNormalizerRegistry,
+  defaultShadowNormalizerRegistry,
+  getShadowNormalizerRegistration,
+  listShadowNormalizerRegistrations,
+  isShadowNormalizerRegistryEmpty,
+  registerShadowNormalizer,
+  resolveShadowNormalizer,
+  unregisterShadowNormalizer,
+  resetShadowNormalizerRegistryForTests,
+  SHADOW_ELIGIBILITY_ALLOWLIST_REGISTRY_VERSION,
+  createEligibilityAllowlistRegistry,
+  defaultEligibilityAllowlistRegistry,
+  getDefaultCapabilityAllowlist,
+  getDefaultOperationAllowlist,
+  getEligibilityAllowlistRegistration,
+  resolveEligibilityAllowlist,
+  resolveEligibilityAllowlistsFromRegistry,
+  listEligibilityAllowlistRegistrations,
+  isEligibilityAllowlistRegistryEmpty,
+  registerEligibilityAllowlist,
+  unregisterEligibilityAllowlist,
+  resetEligibilityAllowlistRegistryForTests,
 } from "./shadow/index.js";

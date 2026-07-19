@@ -79,9 +79,7 @@ export default function TournamentCourtSchedulePanel({
 
     setError(null);
     setMessage(
-      `${result.message || "Đã khóa sân cho giải."}${
-        result.failed?.length ? ` · ${result.failed.length} sân trùng lịch.` : ""
-      }`
+      result.message || "Đã khóa sân cho giải."
     );
     onSaved?.(result);
   };

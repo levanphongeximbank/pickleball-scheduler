@@ -25,6 +25,7 @@ import {
 } from "@mui/material";
 import AddIcon from "@mui/icons-material/Add";
 import PersonRemoveIcon from "@mui/icons-material/PersonRemove";
+import RestoreIcon from "@mui/icons-material/Restore";
 
 import { useAuth } from "../../../context/AuthContext.jsx";
 import { PERMISSIONS } from "../../../auth/permissions.js";
@@ -36,12 +37,15 @@ import {
   getClubRatings,
   getTenantPlayers,
   removeMemberFromClub,
+  restoreMemberToClub,
   updateClubMemberRole,
   updateClubMemberStatus,
   canViewFullClubMembers,
   canDeleteClubMembers,
+  canManageClubGovernance,
   canApproveClubMembershipRequests,
   countActiveClubMembers,
+  formatMemberCommandUserError,
   getClubMemberStatusLabel,
   isClubMemberStatusActive,
   isClubStorageV2Enabled,
@@ -82,9 +86,12 @@ export default function ClubMembersTab({ club, tenantId, onRefresh }) {
   });
   const [memberCommandReady, setMemberCommandReady] = useState(!isClubStorageV2Enabled());
   const [mutationBusy, setMutationBusy] = useState(false);
+  const [statusFilter, setStatusFilter] = useState("active");
+  const [restoreTarget, setRestoreTarget] = useState(null);
 
   const fullAccess = canViewFullClubMembers(user, club);
   const canApproveRequests = canApproveClubMembershipRequests(user, club);
+  const governanceWriteAllowed = canManageClubGovernance(user, club);
   // Phase 45A.2 — member roster reads flow through canonicalMembershipRepository
   // whenever cloud membership is authoritative (Club Storage V2 OR canonical repo flag).
   // The legacy blob join is used only in explicit offline/no-Supabase mode.
@@ -124,15 +131,18 @@ export default function ClubMembersTab({ club, tenantId, onRefresh }) {
 
   const canManage =
     fullAccess &&
+    governanceWriteAllowed &&
     (!rbacEnabled ||
       !isAuthenticated ||
       can(PERMISSIONS.PLAYER_UPDATE, { clubId: club.id, venueId: tenantId }));
 
-  // Phase 45A.4C.4 — add/remove enabled under V2 when mutation RPC probe passes.
+  // Phase 1C — write visibility aligns with Phase 1B governance authz (not list-only probe).
   // Role/status remain legacy-only (disabled while canonical membership read is on).
-  const addRemoveEnabled = canManage && (canonicalMembershipRead ? memberCommandReady : true);
+  const addRemoveEnabled =
+    canManage && (canonicalMembershipRead ? memberCommandReady : true);
   const roleStatusEnabled = canManage && !canonicalMembershipRead;
   const canRemoveMembers = canDeleteClubMembers(user, club) && addRemoveEnabled;
+  const canRestoreMembers = addRemoveEnabled && canonicalMembershipRead;
 
   useEffect(() => {
     let cancelled = false;
@@ -197,6 +207,21 @@ export default function ClubMembersTab({ club, tenantId, onRefresh }) {
   }, [club.id, tenantId, revision, canonicalMembershipRead, fullAccess]);
 
   const members = memberState.list;
+  const filteredMembers = useMemo(() => {
+    if (statusFilter === "all") {
+      return members;
+    }
+    if (statusFilter === "active") {
+      return members.filter((m) => isClubMemberStatusActive(m.status));
+    }
+    if (statusFilter === "left") {
+      return members.filter((m) => m.status === CLUB_MEMBER_STATUSES.LEFT);
+    }
+    if (statusFilter === "removed") {
+      return members.filter((m) => m.status === CLUB_MEMBER_STATUSES.REMOVED);
+    }
+    return members;
+  }, [members, statusFilter]);
   const membersLoading =
     canonicalMembershipRead &&
     fullAccess &&
@@ -206,6 +231,11 @@ export default function ClubMembersTab({ club, tenantId, onRefresh }) {
     memberState.state === MEMBERSHIP_READ_STATE.ERROR
       ? "Không tải được danh sách thành viên. Vui lòng thử lại."
       : null;
+
+  const bumpAfterMutation = () => {
+    setRevision((v) => v + 1);
+    onRefresh?.();
+  };
 
   const ratings = useMemo(
     () => getClubRatings(club.id, tenantId),
@@ -246,15 +276,19 @@ export default function ClubMembersTab({ club, tenantId, onRefresh }) {
     setError(null);
     setMutationBusy(true);
     try {
-      const result = await addMemberToClub(club.id, selectedPlayerId, tenantId);
+      const result = await addMemberToClub(club.id, selectedPlayerId, tenantId, {
+        expectedVersion: club.version ?? null,
+      });
       if (!result.ok) {
-        setError(result.error || "Không thêm được thành viên.");
+        setError(formatMemberCommandUserError(result, "Không thêm được thành viên."));
+        if (result.serverCode === "VERSION_CONFLICT") {
+          bumpAfterMutation();
+        }
         return;
       }
       setAddOpen(false);
       setSelectedPlayerId("");
-      setRevision((v) => v + 1);
-      onRefresh?.();
+      bumpAfterMutation();
     } finally {
       setMutationBusy(false);
     }
@@ -272,15 +306,40 @@ export default function ClubMembersTab({ club, tenantId, onRefresh }) {
     try {
       const result = await removeMemberFromClub(club.id, removeTarget.playerId, tenantId, {
         targetUserId: removeTarget.userId || null,
-        expectedVersion: removeTarget.version ?? null,
+        expectedVersion: removeTarget.version ?? club.version ?? null,
       });
       if (!result.ok) {
-        setError(result.error || "Không gỡ được thành viên.");
+        setError(formatMemberCommandUserError(result, "Không gỡ được thành viên."));
+        if (result.serverCode === "VERSION_CONFLICT") {
+          bumpAfterMutation();
+        }
         return;
       }
       setRemoveTarget(null);
-      setRevision((v) => v + 1);
-      onRefresh?.();
+      bumpAfterMutation();
+    } finally {
+      setMutationBusy(false);
+    }
+  };
+
+  const handleRestore = async () => {
+    if (!restoreTarget || mutationBusy) return;
+    setError(null);
+    setMutationBusy(true);
+    try {
+      const result = await restoreMemberToClub(club.id, restoreTarget.playerId, tenantId, {
+        targetUserId: restoreTarget.userId || null,
+        expectedVersion: restoreTarget.version ?? club.version ?? null,
+      });
+      if (!result.ok) {
+        setError(formatMemberCommandUserError(result, "Không khôi phục được thành viên."));
+        if (result.serverCode === "VERSION_CONFLICT") {
+          bumpAfterMutation();
+        }
+        return;
+      }
+      setRestoreTarget(null);
+      bumpAfterMutation();
     } finally {
       setMutationBusy(false);
     }
@@ -495,10 +554,32 @@ export default function ClubMembersTab({ club, tenantId, onRefresh }) {
         </Alert>
       )}
 
-      <Stack direction="row" justifyContent="space-between" mb={2}>
-        <Typography variant="subtitle1" fontWeight={600}>
-          {countActiveClubMembers(members)} thành viên đang hoạt động
-        </Typography>
+      <Stack direction="row" justifyContent="space-between" alignItems="center" mb={2} flexWrap="wrap" gap={1}>
+        <Stack direction="row" spacing={1} alignItems="center" flexWrap="wrap">
+          <Typography variant="subtitle1" fontWeight={600}>
+            {countActiveClubMembers(members)} thành viên đang hoạt động
+          </Typography>
+          {canonicalMembershipRead && (
+            <TextField
+              select
+              size="small"
+              label="Lọc"
+              value={statusFilter}
+              onChange={(e) => setStatusFilter(e.target.value)}
+              sx={{ minWidth: 140 }}
+            >
+              <MenuItem value="active">Đang hoạt động</MenuItem>
+              <MenuItem value="left">Đã rời</MenuItem>
+              <MenuItem value="removed">Đã gỡ</MenuItem>
+              <MenuItem value="all">Tất cả</MenuItem>
+            </TextField>
+          )}
+          {club.version != null && (
+            <Typography variant="caption" color="text.secondary">
+              CLB v{club.version}
+            </Typography>
+          )}
+        </Stack>
         {addRemoveEnabled && (
           <Button
             startIcon={<AddIcon />}
@@ -516,10 +597,14 @@ export default function ClubMembersTab({ club, tenantId, onRefresh }) {
         <Stack alignItems="center" sx={{ py: 4 }}>
           <CircularProgress size={28} aria-label="Đang tải thành viên" />
         </Stack>
-      ) : members.length === 0 ? (
+      ) : filteredMembers.length === 0 ? (
         <Paper sx={{ p: 3, textAlign: "center" }}>
           <Typography color="text.secondary">
-            {membersError ? "Không tải được danh sách thành viên." : "CLB chưa có thành viên."}
+            {membersError
+              ? "Không tải được danh sách thành viên."
+              : statusFilter === "active"
+                ? "CLB chưa có thành viên đang hoạt động."
+                : "Không có thành viên trong bộ lọc này."}
           </Typography>
         </Paper>
       ) : (
@@ -535,15 +620,19 @@ export default function ClubMembersTab({ club, tenantId, onRefresh }) {
                 <TableCell>Vai trò</TableCell>
                 <TableCell>Ngày tham gia</TableCell>
                 <TableCell>Trạng thái</TableCell>
-                    {canRemoveMembers && (
+                    {(canRemoveMembers || canRestoreMembers) && (
                       <TableCell align="right">Thao tác</TableCell>
                     )}
               </TableRow>
             </TableHead>
             <TableBody>
-              {members.map((member) => {
+              {filteredMembers.map((member) => {
                 const player = playersById.get(member.playerId);
                 const rating = ratingByPlayer.get(member.playerId);
+                const canRestoreRow =
+                  canRestoreMembers &&
+                  (member.status === CLUB_MEMBER_STATUSES.LEFT ||
+                    member.status === CLUB_MEMBER_STATUSES.REMOVED);
                 return (
                   <TableRow key={member.id} hover>
                     <TableCell>{member.displayName || player?.name || member.playerId}</TableCell>
@@ -592,9 +681,10 @@ export default function ClubMembersTab({ club, tenantId, onRefresh }) {
                         }
                       />
                     </TableCell>
-                    {canRemoveMembers && (
+                    {(canRemoveMembers || canRestoreMembers) && (
                       <TableCell align="right">
                         {isClubMemberStatusActive(member.status) &&
+                          canRemoveMembers &&
                           !isProtectedGovernanceMember(member) && (
                           <Tooltip title="Xóa khỏi CLB">
                             <span>
@@ -605,6 +695,20 @@ export default function ClubMembersTab({ club, tenantId, onRefresh }) {
                                 onClick={() => setRemoveTarget(member)}
                               >
                                 <PersonRemoveIcon fontSize="small" />
+                              </IconButton>
+                            </span>
+                          </Tooltip>
+                        )}
+                        {canRestoreRow && (
+                          <Tooltip title="Khôi phục vào CLB">
+                            <span>
+                              <IconButton
+                                size="small"
+                                color="primary"
+                                disabled={mutationBusy}
+                                onClick={() => setRestoreTarget(member)}
+                              >
+                                <RestoreIcon fontSize="small" />
                               </IconButton>
                             </span>
                           </Tooltip>
@@ -673,6 +777,29 @@ export default function ClubMembersTab({ club, tenantId, onRefresh }) {
           </Button>
           <Button color="error" variant="contained" disabled={mutationBusy} onClick={handleRemove}>
             {mutationBusy ? "Đang gỡ…" : "Xóa"}
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      <Dialog open={Boolean(restoreTarget)} onClose={() => !mutationBusy && setRestoreTarget(null)}>
+        <DialogTitle>Khôi phục thành viên</DialogTitle>
+        <DialogContent>
+          <Typography>
+            Khôi phục{" "}
+            <strong>
+              {restoreTarget?.displayName ||
+                playersById.get(restoreTarget?.playerId)?.name ||
+                restoreTarget?.playerId}
+            </strong>{" "}
+            vào CLB với trạng thái đang hoạt động?
+          </Typography>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setRestoreTarget(null)} disabled={mutationBusy}>
+            Hủy
+          </Button>
+          <Button variant="contained" disabled={mutationBusy} onClick={handleRestore}>
+            {mutationBusy ? "Đang khôi phục…" : "Khôi phục"}
           </Button>
         </DialogActions>
       </Dialog>

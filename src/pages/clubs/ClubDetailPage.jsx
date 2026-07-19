@@ -6,6 +6,7 @@ import {
   Breadcrumbs,
   Button,
   Chip,
+  CircularProgress,
   Link,
   Stack,
   Tab,
@@ -23,7 +24,9 @@ import {
   canApproveClubRegistration,
   approveClubRegistration,
   rejectClubRegistration,
+  isClubStorageV2Enabled,
 } from "../../features/club/index.js";
+import { useResolvedClubRecord } from "../../features/club/hooks/useResolvedClubRecord.js";
 import ClubOverviewTab from "./tabs/ClubOverviewTab.jsx";
 import ClubMembersTab from "./tabs/ClubMembersTab.jsx";
 import ClubRatingsTab from "./tabs/ClubRatingsTab.jsx";
@@ -46,10 +49,18 @@ export default function ClubDetailPage() {
   const { user } = useAuth();
   const [localRevision, setLocalRevision] = useState(0);
 
-  const club = useMemo(
-    () => getClubById(clubId, currentTenantId),
+  const registryClub = useMemo(
+    () => (isClubStorageV2Enabled() ? null : getClubById(clubId, currentTenantId)),
     [clubId, currentTenantId, revision, localRevision]
   );
+
+  const { clubRecord: v2Club, clubLoading, clubError, reload } = useResolvedClubRecord({
+    clubId,
+    tenantId: currentTenantId,
+    revision: revision + localRevision,
+  });
+
+  const club = isClubStorageV2Enabled() ? v2Club : registryClub;
 
   const fullMemberAccess = useMemo(
     () => (club ? canViewFullClubMembers(user, club) : false),
@@ -65,7 +76,12 @@ export default function ClubDetailPage() {
   const tabIndex = Math.max(0, TABS.findIndex((t) => t.key === activeTab));
   const safeTab = TABS[tabIndex]?.key || "overview";
 
-  const handleRefresh = () => setLocalRevision((v) => v + 1);
+  const handleRefresh = () => {
+    setLocalRevision((v) => v + 1);
+    if (isClubStorageV2Enabled()) {
+      reload();
+    }
+  };
 
   const showApprovalActions = club && canApproveClubRegistration(user, club);
 
@@ -99,10 +115,20 @@ export default function ClubDetailPage() {
     return <Alert severity="warning">Chưa xác định được tenant.</Alert>;
   }
 
+  if (isClubStorageV2Enabled() && clubLoading && !club) {
+    return (
+      <Stack alignItems="center" sx={{ py: 6 }}>
+        <CircularProgress size={28} aria-label="Đang tải CLB" />
+      </Stack>
+    );
+  }
+
   if (!club) {
     return (
       <Box>
-        <Alert severity="error">Không tìm thấy CLB hoặc bạn không có quyền truy cập.</Alert>
+        <Alert severity="error">
+          {clubError || "Không tìm thấy CLB hoặc bạn không có quyền truy cập."}
+        </Alert>
         <Link component={RouterLink} to="/manage/clubs" sx={{ mt: 2, display: "inline-block" }}>
           ← Quay lại danh sách CLB
         </Link>
@@ -184,20 +210,26 @@ function StackTitle({ club }) {
           {club.description}
         </Typography>
       )}
-      <Chip
-        size="small"
-        sx={{ mt: 1 }}
-        label={CLUB_STATUS_LABELS[club.status] || club.status}
-        color={
-          club.status === CLUB_STATUSES.ACTIVE
-            ? "success"
-            : club.status === CLUB_STATUSES.PENDING_SETUP
-              ? "warning"
-              : club.status === CLUB_STATUSES.PENDING_APPROVAL
+      <Stack direction="row" spacing={1} alignItems="center" sx={{ mt: 1 }}>
+        <Chip
+          size="small"
+          label={CLUB_STATUS_LABELS[club.status] || club.status}
+          color={
+            club.status === CLUB_STATUSES.ACTIVE
+              ? "success"
+              : club.status === CLUB_STATUSES.PENDING_SETUP
                 ? "warning"
-                : "default"
-        }
-      />
+                : club.status === CLUB_STATUSES.PENDING_APPROVAL
+                  ? "warning"
+                  : "default"
+          }
+        />
+        {club.version != null && (
+          <Typography variant="caption" color="text.secondary">
+            v{club.version}
+          </Typography>
+        )}
+      </Stack>
     </Box>
   );
 }

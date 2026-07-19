@@ -16,6 +16,12 @@ import {
   mapCourtMatchHistoryToRepeatCounts,
   mapCourtSessionPlayersToSnapshots,
 } from "../../competition-core/constraints/adapters/legacyRuleMappers.js";
+import {
+  CE_AVAILABILITY_ERROR,
+  CE_AVAILABILITY_MODE,
+  resolveCeAvailabilityMode,
+  validateCourtsForCourtEngine,
+} from "../services/courtEngineAvailabilityGuard.js";
 
 function playerRating(player) {
   return Number(player?.rating ?? player?.level ?? 3.5);
@@ -328,9 +334,51 @@ export function generateCourtAssignments(input = {}) {
   const lockedIds = new Set((lockedPlayerIds || []).map(String));
 
   const busyCourtIds = collectBusyCourtIds(courtStates, activeAssignments);
-  const availableCourts = (courts || []).filter((court) =>
+  let availableCourts = (courts || []).filter((court) =>
     isCourtAvailable(court, courtStates, busyCourtIds)
   );
+
+  const availabilityMode = resolveCeAvailabilityMode(input);
+  if (availabilityMode === CE_AVAILABILITY_MODE.REQUIRED) {
+    const gate = validateCourtsForCourtEngine({
+      clubId: input.clubId || input.session?.clubId || null,
+      venueId: input.venueId || input.session?.venueId || null,
+      date: input.date,
+      startTime: input.startTime,
+      endTime: input.endTime,
+      courtIds: availableCourts.map((court) => court.id),
+      clusterId: input.clusterId || null,
+      context: input.availabilityContext || null,
+      options: input,
+    });
+
+    if (
+      !gate.ok &&
+      (gate.code === CE_AVAILABILITY_ERROR.CLUB_REQUIRED ||
+        gate.code === CE_AVAILABILITY_ERROR.INVALID_TIME_WINDOW ||
+        gate.code === CE_AVAILABILITY_ERROR.DATA_UNAVAILABLE)
+    ) {
+      return {
+        assignments: [],
+        unassignedPlayers: waitingPlayers.map((p) => p.id || p.playerId),
+        warnings: [gate.error || "Venue & Court availability blocked auto-assign."],
+        reasons: [],
+        scoreBreakdown: [],
+        ok: false,
+        code: gate.code,
+        error: gate.error,
+        unavailable: gate.unavailable || [],
+      };
+    }
+
+    if (!gate.ok && gate.unavailable?.length) {
+      const blocked = new Set(gate.unavailable.map((item) => String(item.courtId)));
+      availableCourts = availableCourts.filter((court) => !blocked.has(String(court.id)));
+      warnings.push(
+        `${gate.unavailable.length} sân bị loại bởi Venue & Court availability.`
+      );
+    }
+  }
 
   if (!availableCourts.length) {
     warnings.push("Không có sân trống.");
@@ -478,11 +526,69 @@ export function generateCourtAssignments(input = {}) {
 }
 
 export function confirmAssignments(session, proposedAssignments = [], options = {}) {
+  const proposals = proposedAssignments || [];
+  if (!proposals.length) {
+    return { ok: false, error: "Không có assignment để xác nhận.", code: "EMPTY_PROPOSALS" };
+  }
+
+  const courtIds = proposals.map((item) => normalizeCourtId(item.courtId));
+  const busyCourtIds = collectBusyCourtIds(
+    session.courtStates || {},
+    session.assignments || []
+  );
+
+  // Court Engine session rules (always).
+  for (const courtId of courtIds) {
+    const state = session.courtStates?.[courtId] || {};
+    if (busyCourtIds.has(courtId)) {
+      return {
+        ok: false,
+        code: CE_AVAILABILITY_ERROR.SESSION_COURT_BUSY,
+        error: `Sân ${courtId} đang bận trong session Court Engine.`,
+      };
+    }
+    if (state.locked || state.status === COURT_RUNTIME_STATUS.LOCKED) {
+      return {
+        ok: false,
+        code: CE_AVAILABILITY_ERROR.COURT_LOCKED,
+        error: `Sân ${courtId} đang bị khóa trong session.`,
+      };
+    }
+    if (state.status === COURT_RUNTIME_STATUS.MAINTENANCE) {
+      return {
+        ok: false,
+        code: CE_AVAILABILITY_ERROR.MAINTENANCE,
+        error: `Sân ${courtId} đang bảo trì trong session.`,
+      };
+    }
+  }
+
+  // Venue & Court canonical guard (re-check at confirmation — never trust preview cache).
+  const gate = validateCourtsForCourtEngine({
+    clubId: options.clubId || session.clubId || null,
+    venueId: options.venueId || session.venueId || null,
+    date: options.date,
+    startTime: options.startTime,
+    endTime: options.endTime,
+    courtIds,
+    clusterId: options.clusterId || null,
+    context: options.availabilityContext || null,
+    options,
+  });
+  if (!gate.ok) {
+    return {
+      ok: false,
+      code: gate.code,
+      error: gate.error,
+      unavailable: gate.unavailable || [],
+    };
+  }
+
   const now = new Date().toISOString();
   const assignments = [...(session.assignments || [])];
   let courtStates = { ...(session.courtStates || {}) };
 
-  proposedAssignments.forEach((proposal) => {
+  proposals.forEach((proposal) => {
     const confirmed = {
       ...proposal,
       status: ASSIGNMENT_STATUS.ASSIGNED,
@@ -498,7 +604,7 @@ export function confirmAssignments(session, proposedAssignments = [], options = 
     });
   });
 
-  const playerIds = proposedAssignments.flatMap((item) => item.players || []);
+  const playerIds = proposals.flatMap((item) => item.players || []);
   const queue = (session.queue || []).filter(
     (entry) => !playerIds.includes(String(entry.playerId))
   );

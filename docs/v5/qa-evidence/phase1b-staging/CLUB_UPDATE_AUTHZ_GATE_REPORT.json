@@ -1,0 +1,130 @@
+{
+  "phase": "1B",
+  "kind": "CLUB_UPDATE_AUTHZ_GATE_APPLY_AND_QA",
+  "stagingRef": "qyewbxjsiiyufanzcjcq",
+  "productionRef": "expuvcohlcjzvrrauvud",
+  "productionTouched": false,
+  "commit": "1d5ac6e57e73f38c1c29f6c09bc07e01f139e773",
+  "approvedCommit": "1d5ac6e57e73f38c1c29f6c09bc07e01f139e773",
+  "startedAt": "2026-07-18T11:56:04.946Z",
+  "apply": {
+    "file": "docs/v5/phase1b/PHASE_1B_CLUB_UPDATE_AUTHZ_SECURITY_GATE.sql",
+    "checksum": "de68a529b98ad8113a805a048f112c367186a3bb644abe33ec8b5fcc2bcc983e",
+    "result": "PASS",
+    "finishedAt": "2026-07-18T11:56:06.505Z"
+  },
+  "verify": {
+    "helper_exists": true,
+    "uses_phase42_can_update_club": true,
+    "no_bare_tenant_member": true,
+    "vp_assign_untouched": true
+  },
+  "matrix": [
+    {
+      "id": "UPDATE_SUPER_ADMIN",
+      "ok": true,
+      "expected": "ALLOW",
+      "actual": "ALLOW",
+      "note": null
+    },
+    {
+      "id": "UPDATE_Club Owner",
+      "ok": true,
+      "expected": "ALLOW",
+      "actual": "ALLOW",
+      "note": null
+    },
+    {
+      "id": "UPDATE_Club President",
+      "ok": true,
+      "expected": "ALLOW",
+      "actual": "ALLOW",
+      "note": null
+    },
+    {
+      "id": "UPDATE_Authorized Tenant Owner/Admin",
+      "ok": true,
+      "expected": "ALLOW",
+      "actual": "ALLOW",
+      "note": null
+    },
+    {
+      "id": "UPDATE_Ordinary tenant member",
+      "ok": true,
+      "expected": "DENY",
+      "actual": "DENY:FORBIDDEN",
+      "note": null
+    },
+    {
+      "id": "UPDATE_Unrelated authenticated user",
+      "ok": true,
+      "expected": "DENY",
+      "actual": "DENY:FORBIDDEN",
+      "note": null
+    },
+    {
+      "id": "UPDATE_Ordinary club member / Player",
+      "ok": true,
+      "expected": "DENY",
+      "actual": "DENY:FORBIDDEN",
+      "note": null
+    },
+    {
+      "id": "UPDATE_Vice President alone",
+      "ok": true,
+      "expected": "DENY",
+      "actual": "DENY:FORBIDDEN",
+      "note": null
+    },
+    {
+      "id": "persistence_authorized_reload",
+      "ok": true,
+      "authorized_update_ok": true,
+      "reload_name_matches": true,
+      "version_before": 104,
+      "version_after": 105,
+      "version_incremented": true,
+      "stale_rejected": true,
+      "stale_code": "VERSION_CONFLICT"
+    },
+    {
+      "id": "version_increment",
+      "ok": true,
+      "expected": 105,
+      "actual": 105
+    },
+    {
+      "id": "stale_version_conflict",
+      "ok": true,
+      "expected": "VERSION_CONFLICT",
+      "actual": "VERSION_CONFLICT"
+    },
+    {
+      "id": "audit_club_update",
+      "ok": true,
+      "club_update_recent_count": 7
+    }
+  ],
+  "persistence": {
+    "authorized_update_ok": true,
+    "reload_name_matches": true,
+    "version_before": 104,
+    "version_after": 105,
+    "version_incremented": true,
+    "stale_rejected": true,
+    "stale_code": "VERSION_CONFLICT"
+  },
+  "audit": {
+    "club_update_recent_count": 7,
+    "ok": true
+  },
+  "livePredicate": "CREATE OR REPLACE FUNCTION public.phase42_can_update_club(p_club_id text) RETURNS boolean LANGUAGE sql STABLE SECURITY DEFINER SET search_path TO 'public' AS $function$ select public.phase42_is_platform_super_admin() or public.phase42_has_gov_role(p_club_id, array['club_owner', 'president']) or exists ( select 1 from public.clubs c where c.id = p_club_id and c.deleted_at is null and public.user_has_permission('club.update') and ( exists ( select 1 from public.tenant_members tm where tm.tenant_id = c.tenant_id and tm.user_id = auth.uid() and tm.status = 'active' and tm.role_code = 'tenant_owner' ) or exists ( select 1 from public.profiles p where p.id = auth.uid() and p.venue_id = c.tenant_id and upper(coalesce(p.role, '')) in ( 'VENUE_OWNER', 'COURT_OWNER', 'TENANT_OWNER' ) ) ) ); $function$",
+  "status": "PASS",
+  "clubId": "club-smoke-42i1",
+  "totals": {
+    "total": 12,
+    "passed": 12,
+    "failed": 0
+  },
+  "finishedAt": "2026-07-18T11:56:34.792Z"
+}

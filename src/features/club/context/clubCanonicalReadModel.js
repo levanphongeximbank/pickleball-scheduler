@@ -109,11 +109,19 @@ export function resolveActiveClubSelection({ preferredClubId, visibleClubs }) {
     }
   }
 
-  const fallback = list[0] || null;
+  // Phase 2F: never silent first-of-many. Auto-select only when exactly one club.
+  if (list.length === 1) {
+    return {
+      activeClubId: list[0].id,
+      activeClub: list[0],
+      stale: Boolean(preferred),
+    };
+  }
+
   return {
-    activeClubId: fallback ? fallback.id : null,
-    activeClub: fallback,
-    stale: Boolean(preferred),
+    activeClubId: null,
+    activeClub: null,
+    stale: Boolean(preferred) || list.length > 1,
   };
 }
 

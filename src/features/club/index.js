@@ -61,11 +61,13 @@ export {
   finalizeSelfRegisteredClubCloud,
   listLocalPresidentClubsForUser,
   canTransferClubOwnership,
+  canShowTransferClubOwnership,
   transferClubOwnership,
   transferClubPresident,
   assignClubVicePresident,
   setClubVicePresidents,
   listClubGovernanceCandidates,
+  listClubGovernanceCandidatesAsync,
   deleteClubAsOwner,
 } from "./services/clubGovernanceService.js";
 
@@ -95,10 +97,12 @@ export {
   mapV2MemberRowToUi,
   addMemberToClub,
   removeMemberFromClub,
+  restoreMemberToClub,
   updateClubMemberRole,
   updateClubMemberStatus,
   resolveTargetUserIdForMemberCommand,
   probeClubMemberMutationAccess,
+  formatMemberCommandUserError,
   isProtectedGovernanceMember,
 } from "./services/clubMemberService.js";
 
@@ -172,9 +176,12 @@ export {
   rpcV2ClubAssignOwner,
   rpcV2ClubClearOwner,
   rpcV2ClubTransferPresident,
+  rpcV2ClubAssignVicePresident,
+  rpcV2ClubClearVicePresident,
   rpcV2ClubLeaveMembership,
   rpcV2ClubAddMember,
   rpcV2ClubRemoveMember,
+  rpcV2ClubRestoreMember,
   rpcV2GetMyActiveMembership,
   mapV2ClubToUiClub,
 } from "./services/clubStorageV2RpcService.js";
