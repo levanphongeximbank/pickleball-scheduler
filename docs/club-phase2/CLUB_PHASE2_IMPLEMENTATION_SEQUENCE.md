@@ -3,7 +3,7 @@
 **Status:** FROZEN / **LOCKED** recommendation (documentation only)  
 **Date:** 2026-07-19  
 **Authority:** Phase 2B Domain & API Freeze  
-**Phase status:** 2A CLOSED · 2B LOCKED · **2C IMPLEMENTED** (awaiting Owner gate) · **Next: 2D**  
+**Phase status:** 2A CLOSED · 2B LOCKED · **2C CLOSED** · **2D IN PROGRESS** · Next: 2E  
 **Product decisions:** Invitation GO · Captain/Coach GO (0..N; optional primary Captain) · Committee **EXCLUDED**
 
 ---
@@ -13,9 +13,9 @@
 ```text
 2B  Domain & API freeze              ← LOCKED (docs only)
  ↓
-2C  Membership & roster parity       ← IMPLEMENTED (WS-A branch; Owner gate)
+2C  Membership & roster parity       ← CLOSED (impl + cancel-audit Prod)
  ↓
-2D  Governance writer certification  ← NEXT
+2D  Governance writer certification  ← IN PROGRESS (this branch)
  ↓
 2E  Invitation + Captain/Coach SoT
  ↓
@@ -26,7 +26,8 @@
 2H  Final production certification
 ```
 
-This matches repository evidence: create/update already certified (45A.3F); membership/governance still dual-path; Invitation/Captain/Coach have **no** cloud SoT yet; blob leaks are cross-module and should not block membership certification.
+This matches repository evidence: create/update already certified (45A.3F); membership certified (2C); governance writers certified on this branch; Invitation/Captain/Coach have **no** cloud SoT yet; blob leaks are cross-module and should not block governance certification.
+
 
 ---
 
