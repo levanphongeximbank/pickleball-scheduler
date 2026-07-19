@@ -41,6 +41,8 @@ import {
   PROFILE_GENDER_OPTIONS,
   toProfileGenderFormValue,
 } from "../../features/identity/utils/profileGender.js";
+import { useAuthenticatedSelfPlayerProfile } from "../../features/player/hooks/useAuthenticatedSelfPlayerProfile.js";
+import SelfPlayerProfileFoundationRead from "../../features/player/components/SelfPlayerProfileFoundationRead.jsx";
 
 const CURRENT_YEAR = new Date().getFullYear();
 
@@ -60,6 +62,11 @@ export default function AthleteSelfProfilePage() {
   const [loading, setLoading] = useState(false);
   const [profileReady, setProfileReady] = useState(false);
   const [ratingTick, setRatingTick] = useState(0);
+
+  const playerProfileRead = useAuthenticatedSelfPlayerProfile({
+    authUserId: user?.id || null,
+    enabled: Boolean(user?.id),
+  });
 
   useEffect(() => {
     let cancelled = false;
@@ -83,6 +90,15 @@ export default function AthleteSelfProfilePage() {
       cancelled = true;
     };
   }, [user?.id]);
+
+  // Prefer canonical Player Management birthYear when the foundation read is loaded.
+  useEffect(() => {
+    if (!playerProfileRead.ok || !playerProfileRead.fields) return;
+    const year = playerProfileRead.fields.birthYear?.raw;
+    if (year != null) {
+      setBirthYear(String(year));
+    }
+  }, [playerProfileRead.ok, playerProfileRead.fields]);
 
   const ratingRecord = useMemo(() => {
     void ratingTick;
@@ -126,6 +142,7 @@ export default function AthleteSelfProfilePage() {
     );
     refresh();
     setRatingTick((value) => value + 1);
+    playerProfileRead.reload();
     setMessage({ type: "success", text: "Đã cập nhật hồ sơ." });
   };
 
@@ -271,6 +288,17 @@ export default function AthleteSelfProfilePage() {
                     Lưu hồ sơ
                   </Button>
                 </Stack>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardContent>
+                <SelfPlayerProfileFoundationRead
+                  status={playerProfileRead.status}
+                  message={playerProfileRead.message}
+                  fields={playerProfileRead.fields}
+                  onRetry={playerProfileRead.reload}
+                />
               </CardContent>
             </Card>
 
