@@ -22,10 +22,7 @@ import {
 } from "./contracts/drawIdentity.js";
 import { createLegacyDrawAdapter } from "./adapters/LegacyDrawAdapter.js";
 import { DRAW_RUNTIME_ERROR_CODE } from "./errors/runtimeErrorCodes.js";
-import {
-  isDrawRuntimeError,
-  DrawRuntimeError,
-} from "./errors/DrawRuntimeError.js";
+import { isDrawRuntimeError } from "./errors/DrawRuntimeError.js";
 import {
   createDrawIdentityLookup,
   requireDrawIdentity,

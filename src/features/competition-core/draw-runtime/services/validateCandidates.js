@@ -13,10 +13,9 @@ import { normalizeCandidates } from "./normalizeCandidates.js";
  * Extract candidateReference from a seed assignment's candidateIdentityKey
  * when the key follows `...::CANDIDATE::ref` pattern, else use metadata.
  * @param {import('../contracts/drawSeedReference.js').DrawSeedReference} ref
- * @param {string} drawIdentityKey
  * @returns {string}
  */
-function resolveReferenceFromSeed(ref, drawIdentityKey) {
+function resolveReferenceFromSeed(ref) {
   if (ref.candidateReference) return String(ref.candidateReference);
   const key = String(ref.candidateIdentityKey || "");
   const marker = "::CANDIDATE::";
@@ -96,7 +95,7 @@ export function mergeCandidatesAndSeeds(input) {
 
   if (!hasCandidates && hasSeeds) {
     return seedRefs.map((ref, index) => {
-      const candidateReference = resolveReferenceFromSeed(ref, drawIdentityKey);
+      const candidateReference = resolveReferenceFromSeed(ref);
       // Prefer foreign candidateIdentityKey from seeding when present & non-empty
       const foreignKey = String(ref.candidateIdentityKey || "").trim();
       const candidateIdentityKey =
@@ -143,7 +142,7 @@ export function mergeCandidatesAndSeeds(input) {
       }
       byCandKey.set(ref.candidateIdentityKey, ref);
     }
-    const cref = resolveReferenceFromSeed(ref, drawIdentityKey);
+    const cref = resolveReferenceFromSeed(ref);
     if (cref) byRef.set(cref, ref);
   }
 
