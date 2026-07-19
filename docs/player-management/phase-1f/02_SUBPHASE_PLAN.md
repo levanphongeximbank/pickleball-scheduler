@@ -36,7 +36,7 @@ Do not open public/directory work that bypasses the projector.
 **Branch:** `feature/player-phase-1f-b-privacy-public-projector`  
 **Sub-order:** 1F-B1 (projector) → 1F-B2 (facade wire-up) → 1F-B3 (optional public UI).
 
-**Status:** 1F-B1 implementation evidence in `06_PHASE_1F_B1_IMPLEMENTATION_EVIDENCE.md`. 1F-B2/B3 not started.
+**Status:** 1F-B1 evidence in `06_PHASE_1F_B1_IMPLEMENTATION_EVIDENCE.md`. 1F-B2 evidence in `07_PHASE_1F_B2_IMPLEMENTATION_EVIDENCE.md`. 1F-B3 not started.
 
 ## Deferred (post–1F)
 

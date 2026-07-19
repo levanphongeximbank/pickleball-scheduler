@@ -224,6 +224,7 @@ test("1B searchPlayers — read-only filter over injected roster", () => {
   const result = searchPlayers(
     { query: "lan", gender: "Nữ" },
     {
+      mode: "internal",
       players: [
         { id: "p1", name: "Lan", gender: "Nữ" },
         { id: "p2", name: "Nam A", gender: "Nam" },
@@ -233,6 +234,7 @@ test("1B searchPlayers — read-only filter over injected roster", () => {
   );
   assert.equal(result.ok, true);
   assert.equal(result.meta.readOnly, true);
+  assert.equal(result.meta.mode, "internal");
   assert.equal(result.data.length, 2);
   assert.ok(result.data.every((p) => p.gender === "female"));
 });

@@ -117,6 +117,7 @@
   "tests/player-management-phase-1c-guard-auth-hotfix.test.js",
   "tests/player-management-phase-1f-a-self-profile-read.test.js",
   "tests/player-management-phase-1f-b1-public-projector.test.js",
+  "tests/player-management-phase-1f-b2-directory-wireup.test.js",
   "tests/player-history.test.js",
   "tests/tournament-mobile.test.js",
   "tests/tournament-regression.test.js",
