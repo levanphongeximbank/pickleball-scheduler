@@ -1,9 +1,9 @@
 # CORE-03 Phase 1E — Sibling Core Adapters
 
-**Wave:** 1 / CORE-03  
-**Phase:** 1E — Sibling Core Adapters  
-**Module:** `src/features/competition-core/registration-eligibility/adapters/`  
-**Branch intent:** `feature/competition-core-03-sibling-adapters`  
+**Wave:** 1 / CORE-03
+**Phase:** 1E — Sibling Core Adapters
+**Module:** `src/features/competition-core/registration-eligibility/adapters/`
+**Branch intent:** `feature/competition-core-03-sibling-adapters`
 **Adapter composition version:** `SIBLING_ADAPTERS_VERSION` = `core03-sibling-adapters-1.0.0`
 
 ---
