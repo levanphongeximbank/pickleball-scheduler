@@ -192,29 +192,6 @@ test("1F-B2 hidden profile is not exposed in public/directory", () => {
 });
 
 test("1F-B2 phone/email/DOB/demographics obey privacy flags", () => {
-  const players = [
-    rosterPlayer({
-      id: "p1",
-      name: "Flags",
-      phone: "0901",
-      email: "a@b.c",
-      birthDate: "1990-01-02",
-      birthYear: 1990,
-      gender: "female",
-      handedness: "right",
-      privacySettings: privacy({
-        showPhone: true,
-        showEmail: false,
-        showBirthDate: true,
-        showBirthYear: false,
-        showGender: false,
-        showHandedness: true,
-      }),
-      extra: {
-        activity_region: { provinceName: "HN" },
-      },
-    }),
-  ];
   // activity region on blob — adapt may not map; set via privacy on profile by injecting privacy only
   const result = searchPlayers(
     {},
