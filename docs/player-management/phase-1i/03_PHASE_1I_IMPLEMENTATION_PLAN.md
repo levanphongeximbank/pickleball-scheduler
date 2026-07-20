@@ -1,160 +1,103 @@
 # Phase 1I — Implementation Plan
 
-**Status:** Owner-approved scope freeze plan (`APPROVE_PHASE_1I_SCOPE_WITH_CHANGES`)  
-**Branch (docs only):** `feature/player-phase-1i-public-directory-discovery`  
-**Base `origin/main` SHA:** `0c37f1dfb152c24a9b9eccde5b0d1b3180773d7d`  
-**Remediation date:** 2026-07-20 (UTC+7)  
-**Document verdict:** `READY_FOR_SCOPE_FREEZE_COMMIT`  
+**Status:** Scope freeze on `main` (PR #112) + 1I-0 design remediated  
+**Owner design decision:** `APPROVE_PHASE_1I_0_READ_MODEL_DESIGN_WITH_CHANGES`  
+**1I-0 design branch:** `feature/player-phase-1i-0-read-model-design`  
+**Base `origin/main` SHA:** `bfb8980852d3c17174b3f77f17331605a5923457`  
+**Document verdict:** `READY_FOR_PHASE_1I_0_COMMIT`
 
-Do **not** implement feature code on the discovery branch unless Owner explicitly redirects after freeze commit.
+Do **not** implement feature/SQL apply until the matching Owner gate is issued.  
+**Do not authorize 1I-B before 1I-A.**
 
 ---
 
-## 0. Locked sub-phase plan (Owner-approved)
+## 0. Locked sub-phase sequence (Owner)
 
 | Sub-phase | Objective |
 |-----------|-----------|
-| **1I-0** | Owner-approved SQL/read-model **design** gate |
-| **1I-A** | Strict directory read contract, DTO, facade, and repository port |
-| **1I-B** | Durable SQL/RLS read model, **separately authorized** |
-| **1I-C** | Authenticated directory list UI at `/athletes` |
-| **1I-D** | Minimal public Player detail UI at `/athletes/:playerId` |
-| **1I-E** | Staging privacy, auth, pagination, and abuse QA |
-| **1I-F** | Final closure and **separate** Production rollout decision |
+| **1I-0** | SQL / read-model **design** gate |
+| **1I-A** | Facade / repository **application contract** |
+| **1I-B** | SQL authoring and Staging apply (**after 1I-A**) |
+| **1I-C** | Authenticated list UI `/athletes` |
+| **1I-D** | Minimal detail UI `/athletes/:playerId` |
+| **1I-E** | Privacy / Staging QA |
+| **1I-F** | Closure and separate Production gate |
 
 Platform MVP requires durable read (**1I-B**). Club-blob-only is **not** the approved product path.
 
 ---
 
-## 1I-0 — Owner-approved SQL/read-model design gate
+## 1I-0 — Design gate
 
 | Item | Detail |
 |------|--------|
-| Objective | Freeze design intent for authenticated directory reads: RPC vs view, column allow-list, filters (`publicProfileEnabled`, verified), pagination, **no** anon table grants, **no** browser service-role |
-| Files | Design docs under `docs/player-management/phase-1i/` (and/or future `phase-1i-sql` design-only package) — **no apply** |
-| Tests | None (design gate) |
-| SQL expectation | Design only — **do not write apply scripts unless Owner expands 1I-0**; **do not apply** |
-| Dependencies | Approved scope freeze |
-| Stop gate | Written Owner authorization to proceed to **1I-A** and (separately) to author/apply **1I-B** |
+| Status | Design package remediated — `READY_FOR_PHASE_1I_0_COMMIT` |
+| Docs | `05`–`09` under `docs/player-management/phase-1i/` |
+| Mechanism | `SECURITY DEFINER` RPCs `player_directory_search` / `player_directory_get` |
+| `search_path` | `pg_catalog, public` |
+| RPC output | Strict Directory-safe fields only; **server-side masking**; no `privacy_settings` |
+| Active rule | `EXCLUDE_SUSPENDED_ONLY` (`status IS DISTINCT FROM 'suspended'`) |
+| SQL apply | **None** in 1I-0 |
+| Stop gate | Commit 1I-0 docs → Owner `AUTHORIZE_PHASE_1I_A_DIRECTORY_CONTRACT` |
 
 ---
 
-## 1I-A — Strict directory read contract / DTO / facade / repository port
+## 1I-A — Facade / repository application contract
 
 | Item | Detail |
 |------|--------|
-| Objective | Directory projector/DTO (no `visible` to consumers), `listDirectoryPlayers` / `getDirectoryPlayerById` (names flexible), auth-first checks, search/region/pagination ports, repository **port** with test doubles |
-| Files likely affected | `src/features/player/projectors/*`, `services/*`, `repositories/*`, `index.js`, `tests/player-management-phase-1i-*.test.js` |
-| Tests | DTO exclusions; no `visible` on returned DTOs; eligibility; search isolation; pagination caps; auth-first fail closed |
-| SQL expectation | **None applied**; port may define adapter interface for 1I-B |
-| Dependencies | Scope freeze commit; 1I-0 design gate preferred before locking adapter assumptions |
-| Stop gate | Unit tests green; no UI; no Production SQL |
-
-### API sketch (non-binding names)
-
-```js
-listDirectoryPlayers({ query, activityRegion, cursor|offset, limit }, { session })
-getDirectoryPlayerById(playerId, { session })
-```
-
-Both return **only** eligible Directory DTOs (or empty / not-found outcomes) — never `{ visible: false }` to UI.
+| Objective | Directory DTO mapping, auth-first facade, repository port + test doubles aligned to strict RPC contract |
+| APIs | `searchPublicDirectoryPlayers`, `getPublicDirectoryPlayer` |
+| Tests | DTO exclusions; no privacy_settings in responses; auth-first; invalid cursor; pagination caps |
+| SQL | **None applied**; port interfaces match 1I-0 contract |
+| Dependencies | Approved + committed 1I-0 design |
+| Stop gate | Unit tests green → then Owner may authorize **1I-B** |
 
 ---
 
-## 1I-B — Durable SQL/RLS read model (separately authorized)
+## 1I-B — SQL authoring and Staging apply
 
 | Item | Detail |
 |------|--------|
-| Objective | Staging-first durable read for authenticated directory: narrow columns; server-side eligibility filters; grants for authenticated callers as designed; **no** anonymous table access |
-| Files likely affected | Future `docs/player-management/phase-1i-sql/*` (only after Owner authorize); repository adapter wiring |
-| Tests | Static SQL review; Staging smoke (not Production) |
-| SQL expectation | **`SQL_REQUIRED`** — separately Owner-authorized; Staging apply before Production consideration |
-| Dependencies | 1I-0 design approval; separate `AUTHORIZE_*_SQL_*` decision |
-| Stop gate | Staging evidence; Production **hold** until 1I-F separate decision |
-
-**Forbidden:** anon `SELECT` on full `profiles`; browser `service_role`.
+| Objective | Author executable SQL package; Staging apply after separate authorize |
+| Dependencies | **1I-A complete**; separate `AUTHORIZE_PHASE_1I_B_SQL_AUTHORING` then `…_STAGING_APPLY` |
+| Forbidden | anon table SELECT; browser service-role; authorizing before 1I-A |
+| Stop gate | Staging evidence; Production hold until 1I-F |
 
 ---
 
-## 1I-C — Authenticated directory list UI
+## 1I-C — List UI
 
-| Item | Detail |
-|------|--------|
-| Objective | `/athletes` list: search, region filter, pagination, cards, loading/empty/error/authorization |
-| Files likely affected | `src/router.jsx`, `PublicHeader.jsx`, new directory page/components |
-| Tests | Facade-only wiring; auth state; no direct Supabase |
-| SQL expectation | None in UI; consumes 1I-A + 1I-B adapter |
-| Dependencies | 1I-A; 1I-B for real Staging data |
-| Stop gate | List works on Staging; privacy exclusions verified |
+`/athletes`: search, region filter, pagination, cards, loading/empty/error/authorization. Facade only.
 
 ---
 
-## 1I-D — Minimal Player detail UI
+## 1I-D — Detail UI
 
-| Item | Detail |
-|------|--------|
-| Objective | `/athletes/:playerId` using same Directory DTO |
-| Files likely affected | Router + detail page/component |
-| Tests | Not-found / unauthorized / field allow-list render |
-| SQL expectation | None in UI |
-| Dependencies | 1I-A (+ 1I-B); 1I-C recommended first |
-| Stop gate | Detail does not leak excluded fields |
+`/athletes/:playerId`: same Directory DTO; generic not-found.
 
 ---
 
-## 1I-E — Staging privacy, auth, pagination, and abuse QA
+## 1I-E — Privacy / Staging QA
 
-| Item | Detail |
-|------|--------|
-| Objective | Manual + automated privacy/auth/pagination/abuse proof on Staging |
-| Files | QA checklist under `docs/player-management/phase-1i/` |
-| Tests | Unit suites + QA script |
-| SQL expectation | Staging only (if 1I-B applied) |
-| Dependencies | 1I-C / 1I-D |
-| Stop gate | Checklist signed; no Production apply |
-
-### QA themes
-
-- Unverified / privacy-off absent  
-- Verified + public-on present  
-- No email/phone/birth/`authUserId`/`visible`/club/venue/rating in payloads or DOM  
-- Search cannot find by email/phone/auth id  
-- Pagination caps + deterministic order  
-- Unauthenticated denied under auth-first  
-- Basic abuse controls exercised (rate/limit behavior as implemented)  
+Auth, masking, suspended exclusion, privacy revoke, invalid cursor, abuse limits.
 
 ---
 
-## 1I-F — Final closure and separate Production rollout decision
+## 1I-F — Closure / Production gate
 
-| Item | Detail |
-|------|--------|
-| Objective | Evidence package; deferred items; **separate** Owner decision on Production rollout |
-| Files | Final closure doc |
-| Tests | Regression counts |
-| SQL expectation | Confirm no unauthorized Production SQL/deploy |
-| Dependencies | 1I-E |
-| Stop gate | Owner `AUTHORIZE_PHASE_1I_CLOSURE`; Production only if separately authorized |
+Separate Owner Production decision. No deploy implied by earlier phases.
 
 ---
 
-## Sequencing
+## Sequencing diagram
 
 ```
-Scope freeze commit
-  → 1I-0 design gate
-  → 1I-A app contract / port
-  → 1I-B SQL/RLS (separate authorize → Staging)
+1I-0 design commit
+  → 1I-A app contract (required first)
+  → 1I-B SQL author + Staging apply
   → 1I-C list UI
   → 1I-D detail UI
-  → 1I-E Staging QA
-  → 1I-F closure (+ separate Production decision)
+  → 1I-E QA
+  → 1I-F closure (+ separate Production)
 ```
-
-Do not start UI before Directory DTO exclusion tests exist.
-
----
-
-## Explicit non-implementation in this docs wave
-
-Documentation remediation only: **no** source, UI, routes, APIs, SQL, schema, Supabase mutation, deploy, commit, push, or PR unless Owner later requests commit of these docs.
