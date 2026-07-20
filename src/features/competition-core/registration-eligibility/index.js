@@ -49,6 +49,7 @@ export {
 export {
   REGISTRATION_ELIGIBILITY_SCHEMA_VERSION,
   ELIGIBILITY_EVALUATOR_VERSION,
+  REGISTRATION_LIFECYCLE_SERVICE_VERSION,
   createAuditMetadata,
   isNonEmptyString,
   requireNonEmptyString,
@@ -136,3 +137,13 @@ export {
   fixturePairRegistration,
   fixtureTeamRegistration,
 } from "./fixtures/index.js";
+
+export {
+  REGISTRATION_LIFECYCLE_OPERATION,
+  REGISTRATION_LIFECYCLE_OPERATION_VALUES,
+  isRegistrationLifecycleOperation,
+  REGISTRATION_LIFECYCLE_SYSTEM_ACTOR,
+  registrationLifecycleServiceOk,
+  registrationLifecycleServiceFail,
+  createRegistrationLifecycleService,
+} from "./services/index.js";

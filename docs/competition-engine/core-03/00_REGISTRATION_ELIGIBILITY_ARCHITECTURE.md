@@ -157,6 +157,7 @@ src/features/competition-core/registration-eligibility/
   contracts/
   policies/
   ports/
+  services/         ← Phase 1B lifecycle orchestration
   errors/
   fixtures/
   index.js          ← capability-local public surface ONLY
@@ -211,4 +212,17 @@ Integrator follow-up (separate PR) may add the Core-03 test to the official mani
 - Root `competition-core/index.js` re-exports
 - Editing Core-01 / Core-02 / Core-04 owned trees
 - Editing Integrator-protected `unit-test-files.json`
-- Full eligibility orchestration service (Phase 1B+)
+- Full eligibility orchestration service (Phase 1C — see `03_PHASE_1B_LIFECYCLE_SERVICE.md`)
+
+---
+
+## 12. Phase 1B — Lifecycle service (complete)
+
+Phase 1B adds `services/registrationLifecycleService.js` orchestrating:
+
+- `createDraftRegistration`, `submitRegistration`, `beginRegistrationReview`
+- `withdrawRegistration`, `cancelRegistration`, `expireRegistration`
+
+Details: **`03_PHASE_1B_LIFECYCLE_SERVICE.md`**
+
+Phase 1C (deferred): eligibility evaluation orchestration after `beginRegistrationReview`.

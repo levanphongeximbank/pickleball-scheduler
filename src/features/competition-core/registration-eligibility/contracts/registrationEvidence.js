@@ -65,6 +65,12 @@ export function createRegistrationEvidence(partial = {}) {
  * @property {string|null} [toStatus]
  * @property {string|null} [decisionId]
  * @property {string|null} [eligibilityDecisionId]
+ * @property {string|null} [competitionId] — Phase 1B additive
+ * @property {string|null} [operation] — Phase 1B lifecycle operation name
+ * @property {string|null} [requestId] — originating registrationRequestId or command requestId
+ * @property {string|null} [correlationId]
+ * @property {string|null} [reason]
+ * @property {string|null} [serviceVersion]
  * @property {Record<string, unknown>|null} [payload]
  */
 
@@ -109,6 +115,30 @@ export function createRegistrationAuditEvent(partial = {}) {
       partial.eligibilityDecisionId != null &&
       String(partial.eligibilityDecisionId).trim() !== ""
         ? String(partial.eligibilityDecisionId).trim()
+        : null,
+    competitionId:
+      partial.competitionId != null && String(partial.competitionId).trim() !== ""
+        ? String(partial.competitionId).trim()
+        : null,
+    operation:
+      partial.operation != null && String(partial.operation).trim() !== ""
+        ? String(partial.operation).trim()
+        : null,
+    requestId:
+      partial.requestId != null && String(partial.requestId).trim() !== ""
+        ? String(partial.requestId).trim()
+        : null,
+    correlationId:
+      partial.correlationId != null && String(partial.correlationId).trim() !== ""
+        ? String(partial.correlationId).trim()
+        : null,
+    reason:
+      partial.reason != null && String(partial.reason).trim() !== ""
+        ? String(partial.reason).trim()
+        : null,
+    serviceVersion:
+      partial.serviceVersion != null && String(partial.serviceVersion).trim() !== ""
+        ? String(partial.serviceVersion).trim()
         : null,
     payload:
       partial.payload && typeof partial.payload === "object" && !Array.isArray(partial.payload)
