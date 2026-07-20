@@ -1,6 +1,6 @@
 /**
  * Core-03 — Registration & Eligibility
- * (Phase 1A–1D services + Phase 1E sibling adapters + Phase 1F persistence foundation).
+ * (Phase 1A–1D services + Phase 1E sibling adapters + Phase 1F persistence + Phase 1G runtime QA closure).
  *
  * Capability-local public surface ONLY.
  * Do NOT re-export from competition-core/index.js in this branch
@@ -11,6 +11,8 @@
  * Phase 1E adapters depend on injected sibling public facades only (no deep imports).
  * Phase 1F authors persistence adapters + migration SQL but does not apply SQL or connect
  * to Staging/Production databases. Core-02 Entry creation remains DEFERRED_FAIL_CLOSED.
+ * Phase 1G adds runtime QA closure metadata only — test-only composition harness is NOT
+ * exported from this capability barrel.
  */
 
 export {
@@ -251,6 +253,7 @@ export {
 
 export {
   CORE03_PHASE_1F_MIGRATION_STATUS,
+  CORE03_PHASE_1G_CLOSURE_STATUS,
   createParameterizedSqlStatement,
   buildInsertRegistrationSql,
   buildSelectRegistrationByIdSql,
