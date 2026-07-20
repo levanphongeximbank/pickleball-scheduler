@@ -1,9 +1,9 @@
 # CORE-03 Phase 1F — Persistence Foundation and Migration Authoring
 
-**Wave:** 1 / CORE-03  
-**Phase:** 1F — Persistence Foundation and Migration Authoring  
-**Module:** `src/features/competition-core/registration-eligibility/persistence/`  
-**Branch intent:** `feature/competition-core-03-persistence`  
+**Wave:** 1 / CORE-03
+**Phase:** 1F — Persistence Foundation and Migration Authoring
+**Module:** `src/features/competition-core/registration-eligibility/persistence/`
+**Branch intent:** `feature/competition-core-03-persistence`
 **Persistence version:** `PERSISTENCE_FOUNDATION_VERSION` = `core03-persistence-1.0.0`
 
 ---
@@ -23,7 +23,7 @@
 | Core-02 Entry | **Core-02** (deferred) | not created |
 | Legacy Phase 3C tables | Integrator / legacy | **not modified** |
 
-Core-02 Entry creation and APPROVED→Entry handoff remain **DEFERRED_FAIL_CLOSED**.  
+Core-02 Entry creation and APPROVED→Entry handoff remain **DEFERRED_FAIL_CLOSED**.
 Phase 1F may persist `handoff_pending` / approval state only.
 
 ---
@@ -96,7 +96,7 @@ Adapters:
 - avoid hidden retries that could duplicate writes
 - never call `Date.now()` or generate random IDs
 
-SQL helpers (`buildInsertRegistrationSql`, etc.) produce **parameterized** `{ text, values }` plans only.  
+SQL helpers (`buildInsertRegistrationSql`, etc.) produce **parameterized** `{ text, values }` plans only.
 **No database connection is opened by Phase 1F code.**
 
 ---
@@ -118,15 +118,15 @@ Stale writes fail closed (`STALE_REGISTRATION_VERSION`, `STALE_CAPACITY_VERSION`
 
 Documented multi-step boundaries:
 
-1. create draft + idempotency + audit  
-2. submit + audit  
-3. eligibility evidence + evaluation idempotency + audit  
-4. reserve capacity + counters + idempotency + audit  
-5. release capacity + counters + audit  
-6. waitlist placement + registration transition + waitlist entry + audit  
-7. promotion + reservation + registration transition + waitlist mutation + audit  
+1. create draft + idempotency + audit
+2. submit + audit
+3. eligibility evidence + evaluation idempotency + audit
+4. reserve capacity + counters + idempotency + audit
+5. release capacity + counters + audit
+6. waitlist placement + registration transition + waitlist entry + audit
+7. promotion + reservation + registration transition + waitlist mutation + audit
 
-Memory store **supports** begin/commit/rollback.  
+Memory store **supports** begin/commit/rollback.
 `runPersistenceTransaction` claims atomicity **only** when the store supports transactions.
 
 ---
@@ -166,7 +166,7 @@ Phase 1F SQL (fail-closed default for every Phase 1F table):
 
 No policy is authored that pretends the tenant ownership model is already approved.
 
-**SQL was not applied to any environment.**  
+**SQL was not applied to any environment.**
 `MIGRATION_STATUS = AUTHORED_NOT_APPLIED`
 
 ---
@@ -175,27 +175,27 @@ No policy is authored that pretends the tenant ownership model is already approv
 
 ### Order
 
-1. Preflight + backup  
-2. Dry-run SQL parse / plan  
-3. Staging apply (future owner-approved phase)  
-4. Verification queries  
-5. Production apply only after Staging GO + owner approval  
+1. Preflight + backup
+2. Dry-run SQL parse / plan
+3. Staging apply (future owner-approved phase)
+4. Verification queries
+5. Production apply only after Staging GO + owner approval
 
 ### Preflight checks
 
-- Phases 1A–1E present  
-- No Phase 3C table collision  
-- Backup taken  
-- Service-role credentials available to operator (not stored in app)  
+- Phases 1A–1E present
+- No Phase 3C table collision
+- Backup taken
+- Service-role credentials available to operator (not stored in app)
 
 ### Dry-run
 
-- Review `supabase-core03-phase1f-persistence.sql` in SQL editor without execute  
-- Confirm no DROP/RENAME of legacy tables  
+- Review `supabase-core03-phase1f-persistence.sql` in SQL editor without execute
+- Confirm no DROP/RENAME of legacy tables
 
 ### Rollback
 
-- Prefer restore-from-backup  
+- Prefer restore-from-backup
 - Destructive DROP script is Staging-lab only (`*-rollback.sql`, fully commented)
 - Rollback docs warn about irreversible data loss (especially audit history)
 
