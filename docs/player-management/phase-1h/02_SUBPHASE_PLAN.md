@@ -47,7 +47,7 @@ Docs freeze precedes all application code. **No implementation in the freeze com
 | Audit logging | Every successful privileged write |
 | Tests | Authorized success; unauthorized fail; self fail; transition reject |
 
-**Status:** Implemented on branch (awaiting pre-commit review) — evidence `03_PHASE_1H_A_IMPLEMENTATION_EVIDENCE.md`.
+**Status:** Merged to `main` (PR #104) — evidence `03_PHASE_1H_A_IMPLEMENTATION_EVIDENCE.md`.
 
 ---
 
@@ -55,12 +55,15 @@ Docs freeze precedes all application code. **No implementation in the freeze com
 
 | Deliverable | Notes |
 |-------------|--------|
-| Queue list | Pending / actionable Player records |
-| Read path | Player facade; **internal** viewer mode |
-| Privacy | No raw public exposure; projector rules unchanged for public/directory |
-| Tests | Queue composition; hidden/public leakage guards |
+| Queue list | `listPlayerVerificationQueue` — pending default; explicit status filters |
+| Read path | Player facade; internal admin queue DTO (not public projector) |
+| Authorization | Reuse Identity `user.manage` + SUPER_ADMIN / PLATFORM_ADMIN; venue isolation |
+| Privacy | No raw privacy_settings / unrelated PII; public projector unchanged |
+| Limit / sort | Max 100; `updatedAt` desc + playerId asc |
+| UI | Deferred to optional 1H-D (no suitable non-invasive User Management entry) |
+| Tests | Authz, filters, search, limit, sort, DTO exclusions, read-only |
 
-**Status:** Blocked on 1H-A.
+**Status:** Implemented on branch (awaiting pre-commit review) — evidence `04_PHASE_1H_B_QUEUE_IMPLEMENTATION_EVIDENCE.md`.
 
 ---
 
@@ -75,7 +78,7 @@ Docs freeze precedes all application code. **No implementation in the freeze com
 | Audit | Every successful action |
 | Tests | Action matrix + authz + audit side effects |
 
-**Status:** Blocked on 1H-A (+ typically 1H-B for usable queue UX).
+**Status:** Blocked on 1H-B acceptance (+ uses 1H-A writer).
 
 ---
 
