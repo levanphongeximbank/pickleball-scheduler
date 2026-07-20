@@ -1,5 +1,5 @@
 /**
- * Core-03 — Registration & Eligibility (Phase 1A foundation).
+ * Core-03 — Registration & Eligibility (Phase 1A foundation, 1B lifecycle, 1C evaluation orchestration).
  *
  * Capability-local public surface ONLY.
  * Do NOT re-export from competition-core/index.js in this branch
@@ -50,6 +50,7 @@ export {
   REGISTRATION_ELIGIBILITY_SCHEMA_VERSION,
   ELIGIBILITY_EVALUATOR_VERSION,
   REGISTRATION_LIFECYCLE_SERVICE_VERSION,
+  ELIGIBILITY_EVALUATION_SERVICE_VERSION,
   createAuditMetadata,
   isNonEmptyString,
   requireNonEmptyString,
@@ -68,6 +69,7 @@ export {
   createEligibilityPolicy,
   createEligibilityEvaluationContext,
   createEligibilityDecision,
+  createEligibilityEvaluationEvidence,
   createCompetitionRegistration,
   buildCompetitionRegistrationIdentityKey,
   createRegistrationEvidence,
@@ -85,6 +87,14 @@ export {
   applyRegistrationTransition,
   evaluateIdempotentSubmission,
   createIdempotencyRecordForRegistration,
+  buildEvaluationIdempotencyKey,
+  buildCanonicalEvaluationRequestFingerprint,
+  serializeCanonicalEvaluationRequestFingerprint,
+  canonicalEvaluationFingerprintsEqual,
+  evaluateIdempotentEvaluation,
+  createIdempotencyRecordForEvaluation,
+  orderCheckTypesForExecution,
+  resolveRequiredCheckTypes,
 } from "./policies/index.js";
 
 export {
@@ -136,6 +146,9 @@ export {
   fixtureIndividualRegistration,
   fixturePairRegistration,
   fixtureTeamRegistration,
+  CORE03_FIXTURE_PARTICIPANTS,
+  fixtureDefaultCompetitionPolicy,
+  createEligibilityEvaluationTestHarness,
 } from "./fixtures/index.js";
 
 export {
@@ -146,4 +159,11 @@ export {
   registrationLifecycleServiceOk,
   registrationLifecycleServiceFail,
   createRegistrationLifecycleService,
+  ELIGIBILITY_EVALUATION_OPERATION,
+  ELIGIBILITY_EVALUATION_OPERATION_VALUES,
+  isEligibilityEvaluationOperation,
+  ELIGIBILITY_EVALUATION_SYSTEM_ACTOR,
+  eligibilityEvaluationServiceOk,
+  eligibilityEvaluationServiceFail,
+  createEligibilityEvaluationService,
 } from "./services/index.js";

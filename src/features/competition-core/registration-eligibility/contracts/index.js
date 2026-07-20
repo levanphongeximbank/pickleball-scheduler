@@ -2,6 +2,7 @@ export {
   REGISTRATION_ELIGIBILITY_SCHEMA_VERSION,
   ELIGIBILITY_EVALUATOR_VERSION,
   REGISTRATION_LIFECYCLE_SERVICE_VERSION,
+  ELIGIBILITY_EVALUATION_SERVICE_VERSION,
   createAuditMetadata,
   isNonEmptyString,
   requireNonEmptyString,
@@ -31,6 +32,8 @@ export {
   createEligibilityEvaluationContext,
   createEligibilityDecision,
 } from "./eligibility.js";
+
+export { createEligibilityEvaluationEvidence } from "./eligibilityEvaluationEvidence.js";
 
 export {
   createCompetitionRegistration,

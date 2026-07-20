@@ -7,6 +7,9 @@ export const ELIGIBILITY_EVALUATOR_VERSION = "core03-eligibility-1.0.0";
 /** Phase 1B lifecycle service version — recorded on lifecycle audit events. */
 export const REGISTRATION_LIFECYCLE_SERVICE_VERSION = "core03-lifecycle-1.0.0";
 
+/** Phase 1C eligibility evaluation orchestration service version. */
+export const ELIGIBILITY_EVALUATION_SERVICE_VERSION = "core03-eligibility-eval-1.0.0";
+
 /**
  * @typedef {Object} RegistrationAuditMetadata
  * @property {string|null} [createdAt]
