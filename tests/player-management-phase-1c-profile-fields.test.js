@@ -32,11 +32,17 @@ const APPROVED_EXPORTS = [
   "PLAYER_PROFILE_VIEWER_MODES",
   "PUBLIC_PROFILE_HIDE_REASON",
   "RESOLUTION_OUTCOME",
+  "SELF_FOUNDATION_HANDEDNESS_OPTIONS",
+  "SELF_FOUNDATION_PRIVACY_KEYS",
+  "SELF_FOUNDATION_PRIVACY_LABELS",
   "SELF_PLAYER_PROFILE_READ_STATUS",
   "UNKNOWN_LABEL",
   "VIEWER_MODE_ERROR",
+  "applyBirthDateChange",
   "buildOpaquePublicPlayerProfile",
   "buildSelfFoundationFieldView",
+  "buildSelfFoundationFormState",
+  "buildSelfFoundationUpdatePatch",
   "formatActivityRegionDisplay",
   "formatBirthDateDisplay",
   "formatBirthYearDisplay",
@@ -56,11 +62,12 @@ const APPROVED_EXPORTS = [
   "searchInternalPlayers",
   "searchPlayers",
   "searchPublicPlayers",
+  "stripVerificationFromSelfPatch",
   "updatePlayerProfile",
   "validatePrivacySettings",
 ];
 
-test("1C public API — Phase 1B/1C/1F-A/1F-B1/1F-B2 exports", () => {
+test("1C public API — Phase 1B/1C/1F/1G-A exports", () => {
   assert.deepEqual(Object.keys(playerPublicApi).sort(), [...APPROVED_EXPORTS].sort());
 });
 

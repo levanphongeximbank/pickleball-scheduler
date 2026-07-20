@@ -42,9 +42,14 @@ import {
   toProfileGenderFormValue,
 } from "../../features/identity/utils/profileGender.js";
 import { useAuthenticatedSelfPlayerProfile } from "../../features/player/hooks/useAuthenticatedSelfPlayerProfile.js";
-import SelfPlayerProfileFoundationRead from "../../features/player/components/SelfPlayerProfileFoundationRead.jsx";
-
-const CURRENT_YEAR = new Date().getFullYear();
+import SelfPlayerProfileFoundationEdit from "../../features/player/components/SelfPlayerProfileFoundationEdit.jsx";
+import { SELF_PLAYER_PROFILE_READ_STATUS } from "../../features/player/services/getAuthenticatedSelfPlayerProfile.js";
+import { formatVerificationStatusDisplay } from "../../features/player/selectors/selfProfileDisplay.js";
+import {
+  buildSelfFoundationFormState,
+  buildSelfFoundationUpdatePatch,
+  stripVerificationFromSelfPatch,
+} from "../../features/player/utils/selfFoundationForm.js";
 
 export default function AthleteSelfProfilePage() {
   const { user, refresh } = useAuth();
@@ -53,8 +58,9 @@ export default function AthleteSelfProfilePage() {
   const [displayName, setDisplayName] = useState("");
   const [phone, setPhone] = useState("");
   const [gender, setGender] = useState("");
-  const [birthYear, setBirthYear] = useState("");
   const [avatarUrl, setAvatarUrl] = useState("");
+  const [foundationForm, setFoundationForm] = useState(null);
+  const [foundationSeeded, setFoundationSeeded] = useState(false);
   const [currentPassword, setCurrentPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
@@ -80,7 +86,6 @@ export default function AthleteSelfProfilePage() {
       setDisplayName(result.user.displayName || "");
       setPhone(result.user.phone || "");
       setGender(toProfileGenderFormValue(result.user.gender));
-      setBirthYear(result.user.birthYear ? String(result.user.birthYear) : "");
       setAvatarUrl(result.user.avatarUrl || "");
       setProfileReady(true);
     };
@@ -91,14 +96,22 @@ export default function AthleteSelfProfilePage() {
     };
   }, [user?.id]);
 
-  // Prefer canonical Player Management birthYear when the foundation read is loaded.
+  // Seed foundation form from canonical Player profile (single source — avoid Identity dual state).
   useEffect(() => {
-    if (!playerProfileRead.ok || !playerProfileRead.fields) return;
-    const year = playerProfileRead.fields.birthYear?.raw;
-    if (year != null) {
-      setBirthYear(String(year));
+    if (foundationSeeded) return;
+    if (playerProfileRead.status === SELF_PLAYER_PROFILE_READ_STATUS.LOADING) return;
+    if (
+      playerProfileRead.status === SELF_PLAYER_PROFILE_READ_STATUS.UNAUTHORIZED ||
+      playerProfileRead.status === SELF_PLAYER_PROFILE_READ_STATUS.PROFILE_NOT_FOUND ||
+      playerProfileRead.status === SELF_PLAYER_PROFILE_READ_STATUS.READ_ERROR ||
+      playerProfileRead.status === SELF_PLAYER_PROFILE_READ_STATUS.UNRESOLVED
+    ) {
+      return;
     }
-  }, [playerProfileRead.ok, playerProfileRead.fields]);
+    // LOADED or EMPTY — allow edit with defaults when profile row has no foundation data yet.
+    setFoundationForm(buildSelfFoundationFormState(playerProfileRead.profile));
+    setFoundationSeeded(true);
+  }, [playerProfileRead.status, playerProfileRead.profile, foundationSeeded]);
 
   const ratingRecord = useMemo(() => {
     void ratingTick;
@@ -110,7 +123,7 @@ export default function AthleteSelfProfilePage() {
       return null;
     }
     return getMyClubSummary(user.clubId, currentTenantId);
-  }, [currentTenantId, user?.clubId]);
+  }, [currentTenantId, user]);
 
   const handleSaveProfile = async () => {
     if (!profileReady) {
@@ -118,16 +131,29 @@ export default function AthleteSelfProfilePage() {
       return;
     }
 
+    if (!foundationForm) {
+      setMessage({ type: "error", text: "Đang tải hồ sơ vận động viên — thử lại sau giây lát." });
+      return;
+    }
+
+    const foundation = buildSelfFoundationUpdatePatch(foundationForm);
+    if (!foundation.ok) {
+      setMessage({ type: "error", text: foundation.error });
+      return;
+    }
+
     setLoading(true);
     setMessage(null);
 
-    const profileResult = await updateSelfProfile({
-      displayName,
-      phone,
-      avatarUrl,
-      gender,
-      birthYear: birthYear === "" ? null : birthYear ? Number(birthYear) : null,
-    });
+    const profileResult = await updateSelfProfile(
+      stripVerificationFromSelfPatch({
+        displayName,
+        phone,
+        avatarUrl,
+        gender,
+        ...foundation.patch,
+      })
+    );
 
     setLoading(false);
 
@@ -137,12 +163,12 @@ export default function AthleteSelfProfilePage() {
     }
 
     setGender(toProfileGenderFormValue(profileResult.user?.gender ?? gender));
-    setBirthYear(
-      profileResult.user?.birthYear != null ? String(profileResult.user.birthYear) : birthYear
-    );
     refresh();
     setRatingTick((value) => value + 1);
-    playerProfileRead.reload();
+
+    // Reload Player profile then re-seed form from persisted values.
+    setFoundationSeeded(false);
+    await playerProfileRead.reload();
     setMessage({ type: "success", text: "Đã cập nhật hồ sơ." });
   };
 
@@ -179,6 +205,12 @@ export default function AthleteSelfProfilePage() {
 
   const roleLabel =
     resolveSelfProfileRoleLabel(user) || ROLE_LABELS[user.role] || "Vận động viên";
+
+  const foundationReady =
+    foundationSeeded &&
+    foundationForm &&
+    (playerProfileRead.status === SELF_PLAYER_PROFILE_READ_STATUS.LOADED ||
+      playerProfileRead.status === SELF_PLAYER_PROFILE_READ_STATUS.EMPTY);
 
   return (
     <Box>
@@ -271,34 +303,40 @@ export default function AthleteSelfProfilePage() {
                       ))}
                     </RadioGroup>
                   </FormControl>
-                  <TextField
-                    label="Năm sinh"
-                    type="number"
-                    value={birthYear}
-                    onChange={(e) => setBirthYear(e.target.value)}
-                    inputProps={{ min: CURRENT_YEAR - 90, max: CURRENT_YEAR - 8 }}
-                    fullWidth
-                  />
                   <TextField label="Email" value={user.email || ""} disabled fullWidth />
-                  <Button
-                    variant="contained"
-                    onClick={handleSaveProfile}
-                    disabled={loading || !profileReady}
-                  >
-                    Lưu hồ sơ
-                  </Button>
                 </Stack>
               </CardContent>
             </Card>
 
             <Card>
               <CardContent>
-                <SelfPlayerProfileFoundationRead
-                  status={playerProfileRead.status}
+                <SelfPlayerProfileFoundationEdit
+                  status={
+                    foundationReady
+                      ? SELF_PLAYER_PROFILE_READ_STATUS.LOADED
+                      : playerProfileRead.status
+                  }
                   message={playerProfileRead.message}
-                  fields={playerProfileRead.fields}
-                  onRetry={playerProfileRead.reload}
+                  form={foundationForm}
+                  onChange={setFoundationForm}
+                  verificationLabel={formatVerificationStatusDisplay(
+                    playerProfileRead.profile?.verificationStatus
+                  )}
+                  disabled={loading || !foundationReady}
+                  onRetry={() => {
+                    setFoundationSeeded(false);
+                    playerProfileRead.reload();
+                  }}
                 />
+                <Box sx={{ mt: 2 }}>
+                  <Button
+                    variant="contained"
+                    onClick={handleSaveProfile}
+                    disabled={loading || !profileReady || !foundationReady}
+                  >
+                    Lưu hồ sơ
+                  </Button>
+                </Box>
               </CardContent>
             </Card>
 
