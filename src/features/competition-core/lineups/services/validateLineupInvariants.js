@@ -230,7 +230,7 @@ export function validateLineupMembershipInvariants(lineup, roster, options = {})
 
   const slots = Array.isArray(lineup.slots) ? lineup.slots : [];
   const allowDuplicates = options.allowDuplicateParticipants === true;
-  let rosterTokens = null;
+  let rosterTokens;
   try {
     rosterTokens = buildRosterMemberTokenSet(roster);
   } catch (err) {
