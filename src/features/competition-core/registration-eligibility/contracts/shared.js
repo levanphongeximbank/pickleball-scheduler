@@ -16,6 +16,9 @@ export const CAPACITY_WAITLIST_SERVICE_VERSION = "core03-capacity-waitlist-1.0.0
 /** Phase 1E sibling core adapter composition version. */
 export const SIBLING_ADAPTERS_VERSION = "core03-sibling-adapters-1.0.0";
 
+/** Phase 1F persistence foundation version — recorded on persistence metadata. */
+export const PERSISTENCE_FOUNDATION_VERSION = "core03-persistence-1.0.0";
+
 /**
  * @typedef {Object} RegistrationAuditMetadata
  * @property {string|null} [createdAt]

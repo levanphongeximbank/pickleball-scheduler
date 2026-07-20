@@ -35,6 +35,13 @@ import { createRegistrationApplicant } from "./registrationApplicant.js";
  * @property {string|null} [decidedAt]
  * @property {string|null} [decidedBy]
  * @property {string|null} [identityKey]
+ * @property {number} [stateVersion] — Phase 1F optimistic concurrency
+ * @property {number|null} [sourceVersion] — Phase 1F additive
+ * @property {string|null} [createdAt] — Phase 1F additive (ClockPort)
+ * @property {string|null} [updatedAt] — Phase 1F additive (ClockPort)
+ * @property {string|null} [correlationId] — Phase 1F additive
+ * @property {string|null} [requestId] — Phase 1F additive
+ * @property {boolean} [handoffPending] — APPROVED awaiting Core-02 Entry (deferred)
  * @property {Record<string, unknown>|null} [metadata]
  * @property {import('./shared.js').RegistrationAuditMetadata} [audit]
  */
@@ -149,6 +156,34 @@ export function createCompetitionRegistration(partial = {}) {
         ? String(partial.decidedBy).trim()
         : null,
     identityKey,
+    stateVersion: (() => {
+      const v = Number(partial.stateVersion ?? 0);
+      if (!Number.isInteger(v) || v < 0) {
+        throw new TypeError("CompetitionRegistration.stateVersion must be integer >= 0");
+      }
+      return v;
+    })(),
+    sourceVersion:
+      partial.sourceVersion == null || partial.sourceVersion === ""
+        ? null
+        : Number(partial.sourceVersion),
+    createdAt:
+      partial.createdAt != null && String(partial.createdAt).trim() !== ""
+        ? String(partial.createdAt).trim()
+        : null,
+    updatedAt:
+      partial.updatedAt != null && String(partial.updatedAt).trim() !== ""
+        ? String(partial.updatedAt).trim()
+        : null,
+    correlationId:
+      partial.correlationId != null && String(partial.correlationId).trim() !== ""
+        ? String(partial.correlationId).trim()
+        : null,
+    requestId:
+      partial.requestId != null && String(partial.requestId).trim() !== ""
+        ? String(partial.requestId).trim()
+        : null,
+    handoffPending: Boolean(partial.handoffPending),
     metadata:
       partial.metadata && typeof partial.metadata === "object" && !Array.isArray(partial.metadata)
         ? { ...partial.metadata }

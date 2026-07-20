@@ -299,6 +299,8 @@ export function createRegistrationWaitlistPosition(partial = {}) {
  * @property {string|null} actorId
  * @property {number} stateVersion
  * @property {string|null} requestId
+ * @property {string|null} [operationFingerprint] — Phase 1F additive
+ * @property {string|null} [sourceVersion] — Phase 1F additive
  */
 
 /**
@@ -355,6 +357,14 @@ export function createCapacityReservation(partial = {}) {
       partial.requestId != null && String(partial.requestId).trim() !== ""
         ? String(partial.requestId).trim()
         : null,
+    operationFingerprint:
+      partial.operationFingerprint != null && String(partial.operationFingerprint).trim() !== ""
+        ? String(partial.operationFingerprint).trim()
+        : null,
+    sourceVersion:
+      partial.sourceVersion == null || partial.sourceVersion === ""
+        ? null
+        : Number(partial.sourceVersion),
   });
 }
 
@@ -376,6 +386,7 @@ export function createCapacityReservation(partial = {}) {
  * @property {number} waitlistVersion
  * @property {string|null} actorId
  * @property {string|null} requestId
+ * @property {string|null} [operationFingerprint] — Phase 1F additive
  * @property {Record<string, unknown>|null} [metadata]
  */
 
@@ -441,6 +452,10 @@ export function createWaitlistEntry(partial = {}) {
     requestId:
       partial.requestId != null && String(partial.requestId).trim() !== ""
         ? String(partial.requestId).trim()
+        : null,
+    operationFingerprint:
+      partial.operationFingerprint != null && String(partial.operationFingerprint).trim() !== ""
+        ? String(partial.operationFingerprint).trim()
         : null,
     metadata:
       partial.metadata && typeof partial.metadata === "object" && !Array.isArray(partial.metadata)
