@@ -30,3 +30,35 @@ export {
   resolveEligibilityPolicyFromCompetitionPolicy,
   orderCheckTypesForExecution,
 } from "./eligibilityEvaluationPolicy.js";
+
+export {
+  validateCapacityCounts,
+  computeEffectiveRemaining,
+  hasAvailableCapacity,
+  normalizePriorityRank,
+  buildCapacityScopeKey,
+} from "./capacityAccounting.js";
+
+export {
+  compareWaitlistEntries,
+  sortWaitlistEntries,
+  calculateWaitlistPositions,
+} from "./waitlistOrderingPolicy.js";
+
+export {
+  CAPACITY_IDEMPOTENCY_NAMESPACE,
+  buildCapacityIdempotencyKey,
+  buildCanonicalCapacityRequestFingerprint,
+  serializeCanonicalCapacityRequestFingerprint,
+  canonicalCapacityFingerprintsEqual,
+  evaluateIdempotentCapacityRequest,
+  createIdempotencyRecordForCapacity,
+} from "./capacityIdempotencyPolicy.js";
+
+export {
+  CAPACITY_AUTH_PURPOSE,
+  validateScopeBoundAuthorization,
+  policyExplicitlyRequiresWaitlist,
+  resolveWaitlistPlacementPermit,
+  validatePromotionAuthorization,
+} from "./capacityAuthorizationPolicy.js";

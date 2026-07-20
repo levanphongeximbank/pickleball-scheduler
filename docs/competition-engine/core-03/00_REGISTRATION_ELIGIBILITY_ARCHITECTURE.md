@@ -157,7 +157,7 @@ src/features/competition-core/registration-eligibility/
   contracts/
   policies/
   ports/
-  services/         ← Phase 1B lifecycle + Phase 1C eligibility orchestration
+  services/         ← Phase 1B lifecycle + Phase 1C evaluation + Phase 1D capacity/waitlist
   errors/
   fixtures/
   index.js          ← capability-local public surface ONLY
@@ -225,8 +225,6 @@ Phase 1B adds `services/registrationLifecycleService.js` orchestrating:
 
 Details: **`03_PHASE_1B_LIFECYCLE_SERVICE.md`**
 
-Phase 1C (deferred): eligibility evaluation orchestration after `beginRegistrationReview`.
-
 ---
 
 ## 13. Phase 1C — Eligibility evaluation orchestration (complete)
@@ -238,3 +236,18 @@ Phase 1C adds `services/eligibilityEvaluationService.js` orchestrating:
 - Evaluation evidence + audit + namespaced idempotency replay
 
 Details: **`04_PHASE_1C_ELIGIBILITY_ORCHESTRATION.md`**
+
+---
+
+## 14. Phase 1D — Capacity & waitlist runtime (complete)
+
+Phase 1D adds `services/capacityWaitlistService.js` orchestrating:
+
+- Capacity evaluation / reserve / release
+- Waitlist place / withdraw / position / list
+- Deterministic promotion-candidate selection
+- Validated `WAITLISTED → APPROVED` promotion (no Core-02 Entry creation)
+
+Details: **`05_PHASE_1D_CAPACITY_WAITLIST_RUNTIME.md`**
+
+Deferred after 1D: SQL adapters, UI, Production authz providers, Entry creation handoff.
