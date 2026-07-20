@@ -13,6 +13,9 @@ export const ELIGIBILITY_EVALUATION_SERVICE_VERSION = "core03-eligibility-eval-1
 /** Phase 1D capacity & waitlist runtime service version. */
 export const CAPACITY_WAITLIST_SERVICE_VERSION = "core03-capacity-waitlist-1.0.0";
 
+/** Phase 1E sibling core adapter composition version. */
+export const SIBLING_ADAPTERS_VERSION = "core03-sibling-adapters-1.0.0";
+
 /**
  * @typedef {Object} RegistrationAuditMetadata
  * @property {string|null} [createdAt]
