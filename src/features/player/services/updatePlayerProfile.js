@@ -8,7 +8,7 @@
  * Runtime default: createDefaultPlayerProfileWriteRepository()
  * (durable Supabase writer when anon/session client is configured;
  * otherwise unconfigured). Tests may inject writeRepository doubles.
- * identityVerificationStatus is forbidden here — privileged admin path deferred.
+ * identityVerificationStatus is forbidden here — use updatePlayerVerificationStatus (Phase 1H-A).
  */
 import { RESOLUTION_OUTCOME } from "../constants/resolutionOutcomes.js";
 import { WRITE_ERROR_CODES } from "../constants/writableFields.js";

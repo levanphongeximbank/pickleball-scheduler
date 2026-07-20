@@ -1,7 +1,7 @@
 /**
  * Player Management — public facade.
  *
- * Phase 1B–1F + Phase 1G-A self foundation edit helpers.
+ * Phase 1B–1G-A + Phase 1H-A privileged verification writer.
  * Adapters, repositories, validators, bootstrap remain internal.
  */
 export { RESOLUTION_OUTCOME } from "./constants/resolutionOutcomes.js";
@@ -34,6 +34,16 @@ export {
   searchInternalPlayers,
 } from "./services/searchPlayers.js";
 export { updatePlayerProfile } from "./services/updatePlayerProfile.js";
+export { updatePlayerVerificationStatus } from "./services/updatePlayerVerificationStatus.js";
+export {
+  IDENTITY_VERIFICATION_STATUS,
+  IDENTITY_VERIFICATION_VALUES,
+} from "./constants/verification.js";
+export {
+  VERIFICATION_TRANSITION_MATRIX,
+  validateVerificationTransition,
+} from "./constants/verificationTransitions.js";
+export { WRITE_ERROR_CODES } from "./constants/writableFields.js";
 
 export {
   projectPublicPlayerProfile,

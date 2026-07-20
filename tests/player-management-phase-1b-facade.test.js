@@ -216,8 +216,10 @@ test("1B write surface not part of public API", () => {
   assert.equal("adaptProfileRow" in playerPublicApi, false);
   assert.equal("createPlayerSourceRepository" in playerPublicApi, false);
   assert.equal("buildAuthLinkedPlayerId" in playerPublicApi, false);
-  // Phase 1C adds the single approved write export:
+  // Phase 1C adds the single approved demographics write export:
   assert.equal("updatePlayerProfile" in playerPublicApi, true);
+  // Phase 1H-A adds the explicit privileged verification write export:
+  assert.equal("updatePlayerVerificationStatus" in playerPublicApi, true);
 });
 
 test("1B searchPlayers — read-only filter over injected roster", () => {

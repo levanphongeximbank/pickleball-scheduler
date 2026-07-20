@@ -47,7 +47,7 @@ Docs freeze precedes all application code. **No implementation in the freeze com
 | Audit logging | Every successful privileged write |
 | Tests | Authorized success; unauthorized fail; self fail; transition reject |
 
-**Status:** Not started — awaiting Owner authorize **1H-A implementation**.
+**Status:** Implemented on branch (awaiting pre-commit review) — evidence `03_PHASE_1H_A_IMPLEMENTATION_EVIDENCE.md`.
 
 ---
 

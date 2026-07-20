@@ -164,7 +164,7 @@ export function normalizeAndValidateWritePatch(patch, options = {}) {
   }
 
   // verificationStatus / identityVerificationStatus are forbidden on this path
-  // (see PLAYER_PRIVILEGED_WRITE_FIELDS). Privileged admin updates are deferred.
+  // (see PLAYER_PRIVILEGED_WRITE_FIELDS). Use updatePlayerVerificationStatus (Phase 1H-A).
 
   if (errors.length) {
     return {
