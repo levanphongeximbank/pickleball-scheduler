@@ -28,10 +28,13 @@ function directory(map) {
 
 const APPROVED_EXPORTS = [
   "DEFAULT_PRIVACY_SETTINGS",
+  "PLAYER_PROFILE_VIEWER_MODE",
+  "PLAYER_PROFILE_VIEWER_MODES",
   "PUBLIC_PROFILE_HIDE_REASON",
   "RESOLUTION_OUTCOME",
   "SELF_PLAYER_PROFILE_READ_STATUS",
   "UNKNOWN_LABEL",
+  "VIEWER_MODE_ERROR",
   "buildOpaquePublicPlayerProfile",
   "buildSelfFoundationFieldView",
   "formatActivityRegionDisplay",
@@ -48,12 +51,16 @@ const APPROVED_EXPORTS = [
   "projectPublicPlayerProfile",
   "resolveByAuthUser",
   "resolveCanonicalPlayerId",
+  "resolvePlayerProfileViewerMode",
+  "searchDirectoryPlayers",
+  "searchInternalPlayers",
   "searchPlayers",
+  "searchPublicPlayers",
   "updatePlayerProfile",
   "validatePrivacySettings",
 ];
 
-test("1C public API — Phase 1B/1C/1F-A/1F-B1 exports", () => {
+test("1C public API — Phase 1B/1C/1F-A/1F-B1/1F-B2 exports", () => {
   assert.deepEqual(Object.keys(playerPublicApi).sort(), [...APPROVED_EXPORTS].sort());
 });
 

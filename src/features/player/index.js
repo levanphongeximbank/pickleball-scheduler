@@ -1,8 +1,7 @@
 /**
  * Player Management — public facade.
  *
- * Phase 1B read contracts + Phase 1C single write export + Phase 1F-A self read
- * + Phase 1F-B1 public projector.
+ * Phase 1B–1F-A + Phase 1F-B1 projector + Phase 1F-B2 directory wire-up.
  * Adapters, repositories, validators, bootstrap remain internal.
  */
 export { RESOLUTION_OUTCOME } from "./constants/resolutionOutcomes.js";
@@ -11,6 +10,12 @@ export {
   normalizePrivacySettings,
   validatePrivacySettings,
 } from "./constants/privacy.js";
+export {
+  PLAYER_PROFILE_VIEWER_MODE,
+  PLAYER_PROFILE_VIEWER_MODES,
+  VIEWER_MODE_ERROR,
+  resolvePlayerProfileViewerMode,
+} from "./constants/viewerModes.js";
 
 export { normalizePlayerProfile } from "./models/playerProfile.js";
 
@@ -22,7 +27,12 @@ export {
   getAuthenticatedSelfPlayerProfile,
   SELF_PLAYER_PROFILE_READ_STATUS,
 } from "./services/getAuthenticatedSelfPlayerProfile.js";
-export { searchPlayers } from "./services/searchPlayers.js";
+export {
+  searchPlayers,
+  searchPublicPlayers,
+  searchDirectoryPlayers,
+  searchInternalPlayers,
+} from "./services/searchPlayers.js";
 export { updatePlayerProfile } from "./services/updatePlayerProfile.js";
 
 export {
