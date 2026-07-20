@@ -1,8 +1,8 @@
 # CORE-03 Phase 1C — Eligibility Evaluation Orchestration
 
-**Wave:** 1 / CORE-03  
-**Phase:** 1C — Eligibility Evaluation Orchestration  
-**Module:** `src/features/competition-core/registration-eligibility/services/`  
+**Wave:** 1 / CORE-03
+**Phase:** 1C — Eligibility Evaluation Orchestration
+**Module:** `src/features/competition-core/registration-eligibility/services/`
 **Branch intent:** `feature/competition-core-03-eligibility-orchestration`
 
 ---
