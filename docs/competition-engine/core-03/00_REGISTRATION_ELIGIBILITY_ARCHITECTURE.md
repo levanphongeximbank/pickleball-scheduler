@@ -58,8 +58,9 @@ See **`02_STATUS_COMPATIBILITY.md`** for the full matrix and rules:
                Lookup     Port
 ```
 
-- Core-03 **never** imports `participants/**`, `classification/**`, or `constraints/**` source.
+- Core-03 domain/services **never** import `participants/**`, `classification/**`, or `constraints/**` source.
 - Sibling cores are reached only through **local ports** with null/in-memory stubs.
+- **Phase 1E** adds `adapters/**` that implement those ports via **injected sibling public facades** (still no deep imports of sibling private files). See `06_PHASE_1E_SIBLING_CORE_ADAPTERS.md`.
 - No hidden fallback to “first participant / first division / first club / first competition”.
 
 ---
@@ -158,6 +159,7 @@ src/features/competition-core/registration-eligibility/
   policies/
   ports/
   services/         ← Phase 1B lifecycle + Phase 1C evaluation + Phase 1D capacity/waitlist
+  adapters/         ← Phase 1E sibling core adapters (DI facades → Core-03 ports)
   errors/
   fixtures/
   index.js          ← capability-local public surface ONLY

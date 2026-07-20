@@ -1,6 +1,6 @@
 /**
  * Core-03 — Registration & Eligibility
- * (Phase 1A foundation, 1B lifecycle, 1C evaluation orchestration, 1D capacity & waitlist).
+ * (Phase 1A–1D services + Phase 1E sibling core adapters).
  *
  * Capability-local public surface ONLY.
  * Do NOT re-export from competition-core/index.js in this branch
@@ -8,6 +8,7 @@
  *
  * Does not own: Participant/Entry persistence (Core-02), Division/Category (Core-04),
  * Rule Engine implementation (Core-01), UI, SQL, or Production adapters.
+ * Phase 1E adapters depend on injected sibling public facades only (no deep imports).
  */
 
 export {
@@ -53,6 +54,7 @@ export {
   REGISTRATION_LIFECYCLE_SERVICE_VERSION,
   ELIGIBILITY_EVALUATION_SERVICE_VERSION,
   CAPACITY_WAITLIST_SERVICE_VERSION,
+  SIBLING_ADAPTERS_VERSION,
   createAuditMetadata,
   isNonEmptyString,
   requireNonEmptyString,
@@ -191,6 +193,7 @@ export {
   fixtureDefaultCompetitionPolicy,
   createEligibilityEvaluationTestHarness,
   createCapacityWaitlistTestHarness,
+  createFakeSiblingFacades,
 } from "./fixtures/index.js";
 
 export {
@@ -216,3 +219,29 @@ export {
   capacityWaitlistServiceFail,
   createCapacityWaitlistService,
 } from "./services/index.js";
+
+export {
+  CORE03_SIBLING_ADAPTER_NAME,
+  CORE03_SIBLING_CAPABILITY,
+  CORE03_SIBLING_ADAPTER_VERSION,
+  createSiblingAdapterMetadata,
+  RULE_EVALUATION_ADAPTER_CONTRACT_VERSION,
+  createCore01RuleEvaluationAdapter,
+  PARTICIPANT_LOOKUP_ADAPTER_CONTRACT_VERSION,
+  createCore02ParticipantLookupAdapter,
+  ENTRY_LOOKUP_ADAPTER_CONTRACT_VERSION,
+  CORE02_ACTIVE_ENTRY_STATUSES,
+  normalizeCore02EntryStatus,
+  createCore02EntryLookupAdapter,
+  ENTRY_CREATION_ADAPTER_CONTRACT_VERSION,
+  ENTRY_CREATION_COMPATIBILITY_GAP,
+  createCore02EntryCreationAdapter,
+  DIVISION_ELIGIBILITY_ADAPTER_CONTRACT_VERSION,
+  createCore04DivisionEligibilityAdapter,
+  TEAM_ROSTER_VALIDATION_ADAPTER_CONTRACT_VERSION,
+  TEAM_ROSTER_NOT_APPLICABLE_CODE,
+  createCore05TeamRosterValidationAdapter,
+  CORE03_SIBLING_COMPATIBILITY_MATRIX,
+  getCore03SiblingCompatibilityMatrix,
+  createCore03SiblingAdapters,
+} from "./adapters/index.js";
