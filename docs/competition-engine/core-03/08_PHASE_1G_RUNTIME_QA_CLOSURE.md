@@ -1,8 +1,8 @@
 # CORE-03 Phase 1G — Runtime QA Closure
 
-**Wave:** 1 / CORE-03  
-**Phase:** 1G — Runtime QA, Migration Readiness, and Final Closure  
-**Module:** `src/features/competition-core/registration-eligibility/`  
+**Wave:** 1 / CORE-03
+**Phase:** 1G — Runtime QA, Migration Readiness, and Final Closure
+**Module:** `src/features/competition-core/registration-eligibility/`
 **Branch intent:** `feature/competition-core-03-runtime-qa`
 
 ---
