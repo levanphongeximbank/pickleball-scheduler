@@ -144,6 +144,24 @@ export const ADMIN_MENU_ROOT = menuFolder({
 
     menuLeaf({
 
+      key: "player-verification",
+
+      icon: "users",
+
+      text: "Xác minh VĐV",
+
+      path: "/users/verification",
+
+      match: "users-verification",
+
+      permissions: [PERMISSIONS.USER_MANAGE],
+
+      featureStatus: FEATURE_STATUS.LIVE,
+
+    }),
+
+    menuLeaf({
+
       key: "roles",
 
       icon: "roles",

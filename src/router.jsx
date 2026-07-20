@@ -228,6 +228,9 @@ const SelfProfilePage = lazy(() => import("./pages/SelfProfilePage"));
 const NotificationCenterPage = lazy(() => import("./pages/NotificationCenterPage.jsx"));
 
 const UserManagementPage = lazy(() => import("./pages/UserManagementPage"));
+const AdminPlayerVerificationPage = lazy(() =>
+  import("./pages/AdminPlayerVerificationPage")
+);
 
 const RolesPermissionsPage = lazy(() => import("./pages/admin/RolesPermissionsPage"));
 
@@ -464,6 +467,10 @@ export default function Router() {
             <Route path="/player/skill-assessment-v5" element={<SkillAssessmentV5Page />} />
 
             <Route path="/users" element={<UserManagementPage />} />
+            <Route
+              path="/users/verification"
+              element={<AdminPlayerVerificationPage />}
+            />
             <Route path="/admin/roles" element={<RolesPermissionsPage />} />
             <Route path="/audit" element={<AuditLogPage />} />
 
