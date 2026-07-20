@@ -1,12 +1,22 @@
 import { REGISTRATION_TARGET_TYPE } from "../enums/registrationTargetType.js";
 import { REGISTRATION_STATUS } from "../enums/registrationStatus.js";
 import { COMPETITION_FORMAT_HINT } from "../enums/competitionFormatHint.js";
+import { ELIGIBILITY_CHECK_TYPE } from "../enums/eligibilityCheckType.js";
 import { createCompetitionRegistration } from "../contracts/competitionRegistration.js";
 import { createRegistrationApplicant } from "../contracts/registrationApplicant.js";
 import { createFixedClockPort } from "../ports/clockPort.js";
 import { createSequentialIdGeneratorPort } from "../ports/idGeneratorPort.js";
 import { createInMemoryRegistrationRepositoryPort } from "../ports/registrationRepositoryPort.js";
 import { createInMemoryRegistrationAuditPort } from "../ports/registrationAuditPort.js";
+import { createInMemoryParticipantLookupPort } from "../ports/participantLookupPort.js";
+import { createInMemoryEntryLookupPort } from "../ports/entryLookupPort.js";
+import { createInMemoryCompetitionRegistrationPolicyPort } from "../ports/competitionRegistrationPolicyPort.js";
+import { createStubDivisionEligibilityPort } from "../ports/divisionEligibilityPort.js";
+import { createStubRuleEvaluationPort } from "../ports/ruleEvaluationPort.js";
+import { createStubPaymentStatusPort } from "../ports/paymentStatusPort.js";
+import { createStubMembershipStatusPort } from "../ports/membershipStatusPort.js";
+import { createStubTeamRosterValidationPort } from "../ports/teamRosterValidationPort.js";
+import { createEligibilityEvaluationService } from "../services/eligibilityEvaluationService.js";
 
 export const CORE03_FIXTURE_CLOCK = "2026-07-20T05:00:00.000Z";
 
@@ -100,4 +110,119 @@ export function fixtureTeamRegistration(overrides = {}) {
     }),
     ...overrides,
   });
+}
+
+/** Default participant seed for orchestration tests. */
+export const CORE03_FIXTURE_PARTICIPANTS = Object.freeze([
+  {
+    id: "p-1",
+    status: "ACTIVE",
+    birthDate: "1990-01-01",
+    gender: "M",
+    rating: 3.5,
+  },
+  {
+    id: "p-2",
+    status: "ACTIVE",
+    birthDate: "1992-06-15",
+    gender: "F",
+    rating: 3.0,
+  },
+  {
+    id: "p-captain",
+    status: "ACTIVE",
+    birthDate: "1988-03-10",
+    gender: "M",
+    rating: 4.0,
+  },
+]);
+
+/**
+ * Default open competition policy with minimal eligibility checks.
+ */
+export function fixtureDefaultCompetitionPolicy(overrides = {}) {
+  return {
+    policyAvailable: true,
+    windowOpen: true,
+    policyRef: "pol-default",
+    competitionLimit: null,
+    allowWaitlist: false,
+    eligibilityPolicy: {
+      policyId: "pol-default",
+      requiredCheckTypes: [
+        ELIGIBILITY_CHECK_TYPE.REGISTRATION_WINDOW,
+        ELIGIBILITY_CHECK_TYPE.PARTICIPANT_STATUS,
+      ],
+    },
+    ...overrides,
+  };
+}
+
+/**
+ * @param {{
+ *   clockIso?: string,
+ *   idSeed?: string,
+ *   participants?: Array<Record<string, unknown>>,
+ *   competitionPolicies?: Record<string, Record<string, unknown>>,
+ *   teamRosterImpl?: Function,
+ *   ruleEvaluationImpl?: Function,
+ *   paymentImpl?: Function,
+ *   membershipImpl?: Function,
+ *   divisionImpl?: Function,
+ * }} [options]
+ */
+export function createEligibilityEvaluationTestHarness(options = {}) {
+  const clock = createFixedClockPort(options.clockIso || CORE03_FIXTURE_CLOCK);
+  const ids = createSequentialIdGeneratorPort(options.idSeed || "eval");
+  const repository = createInMemoryRegistrationRepositoryPort();
+  const audit = createInMemoryRegistrationAuditPort();
+  const participantLookup = createInMemoryParticipantLookupPort(
+    options.participants || [...CORE03_FIXTURE_PARTICIPANTS]
+  );
+  const entryLookup = createInMemoryEntryLookupPort();
+  const competitionPolicy = createInMemoryCompetitionRegistrationPolicyPort(
+    options.competitionPolicies || {
+      "comp-1": fixtureDefaultCompetitionPolicy(),
+    }
+  );
+  const divisionEligibility = createStubDivisionEligibilityPort(options.divisionImpl);
+  const ruleEvaluation = createStubRuleEvaluationPort(options.ruleEvaluationImpl);
+  const paymentStatus = createStubPaymentStatusPort(options.paymentImpl);
+  const membershipStatus = createStubMembershipStatusPort(options.membershipImpl);
+  const teamRosterValidation = createStubTeamRosterValidationPort(options.teamRosterImpl);
+
+  const service = createEligibilityEvaluationService({
+    repository,
+    audit,
+    clock,
+    ids,
+    participantLookup,
+    entryLookup,
+    divisionEligibility,
+    competitionPolicy,
+    ruleEvaluation,
+    paymentStatus,
+    membershipStatus,
+    teamRosterValidation,
+  });
+
+  return {
+    clock,
+    ids,
+    repository,
+    audit,
+    participantLookup,
+    entryLookup,
+    competitionPolicy,
+    divisionEligibility,
+    ruleEvaluation,
+    paymentStatus,
+    membershipStatus,
+    teamRosterValidation,
+    service,
+    now: () => clock.nowIso(),
+    async seedRegistration(registration) {
+      return repository.save(registration);
+    },
+  };
 }

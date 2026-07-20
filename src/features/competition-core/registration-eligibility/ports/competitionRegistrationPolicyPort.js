@@ -20,11 +20,13 @@ export function createNullCompetitionRegistrationPolicyPort() {
     async getRegistrationPolicy() {
       return {
         competitionId: "",
+        policyAvailable: false,
         windowOpen: false,
         competitionLimit: null,
         allowWaitlist: false,
         formatHint: null,
         policyRef: null,
+        eligibilityPolicy: null,
       };
     },
   };
@@ -45,14 +47,20 @@ export function createInMemoryCompetitionRegistrationPolicyPort(byCompetitionId 
       if (!found) {
         return {
           competitionId: id,
+          policyAvailable: false,
           windowOpen: false,
           competitionLimit: null,
           allowWaitlist: false,
           formatHint: null,
           policyRef: null,
+          eligibilityPolicy: null,
         };
       }
-      return { competitionId: id, ...found };
+      return {
+        competitionId: id,
+        policyAvailable: true,
+        ...found,
+      };
     },
   };
 }

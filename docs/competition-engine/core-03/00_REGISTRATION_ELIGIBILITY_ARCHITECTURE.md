@@ -157,7 +157,7 @@ src/features/competition-core/registration-eligibility/
   contracts/
   policies/
   ports/
-  services/         ← Phase 1B lifecycle orchestration
+  services/         ← Phase 1B lifecycle + Phase 1C eligibility orchestration
   errors/
   fixtures/
   index.js          ← capability-local public surface ONLY
@@ -226,3 +226,15 @@ Phase 1B adds `services/registrationLifecycleService.js` orchestrating:
 Details: **`03_PHASE_1B_LIFECYCLE_SERVICE.md`**
 
 Phase 1C (deferred): eligibility evaluation orchestration after `beginRegistrationReview`.
+
+---
+
+## 13. Phase 1C — Eligibility evaluation orchestration (complete)
+
+Phase 1C adds `services/eligibilityEvaluationService.js` orchestrating:
+
+- `evaluateRegistrationEligibility` — canonical public evaluation operation
+- Check execution via dependency ports (`eligibilityCheckExecutor.js`)
+- Evaluation evidence + audit + namespaced idempotency replay
+
+Details: **`04_PHASE_1C_ELIGIBILITY_ORCHESTRATION.md`**

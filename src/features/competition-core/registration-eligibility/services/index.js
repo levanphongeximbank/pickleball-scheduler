@@ -13,3 +13,13 @@ export {
 export {
   createRegistrationLifecycleService,
 } from "./registrationLifecycleService.js";
+
+export {
+  ELIGIBILITY_EVALUATION_OPERATION,
+  ELIGIBILITY_EVALUATION_OPERATION_VALUES,
+  isEligibilityEvaluationOperation,
+  ELIGIBILITY_EVALUATION_SYSTEM_ACTOR,
+  eligibilityEvaluationServiceOk,
+  eligibilityEvaluationServiceFail,
+  createEligibilityEvaluationService,
+} from "./eligibilityEvaluationService.js";
