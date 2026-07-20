@@ -20,9 +20,7 @@ Do not open public/directory work that bypasses the projector.
 | Verification status badge / text | Read-only |
 | Tests | UI + service; self verification write still blocked |
 
-**Status:** Implementation evidence in `03_PHASE_1F_A_IMPLEMENTATION_EVIDENCE.md`.
-
-**Stop before 1F-B public surface** until Owner confirms 1F-A ready.
+**Status:** **Closed** — evidence `03_PHASE_1F_A_IMPLEMENTATION_EVIDENCE.md`.
 
 ## 1F-B deliverables
 
@@ -36,13 +34,21 @@ Do not open public/directory work that bypasses the projector.
 **Branch:** `feature/player-phase-1f-b-privacy-public-projector`  
 **Sub-order:** 1F-B1 (projector) → 1F-B2 (facade wire-up) → 1F-B3 (optional public UI).
 
-**Status:** 1F-B1 evidence in `06_PHASE_1F_B1_IMPLEMENTATION_EVIDENCE.md`. 1F-B2 evidence in `07_PHASE_1F_B2_IMPLEMENTATION_EVIDENCE.md`. 1F-B3 not started.
+**Status:**
+
+| Sub-phase | State |
+|-----------|--------|
+| **1F-B1** | **Closed** — `06_PHASE_1F_B1_IMPLEMENTATION_EVIDENCE.md` |
+| **1F-B2** | **Closed** — `07_PHASE_1F_B2_IMPLEMENTATION_EVIDENCE.md` |
+| **1F-B3** | **Skipped** (optional) — Owner `CLOSE_PHASE_1F_NOW` |
+
+**Phase closure:** `08_PHASE_1F_CLOSURE.md` — verdict `PHASE_1F_CLOSED`.
 
 ## Deferred (post–1F)
 
-| Item | Original label / note |
-|------|------------------------|
-| Verification admin | Classification C |
-| Link & dedupe | Original 1A “1F” |
-| V2 dossier cutover | Classification D partial |
-| Blob write retirement | Classification D partial |
+| Item | Original label / note | Status |
+|------|------------------------|--------|
+| Verification admin | Classification **1F-C** | **Deferred** |
+| Link & dedupe | Original 1A “1F” | **Deferred** |
+| V2 dossier cutover | Classification **1F-D** partial | **Deferred** |
+| Blob write retirement | Classification **1F-D** partial | **Deferred** |
