@@ -80,7 +80,7 @@ Docs freeze precedes all application code. **No implementation in the freeze com
 | Audit | Owned by 1H-A writer (UI does not write audit) |
 | Tests | Actions matrix + confirm/cancel + authz UI states + refresh/error |
 
-**Status:** Implemented on branch (awaiting pre-commit review) — evidence `05_PHASE_1H_C_ACTIONS_IMPLEMENTATION_EVIDENCE.md`.
+**Status:** **DONE** — Merged to `main` (PR #107) — evidence `05_PHASE_1H_C_ACTIONS_IMPLEMENTATION_EVIDENCE.md`.
 
 ---
 
@@ -91,7 +91,20 @@ Docs freeze precedes all application code. **No implementation in the freeze com
 | Entry point | Deeper User Management shell tab/panel (optional) |
 | Not in scope | Full Admin Player Management; legacy `/players` rewrite |
 
-**Status:** Optional — 1H-C already ships dedicated `/users/verification` + Admin menu leaf. 1H-D only if Owner wants embedding inside `/users`.
+**Status:** **Deferred by Owner** — 1H-C already ships dedicated `/users/verification` + Admin menu leaf; deeper `/users` embed not required for Phase 1H closure. See `06_PHASE_1H_FINAL_CLOSURE.md`.
+
+---
+
+## Phase status (final)
+
+| Sub-phase | Status |
+|-----------|--------|
+| 1H-A | **DONE** |
+| 1H-B | **DONE** |
+| 1H-C | **DONE** |
+| 1H-D | **Deferred by Owner** |
+
+**Phase verdict:** `PHASE_1H_COMPLETE` — closure evidence `06_PHASE_1H_FINAL_CLOSURE.md`.
 
 ---
 
@@ -112,17 +125,17 @@ Reopening any deferred item requires Owner `REVISE_SCOPE`.
 
 ## Closure criteria (phase)
 
-- Authorized admin transitions work.
-- Unauthorized and self transitions fail.
-- Transition matrix is explicit and tested.
-- Tenant / venue isolation is tested.
-- Audit entries are written.
-- Focused verification tests pass.
-- All `tests/player-management*.test.js` regressions pass.
-- No SQL added or applied.
-- No Production mutation for rollout.
-- No deploy as part of Phase 1H closure.
-- Closure evidence merged to `main`.
+- [x] Authorized admin transitions work.
+- [x] Unauthorized and self transitions fail.
+- [x] Transition matrix is explicit and tested.
+- [x] Tenant / venue isolation is tested.
+- [x] Audit entries are written.
+- [x] Focused verification tests pass (1H-A 14/14, 1H-B 17/17, 1H-C 18/18).
+- [x] All `tests/player-management*.test.js` regressions pass (210/210 on `b64244c`).
+- [x] No SQL added or applied.
+- [x] No Production mutation for rollout.
+- [x] No deploy as part of Phase 1H closure.
+- [ ] Closure evidence merged to `main` (this docs package — pending Owner commit/PR).
 
 ---
 
@@ -132,4 +145,4 @@ Reopening any deferred item requires Owner `REVISE_SCOPE`.
 2. No Production SQL apply / deploy without separate Owner gate.
 3. No expansion into deferred candidates without `REVISE_SCOPE`.
 4. Do not rewrite Club / Competition / Ranking / Rating / Venue / Notification in this wave.
-5. Do not implement application code until Owner authorizes **1H-A implementation**.
+5. Application code for 1H-A → 1H-C is complete on `main`; this closure wave is **documentation only**.
