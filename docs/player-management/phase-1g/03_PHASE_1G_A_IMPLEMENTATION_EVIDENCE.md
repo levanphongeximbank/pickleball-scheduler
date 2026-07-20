@@ -142,7 +142,8 @@ Coverage includes: birth_date edit, birth_year sync, handedness, activity_region
 | Deployment | **No** |
 | Direct profiles write from Athlete page | **No** |
 
-## Pre-commit status
+## Closure status
 
-Implementation verified; **implementation commit not created** per Owner stop gate.  
-Awaiting `READY_FOR_PRE_COMMIT_REVIEW` Owner decision before commit/push/PR.
+**1G-A closed** on `main` at `288f601` (PR #101).  
+Optional **1G-B excluded**. **1G-C / 1G-D / 1G-E deferred**.  
+Formal phase closure: `08_PHASE_1G_CLOSURE.md` (docs PR pending merge).
