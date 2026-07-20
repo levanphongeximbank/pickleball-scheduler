@@ -3,6 +3,7 @@ export {
   ELIGIBILITY_EVALUATOR_VERSION,
   REGISTRATION_LIFECYCLE_SERVICE_VERSION,
   ELIGIBILITY_EVALUATION_SERVICE_VERSION,
+  CAPACITY_WAITLIST_SERVICE_VERSION,
   createAuditMetadata,
   isNonEmptyString,
   requireNonEmptyString,
@@ -48,6 +49,8 @@ export {
 export {
   createRegistrationCapacitySnapshot,
   createRegistrationWaitlistPosition,
+  createCapacityReservation,
+  createWaitlistEntry,
 } from "./capacity.js";
 
 export {

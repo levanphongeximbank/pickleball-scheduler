@@ -2,8 +2,10 @@ import { REGISTRATION_TARGET_TYPE } from "../enums/registrationTargetType.js";
 import { REGISTRATION_STATUS } from "../enums/registrationStatus.js";
 import { COMPETITION_FORMAT_HINT } from "../enums/competitionFormatHint.js";
 import { ELIGIBILITY_CHECK_TYPE } from "../enums/eligibilityCheckType.js";
+import { ELIGIBILITY_OUTCOME } from "../enums/eligibilityOutcome.js";
 import { createCompetitionRegistration } from "../contracts/competitionRegistration.js";
 import { createRegistrationApplicant } from "../contracts/registrationApplicant.js";
+import { createEligibilityEvaluationEvidence } from "../contracts/eligibilityEvaluationEvidence.js";
 import { createFixedClockPort } from "../ports/clockPort.js";
 import { createSequentialIdGeneratorPort } from "../ports/idGeneratorPort.js";
 import { createInMemoryRegistrationRepositoryPort } from "../ports/registrationRepositoryPort.js";
@@ -16,7 +18,12 @@ import { createStubRuleEvaluationPort } from "../ports/ruleEvaluationPort.js";
 import { createStubPaymentStatusPort } from "../ports/paymentStatusPort.js";
 import { createStubMembershipStatusPort } from "../ports/membershipStatusPort.js";
 import { createStubTeamRosterValidationPort } from "../ports/teamRosterValidationPort.js";
+import { createInMemoryCapacityStateRepositoryPort } from "../ports/capacityStateRepositoryPort.js";
+import { createInMemoryCapacityReservationRepositoryPort } from "../ports/capacityReservationRepositoryPort.js";
+import { createInMemoryWaitlistRepositoryPort } from "../ports/waitlistRepositoryPort.js";
+import { createInMemoryEligibilityEvidenceLookupPort } from "../ports/eligibilityEvidenceLookupPort.js";
 import { createEligibilityEvaluationService } from "../services/eligibilityEvaluationService.js";
+import { createCapacityWaitlistService } from "../services/capacityWaitlistService.js";
 
 export const CORE03_FIXTURE_CLOCK = "2026-07-20T05:00:00.000Z";
 
@@ -223,6 +230,80 @@ export function createEligibilityEvaluationTestHarness(options = {}) {
     now: () => clock.nowIso(),
     async seedRegistration(registration) {
       return repository.save(registration);
+    },
+  };
+}
+
+/**
+ * Phase 1D capacity & waitlist test harness.
+ * @param {{
+ *   clockIso?: string,
+ *   idSeed?: string,
+ *   capacityStates?: Array<Record<string, unknown>>,
+ *   competitionPolicies?: Record<string, Record<string, unknown>>,
+ * }} [options]
+ */
+export function createCapacityWaitlistTestHarness(options = {}) {
+  const fx = createCore03TestFixture(options);
+  const capacityState = createInMemoryCapacityStateRepositoryPort({
+    competitionStates: options.capacityStates || [],
+  });
+  const capacityReservations = createInMemoryCapacityReservationRepositoryPort();
+  const waitlist = createInMemoryWaitlistRepositoryPort();
+  const eligibilityEvidence = createInMemoryEligibilityEvidenceLookupPort();
+  const competitionPolicy = createInMemoryCompetitionRegistrationPolicyPort(
+    options.competitionPolicies || {}
+  );
+
+  const service = createCapacityWaitlistService({
+    repository: fx.repository,
+    audit: fx.audit,
+    clock: fx.clock,
+    ids: fx.ids,
+    capacityState,
+    capacityReservations,
+    waitlist,
+    eligibilityEvidence,
+    competitionPolicy,
+  });
+
+  return {
+    ...fx,
+    capacityState,
+    capacityReservations,
+    waitlist,
+    eligibilityEvidence,
+    competitionPolicy,
+    service,
+    async seedRegistration(registration) {
+      return fx.repository.save(registration);
+    },
+    async seedEligibleEvidence(registration, overrides = {}) {
+      return eligibilityEvidence.saveEvidence(
+        createEligibilityEvaluationEvidence({
+          id: fx.ids.nextId("evidence"),
+          evaluationRequestId: fx.ids.nextId("eval-req"),
+          registrationId: registration.id,
+          competitionId: registration.competitionId,
+          divisionId: registration.divisionId,
+          outcome: ELIGIBILITY_OUTCOME.ELIGIBLE,
+          evaluatedAt: fx.now(),
+          checkResults: [],
+          reasons: [],
+          requiredCheckTypes: [],
+          ...overrides,
+        })
+      );
+    },
+    async seedUnderReviewRegistration(overrides = {}) {
+      const registration = fixtureIndividualRegistration({
+        status: REGISTRATION_STATUS.UNDER_REVIEW,
+        submittedAt: fx.now(),
+        ...overrides,
+      });
+      await fx.repository.save(registration);
+      await this.seedEligibleEvidence(registration);
+      return registration;
     },
   };
 }

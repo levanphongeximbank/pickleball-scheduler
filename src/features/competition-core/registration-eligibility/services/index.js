@@ -23,3 +23,17 @@ export {
   eligibilityEvaluationServiceFail,
   createEligibilityEvaluationService,
 } from "./eligibilityEvaluationService.js";
+
+export {
+  CAPACITY_WAITLIST_OPERATION,
+  CAPACITY_WAITLIST_OPERATION_VALUES,
+  isCapacityWaitlistOperation,
+  CAPACITY_WAITLIST_SYSTEM_ACTOR,
+} from "./capacityWaitlistOperations.js";
+
+export {
+  capacityWaitlistServiceOk,
+  capacityWaitlistServiceFail,
+} from "./capacityWaitlistResult.js";
+
+export { createCapacityWaitlistService } from "./capacityWaitlistService.js";

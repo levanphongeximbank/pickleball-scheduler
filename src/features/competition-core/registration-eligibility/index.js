@@ -1,5 +1,6 @@
 /**
- * Core-03 — Registration & Eligibility (Phase 1A foundation, 1B lifecycle, 1C evaluation orchestration).
+ * Core-03 — Registration & Eligibility
+ * (Phase 1A foundation, 1B lifecycle, 1C evaluation orchestration, 1D capacity & waitlist).
  *
  * Capability-local public surface ONLY.
  * Do NOT re-export from competition-core/index.js in this branch
@@ -51,6 +52,7 @@ export {
   ELIGIBILITY_EVALUATOR_VERSION,
   REGISTRATION_LIFECYCLE_SERVICE_VERSION,
   ELIGIBILITY_EVALUATION_SERVICE_VERSION,
+  CAPACITY_WAITLIST_SERVICE_VERSION,
   createAuditMetadata,
   isNonEmptyString,
   requireNonEmptyString,
@@ -76,6 +78,8 @@ export {
   createRegistrationAuditEvent,
   createRegistrationCapacitySnapshot,
   createRegistrationWaitlistPosition,
+  createCapacityReservation,
+  createWaitlistEntry,
   buildRegistrationIdempotencyKey,
   createRegistrationIdempotencyRecord,
 } from "./contracts/index.js";
@@ -95,6 +99,26 @@ export {
   createIdempotencyRecordForEvaluation,
   orderCheckTypesForExecution,
   resolveRequiredCheckTypes,
+  validateCapacityCounts,
+  computeEffectiveRemaining,
+  hasAvailableCapacity,
+  normalizePriorityRank,
+  buildCapacityScopeKey,
+  compareWaitlistEntries,
+  sortWaitlistEntries,
+  calculateWaitlistPositions,
+  CAPACITY_IDEMPOTENCY_NAMESPACE,
+  buildCapacityIdempotencyKey,
+  buildCanonicalCapacityRequestFingerprint,
+  serializeCanonicalCapacityRequestFingerprint,
+  canonicalCapacityFingerprintsEqual,
+  evaluateIdempotentCapacityRequest,
+  createIdempotencyRecordForCapacity,
+  CAPACITY_AUTH_PURPOSE,
+  validateScopeBoundAuthorization,
+  policyExplicitlyRequiresWaitlist,
+  resolveWaitlistPlacementPermit,
+  validatePromotionAuthorization,
 } from "./policies/index.js";
 
 export {
@@ -138,6 +162,23 @@ export {
   createNullRegistrationAuditPort,
   createInMemoryRegistrationAuditPort,
   REGISTRATION_AUDIT_PORT_METHODS,
+  CAPACITY_STATE_REPOSITORY_PORT_METHODS,
+  matchesCapacityStateRepositoryPort,
+  createInMemoryCapacityStateRepositoryPort,
+  createNullCapacityStateRepositoryPort,
+  CAPACITY_RESERVATION_REPOSITORY_PORT_METHODS,
+  matchesCapacityReservationRepositoryPort,
+  createInMemoryCapacityReservationRepositoryPort,
+  createNullCapacityReservationRepositoryPort,
+  WAITLIST_REPOSITORY_PORT_METHODS,
+  matchesWaitlistRepositoryPort,
+  createInMemoryWaitlistRepositoryPort,
+  createNullWaitlistRepositoryPort,
+  ELIGIBILITY_EVIDENCE_LOOKUP_PORT_METHODS,
+  matchesEligibilityEvidenceLookupPort,
+  createInMemoryEligibilityEvidenceLookupPort,
+  createNullEligibilityEvidenceLookupPort,
+  CAPACITY_VALID_ELIGIBILITY_OUTCOMES,
 } from "./ports/index.js";
 
 export {
@@ -149,6 +190,7 @@ export {
   CORE03_FIXTURE_PARTICIPANTS,
   fixtureDefaultCompetitionPolicy,
   createEligibilityEvaluationTestHarness,
+  createCapacityWaitlistTestHarness,
 } from "./fixtures/index.js";
 
 export {
@@ -166,4 +208,11 @@ export {
   eligibilityEvaluationServiceOk,
   eligibilityEvaluationServiceFail,
   createEligibilityEvaluationService,
+  CAPACITY_WAITLIST_OPERATION,
+  CAPACITY_WAITLIST_OPERATION_VALUES,
+  isCapacityWaitlistOperation,
+  CAPACITY_WAITLIST_SYSTEM_ACTOR,
+  capacityWaitlistServiceOk,
+  capacityWaitlistServiceFail,
+  createCapacityWaitlistService,
 } from "./services/index.js";

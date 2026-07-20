@@ -76,3 +76,32 @@ export {
   createInMemoryRegistrationAuditPort,
   REGISTRATION_AUDIT_PORT_METHODS,
 } from "./registrationAuditPort.js";
+
+export {
+  CAPACITY_STATE_REPOSITORY_PORT_METHODS,
+  matchesCapacityStateRepositoryPort,
+  createInMemoryCapacityStateRepositoryPort,
+  createNullCapacityStateRepositoryPort,
+} from "./capacityStateRepositoryPort.js";
+
+export {
+  CAPACITY_RESERVATION_REPOSITORY_PORT_METHODS,
+  matchesCapacityReservationRepositoryPort,
+  createInMemoryCapacityReservationRepositoryPort,
+  createNullCapacityReservationRepositoryPort,
+} from "./capacityReservationRepositoryPort.js";
+
+export {
+  WAITLIST_REPOSITORY_PORT_METHODS,
+  matchesWaitlistRepositoryPort,
+  createInMemoryWaitlistRepositoryPort,
+  createNullWaitlistRepositoryPort,
+} from "./waitlistRepositoryPort.js";
+
+export {
+  ELIGIBILITY_EVIDENCE_LOOKUP_PORT_METHODS,
+  matchesEligibilityEvidenceLookupPort,
+  createInMemoryEligibilityEvidenceLookupPort,
+  createNullEligibilityEvidenceLookupPort,
+  CAPACITY_VALID_ELIGIBILITY_OUTCOMES,
+} from "./eligibilityEvidenceLookupPort.js";
