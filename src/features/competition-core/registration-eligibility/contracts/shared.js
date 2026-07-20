@@ -4,6 +4,9 @@ export const REGISTRATION_ELIGIBILITY_SCHEMA_VERSION = "1";
 /** Domain evaluator version — recorded on every EligibilityDecision. */
 export const ELIGIBILITY_EVALUATOR_VERSION = "core03-eligibility-1.0.0";
 
+/** Phase 1B lifecycle service version — recorded on lifecycle audit events. */
+export const REGISTRATION_LIFECYCLE_SERVICE_VERSION = "core03-lifecycle-1.0.0";
+
 /**
  * @typedef {Object} RegistrationAuditMetadata
  * @property {string|null} [createdAt]
