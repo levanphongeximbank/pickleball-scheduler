@@ -566,6 +566,7 @@ export const ROUTE_PERMISSIONS = Object.freeze({
   "/admin/billing/payments": [PERMISSIONS.BILLING_PAYMENT_VIEW],
   "/admin/billing/audit": [PERMISSIONS.BILLING_AUDIT_VIEW],
   "/users": [PERMISSIONS.USER_MANAGE, PERMISSIONS.USER_VIEW],
+  "/users/verification": [PERMISSIONS.USER_MANAGE],
   "/admin/roles": [
     PERMISSIONS.ROLE_MANAGE,
     PERMISSIONS.ROLE_VIEW,

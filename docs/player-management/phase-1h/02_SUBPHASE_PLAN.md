@@ -60,10 +60,10 @@ Docs freeze precedes all application code. **No implementation in the freeze com
 | Authorization | Reuse Identity `user.manage` + SUPER_ADMIN / PLATFORM_ADMIN; venue isolation |
 | Privacy | No raw privacy_settings / unrelated PII; public projector unchanged |
 | Limit / sort | Max 100; `updatedAt` desc + playerId asc |
-| UI | Deferred to optional 1H-D (no suitable non-invasive User Management entry) |
+| UI | Deferred to 1H-C (dedicated `/users/verification`; not invasive User Management embed) |
 | Tests | Authz, filters, search, limit, sort, DTO exclusions, read-only |
 
-**Status:** Implemented on branch (awaiting pre-commit review) — evidence `04_PHASE_1H_B_QUEUE_IMPLEMENTATION_EVIDENCE.md`.
+**Status:** Merged to `main` (PR #106) — evidence `04_PHASE_1H_B_QUEUE_IMPLEMENTATION_EVIDENCE.md`.
 
 ---
 
@@ -71,14 +71,16 @@ Docs freeze precedes all application code. **No implementation in the freeze com
 
 | Deliverable | Notes |
 |-------------|--------|
-| Set `pending` | Admin-only |
+| Set `pending` | Admin-only (via transition matrix) |
 | Set `verified` | Admin-only |
 | Set `rejected` | Admin-only |
-| Optional `unverified` reset | Only if explicitly justified in implementation evidence |
-| Audit | Every successful action |
-| Tests | Action matrix + authz + audit side effects |
+| Optional `unverified` reset | Allowed only where matrix permits (1H-A) |
+| Confirmation | Required before every mutation |
+| Queue refresh | After successful mutation |
+| Audit | Owned by 1H-A writer (UI does not write audit) |
+| Tests | Actions matrix + confirm/cancel + authz UI states + refresh/error |
 
-**Status:** Blocked on 1H-B acceptance (+ uses 1H-A writer).
+**Status:** Implemented on branch (awaiting pre-commit review) — evidence `05_PHASE_1H_C_ACTIONS_IMPLEMENTATION_EVIDENCE.md`.
 
 ---
 
@@ -86,10 +88,10 @@ Docs freeze precedes all application code. **No implementation in the freeze com
 
 | Deliverable | Notes |
 |-------------|--------|
-| Entry point | Existing admin / User Management shell only |
+| Entry point | Deeper User Management shell tab/panel (optional) |
 | Not in scope | Full Admin Player Management; legacy `/players` rewrite |
 
-**Status:** Optional — not required to open 1H-A.
+**Status:** Optional — 1H-C already ships dedicated `/users/verification` + Admin menu leaf. 1H-D only if Owner wants embedding inside `/users`.
 
 ---
 
