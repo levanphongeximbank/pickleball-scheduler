@@ -1,14 +1,16 @@
 /**
  * Core-03 — Registration & Eligibility
- * (Phase 1A–1D services + Phase 1E sibling core adapters).
+ * (Phase 1A–1D services + Phase 1E sibling adapters + Phase 1F persistence foundation).
  *
  * Capability-local public surface ONLY.
  * Do NOT re-export from competition-core/index.js in this branch
  * (Integrator owns protected barrels).
  *
  * Does not own: Participant/Entry persistence (Core-02), Division/Category (Core-04),
- * Rule Engine implementation (Core-01), UI, SQL, or Production adapters.
+ * Rule Engine implementation (Core-01), UI, or Production SQL apply.
  * Phase 1E adapters depend on injected sibling public facades only (no deep imports).
+ * Phase 1F authors persistence adapters + migration SQL but does not apply SQL or connect
+ * to Staging/Production databases. Core-02 Entry creation remains DEFERRED_FAIL_CLOSED.
  */
 
 export {
@@ -55,6 +57,7 @@ export {
   ELIGIBILITY_EVALUATION_SERVICE_VERSION,
   CAPACITY_WAITLIST_SERVICE_VERSION,
   SIBLING_ADAPTERS_VERSION,
+  PERSISTENCE_FOUNDATION_VERSION,
   createAuditMetadata,
   isNonEmptyString,
   requireNonEmptyString,
@@ -245,3 +248,23 @@ export {
   getCore03SiblingCompatibilityMatrix,
   createCore03SiblingAdapters,
 } from "./adapters/index.js";
+
+export {
+  CORE03_PHASE_1F_MIGRATION_STATUS,
+  createParameterizedSqlStatement,
+  buildInsertRegistrationSql,
+  buildSelectRegistrationByIdSql,
+  buildInsertAuditEventSql,
+  isSafeParameterizedStatement,
+  createPersistencePartialSuccess,
+  runPersistenceTransaction,
+  mapPersistenceError,
+  createCore03MemoryPersistenceStore,
+  createRegistrationRepositoryAdapter,
+  createRegistrationAuditRepositoryAdapter,
+  createEligibilityEvidenceRepositoryAdapter,
+  createCapacityStateRepositoryAdapter,
+  createCapacityReservationRepositoryAdapter,
+  createWaitlistRepositoryAdapter,
+  createCore03PersistenceRepositories,
+} from "./persistence/index.js";

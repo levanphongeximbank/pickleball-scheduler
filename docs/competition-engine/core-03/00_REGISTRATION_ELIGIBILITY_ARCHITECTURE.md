@@ -160,10 +160,16 @@ src/features/competition-core/registration-eligibility/
   ports/
   services/         ← Phase 1B lifecycle + Phase 1C evaluation + Phase 1D capacity/waitlist
   adapters/         ← Phase 1E sibling core adapters (DI facades → Core-03 ports)
+  persistence/      ← Phase 1F persistence adapters + parameterized SQL helpers (no SQL apply)
   errors/
   fixtures/
   index.js          ← capability-local public surface ONLY
 ```
+
+Persistence foundation (Phase 1F): see **`07_PHASE_1F_PERSISTENCE_FOUNDATION.md`**.
+Migration SQL is authored under `docs/competition-engine/core-03/supabase-core03-phase1f-persistence.sql` and is **not applied** (`MIGRATION_STATUS = AUTHORED_NOT_APPLIED`).
+Owner-accepted deferred gaps: `TENANT_CLIENT_RLS_POLICY = DEFERRED_FAIL_CLOSED`, Core-02 Entry creation = `DEFERRED_FAIL_CLOSED`.
+Phase 1G is documented as a future boundary only and is **not started** by Phase 1F.
 
 Import example:
 

@@ -1,0 +1,39 @@
+-- =============================================================================
+-- CORE-03 Phase 1F — Rollback guidance (NOT APPLIED)
+-- =============================================================================
+-- MIGRATION_STATUS = AUTHORED_NOT_APPLIED
+-- TENANT_CLIENT_RLS_POLICY = DEFERRED_FAIL_CLOSED
+-- CORE02_ENTRY_CREATION = DEFERRED_FAIL_CLOSED
+--
+-- Status: documentation / dry-run only. Do not execute against any environment
+-- without Staging-first + Production owner approval after a prior apply.
+--
+-- DESTRUCTIVE DATA LOSS WARNING:
+--   - DROP of core03_* tables permanently destroys registration, eligibility,
+--     capacity, waitlist, audit, and reconciliation data.
+--   - Dropping audit tables destroys immutable history — prefer quarantine
+--     and restore-from-backup over destructive DROP.
+--   - Production rollback MUST prefer restore from pre-apply backup.
+--
+-- Rollback constraints:
+--   - Safe only when no Production traffic depends on Core-03 tables.
+--   - Do not drop or rewrite legacy Phase 3C tables.
+--   - Do not drop sibling-owned objects (Core-01/02/04/05).
+--   - Do not activate client RLS or Entry handoff as part of rollback.
+-- =============================================================================
+
+-- Optional destructive rollback (Staging lab only after explicit Owner approval):
+-- WARNING: irreversible data loss for all Core-03 Phase 1F tables below.
+-- drop trigger if exists core03_audit_no_delete on public.core03_registration_audit_events;
+-- drop trigger if exists core03_audit_no_update on public.core03_registration_audit_events;
+-- drop function if exists public.core03_reject_audit_mutation();
+-- drop table if exists public.core03_persistence_reconciliation;
+-- drop table if exists public.core03_registration_audit_events;
+-- drop table if exists public.core03_waitlist_entries;
+-- drop table if exists public.core03_capacity_reservations;
+-- drop table if exists public.core03_capacity_state;
+-- drop table if exists public.core03_eligibility_evidence;
+-- drop table if exists public.core03_registration_idempotency;
+-- drop table if exists public.core03_competition_registrations;
+
+-- Preferred Production rollback: restore from pre-apply backup; do not DROP.

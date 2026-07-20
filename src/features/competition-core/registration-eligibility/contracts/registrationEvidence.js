@@ -71,6 +71,13 @@ export function createRegistrationEvidence(partial = {}) {
  * @property {string|null} [correlationId]
  * @property {string|null} [reason]
  * @property {string|null} [serviceVersion]
+ * @property {string|null} [divisionId] — Phase 1F additive
+ * @property {string|null} [capacitySnapshotId] — Phase 1F additive
+ * @property {string|null} [reservationId] — Phase 1F additive
+ * @property {string|null} [waitlistEntryId] — Phase 1F additive
+ * @property {string[]} [reasonCodes] — Phase 1F additive
+ * @property {boolean} [reconciliationRequired] — Phase 1F additive
+ * @property {Record<string, unknown>|null} [partialSuccess] — Phase 1F additive
  * @property {Record<string, unknown>|null} [payload]
  */
 
@@ -139,6 +146,32 @@ export function createRegistrationAuditEvent(partial = {}) {
     serviceVersion:
       partial.serviceVersion != null && String(partial.serviceVersion).trim() !== ""
         ? String(partial.serviceVersion).trim()
+        : null,
+    divisionId:
+      partial.divisionId != null && String(partial.divisionId).trim() !== ""
+        ? String(partial.divisionId).trim()
+        : null,
+    capacitySnapshotId:
+      partial.capacitySnapshotId != null && String(partial.capacitySnapshotId).trim() !== ""
+        ? String(partial.capacitySnapshotId).trim()
+        : null,
+    reservationId:
+      partial.reservationId != null && String(partial.reservationId).trim() !== ""
+        ? String(partial.reservationId).trim()
+        : null,
+    waitlistEntryId:
+      partial.waitlistEntryId != null && String(partial.waitlistEntryId).trim() !== ""
+        ? String(partial.waitlistEntryId).trim()
+        : null,
+    reasonCodes: Array.isArray(partial.reasonCodes)
+      ? partial.reasonCodes.map((c) => String(c))
+      : [],
+    reconciliationRequired: Boolean(partial.reconciliationRequired),
+    partialSuccess:
+      partial.partialSuccess &&
+      typeof partial.partialSuccess === "object" &&
+      !Array.isArray(partial.partialSuccess)
+        ? { ...partial.partialSuccess }
         : null,
     payload:
       partial.payload && typeof partial.payload === "object" && !Array.isArray(partial.payload)

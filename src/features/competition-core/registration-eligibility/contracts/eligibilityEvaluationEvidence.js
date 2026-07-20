@@ -26,6 +26,11 @@ import {
  * @property {string} evaluatedAt
  * @property {string|null} correlationId
  * @property {string|null} requestId
+ * @property {string|null} [canonicalRequestFingerprint] — Phase 1F additive
+ * @property {string|null} [policyId] — Phase 1F additive
+ * @property {string|null} [policyVersion] — Phase 1F additive
+ * @property {string|null} [decisionId] — Phase 1F additive alias of eligibility decision
+ * @property {Record<string, unknown>|null} [evidenceMetadata] — Phase 1F additive (no secrets)
  * @property {import('./shared.js').RegistrationAuditMetadata} [audit]
  */
 
@@ -93,6 +98,29 @@ export function createEligibilityEvaluationEvidence(partial = {}) {
     requestId:
       partial.requestId != null && String(partial.requestId).trim() !== ""
         ? String(partial.requestId).trim()
+        : null,
+    canonicalRequestFingerprint:
+      partial.canonicalRequestFingerprint != null &&
+      String(partial.canonicalRequestFingerprint).trim() !== ""
+        ? String(partial.canonicalRequestFingerprint).trim()
+        : null,
+    policyId:
+      partial.policyId != null && String(partial.policyId).trim() !== ""
+        ? String(partial.policyId).trim()
+        : null,
+    policyVersion:
+      partial.policyVersion != null && String(partial.policyVersion).trim() !== ""
+        ? String(partial.policyVersion).trim()
+        : null,
+    decisionId:
+      partial.decisionId != null && String(partial.decisionId).trim() !== ""
+        ? String(partial.decisionId).trim()
+        : String(partial.id).trim(),
+    evidenceMetadata:
+      partial.evidenceMetadata &&
+      typeof partial.evidenceMetadata === "object" &&
+      !Array.isArray(partial.evidenceMetadata)
+        ? { ...partial.evidenceMetadata }
         : null,
     audit: createAuditMetadata(partial.audit),
   });
