@@ -21,7 +21,7 @@ Do not open verification admin, public directory, or legacy cutover under this p
 | Verification status | Read-only display; no edit control |
 | Tests | UI smoke + service; self verification write still blocked |
 
-**Status:** **Implemented** — evidence `03_PHASE_1G_A_IMPLEMENTATION_EVIDENCE.md` (awaiting implementation commit).
+**Status:** **Closed** — evidence `03_PHASE_1G_A_IMPLEMENTATION_EVIDENCE.md`; phase closure `08_PHASE_1G_CLOSURE.md`.
 
 ## 1G-B deliverables (optional)
 
@@ -31,15 +31,17 @@ Do not open verification admin, public directory, or legacy cutover under this p
 | Stale field-list cleanup | e.g. Identity `SELF_EDITABLE_PROFILE_FIELDS` docs/comments |
 | Avatar | Parity only if needed; no new media subsystem |
 
-**Status:** Optional; may ship with 1G-A if small.
+**Status:** **Excluded** (optional) — not required for Phase 1G closure; Owner `CLOSE_PHASE_1G_NOW`.
 
 ## Deferred (post–1G)
 
 | Item | Original label | Status |
 |------|----------------|--------|
-| Verification admin | 1F-C / 1G-C | Deferred |
-| Legacy writer / V2 dossier / blob cutover | 1F-D / 1G-D | Deferred |
-| Public directory UI | 1F-B3 / 1G-E | Deferred |
+| Verification admin | 1F-C / 1G-C | **Deferred** |
+| Legacy writer / V2 dossier / blob cutover | 1F-D / 1G-D | **Deferred** |
+| Public directory UI | 1F-B3 / 1G-E | **Deferred** |
+
+**Phase closure:** `08_PHASE_1G_CLOSURE.md` — verdict `PHASE_1G_CLOSED` (pending docs PR merge onto `main`).
 
 ## Hard rules
 
