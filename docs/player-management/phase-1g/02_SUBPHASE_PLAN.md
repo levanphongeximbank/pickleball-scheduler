@@ -21,7 +21,7 @@ Do not open verification admin, public directory, or legacy cutover under this p
 | Verification status | Read-only display; no edit control |
 | Tests | UI smoke + service; self verification write still blocked |
 
-**Status:** Not started — awaiting Owner authorize implementation.
+**Status:** **Implemented** — evidence `03_PHASE_1G_A_IMPLEMENTATION_EVIDENCE.md` (awaiting implementation commit).
 
 ## 1G-B deliverables (optional)
 

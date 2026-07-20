@@ -1,7 +1,7 @@
 /**
  * Player Management — public facade.
  *
- * Phase 1B–1F-A + Phase 1F-B1 projector + Phase 1F-B2 directory wire-up.
+ * Phase 1B–1F + Phase 1G-A self foundation edit helpers.
  * Adapters, repositories, validators, bootstrap remain internal.
  */
 export { RESOLUTION_OUTCOME } from "./constants/resolutionOutcomes.js";
@@ -51,3 +51,13 @@ export {
   formatPrivacySettingsDisplay,
   UNKNOWN_LABEL,
 } from "./selectors/selfProfileDisplay.js";
+
+export {
+  buildSelfFoundationFormState,
+  buildSelfFoundationUpdatePatch,
+  applyBirthDateChange,
+  stripVerificationFromSelfPatch,
+  SELF_FOUNDATION_PRIVACY_KEYS,
+  SELF_FOUNDATION_PRIVACY_LABELS,
+  SELF_FOUNDATION_HANDEDNESS_OPTIONS,
+} from "./utils/selfFoundationForm.js";
