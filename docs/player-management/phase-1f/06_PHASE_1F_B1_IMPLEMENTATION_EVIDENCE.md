@@ -3,7 +3,7 @@
 **Branch:** `feature/player-phase-1f-b-privacy-public-projector`  
 **Plan freeze:** `7f4a2a85d7000c6b9676746114de9b794e88cd57`  
 **Sub-phase:** **1F-B1 only** (canonical public projector + tests)  
-**1F-B2 / 1F-B3:** Not started
+**Status at Phase 1F closure:** **1F-B1 closed**; **1F-B2 closed**; **1F-B3 skipped** (optional); see `08_PHASE_1F_CLOSURE.md`
 
 ---
 
