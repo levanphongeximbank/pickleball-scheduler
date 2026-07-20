@@ -23,3 +23,11 @@ export {
   lineupResolveOk,
   lineupResolveFail,
 } from "./resolveResult.js";
+
+export { createLineupVisibilityGrant } from "./visibilityGrant.js";
+
+export {
+  MISSING_LINEUP_POLICY,
+  MISSING_LINEUP_POLICY_VALUES,
+  createMissingLineupResolution,
+} from "./missingLineupResolution.js";

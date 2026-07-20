@@ -1,5 +1,5 @@
 /**
- * Phase 3E — Lineup Resolution Runtime (capability-local public surface).
+ * Phase 3E + CORE-06 Phase 1C — Lineup capability-local public surface.
  * Integrator owns root competition-core/index.js re-exports — do not edit that here.
  */
 
@@ -27,6 +27,10 @@ export {
   identityFromCompetitionLineup,
   createLineupPolicyResult,
   isLineupPolicy,
+  createLineupVisibilityGrant,
+  MISSING_LINEUP_POLICY,
+  MISSING_LINEUP_POLICY_VALUES,
+  createMissingLineupResolution,
 } from "./contracts/index.js";
 
 export {
@@ -56,6 +60,26 @@ export {
   matchesLineupPersistencePort,
   createInMemoryLineupPersistencePort,
   createNoopLineupPersistencePort,
+  LINEUP_AUTH_ACTION,
+  matchesLineupAuthorizationPort,
+  createDenyLineupAuthorizationPort,
+  createAllowlistLineupAuthorizationPort,
+  matchesLineupVisibilityPort,
+  createDenyLineupVisibilityPort,
+  matchesLineupClockPort,
+  createLineupClockPort,
+  createFixedLineupClockPort,
+  matchesLineupRandomPort,
+  createNoopLineupRandomPort,
+  matchesRosterLookupPort,
+  createFailClosedRosterLookupPort,
+  createFixedRosterLookupPort,
+  matchesLineupAuditPort,
+  createNoopLineupAuditPort,
+  createLineupAuditPort,
+  matchesLineupIdempotencyPort,
+  createNoopLineupIdempotencyPort,
+  createInMemoryLineupIdempotencyPort,
 } from "./ports/index.js";
 
 export {
@@ -75,6 +99,20 @@ export {
   LINEUP_TRANSITION_MATRIX,
   findLineupTransition,
   assertLineupTransitionAllowed,
+  domainIssue,
+  sortDomainIssues,
+  validateLineupScope,
+  validateLineupIdentityDeterminism,
+  validateRevisionNumber,
+  validateLineupMembershipInvariants,
+  validateRevisionImmutability,
+  validateLineupInvariants,
+  normalizeSlotsWithDeterministicIds,
+  createInitialRevision,
+  createNextRevision,
+  supersedeRevision,
+  appendRevisionHistory,
+  createLineupDomainService,
 } from "./services/index.js";
 
 /** Re-export slot/lineup factories for capability-local consumers (contracts only). */
