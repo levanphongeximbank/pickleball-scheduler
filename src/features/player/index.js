@@ -1,7 +1,8 @@
 /**
  * Player Management — public facade.
  *
- * Phase 1B–1G-A + Phase 1H-A privileged verification writer.
+ * Phase 1B–1G-A + Phase 1H-A privileged verification writer
+ * + Phase 1H-B admin verification queue read API.
  * Adapters, repositories, validators, bootstrap remain internal.
  */
 export { RESOLUTION_OUTCOME } from "./constants/resolutionOutcomes.js";
@@ -35,6 +36,7 @@ export {
 } from "./services/searchPlayers.js";
 export { updatePlayerProfile } from "./services/updatePlayerProfile.js";
 export { updatePlayerVerificationStatus } from "./services/updatePlayerVerificationStatus.js";
+export { listPlayerVerificationQueue } from "./services/listPlayerVerificationQueue.js";
 export {
   IDENTITY_VERIFICATION_STATUS,
   IDENTITY_VERIFICATION_VALUES,
@@ -43,6 +45,13 @@ export {
   VERIFICATION_TRANSITION_MATRIX,
   validateVerificationTransition,
 } from "./constants/verificationTransitions.js";
+export {
+  VERIFICATION_QUEUE_DEFAULT_STATUS,
+  VERIFICATION_QUEUE_DEFAULT_LIMIT,
+  VERIFICATION_QUEUE_MAX_LIMIT,
+  VERIFICATION_QUEUE_SUPPORTED_STATUSES,
+  VERIFICATION_QUEUE_ERROR_CODES,
+} from "./constants/verificationQueue.js";
 export { WRITE_ERROR_CODES } from "./constants/writableFields.js";
 
 export {
@@ -50,6 +59,11 @@ export {
   buildOpaquePublicPlayerProfile,
   PUBLIC_PROFILE_HIDE_REASON,
 } from "./projectors/projectPublicPlayerProfile.js";
+export {
+  projectAdminVerificationQueueItem,
+  ADMIN_VERIFICATION_QUEUE_DTO_FIELDS,
+  ADMIN_VERIFICATION_QUEUE_EXCLUDED_FIELDS,
+} from "./projectors/projectAdminVerificationQueueItem.js";
 
 export {
   buildSelfFoundationFieldView,

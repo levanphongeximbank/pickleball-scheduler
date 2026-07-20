@@ -27,6 +27,8 @@ function directory(map) {
 }
 
 const APPROVED_EXPORTS = [
+  "ADMIN_VERIFICATION_QUEUE_DTO_FIELDS",
+  "ADMIN_VERIFICATION_QUEUE_EXCLUDED_FIELDS",
   "DEFAULT_PRIVACY_SETTINGS",
   "IDENTITY_VERIFICATION_STATUS",
   "IDENTITY_VERIFICATION_VALUES",
@@ -39,6 +41,11 @@ const APPROVED_EXPORTS = [
   "SELF_FOUNDATION_PRIVACY_LABELS",
   "SELF_PLAYER_PROFILE_READ_STATUS",
   "UNKNOWN_LABEL",
+  "VERIFICATION_QUEUE_DEFAULT_LIMIT",
+  "VERIFICATION_QUEUE_DEFAULT_STATUS",
+  "VERIFICATION_QUEUE_ERROR_CODES",
+  "VERIFICATION_QUEUE_MAX_LIMIT",
+  "VERIFICATION_QUEUE_SUPPORTED_STATUSES",
   "VERIFICATION_TRANSITION_MATRIX",
   "VIEWER_MODE_ERROR",
   "WRITE_ERROR_CODES",
@@ -56,8 +63,10 @@ const APPROVED_EXPORTS = [
   "getAuthenticatedSelfPlayerProfile",
   "getPlayerProfile",
   "getPlayerProfileByAuthUser",
+  "listPlayerVerificationQueue",
   "normalizePlayerProfile",
   "normalizePrivacySettings",
+  "projectAdminVerificationQueueItem",
   "projectPublicPlayerProfile",
   "resolveByAuthUser",
   "resolveCanonicalPlayerId",
@@ -73,7 +82,7 @@ const APPROVED_EXPORTS = [
   "validateVerificationTransition",
 ];
 
-test("1C public API — Phase 1B/1C/1F/1G-A/1H-A exports", () => {
+test("1C public API — Phase 1B/1C/1F/1G-A/1H-A/1H-B exports", () => {
   assert.deepEqual(Object.keys(playerPublicApi).sort(), [...APPROVED_EXPORTS].sort());
 });
 

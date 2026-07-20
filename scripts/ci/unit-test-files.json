@@ -120,6 +120,7 @@
   "tests/player-management-phase-1f-b2-directory-wireup.test.js",
   "tests/player-management-phase-1g-a-self-profile-edit.test.js",
   "tests/player-management-phase-1h-a-verification-writer.test.js",
+  "tests/player-management-phase-1h-b-verification-queue.test.js",
   "tests/player-history.test.js",
   "tests/tournament-mobile.test.js",
   "tests/tournament-regression.test.js",
