@@ -234,16 +234,21 @@ export function createCompetitionRoster(partial = {}) {
  */
 
 /**
- * Immutable lineup revision (OD-06).
+ * Immutable lineup revision (OD-06 / CORE-06 Phase 1C).
  *
  * @typedef {Object} CompetitionLineupRevision
  * @property {string} schemaVersion
+ * @property {string} id
  * @property {string} lineupId
  * @property {number} revision
  * @property {string|null} previousRevisionId
  * @property {string|null} submittedAt
  * @property {string|null} submittedBy
  * @property {string|null} lockedAt
+ * @property {string|null} publishedAt
+ * @property {string|null} createdAt
+ * @property {string|null} actorId
+ * @property {string|null} source
  * @property {string} status
  * @property {CompetitionLineupSlot[]} slots
  * @property {string|null} reason
@@ -258,13 +263,20 @@ export function createCompetitionRoster(partial = {}) {
  * @property {string} contextId
  * @property {string} status
  * @property {number} revision
- * @property {string|null} [rosterId]
+ * @property {string|null} [tenantId] — required by CORE-06 Phase 1C scope validation
+ * @property {string|null} [rosterId] — required by CORE-06 Phase 1C scope validation
+ * @property {number|null} [rosterVersion] — Core-05 roster version at selection time
+ * @property {string|null} [divisionId] — opaque Core-04 reference
+ * @property {string|null} [divisionCategoryId] — opaque Core-04 lane reference
+ * @property {string|null} [eventId] — opaque Format/event reference
+ * @property {string|null} [roundId] — opaque round reference
  * @property {string|null} [previousRevisionId]
  * @property {string|null} [submittedAt]
  * @property {string|null} [submittedBy]
  * @property {string|null} [lockedAt]
  * @property {string|null} [publishedAt]
  * @property {string|null} [reason]
+ * @property {boolean} [requiresRepublish] — set after override until publish
  * @property {CompetitionLineupSlot[]} slots
  * @property {CompetitionLineupRevision[]} [revisions]
  * @property {string|null} [identityKey] — competitionId::LINEUP::contextId::teamId (Phase 3E)
@@ -290,14 +302,36 @@ export function createCompetitionLineupSlot(partial = {}) {
  * @returns {CompetitionLineupRevision}
  */
 export function createCompetitionLineupRevision(partial = {}) {
+  const revisionNumber =
+    typeof partial.revision === "number" && Number.isInteger(partial.revision)
+      ? partial.revision
+      : 0;
+  const lineupId = String(partial.lineupId || "");
+  const id =
+    partial.id != null && String(partial.id).trim() !== ""
+      ? String(partial.id).trim()
+      : lineupId && revisionNumber > 0
+        ? `${lineupId}::REV::${revisionNumber}`
+        : String(partial.id || "");
   return {
     schemaVersion: String(partial.schemaVersion ?? PARTICIPANT_SCHEMA_VERSION),
-    lineupId: String(partial.lineupId || ""),
-    revision: typeof partial.revision === "number" ? partial.revision : 0,
+    id,
+    lineupId,
+    revision: revisionNumber,
     previousRevisionId: partial.previousRevisionId ?? null,
     submittedAt: partial.submittedAt ?? null,
     submittedBy: partial.submittedBy ?? null,
     lockedAt: partial.lockedAt ?? null,
+    publishedAt: partial.publishedAt ?? null,
+    createdAt: partial.createdAt ?? null,
+    actorId:
+      partial.actorId != null && String(partial.actorId).trim() !== ""
+        ? String(partial.actorId).trim()
+        : null,
+    source:
+      partial.source != null && String(partial.source).trim() !== ""
+        ? String(partial.source).trim()
+        : null,
     status: String(partial.status || COMPETITION_LINEUP_STATUS.DRAFT),
     slots: Array.isArray(partial.slots)
       ? partial.slots.map((s) => createCompetitionLineupSlot(s || {}))
@@ -314,6 +348,10 @@ export function createCompetitionLineup(partial = {}) {
   const slots = Array.isArray(partial.slots)
     ? partial.slots.map((s) => createCompetitionLineupSlot(s || {}))
     : [];
+  const revision =
+    typeof partial.revision === "number" && Number.isInteger(partial.revision)
+      ? partial.revision
+      : 1;
   return {
     schemaVersion: String(partial.schemaVersion ?? PARTICIPANT_SCHEMA_VERSION),
     id: String(partial.id || ""),
@@ -321,10 +359,36 @@ export function createCompetitionLineup(partial = {}) {
     teamId: String(partial.teamId || ""),
     contextId: String(partial.contextId || ""),
     status: String(partial.status || COMPETITION_LINEUP_STATUS.DRAFT),
-    revision: typeof partial.revision === "number" ? partial.revision : 1,
+    revision,
+    tenantId:
+      partial.tenantId != null && String(partial.tenantId).trim() !== ""
+        ? String(partial.tenantId).trim()
+        : null,
     rosterId:
       partial.rosterId != null && partial.rosterId !== ""
         ? String(partial.rosterId)
+        : null,
+    rosterVersion:
+      typeof partial.rosterVersion === "number" &&
+      Number.isInteger(partial.rosterVersion)
+        ? partial.rosterVersion
+        : null,
+    divisionId:
+      partial.divisionId != null && String(partial.divisionId).trim() !== ""
+        ? String(partial.divisionId).trim()
+        : null,
+    divisionCategoryId:
+      partial.divisionCategoryId != null &&
+      String(partial.divisionCategoryId).trim() !== ""
+        ? String(partial.divisionCategoryId).trim()
+        : null,
+    eventId:
+      partial.eventId != null && String(partial.eventId).trim() !== ""
+        ? String(partial.eventId).trim()
+        : null,
+    roundId:
+      partial.roundId != null && String(partial.roundId).trim() !== ""
+        ? String(partial.roundId).trim()
         : null,
     previousRevisionId: partial.previousRevisionId ?? null,
     submittedAt: partial.submittedAt ?? null,
@@ -332,6 +396,7 @@ export function createCompetitionLineup(partial = {}) {
     lockedAt: partial.lockedAt ?? null,
     publishedAt: partial.publishedAt ?? null,
     reason: partial.reason ?? null,
+    requiresRepublish: partial.requiresRepublish === true,
     slots,
     revisions: Array.isArray(partial.revisions)
       ? partial.revisions.map((r) => createCompetitionLineupRevision(r || {}))

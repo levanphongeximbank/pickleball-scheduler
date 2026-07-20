@@ -1,14 +1,26 @@
 /**
- * Phase 3E — Lineup persistence port (stub only).
- * No Supabase. No RPC. No Production writes from this runtime.
+ * CORE-06 Phase 1C — LineupPersistencePort (contract + test doubles only).
+ * No Supabase. No RPC. No Production writes.
+ *
+ * Writes accept expectedVersion for optimistic concurrency.
+ */
+
+import { LINEUP_RUNTIME_ERROR_CODE } from "../errors/runtimeErrorCodes.js";
+import { LineupRuntimeError } from "../errors/LineupRuntimeError.js";
+
+/**
+ * @typedef {Object} LineupPersistenceSaveOptions
+ * @property {number|null|undefined} [expectedVersion]
+ * @property {string|null|undefined} [idempotencyKey]
+ * @property {string|null|undefined} [actorId]
  */
 
 /**
  * @typedef {Object} LineupPersistencePort
  * @property {(id: string) => Promise<unknown|null>} getById
  * @property {(competitionId: string) => Promise<unknown[]>} listByCompetition
- * @property {(lineup: unknown) => Promise<unknown>} save
- * @property {(lineup: unknown) => Promise<unknown>} [saveRevision]
+ * @property {(lineup: unknown, options?: LineupPersistenceSaveOptions) => Promise<unknown>} save
+ * @property {(lineup: unknown, options?: LineupPersistenceSaveOptions) => Promise<unknown>} [saveRevision]
  * @property {(identity: { key: string }|string) => Promise<unknown|null>} findByIdentityKey
  */
 
@@ -52,18 +64,44 @@ export function createInMemoryLineupPersistencePort() {
             competitionId
       );
     },
-    async save(lineup) {
+    async save(lineup, options = {}) {
       if (!lineup || typeof lineup !== "object" || !lineup.id) {
         throw new TypeError("save requires lineup with id");
       }
-      byId.set(String(lineup.id), lineup);
+      const id = String(lineup.id);
+      const existing = byId.get(id);
+      if (
+        options &&
+        options.expectedVersion != null &&
+        Number.isInteger(options.expectedVersion)
+      ) {
+        const currentRevision =
+          existing &&
+          typeof existing === "object" &&
+          typeof /** @type {{ revision?: number }} */ (existing).revision ===
+            "number"
+            ? /** @type {{ revision: number }} */ (existing).revision
+            : null;
+        if (currentRevision != null && currentRevision !== options.expectedVersion) {
+          throw new LineupRuntimeError(
+            LINEUP_RUNTIME_ERROR_CODE.LINEUP_VERSION_CONFLICT,
+            "Lineup expectedVersion conflict",
+            {
+              id,
+              expectedVersion: options.expectedVersion,
+              actualVersion: currentRevision,
+            }
+          );
+        }
+      }
+      byId.set(id, lineup);
       if (lineup.identityKey) {
-        identityToId.set(String(lineup.identityKey), String(lineup.id));
+        identityToId.set(String(lineup.identityKey), id);
       }
       return lineup;
     },
-    async saveRevision(lineup) {
-      return this.save(lineup);
+    async saveRevision(lineup, options = {}) {
+      return this.save(lineup, options);
     },
     async findByIdentityKey(identity) {
       const key =

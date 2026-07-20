@@ -18,3 +18,24 @@ export {
   findLineupTransition,
   assertLineupTransitionAllowed,
 } from "./transitions.js";
+
+export {
+  domainIssue,
+  sortDomainIssues,
+  validateLineupScope,
+  validateLineupIdentityDeterminism,
+  validateRevisionNumber,
+  validateLineupMembershipInvariants,
+  validateRevisionImmutability,
+  validateLineupInvariants,
+} from "./validateLineupInvariants.js";
+
+export {
+  normalizeSlotsWithDeterministicIds,
+  createInitialRevision,
+  createNextRevision,
+  supersedeRevision,
+  appendRevisionHistory,
+} from "./revisions.js";
+
+export { createLineupDomainService } from "./lineupDomainService.js";

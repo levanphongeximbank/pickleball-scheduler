@@ -1,6 +1,10 @@
 /**
- * Phase 3E — canonical lineup status transition helpers.
+ * CORE-06 Phase 1C — canonical lineup status transition helpers.
  * Role/deadline enforcement remains policy-injected.
+ *
+ * Override is a compound domain operation: prior revision → SUPERSEDED,
+ * new head revision → LOCKED (requires republish). Matrix documents the
+ * supersede step; the domain service applies the new LOCKED head.
  */
 
 import { COMPETITION_LINEUP_STATUS } from "../../participants/enums/statuses.js";
@@ -75,6 +79,7 @@ export const LINEUP_TRANSITION_MATRIX = Object.freeze([
     from: [
       COMPETITION_LINEUP_STATUS.DRAFT,
       COMPETITION_LINEUP_STATUS.SUBMITTED,
+      COMPETITION_LINEUP_STATUS.LOCKED,
     ],
     to: COMPETITION_LINEUP_STATUS.VOIDED,
   },

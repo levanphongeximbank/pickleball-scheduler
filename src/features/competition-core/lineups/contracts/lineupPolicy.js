@@ -31,6 +31,7 @@
  * @property {(ctx: LineupPolicyContext) => LineupPolicyResult|Promise<LineupPolicyResult>} [validateSlots]
  * @property {(ctx: LineupPolicyContext) => LineupPolicyResult|Promise<LineupPolicyResult>} [assertTransition]
  * @property {(ctx: LineupPolicyContext) => LineupPolicyResult|Promise<LineupPolicyResult>} [evaluateDeadline]
+ * @property {(ctx?: LineupPolicyContext) => boolean} [allowsDuplicateParticipants] — CORE-06; default false
  */
 
 /**
