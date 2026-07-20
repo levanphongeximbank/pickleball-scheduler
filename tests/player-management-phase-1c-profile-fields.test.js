@@ -28,6 +28,8 @@ function directory(map) {
 
 const APPROVED_EXPORTS = [
   "DEFAULT_PRIVACY_SETTINGS",
+  "IDENTITY_VERIFICATION_STATUS",
+  "IDENTITY_VERIFICATION_VALUES",
   "PLAYER_PROFILE_VIEWER_MODE",
   "PLAYER_PROFILE_VIEWER_MODES",
   "PUBLIC_PROFILE_HIDE_REASON",
@@ -37,7 +39,9 @@ const APPROVED_EXPORTS = [
   "SELF_FOUNDATION_PRIVACY_LABELS",
   "SELF_PLAYER_PROFILE_READ_STATUS",
   "UNKNOWN_LABEL",
+  "VERIFICATION_TRANSITION_MATRIX",
   "VIEWER_MODE_ERROR",
+  "WRITE_ERROR_CODES",
   "applyBirthDateChange",
   "buildOpaquePublicPlayerProfile",
   "buildSelfFoundationFieldView",
@@ -64,10 +68,12 @@ const APPROVED_EXPORTS = [
   "searchPublicPlayers",
   "stripVerificationFromSelfPatch",
   "updatePlayerProfile",
+  "updatePlayerVerificationStatus",
   "validatePrivacySettings",
+  "validateVerificationTransition",
 ];
 
-test("1C public API — Phase 1B/1C/1F/1G-A exports", () => {
+test("1C public API — Phase 1B/1C/1F/1G-A/1H-A exports", () => {
   assert.deepEqual(Object.keys(playerPublicApi).sort(), [...APPROVED_EXPORTS].sort());
 });
 

@@ -19,8 +19,8 @@ export const PLAYER_WRITABLE_FIELDS = Object.freeze([
 
 /**
  * Privileged identity-verification fields — not writable via updatePlayerProfile.
- * A dedicated admin method (e.g. updatePlayerVerificationStatus) is deferred;
- * do not re-add these as a generic patch escape hatch.
+ * Use updatePlayerVerificationStatus (Phase 1H-A) for authorized admin writes.
+ * Do not re-add these as a generic patch escape hatch.
  */
 export const PLAYER_PRIVILEGED_WRITE_FIELDS = Object.freeze([
   "verificationStatus",
@@ -66,6 +66,9 @@ export const WRITE_ERROR_CODES = Object.freeze({
   AMBIGUOUS_IDENTITY: "AMBIGUOUS_IDENTITY",
   FORBIDDEN_FIELD: "FORBIDDEN_FIELD",
   VALIDATION_ERROR: "VALIDATION_ERROR",
+  INVALID_TRANSITION: "INVALID_TRANSITION",
+  NOT_AUTHENTICATED: "NOT_AUTHENTICATED",
+  SELF_VERIFICATION_FORBIDDEN: "SELF_VERIFICATION_FORBIDDEN",
   SCHEMA_MIGRATION_REQUIRED: "SCHEMA_MIGRATION_REQUIRED",
   PERSISTENCE_NOT_CONFIGURED: "PERSISTENCE_NOT_CONFIGURED",
   PERSISTENCE_UNAVAILABLE: "PERSISTENCE_UNAVAILABLE",

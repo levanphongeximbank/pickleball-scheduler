@@ -33,6 +33,7 @@ const ACTION_LABELS = {
   [AUDIT_ACTIONS.PERMISSION_CHANGE]: "Đổi quyền",
   [AUDIT_ACTIONS.PASSWORD_CHANGE]: "Đổi mật khẩu",
   [AUDIT_ACTIONS.RESET_PASSWORD]: "Reset mật khẩu",
+  [AUDIT_ACTIONS.PLAYER_VERIFICATION_STATUS_UPDATED]: "Cập nhật xác minh VĐV",
 };
 
 function formatTime(value) {

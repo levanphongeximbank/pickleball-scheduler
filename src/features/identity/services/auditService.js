@@ -17,6 +17,7 @@ export const AUDIT_ACTIONS = Object.freeze({
   RESET_PASSWORD: "reset_password",
   PAIRING_OVERRIDE: "pairing_override",
   GROUP_OVERRIDE: "group_override",
+  PLAYER_VERIFICATION_STATUS_UPDATED: "player.verification_status_updated",
 });
 
 const AUDIT_TABLE = "audit_logs";
