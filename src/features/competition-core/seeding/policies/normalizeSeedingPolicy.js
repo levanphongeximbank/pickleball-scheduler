@@ -22,11 +22,13 @@ import { normalizeTieBreakSequence } from "./normalizeTieBreakSequence.js";
  * @property {string} sortDirection
  * @property {string} missingValueBehaviour
  * @property {ReadonlyArray<import('./normalizeTieBreakSequence.js').NormalizedTieBreakStep>} tieBreakSequence
+ * @property {number} seedNumberStart
+ * @property {number|null} maximumSeededEntries
+ * @property {string} manualOverrideMode
  */
 
 /**
- * Normalize ordering-related SeedingPolicy fields for Phase 1C (docs 08 / 09 / 10).
- * Does not implement seed-count, override, or finalization behaviour.
+ * Normalize SeedingPolicy ordering + Phase 1D allocation fields (docs 08 / 09 / 10).
  *
  * @param {unknown} raw
  * @returns {Readonly<NormalizedSeedingPolicy>}
@@ -123,6 +125,54 @@ export function normalizeSeedingPolicy(raw) {
 
   const tieBreakSequence = normalizeTieBreakSequence(input.tieBreakSequence);
 
+  let seedNumberStart = 1;
+  if (input.seedNumberStart != null && input.seedNumberStart !== "") {
+    if (
+      typeof input.seedNumberStart !== "number" ||
+      !Number.isInteger(input.seedNumberStart) ||
+      input.seedNumberStart < 1
+    ) {
+      throwSeedingError(
+        SEEDING_ERROR_CODE.INVALID_REQUEST,
+        "seedNumberStart must be a positive integer",
+        { field: "seedNumberStart", value: input.seedNumberStart }
+      );
+    }
+    seedNumberStart = input.seedNumberStart;
+  }
+
+  let maximumSeededEntries = null;
+  if (input.maximumSeededEntries != null && input.maximumSeededEntries !== "") {
+    if (
+      typeof input.maximumSeededEntries !== "number" ||
+      !Number.isInteger(input.maximumSeededEntries) ||
+      input.maximumSeededEntries < 1
+    ) {
+      throwSeedingError(
+        SEEDING_ERROR_CODE.INVALID_REQUEST,
+        "maximumSeededEntries must be a positive integer when provided",
+        { field: "maximumSeededEntries", value: input.maximumSeededEntries }
+      );
+    }
+    maximumSeededEntries = input.maximumSeededEntries;
+  }
+
+  let manualOverrideMode = normalizeOpaqueId(input.manualOverrideMode);
+  if (manualOverrideMode == null) {
+    manualOverrideMode = "ALLOW_PARTIAL";
+  }
+  if (
+    manualOverrideMode !== "DISALLOW" &&
+    manualOverrideMode !== "ALLOW_PARTIAL" &&
+    manualOverrideMode !== "REQUIRE_AUTHORIZED"
+  ) {
+    throwSeedingError(
+      SEEDING_ERROR_CODE.INVALID_REQUEST,
+      "Invalid manualOverrideMode",
+      { field: "manualOverrideMode", value: input.manualOverrideMode }
+    );
+  }
+
   /** @type {NormalizedSeedingPolicy} */
   const policy = {
     policyId,
@@ -131,6 +181,9 @@ export function normalizeSeedingPolicy(raw) {
     sortDirection,
     missingValueBehaviour,
     tieBreakSequence,
+    seedNumberStart,
+    maximumSeededEntries,
+    manualOverrideMode,
   };
 
   return deepFreeze(policy);

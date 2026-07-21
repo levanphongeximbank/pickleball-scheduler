@@ -36,3 +36,16 @@ export {
   orderCandidatesByDeterministicComparator,
   CORE07_COMPARISON_CONTRACT_VERSION,
 } from "./createDeterministicCandidateComparator.js";
+
+export { reserveOverrideSeedSlots, computeSeedNumberUpperBound } from "./reserveOverrideSeedSlots.js";
+
+export { allocateSeedNumbers } from "./allocateSeedNumbers.js";
+
+export {
+  buildAssignmentFingerprintPayload,
+  stringifyCanonicalJson,
+} from "./buildAssignmentFingerprintPayload.js";
+
+export { buildResultFingerprintPayload } from "./buildResultFingerprintPayload.js";
+
+export { createDraftSeedingResult } from "./createDraftSeedingResult.js";

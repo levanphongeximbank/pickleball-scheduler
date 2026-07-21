@@ -4,9 +4,10 @@
 **Branch:** `feature/competition-core-07-seeding`
 **Phase 1A commit (accepted):** `0307d812bc0674a59a388b30829e5190971a01fe`
 **Phase 1B commit (accepted):** `5290b378a5f970eceebc6bc5fde55f609cdfb6a4`
-**Phase:** **1C — Domain Foundation and Deterministic Comparator** (implementation complete; awaiting Owner commit review)
+**Phase 1C commit (accepted):** `2cdcda4407b1fff45b80f8ce811c42d789b8ef89`
+**Phase:** **1D — Deterministic Seed Allocation Runtime** (implementation complete; awaiting Owner commit review)
 **Date:** 2026-07-21
-**Status:** Phase 1C domain / policy / comparator implemented (non-production). Report: [17_PHASE_1C_DOMAIN_FOUNDATION_REPORT.md](./17_PHASE_1C_DOMAIN_FOUNDATION_REPORT.md)
+**Status:** Phase 1D DRAFT allocation / overrides / fingerprint ports implemented (non-production). Report: [18_PHASE_1D_SEED_ALLOCATION_REPORT.md](./18_PHASE_1D_SEED_ALLOCATION_REPORT.md)
 
 Owner remediation locked before Phase 1B commit:
 
@@ -47,7 +48,8 @@ CORE-07 does **not** own:
 |-------|--------|-------|
 | **1A** Existing Seeding Audit | **Accepted** | Commit `0307d81` |
 | **1B** Architecture & Contract Freeze | **Accepted** | Commit `5290b37`; docs `07`–`16` |
-| **1C** Domain foundation implementation | **Implemented (pre-commit)** | Report: [17](./17_PHASE_1C_DOMAIN_FOUNDATION_REPORT.md); plan: `15` / `16` |
+| **1C** Domain foundation implementation | **Accepted** | Commit `2cdcda4`; report [17](./17_PHASE_1C_DOMAIN_FOUNDATION_REPORT.md) |
+| **1D** Seed allocation runtime | **Implemented (pre-commit)** | Report: [18](./18_PHASE_1D_SEED_ALLOCATION_REPORT.md) |
 
 ---
 
@@ -83,7 +85,13 @@ CORE-07 does **not** own:
 
 | File | Content |
 |------|---------|
-| [17_PHASE_1C_DOMAIN_FOUNDATION_REPORT.md](./17_PHASE_1C_DOMAIN_FOUNDATION_REPORT.md) | Phase 1C implementation report (pre-commit) |
+| [17_PHASE_1C_DOMAIN_FOUNDATION_REPORT.md](./17_PHASE_1C_DOMAIN_FOUNDATION_REPORT.md) | Phase 1C implementation report |
+
+### Phase 1D (seed allocation)
+
+| File | Content |
+|------|---------|
+| [18_PHASE_1D_SEED_ALLOCATION_REPORT.md](./18_PHASE_1D_SEED_ALLOCATION_REPORT.md) | Phase 1D DRAFT allocation / overrides / fingerprint report |
 
 ---
 
@@ -99,8 +107,8 @@ CORE-07 does **not** own:
 
 ---
 
-## Phase 1C status
+## Phase 1D status
 
-Domain foundation + deterministic comparator implemented under capability-local `seeding/**` (see [17](./17_PHASE_1C_DOMAIN_FOUNDATION_REPORT.md)). No root export, feature flag, SQL, or production wiring.
+DRAFT seed allocation runtime implemented under capability-local `seeding/**` (see [18](./18_PHASE_1D_SEED_ALLOCATION_REPORT.md)). No root export, feature flag, SQL, finalization, or production wiring.
 
-**Next:** Owner commit review → Phase 1D (assignment / overrides / fingerprint) only after acceptance.
+**Next:** Owner commit review → Phase 1E (finalization / adapters) only after acceptance.

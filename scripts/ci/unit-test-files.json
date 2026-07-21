@@ -28,6 +28,7 @@
   "tests/competition-core-draw-foundation.test.js",
   "tests/competition-core-seed-foundation.test.js",
   "tests/competition-core-seeding-core07.test.js",
+  "tests/competition-core-seeding-core07-phase1d.test.js",
   "tests/competition-core-draw-strategy-foundation.test.js",
   "tests/competition-core-draw-runtime-adapter.test.js",
   "tests/competition-core-draw-cc04e.test.js",

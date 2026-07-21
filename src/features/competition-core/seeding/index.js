@@ -1,7 +1,7 @@
 /**
  * Competition-core seeding capability-local public surface.
  * Phase 3G runtime exports preserved.
- * CORE-07 Phase 1C domain / policy / comparator exports added (non-production).
+ * CORE-07 Phase 1C/1D exports added (non-production).
  * Integrator owns root competition-core/index.js re-exports — do not edit that here.
  */
 
@@ -78,6 +78,12 @@ export {
   matchesSeedingPersistencePort,
   createInMemorySeedingPersistencePort,
   createNoopSeedingPersistencePort,
+  isFingerprintPort,
+  fingerprintCanonicalPayload,
+  isEligibilityDecisionPort,
+  CORE07_ELIGIBILITY_PORT_VERSION,
+  isRuleEvaluationPort,
+  CORE07_RULE_EVALUATION_PORT_VERSION,
 } from "./ports/index.js";
 
 export {
@@ -106,10 +112,27 @@ export {
   MISSING_VALUE_BEHAVIOUR_VALUES,
   DEFAULT_FIELD_SORT_DIRECTION,
   SCOPE_PROVENANCE_EXCLUSIONS,
+  OVERRIDE_ACTION,
+  OVERRIDE_ACTION_VALUES,
+  OVERRIDE_STATUS,
+  OVERRIDE_STATUS_VALUES,
+  AUTHORIZATION_DECISION,
+  AUTHORIZATION_DECISION_VALUES,
+  MANUAL_OVERRIDE_MODE,
+  MANUAL_OVERRIDE_MODE_VALUES,
+  ASSIGNMENT_SOURCE,
+  ASSIGNMENT_SOURCE_VALUES,
+  FINALIZATION_STATE,
+  CORE07_FINGERPRINT_PORT_VERSION,
   normalizeSeedingScope,
   buildSeedingScopeKey,
   normalizeSeedingCandidate,
   normalizeSeedingCandidates,
+  normalizeManualSeedOverride,
+  normalizeManualSeedOverrides,
+  sortOverridesDeterministically,
+  createCore07SeedAssignment,
+  createCore07DraftSeedingResultDocument,
 } from "./domain/index.js";
 
 export {
@@ -131,4 +154,11 @@ export {
   readCandidateOrderingField,
   createDeterministicCandidateComparator,
   orderCandidatesByDeterministicComparator,
+  reserveOverrideSeedSlots,
+  computeSeedNumberUpperBound,
+  allocateSeedNumbers,
+  buildAssignmentFingerprintPayload,
+  stringifyCanonicalJson,
+  buildResultFingerprintPayload,
+  createDraftSeedingResult,
 } from "./services/index.js";

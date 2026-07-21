@@ -90,3 +90,69 @@ export const SCOPE_PROVENANCE_EXCLUSIONS = Object.freeze([
   "deterministicFingerprint",
   "fingerprint",
 ]);
+
+export const OVERRIDE_ACTION = Object.freeze({
+  ASSIGN: "ASSIGN",
+  PROTECT: "PROTECT",
+  CLEAR: "CLEAR",
+});
+
+/** @type {ReadonlySet<string>} */
+export const OVERRIDE_ACTION_VALUES = new Set(Object.values(OVERRIDE_ACTION));
+
+export const OVERRIDE_STATUS = Object.freeze({
+  PENDING: "PENDING",
+  ACCEPTED: "ACCEPTED",
+  REJECTED: "REJECTED",
+  SUPERSEDED: "SUPERSEDED",
+  CANCELLED: "CANCELLED",
+});
+
+/** @type {ReadonlySet<string>} */
+export const OVERRIDE_STATUS_VALUES = new Set(Object.values(OVERRIDE_STATUS));
+
+export const AUTHORIZATION_DECISION = Object.freeze({
+  ALLOWED: "ALLOWED",
+  DENIED: "DENIED",
+  NOT_EVALUATED: "NOT_EVALUATED",
+});
+
+/** @type {ReadonlySet<string>} */
+export const AUTHORIZATION_DECISION_VALUES = new Set(
+  Object.values(AUTHORIZATION_DECISION)
+);
+
+export const MANUAL_OVERRIDE_MODE = Object.freeze({
+  DISALLOW: "DISALLOW",
+  ALLOW_PARTIAL: "ALLOW_PARTIAL",
+  REQUIRE_AUTHORIZED: "REQUIRE_AUTHORIZED",
+});
+
+/** @type {ReadonlySet<string>} */
+export const MANUAL_OVERRIDE_MODE_VALUES = new Set(
+  Object.values(MANUAL_OVERRIDE_MODE)
+);
+
+export const ASSIGNMENT_SOURCE = Object.freeze({
+  MANUAL_OVERRIDE: "MANUAL_OVERRIDE",
+  PROTECTED: "PROTECTED",
+  AUTO_ORDER: "AUTO_ORDER",
+});
+
+/** @type {ReadonlySet<string>} */
+export const ASSIGNMENT_SOURCE_VALUES = new Set(
+  Object.values(ASSIGNMENT_SOURCE)
+);
+
+export const FINALIZATION_STATE = Object.freeze({
+  DRAFT: "DRAFT",
+  FINALIZED: "FINALIZED",
+  SUPERSEDED: "SUPERSEDED",
+  CANCELLED: "CANCELLED",
+});
+
+export const CORE07_ELIGIBILITY_PORT_VERSION =
+  "core07-eligibility-decision-port-v1";
+export const CORE07_RULE_EVALUATION_PORT_VERSION =
+  "core07-rule-evaluation-port-v1";
+export const CORE07_FINGERPRINT_PORT_VERSION = "core07-fingerprint-port-v1";
