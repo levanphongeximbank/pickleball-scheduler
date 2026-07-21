@@ -249,21 +249,26 @@ export function isMenuItemVisible(item, { can, rbacEnabled, isAuthenticated, use
     }
   }
 
-  // Role allow/deny still applies when RBAC is off so dual-entry items
-  // (e.g. athletes-directory in PROFILE + PLAYER_ZONE) stay unique per role.
-  if (item.roles?.length && user?.role) {
-    const allowed = item.roles.some((role) => rolesEqual(user.role, role));
-    if (!allowed) return false;
-  }
-
-  if (item.excludeRoles?.length && user?.role) {
-    const excluded = item.excludeRoles.some((role) => rolesEqual(user.role, role));
-    if (excluded && !(rolesEqual(user.role, ROLES.PLAYER) && hasClubGovernanceManagerAccess(user))) {
-      return false;
-    }
-  }
-
+  // Phase 1I-E: when RBAC is off, still honor roles/excludeRoles so dual-entry
+  // items (e.g. athletes-directory in PROFILE + PLAYER_ZONE) stay unique per role.
+  // When RBAC is on, keep the pre-1I-E order: club-nav override may elevate a
+  // PLAYER president past excludeRoles (Phase 42L "Vận hành CLB") before role gates.
   if (!rbacEnabled || !isAuthenticated) {
+    if (isAuthenticated && user?.role) {
+      if (item.roles?.length) {
+        const allowed = item.roles.some((role) => rolesEqual(user.role, role));
+        if (!allowed) return false;
+      }
+      if (item.excludeRoles?.length) {
+        const excluded = item.excludeRoles.some((role) => rolesEqual(user.role, role));
+        if (
+          excluded &&
+          !(rolesEqual(user.role, ROLES.PLAYER) && hasClubGovernanceManagerAccess(user))
+        ) {
+          return false;
+        }
+      }
+    }
     return true;
   }
 
@@ -278,6 +283,18 @@ export function isMenuItemVisible(item, { can, rbacEnabled, isAuthenticated, use
 
   if (clubOverride === true) {
     return true;
+  }
+
+  if (item.roles?.length && user?.role) {
+    const allowed = item.roles.some((role) => rolesEqual(user.role, role));
+    if (!allowed) return false;
+  }
+
+  if (item.excludeRoles?.length && user?.role) {
+    const excluded = item.excludeRoles.some((role) => rolesEqual(user.role, role));
+    if (excluded && !(rolesEqual(user.role, ROLES.PLAYER) && hasClubGovernanceManagerAccess(user))) {
+      return false;
+    }
   }
 
   const isFolder = Boolean(item.children?.length);
