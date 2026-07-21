@@ -3,11 +3,12 @@
 **Module:** Competition Engine — Competition Seeding
 **Branch:** `feature/competition-core-07-seeding`
 **Phase 1A commit (accepted):** `0307d812bc0674a59a388b30829e5190971a01fe`
-**Phase:** **1B — Architecture and Contract Freeze** (Owner remediation; ready to commit)
+**Phase 1B commit (accepted):** `5290b378a5f970eceebc6bc5fde55f609cdfb6a4`
+**Phase:** **1C — Domain Foundation and Deterministic Comparator** (implementation complete; awaiting Owner commit review)
 **Date:** 2026-07-21
-**Status:** Documentation-only (no production implementation)
+**Status:** Phase 1C domain / policy / comparator implemented (non-production). Report: [17_PHASE_1C_DOMAIN_FOUNDATION_REPORT.md](./17_PHASE_1C_DOMAIN_FOUNDATION_REPORT.md)
 
-Owner remediation locked before commit:
+Owner remediation locked before Phase 1B commit:
 
 1. Comparator zero / algebraic semantics
 2. SeedingScope = competition boundary (policy/snapshot are provenance)
@@ -45,8 +46,8 @@ CORE-07 does **not** own:
 | Phase | Status | Notes |
 |-------|--------|-------|
 | **1A** Existing Seeding Audit | **Accepted** | Commit `0307d81` |
-| **1B** Architecture & Contract Freeze | **Accepted with remediation; committing** | Docs `07`–`16` |
-| **1C** Domain foundation implementation | **Not started** | Plan: `15` / `16` — no source yet |
+| **1B** Architecture & Contract Freeze | **Accepted** | Commit `5290b37`; docs `07`–`16` |
+| **1C** Domain foundation implementation | **Implemented (pre-commit)** | Report: [17](./17_PHASE_1C_DOMAIN_FOUNDATION_REPORT.md); plan: `15` / `16` |
 
 ---
 
@@ -78,6 +79,12 @@ CORE-07 does **not** own:
 | [15_PHASE_1C_IMPLEMENTATION_PLAN.md](./15_PHASE_1C_IMPLEMENTATION_PLAN.md) | Increments and source/test locations |
 | [16_PHASE_1C_TEST_MATRIX.md](./16_PHASE_1C_TEST_MATRIX.md) | Planned Phase 1C tests |
 
+### Phase 1C (domain foundation)
+
+| File | Content |
+|------|---------|
+| [17_PHASE_1C_DOMAIN_FOUNDATION_REPORT.md](./17_PHASE_1C_DOMAIN_FOUNDATION_REPORT.md) | Phase 1C implementation report (pre-commit) |
+
 ---
 
 ## Frozen ownership (summary)
@@ -92,9 +99,8 @@ CORE-07 does **not** own:
 
 ---
 
-## Phase 1B verdict (pending Owner)
+## Phase 1C status
 
-See `07_PHASE_1B_ARCHITECTURE_FREEZE.md` return report in session handoff.
+Domain foundation + deterministic comparator implemented under capability-local `seeding/**` (see [17](./17_PHASE_1C_DOMAIN_FOUNDATION_REPORT.md)). No root export, feature flag, SQL, or production wiring.
 
-**Implementation:** none in Phase 1B.
-**Next:** Owner review → Phase 1C only after acceptance.
+**Next:** Owner commit review → Phase 1D (assignment / overrides / fingerprint) only after acceptance.

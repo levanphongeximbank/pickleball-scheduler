@@ -25,3 +25,14 @@ export {
   createDeterministicRandomFromSeed,
   deterministicTieKey,
 } from "./deterministicRandom.js";
+
+export {
+  buildCandidateOrderingTuple,
+  readCandidateOrderingField,
+} from "./buildCandidateOrderingTuple.js";
+
+export {
+  createDeterministicCandidateComparator,
+  orderCandidatesByDeterministicComparator,
+  CORE07_COMPARISON_CONTRACT_VERSION,
+} from "./createDeterministicCandidateComparator.js";

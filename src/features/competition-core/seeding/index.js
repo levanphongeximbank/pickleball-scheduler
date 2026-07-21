@@ -1,5 +1,7 @@
 /**
- * Phase 3G — Seeding Runtime (capability-local public surface).
+ * Competition-core seeding capability-local public surface.
+ * Phase 3G runtime exports preserved.
+ * CORE-07 Phase 1C domain / policy / comparator exports added (non-production).
  * Integrator owns root competition-core/index.js re-exports — do not edit that here.
  */
 
@@ -42,6 +44,16 @@ export {
   SeedingRuntimeError,
   isSeedingRuntimeError,
   createSeedingRuntimeError,
+  SEEDING_ERROR_CATEGORY,
+  SEEDING_ERROR_CODE,
+  SEEDING_ERROR_CODE_VALUES,
+  SEEDING_ERROR_CATEGORY_VALUES,
+  SEEDING_ERROR_CODE_CATEGORY,
+  isSeedingErrorCode,
+  isSeedingErrorCategory,
+  SeedingDomainError,
+  isSeedingDomainError,
+  createSeedingDomainError,
 } from "./errors/index.js";
 
 export {
@@ -71,7 +83,34 @@ export {
 export {
   createNoopSeedingPolicy,
   NOOP_SEEDING_POLICY_ID,
+  normalizeSeedingPolicy,
+  normalizeTieBreakSequence,
 } from "./policies/index.js";
+
+export {
+  deepFreeze,
+  deepFreezeClone,
+  CORE07_COMPARISON_CONTRACT_VERSION,
+  CORE07_SEEDING_CONTRACT_VERSION,
+  ENTRY_TYPE,
+  ENTRY_TYPE_VALUES,
+  ELIGIBILITY_STATUS,
+  ELIGIBILITY_STATUS_VALUES,
+  PRIMARY_ORDERING_SOURCE,
+  PRIMARY_ORDERING_SOURCE_VALUES,
+  TIE_BREAK_FIELD,
+  TIE_BREAK_FIELD_VALUES,
+  SORT_DIRECTION,
+  SORT_DIRECTION_VALUES,
+  MISSING_VALUE_BEHAVIOUR,
+  MISSING_VALUE_BEHAVIOUR_VALUES,
+  DEFAULT_FIELD_SORT_DIRECTION,
+  SCOPE_PROVENANCE_EXCLUSIONS,
+  normalizeSeedingScope,
+  buildSeedingScopeKey,
+  normalizeSeedingCandidate,
+  normalizeSeedingCandidates,
+} from "./domain/index.js";
 
 export {
   createSeedingIdentityLookup,
@@ -88,4 +127,8 @@ export {
   createMulberry32,
   createDeterministicRandomFromSeed,
   deterministicTieKey,
+  buildCandidateOrderingTuple,
+  readCandidateOrderingField,
+  createDeterministicCandidateComparator,
+  orderCandidatesByDeterministicComparator,
 } from "./services/index.js";
