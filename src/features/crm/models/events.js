@@ -1,9 +1,9 @@
 /**
- * CRM audit and integration event envelopes (Phase 1B contracts).
+ * CRM audit and integration event envelopes (Phase 1B contracts; schemaVersion in 1C).
  */
 
 import { CRM_ERROR_CODES, crmFailure } from "../constants/errorCodes.js";
-import { isCrmEventType } from "../constants/eventTypes.js";
+import { CRM_EVENT_SCHEMA_VERSION, isCrmEventType } from "../constants/eventTypes.js";
 import { normalizeIsoTimestamp } from "../constants/timestamps.js";
 
 function normalizeString(value) {
@@ -45,6 +45,16 @@ export function validateCrmAuditEvent(input) {
     return crmFailure(CRM_ERROR_CODES.INVALID_ENVELOPE, "occurredAt must be a valid ISO-8601 timestamp.");
   }
 
+  const schemaVersionRaw =
+    input.schemaVersion == null ? CRM_EVENT_SCHEMA_VERSION : input.schemaVersion;
+  const schemaVersion = Number(schemaVersionRaw);
+  if (!Number.isInteger(schemaVersion) || schemaVersion < 1) {
+    return crmFailure(
+      CRM_ERROR_CODES.INVALID_ENVELOPE,
+      "schemaVersion must be a positive integer."
+    );
+  }
+
   return {
     ok: true,
     event: Object.freeze({
@@ -56,6 +66,7 @@ export function validateCrmAuditEvent(input) {
       aggregateType: normalizeString(input.aggregateType),
       aggregateId: normalizeString(input.aggregateId),
       occurredAt,
+      schemaVersion,
       payload:
         input.payload && typeof input.payload === "object" ? Object.freeze({ ...input.payload }) : Object.freeze({}),
     }),

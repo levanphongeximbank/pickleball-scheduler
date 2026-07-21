@@ -1,6 +1,9 @@
-/** CRM audit and integration event type codes (Phase 1B contracts). */
+/** CRM audit and integration event type codes (Phase 1B + 1C). */
+
+export const CRM_EVENT_SCHEMA_VERSION = 1;
 
 export const CRM_AUDIT_EVENT_TYPE = Object.freeze({
+  CONTACT_REFERENCE_CREATED: "crm.audit.contact_reference.created",
   LEAD_CREATED: "crm.audit.lead.created",
   LEAD_UPDATED: "crm.audit.lead.updated",
   LEAD_ASSIGNED: "crm.audit.lead.assigned",
