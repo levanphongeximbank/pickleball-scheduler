@@ -1,8 +1,8 @@
 # CORE-08 Phase 1B — Adapter Certification
 
-**Status:** Capability-local (dormant). No production cutover.  
-**Prerequisite:** Phase 1A `READY_WITH_ADAPTER_REQUIRED`  
-**Canonical runtime:** `src/features/competition-core/draw-runtime/**` (Phase 3H)  
+**Status:** Capability-local (dormant). No production cutover.
+**Prerequisite:** Phase 1A `READY_WITH_ADAPTER_REQUIRED`
+**Canonical runtime:** `src/features/competition-core/draw-runtime/**` (Phase 3H)
 **Orchestration API:** `createDrawResolver(options).resolve(request)`
 
 ## Objective
