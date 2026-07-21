@@ -29,17 +29,21 @@
  */
 
 /**
- * PlayerDirectoryPort — resolve players by id (read-only).
+ * PlayerDirectoryPort — resolve players by id within explicit tenant+venue scope (read-only).
+ * Callers must pass command scope; do not use an unscoped getById(playerId) signature.
  *
  * @typedef {object} PlayerDirectoryPort
- * @property {(playerId: string) => object|null|Promise<object|null>} getById
+ * @property {(scope: TenantVenueScope, playerId: string) => object|null|Promise<object|null>} getById
+ * @property {(scope: TenantVenueScope, query: object) => object[]|Promise<object[]>} [search]
  */
 
 /**
  * IdentityActorPort — resolve authenticated actor for authorization.
+ * Phase 1C may also resolve assignable owners via resolveActor (optional).
  *
  * @typedef {object} IdentityActorPort
  * @property {() => CrmActor|null|Promise<CrmActor|null>} getCurrentActor
+ * @property {(scope: TenantVenueScope, userId: string) => (CrmActor & { active?: boolean })|null|Promise<(CrmActor & { active?: boolean })|null>} [resolveActor]
  */
 
 /**
