@@ -654,11 +654,11 @@ test("1C-30: participant ordering follows Draw placement ordering", () => {
 test("1C-31: unsupported strategy fails closed", () => {
   const draw = completeDraw(["a", "b"]);
   const evaluated = rules({
-    generationStrategy: MATCH_GENERATION_STRATEGY.SINGLE_ELIMINATION,
+    generationStrategy: MATCH_GENERATION_STRATEGY.TEAM_FIXTURE,
   });
-  // Request factory rejects deferred? SINGLE_ELIMINATION is contract-supported.
+  // TEAM_FIXTURE is contract-bound but has no executor yet.
   const request = baseRequest({
-    strategy: MATCH_GENERATION_STRATEGY.SINGLE_ELIMINATION,
+    strategy: MATCH_GENERATION_STRATEGY.TEAM_FIXTURE,
   });
   const result = generateMatchPlan(request, contextFor(draw, evaluated));
   assert.equal(result.ok, false);

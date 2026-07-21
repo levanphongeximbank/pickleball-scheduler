@@ -63,7 +63,17 @@ export {
 } from "./validateRoundRobinRules.js";
 
 export {
+  validateSingleEliminationRuleBinding,
+  PHASE_1D_EXECUTABLE_STRATEGIES,
+  PHASE_1D_BRACKET_SIZE_POLICIES,
+  PHASE_1D_BYE_POLICIES,
+} from "./validateSingleEliminationRules.js";
+
+export { validateSingleEliminationBracketInvariants } from "./validateSingleEliminationBracketInvariants.js";
+
+export {
   generateMatchPlan,
   generateRoundRobinMatchPlan,
   generateGroupStageRoundRobinMatchPlan,
+  generateSingleEliminationMatchPlan,
 } from "./generateMatchPlan.js";

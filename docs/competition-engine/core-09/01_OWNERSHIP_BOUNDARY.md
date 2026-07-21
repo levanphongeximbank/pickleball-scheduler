@@ -9,17 +9,19 @@
 ## 1. CORE-09 owns
 
 - Transforming approved Draw placements into a logical `MatchPlan`
-- Executing an approved `MatchGenerationStrategy` (Phase 1C: `ROUND_ROBIN`, `GROUP_ROUND_ROBIN`; knockout/team later)
+- Executing an approved `MatchGenerationStrategy` (Phase 1C: `ROUND_ROBIN`, `GROUP_ROUND_ROBIN`; Phase 1D: `SINGLE_ELIMINATION`; team/Swiss later)
 - Logical stage and round structure
 - Logical match ordering
 - Stable logical match keys
 - Participant slots
-- Explicit bye representation
+- Explicit bye representation (including SE opening-round bye LogicalMatches)
 - Winner and loser dependency edges
 - Deterministic regeneration
 - Idempotency (policy + fingerprints; runtime wiring later)
 - Match-plan validation
 - Generation fingerprint
+
+CORE-09 consumes Draw-owned bye **placements**; it does **not** choose bye recipients from participant list order.
 
 ---
 

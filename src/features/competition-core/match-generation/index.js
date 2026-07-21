@@ -3,6 +3,7 @@
  * Integrator owns root competition-core/index.js — do not edit that here.
  * Phase 1B: domain contracts, ports, validators, determinism policy.
  * Phase 1C: ROUND_ROBIN + GROUP_ROUND_ROBIN MatchPlan executors (dormant).
+ * Phase 1D: SINGLE_ELIMINATION MatchPlan executor (dormant).
  * No production UI / persistence / SQL / runtime wiring.
  */
 
@@ -114,9 +115,15 @@ export {
   validateRoundRobinRuleBinding,
   resolveRoundRobinLegs,
   PHASE_1C_EXECUTABLE_STRATEGIES,
+  validateSingleEliminationRuleBinding,
+  PHASE_1D_EXECUTABLE_STRATEGIES,
+  PHASE_1D_BRACKET_SIZE_POLICIES,
+  PHASE_1D_BYE_POLICIES,
+  validateSingleEliminationBracketInvariants,
   generateMatchPlan,
   generateRoundRobinMatchPlan,
   generateGroupStageRoundRobinMatchPlan,
+  generateSingleEliminationMatchPlan,
 } from "./services/index.js";
 
 export {
@@ -125,4 +132,16 @@ export {
   expectedSingleRoundRobinRounds,
   generateRoundRobinForParticipants,
   assembleMatchPlan,
+  isPowerOfTwo,
+  nextPowerOfTwo,
+  computeSingleEliminationBracket,
+  expectedLogicalMatchCount,
+  expectedPlayedMatchCount,
+  openingSlotPositions,
+  priorChampionshipFeeders,
+  resolveBracketSlotsFromDraw,
+  materializeOpeningRoundMatches,
+  buildEliminationDependencyGraph,
+  generateSingleEliminationForParticipants,
+  countDrawParticipants,
 } from "./generators/index.js";

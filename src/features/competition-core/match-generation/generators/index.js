@@ -16,3 +16,25 @@ export {
 export { generateRoundRobinForParticipants } from "./generateRoundRobinForParticipants.js";
 
 export { assembleMatchPlan } from "./assembleMatchPlan.js";
+
+export {
+  isPowerOfTwo,
+  nextPowerOfTwo,
+  computeSingleEliminationBracket,
+  expectedLogicalMatchCount,
+  expectedPlayedMatchCount,
+  openingSlotPositions,
+  priorChampionshipFeeders,
+} from "./singleEliminationBracket.js";
+
+export {
+  resolveBracketSlotsFromDraw,
+  materializeOpeningRoundMatches,
+} from "./materializeSingleEliminationMatches.js";
+
+export { buildEliminationDependencyGraph } from "./buildEliminationDependencyGraph.js";
+
+export {
+  generateSingleEliminationForParticipants,
+  countDrawParticipants,
+} from "./generateSingleEliminationForParticipants.js";

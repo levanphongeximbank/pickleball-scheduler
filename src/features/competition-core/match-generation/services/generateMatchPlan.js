@@ -1,5 +1,5 @@
 /**
- * CORE-09 Phase 1C — MatchPlan generation orchestrator (capability-local).
+ * CORE-09 Phase 1C/1D — MatchPlan generation orchestrator (capability-local).
  * No production runtime wiring. No schedule/score/lifecycle fields.
  */
 
@@ -23,7 +23,17 @@ import {
   resolveRoundRobinLegs,
   PHASE_1C_EXECUTABLE_STRATEGIES,
 } from "../services/validateRoundRobinRules.js";
+import {
+  validateSingleEliminationRuleBinding,
+  PHASE_1D_EXECUTABLE_STRATEGIES,
+} from "../services/validateSingleEliminationRules.js";
+import { validateSingleEliminationBracketInvariants } from "../services/validateSingleEliminationBracketInvariants.js";
 import { generateRoundRobinForParticipants } from "../generators/generateRoundRobinForParticipants.js";
+import {
+  generateSingleEliminationForParticipants,
+  countDrawParticipants,
+} from "../generators/generateSingleEliminationForParticipants.js";
+import { computeSingleEliminationBracket as computeBracket } from "../generators/singleEliminationBracket.js";
 import { assembleMatchPlan } from "../generators/assembleMatchPlan.js";
 import {
   expectedSingleRoundRobinPlayedMatches,
@@ -55,7 +65,8 @@ function failWithIssues(issues, fingerprints = {}, diagnostics = {}) {
 }
 
 /**
- * Generate a deterministic MatchPlan for ROUND_ROBIN or GROUP_ROUND_ROBIN.
+ * Generate a deterministic MatchPlan for ROUND_ROBIN, GROUP_ROUND_ROBIN,
+ * or SINGLE_ELIMINATION.
  *
  * @param {import('../contracts/matchGenerationRequest.js').MatchGenerationRequest|object} request
  * @param {import('../contracts/matchGenerationContext.js').MatchGenerationContext|object} context
@@ -82,10 +93,13 @@ export function generateMatchPlan(request, context) {
     });
   }
 
-  if (!PHASE_1C_EXECUTABLE_STRATEGIES.has(request.strategy)) {
+  const isPhase1C = PHASE_1C_EXECUTABLE_STRATEGIES.has(request.strategy);
+  const isPhase1D = PHASE_1D_EXECUTABLE_STRATEGIES.has(request.strategy);
+
+  if (!isPhase1C && !isPhase1D) {
     return matchGenerationFail(
       MATCH_GENERATION_ISSUE_CODE.STRATEGY_UNSUPPORTED,
-      "Phase 1C executor supports only ROUND_ROBIN and GROUP_ROUND_ROBIN",
+      "Match Generator executor does not support this strategy yet",
       {
         path: "strategy",
         details: { strategy: request.strategy },
@@ -133,13 +147,6 @@ export function generateMatchPlan(request, context) {
     );
   }
 
-  const ruleIssues = validateRoundRobinRuleBinding(request, evaluatedRules);
-  if (ruleIssues.length > 0) {
-    return failWithIssues(ruleIssues, fingerprints, {
-      phase: "validateRoundRobinRuleBinding",
-    });
-  }
-
   const participantFingerprint = String(
     context.participantSnapshot?.participantFingerprint ||
       request.participantSnapshotReference?.participantFingerprint ||
@@ -153,12 +160,213 @@ export function generateMatchPlan(request, context) {
     );
   }
 
-  const { legs, encounterCount } = resolveRoundRobinLegs(evaluatedRules);
   const deterministicOrderingInputs = Array.isArray(
     context.deterministicOrderingInputs
   )
     ? [...context.deterministicOrderingInputs]
     : [];
+
+  if (isPhase1D) {
+    return generateSingleEliminationPlan({
+      request,
+      drawSnapshot,
+      evaluatedRules,
+      participantFingerprint,
+      deterministicOrderingInputs,
+      fingerprints,
+    });
+  }
+
+  return generateRoundRobinPlan({
+    request,
+    drawSnapshot,
+    evaluatedRules,
+    participantFingerprint,
+    deterministicOrderingInputs,
+    fingerprints,
+  });
+}
+
+/**
+ * @param {object} args
+ */
+function generateSingleEliminationPlan(args) {
+  const {
+    request,
+    drawSnapshot,
+    evaluatedRules,
+    participantFingerprint,
+    deterministicOrderingInputs,
+    fingerprints,
+  } = args;
+
+  const N = countDrawParticipants(drawSnapshot);
+  const dims = computeBracket(N, evaluatedRules.bracketSizePolicy);
+  const byeCount = dims.ok ? dims.byeCount : undefined;
+
+  const ruleIssues = validateSingleEliminationRuleBinding(
+    request,
+    evaluatedRules,
+    { participantCount: N, byeCount }
+  );
+  if (ruleIssues.length > 0) {
+    return failWithIssues(ruleIssues, fingerprints, {
+      phase: "validateSingleEliminationRuleBinding",
+    });
+  }
+
+  const generated = generateSingleEliminationForParticipants({
+    drawSnapshot,
+    evaluatedRules,
+    competitionId: request.competitionId,
+    divisionId: request.divisionId,
+    categoryId: request.categoryId,
+    stageId: request.stageId,
+  });
+  if (!generated.ok) {
+    return failWithIssues(generated.issues, fingerprints, {
+      phase: "generateSingleEliminationForParticipants",
+      diagnostics: generated.diagnostics,
+    });
+  }
+
+  const diagnostics = {
+    generatorId: MATCH_GENERATOR_IDENTITY.id,
+    generatorVersion: MATCH_GENERATOR_IDENTITY.version,
+    strategy: request.strategy,
+    ...generated.diagnostics,
+  };
+
+  const plan = assembleMatchPlan({
+    competitionId: request.competitionId,
+    divisionId: request.divisionId,
+    categoryId: request.categoryId,
+    stageId: request.stageId,
+    logicalMatches: generated.logicalMatches,
+    drawFingerprint: drawSnapshot.drawFingerprint,
+    ruleEvaluationFingerprint: evaluatedRules.ruleEvaluationFingerprint,
+    participantFingerprint,
+    strategy: request.strategy,
+    deterministicOrderingInputs,
+    diagnostics,
+    validationSummary: { ok: false, issueCount: 0, issueCodes: [] },
+  });
+
+  const seIssues = validateSingleEliminationBracketInvariants(plan, {
+    participantCount: diagnostics.participantCount,
+    bracketSize: diagnostics.bracketSize,
+    byeCount: diagnostics.byeCount,
+    championshipRoundCount: diagnostics.championshipRoundCount,
+    includeThirdPlace: diagnostics.includeThirdPlace === true,
+  });
+  if (seIssues.length > 0) {
+    return failWithIssues(
+      seIssues,
+      { ...fingerprints, generationFingerprint: plan.generationFingerprint },
+      { phase: "validateSingleEliminationBracketInvariants", diagnostics }
+    );
+  }
+
+  const invariantIssues = validateMatchPlanInvariants(plan, {
+    boundDrawSnapshot: drawSnapshot,
+    expectedDrawFingerprint: drawSnapshot.drawFingerprint,
+    expectedRuleEvaluationFingerprint: evaluatedRules.ruleEvaluationFingerprint,
+    expectedParticipantFingerprint: participantFingerprint,
+    strategy: request.strategy,
+    deterministicOrderingInputs,
+    requireGenerationFingerprintMatch: true,
+    maxDirectPairOccurrences: 1,
+  });
+  if (invariantIssues.length > 0) {
+    return failWithIssues(
+      invariantIssues,
+      { ...fingerprints, generationFingerprint: plan.generationFingerprint },
+      { phase: "validateMatchPlanInvariants", diagnostics }
+    );
+  }
+
+  const finalPlan = assembleMatchPlan({
+    competitionId: request.competitionId,
+    divisionId: request.divisionId,
+    categoryId: request.categoryId,
+    stageId: request.stageId,
+    logicalMatches: generated.logicalMatches,
+    drawFingerprint: drawSnapshot.drawFingerprint,
+    ruleEvaluationFingerprint: evaluatedRules.ruleEvaluationFingerprint,
+    participantFingerprint,
+    strategy: request.strategy,
+    deterministicOrderingInputs,
+    diagnostics,
+    validationSummary: {
+      ok: true,
+      issueCount: 0,
+      issueCodes: [],
+    },
+  });
+
+  const finalSe = validateSingleEliminationBracketInvariants(finalPlan, {
+    participantCount: diagnostics.participantCount,
+    bracketSize: diagnostics.bracketSize,
+    byeCount: diagnostics.byeCount,
+    championshipRoundCount: diagnostics.championshipRoundCount,
+    includeThirdPlace: diagnostics.includeThirdPlace === true,
+  });
+  const finalIssues = validateMatchPlanInvariants(finalPlan, {
+    boundDrawSnapshot: drawSnapshot,
+    expectedDrawFingerprint: drawSnapshot.drawFingerprint,
+    expectedRuleEvaluationFingerprint: evaluatedRules.ruleEvaluationFingerprint,
+    expectedParticipantFingerprint: participantFingerprint,
+    strategy: request.strategy,
+    deterministicOrderingInputs,
+    requireGenerationFingerprintMatch: true,
+    maxDirectPairOccurrences: 1,
+  });
+  const combined = [...finalSe, ...finalIssues];
+  if (combined.length > 0) {
+    return failWithIssues(
+      combined,
+      {
+        ...fingerprints,
+        generationFingerprint: finalPlan.generationFingerprint,
+      },
+      { phase: "finalInvariantCheck", diagnostics }
+    );
+  }
+
+  return matchGenerationOk({
+    matchPlan: finalPlan,
+    issues: [],
+    diagnostics,
+    fingerprints: {
+      drawFingerprint: finalPlan.drawFingerprint,
+      ruleEvaluationFingerprint: finalPlan.ruleEvaluationFingerprint,
+      participantFingerprint: finalPlan.participantFingerprint,
+      generationFingerprint: finalPlan.generationFingerprint,
+    },
+  });
+}
+
+/**
+ * @param {object} args
+ */
+function generateRoundRobinPlan(args) {
+  const {
+    request,
+    drawSnapshot,
+    evaluatedRules,
+    participantFingerprint,
+    deterministicOrderingInputs,
+    fingerprints,
+  } = args;
+
+  const ruleIssues = validateRoundRobinRuleBinding(request, evaluatedRules);
+  if (ruleIssues.length > 0) {
+    return failWithIssues(ruleIssues, fingerprints, {
+      phase: "validateRoundRobinRuleBinding",
+    });
+  }
+
+  const { legs, encounterCount } = resolveRoundRobinLegs(evaluatedRules);
 
   /** @type {import('../contracts/logicalMatch.js').LogicalMatch[]} */
   let logicalMatches = [];
@@ -266,7 +474,6 @@ export function generateMatchPlan(request, context) {
     );
   }
 
-  // Cross-group pairing guard (group stage)
   if (request.strategy === MATCH_GENERATION_STRATEGY.GROUP_ROUND_ROBIN) {
     for (const m of logicalMatches) {
       if (m.isByeMatch) continue;
@@ -283,7 +490,6 @@ export function generateMatchPlan(request, context) {
           }
         );
       }
-      // Both participants must belong to the same groupId (structural).
       if (a && b) {
         const aGroup = drawSnapshot.participantPlacements.find(
           (p) => p.participantId === a
@@ -338,13 +544,17 @@ export function generateMatchPlan(request, context) {
   });
 
   if (invariantIssues.length > 0) {
-    return failWithIssues(invariantIssues, {
-      ...fingerprints,
-      generationFingerprint: plan.generationFingerprint,
-    }, {
-      phase: "validateMatchPlanInvariants",
-      diagnostics,
-    });
+    return failWithIssues(
+      invariantIssues,
+      {
+        ...fingerprints,
+        generationFingerprint: plan.generationFingerprint,
+      },
+      {
+        phase: "validateMatchPlanInvariants",
+        diagnostics,
+      }
+    );
   }
 
   const finalPlan = assembleMatchPlan({
@@ -366,7 +576,6 @@ export function generateMatchPlan(request, context) {
     },
   });
 
-  // Re-validate after validationSummary change (fingerprint excludes summary).
   const finalIssues = validateMatchPlanInvariants(finalPlan, {
     boundDrawSnapshot: drawSnapshot,
     expectedDrawFingerprint: drawSnapshot.drawFingerprint,
@@ -378,10 +587,14 @@ export function generateMatchPlan(request, context) {
     maxDirectPairOccurrences: encounterCount,
   });
   if (finalIssues.length > 0) {
-    return failWithIssues(finalIssues, {
-      ...fingerprints,
-      generationFingerprint: finalPlan.generationFingerprint,
-    }, { phase: "finalInvariantCheck", diagnostics });
+    return failWithIssues(
+      finalIssues,
+      {
+        ...fingerprints,
+        generationFingerprint: finalPlan.generationFingerprint,
+      },
+      { phase: "finalInvariantCheck", diagnostics }
+    );
   }
 
   return matchGenerationOk({
@@ -405,5 +618,9 @@ export function generateRoundRobinMatchPlan(request, context) {
 }
 
 export function generateGroupStageRoundRobinMatchPlan(request, context) {
+  return generateMatchPlan(request, context);
+}
+
+export function generateSingleEliminationMatchPlan(request, context) {
   return generateMatchPlan(request, context);
 }

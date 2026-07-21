@@ -20,6 +20,8 @@
 | 13 | Identical inputs regenerate the same output | `GENERATION_FINGERPRINT_MISMATCH` + fingerprint helpers |
 | 14 | No schedule/court/referee/score/result/lifecycle/standings on MatchPlan contracts | `FORBIDDEN_SCHEDULING_FIELD` |
 | 15 | Unsupported strategy fails closed | `STRATEGY_UNSUPPORTED`, `STRATEGY_DEFERRED`, `STRATEGY_REQUIRED` |
+| 16 | Single Elimination bracket structure (Phase 1D) | `BRACKET_INVARIANT_VIOLATION`, `PARTICIPANT_COUNT_INSUFFICIENT` |
+| 17 | Draw-owned bye slots required when B − N > 0 | `DRAW_PLACEMENT_MISSING`, `UNSUPPORTED_GENERATION_POLICY` |
 
 ## Draw fail-closed gates
 

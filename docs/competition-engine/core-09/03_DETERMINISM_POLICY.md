@@ -53,7 +53,7 @@ Algorithm: FNV-1a 32-bit over canonical JSON (sorted object keys). **Not a crypt
 
 ```text
 id: CORE09_MATCH_GENERATOR
-version: 1.0.0-phase1c
+version: 1.0.0-phase1d
 ```
 
 Bump `MATCH_GENERATOR_IDENTITY.version` when stable key derivation or fingerprint material changes.
