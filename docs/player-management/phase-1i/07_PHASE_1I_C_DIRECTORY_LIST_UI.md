@@ -144,15 +144,15 @@ Mock facade at application boundary; no live Supabase.
 
 ## 11. Phase 1I-D handoff
 
-1I-D should:
+1I-D implements:
 
-1. Add authenticated route `/athletes/:playerId`
-2. Call `getPublicDirectoryPlayer` only
-3. Reuse Directory DTO + verified badge
-4. Wire card navigation only after detail route exists
-5. Keep opaque privacy empty/not-found messaging
+1. Authenticated route `/athletes/:playerId`
+2. `getPublicDirectoryPlayer` only
+3. Directory DTO + verified badge
+4. Card navigation to detail (wired in 1I-D)
+5. Opaque privacy empty/not-found messaging
 
-Do **not** start 1I-D until Owner authorizes.
+See `08_PHASE_1I_D_DIRECTORY_DETAIL_UI.md`.
 
 ---
 
