@@ -1,6 +1,10 @@
 import { createOpportunity } from "../../models/opportunity.js";
 import { createScopedMemoryStore, resolveScope } from "./scopedMemoryStore.js";
 
+/**
+ * In-memory CrmOpportunityRepository — tenant/venue isolated per instance.
+ * No localStorage, Supabase, SQL, or global singleton state.
+ */
 export function createMemoryOpportunityRepository() {
   const store = createScopedMemoryStore();
 
@@ -21,7 +25,14 @@ export function createMemoryOpportunityRepository() {
     list(scopeInput, filters = {}) {
       const scope = resolveScope(scopeInput);
       return store.list(scope, (row) => {
-        if (filters.stageCode && row.stageCode !== filters.stageCode) return false;
+        if (filters.pipelineId && row.pipelineId !== String(filters.pipelineId)) return false;
+        if (filters.stageCode && row.stageCode !== String(filters.stageCode)) return false;
+        if (filters.ownerUserId && row.ownerUserId !== String(filters.ownerUserId)) return false;
+        if (filters.stageCategory && row.stageCategory !== String(filters.stageCategory)) {
+          return false;
+        }
+        if (filters.status && row.stageCategory !== String(filters.status)) return false;
+        if (filters.leadId && row.leadId !== String(filters.leadId)) return false;
         return true;
       });
     },

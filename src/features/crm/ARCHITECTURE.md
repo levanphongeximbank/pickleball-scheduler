@@ -1,8 +1,8 @@
-# CRM Architecture (Phase 1B + Phase 1C)
+# CRM Architecture (Phase 1B + Phase 1C + Phase 1D)
 
 **Module home:** `src/features/crm/`
-**Status:** Foundation contracts + ContactReference/Lead application services (not Production-ready CRM)
-**Baseline:** Phase 1A audit (2026-07-21), Phase 1B contracts, owner-approved Phase 1C
+**Status:** Foundation contracts + Lead + Opportunity/Pipeline application services (not Production-ready CRM)
+**Baseline:** Phase 1A–1C complete; owner-approved Phase 1D
 
 ---
 
@@ -32,7 +32,7 @@ CRM must **not** become the source of truth for auth users, user profiles, playe
 | Authorization | `authorization/` | Fail-closed actor + scope + permission |
 | Repositories | `repositories/memory/` | In-memory proof implementations |
 | Adapters | `adapters/` | Legacy LS compatibility boundary |
-| Services | `services/` | Phase 1C application services + legacy LS (compat) |
+| Services | `services/` | Phase 1C/1D application services + legacy LS (compat) |
 | Testing | `testing/` | Test fakes only — not production facade |
 | Projectors | `projectors/` | Read models |
 | Pages | `pages/` | Legacy UI — not wired to new domain yet |
@@ -50,15 +50,27 @@ CRM must **not** become the source of truth for auth users, user profiles, playe
 - `listLeads`
 - `assignLead`
 
+See `docs/crm/phase-1c/`.
+
+---
+
+## Phase 1D application services
+
+`createOpportunityApplicationService(deps)` provides:
+
+- `createPipeline` / `listPipelines`
+- `createOpportunityFromLead` (Opportunity write only — Lead conversion deferred)
+- `getOpportunity` / `listOpportunities`
+- `assignOpportunity`
+- `advanceOpportunityStage`
+- `closeOpportunityWon` / `closeOpportunityLost`
+
 **Consistency model (MODEL 1):** each mutating command performs one aggregate
 write and returns validated `pendingApplicationEvents` (`delivery: "pending"`).
-No active audit/integration port dispatch in Phase 1C. No multi-write
-compensating rollback in application services.
+No active audit/integration port dispatch. No multi-write compensating rollback.
+`estimatedValue` is non-authoritative CRM data — no Finance transactions.
 
-`PlayerDirectoryPort.getById(scope, playerId)` requires explicit tenant+venue scope
-(same discipline as `VenueCustomerDirectoryPort`).
-
-See `docs/crm/phase-1c/`.
+See `docs/crm/phase-1d/`.
 
 ---
 
@@ -97,16 +109,18 @@ See `COMPATIBILITY.md`.
 
 ---
 
-## Non-goals (Phase 1C)
+## Non-goals (Phase 1D)
 
 - SQL / RLS / Supabase repositories
 - Wiring new domain into existing CRM pages
-- Complete lead lifecycle / opportunity conversion
+- Interaction timeline / Tasks
+- Lead conversion in the same command as Opportunity create
 - Identity SQL permission seeding
 - Production / Staging deploy
 
 ---
 
-## Phase 1D entry
+## Phase 1E entry
 
-Proceed to Phase 1D when Phase 1C acceptance criteria pass and owner approves commit. Phase 1D focuses on Opportunity + pipeline stages on the same foundation.
+Proceed to Phase 1E when Phase 1D acceptance criteria pass and owner approves commit.
+Phase 1E is expected to cover Interaction timeline and/or Task follow-ups on the same foundation.

@@ -1,8 +1,8 @@
 /**
- * CRM module — public facade (Phase 1B + Phase 1C).
+ * CRM module — public facade (Phase 1B + Phase 1C + Phase 1D).
  *
  * Exports approved contracts, constants, pure models, authorization,
- * memory repository factories, Phase 1C application services, and
+ * memory repository factories, Phase 1C/1D application services, and
  * foundation helpers only.
  *
  * Does NOT export:
@@ -32,8 +32,13 @@ export {
 export {
   OPPORTUNITY_STAGE,
   OPPORTUNITY_STAGE_VALUES,
+  PIPELINE_STAGE_CATEGORY,
+  PIPELINE_STAGE_CATEGORY_VALUES,
   DEFAULT_PIPELINE_STAGE_ORDER,
   isOpportunityStage,
+  isPipelineStageCategory,
+  normalizePipelineCode,
+  inferStageCategoryFromCode,
 } from "./constants/opportunityStages.js";
 export {
   CRM_EVENT_SCHEMA_VERSION,
@@ -60,6 +65,12 @@ export {
   createOpportunity,
   createPipeline,
   createPipelineStage,
+  assertValidPipelineStages,
+  buildDefaultAllowedTransitions,
+  getInitialOpenStage,
+  getTerminalStageByCategory,
+  findPipelineStage,
+  isAllowedStageTransition,
 } from "./models/opportunity.js";
 export { createInteraction } from "./models/interaction.js";
 export { createCrmTask } from "./models/task.js";
@@ -83,12 +94,14 @@ export {
 export { createMemoryContactReferenceRepository } from "./repositories/memory/memoryContactReferenceRepository.js";
 export { createMemoryLeadRepository } from "./repositories/memory/memoryLeadRepository.js";
 export { createMemoryOpportunityRepository } from "./repositories/memory/memoryOpportunityRepository.js";
+export { createMemoryPipelineRepository } from "./repositories/memory/memoryPipelineRepository.js";
 export { createMemoryInteractionRepository } from "./repositories/memory/memoryInteractionRepository.js";
 export { createMemoryTaskRepository } from "./repositories/memory/memoryTaskRepository.js";
 
 export { projectContactTimeline } from "./projectors/contactTimeline.js";
 export { prepareLeadDraft } from "./services/prepareLeadDraft.js";
 export { createLeadApplicationService } from "./services/leadApplicationService.js";
+export { createOpportunityApplicationService } from "./services/opportunityApplicationService.js";
 
 export {
   LEGACY_CRM_STORAGE_PREFIXES,

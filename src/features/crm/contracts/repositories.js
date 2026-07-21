@@ -34,6 +34,15 @@
  */
 
 /**
+ * @typedef {object} CrmPipelineRepository
+ * @property {(scope: TenantVenueScope, pipeline: object) => object|Promise<object>} save
+ * @property {(scope: TenantVenueScope, pipelineId: string) => object|null|Promise<object|null>} getById
+ * @property {(scope: TenantVenueScope, code: string) => object|null|Promise<object|null>} [getByCode]
+ * @property {(scope: TenantVenueScope, filters?: object) => object[]|Promise<object[]>} list
+ * @property {(scope: TenantVenueScope, pipelineId: string) => boolean|Promise<boolean>} delete
+ */
+
+/**
  * @typedef {object} CrmInteractionRepository
  * @property {(scope: TenantVenueScope, interaction: object) => object|Promise<object>} save
  * @property {(scope: TenantVenueScope, interactionId: string) => object|null|Promise<object|null>} getById
@@ -53,6 +62,7 @@ export const CRM_REPOSITORY_CONTRACT_NAMES = Object.freeze([
   "CrmContactReferenceRepository",
   "CrmLeadRepository",
   "CrmOpportunityRepository",
+  "CrmPipelineRepository",
   "CrmInteractionRepository",
   "CrmTaskRepository",
 ]);
