@@ -1,0 +1,125 @@
+{
+  "ok": true,
+  "stagingRef": "qyewbxjsiiyufanzcjcq",
+  "verifierEmail": "player@staging.local",
+  "marker": "QA|PM-1J-A|DIR-FIXTURE",
+  "results": [
+    {
+      "name": "verifier auth",
+      "ok": true,
+      "detail": {
+        "email": "player@staging.local"
+      }
+    },
+    {
+      "name": "browse rpc ok",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "name": "eligible athlete appears in browse",
+      "ok": true,
+      "detail": {
+        "playerId": "qa-pm1ja-eligible"
+      }
+    },
+    {
+      "name": "hidden athlete excluded from browse",
+      "ok": true,
+      "detail": {
+        "playerId": "qa-pm1ja-hidden"
+      }
+    },
+    {
+      "name": "suspended athlete excluded from browse",
+      "ok": true,
+      "detail": {
+        "playerId": "qa-pm1ja-suspended"
+      }
+    },
+    {
+      "name": "unverified athlete excluded from browse",
+      "ok": true,
+      "detail": {
+        "playerId": "qa-pm1ja-unverified"
+      }
+    },
+    {
+      "name": "no hidden total leak in meta",
+      "ok": true,
+      "detail": {
+        "nextCursor": null,
+        "limit": 50,
+        "count": 2
+      }
+    },
+    {
+      "name": "eligible search by display_name",
+      "ok": true,
+      "detail": {
+        "count": 1
+      }
+    },
+    {
+      "name": "eligible detail returns strict fields",
+      "ok": true,
+      "detail": {
+        "player_id": "qa-pm1ja-eligible",
+        "display_name": "PM1JA Eligible Public Athlete",
+        "gender": "female",
+        "handedness": "right",
+        "activity_region": "Hà Nội, Cầu Giấy, VN"
+      }
+    },
+    {
+      "name": "masked detail keeps row but nulls masked fields",
+      "ok": true,
+      "detail": {
+        "gender": null,
+        "player_id": "qa-pm1ja-masked",
+        "avatar_url": "https://cdn.example/pm1ja-avatar.png",
+        "handedness": null,
+        "is_verified": true,
+        "display_name": "PM1JA Masked Privacy Athlete",
+        "activity_region": null
+      }
+    },
+    {
+      "name": "hidden detail is null",
+      "ok": true,
+      "detail": {
+        "playerId": "qa-pm1ja-hidden"
+      }
+    },
+    {
+      "name": "suspended detail is null",
+      "ok": true,
+      "detail": {
+        "playerId": "qa-pm1ja-suspended"
+      }
+    },
+    {
+      "name": "unverified detail is null",
+      "ok": true,
+      "detail": {
+        "playerId": "qa-pm1ja-unverified"
+      }
+    },
+    {
+      "name": "nonexistent detail is null",
+      "ok": true,
+      "detail": {
+        "playerId": "qa-pm1ja-nonexistent-0000"
+      }
+    },
+    {
+      "name": "invalid cursor is controlled",
+      "ok": true,
+      "detail": {
+        "code": "INVALID_CURSOR"
+      }
+    }
+  ],
+  "failed": [],
+  "verifiedAt": "2026-07-21T15:34:56.895Z"
+}

@@ -1,0 +1,85 @@
+{
+  "ok": true,
+  "dryRun": false,
+  "offlineDryRun": false,
+  "stagingRef": "qyewbxjsiiyufanzcjcq",
+  "marker": "QA|PM-1J-A|DIR-FIXTURE",
+  "namespace": "pm1ja",
+  "scopedPlayerIds": [
+    "qa-pm1ja-eligible",
+    "qa-pm1ja-hidden",
+    "qa-pm1ja-suspended",
+    "qa-pm1ja-unverified",
+    "qa-pm1ja-masked"
+  ],
+  "before": {
+    "ok": true,
+    "rows": [
+      {
+        "id": "c7000000-7e57-4000-8000-000000000001",
+        "player_id": "qa-pm1ja-eligible",
+        "display_name": "PM1JA Eligible Public Athlete"
+      },
+      {
+        "id": "c7000000-7e57-4000-8000-000000000002",
+        "player_id": "qa-pm1ja-hidden",
+        "display_name": "PM1JA Hidden Athlete"
+      },
+      {
+        "id": "c7000000-7e57-4000-8000-000000000003",
+        "player_id": "qa-pm1ja-suspended",
+        "display_name": "PM1JA Suspended Athlete"
+      },
+      {
+        "id": "c7000000-7e57-4000-8000-000000000004",
+        "player_id": "qa-pm1ja-unverified",
+        "display_name": "PM1JA Unverified Athlete"
+      },
+      {
+        "id": "c7000000-7e57-4000-8000-000000000005",
+        "player_id": "qa-pm1ja-masked",
+        "display_name": "PM1JA Masked Privacy Athlete"
+      }
+    ]
+  },
+  "profileDelete": {
+    "deleted": 5
+  },
+  "authDelete": [
+    {
+      "userId": "c7000000-7e57-4000-8000-000000000001",
+      "role": "eligible",
+      "ok": true,
+      "error": null
+    },
+    {
+      "userId": "c7000000-7e57-4000-8000-000000000002",
+      "role": "hidden",
+      "ok": true,
+      "error": null
+    },
+    {
+      "userId": "c7000000-7e57-4000-8000-000000000003",
+      "role": "suspended",
+      "ok": true,
+      "error": null
+    },
+    {
+      "userId": "c7000000-7e57-4000-8000-000000000004",
+      "role": "unverified",
+      "ok": true,
+      "error": null
+    },
+    {
+      "userId": "c7000000-7e57-4000-8000-000000000005",
+      "role": "masked",
+      "ok": true,
+      "error": null
+    }
+  ],
+  "after": {
+    "ok": true,
+    "rows": []
+  },
+  "cleanedAt": "2026-07-21T15:35:07.234Z"
+}
