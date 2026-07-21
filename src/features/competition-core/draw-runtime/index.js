@@ -11,6 +11,31 @@ export {
 export {
   createLegacyDrawAdapter,
   LegacyDrawAdapter,
+  DRAW_CERTIFICATION_ERROR_CODE,
+  DRAW_CERTIFICATION_ERROR_CODE_VALUES,
+  isDrawCertificationErrorCode,
+  createDrawCertificationError,
+  createDrawCertificationOk,
+  MODE_MAPPING_STATUS,
+  LEGACY_TO_PHASE3H_MODE_MATRIX,
+  findModeMappingRow,
+  mapLegacyModeToPhase3h,
+  mapCertificationInputToDrawResolveRequest,
+  groupNumberToLabel,
+  mapCanonicalResultToLegacyGroups,
+  membershipByLabel,
+  runCertificationResolve,
+  SEEDED_GROUPING_ADAPTER_ID,
+  runSeededGroupingAdapter,
+  OPEN_CONDITIONAL_ADAPTER_ID,
+  runOpenConditionalAdapter,
+  TEAM_TOURNAMENT_GROUPING_ADAPTER_ID,
+  runTeamTournamentGroupingAdapter,
+  CONSTRAINT_GROUPING_ADAPTER_ID,
+  runConstraintGroupingAdapter,
+  CC04_COMPAT_BRIDGE_ID,
+  CC04_BRIDGE_POLICY,
+  runCc04CompatibilityBridge,
 } from "./adapters/index.js";
 
 export {
@@ -88,6 +113,9 @@ export {
   matchesDrawPersistencePort,
   createInMemoryDrawPersistencePort,
   createNoopDrawPersistencePort,
+  matchesConstraintResolver,
+  normalizeConstraintResolver,
+  freezeConstraintResolveInput,
 } from "./ports/index.js";
 
 export {
@@ -123,10 +151,13 @@ export {
   assignSeededGroups,
   assignPotGroups,
   assignOpenRandomGroups,
+  assignOpenShuffledSnakeGroups,
   assignManualGroupsOnly,
   buildSeededBracketSlotOrder,
   calculateByeCount,
   selectByeSlots,
   assignBracketSlots,
   assignByes,
+  validateConstraintResolutionOutput,
+  applyConstraintResolverHook,
 } from "./services/index.js";

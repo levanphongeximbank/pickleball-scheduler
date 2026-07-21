@@ -34,6 +34,7 @@ export {
   assignSeededGroups,
   assignPotGroups,
   assignOpenRandomGroups,
+  assignOpenShuffledSnakeGroups,
   assignManualGroupsOnly,
 } from "./assignGroups.js";
 export {
@@ -47,3 +48,5 @@ export {
   createDrawIdentityLookup,
   requireDrawIdentity,
 } from "./drawIdentityLookup.js";
+export { validateConstraintResolutionOutput } from "./validateConstraintResolution.js";
+export { applyConstraintResolverHook } from "./applyConstraintResolverHook.js";

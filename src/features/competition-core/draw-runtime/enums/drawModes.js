@@ -7,6 +7,11 @@
 export const DRAW_MODE = Object.freeze({
   SEEDED_GROUPS: "SEEDED_GROUPS",
   OPEN_RANDOM_GROUPS: "OPEN_RANDOM_GROUPS",
+  /**
+   * CORE-08 Phase 1D — deterministic shuffle then snake placement.
+   * Composes existing Phase 3H primitives only; does not replace OPEN_RANDOM_GROUPS.
+   */
+  OPEN_SHUFFLED_SNAKE_GROUPS: "OPEN_SHUFFLED_SNAKE_GROUPS",
   SNAKE_GROUPS: "SNAKE_GROUPS",
   SERPENTINE_GROUPS: "SERPENTINE_GROUPS",
   POT_GROUPS: "POT_GROUPS",
@@ -32,6 +37,7 @@ export function isDrawMode(value) {
 export const GROUP_DRAW_MODES = Object.freeze([
   DRAW_MODE.SEEDED_GROUPS,
   DRAW_MODE.OPEN_RANDOM_GROUPS,
+  DRAW_MODE.OPEN_SHUFFLED_SNAKE_GROUPS,
   DRAW_MODE.SNAKE_GROUPS,
   DRAW_MODE.SERPENTINE_GROUPS,
   DRAW_MODE.POT_GROUPS,
