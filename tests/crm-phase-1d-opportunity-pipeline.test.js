@@ -324,7 +324,7 @@ test("Phase 1D — missing lead rejection", async () => {
 });
 
 test("Phase 1D — cross-tenant lead rejection", async () => {
-  const { service, leadService, leadRepository } = buildHarness();
+  const { service, leadRepository } = buildHarness();
   const actor = actorWith(ALL_OPP_PERMS);
   const pipeline = await seedDefaultPipeline(service, actor);
 
