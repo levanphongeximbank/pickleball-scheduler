@@ -1,0 +1,84 @@
+/**
+ * CORE-11 Schedule Engine — public module surface.
+ *
+ * Canonical path: src/features/competition-core/schedule-engine/
+ * Engine ID: CORE11_SCHEDULE_ENGINE
+ * Engine version: core11-v1
+ *
+ * Phase 1B: domain contracts, diagnostics, request/plan validators.
+ * Does not re-export CC-09 (src/features/competition-core/scheduling/).
+ * Does not implement graph, slot generation, baseline scheduler, optimizer,
+ * physical court / referee assignment, persistence, or UI wiring.
+ */
+
+export {
+  SCHEDULE_SCHEMA_VERSION,
+  SCHEDULE_ENGINE_IDENTITY,
+  CORE11_SCHEDULE_ENGINE,
+  CORE11_ENGINE_VERSION,
+  OVERNIGHT_POLICY,
+  SCHEDULE_DIAGNOSTIC_SEVERITY,
+  SCHEDULE_DIAGNOSTIC_SEVERITY_VALUES,
+  isScheduleDiagnosticSeverity,
+  FORBIDDEN_CANONICAL_ASSIGNMENT_FIELDS,
+  MINUTES_FROM_MIDNIGHT_MIN,
+  MINUTES_FROM_MIDNIGHT_MAX,
+  CIVIL_DATE_RE,
+} from "./scheduleConstants.js";
+
+export {
+  SCHEDULE_DIAGNOSTIC_CODE,
+  SCHEDULE_DIAGNOSTIC_CODE_VALUES,
+  isScheduleDiagnosticCode,
+  createScheduleDiagnostic,
+  sortScheduleDiagnostics,
+  assignmentBoundaryCodeForField,
+} from "./scheduleDiagnostics.js";
+
+export {
+  asciiCompare,
+  normalizeIdentifier,
+  isValidIdentifier,
+  isNonNegativeInteger,
+  isPositiveInteger,
+  copyPlainObject,
+  isValidCivilDate,
+  isValidMinutesFromMidnight,
+  isValidIanaTimezone,
+  civilWindowsOverlap,
+  stableSortByKeys,
+  canonicalizeJsonValue,
+  serializeCanonical,
+} from "./scheduleTypes.js";
+
+export {
+  createCivilScheduleTime,
+  createSchedulingWindow,
+  createSessionWindow,
+  createScheduleParticipantReference,
+  createScheduleDependency,
+  createScheduleMatchInput,
+  createMatchDurationPolicy,
+  createRestPolicy,
+  createCapacityPolicy,
+  createSchedulePolicy,
+  createScheduleRequest,
+  createScheduledMatch,
+  createUnscheduledMatch,
+  createScheduleReplayMetadata,
+  createSchedulePlan,
+  normalizeScheduledOrder,
+  normalizeUnscheduledOrder,
+  projectSchedulePlanForFingerprint,
+  fingerprintSchedulePlan,
+  schedulePlansSemanticallyEqual,
+  collectForbiddenAssignmentFieldPaths,
+  matchesScheduleOptimizerPort,
+  matchesScheduleCapacityPort,
+} from "./scheduleContracts.js";
+
+export { validateScheduleRequest } from "./validateScheduleRequest.js";
+export {
+  validateSchedulePlan,
+  scheduleResultValidator,
+} from "./validateSchedulePlan.js";
