@@ -1,0 +1,8 @@
+[
+  "tests/competition-core-draw-runtime-3h.test.js",
+  "tests/competition-core-draw-runtime-3h-architecture.test.js",
+  "tests/competition-core-draw-runtime-core08-1b.test.js",
+  "tests/competition-core-draw-runtime-core08-1c.test.js",
+  "tests/competition-core-draw-runtime-core08-1d.test.js",
+  "tests/competition-core-draw-runtime-core08-1e-certification.test.js"
+]
