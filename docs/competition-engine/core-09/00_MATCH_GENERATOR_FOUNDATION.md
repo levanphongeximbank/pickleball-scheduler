@@ -1,7 +1,7 @@
 # CORE-09 — Match Generator Foundation
 
-**Status:** Phase 1B implemented (capability-local, dormant)  
-**Module:** `src/features/competition-core/match-generation/`  
+**Status:** Phase 1B contracts + Phase 1C RR/Group executors (capability-local, dormant)
+**Module:** `src/features/competition-core/match-generation/`
 **Production impact:** NONE
 
 ## Locked terminology
@@ -24,9 +24,16 @@ Do **not** place CORE-09 implementation under `src/features/competition-core/sch
 5. Ownership + migration documentation
 6. Contract-level unit tests
 
-## Explicit non-goals (this phase)
+## Phase 1C delivered
 
-- Round-robin / knockout / Swiss executors
+Deterministic MatchPlan executors for `ROUND_ROBIN` and `GROUP_ROUND_ROBIN` (single + double).
+See `08_PHASE_1C_ROUND_ROBIN_GROUP_STAGE.md`.
+
+**Phase 1C generates logical MatchPlans only. It does not schedule date, time, court, referee, score, result, or lifecycle state.**
+
+## Explicit non-goals (remaining)
+
+- Knockout / Swiss / team-fixture executors
 - Production runtime wiring
 - Feature flags / UI / persistence / SQL / Supabase / deployment
 - Changes to production tournament, Daily Play, Team Tournament, or scheduling engines
@@ -47,3 +54,4 @@ Root `competition-core/index.js` and `unit-test-files.json` remain Integrator-ow
 | `05_MIGRATION_AND_COMPATIBILITY_MAP.md` | Future migration map |
 | `06_PHASE_1B_DOMAIN_CONTRACTS.md` | Contract delivery note |
 | `07_CONTRACT_DEFAULTS_AND_IMMUTABILITY.md` | Fail-closed enums, LMK grammar, freeze semantics |
+| `08_PHASE_1C_ROUND_ROBIN_GROUP_STAGE.md` | RR / group-stage executor delivery |
