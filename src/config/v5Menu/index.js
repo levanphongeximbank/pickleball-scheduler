@@ -22,7 +22,11 @@ export {
   TOURNAMENT_IN_PAGE_NAV,
   collectTournamentInPageLabels,
 } from "./tournamentInPageNav.js";
-export { auditFullMenuCoverage } from "./fullMenuAudit.js";
+export {
+  auditFullMenuCoverage,
+  evaluateFullMenuReadinessGate,
+  APPROVED_PARTIAL_MENU_PATHS,
+} from "./fullMenuAudit.js";
 
 /** MENU_GROUPS V5 — cây menu đầy đủ theo spec hệ thống. */
 export const V5_MENU_GROUPS = [
