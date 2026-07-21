@@ -25,3 +25,39 @@ export {
   createDeterministicRandomFromSeed,
   deterministicTieKey,
 } from "./deterministicRandom.js";
+
+export {
+  buildCandidateOrderingTuple,
+  readCandidateOrderingField,
+} from "./buildCandidateOrderingTuple.js";
+
+export {
+  createDeterministicCandidateComparator,
+  orderCandidatesByDeterministicComparator,
+  CORE07_COMPARISON_CONTRACT_VERSION,
+} from "./createDeterministicCandidateComparator.js";
+
+export { reserveOverrideSeedSlots, computeSeedNumberUpperBound } from "./reserveOverrideSeedSlots.js";
+
+export { allocateSeedNumbers } from "./allocateSeedNumbers.js";
+
+export {
+  buildAssignmentFingerprintPayload,
+  stringifyCanonicalJson,
+} from "./buildAssignmentFingerprintPayload.js";
+
+export { buildResultFingerprintPayload } from "./buildResultFingerprintPayload.js";
+
+export { createDraftSeedingResult } from "./createDraftSeedingResult.js";
+
+export {
+  SEEDING_STATE_TRANSITION_MATRIX,
+  getSeedingStateTransitionDecision,
+  validateSeedingStateTransition,
+} from "./validateSeedingStateTransition.js";
+
+export { finalizeSeedingResult } from "./finalizeSeedingResult.js";
+
+export { supersedeSeedingResult } from "./supersedeSeedingResult.js";
+
+export { cancelSeedingResult } from "./cancelSeedingResult.js";
