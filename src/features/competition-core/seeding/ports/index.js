@@ -34,3 +34,10 @@ export {
   appendLifecycleEventsThroughPort,
   CORE07_LIFECYCLE_AUDIT_PORT_VERSION,
 } from "./SeedingLifecycleAuditPort.js";
+
+export {
+  isRankingRatingSnapshotProviderPort,
+  requireRankingRatingSnapshotProviderPort,
+  getSnapshotThroughPort,
+  CORE07_SNAPSHOT_PROVIDER_PORT_VERSION,
+} from "./RankingRatingSnapshotProviderPort.js";

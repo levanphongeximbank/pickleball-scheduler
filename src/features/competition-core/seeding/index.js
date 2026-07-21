@@ -1,7 +1,7 @@
 /**
  * Competition-core seeding capability-local public surface.
  * Phase 3G runtime exports preserved.
- * CORE-07 Phase 1C/1D/1E exports added (non-production).
+ * CORE-07 Phase 1C/1D/1E/1F exports added (non-production).
  * Integrator owns root competition-core/index.js re-exports — do not edit that here.
  */
 
@@ -14,6 +14,10 @@ export {
   createLegacySeedingAdapter,
   LegacySeedingAdapter,
 } from "./adapters/index.js";
+
+/* Memory/testing adapters are intentionally NOT re-exported from this barrel.
+ * Import them only via explicit adapters/memory or adapters/testing subpaths.
+ */
 
 export {
   createSeedingResolveRequest,
@@ -93,6 +97,10 @@ export {
   requireSeedingLifecycleAuditPort,
   appendLifecycleEventsThroughPort,
   CORE07_LIFECYCLE_AUDIT_PORT_VERSION,
+  isRankingRatingSnapshotProviderPort,
+  requireRankingRatingSnapshotProviderPort,
+  getSnapshotThroughPort,
+  CORE07_SNAPSHOT_PROVIDER_PORT_VERSION,
 } from "./ports/index.js";
 
 export {
@@ -138,6 +146,7 @@ export {
   LIFECYCLE_EVENT_TYPE,
   LIFECYCLE_EVENT_TYPE_VALUES,
   CORE07_FINGERPRINT_PORT_VERSION,
+  CORE07_INTEGRATION_CONTRACT_VERSION,
   normalizeSeedingScope,
   buildSeedingScopeKey,
   normalizeSeedingCandidate,
@@ -189,3 +198,14 @@ export {
   supersedeSeedingResult,
   cancelSeedingResult,
 } from "./services/index.js";
+
+export {
+  normalizeSeedingIntegrationRequest,
+  applyEligibilityDecisions,
+  applyRuleEvaluation,
+  resolveIntegrationSnapshot,
+  projectAuthoritativeSeedingResult,
+  mapAuthoritativeProjectionToDrawSeedRanking,
+  compareLegacyAndCanonicalSeeding,
+  createSeedingIntegrationFacade,
+} from "./integration/index.js";

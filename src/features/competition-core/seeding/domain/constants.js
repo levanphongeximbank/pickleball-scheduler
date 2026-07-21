@@ -187,3 +187,7 @@ export const CORE07_RESULT_REPOSITORY_PORT_VERSION =
   "core07-result-repository-port-v1";
 export const CORE07_LIFECYCLE_AUDIT_PORT_VERSION =
   "core07-lifecycle-audit-port-v1";
+export const CORE07_SNAPSHOT_PROVIDER_PORT_VERSION =
+  "core07-snapshot-provider-port-v1";
+export const CORE07_INTEGRATION_CONTRACT_VERSION =
+  "core07-integration-contracts-v1";
