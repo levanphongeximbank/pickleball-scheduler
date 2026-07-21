@@ -35,6 +35,7 @@ const FEATURE_FLAG_CHECKERS = Object.freeze({
 /** Route không cần permission khi RBAC bật (hồ sơ, thông báo, placeholder). */
 const PUBLIC_MENU_PATHS = new Set([
   "/profile",
+  "/athletes",
   "/my-club",
   "/my-club/requests",
   "/discover-clubs",

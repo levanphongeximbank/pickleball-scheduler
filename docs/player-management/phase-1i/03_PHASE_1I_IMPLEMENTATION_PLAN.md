@@ -72,6 +72,8 @@ Platform MVP requires durable read (**1I-B**). Club-blob-only is **not** the app
 
 `/athletes`: search, region filter, pagination, cards, loading/empty/error/authorization. Facade only.
 
+**Implementation package:** `docs/player-management/phase-1i/07_PHASE_1I_C_DIRECTORY_LIST_UI.md`
+
 ---
 
 ## 1I-D — Detail UI
