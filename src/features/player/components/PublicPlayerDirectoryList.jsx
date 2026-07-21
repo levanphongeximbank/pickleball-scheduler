@@ -217,6 +217,7 @@ export default function PublicPlayerDirectoryList({
                 color="inherit"
                 size="small"
                 onClick={() => void controller.retry(searchOptions)}
+                aria-label="Thử lại tải danh bạ vận động viên"
               >
                 Thử lại
               </Button>
