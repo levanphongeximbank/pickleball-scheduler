@@ -35,7 +35,40 @@ export {
   lineupResolveFail,
 } from "./resolveResult.js";
 
-export { createLineupVisibilityGrant } from "./visibilityGrant.js";
+export {
+  createLineupVisibilityGrant,
+} from "./visibilityGrant.js";
+
+export {
+  LINEUP_VISIBILITY_STATE,
+  LINEUP_VISIBILITY_STATE_VALUES,
+  LINEUP_VISIBILITY_RANK,
+  isLineupVisibilityState,
+  normalizeLineupVisibilityState,
+  compareVisibilityRank,
+} from "./lineupVisibilityState.js";
+
+export {
+  LINEUP_DEADLINE_PHASE,
+  LINEUP_DEADLINE_PHASE_VALUES,
+  isLineupDeadlinePhase,
+  createLineupDeadlineTimestamps,
+} from "./lineupDeadlinePhase.js";
+
+export {
+  createLineupVisibilityProjection,
+  LINEUP_PROJECTION_FIELD,
+} from "./visibilityProjection.js";
+
+export {
+  isLineupHardeningPolicy,
+  createDefaultLineupHardeningPolicy,
+  createLineupHardeningPolicy,
+} from "./lineupHardeningPolicy.js";
+
+export { createLineupAuditMetadata } from "./auditMetadata.js";
+
+export { createLineupIdempotencyRecord } from "./idempotencyRecord.js";
 
 export {
   MISSING_LINEUP_POLICY,
