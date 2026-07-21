@@ -93,9 +93,24 @@ Domain builders exported as `createCore07SeedAssignment` / `createCore07DraftSee
 
 ```text
 node --test tests/competition-core-seeding-core07.test.js
+→ 40 pass / 0 fail
+
 node --test tests/competition-core-seeding-core07-phase1d.test.js  (×2)
+→ 25 pass / 0 fail (identical both runs)
+
 node --test tests/competition-core-seeding-runtime-3g.test.js
+→ 22 pass / 0 fail
 ```
+
+### Test-count change (pre-remediation → post-remediation commit)
+
+Pre-CLEAR-remediation suite: **21** tests (entry-based CLEAR + fine-grained allocation/override/result cases).
+
+Commit `7ca3115` final suite: **16** tests — allocation/override/result cases were **consolidated** into fewer broader tests, and entry-based CLEAR was **replaced** by a targeted-CLEAR suite. Coverage gaps after consolidation are restored by the certification remediation below (tests-only).
+
+### Certification remediation (tests only)
+
+Restored/strengthened Phase 1D coverage for: `seedNumberStart` offset, eligible unseeded, Phase 1C equal-rank tie-break, Infinity rejection, ineligible exclusion, PROTECT source, duplicate-entry conflict, out-of-range/unknown/ineligible/unauthorized overrides, rejection provenance, override-order independence, immutability, root-inactive + no production activation scan.
 
 ---
 
