@@ -53,6 +53,11 @@ import {
   matchesDrawPersistencePort,
   createNoopDrawPersistencePort,
 } from "./ports/drawPersistencePort.js";
+import {
+  matchesConstraintResolver,
+  normalizeConstraintResolver,
+} from "./ports/constraintResolverPort.js";
+import { applyConstraintResolverHook } from "./services/applyConstraintResolverHook.js";
 import { createNoopDrawPolicy } from "./policies/noopDrawPolicy.js";
 import { DRAW_MODE, BRACKET_DRAW_MODES } from "./enums/drawModes.js";
 import { LAYOUT_TYPE } from "./enums/layoutTypes.js";
@@ -69,7 +74,7 @@ import { isNonEmptyString } from "../participants/contracts/shared.js";
  * @property {Function} [participantResolver]
  * @property {Function} [entryResolver]
  * @property {Function} [teamResolver]
- * @property {Function} [constraintResolver]
+ * @property {import('./ports/constraintResolverPort.js').ConstraintResolverFn|import('./ports/constraintResolverPort.js').ConstraintResolverPort} [constraintResolver]
  * @property {(seed: unknown) => () => number} [deterministicRandom]
  * @property {() => string|Date} [clock]
  */
@@ -121,6 +126,18 @@ export function createDrawResolver(options = {}) {
       : null;
   void seedingResolver;
 
+  // constraintResolver is optional. When absent, Phase 3H placement is unchanged.
+  // When present, it runs once after canonical placement and before identity/persist.
+  let constraintResolver = null;
+  if (options.constraintResolver != null) {
+    if (!matchesConstraintResolver(options.constraintResolver)) {
+      throw new TypeError(
+        "createDrawResolver constraintResolver must be a function or { resolveConstraints }"
+      );
+    }
+    constraintResolver = normalizeConstraintResolver(options.constraintResolver);
+  }
+
   const identityLookup =
     options.identityLookup || createDrawIdentityLookup();
   const enablePersistence = options.enablePersistence === true;
@@ -153,6 +170,8 @@ export function createDrawResolver(options = {}) {
       persistenceEnabled: enablePersistence,
       usedMathRandom: false,
       seedingResolverCalled: false,
+      constraintResolverInvoked: false,
+      constraintResolverCallCount: 0,
       matchupImplemented: false,
       matchCreated: false,
       scheduleCreated: false,
@@ -476,6 +495,30 @@ export function createDrawResolver(options = {}) {
           }),
           placements
         );
+      }
+
+      // Phase 1C: optional generic constraint hook AFTER canonical Phase 3H placement.
+      // Fail-closed. Never silently fall back to unconstrained placement on failure.
+      if (constraintResolver) {
+        const constrained = await applyConstraintResolverHook({
+          constraintResolver,
+          placements,
+          groups,
+          brackets,
+          byes,
+          unresolvedCandidates,
+          eligible,
+          decisionTrace,
+          request,
+          drawIdentityKey,
+          diagnostics,
+        });
+        placements = constrained.placements;
+        groups = constrained.groups;
+        brackets = constrained.brackets;
+        byes = constrained.byes;
+        unresolvedCandidates = constrained.unresolvedCandidates;
+        decisionTrace = constrained.decisionTrace;
       }
 
       requireDrawIdentity({

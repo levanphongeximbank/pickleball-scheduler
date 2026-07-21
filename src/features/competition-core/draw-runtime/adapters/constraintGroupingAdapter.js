@@ -1,11 +1,14 @@
 /**
- * CORE-08 Phase 1B — Target D: Constraint grouping adapter.
+ * CORE-08 Phase 1B/1C — Target D: Constraint grouping adapter.
  * Does not fake constraint repair parity.
  * Empty constraints → snake via Phase 3H.
- * Non-empty avoid_same_group (or any constraints) → typed failure HARDENING_REQUIRED.
+ * Non-empty constraints without injected constraintResolver → fail closed.
+ * Non-empty constraints with injected generic resolver → Phase 3H + hook.
+ * Adapter never implements repair and never imports the legacy constraint engine.
  */
 
 import { DRAW_MODE } from "../enums/drawModes.js";
+import { matchesConstraintResolver } from "../ports/constraintResolverPort.js";
 import {
   DRAW_CERTIFICATION_ERROR_CODE,
   createDrawCertificationError,
@@ -18,6 +21,8 @@ export const CONSTRAINT_GROUPING_ADAPTER_ID = "CORE08_CONSTRAINT_GROUPING_CERT";
  * @param {object} input
  * @param {Array} [input.constraints]
  * @param {boolean} [input.allowPostValidateOnly] reserved — still does not repair
+ * @param {object} [resolverOptions]
+ * @param {unknown} [resolverOptions.constraintResolver]
  */
 export async function runConstraintGroupingAdapter(
   input = {},
@@ -32,18 +37,22 @@ export async function runConstraintGroupingAdapter(
         c.category === "separation")
   );
 
-  if (constraints.length > 0) {
+  const hasResolver = matchesConstraintResolver(
+    resolverOptions && resolverOptions.constraintResolver
+  );
+
+  if (constraints.length > 0 && !hasResolver) {
     return createDrawCertificationError(
       DRAW_CERTIFICATION_ERROR_CODE.ADAPTER_CONSTRAINTS_UNSUPPORTED,
-      "Separation constraints cannot be represented by Phase 3H placement without constraintResolver hardening",
+      "Separation constraints cannot be represented by Phase 3H placement without an injected constraintResolver",
       {
         hardening: "HARDENING_REQUIRED",
         constraintCount: constraints.length,
         separationCount: separation.length,
         supportedToday:
-          "Snake-only path when constraints:[]. Post-placement validation may be added later; repair remains format/CORE-01 owned.",
+          "Snake-only path when constraints:[]. Non-empty constraints require injected generic constraintResolver (Phase 1C).",
         phase3hNote:
-          "DrawResolver accepts constraintResolver DI but does not invoke it.",
+          "DrawResolver invokes constraintResolver once after canonical placement when supplied.",
       }
     );
   }
@@ -56,6 +65,25 @@ export async function runConstraintGroupingAdapter(
     }
   }
 
+  const acceptedDifferences = [
+    "Parity certified for constraint-empty snake placement via Phase 3H.",
+    "assignGroupsWithConstraints repair/swap loop is not executed by this adapter.",
+  ];
+  const unsupportedBehavior = [
+    "avoid_same_group hard repair inside CORE-08",
+    "Constraint evaluation swap passes inside CORE-08",
+    "Private pairing overlay",
+  ];
+
+  if (constraints.length > 0 && hasResolver) {
+    acceptedDifferences.push(
+      "Non-empty constraints delegated to injected generic constraintResolver after Phase 3H placement."
+    );
+    unsupportedBehavior.push(
+      "Format-specific club/unit/host rule definitions remain outside CORE-08"
+    );
+  }
+
   return runCertificationResolve(
     {
       ...input,
@@ -63,22 +91,25 @@ export async function runConstraintGroupingAdapter(
       legacyMode: "official_ai_balance",
       drawMode: DRAW_MODE.SNAKE_GROUPS,
       allowConditionalMode: true,
+      context: {
+        ...(input.context && typeof input.context === "object"
+          ? input.context
+          : {}),
+        constraints,
+        separationCount: separation.length,
+      },
     },
     {
       target: "D_CONSTRAINT_GROUPING",
-      parity: "PARTIAL_PARITY",
+      parity:
+        constraints.length > 0
+          ? "PARTIAL_PARITY_WITH_INJECTED_RESOLVER"
+          : "PARTIAL_PARITY",
       resolverOptions,
       entriesById,
       namePrefix: input.namePrefix || "Bảng ",
-      acceptedDifferences: [
-        "Parity certified only for constraint-empty snake placement via Phase 3H.",
-        "assignGroupsWithConstraints repair/swap loop is not executed.",
-      ],
-      unsupportedBehavior: [
-        "avoid_same_group hard repair",
-        "Constraint evaluation swap passes",
-        "Private pairing overlay",
-      ],
+      acceptedDifferences,
+      unsupportedBehavior,
     }
   );
 }

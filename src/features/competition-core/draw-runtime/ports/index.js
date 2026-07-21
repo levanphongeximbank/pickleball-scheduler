@@ -4,3 +4,9 @@ export {
   createInMemoryDrawPersistencePort,
   createNoopDrawPersistencePort,
 } from "./drawPersistencePort.js";
+
+export {
+  matchesConstraintResolver,
+  normalizeConstraintResolver,
+  freezeConstraintResolveInput,
+} from "./constraintResolverPort.js";

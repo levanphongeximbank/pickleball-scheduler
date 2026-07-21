@@ -113,6 +113,9 @@ export {
   matchesDrawPersistencePort,
   createInMemoryDrawPersistencePort,
   createNoopDrawPersistencePort,
+  matchesConstraintResolver,
+  normalizeConstraintResolver,
+  freezeConstraintResolveInput,
 } from "./ports/index.js";
 
 export {
@@ -154,4 +157,6 @@ export {
   selectByeSlots,
   assignBracketSlots,
   assignByes,
+  validateConstraintResolutionOutput,
+  applyConstraintResolverHook,
 } from "./services/index.js";

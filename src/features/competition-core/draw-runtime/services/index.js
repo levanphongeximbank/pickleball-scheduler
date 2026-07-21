@@ -47,3 +47,5 @@ export {
   createDrawIdentityLookup,
   requireDrawIdentity,
 } from "./drawIdentityLookup.js";
+export { validateConstraintResolutionOutput } from "./validateConstraintResolution.js";
+export { applyConstraintResolverHook } from "./applyConstraintResolverHook.js";
