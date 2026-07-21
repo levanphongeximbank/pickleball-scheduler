@@ -1,0 +1,67 @@
+{
+  "ok": true,
+  "dryRun": false,
+  "offlineDryRun": false,
+  "stagingRef": "qyewbxjsiiyufanzcjcq",
+  "marker": "QA|PM-1J-A|DIR-FIXTURE",
+  "namespace": "pm1ja",
+  "fixtureCount": 5,
+  "preWriteSnapshot": {
+    "ok": true,
+    "rows": [],
+    "capturedAt": "2026-07-21T15:34:36.992Z"
+  },
+  "seeded": [
+    {
+      "role": "eligible",
+      "key": "PM1JA-ELIGIBLE",
+      "userId": "c7000000-7e57-4000-8000-000000000001",
+      "playerId": "qa-pm1ja-eligible",
+      "displayName": "PM1JA Eligible Public Athlete",
+      "directoryExpectation": "visible",
+      "created": true,
+      "profileOk": true
+    },
+    {
+      "role": "hidden",
+      "key": "PM1JA-HIDDEN",
+      "userId": "c7000000-7e57-4000-8000-000000000002",
+      "playerId": "qa-pm1ja-hidden",
+      "displayName": "PM1JA Hidden Athlete",
+      "directoryExpectation": "excluded",
+      "created": true,
+      "profileOk": true
+    },
+    {
+      "role": "suspended",
+      "key": "PM1JA-SUSPENDED",
+      "userId": "c7000000-7e57-4000-8000-000000000003",
+      "playerId": "qa-pm1ja-suspended",
+      "displayName": "PM1JA Suspended Athlete",
+      "directoryExpectation": "excluded",
+      "created": true,
+      "profileOk": true
+    },
+    {
+      "role": "unverified",
+      "key": "PM1JA-UNVERIFIED",
+      "userId": "c7000000-7e57-4000-8000-000000000004",
+      "playerId": "qa-pm1ja-unverified",
+      "displayName": "PM1JA Unverified Athlete",
+      "directoryExpectation": "excluded",
+      "created": true,
+      "profileOk": true
+    },
+    {
+      "role": "masked",
+      "key": "PM1JA-MASKED",
+      "userId": "c7000000-7e57-4000-8000-000000000005",
+      "playerId": "qa-pm1ja-masked",
+      "displayName": "PM1JA Masked Privacy Athlete",
+      "directoryExpectation": "visible_masked",
+      "created": true,
+      "profileOk": true
+    }
+  ],
+  "seededAt": "2026-07-21T15:34:40.770Z"
+}
