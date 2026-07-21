@@ -1,8 +1,8 @@
-# CRM Architecture (Phase 1B)
+# CRM Architecture (Phase 1B + Phase 1C)
 
-**Module home:** `src/features/crm/`  
-**Status:** Foundation contracts + skeleton (not Production-ready CRM)  
-**Baseline:** Phase 1A audit (2026-07-21), owner-approved with conditions
+**Module home:** `src/features/crm/`
+**Status:** Foundation contracts + ContactReference/Lead application services (not Production-ready CRM)
+**Baseline:** Phase 1A audit (2026-07-21), Phase 1B contracts, owner-approved Phase 1C
 
 ---
 
@@ -32,10 +32,33 @@ CRM must **not** become the source of truth for auth users, user profiles, playe
 | Authorization | `authorization/` | Fail-closed actor + scope + permission |
 | Repositories | `repositories/memory/` | In-memory proof implementations |
 | Adapters | `adapters/` | Legacy LS compatibility boundary |
-| Services | `services/` | Foundation helpers + legacy LS (compat) |
+| Services | `services/` | Phase 1C application services + legacy LS (compat) |
+| Testing | `testing/` | Test fakes only — not production facade |
 | Projectors | `projectors/` | Read models |
 | Pages | `pages/` | Legacy UI — not wired to new domain yet |
 | Facade | `index.js` | Explicit public exports only |
+
+---
+
+## Phase 1C application services
+
+`createLeadApplicationService(deps)` provides:
+
+- `createContactReference`
+- `createLead` (requires existing `contactRefId`)
+- `getLead`
+- `listLeads`
+- `assignLead`
+
+**Consistency model (MODEL 1):** each mutating command performs one aggregate
+write and returns validated `pendingApplicationEvents` (`delivery: "pending"`).
+No active audit/integration port dispatch in Phase 1C. No multi-write
+compensating rollback in application services.
+
+`PlayerDirectoryPort.getById(scope, playerId)` requires explicit tenant+venue scope
+(same discipline as `VenueCustomerDirectoryPort`).
+
+See `docs/crm/phase-1c/`.
 
 ---
 
@@ -74,16 +97,16 @@ See `COMPATIBILITY.md`.
 
 ---
 
-## Non-goals (Phase 1B)
+## Non-goals (Phase 1C)
 
 - SQL / RLS / Supabase repositories
 - Wiring new domain into existing CRM pages
-- Complete lead/opportunity/campaign lifecycles
+- Complete lead lifecycle / opportunity conversion
 - Identity SQL permission seeding
-- Production deploy
+- Production / Staging deploy
 
 ---
 
-## Phase 1C entry
+## Phase 1D entry
 
-Proceed to Phase 1C when Phase 1B acceptance criteria pass and owner approves commit. Phase 1C focuses on ContactReference + Lead application services on the foundation contracts.
+Proceed to Phase 1D when Phase 1C acceptance criteria pass and owner approves commit. Phase 1D focuses on Opportunity + pipeline stages on the same foundation.

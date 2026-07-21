@@ -1,13 +1,15 @@
 /**
- * CRM module — public facade (Phase 1B).
+ * CRM module — public facade (Phase 1B + Phase 1C).
  *
  * Exports approved contracts, constants, pure models, authorization,
- * memory repository factories, and foundation helpers only.
+ * memory repository factories, Phase 1C application services, and
+ * foundation helpers only.
  *
  * Does NOT export:
  * - internal repository mutable state
  * - Supabase implementations
  * - legacy localStorage services as canonical repositories
+ * - test-only fakes (see `testing/phase1cFakes.js` for tests)
  *
  * Legacy LS services remain importable from their file paths / adapters
  * for compatibility only — see COMPATIBILITY.md.
@@ -34,6 +36,7 @@ export {
   isOpportunityStage,
 } from "./constants/opportunityStages.js";
 export {
+  CRM_EVENT_SCHEMA_VERSION,
   CRM_AUDIT_EVENT_TYPE,
   CRM_INTEGRATION_EVENT_TYPE,
   CRM_EVENT_TYPE_VALUES,
@@ -77,6 +80,7 @@ export {
   authorizeCrmResource,
 } from "./authorization/crmAuthorize.js";
 
+export { createMemoryContactReferenceRepository } from "./repositories/memory/memoryContactReferenceRepository.js";
 export { createMemoryLeadRepository } from "./repositories/memory/memoryLeadRepository.js";
 export { createMemoryOpportunityRepository } from "./repositories/memory/memoryOpportunityRepository.js";
 export { createMemoryInteractionRepository } from "./repositories/memory/memoryInteractionRepository.js";
@@ -84,6 +88,7 @@ export { createMemoryTaskRepository } from "./repositories/memory/memoryTaskRepo
 
 export { projectContactTimeline } from "./projectors/contactTimeline.js";
 export { prepareLeadDraft } from "./services/prepareLeadDraft.js";
+export { createLeadApplicationService } from "./services/leadApplicationService.js";
 
 export {
   LEGACY_CRM_STORAGE_PREFIXES,

@@ -10,6 +10,14 @@
  */
 
 /**
+ * @typedef {object} CrmContactReferenceRepository
+ * @property {(scope: TenantVenueScope, contactRef: object) => object|Promise<object>} save
+ * @property {(scope: TenantVenueScope, contactRefId: string) => object|null|Promise<object|null>} getById
+ * @property {(scope: TenantVenueScope, filters?: object) => object[]|Promise<object[]>} list
+ * @property {(scope: TenantVenueScope, contactRefId: string) => boolean|Promise<boolean>} delete
+ */
+
+/**
  * @typedef {object} CrmLeadRepository
  * @property {(scope: TenantVenueScope, lead: object) => object|Promise<object>} save
  * @property {(scope: TenantVenueScope, leadId: string) => object|null|Promise<object|null>} getById
@@ -42,6 +50,7 @@
  */
 
 export const CRM_REPOSITORY_CONTRACT_NAMES = Object.freeze([
+  "CrmContactReferenceRepository",
   "CrmLeadRepository",
   "CrmOpportunityRepository",
   "CrmInteractionRepository",
