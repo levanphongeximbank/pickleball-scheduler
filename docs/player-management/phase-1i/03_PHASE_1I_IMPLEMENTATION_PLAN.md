@@ -73,18 +73,30 @@ Platform MVP requires durable read (**1I-B**). Club-blob-only is **not** the app
 `/athletes`: search, region filter, pagination, cards, loading/empty/error/authorization. Facade only.
 
 **Implementation package:** `docs/player-management/phase-1i/07_PHASE_1I_C_DIRECTORY_LIST_UI.md`
+**Status on `main`:** merged (PR #121). Card → detail navigation is wired in **1I-D**.
 
 ---
 
 ## 1I-D — Detail UI
 
-`/athletes/:playerId`: same Directory DTO; generic not-found.
+`/athletes/:playerId`: same Directory DTO; generic not-found; authenticated-only under `MainLayout`.
+
+| Item | Detail |
+|------|--------|
+| Facade | `getPublicDirectoryPlayer` only |
+| Auth | Same as `/athletes` (no special permission) |
+| Privacy | Single generic message for null/hidden/ineligible/nonexistent |
+| Cards | 1I-C cards navigate via `buildPublicDirectoryPlayerPath` |
+| Package | `docs/player-management/phase-1i/08_PHASE_1I_D_DIRECTORY_DETAIL_UI.md` |
+| Stop gate | Owner precommit review → then may authorize **1I-E** |
 
 ---
 
 ## 1I-E — Privacy / Staging QA
 
 Auth, masking, suspended exclusion, privacy revoke, invalid cursor, abuse limits.
+
+Do **not** start until Owner `AUTHORIZE_PHASE_1I_E_*`.
 
 ---
 
