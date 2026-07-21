@@ -1,8 +1,8 @@
 /**
- * CRM module — public facade (Phase 1B + Phase 1C + Phase 1D + Phase 1E).
+ * CRM module — public facade (Phase 1B + Phase 1C + Phase 1D + Phase 1E + Phase 1F).
  *
  * Exports approved contracts, constants, pure models, authorization,
- * memory repository factories, Phase 1C–1E application services, and
+ * memory repository factories, Phase 1C–1F application services, and
  * foundation helpers only.
  *
  * Does NOT export:
@@ -71,6 +71,33 @@ export {
   isIsoTimestamp,
   normalizeIsoTimestamp,
 } from "./constants/timestamps.js";
+export {
+  TAG_TARGET_TYPE,
+  TAG_TARGET_TYPE_VALUES,
+  isTagTargetType,
+} from "./constants/tagTargetTypes.js";
+export {
+  CONSENT_CHANNEL,
+  CONSENT_CHANNEL_VALUES,
+  isConsentChannel,
+} from "./constants/consentChannels.js";
+export {
+  CONSENT_STATUS,
+  CONSENT_STATUS_VALUES,
+  isConsentStatus,
+} from "./constants/consentStatuses.js";
+export {
+  CONSENT_PURPOSE,
+  CONSENT_PURPOSE_VALUES,
+  isConsentPurpose,
+} from "./constants/consentPurposes.js";
+export {
+  PENDING_EVENT_STATUS,
+  PENDING_EVENT_STATUS_VALUES,
+  PENDING_EVENT_TERMINAL_STATUSES,
+  isPendingEventStatus,
+  isPendingEventTerminalStatus,
+} from "./constants/pendingEventStatuses.js";
 
 export {
   createTenantVenueScope,
@@ -102,7 +129,25 @@ export {
   CRM_TASK_DESCRIPTION_MAX_LENGTH,
   CRM_TASK_CANCELLATION_REASON_MAX_LENGTH,
 } from "./models/task.js";
-export { createCrmTag, createContactTagLink } from "./models/tag.js";
+export {
+  createCrmTag,
+  createTagAssignment,
+  createContactTagLink,
+  normalizeTagCode,
+  compareTagsList,
+  CRM_TAG_NAME_MAX_LENGTH,
+  CRM_TAG_CODE_MAX_LENGTH,
+} from "./models/tag.js";
+export {
+  createConsentRecord,
+  deriveEffectiveConsent,
+  compareConsentHistoryDesc,
+  CONSENT_POLICY_VERSION_MAX_LENGTH,
+} from "./models/consentRecord.js";
+export {
+  createPendingEventRecord,
+  comparePendingEventsClaimOrder,
+} from "./models/pendingEventRecord.js";
 export { validateCrmAuditEvent, validateCrmIntegrationEvent } from "./models/events.js";
 
 export { CRM_REPOSITORY_CONTRACT_NAMES } from "./contracts/repositories.js";
@@ -125,6 +170,10 @@ export { createMemoryOpportunityRepository } from "./repositories/memory/memoryO
 export { createMemoryPipelineRepository } from "./repositories/memory/memoryPipelineRepository.js";
 export { createMemoryInteractionRepository } from "./repositories/memory/memoryInteractionRepository.js";
 export { createMemoryTaskRepository } from "./repositories/memory/memoryTaskRepository.js";
+export { createMemoryTagRepository } from "./repositories/memory/memoryTagRepository.js";
+export { createMemoryTagAssignmentRepository } from "./repositories/memory/memoryTagAssignmentRepository.js";
+export { createMemoryConsentRepository } from "./repositories/memory/memoryConsentRepository.js";
+export { createMemoryPendingEventRepository } from "./repositories/memory/memoryPendingEventRepository.js";
 
 export { projectContactTimeline } from "./projectors/contactTimeline.js";
 export { prepareLeadDraft } from "./services/prepareLeadDraft.js";
@@ -132,6 +181,9 @@ export { createLeadApplicationService } from "./services/leadApplicationService.
 export { createOpportunityApplicationService } from "./services/opportunityApplicationService.js";
 export { createInteractionApplicationService } from "./services/interactionApplicationService.js";
 export { createTaskApplicationService } from "./services/taskApplicationService.js";
+export { createTagApplicationService } from "./services/tagApplicationService.js";
+export { createConsentApplicationService } from "./services/consentApplicationService.js";
+export { createPendingEventDispatchService } from "./services/pendingEventDispatchService.js";
 
 export {
   LEGACY_CRM_STORAGE_PREFIXES,
