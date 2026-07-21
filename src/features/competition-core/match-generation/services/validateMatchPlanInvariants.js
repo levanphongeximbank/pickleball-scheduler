@@ -68,6 +68,36 @@ function indexMatches(plan) {
 }
 
 /**
+ * Canonical dependency edge key for duplicate detection.
+ * @param {string} type
+ * @param {string|null|undefined} logicalMatchKey
+ * @returns {string|null}
+ */
+function dependencyEdgeKey(type, logicalMatchKey) {
+  const depType = String(type || "").trim();
+  const key = String(logicalMatchKey || "").trim();
+  if (!depType || !key) return null;
+  return `${depType}|${key}`;
+}
+
+/**
+ * Collect (type, logicalMatchKey) edges from dependencyInputs only.
+ * Slot / winnerTo / loserTo mirrors are excluded to avoid false positives.
+ *
+ * @param {import('../contracts/logicalMatch.js').LogicalMatch} match
+ * @returns {string[]}
+ */
+function collectDependencyInputEdgeKeys(match) {
+  /** @type {string[]} */
+  const keys = [];
+  for (const dep of match.dependencyInputs || []) {
+    const edge = dependencyEdgeKey(dep.type, dep.logicalMatchKey);
+    if (edge) keys.push(edge);
+  }
+  return keys;
+}
+
+/**
  * Collect outgoing dependency edges from match key → referenced match keys.
  * @param {import('../contracts/logicalMatch.js').LogicalMatch} match
  * @returns {string[]}
@@ -594,6 +624,31 @@ export function validateMatchPlanInvariants(plan, options = {}) {
             details: {
               logicalMatchKey: key,
               referencedLogicalMatchKey: refKey,
+            },
+          })
+        );
+      }
+    }
+
+    // 6b — duplicate dependency edges (type, logicalMatchKey)
+    /** @type {Map<string, number>} */
+    const edgeCounts = new Map();
+    for (const edge of collectDependencyInputEdgeKeys(match)) {
+      edgeCounts.set(edge, (edgeCounts.get(edge) || 0) + 1);
+    }
+    for (const [edge, count] of edgeCounts.entries()) {
+      if (count > 1) {
+        const [type, logicalMatchKey] = edge.split("|");
+        issues.push(
+          createMatchGenerationIssue({
+            code: MATCH_GENERATION_ISSUE_CODE.DUPLICATE_DEPENDENCY_EDGE,
+            path: `${path}.dependencyInputs`,
+            message: "Duplicate dependency edge on logical match",
+            details: {
+              logicalMatchKey: key,
+              dependencyType: type,
+              referencedLogicalMatchKey: logicalMatchKey,
+              count,
             },
           })
         );
