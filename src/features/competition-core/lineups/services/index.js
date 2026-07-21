@@ -44,3 +44,14 @@ export {
   createMissingLineupResolver,
   buildMissingLineupPayloadHash,
 } from "./missingLineupResolver.js";
+
+export {
+  LOCKED_BLOCKED_ACTIONS,
+  assertLockedMutationAllowed,
+} from "./lockedMutationGuard.js";
+
+export {
+  buildIdempotencyPayloadFingerprint,
+  createHardenedLineupIdempotencyPort,
+  idempotencyConflictResult,
+} from "./idempotencyGuard.js";

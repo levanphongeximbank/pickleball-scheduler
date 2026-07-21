@@ -1,8 +1,9 @@
 /**
- * CORE-06 Phase 1C — Lineup domain service (capability-local).
+ * CORE-06 Phase 1C + 1E — Lineup domain service (capability-local).
  *
  * Isolated domain foundation only. No Production wiring, SQL, RPC, or TT writers.
  * Dependencies are injected. Clock is required (no system time).
+ * Phase 1E: visibility, deadlines, concurrency, idempotency, locked correction.
  */
 
 import {
@@ -17,6 +18,16 @@ import {
   createLineupPolicyResult,
   isLineupPolicy,
 } from "../contracts/lineupPolicy.js";
+import {
+  createDefaultLineupHardeningPolicy,
+  isLineupHardeningPolicy,
+} from "../contracts/lineupHardeningPolicy.js";
+import { createLineupAuditMetadata } from "../contracts/auditMetadata.js";
+import { createLineupIdempotencyRecord } from "../contracts/idempotencyRecord.js";
+import {
+  LINEUP_VISIBILITY_STATE,
+  normalizeLineupVisibilityState,
+} from "../contracts/lineupVisibilityState.js";
 import { LINEUP_RUNTIME_ERROR_CODE } from "../errors/runtimeErrorCodes.js";
 import { LineupRuntimeError } from "../errors/LineupRuntimeError.js";
 import { createNoopLineupPolicy } from "../policies/noopLineupPolicy.js";
@@ -54,6 +65,18 @@ import {
   createNoopLineupIdempotencyPort,
 } from "../ports/idempotencyPort.js";
 import {
+  evaluateDeadlinePhase,
+  assertDeadlineAllowsMutation,
+  resolveExplicitEvaluationTime,
+} from "../deadlines/evaluateDeadline.js";
+import {
+  assertExpectedVersion,
+  buildCommandFingerprint,
+  buildResultFingerprint,
+} from "../concurrency/assertExpectedVersion.js";
+import { projectLineupForViewer } from "../visibility/projectLineupForViewer.js";
+import { assertVisibilityTransitionAllowed } from "../visibility/visibilityTransitions.js";
+import {
   LINEUP_ACTION,
   assertLineupTransitionAllowed,
 } from "./transitions.js";
@@ -70,6 +93,10 @@ import {
   appendRevisionHistory,
   normalizeSlotsWithDeterministicIds,
 } from "./revisions.js";
+import { assertLockedMutationAllowed } from "./lockedMutationGuard.js";
+import {
+  buildIdempotencyPayloadFingerprint,
+} from "./idempotencyGuard.js";
 
 /**
  * @param {boolean} ok
@@ -114,8 +141,12 @@ function fail(code, message, issues = [], details = {}) {
 
 function freezeLineup(lineup) {
   const created = createCompetitionLineup(lineup);
+  const visibilityState =
+    normalizeLineupVisibilityState(lineup?.visibilityState) ||
+    LINEUP_VISIBILITY_STATE.PRIVATE;
   return Object.freeze({
     ...created,
+    visibilityState,
     slots: Object.freeze([...(created.slots || [])]),
     revisions: Object.freeze(
       (created.revisions || []).map((r) => Object.freeze(r))
@@ -123,13 +154,11 @@ function freezeLineup(lineup) {
   });
 }
 
-function simpleHash(input) {
-  const text = String(input);
-  let hash = 0;
-  for (let i = 0; i < text.length; i += 1) {
-    hash = (hash * 31 + text.charCodeAt(i)) % 2147483647;
-  }
-  return `h${hash}`;
+function evaluationTimeFrom(command = {}, clock) {
+  return (
+    resolveExplicitEvaluationTime(command) ||
+    (clock && typeof clock.nowIso === "function" ? clock.nowIso() : null)
+  );
 }
 
 function authActionFor(action) {
@@ -188,11 +217,112 @@ export function createLineupDomainService(options = {}) {
   const idempotency = matchesLineupIdempotencyPort(options.idempotency)
     ? options.idempotency
     : createNoopLineupIdempotencyPort();
+  const hardeningPolicy = isLineupHardeningPolicy(options.hardeningPolicy)
+    ? options.hardeningPolicy
+    : createDefaultLineupHardeningPolicy();
 
-  // Silence unused in Phase 1C (ports retained for DI surface / later phases).
+  // Phase 1C retained DI surface; Phase 1E wires visibility/hardening.
   void LINEUP_PERSISTENCE_PORT_METHODS;
   void random;
-  void visibility;
+
+  function resolveDeadlineTimestamps(command = {}, lineup = null) {
+    if (
+      command.deadlineTimestamps &&
+      typeof command.deadlineTimestamps === "object"
+    ) {
+      return command.deadlineTimestamps;
+    }
+    if (typeof hardeningPolicy.resolveDeadlineTimestamps === "function") {
+      return hardeningPolicy.resolveDeadlineTimestamps({
+        lineup,
+        command,
+        extras: command.context || {},
+      });
+    }
+    return null;
+  }
+
+  async function enforceDeadline(action, lineup, command = {}, extras = {}) {
+    const evaluatedAt = evaluationTimeFrom(command, clock);
+    if (!evaluatedAt) {
+      return fail(
+        LINEUP_RUNTIME_ERROR_CODE.LINEUP_CLOCK_REQUIRED,
+        "Explicit evaluation time or injected clock is required"
+      );
+    }
+    const timestamps = resolveDeadlineTimestamps(command, lineup);
+    if (!timestamps) {
+      // No deadline policy timestamps → do not invent; allow (format-owned).
+      return { evaluatedAt, phaseResult: null, deadlineFail: null };
+    }
+    const phaseResult = evaluateDeadlinePhase({
+      timestamps,
+      evaluatedAt,
+    });
+    if (!phaseResult.ok) {
+      return {
+        evaluatedAt,
+        phaseResult,
+        deadlineFail: fail(phaseResult.code, phaseResult.message),
+      };
+    }
+    const allowsLate =
+      typeof hardeningPolicy.allowsLateMutation === "function"
+        ? hardeningPolicy.allowsLateMutation({
+            action,
+            lineup,
+            phase: phaseResult.phase,
+            command,
+          }) === true
+        : false;
+    const gate = assertDeadlineAllowsMutation({
+      phase: phaseResult.phase,
+      action,
+      allowsLateMutation: allowsLate,
+      correctionUntil: timestamps.correctionUntil ?? null,
+      evaluatedAt,
+      isCorrection: extras.isCorrection === true,
+    });
+    if (gate.ok !== true) {
+      return {
+        evaluatedAt,
+        phaseResult,
+        deadlineFail: fail(
+          gate.code || LINEUP_RUNTIME_ERROR_CODE.LINEUP_MUTATION_NOT_ALLOWED,
+          gate.message || "Deadline policy denied mutation",
+          [],
+          gate.details || {}
+        ),
+      };
+    }
+    return { evaluatedAt, phaseResult, deadlineFail: null };
+  }
+
+  async function enforceExpectedVersion(lineup, command = {}, action = null) {
+    const required =
+      typeof hardeningPolicy.requiresExpectedVersion === "function"
+        ? hardeningPolicy.requiresExpectedVersion({
+            lineup,
+            command,
+            action,
+          }) === true
+        : false;
+    const check = assertExpectedVersion({
+      expectedVersion: command.expectedVersion,
+      currentVersion: lineup?.revision ?? null,
+      required,
+      aggregateIdentity: lineup?.identityKey ?? lineup?.id ?? null,
+    });
+    if (check.ok !== true) {
+      return fail(
+        check.code || LINEUP_RUNTIME_ERROR_CODE.LINEUP_VERSION_CONFLICT,
+        check.message || "Version conflict",
+        [],
+        check.details || {}
+      );
+    }
+    return null;
+  }
 
   async function authorize(action, lineup, command = {}) {
     const decision = await authorization.authorize({
@@ -234,11 +364,12 @@ export function createLineupDomainService(options = {}) {
   }
 
   async function runPolicy(lineup, action, command, roster) {
+    const evaluatedAt = evaluationTimeFrom(command, clock);
     const ctx = {
       lineup,
       action,
       actorRole: command.actorRole ?? null,
-      now: clock.nowIso(),
+      now: evaluatedAt,
       roster,
       extras: command.context || {},
     };
@@ -280,6 +411,26 @@ export function createLineupDomainService(options = {}) {
         );
       }
     }
+    if (typeof policy.evaluateDeadline === "function") {
+      const deadlineResult = await policy.evaluateDeadline(ctx);
+      const normalized = createLineupPolicyResult(deadlineResult);
+      if (!normalized.ok) {
+        return fail(
+          normalized.code ||
+            LINEUP_RUNTIME_ERROR_CODE.LINEUP_SUBMISSION_DEADLINE_PASSED,
+          normalized.message || "Lineup deadline policy rejected mutation",
+          [
+            domainIssue(
+              normalized.code ||
+                LINEUP_RUNTIME_ERROR_CODE.LINEUP_SUBMISSION_DEADLINE_PASSED,
+              "deadline",
+              normalized.message || "Lineup deadline policy rejected mutation",
+              normalized.details
+            ),
+          ]
+        );
+      }
+    }
     return null;
   }
 
@@ -291,7 +442,90 @@ export function createLineupDomainService(options = {}) {
         : null;
     if (!key) return { key: null, replay: null };
 
-    const payloadHash = simpleHash(JSON.stringify(payload));
+    const aggregateIdentity =
+      payload.aggregateIdentity ??
+      payload.lineupIdentityKey ??
+      payload.lineupId ??
+      null;
+    const commandType = payload.op ?? payload.commandType ?? null;
+    const expectedVersion =
+      command.expectedVersion != null &&
+      Number.isInteger(Number(command.expectedVersion))
+        ? Number(command.expectedVersion)
+        : null;
+    const commandFingerprint = buildCommandFingerprint({
+      ...payload,
+      commandType,
+      aggregateIdentity,
+      expectedVersion,
+      actorId: command.actorId ?? null,
+      actorRole: command.actorRole ?? null,
+      source: command.source ?? null,
+      reason: command.reason ?? null,
+      slots: payload.slots,
+    });
+    const payloadHash = buildIdempotencyPayloadFingerprint({
+      ...payload,
+      commandFingerprint,
+      expectedVersion,
+      aggregateIdentity,
+      commandType,
+    });
+
+    if (typeof idempotency.lookupContext === "function") {
+      const lookup = await idempotency.lookupContext({
+        idempotencyKey: key,
+        aggregateIdentity,
+        commandType,
+        canonicalPayloadFingerprint: payloadHash,
+        expectedVersion,
+      });
+      if (lookup?.conflict) {
+        return {
+          key,
+          replay: fail(
+            LINEUP_RUNTIME_ERROR_CODE.LINEUP_IDEMPOTENCY_CONFLICT,
+            lookup.message ||
+              "Idempotency key reused with different context",
+            [],
+            { idempotencyKey: key }
+          ),
+        };
+      }
+      if (lookup?.found && lookup.record?.result) {
+        const replayed =
+          typeof idempotency.markReplayed === "function"
+            ? idempotency.markReplayed(key)
+            : lookup.record;
+        const prior = lookup.record.result;
+        if (prior && typeof prior === "object") {
+          return {
+            key,
+            payloadHash,
+            replay: Object.freeze({
+              ...prior,
+              details: Object.freeze({
+                ...(prior.details && typeof prior.details === "object"
+                  ? prior.details
+                  : {}),
+                replayed: true,
+                idempotencyKey: key,
+              }),
+            }),
+            record: replayed || lookup.record,
+          };
+        }
+        return { key, payloadHash, replay: prior };
+      }
+      return {
+        key,
+        payloadHash,
+        commandFingerprint,
+        replay: null,
+        claimed: lookup?.claimed === true,
+      };
+    }
+
     const lookup = await idempotency.lookup(key, payloadHash);
     if (lookup?.conflict) {
       return {
@@ -305,16 +539,55 @@ export function createLineupDomainService(options = {}) {
       };
     }
     if (lookup?.found && lookup.record?.result) {
-      return { key, replay: lookup.record.result };
+      const prior = lookup.record.result;
+      if (prior && typeof prior === "object") {
+        return {
+          key,
+          payloadHash,
+          commandFingerprint,
+          replay: Object.freeze({
+            ...prior,
+            details: Object.freeze({
+              ...(prior.details && typeof prior.details === "object"
+                ? prior.details
+                : {}),
+              replayed: true,
+              idempotencyKey: key,
+            }),
+          }),
+        };
+      }
+      return { key, payloadHash, commandFingerprint, replay: prior };
     }
-    return { key, payloadHash, replay: null };
+    return { key, payloadHash, commandFingerprint, replay: null };
   }
 
-  async function persistAndAudit(lineup, command, action, fromStatus, toStatus) {
+  async function persistAndAudit(lineup, command, action, fromStatus, toStatus, auditExtra = {}) {
     const saved = await persistence.save(lineup, {
       expectedVersion: command.expectedVersion,
       idempotencyKey: command.idempotencyKey ?? null,
       actorId: command.actorId ?? null,
+    });
+    const evaluatedAt = evaluationTimeFrom(command, clock) || clock.nowIso();
+    const auditMeta = createLineupAuditMetadata({
+      tenantId: saved.tenantId,
+      competitionId: saved.competitionId,
+      teamId: saved.teamId,
+      lineupIdentityKey: saved.identityKey,
+      previousVersion: auditExtra.previousVersion ?? null,
+      resultingVersion: saved.revision,
+      commandType: action,
+      actor: {
+        actorId: command.actorId ?? null,
+        actorRole: command.actorRole ?? null,
+      },
+      source: command.source ?? null,
+      idempotencyKey: command.idempotencyKey ?? null,
+      commandFingerprint: auditExtra.commandFingerprint ?? null,
+      resultFingerprint: auditExtra.resultFingerprint ?? null,
+      evaluatedAt,
+      reasonCode: auditExtra.reasonCode ?? null,
+      correctionReason: auditExtra.correctionReason ?? command.reason ?? null,
     });
     await audit.append({
       type: "LINEUP_TRANSITION",
@@ -328,7 +601,8 @@ export function createLineupDomainService(options = {}) {
       revision: saved.revision,
       reason: command.reason ?? null,
       idempotencyKey: command.idempotencyKey ?? null,
-      at: clock.nowIso(),
+      at: evaluatedAt,
+      metadata: auditMeta,
     });
     return saved;
   }
@@ -337,7 +611,7 @@ export function createLineupDomainService(options = {}) {
    * Create a new DRAFT lineup with revision 1.
    */
   async function createLineup(input = {}, command = {}) {
-    const now = clock.nowIso();
+    const now = evaluationTimeFrom(command, clock) || clock.nowIso();
     const competitionId = String(input.competitionId || "").trim();
     const teamId = String(input.teamId || "").trim();
     const contextId = String(input.contextId || "").trim();
@@ -381,6 +655,9 @@ export function createLineupDomainService(options = {}) {
       slots,
       identityKey,
       requiresRepublish: false,
+      visibilityState:
+        normalizeLineupVisibilityState(input.visibilityState) ||
+        LINEUP_VISIBILITY_STATE.PRIVATE,
       revisions: [initial],
       previousRevisionId: null,
     });
@@ -391,6 +668,12 @@ export function createLineupDomainService(options = {}) {
       teamId,
       key: identityKey,
     });
+
+    const deadline = await enforceDeadline("createLineup", lineup, {
+      ...command,
+      evaluatedAt: now,
+    });
+    if (deadline.deadlineFail) return deadline.deadlineFail;
 
     const rosterResult = await resolveRoster(lineup, command);
     if (!rosterResult.ok) {
@@ -418,6 +701,8 @@ export function createLineupDomainService(options = {}) {
     const idem = await maybeIdempotent(command, {
       op: "createLineup",
       lineupId,
+      lineupIdentityKey: identityKey,
+      aggregateIdentity: identityKey,
       slots,
     });
     if (idem.replay) return idem.replay;
@@ -427,16 +712,46 @@ export function createLineupDomainService(options = {}) {
       { ...command, expectedVersion: command.expectedVersion ?? null },
       LINEUP_ACTION.SAVE_DRAFT,
       null,
-      COMPETITION_LINEUP_STATUS.DRAFT
+      COMPETITION_LINEUP_STATUS.DRAFT,
+      {
+        previousVersion: null,
+        commandFingerprint: idem.commandFingerprint ?? null,
+      }
     );
-    const out = result(true, freezeLineup(saved));
+    const out = result(true, freezeLineup(saved), [], null, null, {
+      replayed: false,
+    });
     if (idem.key) {
-      await idempotency.remember({
-        key: idem.key,
-        payloadHash: idem.payloadHash,
+      const record = createLineupIdempotencyRecord({
+        idempotencyKey: idem.key,
+        aggregateIdentity: identityKey,
+        commandType: "createLineup",
+        canonicalPayloadFingerprint: idem.payloadHash,
+        resultFingerprint: buildResultFingerprint(out),
+        actor: {
+          actorId: command.actorId ?? null,
+          actorRole: command.actorRole ?? null,
+        },
+        source: command.source ?? null,
+        expectedVersion:
+          command.expectedVersion != null
+            ? Number(command.expectedVersion)
+            : null,
+        resultingVersion: saved.revision,
+        createdAt: now,
+        replayed: false,
         result: out,
-        at: now,
       });
+      await idempotency.remember(
+        typeof idempotency.lookupContext === "function"
+          ? record
+          : {
+              key: idem.key,
+              payloadHash: idem.payloadHash,
+              result: out,
+              at: now,
+            }
+      );
     }
     return out;
   }
@@ -444,6 +759,9 @@ export function createLineupDomainService(options = {}) {
   async function transition(action, lineupInput, command = {}) {
     const current = freezeLineup(lineupInput);
     const fromStatus = current.status;
+    const previousVersion = current.revision;
+    const isCorrection =
+      action === LINEUP_ACTION.OVERRIDE || command.isCorrection === true;
 
     let transitionInfo;
     try {
@@ -457,6 +775,38 @@ export function createLineupDomainService(options = {}) {
       }
       throw err;
     }
+
+    const lockedGate = assertLockedMutationAllowed({
+      lineup: current,
+      action,
+      isCorrection,
+      correctionAuthorized:
+        isCorrection &&
+        typeof hardeningPolicy.allowsLockedCorrection === "function" &&
+        hardeningPolicy.allowsLockedCorrection({
+          lineup: current,
+          command,
+          action,
+        }) === true,
+      correctionReason: command.reason ?? null,
+    });
+    if (lockedGate.ok !== true) {
+      return fail(
+        lockedGate.code || LINEUP_RUNTIME_ERROR_CODE.LINEUP_MUTATION_NOT_ALLOWED,
+        lockedGate.message || "Locked mutation denied",
+        [],
+        lockedGate.details || {}
+      );
+    }
+
+    const versionFail = await enforceExpectedVersion(current, command, action);
+    if (versionFail) return versionFail;
+
+    const deadline = await enforceDeadline(action, current, command, {
+      isCorrection,
+    });
+    if (deadline.deadlineFail) return deadline.deadlineFail;
+    const now = deadline.evaluatedAt || clock.nowIso();
 
     const authFail = await authorize(action, current, command);
     if (authFail) return authFail;
@@ -484,7 +834,7 @@ export function createLineupDomainService(options = {}) {
     let revisions = current.revisions;
     let previousRevisionId = current.previousRevisionId;
     let revision = current.revision;
-    const now = clock.nowIso();
+    let visibilityState = current.visibilityState;
 
     if (action === LINEUP_ACTION.OVERRIDE) {
       const overrideReason =
@@ -675,6 +1025,7 @@ export function createLineupDomainService(options = {}) {
       publishedAt,
       reason,
       requiresRepublish,
+      visibilityState,
     });
 
     const allowDup = allowDuplicatesFromPolicy({
@@ -694,7 +1045,7 @@ export function createLineupDomainService(options = {}) {
     const policyFail = await runPolicy(
       nextLineup,
       action,
-      command,
+      { ...command, evaluatedAt: now },
       rosterResult.roster
     );
     if (policyFail) return policyFail;
@@ -702,40 +1053,277 @@ export function createLineupDomainService(options = {}) {
     const idem = await maybeIdempotent(command, {
       op: action,
       lineupId: current.id,
+      lineupIdentityKey: current.identityKey,
+      aggregateIdentity: current.identityKey,
       fromStatus,
       slots: nextSlots,
       reason: command.reason ?? null,
+      expectedVersion:
+        command.expectedVersion != null
+          ? Number(command.expectedVersion)
+          : null,
     });
     if (idem.replay) return idem.replay;
 
-    const saved = await persistAndAudit(
-      nextLineup,
-      {
-        ...command,
-        expectedVersion:
-          command.expectedVersion != null
-            ? command.expectedVersion
-            : current.revision,
-      },
-      action,
-      fromStatus,
-      nextStatus
-    );
+    let saved;
+    try {
+      saved = await persistAndAudit(
+        nextLineup,
+        {
+          ...command,
+          expectedVersion:
+            command.expectedVersion != null
+              ? command.expectedVersion
+              : current.revision,
+        },
+        action,
+        fromStatus,
+        nextStatus,
+        {
+          previousVersion,
+          commandFingerprint: idem.commandFingerprint ?? null,
+          correctionReason: isCorrection ? command.reason ?? null : null,
+          reasonCode: null,
+        }
+      );
+    } catch (err) {
+      if (idem.claimed && typeof idempotency.release === "function") {
+        idempotency.release(idem.key);
+      }
+      if (err instanceof LineupRuntimeError) {
+        return fail(err.code, err.message, [], err.details || {});
+      }
+      throw err;
+    }
 
-    const out = result(true, freezeLineup(saved), [], null, null, {
-      requiresRepublish: freezeLineup(saved).requiresRepublish === true,
+    const frozenSaved = freezeLineup(saved);
+    const out = result(true, frozenSaved, [], null, null, {
+      requiresRepublish: frozenSaved.requiresRepublish === true,
       fromStatus,
       toStatus: nextStatus,
+      previousVersion,
+      resultingVersion: frozenSaved.revision,
+      replayed: false,
+    });
+    if (idem.key) {
+      const record = createLineupIdempotencyRecord({
+        idempotencyKey: idem.key,
+        aggregateIdentity: current.identityKey,
+        commandType: action,
+        canonicalPayloadFingerprint: idem.payloadHash,
+        resultFingerprint: buildResultFingerprint(out),
+        actor: {
+          actorId: command.actorId ?? null,
+          actorRole: command.actorRole ?? null,
+        },
+        source: command.source ?? null,
+        expectedVersion:
+          command.expectedVersion != null
+            ? Number(command.expectedVersion)
+            : current.revision,
+        resultingVersion: frozenSaved.revision,
+        createdAt: now,
+        replayed: false,
+        result: out,
+      });
+      await idempotency.remember(
+        typeof idempotency.lookupContext === "function"
+          ? record
+          : {
+              key: idem.key,
+              payloadHash: idem.payloadHash,
+              result: out,
+              at: now,
+            }
+      );
+    }
+    return out;
+  }
+
+  /**
+   * Fail-closed visibility projection (Phase 1E).
+   */
+  function projectForViewer(request = {}) {
+    return projectLineupForViewer({
+      ...request,
+      visibilityPolicy: request.visibilityPolicy || hardeningPolicy,
+      evaluatedAt:
+        resolveExplicitEvaluationTime(request) || clock.nowIso(),
+    });
+  }
+
+  /**
+   * Explicit visibility transition — never inferred from lifecycle alone.
+   */
+  async function transitionVisibility(lineupInput, command = {}) {
+    const current = freezeLineup(lineupInput);
+    const from =
+      normalizeLineupVisibilityState(current.visibilityState) ||
+      LINEUP_VISIBILITY_STATE.PRIVATE;
+    const to = normalizeLineupVisibilityState(command.toVisibilityState);
+    if (!to) {
+      return fail(
+        LINEUP_RUNTIME_ERROR_CODE.LINEUP_VISIBILITY_TRANSITION_NOT_ALLOWED,
+        "Target visibility state is required"
+      );
+    }
+
+    const versionFail = await enforceExpectedVersion(
+      current,
+      command,
+      "transition_visibility"
+    );
+    if (versionFail) return versionFail;
+
+    const evaluatedAt = evaluationTimeFrom(command, clock) || clock.nowIso();
+    const timestamps = resolveDeadlineTimestamps(command, current);
+    const phaseResult = timestamps
+      ? evaluateDeadlinePhase({ timestamps, evaluatedAt })
+      : { ok: true, revealEligible: false, phase: null };
+    if (phaseResult.ok === false) {
+      return fail(phaseResult.code, phaseResult.message);
+    }
+
+    const revealAuthorized =
+      typeof hardeningPolicy.allowsReveal === "function"
+        ? hardeningPolicy.allowsReveal({
+            from,
+            to,
+            lineup: current,
+            command,
+          }) === true
+        : false;
+
+    const gate = assertVisibilityTransitionAllowed({
+      from,
+      to,
+      policy: hardeningPolicy,
+      revealAuthorized,
+      revealReady: timestamps
+        ? phaseResult.revealEligible === true
+        : revealAuthorized,
+    });
+    // PUBLIC / OPPONENT_VISIBLE still need revealReady from deadline when timestamps exist.
+    if (
+      timestamps &&
+      (to === LINEUP_VISIBILITY_STATE.OPPONENT_VISIBLE ||
+        to === LINEUP_VISIBILITY_STATE.PUBLIC) &&
+      phaseResult.revealEligible !== true
+    ) {
+      return fail(
+        LINEUP_RUNTIME_ERROR_CODE.LINEUP_REVEAL_NOT_AUTHORIZED,
+        "Reveal/public visibility is not eligible yet",
+        [],
+        { from, to, revealAt: timestamps.revealAt ?? null, evaluatedAt }
+      );
+    }
+    if (gate.ok !== true) {
+      return fail(
+        gate.code ||
+          LINEUP_RUNTIME_ERROR_CODE.LINEUP_VISIBILITY_TRANSITION_NOT_ALLOWED,
+        gate.message || "Visibility transition denied",
+        [],
+        gate.details || {}
+      );
+    }
+
+    const previousVersion = current.revision;
+    const nextRevision = previousVersion + 1;
+    const nextLineup = freezeLineup({
+      ...current,
+      visibilityState: to,
+      revision: nextRevision,
+    });
+
+    const idem = await maybeIdempotent(command, {
+      op: "transition_visibility",
+      lineupId: current.id,
+      aggregateIdentity: current.identityKey,
+      from,
+      to,
+      expectedVersion: command.expectedVersion ?? previousVersion,
+    });
+    if (idem.replay) return idem.replay;
+
+    let saved;
+    try {
+      saved = await persistAndAudit(
+        nextLineup,
+        {
+          ...command,
+          expectedVersion:
+            command.expectedVersion != null
+              ? command.expectedVersion
+              : previousVersion,
+        },
+        "transition_visibility",
+        current.status,
+        current.status,
+        {
+          previousVersion,
+          commandFingerprint: idem.commandFingerprint ?? null,
+          reasonCode: null,
+        }
+      );
+    } catch (err) {
+      if (idem.claimed && typeof idempotency.release === "function") {
+        idempotency.release(idem.key);
+      }
+      if (err instanceof LineupRuntimeError) {
+        return fail(err.code, err.message, [], err.details || {});
+      }
+      throw err;
+    }
+
+    const out = result(true, freezeLineup(saved), [], null, null, {
+      fromVisibility: from,
+      toVisibility: to,
+      previousVersion,
+      resultingVersion: freezeLineup(saved).revision,
+      replayed: false,
     });
     if (idem.key) {
       await idempotency.remember({
         key: idem.key,
         payloadHash: idem.payloadHash,
         result: out,
-        at: now,
+        at: evaluatedAt,
       });
     }
     return out;
+  }
+
+  /**
+   * Explicit locked correction workflow (policy-authorized).
+   */
+  async function correctLockedLineup(lineupInput, command = {}) {
+    return transition(LINEUP_ACTION.OVERRIDE, lineupInput, {
+      ...command,
+      isCorrection: true,
+    });
+  }
+
+  /**
+   * Explicit guard for random fallback overwrite attempts.
+   */
+  function assertRandomOverwriteAllowed(lineupInput, command = {}) {
+    const current = freezeLineup(lineupInput);
+    const gate = assertLockedMutationAllowed({
+      lineup: current,
+      action: "random_overwrite",
+      isCorrection: false,
+      correctionAuthorized: false,
+      correctionReason: command.reason ?? null,
+    });
+    if (gate.ok !== true) {
+      return fail(
+        gate.code || LINEUP_RUNTIME_ERROR_CODE.LINEUP_ALREADY_LOCKED,
+        gate.message || "Random overwrite blocked",
+        [],
+        gate.details || {}
+      );
+    }
+    return result(true, current);
   }
 
   return Object.freeze({
@@ -749,9 +1337,16 @@ export function createLineupDomainService(options = {}) {
     publish: (lineup, command = {}) =>
       transition(LINEUP_ACTION.PUBLISH, lineup, command),
     override: (lineup, command = {}) =>
-      transition(LINEUP_ACTION.OVERRIDE, lineup, command),
+      transition(LINEUP_ACTION.OVERRIDE, lineup, {
+        ...command,
+        isCorrection: true,
+      }),
     voidLineup: (lineup, command = {}) =>
       transition(LINEUP_ACTION.VOID, lineup, command),
+    correctLockedLineup,
+    transitionVisibility,
+    projectLineupForViewer: projectForViewer,
+    assertRandomOverwriteAllowed,
     validateInvariants: async (lineup, command = {}) => {
       const rosterResult = await resolveRoster(lineup, command);
       if (!rosterResult.ok) {
@@ -781,6 +1376,7 @@ export function createLineupDomainService(options = {}) {
       rosterLookup,
       audit,
       idempotency,
+      hardeningPolicy,
     }),
   });
 }

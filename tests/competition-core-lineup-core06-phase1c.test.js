@@ -18,6 +18,7 @@ import {
   createFixedRosterLookupPort,
   createNoopLineupPolicy,
   createLineupPolicyResult,
+  createLineupHardeningPolicy,
   mapLegacyLineupStatus,
   LEGACY_LINEUP_STATUS_MAP,
   LINEUP_ACTION,
@@ -370,7 +371,11 @@ test("1C revision: previous published/superseded revision immutable", () => {
 });
 
 test("1C override: supersede prior + new LOCKED head requires republish", async () => {
-  const service = createService();
+  const service = createService({
+    hardeningPolicy: createLineupHardeningPolicy({
+      allowsLockedCorrection: () => true,
+    }),
+  });
   const created = await service.createLineup(baseCreateInput(), {
     actorId: "captain-1",
   });

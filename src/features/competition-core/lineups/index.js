@@ -28,6 +28,23 @@ export {
   createLineupIdentity,
   identityFromCompetitionLineup,
   createLineupVisibilityGrant,
+  LINEUP_VISIBILITY_STATE,
+  LINEUP_VISIBILITY_STATE_VALUES,
+  LINEUP_VISIBILITY_RANK,
+  isLineupVisibilityState,
+  normalizeLineupVisibilityState,
+  compareVisibilityRank,
+  LINEUP_DEADLINE_PHASE,
+  LINEUP_DEADLINE_PHASE_VALUES,
+  isLineupDeadlinePhase,
+  createLineupDeadlineTimestamps,
+  createLineupVisibilityProjection,
+  LINEUP_PROJECTION_FIELD,
+  isLineupHardeningPolicy,
+  createDefaultLineupHardeningPolicy,
+  createLineupHardeningPolicy,
+  createLineupAuditMetadata,
+  createLineupIdempotencyRecord,
   MISSING_LINEUP_POLICY,
   MISSING_LINEUP_POLICY_VALUES,
   MISSING_LINEUP_OUTCOME,
@@ -124,7 +141,33 @@ export {
   createLineupDomainService,
   createMissingLineupResolver,
   buildMissingLineupPayloadHash,
+  LOCKED_BLOCKED_ACTIONS,
+  assertLockedMutationAllowed,
+  buildIdempotencyPayloadFingerprint,
+  createHardenedLineupIdempotencyPort,
+  idempotencyConflictResult,
 } from "./services/index.js";
+
+export {
+  projectLineupForViewer,
+  assertVisibilityTransitionAllowed,
+  DEFAULT_VISIBILITY_PROGRESSION,
+} from "./visibility/index.js";
+
+export {
+  parsePolicyTimeMs,
+  resolveExplicitEvaluationTime,
+  evaluateDeadlinePhase,
+  assertDeadlineAllowsMutation,
+} from "./deadlines/index.js";
+
+export {
+  assertExpectedVersion,
+  buildCommandFingerprint,
+  buildResultFingerprint,
+} from "./concurrency/index.js";
+
+export { createInMemoryIdempotencyRepository } from "./repositories/index.js";
 
 export {
   LINEUP_RANDOM_ALGORITHM,
