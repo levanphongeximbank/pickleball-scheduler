@@ -3,7 +3,8 @@
  *
  * Phase 1B–1G-A + Phase 1H-A privileged verification writer
  * + Phase 1H-B admin verification queue read API
- * + Phase 1H-C admin verification actions UI (components remain importable from path).
+ * + Phase 1H-C admin verification actions UI (components remain importable from path)
+ * + Phase 1I-A authenticated Public Player Directory application contract.
  * Adapters, repositories, validators, bootstrap remain internal.
  */
 export { RESOLUTION_OUTCOME } from "./constants/resolutionOutcomes.js";
@@ -35,6 +36,9 @@ export {
   searchDirectoryPlayers,
   searchInternalPlayers,
 } from "./services/searchPlayers.js";
+export { searchPublicDirectoryPlayers } from "./services/searchPublicDirectoryPlayers.js";
+export { getPublicDirectoryPlayer } from "./services/getPublicDirectoryPlayer.js";
+export { DIRECTORY_ERROR_CODES } from "./constants/directory.js";
 export { updatePlayerProfile } from "./services/updatePlayerProfile.js";
 export { updatePlayerVerificationStatus } from "./services/updatePlayerVerificationStatus.js";
 export { listPlayerVerificationQueue } from "./services/listPlayerVerificationQueue.js";
