@@ -7,7 +7,7 @@
 Source: exact strings from `CRM_PERMISSION_VALUES` in
 `src/features/crm/constants/permissions.js`.
 
-SQL: `docs/crm/phase-1h/10_CRM_PHASE_1H_PERMISSION_SEED.sql`  
+SQL: `docs/crm/phase-1h/10_CRM_PHASE_1H_PERMISSION_SEED.sql`
 JS mirror: `src/features/crm/identity/crmPermissionSeedDefinitions.js`
 
 | Permission | Seeded |
@@ -33,7 +33,7 @@ Properties:
 
 ## Proposed role matrix (separately reviewable)
 
-SQL: `docs/crm/phase-1h/20_CRM_PHASE_1H_ROLE_PERMISSION_ASSIGNMENT.sql`  
+SQL: `docs/crm/phase-1h/20_CRM_PHASE_1H_ROLE_PERMISSION_ASSIGNMENT.sql`
 JS: `src/features/crm/identity/crmRolePermissionMatrix.js`
 
 | Role (DB id) | CRM grants |

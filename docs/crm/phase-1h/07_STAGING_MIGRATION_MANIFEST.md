@@ -1,6 +1,6 @@
 # 07 — Staging Migration Manifest (Phase 1H-A)
 
-**Machine-readable:** `docs/crm/phase-1h/staging-migration-manifest.json`  
+**Machine-readable:** `docs/crm/phase-1h/staging-migration-manifest.json`
 **Helpers:** `src/features/crm/staging/migrationManifest.js`
 
 ## Controlled sequence (order)

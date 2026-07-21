@@ -4,8 +4,8 @@
 
 ## Factory
 
-`createSupabaseCrmDatabaseClient({ client })`  
-Path: `src/features/crm/persistence/supabase/supabaseCrmDatabaseClient.js`  
+`createSupabaseCrmDatabaseClient({ client })`
+Path: `src/features/crm/persistence/supabase/supabaseCrmDatabaseClient.js`
 Implements `CrmDatabaseClientPort` via `requireCrmDatabaseClientPort`.
 
 ## Guarantees
