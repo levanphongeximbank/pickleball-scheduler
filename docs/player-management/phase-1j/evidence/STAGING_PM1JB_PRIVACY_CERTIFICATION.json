@@ -1,0 +1,131 @@
+{
+  "phase": "1J-B",
+  "title": "Staging Privacy Live Evidence Certification",
+  "ownerAuthorization": "AUTHORIZE_PHASE_1J_B_STAGING_PRIVACY_EVIDENCE",
+  "documentVerdict": "READY_FOR_PHASE_1J_B_PRECOMMIT_REVIEW",
+  "certifiedAt": "2026-07-21T16:00:00.000Z",
+  "stagingRef": "qyewbxjsiiyufanzcjcq",
+  "productionRefExcluded": "expuvcohlcjzvrrauvud",
+  "freshStagingWrites": false,
+  "freshStagingReads": false,
+  "evidenceSource": {
+    "decision": "REUSE_MERGED_PHASE_1J_A_LIVE_REPORTS",
+    "seedReport": "docs/player-management/phase-1j/evidence/STAGING_PM1JA_FIXTURE_SEED_REPORT.json",
+    "verifyReport": "docs/player-management/phase-1j/evidence/STAGING_PM1JA_FIXTURE_VERIFY_REPORT.json",
+    "cleanupReport": "docs/player-management/phase-1j/evidence/STAGING_PM1JA_FIXTURE_CLEANUP_REPORT.json",
+    "verifyOk": true,
+    "verifyFailedCount": 0,
+    "verifiedAt": "2026-07-21T15:34:56.895Z",
+    "cleanupRemainingCount": 0,
+    "cleanedAt": "2026-07-21T15:35:07.234Z"
+  },
+  "assertions": [
+    {
+      "id": 1,
+      "name": "eligible_search_visibility",
+      "result": "PASS",
+      "sourceChecks": [
+        "eligible athlete appears in browse",
+        "eligible search by display_name"
+      ]
+    },
+    {
+      "id": 2,
+      "name": "eligible_detail_visibility",
+      "result": "PASS",
+      "sourceChecks": ["eligible detail returns strict fields"]
+    },
+    {
+      "id": 3,
+      "name": "masked_fields",
+      "result": "PASS",
+      "sourceChecks": ["masked detail keeps row but nulls masked fields"],
+      "observed": {
+        "player_id": "qa-pm1ja-masked",
+        "gender": null,
+        "handedness": null,
+        "activity_region": null,
+        "is_verified": true
+      }
+    },
+    {
+      "id": 4,
+      "name": "hidden_exclusion_search",
+      "result": "PASS",
+      "sourceChecks": ["hidden athlete excluded from browse"]
+    },
+    {
+      "id": 5,
+      "name": "hidden_detail_null",
+      "result": "PASS",
+      "sourceChecks": ["hidden detail is null"]
+    },
+    {
+      "id": 6,
+      "name": "suspended_exclusion",
+      "result": "PASS",
+      "sourceChecks": [
+        "suspended athlete excluded from browse",
+        "suspended detail is null"
+      ]
+    },
+    {
+      "id": 7,
+      "name": "unverified_exclusion",
+      "result": "PASS",
+      "sourceChecks": [
+        "unverified athlete excluded from browse",
+        "unverified detail is null"
+      ]
+    },
+    {
+      "id": 8,
+      "name": "forbidden_field_absence",
+      "result": "PASS",
+      "notes": "Eligible and masked detail payloads contain only directory allow-listed keys."
+    },
+    {
+      "id": 9,
+      "name": "hidden_total_protection",
+      "result": "PASS",
+      "sourceChecks": ["no hidden total leak in meta"],
+      "observedMetaKeys": ["nextCursor", "limit", "count"]
+    },
+    {
+      "id": 10,
+      "name": "invalid_cursor",
+      "result": "PASS",
+      "sourceChecks": ["invalid cursor is controlled"],
+      "observedCode": "INVALID_CURSOR"
+    },
+    {
+      "id": 11,
+      "name": "nonexistent_detail",
+      "result": "PASS",
+      "sourceChecks": ["nonexistent detail is null"]
+    },
+    {
+      "id": 12,
+      "name": "exclusion_reason_protection",
+      "result": "PASS",
+      "notes": "Ineligible details return null with no hide-reason or private status fields."
+    },
+    {
+      "id": 13,
+      "name": "evidence_sanitization",
+      "result": "PASS",
+      "notes": "No passwords, JWTs, service-role keys, database URLs, or auth headers in cited reports."
+    },
+    {
+      "id": 14,
+      "name": "cleanup_remaining_zero",
+      "result": "PASS",
+      "remainingCount": 0
+    }
+  ],
+  "summary": {
+    "passCount": 14,
+    "failCount": 0,
+    "overall": "PASS"
+  }
+}
