@@ -1,11 +1,47 @@
 /**
- * CrmTask foundation model (Phase 1B). Follow-up workflows in 1E+.
+ * CrmTask domain model (Phase 1B foundation + Phase 1E lifecycle fields).
+ *
+ * Status transitions are enforced by application commands — not by direct
+ * status assignment outside those commands.
  */
 
 import { CRM_ERROR_CODES, CrmError } from "../constants/errorCodes.js";
+import {
+  CRM_TASK_PRIORITY,
+  isCrmTaskPriority,
+} from "../constants/taskPriorities.js";
 import { CRM_TASK_STATUS, isCrmTaskStatus } from "../constants/taskStatuses.js";
 import { normalizeIsoTimestamp } from "../constants/timestamps.js";
 import { createTenantVenueScope, requireNonEmptyId } from "./scope.js";
+
+export const CRM_TASK_TITLE_MAX_LENGTH = 200;
+export const CRM_TASK_DESCRIPTION_MAX_LENGTH = 4000;
+export const CRM_TASK_CANCELLATION_REASON_MAX_LENGTH = 1000;
+
+function optionalId(value) {
+  if (value == null || value === "") return null;
+  const s = String(value).trim();
+  return s || null;
+}
+
+function requireBoundedText(value, fieldName, maxLength, { allowEmpty = false } = {}) {
+  if (value == null) {
+    if (allowEmpty) return null;
+    throw new CrmError(CRM_ERROR_CODES.INVALID_INPUT, `${fieldName} is required.`);
+  }
+  const text = String(value).trim();
+  if (!text) {
+    if (allowEmpty) return null;
+    throw new CrmError(CRM_ERROR_CODES.INVALID_INPUT, `${fieldName} must be non-empty.`);
+  }
+  if (text.length > maxLength) {
+    throw new CrmError(
+      CRM_ERROR_CODES.INVALID_INPUT,
+      `${fieldName} must be at most ${maxLength} characters.`
+    );
+  }
+  return text;
+}
 
 /**
  * @param {object} input
@@ -20,32 +56,65 @@ export function createCrmTask(input = {}) {
     throw new CrmError(CRM_ERROR_CODES.INVALID_STATUS, `Invalid task status: ${status}`);
   }
 
-  const contactRefId =
-    input.contactRefId != null && String(input.contactRefId).trim()
-      ? String(input.contactRefId).trim()
+  const priority =
+    input.priority != null ? String(input.priority) : CRM_TASK_PRIORITY.NORMAL;
+  if (!isCrmTaskPriority(priority)) {
+    throw new CrmError(CRM_ERROR_CODES.INVALID_STATUS, `Invalid task priority: ${priority}`);
+  }
+
+  const title = requireBoundedText(input.title, "title", CRM_TASK_TITLE_MAX_LENGTH, {
+    allowEmpty: true,
+  });
+
+  const description =
+    input.description != null
+      ? requireBoundedText(
+          input.description,
+          "description",
+          CRM_TASK_DESCRIPTION_MAX_LENGTH,
+          { allowEmpty: true }
+        )
       : null;
-  const leadId =
-    input.leadId != null && String(input.leadId).trim() ? String(input.leadId).trim() : null;
-  const opportunityId =
-    input.opportunityId != null && String(input.opportunityId).trim()
-      ? String(input.opportunityId).trim()
+
+  const cancellationReason =
+    input.cancellationReason != null
+      ? requireBoundedText(
+          input.cancellationReason,
+          "cancellationReason",
+          CRM_TASK_CANCELLATION_REASON_MAX_LENGTH,
+          { allowEmpty: true }
+        )
       : null;
-  const assigneeUserId =
-    input.assigneeUserId != null && String(input.assigneeUserId).trim()
-      ? String(input.assigneeUserId).trim()
-      : null;
+
+  const assignedToActorId =
+    optionalId(input.assignedToActorId) || optionalId(input.assigneeUserId);
+
+  const dueAt = normalizeIsoTimestamp(input.dueAt);
+  if (input.dueAt != null && input.dueAt !== "" && !dueAt) {
+    throw new CrmError(CRM_ERROR_CODES.INVALID_INPUT, "dueAt must be a valid ISO-8601 timestamp.");
+  }
 
   return Object.freeze({
     taskId,
     tenantId: scope.tenantId,
     venueId: scope.venueId,
-    contactRefId,
-    leadId,
-    opportunityId,
-    assigneeUserId,
+    contactRefId: optionalId(input.contactRefId),
+    leadId: optionalId(input.leadId),
+    opportunityId: optionalId(input.opportunityId),
+    sourceInteractionId: optionalId(input.sourceInteractionId),
+    title,
+    description,
     status,
-    title: input.title != null ? String(input.title).trim() || null : null,
-    dueAt: normalizeIsoTimestamp(input.dueAt),
+    priority,
+    dueAt,
+    assignedToActorId,
+    /** @deprecated Phase 1B alias — same as assignedToActorId */
+    assigneeUserId: assignedToActorId,
+    createdByActorId: optionalId(input.createdByActorId),
+    startedAt: normalizeIsoTimestamp(input.startedAt),
+    completedAt: normalizeIsoTimestamp(input.completedAt),
+    cancelledAt: normalizeIsoTimestamp(input.cancelledAt),
+    cancellationReason,
     createdAt: normalizeIsoTimestamp(input.createdAt),
     updatedAt: normalizeIsoTimestamp(input.updatedAt),
   });

@@ -1,8 +1,8 @@
-# CRM Architecture (Phase 1B + Phase 1C + Phase 1D)
+# CRM Architecture (Phase 1B + Phase 1C + Phase 1D + Phase 1E)
 
 **Module home:** `src/features/crm/`
-**Status:** Foundation contracts + Lead + Opportunity/Pipeline application services (not Production-ready CRM)
-**Baseline:** Phase 1A–1C complete; owner-approved Phase 1D
+**Status:** Foundation contracts + Lead + Opportunity/Pipeline + Interaction/Task application services (not Production-ready CRM)
+**Baseline:** Phase 1A–1D complete; owner-approved Phase 1E
 
 ---
 
@@ -32,7 +32,7 @@ CRM must **not** become the source of truth for auth users, user profiles, playe
 | Authorization | `authorization/` | Fail-closed actor + scope + permission |
 | Repositories | `repositories/memory/` | In-memory proof implementations |
 | Adapters | `adapters/` | Legacy LS compatibility boundary |
-| Services | `services/` | Phase 1C/1D application services + legacy LS (compat) |
+| Services | `services/` | Phase 1C–1E application services + legacy LS (compat) |
 | Testing | `testing/` | Test fakes only — not production facade |
 | Projectors | `projectors/` | Read models |
 | Pages | `pages/` | Legacy UI — not wired to new domain yet |
@@ -74,6 +74,28 @@ See `docs/crm/phase-1d/`.
 
 ---
 
+## Phase 1E application services
+
+`createInteractionApplicationService(deps)` provides:
+
+- `recordInteraction` (append-only)
+- `getInteraction`
+- `listInteractions` (deterministic timeline filters/order)
+
+`createTaskApplicationService(deps)` provides:
+
+- `createTask` / `scheduleFollowUp`
+- `getTask` / `listTasks`
+- `assignTask` / `rescheduleTask`
+- `startTask` / `completeTask` / `cancelTask`
+
+Follow-up scheduling creates **one Task** only. No automatic Interaction, Lead/Opportunity
+mutation, Notification, Calendar, email/SMS, or Finance side effects.
+
+See `docs/crm/phase-1e/`.
+
+---
+
 ## Scope rules
 
 Every CRM aggregate and command requires:
@@ -109,18 +131,19 @@ See `COMPATIBILITY.md`.
 
 ---
 
-## Non-goals (Phase 1D)
+## Non-goals (Phase 1E)
 
 - SQL / RLS / Supabase repositories
-- Wiring new domain into existing CRM pages
-- Interaction timeline / Tasks
-- Lead conversion in the same command as Opportunity create
+- CRM UI / routes / pipeline board
+- Durable event dispatch / workers
+- Notification / email / SMS / Calendar delivery
+- Lead status conversion or Opportunity stage mutation as Interaction/Task side effects
 - Identity SQL permission seeding
 - Production / Staging deploy
 
 ---
 
-## Phase 1E entry
+## Phase 1F entry
 
-Proceed to Phase 1E when Phase 1D acceptance criteria pass and owner approves commit.
-Phase 1E is expected to cover Interaction timeline and/or Task follow-ups on the same foundation.
+Proceed to Phase 1F when Phase 1E acceptance criteria pass and owner approves commit.
+Phase 1F is expected to cover CRM tags/consent and/or event-dispatch adapters on the same foundation.

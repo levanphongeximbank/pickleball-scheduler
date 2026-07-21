@@ -1,8 +1,8 @@
 /**
- * CRM module — public facade (Phase 1B + Phase 1C + Phase 1D).
+ * CRM module — public facade (Phase 1B + Phase 1C + Phase 1D + Phase 1E).
  *
  * Exports approved contracts, constants, pure models, authorization,
- * memory repository factories, Phase 1C/1D application services, and
+ * memory repository factories, Phase 1C–1E application services, and
  * foundation helpers only.
  *
  * Does NOT export:
@@ -25,10 +25,29 @@ export {
   isInteractionType,
 } from "./constants/interactionTypes.js";
 export {
+  INTERACTION_DIRECTION,
+  INTERACTION_DIRECTION_VALUES,
+  isInteractionDirection,
+} from "./constants/interactionDirections.js";
+export {
+  INTERACTION_CHANNEL,
+  INTERACTION_CHANNEL_VALUES,
+  isInteractionChannel,
+} from "./constants/interactionChannels.js";
+export {
   CRM_TASK_STATUS,
   CRM_TASK_STATUS_VALUES,
+  CRM_TASK_TERMINAL_STATUSES,
+  CRM_TASK_ALLOWED_TRANSITIONS,
   isCrmTaskStatus,
+  isCrmTaskTerminalStatus,
+  isAllowedCrmTaskTransition,
 } from "./constants/taskStatuses.js";
+export {
+  CRM_TASK_PRIORITY,
+  CRM_TASK_PRIORITY_VALUES,
+  isCrmTaskPriority,
+} from "./constants/taskPriorities.js";
 export {
   OPPORTUNITY_STAGE,
   OPPORTUNITY_STAGE_VALUES,
@@ -72,8 +91,17 @@ export {
   findPipelineStage,
   isAllowedStageTransition,
 } from "./models/opportunity.js";
-export { createInteraction } from "./models/interaction.js";
-export { createCrmTask } from "./models/task.js";
+export {
+  createInteraction,
+  INTERACTION_SUMMARY_MAX_LENGTH,
+  INTERACTION_OUTCOME_MAX_LENGTH,
+} from "./models/interaction.js";
+export {
+  createCrmTask,
+  CRM_TASK_TITLE_MAX_LENGTH,
+  CRM_TASK_DESCRIPTION_MAX_LENGTH,
+  CRM_TASK_CANCELLATION_REASON_MAX_LENGTH,
+} from "./models/task.js";
 export { createCrmTag, createContactTagLink } from "./models/tag.js";
 export { validateCrmAuditEvent, validateCrmIntegrationEvent } from "./models/events.js";
 
@@ -102,6 +130,8 @@ export { projectContactTimeline } from "./projectors/contactTimeline.js";
 export { prepareLeadDraft } from "./services/prepareLeadDraft.js";
 export { createLeadApplicationService } from "./services/leadApplicationService.js";
 export { createOpportunityApplicationService } from "./services/opportunityApplicationService.js";
+export { createInteractionApplicationService } from "./services/interactionApplicationService.js";
+export { createTaskApplicationService } from "./services/taskApplicationService.js";
 
 export {
   LEGACY_CRM_STORAGE_PREFIXES,
