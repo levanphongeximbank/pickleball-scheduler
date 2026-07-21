@@ -26,6 +26,8 @@ export {
 export {
   matchesLineupRandomPort,
   createNoopLineupRandomPort,
+  createDeterministicLineupRandomPort,
+  selectLineupViaPortAlgorithm,
 } from "./lineupRandomPort.js";
 
 export {

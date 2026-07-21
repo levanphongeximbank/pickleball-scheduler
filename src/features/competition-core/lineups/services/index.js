@@ -39,3 +39,8 @@ export {
 } from "./revisions.js";
 
 export { createLineupDomainService } from "./lineupDomainService.js";
+
+export {
+  createMissingLineupResolver,
+  buildMissingLineupPayloadHash,
+} from "./missingLineupResolver.js";
