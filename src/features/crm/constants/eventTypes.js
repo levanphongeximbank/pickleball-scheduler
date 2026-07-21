@@ -1,4 +1,4 @@
-/** CRM audit and integration event type codes (Phase 1B + 1C). */
+/** CRM audit and integration event type codes (Phase 1B + 1C + 1D). */
 
 export const CRM_EVENT_SCHEMA_VERSION = 1;
 
@@ -7,8 +7,12 @@ export const CRM_AUDIT_EVENT_TYPE = Object.freeze({
   LEAD_CREATED: "crm.audit.lead.created",
   LEAD_UPDATED: "crm.audit.lead.updated",
   LEAD_ASSIGNED: "crm.audit.lead.assigned",
+  PIPELINE_CREATED: "crm.audit.pipeline.created",
   OPPORTUNITY_CREATED: "crm.audit.opportunity.created",
+  OPPORTUNITY_ASSIGNED: "crm.audit.opportunity.assigned",
   OPPORTUNITY_STAGE_CHANGED: "crm.audit.opportunity.stage_changed",
+  OPPORTUNITY_WON: "crm.audit.opportunity.won",
+  OPPORTUNITY_LOST: "crm.audit.opportunity.lost",
   INTERACTION_RECORDED: "crm.audit.interaction.recorded",
   TASK_CREATED: "crm.audit.task.created",
   TASK_UPDATED: "crm.audit.task.updated",
@@ -17,6 +21,7 @@ export const CRM_AUDIT_EVENT_TYPE = Object.freeze({
 export const CRM_INTEGRATION_EVENT_TYPE = Object.freeze({
   LEAD_CREATED: "crm.integration.lead.created",
   OPPORTUNITY_WON: "crm.integration.opportunity.won",
+  OPPORTUNITY_LOST: "crm.integration.opportunity.lost",
   CAMPAIGN_LAUNCH_REQUESTED: "crm.integration.campaign.launch_requested",
   FOLLOW_UP_DUE: "crm.integration.follow_up.due",
 });

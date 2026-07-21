@@ -72,8 +72,26 @@ export function createScopedMemoryStore() {
         out.push(row);
       }
       out.sort((a, b) => {
-        const left = String(a.id ?? a.leadId ?? a.contactRefId ?? a.opportunityId ?? a.taskId ?? a.interactionId ?? "");
-        const right = String(b.id ?? b.leadId ?? b.contactRefId ?? b.opportunityId ?? b.taskId ?? b.interactionId ?? "");
+        const left = String(
+          a.id ??
+            a.leadId ??
+            a.contactRefId ??
+            a.opportunityId ??
+            a.pipelineId ??
+            a.taskId ??
+            a.interactionId ??
+            ""
+        );
+        const right = String(
+          b.id ??
+            b.leadId ??
+            b.contactRefId ??
+            b.opportunityId ??
+            b.pipelineId ??
+            b.taskId ??
+            b.interactionId ??
+            ""
+        );
         if (left < right) return -1;
         if (left > right) return 1;
         const leftAt = String(a.createdAt ?? "");
