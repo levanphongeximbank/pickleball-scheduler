@@ -1,8 +1,8 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 
-import { getRouteAccessPermissions } from "../src/auth/menuAccess.js";
 import { PERMISSIONS } from "../src/auth/permissions.js";
+import { ROUTE_PERMISSIONS } from "../src/config/navigationConfig.js";
 import { FINANCE_MENU_ROOT } from "../src/config/v5Menu/financeMenu.js";
 import { CRM_MENU_ROOT } from "../src/config/v5Menu/crmMenu.js";
 import { REPORTS_IN_PAGE_NAV } from "../src/config/v5Menu/reportsInPageNav.js";
@@ -173,7 +173,7 @@ test("CRM services — messages, templates, campaigns, contact history", () => {
   cleanupClub(CLUB);
 });
 
-test("finance & CRM menus — LIVE paths wired", () => {
+test("finance & CRM menus — paths wired (CRM PARTIAL readiness correction)", () => {
   const financePaths = FINANCE_MENU_ROOT.children
     .filter((item) => item.featureStatus === FEATURE_STATUS.LIVE)
     .map((item) => item.path);
@@ -182,10 +182,13 @@ test("finance & CRM menus — LIVE paths wired", () => {
   assert.ok(financePaths.includes("/finance/receipts"));
   assert.ok(financePaths.includes("/finance/refunds"));
 
-  const crmLive = CRM_MENU_ROOT.children.filter(
-    (item) => item.featureStatus === FEATURE_STATUS.LIVE
+  // Phase 1B: CRM route items are PARTIAL (compatibility shell), not LIVE.
+  const crmPartial = CRM_MENU_ROOT.children.filter(
+    (item) =>
+      item.featureStatus === FEATURE_STATUS.PARTIAL &&
+      String(item.path || "").startsWith("/crm/")
   );
-  const crmPaths = crmLive.map((item) => item.path);
+  const crmPaths = crmPartial.map((item) => item.path);
 
   assert.ok(crmPaths.includes("/crm/messages"));
   assert.ok(crmPaths.includes("/crm/templates"));
@@ -205,16 +208,17 @@ test("reports in-page nav — finance items LIVE", () => {
 });
 
 test("route permissions — finance and CRM paths", () => {
-  assert.deepEqual(getRouteAccessPermissions("/finance/debt"), [PERMISSIONS.FINANCE_VIEW]);
-  assert.deepEqual(getRouteAccessPermissions("/finance/receipts"), [PERMISSIONS.FINANCE_VIEW]);
-  assert.deepEqual(getRouteAccessPermissions("/finance/refunds"), [PERMISSIONS.FINANCE_VIEW]);
+  // Use ROUTE_PERMISSIONS directly to avoid menuAccess → supabase client import in unit tests.
+  assert.deepEqual(ROUTE_PERMISSIONS["/finance/debt"], [PERMISSIONS.FINANCE_VIEW]);
+  assert.deepEqual(ROUTE_PERMISSIONS["/finance/receipts"], [PERMISSIONS.FINANCE_VIEW]);
+  assert.deepEqual(ROUTE_PERMISSIONS["/finance/refunds"], [PERMISSIONS.FINANCE_VIEW]);
 
-  assert.deepEqual(getRouteAccessPermissions("/crm/templates"), [PERMISSIONS.CUSTOMER_VIEW]);
-  assert.deepEqual(getRouteAccessPermissions("/crm/messages"), [
+  assert.deepEqual(ROUTE_PERMISSIONS["/crm/templates"], [PERMISSIONS.CUSTOMER_VIEW]);
+  assert.deepEqual(ROUTE_PERMISSIONS["/crm/messages"], [
     PERMISSIONS.BOOKING_VIEW,
     PERMISSIONS.CUSTOMER_VIEW,
   ]);
-  assert.deepEqual(getRouteAccessPermissions("/crm/reminders/booking"), [
+  assert.deepEqual(ROUTE_PERMISSIONS["/crm/reminders/booking"], [
     PERMISSIONS.BOOKING_VIEW,
     PERMISSIONS.CUSTOMER_VIEW,
   ]);

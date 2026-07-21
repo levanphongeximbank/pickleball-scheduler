@@ -9,9 +9,11 @@ import { CRM_MENU_ROOT } from "./crmMenu.js";
 import { AI_MENU_ROOT } from "./aiMenu.js";
 import { ADMIN_MENU_ROOT } from "./adminMenu.js";
 import { TENANT_MENU_ROOT } from "./tenantMenu.js";
-import { SUPPORT_HUB_LEAF, PROFILE_MENU_LEAF } from "./supportMenu.js";
-import { SYSTEM_TECHNICIAN_MENU_ROOT } from "./systemTechnicianMenu.js";
-import { TEAM_CAPTAIN_MENU_ROOT } from "./teamCaptainMenu.js";
+import {
+  SUPPORT_HUB_LEAF,
+  PROFILE_MENU_LEAF,
+  ATHLETES_DIRECTORY_MENU_LEAF,
+} from "./supportMenu.js";
 
 export { TOURNAMENT_MENU_ROOT } from "./tournamentMenu.js";
 export { SYSTEM_TECHNICIAN_MENU_ROOT } from "./systemTechnicianMenu.js";
@@ -22,7 +24,11 @@ export {
   TOURNAMENT_IN_PAGE_NAV,
   collectTournamentInPageLabels,
 } from "./tournamentInPageNav.js";
-export { auditFullMenuCoverage } from "./fullMenuAudit.js";
+export {
+  auditFullMenuCoverage,
+  evaluateFullMenuReadinessGate,
+  APPROVED_PARTIAL_MENU_PATHS,
+} from "./fullMenuAudit.js";
 
 /** MENU_GROUPS V5 — cây menu đầy đủ theo spec hệ thống. */
 export const V5_MENU_GROUPS = [
@@ -37,6 +43,10 @@ export const V5_MENU_GROUPS = [
   { id: "crm", label: "Chăm sóc khách hàng", items: [CRM_MENU_ROOT] },
   { id: "ai", label: "Trợ lý thông minh", items: [AI_MENU_ROOT], requiresFeature: "ai" },
   { id: "admin", label: "Quản trị", items: [ADMIN_MENU_ROOT] },
-  { id: "profile", label: "Tài khoản", items: [PROFILE_MENU_LEAF] },
+  {
+    id: "profile",
+    label: "Tài khoản",
+    items: [PROFILE_MENU_LEAF, ATHLETES_DIRECTORY_MENU_LEAF],
+  },
   { id: "support", label: "Hỗ trợ", items: [SUPPORT_HUB_LEAF] },
 ];
