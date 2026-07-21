@@ -131,19 +131,25 @@ See `COMPATIBILITY.md`.
 
 ---
 
-## Non-goals (Phase 1E)
+## Phase 1F foundation (implemented)
+
+- **Tags:** tenant/venue-scoped `CrmTag` definitions + `TagAssignment` to ContactReference, Lead, Opportunity
+- **Consent:** append-only `ConsentRecord` history with deterministic effective-state evaluation
+- **Pending events:** memory-first dispatch queue (`enqueue` / `claim` / `acknowledge` / `fail` / `releaseExpiredClaims`)
+- Application services: `createTagApplicationService`, `createConsentApplicationService`, `createPendingEventDispatchService`
+- MODEL 1 preserved — mutating commands return validated pending audit envelopes; no provider delivery
+
+## Non-goals (Phase 1F)
 
 - SQL / RLS / Supabase repositories
-- CRM UI / routes / pipeline board
-- Durable event dispatch / workers
-- Notification / email / SMS / Calendar delivery
-- Lead status conversion or Opportunity stage mutation as Interaction/Task side effects
-- Identity SQL permission seeding
+- CRM UI / routes
+- Durable external event broker / background workers
+- Notification / email / SMS / Push delivery
 - Production / Staging deploy
 
 ---
 
-## Phase 1F entry
+## Phase 1G entry
 
-Proceed to Phase 1F when Phase 1E acceptance criteria pass and owner approves commit.
-Phase 1F is expected to cover CRM tags/consent and/or event-dispatch adapters on the same foundation.
+Proceed to Phase 1G when Phase 1F acceptance criteria pass and owner approves commit.
+Phase 1G may wire pending-event dispatch to durable adapters and/or CRM UI surfaces.

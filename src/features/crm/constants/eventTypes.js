@@ -22,6 +22,17 @@ export const CRM_AUDIT_EVENT_TYPE = Object.freeze({
   TASK_STARTED: "crm.audit.task.started",
   TASK_COMPLETED: "crm.audit.task.completed",
   TASK_CANCELLED: "crm.audit.task.cancelled",
+  TAG_CREATED: "crm.audit.tag.created",
+  TAG_ACTIVATED: "crm.audit.tag.activated",
+  TAG_DEACTIVATED: "crm.audit.tag.deactivated",
+  TAG_ASSIGNED: "crm.audit.tag.assigned",
+  TAG_REMOVED: "crm.audit.tag.removed",
+  CONSENT_GRANTED: "crm.audit.consent.granted",
+  CONSENT_REVOKED: "crm.audit.consent.revoked",
+  PENDING_EVENTS_ENQUEUED: "crm.audit.pending_events.enqueued",
+  PENDING_EVENT_CLAIMED: "crm.audit.pending_event.claimed",
+  PENDING_EVENT_ACKNOWLEDGED: "crm.audit.pending_event.acknowledged",
+  PENDING_EVENT_FAILED: "crm.audit.pending_event.failed",
 });
 
 export const CRM_INTEGRATION_EVENT_TYPE = Object.freeze({
