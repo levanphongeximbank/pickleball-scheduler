@@ -309,7 +309,7 @@ test("1D: without seed uses identity order then snake (not Math.random)", async 
 });
 
 test("1D: service-level composition matches resolver mode", () => {
-  const candidates = seedCandidates(6).map((c, i) => ({
+  const candidates = seedCandidates(6).map((c) => ({
     candidateId: c.id,
     candidateReference: c.id,
     candidateIdentityKey: `c::DRAW::x::CANDIDATE::${c.id}`,
