@@ -26,9 +26,16 @@ export {
   ASSIGNMENT_SOURCE,
   ASSIGNMENT_SOURCE_VALUES,
   FINALIZATION_STATE,
+  FINALIZATION_STATE_VALUES,
+  LIFECYCLE_ACTION,
+  LIFECYCLE_ACTION_VALUES,
+  LIFECYCLE_EVENT_TYPE,
+  LIFECYCLE_EVENT_TYPE_VALUES,
   CORE07_ELIGIBILITY_PORT_VERSION,
   CORE07_RULE_EVALUATION_PORT_VERSION,
   CORE07_FINGERPRINT_PORT_VERSION,
+  CORE07_RESULT_REPOSITORY_PORT_VERSION,
+  CORE07_LIFECYCLE_AUDIT_PORT_VERSION,
 } from "./constants.js";
 
 export { deepFreeze, deepFreezeClone } from "./deepFreeze.js";
@@ -52,3 +59,18 @@ export {
 export { createSeedAssignment as createCore07SeedAssignment } from "./createSeedAssignment.js";
 
 export { createSeedingResult as createCore07DraftSeedingResultDocument } from "./createSeedingResult.js";
+
+export { normalizeLifecycleAuthorizationDecision } from "./normalizeLifecycleAuthorizationDecision.js";
+
+export { normalizeFinalizationRequest } from "./normalizeFinalizationRequest.js";
+
+export { normalizeSupersedeRequest } from "./normalizeSupersedeRequest.js";
+
+export { normalizeCancellationRequest } from "./normalizeCancellationRequest.js";
+
+export {
+  createLifecycleAuditEvent,
+  buildLifecycleEventId,
+} from "./createLifecycleAuditEvent.js";
+
+export { cloneSeedingResultWithLifecycle } from "./cloneSeedingResultWithLifecycle.js";

@@ -19,3 +19,18 @@ export {
   isRuleEvaluationPort,
   CORE07_RULE_EVALUATION_PORT_VERSION,
 } from "./RuleEvaluationPort.js";
+
+export {
+  isSeedingResultRepositoryPort,
+  requireSeedingResultRepositoryPort,
+  invokeSeedingResultRepository,
+  SEEDING_RESULT_REPOSITORY_PORT_METHODS,
+  CORE07_RESULT_REPOSITORY_PORT_VERSION,
+} from "./SeedingResultRepositoryPort.js";
+
+export {
+  isSeedingLifecycleAuditPort,
+  requireSeedingLifecycleAuditPort,
+  appendLifecycleEventsThroughPort,
+  CORE07_LIFECYCLE_AUDIT_PORT_VERSION,
+} from "./SeedingLifecycleAuditPort.js";

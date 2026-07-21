@@ -49,3 +49,15 @@ export {
 export { buildResultFingerprintPayload } from "./buildResultFingerprintPayload.js";
 
 export { createDraftSeedingResult } from "./createDraftSeedingResult.js";
+
+export {
+  SEEDING_STATE_TRANSITION_MATRIX,
+  getSeedingStateTransitionDecision,
+  validateSeedingStateTransition,
+} from "./validateSeedingStateTransition.js";
+
+export { finalizeSeedingResult } from "./finalizeSeedingResult.js";
+
+export { supersedeSeedingResult } from "./supersedeSeedingResult.js";
+
+export { cancelSeedingResult } from "./cancelSeedingResult.js";

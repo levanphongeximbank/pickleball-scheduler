@@ -1,7 +1,7 @@
 /**
  * Competition-core seeding capability-local public surface.
  * Phase 3G runtime exports preserved.
- * CORE-07 Phase 1C/1D exports added (non-production).
+ * CORE-07 Phase 1C/1D/1E exports added (non-production).
  * Integrator owns root competition-core/index.js re-exports — do not edit that here.
  */
 
@@ -84,6 +84,15 @@ export {
   CORE07_ELIGIBILITY_PORT_VERSION,
   isRuleEvaluationPort,
   CORE07_RULE_EVALUATION_PORT_VERSION,
+  isSeedingResultRepositoryPort,
+  requireSeedingResultRepositoryPort,
+  invokeSeedingResultRepository,
+  SEEDING_RESULT_REPOSITORY_PORT_METHODS,
+  CORE07_RESULT_REPOSITORY_PORT_VERSION,
+  isSeedingLifecycleAuditPort,
+  requireSeedingLifecycleAuditPort,
+  appendLifecycleEventsThroughPort,
+  CORE07_LIFECYCLE_AUDIT_PORT_VERSION,
 } from "./ports/index.js";
 
 export {
@@ -123,6 +132,11 @@ export {
   ASSIGNMENT_SOURCE,
   ASSIGNMENT_SOURCE_VALUES,
   FINALIZATION_STATE,
+  FINALIZATION_STATE_VALUES,
+  LIFECYCLE_ACTION,
+  LIFECYCLE_ACTION_VALUES,
+  LIFECYCLE_EVENT_TYPE,
+  LIFECYCLE_EVENT_TYPE_VALUES,
   CORE07_FINGERPRINT_PORT_VERSION,
   normalizeSeedingScope,
   buildSeedingScopeKey,
@@ -133,6 +147,13 @@ export {
   sortOverridesDeterministically,
   createCore07SeedAssignment,
   createCore07DraftSeedingResultDocument,
+  normalizeLifecycleAuthorizationDecision,
+  normalizeFinalizationRequest,
+  normalizeSupersedeRequest,
+  normalizeCancellationRequest,
+  createLifecycleAuditEvent,
+  buildLifecycleEventId,
+  cloneSeedingResultWithLifecycle,
 } from "./domain/index.js";
 
 export {
@@ -161,4 +182,10 @@ export {
   stringifyCanonicalJson,
   buildResultFingerprintPayload,
   createDraftSeedingResult,
+  SEEDING_STATE_TRANSITION_MATRIX,
+  getSeedingStateTransitionDecision,
+  validateSeedingStateTransition,
+  finalizeSeedingResult,
+  supersedeSeedingResult,
+  cancelSeedingResult,
 } from "./services/index.js";

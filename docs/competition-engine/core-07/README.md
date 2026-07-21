@@ -5,9 +5,10 @@
 **Phase 1A commit (accepted):** `0307d812bc0674a59a388b30829e5190971a01fe`
 **Phase 1B commit (accepted):** `5290b378a5f970eceebc6bc5fde55f609cdfb6a4`
 **Phase 1C commit (accepted):** `2cdcda4407b1fff45b80f8ce811c42d789b8ef89`
-**Phase:** **1D — Deterministic Seed Allocation Runtime** (implementation complete; awaiting Owner commit review)
+**Phase 1D commits (accepted):** `7ca31153…` (impl), `c333bd5e…` (cert)
+**Phase:** **1E — Result Lifecycle, Finalization and Superseding** (implementation complete; awaiting Owner commit review)
 **Date:** 2026-07-21
-**Status:** Phase 1D DRAFT allocation / overrides / fingerprint ports implemented (non-production). Report: [18_PHASE_1D_SEED_ALLOCATION_REPORT.md](./18_PHASE_1D_SEED_ALLOCATION_REPORT.md)
+**Status:** Phase 1E lifecycle services implemented (non-production). Report: [19_PHASE_1E_RESULT_LIFECYCLE_REPORT.md](./19_PHASE_1E_RESULT_LIFECYCLE_REPORT.md)
 
 Owner remediation locked before Phase 1B commit:
 
@@ -49,7 +50,8 @@ CORE-07 does **not** own:
 | **1A** Existing Seeding Audit | **Accepted** | Commit `0307d81` |
 | **1B** Architecture & Contract Freeze | **Accepted** | Commit `5290b37`; docs `07`–`16` |
 | **1C** Domain foundation implementation | **Accepted** | Commit `2cdcda4`; report [17](./17_PHASE_1C_DOMAIN_FOUNDATION_REPORT.md) |
-| **1D** Seed allocation runtime | **Implemented (pre-commit)** | Report: [18](./18_PHASE_1D_SEED_ALLOCATION_REPORT.md) |
+| **1D** Seed allocation runtime | **Accepted** | Commits `7ca31153` / `c333bd5e`; report [18](./18_PHASE_1D_SEED_ALLOCATION_REPORT.md) |
+| **1E** Result lifecycle | **Implemented (pre-commit)** | Report: [19](./19_PHASE_1E_RESULT_LIFECYCLE_REPORT.md) |
 
 ---
 
@@ -92,6 +94,12 @@ CORE-07 does **not** own:
 | File | Content |
 |------|---------|
 | [18_PHASE_1D_SEED_ALLOCATION_REPORT.md](./18_PHASE_1D_SEED_ALLOCATION_REPORT.md) | Phase 1D DRAFT allocation / overrides / fingerprint report |
+
+### Phase 1E (result lifecycle)
+
+| File | Content |
+|------|---------|
+| [19_PHASE_1E_RESULT_LIFECYCLE_REPORT.md](./19_PHASE_1E_RESULT_LIFECYCLE_REPORT.md) | Finalization, idempotency, superseding, cancellation, ports |
 
 ---
 

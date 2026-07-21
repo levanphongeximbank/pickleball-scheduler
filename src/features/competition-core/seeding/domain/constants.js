@@ -151,8 +151,39 @@ export const FINALIZATION_STATE = Object.freeze({
   CANCELLED: "CANCELLED",
 });
 
+/** @type {ReadonlySet<string>} */
+export const FINALIZATION_STATE_VALUES = new Set(
+  Object.values(FINALIZATION_STATE)
+);
+
+/** Phase 1E lifecycle actions (authorization / transition identity). */
+export const LIFECYCLE_ACTION = Object.freeze({
+  FINALIZE: "FINALIZE",
+  SUPERSEDE: "SUPERSEDE",
+  CANCEL: "CANCEL",
+});
+
+/** @type {ReadonlySet<string>} */
+export const LIFECYCLE_ACTION_VALUES = new Set(Object.values(LIFECYCLE_ACTION));
+
+export const LIFECYCLE_EVENT_TYPE = Object.freeze({
+  RESULT_FINALIZED: "RESULT_FINALIZED",
+  RESULT_FINALIZE_IDEMPOTENT: "RESULT_FINALIZE_IDEMPOTENT",
+  RESULT_SUPERSEDED: "RESULT_SUPERSEDED",
+  RESULT_CANCELLED: "RESULT_CANCELLED",
+});
+
+/** @type {ReadonlySet<string>} */
+export const LIFECYCLE_EVENT_TYPE_VALUES = new Set(
+  Object.values(LIFECYCLE_EVENT_TYPE)
+);
+
 export const CORE07_ELIGIBILITY_PORT_VERSION =
   "core07-eligibility-decision-port-v1";
 export const CORE07_RULE_EVALUATION_PORT_VERSION =
   "core07-rule-evaluation-port-v1";
 export const CORE07_FINGERPRINT_PORT_VERSION = "core07-fingerprint-port-v1";
+export const CORE07_RESULT_REPOSITORY_PORT_VERSION =
+  "core07-result-repository-port-v1";
+export const CORE07_LIFECYCLE_AUDIT_PORT_VERSION =
+  "core07-lifecycle-audit-port-v1";
