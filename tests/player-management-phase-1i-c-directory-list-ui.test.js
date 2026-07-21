@@ -150,12 +150,13 @@ test("navigation — /athletes discoverable once for PLAYER and non-PLAYER; bloc
   );
 });
 
-test("router — /athletes registered under MainLayout; no detail route", () => {
+test("router — /athletes registered under MainLayout; detail route owned by 1I-D", () => {
   const router = readSrc("src/router.jsx");
   assert.match(router, /path="\/athletes"/);
   assert.match(router, /PublicPlayerDirectoryPage/);
-  assert.doesNotMatch(router, /path="\/athletes\/:playerId"/);
-  assert.doesNotMatch(router, /path="\/athletes\/:/);
+  // Detail route is added in Phase 1I-D; list page remains registered.
+  assert.match(router, /path="\/athletes\/:playerId"/);
+  assert.match(router, /PublicPlayerDirectoryDetailPage/);
 });
 
 test("UI sources — facade only; no direct RPC; no forbidden fields rendered", () => {
@@ -183,6 +184,7 @@ test("UI sources — facade only; no direct RPC; no forbidden fields rendered", 
   assert.doesNotMatch(list, /Tổng số|total count|totalCount|hasMore/);
   assert.match(card, /isVerified/);
   assert.match(card, /Đã xác minh/);
+  assert.match(card, /buildPublicDirectoryPlayerPath|\/athletes\//);
   assert.match(list, /"aria-label":\s*"Tìm theo tên hiển thị"/);
   assert.match(list, /"aria-label":\s*"Lọc theo khu vực hoạt động"/);
   assert.match(list, /Tải thêm/);

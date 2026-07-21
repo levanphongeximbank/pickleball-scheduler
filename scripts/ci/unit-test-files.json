@@ -125,6 +125,7 @@
   "tests/player-management-phase-1h-c-verification-actions.test.js",
   "tests/player-management-phase-1i-a-directory-contract.test.js",
   "tests/player-management-phase-1i-c-directory-list-ui.test.js",
+  "tests/player-management-phase-1i-d-directory-detail-ui.test.js",
   "tests/player-history.test.js",
   "tests/tournament-mobile.test.js",
   "tests/tournament-regression.test.js",
