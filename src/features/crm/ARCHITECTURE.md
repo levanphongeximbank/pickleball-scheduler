@@ -168,7 +168,26 @@ See `docs/crm/phase-1g/`.
 
 ---
 
-## Phase 1H entry
+## Phase 1H-A staging readiness (implemented — no live apply)
 
-Proceed to Phase 1H when Phase 1G acceptance criteria pass and owner approves commit.
-Phase 1H may stage-apply migrations, seed CRM permissions into Identity, and validate RLS/RPC security.
+- Identity permission inventory + idempotent CRM permission seed SQL (catalog only)
+- Proposed fail-closed role matrix (separately reviewable; Owner approval before apply)
+- Tenant/venue resolver verdict: `SAME_SCOPE_MODEL_VERIFIED`
+- Phase 1G RLS + claim/release RPC static security certification
+- Injectable `createSupabaseCrmDatabaseClient` behind `CrmDatabaseClientPort`
+- SHA-pinned staging migration manifest + offline preflight / dry-run apply boundary
+- Runtime composition guard: memory default; Production durable blocked
+- Docs: `docs/crm/phase-1h/`
+
+## Non-goals (Phase 1H-A)
+
+- Apply SQL to Staging or Production / connect live databases / deploy
+- Enable durable runtime or replace memory composition
+- Enable workers or provider delivery
+- CRM UI / routes
+- Commit / push / PR (Owner-controlled)
+
+## Phase 1H-B / 1I entry
+
+Owner-approved Staging apply + post-apply QA; optional durable staging switch under composition guard.
+Do not enable Production durable CRM persistence without a later dedicated phase.

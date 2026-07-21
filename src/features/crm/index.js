@@ -1,10 +1,11 @@
 /**
- * CRM module — public facade (Phase 1B–1G).
+ * CRM module — public facade (Phase 1B–1H-A).
  *
  * Exports approved contracts, constants, pure models, authorization,
  * memory repository factories, Phase 1C–1F application services,
- * Phase 1G durable repository adapters + mapping utilities, and
- * foundation helpers only.
+ * Phase 1G durable repository adapters + mapping utilities,
+ * Phase 1H-A injectable Supabase port adapter + composition guard,
+ * and foundation helpers only.
  *
  * Does NOT export:
  * - internal repository mutable state
@@ -15,7 +16,7 @@
  *
  * Legacy LS services remain importable from their file paths / adapters
  * for compatibility only — see COMPATIBILITY.md.
- * Memory repositories remain the default runtime composition in Phase 1G.
+ * Memory repositories remain the default runtime composition in Phase 1H-A.
  */
 
 export { CRM_ERROR_CODES, CrmError, crmFailure } from "./constants/errorCodes.js";
@@ -200,6 +201,34 @@ export {
   mapPendingEventDomainToRow,
   mapPendingEventRowToDomain,
 } from "./persistence/mapping/pendingEventMapping.js";
+export {
+  createSupabaseCrmDatabaseClient,
+  CRM_SUPABASE_TABLE_ALLOWLIST,
+  CRM_SUPABASE_OPERATION_ALLOWLIST,
+  CRM_SUPABASE_RPC_ALLOWLIST,
+} from "./persistence/supabase/supabaseCrmDatabaseClient.js";
+export {
+  CRM_PERSISTENCE_MODE_ENV,
+  CRM_PERSISTENCE_MEMORY_MODE,
+  CRM_PERSISTENCE_DURABLE_MODE,
+  resolveCrmPersistenceMode,
+  assertCrmRuntimeCompositionGuard,
+  getCrmDefaultRuntimePersistenceMode,
+} from "./persistence/runtimeCompositionGuard.js";
+export {
+  CRM_PERMISSION_SEED_ROWS,
+  CRM_PHASE_1G_REQUIRED_PERMISSIONS,
+  CRM_PERMISSION_SEED_APPROVAL,
+} from "./identity/crmPermissionSeedDefinitions.js";
+export {
+  CRM_PROPOSED_ROLE_PERMISSION_MATRIX,
+  CRM_ROLE_MATRIX_APPROVAL,
+  listProposedCrmRolePermissionGrants,
+} from "./identity/crmRolePermissionMatrix.js";
+export {
+  CRM_TENANT_VENUE_RESOLVER_VERDICT,
+  getCrmTenantVenueResolverVerdict,
+} from "./identity/tenantVenueResolverCertification.js";
 
 export { projectContactTimeline } from "./projectors/contactTimeline.js";
 export { prepareLeadDraft } from "./services/prepareLeadDraft.js";
