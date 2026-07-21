@@ -281,6 +281,7 @@ export const NAV_ROUTE_ALIASES = Object.freeze({
   "/court-engine": { label: "Điều phối sân", group: MENU_GROUP_IDS.VENUE_OPS },
   "/select-players": { label: "Danh sách chờ / Ghép cặp", group: MENU_GROUP_IDS.VENUE_OPS },
   "/players": { label: "Danh sách VĐV", group: MENU_GROUP_IDS.CUSTOMERS },
+  "/athletes": { label: "Danh bạ vận động viên", group: MENU_GROUP_IDS.CUSTOMERS },
   "/club": { label: "Lịch sinh hoạt / Mùa giải", group: MENU_GROUP_IDS.CLUB },
   "/my-club": { label: "CLB của tôi", group: MENU_GROUP_IDS.CLUB },
   "/discover-clubs": { label: "Khám phá CLB", group: MENU_GROUP_IDS.CLUB },
@@ -422,6 +423,13 @@ export const MENU_GROUPS = [
         icon: NAV_ICON_KEYS["player-profile"],
         text: "Hồ sơ cá nhân",
         path: "/player/profile",
+        roles: [ROLES.PLAYER],
+      },
+      {
+        key: "athletes-directory",
+        icon: NAV_ICON_KEYS.players,
+        text: "Danh bạ vận động viên",
+        path: "/athletes",
         roles: [ROLES.PLAYER],
       },
       {
@@ -576,6 +584,7 @@ export const ROUTE_PERMISSIONS = Object.freeze({
   "/admin/tournament-certifications": [PERMISSIONS.TOURNAMENT_CERTIFY, PERMISSIONS.RANKING_MANAGE],
   "/audit": [PERMISSIONS.USER_MANAGE, PERMISSIONS.ACTIVITY_LOG_VIEW, PERMISSIONS.ROLE_VIEW],
   "/profile": [],
+  "/athletes": [],
   "/notifications": [],
   "/referee": [PERMISSIONS.TOURNAMENT_VIEW, PERMISSIONS.MATCH_UPDATE],
   "/403": [],
@@ -753,6 +762,12 @@ export const MOBILE_QUICK_LINKS = [
     label: "Hồ sơ của tôi",
     path: "/profile",
     iconKey: "profile",
+  },
+  {
+    key: "athletes-directory",
+    label: "Danh bạ vận động viên",
+    path: "/athletes",
+    iconKey: "players",
   },
   {
     key: "operations",

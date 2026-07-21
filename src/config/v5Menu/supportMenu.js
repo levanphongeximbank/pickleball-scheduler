@@ -11,6 +11,20 @@ export const PROFILE_MENU_LEAF = menuLeaf({
   featureStatus: FEATURE_STATUS.LIVE,
 });
 
+/**
+ * Phase 1I-C — Public Player Directory.
+ * No special permission. Visible to authenticated non-PLAYER roles via PROFILE group.
+ * PLAYER role uses the PLAYER_ZONE copy (PROFILE group is hidden for PLAYER).
+ */
+export const ATHLETES_DIRECTORY_MENU_LEAF = menuLeaf({
+  key: "athletes-directory",
+  icon: "players",
+  text: "Danh bạ vận động viên",
+  path: "/athletes",
+  featureStatus: FEATURE_STATUS.LIVE,
+  featureNote: "Authenticated Public Player Directory (Phase 1I-C)",
+});
+
 export const SUPPORT_HUB_LEAF = menuLeaf({
   key: "support-hub",
   icon: "support",
