@@ -1,18 +1,21 @@
 /**
- * CRM module — public facade (Phase 1B + Phase 1C + Phase 1D + Phase 1E + Phase 1F).
+ * CRM module — public facade (Phase 1B–1G).
  *
  * Exports approved contracts, constants, pure models, authorization,
- * memory repository factories, Phase 1C–1F application services, and
+ * memory repository factories, Phase 1C–1F application services,
+ * Phase 1G durable repository adapters + mapping utilities, and
  * foundation helpers only.
  *
  * Does NOT export:
  * - internal repository mutable state
- * - Supabase implementations
- * - legacy localStorage services as canonical repositories
+ * - concrete Supabase client instances or credentials
  * - test-only fakes (see `testing/phase1cFakes.js` for tests)
+ * - raw SQL strings
+ * - legacy localStorage services as canonical repositories
  *
  * Legacy LS services remain importable from their file paths / adapters
  * for compatibility only — see COMPATIBILITY.md.
+ * Memory repositories remain the default runtime composition in Phase 1G.
  */
 
 export { CRM_ERROR_CODES, CrmError, crmFailure } from "./constants/errorCodes.js";
@@ -174,6 +177,29 @@ export { createMemoryTagRepository } from "./repositories/memory/memoryTagReposi
 export { createMemoryTagAssignmentRepository } from "./repositories/memory/memoryTagAssignmentRepository.js";
 export { createMemoryConsentRepository } from "./repositories/memory/memoryConsentRepository.js";
 export { createMemoryPendingEventRepository } from "./repositories/memory/memoryPendingEventRepository.js";
+
+export {
+  CRM_PHASE_1G_TABLES,
+  CRM_PHASE_1G_RPC,
+  requireCrmDatabaseClientPort,
+} from "./persistence/databaseClientPort.js";
+export { createDurableTagRepository } from "./persistence/durable/durableTagRepository.js";
+export { createDurableTagAssignmentRepository } from "./persistence/durable/durableTagAssignmentRepository.js";
+export { createDurableConsentRepository } from "./persistence/durable/durableConsentRepository.js";
+export { createDurablePendingEventRepository } from "./persistence/durable/durablePendingEventRepository.js";
+export { mapTagDomainToRow, mapTagRowToDomain } from "./persistence/mapping/tagMapping.js";
+export {
+  mapTagAssignmentDomainToRow,
+  mapTagAssignmentRowToDomain,
+} from "./persistence/mapping/tagAssignmentMapping.js";
+export {
+  mapConsentDomainToRow,
+  mapConsentRowToDomain,
+} from "./persistence/mapping/consentMapping.js";
+export {
+  mapPendingEventDomainToRow,
+  mapPendingEventRowToDomain,
+} from "./persistence/mapping/pendingEventMapping.js";
 
 export { projectContactTimeline } from "./projectors/contactTimeline.js";
 export { prepareLeadDraft } from "./services/prepareLeadDraft.js";

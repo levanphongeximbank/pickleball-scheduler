@@ -149,7 +149,26 @@ See `COMPATIBILITY.md`.
 
 ---
 
-## Phase 1G entry
+## Phase 1G foundation (implemented — authored, not applied)
 
-Proceed to Phase 1G when Phase 1F acceptance criteria pass and owner approves commit.
-Phase 1G may wire pending-event dispatch to durable adapters and/or CRM UI surfaces.
+- Durable persistence boundary: application → repository contract → durable adapter → `CrmDatabaseClientPort`
+- SQL migrations authored under `docs/crm/phase-1g/` (tables, indexes, RLS, claim/release RPCs, grants, consent immutability trigger)
+- Durable adapters: Tag, TagAssignment, Consent, PendingEvent
+- Explicit domain↔row mapping; memory repositories remain default runtime composition
+- SQL not applied; no Supabase / Staging / Production connection in this phase
+
+See `docs/crm/phase-1g/`.
+
+## Non-goals (Phase 1G)
+
+- Apply SQL / connect Supabase / deploy
+- Replace memory repositories in runtime composition
+- Enable workers or provider delivery
+- CRM UI / routes
+
+---
+
+## Phase 1H entry
+
+Proceed to Phase 1H when Phase 1G acceptance criteria pass and owner approves commit.
+Phase 1H may stage-apply migrations, seed CRM permissions into Identity, and validate RLS/RPC security.
