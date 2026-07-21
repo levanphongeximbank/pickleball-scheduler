@@ -149,7 +149,7 @@ export const LEGACY_TO_PHASE3H_MODE_MATRIX = Object.freeze([
     status: MODE_MAPPING_STATUS.FORMAT_SPECIFIC,
     vocabulary: "cc04_canonical",
     conditions:
-      "Use team-tournament grouping adapter with explicit SNAKE_GROUPS or OPEN_RANDOM_GROUPS.",
+      "Use team-tournament grouping adapter with explicit SNAKE_GROUPS, OPEN_RANDOM_GROUPS, or OPEN_SHUFFLED_SNAKE_GROUPS.",
     typedError: DRAW_CERTIFICATION_ERROR_CODE.ADAPTER_MODE_FORMAT_SPECIFIC,
   },
   {
@@ -186,11 +186,20 @@ export const LEGACY_TO_PHASE3H_MODE_MATRIX = Object.freeze([
   },
   {
     legacyMode: "tt_open_shuffle_snake",
-    phase3hMode: DRAW_MODE.OPEN_RANDOM_GROUPS,
-    status: MODE_MAPPING_STATUS.CONDITIONAL,
+    phase3hMode: DRAW_MODE.OPEN_SHUFFLED_SNAKE_GROUPS,
+    status: MODE_MAPPING_STATUS.EXACT,
     vocabulary: "team_tournament",
     conditions:
-      "TT OFF seeding uses shuffle-then-snake; Phase 3H OPEN_RANDOM uses shuffle-then-round-robin. Documented semantic difference.",
+      "TT OFF seeding shuffle-then-snake. Maps to OPEN_SHUFFLED_SNAKE_GROUPS (Phase 3H compose: deterministicShuffle + snake). Distinct from OPEN_RANDOM_GROUPS (shuffle-then-round-robin).",
+    typedError: null,
+  },
+  {
+    legacyMode: "open_shuffled_snake",
+    phase3hMode: DRAW_MODE.OPEN_SHUFFLED_SNAKE_GROUPS,
+    status: MODE_MAPPING_STATUS.EXACT,
+    vocabulary: "phase3h_alias",
+    conditions:
+      "Explicit format-neutral shuffle-then-snake. Requires deterministicSeed for certified shuffle; absent seed uses identity order then snake.",
     typedError: null,
   },
   {

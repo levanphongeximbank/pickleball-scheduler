@@ -34,6 +34,7 @@ export {
   assignSeededGroups,
   assignPotGroups,
   assignOpenRandomGroups,
+  assignOpenShuffledSnakeGroups,
   assignManualGroupsOnly,
 } from "./assignGroups.js";
 export {

@@ -151,6 +151,7 @@ export {
   assignSeededGroups,
   assignPotGroups,
   assignOpenRandomGroups,
+  assignOpenShuffledSnakeGroups,
   assignManualGroupsOnly,
   buildSeededBracketSlotOrder,
   calculateByeCount,

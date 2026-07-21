@@ -670,6 +670,49 @@ export function assignOpenRandomGroups(candidates, options) {
 }
 
 /**
+ * CORE-08 Phase 1D — open shuffled snake groups.
+ * Composes existing primitives only:
+ *   orderByIdentity → deterministicShuffle (when seed/RNG present)
+ *   → placeIntoGroups(getSnakeGroupIndex)
+ * Does not copy Fisher–Yates or snake-index math.
+ *
+ * Deterministic seed contract (inherited from OPEN_RANDOM_GROUPS):
+ * - With randomFn / deterministicSeed → shuffle then snake
+ * - Without → identity order then snake (not seedNumber snake)
+ *
+ * @param {import('../contracts/drawCandidate.js').DrawCandidate[]} candidates
+ * @param {object} options
+ * @param {unknown} [options.deterministicSeed]
+ * @param {() => number} [options.randomFn]
+ */
+export function assignOpenShuffledSnakeGroups(candidates, options) {
+  let ordered;
+  const hasRng = typeof options.randomFn === "function";
+  const hasSeed =
+    options.deterministicSeed !== undefined &&
+    options.deterministicSeed !== null;
+
+  if (hasRng) {
+    ordered = deterministicShuffle(orderByIdentity(candidates), options.randomFn);
+  } else if (hasSeed) {
+    const rng = createDeterministicRandomFromSeed(options.deterministicSeed);
+    ordered = deterministicShuffle(orderByIdentity(candidates), rng);
+  } else {
+    ordered = orderByIdentity(candidates);
+  }
+
+  return placeIntoGroups(ordered, {
+    ...options,
+    indexFn: getSnakeGroupIndex,
+    reason:
+      hasRng || hasSeed
+        ? PLACEMENT_REASON.OPEN_SHUFFLED_SNAKE
+        : PLACEMENT_REASON.IDENTITY_ORDER,
+    reserved: buildReservedGroupMap(ordered),
+  });
+}
+
+/**
  * Manual-only: place reserved; leave rest unresolved (returned separately by resolver).
  * @param {import('../contracts/drawCandidate.js').DrawCandidate[]} candidates
  * @param {object} options

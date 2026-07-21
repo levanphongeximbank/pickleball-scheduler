@@ -41,6 +41,7 @@ import {
   assignSeededGroups,
   assignPotGroups,
   assignOpenRandomGroups,
+  assignOpenShuffledSnakeGroups,
   assignManualGroupsOnly,
 } from "./services/assignGroups.js";
 import { assignBracketSlots } from "./services/assignBracket.js";
@@ -465,6 +466,9 @@ export function createDrawResolver(options = {}) {
             break;
           case DRAW_MODE.OPEN_RANDOM_GROUPS:
             result = assignOpenRandomGroups(eligible, groupOpts);
+            break;
+          case DRAW_MODE.OPEN_SHUFFLED_SNAKE_GROUPS:
+            result = assignOpenShuffledSnakeGroups(eligible, groupOpts);
             break;
           case DRAW_MODE.HYBRID:
             // HYBRID remains in the enum for Integrator-owned composition.
