@@ -1,4 +1,4 @@
-/** CRM audit and integration event type codes (Phase 1B + 1C + 1D). */
+/** CRM audit and integration event type codes (Phase 1B + 1C + 1D + 1E). */
 
 export const CRM_EVENT_SCHEMA_VERSION = 1;
 
@@ -16,6 +16,12 @@ export const CRM_AUDIT_EVENT_TYPE = Object.freeze({
   INTERACTION_RECORDED: "crm.audit.interaction.recorded",
   TASK_CREATED: "crm.audit.task.created",
   TASK_UPDATED: "crm.audit.task.updated",
+  FOLLOW_UP_SCHEDULED: "crm.audit.follow_up.scheduled",
+  TASK_ASSIGNED: "crm.audit.task.assigned",
+  TASK_RESCHEDULED: "crm.audit.task.rescheduled",
+  TASK_STARTED: "crm.audit.task.started",
+  TASK_COMPLETED: "crm.audit.task.completed",
+  TASK_CANCELLED: "crm.audit.task.cancelled",
 });
 
 export const CRM_INTEGRATION_EVENT_TYPE = Object.freeze({

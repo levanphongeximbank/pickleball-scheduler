@@ -20,6 +20,7 @@ export const CRM_PERMISSIONS = Object.freeze({
   TASK_VIEW: "crm.task.view",
   TASK_CREATE: "crm.task.create",
   TASK_UPDATE: "crm.task.update",
+  TASK_ASSIGN: "crm.task.assign",
   CAMPAIGN_VIEW: "crm.campaign.view",
   CAMPAIGN_MANAGE: "crm.campaign.manage",
   AUDIT_VIEW: "crm.audit.view",
