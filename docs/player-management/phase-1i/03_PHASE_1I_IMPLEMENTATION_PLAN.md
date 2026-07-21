@@ -60,9 +60,11 @@ Platform MVP requires durable read (**1I-B**). Club-blob-only is **not** the app
 | Item | Detail |
 |------|--------|
 | Objective | Author executable SQL package; Staging apply after separate authorize |
-| Dependencies | **1I-A complete**; separate `AUTHORIZE_PHASE_1I_B_SQL_AUTHORING` then `…_STAGING_APPLY` |
-| Forbidden | anon table SELECT; browser service-role; authorizing before 1I-A |
-| Stop gate | Staging evidence; Production hold until 1I-F |
+| Dependencies | **1I-A complete**; separate `AUTHORIZE_PHASE_1I_B_SQL_AUTHORING_ONLY` then `AUTHORIZE_PHASE_1I_B_STAGING_APPLY` |
+| Package | `docs/v5/PHASE_1I_B_PLAYER_DIRECTORY_READ_MODEL*.sql` + `docs/player-management/phase-1i-b-sql/` |
+| Contract note | `p_region` + emitted `activity_region` are **text\|null** (1I-A remediation) |
+| Forbidden | anon table SELECT; browser service-role; authorizing before 1I-A; apply under authoring-only token |
+| Stop gate | Authoring → precommit review; Staging evidence only after apply token; Production hold until 1I-F |
 
 ---
 

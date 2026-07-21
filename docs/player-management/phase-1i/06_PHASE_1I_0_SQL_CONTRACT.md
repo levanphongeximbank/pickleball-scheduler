@@ -84,9 +84,11 @@ Returned `data[]` / `data` objects may contain **only**:
 | `display_name` | always |
 | `is_verified` | boolean **`true`** |
 | `avatar_url` | present value or null/empty — eligible rows only (avatar is identity field under publicProfileEnabled; no `showAvatar` toggle) |
-| `activity_region` | masked: null unless `showActivityRegion` |
+| `activity_region` | masked **text\|null** unless `showActivityRegion` (1I-A remediation — **not** jsonb) |
 | `gender` | masked: null unless `showGender` |
 | `handedness` | masked: null unless `showHandedness` |
+
+> **1I-B addendum:** `p_region` is **text**, not jsonb. RPC output `activity_region` is **text\|null**. Storage remains jsonb. See `phase-1i-b-sql/05_ACTIVITY_REGION_TEXT_CONTRACT.md`.
 
 ### Removed from prior draft / never return
 
@@ -113,7 +115,8 @@ json_build_object(
   'avatar_url', nullif(trim(p.avatar_url), ''),
   'activity_region',
     CASE WHEN (p.privacy_settings ->> 'showActivityRegion') = 'true'
-         THEN p.activity_region ELSE NULL END,
+         THEN public.player_directory_format_activity_region(p.activity_region)
+         ELSE NULL END,  -- text|null (1I-A), not jsonb
   'gender',
     CASE WHEN (p.privacy_settings ->> 'showGender') = 'true'
          THEN p.gender ELSE NULL END,
@@ -132,14 +135,14 @@ json_build_object(
 | Arg | Type | Notes |
 |-----|------|-------|
 | `p_query` | `text` | displayName search; min length 2 after trim |
-| `p_region` | `jsonb` | optional equality filter |
+| `p_region` | `text` | optional normalized region filter (1I-A remediation; was jsonb in early 1I-0 draft) |
 | `p_cursor` | `text` | opaque; invalid → error |
 | `p_limit` | `int` | default 20; clamp 1–50 |
 
 ### Search / region / sort / cursor
 
 - Search: escaped `ILIKE` on `p.display_name` only.  
-- Region: when `p_region` provided, require `showActivityRegion` and key equality.  
+- Region: when `p_region` text provided, require `showActivityRegion` and case-insensitive match on allow-listed fields / formatted label.  
 - Order: `lower(trim(p.display_name)) ASC, p.player_id ASC`.  
 - Cursor logical key: `(lower(trim(display_name)), player_id)`.  
 - Decode opaque `p_cursor` in function or document that repository passes already-decoded components — **preferred:** repository validates/decodes and passes structured args **or** RPC decodes; either way UI sees only opaque string.  
@@ -173,9 +176,9 @@ Missing/ineligible/unauthenticated → generic not-found / `NOT_AUTHENTICATED` (
 
 ```sql
 -- DESIGN_ONLY — NOT AUTHORIZED FOR APPLY
-REVOKE ALL ON FUNCTION public.player_directory_search(text, jsonb, text, int) FROM PUBLIC;
-REVOKE ALL ON FUNCTION public.player_directory_search(text, jsonb, text, int) FROM anon;
-GRANT EXECUTE ON FUNCTION public.player_directory_search(text, jsonb, text, int) TO authenticated;
+REVOKE ALL ON FUNCTION public.player_directory_search(text, text, text, integer) FROM PUBLIC;
+REVOKE ALL ON FUNCTION public.player_directory_search(text, text, text, integer) FROM anon;
+GRANT EXECUTE ON FUNCTION public.player_directory_search(text, text, text, integer) TO authenticated;
 
 REVOKE ALL ON FUNCTION public.player_directory_get(text) FROM PUBLIC;
 REVOKE ALL ON FUNCTION public.player_directory_get(text) FROM anon;
@@ -198,9 +201,9 @@ DEFINER bypasses RLS; compensated by eligibility + masking + strict columns. Pre
 -- DESIGN_ONLY — NOT AUTHORIZED FOR APPLY
 CREATE OR REPLACE FUNCTION public.player_directory_search(
   p_query text DEFAULT NULL,
-  p_region jsonb DEFAULT NULL,
+  p_region text DEFAULT NULL,
   p_cursor text DEFAULT NULL,
-  p_limit int DEFAULT 20
+  p_limit integer DEFAULT 20
 )
 RETURNS json
 LANGUAGE plpgsql
