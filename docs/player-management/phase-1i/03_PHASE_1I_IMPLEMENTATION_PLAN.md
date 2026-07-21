@@ -1,10 +1,10 @@
 # Phase 1I — Implementation Plan
 
-**Status:** Scope freeze on `main` (PR #112) + 1I-0 design remediated  
-**Owner design decision:** `APPROVE_PHASE_1I_0_READ_MODEL_DESIGN_WITH_CHANGES`  
-**1I-0 design branch:** `feature/player-phase-1i-0-read-model-design`  
-**Base `origin/main` SHA:** `bfb8980852d3c17174b3f77f17331605a5923457`  
-**Document verdict:** `READY_FOR_PHASE_1I_0_COMMIT`
+**Status:** Phase 1I sub-phases 1I-0 → 1I-E merged on `main`; 1I-F closure package in review
+**Owner design decision:** `APPROVE_PHASE_1I_0_READ_MODEL_DESIGN_WITH_CHANGES`
+**1I-0 design branch:** `feature/player-phase-1i-0-read-model-design`
+**Closure base `origin/main` SHA:** `49d5a53b14b0b8bf40958caa574b1ee78b2dd048`
+**Document verdict:** `READY_FOR_PHASE_1I_F_PRECOMMIT_REVIEW`
 
 Do **not** implement feature/SQL apply until the matching Owner gate is issued.  
 **Do not authorize 1I-B before 1I-A.**
@@ -97,17 +97,23 @@ Platform MVP requires durable read (**1I-B**). Club-blob-only is **not** the app
 | Item | Detail |
 |------|--------|
 | Objective | Deterministic QA matrix + scoped hardening for `/athletes` and `/athletes/:playerId` |
-| Hardening | Nav uniqueness when RBAC off; list Retry a11y |
+| Hardening | Nav uniqueness when RBAC off; list Retry a11y; CI remediation preserves club-nav override when RBAC on |
 | Staging | Project `qyewbxjsiiyufanzcjcq` only; Production `expuvcohlcjzvrrauvud` forbidden |
 | Package | `docs/player-management/phase-1i/09_PHASE_1I_E_QA_HARDENING.md` |
 | Tests | `tests/player-management-phase-1i-e-directory-qa-hardening.test.js` |
-| Stop gate | Owner precommit review → then may authorize **1I-F** |
+| Status on `main` | Merged (PR #125), including tip `2acd2cc` |
 
 ---
 
-## 1I-F — Closure / Production gate
+## 1I-F — Closure / certification
 
-Separate Owner Production decision. No deploy implied by earlier phases.
+| Item | Detail |
+|------|--------|
+| Objective | Final audit, containment evidence, and certification of Phase 1I |
+| Package | `docs/player-management/phase-1i/10_PHASE_1I_F_FINAL_CLOSURE.md` |
+| Runtime / SQL / deploy | **None** in 1I-F |
+| Production | Separate Owner gate — **not** authorized by 1I-F |
+| Status | Completed pending Owner precommit review of this closure package |
 
 ---
 
@@ -119,6 +125,7 @@ Separate Owner Production decision. No deploy implied by earlier phases.
   → 1I-B SQL author + Staging apply
   → 1I-C list UI
   → 1I-D detail UI
-  → 1I-E QA
-  → 1I-F closure (+ separate Production)
+  → 1I-E QA (+ CI remediation)
+  → 1I-F closure (docs/audit only)
+  → separate Owner Production gate (not part of 1I-F runtime)
 ```
