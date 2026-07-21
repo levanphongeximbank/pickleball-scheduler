@@ -202,6 +202,7 @@
   "tests/action-queue.test.js",
   "tests/tournament-phase25.test.js",
   "tests/finance-crm-phase26-27.test.js",
+  "tests/crm-phase-1b-foundation.test.js",
   "tests/coaching-ai-phase28-29.test.js",
   "tests/rbac-v52.test.js",
   "tests/tournament-player-picker.test.js",

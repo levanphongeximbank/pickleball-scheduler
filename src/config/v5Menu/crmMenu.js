@@ -6,6 +6,12 @@ import { FEATURE_STATUS, menuFolder, menuLeaf } from "./menuBuilders.js";
 
 
 
+/**
+ * CRM menu — Phase 1B product-readiness correction.
+ * Paths remain available; status PARTIAL (badge "Một phần") because the
+ * shipping surfaces are localStorage compatibility shells, not the canonical
+ * CRM domain foundation. This is NOT a feature deletion.
+ */
 export const CRM_MENU_ROOT = menuFolder({
 
   key: "crm-root",
@@ -32,7 +38,9 @@ export const CRM_MENU_ROOT = menuFolder({
 
       excludeRoles: [ROLES.REFEREE, ROLES.PLAYER],
 
-      featureStatus: FEATURE_STATUS.LIVE,
+      featureStatus: FEATURE_STATUS.PARTIAL,
+
+      featureNote: "Compatibility shell — canonical CRM domain is Phase 1B+",
 
     }),
 
@@ -47,6 +55,8 @@ export const CRM_MENU_ROOT = menuFolder({
       path: "/mobile/notifications",
 
       featureStatus: FEATURE_STATUS.LIVE,
+
+      featureNote: "External Notifications module (not CRM SoT)",
 
     }),
 
@@ -64,7 +74,9 @@ export const CRM_MENU_ROOT = menuFolder({
 
       permissions: [PERMISSIONS.CUSTOMER_VIEW],
 
-      featureStatus: FEATURE_STATUS.LIVE,
+      featureStatus: FEATURE_STATUS.PARTIAL,
+
+      featureNote: "Compatibility shell — canonical CRM domain is Phase 1B+",
 
     }),
 
@@ -82,7 +94,9 @@ export const CRM_MENU_ROOT = menuFolder({
 
       permissions: [PERMISSIONS.CUSTOMER_VIEW],
 
-      featureStatus: FEATURE_STATUS.LIVE,
+      featureStatus: FEATURE_STATUS.PARTIAL,
+
+      featureNote: "Compatibility shell — delivery remains Notifications-owned",
 
     }),
 
@@ -100,7 +114,9 @@ export const CRM_MENU_ROOT = menuFolder({
 
       permissions: [PERMISSIONS.CUSTOMER_VIEW],
 
-      featureStatus: FEATURE_STATUS.LIVE,
+      featureStatus: FEATURE_STATUS.PARTIAL,
+
+      featureNote: "Compatibility shell — Interaction timeline is Phase 1E+",
 
     }),
 
@@ -120,11 +136,12 @@ export const CRM_MENU_ROOT = menuFolder({
 
       excludeRoles: [ROLES.REFEREE, ROLES.PLAYER],
 
-      featureStatus: FEATURE_STATUS.LIVE,
+      featureStatus: FEATURE_STATUS.PARTIAL,
+
+      featureNote: "Wrapper over court booking reminder settings",
 
     }),
 
   ],
 
 });
-
