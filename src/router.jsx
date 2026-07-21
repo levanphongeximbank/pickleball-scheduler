@@ -228,6 +228,9 @@ const SelfProfilePage = lazy(() => import("./pages/SelfProfilePage"));
 const PublicPlayerDirectoryPage = lazy(() =>
   import("./pages/PublicPlayerDirectoryPage.jsx")
 );
+const PublicPlayerDirectoryDetailPage = lazy(() =>
+  import("./pages/PublicPlayerDirectoryDetailPage.jsx")
+);
 const NotificationCenterPage = lazy(() => import("./pages/NotificationCenterPage.jsx"));
 
 const UserManagementPage = lazy(() => import("./pages/UserManagementPage"));
@@ -459,6 +462,10 @@ export default function Router() {
 
             <Route path="/profile" element={<SelfProfilePage />} />
             <Route path="/athletes" element={<PublicPlayerDirectoryPage />} />
+            <Route
+              path="/athletes/:playerId"
+              element={<PublicPlayerDirectoryDetailPage />}
+            />
             <Route path="/notifications" element={<NotificationCenterPage />} />
             <Route path="/discover-clubs" element={<DiscoverClubsPage />} />
             <Route path="/my-club/requests" element={<MyClubRequestsPage />} />
