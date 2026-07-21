@@ -45,6 +45,14 @@ export const MATCH_GENERATION_ISSUE_CODE = Object.freeze({
   NON_CANONICAL_VALUE: "NON_CANONICAL_VALUE",
   DRAW_CATALOG_EMPTY: "DRAW_CATALOG_EMPTY",
   INVALID_LOSER_PATH: "INVALID_LOSER_PATH",
+  /** Phase 1C: request.strategy vs evaluatedRules.generationStrategy diverge. */
+  RULE_STRATEGY_MISMATCH: "RULE_STRATEGY_MISMATCH",
+  /** Phase 1C: roundRobinMode not executable (e.g. CUSTOM). */
+  ROUND_ROBIN_MODE_UNSUPPORTED: "ROUND_ROBIN_MODE_UNSUPPORTED",
+  /** Phase 1C: encounterCount unsupported or inconsistent with mode. */
+  ENCOUNTER_COUNT_UNSUPPORTED: "ENCOUNTER_COUNT_UNSUPPORTED",
+  /** Phase 1C: rematch / club / bye / format policy not executable here. */
+  UNSUPPORTED_GENERATION_POLICY: "UNSUPPORTED_GENERATION_POLICY",
 });
 
 /** @type {ReadonlySet<string>} */

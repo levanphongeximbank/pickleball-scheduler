@@ -245,6 +245,8 @@ export function detectDependencyCycle(plan) {
  * @param {string} [options.strategy]
  * @param {string[]} [options.deterministicOrderingInputs]
  * @param {boolean} [options.requireGenerationFingerprintMatch]
+ * @param {number} [options.maxDirectPairOccurrences=1] Max allowed unordered
+ *   DIRECT_PARTICIPANT pairings (1 = single RR; 2 = double RR rematch).
  * @returns {import('../contracts/matchGenerationIssue.js').MatchGenerationIssue[]}
  */
 export function validateMatchPlanInvariants(plan, options = {}) {
@@ -635,15 +637,21 @@ export function validateMatchPlanInvariants(plan, options = {}) {
     }
   }
 
-  // 2 — duplicate pairings
+  // 2 — duplicate pairings (Phase 1C double RR may allow up to encounterCount)
+  const maxDirectPairOccurrences =
+    typeof options.maxDirectPairOccurrences === "number" &&
+    Number.isInteger(options.maxDirectPairOccurrences) &&
+    options.maxDirectPairOccurrences >= 1
+      ? options.maxDirectPairOccurrences
+      : 1;
   for (const [pair, count] of pairCounts.entries()) {
-    if (count > 1) {
+    if (count > maxDirectPairOccurrences) {
       issues.push(
         createMatchGenerationIssue({
           code: MATCH_GENERATION_ISSUE_CODE.FORBIDDEN_DUPLICATE_PAIRING,
           path: "logicalMatches",
           message: "Forbidden duplicate pairing",
-          details: { pair, count },
+          details: { pair, count, maxDirectPairOccurrences },
         })
       );
     }

@@ -1,8 +1,9 @@
 /**
  * CORE-09 Match Generator — capability-local public surface.
  * Integrator owns root competition-core/index.js — do not edit that here.
- * Phase 1B: domain contracts, ports, validators, determinism policy only.
- * No production executor / UI / persistence / SQL.
+ * Phase 1B: domain contracts, ports, validators, determinism policy.
+ * Phase 1C: ROUND_ROBIN + GROUP_ROUND_ROBIN MatchPlan executors (dormant).
+ * No production UI / persistence / SQL / runtime wiring.
  */
 
 export {
@@ -108,4 +109,20 @@ export {
   findForbiddenNondeterminismPatterns,
   deepFreezeCanonical,
   freezeMetadata,
+  resolveFlatParticipantsFromDraw,
+  resolveGroupedParticipantsFromDraw,
+  validateRoundRobinRuleBinding,
+  resolveRoundRobinLegs,
+  PHASE_1C_EXECUTABLE_STRATEGIES,
+  generateMatchPlan,
+  generateRoundRobinMatchPlan,
+  generateGroupStageRoundRobinMatchPlan,
 } from "./services/index.js";
+
+export {
+  generateCircleRoundRobinPairings,
+  expectedSingleRoundRobinPlayedMatches,
+  expectedSingleRoundRobinRounds,
+  generateRoundRobinForParticipants,
+  assembleMatchPlan,
+} from "./generators/index.js";

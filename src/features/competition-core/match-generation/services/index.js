@@ -50,3 +50,20 @@ export {
   deepFreezeCanonical,
   freezeMetadata,
 } from "./canonicalFreeze.js";
+
+export {
+  resolveFlatParticipantsFromDraw,
+  resolveGroupedParticipantsFromDraw,
+} from "./resolveParticipantsFromDraw.js";
+
+export {
+  validateRoundRobinRuleBinding,
+  resolveRoundRobinLegs,
+  PHASE_1C_EXECUTABLE_STRATEGIES,
+} from "./validateRoundRobinRules.js";
+
+export {
+  generateMatchPlan,
+  generateRoundRobinMatchPlan,
+  generateGroupStageRoundRobinMatchPlan,
+} from "./generateMatchPlan.js";
