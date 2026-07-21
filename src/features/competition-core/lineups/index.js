@@ -20,17 +20,24 @@ export {
   lineupResolveFail,
   LINEUP_ADAPTER_ID,
   isLineupAdapter,
+  createLineupPolicyResult,
+  isLineupPolicy,
   LINEUP_IDENTITY_KIND,
   buildLineupIdentityKey,
   buildLineupSlotId,
   createLineupIdentity,
   identityFromCompetitionLineup,
-  createLineupPolicyResult,
-  isLineupPolicy,
   createLineupVisibilityGrant,
   MISSING_LINEUP_POLICY,
   MISSING_LINEUP_POLICY_VALUES,
+  MISSING_LINEUP_OUTCOME,
+  MISSING_LINEUP_OUTCOME_VALUES,
   createMissingLineupResolution,
+  isLineupRandomPolicy,
+  createPermissiveLineupRandomPolicy,
+  createFixedStrategyLineupRandomPolicy,
+  createLineupRandomSelectRequest,
+  createLineupRandomSelectResult,
 } from "./contracts/index.js";
 
 export {
@@ -71,6 +78,8 @@ export {
   createFixedLineupClockPort,
   matchesLineupRandomPort,
   createNoopLineupRandomPort,
+  createDeterministicLineupRandomPort,
+  selectLineupViaPortAlgorithm,
   matchesRosterLookupPort,
   createFailClosedRosterLookupPort,
   createFixedRosterLookupPort,
@@ -113,7 +122,32 @@ export {
   supersedeRevision,
   appendRevisionHistory,
   createLineupDomainService,
+  createMissingLineupResolver,
+  buildMissingLineupPayloadHash,
 } from "./services/index.js";
+
+export {
+  LINEUP_RANDOM_ALGORITHM,
+  hashStringToUint32,
+  createMulberry32,
+  createRngFromMaterial,
+  deterministicShuffle,
+  CANONICAL_SEED_FIELD_SEP,
+  CANONICAL_SEED_FIELDS,
+  normalizeSeedPart,
+  normalizeSeed,
+  composeCanonicalSeed,
+  canonicalizeJsonValue,
+  serializeCanonical,
+  fingerprintValue,
+  fingerprintSeed,
+  fingerprintInput,
+  fingerprintSelection,
+  compareCanonicalStrings,
+  normalizeRosterCandidates,
+  normalizeSlotTemplate,
+  selectLineupDeterministic,
+} from "./random/index.js";
 
 /** Re-export slot/lineup factories for capability-local consumers (contracts only). */
 export {
