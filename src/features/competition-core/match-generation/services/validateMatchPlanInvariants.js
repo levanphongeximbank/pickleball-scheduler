@@ -405,27 +405,24 @@ export function validateMatchPlanInvariants(plan, options = {}) {
     }
   }
 
-  // Also count stage membership via stage.roundIds → rounds
+  // Round ↔ stage consistency via stage.roundIds → rounds
   for (const s of stages) {
     for (const roundId of s.roundIds || []) {
       const round = rounds.find((r) => r.roundId === roundId);
       if (!round) continue;
-      for (const key of round.logicalMatchKeys || []) {
-        // already counted via rounds; ensure stage consistency
-        if (round.stageId && round.stageId !== s.stageId) {
-          issues.push(
-            createMatchGenerationIssue({
-              code: MATCH_GENERATION_ISSUE_CODE.MATCH_STAGE_AMBIGUOUS,
-              path: `rounds.${roundId}.stageId`,
-              message: "Round stageId conflicts with parent stage",
-              details: {
-                roundId,
-                stageId: s.stageId,
-                roundStageId: round.stageId,
-              },
-            })
-          );
-        }
+      if (round.stageId && round.stageId !== s.stageId) {
+        issues.push(
+          createMatchGenerationIssue({
+            code: MATCH_GENERATION_ISSUE_CODE.MATCH_STAGE_AMBIGUOUS,
+            path: `rounds.${roundId}.stageId`,
+            message: "Round stageId conflicts with parent stage",
+            details: {
+              roundId,
+              stageId: s.stageId,
+              roundStageId: round.stageId,
+            },
+          })
+        );
       }
     }
   }
