@@ -66,9 +66,11 @@ Each data row returned by either RPC may contain **only**:
 | `display_name` | text |
 | `is_verified` | **boolean** (always `true` for returned rows) |
 | `avatar_url` | text or null |
-| `activity_region` | jsonb or **null** (masked) |
+| `activity_region` | **text or null** (masked label; Phase 1I-A remediation — **not** jsonb) |
 | `gender` | text or **null** (masked) |
 | `handedness` | text or **null** (masked) |
+
+> **1I-B addendum:** Phase 1I-0 originally drafted `activity_region` as jsonb. Merged Phase 1I-A locks Directory I/O to **text \| null**. Storage column `profiles.activity_region` remains jsonb; RPC **emits** a formatted text label only. See `docs/player-management/phase-1i-b-sql/05_ACTIVITY_REGION_TEXT_CONTRACT.md`.
 
 ### Forbidden in RPC JSON (never return)
 
@@ -105,7 +107,7 @@ Field masking **before** emission:
 
 | Output field | Rule |
 |--------------|------|
-| `activity_region` | value only if `(privacy_settings ->> 'showActivityRegion') = 'true'`; else **NULL** |
+| `activity_region` | **text label** only if `(privacy_settings ->> 'showActivityRegion') = 'true'`; else **NULL** (never emit jsonb object) |
 | `gender` | value only if `(privacy_settings ->> 'showGender') = 'true'`; else **NULL** |
 | `handedness` | value only if `(privacy_settings ->> 'showHandedness') = 'true'`; else **NULL** |
 | `is_verified` | constant **`true`** (boolean) — never raw status string |
@@ -173,7 +175,7 @@ Unchanged product rules from prior design, with remediations:
 | Topic | Design |
 |-------|--------|
 | Search | `display_name` ILIKE substring; min length 2; escape `%`/`_`; empty = browse |
-| Region filter | Equality on provided `activity_region` keys; only rows with `showActivityRegion = true` (and thus non-null masked region) |
+| Region filter | Optional **text** `p_region` (1I-A); case-insensitive match on allow-listed region fields / formatted label; only rows with `showActivityRegion = true` |
 | Cursor logical key | `lower(trim(display_name)), player_id` |
 | Cursor to UI | **Opaque** token only (`meta.nextCursor`) |
 | Invalid cursor | **`INVALID_CURSOR`** — empty data; **must not** silently reset to first page |
@@ -204,7 +206,7 @@ UI Directory DTO (camelCase mapping of strict RPC fields):
   displayName,
   isVerified,       // boolean true
   avatarUrl?,
-  activityRegion?,  // already masked
+  activityRegion?,  // string | null (already masked text label)
   gender?,
   handedness?,
 }
