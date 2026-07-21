@@ -92,11 +92,16 @@ Platform MVP requires durable read (**1I-B**). Club-blob-only is **not** the app
 
 ---
 
-## 1I-E — Privacy / Staging QA
+## 1I-E — Privacy / Staging QA & hardening
 
-Auth, masking, suspended exclusion, privacy revoke, invalid cursor, abuse limits.
-
-Do **not** start until Owner `AUTHORIZE_PHASE_1I_E_*`.
+| Item | Detail |
+|------|--------|
+| Objective | Deterministic QA matrix + scoped hardening for `/athletes` and `/athletes/:playerId` |
+| Hardening | Nav uniqueness when RBAC off; list Retry a11y |
+| Staging | Project `qyewbxjsiiyufanzcjcq` only; Production `expuvcohlcjzvrrauvud` forbidden |
+| Package | `docs/player-management/phase-1i/09_PHASE_1I_E_QA_HARDENING.md` |
+| Tests | `tests/player-management-phase-1i-e-directory-qa-hardening.test.js` |
+| Stop gate | Owner precommit review → then may authorize **1I-F** |
 
 ---
 

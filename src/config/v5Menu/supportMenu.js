@@ -1,4 +1,5 @@
 import { PERMISSIONS } from "../../auth/permissions.js";
+import { ROLES } from "../../auth/roles.js";
 
 import { FEATURE_STATUS, menuLeaf } from "./menuBuilders.js";
 
@@ -14,7 +15,8 @@ export const PROFILE_MENU_LEAF = menuLeaf({
 /**
  * Phase 1I-C — Public Player Directory.
  * No special permission. Visible to authenticated non-PLAYER roles via PROFILE group.
- * PLAYER role uses the PLAYER_ZONE copy (PROFILE group is hidden for PLAYER).
+ * PLAYER role uses the PLAYER_ZONE copy (PROFILE group is hidden for PLAYER when RBAC on;
+ * excludeRoles keeps a single entry when RBAC is off).
  */
 export const ATHLETES_DIRECTORY_MENU_LEAF = menuLeaf({
   key: "athletes-directory",
@@ -23,6 +25,7 @@ export const ATHLETES_DIRECTORY_MENU_LEAF = menuLeaf({
   path: "/athletes",
   featureStatus: FEATURE_STATUS.LIVE,
   featureNote: "Authenticated Public Player Directory (Phase 1I-C)",
+  excludeRoles: [ROLES.PLAYER],
 });
 
 export const SUPPORT_HUB_LEAF = menuLeaf({
