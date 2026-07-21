@@ -12,7 +12,7 @@ export const MATCH_GENERATION_SCHEMA_VERSION = "core09.match-generation.v1";
  */
 export const MATCH_GENERATOR_IDENTITY = Object.freeze({
   id: "CORE09_MATCH_GENERATOR",
-  version: "1.0.0-phase1c",
+  version: "1.0.0-phase1d",
 });
 
 /** @type {ReadonlySet<string>} */

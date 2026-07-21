@@ -1,6 +1,6 @@
 # CORE-09 — Match Generator Foundation
 
-**Status:** Phase 1B contracts + Phase 1C RR/Group executors (capability-local, dormant)
+**Status:** Phase 1B contracts + Phase 1C RR/Group + Phase 1D Single Elimination executors (capability-local, dormant)
 **Module:** `src/features/competition-core/match-generation/`
 **Production impact:** NONE
 
@@ -31,9 +31,16 @@ See `08_PHASE_1C_ROUND_ROBIN_GROUP_STAGE.md`.
 
 **Phase 1C generates logical MatchPlans only. It does not schedule date, time, court, referee, score, result, or lifecycle state.**
 
+## Phase 1D delivered
+
+Deterministic MatchPlan executor for `SINGLE_ELIMINATION` (power-of-two and Draw-owned byes, optional third place).
+See `09_PHASE_1D_SINGLE_ELIMINATION.md`.
+
+**Phase 1D generates logical MatchPlans only. It does not schedule, score, or advance bye outcomes (Match Lifecycle owns advancement).**
+
 ## Explicit non-goals (remaining)
 
-- Knockout / Swiss / team-fixture executors
+- Swiss / double-elimination / team-fixture executors
 - Production runtime wiring
 - Feature flags / UI / persistence / SQL / Supabase / deployment
 - Changes to production tournament, Daily Play, Team Tournament, or scheduling engines
@@ -55,3 +62,4 @@ Root `competition-core/index.js` and `unit-test-files.json` remain Integrator-ow
 | `06_PHASE_1B_DOMAIN_CONTRACTS.md` | Contract delivery note |
 | `07_CONTRACT_DEFAULTS_AND_IMMUTABILITY.md` | Fail-closed enums, LMK grammar, freeze semantics |
 | `08_PHASE_1C_ROUND_ROBIN_GROUP_STAGE.md` | RR / group-stage executor delivery |
+| `09_PHASE_1D_SINGLE_ELIMINATION.md` | Single Elimination executor delivery |

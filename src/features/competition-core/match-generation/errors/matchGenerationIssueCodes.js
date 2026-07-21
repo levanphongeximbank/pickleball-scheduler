@@ -53,6 +53,10 @@ export const MATCH_GENERATION_ISSUE_CODE = Object.freeze({
   ENCOUNTER_COUNT_UNSUPPORTED: "ENCOUNTER_COUNT_UNSUPPORTED",
   /** Phase 1C: rematch / club / bye / format policy not executable here. */
   UNSUPPORTED_GENERATION_POLICY: "UNSUPPORTED_GENERATION_POLICY",
+  /** Phase 1D: fewer than two participants (or third-place with N < 4). */
+  PARTICIPANT_COUNT_INSUFFICIENT: "PARTICIPANT_COUNT_INSUFFICIENT",
+  /** Phase 1D: single-elimination bracket structure violated. */
+  BRACKET_INVARIANT_VIOLATION: "BRACKET_INVARIANT_VIOLATION",
 });
 
 /** @type {ReadonlySet<string>} */
