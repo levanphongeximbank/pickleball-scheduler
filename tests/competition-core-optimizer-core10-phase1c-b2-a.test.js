@@ -1049,11 +1049,12 @@ test("D03: invalid status combinations and failure-path purity rejected", () => 
 // E. Public API and ownership
 // ---------------------------------------------------------------------------
 
-test("E01: approved B2-A public exports; orchestration/fingerprint not public", () => {
+test("E01: approved B2-A public exports; fingerprint not public; B2-B orchestration public", () => {
   for (const key of [
     "createCandidateEvaluationFailure",
     "createCandidateEvaluationResult",
     "composeCandidateOptimizationScore",
+    "evaluateCandidateSolution",
     "CORE10_CANDIDATE_EVALUATION_RESULT_SCHEMA_VERSION",
     "CORE10_CANDIDATE_EVALUATION_FAILURE_SCHEMA_VERSION",
     "CORE10_CANDIDATE_EVALUATION_PIPELINE_VERSION",
@@ -1085,7 +1086,7 @@ test("E01: approved B2-A public exports; orchestration/fingerprint not public", 
     CORE10_CANDIDATE_INPUT_FINGERPRINT_VERSION
   );
 
-  assert.equal("evaluateCandidateSolution" in OptimizerPublic, false);
+  assert.equal("evaluateCandidateSolution" in OptimizerPublic, true);
   assert.equal(
     "createCandidateEvaluationInputFingerprint" in OptimizerPublic,
     false

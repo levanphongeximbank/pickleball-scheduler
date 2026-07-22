@@ -981,7 +981,7 @@ test("F01: public export allowlist for Phase 1C-A symbols", () => {
   assert.equal("isObjectiveEvaluationFailureCode" in OptimizerPublic, false);
   assert.equal("resolveObjectiveEvaluationFailureCode" in OptimizerPublic, false);
   assert.equal("OBJECTIVE_EVALUATION_FAILURE_CODE_VALUES" in OptimizerPublic, false);
-  assert.equal("evaluateCandidateSolution" in OptimizerPublic, false);
+  assert.equal("evaluateCandidateSolution" in OptimizerPublic, true);
   // Phase 1C-B2-A expands capability-local public API with this result factory.
   assert.equal("createCandidateEvaluationResult" in OptimizerPublic, true);
   assert.equal(

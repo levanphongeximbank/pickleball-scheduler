@@ -1,8 +1,9 @@
-# CORE-10 — Candidate Evaluation (Phase 1C-B1 / 1C-B2-A)
+# CORE-10 — Candidate Evaluation (Phase 1C-B1 / 1C-B2-A / 1C-B2-B)
 
 **Module:** `src/features/competition-core/optimizer/`
 **B1 Versions:** `CORE10_CANDIDATE_EVALUATION_INPUT_SCHEMA_V1`, `CORE10_CANDIDATE_EVALUATION_DEPENDENCIES_V1`, `CORE10_HARD_VIOLATION_SCHEMA_V1`, `CORE10_CONSTRAINT_EVALUATION_PORT_V1`, `CORE10_HARD_VIOLATION_COMPOSITION_V1`
 **B2-A Versions:** `CORE10_CANDIDATE_EVALUATION_RESULT_SCHEMA_V1`, `CORE10_CANDIDATE_EVALUATION_FAILURE_SCHEMA_V1`, `CORE10_CANDIDATE_EVALUATION_PIPELINE_V1`, `CORE10_CANDIDATE_SCORE_COMPOSITION_V1`, `CORE10_CANDIDATE_INPUT_FINGERPRINT_V1`
+**B2-B:** reuses `CORE10_CANDIDATE_EVALUATION_PIPELINE_V1` (no new orchestration version)
 
 ---
 
@@ -163,4 +164,37 @@ VALID_FEASIBLE | VALID_INFEASIBLE | INVALID_CANDIDATE | EVALUATION_FAILED
 
 `createCandidateEvaluationFailure`, `createCandidateEvaluationResult`, `composeCandidateOptimizationScore`, B2-A version constants.
 
-Not public from `optimizer/index.js`: failure-stage constant object, `createCandidateEvaluationInputFingerprint`, `evaluateCandidateSolution`.
+Not public from `optimizer/index.js`: failure-stage constant object, `createCandidateEvaluationInputFingerprint`.
+
+---
+
+## Phase 1C-B2-B ownership
+
+Phase 1C-B2-B owns:
+
+- public `evaluateCandidateSolution(rawInput, rawDependencies)`;
+- input → dependencies → fingerprint → port → hard composition → feasibility gate → objectives → score → result sequencing;
+- owned ConstraintPortInput mapping (`facts: {}`);
+- stable failure mapping into `CandidateEvaluationFailure` / `CandidateEvaluationResult`;
+- B2-B tests and documentation.
+
+Phase 1C-B2-B does **not** own:
+
+- CORE-01 `evaluateCandidate` or private adapters;
+- final evaluation-result fingerprint certification (Phase 1C-C);
+- solvers, candidate generation, Schedule / Court / Referee, persistence, UI.
+
+### Orchestration outcomes
+
+| Status | Meaning |
+|--------|---------|
+| `VALID_FEASIBLE` | Hard-feasible; objectives evaluated; feasible score |
+| `VALID_INFEASIBLE` | Port returned hard violations; objectives skipped; infeasible score |
+| `INVALID_CANDIDATE` | Input validation failed; no port/objectives/fingerprint |
+| `EVALUATION_FAILED` | Deps / port / composition / objectives / score / unexpected |
+
+Missing/invalid port from the dependency factory retains `CONSTRAINT_PORT_*` codes with stage `CONSTRAINT_PORT` (descriptor and fingerprint remain null). Registry/wrapper failures use `INVALID_CANDIDATE_EVALUATION_DEPENDENCIES` / `DEPENDENCY_VALIDATION`.
+
+### Public B2-B API
+
+`evaluateCandidateSolution` (capability-local). Internal helpers are not exported from `optimizer/index.js`.
