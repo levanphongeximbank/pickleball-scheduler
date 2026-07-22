@@ -6,6 +6,7 @@
  * Engine version: core11-v1
  *
  * Phase 1B: domain contracts, diagnostics, request/plan validators.
+ * Phase 1C: operating/session window normalization + civilTime.js absolute adapter.
  * Does not re-export CC-09 (src/features/competition-core/scheduling/).
  * Does not implement graph, slot generation, baseline scheduler, optimizer,
  * physical court / referee assignment, persistence, or UI wiring.
@@ -46,6 +47,8 @@ export {
   isValidMinutesFromMidnight,
   isValidIanaTimezone,
   civilWindowsOverlap,
+  isCivilWindowContained,
+  deriveOperatingWindowId,
   stableSortByKeys,
   canonicalizeJsonValue,
   serializeCanonical,
@@ -76,6 +79,16 @@ export {
   matchesScheduleOptimizerPort,
   matchesScheduleCapacityPort,
 } from "./scheduleContracts.js";
+
+export { normalizeOperatingWindows } from "./normalizeOperatingWindows.js";
+export {
+  normalizeSessionWindows,
+  validateSessionContainment,
+} from "./normalizeSessionWindows.js";
+export {
+  convertCivilScheduleTimeToAbsolute,
+  convertSchedulingWindowToAbsoluteRange,
+} from "./scheduleCivilTime.js";
 
 export { validateScheduleRequest } from "./validateScheduleRequest.js";
 export {

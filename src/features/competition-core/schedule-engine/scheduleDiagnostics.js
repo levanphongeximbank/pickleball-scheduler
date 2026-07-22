@@ -20,10 +20,29 @@ export const SCHEDULE_DIAGNOSTIC_CODE = Object.freeze({
   DUPLICATE_MATCH_ID: "DUPLICATE_MATCH_ID",
   DUPLICATE_SESSION_ID: "DUPLICATE_SESSION_ID",
   INVALID_TIMEZONE: "INVALID_TIMEZONE",
+  /** Window timezone differs from ScheduleRequest timezone. */
+  TIMEZONE_MISMATCH: "TIMEZONE_MISMATCH",
   INVALID_DATE: "INVALID_DATE",
   INVALID_TIME_WINDOW: "INVALID_TIME_WINDOW",
   OVERLAPPING_TIME_WINDOW: "OVERLAPPING_TIME_WINDOW",
   OVERNIGHT_WINDOW_NOT_SUPPORTED: "OVERNIGHT_WINDOW_NOT_SUPPORTED",
+  /** Equivalent operating windows in the same scope. */
+  DUPLICATE_OPERATING_WINDOW: "DUPLICATE_OPERATING_WINDOW",
+  /** Equivalent session windows (same civil interval) in the same scope. */
+  DUPLICATE_SESSION_WINDOW: "DUPLICATE_SESSION_WINDOW",
+  /** Session not fully contained in any single operating window. */
+  SESSION_OUTSIDE_OPERATING_WINDOW: "SESSION_OUTSIDE_OPERATING_WINDOW",
+  /** Session intersects / bridges more than one operating window. */
+  SESSION_SPANS_INCOMPATIBLE_WINDOWS: "SESSION_SPANS_INCOMPATIBLE_WINDOWS",
+  /** Unmapped or generic civil→absolute conversion failure. */
+  ABSOLUTE_CONVERSION_FAILURE: "ABSOLUTE_CONVERSION_FAILURE",
+  /**
+   * Emitted only when civilTime.js throws CIVIL_TIME_ERROR.AMBIGUOUS_LOCAL_TIME
+   * (today: nonexistent spring-forward local times). Fall-back ambiguous local
+   * times that civilTime.js resolves to an instant do NOT produce this code —
+   * CORE-11 does not independently detect or reject fall-back ambiguity.
+   */
+  AMBIGUOUS_CIVIL_TIME: "AMBIGUOUS_CIVIL_TIME",
   MATCH_DURATION_INVALID: "MATCH_DURATION_INVALID",
   BUFFER_DURATION_INVALID: "BUFFER_DURATION_INVALID",
   REST_POLICY_INVALID: "REST_POLICY_INVALID",

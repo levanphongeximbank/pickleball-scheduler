@@ -5,8 +5,7 @@
  * They must not implement civil↔UTC conversion, offset/DST handling, or absolute
  * timestamp generation. Canonical conversion SSOT remains:
  *   `src/domain/civilTime.js`
- * Later CORE-11 phases that need absolute instants must consume that boundary.
- * Phase 1B avoids importing civilTime.js to prevent data-layer coupling.
+ * Phase 1C absolute conversion is delegated via `scheduleCivilTime.js` only.
  *
  * Mutation expectation: factories return fresh plain records. Callers must not
  * mutate returned objects if they rely on canonical equality / fingerprints.
@@ -148,6 +147,33 @@ export function civilWindowsOverlap(a, b) {
 }
 
 /**
+ * Half-open containment: inner ⊆ outer on the same civil date
+ * (inner.start >= outer.start && inner.end <= outer.end).
+ *
+ * @param {{ date: string, startMinutes: number, endMinutes: number }} inner
+ * @param {{ date: string, startMinutes: number, endMinutes: number }} outer
+ * @returns {boolean}
+ */
+export function isCivilWindowContained(inner, outer) {
+  return (
+    inner.date === outer.date &&
+    inner.startMinutes >= outer.startMinutes &&
+    inner.endMinutes <= outer.endMinutes
+  );
+}
+
+/**
+ * Deterministic operating-window identity when caller omits windowId.
+ * ASCII-safe; not a UUID; derived only from civil fields + timezone.
+ *
+ * @param {{ date: string, startMinutes: number, endMinutes: number, timezone: string }} w
+ * @returns {string}
+ */
+export function deriveOperatingWindowId(w) {
+  return `ow:${w.date}:${w.startMinutes}:${w.endMinutes}:${w.timezone}`;
+}
+
+/**
  * Stable sort with complete numeric + string tie-breakers (ASCII).
  * @template T
  * @param {T[]} items
@@ -228,9 +254,13 @@ export function serializeCanonical(value) {
 /* -------------------------------------------------------------------------- */
 
 /**
+ * Canonical civil schedule instant (timezone usually owned by ScheduleRequest;
+ * conversion adapters require an explicit IANA timezone argument or field).
+ *
  * @typedef {Object} CivilScheduleTime
  * @property {string} date - YYYY-MM-DD
  * @property {number} minutesFromMidnight - integer 0..1439
+ * @property {string} [timezone] - explicit IANA when present on a conversion input
  */
 
 /**
@@ -238,6 +268,11 @@ export function serializeCanonical(value) {
  * @property {string} date
  * @property {number} startMinutes - inclusive
  * @property {number} endMinutes - exclusive
+ * @property {string} [timezone] - must match ScheduleRequest.timezone when present
+ * @property {string} [windowId]
+ * @property {string} [label] - non-semantic metadata
+ * @property {number} [sequence] - assigned by normalization
+ * @property {Readonly<Record<string, unknown>>} [metadata]
  */
 
 /**
@@ -246,6 +281,10 @@ export function serializeCanonical(value) {
  * @property {string} date
  * @property {number} startMinutes
  * @property {number} endMinutes
+ * @property {string} [timezone] - must match ScheduleRequest.timezone when present
+ * @property {string} [label] - non-semantic metadata
+ * @property {number} [sequence] - assigned by normalization
+ * @property {Readonly<Record<string, unknown>>} [metadata]
  */
 
 /**

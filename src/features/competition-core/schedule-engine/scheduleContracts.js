@@ -40,7 +40,8 @@ export function createCivilScheduleTime(partial = {}) {
  * @returns {import('./scheduleTypes.js').SchedulingWindow}
  */
 export function createSchedulingWindow(partial = {}) {
-  return {
+  /** @type {import('./scheduleTypes.js').SchedulingWindow} */
+  const out = {
     date: normalizeIdentifier(partial.date),
     startMinutes:
       partial.startMinutes === undefined || partial.startMinutes === null
@@ -51,6 +52,22 @@ export function createSchedulingWindow(partial = {}) {
         ? NaN
         : Number(partial.endMinutes),
   };
+  if (partial.timezone != null && String(partial.timezone).trim()) {
+    out.timezone = normalizeIdentifier(partial.timezone);
+  }
+  if (partial.windowId != null && String(partial.windowId).trim()) {
+    out.windowId = normalizeIdentifier(partial.windowId);
+  }
+  if (partial.label != null && String(partial.label).trim()) {
+    out.label = String(partial.label).trim();
+  }
+  if (partial.sequence !== undefined && partial.sequence !== null) {
+    out.sequence = Number(partial.sequence);
+  }
+  if (partial.metadata && typeof partial.metadata === "object") {
+    out.metadata = Object.freeze(copyPlainObject(partial.metadata));
+  }
+  return out;
 }
 
 /**
@@ -58,7 +75,8 @@ export function createSchedulingWindow(partial = {}) {
  * @returns {import('./scheduleTypes.js').SessionWindow}
  */
 export function createSessionWindow(partial = {}) {
-  return {
+  /** @type {import('./scheduleTypes.js').SessionWindow} */
+  const out = {
     sessionId: normalizeIdentifier(partial.sessionId),
     date: normalizeIdentifier(partial.date),
     startMinutes:
@@ -70,6 +88,19 @@ export function createSessionWindow(partial = {}) {
         ? NaN
         : Number(partial.endMinutes),
   };
+  if (partial.timezone != null && String(partial.timezone).trim()) {
+    out.timezone = normalizeIdentifier(partial.timezone);
+  }
+  if (partial.label != null && String(partial.label).trim()) {
+    out.label = String(partial.label).trim();
+  }
+  if (partial.sequence !== undefined && partial.sequence !== null) {
+    out.sequence = Number(partial.sequence);
+  }
+  if (partial.metadata && typeof partial.metadata === "object") {
+    out.metadata = Object.freeze(copyPlainObject(partial.metadata));
+  }
+  return out;
 }
 
 /**

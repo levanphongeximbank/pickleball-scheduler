@@ -20,14 +20,13 @@ import {
   collectForbiddenAssignmentFieldPaths,
   createScheduleRequest,
 } from "./scheduleContracts.js";
+import { normalizeOperatingWindows } from "./normalizeOperatingWindows.js";
+import { normalizeSessionWindows } from "./normalizeSessionWindows.js";
 import {
-  civilWindowsOverlap,
   isNonNegativeInteger,
   isPositiveInteger,
-  isValidCivilDate,
   isValidIdentifier,
   isValidIanaTimezone,
-  isValidMinutesFromMidnight,
   normalizeIdentifier,
 } from "./scheduleTypes.js";
 
@@ -268,7 +267,8 @@ export function validateScheduleRequest(request) {
   validateDurationPolicy(input.policy, push);
   validateRestPolicy(input.policy, push);
   validateCapacityPolicy(input.policy, push);
-  validateWindows(input, push);
+
+  const windowNormalization = normalizeRequestWindows(input, push);
 
   for (const hit of collectForbiddenAssignmentFieldPaths({
     competitionId: input.competitionId,
@@ -299,10 +299,22 @@ export function validateScheduleRequest(request) {
   const sorted = sortScheduleDiagnostics(diagnostics);
   const hasError = sorted.some((d) => d.severity === SCHEDULE_DIAGNOSTIC_SEVERITY.ERROR);
 
+  let requestOut = null;
+  if (!hasError) {
+    requestOut = createScheduleRequest({
+      ...normalized,
+      operatingWindows: windowNormalization.operatingWindows,
+      sessionWindows: windowNormalization.sessionWindows,
+    });
+    // Preserve normalized timezone / identity fields that factories may omit when empty.
+    requestOut.operatingWindows = windowNormalization.operatingWindows;
+    requestOut.sessionWindows = windowNormalization.sessionWindows;
+  }
+
   return {
     ok: !hasError,
     diagnostics: sorted,
-    request: hasError ? null : normalized,
+    request: requestOut,
   };
 }
 
@@ -457,191 +469,54 @@ function validateCapacityPolicy(policy, push) {
 }
 
 /**
+ * Raw window validation + Phase 1C canonical normalization.
+ * Absolute-time derivation is intentionally not performed here.
+ *
  * @param {Record<string, unknown>} input
  * @param {(partial: Partial<import('./scheduleDiagnostics.js').ScheduleDiagnostic> & { code: string }) => void} push
+ * @returns {{ operatingWindows: import('./normalizeOperatingWindows.js').NormalizedOperatingWindow[], sessionWindows: import('./normalizeSessionWindows.js').NormalizedSessionWindow[] }}
  */
-function validateWindows(input, push) {
-  const operatingWindows = input.operatingWindows;
-  const sessionWindows = input.sessionWindows;
+function normalizeRequestWindows(input, push) {
+  const timezone = normalizeIdentifier(input.timezone);
 
-  if (operatingWindows !== undefined && !Array.isArray(operatingWindows)) {
-    push({
-      code: SCHEDULE_DIAGNOSTIC_CODE.INVALID_TIME_WINDOW,
-      path: "operatingWindows",
-      message: "operatingWindows must be an array when provided",
-    });
-  }
-  if (sessionWindows !== undefined && !Array.isArray(sessionWindows)) {
-    push({
-      code: SCHEDULE_DIAGNOSTIC_CODE.INVALID_TIME_WINDOW,
-      path: "sessionWindows",
-      message: "sessionWindows must be an array when provided",
-    });
-  }
-
-  /** @type {{ date: string, startMinutes: number, endMinutes: number, path: string }[]} */
-  const operatingValidated = [];
-  if (Array.isArray(operatingWindows)) {
-    operatingWindows.forEach((raw, index) => {
-      const path = `operatingWindows[${index}]`;
-      const w = validateOneWindow(raw, path, push, false);
-      if (w) operatingValidated.push(w);
-    });
-    rejectOverlaps(operatingValidated, push);
-  }
-
-  /** @type {Set<string>} */
-  const sessionIds = new Set();
-  /** @type {{ date: string, startMinutes: number, endMinutes: number, path: string }[]} */
-  const sessionValidated = [];
-  if (Array.isArray(sessionWindows)) {
-    sessionWindows.forEach((raw, index) => {
-      const path = `sessionWindows[${index}]`;
-      if (raw == null || typeof raw !== "object" || Array.isArray(raw)) {
-        push({
-          code: SCHEDULE_DIAGNOSTIC_CODE.INVALID_TIME_WINDOW,
-          path,
-          message: "session window must be an object",
-        });
-        return;
-      }
-      const sessionId = normalizeIdentifier(
-        /** @type {Record<string, unknown>} */ (raw).sessionId
-      );
-      if (!isValidIdentifier(sessionId)) {
-        push({
-          code: SCHEDULE_DIAGNOSTIC_CODE.INVALID_IDENTIFIER,
-          path: `${path}.sessionId`,
-          message: "sessionId must be a non-empty trimmed string",
-        });
-      } else if (sessionIds.has(sessionId)) {
-        push({
-          code: SCHEDULE_DIAGNOSTIC_CODE.DUPLICATE_SESSION_ID,
-          path: `${path}.sessionId`,
-          message: `duplicate sessionId: ${sessionId}`,
-          details: { sessionId },
-        });
-      } else {
-        sessionIds.add(sessionId);
-      }
-      const w = validateOneWindow(raw, path, push, true);
-      if (w) sessionValidated.push(w);
-    });
-    rejectOverlaps(sessionValidated, push);
-  }
-}
-
-/**
- * @param {unknown} raw
- * @param {string} path
- * @param {(partial: Partial<import('./scheduleDiagnostics.js').ScheduleDiagnostic> & { code: string }) => void} push
- * @param {boolean} _isSession
- * @returns {{ date: string, startMinutes: number, endMinutes: number, path: string }|null}
- */
-function validateOneWindow(raw, path, push, _isSession) {
-  if (raw == null || typeof raw !== "object" || Array.isArray(raw)) {
-    push({
-      code: SCHEDULE_DIAGNOSTIC_CODE.INVALID_TIME_WINDOW,
-      path,
-      message: "window must be an object",
-    });
-    return null;
-  }
-  const w = /** @type {Record<string, unknown>} */ (raw);
-  const date = normalizeIdentifier(w.date);
-  let ok = true;
-
-  if (!isValidCivilDate(date)) {
-    push({
-      code: SCHEDULE_DIAGNOSTIC_CODE.INVALID_DATE,
-      path: `${path}.date`,
-      message: "date must be a valid civil YYYY-MM-DD",
-      details: { date },
-    });
-    ok = false;
-  }
-
-  if (!isValidMinutesFromMidnight(w.startMinutes)) {
-    push({
-      code: SCHEDULE_DIAGNOSTIC_CODE.INVALID_TIME_WINDOW,
-      path: `${path}.startMinutes`,
-      message: "startMinutes must be an integer 0..1439",
-    });
-    ok = false;
-  }
-  if (!isValidMinutesFromMidnight(w.endMinutes)) {
-    push({
-      code: SCHEDULE_DIAGNOSTIC_CODE.INVALID_TIME_WINDOW,
-      path: `${path}.endMinutes`,
-      message: "endMinutes must be an integer 0..1439",
-    });
-    ok = false;
-  }
-
-  if (
-    isValidMinutesFromMidnight(w.startMinutes) &&
-    isValidMinutesFromMidnight(w.endMinutes)
-  ) {
-    const start = /** @type {number} */ (w.startMinutes);
-    const end = /** @type {number} */ (w.endMinutes);
-    if (end <= start) {
-      // Overnight: end wrapping past midnight is also end <= start on same civil date.
-      if (end < start) {
-        push({
-          code: SCHEDULE_DIAGNOSTIC_CODE.OVERNIGHT_WINDOW_NOT_SUPPORTED,
-          path,
-          message:
-            "Phase 1 overnight policy is REJECT — window must remain inside one civil date (endMinutes > startMinutes)",
-          details: { startMinutes: start, endMinutes: end, overnightPolicy: "REJECT" },
-        });
-      } else {
-        push({
-          code: SCHEDULE_DIAGNOSTIC_CODE.INVALID_TIME_WINDOW,
-          path,
-          message: "endMinutes must be greater than startMinutes (end exclusive)",
-          details: { startMinutes: start, endMinutes: end },
-        });
-      }
-      ok = false;
+  const operatingResult = normalizeOperatingWindows(input.operatingWindows, {
+    timezone,
+    pathPrefix: "operatingWindows",
+  });
+  for (const d of operatingResult.diagnostics) {
+    // Avoid duplicating request-level INVALID_TIMEZONE already emitted above
+    // when timezone was blank/invalid — still surface window-local codes.
+    if (
+      d.code === SCHEDULE_DIAGNOSTIC_CODE.INVALID_TIMEZONE &&
+      d.path === "timezone" &&
+      (!timezone || !isValidIanaTimezone(timezone))
+    ) {
+      continue;
     }
+    push(d);
   }
 
-  if (!ok) return null;
+  const sessionResult = normalizeSessionWindows(
+    input.sessionWindows,
+    operatingResult.ok ? operatingResult.windows : [],
+    {
+      timezone,
+      pathPrefix: "sessionWindows",
+    }
+  );
+  for (const d of sessionResult.diagnostics) {
+    if (
+      d.code === SCHEDULE_DIAGNOSTIC_CODE.INVALID_TIMEZONE &&
+      d.path === "timezone" &&
+      (!timezone || !isValidIanaTimezone(timezone))
+    ) {
+      continue;
+    }
+    push(d);
+  }
+
   return {
-    date,
-    startMinutes: /** @type {number} */ (w.startMinutes),
-    endMinutes: /** @type {number} */ (w.endMinutes),
-    path,
+    operatingWindows: operatingResult.ok ? operatingResult.windows : [],
+    sessionWindows: sessionResult.ok ? sessionResult.windows : [],
   };
-}
-
-/**
- * Overlap scope: within the same window collection (operating or session).
- * Same civil date required for overlap comparison.
- *
- * @param {{ date: string, startMinutes: number, endMinutes: number, path: string }[]} windows
- * @param {(partial: Partial<import('./scheduleDiagnostics.js').ScheduleDiagnostic> & { code: string }) => void} push
- */
-function rejectOverlaps(windows, push) {
-  for (let i = 0; i < windows.length; i += 1) {
-    for (let j = i + 1; j < windows.length; j += 1) {
-      const a = windows[i];
-      const b = windows[j];
-      if (a.date !== b.date) continue;
-      if (civilWindowsOverlap(a, b)) {
-        push({
-          code: SCHEDULE_DIAGNOSTIC_CODE.OVERLAPPING_TIME_WINDOW,
-          path: b.path,
-          message: `window overlaps ${a.path} on ${a.date}`,
-          details: {
-            leftPath: a.path,
-            rightPath: b.path,
-            date: a.date,
-            left: { startMinutes: a.startMinutes, endMinutes: a.endMinutes },
-            right: { startMinutes: b.startMinutes, endMinutes: b.endMinutes },
-          },
-        });
-      }
-    }
-  }
 }
