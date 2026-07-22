@@ -1,0 +1,47 @@
+{
+  "phase": "1H-B",
+  "name": "CRM Phase 1H-B Owner Limited Staging Approval",
+  "recordedAt": "2026-07-22T00:00:00.000Z",
+  "recoveryApprovedAt": "2026-07-22T00:00:00.000Z",
+  "environmentTarget": "staging",
+  "stagingProjectRefAllowlist": ["qyewbxjsiiyufanzcjcq"],
+  "productionProjectRefBlocklist": ["expuvcohlcjzvrrauvud"],
+  "stagingIdentityVerified": true,
+  "stagingProjectRefVerified": "qyewbxjsiiyufanzcjcq",
+  "stagingIdentityVerifiedVia": "mcp-supabase-staging",
+  "phase1gPersistenceApplyApproved": true,
+  "permissionSeedApplyApproved": true,
+  "roleMatrixApplyApproved": false,
+  "deferRoleMatrix": true,
+  "deferredMigrations": [
+    "docs/crm/phase-1h/20_CRM_PHASE_1H_ROLE_PERMISSION_ASSIGNMENT.sql"
+  ],
+  "approvedMigrationClasses": [
+    "phase_1g_crm_persistence",
+    "phase_1h_permission_seed"
+  ],
+  "limitedStagingApplyUmbrellaApproved": true,
+  "backupRestoreApproved": true,
+  "recoveryMethod": "rollback-only",
+  "backupPitrClaimed": false,
+  "recoveryEvidencePath": "docs/crm/phase-1h-b/14_STAGING_RECOVERY_EVIDENCE.md",
+  "rollbackSqlPath": "docs/crm/phase-1h-b/14_CRM_PHASE_1H_B_STAGING_ROLLBACK.sql",
+  "preApplyEvidencePath": "docs/crm/phase-1h-b/15_PRE_APPLY_OBJECT_STATE_EVIDENCE.md",
+  "productionApplyApproved": false,
+  "durableRuntimeApproved": false,
+  "deploymentApproved": false,
+  "backgroundWorkersApproved": false,
+  "providerDeliveryApproved": false,
+  "uiWiringApproved": false,
+  "dualWriteApproved": false,
+  "shadowWriteApproved": false,
+  "notes": [
+    "Approvals are Staging-only and limited to Phase 1G persistence + Phase 1H permission seed.",
+    "Role matrix SQL remains deferred.",
+    "Recovery gate approved as rollback-only after live MCP Staging precheck PASS.",
+    "No Supabase backup or PITR snapshot is claimed.",
+    "Staging identity verified via MCP supabase-staging for project ref qyewbxjsiiyufanzcjcq.",
+    "Do not connect to Production. Do not deploy. Do not enable durable runtime or workers."
+  ],
+  "secretsIncluded": false
+}

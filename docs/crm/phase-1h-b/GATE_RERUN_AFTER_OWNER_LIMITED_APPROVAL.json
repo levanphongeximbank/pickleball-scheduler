@@ -1,0 +1,98 @@
+{
+  "phase": "1H-B",
+  "script": "phase-1h-b-gate-rerun",
+  "mode": "gates-only-no-db",
+  "verdict": "CRM_PHASE_1H_B_BLOCKED_CREDENTIALS_REQUIRED",
+  "canWrite": false,
+  "sqlApplied": false,
+  "stagingConnected": false,
+  "productionConnected": false,
+  "deploy": false,
+  "ownerDecisionLoaded": true,
+  "ownerDecisionPath": "docs/crm/phase-1h-b/OWNER_LIMITED_STAGING_APPROVAL.json",
+  "approvalsOk": true,
+  "roleMatrixDeferred": true,
+  "migrationPlan": {
+    "approvedForApply": [
+      "docs/crm/phase-1g/10_CRM_PHASE_1G_TABLES.sql",
+      "docs/crm/phase-1g/20_CRM_PHASE_1G_INDEXES.sql",
+      "docs/crm/phase-1g/30_CRM_PHASE_1G_RLS.sql",
+      "docs/crm/phase-1g/40_CRM_PHASE_1G_CLAIM_RELEASE_RPCS.sql",
+      "docs/crm/phase-1g/50_CRM_PHASE_1G_GRANTS.sql",
+      "docs/crm/phase-1g/60_CRM_PHASE_1G_CONSENT_IMMUTABLE.sql",
+      "docs/crm/phase-1h/10_CRM_PHASE_1H_PERMISSION_SEED.sql"
+    ],
+    "deferred": [
+      "docs/crm/phase-1h/20_CRM_PHASE_1H_ROLE_PERMISSION_ASSIGNMENT.sql"
+    ],
+    "stopOnFirstError": true,
+    "reorderForbidden": true,
+    "editSqlForbidden": true
+  },
+  "identityOk": true,
+  "identityErrors": [],
+  "stagingProjectProven": true,
+  "expectedStagingRef": "qyewbxjsiiyufanzcjcq",
+  "backupOk": true,
+  "backupErrors": [],
+  "credentialsOk": false,
+  "credentialsErrors": [
+    "SUPABASE_ACCESS_TOKEN unset.",
+    "Staging Supabase URL identity not proven for credentials gate."
+  ],
+  "qaIdentitiesOk": false,
+  "requiredQaRoles": [
+    "SUPER_ADMIN",
+    "TENANT_OWNER_OR_VENUE_OWNER",
+    "VENUE_MANAGER",
+    "STAFF",
+    "PLAYER",
+    "CUSTOMER",
+    "UNAUTHENTICATED"
+  ],
+  "runtime": {
+    "durableRuntime": "off",
+    "defaultPersistenceMode": "memory"
+  },
+  "envPresence": {
+    "VITE_APP_ENV": "unset",
+    "VITE_SUPABASE_URL": "unset",
+    "SUPABASE_URL": "unset",
+    "STAGING_SUPABASE_URL": "unset",
+    "VITE_SUPABASE_ANON_KEY": "unset",
+    "SUPABASE_ACCESS_TOKEN": "unset",
+    "CRM_STAGING_OWNER_APPROVAL": "unset",
+    "CRM_STAGING_BACKUP_EVIDENCE": "unset",
+    "CRM_STAGING_BACKUP_EVIDENCE_PATH": "unset",
+    "CRM_IDENTITY_PERMISSION_SEED_APPROVAL": "unset",
+    "CRM_IDENTITY_ROLE_MATRIX_APPROVAL": "unset",
+    "CRM_PHASE_1G_PERSISTENCE_APPLY_APPROVAL": "unset",
+    "CRM_STAGING_QA_IDENTITIES_READY": "unset",
+    "VITE_CRM_PERSISTENCE_MODE": "unset"
+  },
+  "requiredEnvNamesOnly": [
+    "VITE_APP_ENV",
+    "VITE_SUPABASE_URL",
+    "SUPABASE_URL",
+    "STAGING_SUPABASE_URL",
+    "VITE_SUPABASE_ANON_KEY",
+    "SUPABASE_ACCESS_TOKEN",
+    "CRM_STAGING_OWNER_APPROVAL",
+    "CRM_STAGING_BACKUP_EVIDENCE",
+    "CRM_STAGING_BACKUP_EVIDENCE_PATH",
+    "CRM_IDENTITY_PERMISSION_SEED_APPROVAL",
+    "CRM_IDENTITY_ROLE_MATRIX_APPROVAL",
+    "CRM_PHASE_1G_PERSISTENCE_APPLY_APPROVAL",
+    "CRM_STAGING_QA_IDENTITIES_READY",
+    "VITE_CRM_PERSISTENCE_MODE"
+  ],
+  "localSecureEnvSourcesChecked": [
+    ".env",
+    ".env.local",
+    ".env.development",
+    ".env.development.local",
+    ".env.staging-qa.local",
+    "../pickleball-scheduler/.env.staging-qa.local"
+  ],
+  "secretsPrinted": false
+}

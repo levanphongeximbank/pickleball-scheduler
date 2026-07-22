@@ -548,7 +548,7 @@ test("offline preflight dry-run default; no SQL apply; secrets not printed", () 
   assert.equal(applyReport.automaticRollback, false);
   assert.equal(applyReport.deploy, false);
 
-  // Apply mode refused even with flag
+  // Apply mode refused without matching Owner gate tokens (Phase 1H-B fail-closed)
   let applyRefused = false;
   try {
     execFileSync(
@@ -567,7 +567,18 @@ test("offline preflight dry-run default; no SQL apply; secrets not printed", () 
     const body = String(err.stdout || "");
     const refused = JSON.parse(body);
     assert.equal(refused.sqlApplied, false);
-    assert.ok(refused.errors.some((e) => /refuses SQL apply/i.test(e)));
+    assert.equal(refused.mode, "apply-refused");
+    assert.ok(
+      [
+        "CRM_PHASE_1H_B_BLOCKED_APPROVAL_REQUIRED",
+        "CRM_PHASE_1H_B_BLOCKED_STAGING_IDENTITY_UNVERIFIED",
+        "CRM_PHASE_1H_B_BLOCKED_BACKUP_REQUIRED",
+        "CRM_PHASE_1H_B_BLOCKED_CREDENTIALS_REQUIRED",
+      ].includes(refused.verdict)
+    );
+    assert.equal(refused.stagingConnected, false);
+    assert.equal(refused.productionConnected, false);
+    assert.equal(refused.deploy, false);
   }
   assert.equal(applyRefused, true);
 });

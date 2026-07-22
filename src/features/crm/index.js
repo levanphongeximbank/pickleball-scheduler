@@ -1,10 +1,11 @@
 /**
- * CRM module — public facade (Phase 1B–1H-A).
+ * CRM module — public facade (Phase 1B–1H-B).
  *
  * Exports approved contracts, constants, pure models, authorization,
  * memory repository factories, Phase 1C–1F application services,
  * Phase 1G durable repository adapters + mapping utilities,
  * Phase 1H-A injectable Supabase port adapter + composition guard,
+ * Phase 1H-B Staging apply gates (fail-closed),
  * and foundation helpers only.
  *
  * Does NOT export:
@@ -229,6 +230,27 @@ export {
   CRM_TENANT_VENUE_RESOLVER_VERDICT,
   getCrmTenantVenueResolverVerdict,
 } from "./identity/tenantVenueResolverCertification.js";
+export {
+  CRM_PHASE_1H_B_VERDICTS,
+  CRM_PHASE_1H_B_ENV_NAMES,
+  CRM_PHASE_1H_B_OWNER_DECISION_RELATIVE_PATH,
+  CRM_PHASE_1H_B_REQUIRED_QA_IDENTITY_ROLES,
+  loadCrmPhase1hBOwnerDecision,
+  evaluateCrmPhase1hBApprovalGates,
+  evaluateCrmPhase1hBStagingIdentityGate,
+  evaluateCrmPhase1hBBackupGate,
+  evaluateCrmPhase1hBCredentialsGate,
+  evaluateCrmPhase1hBQaIdentitiesGate,
+  evaluateCrmPhase1hBRuntimeSafetyGate,
+  evaluateCrmPhase1hBPreWriteGates,
+  classifyCrmPhase1hBMigrationPlan,
+} from "./staging/phase1hBGates.js";
+export {
+  loadCrmStagingMigrationManifest,
+  verifyCrmStagingMigrationManifest,
+  CRM_PRODUCTION_PROJECT_REF_BLOCKLIST,
+  CRM_STAGING_PROJECT_REF_ALLOWLIST,
+} from "./staging/migrationManifest.js";
 
 export { projectContactTimeline } from "./projectors/contactTimeline.js";
 export { prepareLeadDraft } from "./services/prepareLeadDraft.js";

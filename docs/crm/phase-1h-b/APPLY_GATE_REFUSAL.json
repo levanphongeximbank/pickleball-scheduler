@@ -1,0 +1,47 @@
+{
+  "phase": "1H-B",
+  "script": "phase-1h-staging-apply",
+  "mode": "apply-refused",
+  "ok": false,
+  "verdict": "CRM_PHASE_1H_B_BLOCKED_CREDENTIALS_REQUIRED",
+  "sqlApplied": false,
+  "stagingConnected": false,
+  "productionConnected": false,
+  "deploy": false,
+  "automaticRollback": false,
+  "credentialsLogged": false,
+  "gates": {
+    "approvalsOk": true,
+    "requiredMissingApprovals": [],
+    "identityOk": true,
+    "identityErrors": [],
+    "backupOk": true,
+    "backupErrors": [],
+    "credentialsOk": false,
+    "credentialsErrors": [
+      "SUPABASE_ACCESS_TOKEN unset."
+    ],
+    "runtimeOk": true,
+    "runtimeErrors": [],
+    "manifestOk": true,
+    "manifestErrors": [],
+    "roleMatrixDeferred": true
+  },
+  "migrationPlan": {
+    "approvedForApply": [
+      "docs/crm/phase-1g/10_CRM_PHASE_1G_TABLES.sql",
+      "docs/crm/phase-1g/20_CRM_PHASE_1G_INDEXES.sql",
+      "docs/crm/phase-1g/30_CRM_PHASE_1G_RLS.sql",
+      "docs/crm/phase-1g/40_CRM_PHASE_1G_CLAIM_RELEASE_RPCS.sql",
+      "docs/crm/phase-1g/50_CRM_PHASE_1G_GRANTS.sql",
+      "docs/crm/phase-1g/60_CRM_PHASE_1G_CONSENT_IMMUTABLE.sql",
+      "docs/crm/phase-1h/10_CRM_PHASE_1H_PERMISSION_SEED.sql"
+    ],
+    "deferred": [
+      "docs/crm/phase-1h/20_CRM_PHASE_1H_ROLE_PERMISSION_ASSIGNMENT.sql"
+    ],
+    "stopOnFirstError": true,
+    "reorderForbidden": true,
+    "editSqlForbidden": true
+  }
+}
