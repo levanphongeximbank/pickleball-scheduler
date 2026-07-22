@@ -521,3 +521,22 @@ Same unchanged API as Phase 1F. Extends `optimizeSuppliedCandidates` with determ
 `optimizeSuppliedCandidates` (unchanged name), `CORE10_SUPPLIED_CANDIDATE_OPTIMIZATION_V2`.
 
 See `08_SUPPLIED_CANDIDATE_BUDGET_TERMINATION.md`. Root `competition-core/index.js` unchanged.
+
+---
+
+## Phase 1H — Deterministic Candidate Source Contract
+
+Capability-local contract boundary only:
+
+- `createCandidateBatch` — unevaluated supplied-candidate batch factory (clone + freeze; duplicate `candidateId` rejected).
+- `createCandidateSourcePort` / `isCandidateSourcePort` — synchronous `produce(request, sourceContext) → CandidateBatch`.
+- `createFixedCandidateSourcePort` — deterministic fixed/supplied test double.
+- Capability version `CORE10_CANDIDATE_SOURCE_PORT_V1`.
+
+Does not generate candidates, search, evaluate, rank, enforce budgets, or wire orchestration.
+
+### Public Phase 1H API (capability-local)
+
+`createCandidateBatch`, `createCandidateSourcePort`, `isCandidateSourcePort`, `createFixedCandidateSourcePort`, `CORE10_CANDIDATE_SOURCE_PORT_V1`.
+
+See `09_CANDIDATE_SOURCE_CONTRACT.md`. Root `competition-core/index.js` unchanged.

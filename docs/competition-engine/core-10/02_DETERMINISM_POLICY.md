@@ -262,3 +262,15 @@ Exclude from replay-determining fingerprints: wall-clock duration, machine ident
 7. Fingerprint binds `CORE10_SUPPLIED_CANDIDATE_OPTIMIZATION_V2` plus status / failure / selection / ranking / counts / `budgetExhausted` — no wall-clock material.
 8. Wall-clock watchdog is explicitly out of scope and must not drive termination.
 9. No candidate generation, greedy/exhaustive search, node inventing, or environment-dependent stopping.
+
+---
+
+## Phase 1H — Candidate Source Contract determinism
+
+1. `createCandidateBatch` and `createCandidateSourcePort.produce` are synchronous only — no Promise, async, concurrency, retry, or timers.
+2. Candidate Batch clones caller structures and deep-freezes the result; caller input is never mutated or frozen in place.
+3. Duplicate `candidateId` fails closed (`DUPLICATE_CANDIDATE_ID`); semantic duplicates with distinct IDs are preserved; no silent dedupe/reorder.
+4. Source `produce` validates output through `createCandidateBatch`; raw mutable producer output must not escape.
+5. Repeated produce over equivalent inputs is structurally deterministic; no `Math.random`, `Date.now`, locale ordering, IO, or host-specific values.
+6. Source does not enforce optimization budgets; Phase 1G orchestration remains the budget owner and still canonicalizes by `candidateId` before truncation.
+7. No candidate generation, greedy/exhaustive search, or sibling CORE imports.
