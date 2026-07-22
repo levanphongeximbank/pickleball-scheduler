@@ -1,0 +1,408 @@
+/**
+ * CORE-13 authoritative digest — pure SHA-256 over canonical serialization.
+ * Browser + Node safe (no Node crypto module imports, no Web Crypto APIs).
+ * Version: CORE13_DIGEST_SHA256_V1
+ */
+
+import { CORE13_SCHEMA_VERSION } from "../constants/versions.js";
+import { REFEREE_ASSIGNMENT_DIAGNOSTIC_CODE } from "../errors/diagnosticCodes.js";
+import { RefereeAssignmentContractError } from "../errors/RefereeAssignmentContractError.js";
+import { compareStableString } from "./compare.js";
+import { isPlainObject } from "./canonicalize.js";
+
+export const CORE13_DIGEST_VERSION = "CORE13_DIGEST_SHA256_V1";
+/** @deprecated Use CORE13_DIGEST_VERSION — kept as alias for schema continuity. */
+export const CORE13_FINGERPRINT_VERSION = CORE13_DIGEST_VERSION;
+
+export const CORE13_DIGEST_DOMAIN = Object.freeze({
+  ASSIGNMENT: "CORE13:ASSIGNMENT:V1",
+  PLAN: "CORE13:PLAN:V1",
+  PLAN_FINGERPRINT: "CORE13:PLAN_FINGERPRINT:V1",
+  REPLACEMENT: "CORE13:REPLACEMENT:V1",
+  REPLACEMENT_RESULT: "CORE13:REPLACEMENT_RESULT:V1",
+  AUDIT: "CORE13:AUDIT:V1",
+  SNAPSHOT_DIRECTORY: "CORE13:SNAPSHOT:DIRECTORY:V1",
+  SNAPSHOT_QUALIFICATION: "CORE13:SNAPSHOT:QUALIFICATION:V1",
+  SNAPSHOT_AVAILABILITY: "CORE13:SNAPSHOT:AVAILABILITY:V1",
+  SNAPSHOT_EXISTING_ASSIGNMENT: "CORE13:SNAPSHOT:EXISTING_ASSIGNMENT:V1",
+  SNAPSHOT_SCHEDULE: "CORE13:SNAPSHOT:SCHEDULE:V1",
+  SNAPSHOT_CONFLICT_POLICY: "CORE13:SNAPSHOT:CONFLICT_POLICY:V1",
+  SNAPSHOT_WORKLOAD_HISTORY: "CORE13:SNAPSHOT:WORKLOAD_HISTORY:V1",
+  SEED_EXPLORATION: "CORE13:SEED_EXPLORATION:V1",
+  GENERIC: "CORE13:GENERIC:V1",
+});
+
+export const CORE13_ID_PREFIX = Object.freeze({
+  ASSIGNMENT: "core13_assignment_v1_",
+  PLAN: "core13_plan_v1_",
+  REPLACEMENT: "core13_replacement_v1_",
+  AUDIT: "core13_audit_v1_",
+});
+
+/** Truncation length for namespaced IDs — 32 hex chars = 128 bits. */
+export const CORE13_ID_DIGEST_HEX_LEN = 32;
+
+const textEncoder = new TextEncoder();
+
+const SHA256_K = new Uint32Array([
+  0x428a2f98, 0x71374491, 0xb5c0fbcf, 0xe9b5dba5, 0x3956c25b, 0x59f111f1, 0x923f82a4,
+  0xab1c5ed5, 0xd807aa98, 0x12835b01, 0x243185be, 0x550c7dc3, 0x72be5d74, 0x80deb1fe,
+  0x9bdc06a7, 0xc19bf174, 0xe49b69c1, 0xefbe4786, 0x0fc19dc6, 0x240ca1cc, 0x2de92c6f,
+  0x4a7484aa, 0x5cb0a9dc, 0x76f988da, 0x983e5152, 0xa831c66d, 0xb00327c8, 0xbf597fc7,
+  0xc6e00bf3, 0xd5a79147, 0x06ca6351, 0x14292967, 0x27b70a85, 0x2e1b2138, 0x4d2c6dfc,
+  0x53380d13, 0x650a7354, 0x766a0abb, 0x81c2c92e, 0x92722c85, 0xa2bfe8a1, 0xa81a664b,
+  0xc24b8b70, 0xc76c51a3, 0xd192e819, 0xd6990624, 0xf40e3585, 0x106aa070, 0x19a4c116,
+  0x1e376c08, 0x2748774c, 0x34b0bcb5, 0x391c0cb3, 0x4ed8aa4a, 0x5b9cca4f, 0x682e6ff3,
+  0x748f82ee, 0x78a5636f, 0x84c87814, 0x8cc70208, 0x90befffa, 0xa4506ceb, 0xbef9a3f7,
+  0xc67178f2,
+]);
+
+/**
+ * @param {number} value
+ * @param {number} amount
+ */
+function sha256RightRotate(value, amount) {
+  return (value >>> amount) | (value << (32 - amount));
+}
+
+/**
+ * @param {Uint8Array} message
+ * @returns {Uint8Array}
+ */
+function sha256DigestBytes(message) {
+  const msgLen = message.length;
+  const bitLenHi = Math.floor(msgLen / 0x20000000);
+  const bitLenLo = (msgLen << 3) >>> 0;
+  const padLen = msgLen % 64 < 56 ? 56 - (msgLen % 64) : 120 - (msgLen % 64);
+  const totalLen = msgLen + padLen + 8;
+  const padded = new Uint8Array(totalLen);
+  padded.set(message);
+  padded[msgLen] = 0x80;
+  const view = new DataView(padded.buffer);
+  view.setUint32(totalLen - 8, bitLenHi, false);
+  view.setUint32(totalLen - 4, bitLenLo, false);
+
+  let h0 = 0x6a09e667;
+  let h1 = 0xbb67ae85;
+  let h2 = 0x3c6ef372;
+  let h3 = 0xa54ff53a;
+  let h4 = 0x510e527f;
+  let h5 = 0x9b05688c;
+  let h6 = 0x1f83d9ab;
+  let h7 = 0x5be0cd19;
+
+  const w = new Uint32Array(64);
+  for (let offset = 0; offset < totalLen; offset += 64) {
+    for (let i = 0; i < 16; i += 1) {
+      w[i] = view.getUint32(offset + i * 4, false);
+    }
+    for (let i = 16; i < 64; i += 1) {
+      const s0 =
+        sha256RightRotate(w[i - 15], 7) ^
+        sha256RightRotate(w[i - 15], 18) ^
+        (w[i - 15] >>> 3);
+      const s1 =
+        sha256RightRotate(w[i - 2], 17) ^
+        sha256RightRotate(w[i - 2], 19) ^
+        (w[i - 2] >>> 10);
+      w[i] = (w[i - 16] + s0 + w[i - 7] + s1) >>> 0;
+    }
+
+    let a = h0;
+    let b = h1;
+    let c = h2;
+    let d = h3;
+    let e = h4;
+    let f = h5;
+    let g = h6;
+    let h = h7;
+
+    for (let i = 0; i < 64; i += 1) {
+      const s1 =
+        sha256RightRotate(e, 6) ^ sha256RightRotate(e, 11) ^ sha256RightRotate(e, 25);
+      const ch = (e & f) ^ (~e & g);
+      const temp1 = (h + s1 + ch + SHA256_K[i] + w[i]) >>> 0;
+      const s0 =
+        sha256RightRotate(a, 2) ^ sha256RightRotate(a, 13) ^ sha256RightRotate(a, 22);
+      const maj = (a & b) ^ (a & c) ^ (b & c);
+      const temp2 = (s0 + maj) >>> 0;
+
+      h = g;
+      g = f;
+      f = e;
+      e = (d + temp1) >>> 0;
+      d = c;
+      c = b;
+      b = a;
+      a = (temp1 + temp2) >>> 0;
+    }
+
+    h0 = (h0 + a) >>> 0;
+    h1 = (h1 + b) >>> 0;
+    h2 = (h2 + c) >>> 0;
+    h3 = (h3 + d) >>> 0;
+    h4 = (h4 + e) >>> 0;
+    h5 = (h5 + f) >>> 0;
+    h6 = (h6 + g) >>> 0;
+    h7 = (h7 + h) >>> 0;
+  }
+
+  const out = new Uint8Array(32);
+  const outView = new DataView(out.buffer);
+  outView.setUint32(0, h0, false);
+  outView.setUint32(4, h1, false);
+  outView.setUint32(8, h2, false);
+  outView.setUint32(12, h3, false);
+  outView.setUint32(16, h4, false);
+  outView.setUint32(20, h5, false);
+  outView.setUint32(24, h6, false);
+  outView.setUint32(28, h7, false);
+  return out;
+}
+
+/**
+ * @param {string} text
+ * @returns {string} lowercase 64-char hex
+ */
+export function sha256HexUtf8(text) {
+  const bytes = sha256DigestBytes(textEncoder.encode(String(text ?? "")));
+  let hex = "";
+  for (let i = 0; i < bytes.length; i += 1) {
+    hex += bytes[i].toString(16).padStart(2, "0");
+  }
+  return hex;
+}
+
+/**
+ * @param {unknown} value
+ * @param {WeakSet<object>} [seen]
+ * @returns {unknown}
+ */
+export function canonicalizeJsonValue(value, seen = new WeakSet()) {
+  if (value === null) return null;
+  const t = typeof value;
+  if (t === "string" || t === "boolean") return value;
+  if (t === "number") {
+    if (!Number.isFinite(value)) {
+      throw new RefereeAssignmentContractError(
+        REFEREE_ASSIGNMENT_DIAGNOSTIC_CODE.NON_DETERMINISTIC_INPUT,
+        "Non-finite number in canonical serialization",
+        { value: String(value) }
+      );
+    }
+    return Object.is(value, -0) ? 0 : value;
+  }
+  if (t === "undefined" || t === "function" || t === "symbol" || t === "bigint") {
+    throw new RefereeAssignmentContractError(
+      REFEREE_ASSIGNMENT_DIAGNOSTIC_CODE.NON_DETERMINISTIC_INPUT,
+      `Unsupported type in canonical serialization: ${t}`,
+      { type: t }
+    );
+  }
+  if (t !== "object") {
+    throw new RefereeAssignmentContractError(
+      REFEREE_ASSIGNMENT_DIAGNOSTIC_CODE.NON_DETERMINISTIC_INPUT,
+      "Unsupported value in canonical serialization",
+      { type: t }
+    );
+  }
+  if (value instanceof Date || value instanceof Map || value instanceof Set) {
+    throw new RefereeAssignmentContractError(
+      REFEREE_ASSIGNMENT_DIAGNOSTIC_CODE.NON_DETERMINISTIC_INPUT,
+      "Date/Map/Set forbidden in canonical serialization",
+      {}
+    );
+  }
+  if (seen.has(/** @type {object} */ (value))) {
+    throw new RefereeAssignmentContractError(
+      REFEREE_ASSIGNMENT_DIAGNOSTIC_CODE.NON_DETERMINISTIC_INPUT,
+      "Cyclic reference in canonical serialization",
+      {}
+    );
+  }
+  seen.add(/** @type {object} */ (value));
+  if (Array.isArray(value)) {
+    return value.map((item) => canonicalizeJsonValue(item, seen));
+  }
+  if (!isPlainObject(value)) {
+    throw new RefereeAssignmentContractError(
+      REFEREE_ASSIGNMENT_DIAGNOSTIC_CODE.NON_DETERMINISTIC_INPUT,
+      "Non-plain object in canonical serialization",
+      {}
+    );
+  }
+  /** @type {Record<string, unknown>} */
+  const out = {};
+  const keys = Object.keys(/** @type {Record<string, unknown>} */ (value)).sort(
+    compareStableString
+  );
+  for (const key of keys) {
+    const v = /** @type {Record<string, unknown>} */ (value)[key];
+    if (v === undefined) {
+      throw new RefereeAssignmentContractError(
+        REFEREE_ASSIGNMENT_DIAGNOSTIC_CODE.NON_DETERMINISTIC_INPUT,
+        `Undefined value at key ${key}`,
+        { key }
+      );
+    }
+    out[key] = canonicalizeJsonValue(v, seen);
+  }
+  return out;
+}
+
+/**
+ * @param {unknown} value
+ * @returns {string}
+ */
+export function serializeCanonical(value) {
+  return JSON.stringify(canonicalizeJsonValue(value));
+}
+
+/**
+ * Collision-resistant digest with domain separation.
+ * @param {string} domain
+ * @param {unknown} payload
+ * @returns {string} 64-char lowercase hex
+ */
+export function digestCanonical(domain, payload) {
+  if (typeof domain !== "string" || !domain.trim()) {
+    throw new RefereeAssignmentContractError(
+      REFEREE_ASSIGNMENT_DIAGNOSTIC_CODE.NON_DETERMINISTIC_INPUT,
+      "Digest domain required",
+      {}
+    );
+  }
+  const material = serializeCanonical({
+    digestAlgorithmVersion: CORE13_DIGEST_VERSION,
+    schemaVersion: CORE13_SCHEMA_VERSION,
+    domain: domain.trim(),
+    payload: canonicalizeJsonValue(payload),
+  });
+  const hex = sha256HexUtf8(material);
+  if (!/^[0-9a-f]{64}$/.test(hex)) {
+    throw new RefereeAssignmentContractError(
+      REFEREE_ASSIGNMENT_DIAGNOSTIC_CODE.NON_DETERMINISTIC_INPUT,
+      "Fingerprint primitive unavailable",
+      {}
+    );
+  }
+  return hex;
+}
+
+/**
+ * Full authoritative fingerprint (SHA-256 hex).
+ * @param {unknown} value
+ * @param {string} [domain]
+ * @returns {string}
+ */
+export function fingerprintValue(value, domain = CORE13_DIGEST_DOMAIN.GENERIC) {
+  return digestCanonical(domain, value);
+}
+
+/**
+ * @param {string} prefix
+ * @param {string} domain
+ * @param {unknown} payload
+ * @returns {string}
+ */
+export function buildNamespacedId(prefix, domain, payload) {
+  const digest = digestCanonical(domain, payload);
+  return `${prefix}${digest.slice(0, CORE13_ID_DIGEST_HEX_LEN)}`;
+}
+
+/**
+ * @param {object} facts
+ * @returns {string}
+ */
+export function buildAssignmentId(facts) {
+  return buildNamespacedId(CORE13_ID_PREFIX.ASSIGNMENT, CORE13_DIGEST_DOMAIN.ASSIGNMENT, {
+    schemaVersion: facts.schemaVersion || CORE13_SCHEMA_VERSION,
+    requestId: facts.requestId,
+    tenantId: facts.tenantId,
+    tournamentId: facts.tournamentId,
+    matchId: facts.matchId,
+    roleCode: facts.roleCode,
+    slotIndex: facts.slotIndex,
+    refereeId: facts.refereeId,
+    source: facts.source,
+  });
+}
+
+/**
+ * @param {object} facts
+ * @returns {string}
+ */
+export function buildPlanId(facts) {
+  return buildNamespacedId(CORE13_ID_PREFIX.PLAN, CORE13_DIGEST_DOMAIN.PLAN, {
+    schemaVersion: facts.schemaVersion || CORE13_SCHEMA_VERSION,
+    requestId: facts.requestId,
+    tenantId: facts.tenantId,
+    tournamentId: facts.tournamentId,
+    policyId: facts.policyId,
+    policyVersion: facts.policyVersion,
+    seed: facts.seed ?? null,
+    enableSeededExploration: facts.enableSeededExploration === true,
+  });
+}
+
+/**
+ * @param {object} facts
+ * @returns {string}
+ */
+export function buildReplacementId(facts) {
+  return buildNamespacedId(
+    CORE13_ID_PREFIX.REPLACEMENT,
+    CORE13_DIGEST_DOMAIN.REPLACEMENT,
+    {
+      schemaVersion: facts.schemaVersion || CORE13_SCHEMA_VERSION,
+      requestId: facts.requestId,
+      tenantId: facts.tenantId,
+      tournamentId: facts.tournamentId,
+      matchId: facts.matchId,
+      roleCode: facts.roleCode,
+      slotIndex: facts.slotIndex ?? 0,
+      refereeId: facts.refereeId,
+      priorAssignmentId: facts.priorAssignmentId ?? null,
+      source: facts.source,
+    }
+  );
+}
+
+/**
+ * Deterministic exploration key derived from SHA-256 (not FNV).
+ * @param {unknown} material
+ * @returns {number} unsigned 32-bit from first 4 digest bytes
+ */
+export function seedExplorationKey(material) {
+  const hex = digestCanonical(CORE13_DIGEST_DOMAIN.SEED_EXPLORATION, material);
+  return Number.parseInt(hex.slice(0, 8), 16) >>> 0;
+}
+
+/**
+ * Normalize planner seed for deterministic use.
+ * @param {unknown} raw
+ * @returns {string|null}
+ */
+export function normalizePlannerSeed(raw) {
+  if (raw == null || raw === "") return null;
+  if (typeof raw === "string") {
+    const trimmed = raw.trim();
+    if (!trimmed) return null;
+    return trimmed;
+  }
+  if (typeof raw === "number") {
+    if (!Number.isFinite(raw) || !Number.isInteger(raw)) {
+      throw new RefereeAssignmentContractError(
+        REFEREE_ASSIGNMENT_DIAGNOSTIC_CODE.NON_DETERMINISTIC_INPUT,
+        "Seed must be a finite integer or string",
+        { seed: String(raw) }
+      );
+    }
+    return String(raw);
+  }
+  throw new RefereeAssignmentContractError(
+    REFEREE_ASSIGNMENT_DIAGNOSTIC_CODE.NON_DETERMINISTIC_INPUT,
+    "Seed must be a string or finite integer",
+    { type: typeof raw }
+  );
+}
