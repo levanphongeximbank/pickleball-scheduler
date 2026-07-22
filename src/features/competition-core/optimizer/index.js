@@ -5,12 +5,13 @@
  * Phase 1C-A: objective definitions, immutable registry, synchronous
  * deterministic objective evaluation (no candidate pipeline).
  * Phase 1C-B1: candidate-evaluation contracts, constraint port,
- * HardViolation composition, structural candidate-input validation
- * (no evaluateCandidateSolution / score composition / solvers).
+ * HardViolation composition, structural candidate-input validation.
+ * Phase 1C-B2-A: CandidateEvaluationFailure/Result, score composition,
+ * input fingerprint helper (internal) — no evaluateCandidateSolution.
  *
  * Integrator owns root competition-core/index.js — do not edit that here.
  * No scheduling, court-assignment, or referee-assignment exports.
- * No production solvers in Phase 1B / 1C-A / 1C-B1.
+ * No production solvers in Phase 1B / 1C-A / 1C-B1 / 1C-B2-A.
  */
 
 export {
@@ -30,6 +31,11 @@ export {
   CORE10_HARD_VIOLATION_SCHEMA_VERSION,
   CORE10_CONSTRAINT_EVALUATION_PORT_VERSION,
   CORE10_HARD_VIOLATION_COMPOSITION_VERSION,
+  CORE10_CANDIDATE_EVALUATION_RESULT_SCHEMA_VERSION,
+  CORE10_CANDIDATE_EVALUATION_FAILURE_SCHEMA_VERSION,
+  CORE10_CANDIDATE_EVALUATION_PIPELINE_VERSION,
+  CORE10_CANDIDATE_SCORE_COMPOSITION_VERSION,
+  CORE10_CANDIDATE_INPUT_FINGERPRINT_VERSION,
   CORE10_IDENTITY,
 } from "./constants/index.js";
 
@@ -92,6 +98,8 @@ export {
   createHardViolation,
   createCandidateEvaluationInput,
   createCandidateEvaluationDependencies,
+  createCandidateEvaluationFailure,
+  createCandidateEvaluationResult,
 } from "./contracts/index.js";
 
 export {
@@ -116,6 +124,7 @@ export {
   buildOptimizationScore,
   compareOptimizationScores,
   sortScoresDeterministic,
+  composeCandidateOptimizationScore,
 } from "./scoring/index.js";
 
 export {

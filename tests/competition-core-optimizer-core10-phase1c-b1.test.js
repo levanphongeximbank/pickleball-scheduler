@@ -844,7 +844,7 @@ test("G01: structural validation; no HardViolation/port/result", () => {
   assert.equal("status" in result, false);
 });
 
-test("H01: public API allowlist; no B2 symbols; root barrel untouched", () => {
+test("H01: public API allowlist; B2-A result/score exports; root barrel untouched", () => {
   for (const key of [
     "CANDIDATE_EVALUATION_STATUS",
     "CANDIDATE_EVALUATION_FAILURE_CODE",
@@ -859,13 +859,19 @@ test("H01: public API allowlist; no B2 symbols; root barrel untouched", () => {
     "CORE10_HARD_VIOLATION_SCHEMA_VERSION",
     "CORE10_CONSTRAINT_EVALUATION_PORT_VERSION",
     "CORE10_HARD_VIOLATION_COMPOSITION_VERSION",
+    // Phase 1C-B2-A approved capability-local public additions
+    "createCandidateEvaluationResult",
+    "composeCandidateOptimizationScore",
   ]) {
     assert.equal(key in OptimizerPublic, true, key);
   }
 
   assert.equal("evaluateCandidateSolution" in OptimizerPublic, false);
-  assert.equal("createCandidateEvaluationResult" in OptimizerPublic, false);
-  assert.equal("composeCandidateOptimizationScore" in OptimizerPublic, false);
+  assert.equal(
+    "createCandidateEvaluationInputFingerprint" in OptimizerPublic,
+    false
+  );
+  assert.equal("CANDIDATE_EVALUATION_FAILURE_STAGE" in OptimizerPublic, false);
   assert.equal("isConstraintEvaluationPort" in OptimizerPublic, false);
   assert.equal("CORE10_NOOP_CONSTRAINT_PORT_ID" in OptimizerPublic, false);
   assert.equal("identityKey" in OptimizerPublic, false);

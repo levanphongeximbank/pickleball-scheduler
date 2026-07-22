@@ -165,3 +165,17 @@ Exclude from replay-determining fingerprints: wall-clock duration, machine ident
 6. Runtime dependencies (registry evaluators, port functions) are never included in replay-safe fingerprints.
 7. Structural candidate-input failures produce Phase 1C-B failure codes — not HardViolation objects and not run-level `INFEASIBLE`.
 8. No `Math.random`, wall-clock, locale sorting, or floating-point ranking keys in Phase 1C-B1 contracts.
+
+---
+
+## Phase 1C-B2-A — Result / failure / score / input fingerprint determinism
+
+1. `CandidateEvaluationFailure` and `CandidateEvaluationResult` are immutable owned values; caller objects/arrays are never frozen or sorted in place.
+2. Failure `detailsCodes` are copy-sorted; duplicates fail closed.
+3. `composeCandidateOptimizationScore` never injects sentinel objective values and never calls `buildOptimizationScore`.
+4. Candidate input fingerprint uses CORE-10 `fingerprintValue` over canonical material only — no evaluator/port functions, timestamps, random, or localeCompare.
+5. Assignment order does not affect the fingerprint (assignments re-ordered by `variableId` in fingerprint material, matching CandidateEvaluationInput canonicalization). `objectiveExecutionSpecs` order and `authorityValues` order do affect it. Registry insertion order does not (descriptor fingerprint). Snapshot refs preserve `OptimizationContext.snapshotRefs` insertion order (no second sort by `snapshotId`).
+6. `structuralViolations` remain empty throughout Phase 1C-B2; business and all-hard arrays are deeply equivalent on `VALID_INFEASIBLE`.
+7. Failure-path purity: `INVALID_CANDIDATE` / `EVALUATION_FAILED` never retain partial violations, objectives, or scores. `EVALUATION_FAILED` at `DEPENDENCY_VALIDATION` requires `portDescriptor=null` and `inputFingerprint=null`.
+8. `INVALID_CANDIDATE_EVALUATION_FAILURE` is reserved for contract-validation throws and cannot be stored as a pipeline failure code.
+9. Final `CandidateEvaluationResult` fingerprint certification remains Phase 1C-C.

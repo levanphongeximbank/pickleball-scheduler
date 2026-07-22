@@ -1,7 +1,8 @@
-# CORE-10 — Candidate Evaluation (Phase 1C-B1)
+# CORE-10 — Candidate Evaluation (Phase 1C-B1 / 1C-B2-A)
 
 **Module:** `src/features/competition-core/optimizer/`
-**Versions:** `CORE10_CANDIDATE_EVALUATION_INPUT_SCHEMA_V1`, `CORE10_CANDIDATE_EVALUATION_DEPENDENCIES_V1`, `CORE10_HARD_VIOLATION_SCHEMA_V1`, `CORE10_CONSTRAINT_EVALUATION_PORT_V1`, `CORE10_HARD_VIOLATION_COMPOSITION_V1`
+**B1 Versions:** `CORE10_CANDIDATE_EVALUATION_INPUT_SCHEMA_V1`, `CORE10_CANDIDATE_EVALUATION_DEPENDENCIES_V1`, `CORE10_HARD_VIOLATION_SCHEMA_V1`, `CORE10_CONSTRAINT_EVALUATION_PORT_V1`, `CORE10_HARD_VIOLATION_COMPOSITION_V1`
+**B2-A Versions:** `CORE10_CANDIDATE_EVALUATION_RESULT_SCHEMA_V1`, `CORE10_CANDIDATE_EVALUATION_FAILURE_SCHEMA_V1`, `CORE10_CANDIDATE_EVALUATION_PIPELINE_V1`, `CORE10_CANDIDATE_SCORE_COMPOSITION_V1`, `CORE10_CANDIDATE_INPUT_FINGERPRINT_V1`
 
 ---
 
@@ -131,3 +132,35 @@ Invalid shape/domain/scope conditions **do not** create `HardViolation` objects,
 6. Conflicting messageCode/detailsCodes → `DUPLICATE_HARD_VIOLATION`.
 
 Hard violations are never transformed into objective values.
+
+---
+
+## Phase 1C-B2-A ownership
+
+Phase 1C-B2-A owns:
+
+- replay-safe `CandidateEvaluationFailure` (code/stage fail-closed);
+- immutable `CandidateEvaluationResult` with status invariants;
+- `composeCandidateOptimizationScore` (direct `createOptimizationScore`; no sentinels);
+- candidate evaluation input fingerprint helper (evaluation-local);
+- additive B2 failure codes and version constants.
+
+Phase 1C-B2-A does **not** own:
+
+- `evaluateCandidateSolution` / port / objective / hard-feasibility orchestration (Phase 1C-B2-B);
+- final evaluation-result fingerprint certification (Phase 1C-C);
+- CORE-01 adapters, solvers, Schedule / Court / Referee, persistence, UI.
+
+### Status outcomes (factories only in B2-A)
+
+```text
+VALID_FEASIBLE | VALID_INFEASIBLE | INVALID_CANDIDATE | EVALUATION_FAILED
+```
+
+`structuralViolations` remain `[]` in B2. On `VALID_INFEASIBLE`, `allHardViolations` deeply equals `businessViolations`. Failure paths keep violations/objectives empty and `optimizationScore=null`.
+
+### Public B2-A API
+
+`createCandidateEvaluationFailure`, `createCandidateEvaluationResult`, `composeCandidateOptimizationScore`, B2-A version constants.
+
+Not public from `optimizer/index.js`: failure-stage constant object, `createCandidateEvaluationInputFingerprint`, `evaluateCandidateSolution`.

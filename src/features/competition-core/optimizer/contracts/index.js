@@ -46,3 +46,5 @@ export { createObjectiveEvaluationRecord } from "./objectiveEvaluationRecord.js"
 export { createHardViolation } from "./hardViolation.js";
 export { createCandidateEvaluationInput } from "./candidateEvaluationInput.js";
 export { createCandidateEvaluationDependencies } from "./candidateEvaluationDependencies.js";
+export { createCandidateEvaluationFailure } from "./candidateEvaluationFailure.js";
+export { createCandidateEvaluationResult } from "./candidateEvaluationResult.js";

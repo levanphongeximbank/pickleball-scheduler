@@ -56,6 +56,26 @@ export const CORE10_CONSTRAINT_EVALUATION_PORT_VERSION =
 export const CORE10_HARD_VIOLATION_COMPOSITION_VERSION =
   "CORE10_HARD_VIOLATION_COMPOSITION_V1";
 
+/** Phase 1C-B2-A — CandidateEvaluationResult schema version. */
+export const CORE10_CANDIDATE_EVALUATION_RESULT_SCHEMA_VERSION =
+  "CORE10_CANDIDATE_EVALUATION_RESULT_SCHEMA_V1";
+
+/** Phase 1C-B2-A — CandidateEvaluationFailure schema version. */
+export const CORE10_CANDIDATE_EVALUATION_FAILURE_SCHEMA_VERSION =
+  "CORE10_CANDIDATE_EVALUATION_FAILURE_SCHEMA_V1";
+
+/** Phase 1C-B2-A — candidate evaluation pipeline version. */
+export const CORE10_CANDIDATE_EVALUATION_PIPELINE_VERSION =
+  "CORE10_CANDIDATE_EVALUATION_PIPELINE_V1";
+
+/** Phase 1C-B2-A — candidate OptimizationScore composition version. */
+export const CORE10_CANDIDATE_SCORE_COMPOSITION_VERSION =
+  "CORE10_CANDIDATE_SCORE_COMPOSITION_V1";
+
+/** Phase 1C-B2-A — candidate evaluation input fingerprint version. */
+export const CORE10_CANDIDATE_INPUT_FINGERPRINT_VERSION =
+  "CORE10_CANDIDATE_INPUT_FINGERPRINT_V1";
+
 export const CORE10_IDENTITY = Object.freeze({
   id: CORE10_ENGINE_ID,
   version: CORE10_ENGINE_VERSION,
@@ -75,4 +95,12 @@ export const CORE10_IDENTITY = Object.freeze({
   hardViolationSchemaVersion: CORE10_HARD_VIOLATION_SCHEMA_VERSION,
   constraintEvaluationPortVersion: CORE10_CONSTRAINT_EVALUATION_PORT_VERSION,
   hardViolationCompositionVersion: CORE10_HARD_VIOLATION_COMPOSITION_VERSION,
+  candidateEvaluationResultSchemaVersion:
+    CORE10_CANDIDATE_EVALUATION_RESULT_SCHEMA_VERSION,
+  candidateEvaluationFailureSchemaVersion:
+    CORE10_CANDIDATE_EVALUATION_FAILURE_SCHEMA_VERSION,
+  candidateEvaluationPipelineVersion:
+    CORE10_CANDIDATE_EVALUATION_PIPELINE_VERSION,
+  candidateScoreCompositionVersion: CORE10_CANDIDATE_SCORE_COMPOSITION_VERSION,
+  candidateInputFingerprintVersion: CORE10_CANDIDATE_INPUT_FINGERPRINT_VERSION,
 });
