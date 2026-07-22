@@ -415,3 +415,28 @@ createCandidateEvaluationResultFingerprint(result) → string
 `createCandidateEvaluationResultFingerprint`, `CORE10_CANDIDATE_RESULT_FINGERPRINT_VERSION`.
 
 Not exported: material builders, serializers, validators, hash internals. Root `competition-core/index.js` unchanged. Input fingerprint remains non-public.
+
+---
+
+## Phase 1D — Candidate ranking / feasible-winner selection
+
+Capability-local only (`optimizer/`). Ranks a supplied frontier of already evaluated candidates. Does not generate candidates, search, project `OptimizationResult`, or attach fingerprints.
+
+### API
+
+```text
+rankCandidateEvaluations(frontier) → frozen ranking view
+```
+
+- Revalidates each item through `createCandidateEvaluationResult`.
+- Accepts only `VALID_FEASIBLE` / `VALID_INFEASIBLE`.
+- Reuses `sortScoresDeterministic` (`CORE10_COMPARATOR_V1`).
+- Returns `{ rankedCandidateIds, selectedCandidateId, rankedScores, feasibleCount, infeasibleCount, rankingVersion }`.
+- Empty frontier and all-infeasible frontiers yield `selectedCandidateId=null`; infeasible IDs remain ranked.
+- Throw-only codes: `INVALID_CANDIDATE_RANKING_INPUT`, `DUPLICATE_CANDIDATE_ID`.
+
+### Public Phase 1D API (capability-local)
+
+`rankCandidateEvaluations`, `CANDIDATE_RANKING_FAILURE_CODE`, `CORE10_CANDIDATE_RANKING_VERSION`.
+
+See `05_CANDIDATE_RANKING.md`. Root `competition-core/index.js` unchanged.

@@ -685,10 +685,19 @@ test("D01: public export exact; helpers private; root barrel unchanged", () => {
   assert.equal("buildOwnedRevalidationInput" in OptimizerPublic, false);
   assert.equal("CANDIDATE_EVALUATION_FAILURE_STAGE" in OptimizerPublic, false);
 
+  // Phase 1D symbols are capability-local (admitted); still not in root barrel.
+  assert.equal(typeof OptimizerPublic.rankCandidateEvaluations, "function");
+  assert.equal(
+    OptimizerPublic.CORE10_CANDIDATE_RANKING_VERSION,
+    "CORE10_CANDIDATE_RANKING_V1"
+  );
+
   const root = readFileSync(ROOT_BARREL, "utf8");
   assert.equal(root.includes("createCandidateEvaluationResultFingerprint"), false);
   assert.equal(root.includes("CORE10_CANDIDATE_RESULT_FINGERPRINT_VERSION"), false);
   assert.equal(root.includes("evaluateCandidateSolution"), false);
+  assert.equal(root.includes("rankCandidateEvaluations"), false);
+  assert.equal(root.includes("CORE10_CANDIDATE_RANKING_VERSION"), false);
 });
 
 test("D02: no timestamp/random/localeCompare/external crypto; reuses fingerprintValue", () => {

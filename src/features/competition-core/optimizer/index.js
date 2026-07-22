@@ -10,10 +10,12 @@
  * input fingerprint helper (internal).
  * Phase 1C-B2-B: evaluateCandidateSolution orchestration (no search/solvers).
  * Phase 1C-C: CandidateEvaluationResult content fingerprint (explicit utility).
+ * Phase 1D: deterministic ranking / feasible-winner selection over a supplied
+ * frontier of already evaluated candidates (no search/solvers).
  *
  * Integrator owns root competition-core/index.js — do not edit that here.
  * No scheduling, court-assignment, or referee-assignment exports.
- * No production solvers in Phase 1B / 1C-A / 1C-B1 / 1C-B2-A / 1C-B2-B / 1C-C.
+ * No production solvers in Phase 1B / 1C-A / 1C-B1 / 1C-B2-A / 1C-B2-B / 1C-C / 1D.
  */
 
 export {
@@ -39,6 +41,7 @@ export {
   CORE10_CANDIDATE_SCORE_COMPOSITION_VERSION,
   CORE10_CANDIDATE_INPUT_FINGERPRINT_VERSION,
   CORE10_CANDIDATE_RESULT_FINGERPRINT_VERSION,
+  CORE10_CANDIDATE_RANKING_VERSION,
   CORE10_IDENTITY,
 } from "./constants/index.js";
 
@@ -68,6 +71,7 @@ export {
   OBJECTIVE_EVALUATION_FAILURE_CODE,
   CANDIDATE_EVALUATION_STATUS,
   CANDIDATE_EVALUATION_FAILURE_CODE,
+  CANDIDATE_RANKING_FAILURE_CODE,
 } from "./enums/index.js";
 
 export {
@@ -155,3 +159,5 @@ export {
   evaluateCandidateSolution,
   createCandidateEvaluationResultFingerprint,
 } from "./evaluation/index.js";
+
+export { rankCandidateEvaluations } from "./ranking/index.js";

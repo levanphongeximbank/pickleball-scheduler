@@ -80,6 +80,9 @@ export const CORE10_CANDIDATE_INPUT_FINGERPRINT_VERSION =
 export const CORE10_CANDIDATE_RESULT_FINGERPRINT_VERSION =
   "CORE10_CANDIDATE_RESULT_FINGERPRINT_V1";
 
+/** Phase 1D — candidate ranking / feasible-winner selection version. */
+export const CORE10_CANDIDATE_RANKING_VERSION = "CORE10_CANDIDATE_RANKING_V1";
+
 export const CORE10_IDENTITY = Object.freeze({
   id: CORE10_ENGINE_ID,
   version: CORE10_ENGINE_VERSION,
@@ -108,4 +111,5 @@ export const CORE10_IDENTITY = Object.freeze({
   candidateScoreCompositionVersion: CORE10_CANDIDATE_SCORE_COMPOSITION_VERSION,
   candidateInputFingerprintVersion: CORE10_CANDIDATE_INPUT_FINGERPRINT_VERSION,
   candidateResultFingerprintVersion: CORE10_CANDIDATE_RESULT_FINGERPRINT_VERSION,
+  candidateRankingVersion: CORE10_CANDIDATE_RANKING_VERSION,
 });
