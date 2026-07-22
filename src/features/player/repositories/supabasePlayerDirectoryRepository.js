@@ -1,10 +1,14 @@
 /**
- * Phase 1I-A — Supabase RPC adapter for Public Player Directory.
+ * Phase 1I-A / 1J-C — Supabase RPC adapter for Public Player Directory.
  *
  * Calls authenticated SECURITY DEFINER RPCs only (no table SELECT).
- * Client is injected — never a browser service-role singleton.
- * SQL is not implemented yet (1I-B); unit tests mock client.rpc.
+ * Client is injected when provided; otherwise uses the shared anon/session
+ * client (never a browser service-role singleton).
  */
+import {
+  getSupabaseAuthClient,
+  hasSupabaseConfig,
+} from "../../../auth/supabaseClient.js";
 import { DIRECTORY_ERROR_CODES } from "../constants/directory.js";
 import { projectDirectoryPlayerFromRpcRow } from "../projectors/projectDirectoryPlayer.js";
 import { decodeDirectoryCursor } from "../utils/directoryCursor.js";
@@ -186,23 +190,22 @@ function resolveNextCursor(envelope) {
  * @param {() => boolean} [deps.hasConfig]
  */
 export function createSupabasePlayerDirectoryRepository(deps = {}) {
-  const getClient =
-    deps.getClient ||
-    (deps.supabase ? () => deps.supabase : null) ||
-    null;
+  const injectedClient =
+    deps.getClient || (deps.supabase ? () => deps.supabase : null);
+  const getClient = injectedClient || getSupabaseAuthClient;
+  // Injected clients (unit tests) skip env config; Production uses hasSupabaseConfig.
   const hasConfig =
-    deps.hasConfig ||
-    (() => Boolean(getClient && getClient()));
+    deps.hasConfig || (injectedClient ? () => true : hasSupabaseConfig);
 
   async function invokeRpc(rpcName, args) {
-    if (!hasConfig() || !getClient) {
+    if (!hasConfig()) {
       return {
         ok: false,
         code: DIRECTORY_ERROR_CODES.BACKEND_UNAVAILABLE,
         message: "Player directory backend is not configured",
       };
     }
-    const client = getClient();
+    const client = typeof getClient === "function" ? getClient() : null;
     if (!client || typeof client.rpc !== "function") {
       return {
         ok: false,

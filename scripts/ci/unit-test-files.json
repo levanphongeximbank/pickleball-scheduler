@@ -130,6 +130,7 @@
   "tests/player-management-phase-1i-c-directory-list-ui.test.js",
   "tests/player-management-phase-1i-d-directory-detail-ui.test.js",
   "tests/player-management-phase-1i-e-directory-qa-hardening.test.js",
+  "tests/player-management-phase-1j-c-directory-auth-repository-remediation.test.js",
   "tests/player-management-phase-1j-a-staging-fixtures.test.js",
   "tests/player-history.test.js",
   "tests/tournament-mobile.test.js",
