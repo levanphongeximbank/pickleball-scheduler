@@ -30,6 +30,10 @@ export function getCourtDisplayName(court, fallbackIndex = 0) {
   return `Sân ${fallbackIndex + 1}`;
 }
 
+function isExplicitFinitePriority(value) {
+  return typeof value === "number" && Number.isFinite(value);
+}
+
 export function normalizeCourt(court, index = 0) {
   const active = court?.active !== false;
   const status = COURT_STATUSES.includes(court?.status)
@@ -50,6 +54,7 @@ export function normalizeCourt(court, index = 0) {
     note: court?.note ? String(court.note).trim() : "",
     ...(court?.tenantId ? { tenantId: String(court.tenantId).trim() } : {}),
     ...(court?.clusterId ? { clusterId: String(court.clusterId).trim() } : {}),
+    ...(isExplicitFinitePriority(court?.priority) ? { priority: court.priority } : {}),
   };
 }
 

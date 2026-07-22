@@ -101,3 +101,31 @@ test("normalizePlayers drops entries without id", () => {
   assert.equal(players.length, 1);
   assert.equal(players[0].id, 1);
 });
+
+test("normalizeCourt preserves explicit finite priority and omits invalid values", () => {
+  assert.equal(normalizeCourt({ id: 1, priority: 10 }).priority, 10);
+  assert.equal(normalizeCourt({ id: 2, priority: 1.5 }).priority, 1.5);
+  assert.equal(normalizeCourt({ id: 3, priority: -2 }).priority, -2);
+  assert.equal(normalizeCourt({ id: 4, priority: 0 }).priority, 0);
+  assert.equal(Object.hasOwn(normalizeCourt({ id: 5 }), "priority"), false);
+  assert.equal(Object.hasOwn(normalizeCourt({ id: 6, priority: undefined }), "priority"), false);
+  assert.equal(Object.hasOwn(normalizeCourt({ id: 7, priority: null }), "priority"), false);
+  assert.equal(Object.hasOwn(normalizeCourt({ id: 8, priority: "10" }), "priority"), false);
+  assert.equal(Object.hasOwn(normalizeCourt({ id: 9, priority: Number.NaN }), "priority"), false);
+  assert.equal(Object.hasOwn(normalizeCourt({ id: 10, priority: Infinity }), "priority"), false);
+  assert.equal(Object.hasOwn(normalizeCourt({ id: 11, priority: -Infinity }), "priority"), false);
+  assert.equal(Object.hasOwn(normalizeCourt({ id: 12, priority: {} }), "priority"), false);
+  assert.equal(Object.hasOwn(normalizeCourt({ id: 13, priority: [1] }), "priority"), false);
+});
+
+test("normalizeCourts preserves valid priority per row without inventing defaults", () => {
+  const courts = normalizeCourts([
+    { id: "a", name: "A", priority: 3 },
+    { id: "b", name: "B" },
+    { id: "c", name: "C", priority: "9" },
+  ]);
+
+  assert.equal(courts[0].priority, 3);
+  assert.equal(Object.hasOwn(courts[1], "priority"), false);
+  assert.equal(Object.hasOwn(courts[2], "priority"), false);
+});
