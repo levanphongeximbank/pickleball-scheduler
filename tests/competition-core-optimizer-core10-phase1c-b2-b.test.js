@@ -769,6 +769,14 @@ test("D03: INVALID_CANDIDATE_EVALUATION_FAILURE never stored; result-constructio
 test("E01: public export surface; internals absent; root barrel unchanged", () => {
   assert.equal(typeof OptimizerPublic.evaluateCandidateSolution, "function");
   assert.equal(
+    typeof OptimizerPublic.createCandidateEvaluationResultFingerprint,
+    "function"
+  );
+  assert.equal(
+    "CORE10_CANDIDATE_RESULT_FINGERPRINT_VERSION" in OptimizerPublic,
+    true
+  );
+  assert.equal(
     "createCandidateEvaluationInputFingerprint" in OptimizerPublic,
     false
   );
@@ -782,6 +790,10 @@ test("E01: public export surface; internals absent; root barrel unchanged", () =
   const root = readFileSync(ROOT_BARREL, "utf8");
   assert.equal(root.includes("evaluateCandidateSolution"), false);
   assert.equal(root.includes("composeCandidateOptimizationScore"), false);
+  assert.equal(
+    root.includes("createCandidateEvaluationResultFingerprint"),
+    false
+  );
 });
 
 test("E02: no prohibited imports or forbidden runtime patterns in B2-B sources", () => {

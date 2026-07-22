@@ -984,6 +984,11 @@ test("F01: public export allowlist for Phase 1C-A symbols", () => {
   assert.equal("evaluateCandidateSolution" in OptimizerPublic, true);
   // Phase 1C-B2-A expands capability-local public API with this result factory.
   assert.equal("createCandidateEvaluationResult" in OptimizerPublic, true);
+  // Phase 1C-C result fingerprint is public; input fingerprint stays private.
+  assert.equal(
+    "createCandidateEvaluationResultFingerprint" in OptimizerPublic,
+    true
+  );
   assert.equal(
     "createCandidateEvaluationInputFingerprint" in OptimizerPublic,
     false

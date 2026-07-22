@@ -108,6 +108,9 @@ const CODE_STAGE = Object.freeze({
     CANDIDATE_EVALUATION_FAILURE_STAGE.RESULT_CONSTRUCTION,
   [CANDIDATE_EVALUATION_FAILURE_CODE.INVALID_CANDIDATE_INPUT_FINGERPRINT]:
     CANDIDATE_EVALUATION_FAILURE_STAGE.RESULT_CONSTRUCTION,
+  [CANDIDATE_EVALUATION_FAILURE_CODE
+    .INVALID_CANDIDATE_EVALUATION_RESULT_FINGERPRINT_INPUT]:
+    CANDIDATE_EVALUATION_FAILURE_STAGE.RESULT_CONSTRUCTION,
 
   [CANDIDATE_EVALUATION_FAILURE_CODE.CANDIDATE_EVALUATION_UNEXPECTED_FAILURE]:
     CANDIDATE_EVALUATION_FAILURE_STAGE.UNEXPECTED_FAILURE,
@@ -245,14 +248,17 @@ export function createCandidateEvaluationFailure(partial = {}) {
     );
   }
 
-  // Reserved throw-only code — must never be stored as a pipeline failure outcome.
+  // Reserved throw-only codes — must never be stored as pipeline failure outcomes.
   if (
     code ===
-    CANDIDATE_EVALUATION_FAILURE_CODE.INVALID_CANDIDATE_EVALUATION_FAILURE
+      CANDIDATE_EVALUATION_FAILURE_CODE.INVALID_CANDIDATE_EVALUATION_FAILURE ||
+    code ===
+      CANDIDATE_EVALUATION_FAILURE_CODE
+        .INVALID_CANDIDATE_EVALUATION_RESULT_FINGERPRINT_INPUT
   ) {
     throw new OptimizerContractError(
       FAIL,
-      "INVALID_CANDIDATE_EVALUATION_FAILURE is reserved for contract-validation throws and cannot be stored as a pipeline failure code",
+      `${code} is reserved for contract-validation throws and cannot be stored as a pipeline failure code`,
       { code }
     );
   }

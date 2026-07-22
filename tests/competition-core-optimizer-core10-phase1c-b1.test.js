@@ -864,6 +864,9 @@ test("H01: public API allowlist; B2-A result/score exports; root barrel untouche
     "composeCandidateOptimizationScore",
     // Phase 1C-B2-B approved capability-local public addition
     "evaluateCandidateSolution",
+    // Phase 1C-C approved capability-local public additions
+    "createCandidateEvaluationResultFingerprint",
+    "CORE10_CANDIDATE_RESULT_FINGERPRINT_VERSION",
   ]) {
     assert.equal(key in OptimizerPublic, true, key);
   }
@@ -915,6 +918,11 @@ test("H02: no prohibited imports in Phase 1C-B1 sources", () => {
     "localeCompare",
   ];
   const b2bOrchestrationBasenames = new Set(["evaluateCandidateSolution.js"]);
+  const resultFactoryAllowedBasenames = new Set([
+    "evaluateCandidateSolution.js",
+    // Phase 1C-C revalidates envelopes before hashing.
+    "candidateEvaluationResultFingerprint.js",
+  ]);
   for (const file of files) {
     const text = readFileSync(file, "utf8");
     for (const b of banned) {
@@ -932,8 +940,14 @@ test("H02: no prohibited imports in Phase 1C-B1 sources", () => {
     if (!b2bOrchestrationBasenames.has(base) && !isEvaluationIndex) {
       assert.equal(text.includes("evaluateCandidateSolution"), false);
     }
-    if (!b2bOrchestrationBasenames.has(base)) {
-      assert.equal(text.includes("createCandidateEvaluationResult"), false);
+    if (!resultFactoryAllowedBasenames.has(base)) {
+      // Negative lookahead avoids false positive on
+      // createCandidateEvaluationResultFingerprint.
+      assert.equal(
+        /createCandidateEvaluationResult(?!Fingerprint\b)/.test(text),
+        false,
+        `${path.relative(ROOT, file)} must not reference createCandidateEvaluationResult`
+      );
       assert.equal(text.includes("composeCandidateOptimizationScore"), false);
     }
   }

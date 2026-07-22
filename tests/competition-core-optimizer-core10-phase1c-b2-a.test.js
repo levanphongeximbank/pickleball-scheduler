@@ -1055,11 +1055,13 @@ test("E01: approved B2-A public exports; fingerprint not public; B2-B orchestrat
     "createCandidateEvaluationResult",
     "composeCandidateOptimizationScore",
     "evaluateCandidateSolution",
+    "createCandidateEvaluationResultFingerprint",
     "CORE10_CANDIDATE_EVALUATION_RESULT_SCHEMA_VERSION",
     "CORE10_CANDIDATE_EVALUATION_FAILURE_SCHEMA_VERSION",
     "CORE10_CANDIDATE_EVALUATION_PIPELINE_VERSION",
     "CORE10_CANDIDATE_SCORE_COMPOSITION_VERSION",
     "CORE10_CANDIDATE_INPUT_FINGERPRINT_VERSION",
+    "CORE10_CANDIDATE_RESULT_FINGERPRINT_VERSION",
     "CANDIDATE_EVALUATION_FAILURE_CODE",
   ]) {
     assert.equal(key in OptimizerPublic, true, key);
@@ -1100,6 +1102,7 @@ test("E01: approved B2-A public exports; fingerprint not public; B2-B orchestrat
     "INVALID_CANDIDATE_EVALUATION_FAILURE",
     "INVALID_CANDIDATE_EVALUATION_RESULT",
     "INVALID_CANDIDATE_INPUT_FINGERPRINT",
+    "INVALID_CANDIDATE_EVALUATION_RESULT_FINGERPRINT_INPUT",
   ]) {
     assert.equal(CANDIDATE_EVALUATION_FAILURE_CODE[code], code);
   }
