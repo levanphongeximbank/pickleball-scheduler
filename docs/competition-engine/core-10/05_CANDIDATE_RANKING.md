@@ -18,7 +18,7 @@ Phase 1D owns:
 Phase 1D does **not** own:
 
 - candidate generation / search / `DETERMINISTIC_GREEDY` / `EXHAUSTIVE`;
-- `OptimizationResult` projection or replay/diagnostics fabrication;
+- `OptimizationResult` projection or replay/diagnostics fabrication (Phase 1E);
 - changes to `evaluateCandidateSolution` or `CandidateEvaluationResult` schema;
 - new fingerprints or attachment onto evaluation results;
 - CORE-01 adapters, Schedule / Court / Referee, persistence, UI;
