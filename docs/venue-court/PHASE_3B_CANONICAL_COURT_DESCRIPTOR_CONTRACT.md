@@ -1,8 +1,8 @@
 # Phase 3B — Canonical Court Descriptor Public Contract
 
-**Status:** Implementation complete — awaiting Owner review (not committed)  
-**Date:** 2026-07-22  
-**Branch:** `feature/venue-court-phase-3b-canonical-descriptor-contract`  
+**Status:** Implementation complete — awaiting Owner review (not committed)
+**Date:** 2026-07-22
+**Branch:** `feature/venue-court-phase-3b-canonical-descriptor-contract`
 **Authorization:** `AUTHORIZE_VENUE_COURT_PHASE_3B_DESCRIPTOR_CONTRACT_IMPLEMENTATION_ONLY`
 
 ---
