@@ -14,10 +14,13 @@
  * frontier of already evaluated candidates (no search/solvers).
  * Phase 1E: project OptimizationResult from OptimizationRequest + supplied
  * evaluated frontier via Phase 1D ranking (no search/solvers).
+ * Phase 1F: supplied-candidate optimization orchestration — evaluate a
+ * caller-supplied unevaluated batch, rank via Phase 1D, project result
+ * (no search/solvers/candidate generation).
  *
  * Integrator owns root competition-core/index.js — do not edit that here.
  * No scheduling, court-assignment, or referee-assignment exports.
- * No production solvers in Phase 1B / 1C-A / 1C-B1 / 1C-B2-A / 1C-B2-B / 1C-C / 1D / 1E.
+ * No production solvers in Phase 1B / 1C-A / 1C-B1 / 1C-B2-A / 1C-B2-B / 1C-C / 1D / 1E / 1F.
  */
 
 export {
@@ -45,6 +48,7 @@ export {
   CORE10_CANDIDATE_RESULT_FINGERPRINT_VERSION,
   CORE10_CANDIDATE_RANKING_VERSION,
   CORE10_SUPPLIED_FRONTIER_RESULT_PROJECTION_VERSION,
+  CORE10_SUPPLIED_CANDIDATE_OPTIMIZATION_VERSION,
   CORE10_IDENTITY,
 } from "./constants/index.js";
 
@@ -166,3 +170,5 @@ export {
 export { rankCandidateEvaluations } from "./ranking/index.js";
 
 export { projectOptimizationResultFromEvaluatedFrontier } from "./projection/index.js";
+
+export { optimizeSuppliedCandidates } from "./orchestration/index.js";

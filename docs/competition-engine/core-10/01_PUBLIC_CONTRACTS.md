@@ -468,3 +468,38 @@ projectOptimizationResultFromEvaluatedFrontier(optimizationRequest, evaluatedFro
 `projectOptimizationResultFromEvaluatedFrontier`, `CORE10_SUPPLIED_FRONTIER_RESULT_PROJECTION_VERSION`.
 
 See `06_SUPPLIED_FRONTIER_RESULT_PROJECTION.md`. Root `competition-core/index.js` unchanged.
+
+---
+
+## Phase 1F — Supplied-candidate optimization orchestration
+
+Capability-local only (`optimizer/`). Supplied-input optimizer: evaluates a caller-supplied unevaluated candidate batch, ranks via Phase 1D, and projects `OptimizationResult` via existing factories. Does not generate candidates, search, or solve.
+
+### API
+
+```text
+optimizeSuppliedCandidates(
+  optimizationRequest,
+  suppliedCandidateBatch,
+  evaluationDependencies
+) → frozen OptimizationResult
+```
+
+- Validates request via `validateOptimizationRequest` (fail closed / throw).
+- Accepts only `GENERIC_CANDIDATE_RANKING` + `CONTRACT_ONLY`.
+- Rejects Promise/thenable request, batch, or dependencies.
+- Admits supplied batch `{ candidates: [{ candidateId, assignments }], decisionVariables, objectiveExecutionSpecs, authorityValues, context? }` (unknown fields fail closed; `context` defaults to request context).
+- Canonicalizes evaluation order by `candidateId` (`compareStableString`).
+- Reuses `createCandidateEvaluationInput` + `evaluateCandidateSolution` + `rankCandidateEvaluations`.
+- Non-rankable evaluation outcomes fail closed (throw); never silently dropped / converted to `INFEASIBLE`.
+- Empty batch or all-infeasible ⇒ `status=INFEASIBLE`, `selectedCandidateId=null`.
+- Feasible winner ⇒ `status=SUCCESS`, `selectedCandidateId` from Phase 1D.
+- Diagnostics report honest `budgetUsage.evaluations` (actual evaluation invocations); `nodes=0`; `budgetExhausted=false`; `watchdogTimeout=false`.
+- Does not call Phase 1E projection unchanged (Phase 1E always reports `evaluations=0`).
+- No runtime budget exhaustion / watchdog in this phase.
+
+### Public Phase 1F API (capability-local)
+
+`optimizeSuppliedCandidates`, `CORE10_SUPPLIED_CANDIDATE_OPTIMIZATION_VERSION`.
+
+See `07_SUPPLIED_CANDIDATE_OPTIMIZATION.md`. Root `competition-core/index.js` unchanged.
