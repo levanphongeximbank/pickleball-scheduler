@@ -179,3 +179,16 @@ Exclude from replay-determining fingerprints: wall-clock duration, machine ident
 7. Failure-path purity: `INVALID_CANDIDATE` / `EVALUATION_FAILED` never retain partial violations, objectives, or scores. `EVALUATION_FAILED` at `DEPENDENCY_VALIDATION` requires `portDescriptor=null` and `inputFingerprint=null`.
 8. `INVALID_CANDIDATE_EVALUATION_FAILURE` is reserved for contract-validation throws and cannot be stored as a pipeline failure code.
 9. Final `CandidateEvaluationResult` fingerprint certification remains Phase 1C-C.
+
+---
+
+## Phase 1C-B2-B — Orchestration determinism
+
+1. `evaluateCandidateSolution` is synchronous only — no Promise, async, concurrency, retry, or timers.
+2. Input fingerprint is computed after dependency certification and **before** constraint-port invocation.
+3. Constraint port is invoked at most once per call; never for invalid input or failed dependency certification; never after fingerprint failure.
+4. Objectives are invoked only when composed hard violations are empty; execution-spec order is preserved; empty specs yield `VALID_FEASIBLE` with empty objective records.
+5. Owned port input uses `facts: {}` and preserves `OptimizationContext.snapshotRefs` fingerprint order (no second sort).
+6. Caller `rawInput` / `rawDependencies` are never mutated or frozen in place.
+7. No `Date.now`, `new Date`, `Math.random`, `localeCompare`, environment variables, object-identity fingerprinting, or function-source fingerprinting.
+8. Repeated equivalent evaluations produce deeply equivalent results and identical `inputFingerprint` values.

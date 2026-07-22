@@ -862,11 +862,12 @@ test("H01: public API allowlist; B2-A result/score exports; root barrel untouche
     // Phase 1C-B2-A approved capability-local public additions
     "createCandidateEvaluationResult",
     "composeCandidateOptimizationScore",
+    // Phase 1C-B2-B approved capability-local public addition
+    "evaluateCandidateSolution",
   ]) {
     assert.equal(key in OptimizerPublic, true, key);
   }
 
-  assert.equal("evaluateCandidateSolution" in OptimizerPublic, false);
   assert.equal(
     "createCandidateEvaluationInputFingerprint" in OptimizerPublic,
     false
@@ -913,6 +914,7 @@ test("H02: no prohibited imports in Phase 1C-B1 sources", () => {
     "Date.now",
     "localeCompare",
   ];
+  const b2bOrchestrationBasenames = new Set(["evaluateCandidateSolution.js"]);
   for (const file of files) {
     const text = readFileSync(file, "utf8");
     for (const b of banned) {
@@ -922,8 +924,17 @@ test("H02: no prohibited imports in Phase 1C-B1 sources", () => {
         `${path.relative(ROOT, file)} must not reference ${b}`
       );
     }
-    assert.equal(text.includes("evaluateCandidateSolution"), false);
-    assert.equal(text.includes("createCandidateEvaluationResult"), false);
-    assert.equal(text.includes("composeCandidateOptimizationScore"), false);
+    const base = path.basename(file);
+    const isEvaluationIndex =
+      base === "index.js" &&
+      file.replace(/\\/g, "/").endsWith("/optimizer/evaluation/index.js");
+    // B2-B owns evaluateCandidateSolution; B1 sources must not reference it.
+    if (!b2bOrchestrationBasenames.has(base) && !isEvaluationIndex) {
+      assert.equal(text.includes("evaluateCandidateSolution"), false);
+    }
+    if (!b2bOrchestrationBasenames.has(base)) {
+      assert.equal(text.includes("createCandidateEvaluationResult"), false);
+      assert.equal(text.includes("composeCandidateOptimizationScore"), false);
+    }
   }
 });

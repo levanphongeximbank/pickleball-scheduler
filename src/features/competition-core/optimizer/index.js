@@ -7,11 +7,12 @@
  * Phase 1C-B1: candidate-evaluation contracts, constraint port,
  * HardViolation composition, structural candidate-input validation.
  * Phase 1C-B2-A: CandidateEvaluationFailure/Result, score composition,
- * input fingerprint helper (internal) — no evaluateCandidateSolution.
+ * input fingerprint helper (internal).
+ * Phase 1C-B2-B: evaluateCandidateSolution orchestration (no search/solvers).
  *
  * Integrator owns root competition-core/index.js — do not edit that here.
  * No scheduling, court-assignment, or referee-assignment exports.
- * No production solvers in Phase 1B / 1C-A / 1C-B1 / 1C-B2-A.
+ * No production solvers in Phase 1B / 1C-A / 1C-B1 / 1C-B2-A / 1C-B2-B.
  */
 
 export {
@@ -149,4 +150,5 @@ export { createConstraintEvaluationPort } from "./ports/index.js";
 export {
   validateCandidateEvaluationInput,
   composeHardViolations,
+  evaluateCandidateSolution,
 } from "./evaluation/index.js";

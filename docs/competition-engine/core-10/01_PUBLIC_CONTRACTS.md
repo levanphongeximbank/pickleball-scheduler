@@ -362,4 +362,32 @@ Calls `createOptimizationScore` directly (never `buildOptimizationScore`). Feasi
 
 `createCandidateEvaluationFailure`, `createCandidateEvaluationResult`, `composeCandidateOptimizationScore`, and Phase 1C-B2-A version constants.
 
-Not exported in Phase 1C-B2-A: `evaluateCandidateSolution`, failure-stage helper from `optimizer/index.js`, input fingerprint from `optimizer/index.js`, solvers.
+Not exported in Phase 1C-B2-A: failure-stage helper from `optimizer/index.js`, input fingerprint from `optimizer/index.js`, solvers.
+
+---
+
+## Phase 1C-B2-B — Candidate evaluation orchestration
+
+Capability-local only (`optimizer/`). Implements `evaluateCandidateSolution(rawInput, rawDependencies)`. Does not certify final result fingerprints (Phase 1C-C). Does not own CORE-01 `evaluateCandidate`.
+
+### Pipeline (exact order)
+
+1. `validateCandidateEvaluationInput`
+2. `createCandidateEvaluationDependencies`
+3. Copy certified `{ portId, portVersion }`
+4. `createCandidateEvaluationInputFingerprint` (before port)
+5. Build owned `ConstraintPortInput` (`facts: {}`; snapshot fingerprints preserve `context.snapshotRefs` order)
+6. Invoke constraint port exactly once
+7. `composeHardViolations` exactly once
+8. Hard-feasibility gate (`composed.length > 0` ⇒ infeasible; skip objectives)
+9. Feasible-only `evaluateObjectives` with owned `{ candidate, requestId, tenantId, competitionId, authorityValues, contexts: {} }`
+10. `composeCandidateOptimizationScore`
+11. `createCandidateEvaluationResult`
+
+Port / objective / composition failures map to `EVALUATION_FAILED` (never `VALID_INFEASIBLE`). Result-envelope construction failures throw `OptimizerContractError` (no recursive wrap).
+
+### Public Phase 1C-B2-B API (capability-local)
+
+`evaluateCandidateSolution` in addition to Phase 1C-B2-A exports.
+
+Not exported: fingerprint helper, failure-stage enum, port-input builders, failure mappers, result helpers, solvers.
