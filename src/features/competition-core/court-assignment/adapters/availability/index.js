@@ -1,5 +1,6 @@
 /**
- * CORE-12 Phase 1D-B1 — availability adapters (pure projection + provider invoke).
+ * CORE-12 Phase 1D — availability adapters (pure projection + provider invoke +
+ * Phase 1D-B2 Option A injected Venue bridge).
  *
  * Production-safe exports only. Test doubles live in `./testDoubles.js`
  * and must not be re-exported here.
@@ -15,3 +16,8 @@ export {
 
 export { invokeAvailabilitySnapshotProvider } from "./invokeAvailabilitySnapshotProvider.js";
 export { projectEligibleCourtsToAvailableInputs } from "./projectEligibleCourtsToAvailableInputs.js";
+export { normalizeVenueDescriptorEnvelope } from "./normalizeVenueDescriptorEnvelope.js";
+export {
+  createInjectedVenueCourtAvailabilityProvider,
+  isInjectedVenueCourtAvailabilityProvider,
+} from "./createInjectedVenueCourtAvailabilityProvider.js";

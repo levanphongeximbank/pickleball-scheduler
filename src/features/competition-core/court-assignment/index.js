@@ -29,6 +29,9 @@ export {
   CORE12_AVAILABILITY_QUERY_V1,
   CORE12_CANONICAL_COURT_DESCRIPTOR_V1,
   CORE12_AVAILABILITY_PROJECTION_V1,
+  CORE12_VENUE_AVAILABILITY_BRIDGE_V1,
+  CORE12_EXPECTED_VENUE_DESCRIPTOR_AUTHORITY,
+  CORE12_EXPECTED_VENUE_SOURCE_CONTRACT_VERSION,
   CORE12_IDENTITY,
 } from "./constants/index.js";
 
@@ -141,13 +144,23 @@ export {
   /** Phase 1D-B1 injected eligibility provider method constants. */
   AVAILABILITY_SNAPSHOT_PROVIDER_METHODS,
   isAvailabilitySnapshotProvider,
+  /** Phase 1D-B2 Option A — Venue eligibility / descriptor ports. */
+  VENUE_ELIGIBILITY_PROVIDER_METHODS,
+  isVenueEligibilityProvider,
+  CANONICAL_COURT_DESCRIPTOR_PROVIDER_METHODS,
+  isCanonicalCourtDescriptorProvider,
   COURT_ASSIGNMENT_RULE_PORT_METHODS,
 } from "./ports/index.js";
 
 export {
   /** Pure eligibility ∩ descriptor projection (no I/O). */
   projectEligibleCourtsToAvailableInputs,
-} from "./adapters/availability/projectEligibleCourtsToAvailableInputs.js";
+  /** Pure Venue Phase 3B envelope → CanonicalCourtDescriptor[]. */
+  normalizeVenueDescriptorEnvelope,
+  /** Injected Venue CAA + descriptor availability bridge (no Venue imports). */
+  createInjectedVenueCourtAvailabilityProvider,
+  isInjectedVenueCourtAvailabilityProvider,
+} from "./adapters/availability/index.js";
 
 export {
   /** Async-compatible invoke helper for injected providers (no Venue CAA). */
