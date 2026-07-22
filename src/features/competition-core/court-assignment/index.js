@@ -24,6 +24,11 @@ export {
   CORE12_PARITY_CLASSIFICATION_PRECEDENCE_V1,
   CORE12_LEGACY_SOURCE_ANCHOR_V1,
   CORE12_DIVERGENCE_CATALOG_V1,
+  CORE12_AVAILABILITY_PROVIDER_CONTRACT_V1,
+  CORE12_ELIGIBILITY_SNAPSHOT_V1,
+  CORE12_AVAILABILITY_QUERY_V1,
+  CORE12_CANONICAL_COURT_DESCRIPTOR_V1,
+  CORE12_AVAILABILITY_PROJECTION_V1,
   CORE12_IDENTITY,
 } from "./constants/index.js";
 
@@ -89,6 +94,18 @@ export {
   createCourtAssignmentDiagnostics,
   createCourtAssignmentResult,
   createCourtAssignmentRequest,
+  createExactAvailabilityQueryWindow,
+  createAvailabilityEligibilityQuery,
+  createEligibilitySnapshot,
+  createCanonicalCourtDescriptor,
+  AVAILABILITY_BRIDGE_CODE,
+  AVAILABILITY_BRIDGE_CODE_VALUES,
+  isAvailabilityBridgeCode,
+  computeAvailabilityQueryFingerprint,
+  computeDerivedEligibilityFingerprint,
+  computeDerivedAvailabilityFingerprint,
+  CORE12_AVAILABILITY_PROVIDER_CONTRACT_VERSION,
+  CORE12_AVAILABILITY_PROJECTION_CONTRACT_VERSION,
 } from "./contracts/index.js";
 
 export {
@@ -121,5 +138,18 @@ export {
   createCourtAssignmentPort,
   /** Method-name constants for consumer-side availability port. */
   COURT_AVAILABILITY_PORT_METHODS,
+  /** Phase 1D-B1 injected eligibility provider method constants. */
+  AVAILABILITY_SNAPSHOT_PROVIDER_METHODS,
+  isAvailabilitySnapshotProvider,
   COURT_ASSIGNMENT_RULE_PORT_METHODS,
 } from "./ports/index.js";
+
+export {
+  /** Pure eligibility ∩ descriptor projection (no I/O). */
+  projectEligibleCourtsToAvailableInputs,
+} from "./adapters/availability/projectEligibleCourtsToAvailableInputs.js";
+
+export {
+  /** Async-compatible invoke helper for injected providers (no Venue CAA). */
+  invokeAvailabilitySnapshotProvider,
+} from "./adapters/availability/invokeAvailabilitySnapshotProvider.js";
