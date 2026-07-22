@@ -189,3 +189,67 @@ Excluded from replay-determining material:
 6. Replay-certified inputs reject non-canonical values.
 7. Caller-owned inputs are never mutated; factories clone then freeze owned representations.
 8. Unknown enum / strategy / operation values fail closed.
+
+---
+
+## Phase 1C-A — Objective contracts
+
+Capability-local only (`optimizer/`). Sibling to Phase 1B `ObjectiveEvaluation` — that contract is unchanged.
+
+### ObjectiveDefinition
+
+| Field | Required | Notes |
+|-------|----------|-------|
+| `objectiveId` | yes | Stable ID |
+| `objectiveVersion` | yes | Version string |
+| `direction` | yes | `MINIMIZE` or `MAXIMIZE` |
+| `evaluatorRef` | yes | Stable evaluator descriptor ref (not a function) |
+| `requiredContextRefs` | no | Stable IDs; duplicates rejected; stored sorted |
+| `normalizationPolicy` | no | Phase 1C-A: `NONE` only (default) |
+| `metadataCodes` | no | Stable codes; duplicates rejected; stored sorted |
+
+Forbidden on definition: `order`, `weight`, `enabled`, `failurePolicy`, evaluator function, `displayTotal`, candidate/Schedule/Court/Referee fields.
+
+### ObjectiveExecutionSpec
+
+| Field | Required | Notes |
+|-------|----------|-------|
+| `objectiveId` | yes | Must resolve in registry |
+| `objectiveVersion` | yes | Must resolve in registry |
+| `weight` | yes | Positive safe integer |
+| `quantizeScale` | yes | Positive safe integer |
+
+Execution order is the **array order** of specs passed to `evaluateObjectives`. There is no numeric `order` field. `OptimizationPolicy` is not modified in Phase 1C-A.
+
+### ObjectiveEvaluationRecord
+
+Replay-safe record produced by `evaluateObjective` / `evaluateObjectives`:
+
+| Field | Notes |
+|-------|-------|
+| `objectiveId` / `objectiveVersion` / `evaluatorRef` / `direction` | From definition |
+| `executionIndex` | Non-negative safe integer (position in executionSpecs) |
+| `rawValue` / `normalizedValue` | Finite numbers (`-0` → `+0`) |
+| `quantizedValue` / `weightedValue` / `orientedValue` | Safe integers |
+| `noteCodes` | Stable strings; duplicates rejected; stored sorted |
+
+No free-text display message on the replay-safe record.
+
+### Required context (`evaluationInput.contexts`)
+
+When `requiredContextRefs` is non-empty:
+
+- `evaluationInput.contexts` must be a plain object;
+- each required ref must be an **own property**;
+- own property with value `undefined` ⇒ missing;
+- prototype-chain properties do **not** satisfy required context.
+
+### Public Phase 1C-A API (capability-local)
+
+`createObjectiveDefinition`, `OBJECTIVE_NORMALIZATION_POLICY`, `createObjectiveExecutionSpec`, `createObjectiveEvaluationRecord`, `createObjectiveRegistry`, `evaluateObjective`, `evaluateObjectives`, `OBJECTIVE_EVALUATION_FAILURE_CODE`, objective version constants.
+
+Schema / registry / evaluation version constants:
+
+- `CORE10_OBJECTIVE_DEFINITION_SCHEMA_VERSION`
+- `CORE10_OBJECTIVE_REGISTRY_VERSION`
+- `CORE10_OBJECTIVE_EVALUATION_VERSION`

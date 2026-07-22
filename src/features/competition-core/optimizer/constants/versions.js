@@ -25,6 +25,17 @@ export const CORE10_PRNG_VERSION = "CORE10_PRNG_MULBERRY32_V1";
 /** Determinism policy id. */
 export const CORE10_DETERMINISM_POLICY_ID = "CORE10_DETERMINISM_V1";
 
+/** Phase 1C-A — ObjectiveDefinition schema version. */
+export const CORE10_OBJECTIVE_DEFINITION_SCHEMA_VERSION =
+  "CORE10_OBJECTIVE_DEFINITION_SCHEMA_V1";
+
+/** Phase 1C-A — objective registry contract version. */
+export const CORE10_OBJECTIVE_REGISTRY_VERSION = "CORE10_OBJECTIVE_REGISTRY_V1";
+
+/** Phase 1C-A — objective evaluation pipeline version. */
+export const CORE10_OBJECTIVE_EVALUATION_VERSION =
+  "CORE10_OBJECTIVE_EVALUATION_V1";
+
 export const CORE10_IDENTITY = Object.freeze({
   id: CORE10_ENGINE_ID,
   version: CORE10_ENGINE_VERSION,
@@ -34,4 +45,7 @@ export const CORE10_IDENTITY = Object.freeze({
   canonicalSerializationVersion: CORE10_CANONICAL_SERIALIZATION_VERSION,
   prngVersion: CORE10_PRNG_VERSION,
   determinismPolicyId: CORE10_DETERMINISM_POLICY_ID,
+  objectiveDefinitionSchemaVersion: CORE10_OBJECTIVE_DEFINITION_SCHEMA_VERSION,
+  objectiveRegistryVersion: CORE10_OBJECTIVE_REGISTRY_VERSION,
+  objectiveEvaluationVersion: CORE10_OBJECTIVE_EVALUATION_VERSION,
 });
