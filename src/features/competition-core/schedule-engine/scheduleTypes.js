@@ -298,7 +298,7 @@ export function serializeCanonical(value) {
 /**
  * @typedef {Object} ScheduleDependency
  * @property {string} sourceMatchId
- * @property {string} [type]
+ * @property {string} [type] - Phase 1D graph construction requires a supported type
  * @property {Readonly<Record<string, unknown>>} [metadata]
  */
 

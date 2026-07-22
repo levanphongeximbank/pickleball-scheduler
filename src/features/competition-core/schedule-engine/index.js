@@ -7,8 +7,9 @@
  *
  * Phase 1B: domain contracts, diagnostics, request/plan validators.
  * Phase 1C: operating/session window normalization + civilTime.js absolute adapter.
+ * Phase 1D: dependency graph, cycle detection, topo order, readiness, earliest bound.
  * Does not re-export CC-09 (src/features/competition-core/scheduling/).
- * Does not implement graph, slot generation, baseline scheduler, optimizer,
+ * Does not implement slot generation, baseline scheduler, optimizer,
  * physical court / referee assignment, persistence, or UI wiring.
  */
 
@@ -18,6 +19,12 @@ export {
   CORE11_SCHEDULE_ENGINE,
   CORE11_ENGINE_VERSION,
   OVERNIGHT_POLICY,
+  SCHEDULE_DEPENDENCY_TYPE,
+  SCHEDULE_DEPENDENCY_TYPE_VALUES,
+  isScheduleDependencyType,
+  SCHEDULE_PREDECESSOR_STATE,
+  SCHEDULE_PREDECESSOR_STATE_VALUES,
+  isSchedulePredecessorState,
   SCHEDULE_DIAGNOSTIC_SEVERITY,
   SCHEDULE_DIAGNOSTIC_SEVERITY_VALUES,
   isScheduleDiagnosticSeverity,
@@ -89,6 +96,18 @@ export {
   convertCivilScheduleTimeToAbsolute,
   convertSchedulingWindowToAbsoluteRange,
 } from "./scheduleCivilTime.js";
+
+export {
+  buildScheduleDependencyGraph,
+  topologicallyOrderScheduleMatches,
+  detectDependencyCycles,
+} from "./scheduleDependencyGraph.js";
+export {
+  evaluateSchedulePlanningReadiness,
+  evaluateParticipantResolutionReadiness,
+  evaluateMatchDependencyReadiness,
+  deriveDependencyEarliestStartAbsolute,
+} from "./scheduleDependencyReadiness.js";
 
 export { validateScheduleRequest } from "./validateScheduleRequest.js";
 export {

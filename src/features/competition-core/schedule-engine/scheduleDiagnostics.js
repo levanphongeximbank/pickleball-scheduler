@@ -49,9 +49,17 @@ export const SCHEDULE_DIAGNOSTIC_CODE = Object.freeze({
   CAPACITY_POLICY_INVALID: "CAPACITY_POLICY_INVALID",
   /** Existence of unknown sourceMatchId when full match set is available. */
   UNKNOWN_MATCH_DEPENDENCY: "UNKNOWN_MATCH_DEPENDENCY",
-  /** Deferred to Phase 1D dependency-graph. */
+  /** Match depends on itself. */
+  SELF_MATCH_DEPENDENCY: "SELF_MATCH_DEPENDENCY",
+  /** Duplicate (sourceMatchId, type) edge on the same match. */
+  DUPLICATE_MATCH_DEPENDENCY: "DUPLICATE_MATCH_DEPENDENCY",
+  /** Cycle in the dependency graph. */
   CYCLIC_MATCH_DEPENDENCY: "CYCLIC_MATCH_DEPENDENCY",
-  /** Deferred to later scheduling constraint phases. */
+  /** Required predecessors are not yet ready for scheduling decisions. */
+  DEPENDENCY_NOT_READY: "DEPENDENCY_NOT_READY",
+  /** Required predecessor end timing is unavailable for earliest-start bound. */
+  DEPENDENCY_TIMING_UNAVAILABLE: "DEPENDENCY_TIMING_UNAVAILABLE",
+  /** Topological / ordering invariant failure (deferred placement phases). */
   DEPENDENCY_ORDER_VIOLATION: "DEPENDENCY_ORDER_VIOLATION",
   /** Deferred. */
   PARTICIPANT_OVERLAP: "PARTICIPANT_OVERLAP",

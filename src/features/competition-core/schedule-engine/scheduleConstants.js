@@ -29,6 +29,59 @@ export const OVERNIGHT_POLICY = Object.freeze({
   PHASE_1: "REJECT",
 });
 
+/**
+ * Canonical ScheduleDependency.type values (Phase 1D).
+ * Unsupported / blank types fail closed during graph construction.
+ */
+export const SCHEDULE_DEPENDENCY_TYPE = Object.freeze({
+  WINNER_OF: "WINNER_OF",
+  LOSER_OF: "LOSER_OF",
+  PREVIOUS_ROUND: "PREVIOUS_ROUND",
+  GROUP_STAGE_COMPLETE: "GROUP_STAGE_COMPLETE",
+  QUALIFICATION: "QUALIFICATION",
+});
+
+/** @type {ReadonlySet<string>} */
+export const SCHEDULE_DEPENDENCY_TYPE_VALUES = new Set(
+  Object.values(SCHEDULE_DEPENDENCY_TYPE)
+);
+
+/**
+ * @param {unknown} value
+ * @returns {boolean}
+ */
+export function isScheduleDependencyType(value) {
+  return (
+    typeof value === "string" && SCHEDULE_DEPENDENCY_TYPE_VALUES.has(value)
+  );
+}
+
+/**
+ * Predecessor state for graph-domain readiness (not match-result ownership).
+ */
+export const SCHEDULE_PREDECESSOR_STATE = Object.freeze({
+  UNRESOLVED: "UNRESOLVED",
+  SCHEDULED: "SCHEDULED",
+  COMPLETED: "COMPLETED",
+  BYE: "BYE",
+  INVALID: "INVALID",
+});
+
+/** @type {ReadonlySet<string>} */
+export const SCHEDULE_PREDECESSOR_STATE_VALUES = new Set(
+  Object.values(SCHEDULE_PREDECESSOR_STATE)
+);
+
+/**
+ * @param {unknown} value
+ * @returns {boolean}
+ */
+export function isSchedulePredecessorState(value) {
+  return (
+    typeof value === "string" && SCHEDULE_PREDECESSOR_STATE_VALUES.has(value)
+  );
+}
+
 export const SCHEDULE_DIAGNOSTIC_SEVERITY = Object.freeze({
   ERROR: "ERROR",
   WARNING: "WARNING",
