@@ -3,6 +3,9 @@
  *
  * Import from here in tests. Do not treat these as the normal runtime surface.
  * The pure assigner never invokes audit ports.
+ *
+ * Phase 1C TE anti-corruption adapter is NOT re-exported here.
+ * Import it from `./te-compat/` or `../compatibility/` (dedicated compatibility surface).
  */
 
 export {
