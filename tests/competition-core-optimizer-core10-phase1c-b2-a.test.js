@@ -4,7 +4,7 @@
 
 import test from "node:test";
 import assert from "node:assert/strict";
-import { readFileSync, readdirSync, statSync, existsSync } from "node:fs";
+import { readFileSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -47,18 +47,6 @@ import { createCandidateEvaluationInputFingerprint } from "../src/features/compe
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const OPT_ROOT = path.join(ROOT, "src/features/competition-core/optimizer");
 const ROOT_BARREL = path.join(ROOT, "src/features/competition-core/index.js");
-
-function listJsFiles(dir) {
-  const out = [];
-  if (!existsSync(dir)) return out;
-  for (const name of readdirSync(dir)) {
-    const full = path.join(dir, name);
-    const st = statSync(full);
-    if (st.isDirectory()) out.push(...listJsFiles(full));
-    else if (name.endsWith(".js")) out.push(full);
-  }
-  return out;
-}
 
 function baseRequest(overrides = {}) {
   return {
