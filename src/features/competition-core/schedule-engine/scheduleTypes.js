@@ -290,8 +290,10 @@ export function serializeCanonical(value) {
 /**
  * @typedef {Object} ScheduleParticipantReference
  * @property {string} participantId
+ * @property {string} [kind] - PLAYER | TEAM | ENTRY | PLACEHOLDER
  * @property {string} [teamId]
  * @property {string} [side]
+ * @property {string[]} [constraintResourceIds] - shared player/resource keys
  * @property {Readonly<Record<string, unknown>>} [metadata]
  */
 

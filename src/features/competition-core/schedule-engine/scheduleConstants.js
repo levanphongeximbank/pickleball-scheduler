@@ -1,6 +1,6 @@
 /**
  * CORE-11 Schedule Engine — identity, schema, severity, forbidden fields.
- * Phase 1B–1E: contracts, windows, dependency graph, baseline candidate.
+ * Phase 1B–1F: contracts through hard-constraint certification.
  */
 
 /** Schema version for CORE-11 schedule-engine domain objects. */
@@ -22,11 +22,15 @@ export const CORE11_SCHEDULE_ENGINE = SCHEDULE_ENGINE_IDENTITY.id;
 export const CORE11_ENGINE_VERSION = SCHEDULE_ENGINE_IDENTITY.version;
 
 /**
- * Phase 1E baseline candidate constraint-certification level.
- * Not a publish/finalize status — Phase 1F must certify remaining constraints.
+ * Candidate / certification markers.
+ * Phase 1E candidates remain BASELINE_ONLY until Phase 1F certifies.
+ * HARD_CONSTRAINTS_* belong to the separate certification result — never
+ * rewrite a baseline candidate into a Production schedule.
  */
 export const CONSTRAINT_CERTIFICATION = Object.freeze({
   BASELINE_ONLY: "BASELINE_ONLY",
+  HARD_CONSTRAINTS_CERTIFIED: "HARD_CONSTRAINTS_CERTIFIED",
+  HARD_CONSTRAINTS_REJECTED: "HARD_CONSTRAINTS_REJECTED",
 });
 
 /** @type {ReadonlySet<string>} */
@@ -41,6 +45,38 @@ export const CONSTRAINT_CERTIFICATION_VALUES = new Set(
 export function isConstraintCertification(value) {
   return (
     typeof value === "string" && CONSTRAINT_CERTIFICATION_VALUES.has(value)
+  );
+}
+
+/** Phase 1E / 1F candidate envelope status (not a publish decision). */
+export const BASELINE_CANDIDATE_STATUS = "BASELINE_SCHEDULE_CANDIDATE";
+
+/** Phase 1F certification result envelope status. */
+export const CONSTRAINT_CERTIFICATION_RESULT_STATUS =
+  "CONSTRAINT_CERTIFICATION_RESULT";
+
+/**
+ * Participant reference kinds for constraint identity (Phase 1F).
+ */
+export const PARTICIPANT_REFERENCE_KIND = Object.freeze({
+  PLAYER: "PLAYER",
+  TEAM: "TEAM",
+  ENTRY: "ENTRY",
+  PLACEHOLDER: "PLACEHOLDER",
+});
+
+/** @type {ReadonlySet<string>} */
+export const PARTICIPANT_REFERENCE_KIND_VALUES = new Set(
+  Object.values(PARTICIPANT_REFERENCE_KIND)
+);
+
+/**
+ * @param {unknown} value
+ * @returns {boolean}
+ */
+export function isParticipantReferenceKind(value) {
+  return (
+    typeof value === "string" && PARTICIPANT_REFERENCE_KIND_VALUES.has(value)
   );
 }
 

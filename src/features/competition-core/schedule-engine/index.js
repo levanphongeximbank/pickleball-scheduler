@@ -9,6 +9,7 @@
  * Phase 1C: operating/session window normalization + civilTime.js absolute adapter.
  * Phase 1D: dependency graph, cycle detection, topo order, readiness, earliest bound.
  * Phase 1E: abstract slot generation + deterministic baseline schedule candidate.
+ * Phase 1F: independent hard-constraint certification of baseline candidates.
  * Does not re-export CC-09 (src/features/competition-core/scheduling/).
  * Does not implement physical court / referee assignment, persistence, or UI wiring.
  */
@@ -21,6 +22,11 @@ export {
   CONSTRAINT_CERTIFICATION,
   CONSTRAINT_CERTIFICATION_VALUES,
   isConstraintCertification,
+  BASELINE_CANDIDATE_STATUS,
+  CONSTRAINT_CERTIFICATION_RESULT_STATUS,
+  PARTICIPANT_REFERENCE_KIND,
+  PARTICIPANT_REFERENCE_KIND_VALUES,
+  isParticipantReferenceKind,
   OVERNIGHT_POLICY,
   SCHEDULE_DEPENDENCY_TYPE,
   SCHEDULE_DEPENDENCY_TYPE_VALUES,
@@ -84,6 +90,10 @@ export {
   normalizeUnscheduledOrder,
   projectSchedulePlanForFingerprint,
   fingerprintSchedulePlan,
+  projectScheduleRequestForFingerprint,
+  fingerprintScheduleRequest,
+  projectBaselineCandidateForFingerprint,
+  fingerprintBaselineScheduleCandidate,
   schedulePlansSemanticallyEqual,
   collectForbiddenAssignmentFieldPaths,
   matchesScheduleOptimizerPort,
@@ -121,6 +131,21 @@ export {
   placeMatchIntoCandidateSlot,
   buildBaselineScheduleCandidate,
 } from "./baselineScheduleCandidate.js";
+
+export {
+  intervalsOverlap,
+  restGapUtcMs,
+  isUnresolvedParticipantIdentity,
+  parseLineageParticipantToken,
+  collectPlaceholderLineageSources,
+  extractConstraintResources,
+  deriveConservativeConstraintResources,
+  collectScheduledConstraintIndex,
+  certifyResourceTimeline,
+  LINEAGE_DEPENDENCY_TYPES,
+  EXTERNAL_BARRIER_DEPENDENCY_TYPES,
+} from "./scheduleParticipantConstraints.js";
+export { certifyBaselineScheduleCandidateConstraints } from "./scheduleConstraintCertification.js";
 
 export { validateScheduleRequest } from "./validateScheduleRequest.js";
 export {

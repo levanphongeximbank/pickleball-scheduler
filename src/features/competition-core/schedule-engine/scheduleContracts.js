@@ -112,11 +112,26 @@ export function createScheduleParticipantReference(partial = {}) {
   const out = {
     participantId: normalizeIdentifier(partial.participantId),
   };
+  if (partial.kind != null && String(partial.kind).trim()) {
+    out.kind = normalizeIdentifier(partial.kind);
+  }
   if (partial.teamId != null && String(partial.teamId).trim()) {
     out.teamId = normalizeIdentifier(partial.teamId);
   }
   if (partial.side != null && String(partial.side).trim()) {
     out.side = normalizeIdentifier(partial.side);
+  }
+  if (Array.isArray(partial.constraintResourceIds)) {
+    const ids = [
+      ...new Set(
+        partial.constraintResourceIds
+          .map((id) => normalizeIdentifier(id))
+          .filter((id) => id.length > 0)
+      ),
+    ].sort(asciiCompare);
+    if (ids.length > 0) {
+      out.constraintResourceIds = ids;
+    }
   }
   if (partial.metadata && typeof partial.metadata === "object") {
     out.metadata = Object.freeze(copyPlainObject(partial.metadata));
@@ -542,6 +557,248 @@ export function projectSchedulePlanForFingerprint(plan) {
  */
 export function fingerprintSchedulePlan(plan) {
   return serializeCanonical(projectSchedulePlanForFingerprint(plan));
+}
+
+/**
+ * Canonical semantic projection of a ScheduleRequest for Phase 1F fingerprints.
+ * Input-order independent. Excludes producedAt and display-only metadata.
+ *
+ * @param {unknown} request
+ * @returns {object|null}
+ */
+export function projectScheduleRequestForFingerprint(request) {
+  if (request == null || typeof request !== "object" || Array.isArray(request)) {
+    return null;
+  }
+  const r = /** @type {Record<string, unknown>} */ (request);
+  const policy =
+    r.policy && typeof r.policy === "object" && !Array.isArray(r.policy)
+      ? /** @type {Record<string, unknown>} */ (r.policy)
+      : {};
+  const duration =
+    policy.duration && typeof policy.duration === "object"
+      ? /** @type {Record<string, unknown>} */ (policy.duration)
+      : {};
+  const rest =
+    policy.rest && typeof policy.rest === "object"
+      ? /** @type {Record<string, unknown>} */ (policy.rest)
+      : {};
+  const capacity =
+    policy.capacity && typeof policy.capacity === "object"
+      ? /** @type {Record<string, unknown>} */ (policy.capacity)
+      : {};
+
+  const matches = Array.isArray(r.matches) ? /** @type {any[]} */ (r.matches) : [];
+  const projectedMatches = stableSortByKeys(
+    matches
+      .filter((m) => m && typeof m === "object")
+      .map((m) => {
+        const participants = Array.isArray(m.participants)
+          ? stableSortByKeys(
+              m.participants
+                .filter((p) => p && typeof p === "object")
+                .map((p) => ({
+                  participantId: normalizeIdentifier(p.participantId),
+                  kind: normalizeIdentifier(p.kind) || undefined,
+                  teamId: normalizeIdentifier(p.teamId) || undefined,
+                  side: normalizeIdentifier(p.side) || undefined,
+                  constraintResourceIds: Array.isArray(p.constraintResourceIds)
+                    ? [
+                        ...new Set(
+                          p.constraintResourceIds
+                            .map((id) => normalizeIdentifier(id))
+                            .filter((id) => id.length > 0)
+                        ),
+                      ].sort(asciiCompare)
+                    : undefined,
+                })),
+              (p) => [p.kind || "", p.participantId, p.teamId || ""]
+            )
+          : [];
+        const dependencies = Array.isArray(m.dependencies)
+          ? stableSortByKeys(
+              m.dependencies
+                .filter((d) => d && typeof d === "object")
+                .map((d) => ({
+                  sourceMatchId: normalizeIdentifier(d.sourceMatchId),
+                  type: normalizeIdentifier(d.type) || undefined,
+                })),
+              (d) => [d.type || "", d.sourceMatchId]
+            )
+          : [];
+        return {
+          matchId: normalizeIdentifier(m.matchId),
+          isBye: m.isBye === true,
+          roundId: normalizeIdentifier(m.roundId) || undefined,
+          stageId: normalizeIdentifier(m.stageId) || undefined,
+          estimatedDurationMinutes:
+            typeof m.estimatedDurationMinutes === "number"
+              ? m.estimatedDurationMinutes
+              : undefined,
+          participants,
+          dependencies,
+        };
+      }),
+    (m) => [m.matchId]
+  );
+
+  const operatingWindows = stableSortByKeys(
+    (Array.isArray(r.operatingWindows) ? r.operatingWindows : [])
+      .filter((w) => w && typeof w === "object")
+      .map((w) => ({
+        date: normalizeIdentifier(w.date),
+        startMinutes: w.startMinutes,
+        endMinutes: w.endMinutes,
+        windowId: normalizeIdentifier(w.windowId) || undefined,
+      })),
+    (w) => [w.date || "", w.startMinutes ?? -1, w.endMinutes ?? -1, w.windowId || ""]
+  );
+
+  const sessionWindows = stableSortByKeys(
+    (Array.isArray(r.sessionWindows) ? r.sessionWindows : [])
+      .filter((w) => w && typeof w === "object")
+      .map((w) => ({
+        sessionId: normalizeIdentifier(w.sessionId),
+        date: normalizeIdentifier(w.date),
+        startMinutes: w.startMinutes,
+        endMinutes: w.endMinutes,
+      })),
+    (w) => [w.sessionId || "", w.date || "", w.startMinutes ?? -1]
+  );
+
+  return {
+    schemaVersion: SCHEDULE_SCHEMA_VERSION,
+    competitionId: normalizeIdentifier(r.competitionId),
+    seasonId: normalizeIdentifier(r.seasonId) || undefined,
+    leagueId: normalizeIdentifier(r.leagueId) || undefined,
+    timezone: normalizeIdentifier(r.timezone),
+    matches: projectedMatches,
+    policy: {
+      duration: {
+        defaultDurationMinutes: duration.defaultDurationMinutes ?? null,
+        bufferMinutes: duration.bufferMinutes ?? null,
+        durationByRound:
+          duration.durationByRound && typeof duration.durationByRound === "object"
+            ? { .../** @type {object} */ (duration.durationByRound) }
+            : undefined,
+        durationByStage:
+          duration.durationByStage && typeof duration.durationByStage === "object"
+            ? { .../** @type {object} */ (duration.durationByStage) }
+            : undefined,
+      },
+      rest: {
+        minParticipantRestMinutes: rest.minParticipantRestMinutes ?? null,
+        minTeamRestMinutes: rest.minTeamRestMinutes ?? null,
+      },
+      capacity: {
+        maxConcurrentMatches: capacity.maxConcurrentMatches ?? null,
+      },
+    },
+    operatingWindows,
+    sessionWindows,
+  };
+}
+
+/**
+ * @param {unknown} request
+ * @returns {string}
+ */
+export function fingerprintScheduleRequest(request) {
+  return serializeCanonical(projectScheduleRequestForFingerprint(request));
+}
+
+/**
+ * Canonical semantic projection of a Phase 1E/1F baseline candidate envelope.
+ * Excludes producedAt, diagnostics, and display-only labels.
+ *
+ * @param {unknown} candidate
+ * @returns {object|null}
+ */
+export function projectBaselineCandidateForFingerprint(candidate) {
+  if (
+    candidate == null ||
+    typeof candidate !== "object" ||
+    Array.isArray(candidate)
+  ) {
+    return null;
+  }
+  const cand = /** @type {Record<string, unknown>} */ (candidate);
+  const planRaw =
+    cand.plan && typeof cand.plan === "object" && !Array.isArray(cand.plan)
+      ? /** @type {Record<string, unknown>} */ (cand.plan)
+      : cand;
+
+  const scheduled = normalizeScheduledOrder(
+    Array.isArray(planRaw.scheduled) ? /** @type {any[]} */ (planRaw.scheduled) : []
+  ).map((m) => ({
+    matchId: normalizeIdentifier(m.matchId),
+    start: m.start
+      ? {
+          date: normalizeIdentifier(m.start.date),
+          minutesFromMidnight: m.start.minutesFromMidnight,
+        }
+      : null,
+    end: m.end
+      ? {
+          date: normalizeIdentifier(m.end.date),
+          minutesFromMidnight: m.end.minutesFromMidnight,
+        }
+      : null,
+    startUtcMs: m.startUtcMs ?? null,
+    endUtcMs: m.endUtcMs ?? null,
+    durationMinutes: m.durationMinutes ?? null,
+    bufferMinutes: m.bufferMinutes ?? null,
+    capacityReleaseUtcMs: m.capacityReleaseUtcMs ?? null,
+    concurrencyIndex: m.concurrencyIndex ?? null,
+    abstractSlotIndex: m.abstractSlotIndex ?? null,
+    sequence: m.sequence ?? null,
+    sessionId: normalizeIdentifier(m.sessionId) || undefined,
+  }));
+
+  const unscheduled = normalizeUnscheduledOrder(
+    Array.isArray(planRaw.unscheduled)
+      ? /** @type {any[]} */ (planRaw.unscheduled)
+      : []
+  ).map((u) => ({
+    matchId: normalizeIdentifier(u.matchId),
+    reasonCode: normalizeIdentifier(u.reasonCode) || undefined,
+  }));
+
+  const status = normalizeIdentifier(
+    cand.status ??
+      (planRaw.metadata &&
+      typeof planRaw.metadata === "object" &&
+      !Array.isArray(planRaw.metadata)
+        ? /** @type {any} */ (planRaw.metadata).status
+        : undefined) ??
+      "BASELINE_SCHEDULE_CANDIDATE"
+  );
+  const constraintCertification = normalizeIdentifier(
+    cand.constraintCertification ??
+      (planRaw.metadata &&
+      typeof planRaw.metadata === "object" &&
+      !Array.isArray(planRaw.metadata)
+        ? /** @type {any} */ (planRaw.metadata).constraintCertification
+        : undefined) ??
+      "BASELINE_ONLY"
+  );
+
+  return {
+    status,
+    constraintCertification,
+    competitionId: normalizeIdentifier(planRaw.competitionId),
+    timezone: normalizeIdentifier(planRaw.timezone),
+    scheduled,
+    unscheduled,
+  };
+}
+
+/**
+ * @param {unknown} candidate
+ * @returns {string}
+ */
+export function fingerprintBaselineScheduleCandidate(candidate) {
+  return serializeCanonical(projectBaselineCandidateForFingerprint(candidate));
 }
 
 /**

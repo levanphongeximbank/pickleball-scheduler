@@ -90,6 +90,20 @@ export const SCHEDULE_DIAGNOSTIC_CODE = Object.freeze({
   ABSTRACT_CAPACITY_EXHAUSTED: "ABSTRACT_CAPACITY_EXHAUSTED",
   /** Phase 1E — baseline candidate has unscheduled schedulable matches. */
   BASELINE_CANDIDATE_INCOMPLETE: "BASELINE_CANDIDATE_INCOMPLETE",
+  /** Phase 1F — concrete conflict identity cannot be proven for a scheduled match. */
+  PARTICIPANT_IDENTITY_UNRESOLVED: "PARTICIPANT_IDENTITY_UNRESOLVED",
+  /** Phase 1F — candidate references a matchId not present in the request. */
+  UNKNOWN_CANDIDATE_MATCH: "UNKNOWN_CANDIDATE_MATCH",
+  /** Phase 1F — civil/UTC/duration time record inconsistency. */
+  MATCH_TIME_INCONSISTENT: "MATCH_TIME_INCONSISTENT",
+  /** Phase 1F — capacityReleaseUtcMs inconsistent with end + buffer. */
+  CAPACITY_RELEASE_INCONSISTENT: "CAPACITY_RELEASE_INCONSISTENT",
+  /** Phase 1F — scheduled sessionId not present in normalized sessions. */
+  UNKNOWN_SESSION_ID: "UNKNOWN_SESSION_ID",
+  /** Phase 1F — concurrencyIndex missing, out of range, or conflicting. */
+  CONCURRENCY_INDEX_INVALID: "CONCURRENCY_INDEX_INVALID",
+  /** Phase 1F — aggregate hard-constraint certification failure. */
+  HARD_CONSTRAINT_CERTIFICATION_FAILED: "HARD_CONSTRAINT_CERTIFICATION_FAILED",
 });
 
 /** @type {ReadonlySet<string>} */
