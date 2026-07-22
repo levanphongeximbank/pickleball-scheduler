@@ -2,9 +2,12 @@
  * CORE-11 Phase 1E — deterministic baseline schedule candidate (pure).
  *
  * Produces BASELINE_SCHEDULE_CANDIDATE with constraintCertification BASELINE_ONLY.
- * Does not certify participant/team overlap or minimum rest (Phase 1F).
- * Does not assign physical courts or referees.
- * First-feasible placement — not CORE-10 optimization.
+ * Phase 1E-R1: placement honors per-resource earliest =
+ * prior.actualEnd + restMinutes (PARTICIPANT/SHARED_PLAYER → minParticipantRestMinutes;
+ * TEAM → minTeamRestMinutes). Rest=0 still forbids concurrent reuse of the same
+ * resource (earliest = prior end). Distinct from capacity/dependency buffers.
+ * Phase 1F remains the independent certifier. Does not assign physical courts
+ * or referees. First-feasible placement — not CORE-10 optimization.
  */
 
 import {
@@ -36,6 +39,7 @@ import {
 } from "./scheduleDependencyGraph.js";
 import { deriveDependencyEarliestStartAbsolute } from "./scheduleDependencyReadiness.js";
 import { generateAbstractScheduleSlots } from "./scheduleSlotGenerator.js";
+import { deriveConservativeConstraintResources } from "./scheduleParticipantConstraints.js";
 import {
   asciiCompare,
   isNonNegativeInteger,
@@ -574,6 +578,7 @@ export function buildBaselineScheduleCandidate(request) {
 
   const bufferMinutes = resolveBufferMinutes(policy);
   const maxConcurrentMatches = resolveMaxConcurrent(policy);
+  const restPolicy = resolveRestPolicy(policy);
 
   if (bufferMinutes == null) {
     push({
@@ -609,8 +614,17 @@ export function buildBaselineScheduleCandidate(request) {
     !operatingNorm.ok ||
     !sessionNorm.ok ||
     maxConcurrentMatches == null ||
-    bufferMinutes == null
+    bufferMinutes == null ||
+    restPolicy == null
   ) {
+    if (restPolicy == null) {
+      push({
+        code: SCHEDULE_DIAGNOSTIC_CODE.REST_POLICY_INVALID,
+        path: "policy.rest",
+        message:
+          "minParticipantRestMinutes and minTeamRestMinutes must be non-negative integers when provided",
+      });
+    }
     const unscheduled = schedulableUnscheduledAll(
       matches,
       SCHEDULE_DIAGNOSTIC_CODE.INVALID_SCHEDULE_REQUEST,
@@ -718,6 +732,12 @@ export function buildBaselineScheduleCandidate(request) {
   const predecessorSchedule = new Map();
   /** @type {Array<{ concurrencyIndex: number, startUtcMs: number, capacityReleaseUtcMs: number, date: string, capacityReleaseMinutes: number }>} */
   const occupied = [];
+  /**
+   * Latest scheduled match end per constraint resource key (`kind\\0resourceId`).
+   * Rest anchors use actual endUtcMs — never capacityReleaseUtcMs.
+   * @type {Map<string, { endUtcMs: number, end: { date: string, minutesFromMidnight: number } }>}
+   */
+  const latestEndByConstraintResourceId = new Map();
   let sequence = 0;
 
   for (const matchId of topo.order) {
@@ -782,6 +802,20 @@ export function buildBaselineScheduleCandidate(request) {
       continue;
     }
 
+    const matchResources = collectMatchPlacementResources(match, matchId, matchById);
+    diagnostics.push(...matchResources.diagnostics);
+
+    const restEarliest = resolveResourceRestEarliestStart({
+      resources: matchResources.resources,
+      latestEndByConstraintResourceId,
+      minParticipantRestMinutes: /** @type {number} */ (
+        restPolicy.minParticipantRestMinutes
+      ),
+      minTeamRestMinutes: /** @type {number} */ (restPolicy.minTeamRestMinutes),
+    });
+
+    const combinedEarliest = combineEarliestStarts(earliest, restEarliest);
+
     const placement = placeMatchIntoCandidateSlot({
       match: {
         ...match,
@@ -791,8 +825,8 @@ export function buildBaselineScheduleCandidate(request) {
       bufferMinutes,
       maxConcurrentMatches,
       placementWindows,
-      earliestStartUtcMs: earliest.utcMs,
-      earliestStartCivil: earliest.civil,
+      earliestStartUtcMs: combinedEarliest.utcMs,
+      earliestStartCivil: combinedEarliest.civil,
       occupied,
       timezone,
       sequence,
@@ -823,6 +857,15 @@ export function buildBaselineScheduleCandidate(request) {
       utcMs: /** @type {number} */ (placement.scheduled.endUtcMs),
       utcIso: /** @type {string} */ (placement.scheduled.endUtcIso),
       timezone,
+    });
+    updateResourceRestState({
+      latestEndByConstraintResourceId,
+      resources: matchResources.resources,
+      endUtcMs: /** @type {number} */ (placement.scheduled.endUtcMs),
+      end: {
+        date: placement.scheduled.end.date,
+        minutesFromMidnight: placement.scheduled.end.minutesFromMidnight,
+      },
     });
     sequence += 1;
   }
@@ -858,12 +901,12 @@ export function buildBaselineScheduleCandidate(request) {
           "ABSTRACT_CONCURRENCY",
           "WINDOW_CONTAINMENT",
           "SESSION_CONTAINMENT",
-        ],
-        deferredConstraints: [
-          "PARTICIPANT_OVERLAP",
-          "TEAM_OVERLAP",
           "INSUFFICIENT_REST",
           "MIN_TEAM_REST",
+          "PARTICIPANT_OVERLAP",
+          "TEAM_OVERLAP",
+        ],
+        deferredConstraints: [
           "PHYSICAL_COURT_ASSIGNMENT",
           "REFEREE_ASSIGNMENT",
         ],
@@ -952,12 +995,18 @@ function baselineReplay() {
     details: {
       constraintCertification: CONSTRAINT_CERTIFICATION.BASELINE_ONLY,
       status: "BASELINE_SCHEDULE_CANDIDATE",
-      certifiedConstraints: [],
-      deferredConstraints: [
-        "PARTICIPANT_OVERLAP",
-        "TEAM_OVERLAP",
+      certifiedConstraints: [
+        "DEPENDENCY_ORDER",
+        "DEPENDENCY_EARLIEST_START",
+        "ABSTRACT_CONCURRENCY",
+        "WINDOW_CONTAINMENT",
+        "SESSION_CONTAINMENT",
         "INSUFFICIENT_REST",
         "MIN_TEAM_REST",
+        "PARTICIPANT_OVERLAP",
+        "TEAM_OVERLAP",
+      ],
+      deferredConstraints: [
         "PHYSICAL_COURT_ASSIGNMENT",
         "REFEREE_ASSIGNMENT",
       ],
@@ -1419,6 +1468,198 @@ function isConcurrencyFree(
     }
   }
   return true;
+}
+
+/**
+ * @param {unknown} policy
+ * @returns {{ minParticipantRestMinutes: number, minTeamRestMinutes: number }|null}
+ */
+function resolveRestPolicy(policy) {
+  const rest =
+    policy != null && typeof policy === "object"
+      ? /** @type {Record<string, unknown>} */ (policy).rest
+      : null;
+  if (rest == null || typeof rest !== "object" || Array.isArray(rest)) {
+    return { minParticipantRestMinutes: 0, minTeamRestMinutes: 0 };
+  }
+  const r = /** @type {Record<string, unknown>} */ (rest);
+  const minParticipant =
+    r.minParticipantRestMinutes === undefined ||
+    r.minParticipantRestMinutes === null
+      ? 0
+      : r.minParticipantRestMinutes;
+  const minTeam =
+    r.minTeamRestMinutes === undefined || r.minTeamRestMinutes === null
+      ? 0
+      : r.minTeamRestMinutes;
+  if (!isNonNegativeInteger(minParticipant) || !isNonNegativeInteger(minTeam)) {
+    return null;
+  }
+  return {
+    minParticipantRestMinutes: /** @type {number} */ (minParticipant),
+    minTeamRestMinutes: /** @type {number} */ (minTeam),
+  };
+}
+
+/**
+ * Collect deterministic placement resources for one match (Phase 1F-aligned).
+ *
+ * @param {Record<string, unknown>} match
+ * @param {string} matchId
+ * @param {Map<string, Record<string, unknown>>} matchById
+ */
+function collectMatchPlacementResources(match, matchId, matchById) {
+  /** @type {import('./scheduleDiagnostics.js').ScheduleDiagnostic[]} */
+  const diagnostics = [];
+  /** @type {Map<string, { resourceId: string, kind: string }>} */
+  const byKey = new Map();
+
+  const participants = Array.isArray(match.participants)
+    ? /** @type {unknown[]} */ (match.participants)
+    : [];
+
+  for (const participant of participants) {
+    const derived = deriveConservativeConstraintResources(
+      participant,
+      matchId,
+      matchById
+    );
+    diagnostics.push(...derived.diagnostics);
+    for (const res of derived.resources) {
+      const key = `${res.kind}\0${res.resourceId}`;
+      if (!byKey.has(key)) {
+        byKey.set(key, { resourceId: res.resourceId, kind: res.kind });
+      }
+    }
+  }
+
+  const resources = stableSortByKeys([...byKey.values()], (r) => [
+    r.kind,
+    r.resourceId,
+  ]);
+
+  return {
+    resources,
+    diagnostics: sortScheduleDiagnostics(diagnostics),
+  };
+}
+
+/**
+ * Resource-specific earliest-start from prior scheduled ends.
+ *
+ * For each known conflict resource:
+ *   earliest = prior.actualEnd + configuredRestMinutes
+ * When configured rest is 0, earliest = prior.actualEnd (no concurrent reuse;
+ * no artificial positive gap). Rest never uses capacityReleaseUtcMs.
+ *
+ * Policy mapping (aligned with Phase 1F certifyResourceTimeline):
+ *   PARTICIPANT / SHARED_PLAYER → minParticipantRestMinutes
+ *   TEAM → minTeamRestMinutes
+ * Explicit constraintResourceIds are typed SHARED_PLAYER (Option A).
+ *
+ * @param {{
+ *   resources: Array<{ resourceId: string, kind: string }>,
+ *   latestEndByConstraintResourceId: Map<string, { endUtcMs: number, end: { date: string, minutesFromMidnight: number } }>,
+ *   minParticipantRestMinutes: number,
+ *   minTeamRestMinutes: number,
+ * }} args
+ * @returns {{ utcMs: number|null, civil: { date: string, minutesFromMidnight: number }|null }}
+ */
+function resolveResourceRestEarliestStart(args) {
+  let bestUtcMs = null;
+  /** @type {{ date: string, minutesFromMidnight: number }|null} */
+  let bestCivil = null;
+
+  for (const res of args.resources) {
+    const key = `${res.kind}\0${res.resourceId}`;
+    const prior = args.latestEndByConstraintResourceId.get(key);
+    if (!prior) continue;
+
+    /** @type {number|null} */
+    let restMinutes = null;
+    if (res.kind === "TEAM") {
+      restMinutes = args.minTeamRestMinutes;
+    } else if (
+      res.kind === "PARTICIPANT" ||
+      res.kind === "SHARED_PLAYER"
+    ) {
+      restMinutes = args.minParticipantRestMinutes;
+    }
+    if (restMinutes == null || !isNonNegativeInteger(restMinutes)) continue;
+
+    const earliestUtc = prior.endUtcMs + restMinutes * 60_000;
+    if (bestUtcMs == null || earliestUtc > bestUtcMs) {
+      bestUtcMs = earliestUtc;
+    }
+
+    const civilMinutes = prior.end.minutesFromMidnight + restMinutes;
+    if (civilMinutes <= 1439) {
+      const civil = {
+        date: prior.end.date,
+        minutesFromMidnight: civilMinutes,
+      };
+      bestCivil = maxCivilBound(bestCivil, civil);
+    }
+  }
+
+  return { utcMs: bestUtcMs, civil: bestCivil };
+}
+
+/**
+ * @param {{ utcMs: number|null, civil: { date: string, minutesFromMidnight: number }|null }} dependency
+ * @param {{ utcMs: number|null, civil: { date: string, minutesFromMidnight: number }|null }} rest
+ */
+function combineEarliestStarts(dependency, rest) {
+  let utcMs = dependency.utcMs ?? null;
+  let civil = dependency.civil ?? null;
+
+  if (rest.utcMs != null) {
+    if (utcMs == null || rest.utcMs > utcMs) {
+      utcMs = rest.utcMs;
+    }
+  }
+  civil = maxCivilBound(civil, rest.civil);
+
+  return { utcMs, civil };
+}
+
+/**
+ * @param {{ date: string, minutesFromMidnight: number }|null} a
+ * @param {{ date: string, minutesFromMidnight: number }|null} b
+ */
+function maxCivilBound(a, b) {
+  if (!a) return b ? { ...b } : null;
+  if (!b) return { ...a };
+  const dateCmp = asciiCompare(a.date, b.date);
+  if (dateCmp > 0) return { ...a };
+  if (dateCmp < 0) return { ...b };
+  return a.minutesFromMidnight >= b.minutesFromMidnight
+    ? { ...a }
+    : { ...b };
+}
+
+/**
+ * @param {{
+ *   latestEndByConstraintResourceId: Map<string, { endUtcMs: number, end: { date: string, minutesFromMidnight: number } }>,
+ *   resources: Array<{ resourceId: string, kind: string }>,
+ *   endUtcMs: number,
+ *   end: { date: string, minutesFromMidnight: number },
+ * }} args
+ */
+function updateResourceRestState(args) {
+  for (const res of args.resources) {
+    const key = `${res.kind}\0${res.resourceId}`;
+    const prev = args.latestEndByConstraintResourceId.get(key);
+    if (!prev || args.endUtcMs >= prev.endUtcMs) {
+      args.latestEndByConstraintResourceId.set(key, {
+        endUtcMs: args.endUtcMs,
+        end: {
+          date: args.end.date,
+          minutesFromMidnight: args.end.minutesFromMidnight,
+        },
+      });
+    }
+  }
 }
 
 /**

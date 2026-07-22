@@ -65,7 +65,7 @@ export const SCHEDULE_DIAGNOSTIC_CODE = Object.freeze({
   PARTICIPANT_OVERLAP: "PARTICIPANT_OVERLAP",
   /** Deferred. */
   TEAM_OVERLAP: "TEAM_OVERLAP",
-  /** Deferred (hard min-rest enforcement at schedule time). */
+  /** Deferred (Phase 1F independent recheck; Phase 1E-R1 also enforces at placement). */
   INSUFFICIENT_REST: "INSUFFICIENT_REST",
   /** Deferred (Phase 1F+ physical / participant capacity certification). */
   CAPACITY_EXCEEDED: "CAPACITY_EXCEEDED",

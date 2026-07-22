@@ -1992,6 +1992,9 @@ test("C1-10 placeholder conflict is detected conservatively", () => {
 });
 
 test("C1-11 placeholder rest violation is detected conservatively", () => {
+  // Phase 1E-R1 places conservatively for WINNER_OF placeholders, so the live
+  // baseline candidate is rest-legal. Phase 1F defense-in-depth is verified by
+  // forging an insufficient-rest schedule (same pattern as test 06).
   const request = baseRequest({
     policy: policy({
       rest: { minParticipantRestMinutes: 30, minTeamRestMinutes: 0 },
@@ -2011,7 +2014,40 @@ test("C1-11 placeholder rest violation is detected conservatively", () => {
       }),
     ],
   });
-  const { result } = buildAndCertify(request);
+  const candidate = buildBaselineScheduleCandidate(request);
+  const live = certify(request, candidate);
+  assert.equal(live.ok, true);
+  const m1 = candidate.plan.scheduled.find((s) => s.matchId === "m1");
+  const m2 = candidate.plan.scheduled.find((s) => s.matchId === "m2");
+  assert.ok(m1 && m2);
+  assert.ok(m2.startUtcMs >= m1.endUtcMs + 30 * 60_000);
+
+  const forgedPlan = createSchedulePlan({
+    ...candidate.plan,
+    scheduled: candidate.plan.scheduled.map((s) => {
+      if (s.matchId !== "m2") return s;
+      return {
+        ...s,
+        start: { date: m1.end.date, minutesFromMidnight: m1.end.minutesFromMidnight },
+        end: {
+          date: m1.end.date,
+          minutesFromMidnight: m1.end.minutesFromMidnight + 30,
+        },
+        startUtcMs: m1.endUtcMs,
+        endUtcMs: m1.endUtcMs + 30 * 60_000,
+        capacityReleaseUtcMs: m1.endUtcMs + 30 * 60_000,
+        durationMinutes: 30,
+        bufferMinutes: 0,
+        concurrencyIndex: 0,
+        abstractSlotIndex: 0,
+      };
+    }),
+  });
+  const result = certify(request, {
+    status: BASELINE_CANDIDATE_STATUS,
+    constraintCertification: CONSTRAINT_CERTIFICATION.BASELINE_ONLY,
+    plan: forgedPlan,
+  });
   assert.equal(result.ok, false);
   assert.ok(codesOf(result).includes(SCHEDULE_DIAGNOSTIC_CODE.INSUFFICIENT_REST));
 });

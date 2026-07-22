@@ -849,29 +849,43 @@ test("47 BASELINE_ONLY certification marker", () => {
   );
 });
 
-test("48 no participant-overlap certification claim", () => {
+test("48 participant-overlap is placement-enforced (Phase 1E-R1)", () => {
   const result = buildBaselineScheduleCandidate(
     request({ matches: [match("m1")] })
   );
+  assert.ok(
+    result.plan.replay.details.certifiedConstraints.includes("PARTICIPANT_OVERLAP")
+  );
   assert.equal(
-    result.plan.replay.details.certifiedConstraints.includes("PARTICIPANT_OVERLAP"),
+    result.plan.replay.details.deferredConstraints.includes("PARTICIPANT_OVERLAP"),
     false
   );
   assert.ok(
-    result.plan.replay.details.deferredConstraints.includes("PARTICIPANT_OVERLAP")
+    result.plan.replay.details.certifiedConstraints.includes("TEAM_OVERLAP")
+  );
+  assert.equal(
+    result.plan.replay.details.deferredConstraints.includes("TEAM_OVERLAP"),
+    false
   );
 });
 
-test("49 no minimum-rest certification claim", () => {
+test("49 minimum-rest is placement-enforced (Phase 1E-R1)", () => {
   const result = buildBaselineScheduleCandidate(
     request({ matches: [match("m1")] })
   );
+  assert.ok(
+    result.plan.replay.details.certifiedConstraints.includes("INSUFFICIENT_REST")
+  );
   assert.equal(
-    result.plan.replay.details.certifiedConstraints.includes("INSUFFICIENT_REST"),
+    result.plan.replay.details.deferredConstraints.includes("INSUFFICIENT_REST"),
     false
   );
   assert.ok(
-    result.plan.replay.details.deferredConstraints.includes("INSUFFICIENT_REST")
+    result.plan.replay.details.certifiedConstraints.includes("MIN_TEAM_REST")
+  );
+  assert.equal(
+    result.plan.replay.details.deferredConstraints.includes("MIN_TEAM_REST"),
+    false
   );
 });
 
