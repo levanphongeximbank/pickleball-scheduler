@@ -187,7 +187,22 @@ See `docs/crm/phase-1g/`.
 - CRM UI / routes
 - Commit / push / PR (Owner-controlled)
 
-## Phase 1H-B / 1I entry
+## Phase 1H-B controlled Staging apply (gates implemented — apply blocked until Owner tokens)
 
-Owner-approved Staging apply + post-apply QA; optional durable staging switch under composition guard.
+- Fail-closed pre-write gates: separate permission-seed / role-matrix / Phase 1G / backup approvals
+- Staging identity allowlist + Production blocklist; credentials + QA identity markers
+- Apply script: dry-run default; live apply only after all gates + SHA re-verify; role matrix may defer
+- Evidence: `docs/crm/phase-1h-b/`
+- Durable runtime remains **off**; memory composition remains default
+
+## Non-goals (Phase 1H-B)
+
+- Production apply / Production connection / deploy
+- Enable durable runtime or background workers / provider delivery
+- Infer Owner apply approval from Phase 1H-A merge
+- Commit / push / PR unless separately instructed
+
+## Phase 1I entry
+
+Optional durable staging switch under composition guard after 1H-B certification.
 Do not enable Production durable CRM persistence without a later dedicated phase.

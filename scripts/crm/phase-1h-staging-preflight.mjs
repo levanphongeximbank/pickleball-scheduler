@@ -1,24 +1,22 @@
 #!/usr/bin/env node
 /**
- * CRM Phase 1H-A — Staging preflight (offline / static mode).
+ * CRM Phase 1H-B — Staging preflight.
  *
- * Default and Phase 1H-A allowed mode: --offline (or no flags).
- * Does NOT apply SQL. Does NOT connect to Staging or Production databases.
- * Does NOT print secret values.
+ * Modes:
+ *   --offline (default): static/manifest checks; no DB connection
+ *   --rollout-mode: also fail on dirty controlled migration paths
+ *   --live-gates: evaluate Owner approval / Staging identity / backup /
+ *                 credential / QA identity gates against process.env
+ *                 (still no SQL apply; values never printed)
  *
- * Usage:
- *   node scripts/crm/phase-1h-staging-preflight.mjs
- *   node scripts/crm/phase-1h-staging-preflight.mjs --offline
- *   node scripts/crm/phase-1h-staging-preflight.mjs --mode=offline
- *
- * Future live modes are intentionally unimplemented / fail-closed here.
+ * Does NOT apply SQL. Does NOT connect to Production.
  */
 
-import { existsSync, readFileSync } from "node:fs";
+import { existsSync } from "node:fs";
 import path from "node:path";
-import { fileURLToPath } from "node:url";
 import { execSync } from "node:child_process";
 
+import { loadProjectEnv } from "../load-env.mjs";
 import {
   CRM_PRODUCTION_PROJECT_REF_BLOCKLIST,
   CRM_STAGING_PROJECT_REF_ALLOWLIST,
@@ -40,17 +38,13 @@ import {
   CRM_PERSISTENCE_MODE_ENV,
   getCrmDefaultRuntimePersistenceMode,
 } from "../../src/features/crm/persistence/runtimeCompositionGuard.js";
+import {
+  CRM_PHASE_1H_B_ENV_NAMES,
+  CRM_PHASE_1H_B_VERDICTS,
+  evaluateCrmPhase1hBPreWriteGates,
+} from "../../src/features/crm/staging/phase1hBGates.js";
 
 const root = getCrmPhase1hRepoRoot();
-
-const REQUIRED_ENV_NAMES = Object.freeze([
-  "VITE_APP_ENV",
-  "VITE_SUPABASE_URL",
-  "VITE_SUPABASE_ANON_KEY",
-  "CRM_STAGING_OWNER_APPROVAL",
-  "CRM_STAGING_BACKUP_EVIDENCE",
-  "CRM_IDENTITY_PERMISSION_SEED_APPROVAL",
-]);
 
 const CERT_DOCS = Object.freeze([
   "docs/crm/phase-1h/04_RLS_SECURITY_CERTIFICATION.md",
@@ -62,14 +56,20 @@ function parseArgs(argv) {
   const args = {
     offline: true,
     rolloutMode: false,
+    liveGates: false,
     environment: "staging",
     apply: false,
+    deferRoleMatrix: true,
   };
   for (const raw of argv) {
     if (raw === "--offline" || raw === "--mode=offline") {
       args.offline = true;
     } else if (raw === "--rollout-mode") {
       args.rolloutMode = true;
+    } else if (raw === "--live-gates") {
+      args.liveGates = true;
+    } else if (raw === "--require-role-matrix") {
+      args.deferRoleMatrix = false;
     } else if (raw.startsWith("--environment=")) {
       args.environment = String(raw.slice("--environment=".length)).toLowerCase();
     } else if (raw === "--apply" || raw === "--apply-staging") {
@@ -77,10 +77,6 @@ function parseArgs(argv) {
     }
   }
   return args;
-}
-
-function maskSecretNames(names) {
-  return names.map((n) => `${n}=<set|unset — value not printed>`);
 }
 
 function gitPorcelain() {
@@ -94,7 +90,7 @@ function gitPorcelain() {
   }
 }
 
-function collectFindings(args) {
+function collectStaticFindings(args) {
   /** @type {Array<{ level: string, code: string, message: string }>} */
   const findings = [];
 
@@ -103,7 +99,7 @@ function collectFindings(args) {
       level: "error",
       code: "APPLY_REFUSED",
       message:
-        "Preflight refuses --apply / --apply-staging. Use apply script dry-run only; Phase 1H-A does not apply SQL.",
+        "Preflight refuses --apply / --apply-staging. Use scripts/crm/phase-1h-staging-apply.mjs for controlled apply.",
     });
   }
 
@@ -115,17 +111,7 @@ function collectFindings(args) {
     });
   }
 
-  // Production project references must not appear in controlled CRM 1H artifacts.
-  const scanRoots = [
-    path.join(root, "docs/crm/phase-1h"),
-    path.join(root, "scripts/crm"),
-  ];
-  for (const dir of scanRoots) {
-    if (!existsSync(dir)) continue;
-    // Lightweight static scan of text files in these folders
-  }
   const manifest = loadCrmStagingMigrationManifest(root);
-  // Production refs may appear only inside explicit blocklist fields — never as targets.
   const blocklist = new Set([
     ...(manifest.productionProjectRefBlocklist || []),
     ...CRM_PRODUCTION_PROJECT_REF_BLOCKLIST,
@@ -171,7 +157,6 @@ function collectFindings(args) {
   if (args.rolloutMode) {
     const dirty = gitPorcelain();
     if (dirty) {
-      // Only fail if controlled migration paths are dirty
       const dirtyLines = dirty.split("\n").filter(Boolean);
       const migrationDirty = dirtyLines.filter((line) =>
         /docs\/crm\/phase-1[gh]\/\d+_.*\.sql|staging-migration-manifest\.json/.test(
@@ -210,10 +195,15 @@ function collectFindings(args) {
     });
   }
 
-  if (CRM_PERMISSION_SEED_APPROVAL.status !== "PROPOSED_AWAITING_OWNER_APPLY_APPROVAL") {
+  // Code markers remain PROPOSED until Owner supplies apply tokens —
+  // Phase 1H-B must not infer approval from merge.
+  if (
+    CRM_PERMISSION_SEED_APPROVAL.status !== "PROPOSED_AWAITING_OWNER_APPLY_APPROVAL" &&
+    CRM_PERMISSION_SEED_APPROVAL.status !== "OWNER_APPROVED_FOR_STAGING_APPLY"
+  ) {
     findings.push({
       level: "error",
-      code: "PERMISSION_SEED_APPROVAL",
+      code: "PERMISSION_SEED_APPROVAL_MARKER",
       message: "Identity permission seed approval marker unexpected.",
     });
   }
@@ -235,15 +225,17 @@ function collectFindings(args) {
     });
   }
 
-  // Named env vars — presence checked only when provided via process.env in offline mode;
-  // values are never printed. Offline mode does not require them to be set.
   const envPresence = {};
-  for (const name of REQUIRED_ENV_NAMES) {
-    envPresence[name] = process.env[name] != null && process.env[name] !== "" ? "set" : "unset";
+  for (const name of Object.values(CRM_PHASE_1H_B_ENV_NAMES)) {
+    envPresence[name] =
+      process.env[name] != null && process.env[name] !== "" ? "set" : "unset";
   }
 
-  // Block obvious production URL/project refs if env is set (without printing values)
-  const url = process.env.VITE_SUPABASE_URL || process.env.SUPABASE_URL || "";
+  const url =
+    process.env.VITE_SUPABASE_URL ||
+    process.env.SUPABASE_URL ||
+    process.env.STAGING_SUPABASE_URL ||
+    "";
   for (const prodRef of CRM_PRODUCTION_PROJECT_REF_BLOCKLIST) {
     if (url.includes(prodRef)) {
       findings.push({
@@ -254,11 +246,9 @@ function collectFindings(args) {
     }
   }
   for (const stagingRef of CRM_STAGING_PROJECT_REF_ALLOWLIST) {
-    // allowlist documented; offline mode does not require URL to be set
     void stagingRef;
   }
 
-  // Ensure durable flag is not enabled in current process for Phase 1H-A offline cert
   const persistenceMode = String(process.env[CRM_PERSISTENCE_MODE_ENV] || "memory")
     .trim()
     .toLowerCase();
@@ -266,54 +256,100 @@ function collectFindings(args) {
     findings.push({
       level: "error",
       code: "DURABLE_RUNTIME_ENABLED",
-      message: `${CRM_PERSISTENCE_MODE_ENV}=durable is set; Phase 1H-A requires durable runtime off.`,
+      message: `${CRM_PERSISTENCE_MODE_ENV}=durable is set; Phase 1H-B requires durable runtime off during controlled apply.`,
     });
   }
 
   return {
     findings,
     envPresence,
-    requiredEnvNames: REQUIRED_ENV_NAMES,
     resolverVerdict: CRM_TENANT_VENUE_RESOLVER_VERDICT.verdict,
     defaultPersistenceMode: defaultMode,
-    sqlApplied: false,
-    databaseConnected: false,
-    mode: "offline",
+    manifestMigrationCount: (manifest.migrations || []).length,
   };
 }
 
 function main() {
-  const args = parseArgs(process.argv.slice(2));
-  if (!args.offline) {
-    console.error("Phase 1H-A preflight only supports offline/static mode.");
-    process.exit(2);
+  try {
+    loadProjectEnv();
+  } catch {
+    // offline may proceed without env files
   }
 
-  const report = collectFindings(args);
-  const errors = report.findings.filter((f) => f.level === "error");
-  const ok = errors.length === 0;
+  const args = parseArgs(process.argv.slice(2));
+  const staticReport = collectStaticFindings(args);
+  const staticErrors = staticReport.findings.filter((f) => f.level === "error");
+
+  /** @type {object|null} */
+  let liveGates = null;
+  /** @type {string|null} */
+  let liveVerdict = null;
+
+  if (args.liveGates) {
+    // Do NOT pass env tokens as CLI flags — presence ≠ Owner apply confirmation.
+    // Apply script requires explicit matching CLI flags; preflight only reports gaps.
+    liveGates = evaluateCrmPhase1hBPreWriteGates({
+      env: process.env,
+      flags: {
+        environment: args.environment,
+        deferRoleMatrix: args.deferRoleMatrix,
+        ownerApproval: null,
+        backupEvidence: null,
+        permissionSeedApproval: null,
+        roleMatrixApproval: null,
+        phase1gApplyApproval: null,
+      },
+      repoRoot: root,
+      requireQaIdentities: true,
+    });
+    liveVerdict = liveGates.canWrite
+      ? null
+      : liveGates.verdict || CRM_PHASE_1H_B_VERDICTS.BLOCKED_APPROVAL_REQUIRED;
+  }
 
   const output = {
-    phase: "1H-A",
+    phase: "1H-B",
     script: "phase-1h-staging-preflight",
-    mode: "offline",
+    mode: args.liveGates ? "live-gates" : "offline",
     environmentAssertion: args.environment,
-    ok,
+    ok: args.liveGates ? staticErrors.length === 0 && Boolean(liveGates?.canWrite) : staticErrors.length === 0,
     sqlApplied: false,
     stagingConnected: false,
     productionConnected: false,
     durableRuntime: "off",
-    requiredEnvironmentVariableNames: report.requiredEnvNames,
-    environmentVariablePresence: report.envPresence,
+    requiredEnvironmentVariableNames: Object.values(CRM_PHASE_1H_B_ENV_NAMES),
+    environmentVariablePresence: staticReport.envPresence,
     environmentVariableValues: "NOT_PRINTED",
-    resolverVerdict: report.resolverVerdict,
-    defaultPersistenceMode: report.defaultPersistenceMode,
-    findings: report.findings,
-    secretScanNote: maskSecretNames(report.requiredEnvNames),
+    resolverVerdict: staticReport.resolverVerdict,
+    defaultPersistenceMode: staticReport.defaultPersistenceMode,
+    manifestMigrationCount: staticReport.manifestMigrationCount,
+    findings: staticReport.findings,
+    liveGates: liveGates
+      ? {
+          canWrite: liveGates.canWrite,
+          verdict: liveGates.verdict,
+          approvalsOk: liveGates.approvals.ok,
+          requiredMissingApprovals: liveGates.approvals.requiredMissing,
+          identityOk: liveGates.identity.ok,
+          backupOk: liveGates.backup.ok,
+          credentialsOk: liveGates.credentials.ok,
+          qaIdentitiesOk: liveGates.qaIdentities.ok,
+          runtimeOk: liveGates.runtime.ok,
+          migrationPlan: liveGates.migrationPlan,
+        }
+      : null,
+    recommendedVerdictIfBlocked:
+      liveVerdict ||
+      (args.liveGates
+        ? CRM_PHASE_1H_B_VERDICTS.BLOCKED_APPROVAL_REQUIRED
+        : null),
   };
 
   console.log(JSON.stringify(output, null, 2));
-  process.exit(ok ? 0 : 1);
+  const exitOk = args.liveGates
+    ? staticErrors.length === 0 && Boolean(liveGates?.canWrite)
+    : staticErrors.length === 0;
+  process.exit(exitOk ? 0 : 1);
 }
 
 main();
