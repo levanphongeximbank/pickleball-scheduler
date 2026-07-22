@@ -11,6 +11,13 @@ export {
   AVAILABILITY_REASON,
 } from "./services/courtAvailabilityService.js";
 export { getCompetitionCourtAvailability } from "./adapters/competitionCourtAvailabilityAdapter.js";
+export { listCanonicalCourtDescriptors } from "./adapters/competitionCourtDescriptorAdapter.js";
+export {
+  DESCRIPTOR_AUTHORITY,
+  SOURCE_CONTRACT_VERSION,
+  DESCRIPTOR_DIAGNOSTIC_REASON,
+  DESCRIPTOR_ERROR,
+} from "./constants/descriptorContract.js";
 export {
   VENUE_COURT_SCOPE_ERROR,
   assertClubVenueScope,

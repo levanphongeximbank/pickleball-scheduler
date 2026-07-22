@@ -73,15 +73,23 @@ Venue & Court must not import Court Engine. Phase 2D wires CE confirm/transfer/p
 * `getCourtAvailability({ clubId, venueId?, date, startTime, endTime, courtId?, courtIds?, clusterId?, context?, includeUnavailable? })`
 * `AVAILABILITY_REASON`
 * `getCompetitionCourtAvailability({ clubId, venueId?, date, startTime, endTime, courtIds?, clusterId?, context?, includeUnavailable? })`
+* `listCanonicalCourtDescriptors({ tenantId, clubId, venueId, courtIds?, clusterId?, includeInactive?, includeLocked? })` (Phase 3B)
+* `DESCRIPTOR_AUTHORITY` / `SOURCE_CONTRACT_VERSION` / `DESCRIPTOR_DIAGNOSTIC_REASON` / `DESCRIPTOR_ERROR`
 * Civil time helpers (Phase 2E): `getLocalCivilDate`, `normalizeCivilWindow`, `isoToCivilHhmmOnDate`, `CIVIL_TIME_ERROR`, …
 
 ## Phase status
 
 ```text
-PHASE 2F — MULTI-VENUE RUNTIME READINESS
+PHASE 3B — CANONICAL COURT DESCRIPTOR PUBLIC CONTRACT
 ```
 
-See `docs/venue-court/PHASE_2F_MULTI_VENUE_RUNTIME.md`.
+See `docs/venue-court/PHASE_3B_CANONICAL_COURT_DESCRIPTOR_CONTRACT.md`.
+
+`listCanonicalCourtDescriptors` is a separate Competition-facing inventory descriptor contract. It does **not** change `getCompetitionCourtAvailability` (eligibility-only). Courts without an explicit finite numeric Venue inventory `priority` are omitted with diagnostic `PRIORITY_NOT_AUTHORITATIVE`. Snapshot fields are always `null` in Phase 3B.
+
+Prior phase docs remain authoritative for their scopes:
+
+* Phase 2F: `docs/venue-court/PHASE_2F_MULTI_VENUE_RUNTIME.md`
 
 **Scope rule (Phase 2F):** engines require explicit `clubId`. No silent first-club fallback when multiple clubs exist. Court Engine sessions load **club inventory only** (never venue-union into a club-keyed session). `clusterId` is a filter only. Venue switcher is a UI pointer — not automatic engine ownership. Phase 2E IANA timezone rules remain authoritative per venue.
 
