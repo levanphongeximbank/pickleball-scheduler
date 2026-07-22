@@ -62,6 +62,27 @@ export const CORE12_CANONICAL_COURT_DESCRIPTOR_V1 =
 export const CORE12_AVAILABILITY_PROJECTION_V1 =
   "CORE12_AVAILABILITY_PROJECTION_V1";
 
+/**
+ * Phase 1D-B2 Option A — injected Venue CAA + descriptor bridge contract.
+ * Capability-local pin; does not import Venue modules.
+ */
+export const CORE12_VENUE_AVAILABILITY_BRIDGE_V1 =
+  "CORE12_VENUE_AVAILABILITY_BRIDGE_V1";
+
+/**
+ * Expected Venue Phase 3B public descriptorAuthority literal.
+ * Copied as a CORE-12 pin — not imported from Venue source.
+ */
+export const CORE12_EXPECTED_VENUE_DESCRIPTOR_AUTHORITY =
+  "venue-court.inventory.club_data_v3";
+
+/**
+ * Expected Venue Phase 3B public sourceContractVersion literal.
+ * Copied as a CORE-12 pin — not imported from Venue source.
+ */
+export const CORE12_EXPECTED_VENUE_SOURCE_CONTRACT_VERSION =
+  "VENUE_COURT_CANONICAL_COURT_DESCRIPTOR_V1";
+
 export const CORE12_IDENTITY = Object.freeze({
   id: CORE12_ENGINE_ID,
   version: CORE12_ENGINE_VERSION,
@@ -81,4 +102,5 @@ export const CORE12_IDENTITY = Object.freeze({
   availabilityQueryVersion: CORE12_AVAILABILITY_QUERY_V1,
   canonicalCourtDescriptorVersion: CORE12_CANONICAL_COURT_DESCRIPTOR_V1,
   availabilityProjectionVersion: CORE12_AVAILABILITY_PROJECTION_V1,
+  venueAvailabilityBridgeVersion: CORE12_VENUE_AVAILABILITY_BRIDGE_V1,
 });

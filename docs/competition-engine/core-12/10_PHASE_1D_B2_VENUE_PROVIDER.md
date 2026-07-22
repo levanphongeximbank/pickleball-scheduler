@@ -1,244 +1,194 @@
-# CORE-12 Phase 1D-B2 — Venue Provider Authority Audit
+# CORE-12 Phase 1D-B2 — Venue Provider Integration
 
 | | |
 |--|--|
-| **Phase** | **1D-B2 — authoritative descriptor source audit** |
+| **Phase** | **1D-B2 Option A — injected Venue provider** |
 | **Date** | 2026-07-22 |
-| **HEAD base** | `aaa603cd…` (= `origin/main` / merged Phase 1D-B1 PR #156) |
-| **Branch** | `feature/competition-core-12-phase-1d-b2-venue-provider` |
-| **Selected option** | **OPTION B** |
-| **Verdict** | `BLOCKED_AUTHORITATIVE_DESCRIPTOR_PUBLIC_CONTRACT` |
-| **Production provider** | **Not implemented** (correct fail-closed outcome) |
+| **Status** | Option A implemented (capability-local; awaiting Owner review) |
+| **Prior verdict** | `BLOCKED_AUTHORITATIVE_DESCRIPTOR_PUBLIC_CONTRACT` (**resolved**) |
+| **Cleared by** | Venue & Court Phase 3B + Phase 3C on `origin/main` |
+| **Authorization** | `AUTHORIZE_CORE_12_PHASE_1D_B2_OPTION_A_IMPLEMENTATION` |
 
 ---
 
-## 1. Scope statement
+## 0. Historical blocker evidence (preserved)
 
-Phase 1D-B2 audited whether an independently authoritative canonical court descriptor source already exists and, **only if** a sufficient public contract existed without modifying Venue & Court, would implement an injected Venue CAA provider inside CORE-12.
+Phase 1D-B2 initially audited CORE-12 against then-current Venue APIs and selected
+**OPTION B**: authoritative inventory existed (`listCourts` / Club V3), but **no**
+stable Competition-facing `CanonicalCourtDescriptor` public contract was exposed.
 
-**Result:** authoritative inventory **exists** under Venue & Court, but **no stable public Competition-facing contract** exposes the `CanonicalCourtDescriptor` shape required by Phase 1D-B1. CORE-12 therefore **must not** ship a production provider that invents or silently maps incomplete inventory records into descriptors.
+Stop code at that time: **`BLOCKED_AUTHORITATIVE_DESCRIPTOR_PUBLIC_CONTRACT`**.
 
----
+That finding remains historically valid for the pre–Phase-3B tree. It is **resolved**
+for current main by:
 
-## 2. Selected authority option
+| Upstream | Contribution |
+|----------|----------------|
+| Venue Phase 3B | `listCanonicalCourtDescriptors` + authority/version pins |
+| Venue Phase 3C | Authoritative finite `court.priority` persistence into Club V3 |
 
-**OPTION B — EXISTING SOURCE NEEDS A NARROW PUBLIC CONTRACT**
-
-| Claim | Status |
-|-------|--------|
-| Independently authoritative inventory provenance exists | **Yes** — Club V3 courts via Venue `listCourts` / availability load path |
-| Stable public contract exposes required descriptor shape | **No** |
-| CORE-12 may fabricate missing descriptor fields | **Forbidden** |
-| CORE-12 may modify Venue & Court in this phase | **Forbidden** |
-| Production injected Venue CAA provider | **Deferred** until upstream contract lands |
-
-Stop code: **`BLOCKED_AUTHORITATIVE_DESCRIPTOR_PUBLIC_CONTRACT`**
+CORE-12 must still not invent descriptors from eligibility IDs alone.
 
 ---
 
-## 3. Exact authoritative source (inventory, not descriptor contract)
+## 1. Selected authority option (current)
 
-| Layer | Module | Export | Role |
-|-------|--------|--------|------|
-| Inventory facade | `src/features/venue-court/services/courtInventoryService.js` | `listCourts`, `getCourtById` | Production inventory read; public via `venue-court/index.js` |
-| Canonical availability | `src/features/venue-court/services/courtAvailabilityService.js` | `getCourtAvailability` | Loads inventory + bookings + hours; embeds `toCourtPublic(court)` |
-| Competition CAA | `src/features/venue-court/adapters/competitionCourtAvailabilityAdapter.js` | `getCompetitionCourtAvailability` | Competition eligibility IDs only |
-| Domain model | `src/models/court.js` | `normalizeCourt` | Master shape: `id`, `name`, `number`, `active`, `status`, rates, optional `tenantId`/`clusterId` |
-| HTTP slice | `src/features/api/router/handlers/courtsHandler.js` | `handleCourtsList` | `{ id, name, number, active }` only |
+**OPTION A — EXISTING AUTHORITATIVE SOURCE** (cleared)
 
-**Owning capability:** Venue & Court Management (not CORE-12).
+Venue public facade exposes sufficient canonical descriptors for injection into
+CORE-12 without modifying Venue & Court in this phase.
 
 ---
 
-## 4. Dependency direction
+## 2. Exact upstream Venue public contract
+
+Public import path: `src/features/venue-court/index.js`
+
+| Export | Role |
+|--------|------|
+| `getCompetitionCourtAvailability` | Eligibility IDs for exact civil window |
+| `listCanonicalCourtDescriptors` | Canonical descriptor envelope |
+| `DESCRIPTOR_AUTHORITY` | `venue-court.inventory.club_data_v3` |
+| `SOURCE_CONTRACT_VERSION` | `VENUE_COURT_CANONICAL_COURT_DESCRIPTOR_V1` |
+
+CORE-12 production modules **do not import** these symbols. The Integrator /
+composition root (or tests) injects wrappers around the public facade.
+
+CORE-12 pin copies (not Venue imports):
+
+* `CORE12_EXPECTED_VENUE_DESCRIPTOR_AUTHORITY`
+* `CORE12_EXPECTED_VENUE_SOURCE_CONTRACT_VERSION`
+
+---
+
+## 3. Dependency injection architecture
 
 ```text
-Allowed (future, after upstream contract):
-  Integrator / host
-    → injects VenueEligibilityProvider (wraps CAA)
-    → injects CanonicalCourtDescriptorProvider (wraps NEW Venue public descriptor contract)
-    → CORE-12 consumer-side AvailabilitySnapshotProvider / bridge
-    → projectEligibleCourtsToAvailableInputs
-    → assignCourtsDeterministic
-
-Forbidden now:
-  CORE-12 hard-importing domain/courtService, clubStorage, Supabase
-  CORE-12 inventing CanonicalCourtDescriptor fields from eligibility IDs
-  Venue & Court importing CORE-12
-  TE / CORE-11 / CORE-14 wiring in this phase
+Integrator / tests
+  ├─ wraps getCompetitionCourtAvailability → VenueEligibilityProvider
+  └─ wraps listCanonicalCourtDescriptors → CanonicalCourtDescriptorProvider
+        ↓ inject
+createInjectedVenueCourtAvailabilityProvider({ eligibilityProvider, descriptorProvider })
+        ↓
+normalizeVenueDescriptorEnvelope (pure)
+        ↓
+projectEligibleCourtsToAvailableInputs (pure, Phase 1D-B1)
+        ↓
+AvailableCourtInput[] (exact query window interval)
 ```
 
-Hard-importing `listCourts` into CORE-12 would be directionally acyclic but **still invalid** for Phase 1D-B2 because:
-
-1. Architecture prefers Integrator-injected ports (`05_INTEGRATION_BOUNDARIES.md`, 1D-A2 §19.12).
-2. Raw inventory / `toCourtPublic` is **not** the required descriptor contract.
-3. Mapping would fabricate `capabilities`, `priority`, `descriptorAuthority`, scoped `clubId`/`venueId`/`tenantId` on records, and source identity.
+Forbidden: Venue repository / store / SQL / deep internal imports from CORE-12;
+reverse Venue→CORE-12 dependency; TE / CORE-11 / CORE-14 wiring in this phase.
 
 ---
 
-## 5. Why Option A is rejected
+## 4. Envelope-to-descriptor normalization
 
-Phase 1D-B1 `CanonicalCourtDescriptor` requires at minimum:
+`normalizeVenueDescriptorEnvelope`:
 
-| Field | `listCourts` raw | `toCourtPublic` | CAA out | Sufficient? |
-|-------|------------------|-----------------|---------|-------------|
-| `courtId` | `id` | `id` | id only | ID only |
-| `tenantId` | optional / often absent | absent | absent | **No** |
-| `clubId` | not on court record | absent | echo on response, not per-court descriptor | **No** |
-| `venueId` | not on court record | absent | nullable echo | **No** |
-| `active` | yes | yes | absent | Partial |
-| `locked` | via `status === "locked"` only | via `status` | eligibility exclusion only | **No explicit contract field** |
-| `capabilities` | absent | absent | absent | **No** |
-| `priority` | absent | absent | absent | **No** (default `0` is not Venue truth) |
-| `descriptorAuthority` / `sourceContractVersion` | absent | absent | absent | **No** |
-| `sourceSnapshotId` / version | absent | static `source` labels only | absent | Must remain **null** if absent |
+* Validates envelope object + `courts[]`.
+* Pins `descriptorAuthority` / `sourceContractVersion` against expected literals.
+* Validates envelope and per-court tenant/club/venue against query scope (**no ID rewrite**).
+* Copies envelope authority/version onto each `CanonicalCourtDescriptor`.
+* Requires explicit finite numeric `priority` (rejects missing/string/non-finite; never uses factory default `0` as Venue truth).
+* Preserves Venue-certified `capabilities` (including `[]`).
+* Preserves genuine nullable `sourceSnapshotId` / `sourceSnapshotVersion` (never fabricates).
+* Rejects duplicate `courtId`s.
+* Does not mutate the source envelope.
 
-Eligibility IDs are **not** inventory descriptors. Structural `createCanonicalCourtDescriptor` validation is **not** independently verified authority.
+Courts omitted upstream for `PRIORITY_NOT_AUTHORITATIVE` remain omitted — CORE-12
+does **not** recreate them from eligibility IDs.
 
 ---
 
-## 6. Exact required upstream public contract
+## 5. Priority authority rules
 
-Venue & Court (or Owner-approved Integrator adapter backed by Venue) must expose a **stable, versioned, Competition-facing** descriptor provider contract. Recommended shape (consumer-side name may be `CanonicalCourtDescriptorProvider`):
-
-### 6.1 Query (exact scope)
-
-```text
-{
-  tenantId,          // required stable id
-  clubId,            // required
-  venueId,           // required
-  courtIds?,         // optional filter; when set, result must be subset
-  clusterId?,        // optional
-  includeInactive?,  // default false
-  includeLocked?     // default true for descriptor listing (projection still fail-closes locked)
-}
-```
-
-### 6.2 Output — one descriptor per court (deterministic order)
-
-```text
-{
-  sourceContractVersion,   // required non-empty Venue-owned pin (never invented by CORE-12)
-  descriptorAuthority,     // required non-empty Venue-owned authority id
-  sourceSnapshotId,        // nullable; omit/null when Venue has none — never fabricate
-  sourceSnapshotVersion,   // nullable; same rule
-  courts: [
-    {
-      courtId,             // required
-      tenantId,            // required; must match query
-      clubId,              // required; must match query
-      venueId,             // required; must match query
-      active,              // required boolean
-      locked,              // required boolean (inventory lock; not TE manual lock)
-      capabilities,        // required: [] or Venue-owned map/array — never invented by CORE-12
-      priority             // required finite number owned by Venue, OR explicitly documented
-                           // as "absent → omit court from competition descriptor set"
-                           // (CORE-12 must not silently default and claim Venue truth)
-    }
-  ]
-}
-```
-
-### 6.3 Semantics Venue must certify
-
-1. Inventory provenance is Club V3 / Venue SSOT (or successor), not TE/CE/UI reconstructed lists.
-2. Exact tenant/club/venue scoping; mismatch fails closed.
-3. Deterministic ordering (stable id / inventory order — documented).
-4. No fabricated snapshot ids.
-5. Sync or Promise allowed; CORE-12 will await via injected port only.
-6. Public export from `venue-court` (or approved Integrator module) — not deep `domain/` imports for CORE-12.
-7. CAA may remain ID-only; descriptors may be a **separate** public export (preferred) **or** an additive CAA field set authorized by Venue Owner.
-
-### 6.4 Eligibility dependency (already exists, injectable)
-
-`getCompetitionCourtAvailability` remains the eligibility source. CORE-12 may wrap it behind a consumer-side `VenueEligibilityProvider` **after** the descriptor contract exists — without modifying Venue if injection is used.
+* Consume only authoritative Venue `priority`.
+* No string coercion; no default zero; no array-order priority.
+* After valid priority is supplied, Phase 1B deterministic sort (priority then id) applies.
 
 ---
 
-## 7. Provider construction (deferred)
+## 6. Null snapshot treatment
 
-Not implemented. Future construction (after Option A becomes true):
-
-```text
-createInjectedVenueCourtAvailabilityProvider({
-  resolveEligibility,   // VenueEligibilityProvider
-  resolveDescriptors,   // CanonicalCourtDescriptorProvider
-})
-```
-
-Must:
-
-- accept `AvailabilityEligibilityQuery`;
-- validate exact scope/window;
-- call injected eligibility + descriptor deps;
-- normalize; preserve genuine source snapshot ids; leave null when absent;
-- reject scope/dupes/missing/inactive/locked/capability failures;
-- project eligibility ∩ descriptors with exactly one interval = query window;
-- preserve empty eligibility;
-- emit deterministic findings/fingerprints;
-- map upstream errors to CORE-12 bridge codes;
-- perform no retries/timeout/cache/persistence unless a public contract authorizes them.
+Venue Phase 3B always emits `sourceSnapshotId: null` and `sourceSnapshotVersion: null`.
+CORE-12 preserves those nulls. Non-null genuine strings are accepted if ever supplied
+upstream; CORE-12 never invents UUID/time/hash identity.
 
 ---
 
-## 8. Source and derived identity
+## 7. Capabilities limitation
 
-| Field | Rule (unchanged from 1D-B1) |
-|-------|-----------------------------|
-| `sourceSnapshotId` / `sourceSnapshotVersion` | Nullable; **never fabricated** |
-| Derived fingerprints | Required; labeled derived |
-| Declared `descriptorAuthority` | Must come from upstream contract, not CORE-12 invention |
+Venue currently emits authoritative `capabilities: []`.
 
----
-
-## 9. Exact-window / empty / fail-closed
-
-Unchanged from Phase 1D-B1:
-
-- One absolute half-open interval equal to the query window.
-- Overnight / cross-midnight unsupported.
-- Empty eligibility → valid empty projection + `EMPTY_ELIGIBILITY_RESULT`.
-- Locked descriptors fail closed (`COURT_DESCRIPTOR_LOCKED`).
-- No unrestricted fallback from eligibility IDs alone.
+* Matches with no required capabilities may project.
+* Required capabilities fail closed via existing `COURT_CAPABILITY_UNKNOWN` /
+  `COURT_CAPABILITY_MISMATCH`.
+* CORE-12 does not infer or enrich capabilities.
 
 ---
 
-## 10. Export inventory (this phase)
+## 8. Fail-closed behavior
 
-| Surface | Change |
-|---------|--------|
-| `court-assignment/index.js` | **Unchanged** (no production Venue provider) |
-| `adapters/availability/index.js` | **Unchanged** |
-| Root `competition-core/index.js` | **Unchanged** |
-| New production provider modules | **None** |
-| Test doubles in production barrels | **None** |
-| Docs | This file |
-| Tests | `tests/competition-core-court-assignment-core12-phase1d-b2.test.js` (authority lock / audit) |
+Missing providers, malformed envelopes, authority/version pin mismatch, scope
+mismatch, duplicate descriptors, missing descriptor for eligible id, inactive /
+locked descriptors, provider throw/rejection, invalid windows, and non-authoritative
+priority all fail closed with stable `AVAILABILITY_BRIDGE_CODE` values.
 
----
+Locked: only when descriptor `locked === true` (Venue maps `status === "locked"`).
+Maintenance is **not** reinterpreted as locked unless Venue reports `locked: true`.
 
-## 11. Explicit non-goals (confirmed)
+Empty eligibility remains a valid empty projection (`EMPTY_ELIGIBILITY_RESULT`),
+never unrestricted courts.
 
-No Tournament Engine wiring; no CORE-11; no CORE-14; no UI; no SQL; no Supabase; no persistence; no deployment; no runtime cutover; no Venue & Court source edits in this phase; no commit/push/PR from this agent pass.
+Exact-window: one absolute half-open interval equal to the query window.
+Overnight / cross-midnight remains unsupported.
 
 ---
 
-## 12. Remaining blockers
+## 9. Export inventory
 
-1. **Hard:** Venue (or Owner-approved Integrator) must publish the §6 descriptor public contract.
-2. Soft: optional Venue `sourceSnapshotId` / version for audit correlation.
-3. Soft: whether capabilities/priority are Venue-owned inventory fields or remain Integrator-owned (must be explicit; CORE-12 will not invent).
-4. After contract: implement injected provider + full Phase 1D-B2 behavioral matrix inside CORE-12 only.
+Production (`court-assignment/index.js`):
+
+* Ports: `isVenueEligibilityProvider`, `isCanonicalCourtDescriptorProvider`, method constants
+* `normalizeVenueDescriptorEnvelope`
+* `createInjectedVenueCourtAvailabilityProvider`
+* Existing Phase 1D-B1 projection / invoke helpers
+
+Test doubles: `adapters/availability/testDoubles.js` only — not production barrels.
+Root `competition-core/index.js` unchanged.
+
+Bridge pin: `CORE12_VENUE_AVAILABILITY_BRIDGE_V1`.
 
 ---
 
-## 13. Recommended next action
+## 10. New bridge codes (Phase 1D-B2 Option A)
 
-Owner / Venue & Court Owner:
+| Code | Use |
+|------|-----|
+| `MISSING_ELIGIBILITY_PROVIDER` | Injected eligibility dep missing |
+| `MISSING_DESCRIPTOR_PROVIDER` | Injected descriptor dep missing |
+| `MALFORMED_DESCRIPTOR_ENVELOPE` | Envelope / row shape invalid |
+| `DESCRIPTOR_AUTHORITY_MISMATCH` | Authority pin mismatch |
+| `DESCRIPTOR_CONTRACT_VERSION_MISMATCH` | Version pin missing/mismatch |
+| `DESCRIPTOR_SCOPE_MISMATCH` | Envelope scope ≠ query |
+| `PRIORITY_NOT_AUTHORITATIVE` | Missing/non-finite priority on a court row |
 
-1. Approve §6 as the minimal public descriptor contract **or** authorize an additive CAA descriptor payload.
-2. Implement and certify that contract upstream (out of CORE-12 ownership).
-3. Re-open Phase 1D-B2 implementation as Option A on a fresh clean tree from then-current main.
+Existing codes reused for duplicates, projection locks, eligibility scope, provider reject, etc.
 
-Until then, CORE-12 remains on Phase 1D-B1 foundation only.
+---
+
+## 11. Explicit exclusions
+
+No Venue source edits; no TE / CORE-11 / CORE-14 wiring; no UI; no SQL/Supabase;
+no persistence/caching/retries inside the bridge; no deployment; no root barrel export;
+no commit/push/PR in the implementation authorization pass.
+
+---
+
+## 12. Residual product constraints
+
+1. Courts without persisted finite priority never appear in Venue descriptors → cannot be assigned via this bridge.
+2. Capability taxonomy still empty upstream.
+3. Venue scope rule requires aligned tenant/venue (`tenantId === club.venueId`) — Integrator must supply matching query scope; CORE-12 does not rewrite IDs.
+4. Full TE cutover / orchestration end-to-end assignment remains deferred.

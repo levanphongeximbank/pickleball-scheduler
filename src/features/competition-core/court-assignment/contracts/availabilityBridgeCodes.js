@@ -26,6 +26,20 @@ export const AVAILABILITY_BRIDGE_CODE = Object.freeze({
   EMPTY_ELIGIBILITY_RESULT: "EMPTY_ELIGIBILITY_RESULT",
   PROVIDER_REJECTED: "PROVIDER_REJECTED",
   PROVIDER_RESULT_INVALID: "PROVIDER_RESULT_INVALID",
+  /** Phase 1D-B2 Option A — injected Venue eligibility dependency missing. */
+  MISSING_ELIGIBILITY_PROVIDER: "MISSING_ELIGIBILITY_PROVIDER",
+  /** Phase 1D-B2 Option A — injected canonical descriptor dependency missing. */
+  MISSING_DESCRIPTOR_PROVIDER: "MISSING_DESCRIPTOR_PROVIDER",
+  /** Phase 1D-B2 Option A — Venue descriptor envelope shape invalid. */
+  MALFORMED_DESCRIPTOR_ENVELOPE: "MALFORMED_DESCRIPTOR_ENVELOPE",
+  /** Phase 1D-B2 Option A — envelope descriptorAuthority pin mismatch. */
+  DESCRIPTOR_AUTHORITY_MISMATCH: "DESCRIPTOR_AUTHORITY_MISMATCH",
+  /** Phase 1D-B2 Option A — envelope sourceContractVersion pin mismatch. */
+  DESCRIPTOR_CONTRACT_VERSION_MISMATCH: "DESCRIPTOR_CONTRACT_VERSION_MISMATCH",
+  /** Phase 1D-B2 Option A — descriptor envelope scope ≠ query scope. */
+  DESCRIPTOR_SCOPE_MISMATCH: "DESCRIPTOR_SCOPE_MISMATCH",
+  /** Phase 1D-B2 Option A — court lacks authoritative finite priority. */
+  PRIORITY_NOT_AUTHORITATIVE: "PRIORITY_NOT_AUTHORITATIVE",
 });
 
 export const AVAILABILITY_BRIDGE_CODE_VALUES = Object.freeze(
