@@ -1,13 +1,15 @@
 /**
- * Phase 1I-A — Authenticated Public Player Directory detail facade.
+ * Phase 1I-A / 1J-C — Authenticated Public Player Directory detail facade.
  *
  * Hidden / unverified / suspended / nonexistent → null player (generic).
- * No UI imports. No direct Supabase import in this core facade.
+ * No UI imports. Defaults: authService.getCurrentUser + Supabase directory adapter.
+ * Tests retain full DI (user/session/getters/repository).
  */
+import { getSupabaseAuthClient, hasSupabaseConfig } from "../../../auth/supabaseClient.js";
 import { normalizeDirectoryDetailRequest } from "../contracts/directoryRequests.js";
 import { DIRECTORY_ERROR_CODES } from "../constants/directory.js";
 import { assertStrictDirectoryDto } from "../projectors/projectDirectoryPlayer.js";
-import { createPlayerDirectoryRepository } from "../repositories/playerDirectoryRepository.js";
+import { createSupabasePlayerDirectoryRepository } from "../repositories/supabasePlayerDirectoryRepository.js";
 import { resolveDirectorySession } from "./directorySession.js";
 
 function fail(code, message, extra = {}) {
@@ -25,6 +27,33 @@ function fail(code, message, extra = {}) {
 }
 
 /**
+ * @param {object} [dependencies]
+ * @returns {{ directoryGetByPlayerId: Function }}
+ */
+function resolveDirectoryRepository(dependencies = {}) {
+  if (dependencies.directoryRepository) return dependencies.directoryRepository;
+  if (dependencies.repository) return dependencies.repository;
+
+  const injectedGetClient =
+    typeof dependencies.getSupabaseClient === "function"
+      ? dependencies.getSupabaseClient
+      : dependencies.supabase
+        ? () => dependencies.supabase
+        : null;
+
+  return createSupabasePlayerDirectoryRepository({
+    getClient: injectedGetClient || getSupabaseAuthClient,
+    hasConfig:
+      typeof dependencies.hasSupabaseConfig === "function"
+        ? dependencies.hasSupabaseConfig
+        : injectedGetClient
+          ? () => true
+          : hasSupabaseConfig,
+    supabase: dependencies.supabase,
+  });
+}
+
+/**
  * @param {string|object} playerIdOrRequest
  * @param {object} [dependencies]
  * @param {object} [dependencies.session]
@@ -33,6 +62,9 @@ function fail(code, message, extra = {}) {
  * @param {() => object|null} [dependencies.getCurrentUser]
  * @param {{ directoryGetByPlayerId: Function }} [dependencies.directoryRepository]
  * @param {{ directoryGetByPlayerId: Function }} [dependencies.repository]
+ * @param {() => object|null} [dependencies.getSupabaseClient]
+ * @param {() => boolean} [dependencies.hasSupabaseConfig]
+ * @param {object} [dependencies.supabase]
  */
 export async function getPublicDirectoryPlayer(playerIdOrRequest, dependencies = {}) {
   const sessionResult = resolveDirectorySession(dependencies);
@@ -46,10 +78,7 @@ export async function getPublicDirectoryPlayer(playerIdOrRequest, dependencies =
   }
 
   const { playerId } = normalized.value;
-  const repository =
-    dependencies.directoryRepository ||
-    dependencies.repository ||
-    createPlayerDirectoryRepository();
+  const repository = resolveDirectoryRepository(dependencies);
 
   let result;
   try {
