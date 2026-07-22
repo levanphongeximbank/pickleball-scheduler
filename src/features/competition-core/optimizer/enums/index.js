@@ -41,3 +41,7 @@ export {
   isObjectiveEvaluationFailureCode,
   resolveObjectiveEvaluationFailureCode,
 } from "./objectiveEvaluationFailureCodes.js";
+
+export { CANDIDATE_EVALUATION_STATUS } from "./candidateEvaluationStatus.js";
+
+export { CANDIDATE_EVALUATION_FAILURE_CODE } from "./candidateEvaluationFailureCodes.js";
