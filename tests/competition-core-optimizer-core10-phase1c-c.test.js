@@ -155,8 +155,6 @@ function makeFeasible(overrides = {}) {
     portDescriptor: portDesc(),
     inputFingerprint: "abcd1234",
     ...resultOverrides,
-    objectiveEvaluations,
-    optimizationScore: score,
   });
 }
 
@@ -196,9 +194,6 @@ function makeInfeasible(overrides = {}) {
     portDescriptor: portDesc(),
     inputFingerprint: "abcd1234",
     ...resultOverrides,
-    businessViolations,
-    allHardViolations,
-    optimizationScore: score,
   });
 }
 
