@@ -37,3 +37,9 @@ export {
   REPLAY_METADATA_FORBIDDEN_FIELDS,
 } from "./replayMetadata.js";
 export { createOptimizationResult } from "./optimizationResult.js";
+export {
+  createObjectiveDefinition,
+  OBJECTIVE_NORMALIZATION_POLICY,
+} from "./objectiveDefinition.js";
+export { createObjectiveExecutionSpec } from "./objectiveExecutionSpec.js";
+export { createObjectiveEvaluationRecord } from "./objectiveEvaluationRecord.js";

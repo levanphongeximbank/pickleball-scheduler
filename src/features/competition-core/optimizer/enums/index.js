@@ -34,3 +34,10 @@ export {
   OBJECTIVE_SENSE_VALUES,
   isObjectiveSense,
 } from "./constraintKind.js";
+
+export {
+  OBJECTIVE_EVALUATION_FAILURE_CODE,
+  OBJECTIVE_EVALUATION_FAILURE_CODE_VALUES,
+  isObjectiveEvaluationFailureCode,
+  resolveObjectiveEvaluationFailureCode,
+} from "./objectiveEvaluationFailureCodes.js";

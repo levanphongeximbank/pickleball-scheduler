@@ -135,3 +135,20 @@ Watchdog wall-clock timeout ⇒ `WATCHDOG_TIMEOUT` (not replay-certified success
 - result fingerprint
 
 Exclude from replay-determining fingerprints: wall-clock duration, machine identity, timestamps, PID, memory, runtime timing.
+
+---
+
+## Phase 1C-A — Objective evaluation determinism
+
+1. Objective evaluators are **synchronous only**. Promise/thenable results fail with `ASYNC_OBJECTIVE_EVALUATOR_UNSUPPORTED` (checked before result schema validation).
+2. Execution order is exactly the caller-supplied `executionSpecs` array order — registry insertion order must not affect evaluation order.
+3. Registry uses nested `Map(objectiveId → Map(objectiveVersion → entry))` — no delimiter-joined keys.
+4. `descriptorFingerprint()` binds `CORE10_OBJECTIVE_DEFINITION_SCHEMA_VERSION`, `CORE10_OBJECTIVE_REGISTRY_VERSION`, and sorted definitions. Evaluator function source is never fingerprinted.
+5. Quantization: `Math.round(normalizedValue * quantizeScale)` → safe integer; `-0` → `+0` after each numeric stage.
+6. Weighting: `quantizedValue * weight` with safe-integer overflow checks.
+7. Orientation reuses Phase 1B `orientObjectiveValue` (`MINIMIZE` keep, `MAXIMIZE` negate).
+8. No `Math.random`, wall-clock, locale sorting, or floating-point equality for ranking keys.
+9. Evaluator exceptions become `OBJECTIVE_EVALUATOR_EXCEPTION` without leaking message/stack into replay-safe records.
+10. Empty `executionSpecs` returns an empty frozen array and invokes no evaluator.
+11. Failures throw immediately — no partial-success envelope in Phase 1C-A.
+12. Caller objects/arrays are never frozen or sorted in place; factories/evaluators operate on owned clones.

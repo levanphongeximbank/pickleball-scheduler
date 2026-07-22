@@ -2,10 +2,12 @@
  * CORE-10 Global Optimizer — capability-local public surface.
  * Phase 1B: contracts, determinism primitives, structural validation,
  * scoring comparator, replay metadata, diagnostics contracts.
+ * Phase 1C-A: objective definitions, immutable registry, synchronous
+ * deterministic objective evaluation (no candidate pipeline).
  *
  * Integrator owns root competition-core/index.js — do not edit that here.
  * No scheduling, court-assignment, or referee-assignment exports.
- * No production solvers in Phase 1B.
+ * No production solvers in Phase 1B / 1C-A.
  */
 
 export {
@@ -17,6 +19,9 @@ export {
   CORE10_CANONICAL_SERIALIZATION_VERSION,
   CORE10_PRNG_VERSION,
   CORE10_DETERMINISM_POLICY_ID,
+  CORE10_OBJECTIVE_DEFINITION_SCHEMA_VERSION,
+  CORE10_OBJECTIVE_REGISTRY_VERSION,
+  CORE10_OBJECTIVE_EVALUATION_VERSION,
   CORE10_IDENTITY,
 } from "./constants/index.js";
 
@@ -43,6 +48,7 @@ export {
   OBJECTIVE_SENSE,
   OBJECTIVE_SENSE_VALUES,
   isObjectiveSense,
+  OBJECTIVE_EVALUATION_FAILURE_CODE,
 } from "./enums/index.js";
 
 export {
@@ -69,6 +75,10 @@ export {
   projectReplayFingerprintMaterial,
   REPLAY_METADATA_FORBIDDEN_FIELDS,
   createOptimizationResult,
+  createObjectiveDefinition,
+  OBJECTIVE_NORMALIZATION_POLICY,
+  createObjectiveExecutionSpec,
+  createObjectiveEvaluationRecord,
 } from "./contracts/index.js";
 
 export {
@@ -105,3 +115,9 @@ export {
 } from "./constraints/index.js";
 
 export { createEmptySolverDiagnostics } from "./diagnostics/index.js";
+
+export {
+  createObjectiveRegistry,
+  evaluateObjective,
+  evaluateObjectives,
+} from "./objectives/index.js";
