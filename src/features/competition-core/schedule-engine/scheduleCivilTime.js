@@ -1,7 +1,9 @@
 /**
  * CORE-11 — thin civil→absolute adapter.
  *
- * Delegates all timezone/DST conversion to `src/domain/civilTime.js`.
+ * Delegates all timezone/DST conversion to `src/domain/civilTime.js`
+ * via `civilDateTimeToUtcMs` only.
+ * Does not implement absolute→civil conversion in CORE-11.
  * Does not copy conversion algorithms. Does not inject Date.now / locale.
  * Does not independently detect or reject DST fall-back ambiguity —
  * `AMBIGUOUS_CIVIL_TIME` maps only when civilTime.js throws

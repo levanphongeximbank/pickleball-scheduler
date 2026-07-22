@@ -363,6 +363,16 @@ export function serializeCanonical(value) {
  * @property {number} sequence
  * @property {number} [abstractSlotIndex]
  * @property {number} [requiredCapacity]
+ * @property {number} [durationMinutes]
+ * @property {number} [bufferMinutes]
+ * @property {number} [concurrencyIndex]
+ * @property {number} [startUtcMs]
+ * @property {number} [endUtcMs]
+ * @property {string} [startUtcIso]
+ * @property {string} [endUtcIso]
+ * @property {number} [capacityReleaseUtcMs]
+ * @property {string} [capacityReleaseUtcIso]
+ * @property {string} [sourceWindowId]
  * @property {Readonly<Record<string, unknown>>} [metadata]
  */
 

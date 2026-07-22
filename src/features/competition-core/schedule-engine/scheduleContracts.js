@@ -299,11 +299,11 @@ export function createScheduleRequest(partial = {}) {
 }
 
 /**
- * @param {Partial<import('./scheduleTypes.js').ScheduledMatch>} [partial]
+ * @param {Partial<import('./scheduleTypes.js').ScheduledMatch> & Record<string, unknown>} [partial]
  * @returns {import('./scheduleTypes.js').ScheduledMatch}
  */
 export function createScheduledMatch(partial = {}) {
-  /** @type {import('./scheduleTypes.js').ScheduledMatch} */
+  /** @type {import('./scheduleTypes.js').ScheduledMatch & Record<string, unknown>} */
   const out = {
     matchId: normalizeIdentifier(partial.matchId),
     start: createCivilScheduleTime(partial.start || {}),
@@ -327,6 +327,49 @@ export function createScheduledMatch(partial = {}) {
     partial.requiredCapacity !== null
   ) {
     out.requiredCapacity = Number(partial.requiredCapacity);
+  }
+  // Phase 1E baseline extensions (backward-compatible optional fields).
+  if (
+    partial.durationMinutes !== undefined &&
+    partial.durationMinutes !== null
+  ) {
+    out.durationMinutes = Number(partial.durationMinutes);
+  }
+  if (partial.bufferMinutes !== undefined && partial.bufferMinutes !== null) {
+    out.bufferMinutes = Number(partial.bufferMinutes);
+  }
+  if (
+    partial.concurrencyIndex !== undefined &&
+    partial.concurrencyIndex !== null
+  ) {
+    out.concurrencyIndex = Number(partial.concurrencyIndex);
+  }
+  if (partial.startUtcMs !== undefined && partial.startUtcMs !== null) {
+    out.startUtcMs = Number(partial.startUtcMs);
+  }
+  if (partial.endUtcMs !== undefined && partial.endUtcMs !== null) {
+    out.endUtcMs = Number(partial.endUtcMs);
+  }
+  if (partial.startUtcIso != null && String(partial.startUtcIso).trim()) {
+    out.startUtcIso = String(partial.startUtcIso).trim();
+  }
+  if (partial.endUtcIso != null && String(partial.endUtcIso).trim()) {
+    out.endUtcIso = String(partial.endUtcIso).trim();
+  }
+  if (
+    partial.capacityReleaseUtcMs !== undefined &&
+    partial.capacityReleaseUtcMs !== null
+  ) {
+    out.capacityReleaseUtcMs = Number(partial.capacityReleaseUtcMs);
+  }
+  if (
+    partial.capacityReleaseUtcIso != null &&
+    String(partial.capacityReleaseUtcIso).trim()
+  ) {
+    out.capacityReleaseUtcIso = String(partial.capacityReleaseUtcIso).trim();
+  }
+  if (partial.sourceWindowId != null && String(partial.sourceWindowId).trim()) {
+    out.sourceWindowId = normalizeIdentifier(partial.sourceWindowId);
   }
   if (partial.metadata && typeof partial.metadata === "object") {
     out.metadata = Object.freeze(copyPlainObject(partial.metadata));

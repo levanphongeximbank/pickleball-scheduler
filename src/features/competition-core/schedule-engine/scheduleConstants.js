@@ -1,6 +1,6 @@
 /**
  * CORE-11 Schedule Engine — identity, schema, severity, forbidden fields.
- * Phase 1B: contracts & validation only (no scheduler / graph / adapters).
+ * Phase 1B–1E: contracts, windows, dependency graph, baseline candidate.
  */
 
 /** Schema version for CORE-11 schedule-engine domain objects. */
@@ -20,6 +20,29 @@ export const CORE11_SCHEDULE_ENGINE = SCHEDULE_ENGINE_IDENTITY.id;
 
 /** @deprecated Prefer SCHEDULE_ENGINE_IDENTITY.version */
 export const CORE11_ENGINE_VERSION = SCHEDULE_ENGINE_IDENTITY.version;
+
+/**
+ * Phase 1E baseline candidate constraint-certification level.
+ * Not a publish/finalize status — Phase 1F must certify remaining constraints.
+ */
+export const CONSTRAINT_CERTIFICATION = Object.freeze({
+  BASELINE_ONLY: "BASELINE_ONLY",
+});
+
+/** @type {ReadonlySet<string>} */
+export const CONSTRAINT_CERTIFICATION_VALUES = new Set(
+  Object.values(CONSTRAINT_CERTIFICATION)
+);
+
+/**
+ * @param {unknown} value
+ * @returns {boolean}
+ */
+export function isConstraintCertification(value) {
+  return (
+    typeof value === "string" && CONSTRAINT_CERTIFICATION_VALUES.has(value)
+  );
+}
 
 /**
  * Phase 1 overnight policy: REJECT.

@@ -67,7 +67,7 @@ export const SCHEDULE_DIAGNOSTIC_CODE = Object.freeze({
   TEAM_OVERLAP: "TEAM_OVERLAP",
   /** Deferred (hard min-rest enforcement at schedule time). */
   INSUFFICIENT_REST: "INSUFFICIENT_REST",
-  /** Deferred. */
+  /** Deferred (Phase 1F+ physical / participant capacity certification). */
   CAPACITY_EXCEEDED: "CAPACITY_EXCEEDED",
   /** Deferred. */
   MATCH_OUTSIDE_ALLOWED_WINDOW: "MATCH_OUTSIDE_ALLOWED_WINDOW",
@@ -80,6 +80,16 @@ export const SCHEDULE_DIAGNOSTIC_CODE = Object.freeze({
   COURT_ASSIGNMENT_BOUNDARY_VIOLATION: "COURT_ASSIGNMENT_BOUNDARY_VIOLATION",
   REFEREE_ASSIGNMENT_BOUNDARY_VIOLATION: "REFEREE_ASSIGNMENT_BOUNDARY_VIOLATION",
   BYE_NO_SCHEDULE_REQUIRED: "BYE_NO_SCHEDULE_REQUIRED",
+  /** Phase 1E — no feasible abstract interval under current constraints. */
+  NO_FEASIBLE_TIME_SLOT: "NO_FEASIBLE_TIME_SLOT",
+  /** Phase 1E — required non-bye predecessor was not placed. */
+  PREDECESSOR_UNSCHEDULED: "PREDECESSOR_UNSCHEDULED",
+  /** Phase 1E — match duration cannot fit any available window/session. */
+  MATCH_DURATION_EXCEEDS_WINDOW: "MATCH_DURATION_EXCEEDS_WINDOW",
+  /** Phase 1E — abstract maxConcurrentMatches exhausted at all candidate times. */
+  ABSTRACT_CAPACITY_EXHAUSTED: "ABSTRACT_CAPACITY_EXHAUSTED",
+  /** Phase 1E — baseline candidate has unscheduled schedulable matches. */
+  BASELINE_CANDIDATE_INCOMPLETE: "BASELINE_CANDIDATE_INCOMPLETE",
 });
 
 /** @type {ReadonlySet<string>} */
