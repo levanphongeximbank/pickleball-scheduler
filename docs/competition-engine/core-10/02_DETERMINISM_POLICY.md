@@ -152,3 +152,16 @@ Exclude from replay-determining fingerprints: wall-clock duration, machine ident
 10. Empty `executionSpecs` returns an empty frozen array and invokes no evaluator.
 11. Failures throw immediately — no partial-success envelope in Phase 1C-A.
 12. Caller objects/arrays are never frozen or sorted in place; factories/evaluators operate on owned clones.
+
+---
+
+## Phase 1C-B1 — Candidate evaluation determinism
+
+1. Constraint ports are **synchronous only**. Promise/thenable results fail with `ASYNC_CONSTRAINT_PORT_UNSUPPORTED`.
+2. Candidate assignment arrays are copied; owned canonical order is by stable `variableId`. Caller arrays are never sorted in place.
+3. Hard-violation composition uses canonical serialized identity tuples (no delimiter-joined keys) over `sourceModule`, `sourceVersion`, `violationCode`, `constraintId`, `affectedIds`.
+4. Composition order is stable by sourceModule → sourceVersion → violationCode → constraintId → affectedIds tuple → magnitude → messageCode → detailsCodes tuple.
+5. Exact duplicate hard violations are deduplicated; magnitude conflicts fail closed (`HARD_VIOLATION_MAGNITUDE_CONFLICT`); messageCode/detailsCodes conflicts fail closed (`DUPLICATE_HARD_VIOLATION`).
+6. Runtime dependencies (registry evaluators, port functions) are never included in replay-safe fingerprints.
+7. Structural candidate-input failures produce Phase 1C-B failure codes — not HardViolation objects and not run-level `INFEASIBLE`.
+8. No `Math.random`, wall-clock, locale sorting, or floating-point ranking keys in Phase 1C-B1 contracts.
