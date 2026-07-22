@@ -540,3 +540,30 @@ Does not generate candidates, search, evaluate, rank, enforce budgets, or wire o
 `createCandidateBatch`, `createCandidateSourcePort`, `isCandidateSourcePort`, `createFixedCandidateSourcePort`, `CORE10_CANDIDATE_SOURCE_PORT_V1`.
 
 See `09_CANDIDATE_SOURCE_CONTRACT.md`. Root `competition-core/index.js` unchanged.
+
+---
+
+## Phase 1I — Candidate Source Wiring
+
+Thin synchronous wiring of an approved Candidate Source Port into existing supplied-candidate orchestration:
+
+```text
+optimizeCandidateSource(
+  optimizationRequest,
+  candidateSourcePort,
+  evaluationDependencies,
+  sourceContext?
+) → OptimizationResult
+```
+
+- Validates arguments (including Promise/thenable rejection).
+- Verifies port via `isCandidateSourcePort`.
+- Calls `produce` exactly once, then delegates to `optimizeSuppliedCandidates`.
+- Preserves Phase 1G budgets, context precedence, duplicate-before-budget, and `CORE10_SUPPLIED_CANDIDATE_OPTIMIZATION_V2` fingerprints.
+- Does not generate candidates, search, own budgets, or remap results.
+
+### Public Phase 1I API (capability-local)
+
+`optimizeCandidateSource`.
+
+See `10_CANDIDATE_SOURCE_WIRING.md`. Root `competition-core/index.js` unchanged.

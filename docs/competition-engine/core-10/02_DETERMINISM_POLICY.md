@@ -274,3 +274,14 @@ Exclude from replay-determining fingerprints: wall-clock duration, machine ident
 5. Repeated produce over equivalent inputs is structurally deterministic; no `Math.random`, `Date.now`, locale ordering, IO, or host-specific values.
 6. Source does not enforce optimization budgets; Phase 1G orchestration remains the budget owner and still canonicalizes by `candidateId` before truncation.
 7. No candidate generation, greedy/exhaustive search, or sibling CORE imports.
+
+---
+
+## Phase 1I — Candidate Source Wiring determinism
+
+1. `optimizeCandidateSource` is synchronous only — no Promise, async, concurrency, retry, or timers.
+2. Candidate Source Port `produce` executes exactly once per optimization call before delegation.
+3. Result identity matches direct `optimizeSuppliedCandidates` for equivalent request + Candidate Batch content (`CORE10_SUPPLIED_CANDIDATE_OPTIMIZATION_V2`).
+4. Port identity / `sourceContext` identity / timestamps are not bound into result fingerprint.
+5. Context precedence, duplicate-before-budget, and canonicalization-before-truncation remain owned by existing supplied orchestration.
+6. No candidate generation, greedy/exhaustive search, `maxNodes` execution, or sibling CORE imports.

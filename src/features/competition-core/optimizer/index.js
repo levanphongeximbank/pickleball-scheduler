@@ -22,10 +22,12 @@
  * wall-clock watchdog, no search/generation).
  * Phase 1H: deterministic Candidate Source Port + Candidate Batch contract
  * (synchronous source boundary only; no generation/search/wiring).
+ * Phase 1I: wire Candidate Source Port into existing optimizeSuppliedCandidates
+ * orchestration (once-only produce + pure delegation; no generation/search).
  *
  * Integrator owns root competition-core/index.js — do not edit that here.
  * No scheduling, court-assignment, or referee-assignment exports.
- * No production solvers in Phase 1B / 1C-A / 1C-B1 / 1C-B2-A / 1C-B2-B / 1C-C / 1D / 1E / 1F / 1G / 1H.
+ * No production solvers in Phase 1B / 1C-A / 1C-B1 / 1C-B2-A / 1C-B2-B / 1C-C / 1D / 1E / 1F / 1G / 1H / 1I.
  */
 
 export {
@@ -184,4 +186,7 @@ export { rankCandidateEvaluations } from "./ranking/index.js";
 
 export { projectOptimizationResultFromEvaluatedFrontier } from "./projection/index.js";
 
-export { optimizeSuppliedCandidates } from "./orchestration/index.js";
+export {
+  optimizeSuppliedCandidates,
+  optimizeCandidateSource,
+} from "./orchestration/index.js";

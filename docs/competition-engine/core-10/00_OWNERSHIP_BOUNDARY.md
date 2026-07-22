@@ -2,7 +2,7 @@
 
 **Module:** `src/features/competition-core/optimizer/`
 **Capability-local public surface:** `optimizer/index.js`
-**Protected:** root `competition-core/index.js` (Integrator-owned; Phase 1B / 1C-A / 1C-B1 / 1C-B2-A / 1C-B2-B / 1C-C / 1D / 1E / 1F / 1G / 1H do not modify it)
+**Protected:** root `competition-core/index.js` (Integrator-owned; Phase 1B / 1C-A / 1C-B1 / 1C-B2-A / 1C-B2-B / 1C-C / 1D / 1E / 1F / 1G / 1H / 1I do not modify it)
 
 ---
 
@@ -25,9 +25,11 @@
 - Phase 1F `optimizeSuppliedCandidates` (supplied-input optimizer: evaluate caller-supplied unevaluated candidates, rank via Phase 1D, project `OptimizationResult`)
 - Phase 1G deterministic evaluation-budget termination on the same `optimizeSuppliedCandidates` API (`maxCandidates` / `maxEvaluations`; `maxNodes` ignored for this path; no wall-clock watchdog)
 - Phase 1H Candidate Batch contract + synchronous Candidate Source Port (`createCandidateBatch`, `createCandidateSourcePort`; no generation/search/wiring)
+- Phase 1I `optimizeCandidateSource` (once-only Candidate Source Port produce + pure delegation into `optimizeSuppliedCandidates`; no generation/search)
 
 CORE-10 is a **generic optimizer substrate**. It does not implement domain algorithms owned by other COREs.
 
+Phase 1I does **not** own candidate generation, search solvers, greedy/exhaustive strategies, budget ownership inside the wrapper, result remapping, or CORE-01 adapters.
 Phase 1H does **not** own candidate generation, search solvers, greedy/exhaustive strategies, budget enforcement inside `produce()`, orchestration rewiring, or CORE-01 adapters.
 Phase 1G does **not** own candidate generation, search solvers, greedy/exhaustive strategies, wall-clock watchdog termination, node-based search accounting on the supplied path, or CORE-01 adapters.
 Phase 1F does **not** own candidate generation, search solvers, greedy/exhaustive strategies, wall-clock watchdog termination, or CORE-01 adapters (evaluation-budget termination for supplied candidates is Phase 1G).
@@ -54,7 +56,7 @@ Phase 1C-C does **not** own candidate ranking across a search frontier, search s
 
 Phase 1B does **not** create dependencies on CORE-03 or CORE-06.
 Phase 1C-B1 does **not** import CORE-01 private implementations and does **not** ship a CORE-01 adapter.
-Phase 1C-B2-A / 1C-B2-B / 1C-C / 1D / 1E / 1F / 1G / 1H likewise do **not** import CORE-01 private implementations and do **not** ship a CORE-01 adapter.
+Phase 1C-B2-A / 1C-B2-B / 1C-C / 1D / 1E / 1F / 1G / 1H / 1I likewise do **not** import CORE-01 private implementations and do **not** ship a CORE-01 adapter.
 
 ---
 
