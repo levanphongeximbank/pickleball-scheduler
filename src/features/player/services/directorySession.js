@@ -18,7 +18,7 @@ import { trimId } from "../utils/playerId.js";
  * @returns {{ ok: true, user: object, authUserId: string } | { ok: false, code: string, message: string }}
  */
 export function resolveDirectorySession(dependencies = {}) {
-  let user = null;
+  let user;
 
   if (dependencies.user !== undefined) {
     user = dependencies.user;
