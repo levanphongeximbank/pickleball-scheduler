@@ -20,10 +20,12 @@
  * Phase 1G: deterministic evaluation-budget termination on the same
  * optimizeSuppliedCandidates API (maxCandidates / maxEvaluations; no
  * wall-clock watchdog, no search/generation).
+ * Phase 1H: deterministic Candidate Source Port + Candidate Batch contract
+ * (synchronous source boundary only; no generation/search/wiring).
  *
  * Integrator owns root competition-core/index.js — do not edit that here.
  * No scheduling, court-assignment, or referee-assignment exports.
- * No production solvers in Phase 1B / 1C-A / 1C-B1 / 1C-B2-A / 1C-B2-B / 1C-C / 1D / 1E / 1F / 1G.
+ * No production solvers in Phase 1B / 1C-A / 1C-B1 / 1C-B2-A / 1C-B2-B / 1C-C / 1D / 1E / 1F / 1G / 1H.
  */
 
 export {
@@ -53,6 +55,7 @@ export {
   CORE10_SUPPLIED_FRONTIER_RESULT_PROJECTION_VERSION,
   CORE10_SUPPLIED_CANDIDATE_OPTIMIZATION_VERSION,
   CORE10_SUPPLIED_CANDIDATE_OPTIMIZATION_V2,
+  CORE10_CANDIDATE_SOURCE_PORT_V1,
   CORE10_IDENTITY,
 } from "./constants/index.js";
 
@@ -118,6 +121,7 @@ export {
   createCandidateEvaluationDependencies,
   createCandidateEvaluationFailure,
   createCandidateEvaluationResult,
+  createCandidateBatch,
 } from "./contracts/index.js";
 
 export {
@@ -162,7 +166,12 @@ export {
   evaluateObjectives,
 } from "./objectives/index.js";
 
-export { createConstraintEvaluationPort } from "./ports/index.js";
+export {
+  createConstraintEvaluationPort,
+  createCandidateSourcePort,
+  isCandidateSourcePort,
+  createFixedCandidateSourcePort,
+} from "./ports/index.js";
 
 export {
   validateCandidateEvaluationInput,

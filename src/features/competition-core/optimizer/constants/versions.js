@@ -98,6 +98,10 @@ export const CORE10_SUPPLIED_CANDIDATE_OPTIMIZATION_VERSION =
 export const CORE10_SUPPLIED_CANDIDATE_OPTIMIZATION_V2 =
   "CORE10_SUPPLIED_CANDIDATE_OPTIMIZATION_V2";
 
+/** Phase 1H — Candidate Source Port contract version. */
+export const CORE10_CANDIDATE_SOURCE_PORT_V1 =
+  "CORE10_CANDIDATE_SOURCE_PORT_V1";
+
 export const CORE10_IDENTITY = Object.freeze({
   id: CORE10_ENGINE_ID,
   version: CORE10_ENGINE_VERSION,
@@ -132,4 +136,5 @@ export const CORE10_IDENTITY = Object.freeze({
   suppliedCandidateOptimizationVersion:
     CORE10_SUPPLIED_CANDIDATE_OPTIMIZATION_VERSION,
   suppliedCandidateOptimizationV2: CORE10_SUPPLIED_CANDIDATE_OPTIMIZATION_V2,
+  candidateSourcePortV1: CORE10_CANDIDATE_SOURCE_PORT_V1,
 });

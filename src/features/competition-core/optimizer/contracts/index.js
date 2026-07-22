@@ -48,3 +48,4 @@ export { createCandidateEvaluationInput } from "./candidateEvaluationInput.js";
 export { createCandidateEvaluationDependencies } from "./candidateEvaluationDependencies.js";
 export { createCandidateEvaluationFailure } from "./candidateEvaluationFailure.js";
 export { createCandidateEvaluationResult } from "./candidateEvaluationResult.js";
+export { createCandidateBatch } from "./candidateBatch.js";
