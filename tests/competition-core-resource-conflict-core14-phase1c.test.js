@@ -37,7 +37,6 @@ import {
   intervalsOverlap,
   intervalIntersection,
   resolveActivityIdentity,
-  createLogicalAssignmentKeyV1,
   serializeLogicalAssignmentKeyV1,
   serializeOccupancyIndexKey,
   evaluateDuplicateIntegrity,

@@ -203,7 +203,8 @@ export function detectResourceConflicts(request = {}) {
   const availabilityMode = modeResult.value;
 
   const capacityCheckEnabled = request.capacityCheckEnabled === true;
-  let capacityPolicy = null;
+  /** @type {object | null} */
+  let capacityPolicy;
   if (capacityCheckEnabled) {
     const cap = normalizeCapacityPolicy(request.capacityPolicy);
     if (!cap.ok) {
@@ -225,9 +226,7 @@ export function detectResourceConflicts(request = {}) {
   } else {
     // Still allow exclusive-location flags for overlap without full capacity scan.
     const cap = normalizeCapacityPolicy(request.capacityPolicy || {});
-    if (cap.ok) {
-      capacityPolicy = cap.value;
-    } else {
+    if (!cap.ok) {
       return createRejectedInvalidInputResult(
         cap.diagnostics.map((d) =>
           createInputDiagnostic({
@@ -242,6 +241,7 @@ export function detectResourceConflicts(request = {}) {
         }
       );
     }
+    capacityPolicy = cap.value;
   }
 
   const restResult = normalizeRestPolicy(request.restPolicy);
@@ -305,7 +305,6 @@ export function detectResourceConflicts(request = {}) {
   // 7. Availability
   const availabilityCheckEnabled = request.availabilityCheckEnabled === true;
   let availabilityCertification = AVAILABILITY_CERTIFICATION.NOT_EVALUATED;
-  let authoritativeFailure = false;
   /** @type {string[]} */
   let providerVersions = [];
 
@@ -326,8 +325,8 @@ export function detectResourceConflicts(request = {}) {
     });
     runtimeDiagnostics = runtimeDiagnostics.concat(avail.diagnostics);
     findings = findings.concat(avail.findings);
-    authoritativeFailure = avail.authoritativeFailure;
     providerVersions = avail.providerVersions;
+    const authoritativeFailure = avail.authoritativeFailure;
 
     if (authoritativeFailure && availabilityMode === AVAILABILITY_MODE.AUTHORITATIVE) {
       const resourceKeys = new Set(

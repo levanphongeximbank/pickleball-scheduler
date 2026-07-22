@@ -428,13 +428,7 @@ export function validateResolutionRecommendation(request = {}) {
     (policy.allowTouchPublished !== true ||
       policy.requireManualApprovalForPublished !== false);
 
-  const originalConflictsResolved =
-    comparison.unresolvedConflictIds.length === 0 &&
-    (targetConflictIds.length === 0 || comparison.resolvedConflictIds.length > 0
-      ? comparison.unresolvedConflictIds.length === 0
-      : targetConflictIds.length === 0);
-
-  // Refine: all targets resolved when every target id is in resolved set (continuity-aware).
+  // All targets resolved when every target id is in resolved set (continuity-aware).
   const allTargetsResolved =
     targetConflictIds.length === 0
       ? true
