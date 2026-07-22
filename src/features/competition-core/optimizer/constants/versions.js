@@ -87,9 +87,16 @@ export const CORE10_CANDIDATE_RANKING_VERSION = "CORE10_CANDIDATE_RANKING_V1";
 export const CORE10_SUPPLIED_FRONTIER_RESULT_PROJECTION_VERSION =
   "CORE10_SUPPLIED_FRONTIER_RESULT_PROJECTION_V1";
 
-/** Phase 1F — supplied-candidate optimization orchestration version. */
+/** Phase 1F — historical supplied-candidate optimization version (retained). */
 export const CORE10_SUPPLIED_CANDIDATE_OPTIMIZATION_VERSION =
   "CORE10_SUPPLIED_CANDIDATE_OPTIMIZATION_V1";
+
+/**
+ * Phase 1G — supplied-candidate optimization with deterministic
+ * evaluation-budget termination.
+ */
+export const CORE10_SUPPLIED_CANDIDATE_OPTIMIZATION_V2 =
+  "CORE10_SUPPLIED_CANDIDATE_OPTIMIZATION_V2";
 
 export const CORE10_IDENTITY = Object.freeze({
   id: CORE10_ENGINE_ID,
@@ -124,4 +131,5 @@ export const CORE10_IDENTITY = Object.freeze({
     CORE10_SUPPLIED_FRONTIER_RESULT_PROJECTION_VERSION,
   suppliedCandidateOptimizationVersion:
     CORE10_SUPPLIED_CANDIDATE_OPTIMIZATION_VERSION,
+  suppliedCandidateOptimizationV2: CORE10_SUPPLIED_CANDIDATE_OPTIMIZATION_V2,
 });

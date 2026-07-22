@@ -492,14 +492,32 @@ optimizeSuppliedCandidates(
 - Canonicalizes evaluation order by `candidateId` (`compareStableString`).
 - Reuses `createCandidateEvaluationInput` + `evaluateCandidateSolution` + `rankCandidateEvaluations`.
 - Non-rankable evaluation outcomes fail closed (throw); never silently dropped / converted to `INFEASIBLE`.
-- Empty batch or all-infeasible ⇒ `status=INFEASIBLE`, `selectedCandidateId=null`.
-- Feasible winner ⇒ `status=SUCCESS`, `selectedCandidateId` from Phase 1D.
-- Diagnostics report honest `budgetUsage.evaluations` (actual evaluation invocations); `nodes=0`; `budgetExhausted=false`; `watchdogTimeout=false`.
+- Empty batch or all-infeasible (complete evaluation) ⇒ `status=INFEASIBLE`, `selectedCandidateId=null`.
+- Feasible winner on a complete evaluation ⇒ `status=SUCCESS`, `selectedCandidateId` from Phase 1D.
+- Diagnostics report honest `budgetUsage.evaluations` (actual evaluation invocations); `nodes=0`; `watchdogTimeout=false`.
 - Does not call Phase 1E projection unchanged (Phase 1E always reports `evaluations=0`).
-- No runtime budget exhaustion / watchdog in this phase.
+- Phase 1G supersedes Phase 1F budget deferral for `maxCandidates` / `maxEvaluations` on this path (see below).
 
 ### Public Phase 1F API (capability-local)
 
-`optimizeSuppliedCandidates`, `CORE10_SUPPLIED_CANDIDATE_OPTIMIZATION_VERSION`.
+`optimizeSuppliedCandidates`, `CORE10_SUPPLIED_CANDIDATE_OPTIMIZATION_VERSION` (historical V1).
 
 See `07_SUPPLIED_CANDIDATE_OPTIMIZATION.md`. Root `competition-core/index.js` unchanged.
+
+---
+
+## Phase 1G — Deterministic evaluation-budget termination
+
+Same unchanged API as Phase 1F. Extends `optimizeSuppliedCandidates` with deterministic evaluation-budget termination.
+
+- Effective evaluation limit = minimum of non-null `maxCandidates` / `maxEvaluations`.
+- Both null ⇒ no evaluation cap (including only-`maxNodes` budgets); `maxNodes` never caps this path.
+- Zero is a real limit. Truncated non-empty batches ⇒ `BUDGET_EXHAUSTED` (never `SUCCESS`); empty batch remains `INFEASIBLE` (precedence).
+- Evaluate / rank only the canonical prefix under the limit; `candidateCount` = full admitted count; `evaluationCount` / `budgetUsage.evaluations` = actual evaluations; `budgetExhausted=true` iff truncated non-empty; `watchdogTimeout=false`.
+- Capability version `CORE10_SUPPLIED_CANDIDATE_OPTIMIZATION_V2` (exported capability-locally alongside historical V1).
+
+### Public Phase 1G API (capability-local)
+
+`optimizeSuppliedCandidates` (unchanged name), `CORE10_SUPPLIED_CANDIDATE_OPTIMIZATION_V2`.
+
+See `08_SUPPLIED_CANDIDATE_BUDGET_TERMINATION.md`. Root `competition-core/index.js` unchanged.

@@ -1,7 +1,7 @@
 # CORE-10 — Supplied-Candidate Optimization Orchestration (Phase 1F)
 
 **Module:** `src/features/competition-core/optimizer/orchestration/`
-**Version:** `CORE10_SUPPLIED_CANDIDATE_OPTIMIZATION_V1`
+**Version:** `CORE10_SUPPLIED_CANDIDATE_OPTIMIZATION_V1` (historical Phase 1F); active orchestration fingerprint uses Phase 1G `CORE10_SUPPLIED_CANDIDATE_OPTIMIZATION_V2`
 **Capability:** supplied-input optimizer (not a production global search solver)
 
 ---
@@ -11,6 +11,8 @@
 Phase 1F orchestrates evaluation of a **caller-supplied** unevaluated candidate batch, then reuses Phase 1D ranking and existing `OptimizationResult` factories to return a frozen result.
 
 It is a **supplied-input optimizer** under `CONTRACT_ONLY`. It does **not** generate candidates, search, run greedy/exhaustive solvers, consume wall-clock budgets, or claim solver-node activity.
+
+Phase 1G extends the same API with deterministic evaluation-budget termination for `maxCandidates` / `maxEvaluations`. See `08_SUPPLIED_CANDIDATE_BUDGET_TERMINATION.md`.
 
 ---
 
@@ -30,9 +32,11 @@ Phase 1F does **not** own:
 - candidate generation / search / `DETERMINISTIC_GREEDY` / `EXHAUSTIVE`;
 - changes to `CandidateEvaluationResult`, ranking contracts, or Phase 1E zero-budget projection semantics;
 - new `OptimizationResult` schema fields;
-- runtime budget exhaustion / watchdog termination;
+- wall-clock watchdog termination;
 - CORE-01 adapters, Schedule / Court / Referee, persistence, UI;
 - root `competition-core/index.js` export.
+
+Evaluation-budget termination for supplied candidates (`BUDGET_EXHAUSTED` on truncated batches) is owned by Phase 1G.
 
 ---
 
@@ -106,13 +110,16 @@ Each admitted candidate is turned into a `CandidateEvaluationInput` via existing
 2. Validate request; enforce accepted operation + strategy.
 3. Admit supplied batch (fail closed).
 4. Canonicalize evaluation order by `candidateId` using `compareStableString` (UTF-16 code units; not `localeCompare`; not caller array order).
-5. Certify `evaluationDependencies` via `createCandidateEvaluationDependencies`.
-6. For each canonical candidate: build `CandidateEvaluationInput` → `evaluateCandidateSolution` (count one evaluation per invocation).
-7. Non-rankable evaluation statuses (`INVALID_CANDIDATE`, `EVALUATION_FAILED`, …) fail closed (throw). They are never dropped and never converted to `INFEASIBLE`.
-8. `rankCandidateEvaluations(evaluatedFrontier)` (Phase 1D).
-9. Build diagnostics / replay / fingerprint / `OptimizationResult` via existing factories with **honest** evaluation counts.
+5. Derive effective evaluation limit (Phase 1G) and select the evaluated prefix.
+6. Certify `evaluationDependencies` via `createCandidateEvaluationDependencies`.
+7. For each selected canonical candidate: build `CandidateEvaluationInput` → `evaluateCandidateSolution` (count one evaluation per invocation).
+8. Non-rankable evaluation statuses (`INVALID_CANDIDATE`, `EVALUATION_FAILED`, …) fail closed (throw). They are never dropped and never converted to `INFEASIBLE`.
+9. `rankCandidateEvaluations(evaluatedFrontier)` (Phase 1D) over the **evaluated subset only**.
+10. Build diagnostics / replay / fingerprint / `OptimizationResult` via existing factories with **honest** evaluation counts.
 
 Phase 1F does **not** call Phase 1E projection unchanged, because Phase 1E always reports `budgetUsage.evaluations = 0`. Phase 1F builds the result directly with the same factories so evaluation accounting remains honest. Phase 1E public behavior is unchanged.
+
+Full-batch ranking applies only when the admitted batch is within the effective evaluation budget (or unlimited). Truncated results are partial and use `BUDGET_EXHAUSTED` (Phase 1G).
 
 ---
 
@@ -121,35 +128,48 @@ Phase 1F does **not** call Phase 1E projection unchanged, because Phase 1E alway
 | Condition | `status` | `selectedCandidateId` | evaluations |
 |-----------|----------|------------------------|-------------|
 | Empty `candidates` | `INFEASIBLE` | `null` | `0` |
-| All rankable but infeasible | `INFEASIBLE` | `null` | `N` |
-| At least one feasible | `SUCCESS` | Phase 1D winner | `N` |
+| Complete evaluation, all rankable but infeasible | `INFEASIBLE` | `null` | `N` |
+| Complete evaluation, at least one feasible | `SUCCESS` | Phase 1D winner | `N` |
+| Truncated non-empty batch (Phase 1G) | `BUDGET_EXHAUSTED` | best evaluated-so-far or `null` | limit |
 
 Contract/input failures throw and do **not** return an `INFEASIBLE` domain result.
 
-`rankedCandidateIds` mirrors Phase 1D (infeasible IDs retained after feasible).
+Empty batch takes precedence over budget exhaustion.
+
+`rankedCandidateIds` mirrors Phase 1D over the evaluated subset (infeasible IDs retained after feasible).
 
 ---
 
 ## Diagnostics semantics
 
-| Field | Phase 1F value |
-|-------|----------------|
+| Field | Value |
+|-------|-------|
 | `candidateCount` | admitted supplied candidate count |
-| `feasibleCount` / `infeasibleCount` | from Phase 1D ranking |
+| `feasibleCount` / `infeasibleCount` | from Phase 1D ranking of evaluated subset |
 | `budgetUsage.nodes` | `0` |
 | `budgetUsage.candidates` | admitted supplied candidate count |
 | `budgetUsage.evaluations` | actual `evaluateCandidateSolution` invocations |
 | `prunedCount` | `0` |
-| `budgetExhausted` | `false` |
+| `budgetExhausted` | `false` when complete; `true` when Phase 1G truncates a non-empty batch |
 | `watchdogTimeout` | `false` |
 
 No solver nodes, search tree, generated candidates, watchdog, or wall-clock timing.
 
 ---
 
-## Budget policy (deferred)
+## Budget policy
 
-Phase 1F evaluates **all** valid supplied candidates. It does not partially terminate on `maxNodes` / `maxCandidates` / `maxEvaluations`, and does not introduce `BUDGET_EXHAUSTED` behaviour. Runtime budget exhaustion and watchdog semantics remain deferred for future search strategies.
+Phase 1F originally deferred runtime budget exhaustion. **Phase 1G supersedes that deferral** for `maxCandidates` / `maxEvaluations` on the supplied-candidate path:
+
+- effective limit = min of non-null `maxCandidates` / `maxEvaluations`;
+- both null ⇒ no evaluation cap (including only-`maxNodes` budgets);
+- `maxNodes` does not limit supplied-candidate evaluations;
+- zero is a real limit;
+- truncated batches return `BUDGET_EXHAUSTED` (never `SUCCESS`).
+
+Wall-clock watchdog semantics remain out of scope.
+
+See `08_SUPPLIED_CANDIDATE_BUDGET_TERMINATION.md`.
 
 ---
 
@@ -157,14 +177,16 @@ Phase 1F evaluates **all** valid supplied candidates. It does not partially term
 
 Replay metadata reuses `createReplayMetadata` (engine/schema/policy/comparator/fingerprint versions, snapshot fingerprints, seed/PRNG only when seed present, operation, deterministic budget, result fingerprint). No timestamps / `Date.now`.
 
-Result fingerprint material (via `fingerprintValue`) binds at least:
+Active result fingerprint material (via `fingerprintValue`) binds at least:
 
-- `CORE10_SUPPLIED_CANDIDATE_OPTIMIZATION_V1`
+- `CORE10_SUPPLIED_CANDIDATE_OPTIMIZATION_V2`
 - `requestId`, `status`, `failureCode`
 - `selectedCandidateId`, `rankedCandidateIds`
-- `candidateCount`, `feasibleCount`, `infeasibleCount`, `evaluationCount`
+- `candidateCount`, feasible/infeasible counts, `evaluationCount`, `budgetExhausted`
 
-Same logical input under different caller candidate order ⇒ same fingerprint. Different `requestId` or different winner ⇒ different fingerprint.
+Historical constant `CORE10_SUPPLIED_CANDIDATE_OPTIMIZATION_VERSION` remains `…_V1` for compatibility.
+
+Same logical input under different caller candidate order ⇒ same fingerprint. Different `requestId`, winner, or complete-vs-exhausted semantics ⇒ different fingerprint.
 
 ---
 
@@ -175,6 +197,7 @@ Same logical input under different caller candidate order ⇒ same fingerprint. 
 3. No `Math.random`, `Date.now`, `localeCompare`, filesystem, network, or sibling CORE imports.
 4. Caller inputs never mutated / frozen in place.
 5. Returned `OptimizationResult` frozen per existing factory contract.
+6. Phase 1G stopping point is deterministic from discrete budgets + canonical order (not wall-clock).
 
 ---
 
@@ -186,11 +209,12 @@ Same logical input under different caller candidate order ⇒ same fingerprint. 
 - No sibling CORE module imports.
 - Root barrel unchanged.
 - Future search strategies (`DETERMINISTIC_GREEDY`, `EXHAUSTIVE`) remain out of scope and unsupported here.
+- Wall-clock watchdog is out of scope.
 
 ---
 
 ## Public exports (capability-local)
 
-`optimizeSuppliedCandidates`, `CORE10_SUPPLIED_CANDIDATE_OPTIMIZATION_VERSION`.
+`optimizeSuppliedCandidates`, `CORE10_SUPPLIED_CANDIDATE_OPTIMIZATION_VERSION` (V1), `CORE10_SUPPLIED_CANDIDATE_OPTIMIZATION_V2`.
 
 Not exported: fingerprint material builder helpers. Root barrel unchanged.

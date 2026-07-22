@@ -114,8 +114,12 @@ Replay-certified budgets use discrete counters such as:
 - `maxCandidates`
 - `maxEvaluations`
 
+These are **operation budgets** (discrete evaluation / candidate / node counters). They are distinct from any wall-clock watchdog.
+
 Budget exhaustion ⇒ `BUDGET_EXHAUSTED` (not replay-certified success).
 Watchdog wall-clock timeout ⇒ `WATCHDOG_TIMEOUT` (not replay-certified success).
+
+Phase 1G implements operation-budget termination for the supplied-candidate path using `maxCandidates` / `maxEvaluations` only. A real wall-clock watchdog remains out of scope and must not be used to drive termination or fingerprints.
 
 ---
 
@@ -232,3 +236,29 @@ Exclude from replay-determining fingerprints: wall-clock duration, machine ident
 5. Caller request and frontier are never mutated or frozen in place; returned `OptimizationResult` is frozen.
 6. Empty / all-infeasible frontiers project `INFEASIBLE` with `selectedCandidateId=null`; feasible winner projects `SUCCESS`.
 7. No `Math.random`, `Date.now`, `localeCompare`, or environment-dependent ordering.
+
+---
+
+## Phase 1F — Supplied-candidate optimization orchestration determinism
+
+1. `optimizeSuppliedCandidates(request, batch, dependencies)` is synchronous only — no Promise, async, concurrency, retry, or timers.
+2. Supplied candidates are admitted then ordered by stable `candidateId` (`compareStableString`) before evaluation; caller array order must not affect outcomes.
+3. Each evaluated candidate uses `createCandidateEvaluationInput` + `evaluateCandidateSolution`; ranking delegates to Phase 1D.
+4. Non-rankable evaluation statuses fail closed (throw) — never silently dropped or converted to `INFEASIBLE`.
+5. Caller request / batch / assignments / context / dependencies are never mutated or frozen in place; returned `OptimizationResult` is frozen.
+6. Diagnostics and replay are built via existing factories; no wall-clock data in fingerprints.
+7. No `Math.random`, `Date.now`, `localeCompare`, candidate generation, greedy/exhaustive search, or sibling CORE imports.
+
+---
+
+## Phase 1G — Deterministic evaluation-budget termination
+
+1. Same synchronous `optimizeSuppliedCandidates` API; no signature change; no Promise/async/timers/`Date.now`.
+2. Operation budgets only: effective evaluation limit = min of non-null `maxCandidates` / `maxEvaluations`; both null ⇒ unlimited on this path; `maxNodes` does not cap supplied-candidate evaluations; zero is a real limit.
+3. Admission + canonical `candidateId` order occur before truncation; evaluate only the canonical prefix under a finite limit.
+4. Truncated non-empty batch ⇒ `BUDGET_EXHAUSTED` with best-evaluated-so-far selection (or null) and partial `rankedCandidateIds` over the evaluated subset only — never `SUCCESS`.
+5. Empty batch remains `INFEASIBLE` and takes precedence over budget exhaustion.
+6. Complete within-budget evaluation preserves Phase 1F SUCCESS / INFEASIBLE semantics with `budgetExhausted=false`.
+7. Fingerprint binds `CORE10_SUPPLIED_CANDIDATE_OPTIMIZATION_V2` plus status / failure / selection / ranking / counts / `budgetExhausted` — no wall-clock material.
+8. Wall-clock watchdog is explicitly out of scope and must not drive termination.
+9. No candidate generation, greedy/exhaustive search, node inventing, or environment-dependent stopping.
