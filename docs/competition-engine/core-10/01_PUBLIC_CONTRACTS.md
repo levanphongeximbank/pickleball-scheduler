@@ -440,3 +440,31 @@ rankCandidateEvaluations(frontier) → frozen ranking view
 `rankCandidateEvaluations`, `CANDIDATE_RANKING_FAILURE_CODE`, `CORE10_CANDIDATE_RANKING_VERSION`.
 
 See `05_CANDIDATE_RANKING.md`. Root `competition-core/index.js` unchanged.
+
+---
+
+## Phase 1E — Supplied-frontier OptimizationResult projection
+
+Capability-local only (`optimizer/`). Projects an `OptimizationResult` from an `OptimizationRequest` and a supplied frontier of already evaluated candidates. Does not generate candidates, search, or solve.
+
+### API
+
+```text
+projectOptimizationResultFromEvaluatedFrontier(optimizationRequest, evaluatedFrontier)
+  → frozen OptimizationResult
+```
+
+- Validates request via `validateOptimizationRequest` (fail closed / throw).
+- Accepts only `GENERIC_CANDIDATE_RANKING` + `CONTRACT_ONLY`.
+- Rejects Promise/thenable request or frontier.
+- Calls Phase 1D `rankCandidateEvaluations` for ranking / feasible-winner selection.
+- Empty frontier or all-infeasible ⇒ `status=INFEASIBLE`, `selectedCandidateId=null`.
+- Feasible winner ⇒ `status=SUCCESS`, `selectedCandidateId` from ranking.
+- Populates existing `createSolverDiagnostics` / `createReplayMetadata` / `createOptimizationResult` factories only.
+- Result fingerprint binds projection version + rankable result material (no recursive fingerprint field).
+
+### Public Phase 1E API (capability-local)
+
+`projectOptimizationResultFromEvaluatedFrontier`, `CORE10_SUPPLIED_FRONTIER_RESULT_PROJECTION_VERSION`.
+
+See `06_SUPPLIED_FRONTIER_RESULT_PROJECTION.md`. Root `competition-core/index.js` unchanged.

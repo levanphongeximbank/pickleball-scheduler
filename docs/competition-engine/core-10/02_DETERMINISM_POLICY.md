@@ -220,3 +220,15 @@ Exclude from replay-determining fingerprints: wall-clock duration, machine ident
 8. Caller frontier array/elements are never mutated or frozen in place; returned view and arrays are frozen owned values.
 9. Empty frontier returns an empty frozen view with `selectedCandidateId=null`.
 10. No `Math.random`, `Date.now`, `localeCompare`, or environment-dependent ordering.
+
+---
+
+## Phase 1E — Supplied-frontier OptimizationResult projection determinism
+
+1. `projectOptimizationResultFromEvaluatedFrontier(request, frontier)` is synchronous only — no Promise, async, concurrency, retry, or timers.
+2. Ranking is delegated entirely to Phase 1D `rankCandidateEvaluations` — no comparator fork.
+3. `resultFingerprint` uses CORE-10 `fingerprintValue` over projection version + rankable result material (status, selected/ranked IDs, counts). Material does not recursively include `resultFingerprint`.
+4. Diagnostics and replay metadata are built only via existing factories (`createEmptySolverDiagnostics` / `createReplayMetadata` / `createOptimizationResult`).
+5. Caller request and frontier are never mutated or frozen in place; returned `OptimizationResult` is frozen.
+6. Empty / all-infeasible frontiers project `INFEASIBLE` with `selectedCandidateId=null`; feasible winner projects `SUCCESS`.
+7. No `Math.random`, `Date.now`, `localeCompare`, or environment-dependent ordering.

@@ -12,10 +12,12 @@
  * Phase 1C-C: CandidateEvaluationResult content fingerprint (explicit utility).
  * Phase 1D: deterministic ranking / feasible-winner selection over a supplied
  * frontier of already evaluated candidates (no search/solvers).
+ * Phase 1E: project OptimizationResult from OptimizationRequest + supplied
+ * evaluated frontier via Phase 1D ranking (no search/solvers).
  *
  * Integrator owns root competition-core/index.js — do not edit that here.
  * No scheduling, court-assignment, or referee-assignment exports.
- * No production solvers in Phase 1B / 1C-A / 1C-B1 / 1C-B2-A / 1C-B2-B / 1C-C / 1D.
+ * No production solvers in Phase 1B / 1C-A / 1C-B1 / 1C-B2-A / 1C-B2-B / 1C-C / 1D / 1E.
  */
 
 export {
@@ -42,6 +44,7 @@ export {
   CORE10_CANDIDATE_INPUT_FINGERPRINT_VERSION,
   CORE10_CANDIDATE_RESULT_FINGERPRINT_VERSION,
   CORE10_CANDIDATE_RANKING_VERSION,
+  CORE10_SUPPLIED_FRONTIER_RESULT_PROJECTION_VERSION,
   CORE10_IDENTITY,
 } from "./constants/index.js";
 
@@ -161,3 +164,5 @@ export {
 } from "./evaluation/index.js";
 
 export { rankCandidateEvaluations } from "./ranking/index.js";
+
+export { projectOptimizationResultFromEvaluatedFrontier } from "./projection/index.js";
