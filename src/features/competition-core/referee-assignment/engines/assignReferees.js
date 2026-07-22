@@ -393,7 +393,7 @@ function validateStructural(input) {
     }
   }
 
-  let seed = null;
+  let seed;
   try {
     seed = normalizePlannerSeed(request.seed);
   } catch (err) {
