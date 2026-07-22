@@ -102,6 +102,12 @@ export const CORE10_SUPPLIED_CANDIDATE_OPTIMIZATION_V2 =
 export const CORE10_CANDIDATE_SOURCE_PORT_V1 =
   "CORE10_CANDIDATE_SOURCE_PORT_V1";
 
+/**
+ * Phase 1J — deterministic Cartesian candidate generator capability version.
+ */
+export const CORE10_DETERMINISTIC_CANDIDATE_GENERATOR_V1 =
+  "CORE10_DETERMINISTIC_CANDIDATE_GENERATOR_V1";
+
 export const CORE10_IDENTITY = Object.freeze({
   id: CORE10_ENGINE_ID,
   version: CORE10_ENGINE_VERSION,
@@ -137,4 +143,6 @@ export const CORE10_IDENTITY = Object.freeze({
     CORE10_SUPPLIED_CANDIDATE_OPTIMIZATION_VERSION,
   suppliedCandidateOptimizationV2: CORE10_SUPPLIED_CANDIDATE_OPTIMIZATION_V2,
   candidateSourcePortV1: CORE10_CANDIDATE_SOURCE_PORT_V1,
+  deterministicCandidateGeneratorV1:
+    CORE10_DETERMINISTIC_CANDIDATE_GENERATOR_V1,
 });

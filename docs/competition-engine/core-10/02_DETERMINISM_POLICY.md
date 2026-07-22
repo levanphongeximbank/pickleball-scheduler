@@ -285,3 +285,16 @@ Exclude from replay-determining fingerprints: wall-clock duration, machine ident
 4. Port identity / `sourceContext` identity / timestamps are not bound into result fingerprint.
 5. Context precedence, duplicate-before-budget, and canonicalization-before-truncation remain owned by existing supplied orchestration.
 6. No candidate generation, greedy/exhaustive search, `maxNodes` execution, or sibling CORE imports.
+
+---
+
+## Phase 1J — Deterministic Candidate Generator determinism
+
+1. `createDeterministicCandidateGenerationSpec`, `generateCandidateBatch`, and deterministic source `produce` are synchronous only — no Promise, async, concurrency, retry, or timers.
+2. Generation Spec variables and `valueIds` are canonicalized with `compareStableString` before enumeration; caller order must not affect output.
+3. Cardinality is preflighted with safe-integer arithmetic against `maxGeneratedCandidates` before candidate materialization; over-cap / overflow fail closed (`GENERATION_LIMIT_EXCEEDED`).
+4. Complete Cartesian enumeration only; no pruning, feasibility checks, ranking, or evaluation during generation.
+5. `candidateId = "cand-" + fingerprintValue({ assignments })` over canonical assignment material only — no request/source/version/time/random binding.
+6. Generator does not read `maxCandidates` / `maxEvaluations` / `maxNodes`; those remain Phase 1G orchestration concerns.
+7. `sourceContext` is accepted for CandidateSourcePort compatibility and is not used for generation, IDs, or cardinality.
+8. No `Math.random`, `Date.now`, `localeCompare`, streaming, async production, or sibling CORE imports.
