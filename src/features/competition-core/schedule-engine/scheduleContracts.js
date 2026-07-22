@@ -801,6 +801,40 @@ export function fingerprintBaselineScheduleCandidate(candidate) {
   return serializeCanonical(projectBaselineCandidateForFingerprint(candidate));
 }
 
+/** Phase 1G-B1 adapter result status. */
+export const MATCH_PLAN_TO_SCHEDULE_REQUEST_RESULT_STATUS =
+  "MATCH_PLAN_TO_SCHEDULE_REQUEST_RESULT";
+
+/**
+ * @param {Partial<import('./scheduleTypes.js').MatchPlanToScheduleRequestResult>} [partial]
+ * @returns {import('./scheduleTypes.js').MatchPlanToScheduleRequestResult}
+ */
+export function createMatchPlanToScheduleRequestResult(partial = {}) {
+  const summary = partial.mappingSummary || {};
+  return {
+    ok: partial.ok === true,
+    status: MATCH_PLAN_TO_SCHEDULE_REQUEST_RESULT_STATUS,
+    scheduleRequest: partial.ok === true ? partial.scheduleRequest ?? null : null,
+    diagnostics: sortScheduleDiagnostics(
+      Array.isArray(partial.diagnostics) ? partial.diagnostics : []
+    ),
+    mappingSummary: {
+      sourceMatchCount: Number(summary.sourceMatchCount) || 0,
+      mappedMatchCount: Number(summary.mappedMatchCount) || 0,
+      byeMatchCount: Number(summary.byeMatchCount) || 0,
+      dependencyCount: Number(summary.dependencyCount) || 0,
+      concreteParticipantCount: Number(summary.concreteParticipantCount) || 0,
+      placeholderParticipantCount:
+        Number(summary.placeholderParticipantCount) || 0,
+    },
+    replay: Object.freeze(
+      partial.replay && typeof partial.replay === "object"
+        ? copyPlainObject(partial.replay)
+        : {}
+    ),
+  };
+}
+
 /**
  * Semantic equality ignoring producedAt.
  *

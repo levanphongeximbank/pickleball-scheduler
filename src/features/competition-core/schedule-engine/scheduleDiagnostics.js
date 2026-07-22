@@ -104,6 +104,25 @@ export const SCHEDULE_DIAGNOSTIC_CODE = Object.freeze({
   CONCURRENCY_INDEX_INVALID: "CONCURRENCY_INDEX_INVALID",
   /** Phase 1F — aggregate hard-constraint certification failure. */
   HARD_CONSTRAINT_CERTIFICATION_FAILED: "HARD_CONSTRAINT_CERTIFICATION_FAILED",
+  /** Phase 1G-B1 — MatchPlan failed public CORE-09 validation. */
+  MATCH_PLAN_INVALID: "MATCH_PLAN_INVALID",
+  /** Phase 1G-B1 — required MatchPlan field missing for schedule mapping. */
+  MATCH_PLAN_FIELD_MISSING: "MATCH_PLAN_FIELD_MISSING",
+  /** Phase 1G-B1 — direct participant lacks stable identity or kind. */
+  MATCH_PLAN_PARTICIPANT_IDENTITY_MISSING:
+    "MATCH_PLAN_PARTICIPANT_IDENTITY_MISSING",
+  /** Phase 1G-B1 — CORE-09 dependency type cannot become a schedule edge. */
+  MATCH_PLAN_DEPENDENCY_UNSUPPORTED: "MATCH_PLAN_DEPENDENCY_UNSUPPORTED",
+  /** Phase 1G-B1 — incoming/outgoing dependency contradiction. */
+  MATCH_PLAN_DEPENDENCY_INCONSISTENT: "MATCH_PLAN_DEPENDENCY_INCONSISTENT",
+  /** Phase 1G-B1 — required schedule policy field missing or invalid. */
+  SCHEDULE_POLICY_MISSING: "SCHEDULE_POLICY_MISSING",
+  /** Phase 1G-B1 — capacity vs dependency buffer diverge under shared-buffer contract. */
+  SCHEDULE_POLICY_BUFFER_CONFLICT: "SCHEDULE_POLICY_BUFFER_CONFLICT",
+  /** Phase 1G-B1 — identity enrichment map invalid or conflicting. */
+  IDENTITY_ENRICHMENT_INVALID: "IDENTITY_ENRICHMENT_INVALID",
+  /** Phase 1G-B1 — placement ref lacks explicit identity enrichment. */
+  PLACEMENT_IDENTITY_MISSING: "PLACEMENT_IDENTITY_MISSING",
 });
 
 /** @type {ReadonlySet<string>} */

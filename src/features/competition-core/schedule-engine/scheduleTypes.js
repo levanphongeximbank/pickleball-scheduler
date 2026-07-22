@@ -408,6 +408,56 @@ export function serializeCanonical(value) {
  */
 
 /**
+ * @typedef {Object} SchedulePolicyBundle
+ * @property {string} timezone
+ * @property {import('./scheduleTypes.js').SchedulingWindow[]} operatingWindows
+ * @property {import('./scheduleTypes.js').SessionWindow[]} [sessionWindows]
+ * @property {number} defaultDurationMinutes
+ * @property {Readonly<Record<string, number>>} [durationByStage]
+ * @property {Readonly<Record<string, number>>} [durationByRound]
+ * @property {number} bufferMinutes - capacity occupancy buffer; maps to policy.duration.bufferMinutes
+ * @property {number} dependencyBufferMinutes - adapter input for dependency earliest-start intent; must equal bufferMinutes under CORE-11 shared-buffer Outcome B (not stored as a second canonical field)
+ * @property {number} minParticipantRestMinutes
+ * @property {number} [minTeamRestMinutes]
+ * @property {number} maxConcurrentMatches
+ * @property {Readonly<Record<string, {
+ *   kind?: string,
+ *   teamId?: string,
+ *   constraintResourceIds?: string[],
+ * }>>} [identityByParticipantId]
+ * @property {Readonly<Record<string, {
+ *   participantId: string,
+ *   kind?: string,
+ *   teamId?: string,
+ *   constraintResourceIds?: string[],
+ * }>>} [placementIdentityByRef]
+ * @property {string} [defaultDirectParticipantKind]
+ * @property {Readonly<Record<string, number>>} [estimatedDurationByMatchId]
+ * @property {Readonly<Record<string, number>>} [priorityByMatchId]
+ * @property {string} [competitionId]
+ */
+
+/**
+ * @typedef {Object} MatchPlanAdapterMappingSummary
+ * @property {number} sourceMatchCount
+ * @property {number} mappedMatchCount
+ * @property {number} byeMatchCount
+ * @property {number} dependencyCount
+ * @property {number} concreteParticipantCount
+ * @property {number} placeholderParticipantCount
+ */
+
+/**
+ * @typedef {Object} MatchPlanToScheduleRequestResult
+ * @property {boolean} ok
+ * @property {string} status
+ * @property {import('./scheduleTypes.js').ScheduleRequest|null} scheduleRequest
+ * @property {import('./scheduleDiagnostics.js').ScheduleDiagnostic[]} diagnostics
+ * @property {MatchPlanAdapterMappingSummary} mappingSummary
+ * @property {Readonly<Record<string, unknown>>} replay
+ */
+
+/**
  * Optional CORE-10 port. Must not be called in Phase 1B.
  *
  * @typedef {Object} ScheduleOptimizerPort

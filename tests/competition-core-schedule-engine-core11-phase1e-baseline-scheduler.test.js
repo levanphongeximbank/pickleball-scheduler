@@ -908,13 +908,33 @@ test("52 no persistence or UI import", () => {
   assert.equal(/from ['"]@mui\//.test(src), false);
 });
 
-test("53 no CORE-09 adapter import", () => {
+test("53 no CORE-09 private or CC-09 scheduling import", () => {
   const src = readModuleSources();
   assert.equal(
     /from ['"].*competition-core\/scheduling/.test(src),
     false
   );
-  assert.equal(/from ['"].*match-generation/.test(src), false);
+  // Phase 1G-B1 adapters may import the public CORE-09 barrel only.
+  const adapterFiles = listJsFiles(path.join(SE_ROOT, "adapters"));
+  for (const file of listJsFiles(SE_ROOT)) {
+    if (adapterFiles.includes(file)) continue;
+    const text = readFileSync(file, "utf8");
+    assert.equal(/from ['"].*match-generation/.test(text), false, file);
+  }
+  for (const file of adapterFiles) {
+    const text = readFileSync(file, "utf8");
+    if (!/match-generation/i.test(text)) continue;
+    assert.match(
+      text,
+      /from ['"].*match-generation\/index\.js['"]/,
+      `adapter must import CORE-09 public barrel: ${file}`
+    );
+    assert.equal(
+      /from ['"].*match-generation\/(?!index\.js)/.test(text),
+      false,
+      file
+    );
+  }
 });
 
 test("54 no CORE-10 optimizer runtime", () => {

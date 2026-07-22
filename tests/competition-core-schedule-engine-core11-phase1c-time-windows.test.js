@@ -761,7 +761,21 @@ test("40 no React, Supabase, court, referee or persistence import", () => {
     assert.equal(/from\s+['"][^'"]*venue-court/i.test(text), false, file);
     assert.equal(/from\s+['"][^'"]*court-engine/i.test(text), false, file);
     assert.equal(/from\s+['"][^'"]*scheduling\//i.test(text), false, file);
-    assert.equal(/from\s+['"][^'"]*match-generation/i.test(text), false, file);
+    const isAdapter = /schedule-engine[\\/]+adapters[\\/]/.test(file);
+    if (!isAdapter) {
+      assert.equal(/from\s+['"][^'"]*match-generation/i.test(text), false, file);
+    } else if (/match-generation/i.test(text)) {
+      assert.match(
+        text,
+        /from\s+['"][^'"]*match-generation\/index\.js['"]/,
+        `adapter must import CORE-09 public barrel only: ${file}`
+      );
+      assert.equal(
+        /from\s+['"][^'"]*match-generation\/(?!index\.js)/.test(text),
+        false,
+        `adapter must not import CORE-09 private paths: ${file}`
+      );
+    }
   }
 });
 

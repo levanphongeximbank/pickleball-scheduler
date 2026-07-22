@@ -10,6 +10,7 @@
  * Phase 1D: dependency graph, cycle detection, topo order, readiness, earliest bound.
  * Phase 1E: abstract slot generation + deterministic baseline schedule candidate.
  * Phase 1F: independent hard-constraint certification of baseline candidates.
+ * Phase 1G-B1: CORE-09 MatchPlan → ScheduleRequest adapter (Path A).
  * Does not re-export CC-09 (src/features/competition-core/scheduling/).
  * Does not implement physical court / referee assignment, persistence, or UI wiring.
  */
@@ -94,6 +95,8 @@ export {
   fingerprintScheduleRequest,
   projectBaselineCandidateForFingerprint,
   fingerprintBaselineScheduleCandidate,
+  MATCH_PLAN_TO_SCHEDULE_REQUEST_RESULT_STATUS,
+  createMatchPlanToScheduleRequestResult,
   schedulePlansSemanticallyEqual,
   collectForbiddenAssignmentFieldPaths,
   matchesScheduleOptimizerPort,
@@ -146,6 +149,8 @@ export {
   EXTERNAL_BARRIER_DEPENDENCY_TYPES,
 } from "./scheduleParticipantConstraints.js";
 export { certifyBaselineScheduleCandidateConstraints } from "./scheduleConstraintCertification.js";
+
+export { createScheduleRequestFromMatchPlan } from "./adapters/index.js";
 
 export { validateScheduleRequest } from "./validateScheduleRequest.js";
 export {
