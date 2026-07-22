@@ -80,6 +80,19 @@ Venue & Court must not import Court Engine. Phase 2D wires CE confirm/transfer/p
 ## Phase status
 
 ```text
+PHASE 3C — AUTHORITATIVE COURT PRIORITY PERSISTENCE
+```
+
+See `docs/venue-court/PHASE_3C_AUTHORITATIVE_COURT_PRIORITY_PERSISTENCE.md`.
+
+Optional Venue-owned `court.priority` is preserved only when it is an explicit
+finite number. No default, no inference, no backfill, no UI, no HTTP/SQL change
+in this phase. Phase 3B descriptors continue to omit courts without authoritative
+priority (`PRIORITY_NOT_AUTHORITATIVE`).
+
+Prior phase:
+
+```text
 PHASE 3B — CANONICAL COURT DESCRIPTOR PUBLIC CONTRACT
 ```
 

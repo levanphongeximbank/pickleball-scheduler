@@ -232,6 +232,10 @@ export function upsertCourt(courts, { courtName, courtNumber, editingCourt = nul
     peakHourlyRate: extra.peakHourlyRate,
     note: extra.note,
     clusterId: extra.clusterId,
+    // Only forward priority when explicitly supplied; never invent a default.
+    ...(Object.prototype.hasOwnProperty.call(extra, "priority")
+      ? { priority: extra.priority }
+      : {}),
   };
 
   if (editingCourt) {
