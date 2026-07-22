@@ -205,3 +205,18 @@ Exclude from replay-determining fingerprints: wall-clock duration, machine ident
 6. Invalid fingerprint input throws `OptimizerContractError` with throw-only code `INVALID_CANDIDATE_EVALUATION_RESULT_FINGERPRINT_INPUT` (not stored in `CandidateEvaluationFailure`).
 7. Does **not** attach `resultFingerprint` onto `CandidateEvaluationResult` and does **not** alter `evaluateCandidateSolution`.
 8. No timestamps, random, localeCompare, environment, evaluator/port function identity, or external hash packages.
+
+---
+
+## Phase 1D — Candidate ranking determinism
+
+1. `rankCandidateEvaluations(frontier)` is synchronous only — no Promise, async, concurrency, retry, or timers.
+2. Ranking reuses Phase 1B `sortScoresDeterministic` / `compareOptimizationScores` (`CORE10_COMPARATOR_V1`) — no comparator fork.
+3. Order: feasible before infeasible → `hardViolationCount` ascending → authority values → objective values → stable `candidateId`.
+4. Input frontier order never influences output when candidate IDs are unique.
+5. `displayTotal` and evaluation/result fingerprints never participate in ranking.
+6. Duplicate `candidateId` values fail closed (`DUPLICATE_CANDIDATE_ID`) before sorting.
+7. Non-rankable statuses (`INVALID_CANDIDATE`, `EVALUATION_FAILED`) fail closed — never silently skipped.
+8. Caller frontier array/elements are never mutated or frozen in place; returned view and arrays are frozen owned values.
+9. Empty frontier returns an empty frozen view with `selectedCandidateId=null`.
+10. No `Math.random`, `Date.now`, `localeCompare`, or environment-dependent ordering.

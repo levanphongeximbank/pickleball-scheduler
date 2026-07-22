@@ -993,6 +993,10 @@ test("F01: public export allowlist for Phase 1C-A symbols", () => {
     "createCandidateEvaluationInputFingerprint" in OptimizerPublic,
     false
   );
+  // Phase 1D ranking is capability-local public.
+  assert.equal("rankCandidateEvaluations" in OptimizerPublic, true);
+  assert.equal("CORE10_CANDIDATE_RANKING_VERSION" in OptimizerPublic, true);
+  assert.equal("CANDIDATE_RANKING_FAILURE_CODE" in OptimizerPublic, true);
 });
 
 test("F02: no prohibited imports or domain objectives in Phase 1C-A sources", () => {

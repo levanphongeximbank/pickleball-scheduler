@@ -45,3 +45,9 @@ export {
 export { CANDIDATE_EVALUATION_STATUS } from "./candidateEvaluationStatus.js";
 
 export { CANDIDATE_EVALUATION_FAILURE_CODE } from "./candidateEvaluationFailureCodes.js";
+
+export {
+  CANDIDATE_RANKING_FAILURE_CODE,
+  CANDIDATE_RANKING_FAILURE_CODE_VALUES,
+  isCandidateRankingFailureCode,
+} from "./candidateRankingFailureCodes.js";

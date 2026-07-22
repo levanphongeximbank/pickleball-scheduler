@@ -2,7 +2,7 @@
 
 **Module:** `src/features/competition-core/optimizer/`
 **Capability-local public surface:** `optimizer/index.js`
-**Protected:** root `competition-core/index.js` (Integrator-owned; Phase 1B / 1C-A / 1C-B1 / 1C-B2-A / 1C-B2-B / 1C-C do not modify it)
+**Protected:** root `competition-core/index.js` (Integrator-owned; Phase 1B / 1C-A / 1C-B1 / 1C-B2-A / 1C-B2-B / 1C-C / 1D do not modify it)
 
 ---
 
@@ -20,9 +20,11 @@
 - Phase 1C-B2-A CandidateEvaluationFailure / CandidateEvaluationResult, candidate score composition, candidate input fingerprint helper
 - Phase 1C-B2-B `evaluateCandidateSolution` orchestration (input/deps validation, port invocation, hard-feasibility gate, objective/score composition)
 - Phase 1C-C `createCandidateEvaluationResultFingerprint` (explicit result-content fingerprint; no schema attach)
+- Phase 1D `rankCandidateEvaluations` (deterministic ranking / feasible-winner selection over a supplied evaluated frontier)
 
 CORE-10 is a **generic optimizer substrate**. It does not implement domain algorithms owned by other COREs.
 
+Phase 1D does **not** own candidate generation, search solvers, `OptimizationResult` run projection, or CORE-01 adapters.
 Phase 1C-C does **not** own candidate ranking across a search frontier, search solvers, or CORE-01 adapters.
 
 ---
@@ -44,7 +46,7 @@ Phase 1C-C does **not** own candidate ranking across a search frontier, search s
 
 Phase 1B does **not** create dependencies on CORE-03 or CORE-06.
 Phase 1C-B1 does **not** import CORE-01 private implementations and does **not** ship a CORE-01 adapter.
-Phase 1C-B2-A / 1C-B2-B / 1C-C likewise do **not** import CORE-01 private implementations and do **not** ship a CORE-01 adapter.
+Phase 1C-B2-A / 1C-B2-B / 1C-C / 1D likewise do **not** import CORE-01 private implementations and do **not** ship a CORE-01 adapter.
 
 ---
 

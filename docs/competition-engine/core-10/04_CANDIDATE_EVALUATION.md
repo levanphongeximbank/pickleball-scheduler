@@ -5,6 +5,7 @@
 **B2-A Versions:** `CORE10_CANDIDATE_EVALUATION_RESULT_SCHEMA_V1`, `CORE10_CANDIDATE_EVALUATION_FAILURE_SCHEMA_V1`, `CORE10_CANDIDATE_EVALUATION_PIPELINE_V1`, `CORE10_CANDIDATE_SCORE_COMPOSITION_V1`, `CORE10_CANDIDATE_INPUT_FINGERPRINT_V1`
 **B2-B:** reuses `CORE10_CANDIDATE_EVALUATION_PIPELINE_V1` (no new orchestration version)
 **1C-C Version:** `CORE10_CANDIDATE_RESULT_FINGERPRINT_V1`
+**1D Version:** `CORE10_CANDIDATE_RANKING_V1` (frontier ranking — see `05_CANDIDATE_RANKING.md`)
 
 ---
 
@@ -235,3 +236,9 @@ createCandidateEvaluationResultFingerprint(result) → hex string
 `createCandidateEvaluationResultFingerprint`, `CORE10_CANDIDATE_RESULT_FINGERPRINT_VERSION` (capability-local).
 
 Not exported: material builders, serialization helpers, validators, hash internals. Root `competition-core/index.js` unchanged. Input fingerprint remains non-public.
+
+---
+
+## Phase 1D pointer
+
+Frontier ranking / feasible-winner selection is owned by Phase 1D (`rankCandidateEvaluations`). See `05_CANDIDATE_RANKING.md`. Phase 1C evaluation contracts remain unchanged.
