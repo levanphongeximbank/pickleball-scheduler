@@ -1,0 +1,71 @@
+/**
+ * CORE-14 Phase 1E — frozen resolution action types and ordinals.
+ * REMOVE_ASSIGNMENT is intentionally absent.
+ */
+
+export const RESOLUTION_ACTION_TYPE = Object.freeze({
+  MOVE_ASSIGNMENT_TIME: "MOVE_ASSIGNMENT_TIME",
+  REASSIGN_COURT: "REASSIGN_COURT",
+  REASSIGN_REFEREE: "REASSIGN_REFEREE",
+  INSERT_REST_GAP: "INSERT_REST_GAP",
+  REDUCE_CAPACITY_USAGE: "REDUCE_CAPACITY_USAGE",
+  MARK_FOR_MANUAL_REVIEW: "MARK_FOR_MANUAL_REVIEW",
+  NO_SAFE_AUTOMATIC_RESOLUTION: "NO_SAFE_AUTOMATIC_RESOLUTION",
+});
+
+/** Frozen ranking ordinal ascending (lower = preferred). */
+export const RESOLUTION_ACTION_TYPE_ORDINAL = Object.freeze({
+  [RESOLUTION_ACTION_TYPE.MOVE_ASSIGNMENT_TIME]: 1,
+  [RESOLUTION_ACTION_TYPE.INSERT_REST_GAP]: 2,
+  [RESOLUTION_ACTION_TYPE.REASSIGN_COURT]: 3,
+  [RESOLUTION_ACTION_TYPE.REASSIGN_REFEREE]: 4,
+  [RESOLUTION_ACTION_TYPE.REDUCE_CAPACITY_USAGE]: 5,
+  [RESOLUTION_ACTION_TYPE.MARK_FOR_MANUAL_REVIEW]: 6,
+  [RESOLUTION_ACTION_TYPE.NO_SAFE_AUTOMATIC_RESOLUTION]: 7,
+});
+
+export const RESOLUTION_ACTION_TYPE_VALUES = Object.freeze([
+  RESOLUTION_ACTION_TYPE.MOVE_ASSIGNMENT_TIME,
+  RESOLUTION_ACTION_TYPE.REASSIGN_COURT,
+  RESOLUTION_ACTION_TYPE.REASSIGN_REFEREE,
+  RESOLUTION_ACTION_TYPE.INSERT_REST_GAP,
+  RESOLUTION_ACTION_TYPE.REDUCE_CAPACITY_USAGE,
+  RESOLUTION_ACTION_TYPE.MARK_FOR_MANUAL_REVIEW,
+  RESOLUTION_ACTION_TYPE.NO_SAFE_AUTOMATIC_RESOLUTION,
+]);
+
+const RESOLUTION_ACTION_TYPE_SET = new Set(RESOLUTION_ACTION_TYPE_VALUES);
+
+/**
+ * @param {unknown} value
+ * @returns {value is string}
+ */
+export function isResolutionActionType(value) {
+  return typeof value === "string" && RESOLUTION_ACTION_TYPE_SET.has(value);
+}
+
+/**
+ * @param {string} actionType
+ * @returns {number}
+ */
+export function getActionTypeOrdinal(actionType) {
+  const ordinal = RESOLUTION_ACTION_TYPE_ORDINAL[actionType];
+  return typeof ordinal === "number" ? ordinal : 999;
+}
+
+/** Actions that never carry a mutation delta. */
+export const NON_MUTATING_ACTION_TYPES = Object.freeze([
+  RESOLUTION_ACTION_TYPE.MARK_FOR_MANUAL_REVIEW,
+  RESOLUTION_ACTION_TYPE.NO_SAFE_AUTOMATIC_RESOLUTION,
+]);
+
+/**
+ * @param {string} actionType
+ * @returns {boolean}
+ */
+export function isNonMutatingActionType(actionType) {
+  return (
+    actionType === RESOLUTION_ACTION_TYPE.MARK_FOR_MANUAL_REVIEW ||
+    actionType === RESOLUTION_ACTION_TYPE.NO_SAFE_AUTOMATIC_RESOLUTION
+  );
+}
