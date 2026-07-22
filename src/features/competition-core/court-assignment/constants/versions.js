@@ -44,6 +44,24 @@ export const CORE12_LEGACY_SOURCE_ANCHOR_V1 = "CORE12_LEGACY_SOURCE_ANCHOR_V1";
 /** Divergence catalog version (Phase 1C-R). */
 export const CORE12_DIVERGENCE_CATALOG_V1 = "CORE12_DIVERGENCE_CATALOG_V1";
 
+/** Phase 1D-B1 — injected eligibility provider contract. */
+export const CORE12_AVAILABILITY_PROVIDER_CONTRACT_V1 =
+  "CORE12_AVAILABILITY_PROVIDER_CONTRACT_V1";
+
+/** Phase 1D-B1 — eligibility snapshot schema. */
+export const CORE12_ELIGIBILITY_SNAPSHOT_V1 = "CORE12_ELIGIBILITY_SNAPSHOT_V1";
+
+/** Phase 1D-B1 — exact query-window + eligibility query schema. */
+export const CORE12_AVAILABILITY_QUERY_V1 = "CORE12_AVAILABILITY_QUERY_V1";
+
+/** Phase 1D-B1 — canonical court descriptor authority schema. */
+export const CORE12_CANONICAL_COURT_DESCRIPTOR_V1 =
+  "CORE12_CANONICAL_COURT_DESCRIPTOR_V1";
+
+/** Phase 1D-B1 — pure eligibility→AvailableCourtInput projection. */
+export const CORE12_AVAILABILITY_PROJECTION_V1 =
+  "CORE12_AVAILABILITY_PROJECTION_V1";
+
 export const CORE12_IDENTITY = Object.freeze({
   id: CORE12_ENGINE_ID,
   version: CORE12_ENGINE_VERSION,
@@ -58,4 +76,9 @@ export const CORE12_IDENTITY = Object.freeze({
   classificationPrecedenceVersion: CORE12_PARITY_CLASSIFICATION_PRECEDENCE_V1,
   legacySourceAnchorVersion: CORE12_LEGACY_SOURCE_ANCHOR_V1,
   divergenceCatalogVersion: CORE12_DIVERGENCE_CATALOG_V1,
+  availabilityProviderContractVersion: CORE12_AVAILABILITY_PROVIDER_CONTRACT_V1,
+  eligibilitySnapshotVersion: CORE12_ELIGIBILITY_SNAPSHOT_V1,
+  availabilityQueryVersion: CORE12_AVAILABILITY_QUERY_V1,
+  canonicalCourtDescriptorVersion: CORE12_CANONICAL_COURT_DESCRIPTOR_V1,
+  availabilityProjectionVersion: CORE12_AVAILABILITY_PROJECTION_V1,
 });
