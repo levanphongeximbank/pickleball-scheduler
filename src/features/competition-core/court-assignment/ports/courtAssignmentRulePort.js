@@ -12,7 +12,8 @@ export const COURT_ASSIGNMENT_RULE_PORT_METHODS = Object.freeze([
  */
 export function createEmptyCourtAssignmentRulePort() {
   return Object.freeze({
-    resolveEvaluatedRules(_request) {
+    // Port arity retained for callers; request is unused in empty Phase 1B double.
+    resolveEvaluatedRules() {
       return Object.freeze({
         ruleSetId: null,
         ruleSetVersion: null,
@@ -30,7 +31,8 @@ export function createEmptyCourtAssignmentRulePort() {
 export function createFixedCourtAssignmentRulePort(rules) {
   const frozen = Object.freeze({ ...rules });
   return Object.freeze({
-    resolveEvaluatedRules(_request) {
+    // Port arity retained for callers; request is unused in fixed Phase 1B double.
+    resolveEvaluatedRules() {
       return frozen;
     },
   });

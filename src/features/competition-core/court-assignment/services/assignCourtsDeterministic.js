@@ -361,18 +361,14 @@ function runAssignment(request) {
   unassigned.sort((a, b) => compareStableId(a.matchId, b.matchId));
   conflicts.sort((a, b) => compareStableId(a.conflictId, b.conflictId));
 
-  const assignableMatchCount =
-    assignable.length + lockedPreservedCount + unassigned.filter((u) =>
-      lockedMatchIds.has(u.matchId)
-    ).length;
-
-  // Recompute assignable count: non-bye non-terminal matches that needed a court
+  // Assignable count: non-bye non-terminal matches that needed a court
   const requiredMatches = request.matches.filter(
     (m) => !m.isBye && !isTerminal(m, policy)
   );
   const requiredCount = requiredMatches.length;
 
-  let status = COURT_ASSIGNMENT_STATUS.SUCCESS;
+  /** @type {string} */
+  let status;
   /** @type {object|null} */
   let failure = null;
 

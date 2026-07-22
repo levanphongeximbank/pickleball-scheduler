@@ -41,7 +41,8 @@ export const COURT_AVAILABILITY_PORT_METHODS = Object.freeze([
  */
 export function createFailClosedCourtAvailabilityPort() {
   return Object.freeze({
-    resolveAvailability(_query) {
+    // Port arity retained for callers; query unused — fail-closed Phase 1B double.
+    resolveAvailability() {
       throw Object.freeze({
         name: "CourtAvailabilityPortError",
         code: "AVAILABILITY_DATA_UNAVAILABLE",
@@ -65,7 +66,8 @@ export function createFixedCourtAvailabilityPort(snapshot) {
     snapshotVersion: String(snapshot.snapshotVersion),
   });
   return Object.freeze({
-    resolveAvailability(_query) {
+    // Port arity retained for callers; query unused — fixed Phase 1B double.
+    resolveAvailability() {
       return frozen;
     },
   });
