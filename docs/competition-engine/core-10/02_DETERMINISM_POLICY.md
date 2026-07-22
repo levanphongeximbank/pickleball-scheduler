@@ -178,7 +178,7 @@ Exclude from replay-determining fingerprints: wall-clock duration, machine ident
 6. `structuralViolations` remain empty throughout Phase 1C-B2; business and all-hard arrays are deeply equivalent on `VALID_INFEASIBLE`.
 7. Failure-path purity: `INVALID_CANDIDATE` / `EVALUATION_FAILED` never retain partial violations, objectives, or scores. `EVALUATION_FAILED` at `DEPENDENCY_VALIDATION` requires `portDescriptor=null` and `inputFingerprint=null`.
 8. `INVALID_CANDIDATE_EVALUATION_FAILURE` is reserved for contract-validation throws and cannot be stored as a pipeline failure code.
-9. Final `CandidateEvaluationResult` fingerprint certification remains Phase 1C-C.
+9. Final `CandidateEvaluationResult` fingerprint certification is Phase 1C-C.
 
 ---
 
@@ -192,3 +192,16 @@ Exclude from replay-determining fingerprints: wall-clock duration, machine ident
 6. Caller `rawInput` / `rawDependencies` are never mutated or frozen in place.
 7. No `Date.now`, `new Date`, `Math.random`, `localeCompare`, environment variables, object-identity fingerprinting, or function-source fingerprinting.
 8. Repeated equivalent evaluations produce deeply equivalent results and identical `inputFingerprint` values.
+
+---
+
+## Phase 1C-C — Result fingerprint determinism
+
+1. `createCandidateEvaluationResultFingerprint(result)` returns a hex string via CORE-10 `fingerprintValue` (FNV-1a / canonical JSON).
+2. Input is revalidated through `createCandidateEvaluationResult` before hashing — lookalike objects are never hashed.
+3. Material includes `resultFingerprintVersion` plus the full public result envelope (schema/evaluation versions, ids, status, feasible, violation arrays, objective evaluations, score, failure, port descriptor, input fingerprint).
+4. Objective evaluation order, `authorityValues` order, and `objectiveValues` order are preserved; material arrays are not re-sorted.
+5. Caller result is never mutated or frozen in place. Nested ID lists reuse factory-canonical ordering.
+6. Invalid fingerprint input throws `OptimizerContractError` with throw-only code `INVALID_CANDIDATE_EVALUATION_RESULT_FINGERPRINT_INPUT` (not stored in `CandidateEvaluationFailure`).
+7. Does **not** attach `resultFingerprint` onto `CandidateEvaluationResult` and does **not** alter `evaluateCandidateSolution`.
+8. No timestamps, random, localeCompare, environment, evaluator/port function identity, or external hash packages.

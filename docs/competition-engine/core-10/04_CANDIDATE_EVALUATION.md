@@ -1,9 +1,10 @@
-# CORE-10 — Candidate Evaluation (Phase 1C-B1 / 1C-B2-A / 1C-B2-B)
+# CORE-10 — Candidate Evaluation (Phase 1C-B1 / 1C-B2-A / 1C-B2-B / 1C-C)
 
 **Module:** `src/features/competition-core/optimizer/`
 **B1 Versions:** `CORE10_CANDIDATE_EVALUATION_INPUT_SCHEMA_V1`, `CORE10_CANDIDATE_EVALUATION_DEPENDENCIES_V1`, `CORE10_HARD_VIOLATION_SCHEMA_V1`, `CORE10_CONSTRAINT_EVALUATION_PORT_V1`, `CORE10_HARD_VIOLATION_COMPOSITION_V1`
 **B2-A Versions:** `CORE10_CANDIDATE_EVALUATION_RESULT_SCHEMA_V1`, `CORE10_CANDIDATE_EVALUATION_FAILURE_SCHEMA_V1`, `CORE10_CANDIDATE_EVALUATION_PIPELINE_V1`, `CORE10_CANDIDATE_SCORE_COMPOSITION_V1`, `CORE10_CANDIDATE_INPUT_FINGERPRINT_V1`
 **B2-B:** reuses `CORE10_CANDIDATE_EVALUATION_PIPELINE_V1` (no new orchestration version)
+**1C-C Version:** `CORE10_CANDIDATE_RESULT_FINGERPRINT_V1`
 
 ---
 
@@ -198,3 +199,39 @@ Missing/invalid port from the dependency factory retains `CONSTRAINT_PORT_*` cod
 ### Public B2-B API
 
 `evaluateCandidateSolution` (capability-local). Internal helpers are not exported from `optimizer/index.js`.
+
+---
+
+## Phase 1C-C ownership
+
+Phase 1C-C owns:
+
+- public `createCandidateEvaluationResultFingerprint(result) → string`;
+- `CORE10_CANDIDATE_RESULT_FINGERPRINT_VERSION`;
+- throw-only `INVALID_CANDIDATE_EVALUATION_RESULT_FINGERPRINT_INPUT`;
+- Phase 1C-C tests and documentation.
+
+Phase 1C-C does **not** own:
+
+- changes to `CandidateEvaluationResult` schema or `evaluateCandidateSolution`;
+- automatic attachment of a `resultFingerprint` field;
+- solvers, candidate generation, Schedule / Court / Referee, persistence, UI.
+
+### Result fingerprint
+
+```text
+createCandidateEvaluationResultFingerprint(result) → hex string
+```
+
+1. Revalidates via `createCandidateEvaluationResult` (owned clone; caller never mutated/frozen).
+2. Hashes approved envelope material with CORE-10 `fingerprintValue` (includes `resultFingerprintVersion`).
+3. Preserves objective / authority / objective-value array order; does not re-sort material arrays.
+4. Invalid lookalike / function / Error / thenable / undefined / non-finite top-level input → `OptimizerContractError` with `INVALID_CANDIDATE_EVALUATION_RESULT_FINGERPRINT_INPUT`.
+5. Invalid result status/shape from revalidation propagates `INVALID_CANDIDATE_EVALUATION_RESULT`.
+6. The fingerprint code is throw-only and cannot be stored in `CandidateEvaluationFailure`.
+
+### Public 1C-C API
+
+`createCandidateEvaluationResultFingerprint`, `CORE10_CANDIDATE_RESULT_FINGERPRINT_VERSION` (capability-local).
+
+Not exported: material builders, serialization helpers, validators, hash internals. Root `competition-core/index.js` unchanged. Input fingerprint remains non-public.

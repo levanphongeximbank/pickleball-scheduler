@@ -9,10 +9,11 @@
  * Phase 1C-B2-A: CandidateEvaluationFailure/Result, score composition,
  * input fingerprint helper (internal).
  * Phase 1C-B2-B: evaluateCandidateSolution orchestration (no search/solvers).
+ * Phase 1C-C: CandidateEvaluationResult content fingerprint (explicit utility).
  *
  * Integrator owns root competition-core/index.js — do not edit that here.
  * No scheduling, court-assignment, or referee-assignment exports.
- * No production solvers in Phase 1B / 1C-A / 1C-B1 / 1C-B2-A / 1C-B2-B.
+ * No production solvers in Phase 1B / 1C-A / 1C-B1 / 1C-B2-A / 1C-B2-B / 1C-C.
  */
 
 export {
@@ -37,6 +38,7 @@ export {
   CORE10_CANDIDATE_EVALUATION_PIPELINE_VERSION,
   CORE10_CANDIDATE_SCORE_COMPOSITION_VERSION,
   CORE10_CANDIDATE_INPUT_FINGERPRINT_VERSION,
+  CORE10_CANDIDATE_RESULT_FINGERPRINT_VERSION,
   CORE10_IDENTITY,
 } from "./constants/index.js";
 
@@ -151,4 +153,5 @@ export {
   validateCandidateEvaluationInput,
   composeHardViolations,
   evaluateCandidateSolution,
+  createCandidateEvaluationResultFingerprint,
 } from "./evaluation/index.js";

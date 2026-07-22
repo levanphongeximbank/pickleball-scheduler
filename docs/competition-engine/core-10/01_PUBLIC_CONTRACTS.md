@@ -390,4 +390,28 @@ Port / objective / composition failures map to `EVALUATION_FAILED` (never `VALID
 
 `evaluateCandidateSolution` in addition to Phase 1C-B2-A exports.
 
-Not exported: fingerprint helper, failure-stage enum, port-input builders, failure mappers, result helpers, solvers.
+Not exported: input fingerprint helper, failure-stage enum, port-input builders, failure mappers, result helpers, solvers.
+
+---
+
+## Phase 1C-C — CandidateEvaluationResult fingerprint
+
+Capability-local only (`optimizer/`). Certifies replay-equivalent result-content identity. Does **not** modify `CandidateEvaluationResult` schema and does **not** attach a fingerprint inside `evaluateCandidateSolution`.
+
+### API
+
+```text
+createCandidateEvaluationResultFingerprint(result) → string
+```
+
+- Revalidates through `createCandidateEvaluationResult` (owned clone; caller never mutated/frozen).
+- Hashes approved envelope material via CORE-10 `fingerprintValue`.
+- Material binds `CORE10_CANDIDATE_RESULT_FINGERPRINT_V1` plus the full public result envelope.
+- Preserves objective / authority / objective-value order; does not re-sort material arrays.
+- Throw-only code: `INVALID_CANDIDATE_EVALUATION_RESULT_FINGERPRINT_INPUT` (cannot be stored in `CandidateEvaluationFailure`).
+
+### Public Phase 1C-C API (capability-local)
+
+`createCandidateEvaluationResultFingerprint`, `CORE10_CANDIDATE_RESULT_FINGERPRINT_VERSION`.
+
+Not exported: material builders, serializers, validators, hash internals. Root `competition-core/index.js` unchanged. Input fingerprint remains non-public.
