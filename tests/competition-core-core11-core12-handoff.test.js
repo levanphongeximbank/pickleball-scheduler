@@ -13,7 +13,6 @@ import { fileURLToPath } from "node:url";
 
 import {
   CONSTRAINT_CERTIFICATION,
-  BASELINE_CANDIDATE_STATUS,
   CONSTRAINT_CERTIFICATION_RESULT_STATUS,
   buildBaselineScheduleCandidate,
   certifyBaselineScheduleCandidateConstraints,
@@ -210,10 +209,6 @@ function codesOf(result) {
   return (result.diagnostics || []).map((d) => d.code);
 }
 
-function deepClone(value) {
-  return JSON.parse(JSON.stringify(value));
-}
-
 function assertFrozenInputs(request, candidate, certificationResult, scopeObj, courts) {
   const before = {
     request: JSON.stringify(request),
@@ -269,14 +264,6 @@ test("02 valid multi-match handoff", () => {
 });
 
 test("03 valid deterministic court assignment SUCCESS", () => {
-  const { input } = handoffInput({
-    courts: [
-      courtCovering(buildCertified(baseRequest()).candidate, {
-        courtId: "court-a",
-        priority: 1,
-      }),
-    ],
-  });
   // rebuild with matching courts coverage
   const rebuilt = handoffInput();
   const result = assignCourtsFromCertifiedSchedule(rebuilt.input);
@@ -748,10 +735,6 @@ test("38–39 bye excluded; scheduled bye rejected", () => {
 });
 
 test("40–42 court requirements", () => {
-  const { input } = handoffInput({
-    courtOverrides: { capabilities: { courtType: "indoor" } },
-    courtRequirementsByMatchId: { m1: ["indoor"] },
-  });
   // courtCovering in handoffInput uses courtOverrides via courts rebuild
   const bundle = buildCertified(baseRequest());
   const courts = [
@@ -1091,7 +1074,7 @@ test("70–77 import and forbidden-pattern boundary", () => {
   assert.equal(src.includes("Math.random"), false);
   assert.equal(src.includes("randomUUID"), false);
   assert.equal(src.includes("localeCompare"), false);
-  assert.equal(/from\s+['\"]react['\"]/i.test(src), false);
+  assert.equal(/from\s+['"]react['"]/i.test(src), false);
   assert.equal(/@mui\//.test(src), false);
   assert.equal(/supabase/i.test(src), false);
   assert.equal(/tournament-engine/.test(src), false);
@@ -1103,8 +1086,8 @@ test("70–77 import and forbidden-pattern boundary", () => {
   // Public barrels only
   assert.match(src, /from\s+["']\.\.\/schedule-engine\/index\.js["']/);
   assert.match(src, /from\s+["']\.\.\/court-assignment\/index\.js["']/);
-  assert.equal(/from\s+['\"]\.\.\/schedule-engine\/(?!index\.js)/.test(src), false);
-  assert.equal(/from\s+['\"]\.\.\/court-assignment\/(?!index\.js)/.test(src), false);
+  assert.equal(/from\s+['"]\.\.\/schedule-engine\/(?!index\.js)/.test(src), false);
+  assert.equal(/from\s+['"]\.\.\/court-assignment\/(?!index\.js)/.test(src), false);
   // No concurrency→court or capacityRelease→end mapping
   assert.equal(
     /courtId\s*:\s*.*concurrencyIndex|concurrencyIndex\s*[:=]\s*.*courtId/.test(src),

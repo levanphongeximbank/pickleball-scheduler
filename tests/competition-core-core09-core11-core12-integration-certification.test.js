@@ -74,7 +74,6 @@ import {
   SCHEDULE_TO_COURT_ASSIGNMENT_HANDOFF_RESULT_STATUS,
   CERTIFIED_SCHEDULE_COURT_ASSIGNMENT_RESULT_STATUS,
   HANDOFF_DIAGNOSTIC_CODE,
-  HANDOFF_AVAILABILITY_SNAPSHOT_TRUST_MODEL,
   createCourtAssignmentRequestFromCertifiedSchedule,
   assignCourtsFromCertifiedSchedule,
   fingerprintCourtAssignmentRequest,
@@ -318,10 +317,6 @@ function canonicalHandoffInput(chain, partial = {}) {
 
 function codesOf(result) {
   return (result.diagnostics || []).map((d) => d.code);
-}
-
-function deepEqualJson(a, b) {
-  return JSON.stringify(a) === JSON.stringify(b);
 }
 
 /* -------------------------------------------------------------------------- */

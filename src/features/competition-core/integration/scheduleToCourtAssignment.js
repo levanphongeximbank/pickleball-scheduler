@@ -198,7 +198,11 @@ function projectCourtAssignmentRequestForFingerprint(
       isBye: m.isBye === true,
     })),
     (m) => [m.matchId, String(m._order)]
-  ).map(({ _order, ...rest }) => rest);
+  ).map((row) => {
+    const rest = { ...row };
+    delete rest._order;
+    return rest;
+  });
 
   const projectedCourts = stableSortByKeys(
     courts.map((c, index) => ({
@@ -227,7 +231,11 @@ function projectCourtAssignmentRequestForFingerprint(
       ),
     })),
     (c) => [c.courtId, String(c._order)]
-  ).map(({ _order, ...rest }) => rest);
+  ).map((row) => {
+    const rest = { ...row };
+    delete rest._order;
+    return rest;
+  });
 
   const projectedLocks = stableSortByKeys(
     locks.map((l, index) => ({
@@ -239,7 +247,11 @@ function projectCourtAssignmentRequestForFingerprint(
       overrideAllowed: l.overrideAllowed === true,
     })),
     (l) => [l.matchId, l.courtId, String(l._order)]
-  ).map(({ _order, ...rest }) => rest);
+  ).map((row) => {
+    const rest = { ...row };
+    delete rest._order;
+    return rest;
+  });
 
   const projectedConstraints = stableSortByKeys(
     constraints.map((c, index) => ({
@@ -251,7 +263,11 @@ function projectCourtAssignmentRequestForFingerprint(
       courtId: c.courtId == null ? null : normalizeIdentifier(c.courtId),
     })),
     (c) => [c.constraintId, String(c._order)]
-  ).map(({ _order, ...rest }) => rest);
+  ).map((row) => {
+    const rest = { ...row };
+    delete rest._order;
+    return rest;
+  });
 
   /** @type {Record<string, unknown>} */
   const projection = {
@@ -727,7 +743,7 @@ export function createCourtAssignmentRequestFromCertifiedSchedule(input = {}) {
     return fail();
   }
 
-  let sourceScheduleRequestFingerprint = "";
+  let sourceScheduleRequestFingerprint;
   try {
     sourceScheduleRequestFingerprint = fingerprintScheduleRequest(scheduleRequest);
   } catch (err) {
@@ -814,7 +830,7 @@ export function createCourtAssignmentRequestFromCertifiedSchedule(input = {}) {
     return fail({ sourceScheduleRequestFingerprint });
   }
 
-  let sourceScheduleCandidateFingerprint = "";
+  let sourceScheduleCandidateFingerprint;
   try {
     sourceScheduleCandidateFingerprint =
       fingerprintBaselineScheduleCandidate(candidate);

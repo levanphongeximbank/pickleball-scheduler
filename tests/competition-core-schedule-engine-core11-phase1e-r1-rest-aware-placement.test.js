@@ -24,7 +24,6 @@ import {
   createSchedulePolicy,
   createScheduleParticipantReference,
   createScheduleDependency,
-  createScheduledMatch,
   createSchedulePlan,
   buildBaselineScheduleCandidate,
   certifyBaselineScheduleCandidateConstraints,

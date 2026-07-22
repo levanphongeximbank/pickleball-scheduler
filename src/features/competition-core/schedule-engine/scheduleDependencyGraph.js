@@ -339,10 +339,9 @@ export function buildScheduleDependencyGraph(matches) {
  * 4. matchId ASCII
  *
  * @param {ScheduleDependencyGraph|null|undefined} graph
- * @param {unknown} [_matches] unused; ordering uses graph node metadata only
  * @returns {TopologicalOrderResult}
  */
-export function topologicallyOrderScheduleMatches(graph, _matches) {
+export function topologicallyOrderScheduleMatches(graph) {
   /** @type {import('./scheduleDiagnostics.js').ScheduleDiagnostic[]} */
   const diagnostics = [];
   if (!graph || typeof graph !== "object" || !Array.isArray(graph.nodes)) {

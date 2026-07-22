@@ -42,7 +42,6 @@ import {
   isNonNegativeInteger,
   isPositiveInteger,
   isValidCivilDate,
-  isValidIdentifier,
   isValidIanaTimezone,
   isValidMinutesFromMidnight,
   normalizeIdentifier,
@@ -1181,8 +1180,8 @@ function buildResult(args) {
     ? CONSTRAINT_CERTIFICATION.HARD_CONSTRAINTS_CERTIFIED
     : CONSTRAINT_CERTIFICATION.HARD_CONSTRAINTS_REJECTED;
 
-  let requestFingerprint = "";
-  let candidateFingerprint = "";
+  let requestFingerprint;
+  let candidateFingerprint;
   try {
     requestFingerprint = fingerprintScheduleRequest(args.request);
   } catch {

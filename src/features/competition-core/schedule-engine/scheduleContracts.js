@@ -527,10 +527,8 @@ export function normalizeUnscheduledOrder(unscheduled) {
  */
 export function projectSchedulePlanForFingerprint(plan) {
   if (!plan || typeof plan !== "object") return null;
-  const {
-    producedAt: _producedAt,
-    ...rest
-  } = /** @type {Record<string, unknown>} */ (plan);
+  const rest = { .../** @type {Record<string, unknown>} */ (plan) };
+  delete rest.producedAt;
   return {
     schemaVersion: SCHEDULE_SCHEMA_VERSION,
     engineId: SCHEDULE_ENGINE_IDENTITY.id,

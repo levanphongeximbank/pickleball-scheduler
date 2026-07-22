@@ -25,7 +25,6 @@ import {
 import {
   SCHEDULE_DIAGNOSTIC_CODE,
   createScheduleDiagnostic,
-  sortScheduleDiagnostics,
 } from "../scheduleDiagnostics.js";
 import {
   createMatchPlanToScheduleRequestResult,
@@ -123,7 +122,7 @@ export function createScheduleRequestFromMatchPlan(
     ? { strategy: strategyForPublicApi }
     : {};
 
-  let computedFingerprint = "";
+  let computedFingerprint;
   try {
     computedFingerprint = fingerprintMatchPlan(matchPlan, fingerprintExtras);
   } catch (err) {
@@ -537,7 +536,7 @@ export function createScheduleRequestFromMatchPlan(
     );
   }
 
-  let requestFingerprint = "";
+  let requestFingerprint;
   try {
     requestFingerprint = fingerprintScheduleRequest(validated.request);
   } catch {

@@ -971,7 +971,8 @@ test("35 missing sessionId when sessions configured", () => {
   });
   const candidate = buildBaselineScheduleCandidate(request);
   const s = candidate.plan.scheduled[0];
-  const { sessionId: _drop, ...rest } = s;
+  const rest = { ...s };
+  delete rest.sessionId;
   const plan = createSchedulePlan({
     ...candidate.plan,
     scheduled: [rest],

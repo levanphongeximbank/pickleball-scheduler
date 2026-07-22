@@ -12,7 +12,6 @@ import { fileURLToPath } from "node:url";
 import {
   MATCH_DEPENDENCY_TYPE,
   MATCH_GENERATION_STRATEGY,
-  MATCH_GENERATOR_IDENTITY,
   PARTICIPANT_SLOT_KIND,
   createLogicalMatch,
   createMatchDependency,
@@ -119,7 +118,6 @@ function plan(matches, extra = {}) {
     competitionId: "comp-1",
     divisionId: "div-1",
     categoryId: null,
-    stageId,
     logicalMatches: matches,
     drawFingerprint: "draw-fp",
     ruleEvaluationFingerprint: "rule-fp",
