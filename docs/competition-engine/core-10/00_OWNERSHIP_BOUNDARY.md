@@ -2,7 +2,7 @@
 
 **Module:** `src/features/competition-core/optimizer/`
 **Capability-local public surface:** `optimizer/index.js`
-**Protected:** root `competition-core/index.js` (Integrator-owned; Phase 1B / 1C-A / 1C-B1 do not modify it)
+**Protected:** root `competition-core/index.js` (Integrator-owned; Phase 1B / 1C-A / 1C-B1 / 1C-B2-A do not modify it)
 
 ---
 
@@ -17,10 +17,11 @@
 - Solver extension contracts (strategy identifiers, operation identifiers, policy shapes)
 - Phase 1C-A objective definitions, immutable registry, synchronous objective evaluation
 - Phase 1C-B1 candidate-evaluation input/dependencies contracts, HardViolation, ConstraintEvaluationPort, structural candidate-input validation, hard-violation composition
+- Phase 1C-B2-A CandidateEvaluationFailure / CandidateEvaluationResult, candidate score composition, candidate input fingerprint helper (no evaluateCandidateSolution)
 
 CORE-10 is a **generic optimizer substrate**. It does not implement domain algorithms owned by other COREs.
 
-Phase 1C-B1 does **not** own `evaluateCandidateSolution`, score composition, candidate ranking, search solvers, or final evaluation-result fingerprint certification.
+Phase 1C-B2-A does **not** own `evaluateCandidateSolution`, port/objective orchestration, hard-feasibility pipeline, candidate ranking, search solvers, or final evaluation-result fingerprint certification (Phase 1C-C).
 
 ---
 
@@ -41,6 +42,7 @@ Phase 1C-B1 does **not** own `evaluateCandidateSolution`, score composition, can
 
 Phase 1B does **not** create dependencies on CORE-03 or CORE-06.
 Phase 1C-B1 does **not** import CORE-01 private implementations and does **not** ship a CORE-01 adapter.
+Phase 1C-B2-A likewise does **not** import CORE-01 private implementations and does **not** ship a CORE-01 adapter.
 
 ---
 

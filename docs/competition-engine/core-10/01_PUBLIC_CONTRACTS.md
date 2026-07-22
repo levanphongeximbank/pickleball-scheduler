@@ -310,3 +310,56 @@ Synchronous only. Promise/thenable rejected before result parsing. `violations` 
 `CANDIDATE_EVALUATION_STATUS`, `CANDIDATE_EVALUATION_FAILURE_CODE`, `createCandidateEvaluationInput`, `createCandidateEvaluationDependencies`, `createHardViolation`, `createConstraintEvaluationPort`, `validateCandidateEvaluationInput`, `composeHardViolations`, and Phase 1C-B1 version constants.
 
 Not exported in Phase 1C-B1: `evaluateCandidateSolution`, `CandidateEvaluationResult`, score composer, candidate search/solvers.
+
+---
+
+## Phase 1C-B2-A — Candidate result / failure / score / input fingerprint
+
+Capability-local only (`optimizer/`). Does not implement `evaluateCandidateSolution` (Phase 1C-B2-B). Does not certify final result fingerprints (Phase 1C-C).
+
+### CandidateEvaluationFailure (replay-safe)
+
+| Field | Notes |
+|-------|--------|
+| `code` / `messageCode` | Stable Phase 1C-B failure codes (B1 + additive B2) |
+| `stage` | `INPUT_VALIDATION` \| `DEPENDENCY_VALIDATION` \| `CONSTRAINT_PORT` \| `HARD_COMPOSITION` \| `OBJECTIVE_EVALUATION` \| `SCORE_COMPOSITION` \| `RESULT_CONSTRUCTION` \| `UNEXPECTED_FAILURE` |
+| `detailsCodes` | Stable strings; duplicates rejected; stored sorted |
+| `objectiveFailureCode` | Phase 1C-A code or `null` |
+| `candidateId` | Stable string or `null` |
+| `portDescriptor` | `{ portId, portVersion }` or `null` |
+| `schemaVersion` | `CORE10_CANDIDATE_EVALUATION_FAILURE_SCHEMA_V1` |
+
+No free-text `message`, stack, Error, raw exception, or function identity. Code/stage combinations are fail-closed.
+
+Additive B2 codes: `OBJECTIVE_EVALUATION_FAILED`, `SCORE_COMPOSITION_FAILED`, `CANDIDATE_EVALUATION_UNEXPECTED_FAILURE`, `INVALID_CANDIDATE_EVALUATION_FAILURE`, `INVALID_CANDIDATE_EVALUATION_RESULT`, `INVALID_CANDIDATE_INPUT_FINGERPRINT`. Never mapped to `VALID_INFEASIBLE`.
+
+### CandidateEvaluationResult
+
+| Field | Notes |
+|-------|--------|
+| `status` | `VALID_FEASIBLE` \| `VALID_INFEASIBLE` \| `INVALID_CANDIDATE` \| `EVALUATION_FAILED` |
+| `feasible` | Boolean aligned to status |
+| `structuralViolations` | Always `[]` in Phase 1C-B2 |
+| `businessViolations` / `allHardViolations` | HardViolation arrays; equal on `VALID_INFEASIBLE` |
+| `objectiveEvaluations` | `ObjectiveEvaluationRecord[]` or `[]` |
+| `optimizationScore` | Present on feasible/infeasible; `null` on invalid/failed |
+| `failure` | Required on invalid/failed; `null` otherwise |
+| `portDescriptor` / `inputFingerprint` | Required on valid statuses; null on `INVALID_CANDIDATE` |
+| `evaluationVersion` | `CORE10_CANDIDATE_EVALUATION_PIPELINE_V1` |
+| `schemaVersion` | `CORE10_CANDIDATE_EVALUATION_RESULT_SCHEMA_V1` |
+
+Failure-path purity: invalid/failed results carry empty violations, empty objectives, and `optimizationScore=null`.
+
+### composeCandidateOptimizationScore
+
+Calls `createOptimizationScore` directly (never `buildOptimizationScore`). Feasible: `hardViolationCount=0`, `objectiveValues` from `orientedValue` order. Infeasible: positive `hardViolationCount`, empty objectives, authority retained.
+
+### Input fingerprint (internal)
+
+`createCandidateEvaluationInputFingerprint` is evaluation-local (available via `evaluation/index.js` for B2-B). **Not** exported from `optimizer/index.js`. Binds versions, request/context/candidate material, specs order, registry descriptor fingerprint, port id/version, authority values, comparator version. Excludes evaluator/port functions and runtime identity. Final result fingerprint remains Phase 1C-C.
+
+### Public Phase 1C-B2-A API (capability-local)
+
+`createCandidateEvaluationFailure`, `createCandidateEvaluationResult`, `composeCandidateOptimizationScore`, and Phase 1C-B2-A version constants.
+
+Not exported in Phase 1C-B2-A: `evaluateCandidateSolution`, failure-stage helper from `optimizer/index.js`, input fingerprint from `optimizer/index.js`, solvers.
