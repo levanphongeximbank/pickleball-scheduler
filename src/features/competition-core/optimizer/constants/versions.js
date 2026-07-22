@@ -36,6 +36,26 @@ export const CORE10_OBJECTIVE_REGISTRY_VERSION = "CORE10_OBJECTIVE_REGISTRY_V1";
 export const CORE10_OBJECTIVE_EVALUATION_VERSION =
   "CORE10_OBJECTIVE_EVALUATION_V1";
 
+/** Phase 1C-B1 — CandidateEvaluationInput schema version. */
+export const CORE10_CANDIDATE_EVALUATION_INPUT_SCHEMA_VERSION =
+  "CORE10_CANDIDATE_EVALUATION_INPUT_SCHEMA_V1";
+
+/** Phase 1C-B1 — CandidateEvaluationDependencies contract version. */
+export const CORE10_CANDIDATE_EVALUATION_DEPENDENCIES_VERSION =
+  "CORE10_CANDIDATE_EVALUATION_DEPENDENCIES_V1";
+
+/** Phase 1C-B1 — HardViolation schema version. */
+export const CORE10_HARD_VIOLATION_SCHEMA_VERSION =
+  "CORE10_HARD_VIOLATION_SCHEMA_V1";
+
+/** Phase 1C-B1 — ConstraintEvaluationPort contract version. */
+export const CORE10_CONSTRAINT_EVALUATION_PORT_VERSION =
+  "CORE10_CONSTRAINT_EVALUATION_PORT_V1";
+
+/** Phase 1C-B1 — hard-violation composition algorithm version. */
+export const CORE10_HARD_VIOLATION_COMPOSITION_VERSION =
+  "CORE10_HARD_VIOLATION_COMPOSITION_V1";
+
 export const CORE10_IDENTITY = Object.freeze({
   id: CORE10_ENGINE_ID,
   version: CORE10_ENGINE_VERSION,
@@ -48,4 +68,11 @@ export const CORE10_IDENTITY = Object.freeze({
   objectiveDefinitionSchemaVersion: CORE10_OBJECTIVE_DEFINITION_SCHEMA_VERSION,
   objectiveRegistryVersion: CORE10_OBJECTIVE_REGISTRY_VERSION,
   objectiveEvaluationVersion: CORE10_OBJECTIVE_EVALUATION_VERSION,
+  candidateEvaluationInputSchemaVersion:
+    CORE10_CANDIDATE_EVALUATION_INPUT_SCHEMA_VERSION,
+  candidateEvaluationDependenciesVersion:
+    CORE10_CANDIDATE_EVALUATION_DEPENDENCIES_VERSION,
+  hardViolationSchemaVersion: CORE10_HARD_VIOLATION_SCHEMA_VERSION,
+  constraintEvaluationPortVersion: CORE10_CONSTRAINT_EVALUATION_PORT_VERSION,
+  hardViolationCompositionVersion: CORE10_HARD_VIOLATION_COMPOSITION_VERSION,
 });

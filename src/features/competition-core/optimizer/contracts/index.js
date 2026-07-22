@@ -43,3 +43,6 @@ export {
 } from "./objectiveDefinition.js";
 export { createObjectiveExecutionSpec } from "./objectiveExecutionSpec.js";
 export { createObjectiveEvaluationRecord } from "./objectiveEvaluationRecord.js";
+export { createHardViolation } from "./hardViolation.js";
+export { createCandidateEvaluationInput } from "./candidateEvaluationInput.js";
+export { createCandidateEvaluationDependencies } from "./candidateEvaluationDependencies.js";

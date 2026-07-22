@@ -253,3 +253,60 @@ Schema / registry / evaluation version constants:
 - `CORE10_OBJECTIVE_DEFINITION_SCHEMA_VERSION`
 - `CORE10_OBJECTIVE_REGISTRY_VERSION`
 - `CORE10_OBJECTIVE_EVALUATION_VERSION`
+
+---
+
+## Phase 1C-B1 — Candidate evaluation contracts
+
+Capability-local only (`optimizer/`). Does not modify Phase 1B `CandidateSolution`, `ConstraintEvaluation`, or Phase 1C-A objective files.
+
+### CandidateEvaluationInput (replay-safe)
+
+| Field | Required | Notes |
+|-------|----------|-------|
+| `schemaVersion` | yes | `CORE10_CANDIDATE_EVALUATION_INPUT_SCHEMA_V1` |
+| `evaluationVersion` | yes | Bound to `CORE10_HARD_VIOLATION_COMPOSITION_V1` in Phase 1C-B1 |
+| `request` | yes | Owned `OptimizationRequest` clone |
+| `context` | yes | Owned `OptimizationContext`; tenant/competition must match request |
+| `candidate` | yes | `{ candidateId, operation, assignments }` — not `CandidateSolution` |
+| `decisionVariables` | yes | Must match `request.decisionVariables` |
+| `objectiveExecutionSpecs` | yes | Copied in caller order (never auto-sorted) |
+| `authorityValues` | yes | Safe integers; length equals `policy.authorityKeys` |
+
+Assignment records: `{ variableId, valueId }` (stable strings). Array order does not determine identity — owned representation is sorted by `variableId`. Duplicate `variableId` rejected. **Every** declared decision variable must receive exactly one assignment. `valueId` must be a **string domain member**. Own-property reads only.
+
+### CandidateEvaluationDependencies (runtime-only)
+
+| Field | Notes |
+|-------|-------|
+| `objectiveRegistry` | Phase 1C-A registry API |
+| `constraintEvaluationPort` | Required — no `allowMissingPort` |
+| `dependenciesVersion` | `CORE10_CANDIDATE_EVALUATION_DEPENDENCIES_V1` |
+
+Not fingerprinted. No default registry/port. No module-level singleton.
+
+### HardViolation (replay-safe sibling)
+
+| Field | Notes |
+|-------|-------|
+| `violationCode` / `constraintId` / `sourceModule` / `sourceVersion` / `messageCode` | Stable non-empty strings |
+| `severity` | Exactly `HARD` |
+| `affectedIds` | Stable strings; duplicates rejected; stored sorted |
+| `magnitude` | Non-negative safe integer |
+| `detailsCodes` | Stable strings; duplicates rejected; stored sorted |
+
+No free-text message. Phase 1B `ConstraintEvaluation` unchanged.
+
+### ConstraintEvaluationPort
+
+`{ portId, portVersion, evaluateConstraints(input) → { violations, noteCodes? } }`
+
+Synchronous only. Promise/thenable rejected before result parsing. `violations` required (array; may be empty). Exceptions map to `CONSTRAINT_PORT_EXCEPTION` without leaking message/stack. Raw evaluator stays in a closure. Operations without business constraints must receive an **explicit** versioned no-op port created at the call site (e.g. `portId: CORE10_NOOP_CONSTRAINT_PORT`) — never a global singleton or exported fixture; never optional.
+
+`validateCandidateEvaluationInput` failure shape: `{ ok:false, code, messageCode, details }` — stable codes only; no free-text ranking material.
+
+### Public Phase 1C-B1 API (capability-local)
+
+`CANDIDATE_EVALUATION_STATUS`, `CANDIDATE_EVALUATION_FAILURE_CODE`, `createCandidateEvaluationInput`, `createCandidateEvaluationDependencies`, `createHardViolation`, `createConstraintEvaluationPort`, `validateCandidateEvaluationInput`, `composeHardViolations`, and Phase 1C-B1 version constants.
+
+Not exported in Phase 1C-B1: `evaluateCandidateSolution`, `CandidateEvaluationResult`, score composer, candidate search/solvers.
