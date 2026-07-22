@@ -1,9 +1,11 @@
 /**
- * CORE-10 Phase 1F — supplied-candidate optimization orchestration.
+ * CORE-10 Phase 1F / 1G — supplied-candidate optimization orchestration.
  *
  * Supplied-input optimizer: evaluate a caller-supplied unevaluated candidate
- * batch, then rank and project OptimizationResult. CONTRACT_ONLY only.
- * No candidate generation, search, greedy, or exhaustive solver.
+ * batch (subject to deterministic evaluation-budget termination in Phase 1G),
+ * then rank and project OptimizationResult. CONTRACT_ONLY only.
+ * No candidate generation, search, greedy, exhaustive solver, or wall-clock
+ * watchdog.
  */
 
 import {
@@ -14,7 +16,7 @@ import {
   CORE10_HARD_VIOLATION_COMPOSITION_VERSION,
   CORE10_PRNG_VERSION,
   CORE10_SCHEMA_VERSION,
-  CORE10_SUPPLIED_CANDIDATE_OPTIMIZATION_VERSION,
+  CORE10_SUPPLIED_CANDIDATE_OPTIMIZATION_V2,
 } from "../constants/versions.js";
 import { CANDIDATE_EVALUATION_STATUS } from "../enums/candidateEvaluationStatus.js";
 import { CANDIDATE_RANKING_FAILURE_CODE } from "../enums/candidateRankingFailureCodes.js";
@@ -335,6 +337,41 @@ function canonicalizeCandidateOrder(candidates) {
 }
 
 /**
+ * Effective evaluation limit for the supplied-candidate path.
+ *
+ * Uses the minimum of non-null `maxCandidates` and `maxEvaluations`.
+ * `maxNodes` never caps this path (no search nodes).
+ * Both null ⇒ no evaluation cap (including the valid case where only
+ * `maxNodes` is set). Zero is a real finite limit.
+ *
+ * @param {Readonly<{
+ *   maxNodes: number | null,
+ *   maxCandidates: number | null,
+ *   maxEvaluations: number | null,
+ * }>} deterministicBudget
+ * @returns {number | null} finite limit, or null when unlimited
+ */
+function resolveEffectiveEvaluationLimit(deterministicBudget) {
+  const limits = [];
+  if (deterministicBudget.maxCandidates != null) {
+    limits.push(deterministicBudget.maxCandidates);
+  }
+  if (deterministicBudget.maxEvaluations != null) {
+    limits.push(deterministicBudget.maxEvaluations);
+  }
+  if (limits.length === 0) {
+    return null;
+  }
+  let min = limits[0];
+  for (let i = 1; i < limits.length; i += 1) {
+    if (limits[i] < min) {
+      min = limits[i];
+    }
+  }
+  return min;
+}
+
+/**
  * @param {Readonly<object>} request
  * @param {Readonly<{
  *   rankedCandidateIds: ReadonlyArray<string>,
@@ -345,7 +382,10 @@ function canonicalizeCandidateOrder(candidates) {
  * }>} ranking
  * @param {string} status
  * @param {number} candidateCount
+ * @param {number} feasibleCandidateCount
+ * @param {number} infeasibleCandidateCount
  * @param {number} evaluationCount
+ * @param {boolean} budgetExhausted
  * @param {string | null} failureCode
  * @returns {string}
  */
@@ -354,11 +394,14 @@ function buildResultFingerprint(
   ranking,
   status,
   candidateCount,
+  feasibleCandidateCount,
+  infeasibleCandidateCount,
   evaluationCount,
+  budgetExhausted,
   failureCode
 ) {
   return fingerprintValue({
-    optimizationVersion: CORE10_SUPPLIED_CANDIDATE_OPTIMIZATION_VERSION,
+    optimizationVersion: CORE10_SUPPLIED_CANDIDATE_OPTIMIZATION_V2,
     rankingVersion: ranking.rankingVersion,
     schemaVersion: request.schemaVersion,
     requestId: request.requestId,
@@ -367,15 +410,18 @@ function buildResultFingerprint(
     selectedCandidateId: ranking.selectedCandidateId,
     rankedCandidateIds: [...ranking.rankedCandidateIds],
     candidateCount,
-    feasibleCount: ranking.feasibleCount,
-    infeasibleCount: ranking.infeasibleCount,
+    feasibleCandidateCount,
+    infeasibleCandidateCount,
     evaluationCount,
+    budgetExhausted,
   });
 }
 
 /**
  * Evaluate a supplied unevaluated candidate batch and project OptimizationResult.
  * Synchronous only. CONTRACT_ONLY / GENERIC_CANDIDATE_RANKING.
+ * Phase 1G: deterministic evaluation-budget termination on maxCandidates /
+ * maxEvaluations (maxNodes does not cap this path).
  *
  * @param {unknown} optimizationRequest
  * @param {unknown} suppliedCandidateBatch
@@ -417,7 +463,7 @@ export function optimizeSuppliedCandidates(
   if (request.operation.operationId !== ACCEPTED_OPERATION) {
     throw new OptimizerContractError(
       OPTIMIZATION_FAILURE_CODE.INVALID_OPERATION,
-      `Phase 1F supplied-candidate optimization requires operation ${ACCEPTED_OPERATION}; received ${request.operation.operationId}`,
+      `Phase 1G supplied-candidate optimization requires operation ${ACCEPTED_OPERATION}; received ${request.operation.operationId}`,
       {
         operationId: request.operation.operationId,
         expected: ACCEPTED_OPERATION,
@@ -428,7 +474,7 @@ export function optimizeSuppliedCandidates(
   if (request.strategy !== ACCEPTED_STRATEGY) {
     throw new OptimizerContractError(
       OPTIMIZATION_FAILURE_CODE.UNSUPPORTED_STRATEGY,
-      `Phase 1F supplied-candidate optimization requires strategy ${ACCEPTED_STRATEGY}; received ${request.strategy}`,
+      `Phase 1G supplied-candidate optimization requires strategy ${ACCEPTED_STRATEGY}; received ${request.strategy}`,
       {
         strategy: request.strategy,
         expected: ACCEPTED_STRATEGY,
@@ -438,7 +484,18 @@ export function optimizeSuppliedCandidates(
 
   const batch = admitSuppliedCandidateBatch(suppliedCandidateBatch, request);
   const orderedCandidates = canonicalizeCandidateOrder(batch.candidates);
-  const candidateCount = orderedCandidates.length;
+  const admittedCount = orderedCandidates.length;
+  const candidateCount = admittedCount;
+
+  const effectiveEvaluationLimit = resolveEffectiveEvaluationLimit(
+    request.deterministicBudget
+  );
+  const truncated =
+    effectiveEvaluationLimit != null && admittedCount > effectiveEvaluationLimit;
+  const toEvaluate =
+    effectiveEvaluationLimit == null
+      ? orderedCandidates
+      : orderedCandidates.slice(0, effectiveEvaluationLimit);
 
   // Fail closed on malformed dependencies before any evaluation.
   const dependencies = createCandidateEvaluationDependencies(
@@ -455,7 +512,7 @@ export function optimizeSuppliedCandidates(
   const evaluatedFrontier = [];
   let evaluationCount = 0;
 
-  for (const supplied of orderedCandidates) {
+  for (const supplied of toEvaluate) {
     const evaluationInput = createCandidateEvaluationInput({
       schemaVersion: CORE10_CANDIDATE_EVALUATION_INPUT_SCHEMA_VERSION,
       evaluationVersion: CORE10_HARD_VIOLATION_COMPOSITION_VERSION,
@@ -493,11 +550,21 @@ export function optimizeSuppliedCandidates(
   }
 
   const ranking = rankCandidateEvaluations(evaluatedFrontier);
+  const budgetExhausted = truncated;
+  // Empty batch takes precedence over budget exhaustion (Phase 1F INFEASIBLE).
+  const emptyBatch = admittedCount === 0;
 
-  const status =
-    ranking.selectedCandidateId != null
-      ? OPTIMIZATION_STATUS.SUCCESS
-      : OPTIMIZATION_STATUS.INFEASIBLE;
+  /** @type {string} */
+  let status;
+  if (emptyBatch) {
+    status = OPTIMIZATION_STATUS.INFEASIBLE;
+  } else if (budgetExhausted) {
+    status = OPTIMIZATION_STATUS.BUDGET_EXHAUSTED;
+  } else if (ranking.selectedCandidateId != null) {
+    status = OPTIMIZATION_STATUS.SUCCESS;
+  } else {
+    status = OPTIMIZATION_STATUS.INFEASIBLE;
+  }
 
   const rankedCandidateIds = [...ranking.rankedCandidateIds];
 
@@ -511,13 +578,30 @@ export function optimizeSuppliedCandidates(
       candidates: candidateCount,
       evaluations: evaluationCount,
     },
-    budgetExhausted: false,
+    budgetExhausted: emptyBatch ? false : budgetExhausted,
     watchdogTimeout: false,
   });
 
   /** @type {object | null} */
   let failure = null;
-  if (status === OPTIMIZATION_STATUS.INFEASIBLE) {
+  if (status === OPTIMIZATION_STATUS.BUDGET_EXHAUSTED) {
+    failure = createOptimizationFailure({
+      code: OPTIMIZATION_FAILURE_CODE.BUDGET_EXHAUSTED,
+      message:
+        evaluationCount === 0
+          ? "Evaluation budget exhausted before any supplied candidate was evaluated"
+          : "Evaluation budget exhausted before all admitted supplied candidates were evaluated",
+      details: {
+        candidateCount,
+        feasibleCount: ranking.feasibleCount,
+        infeasibleCount: ranking.infeasibleCount,
+        evaluationCount,
+        effectiveEvaluationLimit,
+        optimizationVersion: CORE10_SUPPLIED_CANDIDATE_OPTIMIZATION_V2,
+        rankingVersion: ranking.rankingVersion,
+      },
+    });
+  } else if (status === OPTIMIZATION_STATUS.INFEASIBLE) {
     failure = createOptimizationFailure({
       code: OPTIMIZATION_FAILURE_CODE.INFEASIBLE,
       message:
@@ -529,7 +613,7 @@ export function optimizeSuppliedCandidates(
         feasibleCount: ranking.feasibleCount,
         infeasibleCount: ranking.infeasibleCount,
         evaluationCount,
-        optimizationVersion: CORE10_SUPPLIED_CANDIDATE_OPTIMIZATION_VERSION,
+        optimizationVersion: CORE10_SUPPLIED_CANDIDATE_OPTIMIZATION_V2,
         rankingVersion: ranking.rankingVersion,
       },
     });
@@ -541,7 +625,10 @@ export function optimizeSuppliedCandidates(
     ranking,
     status,
     candidateCount,
+    ranking.feasibleCount,
+    ranking.infeasibleCount,
     evaluationCount,
+    diagnostics.budgetExhausted,
     failureCode
   );
 
