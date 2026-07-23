@@ -1,9 +1,10 @@
 /**
  * Player Rating Foundation — Phase 1B contracts/ports + Phase 1C read model
- * + Phase 1D append-only history & immutable snapshots.
+ * + Phase 1D append-only history & immutable snapshots
+ * + Phase 1E verification & manual adjustment.
  *
- * Runtime-neutral contracts, ports, read-model, and in-memory history/snapshot
- * adapters only. Not wired into Production runtime.
+ * Runtime-neutral contracts, ports, read-model, and in-memory adapters only.
+ * Not wired into Production runtime.
  * Does not replace legacy assessment under src/features/player-rating/.
  */
 
@@ -131,3 +132,32 @@ export {
   createInMemoryRatingHistoryAdapter,
   createInMemoryRatingSnapshotAdapter,
 } from "./history-snapshot/index.js";
+
+export {
+  PLAYER_RATING_VERIFICATION_ADJUSTMENT_PHASE,
+  PLAYER_RATING_CAPABILITY,
+  ALLOWED_ADJUSTMENT_FIELDS,
+  RATING_OPERATION_TYPE,
+  RATING_HISTORY_EVENT_TYPE,
+  authorizeRatingOperation,
+  authorizeVerificationActor,
+  authorizeAdjustmentActor,
+  createRatingOperationIdentity,
+  buildRatingOperationIdentityKey,
+  ratingOperationIdentitiesEqual,
+  buildCurrentStateKey,
+  normalizeStoredCurrentState,
+  assertStateIdentityImmutable,
+  assertExpectedVersion,
+  requireExplicitRatingValue,
+  buildAfterState,
+  fingerprintPayload,
+  createInMemoryRatingCurrentStateAdapter,
+  buildStoredAdjustmentAuditEntry,
+  createInMemoryRatingAdjustmentAuditAdapter,
+  buildVerificationHistoryEntry,
+  buildAdjustmentHistoryEntry,
+  buildAdjustmentAuditEntry,
+  verifyPlayerRating,
+  adjustPlayerRating,
+} from "./verification-adjustment/index.js";

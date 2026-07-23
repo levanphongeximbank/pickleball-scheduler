@@ -314,5 +314,6 @@
   "tests/tt-v6-ai-group-reveal.test.js",
   "tests/player-rating-foundation.test.js",
   "tests/player-rating-current-state-read-model.test.js",
-  "tests/player-rating-history-snapshot.test.js"
+  "tests/player-rating-history-snapshot.test.js",
+  "tests/player-rating-verification-adjustment.test.js"
 ]
