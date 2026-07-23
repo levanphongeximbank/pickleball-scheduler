@@ -7,7 +7,6 @@ import { WORKFLOW_ERROR_CODE } from "../errors/workflowErrorCodes.js";
 import { WorkflowError } from "../errors/WorkflowError.js";
 import {
   deepFreezeClone,
-  isNonEmptyString,
   isPlainObject,
 } from "../utils/canonicalizeWorkflowPayload.js";
 import { createTransitionAuthorizationDecision } from "./workflowDecisions.js";

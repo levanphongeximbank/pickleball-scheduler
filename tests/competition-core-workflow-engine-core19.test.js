@@ -505,7 +505,7 @@ describe("CORE-19 Phase 1B — deterministic transition kernel", () => {
         if (token === "WORKFLOW_STAGE" || token === "TOURNAMENT_STATUS") {
           // Mentions in ownership comments are allowed; imports/usages as SSOT are not.
           const importLike = new RegExp(
-            `from\\s+['\"][^'\"]*${token}[^'\"]*['\"]|require\\([^)]*${token}`
+            `from\\s+['"][^'"]*${token}[^'"]*['"]|require\\([^)]*${token}`
           );
           assert.equal(
             importLike.test(text),

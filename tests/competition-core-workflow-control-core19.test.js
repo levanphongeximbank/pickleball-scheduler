@@ -529,7 +529,7 @@ describe("CORE-19 Phase 1D — pause / resume / restart", () => {
     for (const file of files) {
       const text = readFileSync(file, "utf8");
       assert.equal(
-        /from\s+['\"][^'\"]*recovery[^'\"]*['\"]/.test(text),
+        /from\s+['"][^'"]*recovery[^'"]*['"]/.test(text),
         false,
         `${path.relative(ROOT, file)} must not import recovery modules`
       );
@@ -819,7 +819,7 @@ describe("CORE-19 Phase 1D — duplicates, distinct failures, determinism", () =
     for (const file of files) {
       const text = readFileSync(file, "utf8");
       assert.equal(text.includes("audit-event-log"), false);
-      assert.equal(/from\s+['\"][^'\"]*core-20/i.test(text), false);
+      assert.equal(/from\s+['"][^'"]*core-20/i.test(text), false);
       assert.equal(/persistAudit|writeAudit/i.test(text), false);
     }
   });
@@ -828,7 +828,7 @@ describe("CORE-19 Phase 1D — duplicates, distinct failures, determinism", () =
     const files = listJsFiles(WORKFLOW_ROOT);
     for (const file of files) {
       const text = readFileSync(file, "utf8");
-      assert.equal(/from\s+['\"][^'\"]*recovery/i.test(text), false);
+      assert.equal(/from\s+['"][^'"]*recovery/i.test(text), false);
       assert.equal(text.includes("last-known-safe"), false);
     }
   });
@@ -1130,7 +1130,7 @@ describe("CORE-19 Phase 1E — consolidation certification", () => {
     for (const file of listJsFiles(adapterDir)) {
       if (path.basename(file) === "index.js") continue;
       const text = readFileSync(file, "utf8");
-      const imports = [...text.matchAll(/from\s+['\"]([^'\"]+)['\"]/g)].map(
+      const imports = [...text.matchAll(/from\s+['"]([^'"]+)['"]/g)].map(
         (m) => m[1]
       );
       for (const spec of imports) {
