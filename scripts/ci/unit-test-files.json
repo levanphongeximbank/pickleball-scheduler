@@ -317,5 +317,6 @@
   "tests/player-rating-history-snapshot.test.js",
   "tests/player-rating-verification-adjustment.test.js",
   "tests/player-rating-read-facade.test.js",
-  "tests/player-rating-security-privacy.test.js"
+  "tests/player-rating-security-privacy.test.js",
+  "tests/player-rating-integration-certification.test.js"
 ]
