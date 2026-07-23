@@ -14,6 +14,7 @@ import { ClusterProvider } from "../context/ClusterContext.jsx";
 import { ClubProvider } from "../context/ClubContext.jsx";
 import { SeasonProvider } from "../context/SeasonContext.jsx";
 import { NotificationRuntimeProvider } from "../features/notifications/runtime/NotificationRuntimeProvider.jsx";
+import { FinanceStagingRuntimeProvider } from "../features/finance/runtime/FinanceStagingRuntimeProvider.jsx";
 import OfflineBanner from "../features/mobile/components/OfflineBanner.jsx";
 import PwaInstallPrompt from "../features/mobile/components/PwaInstallPrompt.jsx";
 import MobileBottomNav from "../features/mobile/layout/MobileBottomNav.jsx";
@@ -79,7 +80,9 @@ export default function MainLayout() {
         <ClubProvider>
           <SeasonProvider>
             <NotificationRuntimeProvider>
-              <MainLayoutContent />
+              <FinanceStagingRuntimeProvider>
+                <MainLayoutContent />
+              </FinanceStagingRuntimeProvider>
             </NotificationRuntimeProvider>
           </SeasonProvider>
         </ClubProvider>

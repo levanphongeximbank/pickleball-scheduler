@@ -1,0 +1,2464 @@
+{
+  "phase": "1H",
+  "startedAt": "2026-07-23T11:36:02.197Z",
+  "commit": "f879a1ac52178dc2c6a0f4333040362138274895",
+  "stagingRef": "qyewbxjsiiyufanzcjcq",
+  "stagingNameExpected": "pickleball-scheduler-stagin",
+  "stagingUrl": "https://qyewbxjsiiyufanzcjcq.supabase.co",
+  "productionRef": "expuvcohlcjzvrrauvud",
+  "productionName": "pickleball-scheduler-production",
+  "productionTouched": false,
+  "forwardSql": "docs/supabase-finance-phase1f.sql",
+  "rollbackSql": "docs/supabase-finance-phase1f-rollback.sql",
+  "forwardSha256": "0310905a5fba1ca2028d841c612f9cd7fcf22a5db96d7d9c4d81da3354050d00",
+  "rollbackSha256": "b86921d7571c6861c0ec3a5464d87af7fd8f740000e55bfe6785535b8c40ea95",
+  "mode": "--verify-only",
+  "status": "VERIFIED",
+  "tokenSource": "../club-management/.env.staging-qa.local",
+  "credentialKind": "SUPABASE_ACCESS_TOKEN (Management API)",
+  "noProductionCredentialInUse": true,
+  "projectIdentity": {
+    "ref": "qyewbxjsiiyufanzcjcq",
+    "name": "pickleball-scheduler-stagin",
+    "region": "ap-southeast-2",
+    "organization_id": "mybtvdfgdvjxzzmazlsv",
+    "status": "ACTIVE_HEALTHY",
+    "database_host": "db.qyewbxjsiiyufanzcjcq.supabase.co"
+  },
+  "environmentClassification": "STAGING",
+  "identifiedAsStagingHow": [
+    "Hardcoded target ref qyewbxjsiiyufanzcjcq matches repository SSOT docs",
+    "Management API /v1/projects/qyewbxjsiiyufanzcjcq returned ref=qyewbxjsiiyufanzcjcq name=pickleball-scheduler-stagin",
+    "Distinct from Production ref expuvcohlcjzvrrauvud / name pickleball-scheduler-production",
+    "Credential loaded from gitignored staging-qa sibling env; Production URL refused"
+  ],
+  "preflight": {
+    "user_venue_id": {
+      "exists": true,
+      "result_type": "text"
+    },
+    "is_super_admin": {
+      "exists": true,
+      "result_type": "boolean"
+    },
+    "user_has_permission": {
+      "exists": true,
+      "result_type": null
+    },
+    "finance_permissions": [
+      {
+        "id": "finance.edit",
+        "module": "finance",
+        "action": "edit"
+      },
+      {
+        "id": "finance.view",
+        "module": "finance",
+        "action": "view"
+      }
+    ],
+    "finance_tables": [
+      {
+        "relname": "finance_audit_evidence",
+        "relrowsecurity": true,
+        "relforcerowsecurity": true,
+        "estimated_rows": 0
+      },
+      {
+        "relname": "finance_events",
+        "relrowsecurity": true,
+        "relforcerowsecurity": true,
+        "estimated_rows": 0
+      },
+      {
+        "relname": "finance_fee_definitions",
+        "relrowsecurity": true,
+        "relforcerowsecurity": true,
+        "estimated_rows": 0
+      },
+      {
+        "relname": "finance_idempotency",
+        "relrowsecurity": true,
+        "relforcerowsecurity": true,
+        "estimated_rows": 0
+      },
+      {
+        "relname": "finance_invoice_items",
+        "relrowsecurity": true,
+        "relforcerowsecurity": true,
+        "estimated_rows": 0
+      },
+      {
+        "relname": "finance_invoices",
+        "relrowsecurity": true,
+        "relforcerowsecurity": true,
+        "estimated_rows": 0
+      },
+      {
+        "relname": "finance_obligations",
+        "relrowsecurity": true,
+        "relforcerowsecurity": true,
+        "estimated_rows": 0
+      },
+      {
+        "relname": "finance_payment_attempts",
+        "relrowsecurity": true,
+        "relforcerowsecurity": true,
+        "estimated_rows": 0
+      },
+      {
+        "relname": "finance_payments",
+        "relrowsecurity": true,
+        "relforcerowsecurity": true,
+        "estimated_rows": 0
+      },
+      {
+        "relname": "finance_receipts",
+        "relrowsecurity": true,
+        "relforcerowsecurity": true,
+        "estimated_rows": 0
+      },
+      {
+        "relname": "finance_refunds",
+        "relrowsecurity": true,
+        "relforcerowsecurity": true,
+        "estimated_rows": 0
+      }
+    ],
+    "billing_tables_untouched_sample": {
+      "invoices_exists": true,
+      "payments_exists": true
+    }
+  },
+  "tableClassification": {
+    "finance_fee_definitions": "PRESENT",
+    "finance_audit_evidence": "PRESENT",
+    "finance_obligations": "PRESENT",
+    "finance_invoices": "PRESENT",
+    "finance_invoice_items": "PRESENT",
+    "finance_payments": "PRESENT",
+    "finance_payment_attempts": "PRESENT",
+    "finance_receipts": "PRESENT",
+    "finance_refunds": "PRESENT",
+    "finance_events": "PRESENT",
+    "finance_idempotency": "PRESENT"
+  },
+  "verify": {
+    "tables": [
+      {
+        "name": "finance_audit_evidence",
+        "rls": true,
+        "force_rls": true,
+        "pk": [
+          "id"
+        ],
+        "has_tenant_id": true,
+        "has_version": true,
+        "amount_minor_type": null,
+        "constraints": [
+          {
+            "name": "finance_audit_evidence_metadata_object_check",
+            "type": "c",
+            "def": "CHECK ((jsonb_typeof(metadata) = 'object'::text))"
+          },
+          {
+            "name": "finance_audit_evidence_metadata_size_check",
+            "type": "c",
+            "def": "CHECK ((octet_length((metadata)::text) <= 8192))"
+          },
+          {
+            "name": "finance_audit_evidence_no_secret_metadata_check",
+            "type": "c",
+            "def": "CHECK ((NOT (metadata ?| ARRAY['apiKey'::text, 'api_key'::text, 'secret'::text, 'token'::text, 'accessToken'::text, 'refreshToken'::text, 'authorization'::text, 'authorizationHeader'::text, 'webhookSecret'::text, 'cvv'::text, 'cardNumber'::text, 'rawPayload'::text, 'raw_payload'::text, 'password'::text])))"
+          },
+          {
+            "name": "finance_audit_evidence_pkey",
+            "type": "p",
+            "def": "PRIMARY KEY (id)"
+          },
+          {
+            "name": "finance_audit_evidence_redaction_check",
+            "type": "c",
+            "def": "CHECK ((redaction_classification = ANY (ARRAY['NONE'::text, 'PARTIAL'::text, 'FULL'::text])))"
+          },
+          {
+            "name": "finance_audit_evidence_retention_check",
+            "type": "c",
+            "def": "CHECK ((retention_classification = ANY (ARRAY['STANDARD'::text, 'EXTENDED'::text, 'LEGAL_HOLD'::text])))"
+          },
+          {
+            "name": "finance_audit_evidence_tenant_id_id_key",
+            "type": "u",
+            "def": "UNIQUE (tenant_id, id)"
+          },
+          {
+            "name": "finance_audit_evidence_verification_status_check",
+            "type": "c",
+            "def": "CHECK ((verification_status = ANY (ARRAY['UNVERIFIED'::text, 'VERIFIED'::text, 'REJECTED'::text])))"
+          },
+          {
+            "name": "finance_audit_evidence_version_check",
+            "type": "c",
+            "def": "CHECK ((version >= 1))"
+          }
+        ],
+        "indexes": [
+          {
+            "name": "finance_audit_evidence_pkey",
+            "unique": true,
+            "def": "CREATE UNIQUE INDEX finance_audit_evidence_pkey ON public.finance_audit_evidence USING btree (id)"
+          },
+          {
+            "name": "finance_audit_evidence_tenant_captured_idx",
+            "unique": false,
+            "def": "CREATE INDEX finance_audit_evidence_tenant_captured_idx ON public.finance_audit_evidence USING btree (tenant_id, captured_at DESC)"
+          },
+          {
+            "name": "finance_audit_evidence_tenant_external_ref_idx",
+            "unique": false,
+            "def": "CREATE INDEX finance_audit_evidence_tenant_external_ref_idx ON public.finance_audit_evidence USING btree (tenant_id, provider_code, external_reference) WHERE (external_reference IS NOT NULL)"
+          },
+          {
+            "name": "finance_audit_evidence_tenant_id_id_key",
+            "unique": true,
+            "def": "CREATE UNIQUE INDEX finance_audit_evidence_tenant_id_id_key ON public.finance_audit_evidence USING btree (tenant_id, id)"
+          }
+        ],
+        "policies": [
+          {
+            "name": "finance_audit_evidence_insert",
+            "cmd": "a",
+            "roles": [
+              "authenticated"
+            ],
+            "qual": null,
+            "with_check": "((is_super_admin() OR user_has_permission('finance.edit'::text)) AND (is_super_admin() OR (tenant_id = user_venue_id())))"
+          },
+          {
+            "name": "finance_audit_evidence_select",
+            "cmd": "r",
+            "roles": [
+              "authenticated"
+            ],
+            "qual": "((is_super_admin() OR user_has_permission('finance.view'::text)) AND (is_super_admin() OR (tenant_id = user_venue_id())))",
+            "with_check": null
+          },
+          {
+            "name": "finance_audit_evidence_update",
+            "cmd": "w",
+            "roles": [
+              "authenticated"
+            ],
+            "qual": "((is_super_admin() OR user_has_permission('finance.edit'::text)) AND (is_super_admin() OR (tenant_id = user_venue_id())))",
+            "with_check": "((is_super_admin() OR user_has_permission('finance.edit'::text)) AND (is_super_admin() OR (tenant_id = user_venue_id())))"
+          }
+        ],
+        "grants": [
+          {
+            "grantee": "authenticated",
+            "privilege": "DELETE"
+          },
+          {
+            "grantee": "authenticated",
+            "privilege": "INSERT"
+          },
+          {
+            "grantee": "authenticated",
+            "privilege": "REFERENCES"
+          },
+          {
+            "grantee": "authenticated",
+            "privilege": "SELECT"
+          },
+          {
+            "grantee": "authenticated",
+            "privilege": "TRIGGER"
+          },
+          {
+            "grantee": "authenticated",
+            "privilege": "TRUNCATE"
+          },
+          {
+            "grantee": "authenticated",
+            "privilege": "UPDATE"
+          },
+          {
+            "grantee": "postgres",
+            "privilege": "DELETE"
+          },
+          {
+            "grantee": "postgres",
+            "privilege": "INSERT"
+          },
+          {
+            "grantee": "postgres",
+            "privilege": "REFERENCES"
+          },
+          {
+            "grantee": "postgres",
+            "privilege": "SELECT"
+          },
+          {
+            "grantee": "postgres",
+            "privilege": "TRIGGER"
+          },
+          {
+            "grantee": "postgres",
+            "privilege": "TRUNCATE"
+          },
+          {
+            "grantee": "postgres",
+            "privilege": "UPDATE"
+          },
+          {
+            "grantee": "service_role",
+            "privilege": "DELETE"
+          },
+          {
+            "grantee": "service_role",
+            "privilege": "INSERT"
+          },
+          {
+            "grantee": "service_role",
+            "privilege": "REFERENCES"
+          },
+          {
+            "grantee": "service_role",
+            "privilege": "SELECT"
+          },
+          {
+            "grantee": "service_role",
+            "privilege": "TRIGGER"
+          },
+          {
+            "grantee": "service_role",
+            "privilege": "TRUNCATE"
+          },
+          {
+            "grantee": "service_role",
+            "privilege": "UPDATE"
+          }
+        ]
+      },
+      {
+        "name": "finance_events",
+        "rls": true,
+        "force_rls": true,
+        "pk": [
+          "id"
+        ],
+        "has_tenant_id": true,
+        "has_version": false,
+        "amount_minor_type": "bigint",
+        "constraints": [
+          {
+            "name": "finance_events_amount_minor_check",
+            "type": "c",
+            "def": "CHECK (((amount_minor IS NULL) OR (amount_minor >= 0)))"
+          },
+          {
+            "name": "finance_events_currency_vnd_v1_check",
+            "type": "c",
+            "def": "CHECK (((currency IS NULL) OR (currency = 'VND'::text)))"
+          },
+          {
+            "name": "finance_events_event_type_check",
+            "type": "c",
+            "def": "CHECK ((event_type = ANY (ARRAY['FINANCE_OBLIGATION_CREATED'::text, 'INVOICE_CREATED'::text, 'INVOICE_ISSUED'::text, 'PAYMENT_PENDING'::text, 'PAYMENT_CONFIRMED'::text, 'PAYMENT_FAILED'::text, 'PAYMENT_CANCELLED'::text, 'PAYMENT_EXPIRED'::text, 'RECEIPT_ISSUED'::text, 'REFUND_REQUESTED'::text, 'REFUND_APPROVED'::text, 'REFUND_REJECTED'::text, 'REFUND_COMPLETED'::text, 'RECONCILIATION_COMPLETED'::text, 'FINANCIAL_ADJUSTMENT_RECORDED'::text])))"
+          },
+          {
+            "name": "finance_events_event_version_check",
+            "type": "c",
+            "def": "CHECK ((event_version >= 1))"
+          },
+          {
+            "name": "finance_events_no_secret_payload_check",
+            "type": "c",
+            "def": "CHECK ((NOT (payload ?| ARRAY['apiKey'::text, 'api_key'::text, 'secret'::text, 'token'::text, 'accessToken'::text, 'refreshToken'::text, 'authorization'::text, 'authorizationHeader'::text, 'webhookSecret'::text, 'cvv'::text, 'cardNumber'::text, 'rawPayload'::text, 'raw_payload'::text, 'password'::text])))"
+          },
+          {
+            "name": "finance_events_payload_object_check",
+            "type": "c",
+            "def": "CHECK ((jsonb_typeof(payload) = 'object'::text))"
+          },
+          {
+            "name": "finance_events_payload_schema_version_check",
+            "type": "c",
+            "def": "CHECK ((payload_schema_version >= 1))"
+          },
+          {
+            "name": "finance_events_payload_size_check",
+            "type": "c",
+            "def": "CHECK ((octet_length((payload)::text) <= 16384))"
+          },
+          {
+            "name": "finance_events_pkey",
+            "type": "p",
+            "def": "PRIMARY KEY (id)"
+          },
+          {
+            "name": "finance_events_privacy_check",
+            "type": "c",
+            "def": "CHECK ((privacy_classification = ANY (ARRAY['INTERNAL'::text, 'RESTRICTED'::text, 'PUBLIC'::text])))"
+          },
+          {
+            "name": "finance_events_tenant_id_id_key",
+            "type": "u",
+            "def": "UNIQUE (tenant_id, id)"
+          }
+        ],
+        "indexes": [
+          {
+            "name": "finance_events_pkey",
+            "unique": true,
+            "def": "CREATE UNIQUE INDEX finance_events_pkey ON public.finance_events USING btree (id)"
+          },
+          {
+            "name": "finance_events_tenant_correlation_idx",
+            "unique": false,
+            "def": "CREATE INDEX finance_events_tenant_correlation_idx ON public.finance_events USING btree (tenant_id, correlation_id)"
+          },
+          {
+            "name": "finance_events_tenant_event_type_idx",
+            "unique": false,
+            "def": "CREATE INDEX finance_events_tenant_event_type_idx ON public.finance_events USING btree (tenant_id, event_type, recorded_at DESC)"
+          },
+          {
+            "name": "finance_events_tenant_id_id_key",
+            "unique": true,
+            "def": "CREATE UNIQUE INDEX finance_events_tenant_id_id_key ON public.finance_events USING btree (tenant_id, id)"
+          },
+          {
+            "name": "finance_events_tenant_occurred_idx",
+            "unique": false,
+            "def": "CREATE INDEX finance_events_tenant_occurred_idx ON public.finance_events USING btree (tenant_id, occurred_at DESC)"
+          },
+          {
+            "name": "finance_events_tenant_payment_idx",
+            "unique": false,
+            "def": "CREATE INDEX finance_events_tenant_payment_idx ON public.finance_events USING btree (tenant_id, payment_id) WHERE (payment_id IS NOT NULL)"
+          },
+          {
+            "name": "finance_events_tenant_recorded_idx",
+            "unique": false,
+            "def": "CREATE INDEX finance_events_tenant_recorded_idx ON public.finance_events USING btree (tenant_id, recorded_at DESC)"
+          }
+        ],
+        "policies": [
+          {
+            "name": "finance_events_insert",
+            "cmd": "a",
+            "roles": [
+              "authenticated"
+            ],
+            "qual": null,
+            "with_check": "((is_super_admin() OR user_has_permission('finance.edit'::text)) AND (is_super_admin() OR (tenant_id = user_venue_id())))"
+          },
+          {
+            "name": "finance_events_select",
+            "cmd": "r",
+            "roles": [
+              "authenticated"
+            ],
+            "qual": "((is_super_admin() OR user_has_permission('finance.view'::text)) AND (is_super_admin() OR (tenant_id = user_venue_id())))",
+            "with_check": null
+          }
+        ],
+        "grants": [
+          {
+            "grantee": "authenticated",
+            "privilege": "DELETE"
+          },
+          {
+            "grantee": "authenticated",
+            "privilege": "INSERT"
+          },
+          {
+            "grantee": "authenticated",
+            "privilege": "REFERENCES"
+          },
+          {
+            "grantee": "authenticated",
+            "privilege": "SELECT"
+          },
+          {
+            "grantee": "authenticated",
+            "privilege": "TRIGGER"
+          },
+          {
+            "grantee": "authenticated",
+            "privilege": "TRUNCATE"
+          },
+          {
+            "grantee": "authenticated",
+            "privilege": "UPDATE"
+          },
+          {
+            "grantee": "postgres",
+            "privilege": "DELETE"
+          },
+          {
+            "grantee": "postgres",
+            "privilege": "INSERT"
+          },
+          {
+            "grantee": "postgres",
+            "privilege": "REFERENCES"
+          },
+          {
+            "grantee": "postgres",
+            "privilege": "SELECT"
+          },
+          {
+            "grantee": "postgres",
+            "privilege": "TRIGGER"
+          },
+          {
+            "grantee": "postgres",
+            "privilege": "TRUNCATE"
+          },
+          {
+            "grantee": "postgres",
+            "privilege": "UPDATE"
+          },
+          {
+            "grantee": "service_role",
+            "privilege": "DELETE"
+          },
+          {
+            "grantee": "service_role",
+            "privilege": "INSERT"
+          },
+          {
+            "grantee": "service_role",
+            "privilege": "REFERENCES"
+          },
+          {
+            "grantee": "service_role",
+            "privilege": "SELECT"
+          },
+          {
+            "grantee": "service_role",
+            "privilege": "TRIGGER"
+          },
+          {
+            "grantee": "service_role",
+            "privilege": "TRUNCATE"
+          },
+          {
+            "grantee": "service_role",
+            "privilege": "UPDATE"
+          }
+        ]
+      },
+      {
+        "name": "finance_fee_definitions",
+        "rls": true,
+        "force_rls": true,
+        "pk": [
+          "id"
+        ],
+        "has_tenant_id": true,
+        "has_version": true,
+        "amount_minor_type": "bigint",
+        "constraints": [
+          {
+            "name": "finance_fee_definitions_amount_minor_check",
+            "type": "c",
+            "def": "CHECK ((amount_minor >= 0))"
+          },
+          {
+            "name": "finance_fee_definitions_currency_vnd_v1_check",
+            "type": "c",
+            "def": "CHECK ((currency = 'VND'::text))"
+          },
+          {
+            "name": "finance_fee_definitions_fee_type_check",
+            "type": "c",
+            "def": "CHECK ((fee_type = ANY (ARRAY['COMPETITION'::text, 'TOURNAMENT_ENTRY'::text, 'VENUE_BOOKING'::text, 'COURT_BOOKING'::text, 'CLUB_MEMBERSHIP'::text, 'OPERATIONAL'::text, 'OTHER'::text])))"
+          },
+          {
+            "name": "finance_fee_definitions_metadata_object_check",
+            "type": "c",
+            "def": "CHECK ((jsonb_typeof(metadata) = 'object'::text))"
+          },
+          {
+            "name": "finance_fee_definitions_metadata_size_check",
+            "type": "c",
+            "def": "CHECK ((octet_length((metadata)::text) <= 8192))"
+          },
+          {
+            "name": "finance_fee_definitions_no_secret_metadata_check",
+            "type": "c",
+            "def": "CHECK ((NOT (metadata ?| ARRAY['apiKey'::text, 'api_key'::text, 'secret'::text, 'token'::text, 'accessToken'::text, 'refreshToken'::text, 'authorization'::text, 'authorizationHeader'::text, 'webhookSecret'::text, 'cvv'::text, 'cardNumber'::text, 'rawPayload'::text, 'raw_payload'::text])))"
+          },
+          {
+            "name": "finance_fee_definitions_pkey",
+            "type": "p",
+            "def": "PRIMARY KEY (id)"
+          },
+          {
+            "name": "finance_fee_definitions_policy_version_check",
+            "type": "c",
+            "def": "CHECK ((policy_version >= 1))"
+          },
+          {
+            "name": "finance_fee_definitions_status_check",
+            "type": "c",
+            "def": "CHECK ((status = ANY (ARRAY['DRAFT'::text, 'ACTIVE'::text, 'INACTIVE'::text, 'ARCHIVED'::text])))"
+          },
+          {
+            "name": "finance_fee_definitions_tenant_id_id_key",
+            "type": "u",
+            "def": "UNIQUE (tenant_id, id)"
+          },
+          {
+            "name": "finance_fee_definitions_version_check",
+            "type": "c",
+            "def": "CHECK ((version >= 1))"
+          }
+        ],
+        "indexes": [
+          {
+            "name": "finance_fee_definitions_pkey",
+            "unique": true,
+            "def": "CREATE UNIQUE INDEX finance_fee_definitions_pkey ON public.finance_fee_definitions USING btree (id)"
+          },
+          {
+            "name": "finance_fee_definitions_tenant_id_id_key",
+            "unique": true,
+            "def": "CREATE UNIQUE INDEX finance_fee_definitions_tenant_id_id_key ON public.finance_fee_definitions USING btree (tenant_id, id)"
+          },
+          {
+            "name": "finance_fee_definitions_tenant_status_idx",
+            "unique": false,
+            "def": "CREATE INDEX finance_fee_definitions_tenant_status_idx ON public.finance_fee_definitions USING btree (tenant_id, status, created_at DESC)"
+          },
+          {
+            "name": "finance_fee_definitions_tenant_subject_booking_idx",
+            "unique": false,
+            "def": "CREATE INDEX finance_fee_definitions_tenant_subject_booking_idx ON public.finance_fee_definitions USING btree (tenant_id, subject_booking_id) WHERE (subject_booking_id IS NOT NULL)"
+          },
+          {
+            "name": "finance_fee_definitions_tenant_subject_venue_idx",
+            "unique": false,
+            "def": "CREATE INDEX finance_fee_definitions_tenant_subject_venue_idx ON public.finance_fee_definitions USING btree (tenant_id, subject_venue_id) WHERE (subject_venue_id IS NOT NULL)"
+          }
+        ],
+        "policies": [
+          {
+            "name": "finance_fee_definitions_insert",
+            "cmd": "a",
+            "roles": [
+              "authenticated"
+            ],
+            "qual": null,
+            "with_check": "((is_super_admin() OR user_has_permission('finance.edit'::text)) AND (is_super_admin() OR (tenant_id = user_venue_id())))"
+          },
+          {
+            "name": "finance_fee_definitions_select",
+            "cmd": "r",
+            "roles": [
+              "authenticated"
+            ],
+            "qual": "((is_super_admin() OR user_has_permission('finance.view'::text)) AND (is_super_admin() OR (tenant_id = user_venue_id())))",
+            "with_check": null
+          },
+          {
+            "name": "finance_fee_definitions_update",
+            "cmd": "w",
+            "roles": [
+              "authenticated"
+            ],
+            "qual": "((is_super_admin() OR user_has_permission('finance.edit'::text)) AND (is_super_admin() OR (tenant_id = user_venue_id())))",
+            "with_check": "((is_super_admin() OR user_has_permission('finance.edit'::text)) AND (is_super_admin() OR (tenant_id = user_venue_id())))"
+          }
+        ],
+        "grants": [
+          {
+            "grantee": "authenticated",
+            "privilege": "DELETE"
+          },
+          {
+            "grantee": "authenticated",
+            "privilege": "INSERT"
+          },
+          {
+            "grantee": "authenticated",
+            "privilege": "REFERENCES"
+          },
+          {
+            "grantee": "authenticated",
+            "privilege": "SELECT"
+          },
+          {
+            "grantee": "authenticated",
+            "privilege": "TRIGGER"
+          },
+          {
+            "grantee": "authenticated",
+            "privilege": "TRUNCATE"
+          },
+          {
+            "grantee": "authenticated",
+            "privilege": "UPDATE"
+          },
+          {
+            "grantee": "postgres",
+            "privilege": "DELETE"
+          },
+          {
+            "grantee": "postgres",
+            "privilege": "INSERT"
+          },
+          {
+            "grantee": "postgres",
+            "privilege": "REFERENCES"
+          },
+          {
+            "grantee": "postgres",
+            "privilege": "SELECT"
+          },
+          {
+            "grantee": "postgres",
+            "privilege": "TRIGGER"
+          },
+          {
+            "grantee": "postgres",
+            "privilege": "TRUNCATE"
+          },
+          {
+            "grantee": "postgres",
+            "privilege": "UPDATE"
+          },
+          {
+            "grantee": "service_role",
+            "privilege": "DELETE"
+          },
+          {
+            "grantee": "service_role",
+            "privilege": "INSERT"
+          },
+          {
+            "grantee": "service_role",
+            "privilege": "REFERENCES"
+          },
+          {
+            "grantee": "service_role",
+            "privilege": "SELECT"
+          },
+          {
+            "grantee": "service_role",
+            "privilege": "TRIGGER"
+          },
+          {
+            "grantee": "service_role",
+            "privilege": "TRUNCATE"
+          },
+          {
+            "grantee": "service_role",
+            "privilege": "UPDATE"
+          }
+        ]
+      },
+      {
+        "name": "finance_idempotency",
+        "rls": true,
+        "force_rls": true,
+        "pk": [
+          "id"
+        ],
+        "has_tenant_id": true,
+        "has_version": true,
+        "amount_minor_type": null,
+        "constraints": [
+          {
+            "name": "finance_idempotency_completed_result_check",
+            "type": "c",
+            "def": "CHECK (((execution_status <> 'COMPLETED'::text) OR ((result_entity_type IS NOT NULL) AND (result_entity_id IS NOT NULL))))"
+          },
+          {
+            "name": "finance_idempotency_execution_status_check",
+            "type": "c",
+            "def": "CHECK ((execution_status = ANY (ARRAY['STARTED'::text, 'COMPLETED'::text, 'FAILED'::text, 'ABANDONED'::text])))"
+          },
+          {
+            "name": "finance_idempotency_fingerprint_not_empty_check",
+            "type": "c",
+            "def": "CHECK ((length(TRIM(BOTH FROM request_fingerprint)) > 0))"
+          },
+          {
+            "name": "finance_idempotency_pkey",
+            "type": "p",
+            "def": "PRIMARY KEY (id)"
+          },
+          {
+            "name": "finance_idempotency_tenant_op_key_uidx",
+            "type": "u",
+            "def": "UNIQUE (tenant_id, operation_type, idempotency_key)"
+          },
+          {
+            "name": "finance_idempotency_version_check",
+            "type": "c",
+            "def": "CHECK ((version >= 1))"
+          }
+        ],
+        "indexes": [
+          {
+            "name": "finance_idempotency_expires_idx",
+            "unique": false,
+            "def": "CREATE INDEX finance_idempotency_expires_idx ON public.finance_idempotency USING btree (expires_at) WHERE (expires_at IS NOT NULL)"
+          },
+          {
+            "name": "finance_idempotency_pkey",
+            "unique": true,
+            "def": "CREATE UNIQUE INDEX finance_idempotency_pkey ON public.finance_idempotency USING btree (id)"
+          },
+          {
+            "name": "finance_idempotency_tenant_op_key_uidx",
+            "unique": true,
+            "def": "CREATE UNIQUE INDEX finance_idempotency_tenant_op_key_uidx ON public.finance_idempotency USING btree (tenant_id, operation_type, idempotency_key)"
+          },
+          {
+            "name": "finance_idempotency_tenant_status_idx",
+            "unique": false,
+            "def": "CREATE INDEX finance_idempotency_tenant_status_idx ON public.finance_idempotency USING btree (tenant_id, execution_status, created_at DESC)"
+          }
+        ],
+        "policies": [
+          {
+            "name": "finance_idempotency_insert",
+            "cmd": "a",
+            "roles": [
+              "authenticated"
+            ],
+            "qual": null,
+            "with_check": "((is_super_admin() OR user_has_permission('finance.edit'::text)) AND (is_super_admin() OR (tenant_id = user_venue_id())))"
+          },
+          {
+            "name": "finance_idempotency_select",
+            "cmd": "r",
+            "roles": [
+              "authenticated"
+            ],
+            "qual": "((is_super_admin() OR user_has_permission('finance.view'::text)) AND (is_super_admin() OR (tenant_id = user_venue_id())))",
+            "with_check": null
+          },
+          {
+            "name": "finance_idempotency_update",
+            "cmd": "w",
+            "roles": [
+              "authenticated"
+            ],
+            "qual": "((is_super_admin() OR user_has_permission('finance.edit'::text)) AND (is_super_admin() OR (tenant_id = user_venue_id())))",
+            "with_check": "((is_super_admin() OR user_has_permission('finance.edit'::text)) AND (is_super_admin() OR (tenant_id = user_venue_id())))"
+          }
+        ],
+        "grants": [
+          {
+            "grantee": "authenticated",
+            "privilege": "DELETE"
+          },
+          {
+            "grantee": "authenticated",
+            "privilege": "INSERT"
+          },
+          {
+            "grantee": "authenticated",
+            "privilege": "REFERENCES"
+          },
+          {
+            "grantee": "authenticated",
+            "privilege": "SELECT"
+          },
+          {
+            "grantee": "authenticated",
+            "privilege": "TRIGGER"
+          },
+          {
+            "grantee": "authenticated",
+            "privilege": "TRUNCATE"
+          },
+          {
+            "grantee": "authenticated",
+            "privilege": "UPDATE"
+          },
+          {
+            "grantee": "postgres",
+            "privilege": "DELETE"
+          },
+          {
+            "grantee": "postgres",
+            "privilege": "INSERT"
+          },
+          {
+            "grantee": "postgres",
+            "privilege": "REFERENCES"
+          },
+          {
+            "grantee": "postgres",
+            "privilege": "SELECT"
+          },
+          {
+            "grantee": "postgres",
+            "privilege": "TRIGGER"
+          },
+          {
+            "grantee": "postgres",
+            "privilege": "TRUNCATE"
+          },
+          {
+            "grantee": "postgres",
+            "privilege": "UPDATE"
+          },
+          {
+            "grantee": "service_role",
+            "privilege": "DELETE"
+          },
+          {
+            "grantee": "service_role",
+            "privilege": "INSERT"
+          },
+          {
+            "grantee": "service_role",
+            "privilege": "REFERENCES"
+          },
+          {
+            "grantee": "service_role",
+            "privilege": "SELECT"
+          },
+          {
+            "grantee": "service_role",
+            "privilege": "TRIGGER"
+          },
+          {
+            "grantee": "service_role",
+            "privilege": "TRUNCATE"
+          },
+          {
+            "grantee": "service_role",
+            "privilege": "UPDATE"
+          }
+        ]
+      },
+      {
+        "name": "finance_invoice_items",
+        "rls": true,
+        "force_rls": true,
+        "pk": [
+          "id"
+        ],
+        "has_tenant_id": true,
+        "has_version": false,
+        "amount_minor_type": null,
+        "constraints": [
+          {
+            "name": "finance_invoice_items_currency_vnd_v1_check",
+            "type": "c",
+            "def": "CHECK ((currency = 'VND'::text))"
+          },
+          {
+            "name": "finance_invoice_items_fee_fk",
+            "type": "f",
+            "def": "FOREIGN KEY (tenant_id, fee_id) REFERENCES finance_fee_definitions(tenant_id, id) ON DELETE RESTRICT"
+          },
+          {
+            "name": "finance_invoice_items_invoice_fk",
+            "type": "f",
+            "def": "FOREIGN KEY (tenant_id, invoice_id) REFERENCES finance_invoices(tenant_id, id) ON DELETE RESTRICT"
+          },
+          {
+            "name": "finance_invoice_items_line_math_check",
+            "type": "c",
+            "def": "CHECK ((line_total_minor = (unit_amount_minor * quantity)))"
+          },
+          {
+            "name": "finance_invoice_items_line_total_minor_check",
+            "type": "c",
+            "def": "CHECK ((line_total_minor >= 0))"
+          },
+          {
+            "name": "finance_invoice_items_obligation_fk",
+            "type": "f",
+            "def": "FOREIGN KEY (tenant_id, obligation_id) REFERENCES finance_obligations(tenant_id, id) ON DELETE RESTRICT"
+          },
+          {
+            "name": "finance_invoice_items_pkey",
+            "type": "p",
+            "def": "PRIMARY KEY (id)"
+          },
+          {
+            "name": "finance_invoice_items_quantity_check",
+            "type": "c",
+            "def": "CHECK ((quantity >= 1))"
+          },
+          {
+            "name": "finance_invoice_items_tenant_id_id_key",
+            "type": "u",
+            "def": "UNIQUE (tenant_id, id)"
+          },
+          {
+            "name": "finance_invoice_items_unit_amount_minor_check",
+            "type": "c",
+            "def": "CHECK ((unit_amount_minor >= 0))"
+          }
+        ],
+        "indexes": [
+          {
+            "name": "finance_invoice_items_pkey",
+            "unique": true,
+            "def": "CREATE UNIQUE INDEX finance_invoice_items_pkey ON public.finance_invoice_items USING btree (id)"
+          },
+          {
+            "name": "finance_invoice_items_tenant_id_id_key",
+            "unique": true,
+            "def": "CREATE UNIQUE INDEX finance_invoice_items_tenant_id_id_key ON public.finance_invoice_items USING btree (tenant_id, id)"
+          },
+          {
+            "name": "finance_invoice_items_tenant_invoice_idx",
+            "unique": false,
+            "def": "CREATE INDEX finance_invoice_items_tenant_invoice_idx ON public.finance_invoice_items USING btree (tenant_id, invoice_id)"
+          }
+        ],
+        "policies": [
+          {
+            "name": "finance_invoice_items_insert",
+            "cmd": "a",
+            "roles": [
+              "authenticated"
+            ],
+            "qual": null,
+            "with_check": "((is_super_admin() OR user_has_permission('finance.edit'::text)) AND (is_super_admin() OR (tenant_id = user_venue_id())))"
+          },
+          {
+            "name": "finance_invoice_items_select",
+            "cmd": "r",
+            "roles": [
+              "authenticated"
+            ],
+            "qual": "((is_super_admin() OR user_has_permission('finance.view'::text)) AND (is_super_admin() OR (tenant_id = user_venue_id())))",
+            "with_check": null
+          },
+          {
+            "name": "finance_invoice_items_update",
+            "cmd": "w",
+            "roles": [
+              "authenticated"
+            ],
+            "qual": "((is_super_admin() OR user_has_permission('finance.edit'::text)) AND (is_super_admin() OR (tenant_id = user_venue_id())))",
+            "with_check": "((is_super_admin() OR user_has_permission('finance.edit'::text)) AND (is_super_admin() OR (tenant_id = user_venue_id())))"
+          }
+        ],
+        "grants": [
+          {
+            "grantee": "authenticated",
+            "privilege": "DELETE"
+          },
+          {
+            "grantee": "authenticated",
+            "privilege": "INSERT"
+          },
+          {
+            "grantee": "authenticated",
+            "privilege": "REFERENCES"
+          },
+          {
+            "grantee": "authenticated",
+            "privilege": "SELECT"
+          },
+          {
+            "grantee": "authenticated",
+            "privilege": "TRIGGER"
+          },
+          {
+            "grantee": "authenticated",
+            "privilege": "TRUNCATE"
+          },
+          {
+            "grantee": "authenticated",
+            "privilege": "UPDATE"
+          },
+          {
+            "grantee": "postgres",
+            "privilege": "DELETE"
+          },
+          {
+            "grantee": "postgres",
+            "privilege": "INSERT"
+          },
+          {
+            "grantee": "postgres",
+            "privilege": "REFERENCES"
+          },
+          {
+            "grantee": "postgres",
+            "privilege": "SELECT"
+          },
+          {
+            "grantee": "postgres",
+            "privilege": "TRIGGER"
+          },
+          {
+            "grantee": "postgres",
+            "privilege": "TRUNCATE"
+          },
+          {
+            "grantee": "postgres",
+            "privilege": "UPDATE"
+          },
+          {
+            "grantee": "service_role",
+            "privilege": "DELETE"
+          },
+          {
+            "grantee": "service_role",
+            "privilege": "INSERT"
+          },
+          {
+            "grantee": "service_role",
+            "privilege": "REFERENCES"
+          },
+          {
+            "grantee": "service_role",
+            "privilege": "SELECT"
+          },
+          {
+            "grantee": "service_role",
+            "privilege": "TRIGGER"
+          },
+          {
+            "grantee": "service_role",
+            "privilege": "TRUNCATE"
+          },
+          {
+            "grantee": "service_role",
+            "privilege": "UPDATE"
+          }
+        ]
+      },
+      {
+        "name": "finance_invoices",
+        "rls": true,
+        "force_rls": true,
+        "pk": [
+          "id"
+        ],
+        "has_tenant_id": true,
+        "has_version": true,
+        "amount_minor_type": "bigint",
+        "constraints": [
+          {
+            "name": "finance_invoices_amount_minor_check",
+            "type": "c",
+            "def": "CHECK ((amount_minor >= 0))"
+          },
+          {
+            "name": "finance_invoices_currency_vnd_v1_check",
+            "type": "c",
+            "def": "CHECK ((currency = 'VND'::text))"
+          },
+          {
+            "name": "finance_invoices_metadata_object_check",
+            "type": "c",
+            "def": "CHECK ((jsonb_typeof(metadata) = 'object'::text))"
+          },
+          {
+            "name": "finance_invoices_metadata_size_check",
+            "type": "c",
+            "def": "CHECK ((octet_length((metadata)::text) <= 8192))"
+          },
+          {
+            "name": "finance_invoices_no_secret_metadata_check",
+            "type": "c",
+            "def": "CHECK ((NOT (metadata ?| ARRAY['apiKey'::text, 'api_key'::text, 'secret'::text, 'token'::text, 'accessToken'::text, 'refreshToken'::text, 'authorization'::text, 'authorizationHeader'::text, 'webhookSecret'::text, 'cvv'::text, 'cardNumber'::text, 'rawPayload'::text, 'raw_payload'::text])))"
+          },
+          {
+            "name": "finance_invoices_paid_amount_minor_check",
+            "type": "c",
+            "def": "CHECK ((paid_amount_minor >= 0))"
+          },
+          {
+            "name": "finance_invoices_paid_lte_amount_check",
+            "type": "c",
+            "def": "CHECK ((paid_amount_minor <= amount_minor))"
+          },
+          {
+            "name": "finance_invoices_pkey",
+            "type": "p",
+            "def": "PRIMARY KEY (id)"
+          },
+          {
+            "name": "finance_invoices_status_check",
+            "type": "c",
+            "def": "CHECK ((status = ANY (ARRAY['DRAFT'::text, 'ISSUED'::text, 'PARTIALLY_PAID'::text, 'PAID'::text, 'VOID'::text])))"
+          },
+          {
+            "name": "finance_invoices_tenant_id_id_key",
+            "type": "u",
+            "def": "UNIQUE (tenant_id, id)"
+          },
+          {
+            "name": "finance_invoices_version_check",
+            "type": "c",
+            "def": "CHECK ((version >= 1))"
+          }
+        ],
+        "indexes": [
+          {
+            "name": "finance_invoices_pkey",
+            "unique": true,
+            "def": "CREATE UNIQUE INDEX finance_invoices_pkey ON public.finance_invoices USING btree (id)"
+          },
+          {
+            "name": "finance_invoices_tenant_id_id_key",
+            "unique": true,
+            "def": "CREATE UNIQUE INDEX finance_invoices_tenant_id_id_key ON public.finance_invoices USING btree (tenant_id, id)"
+          },
+          {
+            "name": "finance_invoices_tenant_invoice_number_uidx",
+            "unique": true,
+            "def": "CREATE UNIQUE INDEX finance_invoices_tenant_invoice_number_uidx ON public.finance_invoices USING btree (tenant_id, invoice_number) WHERE (invoice_number IS NOT NULL)"
+          },
+          {
+            "name": "finance_invoices_tenant_status_idx",
+            "unique": false,
+            "def": "CREATE INDEX finance_invoices_tenant_status_idx ON public.finance_invoices USING btree (tenant_id, status, created_at DESC)"
+          },
+          {
+            "name": "finance_invoices_tenant_subject_customer_idx",
+            "unique": false,
+            "def": "CREATE INDEX finance_invoices_tenant_subject_customer_idx ON public.finance_invoices USING btree (tenant_id, subject_customer_id) WHERE (subject_customer_id IS NOT NULL)"
+          }
+        ],
+        "policies": [
+          {
+            "name": "finance_invoices_insert",
+            "cmd": "a",
+            "roles": [
+              "authenticated"
+            ],
+            "qual": null,
+            "with_check": "((is_super_admin() OR user_has_permission('finance.edit'::text)) AND (is_super_admin() OR (tenant_id = user_venue_id())))"
+          },
+          {
+            "name": "finance_invoices_select",
+            "cmd": "r",
+            "roles": [
+              "authenticated"
+            ],
+            "qual": "((is_super_admin() OR user_has_permission('finance.view'::text)) AND (is_super_admin() OR (tenant_id = user_venue_id())))",
+            "with_check": null
+          },
+          {
+            "name": "finance_invoices_update",
+            "cmd": "w",
+            "roles": [
+              "authenticated"
+            ],
+            "qual": "((is_super_admin() OR user_has_permission('finance.edit'::text)) AND (is_super_admin() OR (tenant_id = user_venue_id())))",
+            "with_check": "((is_super_admin() OR user_has_permission('finance.edit'::text)) AND (is_super_admin() OR (tenant_id = user_venue_id())))"
+          }
+        ],
+        "grants": [
+          {
+            "grantee": "authenticated",
+            "privilege": "DELETE"
+          },
+          {
+            "grantee": "authenticated",
+            "privilege": "INSERT"
+          },
+          {
+            "grantee": "authenticated",
+            "privilege": "REFERENCES"
+          },
+          {
+            "grantee": "authenticated",
+            "privilege": "SELECT"
+          },
+          {
+            "grantee": "authenticated",
+            "privilege": "TRIGGER"
+          },
+          {
+            "grantee": "authenticated",
+            "privilege": "TRUNCATE"
+          },
+          {
+            "grantee": "authenticated",
+            "privilege": "UPDATE"
+          },
+          {
+            "grantee": "postgres",
+            "privilege": "DELETE"
+          },
+          {
+            "grantee": "postgres",
+            "privilege": "INSERT"
+          },
+          {
+            "grantee": "postgres",
+            "privilege": "REFERENCES"
+          },
+          {
+            "grantee": "postgres",
+            "privilege": "SELECT"
+          },
+          {
+            "grantee": "postgres",
+            "privilege": "TRIGGER"
+          },
+          {
+            "grantee": "postgres",
+            "privilege": "TRUNCATE"
+          },
+          {
+            "grantee": "postgres",
+            "privilege": "UPDATE"
+          },
+          {
+            "grantee": "service_role",
+            "privilege": "DELETE"
+          },
+          {
+            "grantee": "service_role",
+            "privilege": "INSERT"
+          },
+          {
+            "grantee": "service_role",
+            "privilege": "REFERENCES"
+          },
+          {
+            "grantee": "service_role",
+            "privilege": "SELECT"
+          },
+          {
+            "grantee": "service_role",
+            "privilege": "TRIGGER"
+          },
+          {
+            "grantee": "service_role",
+            "privilege": "TRUNCATE"
+          },
+          {
+            "grantee": "service_role",
+            "privilege": "UPDATE"
+          }
+        ]
+      },
+      {
+        "name": "finance_obligations",
+        "rls": true,
+        "force_rls": true,
+        "pk": [
+          "id"
+        ],
+        "has_tenant_id": true,
+        "has_version": true,
+        "amount_minor_type": "bigint",
+        "constraints": [
+          {
+            "name": "finance_obligations_amount_minor_check",
+            "type": "c",
+            "def": "CHECK ((amount_minor >= 0))"
+          },
+          {
+            "name": "finance_obligations_currency_vnd_v1_check",
+            "type": "c",
+            "def": "CHECK ((currency = 'VND'::text))"
+          },
+          {
+            "name": "finance_obligations_fee_fk",
+            "type": "f",
+            "def": "FOREIGN KEY (tenant_id, fee_id) REFERENCES finance_fee_definitions(tenant_id, id) ON DELETE RESTRICT"
+          },
+          {
+            "name": "finance_obligations_invoice_fk",
+            "type": "f",
+            "def": "FOREIGN KEY (tenant_id, invoice_id) REFERENCES finance_invoices(tenant_id, id) ON DELETE RESTRICT"
+          },
+          {
+            "name": "finance_obligations_metadata_object_check",
+            "type": "c",
+            "def": "CHECK ((jsonb_typeof(metadata) = 'object'::text))"
+          },
+          {
+            "name": "finance_obligations_metadata_size_check",
+            "type": "c",
+            "def": "CHECK ((octet_length((metadata)::text) <= 8192))"
+          },
+          {
+            "name": "finance_obligations_no_secret_metadata_check",
+            "type": "c",
+            "def": "CHECK ((NOT (metadata ?| ARRAY['apiKey'::text, 'api_key'::text, 'secret'::text, 'token'::text, 'accessToken'::text, 'refreshToken'::text, 'authorization'::text, 'authorizationHeader'::text, 'webhookSecret'::text, 'cvv'::text, 'cardNumber'::text, 'rawPayload'::text, 'raw_payload'::text])))"
+          },
+          {
+            "name": "finance_obligations_pkey",
+            "type": "p",
+            "def": "PRIMARY KEY (id)"
+          },
+          {
+            "name": "finance_obligations_settled_amount_minor_check",
+            "type": "c",
+            "def": "CHECK ((settled_amount_minor >= 0))"
+          },
+          {
+            "name": "finance_obligations_settled_lte_amount_check",
+            "type": "c",
+            "def": "CHECK ((settled_amount_minor <= amount_minor))"
+          },
+          {
+            "name": "finance_obligations_status_check",
+            "type": "c",
+            "def": "CHECK ((status = ANY (ARRAY['CREATED'::text, 'OPEN'::text, 'PARTIALLY_SETTLED'::text, 'SETTLED'::text, 'CANCELLED'::text, 'EXPIRED'::text])))"
+          },
+          {
+            "name": "finance_obligations_tenant_id_id_key",
+            "type": "u",
+            "def": "UNIQUE (tenant_id, id)"
+          },
+          {
+            "name": "finance_obligations_version_check",
+            "type": "c",
+            "def": "CHECK ((version >= 1))"
+          }
+        ],
+        "indexes": [
+          {
+            "name": "finance_obligations_pkey",
+            "unique": true,
+            "def": "CREATE UNIQUE INDEX finance_obligations_pkey ON public.finance_obligations USING btree (id)"
+          },
+          {
+            "name": "finance_obligations_tenant_business_ref_uidx",
+            "unique": true,
+            "def": "CREATE UNIQUE INDEX finance_obligations_tenant_business_ref_uidx ON public.finance_obligations USING btree (tenant_id, business_reference) WHERE (business_reference IS NOT NULL)"
+          },
+          {
+            "name": "finance_obligations_tenant_id_id_key",
+            "unique": true,
+            "def": "CREATE UNIQUE INDEX finance_obligations_tenant_id_id_key ON public.finance_obligations USING btree (tenant_id, id)"
+          },
+          {
+            "name": "finance_obligations_tenant_status_idx",
+            "unique": false,
+            "def": "CREATE INDEX finance_obligations_tenant_status_idx ON public.finance_obligations USING btree (tenant_id, status, created_at DESC)"
+          },
+          {
+            "name": "finance_obligations_tenant_subject_booking_idx",
+            "unique": false,
+            "def": "CREATE INDEX finance_obligations_tenant_subject_booking_idx ON public.finance_obligations USING btree (tenant_id, subject_booking_id) WHERE (subject_booking_id IS NOT NULL)"
+          },
+          {
+            "name": "finance_obligations_tenant_subject_entry_idx",
+            "unique": false,
+            "def": "CREATE INDEX finance_obligations_tenant_subject_entry_idx ON public.finance_obligations USING btree (tenant_id, subject_entry_id) WHERE (subject_entry_id IS NOT NULL)"
+          }
+        ],
+        "policies": [
+          {
+            "name": "finance_obligations_insert",
+            "cmd": "a",
+            "roles": [
+              "authenticated"
+            ],
+            "qual": null,
+            "with_check": "((is_super_admin() OR user_has_permission('finance.edit'::text)) AND (is_super_admin() OR (tenant_id = user_venue_id())))"
+          },
+          {
+            "name": "finance_obligations_select",
+            "cmd": "r",
+            "roles": [
+              "authenticated"
+            ],
+            "qual": "((is_super_admin() OR user_has_permission('finance.view'::text)) AND (is_super_admin() OR (tenant_id = user_venue_id())))",
+            "with_check": null
+          },
+          {
+            "name": "finance_obligations_update",
+            "cmd": "w",
+            "roles": [
+              "authenticated"
+            ],
+            "qual": "((is_super_admin() OR user_has_permission('finance.edit'::text)) AND (is_super_admin() OR (tenant_id = user_venue_id())))",
+            "with_check": "((is_super_admin() OR user_has_permission('finance.edit'::text)) AND (is_super_admin() OR (tenant_id = user_venue_id())))"
+          }
+        ],
+        "grants": [
+          {
+            "grantee": "authenticated",
+            "privilege": "DELETE"
+          },
+          {
+            "grantee": "authenticated",
+            "privilege": "INSERT"
+          },
+          {
+            "grantee": "authenticated",
+            "privilege": "REFERENCES"
+          },
+          {
+            "grantee": "authenticated",
+            "privilege": "SELECT"
+          },
+          {
+            "grantee": "authenticated",
+            "privilege": "TRIGGER"
+          },
+          {
+            "grantee": "authenticated",
+            "privilege": "TRUNCATE"
+          },
+          {
+            "grantee": "authenticated",
+            "privilege": "UPDATE"
+          },
+          {
+            "grantee": "postgres",
+            "privilege": "DELETE"
+          },
+          {
+            "grantee": "postgres",
+            "privilege": "INSERT"
+          },
+          {
+            "grantee": "postgres",
+            "privilege": "REFERENCES"
+          },
+          {
+            "grantee": "postgres",
+            "privilege": "SELECT"
+          },
+          {
+            "grantee": "postgres",
+            "privilege": "TRIGGER"
+          },
+          {
+            "grantee": "postgres",
+            "privilege": "TRUNCATE"
+          },
+          {
+            "grantee": "postgres",
+            "privilege": "UPDATE"
+          },
+          {
+            "grantee": "service_role",
+            "privilege": "DELETE"
+          },
+          {
+            "grantee": "service_role",
+            "privilege": "INSERT"
+          },
+          {
+            "grantee": "service_role",
+            "privilege": "REFERENCES"
+          },
+          {
+            "grantee": "service_role",
+            "privilege": "SELECT"
+          },
+          {
+            "grantee": "service_role",
+            "privilege": "TRIGGER"
+          },
+          {
+            "grantee": "service_role",
+            "privilege": "TRUNCATE"
+          },
+          {
+            "grantee": "service_role",
+            "privilege": "UPDATE"
+          }
+        ]
+      },
+      {
+        "name": "finance_payment_attempts",
+        "rls": true,
+        "force_rls": true,
+        "pk": [
+          "id"
+        ],
+        "has_tenant_id": true,
+        "has_version": true,
+        "amount_minor_type": "bigint",
+        "constraints": [
+          {
+            "name": "finance_payment_attempts_amount_minor_check",
+            "type": "c",
+            "def": "CHECK ((amount_minor >= 0))"
+          },
+          {
+            "name": "finance_payment_attempts_attempt_number_check",
+            "type": "c",
+            "def": "CHECK ((attempt_number >= 1))"
+          },
+          {
+            "name": "finance_payment_attempts_audit_evidence_fk",
+            "type": "f",
+            "def": "FOREIGN KEY (tenant_id, audit_evidence_ref) REFERENCES finance_audit_evidence(tenant_id, id) ON DELETE RESTRICT"
+          },
+          {
+            "name": "finance_payment_attempts_confirmed_requires_evidence_check",
+            "type": "c",
+            "def": "CHECK (((status <> 'CONFIRMED'::text) OR (evidence_ref IS NOT NULL)))"
+          },
+          {
+            "name": "finance_payment_attempts_currency_vnd_v1_check",
+            "type": "c",
+            "def": "CHECK ((currency = 'VND'::text))"
+          },
+          {
+            "name": "finance_payment_attempts_metadata_object_check",
+            "type": "c",
+            "def": "CHECK ((jsonb_typeof(metadata) = 'object'::text))"
+          },
+          {
+            "name": "finance_payment_attempts_metadata_size_check",
+            "type": "c",
+            "def": "CHECK ((octet_length((metadata)::text) <= 8192))"
+          },
+          {
+            "name": "finance_payment_attempts_no_secret_metadata_check",
+            "type": "c",
+            "def": "CHECK ((NOT (metadata ?| ARRAY['apiKey'::text, 'api_key'::text, 'secret'::text, 'token'::text, 'accessToken'::text, 'refreshToken'::text, 'authorization'::text, 'authorizationHeader'::text, 'webhookSecret'::text, 'cvv'::text, 'cardNumber'::text, 'rawPayload'::text, 'raw_payload'::text])))"
+          },
+          {
+            "name": "finance_payment_attempts_payment_fk",
+            "type": "f",
+            "def": "FOREIGN KEY (tenant_id, payment_id) REFERENCES finance_payments(tenant_id, id) ON DELETE RESTRICT"
+          },
+          {
+            "name": "finance_payment_attempts_pkey",
+            "type": "p",
+            "def": "PRIMARY KEY (id)"
+          },
+          {
+            "name": "finance_payment_attempts_status_check",
+            "type": "c",
+            "def": "CHECK ((status = ANY (ARRAY['PENDING'::text, 'CONFIRMED'::text, 'FAILED'::text, 'CANCELLED'::text, 'EXPIRED'::text])))"
+          },
+          {
+            "name": "finance_payment_attempts_tenant_id_id_key",
+            "type": "u",
+            "def": "UNIQUE (tenant_id, id)"
+          },
+          {
+            "name": "finance_payment_attempts_version_check",
+            "type": "c",
+            "def": "CHECK ((version >= 1))"
+          }
+        ],
+        "indexes": [
+          {
+            "name": "finance_payment_attempts_pkey",
+            "unique": true,
+            "def": "CREATE UNIQUE INDEX finance_payment_attempts_pkey ON public.finance_payment_attempts USING btree (id)"
+          },
+          {
+            "name": "finance_payment_attempts_tenant_id_id_key",
+            "unique": true,
+            "def": "CREATE UNIQUE INDEX finance_payment_attempts_tenant_id_id_key ON public.finance_payment_attempts USING btree (tenant_id, id)"
+          },
+          {
+            "name": "finance_payment_attempts_tenant_payment_idx",
+            "unique": false,
+            "def": "CREATE INDEX finance_payment_attempts_tenant_payment_idx ON public.finance_payment_attempts USING btree (tenant_id, payment_id)"
+          },
+          {
+            "name": "finance_payment_attempts_tenant_payment_number_uidx",
+            "unique": true,
+            "def": "CREATE UNIQUE INDEX finance_payment_attempts_tenant_payment_number_uidx ON public.finance_payment_attempts USING btree (tenant_id, payment_id, attempt_number)"
+          },
+          {
+            "name": "finance_payment_attempts_tenant_provider_txn_uidx",
+            "unique": true,
+            "def": "CREATE UNIQUE INDEX finance_payment_attempts_tenant_provider_txn_uidx ON public.finance_payment_attempts USING btree (tenant_id, provider_code, provider_transaction_reference) WHERE (provider_transaction_reference IS NOT NULL)"
+          }
+        ],
+        "policies": [
+          {
+            "name": "finance_payment_attempts_insert",
+            "cmd": "a",
+            "roles": [
+              "authenticated"
+            ],
+            "qual": null,
+            "with_check": "((is_super_admin() OR user_has_permission('finance.edit'::text)) AND (is_super_admin() OR (tenant_id = user_venue_id())))"
+          },
+          {
+            "name": "finance_payment_attempts_select",
+            "cmd": "r",
+            "roles": [
+              "authenticated"
+            ],
+            "qual": "((is_super_admin() OR user_has_permission('finance.view'::text)) AND (is_super_admin() OR (tenant_id = user_venue_id())))",
+            "with_check": null
+          },
+          {
+            "name": "finance_payment_attempts_update",
+            "cmd": "w",
+            "roles": [
+              "authenticated"
+            ],
+            "qual": "((is_super_admin() OR user_has_permission('finance.edit'::text)) AND (is_super_admin() OR (tenant_id = user_venue_id())))",
+            "with_check": "((is_super_admin() OR user_has_permission('finance.edit'::text)) AND (is_super_admin() OR (tenant_id = user_venue_id())))"
+          }
+        ],
+        "grants": [
+          {
+            "grantee": "authenticated",
+            "privilege": "DELETE"
+          },
+          {
+            "grantee": "authenticated",
+            "privilege": "INSERT"
+          },
+          {
+            "grantee": "authenticated",
+            "privilege": "REFERENCES"
+          },
+          {
+            "grantee": "authenticated",
+            "privilege": "SELECT"
+          },
+          {
+            "grantee": "authenticated",
+            "privilege": "TRIGGER"
+          },
+          {
+            "grantee": "authenticated",
+            "privilege": "TRUNCATE"
+          },
+          {
+            "grantee": "authenticated",
+            "privilege": "UPDATE"
+          },
+          {
+            "grantee": "postgres",
+            "privilege": "DELETE"
+          },
+          {
+            "grantee": "postgres",
+            "privilege": "INSERT"
+          },
+          {
+            "grantee": "postgres",
+            "privilege": "REFERENCES"
+          },
+          {
+            "grantee": "postgres",
+            "privilege": "SELECT"
+          },
+          {
+            "grantee": "postgres",
+            "privilege": "TRIGGER"
+          },
+          {
+            "grantee": "postgres",
+            "privilege": "TRUNCATE"
+          },
+          {
+            "grantee": "postgres",
+            "privilege": "UPDATE"
+          },
+          {
+            "grantee": "service_role",
+            "privilege": "DELETE"
+          },
+          {
+            "grantee": "service_role",
+            "privilege": "INSERT"
+          },
+          {
+            "grantee": "service_role",
+            "privilege": "REFERENCES"
+          },
+          {
+            "grantee": "service_role",
+            "privilege": "SELECT"
+          },
+          {
+            "grantee": "service_role",
+            "privilege": "TRIGGER"
+          },
+          {
+            "grantee": "service_role",
+            "privilege": "TRUNCATE"
+          },
+          {
+            "grantee": "service_role",
+            "privilege": "UPDATE"
+          }
+        ]
+      },
+      {
+        "name": "finance_payments",
+        "rls": true,
+        "force_rls": true,
+        "pk": [
+          "id"
+        ],
+        "has_tenant_id": true,
+        "has_version": true,
+        "amount_minor_type": "bigint",
+        "constraints": [
+          {
+            "name": "finance_payments_amount_minor_check",
+            "type": "c",
+            "def": "CHECK ((amount_minor >= 0))"
+          },
+          {
+            "name": "finance_payments_audit_evidence_fk",
+            "type": "f",
+            "def": "FOREIGN KEY (tenant_id, audit_evidence_ref) REFERENCES finance_audit_evidence(tenant_id, id) ON DELETE RESTRICT"
+          },
+          {
+            "name": "finance_payments_confirmed_requires_evidence_check",
+            "type": "c",
+            "def": "CHECK (((status <> 'CONFIRMED'::text) OR (evidence_ref IS NOT NULL)))"
+          },
+          {
+            "name": "finance_payments_currency_vnd_v1_check",
+            "type": "c",
+            "def": "CHECK ((currency = 'VND'::text))"
+          },
+          {
+            "name": "finance_payments_invoice_fk",
+            "type": "f",
+            "def": "FOREIGN KEY (tenant_id, invoice_id) REFERENCES finance_invoices(tenant_id, id) ON DELETE RESTRICT"
+          },
+          {
+            "name": "finance_payments_metadata_object_check",
+            "type": "c",
+            "def": "CHECK ((jsonb_typeof(metadata) = 'object'::text))"
+          },
+          {
+            "name": "finance_payments_metadata_size_check",
+            "type": "c",
+            "def": "CHECK ((octet_length((metadata)::text) <= 8192))"
+          },
+          {
+            "name": "finance_payments_no_secret_metadata_check",
+            "type": "c",
+            "def": "CHECK ((NOT (metadata ?| ARRAY['apiKey'::text, 'api_key'::text, 'secret'::text, 'token'::text, 'accessToken'::text, 'refreshToken'::text, 'authorization'::text, 'authorizationHeader'::text, 'webhookSecret'::text, 'cvv'::text, 'cardNumber'::text, 'rawPayload'::text, 'raw_payload'::text])))"
+          },
+          {
+            "name": "finance_payments_obligation_fk",
+            "type": "f",
+            "def": "FOREIGN KEY (tenant_id, obligation_id) REFERENCES finance_obligations(tenant_id, id) ON DELETE RESTRICT"
+          },
+          {
+            "name": "finance_payments_pkey",
+            "type": "p",
+            "def": "PRIMARY KEY (id)"
+          },
+          {
+            "name": "finance_payments_refunded_amount_minor_check",
+            "type": "c",
+            "def": "CHECK ((refunded_amount_minor >= 0))"
+          },
+          {
+            "name": "finance_payments_refunded_lte_amount_check",
+            "type": "c",
+            "def": "CHECK ((refunded_amount_minor <= amount_minor))"
+          },
+          {
+            "name": "finance_payments_status_check",
+            "type": "c",
+            "def": "CHECK ((status = ANY (ARRAY['PENDING'::text, 'CONFIRMED'::text, 'FAILED'::text, 'CANCELLED'::text, 'EXPIRED'::text])))"
+          },
+          {
+            "name": "finance_payments_tenant_id_id_key",
+            "type": "u",
+            "def": "UNIQUE (tenant_id, id)"
+          },
+          {
+            "name": "finance_payments_version_check",
+            "type": "c",
+            "def": "CHECK ((version >= 1))"
+          }
+        ],
+        "indexes": [
+          {
+            "name": "finance_payments_pkey",
+            "unique": true,
+            "def": "CREATE UNIQUE INDEX finance_payments_pkey ON public.finance_payments USING btree (id)"
+          },
+          {
+            "name": "finance_payments_tenant_id_id_key",
+            "unique": true,
+            "def": "CREATE UNIQUE INDEX finance_payments_tenant_id_id_key ON public.finance_payments USING btree (tenant_id, id)"
+          },
+          {
+            "name": "finance_payments_tenant_invoice_idx",
+            "unique": false,
+            "def": "CREATE INDEX finance_payments_tenant_invoice_idx ON public.finance_payments USING btree (tenant_id, invoice_id) WHERE (invoice_id IS NOT NULL)"
+          },
+          {
+            "name": "finance_payments_tenant_obligation_idx",
+            "unique": false,
+            "def": "CREATE INDEX finance_payments_tenant_obligation_idx ON public.finance_payments USING btree (tenant_id, obligation_id) WHERE (obligation_id IS NOT NULL)"
+          },
+          {
+            "name": "finance_payments_tenant_provider_txn_uidx",
+            "unique": true,
+            "def": "CREATE UNIQUE INDEX finance_payments_tenant_provider_txn_uidx ON public.finance_payments USING btree (tenant_id, provider_code, provider_transaction_reference) WHERE (provider_transaction_reference IS NOT NULL)"
+          },
+          {
+            "name": "finance_payments_tenant_status_idx",
+            "unique": false,
+            "def": "CREATE INDEX finance_payments_tenant_status_idx ON public.finance_payments USING btree (tenant_id, status, created_at DESC)"
+          }
+        ],
+        "policies": [
+          {
+            "name": "finance_payments_insert",
+            "cmd": "a",
+            "roles": [
+              "authenticated"
+            ],
+            "qual": null,
+            "with_check": "((is_super_admin() OR user_has_permission('finance.edit'::text)) AND (is_super_admin() OR (tenant_id = user_venue_id())))"
+          },
+          {
+            "name": "finance_payments_select",
+            "cmd": "r",
+            "roles": [
+              "authenticated"
+            ],
+            "qual": "((is_super_admin() OR user_has_permission('finance.view'::text)) AND (is_super_admin() OR (tenant_id = user_venue_id())))",
+            "with_check": null
+          },
+          {
+            "name": "finance_payments_update",
+            "cmd": "w",
+            "roles": [
+              "authenticated"
+            ],
+            "qual": "((is_super_admin() OR user_has_permission('finance.edit'::text)) AND (is_super_admin() OR (tenant_id = user_venue_id())))",
+            "with_check": "((is_super_admin() OR user_has_permission('finance.edit'::text)) AND (is_super_admin() OR (tenant_id = user_venue_id())))"
+          }
+        ],
+        "grants": [
+          {
+            "grantee": "authenticated",
+            "privilege": "DELETE"
+          },
+          {
+            "grantee": "authenticated",
+            "privilege": "INSERT"
+          },
+          {
+            "grantee": "authenticated",
+            "privilege": "REFERENCES"
+          },
+          {
+            "grantee": "authenticated",
+            "privilege": "SELECT"
+          },
+          {
+            "grantee": "authenticated",
+            "privilege": "TRIGGER"
+          },
+          {
+            "grantee": "authenticated",
+            "privilege": "TRUNCATE"
+          },
+          {
+            "grantee": "authenticated",
+            "privilege": "UPDATE"
+          },
+          {
+            "grantee": "postgres",
+            "privilege": "DELETE"
+          },
+          {
+            "grantee": "postgres",
+            "privilege": "INSERT"
+          },
+          {
+            "grantee": "postgres",
+            "privilege": "REFERENCES"
+          },
+          {
+            "grantee": "postgres",
+            "privilege": "SELECT"
+          },
+          {
+            "grantee": "postgres",
+            "privilege": "TRIGGER"
+          },
+          {
+            "grantee": "postgres",
+            "privilege": "TRUNCATE"
+          },
+          {
+            "grantee": "postgres",
+            "privilege": "UPDATE"
+          },
+          {
+            "grantee": "service_role",
+            "privilege": "DELETE"
+          },
+          {
+            "grantee": "service_role",
+            "privilege": "INSERT"
+          },
+          {
+            "grantee": "service_role",
+            "privilege": "REFERENCES"
+          },
+          {
+            "grantee": "service_role",
+            "privilege": "SELECT"
+          },
+          {
+            "grantee": "service_role",
+            "privilege": "TRIGGER"
+          },
+          {
+            "grantee": "service_role",
+            "privilege": "TRUNCATE"
+          },
+          {
+            "grantee": "service_role",
+            "privilege": "UPDATE"
+          }
+        ]
+      },
+      {
+        "name": "finance_receipts",
+        "rls": true,
+        "force_rls": true,
+        "pk": [
+          "id"
+        ],
+        "has_tenant_id": true,
+        "has_version": true,
+        "amount_minor_type": "bigint",
+        "constraints": [
+          {
+            "name": "finance_receipts_amount_minor_check",
+            "type": "c",
+            "def": "CHECK ((amount_minor >= 0))"
+          },
+          {
+            "name": "finance_receipts_audit_evidence_fk",
+            "type": "f",
+            "def": "FOREIGN KEY (tenant_id, audit_evidence_ref) REFERENCES finance_audit_evidence(tenant_id, id) ON DELETE RESTRICT"
+          },
+          {
+            "name": "finance_receipts_currency_vnd_v1_check",
+            "type": "c",
+            "def": "CHECK ((currency = 'VND'::text))"
+          },
+          {
+            "name": "finance_receipts_metadata_object_check",
+            "type": "c",
+            "def": "CHECK ((jsonb_typeof(metadata) = 'object'::text))"
+          },
+          {
+            "name": "finance_receipts_metadata_size_check",
+            "type": "c",
+            "def": "CHECK ((octet_length((metadata)::text) <= 8192))"
+          },
+          {
+            "name": "finance_receipts_no_secret_metadata_check",
+            "type": "c",
+            "def": "CHECK ((NOT (metadata ?| ARRAY['apiKey'::text, 'api_key'::text, 'secret'::text, 'token'::text, 'accessToken'::text, 'refreshToken'::text, 'authorization'::text, 'authorizationHeader'::text, 'webhookSecret'::text, 'cvv'::text, 'cardNumber'::text, 'rawPayload'::text, 'raw_payload'::text])))"
+          },
+          {
+            "name": "finance_receipts_payment_fk",
+            "type": "f",
+            "def": "FOREIGN KEY (tenant_id, payment_id) REFERENCES finance_payments(tenant_id, id) ON DELETE RESTRICT"
+          },
+          {
+            "name": "finance_receipts_pkey",
+            "type": "p",
+            "def": "PRIMARY KEY (id)"
+          },
+          {
+            "name": "finance_receipts_tenant_id_id_key",
+            "type": "u",
+            "def": "UNIQUE (tenant_id, id)"
+          },
+          {
+            "name": "finance_receipts_version_check",
+            "type": "c",
+            "def": "CHECK ((version >= 1))"
+          }
+        ],
+        "indexes": [
+          {
+            "name": "finance_receipts_pkey",
+            "unique": true,
+            "def": "CREATE UNIQUE INDEX finance_receipts_pkey ON public.finance_receipts USING btree (id)"
+          },
+          {
+            "name": "finance_receipts_tenant_id_id_key",
+            "unique": true,
+            "def": "CREATE UNIQUE INDEX finance_receipts_tenant_id_id_key ON public.finance_receipts USING btree (tenant_id, id)"
+          },
+          {
+            "name": "finance_receipts_tenant_issued_idx",
+            "unique": false,
+            "def": "CREATE INDEX finance_receipts_tenant_issued_idx ON public.finance_receipts USING btree (tenant_id, issued_at DESC)"
+          },
+          {
+            "name": "finance_receipts_tenant_payment_uidx",
+            "unique": true,
+            "def": "CREATE UNIQUE INDEX finance_receipts_tenant_payment_uidx ON public.finance_receipts USING btree (tenant_id, payment_id)"
+          }
+        ],
+        "policies": [
+          {
+            "name": "finance_receipts_insert",
+            "cmd": "a",
+            "roles": [
+              "authenticated"
+            ],
+            "qual": null,
+            "with_check": "((is_super_admin() OR user_has_permission('finance.edit'::text)) AND (is_super_admin() OR (tenant_id = user_venue_id())))"
+          },
+          {
+            "name": "finance_receipts_select",
+            "cmd": "r",
+            "roles": [
+              "authenticated"
+            ],
+            "qual": "((is_super_admin() OR user_has_permission('finance.view'::text)) AND (is_super_admin() OR (tenant_id = user_venue_id())))",
+            "with_check": null
+          }
+        ],
+        "grants": [
+          {
+            "grantee": "authenticated",
+            "privilege": "DELETE"
+          },
+          {
+            "grantee": "authenticated",
+            "privilege": "INSERT"
+          },
+          {
+            "grantee": "authenticated",
+            "privilege": "REFERENCES"
+          },
+          {
+            "grantee": "authenticated",
+            "privilege": "SELECT"
+          },
+          {
+            "grantee": "authenticated",
+            "privilege": "TRIGGER"
+          },
+          {
+            "grantee": "authenticated",
+            "privilege": "TRUNCATE"
+          },
+          {
+            "grantee": "authenticated",
+            "privilege": "UPDATE"
+          },
+          {
+            "grantee": "postgres",
+            "privilege": "DELETE"
+          },
+          {
+            "grantee": "postgres",
+            "privilege": "INSERT"
+          },
+          {
+            "grantee": "postgres",
+            "privilege": "REFERENCES"
+          },
+          {
+            "grantee": "postgres",
+            "privilege": "SELECT"
+          },
+          {
+            "grantee": "postgres",
+            "privilege": "TRIGGER"
+          },
+          {
+            "grantee": "postgres",
+            "privilege": "TRUNCATE"
+          },
+          {
+            "grantee": "postgres",
+            "privilege": "UPDATE"
+          },
+          {
+            "grantee": "service_role",
+            "privilege": "DELETE"
+          },
+          {
+            "grantee": "service_role",
+            "privilege": "INSERT"
+          },
+          {
+            "grantee": "service_role",
+            "privilege": "REFERENCES"
+          },
+          {
+            "grantee": "service_role",
+            "privilege": "SELECT"
+          },
+          {
+            "grantee": "service_role",
+            "privilege": "TRIGGER"
+          },
+          {
+            "grantee": "service_role",
+            "privilege": "TRUNCATE"
+          },
+          {
+            "grantee": "service_role",
+            "privilege": "UPDATE"
+          }
+        ]
+      },
+      {
+        "name": "finance_refunds",
+        "rls": true,
+        "force_rls": true,
+        "pk": [
+          "id"
+        ],
+        "has_tenant_id": true,
+        "has_version": true,
+        "amount_minor_type": "bigint",
+        "constraints": [
+          {
+            "name": "finance_refunds_amount_minor_positive_check",
+            "type": "c",
+            "def": "CHECK ((amount_minor > 0))"
+          },
+          {
+            "name": "finance_refunds_audit_evidence_fk",
+            "type": "f",
+            "def": "FOREIGN KEY (tenant_id, audit_evidence_ref) REFERENCES finance_audit_evidence(tenant_id, id) ON DELETE RESTRICT"
+          },
+          {
+            "name": "finance_refunds_completed_requires_evidence_check",
+            "type": "c",
+            "def": "CHECK (((status <> 'COMPLETED'::text) OR (evidence_ref IS NOT NULL)))"
+          },
+          {
+            "name": "finance_refunds_currency_vnd_v1_check",
+            "type": "c",
+            "def": "CHECK ((currency = 'VND'::text))"
+          },
+          {
+            "name": "finance_refunds_metadata_object_check",
+            "type": "c",
+            "def": "CHECK ((jsonb_typeof(metadata) = 'object'::text))"
+          },
+          {
+            "name": "finance_refunds_metadata_size_check",
+            "type": "c",
+            "def": "CHECK ((octet_length((metadata)::text) <= 8192))"
+          },
+          {
+            "name": "finance_refunds_no_secret_metadata_check",
+            "type": "c",
+            "def": "CHECK ((NOT (metadata ?| ARRAY['apiKey'::text, 'api_key'::text, 'secret'::text, 'token'::text, 'accessToken'::text, 'refreshToken'::text, 'authorization'::text, 'authorizationHeader'::text, 'webhookSecret'::text, 'cvv'::text, 'cardNumber'::text, 'rawPayload'::text, 'raw_payload'::text])))"
+          },
+          {
+            "name": "finance_refunds_payment_fk",
+            "type": "f",
+            "def": "FOREIGN KEY (tenant_id, payment_id) REFERENCES finance_payments(tenant_id, id) ON DELETE RESTRICT"
+          },
+          {
+            "name": "finance_refunds_pkey",
+            "type": "p",
+            "def": "PRIMARY KEY (id)"
+          },
+          {
+            "name": "finance_refunds_status_check",
+            "type": "c",
+            "def": "CHECK ((status = ANY (ARRAY['REQUESTED'::text, 'APPROVED'::text, 'REJECTED'::text, 'COMPLETED'::text])))"
+          },
+          {
+            "name": "finance_refunds_tenant_id_id_key",
+            "type": "u",
+            "def": "UNIQUE (tenant_id, id)"
+          },
+          {
+            "name": "finance_refunds_version_check",
+            "type": "c",
+            "def": "CHECK ((version >= 1))"
+          }
+        ],
+        "indexes": [
+          {
+            "name": "finance_refunds_pkey",
+            "unique": true,
+            "def": "CREATE UNIQUE INDEX finance_refunds_pkey ON public.finance_refunds USING btree (id)"
+          },
+          {
+            "name": "finance_refunds_tenant_id_id_key",
+            "unique": true,
+            "def": "CREATE UNIQUE INDEX finance_refunds_tenant_id_id_key ON public.finance_refunds USING btree (tenant_id, id)"
+          },
+          {
+            "name": "finance_refunds_tenant_payment_idx",
+            "unique": false,
+            "def": "CREATE INDEX finance_refunds_tenant_payment_idx ON public.finance_refunds USING btree (tenant_id, payment_id)"
+          },
+          {
+            "name": "finance_refunds_tenant_provider_ref_uidx",
+            "unique": true,
+            "def": "CREATE UNIQUE INDEX finance_refunds_tenant_provider_ref_uidx ON public.finance_refunds USING btree (tenant_id, provider_code, provider_refund_reference) WHERE (provider_refund_reference IS NOT NULL)"
+          },
+          {
+            "name": "finance_refunds_tenant_status_idx",
+            "unique": false,
+            "def": "CREATE INDEX finance_refunds_tenant_status_idx ON public.finance_refunds USING btree (tenant_id, status, created_at DESC)"
+          }
+        ],
+        "policies": [
+          {
+            "name": "finance_refunds_insert",
+            "cmd": "a",
+            "roles": [
+              "authenticated"
+            ],
+            "qual": null,
+            "with_check": "((is_super_admin() OR user_has_permission('finance.edit'::text)) AND (is_super_admin() OR (tenant_id = user_venue_id())))"
+          },
+          {
+            "name": "finance_refunds_select",
+            "cmd": "r",
+            "roles": [
+              "authenticated"
+            ],
+            "qual": "((is_super_admin() OR user_has_permission('finance.view'::text)) AND (is_super_admin() OR (tenant_id = user_venue_id())))",
+            "with_check": null
+          },
+          {
+            "name": "finance_refunds_update",
+            "cmd": "w",
+            "roles": [
+              "authenticated"
+            ],
+            "qual": "((is_super_admin() OR user_has_permission('finance.edit'::text)) AND (is_super_admin() OR (tenant_id = user_venue_id())))",
+            "with_check": "((is_super_admin() OR user_has_permission('finance.edit'::text)) AND (is_super_admin() OR (tenant_id = user_venue_id())))"
+          }
+        ],
+        "grants": [
+          {
+            "grantee": "authenticated",
+            "privilege": "DELETE"
+          },
+          {
+            "grantee": "authenticated",
+            "privilege": "INSERT"
+          },
+          {
+            "grantee": "authenticated",
+            "privilege": "REFERENCES"
+          },
+          {
+            "grantee": "authenticated",
+            "privilege": "SELECT"
+          },
+          {
+            "grantee": "authenticated",
+            "privilege": "TRIGGER"
+          },
+          {
+            "grantee": "authenticated",
+            "privilege": "TRUNCATE"
+          },
+          {
+            "grantee": "authenticated",
+            "privilege": "UPDATE"
+          },
+          {
+            "grantee": "postgres",
+            "privilege": "DELETE"
+          },
+          {
+            "grantee": "postgres",
+            "privilege": "INSERT"
+          },
+          {
+            "grantee": "postgres",
+            "privilege": "REFERENCES"
+          },
+          {
+            "grantee": "postgres",
+            "privilege": "SELECT"
+          },
+          {
+            "grantee": "postgres",
+            "privilege": "TRIGGER"
+          },
+          {
+            "grantee": "postgres",
+            "privilege": "TRUNCATE"
+          },
+          {
+            "grantee": "postgres",
+            "privilege": "UPDATE"
+          },
+          {
+            "grantee": "service_role",
+            "privilege": "DELETE"
+          },
+          {
+            "grantee": "service_role",
+            "privilege": "INSERT"
+          },
+          {
+            "grantee": "service_role",
+            "privilege": "REFERENCES"
+          },
+          {
+            "grantee": "service_role",
+            "privilege": "SELECT"
+          },
+          {
+            "grantee": "service_role",
+            "privilege": "TRIGGER"
+          },
+          {
+            "grantee": "service_role",
+            "privilege": "TRUNCATE"
+          },
+          {
+            "grantee": "service_role",
+            "privilege": "UPDATE"
+          }
+        ]
+      }
+    ],
+    "anon_grants": [],
+    "billing_sample": {
+      "invoices_exists": true,
+      "payments_exists": true
+    }
+  },
+  "appliedObjectInventory": {
+    "tables": [
+      "finance_audit_evidence",
+      "finance_events",
+      "finance_fee_definitions",
+      "finance_idempotency",
+      "finance_invoice_items",
+      "finance_invoices",
+      "finance_obligations",
+      "finance_payment_attempts",
+      "finance_payments",
+      "finance_receipts",
+      "finance_refunds"
+    ],
+    "missing": [],
+    "anonOrPublicGrants": [],
+    "billingSample": {
+      "invoices_exists": true,
+      "payments_exists": true
+    }
+  },
+  "finishedAt": "2026-07-23T11:36:04.808Z"
+}

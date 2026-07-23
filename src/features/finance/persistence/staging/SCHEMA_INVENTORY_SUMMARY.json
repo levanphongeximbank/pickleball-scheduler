@@ -1,0 +1,506 @@
+{
+  "generatedFrom": "APPLY_REPORT.json verify",
+  "stagingRef": "qyewbxjsiiyufanzcjcq",
+  "forwardSha256": "0310905a5fba1ca2028d841c612f9cd7fcf22a5db96d7d9c4d81da3354050d00",
+  "rollbackSha256": "b86921d7571c6861c0ec3a5464d87af7fd8f740000e55bfe6785535b8c40ea95",
+  "anon_grants": [],
+  "billing_sample": {
+    "invoices_exists": true,
+    "payments_exists": true
+  },
+  "tables": [
+    {
+      "name": "finance_audit_evidence",
+      "rls": true,
+      "force_rls": true,
+      "pk": [
+        "id"
+      ],
+      "has_tenant_id": true,
+      "has_version": true,
+      "amount_minor_type": null,
+      "policy_count": 3,
+      "policy_names": [
+        "finance_audit_evidence_insert",
+        "finance_audit_evidence_select",
+        "finance_audit_evidence_update"
+      ],
+      "unique_constraints": [
+        "finance_audit_evidence_tenant_id_id_key"
+      ],
+      "check_count": 7,
+      "index_count": 4,
+      "grants": [
+        "authenticated:DELETE",
+        "authenticated:INSERT",
+        "authenticated:REFERENCES",
+        "authenticated:SELECT",
+        "authenticated:TRIGGER",
+        "authenticated:TRUNCATE",
+        "authenticated:UPDATE",
+        "postgres:DELETE",
+        "postgres:INSERT",
+        "postgres:REFERENCES",
+        "postgres:SELECT",
+        "postgres:TRIGGER",
+        "postgres:TRUNCATE",
+        "postgres:UPDATE",
+        "service_role:DELETE",
+        "service_role:INSERT",
+        "service_role:REFERENCES",
+        "service_role:SELECT",
+        "service_role:TRIGGER",
+        "service_role:TRUNCATE",
+        "service_role:UPDATE"
+      ]
+    },
+    {
+      "name": "finance_events",
+      "rls": true,
+      "force_rls": true,
+      "pk": [
+        "id"
+      ],
+      "has_tenant_id": true,
+      "has_version": false,
+      "amount_minor_type": "bigint",
+      "policy_count": 2,
+      "policy_names": [
+        "finance_events_insert",
+        "finance_events_select"
+      ],
+      "unique_constraints": [
+        "finance_events_tenant_id_id_key"
+      ],
+      "check_count": 9,
+      "index_count": 7,
+      "grants": [
+        "authenticated:DELETE",
+        "authenticated:INSERT",
+        "authenticated:REFERENCES",
+        "authenticated:SELECT",
+        "authenticated:TRIGGER",
+        "authenticated:TRUNCATE",
+        "authenticated:UPDATE",
+        "postgres:DELETE",
+        "postgres:INSERT",
+        "postgres:REFERENCES",
+        "postgres:SELECT",
+        "postgres:TRIGGER",
+        "postgres:TRUNCATE",
+        "postgres:UPDATE",
+        "service_role:DELETE",
+        "service_role:INSERT",
+        "service_role:REFERENCES",
+        "service_role:SELECT",
+        "service_role:TRIGGER",
+        "service_role:TRUNCATE",
+        "service_role:UPDATE"
+      ]
+    },
+    {
+      "name": "finance_fee_definitions",
+      "rls": true,
+      "force_rls": true,
+      "pk": [
+        "id"
+      ],
+      "has_tenant_id": true,
+      "has_version": true,
+      "amount_minor_type": "bigint",
+      "policy_count": 3,
+      "policy_names": [
+        "finance_fee_definitions_insert",
+        "finance_fee_definitions_select",
+        "finance_fee_definitions_update"
+      ],
+      "unique_constraints": [
+        "finance_fee_definitions_tenant_id_id_key"
+      ],
+      "check_count": 9,
+      "index_count": 5,
+      "grants": [
+        "authenticated:DELETE",
+        "authenticated:INSERT",
+        "authenticated:REFERENCES",
+        "authenticated:SELECT",
+        "authenticated:TRIGGER",
+        "authenticated:TRUNCATE",
+        "authenticated:UPDATE",
+        "postgres:DELETE",
+        "postgres:INSERT",
+        "postgres:REFERENCES",
+        "postgres:SELECT",
+        "postgres:TRIGGER",
+        "postgres:TRUNCATE",
+        "postgres:UPDATE",
+        "service_role:DELETE",
+        "service_role:INSERT",
+        "service_role:REFERENCES",
+        "service_role:SELECT",
+        "service_role:TRIGGER",
+        "service_role:TRUNCATE",
+        "service_role:UPDATE"
+      ]
+    },
+    {
+      "name": "finance_idempotency",
+      "rls": true,
+      "force_rls": true,
+      "pk": [
+        "id"
+      ],
+      "has_tenant_id": true,
+      "has_version": true,
+      "amount_minor_type": null,
+      "policy_count": 3,
+      "policy_names": [
+        "finance_idempotency_insert",
+        "finance_idempotency_select",
+        "finance_idempotency_update"
+      ],
+      "unique_constraints": [
+        "finance_idempotency_tenant_op_key_uidx"
+      ],
+      "check_count": 4,
+      "index_count": 4,
+      "grants": [
+        "authenticated:DELETE",
+        "authenticated:INSERT",
+        "authenticated:REFERENCES",
+        "authenticated:SELECT",
+        "authenticated:TRIGGER",
+        "authenticated:TRUNCATE",
+        "authenticated:UPDATE",
+        "postgres:DELETE",
+        "postgres:INSERT",
+        "postgres:REFERENCES",
+        "postgres:SELECT",
+        "postgres:TRIGGER",
+        "postgres:TRUNCATE",
+        "postgres:UPDATE",
+        "service_role:DELETE",
+        "service_role:INSERT",
+        "service_role:REFERENCES",
+        "service_role:SELECT",
+        "service_role:TRIGGER",
+        "service_role:TRUNCATE",
+        "service_role:UPDATE"
+      ]
+    },
+    {
+      "name": "finance_invoice_items",
+      "rls": true,
+      "force_rls": true,
+      "pk": [
+        "id"
+      ],
+      "has_tenant_id": true,
+      "has_version": false,
+      "amount_minor_type": null,
+      "policy_count": 3,
+      "policy_names": [
+        "finance_invoice_items_insert",
+        "finance_invoice_items_select",
+        "finance_invoice_items_update"
+      ],
+      "unique_constraints": [
+        "finance_invoice_items_tenant_id_id_key"
+      ],
+      "check_count": 5,
+      "index_count": 3,
+      "grants": [
+        "authenticated:DELETE",
+        "authenticated:INSERT",
+        "authenticated:REFERENCES",
+        "authenticated:SELECT",
+        "authenticated:TRIGGER",
+        "authenticated:TRUNCATE",
+        "authenticated:UPDATE",
+        "postgres:DELETE",
+        "postgres:INSERT",
+        "postgres:REFERENCES",
+        "postgres:SELECT",
+        "postgres:TRIGGER",
+        "postgres:TRUNCATE",
+        "postgres:UPDATE",
+        "service_role:DELETE",
+        "service_role:INSERT",
+        "service_role:REFERENCES",
+        "service_role:SELECT",
+        "service_role:TRIGGER",
+        "service_role:TRUNCATE",
+        "service_role:UPDATE"
+      ]
+    },
+    {
+      "name": "finance_invoices",
+      "rls": true,
+      "force_rls": true,
+      "pk": [
+        "id"
+      ],
+      "has_tenant_id": true,
+      "has_version": true,
+      "amount_minor_type": "bigint",
+      "policy_count": 3,
+      "policy_names": [
+        "finance_invoices_insert",
+        "finance_invoices_select",
+        "finance_invoices_update"
+      ],
+      "unique_constraints": [
+        "finance_invoices_tenant_id_id_key"
+      ],
+      "check_count": 9,
+      "index_count": 5,
+      "grants": [
+        "authenticated:DELETE",
+        "authenticated:INSERT",
+        "authenticated:REFERENCES",
+        "authenticated:SELECT",
+        "authenticated:TRIGGER",
+        "authenticated:TRUNCATE",
+        "authenticated:UPDATE",
+        "postgres:DELETE",
+        "postgres:INSERT",
+        "postgres:REFERENCES",
+        "postgres:SELECT",
+        "postgres:TRIGGER",
+        "postgres:TRUNCATE",
+        "postgres:UPDATE",
+        "service_role:DELETE",
+        "service_role:INSERT",
+        "service_role:REFERENCES",
+        "service_role:SELECT",
+        "service_role:TRIGGER",
+        "service_role:TRUNCATE",
+        "service_role:UPDATE"
+      ]
+    },
+    {
+      "name": "finance_obligations",
+      "rls": true,
+      "force_rls": true,
+      "pk": [
+        "id"
+      ],
+      "has_tenant_id": true,
+      "has_version": true,
+      "amount_minor_type": "bigint",
+      "policy_count": 3,
+      "policy_names": [
+        "finance_obligations_insert",
+        "finance_obligations_select",
+        "finance_obligations_update"
+      ],
+      "unique_constraints": [
+        "finance_obligations_tenant_id_id_key"
+      ],
+      "check_count": 9,
+      "index_count": 6,
+      "grants": [
+        "authenticated:DELETE",
+        "authenticated:INSERT",
+        "authenticated:REFERENCES",
+        "authenticated:SELECT",
+        "authenticated:TRIGGER",
+        "authenticated:TRUNCATE",
+        "authenticated:UPDATE",
+        "postgres:DELETE",
+        "postgres:INSERT",
+        "postgres:REFERENCES",
+        "postgres:SELECT",
+        "postgres:TRIGGER",
+        "postgres:TRUNCATE",
+        "postgres:UPDATE",
+        "service_role:DELETE",
+        "service_role:INSERT",
+        "service_role:REFERENCES",
+        "service_role:SELECT",
+        "service_role:TRIGGER",
+        "service_role:TRUNCATE",
+        "service_role:UPDATE"
+      ]
+    },
+    {
+      "name": "finance_payment_attempts",
+      "rls": true,
+      "force_rls": true,
+      "pk": [
+        "id"
+      ],
+      "has_tenant_id": true,
+      "has_version": true,
+      "amount_minor_type": "bigint",
+      "policy_count": 3,
+      "policy_names": [
+        "finance_payment_attempts_insert",
+        "finance_payment_attempts_select",
+        "finance_payment_attempts_update"
+      ],
+      "unique_constraints": [
+        "finance_payment_attempts_tenant_id_id_key"
+      ],
+      "check_count": 9,
+      "index_count": 5,
+      "grants": [
+        "authenticated:DELETE",
+        "authenticated:INSERT",
+        "authenticated:REFERENCES",
+        "authenticated:SELECT",
+        "authenticated:TRIGGER",
+        "authenticated:TRUNCATE",
+        "authenticated:UPDATE",
+        "postgres:DELETE",
+        "postgres:INSERT",
+        "postgres:REFERENCES",
+        "postgres:SELECT",
+        "postgres:TRIGGER",
+        "postgres:TRUNCATE",
+        "postgres:UPDATE",
+        "service_role:DELETE",
+        "service_role:INSERT",
+        "service_role:REFERENCES",
+        "service_role:SELECT",
+        "service_role:TRIGGER",
+        "service_role:TRUNCATE",
+        "service_role:UPDATE"
+      ]
+    },
+    {
+      "name": "finance_payments",
+      "rls": true,
+      "force_rls": true,
+      "pk": [
+        "id"
+      ],
+      "has_tenant_id": true,
+      "has_version": true,
+      "amount_minor_type": "bigint",
+      "policy_count": 3,
+      "policy_names": [
+        "finance_payments_insert",
+        "finance_payments_select",
+        "finance_payments_update"
+      ],
+      "unique_constraints": [
+        "finance_payments_tenant_id_id_key"
+      ],
+      "check_count": 10,
+      "index_count": 6,
+      "grants": [
+        "authenticated:DELETE",
+        "authenticated:INSERT",
+        "authenticated:REFERENCES",
+        "authenticated:SELECT",
+        "authenticated:TRIGGER",
+        "authenticated:TRUNCATE",
+        "authenticated:UPDATE",
+        "postgres:DELETE",
+        "postgres:INSERT",
+        "postgres:REFERENCES",
+        "postgres:SELECT",
+        "postgres:TRIGGER",
+        "postgres:TRUNCATE",
+        "postgres:UPDATE",
+        "service_role:DELETE",
+        "service_role:INSERT",
+        "service_role:REFERENCES",
+        "service_role:SELECT",
+        "service_role:TRIGGER",
+        "service_role:TRUNCATE",
+        "service_role:UPDATE"
+      ]
+    },
+    {
+      "name": "finance_receipts",
+      "rls": true,
+      "force_rls": true,
+      "pk": [
+        "id"
+      ],
+      "has_tenant_id": true,
+      "has_version": true,
+      "amount_minor_type": "bigint",
+      "policy_count": 2,
+      "policy_names": [
+        "finance_receipts_insert",
+        "finance_receipts_select"
+      ],
+      "unique_constraints": [
+        "finance_receipts_tenant_id_id_key"
+      ],
+      "check_count": 6,
+      "index_count": 4,
+      "grants": [
+        "authenticated:DELETE",
+        "authenticated:INSERT",
+        "authenticated:REFERENCES",
+        "authenticated:SELECT",
+        "authenticated:TRIGGER",
+        "authenticated:TRUNCATE",
+        "authenticated:UPDATE",
+        "postgres:DELETE",
+        "postgres:INSERT",
+        "postgres:REFERENCES",
+        "postgres:SELECT",
+        "postgres:TRIGGER",
+        "postgres:TRUNCATE",
+        "postgres:UPDATE",
+        "service_role:DELETE",
+        "service_role:INSERT",
+        "service_role:REFERENCES",
+        "service_role:SELECT",
+        "service_role:TRIGGER",
+        "service_role:TRUNCATE",
+        "service_role:UPDATE"
+      ]
+    },
+    {
+      "name": "finance_refunds",
+      "rls": true,
+      "force_rls": true,
+      "pk": [
+        "id"
+      ],
+      "has_tenant_id": true,
+      "has_version": true,
+      "amount_minor_type": "bigint",
+      "policy_count": 3,
+      "policy_names": [
+        "finance_refunds_insert",
+        "finance_refunds_select",
+        "finance_refunds_update"
+      ],
+      "unique_constraints": [
+        "finance_refunds_tenant_id_id_key"
+      ],
+      "check_count": 8,
+      "index_count": 5,
+      "grants": [
+        "authenticated:DELETE",
+        "authenticated:INSERT",
+        "authenticated:REFERENCES",
+        "authenticated:SELECT",
+        "authenticated:TRIGGER",
+        "authenticated:TRUNCATE",
+        "authenticated:UPDATE",
+        "postgres:DELETE",
+        "postgres:INSERT",
+        "postgres:REFERENCES",
+        "postgres:SELECT",
+        "postgres:TRIGGER",
+        "postgres:TRUNCATE",
+        "postgres:UPDATE",
+        "service_role:DELETE",
+        "service_role:INSERT",
+        "service_role:REFERENCES",
+        "service_role:SELECT",
+        "service_role:TRIGGER",
+        "service_role:TRUNCATE",
+        "service_role:UPDATE"
+      ]
+    }
+  ]
+}

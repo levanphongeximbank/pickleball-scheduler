@@ -1,0 +1,25 @@
+{
+  "phase": "1H",
+  "stagingRef": "qyewbxjsiiyufanzcjcq",
+  "productionTouched": false,
+  "finishedAt": "2026-07-23T11:37:51.791Z",
+  "qa": {
+    "payments": 2,
+    "attempts": 1,
+    "receipts": 1,
+    "receipt_update_policies": 0,
+    "event_mut_policies": 0
+  },
+  "cleanup": {
+    "remaining_payments": 0,
+    "remaining_receipts": 0,
+    "remaining_evidence": 0,
+    "retained_events": [
+      "FINANCE_QA_EVT_001",
+      "FINANCE_QA_RLS_EVT_1784806505699",
+      "FINANCE_QA_RLS_EVT_1784806534140"
+    ]
+  },
+  "status": "PASS",
+  "forwardSha256": "0310905a5fba1ca2028d841c612f9cd7fcf22a5db96d7d9c4d81da3354050d00"
+}
