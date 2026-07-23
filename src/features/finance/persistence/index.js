@@ -1,8 +1,8 @@
 /**
- * Finance durable persistence contracts (Phase 1E).
+ * Finance durable persistence (Phase 1E contracts + Phase 1G Supabase adapter).
  *
- * Design + mappers + ports + unit-of-work only.
- * No SQL. No Supabase adapter. No durable production store.
+ * Phase 1G adapter is dependency-injected and database-disconnected in tests.
+ * SQL is authored (Phase 1F) but not applied. No Staging/Production connection.
  */
 
 export {
@@ -93,3 +93,17 @@ export {
   requireKnownStatus,
   serializeRecordDeterministically as serializePersistenceRecordDeterministically,
 } from "./validation/index.js";
+
+// Phase 1G — Supabase-compatible durable adapter (injected client only)
+export {
+  FINANCE_SCHEMA,
+  FINANCE_TABLES,
+  FINANCE_TABLE_NAME_VALUES,
+  FORBIDDEN_BILLING_TABLES,
+  FINANCE_COLUMN_MAPS,
+  assertSupabaseFinanceClient,
+  createFakeSupabaseFinanceClient,
+  mapSupabaseFinanceError,
+  createSupabaseFinanceRepositories,
+  createSupabaseFinanceUnitOfWork,
+} from "./supabase/index.js";

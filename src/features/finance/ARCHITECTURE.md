@@ -1,10 +1,12 @@
-# Finance Foundation Architecture (Phase 1B + Phase 1C + Phase 1D + Phase 1E + Phase 1F)
+# Finance Foundation Architecture (Phase 1B + Phase 1C + Phase 1D + Phase 1E + Phase 1F + Phase 1G)
 
 **Module home:** `src/features/finance/`
 
-**Status:** Domain + application services + in-memory repositories + provider-neutral payment port + durable persistence contracts + **SQL authored / statically verified** (not Production-ready Finance; SQL **not applied**)
+**Status:** Domain + application services + in-memory repositories + provider-neutral payment port + durable persistence contracts + SQL authored/statically verified + **Supabase-compatible durable adapter (injected client; tests use fake client only)**
 
 **Baseline:** Phase 1A read-only audit approved at `1fe3d1c0597470858ea400d379ef853d225720a5`
+
+**Distinctions:** SQL authored and statically verified. SQL **not applied**. Adapter **not connected** to Staging/Production. Database persistence **not certified**.
 
 ---
 
@@ -312,21 +314,34 @@ Canonical executable migration location for this repository: `docs/supabase-*.sq
 
 **Namespace:** `public.finance_*` table prefixes — operational Finance is **not** SaaS Billing (`public.invoices` / `public.payments`).
 
+### Phase 1G — Durable Supabase repository adapter (injected client)
+
+| Artifact | Path |
+|----------|------|
+| Adapter package | `src/features/finance/persistence/supabase/` |
+| Factory | `createSupabaseFinanceRepositories(client, config?)` |
+| Fake client (tests) | `createFakeSupabaseFinanceClient()` |
+| Contract tests | `tests/finance-phase-1g-supabase-adapter.test.js` |
+
+Adapter targets Phase 1F `public.finance_*` tables only. Client is **explicitly injected**. No application Supabase singleton, env credentials, network, or SQL apply in this phase. Multi-record atomic groups fail closed unless an injected transactional executor is provided (`atomicityClaim: none | injected-executor`).
+
 **Distinctions (mandatory):**
 
 - SQL authored.
 - SQL statically verified.
 - SQL **not applied**.
+- Adapter implemented and contract-tested with fake client.
 - Database persistence **not yet certified**.
 - Staging **not started**.
 - Production **not started**.
 
 **Still absent / deferred:**
 
-- Supabase repository / durable runtime adapters
-- staging or production database apply
+- Staging/Production SQL apply
+- Runtime app wiring / authenticated Supabase client composition
 - Billing table reuse
 - finance-ledger localStorage as durable SoT
+- Live payment provider
 
 ---
 
@@ -383,10 +398,11 @@ Expected later phases (not started):
 
 - Phase 1C in-memory repositories and Phase 1E contract harness are not durable / not production.
 - Phase 1F SQL is authored and statically verified only — **not applied**, not staging-certified.
+- Phase 1G adapter is durable-capable in code shape only — **no real DB connection**; multi-record atomicity requires injected executor.
 - VND-only allowlist (DB CHECK `currency = 'VND'`; extend via later migration).
 - Provider port exists; no live provider adapter authorized.
 - Mock provider is not production-capable.
-- No durable Supabase/runtime adapter yet.
+- No durable Supabase runtime wiring in the application shell.
 - No UI.
 - No wiring into booking, tournament, competition, notification, or billing modules.
 - Invoice payment status is a bookkeeping hint, not settlement evidence.
@@ -399,6 +415,6 @@ Expected later phases (not started):
 
 ## Next recommended phase
 
-**Phase 1G — Durable persistence adapter** (Supabase/repository implementation behind Finance ports) and/or **authorized Staging SQL apply** when Owner approves. Live provider adapters remain separately gated.
+**Phase 1H — Staging SQL apply + adapter certification** (Owner-authorized Staging only) and/or application composition wiring behind feature flags. Live provider adapters remain separately gated.
 
-Conditions for next phase: Phase 1F committed on `feature/finance-phase-1-foundation`, Finance static SQL tests green, Owner approval for adapter implementation and/or Staging apply (never Production without separate gate).
+Conditions for next phase: Phase 1G committed on `feature/finance-phase-1-foundation`, Finance tests green, Owner approval for Staging apply and/or runtime wiring (never Production without separate gate).

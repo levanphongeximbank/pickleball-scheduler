@@ -1,6 +1,6 @@
-# Finance Persistence Design (Phase 1E + Phase 1F)
+# Finance Persistence Design (Phase 1E + Phase 1F + Phase 1G)
 
-**Status:** Contracts + **SQL authored / statically verified**. **SQL not applied.** Staging not started. Production not started. Database persistence not yet certified.
+**Status:** Contracts + SQL authored/statically verified + **Supabase-compatible adapter implemented (fake-client tested)**. SQL **not applied**. Staging not started. Production not started. Database persistence **not yet certified**.
 
 **Module:** `src/features/finance/persistence/`
 
@@ -253,9 +253,25 @@ Covers: required tables, Billing isolation, bigint money, VND, tenant_id, RLS, g
 
 ---
 
-## 20. Explicit non-claims
+## 20. Phase 1G durable adapter
+
+Package: `src/features/finance/persistence/supabase/`
+
+- Factory: `createSupabaseFinanceRepositories(client, config?)`
+- Fake test client: `createFakeSupabaseFinanceClient()` (`__testOnly: true`)
+- Maps exclusively to `public.finance_*` (never Billing tables)
+- Tenant filters on every read/write; optimistic updates use `tenant_id` + `id` + `version`
+- Events/receipts expose no ordinary update/delete
+- Unit of work: single-statement capable; multi-record atomic groups fail closed unless `transactionalExecutor` injected
+- Error normalization: unique / constraint / RLS / timeout / unknown → typed Finance errors with sanitized context
+
+**Non-claims:** no SQL apply; no real Supabase initialization; no env credentials; no network in tests; no app runtime wiring.
+
+---
+
+## 21. Explicit non-claims
 
 - This phase does **not** apply SQL to any database.
-- This phase does **not** implement Supabase repositories / durable adapters.
 - Contract harness remains in-memory (`isDurable: false`).
+- Supabase adapter is durable-shaped but **uncertified** until Staging apply + live client composition.
 - No package installs, no Billing reuse, no live provider, no PR, no deploy, no backfill.

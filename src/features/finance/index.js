@@ -1,5 +1,5 @@
 /**
- * Finance Foundation — public facade (Phase 1B + Phase 1C + Phase 1D + Phase 1E).
+ * Finance Foundation — public facade (Phase 1B–1G).
  *
  * Export only canonical public contracts. Consumers must import from this
  * index — not from internal file paths — once wiring begins in later phases.
@@ -7,10 +7,11 @@
  * Does NOT export:
  * - mutable in-memory internal storage maps
  * - test-only reset helpers (use createInMemoryFinanceRepositories().resetAllForTests
- *   or createDurableFinanceContractHarness().resetAllForTests)
+ *   or createDurableFinanceContractHarness().resetAllForTests
+ *   or createFakeSupabaseFinanceClient for adapter tests)
  * - private fingerprint/normalization internals beyond documented helpers
- * - SQL / live payment provider / UI / Billing surfaces
- * - Supabase / durable production adapters (Phase 1E is contracts only)
+ * - SQL apply / live payment provider / UI / Billing surfaces
+ * - initialized Supabase credentials or application singletons
  */
 
 // Errors
@@ -234,7 +235,8 @@ export {
 } from "./providers/index.js";
 
 // ---------------------------------------------------------------------------
-// Phase 1E — Durable persistence contracts (no SQL / no Supabase adapter)
+// Phase 1E — Durable persistence contracts
+// Phase 1G — Supabase-compatible durable adapter (injected client; not applied SQL)
 // ---------------------------------------------------------------------------
 
 export {
@@ -281,4 +283,13 @@ export {
   createFinanceUnitOfWork,
   assertExpectedVersion,
   applyOptimisticUpdate,
+  FINANCE_TABLES,
+  FINANCE_TABLE_NAME_VALUES,
+  FORBIDDEN_BILLING_TABLES,
+  FINANCE_COLUMN_MAPS,
+  assertSupabaseFinanceClient,
+  createFakeSupabaseFinanceClient,
+  mapSupabaseFinanceError,
+  createSupabaseFinanceRepositories,
+  createSupabaseFinanceUnitOfWork,
 } from "./persistence/index.js";
