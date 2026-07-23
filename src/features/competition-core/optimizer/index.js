@@ -26,10 +26,12 @@
  * orchestration (once-only produce + pure delegation; no generation/search).
  * Phase 1J: bounded synchronous deterministic Cartesian candidate generator
  * behind CandidateSourcePort (string domains; no evaluation/ranking/search).
+ * Phase 1L: Candidate Evaluation Envelope + deterministic bounded DFS search
+ * (maxNodes-owned structural traversal) + certified bounded-search entry.
  *
  * Integrator owns root competition-core/index.js — do not edit that here.
  * No scheduling, court-assignment, or referee-assignment exports.
- * No production solvers in Phase 1B / 1C-A / 1C-B1 / 1C-B2-A / 1C-B2-B / 1C-C / 1D / 1E / 1F / 1G / 1H / 1I / 1J.
+ * No production solvers in Phase 1B / 1C-A / 1C-B1 / 1C-B2-A / 1C-B2-B / 1C-C / 1D / 1E / 1F / 1G / 1H / 1I / 1J / 1L beyond approved DFS V1.
  */
 
 export {
@@ -61,6 +63,9 @@ export {
   CORE10_SUPPLIED_CANDIDATE_OPTIMIZATION_V2,
   CORE10_CANDIDATE_SOURCE_PORT_V1,
   CORE10_DETERMINISTIC_CANDIDATE_GENERATOR_V1,
+  CORE10_CANDIDATE_EVALUATION_ENVELOPE_V1,
+  CORE10_DETERMINISTIC_BOUNDED_SEARCH_V1,
+  CORE10_DETERMINISTIC_BOUNDED_SEARCH_STRATEGY_DFS_V1,
   CORE10_IDENTITY,
 } from "./constants/index.js";
 
@@ -199,3 +204,16 @@ export {
   generateCandidateBatch,
   createDeterministicCandidateSource,
 } from "./generation/index.js";
+
+export {
+  createCandidateEvaluationEnvelope,
+  applyCandidateEvaluationEnvelope,
+  assertCandidateEvaluationEnvelopeCompatible,
+} from "./enrichment/index.js";
+
+export {
+  createDeterministicBoundedSearchSpec,
+  searchDeterministicCandidates,
+  createDeterministicBoundedCandidateSource,
+  optimizeDeterministicBoundedSearch,
+} from "./search/index.js";

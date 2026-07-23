@@ -108,6 +108,25 @@ export const CORE10_CANDIDATE_SOURCE_PORT_V1 =
 export const CORE10_DETERMINISTIC_CANDIDATE_GENERATOR_V1 =
   "CORE10_DETERMINISTIC_CANDIDATE_GENERATOR_V1";
 
+/**
+ * Phase 1L — Candidate Evaluation Envelope capability version.
+ */
+export const CORE10_CANDIDATE_EVALUATION_ENVELOPE_V1 =
+  "CORE10_CANDIDATE_EVALUATION_ENVELOPE_V1";
+
+/**
+ * Phase 1L — deterministic bounded-search capability version.
+ */
+export const CORE10_DETERMINISTIC_BOUNDED_SEARCH_V1 =
+  "CORE10_DETERMINISTIC_BOUNDED_SEARCH_V1";
+
+/**
+ * Phase 1L — stable public strategy identifier for deterministic DFS V1.
+ * Future deterministic strategies may add new versioned identifiers.
+ */
+export const CORE10_DETERMINISTIC_BOUNDED_SEARCH_STRATEGY_DFS_V1 =
+  "CORE10_DETERMINISTIC_BOUNDED_SEARCH_STRATEGY_DFS_V1";
+
 export const CORE10_IDENTITY = Object.freeze({
   id: CORE10_ENGINE_ID,
   version: CORE10_ENGINE_VERSION,
@@ -145,4 +164,8 @@ export const CORE10_IDENTITY = Object.freeze({
   candidateSourcePortV1: CORE10_CANDIDATE_SOURCE_PORT_V1,
   deterministicCandidateGeneratorV1:
     CORE10_DETERMINISTIC_CANDIDATE_GENERATOR_V1,
+  candidateEvaluationEnvelopeV1: CORE10_CANDIDATE_EVALUATION_ENVELOPE_V1,
+  deterministicBoundedSearchV1: CORE10_DETERMINISTIC_BOUNDED_SEARCH_V1,
+  deterministicBoundedSearchStrategyDfsV1:
+    CORE10_DETERMINISTIC_BOUNDED_SEARCH_STRATEGY_DFS_V1,
 });

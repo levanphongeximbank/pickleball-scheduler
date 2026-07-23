@@ -298,3 +298,22 @@ Exclude from replay-determining fingerprints: wall-clock duration, machine ident
 6. Generator does not read `maxCandidates` / `maxEvaluations` / `maxNodes`; those remain Phase 1G orchestration concerns.
 7. `sourceContext` is accepted for CandidateSourcePort compatibility and is not used for generation, IDs, or cardinality.
 8. No `Math.random`, `Date.now`, `localeCompare`, streaming, async production, or sibling CORE imports.
+
+---
+
+## Phase 1L — Candidate Evaluation Envelope + deterministic bounded search
+
+1. Envelope / search / certified entry APIs are synchronous only — no Promise, async, concurrency, retry, or timers.
+2. Envelope contains only `envelopeVersion`, `objectiveExecutionSpecs`, and `authorityValues`; unknown fields, thenables, non-plain objects, and accessors fail closed.
+3. Objective specs are admitted through existing ObjectiveExecutionSpec rules with duplicate-identity rejection; authority values are safe integers; length must match `policy.authorityKeys`.
+4. `applyCandidateEvaluationEnvelope` preserves candidates / IDs / decisionVariables / context and replaces only specs + authority; no evaluation/ranking/budget reads.
+5. Bounded search owns `maxNodes` exclusively; null `maxNodes` fails closed; `maxNodes` is never treated as unlimited on this path.
+6. A node is one visited assignment-tree state (root + partials + completes); root counts as node 1; after counting at `maxNodes`, children are not expanded.
+7. Strategy V1 is deterministic DFS only (`CORE10_DETERMINISTIC_BOUNDED_SEARCH_STRATEGY_DFS_V1`); variables/values ordered by `compareStableString`; complete candidates only; no pruning/feasibility/evaluation/ranking during search.
+8. `maxEmittedCandidates` is independent of `maxNodes`; `maxCandidates` / `maxEvaluations` / `maxGeneratedCandidates` are not read during search.
+9. Candidate IDs reuse Phase 1J assignment-fingerprint policy; search/envelope metadata never enter `candidateId`.
+10. Evaluation occurs only after traversal via envelope apply + existing `optimizeSuppliedCandidates`.
+11. Search truncation (`nodeBudgetExhausted` / `emittedCandidateBudgetExhausted`) projects `BUDGET_EXHAUSTED` (no new status); zero emitted under truncation is not `INFEASIBLE`.
+12. CandidateSourcePort adapter emits CandidateBatch only — search diagnostics stay on the direct search API / certified entry.
+13. Certified-entry result fingerprint binds search identity fields without changing `CORE10_SUPPLIED_CANDIDATE_OPTIMIZATION_V2` semantics.
+14. No `Math.random`, `Date.now`, `localeCompare`, `process.env`, streaming, workers, or sibling CORE imports.
