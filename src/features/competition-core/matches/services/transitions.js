@@ -1,6 +1,7 @@
 /**
- * Phase 3F — canonical match status transition helpers.
+ * Phase 3F / CORE-15 — canonical match status transition helpers.
  * Format rules (lineups pending, WO authority) remain policy-injected.
+ * PAUSED and SUSPENDED are distinct non-terminal states.
  */
 
 import { MATCH_STATUS } from "../enums/matchStatuses.js";
@@ -13,8 +14,10 @@ export const MATCH_ACTION = Object.freeze({
   REQUIRE_LINEUPS: "require_lineups",
   MARK_READY_TO_START: "mark_ready_to_start",
   START: "start",
-  SUSPEND: "suspend",
+  PAUSE: "pause",
   RESUME: "resume",
+  SUSPEND: "suspend",
+  ABANDON: "abandon",
   COMPLETE: "complete",
   CANCEL: "cancel",
   POSTPONE: "postpone",
@@ -71,18 +74,36 @@ export const MATCH_TRANSITION_MATRIX = Object.freeze([
     to: MATCH_STATUS.IN_PROGRESS,
   },
   {
-    action: MATCH_ACTION.SUSPEND,
+    action: MATCH_ACTION.PAUSE,
     from: [MATCH_STATUS.IN_PROGRESS],
+    to: MATCH_STATUS.PAUSED,
+  },
+  {
+    action: MATCH_ACTION.SUSPEND,
+    from: [MATCH_STATUS.IN_PROGRESS, MATCH_STATUS.PAUSED],
     to: MATCH_STATUS.SUSPENDED,
   },
   {
     action: MATCH_ACTION.RESUME,
-    from: [MATCH_STATUS.SUSPENDED],
+    from: [MATCH_STATUS.PAUSED, MATCH_STATUS.SUSPENDED],
     to: MATCH_STATUS.IN_PROGRESS,
   },
   {
     action: MATCH_ACTION.COMPLETE,
-    from: [MATCH_STATUS.IN_PROGRESS, MATCH_STATUS.SUSPENDED],
+    from: [
+      MATCH_STATUS.IN_PROGRESS,
+      MATCH_STATUS.PAUSED,
+      MATCH_STATUS.SUSPENDED,
+    ],
+    to: MATCH_STATUS.COMPLETED,
+  },
+  {
+    action: MATCH_ACTION.ABANDON,
+    from: [
+      MATCH_STATUS.IN_PROGRESS,
+      MATCH_STATUS.PAUSED,
+      MATCH_STATUS.SUSPENDED,
+    ],
     to: MATCH_STATUS.COMPLETED,
   },
   {
@@ -94,6 +115,7 @@ export const MATCH_TRANSITION_MATRIX = Object.freeze([
       MATCH_STATUS.LINEUPS_PENDING,
       MATCH_STATUS.READY_TO_START,
       MATCH_STATUS.IN_PROGRESS,
+      MATCH_STATUS.PAUSED,
       MATCH_STATUS.SUSPENDED,
       MATCH_STATUS.POSTPONED,
     ],
@@ -168,12 +190,16 @@ export function assertMatchTransitionAllowed({
       );
     }
     if (
-      action === MATCH_ACTION.SUSPEND &&
-      normalizedFrom !== MATCH_STATUS.IN_PROGRESS
+      (action === MATCH_ACTION.SUSPEND || action === MATCH_ACTION.PAUSE) &&
+      normalizedFrom !== MATCH_STATUS.IN_PROGRESS &&
+      !(
+        action === MATCH_ACTION.SUSPEND &&
+        normalizedFrom === MATCH_STATUS.PAUSED
+      )
     ) {
       throw new MatchRuntimeError(
         MATCH_RUNTIME_ERROR_CODE.MATCH_NOT_IN_PROGRESS,
-        "Match is not in progress",
+        "Match is not in a state that allows this interruption",
         { fromStatus: normalizedFrom, action }
       );
     }

@@ -1,6 +1,7 @@
 /**
- * Phase 3F — canonical Match Runtime statuses.
+ * Phase 3F / CORE-15 — canonical Match Runtime statuses.
  * LINEUPS_PENDING is optional / policy-specific (recognized, not mandatory).
+ * PAUSED and SUSPENDED are distinct non-terminal states.
  */
 
 export const MATCH_STATUS = Object.freeze({
@@ -10,6 +11,7 @@ export const MATCH_STATUS = Object.freeze({
   LINEUPS_PENDING: "LINEUPS_PENDING",
   READY_TO_START: "READY_TO_START",
   IN_PROGRESS: "IN_PROGRESS",
+  PAUSED: "PAUSED",
   SUSPENDED: "SUSPENDED",
   COMPLETED: "COMPLETED",
   CANCELLED: "CANCELLED",
@@ -29,6 +31,7 @@ export const MATCH_CORE_STATUS_VALUES = new Set([
   MATCH_STATUS.SCHEDULED,
   MATCH_STATUS.READY_TO_START,
   MATCH_STATUS.IN_PROGRESS,
+  MATCH_STATUS.PAUSED,
   MATCH_STATUS.SUSPENDED,
   MATCH_STATUS.COMPLETED,
   MATCH_STATUS.CANCELLED,

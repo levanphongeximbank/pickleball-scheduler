@@ -23,8 +23,11 @@ export const LEGACY_MATCH_STATUS_MAP = Object.freeze({
   inprogress: MATCH_STATUS.IN_PROGRESS,
   active: MATCH_STATUS.IN_PROGRESS,
   running: MATCH_STATUS.IN_PROGRESS,
-  paused: MATCH_STATUS.SUSPENDED,
+  // Unambiguous legacy "paused" → canonical PAUSED (distinct from SUSPENDED).
+  paused: MATCH_STATUS.PAUSED,
+  pause: MATCH_STATUS.PAUSED,
   suspended: MATCH_STATUS.SUSPENDED,
+  suspend: MATCH_STATUS.SUSPENDED,
   completed: MATCH_STATUS.COMPLETED,
   done: MATCH_STATUS.COMPLETED,
   finished: MATCH_STATUS.COMPLETED,
