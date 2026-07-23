@@ -414,7 +414,7 @@ test("contract directory has no business-module imports, persistence, or evaluat
   }
 });
 
-test("contract-local index remains the canonical export without root wiring", () => {
+test("contract-local index remains the implementation source of truth", () => {
   const indexSource = fs.readFileSync(
     path.join(CONTRACT_DIR, "index.js"),
     "utf8"
@@ -438,12 +438,17 @@ test("contract-local index remains the canonical export without root wiring", ()
   const rootSource = fs.readFileSync(rootPlatformIndex, "utf8");
   assert.equal(
     /from\s+["']\.\/contracts(?:\/index)?\.js["']/.test(rootSource),
-    false,
-    "root platform barrel must not re-export contracts in Phase 1"
+    true,
+    "Phase 2A root platform barrel must re-export contracts"
   );
   assert.equal(
-    /export\s+\*\s+from\s+["']\.\/contracts/.test(rootSource),
-    false,
-    "root platform barrel must not star-export contracts in Phase 1"
+    /PLATFORM_CAPABILITY_MANIFEST/.test(rootSource),
+    true,
+    "Phase 2A root platform barrel must export capability manifest"
+  );
+  assert.equal(
+    /from\s+["']\.\/capabilities\.js["']/.test(rootSource),
+    true,
+    "Phase 2A root platform barrel must export capabilities module"
   );
 });
