@@ -1,7 +1,9 @@
 # Finance Foundation Architecture (Phase 1B)
 
-**Module home:** `src/features/finance/`  
-**Status:** Domain foundation contracts and lifecycles (not Production-ready Finance)  
+**Module home:** `src/features/finance/`
+
+**Status:** Domain foundation contracts and lifecycles (not Production-ready Finance)
+
 **Baseline:** Phase 1A read-only audit approved at `1fe3d1c0597470858ea400d379ef853d225720a5`
 
 ---
@@ -86,7 +88,8 @@ Evaluation is deterministic and side-effect free. Tournament/booking-specific ru
 
 ### Financial Obligation
 
-`CREATED → OPEN → PARTIALLY_SETTLED → SETTLED`  
+`CREATED → OPEN → PARTIALLY_SETTLED → SETTLED`
+
 Also: `CREATED|OPEN|PARTIALLY_SETTLED → CANCELLED|EXPIRED`
 
 - Explicit allowed transitions; invalid transitions throw typed errors.
@@ -95,7 +98,8 @@ Also: `CREATED|OPEN|PARTIALLY_SETTLED → CANCELLED|EXPIRED`
 
 ### Invoice
 
-`DRAFT → ISSUED → PARTIALLY_PAID → PAID`  
+`DRAFT → ISSUED → PARTIALLY_PAID → PAID`
+
 Also void from draft/issued/partially-paid (not from paid).
 
 - Total = deterministic sum of items.
@@ -119,7 +123,8 @@ Issued only from a confirmed payment. Deterministic serialization. No PDF/HTML/p
 
 ### Refund
 
-`REQUESTED → APPROVED | REJECTED`  
+`REQUESTED → APPROVED | REJECTED`
+
 `APPROVED → COMPLETED | REJECTED`
 
 - References confirmed payment.
