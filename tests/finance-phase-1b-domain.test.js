@@ -39,7 +39,6 @@ import {
   failPayment,
   cancelPayment,
   expirePayment,
-  createPaymentAttempt,
   confirmPaymentAttempt,
   failPaymentAttempt,
   PAYMENT_STATUS,

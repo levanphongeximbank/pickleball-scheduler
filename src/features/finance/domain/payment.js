@@ -14,7 +14,6 @@ import { createMoney, serializeMoney, compareMoney, subtractMoney } from "./mone
 import {
   createPaymentAttempt,
   confirmPaymentAttempt,
-  PAYMENT_ATTEMPT_STATUS,
 } from "./paymentAttempt.js";
 
 export const PAYMENT_STATUS = Object.freeze({

@@ -98,8 +98,9 @@ function stripReplayFlags(result) {
   if (!result || typeof result !== "object") {
     return Object.freeze({ value: result });
   }
-  const { replayed: _r, ...rest } = result;
-  return Object.freeze({ ...rest });
+  const rest = { ...result };
+  delete rest.replayed;
+  return Object.freeze(rest);
 }
 
 /**

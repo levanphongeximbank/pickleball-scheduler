@@ -13,7 +13,6 @@ import {
   INVOICE_STATUS,
   PAYMENT_STATUS,
   PAYMENT_ATTEMPT_STATUS,
-  REFUND_STATUS,
   FINANCE_EVENT_TYPE,
   FINANCE_REPOSITORY_PORTS,
   createInMemoryFinanceRepositories,
@@ -545,7 +544,7 @@ test("Refund: request/approve/reject/complete, partials, over-refund, replay", (
   assert.equal(completed.remainingRefundable.amountMinor, 60000);
   assert.equal(completed.payment.amount.amountMinor, 100000);
 
-  const r2 = app.refunds.requestRefund(
+  app.refunds.requestRefund(
     baseCmd({
       idempotencyKey: "ref-req-2",
       refundId: "ref-2",
