@@ -112,6 +112,8 @@ export function evaluateCanonicalStandingsRuntime(input) {
 
   const canonicalResult = calculateCanonicalStandings(request, {
     groupComplete: input.groupComplete !== false,
+    // Legacy runtime adapter explicitly opts into qualification side-path.
+    applyQualification: true,
   });
   warnings.push(...(canonicalResult.warnings || []));
 

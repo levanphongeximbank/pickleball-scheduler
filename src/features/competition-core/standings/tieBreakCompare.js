@@ -1,6 +1,11 @@
 import { TIEBREAK_TYPE } from "./standingsConstants.js";
 import { compareHeadToHeadRows } from "./headToHead.js";
 import { orderRowsByDrawLot } from "./drawLot.js";
+import { compareCanonicalIdentity } from "./canonicalResultAdapter.js";
+import {
+  STANDINGS_ERROR_CODE,
+  createStandingsIssue,
+} from "./standingsErrors.js";
 
 /**
  * @param {import('./standingsTypes.js').StandingsRow} left
@@ -8,6 +13,7 @@ import { orderRowsByDrawLot } from "./drawLot.js";
  * @param {import('./standingsTypes.js').TieBreakRule} rule
  * @param {import('./standingsTypes.js').StandingsMatchRecord[]} matches
  * @param {Partial<import('./standingsTypes.js').StandingsConfiguration>} configuration
+ * @returns {number}
  */
 export function compareRowsByTieBreakRule(left, right, rule, matches = [], configuration = {}) {
   switch (rule.type) {
@@ -20,16 +26,17 @@ export function compareRowsByTieBreakRule(left, right, rule, matches = [], confi
         return Number(right.gameDifference ?? 0) - Number(left.gameDifference ?? 0);
       }
       if (rule.legacyKey === "manual") {
-        return String(left.entryId).localeCompare(String(right.entryId));
+        return compareCanonicalIdentity(left.entryId, right.entryId);
       }
       return right.points - left.points;
     case TIEBREAK_TYPE.POINT_DIFFERENCE:
+      return Number(right.scoreDifference ?? 0) - Number(left.scoreDifference ?? 0);
     case TIEBREAK_TYPE.GAME_DIFFERENCE:
-      return right.scoreDifference - left.scoreDifference;
+      return Number(right.gameDifference ?? 0) - Number(left.gameDifference ?? 0);
     case TIEBREAK_TYPE.SET_DIFFERENCE:
-      return right.setDifference - left.setDifference;
+      return Number(right.setDifference ?? 0) - Number(left.setDifference ?? 0);
     case TIEBREAK_TYPE.SCORE_FOR:
-      return right.scoreFor - left.scoreFor;
+      return Number(right.scoreFor ?? 0) - Number(left.scoreFor ?? 0);
     case TIEBREAK_TYPE.FEWER_FORFEITS:
       return left.forfeits - right.forfeits;
     case TIEBREAK_TYPE.ORIGINAL_SEED:
@@ -37,11 +44,30 @@ export function compareRowsByTieBreakRule(left, right, rule, matches = [], confi
     case TIEBREAK_TYPE.HEAD_TO_HEAD:
       return compareHeadToHeadRows(left, right, matches, configuration.scoringRule || {});
     case TIEBREAK_TYPE.DRAW_LOT: {
-      const seed = configuration.drawLotSeed || "cc08-default-seed";
-      const [first] = orderRowsByDrawLot([left, right], seed);
+      const seed = configuration.drawLotSeed;
+      if (seed == null || String(seed).trim() === "") {
+        // Invalid draw-lot config: do not invent a seed; leave unresolved (0).
+        return 0;
+      }
+      const [first] = orderRowsByDrawLot([left, right], String(seed));
       return first.entryId === left.entryId ? -1 : 1;
     }
     default:
       return 0;
   }
+}
+
+/**
+ * @param {string} type
+ * @returns {ReturnType<typeof createStandingsIssue>|null}
+ */
+export function unsupportedTieBreakIssue(type) {
+  if (Object.values(TIEBREAK_TYPE).includes(type)) {
+    return null;
+  }
+  return createStandingsIssue(
+    STANDINGS_ERROR_CODE.STANDINGS_UNSUPPORTED_TIEBREAK_CRITERION,
+    `Unsupported tie-break criterion: ${type}`,
+    { type }
+  );
 }

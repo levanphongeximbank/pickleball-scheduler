@@ -28,8 +28,12 @@ export function normalizeLegacyGroupMatch(match = {}) {
     resultType = MATCH_RESULT_TYPE.BYE;
   } else if (legacyStatus === "walkover") {
     resultType = MATCH_RESULT_TYPE.WALKOVER;
+  } else if (legacyStatus === "retirement") {
+    resultType = MATCH_RESULT_TYPE.RETIREMENT;
+  } else if (legacyStatus === "abandoned") {
+    resultType = MATCH_RESULT_TYPE.ABANDONED;
   } else if (legacyStatus === "cancelled" || legacyStatus === "void") {
-    resultType = MATCH_RESULT_TYPE.CANCELLED;
+    resultType = legacyStatus === "void" ? MATCH_RESULT_TYPE.VOID : MATCH_RESULT_TYPE.CANCELLED;
   } else if (legacyStatus === "unverified") {
     resultType = MATCH_RESULT_TYPE.UNVERIFIED;
   } else if (legacyStatus !== "completed" && legacyStatus !== "") {
@@ -48,6 +52,7 @@ export function normalizeLegacyGroupMatch(match = {}) {
       verified: match.verified !== false,
       legacyStatus: match.status != null ? String(match.status) : undefined,
       groupId: match.groupId != null ? String(match.groupId) : undefined,
+      canonicalSource: false,
     },
     warning,
   };
@@ -61,11 +66,16 @@ export function getMatchStandingsPolicy(match, scoringRule) {
   const warnings = [];
   const type = match.resultType;
 
-  if (type === MATCH_RESULT_TYPE.CANCELLED || type === MATCH_RESULT_TYPE.VOID) {
+  if (
+    type === MATCH_RESULT_TYPE.CANCELLED ||
+    type === MATCH_RESULT_TYPE.VOID ||
+    type === MATCH_RESULT_TYPE.ABANDONED
+  ) {
     return {
       includeInStandings: false,
       countsAsPlayed: false,
       headToHeadEligible: false,
+      includeScoreDiff: false,
       excludedReason: type,
       warnings,
     };
@@ -78,6 +88,7 @@ export function getMatchStandingsPolicy(match, scoringRule) {
       headToHeadEligible: false,
       awardPoints: scoringRule.byePoints,
       countsBye: true,
+      includeScoreDiff: false,
       warnings,
     };
   }
@@ -87,6 +98,7 @@ export function getMatchStandingsPolicy(match, scoringRule) {
       includeInStandings: false,
       countsAsPlayed: false,
       headToHeadEligible: false,
+      includeScoreDiff: false,
       excludedReason: "unverified_result",
       warnings: ["Unverified result excluded by scoring rule."],
     };
@@ -97,10 +109,12 @@ export function getMatchStandingsPolicy(match, scoringRule) {
   }
 
   const forfeitTypes = new Set([
+    MATCH_RESULT_TYPE.FORFEIT,
     MATCH_RESULT_TYPE.FORFEIT_BEFORE_START,
     MATCH_RESULT_TYPE.FORFEIT_AFTER_START,
     MATCH_RESULT_TYPE.ADMINISTRATIVE_FORFEIT,
     MATCH_RESULT_TYPE.LEGACY_FORFEIT,
+    MATCH_RESULT_TYPE.NO_SHOW,
   ]);
 
   if (forfeitTypes.has(type)) {
@@ -125,17 +139,35 @@ export function getMatchStandingsPolicy(match, scoringRule) {
     };
   }
 
+  // RETIREMENT: win/loss only — never score differential (CORE-17 / CORE-18 lock).
+  if (type === MATCH_RESULT_TYPE.RETIREMENT) {
+    return {
+      includeInStandings: true,
+      countsAsPlayed: true,
+      headToHeadEligible: true,
+      isRetirement: true,
+      includeScoreDiff: false,
+      warnings,
+    };
+  }
+
   if (type === MATCH_RESULT_TYPE.COMPLETED || type === MATCH_RESULT_TYPE.UNVERIFIED) {
     if (!Number.isFinite(Number(match.scoreA)) || !Number.isFinite(Number(match.scoreB))) {
       if (scoringRule.completedMatchRequired) {
         warnings.push(`Match ${match.matchId} has score but incomplete numeric values.`);
       }
     }
+    const includeScoreDiff =
+      match.differentialEligible === false
+        ? false
+        : match.canonicalSource
+          ? match.differentialEligible === true
+          : true;
     return {
       includeInStandings: true,
       countsAsPlayed: true,
       headToHeadEligible: true,
-      includeScoreDiff: true,
+      includeScoreDiff,
       warnings,
     };
   }
@@ -144,6 +176,7 @@ export function getMatchStandingsPolicy(match, scoringRule) {
     includeInStandings: false,
     countsAsPlayed: false,
     headToHeadEligible: false,
+    includeScoreDiff: false,
     excludedReason: `unsupported_result_type:${type}`,
     warnings,
   };

@@ -1,6 +1,7 @@
 import { createStandingsRequest } from "./standingsContracts.js";
 import { accumulateStandingsRows } from "./scoringRules.js";
 import { compareRowsByTieBreakRule } from "./tieBreakCompare.js";
+import { compareCanonicalIdentity } from "./canonicalResultAdapter.js";
 
 const MAX_MINI_TABLE_DEPTH = 8;
 
@@ -57,7 +58,7 @@ export function computeMiniTableRanking(entryIds, allRows, matches, request, dep
         return delta;
       }
     }
-    return String(left.entryId).localeCompare(String(right.entryId));
+    return compareCanonicalIdentity(left.entryId, right.entryId);
   });
 
   const orderedEntryIds = sorted.map((row) => row.entryId);
@@ -66,6 +67,8 @@ export function computeMiniTableRanking(entryIds, allRows, matches, request, dep
     (row) =>
       row.points === top.points &&
       row.scoreDifference === top.scoreDifference &&
+      row.gameDifference === top.gameDifference &&
+      row.setDifference === top.setDifference &&
       row.scoreFor === top.scoreFor &&
       row.forfeits === top.forfeits
   );

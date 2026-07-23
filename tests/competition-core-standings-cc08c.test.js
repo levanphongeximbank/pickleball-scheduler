@@ -255,7 +255,10 @@ test("CC08C-12 qualification status preserved", () => {
     ...groupPayload,
     qualifiersCount: 2,
   });
-  const result = calculateCanonicalStandings(mapped.request, { groupComplete: true });
+  const result = calculateCanonicalStandings(mapped.request, {
+    groupComplete: true,
+    applyQualification: true,
+  });
   const qualified = result.rows.filter((row) => row.qualificationStatus === "QUALIFIED");
   assert.equal(qualified.length, 2);
 });

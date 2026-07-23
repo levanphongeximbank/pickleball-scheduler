@@ -1,4 +1,6 @@
 export {
+  CORE18_ENGINE_ID,
+  CORE18_ENGINE_VERSION,
   STANDINGS_ENGINE_VERSION,
   MATCH_RESULT_TYPE,
   TIEBREAK_TYPE,
@@ -6,6 +8,7 @@ export {
   STANDINGS_SCOPE,
   DEFAULT_SCORING_RULE,
   DEFAULT_TIEBREAK_ORDER,
+  LEGACY_DEFAULT_TIEBREAK_ORDER,
   DEFAULT_SCORING_RULE_ID,
   DEFAULT_SCORING_RULE_VERSION,
   DEFAULT_TIEBREAK_RULE_SET_ID,
@@ -13,6 +16,30 @@ export {
   isMatchResultType,
   isTieBreakType,
 } from "./standingsConstants.js";
+
+export {
+  STANDINGS_ERROR_CODE,
+  STANDINGS_ERROR_CODE_VALUES,
+  STANDINGS_WARNING_CODE,
+  STANDINGS_WARNING_CODE_VALUES,
+  isStandingsErrorCode,
+  isStandingsWarningCode,
+  StandingsError,
+  isStandingsError,
+  createStandingsError,
+  createStandingsIssue,
+} from "./standingsErrors.js";
+
+export {
+  STANDINGS_EXPLANATION_CODE,
+  compareCanonicalIdentity,
+  mapCore17ResultTypeToStandings,
+  mapEligibleScoreStatistics,
+  adaptValidatedResultToStandingsMatch,
+  adaptValidatedResultsToStandingsMatches,
+  standingsMatchFingerprint,
+  isRawCore16Projection,
+} from "./canonicalResultAdapter.js";
 
 export {
   createScoringRule,
@@ -60,6 +87,7 @@ export {
 
 export {
   compareRowsByTieBreakRule,
+  unsupportedTieBreakIssue,
 } from "./tieBreakCompare.js";
 
 export {
@@ -71,8 +99,10 @@ export {
 
 export {
   calculateCanonicalStandings,
+  calculateStandingsFromValidatedResults,
   validateStandingsRequestShape,
   isStandingsResultJsonSerializable,
+  CORE18_IDENTITY,
 } from "./calculateStandings.js";
 
 export {

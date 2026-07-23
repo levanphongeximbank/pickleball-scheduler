@@ -1,5 +1,5 @@
 /**
- * @typedef {'COMPLETED'|'BYE'|'WALKOVER'|'FORFEIT_BEFORE_START'|'FORFEIT_AFTER_START'|'ADMINISTRATIVE_FORFEIT'|'CANCELLED'|'VOID'|'UNVERIFIED'|'LEGACY_FORFEIT'} MatchResultTypeValue
+ * @typedef {'COMPLETED'|'BYE'|'WALKOVER'|'NO_SHOW'|'RETIREMENT'|'FORFEIT'|'FORFEIT_BEFORE_START'|'FORFEIT_AFTER_START'|'ADMINISTRATIVE_FORFEIT'|'ABANDONED'|'CANCELLED'|'VOID'|'UNVERIFIED'|'LEGACY_FORFEIT'} MatchResultTypeValue
  * @typedef {'TOTAL_POINTS'|'HEAD_TO_HEAD'|'MINI_TABLE'|'SET_DIFFERENCE'|'GAME_DIFFERENCE'|'POINT_DIFFERENCE'|'SCORE_FOR'|'FEWER_FORFEITS'|'ORIGINAL_SEED'|'DRAW_LOT'|'CUSTOM'} TieBreakTypeValue
  * @typedef {'QUALIFIED'|'ELIMINATED'|'PENDING'|'TIE_BREAK_REQUIRED'} QualificationStatusValue
  * @typedef {'individual_group'|'team_tournament'|'season_league'} StandingsScopeValue
@@ -67,6 +67,7 @@
  * @property {string} entryBId
  * @property {MatchResultTypeValue} resultType
  * @property {string} [winnerEntryId]
+ * @property {string} [loserEntryId]
  * @property {number} [scoreA]
  * @property {number} [scoreB]
  * @property {number} [gamesA]
@@ -76,6 +77,11 @@
  * @property {boolean} [verified]
  * @property {string} [legacyStatus]
  * @property {string} [groupId]
+ * @property {boolean} [canonicalSource]
+ * @property {string} [validatedResultId]
+ * @property {boolean} [differentialEligible]
+ * @property {string} [core17ResultType]
+ * @property {string} [core17Outcome]
  */
 
 /**
@@ -131,6 +137,8 @@
  * @typedef {Object} StandingsConfiguration
  * @property {ScoringRule} scoringRule
  * @property {TieBreakRule[]} tieBreakRules
+ * @property {string} [tieBreakRuleSetId]
+ * @property {string} [tieBreakRuleSetVersion]
  * @property {QualificationRule} [qualificationRule]
  * @property {string} [drawLotSeed]
  */
@@ -217,6 +225,9 @@
  * @property {StandingsExplanation[]} explanations
  * @property {string[]} warnings
  * @property {string[]} errors
+ * @property {Array<{ code: string, message: string, details?: Record<string, unknown> }>} [typedErrors]
+ * @property {Array<{ code: string, message: string, details?: Record<string, unknown> }>} [typedWarnings]
+ * @property {{ applied: boolean, decisions: Array<Record<string, unknown>>, note?: string }} [legacyQualification]
  */
 
 export {};
