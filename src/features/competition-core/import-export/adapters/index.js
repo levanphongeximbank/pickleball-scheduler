@@ -2,7 +2,7 @@
  * CORE-22 adapter surface + default registry factory.
  */
 
-import { createAdapterRegistry, ADAPTER_REGISTRY_VERSION } from "./registry.js";
+import { createAdapterRegistry } from "./registry.js";
 import { createCore19WorkflowAdapter, CORE19_MODULE_ID } from "./core19-workflow.js";
 import { createCore20AuditAdapter, CORE20_MODULE_ID } from "./core20-audit.js";
 import {
@@ -11,7 +11,6 @@ import {
 } from "./core21-seed-replay.js";
 import {
   CORE_01_TO_18_CATALOG,
-  createGenericPublicAdapter,
   registerCore01To18Adapters,
 } from "./generic-public.js";
 

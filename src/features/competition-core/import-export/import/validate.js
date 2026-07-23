@@ -81,7 +81,7 @@ export function validateCompetitionPackage(rawOrPackage, options = {}) {
   /** @type {object[]} */
   const warnings = [];
 
-  let pkg = null;
+  let pkg;
   try {
     pkg = isPlainObject(rawOrPackage) && rawOrPackage.manifest
       ? rawOrPackage.packageType

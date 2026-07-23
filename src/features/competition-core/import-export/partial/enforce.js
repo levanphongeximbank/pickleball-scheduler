@@ -37,9 +37,9 @@ export function enforcePartialImportPolicy(input = {}) {
   /** @type {object[]} */
   const conflicts = [];
   /** @type {string[]} */
-  let selectedModules = [];
+  let selectedModules;
   /** @type {string[]} */
-  let omittedModules = [];
+  let omittedModules;
 
   if (policy.policy === PARTIAL_IMPORT_POLICY.ALL_OR_NOTHING) {
     selectedModules = included;
