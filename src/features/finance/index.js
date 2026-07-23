@@ -1,14 +1,16 @@
 /**
- * Finance Foundation — public facade (Phase 1B + Phase 1C).
+ * Finance Foundation — public facade (Phase 1B + Phase 1C + Phase 1D + Phase 1E).
  *
  * Export only canonical public contracts. Consumers must import from this
  * index — not from internal file paths — once wiring begins in later phases.
  *
  * Does NOT export:
  * - mutable in-memory internal storage maps
- * - test-only reset helpers (use createInMemoryFinanceRepositories().resetAllForTests)
+ * - test-only reset helpers (use createInMemoryFinanceRepositories().resetAllForTests
+ *   or createDurableFinanceContractHarness().resetAllForTests)
  * - private fingerprint/normalization internals beyond documented helpers
- * - SQL / payment provider / UI / Billing surfaces
+ * - SQL / live payment provider / UI / Billing surfaces
+ * - Supabase / durable production adapters (Phase 1E is contracts only)
  */
 
 // Errors
@@ -230,3 +232,53 @@ export {
   assertPaymentProviderPort,
   createMockPaymentProvider,
 } from "./providers/index.js";
+
+// ---------------------------------------------------------------------------
+// Phase 1E — Durable persistence contracts (no SQL / no Supabase adapter)
+// ---------------------------------------------------------------------------
+
+export {
+  EXTERNAL_REFERENCE_KIND,
+  EXTERNAL_REFERENCE_KIND_VALUES,
+  createExternalReference,
+  IDEMPOTENCY_EXECUTION_STATUS,
+  IDEMPOTENCY_EXECUTION_STATUS_VALUES,
+  EVIDENCE_VERIFICATION_STATUS,
+  EVIDENCE_REDACTION_CLASSIFICATION,
+  EVIDENCE_RETENTION_CLASSIFICATION,
+  createObligationRecord,
+  createInvoiceItemRecord,
+  createInvoiceRecord,
+  createPaymentAttemptRecord,
+  createPaymentRecord,
+  createReceiptRecord,
+  createRefundRecord,
+  createFinancialEventRecord,
+  createIdempotencyRecord,
+  createAuditEvidenceRecord,
+  serializeRecordDeterministically,
+  obligationToRecord,
+  obligationFromRecord,
+  invoiceToRecord,
+  invoiceFromRecord,
+  paymentAttemptToRecord,
+  paymentAttemptFromRecord,
+  paymentToRecord,
+  paymentFromRecord,
+  receiptToRecord,
+  receiptFromRecord,
+  refundToRecord,
+  refundFromRecord,
+  eventToRecord,
+  eventFromRecord,
+  FINANCE_DURABLE_REPOSITORY_PORTS,
+  createBoundedListQuery,
+  requireTenantScope,
+  requireExpectedVersion,
+  createDurableFinanceContractHarness,
+  FINANCE_UNIT_OF_WORK_VERSION,
+  FINANCE_ATOMIC_OPERATION_GROUPS,
+  createFinanceUnitOfWork,
+  assertExpectedVersion,
+  applyOptimisticUpdate,
+} from "./persistence/index.js";

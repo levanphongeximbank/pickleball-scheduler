@@ -1,8 +1,8 @@
-# Finance Foundation Architecture (Phase 1B + Phase 1C + Phase 1D)
+# Finance Foundation Architecture (Phase 1B + Phase 1C + Phase 1D + Phase 1E)
 
 **Module home:** `src/features/finance/`
 
-**Status:** Domain + application services + in-memory repositories + provider-neutral payment port (not Production-ready Finance)
+**Status:** Domain + application services + in-memory repositories + provider-neutral payment port + durable persistence **contracts** (not Production-ready Finance)
 
 **Baseline:** Phase 1A read-only audit approved at `1fe3d1c0597470858ea400d379ef853d225720a5`
 
@@ -78,12 +78,13 @@ Billing PascalCase events and provider webhook names remain unchanged.
 
 ---
 
-## Layering (Phase 1C + 1D)
+## Layering (Phase 1C + 1D + 1E)
 
 ```
 application/     orchestration services + idempotent commands
 providers/       provider-neutral PaymentProviderPort + mock adapter
-repositories/    provider-neutral ports + in-memory implementations
+persistence/     durable record contracts, mappers, ports, UoW (no SQL)
+repositories/    Phase 1C provider-neutral ports + in-memory implementations
 domain/          pure lifecycle contracts (Phase 1B)
 events/          catalogue + envelope builders
 errors/          typed FinanceError codes
@@ -287,11 +288,25 @@ Phase 1C records the workflow events above as applicable. It does **not** implem
 
 ## Persistence
 
-**Still absent.**
+Phase 1E delivers Finance-owned **durable persistence contracts** under `src/features/finance/persistence/`:
 
-Phase 1C provides repository **ports** and **in-memory** implementations for capability proof only.
+- normalized persistence records (obligation, invoice/items, payment, attempt, receipt, refund, event, idempotency, audit evidence)
+- bidirectional domain ↔ record mappers (reject corrupt/malformed stored data; no silent repair)
+- durable repository ports with explicit tenant scope + bounded queries
+- unit-of-work / transaction boundary contract (no nested transactions)
+- optimistic concurrency contract (`expectedVersion` → increment)
+- uniqueness / RLS / migration ordering documented in `persistence/PERSISTENCE_DESIGN.md`
+- in-memory **contract harness** only (`createDurableFinanceContractHarness`, `isDurable: false`)
 
-No SQL, Supabase migrations, staging, or production database operations are authorized in this phase.
+Phase 1C in-memory repositories remain capability proof for application services.
+
+**Still absent / deferred:**
+
+- executable SQL migration files
+- Supabase repository adapters
+- staging or production database apply
+- Billing table reuse
+- finance-ledger localStorage as durable SoT
 
 ---
 
@@ -346,20 +361,22 @@ Expected later phases (not started):
 
 ## Known limitations
 
-- In-memory repositories only — no durability / no production guarantee.
+- Phase 1C in-memory repositories and Phase 1E contract harness are not durable / not production.
 - VND-only allowlist.
 - Provider port exists; no live provider adapter authorized.
 - Mock provider is not production-capable.
+- No SQL / no Supabase adapter.
 - No UI.
 - No wiring into booking, tournament, competition, notification, or billing modules.
 - Invoice payment status is a bookkeeping hint, not settlement evidence.
-- Application idempotency does not replace future database uniqueness constraints.
+- Application + contract-harness idempotency does not replace future database uniqueness constraints.
 - No cryptographic hash dependency for idempotency (canonical string fingerprints).
+- Optimistic concurrency contracts do not claim DB-level safety without later constraints.
 
 ---
 
 ## Next recommended phase
 
-**Phase 1E — Durable persistence contracts / SQL design** (still no production deploy), followed by live provider adapters behind PaymentProviderPort when authorized.
+**Phase 1F — Durable persistence adapter (authorized SQL + repository implementation behind Finance ports)** or live provider adapters behind PaymentProviderPort when authorized.
 
-Conditions for next phase: Phase 1D committed on `feature/finance-phase-1-foundation`, targeted tests green, owner approval for persistence or live-adapter scope.
+Conditions for next phase: Phase 1E committed on `feature/finance-phase-1-foundation`, targeted tests green, owner approval for SQL creation / staging apply or live-adapter scope.
