@@ -1,5 +1,5 @@
 /**
- * Platform Technical Contract Kit — Phase 1B/1C local exports.
+ * Platform Technical Contract Kit — Phase 1B/1C/1D local exports.
  *
  * Contract-local barrel only. Not re-exported from src/core/platform/index.js.
  */
@@ -30,3 +30,13 @@ export {
   isSecurityContext,
   SECURITY_CONTEXT_ERROR,
 } from "./securityContext.js";
+export {
+  createTraceContext,
+  isTraceContext,
+  TRACE_CONTEXT_ERROR,
+} from "./traceContext.js";
+export {
+  createCommonEventEnvelope,
+  isCommonEventEnvelope,
+  COMMON_EVENT_ERROR,
+} from "./commonEventEnvelope.js";
