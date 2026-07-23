@@ -1,7 +1,8 @@
 /**
  * Platform Technical Contract Kit — Phase 1B–1J local exports.
  *
- * Contract-local barrel only. Not re-exported from src/core/platform/index.js.
+ * Contract-local barrel (implementation source of truth).
+ * Public integration surface re-exports these from src/core/platform/index.js (Phase 2A).
  */
 
 export { ok, fail, isOk, isFail } from "./result.js";
