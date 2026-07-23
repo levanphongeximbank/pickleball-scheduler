@@ -1,7 +1,7 @@
 /**
- * Player Rating Foundation — Phase 1B module skeleton.
+ * Player Rating Foundation — Phase 1B contracts/ports + Phase 1C read model.
  *
- * Runtime-neutral contracts and ports only.
+ * Runtime-neutral contracts, ports, and current-state read-model only.
  * Not wired into Production runtime.
  * Does not replace legacy assessment under src/features/player-rating/.
  */
@@ -80,3 +80,31 @@ export {
   createUnimplementedMatchResultRatingPort,
   MATCH_RESULT_RATING_ALGORITHM,
 } from "./ports/index.js";
+
+export {
+  PLAYER_RATING_CURRENT_STATE_READ_MODEL_PHASE,
+  PLAYER_RATING_SOURCE_TYPE,
+  PLAYER_RATING_SOURCE_SCALE,
+  PLAYER_ID_RESOLUTION_STATUS,
+  CONFIDENCE_SCALE,
+  NORMALIZABLE_SOURCE_TYPES,
+  NON_AUTHORITATIVE_SOURCE_TYPES,
+  isKnownPlayerRatingSourceType,
+  isNormalizableSourceType,
+  isNonAuthoritativeSourceType,
+  PLAYER_RATING_READ_MODEL_ERROR_CODE,
+  PLAYER_RATING_READ_MODEL_REUSED_ERROR_CODE,
+  failReadModel,
+  isPlayerRatingReadModelErrorCode,
+  buildCandidateId,
+  candidateSortKey,
+  sortCandidatesDeterministically,
+  createCurrentStateCandidate,
+  optionalFiniteNumber,
+  optionalNonEmptyString,
+  optionalTimestamp,
+  normalizeV2Rating,
+  normalizeV5Rating,
+  normalizeLegacyRating,
+  collectRatingCandidates,
+} from "./read-model/index.js";
