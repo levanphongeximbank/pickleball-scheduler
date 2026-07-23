@@ -2,7 +2,8 @@
  * Player Rating Foundation — Phase 1B contracts/ports + Phase 1C read model
  * + Phase 1D append-only history & immutable snapshots
  * + Phase 1E verification & manual adjustment
- * + Phase 1H read-only facade.
+ * + Phase 1H read-only facade
+ * + Phase 1I security, privacy, and boundary hardening.
  *
  * Runtime-neutral contracts, ports, read-model, and in-memory adapters only.
  * Not wired into Production runtime.
@@ -174,3 +175,25 @@ export {
   deriveAvailabilityStatus,
   createPlayerRatingReadFacade,
 } from "./read-facade/index.js";
+
+export {
+  PLAYER_RATING_SECURITY_PRIVACY_PHASE,
+  PLAYER_RATING_PRIVACY_PROJECTION_LEVEL,
+  PLAYER_RATING_READ_CAPABILITY,
+  PLAYER_RATING_SECURITY_PRIVACY_ERROR_CODE,
+  isSupportedPrivacyProjectionLevel,
+  requiredCapabilityForProjectionLevel,
+  DEFAULT_PUBLIC_WARNING_ALLOWLIST,
+  ALWAYS_EXCLUDED_PROFILE_KEYS,
+  createPlayerRatingPrivacyPolicy,
+  validatePlayerRatingScopeAccess,
+  authorizePlayerRatingRead,
+  redactPlayerRatingCandidate,
+  redactPlayerRatingOverview,
+  stripExcludedKeys,
+  projectPublicPlayerRating,
+  projectRestrictedPlayerRating,
+  createSecurePlayerRatingReadFacade,
+  failSecurityPrivacy,
+  sanitizeSecurityErrorDetails,
+} from "./security-privacy/index.js";
