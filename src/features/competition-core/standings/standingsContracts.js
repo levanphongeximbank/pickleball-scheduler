@@ -84,6 +84,7 @@ export function createStandingsMatchRecord(partial = {}) {
     entryBId: String(partial.entryBId || ""),
     resultType: partial.resultType || "COMPLETED",
     winnerEntryId: partial.winnerEntryId != null ? String(partial.winnerEntryId) : undefined,
+    loserEntryId: partial.loserEntryId != null ? String(partial.loserEntryId) : undefined,
     scoreA: Number.isFinite(Number(partial.scoreA)) ? Number(partial.scoreA) : undefined,
     scoreB: Number.isFinite(Number(partial.scoreB)) ? Number(partial.scoreB) : undefined,
     gamesA: Number.isFinite(Number(partial.gamesA)) ? Number(partial.gamesA) : undefined,
@@ -93,6 +94,16 @@ export function createStandingsMatchRecord(partial = {}) {
     verified: partial.verified !== false,
     legacyStatus: partial.legacyStatus,
     groupId: partial.groupId != null ? String(partial.groupId) : undefined,
+    canonicalSource: partial.canonicalSource === true,
+    validatedResultId:
+      partial.validatedResultId != null ? String(partial.validatedResultId) : undefined,
+    differentialEligible:
+      partial.differentialEligible === undefined
+        ? undefined
+        : partial.differentialEligible === true,
+    core17ResultType:
+      partial.core17ResultType != null ? String(partial.core17ResultType) : undefined,
+    core17Outcome: partial.core17Outcome != null ? String(partial.core17Outcome) : undefined,
   };
 }
 
@@ -142,9 +153,23 @@ export function createStandingsRow(partial = {}) {
  * @param {Partial<import('./standingsTypes.js').StandingsConfiguration>} [partial]
  */
 export function createStandingsConfiguration(partial = {}) {
+  const hasInjectedRules = Array.isArray(partial.tieBreakRules);
   return {
     scoringRule: createScoringRule(partial.scoringRule || {}),
-    tieBreakRules: createDefaultTieBreakRuleSet(partial.tieBreakRules || DEFAULT_TIEBREAK_ORDER),
+    // Injected rules are the authority. DEFAULT_TIEBREAK_ORDER is legacy/test fallback only.
+    tieBreakRules: createDefaultTieBreakRuleSet(
+      hasInjectedRules ? partial.tieBreakRules : DEFAULT_TIEBREAK_ORDER
+    ),
+    tieBreakRuleSetId:
+      partial.tieBreakRuleSetId != null
+        ? String(partial.tieBreakRuleSetId)
+        : hasInjectedRules
+          ? "injected-tiebreak"
+          : DEFAULT_TIEBREAK_RULE_SET_ID,
+    tieBreakRuleSetVersion:
+      partial.tieBreakRuleSetVersion != null
+        ? String(partial.tieBreakRuleSetVersion)
+        : DEFAULT_TIEBREAK_RULE_SET_VERSION,
     qualificationRule: partial.qualificationRule ? { ...partial.qualificationRule } : undefined,
     drawLotSeed: partial.drawLotSeed != null ? String(partial.drawLotSeed) : "cc08-default-seed",
   };
@@ -189,7 +214,8 @@ export function createStandingsAudit(partial = {}) {
     tieBreakRuleSetId: partial.tieBreakRuleSetId || DEFAULT_TIEBREAK_RULE_SET_ID,
     tieBreakRuleSetVersion: partial.tieBreakRuleSetVersion || DEFAULT_TIEBREAK_RULE_SET_VERSION,
     warnings: cloneArray(partial.warnings, String),
-    recordedAt: partial.recordedAt || new Date().toISOString(),
+    // Wall-clock excluded from canonical defaults for byte-stable outputs.
+    recordedAt: partial.recordedAt != null ? String(partial.recordedAt) : null,
   };
 }
 
@@ -197,16 +223,18 @@ export function createStandingsAudit(partial = {}) {
  * @param {Partial<import('./standingsTypes.js').StandingsSnapshot>} [partial]
  */
 export function createStandingsSnapshot(partial = {}) {
+  const matchSetHash = partial.matchSetHash || "";
   return {
-    snapshotId: partial.snapshotId || `standings-snapshot-${Date.now()}`,
+    snapshotId: partial.snapshotId || (matchSetHash ? `standings-snapshot-${matchSetHash}` : "standings-snapshot"),
     tournamentId: partial.tournamentId,
     eventId: partial.eventId,
     groupId: partial.groupId,
     scoringRuleVersion: partial.scoringRuleVersion || DEFAULT_SCORING_RULE.scoringRuleVersion,
     tieBreakRuleVersion: partial.tieBreakRuleVersion || DEFAULT_TIEBREAK_RULE_SET_VERSION,
-    matchSetHash: partial.matchSetHash || "",
+    matchSetHash,
     rows: cloneArray(partial.rows, createStandingsRow),
-    generatedAt: partial.generatedAt || new Date().toISOString(),
+    // Wall-clock excluded from canonical defaults.
+    generatedAt: partial.generatedAt != null ? String(partial.generatedAt) : null,
     engineVersion: partial.engineVersion || STANDINGS_ENGINE_VERSION,
     warnings: cloneArray(partial.warnings, String),
   };
@@ -216,8 +244,13 @@ export function createStandingsSnapshot(partial = {}) {
  * @param {Partial<import('./standingsTypes.js').StandingsDecisionTrace>} [partial]
  */
 export function createStandingsDecisionTrace(partial = {}) {
+  const matchSetHash = Array.isArray(partial.inputMatchIds)
+    ? buildMatchSetHash(
+        partial.inputMatchIds.map((matchId) => ({ matchId: String(matchId) }))
+      )
+    : "";
   return {
-    traceId: partial.traceId || `standings-trace-${Date.now()}`,
+    traceId: partial.traceId || (matchSetHash ? `standings-trace-${matchSetHash}` : "standings-trace"),
     engineVersion: partial.engineVersion || STANDINGS_ENGINE_VERSION,
     scoringRuleId: partial.scoringRuleId || DEFAULT_SCORING_RULE.scoringRuleId,
     scoringRuleVersion: partial.scoringRuleVersion || DEFAULT_SCORING_RULE.scoringRuleVersion,
@@ -238,7 +271,8 @@ export function createStandingsDecisionTrace(partial = {}) {
     finalRanks: cloneArray(partial.finalRanks),
     qualificationDecisions: cloneArray(partial.qualificationDecisions),
     warnings: cloneArray(partial.warnings, String),
-    timestamp: partial.timestamp || new Date().toISOString(),
+    // Wall-clock excluded from canonical defaults.
+    timestamp: partial.timestamp != null ? String(partial.timestamp) : null,
   };
 }
 
@@ -255,6 +289,11 @@ export function createStandingsResult(partial = {}) {
     explanations: cloneArray(partial.explanations, createStandingsExplanation),
     warnings: cloneArray(partial.warnings, String),
     errors: cloneArray(partial.errors, String),
+    typedErrors: cloneArray(partial.typedErrors),
+    typedWarnings: cloneArray(partial.typedWarnings),
+    legacyQualification: partial.legacyQualification
+      ? { ...partial.legacyQualification }
+      : undefined,
   };
 }
 

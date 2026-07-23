@@ -42,6 +42,7 @@
   "tests/competition-core-rules-cc07c.test.js",
   "tests/competition-core-standings-cc08.test.js",
   "tests/competition-core-standings-cc08c.test.js",
+  "tests/competition-core-standings-core18.test.js",
   "tests/competition-core-scheduling-cc09.test.js",
   "tests/team-tournament-seed.test.js",
   "tests/ai-core.test.js",

@@ -425,7 +425,7 @@ test("21. qualification cutoff", () => {
         qualificationRule: { qualifiersCount: 2 },
       }),
     }),
-    { groupComplete: true }
+    { groupComplete: true, applyQualification: true }
   );
   const qualified = result.rows.filter((row) => row.qualificationStatus === "QUALIFIED");
   assert.equal(qualified.length, 2);
@@ -434,13 +434,19 @@ test("21. qualification cutoff", () => {
 test("22. duplicate match protection", () => {
   const match = createStandingsMatchRecord({ matchId: "dup", entryAId: "a", entryBId: "b", scoreA: 11, scoreB: 5 });
   const result = calculateCanonicalStandings(baseRequest({ matches: [match, match] }));
-  assert.ok(result.warnings.some((warning) => warning.includes("Duplicate match")));
+  assert.equal(result.ok, false);
+  assert.ok(
+    result.typedErrors?.some((issue) => issue.code === "STANDINGS_DUPLICATE_MATCH_IDENTITY") ||
+      result.warnings.some((warning) => warning.includes("Duplicate match"))
+  );
 });
 
 test("23. same match not counted twice", () => {
   const match = createStandingsMatchRecord({ matchId: "dup", entryAId: "a", entryBId: "b", scoreA: 11, scoreB: 5 });
   const result = calculateCanonicalStandings(baseRequest({ matches: [match, match] }));
-  assert.equal(result.rows.find((row) => row.entryId === "a").played, 1);
+  // Fail-closed: neither duplicate contributes (no first-input-wins).
+  assert.equal(result.rows.find((row) => row.entryId === "a").played, 0);
+  assert.equal(result.ok, false);
 });
 
 test("24. missing entry reference warning", () => {

@@ -1,4 +1,9 @@
-export const STANDINGS_ENGINE_VERSION = "cc08-v1";
+/** CORE-18 capability identity. */
+export const CORE18_ENGINE_ID = "competition-core.standings";
+export const CORE18_ENGINE_VERSION = "1.0.0";
+
+/** Engine version stamped on canonical standings outputs (CC-08 evolved). */
+export const STANDINGS_ENGINE_VERSION = "core18-v1";
 
 export const DEFAULT_SCORING_RULE_ID = "legacy-group-default";
 export const DEFAULT_SCORING_RULE_VERSION = "1";
@@ -12,9 +17,13 @@ export const MATCH_RESULT_TYPE = Object.freeze({
   COMPLETED: "COMPLETED",
   BYE: "BYE",
   WALKOVER: "WALKOVER",
+  NO_SHOW: "NO_SHOW",
+  RETIREMENT: "RETIREMENT",
+  FORFEIT: "FORFEIT",
   FORFEIT_BEFORE_START: "FORFEIT_BEFORE_START",
   FORFEIT_AFTER_START: "FORFEIT_AFTER_START",
   ADMINISTRATIVE_FORFEIT: "ADMINISTRATIVE_FORFEIT",
+  ABANDONED: "ABANDONED",
   CANCELLED: "CANCELLED",
   VOID: "VOID",
   UNVERIFIED: "UNVERIFIED",
@@ -61,6 +70,10 @@ export const DEFAULT_SCORING_RULE = Object.freeze({
   verifiedResultRequired: false,
 });
 
+/**
+ * Legacy / test compatibility default only — NOT the production rule authority.
+ * Production callers must inject `configuration.tieBreakRules`.
+ */
 export const DEFAULT_TIEBREAK_ORDER = Object.freeze([
   TIEBREAK_TYPE.TOTAL_POINTS,
   TIEBREAK_TYPE.HEAD_TO_HEAD,
@@ -72,6 +85,9 @@ export const DEFAULT_TIEBREAK_ORDER = Object.freeze([
   TIEBREAK_TYPE.ORIGINAL_SEED,
   TIEBREAK_TYPE.DRAW_LOT,
 ]);
+
+/** @deprecated Alias — use only for legacy adapters/tests. Prefer injected rules. */
+export const LEGACY_DEFAULT_TIEBREAK_ORDER = DEFAULT_TIEBREAK_ORDER;
 
 export const LEGACY_GROUP_TIEBREAK_ORDER = Object.freeze([
   TIEBREAK_TYPE.TOTAL_POINTS,

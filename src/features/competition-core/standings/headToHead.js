@@ -31,6 +31,9 @@ export function computeTwoEntryHeadToHead(entryAId, entryBId, matches = [], scor
       winsA += 1;
     } else if (winnerId === entryBId) {
       winsB += 1;
+    } else if (match.canonicalSource) {
+      // Canonical results must carry winner identity — do not infer from scores.
+      return;
     } else {
       const scoreA = match.entryAId === entryAId ? Number(match.scoreA ?? 0) : Number(match.scoreB ?? 0);
       const scoreB = match.entryAId === entryAId ? Number(match.scoreB ?? 0) : Number(match.scoreA ?? 0);

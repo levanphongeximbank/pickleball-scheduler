@@ -1,3 +1,5 @@
+import { compareCanonicalIdentity } from "./canonicalResultAdapter.js";
+
 /**
  * Deterministic draw-lot token — no Math.random.
  *
@@ -5,7 +7,7 @@
  * @param {string[]} entryIds
  */
 export function buildDrawLotToken(drawLotSeed, entryIds = []) {
-  const payload = [drawLotSeed, ...entryIds.map(String).sort()].join("::");
+  const payload = [drawLotSeed, ...[...entryIds].map(String).sort(compareCanonicalIdentity)].join("::");
   let hash = 2166136261;
   for (let i = 0; i < payload.length; i += 1) {
     hash ^= payload.charCodeAt(i);
@@ -22,7 +24,7 @@ export function orderRowsByDrawLot(rows, drawLotSeed) {
   return [...rows].sort((left, right) => {
     const leftToken = buildDrawLotToken(drawLotSeed, [left.entryId]);
     const rightToken = buildDrawLotToken(drawLotSeed, [right.entryId]);
-    return leftToken.localeCompare(rightToken) || String(left.entryId).localeCompare(String(right.entryId));
+    return compareCanonicalIdentity(leftToken, rightToken) || compareCanonicalIdentity(left.entryId, right.entryId);
   });
 }
 
