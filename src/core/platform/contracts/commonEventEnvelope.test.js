@@ -209,7 +209,8 @@ test("empty payloadVersion is rejected", () => {
 });
 
 test("invalid actor is rejected", () => {
-  const { actor: _omit, ...withoutActor } = minimalInput();
+  const withoutActor = { ...minimalInput() };
+  delete withoutActor.actor;
   const missingActor = createCommonEventEnvelope(withoutActor);
   assert.equal(missingActor.ok, false);
   assert.equal(missingActor.error.code, COMMON_EVENT_ERROR.ACTOR_INVALID);
@@ -246,7 +247,8 @@ test("invalid trace is rejected", () => {
 });
 
 test("missing payload property is rejected", () => {
-  const { payload: _omit, ...withoutPayload } = minimalInput();
+  const withoutPayload = { ...minimalInput() };
+  delete withoutPayload.payload;
   const result = createCommonEventEnvelope(withoutPayload);
   assert.equal(result.ok, false);
   assert.equal(result.error.code, COMMON_EVENT_ERROR.PAYLOAD_MISSING);
@@ -339,14 +341,16 @@ test("isCommonEventEnvelope true/false is correct", () => {
 });
 
 test("eventId is not auto-generated", () => {
-  const { eventId: _omit, ...withoutId } = minimalInput();
+  const withoutId = { ...minimalInput() };
+  delete withoutId.eventId;
   const result = createCommonEventEnvelope(withoutId);
   assert.equal(result.ok, false);
   assert.equal(result.error.code, COMMON_EVENT_ERROR.ID_INVALID);
 });
 
 test("occurredAt is not auto-defaulted", () => {
-  const { occurredAt: _omit, ...withoutOccurredAt } = minimalInput();
+  const withoutOccurredAt = { ...minimalInput() };
+  delete withoutOccurredAt.occurredAt;
   const result = createCommonEventEnvelope(withoutOccurredAt);
   assert.equal(result.ok, false);
   assert.equal(result.error.code, COMMON_EVENT_ERROR.OCCURRED_AT_INVALID);
