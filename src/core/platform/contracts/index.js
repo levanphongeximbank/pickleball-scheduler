@@ -1,5 +1,5 @@
 /**
- * Platform Technical Contract Kit — Phase 1B/1C/1D local exports.
+ * Platform Technical Contract Kit — Phase 1B/1C/1D/1E local exports.
  *
  * Contract-local barrel only. Not re-exported from src/core/platform/index.js.
  */
@@ -40,3 +40,13 @@ export {
   isCommonEventEnvelope,
   COMMON_EVENT_ERROR,
 } from "./commonEventEnvelope.js";
+export {
+  createPlatformScope,
+  isPlatformScope,
+  PLATFORM_SCOPE_ERROR,
+} from "./platformScope.js";
+export {
+  createAuthorizationDecision,
+  isAuthorizationDecision,
+  AUTHORIZATION_DECISION_ERROR,
+} from "./authorizationDecision.js";
