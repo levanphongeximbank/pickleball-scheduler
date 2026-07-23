@@ -1,8 +1,8 @@
-# Finance Foundation Architecture (Phase 1B + Phase 1C + Phase 1D + Phase 1E)
+# Finance Foundation Architecture (Phase 1B + Phase 1C + Phase 1D + Phase 1E + Phase 1F)
 
 **Module home:** `src/features/finance/`
 
-**Status:** Domain + application services + in-memory repositories + provider-neutral payment port + durable persistence **contracts** (not Production-ready Finance)
+**Status:** Domain + application services + in-memory repositories + provider-neutral payment port + durable persistence contracts + **SQL authored / statically verified** (not Production-ready Finance; SQL **not applied**)
 
 **Baseline:** Phase 1A read-only audit approved at `1fe3d1c0597470858ea400d379ef853d225720a5`
 
@@ -300,10 +300,30 @@ Phase 1E delivers Finance-owned **durable persistence contracts** under `src/fea
 
 Phase 1C in-memory repositories remain capability proof for application services.
 
+### Phase 1F — SQL migration package (authored, not applied)
+
+Canonical executable migration location for this repository: `docs/supabase-*.sql` (no active `supabase/migrations/` directory).
+
+| Artifact | Path |
+|----------|------|
+| Forward migration | `docs/supabase-finance-phase1f.sql` |
+| Rollback migration | `docs/supabase-finance-phase1f-rollback.sql` |
+| Static verification | `tests/finance-phase-1f-sql-migration.test.js` |
+
+**Namespace:** `public.finance_*` table prefixes — operational Finance is **not** SaaS Billing (`public.invoices` / `public.payments`).
+
+**Distinctions (mandatory):**
+
+- SQL authored.
+- SQL statically verified.
+- SQL **not applied**.
+- Database persistence **not yet certified**.
+- Staging **not started**.
+- Production **not started**.
+
 **Still absent / deferred:**
 
-- executable SQL migration files
-- Supabase repository adapters
+- Supabase repository / durable runtime adapters
 - staging or production database apply
 - Billing table reuse
 - finance-ledger localStorage as durable SoT
@@ -362,21 +382,23 @@ Expected later phases (not started):
 ## Known limitations
 
 - Phase 1C in-memory repositories and Phase 1E contract harness are not durable / not production.
-- VND-only allowlist.
+- Phase 1F SQL is authored and statically verified only — **not applied**, not staging-certified.
+- VND-only allowlist (DB CHECK `currency = 'VND'`; extend via later migration).
 - Provider port exists; no live provider adapter authorized.
 - Mock provider is not production-capable.
-- No SQL / no Supabase adapter.
+- No durable Supabase/runtime adapter yet.
 - No UI.
 - No wiring into booking, tournament, competition, notification, or billing modules.
 - Invoice payment status is a bookkeeping hint, not settlement evidence.
-- Application + contract-harness idempotency does not replace future database uniqueness constraints.
+- Cross-table invoice total = sum(items) cannot be a simple CHECK; application/UoW remain authoritative.
+- RLS depends on existing `user_venue_id()` / `user_has_permission('finance.view'|'finance.edit')` (rbac-v4); finer refund-approval permission unresolved.
+- Service-role bypass is not application authorization.
 - No cryptographic hash dependency for idempotency (canonical string fingerprints).
-- Optimistic concurrency contracts do not claim DB-level safety without later constraints.
 
 ---
 
 ## Next recommended phase
 
-**Phase 1F — Durable persistence adapter (authorized SQL + repository implementation behind Finance ports)** or live provider adapters behind PaymentProviderPort when authorized.
+**Phase 1G — Durable persistence adapter** (Supabase/repository implementation behind Finance ports) and/or **authorized Staging SQL apply** when Owner approves. Live provider adapters remain separately gated.
 
-Conditions for next phase: Phase 1E committed on `feature/finance-phase-1-foundation`, targeted tests green, owner approval for SQL creation / staging apply or live-adapter scope.
+Conditions for next phase: Phase 1F committed on `feature/finance-phase-1-foundation`, Finance static SQL tests green, Owner approval for adapter implementation and/or Staging apply (never Production without separate gate).

@@ -1,6 +1,6 @@
-# Finance Persistence Design (Phase 1E)
+# Finance Persistence Design (Phase 1E + Phase 1F)
 
-**Status:** Contract + migration design only. **No executable SQL. No staging/production apply.**
+**Status:** Contracts + **SQL authored / statically verified**. **SQL not applied.** Staging not started. Production not started. Database persistence not yet certified.
 
 **Module:** `src/features/finance/persistence/`
 
@@ -28,195 +28,234 @@ Finance does **not** own SaaS Billing tables, marketplace payment gateway tables
 
 | Concern | Canonical store |
 |---------|-----------------|
-| Tenant SaaS plans / trials / locks | `billing` / `subscription` |
-| Operational fees, invoices, receipts, refunds | **Finance** (this design) |
+| Tenant SaaS plans / trials / locks | `billing` / `subscription` (`public.invoices`, `public.payments`, …) |
+| Operational fees, invoices, receipts, refunds | **Finance** `public.finance_*` |
 
 Finance persistence **must not** reuse Billing tables as source of truth.
 
 ---
 
-## 3. Proposed logical tables (no SQL)
+## 3. Namespace decision (Phase 1F)
 
-| Logical table | PK | Tenant key | Notes |
-|---------------|----|------------|-------|
-| `finance_fee_definitions` | `id` | `tenant_id` | Mutable with version |
-| `finance_obligations` | `id` | `tenant_id` | Mutable with version |
-| `finance_invoices` | `id` | `tenant_id` | Mutable with version |
-| `finance_invoice_items` | `id` | via invoice / tenant | Child of invoice |
-| `finance_payments` | `id` | `tenant_id` | Mutable until terminal |
-| `finance_payment_attempts` | `id` | `tenant_id` | Mutable until terminal |
-| `finance_receipts` | `id` | `tenant_id` | Immutable after insert |
-| `finance_refunds` | `id` | `tenant_id` | Mutable until terminal |
-| `finance_events` | `id` | `tenant_id` | Append-only |
-| `finance_idempotency` | `(tenant_id, operation_type, idempotency_key)` | `tenant_id` | Durable execution lock |
-| `finance_audit_evidence` | `id` | `tenant_id` | Reference + digest only |
+**Chosen model:** `public.finance_*` table prefixes.
 
-Primary keys are opaque Finance IDs (strings). Tenant key is always explicit `tenant_id`.
+**Rejected for v1:** dedicated `finance` schema — repository Supabase convention uses the `public` schema with module-prefixed tables (billing, notification, identity). Inventing a second schema system was avoided.
 
 ---
 
-## 4. Columns (logical)
+## 4. Migration artifacts (Phase 1F)
 
-Common on mutable aggregates:
+Canonical repository migration location: `docs/supabase-*.sql` (no active `supabase/migrations/` directory).
 
-- `id`, `tenant_id`, `version`, `created_at`, `updated_at`
-- lifecycle `status`
-- `amount_minor` (bigint / safe integer), `currency` (uppercase ISO-4217; v1 = VND)
-- `correlation_id`, `causation_id`, `idempotency_key` where applicable
-- typed external references (venue/club/competition/registration/entry/booking/player/customer) — IDs only
-- evidence reference IDs (not raw payloads)
+| Role | Filename |
+|------|----------|
+| Forward | `docs/supabase-finance-phase1f.sql` |
+| Rollback | `docs/supabase-finance-phase1f-rollback.sql` |
+| Static tests | `tests/finance-phase-1f-sql-migration.test.js` |
 
-Events additionally:
+**Distinctions:**
 
-- `event_type`, `event_version`
-- `occurred_at` vs `recorded_at`
-- `privacy_classification`
-- `payload_schema_version`
-- safe payload (no secrets / unrestricted provider bodies)
-
----
-
-## 5. Unique constraints (future database)
-
-| Rule | Components | Tenant scope | Nullable | Conflict error | Idempotent replay | Partial unique later? |
-|------|------------|--------------|----------|----------------|-------------------|------------------------|
-| Idempotency | `(tenant_id, operation_type, idempotency_key)` | Yes | key NOT NULL | `FINANCE_PERSISTENCE_UNIQUENESS_CONFLICT` / fingerprint mismatch | Same fingerprint returns stored result; no version bump | No |
-| Provider payment txn | `(tenant_id, provider_code, provider_transaction_reference)` | Yes | reference NULL allowed pre-assign | uniqueness conflict | Replay must resolve to same payment | **Yes** — unique where reference IS NOT NULL |
-| Payment attempt reference | `(tenant_id, attempt_id)` PK; optional `(tenant_id, payment_id, attempt_number)` | Yes | attempt_number NOT NULL | uniqueness conflict | N/A | Optional |
-| Receipt identity | `id` PK; `(tenant_id, payment_id)` one receipt per payment | Yes | payment_id NOT NULL | uniqueness conflict | Same payment → same receipt | No |
-| Finance event id | `(tenant_id, event_id)` | Yes | NOT NULL | `FINANCE_EVENT_APPEND_CONFLICT` | Same id rejected (append-only) | No |
-| Invoice number (future) | `(tenant_id, invoice_number)` | Yes | NULL until issued/assigned | uniqueness conflict | Replay returns same invoice | **Yes** — unique where number IS NOT NULL |
-| Business reference (selected) | `(tenant_id, entity_type, business_reference)` where justified | Yes | NULL allowed | uniqueness conflict | Deterministic lookup | **Yes** for non-null |
+- SQL authored.
+- SQL statically verified.
+- SQL **not applied**.
+- Database persistence **not yet certified**.
+- Staging **not started**.
+- Production **not started**.
 
 ---
 
-## 6. Index strategy (design only)
+## 5. Logical / physical tables
 
-- Tenant + id primary access path on every aggregate.
-- Tenant + status + created_at for bounded lists.
-- Tenant + provider_code + provider_transaction_reference (partial) for payment uniqueness lookup.
-- Tenant + operation_type + idempotency_key for idempotency.
-- Tenant + occurred_at for event reads (always bounded).
-- Tenant + payment_id for attempts / refunds / receipt.
+| Table | PK | Tenant key | Mutable | Notes |
+|-------|----|------------|---------|-------|
+| `finance_fee_definitions` | `id` | `tenant_id` | Yes + `version` | Fee catalog |
+| `finance_obligations` | `id` | `tenant_id` | Yes + `version` | Soft subject_* refs |
+| `finance_invoices` | `id` | `tenant_id` | Yes + `version` | Not Billing invoices |
+| `finance_invoice_items` | `id` | `tenant_id` | Child | FK → invoice |
+| `finance_payments` | `id` | `tenant_id` | Yes + `version` | Not Billing payments |
+| `finance_payment_attempts` | `id` | `tenant_id` | Yes + `version` | FK → payment |
+| `finance_receipts` | `id` | `tenant_id` | Insert-only at policy | One per payment |
+| `finance_refunds` | `id` | `tenant_id` | Yes + `version` | FK → payment |
+| `finance_events` | `id` | `tenant_id` | Append-only | No UPDATE/DELETE grant |
+| `finance_idempotency` | `id` | `tenant_id` | Yes + `version` | Unique (tenant, op, key) |
+| `finance_audit_evidence` | `id` | `tenant_id` | Yes + `version` | Metadata only |
 
-No unbounded full-history scan is authorized by the query contract.
-
----
-
-## 7. Transaction boundaries
-
-Atomic unit-of-work groups (see `FINANCE_ATOMIC_OPERATION_GROUPS`):
-
-1. create obligation + append event
-2. issue invoice + append event
-3. confirm payment + settle obligation + settle invoice + create receipt + append event + complete idempotency
-4. complete refund + update refundable balance + append event
-5. consume idempotency key with the financial effect
-
-Semantics: explicit begin/commit/rollback or `run(callback)`. Nested transactions are **not** supported. No silent partial success.
+Primary keys are opaque Finance IDs (text). Tenant key is always explicit `tenant_id` (soft reference to venue/tenant identity; **no FK** to `venues` to avoid cascade destroying financial evidence).
 
 ---
 
-## 8. Optimistic concurrency
+## 6. External reference model
 
-- Mutable aggregates carry `version` starting at 1.
-- Updates require `expectedVersion`.
-- Success increments version by 1.
-- Mismatch → `FINANCE_OPTIMISTIC_CONCURRENCY_CONFLICT`.
-- Terminal / immutable records cannot be updated by version bump alone.
-- Idempotent replay must not bump versions.
+**Selected:** explicit nullable typed columns:
 
-**Caveat:** application contracts alone do not equal database concurrency safety; later DB constraints / RLS / transactions are required.
+`subject_venue_id`, `subject_club_id`, `subject_competition_id`, `subject_registration_id`, `subject_entry_id`, `subject_booking_id`, `subject_player_id`, `subject_customer_id`
 
----
+All are **soft references** (IDs only):
 
-## 9. Idempotency model
-
-Durable record fields: tenant, operation type, key, canonical fingerprint, execution status (`STARTED` / `COMPLETED` / `FAILED` / `ABANDONED`), result reference only, timestamps, retention policy ref, version.
-
-Policies:
-
-- Same key + same fingerprint → replay stored result.
-- Same key + different fingerprint → conflict.
-- `STARTED` → `FINANCE_IDEMPOTENCY_IN_PROGRESS` (no silent re-entry).
-- `FAILED` / `ABANDONED` → explicit retry API only (not silent).
-- Never persist sensitive request payloads.
+- avoid ambiguous free-form entity types;
+- support indexes;
+- do not duplicate external profiles;
+- do not create FKs to tables Finance does not own.
 
 ---
 
-## 10. Event append model
+## 7. Money and currency
 
-Append-only. Duplicate event id → conflict. No mutation after append. Queries require tenant + bounds (`limit`, optional time window / cursor). Correlation/causation preserved. Privacy classification required. Evidence refs only.
-
----
-
-## 11. Evidence redaction
-
-`finance_audit_evidence` stores:
-
-- evidence type, provider code, external reference
-- captured_at, verification status
-- integrity digest
-- redaction + retention classification
-- safe metadata only
-
-Rejected: secrets, auth headers, tokens, CVV, full card data, unrestricted PII profiles, unlimited raw payloads. File/blob storage is out of scope for Phase 1E.
+- Store money as `bigint` minor units (`amount_minor`, etc.).
+- Never floating-point / `numeric` / `real` for money.
+- Non-negative checks; refunds require positive amounts.
+- Currency CHECK: `currency = 'VND'` (v1). Extend via later migration.
+- Invoice line math: `line_total_minor = unit_amount_minor * quantity` (CHECK).
+- **Cannot** safely CHECK `sum(items) = invoice.amount_minor` across tables — application + UoW remain authoritative.
 
 ---
 
-## 12. RLS / permission assumptions (future)
+## 8. Unique constraints and conflict behavior
 
-- Every Finance table RLS-scoped by `tenant_id`.
-- No policy may allow cross-tenant select/update.
-- Service role writes still must pass application tenant checks.
-- Permissions assumed at app layer: Finance command actors; DB roles deferred.
-
----
-
-## 13. Migration ordering (deferred SQL)
-
-Suggested later order (documentation only):
-
-1. fee definitions
-2. obligations
-3. invoices + items
-4. payments + attempts
-5. receipts
-6. refunds
-7. audit evidence
-8. events
-9. idempotency
-10. uniqueness indexes / partial uniques
-11. RLS policies
-
-**Explicitly deferred:** executable SQL files, Supabase migration apply, staging apply, production apply.
+| Rule | Components | Semantics | Conflict |
+|------|------------|-----------|----------|
+| Idempotency | `(tenant_id, operation_type, idempotency_key)` | Unique always | Uniqueness conflict; same fingerprint → replay at app layer |
+| Provider payment txn | `(tenant_id, provider_code, provider_transaction_reference)` | **Partial** WHERE reference IS NOT NULL | Uniqueness conflict |
+| Provider attempt txn | same pattern on attempts | Partial | Uniqueness conflict |
+| Payment attempt number | `(tenant_id, payment_id, attempt_number)` | Unique | Duplicate attempt identity |
+| Receipt per payment | `(tenant_id, payment_id)` | Unique | One authoritative receipt |
+| Event id | `(tenant_id, id)` + PK `id` | Unique | Append conflict |
+| Invoice number | `(tenant_id, invoice_number)` | **Partial** WHERE number IS NOT NULL | No global sequence invented |
+| Obligation business ref | `(tenant_id, business_reference)` | Partial WHERE NOT NULL | Duplicate obligation effect |
 
 ---
 
-## 14. Rollback considerations
+## 9. Relational integrity (Finance-owned)
 
-- Forward-only additive migrations preferred.
-- Dropping uniqueness indexes is dangerous once live money flows exist.
-- Event table should not be rewritten; compensating events preferred.
-- Rollback of applied Finance DDL requires owner approval and a separate change request.
+Composite tenant-aware FKs with `ON DELETE RESTRICT`:
 
----
+- invoice items → invoices
+- payment attempts → payments
+- receipts → payments
+- refunds → payments
+- payments → invoices / obligations (nullable)
+- obligations → fee definitions / invoices (nullable)
+- optional audit_evidence_ref → finance_audit_evidence
 
-## 15. Legacy data migration risks
-
-| Source | Risk |
-|--------|------|
-| `finance-ledger` localStorage | Incomplete, non-tenant-safe, not durable; do not treat as SoT |
-| Booking monetary blobs | May lack evidence / idempotency; require explicit mapping + quarantine |
-| Tournament fee blobs | Eligibility mixed with money; Finance must import financial facts only |
-
-Dual-write / backfill plans are **out of scope** until a later persistence implementation phase.
+Retention: soft archive via status; hard delete is ops-only. Never cascade-delete immutable financial evidence.
 
 ---
 
-## 16. Explicit non-claims
+## 10. Optimistic concurrency
 
-- This phase does **not** create SQL.
-- This phase does **not** implement Supabase repositories.
-- Contract harness is in-memory proof only (`isDurable: false`).
-- No package installs, no Billing reuse, no live provider, no PR, no deploy.
+Mutable aggregates include `version integer not null default 1` with `version >= 1`.
+
+Future adapter update pattern:
+
+```sql
+UPDATE ...
+SET version = version + 1, updated_at = now()
+WHERE id = $id
+  AND tenant_id = $tenant
+  AND version = $expected_version;
+```
+
+No generic version-hiding trigger in Phase 1F.
+
+---
+
+## 11. Idempotency table
+
+Fields: tenant, operation_type, idempotency_key, request_fingerprint (non-empty), execution_status (`STARTED`/`COMPLETED`/`FAILED`/`ABANDONED`), result_entity_type/id, timestamps, expires_at, version.
+
+- Completed requires result entity type + id.
+- No raw request body / PII / secrets.
+- Future: consume key in same DB transaction as the financial effect.
+
+---
+
+## 12. Finance events (append-only)
+
+Includes event_type, event_version, occurred_at, recorded_at, correlation/causation, privacy_classification, Finance refs, evidence_refs, payload_schema_version, sanitized payload.
+
+**Append-only boundary:**
+
+- GRANT SELECT, INSERT only to `authenticated`.
+- No UPDATE/DELETE policies for ordinary roles.
+- No UPDATE/DELETE grants.
+- Service-role bypass is **not** application authorization; maintenance deletes require elevated ops process + Owner approval.
+
+---
+
+## 13. Audit evidence restrictions
+
+Stores: evidence_type, provider_code, external_reference, captured_at, verification_status, integrity_digest, redaction/retention classification, sanitized metadata (≤ 8 KiB; secret key names rejected).
+
+**Forbidden:** API secrets, auth headers, tokens, webhook secrets, CVV, full card data, unrestricted provider payloads, profile blobs. No file/blob storage.
+
+---
+
+## 14. RLS and permission model
+
+- RLS + FORCE RLS on all Finance tables.
+- Tenant: `tenant_id = public.user_venue_id()` OR `is_super_admin()`.
+- Read: `user_has_permission('finance.view')` (or super admin).
+- Commands: `user_has_permission('finance.edit')` (or super admin).
+- WITH CHECK on all write policies.
+- REVOKE ALL from `PUBLIC` and `anon`; no anonymous/public financial access.
+- No `GRANT ALL` to authenticated.
+
+**READY WITH CONDITIONS:**
+
+- Depends on existing rbac helpers (`user_venue_id`, `user_has_permission`, `is_super_admin`) from `docs/supabase-rbac.sql` / `docs/supabase-rbac-v4.sql`.
+- Finer-grained refund-approval permission not introduced (uses `finance.edit`).
+- Runtime permission wiring / role matrix verification deferred to Staging certification.
+- Client-supplied `tenant_id` alone is never trusted.
+
+---
+
+## 15. Index strategy
+
+Tenant + status + time; tenant + subject refs; tenant + provider txn (partial unique); tenant + idempotency key (unique); payment attempts by payment; invoice items by invoice; refunds by payment; events by recorded_at / correlation_id; evidence by external reference.
+
+Unique constraints already cover primary uniqueness paths — no redundant duplicate indexes.
+
+---
+
+## 16. Transaction boundaries (unchanged from 1E)
+
+Atomic UoW groups remain application-defined (obligation+event, invoice+event, confirm payment settle+receipt+idempotency, refund complete, etc.). Nested transactions unsupported.
+
+---
+
+## 17. Rollback strategy
+
+- Explicit file: `docs/supabase-finance-phase1f-rollback.sql`
+- Drops policies then child tables then parents; Finance objects only.
+- No Billing/foreign DROP; no broad CASCADE.
+- **WARNING:** destroys Finance data.
+- Static-only / unapplied in Phase 1F.
+
+---
+
+## 18. Static verification results
+
+`tests/finance-phase-1f-sql-migration.test.js` inspects SQL text (no DB connection, no Supabase CLI apply).
+
+Covers: required tables, Billing isolation, bigint money, VND, tenant_id, RLS, grants, uniqueness, append-only events, version columns, indexes, evidence restrictions, rollback scope, no legacy backfill, no new SECURITY DEFINER Finance functions.
+
+---
+
+## 19. Unresolved runtime authorization dependencies
+
+| Dependency | Status |
+|------------|--------|
+| `user_venue_id()` | Existing convention; required at apply time |
+| `user_has_permission('finance.view'|'finance.edit')` | Catalogued in identity/rbac-v4; role wiring verification deferred |
+| Finer refund approval permission | Not created; uses finance.edit |
+| Service-role tenant enforcement | Application must enforce; RLS bypassed by service_role |
+| Durable adapter | Not started (Phase 1G+) |
+
+---
+
+## 20. Explicit non-claims
+
+- This phase does **not** apply SQL to any database.
+- This phase does **not** implement Supabase repositories / durable adapters.
+- Contract harness remains in-memory (`isDurable: false`).
+- No package installs, no Billing reuse, no live provider, no PR, no deploy, no backfill.
