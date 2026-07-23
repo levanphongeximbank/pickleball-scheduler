@@ -1,5 +1,5 @@
 /**
- * Finance Foundation — public facade (Phase 1B–1G).
+ * Finance Foundation — public facade (Phase 1B–1I).
  *
  * Export only canonical public contracts. Consumers must import from this
  * index — not from internal file paths — once wiring begins in later phases.
@@ -8,10 +8,12 @@
  * - mutable in-memory internal storage maps
  * - test-only reset helpers (use createInMemoryFinanceRepositories().resetAllForTests
  *   or createDurableFinanceContractHarness().resetAllForTests
- *   or createFakeSupabaseFinanceClient for adapter tests)
+ *   or createFakeSupabaseFinanceClient for adapter tests
+ *   or createFinanceRuntimeTestHarness().resetAllForTests)
  * - private fingerprint/normalization internals beyond documented helpers
  * - SQL apply / live payment provider / UI / Billing surfaces
  * - initialized Supabase credentials or application singletons
+ * - Production-activated Finance runtime (Phase 1I default is disabled)
  */
 
 // Errors
@@ -293,3 +295,38 @@ export {
   createSupabaseFinanceRepositories,
   createSupabaseFinanceUnitOfWork,
 } from "./persistence/index.js";
+
+// ---------------------------------------------------------------------------
+// Phase 1I — Runtime composition foundation (opt-in; default disabled)
+// ---------------------------------------------------------------------------
+
+export {
+  FINANCE_RUNTIME_MODE,
+  FINANCE_RUNTIME_MODE_VALUES,
+  FINANCE_RUNTIME_ENVIRONMENT,
+  FINANCE_RUNTIME_ENVIRONMENT_VALUES,
+  FINANCE_TENANT_STRATEGY,
+  FINANCE_TENANT_STRATEGY_VALUES,
+  FINANCE_PROVIDER_STRATEGY,
+  FINANCE_PROVIDER_STRATEGY_VALUES,
+  FINANCE_PERSISTENCE_EXPECTATION,
+  FINANCE_TRANSACTION_EXPECTATION,
+  createDefaultFinanceRuntimeConfig,
+  validateFinanceRuntimeConfig,
+  isForbiddenRuntimeSecretKey,
+  FINANCE_RUNTIME_ERROR_CODES,
+  createFinanceRuntimeError,
+  throwFinanceRuntimeError,
+  throwRuntimeDisabled,
+  FINANCE_READINESS_STATE,
+  FINANCE_READINESS_STATE_VALUES,
+  FINANCE_DEFAULT_PROBE_TIMEOUT_MS,
+  buildFinanceReadinessReport,
+  serializeFinanceReadiness,
+  deriveFinanceReadiness,
+  inspectFinanceRuntimeHealth,
+  FINANCE_STAGING_CERTIFICATION_REFERENCE,
+  buildFinanceCapabilityReport,
+  createFinanceRuntime,
+  createFinanceRuntimeTestHarness,
+} from "./runtime/index.js";

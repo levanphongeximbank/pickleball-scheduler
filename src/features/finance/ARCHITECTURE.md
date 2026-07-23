@@ -1,12 +1,12 @@
-# Finance Foundation Architecture (Phase 1B + Phase 1C + Phase 1D + Phase 1E + Phase 1F + Phase 1G)
+# Finance Foundation Architecture (Phase 1B + Phase 1C + Phase 1D + Phase 1E + Phase 1F + Phase 1G + Phase 1H + Phase 1I)
 
 **Module home:** `src/features/finance/`
 
-**Status:** Domain + application services + in-memory repositories + provider-neutral payment port + durable persistence contracts + SQL authored/statically verified + **Supabase-compatible durable adapter (injected client; tests use fake client only)**
+**Status:** Domain + application services + in-memory repositories + provider-neutral payment port + durable persistence contracts + SQL authored/statically verified + Supabase-compatible durable adapter + **Staging SQL applied & certified (READY WITH CONDITIONS)** + **opt-in runtime composition foundation (default disabled)**
 
 **Baseline:** Phase 1A read-only audit approved at `1fe3d1c0597470858ea400d379ef853d225720a5`
 
-**Distinctions:** SQL authored and statically verified. SQL **not applied**. Adapter **not connected** to Staging/Production. Database persistence **not certified**.
+**Distinctions:** SQL authored, statically verified, and **Staging-applied** (Phase 1H). Adapter certified on Staging with conditions. Runtime composition exists but is **opt-in / default disabled**. Production **not** authorized. No live provider. No UI / Booking / Tournament / Competition wiring.
 
 ---
 
@@ -80,12 +80,13 @@ Billing PascalCase events and provider webhook names remain unchanged.
 
 ---
 
-## Layering (Phase 1C + 1D + 1E)
+## Layering (Phase 1C + 1D + 1E + 1I)
 
 ```
+runtime/         Phase 1I composition factory + readiness/capabilities (opt-in)
 application/     orchestration services + idempotent commands
 providers/       provider-neutral PaymentProviderPort + mock adapter
-persistence/     durable record contracts, mappers, ports, UoW (no SQL)
+persistence/     durable record contracts, mappers, ports, UoW, Supabase adapter
 repositories/    Phase 1C provider-neutral ports + in-memory implementations
 domain/          pure lifecycle contracts (Phase 1B)
 events/          catalogue + envelope builders
@@ -329,19 +330,67 @@ Adapter targets Phase 1F `public.finance_*` tables only. Client is **explicitly 
 
 - SQL authored.
 - SQL statically verified.
-- SQL **not applied**.
-- Adapter implemented and contract-tested with fake client.
-- Database persistence **not yet certified**.
-- Staging **not started**.
-- Production **not started**.
+- SQL applied on **Staging only** (Phase 1H) — see `persistence/staging/PHASE_1H_STAGING_CERTIFICATION.md`.
+- Adapter implemented and contract-tested with fake client; Staging adapter QA certified with conditions.
+- Production SQL **not** applied / **not** authorized.
+- Runtime composition (Phase 1I) is opt-in; default mode is **disabled**.
 
 **Still absent / deferred:**
 
-- Staging/Production SQL apply
-- Runtime app wiring / authenticated Supabase client composition
+- Production SQL apply / Production runtime activation
+- App shell / authenticated Supabase client composition wiring
 - Billing table reuse
 - finance-ledger localStorage as durable SoT
 - Live payment provider
+- Booking / Tournament / Competition / UI integration
+
+---
+
+## Phase 1I — Runtime composition foundation
+
+| Artifact | Path |
+|----------|------|
+| Runtime package | `src/features/finance/runtime/` |
+| Factory | `createFinanceRuntime(config, dependencies)` |
+| Test harness | `createFinanceRuntimeTestHarness(options?)` |
+| Contract tests | `tests/finance-phase-1i-runtime-composition.test.js` |
+
+### Owner decisions (enforced)
+
+1. Finance runtime is **opt-in**; default mode is **disabled**.
+2. No implicit Supabase client; no env credential reads; no global singleton.
+3. No implicit tenant; default tenant strategy is `explicit-per-command`.
+4. No Production activation; Production environment classification rejects non-disabled modes.
+5. No live payment provider; provider strategies are `none` (default) and `mock` (explicit).
+6. No UI route/menu wiring; no Booking / Tournament / Competition integration.
+7. No automatic migration apply; no startup database write; no network during construction.
+
+### Modes
+
+| Mode | Persistence | Notes |
+|------|-------------|-------|
+| `disabled` (default) | none | Capability inspection only; command attempts throw `FINANCE_RUNTIME_DISABLED` |
+| `memory` | isolated in-memory repos | Non-durable; rejects Production; tests/demo only |
+| `supabase` | `createSupabaseFinanceRepositories` | Injected client required; Staging classification only; no query/write during construction |
+
+### Configuration contract
+
+Validated by `validateFinanceRuntimeConfig`. Unknown keys are **rejected** (fail-closed). Secret-like keys (`apiKey`, `token`, `serviceRole`, …) are rejected. Validated config is immutable (`Object.freeze`).
+
+Fields: `enabled`, `mode`, `environment`, `tenantStrategy`, `providerStrategy`, `persistenceExpectation`, `transactionExpectation`, `featureFlags`, `diagnostics`.
+
+### Readiness / capabilities
+
+Readiness states: `DISABLED` | `READY` | `READY_WITH_CONDITIONS` | `NOT_READY`.
+
+Supabase without an injected transactional executor reports `READY_WITH_CONDITIONS` (or `NOT_READY` when `transactionExpectation` requires an executor). Capability reports always set `productionAuthorized: false` and reference Phase 1H Staging certification without embedding secrets or database URLs.
+
+Optional health probes are explicit and opt-in (`featureFlags.allowOptionalHealthProbes`); they never run during construction.
+
+### Tenant / provider boundaries
+
+- Tenant: `explicit-per-command` (default) or `injected-trusted-resolver` (injected `tenantResolver.resolveTenantId`). Factory does not resolve a tenant at startup. No first-venue fallback.
+- Provider: `none` (default) or `mock` (requires `featureFlags.allowMockProvider: true`). Mock never auto-confirms payments. Production rejects mock.
 
 ---
 
@@ -349,13 +398,13 @@ Adapter targets Phase 1F `public.finance_*` tables only. Client is **explicitly 
 
 Finance owns a provider-neutral Payment Provider port (Phase 1D).
 
-Phase 1D does **not** select, enable, or consolidate a live payment provider. No webhooks wired to HTTP/Edge. No live provider calls. No credentials.
+Phase 1D/1I does **not** select, enable, or consolidate a live payment provider. No webhooks wired to HTTP/Edge. No live provider calls. No credentials.
 
 ---
 
 ## Integration status
 
-Phase 1D has **no integration** with Booking, Tournament, Competition, Notification, Reporting, Billing, or UI modules.
+Phase 1I has **no integration** with Booking, Tournament, Competition, Notification, Reporting, Billing, or UI modules. Runtime composition is not wired into the application shell.
 
 ---
 
@@ -374,12 +423,13 @@ Finance must never independently decide competition eligibility.
 
 Expected later phases (not started):
 
-1. Durable persistence adapters + DB uniqueness for idempotency / provider txn refs
+1. Authenticated app-shell composition behind feature flags (still opt-in; Staging first)
 2. Live provider adapters implementing PaymentProviderPort (still no forced consolidation of sibling stacks)
 3. Booking / Tournament / Club fee adapters (consume Finance contracts)
 4. Competition consumer of `PAYMENT_CONFIRMED` (eligibility remains Competition-owned)
 5. Notification / Reporting consumers of Finance events
 6. Reconciliation workflows
+7. Production authorization gate (separate Owner approval)
 
 ---
 
@@ -391,18 +441,19 @@ Expected later phases (not started):
 - Provider contracts reject secret-like metadata and do not return raw payloads.
 - Webhook tenant routing hints are never authoritative.
 - Typed errors expose safe messages + non-sensitive context only; retryable hints where applicable.
+- Runtime config / readiness / capability reports reject secrets and do not embed credentials, DB URLs, or access tokens.
 
 ---
 
 ## Known limitations
 
 - Phase 1C in-memory repositories and Phase 1E contract harness are not durable / not production.
-- Phase 1F SQL is authored and statically verified only — **not applied**, not staging-certified.
-- Phase 1G adapter is durable-capable in code shape only — **no real DB connection**; multi-record atomicity requires injected executor.
+- Phase 1F SQL is Staging-applied (Phase 1H) with unresolved conditions — see certification doc.
+- Phase 1G adapter multi-record atomicity requires injected executor.
+- Phase 1I runtime default is disabled; Production activation rejected; no app-shell wiring.
 - VND-only allowlist (DB CHECK `currency = 'VND'`; extend via later migration).
 - Provider port exists; no live provider adapter authorized.
 - Mock provider is not production-capable.
-- No durable Supabase runtime wiring in the application shell.
 - No UI.
 - No wiring into booking, tournament, competition, notification, or billing modules.
 - Invoice payment status is a bookkeeping hint, not settlement evidence.
@@ -415,6 +466,6 @@ Expected later phases (not started):
 
 ## Next recommended phase
 
-**Phase 1H — Staging SQL apply + adapter certification** (Owner-authorized Staging only) and/or application composition wiring behind feature flags. Live provider adapters remain separately gated.
+**Phase 1J — Authenticated Staging composition behind feature flags** (Owner-authorized) and/or live provider adapter spike (separately gated). Production remains blocked.
 
-Conditions for next phase: Phase 1G committed on `feature/finance-phase-1-foundation`, Finance tests green, Owner approval for Staging apply and/or runtime wiring (never Production without separate gate).
+Conditions for next phase: Phase 1I committed on `feature/finance-phase-1-foundation`, Finance tests green, Owner approval for any app-shell wiring or live provider work (never Production without separate gate).
