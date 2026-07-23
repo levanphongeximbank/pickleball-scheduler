@@ -2,7 +2,10 @@
  * Finance durable persistence (Phase 1E contracts + Phase 1G Supabase adapter).
  *
  * Phase 1G adapter is dependency-injected and database-disconnected in tests.
- * SQL is authored (Phase 1F) but not applied. No Staging/Production connection.
+ * Finance SQL was applied to Staging only (Phase 1H); Staging certification is
+ * READY WITH CONDITIONS. Production was not touched; Production rollout remains
+ * deferred and unauthorized. Persistence contracts and adapters are Foundation
+ * capabilities only — not business integration or Production readiness.
  */
 
 export {
