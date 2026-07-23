@@ -1,8 +1,8 @@
-# Finance Foundation Architecture (Phase 1B)
+# Finance Foundation Architecture (Phase 1B + Phase 1C)
 
 **Module home:** `src/features/finance/`
 
-**Status:** Domain foundation contracts and lifecycles (not Production-ready Finance)
+**Status:** Domain foundation + application services with in-memory repositories (not Production-ready Finance)
 
 **Baseline:** Phase 1A read-only audit approved at `1fe3d1c0597470858ea400d379ef853d225720a5`
 
@@ -56,7 +56,7 @@ Billing PascalCase events and provider webhook names remain unchanged.
 `src/features/finance-ledger` is legacy/prototype UI with localStorage persistence.
 
 - Do **not** build the new Finance domain on finance-ledger.
-- Phase 1B does **not** modify finance-ledger.
+- Phase 1B/1C do **not** modify finance-ledger.
 - localStorage is not an acceptable production source of truth for Finance.
 
 ---
@@ -78,6 +78,94 @@ Billing PascalCase events and provider webhook names remain unchanged.
 
 ---
 
+## Layering (Phase 1C)
+
+```
+application/     orchestration services + idempotent commands
+repositories/    provider-neutral ports + in-memory implementations
+domain/          pure lifecycle contracts (Phase 1B)
+events/          catalogue + envelope builders
+errors/          typed FinanceError codes
+```
+
+### Application layer
+
+Focused services (explicit DI via `createFinanceApplication`):
+
+| Service | Responsibility |
+|---------|----------------|
+| FeeApplicationService | Register FeeDefinition; evaluate FeePolicy |
+| ObligationApplicationService | Create/open/cancel/expire; settlement only via confirmed payment |
+| InvoiceApplicationService | Create/issue/void; payment hint only via confirmed payment |
+| PaymentApplicationService | Initiate, attempt, confirm/fail/cancel/expire; settle once |
+| ReceiptApplicationService | Exactly one receipt per confirmed payment |
+| RefundApplicationService | Request/approve/reject/complete; partial refunds |
+| FinanceEventRecorder | Persist approved event envelopes (not an external bus) |
+
+Commands carry explicit `tenantId`, `idempotencyKey`, `actor`, `correlationId`, optional `causationId`, and `occurredAt` / `requestedAt`. No `Date.now`, no implicit current user, no random IDs unless injected.
+
+### Repository ports
+
+Provider-neutral, persistence-neutral contracts:
+
+- FeeDefinitionRepository
+- FinancialObligationRepository
+- InvoiceRepository
+- PaymentRepository (tenant-scoped provider transaction uniqueness)
+- PaymentAttemptRepository
+- ReceiptRepository (one receipt per payment)
+- RefundRepository
+- IdempotencyRepository
+- FinanceEventRepository (FinanceEventSink)
+
+Ports support tenant-scoped reads/writes, deterministic identity lookup, immutable-record protections, idempotency lookup/conflict detection, and typed `NOT_FOUND` / `CONFLICT` errors. No SQL, Supabase, localStorage, or browser APIs.
+
+### In-memory repositories
+
+`createInMemoryFinanceRepositories()` creates an **isolated** store per call:
+
+- tenant isolation;
+- defensive cloning / frozen snapshots (no mutable leakage);
+- duplicate identity rejection;
+- provider transaction reference uniqueness **per tenant**;
+- idempotency uniqueness per tenant + operation + key;
+- `resetAllForTests()` for test setup only.
+
+**Limitations:** in-memory only; not durable; not production persistence; no shared global singleton across instances.
+
+### Orchestration workflows
+
+1. Fee → Obligation → Invoice → Payment → Attempt → Confirmation → Receipt
+2. Confirmed Payment → Refund Request → Approve/Reject → Complete (with evidence)
+3. Idempotent command replay returns the same financial result without a second effect
+
+### Idempotency behavior
+
+Application-level executor (`executeIdempotent`):
+
+1. First valid command records canonical request fingerprint + result.
+2. Same tenant, operation, key, and fingerprint → return stored result; no second record/event/settlement.
+3. Same key with different fingerprint → `FINANCE_IDEMPOTENCY_CONFLICT`.
+4. Same key in a different tenant remains isolated.
+5. Fingerprints use canonical key-sorted normalization (not raw unordered `JSON.stringify`).
+6. Secrets / sensitive fields are rejected from fingerprints.
+
+**Still required later:** database uniqueness on `(tenantId, operationType, idempotencyKey)`.
+
+### Event recording
+
+Successful transitions record Phase 1B envelopes (SCREAMING_SNAKE_CASE). Event recorder stores envelopes through FinanceEventRepository. Idempotent replay does not append duplicate events (command + event idempotency keys). No Notification or Reporting wiring. No fake reconciliation/adjustment events.
+
+### Tenant isolation
+
+All repository operations are tenant-scoped. Cross-tenant reads/updates fail with typed errors. Provider transaction uniqueness is tenant-scoped (documented policy).
+
+### Provider-neutral design
+
+No live payment provider. No webhooks. No provider secrets or raw payloads in commands/events. Provider transaction references are opaque strings with uniqueness enforcement.
+
+---
+
 ## Lifecycle summaries
 
 ### Fee Definition / Fee Policy
@@ -95,6 +183,7 @@ Also: `CREATED|OPEN|PARTIALLY_SETTLED → CANCELLED|EXPIRED`
 - Explicit allowed transitions; invalid transitions throw typed errors.
 - Amount/currency immutable after settlement begins.
 - Overpayment rejected.
+- Settlement applied only through confirmed Finance payments (application layer).
 
 ### Invoice
 
@@ -114,12 +203,12 @@ Payment: `PENDING → CONFIRMED | FAILED | CANCELLED | EXPIRED`
 - Attempts are separate; failed/cancelled/expired attempts cannot become successful.
 - Confirmation requires evidence metadata.
 - Duplicate confirmation does not create a second financial effect.
-- Provider transaction references are immutable once set.
+- Provider transaction references are immutable once set and unique per tenant.
 - Refunds never rewrite the original payment amount.
 
 ### Receipt
 
-Issued only from a confirmed payment. Deterministic serialization. No PDF/HTML/print.
+Issued only from a confirmed payment. Exactly one canonical receipt per confirmed effect. Deterministic serialization. No PDF/HTML/print.
 
 ### Refund
 
@@ -157,31 +246,17 @@ Approved types (SCREAMING_SNAKE_CASE):
 - `RECONCILIATION_COMPLETED`
 - `FINANCIAL_ADJUSTMENT_RECORDED`
 
+Phase 1C records the workflow events above as applicable. It does **not** implement reconciliation or financial adjustment merely to emit those events.
+
 `PAYMENT_CONFIRMED` may later be consumed by Competition, but the event itself only confirms financial state — never eligibility.
-
-Phase 1B does **not** create a runtime event bus or Notification wiring.
-
----
-
-## Idempotency boundaries
-
-Helpers produce deterministic tenant-scoped keys from:
-
-- tenantId
-- operationType
-- businessReference
-- optional providerReference
-- version
-
-Empty/malformed/secret-like components are rejected.
-
-**Limitation:** an in-memory helper alone does **not** prevent database duplicates. Persistence phases must enforce uniqueness.
 
 ---
 
 ## Persistence
 
-**Not implemented in Phase 1B.**
+**Still absent.**
+
+Phase 1C provides repository **ports** and **in-memory** implementations for capability proof only.
 
 No SQL, Supabase migrations, staging, or production database operations are authorized in this phase.
 
@@ -191,7 +266,13 @@ No SQL, Supabase migrations, staging, or production database operations are auth
 
 Finance will own a provider-neutral Payment Provider port in a later phase.
 
-Phase 1B does **not** select, enable, or consolidate a live payment provider. No webhooks. No live provider calls.
+Phase 1C does **not** select, enable, or consolidate a live payment provider. No webhooks. No live provider calls.
+
+---
+
+## Integration status
+
+Phase 1C has **no integration** with Booking, Tournament, Competition, Notification, Reporting, Billing, or UI modules.
 
 ---
 
@@ -210,7 +291,7 @@ Finance must never independently decide competition eligibility.
 
 Expected later phases (not started):
 
-1. Persistence adapters + DB uniqueness for idempotency
+1. Durable persistence adapters + DB uniqueness for idempotency / provider txn refs
 2. Payment Provider port (provider-neutral)
 3. Booking / Tournament / Club fee adapters (consume Finance contracts)
 4. Competition consumer of `PAYMENT_CONFIRMED` (eligibility remains Competition-owned)
@@ -223,28 +304,26 @@ Expected later phases (not started):
 
 - Domain objects must not store raw provider secrets or unnecessary personal profile data.
 - Event payloads reject forbidden eligibility and secret/PII fields.
-- Idempotency keys reject secret-like component names.
+- Idempotency keys and fingerprints reject secret-like material.
 - Typed errors expose safe messages + non-sensitive context only.
 
 ---
 
 ## Known limitations
 
-- In-memory / pure domain only — no durability.
+- In-memory repositories only — no durability / no production guarantee.
 - VND-only allowlist.
 - No provider port.
 - No UI.
 - No wiring into booking, tournament, competition, notification, or billing modules.
 - Invoice payment status is a bookkeeping hint, not settlement evidence.
-- No cryptographic hash dependency for idempotency (canonical string keys only).
+- Application idempotency does not replace future database uniqueness constraints.
+- No cryptographic hash dependency for idempotency (canonical string fingerprints).
 
 ---
 
-## Next recommended phases
+## Next recommended phase
 
-1. **Phase 1C — Persistence contracts** (repository ports + SQL design, still no production deploy)
-2. **Phase 1D — Payment Provider port** (provider-neutral; no live consolidation yet)
-3. **Phase 1E — Adapter wiring** (booking/tournament fee adapters consuming Finance)
-4. **Competition financial-status consumer** (eligibility remains outside Finance)
+**Phase 1D — Durable persistence contracts / SQL design** (still no production deploy), or **Payment Provider port** (provider-neutral; no live consolidation yet).
 
-Conditions for next phase: Phase 1B committed on `feature/finance-phase-1-foundation`, tests green, owner approval for persistence scope.
+Conditions for next phase: Phase 1C committed on `feature/finance-phase-1-foundation`, targeted tests green, owner approval for persistence or provider-port scope.

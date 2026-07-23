@@ -1,14 +1,14 @@
 /**
- * Finance Foundation — public facade (Phase 1B).
+ * Finance Foundation — public facade (Phase 1B + Phase 1C).
  *
  * Export only canonical public contracts. Consumers must import from this
  * index — not from internal file paths — once wiring begins in later phases.
  *
  * Does NOT export:
- * - private helper internals beyond documented contracts
- * - persistence adapters (none in Phase 1B)
- * - payment provider ports (deferred)
- * - UI, SQL, or Billing/SaaS surfaces
+ * - mutable in-memory internal storage maps
+ * - test-only reset helpers (use createInMemoryFinanceRepositories().resetAllForTests)
+ * - private fingerprint/normalization internals beyond documented helpers
+ * - SQL / payment provider / UI / Billing surfaces
  */
 
 // Errors
@@ -139,7 +139,7 @@ export {
   assertCompletedRefundImmutable,
 } from "./domain/refund.js";
 
-// Idempotency
+// Idempotency (domain helpers)
 export {
   FINANCE_IDEMPOTENCY_VERSION,
   normalizeIdempotencyInput,
@@ -160,3 +160,34 @@ export {
   isFinanceEventType,
 } from "./events/catalogue.js";
 export { createFinanceEvent, serializeFinanceEvent } from "./events/envelope.js";
+
+// ---------------------------------------------------------------------------
+// Phase 1C — Application services + repository ports
+// ---------------------------------------------------------------------------
+
+export { FINANCE_REPOSITORY_PORTS } from "./repositories/ports.js";
+
+/**
+ * In-memory repositories — development / testing capability proof only.
+ * Not production persistence.
+ */
+export { createInMemoryFinanceRepositories } from "./repositories/inMemory.js";
+
+export {
+  createFinanceApplication,
+  createSequentialIdGenerator,
+  createFinanceEventRecorder,
+  createFeeApplicationService,
+  createObligationApplicationService,
+  createInvoiceApplicationService,
+  createPaymentApplicationService,
+  createReceiptApplicationService,
+  createRefundApplicationService,
+  buildCanonicalRequestFingerprint,
+  FEE_OPERATIONS,
+  OBLIGATION_OPERATIONS,
+  INVOICE_OPERATIONS,
+  PAYMENT_OPERATIONS,
+  RECEIPT_OPERATIONS,
+  REFUND_OPERATIONS,
+} from "./application/index.js";

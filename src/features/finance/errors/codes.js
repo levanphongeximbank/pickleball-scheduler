@@ -19,6 +19,10 @@ export const FINANCE_ERROR_CODES = Object.freeze({
   IMMUTABLE_RECORD: "FINANCE_IMMUTABLE_RECORD",
   INVALID_EVENT_PAYLOAD: "FINANCE_INVALID_EVENT_PAYLOAD",
   INVALID_INPUT: "FINANCE_INVALID_INPUT",
+  /** Tenant-scoped entity was not found. */
+  NOT_FOUND: "FINANCE_NOT_FOUND",
+  /** Duplicate identity or conflicting write under the same tenant. */
+  CONFLICT: "FINANCE_CONFLICT",
 });
 
 export const FINANCE_ERROR_CODE_VALUES = Object.freeze(
