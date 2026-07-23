@@ -82,10 +82,9 @@ export function createRatingSnapshotContract(input) {
  * Immutable guard: snapshots must not change after creation.
  * @param {Readonly<RatingSnapshotContract>} snapshot
  * @param {string} field
- * @param {unknown} _value
  * @returns {never}
  */
-export function assertSnapshotImmutable(snapshot, field, _value) {
+export function assertSnapshotImmutable(snapshot, field) {
   failContract(
     PLAYER_RATING_FOUNDATION_ERROR_CODE.SNAPSHOT_MUTATION_FORBIDDEN,
     "Rating snapshot is immutable; mutation is forbidden",

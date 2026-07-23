@@ -83,10 +83,9 @@ export function createRatingHistoryEntryContract(input) {
  * Append-only guard: history contracts must not be rewritten in place.
  * @param {Readonly<RatingHistoryEntryContract>} entry
  * @param {string} field
- * @param {unknown} _value
  * @returns {never}
  */
-export function assertHistoryAppendOnly(entry, field, _value) {
+export function assertHistoryAppendOnly(entry, field) {
   failContract(
     PLAYER_RATING_FOUNDATION_ERROR_CODE.HISTORY_MUTATION_FORBIDDEN,
     "Rating history is append-only; in-place mutation is forbidden",
