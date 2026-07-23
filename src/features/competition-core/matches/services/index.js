@@ -14,3 +14,17 @@ export {
   findMatchTransition,
   assertMatchTransitionAllowed,
 } from "./transitions.js";
+
+export {
+  applyMatchTransition,
+  normalizeMatchAuthorizationDecision,
+} from "./applyMatchTransition.js";
+
+export {
+  evaluatePreMatchReadiness,
+} from "./preMatchReadiness.js";
+
+export {
+  evaluateScoringEligibility,
+  assertScoringAllowed,
+} from "./scoringEligibility.js";

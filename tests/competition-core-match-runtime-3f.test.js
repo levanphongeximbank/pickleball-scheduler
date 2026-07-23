@@ -102,7 +102,8 @@ test("3F status mapping: legacy → canonical", () => {
   assert.equal(mapLegacyMatchStatus("postponed"), MATCH_STATUS.POSTPONED);
   assert.equal(mapLegacyMatchStatus("forfeit"), MATCH_STATUS.COMPLETED);
   assert.equal(mapLegacyMatchStatus("lineup_open"), MATCH_STATUS.LINEUPS_PENDING);
-  assert.equal(mapLegacyMatchStatus("paused"), MATCH_STATUS.SUSPENDED);
+  assert.equal(mapLegacyMatchStatus("paused"), MATCH_STATUS.PAUSED);
+  assert.equal(mapLegacyMatchStatus("suspended"), MATCH_STATUS.SUSPENDED);
 });
 
 test("3F identity: match key frozen and display-name independent", () => {

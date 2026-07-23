@@ -88,4 +88,15 @@ export {
   MATCH_TRANSITION_MATRIX,
   findMatchTransition,
   assertMatchTransitionAllowed,
+  applyMatchTransition,
+  normalizeMatchAuthorizationDecision,
+  evaluatePreMatchReadiness,
+  evaluateScoringEligibility,
+  assertScoringAllowed,
 } from "./services/index.js";
+
+export {
+  MATCH_LIFECYCLE_EVENT_TYPE,
+  buildMatchLifecycleEventId,
+  createMatchLifecycleAuditEvent,
+} from "./domain/createMatchLifecycleAuditEvent.js";

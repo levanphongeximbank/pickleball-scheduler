@@ -114,6 +114,25 @@ function mapCompletionReason(rawStatus, raw) {
   if (key === "walkover" || raw?.resultType === "walkover") {
     return MATCH_COMPLETION_REASON.WALKOVER;
   }
+  if (
+    key === "no_show" ||
+    key === "noshow" ||
+    raw?.resultType === "no_show" ||
+    raw?.resultType === "NO_SHOW"
+  ) {
+    return MATCH_COMPLETION_REASON.NO_SHOW;
+  }
+  if (
+    key === "retirement" ||
+    key === "retired" ||
+    raw?.resultType === "retirement" ||
+    raw?.resultType === "RETIREMENT"
+  ) {
+    return MATCH_COMPLETION_REASON.RETIREMENT;
+  }
+  if (key === "abandoned" || raw?.resultType === "abandoned") {
+    return MATCH_COMPLETION_REASON.ABANDONED;
+  }
   if (key === "cancelled" || key === "canceled") {
     return MATCH_COMPLETION_REASON.CANCELLED;
   }
@@ -336,7 +355,12 @@ export function mapLegacyMatchToCompetitionMatch(source, context = {}) {
         : null,
     scheduledAt: raw.scheduledAt ?? null,
     startedAt: raw.startedAt ?? null,
+    pausedAt: raw.pausedAt ?? null,
+    resumedAt: raw.resumedAt ?? null,
     completedAt: raw.completedAt ?? null,
+    suspendedAt: raw.suspendedAt ?? null,
+    cancelledAt: raw.cancelledAt ?? null,
+    abandonedAt: raw.abandonedAt ?? null,
     resultReference,
     sourceType,
     revision: 1,

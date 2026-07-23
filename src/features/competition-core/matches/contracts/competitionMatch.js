@@ -66,9 +66,12 @@ import {
  * @property {string|null} refereeAssignmentRef
  * @property {string|null} scheduledAt
  * @property {string|null} startedAt
+ * @property {string|null} pausedAt
+ * @property {string|null} resumedAt
  * @property {string|null} completedAt
  * @property {string|null} suspendedAt
  * @property {string|null} cancelledAt
+ * @property {string|null} abandonedAt
  * @property {MatchResultReference|null} resultReference
  * @property {string} sourceType
  * @property {number} revision
@@ -269,9 +272,12 @@ export function createCompetitionMatch(partial = {}) {
         : String(partial.refereeAssignmentRef),
     scheduledAt: partial?.scheduledAt ?? null,
     startedAt: partial?.startedAt ?? null,
+    pausedAt: partial?.pausedAt ?? null,
+    resumedAt: partial?.resumedAt ?? null,
     completedAt: partial?.completedAt ?? null,
     suspendedAt: partial?.suspendedAt ?? null,
     cancelledAt: partial?.cancelledAt ?? null,
+    abandonedAt: partial?.abandonedAt ?? null,
     resultReference: createMatchResultReference(partial?.resultReference),
     sourceType: isNonEmptyString(partial?.sourceType)
       ? String(partial.sourceType)
