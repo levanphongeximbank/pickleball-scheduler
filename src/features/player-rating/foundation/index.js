@@ -1,7 +1,8 @@
 /**
  * Player Rating Foundation — Phase 1B contracts/ports + Phase 1C read model
  * + Phase 1D append-only history & immutable snapshots
- * + Phase 1E verification & manual adjustment.
+ * + Phase 1E verification & manual adjustment
+ * + Phase 1H read-only facade.
  *
  * Runtime-neutral contracts, ports, read-model, and in-memory adapters only.
  * Not wired into Production runtime.
@@ -161,3 +162,15 @@ export {
   verifyPlayerRating,
   adjustPlayerRating,
 } from "./verification-adjustment/index.js";
+
+export {
+  PLAYER_RATING_READ_FACADE_PHASE,
+  PLAYER_RATING_READ_FACADE_AVAILABILITY_STATUS,
+  PLAYER_RATING_READ_FACADE_REUSED_ERROR_CODE,
+  isPlayerRatingReadFacadeAvailabilityStatus,
+  isPlayerRatingReadFacadeErrorCode,
+  failReadFacade,
+  buildPlayerRatingOverview,
+  deriveAvailabilityStatus,
+  createPlayerRatingReadFacade,
+} from "./read-facade/index.js";

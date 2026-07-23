@@ -315,5 +315,6 @@
   "tests/player-rating-foundation.test.js",
   "tests/player-rating-current-state-read-model.test.js",
   "tests/player-rating-history-snapshot.test.js",
-  "tests/player-rating-verification-adjustment.test.js"
+  "tests/player-rating-verification-adjustment.test.js",
+  "tests/player-rating-read-facade.test.js"
 ]
