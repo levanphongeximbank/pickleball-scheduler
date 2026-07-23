@@ -156,6 +156,14 @@ export function createPayment(input = {}) {
     evidenceRef: optionalId(input.evidenceRef),
     auditEvidenceRef: optionalId(input.auditEvidenceRef),
     confirmedAttemptId: optionalId(input.confirmedAttemptId),
+    /**
+     * Application settlement bookkeeping: true after obligation/invoice
+     * settlement effects for this confirmed payment have been applied.
+     * Not a durable DB transaction marker — Foundation reconciliation aid.
+     */
+    settlementEffectApplied: Boolean(input.settlementEffectApplied),
+    obligationSettlementApplied: Boolean(input.obligationSettlementApplied),
+    invoiceSettlementApplied: Boolean(input.invoiceSettlementApplied),
     attempts,
     createdAt: optionalId(input.createdAt),
     updatedAt: optionalId(input.updatedAt),
@@ -351,10 +359,15 @@ export function expirePayment(payment, meta = {}) {
 /**
  * Remaining refundable amount (does not mutate payment amount).
  *
+ * Completed refunds are reflected in payment.refundedAmount.
+ * Callers may also pass reservedInFlightMinor for REQUESTED/APPROVED refunds
+ * that have not yet completed (application-layer reservation).
+ *
  * @param {object} payment
+ * @param {{ reservedInFlightMinor?: number }} [options]
  * @returns {Readonly<{ amountMinor: number, currency: string }>}
  */
-export function getRefundableAmount(payment) {
+export function getRefundableAmount(payment, options = {}) {
   const current = createPayment(payment);
   if (current.status !== PAYMENT_STATUS.CONFIRMED) {
     throw new FinanceError(
@@ -363,7 +376,25 @@ export function getRefundableAmount(payment) {
       { paymentId: current.paymentId, status: current.status }
     );
   }
-  return serializeMoney(subtractMoney(current.amount, current.refundedAmount));
+  const reservedRaw = options.reservedInFlightMinor ?? 0;
+  if (
+    typeof reservedRaw !== "number" ||
+    !Number.isSafeInteger(reservedRaw) ||
+    reservedRaw < 0
+  ) {
+    throw new FinanceError(
+      FINANCE_ERROR_CODES.INVALID_REFUND_AMOUNT,
+      "reservedInFlightMinor must be a non-negative safe integer.",
+      { paymentId: current.paymentId, field: "reservedInFlightMinor" }
+    );
+  }
+  const afterCompleted = subtractMoney(current.amount, current.refundedAmount);
+  if (reservedRaw > afterCompleted.amountMinor) {
+    return serializeMoney(createMoney(0, current.currency));
+  }
+  return serializeMoney(
+    createMoney(afterCompleted.amountMinor - reservedRaw, current.currency)
+  );
 }
 
 /**

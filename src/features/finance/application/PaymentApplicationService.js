@@ -18,6 +18,11 @@ import {
   expirePaymentAttempt,
   PAYMENT_ATTEMPT_STATUS,
 } from "../domain/paymentAttempt.js";
+import { applyObligationSettlement } from "../domain/obligation.js";
+import {
+  applyInvoicePaymentHint,
+  assertIssuedInvoiceImmutable,
+} from "../domain/invoice.js";
 import { FINANCE_EVENT_TYPE } from "../events/catalogue.js";
 import { FINANCE_ERROR_CODES } from "../errors/codes.js";
 import { FinanceError } from "../errors/FinanceError.js";
@@ -44,6 +49,42 @@ export const PAYMENT_OPERATIONS = Object.freeze({
 });
 
 /**
+ * Outstanding remaining amount for an obligation or invoice.
+ * @param {{ amountMinor: number } | null} total
+ * @param {{ amountMinor: number } | null} paidOrSettled
+ * @param {string} label
+ * @returns {number}
+ */
+function requireRemainingPayableMinor(total, paidOrSettled, label) {
+  if (!total || typeof total.amountMinor !== "number") {
+    throw new FinanceError(
+      FINANCE_ERROR_CODES.INVALID_INPUT,
+      `${label} amount is required to compute remaining payable.`
+    );
+  }
+  const paid =
+    paidOrSettled && typeof paidOrSettled.amountMinor === "number"
+      ? paidOrSettled.amountMinor
+      : 0;
+  if (!Number.isSafeInteger(paid) || paid < 0) {
+    throw new FinanceError(
+      FINANCE_ERROR_CODES.INVALID_MONEY,
+      `${label} settled/paid amount is inconsistent.`,
+      { field: label }
+    );
+  }
+  const remaining = total.amountMinor - paid;
+  if (!Number.isSafeInteger(remaining) || remaining < 0) {
+    throw new FinanceError(
+      FINANCE_ERROR_CODES.INVALID_MONEY,
+      `${label} remaining amount is inconsistent.`,
+      { remainingMinor: remaining }
+    );
+  }
+  return remaining;
+}
+
+/**
  * @param {object} deps
  */
 export function createPaymentApplicationService(deps = {}) {
@@ -53,8 +94,6 @@ export function createPaymentApplicationService(deps = {}) {
   const obligationRepository = deps.obligationRepository;
   const idempotencyRepository = deps.idempotencyRepository;
   const eventRecorder = deps.eventRecorder;
-  const obligationService = deps.obligationService;
-  const invoiceService = deps.invoiceService;
   const paymentProvider = deps.paymentProvider || null;
   const idGenerator = requireIdGenerator(deps);
 
@@ -80,6 +119,95 @@ export function createPaymentApplicationService(deps = {}) {
         { paymentId: payment.paymentId, obligationId: obligation.obligationId }
       );
     }
+  }
+
+  /**
+   * Apply missing obligation/invoice settlement for a confirmed payment.
+   * Idempotent via per-target settlement flags — does not recontact provider.
+   * Foundation does not claim multi-record DB atomicity.
+   *
+   * @param {object} payment
+   * @param {object} ctx
+   * @returns {{ payment: object, settlementAppliedNow: boolean }}
+   */
+  function ensureSettlementFromConfirmedPayment(payment, ctx) {
+    if (payment.status !== PAYMENT_STATUS.CONFIRMED) {
+      throw new FinanceError(
+        FINANCE_ERROR_CODES.INVALID_TRANSITION,
+        "Settlement reconciliation requires a confirmed payment.",
+        { paymentId: payment.paymentId, status: payment.status }
+      );
+    }
+    if (payment.settlementEffectApplied) {
+      return { payment, settlementAppliedNow: false };
+    }
+
+    let current = payment;
+    let settlementAppliedNow = false;
+
+    if (current.obligationId && !current.obligationSettlementApplied) {
+      if (!obligationRepository) {
+        throw new FinanceError(
+          FINANCE_ERROR_CODES.INVALID_INPUT,
+          "obligationRepository is required to settle an obligation."
+        );
+      }
+      const obligation = obligationRepository.getById(
+        ctx.tenantId,
+        current.obligationId
+      );
+      const nextObligation = applyObligationSettlement(obligation, {
+        amountMinor: current.amount.amountMinor,
+        currency: current.currency,
+      });
+      obligationRepository.update(ctx.tenantId, current.obligationId, {
+        ...nextObligation,
+        updatedAt: ctx.occurredAt,
+      });
+      current = paymentRepository.update(ctx.tenantId, current.paymentId, {
+        ...current,
+        obligationSettlementApplied: true,
+        updatedAt: ctx.occurredAt,
+      });
+      settlementAppliedNow = true;
+    }
+
+    if (current.invoiceId && !current.invoiceSettlementApplied) {
+      if (!invoiceRepository) {
+        throw new FinanceError(
+          FINANCE_ERROR_CODES.INVALID_INPUT,
+          "invoiceRepository is required to settle an invoice."
+        );
+      }
+      const invoice = invoiceRepository.getById(ctx.tenantId, current.invoiceId);
+      assertIssuedInvoiceImmutable(invoice, invoice);
+      const nextInvoice = applyInvoicePaymentHint(invoice, {
+        amountMinor: current.amount.amountMinor,
+        currency: current.currency,
+      });
+      invoiceRepository.update(ctx.tenantId, current.invoiceId, {
+        ...nextInvoice,
+        updatedAt: ctx.occurredAt,
+      });
+      current = paymentRepository.update(ctx.tenantId, current.paymentId, {
+        ...current,
+        invoiceSettlementApplied: true,
+        updatedAt: ctx.occurredAt,
+      });
+      settlementAppliedNow = true;
+    }
+
+    current = paymentRepository.update(ctx.tenantId, current.paymentId, {
+      ...current,
+      settlementEffectApplied: true,
+      obligationSettlementApplied:
+        !current.obligationId || Boolean(current.obligationSettlementApplied),
+      invoiceSettlementApplied:
+        !current.invoiceId || Boolean(current.invoiceSettlementApplied),
+      updatedAt: ctx.occurredAt,
+    });
+
+    return { payment: current, settlementAppliedNow };
   }
 
   function terminalAttempt(command, operationType, transitionFn, eventType, label) {
@@ -224,24 +352,91 @@ export function createPaymentApplicationService(deps = {}) {
           let currency = command.currency;
           let invoice = null;
           let obligation = null;
+          /** @type {number|null} */
+          let remainingPayable = null;
 
           if (invoiceId) {
+            if (!invoiceRepository) {
+              throw new FinanceError(
+                FINANCE_ERROR_CODES.INVALID_INPUT,
+                "invoiceRepository is required when invoiceId is provided."
+              );
+            }
             invoice = invoiceRepository.getById(ctx.tenantId, invoiceId);
-            amountMinor = amountMinor ?? invoice.total.amountMinor;
             currency = currency ?? invoice.currency;
+            remainingPayable = requireRemainingPayableMinor(
+              invoice.total,
+              invoice.amountPaid,
+              "invoice"
+            );
+            if (remainingPayable === 0) {
+              throw new FinanceError(
+                FINANCE_ERROR_CODES.INVALID_INPUT,
+                "Cannot initiate payment against a fully settled invoice.",
+                { invoiceId, remainingMinor: 0 }
+              );
+            }
+            amountMinor = amountMinor ?? remainingPayable;
           }
           if (obligationId) {
+            if (!obligationRepository) {
+              throw new FinanceError(
+                FINANCE_ERROR_CODES.INVALID_INPUT,
+                "obligationRepository is required when obligationId is provided."
+              );
+            }
             obligation = obligationRepository.getById(
               ctx.tenantId,
               obligationId
             );
-            amountMinor = amountMinor ?? obligation.amount.amountMinor;
             currency = currency ?? obligation.currency;
+            const obligationRemaining = requireRemainingPayableMinor(
+              obligation.amount,
+              obligation.settledAmount,
+              "obligation"
+            );
+            if (obligationRemaining === 0) {
+              throw new FinanceError(
+                FINANCE_ERROR_CODES.INVALID_INPUT,
+                "Cannot initiate payment against a fully settled obligation.",
+                { obligationId, remainingMinor: 0 }
+              );
+            }
+            if (remainingPayable == null) {
+              remainingPayable = obligationRemaining;
+              amountMinor = amountMinor ?? obligationRemaining;
+            } else {
+              remainingPayable = Math.min(remainingPayable, obligationRemaining);
+              amountMinor = amountMinor ?? remainingPayable;
+            }
           }
           if (amountMinor == null || currency == null) {
             throw new FinanceError(
               FINANCE_ERROR_CODES.INVALID_INPUT,
               "initiatePayment requires amount/currency or invoice/obligation reference."
+            );
+          }
+          if (
+            typeof amountMinor !== "number" ||
+            !Number.isSafeInteger(amountMinor) ||
+            amountMinor <= 0
+          ) {
+            throw new FinanceError(
+              FINANCE_ERROR_CODES.INVALID_MONEY,
+              "Payment initiation amount must be a positive safe integer.",
+              { amountMinor }
+            );
+          }
+          if (remainingPayable != null && amountMinor > remainingPayable) {
+            throw new FinanceError(
+              FINANCE_ERROR_CODES.OVERPAYMENT,
+              "Initiated payment cannot exceed remaining payable amount.",
+              {
+                attemptedMinor: amountMinor,
+                remainingMinor: remainingPayable,
+                invoiceId,
+                obligationId,
+              }
             );
           }
 
@@ -258,6 +453,9 @@ export function createPaymentApplicationService(deps = {}) {
             idempotencyKey: ctx.idempotencyKey,
             createdAt: ctx.occurredAt,
             updatedAt: ctx.occurredAt,
+            settlementEffectApplied: false,
+            obligationSettlementApplied: false,
+            invoiceSettlementApplied: false,
           });
           assertCurrencyMatchesTarget(payment, invoice, obligation);
           const saved = paymentRepository.save(payment);
@@ -307,11 +505,6 @@ export function createPaymentApplicationService(deps = {}) {
         },
         () => {
           const current = paymentRepository.getById(ctx.tenantId, paymentId);
-          if (current.status === PAYMENT_STATUS.FAILED) {
-            // Domain allows adding attempts only when not cancelled/expired/confirmed.
-            // For FAILED payment at payment-level, reopen conceptually via addPaymentAttempt
-            // which sets status back to PENDING.
-          }
           const withAttempt = addPaymentAttempt(current, {
             attemptId,
             providerReference: command.providerReference,
@@ -514,7 +707,6 @@ export function createPaymentApplicationService(deps = {}) {
             verification.providerTransactionReference ||
             providerPaymentReference;
 
-          // Reuse confirmPayment domain path via nested command semantics
           return this.confirmPayment({
             ...command,
             idempotencyKey: `${ctx.idempotencyKey}::confirm`,
@@ -578,45 +770,35 @@ export function createPaymentApplicationService(deps = {}) {
             confirmedAt: ctx.occurredAt,
           });
 
-          if (!confirmation.financialEffectApplied) {
-            return Object.freeze({
-              payment: confirmation.payment,
-              eventIds: [],
-              financialEffectApplied: false,
-            });
-          }
+          let savedPayment;
+          const confirmationAppliedNow = confirmation.financialEffectApplied;
 
-          const confirmed = confirmation.payment;
-          const attempt = confirmed.attempts.find((a) => a.attemptId === attemptId);
-          paymentAttemptRepository.update(ctx.tenantId, attemptId, attempt);
-          const savedPayment = paymentRepository.update(
-            ctx.tenantId,
-            paymentId,
-            {
+          if (confirmation.financialEffectApplied) {
+            const confirmed = {
+              ...confirmation.payment,
+              settlementEffectApplied: false,
+              obligationSettlementApplied: false,
+              invoiceSettlementApplied: false,
+            };
+            const attempt = confirmed.attempts.find(
+              (a) => a.attemptId === attemptId
+            );
+            paymentAttemptRepository.update(ctx.tenantId, attemptId, attempt);
+            savedPayment = paymentRepository.update(ctx.tenantId, paymentId, {
               ...confirmed,
               updatedAt: ctx.occurredAt,
-            }
-          );
+            });
+          } else {
+            // Already confirmed for this attempt — reconcile missing settlement.
+            // Never reconfirm or recontact the provider during replay recovery.
+            savedPayment = confirmation.payment;
+          }
 
-          // Settle obligation / invoice once.
-          if (savedPayment.obligationId && obligationService) {
-            obligationService.applySettlementFromConfirmedPayment({
-              tenantId: ctx.tenantId,
-              obligationId: savedPayment.obligationId,
-              amountMinor: savedPayment.amount.amountMinor,
-              currency: savedPayment.currency,
-              occurredAt: ctx.occurredAt,
-            });
-          }
-          if (savedPayment.invoiceId && invoiceService) {
-            invoiceService.applyPaymentHintFromConfirmedPayment({
-              tenantId: ctx.tenantId,
-              invoiceId: savedPayment.invoiceId,
-              amountMinor: savedPayment.amount.amountMinor,
-              currency: savedPayment.currency,
-              occurredAt: ctx.occurredAt,
-            });
-          }
+          const settled = ensureSettlementFromConfirmedPayment(
+            savedPayment,
+            ctx
+          );
+          savedPayment = settled.payment;
 
           const event = eventRecorder.record({
             eventType: FINANCE_EVENT_TYPE.PAYMENT_CONFIRMED,
@@ -641,13 +823,16 @@ export function createPaymentApplicationService(deps = {}) {
               paymentId: savedPayment.paymentId,
               attemptId,
               status: savedPayment.status,
+              settlementEffectApplied: savedPayment.settlementEffectApplied,
             },
           });
 
           return Object.freeze({
             payment: savedPayment,
             eventIds: [event.eventId],
-            financialEffectApplied: true,
+            financialEffectApplied:
+              confirmationAppliedNow || settled.settlementAppliedNow,
+            settlementReconciled: settled.settlementAppliedNow,
           });
         }
       );

@@ -12,8 +12,11 @@
 -- Subscription, Competition, or other module objects.
 -- Never uses broad CASCADE.
 --
--- Status: Static-only / unapplied. Do not run against Staging or Production
--- without explicit Owner authorization and backup verification.
+-- Status: Rollback authored for emergency use only.
+--   Forward SQL was applied to Staging only (Phase 1H).
+--   Do not run against Staging or Production without explicit Owner
+--   authorization, backup verification, and a documented rollback window.
+--   Production was not authorized for Finance SQL apply.
 -- =============================================================================
 
 -- Drop policies first (reverse of enablement)

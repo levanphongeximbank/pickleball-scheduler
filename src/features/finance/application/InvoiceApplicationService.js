@@ -7,8 +7,6 @@ import {
   createInvoiceItem,
   issueInvoice,
   voidInvoice,
-  applyInvoicePaymentHint,
-  assertIssuedInvoiceImmutable,
 } from "../domain/invoice.js";
 import { FINANCE_EVENT_TYPE } from "../events/catalogue.js";
 import { FINANCE_ERROR_CODES } from "../errors/codes.js";
@@ -232,25 +230,6 @@ export function createInvoiceApplicationService(deps = {}) {
           });
         }
       );
-    },
-
-    /**
-     * Bookkeeping payment hint after confirmed payment (internal orchestration).
-     * @param {object} params
-     */
-    applyPaymentHintFromConfirmedPayment(params = {}) {
-      const tenantId = requireCommandId(params.tenantId, "tenantId");
-      const invoiceId = requireCommandId(params.invoiceId, "invoiceId");
-      const current = invoiceRepository.getById(tenantId, invoiceId);
-      assertIssuedInvoiceImmutable(current, current);
-      const next = applyInvoicePaymentHint(current, {
-        amountMinor: params.amountMinor,
-        currency: params.currency,
-      });
-      return invoiceRepository.update(tenantId, invoiceId, {
-        ...next,
-        updatedAt: params.occurredAt || current.updatedAt,
-      });
     },
   };
 }

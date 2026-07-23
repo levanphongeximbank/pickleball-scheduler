@@ -323,5 +323,15 @@
   "tests/player-rating-verification-adjustment.test.js",
   "tests/player-rating-read-facade.test.js",
   "tests/player-rating-security-privacy.test.js",
-  "tests/player-rating-integration-certification.test.js"
+  "tests/player-rating-integration-certification.test.js",
+  "tests/finance-phase-1b-domain.test.js",
+  "tests/finance-phase-1c-application.test.js",
+  "tests/finance-phase-1d-provider-port.test.js",
+  "tests/finance-phase-1e-persistence-contract.test.js",
+  "tests/finance-phase-1f-sql-migration.test.js",
+  "tests/finance-phase-1g-supabase-adapter.test.js",
+  "tests/finance-phase-1h-staging-evidence.test.js",
+  "tests/finance-phase-1i-runtime-composition.test.js",
+  "tests/finance-phase-1j-staging-composition.test.js",
+  "tests/finance-phase-1l-remediation.test.js"
 ]

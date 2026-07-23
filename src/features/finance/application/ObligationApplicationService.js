@@ -7,7 +7,6 @@ import {
   openObligation,
   cancelObligation,
   expireObligation,
-  applyObligationSettlement,
 } from "../domain/obligation.js";
 import { FINANCE_EVENT_TYPE } from "../events/catalogue.js";
 import { FINANCE_ERROR_CODES } from "../errors/codes.js";
@@ -202,25 +201,6 @@ export function createObligationApplicationService(deps = {}) {
           });
         }
       );
-    },
-
-    /**
-     * Apply settlement only through confirmed Finance payments (called by Payment service).
-     * Not exposed as a public customer command in the facade — used by orchestration.
-     * @param {object} params
-     */
-    applySettlementFromConfirmedPayment(params = {}) {
-      const tenantId = requireCommandId(params.tenantId, "tenantId");
-      const obligationId = requireCommandId(params.obligationId, "obligationId");
-      const current = obligationRepository.getById(tenantId, obligationId);
-      const next = applyObligationSettlement(current, {
-        amountMinor: params.amountMinor,
-        currency: params.currency,
-      });
-      return obligationRepository.update(tenantId, obligationId, {
-        ...next,
-        updatedAt: params.occurredAt || current.updatedAt,
-      });
     },
   };
 }

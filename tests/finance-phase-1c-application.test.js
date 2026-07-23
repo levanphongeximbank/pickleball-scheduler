@@ -529,7 +529,7 @@ test("Refund: request/approve/reject/complete, partials, over-refund, replay", (
       reason: "partial",
     })
   );
-  assert.equal(r1.remainingRefundable.amountMinor, 100000);
+  assert.equal(r1.remainingRefundable.amountMinor, 60000);
   app.refunds.approveRefund(
     baseCmd({ idempotencyKey: "ref-appr-1", refundId: "ref-1" })
   );

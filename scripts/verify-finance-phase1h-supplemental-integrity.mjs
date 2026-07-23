@@ -3,7 +3,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { createHash } from "node:crypto";
+import { sha256SqlFile } from "../src/features/finance/persistence/staging/sqlChecksum.js";
 
 const STAGING_REF = "qyewbxjsiiyufanzcjcq";
 const PRODUCTION_REF = "expuvcohlcjzvrrauvud";
@@ -227,9 +227,9 @@ const out = {
   qa,
   cleanup,
   status: "PASS",
-  forwardSha256: createHash("sha256")
-    .update(fs.readFileSync(path.join(rootDir, "docs/supabase-finance-phase1f.sql")))
-    .digest("hex"),
+  forwardSha256: sha256SqlFile(
+    path.join(rootDir, "docs/supabase-finance-phase1f.sql")
+  ),
 };
 fs.mkdirSync(path.join(rootDir, "src/features/finance/persistence/staging"), { recursive: true });
 fs.writeFileSync(

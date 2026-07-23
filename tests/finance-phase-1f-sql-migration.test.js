@@ -267,16 +267,19 @@ test("1F does not invent SECURITY DEFINER helpers in this phase", () => {
   assert.doesNotMatch(body, /create\s+(or\s+replace\s+)?function\s+public\.finance_/i);
 });
 
-test("1F documentation records authored / not applied distinctions", () => {
+test("1F documentation records Staging-applied / Production-not-applied distinctions", () => {
   const arch = read(architecturePath);
   const design = read(persistenceDesignPath);
   assert.match(arch, /supabase-finance-phase1f\.sql/);
   assert.match(arch, /SQL authored/i);
-  assert.match(arch, /not applied/i);
+  assert.match(arch, /Staging only/i);
+  assert.match(arch, /READY WITH CONDITIONS/i);
   assert.match(design, /supabase-finance-phase1f\.sql/);
   assert.match(design, /finance_\*/);
-  assert.match(design, /not applied/i);
+  assert.match(design, /Staging only/i);
+  assert.match(design, /READY WITH CONDITIONS/i);
   assert.match(design, /SaaS Billing/i);
+  assert.match(design, /Production.*not/i);
 });
 
 test("1F does not modify historical migration files (package is additive)", () => {

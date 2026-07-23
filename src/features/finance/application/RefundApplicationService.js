@@ -1,6 +1,7 @@
 /**
  * RefundApplicationService — request / approve / reject / complete with evidence.
  * Supports multiple partial refunds without rewriting original payment amount.
+ * In-flight REQUESTED/APPROVED refunds reserve refundable balance (Phase 1L / F-03).
  */
 
 import {
@@ -8,6 +9,7 @@ import {
   approveRefund,
   rejectRefund,
   completeRefund,
+  REFUND_STATUS,
 } from "../domain/refund.js";
 import { getRefundableAmount } from "../domain/payment.js";
 import { FINANCE_EVENT_TYPE } from "../events/catalogue.js";
@@ -30,6 +32,32 @@ export const REFUND_OPERATIONS = Object.freeze({
   VERIFY_AND_COMPLETE_REFUND: "VERIFY_AND_COMPLETE_REFUND",
 });
 
+const RESERVING_REFUND_STATUSES = Object.freeze([
+  REFUND_STATUS.REQUESTED,
+  REFUND_STATUS.APPROVED,
+]);
+
+/**
+ * @param {object[]} refunds
+ * @param {{ excludeRefundId?: string|null }} [options]
+ * @returns {number}
+ */
+function sumInFlightReservationMinor(refunds, options = {}) {
+  let total = 0;
+  for (const refund of refunds) {
+    if (
+      options.excludeRefundId &&
+      refund.refundId === options.excludeRefundId
+    ) {
+      continue;
+    }
+    if (RESERVING_REFUND_STATUSES.includes(refund.status)) {
+      total += refund.amount.amountMinor;
+    }
+  }
+  return total;
+}
+
 /**
  * @param {object} deps
  */
@@ -46,6 +74,25 @@ export function createRefundApplicationService(deps = {}) {
       FINANCE_ERROR_CODES.INVALID_INPUT,
       "refundRepository, paymentRepository, and eventRecorder are required."
     );
+  }
+
+  function listRefundsForPayment(tenantId, paymentId) {
+    if (typeof refundRepository.listByPaymentId !== "function") {
+      throw new FinanceError(
+        FINANCE_ERROR_CODES.INVALID_INPUT,
+        "refundRepository.listByPaymentId is required for refund reservation."
+      );
+    }
+    return refundRepository.listByPaymentId(tenantId, paymentId) || [];
+  }
+
+  function remainingRefundableForPayment(tenantId, paymentId, options = {}) {
+    const payment = paymentRepository.getById(tenantId, paymentId);
+    const reserved = sumInFlightReservationMinor(
+      listRefundsForPayment(tenantId, paymentId),
+      options
+    );
+    return getRefundableAmount(payment, { reservedInFlightMinor: reserved });
   }
 
   return {
@@ -69,15 +116,22 @@ export function createRefundApplicationService(deps = {}) {
         },
         () => {
           const payment = paymentRepository.getById(ctx.tenantId, paymentId);
+          const reservedInFlightMinor = sumInFlightReservationMinor(
+            listRefundsForPayment(ctx.tenantId, paymentId)
+          );
           const { refund } = requestRefund(payment, {
             refundId,
             amountMinor: command.amountMinor,
             currency: command.currency,
             reason: command.reason,
             requestedAt: ctx.occurredAt,
+            reservedInFlightMinor,
           });
           const saved = refundRepository.save(refund);
-          const remaining = getRefundableAmount(payment);
+          const remaining = remainingRefundableForPayment(
+            ctx.tenantId,
+            paymentId
+          );
           const event = eventRecorder.record({
             eventType: FINANCE_EVENT_TYPE.REFUND_REQUESTED,
             occurredAt: ctx.occurredAt,
@@ -122,6 +176,24 @@ export function createRefundApplicationService(deps = {}) {
         { refundId },
         () => {
           const current = refundRepository.getById(ctx.tenantId, refundId);
+          // Capacity was reserved at request; re-validate against remaining
+          // excluding this refund's own reservation (still REQUESTED).
+          const remainingExcludingSelf = remainingRefundableForPayment(
+            ctx.tenantId,
+            current.paymentId,
+            { excludeRefundId: refundId }
+          );
+          if (current.amount.amountMinor > remainingExcludingSelf.amountMinor) {
+            throw new FinanceError(
+              FINANCE_ERROR_CODES.INVALID_REFUND_AMOUNT,
+              "Cannot approve refund above remaining reserved capacity.",
+              {
+                refundId,
+                remainingMinor: remainingExcludingSelf.amountMinor,
+                attemptedMinor: current.amount.amountMinor,
+              }
+            );
+          }
           const next = approveRefund(current, { approvedAt: ctx.occurredAt });
           const saved = refundRepository.update(ctx.tenantId, refundId, next);
           const event = eventRecorder.record({
@@ -214,6 +286,9 @@ export function createRefundApplicationService(deps = {}) {
             ctx.tenantId,
             current.paymentId
           );
+          // Aggregate completed refunds must not exceed original payment.
+          // Other in-flight reservations remain reserved and are excluded from
+          // the completed-amount check inside recordPaymentRefund.
           const { refund, payment: updatedPayment } = completeRefund(
             current,
             payment,
@@ -236,7 +311,10 @@ export function createRefundApplicationService(deps = {}) {
               updatedAt: ctx.occurredAt,
             }
           );
-          const remaining = getRefundableAmount(savedPayment);
+          const remaining = remainingRefundableForPayment(
+            ctx.tenantId,
+            savedPayment.paymentId
+          );
           const event = eventRecorder.record({
             eventType: FINANCE_EVENT_TYPE.REFUND_COMPLETED,
             occurredAt: ctx.occurredAt,
@@ -303,7 +381,7 @@ export function createRefundApplicationService(deps = {}) {
         },
         () => {
           const refund = refundRepository.getById(ctx.tenantId, refundId);
-          if (refund.status !== "APPROVED") {
+          if (refund.status !== REFUND_STATUS.APPROVED) {
             throw new FinanceError(
               FINANCE_ERROR_CODES.INVALID_TRANSITION,
               "Provider refund initiation requires an approved refund.",
@@ -311,15 +389,18 @@ export function createRefundApplicationService(deps = {}) {
             );
           }
           const payment = paymentRepository.getById(ctx.tenantId, refund.paymentId);
-          // Domain over-refund guard before provider invocation
-          const remaining = getRefundableAmount(payment);
-          if (refund.amount.amountMinor > remaining.amountMinor) {
+          const remainingExcludingSelf = remainingRefundableForPayment(
+            ctx.tenantId,
+            payment.paymentId,
+            { excludeRefundId: refundId }
+          );
+          if (refund.amount.amountMinor > remainingExcludingSelf.amountMinor) {
             throw new FinanceError(
               FINANCE_ERROR_CODES.INVALID_REFUND_AMOUNT,
               "Refund exceeds remaining refundable amount before provider call.",
               {
                 refundId,
-                remainingMinor: remaining.amountMinor,
+                remainingMinor: remainingExcludingSelf.amountMinor,
                 attemptedMinor: refund.amount.amountMinor,
               }
             );
@@ -429,8 +510,7 @@ export function createRefundApplicationService(deps = {}) {
     },
 
     getRemainingRefundable(tenantId, paymentId) {
-      const payment = paymentRepository.getById(tenantId, paymentId);
-      return getRefundableAmount(payment);
+      return remainingRefundableForPayment(tenantId, paymentId);
     },
   };
 }

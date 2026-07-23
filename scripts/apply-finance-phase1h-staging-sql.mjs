@@ -20,10 +20,10 @@
  */
 import fs from "node:fs";
 import path from "node:path";
-import { createHash } from "node:crypto";
 import { fileURLToPath } from "node:url";
 import { execSync } from "node:child_process";
 import { loadProjectEnv } from "./load-env.mjs";
+import { sha256SqlFile } from "../src/features/finance/persistence/staging/sqlChecksum.js";
 
 const STAGING_REF = "qyewbxjsiiyufanzcjcq";
 const PRODUCTION_REF = "expuvcohlcjzvrrauvud";
@@ -115,9 +115,8 @@ function loadStagingAccessToken() {
 }
 
 function sha256File(relPath) {
-  const abs = path.join(rootDir, relPath);
-  const buf = fs.readFileSync(abs);
-  return createHash("sha256").update(buf).digest("hex");
+  // Content-semantic LF checksum — identical on Windows CRLF checkout and Linux CI.
+  return sha256SqlFile(path.join(rootDir, relPath));
 }
 
 function assertNotProductionUrl() {

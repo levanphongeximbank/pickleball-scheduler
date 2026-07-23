@@ -303,7 +303,7 @@ Phase 1E delivers Finance-owned **durable persistence contracts** under `src/fea
 
 Phase 1C in-memory repositories remain capability proof for application services.
 
-### Phase 1F — SQL migration package (authored, not applied)
+### Phase 1F — SQL migration package (authored; Staging-applied in Phase 1H)
 
 Canonical executable migration location for this repository: `docs/supabase-*.sql` (no active `supabase/migrations/` directory).
 
@@ -338,11 +338,12 @@ Adapter targets Phase 1F `public.finance_*` tables only. Client is **explicitly 
 **Still absent / deferred:**
 
 - Production SQL apply / Production runtime activation
-- App shell / authenticated Supabase client composition wiring
+- Production grant remediation / PITR / backup setup (Production-only conditions)
 - Billing table reuse
 - finance-ledger localStorage as durable SoT
 - Live payment provider
 - Booking / Tournament / Competition / UI integration
+- Phase 1C sync application command bridge over async Supabase repositories (Supabase runtime fail-closes application commands)
 
 ---
 
@@ -371,7 +372,7 @@ Adapter targets Phase 1F `public.finance_*` tables only. Client is **explicitly 
 |------|-------------|-------|
 | `disabled` (default) | none | Capability inspection only; command attempts throw `FINANCE_RUNTIME_DISABLED` |
 | `memory` | isolated in-memory repos | Non-durable; rejects Production; tests/demo only |
-| `supabase` | `createSupabaseFinanceRepositories` | Injected client required; Staging classification only; no query/write during construction |
+| `supabase` | Durable repositories only | Injected client required; Staging classification only; no query/write during construction; Phase 1C application commands **not** attached (fail closed) |
 
 ### Configuration contract
 

@@ -21,6 +21,7 @@ import {
 import {
   throwFinanceRuntimeError,
   throwRuntimeDisabled,
+  throwApplicationCommandsUnavailable,
 } from "./errors.js";
 import {
   deriveFinanceReadiness,
@@ -83,6 +84,37 @@ function createDisabledCommandSurface() {
       return () => throwRuntimeDisabled(
         `Finance command '${String(prop)}' is unavailable while runtime is disabled.`
       );
+    },
+  };
+  const service = new Proxy({}, handler);
+  return Object.freeze({
+    fees: service,
+    obligations: service,
+    invoices: service,
+    payments: service,
+    receipts: service,
+    refunds: service,
+    eventRecorder: service,
+  });
+}
+
+/**
+ * Durable adapter present, but Phase 1C sync application commands are not bridged.
+ * Fail closed — do not expose a broken command surface.
+ * @param {object} [context]
+ * @returns {Readonly<object>}
+ */
+function createUnsupportedApplicationCommandSurface(context = {}) {
+  const handler = {
+    get(_target, prop) {
+      if (prop === "then" || prop === "toJSON" || typeof prop === "symbol") {
+        return undefined;
+      }
+      return () =>
+        throwApplicationCommandsUnavailable(
+          `Finance application command '${String(prop)}' is unavailable: durable Supabase repositories are async and are not bridged to the Phase 1C sync application port.`,
+          context
+        );
     },
   };
   const service = new Proxy({}, handler);
@@ -364,12 +396,25 @@ export function createFinanceRuntime(rawConfig, dependencies = {}) {
       ? dependencies.idGenerator
       : createSequentialIdGenerator("fin");
 
-  const application = createFinanceApplication({
-    repositories,
-    paymentProvider,
-    idGenerator,
-    useInMemoryRepositories: false,
-  });
+  // OPTION A (Phase 1L / F-04): do not attach Phase 1C sync application commands
+  // over async Supabase durable repositories. Memory mode keeps the application surface.
+  const attachApplicationCommands =
+    config.mode === FINANCE_RUNTIME_MODE.MEMORY;
+
+  if (config.mode === FINANCE_RUNTIME_MODE.SUPABASE) {
+    warnings.push(
+      "Durable application commands unavailable: Phase 1C sync ports are not bridged over async Supabase repositories."
+    );
+  }
+
+  const application = attachApplicationCommands
+    ? createFinanceApplication({
+        repositories,
+        paymentProvider,
+        idGenerator,
+        useInMemoryRepositories: false,
+      })
+    : null;
 
   const readiness = deriveFinanceReadiness({
     config,
@@ -406,6 +451,21 @@ export function createFinanceRuntime(rawConfig, dependencies = {}) {
           : undefined,
   });
 
+  const commands = attachApplicationCommands
+    ? Object.freeze({
+        fees: application.fees,
+        obligations: application.obligations,
+        invoices: application.invoices,
+        payments: application.payments,
+        receipts: application.receipts,
+        refunds: application.refunds,
+        eventRecorder: application.eventRecorder,
+      })
+    : createUnsupportedApplicationCommandSurface({
+        runtimeMode: config.mode,
+        persistenceAdapter,
+      });
+
   const runtime = Object.freeze({
     enabled: true,
     mode: config.mode,
@@ -424,17 +484,15 @@ export function createFinanceRuntime(rawConfig, dependencies = {}) {
       capabilities: repositories?.capabilities || null,
     }),
     tenant: tenantBoundary,
-    commands: Object.freeze({
-      fees: application.fees,
-      obligations: application.obligations,
-      invoices: application.invoices,
-      payments: application.payments,
-      receipts: application.receipts,
-      refunds: application.refunds,
-      eventRecorder: application.eventRecorder,
-    }),
+    commands,
     probes,
     requireApplication() {
+      if (!application) {
+        return throwApplicationCommandsUnavailable(
+          "Finance application commands are unavailable for durable Supabase runtime composition.",
+          { runtimeMode: config.mode, persistenceAdapter }
+        );
+      }
       return application;
     },
     getReadiness() {

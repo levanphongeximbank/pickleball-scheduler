@@ -1,6 +1,6 @@
-# Finance Persistence Design (Phase 1E + Phase 1F + Phase 1G)
+# Finance Persistence Design (Phase 1E + Phase 1F + Phase 1G + Phase 1H)
 
-**Status:** Contracts + SQL authored/statically verified + **Supabase-compatible adapter implemented (fake-client tested)**. SQL **not applied**. Staging not started. Production not started. Database persistence **not yet certified**.
+**Status:** Contracts + SQL authored/statically verified + **Supabase-compatible adapter implemented** + **SQL applied to Staging only** + Staging certification **READY WITH CONDITIONS**. Production SQL **not** applied. Production runtime **not** authorized. Runtime defaults remain disabled.
 
 **Module:** `src/features/finance/persistence/`
 
@@ -57,10 +57,12 @@ Canonical repository migration location: `docs/supabase-*.sql` (no active `supab
 
 - SQL authored.
 - SQL statically verified.
-- SQL **not applied**.
-- Database persistence **not yet certified**.
-- Staging **not started**.
-- Production **not started**.
+- SQL applied on **Staging only** (Phase 1H).
+- Staging certification: **READY WITH CONDITIONS** — see `staging/PHASE_1H_STAGING_CERTIFICATION.md`.
+- Production SQL **not** applied / **not** authorized.
+- Runtime composition defaults **disabled**; Production remains hard-disabled.
+- Foundation is **not** a business integration (no Booking / Tournament / Competition / UI workflow).
+- Known Production-only conditions remain deferred.
 
 ---
 
@@ -249,7 +251,7 @@ Covers: required tables, Billing isolation, bigint money, VND, tenant_id, RLS, g
 | `user_has_permission('finance.view'|'finance.edit')` | Catalogued in identity/rbac-v4; role wiring verification deferred |
 | Finer refund approval permission | Not created; uses finance.edit |
 | Service-role tenant enforcement | Application must enforce; RLS bypassed by service_role |
-| Durable adapter | Not started (Phase 1G+) |
+| Durable adapter | Implemented (Phase 1G); Staging-certified with conditions (Phase 1H) |
 
 ---
 
@@ -265,13 +267,17 @@ Package: `src/features/finance/persistence/supabase/`
 - Unit of work: single-statement capable; multi-record atomic groups fail closed unless `transactionalExecutor` injected
 - Error normalization: unique / constraint / RLS / timeout / unknown → typed Finance errors with sanitized context
 
-**Non-claims:** no SQL apply; no real Supabase initialization; no env credentials; no network in tests; no app runtime wiring.
+**Non-claims:** adapter factory tests do not apply SQL or open Production; no env credentials; no network in unit tests; no Production runtime activation.
 
 ---
 
-## 21. Explicit non-claims
+## 21. Explicit non-claims / current boundaries
 
-- This phase does **not** apply SQL to any database.
-- Contract harness remains in-memory (`isDurable: false`).
-- Supabase adapter is durable-shaped but **uncertified** until Staging apply + live client composition.
-- No package installs, no Billing reuse, no live provider, no PR, no deploy, no backfill.
+- SQL was applied to **Staging only** (Phase 1H). Production was **not** touched.
+- Staging certification is **READY WITH CONDITIONS**.
+- Contract harness remains in-memory for unit tests (`isDurable: false`).
+- Runtime defaults remain disabled; Production remains hard-disabled.
+- Authenticated Staging app-shell composition exists (Phase 1J) behind a feature flag (default OFF).
+- Foundation is **not** a business integration.
+- No package installs, no Billing reuse, no live provider, no Production deploy, no legacy finance-ledger backfill in this phase.
+- Known Production-only conditions remain deferred.
