@@ -46,6 +46,7 @@
   "tests/competition-core-workflow-engine-core19.test.js",
   "tests/competition-core-workflow-adapters-core19.test.js",
   "tests/competition-core-workflow-control-core19.test.js",
+  "tests/competition-core-deterministic-seed-replay-core21.test.js",
   "tests/competition-core-scheduling-cc09.test.js",
   "tests/team-tournament-seed.test.js",
   "tests/ai-core.test.js",

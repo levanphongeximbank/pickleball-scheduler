@@ -1,0 +1,33 @@
+/**
+ * CORE-21 — typed deterministic seed / replay error taxonomy.
+ * Capability-local. Do not reuse OPTIMIZATION_* / AUDIT_* / WORKFLOW_* codes.
+ */
+
+export const DETERMINISTIC_SEED_REPLAY_ERROR_CODE = Object.freeze({
+  SEED_MISSING: "SEED_MISSING",
+  SEED_INVALID: "SEED_INVALID",
+  PRNG_INVALID_OPERATION: "PRNG_INVALID_OPERATION",
+  NON_DETERMINISTIC_INPUT: "NON_DETERMINISTIC_INPUT",
+  ORDERING_CONTRACT_VIOLATION: "ORDERING_CONTRACT_VIOLATION",
+  SERIALIZATION_REJECTED: "SERIALIZATION_REJECTED",
+  REPLAY_INPUT_INVALID: "REPLAY_INPUT_INVALID",
+  REPLAY_VERSION_MISMATCH: "REPLAY_VERSION_MISMATCH",
+  REPLAY_OUTPUT_MISMATCH: "REPLAY_OUTPUT_MISMATCH",
+  EVENT_HISTORY_MISMATCH: "EVENT_HISTORY_MISMATCH",
+});
+
+/** @type {ReadonlySet<string>} */
+export const DETERMINISTIC_SEED_REPLAY_ERROR_CODE_VALUES = new Set(
+  Object.values(DETERMINISTIC_SEED_REPLAY_ERROR_CODE)
+);
+
+/**
+ * @param {unknown} value
+ * @returns {boolean}
+ */
+export function isDeterministicSeedReplayErrorCode(value) {
+  return (
+    typeof value === "string" &&
+    DETERMINISTIC_SEED_REPLAY_ERROR_CODE_VALUES.has(value)
+  );
+}
