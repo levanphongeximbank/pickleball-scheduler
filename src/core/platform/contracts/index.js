@@ -1,5 +1,5 @@
 /**
- * Platform Technical Contract Kit — Phase 1B/1C/1D/1E local exports.
+ * Platform Technical Contract Kit — Phase 1B–1J local exports.
  *
  * Contract-local barrel only. Not re-exported from src/core/platform/index.js.
  */
@@ -50,3 +50,53 @@ export {
   isAuthorizationDecision,
   AUTHORIZATION_DECISION_ERROR,
 } from "./authorizationDecision.js";
+export {
+  createRoleCode,
+  isRoleCode,
+  ROLE_CODE_ERROR,
+} from "./roleCode.js";
+export {
+  createPermissionCode,
+  isPermissionCode,
+  PERMISSION_CODE_ERROR,
+} from "./permissionCode.js";
+export {
+  createAuthorizationRequest,
+  isAuthorizationRequest,
+  AUTHORIZATION_REQUEST_ERROR,
+} from "./authorizationRequest.js";
+export {
+  createIdempotencyKey,
+  isIdempotencyKey,
+  IDEMPOTENCY_KEY_ERROR,
+} from "./idempotencyKey.js";
+export {
+  createOperationIdentity,
+  isOperationIdentity,
+  OPERATION_IDENTITY_ERROR,
+} from "./operationIdentity.js";
+export {
+  createContractVersion,
+  isContractVersion,
+  CONTRACT_VERSION_ERROR,
+} from "./contractVersion.js";
+export {
+  createCompatibilityDecision,
+  isCompatibilityDecision,
+  COMPATIBILITY_DECISION_ERROR,
+} from "./compatibilityDecision.js";
+export {
+  createPlatformErrorDescriptor,
+  isPlatformErrorDescriptor,
+  PLATFORM_ERROR_DESCRIPTOR_ERROR,
+} from "./platformErrorDescriptor.js";
+export {
+  createIntegrationPortDescriptor,
+  isIntegrationPortDescriptor,
+  INTEGRATION_PORT_DESCRIPTOR_ERROR,
+} from "./integrationPortDescriptor.js";
+export {
+  createPlatformCapabilityDescriptor,
+  isPlatformCapabilityDescriptor,
+  PLATFORM_CAPABILITY_DESCRIPTOR_ERROR,
+} from "./platformCapabilityDescriptor.js";
