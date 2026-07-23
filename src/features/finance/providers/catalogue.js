@@ -1,0 +1,60 @@
+/**
+ * Provider-neutral catalogues (Phase 1D).
+ * No vendor SDK coupling. No canonical provider selected.
+ */
+
+export const FINANCE_PROVIDER_PORT_VERSION = 1;
+
+/** Opaque provider codes — adapters declare their own string codes. */
+export const FINANCE_PROVIDER_CODE = Object.freeze({
+  MOCK: "MOCK",
+});
+
+export const PROVIDER_PAYMENT_STATUS = Object.freeze({
+  INITIATED: "INITIATED",
+  PENDING: "PENDING",
+  CONFIRMED: "CONFIRMED",
+  FAILED: "FAILED",
+  CANCELLED: "CANCELLED",
+  EXPIRED: "EXPIRED",
+  UNKNOWN: "UNKNOWN",
+});
+
+export const PROVIDER_PAYMENT_STATUS_VALUES = Object.freeze(
+  Object.values(PROVIDER_PAYMENT_STATUS)
+);
+
+export const PROVIDER_REFUND_STATUS = Object.freeze({
+  PENDING: "PENDING",
+  COMPLETED: "COMPLETED",
+  FAILED: "FAILED",
+  REJECTED: "REJECTED",
+  UNKNOWN: "UNKNOWN",
+});
+
+export const PROVIDER_REFUND_STATUS_VALUES = Object.freeze(
+  Object.values(PROVIDER_REFUND_STATUS)
+);
+
+export const PROVIDER_WEBHOOK_EVENT_TYPE = Object.freeze({
+  PAYMENT_STATUS_CHANGED: "PAYMENT_STATUS_CHANGED",
+  REFUND_STATUS_CHANGED: "REFUND_STATUS_CHANGED",
+});
+
+export const PROVIDER_WEBHOOK_EVENT_TYPE_VALUES = Object.freeze(
+  Object.values(PROVIDER_WEBHOOK_EVENT_TYPE)
+);
+
+export const PROVIDER_OPERATION = Object.freeze({
+  INITIATE_PAYMENT: "INITIATE_PAYMENT",
+  QUERY_PAYMENT_STATUS: "QUERY_PAYMENT_STATUS",
+  VERIFY_PAYMENT_CONFIRMATION: "VERIFY_PAYMENT_CONFIRMATION",
+  CANCEL_PAYMENT: "CANCEL_PAYMENT",
+  INITIATE_REFUND: "INITIATE_REFUND",
+  QUERY_REFUND_STATUS: "QUERY_REFUND_STATUS",
+  PARSE_WEBHOOK: "PARSE_WEBHOOK",
+});
+
+export const PROVIDER_OPERATION_VALUES = Object.freeze(
+  Object.values(PROVIDER_OPERATION)
+);

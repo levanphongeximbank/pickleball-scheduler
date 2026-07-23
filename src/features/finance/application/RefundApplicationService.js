@@ -26,6 +26,8 @@ export const REFUND_OPERATIONS = Object.freeze({
   APPROVE_REFUND: "APPROVE_REFUND",
   REJECT_REFUND: "REJECT_REFUND",
   COMPLETE_REFUND: "COMPLETE_REFUND",
+  INITIATE_PROVIDER_REFUND: "INITIATE_PROVIDER_REFUND",
+  VERIFY_AND_COMPLETE_REFUND: "VERIFY_AND_COMPLETE_REFUND",
 });
 
 /**
@@ -36,6 +38,7 @@ export function createRefundApplicationService(deps = {}) {
   const paymentRepository = deps.paymentRepository;
   const idempotencyRepository = deps.idempotencyRepository;
   const eventRecorder = deps.eventRecorder;
+  const paymentProvider = deps.paymentProvider || null;
   const idGenerator = requireIdGenerator(deps);
 
   if (!refundRepository || !paymentRepository || !eventRecorder) {
@@ -265,6 +268,161 @@ export function createRefundApplicationService(deps = {}) {
             remainingRefundable: remaining,
             eventIds: [event.eventId],
             financialEffectApplied: true,
+          });
+        }
+      );
+    },
+
+    /**
+     * Initiate refund at provider after Finance approval.
+     * Does not complete Finance refund domain state.
+     */
+    initiateProviderRefund(command = {}) {
+      if (!paymentProvider) {
+        throw new FinanceError(
+          FINANCE_ERROR_CODES.INVALID_INPUT,
+          "paymentProvider is required for initiateProviderRefund."
+        );
+      }
+      const ctx = requireCommandContext(command);
+      const refundId = requireCommandId(command.refundId, "refundId");
+      const providerCode = requireCommandId(command.providerCode, "providerCode");
+      const providerPaymentReference = requireCommandId(
+        command.providerPaymentReference,
+        "providerPaymentReference"
+      );
+
+      return executeIdempotent(
+        { idempotencyRepository },
+        REFUND_OPERATIONS.INITIATE_PROVIDER_REFUND,
+        command,
+        {
+          refundId,
+          providerCode,
+          providerPaymentReference,
+        },
+        () => {
+          const refund = refundRepository.getById(ctx.tenantId, refundId);
+          if (refund.status !== "APPROVED") {
+            throw new FinanceError(
+              FINANCE_ERROR_CODES.INVALID_TRANSITION,
+              "Provider refund initiation requires an approved refund.",
+              { refundId, status: refund.status }
+            );
+          }
+          const payment = paymentRepository.getById(ctx.tenantId, refund.paymentId);
+          // Domain over-refund guard before provider invocation
+          const remaining = getRefundableAmount(payment);
+          if (refund.amount.amountMinor > remaining.amountMinor) {
+            throw new FinanceError(
+              FINANCE_ERROR_CODES.INVALID_REFUND_AMOUNT,
+              "Refund exceeds remaining refundable amount before provider call.",
+              {
+                refundId,
+                remainingMinor: remaining.amountMinor,
+                attemptedMinor: refund.amount.amountMinor,
+              }
+            );
+          }
+
+          const providerResult = paymentProvider.initiateRefund(
+            {
+              tenantId: ctx.tenantId,
+              operationId: refundId,
+              idempotencyKey: ctx.idempotencyKey,
+              correlationId: ctx.correlationId,
+              causationId: ctx.causationId,
+              providerCode,
+              paymentId: payment.paymentId,
+              refundId,
+              occurredAt: ctx.occurredAt,
+            },
+            {
+              tenantId: ctx.tenantId,
+              paymentId: payment.paymentId,
+              refundId,
+              providerPaymentReference,
+              amountMinor: refund.amount.amountMinor,
+              currency: refund.currency,
+              idempotencyKey: ctx.idempotencyKey,
+              correlationId: ctx.correlationId,
+              reason: refund.reason,
+            }
+          );
+
+          return Object.freeze({
+            refund,
+            payment,
+            providerResult,
+            eventIds: [],
+            financialEffectApplied: true,
+          });
+        }
+      );
+    },
+
+    /**
+     * Query provider refund status; complete Finance refund only when verified completed.
+     */
+    verifyAndCompleteRefund(command = {}) {
+      if (!paymentProvider) {
+        throw new FinanceError(
+          FINANCE_ERROR_CODES.INVALID_INPUT,
+          "paymentProvider is required for verifyAndCompleteRefund."
+        );
+      }
+      const ctx = requireCommandContext(command);
+      const refundId = requireCommandId(command.refundId, "refundId");
+      const providerCode = requireCommandId(command.providerCode, "providerCode");
+      const providerRefundReference = requireCommandId(
+        command.providerRefundReference,
+        "providerRefundReference"
+      );
+
+      return executeIdempotent(
+        { idempotencyRepository },
+        REFUND_OPERATIONS.VERIFY_AND_COMPLETE_REFUND,
+        command,
+        {
+          refundId,
+          providerCode,
+          providerRefundReference,
+        },
+        () => {
+          const statusResult = paymentProvider.queryRefundStatus(
+            {
+              tenantId: ctx.tenantId,
+              operationId: `refund-status-${refundId}`,
+              idempotencyKey: ctx.idempotencyKey,
+              correlationId: ctx.correlationId,
+              causationId: ctx.causationId,
+              providerCode,
+              refundId,
+              occurredAt: ctx.occurredAt,
+            },
+            { providerRefundReference }
+          );
+
+          if (statusResult.status !== "COMPLETED") {
+            throw new FinanceError(
+              FINANCE_ERROR_CODES.PROVIDER_EVIDENCE_INVALID,
+              "Provider refund is not completed; Finance refund not completed.",
+              {
+                refundId,
+                providerStatus: statusResult.status,
+              }
+            );
+          }
+
+          const evidenceRef =
+            statusResult.evidence?.evidenceRef ||
+            requireCommandId(command.evidenceRef, "evidenceRef");
+
+          return this.completeRefund({
+            ...command,
+            idempotencyKey: `${ctx.idempotencyKey}::complete`,
+            refundId,
+            evidenceRef,
           });
         }
       );

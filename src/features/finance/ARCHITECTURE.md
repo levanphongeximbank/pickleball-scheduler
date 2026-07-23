@@ -1,8 +1,8 @@
-# Finance Foundation Architecture (Phase 1B + Phase 1C)
+# Finance Foundation Architecture (Phase 1B + Phase 1C + Phase 1D)
 
 **Module home:** `src/features/finance/`
 
-**Status:** Domain foundation + application services with in-memory repositories (not Production-ready Finance)
+**Status:** Domain + application services + in-memory repositories + provider-neutral payment port (not Production-ready Finance)
 
 **Baseline:** Phase 1A read-only audit approved at `1fe3d1c0597470858ea400d379ef853d225720a5`
 
@@ -78,15 +78,48 @@ Billing PascalCase events and provider webhook names remain unchanged.
 
 ---
 
-## Layering (Phase 1C)
+## Layering (Phase 1C + 1D)
 
 ```
 application/     orchestration services + idempotent commands
+providers/       provider-neutral PaymentProviderPort + mock adapter
 repositories/    provider-neutral ports + in-memory implementations
 domain/          pure lifecycle contracts (Phase 1B)
 events/          catalogue + envelope builders
 errors/          typed FinanceError codes
 ```
+
+### Provider-neutral payment port (Phase 1D)
+
+Finance owns `PaymentProviderPort` under `src/features/finance/providers/`.
+
+| Concern | Policy |
+|---------|--------|
+| Ownership | Finance-owned, provider-neutral |
+| Canonical provider | **None selected** |
+| Sibling stacks | `billing` / `payments` remain separate; not modified or consolidated |
+| Secrets | No API keys, webhook secrets, or env vars introduced |
+| Network | No external API calls in this phase |
+| Domain truth | Provider payloads are never Finance source of truth |
+| Storage | Normalized references + evidence only; no unrestricted raw sensitive payloads |
+| Webhook | Evidence input only; Finance application rules still decide transitions |
+| Confirmation | Callback / redirect / client-declared success alone never confirms payment |
+
+Port methods: `getCapabilities`, `initiatePayment`, `queryPaymentStatus`, `verifyPaymentConfirmation`, `cancelPayment`, `initiateRefund`, `queryRefundStatus`, `parseWebhook`.
+
+Capability negotiation is explicit and immutable. Unsupported operations throw typed Finance provider errors (never silent success).
+
+Application integration (injected only):
+
+- `createPaymentAttemptWithProvider` initiates at provider; payment stays pending.
+- `verifyAndConfirmPayment` requires verified provider evidence before Finance confirmation.
+- `initiateProviderRefund` / `verifyAndCompleteRefund` keep Finance refund transitions application-owned.
+- Idempotent replay does not re-invoke provider initiation.
+- Provider transaction uniqueness remains repository-enforced (tenant-scoped).
+
+Mock adapter (`createMockPaymentProvider`) is tests/development only: deterministic, no network, no production claim, isolated per factory call.
+
+---
 
 ### Application layer
 
@@ -264,15 +297,15 @@ No SQL, Supabase migrations, staging, or production database operations are auth
 
 ## Provider integration
 
-Finance will own a provider-neutral Payment Provider port in a later phase.
+Finance owns a provider-neutral Payment Provider port (Phase 1D).
 
-Phase 1C does **not** select, enable, or consolidate a live payment provider. No webhooks. No live provider calls.
+Phase 1D does **not** select, enable, or consolidate a live payment provider. No webhooks wired to HTTP/Edge. No live provider calls. No credentials.
 
 ---
 
 ## Integration status
 
-Phase 1C has **no integration** with Booking, Tournament, Competition, Notification, Reporting, Billing, or UI modules.
+Phase 1D has **no integration** with Booking, Tournament, Competition, Notification, Reporting, Billing, or UI modules.
 
 ---
 
@@ -292,7 +325,7 @@ Finance must never independently decide competition eligibility.
 Expected later phases (not started):
 
 1. Durable persistence adapters + DB uniqueness for idempotency / provider txn refs
-2. Payment Provider port (provider-neutral)
+2. Live provider adapters implementing PaymentProviderPort (still no forced consolidation of sibling stacks)
 3. Booking / Tournament / Club fee adapters (consume Finance contracts)
 4. Competition consumer of `PAYMENT_CONFIRMED` (eligibility remains Competition-owned)
 5. Notification / Reporting consumers of Finance events
@@ -305,7 +338,9 @@ Expected later phases (not started):
 - Domain objects must not store raw provider secrets or unnecessary personal profile data.
 - Event payloads reject forbidden eligibility and secret/PII fields.
 - Idempotency keys and fingerprints reject secret-like material.
-- Typed errors expose safe messages + non-sensitive context only.
+- Provider contracts reject secret-like metadata and do not return raw payloads.
+- Webhook tenant routing hints are never authoritative.
+- Typed errors expose safe messages + non-sensitive context only; retryable hints where applicable.
 
 ---
 
@@ -313,7 +348,8 @@ Expected later phases (not started):
 
 - In-memory repositories only — no durability / no production guarantee.
 - VND-only allowlist.
-- No provider port.
+- Provider port exists; no live provider adapter authorized.
+- Mock provider is not production-capable.
 - No UI.
 - No wiring into booking, tournament, competition, notification, or billing modules.
 - Invoice payment status is a bookkeeping hint, not settlement evidence.
@@ -324,6 +360,6 @@ Expected later phases (not started):
 
 ## Next recommended phase
 
-**Phase 1D — Durable persistence contracts / SQL design** (still no production deploy), or **Payment Provider port** (provider-neutral; no live consolidation yet).
+**Phase 1E — Durable persistence contracts / SQL design** (still no production deploy), followed by live provider adapters behind PaymentProviderPort when authorized.
 
-Conditions for next phase: Phase 1C committed on `feature/finance-phase-1-foundation`, targeted tests green, owner approval for persistence or provider-port scope.
+Conditions for next phase: Phase 1D committed on `feature/finance-phase-1-foundation`, targeted tests green, owner approval for persistence or live-adapter scope.

@@ -32,7 +32,9 @@ import {
 export const PAYMENT_OPERATIONS = Object.freeze({
   INITIATE_PAYMENT: "INITIATE_PAYMENT",
   CREATE_PAYMENT_ATTEMPT: "CREATE_PAYMENT_ATTEMPT",
+  CREATE_PAYMENT_ATTEMPT_WITH_PROVIDER: "CREATE_PAYMENT_ATTEMPT_WITH_PROVIDER",
   CONFIRM_PAYMENT: "CONFIRM_PAYMENT",
+  VERIFY_AND_CONFIRM_PAYMENT: "VERIFY_AND_CONFIRM_PAYMENT",
   FAIL_PAYMENT_ATTEMPT: "FAIL_PAYMENT_ATTEMPT",
   CANCEL_PAYMENT_ATTEMPT: "CANCEL_PAYMENT_ATTEMPT",
   EXPIRE_PAYMENT_ATTEMPT: "EXPIRE_PAYMENT_ATTEMPT",
@@ -53,6 +55,7 @@ export function createPaymentApplicationService(deps = {}) {
   const eventRecorder = deps.eventRecorder;
   const obligationService = deps.obligationService;
   const invoiceService = deps.invoiceService;
+  const paymentProvider = deps.paymentProvider || null;
   const idGenerator = requireIdGenerator(deps);
 
   if (!paymentRepository || !paymentAttemptRepository || !eventRecorder) {
@@ -331,6 +334,194 @@ export function createPaymentApplicationService(deps = {}) {
             attempt,
             eventIds: [],
             financialEffectApplied: true,
+          });
+        }
+      );
+    },
+
+    /**
+     * Create a payment attempt and initiate via injected PaymentProviderPort.
+     * Does NOT confirm payment — verification is required separately.
+     */
+    createPaymentAttemptWithProvider(command = {}) {
+      if (!paymentProvider) {
+        throw new FinanceError(
+          FINANCE_ERROR_CODES.INVALID_INPUT,
+          "paymentProvider is required for createPaymentAttemptWithProvider."
+        );
+      }
+      const ctx = requireCommandContext(command);
+      const paymentId = requireCommandId(command.paymentId, "paymentId");
+      const attemptId =
+        optionalCommandId(command.attemptId, "attemptId") ||
+        idGenerator("attempt");
+      const providerCode = requireCommandId(command.providerCode, "providerCode");
+
+      return executeIdempotent(
+        { idempotencyRepository },
+        PAYMENT_OPERATIONS.CREATE_PAYMENT_ATTEMPT_WITH_PROVIDER,
+        command,
+        {
+          paymentId,
+          attemptId,
+          providerCode,
+          description: command.description ?? null,
+          returnReference: command.returnReference ?? null,
+          expiresAt: command.expiresAt ?? null,
+          metadata: command.metadata ?? null,
+        },
+        () => {
+          const current = paymentRepository.getById(ctx.tenantId, paymentId);
+          const withAttempt = addPaymentAttempt(current, {
+            attemptId,
+            createdAt: ctx.occurredAt,
+            updatedAt: ctx.occurredAt,
+            idempotencyKey: ctx.idempotencyKey,
+          });
+          const attempt = withAttempt.attempts[withAttempt.attempts.length - 1];
+
+          const initiation = paymentProvider.initiatePayment(
+            {
+              tenantId: ctx.tenantId,
+              operationId: attemptId,
+              idempotencyKey: ctx.idempotencyKey,
+              correlationId: ctx.correlationId,
+              causationId: ctx.causationId,
+              providerCode,
+              paymentId,
+              occurredAt: ctx.occurredAt,
+            },
+            {
+              tenantId: ctx.tenantId,
+              paymentId,
+              paymentAttemptId: attemptId,
+              amountMinor: current.amount.amountMinor,
+              currency: current.currency,
+              idempotencyKey: ctx.idempotencyKey,
+              correlationId: ctx.correlationId,
+              description: command.description,
+              returnReference: command.returnReference,
+              expiresAt: command.expiresAt,
+              metadata: command.metadata,
+            }
+          );
+
+          const enrichedAttempt = {
+            ...attempt,
+            providerReference: initiation.providerPaymentReference,
+            providerTransactionReference: null,
+            evidenceRef: initiation.evidence?.evidenceRef || null,
+          };
+          paymentAttemptRepository.save(enrichedAttempt);
+          const nextAttempts = withAttempt.attempts.map((a) =>
+            a.attemptId === attemptId ? enrichedAttempt : a
+          );
+          const savedPayment = paymentRepository.update(ctx.tenantId, paymentId, {
+            ...withAttempt,
+            attempts: nextAttempts,
+            providerReference: initiation.providerPaymentReference,
+            updatedAt: ctx.occurredAt,
+          });
+
+          return Object.freeze({
+            payment: savedPayment,
+            attempt: enrichedAttempt,
+            providerResult: initiation,
+            eventIds: [],
+            financialEffectApplied: true,
+          });
+        }
+      );
+    },
+
+    /**
+     * Verify provider evidence, then apply Finance confirmation rules.
+     * Client-declared success alone is insufficient.
+     */
+    verifyAndConfirmPayment(command = {}) {
+      if (!paymentProvider) {
+        throw new FinanceError(
+          FINANCE_ERROR_CODES.INVALID_INPUT,
+          "paymentProvider is required for verifyAndConfirmPayment."
+        );
+      }
+      const ctx = requireCommandContext(command);
+      const paymentId = requireCommandId(command.paymentId, "paymentId");
+      const attemptId = requireCommandId(command.attemptId, "attemptId");
+      const providerCode = requireCommandId(command.providerCode, "providerCode");
+      const providerPaymentReference = requireCommandId(
+        command.providerPaymentReference,
+        "providerPaymentReference"
+      );
+
+      return executeIdempotent(
+        { idempotencyRepository },
+        PAYMENT_OPERATIONS.VERIFY_AND_CONFIRM_PAYMENT,
+        command,
+        {
+          paymentId,
+          attemptId,
+          providerCode,
+          providerPaymentReference,
+          evidenceRef: command.evidenceRef ?? null,
+          providerTransactionReference:
+            command.providerTransactionReference ?? null,
+          clientDeclaredSuccess: Boolean(command.clientDeclaredSuccess),
+          amountMinor: command.amountMinor ?? null,
+          currency: command.currency ?? null,
+        },
+        () => {
+          const current = paymentRepository.getById(ctx.tenantId, paymentId);
+          const verification = paymentProvider.verifyPaymentConfirmation(
+            {
+              tenantId: ctx.tenantId,
+              operationId: `verify-${attemptId}`,
+              idempotencyKey: ctx.idempotencyKey,
+              correlationId: ctx.correlationId,
+              causationId: ctx.causationId,
+              providerCode,
+              paymentId,
+              occurredAt: ctx.occurredAt,
+            },
+            {
+              evidenceRef: command.evidenceRef,
+              providerPaymentReference,
+              providerTransactionReference: command.providerTransactionReference,
+              paymentId,
+              amountMinor: command.amountMinor ?? current.amount.amountMinor,
+              currency: command.currency ?? current.currency,
+              clientDeclaredSuccess: command.clientDeclaredSuccess,
+            }
+          );
+
+          if (!verification.verified) {
+            throw new FinanceError(
+              FINANCE_ERROR_CODES.PROVIDER_EVIDENCE_INVALID,
+              verification.failureReason ||
+                "Provider verification did not confirm payment.",
+              {
+                paymentId,
+                providerStatus: verification.providerStatus,
+                clientDeclaredSuccess: verification.clientDeclaredSuccess,
+              }
+            );
+          }
+
+          const evidenceRef =
+            verification.evidence?.evidenceRef ||
+            requireCommandId(command.evidenceRef, "evidenceRef");
+          const providerTransactionReference =
+            verification.providerTransactionReference ||
+            providerPaymentReference;
+
+          // Reuse confirmPayment domain path via nested command semantics
+          return this.confirmPayment({
+            ...command,
+            idempotencyKey: `${ctx.idempotencyKey}::confirm`,
+            evidenceRef,
+            providerTransactionReference,
+            attemptId,
+            paymentId,
           });
         }
       );

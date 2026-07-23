@@ -12,12 +12,14 @@
  */
 
 // Errors
+// Errors
 export {
   FINANCE_ERROR_CODES,
   FINANCE_ERROR_CODE_VALUES,
   isFinanceErrorCode,
   FinanceError,
   isFinanceError,
+  isRetryableFinanceError,
 } from "./errors/index.js";
 
 // Currency
@@ -191,3 +193,40 @@ export {
   RECEIPT_OPERATIONS,
   REFUND_OPERATIONS,
 } from "./application/index.js";
+
+// ---------------------------------------------------------------------------
+// Phase 1D — Provider-neutral payment port
+// ---------------------------------------------------------------------------
+
+export {
+  FINANCE_PROVIDER_PORT_VERSION,
+  FINANCE_PROVIDER_CODE,
+  PROVIDER_PAYMENT_STATUS,
+  PROVIDER_PAYMENT_STATUS_VALUES,
+  PROVIDER_REFUND_STATUS,
+  PROVIDER_REFUND_STATUS_VALUES,
+  PROVIDER_WEBHOOK_EVENT_TYPE,
+  PROVIDER_WEBHOOK_EVENT_TYPE_VALUES,
+  PROVIDER_OPERATION,
+  PROVIDER_OPERATION_VALUES,
+  createProviderCapabilities,
+  assertProviderOperationSupported,
+  assertProviderCurrencySupported,
+  createProviderError,
+  throwProviderError,
+  PROVIDER_ERROR_RETRYABLE,
+  createProviderOperationContext,
+  createPaymentInitiationRequest,
+  createPaymentInitiationResult,
+  createPaymentVerificationResult,
+  createNormalizedProviderEvidence,
+  createRefundInitiationRequest,
+  createRefundProviderResult,
+  createProviderWebhookInput,
+  createNormalizedWebhookEvent,
+  normalizeSafeMetadata,
+  MAX_WEBHOOK_BODY_CHARS,
+  PAYMENT_PROVIDER_PORT_METHODS,
+  assertPaymentProviderPort,
+  createMockPaymentProvider,
+} from "./providers/index.js";

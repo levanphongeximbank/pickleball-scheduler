@@ -35,6 +35,7 @@ export function createSequentialIdGenerator(prefix = "fin") {
  * @param {object} [options]
  * @param {object} [options.repositories] — prebuilt repository bundle
  * @param {() => string} [options.idGenerator]
+ * @param {object} [options.paymentProvider] — optional PaymentProviderPort
  * @param {boolean} [options.useInMemoryRepositories]
  * @returns {object}
  */
@@ -54,6 +55,8 @@ export function createFinanceApplication(options = {}) {
     }
     repositories = createInMemoryFinanceRepositories();
   }
+
+  const paymentProvider = options.paymentProvider || null;
 
   const eventRecorder = createFinanceEventRecorder({
     eventRepository: repositories.events,
@@ -90,6 +93,7 @@ export function createFinanceApplication(options = {}) {
     eventRecorder,
     obligationService,
     invoiceService,
+    paymentProvider,
     idGenerator,
   });
 
@@ -106,6 +110,7 @@ export function createFinanceApplication(options = {}) {
     paymentRepository: repositories.payments,
     idempotencyRepository: repositories.idempotency,
     eventRecorder,
+    paymentProvider,
     idGenerator,
   });
 
@@ -113,6 +118,7 @@ export function createFinanceApplication(options = {}) {
     /** In-memory only when created via default path — not production persistence. */
     repositories,
     eventRecorder,
+    paymentProvider,
     fees: feeService,
     obligations: obligationService,
     invoices: invoiceService,

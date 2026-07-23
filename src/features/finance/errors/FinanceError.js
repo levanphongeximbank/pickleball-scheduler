@@ -38,3 +38,14 @@ export function throwFinanceError(code, message, context) {
 export function isFinanceError(err) {
   return err instanceof FinanceError;
 }
+
+/**
+ * Retryability hint from provider-normalized Finance errors.
+ * Defaults to false when not explicitly marked.
+ *
+ * @param {unknown} err
+ * @returns {boolean}
+ */
+export function isRetryableFinanceError(err) {
+  return isFinanceError(err) && err.context?.retryable === true;
+}
