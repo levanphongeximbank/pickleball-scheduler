@@ -1,8 +1,8 @@
 # Phase 1H — Staging SQL Apply and Adapter Certification
 
-**Date/time (UTC):** 2026-07-23T11:37:51Z  
-**Feature HEAD at apply:** `f879a1ac52178dc2c6a0f4333040362138274895`  
-**Branch:** `feature/finance-phase-1-foundation`  
+**Date/time (UTC):** 2026-07-23T11:37:51Z
+**Feature HEAD at apply:** `f879a1ac52178dc2c6a0f4333040362138274895`
+**Branch:** `feature/finance-phase-1-foundation`
 **Verdict class:** READY WITH CONDITIONS (see Unresolved conditions)
 
 ## Staging project identity
@@ -40,7 +40,7 @@ Supabase Management API:
 
 `POST https://api.supabase.com/v1/projects/qyewbxjsiiyufanzcjcq/database/query`
 
-Script: `scripts/apply-finance-phase1h-staging-sql.mjs --apply`  
+Script: `scripts/apply-finance-phase1h-staging-sql.mjs --apply`
 Scope: only `docs/supabase-finance-phase1f.sql` (no bulk migration push, no `db reset`, no rollback executed).
 
 ## Backup / rollback readiness
@@ -84,7 +84,7 @@ All 11 tables present after apply:
 10. `finance_events`
 11. `finance_idempotency`
 
-Compact inventory: `SCHEMA_INVENTORY_SUMMARY.json`  
+Compact inventory: `SCHEMA_INVENTORY_SUMMARY.json`
 Full verify dump: `APPLY_REPORT.json`
 
 ## Table / constraint / index / RLS verification
@@ -189,14 +189,14 @@ Mode: **authenticated Owner A injected Staging client** (no runtime app wiring; 
 
 ## Explicit non-actions
 
-- No Production apply / access / write  
-- No live provider enabled  
-- No runtime application wiring or deploy  
-- No legacy data migration / backfill  
-- No Billing or foreign-module mutation  
-- No PR opened  
-- No rebase / force-push  
-- No credentials committed  
+- No Production apply / access / write
+- No live provider enabled
+- No runtime application wiring or deploy
+- No legacy data migration / backfill
+- No Billing or foreign-module mutation
+- No PR opened
+- No rebase / force-push
+- No credentials committed
 
 ## Supporting artifacts
 
