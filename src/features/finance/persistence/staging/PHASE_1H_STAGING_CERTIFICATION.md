@@ -27,12 +27,14 @@
 
 ## SQL checksums
 
-| File | SHA-256 |
-|------|---------|
-| `docs/supabase-finance-phase1f.sql` | `618f46a2dcc4eadd8eb6375ed03ccd4b86427e2448d8e56cefaf3c43c409a926` |
-| `docs/supabase-finance-phase1f-rollback.sql` | `4505da40bd4d284e2b6acf4d8603b2a27f03e8ae648f037c6b34c2dd5af37163` |
+Canonical algorithm: SHA-256 over UTF-8 SQL text after normalizing line endings to LF (`\r\n`/`\r` → `\n`). Same helper: `src/features/finance/persistence/staging/sqlChecksum.js`. This matches Git blob bytes and Linux CI checkouts; Windows `core.autocrlf` working-tree CRLF must not change the digest.
 
-Forward SQL was applied on Staging in Phase 1H. Phase 1L refreshed comment/status headers only (documentation alignment); Staging was **not** re-applied and Production was **not** touched. Historical Phase 1H apply checksums were `0310905a5fba1ca2028d841c612f9cd7fcf22a5db96d7d9c4d81da3354050d00` (forward) and `b86921d7571c6861c0ec3a5464d87af7fd8f740000e55bfe6785535b8c40ea95` (rollback).
+| File | SHA-256 (LF-normalized) |
+|------|---------|
+| `docs/supabase-finance-phase1f.sql` | `39f34d1c4c80b3b7f34435ae858c3fe5a4f0a3bac96e2bbf61c00c09ecaec2fc` |
+| `docs/supabase-finance-phase1f-rollback.sql` | `4ec690da9ab9642d0d88d0269a08ce776377e2424938168d3b6baa6e936b2caa` |
+
+Forward SQL was applied on Staging in Phase 1H. Phase 1L refreshed comment/status headers only (documentation alignment); Staging was **not** re-applied and Production was **not** touched. Historical Phase 1H apply checksums were `0310905a5fba1ca2028d841c612f9cd7fcf22a5db96d7d9c4d81da3354050d00` (forward) and `b86921d7571c6861c0ec3a5464d87af7fd8f740000e55bfe6785535b8c40ea95` (rollback). Phase 1L-CI1 corrected evidence digests from Windows raw-CRLF hashes (`618f46a2…` / `4505da40…`) to the LF-canonical values above; SQL executable content was unchanged.
 
 ## Apply method
 

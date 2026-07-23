@@ -5,9 +5,9 @@
 import assert from "node:assert/strict";
 import fs from "node:fs";
 import path from "node:path";
-import { createHash } from "node:crypto";
 import { fileURLToPath } from "node:url";
 import test from "node:test";
+import { sha256SqlFile } from "../src/features/finance/persistence/staging/sqlChecksum.js";
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const stagingDir = path.join(root, "src/features/finance/persistence/staging");
@@ -16,14 +16,11 @@ const rollbackSql = path.join(root, "docs/supabase-finance-phase1f-rollback.sql"
 
 const STAGING_REF = "qyewbxjsiiyufanzcjcq";
 const PRODUCTION_REF = "expuvcohlcjzvrrauvud";
+/** LF-normalized content SHA-256 (matches Git blob / Linux checkout). */
 const FORWARD_SHA256 =
-  "618f46a2dcc4eadd8eb6375ed03ccd4b86427e2448d8e56cefaf3c43c409a926";
+  "39f34d1c4c80b3b7f34435ae858c3fe5a4f0a3bac96e2bbf61c00c09ecaec2fc";
 const ROLLBACK_SHA256 =
-  "4505da40bd4d284e2b6acf4d8603b2a27f03e8ae648f037c6b34c2dd5af37163";
-
-function sha256File(absPath) {
-  return createHash("sha256").update(fs.readFileSync(absPath)).digest("hex");
-}
+  "4ec690da9ab9642d0d88d0269a08ce776377e2424938168d3b6baa6e936b2caa";
 
 function readJson(name) {
   return JSON.parse(fs.readFileSync(path.join(stagingDir, name), "utf8"));
@@ -50,8 +47,8 @@ test("1H evidence files exist and declare Staging-only certification", () => {
 });
 
 test("1H SQL checksums match committed forward/rollback files", () => {
-  assert.equal(sha256File(forwardSql).toLowerCase(), FORWARD_SHA256);
-  assert.equal(sha256File(rollbackSql).toLowerCase(), ROLLBACK_SHA256);
+  assert.equal(sha256SqlFile(forwardSql).toLowerCase(), FORWARD_SHA256);
+  assert.equal(sha256SqlFile(rollbackSql).toLowerCase(), ROLLBACK_SHA256);
   assert.notEqual(FORWARD_SHA256, ROLLBACK_SHA256);
 });
 
