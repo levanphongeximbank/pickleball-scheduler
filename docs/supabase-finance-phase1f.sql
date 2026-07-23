@@ -1,6 +1,6 @@
 -- =============================================================================
 -- PICK_VN — Finance Foundation Phase 1F
--- Operational Finance persistence (SQL AUTHORING ONLY — DO NOT APPLY YET)
+-- Operational Finance persistence migration package
 -- =============================================================================
 -- Filename: docs/supabase-finance-phase1f.sql
 -- Rollback: docs/supabase-finance-phase1f-rollback.sql
@@ -10,7 +10,7 @@
 --   Dedicated `finance` schema was considered; repository convention uses public
 --   schema with module-prefixed tables (billing, notification, identity).
 --
--- Prerequisites (runtime apply — not performed in Phase 1F):
+-- Prerequisites (runtime apply):
 --   docs/supabase-rbac.sql (or rbac-v4) providing:
 --     public.user_venue_id(), public.is_super_admin(), public.user_has_permission(text)
 --   Permissions finance.view / finance.edit already catalogued in identity SQL.
@@ -37,7 +37,10 @@
 --   No UPDATE/DELETE policies for authenticated. Service-role bypass is NOT
 --   application authorization. Maintenance deletes require elevated ops process.
 --
--- Status: SQL authored / statically verified. NOT applied. NOT staging-certified.
+-- Status: SQL authored / statically verified.
+--   Applied to Staging only (Phase 1H) — READY WITH CONDITIONS.
+--   Production was not touched / not authorized.
+--   Runtime defaults remain disabled. Foundation is not a business integration.
 -- =============================================================================
 
 -- ─── 1. finance_fee_definitions ─────────────────────────────────────────────

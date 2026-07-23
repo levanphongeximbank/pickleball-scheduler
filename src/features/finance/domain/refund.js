@@ -179,7 +179,9 @@ export function requestRefund(payment, input = {}) {
     );
   }
 
-  const remaining = getRefundableAmount(p);
+  const remaining = getRefundableAmount(p, {
+    reservedInFlightMinor: input.reservedInFlightMinor ?? 0,
+  });
   if (compareMoney(refundMoney, remaining) > 0) {
     throw new FinanceError(
       FINANCE_ERROR_CODES.INVALID_REFUND_AMOUNT,

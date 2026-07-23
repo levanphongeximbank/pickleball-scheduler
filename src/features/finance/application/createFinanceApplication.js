@@ -91,8 +91,6 @@ export function createFinanceApplication(options = {}) {
     obligationRepository: repositories.obligations,
     idempotencyRepository: repositories.idempotency,
     eventRecorder,
-    obligationService,
-    invoiceService,
     paymentProvider,
     idGenerator,
   });

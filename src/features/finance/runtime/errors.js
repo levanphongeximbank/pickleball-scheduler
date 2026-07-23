@@ -17,7 +17,7 @@ export const FINANCE_RUNTIME_ERROR_CODES = Object.freeze({
   PERSISTENCE_NOT_READY: FINANCE_ERROR_CODES.PERSISTENCE_NOT_READY,
   PROVIDER_NOT_CONFIGURED: FINANCE_ERROR_CODES.PROVIDER_NOT_CONFIGURED,
   TENANT_RESOLUTION_UNAVAILABLE: FINANCE_ERROR_CODES.TENANT_RESOLUTION_UNAVAILABLE,
-  READINESS_PROBE_FAILED: FINANCE_ERROR_CODES.READINESS_PROBE_FAILED,
+  APPLICATION_COMMANDS_UNAVAILABLE: FINANCE_ERROR_CODES.APPLICATION_COMMANDS_UNAVAILABLE,
 });
 
 /**
@@ -48,5 +48,24 @@ export function throwRuntimeDisabled(message = "Finance runtime is disabled.") {
     FINANCE_ERROR_CODES.RUNTIME_DISABLED,
     message,
     { runtimeMode: "disabled", enabled: false }
+  );
+}
+
+/**
+ * @param {string} [message]
+ * @param {object} [context]
+ * @returns {never}
+ */
+export function throwApplicationCommandsUnavailable(
+  message = "Finance application commands are unavailable for this runtime composition.",
+  context = {}
+) {
+  return throwFinanceRuntimeError(
+    FINANCE_ERROR_CODES.APPLICATION_COMMANDS_UNAVAILABLE,
+    message,
+    {
+      applicationCommandsAvailable: false,
+      ...context,
+    }
   );
 }

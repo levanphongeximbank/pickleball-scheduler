@@ -54,6 +54,11 @@ export function buildFinanceCapabilityReport(params) {
       "Supabase adapter multi-record atomicity is unavailable without injected transactional executor."
     );
   }
+  if (config.mode === FINANCE_RUNTIME_MODE.SUPABASE) {
+    limitations.push(
+      "Durable Phase 1C application command surface is not attached over async Supabase repositories (fail closed)."
+    );
+  }
   if (config.providerStrategy === FINANCE_PROVIDER_STRATEGY.NONE) {
     limitations.push("Provider strategy is none — initiation/verification not available.");
   }
@@ -61,9 +66,13 @@ export function buildFinanceCapabilityReport(params) {
     limitations.push("Mock provider does not auto-confirm payments; application verification still required.");
   }
 
+  const applicationCommandsAvailable =
+    enabled && config.mode === FINANCE_RUNTIME_MODE.MEMORY;
+
   return Object.freeze({
     financeEnabled: enabled,
     runtimeMode: config.mode,
+    applicationCommandsAvailable,
     durablePersistenceAvailable: Boolean(durablePersistenceAvailable),
     sqlSchemaExpected: FINANCE_STAGING_CERTIFICATION_REFERENCE.sqlSchemaExpected,
     stagingCertified:

@@ -17,9 +17,9 @@ const rollbackSql = path.join(root, "docs/supabase-finance-phase1f-rollback.sql"
 const STAGING_REF = "qyewbxjsiiyufanzcjcq";
 const PRODUCTION_REF = "expuvcohlcjzvrrauvud";
 const FORWARD_SHA256 =
-  "0310905a5fba1ca2028d841c612f9cd7fcf22a5db96d7d9c4d81da3354050d00";
+  "618f46a2dcc4eadd8eb6375ed03ccd4b86427e2448d8e56cefaf3c43c409a926";
 const ROLLBACK_SHA256 =
-  "b86921d7571c6861c0ec3a5464d87af7fd8f740000e55bfe6785535b8c40ea95";
+  "4505da40bd4d284e2b6acf4d8603b2a27f03e8ae648f037c6b34c2dd5af37163";
 
 function sha256File(absPath) {
   return createHash("sha256").update(fs.readFileSync(absPath)).digest("hex");

@@ -23,7 +23,9 @@ export {
   createFinanceRuntimeError,
   throwFinanceRuntimeError,
   throwRuntimeDisabled,
+  throwApplicationCommandsUnavailable,
 } from "./errors.js";
+
 
 export {
   FINANCE_READINESS_STATE,

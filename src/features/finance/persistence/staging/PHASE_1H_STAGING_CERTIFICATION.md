@@ -25,14 +25,14 @@
 
 **Explicit:** Production was not accessed for write. Production SQL was not applied.
 
-## SQL checksums (unchanged)
+## SQL checksums
 
 | File | SHA-256 |
 |------|---------|
-| `docs/supabase-finance-phase1f.sql` | `0310905a5fba1ca2028d841c612f9cd7fcf22a5db96d7d9c4d81da3354050d00` |
-| `docs/supabase-finance-phase1f-rollback.sql` | `b86921d7571c6861c0ec3a5464d87af7fd8f740000e55bfe6785535b8c40ea95` |
+| `docs/supabase-finance-phase1f.sql` | `618f46a2dcc4eadd8eb6375ed03ccd4b86427e2448d8e56cefaf3c43c409a926` |
+| `docs/supabase-finance-phase1f-rollback.sql` | `4505da40bd4d284e2b6acf4d8603b2a27f03e8ae648f037c6b34c2dd5af37163` |
 
-Forward SQL was applied **exactly as committed**. Historical SQL files were not modified.
+Forward SQL was applied on Staging in Phase 1H. Phase 1L refreshed comment/status headers only (documentation alignment); Staging was **not** re-applied and Production was **not** touched. Historical Phase 1H apply checksums were `0310905a5fba1ca2028d841c612f9cd7fcf22a5db96d7d9c4d81da3354050d00` (forward) and `b86921d7571c6861c0ec3a5464d87af7fd8f740000e55bfe6785535b8c40ea95` (rollback).
 
 ## Apply method
 

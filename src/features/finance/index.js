@@ -318,6 +318,7 @@ export {
   createFinanceRuntimeError,
   throwFinanceRuntimeError,
   throwRuntimeDisabled,
+  throwApplicationCommandsUnavailable,
   FINANCE_READINESS_STATE,
   FINANCE_READINESS_STATE_VALUES,
   FINANCE_DEFAULT_PROBE_TIMEOUT_MS,
