@@ -13,7 +13,7 @@
  * - private fingerprint/normalization internals beyond documented helpers
  * - SQL apply / live payment provider / UI / Billing surfaces
  * - initialized Supabase credentials or application singletons
- * - Production-activated Finance runtime (Phase 1I default is disabled)
+ * - Production-activated Finance runtime (Phase 1I/1J default is disabled; Staging flag OFF)
  */
 
 // Errors
@@ -329,4 +329,14 @@ export {
   buildFinanceCapabilityReport,
   createFinanceRuntime,
   createFinanceRuntimeTestHarness,
+  FINANCE_STAGING_RUNTIME_FLAG,
+  FINANCE_APP_ENV_KEY,
+  FINANCE_APP_ENVIRONMENT,
+  FINANCE_STAGING_ACTIVATION_REASON,
+  classifyFinanceAppEnvironment,
+  isFinanceStagingRuntimeFlagEnabled,
+  readFinanceStagingEnvFromImportMeta,
+  resolveFinanceStagingActivation,
+  createAuthenticatedFinanceTenantResolver,
+  createFinanceAppComposition,
 } from "./runtime/index.js";

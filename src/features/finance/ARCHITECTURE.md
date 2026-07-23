@@ -1,12 +1,12 @@
-# Finance Foundation Architecture (Phase 1B + Phase 1C + Phase 1D + Phase 1E + Phase 1F + Phase 1G + Phase 1H + Phase 1I)
+# Finance Foundation Architecture (Phase 1B + Phase 1C + Phase 1D + Phase 1E + Phase 1F + Phase 1G + Phase 1H + Phase 1I + Phase 1J)
 
 **Module home:** `src/features/finance/`
 
-**Status:** Domain + application services + in-memory repositories + provider-neutral payment port + durable persistence contracts + SQL authored/statically verified + Supabase-compatible durable adapter + **Staging SQL applied & certified (READY WITH CONDITIONS)** + **opt-in runtime composition foundation (default disabled)**
+**Status:** Domain + application services + in-memory repositories + provider-neutral payment port + durable persistence contracts + SQL authored/statically verified + Supabase-compatible durable adapter + Staging SQL applied & certified (READY WITH CONDITIONS) + opt-in runtime composition + **authenticated Staging app composition behind feature flag (default OFF)**
 
 **Baseline:** Phase 1A read-only audit approved at `1fe3d1c0597470858ea400d379ef853d225720a5`
 
-**Distinctions:** SQL authored, statically verified, and **Staging-applied** (Phase 1H). Adapter certified on Staging with conditions. Runtime composition exists but is **opt-in / default disabled**. Production **not** authorized. No live provider. No UI / Booking / Tournament / Competition wiring.
+**Distinctions:** SQL authored, statically verified, and **Staging-applied** (Phase 1H). Adapter certified on Staging with conditions. Runtime composition exists (Phase 1I). Phase 1J mounts Staging composition in authenticated app shell **only when** `VITE_FINANCE_STAGING_RUNTIME_ENABLED=true` **and** `VITE_APP_ENV=staging`. Production **not** authorized. No live provider. No Booking / Tournament / Competition / UI workflow wiring.
 
 ---
 
@@ -394,17 +394,64 @@ Optional health probes are explicit and opt-in (`featureFlags.allowOptionalHealt
 
 ---
 
+## Phase 1J — Authenticated Staging composition wiring
+
+| Artifact | Path |
+|----------|------|
+| Staging flag gate | `src/features/finance/runtime/stagingFlags.js` |
+| App composition | `createFinanceAppComposition(options)` |
+| Tenant resolver adapter | `runtime/adapters/createAuthenticatedFinanceTenantResolver.js` |
+| App-shell provider | `runtime/FinanceStagingRuntimeProvider.jsx` |
+| Shell mount | `src/layouts/MainLayout.jsx` (provider nest only) |
+| Contract tests | `tests/finance-phase-1j-staging-composition.test.js` |
+
+### Feature flag
+
+- Name: `VITE_FINANCE_STAGING_RUNTIME_ENABLED`
+- Default: **OFF** (only exact `"true"` enables)
+- Environment key: existing `VITE_APP_ENV`
+- Activation requires: flag ON **and** `VITE_APP_ENV=staging`
+- Production: always forced disabled (no Supabase Finance adapter instantiation)
+- Unknown / non-staging + flag ON: fail closed (disabled)
+- Testable via injected `env` / `appEnvironment` (no required `process.env`)
+
+### App-shell boundary
+
+`MainLayout.jsx` is the authenticated composition root (alongside `NotificationRuntimeProvider`). Phase 1J adds `FinanceStagingRuntimeProvider` only — no routes, menus, pages, or Finance business commands.
+
+Provider behavior:
+
+- Flag OFF → disabled Finance runtime; does not call Supabase client factory for Finance
+- Staging + flag ON → injects existing `getSupabaseAuthClient()` (no new client / credentials)
+- Composition never resolves tenant, never queries/writes DB, never invokes Finance commands
+- Failures fail closed to disabled (shell must not crash)
+
+### Authenticated tenant resolver
+
+`createAuthenticatedFinanceTenantResolver` wraps profile-backed tenant identity (`user.tenantId` / `user.venueId`). It:
+
+- resolves only on explicit `resolveTenantId({ user })` calls;
+- rejects missing / ambiguous tenant;
+- rejects raw client `tenantId` / `overrideTenantId`;
+- does not use localStorage or first-venue fallback.
+
+### Readiness
+
+Available via `composition.getReadiness()` / `useFinanceStagingReadiness()` (internal diagnostics). No new diagnostics UI page. Reports flag state, activation reason, Staging certification reference, persistence/transaction/provider/tenant strategies, and `productionAuthorized: false`.
+
+---
+
 ## Provider integration
 
 Finance owns a provider-neutral Payment Provider port (Phase 1D).
 
-Phase 1D/1I does **not** select, enable, or consolidate a live payment provider. No webhooks wired to HTTP/Edge. No live provider calls. No credentials.
+Phase 1D/1I/1J does **not** select, enable, or consolidate a live payment provider. No webhooks wired to HTTP/Edge. No live provider calls. No credentials.
 
 ---
 
 ## Integration status
 
-Phase 1I has **no integration** with Booking, Tournament, Competition, Notification, Reporting, Billing, or UI modules. Runtime composition is not wired into the application shell.
+Phase 1J wires **composition only** into the authenticated app shell behind a Staging flag. It has **no** Booking, Tournament, Competition, Notification, Reporting, Billing, or Finance UI workflow integration. No Finance business commands run at startup.
 
 ---
 
@@ -423,7 +470,7 @@ Finance must never independently decide competition eligibility.
 
 Expected later phases (not started):
 
-1. Authenticated app-shell composition behind feature flags (still opt-in; Staging first)
+1. Explicit Finance command/query surfaces behind Staging flag (still no Production)
 2. Live provider adapters implementing PaymentProviderPort (still no forced consolidation of sibling stacks)
 3. Booking / Tournament / Club fee adapters (consume Finance contracts)
 4. Competition consumer of `PAYMENT_CONFIRMED` (eligibility remains Competition-owned)
@@ -442,6 +489,7 @@ Expected later phases (not started):
 - Webhook tenant routing hints are never authoritative.
 - Typed errors expose safe messages + non-sensitive context only; retryable hints where applicable.
 - Runtime config / readiness / capability reports reject secrets and do not embed credentials, DB URLs, or access tokens.
+- Staging composition never uses `service_role`; authenticated anon/session client only when injected.
 
 ---
 
@@ -450,12 +498,12 @@ Expected later phases (not started):
 - Phase 1C in-memory repositories and Phase 1E contract harness are not durable / not production.
 - Phase 1F SQL is Staging-applied (Phase 1H) with unresolved conditions — see certification doc.
 - Phase 1G adapter multi-record atomicity requires injected executor.
-- Phase 1I runtime default is disabled; Production activation rejected; no app-shell wiring.
+- Phase 1I runtime default is disabled; Phase 1J Staging flag default is OFF.
+- Phase 1J does not invoke Finance business flows; no UI for Finance operations.
 - VND-only allowlist (DB CHECK `currency = 'VND'`; extend via later migration).
 - Provider port exists; no live provider adapter authorized.
 - Mock provider is not production-capable.
-- No UI.
-- No wiring into booking, tournament, competition, notification, or billing modules.
+- No wiring into booking, tournament, competition, notification, or billing business modules.
 - Invoice payment status is a bookkeeping hint, not settlement evidence.
 - Cross-table invoice total = sum(items) cannot be a simple CHECK; application/UoW remain authoritative.
 - RLS depends on existing `user_venue_id()` / `user_has_permission('finance.view'|'finance.edit')` (rbac-v4); finer refund-approval permission unresolved.
@@ -466,6 +514,6 @@ Expected later phases (not started):
 
 ## Next recommended phase
 
-**Phase 1J — Authenticated Staging composition behind feature flags** (Owner-authorized) and/or live provider adapter spike (separately gated). Production remains blocked.
+**Phase 1K — Staging Finance command surface / first operational use-case adapter** (Owner-authorized Staging only), still behind the Staging flag. Live provider and Production remain blocked.
 
-Conditions for next phase: Phase 1I committed on `feature/finance-phase-1-foundation`, Finance tests green, Owner approval for any app-shell wiring or live provider work (never Production without separate gate).
+Conditions for next phase: Phase 1J committed on `feature/finance-phase-1-foundation`, Finance tests green, Owner approval for any business-module or UI wiring (never Production without separate gate).

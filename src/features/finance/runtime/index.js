@@ -44,3 +44,18 @@ export {
   createFinanceRuntime,
   createFinanceRuntimeTestHarness,
 } from "./createFinanceRuntime.js";
+
+export {
+  FINANCE_STAGING_RUNTIME_FLAG,
+  FINANCE_APP_ENV_KEY,
+  FINANCE_APP_ENVIRONMENT,
+  FINANCE_STAGING_ACTIVATION_REASON,
+  classifyFinanceAppEnvironment,
+  isFinanceStagingRuntimeFlagEnabled,
+  readFinanceStagingEnvFromImportMeta,
+  resolveFinanceStagingActivation,
+} from "./stagingFlags.js";
+
+export { createAuthenticatedFinanceTenantResolver } from "./adapters/createAuthenticatedFinanceTenantResolver.js";
+
+export { createFinanceAppComposition } from "./createFinanceAppComposition.js";
