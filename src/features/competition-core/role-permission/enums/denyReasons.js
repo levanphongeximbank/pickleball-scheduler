@@ -1,0 +1,31 @@
+/** CORE-02 typed deny reasons / decision codes. */
+
+export const AUTHORIZATION_DENY_REASON = Object.freeze({
+  INVALID_REQUEST: "INVALID_REQUEST",
+  MISSING_SUBJECT: "MISSING_SUBJECT",
+  MISSING_SCOPE: "MISSING_SCOPE",
+  MISSING_ACTION: "MISSING_ACTION",
+  UNKNOWN_ACTION: "UNKNOWN_ACTION",
+  EVIDENCE_UNAVAILABLE: "EVIDENCE_UNAVAILABLE",
+  EVIDENCE_MALFORMED: "EVIDENCE_MALFORMED",
+  SCOPE_MISMATCH: "SCOPE_MISMATCH",
+  PERMISSION_DENIED: "PERMISSION_DENIED",
+  ADAPTER_UNAVAILABLE: "ADAPTER_UNAVAILABLE",
+});
+
+export const AUTHORIZATION_DENY_REASON_VALUES = Object.freeze(
+  Object.values(AUTHORIZATION_DENY_REASON)
+);
+
+export const AUTHORIZATION_DECISION_CODE = Object.freeze({
+  ALLOW: "ALLOW",
+  ...AUTHORIZATION_DENY_REASON,
+});
+
+/**
+ * @param {unknown} value
+ * @returns {boolean}
+ */
+export function isAuthorizationDenyReason(value) {
+  return AUTHORIZATION_DENY_REASON_VALUES.includes(String(value || ""));
+}

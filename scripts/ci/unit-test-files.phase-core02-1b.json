@@ -1,0 +1,8 @@
+[
+  "tests/competition-core-role-permission-core02-phase1b-contracts.test.js",
+  "tests/competition-core-role-permission-core02-phase1b-fail-closed.test.js",
+  "tests/competition-core-role-permission-core02-phase1b-mapping.test.js",
+  "tests/competition-core-role-permission-core02-phase1b-port-adapters.test.js",
+  "tests/competition-core-role-permission-core02-phase1b-projectors.test.js",
+  "tests/competition-core-role-permission-core02-phase1b-architecture.test.js"
+]
