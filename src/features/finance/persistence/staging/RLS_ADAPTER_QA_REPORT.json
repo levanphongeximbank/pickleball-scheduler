@@ -1,0 +1,121 @@
+{
+  "phase": "1H",
+  "startedAt": "2026-07-23T11:35:29.719Z",
+  "stagingRef": "qyewbxjsiiyufanzcjcq",
+  "stagingUrl": "https://qyewbxjsiiyufanzcjcq.supabase.co",
+  "productionTouched": false,
+  "envSource": "../crm/.env.staging-qa.local",
+  "tenantAConfigured": true,
+  "tenantBConfigured": true,
+  "checks": {
+    "anonSelectDenied": {
+      "pass": true,
+      "errorCode": "42501",
+      "errorMessage": "permission denied for table finance_fee_definitions",
+      "rowCount": null
+    },
+    "tenantAInsertOwn": {
+      "pass": true,
+      "errorCode": null,
+      "errorMessage": null,
+      "row": {
+        "id": "FINANCE_QA_RLS_FEE_A_1784806532214",
+        "tenant_id": "venue-staging-a",
+        "version": 1
+      }
+    },
+    "tenantBInsertOwn": {
+      "pass": true,
+      "errorCode": null,
+      "errorMessage": null,
+      "row": {
+        "id": "FINANCE_QA_RLS_FEE_B_1784806532214",
+        "tenant_id": "venue-staging-b"
+      }
+    },
+    "tenantACannotSelectB": {
+      "pass": true,
+      "errorCode": null,
+      "errorMessage": null,
+      "rowCount": 0
+    },
+    "tenantACannotInsertForB": {
+      "pass": true,
+      "errorCode": "42501",
+      "errorMessage": "new row violates row-level security policy for table \"finance_fee_definitions\""
+    },
+    "tenantACannotUpdateB": {
+      "pass": true,
+      "errorCode": null,
+      "errorMessage": null,
+      "rowCount": 0
+    },
+    "tenantACannotDeleteB": {
+      "pass": true,
+      "errorCode": null,
+      "errorMessage": null,
+      "rowCount": 0
+    },
+    "tenantACanSelectOwn": {
+      "pass": true,
+      "errorCode": null,
+      "errorMessage": null
+    },
+    "eventAppendOnlyAuthenticated": {
+      "insertPass": true,
+      "insertError": null,
+      "updateDenied": true,
+      "updateError": null,
+      "deleteDenied": true,
+      "deleteError": null,
+      "retainedEventId": "FINANCE_QA_RLS_EVT_1784806534140",
+      "pass": true
+    }
+  },
+  "status": "PASS",
+  "tenantContext": {
+    "ownerAUserIdPresent": true,
+    "ownerBUserIdPresent": true,
+    "venueA": "venue-staging-a",
+    "venueB": "venue-staging-b",
+    "venueAError": null,
+    "venueBError": null,
+    "configuredTenantA": "venue-staging-a",
+    "configuredTenantB": "venue-staging-b"
+  },
+  "adapterCertification": {
+    "mode": "authenticated_owner_a_injected",
+    "results": {
+      "create": {
+        "pass": true,
+        "version": 1
+      },
+      "getById": {
+        "pass": true
+      },
+      "boundedList": {
+        "pass": true,
+        "count": 4
+      },
+      "optimisticUpdate": {
+        "pass": true,
+        "version": 2
+      },
+      "staleUpdateErrorName": "FinanceError",
+      "staleUpdateCode": "FINANCE_OPTIMISTIC_CONCURRENCY_CONFLICT",
+      "staleUpdateRejected": {
+        "pass": true
+      },
+      "idempotencyBegin": {
+        "pass": true
+      },
+      "idempotencyGet": {
+        "pass": true
+      }
+    },
+    "pass": true
+  },
+  "cleanupNote": "Authenticated roles lack DELETE grants by design. Run apply-finance-phase1h-staging-sql.mjs --cleanup for FINANCE_QA_ fee/idempotency rows. Append-only events retained.",
+  "rlsTenantIsolationPass": true,
+  "finishedAt": "2026-07-23T11:35:36.831Z"
+}
