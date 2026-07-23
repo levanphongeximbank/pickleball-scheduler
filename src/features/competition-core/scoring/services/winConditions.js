@@ -27,12 +27,9 @@ export function evaluateGameComplete(points, format) {
     return { complete: false, winnerSide: null };
   }
 
-  let complete = false;
-  if (maximumScore != null && leader >= maximumScore) {
-    complete = true;
-  } else {
-    complete = leader - trailer >= winBy;
-  }
+  const complete =
+    (maximumScore != null && leader >= maximumScore) ||
+    leader - trailer >= winBy;
 
   if (!complete || scoreA === scoreB) {
     return { complete: false, winnerSide: null };
