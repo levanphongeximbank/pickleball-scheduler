@@ -1,8 +1,9 @@
 /**
- * Player Rating Foundation — Phase 1B contracts/ports + Phase 1C read model.
+ * Player Rating Foundation — Phase 1B contracts/ports + Phase 1C read model
+ * + Phase 1D append-only history & immutable snapshots.
  *
- * Runtime-neutral contracts, ports, and current-state read-model only.
- * Not wired into Production runtime.
+ * Runtime-neutral contracts, ports, read-model, and in-memory history/snapshot
+ * adapters only. Not wired into Production runtime.
  * Does not replace legacy assessment under src/features/player-rating/.
  */
 
@@ -108,3 +109,25 @@ export {
   normalizeLegacyRating,
   collectRatingCandidates,
 } from "./read-model/index.js";
+
+export {
+  PLAYER_RATING_HISTORY_SNAPSHOT_PHASE,
+  timestampSortValue,
+  compareHistoryEntriesAscending,
+  compareSnapshotsAscending,
+  sortDeterministically,
+  scopesMatch,
+  requireQueryScope,
+  buildStoredHistoryEntry,
+  appendRatingHistory,
+  getRatingHistoryByEventId,
+  listRatingHistory,
+  rejectHistoryMutation,
+  buildStoredSnapshot,
+  createRatingSnapshot,
+  getRatingSnapshotById,
+  listRatingSnapshots,
+  rejectSnapshotMutation,
+  createInMemoryRatingHistoryAdapter,
+  createInMemoryRatingSnapshotAdapter,
+} from "./history-snapshot/index.js";
