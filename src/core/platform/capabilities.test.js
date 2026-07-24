@@ -41,6 +41,17 @@ const OPERATION_COMPATIBILITY_ADAPTER_CAPABILITY_CODES = Object.freeze([
   "COMPATIBILITY_DECISION_ADAPTER",
 ]);
 
+const INTEGRATION_CAPABILITY_ADAPTER_CAPABILITY_CODES = Object.freeze([
+  "INTEGRATION_PORT_DESCRIPTOR_ADAPTER",
+  "PLATFORM_CAPABILITY_DESCRIPTOR_ADAPTER",
+]);
+
+const CAPABILITY_DISCOVERY_CODES = Object.freeze([
+  "CAPABILITY_DISCOVERY",
+]);
+
+const AUTHORITATIVE_MANIFEST_COUNT = 37;
+
 test("capability manifest is a non-empty frozen list", () => {
   assert.equal(Array.isArray(PLATFORM_CAPABILITY_MANIFEST), true);
   assert.ok(PLATFORM_CAPABILITY_MANIFEST.length >= 1);
@@ -55,16 +66,20 @@ test("every capability item is a valid immutable descriptor", () => {
     assert.equal(item.ownerModule, "platform-core");
     assert.equal(item.version, "1.0.0");
     assert.ok(
-      item.status === "CONTRACT_AVAILABLE" || item.status === "ADAPTER_AVAILABLE",
-      `${item.capabilityCode} status must be CONTRACT_AVAILABLE or ADAPTER_AVAILABLE`
+      item.status === "CONTRACT_AVAILABLE" ||
+        item.status === "ADAPTER_AVAILABLE" ||
+        item.status === "DISCOVERY_AVAILABLE",
+      `${item.capabilityCode} status must be CONTRACT_AVAILABLE, ADAPTER_AVAILABLE, or DISCOVERY_AVAILABLE`
     );
     assert.notEqual(item.status, "PRODUCTION_READY");
+    assert.notEqual(item.status, "RUNTIME_ADOPTED");
   }
 });
 
 test("capability codes are unique", () => {
   const codes = PLATFORM_CAPABILITY_MANIFEST.map((item) => item.capabilityCode);
   assert.equal(new Set(codes).size, codes.length);
+  assert.equal(PLATFORM_CAPABILITY_MANIFEST.length, AUTHORITATIVE_MANIFEST_COUNT);
 });
 
 test("identity/tenant adapter capabilities are present with ADAPTER_AVAILABLE", () => {
@@ -103,6 +118,33 @@ test("operation/compatibility adapter capabilities are present with ADAPTER_AVAI
     assert.notEqual(byCode.get(code).status, "RUNTIME_ADOPTED");
   }
 });
+
+test("integration/capability adapter capabilities are present with ADAPTER_AVAILABLE", () => {
+  const byCode = new Map(
+    PLATFORM_CAPABILITY_MANIFEST.map((item) => [item.capabilityCode, item])
+  );
+  for (const code of INTEGRATION_CAPABILITY_ADAPTER_CAPABILITY_CODES) {
+    assert.equal(byCode.has(code), true, `missing capability ${code}`);
+    assert.equal(byCode.get(code).status, "ADAPTER_AVAILABLE");
+    assert.equal(byCode.get(code).ownerModule, "platform-core");
+    assert.notEqual(byCode.get(code).status, "PRODUCTION_READY");
+    assert.notEqual(byCode.get(code).status, "RUNTIME_ADOPTED");
+  }
+});
+
+test("capability discovery is present with DISCOVERY_AVAILABLE", () => {
+  const byCode = new Map(
+    PLATFORM_CAPABILITY_MANIFEST.map((item) => [item.capabilityCode, item])
+  );
+  for (const code of CAPABILITY_DISCOVERY_CODES) {
+    assert.equal(byCode.has(code), true, `missing capability ${code}`);
+    assert.equal(byCode.get(code).status, "DISCOVERY_AVAILABLE");
+    assert.equal(byCode.get(code).ownerModule, "platform-core");
+    assert.notEqual(byCode.get(code).status, "PRODUCTION_READY");
+    assert.notEqual(byCode.get(code).status, "RUNTIME_ADOPTED");
+  }
+});
+
 test("manifest mutation is rejected", () => {
   assert.throws(() => {
     /** @type {any} */ (PLATFORM_CAPABILITY_MANIFEST).push({

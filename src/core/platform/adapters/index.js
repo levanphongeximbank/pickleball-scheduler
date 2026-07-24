@@ -38,3 +38,10 @@ export {
   projectCompatibilityDecision,
   COMPATIBILITY_DECISION_ADAPTER_ERROR,
 } from "./operationCompatibility/index.js";
+
+export {
+  projectIntegrationPortDescriptor,
+  INTEGRATION_PORT_DESCRIPTOR_ADAPTER_ERROR,
+  projectPlatformCapabilityDescriptor,
+  PLATFORM_CAPABILITY_DESCRIPTOR_ADAPTER_ERROR,
+} from "./integrationCapability/index.js";
