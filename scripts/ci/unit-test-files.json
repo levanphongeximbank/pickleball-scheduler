@@ -374,6 +374,7 @@
   "tests/competition-engine-e2e-03-organizer-operations.test.js",
   "tests/competition-engine-e2e-04-player-referee-operations.test.js",
   "tests/competition-engine-e2e-05-public-experience.test.js",
+  "tests/competition-engine-e2e-06-governance-reliability.test.js",
   "tests/intelligence-analytics-ia-01-foundation.test.js",
   "tests/intelligence-analytics-ia-02-metric-registry.test.js",
   "tests/intelligence-analytics-ia-03-query-projection-runtime.test.js",

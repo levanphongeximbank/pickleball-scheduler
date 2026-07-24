@@ -2,6 +2,7 @@
  * E2E-03 Organizer Operations — public barrel.
  * E2E-04 Player / Referee Operations exported selectively (additive).
  * E2E-05 Public Competition Experience exported selectively (additive).
+ * E2E-06 Governance & Reliability exported selectively (additive).
  */
 
 export {
@@ -199,3 +200,58 @@ export {
   getPublicCompetitionExperienceState,
   COMPETITION_ENGINE_PUBLIC_EXPERIENCE,
 } from "./public/index.js";
+
+// ─── E2E-06 Governance & Reliability (selective — avoid helper name clashes) ─
+export {
+  E2E06_GOVERNANCE_VERSION,
+  E2E06_GOVERNANCE_PHASE,
+  E2E06_RELIABILITY_POLICY_VERSION,
+  E2E06_CAPABILITY,
+  GOVERNANCE_QUERY,
+  GOVERNANCE_QUERY_VALUES,
+  GOVERNANCE_ACTION,
+  GOVERNANCE_ACTION_VALUES,
+  RUNTIME_HEALTH_STATE,
+  RUNTIME_HEALTH_STATE_VALUES,
+  ISSUE_SEVERITY,
+  ISSUE_SEVERITY_VALUES,
+  ISSUE_SOURCE_OWNER,
+  RELIABILITY_ISSUE_CODE,
+  RELIABILITY_ISSUE_CODE_VALUES,
+  DEGRADED_CONTINUATION,
+  DEGRADED_CONTINUATION_VALUES,
+  DEPENDENCY_STATUS,
+  LIFECYCLE_PROJECTION,
+  GOVERNANCE_ERROR_CODE,
+  GOVERNANCE_ERROR_CODE_VALUES,
+  GOVERNANCE_FORBIDDEN_PUBLIC_KEYS,
+  GovernanceReliabilityError,
+  isGovernanceReliabilityError,
+  isGovernanceErrorCode,
+  failGovernance,
+  normalizeGovernanceError,
+  GOVERNANCE_CAPABILITY,
+  GOVERNANCE_ACTION_PERMISSION_MAP,
+  resolveGovernanceActionPermissions,
+  isKnownGovernanceAction,
+  authorizeGovernanceCommand,
+  evaluateReliabilityPolicy,
+  sortReliabilityIssues,
+  buildDegradedModeProjection,
+  buildGovernanceStateProjection,
+  buildIncidentProjection,
+  buildCertificationReadinessProjection,
+  buildReliabilityEvidenceManifest,
+  evaluateOperationReadiness,
+  evaluateReplayReadiness,
+  evaluateImportReadiness,
+  evaluateExportReadiness,
+  evaluateRecoveryReadiness,
+  evaluatePublicationGovernanceReadiness,
+  evaluateCompletionReadiness,
+  evaluateArchiveGovernanceReadiness,
+  buildAuditEvidenceHandoff,
+  createCompetitionGovernanceReliabilityFacade,
+  getCompetitionGovernanceState,
+  COMPETITION_ENGINE_GOVERNANCE_RELIABILITY,
+} from "./governance/index.js";

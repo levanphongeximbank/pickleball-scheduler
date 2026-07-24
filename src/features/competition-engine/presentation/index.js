@@ -1,6 +1,6 @@
 /**
  * Competition Engine presentation helpers
- * (E2E-03 Organizer + E2E-04 Player/Referee + E2E-05 Public Experience).
+ * (E2E-03 Organizer + E2E-04 Player/Referee + E2E-05 Public Experience + E2E-06 Governance).
  * No global router/shell changes — view-model only.
  */
 
@@ -10,3 +10,6 @@ export { buildRefereePortalSections } from "./referee/refereeOperationsViewModel
 
 // E2E-05 Public Experience view-model
 export { buildPublicCompetitionExperienceSections } from "./public/index.js";
+
+// E2E-06 Governance & Reliability view-model
+export { buildGovernanceReliabilitySections } from "./governance/index.js";
