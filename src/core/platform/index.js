@@ -257,6 +257,12 @@ export {
 
 export { PLATFORM_CAPABILITY_MANIFEST } from "./capabilities.js";
 
+export {
+  listPlatformCapabilities,
+  findPlatformCapability,
+  hasPlatformCapability,
+} from "./capabilityDiscovery.js";
+
 /**
  * Identity/Tenant adoption adapters — pure projections over already-resolved
  * runtime values. Do not replace Identity/Auth/Tenant runtimes.
@@ -306,4 +312,17 @@ export {
   CONTRACT_VERSION_ADAPTER_ERROR,
   projectCompatibilityDecision,
   COMPATIBILITY_DECISION_ADAPTER_ERROR,
+} from "./adapters/index.js";
+
+/**
+ * Integration/Capability adoption adapters — pure projections over
+ * caller-supplied integration-port and platform-capability descriptors.
+ * Do not implement ports, register runtimes, execute capabilities, or
+ * invent a mutable discovery registry.
+ */
+export {
+  projectIntegrationPortDescriptor,
+  INTEGRATION_PORT_DESCRIPTOR_ADAPTER_ERROR,
+  projectPlatformCapabilityDescriptor,
+  PLATFORM_CAPABILITY_DESCRIPTOR_ADAPTER_ERROR,
 } from "./adapters/index.js";
