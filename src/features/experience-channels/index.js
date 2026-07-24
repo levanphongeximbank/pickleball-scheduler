@@ -1,7 +1,8 @@
 /**
- * Experience Channels — public facade (EC-00).
+ * Experience Channels — public facade (EC-00 + EC-01 re-exports).
  *
  * EC-00: Channel Architecture & Ownership Foundation.
+ * EC-01: Public Portal Channel Readiness Certification (contracts only).
  *
  * Safe re-export only. No runtime wiring into router, main.jsx, App shell,
  * or provider trees in this phase.
@@ -37,6 +38,9 @@ export const EXPERIENCE_CHANNELS_PUBLIC_EXPORTS = Object.freeze([
   "getOwnershipSnapshot",
   "certifyExperienceChannelRegistry",
   "createExperienceChannelDescriptor",
+  "EXPERIENCE_CHANNELS_EC01_PHASE",
+  "listPublicPortalSurfaces",
+  "certifyPublicPortalReadiness",
 ]);
 
 export {
@@ -94,3 +98,36 @@ export {
 } from "./registry/index.js";
 
 export { certifyExperienceChannelRegistry } from "./validation/index.js";
+
+export {
+  EXPERIENCE_CHANNELS_EC01_PHASE,
+  PUBLIC_PORTAL_READINESS_PUBLIC_EXPORTS,
+  PUBLIC_PORTAL_DATA_SOURCE,
+  PUBLIC_PORTAL_DATA_SOURCE_VALUES,
+  isPublicPortalDataSource,
+  PUBLIC_PORTAL_AUTH_DEPENDENCY,
+  PUBLIC_PORTAL_AUTH_DEPENDENCY_VALUES,
+  isPublicPortalAuthDependency,
+  PUBLIC_PORTAL_TENANT_DEPENDENCY,
+  PUBLIC_PORTAL_TENANT_DEPENDENCY_VALUES,
+  isPublicPortalTenantDependency,
+  PUBLIC_PORTAL_COMPETITION_MARKER,
+  PUBLIC_PORTAL_COMPETITION_MARKER_VALUES,
+  isPublicPortalCompetitionMarker,
+  PUBLIC_PORTAL_SURFACE_ID,
+  PUBLIC_PORTAL_SURFACE_ID_VALUES,
+  isPublicPortalSurfaceId,
+  PUBLIC_PORTAL_BOUNDARY_ID,
+  PUBLIC_PORTAL_BOUNDARY_ID_VALUES,
+  isPublicPortalBoundaryId,
+  createPublicPortalSurfaceDescriptor,
+  createPublicPortalBoundaryDescriptor,
+  PUBLIC_PORTAL_SURFACE_REGISTRY_ORDER,
+  PUBLIC_PORTAL_BOUNDARY_REGISTRY_ORDER,
+  listPublicPortalSurfaces,
+  getPublicPortalSurface,
+  listPublicPortalBoundaryMarkers,
+  getPublicPortalBoundaryMarker,
+  getPublicPortalSharedReadinessEvidence,
+  certifyPublicPortalReadiness,
+} from "./public-portal/index.js";
