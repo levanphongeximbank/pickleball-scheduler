@@ -376,6 +376,7 @@
   "tests/competition-engine-e2e-05-public-experience.test.js",
   "tests/intelligence-analytics-ia-01-foundation.test.js",
   "tests/intelligence-analytics-ia-02-metric-registry.test.js",
+  "tests/intelligence-analytics-ia-03-query-projection-runtime.test.js",
   "tests/ecosystem-integrations-eco-01-foundation.test.js",
   "tests/ecosystem-integrations-eco-01-architecture.test.js",
   "tests/ecosystem-integrations-eco-01-security.test.js"
