@@ -268,7 +268,9 @@ export function createInMemoryCustomerLinkageRepository(deps = {}) {
         }
         historyByLinkage.set(key, [...prevHistory, cloneFrozen(history)]);
         linkages.set(key, cloneFrozen(linkage));
-        await syncCustomerAggregate(linkage, options);
+        if (options.skipCustomerSync !== true) {
+          await syncCustomerAggregate(linkage, options);
+        }
         return cloneFrozen(linkage);
       } catch (err) {
         if (prevLinkage) linkages.set(key, prevLinkage);

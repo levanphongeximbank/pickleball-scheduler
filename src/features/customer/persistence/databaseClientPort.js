@@ -102,3 +102,16 @@ export const CUSTOMER_PHASE_5_TABLES = Object.freeze({
 export const CUSTOMER_PHASE_5_RPC = Object.freeze({
   SAVE_LINKAGE: "customer_save_linkage",
 });
+
+/** CUSTOMER-06 additive tables (authored migration; depends on CUSTOMER-03/04/05). */
+export const CUSTOMER_PHASE_6_TABLES = Object.freeze({
+  CANDIDATES: "customer_duplicate_candidates",
+  PROPOSALS: "customer_merge_proposals",
+  HISTORY: "customer_merge_history",
+});
+
+export const CUSTOMER_PHASE_6_RPC = Object.freeze({
+  SAVE_CANDIDATE: "customer_save_duplicate_candidate",
+  SAVE_PROPOSAL: "customer_save_merge_proposal",
+  EXECUTE_MERGE: "customer_execute_merge",
+});

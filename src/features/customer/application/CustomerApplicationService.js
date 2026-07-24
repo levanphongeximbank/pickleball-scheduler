@@ -25,6 +25,7 @@ import {
   updateCustomerProfileFields,
 } from "../domain/customerProfile.js";
 import { createCustomerScope } from "../domain/scope.js";
+import { createCustomerSearchQuery } from "../domain/searchQuery.js";
 import {
   createSequentialCustomerIdGenerator,
   createSystemCustomerClock,
@@ -35,6 +36,7 @@ import {
   projectCustomerProfileView,
   projectCustomerSummary,
 } from "../projectors/customerSummary.js";
+import { projectCustomerSearchResultView } from "../projectors/mergeViews.js";
 
 /**
  * @param {object} [deps]
@@ -420,8 +422,11 @@ export function createCustomerApplicationService(deps = {}) {
     async searchCustomers(scope, query = {}) {
       const repo = requireRepository();
       const s = createCustomerScope(scope);
-      const rows = await repo.search(s, query);
-      return Object.freeze(rows.map((row) => projectCustomerSummary(row)));
+      const canonical = createCustomerSearchQuery(query);
+      const rows = await repo.search(s, canonical);
+      return Object.freeze(
+        rows.map((row) => projectCustomerSearchResultView(row))
+      );
     },
 
     async listCustomers(scope, query = {}) {

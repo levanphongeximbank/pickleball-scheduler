@@ -8,6 +8,10 @@ import { CONTACT_POINT_TYPE } from "../../constants/contactPointTypes.js";
 import { CUSTOMER_ERROR_CODES } from "../../errors/codes.js";
 import { CustomerError } from "../../errors/CustomerError.js";
 import { createCustomerScope, scopesMatch } from "../../domain/scope.js";
+import {
+  compareCustomersForSearch,
+  customerMatchesSearchQuery,
+} from "../../domain/searchQuery.js";
 import { CUSTOMER_REPOSITORY_PORTS } from "../../repositories/ports.js";
 import { cloneFrozen } from "../../repositories/inMemory.js";
 import {
@@ -68,32 +72,7 @@ export function createDurableCustomerRepository(deps = {}) {
   }
 
   function matchesQuery(row, query = {}) {
-    if (query.customerType && row.customerType !== query.customerType) return false;
-    if (query.status && row.status !== query.status) return false;
-    if (query.customerNumber && row.customerNumber !== query.customerNumber) {
-      return false;
-    }
-    if (query.text) {
-      const needle = String(query.text).trim().toLowerCase();
-      if (!needle) return true;
-      const hay = [
-        row.displayName,
-        row.legalName,
-        row.customerNumber,
-        row.customerId,
-        row.individualProfile?.givenName,
-        row.individualProfile?.familyName,
-        row.organizationProfile?.organizationName,
-        ...(row.contactPoints || []).map(
-          (c) => `${c.value || ""} ${c.displayValue || ""} ${c.normalizedValue || ""}`
-        ),
-      ]
-        .filter(Boolean)
-        .join(" ")
-        .toLowerCase();
-      if (!hay.includes(needle)) return false;
-    }
-    return true;
+    return customerMatchesSearchQuery(row, query);
   }
 
   async function listScoped(scope, query = {}) {
@@ -102,6 +81,7 @@ export function createDurableCustomerRepository(deps = {}) {
       filters: scopeFilters(scope),
       order: [
         { column: "display_name", ascending: true },
+        { column: "customer_number", ascending: true },
         { column: "customer_id", ascending: true },
       ],
     });
@@ -113,7 +93,7 @@ export function createDurableCustomerRepository(deps = {}) {
         aggregates.push(aggregate);
       }
     }
-    return aggregates;
+    return aggregates.slice().sort(compareCustomersForSearch);
   }
 
   return {
