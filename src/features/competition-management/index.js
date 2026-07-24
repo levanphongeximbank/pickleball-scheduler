@@ -1,8 +1,8 @@
 /**
- * Competition Management — root barrel (CM-01 only in this workstream).
+ * Competition Management — root barrel (CM-01 + CM-02).
  *
- * Safe re-export of competition-definition. No runtime wiring.
- * Later CM-02..CM-08 modules may be added here without changing CM-01 ownership.
+ * Safe re-export only. No runtime wiring.
+ * Later CM-03..CM-08 modules may be added here without changing prior ownership.
  */
 
 export {
@@ -10,3 +10,9 @@ export {
 } from "./competition-definition/index.js";
 
 export * from "./competition-definition/index.js";
+
+export {
+  COMPETITION_TEMPLATE_INSTANTIATION_PHASE,
+} from "./template-instantiation/index.js";
+
+export * from "./template-instantiation/index.js";
