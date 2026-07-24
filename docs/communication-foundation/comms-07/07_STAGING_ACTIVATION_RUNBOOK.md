@@ -8,6 +8,11 @@ Do **not** apply to Production until every Staging gate passes with evidence.
 
 Canonical SQL package: `docs/supabase-communication-comms05.sql` (`AUTHORED_NOT_APPLIED`).
 
+**Operational readiness package (COMMS-ACT-01):**
+[`../activation/comms-act-01/01_STAGING_ACTIVATION_READINESS.md`](../activation/comms-act-01/01_STAGING_ACTIVATION_READINESS.md)
+Preflight: `node scripts/communication/comms-act-01-staging-preflight.mjs --offline`
+Remote apply remains **COMMS-ACT-02** after Owner GO — not COMMS-ACT-01.
+
 ---
 
 ## 1. Preflight
