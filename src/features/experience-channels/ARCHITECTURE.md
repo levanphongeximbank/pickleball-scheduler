@@ -90,3 +90,40 @@ public-portal/
   validation/    certifyPublicPortalReadiness
   index.js       EC-01 façade
 ```
+
+---
+
+## EC-02 — Public Portal Presentation Hardening
+
+**Runtime home:** `src/components/public/states/` + `src/components/public/usePublicDocumentTitle.js`  
+**Pages touched (public-only):** Clubs / Tournaments / Courts / Rankings / News (+ Home title)
+
+**Status:** Presentation state primitives + selective page wiring. Does **not** change data sources, router, PublicLayout, providers, Competition Engine, or PWA registration.
+
+### What EC-02 owns
+
+- `PublicLoadingState` / `PublicErrorState` / `PublicEmptyState` / `PublicUnavailableState`
+- Page-local `document.title` via `usePublicDocumentTitle`
+- Empty-state + a11y/responsive polish on safe public list pages
+- EC-02 docs + unit/UI tests
+
+### Explicit non-ownership
+
+| Concern | Owner |
+|---------|--------|
+| Loading/error runtime wiring where fetch is sync + mock-backed | Deferred (needs data-source workstream) |
+| Global SEO (Helmet / OG / sitemap / robots) | Deferred |
+| PublicLayout / Header / Footer / router | GLOBAL_SHARED_HIGH_COLLISION |
+| Competition public tournament UX | COMPETITION_E2E / DEFERRED |
+| Mock → LIVE data cutover | Deferred |
+
+### Layering (EC-02 runtime)
+
+```
+src/components/public/states/     Presentation primitives
+src/components/public/usePublicDocumentTitle.js
+src/pages/public/<safe pages>     Consumers only
+docs/experience-channels/ec-02/   Evidence
+```
+
+EC-01 registry notes may record EC-02 presentation deltas without claiming production-ready portal or hiding MIXED/MOCK data gaps.
