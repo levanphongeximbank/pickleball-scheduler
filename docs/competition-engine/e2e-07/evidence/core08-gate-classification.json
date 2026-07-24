@@ -1,7 +1,7 @@
 {
   "schemaVersion": "e2e-07-end-to-end-certification-v1",
   "generatedAt": null,
-  "sourceCommit": "917819401a9e66280f5c59d80259da03a06d32b1",
+  "sourceCommit": "1fa4980dccb17d6647cbb063fa5189d135f97508",
   "scenarioId": "core08-1e-branch-local-delta-gate",
   "certificationVersion": "e2e-07-end-to-end-certification-v1",
   "testReferences": [
