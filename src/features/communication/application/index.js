@@ -8,3 +8,12 @@ export {
   createFixedClock,
   createMemoryIdentityActorPort,
 } from "./createDirectMessagingApplication.js";
+
+export {
+  createClubCommunicationApplicationService,
+} from "./ClubCommunicationApplicationService.js";
+
+export {
+  createClubCommunicationApplication,
+  createMemoryClubMembershipReader,
+} from "./createClubCommunicationApplication.js";

@@ -48,3 +48,29 @@ export {
   sortDirectConversationSummaries,
   findActiveDirectParticipants,
 } from "./directMessagingProjection.js";
+
+export {
+  assertClubChannelKind,
+  assertClubIdRequired,
+  resolveClubChannelIdentity,
+  denyReasonForMembership,
+  evaluateClubChannelAccess,
+  assertClubAccessAllowed,
+  assertParticipantBelongsToClub,
+  assertCannotMoveClubChannel,
+  assertCannotChangeChannelKey,
+  isExplicitActiveClubParticipant,
+  isClubChannelAdminRole,
+  isDefaultClubChannelKind,
+  buildDefaultClubChannelKey,
+  buildClubChannelKey,
+} from "./clubAccessRules.js";
+
+export {
+  countUnreadClubMessages,
+  buildClubChannelSummary,
+  sortClubChannelSummaries,
+  findActiveClubParticipants,
+  isPinnableClubMessage,
+  compareClubChannelSummaries,
+} from "./clubCommunicationProjection.js";

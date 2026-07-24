@@ -64,3 +64,22 @@ export {
   createDirectConversationSummaryContract,
   compareDirectConversationSummaries,
 } from "./directConversationSummary.js";
+
+export {
+  buildDefaultClubChannelKey,
+  buildClubChannelKey,
+  createClubChannelIdentityContract,
+  assertClubChannelClubImmutable,
+  assertClubChannelKeyImmutable,
+} from "./clubChannel.js";
+
+export { createClubAccessDecisionContract } from "./clubAccessDecision.js";
+
+export { createClubMembershipFactContract } from "./clubMembershipFact.js";
+
+export {
+  createClubChannelSummaryContract,
+  compareClubChannelSummaries,
+} from "./clubChannelSummary.js";
+
+export { createClubPinnedMessageContract } from "./clubPinnedMessage.js";
