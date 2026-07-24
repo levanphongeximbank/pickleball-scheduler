@@ -1,0 +1,11 @@
+{
+  "ok": true,
+  "phase": "CUSTOMER-07",
+  "script": "phase-7-staging-cleanup",
+  "stagingProjectRef": "qyewbxjsiiyufanzcjcq",
+  "remainingActiveCustomers": 0,
+  "historyPreserved": true,
+  "migrationObjectsDropped": false,
+  "secretsPrinted": false,
+  "finishedAt": "2026-07-24T11:28:03.550Z"
+}

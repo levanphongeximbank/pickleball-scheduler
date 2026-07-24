@@ -1,0 +1,9 @@
+{
+  "phase": "CUSTOMER-07",
+  "purpose": "Committed CRM safety stash marker contract for CI-portable validation. Live git stash presence is verified only on Owner workstations during preflight — never required in GitHub Actions unit tests.",
+  "doNotPopApplyOrDrop": true,
+  "markers": [
+    "safety/customer-07-preserve-reappeared-crm-change",
+    "safety/customer-06-preserve-crm-change"
+  ]
+}

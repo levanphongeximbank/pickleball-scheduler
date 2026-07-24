@@ -6,7 +6,7 @@
 import { CUSTOMER_ERROR_CODES } from "../../errors/codes.js";
 import { CustomerError } from "../../errors/CustomerError.js";
 import { createCustomerScope, scopesMatch } from "../../domain/scope.js";
-import { duplicateCandidatePairKey } from "../../domain/duplicateCandidate.js";
+import { duplicateCandidatePairKey, orderCustomerPair } from "../../domain/duplicateCandidate.js";
 import { CUSTOMER_MERGE_REPOSITORY_PORTS } from "../../repositories/mergePorts.js";
 import { cloneFrozen } from "../../repositories/inMemory.js";
 import {
@@ -109,10 +109,31 @@ export function createDurableCustomerMergeRepository(deps = {}) {
 
     async saveCandidate(candidate, options = {}) {
       return withCustomerPersistenceErrors(async () => {
+        const ordered = orderCustomerPair(
+          candidate.customerIdA,
+          candidate.customerIdB
+        );
+        const row = mapCandidateDomainToRow({
+          ...candidate,
+          customerIdA: ordered.customerIdA,
+          customerIdB: ordered.customerIdB,
+        });
+        // Defensive: Postgres CHECK (customer_id_a < customer_id_b) must hold
+        // even if a caller bypassed domain ordering.
+        if (!(String(row.customer_id_a) < String(row.customer_id_b))) {
+          throw new CustomerError(
+            CUSTOMER_ERROR_CODES.INVALID_INPUT,
+            "Duplicate candidate pair must be lexicographically ordered.",
+            {
+              customerIdA: row.customer_id_a,
+              customerIdB: row.customer_id_b,
+            }
+          );
+        }
         const result = await db.rpc({
           fn: CUSTOMER_PHASE_6_RPC.SAVE_CANDIDATE,
           args: {
-            p_candidate: mapCandidateDomainToRow(candidate),
+            p_candidate: row,
             p_expected_version:
               options.expectedVersion == null
                 ? null

@@ -1,0 +1,298 @@
+{
+  "phase": "CUSTOMER-07",
+  "title": "Customer Management CUSTOMER-03 through CUSTOMER-06 Staging apply chain",
+  "environmentTarget": "staging",
+  "stagingProjectRefAllowlist": [
+    "qyewbxjsiiyufanzcjcq"
+  ],
+  "productionProjectRefBlocklist": [
+    "expuvcohlcjzvrrauvud"
+  ],
+  "productionDomainBlocklist": [
+    "pickvn.app"
+  ],
+  "stopOnFirstError": true,
+  "automaticRollback": false,
+  "productionApplyApproved": false,
+  "migrations": [
+    {
+      "order": 1,
+      "path": "docs/customer-management/phase-3/10_CUSTOMER_PHASE_3_TABLES.sql",
+      "phase": 3,
+      "sha256": "f39df78ae6411b52f1c0ed67b49956452b85237f6e26c3a53c27f73def73dc07",
+      "purpose": "Customer root tables",
+      "rollbackClassification": "DROP_TABLES_DESTRUCTIVE",
+      "transactionSafe": true,
+      "destructiveOutsideCustomer": false,
+      "automaticRollback": false
+    },
+    {
+      "order": 2,
+      "path": "docs/customer-management/phase-3/20_CUSTOMER_PHASE_3_INDEXES.sql",
+      "phase": 3,
+      "sha256": "752f879c0288f0df2ed5e91fb48067c10f06e6f1343940b102bf71b819e8712f",
+      "purpose": "Customer indexes",
+      "rollbackClassification": "DROP_INDEXES",
+      "transactionSafe": true,
+      "destructiveOutsideCustomer": false,
+      "automaticRollback": false
+    },
+    {
+      "order": 3,
+      "path": "docs/customer-management/phase-3/30_CUSTOMER_PHASE_3_RLS.sql",
+      "phase": 3,
+      "sha256": "d349f455af26f4ab32ffb8114a4fc96b26f1e56d17e741570cb372b296815a4a",
+      "purpose": "Customer RLS fail-closed",
+      "rollbackClassification": "DROP_POLICIES",
+      "transactionSafe": true,
+      "destructiveOutsideCustomer": false,
+      "automaticRollback": false
+    },
+    {
+      "order": 4,
+      "path": "docs/customer-management/phase-3/40_CUSTOMER_PHASE_3_SAVE_RPC.sql",
+      "phase": 3,
+      "sha256": "1d977c4cc6b513fd645d5e6efd591f94f6b28063468fe297e22cac3d75425b2c",
+      "purpose": "customer_save_aggregate",
+      "rollbackClassification": "DROP_FUNCTION",
+      "transactionSafe": true,
+      "destructiveOutsideCustomer": false,
+      "automaticRollback": false
+    },
+    {
+      "order": 5,
+      "path": "docs/customer-management/phase-3/50_CUSTOMER_PHASE_3_GRANTS.sql",
+      "phase": 3,
+      "sha256": "94512488382643be395261cd8322bb58dfe40792c214cff756c5487543ed14f2",
+      "purpose": "Customer phase-3 grants",
+      "rollbackClassification": "REVOKE_GRANTS",
+      "transactionSafe": true,
+      "destructiveOutsideCustomer": false,
+      "automaticRollback": false
+    },
+    {
+      "order": 6,
+      "path": "docs/customer-management/phase-4/10_CUSTOMER_PHASE_4_TABLES.sql",
+      "phase": 4,
+      "sha256": "ee29244956997347f76a0788851ab3574d8f31d4b8e25abebb65b484ee8b9fdf",
+      "purpose": "Consent/preference tables",
+      "rollbackClassification": "DROP_TABLES_DESTRUCTIVE",
+      "transactionSafe": true,
+      "destructiveOutsideCustomer": false,
+      "automaticRollback": false
+    },
+    {
+      "order": 7,
+      "path": "docs/customer-management/phase-4/20_CUSTOMER_PHASE_4_INDEXES.sql",
+      "phase": 4,
+      "sha256": "ea71c0504761e547cee34faebb4f97f974ae91430f1b7240b75dc56e6fe24b80",
+      "purpose": "Consent/preference indexes",
+      "rollbackClassification": "DROP_INDEXES",
+      "transactionSafe": true,
+      "destructiveOutsideCustomer": false,
+      "automaticRollback": false
+    },
+    {
+      "order": 8,
+      "path": "docs/customer-management/phase-4/30_CUSTOMER_PHASE_4_RLS.sql",
+      "phase": 4,
+      "sha256": "1e166f808c0daf7efc990f5425927cb72e15b0e9166f265c7d95b964b332c6d1",
+      "purpose": "Consent/preference RLS",
+      "rollbackClassification": "DROP_POLICIES",
+      "transactionSafe": true,
+      "destructiveOutsideCustomer": false,
+      "automaticRollback": false
+    },
+    {
+      "order": 9,
+      "path": "docs/customer-management/phase-4/40_CUSTOMER_PHASE_4_SAVE_RPC.sql",
+      "phase": 4,
+      "sha256": "5509360b40d219cdc0b52ee5a084e8d1bfa58e1db7ae2705b2eee23887075f65",
+      "purpose": "Consent/preference RPCs",
+      "rollbackClassification": "DROP_FUNCTION",
+      "transactionSafe": true,
+      "destructiveOutsideCustomer": false,
+      "automaticRollback": false
+    },
+    {
+      "order": 10,
+      "path": "docs/customer-management/phase-4/50_CUSTOMER_PHASE_4_GRANTS.sql",
+      "phase": 4,
+      "sha256": "d10cf6aed7fa6c566f729124462744b93967bc63b1a494af97f229a0f31b19cd",
+      "purpose": "Consent/preference grants",
+      "rollbackClassification": "REVOKE_GRANTS",
+      "transactionSafe": true,
+      "destructiveOutsideCustomer": false,
+      "automaticRollback": false
+    },
+    {
+      "order": 11,
+      "path": "docs/customer-management/phase-4/60_CUSTOMER_PHASE_4_HISTORY_IMMUTABLE.sql",
+      "phase": 4,
+      "sha256": "27e968e4a73793a9b4962d7d8ddee15c01ca6725e56b9fbeb03bdcc62c432e5b",
+      "purpose": "Consent/preference history immutability",
+      "rollbackClassification": "DROP_TRIGGERS",
+      "transactionSafe": true,
+      "destructiveOutsideCustomer": false,
+      "automaticRollback": false
+    },
+    {
+      "order": 12,
+      "path": "docs/customer-management/phase-5/10_CUSTOMER_PHASE_5_TABLES.sql",
+      "phase": 5,
+      "sha256": "6706c6395d7e31956610013b51b0e5dfd448d6a7c7e430e6bb7698535f69d9b7",
+      "purpose": "Linkage tables",
+      "rollbackClassification": "DROP_TABLES_DESTRUCTIVE",
+      "transactionSafe": true,
+      "destructiveOutsideCustomer": false,
+      "automaticRollback": false
+    },
+    {
+      "order": 13,
+      "path": "docs/customer-management/phase-5/20_CUSTOMER_PHASE_5_INDEXES.sql",
+      "phase": 5,
+      "sha256": "36902f0671ad61919e7e11d7f86818b644452ad1d98881fa1c568dd27a2f0aae",
+      "purpose": "Linkage indexes",
+      "rollbackClassification": "DROP_INDEXES",
+      "transactionSafe": true,
+      "destructiveOutsideCustomer": false,
+      "automaticRollback": false
+    },
+    {
+      "order": 14,
+      "path": "docs/customer-management/phase-5/30_CUSTOMER_PHASE_5_RLS.sql",
+      "phase": 5,
+      "sha256": "3fa5fe6f5b520720c36c44dcaaeb7ab7c4c4b12c81b07144dc3414771e246e7d",
+      "purpose": "Linkage RLS",
+      "rollbackClassification": "DROP_POLICIES",
+      "transactionSafe": true,
+      "destructiveOutsideCustomer": false,
+      "automaticRollback": false
+    },
+    {
+      "order": 15,
+      "path": "docs/customer-management/phase-5/40_CUSTOMER_PHASE_5_SAVE_RPC.sql",
+      "phase": 5,
+      "sha256": "12fe985dd7c037e49b6ca430cfa26730781428b5263c37d1d02df5e09d3bf230",
+      "purpose": "Linkage RPC",
+      "rollbackClassification": "DROP_FUNCTION",
+      "transactionSafe": true,
+      "destructiveOutsideCustomer": false,
+      "automaticRollback": false
+    },
+    {
+      "order": 16,
+      "path": "docs/customer-management/phase-5/50_CUSTOMER_PHASE_5_GRANTS.sql",
+      "phase": 5,
+      "sha256": "8f157ab6e98c8ce7dab90c3259ce74fc08c94a359472845c5a6cdc2ab9f518b1",
+      "purpose": "Linkage grants",
+      "rollbackClassification": "REVOKE_GRANTS",
+      "transactionSafe": true,
+      "destructiveOutsideCustomer": false,
+      "automaticRollback": false
+    },
+    {
+      "order": 17,
+      "path": "docs/customer-management/phase-5/60_CUSTOMER_PHASE_5_HISTORY_IMMUTABLE.sql",
+      "phase": 5,
+      "sha256": "3847482260a00d33ae127234feda2eb2dde5e8d8aafbfa63c85f2c22e53a4078",
+      "purpose": "Linkage history immutability",
+      "rollbackClassification": "DROP_TRIGGERS",
+      "transactionSafe": true,
+      "destructiveOutsideCustomer": false,
+      "automaticRollback": false
+    },
+    {
+      "order": 18,
+      "path": "docs/customer-management/phase-6/10_CUSTOMER_PHASE_6_TABLES.sql",
+      "phase": 6,
+      "sha256": "f9f9788c4c629ae3c880c02c49fb426b1f0cab2d5291cfbdf991cbb4543788cf",
+      "purpose": "Search/dedup/merge tables",
+      "rollbackClassification": "DROP_TABLES_DESTRUCTIVE",
+      "transactionSafe": true,
+      "destructiveOutsideCustomer": false,
+      "automaticRollback": false
+    },
+    {
+      "order": 19,
+      "path": "docs/customer-management/phase-6/20_CUSTOMER_PHASE_6_INDEXES.sql",
+      "phase": 6,
+      "sha256": "5335a46fede6aca08cd377c1c28a021e702bc8638292a58dc6c19b83daa41a92",
+      "purpose": "Search/dedup/merge indexes",
+      "rollbackClassification": "DROP_INDEXES",
+      "transactionSafe": true,
+      "destructiveOutsideCustomer": false,
+      "automaticRollback": false
+    },
+    {
+      "order": 20,
+      "path": "docs/customer-management/phase-6/30_CUSTOMER_PHASE_6_RLS.sql",
+      "phase": 6,
+      "sha256": "5c754067607156e29c43ed07a2a9a0492605f3509964846fd58f35f67cab8821",
+      "purpose": "Search/dedup/merge RLS",
+      "rollbackClassification": "DROP_POLICIES",
+      "transactionSafe": true,
+      "destructiveOutsideCustomer": false,
+      "automaticRollback": false
+    },
+    {
+      "order": 21,
+      "path": "docs/customer-management/phase-6/40_CUSTOMER_PHASE_6_SAVE_RPC.sql",
+      "phase": 6,
+      "sha256": "51f5366ad5e260b2f93610ba378497b6403d3616b40aaceeec40ef231fd7aeb7",
+      "purpose": "Dedup/merge RPCs",
+      "rollbackClassification": "DROP_FUNCTION",
+      "transactionSafe": true,
+      "destructiveOutsideCustomer": false,
+      "automaticRollback": false
+    },
+    {
+      "order": 22,
+      "path": "docs/customer-management/phase-6/50_CUSTOMER_PHASE_6_GRANTS.sql",
+      "phase": 6,
+      "sha256": "9f77275b9b991f6fc905de0482a811a75cfb50c383adb19ae0bbb48b17b3aeb8",
+      "purpose": "Dedup/merge grants",
+      "rollbackClassification": "REVOKE_GRANTS",
+      "transactionSafe": true,
+      "destructiveOutsideCustomer": false,
+      "automaticRollback": false
+    },
+    {
+      "order": 23,
+      "path": "docs/customer-management/phase-6/60_CUSTOMER_PHASE_6_HISTORY_IMMUTABLE.sql",
+      "phase": 6,
+      "sha256": "41be133eb5b66ff6042cf3cb2fca0345ad0e3b505e3496a02959e1d2655b1841",
+      "purpose": "Merge history immutability",
+      "rollbackClassification": "DROP_TRIGGERS",
+      "transactionSafe": true,
+      "destructiveOutsideCustomer": false,
+      "automaticRollback": false
+    },
+    {
+      "order": 24,
+      "path": "docs/customer-management/phase-7/70_CUSTOMER_07_PAIR_ORDER_COLLATION_FIX.sql",
+      "phase": 7,
+      "sha256": "a432c3ed47117abff1f3fdf6758f84889ac8349568c72813d592b7711474dd31",
+      "purpose": "Align duplicate candidate pair ordering with C collation / JS orderCustomerPair",
+      "rollbackClassification": "DROP_CONSTRAINT_RESTORE",
+      "transactionSafe": true,
+      "destructiveOutsideCustomer": false,
+      "automaticRollback": false
+    }
+  ],
+  "rollbackScripts": [
+    "docs/customer-management/phase-6/90_CUSTOMER_PHASE_6_ROLLBACK.sql",
+    "docs/customer-management/phase-5/90_CUSTOMER_PHASE_5_ROLLBACK.sql",
+    "docs/customer-management/phase-4/90_CUSTOMER_PHASE_4_ROLLBACK.sql",
+    "docs/customer-management/phase-3/90_CUSTOMER_PHASE_3_ROLLBACK.sql",
+    "docs/customer-management/phase-7/90_CUSTOMER_07_SOFT_DISABLE.sql"
+  ],
+  "verificationScripts": [
+    "docs/customer-management/phase-3/99_CUSTOMER_PHASE_3_VERIFICATION.sql",
+    "docs/customer-management/phase-4/99_CUSTOMER_PHASE_4_VERIFICATION.sql",
+    "docs/customer-management/phase-5/99_CUSTOMER_PHASE_5_VERIFICATION.sql",
+    "docs/customer-management/phase-6/99_CUSTOMER_PHASE_6_VERIFICATION.sql",
+    "docs/customer-management/phase-7/99_CUSTOMER_07_LIVE_VERIFICATION.sql"
+  ],
+  "hashAlgorithm": "sha256-lf-normalized"
+}
