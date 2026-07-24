@@ -141,7 +141,10 @@ const RULES = [
   {
     id: "reporting-read-only",
     description: "Analytics/reporting modules must remain read-only (no table mutations).",
-    onlyIn: ["src/features/dashboard-analytics/"],
+    onlyIn: [
+      "src/features/dashboard-analytics/",
+      "src/features/intelligence-analytics/",
+    ],
     match: (c) => c.match(/\.(insert|update|upsert|delete)\s*\(/g) || [],
   },
   {
