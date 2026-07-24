@@ -3,7 +3,8 @@
 ## Purpose
 
 Canonical, module-neutral analytics contracts, metric definition governance,
-and a read-only query/projection runtime for PICK_VN.
+a read-only query/projection runtime, and presentation-neutral
+dashboard/reporting data contracts for PICK_VN.
 
 ## Ownership
 
@@ -14,6 +15,7 @@ and a read-only query/projection runtime for PICK_VN.
 | Read-only analytics facade (I&A-01) | `src/features/intelligence-analytics/facade` |
 | Metric registry / lifecycle / compatibility | `src/features/intelligence-analytics/registry` |
 | Query / projection runtime (I&A-03) | `src/features/intelligence-analytics/runtime` |
+| Dashboard / reporting data contracts (I&A-04) | `src/features/intelligence-analytics/dashboard-reporting` |
 | Dashboard UI / localStorage analytics | `src/features/dashboard-analytics` (legacy active; not foundation) |
 | Statistics UI aggregations | `src/features/statistics` (legacy active; not foundation) |
 | Platform Core | CLOSED — not modified, not imported |
@@ -55,15 +57,29 @@ and a read-only query/projection runtime for PICK_VN.
 - Read-only query runtime facade
 - Typed runtime errors / warnings / observability hooks (contract-level)
 
+**In scope (I&A-04):**
+
+- Dashboard / report identity and version contracts
+- Dashboard section / widget and report section / column definitions
+- Metric and query bindings (exact ID/version; reuse I&A-01 descriptors)
+- Presentation-neutral visualization intent
+- KPI / time-series / breakdown / comparison / table payloads
+- Explicit EMPTY / PARTIAL / STALE / UNAVAILABLE / ERROR data states
+- Drill-down descriptor (no routes / callbacks)
+- Filter / parameter / export / schedule intent metadata
+- Immutable catalog + read-only discovery facade
+- Compatibility classification between definition versions
+
 **Out of scope:**
 
 - Database / Supabase / SQL / migrations
 - Module-specific production source adapters
-- Persisted database registry
-- Dashboard or route wiring
+- Persisted database registry / dashboard catalog
+- Dashboard UI, report renderer, route wiring
+- Export generator / scheduler / email delivery runtime
 - Production metric catalog migration
 - Competition / Finance / Ranking / Rating / CRM business rules
-- AI inference / paid AI services
+- AI inference / paid AI services / AI narrative
 - Alert delivery / persistence / historical warehouse
 - Platform Core changes
 
@@ -94,6 +110,27 @@ Projection / filter / group / aggregate / order / limit
 AnalyticsResult
 ```
 
+## Contract flow (I&A-04)
+
+```text
+DashboardDefinition / ReportDefinition
+                │
+                ▼
+Metric and query bindings
+                │
+                ▼
+I&A-03 Query Runtime (consumer; not wired here)
+                │
+                ▼
+AnalyticsResult
+                │
+                ▼
+Presentation-neutral dashboard/report payload
+                │
+                ▼
+Existing or future Experience Channel renderer
+```
+
 ## Dependency rules
 
 - No import from `src/core/platform/**`
@@ -102,14 +139,15 @@ AnalyticsResult
 - No React, Supabase client, or database table contracts
 - Registry does not calculate metric values or own business rules
 - Runtime does not own module business calculations
+- Dashboard/report contracts do not own UI, export engines, or schedulers
 - Analytics output always sets `isCanonicalModuleState: false`
 
 ## Roadmap (structural)
 
 1. I&A-01 Canonical Analytics Contracts Foundation ← certified
 2. I&A-02 Metric Registry and Definition Governance ← certified
-3. I&A-03 Analytics Query and Projection Runtime ← current
-4. I&A-04 Dashboard and Reporting Data Contracts
+3. I&A-03 Analytics Query and Projection Runtime ← certified
+4. I&A-04 Dashboard and Reporting Data Contracts ← current
 5. I&A-05 Historical and Trend Analysis
 6. I&A-06 Competition Analytics
 7. I&A-07 Venue, Court and Club Analytics
