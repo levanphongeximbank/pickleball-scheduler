@@ -71,7 +71,14 @@ New under `competition-engine/{templates,formats,composition,application}` + `do
 
 ## O–P. COMMIT / PR
 
-Filled after push/PR creation.
+| Field | Value |
+|-------|-------|
+| Commit | `8338ca27` — `feat(competition): add E2E-02 individual pool-to-knockout composition` |
+| Branch | `feature/competition-e2e-02-individual-pool-knockout` |
+| Push | Success (`origin/feature/competition-e2e-02-individual-pool-knockout`) |
+| PR | https://github.com/levanphongeximbank/pickleball-scheduler/pull/228 |
+| Base | `main` |
+| Working tree | CLEAN after push |
 
 ## Q. PROGRESS
 
