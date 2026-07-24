@@ -59,3 +59,34 @@ export {
   createUnimplementedClockPort,
   createUnimplementedIdProviderPort,
 } from "./clockAndIdPorts.js";
+
+export {
+  DIRECT_CONVERSATION_REPOSITORY_METHODS,
+  matchesDirectConversationRepository,
+  createUnimplementedDirectConversationRepository,
+} from "./directConversationRepositoryPort.js";
+
+export {
+  DIRECT_CONVERSATION_REQUEST_REPOSITORY_METHODS,
+  matchesDirectConversationRequestRepository,
+  createUnimplementedDirectConversationRequestRepository,
+} from "./directConversationRequestRepositoryPort.js";
+
+export {
+  DIRECT_MESSAGE_REPOSITORY_METHODS,
+  matchesDirectMessageRepository,
+  createUnimplementedDirectMessageRepository,
+  DIRECT_READ_CURSOR_REPOSITORY_METHODS,
+  matchesDirectReadCursorRepository,
+  createUnimplementedDirectReadCursorRepository,
+} from "./directMessageRepositoryPort.js";
+
+export {
+  BLOCK_STATE_READER_METHODS,
+  matchesBlockStateReader,
+  createUnimplementedBlockStateReader,
+  DIRECT_MESSAGING_ACCESS_POLICY_METHODS,
+  matchesDirectMessagingAccessPolicy,
+  createUnimplementedDirectMessagingAccessPolicy,
+  createAllowAllDirectMessagingAccessPolicy,
+} from "./directMessagingPolicyPorts.js";

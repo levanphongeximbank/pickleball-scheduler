@@ -7,9 +7,10 @@
 |-------|--------|------|
 | **COMMS-00** Architecture & Boundary Audit | Complete | [`comms-00/00_ARCHITECTURE_AND_BOUNDARY_AUDIT.md`](./comms-00/00_ARCHITECTURE_AND_BOUNDARY_AUDIT.md) |
 | **COMMS-01** Messaging Domain Foundation | Complete (domain-only) | [`comms-01/01_MESSAGING_DOMAIN_FOUNDATION.md`](./comms-01/01_MESSAGING_DOMAIN_FOUNDATION.md) |
-| COMMS-02 … COMMS-07 | Planned | See roadmap in COMMS-00 |
+| **COMMS-02** Direct Messaging | Complete (app/domain; not production-wired) | [`comms-02/02_DIRECT_MESSAGING.md`](./comms-02/02_DIRECT_MESSAGING.md) |
+| COMMS-03 … COMMS-07 | Planned | See roadmap in COMMS-00 |
 
-**Runtime module (COMMS-01):** `src/features/communication/` — contracts, domain rules, ports; not production-wired.
+**Runtime module:** `src/features/communication/` — contracts, domain rules, ports, Direct Messaging application; not production-wired.
 
 ## Hard boundary
 
@@ -24,4 +25,14 @@ It does **not** own Identity, Player profile, Club membership, Notification deli
 | Notification inbox | Notification Foundation |
 | Match / referee / TT realtime | Competition / Referee / Team Tournament |
 
-See COMMS-00 for ownership, dependency status, and COMMS-01 readiness.
+See COMMS-00 for ownership, dependency status, and phase readiness.
+
+## COMMS-02 snapshot
+
+- Canonical direct pair + access decisions (`ALLOW` / `REQUEST_REQUIRED` / `DENY`)
+- Conversation request lifecycle (PENDING → ACCEPTED / DECLINED / CANCELLED; EXPIRED deferred)
+- Application service: request / accept / decline / cancel / openOrResolve / send / markRead / inbox projection
+- Persistence-agnostic ports + in-memory test doubles only
+- Public barrel: `src/features/communication/index.js`
+
+**Next:** COMMS-03 Club Communication — see readiness in [`comms-02/02_DIRECT_MESSAGING.md`](./comms-02/02_DIRECT_MESSAGING.md).

@@ -1,7 +1,9 @@
 /**
- * Communication Foundation — public facade (COMMS-01 Messaging Domain Foundation).
+ * Communication Foundation — public facade.
  *
- * Export only canonical public contracts, domain rules, errors, and ports.
+ * COMMS-01: Messaging Domain Foundation (contracts, domain, ports).
+ * COMMS-02: Direct Messaging application capability (persistence-agnostic).
+ *
  * Consumers must import from this index — not from internal file paths —
  * once wiring begins in later phases.
  *
@@ -11,15 +13,19 @@
  * - notification delivery / inbox SoT
  * - UI / routes / React hooks
  * - Identity / Club / Player / Competition ownership surfaces
+ * - production database repositories
  */
 
 export const COMMUNICATION_FOUNDATION_PHASE = Object.freeze({
-  id: "COMMS-01",
-  name: "messaging-domain-foundation",
+  id: "COMMS-02",
+  name: "direct-messaging",
+  priorPhase: "COMMS-01",
   wiredToProductionRuntime: false,
   hasPersistence: false,
   hasRealtime: false,
   hasUi: false,
+  /** In-memory doubles exist for unit tests only — not production SoT. */
+  hasInMemoryTestDoubles: true,
 });
 
 export {
@@ -47,6 +53,17 @@ export {
   MODERATION_ACTION_TYPE,
   MODERATION_ACTION_TYPE_VALUES,
   isModerationActionType,
+  DIRECT_MESSAGING_ACCESS_DECISION,
+  DIRECT_MESSAGING_ACCESS_DECISION_VALUES,
+  DIRECT_MESSAGING_DENY_REASON,
+  DIRECT_MESSAGING_DENY_REASON_VALUES,
+  isDirectMessagingAccessDecision,
+  isDirectMessagingDenyReason,
+  CONVERSATION_REQUEST_STATUS,
+  CONVERSATION_REQUEST_STATUS_VALUES,
+  CONVERSATION_REQUEST_TERMINAL_STATUSES,
+  CONVERSATION_REQUEST_ALLOWED_TRANSITIONS,
+  isConversationRequestStatus,
 } from "./constants/index.js";
 
 export {
@@ -85,6 +102,14 @@ export {
   createUserBlockContract,
   createMessageReportContract,
   createModerationActionContract,
+  createDirectPairContract,
+  buildDirectPairKey,
+  isDirectPairMember,
+  getDirectPairCounterpart,
+  createDirectAccessDecisionContract,
+  createConversationRequestContract,
+  createDirectConversationSummaryContract,
+  compareDirectConversationSummaries,
 } from "./contracts/index.js";
 
 export {
@@ -106,6 +131,18 @@ export {
   validateUserBlock,
   validateMessageReport,
   validateModerationAction,
+  resolveCanonicalDirectPair,
+  assertActorInDirectPair,
+  evaluateDirectMessagingAccess,
+  assertDirectAccessAllowed,
+  isConversationRequestTerminal,
+  transitionConversationRequestStatus,
+  acceptOrDeclineConversationRequest,
+  cancelConversationRequest,
+  countUnreadDirectMessages,
+  buildDirectConversationSummary,
+  sortDirectConversationSummaries,
+  findActiveDirectParticipants,
 } from "./domain/index.js";
 
 export {
@@ -141,4 +178,33 @@ export {
   matchesIdProviderPort,
   createUnimplementedClockPort,
   createUnimplementedIdProviderPort,
+  DIRECT_CONVERSATION_REPOSITORY_METHODS,
+  matchesDirectConversationRepository,
+  createUnimplementedDirectConversationRepository,
+  DIRECT_CONVERSATION_REQUEST_REPOSITORY_METHODS,
+  matchesDirectConversationRequestRepository,
+  createUnimplementedDirectConversationRequestRepository,
+  DIRECT_MESSAGE_REPOSITORY_METHODS,
+  matchesDirectMessageRepository,
+  createUnimplementedDirectMessageRepository,
+  DIRECT_READ_CURSOR_REPOSITORY_METHODS,
+  matchesDirectReadCursorRepository,
+  createUnimplementedDirectReadCursorRepository,
+  BLOCK_STATE_READER_METHODS,
+  matchesBlockStateReader,
+  createUnimplementedBlockStateReader,
+  DIRECT_MESSAGING_ACCESS_POLICY_METHODS,
+  matchesDirectMessagingAccessPolicy,
+  createUnimplementedDirectMessagingAccessPolicy,
+  createAllowAllDirectMessagingAccessPolicy,
 } from "./ports/index.js";
+
+export {
+  createDirectMessagingApplicationService,
+  createDirectMessagingApplication,
+  createSequentialIdProvider,
+  createFixedClock,
+  createMemoryIdentityActorPort,
+} from "./application/index.js";
+
+export { createInMemoryDirectMessagingRepositories } from "./repositories/index.js";

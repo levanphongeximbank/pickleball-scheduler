@@ -1,6 +1,6 @@
 /**
  * Platform Core capability manifest (Phase 2A + Identity/Tenant + Event/Audit
- * + Operation/Compatibility adapters).
+ * + Operation/Compatibility + Integration/Capability adapters + discovery).
  *
  * Immutable descriptor list of Phase 1 certified contracts and certified
  * projection adapters. Does not auto-discover modules, mutate a registry,
@@ -14,6 +14,7 @@ const OWNER_MODULE = "platform-core";
 const CONTRACT_VERSION = "1.0.0";
 const CONTRACT_STATUS = "CONTRACT_AVAILABLE";
 const ADAPTER_STATUS = "ADAPTER_AVAILABLE";
+const DISCOVERY_STATUS = "DISCOVERY_AVAILABLE";
 
 /**
  * Phase 1 certified contract capability codes (deterministic order).
@@ -81,6 +82,25 @@ const OPERATION_COMPATIBILITY_ADAPTER_CAPABILITY_CODES = Object.freeze([
 ]);
 
 /**
+ * Integration/Capability adapter capability codes (deterministic order).
+ * Status is ADAPTER_AVAILABLE only — not PRODUCTION_READY / RUNTIME_ADOPTED.
+ * @type {readonly string[]}
+ */
+const INTEGRATION_CAPABILITY_ADAPTER_CAPABILITY_CODES = Object.freeze([
+  "INTEGRATION_PORT_DESCRIPTOR_ADAPTER",
+  "PLATFORM_CAPABILITY_DESCRIPTOR_ADAPTER",
+]);
+
+/**
+ * Capability discovery codes (deterministic order).
+ * Status is DISCOVERY_AVAILABLE only — not PRODUCTION_READY / RUNTIME_ADOPTED.
+ * @type {readonly string[]}
+ */
+const CAPABILITY_DISCOVERY_CODES = Object.freeze([
+  "CAPABILITY_DISCOVERY",
+]);
+
+/**
  * @param {readonly { capabilityCode: string, status: string }[]} entries
  * @returns {readonly import("./contracts/platformCapabilityDescriptor.js").PlatformCapabilityDescriptor[]}
  */
@@ -133,6 +153,14 @@ const MANIFEST_ENTRIES = Object.freeze([
   ...OPERATION_COMPATIBILITY_ADAPTER_CAPABILITY_CODES.map((capabilityCode) => ({
     capabilityCode,
     status: ADAPTER_STATUS,
+  })),
+  ...INTEGRATION_CAPABILITY_ADAPTER_CAPABILITY_CODES.map((capabilityCode) => ({
+    capabilityCode,
+    status: ADAPTER_STATUS,
+  })),
+  ...CAPABILITY_DISCOVERY_CODES.map((capabilityCode) => ({
+    capabilityCode,
+    status: DISCOVERY_STATUS,
   })),
 ]);
 

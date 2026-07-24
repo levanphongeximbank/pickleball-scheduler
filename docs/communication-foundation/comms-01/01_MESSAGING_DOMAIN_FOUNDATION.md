@@ -68,7 +68,9 @@ Key surfaces:
 
 ## COMMS-02 readiness
 
-**READY_WITH_CONDITIONS** for Direct Messaging domain work:
+**COMPLETE** — see [`../comms-02/02_DIRECT_MESSAGING.md`](../comms-02/02_DIRECT_MESSAGING.md).
+
+Historical conditions (satisfied by COMMS-02 without SQL):
 
 1. Build `DIRECT` application services on top of these contracts (still persistence-optional / in-memory OK for early COMMS-02).
 2. Wire Identity actor checks via `IdentityActorPort` (still no SoT ownership).

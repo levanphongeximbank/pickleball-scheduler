@@ -149,6 +149,35 @@ test("capability manifest is exported from the public surface", () => {
   assert.ok(publicSurface.PLATFORM_CAPABILITY_MANIFEST.length >= 1);
 });
 
+test("capability discovery APIs are exported from the public surface", () => {
+  assert.equal(typeof publicSurface.listPlatformCapabilities, "function");
+  assert.equal(typeof publicSurface.findPlatformCapability, "function");
+  assert.equal(typeof publicSurface.hasPlatformCapability, "function");
+  assert.equal(
+    publicSurface.listPlatformCapabilities(),
+    PLATFORM_CAPABILITY_MANIFEST
+  );
+  assert.equal(
+    publicSurface.findPlatformCapability("RESULT")?.capabilityCode,
+    "RESULT"
+  );
+  assert.equal(publicSurface.hasPlatformCapability("RESULT"), true);
+  assert.equal(publicSurface.hasPlatformCapability("MISSING"), false);
+});
+
+test("Integration/Capability adapter APIs are exported from the public surface", () => {
+  assert.equal(typeof publicSurface.projectIntegrationPortDescriptor, "function");
+  assert.equal(typeof publicSurface.projectPlatformCapabilityDescriptor, "function");
+  assert.equal(
+    typeof publicSurface.INTEGRATION_PORT_DESCRIPTOR_ADAPTER_ERROR,
+    "object"
+  );
+  assert.equal(
+    typeof publicSurface.PLATFORM_CAPABILITY_DESCRIPTOR_ADAPTER_ERROR,
+    "object"
+  );
+});
+
 test("legacy scaffold exports remain for backward compatibility", () => {
   for (const name of LEGACY_SCAFFOLD_EXPORTS) {
     assert.equal(

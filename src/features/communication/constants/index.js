@@ -39,3 +39,20 @@ export {
   MODERATION_ACTION_TYPE_VALUES,
   isModerationActionType,
 } from "./moderationActions.js";
+
+export {
+  DIRECT_MESSAGING_ACCESS_DECISION,
+  DIRECT_MESSAGING_ACCESS_DECISION_VALUES,
+  DIRECT_MESSAGING_DENY_REASON,
+  DIRECT_MESSAGING_DENY_REASON_VALUES,
+  isDirectMessagingAccessDecision,
+  isDirectMessagingDenyReason,
+} from "./directMessagingAccess.js";
+
+export {
+  CONVERSATION_REQUEST_STATUS,
+  CONVERSATION_REQUEST_STATUS_VALUES,
+  CONVERSATION_REQUEST_TERMINAL_STATUSES,
+  CONVERSATION_REQUEST_ALLOWED_TRANSITIONS,
+  isConversationRequestStatus,
+} from "./conversationRequestStatus.js";
