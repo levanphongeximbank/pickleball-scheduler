@@ -226,6 +226,7 @@
   "tests/finance-crm-phase26-27.test.js",
   "tests/crm-phase-1b-foundation.test.js",
   "tests/customer-phase-1-foundation.test.js",
+  "tests/customer-phase-2-profile-contact.test.js",
   "tests/customer-platform-adoption.test.js",
   "tests/coaching-ai-phase28-29.test.js",
   "tests/rbac-v52.test.js",

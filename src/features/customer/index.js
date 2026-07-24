@@ -1,5 +1,5 @@
 /**
- * Customer Management — public facade (CUSTOMER-01 foundation).
+ * Customer Management — public facade (CUSTOMER-01 + CUSTOMER-02).
  *
  * Exports approved contracts, constants, pure domain factories,
  * application service factory, in-memory repository, read projectors,
@@ -14,6 +14,10 @@
  * Customer Management is the source of truth for customer master data,
  * but NOT for authentication, player sports profile, CRM workflow,
  * or financial transactions.
+ *
+ * Customer contact information is business master data. It is not an
+ * authentication credential and does not prove ownership or verification
+ * without trusted external evidence.
  */
 
 // Errors
@@ -46,9 +50,23 @@ export {
   CONTACT_POINT_TYPE_VALUES,
   CONTACT_POINT_VERIFICATION_STATE,
   CONTACT_POINT_VERIFICATION_STATE_VALUES,
+  CONTACT_POINT_STATUS,
+  CONTACT_POINT_STATUS_VALUES,
+  CONTACT_POINT_PURPOSE,
+  CONTACT_POINT_PURPOSE_VALUES,
   isContactPointType,
   isContactPointVerificationState,
+  isContactPointStatus,
+  isContactPointPurpose,
 } from "./constants/contactPointTypes.js";
+export {
+  CUSTOMER_ADDRESS_TYPE,
+  CUSTOMER_ADDRESS_TYPE_VALUES,
+  CUSTOMER_ADDRESS_STATUS,
+  CUSTOMER_ADDRESS_STATUS_VALUES,
+  isCustomerAddressType,
+  isCustomerAddressStatus,
+} from "./constants/addressTypes.js";
 export {
   CUSTOMER_COMMUNICATION_CHANNEL,
   CUSTOMER_COMMUNICATION_CHANNEL_VALUES,
@@ -83,9 +101,25 @@ export {
   assertScopeOwnership,
 } from "./domain/scope.js";
 export {
+  normalizeCustomerEmail,
+  normalizeCustomerPhone,
+} from "./domain/normalization.js";
+export {
   createContactPoint,
   assertPrimaryContactUniqueness,
+  assertNoDuplicateContactValues,
+  assertContactPointInvariants,
 } from "./domain/contactPoint.js";
+export {
+  createCustomerAddress,
+  assertPrimaryAddressUniqueness,
+} from "./domain/address.js";
+export {
+  createIndividualProfile,
+  createOrganizationProfile,
+  resolveDisplayName,
+  assertProfileTypeConsistency,
+} from "./domain/profileNames.js";
 export {
   createAccountLinkage,
   createPlayerLinkage,
@@ -114,6 +148,12 @@ export {
   addCustomerContactPoint,
   updateCustomerContactPoint,
   removeCustomerContactPoint,
+  deactivateCustomerContactPoint,
+  setPrimaryCustomerContactPoint,
+  addCustomerAddress,
+  updateCustomerAddress,
+  removeCustomerAddress,
+  setPrimaryCustomerAddress,
   setCustomerLinkage,
 } from "./domain/customerProfile.js";
 
@@ -137,6 +177,9 @@ export {
 export {
   projectCustomerSummary,
   projectCustomerDetails,
+  projectCustomerProfileView,
+  projectCustomerContactView,
+  projectCustomerAddressSummary,
 } from "./projectors/customerSummary.js";
 
 // Adapters (boundary only)
@@ -162,6 +205,9 @@ export const CUSTOMER_PUBLIC_EXPORTS = Object.freeze([
   "CUSTOMER_TYPE",
   "CUSTOMER_STATUS",
   "CONTACT_POINT_TYPE",
+  "CONTACT_POINT_STATUS",
+  "CONTACT_POINT_VERIFICATION_STATE",
+  "CUSTOMER_ADDRESS_TYPE",
   "CUSTOMER_COMMUNICATION_CHANNEL",
   "CUSTOMER_CONSENT_STATE",
   "createCustomerProfile",
@@ -171,6 +217,10 @@ export const CUSTOMER_PUBLIC_EXPORTS = Object.freeze([
   "createVenueCustomerDirectoryAdapter",
   "projectCustomerSummary",
   "projectCustomerDetails",
+  "projectCustomerProfileView",
+  "projectCustomerContactView",
+  "normalizeCustomerEmail",
+  "normalizeCustomerPhone",
   "projectCustomerSubject",
   "CUSTOMER_SUBJECT_TYPE",
   "createCustomerMergeProposal",

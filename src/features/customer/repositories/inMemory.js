@@ -80,7 +80,12 @@ export function createInMemoryCustomerRepository() {
         row.legalName,
         row.customerNumber,
         row.customerId,
-        ...(row.contactPoints || []).map((c) => c.value),
+        row.individualProfile?.givenName,
+        row.individualProfile?.familyName,
+        row.organizationProfile?.organizationName,
+        ...(row.contactPoints || []).map(
+          (c) => `${c.value || ""} ${c.displayValue || ""} ${c.normalizedValue || ""}`
+        ),
       ]
         .filter(Boolean)
         .join(" ")
@@ -151,22 +156,26 @@ export function createInMemoryCustomerRepository() {
             (c) =>
               c.type === CONTACT_POINT_TYPE.EMAIL &&
               c.primary === true &&
-              c.value === email
+              (c.normalizedValue || c.value) === email
           );
         });
         if (hit) return hit;
       }
 
       if (criteria.primaryPhone) {
-        const phone = String(criteria.primaryPhone).trim();
+        const phone = String(criteria.primaryPhone).trim().replace(/\s+/g, "");
         const hit = rows.find((row) => {
           if (row.customerId === excludeId) return false;
-          return (row.contactPoints || []).some(
-            (c) =>
-              c.type === CONTACT_POINT_TYPE.PHONE &&
-              c.primary === true &&
-              c.value === phone
-          );
+          return (row.contactPoints || []).some((c) => {
+            if (c.type !== CONTACT_POINT_TYPE.PHONE || c.primary !== true) {
+              return false;
+            }
+            const normalized = String(c.normalizedValue || c.value || "").replace(
+              /\s+/g,
+              ""
+            );
+            return normalized === phone;
+          });
         });
         if (hit) return hit;
       }

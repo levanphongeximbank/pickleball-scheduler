@@ -1,5 +1,5 @@
 /**
- * Customer master profile domain model (CUSTOMER-01).
+ * Customer master profile domain model (CUSTOMER-01 + CUSTOMER-02).
  *
  * Pure factories + transition helpers. No persistence, network, or UI.
  * Does not embed credentials, player sports profile, CRM pipeline, or balances.
@@ -11,12 +11,30 @@ import {
   isCustomerStatus,
   isAllowedCustomerStatusTransition,
 } from "../constants/customerStatuses.js";
+import {
+  CONTACT_POINT_STATUS,
+  CONTACT_POINT_TYPE,
+  CONTACT_POINT_VERIFICATION_STATE,
+} from "../constants/contactPointTypes.js";
+import { CUSTOMER_ADDRESS_STATUS } from "../constants/addressTypes.js";
 import { CUSTOMER_ERROR_CODES } from "../errors/codes.js";
 import { throwCustomerError } from "../errors/CustomerError.js";
 import {
-  assertPrimaryContactUniqueness,
+  assertContactPointInvariants,
   createContactPoint,
 } from "./contactPoint.js";
+import {
+  assertPrimaryAddressUniqueness,
+  createCustomerAddress,
+} from "./address.js";
+import {
+  assertProfileTypeConsistency,
+  createIndividualProfile,
+  createOrganizationProfile,
+  optionalProfileString,
+  requireProfileString,
+  resolveDisplayName,
+} from "./profileNames.js";
 import {
   createAccountLinkage,
   createOrganizationLinkage,
@@ -37,38 +55,6 @@ import {
   requireOpaqueId,
 } from "./identifiers.js";
 import { createCustomerScope } from "./scope.js";
-
-/**
- * @param {unknown} value
- * @param {string} field
- * @returns {string}
- */
-function requireDisplayName(value, field) {
-  if (value == null || typeof value !== "string" || !value.trim()) {
-    throwCustomerError(
-      CUSTOMER_ERROR_CODES.INVALID_INPUT,
-      `${field} is required.`,
-      { field }
-    );
-  }
-  return value.trim();
-}
-
-/**
- * @param {unknown} value
- * @returns {string|null}
- */
-function optionalTrimmed(value) {
-  if (value == null || value === "") return null;
-  if (typeof value !== "string") {
-    throwCustomerError(
-      CUSTOMER_ERROR_CODES.INVALID_INPUT,
-      "Optional string field must be a string when provided."
-    );
-  }
-  const trimmed = value.trim();
-  return trimmed || null;
-}
 
 /**
  * @param {unknown} metadata
@@ -117,6 +103,17 @@ function mapFrozenList(list, factory) {
 }
 
 /**
+ * @param {object} customer
+ * @param {{ nowIso?: () => string, nextId?: (prefix: string) => string }} deps
+ */
+function contactDeps(deps) {
+  return {
+    nowIso: deps.nowIso,
+    allowVerifiedWithoutEvidence: false,
+  };
+}
+
+/**
  * Create a canonical customer master profile.
  *
  * @param {object} input
@@ -149,6 +146,39 @@ export function createCustomerProfile(input = {}, deps = {}) {
     );
   }
 
+  const individualProfile = createIndividualProfile(
+    input.individualProfile ??
+      (input.givenName || input.familyName || input.preferredName
+        ? {
+            givenName: input.givenName,
+            familyName: input.familyName,
+            middleName: input.middleName,
+            preferredName: input.preferredName,
+          }
+        : null)
+  );
+  const organizationProfile = createOrganizationProfile(
+    input.organizationProfile ??
+      (input.organizationName || input.tradingName
+        ? {
+            organizationName: input.organizationName,
+            tradingName: input.tradingName,
+          }
+        : null)
+  );
+  assertProfileTypeConsistency(
+    customerType,
+    individualProfile,
+    organizationProfile
+  );
+
+  const displayName = resolveDisplayName(
+    input,
+    customerType,
+    individualProfile,
+    organizationProfile
+  );
+
   const entropy = nextId("id");
   const customerId = input.customerId
     ? requireOpaqueId(input.customerId, "customerId")
@@ -157,29 +187,49 @@ export function createCustomerProfile(input = {}, deps = {}) {
     ? requireOpaqueId(input.customerNumber, "customerNumber")
     : mintCustomerNumber(entropy);
 
-  const contactPoints = assertPrimaryContactUniqueness(
+  const createdAt = input.createdAt ? String(input.createdAt) : nowIso();
+  const updatedAt = input.updatedAt ? String(input.updatedAt) : createdAt;
+  const cpDeps = { ...contactDeps(deps), nowIso };
+
+  const contactPoints = assertContactPointInvariants(
     mapFrozenList(input.contactPoints, (item, index) =>
-      createContactPoint({
-        contactPointId: item.contactPointId || nextId(`cp${index}`),
+      createContactPoint(
+        {
+          contactPointId: item.contactPointId || nextId(`cp${index}`),
+          createdAt,
+          updatedAt: createdAt,
+          ...item,
+        },
+        cpDeps
+      )
+    )
+  );
+
+  const addresses = assertPrimaryAddressUniqueness(
+    mapFrozenList(input.addresses, (item, index) =>
+      createCustomerAddress({
+        addressId: item.addressId || nextId(`addr${index}`),
+        createdAt,
+        updatedAt: createdAt,
         ...item,
       })
     )
   );
-
-  const createdAt = input.createdAt ? String(input.createdAt) : nowIso();
-  const updatedAt = input.updatedAt ? String(input.updatedAt) : createdAt;
 
   return Object.freeze({
     customerId,
     customerNumber,
     tenantId: scope.tenantId,
     venueId: scope.venueId,
-    displayName: requireDisplayName(input.displayName ?? input.name, "displayName"),
-    legalName: optionalTrimmed(input.legalName ?? input.fullName),
+    displayName,
+    legalName: optionalProfileString(input.legalName ?? input.fullName, "legalName"),
+    individualProfile,
+    organizationProfile,
     customerType,
     status,
     contactPoints: Object.freeze([...contactPoints]),
-    locale: optionalTrimmed(input.locale ?? input.language),
+    addresses: Object.freeze([...addresses]),
+    locale: optionalProfileString(input.locale ?? input.language, "locale"),
     accountLinkage: createAccountLinkage(input.accountLinkage ?? null),
     playerLinkage: createPlayerLinkage(input.playerLinkage ?? null),
     organizationLinkage: createOrganizationLinkage(
@@ -212,11 +262,8 @@ export function createCustomerProfile(input = {}, deps = {}) {
 
 /**
  * @param {object} customer
- * @param {object} patch
- * @param {{ nowIso?: () => string }} [deps]
- * @returns {Readonly<object>}
  */
-export function updateCustomerProfileFields(customer, patch = {}, deps = {}) {
+function assertMutable(customer) {
   if (!customer || typeof customer !== "object") {
     throwCustomerError(
       CUSTOMER_ERROR_CODES.INVALID_INPUT,
@@ -230,21 +277,139 @@ export function updateCustomerProfileFields(customer, patch = {}, deps = {}) {
       { customerId: customer.customerId, status: customer.status }
     );
   }
+}
 
+/**
+ * @param {object} customer
+ * @param {object} patch
+ * @param {{ nowIso?: () => string }} [deps]
+ * @returns {Readonly<object>}
+ */
+export function updateCustomerProfileFields(customer, patch = {}, deps = {}) {
+  assertMutable(customer);
   const nowIso = typeof deps.nowIso === "function" ? deps.nowIso : () => new Date().toISOString();
+
+  if (patch.customerType !== undefined) {
+    const nextType = String(patch.customerType);
+    if (nextType !== customer.customerType) {
+      throwCustomerError(
+        CUSTOMER_ERROR_CODES.PROFILE_TYPE_MISMATCH,
+        "Changing customerType is not supported (fail-closed).",
+        {
+          customerId: customer.customerId,
+          from: customer.customerType,
+          to: nextType,
+        }
+      );
+    }
+  }
+
+  let individualProfile = customer.individualProfile;
+  let organizationProfile = customer.organizationProfile;
+
+  if (patch.individualProfile !== undefined) {
+    if (customer.customerType !== CUSTOMER_TYPE.INDIVIDUAL) {
+      throwCustomerError(
+        CUSTOMER_ERROR_CODES.PROFILE_TYPE_MISMATCH,
+        "individualProfile is only valid for INDIVIDUAL customers.",
+        { customerType: customer.customerType }
+      );
+    }
+    individualProfile = createIndividualProfile(patch.individualProfile);
+  } else if (
+    patch.givenName !== undefined ||
+    patch.familyName !== undefined ||
+    patch.middleName !== undefined ||
+    patch.preferredName !== undefined
+  ) {
+    if (customer.customerType !== CUSTOMER_TYPE.INDIVIDUAL) {
+      throwCustomerError(
+        CUSTOMER_ERROR_CODES.PROFILE_TYPE_MISMATCH,
+        "Individual name fields are only valid for INDIVIDUAL customers.",
+        { customerType: customer.customerType }
+      );
+    }
+    individualProfile = createIndividualProfile({
+      ...(customer.individualProfile || {}),
+      ...(patch.givenName !== undefined ? { givenName: patch.givenName } : {}),
+      ...(patch.familyName !== undefined ? { familyName: patch.familyName } : {}),
+      ...(patch.middleName !== undefined ? { middleName: patch.middleName } : {}),
+      ...(patch.preferredName !== undefined
+        ? { preferredName: patch.preferredName }
+        : {}),
+    });
+  }
+
+  if (patch.organizationProfile !== undefined) {
+    if (customer.customerType !== CUSTOMER_TYPE.ORGANIZATION) {
+      throwCustomerError(
+        CUSTOMER_ERROR_CODES.PROFILE_TYPE_MISMATCH,
+        "organizationProfile is only valid for ORGANIZATION customers.",
+        { customerType: customer.customerType }
+      );
+    }
+    organizationProfile = createOrganizationProfile(patch.organizationProfile);
+  } else if (
+    patch.organizationName !== undefined ||
+    patch.tradingName !== undefined
+  ) {
+    if (customer.customerType !== CUSTOMER_TYPE.ORGANIZATION) {
+      throwCustomerError(
+        CUSTOMER_ERROR_CODES.PROFILE_TYPE_MISMATCH,
+        "Organization name fields are only valid for ORGANIZATION customers.",
+        { customerType: customer.customerType }
+      );
+    }
+    organizationProfile = createOrganizationProfile({
+      ...(customer.organizationProfile || {}),
+      ...(patch.organizationName !== undefined
+        ? { organizationName: patch.organizationName }
+        : {}),
+      ...(patch.tradingName !== undefined
+        ? { tradingName: patch.tradingName }
+        : {}),
+    });
+  }
+
+  assertProfileTypeConsistency(
+    customer.customerType,
+    individualProfile,
+    organizationProfile
+  );
+
+  let displayName = customer.displayName;
+  if (patch.displayName !== undefined || patch.name !== undefined) {
+    displayName = requireProfileString(
+      patch.displayName ?? patch.name,
+      "displayName"
+    );
+  } else if (
+    patch.individualProfile !== undefined ||
+    patch.organizationProfile !== undefined ||
+    patch.givenName !== undefined ||
+    patch.familyName !== undefined ||
+    patch.middleName !== undefined ||
+    patch.preferredName !== undefined ||
+    patch.organizationName !== undefined ||
+    patch.tradingName !== undefined
+  ) {
+    // Keep explicit override unless caller clears via blank — blank rejected.
+    // Name-field patches do not auto-rewrite an existing displayName.
+    displayName = customer.displayName;
+  }
+
   const next = {
     ...customer,
-    displayName:
-      patch.displayName !== undefined || patch.name !== undefined
-        ? requireDisplayName(patch.displayName ?? patch.name, "displayName")
-        : customer.displayName,
+    displayName,
     legalName:
       patch.legalName !== undefined || patch.fullName !== undefined
-        ? optionalTrimmed(patch.legalName ?? patch.fullName)
+        ? optionalProfileString(patch.legalName ?? patch.fullName, "legalName")
         : customer.legalName,
+    individualProfile,
+    organizationProfile,
     locale:
       patch.locale !== undefined || patch.language !== undefined
-        ? optionalTrimmed(patch.locale ?? patch.language)
+        ? optionalProfileString(patch.locale ?? patch.language, "locale")
         : customer.locale,
     metadata:
       patch.metadata !== undefined
@@ -273,21 +438,10 @@ export function updateCustomerProfileFields(customer, patch = {}, deps = {}) {
     version: customer.version + 1,
   };
 
-  if (patch.customerType !== undefined) {
-    const customerType = String(patch.customerType);
-    if (!isCustomerType(customerType)) {
-      throwCustomerError(
-        CUSTOMER_ERROR_CODES.INVALID_TYPE,
-        "customerType must be INDIVIDUAL or ORGANIZATION.",
-        { field: "customerType", customerType }
-      );
-    }
-    next.customerType = customerType;
-  }
-
   return Object.freeze({
     ...next,
     contactPoints: Object.freeze([...(next.contactPoints || [])]),
+    addresses: Object.freeze([...(next.addresses || [])]),
   });
 }
 
@@ -322,6 +476,7 @@ export function changeCustomerStatus(customer, nextStatus, deps = {}) {
     ...customer,
     status: to,
     contactPoints: Object.freeze([...(customer.contactPoints || [])]),
+    addresses: Object.freeze([...(customer.addresses || [])]),
     updatedAt: nowIso(),
     version: customer.version + 1,
   });
@@ -334,23 +489,31 @@ export function changeCustomerStatus(customer, nextStatus, deps = {}) {
  * @returns {Readonly<object>}
  */
 export function addCustomerContactPoint(customer, contactInput, deps = {}) {
+  assertMutable(customer);
   const nowIso = typeof deps.nowIso === "function" ? deps.nowIso : () => new Date().toISOString();
   const nextId =
     typeof deps.nextId === "function"
       ? deps.nextId
       : (prefix) => `${prefix}_${Math.random().toString(36).slice(2, 10)}`;
-  const contactPoint = createContactPoint({
-    contactPointId: contactInput.contactPointId || nextId("cp"),
-    ...contactInput,
-  });
-  const contactPoints = assertPrimaryContactUniqueness([
+  const stamp = nowIso();
+  const contactPoint = createContactPoint(
+    {
+      contactPointId: contactInput.contactPointId || nextId("cp"),
+      createdAt: stamp,
+      updatedAt: stamp,
+      ...contactInput,
+    },
+    contactDeps(deps)
+  );
+  const contactPoints = assertContactPointInvariants([
     ...(customer.contactPoints || []),
     contactPoint,
   ]);
   return Object.freeze({
     ...customer,
     contactPoints: Object.freeze(contactPoints),
-    updatedAt: nowIso(),
+    addresses: Object.freeze([...(customer.addresses || [])]),
+    updatedAt: stamp,
     version: customer.version + 1,
   });
 }
@@ -363,23 +526,52 @@ export function addCustomerContactPoint(customer, contactInput, deps = {}) {
  * @returns {Readonly<object>}
  */
 export function updateCustomerContactPoint(customer, contactPointId, patch, deps = {}) {
+  assertMutable(customer);
   const id = requireOpaqueId(contactPointId, "contactPointId");
   const existing = (customer.contactPoints || []).find((c) => c.contactPointId === id);
   if (!existing) {
     throwCustomerError(
-      CUSTOMER_ERROR_CODES.NOT_FOUND,
+      CUSTOMER_ERROR_CODES.CONTACT_POINT_NOT_FOUND,
       "Contact point not found.",
       { contactPointId: id, customerId: customer.customerId }
     );
   }
   const nowIso = typeof deps.nowIso === "function" ? deps.nowIso : () => new Date().toISOString();
-  const updated = createContactPoint({
-    ...existing,
-    ...patch,
-    contactPointId: existing.contactPointId,
-    type: patch.type !== undefined ? patch.type : existing.type,
-  });
-  const contactPoints = assertPrimaryContactUniqueness(
+  const stamp = nowIso();
+  const valueChanging =
+    (patch.value !== undefined && patch.value !== existing.value) ||
+    (patch.normalizedValue !== undefined &&
+      patch.normalizedValue !== existing.normalizedValue) ||
+    (patch.displayValue !== undefined &&
+      patch.displayValue !== existing.displayValue);
+  const nextVerification =
+    patch.verificationState !== undefined
+      ? patch.verificationState
+      : valueChanging
+        ? CONTACT_POINT_VERIFICATION_STATE.UNVERIFIED
+        : existing.verificationState;
+  const preserveVerified =
+    nextVerification === CONTACT_POINT_VERIFICATION_STATE.VERIFIED &&
+    !valueChanging &&
+    patch.trustedEvidence !== true;
+  const updated = createContactPoint(
+    {
+      ...existing,
+      ...patch,
+      contactPointId: existing.contactPointId,
+      type: patch.type !== undefined ? patch.type : existing.type,
+      verificationState: nextVerification,
+      createdAt: existing.createdAt,
+      updatedAt: stamp,
+      version: (existing.version || 1) + 1,
+      trustedEvidence: patch.trustedEvidence === true || preserveVerified,
+    },
+    {
+      ...contactDeps(deps),
+      allowVerifiedWithoutEvidence: preserveVerified,
+    }
+  );
+  const contactPoints = assertContactPointInvariants(
     (customer.contactPoints || []).map((c) =>
       c.contactPointId === id ? updated : c
     )
@@ -387,23 +579,27 @@ export function updateCustomerContactPoint(customer, contactPointId, patch, deps
   return Object.freeze({
     ...customer,
     contactPoints: Object.freeze(contactPoints),
-    updatedAt: nowIso(),
+    addresses: Object.freeze([...(customer.addresses || [])]),
+    updatedAt: stamp,
     version: customer.version + 1,
   });
 }
 
 /**
+ * Hard-remove a contact point. Does not auto-select a new primary.
+ *
  * @param {object} customer
  * @param {string} contactPointId
  * @param {{ nowIso?: () => string }} [deps]
  * @returns {Readonly<object>}
  */
 export function removeCustomerContactPoint(customer, contactPointId, deps = {}) {
+  assertMutable(customer);
   const id = requireOpaqueId(contactPointId, "contactPointId");
   const remaining = (customer.contactPoints || []).filter((c) => c.contactPointId !== id);
   if (remaining.length === (customer.contactPoints || []).length) {
     throwCustomerError(
-      CUSTOMER_ERROR_CODES.NOT_FOUND,
+      CUSTOMER_ERROR_CODES.CONTACT_POINT_NOT_FOUND,
       "Contact point not found.",
       { contactPointId: id, customerId: customer.customerId }
     );
@@ -411,8 +607,282 @@ export function removeCustomerContactPoint(customer, contactPointId, deps = {}) 
   const nowIso = typeof deps.nowIso === "function" ? deps.nowIso : () => new Date().toISOString();
   return Object.freeze({
     ...customer,
-    contactPoints: Object.freeze(remaining),
+    contactPoints: Object.freeze(assertContactPointInvariants(remaining)),
+    addresses: Object.freeze([...(customer.addresses || [])]),
     updatedAt: nowIso(),
+    version: customer.version + 1,
+  });
+}
+
+/**
+ * Soft-deactivate a contact point. Clears primary when deactivating a primary.
+ *
+ * @param {object} customer
+ * @param {string} contactPointId
+ * @param {{ nowIso?: () => string }} [deps]
+ * @returns {Readonly<object>}
+ */
+export function deactivateCustomerContactPoint(customer, contactPointId, deps = {}) {
+  return updateCustomerContactPoint(
+    customer,
+    contactPointId,
+    {
+      status: CONTACT_POINT_STATUS.INACTIVE,
+      primary: false,
+    },
+    deps
+  );
+}
+
+/**
+ * Set the single primary ACTIVE contact of a given type. Clears other primaries of that type.
+ * Does not auto-select when clearing — caller must pass an existing contactPointId.
+ *
+ * @param {object} customer
+ * @param {string} contactPointId
+ * @param {string} type
+ * @param {{ nowIso?: () => string }} [deps]
+ * @returns {Readonly<object>}
+ */
+export function setPrimaryCustomerContactPoint(customer, contactPointId, type, deps = {}) {
+  assertMutable(customer);
+  const id = requireOpaqueId(contactPointId, "contactPointId");
+  const expectedType = String(type || "");
+  if (
+    expectedType !== CONTACT_POINT_TYPE.EMAIL &&
+    expectedType !== CONTACT_POINT_TYPE.PHONE
+  ) {
+    throwCustomerError(
+      CUSTOMER_ERROR_CODES.INVALID_CONTACT_POINT,
+      "Primary contact type must be EMAIL or PHONE.",
+      { field: "type", type: expectedType }
+    );
+  }
+  const existing = (customer.contactPoints || []).find((c) => c.contactPointId === id);
+  if (!existing) {
+    throwCustomerError(
+      CUSTOMER_ERROR_CODES.CONTACT_POINT_NOT_FOUND,
+      "Contact point not found.",
+      { contactPointId: id, customerId: customer.customerId }
+    );
+  }
+  if (existing.type !== expectedType) {
+    throwCustomerError(
+      CUSTOMER_ERROR_CODES.INVALID_CONTACT_POINT,
+      "Contact point type does not match requested primary type.",
+      {
+        contactPointId: id,
+        expectedType,
+        actualType: existing.type,
+      }
+    );
+  }
+  if (
+    (existing.status || CONTACT_POINT_STATUS.ACTIVE) !== CONTACT_POINT_STATUS.ACTIVE
+  ) {
+    throwCustomerError(
+      CUSTOMER_ERROR_CODES.PRIMARY_CONTACT_CONFLICT,
+      "Inactive contact points cannot be set as primary.",
+      { contactPointId: id, status: existing.status }
+    );
+  }
+
+  const nowIso = typeof deps.nowIso === "function" ? deps.nowIso : () => new Date().toISOString();
+  const stamp = nowIso();
+  const contactPoints = assertContactPointInvariants(
+    (customer.contactPoints || []).map((c) => {
+      if (c.contactPointId === id) {
+        return createContactPoint(
+          {
+            ...c,
+            primary: true,
+            updatedAt: stamp,
+            version: (c.version || 1) + 1,
+            trustedEvidence:
+              c.verificationState === CONTACT_POINT_VERIFICATION_STATE.VERIFIED,
+          },
+          {
+            ...contactDeps(deps),
+            allowVerifiedWithoutEvidence:
+              c.verificationState === CONTACT_POINT_VERIFICATION_STATE.VERIFIED,
+          }
+        );
+      }
+      if (
+        c.type === expectedType &&
+        c.primary === true &&
+        (c.status || CONTACT_POINT_STATUS.ACTIVE) === CONTACT_POINT_STATUS.ACTIVE
+      ) {
+        return createContactPoint(
+          {
+            ...c,
+            primary: false,
+            updatedAt: stamp,
+            version: (c.version || 1) + 1,
+            trustedEvidence:
+              c.verificationState === CONTACT_POINT_VERIFICATION_STATE.VERIFIED,
+          },
+          {
+            ...contactDeps(deps),
+            allowVerifiedWithoutEvidence:
+              c.verificationState === CONTACT_POINT_VERIFICATION_STATE.VERIFIED,
+          }
+        );
+      }
+      return c;
+    })
+  );
+
+  return Object.freeze({
+    ...customer,
+    contactPoints: Object.freeze(contactPoints),
+    addresses: Object.freeze([...(customer.addresses || [])]),
+    updatedAt: stamp,
+    version: customer.version + 1,
+  });
+}
+
+/**
+ * @param {object} customer
+ * @param {object} addressInput
+ * @param {{ nowIso?: () => string, nextId?: (prefix: string) => string }} [deps]
+ * @returns {Readonly<object>}
+ */
+export function addCustomerAddress(customer, addressInput, deps = {}) {
+  assertMutable(customer);
+  const nowIso = typeof deps.nowIso === "function" ? deps.nowIso : () => new Date().toISOString();
+  const nextId =
+    typeof deps.nextId === "function"
+      ? deps.nextId
+      : (prefix) => `${prefix}_${Math.random().toString(36).slice(2, 10)}`;
+  const stamp = nowIso();
+  const address = createCustomerAddress({
+    addressId: addressInput.addressId || nextId("addr"),
+    createdAt: stamp,
+    updatedAt: stamp,
+    ...addressInput,
+  });
+  const addresses = assertPrimaryAddressUniqueness([
+    ...(customer.addresses || []),
+    address,
+  ]);
+  return Object.freeze({
+    ...customer,
+    contactPoints: Object.freeze([...(customer.contactPoints || [])]),
+    addresses: Object.freeze(addresses),
+    updatedAt: stamp,
+    version: customer.version + 1,
+  });
+}
+
+/**
+ * @param {object} customer
+ * @param {string} addressId
+ * @param {object} patch
+ * @param {{ nowIso?: () => string }} [deps]
+ * @returns {Readonly<object>}
+ */
+export function updateCustomerAddress(customer, addressId, patch, deps = {}) {
+  assertMutable(customer);
+  const id = requireOpaqueId(addressId, "addressId");
+  const existing = (customer.addresses || []).find((a) => a.addressId === id);
+  if (!existing) {
+    throwCustomerError(
+      CUSTOMER_ERROR_CODES.NOT_FOUND,
+      "Address not found.",
+      { addressId: id, customerId: customer.customerId }
+    );
+  }
+  const nowIso = typeof deps.nowIso === "function" ? deps.nowIso : () => new Date().toISOString();
+  const stamp = nowIso();
+  const updated = createCustomerAddress({
+    ...existing,
+    ...patch,
+    addressId: existing.addressId,
+    createdAt: existing.createdAt,
+    updatedAt: stamp,
+    version: (existing.version || 1) + 1,
+  });
+  const addresses = assertPrimaryAddressUniqueness(
+    (customer.addresses || []).map((a) => (a.addressId === id ? updated : a))
+  );
+  return Object.freeze({
+    ...customer,
+    contactPoints: Object.freeze([...(customer.contactPoints || [])]),
+    addresses: Object.freeze(addresses),
+    updatedAt: stamp,
+    version: customer.version + 1,
+  });
+}
+
+/**
+ * @param {object} customer
+ * @param {string} addressId
+ * @param {{ nowIso?: () => string }} [deps]
+ * @returns {Readonly<object>}
+ */
+export function removeCustomerAddress(customer, addressId, deps = {}) {
+  assertMutable(customer);
+  const id = requireOpaqueId(addressId, "addressId");
+  const remaining = (customer.addresses || []).filter((a) => a.addressId !== id);
+  if (remaining.length === (customer.addresses || []).length) {
+    throwCustomerError(
+      CUSTOMER_ERROR_CODES.NOT_FOUND,
+      "Address not found.",
+      { addressId: id, customerId: customer.customerId }
+    );
+  }
+  const nowIso = typeof deps.nowIso === "function" ? deps.nowIso : () => new Date().toISOString();
+  return Object.freeze({
+    ...customer,
+    contactPoints: Object.freeze([...(customer.contactPoints || [])]),
+    addresses: Object.freeze(assertPrimaryAddressUniqueness(remaining)),
+    updatedAt: nowIso(),
+    version: customer.version + 1,
+  });
+}
+
+/**
+ * @param {object} customer
+ * @param {string} addressId
+ * @param {{ nowIso?: () => string }} [deps]
+ * @returns {Readonly<object>}
+ */
+export function setPrimaryCustomerAddress(customer, addressId, deps = {}) {
+  assertMutable(customer);
+  const id = requireOpaqueId(addressId, "addressId");
+  const existing = (customer.addresses || []).find((a) => a.addressId === id);
+  if (!existing) {
+    throwCustomerError(
+      CUSTOMER_ERROR_CODES.NOT_FOUND,
+      "Address not found.",
+      { addressId: id, customerId: customer.customerId }
+    );
+  }
+  if (existing.status !== CUSTOMER_ADDRESS_STATUS.ACTIVE) {
+    throwCustomerError(
+      CUSTOMER_ERROR_CODES.PRIMARY_CONTACT_CONFLICT,
+      "Inactive addresses cannot be set as primary.",
+      { addressId: id, status: existing.status }
+    );
+  }
+  const nowIso = typeof deps.nowIso === "function" ? deps.nowIso : () => new Date().toISOString();
+  const stamp = nowIso();
+  const addresses = assertPrimaryAddressUniqueness(
+    (customer.addresses || []).map((a) =>
+      createCustomerAddress({
+        ...a,
+        primary: a.addressId === id,
+        updatedAt: stamp,
+        version: (a.version || 1) + 1,
+      })
+    )
+  );
+  return Object.freeze({
+    ...customer,
+    contactPoints: Object.freeze([...(customer.contactPoints || [])]),
+    addresses: Object.freeze(addresses),
+    updatedAt: stamp,
     version: customer.version + 1,
   });
 }
@@ -425,6 +895,7 @@ export function removeCustomerContactPoint(customer, contactPointId, deps = {}) 
  * @returns {Readonly<object>}
  */
 export function setCustomerLinkage(customer, linkage, kind, deps = {}) {
+  assertMutable(customer);
   const nowIso = typeof deps.nowIso === "function" ? deps.nowIso : () => new Date().toISOString();
   /** @type {Record<string, unknown>} */
   const patch = {};
@@ -494,6 +965,7 @@ export function setCustomerLinkage(customer, linkage, kind, deps = {}) {
     ...customer,
     ...patch,
     contactPoints: Object.freeze([...(customer.contactPoints || [])]),
+    addresses: Object.freeze([...(customer.addresses || [])]),
     updatedAt: nowIso(),
     version: customer.version + 1,
   });
