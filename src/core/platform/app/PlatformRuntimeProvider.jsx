@@ -1,16 +1,24 @@
 import { useMemo } from "react";
 import { createPlatformRuntime } from "./index.js";
 import { PlatformRuntimeContext } from "./PlatformRuntimeContext.js";
-import { registerClubNotificationWriter } from "../../../features/club/services/clubScheduleNotificationBridge.js";
 
-export function PlatformRuntimeProvider({ children, namespace = "pickleball-platform" }) {
+/**
+ * Platform Core runtime provider — no Business Module imports.
+ * Optional onRuntimeReady lets the app composition root wire external
+ * bridges without Platform Core depending on feature modules.
+ */
+export function PlatformRuntimeProvider({
+  children,
+  namespace = "pickleball-platform",
+  onRuntimeReady,
+}) {
   const runtime = useMemo(() => {
     const nextRuntime = createPlatformRuntime({ namespace });
-    registerClubNotificationWriter((input) => {
-      nextRuntime.notificationService.create(input);
-    });
+    if (typeof onRuntimeReady === "function") {
+      onRuntimeReady(nextRuntime);
+    }
     return nextRuntime;
-  }, [namespace]);
+  }, [namespace, onRuntimeReady]);
 
   return (
     <PlatformRuntimeContext.Provider value={runtime}>{children}</PlatformRuntimeContext.Provider>

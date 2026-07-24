@@ -17,6 +17,17 @@ import { seedDemoDataForDev } from "./data/seedDemoData.js";
 import { flushOfflineQueue } from "./features/mobile/services/offlineQueue.js";
 import { ensureStorageSchemaV42 } from "./features/club/storage/storageSchemaV42.js";
 import { isClubStorageV2Enabled } from "./features/club/config/clubRegistryFlags.js";
+import { registerClubNotificationWriter } from "./features/club/services/clubScheduleNotificationBridge.js";
+
+/**
+ * Composition-root bridge: keeps Platform Core free of Business Module imports
+ * while preserving club schedule → platform notification dual-write.
+ */
+function wireClubPlatformNotifications(runtime) {
+  registerClubNotificationWriter((input) => {
+    runtime.notificationService.create(input);
+  });
+}
 
 if (isClubStorageV2Enabled()) {
   ensureStorageSchemaV42();
@@ -67,7 +78,7 @@ window.addEventListener("online", () => {
 ReactDOM.createRoot(document.getElementById("root")).render(
   <ThemeProvider theme={theme}>
     <CssBaseline />
-    <PlatformRuntimeProvider>
+    <PlatformRuntimeProvider onRuntimeReady={wireClubPlatformNotifications}>
       <App />
     </PlatformRuntimeProvider>
   </ThemeProvider>

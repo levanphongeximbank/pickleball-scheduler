@@ -59,7 +59,8 @@ test("createPlatformEventDispatcher writes audit and notification entries", () =
     action: "seed",
     entityType: "workflow",
     entityId: "workflow-1",
-    metadata: { stage: "seed" },
+    // Dispatcher titles use metadata.status (default "info"), not event.type.
+    metadata: { stage: "seed", status: "completed" },
   });
 
   const result = dispatch(event, { tenantId: "tenant-1", notify: true });
