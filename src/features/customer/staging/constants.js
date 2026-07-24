@@ -66,3 +66,10 @@ export const CUSTOMER_07_CRM_SAFETY_STASH_MARKERS = Object.freeze([
   "safety/customer-07-preserve-reappeared-crm-change",
   "safety/customer-06-preserve-crm-change",
 ]);
+
+/** Committed contract for CI — not a live `git stash list` probe. */
+export const CUSTOMER_07_CRM_SAFETY_STASH_EVIDENCE_RELATIVE_PATH =
+  "docs/customer-management/phase-7/CRM_SAFETY_STASH_MARKERS.json";
+
+/** CUSTOMER-06 feature commit that must be an ancestor of HEAD when reachable. */
+export const CUSTOMER_07_CUSTOMER_06_COMMIT = "5349f1cf";

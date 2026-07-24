@@ -1,5 +1,8 @@
 /**
  * CUSTOMER-07 — Staging migration manifest helpers.
+ *
+ * SHA pins are cross-platform: CRLF/CR are normalized to LF before hashing so
+ * Windows working trees and Linux CI produce the same canonical digest.
  */
 
 import { createHash } from "node:crypto";
@@ -13,13 +16,42 @@ import {
 } from "./constants.js";
 import { getCustomer07RepoRoot } from "./loadCustomerStagingEnv.js";
 
+/** Manifest hash algorithm id (pinned in staging-migration-manifest.json). */
+export const CUSTOMER_07_MANIFEST_HASH_ALGORITHM = "sha256-lf-normalized";
+
+/**
+ * Normalize text to LF line endings for cross-platform SHA pinning.
+ * @param {string|Buffer|Uint8Array} input
+ * @returns {string}
+ */
+export function canonicalizeCustomer07MigrationText(input) {
+  let text;
+  if (typeof input === "string") {
+    text = input;
+  } else if (input instanceof Uint8Array) {
+    text = new TextDecoder("utf8").decode(input);
+  } else {
+    text = String(input ?? "");
+  }
+  return text.replace(/\r\n/g, "\n").replace(/\r/g, "\n");
+}
+
+/**
+ * SHA-256 of LF-normalized content (hex lowercase).
+ * @param {string|Buffer|Uint8Array} input
+ * @returns {string}
+ */
+export function sha256CanonicalContent(input) {
+  const canonical = canonicalizeCustomer07MigrationText(input);
+  return createHash("sha256").update(canonical, "utf8").digest("hex");
+}
+
 /**
  * @param {string} absolutePath
  * @returns {string}
  */
 export function sha256File(absolutePath) {
-  const buf = readFileSync(absolutePath);
-  return createHash("sha256").update(buf).digest("hex");
+  return sha256CanonicalContent(readFileSync(absolutePath));
 }
 
 /**
@@ -53,6 +85,13 @@ export function verifyCustomer07MigrationManifest(options = {}) {
   if (manifest.environmentTarget !== "staging") {
     errors.push(
       `Manifest environmentTarget must be staging (got ${manifest.environmentTarget}).`
+    );
+  }
+
+  const hashAlgo = String(manifest.hashAlgorithm || "").trim();
+  if (hashAlgo !== CUSTOMER_07_MANIFEST_HASH_ALGORITHM) {
+    errors.push(
+      `Manifest hashAlgorithm must be ${CUSTOMER_07_MANIFEST_HASH_ALGORITHM} (got ${hashAlgo || "(missing)"}).`
     );
   }
 

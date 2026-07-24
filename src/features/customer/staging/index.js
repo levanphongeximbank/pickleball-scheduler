@@ -17,6 +17,8 @@ export {
   CUSTOMER_07_ROLLBACK_PATHS,
   CUSTOMER_07_SOFT_DISABLE_RELATIVE_PATH,
   CUSTOMER_07_CRM_SAFETY_STASH_MARKERS,
+  CUSTOMER_07_CRM_SAFETY_STASH_EVIDENCE_RELATIVE_PATH,
+  CUSTOMER_07_CUSTOMER_06_COMMIT,
 } from "./constants.js";
 
 export {
@@ -26,6 +28,9 @@ export {
 } from "./loadCustomerStagingEnv.js";
 
 export {
+  CUSTOMER_07_MANIFEST_HASH_ALGORITHM,
+  canonicalizeCustomer07MigrationText,
+  sha256CanonicalContent,
   sha256File,
   loadCustomer07MigrationManifest,
   verifyCustomer07MigrationManifest,
@@ -37,6 +42,8 @@ export {
   evaluateCustomer07BackupRollbackGate,
   evaluateCustomer07CredentialsGate,
   evaluateCustomer07SafetyBaseline,
+  evaluateCustomer07CommittedCrmStashEvidence,
+  isCustomer07CiEnvironment,
   evaluateCustomer07PreWriteGates,
   loadCustomer07OwnerDecision,
 } from "./customer07Gates.js";

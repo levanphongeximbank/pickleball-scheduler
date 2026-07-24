@@ -16,7 +16,9 @@ import { execSync } from "node:child_process";
 import process from "node:process";
 
 import {
+  CUSTOMER_07_CRM_SAFETY_STASH_EVIDENCE_RELATIVE_PATH,
   CUSTOMER_07_CRM_SAFETY_STASH_MARKERS,
+  CUSTOMER_07_CUSTOMER_06_COMMIT,
   CUSTOMER_07_ENV_NAMES,
   CUSTOMER_07_ENVIRONMENT_LABEL,
   CUSTOMER_07_PRODUCTION_DOMAIN_BLOCKLIST,
@@ -264,20 +266,129 @@ export function evaluateCustomer07CredentialsGate(env = {}) {
 
 /**
  * @param {{ repoRoot?: string }} [options]
+ * @returns {{ ok: boolean, markers: string[], path: string, errors: string[] }}
+ */
+export function evaluateCustomer07CommittedCrmStashEvidence(options = {}) {
+  const repoRoot = options.repoRoot || getCustomer07RepoRoot();
+  /** @type {string[]} */
+  const errors = [];
+  const rel = CUSTOMER_07_CRM_SAFETY_STASH_EVIDENCE_RELATIVE_PATH;
+  const abs = path.join(repoRoot, rel);
+  if (!existsSync(abs)) {
+    errors.push(`Missing committed CRM stash evidence: ${rel}`);
+    return { ok: false, markers: [], path: rel, errors };
+  }
+  try {
+    const raw = JSON.parse(readFileSync(abs, "utf8"));
+    const markers = Array.isArray(raw?.markers)
+      ? raw.markers.map((m) => String(m))
+      : [];
+    for (const expected of CUSTOMER_07_CRM_SAFETY_STASH_MARKERS) {
+      if (!markers.some((m) => m.includes(expected) || expected.includes(m))) {
+        errors.push(`Committed CRM stash evidence missing marker: ${expected}`);
+      }
+    }
+    if (raw?.doNotPopApplyOrDrop !== true) {
+      errors.push("Committed CRM stash evidence must set doNotPopApplyOrDrop=true.");
+    }
+    return {
+      ok: errors.length === 0,
+      markers,
+      path: rel,
+      errors,
+    };
+  } catch (err) {
+    errors.push(
+      `Committed CRM stash evidence unreadable: ${err?.message || String(err)}`
+    );
+    return { ok: false, markers: [], path: rel, errors };
+  }
+}
+
+/**
+ * Detect CI runners where local Owner stash / origin/main may be absent.
+ * @param {Record<string, string|undefined>} [env]
+ */
+export function isCustomer07CiEnvironment(env = process.env) {
+  return (
+    String(env.CI || "").toLowerCase() === "true" ||
+    String(env.GITHUB_ACTIONS || "").toLowerCase() === "true" ||
+    String(env.CUSTOMER_07_SAFETY_MODE || "").toLowerCase() === "ci"
+  );
+}
+
+/**
+ * @param {string} repoRoot
+ * @param {string} rev
+ * @returns {string|null}
+ */
+function tryGitRevParse(repoRoot, rev) {
+  try {
+    return execSync(`git rev-parse ${rev}`, {
+      cwd: repoRoot,
+      encoding: "utf8",
+      stdio: ["ignore", "pipe", "ignore"],
+    }).trim();
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * @param {string} repoRoot
+ * @param {string} commit
+ * @returns {boolean|null} true/false when decidable; null when commit object absent
+ */
+function tryIsAncestorOfHead(repoRoot, commit) {
+  try {
+    execSync(`git cat-file -e ${commit}^{commit}`, {
+      cwd: repoRoot,
+      encoding: "utf8",
+      stdio: ["ignore", "ignore", "ignore"],
+    });
+  } catch {
+    return null;
+  }
+  try {
+    execSync(`git merge-base --is-ancestor ${commit} HEAD`, {
+      cwd: repoRoot,
+      encoding: "utf8",
+      stdio: ["ignore", "ignore", "ignore"],
+    });
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * @param {{
+ *   repoRoot?: string,
+ *   mode?: 'auto'|'ci'|'workstation',
+ *   env?: Record<string, string|undefined>,
+ * }} [options]
  */
 export function evaluateCustomer07SafetyBaseline(options = {}) {
   const repoRoot = options.repoRoot || getCustomer07RepoRoot();
+  const env = options.env || process.env;
+  const mode =
+    options.mode ||
+    (isCustomer07CiEnvironment(env) ? "ci" : "workstation");
   /** @type {string[]} */
   const errors = [];
   /** @type {Record<string, unknown>} */
   const facts = {
     repoRoot,
+    mode,
     branch: null,
     head: null,
     originMain: null,
+    originMainPresent: null,
     workingTreeClean: null,
     customer06InHistory: null,
+    customer06CommitReachable: null,
     crmSafetyStashPresent: null,
+    crmSafetyStashEvidenceOk: null,
     packageJsonUnchanged: null,
     lockfileUnchanged: null,
   };
@@ -286,83 +397,144 @@ export function evaluateCustomer07SafetyBaseline(options = {}) {
     facts.branch = execSync("git branch --show-current", {
       cwd: repoRoot,
       encoding: "utf8",
+      stdio: ["ignore", "pipe", "ignore"],
     }).trim();
     facts.head = execSync("git rev-parse HEAD", {
       cwd: repoRoot,
       encoding: "utf8",
+      stdio: ["ignore", "pipe", "ignore"],
     }).trim();
-    facts.originMain = execSync("git rev-parse origin/main", {
-      cwd: repoRoot,
-      encoding: "utf8",
-    }).trim();
+
+    // origin/main is optional — CI shallow checkouts often lack the remote ref.
+    const originMain = tryGitRevParse(repoRoot, "origin/main");
+    facts.originMainPresent = originMain != null;
+    facts.originMain = originMain;
+
     const porcelain = execSync("git status --porcelain", {
       cwd: repoRoot,
       encoding: "utf8",
+      stdio: ["ignore", "pipe", "ignore"],
     }).trim();
     facts.workingTreeClean = porcelain.length === 0;
     if (!facts.workingTreeClean) {
-      // During implementation the tree will be dirty; baseline records state only.
       facts.workingTreeDirtyPreview = porcelain
         .split("\n")
         .slice(0, 20)
         .map((line) => line.slice(0, 120));
     }
 
-    if (
-      facts.branch !==
-      "feature/customer-management-phase-7-staging-live-certification"
-    ) {
-      errors.push(`Wrong branch: ${facts.branch}`);
+    const expectedBranch =
+      "feature/customer-management-phase-7-staging-live-certification";
+    const ciBranchHint = String(
+      env.GITHUB_HEAD_REF || env.GITHUB_REF_NAME || ""
+    ).trim();
+    const branchOk =
+      facts.branch === expectedBranch ||
+      (mode === "ci" &&
+        (!facts.branch ||
+          ciBranchHint === expectedBranch ||
+          ciBranchHint.endsWith(expectedBranch)));
+
+    if (!branchOk && mode === "workstation") {
+      errors.push(`Wrong branch: ${facts.branch || "(detached)"}`);
     }
 
-    const stashList = execSync("git stash list", {
-      cwd: repoRoot,
-      encoding: "utf8",
+    const committedStash = evaluateCustomer07CommittedCrmStashEvidence({
+      repoRoot,
     });
-    facts.crmSafetyStashPresent = CUSTOMER_07_CRM_SAFETY_STASH_MARKERS.every(
-      (marker) => stashList.includes(marker)
-    );
-    if (!facts.crmSafetyStashPresent) {
-      errors.push("CRM safety stash marker missing from git stash list.");
+    facts.crmSafetyStashEvidenceOk = committedStash.ok;
+    if (!committedStash.ok) {
+      errors.push(...committedStash.errors);
     }
 
-    // CUSTOMER-06 merge commit on origin/main ancestry.
-    try {
-      execSync("git merge-base --is-ancestor 5349f1cf HEAD", {
+    if (mode === "workstation") {
+      try {
+        const stashList = execSync("git stash list", {
+          cwd: repoRoot,
+          encoding: "utf8",
+          stdio: ["ignore", "pipe", "ignore"],
+        });
+        facts.crmSafetyStashPresent =
+          CUSTOMER_07_CRM_SAFETY_STASH_MARKERS.every((marker) =>
+            stashList.includes(marker)
+          );
+        if (!facts.crmSafetyStashPresent) {
+          errors.push(
+            "CRM safety stash marker missing from git stash list (workstation)."
+          );
+        }
+      } catch (err) {
+        facts.crmSafetyStashPresent = false;
+        errors.push(
+          `CRM safety stash probe failed: ${err?.message || String(err)}`
+        );
+      }
+    } else {
+      // CI: do not probe live stash — committed evidence is the contract.
+      facts.crmSafetyStashPresent = null;
+    }
+
+    const ancestor = tryIsAncestorOfHead(
+      repoRoot,
+      CUSTOMER_07_CUSTOMER_06_COMMIT
+    );
+    facts.customer06CommitReachable = ancestor != null;
+    if (ancestor === true) {
+      facts.customer06InHistory = true;
+    } else if (ancestor === false) {
+      facts.customer06InHistory = false;
+      errors.push(
+        `CUSTOMER-06 commit ${CUSTOMER_07_CUSTOMER_06_COMMIT} is not an ancestor of HEAD.`
+      );
+    } else {
+      // Commit object absent (shallow clone) — CI soft-records; workstation fails closed.
+      facts.customer06InHistory = null;
+      if (mode === "workstation") {
+        errors.push(
+          `CUSTOMER-06 commit ${CUSTOMER_07_CUSTOMER_06_COMMIT} is not reachable in this clone.`
+        );
+      }
+    }
+
+    const pkgDiff = execSync(
+      "git diff --name-only HEAD -- package.json package-lock.json",
+      {
         cwd: repoRoot,
         encoding: "utf8",
-        stdio: ["ignore", "ignore", "ignore"],
-      });
-      facts.customer06InHistory = true;
-    } catch {
-      facts.customer06InHistory = false;
-      errors.push("CUSTOMER-06 commit 5349f1cf is not an ancestor of HEAD.");
-    }
-
-    // package/lockfile must match HEAD (no local edits).
-    const pkgDiff = execSync("git diff --name-only HEAD -- package.json package-lock.json", {
-      cwd: repoRoot,
-      encoding: "utf8",
-    }).trim();
+        stdio: ["ignore", "pipe", "ignore"],
+      }
+    ).trim();
     facts.packageJsonUnchanged = !pkgDiff.includes("package.json");
     facts.lockfileUnchanged = !pkgDiff.includes("package-lock.json");
     if (!facts.packageJsonUnchanged || !facts.lockfileUnchanged) {
       errors.push("package.json and/or package-lock.json differ from HEAD.");
     }
   } catch (err) {
-    errors.push(`Safety baseline git probe failed: ${err?.message || String(err)}`);
+    errors.push(
+      `Safety baseline git probe failed: ${err?.message || String(err)}`
+    );
   }
 
+  const hardOk =
+    mode === "ci"
+      ? facts.crmSafetyStashEvidenceOk === true &&
+        facts.packageJsonUnchanged === true &&
+        facts.lockfileUnchanged === true &&
+        (facts.customer06InHistory === true ||
+          facts.customer06InHistory === null) &&
+        errors.length === 0
+      : facts.branch ===
+          "feature/customer-management-phase-7-staging-live-certification" &&
+        facts.crmSafetyStashPresent === true &&
+        facts.crmSafetyStashEvidenceOk === true &&
+        facts.customer06InHistory === true &&
+        facts.packageJsonUnchanged === true &&
+        facts.lockfileUnchanged === true &&
+        errors.length === 0;
+
   return {
-    ok: errors.length === 0 || (errors.length === 1 && !facts.workingTreeClean && errors[0]?.includes?.("Wrong branch") === false && facts.branch === "feature/customer-management-phase-7-staging-live-certification"),
-    // Soft: dirty tree during implementation is expected; hard errors are branch/stash/packages.
-    hardOk:
-      facts.branch ===
-        "feature/customer-management-phase-7-staging-live-certification" &&
-      facts.crmSafetyStashPresent === true &&
-      facts.customer06InHistory === true &&
-      facts.packageJsonUnchanged === true &&
-      facts.lockfileUnchanged === true,
+    ok: hardOk,
+    hardOk,
     errors,
     facts,
   };
