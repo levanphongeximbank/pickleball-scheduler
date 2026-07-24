@@ -345,5 +345,6 @@
   "tests/communication-foundation.test.js",
   "tests/communication-direct-messaging.test.js",
   "tests/cm-01-competition-definition.test.js",
-  "tests/cm-02-template-instantiation.test.js"
+  "tests/cm-02-template-instantiation.test.js",
+  "tests/cm-03-competition-versioning.test.js"
 ]
