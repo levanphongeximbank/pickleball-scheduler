@@ -8,3 +8,5 @@ export * from "./templates/index.js";
 export * from "./formats/index.js";
 export * from "./composition/index.js";
 export * from "./application/index.js";
+export * from "./operations/index.js";
+export * from "./presentation/index.js";
