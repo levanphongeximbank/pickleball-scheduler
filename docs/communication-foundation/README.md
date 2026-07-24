@@ -8,9 +8,10 @@
 | **COMMS-00** Architecture & Boundary Audit | Complete | [`comms-00/00_ARCHITECTURE_AND_BOUNDARY_AUDIT.md`](./comms-00/00_ARCHITECTURE_AND_BOUNDARY_AUDIT.md) |
 | **COMMS-01** Messaging Domain Foundation | Complete (domain-only) | [`comms-01/01_MESSAGING_DOMAIN_FOUNDATION.md`](./comms-01/01_MESSAGING_DOMAIN_FOUNDATION.md) |
 | **COMMS-02** Direct Messaging | Complete (app/domain; not production-wired) | [`comms-02/02_DIRECT_MESSAGING.md`](./comms-02/02_DIRECT_MESSAGING.md) |
-| COMMS-03 … COMMS-07 | Planned | See roadmap in COMMS-00 |
+| **COMMS-03** Club Communication | Complete (app/domain; not production-wired) | [`comms-03/03_CLUB_COMMUNICATION.md`](./comms-03/03_CLUB_COMMUNICATION.md) |
+| COMMS-04 … COMMS-07 | Planned | See roadmap in COMMS-00 |
 
-**Runtime module:** `src/features/communication/` — contracts, domain rules, ports, Direct Messaging application; not production-wired.
+**Runtime module:** `src/features/communication/` — contracts, domain rules, ports, Direct Messaging + Club Communication application; not production-wired.
 
 ## Hard boundary
 
@@ -27,12 +28,14 @@ It does **not** own Identity, Player profile, Club membership, Notification deli
 
 See COMMS-00 for ownership, dependency status, and phase readiness.
 
-## COMMS-02 snapshot
+## COMMS-03 snapshot
 
-- Canonical direct pair + access decisions (`ALLOW` / `REQUEST_REQUIRED` / `DENY`)
-- Conversation request lifecycle (PENDING → ACCEPTED / DECLINED / CANCELLED; EXPIRED deferred)
-- Application service: request / accept / decline / cancel / openOrResolve / send / markRead / inbox projection
+- Club channel kinds: `GENERAL` | `ANNOUNCEMENT` | `PRIVATE` | `TEAM` | `MANAGEMENT`
+- Deterministic default channel keys for `GENERAL` / `ANNOUNCEMENT`
+- Membership consumed via `ClubMembershipReader` (Club Management remains SoT)
+- Policy ports for announcement send, team, and management access (no hard-coded Club roles)
+- Application: create/resolve channels, participants, send, pin, read, summary projection
 - Persistence-agnostic ports + in-memory test doubles only
 - Public barrel: `src/features/communication/index.js`
 
-**Next:** COMMS-03 Club Communication — see readiness in [`comms-02/02_DIRECT_MESSAGING.md`](./comms-02/02_DIRECT_MESSAGING.md).
+**Next:** COMMS-04 Community Communication — see readiness in [`comms-03/03_CLUB_COMMUNICATION.md`](./comms-03/03_CLUB_COMMUNICATION.md).

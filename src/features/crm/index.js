@@ -266,3 +266,23 @@ export {
   LEGACY_CRM_STORAGE_PREFIXES,
   LEGACY_CRM_COMPAT_CLASSIFICATION,
 } from "./adapters/legacyLocalStorageCompat.js";
+
+// ---------------------------------------------------------------------------
+// Platform Core adoption — pure projections (additive; no runtime wiring)
+// ---------------------------------------------------------------------------
+
+export {
+  CRM_PLATFORM_ADAPTER_ERROR,
+  projectCrmActor,
+  projectCrmScope,
+  projectCrmLeadSubject,
+  projectCrmCustomerSubject,
+  projectCrmPermission,
+  projectCrmSecurityContext,
+  projectCrmAuthorizationRequest,
+  projectCrmAuthorizationDecision,
+  projectCrmOperationIdentity,
+  projectCrmEventEnvelope,
+  projectCrmErrorDescriptor,
+  projectCrmCapabilityDescriptor,
+} from "./platform/index.js";
