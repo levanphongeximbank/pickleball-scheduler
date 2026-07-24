@@ -27,6 +27,13 @@ const ADAPTER_CAPABILITY_CODES = Object.freeze([
   "AUTHORIZATION_DECISION_ADAPTER",
 ]);
 
+const EVENT_AUDIT_ADAPTER_CAPABILITY_CODES = Object.freeze([
+  "EVENT_TRACE_CONTEXT_ADAPTER",
+  "COMMON_EVENT_ENVELOPE_ADAPTER",
+  "AUDIT_EVENT_ENVELOPE_ADAPTER",
+  "EVENT_ERROR_DESCRIPTOR_ADAPTER",
+]);
+
 test("capability manifest is a non-empty frozen list", () => {
   assert.equal(Array.isArray(PLATFORM_CAPABILITY_MANIFEST), true);
   assert.ok(PLATFORM_CAPABILITY_MANIFEST.length >= 1);
@@ -61,6 +68,19 @@ test("identity/tenant adapter capabilities are present with ADAPTER_AVAILABLE", 
     assert.equal(byCode.has(code), true, `missing capability ${code}`);
     assert.equal(byCode.get(code).status, "ADAPTER_AVAILABLE");
     assert.equal(byCode.get(code).ownerModule, "platform-core");
+  }
+});
+
+test("event/audit adapter capabilities are present with ADAPTER_AVAILABLE", () => {
+  const byCode = new Map(
+    PLATFORM_CAPABILITY_MANIFEST.map((item) => [item.capabilityCode, item])
+  );
+  for (const code of EVENT_AUDIT_ADAPTER_CAPABILITY_CODES) {
+    assert.equal(byCode.has(code), true, `missing capability ${code}`);
+    assert.equal(byCode.get(code).status, "ADAPTER_AVAILABLE");
+    assert.equal(byCode.get(code).ownerModule, "platform-core");
+    assert.notEqual(byCode.get(code).status, "PRODUCTION_READY");
+    assert.notEqual(byCode.get(code).status, "RUNTIME_ADOPTED");
   }
 });
 
