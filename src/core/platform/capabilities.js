@@ -1,9 +1,10 @@
 /**
- * Platform Core capability manifest (Phase 2A).
+ * Platform Core capability manifest (Phase 2A + Identity/Tenant adapters).
  *
- * Immutable descriptor list of Phase 1 certified contracts.
- * Does not auto-discover modules, mutate a registry, execute capabilities,
- * read feature flags, touch persistence, or claim runtime adoption.
+ * Immutable descriptor list of Phase 1 certified contracts and certified
+ * Identity/Tenant projection adapters. Does not auto-discover modules,
+ * mutate a registry, execute capabilities, read feature flags, touch
+ * persistence, or claim runtime/production adoption.
  */
 
 import { createPlatformCapabilityDescriptor } from "./contracts/platformCapabilityDescriptor.js";
@@ -11,6 +12,7 @@ import { createPlatformCapabilityDescriptor } from "./contracts/platformCapabili
 const OWNER_MODULE = "platform-core";
 const CONTRACT_VERSION = "1.0.0";
 const CONTRACT_STATUS = "CONTRACT_AVAILABLE";
+const ADAPTER_STATUS = "ADAPTER_AVAILABLE";
 
 /**
  * Phase 1 certified contract capability codes (deterministic order).
@@ -40,15 +42,30 @@ const PHASE_1_CAPABILITY_CODES = Object.freeze([
 ]);
 
 /**
- * @param {readonly string[]} capabilityCodes
+ * Identity/Tenant adapter capability codes (deterministic order).
+ * Status is ADAPTER_AVAILABLE only — not PRODUCTION_READY.
+ * @type {readonly string[]}
+ */
+const IDENTITY_TENANT_ADAPTER_CAPABILITY_CODES = Object.freeze([
+  "IDENTITY_ACTOR_ADAPTER",
+  "SECURITY_CONTEXT_ADAPTER",
+  "TENANT_SCOPE_ADAPTER",
+  "PERMISSION_CODE_ADAPTER",
+  "AUTHORIZATION_REQUEST_ADAPTER",
+  "AUTHORIZATION_DECISION_ADAPTER",
+]);
+
+/**
+ * @param {readonly { capabilityCode: string, status: string }[]} entries
  * @returns {readonly import("./contracts/platformCapabilityDescriptor.js").PlatformCapabilityDescriptor[]}
  */
-function createImmutableCapabilityManifest(capabilityCodes) {
+function createImmutableCapabilityManifest(entries) {
   const seen = new Set();
   /** @type {import("./contracts/platformCapabilityDescriptor.js").PlatformCapabilityDescriptor[]} */
   const items = [];
 
-  for (const capabilityCode of capabilityCodes) {
+  for (const entry of entries) {
+    const { capabilityCode, status } = entry;
     if (seen.has(capabilityCode)) {
       throw new Error(
         `Duplicate Platform Core capabilityCode: ${capabilityCode}`
@@ -60,7 +77,7 @@ function createImmutableCapabilityManifest(capabilityCodes) {
       capabilityCode,
       ownerModule: OWNER_MODULE,
       version: CONTRACT_VERSION,
-      status: CONTRACT_STATUS,
+      status,
     });
 
     if (!result.ok) {
@@ -75,12 +92,24 @@ function createImmutableCapabilityManifest(capabilityCodes) {
   return Object.freeze(items);
 }
 
+const MANIFEST_ENTRIES = Object.freeze([
+  ...PHASE_1_CAPABILITY_CODES.map((capabilityCode) => ({
+    capabilityCode,
+    status: CONTRACT_STATUS,
+  })),
+  ...IDENTITY_TENANT_ADAPTER_CAPABILITY_CODES.map((capabilityCode) => ({
+    capabilityCode,
+    status: ADAPTER_STATUS,
+  })),
+]);
+
 /**
  * Immutable Platform Core capability manifest.
- * Status reflects contract availability only — not production adoption.
+ * Contract items reflect contract availability; adapter items reflect
+ * adapter availability only — not production runtime adoption.
  */
 export const PLATFORM_CAPABILITY_MANIFEST = createImmutableCapabilityManifest(
-  PHASE_1_CAPABILITY_CODES
+  MANIFEST_ENTRIES
 );
 
 Object.freeze(PLATFORM_CAPABILITY_MANIFEST);

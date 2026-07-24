@@ -1,5 +1,5 @@
 /**
- * Platform Core capability manifest certification (Phase 2A).
+ * Platform Core capability manifest certification (Phase 2A + adapters).
  */
 
 import test from "node:test";
@@ -18,6 +18,15 @@ import {
 
 const PLATFORM_DIR = path.dirname(fileURLToPath(import.meta.url));
 
+const ADAPTER_CAPABILITY_CODES = Object.freeze([
+  "IDENTITY_ACTOR_ADAPTER",
+  "SECURITY_CONTEXT_ADAPTER",
+  "TENANT_SCOPE_ADAPTER",
+  "PERMISSION_CODE_ADAPTER",
+  "AUTHORIZATION_REQUEST_ADAPTER",
+  "AUTHORIZATION_DECISION_ADAPTER",
+]);
+
 test("capability manifest is a non-empty frozen list", () => {
   assert.equal(Array.isArray(PLATFORM_CAPABILITY_MANIFEST), true);
   assert.ok(PLATFORM_CAPABILITY_MANIFEST.length >= 1);
@@ -31,13 +40,28 @@ test("every capability item is a valid immutable descriptor", () => {
     assert.equal(typeof item.capabilityCode, "string");
     assert.equal(item.ownerModule, "platform-core");
     assert.equal(item.version, "1.0.0");
-    assert.equal(item.status, "CONTRACT_AVAILABLE");
+    assert.ok(
+      item.status === "CONTRACT_AVAILABLE" || item.status === "ADAPTER_AVAILABLE",
+      `${item.capabilityCode} status must be CONTRACT_AVAILABLE or ADAPTER_AVAILABLE`
+    );
+    assert.notEqual(item.status, "PRODUCTION_READY");
   }
 });
 
 test("capability codes are unique", () => {
   const codes = PLATFORM_CAPABILITY_MANIFEST.map((item) => item.capabilityCode);
   assert.equal(new Set(codes).size, codes.length);
+});
+
+test("identity/tenant adapter capabilities are present with ADAPTER_AVAILABLE", () => {
+  const byCode = new Map(
+    PLATFORM_CAPABILITY_MANIFEST.map((item) => [item.capabilityCode, item])
+  );
+  for (const code of ADAPTER_CAPABILITY_CODES) {
+    assert.equal(byCode.has(code), true, `missing capability ${code}`);
+    assert.equal(byCode.get(code).status, "ADAPTER_AVAILABLE");
+    assert.equal(byCode.get(code).ownerModule, "platform-core");
+  }
 });
 
 test("manifest mutation is rejected", () => {
@@ -60,10 +84,11 @@ test("development constructor rejects duplicate capability codes", () => {
   );
   assert.match(source, /Duplicate Platform Core capabilityCode/);
 
-  function createImmutableCapabilityManifest(capabilityCodes) {
+  function createImmutableCapabilityManifest(entries) {
     const seen = new Set();
     const items = [];
-    for (const capabilityCode of capabilityCodes) {
+    for (const entry of entries) {
+      const capabilityCode = entry.capabilityCode;
       if (seen.has(capabilityCode)) {
         throw new Error(
           `Duplicate Platform Core capabilityCode: ${capabilityCode}`
@@ -74,7 +99,7 @@ test("development constructor rejects duplicate capability codes", () => {
         capabilityCode,
         ownerModule: "platform-core",
         version: "1.0.0",
-        status: "CONTRACT_AVAILABLE",
+        status: entry.status,
       });
       if (!result.ok) {
         throw new Error(result.error.code);
@@ -85,7 +110,11 @@ test("development constructor rejects duplicate capability codes", () => {
   }
 
   assert.throws(
-    () => createImmutableCapabilityManifest(["RESULT", "RESULT"]),
+    () =>
+      createImmutableCapabilityManifest([
+        { capabilityCode: "RESULT", status: "CONTRACT_AVAILABLE" },
+        { capabilityCode: "RESULT", status: "CONTRACT_AVAILABLE" },
+      ]),
     /Duplicate Platform Core capabilityCode: RESULT/
   );
 });

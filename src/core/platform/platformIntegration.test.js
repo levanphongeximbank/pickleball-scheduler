@@ -164,6 +164,7 @@ test("integration surface modules have no Business Module imports", () => {
     "index.js",
     "capabilities.js",
     "contracts/index.js",
+    "adapters/index.js",
   ].map((rel) => path.join(PLATFORM_DIR, rel));
 
   for (const filePath of files) {
