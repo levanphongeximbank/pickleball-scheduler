@@ -172,6 +172,26 @@ export { emitPaymentLifecycleNotification } from "./adapters/paymentNotification
 
 export { NOTIFICATION_COMPATIBILITY } from "./COMPATIBILITY.js";
 
+// ---------------------------------------------------------------------------
+// Platform Core adoption — pure projections (additive; no runtime wiring)
+// ---------------------------------------------------------------------------
+
+export {
+  NOTIFICATION_PLATFORM_ADAPTER_ERROR,
+  projectNotificationActor,
+  projectNotificationSecurityContext,
+  projectNotificationScope,
+  projectNotificationRecipient,
+  projectNotificationOperation,
+  projectNotificationIdempotencyKey,
+  projectNotificationTrace,
+  projectNotificationEvent,
+  projectNotificationError,
+  projectNotificationVersion,
+  projectNotificationCompatibility,
+  projectNotificationCapability,
+} from "./platform/index.js";
+
 // --- Legacy channel/template API (compat; not for new domain emitters) ---
 export {
   NOTIFICATION_CHANNELS,
