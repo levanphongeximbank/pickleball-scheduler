@@ -6,7 +6,8 @@
  * COMMS-03: Club Communication application capability (persistence-agnostic).
  * COMMS-04: Community Communication application capability (persistence-agnostic).
  * COMMS-05: Persistence & Realtime foundation (SQL package + adapters; not applied / not remote-wired).
- * COMMS-06: Messaging Experience (UI + experience gateway; demo/in-memory only).
+ * COMMS-06: Messaging Experience (UI + experience gateway; demo/in-memory).
+ * COMMS-07: Integration hardening & final certification (runtime/provider/production gateway).
  *
  * Consumers must import from this index — not from internal file paths —
  * once wiring begins in later phases.
@@ -20,22 +21,25 @@
  */
 
 export const COMMUNICATION_FOUNDATION_PHASE = Object.freeze({
-  id: "COMMS-06",
-  name: "messaging-experience",
-  priorPhase: "COMMS-05",
-  wiredToProductionRuntime: false,
+  id: "COMMS-07",
+  name: "integration-hardening-final-certification",
+  priorPhase: "COMMS-06",
+  wiredToProductionRuntime: true,
   hasPersistence: true,
   hasRealtime: true,
   persistenceApplied: false,
   realtimePublicationEnabled: false,
-  clientRlsPolicy: "DEFERRED_FAIL_CLOSED",
+  clientRlsPolicy: "FAIL_CLOSED",
   hasUi: true,
   /** In-memory doubles exist for unit tests / demo gateway only — not production SoT. */
   hasInMemoryTestDoubles: true,
   /** Production-oriented adapters exist; require trusted injected client + activation gates. */
   hasProductionOrientedAdapters: true,
-  /** Experience UI uses demo gateway until COMMS-05 remote gates clear. */
-  experienceAdapterKind: "IN_MEMORY_DEMO",
+  /** Experience runtime selects DEMO | PRODUCTION | UNAVAILABLE — never silent demo in Prod. */
+  experienceAdapterKind: "RUNTIME_RESOLVED",
+  structureComplete: true,
+  localDemoReady: true,
+  productionBlocked: true,
 });
 
 export {
@@ -443,3 +447,25 @@ export {
   assertNotRawPersistenceRow,
   createDemoMessagingExperienceGateway,
 } from "./experience/publicApi.js";
+
+export {
+  COMMUNICATION_RUNTIME_MODE,
+  COMMUNICATION_RUNTIME_MODE_VALUES,
+  COMMUNICATION_RUNTIME_PHASE,
+  PRODUCTION_GATEWAY_MARKER,
+  UNAVAILABLE_GATEWAY_MARKER,
+  COMMUNICATION_RUNTIME_UNAVAILABLE_USER_MESSAGE,
+  COMMUNICATION_EXPERIENCE_ERROR_CODE,
+  resolveCommunicationRuntimeMode,
+  isCommunicationRuntimeMode,
+  mapToCommunicationExperienceError,
+  createSafeCommunicationDiagnosticEvent,
+  createRuntimeNotActivatedError,
+  createUnavailableMessagingExperienceGateway,
+  createProductionMessagingExperienceGateway,
+  bootstrapCommunicationRuntime,
+  getCommunicationRuntimeStatus,
+  getCommunicationRuntimeGateway,
+  resetCommunicationRuntime,
+  setCommunicationRuntimeAuthenticated,
+} from "./runtime/publicApi.js";

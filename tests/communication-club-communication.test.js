@@ -109,8 +109,11 @@ async function resolveGeneral(app, clubId = "club-1") {
 }
 
 test("COMMS-03 phase metadata and public exports", () => {
-  assert.equal(COMMUNICATION_FOUNDATION_PHASE.id, "COMMS-06");
-  assert.equal(COMMUNICATION_FOUNDATION_PHASE.name, "messaging-experience");
+  assert.equal(COMMUNICATION_FOUNDATION_PHASE.id, "COMMS-07");
+  assert.equal(
+    COMMUNICATION_FOUNDATION_PHASE.name,
+    "integration-hardening-final-certification"
+  );
   assert.equal(COMMUNICATION_FOUNDATION_PHASE.hasPersistence, true);
   assert.equal(COMMUNICATION_FOUNDATION_PHASE.hasRealtime, true);
   assert.equal(COMMUNICATION_FOUNDATION_PHASE.realtimePublicationEnabled, false);
@@ -816,7 +819,7 @@ test("in-memory club repositories are isolated test doubles", () => {
   assert.notEqual(a.channels, b.channels);
 });
 
-test("module source has no SQL / Supabase / UI wiring outside persistence/ and experience/", () => {
+test("module source has no SQL / Supabase / UI wiring outside persistence/, experience/, and runtime/", () => {
   const walk = (dir) => {
     const entries = fs.readdirSync(dir, { withFileTypes: true });
     /** @type {string[]} */
@@ -824,7 +827,13 @@ test("module source has no SQL / Supabase / UI wiring outside persistence/ and e
     for (const entry of entries) {
       const full = path.join(dir, entry.name);
       if (entry.isDirectory()) {
-        if (entry.name === "persistence" || entry.name === "experience") continue;
+        if (
+          entry.name === "persistence" ||
+          entry.name === "experience" ||
+          entry.name === "runtime"
+        ) {
+          continue;
+        }
         files.push(...walk(full));
       } else if (entry.name.endsWith(".js")) files.push(full);
     }

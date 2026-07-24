@@ -123,9 +123,12 @@ async function resolveLobby(app, tenantId = "tenant-1") {
 }
 
 test("COMMS-06 phase metadata and public exports (Community capability retained)", () => {
-  assert.equal(COMMUNICATION_FOUNDATION_PHASE.id, "COMMS-06");
-  assert.equal(COMMUNICATION_FOUNDATION_PHASE.name, "messaging-experience");
-  assert.equal(COMMUNICATION_FOUNDATION_PHASE.priorPhase, "COMMS-05");
+  assert.equal(COMMUNICATION_FOUNDATION_PHASE.id, "COMMS-07");
+  assert.equal(
+    COMMUNICATION_FOUNDATION_PHASE.name,
+    "integration-hardening-final-certification"
+  );
+  assert.equal(COMMUNICATION_FOUNDATION_PHASE.priorPhase, "COMMS-06");
   assert.equal(COMMUNICATION_FOUNDATION_PHASE.hasPersistence, true);
   assert.equal(COMMUNICATION_FOUNDATION_PHASE.hasRealtime, true);
   assert.equal(COMMUNICATION_FOUNDATION_PHASE.realtimePublicationEnabled, false);

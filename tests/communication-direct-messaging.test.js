@@ -80,8 +80,8 @@ function createApp(options = {}) {
 }
 
 test("COMMS-02 phase metadata remains available under COMMS-03 barrel", () => {
-  assert.equal(COMMUNICATION_FOUNDATION_PHASE.id, "COMMS-06");
-  assert.equal(COMMUNICATION_FOUNDATION_PHASE.priorPhase, "COMMS-05");
+  assert.equal(COMMUNICATION_FOUNDATION_PHASE.id, "COMMS-07");
+  assert.equal(COMMUNICATION_FOUNDATION_PHASE.priorPhase, "COMMS-06");
   assert.equal(COMMUNICATION_FOUNDATION_PHASE.hasPersistence, true);
   assert.equal(COMMUNICATION_FOUNDATION_PHASE.hasRealtime, true);
   assert.equal(COMMUNICATION_FOUNDATION_PHASE.realtimePublicationEnabled, false);
@@ -548,7 +548,7 @@ test("ports have no runtime coupling (unimplemented throw typed code)", async ()
   assert.equal(matchesDirectConversationRepository(memory.conversations), true);
 });
 
-test("module tree has no remote Supabase client / UI wiring outside persistence/ and experience/", () => {
+test("module tree has no remote Supabase client / UI wiring outside persistence/, experience/, and runtime/", () => {
   const banned = [
     "createClient",
     "@supabase/",
@@ -559,8 +559,14 @@ test("module tree has no remote Supabase client / UI wiring outside persistence/
     for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
       const full = path.join(dir, entry.name);
       if (entry.isDirectory()) {
-        // COMMS-05 persistence adapters; COMMS-06 Messaging Experience UI.
-        if (entry.name === "persistence" || entry.name === "experience") continue;
+        // COMMS-05 persistence; COMMS-06 experience UI; COMMS-07 runtime provider.
+        if (
+          entry.name === "persistence" ||
+          entry.name === "experience" ||
+          entry.name === "runtime"
+        ) {
+          continue;
+        }
         walk(full);
         continue;
       }

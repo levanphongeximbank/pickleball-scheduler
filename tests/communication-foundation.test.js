@@ -96,9 +96,9 @@ test("public communication exports are present and phase is unwired", () => {
   for (const name of required) {
     assert.ok(name in communication, `missing export: ${name}`);
   }
-  assert.equal(COMMUNICATION_FOUNDATION_PHASE.id, "COMMS-06");
-  assert.equal(COMMUNICATION_FOUNDATION_PHASE.priorPhase, "COMMS-05");
-  assert.equal(COMMUNICATION_FOUNDATION_PHASE.wiredToProductionRuntime, false);
+  assert.equal(COMMUNICATION_FOUNDATION_PHASE.id, "COMMS-07");
+  assert.equal(COMMUNICATION_FOUNDATION_PHASE.priorPhase, "COMMS-06");
+  assert.equal(COMMUNICATION_FOUNDATION_PHASE.wiredToProductionRuntime, true);
   assert.equal(COMMUNICATION_FOUNDATION_PHASE.hasPersistence, true);
   assert.equal(COMMUNICATION_FOUNDATION_PHASE.persistenceApplied, false);
   assert.equal(COMMUNICATION_FOUNDATION_PHASE.hasRealtime, true);
