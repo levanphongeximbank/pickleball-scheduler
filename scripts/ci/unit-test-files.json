@@ -361,5 +361,6 @@
   "tests/cm-03-competition-versioning.test.js",
   "tests/cm-04-competition-configuration.test.js",
   "tests/cm-05-competition-branding.test.js",
-  "tests/cm-06-competition-publication.test.js"
+  "tests/cm-06-competition-publication.test.js",
+  "tests/cm-07-competition-suspension-cancellation.test.js"
 ]
