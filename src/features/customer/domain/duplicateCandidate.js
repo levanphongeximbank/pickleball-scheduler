@@ -13,6 +13,10 @@ import { createCustomerScope } from "./scope.js";
 
 /**
  * Canonical ordered pair — lexicographic by customerId to prevent A-B / B-A dupes.
+ * Uses JavaScript `<` (code-unit / C-locale order). Database CHECK must use
+ * `COLLATE "C"` so Staging/Production en_US.UTF-8 does not disagree
+ * (e.g. `cust_id1_` vs `cust_id15_`).
+ *
  * @param {string} customerIdA
  * @param {string} customerIdB
  * @returns {{ customerIdA: string, customerIdB: string }}
@@ -155,9 +159,25 @@ export function createDuplicateCandidate(input = {}, deps = {}) {
  */
 export function isDuplicateCandidateStale(candidate, customerA, customerB) {
   if (!candidate || !customerA || !customerB) return true;
+  // Lookup by customerId — callers may pass survivor/absorbed in any order,
+  // while candidate.customerIdA/B are lexicographically ordered.
+  const versionById = Object.freeze({
+    [String(customerA.customerId)]: customerA.version,
+    [String(customerB.customerId)]: customerB.version,
+  });
   const vA = candidate.evaluatedVersions?.[candidate.customerIdA];
   const vB = candidate.evaluatedVersions?.[candidate.customerIdB];
-  if (vA != null && Number(vA) !== Number(customerA.version)) return true;
-  if (vB != null && Number(vB) !== Number(customerB.version)) return true;
+  if (
+    vA != null &&
+    Number(vA) !== Number(versionById[candidate.customerIdA])
+  ) {
+    return true;
+  }
+  if (
+    vB != null &&
+    Number(vB) !== Number(versionById[candidate.customerIdB])
+  ) {
+    return true;
+  }
   return false;
 }

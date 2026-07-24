@@ -12,6 +12,7 @@ Canonical customer master-data module for PICK_VN.
 | Phase 4 (consent/preferences) | `docs/customer-management/phase-4/` |
 | Phase 5 (Identity/Player/CRM linking) | `docs/customer-management/phase-5/` |
 | Phase 6 (search/dedup/merge) | `docs/customer-management/phase-6/` |
+| Phase 7 (Staging apply & live certification) | `docs/customer-management/phase-7/` |
 
 **SoT statement:** Customer Management is the source of truth for customer master data, but not for authentication, player sports profile, CRM workflow, or financial transactions.
 
@@ -29,4 +30,4 @@ Canonical customer master-data module for PICK_VN.
 
 **Merge requires explicit approval. Duplicate signals are candidate evidence only.**
 
-**Current phase:** CUSTOMER-06 Search, Deduplication & Merge (SQL authored, not applied; domain + adapters + durable fake-DB certified).
+**Current phase:** CUSTOMER-07 Staging Apply & Live Integration Certification (CUSTOMER-03→06 Staging apply + live cert).

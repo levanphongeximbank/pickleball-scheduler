@@ -1,0 +1,225 @@
+{
+  "phase": "CUSTOMER-07",
+  "script": "phase-7-staging-live-certify",
+  "ok": true,
+  "verdict": "CUSTOMER_07_STAGING_CERTIFIED",
+  "stagingProjectRef": "qyewbxjsiiyufanzcjcq",
+  "identity": {
+    "ok": true,
+    "errors": [],
+    "environmentLabel": "staging",
+    "projectRefHint": "qyewbxjsiiyufanzcjcq",
+    "hostnameHint": "qyewbxjsiiyufanzcjcq.supabase.co",
+    "urlPresent": true,
+    "containsStagingAllowlist": true,
+    "containsProductionRef": false,
+    "containsProductionDomain": false,
+    "urlValuePrinted": false,
+    "isProduction": false,
+    "servesPickvnApp": false
+  },
+  "liveExternalDirectory": "LIVE_EXTERNAL_DIRECTORY_DEFERRED",
+  "results": [
+    {
+      "name": "schema.tables_present",
+      "ok": true,
+      "detail": {
+        "present": [
+          "customer_addresses",
+          "customer_communication_preferences",
+          "customer_consent_history",
+          "customer_consents",
+          "customer_contact_points",
+          "customer_duplicate_candidates",
+          "customer_linkage_history",
+          "customer_linkages",
+          "customer_merge_history",
+          "customer_merge_proposals",
+          "customer_preference_history",
+          "customers"
+        ]
+      }
+    },
+    {
+      "name": "schema.rls_enabled",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "name": "schema.no_using_true_policies",
+      "ok": true,
+      "detail": {
+        "count": 0
+      }
+    },
+    {
+      "name": "rls.anon_cannot_read_customers",
+      "ok": true,
+      "detail": "permission denied for table customers"
+    },
+    {
+      "name": "rls.anon_cannot_write_customers",
+      "ok": true,
+      "detail": "permission denied for table customers"
+    },
+    {
+      "name": "rls.service_role_can_read",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "name": "runtime.durable_ready",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "name": "runtime.live_external_directory_deferred",
+      "ok": true,
+      "detail": "LIVE_EXTERNAL_DIRECTORY_DEFERRED"
+    },
+    {
+      "name": "runtime.production_memory_rejected",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "name": "runtime.missing_db_fail_closed",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "name": "repo.create_customer",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "name": "repo.read_customer",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "name": "repo.update_profile_version_ok",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "name": "repo.stale_version_conflict",
+      "ok": true,
+      "detail": "CUSTOMER_VERSION_CONFLICT"
+    },
+    {
+      "name": "repo.tenant_isolation_wrong_scope",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "name": "consent.grant",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "name": "preference.opt_in",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "name": "consent.notification_adapter_read_only",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "name": "linkage.identity",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "name": "linkage.player",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "name": "linkage.crm",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "name": "search.by_customer_id",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "name": "dedup.candidate_created",
+      "ok": true,
+      "detail": {
+        "customerIdA": "cust_id15_mryuwztl_3vll",
+        "customerIdB": "cust_id1_mryuwhm2_5sgv",
+        "orderedOk": true
+      }
+    },
+    {
+      "name": "merge.proposal_created",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "name": "merge.unapproved_blocked",
+      "ok": true,
+      "detail": "CUSTOMER_MERGE_APPROVAL_REQUIRED"
+    },
+    {
+      "name": "merge.explicit_approval",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "name": "merge.stale_proposal_rejected",
+      "ok": true,
+      "detail": "CUSTOMER_MERGE_PROPOSAL_STALE"
+    },
+    {
+      "name": "merge.execute_tombstone",
+      "ok": true,
+      "detail": {
+        "absorbedStatus": "MERGED",
+        "survivor": "cust_id1_mryuwhm2_5sgv"
+      }
+    },
+    {
+      "name": "merge.redirect_resolver",
+      "ok": true,
+      "detail": {
+        "resolved": "cust_id1_mryuwhm2_5sgv",
+        "survivor": "cust_id1_mryuwhm2_5sgv"
+      }
+    },
+    {
+      "name": "merge.approval_required_fail_closed",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "name": "cleanup.test_customers_removed",
+      "ok": true,
+      "detail": {
+        "remainingActive": 0,
+        "cleanup": {
+          "ok": true,
+          "method": "soft_archive_plus_mutable_child_delete",
+          "historyPreserved": true
+        },
+        "historyPreserved": true
+      }
+    },
+    {
+      "name": "runtime.adapters_exported",
+      "ok": true,
+      "detail": null
+    }
+  ],
+  "failedCount": 0,
+  "passedCount": 32,
+  "totalChecks": 32,
+  "secretsPrinted": false,
+  "productionConnected": false,
+  "finishedAt": "2026-07-24T11:28:51.544Z"
+}

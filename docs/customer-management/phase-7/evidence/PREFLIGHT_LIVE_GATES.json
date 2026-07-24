@@ -1,0 +1,108 @@
+{
+  "phase": "CUSTOMER-07",
+  "script": "phase-7-staging-preflight",
+  "mode": "live-gates",
+  "ok": true,
+  "verdict": null,
+  "sqlApplied": false,
+  "productionConnected": false,
+  "stagingProjectRef": "qyewbxjsiiyufanzcjcq",
+  "envLoadedFrom": "pickleball-scheduler/.env.staging-qa.local",
+  "secretsPrinted": false,
+  "safety": {
+    "hardOk": true,
+    "facts": {
+      "repoRoot": "C:\\Users\\Le Phong\\PICK_VN-Workstreams\\customer-management",
+      "branch": "feature/customer-management-phase-7-staging-live-certification",
+      "head": "f599f7e81ad938ea7f16b3c8b4eaa685e763bbc4",
+      "originMain": "78012ec0cdc95dc72693c983d8bc7f5aceaf3bf6",
+      "workingTreeClean": false,
+      "customer06InHistory": true,
+      "crmSafetyStashPresent": true,
+      "packageJsonUnchanged": true,
+      "lockfileUnchanged": true,
+      "workingTreeDirtyPreview": [
+        "M docs/customer-management/README.md",
+        " M scripts/ci/unit-test-files.json",
+        "?? docs/customer-management/phase-7/",
+        "?? scripts/customer/",
+        "?? src/features/customer/staging/",
+        "?? tests/customer-phase-7-staging-live-certification.test.js"
+      ]
+    },
+    "errors": []
+  },
+  "identity": {
+    "ok": true,
+    "errors": [],
+    "environmentLabel": "staging",
+    "projectRefHint": "qyewbxjsiiyufanzcjcq",
+    "hostnameHint": "qyewbxjsiiyufanzcjcq.supabase.co",
+    "urlPresent": true,
+    "containsStagingAllowlist": true,
+    "containsProductionRef": false,
+    "containsProductionDomain": false,
+    "urlValuePrinted": false,
+    "isProduction": false,
+    "servesPickvnApp": false
+  },
+  "credentials": {
+    "ok": true,
+    "accessTokenPresent": true,
+    "stagingServiceRolePresent": true,
+    "stagingAnonPresent": true,
+    "secretsPrinted": false
+  },
+  "backup": {
+    "ok": true,
+    "errors": [],
+    "notes": [
+      "Pre-apply: Customer tables absent — first-apply rollback via phase SQL is reasonable.",
+      "Forward migrations are additive Customer-scoped DDL; rollback scripts DROP only Customer objects."
+    ],
+    "rollbackPresence": [
+      {
+        "path": "docs/customer-management/phase-3/90_CUSTOMER_PHASE_3_ROLLBACK.sql",
+        "present": true
+      },
+      {
+        "path": "docs/customer-management/phase-4/90_CUSTOMER_PHASE_4_ROLLBACK.sql",
+        "present": true
+      },
+      {
+        "path": "docs/customer-management/phase-5/90_CUSTOMER_PHASE_5_ROLLBACK.sql",
+        "present": true
+      },
+      {
+        "path": "docs/customer-management/phase-6/90_CUSTOMER_PHASE_6_ROLLBACK.sql",
+        "present": true
+      },
+      {
+        "path": "docs/customer-management/phase-7/90_CUSTOMER_07_SOFT_DISABLE.sql",
+        "present": true
+      }
+    ],
+    "softDisablePresent": true,
+    "ownerBackupEvidencePresent": false,
+    "preApplyObjectState": {
+      "queried": true,
+      "customerTablesPresent": false,
+      "customerRowCount": 0,
+      "nonTestCustomerRowCount": 0,
+      "importantDataPresent": false
+    },
+    "evidenceValuePrinted": false
+  },
+  "preApplyObjectState": {
+    "queried": true,
+    "customerTablesPresent": false,
+    "customerRowCount": 0,
+    "nonTestCustomerRowCount": 0,
+    "importantDataPresent": false
+  },
+  "manifestVerify": {
+    "ok": true,
+    "checked": 23
+  },
+  "finishedAt": "2026-07-24T11:08:26.913Z"
+}

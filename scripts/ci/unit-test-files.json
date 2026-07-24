@@ -233,6 +233,7 @@
   "tests/customer-phase-4-consent-preferences.test.js",
   "tests/customer-phase-5-identity-player-crm-linking.test.js",
   "tests/customer-phase-6-search-dedup-merge.test.js",
+  "tests/customer-phase-7-staging-live-certification.test.js",
   "tests/customer-platform-adoption.test.js",
   "tests/coaching-ai-phase28-29.test.js",
   "tests/rbac-v52.test.js",
