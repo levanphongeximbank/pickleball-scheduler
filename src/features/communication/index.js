@@ -3,6 +3,7 @@
  *
  * COMMS-01: Messaging Domain Foundation (contracts, domain, ports).
  * COMMS-02: Direct Messaging application capability (persistence-agnostic).
+ * COMMS-03: Club Communication application capability (persistence-agnostic).
  *
  * Consumers must import from this index — not from internal file paths —
  * once wiring begins in later phases.
@@ -17,9 +18,9 @@
  */
 
 export const COMMUNICATION_FOUNDATION_PHASE = Object.freeze({
-  id: "COMMS-02",
-  name: "direct-messaging",
-  priorPhase: "COMMS-01",
+  id: "COMMS-03",
+  name: "club-communication",
+  priorPhase: "COMMS-02",
   wiredToProductionRuntime: false,
   hasPersistence: false,
   hasRealtime: false,
@@ -64,6 +65,24 @@ export {
   CONVERSATION_REQUEST_TERMINAL_STATUSES,
   CONVERSATION_REQUEST_ALLOWED_TRANSITIONS,
   isConversationRequestStatus,
+  CLUB_CHANNEL_KIND,
+  CLUB_CHANNEL_KIND_VALUES,
+  DEFAULT_CLUB_CHANNEL_KINDS,
+  isClubChannelKind,
+  isDefaultClubChannelKind,
+  CLUB_MEMBERSHIP_STATUS,
+  CLUB_MEMBERSHIP_STATUS_VALUES,
+  isClubMembershipStatus,
+  isActiveClubMembership,
+  CLUB_COMMUNICATION_ACCESS_DECISION,
+  CLUB_COMMUNICATION_ACCESS_DECISION_VALUES,
+  CLUB_COMMUNICATION_ACCESS_ACTION,
+  CLUB_COMMUNICATION_ACCESS_ACTION_VALUES,
+  CLUB_COMMUNICATION_DENY_REASON,
+  CLUB_COMMUNICATION_DENY_REASON_VALUES,
+  isClubCommunicationAccessDecision,
+  isClubCommunicationAccessAction,
+  isClubCommunicationDenyReason,
 } from "./constants/index.js";
 
 export {
@@ -110,6 +129,16 @@ export {
   createConversationRequestContract,
   createDirectConversationSummaryContract,
   compareDirectConversationSummaries,
+  buildDefaultClubChannelKey,
+  buildClubChannelKey,
+  createClubChannelIdentityContract,
+  assertClubChannelClubImmutable,
+  assertClubChannelKeyImmutable,
+  createClubAccessDecisionContract,
+  createClubMembershipFactContract,
+  createClubChannelSummaryContract,
+  compareClubChannelSummaries,
+  createClubPinnedMessageContract,
 } from "./contracts/index.js";
 
 export {
@@ -143,6 +172,22 @@ export {
   buildDirectConversationSummary,
   sortDirectConversationSummaries,
   findActiveDirectParticipants,
+  assertClubChannelKind,
+  assertClubIdRequired,
+  resolveClubChannelIdentity,
+  denyReasonForMembership,
+  evaluateClubChannelAccess,
+  assertClubAccessAllowed,
+  assertParticipantBelongsToClub,
+  assertCannotMoveClubChannel,
+  assertCannotChangeChannelKey,
+  isExplicitActiveClubParticipant,
+  isClubChannelAdminRole,
+  countUnreadClubMessages,
+  buildClubChannelSummary,
+  sortClubChannelSummaries,
+  findActiveClubParticipants,
+  isPinnableClubMessage,
 } from "./domain/index.js";
 
 export {
@@ -197,6 +242,31 @@ export {
   matchesDirectMessagingAccessPolicy,
   createUnimplementedDirectMessagingAccessPolicy,
   createAllowAllDirectMessagingAccessPolicy,
+  CLUB_MEMBERSHIP_READER_METHODS,
+  matchesClubMembershipReader,
+  createUnimplementedClubMembershipReader,
+  CLUB_COMMUNICATION_ACCESS_POLICY_METHODS,
+  matchesClubCommunicationAccessPolicy,
+  createUnimplementedClubCommunicationAccessPolicy,
+  createDefaultClubCommunicationAccessPolicy,
+  createAllowAllClubCommunicationAccessPolicy,
+  TEAM_ACCESS_POLICY_METHODS,
+  matchesTeamAccessPolicy,
+  createUnimplementedTeamAccessPolicy,
+  createDenyAllTeamAccessPolicy,
+  createAllowAllTeamAccessPolicy,
+  CLUB_CHANNEL_REPOSITORY_METHODS,
+  matchesClubChannelRepository,
+  createUnimplementedClubChannelRepository,
+  CLUB_MESSAGE_REPOSITORY_METHODS,
+  matchesClubMessageRepository,
+  createUnimplementedClubMessageRepository,
+  CLUB_READ_CURSOR_REPOSITORY_METHODS,
+  matchesClubReadCursorRepository,
+  createUnimplementedClubReadCursorRepository,
+  CLUB_PINNED_MESSAGE_REPOSITORY_METHODS,
+  matchesClubPinnedMessageRepository,
+  createUnimplementedClubPinnedMessageRepository,
 } from "./ports/index.js";
 
 export {
@@ -205,6 +275,12 @@ export {
   createSequentialIdProvider,
   createFixedClock,
   createMemoryIdentityActorPort,
+  createClubCommunicationApplicationService,
+  createClubCommunicationApplication,
+  createMemoryClubMembershipReader,
 } from "./application/index.js";
 
-export { createInMemoryDirectMessagingRepositories } from "./repositories/index.js";
+export {
+  createInMemoryDirectMessagingRepositories,
+  createInMemoryClubCommunicationRepositories,
+} from "./repositories/index.js";
