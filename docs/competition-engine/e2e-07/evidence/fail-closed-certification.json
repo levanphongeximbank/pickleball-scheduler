@@ -1,0 +1,98 @@
+{
+  "schemaVersion": "e2e-07-end-to-end-certification-v1",
+  "generatedAt": null,
+  "sourceCommit": "TBD",
+  "scenarioId": "individual-pool-knockout-e2e07",
+  "certificationVersion": "e2e-07-end-to-end-certification-v1",
+  "testReferences": [
+    "competition-engine-e2e-07-end-to-end-certification.test.js"
+  ],
+  "fingerprint": "e2e07:369f18452f8a1f4670d4ca7be3cd9e03",
+  "verdict": "CERTIFIED_LOCAL_MVP",
+  "deferredChecks": [],
+  "payload": {
+    "matrix": [
+      {
+        "category": "tenant/identity",
+        "action": "organizer missing tenant",
+        "expectedCode": "E2E03_MISSING_TENANT",
+        "ok": true
+      },
+      {
+        "category": "tenant/identity",
+        "action": "organizer permission denied (cashier)",
+        "expectedCode": "E2E03_PERMISSION_DENIED",
+        "ok": true
+      },
+      {
+        "category": "tenant/identity",
+        "action": "organizer client grants rejected",
+        "expectedCode": "E2E03_CLIENT_GRANT_TRUST_REJECTED",
+        "ok": true
+      },
+      {
+        "category": "eligibility/check-in",
+        "action": "player check-in when window closed",
+        "expectedCode": "E2E04_PLAYER_CHECKIN_NOT_OPEN",
+        "ok": true
+      },
+      {
+        "category": "schedule/court",
+        "action": "uncertified schedule rejected",
+        "expectedCode": "E2E03_SCHEDULE_UNCERTIFIED",
+        "ok": true
+      },
+      {
+        "category": "schedule/court",
+        "action": "court snapshot missing",
+        "expectedCode": "E2E03_COURT_SNAPSHOT_MISSING",
+        "ok": true
+      },
+      {
+        "category": "scoring/validation",
+        "action": "referee score when match not active",
+        "expectedCode": "E2E04_REFEREE_MATCH_NOT_ACTIVE",
+        "ok": true
+      },
+      {
+        "category": "standings/qualification",
+        "action": "knockout without qualification ready",
+        "expectedCode": "E2E03_QUALIFICATION_NOT_READY",
+        "ok": true
+      },
+      {
+        "category": "publication/privacy",
+        "action": "public overview unpublished hidden",
+        "expectedCode": "E2E05_COMPETITION_UNPUBLISHED",
+        "ok": true
+      },
+      {
+        "category": "governance/archive",
+        "action": "archive before final publication",
+        "expectedCode": "E2E03_FINAL_PUBLICATION_REQUIRED",
+        "ok": true
+      },
+      {
+        "category": "governance/archive",
+        "action": "governance missing record fail-closed",
+        "expectedCode": "E2E06_RECORD_NOT_FOUND",
+        "ok": true
+      }
+    ],
+    "evidence": {
+      "scenarioId": "individual-pool-knockout-e2e07",
+      "matrixCount": 11,
+      "categories": [
+        "tenant/identity",
+        "eligibility/check-in",
+        "schedule/court",
+        "scoring/validation",
+        "standings/qualification",
+        "publication/privacy",
+        "governance/archive"
+      ],
+      "sourceCommit": "TBD",
+      "generatedAt": null
+    }
+  }
+}

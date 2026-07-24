@@ -1,0 +1,50 @@
+{
+  "schemaVersion": "e2e-07-end-to-end-certification-v1",
+  "generatedAt": null,
+  "sourceCommit": "TBD",
+  "scenarioId": "individual-pool-knockout-e2e07",
+  "certificationVersion": "e2e-07-end-to-end-certification-v1",
+  "testReferences": [
+    "competition-engine-e2e-07-end-to-end-certification.test.js"
+  ],
+  "fingerprint": "e2e07:998593dbdef4a6cbc165dbe457c2ceae",
+  "verdict": "CERTIFIED_LOCAL_MVP",
+  "deferredChecks": [],
+  "payload": {
+    "checks": [
+      {
+        "id": "health-ready",
+        "ok": true,
+        "detail": "READY"
+      },
+      {
+        "id": "health-blocked-mandatory-audit",
+        "ok": true,
+        "detail": "missing audit evidence fail-closed"
+      },
+      {
+        "id": "degraded-safe-partial",
+        "ok": true,
+        "detail": "CONTINUE_SAFE"
+      },
+      {
+        "id": "evidence-manifest-deterministic",
+        "ok": true,
+        "detail": "e2e06-query:c796049fcdbb0c684194178ce90a0c20"
+      },
+      {
+        "id": "no-platform-incident-duplication",
+        "ok": true,
+        "detail": "competition-scoped incident projection only"
+      }
+    ],
+    "evidence": {
+      "scenarioId": "individual-pool-knockout-e2e07",
+      "readyHealth": "READY",
+      "blockedHealth": "BLOCKED",
+      "manifestFingerprint": "e2e06-query:c796049fcdbb0c684194178ce90a0c20",
+      "sourceCommit": "TBD",
+      "generatedAt": null
+    }
+  }
+}

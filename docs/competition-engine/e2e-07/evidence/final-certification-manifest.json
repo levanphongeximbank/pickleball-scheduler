@@ -1,0 +1,90 @@
+{
+  "schemaVersion": "e2e-07-end-to-end-certification-v1",
+  "generatedAt": null,
+  "sourceCommit": "TBD",
+  "scenarioId": "individual-pool-knockout-e2e07",
+  "certificationVersion": "e2e-07-end-to-end-certification-v1",
+  "testReferences": [
+    "competition-engine-e2e-07-end-to-end-certification.test.js",
+    "competition-engine-e2e-07-gov08-benchmark.test.js"
+  ],
+  "fingerprint": "e2e07:f7c53991050bfd4650ccfabd8ad7e91c",
+  "verdict": "CERTIFIED_LOCAL_MVP",
+  "deferredChecks": [
+    {
+      "id": "remote-staging-certification",
+      "level": "REMOTE",
+      "ownerMarker": "E2E_07_REMOTE_STAGING_OWNER_GO_REQUIRED",
+      "status": "DEFERRED"
+    },
+    {
+      "id": "production-runtime-wiring",
+      "level": "REMOTE",
+      "status": "DEFERRED"
+    }
+  ],
+  "payload": {
+    "certificationId": "cert-e2e07-ind-pool-ko-v1",
+    "documents": [
+      "structural-certification.json",
+      "happy-path-certification.json",
+      "fail-closed-certification.json",
+      "recovery-replay-certification.json",
+      "public-privacy-certification.json",
+      "governance-certification.json",
+      "performance-certification.json",
+      "deferred-remote-certification.json"
+    ],
+    "documentIndex": [
+      {
+        "document": "structural-certification.json",
+        "fingerprint": "e2e07:34c7ac4fca6d87578d86bc4d2cbce6ef",
+        "verdict": "CERTIFIED_LOCAL_MVP"
+      },
+      {
+        "document": "happy-path-certification.json",
+        "fingerprint": "e2e07:bb59ce099def22569d2bf2d3ddad6ccf",
+        "verdict": "CERTIFIED_LOCAL_MVP"
+      },
+      {
+        "document": "fail-closed-certification.json",
+        "fingerprint": "e2e07:369f18452f8a1f4670d4ca7be3cd9e03",
+        "verdict": "CERTIFIED_LOCAL_MVP"
+      },
+      {
+        "document": "recovery-replay-certification.json",
+        "fingerprint": "e2e07:4e7d01523311b49b0ffcee0d1fea3959",
+        "verdict": "CERTIFIED_LOCAL_MVP"
+      },
+      {
+        "document": "public-privacy-certification.json",
+        "fingerprint": "e2e07:d03ae939c38718968f3800e3793dd280",
+        "verdict": "CERTIFIED_LOCAL_MVP"
+      },
+      {
+        "document": "governance-certification.json",
+        "fingerprint": "e2e07:998593dbdef4a6cbc165dbe457c2ceae",
+        "verdict": "CERTIFIED_LOCAL_MVP"
+      },
+      {
+        "document": "performance-certification.json",
+        "fingerprint": "e2e07:ba543a13fe3202500db8d9ad56bb1547",
+        "verdict": "CERTIFIED_LOCAL_MVP"
+      },
+      {
+        "document": "deferred-remote-certification.json",
+        "fingerprint": "e2e07:deferred-remote-v1",
+        "verdict": "DEGRADED"
+      }
+    ],
+    "capabilitySummary": {
+      "certified": 29,
+      "certifiedWithCondition": 5,
+      "deferredRemote": 4,
+      "outOfScope": 21,
+      "blocked": 0,
+      "total": 59
+    },
+    "performanceGatePassed": true
+  }
+}

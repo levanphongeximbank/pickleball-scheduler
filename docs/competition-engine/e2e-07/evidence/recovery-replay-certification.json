@@ -1,0 +1,49 @@
+{
+  "schemaVersion": "e2e-07-end-to-end-certification-v1",
+  "generatedAt": null,
+  "sourceCommit": "TBD",
+  "scenarioId": "individual-pool-knockout-e2e07",
+  "certificationVersion": "e2e-07-end-to-end-certification-v1",
+  "testReferences": [
+    "competition-engine-e2e-07-end-to-end-certification.test.js"
+  ],
+  "fingerprint": "e2e07:4e7d01523311b49b0ffcee0d1fea3959",
+  "verdict": "CERTIFIED_LOCAL_MVP",
+  "deferredChecks": [],
+  "payload": {
+    "checks": [
+      {
+        "id": "replay-ready-deterministic",
+        "ok": true,
+        "detail": "fingerprint stable=true"
+      },
+      {
+        "id": "recovery-checkpoint-ready",
+        "ok": true,
+        "detail": "true"
+      },
+      {
+        "id": "replay-missing-seed-fail-closed",
+        "ok": true,
+        "detail": "missing seed blocks replay"
+      },
+      {
+        "id": "recovery-missing-checkpoint-fail-closed",
+        "ok": true,
+        "detail": "missing checkpoint blocks recovery"
+      },
+      {
+        "id": "paused-workflow-record-accepted",
+        "ok": true,
+        "detail": "deterministic paused workflow fixture"
+      }
+    ],
+    "evidence": {
+      "scenarioId": "individual-pool-knockout-e2e07",
+      "replayFingerprint": "e2e06-query:0d1cf553c249d7fdb7a1cd7e160797dc",
+      "recoveryFingerprint": "e2e06-query:73edaab6afe9850ee8c6bd4c86671639",
+      "sourceCommit": "TBD",
+      "generatedAt": null
+    }
+  }
+}

@@ -30,8 +30,14 @@ jobs:
     name: verify
     runs-on: ubuntu-latest
     steps:
+      # fetch-depth: 0 makes PR base history/objects available so unit tests that
+      # compare against the merge-base (or GITHUB_EVENT_PATH pull_request.base.sha)
+      # do not need a network fetch inside the test process. Default shallow
+      # checkout does not create a usable origin/main remote-tracking ref.
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - name: Setup Node
         uses: actions/setup-node@v4
