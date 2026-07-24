@@ -85,12 +85,16 @@ test("public communication exports are present and phase is unwired", () => {
     "createClubCommunicationApplication",
     "createInMemoryClubCommunicationRepositories",
     "createUnimplementedClubMembershipReader",
+    "COMMUNITY_CHANNEL_KIND",
+    "createCommunityCommunicationApplication",
+    "createInMemoryCommunityCommunicationRepositories",
+    "createUnimplementedCommunityMembershipReader",
   ];
   for (const name of required) {
     assert.ok(name in communication, `missing export: ${name}`);
   }
-  assert.equal(COMMUNICATION_FOUNDATION_PHASE.id, "COMMS-03");
-  assert.equal(COMMUNICATION_FOUNDATION_PHASE.priorPhase, "COMMS-02");
+  assert.equal(COMMUNICATION_FOUNDATION_PHASE.id, "COMMS-04");
+  assert.equal(COMMUNICATION_FOUNDATION_PHASE.priorPhase, "COMMS-03");
   assert.equal(COMMUNICATION_FOUNDATION_PHASE.wiredToProductionRuntime, false);
   assert.equal(COMMUNICATION_FOUNDATION_PHASE.hasPersistence, false);
   assert.equal(COMMUNICATION_FOUNDATION_PHASE.hasUi, false);

@@ -83,3 +83,30 @@ export {
 } from "./clubChannelSummary.js";
 
 export { createClubPinnedMessageContract } from "./clubPinnedMessage.js";
+
+export {
+  buildCommunityLobbyChannelKey,
+  buildDefaultCommunityChannelKey,
+  buildCommunityChannelKey,
+  createCommunityChannelIdentityContract,
+  assertCommunityChannelTenantImmutable,
+  assertCommunityChannelKeyImmutable,
+} from "./communityChannel.js";
+
+export { createCommunityAccessDecisionContract } from "./communityAccessDecision.js";
+
+export { createCommunityMembershipFactContract } from "./communityMembershipFact.js";
+
+export { createCommunityRestrictionContract } from "./communityRestriction.js";
+
+export {
+  createCommunityChannelSummaryContract,
+  compareCommunityChannelSummaries,
+} from "./communityChannelSummary.js";
+
+export { createCommunityPinnedMessageContract } from "./communityPinnedMessage.js";
+
+export {
+  createCommunitySlowModeConfigContract,
+  evaluateCommunitySlowMode,
+} from "./communitySlowMode.js";

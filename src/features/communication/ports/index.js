@@ -124,3 +124,50 @@ export {
   matchesClubPinnedMessageRepository,
   createUnimplementedClubPinnedMessageRepository,
 } from "./clubChannelRepositoryPort.js";
+
+export {
+  COMMUNITY_CHANNEL_REPOSITORY_METHODS,
+  matchesCommunityChannelRepository,
+  createUnimplementedCommunityChannelRepository,
+  COMMUNITY_MESSAGE_REPOSITORY_METHODS,
+  matchesCommunityMessageRepository,
+  createUnimplementedCommunityMessageRepository,
+  COMMUNITY_READ_CURSOR_REPOSITORY_METHODS,
+  matchesCommunityReadCursorRepository,
+  createUnimplementedCommunityReadCursorRepository,
+  COMMUNITY_PINNED_MESSAGE_REPOSITORY_METHODS,
+  matchesCommunityPinnedMessageRepository,
+  createUnimplementedCommunityPinnedMessageRepository,
+} from "./communityChannelRepositoryPort.js";
+
+export {
+  COMMUNITY_MEMBERSHIP_READER_METHODS,
+  matchesCommunityMembershipReader,
+  createUnimplementedCommunityMembershipReader,
+} from "./communityMembershipReaderPort.js";
+
+export {
+  COMMUNITY_ACCESS_POLICY_METHODS,
+  matchesCommunityAccessPolicy,
+  createUnimplementedCommunityAccessPolicy,
+  createDefaultCommunityAccessPolicy,
+  createAllowAllCommunityAccessPolicy,
+  COMMUNITY_MODERATION_POLICY_METHODS,
+  matchesCommunityModerationPolicy,
+  createUnimplementedCommunityModerationPolicy,
+  createDenyAllCommunityModerationPolicy,
+  createAllowAllCommunityModerationPolicy,
+  createBypassSlowModeCommunityModerationPolicy,
+} from "./communityCommunicationPolicyPorts.js";
+
+export {
+  COMMUNITY_RESTRICTION_REPOSITORY_METHODS,
+  matchesCommunityRestrictionRepository,
+  createUnimplementedCommunityRestrictionRepository,
+  COMMUNITY_REPORT_REPOSITORY_METHODS,
+  matchesCommunityReportRepository,
+  createUnimplementedCommunityReportRepository,
+  COMMUNITY_MODERATION_ACTION_REPOSITORY_METHODS,
+  matchesCommunityModerationActionRepository,
+  createUnimplementedCommunityModerationActionRepository,
+} from "./communityRestrictionRepositoryPort.js";

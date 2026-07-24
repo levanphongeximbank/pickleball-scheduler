@@ -4,6 +4,7 @@
  * COMMS-01: Messaging Domain Foundation (contracts, domain, ports).
  * COMMS-02: Direct Messaging application capability (persistence-agnostic).
  * COMMS-03: Club Communication application capability (persistence-agnostic).
+ * COMMS-04: Community Communication application capability (persistence-agnostic).
  *
  * Consumers must import from this index — not from internal file paths —
  * once wiring begins in later phases.
@@ -18,9 +19,9 @@
  */
 
 export const COMMUNICATION_FOUNDATION_PHASE = Object.freeze({
-  id: "COMMS-03",
-  name: "club-communication",
-  priorPhase: "COMMS-02",
+  id: "COMMS-04",
+  name: "community-communication",
+  priorPhase: "COMMS-03",
   wiredToProductionRuntime: false,
   hasPersistence: false,
   hasRealtime: false,
@@ -83,6 +84,36 @@ export {
   isClubCommunicationAccessDecision,
   isClubCommunicationAccessAction,
   isClubCommunicationDenyReason,
+  COMMUNITY_CHANNEL_KIND,
+  COMMUNITY_CHANNEL_KIND_VALUES,
+  DEFAULT_COMMUNITY_CHANNEL_KINDS,
+  isCommunityChannelKind,
+  isDefaultCommunityChannelKind,
+  COMMUNITY_CHANNEL_VISIBILITY,
+  COMMUNITY_CHANNEL_VISIBILITY_VALUES,
+  isCommunityChannelVisibility,
+  COMMUNITY_CHANNEL_LIFECYCLE,
+  COMMUNITY_CHANNEL_LIFECYCLE_VALUES,
+  isCommunityChannelLifecycle,
+  COMMUNITY_MEMBERSHIP_STATUS,
+  COMMUNITY_MEMBERSHIP_STATUS_VALUES,
+  isCommunityMembershipStatus,
+  isActiveCommunityMembership,
+  COMMUNITY_COMMUNICATION_ACCESS_DECISION,
+  COMMUNITY_COMMUNICATION_ACCESS_DECISION_VALUES,
+  COMMUNITY_COMMUNICATION_ACCESS_ACTION,
+  COMMUNITY_COMMUNICATION_ACCESS_ACTION_VALUES,
+  COMMUNITY_COMMUNICATION_DENY_REASON,
+  COMMUNITY_COMMUNICATION_DENY_REASON_VALUES,
+  isCommunityCommunicationAccessDecision,
+  isCommunityCommunicationAccessAction,
+  isCommunityCommunicationDenyReason,
+  COMMUNITY_RESTRICTION_STATUS,
+  COMMUNITY_RESTRICTION_STATUS_VALUES,
+  COMMUNITY_RESTRICTION_SCOPE,
+  COMMUNITY_RESTRICTION_SCOPE_VALUES,
+  isCommunityRestrictionStatus,
+  isCommunityRestrictionScope,
 } from "./constants/index.js";
 
 export {
@@ -139,6 +170,20 @@ export {
   createClubChannelSummaryContract,
   compareClubChannelSummaries,
   createClubPinnedMessageContract,
+  buildCommunityLobbyChannelKey,
+  buildDefaultCommunityChannelKey,
+  buildCommunityChannelKey,
+  createCommunityChannelIdentityContract,
+  assertCommunityChannelTenantImmutable,
+  assertCommunityChannelKeyImmutable,
+  createCommunityAccessDecisionContract,
+  createCommunityMembershipFactContract,
+  createCommunityRestrictionContract,
+  createCommunityChannelSummaryContract,
+  compareCommunityChannelSummaries,
+  createCommunityPinnedMessageContract,
+  createCommunitySlowModeConfigContract,
+  evaluateCommunitySlowMode,
 } from "./contracts/index.js";
 
 export {
@@ -188,6 +233,23 @@ export {
   sortClubChannelSummaries,
   findActiveClubParticipants,
   isPinnableClubMessage,
+  assertCommunityChannelKind,
+  assertCommunityChannelVisibility,
+  assertTenantIdRequired,
+  resolveCommunityChannelIdentity,
+  denyReasonForCommunityMembership,
+  evaluateCommunityChannelAccess,
+  assertCommunityAccessAllowed,
+  assertParticipantBelongsToTenant,
+  assertCannotMoveCommunityChannel,
+  assertCannotChangeCommunityChannelKey,
+  isExplicitActiveCommunityParticipant,
+  isCommunityChannelAdminRole,
+  countUnreadCommunityMessages,
+  buildCommunityChannelSummary,
+  sortCommunityChannelSummaries,
+  findActiveCommunityParticipants,
+  isPinnableCommunityMessage,
 } from "./domain/index.js";
 
 export {
@@ -267,6 +329,41 @@ export {
   CLUB_PINNED_MESSAGE_REPOSITORY_METHODS,
   matchesClubPinnedMessageRepository,
   createUnimplementedClubPinnedMessageRepository,
+  COMMUNITY_CHANNEL_REPOSITORY_METHODS,
+  matchesCommunityChannelRepository,
+  createUnimplementedCommunityChannelRepository,
+  COMMUNITY_MESSAGE_REPOSITORY_METHODS,
+  matchesCommunityMessageRepository,
+  createUnimplementedCommunityMessageRepository,
+  COMMUNITY_READ_CURSOR_REPOSITORY_METHODS,
+  matchesCommunityReadCursorRepository,
+  createUnimplementedCommunityReadCursorRepository,
+  COMMUNITY_PINNED_MESSAGE_REPOSITORY_METHODS,
+  matchesCommunityPinnedMessageRepository,
+  createUnimplementedCommunityPinnedMessageRepository,
+  COMMUNITY_MEMBERSHIP_READER_METHODS,
+  matchesCommunityMembershipReader,
+  createUnimplementedCommunityMembershipReader,
+  COMMUNITY_ACCESS_POLICY_METHODS,
+  matchesCommunityAccessPolicy,
+  createUnimplementedCommunityAccessPolicy,
+  createDefaultCommunityAccessPolicy,
+  createAllowAllCommunityAccessPolicy,
+  COMMUNITY_MODERATION_POLICY_METHODS,
+  matchesCommunityModerationPolicy,
+  createUnimplementedCommunityModerationPolicy,
+  createDenyAllCommunityModerationPolicy,
+  createAllowAllCommunityModerationPolicy,
+  createBypassSlowModeCommunityModerationPolicy,
+  COMMUNITY_RESTRICTION_REPOSITORY_METHODS,
+  matchesCommunityRestrictionRepository,
+  createUnimplementedCommunityRestrictionRepository,
+  COMMUNITY_REPORT_REPOSITORY_METHODS,
+  matchesCommunityReportRepository,
+  createUnimplementedCommunityReportRepository,
+  COMMUNITY_MODERATION_ACTION_REPOSITORY_METHODS,
+  matchesCommunityModerationActionRepository,
+  createUnimplementedCommunityModerationActionRepository,
 } from "./ports/index.js";
 
 export {
@@ -278,9 +375,13 @@ export {
   createClubCommunicationApplicationService,
   createClubCommunicationApplication,
   createMemoryClubMembershipReader,
+  createCommunityCommunicationApplicationService,
+  createCommunityCommunicationApplication,
+  createMemoryCommunityMembershipReader,
 } from "./application/index.js";
 
 export {
   createInMemoryDirectMessagingRepositories,
   createInMemoryClubCommunicationRepositories,
+  createInMemoryCommunityCommunicationRepositories,
 } from "./repositories/index.js";

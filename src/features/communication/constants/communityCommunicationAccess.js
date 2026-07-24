@@ -1,0 +1,87 @@
+/**
+ * Community Communication access decisions and reason codes (COMMS-04).
+ * Membership / ban / identity arrive via ports — not hard-coded SoT.
+ */
+
+export const COMMUNITY_COMMUNICATION_ACCESS_DECISION = Object.freeze({
+  ALLOW: "ALLOW",
+  JOIN_REQUIRED: "JOIN_REQUIRED",
+  READ_ONLY: "READ_ONLY",
+  DENY: "DENY",
+});
+
+export const COMMUNITY_COMMUNICATION_ACCESS_DECISION_VALUES = Object.freeze(
+  Object.values(COMMUNITY_COMMUNICATION_ACCESS_DECISION)
+);
+
+export const COMMUNITY_COMMUNICATION_ACCESS_ACTION = Object.freeze({
+  JOIN: "JOIN",
+  READ: "READ",
+  SEND: "SEND",
+  ADMIN: "ADMIN",
+  PIN: "PIN",
+  MODERATE: "MODERATE",
+  REPORT: "REPORT",
+});
+
+export const COMMUNITY_COMMUNICATION_ACCESS_ACTION_VALUES = Object.freeze(
+  Object.values(COMMUNITY_COMMUNICATION_ACCESS_ACTION)
+);
+
+export const COMMUNITY_COMMUNICATION_DENY_REASON = Object.freeze({
+  IDENTITY_INACTIVE: "IDENTITY_INACTIVE",
+  IDENTITY_INVALID: "IDENTITY_INVALID",
+  COMMUNITY_BANNED: "COMMUNITY_BANNED",
+  CHANNEL_SUSPENDED_PARTICIPANT: "CHANNEL_SUSPENDED_PARTICIPANT",
+  MEMBERSHIP_SUSPENDED: "MEMBERSHIP_SUSPENDED",
+  MEMBERSHIP_REMOVED: "MEMBERSHIP_REMOVED",
+  NOT_MEMBER: "NOT_MEMBER",
+  JOIN_REQUIRED: "JOIN_REQUIRED",
+  CHANNEL_KIND_INVALID: "CHANNEL_KIND_INVALID",
+  CHANNEL_VISIBILITY_INVALID: "CHANNEL_VISIBILITY_INVALID",
+  CHANNEL_ARCHIVED: "CHANNEL_ARCHIVED",
+  CHANNEL_SUSPENDED: "CHANNEL_SUSPENDED",
+  NOT_EXPLICIT_PARTICIPANT: "NOT_EXPLICIT_PARTICIPANT",
+  READ_ONLY_CHANNEL: "READ_ONLY_CHANNEL",
+  SLOW_MODE_ACTIVE: "SLOW_MODE_ACTIVE",
+  POLICY_DENIED: "POLICY_DENIED",
+  RESTRICTED_POLICY_DENIED: "RESTRICTED_POLICY_DENIED",
+  UNAUTHORIZED_ADMIN: "UNAUTHORIZED_ADMIN",
+  UNAUTHORIZED_MODERATOR: "UNAUTHORIZED_MODERATOR",
+  PARTICIPANT_TENANT_MISMATCH: "PARTICIPANT_TENANT_MISMATCH",
+  INACTIVE_PARTICIPANT: "INACTIVE_PARTICIPANT",
+});
+
+export const COMMUNITY_COMMUNICATION_DENY_REASON_VALUES = Object.freeze(
+  Object.values(COMMUNITY_COMMUNICATION_DENY_REASON)
+);
+
+/**
+ * @param {unknown} value
+ * @returns {boolean}
+ */
+export function isCommunityCommunicationAccessDecision(value) {
+  return COMMUNITY_COMMUNICATION_ACCESS_DECISION_VALUES.includes(
+    /** @type {string} */ (value)
+  );
+}
+
+/**
+ * @param {unknown} value
+ * @returns {boolean}
+ */
+export function isCommunityCommunicationAccessAction(value) {
+  return COMMUNITY_COMMUNICATION_ACCESS_ACTION_VALUES.includes(
+    /** @type {string} */ (value)
+  );
+}
+
+/**
+ * @param {unknown} value
+ * @returns {boolean}
+ */
+export function isCommunityCommunicationDenyReason(value) {
+  return COMMUNITY_COMMUNICATION_DENY_REASON_VALUES.includes(
+    /** @type {string} */ (value)
+  );
+}

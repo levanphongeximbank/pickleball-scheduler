@@ -80,8 +80,8 @@ function createApp(options = {}) {
 }
 
 test("COMMS-02 phase metadata remains available under COMMS-03 barrel", () => {
-  assert.equal(COMMUNICATION_FOUNDATION_PHASE.id, "COMMS-03");
-  assert.equal(COMMUNICATION_FOUNDATION_PHASE.priorPhase, "COMMS-02");
+  assert.equal(COMMUNICATION_FOUNDATION_PHASE.id, "COMMS-04");
+  assert.equal(COMMUNICATION_FOUNDATION_PHASE.priorPhase, "COMMS-03");
   assert.equal(COMMUNICATION_FOUNDATION_PHASE.hasPersistence, false);
   assert.equal(COMMUNICATION_FOUNDATION_PHASE.hasRealtime, false);
   assert.equal(COMMUNICATION_FOUNDATION_PHASE.hasUi, false);
