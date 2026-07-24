@@ -1,10 +1,10 @@
 # COMMS-02 — Direct Messaging
 
-**Phase:** COMMS-02  
-**Status:** Implemented (application/domain capability; not production-wired)  
-**Module:** `src/features/communication/`  
-**Public barrel:** `src/features/communication/index.js`  
-**Tests:** `tests/communication-direct-messaging.test.js`  
+**Phase:** COMMS-02
+**Status:** Implemented (application/domain capability; not production-wired)
+**Module:** `src/features/communication/`
+**Public barrel:** `src/features/communication/index.js`
+**Tests:** `tests/communication-direct-messaging.test.js`
 **Depends on:** COMMS-01 Messaging Domain Foundation (canonical contracts)
 
 ---
