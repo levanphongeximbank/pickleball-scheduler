@@ -1,14 +1,15 @@
 /**
- * Customer Management — public facade (CUSTOMER-01 + CUSTOMER-02).
+ * Customer Management — public facade (CUSTOMER-01 + CUSTOMER-02 + CUSTOMER-03).
  *
  * Exports approved contracts, constants, pure domain factories,
- * application service factory, in-memory repository, read projectors,
- * CRM directory adapter, and Platform Core adoption projections.
+ * application service factory, in-memory repository, durable repository
+ * adapter factories, runtime composition, read projectors, CRM directory
+ * adapter, and Platform Core adoption projections.
  *
  * Does NOT export:
  * - mutable repository internal maps
- * - Supabase clients / credentials
- * - UI / routes / SQL migrations
+ * - Supabase clients / credentials / service-role keys
+ * - UI / routes / SQL migration runners
  * - legacy `src/models/customer.js` or `src/domain/customerService.js` as SoT
  *
  * Customer Management is the source of truth for customer master data,
@@ -18,6 +19,9 @@
  * Customer contact information is business master data. It is not an
  * authentication credential and does not prove ownership or verification
  * without trusted external evidence.
+ *
+ * Customer persistence is durable business master data and must never
+ * silently fall back to an in-memory repository in Production.
  */
 
 // Errors
@@ -185,6 +189,26 @@ export {
 // Adapters (boundary only)
 export { createVenueCustomerDirectoryAdapter } from "./adapters/venueCustomerDirectoryAdapter.js";
 
+// Persistence (CUSTOMER-03) — ports + durable adapter; no live client
+export {
+  CUSTOMER_PHASE_3_TABLES,
+  CUSTOMER_PHASE_3_RPC,
+  requireCustomerDatabaseClientPort,
+  createDurableCustomerRepository,
+  createFakeCustomerDatabaseClient,
+  mapCustomerDomainToSavePayload,
+  mapCustomerRowsToDomain,
+} from "./persistence/index.js";
+
+// Runtime composition (CUSTOMER-03)
+export {
+  CUSTOMER_RUNTIME_MODE,
+  CUSTOMER_RUNTIME_ENVIRONMENT,
+  validateCustomerRuntimeConfig,
+  createCustomerRuntime,
+  createCustomerRuntimeTestHarness,
+} from "./runtime/index.js";
+
 // Platform Core adoption
 export {
   CUSTOMER_PLATFORM_ADAPTER_ERROR,
@@ -214,6 +238,9 @@ export const CUSTOMER_PUBLIC_EXPORTS = Object.freeze([
   "createCustomerApplicationService",
   "createFailClosedCustomerApplication",
   "createInMemoryCustomerRepository",
+  "createDurableCustomerRepository",
+  "createCustomerRuntime",
+  "createCustomerRuntimeTestHarness",
   "createVenueCustomerDirectoryAdapter",
   "projectCustomerSummary",
   "projectCustomerDetails",
@@ -224,4 +251,6 @@ export const CUSTOMER_PUBLIC_EXPORTS = Object.freeze([
   "projectCustomerSubject",
   "CUSTOMER_SUBJECT_TYPE",
   "createCustomerMergeProposal",
+  "CUSTOMER_PHASE_3_TABLES",
+  "CUSTOMER_RUNTIME_MODE",
 ]);
