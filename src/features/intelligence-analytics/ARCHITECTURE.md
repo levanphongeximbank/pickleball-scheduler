@@ -1,19 +1,18 @@
-# Intelligence & Analytics — Architecture (I&A-01)
+# Intelligence & Analytics — Architecture
 
 ## Purpose
 
-Canonical, module-neutral analytics contracts for PICK_VN. This module defines
-metric identity, provenance, tenant scope, time windows, immutable query
-descriptors, typed results, deterministic aggregation over explicit input, and
-a read-only facade.
+Canonical, module-neutral analytics contracts and metric definition governance
+for PICK_VN.
 
 ## Ownership
 
 | Concern | Owner |
 | --- | --- |
-| Metric / query / result contracts | `src/features/intelligence-analytics` |
+| Metric / query / result contracts | `src/features/intelligence-analytics/contracts` |
 | Deterministic aggregation (explicit input) | `src/features/intelligence-analytics/aggregation` |
-| Read-only facade interface | `src/features/intelligence-analytics/facade` |
+| Read-only analytics facade | `src/features/intelligence-analytics/facade` |
+| Metric registry / lifecycle / compatibility | `src/features/intelligence-analytics/registry` |
 | Dashboard UI / localStorage analytics | `src/features/dashboard-analytics` (legacy active; not foundation) |
 | Statistics UI aggregations | `src/features/statistics` (legacy active; not foundation) |
 | Platform Core | CLOSED — not modified, not imported |
@@ -29,17 +28,31 @@ a read-only facade.
 - Time window + granularity
 - Query descriptor (immutable)
 - Data point / series / result / warning / error
-- Read-only facade
+- Read-only analytics facade
 - Deterministic count / sum / average / rate over explicit observations
+
+**In scope (I&A-02):**
+
+- Canonical metric registry (explicit in-memory definitions)
+- Registration contract, idempotency, and ID/version conflict detection
+- Lifecycle states: draft / active / deprecated / retired
+- Deprecation + replacement metadata
+- Definition validation composed on I&A-01 contracts
+- Compatibility classification between definition versions
+- Deterministic lookup / list / discovery
+- Read-only registry facade
 
 **Out of scope:**
 
 - Runtime source adapters / Supabase / SQL / migrations
+- Persisted database registry
 - Dashboard or route wiring
+- Production metric catalog migration
 - Competition / Finance / Ranking / Rating / CRM business rules
 - AI inference / paid AI services
 - Alert delivery / persistence
 - Platform Core changes
+- Query execution runtime (I&A-03)
 
 ## Dependency rules
 
@@ -47,12 +60,13 @@ a read-only facade.
 - No import from Competition Engine / Competition E2E
 - No import from Finance / CRM / Customer / Player / Ranking business logic
 - No React, Supabase client, or database table contracts
+- Registry does not calculate metric values or own business rules
 - Analytics output always sets `isCanonicalModuleState: false`
 
 ## Roadmap (structural)
 
-1. I&A-01 Canonical Analytics Contracts Foundation ← current
-2. I&A-02 Metric Registry and Definition Governance
+1. I&A-01 Canonical Analytics Contracts Foundation ← certified
+2. I&A-02 Metric Registry and Definition Governance ← current
 3. I&A-03 Analytics Query and Projection Runtime
 4. I&A-04 Dashboard and Reporting Data Contracts
 5. I&A-05 Historical and Trend Analysis
