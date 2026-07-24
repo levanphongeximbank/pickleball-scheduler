@@ -164,6 +164,13 @@ export function createInMemoryDirectMessagingRepositories() {
       }
       return freezeClone(stored);
     },
+    /**
+     * Demo / test helper — not part of DirectConversationRequestRepository port.
+     * @returns {object[]}
+     */
+    listAll() {
+      return [...requestsById.values()].map((r) => freezeClone(r));
+    },
   };
 
   const messages = {

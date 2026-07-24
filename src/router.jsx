@@ -232,6 +232,9 @@ const PublicPlayerDirectoryDetailPage = lazy(() =>
   import("./pages/PublicPlayerDirectoryDetailPage.jsx")
 );
 const NotificationCenterPage = lazy(() => import("./pages/NotificationCenterPage.jsx"));
+const MessagingExperiencePage = lazy(() =>
+  import("./features/communication/experience/MessagingExperiencePage.jsx")
+);
 
 const UserManagementPage = lazy(() => import("./pages/UserManagementPage"));
 const AdminPlayerVerificationPage = lazy(() =>
@@ -467,6 +470,7 @@ export default function Router() {
               element={<PublicPlayerDirectoryDetailPage />}
             />
             <Route path="/notifications" element={<NotificationCenterPage />} />
+            <Route path="/messages" element={<MessagingExperiencePage />} />
             <Route path="/discover-clubs" element={<DiscoverClubsPage />} />
             <Route path="/my-club/requests" element={<MyClubRequestsPage />} />
             <Route path="/my-club" element={<MyClubPage />} />

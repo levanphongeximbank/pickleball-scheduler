@@ -42,6 +42,7 @@ import StorefrontIcon from "@mui/icons-material/Storefront";
 import GavelIcon from "@mui/icons-material/Gavel";
 import AddIcon from "@mui/icons-material/Add";
 import ScoreboardIcon from "@mui/icons-material/Scoreboard";
+import ChatIcon from "@mui/icons-material/Chat";
 
 /** Map iconKey → MUI icon component (fontSize handled by caller). */
 export const NAV_ICON_COMPONENTS = Object.freeze({
@@ -98,6 +99,7 @@ export const NAV_ICON_COMPONENTS = Object.freeze({
   notifications: NotificationsIcon,
   coaches: PeopleIcon,
   messages: SupportAgentIcon,
+  chat: ChatIcon,
   marketplace: StorefrontIcon,
   billing: CardMembershipIcon,
   "player-profile": PersonIcon,
