@@ -48,3 +48,19 @@ export { createUserBlockContract } from "./userBlock.js";
 export { createMessageReportContract } from "./messageReport.js";
 
 export { createModerationActionContract } from "./moderationAction.js";
+
+export {
+  createDirectPairContract,
+  buildDirectPairKey,
+  isDirectPairMember,
+  getDirectPairCounterpart,
+} from "./directPair.js";
+
+export { createDirectAccessDecisionContract } from "./directAccessDecision.js";
+
+export { createConversationRequestContract } from "./conversationRequest.js";
+
+export {
+  createDirectConversationSummaryContract,
+  compareDirectConversationSummaries,
+} from "./directConversationSummary.js";
