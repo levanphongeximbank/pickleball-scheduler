@@ -1,11 +1,11 @@
 /**
  * Platform Core capability manifest (Phase 2A + Identity/Tenant + Event/Audit
- * adapters).
+ * + Operation/Compatibility adapters).
  *
  * Immutable descriptor list of Phase 1 certified contracts and certified
- * Identity/Tenant and Event/Audit projection adapters. Does not auto-discover
- * modules, mutate a registry, execute capabilities, read feature flags, touch
- * persistence, or claim runtime/production adoption.
+ * projection adapters. Does not auto-discover modules, mutate a registry,
+ * execute capabilities, read feature flags, touch persistence, or claim
+ * runtime/production adoption.
  */
 
 import { createPlatformCapabilityDescriptor } from "./contracts/platformCapabilityDescriptor.js";
@@ -69,6 +69,18 @@ const EVENT_AUDIT_ADAPTER_CAPABILITY_CODES = Object.freeze([
 ]);
 
 /**
+ * Operation/Compatibility adapter capability codes (deterministic order).
+ * Status is ADAPTER_AVAILABLE only — not PRODUCTION_READY / RUNTIME_ADOPTED.
+ * @type {readonly string[]}
+ */
+const OPERATION_COMPATIBILITY_ADAPTER_CAPABILITY_CODES = Object.freeze([
+  "IDEMPOTENCY_KEY_ADAPTER",
+  "OPERATION_IDENTITY_ADAPTER",
+  "CONTRACT_VERSION_ADAPTER",
+  "COMPATIBILITY_DECISION_ADAPTER",
+]);
+
+/**
  * @param {readonly { capabilityCode: string, status: string }[]} entries
  * @returns {readonly import("./contracts/platformCapabilityDescriptor.js").PlatformCapabilityDescriptor[]}
  */
@@ -115,6 +127,10 @@ const MANIFEST_ENTRIES = Object.freeze([
     status: ADAPTER_STATUS,
   })),
   ...EVENT_AUDIT_ADAPTER_CAPABILITY_CODES.map((capabilityCode) => ({
+    capabilityCode,
+    status: ADAPTER_STATUS,
+  })),
+  ...OPERATION_COMPATIBILITY_ADAPTER_CAPABILITY_CODES.map((capabilityCode) => ({
     capabilityCode,
     status: ADAPTER_STATUS,
   })),

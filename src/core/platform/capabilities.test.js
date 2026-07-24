@@ -34,6 +34,13 @@ const EVENT_AUDIT_ADAPTER_CAPABILITY_CODES = Object.freeze([
   "EVENT_ERROR_DESCRIPTOR_ADAPTER",
 ]);
 
+const OPERATION_COMPATIBILITY_ADAPTER_CAPABILITY_CODES = Object.freeze([
+  "IDEMPOTENCY_KEY_ADAPTER",
+  "OPERATION_IDENTITY_ADAPTER",
+  "CONTRACT_VERSION_ADAPTER",
+  "COMPATIBILITY_DECISION_ADAPTER",
+]);
+
 test("capability manifest is a non-empty frozen list", () => {
   assert.equal(Array.isArray(PLATFORM_CAPABILITY_MANIFEST), true);
   assert.ok(PLATFORM_CAPABILITY_MANIFEST.length >= 1);
@@ -84,6 +91,18 @@ test("event/audit adapter capabilities are present with ADAPTER_AVAILABLE", () =
   }
 });
 
+test("operation/compatibility adapter capabilities are present with ADAPTER_AVAILABLE", () => {
+  const byCode = new Map(
+    PLATFORM_CAPABILITY_MANIFEST.map((item) => [item.capabilityCode, item])
+  );
+  for (const code of OPERATION_COMPATIBILITY_ADAPTER_CAPABILITY_CODES) {
+    assert.equal(byCode.has(code), true, `missing capability ${code}`);
+    assert.equal(byCode.get(code).status, "ADAPTER_AVAILABLE");
+    assert.equal(byCode.get(code).ownerModule, "platform-core");
+    assert.notEqual(byCode.get(code).status, "PRODUCTION_READY");
+    assert.notEqual(byCode.get(code).status, "RUNTIME_ADOPTED");
+  }
+});
 test("manifest mutation is rejected", () => {
   assert.throws(() => {
     /** @type {any} */ (PLATFORM_CAPABILITY_MANIFEST).push({
