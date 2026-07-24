@@ -1,0 +1,35 @@
+# E2E-07 — Vertical Happy Path (27 stages)
+
+Scenario: `individual-pool-knockout-e2e07` (`cert-e2e07-ind-pool-ko-v1`)
+
+| # | Stage ID | Actor |
+|---|----------|-------|
+| 1 | E2E07_STAGE_PREPARE_OPERATIONS | Organizer |
+| 2 | E2E07_STAGE_LOCK_PARTICIPANT_FIELD | Organizer |
+| 3 | E2E07_STAGE_PREPARE_POOL_STAGE | Organizer + E2E-02 composition |
+| 4 | E2E07_STAGE_PREPARE_OPERATIONAL_SCHEDULE | Organizer |
+| 5 | E2E07_STAGE_CONFIRM_COURT_ASSIGNMENTS | Organizer |
+| 6 | E2E07_STAGE_PUBLISH_OPERATIONAL_PLAN | Organizer |
+| 7 | E2E07_STAGE_OPEN_CHECK_IN | Organizer |
+| 8 | E2E07_STAGE_PLAYER_CHECK_IN_ALL | Player (p1..p8) |
+| 9 | E2E07_STAGE_CLOSE_CHECK_IN | Organizer |
+| 10 | E2E07_STAGE_OPEN_MATCH_OPERATIONS | Organizer |
+| 11 | E2E07_STAGE_REFEREE_SEED_ASSIGNMENTS | Referee |
+| 12 | E2E07_STAGE_REFEREE_OPEN_MATCH | Referee |
+| 13 | E2E07_STAGE_REFEREE_SCORE_ENTRY | Referee |
+| 14 | E2E07_STAGE_REFEREE_VALIDATE_RESULT | Referee |
+| 15 | E2E07_STAGE_BUILD_POOL_STANDINGS | Certification (composition rows) |
+| 16 | E2E07_STAGE_ACTIVATE_KNOCKOUT_STAGE | Organizer |
+| 17 | E2E07_STAGE_SYNC_KNOCKOUT_COMPLETED | Organizer |
+| 18 | E2E07_STAGE_COMPLETE_COMPETITION | Organizer |
+| 19 | E2E07_STAGE_PUBLISH_FINAL_RESULT | Organizer |
+| 20 | E2E07_STAGE_REQUEST_ARCHIVE_READINESS | Organizer |
+| 21 | E2E07_STAGE_PUBLIC_PUT_SNAPSHOT | Public store |
+| 22 | E2E07_STAGE_PUBLIC_GET_OVERVIEW | Public facade |
+| 23 | E2E07_STAGE_PUBLIC_GET_STANDINGS | Public facade |
+| 24 | E2E07_STAGE_PUBLIC_GET_FINAL | Public facade |
+| 25 | E2E07_STAGE_GOVERNANCE_CERTIFICATION_READINESS | Governance facade |
+| 26 | E2E07_STAGE_GOVERNANCE_EVIDENCE_MANIFEST | Governance facade |
+| 27 | E2E07_STAGE_HAPPY_PATH_CLOSURE | Harness |
+
+Implementation: `runHappyPathCertification.js`

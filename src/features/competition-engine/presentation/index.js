@@ -13,3 +13,6 @@ export { buildPublicCompetitionExperienceSections } from "./public/index.js";
 
 // E2E-06 Governance & Reliability view-model
 export { buildGovernanceReliabilitySections } from "./governance/index.js";
+
+// E2E-07 Certification view-model
+export { buildCertificationSections } from "./certification/index.js";

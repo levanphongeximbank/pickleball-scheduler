@@ -1,0 +1,48 @@
+{
+  "schemaVersion": "e2e-07-end-to-end-certification-v1",
+  "generatedAt": null,
+  "sourceCommit": "TBD",
+  "scenarioId": "individual-pool-knockout-e2e07",
+  "certificationVersion": "e2e-07-end-to-end-certification-v1",
+  "testReferences": [
+    "competition-engine-e2e-07-end-to-end-certification.test.js"
+  ],
+  "fingerprint": "e2e07:d03ae939c38718968f3800e3793dd280",
+  "verdict": "CERTIFIED_LOCAL_MVP",
+  "deferredChecks": [],
+  "payload": {
+    "checks": [
+      {
+        "id": "unpublished-hidden",
+        "ok": true,
+        "detail": "unpublished competition fail-closed"
+      },
+      {
+        "id": "private-participant-stripped",
+        "ok": true,
+        "detail": "non-public participant hidden"
+      },
+      {
+        "id": "forbidden-keys-absent",
+        "ok": true,
+        "detail": "scanned 21 public forbidden keys"
+      },
+      {
+        "id": "realtime-disabled",
+        "ok": true,
+        "detail": "realtimeEnabled false in projections"
+      },
+      {
+        "id": "unresolved-tie-preserved",
+        "ok": true,
+        "detail": "standings unresolved tie preserved when projected"
+      }
+    ],
+    "evidence": {
+      "scenarioId": "individual-pool-knockout-e2e07",
+      "publicationState": "FINAL_RESULT_PUBLISHED",
+      "sourceCommit": "TBD",
+      "generatedAt": null
+    }
+  }
+}

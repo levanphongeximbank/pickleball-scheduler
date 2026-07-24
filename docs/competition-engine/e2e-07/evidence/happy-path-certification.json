@@ -1,0 +1,191 @@
+{
+  "schemaVersion": "e2e-07-end-to-end-certification-v1",
+  "generatedAt": null,
+  "sourceCommit": "TBD",
+  "scenarioId": "individual-pool-knockout-e2e07",
+  "certificationVersion": "e2e-07-end-to-end-certification-v1",
+  "testReferences": [
+    "competition-engine-e2e-07-end-to-end-certification.test.js"
+  ],
+  "fingerprint": "e2e07:bb59ce099def22569d2bf2d3ddad6ccf",
+  "verdict": "CERTIFIED_LOCAL_MVP",
+  "deferredChecks": [],
+  "payload": {
+    "stages": [
+      {
+        "stageId": "E2E07_STAGE_PREPARE_OPERATIONS",
+        "ok": true,
+        "fingerprintSnippet": "e2e07-stage:019c6c5f391bfd75498defa43934d206",
+        "blockers": []
+      },
+      {
+        "stageId": "E2E07_STAGE_LOCK_PARTICIPANT_FIELD",
+        "ok": true,
+        "fingerprintSnippet": "e2e07-stage:3ac94190fe9d6001d47916d371392b40",
+        "blockers": []
+      },
+      {
+        "stageId": "E2E07_STAGE_PREPARE_POOL_STAGE",
+        "ok": true,
+        "fingerprintSnippet": "e2e07-stage:dc7f65fe25a514663941bd1f3a013c3e",
+        "blockers": []
+      },
+      {
+        "stageId": "E2E07_STAGE_PREPARE_OPERATIONAL_SCHEDULE",
+        "ok": true,
+        "fingerprintSnippet": "e2e07-stage:2a679170787655439267d67eac466000",
+        "blockers": []
+      },
+      {
+        "stageId": "E2E07_STAGE_CONFIRM_COURT_ASSIGNMENTS",
+        "ok": true,
+        "fingerprintSnippet": "e2e07-stage:7632532bcd77e8c6db4e231b82a75036",
+        "blockers": []
+      },
+      {
+        "stageId": "E2E07_STAGE_PUBLISH_OPERATIONAL_PLAN",
+        "ok": true,
+        "fingerprintSnippet": "e2e07-stage:997ee5dbad206466d07c7f993fc69a10",
+        "blockers": []
+      },
+      {
+        "stageId": "E2E07_STAGE_OPEN_CHECK_IN",
+        "ok": true,
+        "fingerprintSnippet": "e2e07-stage:7983b5cd9b31b3f125c7b31b47ebe592",
+        "blockers": []
+      },
+      {
+        "stageId": "E2E07_STAGE_PLAYER_CHECK_IN_ALL",
+        "ok": true,
+        "fingerprintSnippet": "e2e07-stage:af44da8e55527d8e2d9059fb0d5ff4f2",
+        "blockers": []
+      },
+      {
+        "stageId": "E2E07_STAGE_CLOSE_CHECK_IN",
+        "ok": true,
+        "fingerprintSnippet": "e2e07-stage:6bf1aed1ae3dece1638c788f7851b355",
+        "blockers": []
+      },
+      {
+        "stageId": "E2E07_STAGE_OPEN_MATCH_OPERATIONS",
+        "ok": true,
+        "fingerprintSnippet": "e2e07-stage:56c1c54bf4985bf7b49356829bc510a5",
+        "blockers": []
+      },
+      {
+        "stageId": "E2E07_STAGE_REFEREE_SEED_ASSIGNMENTS",
+        "ok": true,
+        "fingerprintSnippet": "e2e07-stage:c238c3a94a1a314bc1178e0560f281dc",
+        "blockers": []
+      },
+      {
+        "stageId": "E2E07_STAGE_REFEREE_OPEN_MATCH",
+        "ok": true,
+        "fingerprintSnippet": "e2e07-stage:7c879ed72e79886a52dd21fd27e2e736",
+        "blockers": []
+      },
+      {
+        "stageId": "E2E07_STAGE_REFEREE_SCORE_ENTRY",
+        "ok": true,
+        "fingerprintSnippet": "e2e07-stage:6a03746ea7db67164a75ab1de092fbec",
+        "blockers": []
+      },
+      {
+        "stageId": "E2E07_STAGE_REFEREE_VALIDATE_RESULT",
+        "ok": true,
+        "fingerprintSnippet": "e2e07-stage:b2e07ab7d5731f04c78a8c6e6a4bc72e",
+        "blockers": []
+      },
+      {
+        "stageId": "E2E07_STAGE_BUILD_POOL_STANDINGS",
+        "ok": true,
+        "fingerprintSnippet": "e2e07-stage:c156ce973d6e72232027e113f91578da",
+        "blockers": []
+      },
+      {
+        "stageId": "E2E07_STAGE_ACTIVATE_KNOCKOUT_STAGE",
+        "ok": true,
+        "fingerprintSnippet": "e2e07-stage:4713e322e7aca8e5369882d7a8617a5a",
+        "blockers": []
+      },
+      {
+        "stageId": "E2E07_STAGE_SYNC_KNOCKOUT_COMPLETED",
+        "ok": true,
+        "fingerprintSnippet": "e2e07-stage:ef862858bca0905553bd73562b312c3f",
+        "blockers": []
+      },
+      {
+        "stageId": "E2E07_STAGE_COMPLETE_COMPETITION",
+        "ok": true,
+        "fingerprintSnippet": "e2e07-stage:a886b59ea88dc1b69c6ec6d9b990d71d",
+        "blockers": []
+      },
+      {
+        "stageId": "E2E07_STAGE_PUBLISH_FINAL_RESULT",
+        "ok": true,
+        "fingerprintSnippet": "e2e07-stage:050aacc99280e327b12273da00f8f65e",
+        "blockers": []
+      },
+      {
+        "stageId": "E2E07_STAGE_REQUEST_ARCHIVE_READINESS",
+        "ok": true,
+        "fingerprintSnippet": "e2e07-stage:1ede5ede559f284fa70a7ef61411e711",
+        "blockers": []
+      },
+      {
+        "stageId": "E2E07_STAGE_PUBLIC_PUT_SNAPSHOT",
+        "ok": true,
+        "fingerprintSnippet": "e2e07-stage:edf055ffb6a0fa947d3c6c16d57c9c34",
+        "blockers": []
+      },
+      {
+        "stageId": "E2E07_STAGE_PUBLIC_GET_OVERVIEW",
+        "ok": true,
+        "fingerprintSnippet": "e2e07-stage:0eef443e8507191675912e499ec3cc71",
+        "blockers": []
+      },
+      {
+        "stageId": "E2E07_STAGE_PUBLIC_GET_STANDINGS",
+        "ok": true,
+        "fingerprintSnippet": "e2e07-stage:bb316dad0bbf3300dd6ff2db6844d8de",
+        "blockers": []
+      },
+      {
+        "stageId": "E2E07_STAGE_PUBLIC_GET_FINAL",
+        "ok": true,
+        "fingerprintSnippet": "e2e07-stage:4e8594a283ade5243ac0328c1457aaf6",
+        "blockers": []
+      },
+      {
+        "stageId": "E2E07_STAGE_GOVERNANCE_CERTIFICATION_READINESS",
+        "ok": true,
+        "fingerprintSnippet": "e2e07-stage:349e81c9c79fe60574ad7a8ece4809e1",
+        "blockers": []
+      },
+      {
+        "stageId": "E2E07_STAGE_GOVERNANCE_EVIDENCE_MANIFEST",
+        "ok": true,
+        "fingerprintSnippet": "e2e07-stage:c00a658fc32b9e84c676638a8eeb5f90",
+        "blockers": []
+      },
+      {
+        "stageId": "E2E07_STAGE_HAPPY_PATH_CLOSURE",
+        "ok": true,
+        "fingerprintSnippet": "e2e07-stage:e028def8b3e3d18307fa2b8ad17cf914",
+        "blockers": []
+      }
+    ],
+    "evidence": {
+      "scenarioId": "individual-pool-knockout-e2e07",
+      "certificationId": "cert-e2e07-ind-pool-ko-v1",
+      "templateId": "ce-e2e02-individual-pool-knockout",
+      "formatId": "individual-pool-knockout",
+      "stageCount": 27,
+      "startedFromRevision": 0,
+      "finalRevision": 22,
+      "sourceCommit": "TBD",
+      "generatedAt": null
+    },
+    "blockers": []
+  }
+}

@@ -201,7 +201,7 @@ export {
   COMPETITION_ENGINE_PUBLIC_EXPERIENCE,
 } from "./public/index.js";
 
-// ─── E2E-06 Governance & Reliability (selective — avoid helper name clashes) ─
+// E2E-06 Governance & Reliability (selective — avoid helper name clashes) ─
 export {
   E2E06_GOVERNANCE_VERSION,
   E2E06_GOVERNANCE_PHASE,
@@ -255,3 +255,10 @@ export {
   getCompetitionGovernanceState,
   COMPETITION_ENGINE_GOVERNANCE_RELIABILITY,
 } from "./governance/index.js";
+
+// E2E-07 End-to-End Certification (selective re-export — harness entry points)
+export {
+  COMPETITION_ENGINE_END_TO_END_CERTIFICATION,
+  createCompetitionEndToEndCertificationHarness,
+  runCompetitionEndToEndCertification,
+} from "./certification/index.js";

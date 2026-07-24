@@ -1,0 +1,28 @@
+{
+  "schemaVersion": "e2e-07-end-to-end-certification-v1",
+  "generatedAt": null,
+  "sourceCommit": "TBD",
+  "scenarioId": "individual-pool-knockout-e2e07",
+  "certificationVersion": "e2e-07-end-to-end-certification-v1",
+  "testReferences": [
+    "docs/competition-engine/e2e-07/09_REMOTE_STAGING_CERTIFICATION_RUNBOOK.md"
+  ],
+  "fingerprint": "e2e07:deferred-remote-v1",
+  "verdict": "DEGRADED",
+  "deferredChecks": [
+    {
+      "id": "remote-staging-certification",
+      "ownerMarker": "E2E_07_REMOTE_STAGING_OWNER_GO_REQUIRED",
+      "status": "DEFERRED",
+      "note": "Not executed in local MVP certification harness"
+    },
+    {
+      "id": "production-runtime-wiring",
+      "status": "DEFERRED",
+      "note": "INT-01/02/05/09 production adapters require Owner Go"
+    }
+  ],
+  "payload": {
+    "remoteExecutionForbiddenInHarness": true
+  }
+}

@@ -1,0 +1,471 @@
+{
+  "schemaVersion": "e2e-07-end-to-end-certification-v1",
+  "generatedAt": null,
+  "sourceCommit": "TBD",
+  "scenarioId": "individual-pool-knockout-e2e07",
+  "certificationVersion": "e2e-07-end-to-end-certification-v1",
+  "testReferences": [
+    "competition-engine-e2e-07-end-to-end-certification.test.js"
+  ],
+  "fingerprint": "e2e07:34c7ac4fca6d87578d86bc4d2cbce6ef",
+  "verdict": "CERTIFIED_LOCAL_MVP",
+  "deferredChecks": [],
+  "payload": {
+    "checks": [
+      {
+        "id": "E2E07_CHECK_STRUCTURAL_EXPORTS:createCompetitionRuntimePorts",
+        "ok": true,
+        "detail": "createCompetitionRuntimePorts exported"
+      },
+      {
+        "id": "E2E07_CHECK_STRUCTURAL_EXPORTS:createPoolKnockoutRuntimeComposition",
+        "ok": true,
+        "detail": "createPoolKnockoutRuntimeComposition exported"
+      },
+      {
+        "id": "E2E07_CHECK_STRUCTURAL_EXPORTS:createOrganizerOperationsFacade",
+        "ok": true,
+        "detail": "createOrganizerOperationsFacade exported"
+      },
+      {
+        "id": "E2E07_CHECK_STRUCTURAL_EXPORTS:createPlayerCompetitionOperationsFacade",
+        "ok": true,
+        "detail": "createPlayerCompetitionOperationsFacade exported"
+      },
+      {
+        "id": "E2E07_CHECK_STRUCTURAL_EXPORTS:createRefereeCompetitionOperationsFacade",
+        "ok": true,
+        "detail": "createRefereeCompetitionOperationsFacade exported"
+      },
+      {
+        "id": "E2E07_CHECK_STRUCTURAL_EXPORTS:createPublicCompetitionExperienceFacade",
+        "ok": true,
+        "detail": "createPublicCompetitionExperienceFacade exported"
+      },
+      {
+        "id": "E2E07_CHECK_STRUCTURAL_EXPORTS:createCompetitionGovernanceReliabilityFacade",
+        "ok": true,
+        "detail": "createCompetitionGovernanceReliabilityFacade exported"
+      },
+      {
+        "id": "E2E07_CHECK_STRUCTURAL_EXPORTS:buildCertificationReadinessProjection",
+        "ok": true,
+        "detail": "buildCertificationReadinessProjection exported"
+      },
+      {
+        "id": "E2E07_CHECK_STRUCTURAL_EXPORTS:createCertificationReadinessProjection",
+        "ok": true,
+        "detail": "governance facade exposes createCertificationReadinessProjection"
+      },
+      {
+        "id": "E2E07_CHECK_STRUCTURAL_EXPORTS:packageMetadata",
+        "ok": true,
+        "detail": "name=pickleball-scheduler version=5.3.36"
+      },
+      {
+        "id": "E2E07_CHECK_NO_PARALLEL_ENGINES:competition-engine-integration",
+        "ok": true,
+        "detail": "ownsEngines=false"
+      },
+      {
+        "id": "E2E07_CHECK_NO_PARALLEL_ENGINES:competition-engine-organizer-operations",
+        "ok": true,
+        "detail": "ownsEngines=false"
+      },
+      {
+        "id": "E2E07_CHECK_NO_PARALLEL_ENGINES:competition-engine-player-operations",
+        "ok": true,
+        "detail": "ownsEngines=false"
+      },
+      {
+        "id": "E2E07_CHECK_NO_PARALLEL_ENGINES:competition-engine-referee-operations",
+        "ok": true,
+        "detail": "ownsEngines=false"
+      },
+      {
+        "id": "E2E07_CHECK_NO_PARALLEL_ENGINES:competition-engine-public-experience",
+        "ok": true,
+        "detail": "ownsEngines=false"
+      },
+      {
+        "id": "E2E07_CHECK_NO_PARALLEL_ENGINES:competition-engine-governance-reliability",
+        "ok": true,
+        "detail": "ownsEngines=false"
+      },
+      {
+        "id": "E2E07_CHECK_NO_PARALLEL_ENGINES:competition-engine-end-to-end-certification",
+        "ok": true,
+        "detail": "ownsEngines=false"
+      },
+      {
+        "id": "E2E07_CHECK_ARCHITECTURE_BANS:src/features/competition-engine/certification/benchmark/gov08Budgets.js:@supabase",
+        "ok": true,
+        "detail": "clean"
+      },
+      {
+        "id": "E2E07_CHECK_ARCHITECTURE_BANS:src/features/competition-engine/certification/benchmark/gov08Budgets.js:Date.now(",
+        "ok": true,
+        "detail": "clean"
+      },
+      {
+        "id": "E2E07_CHECK_ARCHITECTURE_BANS:src/features/competition-engine/certification/benchmark/gov08Budgets.js:Math.random(",
+        "ok": true,
+        "detail": "clean"
+      },
+      {
+        "id": "E2E07_CHECK_ARCHITECTURE_BANS:src/features/competition-engine/certification/benchmark/gov08Budgets.js:randomUUID(",
+        "ok": true,
+        "detail": "clean"
+      },
+      {
+        "id": "E2E07_CHECK_ARCHITECTURE_BANS:src/features/competition-engine/certification/benchmark/runGov08PerformanceBenchmark.js:@supabase",
+        "ok": true,
+        "detail": "clean"
+      },
+      {
+        "id": "E2E07_CHECK_ARCHITECTURE_BANS:src/features/competition-engine/certification/benchmark/runGov08PerformanceBenchmark.js:Date.now(",
+        "ok": true,
+        "detail": "clean"
+      },
+      {
+        "id": "E2E07_CHECK_ARCHITECTURE_BANS:src/features/competition-engine/certification/benchmark/runGov08PerformanceBenchmark.js:Math.random(",
+        "ok": true,
+        "detail": "clean"
+      },
+      {
+        "id": "E2E07_CHECK_ARCHITECTURE_BANS:src/features/competition-engine/certification/benchmark/runGov08PerformanceBenchmark.js:randomUUID(",
+        "ok": true,
+        "detail": "clean"
+      },
+      {
+        "id": "E2E07_CHECK_ARCHITECTURE_BANS:src/features/competition-engine/certification/capability/buildCapabilityTraceability.js:@supabase",
+        "ok": true,
+        "detail": "clean"
+      },
+      {
+        "id": "E2E07_CHECK_ARCHITECTURE_BANS:src/features/competition-engine/certification/capability/buildCapabilityTraceability.js:Date.now(",
+        "ok": true,
+        "detail": "clean"
+      },
+      {
+        "id": "E2E07_CHECK_ARCHITECTURE_BANS:src/features/competition-engine/certification/capability/buildCapabilityTraceability.js:Math.random(",
+        "ok": true,
+        "detail": "clean"
+      },
+      {
+        "id": "E2E07_CHECK_ARCHITECTURE_BANS:src/features/competition-engine/certification/capability/buildCapabilityTraceability.js:randomUUID(",
+        "ok": true,
+        "detail": "clean"
+      },
+      {
+        "id": "E2E07_CHECK_ARCHITECTURE_BANS:src/features/competition-engine/certification/createCompetitionEndToEndCertificationHarness.js:@supabase",
+        "ok": true,
+        "detail": "clean"
+      },
+      {
+        "id": "E2E07_CHECK_ARCHITECTURE_BANS:src/features/competition-engine/certification/createCompetitionEndToEndCertificationHarness.js:Date.now(",
+        "ok": true,
+        "detail": "clean"
+      },
+      {
+        "id": "E2E07_CHECK_ARCHITECTURE_BANS:src/features/competition-engine/certification/createCompetitionEndToEndCertificationHarness.js:Math.random(",
+        "ok": true,
+        "detail": "clean"
+      },
+      {
+        "id": "E2E07_CHECK_ARCHITECTURE_BANS:src/features/competition-engine/certification/createCompetitionEndToEndCertificationHarness.js:randomUUID(",
+        "ok": true,
+        "detail": "clean"
+      },
+      {
+        "id": "E2E07_CHECK_ARCHITECTURE_BANS:src/features/competition-engine/certification/errors.js:@supabase",
+        "ok": true,
+        "detail": "clean"
+      },
+      {
+        "id": "E2E07_CHECK_ARCHITECTURE_BANS:src/features/competition-engine/certification/errors.js:Date.now(",
+        "ok": true,
+        "detail": "clean"
+      },
+      {
+        "id": "E2E07_CHECK_ARCHITECTURE_BANS:src/features/competition-engine/certification/errors.js:Math.random(",
+        "ok": true,
+        "detail": "clean"
+      },
+      {
+        "id": "E2E07_CHECK_ARCHITECTURE_BANS:src/features/competition-engine/certification/errors.js:randomUUID(",
+        "ok": true,
+        "detail": "clean"
+      },
+      {
+        "id": "E2E07_CHECK_ARCHITECTURE_BANS:src/features/competition-engine/certification/evidence/buildEvidenceDocuments.js:@supabase",
+        "ok": true,
+        "detail": "clean"
+      },
+      {
+        "id": "E2E07_CHECK_ARCHITECTURE_BANS:src/features/competition-engine/certification/evidence/buildEvidenceDocuments.js:Date.now(",
+        "ok": true,
+        "detail": "clean"
+      },
+      {
+        "id": "E2E07_CHECK_ARCHITECTURE_BANS:src/features/competition-engine/certification/evidence/buildEvidenceDocuments.js:Math.random(",
+        "ok": true,
+        "detail": "clean"
+      },
+      {
+        "id": "E2E07_CHECK_ARCHITECTURE_BANS:src/features/competition-engine/certification/evidence/buildEvidenceDocuments.js:randomUUID(",
+        "ok": true,
+        "detail": "clean"
+      },
+      {
+        "id": "E2E07_CHECK_ARCHITECTURE_BANS:src/features/competition-engine/certification/fingerprint.js:@supabase",
+        "ok": true,
+        "detail": "clean"
+      },
+      {
+        "id": "E2E07_CHECK_ARCHITECTURE_BANS:src/features/competition-engine/certification/fingerprint.js:Date.now(",
+        "ok": true,
+        "detail": "clean"
+      },
+      {
+        "id": "E2E07_CHECK_ARCHITECTURE_BANS:src/features/competition-engine/certification/fingerprint.js:Math.random(",
+        "ok": true,
+        "detail": "clean"
+      },
+      {
+        "id": "E2E07_CHECK_ARCHITECTURE_BANS:src/features/competition-engine/certification/fingerprint.js:randomUUID(",
+        "ok": true,
+        "detail": "clean"
+      },
+      {
+        "id": "E2E07_CHECK_ARCHITECTURE_BANS:src/features/competition-engine/certification/fixtures/individualPoolKnockoutScenario.js:@supabase",
+        "ok": true,
+        "detail": "clean"
+      },
+      {
+        "id": "E2E07_CHECK_ARCHITECTURE_BANS:src/features/competition-engine/certification/fixtures/individualPoolKnockoutScenario.js:Date.now(",
+        "ok": true,
+        "detail": "clean"
+      },
+      {
+        "id": "E2E07_CHECK_ARCHITECTURE_BANS:src/features/competition-engine/certification/fixtures/individualPoolKnockoutScenario.js:Math.random(",
+        "ok": true,
+        "detail": "clean"
+      },
+      {
+        "id": "E2E07_CHECK_ARCHITECTURE_BANS:src/features/competition-engine/certification/fixtures/individualPoolKnockoutScenario.js:randomUUID(",
+        "ok": true,
+        "detail": "clean"
+      },
+      {
+        "id": "E2E07_CHECK_ARCHITECTURE_BANS:src/features/competition-engine/certification/index.js:@supabase",
+        "ok": true,
+        "detail": "clean"
+      },
+      {
+        "id": "E2E07_CHECK_ARCHITECTURE_BANS:src/features/competition-engine/certification/index.js:Date.now(",
+        "ok": true,
+        "detail": "clean"
+      },
+      {
+        "id": "E2E07_CHECK_ARCHITECTURE_BANS:src/features/competition-engine/certification/index.js:Math.random(",
+        "ok": true,
+        "detail": "clean"
+      },
+      {
+        "id": "E2E07_CHECK_ARCHITECTURE_BANS:src/features/competition-engine/certification/index.js:randomUUID(",
+        "ok": true,
+        "detail": "clean"
+      },
+      {
+        "id": "E2E07_CHECK_ARCHITECTURE_BANS:src/features/competition-engine/certification/ports/createCertificationRuntimePorts.js:@supabase",
+        "ok": true,
+        "detail": "clean"
+      },
+      {
+        "id": "E2E07_CHECK_ARCHITECTURE_BANS:src/features/competition-engine/certification/ports/createCertificationRuntimePorts.js:Date.now(",
+        "ok": true,
+        "detail": "clean"
+      },
+      {
+        "id": "E2E07_CHECK_ARCHITECTURE_BANS:src/features/competition-engine/certification/ports/createCertificationRuntimePorts.js:Math.random(",
+        "ok": true,
+        "detail": "clean"
+      },
+      {
+        "id": "E2E07_CHECK_ARCHITECTURE_BANS:src/features/competition-engine/certification/ports/createCertificationRuntimePorts.js:randomUUID(",
+        "ok": true,
+        "detail": "clean"
+      },
+      {
+        "id": "E2E07_CHECK_ARCHITECTURE_BANS:src/features/competition-engine/certification/runCompetitionEndToEndCertification.js:@supabase",
+        "ok": true,
+        "detail": "clean"
+      },
+      {
+        "id": "E2E07_CHECK_ARCHITECTURE_BANS:src/features/competition-engine/certification/runCompetitionEndToEndCertification.js:Date.now(",
+        "ok": true,
+        "detail": "clean"
+      },
+      {
+        "id": "E2E07_CHECK_ARCHITECTURE_BANS:src/features/competition-engine/certification/runCompetitionEndToEndCertification.js:Math.random(",
+        "ok": true,
+        "detail": "clean"
+      },
+      {
+        "id": "E2E07_CHECK_ARCHITECTURE_BANS:src/features/competition-engine/certification/runCompetitionEndToEndCertification.js:randomUUID(",
+        "ok": true,
+        "detail": "clean"
+      },
+      {
+        "id": "E2E07_CHECK_ARCHITECTURE_BANS:src/features/competition-engine/certification/scenarios/runFailClosedCertification.js:@supabase",
+        "ok": true,
+        "detail": "clean"
+      },
+      {
+        "id": "E2E07_CHECK_ARCHITECTURE_BANS:src/features/competition-engine/certification/scenarios/runFailClosedCertification.js:Date.now(",
+        "ok": true,
+        "detail": "clean"
+      },
+      {
+        "id": "E2E07_CHECK_ARCHITECTURE_BANS:src/features/competition-engine/certification/scenarios/runFailClosedCertification.js:Math.random(",
+        "ok": true,
+        "detail": "clean"
+      },
+      {
+        "id": "E2E07_CHECK_ARCHITECTURE_BANS:src/features/competition-engine/certification/scenarios/runFailClosedCertification.js:randomUUID(",
+        "ok": true,
+        "detail": "clean"
+      },
+      {
+        "id": "E2E07_CHECK_ARCHITECTURE_BANS:src/features/competition-engine/certification/scenarios/runGovernanceCertification.js:@supabase",
+        "ok": true,
+        "detail": "clean"
+      },
+      {
+        "id": "E2E07_CHECK_ARCHITECTURE_BANS:src/features/competition-engine/certification/scenarios/runGovernanceCertification.js:Date.now(",
+        "ok": true,
+        "detail": "clean"
+      },
+      {
+        "id": "E2E07_CHECK_ARCHITECTURE_BANS:src/features/competition-engine/certification/scenarios/runGovernanceCertification.js:Math.random(",
+        "ok": true,
+        "detail": "clean"
+      },
+      {
+        "id": "E2E07_CHECK_ARCHITECTURE_BANS:src/features/competition-engine/certification/scenarios/runGovernanceCertification.js:randomUUID(",
+        "ok": true,
+        "detail": "clean"
+      },
+      {
+        "id": "E2E07_CHECK_ARCHITECTURE_BANS:src/features/competition-engine/certification/scenarios/runHappyPathCertification.js:@supabase",
+        "ok": true,
+        "detail": "clean"
+      },
+      {
+        "id": "E2E07_CHECK_ARCHITECTURE_BANS:src/features/competition-engine/certification/scenarios/runHappyPathCertification.js:Date.now(",
+        "ok": true,
+        "detail": "clean"
+      },
+      {
+        "id": "E2E07_CHECK_ARCHITECTURE_BANS:src/features/competition-engine/certification/scenarios/runHappyPathCertification.js:Math.random(",
+        "ok": true,
+        "detail": "clean"
+      },
+      {
+        "id": "E2E07_CHECK_ARCHITECTURE_BANS:src/features/competition-engine/certification/scenarios/runHappyPathCertification.js:randomUUID(",
+        "ok": true,
+        "detail": "clean"
+      },
+      {
+        "id": "E2E07_CHECK_ARCHITECTURE_BANS:src/features/competition-engine/certification/scenarios/runPublicPrivacyCertification.js:@supabase",
+        "ok": true,
+        "detail": "clean"
+      },
+      {
+        "id": "E2E07_CHECK_ARCHITECTURE_BANS:src/features/competition-engine/certification/scenarios/runPublicPrivacyCertification.js:Date.now(",
+        "ok": true,
+        "detail": "clean"
+      },
+      {
+        "id": "E2E07_CHECK_ARCHITECTURE_BANS:src/features/competition-engine/certification/scenarios/runPublicPrivacyCertification.js:Math.random(",
+        "ok": true,
+        "detail": "clean"
+      },
+      {
+        "id": "E2E07_CHECK_ARCHITECTURE_BANS:src/features/competition-engine/certification/scenarios/runPublicPrivacyCertification.js:randomUUID(",
+        "ok": true,
+        "detail": "clean"
+      },
+      {
+        "id": "E2E07_CHECK_ARCHITECTURE_BANS:src/features/competition-engine/certification/scenarios/runRecoveryReplayCertification.js:@supabase",
+        "ok": true,
+        "detail": "clean"
+      },
+      {
+        "id": "E2E07_CHECK_ARCHITECTURE_BANS:src/features/competition-engine/certification/scenarios/runRecoveryReplayCertification.js:Date.now(",
+        "ok": true,
+        "detail": "clean"
+      },
+      {
+        "id": "E2E07_CHECK_ARCHITECTURE_BANS:src/features/competition-engine/certification/scenarios/runRecoveryReplayCertification.js:Math.random(",
+        "ok": true,
+        "detail": "clean"
+      },
+      {
+        "id": "E2E07_CHECK_ARCHITECTURE_BANS:src/features/competition-engine/certification/scenarios/runRecoveryReplayCertification.js:randomUUID(",
+        "ok": true,
+        "detail": "clean"
+      },
+      {
+        "id": "E2E07_CHECK_ARCHITECTURE_BANS:src/features/competition-engine/certification/scenarios/runSuspensionCancellationArchiveCertification.js:@supabase",
+        "ok": true,
+        "detail": "clean"
+      },
+      {
+        "id": "E2E07_CHECK_ARCHITECTURE_BANS:src/features/competition-engine/certification/scenarios/runSuspensionCancellationArchiveCertification.js:Date.now(",
+        "ok": true,
+        "detail": "clean"
+      },
+      {
+        "id": "E2E07_CHECK_ARCHITECTURE_BANS:src/features/competition-engine/certification/scenarios/runSuspensionCancellationArchiveCertification.js:Math.random(",
+        "ok": true,
+        "detail": "clean"
+      },
+      {
+        "id": "E2E07_CHECK_ARCHITECTURE_BANS:src/features/competition-engine/certification/scenarios/runSuspensionCancellationArchiveCertification.js:randomUUID(",
+        "ok": true,
+        "detail": "clean"
+      },
+      {
+        "id": "E2E07_CHECK_ARCHITECTURE_BANS:src/features/competition-engine/certification/scenarios/scenarioHelpers.js:@supabase",
+        "ok": true,
+        "detail": "clean"
+      },
+      {
+        "id": "E2E07_CHECK_ARCHITECTURE_BANS:src/features/competition-engine/certification/scenarios/scenarioHelpers.js:Date.now(",
+        "ok": true,
+        "detail": "clean"
+      },
+      {
+        "id": "E2E07_CHECK_ARCHITECTURE_BANS:src/features/competition-engine/certification/scenarios/scenarioHelpers.js:Math.random(",
+        "ok": true,
+        "detail": "clean"
+      },
+      {
+        "id": "E2E07_CHECK_ARCHITECTURE_BANS:src/features/competition-engine/certification/scenarios/scenarioHelpers.js:randomUUID(",
+        "ok": true,
+        "detail": "clean"
+      }
+    ],
+    "evidence": {
+      "packageName": "pickleball-scheduler",
+      "packageVersion": "5.3.36",
+      "exportCount": 8,
+      "markerCount": 7,
+      "certificationFilesScanned": 18,
+      "sourceCommit": "TBD",
+      "generatedAt": null
+    }
+  }
+}

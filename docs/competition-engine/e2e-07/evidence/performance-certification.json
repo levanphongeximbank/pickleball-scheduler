@@ -1,0 +1,65 @@
+{
+  "schemaVersion": "e2e-07-end-to-end-certification-v1",
+  "generatedAt": null,
+  "sourceCommit": "TBD",
+  "scenarioId": "individual-pool-knockout-e2e07",
+  "certificationVersion": "e2e-07-end-to-end-certification-v1",
+  "testReferences": [
+    "competition-engine-e2e-07-gov08-benchmark.test.js"
+  ],
+  "fingerprint": "e2e07:ba543a13fe3202500db8d9ad56bb1547",
+  "verdict": "CERTIFIED_LOCAL_MVP",
+  "deferredChecks": [],
+  "payload": {
+    "performanceResults": {
+      "budgetVersion": "e2e07-gov08-mvp-local-v1",
+      "budgetClass": "MVP_LOCAL_CERTIFICATION",
+      "productionSlaClaimForbidden": true,
+      "environment": {
+        "nodeVersion": null,
+        "platform": null
+      },
+      "sizes": [
+        {
+          "size": 8,
+          "measuredRuns": 3,
+          "poolWithinBudget": true,
+          "knockoutWithinBudget": true,
+          "fullWithinBudget": true,
+          "poolCompositionMedianMs": null,
+          "knockoutCompositionMedianMs": null,
+          "fullCertificationScenarioMedianMs": null
+        },
+        {
+          "size": 16,
+          "measuredRuns": 3,
+          "poolWithinBudget": true,
+          "knockoutWithinBudget": true,
+          "fullWithinBudget": true,
+          "poolCompositionMedianMs": null,
+          "knockoutCompositionMedianMs": null,
+          "fullCertificationScenarioMedianMs": null
+        },
+        {
+          "size": 32,
+          "measuredRuns": 3,
+          "poolWithinBudget": true,
+          "knockoutWithinBudget": true,
+          "fullWithinBudget": true,
+          "poolCompositionMedianMs": null,
+          "knockoutCompositionMedianMs": null,
+          "fullCertificationScenarioMedianMs": null
+        }
+      ],
+      "regressionDetected": false,
+      "gatePassed": true
+    },
+    "checks": [
+      {
+        "id": "E2E07_CHECK_GOV08_BENCHMARK",
+        "ok": true,
+        "detail": "within MVP local budgets"
+      }
+    ]
+  }
+}
