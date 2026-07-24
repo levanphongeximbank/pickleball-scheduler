@@ -63,6 +63,7 @@
   "tests/policy.test.js",
   "tests/persist.test.js",
   "tests/experience-channels-ec-00-foundation.test.js",
+  "tests/experience-channels-ec-01-public-portal-readiness.test.js",
   "tests/engine.integration.test.js",
   "tests/debug-panel.test.js",
   "tests/club.test.js",

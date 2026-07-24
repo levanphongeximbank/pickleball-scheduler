@@ -54,3 +54,39 @@ validation/      Deterministic certification helpers
 - No Capacitor / React Native / Expo
 - No package.json dependency additions for this foundation
 - No SQL / RLS / notification backend changes
+
+---
+
+## EC-01 — Public Portal Channel Readiness Certification
+
+**Module home:** `src/features/experience-channels/public-portal/`
+
+**Status:** Readiness certification contracts + frozen surface inventory. **Not wired** into router / main / providers. **No UI remediation** in this phase.
+
+### What EC-01 owns
+
+- Public Portal surface descriptors (`surfaceId`, route pattern, data source, readiness dimensions)
+- Boundary markers for adjacent “public-named” surfaces (`/athletes*`, `/tournament/:id/public`)
+- SEO / PWA / shell shared evidence (audit metadata only)
+- `certifyPublicPortalReadiness()` deterministic certification
+
+### Explicit non-ownership (unchanged)
+
+| Concern | Owner |
+|---------|--------|
+| `PublicLayout.jsx` / `router.jsx` / `main.jsx` edits | Global high-collision — deferred |
+| Competition Engine / tournament public standings UI | Competition E2E / Tournament Ops |
+| Per-route SEO Helmet / OG | Deferred (global entrypoint collision) |
+| PWA registration / VitePWA config | Deferred (global high-collision) |
+| Native iOS / Android store | 0% — metadata only |
+
+### Layering (EC-01)
+
+```
+public-portal/
+  constants/     Surface IDs + data-source enums
+  contracts/     Descriptor factories (pure)
+  registry/      Frozen surface + boundary inventories
+  validation/    certifyPublicPortalReadiness
+  index.js       EC-01 façade
+```
