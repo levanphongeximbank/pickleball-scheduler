@@ -75,3 +75,19 @@ export {
 } from "./createCompetitionEndToEndCertificationHarness.js";
 
 export { runCompetitionEndToEndCertification } from "./runCompetitionEndToEndCertification.js";
+
+export {
+  CLASSIFICATION_META,
+  EXECUTION_MODE,
+  UNAUTHORIZED_UNIT_TEST_FILES,
+  E2E07_REGISTRY_PATTERN,
+  MIN_BRANCH_LOCAL_DELTA_SIZE,
+  detectClassificationExecutionMode,
+  filterCore08OwnershipTouches,
+  classifyCore08BranchDelta,
+  reproduceCore08BranchLocalGate,
+  validateE2E07RegistryAdditions,
+  validateE2E07RegistryPresent,
+  sha256Normalized,
+  assertMergedMainEvidence,
+} from "./core08GateClassification.js";

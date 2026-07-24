@@ -1,14 +1,15 @@
 {
   "schemaVersion": "e2e-07-end-to-end-certification-v1",
   "generatedAt": null,
-  "sourceCommit": "1fa4980dccb17d6647cbb063fa5189d135f97508",
+  "sourceCommit": "6acb7416ed1e216bbcf3772e3ceafd8413857f44",
   "scenarioId": "core08-1e-branch-local-delta-gate",
   "certificationVersion": "e2e-07-end-to-end-certification-v1",
+  "classificationVersion": "e2e07:core08-gate-classification-v3-main-safe",
   "testReferences": [
     "tests/competition-engine-e2e-07-core08-gate-classification.test.js",
     "tests/competition-core-draw-runtime-core08-1e-certification.test.js"
   ],
-  "fingerprint": "e2e07:core08-gate-classification-v2-ci-safe-base",
+  "fingerprint": "e2e07:core08-gate-classification-v3-main-safe",
   "verdict": "CERTIFIED_LOCAL_MVP",
   "deferredChecks": [],
   "payload": {
@@ -25,47 +26,88 @@
       "name": "1E: production engines / UI / SQL / deploy absent from branch-local delta",
       "line": 276
     },
+    "sourceE2e07BranchCommit": "6acb7416ed1e216bbcf3772e3ceafd8413857f44",
+    "comparisonBaseCommit": "6df46e3d02c8ec10246a5602bd5a4e14f06d9a03",
+    "comparisonBaseSemantic": "pre-E2E-07 origin/main at PR #239 branch point",
+    "classifiedBranchDelta": {
+      "deltaCount": 56,
+      "fileNames": [
+        ".github/workflows/deploy.yml",
+        "docs/competition-engine/e2e-07/00_FILE_OWNERSHIP.md",
+        "docs/competition-engine/e2e-07/01_CERTIFICATION_SCOPE.md",
+        "docs/competition-engine/e2e-07/02_CAPABILITY_TRACEABILITY.md",
+        "docs/competition-engine/e2e-07/03_VERTICAL_HAPPY_PATH.md",
+        "docs/competition-engine/e2e-07/04_FAIL_CLOSED_MATRIX.md",
+        "docs/competition-engine/e2e-07/05_RECOVERY_REPLAY_CERTIFICATION.md",
+        "docs/competition-engine/e2e-07/06_PUBLIC_PRIVACY_CERTIFICATION.md",
+        "docs/competition-engine/e2e-07/07_GOVERNANCE_CERTIFICATION.md",
+        "docs/competition-engine/e2e-07/08_GOV_08_PERFORMANCE_BENCHMARK.md",
+        "docs/competition-engine/e2e-07/09_REMOTE_STAGING_CERTIFICATION_RUNBOOK.md",
+        "docs/competition-engine/e2e-07/10_EVIDENCE_MANIFEST.md",
+        "docs/competition-engine/e2e-07/11_DEFERRED_AND_RESIDUAL_RISKS.md",
+        "docs/competition-engine/e2e-07/12_FINAL_CLOSURE_READINESS.md",
+        "docs/competition-engine/e2e-07/13_CORE08_GATE_CLASSIFICATION.md",
+        "docs/competition-engine/e2e-07/README.md",
+        "docs/competition-engine/e2e-07/evidence/core08-gate-classification.json",
+        "docs/competition-engine/e2e-07/evidence/deferred-remote-certification.json",
+        "docs/competition-engine/e2e-07/evidence/fail-closed-certification.json",
+        "docs/competition-engine/e2e-07/evidence/final-certification-manifest.json",
+        "docs/competition-engine/e2e-07/evidence/governance-certification.json",
+        "docs/competition-engine/e2e-07/evidence/happy-path-certification.json",
+        "docs/competition-engine/e2e-07/evidence/performance-certification.json",
+        "docs/competition-engine/e2e-07/evidence/public-privacy-certification.json",
+        "docs/competition-engine/e2e-07/evidence/recovery-replay-certification.json",
+        "docs/competition-engine/e2e-07/evidence/structural-certification.json",
+        "scripts/ci/unit-test-files.json",
+        "src/features/competition-engine/certification/benchmark/gov08Budgets.js",
+        "src/features/competition-engine/certification/benchmark/runGov08PerformanceBenchmark.js",
+        "src/features/competition-engine/certification/capability/buildCapabilityTraceability.js",
+        "src/features/competition-engine/certification/constants.js",
+        "src/features/competition-engine/certification/createCompetitionEndToEndCertificationHarness.js",
+        "src/features/competition-engine/certification/errors.js",
+        "src/features/competition-engine/certification/evidence/buildEvidenceDocuments.js",
+        "src/features/competition-engine/certification/fingerprint.js",
+        "src/features/competition-engine/certification/fixtures/individualPoolKnockoutScenario.js",
+        "src/features/competition-engine/certification/index.js",
+        "src/features/competition-engine/certification/ports/createCertificationRuntimePorts.js",
+        "src/features/competition-engine/certification/runCompetitionEndToEndCertification.js",
+        "src/features/competition-engine/certification/scenarios/runFailClosedCertification.js",
+        "src/features/competition-engine/certification/scenarios/runGovernanceCertification.js",
+        "src/features/competition-engine/certification/scenarios/runHappyPathCertification.js",
+        "src/features/competition-engine/certification/scenarios/runPublicPrivacyCertification.js",
+        "src/features/competition-engine/certification/scenarios/runRecoveryReplayCertification.js",
+        "src/features/competition-engine/certification/scenarios/runSuspensionCancellationArchiveCertification.js",
+        "src/features/competition-engine/certification/scenarios/scenarioHelpers.js",
+        "src/features/competition-engine/certification/structural/runStructuralCertification.js",
+        "src/features/competition-engine/index.js",
+        "src/features/competition-engine/operations/certification/index.js",
+        "src/features/competition-engine/operations/index.js",
+        "src/features/competition-engine/presentation/certification/buildCertificationSections.js",
+        "src/features/competition-engine/presentation/certification/index.js",
+        "src/features/competition-engine/presentation/index.js",
+        "tests/competition-engine-e2e-07-core08-gate-classification.test.js",
+        "tests/competition-engine-e2e-07-end-to-end-certification.test.js",
+        "tests/competition-engine-e2e-07-gov08-benchmark.test.js"
+      ],
+      "unauthorizedTouchedFile": "scripts/ci/unit-test-files.json",
+      "core08OwnedPathTouchCount": 0
+    },
+    "e2e07RegistryAdditions": [
+      "tests/competition-engine-e2e-07-end-to-end-certification.test.js",
+      "tests/competition-engine-e2e-07-gov08-benchmark.test.js",
+      "tests/competition-engine-e2e-07-core08-gate-classification.test.js"
+    ],
+    "core08FrozenTestPath": "tests/competition-core-draw-runtime-core08-1e-certification.test.js",
+    "core08FrozenTestContentSha256": "4ab89798924475641c1876ba0aab5c73ea918a755aa388637dd0d8c62b9dfeb8",
     "officialCi": {
       "core08_1e_in_unit_test_files_json": false,
       "classification_control_in_unit_test_files_json": true,
       "classification_control_runs_under_npm_run_test_unit": true,
       "note": "Excluding CORE-08 1E from the official manifest does not mean the classification control is skipped in CI."
     },
-    "ciFailurePreRemediation": {
-      "pr": 239,
-      "unitTests": 5175,
-      "pass": 5171,
-      "fail": 4,
-      "failingFile": "tests/competition-engine-e2e-07-core08-gate-classification.test.js",
-      "rootCause": "fatal: ambiguous argument 'origin/main...HEAD' — GitHub Actions shallow checkout had no usable origin/main remote-tracking ref",
-      "kind": "CI_ENVIRONMENT_COMPATIBILITY_DEFECT"
-    },
-    "remediation": {
-      "workflow": {
-        "file": ".github/workflows/deploy.yml",
-        "change": "actions/checkout@v4 fetch-depth: 0 so PR base history/objects exist locally"
-      },
-      "testHelper": {
-        "name": "resolveComparisonBase",
-        "fallbackOrder": [
-          "origin/main when local object exists",
-          "GITHUB_EVENT_PATH pull_request.base.sha when local object exists",
-          "E2E07_COMPARISON_BASE explicit injection when local object exists"
-        ],
-        "forbidden": [
-          "skip in CI",
-          "process.env.CI auto-PASS",
-          "catch git error then PASS",
-          "network fetch inside unit test",
-          "hard-coded stale SHA"
-        ]
-      }
-    },
-    "ciParity": {
-      "method": "temporary local clone; git remote rename origin upstream (parent worktree origin/main untouched)",
-      "originMainUnavailable": true,
-      "pullRequestEventPath": { "pass": 7, "fail": 0, "exitCode": 0 },
-      "injectedEnvE2E07_COMPARISON_BASE": { "pass": 7, "fail": 0, "exitCode": 0 }
+    "postMergeFailure": {
+      "kind": "MERGED_MAIN_TEST_DESIGN_DEFECT",
+      "note": "After PR #239 merge, live origin/main...HEAD delta is empty; assertions requiring non-empty live delta fail. Remediation uses committed classifiedBranchDelta snapshot for MERGED_MAIN_MODE."
     },
     "freshMainControl": {
       "head": "6df46e3d02c8ec10246a5602bd5a4e14f06d9a03",
