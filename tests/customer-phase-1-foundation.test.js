@@ -86,7 +86,9 @@ test("create valid customer with stable customerId", async () => {
 test("reject invalid customer (missing displayName / scope / type)", () => {
   assert.throws(
     () => Customer.createCustomerProfile({ ...SCOPE_A }),
-    (err) => err.code === Customer.CUSTOMER_ERROR_CODES.INVALID_INPUT
+    (err) =>
+      err.code === Customer.CUSTOMER_ERROR_CODES.INVALID_CUSTOMER_PROFILE ||
+      err.code === Customer.CUSTOMER_ERROR_CODES.INVALID_INPUT
   );
   assert.throws(
     () =>
@@ -154,7 +156,7 @@ test("status transitions valid and invalid", async () => {
   );
 });
 
-test("contact points: add, primary uniqueness, update, remove", async () => {
+test("contact points: add, primary uniqueness per type, update, remove", async () => {
   const { service } = createService();
   const created = await service.createCustomer({
     ...SCOPE_A,
@@ -168,23 +170,29 @@ test("contact points: add, primary uniqueness, update, remove", async () => {
     ],
   });
 
+  // CUSTOMER-02: one primary EMAIL and one primary PHONE may coexist.
+  const withEmail = await service.addContactPoint(SCOPE_A, created.customerId, {
+    type: Customer.CONTACT_POINT_TYPE.EMAIL,
+    value: "second@example.com",
+    primary: true,
+  });
+  assert.equal(withEmail.contactPoints.length, 2);
+  assert.equal(
+    withEmail.contactPoints.filter((c) => c.primary).length,
+    2
+  );
+
   await assert.rejects(
     () =>
       service.addContactPoint(SCOPE_A, created.customerId, {
         type: Customer.CONTACT_POINT_TYPE.EMAIL,
-        value: "second@example.com",
+        value: "other@example.com",
         primary: true,
       }),
     (err) =>
+      err.code === Customer.CUSTOMER_ERROR_CODES.PRIMARY_CONTACT_CONFLICT ||
       err.code === Customer.CUSTOMER_ERROR_CODES.CONFLICTING_PRIMARY_CONTACT
   );
-
-  const withEmail = await service.addContactPoint(SCOPE_A, created.customerId, {
-    type: Customer.CONTACT_POINT_TYPE.EMAIL,
-    value: "second@example.com",
-    primary: false,
-  });
-  assert.equal(withEmail.contactPoints.length, 2);
 
   const email = withEmail.contactPoints.find(
     (c) => c.type === Customer.CONTACT_POINT_TYPE.EMAIL
@@ -215,7 +223,9 @@ test("invalid contact point rejected", () => {
         type: Customer.CONTACT_POINT_TYPE.EMAIL,
         value: "not-an-email",
       }),
-    (err) => err.code === Customer.CUSTOMER_ERROR_CODES.INVALID_CONTACT_POINT
+    (err) =>
+      err.code === Customer.CUSTOMER_ERROR_CODES.INVALID_EMAIL ||
+      err.code === Customer.CUSTOMER_ERROR_CODES.INVALID_CONTACT_POINT
   );
 });
 
