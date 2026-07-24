@@ -122,14 +122,14 @@ async function resolveLobby(app, tenantId = "tenant-1") {
   return result.channel;
 }
 
-test("COMMS-05 phase metadata and public exports (Community capability retained)", () => {
-  assert.equal(COMMUNICATION_FOUNDATION_PHASE.id, "COMMS-05");
-  assert.equal(COMMUNICATION_FOUNDATION_PHASE.name, "persistence-and-realtime");
-  assert.equal(COMMUNICATION_FOUNDATION_PHASE.priorPhase, "COMMS-04");
+test("COMMS-06 phase metadata and public exports (Community capability retained)", () => {
+  assert.equal(COMMUNICATION_FOUNDATION_PHASE.id, "COMMS-06");
+  assert.equal(COMMUNICATION_FOUNDATION_PHASE.name, "messaging-experience");
+  assert.equal(COMMUNICATION_FOUNDATION_PHASE.priorPhase, "COMMS-05");
   assert.equal(COMMUNICATION_FOUNDATION_PHASE.hasPersistence, true);
   assert.equal(COMMUNICATION_FOUNDATION_PHASE.hasRealtime, true);
   assert.equal(COMMUNICATION_FOUNDATION_PHASE.realtimePublicationEnabled, false);
-  assert.equal(COMMUNICATION_FOUNDATION_PHASE.hasUi, false);
+  assert.equal(COMMUNICATION_FOUNDATION_PHASE.hasUi, true);
   assert.equal(COMMUNICATION_FOUNDATION_PHASE.hasInMemoryTestDoubles, true);
 });
 

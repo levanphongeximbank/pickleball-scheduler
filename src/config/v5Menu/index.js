@@ -14,6 +14,7 @@ import {
   PROFILE_MENU_LEAF,
   ATHLETES_DIRECTORY_MENU_LEAF,
 } from "./supportMenu.js";
+import { MESSAGING_MENU_LEAF } from "./messagingMenu.js";
 
 export { TOURNAMENT_MENU_ROOT } from "./tournamentMenu.js";
 export { SYSTEM_TECHNICIAN_MENU_ROOT } from "./systemTechnicianMenu.js";
@@ -41,6 +42,11 @@ export const V5_MENU_GROUPS = [
   { id: "tenant", label: "Tenant", items: [TENANT_MENU_ROOT] },
   { id: "reports", label: "Báo cáo", items: [REPORTS_MENU_ROOT] },
   { id: "crm", label: "Chăm sóc khách hàng", items: [CRM_MENU_ROOT] },
+  {
+    id: "messaging",
+    label: "Giao tiếp",
+    items: [MESSAGING_MENU_LEAF],
+  },
   { id: "ai", label: "Trợ lý thông minh", items: [AI_MENU_ROOT], requiresFeature: "ai" },
   { id: "admin", label: "Quản trị", items: [ADMIN_MENU_ROOT] },
   {

@@ -6,6 +6,7 @@
  * COMMS-03: Club Communication application capability (persistence-agnostic).
  * COMMS-04: Community Communication application capability (persistence-agnostic).
  * COMMS-05: Persistence & Realtime foundation (SQL package + adapters; not applied / not remote-wired).
+ * COMMS-06: Messaging Experience (UI + experience gateway; demo/in-memory only).
  *
  * Consumers must import from this index — not from internal file paths —
  * once wiring begins in later phases.
@@ -15,25 +16,26 @@
  * - raw Supabase row types
  * - remote realtime connection / websocket clients
  * - notification delivery / inbox SoT
- * - UI / routes / React hooks
  * - Identity / Club / Player / Competition ownership surfaces
  */
 
 export const COMMUNICATION_FOUNDATION_PHASE = Object.freeze({
-  id: "COMMS-05",
-  name: "persistence-and-realtime",
-  priorPhase: "COMMS-04",
+  id: "COMMS-06",
+  name: "messaging-experience",
+  priorPhase: "COMMS-05",
   wiredToProductionRuntime: false,
   hasPersistence: true,
   hasRealtime: true,
   persistenceApplied: false,
   realtimePublicationEnabled: false,
   clientRlsPolicy: "DEFERRED_FAIL_CLOSED",
-  hasUi: false,
-  /** In-memory doubles exist for unit tests only — not production SoT. */
+  hasUi: true,
+  /** In-memory doubles exist for unit tests / demo gateway only — not production SoT. */
   hasInMemoryTestDoubles: true,
   /** Production-oriented adapters exist; require trusted injected client + activation gates. */
   hasProductionOrientedAdapters: true,
+  /** Experience UI uses demo gateway until COMMS-05 remote gates clear. */
+  experienceAdapterKind: "IN_MEMORY_DEMO",
 });
 
 export {
@@ -413,3 +415,31 @@ export {
   createCommunicationPersistenceEventIntent,
   createCommunicationPersistenceEventRepository,
 } from "./persistence/index.js";
+
+export {
+  MESSAGING_EXPERIENCE_PHASE,
+  MESSAGING_ROUTE_PATH,
+  MESSAGING_MENU_KEY,
+  MESSAGING_TAB,
+  MESSAGING_TAB_VALUES,
+  MESSAGING_TAB_LABEL,
+  MESSAGE_BODY_MAX_LENGTH,
+  MESSAGE_PREVIEW_MAX_LENGTH,
+  DEMO_GATEWAY_MARKER,
+  COMMUNICATION_EXPERIENCE_GATEWAY_METHODS,
+  matchesCommunicationExperienceGateway,
+  asPlainText,
+  sanitizeMessageBodyForDisplay,
+  truncatePreview,
+  createParticipantProjectionVm,
+  createDirectConversationListItemVm,
+  createDirectRequestListItemVm,
+  createClubChannelListItemVm,
+  createCommunityChannelListItemVm,
+  createMessageItemVm,
+  createAccessDecisionVm,
+  createUnreadBadgeVm,
+  validateComposerBody,
+  assertNotRawPersistenceRow,
+  createDemoMessagingExperienceGateway,
+} from "./experience/publicApi.js";

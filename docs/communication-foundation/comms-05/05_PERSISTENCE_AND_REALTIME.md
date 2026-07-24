@@ -200,15 +200,19 @@ Before any future apply:
 
 ## COMMS-06 UI readiness
 
-**READY_WITH_CONDITIONS**
+**SATISFIED_WITH_DEMO_GATEWAY** (COMMS-06 delivered)
 
-UI may begin against application services **only if**:
+UI began against application services with:
 
-1. UI uses application ports / composers — not raw SQL rows.
-2. Persistence wiring remains behind trusted adapters + activation gates.
-3. No remote migration apply from UI workstream.
-4. Realtime UI uses `RealtimeDeliveryPort` signals + reload pattern.
-5. No Notification delivery UI claims until Notification integration gate clears.
+1. Experience gateway / composers — not raw SQL rows. ✅
+2. Persistence wiring remains behind trusted adapters + activation gates. ✅
+3. No remote migration apply from UI workstream. ✅
+4. Realtime UI uses `RealtimeDeliveryPort` signals + reload pattern. ✅
+5. No Notification delivery UI claims. ✅
+
+Demo/in-memory gateway is **not** production. Production adapter still blocked on COMMS-05 Staging/Production gates.
+
+See [`../comms-06/06_MESSAGING_EXPERIENCE.md`](../comms-06/06_MESSAGING_EXPERIENCE.md).
 
 ---
 
