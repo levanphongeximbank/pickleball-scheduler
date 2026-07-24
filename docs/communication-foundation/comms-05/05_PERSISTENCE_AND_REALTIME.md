@@ -1,9 +1,10 @@
 # COMMS-05 — Persistence & Realtime Foundation
 
-**Status:** AUTHORED in repository — **NOT applied** to Staging/Production.  
-**Module:** `src/features/communication/persistence/`  
-**SQL:** `docs/supabase-communication-comms05.sql`  
-**Verdict class:** Local/code ready with explicit activation blockers.
+**Status:** AUTHORED in repository — **Staging applied** (COMMS-ACT-02 `GO_STAGING_PERSISTENCE`, deny-all); **NOT applied** to Production; realtime **not** enabled.
+**Module:** `src/features/communication/persistence/`
+**SQL:** `docs/supabase-communication-comms05.sql`
+**Verdict class:** Staging persistence certified; client RLS open / realtime / Production remain activation blockers.
+**Evidence:** [`../activation/comms-act-02/02_STAGING_APPLY_CERTIFICATION.md`](../activation/comms-act-02/02_STAGING_APPLY_CERTIFICATION.md)
 
 ---
 

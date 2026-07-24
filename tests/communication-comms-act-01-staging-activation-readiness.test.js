@@ -205,6 +205,9 @@ test("COMMS-ACT-01 README Communication Foundation mentions readiness gate", () 
     "utf8"
   );
   assert.match(readme, /COMMS-ACT-01/);
-  assert.match(readme, /NOT ACTIVATED/);
   assert.match(readme, /COMMS-ACT-02/);
+  assert.match(readme, /GO_STAGING_PERSISTENCE/);
+  assert.match(readme, /FAIL-CLOSED/);
+  assert.match(readme, /NOT ENABLED/);
+  assert.match(readme, /\*\*Production\*\*\s*\|\s*BLOCKED/);
 });
