@@ -1,13 +1,12 @@
 /**
  * E2E-07 — CORE-08 Phase 1E branch-local delta gate classification control.
  *
- * Does NOT modify / skip / delete the frozen CORE-08 test.
- * Proves E2E-07 did not regress Competition Core ownership and classifies the
- * known 1E branch-local delta assertion as PRE_EXISTING_MAIN_FAILURE +
- * BRANCH_LOCAL_DELTA_POLICY (not an E2E-07 product regression).
+ * Dual execution modes:
+ * - FEATURE_BRANCH_DELTA_MODE: live delta vs comparison base is non-empty
+ * - MERGED_MAIN_MODE: live delta empty (or comparison base unavailable) —
+ *   replay committed classifiedBranchDelta evidence (never auto-PASS on empty)
  *
- * Comparison base resolution is CI-safe: does not require the remote-tracking
- * name `origin/main` specifically, and never fetches from the network.
+ * Does NOT modify / skip / delete the frozen CORE-08 test.
  */
 
 import assert from "node:assert/strict";
@@ -17,21 +16,27 @@ import { existsSync, readFileSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
+import {
+  CLASSIFICATION_META,
+  EXECUTION_MODE,
+  UNAUTHORIZED_UNIT_TEST_FILES,
+  detectClassificationExecutionMode,
+  classifyCore08BranchDelta,
+  reproduceCore08BranchLocalGate,
+  validateE2E07RegistryAdditions,
+  validateE2E07RegistryPresent,
+  sha256Normalized,
+  assertMergedMainEvidence,
+} from "../src/features/competition-engine/certification/core08GateClassification.js";
+
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const CORE08_1E_TEST =
   "tests/competition-core-draw-runtime-core08-1e-certification.test.js";
 const BRANCH_LOCAL_TEST_NAME =
   "1E: production engines / UI / SQL / deploy absent from branch-local delta";
 const INJECTED_BASE_ENV = "E2E07_COMPARISON_BASE";
-
-const CLASSIFICATION = Object.freeze({
-  id: "CORE08_1E_BRANCH_LOCAL_DELTA_GATE",
-  status: "PRE_EXISTING_MAIN_FAILURE",
-  policy: "BRANCH_LOCAL_DELTA_POLICY",
-  e2e07Regression: false,
-  originalTestPreserved: true,
-  originalTestSkipped: false,
-});
+const EVIDENCE_PATH =
+  "docs/competition-engine/e2e-07/evidence/core08-gate-classification.json";
 
 class ComparisonBaseError extends Error {
   constructor(code, message) {
@@ -47,7 +52,6 @@ function git(cmd, { trim = true } = {}) {
 }
 
 function revExists(rev) {
-  // Quote the peel syntax so Windows cmd.exe does not treat `^` as an escape.
   try {
     execSync(`git cat-file -e "${rev}^{commit}"`, {
       cwd: ROOT,
@@ -86,16 +90,6 @@ function readPullRequestBaseSha() {
   return sha.toLowerCase();
 }
 
-/**
- * Resolve the git revision used for branch-delta comparison.
- *
- * Fallback order (each candidate must exist as a local object):
- * 1. origin/main (developer / full-fetch worktrees)
- * 2. pull_request base.sha from GITHUB_EVENT_PATH
- * 3. E2E07_COMPARISON_BASE explicit injection
- *
- * Never network-fetches. Never auto-PASSes when unresolved.
- */
 function resolveComparisonBase() {
   if (revExists("origin/main")) {
     return { sha: resolveSha("origin/main"), source: "origin/main" };
@@ -143,6 +137,18 @@ function branchDeltaNames() {
     .filter(Boolean);
 }
 
+/**
+ * @returns {string[] | null} null when comparison base cannot be resolved
+ */
+function tryLiveBranchDeltaNames() {
+  try {
+    return branchDeltaNames();
+  } catch (err) {
+    if (err instanceof ComparisonBaseError) return null;
+    throw err;
+  }
+}
+
 function showAtMergeBase(relPath) {
   const { sha } = resolveComparisonBase();
   const mergeBase = git(`git merge-base "${sha}" HEAD`);
@@ -155,127 +161,277 @@ function showAtMergeBase(relPath) {
   }
 }
 
+function loadEvidence() {
+  const abs = path.join(ROOT, EVIDENCE_PATH);
+  assert.equal(existsSync(abs), true, "classification evidence file must exist");
+  return JSON.parse(readFileSync(abs, "utf8"));
+}
+
+function readCore08LocalNormalized() {
+  return readFileSync(path.join(ROOT, CORE08_1E_TEST), "utf8").replace(
+    /\r\n/g,
+    "\n"
+  );
+}
+
+function readOfficialRegistry() {
+  return JSON.parse(
+    readFileSync(path.join(ROOT, "scripts/ci/unit-test-files.json"), "utf8")
+  );
+}
+
+// --- Shared / pure model ---
+
 test("core08 gate — classification metadata locked", () => {
-  assert.equal(CLASSIFICATION.status, "PRE_EXISTING_MAIN_FAILURE");
-  assert.equal(CLASSIFICATION.policy, "BRANCH_LOCAL_DELTA_POLICY");
-  assert.equal(CLASSIFICATION.e2e07Regression, false);
-  assert.equal(CLASSIFICATION.originalTestSkipped, false);
+  assert.equal(CLASSIFICATION_META.status, "PRE_EXISTING_MAIN_FAILURE");
+  assert.equal(CLASSIFICATION_META.policy, "BRANCH_LOCAL_DELTA_POLICY");
+  assert.equal(CLASSIFICATION_META.e2e07Regression, false);
+  assert.equal(CLASSIFICATION_META.originalTestSkipped, false);
 });
 
-test("core08 gate — comparison base resolves without network", () => {
-  const base = resolveComparisonBase();
-  assert.match(base.sha, /^[0-9a-f]{40}$/i);
-  assert.equal(revExists(base.sha), true);
-  assert.ok(
-    ["origin/main", "github.event.pull_request.base.sha", `env:${INJECTED_BASE_ENV}`].includes(
-      base.source
-    ),
-    `unexpected comparison base source: ${base.source}`
+test("core08 gate — empty delta does not auto-PASS classification model", () => {
+  const empty = classifyCore08BranchDelta([]);
+  assert.equal(empty.deltaCount, 0);
+  assert.equal(empty.reproducesBranchLocalFailure, false);
+  assert.equal(empty.sizeGateWouldPass, false);
+  assert.deepEqual(empty.unauthorizedTouchedFiles, []);
+  // Empty delta alone is never a successful classified branch-local reproduction.
+  assert.equal(empty.e2e07Regression, false);
+});
+
+test("core08 gate — evidence missing/invalid must fail merged-main validator", () => {
+  assert.throws(() => assertMergedMainEvidence(null), /MERGED_MAIN_EVIDENCE_MISSING/);
+  assert.throws(
+    () => assertMergedMainEvidence({ generatedAt: "now", payload: {} }),
+    /MERGED_MAIN_EVIDENCE_INVALID/
+  );
+  assert.throws(
+    () =>
+      assertMergedMainEvidence({
+        generatedAt: null,
+        payload: {
+          classification: CLASSIFICATION_META,
+          classifiedBranchDelta: { fileNames: [], deltaCount: 0 },
+        },
+      }),
+    /MERGED_MAIN_EVIDENCE_INVALID/
   );
 });
 
-test("core08 gate — E2E-07 delta does not touch Competition Core ownership", () => {
-  const delta = branchDeltaNames();
-  assert.ok(
-    delta.length > 0,
-    "E2E-07 branch must have a non-empty delta vs comparison base"
+test("core08 gate — registry duplicate must fail validator", () => {
+  const dup = validateE2E07RegistryPresent(
+    [
+      "tests/competition-engine-e2e-07-end-to-end-certification.test.js",
+      "tests/competition-engine-e2e-07-end-to-end-certification.test.js",
+    ],
+    ["tests/competition-engine-e2e-07-end-to-end-certification.test.js"]
   );
-
-  const coreTouches = delta.filter(
-    (name) =>
-      name.startsWith("src/features/competition-core/") ||
-      name.startsWith("docs/competition-engine/core-08/") ||
-      /^tests\/competition-core-draw-runtime-core08/.test(name) ||
-      name.startsWith("scripts/ci/unit-test-files.phase-core08")
-  );
-  assert.deepEqual(coreTouches, []);
-
-  const privateCore = delta.filter((name) =>
-    name.startsWith("src/features/competition-core/")
-  );
-  assert.deepEqual(privateCore, []);
+  assert.equal(dup.ok, false);
+  assert.ok(dup.duplicates.length >= 1);
 });
 
-test("core08 gate — frozen 1E certification test identical to comparison base", () => {
-  assert.equal(existsSync(path.join(ROOT, CORE08_1E_TEST)), true);
-  const normalize = (s) => s.replace(/\r\n/g, "\n");
-  const local = normalize(readFileSync(path.join(ROOT, CORE08_1E_TEST), "utf8"));
-  // Byte-identical to merge-base proves E2E-07 did not edit the frozen CORE-08 file.
-  const baseContent = normalize(showAtMergeBase(CORE08_1E_TEST) || "");
-  assert.ok(baseContent, "merge-base must contain CORE-08 1E test");
-  assert.equal(local, baseContent);
+test("core08 gate — CORE-08 content hash mismatch must fail", () => {
+  const evidence = loadEvidence();
+  assertMergedMainEvidence(evidence);
+  const localHash = sha256Normalized(readCore08LocalNormalized());
+  assert.equal(localHash, evidence.payload.core08FrozenTestContentSha256);
+  assert.notEqual(
+    sha256Normalized("tampered-core08-content"),
+    evidence.payload.core08FrozenTestContentSha256
+  );
+});
 
-  // Frozen CORE-08 1E still hardcodes origin/main internally — that is intentional
-  // and unchanged. This control must keep proving that content, not rewrite it.
-  assert.match(local, /function branchDeltaNames\(\)/);
-  assert.match(local, /git diff --name-only origin\/main\.\.\.HEAD/);
-  assert.match(local, /expected >=31 branch files/);
-  assert.match(local, /scripts\/ci\/unit-test-files\.json/);
-  assert.match(local, new RegExp(BRANCH_LOCAL_TEST_NAME.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")));
+test("core08 gate — deterministic replay of branch-local policy from evidence fixture", () => {
+  const evidence = loadEvidence();
+  assertMergedMainEvidence(evidence);
+  const replay = reproduceCore08BranchLocalGate(
+    evidence.payload.classifiedBranchDelta.fileNames
+  );
+  assert.equal(replay.coreOwnershipClean, true);
+  assert.equal(replay.coreOwnershipTouches.length, 0);
+  assert.equal(replay.sizeGateWouldPass, true);
+  assert.deepEqual(replay.unauthorizedTouchedFiles, [
+    UNAUTHORIZED_UNIT_TEST_FILES,
+  ]);
+  assert.equal(replay.reproducesBranchLocalFailure, true);
+  assert.equal(replay.classification.policy, "BRANCH_LOCAL_DELTA_POLICY");
+  assert.equal(replay.e2e07Regression, false);
+});
+
+test("core08 gate — execution mode detection (feature-branch vs merged-main)", () => {
+  assert.equal(
+    detectClassificationExecutionMode({ liveDeltaNames: [] }),
+    EXECUTION_MODE.MERGED_MAIN_MODE
+  );
+  assert.equal(
+    detectClassificationExecutionMode({ liveDeltaNames: null }),
+    EXECUTION_MODE.MERGED_MAIN_MODE
+  );
+  assert.equal(
+    detectClassificationExecutionMode({
+      liveDeltaNames: ["docs/competition-engine/e2e-07/README.md"],
+    }),
+    EXECUTION_MODE.FEATURE_BRANCH_DELTA_MODE
+  );
+});
+
+test("core08 gate — comparison base resolves or evidence path remains usable", () => {
+  const live = tryLiveBranchDeltaNames();
+  const mode = detectClassificationExecutionMode({ liveDeltaNames: live });
+  if (live != null) {
+    const base = resolveComparisonBase();
+    assert.match(base.sha, /^[0-9a-f]{40}$/i);
+    assert.equal(revExists(base.sha), true);
+  } else {
+    assert.equal(mode, EXECUTION_MODE.MERGED_MAIN_MODE);
+    assertMergedMainEvidence(loadEvidence());
+  }
 });
 
 test("core08 gate — official CI excludes CORE-08 1E but registers classification control", () => {
-  const official = JSON.parse(
-    readFileSync(path.join(ROOT, "scripts/ci/unit-test-files.json"), "utf8")
-  );
+  const official = readOfficialRegistry();
   assert.equal(Array.isArray(official), true);
-  assert.equal(
-    official.includes(CORE08_1E_TEST),
-    false,
-    "CORE-08 1E certification must remain outside official CI unit-test-files.json"
-  );
+  assert.equal(official.includes(CORE08_1E_TEST), false);
   assert.equal(
     official.includes(
       "tests/competition-engine-e2e-07-core08-gate-classification.test.js"
     ),
-    true,
-    "E2E-07 classification control must be registered in official CI (runs under npm run test:unit)"
+    true
   );
 });
 
-test("core08 gate — E2E-07 unit-test-files.json touch is additive certification registration only", () => {
-  const delta = branchDeltaNames();
-  assert.equal(delta.includes("scripts/ci/unit-test-files.json"), true);
-
-  // Compare against merge-base (same semantics as `base...HEAD`), not tip of a
-  // moved-ahead main that may contain unrelated registry entries.
-  const baseRaw = showAtMergeBase("scripts/ci/unit-test-files.json");
-  const localRaw = readFileSync(
-    path.join(ROOT, "scripts/ci/unit-test-files.json"),
-    "utf8"
+test("core08 gate — frozen 1E certification content matches evidence hash", () => {
+  assert.equal(existsSync(path.join(ROOT, CORE08_1E_TEST)), true);
+  const local = readCore08LocalNormalized();
+  const evidence = loadEvidence();
+  assert.equal(
+    sha256Normalized(local),
+    evidence.payload.core08FrozenTestContentSha256
   );
-  assert.ok(baseRaw, "merge-base must contain scripts/ci/unit-test-files.json");
-  const baseList = JSON.parse(baseRaw);
-  const localList = JSON.parse(localRaw);
-  const added = localList.filter((x) => !baseList.includes(x));
-  const removed = baseList.filter((x) => !localList.includes(x));
 
-  assert.deepEqual(removed, []);
-  for (const entry of added) {
-    assert.match(
-      entry,
-      /^tests\/competition-engine-e2e-07-/,
-      `unexpected unit-test-files addition: ${entry}`
+  assert.match(local, /function branchDeltaNames\(\)/);
+  assert.match(local, /git diff --name-only origin\/main\.\.\.HEAD/);
+  assert.match(local, /expected >=31 branch files/);
+  assert.match(local, /scripts\/ci\/unit-test-files\.json/);
+  assert.match(
+    local,
+    new RegExp(BRANCH_LOCAL_TEST_NAME.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"))
+  );
+
+  // When comparison base is available, also prove byte-identical to merge-base.
+  const live = tryLiveBranchDeltaNames();
+  if (live != null) {
+    const baseContent = (showAtMergeBase(CORE08_1E_TEST) || "").replace(
+      /\r\n/g,
+      "\n"
+    );
+    assert.ok(baseContent, "merge-base must contain CORE-08 1E test");
+    assert.equal(local, baseContent);
+  }
+});
+
+// --- Mode-aware live / merged checks ---
+
+test("core08 gate — feature-branch mode: live delta ownership stays CORE-08 clean", () => {
+  const live = tryLiveBranchDeltaNames();
+  const mode = detectClassificationExecutionMode({ liveDeltaNames: live });
+  if (mode !== EXECUTION_MODE.FEATURE_BRANCH_DELTA_MODE) {
+    assert.equal(mode, EXECUTION_MODE.MERGED_MAIN_MODE);
+    // Ownership proven via committed snapshot in merged-main tests.
+    const evidence = loadEvidence();
+    assert.equal(
+      evidence.payload.classifiedBranchDelta.core08OwnedPathTouchCount,
+      0
+    );
+    return;
+  }
+
+  assert.ok(live.length > 0, "FEATURE_BRANCH_DELTA_MODE requires non-empty live delta");
+  const classified = classifyCore08BranchDelta(live);
+  assert.equal(classified.coreOwnershipClean, true);
+  assert.deepEqual(classified.coreOwnershipTouches, []);
+
+  if (live.includes(UNAUTHORIZED_UNIT_TEST_FILES)) {
+    const baseRaw = showAtMergeBase("scripts/ci/unit-test-files.json");
+    const localRaw = readFileSync(
+      path.join(ROOT, "scripts/ci/unit-test-files.json"),
+      "utf8"
+    );
+    assert.ok(baseRaw, "merge-base must contain scripts/ci/unit-test-files.json");
+    const registry = validateE2E07RegistryAdditions(
+      JSON.parse(baseRaw),
+      JSON.parse(localRaw)
+    );
+    assert.equal(registry.ok, true, `registry validation failed: ${JSON.stringify(registry)}`);
+    assert.ok(registry.added.length >= 2);
+
+    const reproduced = classifyCore08BranchDelta(live);
+    assert.equal(reproduced.reproducesBranchLocalFailure, true);
+  }
+});
+
+test("core08 gate — merged-main mode: evidence + registry + hash (empty delta not auto-PASS)", () => {
+  const live = tryLiveBranchDeltaNames();
+  const mode = detectClassificationExecutionMode({ liveDeltaNames: live });
+  const evidence = loadEvidence();
+  assertMergedMainEvidence(evidence);
+
+  // Always verify committed classification model (shared with feature-branch mode).
+  const replay = classifyCore08BranchDelta(
+    evidence.payload.classifiedBranchDelta.fileNames
+  );
+  assert.equal(replay.reproducesBranchLocalFailure, true);
+  assert.equal(replay.coreOwnershipClean, true);
+  assert.equal(
+    evidence.payload.classifiedBranchDelta.unauthorizedTouchedFile,
+    UNAUTHORIZED_UNIT_TEST_FILES
+  );
+
+  const official = readOfficialRegistry();
+  const present = validateE2E07RegistryPresent(
+    official,
+    evidence.payload.e2e07RegistryAdditions
+  );
+  assert.equal(present.ok, true, `registry present failed: ${JSON.stringify(present)}`);
+
+  assert.equal(
+    sha256Normalized(readCore08LocalNormalized()),
+    evidence.payload.core08FrozenTestContentSha256
+  );
+
+  if (mode === EXECUTION_MODE.MERGED_MAIN_MODE) {
+    // Empty (or unavailable) live delta must not be treated as success by itself:
+    // evidence validation above is mandatory.
+    if (live != null) {
+      assert.equal(live.length, 0);
+    }
+    assert.equal(evidence.payload.classification.e2e07Regression, false);
+    assert.equal(
+      evidence.payload.classification.policy,
+      "BRANCH_LOCAL_DELTA_POLICY"
     );
   }
-  assert.ok(added.length >= 2);
 });
 
 test("core08 gate — reproduce branch-local assertion failure without claiming PASS", () => {
-  // Keep original semantics: on non-CORE-08 branches the 1E delta policy fails.
-  // Fresh main fails (>=31 got 0). E2E-07 fails because additive CI registration
-  // touches scripts/ci/unit-test-files.json which CORE-08 forbids in *its* delta.
-  const names = branchDeltaNames();
-  const forbiddenExact = [
-    "src/features/competition-core/index.js",
-    "scripts/ci/unit-test-files.json",
-  ];
-  const hit = forbiddenExact.filter((exact) => names.includes(exact));
+  const evidence = loadEvidence();
+  assertMergedMainEvidence(evidence);
+  const names = evidence.payload.classifiedBranchDelta.fileNames;
+  const hit = names.filter((exact) => exact === UNAUTHORIZED_UNIT_TEST_FILES);
 
-  assert.equal(names.length >= 31, true, "E2E-07 delta size is large enough to pass size check");
-  assert.deepEqual(hit, ["scripts/ci/unit-test-files.json"]);
+  assert.equal(names.length >= 31, true);
+  assert.deepEqual(hit, [UNAUTHORIZED_UNIT_TEST_FILES]);
 
-  // Explicitly do NOT mark the frozen CORE-08 test as passing.
-  assert.equal(CLASSIFICATION.e2e07Regression, false);
-  assert.equal(CLASSIFICATION.status, "PRE_EXISTING_MAIN_FAILURE");
+  const live = tryLiveBranchDeltaNames();
+  if (
+    live &&
+    live.length > 0 &&
+    live.includes(UNAUTHORIZED_UNIT_TEST_FILES)
+  ) {
+    const liveHit = live.filter((exact) => exact === UNAUTHORIZED_UNIT_TEST_FILES);
+    assert.deepEqual(liveHit, [UNAUTHORIZED_UNIT_TEST_FILES]);
+  }
+
+  assert.equal(CLASSIFICATION_META.e2e07Regression, false);
+  assert.equal(CLASSIFICATION_META.status, "PRE_EXISTING_MAIN_FAILURE");
 });
