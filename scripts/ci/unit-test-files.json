@@ -367,5 +367,8 @@
   "tests/cm-06-competition-publication.test.js",
   "tests/cm-07-competition-suspension-cancellation.test.js",
   "tests/cm-08-competition-archive.test.js",
-  "tests/intelligence-analytics-ia-01-foundation.test.js"
+  "tests/intelligence-analytics-ia-01-foundation.test.js",
+  "tests/ecosystem-integrations-eco-01-foundation.test.js",
+  "tests/ecosystem-integrations-eco-01-architecture.test.js",
+  "tests/ecosystem-integrations-eco-01-security.test.js"
 ]

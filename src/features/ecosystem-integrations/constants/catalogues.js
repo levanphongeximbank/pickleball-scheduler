@@ -1,0 +1,141 @@
+/**
+ * ECO-01 — provider-neutral catalogues (immutable).
+ * No vendor SDK codes as connector runtime keys.
+ */
+
+export const ECOSYSTEM_INTEGRATIONS_PHASE = Object.freeze({
+  id: "ECO-01",
+  name: "canonical-connector-event-foundation",
+  wiredToProductionRuntime: false,
+  hasRealProviders: false,
+  hasNetworkClients: false,
+  hasCredentialStorage: false,
+  hasProductionWebhooks: false,
+  structureComplete: true,
+  productionBlocked: true,
+});
+
+export const CONNECTOR_KIND = Object.freeze({
+  PAYMENT: "PAYMENT",
+  NOTIFICATION: "NOTIFICATION",
+  IDENTITY: "IDENTITY",
+  CALENDAR: "CALENDAR",
+  IMPORT_EXPORT: "IMPORT_EXPORT",
+  WEBHOOK: "WEBHOOK",
+  GENERIC: "GENERIC",
+});
+
+export const CONNECTOR_KIND_VALUES = Object.freeze(Object.values(CONNECTOR_KIND));
+
+export const CONNECTOR_DIRECTION = Object.freeze({
+  INBOUND: "INBOUND",
+  OUTBOUND: "OUTBOUND",
+  BIDIRECTIONAL: "BIDIRECTIONAL",
+});
+
+export const CONNECTOR_DIRECTION_VALUES = Object.freeze(
+  Object.values(CONNECTOR_DIRECTION)
+);
+
+export const CONNECTOR_ENVIRONMENT = Object.freeze({
+  TEST: "TEST",
+  SANDBOX: "SANDBOX",
+  STAGING: "STAGING",
+  PRODUCTION: "PRODUCTION",
+});
+
+export const CONNECTOR_ENVIRONMENT_VALUES = Object.freeze(
+  Object.values(CONNECTOR_ENVIRONMENT)
+);
+
+export const CONNECTOR_LIFECYCLE = Object.freeze({
+  DECLARED: "DECLARED",
+  CONFIGURED: "CONFIGURED",
+  READY: "READY",
+  DEGRADED: "DEGRADED",
+  DISABLED: "DISABLED",
+  RETIRED: "RETIRED",
+});
+
+export const CONNECTOR_LIFECYCLE_VALUES = Object.freeze(
+  Object.values(CONNECTOR_LIFECYCLE)
+);
+
+export const INVOCATION_MODE = Object.freeze({
+  SYNC: "SYNC",
+  ASYNC: "ASYNC",
+  WEBHOOK: "WEBHOOK",
+  BATCH: "BATCH",
+});
+
+export const INVOCATION_MODE_VALUES = Object.freeze(Object.values(INVOCATION_MODE));
+
+export const CREDENTIAL_REQUIREMENT = Object.freeze({
+  NONE: "NONE",
+  REQUIRED: "REQUIRED",
+  OPTIONAL: "OPTIONAL",
+});
+
+export const CREDENTIAL_REQUIREMENT_VALUES = Object.freeze(
+  Object.values(CREDENTIAL_REQUIREMENT)
+);
+
+export const INTEGRATION_ERROR_CODE = Object.freeze({
+  CONFIGURATION: "INTEGRATION_CONFIGURATION",
+  AUTHENTICATION: "INTEGRATION_AUTHENTICATION",
+  AUTHORIZATION: "INTEGRATION_AUTHORIZATION",
+  VALIDATION: "INTEGRATION_VALIDATION",
+  UNSUPPORTED_CAPABILITY: "INTEGRATION_UNSUPPORTED_CAPABILITY",
+  RATE_LIMITED: "INTEGRATION_RATE_LIMITED",
+  TRANSIENT_PROVIDER: "INTEGRATION_TRANSIENT_PROVIDER",
+  TIMEOUT: "INTEGRATION_TIMEOUT",
+  NETWORK: "INTEGRATION_NETWORK",
+  CONFLICT_DUPLICATE: "INTEGRATION_CONFLICT_DUPLICATE",
+  PERMANENT_PROVIDER_REJECTION: "INTEGRATION_PERMANENT_PROVIDER_REJECTION",
+  MALFORMED_PROVIDER_RESPONSE: "INTEGRATION_MALFORMED_PROVIDER_RESPONSE",
+  INTERNAL_INTEGRATION_FAILURE: "INTEGRATION_INTERNAL_FAILURE",
+});
+
+export const INTEGRATION_ERROR_CODE_VALUES = Object.freeze(
+  Object.values(INTEGRATION_ERROR_CODE)
+);
+
+export const WEBHOOK_VERIFICATION_OUTCOME = Object.freeze({
+  VERIFIED: "VERIFIED",
+  MISSING: "MISSING",
+  MALFORMED: "MALFORMED",
+  INVALID: "INVALID",
+  EXPIRED: "EXPIRED",
+  REPLAY_SUSPECTED: "REPLAY_SUSPECTED",
+});
+
+export const WEBHOOK_VERIFICATION_OUTCOME_VALUES = Object.freeze(
+  Object.values(WEBHOOK_VERIFICATION_OUTCOME)
+);
+
+export const IDEMPOTENCY_OUTCOME = Object.freeze({
+  NEW: "NEW",
+  DUPLICATE: "DUPLICATE",
+  CONFLICT: "CONFLICT",
+});
+
+export const IDEMPOTENCY_OUTCOME_VALUES = Object.freeze(
+  Object.values(IDEMPOTENCY_OUTCOME)
+);
+
+export const OPERATIONAL_STATUS = Object.freeze({
+  READY: "READY",
+  NOT_READY: "NOT_READY",
+  DEGRADED: "DEGRADED",
+  UNAVAILABLE: "UNAVAILABLE",
+});
+
+export const OPERATIONAL_STATUS_VALUES = Object.freeze(
+  Object.values(OPERATIONAL_STATUS)
+);
+
+export const ENVELOPE_VERSION = "eco-envelope-1";
+
+export const CONNECTOR_DESCRIPTOR_VERSION = "eco-connector-1";
+
+export const PROVIDER_CAPABILITY_VERSION = "eco-capability-1";
