@@ -197,3 +197,12 @@ export {
   failSecurityPrivacy,
   sanitizeSecurityErrorDetails,
 } from "./security-privacy/index.js";
+
+export {
+  PLAYER_RATING_PLATFORM_ADAPTER_ERROR,
+  projectPlayerRatingSubject,
+  projectPlayerRatingOperationIdentity,
+  projectPlayerRatingContractVersion,
+  projectPlayerRatingCompatibilityDecision,
+  projectPlayerRatingErrorDescriptor,
+} from "./platform/index.js";

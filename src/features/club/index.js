@@ -367,3 +367,15 @@ export {
 } from "./services/resolveV2AthleteProfileService.js";
 
 export * from "./ui/index.js";
+
+export {
+  CLUB_PLATFORM_ADAPTER_ERROR,
+  projectClubActor,
+  projectClubScope,
+  projectClubSubject,
+  projectClubMemberSubject,
+  projectClubPermission,
+  projectClubSecurityContext,
+  projectClubAuthorizationRequest,
+  projectClubAuthorizationDecision,
+} from "./platform/index.js";
