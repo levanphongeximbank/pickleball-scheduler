@@ -92,3 +92,13 @@ export const CUSTOMER_PHASE_4_RPC = Object.freeze({
   SAVE_CONSENT: "customer_save_consent",
   SAVE_PREFERENCE: "customer_save_preference",
 });
+
+/** CUSTOMER-05 additive tables (authored migration; depends on CUSTOMER-03/04). */
+export const CUSTOMER_PHASE_5_TABLES = Object.freeze({
+  LINKAGES: "customer_linkages",
+  LINKAGE_HISTORY: "customer_linkage_history",
+});
+
+export const CUSTOMER_PHASE_5_RPC = Object.freeze({
+  SAVE_LINKAGE: "customer_save_linkage",
+});
