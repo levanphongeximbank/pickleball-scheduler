@@ -290,3 +290,20 @@ export {
   projectEventErrorDescriptor,
   EVENT_ERROR_DESCRIPTOR_ADAPTER_ERROR,
 } from "./adapters/index.js";
+
+/**
+ * Operation/Compatibility adoption adapters — pure projections over
+ * caller-supplied operation, idempotency, version, and compatibility values.
+ * Do not generate IDs, detect duplicates, persist, retry, replay, recover,
+ * compare versions, or migrate.
+ */
+export {
+  projectIdempotencyKey,
+  IDEMPOTENCY_KEY_ADAPTER_ERROR,
+  projectOperationIdentity,
+  OPERATION_IDENTITY_ADAPTER_ERROR,
+  projectContractVersion,
+  CONTRACT_VERSION_ADAPTER_ERROR,
+  projectCompatibilityDecision,
+  COMPATIBILITY_DECISION_ADAPTER_ERROR,
+} from "./adapters/index.js";

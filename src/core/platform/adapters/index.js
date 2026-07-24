@@ -27,3 +27,14 @@ export {
   projectEventErrorDescriptor,
   EVENT_ERROR_DESCRIPTOR_ADAPTER_ERROR,
 } from "./eventAudit/index.js";
+
+export {
+  projectIdempotencyKey,
+  IDEMPOTENCY_KEY_ADAPTER_ERROR,
+  projectOperationIdentity,
+  OPERATION_IDENTITY_ADAPTER_ERROR,
+  projectContractVersion,
+  CONTRACT_VERSION_ADAPTER_ERROR,
+  projectCompatibilityDecision,
+  COMPATIBILITY_DECISION_ADAPTER_ERROR,
+} from "./operationCompatibility/index.js";
