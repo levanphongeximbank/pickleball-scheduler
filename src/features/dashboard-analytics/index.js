@@ -22,3 +22,21 @@ export {
   resolveTimeRange,
   resolvePreviousPeriod,
 } from "./constants/timeRangePresets.js";
+
+// ---------------------------------------------------------------------------
+// Platform Core adoption — pure projections (additive; no runtime wiring)
+// ---------------------------------------------------------------------------
+
+export {
+  REPORTING_PLATFORM_ADAPTER_ERROR,
+  projectReportingActor,
+  projectReportingSecurityContext,
+  projectReportingScope,
+  projectReportingSubject,
+  projectReportingOperation,
+  projectReportingVersion,
+  projectReportingCompatibility,
+  projectReportingEvent,
+  projectReportingError,
+  projectReportingCapability,
+} from "./platform/index.js";
