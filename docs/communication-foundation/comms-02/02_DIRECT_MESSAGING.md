@@ -94,10 +94,12 @@ Composition: `createDirectMessagingApplication({ useInMemoryRepositories: true, 
 
 ## COMMS-03 readiness
 
-**READY_WITH_CONDITIONS** for Club Communication:
+**COMPLETE** — see [`../comms-03/03_CLUB_COMMUNICATION.md`](../comms-03/03_CLUB_COMMUNICATION.md).
+
+Historical conditions (satisfied by COMMS-03 without SQL):
 
 1. Reuse COMMS-01 conversation/participant/message contracts; do not fork identifiers.
-2. Consume Club membership via existing `ClubMembershipPort` — Communication must not own club membership writes.
+2. Consume Club membership via `ClubMembershipReader` — Communication must not own club membership writes.
 3. Keep Direct Messaging ports/application separate; Club rooms are a different conversation type (`CLUB`).
 4. Still no SQL until COMMS-05 unless Owner expands scope.
 5. Keep CRM `/crm/messages` and Notification inbox out of Communication SoT.
