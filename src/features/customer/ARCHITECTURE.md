@@ -1,10 +1,10 @@
-# Customer Management Architecture (CUSTOMER-01 + CUSTOMER-02 + CUSTOMER-03)
+# Customer Management Architecture (CUSTOMER-01 … CUSTOMER-04)
 
 **Module home:** `src/features/customer/`
 
-**Status:** Domain + application services + in-memory repository + durable persistence adapter + runtime composition + Platform Core adoption + CRM directory adapter. SQL/RLS authored (not applied). UI deferred.
+**Status:** Domain + application services + in-memory repository + durable persistence adapter + runtime composition + Platform Core adoption + CRM directory adapter + consent/preference capability + Notification/CRM consent read adapters. SQL/RLS authored (not applied). UI deferred.
 
-**Baseline:** CUSTOMER-01 (PR #211) + CUSTOMER-02 (PR #213) + CUSTOMER-03 persistence/runtime.
+**Baseline:** CUSTOMER-01 (PR #211) + CUSTOMER-02 (PR #213) + CUSTOMER-03 (PR #216) + CUSTOMER-04 consent/preferences.
 
 ---
 
@@ -20,7 +20,7 @@ It owns:
 - optimistic concurrency at database/RPC boundary;
 - runtime composition (disabled / memory / durable) with Production fail-closed;
 - classification / segment **references**;
-- communication preference + consent **state/references** (business contract);
+- communication preference + consent **business state**, history, and eligibility projection;
 - typed linkages to user account, player, and organization;
 - search/read of customer master data;
 - merge/deduplication **contract** (foundation; runtime deferred).
@@ -28,6 +28,10 @@ It owns:
 Customer contact information is business master data. It is **not** an authentication credential and does not prove ownership or verification without trusted external evidence.
 
 > Customer persistence is durable business master data and must never silently fall back to an in-memory repository in Production.
+
+> Customer Management stores consent and communication preference facts. It does not independently determine legal permission when Platform Governance policy input is required.
+
+> Notification may consume communication eligibility but must not mutate Customer consent state directly.
 
 ---
 
@@ -41,6 +45,7 @@ Customer contact information is business master data. It is **not** an authentic
 | Payments, invoices, balances, ledger | Finance |
 | Club membership / governance | Club Management |
 | Privacy / retention / consent governance rules | Platform Governance |
+| Message delivery / queue / providers | Notification |
 | Venue booking engine fields (name/phone denorm) | Venue / Booking (legacy until adoption) |
 
 ---
@@ -49,13 +54,13 @@ Customer contact information is business master data. It is **not** an authentic
 
 ```
 platform/        Platform Core projections (pure)
-adapters/        Cross-module boundary adapters (CRM directory)
-application/     CustomerApplicationService (fail-closed without repo)
-projectors/      Summary / details / profile / contact read models
+adapters/        Cross-module boundary adapters (CRM directory, Notification eligibility, CRM consent read)
+application/     CustomerApplicationService + ConsentPreferenceApplicationService
+projectors/      Summary / details / profile / contact / consent / preference / eligibility
 runtime/         Composition (disabled / memory / durable)
-persistence/     Database client port + durable adapter + mapping
-repositories/    Ports + in-memory certification adapter
-domain/          Pure factories, transitions, value objects, normalization
+persistence/     Database client port + durable adapters + mapping
+repositories/    Ports + in-memory certification adapters
+domain/          Pure factories, transitions, value objects, eligibility
 constants/       Enums and allowlists
 errors/          Typed CustomerError codes
 index.js         Public facade only
@@ -71,15 +76,17 @@ SQL: `tenant_id` + `venue_id` on every Customer table. RLS uses CRM-style fail-c
 
 ---
 
-## Persistence (CUSTOMER-03)
+## Persistence
 
 | Asset | Path |
 |-------|------|
-| SQL pack | `docs/customer-management/phase-3/` |
-| Durable adapter | `src/features/customer/persistence/` |
+| CUSTOMER-03 SQL pack | `docs/customer-management/phase-3/` |
+| CUSTOMER-04 SQL pack | `docs/customer-management/phase-4/` |
+| Durable adapters | `src/features/customer/persistence/` |
 | Runtime | `src/features/customer/runtime/` |
 
 Aggregate writes: `customer_save_aggregate` RPC (service_role execute only).  
+Consent/preference writes: `customer_save_consent` / `customer_save_preference` (service_role; current-state + history).  
 Authenticated JWT: SELECT policies only — writes blocked until Owner authorizes.
 
 ---
@@ -97,21 +104,23 @@ Authenticated JWT: SELECT policies only — writes blocked until Owner authorize
 
 - `src/models/customer.js` + club blob `customers[]` — venue operational legacy
 - CRM `ContactReference.customerId` — opaque reference only
+- CRM `crm_consent_records` — CRM workflow history on contactRef (not Customer SoT)
 - Finance `EXTERNAL_REFERENCE_KIND.CUSTOMER` — opaque reference only
 - Identity role `CUSTOMER` — RBAC role, not a customer record
 
-Adoption/migration of legacy venue customers remains **deferred** (see phase-3 docs).
+Adoption/migration of legacy venue customers remains **deferred**.
 
 ---
 
-## Deferred (CUSTOMER-04+)
+## Deferred (CUSTOMER-05+)
 
 - Staging/Production apply (Owner-gated)
 - Legacy club-blob compatibility adapter wired into runtime
 - Booking `customerId` FK adoption
 - Authenticated write policies + permission seed
-- UI / routes
+- UI / routes / preference center
 - Merge execution engine
 - Contact verification runtime (OTP / email verify)
+- Live Notification delivery enablement
 
-See `docs/customer-management/phase-3/`.
+See `docs/customer-management/phase-4/`.

@@ -6,3 +6,6 @@ export {
 } from "./ports.js";
 
 export { createInMemoryCustomerRepository, cloneFrozen } from "./inMemory.js";
+
+export { CUSTOMER_CONSENT_REPOSITORY_PORTS } from "./consentPreferencePorts.js";
+export { createInMemoryConsentPreferenceRepository } from "./inMemoryConsentPreference.js";

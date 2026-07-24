@@ -79,3 +79,16 @@ export const CUSTOMER_PHASE_3_TABLES = Object.freeze({
 export const CUSTOMER_PHASE_3_RPC = Object.freeze({
   SAVE_AGGREGATE: "customer_save_aggregate",
 });
+
+/** CUSTOMER-04 additive tables (authored migration; depends on CUSTOMER-03). */
+export const CUSTOMER_PHASE_4_TABLES = Object.freeze({
+  CONSENTS: "customer_consents",
+  CONSENT_HISTORY: "customer_consent_history",
+  PREFERENCES: "customer_communication_preferences",
+  PREFERENCE_HISTORY: "customer_preference_history",
+});
+
+export const CUSTOMER_PHASE_4_RPC = Object.freeze({
+  SAVE_CONSENT: "customer_save_consent",
+  SAVE_PREFERENCE: "customer_save_preference",
+});
