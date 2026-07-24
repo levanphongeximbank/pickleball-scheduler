@@ -7,6 +7,12 @@ export const MODERATION_ACTION_TYPE = Object.freeze({
   REMOVE_PARTICIPANT: "REMOVE_PARTICIPANT",
   RESTRICT_PARTICIPANT: "RESTRICT_PARTICIPANT",
   REMOVE_MESSAGE: "REMOVE_MESSAGE",
+  /** Soft-hide community message (COMMS-04); maps to DELETED lifecycle. */
+  HIDE_MESSAGE: "HIDE_MESSAGE",
+  /** Community-scoped ban (COMMS-04). */
+  BAN_PARTICIPANT: "BAN_PARTICIPANT",
+  /** Restore previously suspended/banned community participant (COMMS-04). */
+  RESTORE_PARTICIPANT: "RESTORE_PARTICIPANT",
 });
 
 export const MODERATION_ACTION_TYPE_VALUES = Object.freeze(

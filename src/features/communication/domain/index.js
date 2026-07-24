@@ -74,3 +74,31 @@ export {
   isPinnableClubMessage,
   compareClubChannelSummaries,
 } from "./clubCommunicationProjection.js";
+
+export {
+  assertCommunityChannelKind,
+  assertCommunityChannelVisibility,
+  assertTenantIdRequired,
+  resolveCommunityChannelIdentity,
+  denyReasonForCommunityMembership,
+  evaluateCommunityChannelAccess,
+  assertCommunityAccessAllowed,
+  assertParticipantBelongsToTenant,
+  assertCannotMoveCommunityChannel,
+  assertCannotChangeCommunityChannelKey,
+  isExplicitActiveCommunityParticipant,
+  isCommunityChannelAdminRole,
+  isDefaultCommunityChannelKind,
+  buildDefaultCommunityChannelKey,
+  buildCommunityChannelKey,
+  buildCommunityLobbyChannelKey,
+} from "./communityAccessRules.js";
+
+export {
+  countUnreadCommunityMessages,
+  buildCommunityChannelSummary,
+  sortCommunityChannelSummaries,
+  findActiveCommunityParticipants,
+  isPinnableCommunityMessage,
+  compareCommunityChannelSummaries,
+} from "./communityCommunicationProjection.js";

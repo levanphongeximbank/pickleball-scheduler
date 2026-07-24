@@ -9,9 +9,10 @@
 | **COMMS-01** Messaging Domain Foundation | Complete (domain-only) | [`comms-01/01_MESSAGING_DOMAIN_FOUNDATION.md`](./comms-01/01_MESSAGING_DOMAIN_FOUNDATION.md) |
 | **COMMS-02** Direct Messaging | Complete (app/domain; not production-wired) | [`comms-02/02_DIRECT_MESSAGING.md`](./comms-02/02_DIRECT_MESSAGING.md) |
 | **COMMS-03** Club Communication | Complete (app/domain; not production-wired) | [`comms-03/03_CLUB_COMMUNICATION.md`](./comms-03/03_CLUB_COMMUNICATION.md) |
-| COMMS-04 … COMMS-07 | Planned | See roadmap in COMMS-00 |
+| **COMMS-04** Community Communication | Complete (app/domain; not production-wired) | [`comms-04/04_COMMUNITY_COMMUNICATION.md`](./comms-04/04_COMMUNITY_COMMUNICATION.md) |
+| COMMS-05 … COMMS-07 | Planned | See roadmap in COMMS-00 |
 
-**Runtime module:** `src/features/communication/` — contracts, domain rules, ports, Direct Messaging + Club Communication application; not production-wired.
+**Runtime module:** `src/features/communication/` — contracts, domain rules, ports, Direct + Club + Community application; not production-wired.
 
 ## Hard boundary
 
@@ -28,14 +29,16 @@ It does **not** own Identity, Player profile, Club membership, Notification deli
 
 See COMMS-00 for ownership, dependency status, and phase readiness.
 
-## COMMS-03 snapshot
+## COMMS-04 snapshot
 
-- Club channel kinds: `GENERAL` | `ANNOUNCEMENT` | `PRIVATE` | `TEAM` | `MANAGEMENT`
-- Deterministic default channel keys for `GENERAL` / `ANNOUNCEMENT`
-- Membership consumed via `ClubMembershipReader` (Club Management remains SoT)
-- Policy ports for announcement send, team, and management access (no hard-coded Club roles)
-- Application: create/resolve channels, participants, send, pin, read, summary projection
+- Community channel kinds: `LOBBY` | `TOPIC` | `REGION` | `SUPPORT`
+- Visibility: `PUBLIC` | `JOIN_REQUIRED` | `RESTRICTED` | `READ_ONLY`
+- Deterministic default lobby key per tenant (`community:{tenantId}:LOBBY`)
+- Membership consumed via `CommunityMembershipReader` (external SoT)
+- Policy ports for access + moderation; restriction repo for ban/suspend evidence
+- Slow-mode foundation (ClockPort + last-send); pin / report / hide / ban / restore
+- Application: lobby resolve, channels, participants, send, pin, read, summary, moderation
 - Persistence-agnostic ports + in-memory test doubles only
 - Public barrel: `src/features/communication/index.js`
 
-**Next:** COMMS-04 Community Communication — see readiness in [`comms-03/03_CLUB_COMMUNICATION.md`](./comms-03/03_CLUB_COMMUNICATION.md).
+**Next:** COMMS-05 Persistence & Realtime — see readiness in [`comms-04/04_COMMUNITY_COMMUNICATION.md`](./comms-04/04_COMMUNITY_COMMUNICATION.md).

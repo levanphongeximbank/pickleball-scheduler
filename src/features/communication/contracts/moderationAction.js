@@ -61,7 +61,9 @@ export function createModerationActionContract(input = {}) {
   if (
     (type === MODERATION_ACTION_TYPE.MUTE_PARTICIPANT ||
       type === MODERATION_ACTION_TYPE.REMOVE_PARTICIPANT ||
-      type === MODERATION_ACTION_TYPE.RESTRICT_PARTICIPANT) &&
+      type === MODERATION_ACTION_TYPE.RESTRICT_PARTICIPANT ||
+      type === MODERATION_ACTION_TYPE.BAN_PARTICIPANT ||
+      type === MODERATION_ACTION_TYPE.RESTORE_PARTICIPANT) &&
     !targetParticipantId
   ) {
     failContract(
@@ -70,10 +72,14 @@ export function createModerationActionContract(input = {}) {
       { type, field: "targetParticipantId" }
     );
   }
-  if (type === MODERATION_ACTION_TYPE.REMOVE_MESSAGE && !targetMessageId) {
+  if (
+    (type === MODERATION_ACTION_TYPE.REMOVE_MESSAGE ||
+      type === MODERATION_ACTION_TYPE.HIDE_MESSAGE) &&
+    !targetMessageId
+  ) {
     failContract(
       COMMUNICATION_FOUNDATION_ERROR_CODE.INVALID_MODERATION_ACTION,
-      "REMOVE_MESSAGE requires targetMessageId",
+      `${type} requires targetMessageId`,
       { type, field: "targetMessageId" }
     );
   }

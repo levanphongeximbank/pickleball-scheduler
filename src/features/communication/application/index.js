@@ -17,3 +17,12 @@ export {
   createClubCommunicationApplication,
   createMemoryClubMembershipReader,
 } from "./createClubCommunicationApplication.js";
+
+export {
+  createCommunityCommunicationApplicationService,
+} from "./CommunityCommunicationApplicationService.js";
+
+export {
+  createCommunityCommunicationApplication,
+  createMemoryCommunityMembershipReader,
+} from "./createCommunityCommunicationApplication.js";

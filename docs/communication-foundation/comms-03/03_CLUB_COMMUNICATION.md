@@ -113,9 +113,13 @@ Communication **must not**:
 
 ---
 
-## COMMS-04 readiness
+## COMMS-05 readiness
 
-**READY_WITH_CONDITIONS** for Community Communication:
+**READY** for Persistence & Realtime when Community ports from COMMS-04 are implemented against production storage.
+
+Prior Community readiness note (COMMS-04): completed — see [`../comms-04/04_COMMUNITY_COMMUNICATION.md`](../comms-04/04_COMMUNITY_COMMUNICATION.md).
+
+**READY_WITH_CONDITIONS** for Community Communication (historical COMMS-03 note):
 
 1. Reuse COMMS-01 conversation/participant/message contracts; do not fork identifiers.
 2. Keep Club Communication ports/application separate; Community rooms are `COMMUNITY` type and require `tenantId`.

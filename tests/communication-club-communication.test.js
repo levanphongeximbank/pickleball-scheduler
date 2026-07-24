@@ -109,8 +109,8 @@ async function resolveGeneral(app, clubId = "club-1") {
 }
 
 test("COMMS-03 phase metadata and public exports", () => {
-  assert.equal(COMMUNICATION_FOUNDATION_PHASE.id, "COMMS-03");
-  assert.equal(COMMUNICATION_FOUNDATION_PHASE.name, "club-communication");
+  assert.equal(COMMUNICATION_FOUNDATION_PHASE.id, "COMMS-04");
+  assert.equal(COMMUNICATION_FOUNDATION_PHASE.name, "community-communication");
   assert.equal(COMMUNICATION_FOUNDATION_PHASE.hasPersistence, false);
   assert.equal(COMMUNICATION_FOUNDATION_PHASE.hasRealtime, false);
   assert.equal(COMMUNICATION_FOUNDATION_PHASE.hasUi, false);
