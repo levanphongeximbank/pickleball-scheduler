@@ -351,5 +351,6 @@
   "tests/communication-comms05-realtime.test.js",
   "tests/cm-01-competition-definition.test.js",
   "tests/cm-02-template-instantiation.test.js",
-  "tests/cm-03-competition-versioning.test.js"
+  "tests/cm-03-competition-versioning.test.js",
+  "tests/cm-04-competition-configuration.test.js"
 ]
