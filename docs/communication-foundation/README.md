@@ -5,9 +5,11 @@
 
 | Phase | Status | Docs |
 |-------|--------|------|
-| **COMMS-00** Architecture & Boundary Audit | Active (this package) | [`comms-00/00_ARCHITECTURE_AND_BOUNDARY_AUDIT.md`](./comms-00/00_ARCHITECTURE_AND_BOUNDARY_AUDIT.md) |
-| COMMS-01 Messaging Domain Foundation | Not started | — |
+| **COMMS-00** Architecture & Boundary Audit | Complete | [`comms-00/00_ARCHITECTURE_AND_BOUNDARY_AUDIT.md`](./comms-00/00_ARCHITECTURE_AND_BOUNDARY_AUDIT.md) |
+| **COMMS-01** Messaging Domain Foundation | Complete (domain-only) | [`comms-01/01_MESSAGING_DOMAIN_FOUNDATION.md`](./comms-01/01_MESSAGING_DOMAIN_FOUNDATION.md) |
 | COMMS-02 … COMMS-07 | Planned | See roadmap in COMMS-00 |
+
+**Runtime module (COMMS-01):** `src/features/communication/` — contracts, domain rules, ports; not production-wired.
 
 ## Hard boundary
 
