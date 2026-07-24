@@ -24,6 +24,7 @@ import {
   sectionDarkSx,
 } from "../../components/public/publicPortalStyles.js";
 import { MOCK_UPCOMING_EVENTS } from "../../data/public/mockPublicData.js";
+import { usePublicDocumentTitle } from "../../components/public/usePublicDocumentTitle.js";
 import {
   getFeaturedClubs,
   getFeaturedCourts,
@@ -35,6 +36,7 @@ import {
 } from "../../features/public-portal/services/publicPortalService.js";
 
 export default function HomePage() {
+  usePublicDocumentTitle("Trang chủ");
   const stats = getPublicStats();
   const tournaments = getFeaturedTournaments(4);
   const clubs = getFeaturedClubs(5);
