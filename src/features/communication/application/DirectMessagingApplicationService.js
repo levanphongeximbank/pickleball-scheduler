@@ -498,9 +498,8 @@ export function createDirectMessagingApplicationService(deps = {}) {
 
       assertCanSendMessage(aggregate.conversation, sender);
 
-      let replyTarget = null;
       if (input.replyToMessageId) {
-        replyTarget = await messages.findById(input.replyToMessageId);
+        const replyTarget = await messages.findById(input.replyToMessageId);
         assertReplyTargetInConversation(
           { replyToMessageId: input.replyToMessageId },
           replyTarget,
