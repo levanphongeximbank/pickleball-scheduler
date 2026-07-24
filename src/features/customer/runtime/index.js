@@ -1,5 +1,5 @@
 /**
- * Customer runtime composition factory (CUSTOMER-03).
+ * Customer runtime composition factory (CUSTOMER-03 + CUSTOMER-04).
  *
  * Explicit DI only. No env reads, no global Supabase client, no network during
  * construction, no Production memory fallback.
@@ -17,10 +17,13 @@ export {
 } from "./config.js";
 
 import { createCustomerApplicationService } from "../application/CustomerApplicationService.js";
+import { createConsentPreferenceApplicationService } from "../application/ConsentPreferenceApplicationService.js";
 import { CUSTOMER_ERROR_CODES } from "../errors/codes.js";
 import { CustomerError } from "../errors/CustomerError.js";
 import { createDurableCustomerRepository } from "../persistence/durable/durableCustomerRepository.js";
+import { createDurableConsentPreferenceRepository } from "../persistence/durable/durableConsentPreferenceRepository.js";
 import { createInMemoryCustomerRepository } from "../repositories/inMemory.js";
+import { createInMemoryConsentPreferenceRepository } from "../repositories/inMemoryConsentPreference.js";
 import {
   createSequentialCustomerIdGenerator,
   createSystemCustomerClock,
@@ -34,6 +37,7 @@ import {
 const ALLOWED_DEPENDENCY_KEYS = Object.freeze([
   "db",
   "repository",
+  "consentPreferenceRepository",
   "clock",
   "idGenerator",
 ]);
@@ -86,7 +90,9 @@ export function createCustomerRuntime(rawConfig = {}, dependencies = {}) {
       ready: false,
       persistenceMode: CUSTOMER_RUNTIME_MODE.DISABLED,
       repository: null,
+      consentPreferenceRepository: null,
       application: null,
+      consentPreferenceApplication: null,
       assertReady() {
         throw new CustomerError(
           CUSTOMER_ERROR_CODES.RUNTIME_NOT_CONFIGURED,
@@ -98,10 +104,14 @@ export function createCustomerRuntime(rawConfig = {}, dependencies = {}) {
   }
 
   let repository = dependencies.repository || null;
+  let consentPreferenceRepository =
+    dependencies.consentPreferenceRepository || null;
   let persistenceMode = config.mode;
 
   if (config.mode === CUSTOMER_RUNTIME_MODE.MEMORY) {
     repository = repository || createInMemoryCustomerRepository();
+    consentPreferenceRepository =
+      consentPreferenceRepository || createInMemoryConsentPreferenceRepository();
     persistenceMode = CUSTOMER_RUNTIME_MODE.MEMORY;
   } else if (config.mode === CUSTOMER_RUNTIME_MODE.DURABLE) {
     if (repository) {
@@ -120,7 +130,23 @@ export function createCustomerRuntime(rawConfig = {}, dependencies = {}) {
       );
     }
 
-    // Double-guard: never coerce durable→memory.
+    if (!consentPreferenceRepository) {
+      if (dependencies.db) {
+        consentPreferenceRepository = createDurableConsentPreferenceRepository({
+          db: dependencies.db,
+        });
+      } else {
+        throw new CustomerError(
+          CUSTOMER_ERROR_CODES.RUNTIME_NOT_CONFIGURED,
+          "Durable Customer consent/preference runtime requires db or consentPreferenceRepository.",
+          {
+            mode: CUSTOMER_RUNTIME_MODE.DURABLE,
+            environment: config.environment,
+          }
+        );
+      }
+    }
+
     if (config.environment === CUSTOMER_RUNTIME_ENVIRONMENT.PRODUCTION) {
       if (persistenceMode !== CUSTOMER_RUNTIME_MODE.DURABLE) {
         throw new CustomerError(
@@ -140,8 +166,23 @@ export function createCustomerRuntime(rawConfig = {}, dependencies = {}) {
     );
   }
 
+  if (!consentPreferenceRepository) {
+    throw new CustomerError(
+      CUSTOMER_ERROR_CODES.RUNTIME_NOT_CONFIGURED,
+      "Customer consent/preference repository is not configured.",
+      { adapter: "CustomerConsentPreferenceRepository" }
+    );
+  }
+
   const application = createCustomerApplicationService({
     repository,
+    clock,
+    idGenerator,
+  });
+
+  const consentPreferenceApplication = createConsentPreferenceApplicationService({
+    customerRepository: repository,
+    consentPreferenceRepository,
     clock,
     idGenerator,
   });
@@ -151,7 +192,9 @@ export function createCustomerRuntime(rawConfig = {}, dependencies = {}) {
     ready: true,
     persistenceMode,
     repository,
+    consentPreferenceRepository,
     application,
+    consentPreferenceApplication,
     assertReady() {
       return true;
     },
@@ -165,6 +208,9 @@ export function createCustomerRuntime(rawConfig = {}, dependencies = {}) {
 export function createCustomerRuntimeTestHarness(options = {}) {
   const repository =
     options.repository || createInMemoryCustomerRepository();
+  const consentPreferenceRepository =
+    options.consentPreferenceRepository ||
+    createInMemoryConsentPreferenceRepository();
   const runtime = createCustomerRuntime(
     {
       enabled: true,
@@ -173,6 +219,7 @@ export function createCustomerRuntimeTestHarness(options = {}) {
     },
     {
       repository,
+      consentPreferenceRepository,
       clock: options.clock,
       idGenerator: options.idGenerator,
     }
@@ -182,6 +229,9 @@ export function createCustomerRuntimeTestHarness(options = {}) {
     resetAllForTests() {
       if (typeof repository.resetAllForTests === "function") {
         repository.resetAllForTests();
+      }
+      if (typeof consentPreferenceRepository.resetAllForTests === "function") {
+        consentPreferenceRepository.resetAllForTests();
       }
     },
   });

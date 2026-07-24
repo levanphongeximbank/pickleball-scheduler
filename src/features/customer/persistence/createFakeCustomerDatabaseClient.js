@@ -1,12 +1,14 @@
 /**
- * In-process durable contract harness (CUSTOMER-03).
- * Simulates CustomerDatabaseClientPort + customer_save_aggregate semantics.
+ * In-process durable contract harness (CUSTOMER-03 + CUSTOMER-04).
+ * Simulates CustomerDatabaseClientPort + save RPCs.
  * NOT a live database. NOT for Production.
  */
 
 import {
   CUSTOMER_PHASE_3_RPC,
   CUSTOMER_PHASE_3_TABLES,
+  CUSTOMER_PHASE_4_RPC,
+  CUSTOMER_PHASE_4_TABLES,
 } from "./databaseClientPort.js";
 
 /**
@@ -21,12 +23,20 @@ export function createFakeCustomerDatabaseClient() {
     [CUSTOMER_PHASE_3_TABLES.CUSTOMERS, new Map()],
     [CUSTOMER_PHASE_3_TABLES.CONTACT_POINTS, new Map()],
     [CUSTOMER_PHASE_3_TABLES.ADDRESSES, new Map()],
+    [CUSTOMER_PHASE_4_TABLES.CONSENTS, new Map()],
+    [CUSTOMER_PHASE_4_TABLES.CONSENT_HISTORY, new Map()],
+    [CUSTOMER_PHASE_4_TABLES.PREFERENCES, new Map()],
+    [CUSTOMER_PHASE_4_TABLES.PREFERENCE_HISTORY, new Map()],
   ]);
 
   function pkFor(table, row) {
     if (table === CUSTOMER_PHASE_3_TABLES.CUSTOMERS) return row.customer_id;
     if (table === CUSTOMER_PHASE_3_TABLES.CONTACT_POINTS) return row.contact_point_id;
     if (table === CUSTOMER_PHASE_3_TABLES.ADDRESSES) return row.address_id;
+    if (table === CUSTOMER_PHASE_4_TABLES.CONSENTS) return row.consent_id;
+    if (table === CUSTOMER_PHASE_4_TABLES.CONSENT_HISTORY) return row.history_id;
+    if (table === CUSTOMER_PHASE_4_TABLES.PREFERENCES) return row.preference_id;
+    if (table === CUSTOMER_PHASE_4_TABLES.PREFERENCE_HISTORY) return row.history_id;
     throw new Error(`Unknown table ${table}`);
   }
 
@@ -237,6 +247,190 @@ export function createFakeCustomerDatabaseClient() {
     return cloneRow(customerStore.get(customerId));
   }
 
+  function saveConsent(args = {}) {
+    const consent = args.p_consent;
+    const history = args.p_history;
+    const expectedVersion =
+      args.p_expected_version == null ? null : Number(args.p_expected_version);
+    if (!consent || !history) {
+      const err = new Error("customer_save_consent: consent and history required");
+      err.code = "22023";
+      throw err;
+    }
+
+    const customerStore = tables.get(CUSTOMER_PHASE_3_TABLES.CUSTOMERS);
+    const parent = customerStore.get(consent.customer_id);
+    if (
+      !parent ||
+      parent.tenant_id !== consent.tenant_id ||
+      parent.venue_id !== consent.venue_id
+    ) {
+      const err = new Error("customer_save_consent: parent customer missing");
+      err.code = "23503";
+      throw err;
+    }
+
+    const consentStore = tables.get(CUSTOMER_PHASE_4_TABLES.CONSENTS);
+    const historyStore = tables.get(CUSTOMER_PHASE_4_TABLES.CONSENT_HISTORY);
+
+    let existing = null;
+    for (const row of consentStore.values()) {
+      if (
+        row.tenant_id === consent.tenant_id &&
+        row.venue_id === consent.venue_id &&
+        row.customer_id === consent.customer_id &&
+        row.purpose === consent.purpose &&
+        row.channel === consent.channel
+      ) {
+        existing = row;
+        break;
+      }
+    }
+
+    if (expectedVersion != null) {
+      if (!existing && expectedVersion !== 0) {
+        const err = new Error("CUSTOMER_VERSION_CONFLICT");
+        err.name = "CustomerVersionConflict";
+        err.code = "P0001";
+        throw err;
+      }
+      if (existing && existing.version !== expectedVersion) {
+        const err = new Error("CUSTOMER_VERSION_CONFLICT");
+        err.name = "CustomerVersionConflict";
+        err.code = "P0001";
+        throw err;
+      }
+    }
+
+    // Transactional: snapshot, write history then current, rollback on failure.
+    const snapshotConsent = existing ? cloneRow(existing) : null;
+    const snapshotHistory = historyStore.has(history.history_id)
+      ? cloneRow(historyStore.get(history.history_id))
+      : null;
+
+    try {
+      if (historyStore.has(history.history_id)) {
+        const err = new Error("duplicate key value violates unique constraint");
+        err.code = "23505";
+        throw err;
+      }
+      historyStore.set(history.history_id, cloneRow(history));
+      if (existing) {
+        consentStore.delete(existing.consent_id);
+      }
+      consentStore.set(consent.consent_id, cloneRow(consent));
+      return cloneRow(consentStore.get(consent.consent_id));
+    } catch (err) {
+      if (snapshotHistory) historyStore.set(history.history_id, snapshotHistory);
+      else historyStore.delete(history.history_id);
+      if (snapshotConsent) {
+        consentStore.set(snapshotConsent.consent_id, snapshotConsent);
+        if (consent.consent_id !== snapshotConsent.consent_id) {
+          consentStore.delete(consent.consent_id);
+        }
+      } else {
+        consentStore.delete(consent.consent_id);
+      }
+      throw err;
+    }
+  }
+
+  function savePreference(args = {}) {
+    const preference = args.p_preference;
+    const history = args.p_history;
+    const expectedVersion =
+      args.p_expected_version == null ? null : Number(args.p_expected_version);
+    if (!preference || !history) {
+      const err = new Error(
+        "customer_save_preference: preference and history required"
+      );
+      err.code = "22023";
+      throw err;
+    }
+
+    const customerStore = tables.get(CUSTOMER_PHASE_3_TABLES.CUSTOMERS);
+    const parent = customerStore.get(preference.customer_id);
+    if (
+      !parent ||
+      parent.tenant_id !== preference.tenant_id ||
+      parent.venue_id !== preference.venue_id
+    ) {
+      const err = new Error("customer_save_preference: parent customer missing");
+      err.code = "23503";
+      throw err;
+    }
+
+    const prefStore = tables.get(CUSTOMER_PHASE_4_TABLES.PREFERENCES);
+    const historyStore = tables.get(CUSTOMER_PHASE_4_TABLES.PREFERENCE_HISTORY);
+
+    let existing = null;
+    for (const row of prefStore.values()) {
+      if (
+        row.tenant_id === preference.tenant_id &&
+        row.venue_id === preference.venue_id &&
+        row.customer_id === preference.customer_id &&
+        row.purpose === preference.purpose &&
+        row.channel === preference.channel
+      ) {
+        existing = row;
+        break;
+      }
+    }
+
+    if (expectedVersion != null) {
+      if (!existing && expectedVersion !== 0) {
+        const err = new Error("CUSTOMER_VERSION_CONFLICT");
+        err.name = "CustomerVersionConflict";
+        err.code = "P0001";
+        throw err;
+      }
+      if (existing && existing.version !== expectedVersion) {
+        const err = new Error("CUSTOMER_VERSION_CONFLICT");
+        err.name = "CustomerVersionConflict";
+        err.code = "P0001";
+        throw err;
+      }
+    }
+
+    if (existing && existing.preference_id !== preference.preference_id) {
+      const err = new Error("duplicate key value violates unique constraint");
+      err.code = "23505";
+      err.name = "CustomerUniqueViolation";
+      throw err;
+    }
+
+    const snapshotPref = existing ? cloneRow(existing) : null;
+    const snapshotHistory = historyStore.has(history.history_id)
+      ? cloneRow(historyStore.get(history.history_id))
+      : null;
+
+    try {
+      if (historyStore.has(history.history_id)) {
+        const err = new Error("duplicate key value violates unique constraint");
+        err.code = "23505";
+        throw err;
+      }
+      historyStore.set(history.history_id, cloneRow(history));
+      if (existing) {
+        prefStore.delete(existing.preference_id);
+      }
+      prefStore.set(preference.preference_id, cloneRow(preference));
+      return cloneRow(prefStore.get(preference.preference_id));
+    } catch (err) {
+      if (snapshotHistory) historyStore.set(history.history_id, snapshotHistory);
+      else historyStore.delete(history.history_id);
+      if (snapshotPref) {
+        prefStore.set(snapshotPref.preference_id, snapshotPref);
+        if (preference.preference_id !== snapshotPref.preference_id) {
+          prefStore.delete(preference.preference_id);
+        }
+      } else {
+        prefStore.delete(preference.preference_id);
+      }
+      throw err;
+    }
+  }
+
   return {
     _tables: tables,
 
@@ -278,6 +472,14 @@ export function createFakeCustomerDatabaseClient() {
     async update({ table, values, filters, returning = true }) {
       const store = tables.get(table);
       if (!store) throw new Error(`Unknown table ${table}`);
+      if (
+        table === CUSTOMER_PHASE_4_TABLES.CONSENT_HISTORY ||
+        table === CUSTOMER_PHASE_4_TABLES.PREFERENCE_HISTORY
+      ) {
+        const err = new Error("history tables are append-only");
+        err.code = "P0001";
+        throw err;
+      }
       const updated = [];
       for (const [pk, row] of store.entries()) {
         if (!matches(row, filters)) continue;
@@ -292,6 +494,14 @@ export function createFakeCustomerDatabaseClient() {
     async delete({ table, filters }) {
       const store = tables.get(table);
       if (!store) throw new Error(`Unknown table ${table}`);
+      if (
+        table === CUSTOMER_PHASE_4_TABLES.CONSENT_HISTORY ||
+        table === CUSTOMER_PHASE_4_TABLES.PREFERENCE_HISTORY
+      ) {
+        const err = new Error("history tables are append-only");
+        err.code = "P0001";
+        throw err;
+      }
       let count = 0;
       for (const [pk, row] of [...store.entries()]) {
         if (!matches(row, filters)) continue;
@@ -304,6 +514,12 @@ export function createFakeCustomerDatabaseClient() {
     async rpc({ fn, args = {} }) {
       if (fn === CUSTOMER_PHASE_3_RPC.SAVE_AGGREGATE) {
         return saveAggregate(args);
+      }
+      if (fn === CUSTOMER_PHASE_4_RPC.SAVE_CONSENT) {
+        return saveConsent(args);
+      }
+      if (fn === CUSTOMER_PHASE_4_RPC.SAVE_PREFERENCE) {
+        return savePreference(args);
       }
       throw new Error(`Unknown RPC ${fn}`);
     },

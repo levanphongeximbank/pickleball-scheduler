@@ -228,6 +228,7 @@
   "tests/customer-phase-1-foundation.test.js",
   "tests/customer-phase-2-profile-contact.test.js",
   "tests/customer-phase-3-persistence-runtime.test.js",
+  "tests/customer-phase-4-consent-preferences.test.js",
   "tests/customer-platform-adoption.test.js",
   "tests/coaching-ai-phase28-29.test.js",
   "tests/rbac-v52.test.js",

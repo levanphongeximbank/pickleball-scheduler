@@ -1,15 +1,17 @@
 /**
- * Customer Management — public facade (CUSTOMER-01 + CUSTOMER-02 + CUSTOMER-03).
+ * Customer Management — public facade
+ * (CUSTOMER-01 + CUSTOMER-02 + CUSTOMER-03 + CUSTOMER-04).
  *
  * Exports approved contracts, constants, pure domain factories,
- * application service factory, in-memory repository, durable repository
- * adapter factories, runtime composition, read projectors, CRM directory
- * adapter, and Platform Core adoption projections.
+ * application service factories, in-memory repositories, durable repository
+ * adapter factories, runtime composition, read projectors, CRM/Notification
+ * boundary adapters, and Platform Core adoption projections.
  *
  * Does NOT export:
  * - mutable repository internal maps
  * - Supabase clients / credentials / service-role keys
  * - UI / routes / SQL migration runners
+ * - raw evidence payloads
  * - legacy `src/models/customer.js` or `src/domain/customerService.js` as SoT
  *
  * Customer Management is the source of truth for customer master data,
@@ -22,6 +24,13 @@
  *
  * Customer persistence is durable business master data and must never
  * silently fall back to an in-memory repository in Production.
+ *
+ * Customer Management stores consent and communication preference facts.
+ * It does not independently determine legal permission when Platform
+ * Governance policy input is required.
+ *
+ * Notification may consume communication eligibility but must not mutate
+ * Customer consent state directly.
  */
 
 // Errors
@@ -82,6 +91,37 @@ export {
   isCustomerConsentState,
 } from "./constants/consentStates.js";
 export {
+  CUSTOMER_CONSENT_STATUS,
+  CUSTOMER_CONSENT_STATUS_VALUES,
+  isCustomerConsentStatus,
+} from "./constants/consentStatuses.js";
+export {
+  CUSTOMER_PREFERENCE_STATUS,
+  CUSTOMER_PREFERENCE_STATUS_VALUES,
+  isCustomerPreferenceStatus,
+} from "./constants/preferenceStatuses.js";
+export {
+  CUSTOMER_COMMUNICATION_PURPOSE,
+  CUSTOMER_COMMUNICATION_PURPOSE_VALUES,
+  CUSTOMER_PURPOSES_REQUIRING_EXPLICIT_CONSENT,
+  isCustomerCommunicationPurpose,
+} from "./constants/communicationPurposes.js";
+export {
+  CUSTOMER_COMMUNICATION_ELIGIBILITY,
+  CUSTOMER_COMMUNICATION_ELIGIBILITY_VALUES,
+  isCustomerCommunicationEligibility,
+} from "./constants/eligibilityResults.js";
+export {
+  CUSTOMER_ELIGIBILITY_REASON,
+  CUSTOMER_ELIGIBILITY_REASON_VALUES,
+  isCustomerEligibilityReason,
+} from "./constants/eligibilityReasonCodes.js";
+export {
+  CUSTOMER_CONSENT_SOURCE,
+  CUSTOMER_CONSENT_SOURCE_VALUES,
+  isCustomerConsentSource,
+} from "./constants/consentSources.js";
+export {
   CUSTOMER_CLASSIFICATION_KIND,
   CUSTOMER_CLASSIFICATION_KIND_VALUES,
   LEGACY_VENUE_CUSTOMER_TYPE,
@@ -134,6 +174,20 @@ export {
   createConsentReference,
 } from "./domain/communicationPreference.js";
 export {
+  createCustomerConsentRecord,
+  transitionCustomerConsent,
+  createCustomerConsentHistoryRecord,
+  isAllowedCustomerConsentTransition,
+  CUSTOMER_CONSENT_ALLOWED_TRANSITIONS,
+} from "./domain/consentRecord.js";
+export {
+  createCustomerPreferenceRecord,
+  setCustomerPreferenceStatus,
+  createCustomerPreferenceHistoryRecord,
+  preferenceScopeKey,
+} from "./domain/preferenceRecord.js";
+export { evaluateCommunicationEligibility } from "./domain/communicationEligibility.js";
+export {
   createClassificationEntry,
   createSegmentReference,
   normalizeControlledTags,
@@ -169,6 +223,8 @@ export {
   createSequentialCustomerIdGenerator,
   createInMemoryCustomerRepository,
   cloneFrozen,
+  CUSTOMER_CONSENT_REPOSITORY_PORTS,
+  createInMemoryConsentPreferenceRepository,
 } from "./repositories/index.js";
 
 // Application
@@ -176,6 +232,10 @@ export {
   createCustomerApplicationService,
   createFailClosedCustomerApplication,
 } from "./application/CustomerApplicationService.js";
+export {
+  createConsentPreferenceApplicationService,
+  createFailClosedConsentPreferenceApplication,
+} from "./application/ConsentPreferenceApplicationService.js";
 
 // Projectors
 export {
@@ -185,22 +245,33 @@ export {
   projectCustomerContactView,
   projectCustomerAddressSummary,
 } from "./projectors/customerSummary.js";
+export {
+  projectCustomerConsentView,
+  projectCustomerCommunicationPreferenceView,
+  projectCommunicationEligibilityView,
+  projectCustomerConsentPreferenceSummary,
+} from "./projectors/consentPreferenceViews.js";
 
 // Adapters (boundary only)
 export { createVenueCustomerDirectoryAdapter } from "./adapters/venueCustomerDirectoryAdapter.js";
+export { createCustomerNotificationEligibilityAdapter } from "./adapters/notificationEligibilityAdapter.js";
+export { createCustomerCrmConsentPreferenceAdapter } from "./adapters/crmConsentPreferenceAdapter.js";
 
-// Persistence (CUSTOMER-03) — ports + durable adapter; no live client
+// Persistence (CUSTOMER-03 / CUSTOMER-04) — ports + durable adapter; no live client
 export {
   CUSTOMER_PHASE_3_TABLES,
   CUSTOMER_PHASE_3_RPC,
+  CUSTOMER_PHASE_4_TABLES,
+  CUSTOMER_PHASE_4_RPC,
   requireCustomerDatabaseClientPort,
   createDurableCustomerRepository,
+  createDurableConsentPreferenceRepository,
   createFakeCustomerDatabaseClient,
   mapCustomerDomainToSavePayload,
   mapCustomerRowsToDomain,
 } from "./persistence/index.js";
 
-// Runtime composition (CUSTOMER-03)
+// Runtime composition (CUSTOMER-03 + CUSTOMER-04)
 export {
   CUSTOMER_RUNTIME_MODE,
   CUSTOMER_RUNTIME_ENVIRONMENT,
@@ -234,23 +305,39 @@ export const CUSTOMER_PUBLIC_EXPORTS = Object.freeze([
   "CUSTOMER_ADDRESS_TYPE",
   "CUSTOMER_COMMUNICATION_CHANNEL",
   "CUSTOMER_CONSENT_STATE",
+  "CUSTOMER_CONSENT_STATUS",
+  "CUSTOMER_PREFERENCE_STATUS",
+  "CUSTOMER_COMMUNICATION_PURPOSE",
+  "CUSTOMER_COMMUNICATION_ELIGIBILITY",
+  "CUSTOMER_ELIGIBILITY_REASON",
   "createCustomerProfile",
   "createCustomerApplicationService",
   "createFailClosedCustomerApplication",
+  "createConsentPreferenceApplicationService",
+  "createFailClosedConsentPreferenceApplication",
   "createInMemoryCustomerRepository",
+  "createInMemoryConsentPreferenceRepository",
   "createDurableCustomerRepository",
+  "createDurableConsentPreferenceRepository",
   "createCustomerRuntime",
   "createCustomerRuntimeTestHarness",
   "createVenueCustomerDirectoryAdapter",
+  "createCustomerNotificationEligibilityAdapter",
+  "createCustomerCrmConsentPreferenceAdapter",
   "projectCustomerSummary",
   "projectCustomerDetails",
   "projectCustomerProfileView",
   "projectCustomerContactView",
+  "projectCustomerConsentView",
+  "projectCustomerCommunicationPreferenceView",
+  "projectCommunicationEligibilityView",
+  "evaluateCommunicationEligibility",
   "normalizeCustomerEmail",
   "normalizeCustomerPhone",
   "projectCustomerSubject",
   "CUSTOMER_SUBJECT_TYPE",
   "createCustomerMergeProposal",
   "CUSTOMER_PHASE_3_TABLES",
+  "CUSTOMER_PHASE_4_TABLES",
   "CUSTOMER_RUNTIME_MODE",
 ]);
