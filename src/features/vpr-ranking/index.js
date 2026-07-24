@@ -11,3 +11,21 @@ export * from "./services/vprLeaderboardService.js";
 export * from "./services/vprAuditService.js";
 export * from "./services/vprTournamentBridge.js";
 export * from "./utils/vprEligibility.js";
+
+// ---------------------------------------------------------------------------
+// Platform Core adoption — pure projections (additive; no runtime wiring)
+// ---------------------------------------------------------------------------
+
+export {
+  RANKING_PLATFORM_ADAPTER_ERROR,
+  projectRankingActor,
+  projectRankingSecurityContext,
+  projectRankingScope,
+  projectRankingSubject,
+  projectRankingOperation,
+  projectRankingVersion,
+  projectRankingCompatibility,
+  projectRankingEvent,
+  projectRankingError,
+  projectRankingCapability,
+} from "./platform/index.js";
