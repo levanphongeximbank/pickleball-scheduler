@@ -1,14 +1,14 @@
 {
   "schemaVersion": "e2e-07-end-to-end-certification-v1",
   "generatedAt": null,
-  "sourceCommit": "TBD",
+  "sourceCommit": "917819401a9e66280f5c59d80259da03a06d32b1",
   "scenarioId": "core08-1e-branch-local-delta-gate",
   "certificationVersion": "e2e-07-end-to-end-certification-v1",
   "testReferences": [
     "tests/competition-engine-e2e-07-core08-gate-classification.test.js",
     "tests/competition-core-draw-runtime-core08-1e-certification.test.js"
   ],
-  "fingerprint": "e2e07:core08-gate-classification-v1",
+  "fingerprint": "e2e07:core08-gate-classification-v2-ci-safe-base",
   "verdict": "CERTIFIED_LOCAL_MVP",
   "deferredChecks": [],
   "payload": {
@@ -24,6 +24,48 @@
       "file": "tests/competition-core-draw-runtime-core08-1e-certification.test.js",
       "name": "1E: production engines / UI / SQL / deploy absent from branch-local delta",
       "line": 276
+    },
+    "officialCi": {
+      "core08_1e_in_unit_test_files_json": false,
+      "classification_control_in_unit_test_files_json": true,
+      "classification_control_runs_under_npm_run_test_unit": true,
+      "note": "Excluding CORE-08 1E from the official manifest does not mean the classification control is skipped in CI."
+    },
+    "ciFailurePreRemediation": {
+      "pr": 239,
+      "unitTests": 5175,
+      "pass": 5171,
+      "fail": 4,
+      "failingFile": "tests/competition-engine-e2e-07-core08-gate-classification.test.js",
+      "rootCause": "fatal: ambiguous argument 'origin/main...HEAD' — GitHub Actions shallow checkout had no usable origin/main remote-tracking ref",
+      "kind": "CI_ENVIRONMENT_COMPATIBILITY_DEFECT"
+    },
+    "remediation": {
+      "workflow": {
+        "file": ".github/workflows/deploy.yml",
+        "change": "actions/checkout@v4 fetch-depth: 0 so PR base history/objects exist locally"
+      },
+      "testHelper": {
+        "name": "resolveComparisonBase",
+        "fallbackOrder": [
+          "origin/main when local object exists",
+          "GITHUB_EVENT_PATH pull_request.base.sha when local object exists",
+          "E2E07_COMPARISON_BASE explicit injection when local object exists"
+        ],
+        "forbidden": [
+          "skip in CI",
+          "process.env.CI auto-PASS",
+          "catch git error then PASS",
+          "network fetch inside unit test",
+          "hard-coded stale SHA"
+        ]
+      }
+    },
+    "ciParity": {
+      "method": "temporary local clone; git remote rename origin upstream (parent worktree origin/main untouched)",
+      "originMainUnavailable": true,
+      "pullRequestEventPath": { "pass": 7, "fail": 0, "exitCode": 0 },
+      "injectedEnvE2E07_COMPARISON_BASE": { "pass": 7, "fail": 0, "exitCode": 0 }
     },
     "freshMainControl": {
       "head": "6df46e3d02c8ec10246a5602bd5a4e14f06d9a03",
