@@ -1,0 +1,9 @@
+{
+  "phase": "CUSTOMER-07",
+  "environmentTarget": "staging",
+  "stagingProjectRef": "qyewbxjsiiyufanzcjcq",
+  "productionApplyApproved": false,
+  "uiDeployApproved": false,
+  "limitedStagingApplyApproved": true,
+  "notes": "Workstream CUSTOMER-07 authorizes Staging-only apply of CUSTOMER-03→06 after identity, backup/rollback, and static certification gates pass. Production remains blocked."
+}
