@@ -341,3 +341,21 @@ export {
   createAuthenticatedFinanceTenantResolver,
   createFinanceAppComposition,
 } from "./runtime/index.js";
+
+// ---------------------------------------------------------------------------
+// Platform Core adoption — pure projections (additive; no runtime wiring)
+// ---------------------------------------------------------------------------
+
+export {
+  FINANCE_PLATFORM_ADAPTER_ERROR,
+  projectFinanceActor,
+  projectFinanceTenantScope,
+  projectFinanceSecurityContext,
+  projectFinanceOperationIdentity,
+  projectFinanceIdempotencyKey,
+  projectFinanceContractVersion,
+  projectFinanceCompatibilityDecision,
+  projectFinanceEventEnvelope,
+  projectFinanceErrorDescriptor,
+  projectFinanceCapabilityDescriptor,
+} from "./platform/index.js";
