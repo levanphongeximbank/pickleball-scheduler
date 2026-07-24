@@ -25,3 +25,26 @@ export {
   validateMessageReport,
   validateModerationAction,
 } from "./validationRules.js";
+
+export {
+  resolveCanonicalDirectPair,
+  assertActorInDirectPair,
+  evaluateDirectMessagingAccess,
+  assertDirectAccessAllowed,
+  getDirectPairCounterpart,
+  isDirectPairMember,
+} from "./directAccessRules.js";
+
+export {
+  isConversationRequestTerminal,
+  transitionConversationRequestStatus,
+  acceptOrDeclineConversationRequest,
+  cancelConversationRequest,
+} from "./conversationRequestRules.js";
+
+export {
+  countUnreadDirectMessages,
+  buildDirectConversationSummary,
+  sortDirectConversationSummaries,
+  findActiveDirectParticipants,
+} from "./directMessagingProjection.js";
