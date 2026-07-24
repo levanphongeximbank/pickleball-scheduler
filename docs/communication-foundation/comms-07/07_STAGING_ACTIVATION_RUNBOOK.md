@@ -1,17 +1,17 @@
 # COMMS-07 — Staging Activation Runbook
 
-**Status:** AUTHORED — **NOT EXECUTED** in COMMS-07  
+**Status:** Persistence SQL steps **EXECUTED** in COMMS-ACT-02 (`GO_STAGING_PERSISTENCE`) — client RLS open / realtime / Production still **NOT** executed.
 **Purpose:** Owner-operated Staging activation after Communication Foundation structure certification.
 
-Do **not** run this runbook as part of COMMS-07 code delivery.  
 Do **not** apply to Production until every Staging gate passes with evidence.
 
-Canonical SQL package: `docs/supabase-communication-comms05.sql` (`AUTHORED_NOT_APPLIED`).
+Canonical SQL package: `docs/supabase-communication-comms05.sql` — Staging applied 2026-07-24; Production still blocked.
 
 **Operational readiness package (COMMS-ACT-01):**
 [`../activation/comms-act-01/01_STAGING_ACTIVATION_READINESS.md`](../activation/comms-act-01/01_STAGING_ACTIVATION_READINESS.md)
+**ACT-02 certification:**
+[`../activation/comms-act-02/02_STAGING_APPLY_CERTIFICATION.md`](../activation/comms-act-02/02_STAGING_APPLY_CERTIFICATION.md)
 Preflight: `node scripts/communication/comms-act-01-staging-preflight.mjs --offline`
-Remote apply remains **COMMS-ACT-02** after Owner GO — not COMMS-ACT-01.
 
 ---
 

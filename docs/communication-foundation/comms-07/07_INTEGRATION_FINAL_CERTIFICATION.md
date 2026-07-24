@@ -1,8 +1,8 @@
 # COMMS-07 — Integration Hardening & Final Certification
 
-**Status:** Structure COMPLETE · Local/demo READY · Remote activation BLOCKED  
-**Module:** `src/features/communication/runtime/` + experience/provider wiring  
-**Route:** `/messages`  
+**Status:** Structure COMPLETE · Local/demo READY · Staging persistence `GO_STAGING_PERSISTENCE` · Client RLS / realtime / Production BLOCKED
+**Module:** `src/features/communication/runtime/` + experience/provider wiring
+**Route:** `/messages`
 **Menu:** nhóm **Giao tiếp** → **Tin nhắn** (`communication-messaging`)
 
 CRM outreach `/crm/messages` **không** phải Communication SoT và không bị ghi đè.
@@ -15,12 +15,12 @@ CRM outreach `/crm/messages` **không** phải Communication SoT và không bị
 |---------|--------|
 | **Structure** | COMPLETE |
 | **Local/demo** | READY |
-| **Remote persistence** | NOT ACTIVATED |
-| **Client RLS** | FAIL-CLOSED |
+| **Remote persistence (Staging)** | APPLIED (deny-all) — COMMS-ACT-02 |
+| **Client RLS** | FAIL-CLOSED (not opened) |
 | **Realtime** | NOT ENABLED |
 | **Production** | BLOCKED |
 
-Communication Foundation đạt **100% cấu trúc** sau COMMS-07. Remote Staging/Production apply, client RLS mở, và realtime publication vẫn bị chặn có chủ đích.
+Communication Foundation đạt **100% cấu trúc** sau COMMS-07. Staging schema/deny-all đã apply (ACT-02). Client RLS mở, realtime publication, và Production vẫn bị chặn có chủ đích.
 
 ---
 
@@ -65,7 +65,7 @@ Communication Foundation đạt **100% cấu trúc** sau COMMS-07. Remote Stagin
 |------|--------|--------------------|
 | Local/demo | READY | Explicit demo surface (dev/preview/test) |
 | Code integration | READY | COMMS-07 complete |
-| Staging SQL | BLOCKED | Owner GO + backup evidence + target + dry-run + post-apply script |
+| Staging SQL | READY (`GO_STAGING_PERSISTENCE`) | COMMS-ACT-02 evidence 2026-07-24 |
 | Client RLS | BLOCKED | Canonical Club/Community membership SQL mapping + negative access tests |
 | Realtime publication | BLOCKED | Scope inventory + auth/catch-up smoke + rollback procedure |
 | Production | BLOCKED | All Staging gates pass |
