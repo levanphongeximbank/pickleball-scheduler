@@ -13,13 +13,27 @@ import { createDemoMessagingExperienceGateway } from "./createDemoMessagingExper
 import { MessagingExperienceContext } from "./messagingExperienceContext.js";
 
 /**
- * @param {{ gateway?: object, children: import("react").ReactNode }} props
+ * @param {{
+ *   gateway?: object,
+ *   allowDemoFallback?: boolean,
+ *   children: import("react").ReactNode,
+ * }} props
  */
-export function MessagingExperienceProvider({ gateway: injectedGateway, children }) {
-  const gateway = useMemo(
-    () => injectedGateway || createDemoMessagingExperienceGateway(),
-    [injectedGateway]
-  );
+export function MessagingExperienceProvider({
+  gateway: injectedGateway,
+  allowDemoFallback = true,
+  children,
+}) {
+  const gateway = useMemo(() => {
+    if (injectedGateway) return injectedGateway;
+    // COMMS-07: Production / UNAVAILABLE paths must not invent demo data.
+    if (allowDemoFallback === false) {
+      throw new Error(
+        "MessagingExperienceProvider requires an injected gateway when allowDemoFallback is false"
+      );
+    }
+    return createDemoMessagingExperienceGateway();
+  }, [injectedGateway, allowDemoFallback]);
 
   const [tab, setTab] = useState(MESSAGING_TAB.DIRECT);
   const [list, setList] = useState([]);

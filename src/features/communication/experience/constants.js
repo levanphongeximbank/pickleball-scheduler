@@ -1,15 +1,15 @@
 /**
- * Messaging Experience (COMMS-06) — UI/gateway constants.
- * Not production activation. Demo gateway only until COMMS-05 remote gates clear.
+ * Messaging Experience (COMMS-06/07) — UI/gateway constants.
+ * Runtime mode selection lives in `../runtime/` (COMMS-07).
  */
 
 export const MESSAGING_EXPERIENCE_PHASE = Object.freeze({
-  id: "COMMS-06",
-  name: "messaging-experience",
-  priorPhase: "COMMS-05",
+  id: "COMMS-07",
+  name: "messaging-experience-integration",
+  priorPhase: "COMMS-06",
   hasUi: true,
-  /** Demo / in-memory only — not Staging/Production SoT. */
-  productionAdapterWired: false,
+  /** Production-oriented gateway composition exists; remote activation still blocked. */
+  productionAdapterWired: true,
   remotePersistenceActive: false,
   remoteRealtimeActive: false,
 });

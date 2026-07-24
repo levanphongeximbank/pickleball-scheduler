@@ -33,12 +33,12 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const ROOT = path.resolve(__dirname, "..");
 
 test("COMMS-06 phase + experience metadata", () => {
-  assert.equal(COMMUNICATION_FOUNDATION_PHASE.id, "COMMS-06");
+  assert.equal(COMMUNICATION_FOUNDATION_PHASE.id, "COMMS-07");
   assert.equal(COMMUNICATION_FOUNDATION_PHASE.hasUi, true);
   assert.equal(COMMUNICATION_FOUNDATION_PHASE.persistenceApplied, false);
   assert.equal(COMMUNICATION_FOUNDATION_PHASE.realtimePublicationEnabled, false);
-  assert.equal(MESSAGING_EXPERIENCE_PHASE.id, "COMMS-06");
-  assert.equal(MESSAGING_EXPERIENCE_PHASE.productionAdapterWired, false);
+  assert.equal(MESSAGING_EXPERIENCE_PHASE.id, "COMMS-07");
+  assert.equal(MESSAGING_EXPERIENCE_PHASE.productionAdapterWired, true);
   assert.equal(MESSAGING_ROUTE_PATH, "/messages");
   assert.equal(MESSAGING_MENU_KEY, "communication-messaging");
   assert.ok(Object.values(MESSAGING_TAB).includes("DIRECT"));

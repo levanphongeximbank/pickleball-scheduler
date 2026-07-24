@@ -134,14 +134,16 @@ UI may run against demo gateway **now**. Wiring a production gateway requires CO
 
 ## COMMS-07 readiness
 
-**READY_WITH_CONDITIONS**
+**COMPLETE (structure)** — see [`../comms-07/07_INTEGRATION_FINAL_CERTIFICATION.md`](../comms-07/07_INTEGRATION_FINAL_CERTIFICATION.md).
 
-COMMS-07 (integration / activation hardening) can proceed when:
+COMMS-07 delivered:
 
-1. Staging persistence activated under COMMS-05 gates
-2. Experience gateway gains a non-demo adapter implementing the same port
-3. PlayerDisplayPort wired for richer projections (still no email/phone in UI state)
-4. Direct block/report application commands promoted from experience-layer helpers if required for production audit
+1. Production experience gateway composition (injected deps; no demo fallback in Production)
+2. Runtime modes `DEMO` | `PRODUCTION` | `UNAVAILABLE` + `CommunicationRuntimeProvider`
+3. Fail-closed `/messages` when remote activation is blocked
+4. Activation matrix + Staging runbook (authored, not executed)
+
+Remote persistence / client RLS / realtime publication / Production remain **BLOCKED**.
 
 ---
 
