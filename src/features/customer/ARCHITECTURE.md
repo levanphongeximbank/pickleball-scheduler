@@ -1,10 +1,10 @@
-# Customer Management Architecture (CUSTOMER-01 … CUSTOMER-05)
+# Customer Management Architecture (CUSTOMER-01 … CUSTOMER-06)
 
 **Module home:** `src/features/customer/`
 
-**Status:** Domain + application services + in-memory repository + durable persistence adapter + runtime composition + Platform Core adoption + CRM directory adapter + consent/preference capability + Identity/Player/CRM linkage capability + Notification/CRM consent read adapters. SQL/RLS authored (not applied). UI deferred.
+**Status:** Domain + application services + in-memory repository + durable persistence adapter + runtime composition + Platform Core adoption + CRM directory adapter + consent/preference capability + Identity/Player/CRM linkage capability + search/dedup/merge capability + Notification/CRM consent + redirect adapters. SQL/RLS authored (not applied). UI deferred.
 
-**Baseline:** CUSTOMER-01 (PR #211) + CUSTOMER-02 (PR #213) + CUSTOMER-03 (PR #216) + CUSTOMER-04 (PR #218) + CUSTOMER-05 Identity/Player/CRM linking.
+**Baseline:** CUSTOMER-01 (PR #211) + CUSTOMER-02 (PR #213) + CUSTOMER-03 (PR #216) + CUSTOMER-04 (PR #218) + CUSTOMER-05 Identity/Player/CRM linking + CUSTOMER-06 Search/Dedup/Merge.
 
 ---
 
@@ -23,11 +23,11 @@ It owns:
 - communication preference + consent **business state**, history, and eligibility projection;
 - **customer-side** typed linkages to Identity account, Player, and CRM contact/reference (lifecycle, provenance, uniqueness, reverse lookup, history);
 - search/read of customer master data;
-- merge/deduplication **contract** (foundation; runtime deferred).
+- duplicate candidate detection, merge proposals, explicit merge execution, merge history, and redirect projection.
 
 > Customer Management owns the customer-side linkage record, but Identity, Player Management and CRM remain the source of truth for their own entities.
 
-> Matching email, phone or name is not sufficient evidence to create a canonical Customer linkage.
+> Matching email, phone or name is not sufficient evidence to create a canonical Customer linkage or to auto-merge Customers.
 
 Customer contact information is business master data. It is **not** an authentication credential and does not prove ownership or verification without trusted external evidence.
 
@@ -36,6 +36,8 @@ Customer contact information is business master data. It is **not** an authentic
 > Customer Management stores consent and communication preference facts. It does not independently determine legal permission when Platform Governance policy input is required.
 
 > Notification may consume communication eligibility but must not mutate Customer consent state directly.
+
+> Merge requires explicit approval. Duplicate signals are candidate evidence only.
 
 ---
 
@@ -59,14 +61,16 @@ Customer contact information is business master data. It is **not** an authentic
 ```
 platform/        Platform Core projections (pure)
 adapters/        Cross-module boundary adapters (CRM directory, Notification eligibility,
-                 CRM consent read, Identity/Player/CRM linkage facades)
+                 CRM consent read, Identity/Player/CRM linkage facades, redirect)
 application/     CustomerApplicationService + ConsentPreferenceApplicationService
-                 + LinkageApplicationService
-projectors/      Summary / details / profile / contact / consent / preference / eligibility / linkage
+                 + LinkageApplicationService + MergeApplicationService
+projectors/      Summary / details / profile / contact / consent / preference / eligibility /
+                 linkage / search / candidate / merge / redirect
 runtime/         Composition (disabled / memory / durable)
 persistence/     Database client port + durable adapters + mapping
-repositories/    Ports + in-memory certification adapters + directory ports
-domain/          Pure factories, transitions, value objects, eligibility, linkage
+repositories/    Ports + in-memory certification adapters + directory ports + merge ports
+domain/          Pure factories, transitions, value objects, eligibility, linkage,
+                 search, duplicate evaluation, merge execution
 constants/       Enums and allowlists
 errors/          Typed CustomerError codes
 index.js         Public facade only
@@ -89,12 +93,14 @@ SQL: `tenant_id` + `venue_id` on every Customer table. RLS uses CRM-style fail-c
 | CUSTOMER-03 SQL pack | `docs/customer-management/phase-3/` |
 | CUSTOMER-04 SQL pack | `docs/customer-management/phase-4/` |
 | CUSTOMER-05 SQL pack | `docs/customer-management/phase-5/` |
+| CUSTOMER-06 SQL pack | `docs/customer-management/phase-6/` |
 | Durable adapters | `src/features/customer/persistence/` |
 | Runtime | `src/features/customer/runtime/` |
 
 Aggregate writes: `customer_save_aggregate` RPC (service_role execute only).  
 Consent/preference writes: `customer_save_consent` / `customer_save_preference` (service_role; current-state + history).  
 Linkage writes: `customer_save_linkage` (service_role; linkage + history + customer version/denorm sync).  
+Merge writes: `customer_save_duplicate_candidate` / `customer_save_merge_proposal` / `customer_execute_merge` (service_role).  
 Authenticated JWT: SELECT policies only — writes blocked until Owner authorizes.
 
 ---

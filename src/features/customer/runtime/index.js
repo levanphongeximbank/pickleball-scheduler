@@ -1,6 +1,6 @@
 /**
  * Customer runtime composition factory
- * (CUSTOMER-03 + CUSTOMER-04 + CUSTOMER-05).
+ * (CUSTOMER-03 + CUSTOMER-04 + CUSTOMER-05 + CUSTOMER-06).
  *
  * Explicit DI only. No env reads, no global Supabase client, no network during
  * construction, no Production memory fallback.
@@ -8,8 +8,7 @@
  * Customer persistence is durable business master data and must never silently
  * fall back to an in-memory repository in Production.
  *
- * Linking requires directory ports when linkageApplication is used — fail-closed
- * if directories are missing at command time.
+ * Merge commands require MergeApprovalPort — fail-closed if missing at command time.
  */
 
 export {
@@ -23,14 +22,17 @@ export {
 import { createCustomerApplicationService } from "../application/CustomerApplicationService.js";
 import { createConsentPreferenceApplicationService } from "../application/ConsentPreferenceApplicationService.js";
 import { createLinkageApplicationService } from "../application/LinkageApplicationService.js";
+import { createMergeApplicationService } from "../application/MergeApplicationService.js";
 import { CUSTOMER_ERROR_CODES } from "../errors/codes.js";
 import { CustomerError } from "../errors/CustomerError.js";
 import { createDurableCustomerRepository } from "../persistence/durable/durableCustomerRepository.js";
 import { createDurableConsentPreferenceRepository } from "../persistence/durable/durableConsentPreferenceRepository.js";
 import { createDurableCustomerLinkageRepository } from "../persistence/durable/durableCustomerLinkageRepository.js";
+import { createDurableCustomerMergeRepository } from "../persistence/durable/durableMergeRepository.js";
 import { createInMemoryCustomerRepository } from "../repositories/inMemory.js";
 import { createInMemoryConsentPreferenceRepository } from "../repositories/inMemoryConsentPreference.js";
 import { createInMemoryCustomerLinkageRepository } from "../repositories/inMemoryLinkage.js";
+import { createInMemoryCustomerMergeRepository } from "../repositories/inMemoryMerge.js";
 import {
   createSequentialCustomerIdGenerator,
   createSystemCustomerClock,
@@ -46,6 +48,8 @@ const ALLOWED_DEPENDENCY_KEYS = Object.freeze([
   "repository",
   "consentPreferenceRepository",
   "linkageRepository",
+  "mergeRepository",
+  "mergeApprovalPort",
   "identityAccountDirectory",
   "playerDirectory",
   "crmContactDirectory",
@@ -103,12 +107,15 @@ export function createCustomerRuntime(rawConfig = {}, dependencies = {}) {
       repository: null,
       consentPreferenceRepository: null,
       linkageRepository: null,
+      mergeRepository: null,
+      mergeApprovalPort: null,
       identityAccountDirectory: null,
       playerDirectory: null,
       crmContactDirectory: null,
       application: null,
       consentPreferenceApplication: null,
       linkageApplication: null,
+      mergeApplication: null,
       assertReady() {
         throw new CustomerError(
           CUSTOMER_ERROR_CODES.RUNTIME_NOT_CONFIGURED,
@@ -123,6 +130,7 @@ export function createCustomerRuntime(rawConfig = {}, dependencies = {}) {
   let consentPreferenceRepository =
     dependencies.consentPreferenceRepository || null;
   let linkageRepository = dependencies.linkageRepository || null;
+  let mergeRepository = dependencies.mergeRepository || null;
   let persistenceMode = config.mode;
 
   if (config.mode === CUSTOMER_RUNTIME_MODE.MEMORY) {
@@ -132,6 +140,9 @@ export function createCustomerRuntime(rawConfig = {}, dependencies = {}) {
     linkageRepository =
       linkageRepository ||
       createInMemoryCustomerLinkageRepository({ customerRepository: repository });
+    mergeRepository =
+      mergeRepository ||
+      createInMemoryCustomerMergeRepository({ customerRepository: repository });
     persistenceMode = CUSTOMER_RUNTIME_MODE.MEMORY;
   } else if (config.mode === CUSTOMER_RUNTIME_MODE.DURABLE) {
     if (repository) {
@@ -184,6 +195,23 @@ export function createCustomerRuntime(rawConfig = {}, dependencies = {}) {
       }
     }
 
+    if (!mergeRepository) {
+      if (dependencies.db) {
+        mergeRepository = createDurableCustomerMergeRepository({
+          db: dependencies.db,
+        });
+      } else {
+        throw new CustomerError(
+          CUSTOMER_ERROR_CODES.RUNTIME_NOT_CONFIGURED,
+          "Durable Customer merge runtime requires db or mergeRepository.",
+          {
+            mode: CUSTOMER_RUNTIME_MODE.DURABLE,
+            environment: config.environment,
+          }
+        );
+      }
+    }
+
     if (config.environment === CUSTOMER_RUNTIME_ENVIRONMENT.PRODUCTION) {
       if (persistenceMode !== CUSTOMER_RUNTIME_MODE.DURABLE) {
         throw new CustomerError(
@@ -219,9 +247,18 @@ export function createCustomerRuntime(rawConfig = {}, dependencies = {}) {
     );
   }
 
+  if (!mergeRepository) {
+    throw new CustomerError(
+      CUSTOMER_ERROR_CODES.RUNTIME_NOT_CONFIGURED,
+      "Customer merge repository is not configured.",
+      { adapter: "CustomerMergeRepository" }
+    );
+  }
+
   const identityAccountDirectory = dependencies.identityAccountDirectory ?? null;
   const playerDirectory = dependencies.playerDirectory ?? null;
   const crmContactDirectory = dependencies.crmContactDirectory ?? null;
+  const mergeApprovalPort = dependencies.mergeApprovalPort ?? null;
 
   const application = createCustomerApplicationService({
     repository,
@@ -246,6 +283,16 @@ export function createCustomerRuntime(rawConfig = {}, dependencies = {}) {
     idGenerator,
   });
 
+  const mergeApplication = createMergeApplicationService({
+    customerRepository: repository,
+    mergeRepository,
+    linkageRepository,
+    consentPreferenceRepository,
+    mergeApprovalPort,
+    clock,
+    idGenerator,
+  });
+
   return Object.freeze({
     config,
     ready: true,
@@ -253,12 +300,15 @@ export function createCustomerRuntime(rawConfig = {}, dependencies = {}) {
     repository,
     consentPreferenceRepository,
     linkageRepository,
+    mergeRepository,
+    mergeApprovalPort,
     identityAccountDirectory,
     playerDirectory,
     crmContactDirectory,
     application,
     consentPreferenceApplication,
     linkageApplication,
+    mergeApplication,
     assertReady() {
       return true;
     },
@@ -278,6 +328,9 @@ export function createCustomerRuntimeTestHarness(options = {}) {
   const linkageRepository =
     options.linkageRepository ||
     createInMemoryCustomerLinkageRepository({ customerRepository: repository });
+  const mergeRepository =
+    options.mergeRepository ||
+    createInMemoryCustomerMergeRepository({ customerRepository: repository });
   const runtime = createCustomerRuntime(
     {
       enabled: true,
@@ -288,6 +341,8 @@ export function createCustomerRuntimeTestHarness(options = {}) {
       repository,
       consentPreferenceRepository,
       linkageRepository,
+      mergeRepository,
+      mergeApprovalPort: options.mergeApprovalPort ?? null,
       identityAccountDirectory: options.identityAccountDirectory ?? null,
       playerDirectory: options.playerDirectory ?? null,
       crmContactDirectory: options.crmContactDirectory ?? null,
@@ -306,6 +361,9 @@ export function createCustomerRuntimeTestHarness(options = {}) {
       }
       if (typeof linkageRepository.resetAllForTests === "function") {
         linkageRepository.resetAllForTests();
+      }
+      if (typeof mergeRepository.resetAllForTests === "function") {
+        mergeRepository.resetAllForTests();
       }
     },
   });

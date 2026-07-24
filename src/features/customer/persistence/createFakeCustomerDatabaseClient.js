@@ -1,5 +1,6 @@
 /**
- * In-process durable contract harness (CUSTOMER-03 + CUSTOMER-04 + CUSTOMER-05).
+ * In-process durable contract harness
+ * (CUSTOMER-03 + CUSTOMER-04 + CUSTOMER-05 + CUSTOMER-06).
  * Simulates CustomerDatabaseClientPort + save RPCs.
  * NOT a live database. NOT for Production.
  */
@@ -11,6 +12,8 @@ import {
   CUSTOMER_PHASE_4_TABLES,
   CUSTOMER_PHASE_5_RPC,
   CUSTOMER_PHASE_5_TABLES,
+  CUSTOMER_PHASE_6_RPC,
+  CUSTOMER_PHASE_6_TABLES,
 } from "./databaseClientPort.js";
 
 /**
@@ -31,6 +34,9 @@ export function createFakeCustomerDatabaseClient() {
     [CUSTOMER_PHASE_4_TABLES.PREFERENCE_HISTORY, new Map()],
     [CUSTOMER_PHASE_5_TABLES.LINKAGES, new Map()],
     [CUSTOMER_PHASE_5_TABLES.LINKAGE_HISTORY, new Map()],
+    [CUSTOMER_PHASE_6_TABLES.CANDIDATES, new Map()],
+    [CUSTOMER_PHASE_6_TABLES.PROPOSALS, new Map()],
+    [CUSTOMER_PHASE_6_TABLES.HISTORY, new Map()],
   ]);
 
   function pkFor(table, row) {
@@ -43,6 +49,9 @@ export function createFakeCustomerDatabaseClient() {
     if (table === CUSTOMER_PHASE_4_TABLES.PREFERENCE_HISTORY) return row.history_id;
     if (table === CUSTOMER_PHASE_5_TABLES.LINKAGES) return row.linkage_id;
     if (table === CUSTOMER_PHASE_5_TABLES.LINKAGE_HISTORY) return row.history_id;
+    if (table === CUSTOMER_PHASE_6_TABLES.CANDIDATES) return row.candidate_id;
+    if (table === CUSTOMER_PHASE_6_TABLES.PROPOSALS) return row.merge_proposal_id;
+    if (table === CUSTOMER_PHASE_6_TABLES.HISTORY) return row.merge_history_id;
     throw new Error(`Unknown table ${table}`);
   }
 
@@ -589,6 +598,141 @@ export function createFakeCustomerDatabaseClient() {
     }
   }
 
+  function saveCandidate(args = {}) {
+    const candidate = args.p_candidate;
+    const expectedVersion =
+      args.p_expected_version == null ? null : Number(args.p_expected_version);
+    if (!candidate) {
+      const err = new Error("customer_save_duplicate_candidate: candidate required");
+      err.code = "22023";
+      throw err;
+    }
+    const store = tables.get(CUSTOMER_PHASE_6_TABLES.CANDIDATES);
+    const existing = store.get(candidate.candidate_id);
+    if (expectedVersion != null) {
+      if (!existing && expectedVersion !== 0) {
+        const err = new Error("CUSTOMER_VERSION_CONFLICT");
+        err.name = "CustomerVersionConflict";
+        err.code = "P0001";
+        throw err;
+      }
+      if (existing && existing.version !== expectedVersion) {
+        const err = new Error("CUSTOMER_VERSION_CONFLICT");
+        err.name = "CustomerVersionConflict";
+        err.code = "P0001";
+        throw err;
+      }
+    }
+    store.set(candidate.candidate_id, cloneRow(candidate));
+    return cloneRow(store.get(candidate.candidate_id));
+  }
+
+  function saveProposal(args = {}) {
+    const proposal = args.p_proposal;
+    const expectedVersion =
+      args.p_expected_version == null ? null : Number(args.p_expected_version);
+    if (!proposal) {
+      const err = new Error("customer_save_merge_proposal: proposal required");
+      err.code = "22023";
+      throw err;
+    }
+    const store = tables.get(CUSTOMER_PHASE_6_TABLES.PROPOSALS);
+    const existing = store.get(proposal.merge_proposal_id);
+    if (expectedVersion != null) {
+      if (!existing && expectedVersion !== 0) {
+        const err = new Error("CUSTOMER_VERSION_CONFLICT");
+        err.name = "CustomerVersionConflict";
+        err.code = "P0001";
+        throw err;
+      }
+      if (existing && existing.version !== expectedVersion) {
+        const err = new Error("CUSTOMER_VERSION_CONFLICT");
+        err.name = "CustomerVersionConflict";
+        err.code = "P0001";
+        throw err;
+      }
+    }
+    store.set(proposal.merge_proposal_id, cloneRow(proposal));
+    return cloneRow(store.get(proposal.merge_proposal_id));
+  }
+
+  function executeMerge(args = {}) {
+    const survivor = args.p_survivor;
+    const absorbed = args.p_absorbed;
+    const history = args.p_history;
+    const proposal = args.p_proposal;
+    const contacts = args.p_survivor_contacts || [];
+    const addresses = args.p_survivor_addresses || [];
+    if (!survivor || !absorbed || !history || !proposal) {
+      const err = new Error("customer_execute_merge: required payloads missing");
+      err.code = "22023";
+      throw err;
+    }
+
+    const customerStore = tables.get(CUSTOMER_PHASE_3_TABLES.CUSTOMERS);
+    const contactStore = tables.get(CUSTOMER_PHASE_3_TABLES.CONTACT_POINTS);
+    const addressStore = tables.get(CUSTOMER_PHASE_3_TABLES.ADDRESSES);
+    const historyStore = tables.get(CUSTOMER_PHASE_6_TABLES.HISTORY);
+    const proposalStore = tables.get(CUSTOMER_PHASE_6_TABLES.PROPOSALS);
+
+    const existingSurvivor = customerStore.get(survivor.customer_id);
+    const existingAbsorbed = customerStore.get(absorbed.customer_id);
+    if (!existingSurvivor || !existingAbsorbed) {
+      const err = new Error("customer_execute_merge: customer missing");
+      err.code = "23503";
+      throw err;
+    }
+    if (existingSurvivor.version !== survivor.version - 1) {
+      const err = new Error("CUSTOMER_VERSION_CONFLICT");
+      err.name = "CustomerVersionConflict";
+      err.code = "P0001";
+      throw err;
+    }
+    if (existingAbsorbed.version !== absorbed.version - 1) {
+      const err = new Error("CUSTOMER_VERSION_CONFLICT");
+      err.name = "CustomerVersionConflict";
+      err.code = "P0001";
+      throw err;
+    }
+
+    customerStore.set(survivor.customer_id, cloneRow(survivor));
+    customerStore.set(absorbed.customer_id, cloneRow(absorbed));
+
+    for (const [pk, row] of [...contactStore.entries()]) {
+      if (
+        row.tenant_id === survivor.tenant_id &&
+        row.venue_id === survivor.venue_id &&
+        row.customer_id === survivor.customer_id
+      ) {
+        contactStore.delete(pk);
+      }
+    }
+    for (const cp of contacts) {
+      contactStore.set(cp.contact_point_id, cloneRow(cp));
+    }
+    for (const [pk, row] of [...addressStore.entries()]) {
+      if (
+        row.tenant_id === survivor.tenant_id &&
+        row.venue_id === survivor.venue_id &&
+        row.customer_id === survivor.customer_id
+      ) {
+        addressStore.delete(pk);
+      }
+    }
+    for (const addr of addresses) {
+      addressStore.set(addr.address_id, cloneRow(addr));
+    }
+
+    historyStore.set(history.merge_history_id, cloneRow(history));
+    proposalStore.set(proposal.merge_proposal_id, cloneRow(proposal));
+
+    return {
+      survivor_customer_id: survivor.customer_id,
+      absorbed_customer_id: absorbed.customer_id,
+      merge_history_id: history.merge_history_id,
+    };
+  }
+
   return {
     _tables: tables,
 
@@ -633,7 +777,8 @@ export function createFakeCustomerDatabaseClient() {
       if (
         table === CUSTOMER_PHASE_4_TABLES.CONSENT_HISTORY ||
         table === CUSTOMER_PHASE_4_TABLES.PREFERENCE_HISTORY ||
-        table === CUSTOMER_PHASE_5_TABLES.LINKAGE_HISTORY
+        table === CUSTOMER_PHASE_5_TABLES.LINKAGE_HISTORY ||
+        table === CUSTOMER_PHASE_6_TABLES.HISTORY
       ) {
         const err = new Error("history tables are append-only");
         err.code = "P0001";
@@ -656,7 +801,8 @@ export function createFakeCustomerDatabaseClient() {
       if (
         table === CUSTOMER_PHASE_4_TABLES.CONSENT_HISTORY ||
         table === CUSTOMER_PHASE_4_TABLES.PREFERENCE_HISTORY ||
-        table === CUSTOMER_PHASE_5_TABLES.LINKAGE_HISTORY
+        table === CUSTOMER_PHASE_5_TABLES.LINKAGE_HISTORY ||
+        table === CUSTOMER_PHASE_6_TABLES.HISTORY
       ) {
         const err = new Error("history tables are append-only");
         err.code = "P0001";
@@ -683,6 +829,15 @@ export function createFakeCustomerDatabaseClient() {
       }
       if (fn === CUSTOMER_PHASE_5_RPC.SAVE_LINKAGE) {
         return saveLinkage(args);
+      }
+      if (fn === CUSTOMER_PHASE_6_RPC.SAVE_CANDIDATE) {
+        return saveCandidate(args);
+      }
+      if (fn === CUSTOMER_PHASE_6_RPC.SAVE_PROPOSAL) {
+        return saveProposal(args);
+      }
+      if (fn === CUSTOMER_PHASE_6_RPC.EXECUTE_MERGE) {
+        return executeMerge(args);
       }
       throw new Error(`Unknown RPC ${fn}`);
     },
