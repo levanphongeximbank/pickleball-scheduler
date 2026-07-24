@@ -37,6 +37,17 @@ export const COMMS_ACT_01_RLS_CAPABILITY_VERDICTS = Object.freeze({
 });
 
 /**
+ * Read process.env without referencing the Node `process` free global
+ * (ESLint src languageOptions use browser globals only).
+ * @returns {Record<string, string|undefined>}
+ */
+function readProcessEnv() {
+  return typeof globalThis.process !== "undefined" && globalThis.process.env
+    ? globalThis.process.env
+    : {};
+}
+
+/**
  * Capability matrix for COMMS-ACT-01 (client vs trusted backend).
  * Client Club/Community remain fail-closed until helpers certified.
  */
@@ -102,7 +113,7 @@ export function tokensMatch(flag, expected) {
  * @param {Record<string, string|undefined>} [env]
  * @param {{ repoRoot?: string }} [opts]
  */
-export function evaluateCommsAct01BackupGate(env = process.env, opts = {}) {
+export function evaluateCommsAct01BackupGate(env = readProcessEnv(), opts = {}) {
   const root = getCommsAct01RepoRoot(opts.repoRoot);
   const token = env?.[COMMS_ACT_01_ENV_NAMES.BACKUP_EVIDENCE];
   const evidencePathRaw = env?.[COMMS_ACT_01_ENV_NAMES.BACKUP_EVIDENCE_PATH];
@@ -202,7 +213,7 @@ export function evaluateCommsAct01BackupGate(env = process.env, opts = {}) {
 /**
  * @param {Record<string, string|undefined>} [env]
  */
-export function evaluateCommsAct01OwnerGoGate(env = process.env) {
+export function evaluateCommsAct01OwnerGoGate(env = readProcessEnv()) {
   const present = isEnvTokenPresent(env?.[COMMS_ACT_01_ENV_NAMES.OWNER_GO]);
   return Object.freeze({
     status: present ? "PASS" : "FAIL",
@@ -234,7 +245,7 @@ export function evaluateCommsAct01OwnerGoGate(env = process.env) {
  */
 export function evaluateCommsAct01Preflight(opts = {}) {
   const root = getCommsAct01RepoRoot(opts.repoRoot);
-  const env = opts.env || process.env;
+  const env = opts.env || readProcessEnv();
   const mode = opts.mode || "offline";
   const environment = String(opts.environment || "staging").toLowerCase();
   /** @type {Array<{ code: string, level: string, message: string }>} */
