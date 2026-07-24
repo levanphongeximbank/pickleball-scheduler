@@ -346,6 +346,9 @@
   "tests/communication-direct-messaging.test.js",
   "tests/communication-club-communication.test.js",
   "tests/communication-community-communication.test.js",
+  "tests/communication-comms05-sql-migration.test.js",
+  "tests/communication-comms05-supabase-adapter.test.js",
+  "tests/communication-comms05-realtime.test.js",
   "tests/cm-01-competition-definition.test.js",
   "tests/cm-02-template-instantiation.test.js",
   "tests/cm-03-competition-versioning.test.js"

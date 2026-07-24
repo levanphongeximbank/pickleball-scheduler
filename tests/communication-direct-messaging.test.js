@@ -80,10 +80,11 @@ function createApp(options = {}) {
 }
 
 test("COMMS-02 phase metadata remains available under COMMS-03 barrel", () => {
-  assert.equal(COMMUNICATION_FOUNDATION_PHASE.id, "COMMS-04");
-  assert.equal(COMMUNICATION_FOUNDATION_PHASE.priorPhase, "COMMS-03");
-  assert.equal(COMMUNICATION_FOUNDATION_PHASE.hasPersistence, false);
-  assert.equal(COMMUNICATION_FOUNDATION_PHASE.hasRealtime, false);
+  assert.equal(COMMUNICATION_FOUNDATION_PHASE.id, "COMMS-05");
+  assert.equal(COMMUNICATION_FOUNDATION_PHASE.priorPhase, "COMMS-04");
+  assert.equal(COMMUNICATION_FOUNDATION_PHASE.hasPersistence, true);
+  assert.equal(COMMUNICATION_FOUNDATION_PHASE.hasRealtime, true);
+  assert.equal(COMMUNICATION_FOUNDATION_PHASE.realtimePublicationEnabled, false);
   assert.equal(COMMUNICATION_FOUNDATION_PHASE.hasUi, false);
 });
 
@@ -547,12 +548,10 @@ test("ports have no runtime coupling (unimplemented throw typed code)", async ()
   assert.equal(matchesDirectConversationRepository(memory.conversations), true);
 });
 
-test("module tree has no SQL/Supabase/UI wiring artifacts", () => {
+test("module tree has no remote Supabase client / UI wiring outside persistence/", () => {
   const banned = [
     "createClient",
-    "supabase",
-    "from('",
-    ".rpc(",
+    "@supabase/",
     "useEffect",
     "react-router",
   ];
@@ -560,28 +559,15 @@ test("module tree has no SQL/Supabase/UI wiring artifacts", () => {
     for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
       const full = path.join(dir, entry.name);
       if (entry.isDirectory()) {
+        // COMMS-05 owns persistence adapters under persistence/ (injected client only).
+        if (entry.name === "persistence") continue;
         walk(full);
         continue;
       }
-      if (!/\.(js|jsx|ts|tsx|md)$/.test(entry.name)) continue;
-      const text = fs.readFileSync(full, "utf8").toLowerCase();
+      if (!/\.(js|jsx|ts|tsx)$/.test(entry.name)) continue;
+      const text = fs.readFileSync(full, "utf8");
       for (const token of banned) {
-        if (token === "supabase" && entry.name.includes("README")) continue;
-        if (
-          text.includes(token.toLowerCase()) &&
-          !full.includes(`${path.sep}docs${path.sep}`) &&
-          !/explicit non-scope|does not export|no supabase|not production/i.test(
-            text
-          )
-        ) {
-          // allow documentation mentions of non-scope
-          if (
-            /no sql|no supabase|does not export|not production|persistence-agnostic|unit tests only/i.test(
-              text
-            )
-          ) {
-            continue;
-          }
+        if (text.includes(token)) {
           assert.fail(`Banned token "${token}" in ${full}`);
         }
       }

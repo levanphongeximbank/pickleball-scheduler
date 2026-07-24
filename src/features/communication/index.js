@@ -5,29 +5,35 @@
  * COMMS-02: Direct Messaging application capability (persistence-agnostic).
  * COMMS-03: Club Communication application capability (persistence-agnostic).
  * COMMS-04: Community Communication application capability (persistence-agnostic).
+ * COMMS-05: Persistence & Realtime foundation (SQL package + adapters; not applied / not remote-wired).
  *
  * Consumers must import from this index — not from internal file paths —
  * once wiring begins in later phases.
  *
  * Does NOT export:
- * - SQL / migrations / Supabase clients
- * - realtime runtime wiring
+ * - raw SQL / migration text as domain contracts
+ * - raw Supabase row types
+ * - remote realtime connection / websocket clients
  * - notification delivery / inbox SoT
  * - UI / routes / React hooks
  * - Identity / Club / Player / Competition ownership surfaces
- * - production database repositories
  */
 
 export const COMMUNICATION_FOUNDATION_PHASE = Object.freeze({
-  id: "COMMS-04",
-  name: "community-communication",
-  priorPhase: "COMMS-03",
+  id: "COMMS-05",
+  name: "persistence-and-realtime",
+  priorPhase: "COMMS-04",
   wiredToProductionRuntime: false,
-  hasPersistence: false,
-  hasRealtime: false,
+  hasPersistence: true,
+  hasRealtime: true,
+  persistenceApplied: false,
+  realtimePublicationEnabled: false,
+  clientRlsPolicy: "DEFERRED_FAIL_CLOSED",
   hasUi: false,
   /** In-memory doubles exist for unit tests only — not production SoT. */
   hasInMemoryTestDoubles: true,
+  /** Production-oriented adapters exist; require trusted injected client + activation gates. */
+  hasProductionOrientedAdapters: true,
 });
 
 export {
@@ -385,3 +391,25 @@ export {
   createInMemoryClubCommunicationRepositories,
   createInMemoryCommunityCommunicationRepositories,
 } from "./repositories/index.js";
+
+export {
+  COMMUNICATION_TABLES,
+  COMMUNICATION_TABLE_NAME_VALUES,
+  ACTIVATION_GATES,
+  COMMUNICATION_ACTIVATION_STATUS,
+  getCommunicationActivationSnapshot,
+  assertActivationAllowed,
+  createSupabaseCommunicationRepositories,
+  createFakeSupabaseCommunicationClient,
+  mapSupabaseCommunicationError,
+  COMMUNICATION_REALTIME_EVENT_TYPE,
+  COMMUNICATION_REALTIME_EVENT_TYPE_VALUES,
+  createCommunicationRealtimeEventEnvelope,
+  createConversationRealtimeSubscriptionDescriptor,
+  createInMemoryRealtimeDeliveryAdapter,
+  createScopedRealtimeDeliveryAdapter,
+  COMMUNICATION_DELIVERY_INTENT,
+  COMMUNICATION_OUTBOX_INTEGRATION_GATES,
+  createCommunicationPersistenceEventIntent,
+  createCommunicationPersistenceEventRepository,
+} from "./persistence/index.js";

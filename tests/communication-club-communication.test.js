@@ -109,10 +109,11 @@ async function resolveGeneral(app, clubId = "club-1") {
 }
 
 test("COMMS-03 phase metadata and public exports", () => {
-  assert.equal(COMMUNICATION_FOUNDATION_PHASE.id, "COMMS-04");
-  assert.equal(COMMUNICATION_FOUNDATION_PHASE.name, "community-communication");
-  assert.equal(COMMUNICATION_FOUNDATION_PHASE.hasPersistence, false);
-  assert.equal(COMMUNICATION_FOUNDATION_PHASE.hasRealtime, false);
+  assert.equal(COMMUNICATION_FOUNDATION_PHASE.id, "COMMS-05");
+  assert.equal(COMMUNICATION_FOUNDATION_PHASE.name, "persistence-and-realtime");
+  assert.equal(COMMUNICATION_FOUNDATION_PHASE.hasPersistence, true);
+  assert.equal(COMMUNICATION_FOUNDATION_PHASE.hasRealtime, true);
+  assert.equal(COMMUNICATION_FOUNDATION_PHASE.realtimePublicationEnabled, false);
   assert.equal(COMMUNICATION_FOUNDATION_PHASE.hasUi, false);
   assert.equal(COMMUNICATION_FOUNDATION_PHASE.hasInMemoryTestDoubles, true);
 });
@@ -815,15 +816,17 @@ test("in-memory club repositories are isolated test doubles", () => {
   assert.notEqual(a.channels, b.channels);
 });
 
-test("module source has no SQL / Supabase / UI wiring", () => {
+test("module source has no SQL / Supabase / UI wiring outside persistence/", () => {
   const walk = (dir) => {
     const entries = fs.readdirSync(dir, { withFileTypes: true });
     /** @type {string[]} */
     const files = [];
     for (const entry of entries) {
       const full = path.join(dir, entry.name);
-      if (entry.isDirectory()) files.push(...walk(full));
-      else if (entry.name.endsWith(".js")) files.push(full);
+      if (entry.isDirectory()) {
+        if (entry.name === "persistence") continue;
+        files.push(...walk(full));
+      } else if (entry.name.endsWith(".js")) files.push(full);
     }
     return files;
   };
