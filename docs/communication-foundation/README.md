@@ -13,15 +13,17 @@
 | **COMMS-05** Persistence & Realtime | Authored (SQL + adapters; **not applied** / not remote-wired) | [`comms-05/05_PERSISTENCE_AND_REALTIME.md`](./comms-05/05_PERSISTENCE_AND_REALTIME.md) |
 | **COMMS-06** Messaging Experience | Complete (UI + demo gateway) | [`comms-06/06_MESSAGING_EXPERIENCE.md`](./comms-06/06_MESSAGING_EXPERIENCE.md) |
 | **COMMS-07** Integration Hardening & Final Certification | Complete (structure) · activation blocked | [`comms-07/07_INTEGRATION_FINAL_CERTIFICATION.md`](./comms-07/07_INTEGRATION_FINAL_CERTIFICATION.md) |
+| **COMMS-ACT-01** Staging Activation Readiness Gate | Readiness package complete · **no remote apply** | [`activation/comms-act-01/01_STAGING_ACTIVATION_READINESS.md`](./activation/comms-act-01/01_STAGING_ACTIVATION_READINESS.md) |
 
-**Runtime module:** `src/features/communication/` — contracts, domain, ports, Direct + Club + Community application, persistence adapters + realtime foundation, Messaging Experience UI, **COMMS-07 runtime/provider/production gateway**.
+**Runtime module:** `src/features/communication/` — contracts, domain, ports, Direct + Club + Community application, persistence adapters + realtime foundation, Messaging Experience UI, **COMMS-07 runtime/provider/production gateway**, **COMMS-ACT-01 activation readiness modules/scripts**.
 
-## Final status (post COMMS-07)
+## Final status (post COMMS-07 + COMMS-ACT-01)
 
 | Surface | Status |
 |---------|--------|
-| **Structure** | COMPLETE |
+| **Structure / code** | COMPLETE |
 | **Local/demo** | READY |
+| **COMMS-ACT-01 readiness** | READY_FOR_OWNER_GO |
 | **Remote persistence** | NOT ACTIVATED |
 | **Client RLS** | FAIL-CLOSED |
 | **Realtime** | NOT ENABLED |
@@ -43,6 +45,16 @@ It does **not** own Identity, Player profile, Club membership, Notification deli
 
 See COMMS-00 for ownership, dependency status, and phase readiness.
 
+## COMMS-ACT-01 snapshot
+
+- Staging target allowlist / Production blocklist encoded in activation modules
+- Fail-closed preflight + post-apply verification scripts (refuse `--apply`; no remote mutation)
+- Backup gate, RLS matrix, realtime matrix, Direct/Club/Community smoke + negative RLS packages
+- Evidence templates under [`activation/comms-act-01/`](./activation/comms-act-01/)
+- **Owner GO for remote apply: NOT GRANTED** in this phase
+
+**Open COMMS-ACT-02 (Staging Apply) only when:** Owner GO + backup evidence + target confirm PASS + offline preflight PASS.
+
 ## COMMS-07 snapshot
 
 - Runtime modes: `DEMO` | `PRODUCTION` | `UNAVAILABLE` (fail-closed; no Production demo fallback)
@@ -50,6 +62,7 @@ See COMMS-00 for ownership, dependency status, and phase readiness.
 - Production experience gateway via dependency injection (no Supabase singleton)
 - `/messages` + menu **Tin nhắn** honor runtime mode
 - Staging activation runbook authored, **not executed**: [`comms-07/07_STAGING_ACTIVATION_RUNBOOK.md`](./comms-07/07_STAGING_ACTIVATION_RUNBOOK.md)
+- Operational readiness package: [`activation/comms-act-01/`](./activation/comms-act-01/)
 
 ## COMMS-06 snapshot
 
@@ -67,4 +80,4 @@ See COMMS-00 for ownership, dependency status, and phase readiness.
 - Realtime foundation via `RealtimeDeliveryPort` (no remote publication)
 - Activation gates: Staging apply, Production, client RLS, realtime publication, Notification outbox
 
-**Next Owner action:** Staging activation only after Owner GO — follow COMMS-07 runbook.
+**Next Owner action:** Record Staging Owner GO + backup evidence, then open **COMMS-ACT-02** using the ACT-01 package + COMMS-07 runbook. Do **not** apply from COMMS-ACT-01.
