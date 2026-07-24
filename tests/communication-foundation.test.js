@@ -89,16 +89,23 @@ test("public communication exports are present and phase is unwired", () => {
     "createCommunityCommunicationApplication",
     "createInMemoryCommunityCommunicationRepositories",
     "createUnimplementedCommunityMembershipReader",
+    "createSupabaseCommunicationRepositories",
+    "createInMemoryRealtimeDeliveryAdapter",
+    "getCommunicationActivationSnapshot",
   ];
   for (const name of required) {
     assert.ok(name in communication, `missing export: ${name}`);
   }
-  assert.equal(COMMUNICATION_FOUNDATION_PHASE.id, "COMMS-04");
-  assert.equal(COMMUNICATION_FOUNDATION_PHASE.priorPhase, "COMMS-03");
+  assert.equal(COMMUNICATION_FOUNDATION_PHASE.id, "COMMS-05");
+  assert.equal(COMMUNICATION_FOUNDATION_PHASE.priorPhase, "COMMS-04");
   assert.equal(COMMUNICATION_FOUNDATION_PHASE.wiredToProductionRuntime, false);
-  assert.equal(COMMUNICATION_FOUNDATION_PHASE.hasPersistence, false);
+  assert.equal(COMMUNICATION_FOUNDATION_PHASE.hasPersistence, true);
+  assert.equal(COMMUNICATION_FOUNDATION_PHASE.persistenceApplied, false);
+  assert.equal(COMMUNICATION_FOUNDATION_PHASE.hasRealtime, true);
+  assert.equal(COMMUNICATION_FOUNDATION_PHASE.realtimePublicationEnabled, false);
   assert.equal(COMMUNICATION_FOUNDATION_PHASE.hasUi, false);
   assert.equal(COMMUNICATION_FOUNDATION_PHASE.hasInMemoryTestDoubles, true);
+  assert.equal(COMMUNICATION_FOUNDATION_PHASE.hasProductionOrientedAdapters, true);
   assert.deepEqual([...Object.values(CONVERSATION_TYPE)], [
     "DIRECT",
     "CLUB",

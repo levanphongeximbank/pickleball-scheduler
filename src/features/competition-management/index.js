@@ -1,8 +1,8 @@
 /**
- * Competition Management — root barrel (CM-01 + CM-02 + CM-03).
+ * Competition Management — root barrel (CM-01 + CM-02 + CM-03 + CM-04).
  *
  * Safe re-export only. No runtime wiring.
- * Later CM-04..CM-08 modules may be added here without changing prior ownership.
+ * Later CM-05..CM-08 modules may be added here without changing prior ownership.
  */
 
 export {
@@ -22,3 +22,9 @@ export {
 } from "./competition-versioning/index.js";
 
 export * from "./competition-versioning/index.js";
+
+export {
+  COMPETITION_CONFIGURATION_PHASE,
+} from "./competition-configuration/index.js";
+
+export * from "./competition-configuration/index.js";

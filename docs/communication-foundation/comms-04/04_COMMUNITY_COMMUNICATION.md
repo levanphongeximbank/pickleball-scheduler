@@ -119,10 +119,8 @@ Communication **must not**:
 
 ## COMMS-05 readiness
 
-**READY_WITH_CONDITIONS** for Persistence & Realtime:
+**SATISFIED_WITH_ACTIVATION_GATES** — see [`../comms-05/05_PERSISTENCE_AND_REALTIME.md`](../comms-05/05_PERSISTENCE_AND_REALTIME.md).
 
-1. Implement production adapters for Community repository ports (channel, message, read cursor, pin, restriction) without changing contracts.
-2. Wire realtime delivery only through existing `RealtimeDeliveryPort` — do not fork Community chat transport.
-3. Keep Community membership / tenant SoT outside Communication; adapters must remain read-only consumers.
-4. Do not enable UI or Notification delivery in COMMS-05 unless Owner expands scope.
-5. Preserve COMMS-01..04 invariants and regression suite before production wiring.
+COMMS-05 authored production-oriented adapters + SQL package without changing Community contracts.
+Remaining gates: Staging/Production SQL apply, client RLS activation, realtime publication, Notification outbox.
+Community membership SQL helper remains an activation blocker for client RLS (app-layer `CommunityMembershipReader` still required).
