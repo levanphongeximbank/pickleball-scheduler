@@ -90,3 +90,12 @@ export {
   SELF_FOUNDATION_PRIVACY_LABELS,
   SELF_FOUNDATION_HANDEDNESS_OPTIONS,
 } from "./utils/selfFoundationForm.js";
+
+export {
+  PLAYER_PLATFORM_ADAPTER_ERROR,
+  projectPlayerActor,
+  projectPlayerSubject,
+  projectPlayerSecurityContext,
+  projectPlayerErrorDescriptor,
+  projectPlayerOperationIdentity,
+} from "./platform/index.js";
