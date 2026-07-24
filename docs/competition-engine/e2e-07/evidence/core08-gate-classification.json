@@ -1,0 +1,51 @@
+{
+  "schemaVersion": "e2e-07-end-to-end-certification-v1",
+  "generatedAt": null,
+  "sourceCommit": "TBD",
+  "scenarioId": "core08-1e-branch-local-delta-gate",
+  "certificationVersion": "e2e-07-end-to-end-certification-v1",
+  "testReferences": [
+    "tests/competition-engine-e2e-07-core08-gate-classification.test.js",
+    "tests/competition-core-draw-runtime-core08-1e-certification.test.js"
+  ],
+  "fingerprint": "e2e07:core08-gate-classification-v1",
+  "verdict": "CERTIFIED_LOCAL_MVP",
+  "deferredChecks": [],
+  "payload": {
+    "classification": {
+      "id": "CORE08_1E_BRANCH_LOCAL_DELTA_GATE",
+      "status": "PRE_EXISTING_MAIN_FAILURE",
+      "policy": "BRANCH_LOCAL_DELTA_POLICY",
+      "e2e07Regression": false,
+      "originalTestPreserved": true,
+      "originalTestSkipped": false
+    },
+    "failingTestIdentity": {
+      "file": "tests/competition-core-draw-runtime-core08-1e-certification.test.js",
+      "name": "1E: production engines / UI / SQL / deploy absent from branch-local delta",
+      "line": 276
+    },
+    "freshMainControl": {
+      "head": "6df46e3d02c8ec10246a5602bd5a4e14f06d9a03",
+      "deltaFileCount": 0,
+      "expected": "names.length >= 31",
+      "actual": "got 0",
+      "exitCode": 1,
+      "result": "FAIL"
+    },
+    "e2e07BranchObservation": {
+      "headBaseline": "89b284ad666379882ca25672d1df404140cb5dc4",
+      "expected": "scripts/ci/unit-test-files.json not in branch delta (CORE-08 local forbid list)",
+      "actual": "unauthorized touched file: scripts/ci/unit-test-files.json",
+      "exitCode": 1,
+      "result": "FAIL_CLASSIFIED_NOT_REGRESSION"
+    },
+    "ownershipDiff": {
+      "competitionCoreImplTouched": false,
+      "core08TestsTouched": false,
+      "core08DocsTouched": false,
+      "core08PhaseManifestTouched": false,
+      "unitTestFilesJsonChange": "additive e2e-07 test registration only"
+    }
+  }
+}

@@ -33,6 +33,7 @@ Running `runCompetitionEndToEndCertification()` yields **`CERTIFIED_LOCAL_MVP`**
 | [10_EVIDENCE_MANIFEST.md](./10_EVIDENCE_MANIFEST.md) | Evidence pack |
 | [11_DEFERRED_AND_RESIDUAL_RISKS.md](./11_DEFERRED_AND_RESIDUAL_RISKS.md) | Residual risks |
 | [12_FINAL_CLOSURE_READINESS.md](./12_FINAL_CLOSURE_READINESS.md) | Closure checklist |
+| [13_CORE08_GATE_CLASSIFICATION.md](./13_CORE08_GATE_CLASSIFICATION.md) | CORE-08 1E branch-local gate classification |
 
 ## Tests
 

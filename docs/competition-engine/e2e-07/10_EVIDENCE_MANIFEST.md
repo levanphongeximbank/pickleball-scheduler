@@ -18,4 +18,6 @@ Common fields: `generatedAt: null`, `sourceCommit: "TBD"`, `fingerprint`, `verdi
 
 Full-pack fingerprint example: `e2e07:f7c53991050bfd4650ccfabd8ad7e91c` (local deterministic pack; re-verify after commit via harness).
 
+Additional classification evidence: `evidence/core08-gate-classification.json` (`PRE_EXISTING_MAIN_FAILURE` / `BRANCH_LOCAL_DELTA_POLICY`).
+
 No secrets in evidence payloads.

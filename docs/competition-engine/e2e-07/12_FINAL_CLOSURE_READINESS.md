@@ -8,6 +8,7 @@
 - [x] Deterministic evidence pack generated
 - [x] Capability traceability (59 codes)
 - [x] `finalVerdict: CERTIFIED_LOCAL_MVP`
+- [x] CORE-08 1E branch-local delta gate classified (`PRE_EXISTING_MAIN_FAILURE`; no E2E-07 Core regression)
 
 ## Pending for production closure
 
