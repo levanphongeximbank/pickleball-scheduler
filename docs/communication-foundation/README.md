@@ -10,9 +10,10 @@
 | **COMMS-02** Direct Messaging | Complete (app/domain; not production-wired) | [`comms-02/02_DIRECT_MESSAGING.md`](./comms-02/02_DIRECT_MESSAGING.md) |
 | **COMMS-03** Club Communication | Complete (app/domain; not production-wired) | [`comms-03/03_CLUB_COMMUNICATION.md`](./comms-03/03_CLUB_COMMUNICATION.md) |
 | **COMMS-04** Community Communication | Complete (app/domain; not production-wired) | [`comms-04/04_COMMUNITY_COMMUNICATION.md`](./comms-04/04_COMMUNITY_COMMUNICATION.md) |
-| COMMS-05 … COMMS-07 | Planned | See roadmap in COMMS-00 |
+| **COMMS-05** Persistence & Realtime | Authored (SQL + adapters; **not applied** / not remote-wired) | [`comms-05/05_PERSISTENCE_AND_REALTIME.md`](./comms-05/05_PERSISTENCE_AND_REALTIME.md) |
+| COMMS-06 … COMMS-07 | Planned | See roadmap in COMMS-00 |
 
-**Runtime module:** `src/features/communication/` — contracts, domain rules, ports, Direct + Club + Community application; not production-wired.
+**Runtime module:** `src/features/communication/` — contracts, domain, ports, Direct + Club + Community application, persistence adapters + realtime foundation; **not** Staging/Production applied.
 
 ## Hard boundary
 
@@ -41,4 +42,11 @@ See COMMS-00 for ownership, dependency status, and phase readiness.
 - Persistence-agnostic ports + in-memory test doubles only
 - Public barrel: `src/features/communication/index.js`
 
-**Next:** COMMS-05 Persistence & Realtime — see readiness in [`comms-04/04_COMMUNITY_COMMUNICATION.md`](./comms-04/04_COMMUNITY_COMMUNICATION.md).
+## COMMS-05 snapshot
+
+- SQL package: `docs/supabase-communication-comms05.sql` (`AUTHORED_NOT_APPLIED`)
+- Fail-closed client RLS (deny-all); trusted-backend adapters
+- Realtime foundation via `RealtimeDeliveryPort` (no remote publication)
+- Activation gates: Staging apply, Production, client RLS, realtime publication, Notification outbox
+
+**Next:** COMMS-06 UI — see readiness in [`comms-05/05_PERSISTENCE_AND_REALTIME.md`](./comms-05/05_PERSISTENCE_AND_REALTIME.md).
