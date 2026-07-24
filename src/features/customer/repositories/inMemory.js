@@ -251,5 +251,17 @@ export function createInMemoryCustomerRepository() {
     resetAllForTests() {
       byId.clear();
     },
+
+    /**
+     * Test/harness only — restore a prior snapshot without version monotonic checks.
+     * Used by linkage transactional rollback.
+     * @param {object} customer
+     */
+    _restoreForTests(customer) {
+      if (!customer?.customerId) return;
+      const s = createCustomerScope(customer);
+      const key = scopeKey(s.tenantId, s.venueId, customer.customerId);
+      byId.set(key, cloneFrozen(customer));
+    },
   };
 }

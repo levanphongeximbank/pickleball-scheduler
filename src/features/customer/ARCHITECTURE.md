@@ -1,10 +1,10 @@
-# Customer Management Architecture (CUSTOMER-01 … CUSTOMER-04)
+# Customer Management Architecture (CUSTOMER-01 … CUSTOMER-05)
 
 **Module home:** `src/features/customer/`
 
-**Status:** Domain + application services + in-memory repository + durable persistence adapter + runtime composition + Platform Core adoption + CRM directory adapter + consent/preference capability + Notification/CRM consent read adapters. SQL/RLS authored (not applied). UI deferred.
+**Status:** Domain + application services + in-memory repository + durable persistence adapter + runtime composition + Platform Core adoption + CRM directory adapter + consent/preference capability + Identity/Player/CRM linkage capability + Notification/CRM consent read adapters. SQL/RLS authored (not applied). UI deferred.
 
-**Baseline:** CUSTOMER-01 (PR #211) + CUSTOMER-02 (PR #213) + CUSTOMER-03 (PR #216) + CUSTOMER-04 consent/preferences.
+**Baseline:** CUSTOMER-01 (PR #211) + CUSTOMER-02 (PR #213) + CUSTOMER-03 (PR #216) + CUSTOMER-04 (PR #218) + CUSTOMER-05 Identity/Player/CRM linking.
 
 ---
 
@@ -21,9 +21,13 @@ It owns:
 - runtime composition (disabled / memory / durable) with Production fail-closed;
 - classification / segment **references**;
 - communication preference + consent **business state**, history, and eligibility projection;
-- typed linkages to user account, player, and organization;
+- **customer-side** typed linkages to Identity account, Player, and CRM contact/reference (lifecycle, provenance, uniqueness, reverse lookup, history);
 - search/read of customer master data;
 - merge/deduplication **contract** (foundation; runtime deferred).
+
+> Customer Management owns the customer-side linkage record, but Identity, Player Management and CRM remain the source of truth for their own entities.
+
+> Matching email, phone or name is not sufficient evidence to create a canonical Customer linkage.
 
 Customer contact information is business master data. It is **not** an authentication credential and does not prove ownership or verification without trusted external evidence.
 
@@ -54,13 +58,15 @@ Customer contact information is business master data. It is **not** an authentic
 
 ```
 platform/        Platform Core projections (pure)
-adapters/        Cross-module boundary adapters (CRM directory, Notification eligibility, CRM consent read)
+adapters/        Cross-module boundary adapters (CRM directory, Notification eligibility,
+                 CRM consent read, Identity/Player/CRM linkage facades)
 application/     CustomerApplicationService + ConsentPreferenceApplicationService
-projectors/      Summary / details / profile / contact / consent / preference / eligibility
+                 + LinkageApplicationService
+projectors/      Summary / details / profile / contact / consent / preference / eligibility / linkage
 runtime/         Composition (disabled / memory / durable)
 persistence/     Database client port + durable adapters + mapping
-repositories/    Ports + in-memory certification adapters
-domain/          Pure factories, transitions, value objects, eligibility
+repositories/    Ports + in-memory certification adapters + directory ports
+domain/          Pure factories, transitions, value objects, eligibility, linkage
 constants/       Enums and allowlists
 errors/          Typed CustomerError codes
 index.js         Public facade only
@@ -82,11 +88,13 @@ SQL: `tenant_id` + `venue_id` on every Customer table. RLS uses CRM-style fail-c
 |-------|------|
 | CUSTOMER-03 SQL pack | `docs/customer-management/phase-3/` |
 | CUSTOMER-04 SQL pack | `docs/customer-management/phase-4/` |
+| CUSTOMER-05 SQL pack | `docs/customer-management/phase-5/` |
 | Durable adapters | `src/features/customer/persistence/` |
 | Runtime | `src/features/customer/runtime/` |
 
 Aggregate writes: `customer_save_aggregate` RPC (service_role execute only).  
 Consent/preference writes: `customer_save_consent` / `customer_save_preference` (service_role; current-state + history).  
+Linkage writes: `customer_save_linkage` (service_role; linkage + history + customer version/denorm sync).  
 Authenticated JWT: SELECT policies only — writes blocked until Owner authorizes.
 
 ---
@@ -96,6 +104,7 @@ Authenticated JWT: SELECT policies only — writes blocked until Owner authorize
 - `createFailClosedCustomerApplication()` / service without repository → `CUSTOMER_RUNTIME_NOT_CONFIGURED`
 - `createCustomerRuntime({ mode: 'durable' })` without `db`/`repository` → fail-closed
 - Production + memory mode → rejected
+- Linkage writes without directory ports → `LINKAGE_DIRECTORY_UNAVAILABLE`
 - No silent demo / memory fallback in Production
 
 ---
@@ -112,15 +121,16 @@ Adoption/migration of legacy venue customers remains **deferred**.
 
 ---
 
-## Deferred (CUSTOMER-05+)
+## Deferred (CUSTOMER-06+)
 
 - Staging/Production apply (Owner-gated)
+- Fuzzy matching / auto identity resolution / merge execution
+- Explicit transfer command with policy authorization
 - Legacy club-blob compatibility adapter wired into runtime
 - Booking `customerId` FK adoption
 - Authenticated write policies + permission seed
 - UI / routes / preference center
-- Merge execution engine
 - Contact verification runtime (OTP / email verify)
 - Live Notification delivery enablement
 
-See `docs/customer-management/phase-4/`.
+See `docs/customer-management/phase-5/`.

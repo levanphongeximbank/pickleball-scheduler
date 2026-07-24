@@ -1,22 +1,29 @@
 /**
  * Customer Management — public facade
- * (CUSTOMER-01 + CUSTOMER-02 + CUSTOMER-03 + CUSTOMER-04).
+ * (CUSTOMER-01 + CUSTOMER-02 + CUSTOMER-03 + CUSTOMER-04 + CUSTOMER-05).
  *
  * Exports approved contracts, constants, pure domain factories,
  * application service factories, in-memory repositories, durable repository
- * adapter factories, runtime composition, read projectors, CRM/Notification
- * boundary adapters, and Platform Core adoption projections.
+ * adapter factories, runtime composition, read projectors, CRM/Notification/
+ * Identity/Player boundary adapters, and Platform Core adoption projections.
  *
  * Does NOT export:
  * - mutable repository internal maps
  * - Supabase clients / credentials / service-role keys
  * - UI / routes / SQL migration runners
  * - raw evidence payloads
+ * - Identity credentials / full Player profiles / full CRM internals
  * - legacy `src/models/customer.js` or `src/domain/customerService.js` as SoT
  *
  * Customer Management is the source of truth for customer master data,
  * but NOT for authentication, player sports profile, CRM workflow,
  * or financial transactions.
+ *
+ * Customer Management owns the customer-side linkage record, but Identity,
+ * Player Management and CRM remain the source of truth for their own entities.
+ *
+ * Matching email, phone or name is not sufficient evidence to create a
+ * canonical Customer linkage.
  *
  * Customer contact information is business master data. It is not an
  * authentication credential and does not prove ownership or verification
@@ -128,6 +135,28 @@ export {
   LEGACY_VENUE_CUSTOMER_TYPE_VALUES,
   isCustomerClassificationKind,
 } from "./constants/classification.js";
+export {
+  CUSTOMER_LINKAGE_TYPE,
+  CUSTOMER_LINKAGE_TYPE_VALUES,
+  CUSTOMER_LINKAGE_EXTERNAL_SYSTEM,
+  isCustomerLinkageType,
+} from "./constants/linkageTypes.js";
+export {
+  CUSTOMER_LINKAGE_STATUS,
+  CUSTOMER_LINKAGE_STATUS_VALUES,
+  isCustomerLinkageStatus,
+  isActiveCustomerLinkageStatus,
+} from "./constants/linkageStatuses.js";
+export {
+  CUSTOMER_LINKAGE_SOURCE,
+  CUSTOMER_LINKAGE_SOURCE_VALUES,
+  isCustomerLinkageSource,
+} from "./constants/linkageSources.js";
+export {
+  CUSTOMER_LINKAGE_ACTION,
+  CUSTOMER_LINKAGE_ACTION_VALUES,
+  isCustomerLinkageAction,
+} from "./constants/linkageActions.js";
 
 // Domain
 export {
@@ -169,6 +198,14 @@ export {
   createPlayerLinkage,
   createOrganizationLinkage,
 } from "./domain/linkages.js";
+export {
+  createCustomerLinkageRecord,
+  activateCustomerLinkage,
+  endCustomerLinkage,
+  createCustomerLinkageHistoryRecord,
+  defaultExternalSystemForLinkageType,
+  defaultExternalReferenceType,
+} from "./domain/linkageRecord.js";
 export {
   createCommunicationPreference,
   createConsentReference,
@@ -225,6 +262,12 @@ export {
   cloneFrozen,
   CUSTOMER_CONSENT_REPOSITORY_PORTS,
   createInMemoryConsentPreferenceRepository,
+  CUSTOMER_LINKAGE_REPOSITORY_PORTS,
+  createInMemoryCustomerLinkageRepository,
+  CUSTOMER_LINKAGE_DIRECTORY_PORTS,
+  createInMemoryIdentityAccountDirectory,
+  createInMemoryPlayerDirectory,
+  createInMemoryCrmContactDirectory,
 } from "./repositories/index.js";
 
 // Application
@@ -236,6 +279,10 @@ export {
   createConsentPreferenceApplicationService,
   createFailClosedConsentPreferenceApplication,
 } from "./application/ConsentPreferenceApplicationService.js";
+export {
+  createLinkageApplicationService,
+  createFailClosedLinkageApplication,
+} from "./application/LinkageApplicationService.js";
 
 // Projectors
 export {
@@ -251,27 +298,41 @@ export {
   projectCommunicationEligibilityView,
   projectCustomerConsentPreferenceSummary,
 } from "./projectors/consentPreferenceViews.js";
+export {
+  projectCustomerLinkageView,
+  projectCustomerIdentityLinkView,
+  projectCustomerPlayerLinkView,
+  projectCustomerCrmLinkView,
+  projectCustomerLinkageHistoryView,
+  projectCustomerLinkageLookupView,
+} from "./projectors/linkageViews.js";
 
 // Adapters (boundary only)
 export { createVenueCustomerDirectoryAdapter } from "./adapters/venueCustomerDirectoryAdapter.js";
 export { createCustomerNotificationEligibilityAdapter } from "./adapters/notificationEligibilityAdapter.js";
 export { createCustomerCrmConsentPreferenceAdapter } from "./adapters/crmConsentPreferenceAdapter.js";
+export { createCustomerIdentityLinkageAdapter } from "./adapters/identityLinkageAdapter.js";
+export { createCustomerPlayerLinkageAdapter } from "./adapters/playerLinkageAdapter.js";
+export { createCustomerCrmLinkageAdapter } from "./adapters/crmLinkageAdapter.js";
 
-// Persistence (CUSTOMER-03 / CUSTOMER-04) — ports + durable adapter; no live client
+// Persistence (CUSTOMER-03 / CUSTOMER-04 / CUSTOMER-05) — ports + durable adapter; no live client
 export {
   CUSTOMER_PHASE_3_TABLES,
   CUSTOMER_PHASE_3_RPC,
   CUSTOMER_PHASE_4_TABLES,
   CUSTOMER_PHASE_4_RPC,
+  CUSTOMER_PHASE_5_TABLES,
+  CUSTOMER_PHASE_5_RPC,
   requireCustomerDatabaseClientPort,
   createDurableCustomerRepository,
   createDurableConsentPreferenceRepository,
+  createDurableCustomerLinkageRepository,
   createFakeCustomerDatabaseClient,
   mapCustomerDomainToSavePayload,
   mapCustomerRowsToDomain,
 } from "./persistence/index.js";
 
-// Runtime composition (CUSTOMER-03 + CUSTOMER-04)
+// Runtime composition (CUSTOMER-03 + CUSTOMER-04 + CUSTOMER-05)
 export {
   CUSTOMER_RUNTIME_MODE,
   CUSTOMER_RUNTIME_ENVIRONMENT,
@@ -310,20 +371,34 @@ export const CUSTOMER_PUBLIC_EXPORTS = Object.freeze([
   "CUSTOMER_COMMUNICATION_PURPOSE",
   "CUSTOMER_COMMUNICATION_ELIGIBILITY",
   "CUSTOMER_ELIGIBILITY_REASON",
+  "CUSTOMER_LINKAGE_TYPE",
+  "CUSTOMER_LINKAGE_STATUS",
+  "CUSTOMER_LINKAGE_SOURCE",
+  "CUSTOMER_LINKAGE_ACTION",
   "createCustomerProfile",
   "createCustomerApplicationService",
   "createFailClosedCustomerApplication",
   "createConsentPreferenceApplicationService",
   "createFailClosedConsentPreferenceApplication",
+  "createLinkageApplicationService",
+  "createFailClosedLinkageApplication",
   "createInMemoryCustomerRepository",
   "createInMemoryConsentPreferenceRepository",
+  "createInMemoryCustomerLinkageRepository",
+  "createInMemoryIdentityAccountDirectory",
+  "createInMemoryPlayerDirectory",
+  "createInMemoryCrmContactDirectory",
   "createDurableCustomerRepository",
   "createDurableConsentPreferenceRepository",
+  "createDurableCustomerLinkageRepository",
   "createCustomerRuntime",
   "createCustomerRuntimeTestHarness",
   "createVenueCustomerDirectoryAdapter",
   "createCustomerNotificationEligibilityAdapter",
   "createCustomerCrmConsentPreferenceAdapter",
+  "createCustomerIdentityLinkageAdapter",
+  "createCustomerPlayerLinkageAdapter",
+  "createCustomerCrmLinkageAdapter",
   "projectCustomerSummary",
   "projectCustomerDetails",
   "projectCustomerProfileView",
@@ -331,6 +406,10 @@ export const CUSTOMER_PUBLIC_EXPORTS = Object.freeze([
   "projectCustomerConsentView",
   "projectCustomerCommunicationPreferenceView",
   "projectCommunicationEligibilityView",
+  "projectCustomerLinkageView",
+  "projectCustomerIdentityLinkView",
+  "projectCustomerPlayerLinkView",
+  "projectCustomerCrmLinkView",
   "evaluateCommunicationEligibility",
   "normalizeCustomerEmail",
   "normalizeCustomerPhone",
@@ -339,5 +418,6 @@ export const CUSTOMER_PUBLIC_EXPORTS = Object.freeze([
   "createCustomerMergeProposal",
   "CUSTOMER_PHASE_3_TABLES",
   "CUSTOMER_PHASE_4_TABLES",
+  "CUSTOMER_PHASE_5_TABLES",
   "CUSTOMER_RUNTIME_MODE",
 ]);

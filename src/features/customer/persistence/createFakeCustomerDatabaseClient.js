@@ -1,5 +1,5 @@
 /**
- * In-process durable contract harness (CUSTOMER-03 + CUSTOMER-04).
+ * In-process durable contract harness (CUSTOMER-03 + CUSTOMER-04 + CUSTOMER-05).
  * Simulates CustomerDatabaseClientPort + save RPCs.
  * NOT a live database. NOT for Production.
  */
@@ -9,6 +9,8 @@ import {
   CUSTOMER_PHASE_3_TABLES,
   CUSTOMER_PHASE_4_RPC,
   CUSTOMER_PHASE_4_TABLES,
+  CUSTOMER_PHASE_5_RPC,
+  CUSTOMER_PHASE_5_TABLES,
 } from "./databaseClientPort.js";
 
 /**
@@ -27,6 +29,8 @@ export function createFakeCustomerDatabaseClient() {
     [CUSTOMER_PHASE_4_TABLES.CONSENT_HISTORY, new Map()],
     [CUSTOMER_PHASE_4_TABLES.PREFERENCES, new Map()],
     [CUSTOMER_PHASE_4_TABLES.PREFERENCE_HISTORY, new Map()],
+    [CUSTOMER_PHASE_5_TABLES.LINKAGES, new Map()],
+    [CUSTOMER_PHASE_5_TABLES.LINKAGE_HISTORY, new Map()],
   ]);
 
   function pkFor(table, row) {
@@ -37,6 +41,8 @@ export function createFakeCustomerDatabaseClient() {
     if (table === CUSTOMER_PHASE_4_TABLES.CONSENT_HISTORY) return row.history_id;
     if (table === CUSTOMER_PHASE_4_TABLES.PREFERENCES) return row.preference_id;
     if (table === CUSTOMER_PHASE_4_TABLES.PREFERENCE_HISTORY) return row.history_id;
+    if (table === CUSTOMER_PHASE_5_TABLES.LINKAGES) return row.linkage_id;
+    if (table === CUSTOMER_PHASE_5_TABLES.LINKAGE_HISTORY) return row.history_id;
     throw new Error(`Unknown table ${table}`);
   }
 
@@ -119,6 +125,36 @@ export function createFakeCustomerDatabaseClient() {
           existing.is_primary === true &&
           existing.status === "ACTIVE" &&
           existing.customer_id === row.customer_id
+        ) {
+          const err = new Error("duplicate key value violates unique constraint");
+          err.code = "23505";
+          err.name = "CustomerUniqueViolation";
+          throw err;
+        }
+      }
+
+      if (table === CUSTOMER_PHASE_5_TABLES.LINKAGES && row.status === "ACTIVE") {
+        if (
+          existing.status === "ACTIVE" &&
+          existing.tenant_id === row.tenant_id &&
+          existing.venue_id === row.venue_id &&
+          existing.linkage_type === row.linkage_type &&
+          existing.external_system === row.external_system &&
+          existing.external_reference_id === row.external_reference_id
+        ) {
+          const err = new Error("duplicate key value violates unique constraint");
+          err.code = "23505";
+          err.name = "CustomerUniqueViolation";
+          throw err;
+        }
+        if (
+          (row.linkage_type === "IDENTITY_ACCOUNT" ||
+            row.linkage_type === "PLAYER") &&
+          existing.status === "ACTIVE" &&
+          existing.tenant_id === row.tenant_id &&
+          existing.venue_id === row.venue_id &&
+          existing.customer_id === row.customer_id &&
+          existing.linkage_type === row.linkage_type
         ) {
           const err = new Error("duplicate key value violates unique constraint");
           err.code = "23505";
@@ -431,6 +467,128 @@ export function createFakeCustomerDatabaseClient() {
     }
   }
 
+  function saveLinkage(args = {}) {
+    const linkage = args.p_linkage;
+    const history = args.p_history;
+    const expectedLinkageVersion =
+      args.p_expected_linkage_version == null
+        ? null
+        : Number(args.p_expected_linkage_version);
+    const expectedCustomerVersion =
+      args.p_expected_customer_version == null
+        ? null
+        : Number(args.p_expected_customer_version);
+    const customerVersionAfter =
+      args.p_customer_version_after == null
+        ? null
+        : Number(args.p_customer_version_after);
+
+    if (!linkage || !history) {
+      const err = new Error("customer_save_linkage: linkage and history required");
+      err.code = "22023";
+      throw err;
+    }
+
+    const customerStore = tables.get(CUSTOMER_PHASE_3_TABLES.CUSTOMERS);
+    const parent = customerStore.get(linkage.customer_id);
+    if (
+      !parent ||
+      parent.tenant_id !== linkage.tenant_id ||
+      parent.venue_id !== linkage.venue_id
+    ) {
+      const err = new Error("customer_save_linkage: parent customer missing");
+      err.code = "23503";
+      throw err;
+    }
+
+    if (
+      expectedCustomerVersion != null &&
+      parent.version !== expectedCustomerVersion
+    ) {
+      const err = new Error("CUSTOMER_VERSION_CONFLICT");
+      err.name = "CustomerVersionConflict";
+      err.code = "P0001";
+      throw err;
+    }
+
+    const linkageStore = tables.get(CUSTOMER_PHASE_5_TABLES.LINKAGES);
+    const historyStore = tables.get(CUSTOMER_PHASE_5_TABLES.LINKAGE_HISTORY);
+    const existing = linkageStore.get(linkage.linkage_id) || null;
+
+    if (expectedLinkageVersion != null) {
+      if (!existing && expectedLinkageVersion !== 0) {
+        const err = new Error("CUSTOMER_VERSION_CONFLICT");
+        err.name = "CustomerVersionConflict";
+        err.code = "P0001";
+        throw err;
+      }
+      if (existing && existing.version !== expectedLinkageVersion) {
+        const err = new Error("CUSTOMER_VERSION_CONFLICT");
+        err.name = "CustomerVersionConflict";
+        err.code = "P0001";
+        throw err;
+      }
+    }
+
+    const snapshotLinkage = existing ? cloneRow(existing) : null;
+    const snapshotHistory = historyStore.has(history.history_id)
+      ? cloneRow(historyStore.get(history.history_id))
+      : null;
+    const snapshotCustomer = cloneRow(parent);
+
+    try {
+      if (historyStore.has(history.history_id)) {
+        const err = new Error("duplicate key value violates unique constraint");
+        err.code = "23505";
+        throw err;
+      }
+      if (args.forceHistoryFailure) {
+        throw new Error("forced history failure");
+      }
+      historyStore.set(history.history_id, cloneRow(history));
+      assertUniqueConstraints(
+        CUSTOMER_PHASE_5_TABLES.LINKAGES,
+        linkage,
+        linkage.linkage_id
+      );
+      linkageStore.set(linkage.linkage_id, cloneRow(linkage));
+
+      const nextCustomer = cloneRow(parent);
+      if (customerVersionAfter != null) {
+        nextCustomer.version = customerVersionAfter;
+      } else {
+        nextCustomer.version = parent.version + 1;
+      }
+      nextCustomer.updated_at = linkage.updated_at;
+      if (args.p_clear_account_user_id) {
+        nextCustomer.account_user_id = null;
+      } else if (args.p_sync_account_user_id !== undefined) {
+        nextCustomer.account_user_id = args.p_sync_account_user_id;
+      }
+      if (args.p_clear_player_id) {
+        nextCustomer.player_id = null;
+      } else if (args.p_sync_player_id !== undefined) {
+        nextCustomer.player_id = args.p_sync_player_id;
+      }
+      customerStore.set(linkage.customer_id, nextCustomer);
+
+      return cloneRow(linkageStore.get(linkage.linkage_id));
+    } catch (err) {
+      if (snapshotHistory) historyStore.set(history.history_id, snapshotHistory);
+      else historyStore.delete(history.history_id);
+      if (snapshotLinkage) {
+        linkageStore.set(snapshotLinkage.linkage_id, snapshotLinkage);
+        if (linkage.linkage_id !== snapshotLinkage.linkage_id) {
+          linkageStore.delete(linkage.linkage_id);
+        }
+      } else {
+        linkageStore.delete(linkage.linkage_id);
+      }
+      customerStore.set(linkage.customer_id, snapshotCustomer);
+      throw err;
+    }
+  }
+
   return {
     _tables: tables,
 
@@ -474,7 +632,8 @@ export function createFakeCustomerDatabaseClient() {
       if (!store) throw new Error(`Unknown table ${table}`);
       if (
         table === CUSTOMER_PHASE_4_TABLES.CONSENT_HISTORY ||
-        table === CUSTOMER_PHASE_4_TABLES.PREFERENCE_HISTORY
+        table === CUSTOMER_PHASE_4_TABLES.PREFERENCE_HISTORY ||
+        table === CUSTOMER_PHASE_5_TABLES.LINKAGE_HISTORY
       ) {
         const err = new Error("history tables are append-only");
         err.code = "P0001";
@@ -496,7 +655,8 @@ export function createFakeCustomerDatabaseClient() {
       if (!store) throw new Error(`Unknown table ${table}`);
       if (
         table === CUSTOMER_PHASE_4_TABLES.CONSENT_HISTORY ||
-        table === CUSTOMER_PHASE_4_TABLES.PREFERENCE_HISTORY
+        table === CUSTOMER_PHASE_4_TABLES.PREFERENCE_HISTORY ||
+        table === CUSTOMER_PHASE_5_TABLES.LINKAGE_HISTORY
       ) {
         const err = new Error("history tables are append-only");
         err.code = "P0001";
@@ -520,6 +680,9 @@ export function createFakeCustomerDatabaseClient() {
       }
       if (fn === CUSTOMER_PHASE_4_RPC.SAVE_PREFERENCE) {
         return savePreference(args);
+      }
+      if (fn === CUSTOMER_PHASE_5_RPC.SAVE_LINKAGE) {
+        return saveLinkage(args);
       }
       throw new Error(`Unknown RPC ${fn}`);
     },

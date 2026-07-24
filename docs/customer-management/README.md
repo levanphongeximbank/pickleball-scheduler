@@ -10,8 +10,13 @@ Canonical customer master-data module for PICK_VN.
 | Phase 2 (profile/contact) | `docs/customer-management/phase-2/00_CUSTOMER_02_PROFILE_CONTACT.md` |
 | Phase 3 (persistence/runtime) | `docs/customer-management/phase-3/` |
 | Phase 4 (consent/preferences) | `docs/customer-management/phase-4/` |
+| Phase 5 (Identity/Player/CRM linking) | `docs/customer-management/phase-5/` |
 
 **SoT statement:** Customer Management is the source of truth for customer master data, but not for authentication, player sports profile, CRM workflow, or financial transactions.
+
+**Customer Management owns the customer-side linkage record, but Identity, Player Management and CRM remain the source of truth for their own entities.**
+
+**Matching email, phone or name is not sufficient evidence to create a canonical Customer linkage.**
 
 **Customer contact information is business master data. It is not an authentication credential and does not prove ownership or verification without trusted external evidence.**
 
@@ -21,4 +26,4 @@ Canonical customer master-data module for PICK_VN.
 
 **Notification may consume communication eligibility but must not mutate Customer consent state directly.**
 
-**Current phase:** CUSTOMER-04 Consent & Communication Preferences (SQL authored, not applied; domain + adapters + durable fake-DB certified).
+**Current phase:** CUSTOMER-05 Identity, Player & CRM Linking (SQL authored, not applied; domain + adapters + durable fake-DB certified).
