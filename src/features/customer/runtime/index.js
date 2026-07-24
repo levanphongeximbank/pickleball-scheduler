@@ -1,11 +1,15 @@
 /**
- * Customer runtime composition factory (CUSTOMER-03 + CUSTOMER-04).
+ * Customer runtime composition factory
+ * (CUSTOMER-03 + CUSTOMER-04 + CUSTOMER-05).
  *
  * Explicit DI only. No env reads, no global Supabase client, no network during
  * construction, no Production memory fallback.
  *
  * Customer persistence is durable business master data and must never silently
  * fall back to an in-memory repository in Production.
+ *
+ * Linking requires directory ports when linkageApplication is used — fail-closed
+ * if directories are missing at command time.
  */
 
 export {
@@ -18,12 +22,15 @@ export {
 
 import { createCustomerApplicationService } from "../application/CustomerApplicationService.js";
 import { createConsentPreferenceApplicationService } from "../application/ConsentPreferenceApplicationService.js";
+import { createLinkageApplicationService } from "../application/LinkageApplicationService.js";
 import { CUSTOMER_ERROR_CODES } from "../errors/codes.js";
 import { CustomerError } from "../errors/CustomerError.js";
 import { createDurableCustomerRepository } from "../persistence/durable/durableCustomerRepository.js";
 import { createDurableConsentPreferenceRepository } from "../persistence/durable/durableConsentPreferenceRepository.js";
+import { createDurableCustomerLinkageRepository } from "../persistence/durable/durableCustomerLinkageRepository.js";
 import { createInMemoryCustomerRepository } from "../repositories/inMemory.js";
 import { createInMemoryConsentPreferenceRepository } from "../repositories/inMemoryConsentPreference.js";
+import { createInMemoryCustomerLinkageRepository } from "../repositories/inMemoryLinkage.js";
 import {
   createSequentialCustomerIdGenerator,
   createSystemCustomerClock,
@@ -38,6 +45,10 @@ const ALLOWED_DEPENDENCY_KEYS = Object.freeze([
   "db",
   "repository",
   "consentPreferenceRepository",
+  "linkageRepository",
+  "identityAccountDirectory",
+  "playerDirectory",
+  "crmContactDirectory",
   "clock",
   "idGenerator",
 ]);
@@ -91,8 +102,13 @@ export function createCustomerRuntime(rawConfig = {}, dependencies = {}) {
       persistenceMode: CUSTOMER_RUNTIME_MODE.DISABLED,
       repository: null,
       consentPreferenceRepository: null,
+      linkageRepository: null,
+      identityAccountDirectory: null,
+      playerDirectory: null,
+      crmContactDirectory: null,
       application: null,
       consentPreferenceApplication: null,
+      linkageApplication: null,
       assertReady() {
         throw new CustomerError(
           CUSTOMER_ERROR_CODES.RUNTIME_NOT_CONFIGURED,
@@ -106,12 +122,16 @@ export function createCustomerRuntime(rawConfig = {}, dependencies = {}) {
   let repository = dependencies.repository || null;
   let consentPreferenceRepository =
     dependencies.consentPreferenceRepository || null;
+  let linkageRepository = dependencies.linkageRepository || null;
   let persistenceMode = config.mode;
 
   if (config.mode === CUSTOMER_RUNTIME_MODE.MEMORY) {
     repository = repository || createInMemoryCustomerRepository();
     consentPreferenceRepository =
       consentPreferenceRepository || createInMemoryConsentPreferenceRepository();
+    linkageRepository =
+      linkageRepository ||
+      createInMemoryCustomerLinkageRepository({ customerRepository: repository });
     persistenceMode = CUSTOMER_RUNTIME_MODE.MEMORY;
   } else if (config.mode === CUSTOMER_RUNTIME_MODE.DURABLE) {
     if (repository) {
@@ -147,6 +167,23 @@ export function createCustomerRuntime(rawConfig = {}, dependencies = {}) {
       }
     }
 
+    if (!linkageRepository) {
+      if (dependencies.db) {
+        linkageRepository = createDurableCustomerLinkageRepository({
+          db: dependencies.db,
+        });
+      } else {
+        throw new CustomerError(
+          CUSTOMER_ERROR_CODES.RUNTIME_NOT_CONFIGURED,
+          "Durable Customer linkage runtime requires db or linkageRepository.",
+          {
+            mode: CUSTOMER_RUNTIME_MODE.DURABLE,
+            environment: config.environment,
+          }
+        );
+      }
+    }
+
     if (config.environment === CUSTOMER_RUNTIME_ENVIRONMENT.PRODUCTION) {
       if (persistenceMode !== CUSTOMER_RUNTIME_MODE.DURABLE) {
         throw new CustomerError(
@@ -174,6 +211,18 @@ export function createCustomerRuntime(rawConfig = {}, dependencies = {}) {
     );
   }
 
+  if (!linkageRepository) {
+    throw new CustomerError(
+      CUSTOMER_ERROR_CODES.RUNTIME_NOT_CONFIGURED,
+      "Customer linkage repository is not configured.",
+      { adapter: "CustomerLinkageRepository" }
+    );
+  }
+
+  const identityAccountDirectory = dependencies.identityAccountDirectory ?? null;
+  const playerDirectory = dependencies.playerDirectory ?? null;
+  const crmContactDirectory = dependencies.crmContactDirectory ?? null;
+
   const application = createCustomerApplicationService({
     repository,
     clock,
@@ -187,14 +236,29 @@ export function createCustomerRuntime(rawConfig = {}, dependencies = {}) {
     idGenerator,
   });
 
+  const linkageApplication = createLinkageApplicationService({
+    customerRepository: repository,
+    linkageRepository,
+    identityAccountDirectory,
+    playerDirectory,
+    crmContactDirectory,
+    clock,
+    idGenerator,
+  });
+
   return Object.freeze({
     config,
     ready: true,
     persistenceMode,
     repository,
     consentPreferenceRepository,
+    linkageRepository,
+    identityAccountDirectory,
+    playerDirectory,
+    crmContactDirectory,
     application,
     consentPreferenceApplication,
+    linkageApplication,
     assertReady() {
       return true;
     },
@@ -211,6 +275,9 @@ export function createCustomerRuntimeTestHarness(options = {}) {
   const consentPreferenceRepository =
     options.consentPreferenceRepository ||
     createInMemoryConsentPreferenceRepository();
+  const linkageRepository =
+    options.linkageRepository ||
+    createInMemoryCustomerLinkageRepository({ customerRepository: repository });
   const runtime = createCustomerRuntime(
     {
       enabled: true,
@@ -220,6 +287,10 @@ export function createCustomerRuntimeTestHarness(options = {}) {
     {
       repository,
       consentPreferenceRepository,
+      linkageRepository,
+      identityAccountDirectory: options.identityAccountDirectory ?? null,
+      playerDirectory: options.playerDirectory ?? null,
+      crmContactDirectory: options.crmContactDirectory ?? null,
       clock: options.clock,
       idGenerator: options.idGenerator,
     }
@@ -232,6 +303,9 @@ export function createCustomerRuntimeTestHarness(options = {}) {
       }
       if (typeof consentPreferenceRepository.resetAllForTests === "function") {
         consentPreferenceRepository.resetAllForTests();
+      }
+      if (typeof linkageRepository.resetAllForTests === "function") {
+        linkageRepository.resetAllForTests();
       }
     },
   });

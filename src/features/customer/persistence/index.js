@@ -1,5 +1,5 @@
 /**
- * Customer persistence facade (CUSTOMER-03 + CUSTOMER-04).
+ * Customer persistence facade (CUSTOMER-03 + CUSTOMER-04 + CUSTOMER-05).
  */
 
 export {
@@ -7,6 +7,8 @@ export {
   CUSTOMER_PHASE_3_RPC,
   CUSTOMER_PHASE_4_TABLES,
   CUSTOMER_PHASE_4_RPC,
+  CUSTOMER_PHASE_5_TABLES,
+  CUSTOMER_PHASE_5_RPC,
   requireCustomerDatabaseClientPort,
 } from "./databaseClientPort.js";
 
@@ -36,6 +38,14 @@ export {
   mapPreferenceHistoryRowToDomain,
 } from "./mapping/consentPreferenceMapping.js";
 
+export {
+  mapLinkageDomainToRow,
+  mapLinkageRowToDomain,
+  mapLinkageHistoryDomainToRow,
+  mapLinkageHistoryRowToDomain,
+} from "./mapping/linkageMapping.js";
+
 export { createDurableCustomerRepository } from "./durable/durableCustomerRepository.js";
 export { createDurableConsentPreferenceRepository } from "./durable/durableConsentPreferenceRepository.js";
+export { createDurableCustomerLinkageRepository } from "./durable/durableCustomerLinkageRepository.js";
 export { createFakeCustomerDatabaseClient } from "./createFakeCustomerDatabaseClient.js";
