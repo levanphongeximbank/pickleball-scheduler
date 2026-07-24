@@ -342,5 +342,6 @@
   "tests/finance-phase-1i-runtime-composition.test.js",
   "tests/finance-phase-1j-staging-composition.test.js",
   "tests/finance-phase-1l-remediation.test.js",
-  "tests/communication-foundation.test.js"
+  "tests/communication-foundation.test.js",
+  "tests/cm-01-competition-definition.test.js"
 ]
