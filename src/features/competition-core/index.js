@@ -912,3 +912,27 @@ export {
   createDefaultAdapterRegistry,
   ADAPTER_REGISTRY_VERSION,
 } from "./import-export/index.js";
+
+/** CORE-23 Competition Recovery & Resume */
+export {
+  CORE23_ENGINE_ID,
+  CORE23_ENGINE_VERSION,
+  CORE23_CONTRACT_ID,
+  RECOVERY_MODE,
+  RECOVERY_ELIGIBILITY,
+  PARTIAL_OPERATION_STATUS,
+  RECOVERY_OUTCOME_KIND,
+  RECOVERY_ERROR_CODE,
+  RecoveryError,
+  isRecoveryError,
+  createRecoveryCheckpoint,
+  createResumeToken,
+  createResumeContext,
+  createRecoveryRequest,
+  createRecoveryOutcome,
+  evaluateRecovery,
+  assessRecoveryEligibility,
+  validateRecoveryCheckpoint,
+  classifyPartialOperation,
+  buildRecoveryPlan,
+} from "./recovery-resume/index.js";
