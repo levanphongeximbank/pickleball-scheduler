@@ -32,11 +32,12 @@ test("phase 5 engines expose canonical service contracts", () => {
   assert.ok(courtEngine.createSchedule({ courtId: "court-2" }).courtId === "court-2");
 
   const summary = buildPlatformEngineSummary({
-    tournament: { id: "tour-1", name: "Spring Cup" },
+    tournament: { id: "tour-1", name: "Spring Cup", clubId: "tenant-1" },
     players: [{ id: "p1", name: "Ana" }],
   });
 
   assert.equal(summary.tournament.plan.name, "Spring Cup");
+  // tenantId is projected from tournament.clubId / session.clubId only — never invented.
   assert.equal(summary.billing.invoice.tenantId, "tenant-1");
   assert.equal(summary.ai.recommendation.recommendation.includes("Ana"), true);
 });
