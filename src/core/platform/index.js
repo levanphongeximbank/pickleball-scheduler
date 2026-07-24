@@ -275,3 +275,18 @@ export {
   projectAuthorizationDecision,
   AUTHORIZATION_DECISION_ADAPTER_ERROR,
 } from "./adapters/index.js";
+
+/**
+ * Event/Audit adoption adapters — pure projections over already-resolved
+ * event and audit values. Do not publish, persist, or replace Event/Audit runtimes.
+ */
+export {
+  projectEventTraceContext,
+  EVENT_TRACE_CONTEXT_ADAPTER_ERROR,
+  projectCommonEventEnvelope,
+  COMMON_EVENT_ENVELOPE_ADAPTER_ERROR,
+  projectAuditEventEnvelope,
+  AUDIT_EVENT_ENVELOPE_ADAPTER_ERROR,
+  projectEventErrorDescriptor,
+  EVENT_ERROR_DESCRIPTOR_ADAPTER_ERROR,
+} from "./adapters/index.js";

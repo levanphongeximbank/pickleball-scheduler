@@ -16,3 +16,14 @@ export {
   projectAuthorizationDecision,
   AUTHORIZATION_DECISION_ADAPTER_ERROR,
 } from "./identityTenant/index.js";
+
+export {
+  projectEventTraceContext,
+  EVENT_TRACE_CONTEXT_ADAPTER_ERROR,
+  projectCommonEventEnvelope,
+  COMMON_EVENT_ENVELOPE_ADAPTER_ERROR,
+  projectAuditEventEnvelope,
+  AUDIT_EVENT_ENVELOPE_ADAPTER_ERROR,
+  projectEventErrorDescriptor,
+  EVENT_ERROR_DESCRIPTOR_ADAPTER_ERROR,
+} from "./eventAudit/index.js";
