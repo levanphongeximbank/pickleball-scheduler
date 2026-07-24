@@ -18,3 +18,6 @@ export {
   createInMemoryPlayerDirectory,
   createInMemoryCrmContactDirectory,
 } from "./linkageDirectoryPorts.js";
+
+export { CUSTOMER_MERGE_REPOSITORY_PORTS } from "./mergePorts.js";
+export { createInMemoryCustomerMergeRepository } from "./inMemoryMerge.js";

@@ -277,6 +277,13 @@ function assertMutable(customer) {
       { customerId: customer.customerId, status: customer.status }
     );
   }
+  if (customer.status === CUSTOMER_STATUS.MERGED) {
+    throwCustomerError(
+      CUSTOMER_ERROR_CODES.CUSTOMER_ALREADY_MERGED,
+      "Merged customers cannot be updated.",
+      { customerId: customer.customerId, status: customer.status }
+    );
+  }
 }
 
 /**

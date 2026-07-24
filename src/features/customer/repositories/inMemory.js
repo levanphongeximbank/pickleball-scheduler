@@ -7,6 +7,10 @@ import { CUSTOMER_ERROR_CODES } from "../errors/codes.js";
 import { CustomerError } from "../errors/CustomerError.js";
 import { createCustomerScope, scopesMatch } from "../domain/scope.js";
 import { CONTACT_POINT_TYPE } from "../constants/contactPointTypes.js";
+import {
+  compareCustomersForSearch,
+  customerMatchesSearchQuery,
+} from "../domain/searchQuery.js";
 import { CUSTOMER_REPOSITORY_PORTS } from "./ports.js";
 
 /**
@@ -69,30 +73,11 @@ export function createInMemoryCustomerRepository() {
   }
 
   function matchesQuery(row, query = {}) {
-    if (query.customerType && row.customerType !== query.customerType) return false;
-    if (query.status && row.status !== query.status) return false;
-    if (query.customerNumber && row.customerNumber !== query.customerNumber) return false;
-    if (query.text) {
-      const needle = String(query.text).trim().toLowerCase();
-      if (!needle) return true;
-      const hay = [
-        row.displayName,
-        row.legalName,
-        row.customerNumber,
-        row.customerId,
-        row.individualProfile?.givenName,
-        row.individualProfile?.familyName,
-        row.organizationProfile?.organizationName,
-        ...(row.contactPoints || []).map(
-          (c) => `${c.value || ""} ${c.displayValue || ""} ${c.normalizedValue || ""}`
-        ),
-      ]
-        .filter(Boolean)
-        .join(" ")
-        .toLowerCase();
-      if (!hay.includes(needle)) return false;
-    }
-    return true;
+    return customerMatchesSearchQuery(row, query);
+  }
+
+  function sortSearch(rows) {
+    return rows.slice().sort(compareCustomersForSearch);
   }
 
   return {
@@ -112,15 +97,18 @@ export function createInMemoryCustomerRepository() {
     search(scope, query = {}) {
       const limit = Number.isInteger(query.limit) && query.limit > 0 ? query.limit : 50;
       const offset = Number.isInteger(query.offset) && query.offset >= 0 ? query.offset : 0;
-      return listScoped(scope)
-        .filter((row) => matchesQuery(row, query))
-        .slice(offset, offset + limit);
+      return sortSearch(listScoped(scope).filter((row) => matchesQuery(row, query))).slice(
+        offset,
+        offset + limit
+      );
     },
 
     list(scope, query = {}) {
       const limit = Number.isInteger(query.limit) && query.limit > 0 ? query.limit : 50;
       const offset = Number.isInteger(query.offset) && query.offset >= 0 ? query.offset : 0;
-      const filtered = listScoped(scope).filter((row) => matchesQuery(row, query));
+      const filtered = sortSearch(
+        listScoped(scope).filter((row) => matchesQuery(row, query))
+      );
       return {
         items: filtered.slice(offset, offset + limit),
         total: filtered.length,

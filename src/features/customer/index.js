@@ -1,11 +1,11 @@
 /**
  * Customer Management — public facade
- * (CUSTOMER-01 + CUSTOMER-02 + CUSTOMER-03 + CUSTOMER-04 + CUSTOMER-05).
+ * (CUSTOMER-01 + CUSTOMER-02 + CUSTOMER-03 + CUSTOMER-04 + CUSTOMER-05 + CUSTOMER-06).
  *
  * Exports approved contracts, constants, pure domain factories,
  * application service factories, in-memory repositories, durable repository
  * adapter factories, runtime composition, read projectors, CRM/Notification/
- * Identity/Player boundary adapters, and Platform Core adoption projections.
+ * Identity/Player/Redirect boundary adapters, and Platform Core adoption projections.
  *
  * Does NOT export:
  * - mutable repository internal maps
@@ -23,7 +23,7 @@
  * Player Management and CRM remain the source of truth for their own entities.
  *
  * Matching email, phone or name is not sufficient evidence to create a
- * canonical Customer linkage.
+ * canonical Customer linkage or to auto-merge Customers.
  *
  * Customer contact information is business master data. It is not an
  * authentication credential and does not prove ownership or verification
@@ -38,6 +38,8 @@
  *
  * Notification may consume communication eligibility but must not mutate
  * Customer consent state directly.
+ *
+ * Merge requires explicit approval. Duplicate signals are candidate evidence only.
  */
 
 // Errors
@@ -157,6 +159,31 @@ export {
   CUSTOMER_LINKAGE_ACTION_VALUES,
   isCustomerLinkageAction,
 } from "./constants/linkageActions.js";
+export {
+  CUSTOMER_DUPLICATE_SIGNAL,
+  CUSTOMER_DUPLICATE_SIGNAL_VALUES,
+  CUSTOMER_DUPLICATE_SIGNAL_STRENGTH,
+  CUSTOMER_STRONG_DUPLICATE_SIGNALS,
+  CUSTOMER_MODERATE_DUPLICATE_SIGNALS,
+  CUSTOMER_WEAK_DUPLICATE_SIGNALS,
+  isCustomerDuplicateSignal,
+  duplicateSignalStrength,
+} from "./constants/duplicateSignals.js";
+export {
+  CUSTOMER_DUPLICATE_CLASSIFICATION,
+  CUSTOMER_DUPLICATE_CLASSIFICATION_VALUES,
+  isCustomerDuplicateClassification,
+} from "./constants/duplicateClassifications.js";
+export {
+  CUSTOMER_DUPLICATE_CANDIDATE_STATUS,
+  CUSTOMER_DUPLICATE_CANDIDATE_STATUS_VALUES,
+  isCustomerDuplicateCandidateStatus,
+} from "./constants/duplicateCandidateStatuses.js";
+export {
+  CUSTOMER_MERGE_RESOLUTION_ACTION,
+  CUSTOMER_MERGE_RESOLUTION_ACTION_VALUES,
+  isCustomerMergeResolutionAction,
+} from "./constants/mergeResolutionActions.js";
 
 // Domain
 export {
@@ -232,10 +259,46 @@ export {
 export {
   CUSTOMER_MERGE_STATUS,
   CUSTOMER_MERGE_STATUS_VALUES,
+  CUSTOMER_MERGE_APPROVAL_STATUS,
   CUSTOMER_DEDUPE_MATCH_KIND,
   CUSTOMER_DEDUPE_MATCH_KIND_VALUES,
   createCustomerMergeProposal,
+  createRichCustomerMergeProposal,
+  createCustomerMergeHistoryRecord,
+  isCustomerMergeStatus,
 } from "./domain/mergeContract.js";
+export {
+  createCustomerSearchQuery,
+  compareCustomersForSearch,
+  customerMatchesSearchQuery,
+  buildAddressMatchKey,
+} from "./domain/searchQuery.js";
+export {
+  collectDuplicateSignals,
+  collectDuplicateConflicts,
+  classifyDuplicatePair,
+  evaluateCustomerPair,
+} from "./domain/duplicateEvaluation.js";
+export {
+  orderCustomerPair,
+  duplicateCandidatePairKey,
+  createDuplicateCandidate,
+  isDuplicateCandidateStale,
+} from "./domain/duplicateCandidate.js";
+export {
+  createFailClosedMergeApproval,
+  createInMemoryAllowAllMergeApproval,
+  requireMergeApprovalPort,
+} from "./domain/mergeApproval.js";
+export {
+  resolveMergedCustomer,
+  resolveCanonicalCustomerId,
+} from "./domain/mergeRedirect.js";
+export {
+  mergeRestrictiveConsentStatus,
+  mergeRestrictivePreferenceStatus,
+  buildMergeResultSnapshots,
+} from "./domain/mergeExecution.js";
 export {
   createCustomerProfile,
   updateCustomerProfileFields,
@@ -268,6 +331,8 @@ export {
   createInMemoryIdentityAccountDirectory,
   createInMemoryPlayerDirectory,
   createInMemoryCrmContactDirectory,
+  CUSTOMER_MERGE_REPOSITORY_PORTS,
+  createInMemoryCustomerMergeRepository,
 } from "./repositories/index.js";
 
 // Application
@@ -283,6 +348,10 @@ export {
   createLinkageApplicationService,
   createFailClosedLinkageApplication,
 } from "./application/LinkageApplicationService.js";
+export {
+  createMergeApplicationService,
+  createFailClosedMergeApplication,
+} from "./application/MergeApplicationService.js";
 
 // Projectors
 export {
@@ -306,6 +375,13 @@ export {
   projectCustomerLinkageHistoryView,
   projectCustomerLinkageLookupView,
 } from "./projectors/linkageViews.js";
+export {
+  projectCustomerSearchResultView,
+  projectCustomerDuplicateCandidateView,
+  projectCustomerMergeProposalView,
+  projectCustomerMergeResultView,
+  projectCustomerRedirectView,
+} from "./projectors/mergeViews.js";
 
 // Adapters (boundary only)
 export { createVenueCustomerDirectoryAdapter } from "./adapters/venueCustomerDirectoryAdapter.js";
@@ -314,8 +390,9 @@ export { createCustomerCrmConsentPreferenceAdapter } from "./adapters/crmConsent
 export { createCustomerIdentityLinkageAdapter } from "./adapters/identityLinkageAdapter.js";
 export { createCustomerPlayerLinkageAdapter } from "./adapters/playerLinkageAdapter.js";
 export { createCustomerCrmLinkageAdapter } from "./adapters/crmLinkageAdapter.js";
+export { createCustomerRedirectAdapter } from "./adapters/customerRedirectAdapter.js";
 
-// Persistence (CUSTOMER-03 / CUSTOMER-04 / CUSTOMER-05) — ports + durable adapter; no live client
+// Persistence (CUSTOMER-03 / CUSTOMER-04 / CUSTOMER-05 / CUSTOMER-06) — ports + durable adapter; no live client
 export {
   CUSTOMER_PHASE_3_TABLES,
   CUSTOMER_PHASE_3_RPC,
@@ -323,10 +400,13 @@ export {
   CUSTOMER_PHASE_4_RPC,
   CUSTOMER_PHASE_5_TABLES,
   CUSTOMER_PHASE_5_RPC,
+  CUSTOMER_PHASE_6_TABLES,
+  CUSTOMER_PHASE_6_RPC,
   requireCustomerDatabaseClientPort,
   createDurableCustomerRepository,
   createDurableConsentPreferenceRepository,
   createDurableCustomerLinkageRepository,
+  createDurableCustomerMergeRepository,
   createFakeCustomerDatabaseClient,
   mapCustomerDomainToSavePayload,
   mapCustomerRowsToDomain,
@@ -375,6 +455,10 @@ export const CUSTOMER_PUBLIC_EXPORTS = Object.freeze([
   "CUSTOMER_LINKAGE_STATUS",
   "CUSTOMER_LINKAGE_SOURCE",
   "CUSTOMER_LINKAGE_ACTION",
+  "CUSTOMER_DUPLICATE_SIGNAL",
+  "CUSTOMER_DUPLICATE_CLASSIFICATION",
+  "CUSTOMER_DUPLICATE_CANDIDATE_STATUS",
+  "CUSTOMER_MERGE_RESOLUTION_ACTION",
   "createCustomerProfile",
   "createCustomerApplicationService",
   "createFailClosedCustomerApplication",
@@ -382,15 +466,19 @@ export const CUSTOMER_PUBLIC_EXPORTS = Object.freeze([
   "createFailClosedConsentPreferenceApplication",
   "createLinkageApplicationService",
   "createFailClosedLinkageApplication",
+  "createMergeApplicationService",
+  "createFailClosedMergeApplication",
   "createInMemoryCustomerRepository",
   "createInMemoryConsentPreferenceRepository",
   "createInMemoryCustomerLinkageRepository",
+  "createInMemoryCustomerMergeRepository",
   "createInMemoryIdentityAccountDirectory",
   "createInMemoryPlayerDirectory",
   "createInMemoryCrmContactDirectory",
   "createDurableCustomerRepository",
   "createDurableConsentPreferenceRepository",
   "createDurableCustomerLinkageRepository",
+  "createDurableCustomerMergeRepository",
   "createCustomerRuntime",
   "createCustomerRuntimeTestHarness",
   "createVenueCustomerDirectoryAdapter",
@@ -399,6 +487,9 @@ export const CUSTOMER_PUBLIC_EXPORTS = Object.freeze([
   "createCustomerIdentityLinkageAdapter",
   "createCustomerPlayerLinkageAdapter",
   "createCustomerCrmLinkageAdapter",
+  "createCustomerRedirectAdapter",
+  "createInMemoryAllowAllMergeApproval",
+  "createFailClosedMergeApproval",
   "projectCustomerSummary",
   "projectCustomerDetails",
   "projectCustomerProfileView",
@@ -410,6 +501,11 @@ export const CUSTOMER_PUBLIC_EXPORTS = Object.freeze([
   "projectCustomerIdentityLinkView",
   "projectCustomerPlayerLinkView",
   "projectCustomerCrmLinkView",
+  "projectCustomerSearchResultView",
+  "projectCustomerDuplicateCandidateView",
+  "projectCustomerMergeProposalView",
+  "projectCustomerMergeResultView",
+  "projectCustomerRedirectView",
   "evaluateCommunicationEligibility",
   "normalizeCustomerEmail",
   "normalizeCustomerPhone",
@@ -419,5 +515,6 @@ export const CUSTOMER_PUBLIC_EXPORTS = Object.freeze([
   "CUSTOMER_PHASE_3_TABLES",
   "CUSTOMER_PHASE_4_TABLES",
   "CUSTOMER_PHASE_5_TABLES",
+  "CUSTOMER_PHASE_6_TABLES",
   "CUSTOMER_RUNTIME_MODE",
 ]);

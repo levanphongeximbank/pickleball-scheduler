@@ -14,11 +14,18 @@ export const CUSTOMER_REPOSITORY_PORTS = Object.freeze({
 /**
  * @typedef {object} CustomerSearchQuery
  * @property {string} [text]
+ * @property {string} [customerId]
+ * @property {string} [customerNumber]
+ * @property {string} [email]
+ * @property {string} [phone]
+ * @property {string} [normalizedEmail]
+ * @property {string} [normalizedPhone]
+ * @property {{ type: string, id: string }} [externalReference]
  * @property {string} [customerType]
  * @property {string} [status]
- * @property {string} [customerNumber]
  * @property {number} [limit]
  * @property {number} [offset]
+ * @property {boolean} [includeMerged]
  */
 
 /**
