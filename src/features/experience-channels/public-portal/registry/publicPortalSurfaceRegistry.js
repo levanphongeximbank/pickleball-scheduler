@@ -153,7 +153,8 @@ const SURFACE_DESCRIPTORS = deepFreeze({
     visibility: EXPERIENCE_CHANNEL_VISIBILITY.PUBLIC,
     collisionClassification: EXPERIENCE_CHANNEL_CLASSIFICATION.CANONICAL_CHANNEL_SURFACE,
     dataSource: PUBLIC_PORTAL_DATA_SOURCE.MIXED,
-    dataSourceNotes: "Live clubs registry + blob with mock fallback (min 3).",
+    dataSourceNotes:
+      "Live clubs registry + blob with mock fallback (min 3). EC-03 getPublicClubsResult publishes MIXED provenance when fallback is used; never labeled LIVE.",
     authenticationDependency: PUBLIC_PORTAL_AUTH_DEPENDENCY.NONE,
     tenantDependency: PUBLIC_PORTAL_TENANT_DEPENDENCY.CONSUMED_SHARED,
     competitionOwnershipMarker: PUBLIC_PORTAL_COMPETITION_MARKER.NONE,
@@ -161,7 +162,7 @@ const SURFACE_DESCRIPTORS = deepFreeze({
     accessibilityState: EXPERIENCE_CHANNEL_READINESS.PARTIAL,
     seoState: EXPERIENCE_CHANNEL_READINESS.PARTIAL,
     loadingStateReadiness: EXPERIENCE_CHANNEL_READINESS.MISSING,
-    errorStateReadiness: EXPERIENCE_CHANNEL_READINESS.MISSING,
+    errorStateReadiness: EXPERIENCE_CHANNEL_READINESS.PARTIAL,
     emptyStateReadiness: EXPERIENCE_CHANNEL_READINESS.PARTIAL,
     offlinePwaState: EXPERIENCE_CHANNEL_READINESS.PARTIAL,
     testCoverageState: EXPERIENCE_CHANNEL_READINESS.PARTIAL,
@@ -174,8 +175,11 @@ const SURFACE_DESCRIPTORS = deepFreeze({
       SERVICE,
       MOCK,
       "src/components/public/states/PublicPresentationStates.jsx",
+      "src/components/public/states/PublicDataSourceNotice.jsx",
+      "src/features/experience-channels/public-portal/data-source/",
     ],
-    notes: "EC-02: PublicEmptyState for no-results + page-local title. Data source still MIXED.",
+    notes:
+      "EC-03: getPublicClubsResult exposes LIVE/MIXED provenance; mock fallback retained with notice. Error/empty wired; loading still MISSING (sync). Not production-ready while MIXED.",
   }),
 
   [PUBLIC_PORTAL_SURFACE_ID.PUBLIC_COURTS]: createPublicPortalSurfaceDescriptor({
@@ -185,7 +189,8 @@ const SURFACE_DESCRIPTORS = deepFreeze({
     visibility: EXPERIENCE_CHANNEL_VISIBILITY.PUBLIC,
     collisionClassification: EXPERIENCE_CHANNEL_CLASSIFICATION.CANONICAL_CHANNEL_SURFACE,
     dataSource: PUBLIC_PORTAL_DATA_SOURCE.MIXED,
-    dataSourceNotes: "Live club courts + hours with mock fallback (min 2).",
+    dataSourceNotes:
+      "Live club courts + hours with mock fallback (min 2). EC-03 getPublicCourtsResult publishes MIXED provenance when fallback is used; never labeled LIVE.",
     authenticationDependency: PUBLIC_PORTAL_AUTH_DEPENDENCY.NONE,
     tenantDependency: PUBLIC_PORTAL_TENANT_DEPENDENCY.CONSUMED_SHARED,
     competitionOwnershipMarker: PUBLIC_PORTAL_COMPETITION_MARKER.NONE,
@@ -193,7 +198,7 @@ const SURFACE_DESCRIPTORS = deepFreeze({
     accessibilityState: EXPERIENCE_CHANNEL_READINESS.PARTIAL,
     seoState: EXPERIENCE_CHANNEL_READINESS.PARTIAL,
     loadingStateReadiness: EXPERIENCE_CHANNEL_READINESS.MISSING,
-    errorStateReadiness: EXPERIENCE_CHANNEL_READINESS.MISSING,
+    errorStateReadiness: EXPERIENCE_CHANNEL_READINESS.PARTIAL,
     emptyStateReadiness: EXPERIENCE_CHANNEL_READINESS.PARTIAL,
     offlinePwaState: EXPERIENCE_CHANNEL_READINESS.PARTIAL,
     testCoverageState: EXPERIENCE_CHANNEL_READINESS.PARTIAL,
@@ -206,8 +211,11 @@ const SURFACE_DESCRIPTORS = deepFreeze({
       SERVICE,
       MOCK,
       "src/components/public/states/PublicPresentationStates.jsx",
+      "src/components/public/states/PublicDataSourceNotice.jsx",
+      "src/features/experience-channels/public-portal/data-source/",
     ],
-    notes: "EC-02: PublicEmptyState when courts list empty + page-local title. Loading/error still MISSING.",
+    notes:
+      "EC-03: getPublicCourtsResult + PublicDataSourceNotice. Error/empty wired; loading still MISSING (sync). Mock fallback retained until live replacement certified.",
   }),
 
   [PUBLIC_PORTAL_SURFACE_ID.PUBLIC_RANKINGS]: createPublicPortalSurfaceDescriptor({
