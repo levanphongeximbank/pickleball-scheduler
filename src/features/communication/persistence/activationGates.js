@@ -26,9 +26,11 @@ export function assertActivationAllowed(gate, detail) {
     status === "DEFERRED_FAIL_CLOSED" ||
     status === "DEFERRED_NOT_ENABLED" ||
     status === "DEFERRED_STAGING_FIRST_GATE" ||
+    status === "DEFERRED_OWNER_GO_STAGING_ONLY" ||
     status === "DEFERRED_INTEGRATION_GATE" ||
     status === "DEFERRED" ||
     status === "OWNER_APPROVAL_REQUIRED" ||
+    status === "CLUB_SELECT_AUTHORED_NOT_APPLIED" ||
     status === "ACTIVATION_BLOCKER" ||
     status === false
   ) {
