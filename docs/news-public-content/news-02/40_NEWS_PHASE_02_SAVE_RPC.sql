@@ -138,7 +138,7 @@ AS $$
   WHERE i.editorial_status = 'PUBLISHED'
     AND i.public_visibility = 'PUBLIC'
     AND i.archived_at IS NULL
-    AND i.provenance <> 'MOCK'
+    AND i.provenance = 'LIVE'
     AND i.published_revision_id IS NOT NULL
     AND (i.publish_at IS NULL OR i.publish_at <= p_now)
     AND (i.unpublish_at IS NULL OR i.unpublish_at > p_now)
@@ -149,7 +149,7 @@ AS $$
 $$;
 
 COMMENT ON FUNCTION public.news_public_content_query_public(timestamptz, text, text, integer) IS
-  'NEWS-02/03 sanitized public read contract. No reviewer/approver/internal comments. MOCK excluded. SQL authored; not applied in NEWS-02.';
+  'NEWS public read contract: PUBLISHED + PUBLIC + LIVE only. Excludes MOCK/PREVIEW/DRAFT/unpublished/expired/archived. No reviewer/approver/internal comments. Hardened in NEWS-04.';
 
 REVOKE ALL ON FUNCTION public.news_public_content_query_public(timestamptz, text, text, integer) FROM PUBLIC;
 GRANT EXECUTE ON FUNCTION public.news_public_content_query_public(timestamptz, text, text, integer) TO anon;

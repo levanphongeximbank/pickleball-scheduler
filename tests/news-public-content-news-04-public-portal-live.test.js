@@ -201,7 +201,9 @@ test("NEWS-04 explicit preview returns PREVIEW and does not relabel LIVE", async
   assert.equal(result.items[0].provenance, news.CONTENT_PROVENANCE.PREVIEW);
 });
 
-test("NEWS-04 live public path filters PREVIEW (no leak) and rejects unknown provenance", async () => {
+test("NEWS-04 live public path defense-in-depth filters PREVIEW; unknown provenance rejected", async () => {
+  // Primary boundary is News RPC/adapter (LIVE-only). Portal filter remains defense-in-depth
+  // if a stale backend or injected facade still surfaces PREVIEW.
   const filtered = await getPublicNews({
     now: NOW,
     source: PUBLIC_NEWS_SOURCE.LIVE,

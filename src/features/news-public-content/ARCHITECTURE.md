@@ -36,10 +36,11 @@ import { getPublicNews } from "../features/public-portal/services/publicPortalSe
 getPublicNews
   → createNewsPublicContentFacade
   → createSupabaseContentRepository({ preferRpc: true })
-  → RPC news_public_content_query_public
+  → RPC news_public_content_query_public  (provenance = 'LIVE' only)
 ```
 
 No silent mock fallback. Explicit `source: "mock" | "preview" | "live"` only.
+PREVIEW must not cross the public RPC boundary (News-owned). Portal filter is defense in depth.
 
 ## SQL package
 

@@ -33,13 +33,13 @@ CREATE INDEX IF NOT EXISTS news_public_content_items_competition_status_idx
   ON public.news_public_content_items (competition_id, editorial_status)
   WHERE competition_id IS NOT NULL;
 
--- Public read support
+-- Public read support (LIVE-only public boundary; NEWS-04 hardened)
 CREATE INDEX IF NOT EXISTS news_public_content_items_public_window_idx
   ON public.news_public_content_items (editorial_status, public_visibility, publish_at, unpublish_at)
   WHERE editorial_status = 'PUBLISHED'
     AND public_visibility = 'PUBLIC'
     AND archived_at IS NULL
-    AND provenance <> 'MOCK';
+    AND provenance = 'LIVE';
 
 -- Revisions
 CREATE INDEX IF NOT EXISTS news_public_content_revisions_content_idx

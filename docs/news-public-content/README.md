@@ -22,4 +22,6 @@ Permission seed + Staging harness (NEWS-03): `docs/news-public-content/news-03/`
 
 NEWS-04 docs: `docs/news-public-content/news-04/`
 
+Public RPC LIVE-only remediation: `docs/news-public-content/news-04/03_PUBLIC_RPC_LIVE_ONLY_REMEDIATION.md` (Staging apply awaits Owner GO)
+
 Architecture decision: `docs/news-public-content/news-04/00_NEWS_04_ARCHITECTURE_DECISION.md`

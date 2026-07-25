@@ -389,7 +389,8 @@ function projectCandidatesForMode(candidates, mode) {
           { contentId: candidate.contentId }
         );
       }
-      // Public production route: never surface PREVIEW (no relabel to LIVE).
+      // Defense in depth: News RPC must already exclude PREVIEW (LIVE-only).
+      // Skip any residual PREVIEW without relabeling it as LIVE.
       if (provenance === CONTENT_PROVENANCE.PREVIEW) {
         continue;
       }

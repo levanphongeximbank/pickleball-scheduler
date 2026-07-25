@@ -120,7 +120,12 @@ test("NEWS-02 save RPC OCC + public query contract + immutable revisions", () =>
   assert.match(rpc, /revoke\s+all[\s\S]*from\s+anon/i);
   assert.match(rpc, /news_public_content_query_public/i);
   assert.match(rpc, /editorial_status\s*=\s*'PUBLISHED'/i);
-  assert.match(rpc, /provenance\s*<>\s*'MOCK'/i);
+  assert.match(rpc, /provenance\s*=\s*'LIVE'/i);
+  assert.doesNotMatch(
+    rpc,
+    /provenance\s*<>\s*'MOCK'/,
+    "public RPC must require LIVE, not merely exclude MOCK"
+  );
   assert.match(rpc, /grant\s+execute[\s\S]*to\s+anon/i);
   // Public query RETURNS TABLE must not expose reviewer/approver columns
   const publicReturns = rpc.match(

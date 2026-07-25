@@ -38,13 +38,15 @@ NewsPage / HomePage
 
 | Value | When |
 |-------|------|
-| `LIVE` | Successful canonical live RPC/facade path |
+| `LIVE` | Successful canonical live RPC/facade path (`provenance = 'LIVE'` at SQL boundary) |
 | `MOCK` | Explicit mock/demo/test mode only |
-| `PREVIEW` | Explicit preview/editorial mode only |
+| `PREVIEW` | Explicit preview/editorial mode only (never via public RPC) |
 
-Unknown provenance → typed error (fail closed).  
-Public live route filters out `PREVIEW` (no relabel to LIVE).  
-`MOCK` on live path → typed error.
+Unknown provenance → typed error (fail closed).
+
+**Public backend boundary (News-owned):** `news_public_content_query_public` requires `provenance = 'LIVE'`. PREVIEW/MOCK must not cross into the browser via that RPC.
+
+**Defense in depth (Experience Channels):** portal live path also skips PREVIEW if a stale/injected source still surfaces it — not the primary control.
 
 ## Error behavior
 

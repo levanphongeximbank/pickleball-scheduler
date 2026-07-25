@@ -4,6 +4,7 @@
  * Injected client only. No mock fallback. No import-time network.
  */
 
+import { CONTENT_PROVENANCE } from "../../constants/provenance.js";
 import { NEWS_PUBLIC_CONTENT_ERROR_CODE } from "../../errors/errorCodes.js";
 import { NewsPublicContentError } from "../../errors/NewsPublicContentError.js";
 import { matchesContentRepositoryPort } from "../../ports/contentRepositoryPort.js";
@@ -21,6 +22,26 @@ import {
   publicRpcRowToCandidate,
   rowsToDomainAggregate,
 } from "./rowMappers.js";
+
+/**
+ * Public RPC/table candidates must be LIVE only (NEWS-04 boundary).
+ * @param {readonly object[]} candidates
+ */
+function assertPublicCandidatesAreLive(candidates) {
+  for (const candidate of candidates) {
+    if (!candidate || candidate.provenance !== CONTENT_PROVENANCE.LIVE) {
+      throw new NewsPublicContentError(
+        NEWS_PUBLIC_CONTENT_ERROR_CODE.PROVENANCE_MISMATCH,
+        "Public read path rejected non-LIVE provenance",
+        {
+          contentId: candidate?.contentId ?? null,
+          provenance: candidate?.provenance ?? null,
+        }
+      );
+    }
+  }
+  return candidates;
+}
 
 /**
  * @param {{ client: object, preferRpc?: boolean }} options
@@ -148,7 +169,8 @@ export function createSupabaseContentRepository(options) {
             throw mapSupabaseNewsError(error, { operation: "queryPublicCandidates" });
           }
           const rows = Array.isArray(data) ? data : data ? [data] : [];
-          return Object.freeze(rows.map(publicRpcRowToCandidate));
+          const mapped = Object.freeze(rows.map(publicRpcRowToCandidate));
+          return Object.freeze(assertPublicCandidatesAreLive(mapped));
         }
 
         const { data, error } = await client
@@ -157,7 +179,7 @@ export function createSupabaseContentRepository(options) {
           .eq("editorial_status", "PUBLISHED")
           .eq("public_visibility", "PUBLIC")
           .is("archived_at", null)
-          .neq("provenance", "MOCK");
+          .eq("provenance", "LIVE");
         if (error) {
           throw mapSupabaseNewsError(error, { operation: "queryPublicCandidates" });
         }
@@ -183,7 +205,7 @@ export function createSupabaseContentRepository(options) {
             })
           );
         }
-        return Object.freeze(out);
+        return Object.freeze(assertPublicCandidatesAreLive(out));
       } catch (err) {
         if (err instanceof NewsPublicContentError) throw err;
         throw mapSupabaseNewsError(err, { operation: "queryPublicCandidates" });
