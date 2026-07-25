@@ -1,0 +1,32 @@
+/**
+ * Report availability / failure semantics (REPORTING-01).
+ */
+
+export const REPORT_AVAILABILITY = Object.freeze({
+  AVAILABLE: "AVAILABLE",
+  UNAVAILABLE: "UNAVAILABLE",
+  STALE: "STALE",
+  PARTIAL: "PARTIAL",
+  MIXED: "MIXED",
+  SOURCE_NOT_CONFIGURED: "SOURCE_NOT_CONFIGURED",
+  SOURCE_FAILED: "SOURCE_FAILED",
+  AUTHORIZATION_DENIED: "AUTHORIZATION_DENIED",
+  INVALID_SCOPE: "INVALID_SCOPE",
+  INVALID_PARAMETERS: "INVALID_PARAMETERS",
+  INVALID_FILTER: "INVALID_FILTER",
+  INVALID_SORT: "INVALID_SORT",
+  INVALID_GROUPING: "INVALID_GROUPING",
+  INVALID_COLUMN_SELECTION: "INVALID_COLUMN_SELECTION",
+});
+
+export const REPORT_AVAILABILITY_VALUES = Object.freeze(
+  Object.values(REPORT_AVAILABILITY)
+);
+
+/**
+ * @param {unknown} value
+ * @returns {boolean}
+ */
+export function isReportAvailability(value) {
+  return REPORT_AVAILABILITY_VALUES.includes(/** @type {string} */ (value));
+}

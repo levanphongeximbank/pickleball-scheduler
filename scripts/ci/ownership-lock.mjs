@@ -144,6 +144,7 @@ const RULES = [
     onlyIn: [
       "src/features/dashboard-analytics/",
       "src/features/intelligence-analytics/",
+      "src/features/reporting-analytics/",
     ],
     match: (c) => c.match(/\.(insert|update|upsert|delete)\s*\(/g) || [],
   },

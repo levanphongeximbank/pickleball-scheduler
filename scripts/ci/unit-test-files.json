@@ -384,5 +384,9 @@
   "tests/intelligence-analytics-ia-04-dashboard-reporting-contracts.test.js",
   "tests/ecosystem-integrations-eco-01-foundation.test.js",
   "tests/ecosystem-integrations-eco-01-architecture.test.js",
-  "tests/ecosystem-integrations-eco-01-security.test.js"
+  "tests/ecosystem-integrations-eco-01-security.test.js",
+  "tests/reporting-analytics-reporting-01-foundation.test.js",
+  "tests/reporting-analytics-reporting-01-authorization-execution.test.js",
+  "tests/reporting-analytics-reporting-01-provenance-export.test.js",
+  "tests/reporting-analytics-reporting-01-architecture.test.js"
 ]
