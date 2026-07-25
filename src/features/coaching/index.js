@@ -1,16 +1,17 @@
 /**
- * Coaching & Training — public facade (COACHING-01).
+ * Coaching & Training — public facade (COACHING-01 + COACHING-02 authored adapters).
  *
  * Canonical foundation: domain, authorization, application, in-memory repositories,
  * Platform Core adapter projections.
  *
- * Legacy localStorage (`services/coachingService.js`) remains exported for existing
- * UI compatibility only — NOT a repository port implementation.
+ * COACHING-02 durable factories are exported for injection/tests only —
+ * NOT wired as the application runtime default. UI remains on legacy localStorage
+ * (`services/coachingService.js`) until Owner-authorized cutover (COACHING-04).
  *
  * Does NOT export:
- * - durable Supabase adapters (deferred)
  * - raw SQL
  * - secrets / credentials
+ * - a silent durable runtime default
  */
 
 // ---------------------------------------------------------------------------
@@ -116,7 +117,26 @@ export {
   createMemoryCoachingApplication,
 } from "./application/index.js";
 
+export {
+  COACHING_IDENTITY_PERMISSION_IDS,
+  COACHING_IDENTITY_PERMISSION_VALUES,
+  COACHING_PERMISSION_MANIFEST,
+  coachingActionToIdentityPermissionId,
+} from "./constants/permissions.js";
+
+export {
+  COACHING_DURABLE_PERSISTENCE_PHASE,
+  COACHING_DURABLE_RUNTIME_DEFAULT,
+  COACHING_02_TABLES,
+  COACHING_02_RPC,
+  requireCoachingDatabaseClientPort,
+  createDurableCoachingRepositories,
+  createFakeCoachingDatabaseClient,
+  translateCoachingPersistenceError,
+} from "./persistence/index.js";
+
 export const COACHING_FOUNDATION_PHASE = "COACHING-01";
+export const COACHING_PERSISTENCE_PHASE = "COACHING-02";
 
 export const COACHING_PUBLIC_EXPORTS = Object.freeze([
   "COACHING_FOUNDATION_PHASE",
