@@ -38,6 +38,36 @@ const INJECTED_BASE_ENV = "E2E07_COMPARISON_BASE";
 const EVIDENCE_PATH =
   "docs/competition-engine/e2e-07/evidence/core08-gate-classification.json";
 
+/**
+ * Canonical E2E-07 owned paths (docs/competition-engine/e2e-07/00_FILE_OWNERSHIP.md).
+ * Shared unit-test registry alone is NOT an E2E-07 scope trigger.
+ */
+function isE2E07ScopedPath(name) {
+  return (
+    name.startsWith("tests/competition-engine-e2e-07-") ||
+    name.startsWith("src/features/competition-engine/certification/") ||
+    name.startsWith("src/features/competition-engine/presentation/certification/") ||
+    name === "src/features/competition-engine/operations/certification/index.js" ||
+    name.startsWith("docs/competition-engine/e2e-07/")
+  );
+}
+
+function liveDeltaTouchesE2E07Scope(deltaNames) {
+  return (deltaNames || []).some(isE2E07ScopedPath);
+}
+
+/**
+ * Apply E2E-07 registry-addition validation only when the live delta includes
+ * both the shared unit-test registry and at least one E2E-07-owned path.
+ */
+function shouldValidateE2E07RegistryAdditions(deltaNames) {
+  return (
+    Array.isArray(deltaNames) &&
+    deltaNames.includes(UNAUTHORIZED_UNIT_TEST_FILES) &&
+    liveDeltaTouchesE2E07Scope(deltaNames)
+  );
+}
+
 class ComparisonBaseError extends Error {
   constructor(code, message) {
     super(message);
@@ -351,7 +381,7 @@ test("core08 gate — feature-branch mode: live delta ownership stays CORE-08 cl
   assert.equal(classified.coreOwnershipClean, true);
   assert.deepEqual(classified.coreOwnershipTouches, []);
 
-  if (live.includes(UNAUTHORIZED_UNIT_TEST_FILES)) {
+  if (shouldValidateE2E07RegistryAdditions(live)) {
     const baseRaw = showAtMergeBase("scripts/ci/unit-test-files.json");
     const localRaw = readFileSync(
       path.join(ROOT, "scripts/ci/unit-test-files.json"),
@@ -368,6 +398,73 @@ test("core08 gate — feature-branch mode: live delta ownership stays CORE-08 cl
     const reproduced = classifyCore08BranchDelta(live);
     assert.equal(reproduced.reproducesBranchLocalFailure, true);
   }
+});
+
+test("core08 gate — unrelated registry addition without E2E-07 delta is not rejected", () => {
+  const live = [
+    UNAUTHORIZED_UNIT_TEST_FILES,
+    "tests/unrelated-feature-registry-addition.test.js",
+    "src/features/unrelated-feature/index.js",
+  ];
+  assert.equal(liveDeltaTouchesE2E07Scope(live), false);
+  assert.equal(shouldValidateE2E07RegistryAdditions(live), false);
+
+  // Raw validator would reject non-E2E-07 additions — scope guard must skip it.
+  const raw = validateE2E07RegistryAdditions(
+    ["tests/competition-engine-e2e-07-end-to-end-certification.test.js"],
+    [
+      "tests/competition-engine-e2e-07-end-to-end-certification.test.js",
+      "tests/unrelated-feature-registry-addition.test.js",
+    ]
+  );
+  assert.equal(raw.ok, false);
+  assert.deepEqual(raw.unexpected, [
+    "tests/unrelated-feature-registry-addition.test.js",
+  ]);
+});
+
+test("core08 gate — E2E-07 delta with allowed registry additions passes validation", () => {
+  const live = [
+    UNAUTHORIZED_UNIT_TEST_FILES,
+    "tests/competition-engine-e2e-07-core08-gate-classification.test.js",
+    "docs/competition-engine/e2e-07/13_CORE08_GATE_CLASSIFICATION.md",
+    "src/features/competition-engine/certification/core08GateClassification.js",
+  ];
+  assert.equal(shouldValidateE2E07RegistryAdditions(live), true);
+
+  const before = [
+    "tests/competition-engine-e2e-07-end-to-end-certification.test.js",
+  ];
+  const after = [
+    "tests/competition-engine-e2e-07-end-to-end-certification.test.js",
+    "tests/competition-engine-e2e-07-gov08-benchmark.test.js",
+    "tests/competition-engine-e2e-07-core08-gate-classification.test.js",
+  ];
+  const registry = validateE2E07RegistryAdditions(before, after);
+  assert.equal(registry.ok, true);
+  assert.equal(registry.unexpected.length, 0);
+  assert.ok(registry.added.length >= 2);
+});
+
+test("core08 gate — E2E-07 delta still rejects unexpected registry additions", () => {
+  const live = [
+    UNAUTHORIZED_UNIT_TEST_FILES,
+    "tests/competition-engine-e2e-07-new-certification.test.js",
+  ];
+  assert.equal(shouldValidateE2E07RegistryAdditions(live), true);
+
+  const registry = validateE2E07RegistryAdditions(
+    ["tests/competition-engine-e2e-07-end-to-end-certification.test.js"],
+    [
+      "tests/competition-engine-e2e-07-end-to-end-certification.test.js",
+      "tests/competition-engine-e2e-07-new-certification.test.js",
+      "tests/unrelated-feature-registry-addition.test.js",
+    ]
+  );
+  assert.equal(registry.ok, false);
+  assert.deepEqual(registry.unexpected, [
+    "tests/unrelated-feature-registry-addition.test.js",
+  ]);
 });
 
 test("core08 gate — merged-main mode: evidence + registry + hash (empty delta not auto-PASS)", () => {
