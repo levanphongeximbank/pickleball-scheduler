@@ -34,6 +34,7 @@ import {
   conversationToRow,
   directRequestFromRow,
   directRequestToRow,
+  encodeDirectPairKeyForDb,
   messageFromRow,
   messageReportFromRow,
   messageReportToRow,
@@ -482,7 +483,7 @@ export function createSupabaseCommunicationRepositories(client, capabilities = {
         c
           .from(COMMUNICATION_TABLES.conversations)
           .select("*")
-          .eq("direct_pair_key", String(pairKey))
+          .eq("direct_pair_key", encodeDirectPairKeyForDb(pairKey))
           .maybeSingle(),
         {
           entity: "DirectConversation",
@@ -540,7 +541,7 @@ export function createSupabaseCommunicationRepositories(client, capabilities = {
         c
           .from(COMMUNICATION_TABLES.directRequests)
           .select("*")
-          .eq("pair_key", String(pairKey))
+          .eq("pair_key", encodeDirectPairKeyForDb(pairKey))
           .eq("status", "PENDING")
           .maybeSingle(),
         {

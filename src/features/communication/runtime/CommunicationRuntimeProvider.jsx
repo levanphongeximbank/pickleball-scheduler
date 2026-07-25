@@ -12,6 +12,8 @@ import { useEffect, useMemo, useState } from "react";
 import { useAuth } from "../../../context/AuthContext.jsx";
 import { useTenant } from "../../../context/TenantContext.jsx";
 import { useClub } from "../../../context/ClubContext.jsx";
+import { getSupabaseAuthClient } from "../../../auth/supabaseClient.js";
+import { createTrustedBackendHttpMessagingGateway } from "../trustedBackend/createTrustedBackendHttpMessagingGateway.js";
 import {
   bootstrapCommunicationRuntime,
   getCommunicationRuntimeStatus,
@@ -21,6 +23,29 @@ import {
 import { CommunicationRuntimeContext } from "./communicationRuntimeContext.js";
 import { COMMUNICATION_RUNTIME_MODE } from "./constants.js";
 
+function isTrustedBackendHttpEnabled() {
+  try {
+    const flag = String(
+      import.meta.env?.VITE_COMMUNICATION_TRUSTED_BACKEND || ""
+    ).toLowerCase();
+    return flag === "true" || flag === "1";
+  } catch {
+    return false;
+  }
+}
+
+async function resolveAccessToken() {
+  const client = getSupabaseAuthClient();
+  if (!client) return null;
+  let { data } = await client.auth.getSession();
+  let token = data?.session?.access_token || null;
+  if (!token) {
+    const refreshed = await client.auth.refreshSession();
+    token = refreshed.data?.session?.access_token || null;
+  }
+  return token;
+}
+
 export function CommunicationRuntimeProvider({ children }) {
   const { user, authLoading } = useAuth();
   const { currentTenantId } = useTenant();
@@ -29,6 +54,7 @@ export function CommunicationRuntimeProvider({ children }) {
   const [bootError, setBootError] = useState(null);
   const [gateway, setGateway] = useState(null);
   const isAuthenticated = Boolean(user?.id);
+  const trustedBackendHttp = isTrustedBackendHttpEnabled();
 
   useEffect(() => {
     if (authLoading) return undefined;
@@ -45,6 +71,19 @@ export function CommunicationRuntimeProvider({ children }) {
           typeof window !== "undefined"
             ? window.location?.search || ""
             : null,
+        // Explicit opt-in only — never silent demo fallback when wiring missing.
+        productionDependenciesCertified:
+          trustedBackendHttp && isAuthenticated && Boolean(user?.id),
+        createProductionGateway:
+          trustedBackendHttp && isAuthenticated && user?.id
+            ? async (opts) =>
+                createTrustedBackendHttpMessagingGateway({
+                  actorParticipantId: opts.actorParticipantId || user.id,
+                  tenantId: opts.tenantId || null,
+                  clubId: opts.clubId || null,
+                  getAccessToken: resolveAccessToken,
+                })
+            : undefined,
       });
       if (cancelled) return;
       setStatus(result.status || getCommunicationRuntimeStatus());
@@ -64,6 +103,7 @@ export function CommunicationRuntimeProvider({ children }) {
     user?.clubId,
     currentTenantId,
     activeClubId,
+    trustedBackendHttp,
   ]);
 
   useEffect(() => {

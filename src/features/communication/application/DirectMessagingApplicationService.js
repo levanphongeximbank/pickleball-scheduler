@@ -519,7 +519,13 @@ export function createDirectMessagingApplicationService(deps = {}) {
           attachmentRefs: input.attachmentRefs ?? [],
         }
       );
-      const saved = await messages.save(message);
+      const toSave = input.clientIdempotencyKey
+        ? Object.freeze({
+            ...message,
+            clientIdempotencyKey: String(input.clientIdempotencyKey),
+          })
+        : message;
+      const saved = await messages.save(toSave);
       return Object.freeze({ message: saved, conversation: aggregate });
     },
 

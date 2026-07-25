@@ -493,4 +493,32 @@ export {
   evaluateCommsAct03Preflight,
   loadCommsAct03SqlPackageManifest,
   verifyCommsAct03SqlPackage,
+  COMMS_ACT_05_VERDICTS,
+  COMMS_ACT_05_DOCS_RELATIVE,
+  COMMS_ACT_05_REQUIRED_DOCS,
+  getCommsAct05CapabilityState,
+  evaluateCommsAct05TrustedBackendHost,
+  evaluateCommsAct05OwnerGoGate,
+  evaluateCommsAct05BackupGate,
+  evaluateCommsAct05Preflight,
 } from "./activation/index.js";
+
+export {
+  COMMUNICATION_TRUSTED_BACKEND_HOST,
+  COMMUNICATION_TRUSTED_COMMAND,
+  COMMUNICATION_TRUSTED_COMMAND_VALUES,
+  COMMUNICATION_SYSTEM_PRODUCER_ID,
+  COMMUNICATION_SYSTEM_ALLOWED_SOURCES,
+  COMMUNICATION_ACT05_CAPABILITY_STATE,
+  COMMUNICATION_SMOKE_FIXTURE_MARKER,
+  COMMUNICATION_TRUSTED_BACKEND_ENV,
+  COMMUNICATION_SERVER_ONLY_BOUNDARY,
+  mapCommunicationHttpError,
+  createTrustedBackendHttpMessagingGateway,
+} from "./trustedBackend/publicApi.js";
+
+export { createSupabaseClubMembershipReader } from "./adapters/createSupabaseClubMembershipReader.js";
+export {
+  createClubManagerAccessPolicy,
+  createClubManagerTeamAccessPolicy,
+} from "./adapters/createClubManagerAccessPolicy.js";

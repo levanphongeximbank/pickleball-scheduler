@@ -54,3 +54,15 @@ export {
   getCommsAct03AuthorizationSnapshot,
   evaluateCommsAct03Preflight,
 } from "./commsAct03Gates.js";
+
+export {
+  COMMS_ACT_05_VERDICTS,
+  COMMS_ACT_05_DOCS_RELATIVE,
+  COMMS_ACT_05_REQUIRED_DOCS,
+  getCommsAct05RepoRoot,
+  getCommsAct05CapabilityState,
+  evaluateCommsAct05TrustedBackendHost,
+  evaluateCommsAct05OwnerGoGate,
+  evaluateCommsAct05BackupGate,
+  evaluateCommsAct05Preflight,
+} from "./commsAct05Gates.js";
