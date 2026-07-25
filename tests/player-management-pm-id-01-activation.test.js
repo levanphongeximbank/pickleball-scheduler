@@ -4,12 +4,14 @@
  */
 import test from "node:test";
 import assert from "node:assert/strict";
-import { existsSync, readFileSync } from "node:fs";
+import { existsSync, mkdtempSync, readFileSync, rmSync } from "node:fs";
+import os from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { spawnSync } from "node:child_process";
 
 import * as Act from "../scripts/player-management/pm-id-01-activation-lib.mjs";
+import { PICK_VN_STAGING_EVIDENCE_DIR_ENV } from "../scripts/shared/resolve-staging-evidence-dir.mjs";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const root = path.resolve(__dirname, "..");
@@ -20,6 +22,15 @@ function read(rel) {
 
 function headSha() {
   return Act.getPmId01HeadSha(root);
+}
+
+function withTempEvidenceDir(fn) {
+  const tempDir = mkdtempSync(path.join(os.tmpdir(), "pm-id-01-evidence-"));
+  try {
+    return fn(tempDir);
+  } finally {
+    rmSync(tempDir, { recursive: true, force: true });
+  }
 }
 
 test("activation package docs and runners exist", () => {
@@ -386,47 +397,62 @@ test("SQL hash drift refused by guard", () => {
 });
 
 test("no-GO refusal before database connection via apply runner", () => {
-  const result = spawnSync(
-    process.execPath,
-    ["scripts/player-management/pm-id-01-staging-apply.mjs"],
-    { cwd: root, encoding: "utf8" }
-  );
-  assert.equal(result.status, 0, result.stderr || result.stdout);
-  assert.match(result.stdout, /APPLY_MODE=REFUSED/);
-  assert.match(
-    result.stdout,
-    /PM_ID_01_APPLY_REFUSED_OWNER_GO_NOT_GRANTED/
-  );
+  withTempEvidenceDir((tempDir) => {
+    const tracked = path.join(
+      root,
+      Act.PM_ID_01_EVIDENCE_DIR,
+      "APPLY_REFUSED_NO_GO.json"
+    );
+    const trackedBefore = existsSync(tracked) ? readFileSync(tracked) : null;
 
-  const evidencePath = path.join(
-    root,
-    Act.PM_ID_01_EVIDENCE_DIR,
-    "APPLY_REFUSED_NO_GO.json"
-  );
-  assert.equal(existsSync(evidencePath), true);
-  const evidence = JSON.parse(readFileSync(evidencePath, "utf8"));
-  assert.equal(evidence.ownerGoGranted, false);
-  assert.equal(evidence.databaseConnectionOpened, false);
-  assert.equal(evidence.databaseWrites, 0);
-  assert.equal(evidence.sqlApplied, false);
-  assert.equal(evidence.mappingRowsCreated, 0);
-  assert.equal(evidence.backfillExecuted, false);
-  assert.equal(evidence.roleGrantsApplied, false);
-  assert.equal(evidence.productionTouched, false);
-  assert.equal(evidence.filesDeleted, false);
-  assert.equal(evidence.CODEX_DELETE_ALLOWED, "NO");
-  assert.equal(evidence.automaticRollback, false);
+    const result = spawnSync(
+      process.execPath,
+      ["scripts/player-management/pm-id-01-staging-apply.mjs"],
+      {
+        cwd: root,
+        encoding: "utf8",
+        env: {
+          ...process.env,
+          [PICK_VN_STAGING_EVIDENCE_DIR_ENV]: tempDir,
+        },
+      }
+    );
+    assert.equal(result.status, 0, result.stderr || result.stdout);
+    assert.match(result.stdout, /APPLY_MODE=REFUSED/);
+    assert.match(
+      result.stdout,
+      /PM_ID_01_APPLY_REFUSED_OWNER_GO_NOT_GRANTED/
+    );
 
-  // Must not touch Coaching-03 APPLY_REFUSED.json
-  const coachingRefused = path.join(
-    root,
-    "docs/coaching-training/coaching-03/evidence/APPLY_REFUSED.json"
-  );
-  if (existsSync(coachingRefused)) {
-    const before = readFileSync(coachingRefused, "utf8");
-    assert.match(before, /COACHING_03/);
-    assert.doesNotMatch(before, /PM_ID_01_APPLY_REFUSED_OWNER_GO_NOT_GRANTED/);
-  }
+    const evidencePath = path.join(tempDir, "APPLY_REFUSED_NO_GO.json");
+    assert.equal(existsSync(evidencePath), true);
+    const evidence = JSON.parse(readFileSync(evidencePath, "utf8"));
+    assert.equal(evidence.ownerGoGranted, false);
+    assert.equal(evidence.databaseConnectionOpened, false);
+    assert.equal(evidence.databaseWrites, 0);
+    assert.equal(evidence.sqlApplied, false);
+    assert.equal(evidence.mappingRowsCreated, 0);
+    assert.equal(evidence.backfillExecuted, false);
+    assert.equal(evidence.roleGrantsApplied, false);
+    assert.equal(evidence.productionTouched, false);
+    assert.equal(evidence.filesDeleted, false);
+    assert.equal(evidence.CODEX_DELETE_ALLOWED, "NO");
+    assert.equal(evidence.automaticRollback, false);
+
+    const trackedAfter = existsSync(tracked) ? readFileSync(tracked) : null;
+    assert.deepEqual(trackedAfter, trackedBefore);
+
+    // Must not touch Coaching-03 APPLY_REFUSED.json
+    const coachingRefused = path.join(
+      root,
+      "docs/coaching-training/coaching-03/evidence/APPLY_REFUSED.json"
+    );
+    if (existsSync(coachingRefused)) {
+      const before = readFileSync(coachingRefused, "utf8");
+      assert.match(before, /COACHING_03/);
+      assert.doesNotMatch(before, /PM_ID_01_APPLY_REFUSED_OWNER_GO_NOT_GRANTED/);
+    }
+  });
 });
 
 test("no backfill / no mapping creation / no auto rollback / no auto-apply in package scripts", () => {
