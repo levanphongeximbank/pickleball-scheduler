@@ -150,6 +150,7 @@
   "tests/player-management-phase-1j-c-directory-auth-repository-remediation.test.js",
   "tests/player-management-phase-1j-a-staging-fixtures.test.js",
   "tests/player-management-pm-id-01-mapping-contract.test.js",
+  "tests/player-management-pm-id-01-activation.test.js",
   "tests/player-history.test.js",
   "tests/tournament-mobile.test.js",
   "tests/tournament-regression.test.js",

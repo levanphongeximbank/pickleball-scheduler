@@ -1,0 +1,23 @@
+{
+  "phase": "PM-ID-01-ACTIVATION-REMOTE-READ-ONLY-PREFLIGHT",
+  "stagingProjectRefExpected": "qyewbxjsiiyufanzcjcq",
+  "databaseWrites": 0,
+  "sqlApplied": false,
+  "mappingRowsCreated": 0,
+  "backfillExecuted": false,
+  "roleGrantsApplied": false,
+  "stagingTouchedReadOnly": false,
+  "productionTouched": false,
+  "filesDeleted": false,
+  "CODEX_DELETE_ALLOWED": "NO",
+  "secretsPrinted": false,
+  "ok": true,
+  "errors": [],
+  "probeReadOnlyOk": true,
+  "manifestOk": true,
+  "auditOk": true,
+  "combinedManifestHash": "d956334b2d04af2a08851ba253874b63bf7d9d27240e7df10456817f1e8852a1",
+  "stagingProjectRef": "qyewbxjsiiyufanzcjcq",
+  "verdict": "PM_ID_01_REMOTE_READ_ONLY_PREFLIGHT_OFFLINE_PASS",
+  "mode": "offline"
+}

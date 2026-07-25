@@ -1,0 +1,98 @@
+{
+  "phase": "PM-ID-01",
+  "description": "Canonical pin of PM-ID-01 SQL package for guarded Staging activation. Does not execute SQL. Does not create mapping rows. Does not run backfill.",
+  "environmentTarget": "staging",
+  "stagingProjectRef": "qyewbxjsiiyufanzcjcq",
+  "stagingProjectRefAllowlist": ["qyewbxjsiiyufanzcjcq"],
+  "productionProjectRefBlocklist": ["expuvcohlcjzvrrauvud"],
+  "productionApplyApproved": false,
+  "executeSql": false,
+  "automaticRollback": false,
+  "backfillIncluded": false,
+  "mappingRowsCreated": false,
+  "roleGrantsIncluded": false,
+  "coachingChangesIncluded": false,
+  "hashAlgorithm": "sha256-lf-normalized",
+  "aggregateSha256Forward": "a19c76fd748e537fd0b98b38f02c50f3421a23f6604eedfb2a8771d494cf32a1",
+  "combinedManifestHash": "d956334b2d04af2a08851ba253874b63bf7d9d27240e7df10456817f1e8852a1",
+  "applyOrderingLocked": true,
+  "forwardExecutionOrder": [
+    "docs/player-management/pm-id-01/10_PM_ID_01_MAPPING_TABLE.sql",
+    "docs/player-management/pm-id-01/20_PM_ID_01_CONSTRAINTS_AND_INDEXES.sql",
+    "docs/player-management/pm-id-01/30_PM_ID_01_RESOLUTION_HELPERS.sql",
+    "docs/player-management/pm-id-01/40_PM_ID_01_MAPPING_MANAGEMENT_RPCS.sql",
+    "docs/player-management/pm-id-01/50_PM_ID_01_RLS_AND_GRANTS.sql"
+  ],
+  "postApplyVerificationOrder": [
+    "docs/player-management/pm-id-01/99_PM_ID_01_VERIFICATION.sql"
+  ],
+  "rollbackNotInForwardOrder": [
+    "docs/player-management/pm-id-01/90_PM_ID_01_ROLLBACK.sql"
+  ],
+  "transactionModel": {
+    "idealSingleTransaction": true,
+    "scriptedManagementApi": "per-file-checkpoint-stop-on-error",
+    "automaticRollback": false,
+    "notes": "Forward files 10→50 are PostgreSQL-transaction-compatible. Owner SQL Editor may wrap 10→50 in one transaction then run 99. Management API apply runs one file per request — checkpoint boundaries apply; do not claim cross-file atomicity for scripted apply. 90 rollback is never auto-executed."
+  },
+  "ownerGoTokenRequired": "PM_ID_01_OWNER_GO_APPLY_STAGING",
+  "migrations": [
+    {
+      "order": 10,
+      "classification": "forward",
+      "path": "docs/player-management/pm-id-01/10_PM_ID_01_MAPPING_TABLE.sql",
+      "sha256": "a87f2488d9bb65f44791b2196a6d033d9c47cbf81ad7546be0d8031534318598",
+      "transactionSafe": true,
+      "checkpoint": "after-mapping-table"
+    },
+    {
+      "order": 20,
+      "classification": "forward",
+      "path": "docs/player-management/pm-id-01/20_PM_ID_01_CONSTRAINTS_AND_INDEXES.sql",
+      "sha256": "1d8020ba9bb725cd81204bf5f1a922d8b01a75313cb51045e2df44511bef733a",
+      "transactionSafe": true,
+      "checkpoint": "after-constraints-indexes"
+    },
+    {
+      "order": 30,
+      "classification": "forward",
+      "path": "docs/player-management/pm-id-01/30_PM_ID_01_RESOLUTION_HELPERS.sql",
+      "sha256": "29b0748c124f3fcc97930e20e9ef07e2f5ebcec2f6f80a909a0bd96ccef9e9fc",
+      "transactionSafe": true,
+      "checkpoint": "after-resolution-helpers"
+    },
+    {
+      "order": 40,
+      "classification": "forward",
+      "path": "docs/player-management/pm-id-01/40_PM_ID_01_MAPPING_MANAGEMENT_RPCS.sql",
+      "sha256": "c8edb5c1640dc5d2a3ad268ed2324d9d79fac34063a5836e61bc3715e6118056",
+      "transactionSafe": true,
+      "checkpoint": "after-management-rpcs"
+    },
+    {
+      "order": 50,
+      "classification": "forward",
+      "path": "docs/player-management/pm-id-01/50_PM_ID_01_RLS_AND_GRANTS.sql",
+      "sha256": "22d291a82a6e879bee3c34cea41b1384995c79d90265501b7fc97b99ef89c4a3",
+      "transactionSafe": true,
+      "checkpoint": "after-rls-grants"
+    },
+    {
+      "order": 90,
+      "classification": "rollback",
+      "path": "docs/player-management/pm-id-01/90_PM_ID_01_ROLLBACK.sql",
+      "sha256": "24dc59e4bc33898ea6b80c448a13bf617f73ab59c3abf12d9db06217f0047739",
+      "transactionSafe": true,
+      "autoExecute": false
+    },
+    {
+      "order": 99,
+      "classification": "verification",
+      "path": "docs/player-management/pm-id-01/99_PM_ID_01_VERIFICATION.sql",
+      "sha256": "53f544544938ff8e13d6369b29d67925315f0ab28d6a7e8f8902a257b0011176",
+      "transactionSafe": true,
+      "readOnly": true,
+      "checkpoint": "after-verification"
+    }
+  ]
+}

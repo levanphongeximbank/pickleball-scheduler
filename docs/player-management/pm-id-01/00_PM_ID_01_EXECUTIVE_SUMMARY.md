@@ -80,6 +80,7 @@ This package:
 | `50_PM_ID_01_RLS_AND_GRANTS.sql` | RLS + grants |
 | `90_PM_ID_01_ROLLBACK.sql` | Drop PM-ID-01 objects only |
 | `99_PM_ID_01_VERIFICATION.sql` | Post-apply verification (read-style) |
+| `activation/` | Guarded Staging activation package (runbook, manifest, evidence) — apply still requires Owner GO |
 
 ---
 

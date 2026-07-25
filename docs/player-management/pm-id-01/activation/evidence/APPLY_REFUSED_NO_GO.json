@@ -1,0 +1,71 @@
+{
+  "phase": "PM-ID-01-GUARDED-STAGING-APPLY",
+  "script": "pm-id-01-staging-apply",
+  "ownerGoRequired": "PM_ID_01_OWNER_GO_APPLY_STAGING",
+  "stagingProjectRefExpected": "qyewbxjsiiyufanzcjcq",
+  "databaseConnectionOpened": false,
+  "databaseWrites": 0,
+  "sqlApplied": false,
+  "mappingRowsCreated": 0,
+  "backfillExecuted": false,
+  "roleGrantsApplied": false,
+  "productionTouched": false,
+  "filesDeleted": false,
+  "CODEX_DELETE_ALLOWED": "NO",
+  "automaticRollback": false,
+  "coachingChanges": false,
+  "secretsPrinted": false,
+  "APPLY_MODE": "REFUSED",
+  "ok": true,
+  "canWrite": false,
+  "verdict": "PM_ID_01_APPLY_REFUSED_OWNER_GO_NOT_GRANTED",
+  "ownerGoGranted": false,
+  "actualGitHead": "0b71e2a7d3a127cc2d6a7520c9a705bed77f2501",
+  "commitMismatchReasons": [],
+  "blockers": [
+    "Missing explicit --execute (default APPLY_MODE=REFUSED).",
+    "Exact Staging project ref required (got (empty)).",
+    "Working tree must be clean.",
+    "Successful preflight PASS report required.",
+    "Explicit approval token PM_ID_01_OWNER_GO_APPLY_STAGING required."
+  ],
+  "manifestOk": true,
+  "manifestErrors": [],
+  "combinedManifestHash": "d956334b2d04af2a08851ba253874b63bf7d9d27240e7df10456817f1e8852a1",
+  "aggregateSha256Forward": "a19c76fd748e537fd0b98b38f02c50f3421a23f6604eedfb2a8771d494cf32a1",
+  "migrationsWouldApply": [
+    {
+      "order": 1,
+      "path": "docs/player-management/pm-id-01/10_PM_ID_01_MAPPING_TABLE.sql"
+    },
+    {
+      "order": 2,
+      "path": "docs/player-management/pm-id-01/20_PM_ID_01_CONSTRAINTS_AND_INDEXES.sql"
+    },
+    {
+      "order": 3,
+      "path": "docs/player-management/pm-id-01/30_PM_ID_01_RESOLUTION_HELPERS.sql"
+    },
+    {
+      "order": 4,
+      "path": "docs/player-management/pm-id-01/40_PM_ID_01_MAPPING_MANAGEMENT_RPCS.sql"
+    },
+    {
+      "order": 5,
+      "path": "docs/player-management/pm-id-01/50_PM_ID_01_RLS_AND_GRANTS.sql"
+    },
+    {
+      "order": 6,
+      "path": "docs/player-management/pm-id-01/99_PM_ID_01_VERIFICATION.sql"
+    }
+  ],
+  "forwardOnly": [
+    "docs/player-management/pm-id-01/10_PM_ID_01_MAPPING_TABLE.sql",
+    "docs/player-management/pm-id-01/20_PM_ID_01_CONSTRAINTS_AND_INDEXES.sql",
+    "docs/player-management/pm-id-01/30_PM_ID_01_RESOLUTION_HELPERS.sql",
+    "docs/player-management/pm-id-01/40_PM_ID_01_MAPPING_MANAGEMENT_RPCS.sql",
+    "docs/player-management/pm-id-01/50_PM_ID_01_RLS_AND_GRANTS.sql"
+  ],
+  "rollbackAutoExecute": false,
+  "finishedAt": "2026-07-25T15:50:51.067Z"
+}

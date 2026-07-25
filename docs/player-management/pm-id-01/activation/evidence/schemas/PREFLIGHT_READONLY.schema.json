@@ -1,0 +1,40 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "pm-id-01-preflight-readonly.schema.json",
+  "title": "PM-ID-01 Read-Only Staging Preflight Evidence",
+  "type": "object",
+  "required": [
+    "databaseWrites",
+    "sqlApplied",
+    "mappingRowsCreated",
+    "backfillExecuted",
+    "roleGrantsApplied",
+    "stagingTouchedReadOnly",
+    "productionTouched",
+    "filesDeleted",
+    "CODEX_DELETE_ALLOWED"
+  ],
+  "properties": {
+    "verdict": {
+      "enum": [
+        "PM_ID_01_REMOTE_READ_ONLY_PREFLIGHT_PASS",
+        "PM_ID_01_REMOTE_READ_ONLY_PREFLIGHT_OFFLINE_PASS",
+        "PM_ID_01_REMOTE_READ_ONLY_PREFLIGHT_BLOCKED",
+        "PM_ID_01_REMOTE_READ_ONLY_PREFLIGHT_FAIL"
+      ]
+    },
+    "databaseWrites": { "const": 0 },
+    "sqlApplied": { "const": false },
+    "mappingRowsCreated": { "const": 0 },
+    "backfillExecuted": { "const": false },
+    "roleGrantsApplied": { "const": false },
+    "stagingTouchedReadOnly": { "type": "boolean" },
+    "productionTouched": { "const": false },
+    "filesDeleted": { "const": false },
+    "CODEX_DELETE_ALLOWED": { "const": "NO" },
+    "readOnlyTransaction": { "type": "boolean" },
+    "beginReadOnly": { "type": "boolean" },
+    "rollback": { "type": "boolean" }
+  },
+  "additionalProperties": true
+}
