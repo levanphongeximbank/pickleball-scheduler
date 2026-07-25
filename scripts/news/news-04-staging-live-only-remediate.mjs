@@ -388,7 +388,43 @@ function buildFixtureRevision(item, title) {
 
 async function insertFixture(accessToken, transport, item, title) {
   const revision = buildFixtureRevision(item, title);
-  // Insert revision first (FK), then item — trusted service path via Management API
+  // Two-step insert: item shell → revision → publish pointers (FK cycle).
+  await executeStagingSql(
+    transport,
+    accessToken,
+    `
+INSERT INTO public.news_public_content_items (
+  content_id, content_type, content_scope,
+  tenant_id, venue_id, club_id, competition_id,
+  author_id, editorial_owner_id,
+  editorial_status, public_visibility, provenance,
+  current_revision_id, approved_revision_id, published_revision_id,
+  publish_at, unpublish_at, publication_timezone,
+  published_at, unpublished_at, archived_at,
+  row_version, created_at, updated_at
+) VALUES (
+  ${sqlLiteral(item.content_id)},
+  ${sqlLiteral(item.content_type)},
+  ${sqlLiteral(item.content_scope)},
+  ${sqlLiteral(item.tenant_id)},
+  ${sqlLiteral(item.venue_id)},
+  NULL, NULL,
+  ${sqlLiteral(item.author_id)},
+  ${sqlLiteral(item.editorial_owner_id)},
+  'DRAFT',
+  ${sqlLiteral(item.public_visibility)},
+  ${sqlLiteral(item.provenance)},
+  NULL, NULL, NULL,
+  NULL, NULL,
+  ${sqlLiteral(item.publication_timezone)},
+  NULL, NULL, NULL,
+  ${item.row_version},
+  ${sqlLiteral(item.created_at)}::timestamptz,
+  ${sqlLiteral(item.updated_at)}::timestamptz
+);
+`,
+    `item-shell-${item.content_id}`
+  );
   await executeStagingSql(
     transport,
     accessToken,
@@ -422,42 +458,22 @@ INSERT INTO public.news_public_content_revisions (
     transport,
     accessToken,
     `
-INSERT INTO public.news_public_content_items (
-  content_id, content_type, content_scope,
-  tenant_id, venue_id, club_id, competition_id,
-  author_id, editorial_owner_id,
-  editorial_status, public_visibility, provenance,
-  current_revision_id, approved_revision_id, published_revision_id,
-  publish_at, unpublish_at, publication_timezone,
-  published_at, unpublished_at, archived_at,
-  row_version, created_at, updated_at
-) VALUES (
-  ${sqlLiteral(item.content_id)},
-  ${sqlLiteral(item.content_type)},
-  ${sqlLiteral(item.content_scope)},
-  ${sqlLiteral(item.tenant_id)},
-  ${sqlLiteral(item.venue_id)},
-  NULL, NULL,
-  ${sqlLiteral(item.author_id)},
-  ${sqlLiteral(item.editorial_owner_id)},
-  ${sqlLiteral(item.editorial_status)},
-  ${sqlLiteral(item.public_visibility)},
-  ${sqlLiteral(item.provenance)},
-  ${sqlLiteral(item.current_revision_id)},
-  ${sqlLiteral(item.approved_revision_id)},
-  ${sqlLiteral(item.published_revision_id)},
-  ${item.publish_at ? `${sqlLiteral(item.publish_at)}::timestamptz` : "NULL"},
-  ${item.unpublish_at ? `${sqlLiteral(item.unpublish_at)}::timestamptz` : "NULL"},
-  ${sqlLiteral(item.publication_timezone)},
-  ${item.published_at ? `${sqlLiteral(item.published_at)}::timestamptz` : "NULL"},
-  ${item.unpublished_at ? `${sqlLiteral(item.unpublished_at)}::timestamptz` : "NULL"},
-  ${item.archived_at ? `${sqlLiteral(item.archived_at)}::timestamptz` : "NULL"},
-  ${item.row_version},
-  ${sqlLiteral(item.created_at)}::timestamptz,
-  ${sqlLiteral(item.updated_at)}::timestamptz
-);
+UPDATE public.news_public_content_items
+SET
+  editorial_status = ${sqlLiteral(item.editorial_status)},
+  provenance = ${sqlLiteral(item.provenance)},
+  current_revision_id = ${sqlLiteral(item.current_revision_id)},
+  approved_revision_id = ${sqlLiteral(item.approved_revision_id)},
+  published_revision_id = ${sqlLiteral(item.published_revision_id)},
+  publish_at = ${item.publish_at ? `${sqlLiteral(item.publish_at)}::timestamptz` : "NULL"},
+  unpublish_at = ${item.unpublish_at ? `${sqlLiteral(item.unpublish_at)}::timestamptz` : "NULL"},
+  published_at = ${item.published_at ? `${sqlLiteral(item.published_at)}::timestamptz` : "NULL"},
+  unpublished_at = ${item.unpublished_at ? `${sqlLiteral(item.unpublished_at)}::timestamptz` : "NULL"},
+  archived_at = ${item.archived_at ? `${sqlLiteral(item.archived_at)}::timestamptz` : "NULL"},
+  updated_at = ${sqlLiteral(item.updated_at)}::timestamptz
+WHERE content_id = ${sqlLiteral(item.content_id)};
 `,
-    `item-${item.content_id}`
+    `item-finalize-${item.content_id}`
   );
 }
 
@@ -611,6 +627,11 @@ export async function runNews04StagingRemediation(options = {}) {
       applied: false,
       reason: "Staging already has LIVE-only query_public body.",
     };
+    if (args.mode === "preflight") {
+      report.verdict = "NEWS_04_READ_ONLY_OK";
+      writeEvidence(repoRoot, "NEWS_04_PREFLIGHT.json", report);
+      return report;
+    }
   } else if (args.mode === "preflight") {
     report.verdict = "NEWS_04_READ_ONLY_OK";
     report.apply = {
@@ -1099,9 +1120,25 @@ LIMIT 1;
   report.noSilentFallback = true;
 
   if (applyState === "ALREADY_APPLIED_VERIFIED") {
-    report.verdict = "NEWS_04_STAGING_LIVE_ONLY_ALREADY_APPLIED_CERTIFIED";
+    report.verdict =
+      needsCertify && report.liveMatrixPass && report.cleanupPass
+        ? "NEWS_04_STAGING_LIVE_ONLY_ALREADY_APPLIED_CERTIFIED"
+        : needsCertify
+          ? "NEWS_04_STAGING_LIVE_ONLY_APPLY_BLOCKED"
+          : "NEWS_04_STAGING_LIVE_ONLY_ALREADY_APPLIED_CERTIFIED";
+    if (
+      report.verdict === "NEWS_04_STAGING_LIVE_ONLY_APPLY_BLOCKED" &&
+      !report.reason
+    ) {
+      report.reason = "Already applied but live certification incomplete.";
+    }
   } else {
-    report.verdict = "NEWS_04_STAGING_LIVE_ONLY_APPLIED_CERTIFIED";
+    report.verdict =
+      needsCertify && report.liveMatrixPass && report.cleanupPass
+        ? "NEWS_04_STAGING_LIVE_ONLY_APPLIED_CERTIFIED"
+        : needsCertify
+          ? "NEWS_04_STAGING_LIVE_ONLY_APPLY_BLOCKED"
+          : "NEWS_04_STAGING_LIVE_ONLY_APPLIED_CERTIFIED";
   }
 
   writeEvidence(repoRoot, "NEWS_04_STAGING_CERTIFICATION.json", report);
