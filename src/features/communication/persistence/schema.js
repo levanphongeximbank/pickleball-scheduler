@@ -45,10 +45,10 @@ export const COMMUNICATION_RPC = Object.freeze({
 
 export const ACTIVATION_GATES = Object.freeze({
   /**
-   * ACT-03 authored Club SELECT Client RLS package exists but is not applied.
-   * Remote Staging remains COMMS-05 deny-all until Owner Staging apply GO.
+   * ACT-04 certified Club SELECT Client RLS on Staging.
+   * Production client cutover remains blocked until separate Owner GO.
    */
-  CLIENT_RLS_POLICY: "CLUB_SELECT_AUTHORED_NOT_APPLIED",
+  CLIENT_RLS_POLICY: "CLUB_SELECT_ACTIVE_ON_STAGING",
   REALTIME_PUBLICATION: "DEFERRED_NOT_ENABLED",
   SQL_APPLY: "DEFERRED_OWNER_GO_STAGING_ONLY",
   NOTIFICATION_OUTBOX: "DEFERRED_INTEGRATION_GATE",

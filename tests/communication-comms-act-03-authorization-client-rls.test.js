@@ -315,7 +315,7 @@ test("COMMS-ACT-03 rollback restores deny-all without dropping tables", () => {
 test("COMMS-ACT-03 activation gates remain fail-closed until Owner apply", () => {
   assert.equal(
     ACTIVATION_GATES.CLIENT_RLS_POLICY,
-    "CLUB_SELECT_AUTHORED_NOT_APPLIED"
+    "CLUB_SELECT_ACTIVE_ON_STAGING"
   );
   assert.equal(
     ACTIVATION_GATES.CLUB_MEMBERSHIP_SQL_HELPER,

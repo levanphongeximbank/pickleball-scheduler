@@ -31,6 +31,7 @@ export function assertActivationAllowed(gate, detail) {
     status === "DEFERRED" ||
     status === "OWNER_APPROVAL_REQUIRED" ||
     status === "CLUB_SELECT_AUTHORED_NOT_APPLIED" ||
+    status === "CLUB_SELECT_ACTIVE_ON_STAGING" ||
     status === "ACTIVATION_BLOCKER" ||
     status === false
   ) {

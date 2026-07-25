@@ -15,22 +15,24 @@
 | **COMMS-07** Integration Hardening & Final Certification | Complete (structure) · Staging persistence GO; client RLS / realtime / Production blocked | [`comms-07/07_INTEGRATION_FINAL_CERTIFICATION.md`](./comms-07/07_INTEGRATION_FINAL_CERTIFICATION.md) |
 | **COMMS-ACT-01** Staging Activation Readiness Gate | Readiness package complete · Owner GO + backup captured | [`activation/comms-act-01/01_STAGING_ACTIVATION_READINESS.md`](./activation/comms-act-01/01_STAGING_ACTIVATION_READINESS.md) |
 | **COMMS-ACT-02** Staging Apply | **GO_STAGING_PERSISTENCE** (deny-all; no realtime; no client RLS open) | [`activation/comms-act-02/02_STAGING_APPLY_CERTIFICATION.md`](./activation/comms-act-02/02_STAGING_APPLY_CERTIFICATION.md) |
-| **COMMS-ACT-03** Authorization & Client RLS Foundation | Authored · Club SELECT **CLIENT_RLS_READY** (not applied) · Direct/System trusted-backend · Community blocked | [`activation/comms-act-03/03_AUTHORIZATION_ARCHITECTURE.md`](./activation/comms-act-03/03_AUTHORIZATION_ARCHITECTURE.md) |
+| **COMMS-ACT-03** Authorization & Client RLS Foundation | Authored · Club SELECT **CLIENT_RLS_READY** · Staging applied in ACT-04 · Direct/System trusted-backend · Community blocked | [`activation/comms-act-03/03_AUTHORIZATION_ARCHITECTURE.md`](./activation/comms-act-03/03_AUTHORIZATION_ARCHITECTURE.md) |
+| **COMMS-ACT-04** Staging Club SELECT RLS Apply & Certification | **CERTIFIED** on Staging (`CLUB_SELECT_ONLY`) · realtime still off · Production blocked | [`activation/comms-act-04/04_STAGING_CLUB_SELECT_APPLY.md`](./activation/comms-act-04/04_STAGING_CLUB_SELECT_APPLY.md) |
 
-**Runtime module:** `src/features/communication/` — contracts, domain, ports, Direct + Club + Community application, persistence adapters + realtime foundation, Messaging Experience UI, **COMMS-07 runtime/provider/production gateway**, **COMMS-ACT-01/02/03 activation modules**.
+**Runtime module:** `src/features/communication/` — contracts, domain, ports, Direct + Club + Community application, persistence adapters + realtime foundation, Messaging Experience UI, **COMMS-07 runtime/provider/production gateway**, **COMMS-ACT-01/02/03/04 activation modules**.
 
-## Final status (post COMMS-ACT-03 authoring)
+## Final status (COMMS-ACT-04 certified)
 
 | Surface | Status |
 |---------|--------|
 | **Structure / code** | COMPLETE + ACT-03 authorization foundation |
 | **Local/demo** | READY |
-| **COMMS-ACT-02 Staging apply** | `GO_STAGING_PERSISTENCE` (deny-all still live) |
-| **COMMS-ACT-03 Client RLS package** | AUTHORED_NOT_APPLIED (Club SELECT ready for Owner GO) |
-| **Remote persistence (Staging)** | APPLIED deny-all (unchanged by ACT-03) |
-| **Client RLS (remote)** | FAIL-CLOSED deny-all until Owner apply |
-| **Realtime** | NOT ENABLED |
-| **Production** | BLOCKED |
+| **COMMS-ACT-02 Staging apply** | `GO_STAGING_PERSISTENCE` |
+| **COMMS-ACT-03 Client RLS package** | Authored + **Staging applied via ACT-04** (`CLUB_SELECT_ONLY`) |
+| **COMMS-ACT-04** | `STAGING_CLUB_SELECT_CERTIFIED` (fixtures cleaned; realtime off; Production blocked) |
+| **Remote persistence (Staging)** | APPLIED deny-all baseline + **Club SELECT Client RLS** |
+| **Client RLS (remote Staging)** | `CLUB_SELECT_ONLY` |
+| **Realtime** | NOT ENABLED (`BLOCKED_FAIL_CLOSED`) |
+| **Production** | BLOCKED (`UNTOUCHED`; Production client cutover FAIL-CLOSED) |
 
 ## Hard boundary
 
@@ -90,4 +92,4 @@ See COMMS-00 for ownership, dependency status, and phase readiness.
 - Realtime foundation via `RealtimeDeliveryPort` (no remote publication)
 - Remaining gates: client RLS open, realtime publication, Notification outbox, Production
 
-**Next Owner action:** Trusted-backend Staging smoke and/or separate GO for client RLS / realtime — do **not** touch Production.
+**Next Owner action:** Optional trusted-backend smoke / separate GO for realtime or Production — do **not** touch Production without a new Owner GO.

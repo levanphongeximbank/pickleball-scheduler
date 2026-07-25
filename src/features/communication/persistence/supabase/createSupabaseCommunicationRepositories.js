@@ -3,7 +3,8 @@
  *
  * Injected client only (typically service-role / trusted backend).
  * Client JWT RLS: ACT-03 authored Club SELECT package exists but is not applied
- * (`CLUB_SELECT_AUTHORED_NOT_APPLIED`). Trusted backend client still required.
+ * (`CLUB_SELECT_ACTIVE_ON_STAGING`). Trusted backend client still required for writes
+ * and for Production until separate Owner GO.
  * Never returns raw Supabase rows from public methods.
  */
 
