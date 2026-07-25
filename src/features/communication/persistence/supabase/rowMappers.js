@@ -25,6 +25,30 @@ function toIso(value) {
 }
 
 /**
+ * Domain Direct pair keys use U+0000 as separator (in-memory).
+ * Postgres text / PostgREST reject NUL (SQLSTATE 22P05) — encode for storage.
+ */
+const PAIR_KEY_DB_SEPARATOR = "\u001f";
+
+/**
+ * @param {string|null|undefined} pairKey
+ * @returns {string|null}
+ */
+export function encodeDirectPairKeyForDb(pairKey) {
+  if (pairKey == null || pairKey === "") return null;
+  return String(pairKey).split("\u0000").join(PAIR_KEY_DB_SEPARATOR);
+}
+
+/**
+ * @param {string|null|undefined} pairKey
+ * @returns {string|null}
+ */
+export function decodeDirectPairKeyFromDb(pairKey) {
+  if (pairKey == null || pairKey === "") return null;
+  return String(pairKey).split(PAIR_KEY_DB_SEPARATOR).join("\u0000");
+}
+
+/**
  * @param {object} row
  */
 export function conversationFromRow(row) {
@@ -71,7 +95,9 @@ export function conversationToRow(conversation, meta = {}) {
     lifecycle_status: meta.lifecycleStatus ?? null,
     slow_mode_interval_seconds:
       meta.slowModeIntervalSeconds == null ? 0 : Number(meta.slowModeIntervalSeconds),
-    direct_pair_key: meta.pairKey ?? meta.directPairKey ?? null,
+    direct_pair_key: encodeDirectPairKeyForDb(
+      meta.pairKey ?? meta.directPairKey ?? null
+    ),
     updated_at: new Date().toISOString(),
   };
 }
@@ -236,7 +262,7 @@ export function directRequestFromRow(row) {
   try {
     return createConversationRequestContract({
       requestId: row.request_id,
-      pairKey: row.pair_key,
+      pairKey: decodeDirectPairKeyFromDb(row.pair_key),
       requesterParticipantId: row.requester_participant_id,
       recipientParticipantId: row.recipient_participant_id,
       status: row.status,
@@ -258,7 +284,7 @@ export function directRequestFromRow(row) {
 export function directRequestToRow(request) {
   return {
     request_id: request.requestId,
-    pair_key: request.pairKey,
+    pair_key: encodeDirectPairKeyForDb(request.pairKey),
     requester_participant_id: request.requesterParticipantId,
     recipient_participant_id: request.recipientParticipantId,
     status: request.status,
@@ -501,7 +527,7 @@ export function channelAggregateFromRows(conversationRow, participantRows, kind)
     return deepFreeze({
       conversation,
       participants,
-      pairKey: conversationRow.direct_pair_key,
+      pairKey: decodeDirectPairKeyFromDb(conversationRow.direct_pair_key),
     });
   }
   if (kind === "club") {

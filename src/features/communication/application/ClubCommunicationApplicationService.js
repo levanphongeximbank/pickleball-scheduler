@@ -706,7 +706,13 @@ export function createClubCommunicationApplicationService(deps = {}) {
         replyToMessageId: input.replyToMessageId ?? null,
         attachmentRefs: input.attachmentRefs ?? [],
       });
-      const saved = await messages.save(message);
+      const toSave = input.clientIdempotencyKey
+        ? Object.freeze({
+            ...message,
+            clientIdempotencyKey: String(input.clientIdempotencyKey),
+          })
+        : message;
+      const saved = await messages.save(toSave);
       return Object.freeze({ message: saved, channel: working });
     },
 

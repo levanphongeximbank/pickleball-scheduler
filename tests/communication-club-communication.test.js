@@ -819,7 +819,7 @@ test("in-memory club repositories are isolated test doubles", () => {
   assert.notEqual(a.channels, b.channels);
 });
 
-test("module source has no SQL / Supabase / UI wiring outside persistence/, experience/, and runtime/", () => {
+test("module source has no SQL / Supabase / UI wiring outside persistence/, experience/, runtime/, adapters/, trustedBackend/", () => {
   const walk = (dir) => {
     const entries = fs.readdirSync(dir, { withFileTypes: true });
     /** @type {string[]} */
@@ -830,7 +830,9 @@ test("module source has no SQL / Supabase / UI wiring outside persistence/, expe
         if (
           entry.name === "persistence" ||
           entry.name === "experience" ||
-          entry.name === "runtime"
+          entry.name === "runtime" ||
+          entry.name === "adapters" ||
+          entry.name === "trustedBackend"
         ) {
           continue;
         }

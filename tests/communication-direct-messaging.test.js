@@ -548,7 +548,7 @@ test("ports have no runtime coupling (unimplemented throw typed code)", async ()
   assert.equal(matchesDirectConversationRepository(memory.conversations), true);
 });
 
-test("module tree has no remote Supabase client / UI wiring outside persistence/, experience/, and runtime/", () => {
+test("module tree has no remote Supabase client / UI wiring outside persistence/, experience/, runtime/, adapters/, trustedBackend/", () => {
   const banned = [
     "createClient",
     "@supabase/",
@@ -559,11 +559,14 @@ test("module tree has no remote Supabase client / UI wiring outside persistence/
     for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
       const full = path.join(dir, entry.name);
       if (entry.isDirectory()) {
-        // COMMS-05 persistence; COMMS-06 experience UI; COMMS-07 runtime provider.
+        // COMMS-05 persistence; COMMS-06 experience UI; COMMS-07 runtime;
+        // ACT-05 adapters + trustedBackend (injected client; no createClient).
         if (
           entry.name === "persistence" ||
           entry.name === "experience" ||
-          entry.name === "runtime"
+          entry.name === "runtime" ||
+          entry.name === "adapters" ||
+          entry.name === "trustedBackend"
         ) {
           continue;
         }
