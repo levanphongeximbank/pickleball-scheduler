@@ -20,6 +20,7 @@ dashboard/reporting data contracts, and historical/trend analysis for PICK_VN.
 | Competition analytics (I&A-06) | `src/features/intelligence-analytics/competition-analytics` |
 | Venue / Court / Club analytics (I&A-07) | `src/features/intelligence-analytics/venue-court-club-analytics` |
 | Customer / Player analytics (I&A-08) | `src/features/intelligence-analytics/customer-player-analytics` |
+| Finance / Ranking / Performance analytics (I&A-09) | `src/features/intelligence-analytics/finance-ranking-performance-analytics` |
 | Dashboard UI / localStorage analytics | `src/features/dashboard-analytics` (legacy active; not foundation) |
 | Statistics UI aggregations | `src/features/statistics` (legacy active; not foundation) |
 | Platform Core | CLOSED — not modified, not imported |
@@ -131,6 +132,38 @@ dashboard/reporting data contracts, and historical/trend analysis for PICK_VN.
 - Read-only Customer/Player Analytics facade + in-memory certification source
 - Typed customer/player analytics errors / warnings / provenance / completeness
 
+**In scope (I&A-09):**
+
+- Finance / Ranking / Performance analytics context / source request / snapshot envelope
+- Analytical money contract (integer minor units only; no floating point; no
+  currency conversion; fail-closed mixed-currency arithmetic)
+- Explicit finance fact contracts (transaction, invoice, payment, refund,
+  settlement, receivable, recognized revenue/expense amount) — overdue and
+  recognition are always explicit signals, never inferred from dates or from
+  booking/payment facts
+- Explicit ranking fact contracts (ranking system, ranking snapshot with
+  explicit rank-direction metadata, ranking position) — never a source of
+  computed standings
+- Explicit rating fact contracts (rating snapshot, rating change with
+  explicit or before/after-derived delta) — never a rating-algorithm
+  recalculation
+- Explicit performance fact contracts (participation, match, outcome with
+  explicit outcome/validationStatus) — winner is never inferred from score
+- Tenant / currency / ranking-system / rating-system / player / team /
+  competition isolation guards (fail closed)
+- Versioned finance/ranking/performance metric catalog (registry-compatible;
+  currency-safe aggregation documented on every monetary metric)
+- Deterministic finance, ranking (including compatible-system-only movement
+  comparison), rating, and performance summary projections
+- Historical observation composition via I&A-05 contracts (currency /
+  ranking-system / rating-system / entity dimensions preserved)
+- Presentation-neutral dashboard/report payload composition via I&A-04
+- Read-only Finance/Ranking/Performance Analytics facade + in-memory
+  certification source
+- Typed finance/ranking/performance analytics errors / warnings / provenance
+  / completeness
+- PII and payment-credential rejection at the fact-creation boundary
+
 **Out of scope:**
 
 - Database / Supabase / SQL / migrations
@@ -149,6 +182,11 @@ dashboard/reporting data contracts, and historical/trend analysis for PICK_VN.
 - Player skill / rating / ranking / performance calculation
 - PII inspection for profile-completeness (explicit source facts only)
 - Finance revenue / pricing / ledger calculation
+- Ledger posting / revenue recognition decisions / currency conversion
+- Ranking / rating / standings / score / winner calculation or recalculation
+- Treating booking or payment facts as revenue
+- Inferring receivable overdue status from due dates
+- Inferring match winner from raw score
 - AI inference / paid AI services / AI narrative / forecasting
 - Alert delivery / persistence
 - Platform Core changes
@@ -297,6 +335,31 @@ Customer / Player canonical facades, snapshots or events
             CustomerPlayerAnalyticsResult
 ```
 
+## Finance / Ranking / Performance analytics flow (I&A-09)
+
+```text
+Finance / Ranking / Rating / Competition canonical facades, snapshots or events
+                         │
+                         ▼
+   FinanceRankingPerformanceAnalyticsSourceAdapter
+                         │
+                         ▼
+  Privacy-Safe, Currency-Safe Explicit Analytical Facts
+                         │
+                         ▼
+ Tenant / Currency / RankingSystem / RatingSystem / Player / Team / Competition
+                         Guard → Validation
+                         │
+                         ▼
+ Finance / Ranking (+ Movement) / Rating / Performance Projections
+                         │
+                         ▼
+ Historical Series + Dashboard/Report Payloads
+                         │
+                         ▼
+      FinanceRankingPerformanceAnalyticsResult
+```
+
 ## Dependency rules
 
 - No import from `src/core/platform/**`
@@ -314,6 +377,10 @@ Customer / Player canonical facades, snapshots or events
 - Customer/Player analytics does not merge identities, infer customer-player
   links, inspect PII for completeness, calculate CRM conversion / CLV /
   rating / ranking / performance / eligibility, or accept PII fact fields
+- Finance/Ranking/Performance analytics does not post ledger entries,
+  recognize revenue, convert currency, recalculate ranking/rating/standings/
+  score/winner, treat booking/payment facts as revenue, infer overdue from
+  dates, infer winner from score, or accept PII/payment-credential fact fields
 - Analytics output always sets `isCanonicalModuleState: false`
 
 ## Roadmap (structural)
@@ -325,9 +392,9 @@ Customer / Player canonical facades, snapshots or events
 5. I&A-05 Historical and Trend Analysis ← certified
 6. I&A-06 Competition Analytics ← certified
 7. I&A-07 Venue, Court and Club Analytics ← certified
-8. I&A-08 Customer and Player Analytics ← current
-9. I&A-09 Finance, Ranking and Performance Analytics
-10. I&A-10 Operational Alerts and Insights
+8. I&A-08 Customer and Player Analytics ← certified
+9. I&A-09 Finance, Ranking and Performance Analytics ← current
+10. I&A-10 Operational Alerts and Insights ← next
 11. I&A-11 Privacy, Tenant Isolation and Access Certification
 12. I&A-12 AI and Advanced Intelligence Readiness
 13. I&A-13 Integration Hardening and Final Certification

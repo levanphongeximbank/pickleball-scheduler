@@ -9,13 +9,15 @@
  * I&A-06 — Competition Analytics
  * I&A-07 — Venue, Court and Club Analytics
  * I&A-08 — Customer and Player Analytics
+ * I&A-09 — Finance, Ranking and Performance Analytics
  *
  * Module-neutral metric/query/result contracts, metric registry governance,
  * deterministic query/projection runtime over explicit source adapters,
  * presentation-neutral dashboard/report data contracts, historical/trend
  * analysis, competition analytics projections, venue/court/club analytics
- * projections, privacy-safe customer/player analytics projections, and
- * read-only facades.
+ * projections, privacy-safe customer/player analytics projections,
+ * privacy-safe and currency-safe finance/ranking/performance analytics
+ * projections, and read-only facades.
  * No dashboard UI wiring, no Platform Core / Competition E2E / business-rule
  * deps, no SQL/Supabase adapters, no export/scheduler runtime, no forecasting.
  */
@@ -31,6 +33,7 @@ export * from "./historical-trend/index.js";
 export * from "./competition-analytics/index.js";
 export * from "./venue-court-club-analytics/index.js";
 export * from "./customer-player-analytics/index.js";
+export * from "./finance-ranking-performance-analytics/index.js";
 
 export const INTELLIGENCE_ANALYTICS_FOUNDATION = Object.freeze({
   workstreamId: "I&A-01",
@@ -77,6 +80,12 @@ export const INTELLIGENCE_ANALYTICS_VENUE_COURT_CLUB_ANALYTICS = Object.freeze({
 export const INTELLIGENCE_ANALYTICS_CUSTOMER_PLAYER_ANALYTICS = Object.freeze({
   workstreamId: "I&A-08",
   name: "Customer and Player Analytics",
+  version: "1.0.0",
+});
+
+export const INTELLIGENCE_ANALYTICS_FINANCE_RANKING_PERFORMANCE_ANALYTICS = Object.freeze({
+  workstreamId: "I&A-09",
+  name: "Finance, Ranking and Performance Analytics",
   version: "1.0.0",
 });
 
@@ -229,4 +238,29 @@ export const INTELLIGENCE_ANALYTICS_PUBLIC_EXPORTS = Object.freeze([
   "CUSTOMER_PLAYER_ANALYTICS_METHOD_VERSION",
   "CUSTOMER_PLAYER_ANALYTICS_COMPLETENESS",
   "FORBIDDEN_PII_FACT_KEYS",
+  "INTELLIGENCE_ANALYTICS_FINANCE_RANKING_PERFORMANCE_ANALYTICS",
+  "createFinanceRankingPerformanceAnalyticsContext",
+  "createFinanceRankingPerformanceAnalyticsSnapshot",
+  "createFinanceRankingPerformanceAnalyticsSourceRequest",
+  "createInMemoryFinanceRankingPerformanceAnalyticsSource",
+  "createFinanceRankingPerformanceAnalyticsQuery",
+  "normalizeFinanceRankingPerformanceAnalyticsQuery",
+  "createFinanceRankingPerformanceAnalyticsMetricDefinitions",
+  "createFinanceRankingPerformanceAnalyticsMetricCatalogEntries",
+  "FINANCE_RANKING_PERFORMANCE_ANALYTICS_METRIC_IDS",
+  "projectFinanceRankingPerformanceSummary",
+  "projectFinanceSummary",
+  "projectRankingSummary",
+  "projectRankingMovement",
+  "projectRatingSummary",
+  "projectPerformanceSummary",
+  "composeFinanceRankingPerformanceHistoricalObservations",
+  "composeFinanceRankingPerformanceDashboardPayloads",
+  "createFinanceRankingPerformanceAnalyticsFacade",
+  "createReadOnlyFinanceRankingPerformanceAnalyticsFacade",
+  "FINANCE_RANKING_PERFORMANCE_ANALYTICS_METHOD_VERSION",
+  "FINANCE_RANKING_PERFORMANCE_ANALYTICS_COMPLETENESS",
+  "FORBIDDEN_PII_AND_PAYMENT_FACT_KEYS",
+  "createAnalyticalMoney",
+  "RANK_DIRECTION",
 ]);
