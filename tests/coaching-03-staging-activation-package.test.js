@@ -313,15 +313,131 @@ test("rollback object coverage includes tables RPCs policies", () => {
   assert.ok(roleRollback.includes("coaching"));
 });
 
-test("role matrix covers all 14 actions and denies PLAYER broad read", () => {
+test("role matrix covers all 14 actions and denies COACH/PLAYER all grants", () => {
   const matrix = Staging.verifyCoaching03RoleMatrixCompleteness();
   assert.equal(matrix.ok, true, matrix.errors.join(" | "));
   assert.equal(matrix.actionCount, 14);
   assert.equal(matrix.playerRecordsReadGranted, false);
+  assert.equal(matrix.coachAnyGrant, false);
+  assert.equal(matrix.playerAnyGrant, false);
+  assert.equal(Staging.roleHasAnyCoaching03Grant("COACH"), false);
+  assert.equal(Staging.roleHasAnyCoaching03Grant("PLAYER"), false);
   assert.equal(
     Staging.isCoaching03RoleGrantProposed("PLAYER", "coaching.records.read"),
     false
   );
+  assert.equal(
+    Staging.isCoaching03RoleGrantProposed("COACH", "coaching.records.read"),
+    false
+  );
+  for (const action of Staging.COACHING_03_ACTIONS) {
+    assert.equal(
+      Staging.isCoaching03RoleGrantProposed("COACH", action),
+      false,
+      action
+    );
+    assert.equal(
+      Staging.isCoaching03RoleGrantProposed("PLAYER", action),
+      false,
+      action
+    );
+    for (const admin of Staging.COACHING_03_ADMIN_GRANT_ROLES) {
+      assert.equal(
+        Staging.isCoaching03RoleGrantProposed(admin, action),
+        true,
+        `${admin}:${action}`
+      );
+    }
+  }
+});
+
+test("SQL proposal and docs deny COACH grants; COACHING-04 handoff requires assignment RLS", () => {
+  const sql = read(Staging.COACHING_03_ROLE_GRANT_FORWARD_RELATIVE_PATH);
+  assert.doesNotMatch(
+    sql,
+    /INSERT[\s\S]*SELECT\s+'COACH'/i,
+    "SQL must not INSERT role_permissions for COACH"
+  );
+  assert.ok(/No COACH grants/i.test(sql) || /zero Coaching permissions until COACHING-04/i.test(sql));
+  assert.doesNotMatch(sql, /operational subset/i);
+
+  const matrixDoc = read(
+    "docs/coaching-training/coaching-03/02_COACHING_03_ROLE_PERMISSION_MATRIX.md"
+  );
+  assert.ok(matrixDoc.includes("COACH | **none**"));
+  assert.ok(matrixDoc.includes("assignment-aware"));
+  assert.ok(matrixDoc.includes("COACHING-04"));
+  assert.ok(matrixDoc.includes("COACH authorization is incomplete"));
+  assert.doesNotMatch(
+    matrixDoc,
+    /COACH.*operational subset|positive COACH access/i
+  );
+
+  for (const prereq of Staging.COACHING_04_COACH_GRANT_PREREQUISITES) {
+    assert.ok(
+      matrixDoc.toLowerCase().includes(
+        prereq.split(" ")[0].toLowerCase()
+      ) || matrixDoc.includes("Assignment-aware") || matrixDoc.includes("assignment-aware"),
+      `handoff mentions concept from: ${prereq}`
+    );
+  }
+  assert.ok(matrixDoc.includes("Assignment-aware RLS"));
+  assert.ok(matrixDoc.includes("coach_principal_id") || matrixDoc.includes("coach-player"));
+  assert.ok(matrixDoc.includes("cross-coach"));
+  assert.ok(matrixDoc.includes("Removed assignment"));
+
+  const cert = read(
+    "docs/coaching-training/coaching-03/04_COACHING_03_CERTIFICATION_MATRIX.md"
+  );
+  assert.ok(cert.includes("COACH without Coaching permission"));
+  assert.ok(cert.includes("PLAYER without Coaching permission"));
+  assert.ok(cert.includes("No positive COACH flow"));
+  assert.ok(cert.includes("SUPER_ADMIN"));
+  assert.ok(cert.includes("VENUE_MANAGER"));
+  assert.ok(cert.includes("CLUB_MANAGER"));
+
+  assert.deepEqual(
+    [...Staging.COACHING_03_CERT_POSITIVE_ROLES],
+    [
+      "SUPER_ADMIN",
+      "TENANT_OWNER",
+      "VENUE_OWNER",
+      "VENUE_MANAGER",
+      "CLUB_MANAGER",
+    ]
+  );
+});
+
+test("apply still refuses without Owner GO; SQL not applied and writes remain zero", () => {
+  const refused = Staging.evaluateCoaching03ApplyGuards({
+    execute: true,
+    environment: "staging",
+    projectRef: Staging.COACHING_03_STAGING_PROJECT_REF,
+    expectedCommit: Staging.getCoaching03HeadSha(root),
+    ownerGoToken: "WRONG",
+    preflightPass: true,
+    productionAllowed: false,
+    repoRoot: root,
+    requireCleanWorktree: false,
+    env: {
+      STAGING_SUPABASE_URL: `https://${Staging.COACHING_03_STAGING_PROJECT_REF}.supabase.co`,
+    },
+  });
+  assert.equal(refused.applyMode, "REFUSED");
+  assert.equal(refused.canWrite, false);
+
+  const approval = Staging.loadCoaching03ApprovalTemplateDefaults(root);
+  assert.equal(approval.defaults.approved, false);
+  assert.equal(approval.defaults.productionAllowed, false);
+  assert.equal(approval.defaults.environment, "staging");
+
+  const evidence = read(
+    "docs/coaching-training/coaching-03/evidence/PREFLIGHT_LIVE_READONLY.json"
+  );
+  const live = JSON.parse(evidence);
+  assert.equal(live.sqlApplied, false);
+  assert.equal(live.databaseWrites, 0);
+  assert.equal(live.ownerGoGranted, false);
 });
 
 test("runtime remains uncut and localStorage legacy path remains present", () => {

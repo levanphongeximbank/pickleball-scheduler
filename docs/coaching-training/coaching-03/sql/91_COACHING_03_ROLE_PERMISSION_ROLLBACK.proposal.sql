@@ -4,6 +4,8 @@
 -- Status: AUTHORED ONLY — Owner-authorized manual run. Not auto-executed.
 -- Does NOT drop permission catalog rows (those belong to COACHING-02 seed).
 -- Does NOT touch non-Coaching role_permissions.
+-- Note: COACH is listed for residual cleanup if an earlier draft proposal
+-- that granted COACH was ever applied; current 70_* grants COACH zero rows.
 -- =============================================================================
 
 SET search_path = public, pg_temp;

@@ -19,16 +19,29 @@
 
 ## B. Authorization
 
+Positive flows use **admin principals only**:
+
+- `SUPER_ADMIN`
+- `TENANT_OWNER` (or verified venue-owner alias)
+- `VENUE_MANAGER`
+- `CLUB_MANAGER`
+
+**No positive COACH flow in COACHING-03.**
+
 | Case | Expected |
 |------|----------|
 | anon | denied |
 | authenticated without Coaching permission | denied |
+| **COACH without Coaching permission** | **denied** (negative — required) |
+| **PLAYER without Coaching permission** | **denied** (negative — required) |
 | wrong tenant | denied |
 | wrong club | denied |
-| same-tenant / same-club + permission | allowed |
+| same-tenant / same-club + admin permission | allowed |
 | unknown action | denied |
 | removed membership (if helper supports) | denied |
 | broad authenticated fallback | absent |
+
+Do not create or mutate QA accounts during remediation. Prefer existing sanitized Staging admin QA labels when Gate E runs.
 
 ## C. Atomic attendance correction
 

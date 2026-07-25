@@ -6,8 +6,9 @@
 -- Does NOT modify Identity internals / non-Coaching permissions.
 -- Fail-closed:
 --   - No PUBLIC / anon grants
---   - No PLAYER coaching.records.read (self-scope unproven — deferred COACHING-04)
---   - No PLAYER write actions
+--   - No COACH grants (RLS is permission+tenant/club only — assignment-aware
+--     scope deferred to COACHING-04; club-wide COACH access must not be enabled)
+--   - No PLAYER coaching grants (self-scope unproven — deferred COACHING-04)
 --   - No authenticated-global grant
 --   - STAFF / REFEREE / CASHIER / CUSTOMER / SUPPORT receive zero by default
 -- Convention: WHERE NOT EXISTS (CRM Phase 1H style)
@@ -76,29 +77,8 @@ WHERE (p.module = 'coaching' OR p.id LIKE 'coaching.%')
     WHERE rp.role_id = r.role_id AND rp.permission_id = p.id
   );
 
--- ---------------------------------------------------------------------------
--- COACH — operational subset (no program design, no corrections, no package/grant)
--- ---------------------------------------------------------------------------
-INSERT INTO public.role_permissions (role_id, permission_id)
-SELECT 'COACH', v.permission_id
-FROM (
-  VALUES
-    ('coaching.player.enroll'),
-    ('coaching.lesson.create'),
-    ('coaching.session.schedule'),
-    ('coaching.attendance.record'),
-    ('coaching.entitlement.consume'),
-    ('coaching.evaluation.submit'),
-    ('coaching.records.read')
-) AS v(permission_id)
-WHERE EXISTS (SELECT 1 FROM public.permissions p WHERE p.id = v.permission_id)
-  AND EXISTS (SELECT 1 FROM public.roles ro WHERE ro.id = 'COACH')
-  AND NOT EXISTS (
-    SELECT 1 FROM public.role_permissions rp
-    WHERE rp.role_id = 'COACH' AND rp.permission_id = v.permission_id
-  );
-
 -- Explicit non-grants (documented):
+-- COACH — zero Coaching permissions until COACHING-04 assignment-aware RLS
 -- PLAYER — zero Coaching permissions (self-service read deferred to COACHING-04)
 -- STAFF, REFEREE, CASHIER, CUSTOMER, SUPPORT, ACCOUNTANT, SYSTEM_TECHNICIAN,
 -- TOURNAMENT_MANAGER, TEAM_CAPTAIN — zero Coaching permissions by default.
