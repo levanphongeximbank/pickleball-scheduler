@@ -5,9 +5,9 @@
  */
 
 export const ECOSYSTEM_INTEGRATIONS_PHASE = Object.freeze({
-  id: "ECO-02",
-  name: "integration-secret-environment-boundary",
-  priorPhase: "ECO-01",
+  id: "ECO-02b",
+  name: "legacy-vite-secret-cutover",
+  priorPhase: "ECO-02",
   wiredToProductionRuntime: false,
   hasRealProviders: false,
   hasNetworkClients: false,
@@ -15,6 +15,7 @@ export const ECOSYSTEM_INTEGRATIONS_PHASE = Object.freeze({
   hasProductionWebhooks: false,
   hasSecretBoundary: true,
   hasLiveCredentialResolver: false,
+  hasLegacySecretCutover: true,
   structureComplete: true,
   productionBlocked: true,
 });

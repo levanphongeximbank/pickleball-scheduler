@@ -1,5 +1,6 @@
 import { PaymentProvider } from "./PaymentProvider.js";
 import { getIntegrationEnvConfig } from "../../integrations/config/integrationFlags.js";
+import { isBrowserProviderCredentialResolved } from "../../integrations/config/legacyViteSecretCutover.js";
 
 export class MoMoProvider extends PaymentProvider {
   constructor() {
@@ -8,7 +9,10 @@ export class MoMoProvider extends PaymentProvider {
 
   isConfigured() {
     const cfg = getIntegrationEnvConfig().momo;
-    return cfg.enabled && cfg.partnerCode && cfg.secretKey;
+    // ECO-02b: access/secret keys are server-only; browser config fails closed.
+    return Boolean(
+      isBrowserProviderCredentialResolved(cfg) && cfg.partnerCode
+    );
   }
 
   async createPayment(input) {

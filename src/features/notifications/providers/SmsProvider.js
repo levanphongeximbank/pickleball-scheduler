@@ -1,5 +1,6 @@
 import { NotificationProvider } from "./NotificationProvider.js";
-import { getIntegrationEnvConfig, isSmsEnabled } from "../../integrations/config/integrationFlags.js";
+import { getIntegrationEnvConfig } from "../../integrations/config/integrationFlags.js";
+import { isBrowserProviderCredentialResolved } from "../../integrations/config/legacyViteSecretCutover.js";
 import { mockSmsProvider } from "./MockNotificationProvider.js";
 
 const RATE_LIMIT_WINDOW_MS = 60_000;
@@ -13,7 +14,8 @@ export class SmsProvider extends NotificationProvider {
 
   isConfigured() {
     const cfg = getIntegrationEnvConfig().sms;
-    return isSmsEnabled() && cfg.apiKey;
+    // ECO-02b: SMS API key/secret are server-only; fail closed to mock path.
+    return isBrowserProviderCredentialResolved(cfg);
   }
 
   checkRateLimit(tenantId) {

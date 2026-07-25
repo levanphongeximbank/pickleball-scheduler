@@ -1,3 +1,16 @@
+/**
+ * Sprint 10 / ECO-02b — client-safe integration env flags.
+ *
+ * Browser-facing config must never read or export legacy VITE_* secrets,
+ * tokens, passwords, or signing material. Credential-requiring providers are
+ * marked fail-closed until a server-side resolver is injected (not in ECO-02b).
+ */
+
+import {
+  isBrowserProviderCredentialResolved,
+  withServerCredentialCutover,
+} from "./legacyViteSecretCutover.js";
+
 function readEnv(key, fallback = "") {
   if (typeof import.meta !== "undefined" && import.meta.env?.[key] !== undefined) {
     return import.meta.env[key];
@@ -54,60 +67,75 @@ export function getSmsProvider() {
   return readEnv("VITE_SMS_PROVIDER", "mock");
 }
 
+/**
+ * Client-safe integration env projection.
+ * Does not read VITE_* secret / token / password variables.
+ */
 export function getIntegrationEnvConfig() {
   return {
     paymentDefaultProvider: getDefaultPaymentProvider(),
-    vnpay: {
+    vnpay: withServerCredentialCutover("vnpay", {
       enabled: isVnpayEnabled(),
       tmnCode: readEnv("VITE_VNPAY_TMN_CODE", ""),
-      hashSecret: readEnv("VITE_VNPAY_HASH_SECRET", ""),
       returnUrl: readEnv("VITE_VNPAY_RETURN_URL", ""),
       callbackUrl: readEnv("VITE_VNPAY_CALLBACK_URL", ""),
-    },
-    momo: {
+    }),
+    momo: withServerCredentialCutover("momo", {
       enabled: isMomoEnabled(),
       partnerCode: readEnv("VITE_MOMO_PARTNER_CODE", ""),
-      accessKey: readEnv("VITE_MOMO_ACCESS_KEY", ""),
-      secretKey: readEnv("VITE_MOMO_SECRET_KEY", ""),
       returnUrl: readEnv("VITE_MOMO_RETURN_URL", ""),
       callbackUrl: readEnv("VITE_MOMO_CALLBACK_URL", ""),
-    },
-    stripe: {
+    }),
+    stripe: withServerCredentialCutover("stripe", {
       enabled: isStripeEnabled(),
-      secretKey: readEnv("VITE_STRIPE_SECRET_KEY", ""),
-      webhookSecret: readEnv("VITE_STRIPE_WEBHOOK_SECRET", ""),
       successUrl: readEnv("VITE_STRIPE_SUCCESS_URL", ""),
       cancelUrl: readEnv("VITE_STRIPE_CANCEL_URL", ""),
-    },
-    zalo: {
+    }),
+    zalo: withServerCredentialCutover("zalo", {
       enabled: isZaloOaEnabled(),
       appId: readEnv("VITE_ZALO_OA_APP_ID", ""),
-      secret: readEnv("VITE_ZALO_OA_SECRET", ""),
-      accessToken: readEnv("VITE_ZALO_OA_ACCESS_TOKEN", ""),
-      refreshToken: readEnv("VITE_ZALO_OA_REFRESH_TOKEN", ""),
-    },
-    email: {
+    }),
+    email: withServerCredentialCutover("email", {
       enabled: isEmailEnabled(),
       host: readEnv("VITE_SMTP_HOST", ""),
       port: readEnv("VITE_SMTP_PORT", ""),
-      user: readEnv("VITE_SMTP_USER", ""),
-      pass: readEnv("VITE_SMTP_PASS", ""),
       from: readEnv("VITE_SMTP_FROM", ""),
-    },
-    sms: {
+    }),
+    sms: withServerCredentialCutover("sms", {
       enabled: isSmsEnabled(),
       provider: getSmsProvider(),
-      apiKey: readEnv("VITE_SMS_API_KEY", ""),
-      apiSecret: readEnv("VITE_SMS_API_SECRET", ""),
-    },
+    }),
   };
 }
 
+const PROVIDER_STATUS_META_KEYS = new Set([
+  "enabled",
+  "serverCredentialRequired",
+  "credentialPresence",
+  "productionReady",
+  "credentialRequirementIds",
+]);
+
+/**
+ * Resolve coarse provider status from browser-safe config.
+ * Enabled public IDs/URLs never imply production-ready / active when
+ * server credentials are required but unresolved.
+ */
 export function getProviderStatus(providerConfig) {
   if (!providerConfig?.enabled) return "not_configured";
-  const hasCreds = Object.entries(providerConfig).some(
-    ([key, value]) => key !== "enabled" && String(value || "").length > 0
+
+  if (providerConfig.serverCredentialRequired === true) {
+    if (isBrowserProviderCredentialResolved(providerConfig)) {
+      return "active";
+    }
+    // Fail-closed: enabled flag + public metadata ≠ configured credentials.
+    return "error";
+  }
+
+  const hasPublicConfig = Object.entries(providerConfig).some(
+    ([key, value]) =>
+      !PROVIDER_STATUS_META_KEYS.has(key) && String(value || "").length > 0
   );
-  if (!hasCreds && providerConfig.enabled) return "error";
-  return providerConfig.enabled ? "active" : "not_configured";
+  if (!hasPublicConfig && providerConfig.enabled) return "error";
+  return "active";
 }

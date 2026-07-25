@@ -34,7 +34,7 @@ resolved fail-closed in tests — without live providers or real secrets.
 - No real provider / credential / Production webhook
 - No edits to `src/core/platform/**`
 - No Competition Engine / Finance ledger / Notification worker changes
-- No immediate rewrite of Sprint 10 `src/features/integrations/config/integrationFlags.js` (legacy `VITE_*` secret readers remain classified as `BROWSER_EXPOSED_SECRET_RISK` + `LEGACY` + `REQUIRES_OWNER_GO`)
+- Legacy `VITE_*` secret readers in Sprint 10 `integrationFlags.js` were deferred to ECO-02b (now cut over)
 
 ## Security assertions
 
@@ -47,6 +47,6 @@ resolved fail-closed in tests — without live providers or real secrets.
 
 ## Follow-ups
 
-- ECO-02b (Owner GO): cutover Sprint 10 payment/notification providers off `VITE_*` secret readers onto server-only references
+- ECO-02b (Owner GO): cutover Sprint 10 payment/notification providers off `VITE_*` secret readers onto server-only references — **done structurally; live resolver still blocked**
 - ECO-03: adapter ports for payment/notification behind ECO registry
 - ECO-04: webhook ingress worker (staging only, Owner GO)
