@@ -3,8 +3,8 @@
 ## Purpose
 
 Canonical, module-neutral analytics contracts, metric definition governance,
-a read-only query/projection runtime, and presentation-neutral
-dashboard/reporting data contracts for PICK_VN.
+a read-only query/projection runtime, presentation-neutral
+dashboard/reporting data contracts, and historical/trend analysis for PICK_VN.
 
 ## Ownership
 
@@ -16,6 +16,7 @@ dashboard/reporting data contracts for PICK_VN.
 | Metric registry / lifecycle / compatibility | `src/features/intelligence-analytics/registry` |
 | Query / projection runtime (I&A-03) | `src/features/intelligence-analytics/runtime` |
 | Dashboard / reporting data contracts (I&A-04) | `src/features/intelligence-analytics/dashboard-reporting` |
+| Historical / trend analysis (I&A-05) | `src/features/intelligence-analytics/historical-trend` |
 | Dashboard UI / localStorage analytics | `src/features/dashboard-analytics` (legacy active; not foundation) |
 | Statistics UI aggregations | `src/features/statistics` (legacy active; not foundation) |
 | Platform Core | CLOSED — not modified, not imported |
@@ -70,17 +71,30 @@ dashboard/reporting data contracts for PICK_VN.
 - Immutable catalog + read-only discovery facade
 - Compatibility classification between definition versions
 
+**In scope (I&A-05):**
+
+- Historical query descriptor (exact metric ID/version, tenant, window, granularity)
+- Historical observation / series / coverage / completeness contracts
+- Deterministic UTC bucketing (hour / day / week / month)
+- Explicit missing-period policies (default fail-safe: preserve missing)
+- Period-over-period and explicit baseline comparison
+- Absolute / relative change and growth rate (no Infinity on zero baseline)
+- Deterministic trend direction / strength classification
+- Moving-window (average / sum / count) and cumulative (sum / count)
+- Provenance / freshness / stale propagation
+- Read-only historical facade + in-memory certification source
+
 **Out of scope:**
 
 - Database / Supabase / SQL / migrations
 - Module-specific production source adapters
-- Persisted database registry / dashboard catalog
+- Persisted database registry / dashboard catalog / historical warehouse
 - Dashboard UI, report renderer, route wiring
 - Export generator / scheduler / email delivery runtime
 - Production metric catalog migration
 - Competition / Finance / Ranking / Rating / CRM business rules
-- AI inference / paid AI services / AI narrative
-- Alert delivery / persistence / historical warehouse
+- AI inference / paid AI services / AI narrative / forecasting
+- Alert delivery / persistence
 - Platform Core changes
 
 ## Runtime flow (I&A-03)
@@ -131,6 +145,33 @@ Presentation-neutral dashboard/report payload
 Existing or future Experience Channel renderer
 ```
 
+## Historical / trend flow (I&A-05)
+
+```text
+HistoricalQueryDescriptor
+          │
+          ▼
+Metric registry resolution
+          │
+          ▼
+Tenant/time validation
+          │
+          ▼
+Read-only historical source
+          │
+          ▼
+Historical observations
+          │
+          ▼
+Normalize → Bucket → Fill/mark gaps
+          │
+          ▼
+Compare → Change → Trend analysis
+          │
+          ▼
+HistoricalTrendResult
+```
+
 ## Dependency rules
 
 - No import from `src/core/platform/**`
@@ -140,6 +181,7 @@ Existing or future Experience Channel renderer
 - Registry does not calculate metric values or own business rules
 - Runtime does not own module business calculations
 - Dashboard/report contracts do not own UI, export engines, or schedulers
+- Historical/trend does not own persistence, ETL, forecasting, or module adapters
 - Analytics output always sets `isCanonicalModuleState: false`
 
 ## Roadmap (structural)
@@ -147,8 +189,8 @@ Existing or future Experience Channel renderer
 1. I&A-01 Canonical Analytics Contracts Foundation ← certified
 2. I&A-02 Metric Registry and Definition Governance ← certified
 3. I&A-03 Analytics Query and Projection Runtime ← certified
-4. I&A-04 Dashboard and Reporting Data Contracts ← current
-5. I&A-05 Historical and Trend Analysis
+4. I&A-04 Dashboard and Reporting Data Contracts ← certified
+5. I&A-05 Historical and Trend Analysis ← current
 6. I&A-06 Competition Analytics
 7. I&A-07 Venue, Court and Club Analytics
 8. I&A-08 Customer and Player Analytics
