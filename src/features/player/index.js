@@ -5,9 +5,32 @@
  * + Phase 1H-B admin verification queue read API
  * + Phase 1H-C admin verification actions UI (components remain importable from path)
  * + Phase 1I-A authenticated Public Player Directory application contract.
+ * + PM-ID-01 canonical principal→player mapping contract (fail-closed; no DERIVED).
  * Adapters, repositories, validators, bootstrap remain internal.
  */
 export { RESOLUTION_OUTCOME } from "./constants/resolutionOutcomes.js";
+export {
+  PLAYER_IDENTITY_MAPPING_STATUS,
+  PLAYER_IDENTITY_MAPPING_STATUSES,
+  PLAYER_IDENTITY_LINK_LIFECYCLE,
+  PLAYER_IDENTITY_MAPPING_SOURCE,
+  PLAYER_IDENTITY_REASON_CODE,
+  isPlayerIdentityMappingStatus,
+} from "./constants/identityMapping.js";
+export {
+  buildPlayerIdentityMappingResult,
+  validatePlayerIdentityMappingResult,
+} from "./models/identityMappingResult.js";
+export {
+  resolveAuthenticatedCanonicalPlayerMapping,
+  evaluatePlayerIdentityMappingScope,
+} from "./services/resolveAuthenticatedCanonicalPlayerMapping.js";
+export { mapIdentityMappingError } from "./services/mapIdentityMappingError.js";
+export { createMemoryPlayerIdentityLinkRepository } from "./repositories/playerIdentityLinkRepository.js";
+export {
+  createSupabasePlayerIdentityLinkAdapter,
+  resolveMappingViaSupabaseRpc,
+} from "./adapters/supabasePlayerIdentityLinkAdapter.js";
 export {
   DEFAULT_PRIVACY_SETTINGS,
   normalizePrivacySettings,

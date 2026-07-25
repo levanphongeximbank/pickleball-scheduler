@@ -1,0 +1,17 @@
+{
+  "phase": "PM-ID-01-REMOTE-READ-ONLY-PREFLIGHT",
+  "sqlApplied": false,
+  "databaseWrites": 0,
+  "mappingRowsCreated": 0,
+  "backfillExecuted": false,
+  "roleGrantsApplied": false,
+  "productionTouched": false,
+  "filesDeleted": false,
+  "CODEX_DELETE_ALLOWED": "NO",
+  "ok": true,
+  "errors": [],
+  "probeReadOnlyOk": true,
+  "stagingProjectRef": "qyewbxjsiiyufanzcjcq",
+  "verdict": "PM_ID_01_REMOTE_READ_ONLY_PREFLIGHT_OFFLINE_PASS",
+  "mode": "offline"
+}
