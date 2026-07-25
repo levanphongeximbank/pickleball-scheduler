@@ -3,7 +3,11 @@
  */
 export function generateOperationalInsights(payload, sections = {}) {
   const insights = [];
-  const { summary, topCourts, peakHours, isMock } = payload;
+  const { summary, topCourts, peakHours, isMock } = payload || {};
+
+  if (!summary) {
+    return insights;
+  }
 
   if (sections.courts !== false && topCourts?.length > 1) {
     const avgUtil =

@@ -78,20 +78,27 @@ test("v5 full menu audit — gate classification 100% with approved CRM PARTIAL 
   }
 });
 
-test("full-menu readiness gate — exact approved CRM PARTIAL paths", () => {
+test("full-menu readiness gate — exact approved PARTIAL paths", () => {
   assert.deepEqual([...APPROVED_PARTIAL_MENU_PATHS], [
     "/crm/messages",
     "/crm/templates",
     "/crm/campaigns",
     "/crm/history",
     "/crm/reminders/booking",
+    "/reports",
   ]);
 
   const crmPartialPaths = CRM_MENU_ROOT.children
     .filter((item) => item.featureStatus === FEATURE_STATUS.PARTIAL)
     .map((item) => item.path)
     .sort();
-  assert.deepEqual(crmPartialPaths, [...APPROVED_PARTIAL_MENU_PATHS].sort());
+  assert.deepEqual(crmPartialPaths, [
+    "/crm/campaigns",
+    "/crm/history",
+    "/crm/messages",
+    "/crm/reminders/booking",
+    "/crm/templates",
+  ]);
 });
 
 test("full-menu readiness gate — unapproved PARTIAL path fails", () => {

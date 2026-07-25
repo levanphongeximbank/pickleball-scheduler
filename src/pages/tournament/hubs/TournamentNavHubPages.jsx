@@ -5,11 +5,11 @@ import { Alert, Box, Tab, Tabs } from "@mui/material";
 import InPageNavHub from "../../../components/nav/InPageNavHub.jsx";
 import AiAlertsPanel from "../../../components/tournament/ai/AiAlertsPanel.jsx";
 import { TOURNAMENT_IN_PAGE_NAV } from "../../../config/v5Menu/tournamentInPageNav.js";
-import { REPORTS_IN_PAGE_NAV } from "../../../config/v5Menu/reportsInPageNav.js";
 import { AI_IN_PAGE_NAV } from "../../../config/v5Menu/aiInPageNav.js";
 import { SUPPORT_IN_PAGE_NAV } from "../../../config/v5Menu/supportInPageNav.js";
 import SupportGuidePage from "../../support/SupportGuidePage.jsx";
 import SupportFaqPage from "../../support/SupportFaqPage.jsx";
+import { ReportsWorkspacePage } from "../../../features/reporting-analytics/ui/index.js";
 
 const TAB_CONTENT = {
   guide: SupportGuidePage,
@@ -41,7 +41,7 @@ export function TournamentConfigHubPage() {
 }
 
 export function ReportsHubPage() {
-  return <InPageNavHub hub={REPORTS_IN_PAGE_NAV} />;
+  return <ReportsWorkspacePage />;
 }
 
 export function AiHubPage() {

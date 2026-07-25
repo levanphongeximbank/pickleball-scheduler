@@ -1,7 +1,7 @@
 import { PERMISSIONS } from "../../auth/permissions.js";
 import { FEATURE_STATUS, menuFolder, menuLeaf } from "./menuBuilders.js";
 
-/** Sidebar: 1 hub — chi tiết báo cáo trong màn hình /reports */
+/** Sidebar: Reporting workspace at /reports — PARTIAL until durable runtime is injected. */
 export const REPORTS_MENU_ROOT = menuFolder({
   key: "reports-root",
   icon: "report-overview",
@@ -14,8 +14,8 @@ export const REPORTS_MENU_ROOT = menuFolder({
       path: "/reports",
       match: "reports-hub",
       permissions: [PERMISSIONS.STATISTICS_VIEW, PERMISSIONS.FINANCE_VIEW],
-      featureStatus: FEATURE_STATUS.LIVE,
-      featureNote: "Tab: doanh thu, hiệu suất, giờ cao điểm…",
+      featureStatus: FEATURE_STATUS.PARTIAL,
+      featureNote: "Reporting workspace trung thực — runtime durable có thể UNAVAILABLE",
     }),
   ],
 });

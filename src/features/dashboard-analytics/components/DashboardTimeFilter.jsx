@@ -1,7 +1,6 @@
 import {
   Box,
   Button,
-  Chip,
   Stack,
   TextField,
   ToggleButton,
@@ -14,6 +13,7 @@ import {
   TIME_RANGE_PRESETS,
 } from "../constants/timeRangePresets.js";
 import { DASHBOARD_LAYOUT } from "../constants/dashboardLayout.js";
+import ReportingSourceStateBadge from "./ReportingSourceStateBadge.jsx";
 
 export default function DashboardTimeFilter({
   preset,
@@ -22,7 +22,7 @@ export default function DashboardTimeFilter({
   customTo,
   onCustomFromChange,
   onCustomToChange,
-  isMock,
+  sourceState,
   onRefresh,
 }) {
   return (
@@ -37,6 +37,7 @@ export default function DashboardTimeFilter({
           value={preset}
           onChange={(_, value) => value && onPresetChange(value)}
           size="small"
+          aria-label="Khoảng thời gian dashboard"
           sx={{
             flexWrap: "wrap",
             gap: 0.75,
@@ -67,13 +68,14 @@ export default function DashboardTimeFilter({
           ))}
         </ToggleButtonGroup>
 
-        <Stack direction="row" spacing={1} alignItems="center">
-          {isMock && <Chip size="small" label="Demo" color="warning" variant="outlined" />}
+        <Stack direction="row" spacing={1} alignItems="center" flexWrap="wrap">
+          {sourceState && <ReportingSourceStateBadge sourceState={sourceState} />}
           <Button
             startIcon={<RefreshIcon />}
             variant="text"
             size="small"
             onClick={onRefresh}
+            aria-label="Làm mới dashboard"
             sx={{ textTransform: "none", fontWeight: 600, color: "text.secondary" }}
           >
             Làm mới

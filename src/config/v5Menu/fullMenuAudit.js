@@ -86,7 +86,7 @@ const RECOGNIZED_FEATURE_STATUSES = Object.freeze([
  * - classificationCoveragePercent: every leaf has a recognized status (must be 100)
  * - liveReadinessPercent: LIVE-only share (must NOT be faked to 100 when PARTIAL exists)
  *
- * PARTIAL is allowed only for the exact approved CRM path set.
+ * PARTIAL is allowed only for the exact approved path set (CRM + Reporting workspace).
  *
  * @param {ReturnType<typeof auditFullMenuCoverage>} audit
  * @param {{ approvedPartialPaths?: readonly string[] }} [options]
