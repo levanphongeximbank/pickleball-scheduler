@@ -16,7 +16,9 @@ test("NEWS-01 public export allowlist is stable", () => {
     assert.equal(name in news, true, `missing public export: ${name}`);
   }
   assert.ok(
-    ["NEWS-01", "NEWS-02"].includes(news.NEWS_PUBLIC_CONTENT_PHASE.id),
+    ["NEWS-01", "NEWS-02", "NEWS-03", "NEWS-04"].includes(
+      news.NEWS_PUBLIC_CONTENT_PHASE.id
+    ),
     "phase id must remain a News workstream id"
   );
   assert.equal(news.newsPublicContentFacade, news.createNewsPublicContentFacade);

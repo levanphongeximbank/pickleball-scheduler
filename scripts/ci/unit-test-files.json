@@ -406,6 +406,8 @@
   "tests/news-public-content-news-02-architecture.test.js",
   "tests/news-public-content-news-03-permission-seed.test.js",
   "tests/news-public-content-news-03-staging-harness.test.js",
+  "tests/news-public-content-news-04-public-portal-live.test.js",
+  "tests/news-public-content-news-04-portal-ui.test.js",
   "tests/reporting-analytics-reporting-01-foundation.test.js",
   "tests/reporting-analytics-reporting-01-authorization-execution.test.js",
   "tests/reporting-analytics-reporting-01-provenance-export.test.js",

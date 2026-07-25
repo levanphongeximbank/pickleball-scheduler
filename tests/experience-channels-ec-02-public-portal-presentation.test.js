@@ -102,12 +102,23 @@ test("EC-00 and EC-01 certifications remain green after EC-02 presentation updat
   assert.equal(ec01.phase, "EC-01");
   assert.equal(ec01.surfaceCount, 7);
 
-  // Gaps must not be hidden: news stays MOCK overall readiness
+  // Gaps must not be hidden: news is live-wired (NEWS-04) but not production-certified
   const news = ExperienceChannels.getPublicPortalSurface(
     ExperienceChannels.PUBLIC_PORTAL_SURFACE_ID.PUBLIC_NEWS
   );
-  assert.equal(news.dataSource, ExperienceChannels.PUBLIC_PORTAL_DATA_SOURCE.MOCK);
-  assert.equal(news.overallReadiness, ExperienceChannels.EXPERIENCE_CHANNEL_READINESS.MOCK);
+  assert.equal(news.dataSource, ExperienceChannels.PUBLIC_PORTAL_DATA_SOURCE.LIVE);
+  assert.equal(
+    news.overallReadiness,
+    ExperienceChannels.EXPERIENCE_CHANNEL_READINESS.PARTIAL
+  );
+  assert.equal(
+    news.loadingStateReadiness,
+    ExperienceChannels.EXPERIENCE_CHANNEL_READINESS.PARTIAL
+  );
+  assert.equal(
+    news.errorStateReadiness,
+    ExperienceChannels.EXPERIENCE_CHANNEL_READINESS.PARTIAL
+  );
 
   // Loading/error remain MISSING on list pages that still use sync mock-backed fetch
   const clubs = ExperienceChannels.getPublicPortalSurface(

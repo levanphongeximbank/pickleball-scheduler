@@ -1,6 +1,7 @@
 /**
- * Public portal data — live-first, mock-fallback.
- * Reads local club/tournament data when available; falls back to mock.
+ * Public portal data — live-first for most surfaces; mock-fallback remains for
+ * clubs/tournaments/courts/rankings. News (NEWS-04) is provenance-honest and
+ * never silently falls back to MOCK_NEWS on live failure.
  */
 import { loadClubs } from "../../../data/club.js";
 import { loadClubData } from "../../../domain/clubStorage.js";
@@ -8,7 +9,6 @@ import {
   MOCK_CLUBS,
   MOCK_COURTS,
   MOCK_LIVE_SCORES,
-  MOCK_NEWS,
   MOCK_RANKINGS,
   MOCK_SPONSORS,
   MOCK_TOURNAMENTS,
@@ -18,6 +18,17 @@ import { queryPublicLeaderboard } from "../../vpr-ranking/services/vprLeaderboar
 import { isVprRankingEnabled } from "../../vpr-ranking/config/vprFlags.js";
 import { VPR_CATEGORY_OPTIONS } from "../../vpr-ranking/constants/vprCategories.js";
 import { vprCategoryToGenderFilter } from "../../vpr-ranking/constants/vprCategories.js";
+
+export {
+  getPublicNews,
+  PUBLIC_NEWS_SOURCE,
+  PUBLIC_NEWS_STATUS,
+  PUBLIC_NEWS_ERROR_CODE,
+  resolvePublicNewsSource,
+  mapPublicCandidateToPortalItem,
+  mapPublicNewsFailure,
+  getPublicNewsItemsOrEmpty,
+} from "./publicNewsService.js";
 
 const STATUS_MAP = {
   draft: "upcoming",
@@ -198,10 +209,6 @@ export function getFeaturedCourts(limit = 3) {
 
 export function getPublicLiveScores() {
   return MOCK_LIVE_SCORES;
-}
-
-export function getPublicNews() {
-  return MOCK_NEWS;
 }
 
 export function getPublicSponsors() {

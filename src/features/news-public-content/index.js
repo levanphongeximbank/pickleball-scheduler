@@ -1,15 +1,18 @@
 /**
- * News & Public Content — public facade (NEWS-01 + NEWS-02).
+ * News & Public Content — public facade (NEWS-01 … NEWS-04).
  *
  * NEWS-01: Domain, Editorial Lifecycle & Public Read Foundation.
- * NEWS-02: Durable Persistence, SQL, RLS & Editorial Authorization (authored; not applied).
+ * NEWS-02: Durable Persistence, SQL, RLS & Editorial Authorization.
+ * NEWS-03: Staging Apply & Live Public Read Integration.
+ * NEWS-04: Public Portal adopts live public-read via Experience Channels
+ *          (`getPublicNews` in public-portal). This barrel stays UI-free.
  *
  * Consumers must import from this index — not from internal file paths.
  *
  * Does NOT export / does NOT do:
- * - Public Portal UI / NewsPage / routes / layouts
- * - getPublicNews() wiring
- * - Staging / Production SQL apply
+ * - Public Portal UI / public news routes / layouts
+ * - Silent mock fallback for live failures
+ * - Production SQL apply
  * - browser storage durable adapters as SoT
  * - media upload
  * - scheduler worker
