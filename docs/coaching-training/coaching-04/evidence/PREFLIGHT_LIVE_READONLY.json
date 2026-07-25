@@ -1,0 +1,23 @@
+{
+  "phase": "COACHING-04",
+  "mode": "live-readonly",
+  "environmentLabel": "staging",
+  "offlineOk": true,
+  "playerSelfScopeStatus": "COACHING_04_PLAYER_SELF_SCOPE_MAPPING_BLOCKED",
+  "durableRuntimeDefault": false,
+  "ok": true,
+  "verdict": "COACHING_04_PREFLIGHT_PASS",
+  "stagingProjectRef": "qyewbxjsiiyufanzcjcq",
+  "readOnlyTransaction": true,
+  "beginReadOnly": true,
+  "rollback": true,
+  "sqlApplied": false,
+  "databaseWrites": 0,
+  "roleGrantsApplied": false,
+  "uiCutoverActivated": false,
+  "localStorageRetired": false,
+  "productionTouched": false,
+  "resultRowCount": 1,
+  "secretsPrinted": false,
+  "urlValuePrinted": false
+}

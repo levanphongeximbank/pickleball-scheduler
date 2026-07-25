@@ -1,14 +1,11 @@
 import CoachingEntityPage from "./CoachingEntityPage.jsx";
-import { deleteClass, listClasses, saveClass } from "../../features/coaching/index.js";
 
 export default function ClassesPage() {
   return (
     <CoachingEntityPage
       title="Lớp học"
       description="Nhóm lớp, cấp độ và HLV phụ trách."
-      listFn={listClasses}
-      saveFn={saveClass}
-      deleteFn={deleteClass}
+      collection="classes"
       columns={[
         { key: "name", label: "Tên lớp" },
         { key: "level", label: "Cấp độ" },

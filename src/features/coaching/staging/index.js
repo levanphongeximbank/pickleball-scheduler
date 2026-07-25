@@ -66,6 +66,10 @@ export {
   assertCatalogQueryReadOnly,
   buildCoaching03ReadOnlyCatalogProbeSql,
   isCoaching03ReadOnlyCatalogProbe,
+  buildCoaching04ReadOnlyCatalogProbeSql,
+  isCoaching04ReadOnlyCatalogProbe,
+  buildCoaching04PlayerMappingProbeSql,
+  isCoaching04PlayerMappingProbe,
 } from "./readOnlyCatalogQuery.js";
 
 export {

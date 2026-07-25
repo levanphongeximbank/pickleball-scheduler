@@ -1,14 +1,11 @@
 import CoachingEntityPage from "./CoachingEntityPage.jsx";
-import { deleteCoach, listCoaches, saveCoach } from "../../features/coaching/index.js";
 
 export default function CoachesPage() {
   return (
     <CoachingEntityPage
       title="Huấn luyện viên"
       description="Quản lý HLV và chuyên môn."
-      listFn={listCoaches}
-      saveFn={saveCoach}
-      deleteFn={deleteCoach}
+      collection="coaches"
       columns={[
         { key: "name", label: "Tên" },
         { key: "phone", label: "Điện thoại" },

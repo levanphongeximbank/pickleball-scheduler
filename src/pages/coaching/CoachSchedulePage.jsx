@@ -1,14 +1,11 @@
 import CoachingEntityPage from "./CoachingEntityPage.jsx";
-import { deleteScheduleEntry, listSchedule, saveScheduleEntry } from "../../features/coaching/index.js";
 
 export default function CoachSchedulePage() {
   return (
     <CoachingEntityPage
       title="Lịch huấn luyện"
       description="Ca dạy theo ngày, sân và lớp."
-      listFn={listSchedule}
-      saveFn={saveScheduleEntry}
-      deleteFn={deleteScheduleEntry}
+      collection="schedule"
       columns={[
         { key: "date", label: "Ngày" },
         { key: "startTime", label: "Bắt đầu" },

@@ -1,0 +1,19 @@
+{
+  "phase": "COACHING-04-PLAYER-MAPPING-AUDIT",
+  "mode": "offline",
+  "environmentLabel": "staging",
+  "verdict": "COACHING_04_PLAYER_MAPPING_OFFLINE_PASS",
+  "ok": true,
+  "errors": [],
+  "probeReadOnlyOk": true,
+  "playerSelfScopeStatus": "COACHING_04_PLAYER_SELF_SCOPE_MAPPING_BLOCKED",
+  "stagingProjectRef": "qyewbxjsiiyufanzcjcq",
+  "mappingProven": false,
+  "mappingBlocked": true,
+  "envLoadedFrom": ".env.staging-qa.local",
+  "secretsPrinted": false,
+  "sqlApplied": false,
+  "databaseWrites": 0,
+  "roleGrantsApplied": false,
+  "productionTouched": false
+}

@@ -24,9 +24,29 @@ export const COACHING_ACTIONS = Object.freeze({
 export const COACHING_ACTION_VALUES = Object.freeze(Object.values(COACHING_ACTIONS));
 
 /**
+ * COACHING-04 assignment-scoped actions (additive — does not replace the 14 above).
+ * Require assignment-aware RLS before any COACH grants.
+ */
+export const COACHING_04_ASSIGNED_ACTIONS = Object.freeze({
+  ASSIGNED_READ: "coaching.assigned.read",
+  ASSIGNED_SESSION_SCHEDULE: "coaching.assigned.session.schedule",
+  ASSIGNED_ATTENDANCE_RECORD: "coaching.assigned.attendance.record",
+  ASSIGNED_EVALUATION_SUBMIT: "coaching.assigned.evaluation.submit",
+  ASSIGNED_ENTITLEMENT_CONSUME: "coaching.assigned.entitlement.consume",
+});
+
+export const COACHING_04_ASSIGNED_ACTION_VALUES = Object.freeze(
+  Object.values(COACHING_04_ASSIGNED_ACTIONS)
+);
+
+/**
  * @param {string} action
  * @returns {boolean}
  */
 export function isCoachingAction(action) {
-  return COACHING_ACTION_VALUES.includes(String(action || ""));
+  const value = String(action || "");
+  return (
+    COACHING_ACTION_VALUES.includes(value) ||
+    COACHING_04_ASSIGNED_ACTION_VALUES.includes(value)
+  );
 }

@@ -1,8 +1,9 @@
-import { useMemo, useState } from "react";
+import { useState } from "react";
 import {
   Alert,
   Box,
   Button,
+  CircularProgress,
   Paper,
   Stack,
   Table,
@@ -15,16 +16,14 @@ import {
 } from "@mui/material";
 
 import { useClub } from "../../context/ClubContext.jsx";
-import { listPackages } from "../../features/coaching/index.js";
+import { useCoachingCollection } from "../../features/coaching/runtime/useCoachingCollection.js";
 
 export default function CoachPackageRegisterPage() {
   const { activeClubId, activeClub } = useClub();
+  const { status, rows, error, pending } = useCoachingCollection("packages", {
+    clubId: activeClubId,
+  });
   const [message, setMessage] = useState("");
-
-  const rows = useMemo(() => {
-    if (!activeClubId) return [];
-    return listPackages(activeClubId);
-  }, [activeClubId]);
 
   const handleRegister = (pkg) => {
     setMessage(`Đã ghi nhận đăng ký gói "${pkg.name}". CLB sẽ liên hệ xác nhận.`);
@@ -39,7 +38,12 @@ export default function CoachPackageRegisterPage() {
         Chọn gói học phù hợp và gửi yêu cầu đăng ký.
       </Typography>
       {activeClub?.name ? (
-        <Typography variant="caption" color="text.secondary" display="block" sx={{ mb: 2 }}>
+        <Typography
+          variant="caption"
+          color="text.secondary"
+          display="block"
+          sx={{ mb: 2 }}
+        >
           CLB: {activeClub.name}
         </Typography>
       ) : null}
@@ -52,7 +56,28 @@ export default function CoachPackageRegisterPage() {
 
       {!activeClubId ? (
         <Alert severity="info">Chọn CLB ở header để đăng ký gói học.</Alert>
-      ) : (
+      ) : null}
+
+      {status === "loading" || pending ? (
+        <Stack direction="row" spacing={1} alignItems="center" sx={{ mb: 2 }}>
+          <CircularProgress size={22} />
+          <Typography color="text.secondary">Đang tải…</Typography>
+        </Stack>
+      ) : null}
+
+      {status === "denied" ? (
+        <Alert severity="warning" sx={{ mb: 2 }}>
+          {error?.error || "Bạn không có quyền xem gói học."}
+        </Alert>
+      ) : null}
+
+      {status === "error" ? (
+        <Alert severity="error" sx={{ mb: 2 }}>
+          {error?.error || "Không tải được gói học."}
+        </Alert>
+      ) : null}
+
+      {activeClubId && status !== "denied" ? (
         <TableContainer component={Paper} variant="outlined">
           <Table size="small">
             <TableHead>
@@ -68,7 +93,7 @@ export default function CoachPackageRegisterPage() {
               {rows.length === 0 ? (
                 <TableRow>
                   <TableCell colSpan={5} align="center">
-                    Chưa có gói học nào.
+                    {status === "loading" ? "Đang tải…" : "Chưa có gói học nào."}
                   </TableCell>
                 </TableRow>
               ) : (
@@ -78,11 +103,18 @@ export default function CoachPackageRegisterPage() {
                     <TableCell>{row.sessions ?? "—"}</TableCell>
                     <TableCell>{row.durationDays ?? "—"}</TableCell>
                     <TableCell>
-                      {row.price ? `${Number(row.price).toLocaleString("vi-VN")} đ` : "—"}
+                      {row.price
+                        ? `${Number(row.price).toLocaleString("vi-VN")} đ`
+                        : "—"}
                     </TableCell>
                     <TableCell align="right">
                       <Stack direction="row" justifyContent="flex-end">
-                        <Button size="small" variant="contained" onClick={() => handleRegister(row)}>
+                        <Button
+                          size="small"
+                          variant="contained"
+                          onClick={() => handleRegister(row)}
+                          disabled={pending}
+                        >
                           Đăng ký
                         </Button>
                       </Stack>
@@ -93,7 +125,7 @@ export default function CoachPackageRegisterPage() {
             </TableBody>
           </Table>
         </TableContainer>
-      )}
+      ) : null}
     </Box>
   );
 }

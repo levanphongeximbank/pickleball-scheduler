@@ -1,0 +1,46 @@
+/**
+ * COACHING-04 runtime public surface.
+ *
+ * Pages import collection APIs from here (or getCoachingPageGateway).
+ * React hook is exported from ./useCoachingCollection.js (and re-exported below for Vite UI).
+ * Non-UI Node tests should prefer createCoachingRuntime / getCoachingPageGateway over the hook.
+ */
+
+export {
+  COACHING_RUNTIME_MODE,
+  COACHING_DURABLE_RUNTIME_DEFAULT,
+  LOCALSTORAGE_RETIRED,
+  COACHING_LEGACY_STORAGE_KEY_PREFIX,
+  COACHING_04_PHASE,
+  COACHING_04_SCOPED_PERMISSION_IDS,
+  COACHING_04_PLAYER_SELF_SCOPE_STATUS,
+  COACHING_UI_COLLECTIONS,
+} from "./constants.js";
+
+export {
+  COACHING_RUNTIME_ERROR_CODES,
+  COACHING_RUNTIME_ERROR_CODE_VALUES,
+  createCoachingRuntimeError,
+  isCoachingRuntimeErrorResult,
+} from "./errors.js";
+
+export { createLegacyCoachingAdapter } from "./createLegacyCoachingAdapter.js";
+export { createDurableCoachingAdapter } from "./createDurableCoachingAdapter.js";
+export { createCoachingRuntime } from "./createCoachingRuntime.js";
+
+export {
+  detectLegacyStore,
+  classifyLegacyStore,
+  buildRetirementPlan,
+  assertRetirementNotActivated,
+} from "./localStorageRetirement.js";
+
+export {
+  createDefaultCoachingRuntime,
+  getDefaultCoachingRuntime,
+  resetDefaultCoachingRuntime,
+  getCoachingPageGateway,
+} from "./composition.js";
+
+// useCoachingCollection lives in ./useCoachingCollection.js — import that file
+// from pages so Node barrel consumers never resolve React.
