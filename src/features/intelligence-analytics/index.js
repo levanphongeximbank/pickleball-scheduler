@@ -6,11 +6,12 @@
  * I&A-03 — Analytics Query and Projection Runtime
  * I&A-04 — Dashboard and Reporting Data Contracts
  * I&A-05 — Historical and Trend Analysis
+ * I&A-06 — Competition Analytics
  *
  * Module-neutral metric/query/result contracts, metric registry governance,
  * deterministic query/projection runtime over explicit source adapters,
  * presentation-neutral dashboard/report data contracts, historical/trend
- * analysis, and read-only facades.
+ * analysis, competition analytics projections, and read-only facades.
  * No dashboard UI wiring, no Platform Core / Competition E2E / business-rule
  * deps, no SQL/Supabase adapters, no export/scheduler runtime, no forecasting.
  */
@@ -23,6 +24,7 @@ export * from "./registry/index.js";
 export * from "./runtime/index.js";
 export * from "./dashboard-reporting/index.js";
 export * from "./historical-trend/index.js";
+export * from "./competition-analytics/index.js";
 
 export const INTELLIGENCE_ANALYTICS_FOUNDATION = Object.freeze({
   workstreamId: "I&A-01",
@@ -54,12 +56,19 @@ export const INTELLIGENCE_ANALYTICS_HISTORICAL_TREND = Object.freeze({
   version: "1.0.0",
 });
 
+export const INTELLIGENCE_ANALYTICS_COMPETITION_ANALYTICS = Object.freeze({
+  workstreamId: "I&A-06",
+  name: "Competition Analytics",
+  version: "1.0.0",
+});
+
 export const INTELLIGENCE_ANALYTICS_PUBLIC_EXPORTS = Object.freeze([
   "INTELLIGENCE_ANALYTICS_FOUNDATION",
   "INTELLIGENCE_ANALYTICS_METRIC_REGISTRY",
   "INTELLIGENCE_ANALYTICS_QUERY_RUNTIME",
   "INTELLIGENCE_ANALYTICS_DASHBOARD_REPORTING",
   "INTELLIGENCE_ANALYTICS_HISTORICAL_TREND",
+  "INTELLIGENCE_ANALYTICS_COMPETITION_ANALYTICS",
   "createAnalyticsMetricId",
   "createAnalyticsMetricVersion",
   "createAnalyticsMetricDefinition",
@@ -129,4 +138,27 @@ export const INTELLIGENCE_ANALYTICS_PUBLIC_EXPORTS = Object.freeze([
   "ANALYTICS_TREND_STRENGTH",
   "ANALYTICS_CHANGE_DIRECTION",
   "ANALYTICS_COMPLETENESS_STATE",
+  "createCompetitionAnalyticsContext",
+  "createCompetitionAnalyticsSnapshot",
+  "createCompetitionAnalyticsSourceRequest",
+  "createInMemoryCompetitionAnalyticsSource",
+  "createCompetitionAnalyticsQuery",
+  "normalizeCompetitionAnalyticsQuery",
+  "createCompetitionAnalyticsMetricDefinitions",
+  "createCompetitionAnalyticsMetricCatalogEntries",
+  "COMPETITION_ANALYTICS_METRIC_IDS",
+  "projectCompetitionSummary",
+  "projectCompetitionDistributions",
+  "projectCompetitionProgress",
+  "projectCompetitionResultAcceptance",
+  "projectCompetitionScheduleAdherence",
+  "projectCompetitionDurations",
+  "projectCompetitionAssignments",
+  "composeCompetitionHistoricalObservations",
+  "composeCompetitionDashboardPayloads",
+  "createCompetitionAnalyticsFacade",
+  "createReadOnlyCompetitionAnalyticsFacade",
+  "COMPETITION_ANALYTICS_METHOD_VERSION",
+  "COMPETITION_PROGRESS_EXCLUSION_POLICY",
+  "COMPETITION_ANALYTICS_COMPLETENESS",
 ]);
