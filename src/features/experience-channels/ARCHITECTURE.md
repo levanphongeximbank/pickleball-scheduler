@@ -165,3 +165,39 @@ components/public/states/    PublicDataSourceNotice (reuse EC-02 states)
 pages/public/Clubs|Courts    Consumers
 docs/experience-channels/ec-03/
 ```
+
+---
+
+## EC-04 — Public Portal List-Surface Data Honesty
+
+**Runtime adapters (public-only):** `getPublicTournamentsResult` / `getPublicRankingsResult` in `publicTournamentsRankingsDataSource.js`  
+**Presentation:** reuse EC-03 `PublicDataSourceNotice` + EC-02 state primitives on Tournaments / Rankings pages
+
+**Status:** Tournaments + Rankings honesty remediation on the EC-03 `PublicDataResult` contract. Mock fallback **retained** with MOCK/MIXED provenance. Home remains deferred. No router / shell / provider / Competition / Ranking calculation edits.
+
+### What EC-04 owns
+
+- Honest Tournaments/Rankings list adapters (fallback kept, never labeled LIVE when fallback used)
+- Page wiring for `/tournaments` and `/rankings` (notice + error/empty/unavailable + caller-controlled retry)
+- Registry notes for those two surfaces
+- EC-04 docs + certification tests
+
+### Explicit non-ownership
+
+| Concern | Owner |
+|---------|--------|
+| Home honesty wiring | Deferred |
+| Mock removal / LIVE cutover without certified replacement | Deferred |
+| Competition `/tournament/:id/public` | COMPETITION_E2E_OWNED / TOURNAMENT_OPS_DEFERRED |
+| Ranking / rating / standings / eligibility calculation | Business Module / VPR engines (untouched) |
+| Router / PublicLayout / providers / PWA | GLOBAL_SHARED_HIGH_COLLISION |
+| Backend / SQL / Supabase / Notification | Out of scope |
+
+### Layering (EC-04)
+
+```
+publicTournamentsRankingsDataSource.js   Tournaments/Rankings Result adapters
+publicPortalService.js                   Re-exports for compatibility
+pages/public/Tournaments|Rankings        Consumers
+docs/experience-channels/ec-04/
+```

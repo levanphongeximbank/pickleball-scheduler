@@ -120,7 +120,7 @@ const SURFACE_DESCRIPTORS = deepFreeze({
     collisionClassification: EXPERIENCE_CHANNEL_CLASSIFICATION.CANONICAL_CHANNEL_SURFACE,
     dataSource: PUBLIC_PORTAL_DATA_SOURCE.MIXED,
     dataSourceNotes:
-      "Live club blob tournaments with mock fallback (min 3). List/map presentation only — no Competition Engine imports.",
+      "EC-04: getPublicTournamentsResult via resolvePublicListDataResult — live club blob tournaments with mock fallback (min 3). MIXED provenance when fallback used; never labeled LIVE.",
     authenticationDependency: PUBLIC_PORTAL_AUTH_DEPENDENCY.NONE,
     tenantDependency: PUBLIC_PORTAL_TENANT_DEPENDENCY.CONSUMED_SHARED,
     competitionOwnershipMarker: PUBLIC_PORTAL_COMPETITION_MARKER.PRESENTATION_ONLY,
@@ -128,7 +128,7 @@ const SURFACE_DESCRIPTORS = deepFreeze({
     accessibilityState: EXPERIENCE_CHANNEL_READINESS.PARTIAL,
     seoState: EXPERIENCE_CHANNEL_READINESS.PARTIAL,
     loadingStateReadiness: EXPERIENCE_CHANNEL_READINESS.MISSING,
-    errorStateReadiness: EXPERIENCE_CHANNEL_READINESS.MISSING,
+    errorStateReadiness: EXPERIENCE_CHANNEL_READINESS.PARTIAL,
     emptyStateReadiness: EXPERIENCE_CHANNEL_READINESS.PARTIAL,
     offlinePwaState: EXPERIENCE_CHANNEL_READINESS.PARTIAL,
     testCoverageState: EXPERIENCE_CHANNEL_READINESS.PARTIAL,
@@ -139,11 +139,14 @@ const SURFACE_DESCRIPTORS = deepFreeze({
     evidenceReferences: [
       "src/pages/public/TournamentsPage.jsx",
       SERVICE,
+      "src/features/public-portal/services/publicTournamentsRankingsDataSource.js",
       MOCK,
       "src/components/public/states/PublicPresentationStates.jsx",
+      "src/components/public/states/PublicDataSourceNotice.jsx",
+      "src/features/experience-channels/public-portal/data-source/",
     ],
     notes:
-      "Does not recalculate standings. Deep links stay on list (/tournaments). EC-02: PublicEmptyState + page-local title; loading/error still unwired (sync mock-backed fetch).",
+      "EC-04: PublicDataSourceNotice + error/empty/unavailable wired. Does not recalculate standings. Deep links stay on list (/tournaments). Competition /tournament/:id/public remains deferred. Loading still MISSING (sync).",
   }),
 
   [PUBLIC_PORTAL_SURFACE_ID.PUBLIC_CLUBS]: createPublicPortalSurfaceDescriptor({
@@ -226,7 +229,7 @@ const SURFACE_DESCRIPTORS = deepFreeze({
     collisionClassification: EXPERIENCE_CHANNEL_CLASSIFICATION.CANONICAL_CHANNEL_SURFACE,
     dataSource: PUBLIC_PORTAL_DATA_SOURCE.MIXED,
     dataSourceNotes:
-      "Optional VPR leaderboard query when enabled; otherwise MOCK_RANKINGS. UI presents leaderboard rows only — does not compute ratings/standings/eligibility.",
+      "EC-04: getPublicRankingsResult — VPR flag off → explicit MOCK; VPR on → live leaderboard with MIXED mock fallback on empty/error. UI presents canonical rows only — does not compute ratings/standings/eligibility.",
     authenticationDependency: PUBLIC_PORTAL_AUTH_DEPENDENCY.NONE,
     tenantDependency: PUBLIC_PORTAL_TENANT_DEPENDENCY.NONE,
     competitionOwnershipMarker: PUBLIC_PORTAL_COMPETITION_MARKER.PRESENTATION_ONLY,
@@ -245,12 +248,15 @@ const SURFACE_DESCRIPTORS = deepFreeze({
     evidenceReferences: [
       "src/pages/public/RankingsPage.jsx",
       SERVICE,
+      "src/features/public-portal/services/publicTournamentsRankingsDataSource.js",
       MOCK,
       "tests/ui/rankings.smoke.test.jsx",
       "src/components/public/states/PublicPresentationStates.jsx",
+      "src/components/public/states/PublicDataSourceNotice.jsx",
+      "src/features/experience-channels/public-portal/data-source/",
     ],
     notes:
-      "Only public portal page with a smoke test. Silent catch → mock in service. EC-02: PublicEmptyState + responsive table overflow + page-local title.",
+      "EC-04: silent catch removed; PublicDataSourceNotice + error/empty/unavailable wired. Canonical rank order preserved. Loading still MISSING (sync). Not production-ready while MOCK/MIXED.",
   }),
 
   [PUBLIC_PORTAL_SURFACE_ID.PUBLIC_NEWS]: createPublicPortalSurfaceDescriptor({
