@@ -1,16 +1,14 @@
 /**
- * Reporting & Analytics — public facade (REPORTING-01).
- *
- * REPORTING-01: Ownership & Operational Reporting Domain Foundation.
+ * Reporting & Analytics — public facade (REPORTING-05 closure posture).
  *
  * Consumers must import from this index — not from internal file paths.
  *
  * Does NOT export / does NOT do:
- * - Dashboard UI / Statistics UI / Experience Channels rendering
- * - Metric registry / analytical query runtime / historical intelligence
- * - SQL / migrations / Supabase / Staging / Production
- * - browser storage durable adapters
- * - production export file generation
+ * - Dashboard UI / Statistics UI / Experience Channels rendering ownership
+ * - Metric registry / analytical query runtime / historical intelligence ownership
+ * - Production SQL apply / Staging mutation from the browser
+ * - browser storage durable adapters / localStorage SoT
+ * - browser service_role credentials
  * - silent live→mock fallback success
  */
 

@@ -1,7 +1,10 @@
 # REPORTING-03 — Staging Apply Manifest (DO NOT EXECUTE WITHOUT OWNER GO)
 
-**Status:** Prepared only. **Not authorized to run.**  
-**Marker still in force:** `REPORTING_03_STAGING_APPLY_NOT_AUTHORIZED`
+**Historical status:** Prepared for Owner-authorized Staging apply.
+**Post-apply (Owner-accepted):** Staging apply + live RLS/auth certification **PASS** under REPORTING-03 closure.
+**REPORTING-05:** Do **not** re-apply or mutate Staging from this manifest. Treat as historical runbook + rollback reference.
+**Re-apply without Owner GO remains forbidden:** `REPORTING_03_STAGING_APPLY_NOT_AUTHORIZED`
+**Production:** Still prohibited.
 
 ## Target
 

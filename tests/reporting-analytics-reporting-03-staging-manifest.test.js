@@ -24,7 +24,8 @@ test("REPORTING-03 staging apply manifest exists and targets Staging only", () =
   assert.match(body, /expuvcohlcjzvrrauvud/);
   assert.match(body, /Production.*prohibited|No Production/i);
   assert.match(body, /REPORTING_03_STAGING_APPLY_NOT_AUTHORIZED/);
-  assert.match(body, /DO NOT EXECUTE|Not authorized to run/i);
+  assert.match(body, /DO NOT EXECUTE|Not authorized to run|re-apply without Owner GO remains forbidden/i);
+  assert.match(body, /Post-apply \(Owner-accepted\)|live RLS\/auth certification/i);
 });
 
 test("REPORTING-03 manifest encodes correct SQL order and backup/hash prerequisites", () => {

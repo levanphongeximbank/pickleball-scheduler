@@ -1,5 +1,5 @@
 /**
- * Platform Core adoption — consume public barrel only (REPORTING-01).
+ * Platform Core adoption — consume public barrel only (REPORTING-01…05).
  *
  * Canonical operational Reporting module home:
  *   src/features/reporting-analytics/
@@ -164,7 +164,8 @@ export function projectReportingOperationInstant(instant) {
 export function assertReportingAnalyticsPlatformSurface() {
   return deepFreeze({
     moduleId: "reporting-analytics",
-    workstreamId: "REPORTING-01",
+    workstreamId: "REPORTING-05",
+    foundationWorkstreamId: "REPORTING-01",
     consumes: Object.freeze([
       "ok",
       "fail",

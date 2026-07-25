@@ -1,11 +1,13 @@
 /**
- * Reporting & Analytics constants barrel (REPORTING-01).
+ * Reporting & Analytics constants barrel.
+ * Phase id advances with module closure workstream (REPORTING-05).
  */
 
 export const REPORTING_ANALYTICS_PHASE = Object.freeze({
-  id: "REPORTING-01",
-  name: "Ownership & Operational Reporting Foundation",
-  version: "1.0.0",
+  id: "REPORTING-05",
+  name: "Final Certification & Business Module Closure",
+  version: "5.0.0",
+  foundationWorkstreamId: "REPORTING-01",
 });
 
 export {
