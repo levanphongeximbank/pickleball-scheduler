@@ -152,3 +152,48 @@ export function createReportingTestFacade(opts = {}) {
     },
   };
 }
+
+/**
+ * REPORTING-02 durable orchestration harness. The database is explicitly
+ * injected so tests cannot silently fall back to in-memory repositories.
+ *
+ * @param {object} [opts]
+ */
+export function createDurableReportingTestFacade(opts = {}) {
+  const db = opts.db || reporting.createFakeReportingDatabaseClient();
+  const repos = reporting.createDurableReportingRepositories({ db });
+  const events = [];
+  const dataSource =
+    opts.dataSource === undefined
+      ? {
+          async execute() {
+            events.push("source");
+            return {
+              availability: reporting.REPORT_AVAILABILITY.AVAILABLE,
+              provenance: {
+                state: reporting.REPORT_PROVENANCE.LIVE,
+                sourceKind: reporting.REPORT_SOURCE_KIND.OPERATIONAL,
+                generatedAt: "2026-07-25T00:00:00.000Z",
+              },
+              rows: [{ bookingId: "b1", status: "confirmed", amount: 100 }],
+            };
+          },
+        }
+      : opts.dataSource;
+
+  const facade = reporting.createReportingAnalyticsFacade({
+    ...repos,
+    clock: reporting.createFixedClockPort("2026-07-25T00:00:00.000Z"),
+    idProvider: reporting.createSequentialIdProviderPort(1),
+    dataSource,
+    exportExecutor: opts.exportExecutor,
+    onAuthorized() {
+      events.push("authorized");
+    },
+    onSourceExecute() {
+      events.push("source");
+    },
+  });
+
+  return { db, repos, facade, events };
+}
