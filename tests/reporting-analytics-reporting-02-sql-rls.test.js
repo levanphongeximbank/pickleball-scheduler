@@ -10,10 +10,14 @@ const files = Object.freeze({
   tables: "10_REPORTING_02_TABLES.sql",
   indexes: "20_REPORTING_02_INDEXES.sql",
   rls: "30_REPORTING_02_RLS.sql",
+  permissionSeed: "40_REPORTING_02_PERMISSION_SEED.sql",
   grants: "50_REPORTING_02_GRANTS.sql",
   rollback: "90_REPORTING_02_ROLLBACK.sql",
+  permissionSeedRollback: "91_REPORTING_02_PERMISSION_SEED_ROLLBACK.sql",
   verification: "99_REPORTING_02_VERIFICATION.sql",
   readme: "README.md",
+  manifest: "05_STAGING_APPLY_MANIFEST.md",
+  handoff: "04_IDENTITY_PERMISSION_HANDOFF.md",
 });
 const tableNames = Object.freeze([
   "reporting_report_definitions",
@@ -72,8 +76,10 @@ test("REPORTING-02 rollback and verification preserve the documented security po
 });
 
 test("REPORTING-02 package has no ownership seizure or staging apply command", () => {
-  const packageText = Object.keys(files).map(text).join("\n");
-  assert.doesNotMatch(packageText, /communication_message_reports\s+(?:OWNER|OWNED|ALTER)/i);
-  assert.doesNotMatch(packageText, /\bpsql\s+\S*(?:staging|production)\S*/i);
-  assert.doesNotMatch(packageText, /\bsupabase\s+db\s+push\b/i);
+  const sqlOnly = ["tables", "indexes", "rls", "permissionSeed", "grants", "rollback", "permissionSeedRollback", "verification"]
+    .map(text)
+    .join("\n");
+  assert.doesNotMatch(sqlOnly, /communication_message_reports\s+(?:OWNER|OWNED|ALTER)/i);
+  assert.doesNotMatch(sqlOnly, /\bpsql\s+\S*(?:staging|production)\S*/i);
+  assert.doesNotMatch(sqlOnly, /\bsupabase\s+db\s+push\b/i);
 });

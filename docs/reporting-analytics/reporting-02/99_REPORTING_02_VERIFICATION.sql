@@ -56,6 +56,42 @@ BEGIN
   RAISE NOTICE 'REPORTING-02 verification passed (tables + FORCE RLS + scope helper)';
 END $$;
 
+-- Permission catalog (expect exact 10 reporting.* ids from REPORTING-01 SoT)
+DO $$
+DECLARE
+  missing text := '';
+  pid text;
+BEGIN
+  FOREACH pid IN ARRAY ARRAY[
+    'reporting.dashboard.view',
+    'reporting.report.execute',
+    'reporting.field.sensitive.view',
+    'reporting.report.save',
+    'reporting.filter.save',
+    'reporting.report.export',
+    'reporting.scope.cross_tenant',
+    'reporting.scope.tenant',
+    'reporting.scope.venue',
+    'reporting.scope.club'
+  ]
+  LOOP
+    IF NOT EXISTS (SELECT 1 FROM public.permissions p WHERE p.id = pid) THEN
+      missing := missing || pid || ';';
+    END IF;
+  END LOOP;
+
+  IF missing <> '' THEN
+    RAISE EXCEPTION 'REPORTING-02 verification failed: missing permission catalog ids: %', missing;
+  END IF;
+
+  RAISE NOTICE 'REPORTING-02 verification passed (permission catalog — 10 ids)';
+END $$;
+
+-- Role grants for reporting.* must remain fail-closed until Owner matrix (expect 0 unless Owner applied separately)
+SELECT count(*) AS reporting_role_permission_rows
+FROM public.role_permissions rp
+WHERE rp.permission_id LIKE 'reporting.%';
+
 -- Policy inventory (expect SELECT policies only; no write policies)
 SELECT schemaname, tablename, policyname, cmd, roles
 FROM pg_policies

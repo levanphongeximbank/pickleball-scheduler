@@ -19,12 +19,19 @@ Does **not** own Statistics business truth, I&A metric registry/query runtime, d
 1. `10_REPORTING_02_TABLES.sql`
 2. `20_REPORTING_02_INDEXES.sql`
 3. `30_REPORTING_02_RLS.sql`
-4. `50_REPORTING_02_GRANTS.sql`
-5. `99_REPORTING_02_VERIFICATION.sql` (read-only checks)
+4. `40_REPORTING_02_PERMISSION_SEED.sql` (catalog only — no `role_permissions`)
+5. `50_REPORTING_02_GRANTS.sql`
+6. `99_REPORTING_02_VERIFICATION.sql` (read-only checks)
+
+Permission handoff (no auto role grants): `04_IDENTITY_PERMISSION_HANDOFF.md`
+Staging apply manifest (do not execute without Owner GO): `05_STAGING_APPLY_MANIFEST.md`
 
 ## Rollback order
 
-1. `90_REPORTING_02_ROLLBACK.sql` — only under Owner authorization after backup
+1. `90_REPORTING_02_ROLLBACK.sql` — tables / policies / indexes / scope helper
+2. `91_REPORTING_02_PERMISSION_SEED_ROLLBACK.sql` — exact 10 `reporting.*` catalog rows only (refuses if still referenced by `role_permissions`)
+
+Only under Owner authorization after backup.
 
 ## Security notes
 
