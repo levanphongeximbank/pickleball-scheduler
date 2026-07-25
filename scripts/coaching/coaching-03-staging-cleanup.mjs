@@ -60,6 +60,7 @@ async function residualCount(accessToken) {
   const body = await mgmtQuery(
     accessToken,
     `
+SET row_security = off;
 SELECT
   (SELECT count(*)::int FROM public.coaching_programs WHERE program_id LIKE '${P}%') +
   (SELECT count(*)::int FROM public.coaching_packages WHERE package_id LIKE '${P}%') +
@@ -79,10 +80,13 @@ async function cleanupOnce(accessToken) {
   await mgmtQuery(
     accessToken,
     `
+SET row_security = off;
 ALTER TABLE public.coaching_attendance_corrections
   DISABLE TRIGGER coaching_attendance_corrections_immutable_trg;
 ALTER TABLE public.coaching_package_usage_events
   DISABLE TRIGGER coaching_package_usage_events_immutable_trg;
+ALTER TABLE public.coaching_evaluations
+  DISABLE TRIGGER coaching_evaluations_submitted_immutable_trg;
 
 DELETE FROM public.coaching_attendance_corrections WHERE correction_id LIKE '${P}%' OR attendance_id LIKE '${P}%';
 DELETE FROM public.coaching_package_usage_events WHERE usage_event_id LIKE '${P}%' OR entitlement_id LIKE '${P}%';
@@ -97,6 +101,8 @@ ALTER TABLE public.coaching_attendance_corrections
   ENABLE TRIGGER coaching_attendance_corrections_immutable_trg;
 ALTER TABLE public.coaching_package_usage_events
   ENABLE TRIGGER coaching_package_usage_events_immutable_trg;
+ALTER TABLE public.coaching_evaluations
+  ENABLE TRIGGER coaching_evaluations_submitted_immutable_trg;
 `
   );
 }

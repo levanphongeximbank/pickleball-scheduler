@@ -1,0 +1,290 @@
+{
+  "phase": "COACHING-03",
+  "script": "coaching-03-staging-certify",
+  "mode": "execute",
+  "ok": true,
+  "stagingProjectRef": "qyewbxjsiiyufanzcjcq",
+  "productionTouched": false,
+  "fixturePrefix": "COACHING_03_CERT_FIXTURE_",
+  "fixturesCreated": true,
+  "fixturesRetainedForCleanup": true,
+  "checks": [
+    {
+      "name": "schema.13_tables",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "name": "schema.rls_enable_force",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "name": "schema.rpc_helpers",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "name": "schema.immutable_triggers",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "name": "authz.permission_catalog_14",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "name": "authz.coach_grants_zero",
+      "ok": true,
+      "detail": {
+        "n": 0
+      }
+    },
+    {
+      "name": "authz.player_grants_zero",
+      "ok": true,
+      "detail": {
+        "n": 0
+      }
+    },
+    {
+      "name": "authz.admin_roles_granted",
+      "ok": true,
+      "detail": [
+        {
+          "role_id": "CLUB_OWNER",
+          "n": 14
+        },
+        {
+          "role_id": "COURT_MANAGER",
+          "n": 14
+        },
+        {
+          "role_id": "COURT_OWNER",
+          "n": 14
+        },
+        {
+          "role_id": "SUPER_ADMIN",
+          "n": 14
+        },
+        {
+          "role_id": "VENUE_MANAGER",
+          "n": 14
+        },
+        {
+          "role_id": "VENUE_OWNER",
+          "n": 14
+        }
+      ]
+    },
+    {
+      "name": "authz.no_attendance_update_policy",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "name": "authz.anon_no_table_grants",
+      "ok": true,
+      "detail": {
+        "n": 0
+      }
+    },
+    {
+      "name": "authz.anon_no_mutation_rpc_execute",
+      "ok": true,
+      "detail": {
+        "n": 0
+      }
+    },
+    {
+      "name": "fixture.seeded",
+      "ok": true,
+      "detail": {
+        "prefix": "COACHING_03_CERT_FIXTURE_",
+        "scopedToExistingAdminVenue": true,
+        "adminRole": "VENUE_OWNER",
+        "temporaryClubBinding": true
+      }
+    },
+    {
+      "name": "negative.anon_denied",
+      "ok": true,
+      "detail": {
+        "error": "permission denied for table coaching_programs",
+        "rows": 0
+      }
+    },
+    {
+      "name": "negative.wrong_tenant_fixture_context",
+      "ok": true,
+      "detail": {
+        "tenantB": "COACHING_03_CERT_FIXTURE_TENANT_B",
+        "clubB": "COACHING_03_CERT_FIXTURE_CLUB_B"
+      }
+    },
+    {
+      "name": "negative.coach_grants_denied_by_matrix",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "name": "negative.player_grants_denied_by_matrix",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "name": "append_only.correction_update_denied",
+      "ok": true,
+      "detail": {
+        "reason": "seed",
+        "appendDenied": true
+      }
+    },
+    {
+      "name": "authz.direct_attendance_update_denied",
+      "ok": true,
+      "detail": {
+        "n": 0
+      }
+    },
+    {
+      "name": "append_only.usage_update_denied_or_unwritable",
+      "ok": true,
+      "detail": {
+        "usageAppendDenied": true
+      }
+    },
+    {
+      "name": "rpc.attendance_correction_pass",
+      "ok": true,
+      "detail": {
+        "attVersion": 2,
+        "corrCount": 1,
+        "status": "late"
+      }
+    },
+    {
+      "name": "rpc.actor_equals_auth_uid",
+      "ok": true,
+      "detail": {
+        "actor_id": "[REDACTED_QA_ADMIN_UUID]"
+      }
+    },
+    {
+      "name": "rpc.attendance_version_conflict_denied",
+      "ok": true,
+      "detail": {
+        "versionDenied": true
+      }
+    },
+    {
+      "name": "rpc.attendance_cross_scope_denied",
+      "ok": true,
+      "detail": {
+        "crossDenied": true
+      }
+    },
+    {
+      "name": "rpc.entitlement_consume_pass",
+      "ok": true,
+      "detail": {
+        "ent": {
+          "sessions_remaining": 4,
+          "sessions_consumed": 1,
+          "version": 2
+        },
+        "usageCount": 1
+      }
+    },
+    {
+      "name": "rpc.entitlement_idempotent",
+      "ok": true,
+      "detail": {
+        "ent2": {
+          "sessions_remaining": 4,
+          "sessions_consumed": 1
+        },
+        "usage2": 1
+      }
+    },
+    {
+      "name": "rpc.temporary_club_binding_restored",
+      "ok": true,
+      "detail": {
+        "club_id": null
+      }
+    },
+    {
+      "name": "runtime.no_default_wiring",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "name": "runtime.localStorage_legacy_present",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "name": "matrix.proposal_ok",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "name": "manifest.ok",
+      "ok": true,
+      "detail": null
+    }
+  ],
+  "hardFailed": [],
+  "softNotes": [
+    {
+      "name": "append_only.usage_update_denied_or_unwritable",
+      "ok": true,
+      "detail": {
+        "usageAppendDenied": true
+      }
+    }
+  ],
+  "positivePrincipals": [
+    "SUPER_ADMIN",
+    "TENANT_OWNER_OR_VENUE_OWNER_ALIAS",
+    "VENUE_MANAGER_OR_COURT_MANAGER_ALIAS",
+    "CLUB_MANAGER_OR_CLUB_OWNER_ALIAS"
+  ],
+  "adminRoleGrantsObserved": [
+    {
+      "role_id": "CLUB_OWNER",
+      "n": 14
+    },
+    {
+      "role_id": "COURT_MANAGER",
+      "n": 14
+    },
+    {
+      "role_id": "COURT_OWNER",
+      "n": 14
+    },
+    {
+      "role_id": "SUPER_ADMIN",
+      "n": 14
+    },
+    {
+      "role_id": "VENUE_MANAGER",
+      "n": 14
+    },
+    {
+      "role_id": "VENUE_OWNER",
+      "n": 14
+    }
+  ],
+  "coachGrants": 0,
+  "playerGrants": 0,
+  "rpc": {
+    "attempted": true,
+    "mode": "jwt-claim-injection"
+  },
+  "secretsPrinted": false,
+  "startedAt": "2026-07-25T08:19:14.785Z",
+  "finishedAt": "2026-07-25T08:19:52.521Z"
+}

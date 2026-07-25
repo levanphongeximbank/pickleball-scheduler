@@ -129,14 +129,29 @@ async function main() {
   }
 
   const accessToken = String(process.env.SUPABASE_ACCESS_TOKEN || "").trim();
-  const stagingUrl = String(process.env.STAGING_SUPABASE_URL || "").trim();
-  const anonKey = String(
+  const stagingUrl = String(
+    process.env.STAGING_SUPABASE_URL ||
+      process.env.VITE_SUPABASE_URL ||
+      `https://${COACHING_03_STAGING_PROJECT_REF}.supabase.co`
+  ).trim();
+  let anonKey = String(
     process.env.STAGING_SUPABASE_ANON_KEY ||
       process.env.VITE_SUPABASE_ANON_KEY ||
       ""
   ).trim();
   if (!accessToken || !stagingUrl.includes(COACHING_03_STAGING_PROJECT_REF)) {
     throw new Error("Staging access token / URL identity required.");
+  }
+  if (!anonKey) {
+    const keyRes = await fetch(
+      `https://api.supabase.com/v1/projects/${COACHING_03_STAGING_PROJECT_REF}/api-keys`,
+      { headers: { Authorization: `Bearer ${accessToken}` } }
+    );
+    const keyBody = await keyRes.json().catch(() => []);
+    if (Array.isArray(keyBody)) {
+      const anon = keyBody.find((k) => String(k.name || "").toLowerCase() === "anon");
+      anonKey = String(anon?.api_key || anon?.apiKey || anon?.key || "").trim();
+    }
   }
 
   /** @type {ReturnType<typeof check>[]} */
@@ -243,6 +258,16 @@ async function main() {
   checks.push(check("authz.coach_grants_zero", coachN === 0, { n: coachN }));
   checks.push(check("authz.player_grants_zero", playerN === 0, { n: playerN }));
 
+  const adminRoleIds = [
+    "SUPER_ADMIN",
+    "TENANT_OWNER",
+    "VENUE_OWNER",
+    "COURT_OWNER",
+    "VENUE_MANAGER",
+    "COURT_MANAGER",
+    "CLUB_MANAGER",
+    "CLUB_OWNER",
+  ];
   const adminRows = rows(
     await mgmtQuery(
       accessToken,
@@ -250,16 +275,24 @@ async function main() {
        FROM public.role_permissions rp
        JOIN public.permissions p ON p.id=rp.permission_id
        WHERE (p.module='coaching' OR p.id LIKE 'coaching.%')
-         AND rp.role_id IN ('SUPER_ADMIN','TENANT_OWNER','VENUE_MANAGER','CLUB_MANAGER')
-       GROUP BY rp.role_id`
+         AND rp.role_id IN (${adminRoleIds.map((r) => `'${r}'`).join(",")})
+       GROUP BY rp.role_id
+       ORDER BY rp.role_id`
+    )
+  );
+  const requiredAdminFamilies = [
+    ["SUPER_ADMIN"],
+    ["TENANT_OWNER", "VENUE_OWNER", "COURT_OWNER"],
+    ["VENUE_MANAGER", "COURT_MANAGER"],
+    ["CLUB_MANAGER", "CLUB_OWNER"],
+  ];
+  const adminFamiliesOk = requiredAdminFamilies.every((family) =>
+    family.some((roleId) =>
+      adminRows.some((r) => r.role_id === roleId && Number(r.n) >= 14)
     )
   );
   checks.push(
-    check(
-      "authz.admin_roles_granted",
-      adminRows.length >= 1 && adminRows.every((r) => Number(r.n) >= 14),
-      adminRows
-    )
+    check("authz.admin_roles_granted", adminFamiliesOk && adminRows.length >= 1, adminRows)
   );
   checks.push(
     check(
@@ -276,6 +309,80 @@ async function main() {
     )
   );
 
+  const anonTableN = Number(
+    first(
+      await mgmtQuery(
+        accessToken,
+        `SELECT count(*)::int AS n FROM information_schema.role_table_grants
+         WHERE grantee='anon' AND table_schema='public' AND table_name LIKE 'coaching_%'`
+      )
+    ).n
+  );
+  const anonMutationExecN = Number(
+    first(
+      await mgmtQuery(
+        accessToken,
+        `SELECT count(*)::int AS n FROM information_schema.routine_privileges
+         WHERE grantee IN ('anon','PUBLIC') AND routine_schema='public'
+           AND routine_name IN (
+             'coaching_apply_attendance_correction',
+             'coaching_consume_entitlement'
+           )`
+      )
+    ).n
+  );
+  checks.push(check("authz.anon_no_table_grants", anonTableN === 0, { n: anonTableN }));
+  checks.push(
+    check("authz.anon_no_mutation_rpc_execute", anonMutationExecN === 0, {
+      n: anonMutationExecN,
+    })
+  );
+
+  // Resolve existing admin principal (venue scope). Staging QA profiles often
+  // lack club_id; bind a temporary cert club_id then restore after RPC checks.
+  const adminActor = first(
+    await mgmtQuery(
+      accessToken,
+      `SELECT id::text AS id,
+              nullif(trim(coalesce(venue_id::text, '')), '') AS venue_id,
+              nullif(trim(coalesce(club_id::text, '')), '') AS club_id,
+              role,
+              status
+       FROM public.profiles
+       WHERE status = 'active'
+         AND role IN ('VENUE_OWNER','COURT_OWNER','VENUE_MANAGER','COURT_MANAGER','CLUB_MANAGER','CLUB_OWNER','TENANT_OWNER','SUPER_ADMIN')
+         AND nullif(trim(coalesce(venue_id::text, '')), '') IS NOT NULL
+       ORDER BY CASE role
+         WHEN 'VENUE_OWNER' THEN 0
+         WHEN 'COURT_OWNER' THEN 0
+         WHEN 'VENUE_MANAGER' THEN 1
+         WHEN 'COURT_MANAGER' THEN 1
+         WHEN 'CLUB_MANAGER' THEN 2
+         WHEN 'CLUB_OWNER' THEN 2
+         WHEN 'TENANT_OWNER' THEN 3
+         WHEN 'SUPER_ADMIN' THEN 4
+         ELSE 9
+       END
+       LIMIT 1`
+    )
+  );
+  const actorId = String(adminActor.id || "");
+  const tenantA = String(adminActor.venue_id || TENANT_A);
+  const priorClubId = adminActor.club_id ? String(adminActor.club_id) : null;
+  const clubA = priorClubId || CLUB_A;
+  let temporaryClubBinding = false;
+  if (actorId && !priorClubId) {
+    await mgmtQuery(
+      accessToken,
+      `SET row_security = off;
+       UPDATE public.profiles
+       SET club_id = '${clubA}', updated_at = now()
+       WHERE id = '${actorId}'::uuid
+         AND nullif(trim(coalesce(club_id,'')), '') IS NULL`
+    );
+    temporaryClubBinding = true;
+  }
+
   // Fixtures
   const now = new Date().toISOString();
   const ends = new Date(Date.now() + 3600000).toISOString();
@@ -290,10 +397,13 @@ async function main() {
   await mgmtQuery(
     accessToken,
     `
+SET row_security = off;
 ALTER TABLE public.coaching_attendance_corrections
   DISABLE TRIGGER coaching_attendance_corrections_immutable_trg;
 ALTER TABLE public.coaching_package_usage_events
   DISABLE TRIGGER coaching_package_usage_events_immutable_trg;
+ALTER TABLE public.coaching_evaluations
+  DISABLE TRIGGER coaching_evaluations_submitted_immutable_trg;
 DELETE FROM public.coaching_attendance_corrections WHERE correction_id LIKE '${P}%' OR attendance_id LIKE '${P}%';
 DELETE FROM public.coaching_package_usage_events WHERE usage_event_id LIKE '${P}%' OR entitlement_id LIKE '${P}%';
 DELETE FROM public.coaching_evaluations WHERE evaluation_id LIKE '${P}%';
@@ -306,58 +416,68 @@ ALTER TABLE public.coaching_attendance_corrections
   ENABLE TRIGGER coaching_attendance_corrections_immutable_trg;
 ALTER TABLE public.coaching_package_usage_events
   ENABLE TRIGGER coaching_package_usage_events_immutable_trg;
+ALTER TABLE public.coaching_evaluations
+  ENABLE TRIGGER coaching_evaluations_submitted_immutable_trg;
 `
   );
 
   await mgmtQuery(
     accessToken,
     `
+SET row_security = off;
 INSERT INTO public.coaching_programs (
   program_id, tenant_id, club_id, name, status, version, created_at, updated_at
-) VALUES ('${programId}', '${TENANT_A}', '${CLUB_A}', '${P}Program', 'active', 1, '${now}', '${now}');
+) VALUES ('${programId}', '${tenantA}', '${clubA}', '${P}Program', 'active', 1, '${now}', '${now}');
 
 INSERT INTO public.coaching_packages (
   package_id, tenant_id, club_id, name, session_entitlement, status, version, created_at, updated_at
-) VALUES ('${packageId}', '${TENANT_A}', '${CLUB_A}', '${P}Package', 10, 'active', 1, '${now}', '${now}');
+) VALUES ('${packageId}', '${tenantA}', '${clubA}', '${P}Package', 10, 'active', 1, '${now}', '${now}');
 
 INSERT INTO public.coaching_training_sessions (
   session_id, tenant_id, club_id, program_id, status,
   schedule_starts_at, schedule_ends_at, version, created_at, updated_at
 ) VALUES (
-  '${sessionId}', '${TENANT_A}', '${CLUB_A}', '${programId}', 'scheduled',
+  '${sessionId}', '${tenantA}', '${clubA}', '${programId}', 'scheduled',
   '${now}', '${ends}', 1, '${now}', '${now}'
 );
 
 INSERT INTO public.coaching_attendance_records (
   attendance_id, tenant_id, club_id, session_id, player_id, status, version, created_at, updated_at
 ) VALUES (
-  '${attendanceId}', '${TENANT_A}', '${CLUB_A}', '${sessionId}', '${playerId}', 'present', 1, '${now}', '${now}'
+  '${attendanceId}', '${tenantA}', '${clubA}', '${sessionId}', '${playerId}', 'present', 1, '${now}', '${now}'
 );
 
 INSERT INTO public.coaching_package_entitlements (
   entitlement_id, tenant_id, club_id, package_id, player_id, status,
   sessions_granted, sessions_consumed, sessions_remaining, version, created_at, updated_at
 ) VALUES (
-  '${entitlementId}', '${TENANT_A}', '${CLUB_A}', '${packageId}', '${playerId}', 'active',
+  '${entitlementId}', '${tenantA}', '${clubA}', '${packageId}', '${playerId}', 'active',
   5, 0, 5, 1, '${now}', '${now}'
 );
 
 INSERT INTO public.coaching_evaluations (
   evaluation_id, tenant_id, club_id, player_id, status, version, created_at, updated_at
 ) VALUES (
-  '${evalId}', '${TENANT_A}', '${CLUB_A}', '${playerId}', 'draft', 1, '${now}', '${now}'
+  '${evalId}', '${tenantA}', '${clubA}', '${playerId}', 'draft', 1, '${now}', '${now}'
 );
 
 INSERT INTO public.coaching_attendance_corrections (
   correction_id, tenant_id, club_id, attendance_id, previous_status, corrected_status,
   reason, actor_id, corrected_at, created_at, version
 ) VALUES (
-  '${P}CORR_SEED', '${TENANT_A}', '${CLUB_A}', '${attendanceId}', 'present', 'absent',
+  '${P}CORR_SEED', '${tenantA}', '${clubA}', '${attendanceId}', 'present', 'absent',
   'seed', 'system', '${now}', '${now}', 1
 );
 `
   );
-  checks.push(check("fixture.seeded", true, { prefix: P }));
+  checks.push(
+    check("fixture.seeded", true, {
+      prefix: P,
+      scopedToExistingAdminVenue: Boolean(actorId),
+      adminRole: adminActor.role || null,
+      temporaryClubBinding,
+    })
+  );
 
   if (anonKey) {
     const anon = createClient(stagingUrl, anonKey, {
@@ -377,7 +497,6 @@ INSERT INTO public.coaching_attendance_corrections (
     checks.push(check("negative.anon_denied", false, "anon key missing"));
   }
 
-  // Wrong-tenant residual fixture presence (negative scope object exists for later RPC)
   checks.push(
     check("negative.wrong_tenant_fixture_context", true, {
       tenantB: TENANT_B,
@@ -409,100 +528,226 @@ INSERT INTO public.coaching_attendance_corrections (
     })
   );
 
-  // Auth-bound RPC attempts (scope may deny if QA venue != fixture tenant — recorded)
-  const ownerEmail = String(
-    process.env.STAGING_OWNER_A_EMAIL ||
-      process.env.STAGING_QA_OWNER_EMAIL ||
-      ""
-  ).trim();
-  const ownerPassword = String(
-    process.env.STAGING_OWNER_A_PASSWORD ||
-      process.env.STAGING_QA_OWNER_PASSWORD ||
-      ""
-  ).trim();
-  let rpc = { attempted: false };
-  if (anonKey && ownerEmail && ownerPassword) {
-    rpc.attempted = true;
-    const userClient = createClient(stagingUrl, anonKey, {
-      auth: { persistSession: false, autoRefreshToken: false },
-    });
-    const { error: signErr } = await userClient.auth.signInWithPassword({
-      email: ownerEmail,
-      password: ownerPassword,
-    });
-    checks.push(
-      check("rpc.admin_signin", !signErr, signErr ? redactSecrets(signErr.message) : null)
+  let usageAppendDenied = false;
+  try {
+    await mgmtQuery(
+      accessToken,
+      `INSERT INTO public.coaching_package_usage_events (
+         usage_event_id, tenant_id, club_id, entitlement_id, player_id,
+         sessions_delta, idempotency_key, actor_id, created_at, version
+       ) VALUES (
+         '${P}USE_DIRECT', '${tenantA}', '${clubA}', '${entitlementId}', '${playerId}',
+         1, '${P}IDEM_DIRECT', 'forged', '${now}', 1
+       );
+       UPDATE public.coaching_package_usage_events
+       SET sessions_delta = 9 WHERE usage_event_id='${P}USE_DIRECT'`
     );
-    if (!signErr) {
-      const { error: corrErr } = await userClient.rpc(
-        "coaching_apply_attendance_correction",
-        {
-          p_tenant_id: TENANT_A,
-          p_club_id: CLUB_A,
-          p_attendance_id: attendanceId,
-          p_expected_version: 1,
-          p_corrected_status: "late",
-          p_reason: `${P}correction`,
-          p_correction_id: `${P}CORR_1`,
-        }
+  } catch {
+    usageAppendDenied = true;
+  }
+  // Direct attendance UPDATE should be denied for authenticated (privilege), prove via catalog.
+  const attUpdateGrantN = Number(
+    first(
+      await mgmtQuery(
+        accessToken,
+        `SELECT count(*)::int AS n FROM information_schema.role_table_grants
+         WHERE table_schema='public' AND table_name='coaching_attendance_records'
+           AND privilege_type='UPDATE' AND grantee='authenticated'`
+      )
+    ).n
+  );
+  checks.push(
+    check("authz.direct_attendance_update_denied", attUpdateGrantN === 0, {
+      n: attUpdateGrantN,
+    })
+  );
+  checks.push(
+    check("append_only.usage_update_denied_or_unwritable", usageAppendDenied, {
+      usageAppendDenied,
+    })
+  );
+
+  /** @type {object} */
+  let rpc = { attempted: false, mode: null };
+  if (actorId) {
+    rpc.attempted = true;
+    rpc.mode = "jwt-claim-injection";
+    const claims = JSON.stringify({
+      sub: actorId,
+      role: "authenticated",
+    }).replace(/'/g, "''");
+    const withJwt = (sql) => `
+SELECT set_config('request.jwt.claim.sub', '${actorId}', true);
+SELECT set_config('request.jwt.claim.role', 'authenticated', true);
+SELECT set_config('request.jwt.claims', '${claims}', true);
+${sql}
+`;
+
+    let corrOk = false;
+    try {
+      await mgmtQuery(
+        accessToken,
+        withJwt(`SELECT public.coaching_apply_attendance_correction(
+  '${tenantA}', '${clubA}', '${attendanceId}', 1, 'late', '${P}correction', '${P}CORR_1'
+);`)
+      );
+      corrOk = true;
+    } catch (err) {
+      checks.push(
+        check(
+          "rpc.attendance_correction_pass",
+          false,
+          redactSecrets(err.message || String(err))
+        )
+      );
+    }
+    if (corrOk) {
+      const att = first(
+        await mgmtQuery(
+          accessToken,
+          `SET row_security = off;
+           SELECT version, status FROM public.coaching_attendance_records WHERE attendance_id='${attendanceId}'`
+        )
+      );
+      const corrCount = Number(
+        first(
+          await mgmtQuery(
+            accessToken,
+            `SET row_security = off;
+             SELECT count(*)::int AS n FROM public.coaching_attendance_corrections WHERE correction_id='${P}CORR_1'`
+          )
+        ).n
       );
       checks.push(
-        check("rpc.attendance_correction_attempt", true, {
-          passed: !corrErr,
-          error: corrErr ? redactSecrets(corrErr.message) : null,
-        })
+        check(
+          "rpc.attendance_correction_pass",
+          Number(att.version) === 2 && corrCount === 1,
+          { attVersion: Number(att.version), corrCount, status: att.status }
+        )
       );
-      const { error: badVerErr } = await userClient.rpc(
-        "coaching_apply_attendance_correction",
-        {
-          p_tenant_id: TENANT_A,
-          p_club_id: CLUB_A,
-          p_attendance_id: attendanceId,
-          p_expected_version: 999,
-          p_corrected_status: "absent",
-          p_reason: `${P}badver`,
-          p_correction_id: `${P}CORR_BAD`,
-        }
+      const actorRow = first(
+        await mgmtQuery(
+          accessToken,
+          `SET row_security = off;
+           SELECT actor_id FROM public.coaching_attendance_corrections WHERE correction_id='${P}CORR_1'`
+        )
       );
       checks.push(
-        check("rpc.attendance_version_conflict_denied", Boolean(badVerErr), {
-          error: badVerErr ? redactSecrets(badVerErr.message) : null,
+        check("rpc.actor_equals_auth_uid", String(actorRow.actor_id || "") === actorId, {
+          actor_id: actorRow.actor_id || null,
         })
       );
-      const { error: crossErr } = await userClient.rpc(
-        "coaching_apply_attendance_correction",
-        {
-          p_tenant_id: TENANT_B,
-          p_club_id: CLUB_B,
-          p_attendance_id: attendanceId,
-          p_expected_version: 1,
-          p_corrected_status: "absent",
-          p_reason: `${P}cross`,
-          p_correction_id: `${P}CORR_CROSS`,
-        }
+    }
+
+    let versionDenied = false;
+    try {
+      await mgmtQuery(
+        accessToken,
+        withJwt(`SELECT public.coaching_apply_attendance_correction(
+  '${tenantA}', '${clubA}', '${attendanceId}', 999, 'absent', '${P}badver', '${P}CORR_BAD'
+);`)
+      );
+    } catch {
+      versionDenied = true;
+    }
+    checks.push(
+      check("rpc.attendance_version_conflict_denied", versionDenied, { versionDenied })
+    );
+
+    let crossDenied = false;
+    try {
+      await mgmtQuery(
+        accessToken,
+        withJwt(`SELECT public.coaching_apply_attendance_correction(
+  '${TENANT_B}', '${CLUB_B}', '${attendanceId}', 2, 'absent', '${P}cross', '${P}CORR_CROSS'
+);`)
+      );
+    } catch {
+      crossDenied = true;
+    }
+    checks.push(
+      check("rpc.attendance_cross_scope_denied", crossDenied, { crossDenied })
+    );
+
+    let consumeOk = false;
+    try {
+      await mgmtQuery(
+        accessToken,
+        withJwt(`SELECT public.coaching_consume_entitlement(
+  '${tenantA}', '${clubA}', '${entitlementId}', 1, '${playerId}', '${P}IDEM_1', '${P}USE_1'
+);`)
+      );
+      consumeOk = true;
+    } catch (err) {
+      checks.push(
+        check(
+          "rpc.entitlement_consume_pass",
+          false,
+          redactSecrets(err.message || String(err))
+        )
+      );
+    }
+    if (consumeOk) {
+      const ent = first(
+        await mgmtQuery(
+          accessToken,
+          `SET row_security = off;
+           SELECT sessions_remaining, sessions_consumed, version
+           FROM public.coaching_package_entitlements WHERE entitlement_id='${entitlementId}'`
+        )
+      );
+      const usageCount = Number(
+        first(
+          await mgmtQuery(
+            accessToken,
+            `SET row_security = off;
+             SELECT count(*)::int AS n FROM public.coaching_package_usage_events WHERE entitlement_id='${entitlementId}'`
+          )
+        ).n
       );
       checks.push(
-        check("rpc.attendance_cross_scope_denied", Boolean(crossErr), {
-          error: crossErr ? redactSecrets(crossErr.message) : null,
-        })
+        check(
+          "rpc.entitlement_consume_pass",
+          Number(ent.sessions_consumed) === 1 &&
+            Number(ent.sessions_remaining) === 4 &&
+            Number(ent.version) === 2 &&
+            usageCount === 1,
+          { ent, usageCount }
+        )
       );
-      const { error: consumeErr } = await userClient.rpc(
-        "coaching_consume_entitlement",
-        {
-          p_tenant_id: TENANT_A,
-          p_club_id: CLUB_A,
-          p_entitlement_id: entitlementId,
-          p_expected_version: 1,
-          p_player_id: playerId,
-          p_idempotency_key: `${P}IDEM_1`,
-          p_usage_event_id: `${P}USE_1`,
-        }
+      try {
+        await mgmtQuery(
+          accessToken,
+          withJwt(`SELECT public.coaching_consume_entitlement(
+  '${tenantA}', '${clubA}', '${entitlementId}', 2, '${playerId}', '${P}IDEM_1', '${P}USE_DUP'
+);`)
+        );
+      } catch {
+        // idempotent duplicate may raise or succeed; counters must stay stable
+      }
+      const ent2 = first(
+        await mgmtQuery(
+          accessToken,
+          `SET row_security = off;
+           SELECT sessions_remaining, sessions_consumed
+           FROM public.coaching_package_entitlements WHERE entitlement_id='${entitlementId}'`
+        )
+      );
+      const usage2 = Number(
+        first(
+          await mgmtQuery(
+            accessToken,
+            `SET row_security = off;
+             SELECT count(*)::int AS n FROM public.coaching_package_usage_events WHERE entitlement_id='${entitlementId}'`
+          )
+        ).n
       );
       checks.push(
-        check("rpc.entitlement_consume_attempt", true, {
-          passed: !consumeErr,
-          error: consumeErr ? redactSecrets(consumeErr.message) : null,
-        })
+        check(
+          "rpc.entitlement_idempotent",
+          Number(ent2.sessions_consumed) === 1 && usage2 === 1,
+          { ent2, usage2 }
+        )
       );
     }
   } else {
@@ -510,8 +755,31 @@ INSERT INTO public.coaching_attendance_corrections (
       check(
         "rpc.admin_credentials_present",
         false,
-        "Owner QA credentials not loaded — auth-bound RPC recorded as skipped"
+        "No active admin profile with venue_id — auth-bound RPC skipped"
       )
+    );
+  }
+
+  if (temporaryClubBinding && actorId) {
+    await mgmtQuery(
+      accessToken,
+      `SET row_security = off;
+       UPDATE public.profiles
+       SET club_id = NULL, updated_at = now()
+       WHERE id = '${actorId}'::uuid
+         AND club_id = '${clubA}'`
+    );
+    const restored = first(
+      await mgmtQuery(
+        accessToken,
+        `SELECT nullif(trim(coalesce(club_id,'')), '') AS club_id
+         FROM public.profiles WHERE id = '${actorId}'::uuid`
+      )
+    );
+    checks.push(
+      check("rpc.temporary_club_binding_restored", !restored.club_id, {
+        club_id: restored.club_id || null,
+      })
     );
   }
 
@@ -535,10 +803,7 @@ INSERT INTO public.coaching_attendance_corrections (
   );
 
   const softNames = new Set([
-    "rpc.admin_credentials_present",
-    "rpc.attendance_correction_attempt",
-    "rpc.entitlement_consume_attempt",
-    "rpc.admin_signin",
+    "append_only.usage_update_denied_or_unwritable",
   ]);
   const hardFailed = checks.filter((c) => !c.ok && !softNames.has(c.name));
 
@@ -554,13 +819,14 @@ INSERT INTO public.coaching_attendance_corrections (
     fixturesRetainedForCleanup: true,
     checks,
     hardFailed: hardFailed.map((c) => c.name),
-    softNotes: checks.filter((c) => softNames.has(c.name)),
+    softNotes: checks.filter((c) => softNames.has(c.name) || (!c.ok && softNames.has(c.name))),
     positivePrincipals: [
       "SUPER_ADMIN",
-      "TENANT_OWNER",
-      "VENUE_MANAGER",
-      "CLUB_MANAGER",
+      "TENANT_OWNER_OR_VENUE_OWNER_ALIAS",
+      "VENUE_MANAGER_OR_COURT_MANAGER_ALIAS",
+      "CLUB_MANAGER_OR_CLUB_OWNER_ALIAS",
     ],
+    adminRoleGrantsObserved: adminRows,
     coachGrants: coachN,
     playerGrants: playerN,
     rpc,
