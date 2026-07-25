@@ -1,0 +1,31 @@
+{
+  "phase": "COACHING-04-PLAYER-MAPPING-AUDIT",
+  "mode": "live-readonly",
+  "environmentLabel": "staging",
+  "offlineOk": true,
+  "ok": true,
+  "verdict": "COACHING_04_PLAYER_SELF_SCOPE_MAPPING_BLOCKED_STAGING_CATALOG_VERIFIED",
+  "stagingProjectRef": "qyewbxjsiiyufanzcjcq",
+  "playerSelfScopeStatus": "COACHING_04_PLAYER_SELF_SCOPE_MAPPING_BLOCKED",
+  "mappingProven": false,
+  "mappingBlocked": true,
+  "readOnlyTransaction": true,
+  "beginReadOnly": true,
+  "rollback": true,
+  "sqlApplied": false,
+  "databaseWrites": 0,
+  "roleGrantsApplied": false,
+  "productionTouched": false,
+  "secretsPrinted": false,
+  "urlValuePrinted": false,
+  "catalogInterpretation": {
+    "resultRowCount": 1,
+    "coachingPlayerMappingHelpersPresent": false,
+    "teamTournamentHelperPresent": false,
+    "profilesPlayerIdUniqueIndex": null,
+    "clubMembersHasPlayerIdColumn": null,
+    "coachingSelfPermissionCount": null,
+    "playerCoachingGrantCount": null,
+    "note": "Catalog probe only — helper name presence in result payload is informative; Coaching SoT remains blocked without Owner-approved contract."
+  }
+}

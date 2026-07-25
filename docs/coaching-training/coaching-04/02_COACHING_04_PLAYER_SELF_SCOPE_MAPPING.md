@@ -4,7 +4,13 @@
 
 **`COACHING_04_PLAYER_SELF_SCOPE_MAPPING_BLOCKED`**
 
-PLAYER self-scoped Coaching RLS, permission grants, and SQL mapping helpers are **out of scope for apply** in this pack. Do not seed PLAYER Coaching permissions. Do not author `auth.uid()` → `player_id` helpers that invent or reuse unverified mappings.
+**Certification (2026-07-25 independent audit):**
+**`COACHING_04_PLAYER_SELF_SCOPE_MAPPING_BLOCKED_NO_STAGING_GO`**
+
+Full blocker certification:
+[`06_COACHING_04_PLAYER_SELF_SCOPE_MAPPING_BLOCKER_CERTIFICATION.md`](./06_COACHING_04_PLAYER_SELF_SCOPE_MAPPING_BLOCKER_CERTIFICATION.md)
+
+PLAYER self-scoped Coaching RLS, permission grants, and SQL mapping helpers remain **out of scope for apply**. Do not seed PLAYER Coaching permissions. Do not author `auth.uid()` → `player_id` helpers that invent or reuse unverified mappings.
 
 ---
 
@@ -13,11 +19,16 @@ PLAYER self-scoped Coaching RLS, permission grants, and SQL mapping helpers are 
 | Claim sometimes assumed | Audit reality |
 |-------------------------|---------------|
 | `auth.uid() = player_id` | **False / unproven.** Coaching stores typed `player_id` from Player Management. JWT actor is an auth UUID. Equality is not a Coaching SoT. |
-| `profiles.player_id` is Coaching SoT | **Unproven for Coaching.** `profiles.player_id` is used elsewhere (pairing, club membership UX, rating enrollment experiments) with MAPPED / DERIVED / UNMAPPED / INVALID states — not a single proven Coaching self-scope contract. |
-| `player-auth-{userId}` derivation | Convention in other modules; **not** adopted as Coaching RLS SoT here; silent create forbidden in those modules too. |
-| COACHING-02 / -03 already map PLAYER | Explicitly deferred: COACHING-03 grants **zero** Coaching permissions to PLAYER; RLS has no PLAYER policies. |
-| Phase 28 `coaching_students` | Prototype; not canonical; rejected as apply source. |
-| Legacy LS `students[]` | Compatibility-only browser store; no JWT binding. |
+| `profiles.player_id` is Coaching SoT | **Rejected.** Alias: nullable, no FK, historically not UNIQUE; JS outcomes MAPPED/DERIVED/UNMAPPED/INVALID/AMBIGUOUS. |
+| `profiles.id = auth.uid()` | **Identity principal only** — not Coaching `player_id`. |
+| `team_tournament_user_player_id()` | **Rejected.** Module-scoped thin alias read; not Coaching RLS contract. |
+| Rating V5 `auth.uid() = player_id` | **Rejected.** Different ID space (`profiles.id` UUID). |
+| `resolveByAuthUser` / `resolveCanonicalPlayerId` | **App-layer only** — multi-outcome; not SECURITY DEFINER Coaching SoT. |
+| `club_members` / `athletes` | Membership/athlete edges; **no** Coaching `player_id` principal binding. |
+| `player-auth-{userId}` derivation | Convention elsewhere; **not** adopted as Coaching RLS SoT; silent create forbidden. |
+| COACHING-02 / -03 already map PLAYER | Explicitly deferred: zero PLAYER Coaching grants; no PLAYER policies. |
+| Phase 28 `coaching_students` | Prototype; not canonical. |
+| Legacy LS `students[]` | Compatibility-only; no JWT binding. |
 
 Therefore: **`auth.uid() ≠ player_id` unless a future Owner-approved SoT proves otherwise.**
 
@@ -25,12 +36,12 @@ Therefore: **`auth.uid() ≠ player_id` unless a future Owner-approved SoT prove
 
 ## Missing source of truth (required before unblock)
 
-A future COACHING / Identity / Player joint decision must publish **all** of:
+See certification §7. Minimum:
 
-1. Canonical function or view: authenticated principal → Coaching `player_id` for `(tenant_id, club_id)`.
-2. Explicit handling for UNMAPPED / INVALID profiles (fail-closed; no silent backfill in Coaching SQL).
-3. Whether multiple player ids per auth user are possible (and how Coaching chooses one).
-4. Test fixtures proving positive self-read and negative cross-player denial.
+1. Canonical SQL function/view: authenticated principal → Coaching `player_id` for `(tenant_id, club_id)`.
+2. Explicit UNMAPPED / INVALID / AMBIGUOUS fail-closed (no silent backfill).
+3. Multi-player-id-per-auth policy.
+4. Positive self-read + negative cross-player SQL fixtures.
 5. Owner-approved permission ids (e.g. future `coaching.self.read`) distinct from admin `coaching.records.read`.
 
 Until those exist, any PLAYER policy would be a security fiction.
@@ -64,11 +75,15 @@ When mapping is proven, intended rules (non-binding until a later pack):
 3. No PLAYER helpers in `10_COACHING_04_ASSIGNMENT_HELPERS.sql` (commented absence).
 4. Do not reuse or GRANT based on inventing `profiles.player_id` equality inside Coaching SQL.
 5. UI PLAYER pages (`/coaching/coach-list`, `/coaching/register`) remain legacy/unavailable for durable self-scope until mapping unblocks.
+6. Independent audit (2026-07-25) certifies blocker; Staging GO still withheld.
 
 ---
 
 ## Cross-references
 
+- Blocker certification: `06_COACHING_04_PLAYER_SELF_SCOPE_MAPPING_BLOCKER_CERTIFICATION.md`
+- Staging evidence: `evidence/PLAYER_MAPPING_OFFLINE.json`, `evidence/PLAYER_MAPPING_LIVE_READONLY.json`
+- Audit script: `scripts/coaching/coaching-04-player-mapping-audit.mjs`
 - COACHING-03 deferral: `docs/coaching-training/coaching-03/02_COACHING_03_ROLE_PERMISSION_MATRIX.md`
 - Coach assignment (proven path): `01_COACHING_04_ASSIGNMENT_MAPPING.md`
 - Access matrix PLAYER column: `05_COACHING_04_ACCESS_MATRIX.md` → **blocked / N**

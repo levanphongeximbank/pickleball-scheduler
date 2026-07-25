@@ -473,6 +473,54 @@ describe("COACHING-04 PLAYER self-scope contract", () => {
       /INSERT INTO public\.role_permissions[\s\S]{0,200}PLAYER/
     );
   });
+
+  test("blocker certification exists and forbids invented helpers/grants", () => {
+    const cert = readPack(
+      "06_COACHING_04_PLAYER_SELF_SCOPE_MAPPING_BLOCKER_CERTIFICATION.md"
+    );
+    const mapping = readPack("02_COACHING_04_PLAYER_SELF_SCOPE_MAPPING.md");
+    assert.match(
+      cert,
+      /COACHING_04_PLAYER_SELF_SCOPE_MAPPING_BLOCKED_NO_STAGING_GO/
+    );
+    assert.match(
+      mapping,
+      /COACHING_04_PLAYER_SELF_SCOPE_MAPPING_BLOCKED_NO_STAGING_GO/
+    );
+    assert.match(cert, /profiles\.player_id/);
+    assert.match(cert, /team_tournament_user_player_id/);
+    assert.match(cert, /resolveByAuthUser/);
+    assert.match(cert, /Rating V5/);
+    assert.match(cert, /Acceptance criteria to unblock/i);
+    assert.match(cert, /Player Management/i);
+    assert.match(cert, /Identity/i);
+
+    const helpers = readPack("10_COACHING_04_ASSIGNMENT_HELPERS.sql");
+    assert.doesNotMatch(
+      helpers,
+      /CREATE OR REPLACE FUNCTION public\.coaching_04_mapped_player_id/
+    );
+    assert.doesNotMatch(
+      helpers,
+      /CREATE OR REPLACE FUNCTION public\.coaching_04_player_self_id/
+    );
+  });
+
+  test("player mapping probe is read-only and exported", async () => {
+    const {
+      buildCoaching04PlayerMappingProbeSql,
+      assertCatalogQueryReadOnly,
+    } = await import("../src/features/coaching/staging/readOnlyCatalogQuery.js");
+    const sql = buildCoaching04PlayerMappingProbeSql();
+    const safety = assertCatalogQueryReadOnly(sql);
+    assert.equal(safety.ok, true, safety.errors.join(" | "));
+    assert.match(sql, /BEGIN TRANSACTION READ ONLY/);
+    assert.match(sql, /ROLLBACK/);
+    assert.match(sql, /profiles/);
+    assert.match(sql, /team_tournament_user_player_id/);
+    assert.match(sql, /coaching_04_mapped_player_id/);
+    assert.doesNotMatch(sql, /\bINSERT\b|\bUPDATE\b|\bDELETE\b|\bCREATE TABLE\b/i);
+  });
 });
 
 describe("COACHING-04 safety markers", () => {

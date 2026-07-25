@@ -7,5 +7,6 @@
 | [coaching-02/02_PHASE_28_DRIFT_AND_DISPOSITION.md](./coaching-02/02_PHASE_28_DRIFT_AND_DISPOSITION.md) | Phase 28 drift matrix — not canonical apply source |
 | [coaching-03/00_COACHING_03_SCOPE_AND_GATES.md](./coaching-03/00_COACHING_03_SCOPE_AND_GATES.md) | COACHING-03 guarded Staging activation package (preflight/package only; Owner GO required before apply) |
 | [coaching-04/00_COACHING_04_SCOPE_AND_SECURITY_MODEL.md](./coaching-04/00_COACHING_04_SCOPE_AND_SECURITY_MODEL.md) | COACHING-04 assignment RLS/RPCs + UI cutover + LS retirement plans (authored only; runtime defaults still off; PLAYER self-scope blocked) |
+| [coaching-04/06_COACHING_04_PLAYER_SELF_SCOPE_MAPPING_BLOCKER_CERTIFICATION.md](./coaching-04/06_COACHING_04_PLAYER_SELF_SCOPE_MAPPING_BLOCKER_CERTIFICATION.md) | Independent principal→player_id audit — blocker certified; no Staging GO |
 
 Code-level compatibility notes: `src/features/coaching/COMPATIBILITY.md`
