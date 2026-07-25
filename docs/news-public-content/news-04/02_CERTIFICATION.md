@@ -17,9 +17,9 @@
 
 ## Declared exclusions
 
-- Staging/Production database apply not performed in NEWS-04 remediation commit (Owner GO required for LIVE-only RPC SQL)
+- Production database apply not performed (Owner GO required for any Production write)
 - Production config unchanged
-- NEWS-02/03 SQL aligned for LIVE-only public contract in-repo; Staging function body remediation awaits Owner GO
+- NEWS-02/03/04 SQL LIVE-only public contract aligned in-repo; **Staging LIVE-only remediation applied + certified** (see `NEWS_04_STAGING_PUBLIC_RPC_CERTIFICATION.md`)
 
 ## Marker (when gates pass + commit + push + PR)
 

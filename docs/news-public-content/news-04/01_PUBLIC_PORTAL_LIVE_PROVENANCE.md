@@ -2,7 +2,7 @@
 
 ## Status
 
-Implemented in app code. Public RPC LIVE-only boundary authored (NEWS-04 remediation). Staging apply of remediation SQL **awaits Owner GO**. **Production not touched.** Closure deferred to NEWS-05.
+Implemented in app code. Public RPC LIVE-only boundary authored and **applied + live certified on Staging** (see `NEWS_04_STAGING_PUBLIC_RPC_CERTIFICATION.md`). **Production not touched.** Final certification / GO decision: NEWS-05.
 
 ## Live path
 
@@ -54,7 +54,8 @@ Portal PREVIEW skip is defense in depth only.
 
 ## Explicit exclusions
 
-- No Staging/Production **apply** in this remediation commit (authored SQL only; Owner GO required)
+- No Production **apply** in NEWS-04 (Owner GO required for any Production write)
+- Staging LIVE-only apply was performed under Owner GO `NEWS_04_OWNER_GO_STAGING_PUBLIC_RPC_LIVE_ONLY` (separate certify step)
 - No package/lockfile changes
 - No Competition/Venue/Club/CRM/Finance/Notification internals
 - No scheduler / media upload
@@ -64,11 +65,11 @@ Portal PREVIEW skip is defense in depth only.
 - Staging backend: NEWS-03 certified; NEWS-04 LIVE-only RPC remediation **applied + live certified** — see `NEWS_04_STAGING_PUBLIC_RPC_CERTIFICATION.md`
 - Production: **not touched**; `productionBlocked: true`
 
-## NEWS-05 exit criteria (next)
+## NEWS-05 exit criteria (completed in NEWS-05 packet)
 
-1. Owner GO + Staging apply of `10_NEWS_PHASE_04_PUBLIC_RPC_LIVE_ONLY.sql`
-2. End-to-end Staging smoke of Public Portal `/news` against live RPC with real published LIVE content
-3. Confirm PREVIEW/MOCK never appear from anonymous public RPC
-4. Confirm MOCK only via explicit demo flag in portal
-5. Production Go/No-Go checklist (env, RLS, anon path)
-6. Final certification doc + close NEWS module GA gate (without over-claiming)
+1. ~~Owner GO + Staging apply of LIVE-only SQL~~ — done (Staging certified)
+2. Staging live recert + public boundary matrix — NEWS-05 harness PASS
+3. Confirm PREVIEW/MOCK never appear from anonymous public RPC — PASS on Staging
+4. Confirm MOCK only via explicit portal source — PASS (unit)
+5. Production Go/No-Go checklist — `PRODUCTION_GO_WITH_CONDITIONS` (News ABSENT on Production)
+6. Final certification docs — `docs/news-public-content/news-05/` (implementation complete; Production not deployed)

@@ -13,14 +13,17 @@ const MODULE_ROOT = path.join(ROOT, "src", "features", "news-public-content");
 
 test("NEWS-02 durable foundations remain; portal wiring belongs to NEWS-04+", () => {
   assert.ok(
-    ["NEWS-02", "NEWS-03", "NEWS-04"].includes(news.NEWS_PUBLIC_CONTENT_PHASE.id)
+    ["NEWS-02", "NEWS-03", "NEWS-04", "NEWS-05"].includes(news.NEWS_PUBLIC_CONTENT_PHASE.id)
   );
   assert.equal(news.NEWS_PUBLIC_CONTENT_PHASE.hasPersistence, true);
   assert.equal(news.NEWS_PUBLIC_CONTENT_PHASE.hasSql, true);
   assert.equal(news.NEWS_PUBLIC_CONTENT_PHASE.hasProduction, false);
   assert.equal(news.NEWS_PUBLIC_CONTENT_PHASE.productionBlocked, true);
-  // NEWS-04 adopts portal live path; production apply still blocked.
-  if (news.NEWS_PUBLIC_CONTENT_PHASE.id === "NEWS-04") {
+  // NEWS-04+ adopts portal live path; production apply still blocked.
+  if (
+    news.NEWS_PUBLIC_CONTENT_PHASE.id === "NEWS-04" ||
+    news.NEWS_PUBLIC_CONTENT_PHASE.id === "NEWS-05"
+  ) {
     assert.equal(news.NEWS_PUBLIC_CONTENT_PHASE.wiredToPublicPortal, true);
     assert.equal(news.NEWS_PUBLIC_CONTENT_PHASE.hasStaging, true);
   }

@@ -81,7 +81,8 @@ const CHANNEL_DESCRIPTORS = deepFreeze({
     implementationStatus: EXPERIENCE_CHANNEL_IMPLEMENTATION_STATUS.ACTIVE,
     collisionClassification: EXPERIENCE_CHANNEL_CLASSIFICATION.CANONICAL_CHANNEL_SURFACE,
     ownerModule: "src/pages/public + src/features/public-portal",
-    notes: "Live-first publicPortalService with mock fallback (MOCK_OR_PREVIEW data path).",
+    notes:
+      "Live-first publicPortalService. News path: no silent mock fallback (explicit MOCK/PREVIEW only). Other portal surfaces may still use MOCK_OR_PREVIEW fallbacks.",
   }),
 
   [EXPERIENCE_CHANNEL_ID.AUTH]: createExperienceChannelDescriptor({

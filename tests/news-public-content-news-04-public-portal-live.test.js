@@ -317,7 +317,9 @@ test("NEWS-04 module import does not invoke getPublicNews network path", async (
 });
 
 test("NEWS-04 phase flags: portal wired, staging known, production blocked", () => {
-  assert.equal(news.NEWS_PUBLIC_CONTENT_PHASE.id, "NEWS-04");
+  assert.ok(
+    ["NEWS-04", "NEWS-05"].includes(news.NEWS_PUBLIC_CONTENT_PHASE.id)
+  );
   assert.equal(news.NEWS_PUBLIC_CONTENT_PHASE.wiredToPublicPortal, true);
   assert.equal(news.NEWS_PUBLIC_CONTENT_PHASE.hasStaging, true);
   assert.equal(news.NEWS_PUBLIC_CONTENT_PHASE.hasProduction, false);

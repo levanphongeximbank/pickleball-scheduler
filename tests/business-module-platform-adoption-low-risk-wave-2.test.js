@@ -55,7 +55,8 @@ test("wave 2 adopts at least three real stable target modules", () => {
   assert.ok(adopted.length >= 3);
   assert.equal(adopted.length, 3);
 
-  // News & Public Content remains deferred (mock-only; no fake module created).
+  // Wave-2 must not invent a fake `src/features/news` module.
+  // Canonical News lives at `src/features/news-public-content/` (NEWS-01+).
   assert.equal(
     fs.existsSync(path.join(ROOT, "src/features/news")),
     false,
