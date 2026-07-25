@@ -38,6 +38,7 @@ import {
   sha256File,
   verifyPmId01MigrationManifest,
 } from "./pm-id-01-activation-lib.mjs";
+import { resolveStagingEvidenceDir } from "../shared/resolve-staging-evidence-dir.mjs";
 
 function parseArgs(argv) {
   const args = {
@@ -72,7 +73,10 @@ function parseArgs(argv) {
 }
 
 function writeEvidence(repoRoot, filename, payload) {
-  const dir = path.join(repoRoot, PM_ID_01_EVIDENCE_DIR);
+  const dir = resolveStagingEvidenceDir({
+    repoRoot,
+    canonicalRelativeDir: PM_ID_01_EVIDENCE_DIR,
+  });
   if (!existsSync(dir)) mkdirSync(dir, { recursive: true });
   const target = path.join(dir, filename);
   writeFileSync(target, `${JSON.stringify(payload, null, 2)}\n`, "utf8");

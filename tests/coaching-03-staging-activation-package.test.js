@@ -4,7 +4,15 @@
  */
 import test from "node:test";
 import assert from "node:assert/strict";
-import { existsSync, readFileSync, readdirSync, statSync } from "node:fs";
+import {
+  existsSync,
+  mkdtempSync,
+  readFileSync,
+  readdirSync,
+  rmSync,
+  statSync,
+} from "node:fs";
+import os from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { spawnSync } from "node:child_process";
@@ -13,12 +21,37 @@ import * as Staging from "../src/features/coaching/staging/index.js";
 import {
   COACHING_DURABLE_RUNTIME_DEFAULT,
 } from "../src/features/coaching/persistence/index.js";
+import { PICK_VN_STAGING_EVIDENCE_DIR_ENV } from "../scripts/shared/resolve-staging-evidence-dir.mjs";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const root = path.resolve(__dirname, "..");
 
 function read(rel) {
   return readFileSync(path.join(root, rel), "utf8");
+}
+
+function withTempEvidenceDir(fn) {
+  const tempDir = mkdtempSync(path.join(os.tmpdir(), "coaching03-evidence-"));
+  try {
+    return fn(tempDir);
+  } finally {
+    rmSync(tempDir, { recursive: true, force: true });
+  }
+}
+
+function spawnCoaching03Apply(tempEvidenceDir) {
+  return spawnSync(
+    process.execPath,
+    ["scripts/coaching/coaching-03-staging-apply.mjs"],
+    {
+      cwd: root,
+      encoding: "utf8",
+      env: {
+        ...process.env,
+        [PICK_VN_STAGING_EVIDENCE_DIR_ENV]: tempEvidenceDir,
+      },
+    }
+  );
 }
 
 test("COACHING-03 staging constants guard Staging vs Production", () => {
@@ -196,14 +229,29 @@ test("apply refuses missing preflight PASS and checksum drift", () => {
 });
 
 test("apply script prints APPLY_MODE=REFUSED without --execute", () => {
-  const result = spawnSync(
-    process.execPath,
-    ["scripts/coaching/coaching-03-staging-apply.mjs"],
-    { cwd: root, encoding: "utf8" }
-  );
-  assert.equal(result.status, 0);
-  assert.match(result.stdout, /APPLY_MODE=REFUSED/);
-  assert.match(result.stdout, /"sqlApplied": false/);
+  withTempEvidenceDir((tempDir) => {
+    const tracked = path.join(
+      root,
+      Staging.COACHING_03_EVIDENCE_DIR,
+      "APPLY_REFUSED.json"
+    );
+    const trackedBefore = existsSync(tracked) ? readFileSync(tracked) : null;
+
+    const result = spawnCoaching03Apply(tempDir);
+    assert.equal(result.status, 0);
+    assert.match(result.stdout, /APPLY_MODE=REFUSED/);
+    assert.match(result.stdout, /"sqlApplied": false/);
+
+    const evidencePath = path.join(tempDir, "APPLY_REFUSED.json");
+    assert.equal(existsSync(evidencePath), true);
+    const evidence = JSON.parse(readFileSync(evidencePath, "utf8"));
+    assert.equal(evidence.APPLY_MODE, "REFUSED");
+    assert.equal(evidence.sqlApplied, false);
+    assert.equal(evidence.databaseWrites, 0);
+
+    const trackedAfter = existsSync(tracked) ? readFileSync(tracked) : null;
+    assert.deepEqual(trackedAfter, trackedBefore);
+  });
 });
 
 test("no package.json apply shortcut and no CI auto-apply hooks", () => {
@@ -661,14 +709,13 @@ test("exact-commit provenance: mismatch refuses before network write", () => {
   assert.equal(g.sqlWouldApply, false);
   assert.equal(g.canWrite, false);
   // Apply script default without --execute also refuses.
-  const dry = spawnSync(
-    process.execPath,
-    ["scripts/coaching/coaching-03-staging-apply.mjs"],
-    { cwd: root, encoding: "utf8" }
-  );
-  assert.equal(dry.status, 0);
-  assert.ok(String(dry.stdout || "").includes("APPLY_MODE=REFUSED"));
-  assert.ok(!String(dry.stdout || "").includes("APPLY_MODE=EXECUTED"));
+  withTempEvidenceDir((tempDir) => {
+    const dry = spawnCoaching03Apply(tempDir);
+    assert.equal(dry.status, 0);
+    assert.ok(String(dry.stdout || "").includes("APPLY_MODE=REFUSED"));
+    assert.ok(!String(dry.stdout || "").includes("APPLY_MODE=EXECUTED"));
+    assert.equal(existsSync(path.join(tempDir, "APPLY_REFUSED.json")), true);
+  });
 });
 
 test("provenance remediation does not perform second Staging apply", () => {

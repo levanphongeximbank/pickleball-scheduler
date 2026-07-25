@@ -38,6 +38,7 @@ import {
   sha256File,
   verifyCoaching03MigrationManifest,
 } from "../../src/features/coaching/staging/index.js";
+import { resolveStagingEvidenceDir } from "../shared/resolve-staging-evidence-dir.mjs";
 
 function parseArgs(argv) {
   const args = {
@@ -68,7 +69,10 @@ function parseArgs(argv) {
 }
 
 function writeEvidence(repoRoot, filename, payload) {
-  const dir = path.join(repoRoot, COACHING_03_EVIDENCE_DIR);
+  const dir = resolveStagingEvidenceDir({
+    repoRoot,
+    canonicalRelativeDir: COACHING_03_EVIDENCE_DIR,
+  });
   if (!existsSync(dir)) mkdirSync(dir, { recursive: true });
   const target = path.join(dir, filename);
   writeFileSync(target, `${JSON.stringify(payload, null, 2)}\n`, "utf8");
