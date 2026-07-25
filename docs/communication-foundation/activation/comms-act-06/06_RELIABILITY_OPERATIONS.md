@@ -4,10 +4,10 @@
 
 | Item | Status |
 |------|--------|
-| Out-of-repo Production backup script | Prepared: `C:\Users\Le Phong\PICK_VN-Backups\create-comms-act-07-production-logical-backup.ps1` |
-| Fresh Production backup executed | **NO** (ACT-07 Gate B only) |
+| Out-of-repo Production backup script | Owner-local prepared; CI uses repository contract template only |
+| Fresh Production backup executed | **NO** (`PRODUCTION_LOGICAL_BACKUP_VERIFIED=NO`) |
 | Staging backups | Present historically — **not** Production recovery media |
-| Dashboard / PITR capability | **Owner must confirm** on Production project |
+| Dashboard / PITR capability | Owner metadata: **NO** / **NO** |
 
 If Production has no usable backup capability → release **BLOCKED_BACKUP_RECOVERY**.
 

@@ -9,7 +9,10 @@ import test from "node:test";
 import { fileURLToPath } from "node:url";
 
 import {
+  COMMS_ACT_06_BACKUP_CONTRACT_RELATIVE,
+  COMMS_ACT_06_BACKUP_EVIDENCE,
   COMMS_ACT_06_CAPABILITY_SCOPE,
+  COMMS_ACT_06_OWNER_LOCAL_BACKUP_SCRIPT_PATH,
   COMMS_ACT_06_PROD_SMOKE_MARKER,
   COMMS_ACT_06_PRODUCTION_ENABLE_TOKEN,
   COMMS_ACT_06_REQUIRED_DOCS,
@@ -20,7 +23,10 @@ import {
   COMMUNICATION_RUNTIME_MODE,
   COMMUNICATION_TRUSTED_BACKEND_ENV,
   evaluateCommunicationProductionRefGate,
+  evaluateCommsAct06BackupContract,
+  evaluateCommsAct06BackupScriptSource,
   evaluateCommsAct06DeploymentHost,
+  evaluateCommsAct06OwnerLocalBackupScript,
   evaluateCommsAct06Preflight,
   evaluateCommsProductionTargetIdentity,
   getCommsAct06RiskRegister,
@@ -41,8 +47,10 @@ const docsDir = path.join(
   root,
   "docs/communication-foundation/activation/comms-act-06"
 );
-const backupScriptPath =
-  "C:\\Users\\Le Phong\\PICK_VN-Backups\\create-comms-act-07-production-logical-backup.ps1";
+const repoBackupContractPath = path.join(
+  root,
+  COMMS_ACT_06_BACKUP_CONTRACT_RELATIVE
+);
 
 test("COMMS-ACT-06 docs exist", () => {
   for (const name of COMMS_ACT_06_REQUIRED_DOCS) {
@@ -142,9 +150,17 @@ test("request guards enforce size and rate limits", () => {
   assert.equal(huge.ok, false);
   assert.equal(huge.code, "REQUEST_BODY_TOO_LARGE");
 
-  const req = { headers: { authorization: "Bearer test-token", "x-forwarded-for": "1.1.1.1" } };
+  const req = {
+    headers: {
+      authorization: "Bearer test-token",
+      "x-forwarded-for": "1.1.1.1",
+    },
+  };
   for (let i = 0; i < 60; i += 1) {
-    assert.equal(assertCommunicationRateLimit(req, { maxRequests: 60 }).ok, true);
+    assert.equal(
+      assertCommunicationRateLimit(req, { maxRequests: 60 }).ok,
+      true
+    );
   }
   const limited = assertCommunicationRateLimit(req, { maxRequests: 60 });
   assert.equal(limited.ok, false);
@@ -164,8 +180,9 @@ test("Production build stays UNAVAILABLE while PRODUCTION_READY false", () => {
 test("evaluateCommsAct06Preflight returns READY_WITH_REMEDIATION_REQUIRED", () => {
   const result = evaluateCommsAct06Preflight({
     repoRoot: root,
-    backupScriptPath,
-    requireBackupScript: true,
+    // Deliberately point at a path that does not exist on Linux CI.
+    backupScriptPath:
+      "/nonexistent/owner-local/create-comms-act-07-production-logical-backup.ps1",
   });
   assert.equal(result.pass, true, JSON.stringify(result.findings, null, 2));
   assert.equal(
@@ -174,13 +191,27 @@ test("evaluateCommsAct06Preflight returns READY_WITH_REMEDIATION_REQUIRED", () =
   );
   assert.equal(result.mutationCount, 0);
   assert.equal(result.productionUntouched, true);
-  assert.equal(result.backupScriptOk, true);
+  assert.equal(result.backupContract.pass, true);
+  assert.equal(result.ownerLocalBackup.available, false);
+  assert.equal(
+    result.ownerLocalBackup.classification,
+    "OWNER_LOCAL_ARTIFACT_NOT_AVAILABLE_IN_CI"
+  );
+  assert.equal(result.backupEvidence.CI_EXTERNAL_FILE_EXISTENCE_REQUIRED, "NO");
+  assert.equal(result.backupEvidence.PRODUCTION_LOGICAL_BACKUP_VERIFIED, "NO");
   assert.equal(result.secretsPrinted, false);
   assert.ok(result.remediations.length > 0);
+  assert.ok(
+    result.remediations.some((r) => r.id === "PRODUCTION_BACKUP_CAPABILITY")
+  );
   assert.ok(
     result.remediations.every(
       (r) => r.class === COMMS_ACT_06_RISK_CLASS.RELEASE_BLOCKER
     )
+  );
+  assert.equal(
+    result.findings.some((f) => f.code === "BACKUP_SCRIPT_MISSING"),
+    false
   );
 });
 
@@ -202,26 +233,61 @@ test("risk register includes expected classes", () => {
   );
 });
 
-test("Production backup script static safety", () => {
-  assert.ok(fs.existsSync(backupScriptPath), "backup script missing");
-  const src = fs.readFileSync(backupScriptPath, "utf8");
-  assert.match(src, /expuvcohlcjzvrrauvud/);
-  assert.match(src, /qyewbxjsiiyufanzcjcq/);
-  assert.match(src, /Allowlist Production|Production allowlist/i);
-  assert.match(src, /Staging blocklist|Never targets Staging/i);
-  assert.match(src, /roles\.sql/);
-  assert.match(src, /schema\.sql/);
-  assert.match(src, /data\.sql/);
-  assert.match(src, /migration-history/);
-  assert.match(src, /SHA256/);
-  assert.match(src, /already exists \(no overwrite\)|already exists/);
-  assert.doesNotMatch(src, /eyJ[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]+\./);
-  assert.doesNotMatch(src, /postgres:\/\/[^:]+:[^@]+@/);
-  assert.doesNotMatch(src, /service_role|sb_secret_/i);
+test("Production backup contract static safety (repository artifact)", () => {
+  const contract = evaluateCommsAct06BackupContract({ repoRoot: root });
+  assert.equal(contract.pass, true, JSON.stringify(contract.findings, null, 2));
+  assert.equal(contract.ciExternalFileExistenceRequired, false);
+  assert.ok(fs.existsSync(repoBackupContractPath), "repo contract missing");
+  const src = fs.readFileSync(repoBackupContractPath, "utf8");
+  const sourceCheck = evaluateCommsAct06BackupScriptSource(
+    src,
+    COMMS_ACT_06_BACKUP_CONTRACT_RELATIVE
+  );
+  assert.equal(sourceCheck.pass, true, JSON.stringify(sourceCheck.findings));
+  assert.match(src, /CONTRACT_TEMPLATE_NOT_EXECUTABLE/);
+  assert.match(src, /CI_EXTERNAL_FILE_EXISTENCE_REQUIRED=NO/);
+});
+
+test("Windows owner-local backup path is not a CI existence prerequisite", () => {
+  assert.match(
+    COMMS_ACT_06_OWNER_LOCAL_BACKUP_SCRIPT_PATH,
+    /PICK_VN-Backups\\create-comms-act-07-production-logical-backup\.ps1$/
+  );
+  const missing = evaluateCommsAct06OwnerLocalBackupScript({
+    backupScriptPath:
+      "C:\\Users\\Le Phong\\PICK_VN-Backups\\__ci_must_not_require_this__.ps1",
+  });
+  assert.equal(missing.available, false);
+  assert.equal(
+    missing.classification,
+    "OWNER_LOCAL_ARTIFACT_NOT_AVAILABLE_IN_CI"
+  );
+  assert.equal(missing.ciExternalFileExistenceRequired, false);
+  assert.equal(COMMS_ACT_06_BACKUP_EVIDENCE.CI_EXTERNAL_FILE_EXISTENCE_REQUIRED, "NO");
+  assert.equal(COMMS_ACT_06_BACKUP_EVIDENCE.PRODUCTION_LOGICAL_BACKUP_VERIFIED, "NO");
+
+  // Preflight must remain PASS with READY_WITH_REMEDIATION_REQUIRED even when
+  // the documented Windows Owner path is absent (Linux CI case).
+  const result = evaluateCommsAct06Preflight({
+    repoRoot: root,
+    backupScriptPath: COMMS_ACT_06_OWNER_LOCAL_BACKUP_SCRIPT_PATH,
+  });
+  assert.equal(result.pass, true, JSON.stringify(result.findings, null, 2));
+  assert.equal(
+    result.verdict,
+    COMMS_ACT_06_VERDICTS.READY_WITH_REMEDIATION_REQUIRED
+  );
+  // Do not hard-require platform checks; only assert non-blocking classification
+  // when the documented path is missing in this environment.
+  if (!fs.existsSync(COMMS_ACT_06_OWNER_LOCAL_BACKUP_SCRIPT_PATH)) {
+    assert.equal(
+      result.ownerLocalBackup.classification,
+      "OWNER_LOCAL_ARTIFACT_NOT_AVAILABLE_IN_CI"
+    );
+  }
 });
 
 test("package.json and package-lock.json unchanged by ACT-06 policy", () => {
-  // Presence check only — git diff validation runs in CI/local validation.
   assert.ok(fs.existsSync(path.join(root, "package.json")));
   assert.ok(fs.existsSync(path.join(root, "package-lock.json")));
 });

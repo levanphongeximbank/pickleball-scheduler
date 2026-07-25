@@ -508,11 +508,17 @@ export {
   COMMS_ACT_06_PRODUCTION_ENABLE_TOKEN,
   COMMS_ACT_06_PROD_SMOKE_MARKER,
   COMMS_ACT_06_CAPABILITY_SCOPE,
+  COMMS_ACT_06_BACKUP_CONTRACT_RELATIVE,
+  COMMS_ACT_06_OWNER_LOCAL_BACKUP_SCRIPT_PATH,
+  COMMS_ACT_06_BACKUP_EVIDENCE,
   getCommsAct06CapabilityScope,
   getCommsAct06RiskRegister,
   evaluateCommunicationProductionRefGate,
   evaluateCommsProductionTargetIdentity,
   evaluateCommsAct06DeploymentHost,
+  evaluateCommsAct06BackupContract,
+  evaluateCommsAct06OwnerLocalBackupScript,
+  evaluateCommsAct06BackupScriptSource,
   evaluateCommsAct06Preflight,
 } from "./activation/index.js";
 

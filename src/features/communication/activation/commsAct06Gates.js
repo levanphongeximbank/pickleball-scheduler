@@ -62,11 +62,28 @@ export const COMMS_ACT_06_REQUIRED_DOCS = Object.freeze([
   "06_SECURITY_ABUSE_READINESS.md",
   "06_RELIABILITY_OPERATIONS.md",
   "06_BACKUP_PLAN.md",
+  "06_PRODUCTION_BACKUP_SCRIPT_CONTRACT.md",
   "06_RELEASE_ROLLBACK_PACKAGE.md",
   "06_PRODUCTION_SMOKE_DESIGN.md",
   "06_RELEASE_GATE_VERDICT.md",
   "06_OWNER_GO_PACKAGE.md",
 ]);
+
+/** CI-verifiable backup contract (inside repository). */
+export const COMMS_ACT_06_BACKUP_CONTRACT_RELATIVE =
+  "scripts/communication/comms-act-07-production-logical-backup.template.ps1";
+
+/** Documented Owner-local executable — never a CI existence prerequisite. */
+export const COMMS_ACT_06_OWNER_LOCAL_BACKUP_SCRIPT_PATH =
+  "C:\\Users\\Le Phong\\PICK_VN-Backups\\create-comms-act-07-production-logical-backup.ps1";
+
+export const COMMS_ACT_06_BACKUP_EVIDENCE = Object.freeze({
+  OWNER_LOCAL_BACKUP_SCRIPT_PREPARED: "YES",
+  OWNER_LOCAL_BACKUP_SCRIPT_EXECUTED: "NO",
+  CI_EXTERNAL_FILE_EXISTENCE_REQUIRED: "NO",
+  REPOSITORY_BACKUP_CONTRACT_VERIFIED: "YES",
+  PRODUCTION_LOGICAL_BACKUP_VERIFIED: "NO",
+});
 
 export const COMMS_ACT_06_SQL_PACKAGE = Object.freeze({
   forwardComms05: COMMS_ACT_01_FORWARD_SQL_RELATIVE,
@@ -121,7 +138,7 @@ export function getCommsAct06RiskRegister() {
       id: "PRODUCTION_BACKUP_CAPABILITY",
       class: COMMS_ACT_06_RISK_CLASS.RELEASE_BLOCKER,
       message:
-        "Fresh Production logical backup + Dashboard/PITR capability required before ACT-07 mutation (Gate B).",
+        "Fresh Production logical backup not yet executed/verified (Gate B). Dashboard/PITR unavailable; Owner-local script prepared but PRODUCTION_LOGICAL_BACKUP_VERIFIED=NO.",
     }),
     Object.freeze({
       id: "PRODUCTION_TEST_IDENTITIES",
@@ -231,6 +248,156 @@ export function evaluateCommsAct06SqlPackageBinding(options = {}) {
 }
 
 /**
+ * Static safety checks shared by repository contract and Owner-local script text.
+ * @param {string} src
+ * @param {string} label
+ */
+export function evaluateCommsAct06BackupScriptSource(src, label = "backup-script") {
+  /** @type {Array<{ code: string, level: string, message: string }>} */
+  const findings = [];
+  const text = String(src || "");
+
+  const required = [
+    [/expuvcohlcjzvrrauvud/, "PRODUCTION_ALLOWLIST_MISSING"],
+    [/qyewbxjsiiyufanzcjcq/, "STAGING_BLOCKLIST_MISSING"],
+    [/Production allowlist|allowlist:\s*\$ProductionRef|Allowlist Production/i, "ALLOWLIST_LANGUAGE_MISSING"],
+    [/Staging blocklist|blocklist:\s*\$StagingRef|Never targets Staging/i, "BLOCKLIST_LANGUAGE_MISSING"],
+    [/roles\.sql/, "ROLES_DUMP_MISSING"],
+    [/schema\.sql/, "SCHEMA_DUMP_MISSING"],
+    [/data\.sql/, "DATA_DUMP_MISSING"],
+    [/migration-history/, "MIGRATION_HISTORY_MISSING"],
+    [/SHA256/, "SHA256_MISSING"],
+    [/already exists/, "NO_OVERWRITE_GUARD_MISSING"],
+  ];
+
+  for (const [pattern, code] of required) {
+    if (!pattern.test(text)) {
+      findings.push({
+        level: "error",
+        code,
+        message: `${label}: missing required contract marker (${code}).`,
+      });
+    }
+  }
+
+  if (/eyJ[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]+\./.test(text)) {
+    findings.push({
+      level: "error",
+      code: "JWT_LIKE_SECRET_PRESENT",
+      message: `${label}: JWT-like secret material must not appear.`,
+    });
+  }
+  if (/postgres:\/\/[^:]+:[^@]+@/i.test(text)) {
+    findings.push({
+      level: "error",
+      code: "CONNECTION_STRING_SECRET_PRESENT",
+      message: `${label}: database connection string must not appear.`,
+    });
+  }
+  if (/service_role|sb_secret_/i.test(text)) {
+    findings.push({
+      level: "error",
+      code: "SERVICE_ROLE_SECRET_PRESENT",
+      message: `${label}: service-role secret material must not appear.`,
+    });
+  }
+
+  return Object.freeze({
+    pass: findings.filter((f) => f.level === "error").length === 0,
+    findings,
+  });
+}
+
+/**
+ * CI-required: repository backup contract/template exists and is statically safe.
+ * @param {{ repoRoot?: string }} [options]
+ */
+export function evaluateCommsAct06BackupContract(options = {}) {
+  const root = getCommsAct06RepoRoot(options.repoRoot);
+  const relative = COMMS_ACT_06_BACKUP_CONTRACT_RELATIVE;
+  const absolute = path.join(root, relative);
+  /** @type {Array<{ code: string, level: string, message: string }>} */
+  const findings = [];
+
+  if (!fs.existsSync(absolute)) {
+    findings.push({
+      level: "error",
+      code: "BACKUP_CONTRACT_MISSING",
+      message: `Missing repository backup contract: ${relative}`,
+    });
+    return Object.freeze({
+      pass: false,
+      relative,
+      absolute,
+      findings,
+      ciExternalFileExistenceRequired: false,
+    });
+  }
+
+  const src = fs.readFileSync(absolute, "utf8");
+  const sourceCheck = evaluateCommsAct06BackupScriptSource(src, relative);
+  findings.push(...sourceCheck.findings);
+
+  return Object.freeze({
+    pass: sourceCheck.pass,
+    relative,
+    absolute,
+    findings,
+    ciExternalFileExistenceRequired: false,
+    repositoryBackupContractVerified: sourceCheck.pass,
+  });
+}
+
+/**
+ * Optional Owner-local executable presence — never a CI failure.
+ * @param {{ backupScriptPath?: string }} [input]
+ */
+export function evaluateCommsAct06OwnerLocalBackupScript(input = {}) {
+  const documentedPath = COMMS_ACT_06_OWNER_LOCAL_BACKUP_SCRIPT_PATH;
+  const backupScriptPath = String(
+    input.backupScriptPath || documentedPath
+  ).trim();
+  const available =
+    backupScriptPath.length > 0 && fs.existsSync(backupScriptPath);
+
+  if (!available) {
+    return Object.freeze({
+      available: false,
+      path: backupScriptPath,
+      documentedPath,
+      classification: "OWNER_LOCAL_ARTIFACT_NOT_AVAILABLE_IN_CI",
+      executed: false,
+      ciExternalFileExistenceRequired: false,
+      findings: Object.freeze([
+        Object.freeze({
+          level: "info",
+          code: "OWNER_LOCAL_ARTIFACT_NOT_AVAILABLE_IN_CI",
+          message:
+            "Owner-local Production backup script not present in this environment (expected on Linux CI).",
+        }),
+      ]),
+    });
+  }
+
+  const src = fs.readFileSync(backupScriptPath, "utf8");
+  const sourceCheck = evaluateCommsAct06BackupScriptSource(
+    src,
+    "owner-local-backup-script"
+  );
+
+  return Object.freeze({
+    available: true,
+    path: backupScriptPath,
+    documentedPath,
+    classification: "OWNER_LOCAL_ARTIFACT_PRESENT",
+    executed: false,
+    ciExternalFileExistenceRequired: false,
+    sourceCheck,
+    findings: sourceCheck.findings,
+  });
+}
+
+/**
  * Full static Production readiness preflight (no remote mutation).
  * @param {object} [input]
  */
@@ -257,6 +424,26 @@ export function evaluateCommsAct06Preflight(input = {}) {
 
   const sql = evaluateCommsAct06SqlPackageBinding({ repoRoot: root });
   if (!sql.pass) findings.push(...sql.findings);
+
+  const backupContract = evaluateCommsAct06BackupContract({ repoRoot: root });
+  if (!backupContract.pass) findings.push(...backupContract.findings);
+
+  const ownerLocalBackup = evaluateCommsAct06OwnerLocalBackupScript({
+    backupScriptPath: input.backupScriptPath,
+  });
+  // Presence of Owner-local file is informational only — never CI error.
+  // Optional Owner-machine mode may request a warning surface but must not fail CI.
+  if (
+    input.requireOwnerLocalBackupScript === true &&
+    !ownerLocalBackup.available
+  ) {
+    findings.push({
+      level: "warning",
+      code: "OWNER_LOCAL_ARTIFACT_NOT_AVAILABLE_IN_CI",
+      message:
+        "Owner-local backup script requested but not found (non-blocking for repository readiness).",
+    });
+  }
 
   const activation = getCommunicationActivationSnapshot();
   if (activation.PRODUCTION_READY === true) {
@@ -320,18 +507,6 @@ export function evaluateCommsAct06Preflight(input = {}) {
     ownerVerifyRequired: true,
   });
 
-  const backupScriptPath = String(input.backupScriptPath || "").trim();
-  const backupScriptOk =
-    backupScriptPath.length > 0 && fs.existsSync(backupScriptPath);
-
-  if (!backupScriptOk && input.requireBackupScript === true) {
-    findings.push({
-      level: "error",
-      code: "BACKUP_SCRIPT_MISSING",
-      message: "Production backup script missing outside repository.",
-    });
-  }
-
   const errors = findings.filter((f) => f.level === "error");
   let verdict;
   let pass;
@@ -373,7 +548,10 @@ export function evaluateCommsAct06Preflight(input = {}) {
     productionEnableToken: COMMS_ACT_06_PRODUCTION_ENABLE_TOKEN,
     smokeMarker: COMMS_ACT_06_PROD_SMOKE_MARKER,
     envPresence,
-    backupScriptOk,
+    backupContract,
+    ownerLocalBackup,
+    backupScriptOk: ownerLocalBackup.available === true,
+    backupEvidence: COMMS_ACT_06_BACKUP_EVIDENCE,
     riskRegister,
     remediations,
     findings,
