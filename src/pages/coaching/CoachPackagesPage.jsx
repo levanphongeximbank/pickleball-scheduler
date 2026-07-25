@@ -1,14 +1,11 @@
 import CoachingEntityPage from "./CoachingEntityPage.jsx";
-import { deletePackage, listPackages, savePackage } from "../../features/coaching/index.js";
 
 export default function CoachPackagesPage() {
   return (
     <CoachingEntityPage
       title="Gói học"
       description="Gói buổi, thời hạn và giá."
-      listFn={listPackages}
-      saveFn={savePackage}
-      deleteFn={deletePackage}
+      collection="packages"
       columns={[
         { key: "name", label: "Tên gói" },
         { key: "sessions", label: "Số buổi" },
@@ -16,7 +13,8 @@ export default function CoachPackagesPage() {
         {
           key: "price",
           label: "Giá",
-          render: (row) => (row.price ? `${Number(row.price).toLocaleString("vi-VN")} đ` : "—"),
+          render: (row) =>
+            row.price ? `${Number(row.price).toLocaleString("vi-VN")} đ` : "—",
         },
       ]}
       fields={[

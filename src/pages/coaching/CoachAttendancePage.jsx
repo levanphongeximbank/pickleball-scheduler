@@ -1,14 +1,11 @@
 import CoachingEntityPage from "./CoachingEntityPage.jsx";
-import { deleteAttendance, listAttendance, saveAttendance } from "../../features/coaching/index.js";
 
 export default function CoachAttendancePage() {
   return (
     <CoachingEntityPage
       title="Điểm danh"
       description="Theo dõi có mặt / vắng theo buổi học."
-      listFn={listAttendance}
-      saveFn={saveAttendance}
-      deleteFn={deleteAttendance}
+      collection="attendance"
       columns={[
         { key: "date", label: "Ngày" },
         { key: "className", label: "Lớp" },

@@ -1,8 +1,9 @@
-import { useMemo } from "react";
 import {
   Alert,
   Box,
+  CircularProgress,
   Paper,
+  Stack,
   Table,
   TableBody,
   TableCell,
@@ -13,15 +14,13 @@ import {
 } from "@mui/material";
 
 import { useClub } from "../../context/ClubContext.jsx";
-import { listCoaches } from "../../features/coaching/index.js";
+import { useCoachingCollection } from "../../features/coaching/runtime/useCoachingCollection.js";
 
 export default function CoachListPage() {
   const { activeClubId, activeClub } = useClub();
-
-  const rows = useMemo(() => {
-    if (!activeClubId) return [];
-    return listCoaches(activeClubId);
-  }, [activeClubId]);
+  const { status, rows, error, pending } = useCoachingCollection("coaches", {
+    clubId: activeClubId,
+  });
 
   return (
     <Box>
@@ -32,14 +31,42 @@ export default function CoachListPage() {
         Xem HLV và chuyên môn tại CLB.
       </Typography>
       {activeClub?.name ? (
-        <Typography variant="caption" color="text.secondary" display="block" sx={{ mb: 2 }}>
+        <Typography
+          variant="caption"
+          color="text.secondary"
+          display="block"
+          sx={{ mb: 2 }}
+        >
           CLB: {activeClub.name}
         </Typography>
       ) : null}
 
       {!activeClubId ? (
-        <Alert severity="info">Chọn CLB ở header để xem danh sách huấn luyện viên.</Alert>
-      ) : (
+        <Alert severity="info">
+          Chọn CLB ở header để xem danh sách huấn luyện viên.
+        </Alert>
+      ) : null}
+
+      {status === "loading" || pending ? (
+        <Stack direction="row" spacing={1} alignItems="center" sx={{ mb: 2 }}>
+          <CircularProgress size={22} />
+          <Typography color="text.secondary">Đang tải…</Typography>
+        </Stack>
+      ) : null}
+
+      {status === "denied" ? (
+        <Alert severity="warning" sx={{ mb: 2 }}>
+          {error?.error || "Bạn không có quyền xem danh sách HLV."}
+        </Alert>
+      ) : null}
+
+      {status === "error" ? (
+        <Alert severity="error" sx={{ mb: 2 }}>
+          {error?.error || "Không tải được danh sách HLV."}
+        </Alert>
+      ) : null}
+
+      {activeClubId && status !== "denied" ? (
         <TableContainer component={Paper} variant="outlined">
           <Table size="small">
             <TableHead>
@@ -54,7 +81,9 @@ export default function CoachListPage() {
               {rows.length === 0 ? (
                 <TableRow>
                   <TableCell colSpan={4} align="center">
-                    Chưa có huấn luyện viên.
+                    {status === "loading"
+                      ? "Đang tải…"
+                      : "Chưa có huấn luyện viên."}
                   </TableCell>
                 </TableRow>
               ) : (
@@ -70,7 +99,7 @@ export default function CoachListPage() {
             </TableBody>
           </Table>
         </TableContainer>
-      )}
+      ) : null}
     </Box>
   );
 }

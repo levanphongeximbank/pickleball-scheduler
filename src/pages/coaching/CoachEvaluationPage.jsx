@@ -1,14 +1,11 @@
 import CoachingEntityPage from "./CoachingEntityPage.jsx";
-import { deleteEvaluation, listEvaluations, saveEvaluation } from "../../features/coaching/index.js";
 
 export default function CoachEvaluationPage() {
   return (
     <CoachingEntityPage
       title="Đánh giá học viên"
       description="Nhận xét kỹ thuật và tiến bộ."
-      listFn={listEvaluations}
-      saveFn={saveEvaluation}
-      deleteFn={deleteEvaluation}
+      collection="evaluations"
       columns={[
         { key: "date", label: "Ngày" },
         { key: "studentName", label: "Học viên" },
