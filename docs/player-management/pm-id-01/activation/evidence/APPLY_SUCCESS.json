@@ -1,0 +1,81 @@
+{
+  "phase": "PM-ID-01-GUARDED-STAGING-APPLY",
+  "script": "pm-id-01-staging-apply",
+  "ownerGoRequired": "PM_ID_01_OWNER_GO_APPLY_STAGING",
+  "stagingProjectRefExpected": "qyewbxjsiiyufanzcjcq",
+  "databaseConnectionOpened": true,
+  "databaseWrites": 6,
+  "sqlApplied": true,
+  "mappingRowsCreated": 0,
+  "backfillExecuted": false,
+  "roleGrantsApplied": false,
+  "productionTouched": false,
+  "filesDeleted": false,
+  "CODEX_DELETE_ALLOWED": "NO",
+  "automaticRollback": false,
+  "coachingChanges": false,
+  "secretsPrinted": false,
+  "APPLY_MODE": "EXECUTED",
+  "ok": true,
+  "verdict": "PM_ID_01_STAGING_FORWARD_APPLIED",
+  "stagingProjectRef": "qyewbxjsiiyufanzcjcq",
+  "applied": [
+    {
+      "order": 10,
+      "path": "docs/player-management/pm-id-01/10_PM_ID_01_MAPPING_TABLE.sql",
+      "checkpoint": "after-mapping-table",
+      "sha256": "a87f2488d9bb65f44791b2196a6d033d9c47cbf81ad7546be0d8031534318598",
+      "ok": true,
+      "startedAt": "2026-07-25T16:54:06.720Z",
+      "finishedAt": "2026-07-25T16:54:08.024Z"
+    },
+    {
+      "order": 20,
+      "path": "docs/player-management/pm-id-01/20_PM_ID_01_CONSTRAINTS_AND_INDEXES.sql",
+      "checkpoint": "after-constraints-indexes",
+      "sha256": "1d8020ba9bb725cd81204bf5f1a922d8b01a75313cb51045e2df44511bef733a",
+      "ok": true,
+      "startedAt": "2026-07-25T16:54:08.024Z",
+      "finishedAt": "2026-07-25T16:54:09.236Z"
+    },
+    {
+      "order": 30,
+      "path": "docs/player-management/pm-id-01/30_PM_ID_01_RESOLUTION_HELPERS.sql",
+      "checkpoint": "after-resolution-helpers",
+      "sha256": "29b0748c124f3fcc97930e20e9ef07e2f5ebcec2f6f80a909a0bd96ccef9e9fc",
+      "ok": true,
+      "startedAt": "2026-07-25T16:54:09.236Z",
+      "finishedAt": "2026-07-25T16:54:10.289Z"
+    },
+    {
+      "order": 40,
+      "path": "docs/player-management/pm-id-01/40_PM_ID_01_MAPPING_MANAGEMENT_RPCS.sql",
+      "checkpoint": "after-management-rpcs",
+      "sha256": "c8edb5c1640dc5d2a3ad268ed2324d9d79fac34063a5836e61bc3715e6118056",
+      "ok": true,
+      "startedAt": "2026-07-25T16:54:10.290Z",
+      "finishedAt": "2026-07-25T16:54:11.231Z"
+    },
+    {
+      "order": 50,
+      "path": "docs/player-management/pm-id-01/50_PM_ID_01_RLS_AND_GRANTS.sql",
+      "checkpoint": "after-rls-grants",
+      "sha256": "22d291a82a6e879bee3c34cea41b1384995c79d90265501b7fc97b99ef89c4a3",
+      "ok": true,
+      "startedAt": "2026-07-25T16:54:11.231Z",
+      "finishedAt": "2026-07-25T16:54:12.156Z"
+    },
+    {
+      "order": 99,
+      "path": "docs/player-management/pm-id-01/99_PM_ID_01_VERIFICATION.sql",
+      "checkpoint": "after-verification",
+      "sha256": "53f544544938ff8e13d6369b29d67925315f0ab28d6a7e8f8902a257b0011176",
+      "ok": true,
+      "startedAt": "2026-07-25T16:54:12.156Z",
+      "finishedAt": "2026-07-25T16:54:13.137Z"
+    }
+  ],
+  "ownerGoGranted": true,
+  "startedAt": "2026-07-25T16:54:06.719Z",
+  "finishedAt": "2026-07-25T16:54:13.137Z"
+}

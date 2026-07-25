@@ -20,7 +20,7 @@
   "canWrite": false,
   "verdict": "PM_ID_01_APPLY_REFUSED_OWNER_GO_NOT_GRANTED",
   "ownerGoGranted": false,
-  "actualGitHead": "0b71e2a7d3a127cc2d6a7520c9a705bed77f2501",
+  "actualGitHead": "ec3c534d93eb36e3514791ea6550228c3bc75ea3",
   "commitMismatchReasons": [],
   "blockers": [
     "Missing explicit --execute (default APPLY_MODE=REFUSED).",
@@ -67,5 +67,5 @@
     "docs/player-management/pm-id-01/50_PM_ID_01_RLS_AND_GRANTS.sql"
   ],
   "rollbackAutoExecute": false,
-  "finishedAt": "2026-07-25T15:50:51.067Z"
+  "finishedAt": "2026-07-25T16:57:56.036Z"
 }

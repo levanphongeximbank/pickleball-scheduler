@@ -1,0 +1,188 @@
+{
+  "phase": "PM-ID-01-POST-APPLY-VERIFICATION",
+  "stagingProjectRef": "qyewbxjsiiyufanzcjcq",
+  "ok": true,
+  "verdict": "PM_ID_01_POST_APPLY_VERIFICATION_PASS",
+  "assertions": {
+    "tablePresent": true,
+    "principalIdUuid": true,
+    "playerIdText": true,
+    "lifecycleActiveRevoked": true,
+    "uniqueActiveInvariants": true,
+    "resolveHelper": true,
+    "isMappedHelper": true,
+    "managementRpcs": true,
+    "bindsAuthUid": true,
+    "rlsEnabled": true,
+    "rlsForced": true,
+    "noUsingTrue": true,
+    "noWithCheckTrue": true,
+    "publicExecuteRevoked": true,
+    "anonExecuteRevoked": true,
+    "authenticatedHasScoped": true,
+    "mappingRowsZero": true,
+    "backfillCountZero": true,
+    "coaching04NotPresent": true,
+    "productionUntouched": true,
+    "readOnlyTransaction": true
+  },
+  "failedAssertions": [],
+  "details": {
+    "principalType": "uuid",
+    "playerType": "text",
+    "uniqueActiveIndexes": [
+      "uq_player_identity_links_active_player",
+      "uq_player_identity_links_active_principal"
+    ],
+    "functions": [
+      "player_identity_admin_can_manage",
+      "player_identity_admin_revoke_link",
+      "player_identity_admin_upsert_link",
+      "player_identity_is_mapped",
+      "player_identity_links_enforce_club_tenant",
+      "player_identity_resolve_mapping"
+    ],
+    "policies": [],
+    "counts": {
+      "link_rows": 0,
+      "active_rows": 0,
+      "revoked_rows": 0
+    },
+    "coaching04HelperPresent": false,
+    "statusCheckDef": "CHECK ((((status = 'ACTIVE'::text) AND (revoked_at IS NULL) AND (revoked_by IS NULL)) OR ((status = 'REVOKED'::text) AND (revoked_at IS NOT NULL))))"
+  },
+  "databaseWrites": 0,
+  "sqlApplied": false,
+  "mappingRowsCreated": 0,
+  "backfillExecuted": false,
+  "productionTouched": false,
+  "filesDeleted": false,
+  "CODEX_DELETE_ALLOWED": "NO",
+  "rawPayload": {
+    "grants": [
+      {
+        "proname": "player_identity_admin_can_manage",
+        "rolname": "anon",
+        "can_execute": false
+      },
+      {
+        "proname": "player_identity_admin_can_manage",
+        "rolname": "authenticated",
+        "can_execute": true
+      },
+      {
+        "proname": "player_identity_admin_can_manage",
+        "rolname": "service_role",
+        "can_execute": true
+      },
+      {
+        "proname": "player_identity_admin_revoke_link",
+        "rolname": "anon",
+        "can_execute": false
+      },
+      {
+        "proname": "player_identity_admin_revoke_link",
+        "rolname": "authenticated",
+        "can_execute": true
+      },
+      {
+        "proname": "player_identity_admin_revoke_link",
+        "rolname": "service_role",
+        "can_execute": true
+      },
+      {
+        "proname": "player_identity_admin_upsert_link",
+        "rolname": "anon",
+        "can_execute": false
+      },
+      {
+        "proname": "player_identity_admin_upsert_link",
+        "rolname": "authenticated",
+        "can_execute": true
+      },
+      {
+        "proname": "player_identity_admin_upsert_link",
+        "rolname": "service_role",
+        "can_execute": true
+      },
+      {
+        "proname": "player_identity_is_mapped",
+        "rolname": "anon",
+        "can_execute": false
+      },
+      {
+        "proname": "player_identity_is_mapped",
+        "rolname": "authenticated",
+        "can_execute": true
+      },
+      {
+        "proname": "player_identity_is_mapped",
+        "rolname": "service_role",
+        "can_execute": true
+      },
+      {
+        "proname": "player_identity_resolve_mapping",
+        "rolname": "anon",
+        "can_execute": false
+      },
+      {
+        "proname": "player_identity_resolve_mapping",
+        "rolname": "authenticated",
+        "can_execute": true
+      },
+      {
+        "proname": "player_identity_resolve_mapping",
+        "rolname": "service_role",
+        "can_execute": true
+      }
+    ],
+    "policies": [],
+    "functions": [
+      {
+        "proname": "player_identity_admin_can_manage",
+        "binds_auth_uid": true,
+        "security_definer": true
+      },
+      {
+        "proname": "player_identity_admin_revoke_link",
+        "binds_auth_uid": false,
+        "security_definer": true
+      },
+      {
+        "proname": "player_identity_admin_upsert_link",
+        "binds_auth_uid": false,
+        "security_definer": true
+      },
+      {
+        "proname": "player_identity_is_mapped",
+        "binds_auth_uid": false,
+        "security_definer": true
+      },
+      {
+        "proname": "player_identity_links_enforce_club_tenant",
+        "binds_auth_uid": false,
+        "security_definer": true
+      },
+      {
+        "proname": "player_identity_resolve_mapping",
+        "binds_auth_uid": true,
+        "security_definer": true
+      }
+    ],
+    "link_rows": 0,
+    "rls_forced": true,
+    "active_rows": 0,
+    "rls_enabled": true,
+    "revoked_rows": 0,
+    "table_present": true,
+    "player_id_type": "text",
+    "status_check_def": "CHECK ((((status = 'ACTIVE'::text) AND (revoked_at IS NULL) AND (revoked_by IS NULL)) OR ((status = 'REVOKED'::text) AND (revoked_at IS NOT NULL))))",
+    "principal_id_type": "uuid",
+    "unique_active_indexes": [
+      "uq_player_identity_links_active_player",
+      "uq_player_identity_links_active_principal"
+    ],
+    "coaching04_helper_present": false
+  },
+  "finishedAt": "2026-07-25T16:57:13.747Z"
+}
