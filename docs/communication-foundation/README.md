@@ -15,19 +15,20 @@
 | **COMMS-07** Integration Hardening & Final Certification | Complete (structure) · Staging persistence GO; client RLS / realtime / Production blocked | [`comms-07/07_INTEGRATION_FINAL_CERTIFICATION.md`](./comms-07/07_INTEGRATION_FINAL_CERTIFICATION.md) |
 | **COMMS-ACT-01** Staging Activation Readiness Gate | Readiness package complete · Owner GO + backup captured | [`activation/comms-act-01/01_STAGING_ACTIVATION_READINESS.md`](./activation/comms-act-01/01_STAGING_ACTIVATION_READINESS.md) |
 | **COMMS-ACT-02** Staging Apply | **GO_STAGING_PERSISTENCE** (deny-all; no realtime; no client RLS open) | [`activation/comms-act-02/02_STAGING_APPLY_CERTIFICATION.md`](./activation/comms-act-02/02_STAGING_APPLY_CERTIFICATION.md) |
+| **COMMS-ACT-03** Authorization & Client RLS Foundation | Authored · Club SELECT **CLIENT_RLS_READY** (not applied) · Direct/System trusted-backend · Community blocked | [`activation/comms-act-03/03_AUTHORIZATION_ARCHITECTURE.md`](./activation/comms-act-03/03_AUTHORIZATION_ARCHITECTURE.md) |
 
-**Runtime module:** `src/features/communication/` — contracts, domain, ports, Direct + Club + Community application, persistence adapters + realtime foundation, Messaging Experience UI, **COMMS-07 runtime/provider/production gateway**, **COMMS-ACT-01 activation readiness modules/scripts**.
+**Runtime module:** `src/features/communication/` — contracts, domain, ports, Direct + Club + Community application, persistence adapters + realtime foundation, Messaging Experience UI, **COMMS-07 runtime/provider/production gateway**, **COMMS-ACT-01/02/03 activation modules**.
 
-## Final status (post COMMS-ACT-02)
+## Final status (post COMMS-ACT-03 authoring)
 
 | Surface | Status |
 |---------|--------|
-| **Structure / code** | COMPLETE |
+| **Structure / code** | COMPLETE + ACT-03 authorization foundation |
 | **Local/demo** | READY |
-| **COMMS-ACT-01 readiness** | COMPLETE (Owner GO + backup) |
-| **COMMS-ACT-02 Staging apply** | `GO_STAGING_PERSISTENCE` |
-| **Remote persistence (Staging)** | APPLIED (14 tables, deny-all RLS) |
-| **Client RLS** | FAIL-CLOSED (not opened) |
+| **COMMS-ACT-02 Staging apply** | `GO_STAGING_PERSISTENCE` (deny-all still live) |
+| **COMMS-ACT-03 Client RLS package** | AUTHORED_NOT_APPLIED (Club SELECT ready for Owner GO) |
+| **Remote persistence (Staging)** | APPLIED deny-all (unchanged by ACT-03) |
+| **Client RLS (remote)** | FAIL-CLOSED deny-all until Owner apply |
 | **Realtime** | NOT ENABLED |
 | **Production** | BLOCKED |
 

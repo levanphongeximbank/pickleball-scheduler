@@ -2,7 +2,8 @@
  * COMMS-05 production-oriented Supabase Communication repository factory.
  *
  * Injected client only (typically service-role / trusted backend).
- * Client JWT RLS remains DEFERRED_FAIL_CLOSED until Staging activation.
+ * Client JWT RLS: ACT-03 authored Club SELECT package exists but is not applied
+ * (`CLUB_SELECT_AUTHORED_NOT_APPLIED`). Trusted backend client still required.
  * Never returns raw Supabase rows from public methods.
  */
 
@@ -10,7 +11,11 @@ import { clonePlain } from "../../contracts/shared.js";
 import { advanceReadCursor } from "../../domain/readCursorRules.js";
 import { COMMUNICATION_FOUNDATION_ERROR_CODE } from "../../errors/errorCodes.js";
 import { CommunicationFoundationError } from "../../errors/CommunicationFoundationError.js";
-import { COMMUNICATION_RPC, COMMUNICATION_TABLES } from "../schema.js";
+import {
+  ACTIVATION_GATES,
+  COMMUNICATION_RPC,
+  COMMUNICATION_TABLES,
+} from "../schema.js";
 import { assertSupabaseCommunicationClient } from "./clientContract.js";
 import { mapSupabaseCommunicationError, notFoundError } from "./errorMapping.js";
 import {
@@ -928,7 +933,7 @@ export function createSupabaseCommunicationRepositories(client, capabilities = {
   return Object.freeze({
     isProductionOrientedAdapter: true,
     requiresTrustedBackendClient: true,
-    clientRlsPolicy: "DEFERRED_FAIL_CLOSED",
+    clientRlsPolicy: ACTIVATION_GATES.CLIENT_RLS_POLICY,
     unitOfWork,
     // Direct
     directConversations,

@@ -37,3 +37,20 @@ export {
   evaluateCommsAct01OwnerGoGate,
   evaluateCommsAct01Preflight,
 } from "./commsAct01Gates.js";
+
+export {
+  COMMS_ACT_03_FORWARD_SQL_RELATIVE,
+  COMMS_ACT_03_ROLLBACK_SQL_RELATIVE,
+  COMMS_ACT_03_EXPECTED_HELPERS,
+  COMMS_ACT_03_CLUB_SELECT_POLICIES,
+  COMMS_ACT_03_SELECT_GRANT_TABLES,
+  getCommsAct03RepoRoot,
+  loadCommsAct03SqlPackageManifest,
+  verifyCommsAct03SqlPackage,
+} from "./commsAct03SqlManifest.js";
+
+export {
+  COMMS_ACT_03_VERDICTS,
+  getCommsAct03AuthorizationSnapshot,
+  evaluateCommsAct03Preflight,
+} from "./commsAct03Gates.js";

@@ -94,8 +94,13 @@ test("scoped adapter and activation gates remain fail-closed for remote activati
 
   const snap = getCommunicationActivationSnapshot();
   assert.equal(snap.REALTIME_PUBLICATION, "DEFERRED_NOT_ENABLED");
-  assert.equal(snap.CLIENT_RLS_POLICY, "DEFERRED_FAIL_CLOSED");
-  assert.equal(snap.SQL_APPLY, "DEFERRED_STAGING_FIRST_GATE");
+  assert.equal(snap.CLIENT_RLS_POLICY, "CLUB_SELECT_AUTHORED_NOT_APPLIED");
+  assert.equal(snap.SQL_APPLY, "DEFERRED_OWNER_GO_STAGING_ONLY");
+  assert.equal(
+    snap.CLUB_MEMBERSHIP_SQL_HELPER,
+    "CERTIFIED_PHASE42_ACTIVE_CLUB_MEMBER_ID"
+  );
+  assert.equal(snap.COMMUNITY_MEMBERSHIP_SQL_HELPER, "ACTIVATION_BLOCKER");
   assert.equal(COMMUNICATION_ACTIVATION_STATUS.STAGING_MIGRATION_READY, false);
 
   assert.throws(
