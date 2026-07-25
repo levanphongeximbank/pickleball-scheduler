@@ -18,6 +18,7 @@ dashboard/reporting data contracts, and historical/trend analysis for PICK_VN.
 | Dashboard / reporting data contracts (I&A-04) | `src/features/intelligence-analytics/dashboard-reporting` |
 | Historical / trend analysis (I&A-05) | `src/features/intelligence-analytics/historical-trend` |
 | Competition analytics (I&A-06) | `src/features/intelligence-analytics/competition-analytics` |
+| Venue / Court / Club analytics (I&A-07) | `src/features/intelligence-analytics/venue-court-club-analytics` |
 | Dashboard UI / localStorage analytics | `src/features/dashboard-analytics` (legacy active; not foundation) |
 | Statistics UI aggregations | `src/features/statistics` (legacy active; not foundation) |
 | Platform Core | CLOSED — not modified, not imported |
@@ -100,6 +101,20 @@ dashboard/reporting data contracts, and historical/trend analysis for PICK_VN.
 - Read-only Competition Analytics facade + in-memory certification source
 - Typed competition analytics errors / warnings / provenance / completeness
 
+**In scope (I&A-07):**
+
+- Venue / Court / Club analytics context / source request / snapshot envelope
+- Explicit venue, court, operating-hours, availability, booking, maintenance,
+  downtime, club, membership, role, and activity analytical fact contracts
+- Tenant / venue / court / club isolation guards (fail closed)
+- Versioned venue/court/club metric catalog (registry-compatible)
+- Deterministic venue/court inventory, availability, utilization, booking-volume,
+  operating-hours, downtime, and club membership/role/activity projections
+- Historical observation composition via I&A-05 contracts
+- Presentation-neutral dashboard/report payload composition via I&A-04
+- Read-only Venue/Court/Club Analytics facade + in-memory certification source
+- Typed venue/court/club analytics errors / warnings / provenance / completeness
+
 **Out of scope:**
 
 - Database / Supabase / SQL / migrations
@@ -111,6 +126,9 @@ dashboard/reporting data contracts, and historical/trend analysis for PICK_VN.
 - Competition / Finance / Ranking / Rating / CRM business rules
 - Scoring / winner / standings / tie-break / ranking recalculation
 - Eligibility / seeding / scheduling / assignment decision engines
+- Availability / booking-conflict / operating-hours / membership authorization
+  recalculation
+- Finance revenue / pricing / ledger calculation
 - AI inference / paid AI services / AI narrative / forecasting
 - Alert delivery / persistence
 - Platform Core changes
@@ -211,6 +229,30 @@ Competition Engine canonical facade/event/read model
  CompetitionAnalyticsResult + Dashboard/Report Payloads
 ```
 
+## Venue / Court / Club analytics flow (I&A-07)
+
+```text
+Venue/Court/Club canonical facade, events or read models
+                         │
+                         ▼
+      VenueCourtClubAnalyticsSourceAdapter
+                         │
+                         ▼
+ Explicit Venue / Court / Club Analytical Facts
+                         │
+                         ▼
+ Scope Guard → Validation → Deterministic Projection
+                         │
+                         ▼
+ Inventory / Availability / Utilization / Membership Metrics
+                         │
+                         ▼
+ Historical Series + Dashboard/Report Payloads
+                         │
+                         ▼
+ VenueCourtClubAnalyticsResult
+```
+
 ## Dependency rules
 
 - No import from `src/core/platform/**`
@@ -223,6 +265,8 @@ Competition Engine canonical facade/event/read model
 - Historical/trend does not own persistence, ETL, forecasting, or module adapters
 - Competition analytics does not recalculate scoring / standings / ranking /
   eligibility / scheduling / assignment decisions
+- Venue/Court/Club analytics does not recalculate availability, booking conflict,
+  operating-hours validity, membership eligibility, roles/permissions, or revenue
 - Analytics output always sets `isCanonicalModuleState: false`
 
 ## Roadmap (structural)
@@ -232,8 +276,8 @@ Competition Engine canonical facade/event/read model
 3. I&A-03 Analytics Query and Projection Runtime ← certified
 4. I&A-04 Dashboard and Reporting Data Contracts ← certified
 5. I&A-05 Historical and Trend Analysis ← certified
-6. I&A-06 Competition Analytics ← current
-7. I&A-07 Venue, Court and Club Analytics
+6. I&A-06 Competition Analytics ← certified
+7. I&A-07 Venue, Court and Club Analytics ← current
 8. I&A-08 Customer and Player Analytics
 9. I&A-09 Finance, Ranking and Performance Analytics
 10. I&A-10 Operational Alerts and Insights

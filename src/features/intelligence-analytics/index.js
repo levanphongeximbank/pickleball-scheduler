@@ -7,11 +7,13 @@
  * I&A-04 — Dashboard and Reporting Data Contracts
  * I&A-05 — Historical and Trend Analysis
  * I&A-06 — Competition Analytics
+ * I&A-07 — Venue, Court and Club Analytics
  *
  * Module-neutral metric/query/result contracts, metric registry governance,
  * deterministic query/projection runtime over explicit source adapters,
  * presentation-neutral dashboard/report data contracts, historical/trend
- * analysis, competition analytics projections, and read-only facades.
+ * analysis, competition analytics projections, venue/court/club analytics
+ * projections, and read-only facades.
  * No dashboard UI wiring, no Platform Core / Competition E2E / business-rule
  * deps, no SQL/Supabase adapters, no export/scheduler runtime, no forecasting.
  */
@@ -25,6 +27,7 @@ export * from "./runtime/index.js";
 export * from "./dashboard-reporting/index.js";
 export * from "./historical-trend/index.js";
 export * from "./competition-analytics/index.js";
+export * from "./venue-court-club-analytics/index.js";
 
 export const INTELLIGENCE_ANALYTICS_FOUNDATION = Object.freeze({
   workstreamId: "I&A-01",
@@ -62,6 +65,12 @@ export const INTELLIGENCE_ANALYTICS_COMPETITION_ANALYTICS = Object.freeze({
   version: "1.0.0",
 });
 
+export const INTELLIGENCE_ANALYTICS_VENUE_COURT_CLUB_ANALYTICS = Object.freeze({
+  workstreamId: "I&A-07",
+  name: "Venue, Court and Club Analytics",
+  version: "1.0.0",
+});
+
 export const INTELLIGENCE_ANALYTICS_PUBLIC_EXPORTS = Object.freeze([
   "INTELLIGENCE_ANALYTICS_FOUNDATION",
   "INTELLIGENCE_ANALYTICS_METRIC_REGISTRY",
@@ -69,6 +78,7 @@ export const INTELLIGENCE_ANALYTICS_PUBLIC_EXPORTS = Object.freeze([
   "INTELLIGENCE_ANALYTICS_DASHBOARD_REPORTING",
   "INTELLIGENCE_ANALYTICS_HISTORICAL_TREND",
   "INTELLIGENCE_ANALYTICS_COMPETITION_ANALYTICS",
+  "INTELLIGENCE_ANALYTICS_VENUE_COURT_CLUB_ANALYTICS",
   "createAnalyticsMetricId",
   "createAnalyticsMetricVersion",
   "createAnalyticsMetricDefinition",
@@ -161,4 +171,29 @@ export const INTELLIGENCE_ANALYTICS_PUBLIC_EXPORTS = Object.freeze([
   "COMPETITION_ANALYTICS_METHOD_VERSION",
   "COMPETITION_PROGRESS_EXCLUSION_POLICY",
   "COMPETITION_ANALYTICS_COMPLETENESS",
+  "createVenueCourtClubAnalyticsContext",
+  "createVenueCourtClubAnalyticsSnapshot",
+  "createVenueCourtClubAnalyticsSourceRequest",
+  "createInMemoryVenueCourtClubAnalyticsSource",
+  "createVenueCourtClubAnalyticsQuery",
+  "normalizeVenueCourtClubAnalyticsQuery",
+  "createVenueCourtClubAnalyticsMetricDefinitions",
+  "createVenueCourtClubAnalyticsMetricCatalogEntries",
+  "VENUE_COURT_CLUB_ANALYTICS_METRIC_IDS",
+  "projectVenueCourtClubSummary",
+  "projectVenueSummary",
+  "projectCourtInventory",
+  "projectCourtAvailability",
+  "projectOperatingHours",
+  "projectBookingVolume",
+  "projectCourtUtilization",
+  "projectCourtDowntime",
+  "projectClubSummary",
+  "composeVenueCourtClubHistoricalObservations",
+  "composeVenueCourtClubDashboardPayloads",
+  "createVenueCourtClubAnalyticsFacade",
+  "createReadOnlyVenueCourtClubAnalyticsFacade",
+  "VENUE_COURT_CLUB_ANALYTICS_METHOD_VERSION",
+  "BOOKING_CANCELLATION_POLICY",
+  "VENUE_COURT_CLUB_ANALYTICS_COMPLETENESS",
 ]);
