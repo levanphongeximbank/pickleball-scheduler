@@ -132,16 +132,23 @@ Never contains raw secrets.
 
 ---
 
-## 8. Live test plan (after Owner GO apply — not this remediation)
+## 8. Live test plan (post Owner GO apply)
+
+Command:
+
+```bash
+node scripts/news/news-03-staging-live-certify.mjs
+```
 
 1. Temporary Staging fixture grants for exact `news.*` keys (cleanup after).
 2. Editorial SELECT RLS with fixture actors.
 3. Public RPC read for published-only content.
 4. OCC / service_role trusted write path.
 5. Deny: anon editorial, cross-tenant, draft public read.
-6. Cleanup fixture grants; re-run permission verification (expect 0 permanent role mappings).
+6. Cleanup fixture grants; re-run residue inventory (expect 0 temporary grants; six canonical permissions retained).
 
-Test actors: **not provisioned** in this remediation.
+Evidence: `docs/news-public-content/news-03/evidence/NEWS_03_LIVE_CERTIFICATION.json` (gitignored).
+Tracked summary: `NEWS_03_STAGING_CERTIFICATION.md`.
 
 ---
 

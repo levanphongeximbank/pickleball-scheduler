@@ -1,7 +1,7 @@
 # NEWS_03_PERMISSION_AND_ROLLOUT_ARCHITECTURE_DECISION
 
 **Phase:** NEWS-03 — Staging Apply & Live Public Read Integration  
-**Status:** Authored package only — SQL **NOT APPLIED**; Staging/Production unchanged until Owner GO.  
+**Status:** Staging applied + live certified (2026-07-25). Production unchanged. See `NEWS_03_STAGING_CERTIFICATION.md`.
 **Decision date:** 2026-07-25
 
 ## Exact action keys (from source)
