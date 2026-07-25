@@ -1,5 +1,6 @@
 import { PaymentProvider } from "./PaymentProvider.js";
 import { getIntegrationEnvConfig } from "../../integrations/config/integrationFlags.js";
+import { isBrowserProviderCredentialResolved } from "../../integrations/config/legacyViteSecretCutover.js";
 
 export class VNPayProvider extends PaymentProvider {
   constructor() {
@@ -8,7 +9,10 @@ export class VNPayProvider extends PaymentProvider {
 
   isConfigured() {
     const cfg = getIntegrationEnvConfig().vnpay;
-    return cfg.enabled && cfg.tmnCode && cfg.hashSecret;
+    // ECO-02b: hash signing material is server-only; browser config fails closed.
+    return Boolean(
+      isBrowserProviderCredentialResolved(cfg) && cfg.tmnCode
+    );
   }
 
   async createPayment(input) {

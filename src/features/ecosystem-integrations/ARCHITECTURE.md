@@ -1,32 +1,31 @@
-# Ecosystem & Integrations — Architecture (ECO-01 + ECO-02)
+# Ecosystem & Integrations — Architecture (ECO-01 + ECO-02 + ECO-02b)
 
 ## Phase
 
-**ECO-02 — Integration Secret & Environment Boundary**
+**ECO-02b — Legacy Vite Secret Cutover**
 
-Builds on ECO-01 structural readiness. Adds canonical secret references,
-environment classification, client-safe public projection, server-only
-credential boundary, fail-closed no-op credential resolver, and redacted
-diagnostics — without live providers, Production webhooks, or real credentials.
+Builds on ECO-02 secret/environment boundary. Removes browser reads of legacy
+`VITE_*` integration secrets, projects client-safe flags/IDs/URLs only, and
+fail-closes credential-requiring providers until a server resolver exists.
 
 ## Ownership
 
 | Owner | Owns |
 |-------|------|
-| **Ecosystem & Integrations** (`src/features/ecosystem-integrations/`) | Connector/provider descriptors, immutable registry, envelopes, webhook verification port, error taxonomy, idempotency/readiness projections, secret reference + credential requirement descriptors, environment/endpoint classification, client-safe public config projection, server-only credential boundary, no-op test provider + credential resolver |
+| **Ecosystem & Integrations** (`src/features/ecosystem-integrations/`) | Connector/provider descriptors, immutable registry, envelopes, webhook verification port, error taxonomy, idempotency/readiness projections, secret reference + credential requirement descriptors, environment/endpoint classification, client-safe public config projection, server-only credential boundary, browser secret cutover policy, no-op test provider + credential resolver |
 | **Platform Core** | Public Integration Port Descriptor + Capability Discovery (consume only) |
 | **Business Modules** | Business validation, ledger, notification decisions, competition behavior, customer identity |
-| **Sprint 10 `src/features/integrations/`** | Tenant marketplace settings UI / legacy provider catalogue + legacy `VITE_*` env readers (classified; cutover deferred / Owner GO) |
+| **Sprint 10 `src/features/integrations/`** | Tenant marketplace settings UI / legacy provider catalogue; env config reader cut over to client-safe projection |
 
-## Non-goals (ECO-02)
+## Non-goals (ECO-02b)
 
 - Real VNPay / MoMo / Stripe / SMS / email / calendar / OAuth clients
 - Real credential material in contracts or tests
-- Mutable global service locator / live env readers in canonical namespace
+- Live env readers for secrets in browser bundles
+- Mutable global service locator / live credential resolver
 - Editing `src/core/platform/**`
 - Editing Competition Engine / Finance ledger / Notification worker
 - SQL migrations / Supabase writes / Production deploy
-- Immediate cutover of Sprint 10 `integrationFlags.js` (DEFERRED / REQUIRES_OWNER_GO)
 
 ## Public import
 
@@ -38,6 +37,9 @@ import {
   createServerOnlyCredentialBoundary,
   createNoOpTestCredentialResolver,
   projectSecretBoundaryReadiness,
+  isLegacyViteCredentialEnvName,
+  isBrowserProviderCredentialResolved,
+  createServerCredentialCutoverMarkers,
 } from "../features/ecosystem-integrations/index.js";
 ```
 

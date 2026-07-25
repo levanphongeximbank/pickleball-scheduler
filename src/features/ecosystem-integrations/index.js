@@ -1,7 +1,8 @@
 /**
- * Ecosystem & Integrations — public facade (ECO-01 + ECO-02).
+ * Ecosystem & Integrations — public facade (ECO-01 + ECO-02 + ECO-02b).
  *
- * Canonical Connector & Event Foundation + Secret/Environment Boundary.
+ * Canonical Connector & Event Foundation + Secret/Environment Boundary +
+ * Legacy Vite browser-secret cutover policy (vendor-neutral).
  *
  * Consumers must import from this index — not from internal file paths —
  * once wiring begins in later phases.
@@ -146,6 +147,16 @@ export {
   SECRET_SHAPED_KEY_PATTERN,
   BROWSER_EXPOSED_SECRET_NAME_PATTERN,
 } from "./contracts/secretBoundaryShared.js";
+
+export {
+  BROWSER_FORBIDDEN_SECRET_FIELD_NAMES,
+  BROWSER_CLIENT_SAFE_CONFIG_KEYS,
+  LEGACY_VITE_CREDENTIAL_ENV_NAME_PATTERN,
+  isLegacyViteCredentialEnvName,
+  isBrowserForbiddenSecretFieldName,
+  isBrowserProviderCredentialResolved,
+  createServerCredentialCutoverMarkers,
+} from "./cutover/browserSecretCutoverPolicy.js";
 
 export {
   createIntegrationRegistry,

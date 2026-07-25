@@ -1,5 +1,6 @@
 import { PaymentProvider } from "./PaymentProvider.js";
 import { getIntegrationEnvConfig } from "../../integrations/config/integrationFlags.js";
+import { isBrowserProviderCredentialResolved } from "../../integrations/config/legacyViteSecretCutover.js";
 
 export class StripeProvider extends PaymentProvider {
   constructor() {
@@ -8,7 +9,8 @@ export class StripeProvider extends PaymentProvider {
 
   isConfigured() {
     const cfg = getIntegrationEnvConfig().stripe;
-    return cfg.enabled && cfg.secretKey;
+    // ECO-02b: Stripe secret/webhook material is server-only; fail closed.
+    return isBrowserProviderCredentialResolved(cfg);
   }
 
   async createPayment(input) {

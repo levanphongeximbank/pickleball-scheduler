@@ -1,5 +1,6 @@
 import { NotificationProvider } from "./NotificationProvider.js";
-import { getIntegrationEnvConfig, isEmailEnabled } from "../../integrations/config/integrationFlags.js";
+import { getIntegrationEnvConfig } from "../../integrations/config/integrationFlags.js";
+import { isBrowserProviderCredentialResolved } from "../../integrations/config/legacyViteSecretCutover.js";
 import { mockEmailProvider } from "./MockNotificationProvider.js";
 
 export class EmailProvider extends NotificationProvider {
@@ -9,7 +10,10 @@ export class EmailProvider extends NotificationProvider {
 
   isConfigured() {
     const cfg = getIntegrationEnvConfig().email;
-    return isEmailEnabled() && cfg.host && cfg.from;
+    // ECO-02b: SMTP user/pass are server-only; host/from alone ≠ ready.
+    return Boolean(
+      isBrowserProviderCredentialResolved(cfg) && cfg.host && cfg.from
+    );
   }
 
   async send(input) {
