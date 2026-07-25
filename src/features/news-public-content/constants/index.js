@@ -33,16 +33,16 @@ export {
 } from "./publicVisibility.js";
 
 export const NEWS_PUBLIC_CONTENT_PHASE = Object.freeze({
-  id: "NEWS-02",
-  name: "durable-persistence-sql-rls-editorial-authorization",
-  priorPhase: "NEWS-01",
+  id: "NEWS-04",
+  name: "public-portal-live-provenance-adoption",
+  priorPhase: "NEWS-03",
   hasPersistence: true,
-  persistenceApplied: false,
+  persistenceApplied: true,
   hasSql: true,
-  sqlApplied: false,
-  hasStaging: false,
+  sqlApplied: true,
+  hasStaging: true,
   hasProduction: false,
-  wiredToPublicPortal: false,
+  wiredToPublicPortal: true,
   hasSchedulerWorker: false,
   hasMediaUpload: false,
   structureComplete: true,

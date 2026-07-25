@@ -154,11 +154,12 @@ test("NEWS-02 static RLS SQL encodes actor matrix boundaries", () => {
   assert.match(grants, /grant\s+execute[\s\S]*news_public_content_save_aggregate[\s\S]*to\s+service_role/i);
   assert.match(grants, /revoke\s+all[\s\S]*news_public_content_save_aggregate[\s\S]*from\s+authenticated/i);
 
-  // public filters deny draft/preview-as-live leak / mock / archived via query contract
+  // public filters deny draft/preview/mock/archived via LIVE-only query contract
   assert.match(rpc, /editorial_status\s*=\s*'PUBLISHED'/i);
   assert.match(rpc, /public_visibility\s*=\s*'PUBLIC'/i);
   assert.match(rpc, /archived_at\s+is\s+null/i);
-  assert.match(rpc, /provenance\s*<>\s*'MOCK'/i);
+  assert.match(rpc, /provenance\s*=\s*'LIVE'/i);
+  assert.doesNotMatch(rpc, /provenance\s*<>\s*'MOCK'/i);
   assert.match(rpc, /publish_at\s+is\s+null\s+or\s+i\.publish_at\s*<=\s*p_now/i);
   assert.match(rpc, /unpublish_at\s+is\s+null\s+or\s+i\.unpublish_at\s*>\s*p_now/i);
 

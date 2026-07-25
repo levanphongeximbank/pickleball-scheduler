@@ -67,7 +67,7 @@ Normalized ref tables keyed by `(content_id, revision_id, *Id)` with determinist
 - **No** anon SELECT on editorial base tables.
 - SECURITY DEFINER RPC: `news_public_content_query_public(p_now, p_locale, p_content_scope, p_limit)`.
 - Sanitized columns only (no reviewer/approver/comments/internal ids beyond public scope refs).
-- Filters: `PUBLISHED` + `PUBLIC` + publication window + not archived + `provenance <> 'MOCK'`.
+- Filters: `PUBLISHED` + `PUBLIC` + publication window + not archived + `provenance = 'LIVE'` (MOCK/PREVIEW excluded; NEWS-04 hardened).
 
 ## Editorial capability matrix
 

@@ -66,7 +66,7 @@ Actor identity from auth context via `projectNewsActor` — caller-supplied acto
 
 RPC: `news_public_content_query_public(p_now, p_locale, p_content_scope, p_limit)`
 
-Returns sanitized published PUBLIC content inside publication window; excludes MOCK; no reviewer/approver/comments.
+Returns sanitized published PUBLIC content inside publication window with **`provenance = 'LIVE'` only**; excludes MOCK/PREVIEW/DRAFT/unpublished/expired/archived; no reviewer/approver/comments.
 
 **Not wired** to `getPublicNews()` in NEWS-02.
 

@@ -1,3 +1,4 @@
+import { useEffect, useState } from "react";
 import { Link as RouterLink } from "react-router-dom";
 import {
   Avatar,
@@ -31,6 +32,7 @@ import {
   getFeaturedTournaments,
   getPublicLiveScores,
   getPublicNews,
+  getPublicNewsItemsOrEmpty,
   getPublicSponsors,
   getPublicStats,
 } from "../../features/public-portal/services/publicPortalService.js";
@@ -42,8 +44,20 @@ export default function HomePage() {
   const clubs = getFeaturedClubs(5);
   const courts = getFeaturedCourts(4);
   const liveScores = getPublicLiveScores();
-  const news = getPublicNews().slice(0, 4);
   const sponsors = getPublicSponsors();
+  const [news, setNews] = useState([]);
+
+  useEffect(() => {
+    let cancelled = false;
+    getPublicNews({ limit: 4 }).then((result) => {
+      if (!cancelled) {
+        setNews(getPublicNewsItemsOrEmpty(result).slice(0, 4));
+      }
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   return (
     <Box sx={{ bgcolor: PUBLIC_COLORS.bg }}>

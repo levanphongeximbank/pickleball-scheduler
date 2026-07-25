@@ -1,28 +1,91 @@
+import { useEffect, useState } from "react";
 import { Box, Chip, Container, Grid, Stack, Typography } from "@mui/material";
 import PlayArrowIcon from "@mui/icons-material/PlayArrow";
 import ArticleOutlinedIcon from "@mui/icons-material/ArticleOutlined";
 
 import { PUBLIC_COLORS, publicCardSx, publicSectionSx } from "../../components/public/publicPortalStyles.js";
-import { PublicEmptyState } from "../../components/public/states/index.js";
+import {
+  PublicEmptyState,
+  PublicErrorState,
+  PublicLoadingState,
+} from "../../components/public/states/index.js";
 import { usePublicDocumentTitle } from "../../components/public/usePublicDocumentTitle.js";
-import { getPublicNews } from "../../features/public-portal/services/publicPortalService.js";
+import {
+  getPublicNews,
+  PUBLIC_NEWS_STATUS,
+} from "../../features/public-portal/services/publicPortalService.js";
+
+function ProvenanceBadge({ provenance }) {
+  if (!provenance || provenance === "LIVE") return null;
+  const label = provenance === "MOCK" ? "Dữ liệu mẫu (MOCK)" : "Bản xem trước (PREVIEW)";
+  const color =
+    provenance === "MOCK"
+      ? { bgcolor: "rgba(245,158,11,0.18)", color: "#FBBF24" }
+      : { bgcolor: "rgba(59,130,246,0.18)", color: "#93C5FD" };
+  return (
+    <Chip
+      label={label}
+      size="small"
+      data-testid={`public-news-provenance-${String(provenance).toLowerCase()}`}
+      sx={{ ...color, fontWeight: 700 }}
+    />
+  );
+}
 
 export default function NewsPage() {
   usePublicDocumentTitle("Tin tức");
-  const news = getPublicNews();
+  const [result, setResult] = useState(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    let cancelled = false;
+    setLoading(true);
+    getPublicNews()
+      .then((next) => {
+        if (!cancelled) setResult(next);
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const news = result?.items || [];
+  const provenance = result?.provenance || null;
 
   return (
     <Box sx={{ ...publicSectionSx, pt: { xs: 4, md: 6 } }}>
       <Container maxWidth="lg">
-        <Typography variant="h3" component="h1" fontWeight={800} sx={{ mb: 1 }}>
-          Tin tức
-        </Typography>
+        <Stack
+          direction={{ xs: "column", sm: "row" }}
+          spacing={1.5}
+          alignItems={{ xs: "flex-start", sm: "center" }}
+          justifyContent="space-between"
+          sx={{ mb: 1 }}
+        >
+          <Typography variant="h3" component="h1" fontWeight={800}>
+            Tin tức
+          </Typography>
+          <ProvenanceBadge provenance={provenance} />
+        </Stack>
         <Typography variant="body1" color={PUBLIC_COLORS.textMuted} sx={{ mb: 4 }}>
           Tin tức, hình ảnh và video phong trào pickleball Việt Nam
         </Typography>
 
-        {news.length ? (
-          <Grid container spacing={3}>
+        {loading ? (
+          <PublicLoadingState title="Đang tải tin tức…" />
+        ) : result?.status === PUBLIC_NEWS_STATUS.ERROR ? (
+          <PublicErrorState
+            title="Không tải được tin tức"
+            message={
+              result.error?.userMessage ||
+              "Đã xảy ra lỗi khi tải tin tức công khai. Vui lòng thử lại sau."
+            }
+          />
+        ) : news.length ? (
+          <Grid container spacing={3} data-testid="public-news-data-state">
             {news.map((item) => (
               <Grid key={item.id} size={{ xs: 12, sm: 6, md: 4 }}>
                 <Box sx={{ ...publicCardSx, p: 3, height: "100%" }}>
@@ -45,7 +108,7 @@ export default function NewsPage() {
                     )}
                   </Box>
 
-                  <Stack direction="row" spacing={1} sx={{ mb: 1.5 }}>
+                  <Stack direction="row" spacing={1} sx={{ mb: 1.5 }} flexWrap="wrap" useFlexGap>
                     <Chip
                       label={item.category}
                       size="small"

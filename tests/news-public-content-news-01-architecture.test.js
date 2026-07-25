@@ -132,10 +132,10 @@ test("NEWS-01 unimplemented repository port fails closed", async () => {
   );
 });
 
-test("NEWS-01/02 does not claim production readiness", () => {
+test("NEWS phase does not claim production readiness", () => {
   assert.equal(news.NEWS_PUBLIC_CONTENT_PHASE.productionBlocked, true);
-  assert.equal(news.NEWS_PUBLIC_CONTENT_PHASE.persistenceApplied, false);
-  assert.equal(news.NEWS_PUBLIC_CONTENT_PHASE.wiredToPublicPortal, false);
-  assert.equal(news.NEWS_PUBLIC_CONTENT_PHASE.hasStaging, false);
   assert.equal(news.NEWS_PUBLIC_CONTENT_PHASE.hasProduction, false);
+  assert.equal(news.NEWS_PUBLIC_CONTENT_PHASE.wiredToPublicPortal, true);
+  assert.equal(news.NEWS_PUBLIC_CONTENT_PHASE.hasStaging, true);
+  assert.equal(news.NEWS_PUBLIC_CONTENT_PHASE.persistenceApplied, true);
 });

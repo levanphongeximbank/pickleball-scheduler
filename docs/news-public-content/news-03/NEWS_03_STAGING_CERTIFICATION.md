@@ -143,7 +143,7 @@ Full actor/operation/expected/actual rows are in the redacted evidence JSON (git
 ## Residual risks (accepted)
 
 1. Backup remains `ROLLBACK_SQL_ONLY` (authored reverse SQL only).
-2. Public RPC authored filter excludes `MOCK` provenance; `PUBLISHED` + `PREVIEW` is not additionally filtered in SQL (domain should not publish PREVIEW as LIVE; harden in NEWS-04 if required).
+2. ~~Public RPC authored filter excludes `MOCK` only; `PUBLISHED` + `PREVIEW` not filtered~~ — **superseded by NEWS-04**: public RPC requires `provenance = 'LIVE'` (see `docs/news-public-content/news-04/03_PUBLIC_RPC_LIVE_ONLY_REMEDIATION.md`). Staging apply of remediation SQL awaits Owner GO.
 3. First-create with `published_revision_id` set fails FK until revision exists — trusted writers must create then publish (two-step); package not hot-edited after apply.
 4. Temporary editorial capability writes remain app-layer + `service_role` save path (no authenticated write policies by design).
 

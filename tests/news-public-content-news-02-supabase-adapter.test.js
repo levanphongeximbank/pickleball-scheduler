@@ -183,7 +183,7 @@ test("NEWS-02 adapter detectVersionConflict + public RPC mapping", async () => {
           publication_timezone: null,
           revision_id: "rev_pub",
           version: 1,
-          provenance: "PREVIEW",
+          provenance: "LIVE",
           tenant_id: "tenant-1",
           venue_id: null,
           club_id: null,
@@ -230,6 +230,48 @@ test("NEWS-02 adapter detectVersionConflict + public RPC mapping", async () => {
   assert.equal(publicRows.length, 1);
   assert.equal(publicRows[0].contentId, "cnt_pub");
   assert.equal(publicRows[0].editorialStatus, "PUBLISHED");
+  assert.equal(publicRows[0].provenance, news.CONTENT_PROVENANCE.LIVE);
+});
+
+test("NEWS-02/04 public RPC adapter fail-closed on PREVIEW leak", async () => {
+  const client = createFakeSupabaseNewsClient({
+    rpcResults: {
+      news_public_content_query_public: [
+        {
+          content_id: "cnt_preview_leak",
+          content_type: "NEWS",
+          content_scope: "TENANT",
+          title: "Should not leak",
+          summary: "S",
+          slug: "should-not-leak",
+          locale: "vi-VN",
+          category_references: [],
+          tag_references: [],
+          media_references: [],
+          seo_metadata: {},
+          published_at: "2026-07-25T00:00:00.000Z",
+          publish_at: null,
+          unpublish_at: null,
+          publication_timezone: null,
+          revision_id: "rev_preview",
+          version: 1,
+          provenance: "PREVIEW",
+          tenant_id: "tenant-1",
+          venue_id: null,
+          club_id: null,
+          competition_id: null,
+          banner: null,
+          sponsor: null,
+        },
+      ],
+    },
+  });
+  const repo = createSupabaseContentRepository({ client, preferRpc: true });
+  await assert.rejects(
+    () => repo.queryPublicCandidates({ now: "2026-07-25T12:00:00.000Z" }),
+    (err) =>
+      err.code === news.NEWS_PUBLIC_CONTENT_ERROR_CODE.PROVENANCE_MISMATCH
+  );
 });
 
 test("NEWS-02 adapter maps RLS denial and has no mock fallback", async () => {
