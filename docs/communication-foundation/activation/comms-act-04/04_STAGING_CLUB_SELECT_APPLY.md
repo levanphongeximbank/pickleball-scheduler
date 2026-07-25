@@ -16,10 +16,23 @@ Did not open: Direct/System/Community client access; Club INSERT/UPDATE/DELETE; 
 
 ## Canonical SQL (unchanged from ACT-03)
 
-| Package | Path | SHA256 | Bytes |
-|---------|------|--------|------:|
-| Forward | `docs/supabase-communication-comms-act-03-authorization-client-rls.sql` | `4e4a19947bde5db8bc78b135b353b4c694e37bc975f926525c1389d2349a42b7` | 13173 |
-| Rollback | `docs/supabase-communication-comms-act-03-authorization-client-rls-rollback.sql` | `63056ec8ce8140bf06671a1bbf3e375d728047630aeb8bd06a9aefe32a016de5` | 8808 |
+Semantic SQL content is identical to ACT-03. Binding distinguishes Windows apply raw (CRLF, historical Owner apply) vs repository canonical LF (CI):
+
+```
+WINDOWS_APPLY_RAW_SHA256=4e4a19947bde5db8bc78b135b353b4c694e37bc975f926525c1389d2349a42b7
+WINDOWS_APPLY_RAW_BYTES=13173
+REPOSITORY_CANONICAL_LF_SHA256=90b3ff7af7070b6709349cefd570d61f258449f3dc9d3908658b0df0acc65f26
+REPOSITORY_CANONICAL_LF_BYTES=12870
+EOL_EQUIVALENCE_VERIFIED=PASS
+SQL_SEMANTIC_DRIFT=NO
+```
+
+| Package | Path | Representation | SHA256 | Bytes |
+|---------|------|----------------|--------|------:|
+| Forward | `docs/supabase-communication-comms-act-03-authorization-client-rls.sql` | Windows apply raw | `4e4a19947bde5db8bc78b135b353b4c694e37bc975f926525c1389d2349a42b7` | 13173 |
+| Forward | same | Repository canonical LF | `90b3ff7af7070b6709349cefd570d61f258449f3dc9d3908658b0df0acc65f26` | 12870 |
+| Rollback | `docs/supabase-communication-comms-act-03-authorization-client-rls-rollback.sql` | Windows apply raw | `63056ec8ce8140bf06671a1bbf3e375d728047630aeb8bd06a9aefe32a016de5` | 8808 |
+| Rollback | same | Repository canonical LF | `3de26ec8301d5b53bca350a5dde8f69e82ae90cd230bb2f04962f2cd9737dcc9` | 8660 |
 
 ## Gate status (live)
 

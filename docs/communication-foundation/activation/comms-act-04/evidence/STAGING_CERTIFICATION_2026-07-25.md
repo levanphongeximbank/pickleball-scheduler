@@ -15,10 +15,23 @@
 
 ## SQL / rollback binding
 
-| Package | SHA256 | Bytes |
-|---------|--------|------:|
-| Forward `docs/supabase-communication-comms-act-03-authorization-client-rls.sql` | `4e4a19947bde5db8bc78b135b353b4c694e37bc975f926525c1389d2349a42b7` | 13173 |
-| Rollback `docs/supabase-communication-comms-act-03-authorization-client-rls-rollback.sql` | `63056ec8ce8140bf06671a1bbf3e375d728047630aeb8bd06a9aefe32a016de5` | 8808 |
+Historical Owner SQL Editor apply used the **Windows working-tree raw** representation (CRLF). Repository/CI binding uses **canonical LF** of the same SQL text (`EOL_EQUIVALENCE_VERIFIED=PASS`, `SQL_SEMANTIC_DRIFT=NO`). See `SQL_BINDING_EOL_EQUIVALENCE_2026-07-25.md`.
+
+```
+WINDOWS_APPLY_RAW_SHA256=4e4a19947bde5db8bc78b135b353b4c694e37bc975f926525c1389d2349a42b7
+WINDOWS_APPLY_RAW_BYTES=13173
+REPOSITORY_CANONICAL_LF_SHA256=90b3ff7af7070b6709349cefd570d61f258449f3dc9d3908658b0df0acc65f26
+REPOSITORY_CANONICAL_LF_BYTES=12870
+EOL_EQUIVALENCE_VERIFIED=PASS
+SQL_SEMANTIC_DRIFT=NO
+```
+
+| Package | Representation | SHA256 | Bytes |
+|---------|----------------|--------|------:|
+| Forward | Windows apply raw (CRLF) | `4e4a19947bde5db8bc78b135b353b4c694e37bc975f926525c1389d2349a42b7` | 13173 |
+| Forward | Repository canonical LF | `90b3ff7af7070b6709349cefd570d61f258449f3dc9d3908658b0df0acc65f26` | 12870 |
+| Rollback | Windows apply raw (CRLF) | `63056ec8ce8140bf06671a1bbf3e375d728047630aeb8bd06a9aefe32a016de5` | 8808 |
+| Rollback | Repository canonical LF | `3de26ec8301d5b53bca350a5dde8f69e82ae90cd230bb2f04962f2cd9737dcc9` | 8660 |
 
 ## Backup reference
 

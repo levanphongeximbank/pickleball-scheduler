@@ -20,10 +20,16 @@
 | Field | Value |
 |-------|-------|
 | Path | `docs/supabase-communication-comms-act-03-authorization-client-rls.sql` |
-| Bytes | `13173` |
-| SHA256 | `4e4a19947bde5db8bc78b135b353b4c694e37bc975f926525c1389d2349a42b7` |
+| WINDOWS_APPLY_RAW_BYTES | `13173` |
+| WINDOWS_APPLY_RAW_SHA256 | `4e4a19947bde5db8bc78b135b353b4c694e37bc975f926525c1389d2349a42b7` |
+| REPOSITORY_CANONICAL_LF_BYTES | `12870` |
+| REPOSITORY_CANONICAL_LF_SHA256 | `90b3ff7af7070b6709349cefd570d61f258449f3dc9d3908658b0df0acc65f26` |
+| EOL_EQUIVALENCE_VERIFIED | `PASS` |
+| SQL_SEMANTIC_DRIFT | `NO` |
 | Manifest status | `PASS` (0 findings) |
 | ACT-03 regression tests | 13/13 pass |
+
+Gate A measured the Windows working-tree raw representation on this host (`core.autocrlf=true`). That raw binding was used for Owner apply history; repository/CI asserts canonical LF of the same SQL text.
 
 ### Exact capability opened (after Owner apply)
 

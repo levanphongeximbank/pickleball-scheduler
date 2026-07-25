@@ -11,8 +11,12 @@
 | Field | Value |
 |-------|-------|
 | Forward SQL | `docs/supabase-communication-comms-act-03-authorization-client-rls.sql` |
-| SHA256 | `4e4a19947bde5db8bc78b135b353b4c694e37bc975f926525c1389d2349a42b7` |
-| Bytes | `13173` |
+| WINDOWS_APPLY_RAW_SHA256 | `4e4a19947bde5db8bc78b135b353b4c694e37bc975f926525c1389d2349a42b7` |
+| WINDOWS_APPLY_RAW_BYTES | `13173` |
+| REPOSITORY_CANONICAL_LF_SHA256 | `90b3ff7af7070b6709349cefd570d61f258449f3dc9d3908658b0df0acc65f26` |
+| REPOSITORY_CANONICAL_LF_BYTES | `12870` |
+| EOL_EQUIVALENCE_VERIFIED | `PASS` |
+| SQL_SEMANTIC_DRIFT | `NO` |
 | Scope | `CLUB_SELECT_ONLY` |
 | Realtime changed | NO |
 | Production touched | NO |

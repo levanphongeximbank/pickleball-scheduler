@@ -10,10 +10,14 @@
 | Check | Result |
 |-------|--------|
 | Forward SQL path | `docs/supabase-communication-comms-act-03-authorization-client-rls.sql` |
-| Forward SHA256 | `4e4a19947bde5db8bc78b135b353b4c694e37bc975f926525c1389d2349a42b7` |
-| Forward bytes | `13173` |
-| Rollback SHA256 | `63056ec8ce8140bf06671a1bbf3e375d728047630aeb8bd06a9aefe32a016de5` |
-| Rollback bytes | `8808` |
+| WINDOWS_APPLY_RAW_SHA256 (clipboard / Editor) | `4e4a19947bde5db8bc78b135b353b4c694e37bc975f926525c1389d2349a42b7` |
+| WINDOWS_APPLY_RAW_BYTES | `13173` |
+| REPOSITORY_CANONICAL_LF_SHA256 | `90b3ff7af7070b6709349cefd570d61f258449f3dc9d3908658b0df0acc65f26` |
+| REPOSITORY_CANONICAL_LF_BYTES | `12870` |
+| EOL_EQUIVALENCE_VERIFIED | `PASS` |
+| SQL_SEMANTIC_DRIFT | `NO` |
+| Rollback Windows raw SHA256 | `63056ec8ce8140bf06671a1bbf3e375d728047630aeb8bd06a9aefe32a016de5` |
+| Rollback Windows raw bytes | `8808` |
 | Offline SQL package | `COMMS_ACT_04_SQL_PACKAGE_PASS` |
 | Cert fixtures present | YES (5 conversations; totals = markers) |
 | Backup primary | `…20260725-101205` |
@@ -43,7 +47,7 @@ Canonical ACT-03 forward SQL is on the **local clipboard** (SHA256 verified).
 1. Open **Supabase Dashboard → project `qyewbxjsiiyufanzcjcq` (Staging only)**.  
    Refuse if project is Production `expuvcohlcjzvrrauvud`.
 2. Open **SQL Editor → New query**.
-3. Paste clipboard (must be ACT-03 Club SELECT package; bytes `13173`).
+3. Paste clipboard (must be ACT-03 Club SELECT package; Windows apply raw bytes `13173` / SHA `4e4a1994…a42b7`; EOL-equivalent to repository LF `12870` / `90b3ff7a…65f26`).
 4. **Run once**.
 5. Do **not** alter `supabase_realtime`.
 6. Do **not** paste rollback, fixture SQL, or any other script in this step.

@@ -38,14 +38,65 @@ const REQUIRED_EVIDENCE = [
   "OWNER_APPLY_ACTION_2026-07-25.md",
   "FINAL_REMOTE_VERIFY_2026-07-25.md",
   "STAGING_CERTIFICATION_2026-07-25.md",
+  "SQL_BINDING_EOL_EQUIVALENCE_2026-07-25.md",
 ];
 
-const EXPECTED_FORWARD_SHA =
+/** Historical Windows working-tree representation used for Owner SQL Editor apply. */
+const WINDOWS_APPLY_RAW_FORWARD_SHA =
   "4e4a19947bde5db8bc78b135b353b4c694e37bc975f926525c1389d2349a42b7";
-const EXPECTED_FORWARD_BYTES = 13173;
-const EXPECTED_ROLLBACK_SHA =
+const WINDOWS_APPLY_RAW_FORWARD_BYTES = 13173;
+const WINDOWS_APPLY_RAW_ROLLBACK_SHA =
   "63056ec8ce8140bf06671a1bbf3e375d728047630aeb8bd06a9aefe32a016de5";
-const EXPECTED_ROLLBACK_BYTES = 8808;
+const WINDOWS_APPLY_RAW_ROLLBACK_BYTES = 8808;
+
+/**
+ * Repository-canonical LF binding (cross-platform CI).
+ * Equivalent SQL text to Windows apply raw after CRLF→LF normalization.
+ */
+const REPOSITORY_CANONICAL_LF_FORWARD_SHA =
+  "90b3ff7af7070b6709349cefd570d61f258449f3dc9d3908658b0df0acc65f26";
+const REPOSITORY_CANONICAL_LF_FORWARD_BYTES = 12870;
+const REPOSITORY_CANONICAL_LF_ROLLBACK_SHA =
+  "3de26ec8301d5b53bca350a5dde8f69e82ae90cd230bb2f04962f2cd9737dcc9";
+const REPOSITORY_CANONICAL_LF_ROLLBACK_BYTES = 8660;
+
+/**
+ * Canonicalize SQL file text for cross-platform binding.
+ * CRLF → LF only; does not alter SQL tokens.
+ * @param {string} text
+ */
+function canonicalizeSqlText(text) {
+  return String(text || "").replace(/\r\n/g, "\n");
+}
+
+/**
+ * @param {string} text
+ */
+function bindingOf(text) {
+  const canonical = canonicalizeSqlText(text);
+  const bytes = Buffer.byteLength(canonical, "utf8");
+  const sha256 = createHash("sha256")
+    .update(canonical, "utf8")
+    .digest("hex");
+  return { canonical, bytes, sha256 };
+}
+
+/**
+ * @param {string} relativePath
+ */
+function loadSqlBinding(relativePath) {
+  const abs = path.join(root, relativePath);
+  const rawBuf = fs.readFileSync(abs);
+  const rawText = rawBuf.toString("utf8");
+  const loneCR = (rawText.match(/(?<!\r)\r(?!\n)/g) || []).length;
+  return {
+    abs,
+    rawBytes: rawBuf.length,
+    rawSha256: createHash("sha256").update(rawBuf).digest("hex"),
+    loneCR,
+    ...bindingOf(rawText),
+  };
+}
 
 test("COMMS-ACT-04 docs and evidence exist", () => {
   assert.ok(
@@ -73,23 +124,48 @@ test("COMMS-ACT-04 docs and evidence exist", () => {
 test("COMMS-ACT-04 binds canonical ACT-03 SQL SHA256/bytes", () => {
   const manifest = loadCommsAct03SqlPackageManifest({ repoRoot: root });
   assert.equal(manifest.status, "PASS", JSON.stringify(manifest.findings));
-  assert.equal(manifest.forwardSha256, EXPECTED_FORWARD_SHA);
-  assert.equal(manifest.rollbackSha256, EXPECTED_ROLLBACK_SHA);
 
-  const forwardBuf = fs.readFileSync(
-    path.join(root, "docs/supabase-communication-comms-act-03-authorization-client-rls.sql")
+  const forward = loadSqlBinding(
+    "docs/supabase-communication-comms-act-03-authorization-client-rls.sql"
   );
-  const rollbackBuf = fs.readFileSync(
-    path.join(
-      root,
-      "docs/supabase-communication-comms-act-03-authorization-client-rls-rollback.sql"
-    )
+  const rollback = loadSqlBinding(
+    "docs/supabase-communication-comms-act-03-authorization-client-rls-rollback.sql"
   );
-  assert.equal(forwardBuf.length, EXPECTED_FORWARD_BYTES);
-  assert.equal(rollbackBuf.length, EXPECTED_ROLLBACK_BYTES);
+
+  assert.equal(forward.loneCR, 0);
+  assert.equal(rollback.loneCR, 0);
+  assert.equal(forward.bytes, REPOSITORY_CANONICAL_LF_FORWARD_BYTES);
+  assert.equal(forward.sha256, REPOSITORY_CANONICAL_LF_FORWARD_SHA);
+  assert.equal(rollback.bytes, REPOSITORY_CANONICAL_LF_ROLLBACK_BYTES);
+  assert.equal(rollback.sha256, REPOSITORY_CANONICAL_LF_ROLLBACK_SHA);
 
   const verify = verifyCommsAct03SqlPackage({ repoRoot: root });
   assert.equal(verify.status, "PASS");
+});
+
+test("COMMS-ACT-04 LF and CRLF SQL texts share one canonical binding", () => {
+  const forward = loadSqlBinding(
+    "docs/supabase-communication-comms-act-03-authorization-client-rls.sql"
+  );
+  const rollback = loadSqlBinding(
+    "docs/supabase-communication-comms-act-03-authorization-client-rls-rollback.sql"
+  );
+
+  for (const sample of [forward, rollback]) {
+    const fromLf = bindingOf(sample.canonical);
+    const fromCrlf = bindingOf(sample.canonical.replace(/\n/g, "\r\n"));
+    assert.equal(fromLf.sha256, fromCrlf.sha256);
+    assert.equal(fromLf.bytes, fromCrlf.bytes);
+    assert.equal(fromLf.canonical, fromCrlf.canonical);
+    assert.notEqual(
+      createHash("sha256").update(sample.canonical.replace(/\n/g, "\r\n"), "utf8").digest("hex"),
+      fromLf.sha256,
+      "raw CRLF bytes must differ from canonical LF hash"
+    );
+  }
+
+  assert.equal(forward.sha256, REPOSITORY_CANONICAL_LF_FORWARD_SHA);
+  assert.equal(rollback.sha256, REPOSITORY_CANONICAL_LF_ROLLBACK_SHA);
 });
 
 test("COMMS-ACT-04 activation gate reflects Staging Club SELECT certified", () => {
@@ -114,6 +190,12 @@ test("COMMS-ACT-04 certification doc states capability matrix", () => {
   assert.match(cert, /REALTIME\s*=\s*BLOCKED_FAIL_CLOSED/);
   assert.match(cert, /PRODUCTION\s*=\s*UNTOUCHED/);
   assert.match(cert, /COMMS_ACT_04_STAGING_CLUB_SELECT_CERTIFIED/);
+  assert.match(cert, /WINDOWS_APPLY_RAW_SHA256\s*=\s*4e4a19947bde5db8bc78b135b353b4c694e37bc975f926525c1389d2349a42b7/);
+  assert.match(cert, /WINDOWS_APPLY_RAW_BYTES\s*=\s*13173/);
+  assert.match(cert, /REPOSITORY_CANONICAL_LF_SHA256\s*=\s*90b3ff7af7070b6709349cefd570d61f258449f3dc9d3908658b0df0acc65f26/);
+  assert.match(cert, /REPOSITORY_CANONICAL_LF_BYTES\s*=\s*12870/);
+  assert.match(cert, /EOL_EQUIVALENCE_VERIFIED\s*=\s*PASS/);
+  assert.match(cert, /SQL_SEMANTIC_DRIFT\s*=\s*NO/);
 });
 
 test("COMMS-ACT-04 fixture SQL is marker-scoped and Communication-only", () => {
@@ -152,13 +234,34 @@ test("COMMS-ACT-04 preflight script refuses --apply", () => {
   );
 });
 
-test("COMMS-ACT-04 forward SQL byte hash still matches Gate A binding", () => {
-  const forward = path.join(
-    root,
+test("COMMS-ACT-04 forward SQL canonical LF binding matches repository binding", () => {
+  const forward = loadSqlBinding(
     "docs/supabase-communication-comms-act-03-authorization-client-rls.sql"
   );
-  const buf = fs.readFileSync(forward);
-  assert.equal(buf.length, EXPECTED_FORWARD_BYTES);
-  const sha = createHash("sha256").update(buf).digest("hex");
-  assert.equal(sha, EXPECTED_FORWARD_SHA);
+  assert.equal(forward.bytes, REPOSITORY_CANONICAL_LF_FORWARD_BYTES);
+  assert.equal(forward.sha256, REPOSITORY_CANONICAL_LF_FORWARD_SHA);
+
+  // Historical Windows apply representation remains documented (may match working tree on Windows).
+  assert.equal(WINDOWS_APPLY_RAW_FORWARD_BYTES, 13173);
+  assert.equal(
+    WINDOWS_APPLY_RAW_FORWARD_SHA,
+    "4e4a19947bde5db8bc78b135b353b4c694e37bc975f926525c1389d2349a42b7"
+  );
+  assert.equal(WINDOWS_APPLY_RAW_ROLLBACK_BYTES, 8808);
+  assert.equal(
+    WINDOWS_APPLY_RAW_ROLLBACK_SHA,
+    "63056ec8ce8140bf06671a1bbf3e375d728047630aeb8bd06a9aefe32a016de5"
+  );
+
+  // If working tree is CRLF (Windows autocrlf), raw equals historical apply; if LF, raw equals canonical.
+  const rawIsWindowsApply =
+    forward.rawBytes === WINDOWS_APPLY_RAW_FORWARD_BYTES &&
+    forward.rawSha256 === WINDOWS_APPLY_RAW_FORWARD_SHA;
+  const rawIsCanonicalLf =
+    forward.rawBytes === REPOSITORY_CANONICAL_LF_FORWARD_BYTES &&
+    forward.rawSha256 === REPOSITORY_CANONICAL_LF_FORWARD_SHA;
+  assert.ok(
+    rawIsWindowsApply || rawIsCanonicalLf,
+    `unexpected raw binding bytes=${forward.rawBytes} sha=${forward.rawSha256}`
+  );
 });

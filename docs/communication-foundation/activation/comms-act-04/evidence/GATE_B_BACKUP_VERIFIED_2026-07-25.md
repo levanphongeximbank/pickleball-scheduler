@@ -43,10 +43,14 @@ File: `comms-act-04-owner-go-evidence.txt`
 | SCOPE | `CLUB_SELECT_ONLY` | same | YES |
 | STAGING_PROJECT_REF | `qyewbxjsiiyufanzcjcq` | same | YES |
 | PRODUCTION_PROJECT_REF_BLOCKED | `expuvcohlcjzvrrauvud` | same | YES |
-| FORWARD_SQL_SHA256 | `4e4a19947bde5db8bc78b135b353b4c694e37bc975f926525c1389d2349a42b7` | repo forward | YES |
-| FORWARD_SQL_BYTES | `13173` | repo forward | YES |
-| ROLLBACK_SQL_SHA256 | `63056ec8ce8140bf06671a1bbf3e375d728047630aeb8bd06a9aefe32a016de5` | repo rollback | YES |
-| ROLLBACK_SQL_BYTES | `8808` | repo rollback | YES |
+| WINDOWS_APPLY_RAW_SHA256 | `4e4a19947bde5db8bc78b135b353b4c694e37bc975f926525c1389d2349a42b7` | Windows apply raw forward | YES |
+| WINDOWS_APPLY_RAW_BYTES | `13173` | Windows apply raw forward | YES |
+| REPOSITORY_CANONICAL_LF_SHA256 | `90b3ff7af7070b6709349cefd570d61f258449f3dc9d3908658b0df0acc65f26` | LF-equivalent forward | YES |
+| REPOSITORY_CANONICAL_LF_BYTES | `12870` | LF-equivalent forward | YES |
+| ROLLBACK_SQL_SHA256 (Windows raw) | `63056ec8ce8140bf06671a1bbf3e375d728047630aeb8bd06a9aefe32a016de5` | Windows apply raw rollback | YES |
+| ROLLBACK_SQL_BYTES (Windows raw) | `8808` | Windows apply raw rollback | YES |
+| EOL_EQUIVALENCE_VERIFIED | `PASS` | PASS | YES |
+| SQL_SEMANTIC_DRIFT | `NO` | NO | YES |
 | REMOTE_SQL_APPLIED | NO | NO | YES |
 | REALTIME_ENABLED | NO | NO | YES |
 | CLIENT_RLS_OPENED | NO | NO | YES |

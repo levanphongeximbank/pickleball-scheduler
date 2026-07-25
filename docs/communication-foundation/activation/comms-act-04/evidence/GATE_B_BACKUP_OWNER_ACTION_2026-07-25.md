@@ -12,10 +12,14 @@
 | Script SHA256 | `2aadd29e9e96c4a4f90039e4b45cf6a8df317c7c26c3d59dc4f8be0d7b3e4b70` |
 | Staging allowlist | `qyewbxjsiiyufanzcjcq` |
 | Production block | `expuvcohlcjzvrrauvud` |
-| Bound forward SQL SHA256 | `4e4a19947bde5db8bc78b135b353b4c694e37bc975f926525c1389d2349a42b7` |
-| Bound forward SQL bytes | `13173` |
-| Bound rollback SQL SHA256 | `63056ec8ce8140bf06671a1bbf3e375d728047630aeb8bd06a9aefe32a016de5` |
-| Bound rollback SQL bytes | `8808` |
+| WINDOWS_APPLY_RAW_SHA256 | `4e4a19947bde5db8bc78b135b353b4c694e37bc975f926525c1389d2349a42b7` |
+| WINDOWS_APPLY_RAW_BYTES | `13173` |
+| REPOSITORY_CANONICAL_LF_SHA256 | `90b3ff7af7070b6709349cefd570d61f258449f3dc9d3908658b0df0acc65f26` |
+| REPOSITORY_CANONICAL_LF_BYTES | `12870` |
+| Bound rollback SQL SHA256 (Windows raw) | `63056ec8ce8140bf06671a1bbf3e375d728047630aeb8bd06a9aefe32a016de5` |
+| Bound rollback SQL bytes (Windows raw) | `8808` |
+| EOL_EQUIVALENCE_VERIFIED | `PASS` |
+| SQL_SEMANTIC_DRIFT | `NO` |
 | Scope | `CLUB_SELECT_ONLY` |
 
 ## Prerequisites for Owner
