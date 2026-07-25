@@ -1,0 +1,38 @@
+{
+  "phase": "COACHING-03",
+  "script": "coaching-03-staging-preflight",
+  "mode": "offline",
+  "gate": "GATE_A_LOCAL_PACKAGE_CERTIFICATION",
+  "ok": true,
+  "manifest": {
+    "ok": true,
+    "checked": 10,
+    "aggregateSha256": "5f82d85a75e531b648688d3f87e52be6521d482eb5df6202553ac0596e723e26"
+  },
+  "approvalDefaultsOk": true,
+  "roleMatrix": {
+    "ok": true,
+    "errors": [],
+    "actionCount": 14,
+    "playerRecordsReadGranted": false
+  },
+  "readOnlyProbeStaticOk": true,
+  "readOnlyProbeErrors": [],
+  "identityOffline": {
+    "ok": true,
+    "resolvedProjectRef": "qyewbxjsiiyufanzcjcq",
+    "errors": [],
+    "urlValuePrinted": false,
+    "secretsPrinted": false
+  },
+  "envLoad": {
+    "loadedFrom": ".env.staging-qa.local",
+    "keysLoadedCount": 7,
+    "secretsPrinted": false
+  },
+  "sqlApplied": false,
+  "databaseWrites": 0,
+  "ownerGoGranted": false,
+  "secretsPrinted": false,
+  "finishedAt": "2026-07-25T05:35:36.005Z"
+}

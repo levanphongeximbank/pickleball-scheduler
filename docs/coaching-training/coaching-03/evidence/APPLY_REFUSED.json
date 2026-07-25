@@ -1,0 +1,81 @@
+{
+  "phase": "COACHING-03",
+  "script": "coaching-03-staging-apply",
+  "APPLY_MODE": "REFUSED",
+  "ok": true,
+  "canWrite": false,
+  "sqlApplied": false,
+  "databaseWrites": 0,
+  "stagingConnected": false,
+  "productionConnected": false,
+  "ownerGoRequired": "COACHING_03_OWNER_GO_APPLY_STAGING",
+  "ownerGoGranted": false,
+  "blockers": [
+    "Missing explicit --execute (default APPLY_MODE=REFUSED).",
+    "Exact Staging project ref required (got (empty)).",
+    "Exact expected git commit required (head=603ea1030899, expected=(empty)).",
+    "Working tree must be clean.",
+    "Successful preflight PASS report required.",
+    "Explicit approval token COACHING_03_OWNER_GO_APPLY_STAGING required."
+  ],
+  "manifestOk": true,
+  "manifestErrors": [],
+  "migrationsWouldApply": [
+    {
+      "order": 1,
+      "path": "docs/coaching-training/coaching-02/10_COACHING_02_TABLES.sql",
+      "sha256": "ac27665dd2c2f4d97c2a71c3e360e6872c3db97f9655ccd1d063945a9fc59ff6",
+      "checkpoint": "after-tables"
+    },
+    {
+      "order": 2,
+      "path": "docs/coaching-training/coaching-02/15_COACHING_02_PERMISSION_SEED.sql",
+      "sha256": "fee44a916c29300ddececa930010beebe56d24864cf4ddeec095618122c84889",
+      "checkpoint": "after-permission-seed"
+    },
+    {
+      "order": 3,
+      "path": "docs/coaching-training/coaching-02/20_COACHING_02_INDEXES.sql",
+      "sha256": "c5a85874d3843285d7a15a93756fbe63ba89521631becb8eea9daee5c985379c",
+      "checkpoint": "after-indexes"
+    },
+    {
+      "order": 4,
+      "path": "docs/coaching-training/coaching-02/30_COACHING_02_RLS.sql",
+      "sha256": "652e22d83d726f2942ebac765f8a18a7e91343e1c658e78ab0f629817d5a4f05",
+      "checkpoint": "after-rls"
+    },
+    {
+      "order": 5,
+      "path": "docs/coaching-training/coaching-02/40_COACHING_02_ATTENDANCE_CORRECTION_RPC.sql",
+      "sha256": "8063ba0fdbe29d8ff2a09e0de0a9eb006ccb4b54dc8157ecfa1b1d91362d47d7",
+      "checkpoint": "after-attendance-rpc"
+    },
+    {
+      "order": 6,
+      "path": "docs/coaching-training/coaching-02/45_COACHING_02_ENTITLEMENT_CONSUME_RPC.sql",
+      "sha256": "134c928bca264f0a1adf7e0c4a592db4fecaced79cf852d27a0a8d146f05cf07",
+      "checkpoint": "after-entitlement-rpc"
+    },
+    {
+      "order": 7,
+      "path": "docs/coaching-training/coaching-02/50_COACHING_02_GRANTS.sql",
+      "sha256": "2df188b735971cf40f26103130249d0543483311f7b60e5862ba90afdf9366e7",
+      "checkpoint": "after-grants"
+    },
+    {
+      "order": 8,
+      "path": "docs/coaching-training/coaching-02/60_COACHING_02_IMMUTABLE.sql",
+      "sha256": "cd6f2e59803c83d95fefc086c259e6b960e7c72541b18d39d6111f0163d3dfac",
+      "checkpoint": "after-immutable"
+    }
+  ],
+  "transactionModel": {
+    "idealSingleTransaction": true,
+    "scriptedManagementApi": "per-file-checkpoint-stop-on-error",
+    "automaticRollback": false,
+    "notes": "All COACHING-02 forward files are PostgreSQL-transaction-compatible (no CONCURRENTLY). Owner SQL Editor may wrap 10→60 in one transaction. Management API apply runs one file per request — checkpoint boundaries apply; do not claim cross-file atomicity for scripted apply."
+  },
+  "secretsPrinted": false,
+  "finishedAt": "2026-07-25T05:50:09.128Z"
+}

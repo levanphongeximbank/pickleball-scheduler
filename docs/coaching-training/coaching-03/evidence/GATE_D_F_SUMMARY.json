@@ -1,0 +1,57 @@
+{
+  "phase": "COACHING-03",
+  "artifact": "GATE_D_F_STAGING_EXECUTION_SUMMARY",
+  "verdictCandidate": "COACHING_03_STAGING_CERTIFIED_PR_CI_PENDING",
+  "stagingProjectRef": "qyewbxjsiiyufanzcjcq",
+  "productionTouched": false,
+  "productionAllowed": false,
+  "ownerGoToken": "COACHING_03_OWNER_GO_APPLY_STAGING",
+  "authorizedPackageCommit": "c89bec293f4f52b90734a56f2ce813919643b929",
+  "applyReadyCommit": "911daddf4bfff0a636c5d4f1e647379ea30698ab",
+  "aggregateForwardSha256": "5f82d85a75e531b648688d3f87e52be6521d482eb5df6202553ac0596e723e26",
+  "packageJsonSha256": "CF0361BF8FC7F4AE6AA39587AB8489F4C1D3489C04B2E980EEC8E6EB396AFE0E",
+  "packageLockSha256": "844840CA58B3EADCC4A1D090ABDCFCD057B7562F48BB1450D4A8AD1A1763B448",
+  "apply": {
+    "startedAt": "2026-07-25T07:01:12.853Z",
+    "finishedAt": "2026-07-25T07:01:24.435Z",
+    "ok": true,
+    "sqlOrder": [
+      "10_COACHING_02_TABLES.sql",
+      "15_COACHING_02_PERMISSION_SEED.sql",
+      "20_COACHING_02_INDEXES.sql",
+      "30_COACHING_02_RLS.sql",
+      "40_COACHING_02_ATTENDANCE_CORRECTION_RPC.sql",
+      "45_COACHING_02_ENTITLEMENT_CONSUME_RPC.sql",
+      "50_COACHING_02_GRANTS.sql",
+      "60_COACHING_02_IMMUTABLE.sql",
+      "70_COACHING_03_ROLE_PERMISSION_ASSIGNMENT.proposal.sql"
+    ],
+    "databaseWrites": 9,
+    "coachGrantsApplied": false,
+    "playerGrantsApplied": false
+  },
+  "certify": {
+    "startedAt": "2026-07-25T08:19:14.785Z",
+    "finishedAt": "2026-07-25T08:19:52.521Z",
+    "ok": true,
+    "hardFailed": [],
+    "coachGrants": 0,
+    "playerGrants": 0,
+    "rpcMode": "jwt-claim-injection",
+    "notes": [
+      "Staging QA profiles lacked club_id; temporary cert club_id binding was applied and restored.",
+      "COACHING-02 evaluations DELETE guard returns NEW on DELETE (silently skips); cleanup disables that trigger only for fixture prefix rows."
+    ]
+  },
+  "cleanup": {
+    "ok": true,
+    "residualAfterFirst": 0,
+    "residualAfterSecond": 0,
+    "temporaryRoleGrantResidual": 0,
+    "idempotent": true,
+    "finishedAt": "2026-07-25T08:20:05.026Z"
+  },
+  "uiRuntimeCutover": false,
+  "localStorageLegacyPreserved": true,
+  "secretsPrinted": false
+}

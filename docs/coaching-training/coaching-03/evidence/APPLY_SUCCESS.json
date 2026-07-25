@@ -1,0 +1,99 @@
+{
+  "phase": "COACHING-03",
+  "APPLY_MODE": "EXECUTED",
+  "ok": true,
+  "verdict": "COACHING_03_STAGING_FORWARD_APPLIED",
+  "stagingProjectRef": "qyewbxjsiiyufanzcjcq",
+  "productionConnected": false,
+  "sqlApplied": true,
+  "databaseWrites": 9,
+  "applied": [
+    {
+      "order": 1,
+      "path": "docs/coaching-training/coaching-02/10_COACHING_02_TABLES.sql",
+      "checkpoint": "after-tables",
+      "sha256": "ac27665dd2c2f4d97c2a71c3e360e6872c3db97f9655ccd1d063945a9fc59ff6",
+      "ok": true,
+      "startedAt": "2026-07-25T07:01:12.854Z",
+      "finishedAt": "2026-07-25T07:01:15.485Z"
+    },
+    {
+      "order": 2,
+      "path": "docs/coaching-training/coaching-02/15_COACHING_02_PERMISSION_SEED.sql",
+      "checkpoint": "after-permission-seed",
+      "sha256": "fee44a916c29300ddececa930010beebe56d24864cf4ddeec095618122c84889",
+      "ok": true,
+      "startedAt": "2026-07-25T07:01:15.486Z",
+      "finishedAt": "2026-07-25T07:01:16.565Z"
+    },
+    {
+      "order": 3,
+      "path": "docs/coaching-training/coaching-02/20_COACHING_02_INDEXES.sql",
+      "checkpoint": "after-indexes",
+      "sha256": "c5a85874d3843285d7a15a93756fbe63ba89521631becb8eea9daee5c985379c",
+      "ok": true,
+      "startedAt": "2026-07-25T07:01:16.566Z",
+      "finishedAt": "2026-07-25T07:01:17.556Z"
+    },
+    {
+      "order": 4,
+      "path": "docs/coaching-training/coaching-02/30_COACHING_02_RLS.sql",
+      "checkpoint": "after-rls",
+      "sha256": "652e22d83d726f2942ebac765f8a18a7e91343e1c658e78ab0f629817d5a4f05",
+      "ok": true,
+      "startedAt": "2026-07-25T07:01:17.558Z",
+      "finishedAt": "2026-07-25T07:01:18.860Z"
+    },
+    {
+      "order": 5,
+      "path": "docs/coaching-training/coaching-02/40_COACHING_02_ATTENDANCE_CORRECTION_RPC.sql",
+      "checkpoint": "after-attendance-rpc",
+      "sha256": "8063ba0fdbe29d8ff2a09e0de0a9eb006ccb4b54dc8157ecfa1b1d91362d47d7",
+      "ok": true,
+      "startedAt": "2026-07-25T07:01:18.860Z",
+      "finishedAt": "2026-07-25T07:01:19.861Z"
+    },
+    {
+      "order": 6,
+      "path": "docs/coaching-training/coaching-02/45_COACHING_02_ENTITLEMENT_CONSUME_RPC.sql",
+      "checkpoint": "after-entitlement-rpc",
+      "sha256": "134c928bca264f0a1adf7e0c4a592db4fecaced79cf852d27a0a8d146f05cf07",
+      "ok": true,
+      "startedAt": "2026-07-25T07:01:19.862Z",
+      "finishedAt": "2026-07-25T07:01:20.904Z"
+    },
+    {
+      "order": 7,
+      "path": "docs/coaching-training/coaching-02/50_COACHING_02_GRANTS.sql",
+      "checkpoint": "after-grants",
+      "sha256": "2df188b735971cf40f26103130249d0543483311f7b60e5862ba90afdf9366e7",
+      "ok": true,
+      "startedAt": "2026-07-25T07:01:20.904Z",
+      "finishedAt": "2026-07-25T07:01:21.843Z"
+    },
+    {
+      "order": 8,
+      "path": "docs/coaching-training/coaching-02/60_COACHING_02_IMMUTABLE.sql",
+      "checkpoint": "after-immutable",
+      "sha256": "cd6f2e59803c83d95fefc086c259e6b960e7c72541b18d39d6111f0163d3dfac",
+      "ok": true,
+      "startedAt": "2026-07-25T07:01:21.843Z",
+      "finishedAt": "2026-07-25T07:01:23.209Z"
+    },
+    {
+      "order": 70,
+      "path": "docs/coaching-training/coaching-03/sql/70_COACHING_03_ROLE_PERMISSION_ASSIGNMENT.proposal.sql",
+      "checkpoint": "after-role-grants",
+      "ok": true,
+      "startedAt": "2026-07-25T07:01:23.209Z",
+      "finishedAt": "2026-07-25T07:01:24.435Z"
+    }
+  ],
+  "roleGrantsApplied": true,
+  "includeRoleGrantsRequested": true,
+  "coachGrantsApplied": false,
+  "playerGrantsApplied": false,
+  "secretsPrinted": false,
+  "startedAt": "2026-07-25T07:01:12.853Z",
+  "finishedAt": "2026-07-25T07:01:24.435Z"
+}

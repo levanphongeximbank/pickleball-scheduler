@@ -1,0 +1,20 @@
+{
+  "phase": "COACHING-03",
+  "script": "coaching-03-staging-preflight",
+  "mode": "live-readonly",
+  "gate": "GATE_B_REMOTE_READ_ONLY_STAGING_PREFLIGHT",
+  "localPackageOk": true,
+  "ok": true,
+  "verdict": "COACHING_03_PREFLIGHT_PASS",
+  "stagingProjectRef": "qyewbxjsiiyufanzcjcq",
+  "readOnlyTransaction": true,
+  "beginReadOnly": true,
+  "rollback": true,
+  "sqlApplied": false,
+  "databaseWrites": 0,
+  "resultRowCount": 2,
+  "secretsPrinted": false,
+  "urlValuePrinted": false,
+  "ownerGoGranted": false,
+  "finishedAt": "2026-07-25T05:35:37.212Z"
+}
