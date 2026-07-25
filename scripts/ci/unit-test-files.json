@@ -397,6 +397,7 @@
   "tests/intelligence-analytics-ia-09-finance-ranking-performance-analytics.test.js",
   "tests/intelligence-analytics-ia-10-operational-alerts-insights.test.js",
   "tests/intelligence-analytics-ia-11-privacy-tenant-isolation-access-certification.test.js",
+  "tests/intelligence-analytics-ia-12-ai-advanced-intelligence-readiness.test.js",
   "tests/ecosystem-integrations-eco-01-foundation.test.js",
   "tests/ecosystem-integrations-eco-01-architecture.test.js",
   "tests/ecosystem-integrations-eco-01-security.test.js",
