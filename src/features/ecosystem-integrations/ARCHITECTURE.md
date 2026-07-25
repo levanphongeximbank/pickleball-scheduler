@@ -1,28 +1,31 @@
-# Ecosystem & Integrations — Architecture (ECO-01 + ECO-02 + ECO-02b)
+# Ecosystem & Integrations — Architecture (ECO-01 + ECO-02 + ECO-02b + ECO-03)
 
 ## Phase
 
-**ECO-02b — Legacy Vite Secret Cutover**
+**ECO-03 — Provider Adapter Foundation**
 
-Builds on ECO-02 secret/environment boundary. Removes browser reads of legacy
-`VITE_*` integration secrets, projects client-safe flags/IDs/URLs only, and
-fail-closes credential-requiring providers until a server resolver exists.
+Builds on ECO-01 connector/event foundation and ECO-02/ECO-02b secret boundary.
+Adds provider-neutral adapter descriptors, invocation contracts, immutable
+adapter registry, deterministic selection, readiness projection, no-op/fake
+adapters, and domain readiness contracts (payment / messaging / calendar /
+identity / data-exchange) — **contract-only, no live providers**.
 
 ## Ownership
 
 | Owner | Owns |
 |-------|------|
-| **Ecosystem & Integrations** (`src/features/ecosystem-integrations/`) | Connector/provider descriptors, immutable registry, envelopes, webhook verification port, error taxonomy, idempotency/readiness projections, secret reference + credential requirement descriptors, environment/endpoint classification, client-safe public config projection, server-only credential boundary, browser secret cutover policy, no-op test provider + credential resolver |
+| **Ecosystem & Integrations** (`src/features/ecosystem-integrations/`) | Connector/provider descriptors, adapter descriptors, invocation request/result, capability bindings, immutable registries, selection policy, readiness/observation projections, error/retry/idempotency reuse, no-op/fake adapters, secret boundary + cutover policy |
 | **Platform Core** | Public Integration Port Descriptor + Capability Discovery (consume only) |
-| **Business Modules** | Business validation, ledger, notification decisions, competition behavior, customer identity |
-| **Sprint 10 `src/features/integrations/`** | Tenant marketplace settings UI / legacy provider catalogue; env config reader cut over to client-safe projection |
+| **Business Modules** | Payment business state, ledger, notification content/recipients, booking rules, identity rules, competition rules |
+| **Sprint 10 `src/features/integrations/`** | Tenant marketplace settings UI / legacy provider catalogue (not ECO adapter runtime) |
 
-## Non-goals (ECO-02b)
+## Non-goals (ECO-03)
 
 - Real VNPay / MoMo / Stripe / SMS / email / calendar / OAuth clients
-- Real credential material in contracts or tests
-- Live env readers for secrets in browser bundles
-- Mutable global service locator / live credential resolver
+- Live credential resolver / vault
+- Network requests / Production webhook ingress
+- Mutable global service locator
+- Vendor-specific request/response models in canonical contracts
 - Editing `src/core/platform/**`
 - Editing Competition Engine / Finance ledger / Notification worker
 - SQL migrations / Supabase writes / Production deploy
@@ -31,15 +34,15 @@ fail-closes credential-requiring providers until a server resolver exists.
 
 ```js
 import {
-  createSecretReference,
-  createCredentialRequirementDescriptor,
-  projectClientSafePublicConfig,
-  createServerOnlyCredentialBoundary,
-  createNoOpTestCredentialResolver,
-  projectSecretBoundaryReadiness,
-  isLegacyViteCredentialEnvName,
-  isBrowserProviderCredentialResolved,
-  createServerCredentialCutoverMarkers,
+  createProviderAdapterDescriptor,
+  createProviderAdapterRegistry,
+  selectProviderAdapter,
+  projectProviderAdapterReadiness,
+  createProviderInvocationRequest,
+  createProviderInvocationResult,
+  createNoOpProviderAdapter,
+  createFakeProviderAdapter,
+  createPaymentAdapterReadinessContract,
 } from "../features/ecosystem-integrations/index.js";
 ```
 

@@ -5,9 +5,9 @@
  */
 
 export const ECOSYSTEM_INTEGRATIONS_PHASE = Object.freeze({
-  id: "ECO-02b",
-  name: "legacy-vite-secret-cutover",
-  priorPhase: "ECO-02",
+  id: "ECO-03",
+  name: "provider-adapter-foundation",
+  priorPhase: "ECO-02b",
   wiredToProductionRuntime: false,
   hasRealProviders: false,
   hasNetworkClients: false,
@@ -16,6 +16,7 @@ export const ECOSYSTEM_INTEGRATIONS_PHASE = Object.freeze({
   hasSecretBoundary: true,
   hasLiveCredentialResolver: false,
   hasLegacySecretCutover: true,
+  hasProviderAdapterFoundation: true,
   structureComplete: true,
   productionBlocked: true,
 });
@@ -216,3 +217,70 @@ export const CREDENTIAL_REQUIREMENT_DESCRIPTOR_VERSION =
 export const CLIENT_SAFE_PUBLIC_CONFIG_VERSION = "eco-client-safe-config-1";
 export const SERVER_ONLY_CREDENTIAL_BOUNDARY_VERSION =
   "eco-server-only-boundary-1";
+
+/** ECO-03 — provider adapter foundation catalogues */
+
+export const ADAPTER_LIFECYCLE = Object.freeze({
+  DECLARED: "DECLARED",
+  REGISTERED: "REGISTERED",
+  ACTIVE: "ACTIVE",
+  DEGRADED: "DEGRADED",
+  DISABLED: "DISABLED",
+  RETIRED: "RETIRED",
+});
+
+export const ADAPTER_LIFECYCLE_VALUES = Object.freeze(
+  Object.values(ADAPTER_LIFECYCLE)
+);
+
+export const INVOCATION_RESULT_STATUS = Object.freeze({
+  SUCCEEDED: "SUCCEEDED",
+  FAILED: "FAILED",
+  REJECTED: "REJECTED",
+  UNSUPPORTED: "UNSUPPORTED",
+  NO_READY_ADAPTER: "NO_READY_ADAPTER",
+});
+
+export const INVOCATION_RESULT_STATUS_VALUES = Object.freeze(
+  Object.values(INVOCATION_RESULT_STATUS)
+);
+
+export const ADAPTER_READINESS = Object.freeze({
+  REGISTERED: "REGISTERED",
+  LIFECYCLE_ACTIVE: "LIFECYCLE_ACTIVE",
+  ENVIRONMENT_ELIGIBLE: "ENVIRONMENT_ELIGIBLE",
+  CAPABILITY_SUPPORTED: "CAPABILITY_SUPPORTED",
+  CREDENTIAL_REQUIRED: "CREDENTIAL_REQUIRED",
+  CREDENTIAL_PRESENT: "CREDENTIAL_PRESENT",
+  OPERATIONALLY_READY: "OPERATIONALLY_READY",
+  DEGRADED: "DEGRADED",
+  UNAVAILABLE: "UNAVAILABLE",
+  PRODUCTION_BLOCKED: "PRODUCTION_BLOCKED",
+  NOT_READY: "NOT_READY",
+});
+
+export const ADAPTER_READINESS_VALUES = Object.freeze(
+  Object.values(ADAPTER_READINESS)
+);
+
+export const ADAPTER_SELECTION_OUTCOME = Object.freeze({
+  SELECTED: "SELECTED",
+  UNSUPPORTED_CAPABILITY: "UNSUPPORTED_CAPABILITY",
+  NO_READY_ADAPTER: "NO_READY_ADAPTER",
+  ENVIRONMENT_INELIGIBLE: "ENVIRONMENT_INELIGIBLE",
+  LIFECYCLE_BLOCKED: "LIFECYCLE_BLOCKED",
+  CREDENTIAL_ABSENT: "CREDENTIAL_ABSENT",
+  PRODUCTION_BLOCKED: "PRODUCTION_BLOCKED",
+});
+
+export const ADAPTER_SELECTION_OUTCOME_VALUES = Object.freeze(
+  Object.values(ADAPTER_SELECTION_OUTCOME)
+);
+
+export const PROVIDER_ADAPTER_DESCRIPTOR_VERSION = "eco-adapter-1";
+export const PROVIDER_INVOCATION_REQUEST_VERSION = "eco-invocation-request-1";
+export const PROVIDER_INVOCATION_RESULT_VERSION = "eco-invocation-result-1";
+export const CONNECTOR_CAPABILITY_BINDING_VERSION = "eco-capability-binding-1";
+export const PROVIDER_ADAPTER_OBSERVATION_VERSION = "eco-adapter-observation-1";
+export const DOMAIN_ADAPTER_READINESS_CONTRACT_VERSION =
+  "eco-domain-adapter-readiness-1";

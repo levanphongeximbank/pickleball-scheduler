@@ -38,6 +38,6 @@ resolver exists.
 
 ## Follow-ups
 
-- ECO-03: provider adapters behind ECO registry
+- ECO-03: provider adapters behind ECO registry — **done (structural)**
 - ECO-04: webhook ingress (staging only, Owner GO)
 - Server-side credential injection / resolver wiring (Owner GO)
