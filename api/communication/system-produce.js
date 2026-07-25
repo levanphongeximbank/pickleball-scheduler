@@ -14,6 +14,10 @@ import {
   authorizeSystemProducer,
   denyBrowserSystemInvocation,
 } from "./authorizeSystemProducer.js";
+import {
+  assertCommunicationRateLimit,
+  assertCommunicationRequestSize,
+} from "./requestGuards.js";
 
 function parseBody(req) {
   if (!req.body) return {};
@@ -33,6 +37,21 @@ export default async function handler(req, res) {
       code: "METHOD_NOT_ALLOWED",
       error: "Chỉ hỗ trợ POST.",
     });
+  }
+
+  const sizeGate = assertCommunicationRequestSize(req.body);
+  if (!sizeGate.ok) {
+    return res.status(413).json(sizeGate);
+  }
+  const rateGate = assertCommunicationRateLimit(req, {
+    keyPrefix: "comms-system",
+    maxRequests: 30,
+  });
+  if (!rateGate.ok) {
+    if (rateGate.retryAfterSec) {
+      res.setHeader("Retry-After", String(rateGate.retryAfterSec));
+    }
+    return res.status(429).json(rateGate);
   }
 
   const body = parseBody(req);

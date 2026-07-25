@@ -66,3 +66,32 @@ export {
   evaluateCommsAct05BackupGate,
   evaluateCommsAct05Preflight,
 } from "./commsAct05Gates.js";
+
+export {
+  COMMS_ACT_06_ENV_NAMES,
+  COMMS_ACT_06_PRODUCTION_ENABLE_TOKEN,
+  COMMS_ACT_06_PROD_SMOKE_MARKER,
+  COMMS_ACT_06_CAPABILITY_SCOPE,
+  evaluateCommunicationProductionRefGate,
+  evaluateCommsProductionTargetIdentity,
+} from "./productionTarget.js";
+
+export {
+  COMMS_ACT_06_VERDICTS,
+  COMMS_ACT_06_RISK_CLASS,
+  COMMS_ACT_06_DOCS_RELATIVE,
+  COMMS_ACT_06_REQUIRED_DOCS,
+  COMMS_ACT_06_SQL_PACKAGE,
+  COMMS_ACT_06_BACKUP_CONTRACT_RELATIVE,
+  COMMS_ACT_06_OWNER_LOCAL_BACKUP_SCRIPT_PATH,
+  COMMS_ACT_06_BACKUP_EVIDENCE,
+  getCommsAct06RepoRoot,
+  getCommsAct06CapabilityScope,
+  getCommsAct06RiskRegister,
+  evaluateCommsAct06DeploymentHost,
+  evaluateCommsAct06SqlPackageBinding,
+  evaluateCommsAct06BackupScriptSource,
+  evaluateCommsAct06BackupContract,
+  evaluateCommsAct06OwnerLocalBackupScript,
+  evaluateCommsAct06Preflight,
+} from "./commsAct06Gates.js";

@@ -9,6 +9,7 @@ import {
   getSupabaseServerUrl,
   getSupabaseServiceRoleKey,
 } from "../../src/features/api/config/apiKeyStoreConfig.js";
+import { assertCommunicationProductionTargetAllowed } from "./productionTargetGate.js";
 
 export function getCommunicationApiSupabaseUrl() {
   const viteUrl = String(globalThis.process?.env?.VITE_SUPABASE_URL || "").trim();
@@ -61,13 +62,10 @@ export async function authorizeCommunicationActor(req) {
     };
   }
 
-  // Production absolute block — refuse if URL points at Production ref.
-  if (url.includes("expuvcohlcjzvrrauvud")) {
-    return {
-      ok: false,
-      code: "PRODUCTION_REF_BLOCKED",
-      error: "Production project ref is blocked for Communication ACT-05.",
-    };
+  // Production fail-closed — require exact ACT-07 Owner GO enable token.
+  const productionGate = assertCommunicationProductionTargetAllowed(url);
+  if (!productionGate.ok) {
+    return productionGate;
   }
 
   const serviceClient = createServiceClient(url, serviceKey);
