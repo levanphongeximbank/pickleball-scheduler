@@ -376,6 +376,16 @@ export function createCoachingApplicationService(deps = {}) {
     async correctAttendance(actor, input = {}) {
       const auth = authorize(actor, COACHING_ACTIONS.ATTENDANCE_CORRECT, input);
       const repos = requireRepos();
+      if (
+        !repos.attendanceCorrectionUnitOfWork ||
+        typeof repos.attendanceCorrectionUnitOfWork.applyCorrection !== "function"
+      ) {
+        throwCoachingError(
+          COACHING_ERROR_CODES.RUNTIME_NOT_CONFIGURED,
+          "AttendanceCorrectionUnitOfWork is required for atomic attendance correction.",
+          { adapter: "AttendanceCorrectionUnitOfWork" }
+        );
+      }
       const current = await requireEntity(
         repos.attendance,
         auth.scope,
@@ -388,18 +398,17 @@ export function createCoachingApplicationService(deps = {}) {
         domainDeps(),
         { expectedVersion: input.expectedVersion }
       );
-      const savedAttendance = await repos.attendance.save(attendance, {
+      // Single atomic repository boundary — do not save + append separately.
+      return repos.attendanceCorrectionUnitOfWork.applyCorrection({
+        scope: auth.scope,
+        attendance,
+        correction,
         expectedVersion: input.expectedVersion,
-      });
-      const savedCorrection = await repos.attendanceCorrections.append(correction);
-      return Object.freeze({
-        attendance: savedAttendance,
-        correction: savedCorrection,
       });
     },
 
     async createPackage(actor, input = {}) {
-      const auth = authorize(actor, COACHING_ACTIONS.PROGRAM_CREATE, input);
+      const auth = authorize(actor, COACHING_ACTIONS.PACKAGE_CREATE, input);
       const repos = requireRepos();
       const pkg = createCoachingPackage(
         {
@@ -414,7 +423,7 @@ export function createCoachingApplicationService(deps = {}) {
     },
 
     async grantEntitlement(actor, input = {}) {
-      const auth = authorize(actor, COACHING_ACTIONS.PLAYER_ENROLL, input);
+      const auth = authorize(actor, COACHING_ACTIONS.ENTITLEMENT_GRANT, input);
       const repos = requireRepos();
       await requireEntity(
         repos.packages,
@@ -435,7 +444,7 @@ export function createCoachingApplicationService(deps = {}) {
     },
 
     async consumeEntitlement(actor, input = {}) {
-      const auth = authorize(actor, COACHING_ACTIONS.ATTENDANCE_RECORD, input);
+      const auth = authorize(actor, COACHING_ACTIONS.ENTITLEMENT_CONSUME, input);
       const repos = requireRepos();
       const current = await requireEntity(
         repos.entitlements,

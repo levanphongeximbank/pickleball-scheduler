@@ -288,6 +288,217 @@ test("attendance record + append-only correction", async () => {
   );
 });
 
+test("dedicated package/entitlement actions — no fallback to old actions", async () => {
+  const { service } = createApp();
+
+  const programOnly = actorWith([Coaching.COACHING_ACTIONS.PROGRAM_CREATE]);
+  await assert.rejects(
+    () =>
+      service.createPackage(programOnly, {
+        ...SCOPE_A,
+        name: "Should deny",
+        sessionEntitlement: 4,
+      }),
+    (err) => err.code === Coaching.COACHING_ERROR_CODES.FORBIDDEN_ACTION
+  );
+
+  const enrollOnly = actorWith([Coaching.COACHING_ACTIONS.PLAYER_ENROLL]);
+  await assert.rejects(
+    () =>
+      service.grantEntitlement(enrollOnly, {
+        ...SCOPE_A,
+        packageId: "pkg_missing",
+        playerId: "player-x",
+        sessionsGranted: 2,
+      }),
+    (err) => err.code === Coaching.COACHING_ERROR_CODES.FORBIDDEN_ACTION
+  );
+
+  const attendanceOnly = actorWith([Coaching.COACHING_ACTIONS.ATTENDANCE_RECORD]);
+  await assert.rejects(
+    () =>
+      service.consumeEntitlement(attendanceOnly, {
+        ...SCOPE_A,
+        entitlementId: "ent_missing",
+        expectedVersion: 1,
+      }),
+    (err) => err.code === Coaching.COACHING_ERROR_CODES.FORBIDDEN_ACTION
+  );
+
+  const packageActor = actorWith([
+    Coaching.COACHING_ACTIONS.PACKAGE_CREATE,
+    Coaching.COACHING_ACTIONS.ENTITLEMENT_GRANT,
+    Coaching.COACHING_ACTIONS.ENTITLEMENT_CONSUME,
+  ]);
+  const pkg = await service.createPackage(packageActor, {
+    ...SCOPE_A,
+    name: "Dedicated pack",
+    sessionEntitlement: 2,
+  });
+  assert.equal(pkg.name, "Dedicated pack");
+
+  const entitlement = await service.grantEntitlement(packageActor, {
+    ...SCOPE_A,
+    packageId: pkg.packageId,
+    playerId: "player-dedicated",
+    sessionsGranted: 2,
+  });
+  assert.equal(entitlement.sessionsRemaining, 2);
+
+  const consumed = await service.consumeEntitlement(packageActor, {
+    ...SCOPE_A,
+    entitlementId: entitlement.entitlementId,
+    expectedVersion: 1,
+  });
+  assert.equal(consumed.sessionsRemaining, 1);
+
+  assert.equal(
+    Coaching.COACHING_ACTIONS.PACKAGE_CREATE,
+    "coaching.package.create"
+  );
+  assert.equal(
+    Coaching.COACHING_ACTIONS.ENTITLEMENT_GRANT,
+    "coaching.entitlement.grant"
+  );
+  assert.equal(
+    Coaching.COACHING_ACTIONS.ENTITLEMENT_CONSUME,
+    "coaching.entitlement.consume"
+  );
+});
+
+test("atomic attendance correction rolls back when append fails", async () => {
+  const { service, repositories } = createApp();
+  const actor = actorWith(ALL_ACTIONS);
+  const program = await service.createProgram(actor, {
+    ...SCOPE_A,
+    name: "Atomic Prog",
+  });
+  const session = await service.scheduleSession(actor, {
+    ...SCOPE_A,
+    programId: program.programId,
+    startsAt: "2026-07-26T05:00:00.000Z",
+    endsAt: "2026-07-26T06:00:00.000Z",
+  });
+  const record = await service.recordAttendance(actor, {
+    ...SCOPE_A,
+    sessionId: session.sessionId,
+    playerId: "player-atomic",
+    status: Coaching.ATTENDANCE_STATUS.ABSENT,
+  });
+  assert.equal(record.version, 1);
+  assert.equal(record.status, Coaching.ATTENDANCE_STATUS.ABSENT);
+
+  const originalAppend = repositories.attendanceCorrections.append;
+  repositories.attendanceCorrections.append = () => {
+    throw new Coaching.CoachingError(
+      Coaching.COACHING_ERROR_CODES.REPOSITORY_CONTRACT_VIOLATION,
+      "Simulated correction append failure."
+    );
+  };
+
+  await assert.rejects(
+    () =>
+      service.correctAttendance(actor, {
+        ...SCOPE_A,
+        attendanceId: record.attendanceId,
+        correctedStatus: Coaching.ATTENDANCE_STATUS.EXCUSED,
+        reason: "Should roll back",
+        expectedVersion: 1,
+      }),
+    (err) =>
+      err.code === Coaching.COACHING_ERROR_CODES.REPOSITORY_CONTRACT_VIOLATION
+  );
+
+  repositories.attendanceCorrections.append = originalAppend;
+
+  const after = await repositories.attendance.getById(
+    SCOPE_A,
+    record.attendanceId
+  );
+  assert.equal(after.status, Coaching.ATTENDANCE_STATUS.ABSENT);
+  assert.equal(after.version, 1);
+  assert.equal(
+    repositories.attendanceCorrections.listByAttendanceId(
+      SCOPE_A,
+      record.attendanceId
+    ).length,
+    0
+  );
+});
+
+test("atomic attendance correction success increments once and appends history", async () => {
+  const { service, repositories } = createApp();
+  const actor = actorWith(ALL_ACTIONS);
+  const program = await service.createProgram(actor, {
+    ...SCOPE_A,
+    name: "Atomic OK",
+  });
+  const session = await service.scheduleSession(actor, {
+    ...SCOPE_A,
+    programId: program.programId,
+    startsAt: "2026-07-26T07:00:00.000Z",
+    endsAt: "2026-07-26T08:00:00.000Z",
+  });
+  const record = await service.recordAttendance(actor, {
+    ...SCOPE_A,
+    sessionId: session.sessionId,
+    playerId: "player-atomic-ok",
+    status: Coaching.ATTENDANCE_STATUS.LATE,
+  });
+
+  const corrected = await service.correctAttendance(actor, {
+    ...SCOPE_A,
+    attendanceId: record.attendanceId,
+    correctedStatus: Coaching.ATTENDANCE_STATUS.PRESENT,
+    reason: "Clock skew",
+    expectedVersion: 1,
+  });
+
+  assert.equal(corrected.attendance.status, Coaching.ATTENDANCE_STATUS.PRESENT);
+  assert.equal(corrected.attendance.version, 2);
+  assert.equal(
+    corrected.correction.previousStatus,
+    Coaching.ATTENDANCE_STATUS.LATE
+  );
+  assert.equal(
+    repositories.attendanceCorrections.listByAttendanceId(
+      SCOPE_A,
+      record.attendanceId
+    ).length,
+    1
+  );
+
+  // Application must not call independent save+append — UoW port is required.
+  assert.equal(
+    typeof repositories.attendanceCorrectionUnitOfWork.applyCorrection,
+    "function"
+  );
+  assert.match(
+    fs.readFileSync(
+      path.join(
+        COACHING_ROOT,
+        "application",
+        "CoachingApplicationService.js"
+      ),
+      "utf8"
+    ),
+    /attendanceCorrectionUnitOfWork\.applyCorrection/
+  );
+  assert.equal(
+    /attendance\.save\([\s\S]*attendanceCorrections\.append/.test(
+      fs.readFileSync(
+        path.join(
+          COACHING_ROOT,
+          "application",
+          "CoachingApplicationService.js"
+        ),
+        "utf8"
+      )
+    ),
+    false
+  );
+});
+
 test("package entitlement usage + exhaustion", async () => {
   const { service } = createApp();
   const actor = actorWith(ALL_ACTIONS);

@@ -13,10 +13,26 @@ export const COACHING_REPOSITORY_PORTS = Object.freeze({
   SessionRepository: "SessionRepository",
   AttendanceRepository: "AttendanceRepository",
   AttendanceCorrectionRepository: "AttendanceCorrectionRepository",
+  /**
+   * Atomic attendance correction unit-of-work.
+   * Persists AttendanceRecord update + append-only AttendanceCorrection together.
+   * Durable adapters (COACHING-02+) MUST implement the same transactional boundary.
+   */
+  AttendanceCorrectionUnitOfWork: "AttendanceCorrectionUnitOfWork",
   PackageRepository: "PackageRepository",
   EntitlementRepository: "EntitlementRepository",
   EvaluationRepository: "EvaluationRepository",
 });
+
+/**
+ * @typedef {object} AttendanceCorrectionUnitOfWork
+ * @property {(input: {
+ *   scope: CoachingScope,
+ *   attendance: object,
+ *   correction: object,
+ *   expectedVersion: number
+ * }) => { attendance: object, correction: object }|Promise<{ attendance: object, correction: object }>} applyCorrection
+ */
 
 /**
  * @typedef {{ tenantId: string, clubId: string, venueId?: string|null }} CoachingScope

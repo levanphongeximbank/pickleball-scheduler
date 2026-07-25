@@ -183,6 +183,24 @@ function createVersionedStore(portName, idField) {
     getById,
     list,
     save,
+    /**
+     * Internal restore for atomic unit-of-work rollback.
+     * Bypasses version monotonic checks.
+     * @param {object} entity
+     */
+    _restore(entity) {
+      const scope = createCoachingScope(entity);
+      const id = entity[idField];
+      if (!id || !String(id).trim()) {
+        throw new CoachingError(
+          COACHING_ERROR_CODES.REPOSITORY_CONTRACT_VIOLATION,
+          `${portName}._restore requires ${idField}.`
+        );
+      }
+      const key = scopeKey(scope.tenantId, scope.clubId, String(id).trim());
+      byId.set(key, cloneFrozen(entity));
+      return cloneFrozen(entity);
+    },
     /** @internal */
     _clear() {
       byId.clear();
@@ -330,6 +348,74 @@ export function createInMemoryCoachingRepositories() {
     "evaluationId"
   );
 
+  /**
+   * Atomic attendance correction unit-of-work.
+   * Updates AttendanceRecord and appends AttendanceCorrection as one boundary.
+   * Rolls back the attendance write if the correction append fails.
+   * COACHING-02 durable adapters MUST provide an equivalent DB transaction.
+   *
+   * @type {import("./ports.js").AttendanceCorrectionUnitOfWork}
+   */
+  const attendanceCorrectionUnitOfWork = Object.freeze({
+    port: COACHING_REPOSITORY_PORTS.AttendanceCorrectionUnitOfWork,
+
+    /**
+     * @param {{
+     *   scope: object,
+     *   attendance: object,
+     *   correction: object,
+     *   expectedVersion: number
+     * }} input
+     */
+    applyCorrection(input = {}) {
+      const scope = createCoachingScope(input.scope || input.attendance || {});
+      const nextAttendance = input.attendance;
+      const correction = input.correction;
+      const expectedVersion = input.expectedVersion;
+
+      if (!nextAttendance || !correction) {
+        throw new CoachingError(
+          COACHING_ERROR_CODES.REPOSITORY_CONTRACT_VIOLATION,
+          "AttendanceCorrectionUnitOfWork.applyCorrection requires attendance and correction."
+        );
+      }
+      if (expectedVersion == null) {
+        throw new CoachingError(
+          COACHING_ERROR_CODES.INVALID_INPUT,
+          "AttendanceCorrectionUnitOfWork.applyCorrection requires expectedVersion.",
+          { field: "expectedVersion" }
+        );
+      }
+
+      const previous = attendance.getById(scope, nextAttendance.attendanceId);
+      if (!previous) {
+        throw new CoachingError(
+          COACHING_ERROR_CODES.NOT_FOUND,
+          "AttendanceRecord not found for atomic correction.",
+          { attendanceId: nextAttendance.attendanceId }
+        );
+      }
+
+      let attendanceSaved = false;
+      try {
+        const savedAttendance = attendance.save(nextAttendance, {
+          expectedVersion,
+        });
+        attendanceSaved = true;
+        const savedCorrection = attendanceCorrections.append(correction);
+        return Object.freeze({
+          attendance: savedAttendance,
+          correction: savedCorrection,
+        });
+      } catch (err) {
+        if (attendanceSaved) {
+          attendance._restore(previous);
+        }
+        throw err;
+      }
+    },
+  });
+
   return Object.freeze({
     programs,
     coachReferences,
@@ -340,6 +426,7 @@ export function createInMemoryCoachingRepositories() {
     sessions,
     attendance,
     attendanceCorrections,
+    attendanceCorrectionUnitOfWork,
     packages,
     entitlements,
     evaluations,

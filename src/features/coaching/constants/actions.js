@@ -14,6 +14,9 @@ export const COACHING_ACTIONS = Object.freeze({
   SESSION_SCHEDULE: "coaching.session.schedule",
   ATTENDANCE_RECORD: "coaching.attendance.record",
   ATTENDANCE_CORRECT: "coaching.attendance.correct",
+  PACKAGE_CREATE: "coaching.package.create",
+  ENTITLEMENT_GRANT: "coaching.entitlement.grant",
+  ENTITLEMENT_CONSUME: "coaching.entitlement.consume",
   EVALUATION_SUBMIT: "coaching.evaluation.submit",
   RECORDS_READ: "coaching.records.read",
 });

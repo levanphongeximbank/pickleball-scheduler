@@ -76,17 +76,22 @@ Submitted evaluations cannot be silently overwritten; use `createEvaluationRevis
 
 | Action | Purpose |
 |--------|---------|
-| `coaching.program.create` | Create program (also package definition in COACHING-01) |
+| `coaching.program.create` | Create program |
 | `coaching.program.update` | Update / transition program |
 | `coaching.coach.assign` | Assign coach reference (+ optional relationship) |
-| `coaching.player.enroll` | Enroll / transition enrollment / grant entitlement |
+| `coaching.player.enroll` | Enroll / transition enrollment |
 | `coaching.curriculum.create` | Create curriculum |
 | `coaching.lesson.create` | Create lesson |
 | `coaching.session.schedule` | Schedule / transition session |
-| `coaching.attendance.record` | Record attendance / consume entitlement |
-| `coaching.attendance.correct` | Append attendance correction |
+| `coaching.attendance.record` | Record attendance |
+| `coaching.attendance.correct` | Atomic attendance correction |
+| `coaching.package.create` | Create coaching package definition |
+| `coaching.entitlement.grant` | Grant package entitlement to a player |
+| `coaching.entitlement.consume` | Consume one session from entitlement |
 | `coaching.evaluation.submit` | Submit / revise evaluation |
 | `coaching.records.read` | Protected read |
+
+Dedicated package/entitlement actions are **not** aliases of program/enroll/attendance actions. Holding `coaching.program.create` does **not** authorize `createPackage`; holding `coaching.player.enroll` does **not** authorize `grantEntitlement`; holding `coaching.attendance.record` does **not** authorize `consumeEntitlement`.
 
 Fail-closed when actor missing, scope missing, unknown action, cross-tenant/club, missing authorization dependency, or malformed decision.
 
@@ -96,11 +101,19 @@ Authorization runs in the application layer **before** repository write/protecte
 
 ## Repository ports
 
-Ports: Program, CoachReference, Relationship, Enrollment, Curriculum, Lesson, Session, Attendance, AttendanceCorrection (append-only), Package, Entitlement, Evaluation.
+Ports: Program, CoachReference, Relationship, Enrollment, Curriculum, Lesson, Session, Attendance, AttendanceCorrection (append-only), **AttendanceCorrectionUnitOfWork** (atomic correction), Package, Entitlement, Evaluation.
 
 In-memory adapters: `createInMemoryCoachingRepositories()`.
 
 Contracts: tenant/club scoping, not-found, duplicate, `expectedVersion` optimistic concurrency, deterministic ordering, append-only corrections.
+
+### Atomic attendance correction
+
+Application services MUST call `attendanceCorrectionUnitOfWork.applyCorrection({ scope, attendance, correction, expectedVersion })` as a **single** repository boundary. They MUST NOT `attendance.save` then `attendanceCorrections.append` as two independent operations.
+
+In-memory adapter rolls back the attendance write if correction append fails (attendance unchanged; no correction row). Successful apply increments attendance `version` by exactly one and appends one correction.
+
+**COACHING-02 durable adapter requirement:** implement the same transactional boundary (SQL transaction / RPC) so attendance update and correction append commit or roll back together.
 
 **No Supabase durable adapter in COACHING-01.**
 
@@ -166,6 +179,7 @@ Observed drift / gaps for **COACHING-02**:
 
 1. COACHING-01 PR reviewed/approved by Owner.
 2. Agree canonical SQL redesign replacing Phase 28 prototype tables (or explicit additive migration plan).
-3. Map canonical actions → Identity permission seed.
-4. Keep localStorage UI until COACHING-04 unless Owner expands scope.
-5. No Staging/Production apply without separate Owner authorization.
+3. Map canonical actions → Identity permission seed (include dedicated package/entitlement actions).
+4. Durable adapter MUST implement `AttendanceCorrectionUnitOfWork` as a real DB transaction (attendance update + correction append commit/rollback together).
+5. Keep localStorage UI until COACHING-04 unless Owner expands scope.
+6. No Staging/Production apply without separate Owner authorization.
