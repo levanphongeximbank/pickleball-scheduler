@@ -22,6 +22,7 @@ dashboard/reporting data contracts, and historical/trend analysis for PICK_VN.
 | Customer / Player analytics (I&A-08) | `src/features/intelligence-analytics/customer-player-analytics` |
 | Finance / Ranking / Performance analytics (I&A-09) | `src/features/intelligence-analytics/finance-ranking-performance-analytics` |
 | Operational Alerts and Insights (I&A-10) | `src/features/intelligence-analytics/operational-alerts-insights` |
+| Privacy / Tenant Isolation / Access Certification (I&A-11) | `src/features/intelligence-analytics/privacy-access-certification` |
 | Dashboard UI / localStorage analytics | `src/features/dashboard-analytics` (legacy active; not foundation) |
 | Statistics UI aggregations | `src/features/statistics` (legacy active; not foundation) |
 | Platform Core | CLOSED — not modified, not imported |
@@ -181,6 +182,22 @@ dashboard/reporting data contracts, and historical/trend analysis for PICK_VN.
 - Presentation-neutral alert/insight dashboard/report payload composition via I&A-04
 - Read-only Operational Alerts and Insights facade + in-memory certification source
 - Typed operational alerts errors / warnings / provenance / completeness
+
+**In scope (I&A-11):**
+
+- Trusted analytics privacy access-context contracts (explicit tenant,
+  trusted-source marker, policy version, metric/dimension grants)
+- Data-classification contracts (PUBLIC → PRIVILEGED_OPERATIONAL) with
+  most-restrictive deterministic resolution and unknown fail-closed
+- Privacy-policy and access-decision contracts (ALLOW / DENY / REDACT /
+  OMIT / SUPPRESS) with privacy-safe evidence
+- Tenant and entity isolation certification (fail closed; typed contamination)
+- Metric / dimension access evaluation and discovery filtering
+- Deterministic small-cohort suppression (policy-threshold; never zero)
+- Redaction / omission evaluators and privacy-safe error sanitization
+- Historical / dashboard / alert-insight privacy projectors
+- Certification scenario / evidence / report contracts
+- Read-only certification facade + in-memory policy source
 
 **Out of scope:**
 
@@ -425,6 +442,8 @@ I&A-01..09 metrics, observations, trends and explicit facts
   score/winner, treat booking/payment facts as revenue, infer overdue from
   dates, infer winner from score, or accept PII/payment-credential fact fields
 - Analytics output always sets `isCanonicalModuleState: false`
+- Privacy/access certification consumes trusted access context only; does not
+  replace Platform Core authorization or mutate business-module access rules
 
 ## Roadmap (structural)
 
@@ -437,7 +456,7 @@ I&A-01..09 metrics, observations, trends and explicit facts
 7. I&A-07 Venue, Court and Club Analytics ← certified
 8. I&A-08 Customer and Player Analytics ← certified
 9. I&A-09 Finance, Ranking and Performance Analytics ← certified
-10. I&A-10 Operational Alerts and Insights ← current
-11. I&A-11 Privacy, Tenant Isolation and Access Certification
+10. I&A-10 Operational Alerts and Insights ← certified
+11. I&A-11 Privacy, Tenant Isolation and Access Certification ← current
 12. I&A-12 AI and Advanced Intelligence Readiness
 13. I&A-13 Integration Hardening and Final Certification
