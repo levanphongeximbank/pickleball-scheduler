@@ -131,8 +131,8 @@ Full actor/operation/expected/actual rows are in the redacted evidence JSON (git
 
 ## Explicit exclusions
 
-- Production: **NOT TOUCHED**
-- Public Portal: **STILL MOCK** (`MOCK_NEWS` unchanged; no portal wiring)
+- Production: **NOT TOUCHED** (still true as of NEWS-05 inventory)
+- Public Portal: **superseded by NEWS-04** — live path via `getPublicNews` (explicit MOCK/PREVIEW only)
 - Scheduler worker: not present
 - Media upload: not present
 - Permanent News role matrix: not seeded (catalog only)
@@ -143,7 +143,7 @@ Full actor/operation/expected/actual rows are in the redacted evidence JSON (git
 ## Residual risks (accepted)
 
 1. Backup remains `ROLLBACK_SQL_ONLY` (authored reverse SQL only).
-2. ~~Public RPC authored filter excludes `MOCK` only; `PUBLISHED` + `PREVIEW` not filtered~~ — **superseded by NEWS-04**: public RPC requires `provenance = 'LIVE'` (see `docs/news-public-content/news-04/03_PUBLIC_RPC_LIVE_ONLY_REMEDIATION.md`). Staging apply of remediation SQL awaits Owner GO.
+2. ~~Public RPC authored filter excludes `MOCK` only; `PUBLISHED` + `PREVIEW` not filtered~~ — **superseded by NEWS-04**: public RPC requires `provenance = 'LIVE'`; **Staging LIVE-only applied + certified** (see `docs/news-public-content/news-04/NEWS_04_STAGING_PUBLIC_RPC_CERTIFICATION.md`).
 3. First-create with `published_revision_id` set fails FK until revision exists — trusted writers must create then publish (two-step); package not hot-edited after apply.
 4. Temporary editorial capability writes remain app-layer + `service_role` save path (no authenticated write policies by design).
 

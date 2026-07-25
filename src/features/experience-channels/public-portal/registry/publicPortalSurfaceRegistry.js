@@ -85,7 +85,7 @@ const SURFACE_DESCRIPTORS = deepFreeze({
     collisionClassification: EXPERIENCE_CHANNEL_CLASSIFICATION.CANONICAL_CHANNEL_SURFACE,
     dataSource: PUBLIC_PORTAL_DATA_SOURCE.MIXED,
     dataSourceNotes:
-      "Featured tournaments/clubs/courts/stats via publicPortalService live-first; live scores, news, sponsors, upcoming events are mock-only (Home also imports MOCK_UPCOMING_EVENTS directly).",
+      "Featured tournaments/clubs/courts/stats via publicPortalService live-first; Home news uses getPublicNews (live-first, no silent mock fallback). Live scores, sponsors, upcoming events remain mock-only (Home also imports MOCK_UPCOMING_EVENTS directly).",
     authenticationDependency: PUBLIC_PORTAL_AUTH_DEPENDENCY.OPTIONAL_CONSUMED,
     tenantDependency: PUBLIC_PORTAL_TENANT_DEPENDENCY.CONSUMED_SHARED,
     competitionOwnershipMarker: PUBLIC_PORTAL_COMPETITION_MARKER.PRESENTATION_ONLY,
@@ -278,7 +278,7 @@ const SURFACE_DESCRIPTORS = deepFreeze({
       "docs/news-public-content/news-04/00_NEWS_04_ARCHITECTURE_DECISION.md",
     ],
     notes:
-      "NEWS-04 live provenance adoption. MOCK/PREVIEW require explicit source. Production closure deferred to NEWS-05.",
+      "NEWS-04 live provenance adoption. MOCK/PREVIEW require explicit source. NEWS-05: implementation certified; Production not deployed.",
   }),
 });
 

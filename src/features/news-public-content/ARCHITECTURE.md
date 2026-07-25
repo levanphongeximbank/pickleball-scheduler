@@ -2,9 +2,9 @@
 
 ## Phase
 
-**NEWS-04 — Public Portal Live Provenance Adoption**
+**NEWS-05 — Final Integration Certification (implementation complete; Production not deployed)**
 
-Public Portal news uses the canonical live News public-read path with honest provenance. Staging backend was certified in NEWS-03. Production remains blocked.
+Public Portal news uses the canonical live News public-read path with honest provenance. Staging backend certified in NEWS-03 + NEWS-04 LIVE-only RPC. Production inventory (NEWS-05): News schema **ABSENT**. Production apply requires separate Owner GO.
 
 ## Ownership
 
@@ -55,12 +55,13 @@ Canonical path: `docs/news-public-content/news-02/`
 - Public read DB contract: RPC `news_public_content_query_public`
 - Writes: trusted `service_role` / save RPC (not used by Public Portal)
 
-## Explicit non-goals (NEWS-04)
+## Explicit non-goals (NEWS-05)
 
-- Production SQL apply / Production Go
+- Production SQL apply without separate Owner GO
+- Claiming `MODULE_PRODUCTION_DEPLOYED` / Production-ready `/news` content
 - Scheduler worker / media upload / CMS UI
-- Claiming overall IMPLEMENTED / production-ready for `/news`
 
-## Follow-ups
+## Status
 
-- NEWS-05 — Final Integration Certification & Closure
+- Implementation / Staging: certified (NEWS-05)
+- Production: blocked until Owner GO + backup conditions (see `docs/news-public-content/news-05/`)
