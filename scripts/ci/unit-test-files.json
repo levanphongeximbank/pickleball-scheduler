@@ -389,6 +389,7 @@
   "tests/intelligence-analytics-ia-05-historical-trend-analysis.test.js",
   "tests/intelligence-analytics-ia-06-competition-analytics.test.js",
   "tests/intelligence-analytics-ia-07-venue-court-club-analytics.test.js",
+  "tests/intelligence-analytics-ia-08-customer-player-analytics.test.js",
   "tests/ecosystem-integrations-eco-01-foundation.test.js",
   "tests/ecosystem-integrations-eco-01-architecture.test.js",
   "tests/ecosystem-integrations-eco-01-security.test.js",

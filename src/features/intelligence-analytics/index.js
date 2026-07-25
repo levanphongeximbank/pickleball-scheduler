@@ -8,12 +8,14 @@
  * I&A-05 — Historical and Trend Analysis
  * I&A-06 — Competition Analytics
  * I&A-07 — Venue, Court and Club Analytics
+ * I&A-08 — Customer and Player Analytics
  *
  * Module-neutral metric/query/result contracts, metric registry governance,
  * deterministic query/projection runtime over explicit source adapters,
  * presentation-neutral dashboard/report data contracts, historical/trend
  * analysis, competition analytics projections, venue/court/club analytics
- * projections, and read-only facades.
+ * projections, privacy-safe customer/player analytics projections, and
+ * read-only facades.
  * No dashboard UI wiring, no Platform Core / Competition E2E / business-rule
  * deps, no SQL/Supabase adapters, no export/scheduler runtime, no forecasting.
  */
@@ -28,6 +30,7 @@ export * from "./dashboard-reporting/index.js";
 export * from "./historical-trend/index.js";
 export * from "./competition-analytics/index.js";
 export * from "./venue-court-club-analytics/index.js";
+export * from "./customer-player-analytics/index.js";
 
 export const INTELLIGENCE_ANALYTICS_FOUNDATION = Object.freeze({
   workstreamId: "I&A-01",
@@ -71,6 +74,12 @@ export const INTELLIGENCE_ANALYTICS_VENUE_COURT_CLUB_ANALYTICS = Object.freeze({
   version: "1.0.0",
 });
 
+export const INTELLIGENCE_ANALYTICS_CUSTOMER_PLAYER_ANALYTICS = Object.freeze({
+  workstreamId: "I&A-08",
+  name: "Customer and Player Analytics",
+  version: "1.0.0",
+});
+
 export const INTELLIGENCE_ANALYTICS_PUBLIC_EXPORTS = Object.freeze([
   "INTELLIGENCE_ANALYTICS_FOUNDATION",
   "INTELLIGENCE_ANALYTICS_METRIC_REGISTRY",
@@ -79,6 +88,7 @@ export const INTELLIGENCE_ANALYTICS_PUBLIC_EXPORTS = Object.freeze([
   "INTELLIGENCE_ANALYTICS_HISTORICAL_TREND",
   "INTELLIGENCE_ANALYTICS_COMPETITION_ANALYTICS",
   "INTELLIGENCE_ANALYTICS_VENUE_COURT_CLUB_ANALYTICS",
+  "INTELLIGENCE_ANALYTICS_CUSTOMER_PLAYER_ANALYTICS",
   "createAnalyticsMetricId",
   "createAnalyticsMetricVersion",
   "createAnalyticsMetricDefinition",
@@ -196,4 +206,27 @@ export const INTELLIGENCE_ANALYTICS_PUBLIC_EXPORTS = Object.freeze([
   "VENUE_COURT_CLUB_ANALYTICS_METHOD_VERSION",
   "BOOKING_CANCELLATION_POLICY",
   "VENUE_COURT_CLUB_ANALYTICS_COMPLETENESS",
+  "createCustomerPlayerAnalyticsContext",
+  "createCustomerPlayerAnalyticsSnapshot",
+  "createCustomerPlayerAnalyticsSourceRequest",
+  "createInMemoryCustomerPlayerAnalyticsSource",
+  "createCustomerPlayerAnalyticsQuery",
+  "normalizeCustomerPlayerAnalyticsQuery",
+  "createCustomerPlayerAnalyticsMetricDefinitions",
+  "createCustomerPlayerAnalyticsMetricCatalogEntries",
+  "CUSTOMER_PLAYER_ANALYTICS_METRIC_IDS",
+  "projectCustomerPlayerSummary",
+  "projectCustomerSummary",
+  "projectPlayerSummary",
+  "projectCustomerPlayerLinkage",
+  "projectCustomerPlayerActivity",
+  "projectPlayerCompetitionParticipation",
+  "projectPlayerClubMembership",
+  "composeCustomerPlayerHistoricalObservations",
+  "composeCustomerPlayerDashboardPayloads",
+  "createCustomerPlayerAnalyticsFacade",
+  "createReadOnlyCustomerPlayerAnalyticsFacade",
+  "CUSTOMER_PLAYER_ANALYTICS_METHOD_VERSION",
+  "CUSTOMER_PLAYER_ANALYTICS_COMPLETENESS",
+  "FORBIDDEN_PII_FACT_KEYS",
 ]);
