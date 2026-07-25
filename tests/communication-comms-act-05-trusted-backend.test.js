@@ -97,8 +97,22 @@ test("auth token verification contract mirrored in api host", () => {
   );
   assert.match(src, /auth\.getUser\(token\)/);
   assert.match(src, /from\("profiles"\)/);
-  assert.match(src, /expuvcohlcjzvrrauvud/);
+  assert.match(src, /assertCommunicationProductionTargetAllowed/);
   assert.doesNotMatch(src, /VITE_.*SERVICE_ROLE/);
+  const gate = fs.readFileSync(
+    path.join(root, "api/communication/productionTargetGate.js"),
+    "utf8"
+  );
+  assert.match(gate, /evaluateCommunicationProductionRefGate/);
+  const stagingTarget = fs.readFileSync(
+    path.join(
+      root,
+      "src/features/communication/activation/stagingTarget.js"
+    ),
+    "utf8"
+  );
+  assert.match(stagingTarget, /expuvcohlcjzvrrauvud/);
+  assert.match(stagingTarget, /qyewbxjsiiyufanzcjcq/);
 });
 
 test("identity/tenant derived from server profile — not body claims", () => {

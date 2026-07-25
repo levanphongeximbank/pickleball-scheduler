@@ -12,6 +12,7 @@ import {
   COMMUNICATION_SYSTEM_PRODUCER_ID,
   COMMUNICATION_TRUSTED_BACKEND_ENV,
 } from "../../src/features/communication/trustedBackend/constants.js";
+import { assertCommunicationProductionTargetAllowed } from "./productionTargetGate.js";
 
 function createServiceClient(url, serviceKey) {
   return createClient(url, serviceKey, {
@@ -71,12 +72,9 @@ export async function authorizeSystemProducer(req, body = {}) {
     };
   }
 
-  if (url.includes("expuvcohlcjzvrrauvud")) {
-    return {
-      ok: false,
-      code: "PRODUCTION_REF_BLOCKED",
-      error: "Production project ref is blocked.",
-    };
+  const productionGate = assertCommunicationProductionTargetAllowed(url);
+  if (!productionGate.ok) {
+    return productionGate;
   }
 
   return {
