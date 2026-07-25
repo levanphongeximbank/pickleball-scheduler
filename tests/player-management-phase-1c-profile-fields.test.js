@@ -33,6 +33,11 @@ const APPROVED_EXPORTS = [
   "DIRECTORY_ERROR_CODES",
   "IDENTITY_VERIFICATION_STATUS",
   "IDENTITY_VERIFICATION_VALUES",
+  "PLAYER_IDENTITY_LINK_LIFECYCLE",
+  "PLAYER_IDENTITY_MAPPING_SOURCE",
+  "PLAYER_IDENTITY_MAPPING_STATUS",
+  "PLAYER_IDENTITY_MAPPING_STATUSES",
+  "PLAYER_IDENTITY_REASON_CODE",
   "PLAYER_PLATFORM_ADAPTER_ERROR",
   "PLAYER_PROFILE_VIEWER_MODE",
   "PLAYER_PROFILE_VIEWER_MODES",
@@ -53,9 +58,13 @@ const APPROVED_EXPORTS = [
   "WRITE_ERROR_CODES",
   "applyBirthDateChange",
   "buildOpaquePublicPlayerProfile",
+  "buildPlayerIdentityMappingResult",
   "buildSelfFoundationFieldView",
   "buildSelfFoundationFormState",
   "buildSelfFoundationUpdatePatch",
+  "createMemoryPlayerIdentityLinkRepository",
+  "createSupabasePlayerIdentityLinkAdapter",
+  "evaluatePlayerIdentityMappingScope",
   "formatActivityRegionDisplay",
   "formatBirthDateDisplay",
   "formatBirthYearDisplay",
@@ -66,7 +75,9 @@ const APPROVED_EXPORTS = [
   "getPlayerProfile",
   "getPlayerProfileByAuthUser",
   "getPublicDirectoryPlayer",
+  "isPlayerIdentityMappingStatus",
   "listPlayerVerificationQueue",
+  "mapIdentityMappingError",
   "normalizePlayerProfile",
   "normalizePrivacySettings",
   "projectAdminVerificationQueueItem",
@@ -76,8 +87,10 @@ const APPROVED_EXPORTS = [
   "projectPlayerSecurityContext",
   "projectPlayerSubject",
   "projectPublicPlayerProfile",
+  "resolveAuthenticatedCanonicalPlayerMapping",
   "resolveByAuthUser",
   "resolveCanonicalPlayerId",
+  "resolveMappingViaSupabaseRpc",
   "resolvePlayerProfileViewerMode",
   "searchDirectoryPlayers",
   "searchInternalPlayers",
@@ -87,11 +100,12 @@ const APPROVED_EXPORTS = [
   "stripVerificationFromSelfPatch",
   "updatePlayerProfile",
   "updatePlayerVerificationStatus",
+  "validatePlayerIdentityMappingResult",
   "validatePrivacySettings",
   "validateVerificationTransition",
 ];
 
-test("1C public API — Phase 1B/1C/1F/1G-A/1H-A/1H-B exports", () => {
+test("1C public API — Phase 1B/1C/1F/1G-A/1H-A/1H-B + PM-ID-01 exports", () => {
   assert.deepEqual(Object.keys(playerPublicApi).sort(), [...APPROVED_EXPORTS].sort());
 });
 

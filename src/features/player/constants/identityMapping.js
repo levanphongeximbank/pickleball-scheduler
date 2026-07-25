@@ -1,0 +1,48 @@
+/**
+ * PM-ID-01 — Canonical principal→player mapping status constants.
+ * Distinct from Phase 1B RESOLUTION_OUTCOME (which includes DERIVED).
+ */
+
+export const PLAYER_IDENTITY_MAPPING_STATUS = Object.freeze({
+  MAPPED: "MAPPED",
+  UNMAPPED: "UNMAPPED",
+  INACTIVE: "INACTIVE",
+  AMBIGUOUS: "AMBIGUOUS",
+  INVALID: "INVALID",
+});
+
+export const PLAYER_IDENTITY_MAPPING_STATUSES = Object.freeze(
+  Object.values(PLAYER_IDENTITY_MAPPING_STATUS)
+);
+
+export const PLAYER_IDENTITY_LINK_LIFECYCLE = Object.freeze({
+  ACTIVE: "ACTIVE",
+  REVOKED: "REVOKED",
+});
+
+export const PLAYER_IDENTITY_MAPPING_SOURCE = Object.freeze({
+  PLAYER_IDENTITY_LINKS: "player_identity_links",
+});
+
+export const PLAYER_IDENTITY_REASON_CODE = Object.freeze({
+  OK: "OK",
+  UNAUTHENTICATED: "UNAUTHENTICATED",
+  SCOPE_REQUIRED: "SCOPE_REQUIRED",
+  TENANT_CLUB_MISMATCH: "TENANT_CLUB_MISMATCH",
+  MEMBERSHIP_INACTIVE: "MEMBERSHIP_INACTIVE",
+  MULTIPLE_ACTIVE_LINKS: "MULTIPLE_ACTIVE_LINKS",
+  MALFORMED_PLAYER_ID: "MALFORMED_PLAYER_ID",
+  LINK_REVOKED: "LINK_REVOKED",
+  NO_LINK: "NO_LINK",
+  CALLER_PRINCIPAL_FORBIDDEN: "CALLER_PRINCIPAL_FORBIDDEN",
+  REPOSITORY_ERROR: "REPOSITORY_ERROR",
+  INVALID_RESULT: "INVALID_RESULT",
+});
+
+/**
+ * @param {unknown} value
+ * @returns {boolean}
+ */
+export function isPlayerIdentityMappingStatus(value) {
+  return PLAYER_IDENTITY_MAPPING_STATUSES.includes(String(value || ""));
+}

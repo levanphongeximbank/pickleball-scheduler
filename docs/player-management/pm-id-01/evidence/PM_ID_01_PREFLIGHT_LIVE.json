@@ -1,0 +1,39 @@
+{
+  "phase": "PM-ID-01-REMOTE-READ-ONLY-PREFLIGHT",
+  "sqlApplied": false,
+  "databaseWrites": 0,
+  "mappingRowsCreated": 0,
+  "backfillExecuted": false,
+  "roleGrantsApplied": false,
+  "productionTouched": false,
+  "filesDeleted": false,
+  "CODEX_DELETE_ALLOWED": "NO",
+  "offline": {
+    "ok": true,
+    "errors": [],
+    "probeReadOnlyOk": true,
+    "stagingProjectRef": "qyewbxjsiiyufanzcjcq",
+    "databaseWrites": 0,
+    "sqlApplied": false,
+    "mappingRowsCreated": 0,
+    "backfillExecuted": false,
+    "roleGrantsApplied": false,
+    "productionTouched": false,
+    "filesDeleted": false,
+    "CODEX_DELETE_ALLOWED": "NO"
+  },
+  "ok": true,
+  "verdict": "PM_ID_01_REMOTE_READ_ONLY_PREFLIGHT_PASS",
+  "stagingProjectRef": "qyewbxjsiiyufanzcjcq",
+  "readOnlyTransaction": true,
+  "beginReadOnly": true,
+  "rollback": true,
+  "secretsPrinted": false,
+  "catalogInterpretation": {
+    "resultRowCount": 1,
+    "playerIdentityLinksPresent": false,
+    "playerIdentityHelpersPresent": false,
+    "coachingMappedHelperPresent": false,
+    "note": "Catalog probe only. Presence of authored objects expected false until Owner GO apply."
+  }
+}
