@@ -5,12 +5,14 @@
  * I&A-02 — Metric Registry and Definition Governance
  * I&A-03 — Analytics Query and Projection Runtime
  * I&A-04 — Dashboard and Reporting Data Contracts
+ * I&A-05 — Historical and Trend Analysis
  *
  * Module-neutral metric/query/result contracts, metric registry governance,
  * deterministic query/projection runtime over explicit source adapters,
- * presentation-neutral dashboard/report data contracts, and read-only facades.
+ * presentation-neutral dashboard/report data contracts, historical/trend
+ * analysis, and read-only facades.
  * No dashboard UI wiring, no Platform Core / Competition E2E / business-rule
- * deps, no SQL/Supabase adapters, no export/scheduler runtime.
+ * deps, no SQL/Supabase adapters, no export/scheduler runtime, no forecasting.
  */
 
 export * from "./contracts/index.js";
@@ -20,6 +22,7 @@ export * from "./facade/index.js";
 export * from "./registry/index.js";
 export * from "./runtime/index.js";
 export * from "./dashboard-reporting/index.js";
+export * from "./historical-trend/index.js";
 
 export const INTELLIGENCE_ANALYTICS_FOUNDATION = Object.freeze({
   workstreamId: "I&A-01",
@@ -45,11 +48,18 @@ export const INTELLIGENCE_ANALYTICS_DASHBOARD_REPORTING = Object.freeze({
   version: "1.0.0",
 });
 
+export const INTELLIGENCE_ANALYTICS_HISTORICAL_TREND = Object.freeze({
+  workstreamId: "I&A-05",
+  name: "Historical and Trend Analysis",
+  version: "1.0.0",
+});
+
 export const INTELLIGENCE_ANALYTICS_PUBLIC_EXPORTS = Object.freeze([
   "INTELLIGENCE_ANALYTICS_FOUNDATION",
   "INTELLIGENCE_ANALYTICS_METRIC_REGISTRY",
   "INTELLIGENCE_ANALYTICS_QUERY_RUNTIME",
   "INTELLIGENCE_ANALYTICS_DASHBOARD_REPORTING",
+  "INTELLIGENCE_ANALYTICS_HISTORICAL_TREND",
   "createAnalyticsMetricId",
   "createAnalyticsMetricVersion",
   "createAnalyticsMetricDefinition",
@@ -101,4 +111,22 @@ export const INTELLIGENCE_ANALYTICS_PUBLIC_EXPORTS = Object.freeze([
   "ANALYTICS_WIDGET_KIND",
   "ANALYTICS_PRESENTATION_INTENT",
   "ANALYTICS_DASHBOARD_REPORT_COMPATIBILITY",
+  "createAnalyticsHistoricalQuery",
+  "normalizeHistoricalQuery",
+  "createAnalyticsHistoricalObservation",
+  "createAnalyticsHistoricalSeries",
+  "createAnalyticsCoverage",
+  "bucketHistoricalObservations",
+  "compareHistoricalPeriods",
+  "analyzeTrend",
+  "applyMovingWindow",
+  "applyCumulative",
+  "createHistoricalAnalyticsRuntime",
+  "createReadOnlyHistoricalAnalyticsFacade",
+  "createInMemoryHistoricalSourceAdapter",
+  "ANALYTICS_MISSING_PERIOD_POLICY",
+  "ANALYTICS_TREND_DIRECTION",
+  "ANALYTICS_TREND_STRENGTH",
+  "ANALYTICS_CHANGE_DIRECTION",
+  "ANALYTICS_COMPLETENESS_STATE",
 ]);

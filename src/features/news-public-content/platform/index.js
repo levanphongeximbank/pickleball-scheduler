@@ -1,0 +1,15 @@
+export {
+  NEWS_PLATFORM_ADAPTER_ERROR,
+  newsOk,
+  newsFail,
+  newsFailFromCaught,
+  projectNewsActor,
+  projectNewsTenantScope,
+  projectNewsOperationInstant,
+  assertNewsPlatformSurface,
+  ok,
+  fail,
+  isOk,
+  isFail,
+  parseIsoStrict,
+} from "./newsPlatformAdoption.js";

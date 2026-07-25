@@ -8,6 +8,7 @@
  * COMMS-05: Persistence & Realtime foundation (SQL package + adapters; not applied / not remote-wired).
  * COMMS-06: Messaging Experience (UI + experience gateway; demo/in-memory).
  * COMMS-07: Integration hardening & final certification (runtime/provider/production gateway).
+ * COMMS-ACT-03: Authorization & Client RLS foundation (authored; not remotely applied).
  *
  * Consumers must import from this index — not from internal file paths —
  * once wiring begins in later phases.
@@ -29,7 +30,7 @@ export const COMMUNICATION_FOUNDATION_PHASE = Object.freeze({
   hasRealtime: true,
   persistenceApplied: false,
   realtimePublicationEnabled: false,
-  clientRlsPolicy: "FAIL_CLOSED",
+  clientRlsPolicy: "CLUB_SELECT_AUTHORED_NOT_APPLIED",
   hasUi: true,
   /** In-memory doubles exist for unit tests / demo gateway only — not production SoT. */
   hasInMemoryTestDoubles: true,
@@ -469,3 +470,27 @@ export {
   resetCommunicationRuntime,
   setCommunicationRuntimeAuthenticated,
 } from "./runtime/publicApi.js";
+
+export {
+  COMMUNICATION_AUTH_CAPABILITY,
+  COMMUNICATION_AUTH_ACTOR,
+  COMMUNICATION_AUTH_POLICY_CELL,
+  COMMUNICATION_AUTHORIZATION_DECISION,
+  getCommsAct03CapabilityMatrix,
+  getCommsAct03PolicyMatrix,
+  evaluateCommsAct03PolicyCell,
+  createCommunicationAuthorizationDecision,
+  assertCommunicationAuthorizationAllowed,
+  resolveClientRlsSelectCapability,
+  getCommsAct03MembershipDependencyMap,
+} from "./authorization/index.js";
+
+export {
+  COMMS_ACT_03_VERDICTS,
+  COMMS_ACT_03_FORWARD_SQL_RELATIVE,
+  COMMS_ACT_03_ROLLBACK_SQL_RELATIVE,
+  getCommsAct03AuthorizationSnapshot,
+  evaluateCommsAct03Preflight,
+  loadCommsAct03SqlPackageManifest,
+  verifyCommsAct03SqlPackage,
+} from "./activation/index.js";
