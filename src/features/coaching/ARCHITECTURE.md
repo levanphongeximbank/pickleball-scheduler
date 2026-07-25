@@ -1,6 +1,6 @@
-# Coaching & Training Architecture (COACHING-01)
+# Coaching & Training Architecture
 
-**Status:** Domain + authorization + application services + in-memory repositories + Platform Core adapter + legacy localStorage compatibility. SQL Phase 28 audited (not applied). UI cutover deferred.
+**Status:** COACHING-01 domain foundation + COACHING-02 durable persistence authored (not applied, not runtime-default).
 
 ## Layers
 
@@ -10,9 +10,16 @@
 | Authorization | `authorization/` |
 | Application | `application/` |
 | Repository ports + memory | `repositories/` |
+| Durable persistence (COACHING-02) | `persistence/` — injectable; **not** runtime default |
 | Platform adapter | `platform/` |
 | Legacy LS | `services/coachingService.js` |
 
 Import only from `src/features/coaching` (barrel).
 
-See `docs/coaching-training/coaching-01/01_DOMAIN_AUTHORIZATION_FOUNDATION.md`.
+## Docs
+
+- COACHING-01: `docs/coaching-training/coaching-01/01_DOMAIN_AUTHORIZATION_FOUNDATION.md`
+- COACHING-02: `docs/coaching-training/coaching-02/`
+
+SQL authored under `docs/coaching-training/coaching-02/` — **do not apply** in COACHING-02.
+Phase 28 (`docs/v5/PHASE_28_COACHING.sql`) is **not** the canonical apply source.
