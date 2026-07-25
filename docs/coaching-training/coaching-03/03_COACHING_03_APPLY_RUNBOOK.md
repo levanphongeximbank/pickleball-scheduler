@@ -36,6 +36,8 @@ Env equivalents:
 | 1 | `--execute` present | REFUSED |
 | 2 | Exact Staging project ref | REFUSED |
 | 3 | Exact expected git commit = HEAD | REFUSED |
+| 3a | Full 40-char SHA only (no short SHA) | `COACHING_03_EXECUTION_COMMIT_MISMATCH_REFUSED` |
+| 3b | `actualGitHead` (`git rev-parse HEAD`) === CLI expected === `approval.expectedGitCommit` | `COACHING_03_EXECUTION_COMMIT_MISMATCH_REFUSED` |
 | 4 | Clean worktree | REFUSED |
 | 5 | Preflight PASS | REFUSED |
 | 6 | SQL checksums match manifest | REFUSED |
@@ -45,6 +47,25 @@ Env equivalents:
 | 10 | productionAllowed=false | REFUSED |
 
 Missing any condition → stop **before** network write. Print `APPLY_MODE=REFUSED`.
+
+## Exact-commit provenance (mandatory)
+
+Owner GO locks an **exact full 40-character commit SHA**.
+
+Rules:
+
+1. Apply reads `actualGitHead` via `git rev-parse HEAD` (never trust caller-only values).
+2. Require `actualGitHead === approval.expectedGitCommit === CLI --expected-commit`.
+3. **Descendant / ancestor commits are refused.** A tooling commit after GO does **not** inherit the parent GO.
+4. Short SHAs are refused.
+5. Dirty worktree / uncommitted executable changes are refused.
+6. If code/tooling/approval executable surfaces change after GO, the prior approval is invalid — Owner must issue a **new GO** for the new full SHA.
+7. The approval artifact must exist on the **exact execution commit** (same SHA pinned in `expectedGitCommit`).
+8. Do **not** create an execution tooling commit and reuse a parent commit’s approval.
+9. Evidence-only commits **after** a completed execution are allowed when they do not change executable apply/certify/cleanup code.
+10. Executable-code changes after execution need separate review and **must not** auto-reapply Staging SQL.
+
+Mismatch marker: `COACHING_03_EXECUTION_COMMIT_MISMATCH_REFUSED`.
 
 ## Apply plan (authored; not executed now)
 

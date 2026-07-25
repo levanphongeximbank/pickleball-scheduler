@@ -1,0 +1,76 @@
+{
+  "phase": "COACHING-03",
+  "artifact": "EXECUTION_PROVENANCE_DEVIATION",
+  "ownerApprovedBaselineCommit": "c89bec293f4f52b90734a56f2ce813919643b929",
+  "actualExecutionToolingCommit": "911daddf4bfff0a636c5d4f1e647379ea30698ab",
+  "evidenceCommit": "d5b622cf92c947e130a4f868c1947e68f786201a",
+  "stagingProjectRef": "qyewbxjsiiyufanzcjcq",
+  "productionTouched": false,
+  "aggregateForwardSha256": "5f82d85a75e531b648688d3f87e52be6521d482eb5df6202553ac0596e723e26",
+  "ancestry": {
+    "c89becIsAncestorOf911daddf": true,
+    "911daddfIsAncestorOfc89bec": false,
+    "parentOf911daddf": "c89bec293f4f52b90734a56f2ce813919643b929"
+  },
+  "applyCommandUsed": "node scripts/coaching/coaching-03-staging-apply.mjs --execute --environment=staging --project-ref=qyewbxjsiiyufanzcjcq --expected-commit=911daddf4bfff0a636c5d4f1e647379ea30698ab --owner-go=COACHING_03_OWNER_GO_APPLY_STAGING --preflight-pass --include-role-grants",
+  "cliExpectedCommitAtApply": "911daddf4bfff0a636c5d4f1e647379ea30698ab",
+  "actualGitHeadAtApply": "911daddf4bfff0a636c5d4f1e647379ea30698ab",
+  "approvalExpectedGitCommitAtApply": "c89bec293f4f52b90734a56f2ce813919643b929",
+  "guardBehaviorAtApply": {
+    "readActualHeadViaGitRevParse": true,
+    "comparedCliExpectedToActualHead": true,
+    "allowedApprovalAsAncestorOfHead": true,
+    "requiredApprovalEqualsCliExpected": false,
+    "requiredApprovalEqualsActualHead": false
+  },
+  "whyApplyPassedDespiteApprovalPinningC89bec": "gates.js used isCoaching03GitAncestor(approval.expectedGitCommit, HEAD) so approval c89bec was accepted while HEAD/CLI were 911daddf; CLI expected matched HEAD only.",
+  "sqlManifestChangedBetweenC89becAnd911daddf": false,
+  "roleGrantSqlChangedBetweenC89becAnd911daddf": false,
+  "filesChangedC89becTo911daddf": [
+    "docs/coaching-training/coaching-03/OWNER_STAGING_APPLY_APPROVAL.json",
+    "scripts/coaching/coaching-03-staging-apply.mjs",
+    "scripts/coaching/coaching-03-staging-certify.mjs",
+    "scripts/coaching/coaching-03-staging-cleanup.mjs",
+    "src/features/coaching/staging/constants.js",
+    "src/features/coaching/staging/gates.js",
+    "src/features/coaching/staging/index.js"
+  ],
+  "applyWindow": {
+    "startedAt": "2026-07-25T07:01:12.853Z",
+    "finishedAt": "2026-07-25T07:01:24.435Z"
+  },
+  "sqlOrderApplied": [
+    "10_COACHING_02_TABLES.sql",
+    "15_COACHING_02_PERMISSION_SEED.sql",
+    "20_COACHING_02_INDEXES.sql",
+    "30_COACHING_02_RLS.sql",
+    "40_COACHING_02_ATTENDANCE_CORRECTION_RPC.sql",
+    "45_COACHING_02_ENTITLEMENT_CONSUME_RPC.sql",
+    "50_COACHING_02_GRANTS.sql",
+    "60_COACHING_02_IMMUTABLE.sql",
+    "70_COACHING_03_ROLE_PERMISSION_ASSIGNMENT.proposal.sql"
+  ],
+  "certificationResult": {
+    "ok": true,
+    "coachGrants": 0,
+    "playerGrants": 0,
+    "startedAt": "2026-07-25T08:19:14.785Z",
+    "finishedAt": "2026-07-25T08:19:52.521Z"
+  },
+  "cleanupResidualResult": {
+    "ok": true,
+    "residualAfterFirst": 0,
+    "residualAfterSecond": 0,
+    "temporaryRoleGrantResidual": 0,
+    "idempotent": true,
+    "finishedAt": "2026-07-25T08:20:05.026Z"
+  },
+  "deviationClassification": "EXECUTION_COMMIT_DIFFERED_FROM_OWNER_APPROVED_COMMIT",
+  "retroactiveApproval": false,
+  "secondApplyPerformed": false,
+  "rollbackPerformed": false,
+  "ownerRatificationRequired": true,
+  "approvalArtifactNotRewritten": true,
+  "secretsPrinted": false,
+  "recordedAt": "2026-07-25T08:40:00.000Z"
+}

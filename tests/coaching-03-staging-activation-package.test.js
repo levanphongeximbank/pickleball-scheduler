@@ -479,3 +479,214 @@ test("gates document forbids jumping Gate B to Gate D", () => {
   assert.ok(scope.includes("Do not jump from Gate B to Gate D"));
   assert.ok(scope.includes("GATE_C_OWNER_GO") || scope.includes("Owner GO"));
 });
+
+const APPROVED_SHA = "c89bec293f4f52b90734a56f2ce813919643b929";
+const TOOLING_SHA = "911daddf4bfff0a636c5d4f1e647379ea30698ab";
+const EVIDENCE_SHA = "d5b622cf92c947e130a4f868c1947e68f786201a";
+const SHORT_SHA = "911daddf";
+
+function baseApproval(expectedGitCommit) {
+  return {
+    approved: true,
+    environment: "staging",
+    productionAllowed: false,
+    stagingProjectRef: Staging.COACHING_03_STAGING_PROJECT_REF,
+    ownerGoToken: Staging.COACHING_03_OWNER_GO_TOKEN,
+    goToken: Staging.COACHING_03_OWNER_GO_TOKEN,
+    expectedGitCommit,
+    roleMatrixApproved: true,
+    coachGrantsAllowed: false,
+    playerGrantsAllowed: false,
+    uiRuntimeCutoverApproved: false,
+  };
+}
+
+function provenanceGuardInput(overrides = {}) {
+  return {
+    execute: true,
+    environment: "staging",
+    projectRef: Staging.COACHING_03_STAGING_PROJECT_REF,
+    ownerGoToken: Staging.COACHING_03_OWNER_GO_TOKEN,
+    preflightPass: true,
+    productionAllowed: false,
+    requireApprovalEvidence: true,
+    requireCleanWorktree: true,
+    worktreeCleanOverride: true,
+    repoRoot: root,
+    env: {
+      STAGING_SUPABASE_URL: `https://${Staging.COACHING_03_STAGING_PROJECT_REF}.supabase.co`,
+    },
+    ...overrides,
+  };
+}
+
+test("exact-commit provenance: approved HEAD PASS", () => {
+  const g = Staging.evaluateCoaching03ApplyGuards(
+    provenanceGuardInput({
+      actualGitHead: APPROVED_SHA,
+      expectedCommit: APPROVED_SHA,
+      approvalOverride: baseApproval(APPROVED_SHA),
+    })
+  );
+  assert.equal(g.canWrite, true);
+  assert.equal(g.applyMode, "EXECUTE_ALLOWED");
+  assert.equal(g.actualGitHead, APPROVED_SHA);
+});
+
+test("exact-commit provenance: descendant HEAD refused", () => {
+  const g = Staging.evaluateCoaching03ApplyGuards(
+    provenanceGuardInput({
+      actualGitHead: TOOLING_SHA,
+      expectedCommit: TOOLING_SHA,
+      approvalOverride: baseApproval(APPROVED_SHA),
+    })
+  );
+  assert.equal(g.canWrite, false);
+  assert.equal(
+    g.verdict,
+    Staging.COACHING_03_VERDICTS.EXECUTION_COMMIT_MISMATCH_REFUSED
+  );
+  assert.equal(g.sqlWouldApply, false);
+});
+
+test("exact-commit provenance: ancestor HEAD refused", () => {
+  const g = Staging.evaluateCoaching03ApplyGuards(
+    provenanceGuardInput({
+      actualGitHead: APPROVED_SHA,
+      expectedCommit: APPROVED_SHA,
+      approvalOverride: baseApproval(TOOLING_SHA),
+    })
+  );
+  assert.equal(g.canWrite, false);
+  assert.equal(
+    g.verdict,
+    Staging.COACHING_03_VERDICTS.EXECUTION_COMMIT_MISMATCH_REFUSED
+  );
+});
+
+test("exact-commit provenance: CLI expected differs from approval refused", () => {
+  const g = Staging.evaluateCoaching03ApplyGuards(
+    provenanceGuardInput({
+      actualGitHead: TOOLING_SHA,
+      expectedCommit: TOOLING_SHA,
+      approvalOverride: baseApproval(APPROVED_SHA),
+    })
+  );
+  assert.equal(g.canWrite, false);
+  assert.ok(
+    (g.commitMismatchReasons || []).some((r) =>
+      /Approval expectedGitCommit must equal CLI/i.test(r)
+    ) ||
+      (g.commitMismatchReasons || []).some((r) =>
+        /Approval expectedGitCommit must equal actual git HEAD/i.test(r)
+      )
+  );
+});
+
+test("exact-commit provenance: actual HEAD differs from approval refused", () => {
+  const g = Staging.evaluateCoaching03ApplyGuards(
+    provenanceGuardInput({
+      actualGitHead: EVIDENCE_SHA,
+      expectedCommit: APPROVED_SHA,
+      approvalOverride: baseApproval(APPROVED_SHA),
+    })
+  );
+  assert.equal(g.canWrite, false);
+  assert.equal(
+    g.verdict,
+    Staging.COACHING_03_VERDICTS.EXECUTION_COMMIT_MISMATCH_REFUSED
+  );
+});
+
+test("exact-commit provenance: short SHA refused", () => {
+  const g = Staging.evaluateCoaching03ApplyGuards(
+    provenanceGuardInput({
+      actualGitHead: TOOLING_SHA,
+      expectedCommit: SHORT_SHA,
+      approvalOverride: baseApproval(TOOLING_SHA),
+    })
+  );
+  assert.equal(g.canWrite, false);
+  assert.equal(
+    g.verdict,
+    Staging.COACHING_03_VERDICTS.EXECUTION_COMMIT_MISMATCH_REFUSED
+  );
+  assert.ok(
+    (g.commitMismatchReasons || []).some((r) => /full 40-char SHA/i.test(r))
+  );
+});
+
+test("exact-commit provenance: dirty tree refused", () => {
+  const g = Staging.evaluateCoaching03ApplyGuards(
+    provenanceGuardInput({
+      actualGitHead: APPROVED_SHA,
+      expectedCommit: APPROVED_SHA,
+      approvalOverride: baseApproval(APPROVED_SHA),
+      worktreeCleanOverride: false,
+    })
+  );
+  assert.equal(g.canWrite, false);
+  assert.ok((g.blockers || []).some((b) => /clean/i.test(b)));
+});
+
+test("exact-commit provenance: tooling commit after approval invalidates GO", () => {
+  // Historical deviation pattern: HEAD=911daddf tooling, approval pinned to c89bec.
+  assert.equal(
+    Staging.isCoaching03GitAncestor(APPROVED_SHA, TOOLING_SHA, root),
+    true
+  );
+  const g = Staging.evaluateCoaching03ApplyGuards(
+    provenanceGuardInput({
+      actualGitHead: TOOLING_SHA,
+      expectedCommit: TOOLING_SHA,
+      approvalOverride: baseApproval(APPROVED_SHA),
+    })
+  );
+  assert.equal(g.canWrite, false);
+  assert.equal(g.sqlWouldApply, false);
+  assert.equal(
+    g.verdict,
+    Staging.COACHING_03_VERDICTS.EXECUTION_COMMIT_MISMATCH_REFUSED
+  );
+});
+
+test("exact-commit provenance: mismatch refuses before network write", () => {
+  const g = Staging.evaluateCoaching03ApplyGuards(
+    provenanceGuardInput({
+      actualGitHead: TOOLING_SHA,
+      expectedCommit: TOOLING_SHA,
+      approvalOverride: baseApproval(APPROVED_SHA),
+    })
+  );
+  assert.equal(g.sqlWouldApply, false);
+  assert.equal(g.canWrite, false);
+  // Apply script default without --execute also refuses.
+  const dry = spawnSync(
+    process.execPath,
+    ["scripts/coaching/coaching-03-staging-apply.mjs"],
+    { cwd: root, encoding: "utf8" }
+  );
+  assert.equal(dry.status, 0);
+  assert.ok(String(dry.stdout || "").includes("APPLY_MODE=REFUSED"));
+  assert.ok(!String(dry.stdout || "").includes("APPLY_MODE=EXECUTED"));
+});
+
+test("provenance remediation does not perform second Staging apply", () => {
+  const applySrc = read("scripts/coaching/coaching-03-staging-apply.mjs");
+  assert.ok(applySrc.includes("APPLY_MODE=REFUSED"));
+  const deviationPath =
+    "docs/coaching-training/coaching-03/evidence/EXECUTION_PROVENANCE_DEVIATION.json";
+  if (existsSync(path.join(root, deviationPath))) {
+    const d = JSON.parse(read(deviationPath));
+    assert.equal(d.secondApplyPerformed, false);
+    assert.equal(d.rollbackPerformed, false);
+    assert.equal(d.retroactiveApproval, false);
+  }
+});
+
+test("isCoaching03FullGitSha rejects short and non-hex", () => {
+  assert.equal(Staging.isCoaching03FullGitSha(APPROVED_SHA), true);
+  assert.equal(Staging.isCoaching03FullGitSha(SHORT_SHA), false);
+  assert.equal(Staging.isCoaching03FullGitSha("g".repeat(40)), false);
+  assert.equal(Staging.isCoaching03FullGitSha(""), false);
+});

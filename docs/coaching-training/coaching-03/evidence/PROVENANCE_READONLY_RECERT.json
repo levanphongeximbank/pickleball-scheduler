@@ -1,0 +1,57 @@
+{
+  "phase": "COACHING-03",
+  "artifact": "PROVENANCE_READONLY_RECERT",
+  "mode": "read-only",
+  "ok": true,
+  "stagingProjectRef": "qyewbxjsiiyufanzcjcq",
+  "productionTouched": false,
+  "databaseWrites": 0,
+  "sqlAppliedAgain": false,
+  "rollbackExecuted": false,
+  "readOnlyTransaction": true,
+  "checks": [
+    {
+      "name": "schema.13_tables",
+      "ok": true,
+      "n": 13
+    },
+    {
+      "name": "schema.rls_enable_force",
+      "ok": true,
+      "n": 13
+    },
+    {
+      "name": "schema.rpc_helpers",
+      "ok": true,
+      "n": 4
+    },
+    {
+      "name": "schema.immutable_triggers",
+      "ok": true,
+      "n": 3
+    },
+    {
+      "name": "authz.coach_grants_zero",
+      "ok": true,
+      "n": 0
+    },
+    {
+      "name": "authz.player_grants_zero",
+      "ok": true,
+      "n": 0
+    },
+    {
+      "name": "fixture.residual_zero",
+      "ok": true,
+      "n": 0
+    },
+    {
+      "name": "authz.temporary_grants_residual_zero",
+      "ok": true,
+      "n": 0
+    }
+  ],
+  "secretsPrinted": false,
+  "startedAt": "2026-07-25T08:42:04.979Z",
+  "finishedAt": "2026-07-25T08:42:14.572Z"
+}

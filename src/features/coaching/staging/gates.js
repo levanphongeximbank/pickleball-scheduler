@@ -170,6 +170,7 @@ export function getCoaching03HeadSha(repoRoot) {
 
 /**
  * True when `ancestorSha` is an ancestor of `descendantSha` (or equal).
+ * Kept for audit/docs tooling only — apply guards must NOT accept ancestors.
  * @param {string} ancestorSha
  * @param {string} descendantSha
  * @param {string} [repoRoot]
@@ -190,6 +191,11 @@ export function isCoaching03GitAncestor(ancestorSha, descendantSha, repoRoot) {
   } catch {
     return false;
   }
+}
+
+/** Full 40-char lowercase/uppercase hex git object id. */
+export function isCoaching03FullGitSha(value) {
+  return /^[0-9a-fA-F]{40}$/.test(String(value || "").trim());
 }
 
 /**
@@ -286,7 +292,10 @@ export function loadCoaching03OwnerApprovalEvidence(repoRoot) {
  *   requireApprovalEvidence?: boolean,
  *   repoRoot?: string,
  *   requireCleanWorktree?: boolean,
- *   env?: NodeJS.ProcessEnv|Record<string,string|undefined>
+ *   env?: NodeJS.ProcessEnv|Record<string,string|undefined>,
+ *   actualGitHead?: string,
+ *   approvalOverride?: object|null,
+ *   worktreeCleanOverride?: boolean
  * }} input
  */
 export function evaluateCoaching03ApplyGuards(input = {}) {
@@ -294,6 +303,8 @@ export function evaluateCoaching03ApplyGuards(input = {}) {
   const env = input.env || process.env;
   /** @type {string[]} */
   const blockers = [];
+  /** @type {string[]} */
+  const commitMismatchReasons = [];
 
   const execute = input.execute === true;
   if (!execute) {
@@ -327,21 +338,39 @@ export function evaluateCoaching03ApplyGuards(input = {}) {
     blockers.push("Production project ref is blocked.");
   }
 
-  const head = getCoaching03HeadSha(repoRoot);
+  // Always resolve live HEAD via git rev-parse unless tests inject actualGitHead.
+  const actualGitHead = String(
+    input.actualGitHead != null
+      ? input.actualGitHead
+      : getCoaching03HeadSha(repoRoot)
+  ).trim();
   const expectedCommit = String(
     input.expectedCommit ||
       env[COACHING_03_ENV_NAMES.EXPECTED_COMMIT] ||
       ""
   ).trim();
-  if (!expectedCommit || expectedCommit !== head) {
-    blockers.push(
-      `Exact expected git commit required (head=${head.slice(0, 12)}, expected=${expectedCommit ? expectedCommit.slice(0, 12) : "(empty)"}).`
+
+  if (!isCoaching03FullGitSha(actualGitHead)) {
+    commitMismatchReasons.push(
+      `actualGitHead must be full 40-char SHA (got ${actualGitHead ? actualGitHead.slice(0, 12) : "(empty)"}).`
+    );
+  }
+  if (!isCoaching03FullGitSha(expectedCommit)) {
+    commitMismatchReasons.push(
+      `CLI/env expected commit must be full 40-char SHA (got ${expectedCommit ? expectedCommit.slice(0, 12) : "(empty)"}).`
+    );
+  } else if (expectedCommit !== actualGitHead) {
+    commitMismatchReasons.push(
+      `CLI expected commit must equal actual git HEAD (head=${actualGitHead.slice(0, 12)}, expected=${expectedCommit.slice(0, 12)}).`
     );
   }
 
   const requireClean = input.requireCleanWorktree !== false;
   if (requireClean) {
-    const tree = evaluateCoaching03WorktreeClean(repoRoot);
+    const tree =
+      typeof input.worktreeCleanOverride === "boolean"
+        ? { ok: input.worktreeCleanOverride }
+        : evaluateCoaching03WorktreeClean(repoRoot);
     if (!tree.ok) blockers.push("Working tree must be clean.");
   }
 
@@ -375,22 +404,40 @@ export function evaluateCoaching03ApplyGuards(input = {}) {
   // Apply script opts in explicitly; unit tests leave this false by default.
   const requireApproval = input.requireApprovalEvidence === true;
   if (requireApproval) {
-    const loaded = loadCoaching03OwnerApprovalEvidence(repoRoot);
+    const loaded =
+      input.approvalOverride != null
+        ? {
+            ok: true,
+            errors: [],
+            approval: input.approvalOverride,
+            path: COACHING_03_APPROVAL_EVIDENCE_RELATIVE_PATH,
+            secretsPrinted: false,
+          }
+        : loadCoaching03OwnerApprovalEvidence(repoRoot);
     approvalEvidence = loaded;
     if (!loaded.ok) {
       blockers.push(...(loaded.errors || ["Owner approval evidence invalid."]));
     } else {
       const a = loaded.approval;
-      // Owner pins the authorized package commit; HEAD may be a Gate D
-      // apply-tooling descendant while still requiring CLI expectedCommit===HEAD.
       const approvedCommit = String(a.expectedGitCommit || "").trim();
-      if (
-        !approvedCommit ||
-        !isCoaching03GitAncestor(approvedCommit, head, repoRoot)
-      ) {
-        blockers.push(
-          `Approval expectedGitCommit must be HEAD or an ancestor (approval=${approvedCommit ? approvedCommit.slice(0, 12) : "(empty)"}, head=${head.slice(0, 12)}).`
+      // Exact provenance: approval SHA === CLI SHA === actual git HEAD.
+      // Descendants/ancestors/short SHAs are refused — tooling commits after GO
+      // invalidate the prior approval and require a new Owner GO for that SHA.
+      if (!isCoaching03FullGitSha(approvedCommit)) {
+        commitMismatchReasons.push(
+          `Approval expectedGitCommit must be full 40-char SHA (got ${approvedCommit ? approvedCommit.slice(0, 12) : "(empty)"}).`
         );
+      } else {
+        if (approvedCommit !== actualGitHead) {
+          commitMismatchReasons.push(
+            `Approval expectedGitCommit must equal actual git HEAD (approval=${approvedCommit.slice(0, 12)}, head=${actualGitHead.slice(0, 12)}). Descendants/ancestors are refused.`
+          );
+        }
+        if (isCoaching03FullGitSha(expectedCommit) && approvedCommit !== expectedCommit) {
+          commitMismatchReasons.push(
+            `Approval expectedGitCommit must equal CLI expected commit (approval=${approvedCommit.slice(0, 12)}, cli=${expectedCommit.slice(0, 12)}).`
+          );
+        }
       }
       if (String(a.ownerGoToken || a.goToken || "").trim() !== ownerGoToken) {
         blockers.push("Approval token does not match CLI/env Owner GO token.");
@@ -401,21 +448,30 @@ export function evaluateCoaching03ApplyGuards(input = {}) {
     }
   }
 
+  if (commitMismatchReasons.length > 0) {
+    blockers.push(...commitMismatchReasons);
+  }
+
   const identity = inspectCoaching03EnvironmentIdentity(env);
   if (!identity.ok) {
     blockers.push(...identity.errors);
   }
 
   const canWrite = blockers.length === 0;
+  const commitMismatch = commitMismatchReasons.length > 0;
   return {
     canWrite,
     applyMode: canWrite ? "EXECUTE_ALLOWED" : "REFUSED",
     verdict: canWrite
       ? COACHING_03_VERDICTS.PREFLIGHT_PASS
-      : COACHING_03_VERDICTS.APPLY_REFUSED,
+      : commitMismatch
+        ? COACHING_03_VERDICTS.EXECUTION_COMMIT_MISMATCH_REFUSED
+        : COACHING_03_VERDICTS.APPLY_REFUSED,
     blockers,
+    commitMismatchReasons,
     stagingProjectRef: COACHING_03_STAGING_PROJECT_REF,
-    headSha: head,
+    headSha: actualGitHead,
+    actualGitHead,
     approvalEvidenceOk: approvalEvidence ? approvalEvidence.ok : null,
     secretsPrinted: false,
     sqlWouldApply: canWrite,

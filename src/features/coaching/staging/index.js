@@ -55,6 +55,7 @@ export {
   evaluateCoaching03WorktreeClean,
   getCoaching03HeadSha,
   isCoaching03GitAncestor,
+  isCoaching03FullGitSha,
   loadCoaching03ApprovalTemplateDefaults,
   loadCoaching03OwnerApprovalEvidence,
   evaluateCoaching03ApplyGuards,
