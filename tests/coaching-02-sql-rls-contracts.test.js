@@ -39,6 +39,7 @@ const EXPECTED_FILES = [
   "02_PHASE_28_DRIFT_AND_DISPOSITION.md",
   "03_RLS_AND_AUTHORIZATION_DESIGN.md",
   "04_IDENTITY_PERMISSION_HANDOFF.md",
+  "05_TENANT_VENUE_SCOPE_RESOLUTION.md",
   "10_COACHING_02_TABLES.sql",
   "15_COACHING_02_PERMISSION_SEED.sql",
   "20_COACHING_02_INDEXES.sql",
@@ -127,6 +128,9 @@ describe("COACHING-02 tables and constraints", () => {
 describe("COACHING-02 RLS and grants", () => {
   test("ENABLE + FORCE RLS, fail-closed helpers, dedicated actions", () => {
     const rls = stripSqlComments(readPack("30_COACHING_02_RLS.sql"));
+    const attendanceRpc = stripSqlComments(readPack("40_COACHING_02_ATTENDANCE_CORRECTION_RPC.sql"));
+    const consumeRpc = stripSqlComments(readPack("45_COACHING_02_ENTITLEMENT_CONSUME_RPC.sql"));
+    const authSurface = `${rls}\n${attendanceRpc}\n${consumeRpc}`;
     for (const table of CANONICAL_TABLES) {
       assert.match(rls, new RegExp(`ALTER TABLE public\\.${table} ENABLE ROW LEVEL SECURITY`));
       assert.match(rls, new RegExp(`ALTER TABLE public\\.${table} FORCE ROW LEVEL SECURITY`));
@@ -139,7 +143,7 @@ describe("COACHING-02 RLS and grants", () => {
     assert.match(rls, /SET search_path = public, pg_temp/);
 
     for (const action of COACHING_ACTION_VALUES) {
-      assert.match(rls, new RegExp(`'${action.replace(/\./g, "\\.")}'`));
+      assert.match(authSurface, new RegExp(`'${action.replace(/\./g, "\\.")}'`));
     }
 
     assert.doesNotMatch(rls, /USING\s*\(\s*true\s*\)/i);
@@ -148,27 +152,87 @@ describe("COACHING-02 RLS and grants", () => {
     assert.doesNotMatch(rls, /FOR ALL/);
   });
 
-  test("append-only tables have no UPDATE/DELETE policies", () => {
+  test("append-only / RPC-owned tables have no authenticated INSERT/UPDATE policies", () => {
     const rls = stripSqlComments(readPack("30_COACHING_02_RLS.sql"));
-    assert.doesNotMatch(rls, /coaching_acorr_update/);
-    assert.doesNotMatch(rls, /coaching_acorr_delete/);
-    assert.doesNotMatch(rls, /coaching_usage_update/);
-    assert.doesNotMatch(rls, /coaching_usage_delete/);
+    assert.doesNotMatch(rls, /CREATE POLICY coaching_acorr_insert/);
+    assert.doesNotMatch(rls, /CREATE POLICY coaching_acorr_update/);
+    assert.doesNotMatch(rls, /CREATE POLICY coaching_acorr_delete/);
+    assert.doesNotMatch(rls, /CREATE POLICY coaching_usage_insert/);
+    assert.doesNotMatch(rls, /CREATE POLICY coaching_usage_update/);
+    assert.doesNotMatch(rls, /CREATE POLICY coaching_attendance_update/);
+    assert.doesNotMatch(rls, /CREATE POLICY coaching_entitlements_update/);
   });
 
-  test("grants revoke PUBLIC/anon write and RPC execute from PUBLIC", () => {
+  test("least-privilege grants: no broad all-table INSERT/UPDATE; atomic paths RPC-only", () => {
     const grants = stripSqlComments(readPack("50_COACHING_02_GRANTS.sql"));
-    assert.match(grants, /REVOKE ALL ON TABLE[\s\S]*FROM PUBLIC/);
-    assert.match(grants, /REVOKE ALL ON TABLE[\s\S]*FROM anon/);
-    assert.match(grants, /REVOKE ALL ON FUNCTION[\s\S]*FROM PUBLIC/);
-    assert.match(grants, /GRANT EXECUTE[\s\S]*TO service_role/);
-    assert.doesNotMatch(grants, /GRANT ALL[\s\S]*TO PUBLIC/);
-    assert.doesNotMatch(grants, /GRANT[\s\S]*TO anon/);
+    assert.doesNotMatch(
+      grants,
+      /GRANT SELECT, INSERT, UPDATE ON TABLE public\.%I TO authenticated/
+    );
+    assert.doesNotMatch(
+      grants,
+      /GRANT SELECT, INSERT, UPDATE ON TABLE[\s\S]*TO authenticated/
+    );
+    assert.match(
+      grants,
+      /REVOKE INSERT, UPDATE, DELETE ON TABLE public\.coaching_attendance_corrections FROM authenticated/
+    );
+    assert.match(
+      grants,
+      /REVOKE INSERT, UPDATE, DELETE ON TABLE public\.coaching_package_usage_events FROM authenticated/
+    );
+    assert.match(
+      grants,
+      /REVOKE UPDATE, DELETE ON TABLE public\.coaching_attendance_records FROM authenticated/
+    );
+    assert.match(
+      grants,
+      /REVOKE UPDATE, DELETE ON TABLE public\.coaching_package_entitlements FROM authenticated/
+    );
+    assert.match(grants, /GRANT SELECT ON TABLE public\.coaching_attendance_corrections TO authenticated/);
+    assert.match(grants, /GRANT SELECT ON TABLE public\.coaching_package_usage_events TO authenticated/);
+    assert.match(grants, /GRANT INSERT ON TABLE public\.coaching_attendance_records TO authenticated/);
+    assert.match(grants, /GRANT INSERT ON TABLE public\.coaching_package_entitlements TO authenticated/);
+    assert.doesNotMatch(
+      grants,
+      /GRANT (INSERT|UPDATE) ON TABLE public\.coaching_attendance_corrections TO authenticated/
+    );
+    assert.doesNotMatch(
+      grants,
+      /GRANT (INSERT|UPDATE) ON TABLE public\.coaching_package_usage_events TO authenticated/
+    );
+    assert.doesNotMatch(
+      grants,
+      /GRANT UPDATE ON TABLE public\.coaching_attendance_records TO authenticated/
+    );
+    assert.doesNotMatch(
+      grants,
+      /GRANT UPDATE ON TABLE public\.coaching_package_entitlements TO authenticated/
+    );
+    assert.match(grants, /REVOKE ALL[\s\S]*FROM PUBLIC/);
+    assert.match(grants, /REVOKE ALL[\s\S]*FROM anon/);
+    assert.match(grants, /GRANT EXECUTE[\s\S]*TO authenticated/);
+    assert.match(
+      grants,
+      /REVOKE ALL ON FUNCTION public\.coaching_apply_attendance_correction[\s\S]*FROM service_role/
+    );
+    assert.match(
+      grants,
+      /REVOKE ALL ON FUNCTION public\.coaching_consume_entitlement[\s\S]*FROM service_role/
+    );
+    assert.doesNotMatch(
+      grants,
+      /GRANT EXECUTE ON FUNCTION public\.coaching_apply_attendance_correction[\s\S]*TO service_role/
+    );
+    assert.doesNotMatch(
+      grants,
+      /GRANT EXECUTE ON FUNCTION public\.coaching_consume_entitlement[\s\S]*TO service_role/
+    );
   });
 });
 
 describe("COACHING-02 atomic RPCs and immutability", () => {
-  test("attendance correction RPC security + transactional semantics", () => {
+  test("attendance correction RPC security + transactional semantics + auth.uid actor", () => {
     const rpc = stripSqlComments(readPack("40_COACHING_02_ATTENDANCE_CORRECTION_RPC.sql"));
     assert.match(rpc, /CREATE OR REPLACE FUNCTION public\.coaching_apply_attendance_correction/);
     assert.match(rpc, /SECURITY DEFINER/);
@@ -178,12 +242,16 @@ describe("COACHING-02 atomic RPCs and immutability", () => {
     assert.match(rpc, /coaching\.attendance\.correct/);
     assert.match(rpc, /INSERT INTO public\.coaching_attendance_corrections/);
     assert.match(rpc, /UPDATE public\.coaching_attendance_records/);
+    assert.match(rpc, /v_actor_id := v_uid::text/);
+    assert.match(rpc, /auth\.uid\(\)/);
+    assert.doesNotMatch(rpc, /p_actor_id/);
     assert.match(rpc, /REVOKE ALL[\s\S]*FROM PUBLIC/);
     assert.match(rpc, /REVOKE ALL[\s\S]*FROM anon/);
+    assert.match(rpc, /REVOKE ALL[\s\S]*FROM service_role/);
     assert.equal(COACHING_02_RPC.APPLY_ATTENDANCE_CORRECTION, "coaching_apply_attendance_correction");
   });
 
-  test("entitlement consume RPC atomicity + idempotency", () => {
+  test("entitlement consume RPC atomicity + idempotency + auth.uid actor", () => {
     const rpc = stripSqlComments(readPack("45_COACHING_02_ENTITLEMENT_CONSUME_RPC.sql"));
     assert.match(rpc, /CREATE OR REPLACE FUNCTION public\.coaching_consume_entitlement/);
     assert.match(rpc, /SECURITY DEFINER/);
@@ -194,7 +262,10 @@ describe("COACHING-02 atomic RPCs and immutability", () => {
     assert.match(rpc, /coaching\.entitlement\.consume/);
     assert.match(rpc, /INSERT INTO public\.coaching_package_usage_events/);
     assert.match(rpc, /FOR UPDATE/);
+    assert.match(rpc, /v_actor_id := v_uid::text/);
+    assert.doesNotMatch(rpc, /p_actor_id/);
     assert.match(rpc, /REVOKE ALL[\s\S]*FROM PUBLIC/);
+    assert.match(rpc, /REVOKE ALL[\s\S]*FROM service_role/);
   });
 
   test("immutability triggers with fixed search_path", () => {
@@ -209,10 +280,12 @@ describe("COACHING-02 atomic RPCs and immutability", () => {
 });
 
 describe("COACHING-02 rollback and verification", () => {
-  test("rollback drops coaching objects and leaves shared helpers", () => {
+  test("rollback drops coaching objects including prior and current RPC signatures", () => {
     const rollback = stripSqlComments(readPack("90_COACHING_02_ROLLBACK.sql"));
-    assert.match(rollback, /DROP FUNCTION IF EXISTS public\.coaching_apply_attendance_correction/);
-    assert.match(rollback, /DROP FUNCTION IF EXISTS public\.coaching_consume_entitlement/);
+    assert.match(rollback, /DROP FUNCTION IF EXISTS public\.coaching_apply_attendance_correction\(\s*text, text, text, integer, text, text, text, timestamptz, text\s*\)/);
+    assert.match(rollback, /DROP FUNCTION IF EXISTS public\.coaching_apply_attendance_correction\(\s*text, text, text, integer, text, text, text, text, timestamptz, text\s*\)/);
+    assert.match(rollback, /DROP FUNCTION IF EXISTS public\.coaching_consume_entitlement\(\s*text, text, text, integer, text, text, text, timestamptz\s*\)/);
+    assert.match(rollback, /DROP FUNCTION IF EXISTS public\.coaching_consume_entitlement\(\s*text, text, text, integer, text, text, text, text, timestamptz\s*\)/);
     assert.match(rollback, /DROP TRIGGER IF EXISTS coaching_attendance_corrections_immutable_trg/);
     for (const table of CANONICAL_TABLES) {
       assert.match(rollback, new RegExp(`DROP TABLE IF EXISTS public\\.${table}`));
@@ -222,7 +295,7 @@ describe("COACHING-02 rollback and verification", () => {
     assert.doesNotMatch(rollback, /DROP TABLE[\s\S]*permissions/);
   });
 
-  test("verification is read-only and covers readiness checks", () => {
+  test("verification is read-only and covers privilege hardening checks", () => {
     const verify = readPack("99_COACHING_02_VERIFICATION.sql");
     assert.match(verify, /READ-ONLY|read-only/i);
     assert.match(verify, /relrowsecurity/);
@@ -230,14 +303,32 @@ describe("COACHING-02 rollback and verification", () => {
     assert.match(verify, /pg_policies/);
     assert.match(verify, /coaching_apply_attendance_correction/);
     assert.match(verify, /coaching_consume_entitlement/);
-    assert.match(verify, /information_schema\.table_privileges/);
+    assert.match(verify, /coaching_attendance_corrections/);
+    assert.match(verify, /coaching_package_usage_events/);
+    assert.match(verify, /grantee = 'authenticated'/);
+    assert.match(verify, /service_role/);
     const verifyBody = stripSqlComments(verify);
     assert.doesNotMatch(verifyBody, /^\s*(INSERT|UPDATE|DELETE|DROP|CREATE)\b/im);
     assert.doesNotMatch(verifyBody, /\b(INSERT INTO|UPDATE\s+public|DELETE FROM|DROP TABLE|CREATE TABLE)\b/i);
   });
 });
 
-describe("COACHING-02 permission mapping and no-apply safety", () => {
+describe("COACHING-02 tenant/venue semantics and permission mapping", () => {
+  test("Conclusion A: tenant JWT binding is venue-bound; venue_id is not the tenant gate", () => {
+    const resolution = readPack("05_TENANT_VENUE_SCOPE_RESOLUTION.md");
+    assert.match(resolution, /Conclusion A/i);
+    assert.match(resolution, /user_venue_id\(\)/);
+    assert.match(resolution, /user_tenant_id/);
+    assert.match(resolution, /customer-management\/phase-3|CUSTOMER-03/i);
+    assert.match(resolution, /crm\/phase-1g|CRM Phase 1G/i);
+    const rls = stripSqlComments(readPack("30_COACHING_02_RLS.sql"));
+    assert.match(rls, /p_tenant_id = public\.user_venue_id\(\)/);
+    assert.match(rls, /p_club_id = public\.user_club_id\(\)/);
+    // Scope helper takes tenant_id + club_id only — optional venue_id is not the gate.
+    assert.match(rls, /coaching_02_scope_allows\(\s*p_tenant_id text,\s*p_club_id text\s*\)/);
+    assert.doesNotMatch(rls, /coaching_02_scope_allows\([^)]*p_venue_id/);
+  });
+
   test("14 actions map 1:1 to Identity permission ids", () => {
     assert.equal(COACHING_ACTION_VALUES.length, 14);
     assert.equal(COACHING_IDENTITY_PERMISSION_VALUES.length, 14);

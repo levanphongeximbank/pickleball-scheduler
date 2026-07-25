@@ -2,16 +2,21 @@
 -- COACHING-02 — Rollback / down strategy
 -- Purpose: Reverse COACHING-02 objects in safe dependency order.
 -- Status: AUTHORED ONLY — Owner-authorized manual run. Not auto-executed.
--- Does NOT drop shared Platform / Identity helpers (user_has_permission,
--- user_venue_id, user_club_id, is_super_admin, permissions catalog rows).
--- Does NOT touch Phase 28 prototype tables (separate legacy disposition).
+-- Does NOT drop shared Platform / Identity helpers.
+-- Does NOT touch Phase 28 prototype tables.
 -- =============================================================================
 
 SET search_path = public, pg_temp;
 
--- 1. Drop RPCs (drops dependent grants)
+-- 1. Drop RPCs (current + prior remediation signatures)
+DROP FUNCTION IF EXISTS public.coaching_apply_attendance_correction(
+  text, text, text, integer, text, text, text, timestamptz, text
+);
 DROP FUNCTION IF EXISTS public.coaching_apply_attendance_correction(
   text, text, text, integer, text, text, text, text, timestamptz, text
+);
+DROP FUNCTION IF EXISTS public.coaching_consume_entitlement(
+  text, text, text, integer, text, text, text, timestamptz
 );
 DROP FUNCTION IF EXISTS public.coaching_consume_entitlement(
   text, text, text, integer, text, text, text, text, timestamptz
@@ -29,7 +34,7 @@ DROP FUNCTION IF EXISTS public.coaching_attendance_corrections_immutable_guard()
 DROP FUNCTION IF EXISTS public.coaching_package_usage_events_immutable_guard();
 DROP FUNCTION IF EXISTS public.coaching_evaluations_submitted_immutable_guard();
 
--- 3. Drop policies (tables must exist; IF EXISTS on policy)
+-- 3. Drop policies
 DROP POLICY IF EXISTS coaching_programs_select ON public.coaching_programs;
 DROP POLICY IF EXISTS coaching_programs_insert ON public.coaching_programs;
 DROP POLICY IF EXISTS coaching_programs_update ON public.coaching_programs;
@@ -72,7 +77,7 @@ DROP POLICY IF EXISTS coaching_evaluations_update ON public.coaching_evaluations
 DROP FUNCTION IF EXISTS public.coaching_02_has_action(text);
 DROP FUNCTION IF EXISTS public.coaching_02_scope_allows(text, text);
 
--- 5. Drop indexes (cascade with tables, but explicit for clarity)
+-- 5. Drop indexes
 DROP INDEX IF EXISTS public.coaching_programs_tenant_club_idx;
 DROP INDEX IF EXISTS public.coaching_programs_tenant_club_status_idx;
 DROP INDEX IF EXISTS public.coaching_coach_references_tenant_club_idx;
@@ -94,7 +99,7 @@ DROP INDEX IF EXISTS public.coaching_usage_tenant_club_entitlement_idx;
 DROP INDEX IF EXISTS public.coaching_evaluations_tenant_club_idx;
 DROP INDEX IF EXISTS public.coaching_evaluations_tenant_club_player_idx;
 
--- 6. Drop tables (children / history first)
+-- 6. Drop tables (history first)
 DROP TABLE IF EXISTS public.coaching_package_usage_events;
 DROP TABLE IF EXISTS public.coaching_attendance_corrections;
 DROP TABLE IF EXISTS public.coaching_evaluations;
@@ -108,7 +113,3 @@ DROP TABLE IF EXISTS public.coaching_enrollments;
 DROP TABLE IF EXISTS public.coaching_coach_player_relationships;
 DROP TABLE IF EXISTS public.coaching_coach_references;
 DROP TABLE IF EXISTS public.coaching_programs;
-
--- NOTE: Permission catalog rows from 15_COACHING_02_PERMISSION_SEED.sql are
--- intentionally retained (Identity catalog). Owner may delete manually if needed.
--- NOTE: Does not DROP public.permissions or any Identity/Platform shared object.

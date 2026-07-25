@@ -28,12 +28,16 @@ const TABLE_PK = Object.freeze({
  *   _tables: Map<string, Map<string, object>>,
  * }}
  */
-export function createFakeCoachingDatabaseClient() {
+export function createFakeCoachingDatabaseClient(options = {}) {
   /** @type {Map<string, Map<string, object>>} */
   const tables = new Map();
   for (const name of Object.values(COACHING_02_TABLES)) {
     tables.set(name, new Map());
   }
+
+  /** Simulated auth.uid() for RPC actor integrity tests. Null = unauthenticated. */
+  let authUid =
+    options.authUid === undefined ? "00000000-0000-4000-8000-000000000001" : options.authUid;
 
   function cloneRow(row) {
     return JSON.parse(JSON.stringify(row));
@@ -117,10 +121,21 @@ export function createFakeCoachingDatabaseClient() {
     const expectedVersion = Number(args.p_expected_version);
     const correctedStatus = String(args.p_corrected_status || "");
     const reason = String(args.p_reason || "").trim();
-    const actorId = String(args.p_actor_id || "").trim();
     const correctionId = String(args.p_correction_id || "").trim();
     const correctedAt = args.p_corrected_at || new Date().toISOString();
     const notes = args.p_notes;
+
+    if (authUid == null || String(authUid).trim() === "") {
+      const err = new Error("COACHING_MISSING_ACTOR");
+      err.code = "42501";
+      throw err;
+    }
+    if (args.p_actor_id != null) {
+      const err = new Error("COACHING_FORBIDDEN_ACTION: forged actor_id rejected");
+      err.code = "42501";
+      throw err;
+    }
+    const actorId = String(authUid);
 
     if (!tenantId || !clubId) {
       const err = new Error("COACHING_MISSING_SCOPE");
@@ -153,7 +168,7 @@ export function createFakeCoachingDatabaseClient() {
       err.code = "22023";
       throw err;
     }
-    if (!reason || !actorId || !correctionId) {
+    if (!reason || !correctionId) {
       const err = new Error("COACHING_INVALID_INPUT");
       err.code = "22023";
       throw err;
@@ -185,7 +200,6 @@ export function createFakeCoachingDatabaseClient() {
     const corrStore = tables.get(COACHING_02_TABLES.ATTENDANCE_CORRECTIONS);
     const corrKey = scopeKey(tenantId, clubId, correctionId);
     if (corrStore.has(corrKey)) {
-      // rollback attendance
       store.set(key, current);
       const err = new Error("duplicate key value violates unique constraint");
       err.code = "23505";
@@ -207,8 +221,19 @@ export function createFakeCoachingDatabaseClient() {
     const playerId = String(args.p_player_id || "").trim();
     const idempotencyKey = String(args.p_idempotency_key || "").trim();
     const usageEventId = String(args.p_usage_event_id || "").trim();
-    const actorId = args.p_actor_id ? String(args.p_actor_id).trim() : null;
     const consumedAt = args.p_consumed_at || new Date().toISOString();
+
+    if (authUid == null || String(authUid).trim() === "") {
+      const err = new Error("COACHING_MISSING_ACTOR");
+      err.code = "42501";
+      throw err;
+    }
+    if (args.p_actor_id != null) {
+      const err = new Error("COACHING_FORBIDDEN_ACTION: forged actor_id rejected");
+      err.code = "42501";
+      throw err;
+    }
+    const actorId = String(authUid);
 
     if (!tenantId || !clubId) {
       const err = new Error("COACHING_MISSING_SCOPE");
@@ -330,6 +355,10 @@ export function createFakeCoachingDatabaseClient() {
 
   return {
     _tables: tables,
+
+    setAuthUid(uid) {
+      authUid = uid;
+    },
 
     resetAllForTests() {
       for (const store of tables.values()) store.clear();

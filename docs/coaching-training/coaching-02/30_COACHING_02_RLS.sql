@@ -6,15 +6,16 @@
 --          public.is_super_admin().
 -- Status: AUTHORED ONLY — do not apply in COACHING-02.
 --
--- Architecture note (Sprint-2 identity):
+-- Architecture note (Sprint-2 identity — same proof as CUSTOMER-03 / CRM 1G):
 --   JWT venue binding: profiles.venue_id via user_venue_id().
 --   JWT club binding: profiles.club_id via user_club_id().
 --   No verified dual-scope user_tenant_id() distinct from venue exists.
---   Therefore policies require:
+--   Therefore JWT tenant scope IS venue-bound:
 --     tenant_id = user_venue_id()
 --     club_id = user_club_id()
---   Rows where tenant_id <> user_venue_id() or club_id <> user_club_id()
---   cannot be accessed via JWT. Fail-closed, not permissive.
+--   Optional column venue_id on Coaching rows is an operational Venue & Court
+--   typed reference — NOT the identity tenant key and NOT equated to tenant_id
+--   by RLS. Rows where tenant_id <> user_venue_id() are inaccessible via JWT.
 --
 -- Fail-closed:
 --   no actor (auth.uid null) → deny
@@ -367,19 +368,11 @@ CREATE POLICY coaching_attendance_insert ON public.coaching_attendance_records
     AND public.coaching_02_has_action('coaching.attendance.record')
   );
 
-CREATE POLICY coaching_attendance_update ON public.coaching_attendance_records
-  FOR UPDATE TO authenticated
-  USING (
-    public.coaching_02_scope_allows(tenant_id, club_id)
-    AND public.coaching_02_has_action('coaching.attendance.correct')
-  )
-  WITH CHECK (
-    public.coaching_02_scope_allows(tenant_id, club_id)
-    AND public.coaching_02_has_action('coaching.attendance.correct')
-  );
+-- NO authenticated UPDATE policy on attendance_records.
+-- Corrections mutate via coaching_apply_attendance_correction (SECURITY DEFINER).
 
 -- -----------------------------------------------------------------------------
--- coaching_attendance_corrections — APPEND-ONLY (no UPDATE/DELETE policies)
+-- coaching_attendance_corrections — SELECT only for authenticated (RPC inserts)
 -- -----------------------------------------------------------------------------
 CREATE POLICY coaching_acorr_select ON public.coaching_attendance_corrections
   FOR SELECT TO authenticated
@@ -388,12 +381,7 @@ CREATE POLICY coaching_acorr_select ON public.coaching_attendance_corrections
     AND public.coaching_02_has_action('coaching.records.read')
   );
 
-CREATE POLICY coaching_acorr_insert ON public.coaching_attendance_corrections
-  FOR INSERT TO authenticated
-  WITH CHECK (
-    public.coaching_02_scope_allows(tenant_id, club_id)
-    AND public.coaching_02_has_action('coaching.attendance.correct')
-  );
+-- NO authenticated INSERT/UPDATE/DELETE policies — RPC-only append.
 
 -- -----------------------------------------------------------------------------
 -- coaching_packages
@@ -440,25 +428,12 @@ CREATE POLICY coaching_entitlements_insert ON public.coaching_package_entitlemen
     AND public.coaching_02_has_action('coaching.entitlement.grant')
   );
 
-CREATE POLICY coaching_entitlements_update ON public.coaching_package_entitlements
-  FOR UPDATE TO authenticated
-  USING (
-    public.coaching_02_scope_allows(tenant_id, club_id)
-    AND (
-      public.coaching_02_has_action('coaching.entitlement.grant')
-      OR public.coaching_02_has_action('coaching.entitlement.consume')
-    )
-  )
-  WITH CHECK (
-    public.coaching_02_scope_allows(tenant_id, club_id)
-    AND (
-      public.coaching_02_has_action('coaching.entitlement.grant')
-      OR public.coaching_02_has_action('coaching.entitlement.consume')
-    )
-  );
+-- NO authenticated UPDATE policy on entitlements.
+-- Consumption mutates via coaching_consume_entitlement (SECURITY DEFINER).
+-- Grant path for authenticated is INSERT-only.
 
 -- -----------------------------------------------------------------------------
--- coaching_package_usage_events — APPEND-ONLY (no UPDATE/DELETE policies)
+-- coaching_package_usage_events — SELECT only for authenticated (RPC inserts)
 -- -----------------------------------------------------------------------------
 CREATE POLICY coaching_usage_select ON public.coaching_package_usage_events
   FOR SELECT TO authenticated
@@ -467,12 +442,7 @@ CREATE POLICY coaching_usage_select ON public.coaching_package_usage_events
     AND public.coaching_02_has_action('coaching.records.read')
   );
 
-CREATE POLICY coaching_usage_insert ON public.coaching_package_usage_events
-  FOR INSERT TO authenticated
-  WITH CHECK (
-    public.coaching_02_scope_allows(tenant_id, club_id)
-    AND public.coaching_02_has_action('coaching.entitlement.consume')
-  );
+-- NO authenticated INSERT/UPDATE/DELETE policies — RPC-only append.
 
 -- -----------------------------------------------------------------------------
 -- coaching_evaluations

@@ -380,7 +380,6 @@ export function createDurableCoachingRepositories(deps = {}) {
               p_player_id: entity.playerId,
               p_idempotency_key: idempotencyKey,
               p_usage_event_id: usageEventId,
-              p_actor_id: options.actorId ?? null,
               p_consumed_at: entity.updatedAt ?? null,
             },
           });
@@ -527,7 +526,6 @@ export function createDurableCoachingRepositories(deps = {}) {
             p_expected_version: expectedVersion,
             p_corrected_status: nextAttendance.status,
             p_reason: correction.reason,
-            p_actor_id: correction.actorId,
             p_correction_id: correction.correctionId,
             p_corrected_at: correction.correctedAt ?? null,
             p_notes: nextAttendance.notes ?? null,
@@ -540,6 +538,7 @@ export function createDurableCoachingRepositories(deps = {}) {
             "coaching_apply_attendance_correction returned incomplete result."
           );
         }
+        // Domain correction.actorId is advisory for in-memory; durable actor is auth.uid.
         return Object.freeze({
           attendance: mapAttendanceRowToDomain(payload.attendance),
           correction: mapCorrectionRowToDomain(payload.correction),

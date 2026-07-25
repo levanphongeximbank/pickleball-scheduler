@@ -97,7 +97,7 @@ WHERE specific_schema = 'public'
   )
 ORDER BY routine_name, grantee;
 
--- No anon table write grants
+-- No anon/PUBLIC table write grants
 SELECT table_name, grantee, privilege_type
 FROM information_schema.table_privileges
 WHERE table_schema = 'public'
@@ -105,6 +105,41 @@ WHERE table_schema = 'public'
   AND grantee IN ('anon', 'PUBLIC')
   AND privilege_type IN ('INSERT', 'UPDATE', 'DELETE', 'TRUNCATE')
 ORDER BY table_name, grantee, privilege_type;
+
+-- Authenticated must NOT have direct INSERT on append-only / RPC-owned tables
+SELECT table_name, privilege_type
+FROM information_schema.table_privileges
+WHERE table_schema = 'public'
+  AND grantee = 'authenticated'
+  AND table_name IN (
+    'coaching_attendance_corrections',
+    'coaching_package_usage_events'
+  )
+  AND privilege_type IN ('INSERT', 'UPDATE', 'DELETE')
+ORDER BY table_name, privilege_type;
+
+-- Authenticated must NOT have direct UPDATE on attendance / entitlements
+SELECT table_name, privilege_type
+FROM information_schema.table_privileges
+WHERE table_schema = 'public'
+  AND grantee = 'authenticated'
+  AND table_name IN (
+    'coaching_attendance_records',
+    'coaching_package_entitlements'
+  )
+  AND privilege_type IN ('UPDATE', 'DELETE')
+ORDER BY table_name, privilege_type;
+
+-- RPC EXECUTE: authenticated yes; service_role/anon/PUBLIC no
+SELECT routine_name, grantee, privilege_type
+FROM information_schema.routine_privileges
+WHERE specific_schema = 'public'
+  AND routine_name IN (
+    'coaching_apply_attendance_correction',
+    'coaching_consume_entitlement'
+  )
+  AND grantee IN ('anon', 'PUBLIC', 'service_role', 'authenticated')
+ORDER BY routine_name, grantee;
 
 -- Append-only triggers present
 SELECT tgname, relname

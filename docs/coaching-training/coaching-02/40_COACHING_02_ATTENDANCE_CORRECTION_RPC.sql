@@ -3,20 +3,25 @@
 -- Purpose: Single transaction boundary for AttendanceCorrectionUnitOfWork.
 -- Status: AUTHORED ONLY — do not apply in COACHING-02.
 --
--- Contract (mirrors COACHING-01 ports.applyCorrection):
---   1. authorize coaching.attendance.correct
---   2. lock/read current attendance in tenant/club scope
---   3. verify expectedVersion
---   4. update attendance status + increment version exactly once
---   5. append correction history
---   6. return canonical result jsonb
--- Any failure rolls back the entire transaction (PL/pgSQL default).
+-- Client-write path: THIS RPC ONLY for attendance correction mutations.
+-- Authenticated callers have no direct UPDATE on attendance_records and no
+-- direct INSERT on attendance_corrections (see 50_COACHING_02_GRANTS.sql).
 --
--- SECURITY DEFINER: fixed search_path; explicit scope + action checks;
--- does not trust payload actor as JWT substitute; REVOKE FROM PUBLIC.
+-- Actor integrity: audit actor_id is ALWAYS auth.uid()::text.
+-- p_actor_id is NOT accepted — forged payload actors are impossible.
+-- service_role EXECUTE is intentionally NOT granted (no trusted-server actor
+-- contract yet — deferred to COACHING-03).
 -- =============================================================================
 
 SET search_path = public, pg_temp;
+
+-- Drop prior signatures (remediation may change arity)
+DROP FUNCTION IF EXISTS public.coaching_apply_attendance_correction(
+  text, text, text, integer, text, text, text, text, timestamptz, text
+);
+DROP FUNCTION IF EXISTS public.coaching_apply_attendance_correction(
+  text, text, text, integer, text, text, text, timestamptz, text
+);
 
 CREATE OR REPLACE FUNCTION public.coaching_apply_attendance_correction(
   p_tenant_id text,
@@ -25,7 +30,6 @@ CREATE OR REPLACE FUNCTION public.coaching_apply_attendance_correction(
   p_expected_version integer,
   p_corrected_status text,
   p_reason text,
-  p_actor_id text,
   p_correction_id text,
   p_corrected_at timestamptz DEFAULT NULL,
   p_notes text DEFAULT NULL
@@ -37,6 +41,7 @@ SET search_path = public, pg_temp
 AS $$
 DECLARE
   v_uid uuid := auth.uid();
+  v_actor_id text;
   v_row public.coaching_attendance_records%ROWTYPE;
   v_corrected_at timestamptz;
   v_now timestamptz := now();
@@ -47,32 +52,32 @@ BEGIN
       USING ERRCODE = '42501';
   END IF;
 
+  v_actor_id := v_uid::text;
+
   IF length(trim(coalesce(p_tenant_id, ''))) = 0
      OR length(trim(coalesce(p_club_id, ''))) = 0 THEN
     RAISE EXCEPTION 'COACHING_MISSING_SCOPE'
       USING ERRCODE = '42501';
   END IF;
 
-  -- Prefer JWT-bound scope when helpers are available; service_role may pass
-  -- explicit scope after application-layer authorization.
-  IF public.user_venue_id() IS NOT NULL AND public.user_club_id() IS NOT NULL THEN
-    IF p_tenant_id <> public.user_venue_id() OR p_club_id <> public.user_club_id() THEN
-      RAISE EXCEPTION 'COACHING_FORBIDDEN_SCOPE'
-        USING ERRCODE = '42501';
-    END IF;
+  -- Fail-closed JWT scope: tenant_id binds to user_venue_id (Sprint-2),
+  -- club_id binds to user_club_id. No service_role bypass path.
+  IF public.user_venue_id() IS NULL OR public.user_club_id() IS NULL THEN
+    RAISE EXCEPTION 'COACHING_MISSING_SCOPE'
+      USING ERRCODE = '42501';
+  END IF;
+
+  IF p_tenant_id <> public.user_venue_id() OR p_club_id <> public.user_club_id() THEN
+    RAISE EXCEPTION 'COACHING_FORBIDDEN_SCOPE'
+      USING ERRCODE = '42501';
   END IF;
 
   IF NOT (
     public.is_super_admin()
     OR public.user_has_permission('coaching.attendance.correct')
   ) THEN
-    -- service_role bypasses RLS but we still require an explicit permission
-    -- when JWT helpers resolve; when helpers are null (service path), the
-    -- calling adapter MUST have already authorized. Detect service path:
-    IF public.user_venue_id() IS NOT NULL OR public.user_club_id() IS NOT NULL THEN
-      RAISE EXCEPTION 'COACHING_FORBIDDEN_ACTION'
-        USING ERRCODE = '42501';
-    END IF;
+    RAISE EXCEPTION 'COACHING_FORBIDDEN_ACTION'
+      USING ERRCODE = '42501';
   END IF;
 
   IF p_expected_version IS NULL OR p_expected_version < 1 THEN
@@ -87,11 +92,6 @@ BEGIN
 
   IF length(trim(coalesce(p_reason, ''))) = 0 THEN
     RAISE EXCEPTION 'COACHING_INVALID_INPUT: reason required'
-      USING ERRCODE = '22023';
-  END IF;
-
-  IF length(trim(coalesce(p_actor_id, ''))) = 0 THEN
-    RAISE EXCEPTION 'COACHING_INVALID_INPUT: actor_id required'
       USING ERRCODE = '22023';
   END IF;
 
@@ -163,7 +163,7 @@ BEGIN
     v_row.status,
     p_corrected_status,
     trim(p_reason),
-    trim(p_actor_id),
+    v_actor_id,
     v_corrected_at,
     v_now,
     1
@@ -185,19 +185,23 @@ END;
 $$;
 
 COMMENT ON FUNCTION public.coaching_apply_attendance_correction(
-  text, text, text, integer, text, text, text, text, timestamptz, text
+  text, text, text, integer, text, text, text, timestamptz, text
 ) IS
-  'COACHING-02 atomic attendance correction: versioned update + append-only correction in one transaction.';
+  'COACHING-02 atomic attendance correction. Actor from auth.uid() only. Authenticated EXECUTE; no service_role grant.';
 
 REVOKE ALL ON FUNCTION public.coaching_apply_attendance_correction(
-  text, text, text, integer, text, text, text, text, timestamptz, text
+  text, text, text, integer, text, text, text, timestamptz, text
 ) FROM PUBLIC;
 
 REVOKE ALL ON FUNCTION public.coaching_apply_attendance_correction(
-  text, text, text, integer, text, text, text, text, timestamptz, text
+  text, text, text, integer, text, text, text, timestamptz, text
 ) FROM anon;
 
 REVOKE ALL ON FUNCTION public.coaching_apply_attendance_correction(
-  text, text, text, integer, text, text, text, text, timestamptz, text
+  text, text, text, integer, text, text, text, timestamptz, text
 ) FROM authenticated;
--- EXECUTE granted to service_role / authenticated in 50_COACHING_02_GRANTS.sql
+
+REVOKE ALL ON FUNCTION public.coaching_apply_attendance_correction(
+  text, text, text, integer, text, text, text, timestamptz, text
+) FROM service_role;
+-- EXECUTE granted to authenticated only in 50_COACHING_02_GRANTS.sql

@@ -488,3 +488,79 @@ describe("COACHING-02 durable adapter — error typing", () => {
     }
   });
 });
+
+describe("COACHING-02 durable adapter — actor integrity", () => {
+  test("correction actor_id comes from auth.uid; forged p_actor_id is rejected", async () => {
+    const AUTH = "11111111-1111-4111-8111-111111111111";
+    const db = createFakeCoachingDatabaseClient({ authUid: AUTH });
+    const repos = createDurableCoachingRepositories({ db });
+    const attendance = createAttendanceRecord(
+      {
+        ...SCOPE,
+        sessionId: "sess_actor",
+        playerId: "player_1",
+        status: "present",
+        attendanceId: "att_actor",
+      },
+      deps()
+    );
+    await repos.attendance.save(attendance);
+    const { attendance: next, correction } = correctAttendanceRecord(
+      attendance,
+      {
+        correctedStatus: "late",
+        reason: "late arrival",
+        actorId: "forged-should-be-ignored",
+        correctionId: "acorr_actor",
+      },
+      deps(),
+      { expectedVersion: 1 }
+    );
+    const result = await repos.attendanceCorrectionUnitOfWork.applyCorrection({
+      scope: SCOPE,
+      attendance: next,
+      correction,
+      expectedVersion: 1,
+    });
+    assert.equal(result.correction.actorId, AUTH);
+    assert.notEqual(result.correction.actorId, "forged-should-be-ignored");
+
+    await assert.rejects(
+      () =>
+        db.rpc({
+          fn: "coaching_apply_attendance_correction",
+          args: {
+            p_tenant_id: SCOPE.tenantId,
+            p_club_id: SCOPE.clubId,
+            p_attendance_id: "att_actor",
+            p_expected_version: 2,
+            p_corrected_status: "excused",
+            p_reason: "x",
+            p_actor_id: "forged",
+            p_correction_id: "acorr_forged",
+          },
+        }),
+      (err) => /forged actor_id|FORBIDDEN/i.test(String(err.message || err))
+    );
+  });
+
+  test("RPC rejects missing auth.uid", async () => {
+    const db = createFakeCoachingDatabaseClient({ authUid: null });
+    await assert.rejects(
+      () =>
+        db.rpc({
+          fn: "coaching_consume_entitlement",
+          args: {
+            p_tenant_id: SCOPE.tenantId,
+            p_club_id: SCOPE.clubId,
+            p_entitlement_id: "ent_x",
+            p_expected_version: 1,
+            p_player_id: "p1",
+            p_idempotency_key: "k",
+            p_usage_event_id: "u",
+          },
+        }),
+      (err) => /COACHING_MISSING_ACTOR/i.test(String(err.message || err))
+    );
+  });
+});

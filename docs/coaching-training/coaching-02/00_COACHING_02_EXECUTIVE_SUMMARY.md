@@ -17,6 +17,7 @@ Author durable persistence adapter, canonical SQL schema, RLS authorization pack
 | `02_PHASE_28_DRIFT_AND_DISPOSITION.md` | Phase 28 drift matrix |
 | `03_RLS_AND_AUTHORIZATION_DESIGN.md` | Fail-closed RLS |
 | `04_IDENTITY_PERMISSION_HANDOFF.md` | 14 action → Identity ids |
+| `05_TENANT_VENUE_SCOPE_RESOLUTION.md` | Conclusion A — JWT tenant = venue-bound |
 | `10_COACHING_02_TABLES.sql` | Forward schema |
 | `15_COACHING_02_PERMISSION_SEED.sql` | Catalog seed (no role grants) |
 | `20_COACHING_02_INDEXES.sql` | Tenant/club indexes |

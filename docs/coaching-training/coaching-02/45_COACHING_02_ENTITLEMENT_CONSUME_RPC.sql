@@ -1,14 +1,24 @@
 -- =============================================================================
 -- COACHING-02 — Atomic package entitlement consumption RPC
--- Purpose: Prevent negative remaining, double consumption, duplicate
---          idempotency keys, cross-player/club use, validity-window violations,
---          inactive package use, and lost updates — in one transaction.
+-- Purpose: Single client-write path for entitlement consumption + usage ledger.
 -- Status: AUTHORED ONLY — do not apply in COACHING-02.
--- Usage history is append-only via coaching_package_usage_events.
--- Does NOT settle Finance invoices/payments.
+--
+-- Authenticated callers have no UPDATE on coaching_package_entitlements and no
+-- INSERT on coaching_package_usage_events (see 50_COACHING_02_GRANTS.sql).
+-- Grant lifecycle uses INSERT-only on entitlements for authenticated clients.
+--
+-- Actor integrity: usage actor_id is ALWAYS auth.uid()::text.
+-- No p_actor_id parameter. service_role EXECUTE NOT granted (deferred).
 -- =============================================================================
 
 SET search_path = public, pg_temp;
+
+DROP FUNCTION IF EXISTS public.coaching_consume_entitlement(
+  text, text, text, integer, text, text, text, text, timestamptz
+);
+DROP FUNCTION IF EXISTS public.coaching_consume_entitlement(
+  text, text, text, integer, text, text, text, timestamptz
+);
 
 CREATE OR REPLACE FUNCTION public.coaching_consume_entitlement(
   p_tenant_id text,
@@ -18,7 +28,6 @@ CREATE OR REPLACE FUNCTION public.coaching_consume_entitlement(
   p_player_id text,
   p_idempotency_key text,
   p_usage_event_id text,
-  p_actor_id text DEFAULT NULL,
   p_consumed_at timestamptz DEFAULT NULL
 )
 RETURNS jsonb
@@ -28,6 +37,7 @@ SET search_path = public, pg_temp
 AS $$
 DECLARE
   v_uid uuid := auth.uid();
+  v_actor_id text;
   v_ent public.coaching_package_entitlements%ROWTYPE;
   v_pkg public.coaching_packages%ROWTYPE;
   v_existing_usage public.coaching_package_usage_events%ROWTYPE;
@@ -42,27 +52,30 @@ BEGIN
       USING ERRCODE = '42501';
   END IF;
 
+  v_actor_id := v_uid::text;
+
   IF length(trim(coalesce(p_tenant_id, ''))) = 0
      OR length(trim(coalesce(p_club_id, ''))) = 0 THEN
     RAISE EXCEPTION 'COACHING_MISSING_SCOPE'
       USING ERRCODE = '42501';
   END IF;
 
-  IF public.user_venue_id() IS NOT NULL AND public.user_club_id() IS NOT NULL THEN
-    IF p_tenant_id <> public.user_venue_id() OR p_club_id <> public.user_club_id() THEN
-      RAISE EXCEPTION 'COACHING_FORBIDDEN_SCOPE'
-        USING ERRCODE = '42501';
-    END IF;
+  IF public.user_venue_id() IS NULL OR public.user_club_id() IS NULL THEN
+    RAISE EXCEPTION 'COACHING_MISSING_SCOPE'
+      USING ERRCODE = '42501';
+  END IF;
+
+  IF p_tenant_id <> public.user_venue_id() OR p_club_id <> public.user_club_id() THEN
+    RAISE EXCEPTION 'COACHING_FORBIDDEN_SCOPE'
+      USING ERRCODE = '42501';
   END IF;
 
   IF NOT (
     public.is_super_admin()
     OR public.user_has_permission('coaching.entitlement.consume')
   ) THEN
-    IF public.user_venue_id() IS NOT NULL OR public.user_club_id() IS NOT NULL THEN
-      RAISE EXCEPTION 'COACHING_FORBIDDEN_ACTION'
-        USING ERRCODE = '42501';
-    END IF;
+    RAISE EXCEPTION 'COACHING_FORBIDDEN_ACTION'
+      USING ERRCODE = '42501';
   END IF;
 
   IF p_expected_version IS NULL OR p_expected_version < 1 THEN
@@ -87,7 +100,6 @@ BEGIN
 
   v_at := coalesce(p_consumed_at, v_now);
 
-  -- Idempotent replay: return prior result without mutating again
   SELECT *
   INTO v_existing_usage
   FROM public.coaching_package_usage_events
@@ -222,7 +234,7 @@ BEGIN
     1,
     v_next_remaining,
     trim(p_idempotency_key),
-    NULLIF(trim(coalesce(p_actor_id, '')), ''),
+    v_actor_id,
     v_at,
     v_now,
     1
@@ -245,18 +257,22 @@ END;
 $$;
 
 COMMENT ON FUNCTION public.coaching_consume_entitlement(
-  text, text, text, integer, text, text, text, text, timestamptz
+  text, text, text, integer, text, text, text, timestamptz
 ) IS
-  'COACHING-02 atomic entitlement consume + append-only usage event with idempotency key.';
+  'COACHING-02 atomic entitlement consume. Actor from auth.uid() only. Authenticated EXECUTE; no service_role grant.';
 
 REVOKE ALL ON FUNCTION public.coaching_consume_entitlement(
-  text, text, text, integer, text, text, text, text, timestamptz
+  text, text, text, integer, text, text, text, timestamptz
 ) FROM PUBLIC;
 
 REVOKE ALL ON FUNCTION public.coaching_consume_entitlement(
-  text, text, text, integer, text, text, text, text, timestamptz
+  text, text, text, integer, text, text, text, timestamptz
 ) FROM anon;
 
 REVOKE ALL ON FUNCTION public.coaching_consume_entitlement(
-  text, text, text, integer, text, text, text, text, timestamptz
+  text, text, text, integer, text, text, text, timestamptz
 ) FROM authenticated;
+
+REVOKE ALL ON FUNCTION public.coaching_consume_entitlement(
+  text, text, text, integer, text, text, text, timestamptz
+) FROM service_role;
