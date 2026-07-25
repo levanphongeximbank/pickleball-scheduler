@@ -17,6 +17,7 @@ dashboard/reporting data contracts, and historical/trend analysis for PICK_VN.
 | Query / projection runtime (I&A-03) | `src/features/intelligence-analytics/runtime` |
 | Dashboard / reporting data contracts (I&A-04) | `src/features/intelligence-analytics/dashboard-reporting` |
 | Historical / trend analysis (I&A-05) | `src/features/intelligence-analytics/historical-trend` |
+| Competition analytics (I&A-06) | `src/features/intelligence-analytics/competition-analytics` |
 | Dashboard UI / localStorage analytics | `src/features/dashboard-analytics` (legacy active; not foundation) |
 | Statistics UI aggregations | `src/features/statistics` (legacy active; not foundation) |
 | Platform Core | CLOSED — not modified, not imported |
@@ -84,6 +85,21 @@ dashboard/reporting data contracts, and historical/trend analysis for PICK_VN.
 - Provenance / freshness / stale propagation
 - Read-only historical facade + in-memory certification source
 
+**In scope (I&A-06):**
+
+- Competition analytics context / source request / snapshot envelope
+- Explicit competition analytical fact contracts (participant, entry, registration,
+  division, category, team, roster, match, schedule, assignment, result,
+  standings/ranking snapshot references)
+- Tenant / competition / version isolation guards (fail closed)
+- Versioned competition metric catalog (registry-compatible)
+- Deterministic summary, distribution, progress, result-acceptance,
+  schedule-adherence, duration, and assignment projections
+- Historical observation composition via I&A-05 contracts
+- Presentation-neutral dashboard/report payload composition via I&A-04
+- Read-only Competition Analytics facade + in-memory certification source
+- Typed competition analytics errors / warnings / provenance / completeness
+
 **Out of scope:**
 
 - Database / Supabase / SQL / migrations
@@ -93,6 +109,8 @@ dashboard/reporting data contracts, and historical/trend analysis for PICK_VN.
 - Export generator / scheduler / email delivery runtime
 - Production metric catalog migration
 - Competition / Finance / Ranking / Rating / CRM business rules
+- Scoring / winner / standings / tie-break / ranking recalculation
+- Eligibility / seeding / scheduling / assignment decision engines
 - AI inference / paid AI services / AI narrative / forecasting
 - Alert delivery / persistence
 - Platform Core changes
@@ -172,6 +190,27 @@ Compare → Change → Trend analysis
 HistoricalTrendResult
 ```
 
+## Competition analytics flow (I&A-06)
+
+```text
+Competition Engine canonical facade/event/read model
+                         │
+                         ▼
+      CompetitionAnalyticsSourceAdapter
+                         │
+                         ▼
+      Explicit Competition Analytical Facts
+                         │
+                         ▼
+ Validation → Tenant/Competition Guard → Projection
+                         │
+                         ▼
+ Summary / Distribution / Progress / Historical Metrics
+                         │
+                         ▼
+ CompetitionAnalyticsResult + Dashboard/Report Payloads
+```
+
 ## Dependency rules
 
 - No import from `src/core/platform/**`
@@ -182,6 +221,8 @@ HistoricalTrendResult
 - Runtime does not own module business calculations
 - Dashboard/report contracts do not own UI, export engines, or schedulers
 - Historical/trend does not own persistence, ETL, forecasting, or module adapters
+- Competition analytics does not recalculate scoring / standings / ranking /
+  eligibility / scheduling / assignment decisions
 - Analytics output always sets `isCanonicalModuleState: false`
 
 ## Roadmap (structural)
@@ -190,8 +231,8 @@ HistoricalTrendResult
 2. I&A-02 Metric Registry and Definition Governance ← certified
 3. I&A-03 Analytics Query and Projection Runtime ← certified
 4. I&A-04 Dashboard and Reporting Data Contracts ← certified
-5. I&A-05 Historical and Trend Analysis ← current
-6. I&A-06 Competition Analytics
+5. I&A-05 Historical and Trend Analysis ← certified
+6. I&A-06 Competition Analytics ← current
 7. I&A-07 Venue, Court and Club Analytics
 8. I&A-08 Customer and Player Analytics
 9. I&A-09 Finance, Ranking and Performance Analytics

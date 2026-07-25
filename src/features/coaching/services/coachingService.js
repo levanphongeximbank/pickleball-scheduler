@@ -1,3 +1,19 @@
+/**
+ * LEGACY / PROTOTYPE PERSISTENCE — NOT CANONICAL
+ *
+ * Storage key: pickleball-coaching-v1::{clubId}
+ *
+ * Classification: COMPATIBILITY_ONLY (see COMPATIBILITY.md).
+ * This module is the pre-COACHING-01 localStorage prototype used by existing UI pages.
+ *
+ * COACHING-01 rules:
+ * - Do NOT delete this file.
+ * - Do NOT treat this as a Coaching repository port implementation.
+ * - Do NOT import this from canonical domain / application / repository layers.
+ * - Canonical persistence cutover is deferred to COACHING-04.
+ * - Canonical SoT for domain foundation lives under domain/, application/, repositories/.
+ */
+
 const STORAGE_KEY_PREFIX = "pickleball-coaching-v1";
 
 function storageKey(clubId) {
@@ -191,3 +207,6 @@ export function getCoachingSummary(clubId) {
     evaluationCount: store.evaluations.length,
   };
 }
+
+/** @deprecated Use canonical domain — localStorage is legacy prototype only. */
+export const COACHING_LEGACY_STORAGE_KEY_PREFIX = STORAGE_KEY_PREFIX;
