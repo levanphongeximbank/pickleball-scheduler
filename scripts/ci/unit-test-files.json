@@ -66,6 +66,7 @@
   "tests/experience-channels-ec-01-public-portal-readiness.test.js",
   "tests/experience-channels-ec-02-public-portal-presentation.test.js",
   "tests/experience-channels-ec-03-public-portal-data-source-honesty.test.js",
+  "tests/experience-channels-ec-04-public-portal-list-surface-data-honesty.test.js",
   "tests/engine.integration.test.js",
   "tests/debug-panel.test.js",
   "tests/club.test.js",
