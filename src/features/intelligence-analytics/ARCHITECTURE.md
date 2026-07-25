@@ -19,6 +19,7 @@ dashboard/reporting data contracts, and historical/trend analysis for PICK_VN.
 | Historical / trend analysis (I&A-05) | `src/features/intelligence-analytics/historical-trend` |
 | Competition analytics (I&A-06) | `src/features/intelligence-analytics/competition-analytics` |
 | Venue / Court / Club analytics (I&A-07) | `src/features/intelligence-analytics/venue-court-club-analytics` |
+| Customer / Player analytics (I&A-08) | `src/features/intelligence-analytics/customer-player-analytics` |
 | Dashboard UI / localStorage analytics | `src/features/dashboard-analytics` (legacy active; not foundation) |
 | Statistics UI aggregations | `src/features/statistics` (legacy active; not foundation) |
 | Platform Core | CLOSED — not modified, not imported |
@@ -115,6 +116,21 @@ dashboard/reporting data contracts, and historical/trend analysis for PICK_VN.
 - Read-only Venue/Court/Club Analytics facade + in-memory certification source
 - Typed venue/court/club analytics errors / warnings / provenance / completeness
 
+**In scope (I&A-08):**
+
+- Customer / Player analytics context / source request / snapshot envelope
+- Privacy-safe customer, player, lifecycle, profile-completeness, activity,
+  customer-player link, competition-participation, and club-membership fact
+  contracts (opaque IDs only; no PII fields)
+- Tenant / customer / player isolation guards (fail closed)
+- Versioned customer/player metric catalog (registry-compatible)
+- Deterministic inventory, lifecycle/status, profile-completeness, linkage,
+  activity-volume, participation, and membership descriptive projections
+- Historical observation composition via I&A-05 contracts
+- Presentation-neutral dashboard/report payload composition via I&A-04
+- Read-only Customer/Player Analytics facade + in-memory certification source
+- Typed customer/player analytics errors / warnings / provenance / completeness
+
 **Out of scope:**
 
 - Database / Supabase / SQL / migrations
@@ -123,11 +139,15 @@ dashboard/reporting data contracts, and historical/trend analysis for PICK_VN.
 - Dashboard UI, report renderer, route wiring
 - Export generator / scheduler / email delivery runtime
 - Production metric catalog migration
-- Competition / Finance / Ranking / Rating / CRM business rules
+- Competition / Finance / Ranking / Rating / CRM / Customer / Player business rules
 - Scoring / winner / standings / tie-break / ranking recalculation
 - Eligibility / seeding / scheduling / assignment decision engines
 - Availability / booking-conflict / operating-hours / membership authorization
   recalculation
+- Customer identity merge / deduplication / inferred customer-player matching
+- CRM conversion / lead scoring / marketing segmentation / CLV
+- Player skill / rating / ranking / performance calculation
+- PII inspection for profile-completeness (explicit source facts only)
 - Finance revenue / pricing / ledger calculation
 - AI inference / paid AI services / AI narrative / forecasting
 - Alert delivery / persistence
@@ -253,6 +273,30 @@ Venue/Court/Club canonical facade, events or read models
  VenueCourtClubAnalyticsResult
 ```
 
+## Customer / Player analytics flow (I&A-08)
+
+```text
+Customer / Player canonical facades, snapshots or events
+                         │
+                         ▼
+        CustomerPlayerAnalyticsSourceAdapter
+                         │
+                         ▼
+       Privacy-Safe Explicit Analytical Facts
+                         │
+                         ▼
+ Tenant / Customer / Player Guard → Validation
+                         │
+                         ▼
+ Inventory / Lifecycle / Linkage / Activity Projections
+                         │
+                         ▼
+ Historical Series + Dashboard/Report Payloads
+                         │
+                         ▼
+            CustomerPlayerAnalyticsResult
+```
+
 ## Dependency rules
 
 - No import from `src/core/platform/**`
@@ -267,6 +311,9 @@ Venue/Court/Club canonical facade, events or read models
   eligibility / scheduling / assignment decisions
 - Venue/Court/Club analytics does not recalculate availability, booking conflict,
   operating-hours validity, membership eligibility, roles/permissions, or revenue
+- Customer/Player analytics does not merge identities, infer customer-player
+  links, inspect PII for completeness, calculate CRM conversion / CLV /
+  rating / ranking / performance / eligibility, or accept PII fact fields
 - Analytics output always sets `isCanonicalModuleState: false`
 
 ## Roadmap (structural)
@@ -277,8 +324,8 @@ Venue/Court/Club canonical facade, events or read models
 4. I&A-04 Dashboard and Reporting Data Contracts ← certified
 5. I&A-05 Historical and Trend Analysis ← certified
 6. I&A-06 Competition Analytics ← certified
-7. I&A-07 Venue, Court and Club Analytics ← current
-8. I&A-08 Customer and Player Analytics
+7. I&A-07 Venue, Court and Club Analytics ← certified
+8. I&A-08 Customer and Player Analytics ← current
 9. I&A-09 Finance, Ranking and Performance Analytics
 10. I&A-10 Operational Alerts and Insights
 11. I&A-11 Privacy, Tenant Isolation and Access Certification
