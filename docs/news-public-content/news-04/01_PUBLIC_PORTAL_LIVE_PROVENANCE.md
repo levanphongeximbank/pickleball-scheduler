@@ -61,7 +61,7 @@ Portal PREVIEW skip is defense in depth only.
 
 ## Staging / Production
 
-- Staging backend: NEWS-03 certified; NEWS-04 LIVE-only RPC remediation **authored, not yet applied**
+- Staging backend: NEWS-03 certified; NEWS-04 LIVE-only RPC remediation **applied + live certified** — see `NEWS_04_STAGING_PUBLIC_RPC_CERTIFICATION.md`
 - Production: **not touched**; `productionBlocked: true`
 
 ## NEWS-05 exit criteria (next)

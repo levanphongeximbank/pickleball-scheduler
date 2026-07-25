@@ -26,17 +26,9 @@ Portal `getPublicNews` keeps PREVIEW filtering as **defense in depth** only.
 
 ## Staging apply policy
 
-**NOT applied in this remediation commit.**
+**Applied on Staging** with Owner GO `NEWS_04_OWNER_GO_STAGING_PUBLIC_RPC_LIVE_ONLY`.
 
-Staging already has NEWS-03 applied function body. Applying NEWS-04 SQL requires a **new Owner GO** (beyond `NEWS_03_OWNER_GO_STAGING_ONLY`).
-
-Suggested confirm phrase (Owner decides): `NEWS_04_OWNER_GO_STAGING_PUBLIC_RPC_LIVE_ONLY`
-
-Until Owner GO + Staging apply:
-
-- Authored SQL/tests certify the contract in-repo
-- Live Staging may still run the pre-remediation RPC body
-- App adapter fail-closed + portal defense reduce browser leak risk
+See certification: `NEWS_04_STAGING_PUBLIC_RPC_CERTIFICATION.md`
 
 ## Production
 
