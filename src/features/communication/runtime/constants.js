@@ -21,7 +21,7 @@ export const COMMUNICATION_RUNTIME_PHASE = Object.freeze({
   localDemoReady: true,
   productionGatewayWired: true,
   remotePersistenceActivated: false,
-  clientRlsPolicy: "CLUB_SELECT_AUTHORED_NOT_APPLIED",
+  clientRlsPolicy: "CLUB_SELECT_ACTIVE_ON_STAGING",
   realtimePublicationEnabled: false,
   productionBlocked: true,
 });

@@ -367,6 +367,8 @@
   "tests/communication-comms06-messaging-experience.test.js",
   "tests/communication-comms07-integration-final-certification.test.js",
   "tests/communication-comms-act-01-staging-activation-readiness.test.js",
+  "tests/communication-comms-act-03-authorization-client-rls.test.js",
+  "tests/communication-comms-act-04-staging-club-select-rls.test.js",
   "tests/cm-01-competition-definition.test.js",
   "tests/cm-02-template-instantiation.test.js",
   "tests/cm-03-competition-versioning.test.js",

@@ -52,7 +52,7 @@ test("adapter factory maps ports and refuses missing client", () => {
   const client = createFakeSupabaseCommunicationClient();
   const repos = createSupabaseCommunicationRepositories(client);
   assert.equal(repos.requiresTrustedBackendClient, true);
-  assert.equal(repos.clientRlsPolicy, "CLUB_SELECT_AUTHORED_NOT_APPLIED");
+  assert.equal(repos.clientRlsPolicy, "CLUB_SELECT_ACTIVE_ON_STAGING");
   assert.equal(matchesDirectConversationRepository(repos.directConversations), true);
   assert.equal(matchesClubChannelRepository(repos.clubChannels), true);
   assert.equal(matchesCommunityMessageRepository(repos.communityMessages), true);

@@ -558,7 +558,7 @@ test("activation snapshot remains blocked for remote gates", () => {
   assert.equal(snap.REALTIME_ACTIVATION_READY, false);
   assert.equal(
     COMMUNICATION_FOUNDATION_PHASE.clientRlsPolicy,
-    "CLUB_SELECT_AUTHORED_NOT_APPLIED"
+    "CLUB_SELECT_ACTIVE_ON_STAGING"
   );
 });
 

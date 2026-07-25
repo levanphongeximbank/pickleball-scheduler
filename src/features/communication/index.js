@@ -30,7 +30,7 @@ export const COMMUNICATION_FOUNDATION_PHASE = Object.freeze({
   hasRealtime: true,
   persistenceApplied: false,
   realtimePublicationEnabled: false,
-  clientRlsPolicy: "CLUB_SELECT_AUTHORED_NOT_APPLIED",
+  clientRlsPolicy: "CLUB_SELECT_ACTIVE_ON_STAGING",
   hasUi: true,
   /** In-memory doubles exist for unit tests / demo gateway only — not production SoT. */
   hasInMemoryTestDoubles: true,
