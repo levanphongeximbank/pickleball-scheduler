@@ -21,6 +21,7 @@ dashboard/reporting data contracts, and historical/trend analysis for PICK_VN.
 | Venue / Court / Club analytics (I&A-07) | `src/features/intelligence-analytics/venue-court-club-analytics` |
 | Customer / Player analytics (I&A-08) | `src/features/intelligence-analytics/customer-player-analytics` |
 | Finance / Ranking / Performance analytics (I&A-09) | `src/features/intelligence-analytics/finance-ranking-performance-analytics` |
+| Operational Alerts and Insights (I&A-10) | `src/features/intelligence-analytics/operational-alerts-insights` |
 | Dashboard UI / localStorage analytics | `src/features/dashboard-analytics` (legacy active; not foundation) |
 | Statistics UI aggregations | `src/features/statistics` (legacy active; not foundation) |
 | Platform Core | CLOSED — not modified, not imported |
@@ -164,6 +165,23 @@ dashboard/reporting data contracts, and historical/trend analysis for PICK_VN.
   / completeness
 - PII and payment-credential rejection at the fact-creation boundary
 
+**In scope (I&A-10):**
+
+- Operational signal contracts (identity, value/state/trend, provenance,
+  freshness, completeness) referencing merged I&A metric identities
+- Alert rule / insight rule contracts with explicit severity and evaluation type
+- Threshold / state / trend / missing-data / freshness condition contracts
+- Immutable foundation rule catalog (in-memory only)
+- Tenant / entity / currency / ranking / metric-version isolation guards
+- Deterministic evaluation, deduplication, correlation, suppression/cooldown,
+  and lifecycle projection (OPEN / ACKNOWLEDGED / RESOLVED / EXPIRED / SUPPRESSED)
+- Explainable alert and insight payloads (`isCanonicalDomainState: false`,
+  `isDeliveredNotification: false`)
+- Future-safe `AlertNotificationCandidate` without recipient/channel/delivery
+- Presentation-neutral alert/insight dashboard/report payload composition via I&A-04
+- Read-only Operational Alerts and Insights facade + in-memory certification source
+- Typed operational alerts errors / warnings / provenance / completeness
+
 **Out of scope:**
 
 - Database / Supabase / SQL / migrations
@@ -188,7 +206,8 @@ dashboard/reporting data contracts, and historical/trend analysis for PICK_VN.
 - Inferring receivable overdue status from due dates
 - Inferring match winner from raw score
 - AI inference / paid AI services / AI narrative / forecasting
-- Alert delivery / persistence
+- Alert delivery / persistence / notification recipient resolution
+- Background evaluation scheduler / remediation / escalation execution
 - Platform Core changes
 
 ## Runtime flow (I&A-03)
@@ -360,6 +379,30 @@ Finance / Ranking / Rating / Competition canonical facades, snapshots or events
       FinanceRankingPerformanceAnalyticsResult
 ```
 
+## Operational alerts / insights flow (I&A-10)
+
+```text
+I&A-01..09 metrics, observations, trends and explicit facts
+                         │
+                         ▼
+        OperationalSignalSourceAdapter
+                         │
+                         ▼
+   Signal Normalization + Scope/Freshness Validation
+                         │
+                         ▼
+ Alert Rule / Insight Rule Deterministic Evaluation
+                         │
+                         ▼
+ Deduplication / Suppression / Lifecycle Projection
+                         │
+                         ▼
+ AlertResult / InsightResult / Dashboard Payloads
+                         │
+                         ▼
+ Read-only consumer boundary for future Notification adapter
+```
+
 ## Dependency rules
 
 - No import from `src/core/platform/**`
@@ -393,8 +436,8 @@ Finance / Ranking / Rating / Competition canonical facades, snapshots or events
 6. I&A-06 Competition Analytics ← certified
 7. I&A-07 Venue, Court and Club Analytics ← certified
 8. I&A-08 Customer and Player Analytics ← certified
-9. I&A-09 Finance, Ranking and Performance Analytics ← current
-10. I&A-10 Operational Alerts and Insights ← next
+9. I&A-09 Finance, Ranking and Performance Analytics ← certified
+10. I&A-10 Operational Alerts and Insights ← current
 11. I&A-11 Privacy, Tenant Isolation and Access Certification
 12. I&A-12 AI and Advanced Intelligence Readiness
 13. I&A-13 Integration Hardening and Final Certification
