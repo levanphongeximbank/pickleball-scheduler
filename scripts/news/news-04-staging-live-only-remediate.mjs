@@ -489,7 +489,7 @@ export async function runNews04StagingRemediation(options = {}) {
   }
 
   const sqlHash = sha256File(sqlAbs);
-  const git = probeNews03GitFacts(repoRoot);
+  const git = probeNews03GitFacts({ repoRoot });
   const identity = inspectNews03EnvironmentIdentity(env);
 
   const report = {
@@ -508,7 +508,7 @@ export async function runNews04StagingRemediation(options = {}) {
     git: {
       branch: git.branch,
       head: git.head,
-      clean: git.clean,
+      clean: git.workingTreeClean === true,
     },
     identityOk: identity.ok,
     identityErrors: identity.errors,
@@ -628,7 +628,7 @@ export async function runNews04StagingRemediation(options = {}) {
       writeEvidence(repoRoot, "NEWS_04_BLOCKED.json", report);
       return report;
     }
-    if (!git.clean) {
+    if (git.workingTreeClean !== true) {
       report.verdict = "NEWS_04_STAGING_LIVE_ONLY_APPLY_BLOCKED";
       report.reason = "Git working tree is not clean.";
       writeEvidence(repoRoot, "NEWS_04_BLOCKED.json", report);
