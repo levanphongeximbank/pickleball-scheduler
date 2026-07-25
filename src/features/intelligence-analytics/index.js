@@ -12,6 +12,7 @@
  * I&A-09 — Finance, Ranking and Performance Analytics
  * I&A-10 — Operational Alerts and Insights
  * I&A-11 — Privacy, Tenant Isolation and Access Certification
+ * I&A-12 — AI and Advanced Intelligence Readiness
  *
  * Module-neutral metric/query/result contracts, metric registry governance,
  * deterministic query/projection runtime over explicit source adapters,
@@ -20,10 +21,11 @@
  * projections, privacy-safe customer/player analytics projections,
  * privacy-safe and currency-safe finance/ranking/performance analytics
  * projections, operational alerts/insights evaluation, privacy/tenant/
- * access certification, and read-only facades.
+ * access certification, provider-neutral AI/intelligence readiness contracts,
+ * and read-only facades.
  * No dashboard UI wiring, no Platform Core / Competition E2E / business-rule
- * deps, no SQL/Supabase adapters, no export/scheduler runtime, no forecasting,
- * no notification delivery, no Production policy adapter.
+ * deps, no SQL/Supabase adapters, no export/scheduler runtime, no Production
+ * AI provider, no notification delivery, no Production policy adapter.
  */
 
 export * from "./contracts/index.js";
@@ -40,6 +42,7 @@ export * from "./customer-player-analytics/index.js";
 export * from "./finance-ranking-performance-analytics/index.js";
 export * from "./operational-alerts-insights/index.js";
 export * from "./privacy-access-certification/index.js";
+export * from "./ai-advanced-intelligence-readiness/index.js";
 
 export const INTELLIGENCE_ANALYTICS_FOUNDATION = Object.freeze({
   workstreamId: "I&A-01",
@@ -104,6 +107,12 @@ export const INTELLIGENCE_ANALYTICS_OPERATIONAL_ALERTS_INSIGHTS = Object.freeze(
 export const INTELLIGENCE_ANALYTICS_PRIVACY_ACCESS_CERTIFICATION = Object.freeze({
   workstreamId: "I&A-11",
   name: "Privacy, Tenant Isolation and Access Certification",
+  version: "1.0.0",
+});
+
+export const INTELLIGENCE_ANALYTICS_AI_ADVANCED_INTELLIGENCE_READINESS = Object.freeze({
+  workstreamId: "I&A-12",
+  name: "AI and Advanced Intelligence Readiness",
   version: "1.0.0",
 });
 
@@ -364,4 +373,51 @@ export const INTELLIGENCE_ANALYTICS_PUBLIC_EXPORTS = Object.freeze([
   "createInMemoryPrivacyPolicySource",
   "createPrivacyAccessCertificationFacade",
   "createReadOnlyPrivacyAccessCertificationFacade",
+  "INTELLIGENCE_ANALYTICS_AI_ADVANCED_INTELLIGENCE_READINESS",
+  "createIntelligenceUseCaseDefinition",
+  "createIntelligenceUseCaseRegistry",
+  "createReadOnlyIntelligenceUseCaseRegistry",
+  "createIntelligenceFeatureDefinition",
+  "createIntelligenceFeatureSchema",
+  "createIntelligenceFeatureVector",
+  "createIntelligenceProviderReference",
+  "createIntelligenceModelReference",
+  "createIntelligencePromptTemplateReference",
+  "createIntelligenceInferenceRequest",
+  "validateIntelligenceInferenceResponse",
+  "createIntelligenceCandidateInsight",
+  "createIntelligenceConfidence",
+  "compareIntelligenceConfidence",
+  "createIntelligenceUncertainty",
+  "createIntelligenceExplanation",
+  "createIntelligenceEvidenceReference",
+  "createIntelligenceHumanReviewRequirement",
+  "createIntelligenceSafetyPolicy",
+  "evaluateIntelligenceFallback",
+  "guardProhibitedUseCase",
+  "guardPromptInjectionBoundary",
+  "guardIntelligenceTenantEntityIsolation",
+  "guardAccessDecisionForInference",
+  "projectIntelligenceOutputPrivacy",
+  "createInMemoryIntelligenceProvider",
+  "createIntelligenceEvaluationScenario",
+  "evaluateIntelligenceScenario",
+  "createIntelligenceEvaluationReport",
+  "createIntelligenceQualityGate",
+  "createIntelligenceDriftSignal",
+  "createIntelligenceQualitySignal",
+  "createIntelligenceModelHealthSnapshot",
+  "evaluateStalenessWarnings",
+  "composeIntelligenceInsightPresentationPayloads",
+  "createIntelligenceReadinessFacade",
+  "createReadOnlyIntelligenceReadinessFacade",
+  "INTELLIGENCE_RISK_TIER",
+  "INTELLIGENCE_CANDIDATE_STATUS",
+  "INTELLIGENCE_USE_CASE_LIFECYCLE",
+  "INTELLIGENCE_FALLBACK_POLICY",
+  "INTELLIGENCE_QUALITY_GATE_STATUS",
+  "INTELLIGENCE_DRIFT_SIGNAL_TYPE",
+  "INTELLIGENCE_PRESENTATION_DATA_STATE",
+  "AI_ADVANCED_INTELLIGENCE_READINESS_METHOD_VERSION",
+  "ADVANCED_INTELLIGENCE_DEFERRED",
 ]);

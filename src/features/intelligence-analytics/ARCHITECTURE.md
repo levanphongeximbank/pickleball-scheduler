@@ -23,6 +23,7 @@ dashboard/reporting data contracts, and historical/trend analysis for PICK_VN.
 | Finance / Ranking / Performance analytics (I&A-09) | `src/features/intelligence-analytics/finance-ranking-performance-analytics` |
 | Operational Alerts and Insights (I&A-10) | `src/features/intelligence-analytics/operational-alerts-insights` |
 | Privacy / Tenant Isolation / Access Certification (I&A-11) | `src/features/intelligence-analytics/privacy-access-certification` |
+| AI / Advanced Intelligence Readiness (I&A-12) | `src/features/intelligence-analytics/ai-advanced-intelligence-readiness` |
 | Dashboard UI / localStorage analytics | `src/features/dashboard-analytics` (legacy active; not foundation) |
 | Statistics UI aggregations | `src/features/statistics` (legacy active; not foundation) |
 | Platform Core | CLOSED — not modified, not imported |
@@ -199,6 +200,22 @@ dashboard/reporting data contracts, and historical/trend analysis for PICK_VN.
 - Certification scenario / evidence / report contracts
 - Read-only certification facade + in-memory policy source
 
+**In scope (I&A-12):**
+
+- Provider-neutral intelligence use-case definitions and registry governance
+- Risk tiers (LOW / MODERATE / HIGH / PROHIBITED) with fail-closed unknown
+- Structured feature-schema and privacy-safe feature-vector contracts
+- Model / provider / prompt-template reference contracts (no secrets)
+- Inference request / untrusted response validation contracts
+- Candidate insight, confidence, uncertainty, explanation, evidence contracts
+- Human-review, safety, abstention, fallback and prohibited-use-case guards
+- Privacy / tenant / entity enforcement through I&A-11
+- Deterministic offline in-memory certification provider (no network)
+- Evaluation scenario / result / report and quality-gate contracts
+- Drift / quality / model-health signal contracts (no auto-retrain/switch)
+- Presentation-neutral candidate-insight payloads via I&A-04 shapes
+- Read-only AI readiness facade; non-canonical advisory outputs only
+
 **Out of scope:**
 
 - Database / Supabase / SQL / migrations
@@ -222,10 +239,47 @@ dashboard/reporting data contracts, and historical/trend analysis for PICK_VN.
 - Treating booking or payment facts as revenue
 - Inferring receivable overdue status from due dates
 - Inferring match winner from raw score
-- AI inference / paid AI services / AI narrative / forecasting
+- AI inference / paid AI services / Production model hosting / embeddings /
+  RAG / vector DB / agent tool execution / model training
 - Alert delivery / persistence / notification recipient resolution
 - Background evaluation scheduler / remediation / escalation execution
 - Platform Core changes
+
+## AI / advanced intelligence readiness flow (I&A-12)
+
+```text
+Certified I&A-01..11 Analytical Results
+                    │
+                    ▼
+       IntelligenceUseCaseDefinition
+                    │
+                    ▼
+ Privacy / Access / Tenant / Entity Guard (I&A-11)
+                    │
+                    ▼
+ Structured Feature Schema and Feature Vector
+                    │
+                    ▼
+       Provider-Neutral Inference Request
+                    │
+                    ▼
+ Offline Certification Provider / Future Adapter
+                    │
+                    ▼
+ Untrusted Provider Response Validation
+                    │
+                    ▼
+ Candidate Insight + Confidence + Explanation
+                    │
+                    ▼
+ Risk Policy → Abstain / Reject / Human Review
+                    │
+                    ▼
+ Privacy-Safe Presentation Payload
+                    │
+                    ▼
+ Evaluation / Quality / Drift Evidence
+```
 
 ## Runtime flow (I&A-03)
 
@@ -444,6 +498,9 @@ I&A-01..09 metrics, observations, trends and explicit facts
 - Analytics output always sets `isCanonicalModuleState: false`
 - Privacy/access certification consumes trusted access context only; does not
   replace Platform Core authorization or mutate business-module access rules
+- AI readiness outputs are advisory candidates only (`isCanonicalDomainState:
+  false`); no Production provider, secrets, network calls, tool/SQL/shell/eval
+  execution, domain mutations, or automatic business decisions
 
 ## Roadmap (structural)
 
@@ -457,6 +514,6 @@ I&A-01..09 metrics, observations, trends and explicit facts
 8. I&A-08 Customer and Player Analytics ← certified
 9. I&A-09 Finance, Ranking and Performance Analytics ← certified
 10. I&A-10 Operational Alerts and Insights ← certified
-11. I&A-11 Privacy, Tenant Isolation and Access Certification ← current
-12. I&A-12 AI and Advanced Intelligence Readiness
+11. I&A-11 Privacy, Tenant Isolation and Access Certification ← certified
+12. I&A-12 AI and Advanced Intelligence Readiness ← current
 13. I&A-13 Integration Hardening and Final Certification
