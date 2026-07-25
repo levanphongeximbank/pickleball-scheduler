@@ -1,0 +1,26 @@
+{
+  "phase": "COACHING-03",
+  "artifact": "OWNER_STAGING_APPLY_APPROVAL",
+  "approved": true,
+  "environment": "staging",
+  "productionAllowed": false,
+  "stagingProjectRef": "qyewbxjsiiyufanzcjcq",
+  "goToken": "COACHING_03_OWNER_GO_APPLY_STAGING",
+  "ownerGoToken": "COACHING_03_OWNER_GO_APPLY_STAGING",
+  "expectedGitCommit": "c89bec293f4f52b90734a56f2ce813919643b929",
+  "roleMatrixApproved": true,
+  "includeRoleGrants": true,
+  "uiRuntimeCutoverApproved": false,
+  "approvedScope": "GATE_D_GATE_E_GATE_F_ONLY",
+  "productionDenied": true,
+  "coachGrantsAllowed": false,
+  "playerGrantsAllowed": false,
+  "notes": "Owner explicitly granted COACHING_03_OWNER_GO_APPLY_STAGING for Staging Gate D–F only. Production remains denied. COACH and PLAYER Coaching grants remain zero. No UI/runtime cutover.",
+  "signedBy": "OWNER",
+  "signedAt": "2026-07-25T06:49:00.000Z",
+  "gatesAuthorized": [
+    "GATE_D_CONTROLLED_STAGING_APPLY",
+    "GATE_E_SCHEMA_RLS_RUNTIME_CERTIFICATION",
+    "GATE_F_FIXTURE_CLEANUP_RESIDUAL_VERIFICATION"
+  ]
+}

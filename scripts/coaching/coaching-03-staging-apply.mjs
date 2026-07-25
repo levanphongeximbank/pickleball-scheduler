@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * COACHING-03 — Guarded Staging apply.
+ * COACHING-03 — Guarded Staging apply (Gate D).
  *
  * DEFAULT: APPLY_MODE=REFUSED (no network write).
  *
@@ -12,10 +12,11 @@
  *   clean worktree
  *   --preflight-pass
  *   matching SQL checksums
- *   --owner-go=COACHING_03_OWNER_GO_APPLY_STAGING (or env)
+ *   --owner-go=COACHING_03_OWNER_GO_APPLY_STAGING
+ *   Owner approval evidence approved=true / productionAllowed=false
  *   productionAllowed=false
  *
- * No package.json shortcut. No CI auto-apply.
+ * Optional: --include-role-grants (requires approval.roleMatrixApproved)
  */
 
 import { readFileSync, writeFileSync, mkdirSync, existsSync } from "node:fs";
@@ -25,11 +26,13 @@ import {
   COACHING_03_ENVIRONMENT_LABEL,
   COACHING_03_EVIDENCE_DIR,
   COACHING_03_OWNER_GO_TOKEN,
+  COACHING_03_ROLE_GRANT_FORWARD_RELATIVE_PATH,
   COACHING_03_STAGING_PROJECT_REF,
   COACHING_03_VERDICTS,
   evaluateCoaching03ApplyGuards,
   getCoaching03RepoRoot,
   loadCoaching03MigrationManifest,
+  loadCoaching03OwnerApprovalEvidence,
   loadCoaching03StagingEnv,
   redactSecrets,
   sha256File,
@@ -99,6 +102,7 @@ async function main() {
   const args = parseArgs(process.argv.slice(2));
   const manifest = loadCoaching03MigrationManifest(repoRoot);
   const verify = verifyCoaching03MigrationManifest({ repoRoot, manifest });
+  const approvalLoaded = loadCoaching03OwnerApprovalEvidence(repoRoot);
 
   const gates = evaluateCoaching03ApplyGuards({
     execute: args.execute,
@@ -108,6 +112,8 @@ async function main() {
     ownerGoToken: args.ownerGo,
     preflightPass: args.preflightPass,
     productionAllowed: args.productionAllowed,
+    includeRoleGrants: args.includeRoleGrants,
+    requireApprovalEvidence: args.execute === true,
     repoRoot,
     requireCleanWorktree: true,
     env: process.env,
@@ -129,6 +135,7 @@ async function main() {
       ownerGoRequired: COACHING_03_OWNER_GO_TOKEN,
       ownerGoGranted: false,
       blockers: gates.blockers,
+      approvalEvidenceOk: approvalLoaded.ok,
       manifestOk: verify.ok,
       manifestErrors: verify.errors || [],
       migrationsWouldApply: (manifest.migrations || [])
@@ -148,7 +155,6 @@ async function main() {
     process.exit(args.execute ? 1 : 0);
   }
 
-  // Live path — only reachable when Owner GO + all guards pass.
   const accessToken = String(process.env.SUPABASE_ACCESS_TOKEN || "").trim();
   if (!accessToken) {
     const blocked = {
@@ -172,6 +178,7 @@ async function main() {
 
   /** @type {Array<object>} */
   const applied = [];
+  const startedAt = new Date().toISOString();
   try {
     for (const entry of forward) {
       const abs = path.join(repoRoot, entry.path);
@@ -180,12 +187,44 @@ async function main() {
         throw new Error(`Checksum drift before apply: ${entry.path}`);
       }
       const sql = readFileSync(abs, "utf8");
+      const stepStarted = new Date().toISOString();
       await executeStagingSql(accessToken, sql, entry.path);
       applied.push({
         order: entry.order,
         path: entry.path,
         checkpoint: entry.checkpoint,
+        sha256: entry.sha256,
         ok: true,
+        startedAt: stepStarted,
+        finishedAt: new Date().toISOString(),
+      });
+    }
+
+    if (args.includeRoleGrants) {
+      const roleAbs = path.join(
+        repoRoot,
+        COACHING_03_ROLE_GRANT_FORWARD_RELATIVE_PATH
+      );
+      const roleSql = readFileSync(roleAbs, "utf8");
+      if (/SELECT\s+'COACH'/i.test(roleSql) && /INSERT INTO public\.role_permissions/i.test(roleSql)) {
+        // Defense: refuse if proposal unexpectedly grants COACH.
+        if (/INSERT INTO public\.role_permissions[\s\S]*SELECT\s+'COACH'/i.test(roleSql)) {
+          throw new Error("Role grant SQL unexpectedly assigns COACH — refused.");
+        }
+      }
+      const stepStarted = new Date().toISOString();
+      await executeStagingSql(
+        accessToken,
+        roleSql,
+        COACHING_03_ROLE_GRANT_FORWARD_RELATIVE_PATH
+      );
+      applied.push({
+        order: 70,
+        path: COACHING_03_ROLE_GRANT_FORWARD_RELATIVE_PATH,
+        checkpoint: "after-role-grants",
+        ok: true,
+        startedAt: stepStarted,
+        finishedAt: new Date().toISOString(),
       });
     }
   } catch (err) {
@@ -193,15 +232,18 @@ async function main() {
       phase: "COACHING-03",
       APPLY_MODE: "PARTIAL_OR_FAILED",
       ok: false,
-      verdict: COACHING_03_VERDICTS.BLOCKED,
+      verdict: COACHING_03_VERDICTS.APPLY_BLOCKED,
       sqlApplied: applied.length > 0,
       databaseWrites: applied.length,
       applied,
+      lastCheckpoint:
+        applied.length > 0 ? applied[applied.length - 1].checkpoint : "before-any-write",
       error: redactSecrets(err?.message || String(err)),
       automaticRollback: false,
       message:
         "Stopped on first error. Owner must decide rollback per 05_COACHING_03_ROLLBACK_AND_RECOVERY.md",
       secretsPrinted: false,
+      startedAt,
       finishedAt: new Date().toISOString(),
     };
     writeEvidence(repoRoot, "APPLY_FAILURE.json", failed);
@@ -213,14 +255,18 @@ async function main() {
     phase: "COACHING-03",
     APPLY_MODE: "EXECUTED",
     ok: true,
+    verdict: "COACHING_03_STAGING_FORWARD_APPLIED",
+    stagingProjectRef: COACHING_03_STAGING_PROJECT_REF,
+    productionConnected: false,
     sqlApplied: true,
     databaseWrites: applied.length,
     applied,
-    roleGrantsApplied: false,
+    roleGrantsApplied: args.includeRoleGrants === true,
     includeRoleGrantsRequested: args.includeRoleGrants,
-    message:
-      "Forward SQL applied. Role grants remain Owner-gated separately unless explicitly approved.",
+    coachGrantsApplied: false,
+    playerGrantsApplied: false,
     secretsPrinted: false,
+    startedAt,
     finishedAt: new Date().toISOString(),
   };
   writeEvidence(repoRoot, "APPLY_SUCCESS.json", success);

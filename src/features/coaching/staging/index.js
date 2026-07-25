@@ -18,6 +18,7 @@ export {
   COACHING_03_MANIFEST_RELATIVE_PATH,
   COACHING_03_EVIDENCE_DIR,
   COACHING_03_APPROVAL_TEMPLATE_RELATIVE_PATH,
+  COACHING_03_APPROVAL_EVIDENCE_RELATIVE_PATH,
   COACHING_03_ROLE_GRANT_FORWARD_RELATIVE_PATH,
   COACHING_03_ROLE_GRANT_ROLLBACK_RELATIVE_PATH,
   COACHING_03_PHASE_28_SQL_BLOCKLIST,
@@ -53,7 +54,9 @@ export {
   inspectCoaching03EnvironmentIdentity,
   evaluateCoaching03WorktreeClean,
   getCoaching03HeadSha,
+  isCoaching03GitAncestor,
   loadCoaching03ApprovalTemplateDefaults,
+  loadCoaching03OwnerApprovalEvidence,
   evaluateCoaching03ApplyGuards,
 } from "./gates.js";
 

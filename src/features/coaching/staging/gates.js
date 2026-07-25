@@ -10,6 +10,7 @@ import process from "node:process";
 
 import {
   COACHING_03_APPROVAL_TEMPLATE_RELATIVE_PATH,
+  COACHING_03_APPROVAL_EVIDENCE_RELATIVE_PATH,
   COACHING_03_ENVIRONMENT_LABEL,
   COACHING_03_ENV_NAMES,
   COACHING_03_OWNER_GO_TOKEN,
@@ -168,6 +169,30 @@ export function getCoaching03HeadSha(repoRoot) {
 }
 
 /**
+ * True when `ancestorSha` is an ancestor of `descendantSha` (or equal).
+ * @param {string} ancestorSha
+ * @param {string} descendantSha
+ * @param {string} [repoRoot]
+ */
+export function isCoaching03GitAncestor(ancestorSha, descendantSha, repoRoot) {
+  const root = repoRoot || getCoaching03RepoRoot();
+  const a = String(ancestorSha || "").trim();
+  const d = String(descendantSha || "").trim();
+  if (!a || !d) return false;
+  if (a === d) return true;
+  try {
+    execSync(`git merge-base --is-ancestor ${a} ${d}`, {
+      cwd: root,
+      encoding: "utf8",
+      stdio: ["ignore", "ignore", "ignore"],
+    });
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+/**
  * Load Owner approval template defaults (must remain false until GO).
  * @param {string} [repoRoot]
  */
@@ -197,6 +222,55 @@ export function loadCoaching03ApprovalTemplateDefaults(repoRoot) {
 }
 
 /**
+ * Load live Owner approval evidence used by apply guards (Gate D).
+ * @param {string} [repoRoot]
+ */
+export function loadCoaching03OwnerApprovalEvidence(repoRoot) {
+  const root = repoRoot || getCoaching03RepoRoot();
+  const abs = path.join(root, COACHING_03_APPROVAL_EVIDENCE_RELATIVE_PATH);
+  if (!existsSync(abs)) {
+    return {
+      ok: false,
+      errors: ["Owner approval evidence missing."],
+      path: COACHING_03_APPROVAL_EVIDENCE_RELATIVE_PATH,
+    };
+  }
+  const json = JSON.parse(readFileSync(abs, "utf8"));
+  /** @type {string[]} */
+  const errors = [];
+  if (json.approved !== true) errors.push("approval.approved must be true");
+  if (json.environment !== "staging") {
+    errors.push("approval.environment must be staging");
+  }
+  if (json.productionAllowed !== false) {
+    errors.push("approval.productionAllowed must be false");
+  }
+  const token = String(json.ownerGoToken || json.goToken || "").trim();
+  if (token !== COACHING_03_OWNER_GO_TOKEN) {
+    errors.push("approval goToken mismatch");
+  }
+  if (json.stagingProjectRef !== COACHING_03_STAGING_PROJECT_REF) {
+    errors.push("approval stagingProjectRef mismatch");
+  }
+  if (json.coachGrantsAllowed === true) {
+    errors.push("approval must not allow COACH grants");
+  }
+  if (json.playerGrantsAllowed === true) {
+    errors.push("approval must not allow PLAYER grants");
+  }
+  if (json.uiRuntimeCutoverApproved === true) {
+    errors.push("approval must not authorize UI cutover");
+  }
+  return {
+    ok: errors.length === 0,
+    errors,
+    approval: json,
+    path: COACHING_03_APPROVAL_EVIDENCE_RELATIVE_PATH,
+    secretsPrinted: false,
+  };
+}
+
+/**
  * Evaluate whether controlled apply may execute.
  * Defaults to refuse.
  *
@@ -208,6 +282,8 @@ export function loadCoaching03ApprovalTemplateDefaults(repoRoot) {
  *   ownerGoToken?: string,
  *   preflightPass?: boolean,
  *   productionAllowed?: boolean,
+ *   includeRoleGrants?: boolean,
+ *   requireApprovalEvidence?: boolean,
  *   repoRoot?: string,
  *   requireCleanWorktree?: boolean,
  *   env?: NodeJS.ProcessEnv|Record<string,string|undefined>
@@ -294,6 +370,37 @@ export function evaluateCoaching03ApplyGuards(input = {}) {
     blockers.push("productionAllowed must remain false.");
   }
 
+  /** @type {object|null} */
+  let approvalEvidence = null;
+  // Apply script opts in explicitly; unit tests leave this false by default.
+  const requireApproval = input.requireApprovalEvidence === true;
+  if (requireApproval) {
+    const loaded = loadCoaching03OwnerApprovalEvidence(repoRoot);
+    approvalEvidence = loaded;
+    if (!loaded.ok) {
+      blockers.push(...(loaded.errors || ["Owner approval evidence invalid."]));
+    } else {
+      const a = loaded.approval;
+      // Owner pins the authorized package commit; HEAD may be a Gate D
+      // apply-tooling descendant while still requiring CLI expectedCommit===HEAD.
+      const approvedCommit = String(a.expectedGitCommit || "").trim();
+      if (
+        !approvedCommit ||
+        !isCoaching03GitAncestor(approvedCommit, head, repoRoot)
+      ) {
+        blockers.push(
+          `Approval expectedGitCommit must be HEAD or an ancestor (approval=${approvedCommit ? approvedCommit.slice(0, 12) : "(empty)"}, head=${head.slice(0, 12)}).`
+        );
+      }
+      if (String(a.ownerGoToken || a.goToken || "").trim() !== ownerGoToken) {
+        blockers.push("Approval token does not match CLI/env Owner GO token.");
+      }
+      if (input.includeRoleGrants === true && a.roleMatrixApproved !== true) {
+        blockers.push("Role grants requested but approval.roleMatrixApproved is not true.");
+      }
+    }
+  }
+
   const identity = inspectCoaching03EnvironmentIdentity(env);
   if (!identity.ok) {
     blockers.push(...identity.errors);
@@ -309,6 +416,7 @@ export function evaluateCoaching03ApplyGuards(input = {}) {
     blockers,
     stagingProjectRef: COACHING_03_STAGING_PROJECT_REF,
     headSha: head,
+    approvalEvidenceOk: approvalEvidence ? approvalEvidence.ok : null,
     secretsPrinted: false,
     sqlWouldApply: canWrite,
   };
