@@ -1,15 +1,16 @@
 /**
- * News & Public Content — public facade (NEWS-01).
+ * News & Public Content — public facade (NEWS-01 + NEWS-02).
  *
  * NEWS-01: Domain, Editorial Lifecycle & Public Read Foundation.
+ * NEWS-02: Durable Persistence, SQL, RLS & Editorial Authorization (authored; not applied).
  *
  * Consumers must import from this index — not from internal file paths.
  *
  * Does NOT export / does NOT do:
  * - Public Portal UI / NewsPage / routes / layouts
  * - getPublicNews() wiring
- * - SQL / migrations / Supabase / Staging / Production
- * - browser storage durable adapters
+ * - Staging / Production SQL apply
+ * - browser storage durable adapters as SoT
  * - media upload
  * - scheduler worker
  * - runtime mock repository as production source of truth
@@ -121,6 +122,33 @@ export {
   isFail,
 } from "./platform/index.js";
 
+export {
+  NEWS_EDITORIAL_CAPABILITY,
+  NEWS_EDITORIAL_CAPABILITY_VALUES,
+  NEWS_PERMISSION,
+  NEWS_AUTH_ACTOR_KIND,
+  NEWS_AUTH_DECISION,
+  NEWS_CAPABILITY_PERMISSION_MAP,
+  getNews02CapabilityMatrix,
+  authorizeNewsEditorialCapability,
+  assertNewsEditorialCapability,
+  rejectActorSpoofing,
+} from "./authorization/index.js";
+
+export {
+  NEWS_TABLE,
+  NEWS_TABLE_NAME_VALUES,
+  NEWS_RPC,
+  NEWS_SQL_PACKAGE_DIR,
+  NEWS_SQL_PACKAGE_FILES,
+  loadNews02SqlPackageManifest,
+  assertNews02SqlApplyRefused,
+  assertSupabaseNewsClient,
+  createFakeSupabaseNewsClient,
+  createSupabaseContentRepository,
+  mapSupabaseNewsError,
+} from "./persistence/index.js";
+
 export const NEWS_PUBLIC_CONTENT_PUBLIC_EXPORTS = Object.freeze([
   "NEWS_PUBLIC_CONTENT_PHASE",
   "CONTENT_TYPE",
@@ -203,5 +231,26 @@ export const NEWS_PUBLIC_CONTENT_PUBLIC_EXPORTS = Object.freeze([
   "assertNewsPlatformSurface",
   "isOk",
   "isFail",
+  "NEWS_EDITORIAL_CAPABILITY",
+  "NEWS_EDITORIAL_CAPABILITY_VALUES",
+  "NEWS_PERMISSION",
+  "NEWS_AUTH_ACTOR_KIND",
+  "NEWS_AUTH_DECISION",
+  "NEWS_CAPABILITY_PERMISSION_MAP",
+  "getNews02CapabilityMatrix",
+  "authorizeNewsEditorialCapability",
+  "assertNewsEditorialCapability",
+  "rejectActorSpoofing",
+  "NEWS_TABLE",
+  "NEWS_TABLE_NAME_VALUES",
+  "NEWS_RPC",
+  "NEWS_SQL_PACKAGE_DIR",
+  "NEWS_SQL_PACKAGE_FILES",
+  "loadNews02SqlPackageManifest",
+  "assertNews02SqlApplyRefused",
+  "assertSupabaseNewsClient",
+  "createFakeSupabaseNewsClient",
+  "createSupabaseContentRepository",
+  "mapSupabaseNewsError",
   "NEWS_PUBLIC_CONTENT_PUBLIC_EXPORTS",
 ]);

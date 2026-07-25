@@ -389,5 +389,9 @@
   "tests/news-public-content-news-01-foundation.test.js",
   "tests/news-public-content-news-01-lifecycle.test.js",
   "tests/news-public-content-news-01-publication-projection.test.js",
-  "tests/news-public-content-news-01-architecture.test.js"
+  "tests/news-public-content-news-01-architecture.test.js",
+  "tests/news-public-content-news-02-sql-migration.test.js",
+  "tests/news-public-content-news-02-rls-authorization.test.js",
+  "tests/news-public-content-news-02-supabase-adapter.test.js",
+  "tests/news-public-content-news-02-architecture.test.js"
 ]

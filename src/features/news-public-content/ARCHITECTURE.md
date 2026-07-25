@@ -1,67 +1,73 @@
-# News & Public Content — Architecture (NEWS-01)
+# News & Public Content — Architecture
 
 ## Phase
 
-**NEWS-01 — Domain, Editorial Lifecycle & Public Read Foundation**
+**NEWS-02 — Durable Persistence, SQL, RLS & Editorial Authorization**
 
-Structural domain foundation only. No SQL, no Staging/Production, no Public Portal wiring.
+Authored durable SQL + repository adapter + editorial authorization. SQL **NOT APPLIED**. Staging/Production unchanged. Public Portal not wired.
 
 ## Ownership
 
 | Owner | Owns |
 |-------|------|
-| **News & Public Content** (`src/features/news-public-content/`) | Content domain, identity, type/scope, editorial lifecycle, review/approval contracts, publication eligibility/window, public visibility, revisions/versioning, public read projection, SEO/category/tag/media/banner/sponsor reference contracts, LIVE/MOCK/PREVIEW content provenance, typed errors, repository ports, single public facade |
-| **Experience Channels** | NewsPage, Public Portal rendering, routes, layouts, visual components, loading/error/empty/provenance presentation |
-| **Platform Core** | Result envelope, ISO clock parse, tenant/actor projection contracts (consume only) |
+| **News & Public Content** (`src/features/news-public-content/`) | Content domain, lifecycle, public projection, durable schema/SQL package, RLS policies, editorial capability matrix, repository adapter, typed persistence errors |
+| **Experience Channels** | NewsPage, Public Portal rendering, routes, layouts |
+| **Platform Core** | Result envelope, ISO clock, tenant/actor projection contracts (consume only); verified SQL helpers (`user_venue_id`, `user_has_permission`, `is_super_admin`) |
 
 ## Public import
 
 ```js
 import {
   createNewsPublicContentFacade,
-  newsPublicContentFacade,
-  CONTENT_TYPE,
-  EDITORIAL_STATUS,
-  CONTENT_PROVENANCE,
+  createSupabaseContentRepository,
+  getNews02CapabilityMatrix,
+  authorizeNewsEditorialCapability,
+  loadNews02SqlPackageManifest,
 } from "../features/news-public-content/index.js";
 ```
-
-Canonical facade factory: **`newsPublicContentFacade`** (alias of `createNewsPublicContentFacade`).
 
 ## Layering
 
 ```
 index.js                 ← single public facade / barrel
-constants/               ← types, scopes, lifecycle, provenance, visibility
+constants/               ← types, scopes, lifecycle, provenance, visibility, phase
 errors/                  ← module-local typed errors
 contracts/               ← references + review/approval/window/SEO/banner/sponsor
 domain/                  ← aggregate, scope ownership, lifecycle, eligibility, revision
 projections/             ← public read projection (fail-closed)
-ports/                   ← ContentRepositoryPort + clock/id (no durable adapter)
+ports/                   ← ContentRepositoryPort + clock/id
 application/             ← createNewsPublicContentFacade
 platform/                ← Platform Core adoption (public barrel only)
+authorization/           ← NEWS-02 editorial capability matrix (fail-closed)
+persistence/             ← NEWS-02 SQL manifest + Supabase adapter (injected client)
 ```
+
+## SQL package
+
+Canonical path: `docs/news-public-content/news-02/` (Customer/CRM numbered convention).
+
+Apply order: 10 → 20 → 30 → 40 → 50 → 60 (rollback 90 / verify 99 for NEWS-03).
+
+**Status:** AUTHORED ONLY — not applied to Staging or Production.
 
 ## Persistence boundary
 
-Repository **port** only. NEWS-01 does not ship SQL, Supabase adapters, localStorage, or production mock SoT. Test doubles belong in tests.
+- Adapter: `createSupabaseContentRepository({ client })`
+- Injected client only — no global singleton, no import-time network
+- Implements `ContentRepositoryPort`
+- Public read DB contract: RPC `news_public_content_query_public`
+- Writes: trusted `service_role` / `news_public_content_save_aggregate` with `row_version` CAS
 
-## Provenance boundary
+## Explicit non-goals (NEWS-02)
 
-News owns `CONTENT_PROVENANCE` (`LIVE` | `MOCK` | `PREVIEW`). Experience Channels owns presentation classification `PUBLIC_PORTAL_DATA_SOURCE` — related values, different ownership; News must not import Experience Channels.
-
-## Explicit non-goals (NEWS-01)
-
+- Staging / Production SQL apply
 - Public Portal UI / `NewsPage` / router / layouts
-- Wiring `getPublicNews()` or replacing `MOCK_NEWS` purpose
-- SQL / RLS / Staging / Production
-- Scheduler worker / media upload
-- Editing Competition / Venue / Club / CRM / Finance / Notification internals
+- Wiring `getPublicNews()` or replacing `MOCK_NEWS`
+- Scheduler worker / media upload / CMS UI
 - Declaring production-ready
 
 ## Follow-ups
 
-- NEWS-02 — Durable Persistence, SQL, RLS & Editorial Authorization
 - NEWS-03 — Staging Apply & Live Public Read Integration
 - NEWS-04 — Public Portal Live Provenance Adoption
 - NEWS-05 — Final Integration Certification & Closure
