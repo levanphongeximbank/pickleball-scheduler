@@ -23,6 +23,11 @@ import {
   projectCoachingCapability,
   listCoaches,
   loadCoachingStore,
+  getCoachingPlatformAdoption,
+  COACHING_PLATFORM_ADOPTION,
+  authorizeCoaching,
+  COACHING_ACTIONS,
+  COACHING_ERROR_CODES,
 } from "../src/features/coaching/index.js";
 import {
   isOk,
@@ -222,4 +227,18 @@ test("coaching public exports remain compatible", () => {
   assert.equal(typeof listCoaches, "function");
   assert.equal(typeof loadCoachingStore, "function");
   assert.equal(isFail(projectCoachingActor(null)), true);
+});
+
+test("coaching platform adoption metadata and fail-closed authorize", () => {
+  assert.equal(COACHING_PLATFORM_ADOPTION.phase, "COACHING-01");
+  assert.equal(getCoachingPlatformAdoption().durablePersistence, false);
+  assert.equal(getCoachingPlatformAdoption().localStorageCanonical, false);
+
+  const denied = authorizeCoaching(
+    null,
+    COACHING_ACTIONS.RECORDS_READ,
+    { tenantId: "t1", clubId: "c1" }
+  );
+  assert.equal(denied.ok, false);
+  assert.equal(denied.code, COACHING_ERROR_CODES.MISSING_ACTOR);
 });

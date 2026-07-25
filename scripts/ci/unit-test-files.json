@@ -237,6 +237,8 @@
   "tests/customer-phase-7-staging-live-certification.test.js",
   "tests/customer-platform-adoption.test.js",
   "tests/coaching-ai-phase28-29.test.js",
+  "tests/coaching-01-domain-foundation.test.js",
+  "tests/coaching-platform-adoption.test.js",
   "tests/rbac-v52.test.js",
   "tests/tournament-player-picker.test.js",
   "tests/tenant-isolation-qa.test.js",
