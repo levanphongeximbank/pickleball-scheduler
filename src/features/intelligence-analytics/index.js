@@ -13,6 +13,7 @@
  * I&A-10 — Operational Alerts and Insights
  * I&A-11 — Privacy, Tenant Isolation and Access Certification
  * I&A-12 — AI and Advanced Intelligence Readiness
+ * I&A-13 — Integration Hardening and Final Certification
  *
  * Module-neutral metric/query/result contracts, metric registry governance,
  * deterministic query/projection runtime over explicit source adapters,
@@ -22,7 +23,8 @@
  * privacy-safe and currency-safe finance/ranking/performance analytics
  * projections, operational alerts/insights evaluation, privacy/tenant/
  * access certification, provider-neutral AI/intelligence readiness contracts,
- * and read-only facades.
+ * final integration certification manifest/report/facade, and read-only
+ * facades.
  * No dashboard UI wiring, no Platform Core / Competition E2E / business-rule
  * deps, no SQL/Supabase adapters, no export/scheduler runtime, no Production
  * AI provider, no notification delivery, no Production policy adapter.
@@ -43,6 +45,7 @@ export * from "./finance-ranking-performance-analytics/index.js";
 export * from "./operational-alerts-insights/index.js";
 export * from "./privacy-access-certification/index.js";
 export * from "./ai-advanced-intelligence-readiness/index.js";
+export * from "./integration-hardening-final-certification/index.js";
 
 export const INTELLIGENCE_ANALYTICS_FOUNDATION = Object.freeze({
   workstreamId: "I&A-01",
@@ -115,6 +118,13 @@ export const INTELLIGENCE_ANALYTICS_AI_ADVANCED_INTELLIGENCE_READINESS = Object.
   name: "AI and Advanced Intelligence Readiness",
   version: "1.0.0",
 });
+
+export const INTELLIGENCE_ANALYTICS_INTEGRATION_HARDENING_FINAL_CERTIFICATION =
+  Object.freeze({
+    workstreamId: "I&A-13",
+    name: "Integration Hardening and Final Certification",
+    version: "1.0.0",
+  });
 
 export const INTELLIGENCE_ANALYTICS_PUBLIC_EXPORTS = Object.freeze([
   "INTELLIGENCE_ANALYTICS_FOUNDATION",
@@ -420,4 +430,48 @@ export const INTELLIGENCE_ANALYTICS_PUBLIC_EXPORTS = Object.freeze([
   "INTELLIGENCE_PRESENTATION_DATA_STATE",
   "AI_ADVANCED_INTELLIGENCE_READINESS_METHOD_VERSION",
   "ADVANCED_INTELLIGENCE_DEFERRED",
+  "INTELLIGENCE_ANALYTICS_INTEGRATION_HARDENING_FINAL_CERTIFICATION",
+  "INTEGRATION_HARDENING_FINAL_CERTIFICATION_METHOD_VERSION",
+  "CERTIFICATION_MANIFEST_VERSION",
+  "CERTIFICATION_VERSION",
+  "ANALYTICS_CERTIFICATION_STATUS",
+  "ANALYTICS_CERTIFICATION_SEVERITY",
+  "ANALYTICS_CERTIFICATION_DIMENSION_ID",
+  "ANALYTICS_SURFACE_CLASSIFICATION",
+  "ANALYTICS_CERTIFICATION_COMPLETENESS",
+  "ANALYTICS_CERTIFICATION_REASON_CODE",
+  "ANALYTICS_ACCESS_STATE_SEMANTICS",
+  "INTEGRATION_DEFERRED_SURFACES",
+  "createIntelligenceAnalyticsCertificationManifest",
+  "buildDefaultIntelligenceAnalyticsCertificationManifest",
+  "createIntelligenceAnalyticsCertifiedSurface",
+  "validateCertifiedSurfaceRegistry",
+  "listCanonicalCertifiedSurfaces",
+  "createIntelligenceAnalyticsCertificationDimension",
+  "listCanonicalCertificationDimensions",
+  "createIntelligenceAnalyticsCertificationScenario",
+  "createIntelligenceAnalyticsCertificationEvidence",
+  "createIntelligenceAnalyticsCertificationResult",
+  "createIntelligenceAnalyticsFinalReport",
+  "runIntelligenceAnalyticsFinalCertification",
+  "verifyIntelligenceAnalyticsClosureReadiness",
+  "createCleanCertificationInventory",
+  "createInMemoryIntelligenceAnalyticsCertificationSource",
+  "createIntelligenceAnalyticsFinalCertificationFacade",
+  "createReadOnlyIntelligenceAnalyticsFinalCertificationFacade",
+  "verifyPublicExportIntegrity",
+  "verifyMetricRegistryIntegrity",
+  "verifyErrorRegistryIntegrity",
+  "verifyTenantIsolation",
+  "verifyEntityIsolation",
+  "verifyPrivacyAccess",
+  "verifyCurrencyCompatibility",
+  "verifyRankingRatingCompatibility",
+  "verifyOperationalInsightCompatibility",
+  "verifyAiReadinessBoundary",
+  "verifyReadOnlyAndDependencyBoundaries",
+  "verifyMockHonestyAndSourceStates",
+  "verifyDocumentationAndCi",
+  "verifyContractCompatibility",
+  "createSafeCertificationFingerprint",
 ]);

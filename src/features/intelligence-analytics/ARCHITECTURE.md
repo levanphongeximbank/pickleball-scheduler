@@ -24,6 +24,7 @@ dashboard/reporting data contracts, and historical/trend analysis for PICK_VN.
 | Operational Alerts and Insights (I&A-10) | `src/features/intelligence-analytics/operational-alerts-insights` |
 | Privacy / Tenant Isolation / Access Certification (I&A-11) | `src/features/intelligence-analytics/privacy-access-certification` |
 | AI / Advanced Intelligence Readiness (I&A-12) | `src/features/intelligence-analytics/ai-advanced-intelligence-readiness` |
+| Integration Hardening / Final Certification (I&A-13) | `src/features/intelligence-analytics/integration-hardening-final-certification` |
 | Dashboard UI / localStorage analytics | `src/features/dashboard-analytics` (legacy active; not foundation) |
 | Statistics UI aggregations | `src/features/statistics` (legacy active; not foundation) |
 | Platform Core | CLOSED — not modified, not imported |
@@ -215,6 +216,19 @@ dashboard/reporting data contracts, and historical/trend analysis for PICK_VN.
 - Drift / quality / model-health signal contracts (no auto-retrain/switch)
 - Presentation-neutral candidate-insight payloads via I&A-04 shapes
 - Read-only AI readiness facade; non-canonical advisory outputs only
+
+**In scope (I&A-13):**
+
+- Final certification manifest and certified-surface registry (I&A-01..13)
+- Certification dimension / scenario / evidence / result / final report contracts
+- Public-export, contract, metric-registry, and error-registry verifiers
+- Tenant / entity / privacy / currency / ranking-rating verifiers
+- Operational-alert and AI-readiness boundary verifiers
+- Read-only / no-write / no-private-import / no-database / no-provider verifiers
+- Mock-honesty and source-state semantics certification
+- Deterministic certification runner and closure-readiness evaluator
+- In-memory certification-only source + read-only final certification facade
+- Architecture closure documentation and targeted certification tests
 
 **Out of scope:**
 
@@ -501,6 +515,35 @@ I&A-01..09 metrics, observations, trends and explicit facts
 - AI readiness outputs are advisory candidates only (`isCanonicalDomainState:
   false`); no Production provider, secrets, network calls, tool/SQL/shell/eval
   execution, domain mutations, or automatic business decisions
+- Final certification is structural-foundation only; Production adapters remain
+  deferred and must not be claimed active or LIVE
+
+## Final integration certification flow (I&A-13)
+
+```text
+I&A-01..12 Public Surfaces
+             │
+             ▼
+Final Analytics Surface Registry
+             │
+             ▼
+Contract / Metric / Error / Export Validation
+             │
+             ▼
+Tenant / Entity / Privacy / Currency / Version Invariants
+             │
+             ▼
+Read-Only / No-Write / No-Private-Import Certification
+             │
+             ▼
+Cross-Surface Integration Scenarios
+             │
+             ▼
+Deterministic Final Certification Report
+             │
+             ▼
+ReadOnlyIntelligenceAnalyticsFinalCertificationFacade
+```
 
 ## Roadmap (structural)
 
@@ -515,5 +558,5 @@ I&A-01..09 metrics, observations, trends and explicit facts
 9. I&A-09 Finance, Ranking and Performance Analytics ← certified
 10. I&A-10 Operational Alerts and Insights ← certified
 11. I&A-11 Privacy, Tenant Isolation and Access Certification ← certified
-12. I&A-12 AI and Advanced Intelligence Readiness ← current
-13. I&A-13 Integration Hardening and Final Certification
+12. I&A-12 AI and Advanced Intelligence Readiness ← certified
+13. I&A-13 Integration Hardening and Final Certification ← current
