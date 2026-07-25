@@ -1,19 +1,21 @@
-# Reporting & Analytics — Architecture (REPORTING-01)
+# Reporting & Analytics — Architecture
 
 ## Phase
 
-**REPORTING-01 — Ownership & Operational Reporting Foundation**
+**REPORTING-05 — Final Certification & Business Module Closure**
 
-Structural domain foundation only. No SQL, no Staging/Production, no dashboard UI adoption, no durable persistence, no production export runtime.
+Structural foundation through REPORTING-04 is complete. This document is the living architecture summary for the closed module posture (with accepted external residuals).
+
+Foundation workstream id for historical contracts remains REPORTING-01; current module phase constant is REPORTING-05.
 
 ## Ownership
 
 | Owner | Owns |
 |-------|------|
-| **Reporting & Analytics** (`src/features/reporting-analytics/`) | Operational report definitions, operational dashboards (domain), report filters, saved report configurations, report execution use cases, report execution authorization, export-facing use cases, module facades, presentation-ready operational report models, business-facing freshness/provenance, report availability/failure semantics |
-| **Intelligence & Analytics** (`src/features/intelligence-analytics/`) | Metric registry, analytical projections, analytical query runtime, historical intelligence, trend/anomaly, predictive/AI readiness, reusable analytical datasets, presentation-neutral dashboard/report *data contracts* (I&A-04) |
+| **Reporting & Analytics** (`src/features/reporting-analytics/`) | Operational report definitions, operational dashboards (domain/provenance), report filters, saved report configurations, report execution use cases, report execution authorization, export-facing use cases, module facades, presentation-ready operational report models, business-facing freshness/provenance, report availability/failure semantics, durable repositories, Staging SQL package |
+| **Intelligence & Analytics** (`src/features/intelligence-analytics/`) | Metric registry, analytical projections, analytical query runtime, historical intelligence, trend/anomaly, predictive/AI readiness, reusable analytical datasets |
 | **Statistics** (`src/features/statistics/`) | Business-truth statistics presentation + local metric helpers for season/session views — Reporting may consume, must not seize ownership |
-| **dashboard-analytics** (legacy) | Existing operational dashboard UI + live aggregation service + Platform projections; presentation behavior preserved in REPORTING-01 |
+| **dashboard-analytics** (legacy host) | Existing operational dashboard UI + live aggregation service; consumes Reporting provenance honesty |
 | **Experience Channels** | Rendering dashboards/reports in channels |
 
 ## Dependency direction
@@ -22,7 +24,7 @@ Structural domain foundation only. No SQL, no Staging/Production, no dashboard U
 Business Modules produce operational data
   → Intelligence & Analytics produces analytical projections
     → Reporting & Analytics composes operational reports
-      → Experience Channels renders dashboards/reports
+      → Experience Channels / app UI renders dashboards/reports
 ```
 
 ## Public import
@@ -39,6 +41,8 @@ import {
 
 Canonical facade factory: **`reportingAnalyticsFacade`** (alias of `createReportingAnalyticsFacade`).
 
+Workspace page secondary barrel: `src/features/reporting-analytics/ui/index.js`.
+
 ## Layering
 
 ```
@@ -47,54 +51,59 @@ constants/               ← types, scopes, availability, provenance, permission
 errors/                  ← module-local typed errors
 contracts/               ← identity, scope, source refs, params/filters, execution, export
 authorization/           ← fail-closed service-level authz
-ports/                   ← repository + executor + clock/id ports (no durable adapter)
+ports/                   ← repository + executor + clock/id ports
 repositories/            ← deterministic in-memory test repositories only
+persistence/             ← durable adapters + injected DB client port (REPORTING-02)
+lifecycle/               ← execution/export status graphs
 application/             ← facade + execute/export orchestration
+export/                  ← presentation renderers + artifact storage ports
 platform/                ← Platform Core adoption (public barrel only)
-adapters/                ← dashboard mock provenance honesty + I&A UNAVAILABLE refs
+adapters/                ← dashboard provenance honesty + I&A UNAVAILABLE mapping
+presentation/            ← source states, runtime inject, lifecycle VMs, workspace controller
+ui/                      ← Reports workspace page/hooks (secondary public surface)
 ```
 
 ## Allowed imports
 
 - `src/core/platform/index.js` (public Platform Core barrel only)
-- `src/features/intelligence-analytics/index.js` (public I&A facade only — optional consume)
+- `src/features/intelligence-analytics/index.js` (public I&A facade only)
 - Reporting module internals
 
-## Forbidden imports
+## Forbidden imports / patterns
 
-- `src/features/intelligence-analytics/**` deep internals (`contracts/`, `runtime/`, `registry/`, `dashboard-reporting/` paths)
+- `src/features/intelligence-analytics/**` deep internals
 - Finance / CRM / Customer / Competition / Venue / Club / Player internals as ownership
 - Experience Channels internals
-- `localStorage` as persistence
-- SQL / Supabase clients as durable SoT in this phase
+- `localStorage` as durable persistence
+- browser `service_role`
+- silent live→mock fallback success
 
 ## Persistence boundary
 
-Repository **ports** + in-memory test implementations only. REPORTING-01 does not ship SQL, Supabase adapters, localStorage, or claim durable persistence.
+- Repository ports + durable adapters require an **injected** database client
+- In-memory repositories are for tests/demo only
+- No localStorage durable SoT
+- SQL package: `docs/reporting-analytics/reporting-02/`
+- Staging live apply/cert: Owner-accepted under REPORTING-03 (see reporting-05 evidence)
+- Production apply: separate Owner gate
 
 ## Authorization boundary
 
-Service-level fail-closed authorization (`authorizeReporting*`). Not menu visibility. Sensitive fields, save, and export are separately authorized. Authorization runs before source execution.
+Service-level fail-closed authorization (`authorizeReporting*`). Not menu visibility. Sensitive fields, save, and export are separately authorized. Authorization runs before source execution. Catalog seed does **not** auto-map `role_permissions`.
 
 ## Mock / provenance rules
 
-- `mockDashboardData` = development/preview fallback → provenance `MOCK`
+- Explicit demo/preview → provenance `MOCK` / `PREVIEW`
 - Live failure must not silently become mock success
-- Unwired source → `SOURCE_NOT_CONFIGURED` / `UNAVAILABLE`
+- Unwired source / unwired runtime → `SOURCE_NOT_CONFIGURED` / `UNAVAILABLE`
 - `MIXED` only when multiple component sources with differing provenance exist
 
-## Explicit non-goals (REPORTING-01)
+## Accepted residuals (REPORTING-05)
 
-- Durable persistence / SQL / RLS / Staging / Production
-- Production report execution integration
-- Export file generation runtime
-- Dashboard UI adoption / Statistics ownership transfer
-- Metric registry / analytical query runtime ownership
-- Declaring the full Business Module complete
+1. Live I&A execute-by-projectionId not deployed → typed UNAVAILABLE
+2. Browser runtime not composition-injected → typed UNAVAILABLE
+3. Production rollout not performed
 
-## Follow-ups
+## Closure docs
 
-- REPORTING-02 — Durable Report Persistence, Execution & Export
-- REPORTING-03 — Staging Apply & Projection Integration
-- REPORTING-04 — Dashboard/UI Adoption & Mock Honesty
-- REPORTING-05 — Final Certification & Closure
+See `docs/reporting-analytics/reporting-05/`.

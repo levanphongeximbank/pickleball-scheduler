@@ -17,7 +17,11 @@ test("REPORTING-01 public export allowlist is stable", () => {
   for (const name of reporting.REPORTING_ANALYTICS_PUBLIC_EXPORTS) {
     assert.equal(name in reporting, true, `missing public export: ${name}`);
   }
-  assert.equal(reporting.REPORTING_ANALYTICS_PHASE.id, "REPORTING-01");
+  assert.equal(reporting.REPORTING_ANALYTICS_PHASE.id, "REPORTING-05");
+  assert.equal(
+    reporting.REPORTING_ANALYTICS_PHASE.foundationWorkstreamId,
+    "REPORTING-01"
+  );
   assert.equal(
     reporting.reportingAnalyticsFacade,
     reporting.createReportingAnalyticsFacade
