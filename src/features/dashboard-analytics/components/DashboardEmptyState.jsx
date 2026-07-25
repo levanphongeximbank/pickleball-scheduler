@@ -1,4 +1,4 @@
-import { Box, Stack, Typography } from "@mui/material";
+import { Box, Button, Stack, Typography } from "@mui/material";
 import InsightsOutlinedIcon from "@mui/icons-material/InsightsOutlined";
 
 const LEVEL_COLORS = {
@@ -18,6 +18,8 @@ const LEVEL_LABELS = {
 export default function DashboardEmptyState({ title, description, icon: Icon = InsightsOutlinedIcon }) {
   return (
     <Box
+      role="status"
+      aria-live="polite"
       sx={{
         py: 5,
         px: 2,
@@ -28,7 +30,7 @@ export default function DashboardEmptyState({ title, description, icon: Icon = I
         bgcolor: "grey.50",
       }}
     >
-      <Icon sx={{ fontSize: 40, color: "text.disabled", mb: 1 }} />
+      <Icon sx={{ fontSize: 40, color: "text.disabled", mb: 1 }} aria-hidden />
       <Typography variant="subtitle1" fontWeight="bold" sx={{ mb: 0.5 }}>
         {title}
       </Typography>
@@ -41,10 +43,16 @@ export default function DashboardEmptyState({ title, description, icon: Icon = I
 
 export function DashboardLoadingState() {
   return (
-    <Stack spacing={2}>
+    <Stack
+      spacing={2}
+      role="status"
+      aria-busy="true"
+      aria-label="Đang tải dashboard"
+    >
       {[1, 2, 3].map((row) => (
         <Box
           key={row}
+          aria-hidden
           sx={{
             height: 96,
             borderRadius: 2,
@@ -57,6 +65,9 @@ export function DashboardLoadingState() {
           }}
         />
       ))}
+      <Typography variant="body2" color="text.secondary">
+        Đang tải dữ liệu dashboard…
+      </Typography>
     </Stack>
   );
 }
@@ -64,6 +75,7 @@ export function DashboardLoadingState() {
 export function DashboardErrorState({ message, onRetry }) {
   return (
     <Box
+      role="alert"
       sx={{
         p: 3,
         borderRadius: 2,
@@ -79,19 +91,36 @@ export function DashboardErrorState({ message, onRetry }) {
         {message}
       </Typography>
       {onRetry && (
-        <Typography
-          component="button"
-          variant="body2"
-          onClick={onRetry}
-          sx={{
-            border: 0,
-            bgcolor: "transparent",
-            color: "primary.main",
-            cursor: "pointer",
-            fontWeight: "bold",
-          }}
-        >
+        <Button variant="outlined" size="small" onClick={onRetry} aria-label="Thử lại tải dashboard">
           Thử lại
+        </Button>
+      )}
+    </Box>
+  );
+}
+
+export function DashboardUnavailableState({ message, reason }) {
+  return (
+    <Box
+      role="status"
+      aria-live="polite"
+      sx={{
+        p: 3,
+        borderRadius: 2,
+        border: "1px solid",
+        borderColor: "warning.light",
+        bgcolor: "warning.50",
+      }}
+    >
+      <Typography fontWeight="bold" sx={{ mb: 1 }}>
+        Nguồn dashboard chưa khả dụng
+      </Typography>
+      <Typography variant="body2" color="text.secondary">
+        {message || "Reporting runtime hoặc nguồn dữ liệu chưa được cấu hình."}
+      </Typography>
+      {reason && (
+        <Typography variant="caption" color="text.secondary" sx={{ display: "block", mt: 1 }}>
+          Lý do: {reason}
         </Typography>
       )}
     </Box>

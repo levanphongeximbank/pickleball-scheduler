@@ -91,17 +91,63 @@ test("buildMockDashboardPayload returns complete analytics shape", () => {
   assert.ok(payload.peakHours.busiest.length > 0);
 });
 
-test("getDashboardAnalytics returns mock payload when no local data", () => {
+test("getDashboardAnalytics returns EMPTY (not mock) when no local data", () => {
+  const store = new Map();
+  globalThis.localStorage = {
+    getItem(key) {
+      return store.has(key) ? store.get(key) : null;
+    },
+    setItem(key, value) {
+      store.set(String(key), String(value));
+    },
+    removeItem(key) {
+      store.delete(String(key));
+    },
+    clear() {
+      store.clear();
+    },
+  };
+
   const payload = getDashboardAnalytics({
     clubId: "__test_empty_club__",
     from: "2026-06-01",
     to: "2026-06-28",
     sections: { revenue: true, courts: true, insights: true },
+    mode: "live",
   });
 
-  assert.equal(payload.isMock, true);
+  assert.equal(payload.isMock, false);
+  assert.equal(payload.meta.isEmpty, true);
+  assert.equal(payload.sourceState.state, "EMPTY");
+  assert.equal(payload.summary, null);
   assert.ok(Array.isArray(payload.insights));
-  assert.ok(payload.summary.courts.total >= 0);
+});
+
+test("getDashboardAnalytics live failure throws instead of mock fallback", () => {
+  delete globalThis.localStorage;
+  assert.throws(
+    () =>
+      getDashboardAnalytics({
+        clubId: "__test_error_club__",
+        from: "2026-06-01",
+        to: "2026-06-28",
+        mode: "live",
+      }),
+    (err) => err?.code === "DASHBOARD_SOURCE_FAILED" && err?.liveFailed === true
+  );
+});
+
+test("getDashboardAnalytics explicit demo mode returns labeled MOCK", () => {
+  const payload = getDashboardAnalytics({
+    clubId: "__test_empty_club__",
+    from: "2026-06-01",
+    to: "2026-06-28",
+    sections: { revenue: true, courts: true, insights: true },
+    mode: "demo",
+  });
+  assert.equal(payload.isMock, true);
+  assert.equal(payload.sourceState.state, "MOCK");
+  assert.equal(payload.sourceState.explicitDemoOrPreview, true);
 });
 
 test("generateOperationalInsights produces rule-based tips", () => {
@@ -123,4 +169,5 @@ test("formatCurrency and formatTrend helpers", () => {
   const trend = formatTrend(12);
   assert.equal(trend.direction, "up");
   assert.equal(trend.label, "+12%");
+  assert.equal(formatTrend(null).label, "—");
 });

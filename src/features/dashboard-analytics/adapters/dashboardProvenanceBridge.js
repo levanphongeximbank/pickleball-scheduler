@@ -1,12 +1,15 @@
 /**
- * Additive dashboard provenance bridge for REPORTING-04 handoff.
+ * Additive dashboard provenance bridge for REPORTING-04.
  *
- * Does not change dashboard UI or live/mock service behavior.
- * Re-exports Reporting classification helpers so Experience Channels / UI
- * can later adopt honest provenance without deep-importing Reporting internals.
+ * Re-exports Reporting public classification helpers so UI can adopt honest
+ * provenance without deep-importing Reporting internals.
  */
 
 export {
   classifyDashboardPayloadProvenance,
   MOCK_DASHBOARD_DATA_CLASSIFICATION,
-} from "../../reporting-analytics/adapters/dashboardProvenance.js";
+  composeMixedProvenance,
+  resolveDashboardPresentationSourceState,
+  REPORTING_PRESENTATION_SOURCE_STATE,
+  getReportingPresentationSourceStateLabel,
+} from "../../reporting-analytics/index.js";

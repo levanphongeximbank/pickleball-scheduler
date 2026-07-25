@@ -11,6 +11,8 @@ export const APPROVED_PARTIAL_MENU_PATHS = Object.freeze([
   "/crm/campaigns",
   "/crm/history",
   "/crm/reminders/booking",
+  // REPORTING-04: Reports workspace is honest PARTIAL until durable browser runtime is injected.
+  "/reports",
 ]);
 
 /**
