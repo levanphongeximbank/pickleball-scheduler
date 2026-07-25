@@ -11,6 +11,7 @@
  * I&A-08 — Customer and Player Analytics
  * I&A-09 — Finance, Ranking and Performance Analytics
  * I&A-10 — Operational Alerts and Insights
+ * I&A-11 — Privacy, Tenant Isolation and Access Certification
  *
  * Module-neutral metric/query/result contracts, metric registry governance,
  * deterministic query/projection runtime over explicit source adapters,
@@ -18,10 +19,11 @@
  * analysis, competition analytics projections, venue/court/club analytics
  * projections, privacy-safe customer/player analytics projections,
  * privacy-safe and currency-safe finance/ranking/performance analytics
- * projections, operational alerts/insights evaluation, and read-only facades.
+ * projections, operational alerts/insights evaluation, privacy/tenant/
+ * access certification, and read-only facades.
  * No dashboard UI wiring, no Platform Core / Competition E2E / business-rule
  * deps, no SQL/Supabase adapters, no export/scheduler runtime, no forecasting,
- * no notification delivery.
+ * no notification delivery, no Production policy adapter.
  */
 
 export * from "./contracts/index.js";
@@ -37,6 +39,7 @@ export * from "./venue-court-club-analytics/index.js";
 export * from "./customer-player-analytics/index.js";
 export * from "./finance-ranking-performance-analytics/index.js";
 export * from "./operational-alerts-insights/index.js";
+export * from "./privacy-access-certification/index.js";
 
 export const INTELLIGENCE_ANALYTICS_FOUNDATION = Object.freeze({
   workstreamId: "I&A-01",
@@ -95,6 +98,12 @@ export const INTELLIGENCE_ANALYTICS_FINANCE_RANKING_PERFORMANCE_ANALYTICS = Obje
 export const INTELLIGENCE_ANALYTICS_OPERATIONAL_ALERTS_INSIGHTS = Object.freeze({
   workstreamId: "I&A-10",
   name: "Operational Alerts and Insights",
+  version: "1.0.0",
+});
+
+export const INTELLIGENCE_ANALYTICS_PRIVACY_ACCESS_CERTIFICATION = Object.freeze({
+  workstreamId: "I&A-11",
+  name: "Privacy, Tenant Isolation and Access Certification",
   version: "1.0.0",
 });
 
@@ -324,4 +333,35 @@ export const INTELLIGENCE_ANALYTICS_PUBLIC_EXPORTS = Object.freeze([
   "MISSING_SIGNAL_POLICY",
   "STALE_SIGNAL_POLICY",
   "RESULT_KIND",
+  "INTELLIGENCE_ANALYTICS_PRIVACY_ACCESS_CERTIFICATION",
+  "ANALYTICS_DATA_CLASSIFICATION",
+  "ANALYTICS_ACCESS_DECISION",
+  "ANALYTICS_PRIVACY_PAYLOAD_STATE",
+  "ANALYTICS_ENTITY_SCOPE_KIND",
+  "ANALYTICS_PRIVACY_REASON_CODE",
+  "PRIVACY_ACCESS_CERTIFICATION_METHOD_VERSION",
+  "PRIVACY_ACCESS_CERTIFICATION_COMPLETENESS",
+  "createAnalyticsPrivacyAccessContext",
+  "createAnalyticsPrivacyPolicy",
+  "createAnalyticsAccessDecision",
+  "createAnalyticsMetricAccessGrant",
+  "createAnalyticsDimensionAccessGrant",
+  "validateDataClassification",
+  "resolveMostRestrictiveClassification",
+  "certifyTenantIsolation",
+  "certifyEntityIsolation",
+  "evaluateMetricAccess",
+  "evaluateDimensionAccess",
+  "filterMetricDiscovery",
+  "evaluateSmallCohortSuppression",
+  "evaluateRedactionAndOmission",
+  "sanitizePrivacySafeError",
+  "projectHistoricalResultPrivacy",
+  "projectDashboardReportPrivacy",
+  "projectAlertInsightPrivacy",
+  "createPrivacyCertificationReport",
+  "runPrivacyCertificationSuite",
+  "createInMemoryPrivacyPolicySource",
+  "createPrivacyAccessCertificationFacade",
+  "createReadOnlyPrivacyAccessCertificationFacade",
 ]);
