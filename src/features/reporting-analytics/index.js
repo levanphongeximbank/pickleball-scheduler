@@ -202,6 +202,8 @@ export {
   MOCK_DASHBOARD_DATA_CLASSIFICATION,
   composeMixedProvenance,
   createUnavailableIntelligenceProjectionResult,
+  IA_PUBLIC_PROJECTION_EXECUTION_CONTRACT,
+  createIntelligenceProjectionDataSourcePort,
 } from "./adapters/index.js";
 
 export const REPORTING_ANALYTICS_PUBLIC_EXPORTS = Object.freeze([
@@ -360,5 +362,7 @@ export const REPORTING_ANALYTICS_PUBLIC_EXPORTS = Object.freeze([
   "MOCK_DASHBOARD_DATA_CLASSIFICATION",
   "composeMixedProvenance",
   "createUnavailableIntelligenceProjectionResult",
+  "IA_PUBLIC_PROJECTION_EXECUTION_CONTRACT",
+  "createIntelligenceProjectionDataSourcePort",
   "REPORTING_ANALYTICS_PUBLIC_EXPORTS",
 ]);

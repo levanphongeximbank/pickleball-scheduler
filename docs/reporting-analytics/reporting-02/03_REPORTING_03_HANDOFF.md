@@ -27,3 +27,9 @@ REPORTING-02 delivers authored durable schema, RLS, durable repository adapters,
 - Live certification of RLS fail-closed paths
 - Idempotency and optimistic concurrency smoke against Staging
 - Artifact storage adapter certification (if Owner authorizes storage)
+
+## Local remediation delivered (not Staging apply)
+
+- Permission catalog seed: `40_REPORTING_02_PERMISSION_SEED.sql` + handoff `04_IDENTITY_PERMISSION_HANDOFF.md` (no role grants)
+- Projection mapping adapter boundary: `createIntelligenceProjectionDataSourcePort` (public I&A entry only; `PROJECTION_SOURCE_NOT_DEPLOYED` until I&A publish execute-by-projectionId)
+- Staging apply manifest: `05_STAGING_APPLY_MANIFEST.md` — **do not execute** without Owner GO

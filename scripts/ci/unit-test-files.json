@@ -407,5 +407,8 @@
   "tests/reporting-analytics-reporting-02-sql-rls.test.js",
   "tests/reporting-analytics-reporting-02-durable-repositories.test.js",
   "tests/reporting-analytics-reporting-02-execution-export.test.js",
-  "tests/reporting-analytics-reporting-02-authorization-boundary.test.js"
+  "tests/reporting-analytics-reporting-02-authorization-boundary.test.js",
+  "tests/reporting-analytics-reporting-03-permission-seed.test.js",
+  "tests/reporting-analytics-reporting-03-projection-mapping.test.js",
+  "tests/reporting-analytics-reporting-03-staging-manifest.test.js"
 ]
