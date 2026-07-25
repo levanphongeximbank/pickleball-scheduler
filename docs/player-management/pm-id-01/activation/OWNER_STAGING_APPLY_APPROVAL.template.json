@@ -1,0 +1,24 @@
+{
+  "phase": "PM-ID-01",
+  "artifact": "OWNER_STAGING_APPLY_APPROVAL",
+  "approved": false,
+  "environment": "staging",
+  "productionAllowed": false,
+  "stagingProjectRef": "qyewbxjsiiyufanzcjcq",
+  "goToken": "PM_ID_01_OWNER_GO_APPLY_STAGING",
+  "ownerGoToken": "PM_ID_01_OWNER_GO_APPLY_STAGING",
+  "expectedGitCommit": null,
+  "backfillApproved": false,
+  "mappingRowsCreationApproved": false,
+  "roleGrantsApproved": false,
+  "coachingChangesApproved": false,
+  "automaticRollbackApproved": false,
+  "notes": "DEFAULT DENY. Owner must explicitly set approved=true, pin expectedGitCommit to the exact full 40-character execution HEAD, and supply goToken PM_ID_01_OWNER_GO_APPLY_STAGING before any Staging SQL apply. Never commit approved=true by default. Never set productionAllowed=true. CI green / preflight PASS / local tests PASS do not grant apply permission. PR merge does not grant apply permission.",
+  "gatesRequiredBeforeApply": [
+    "GATE_A_LOCAL_ACTIVATION_PACKAGE_CERTIFICATION",
+    "GATE_B_REMOTE_READ_ONLY_STAGING_PREFLIGHT",
+    "GATE_C_OWNER_GO_EXACT_COMMIT"
+  ],
+  "signedBy": null,
+  "signedAt": null
+}

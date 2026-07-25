@@ -1,0 +1,36 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "pm-id-01-apply-refused.schema.json",
+  "title": "PM-ID-01 Apply Refused Evidence",
+  "type": "object",
+  "required": [
+    "verdict",
+    "ownerGoGranted",
+    "databaseConnectionOpened",
+    "databaseWrites",
+    "sqlApplied",
+    "mappingRowsCreated",
+    "backfillExecuted",
+    "roleGrantsApplied",
+    "productionTouched",
+    "filesDeleted",
+    "CODEX_DELETE_ALLOWED"
+  ],
+  "properties": {
+    "verdict": {
+      "const": "PM_ID_01_APPLY_REFUSED_OWNER_GO_NOT_GRANTED"
+    },
+    "ownerGoGranted": { "const": false },
+    "databaseConnectionOpened": { "const": false },
+    "databaseWrites": { "const": 0 },
+    "sqlApplied": { "const": false },
+    "mappingRowsCreated": { "const": 0 },
+    "backfillExecuted": { "const": false },
+    "roleGrantsApplied": { "const": false },
+    "productionTouched": { "const": false },
+    "filesDeleted": { "const": false },
+    "CODEX_DELETE_ALLOWED": { "const": "NO" },
+    "automaticRollback": { "const": false }
+  },
+  "additionalProperties": true
+}

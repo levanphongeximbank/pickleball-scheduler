@@ -1,0 +1,31 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "pm-id-01-apply-success.schema.json",
+  "title": "PM-ID-01 Apply Success Evidence (future only)",
+  "type": "object",
+  "required": [
+    "verdict",
+    "stagingProjectRef",
+    "sqlApplied",
+    "mappingRowsCreated",
+    "backfillExecuted",
+    "roleGrantsApplied",
+    "productionTouched",
+    "automaticRollback",
+    "coachingChanges"
+  ],
+  "properties": {
+    "verdict": { "const": "PM_ID_01_STAGING_FORWARD_APPLIED" },
+    "stagingProjectRef": { "const": "qyewbxjsiiyufanzcjcq" },
+    "sqlApplied": { "const": true },
+    "mappingRowsCreated": { "const": 0 },
+    "backfillExecuted": { "const": false },
+    "roleGrantsApplied": { "const": false },
+    "productionTouched": { "const": false },
+    "automaticRollback": { "const": false },
+    "coachingChanges": { "const": false },
+    "filesDeleted": { "const": false },
+    "CODEX_DELETE_ALLOWED": { "const": "NO" }
+  },
+  "additionalProperties": true
+}
