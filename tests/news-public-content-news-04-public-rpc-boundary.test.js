@@ -124,12 +124,14 @@ test("NEWS-04 adapter rejects MOCK from public RPC path", async () => {
   );
 });
 
-test("NEWS-04 remediation docs refuse silent Staging apply without Owner GO", () => {
+test("NEWS-04 remediation docs require Owner GO and keep Production blocked", () => {
   const doc = readSql(
     "docs/news-public-content/news-04/03_PUBLIC_RPC_LIVE_ONLY_REMEDIATION.md"
   );
   assert.match(doc, /PUBLIC_BOUNDARY_DEFECT/);
   assert.match(doc, /Owner GO/i);
-  assert.match(doc, /NOT applied/i);
-  assert.match(doc, /Production/i);
+  assert.match(doc, /Applied on Staging/i);
+  assert.match(doc, /NEWS_04_OWNER_GO_STAGING_PUBLIC_RPC_LIVE_ONLY/);
+  assert.match(doc, /DO NOT APPLY/i);
+  assert.match(doc, /productionBlocked/i);
 });
