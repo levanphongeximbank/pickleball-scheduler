@@ -15,7 +15,7 @@
 
 | Mode | When | Behavior |
 |------|------|----------|
-| `FEATURE_BRANCH_DELTA_MODE` | Live delta vs comparison base is **non-empty** | Assert live delta does not touch CORE-08 ownership; if `unit-test-files.json` is in the live delta, validate additive E2E-07 registry changes and reproduce branch-local failure from live names |
+| `FEATURE_BRANCH_DELTA_MODE` | Live delta vs comparison base is **non-empty** | Assert live delta does not touch CORE-08 ownership; **only when** the live delta includes both `unit-test-files.json` **and** at least one E2E-07-owned path (`tests/competition-engine-e2e-07-`, `src/features/competition-engine/certification/`, `docs/competition-engine/e2e-07/`, …), validate additive E2E-07 registry changes and reproduce branch-local failure from live names. Unrelated workstreams that only touch the shared registry are **not** classified as E2E-07 registry additions. |
 | `MERGED_MAIN_MODE` | Live delta is **empty**, or comparison base is **unavailable** | Do **not** require non-empty live delta; do **not** auto-PASS; validate committed evidence snapshot + registry presence + CORE-08 content hash; replay classifier from `classifiedBranchDelta.fileNames` |
 
 Both modes share one classification model: `classifyCore08BranchDelta` / `reproduceCore08BranchLocalGate`.
@@ -91,3 +91,4 @@ Frozen CORE-08 1E content SHA-256 is pinned in evidence (`core08FrozenTestConten
 - Official CI does **not** run frozen CORE-08 1E.
 - Official CI **does** run this classification control on feature branches **and** on merged main.
 - Frozen 1E branch-local assertion remains a classified FAIL when executed manually — never silently greened.
+- E2E-07 registry-addition validation is scoped to live deltas that contain E2E-07-owned paths; touching `scripts/ci/unit-test-files.json` alone does not trigger it.
