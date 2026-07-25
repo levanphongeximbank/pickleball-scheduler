@@ -1,0 +1,110 @@
+{
+  "phase": "COACHING-03",
+  "description": "Canonical pin of COACHING-02 SQL package for guarded Staging activation. Does not execute SQL.",
+  "environmentTarget": "staging",
+  "stagingProjectRef": "qyewbxjsiiyufanzcjcq",
+  "stagingProjectRefAllowlist": ["qyewbxjsiiyufanzcjcq"],
+  "productionProjectRefBlocklist": ["expuvcohlcjzvrrauvud"],
+  "productionApplyApproved": false,
+  "executeSql": false,
+  "hashAlgorithm": "sha256-lf-normalized",
+  "aggregateSha256Forward": "5f82d85a75e531b648688d3f87e52be6521d482eb5df6202553ac0596e723e26",
+  "applyOrderingLocked": true,
+  "phase28Excluded": true,
+  "transactionModel": {
+    "idealSingleTransaction": true,
+    "scriptedManagementApi": "per-file-checkpoint-stop-on-error",
+    "automaticRollback": false,
+    "notes": "All COACHING-02 forward files are PostgreSQL-transaction-compatible (no CONCURRENTLY). Owner SQL Editor may wrap 10→60 in one transaction. Management API apply runs one file per request — checkpoint boundaries apply; do not claim cross-file atomicity for scripted apply."
+  },
+  "migrations": [
+    {
+      "order": 1,
+      "classification": "forward",
+      "path": "docs/coaching-training/coaching-02/10_COACHING_02_TABLES.sql",
+      "sha256": "ac27665dd2c2f4d97c2a71c3e360e6872c3db97f9655ccd1d063945a9fc59ff6",
+      "transactionSafe": true,
+      "checkpoint": "after-tables"
+    },
+    {
+      "order": 2,
+      "classification": "forward",
+      "path": "docs/coaching-training/coaching-02/15_COACHING_02_PERMISSION_SEED.sql",
+      "sha256": "fee44a916c29300ddececa930010beebe56d24864cf4ddeec095618122c84889",
+      "transactionSafe": true,
+      "checkpoint": "after-permission-seed"
+    },
+    {
+      "order": 3,
+      "classification": "forward",
+      "path": "docs/coaching-training/coaching-02/20_COACHING_02_INDEXES.sql",
+      "sha256": "c5a85874d3843285d7a15a93756fbe63ba89521631becb8eea9daee5c985379c",
+      "transactionSafe": true,
+      "checkpoint": "after-indexes"
+    },
+    {
+      "order": 4,
+      "classification": "forward",
+      "path": "docs/coaching-training/coaching-02/30_COACHING_02_RLS.sql",
+      "sha256": "652e22d83d726f2942ebac765f8a18a7e91343e1c658e78ab0f629817d5a4f05",
+      "transactionSafe": true,
+      "checkpoint": "after-rls"
+    },
+    {
+      "order": 5,
+      "classification": "forward",
+      "path": "docs/coaching-training/coaching-02/40_COACHING_02_ATTENDANCE_CORRECTION_RPC.sql",
+      "sha256": "8063ba0fdbe29d8ff2a09e0de0a9eb006ccb4b54dc8157ecfa1b1d91362d47d7",
+      "transactionSafe": true,
+      "checkpoint": "after-attendance-rpc"
+    },
+    {
+      "order": 6,
+      "classification": "forward",
+      "path": "docs/coaching-training/coaching-02/45_COACHING_02_ENTITLEMENT_CONSUME_RPC.sql",
+      "sha256": "134c928bca264f0a1adf7e0c4a592db4fecaced79cf852d27a0a8d146f05cf07",
+      "transactionSafe": true,
+      "checkpoint": "after-entitlement-rpc"
+    },
+    {
+      "order": 7,
+      "classification": "forward",
+      "path": "docs/coaching-training/coaching-02/50_COACHING_02_GRANTS.sql",
+      "sha256": "2df188b735971cf40f26103130249d0543483311f7b60e5862ba90afdf9366e7",
+      "transactionSafe": true,
+      "checkpoint": "after-grants"
+    },
+    {
+      "order": 8,
+      "classification": "forward",
+      "path": "docs/coaching-training/coaching-02/60_COACHING_02_IMMUTABLE.sql",
+      "sha256": "cd6f2e59803c83d95fefc086c259e6b960e7c72541b18d39d6111f0163d3dfac",
+      "transactionSafe": true,
+      "checkpoint": "after-immutable"
+    },
+    {
+      "order": 90,
+      "classification": "rollback",
+      "path": "docs/coaching-training/coaching-02/90_COACHING_02_ROLLBACK.sql",
+      "sha256": "c29285e0e2a7c9d702157380c9f67a7f18bfee9e6b1a1c693fcf92e19ebcf480",
+      "transactionSafe": true,
+      "autoExecute": false
+    },
+    {
+      "order": 99,
+      "classification": "verification",
+      "path": "docs/coaching-training/coaching-02/99_COACHING_02_VERIFICATION.sql",
+      "sha256": "b1592fddc31c313ef4798d39be9bac85cae7a993813b109ddceb74884d5cdfbc",
+      "transactionSafe": true,
+      "readOnly": true,
+      "autoExecute": false
+    }
+  ],
+  "roleGrantProposal": {
+    "forward": "docs/coaching-training/coaching-03/sql/70_COACHING_03_ROLE_PERMISSION_ASSIGNMENT.proposal.sql",
+    "rollback": "docs/coaching-training/coaching-03/sql/91_COACHING_03_ROLE_PERMISSION_ROLLBACK.proposal.sql",
+    "ownerApprovalRequired": true,
+    "deferredUntilOwnerGo": true,
+    "executeSql": false
+  }
+}

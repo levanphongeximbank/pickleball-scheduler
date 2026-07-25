@@ -1,0 +1,125 @@
+/**
+ * COACHING-03 — Staging identity constants (no secrets).
+ */
+
+export const COACHING_03_STAGING_PROJECT_REF = "qyewbxjsiiyufanzcjcq";
+
+export const COACHING_03_STAGING_PROJECT_REF_ALLOWLIST = Object.freeze([
+  COACHING_03_STAGING_PROJECT_REF,
+]);
+
+export const COACHING_03_PRODUCTION_PROJECT_REF_BLOCKLIST = Object.freeze([
+  "expuvcohlcjzvrrauvud",
+]);
+
+export const COACHING_03_PRODUCTION_DOMAIN_BLOCKLIST = Object.freeze([
+  "pickvn.app",
+]);
+
+export const COACHING_03_ENVIRONMENT_LABEL = "staging";
+
+export const COACHING_03_TEST_PREFIX = "COACHING_03_CERT_FIXTURE_";
+
+export const COACHING_03_OWNER_GO_TOKEN = "COACHING_03_OWNER_GO_APPLY_STAGING";
+
+export const COACHING_03_COACHING_02_ANCESTOR_COMMITS = Object.freeze([
+  "f554985a97b9460c1a62531972c7894e5ec0da1c",
+  "81805cb13e8a3b5d304759528d1c2519e619e821",
+]);
+
+export const COACHING_03_VERDICTS = Object.freeze({
+  PREFLIGHT_PACKAGE_AWAITING_OWNER_GO:
+    "COACHING_03_PREFLIGHT_PACKAGE_PR_OPEN_AWAITING_OWNER_GO",
+  PREFLIGHT_PACKAGE_CI_PENDING:
+    "COACHING_03_PREFLIGHT_PACKAGE_PR_OPEN_CI_PENDING",
+  REMOTE_READ_ONLY_PREFLIGHT_BLOCKED:
+    "COACHING_03_REMOTE_READ_ONLY_PREFLIGHT_BLOCKED",
+  BASE_ALIGNMENT_BLOCKED: "COACHING_03_BASE_ALIGNMENT_BLOCKED",
+  CANONICAL_SQL_REMEDIATION_REQUIRED:
+    "COACHING_03_CANONICAL_SQL_REMEDIATION_REQUIRED",
+  APPLY_REFUSED: "COACHING_03_APPLY_REFUSED",
+  PREFLIGHT_PASS: "COACHING_03_PREFLIGHT_PASS",
+  PREFLIGHT_FAIL: "COACHING_03_PREFLIGHT_FAIL",
+  BLOCKED: "COACHING_03_BLOCKED",
+});
+
+export const COACHING_03_ENV_NAMES = Object.freeze({
+  STAGING_SUPABASE_URL: "STAGING_SUPABASE_URL",
+  VITE_SUPABASE_URL: "VITE_SUPABASE_URL",
+  SUPABASE_URL: "SUPABASE_URL",
+  STAGING_ANON_KEY: "STAGING_SUPABASE_ANON_KEY",
+  VITE_ANON_KEY: "VITE_SUPABASE_ANON_KEY",
+  STAGING_SERVICE_ROLE_KEY: "STAGING_SUPABASE_SERVICE_ROLE_KEY",
+  STAGING_DB_URL: "STAGING_SUPABASE_DB_URL",
+  ACCESS_TOKEN: "SUPABASE_ACCESS_TOKEN",
+  OWNER_GO: "COACHING_03_OWNER_GO",
+  TARGET_CONFIRM: "COACHING_03_STAGING_TARGET_CONFIRM",
+  EXPECTED_COMMIT: "COACHING_03_EXPECTED_COMMIT",
+  STAGING_ENV_FILE: "COACHING_03_STAGING_ENV_FILE",
+  VITE_APP_ENV: "VITE_APP_ENV",
+  BACKUP_EVIDENCE: "COACHING_03_BACKUP_EVIDENCE",
+  BACKUP_EVIDENCE_PATH: "COACHING_03_BACKUP_EVIDENCE_PATH",
+});
+
+export const COACHING_03_MANIFEST_RELATIVE_PATH =
+  "docs/coaching-training/coaching-03/sql-migration-manifest.json";
+
+export const COACHING_03_EVIDENCE_DIR =
+  "docs/coaching-training/coaching-03/evidence";
+
+export const COACHING_03_APPROVAL_TEMPLATE_RELATIVE_PATH =
+  "docs/coaching-training/coaching-03/OWNER_STAGING_APPLY_APPROVAL.template.json";
+
+export const COACHING_03_ROLE_GRANT_FORWARD_RELATIVE_PATH =
+  "docs/coaching-training/coaching-03/sql/70_COACHING_03_ROLE_PERMISSION_ASSIGNMENT.proposal.sql";
+
+export const COACHING_03_ROLE_GRANT_ROLLBACK_RELATIVE_PATH =
+  "docs/coaching-training/coaching-03/sql/91_COACHING_03_ROLE_PERMISSION_ROLLBACK.proposal.sql";
+
+export const COACHING_03_PHASE_28_SQL_BLOCKLIST = Object.freeze([
+  "docs/v5/PHASE_28_COACHING.sql",
+  "PHASE_28_COACHING.sql",
+]);
+
+export const COACHING_03_CANONICAL_TABLES = Object.freeze([
+  "coaching_programs",
+  "coaching_coach_references",
+  "coaching_coach_player_relationships",
+  "coaching_enrollments",
+  "coaching_curricula",
+  "coaching_lessons",
+  "coaching_training_sessions",
+  "coaching_attendance_records",
+  "coaching_attendance_corrections",
+  "coaching_packages",
+  "coaching_package_entitlements",
+  "coaching_package_usage_events",
+  "coaching_evaluations",
+]);
+
+export const COACHING_03_FORWARD_SQL_ORDER = Object.freeze([
+  "docs/coaching-training/coaching-02/10_COACHING_02_TABLES.sql",
+  "docs/coaching-training/coaching-02/15_COACHING_02_PERMISSION_SEED.sql",
+  "docs/coaching-training/coaching-02/20_COACHING_02_INDEXES.sql",
+  "docs/coaching-training/coaching-02/30_COACHING_02_RLS.sql",
+  "docs/coaching-training/coaching-02/40_COACHING_02_ATTENDANCE_CORRECTION_RPC.sql",
+  "docs/coaching-training/coaching-02/45_COACHING_02_ENTITLEMENT_CONSUME_RPC.sql",
+  "docs/coaching-training/coaching-02/50_COACHING_02_GRANTS.sql",
+  "docs/coaching-training/coaching-02/60_COACHING_02_IMMUTABLE.sql",
+]);
+
+export const COACHING_03_ROLLBACK_SQL_PATH =
+  "docs/coaching-training/coaching-02/90_COACHING_02_ROLLBACK.sql";
+
+export const COACHING_03_VERIFICATION_SQL_PATH =
+  "docs/coaching-training/coaching-02/99_COACHING_02_VERIFICATION.sql";
+
+export const COACHING_03_GATES = Object.freeze({
+  A_LOCAL_PACKAGE: "GATE_A_LOCAL_PACKAGE_CERTIFICATION",
+  B_REMOTE_PREFLIGHT: "GATE_B_REMOTE_READ_ONLY_STAGING_PREFLIGHT",
+  C_OWNER_GO: "GATE_C_OWNER_GO",
+  D_CONTROLLED_APPLY: "GATE_D_CONTROLLED_STAGING_APPLY",
+  E_SCHEMA_RLS_RUNTIME: "GATE_E_SCHEMA_RLS_RUNTIME_CERTIFICATION",
+  F_FIXTURE_CLEANUP: "GATE_F_FIXTURE_CLEANUP_RESIDUAL_VERIFICATION",
+  G_PR_CLOSURE: "GATE_G_PR_MERGE_POST_MERGE_CLOSURE",
+});

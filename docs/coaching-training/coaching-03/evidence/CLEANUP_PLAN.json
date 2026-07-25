@@ -1,0 +1,41 @@
+{
+  "phase": "COACHING-03",
+  "script": "coaching-03-staging-cleanup",
+  "mode": "plan-only",
+  "ok": true,
+  "cleanupPlan": {
+    "fixturePrefix": "COACHING_03_CERT_FIXTURE_",
+    "creationOrder": [
+      "programs",
+      "curricula/lessons",
+      "coaches/relationships",
+      "enrollments",
+      "packages/entitlements",
+      "sessions",
+      "attendance",
+      "evaluations"
+    ],
+    "cleanupOrder": [
+      "evaluations (mutable)",
+      "attendance mutable",
+      "sessions",
+      "usage/entitlements/packages (prefix-scoped mutable)",
+      "enrollments",
+      "relationships/coaches",
+      "lessons/curricula",
+      "programs",
+      "verify residual prefix rows = 0",
+      "verify no residual cert-only role grants"
+    ],
+    "idempotent": true,
+    "preserveSharedQaPrincipals": true,
+    "noAuthUserDeletion": true
+  },
+  "fixturesCreated": false,
+  "fixturesDeleted": 0,
+  "residualExpected": 0,
+  "databaseWrites": 0,
+  "sqlApplied": false,
+  "secretsPrinted": false,
+  "finishedAt": "2026-07-25T05:34:46.835Z"
+}

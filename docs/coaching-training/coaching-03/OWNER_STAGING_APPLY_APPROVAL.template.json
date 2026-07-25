@@ -1,0 +1,19 @@
+{
+  "phase": "COACHING-03",
+  "artifact": "OWNER_STAGING_APPLY_APPROVAL",
+  "approved": false,
+  "environment": "staging",
+  "productionAllowed": false,
+  "stagingProjectRef": "qyewbxjsiiyufanzcjcq",
+  "goToken": "COACHING_03_OWNER_GO_APPLY_STAGING",
+  "roleMatrixApproved": false,
+  "uiRuntimeCutoverApproved": false,
+  "notes": "DEFAULT DENY. Owner must explicitly set approved=true AND provide goToken via env COACHING_03_OWNER_GO=COACHING_03_OWNER_GO_APPLY_STAGING before Gate D. Never commit approved=true. Never set productionAllowed=true. Current phase is preflight/package only — Staging SQL must not be applied until Owner GO.",
+  "gatesRequiredBeforeApply": [
+    "GATE_A_LOCAL_PACKAGE_CERTIFICATION",
+    "GATE_B_REMOTE_READ_ONLY_STAGING_PREFLIGHT",
+    "GATE_C_OWNER_GO"
+  ],
+  "signedBy": null,
+  "signedAt": null
+}
