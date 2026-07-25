@@ -120,7 +120,7 @@ test("EC-00 and EC-01 certifications remain green after EC-02 presentation updat
     ExperienceChannels.EXPERIENCE_CHANNEL_READINESS.PARTIAL
   );
 
-  // Loading/error remain MISSING on list pages that still use sync mock-backed fetch
+  // Loading remains MISSING on sync list pages; Clubs/Courts error wired in EC-03
   const clubs = ExperienceChannels.getPublicPortalSurface(
     ExperienceChannels.PUBLIC_PORTAL_SURFACE_ID.PUBLIC_CLUBS
   );
@@ -130,7 +130,7 @@ test("EC-00 and EC-01 certifications remain green after EC-02 presentation updat
   );
   assert.equal(
     clubs.errorStateReadiness,
-    ExperienceChannels.EXPERIENCE_CHANNEL_READINESS.MISSING
+    ExperienceChannels.EXPERIENCE_CHANNEL_READINESS.PARTIAL
   );
   assert.equal(
     clubs.emptyStateReadiness,

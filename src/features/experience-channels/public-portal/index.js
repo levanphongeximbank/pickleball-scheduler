@@ -21,16 +21,35 @@ export const EXPERIENCE_CHANNELS_EC01_PHASE = Object.freeze({
   androidReleasePercent: 0,
 });
 
+export const EXPERIENCE_CHANNELS_EC03_PHASE = Object.freeze({
+  id: "EC-03",
+  name: "public-portal-data-source-honesty",
+  wiredToRuntimeRouter: false,
+  wiredToMainEntrypoint: false,
+  wiredToProviderTree: false,
+  dataResultContractComplete: true,
+  clubsCourtsAdapterRemediation: true,
+  tournamentsRankingsDeferred: true,
+  mockFallbackRemoved: false,
+  nativeStoreRelease: false,
+  iosReleasePercent: 0,
+  androidReleasePercent: 0,
+});
+
 export const PUBLIC_PORTAL_READINESS_PUBLIC_EXPORTS = Object.freeze([
   "EXPERIENCE_CHANNELS_EC01_PHASE",
+  "EXPERIENCE_CHANNELS_EC03_PHASE",
   "PUBLIC_PORTAL_SURFACE_ID",
   "PUBLIC_PORTAL_DATA_SOURCE",
+  "PUBLIC_DATA_RESULT_STATUS",
   "listPublicPortalSurfaces",
   "getPublicPortalSurface",
   "listPublicPortalBoundaryMarkers",
   "getPublicPortalSharedReadinessEvidence",
   "certifyPublicPortalReadiness",
   "createPublicPortalSurfaceDescriptor",
+  "createLiveResult",
+  "certifyPublicDataResult",
 ]);
 
 export {
@@ -70,3 +89,23 @@ export {
 } from "./registry/index.js";
 
 export { certifyPublicPortalReadiness } from "./validation/index.js";
+
+export {
+  PUBLIC_DATA_RESULT_STATUS,
+  PUBLIC_DATA_RESULT_STATUS_VALUES,
+  isPublicDataResultStatus,
+  PUBLIC_DATA_FALLBACK_REASON,
+  PUBLIC_DATA_FALLBACK_REASON_VALUES,
+  isPublicDataFallbackReason,
+  sanitizePublicDataErrorMessage,
+  normalizePublicDataError,
+  createLiveResult,
+  createMockResult,
+  createPreviewResult,
+  createMixedResult,
+  createEmptyResult,
+  createErrorResult,
+  createUnavailableResult,
+  certifyPublicDataResult,
+  resolvePublicListDataResult,
+} from "./data-source/index.js";

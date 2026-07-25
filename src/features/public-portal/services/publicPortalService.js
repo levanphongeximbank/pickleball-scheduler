@@ -2,12 +2,13 @@
  * Public portal data — live-first for most surfaces; mock-fallback remains for
  * clubs/tournaments/courts/rankings. News (NEWS-04) is provenance-honest and
  * never silently falls back to MOCK_NEWS on live failure.
+ *
+ * EC-03: Clubs/Courts honest PublicDataResult adapters live in
+ * `publicClubsCourtsDataSource.js` and are re-exported here for compatibility.
  */
 import { loadClubs } from "../../../data/club.js";
 import { loadClubData } from "../../../domain/clubStorage.js";
 import {
-  MOCK_CLUBS,
-  MOCK_COURTS,
   MOCK_LIVE_SCORES,
   MOCK_RANKINGS,
   MOCK_SPONSORS,
@@ -29,6 +30,15 @@ export {
   mapPublicNewsFailure,
   getPublicNewsItemsOrEmpty,
 } from "./publicNewsService.js";
+
+export {
+  getPublicClubsResult,
+  getPublicClubs,
+  getFeaturedClubs,
+  getPublicCourtsResult,
+  getPublicCourts,
+  getFeaturedCourts,
+} from "./publicClubsCourtsDataSource.js";
 
 const STATUS_MAP = {
   draft: "upcoming",
@@ -93,55 +103,6 @@ function mapLiveTournaments() {
   return items;
 }
 
-function mapLiveClubs() {
-  const clubs = loadClubs().filter((c) => !c.isDefault && c.status !== "inactive");
-  if (!clubs.length) return [];
-
-  return clubs.map((club) => {
-    const data = safeLoadClubData(club.id);
-    const memberCount = data?.players?.length || 0;
-    const tournamentCount = data?.tournaments?.length || 0;
-
-    return {
-      id: club.id,
-      name: club.name,
-      city: club.city || club.location || "Việt Nam",
-      members: memberCount,
-      tournaments: tournamentCount,
-      logo: club.logo || null,
-      image: club.coverImage || null,
-    };
-  });
-}
-
-function mapLiveCourts() {
-  const clubs = loadClubs().filter((c) => !c.isDefault);
-  const items = [];
-
-  for (const club of clubs) {
-    const data = safeLoadClubData(club.id);
-    const courts = data?.courts || [];
-    if (!courts.length) continue;
-
-    const cm = data?.courtManagement || {};
-    const openHour = cm.openHour ?? 6;
-    const closeHour = cm.closeHour ?? 22;
-    const openHours = `${String(openHour).padStart(2, "0")}:00 – ${String(closeHour).padStart(2, "0")}:00`;
-
-    items.push({
-      id: `venue-${club.id}`,
-      name: club.name,
-      address: club.address || club.city || club.location || "—",
-      courtCount: courts.filter((c) => c.active !== false).length,
-      openHours,
-      amenities: ["Đèn LED", "Sân chuẩn"],
-      image: club.coverImage || null,
-    });
-  }
-
-  return items;
-}
-
 function computeLiveStats() {
   const clubs = loadClubs().filter((c) => !c.isDefault);
   let courtCount = 0;
@@ -189,22 +150,6 @@ export function getFeaturedTournaments(limit = 4) {
     (a, b) => priority.indexOf(a.status) - priority.indexOf(b.status)
   );
   return sorted.slice(0, limit);
-}
-
-export function getPublicClubs() {
-  return withFallback(mapLiveClubs(), MOCK_CLUBS, 3);
-}
-
-export function getFeaturedClubs(limit = 4) {
-  return getPublicClubs().slice(0, limit);
-}
-
-export function getPublicCourts() {
-  return withFallback(mapLiveCourts(), MOCK_COURTS, 2);
-}
-
-export function getFeaturedCourts(limit = 3) {
-  return getPublicCourts().slice(0, limit);
 }
 
 export function getPublicLiveScores() {

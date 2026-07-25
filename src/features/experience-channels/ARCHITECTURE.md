@@ -127,3 +127,41 @@ docs/experience-channels/ec-02/   Evidence
 ```
 
 EC-01 registry notes may record EC-02 presentation deltas without claiming production-ready portal or hiding MIXED/MOCK data gaps.
+
+---
+
+## EC-03 — Public Portal Data-Source Honesty
+
+**Module home:** `src/features/experience-channels/public-portal/data-source/`  
+**Runtime adapters (public-only):** `getPublicClubsResult` / `getPublicCourtsResult` in `publicPortalService.js`  
+**Presentation:** `PublicDataSourceNotice` + EC-02 state primitives on Clubs / Courts pages
+
+**Status:** Canonical PublicDataResult contract + Clubs/Courts honesty remediation. Mock fallback **retained** with MIXED provenance. Tournaments / Rankings / Home deferred. No router / shell / provider / Competition edits.
+
+### What EC-03 owns
+
+- `PUBLIC_DATA_RESULT_STATUS` + result factories / `certifyPublicDataResult` / `resolvePublicListDataResult`
+- Reuse of EC-01 `PUBLIC_PORTAL_DATA_SOURCE` (no second source enum)
+- Honest Clubs/Courts service adapters (fallback kept, never labeled LIVE)
+- `PublicDataSourceNotice` for MOCK / PREVIEW / MIXED / UNKNOWN
+- EC-03 docs + certification tests
+
+### Explicit non-ownership
+
+| Concern | Owner |
+|---------|--------|
+| Mock removal / LIVE cutover without certified replacement | Deferred |
+| Tournaments / Rankings / Home honesty wiring | Deferred (next EC slice) |
+| Competition `/tournament/:id/public` | COMPETITION_E2E_OWNED |
+| Router / PublicLayout / providers / PWA | GLOBAL_SHARED_HIGH_COLLISION |
+| Backend / SQL / Supabase / Notification | Out of scope |
+
+### Layering (EC-03)
+
+```
+public-portal/data-source/   Pure result contract + list resolver
+publicPortalService.js       Clubs/Courts Result adapters only
+components/public/states/    PublicDataSourceNotice (reuse EC-02 states)
+pages/public/Clubs|Courts    Consumers
+docs/experience-channels/ec-03/
+```

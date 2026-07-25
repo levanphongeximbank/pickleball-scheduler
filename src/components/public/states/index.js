@@ -1,5 +1,5 @@
 /**
- * Public Portal presentation state barrel (EC-02).
+ * Public Portal presentation state barrel (EC-02 + EC-03 notice).
  */
 
 export {
@@ -8,3 +8,5 @@ export {
   PublicErrorState,
   PublicUnavailableState,
 } from "./PublicPresentationStates.jsx";
+
+export { PublicDataSourceNotice } from "./PublicDataSourceNotice.jsx";
