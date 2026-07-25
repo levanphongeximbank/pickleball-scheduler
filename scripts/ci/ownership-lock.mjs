@@ -140,12 +140,16 @@ const RULES = [
   },
   {
     id: "reporting-read-only",
-    description: "Analytics/reporting modules must remain read-only (no table mutations).",
+    description:
+      "Analytics/reporting modules must remain read-only (no table mutations), except Reporting durable persistence adapters (REPORTING-02).",
     onlyIn: [
       "src/features/dashboard-analytics/",
       "src/features/intelligence-analytics/",
       "src/features/reporting-analytics/",
     ],
+    // Durable adapters under persistence/ may call injectable db.insert/update/delete.
+    // Domain/application/authorization remain mutation-token free.
+    allow: ["src/features/reporting-analytics/persistence/"],
     match: (c) => c.match(/\.(insert|update|upsert|delete)\s*\(/g) || [],
   },
   {

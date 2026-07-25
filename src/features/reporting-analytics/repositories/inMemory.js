@@ -41,6 +41,7 @@ function removeKey(store, id) {
  *   reportDefinitions: object,
  *   savedReports: object,
  *   savedFilters: object,
+ *   executions: object,
  *   exportJobs: object,
  *   resetAllForTests: () => void,
  * }}
@@ -52,6 +53,8 @@ export function createInMemoryReportingRepositories() {
   const savedReports = Object.create(null);
   /** @type {Record<string, object>} */
   const savedFilters = Object.create(null);
+  /** @type {Record<string, object>} */
+  const executions = Object.create(null);
   /** @type {Record<string, object>} */
   const exportJobs = Object.create(null);
 
@@ -186,6 +189,14 @@ export function createInMemoryReportingRepositories() {
       exportJobs[id] = clonePlain(job);
       return clonePlain(job);
     },
+    async findByIdempotencyKey(tenantId, key) {
+      const found = Object.values(exportJobs).find(
+        (job) =>
+          job.scope?.tenantId === String(tenantId) &&
+          job.idempotencyKey === String(key)
+      );
+      return found ? clonePlain(found) : null;
+    },
     async listByTenant(tenantId) {
       return Object.values(exportJobs)
         .filter((j) => !tenantId || j.scope?.tenantId === String(tenantId))
@@ -204,15 +215,48 @@ export function createInMemoryReportingRepositories() {
     },
   };
 
+  const executionRepository = {
+    async getById(executionId) {
+      const found = executions[String(executionId)];
+      return found ? clonePlain(found) : null;
+    },
+    async save(execution) {
+      const id = String(execution.executionId);
+      executions[id] = clonePlain(execution);
+      return clonePlain(execution);
+    },
+    async findByIdempotencyKey(tenantId, key) {
+      const found = Object.values(executions).find(
+        (execution) =>
+          execution.scope?.tenantId === String(tenantId) &&
+          execution.idempotencyKey === String(key)
+      );
+      return found ? clonePlain(found) : null;
+    },
+    async listByTenant(tenantId) {
+      return Object.values(executions)
+        .filter((execution) => !tenantId || execution.scope?.tenantId === String(tenantId))
+        .map((execution) => clonePlain(execution));
+    },
+    async deleteById(executionId) {
+      const id = String(executionId);
+      requireFound(executions, id, REPORTING_ERROR_CODE.EXECUTION_NOT_FOUND, "Execution");
+      removeKey(executions, id);
+      return true;
+    },
+  };
+
   return {
     reportDefinitions: reportDefinitionRepository,
     savedReports: savedReportRepository,
     savedFilters: savedFilterRepository,
+    executions: executionRepository,
     exportJobs: exportJobRepository,
     resetAllForTests() {
       for (const key of Object.keys(definitions)) Reflect.deleteProperty(definitions, key);
       for (const key of Object.keys(savedReports)) Reflect.deleteProperty(savedReports, key);
       for (const key of Object.keys(savedFilters)) Reflect.deleteProperty(savedFilters, key);
+      for (const key of Object.keys(executions)) Reflect.deleteProperty(executions, key);
       for (const key of Object.keys(exportJobs)) Reflect.deleteProperty(exportJobs, key);
     },
   };

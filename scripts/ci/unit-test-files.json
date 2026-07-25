@@ -396,5 +396,9 @@
   "tests/reporting-analytics-reporting-01-foundation.test.js",
   "tests/reporting-analytics-reporting-01-authorization-execution.test.js",
   "tests/reporting-analytics-reporting-01-provenance-export.test.js",
-  "tests/reporting-analytics-reporting-01-architecture.test.js"
+  "tests/reporting-analytics-reporting-01-architecture.test.js",
+  "tests/reporting-analytics-reporting-02-sql-rls.test.js",
+  "tests/reporting-analytics-reporting-02-durable-repositories.test.js",
+  "tests/reporting-analytics-reporting-02-execution-export.test.js",
+  "tests/reporting-analytics-reporting-02-authorization-boundary.test.js"
 ]

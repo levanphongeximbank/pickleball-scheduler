@@ -52,6 +52,7 @@ export function createExportRequest(input) {
       "reportDefinitionId"
     ),
     executionId: optionalNonEmptyString(input.executionId, "executionId"),
+    idempotencyKey: optionalNonEmptyString(input.idempotencyKey, "idempotencyKey"),
     format,
     columns: Object.freeze(
       Array.isArray(input.columns) ? input.columns.map(String) : []

@@ -41,6 +41,9 @@ export function createReportExecutionRequest(input) {
     actor: deepFreeze({ ...input.actor }),
     scope,
     reportDefinitionId,
+    savedReportId: optionalNonEmptyString(input.savedReportId, "savedReportId"),
+    savedFilterId: optionalNonEmptyString(input.savedFilterId, "savedFilterId"),
+    idempotencyKey: optionalNonEmptyString(input.idempotencyKey, "idempotencyKey"),
     parameters: deepFreeze(
       isPlainObject(input.parameters) ? { ...input.parameters } : {}
     ),

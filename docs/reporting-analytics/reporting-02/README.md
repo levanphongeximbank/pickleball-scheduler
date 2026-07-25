@@ -1,0 +1,40 @@
+# REPORTING-02 — Durable Report Persistence, Execution & Export
+
+**Status:** SQL authored only. **Do not apply** to Staging or Production without separate Owner authorization.
+
+## Ownership
+
+| Table | Owner |
+|-------|--------|
+| `reporting_report_definitions` | Reporting & Analytics |
+| `reporting_saved_reports` | Reporting & Analytics |
+| `reporting_saved_filters` | Reporting & Analytics |
+| `reporting_executions` | Reporting & Analytics |
+| `reporting_export_jobs` | Reporting & Analytics |
+
+Does **not** own Statistics business truth, I&A metric registry/query runtime, dashboard UI, or `communication_message_reports` (COMMS moderation).
+
+## Apply order (forward)
+
+1. `10_REPORTING_02_TABLES.sql`
+2. `20_REPORTING_02_INDEXES.sql`
+3. `30_REPORTING_02_RLS.sql`
+4. `50_REPORTING_02_GRANTS.sql`
+5. `99_REPORTING_02_VERIFICATION.sql` (read-only checks)
+
+## Rollback order
+
+1. `90_REPORTING_02_ROLLBACK.sql` — only under Owner authorization after backup
+
+## Security notes
+
+- RLS fail-closed using verified helpers only: `auth.uid()`, `public.user_venue_id()`, `public.user_has_permission(text)`, `public.is_super_admin()`.
+- No `USING (true)` / `WITH CHECK (true)`.
+- No anon policies or grants.
+- Authenticated: SELECT only (permission-gated). Writes via trusted `service_role` / server adapters.
+- Execution/export status transitions are not writable by authenticated JWT clients.
+- Service-level authorization in the Reporting application layer runs **before** repository/source/export execution; RLS supplements, does not replace.
+
+## REPORTING-03 handoff
+
+See `03_REPORTING_03_HANDOFF.md`.

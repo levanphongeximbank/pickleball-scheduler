@@ -18,9 +18,11 @@ import {
 import {
   matchesClockPort,
   matchesExportExecutorPort,
+  matchesExportJobRepositoryPort,
   matchesIdProviderPort,
   matchesReportDataSourcePort,
   matchesReportDefinitionRepositoryPort,
+  matchesReportExecutionRepositoryPort,
   matchesSavedFilterRepositoryPort,
   matchesSavedReportRepositoryPort,
 } from "../ports/index.js";
@@ -93,6 +95,12 @@ export function createReportingAnalyticsFacade(deps) {
   const exportExecutor = matchesExportExecutorPort(deps.exportExecutor)
     ? deps.exportExecutor
     : null;
+  const executions = matchesReportExecutionRepositoryPort(deps.executions)
+    ? deps.executions
+    : null;
+  const exportJobs = matchesExportJobRepositoryPort(deps.exportJobs)
+    ? deps.exportJobs
+    : null;
 
   function nowOrThrow() {
     const instant = deps.clock.now();
@@ -106,6 +114,20 @@ export function createReportingAnalyticsFacade(deps) {
     }
     return /** @type {string} */ (parsed.value);
   }
+
+  const orchestrationDeps = () => ({
+    reportDefinitions: deps.reportDefinitions,
+    savedReports: deps.savedReports,
+    savedFilters: deps.savedFilters,
+    executions,
+    exportJobs,
+    dataSource,
+    exportExecutor,
+    clock: deps.clock,
+    idProvider: deps.idProvider,
+    onAuthorized: deps.onAuthorized,
+    onSourceExecute: deps.onSourceExecute,
+  });
 
   const api = {
     async saveReportDefinition(input) {
@@ -248,17 +270,7 @@ export function createReportingAnalyticsFacade(deps) {
 
     async executeReport(request) {
       try {
-        const result = await executeOperationalReport(
-          {
-            reportDefinitions: deps.reportDefinitions,
-            dataSource,
-            clock: deps.clock,
-            idProvider: deps.idProvider,
-            onAuthorized: deps.onAuthorized,
-            onSourceExecute: deps.onSourceExecute,
-          },
-          request
-        );
+        const result = await executeOperationalReport(orchestrationDeps(), request);
         return result.ok ? reportingOk(result) : reportingFailFromCaught(
           new ReportingError(
             result.errorCode || REPORTING_ERROR_CODE.UNAVAILABLE,
@@ -273,16 +285,7 @@ export function createReportingAnalyticsFacade(deps) {
 
     async exportReport(request) {
       try {
-        const result = await exportOperationalReport(
-          {
-            reportDefinitions: deps.reportDefinitions,
-            dataSource,
-            exportExecutor,
-            clock: deps.clock,
-            idProvider: deps.idProvider,
-          },
-          request
-        );
+        const result = await exportOperationalReport(orchestrationDeps(), request);
         return result.ok
           ? reportingOk(result)
           : reportingFailFromCaught(

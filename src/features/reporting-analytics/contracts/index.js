@@ -78,3 +78,8 @@ export {
   createExportRequest,
   createExportJobResult,
 } from "./export.js";
+
+export {
+  createReportExecutionRecord,
+  createExportJobRecord,
+} from "./persistenceRecords.js";

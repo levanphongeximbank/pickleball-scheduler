@@ -29,6 +29,15 @@ export const SAVED_FILTER_REPOSITORY_METHODS = Object.freeze([
 export const EXPORT_JOB_REPOSITORY_METHODS = Object.freeze([
   "getById",
   "save",
+  "findByIdempotencyKey",
+  "listByTenant",
+  "deleteById",
+]);
+
+export const REPORT_EXECUTION_REPOSITORY_METHODS = Object.freeze([
+  "getById",
+  "save",
+  "findByIdempotencyKey",
   "listByTenant",
   "deleteById",
 ]);
@@ -41,6 +50,7 @@ export const REPORTING_REPOSITORY_PORTS = Object.freeze({
   reportDefinitions: "reportDefinitions",
   savedReports: "savedReports",
   savedFilters: "savedFilters",
+  executions: "executions",
   exportJobs: "exportJobs",
 });
 
@@ -65,6 +75,10 @@ export function matchesSavedReportRepositoryPort(port) {
 
 export function matchesSavedFilterRepositoryPort(port) {
   return matchesMethods(port, SAVED_FILTER_REPOSITORY_METHODS);
+}
+
+export function matchesReportExecutionRepositoryPort(port) {
+  return matchesMethods(port, REPORT_EXECUTION_REPOSITORY_METHODS);
 }
 
 export function matchesExportJobRepositoryPort(port) {
@@ -151,11 +165,34 @@ export function createUnimplementedExportJobRepositoryPort() {
     async save() {
       throwUnimplemented("ExportJobRepositoryPort", "save");
     },
+    async findByIdempotencyKey() {
+      throwUnimplemented("ExportJobRepositoryPort", "findByIdempotencyKey");
+    },
     async listByTenant() {
       throwUnimplemented("ExportJobRepositoryPort", "listByTenant");
     },
     async deleteById() {
       throwUnimplemented("ExportJobRepositoryPort", "deleteById");
+    },
+  };
+}
+
+export function createUnimplementedReportExecutionRepositoryPort() {
+  return {
+    async getById() {
+      throwUnimplemented("ReportExecutionRepositoryPort", "getById");
+    },
+    async save() {
+      throwUnimplemented("ReportExecutionRepositoryPort", "save");
+    },
+    async findByIdempotencyKey() {
+      throwUnimplemented("ReportExecutionRepositoryPort", "findByIdempotencyKey");
+    },
+    async listByTenant() {
+      throwUnimplemented("ReportExecutionRepositoryPort", "listByTenant");
+    },
+    async deleteById() {
+      throwUnimplemented("ReportExecutionRepositoryPort", "deleteById");
     },
   };
 }
