@@ -1,40 +1,47 @@
-# Ecosystem & Integrations — Architecture (ECO-01)
+# Ecosystem & Integrations — Architecture (ECO-01 + ECO-02)
 
 ## Phase
 
-**ECO-01 — Canonical Connector & Event Foundation**
+**ECO-02 — Integration Secret & Environment Boundary**
 
-Structural readiness only. No real providers, no Production webhooks, no credentials, no SQL/Supabase activation.
+Builds on ECO-01 structural readiness. Adds canonical secret references,
+environment classification, client-safe public projection, server-only
+credential boundary, fail-closed no-op credential resolver, and redacted
+diagnostics — without live providers, Production webhooks, or real credentials.
 
 ## Ownership
 
 | Owner | Owns |
 |-------|------|
-| **Ecosystem & Integrations** (`src/features/ecosystem-integrations/`) | Connector/provider descriptors, immutable registry, inbound/outbound envelopes, webhook verification port, error taxonomy, retry classification, idempotency projection, readiness projection, no-op test provider |
+| **Ecosystem & Integrations** (`src/features/ecosystem-integrations/`) | Connector/provider descriptors, immutable registry, envelopes, webhook verification port, error taxonomy, idempotency/readiness projections, secret reference + credential requirement descriptors, environment/endpoint classification, client-safe public config projection, server-only credential boundary, no-op test provider + credential resolver |
 | **Platform Core** | Public Integration Port Descriptor + Capability Discovery (consume only) |
 | **Business Modules** | Business validation, ledger, notification decisions, competition behavior, customer identity |
-| **Sprint 10 `src/features/integrations/`** | Tenant marketplace settings UI / legacy provider catalogue (unchanged by ECO-01) |
+| **Sprint 10 `src/features/integrations/`** | Tenant marketplace settings UI / legacy provider catalogue + legacy `VITE_*` env readers (classified; cutover deferred / Owner GO) |
 
-## Non-goals (ECO-01)
+## Non-goals (ECO-02)
 
 - Real VNPay / MoMo / Stripe / SMS / email / calendar / OAuth clients
-- Mutable global service locator
-- Vendor request/response models in canonical contracts
+- Real credential material in contracts or tests
+- Mutable global service locator / live env readers in canonical namespace
 - Editing `src/core/platform/**`
 - Editing Competition Engine / Finance ledger / Notification worker
 - SQL migrations / Supabase writes / Production deploy
+- Immediate cutover of Sprint 10 `integrationFlags.js` (DEFERRED / REQUIRES_OWNER_GO)
 
 ## Public import
 
 ```js
 import {
-  createConnectorDescriptor,
-  createIntegrationRegistry,
-  createInboundIntegrationEnvelope,
-  createNoOpTestProvider,
+  createSecretReference,
+  createCredentialRequirementDescriptor,
+  projectClientSafePublicConfig,
+  createServerOnlyCredentialBoundary,
+  createNoOpTestCredentialResolver,
+  projectSecretBoundaryReadiness,
 } from "../features/ecosystem-integrations/index.js";
 ```
 
 ## Relationship to Platform Core
 
-ECO-01 projects connector metadata onto Platform `IntegrationPortDescriptor` and reads Capability Discovery via the public barrel `src/core/platform/index.js` only.
+ECO projects connector metadata onto Platform `IntegrationPortDescriptor` and
+reads Capability Discovery via the public barrel `src/core/platform/index.js` only.

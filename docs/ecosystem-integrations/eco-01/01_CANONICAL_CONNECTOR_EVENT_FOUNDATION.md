@@ -43,6 +43,7 @@ Establish provider-neutral connector/event contracts so Business Modules and fut
 
 ## Follow-ups
 
-- ECO-02: secret boundary (move secrets off `VITE_*` client surface) — Owner GO
+- ECO-02: secret boundary foundation — see `eco-02/01_SECRET_ENVIRONMENT_BOUNDARY.md`
+- ECO-02b: cutover Sprint 10 `VITE_*` secret readers (Owner GO)
 - ECO-03: adapter ports for payment/notification behind ECO registry
 - ECO-04: webhook ingress worker (staging only, Owner GO)

@@ -1,16 +1,20 @@
 /**
- * ECO-01 — provider-neutral catalogues (immutable).
+ * ECO-01/ECO-02 — provider-neutral catalogues (immutable).
  * No vendor SDK codes as connector runtime keys.
+ * No secret values — names and classifications only.
  */
 
 export const ECOSYSTEM_INTEGRATIONS_PHASE = Object.freeze({
-  id: "ECO-01",
-  name: "canonical-connector-event-foundation",
+  id: "ECO-02",
+  name: "integration-secret-environment-boundary",
+  priorPhase: "ECO-01",
   wiredToProductionRuntime: false,
   hasRealProviders: false,
   hasNetworkClients: false,
   hasCredentialStorage: false,
   hasProductionWebhooks: false,
+  hasSecretBoundary: true,
+  hasLiveCredentialResolver: false,
   structureComplete: true,
   productionBlocked: true,
 });
@@ -139,3 +143,75 @@ export const ENVELOPE_VERSION = "eco-envelope-1";
 export const CONNECTOR_DESCRIPTOR_VERSION = "eco-connector-1";
 
 export const PROVIDER_CAPABILITY_VERSION = "eco-capability-1";
+
+/** ECO-02 — secret / environment boundary catalogues */
+
+export const ENVIRONMENT_CLASS = Object.freeze({
+  CLIENT_SAFE_CONFIGURATION: "CLIENT_SAFE_CONFIGURATION",
+  SERVER_ONLY_SECRET: "SERVER_ONLY_SECRET",
+  BROWSER_EXPOSED_SECRET_RISK: "BROWSER_EXPOSED_SECRET_RISK",
+  MOCK_ONLY: "MOCK_ONLY",
+  LEGACY: "LEGACY",
+  CANONICAL_BOUNDARY: "CANONICAL_BOUNDARY",
+  DIRECT_ENV_ACCESS: "DIRECT_ENV_ACCESS",
+  UNSAFE_LOGGING: "UNSAFE_LOGGING",
+  ENVIRONMENT_DRIFT: "ENVIRONMENT_DRIFT",
+  REQUIRES_OWNER_GO: "REQUIRES_OWNER_GO",
+  DEFERRED: "DEFERRED",
+});
+
+export const ENVIRONMENT_CLASS_VALUES = Object.freeze(
+  Object.values(ENVIRONMENT_CLASS)
+);
+
+export const SECRET_REFERENCE_SOURCE = Object.freeze({
+  ENV_NAME: "ENV_NAME",
+  VAULT_PATH: "VAULT_PATH",
+  TEST_DOUBLE: "TEST_DOUBLE",
+});
+
+export const SECRET_REFERENCE_SOURCE_VALUES = Object.freeze(
+  Object.values(SECRET_REFERENCE_SOURCE)
+);
+
+export const CREDENTIAL_PRESENCE = Object.freeze({
+  PRESENT: "PRESENT",
+  ABSENT: "ABSENT",
+  UNKNOWN: "UNKNOWN",
+  REDACTED: "REDACTED",
+});
+
+export const CREDENTIAL_PRESENCE_VALUES = Object.freeze(
+  Object.values(CREDENTIAL_PRESENCE)
+);
+
+export const ENDPOINT_CLASS = Object.freeze({
+  PUBLIC: "PUBLIC",
+  SANDBOX: "SANDBOX",
+  STAGING: "STAGING",
+  PRODUCTION: "PRODUCTION",
+  INTERNAL: "INTERNAL",
+  MOCK: "MOCK",
+});
+
+export const ENDPOINT_CLASS_VALUES = Object.freeze(Object.values(ENDPOINT_CLASS));
+
+export const SECRET_BOUNDARY_READINESS = Object.freeze({
+  READY: "READY",
+  NOT_READY: "NOT_READY",
+  BLOCKED_ENVIRONMENT: "BLOCKED_ENVIRONMENT",
+  MISSING_CREDENTIAL: "MISSING_CREDENTIAL",
+  CLASSIFICATION_UNSAFE: "CLASSIFICATION_UNSAFE",
+  DEGRADED: "DEGRADED",
+});
+
+export const SECRET_BOUNDARY_READINESS_VALUES = Object.freeze(
+  Object.values(SECRET_BOUNDARY_READINESS)
+);
+
+export const SECRET_REFERENCE_VERSION = "eco-secret-ref-1";
+export const CREDENTIAL_REQUIREMENT_DESCRIPTOR_VERSION =
+  "eco-credential-requirement-1";
+export const CLIENT_SAFE_PUBLIC_CONFIG_VERSION = "eco-client-safe-config-1";
+export const SERVER_ONLY_CREDENTIAL_BOUNDARY_VERSION =
+  "eco-server-only-boundary-1";

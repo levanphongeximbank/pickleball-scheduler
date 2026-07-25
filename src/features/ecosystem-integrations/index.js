@@ -1,14 +1,14 @@
 /**
- * Ecosystem & Integrations — public facade (ECO-01).
+ * Ecosystem & Integrations — public facade (ECO-01 + ECO-02).
  *
- * Canonical Connector & Event Foundation.
+ * Canonical Connector & Event Foundation + Secret/Environment Boundary.
  *
  * Consumers must import from this index — not from internal file paths —
  * once wiring begins in later phases.
  *
  * Does NOT export:
  * - live vendor SDKs / network clients
- * - credentials, secrets, or env readers
+ * - credential *values* or live env readers
  * - Sprint 10 marketplace integrations settings UI
  * - Finance ledger / payment posting
  * - Notification delivery worker
@@ -42,6 +42,20 @@ export {
   ENVELOPE_VERSION,
   CONNECTOR_DESCRIPTOR_VERSION,
   PROVIDER_CAPABILITY_VERSION,
+  ENVIRONMENT_CLASS,
+  ENVIRONMENT_CLASS_VALUES,
+  SECRET_REFERENCE_SOURCE,
+  SECRET_REFERENCE_SOURCE_VALUES,
+  CREDENTIAL_PRESENCE,
+  CREDENTIAL_PRESENCE_VALUES,
+  ENDPOINT_CLASS,
+  ENDPOINT_CLASS_VALUES,
+  SECRET_BOUNDARY_READINESS,
+  SECRET_BOUNDARY_READINESS_VALUES,
+  SECRET_REFERENCE_VERSION,
+  CREDENTIAL_REQUIREMENT_DESCRIPTOR_VERSION,
+  CLIENT_SAFE_PUBLIC_CONFIG_VERSION,
+  SERVER_ONLY_CREDENTIAL_BOUNDARY_VERSION,
 } from "./constants/catalogues.js";
 
 export {
@@ -76,6 +90,64 @@ export {
 } from "./contracts/healthReadinessProjection.js";
 
 export {
+  createSecretReference,
+  isSecretReference,
+  SECRET_REFERENCE_ERROR,
+} from "./contracts/secretReference.js";
+
+export {
+  createCredentialRequirementDescriptor,
+  isCredentialRequirementDescriptor,
+  CREDENTIAL_REQUIREMENT_DESCRIPTOR_ERROR,
+} from "./contracts/credentialRequirementDescriptor.js";
+
+export {
+  createEnvironmentClassification,
+  evaluateEnvironmentEligibility,
+  isEnvironmentClassification,
+  ENVIRONMENT_CLASSIFICATION_ERROR,
+} from "./contracts/environmentClassification.js";
+
+export {
+  createEndpointClassification,
+  isEndpointClassPublicSafe,
+  isEndpointClassification,
+  ENDPOINT_CLASSIFICATION_ERROR,
+} from "./contracts/endpointClassification.js";
+
+export {
+  projectClientSafePublicConfig,
+  isClientSafePublicConfig,
+  CLIENT_SAFE_PUBLIC_CONFIG_ERROR,
+} from "./contracts/clientSafePublicConfigProjection.js";
+
+export {
+  createServerOnlyCredentialBoundary,
+  isServerOnlyCredentialBoundary,
+  SERVER_ONLY_CREDENTIAL_BOUNDARY_ERROR,
+} from "./contracts/serverOnlyCredentialBoundary.js";
+
+export {
+  projectSecretBoundaryReadiness,
+  SECRET_BOUNDARY_READINESS_ERROR,
+} from "./contracts/secretBoundaryReadiness.js";
+
+export {
+  createRedactedDiagnostics,
+  diagnosticsContainRedactedMarker,
+  REDACTED_MARKER,
+  REDACTED_DIAGNOSTICS_ERROR,
+} from "./contracts/redactedDiagnostics.js";
+
+export {
+  isSecretShapedKey,
+  isBrowserExposedSecretName,
+  FORBIDDEN_SECRET_VALUE_FIELDS,
+  SECRET_SHAPED_KEY_PATTERN,
+  BROWSER_EXPOSED_SECRET_NAME_PATTERN,
+} from "./contracts/secretBoundaryShared.js";
+
+export {
   createIntegrationRegistry,
   INTEGRATION_REGISTRY_ERROR,
 } from "./registry/createIntegrationRegistry.js";
@@ -95,6 +167,8 @@ export {
 } from "./ports/webhookVerificationPort.js";
 
 export { createNoOpTestProvider } from "./providers/createNoOpTestProvider.js";
+
+export { createNoOpTestCredentialResolver } from "./resolvers/createNoOpTestCredentialResolver.js";
 
 export {
   projectConnectorToIntegrationPort,
