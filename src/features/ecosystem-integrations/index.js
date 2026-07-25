@@ -1,8 +1,9 @@
 /**
- * Ecosystem & Integrations — public facade (ECO-01 + ECO-02 + ECO-02b).
+ * Ecosystem & Integrations — public facade (ECO-01 + ECO-02 + ECO-02b + ECO-03).
  *
  * Canonical Connector & Event Foundation + Secret/Environment Boundary +
- * Legacy Vite browser-secret cutover policy (vendor-neutral).
+ * Legacy Vite browser-secret cutover + Provider Adapter Foundation
+ * (vendor-neutral, no live providers).
  *
  * Consumers must import from this index — not from internal file paths —
  * once wiring begins in later phases.
@@ -57,6 +58,20 @@ export {
   CREDENTIAL_REQUIREMENT_DESCRIPTOR_VERSION,
   CLIENT_SAFE_PUBLIC_CONFIG_VERSION,
   SERVER_ONLY_CREDENTIAL_BOUNDARY_VERSION,
+  ADAPTER_LIFECYCLE,
+  ADAPTER_LIFECYCLE_VALUES,
+  INVOCATION_RESULT_STATUS,
+  INVOCATION_RESULT_STATUS_VALUES,
+  ADAPTER_READINESS,
+  ADAPTER_READINESS_VALUES,
+  ADAPTER_SELECTION_OUTCOME,
+  ADAPTER_SELECTION_OUTCOME_VALUES,
+  PROVIDER_ADAPTER_DESCRIPTOR_VERSION,
+  PROVIDER_INVOCATION_REQUEST_VERSION,
+  PROVIDER_INVOCATION_RESULT_VERSION,
+  CONNECTOR_CAPABILITY_BINDING_VERSION,
+  PROVIDER_ADAPTER_OBSERVATION_VERSION,
+  DOMAIN_ADAPTER_READINESS_CONTRACT_VERSION,
 } from "./constants/catalogues.js";
 
 export {
@@ -191,3 +206,70 @@ export {
   assertPlatformIntegrationCapabilitySurface,
   ECO_PLATFORM_ADAPTER_ERROR,
 } from "./platform/platformAdoption.js";
+
+/** ECO-03 — provider adapter foundation */
+
+export {
+  createProviderAdapterDescriptor,
+  isProviderAdapterDescriptor,
+  PROVIDER_ADAPTER_DESCRIPTOR_ERROR,
+} from "./contracts/providerAdapterDescriptor.js";
+
+export {
+  createConnectorCapabilityBinding,
+  isConnectorCapabilityBinding,
+  CONNECTOR_CAPABILITY_BINDING_ERROR,
+} from "./contracts/connectorCapabilityBinding.js";
+
+export {
+  createProviderInvocationRequest,
+  isProviderInvocationRequest,
+  PROVIDER_INVOCATION_REQUEST_ERROR,
+} from "./contracts/providerInvocationRequest.js";
+
+export {
+  createProviderInvocationResult,
+  isProviderInvocationResult,
+  PROVIDER_INVOCATION_RESULT_ERROR,
+} from "./contracts/providerInvocationResult.js";
+
+export {
+  projectProviderAdapterReadiness,
+  PROVIDER_ADAPTER_READINESS_ERROR,
+} from "./contracts/providerAdapterReadiness.js";
+
+export {
+  createProviderAdapterObservation,
+  PROVIDER_ADAPTER_OBSERVATION_ERROR,
+} from "./contracts/providerAdapterObservation.js";
+
+export {
+  createDomainAdapterReadinessContract,
+  createPaymentAdapterReadinessContract,
+  createMessagingAdapterReadinessContract,
+  createCalendarAdapterReadinessContract,
+  createIdentityAdapterReadinessContract,
+  createDataExchangeAdapterReadinessContract,
+  DOMAIN_ADAPTER_READINESS_CONTRACT_ERROR,
+} from "./contracts/domainAdapterReadinessContracts.js";
+
+export {
+  createProviderAdapterRegistry,
+  PROVIDER_ADAPTER_REGISTRY_ERROR,
+} from "./registry/createProviderAdapterRegistry.js";
+
+export {
+  selectProviderAdapter,
+  PROVIDER_ADAPTER_SELECTION_ERROR,
+} from "./selection/selectProviderAdapter.js";
+
+export {
+  createProviderAdapterPort,
+  PROVIDER_ADAPTER_PORT_ERROR,
+} from "./ports/providerAdapterPort.js";
+
+export { mapProviderFailureToIntegrationError } from "./errors/mapProviderFailureToIntegrationError.js";
+
+export { createNoOpProviderAdapter } from "./providers/createNoOpProviderAdapter.js";
+
+export { createFakeProviderAdapter } from "./providers/createFakeProviderAdapter.js";
