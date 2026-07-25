@@ -1,0 +1,34 @@
+{
+  "phase": "COACHING-03",
+  "artifact": "OWNER_EXECUTION_PROVENANCE_DECISION",
+  "decidedBy": "OWNER",
+  "decidedAt": "2026-07-25T10:01:00.000Z",
+  "ratificationChoice": "B_REJECT_911daddf_AS_PROCEDURALLY_VALID",
+  "followUpChoice": "1_KEEP_STAGING_RECORD_PROCEDURAL_FAIL_ONLY",
+  "ownerApprovedBaselineCommit": "c89bec293f4f52b90734a56f2ce813919643b929",
+  "actualExecutionToolingCommit": "911daddf4bfff0a636c5d4f1e647379ea30698ab",
+  "evidenceCommit": "d5b622cf92c947e130a4f868c1947e68f786201a",
+  "provenanceRemediationCommit": "9aa28836791f8e35271ae1381aa5f50e9da3dae8",
+  "pr257": {
+    "number": 257,
+    "state": "MERGED",
+    "mergeCommit": "10e2da359cba0ec64895a5e62c593f4377a1b5e0"
+  },
+  "stagingProjectRef": "qyewbxjsiiyufanzcjcq",
+  "productionTouched": false,
+  "actionsAuthorized": [
+    "RECORD_PROCEDURAL_DEVIATION_AS_NOT_OWNER_ACCEPTED",
+    "KEEP_EXISTING_STAGING_SCHEMA_RLS_ROLE_STATE"
+  ],
+  "actionsDenied": [
+    "SECOND_STAGING_APPLY",
+    "STAGING_ROLLBACK",
+    "PRODUCTION_ACCESS",
+    "RETROACTIVE_REWRITE_OF_APPROVAL_ARTIFACT"
+  ],
+  "stagingDatabaseChangedByThisDecision": false,
+  "rollbackPerformed": false,
+  "secondApplyPerformed": false,
+  "plainLanguage": "Owner rejects procedural validity of apply executed from 911daddf while approval pinned c89bec. Owner keeps Staging as-is and records procedural fail only. No database write, no rollback, no Production touch.",
+  "secretsPrinted": false
+}
