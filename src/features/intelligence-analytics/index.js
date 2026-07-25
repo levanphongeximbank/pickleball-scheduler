@@ -10,6 +10,7 @@
  * I&A-07 — Venue, Court and Club Analytics
  * I&A-08 — Customer and Player Analytics
  * I&A-09 — Finance, Ranking and Performance Analytics
+ * I&A-10 — Operational Alerts and Insights
  *
  * Module-neutral metric/query/result contracts, metric registry governance,
  * deterministic query/projection runtime over explicit source adapters,
@@ -17,9 +18,10 @@
  * analysis, competition analytics projections, venue/court/club analytics
  * projections, privacy-safe customer/player analytics projections,
  * privacy-safe and currency-safe finance/ranking/performance analytics
- * projections, and read-only facades.
+ * projections, operational alerts/insights evaluation, and read-only facades.
  * No dashboard UI wiring, no Platform Core / Competition E2E / business-rule
- * deps, no SQL/Supabase adapters, no export/scheduler runtime, no forecasting.
+ * deps, no SQL/Supabase adapters, no export/scheduler runtime, no forecasting,
+ * no notification delivery.
  */
 
 export * from "./contracts/index.js";
@@ -34,6 +36,7 @@ export * from "./competition-analytics/index.js";
 export * from "./venue-court-club-analytics/index.js";
 export * from "./customer-player-analytics/index.js";
 export * from "./finance-ranking-performance-analytics/index.js";
+export * from "./operational-alerts-insights/index.js";
 
 export const INTELLIGENCE_ANALYTICS_FOUNDATION = Object.freeze({
   workstreamId: "I&A-01",
@@ -86,6 +89,12 @@ export const INTELLIGENCE_ANALYTICS_CUSTOMER_PLAYER_ANALYTICS = Object.freeze({
 export const INTELLIGENCE_ANALYTICS_FINANCE_RANKING_PERFORMANCE_ANALYTICS = Object.freeze({
   workstreamId: "I&A-09",
   name: "Finance, Ranking and Performance Analytics",
+  version: "1.0.0",
+});
+
+export const INTELLIGENCE_ANALYTICS_OPERATIONAL_ALERTS_INSIGHTS = Object.freeze({
+  workstreamId: "I&A-10",
+  name: "Operational Alerts and Insights",
   version: "1.0.0",
 });
 
@@ -263,4 +272,56 @@ export const INTELLIGENCE_ANALYTICS_PUBLIC_EXPORTS = Object.freeze([
   "FORBIDDEN_PII_AND_PAYMENT_FACT_KEYS",
   "createAnalyticalMoney",
   "RANK_DIRECTION",
+  "INTELLIGENCE_ANALYTICS_OPERATIONAL_ALERTS_INSIGHTS",
+  "createAlertEvaluationContext",
+  "createOperationalAlertsInsightsContext",
+  "createOperationalSignalIdentity",
+  "createOperationalSignal",
+  "createOperationalSignalsSnapshot",
+  "createOperationalSignalSourceRequest",
+  "createInMemoryOperationalSignalsSource",
+  "createOperationalAlertsInsightsQuery",
+  "normalizeOperationalAlertsInsightsQuery",
+  "createOperationalAlertRule",
+  "createOperationalInsightRule",
+  "createOperationalAlertRuleCatalog",
+  "getFoundationOperationalAlertRuleCatalog",
+  "createAlertThresholdCondition",
+  "createAlertStateCondition",
+  "createAlertTrendCondition",
+  "createAlertFreshnessCondition",
+  "createAlertMissingDataCondition",
+  "createAlertDeduplicationPolicy",
+  "createAlertCooldownPolicy",
+  "createAlertSuppressionPolicy",
+  "createAlertResolutionPolicy",
+  "createAlertDeduplicationKey",
+  "createAlertCorrelationKey",
+  "evaluateThresholdCondition",
+  "evaluateStateCondition",
+  "evaluateTrendCondition",
+  "evaluateMissingDataCondition",
+  "evaluateFreshnessCondition",
+  "evaluateOperationalAlertsInsights",
+  "createOperationalAlert",
+  "createOperationalInsight",
+  "createAlertEvidence",
+  "createAlertNotificationCandidate",
+  "composeOperationalAlertsInsightsDashboardPayloads",
+  "createOperationalAlertsInsightsFacade",
+  "createReadOnlyOperationalAlertsInsightsFacade",
+  "guardOperationalSignalsSnapshot",
+  "ALERT_SEVERITY",
+  "ALERT_LIFECYCLE_STATE",
+  "ALERT_EVALUATION_TYPE",
+  "ALERT_THRESHOLD_OPERATOR",
+  "OPERATIONAL_SIGNAL_DOMAIN",
+  "OPERATIONAL_SIGNAL_VALUE_KIND",
+  "OPERATIONAL_ALERTS_INSIGHTS_METHOD_VERSION",
+  "OPERATIONAL_ALERTS_INSIGHTS_COMPLETENESS",
+  "OPERATIONAL_ALERT_RULES_DEFERRED",
+  "FORBIDDEN_OPERATIONAL_ALERT_KEYS",
+  "MISSING_SIGNAL_POLICY",
+  "STALE_SIGNAL_POLICY",
+  "RESULT_KIND",
 ]);
