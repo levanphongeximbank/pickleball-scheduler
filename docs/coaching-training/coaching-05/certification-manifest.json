@@ -1,0 +1,20 @@
+{
+  "phase": "COACHING-05-FINAL-INTEGRATION",
+  "artifact": "coaching-05-certification-manifest",
+  "hashAlgorithm": "sha256-lf-normalized",
+  "verdict": "COACHING_05_FINAL_INTEGRATION_CERTIFIED",
+  "orderedFiles": [
+    "docs/coaching-training/coaching-05/00_COACHING_05_FINAL_INTEGRATION_CERTIFICATION.md",
+    "docs/coaching-training/coaching-05/evidence/FINAL_INTEGRATION_CERTIFICATION.json",
+    "docs/coaching-training/coaching-05/certification-manifest.json",
+    "docs/coaching-training/coaching-04/00_COACHING_04_FINAL_CLOSURE.md",
+    "docs/coaching-training/coaching-04/evidence/COACHING_04_FINAL_CLOSURE.json",
+    "docs/coaching-training/coaching-04/localstorage-retirement/00_COACHING_04_LOCALSTORAGE_RETIREMENT_CERTIFICATION.md",
+    "docs/coaching-training/coaching-04/localstorage-retirement/evidence/LOCALSTORAGE_RETIREMENT_CERTIFICATION.json",
+    "docs/coaching-training/coaching-04/runtime-activation/evidence/POST_MERGE_PR298_VERIFICATION.json",
+    "docs/coaching-training/module-closure/00_BUSINESS_MODULE_2_12_CLOSURE.md",
+    "docs/coaching-training/module-closure/evidence/MODULE_2_12_CLOSURE.json",
+    "tests/coaching-05-final-certification-closure.test.js"
+  ],
+  "notes": "Evidence/docs package for Business Module 2.12 final certification. No secrets. No SQL apply. No env mutation."
+}

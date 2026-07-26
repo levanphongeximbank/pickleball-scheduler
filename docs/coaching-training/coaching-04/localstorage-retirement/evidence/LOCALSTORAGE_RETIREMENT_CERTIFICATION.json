@@ -1,0 +1,38 @@
+{
+  "phase": "COACHING-04-LOCALSTORAGE-RETIREMENT",
+  "artifact": "LOCALSTORAGE_RETIREMENT_CERTIFICATION",
+  "ok": true,
+  "verdict": "COACHING_04_LOCALSTORAGE_RETIREMENT_CERTIFIED",
+  "localStorageRetired": true,
+  "localStorageRetiredSemantics": "ACTIVE_STAGING_DURABLE_PATH_NO_LOCALSTORAGE_USE",
+  "localStorageRetiredMeansAdapterDeleted": false,
+  "localStorageRetiredMeansBrowserDataDeleted": false,
+  "codeConstantLOCALSTORAGE_RETIRED": false,
+  "legacyAdapterRetained": true,
+  "silentFallbackAllowed": false,
+  "durableRuntimeDefault": false,
+  "certifiedPreviewUrl": "https://pickleball-scheduler-q1sjbac73-pickleball-scheduler.vercel.app",
+  "certifiedPreviewCommit": "361d61cb6ed8cecdb50ee9f94f7240d5bb47ff23",
+  "smokeVerdict": "COACHING_04_STAGING_RUNTIME_ACTIVATED_SMOKE_PASS",
+  "runtimeGateActive": true,
+  "legacyStorageKeyPrefix": "pickleball-coaching-v1",
+  "durablePathTouchesLocalStorage": false,
+  "rollback": {
+    "method": "Disable Staging runtime flags only",
+    "flags": [
+      "VITE_COACHING_STAGING_DURABLE_RUNTIME_ENABLED",
+      "VITE_COACHING_STAGING_OWNER_GO_GRANTED"
+    ],
+    "databaseRollbackRequired": false,
+    "legacyAdapterRetained": true
+  },
+  "playerExpectedState": "UNMAPPED",
+  "mappingRowCount": 0,
+  "coachAssignmentScopeFailClosed": true,
+  "productionFailClosed": true,
+  "productionTouched": false,
+  "databaseWrites": 0,
+  "filesDeleted": 0,
+  "CODEX_DELETE_ALLOWED": "NO",
+  "notes": "Certification of active Staging durable path isolation from localStorage. Does not wipe browser data. Does not remove legacy adapter. Does not flip Production."
+}
