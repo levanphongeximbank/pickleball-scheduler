@@ -1,0 +1,123 @@
+{
+  "phase": "COACHING-04-GUARDED-STAGING-APPLY",
+  "APPLY_MODE": "EXECUTED",
+  "ok": true,
+  "verdict": "COACHING_04_STAGING_FORWARD_APPLIED",
+  "finalVerdict": "COACHING_04_STAGING_FORWARD_APPLIED",
+  "stagingProjectRef": "qyewbxjsiiyufanzcjcq",
+  "targetProject": "qyewbxjsiiyufanzcjcq",
+  "databaseConnectionOpened": true,
+  "sqlApplied": true,
+  "databaseWrites": 7,
+  "appliedFileCount": 7,
+  "mappingRowsCreated": 0,
+  "backfillExecuted": false,
+  "runtimeActivated": false,
+  "localStorageRetired": false,
+  "productionTouched": false,
+  "automaticRetry": false,
+  "automaticRollback": false,
+  "roleGrantsApplied": true,
+  "applied": [
+    {
+      "order": 10,
+      "path": "docs/coaching-training/coaching-04/10_COACHING_04_ASSIGNMENT_HELPERS.sql",
+      "checkpoint": "after-assignment-helpers",
+      "sha256": "200318e0c336a85a16f320ac5e5f9cb8985b65e4a7b265294476709bad9b8c9b",
+      "ok": true,
+      "startedAt": "2026-07-26T03:00:42.419Z",
+      "finishedAt": "2026-07-26T03:00:43.912Z"
+    },
+    {
+      "order": 11,
+      "path": "docs/coaching-training/coaching-04/11_COACHING_04_PLAYER_SELF_SCOPE_HELPERS.sql",
+      "checkpoint": "after-player-self-scope-helpers",
+      "sha256": "1b7325236c2f8cac657b9586b86cb1527c18c0fec6b697974fd8249f00c6486a",
+      "ok": true,
+      "startedAt": "2026-07-26T03:00:43.913Z",
+      "finishedAt": "2026-07-26T03:00:44.969Z"
+    },
+    {
+      "order": 20,
+      "path": "docs/coaching-training/coaching-04/20_COACHING_04_ASSIGNMENT_RLS.sql",
+      "checkpoint": "after-assignment-rls",
+      "sha256": "4577fec9c9c9932f7b973b970f50588eb1d5248a4068ebd3e1f45506b4db0945",
+      "ok": true,
+      "startedAt": "2026-07-26T03:00:44.970Z",
+      "finishedAt": "2026-07-26T03:00:46.601Z"
+    },
+    {
+      "order": 21,
+      "path": "docs/coaching-training/coaching-04/21_COACHING_04_PLAYER_SELF_SCOPE_RLS.sql",
+      "checkpoint": "after-player-self-scope-rls",
+      "sha256": "7481566c2b17ab3dd7f90eb47e7283d6f2ebb9553e3594049d4a5a6c241fd957",
+      "ok": true,
+      "startedAt": "2026-07-26T03:00:46.602Z",
+      "finishedAt": "2026-07-26T03:00:48.307Z"
+    },
+    {
+      "order": 30,
+      "path": "docs/coaching-training/coaching-04/30_COACHING_04_SCOPED_RPCS.sql",
+      "checkpoint": "after-scoped-rpcs",
+      "sha256": "937c44a070a6ca063c3a368962551305856561a1bd8de7f3a675f120ba6a748a",
+      "ok": true,
+      "startedAt": "2026-07-26T03:00:48.308Z",
+      "finishedAt": "2026-07-26T03:00:49.517Z"
+    },
+    {
+      "order": 40,
+      "path": "docs/coaching-training/coaching-04/40_COACHING_04_PERMISSION_SEED_AND_GRANTS.proposal.sql",
+      "checkpoint": "after-permission-seed-grants",
+      "sha256": "303fffca79d4f16e3066579f916a7596355383a3ad5284a7c6167582f408e7dd",
+      "ok": true,
+      "startedAt": "2026-07-26T03:00:49.517Z",
+      "finishedAt": "2026-07-26T03:00:50.555Z"
+    },
+    {
+      "order": 99,
+      "path": "docs/coaching-training/coaching-04/99_COACHING_04_VERIFICATION.sql",
+      "checkpoint": "after-verification",
+      "sha256": "4448f9719dc771264d2409e2262544240324bb49974d4f292b910a220be57168",
+      "ok": true,
+      "startedAt": "2026-07-26T03:00:50.555Z",
+      "finishedAt": "2026-07-26T03:00:52.307Z"
+    }
+  ],
+  "ownerGoGranted": true,
+  "executionCommit": "c66397df8e48e75f6a6dfe486dd00e76b34c18d0",
+  "manifestHash": "16cdb19ff57b0e0460610e8a341ca8f2786ff19a067839a80996866f61111eaa",
+  "aggregateSqlHash": "662e70fbb3c76785d7910492284224df6bd04fa6a0ef358231f2ddccbc3386d4",
+  "orderedFiles": [
+    "docs/coaching-training/coaching-04/10_COACHING_04_ASSIGNMENT_HELPERS.sql",
+    "docs/coaching-training/coaching-04/11_COACHING_04_PLAYER_SELF_SCOPE_HELPERS.sql",
+    "docs/coaching-training/coaching-04/20_COACHING_04_ASSIGNMENT_RLS.sql",
+    "docs/coaching-training/coaching-04/21_COACHING_04_PLAYER_SELF_SCOPE_RLS.sql",
+    "docs/coaching-training/coaching-04/30_COACHING_04_SCOPED_RPCS.sql",
+    "docs/coaching-training/coaching-04/40_COACHING_04_PERMISSION_SEED_AND_GRANTS.proposal.sql",
+    "docs/coaching-training/coaching-04/99_COACHING_04_VERIFICATION.sql"
+  ],
+  "forwardOnly": [
+    "docs/coaching-training/coaching-04/10_COACHING_04_ASSIGNMENT_HELPERS.sql",
+    "docs/coaching-training/coaching-04/11_COACHING_04_PLAYER_SELF_SCOPE_HELPERS.sql",
+    "docs/coaching-training/coaching-04/20_COACHING_04_ASSIGNMENT_RLS.sql",
+    "docs/coaching-training/coaching-04/21_COACHING_04_PLAYER_SELF_SCOPE_RLS.sql",
+    "docs/coaching-training/coaching-04/30_COACHING_04_SCOPED_RPCS.sql",
+    "docs/coaching-training/coaching-04/40_COACHING_04_PERMISSION_SEED_AND_GRANTS.proposal.sql"
+  ],
+  "rollbackPathExcluded": "docs/coaching-training/coaching-04/90_COACHING_04_ROLLBACK.sql",
+  "rollbackAutoExecute": false,
+  "verificationRunsOnlyAfterForwardSuccess": true,
+  "preExecutionGuards": {
+    "headEqualsExecutionCommit": true,
+    "worktreeAllowedDirtyOnlyApprovalAndPreSqlRefuse": true,
+    "targetProject": "qyewbxjsiiyufanzcjcq",
+    "aggregateHashMatch": true,
+    "combinedManifestHashMatch": true,
+    "sqlOrder": "10→11→20→21→30→40",
+    "productionRefused": true
+  },
+  "startedAt": "2026-07-26T03:00:42.417Z",
+  "finishedAt": "2026-07-26T03:00:52.308Z",
+  "secretsPrinted": false,
+  "CODEX_DELETE_ALLOWED": "NO"
+}

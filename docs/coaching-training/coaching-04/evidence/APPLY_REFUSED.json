@@ -1,0 +1,25 @@
+{
+  "phase": "COACHING-04-GUARDED-STAGING-APPLY",
+  "APPLY_MODE": "REFUSED",
+  "ok": false,
+  "verdict": "COACHING_04_STAGING_APPLY_REFUSED",
+  "finalVerdict": "COACHING_04_STAGING_APPLY_REFUSED",
+  "databaseConnectionOpened": false,
+  "databaseWrites": 0,
+  "sqlApplied": false,
+  "mappingRowsCreated": 0,
+  "backfillExecuted": false,
+  "runtimeActivated": false,
+  "localStorageRetired": false,
+  "productionTouched": false,
+  "automaticRetry": false,
+  "automaticRollback": false,
+  "secretsPrinted": false,
+  "blockers": [
+    "Worktree dirty beyond Owner approval evidence."
+  ],
+  "dirtyLines": [
+    "?? _coaching04_owner_go_apply_once.mjs",
+    "?? docs/coaching-training/coaching-04/activation/OWNER_STAGING_APPLY_APPROVAL.json"
+  ]
+}
