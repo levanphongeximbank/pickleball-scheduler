@@ -1,0 +1,27 @@
+{
+  "phase": "PUBLIC-PORTAL-FINAL",
+  "gate": "ANON_SECURITY_BOUNDARY",
+  "timestampUtc": "2026-07-26T10:15:00.000Z",
+  "verdict": "PRE_APPLY_BASELINE",
+  "projectRef": "expuvcohlcjzvrrauvud",
+  "packageSecurityDesign": {
+    "securityDefinerFixedSearchPath": true,
+    "noDynamicSql": true,
+    "denyByDefaultDto": true,
+    "noWildcardProjection": true,
+    "anonExecuteRpcOnly": true,
+    "directProjectionSelectDeniedByDesign": true,
+    "anonymousMutationDeniedByDesign": true,
+    "privateFieldsExcluded": true,
+    "deterministicOrdering": true,
+    "boundedPagination": true
+  },
+  "currentProduction": {
+    "catalogRpcAbsent": true,
+    "publicCatalogCourtsAbsent": true,
+    "clubsRlsEnabled": true,
+    "anonClubsMutationDenied": true
+  },
+  "postApplyVerification": "DEFERRED_TO_PHASE_B",
+  "secretsPrinted": false
+}

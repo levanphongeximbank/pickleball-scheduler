@@ -1,0 +1,39 @@
+{
+  "phase": "PUBLIC-PORTAL-FINAL",
+  "gate": "PUBLICATION_COUNTS",
+  "timestampUtc": "2026-07-26T11:30:00.000Z",
+  "verdict": "FAIL_EMPTY_CATALOG",
+  "projectRef": "expuvcohlcjzvrrauvud",
+  "reverifiedReadOnly": true,
+  "counts": {
+    "clubsTotal": 1,
+    "clubsActiveNotDeleted": 1,
+    "publicClubsEligible": 0,
+    "venuesTotal": 1,
+    "publicCourtsProjectionRows": 0,
+    "publicCourtsEligible": 0
+  },
+  "schemaAbsence": {
+    "hasIsPubliclyListed": false,
+    "hasPublicSlug": false,
+    "hasPublicCatalogCourts": false,
+    "hasPublicCatalogListClubs": false,
+    "hasPublicCatalogListCourts": false
+  },
+  "afterSqlWithoutDataMutation": {
+    "publicClubsEligible": 0,
+    "publicCourtsEligible": 0,
+    "reason": "is_publicly_listed defaults false; projection table empty"
+  },
+  "rootCause": {
+    "publicClubsCountFail": true,
+    "publicCourtsCountFail": true,
+    "cutoverWouldEmptyProductionPortal": true,
+    "failClosedMandatory": true
+  },
+  "canonicalPublicationConfigPresent": false,
+  "dataMutationAllowedInThisWorkstream": false,
+  "blockerCode": "PUBLIC_PORTAL_FINAL_PRODUCTION_NO_GO_EMPTY_CATALOG",
+  "secretsPrinted": false,
+  "rawRowsExported": false
+}

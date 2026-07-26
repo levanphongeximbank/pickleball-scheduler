@@ -1,0 +1,28 @@
+{
+  "phase": "PUBLIC-PORTAL-FINAL",
+  "gate": "PRODUCTION_TARGET",
+  "timestampUtc": "2026-07-26T10:15:00.000Z",
+  "verdict": "PASS",
+  "productionProjectRef": "expuvcohlcjzvrrauvud",
+  "stagingBlocklistRef": "qyewbxjsiiyufanzcjcq",
+  "mcpServerId": "project-0-pickleball-scheduler-supabase-production",
+  "mcpConfigBinding": "supabase-production -> project_ref=expuvcohlcjzvrrauvud",
+  "supabaseHost": "expuvcohlcjzvrrauvud.supabase.co",
+  "isStaging": false,
+  "targetAmbiguity": false,
+  "fingerprint": {
+    "migrationCount": 59,
+    "latestMigration": "20260717155720",
+    "catalogRpcPresent": false,
+    "stagingMigrationCount": 141,
+    "stagingLatestMigration": "20260726053052",
+    "stagingCatalogRpcPresent": true
+  },
+  "canonicalDeploymentPlatform": "vercel",
+  "canonicalDomain": "https://pickleball-scheduler-eight.vercel.app",
+  "vercelProject": "pickleball-scheduler",
+  "currentDeployedCommit": "7971a260c325a723f78671a9754f17d2bcde14b5",
+  "currentSourceMode": "local",
+  "sourceModeEvidence": "code default local; Production cutover not applied; VITE_PUBLIC_CLUBS_COURTS_SOURCE unset implies local",
+  "secretsPrinted": false
+}

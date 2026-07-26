@@ -1,0 +1,14 @@
+{
+  "phase": "PUBLIC-PORTAL-FINAL",
+  "gate": "ENV_CUTOVER",
+  "timestampUtc": "2026-07-26T10:15:00.000Z",
+  "verdict": "NOT_PERFORMED_PHASE_A",
+  "projectRef": "expuvcohlcjzvrrauvud",
+  "envKey": "VITE_PUBLIC_CLUBS_COURTS_SOURCE",
+  "currentInferredValue": "local",
+  "targetValueIfGo": "remote",
+  "rollbackValue": "local",
+  "cutoverPerformed": false,
+  "reason": "Phase A read-only; empty catalog hard gate blocks requesting GO PRODUCTION",
+  "secretsPrinted": false
+}

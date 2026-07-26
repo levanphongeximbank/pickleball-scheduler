@@ -1,0 +1,41 @@
+{
+  "phase": "PUBLIC-PORTAL-FINAL",
+  "gate": "PRIVACY_ALLOWLIST",
+  "timestampUtc": "2026-07-26T10:15:00.000Z",
+  "verdict": "PACKAGE_REVIEW_PASS",
+  "projectRef": "expuvcohlcjzvrrauvud",
+  "clubsAllowlist": [
+    "id",
+    "display_name",
+    "slug",
+    "description",
+    "logo_url",
+    "image_url",
+    "location_summary",
+    "publication_state",
+    "public_contact",
+    "total_count"
+  ],
+  "courtsAllowlist": [
+    "id",
+    "club_id",
+    "venue_id",
+    "display_name",
+    "court_type",
+    "surface",
+    "availability_descriptor",
+    "publication_state",
+    "operational_state",
+    "total_count"
+  ],
+  "excludedClasses": [
+    "pricing",
+    "booking",
+    "staff",
+    "member_pii",
+    "club_data_v3_jsonb",
+    "tenant_internal"
+  ],
+  "runtimeVerification": "DEFERRED_TO_PHASE_B",
+  "secretsPrinted": false
+}

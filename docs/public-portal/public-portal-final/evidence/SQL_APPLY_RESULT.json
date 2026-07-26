@@ -1,0 +1,15 @@
+{
+  "phase": "PUBLIC-PORTAL-FINAL",
+  "gate": "SQL_APPLY_RESULT",
+  "timestampUtc": "2026-07-26T10:15:00.000Z",
+  "verdict": "NOT_APPLIED_PHASE_A",
+  "projectRef": "expuvcohlcjzvrrauvud",
+  "authorization": {
+    "PRODUCTION_MUTATION_GO": "NO",
+    "awaitingExactMessage": "GO PRODUCTION",
+    "hardGateBlocksGo": "PUBLIC_PORTAL_FINAL_PRODUCTION_NO_GO_EMPTY_CATALOG"
+  },
+  "packagePath": "docs/public-catalog/pc-01/10_PUBLIC_CATALOG_01_PUBLIC_READ_RPC.sql",
+  "applied": false,
+  "secretsPrinted": false
+}

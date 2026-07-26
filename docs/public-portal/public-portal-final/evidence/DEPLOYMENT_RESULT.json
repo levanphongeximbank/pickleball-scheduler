@@ -1,0 +1,24 @@
+{
+  "phase": "PUBLIC-PORTAL-FINAL",
+  "gate": "DEPLOYMENT_RESULT",
+  "timestampUtc": "2026-07-26T10:15:00.000Z",
+  "verdict": "CURRENT_PRODUCTION_HEALTHY_NO_CUTOVER",
+  "platform": "vercel",
+  "project": "pickleball-scheduler",
+  "canonicalDomain": "https://pickleball-scheduler-eight.vercel.app",
+  "latestProductionDeployment": {
+    "id": 5608821615,
+    "sha": "7971a260c325a723f78671a9754f17d2bcde14b5",
+    "createdAt": "2026-07-26T09:05:20Z",
+    "state": "success",
+    "creator": "vercel[bot]"
+  },
+  "smokeHeaders": {
+    "home": 200,
+    "clubs": 200,
+    "courts": 200,
+    "server": "Vercel"
+  },
+  "redeployPerformed": false,
+  "secretsPrinted": false
+}
