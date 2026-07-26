@@ -1,0 +1,16 @@
+{
+    "crossTenantPrivatePathEmpty":  true,
+    "secretsPrinted":  false,
+    "privateControlsNotLeakedViaRpc":  true,
+    "projectRef":  "qyewbxjsiiyufanzcjcq",
+    "gate":  "SECURITY_BOUNDARY_VERIFICATION",
+    "anonClubsInsertDenied":  true,
+    "anonDirectProjectionSelect":  "PERMISSION_DENIED",
+    "anonDirectClubsSelectRows":  0,
+    "anonRpcExecuteClubs":  true,
+    "timestampUtc":  "2026-07-26T07:07:40.000Z",
+    "verdict":  "PASS",
+    "phase":  "PUBLIC-CATALOG-01E",
+    "anonRpcExecuteCourts":  true,
+    "anonProjectionInsertDenied":  true
+}

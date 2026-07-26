@@ -1,0 +1,31 @@
+{
+    "postApplyRowCounts":  {
+                               "publicClubs":  1,
+                               "venues":  3,
+                               "allCatalogCourts":  2,
+                               "allClubs":  24,
+                               "publishedCourts":  1
+                           },
+    "transactionResult":  "COMMITTED_OK",
+    "seedSha256Lf":  "82d2c451bd61d27604a3522a36d756465143a6d7bd74bed0ca410efa925ae1e1",
+    "createdRowCounts":  {
+                             "venues":  1,
+                             "public_catalog_courts":  2,
+                             "clubs":  2
+                         },
+    "applyMethod":  "supabase_mcp_execute_sql",
+    "projectRef":  "qyewbxjsiiyufanzcjcq",
+    "gate":  "SEED_APPLY_RESULT",
+    "secretsPrinted":  false,
+    "createdRowIds":  [
+                          "PICKVN_PC01E_VENUE",
+                          "PICKVN_PC01E_PUBLIC_CLUB",
+                          "PICKVN_PC01E_PRIVATE_CLUB",
+                          "PICKVN_PC01E_PUBLIC_COURT",
+                          "PICKVN_PC01E_PRIVATE_COURT"
+                      ],
+    "timestampUtc":  "2026-07-26T07:05:00.000Z",
+    "verdict":  "PASS",
+    "phase":  "PUBLIC-CATALOG-01E",
+    "partialFailure":  false
+}

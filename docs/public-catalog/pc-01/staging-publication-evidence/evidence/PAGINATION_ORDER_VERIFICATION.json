@@ -1,0 +1,25 @@
+{
+    "timestampUtc":  "2026-07-26T07:07:20.000Z",
+    "gate":  "PAGINATION_ORDER_VERIFICATION",
+    "courts":  {
+                   "publishedRows":  1,
+                   "order":  "display_name ASC, id ASC",
+                   "limitBoundMax":  50
+               },
+    "verdict":  "PASS",
+    "failureIndependence":  {
+                                "courtsBadSortRejected":  true,
+                                "clubsStillSucceededAfterCourtsFailure":  true
+                            },
+    "phase":  "PUBLIC-CATALOG-01E",
+    "secretsPrinted":  false,
+    "projectRef":  "qyewbxjsiiyufanzcjcq",
+    "clubs":  {
+                  "badLimitRejected":  true,
+                  "page1Rows":  0,
+                  "repeatedCallStable":  true,
+                  "page0Id":  "PICKVN_PC01E_PUBLIC_CLUB",
+                  "page0Total":  1,
+                  "order":  "display_name ASC, id ASC"
+              }
+}

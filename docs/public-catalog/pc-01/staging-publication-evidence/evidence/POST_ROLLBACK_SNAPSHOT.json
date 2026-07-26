@@ -1,0 +1,34 @@
+{
+    "anonProjectionInsert":  false,
+    "rpcStatus":  {
+                      "courts":  "ACTIVE_VERIFIED",
+                      "anonExecute":  true,
+                      "clubs":  "ACTIVE_VERIFIED"
+                  },
+    "anonClubsInsert":  false,
+    "baselineRowCounts":  {
+                              "publicClubs":  0,
+                              "venues":  2,
+                              "allCatalogCourts":  0,
+                              "allClubs":  22,
+                              "publishedCourts":  0
+                          },
+    "rowCounts":  {
+                      "publicClubs":  0,
+                      "venues":  2,
+                      "allCatalogCourts":  0,
+                      "allClubs":  22,
+                      "publishedCourts":  0
+                  },
+    "rpcClubsRows":  0,
+    "projectRef":  "qyewbxjsiiyufanzcjcq",
+    "gate":  "POST_ROLLBACK_SNAPSHOT",
+    "rowCountsMatchBaseline":  true,
+    "secretsPrinted":  false,
+    "timestampUtc":  "2026-07-26T07:08:40.000Z",
+    "rpcCourtsRows":  0,
+    "verdict":  "PASS",
+    "phase":  "PUBLIC-CATALOG-01E",
+    "anonProjectionSelect":  false,
+    "pc01eNamespaceRemaining":  0
+}

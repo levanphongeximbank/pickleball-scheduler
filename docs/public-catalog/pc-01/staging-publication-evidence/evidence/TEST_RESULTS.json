@@ -1,0 +1,33 @@
+{
+  "phase": "PUBLIC-CATALOG-01E",
+  "gate": "TEST_RESULTS",
+  "timestampUtc": "2026-07-26T07:20:00.000Z",
+  "verdict": "PASS",
+  "projectRef": "qyewbxjsiiyufanzcjcq",
+  "targeted": {
+    "publicCatalog01": "PASS",
+    "publicCatalog01S": "PASS",
+    "publicCatalog01E": "PASS",
+    "tests": 47,
+    "pass": 47,
+    "fail": 0
+  },
+  "fullUnit": {
+    "verdict": "PASS",
+    "tests": 6544,
+    "pass": 6544,
+    "fail": 0
+  },
+  "lintNoNew": "PASS",
+  "foundationLock": "PASS",
+  "build": "PASS",
+  "hygiene": {
+    "applyRefusedSha256Before": "a30c5cc05f8a183a68608d62f99a50a05114db7492078cf166d9dc8072ba3664",
+    "applyRefusedSha256After": "a30c5cc05f8a183a68608d62f99a50a05114db7492078cf166d9dc8072ba3664",
+    "applyRefusedNoGoSha256Before": "f795fd56a5e2367432b2f779dd17131d673791b98eca78f3b9044f1cbca34027",
+    "applyRefusedNoGoSha256After": "f795fd56a5e2367432b2f779dd17131d673791b98eca78f3b9044f1cbca34027",
+    "hashesUnchanged": true,
+    "packageLockUnchanged": true
+  },
+  "secretsPrinted": false
+}

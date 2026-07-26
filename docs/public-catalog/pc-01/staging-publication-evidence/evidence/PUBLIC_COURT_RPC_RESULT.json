@@ -1,0 +1,24 @@
+{
+    "timestampUtc":  "2026-07-26T07:06:20.000Z",
+    "responseSample":  {
+                           "operational_state":  "active",
+                           "id":  "PICKVN_PC01E_PUBLIC_COURT",
+                           "display_name":  "PICKVN PC01E Public Court",
+                           "total_count":  1,
+                           "surface":  "synthetic-surface",
+                           "venue_id":  "PICKVN_PC01E_VENUE",
+                           "court_type":  "outdoor",
+                           "publication_state":  "published",
+                           "club_id":  "PICKVN_PC01E_PUBLIC_CLUB"
+                       },
+    "gate":  "PUBLIC_COURT_RPC_RESULT",
+    "anonRoleCallSucceeded":  true,
+    "verdict":  "PASS",
+    "linkedPublicClubId":  "PICKVN_PC01E_PUBLIC_CLUB",
+    "phase":  "PUBLIC-CATALOG-01E",
+    "secretsPrinted":  false,
+    "projectRef":  "qyewbxjsiiyufanzcjcq",
+    "publicCourtId":  "PICKVN_PC01E_PUBLIC_COURT",
+    "publicCourtAppeared":  true,
+    "noBookingsRatesCustomerStaff":  true
+}

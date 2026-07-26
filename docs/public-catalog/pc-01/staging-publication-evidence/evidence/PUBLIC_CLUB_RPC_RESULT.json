@@ -1,0 +1,24 @@
+{
+    "timestampUtc":  "2026-07-26T07:06:00.000Z",
+    "responseSample":  {
+                           "slug":  "pickvn-pc01e-public-club",
+                           "id":  "PICKVN_PC01E_PUBLIC_CLUB",
+                           "logo_url":  null,
+                           "display_name":  "PICKVN PC01E Public Club",
+                           "location_summary":  "Synthetic District, Staging City",
+                           "total_count":  1,
+                           "public_contact":  null,
+                           "image_url":  null,
+                           "publication_state":  "published"
+                       },
+    "gate":  "PUBLIC_CLUB_RPC_RESULT",
+    "anonRoleCallSucceeded":  true,
+    "verdict":  "PASS",
+    "publicClubSlug":  "pickvn-pc01e-public-club",
+    "phase":  "PUBLIC-CATALOG-01E",
+    "secretsPrinted":  false,
+    "projectRef":  "qyewbxjsiiyufanzcjcq",
+    "emptyErrorSemanticsUnchanged":  true,
+    "publicClubAppeared":  true,
+    "publicClubId":  "PICKVN_PC01E_PUBLIC_CLUB"
+}

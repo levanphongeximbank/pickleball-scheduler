@@ -1,0 +1,41 @@
+{
+  "phase": "PUBLIC-CATALOG-01E",
+  "gate": "FINAL_CERTIFICATION",
+  "timestampUtc": "2026-07-26T07:10:00.000Z",
+  "verdict": "PASS",
+  "projectRef": "qyewbxjsiiyufanzcjcq",
+  "productionTouched": false,
+  "publicPortalCutover": false,
+  "seedSha256Lf": "82d2c451bd61d27604a3522a36d756465143a6d7bd74bed0ca410efa925ae1e1",
+  "rollbackSha256Lf": "5ecabe5c5c869add122745308cf8ac3d33648b402697ece56c46150fa0c3a642",
+  "stagingGates": {
+    "PRECHECK": "PASS",
+    "BASELINE_SNAPSHOT": "PASS",
+    "SEED_MANIFEST": "PASS",
+    "SEED_APPLY_RESULT": "PASS",
+    "PUBLIC_CLUB_RPC_RESULT": "PASS",
+    "PUBLIC_COURT_RPC_RESULT": "PASS",
+    "PRIVATE_CONTROL_EXCLUSION": "PASS",
+    "FIELD_ALLOWLIST_VERIFICATION": "PASS",
+    "PAGINATION_ORDER_VERIFICATION": "PASS",
+    "SECURITY_BOUNDARY_VERIFICATION": "PASS",
+    "ROLLBACK_RESULT": "PASS",
+    "POST_ROLLBACK_SNAPSHOT": "PASS",
+    "TEST_RESULTS": "PASS"
+  },
+  "readiness": {
+    "CLUBS_PUBLICATION_PATH": "STAGING_VERIFIED",
+    "COURTS_PUBLICATION_PATH": "STAGING_VERIFIED",
+    "PUBLIC_DTO_ALLOWLIST": "VERIFIED",
+    "PRIVATE_CONTROL_EXCLUSION": "VERIFIED",
+    "STAGING_SEED_APPLIED": "YES",
+    "STAGING_SEED_ROLLED_BACK": "YES",
+    "STAGING_TEST_DATA_REMAINING": 0,
+    "STAGING_RPC_STATUS": "ACTIVE_VERIFIED",
+    "PRODUCTION_SQL_RLS_APPLIED": "NO",
+    "PUBLIC_PORTAL_LIVE_CUTOVER": "NO",
+    "PRODUCTION_RUNTIME_READINESS": "NOT_ACHIEVED"
+  },
+  "note": "FINAL_CERTIFICATION PASS requires rollback complete and Staging returned to baseline. Not Production-ready.",
+  "secretsPrinted": false
+}

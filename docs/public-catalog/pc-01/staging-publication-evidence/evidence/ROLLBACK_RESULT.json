@@ -1,0 +1,21 @@
+{
+    "rollbackSha256Lf":  "5ecabe5c5c869add122745308cf8ac3d33648b402697ece56c46150fa0c3a642",
+    "deletedExactIds":  [
+                            "PICKVN_PC01E_PUBLIC_COURT",
+                            "PICKVN_PC01E_PRIVATE_COURT",
+                            "PICKVN_PC01E_PUBLIC_CLUB",
+                            "PICKVN_PC01E_PRIVATE_CLUB",
+                            "PICKVN_PC01E_VENUE"
+                        ],
+    "secretsPrinted":  false,
+    "applyMethod":  "supabase_mcp_execute_sql",
+    "projectRef":  "qyewbxjsiiyufanzcjcq",
+    "gate":  "ROLLBACK_RESULT",
+    "projectionTablePreserved":  true,
+    "rlsUnchanged":  true,
+    "productionTouched":  false,
+    "timestampUtc":  "2026-07-26T07:08:20.000Z",
+    "verdict":  "PASS",
+    "phase":  "PUBLIC-CATALOG-01E",
+    "rpcObjectsPreserved":  true
+}
