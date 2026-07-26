@@ -1,0 +1,95 @@
+{
+  "phase": "COACHING-04-GUARDED-STAGING-APPLY",
+  "script": "coaching-04-staging-apply",
+  "ownerGoRequired": "COACHING_04_OWNER_GO_APPLY_STAGING",
+  "stagingProjectRefExpected": "qyewbxjsiiyufanzcjcq",
+  "targetProject": "qyewbxjsiiyufanzcjcq",
+  "databaseConnectionOpened": false,
+  "databaseWrites": 0,
+  "sqlApplied": false,
+  "mappingRowsCreated": 0,
+  "backfillExecuted": false,
+  "runtimeActivated": false,
+  "localStorageRetired": false,
+  "roleGrantsApplied": false,
+  "productionTouched": false,
+  "filesDeleted": false,
+  "automaticRetry": false,
+  "automaticRollback": false,
+  "CODEX_DELETE_ALLOWED": "NO",
+  "secretsPrinted": false,
+  "APPLY_MODE": "REFUSED",
+  "ok": true,
+  "canWrite": false,
+  "verdict": "COACHING_04_APPLY_REFUSED_OWNER_GO_NOT_GRANTED",
+  "ownerGoGranted": false,
+  "executionCommit": "66b57ddeaa7c9bc805c0dca06f45e34e3588fb45",
+  "manifestHash": "16cdb19ff57b0e0460610e8a341ca8f2786ff19a067839a80996866f61111eaa",
+  "aggregateSqlHash": "662e70fbb3c76785d7910492284224df6bd04fa6a0ef358231f2ddccbc3386d4",
+  "orderedFiles": [
+    "docs/coaching-training/coaching-04/10_COACHING_04_ASSIGNMENT_HELPERS.sql",
+    "docs/coaching-training/coaching-04/11_COACHING_04_PLAYER_SELF_SCOPE_HELPERS.sql",
+    "docs/coaching-training/coaching-04/20_COACHING_04_ASSIGNMENT_RLS.sql",
+    "docs/coaching-training/coaching-04/21_COACHING_04_PLAYER_SELF_SCOPE_RLS.sql",
+    "docs/coaching-training/coaching-04/30_COACHING_04_SCOPED_RPCS.sql",
+    "docs/coaching-training/coaching-04/40_COACHING_04_PERMISSION_SEED_AND_GRANTS.proposal.sql",
+    "docs/coaching-training/coaching-04/99_COACHING_04_VERIFICATION.sql"
+  ],
+  "forwardOnly": [
+    "docs/coaching-training/coaching-04/10_COACHING_04_ASSIGNMENT_HELPERS.sql",
+    "docs/coaching-training/coaching-04/11_COACHING_04_PLAYER_SELF_SCOPE_HELPERS.sql",
+    "docs/coaching-training/coaching-04/20_COACHING_04_ASSIGNMENT_RLS.sql",
+    "docs/coaching-training/coaching-04/21_COACHING_04_PLAYER_SELF_SCOPE_RLS.sql",
+    "docs/coaching-training/coaching-04/30_COACHING_04_SCOPED_RPCS.sql",
+    "docs/coaching-training/coaching-04/40_COACHING_04_PERMISSION_SEED_AND_GRANTS.proposal.sql"
+  ],
+  "rollbackPathExcluded": "docs/coaching-training/coaching-04/90_COACHING_04_ROLLBACK.sql",
+  "rollbackAutoExecute": false,
+  "appliedFileCount": 0,
+  "startedAt": "2026-07-26T02:04:12.317Z",
+  "finishedAt": "2026-07-26T02:04:12.534Z",
+  "actualGitHead": "66b57ddeaa7c9bc805c0dca06f45e34e3588fb45",
+  "commitMismatchReasons": [],
+  "hashMismatchReasons": [],
+  "blockers": [
+    "Missing explicit --execute (default APPLY_MODE=REFUSED).",
+    "Exact Staging project ref required (got (empty)).",
+    "Working tree must be clean.",
+    "Successful preflight PASS report required.",
+    "Explicit approval token COACHING_04_OWNER_GO_APPLY_STAGING required."
+  ],
+  "manifestOk": true,
+  "manifestErrors": [],
+  "migrationsWouldApply": [
+    {
+      "order": 1,
+      "path": "docs/coaching-training/coaching-04/10_COACHING_04_ASSIGNMENT_HELPERS.sql"
+    },
+    {
+      "order": 2,
+      "path": "docs/coaching-training/coaching-04/11_COACHING_04_PLAYER_SELF_SCOPE_HELPERS.sql"
+    },
+    {
+      "order": 3,
+      "path": "docs/coaching-training/coaching-04/20_COACHING_04_ASSIGNMENT_RLS.sql"
+    },
+    {
+      "order": 4,
+      "path": "docs/coaching-training/coaching-04/21_COACHING_04_PLAYER_SELF_SCOPE_RLS.sql"
+    },
+    {
+      "order": 5,
+      "path": "docs/coaching-training/coaching-04/30_COACHING_04_SCOPED_RPCS.sql"
+    },
+    {
+      "order": 6,
+      "path": "docs/coaching-training/coaching-04/40_COACHING_04_PERMISSION_SEED_AND_GRANTS.proposal.sql"
+    },
+    {
+      "order": 7,
+      "path": "docs/coaching-training/coaching-04/99_COACHING_04_VERIFICATION.sql"
+    }
+  ],
+  "verificationRunsOnlyAfterForwardSuccess": true,
+  "finalVerdict": "COACHING_04_APPLY_REFUSED_OWNER_GO_NOT_GRANTED"
+}

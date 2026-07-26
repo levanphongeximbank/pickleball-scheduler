@@ -17,7 +17,7 @@
   "pmId01DependencyRequired": true,
   "hashAlgorithm": "sha256-lf-normalized",
   "aggregateSha256Forward": "662e70fbb3c76785d7910492284224df6bd04fa6a0ef358231f2ddccbc3386d4",
-  "combinedManifestHash": "85c0e85cd1d27764835d71657409394fc1a8902565bfcbd244528190bef0823b",
+  "combinedManifestHash": "16cdb19ff57b0e0460610e8a341ca8f2786ff19a067839a80996866f61111eaa",
   "applyOrderingLocked": true,
   "forwardExecutionOrder": [
     "docs/coaching-training/coaching-04/10_COACHING_04_ASSIGNMENT_HELPERS.sql",
