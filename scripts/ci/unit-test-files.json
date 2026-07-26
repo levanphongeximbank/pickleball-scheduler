@@ -250,6 +250,7 @@
   "tests/coaching-03-staging-activation-package.test.js",
   "tests/coaching-04-assignment-rls-ui-cutover.test.js",
   "tests/coaching-04-player-self-scope-cutover.test.js",
+  "tests/coaching-04-staging-activation-package.test.js",
   "tests/rbac-v52.test.js",
   "tests/tournament-player-picker.test.js",
   "tests/tenant-isolation-qa.test.js",
