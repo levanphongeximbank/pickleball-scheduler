@@ -30,12 +30,16 @@ test("NEWS-04 NewsPage wires loading/error/empty/data + mock/preview badges", ()
   assert.doesNotMatch(page, /service_role/);
 });
 
-test("NEWS-04 HomePage loads news asynchronously and does not sync-slice mock", () => {
+test("NEWS-04 HomePage loads news asynchronously and projects honest section result", () => {
   const home = read("src/pages/public/HomePage.jsx");
   assert.match(home, /getPublicNews\(/);
   assert.match(home, /useEffect/);
-  assert.match(home, /getPublicNewsItemsOrEmpty/);
+  assert.match(home, /projectHomeNewsSection/);
+  assert.match(home, /PublicLoadingState/);
+  assert.match(home, /PublicErrorState/);
+  assert.doesNotMatch(home, /getPublicNewsItemsOrEmpty/);
   assert.doesNotMatch(home, /getPublicNews\(\)\.slice/);
+  assert.doesNotMatch(home, /MOCK_NEWS/);
 });
 
 test("NEWS-04 EC registry marks /news as LIVE with presentation states", () => {
