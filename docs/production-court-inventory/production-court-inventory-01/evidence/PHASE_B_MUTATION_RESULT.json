@@ -1,0 +1,64 @@
+{
+  "workstream": "PRODUCTION-COURT-INVENTORY-01",
+  "phase": "B_PRODUCTION_MUTATION",
+  "timestampUtc": "2026-07-26T13:05:00.000Z",
+  "productionProjectRef": "expuvcohlcjzvrrauvud",
+  "stagingUntouched": true,
+  "ownerAuthorization": "GO PRODUCTION COURT INVENTORY MUTATION",
+  "preMutationRevalidation": {
+    "accc_club_data_v3_row_before": 0,
+    "club_data_v3_total_before": 0,
+    "club_status": "active",
+    "club_tenant": "venue-prod-main",
+    "club_registered_cluster": "venue-prod-main-pickleball-nam-long-sports",
+    "club_version_before": 38,
+    "venue_status": "trial",
+    "cluster_status": "active",
+    "cluster_court_count_before": 0,
+    "drift_detected": false
+  },
+  "mutation": {
+    "type": "atomic guarded INSERT (INSERT ... WHERE NOT EXISTS)",
+    "table": "public.club_data_v3",
+    "club_id": "club-219e4a7cbd73437eb6271f02a53314c3",
+    "venue_id_column": "venue-prod-main",
+    "version": 1,
+    "rows_inserted": 1,
+    "blind_upsert_used": false
+  },
+  "insertedCourts": [
+    { "id": "court-club-219e4a7cbd73437eb6271f02a53314c3-n3", "name": "Sân 3", "number": 3, "active": true, "status": "active", "courtType": "covered", "surface": "plastic", "clubId": "club-219e4a7cbd73437eb6271f02a53314c3", "venueId": "venue-prod-main", "tenantId": "venue-prod-main", "clusterId": "venue-prod-main-pickleball-nam-long-sports" },
+    { "id": "court-club-219e4a7cbd73437eb6271f02a53314c3-n4", "name": "Sân 4", "number": 4, "active": true, "status": "active", "courtType": "covered", "surface": "plastic", "clubId": "club-219e4a7cbd73437eb6271f02a53314c3", "venueId": "venue-prod-main", "tenantId": "venue-prod-main", "clusterId": "venue-prod-main-pickleball-nam-long-sports" },
+    { "id": "court-club-219e4a7cbd73437eb6271f02a53314c3-n5", "name": "Sân 5", "number": 5, "active": true, "status": "active", "courtType": "covered", "surface": "plastic", "clubId": "club-219e4a7cbd73437eb6271f02a53314c3", "venueId": "venue-prod-main", "tenantId": "venue-prod-main", "clusterId": "venue-prod-main-pickleball-nam-long-sports" },
+    { "id": "court-club-219e4a7cbd73437eb6271f02a53314c3-n6", "name": "Sân 6", "number": 6, "active": true, "status": "active", "courtType": "covered", "surface": "plastic", "clubId": "club-219e4a7cbd73437eb6271f02a53314c3", "venueId": "venue-prod-main", "tenantId": "venue-prod-main", "clusterId": "venue-prod-main-pickleball-nam-long-sports" }
+  ],
+  "postMutationVerification": {
+    "courts_len": 4,
+    "distinct_ids": 4,
+    "duplicate_ids": false,
+    "all_active": true,
+    "all_status_active": true,
+    "all_covered": true,
+    "all_surface_plastic": true,
+    "linkage_correct": true,
+    "hasRate_any": false,
+    "hasNote_any": false,
+    "hasPriority_any": false,
+    "publication_eligible_courts": 4
+  },
+  "unrelatedRowsUnchanged": {
+    "clubs_total": 1,
+    "club_version": 38,
+    "club_status": "active",
+    "venues_total": 1,
+    "venue_status": "trial",
+    "clusters_total": 1,
+    "cluster_court_count": 0,
+    "cluster_status": "active",
+    "public_catalog_courts": "absent / not touched",
+    "clubs_mutated": false,
+    "venues_mutated": false,
+    "catalog_mutated": false,
+    "staging_touched": false
+  }
+}

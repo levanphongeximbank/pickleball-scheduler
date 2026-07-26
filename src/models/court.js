@@ -34,6 +34,14 @@ function isExplicitFinitePriority(value) {
   return typeof value === "number" && Number.isFinite(value);
 }
 
+function toOptionalTrimmedString(value) {
+  if (value == null) {
+    return null;
+  }
+  const trimmed = String(value).trim();
+  return trimmed ? trimmed : null;
+}
+
 export function normalizeCourt(court, index = 0) {
   const active = court?.active !== false;
   const status = COURT_STATUSES.includes(court?.status)
@@ -41,6 +49,9 @@ export function normalizeCourt(court, index = 0) {
     : active
       ? "active"
       : "locked";
+  const surface = toOptionalTrimmedString(court?.surface);
+  const clubId = toOptionalTrimmedString(court?.clubId);
+  const venueId = toOptionalTrimmedString(court?.venueId);
 
   return {
     id: court?.id ?? index + 1,
@@ -54,6 +65,9 @@ export function normalizeCourt(court, index = 0) {
     note: court?.note ? String(court.note).trim() : "",
     ...(court?.tenantId ? { tenantId: String(court.tenantId).trim() } : {}),
     ...(court?.clusterId ? { clusterId: String(court.clusterId).trim() } : {}),
+    ...(clubId ? { clubId } : {}),
+    ...(venueId ? { venueId } : {}),
+    ...(surface ? { surface } : {}),
     ...(isExplicitFinitePriority(court?.priority) ? { priority: court.priority } : {}),
   };
 }

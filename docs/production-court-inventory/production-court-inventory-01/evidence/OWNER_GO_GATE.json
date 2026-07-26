@@ -1,0 +1,27 @@
+{
+  "workstream": "PRODUCTION-COURT-INVENTORY-01",
+  "phase": "A_EXACT_INVENTORY_PLAN",
+  "timestampUtc": "2026-07-26T12:50:00.000Z",
+  "verdict": "PRODUCTION_COURT_INVENTORY_01_AWAITING_OWNER_GO",
+  "authorizationRequired": {
+    "flag": "PRODUCTION_COURT_INVENTORY_MUTATION_GO",
+    "current": "NO",
+    "requiredExactMessage": "GO PRODUCTION COURT INVENTORY MUTATION",
+    "scope": [
+      "INSERT public.club_data_v3 for club-219e4a7cbd73437eb6271f02a53314c3 with exact 4 courts",
+      "OPTIONAL reconcile court_clusters.court_count 0→4 for venue-prod-main-pickleball-nam-long-sports",
+      "NO clubs/venues/catalog/portal/publication mutations"
+    ]
+  },
+  "privacy": {
+    "rates": "private defaults 0",
+    "notes": "private empty",
+    "no_customer_player_booking_staff": true,
+    "no_public_catalog_mutation": true,
+    "no_portal_cutover": true
+  },
+  "stillBlockedDownstream": [
+    "PRODUCTION_PUBLICATION_GO",
+    "PRODUCTION_PORTAL_CUTOVER_GO"
+  ]
+}

@@ -1,0 +1,26 @@
+{
+  "workstream": "PRODUCTION-COURT-INVENTORY-01",
+  "phase": "A_READ_ONLY_AUDIT",
+  "timestampUtc": "2026-07-26T12:40:00.000Z",
+  "verdict": "PASS",
+  "productionProjectRef": "expuvcohlcjzvrrauvud",
+  "stagingBlocklistRef": "qyewbxjsiiyufanzcjcq",
+  "mcpServerId": "project-0-pickleball-scheduler-supabase-production",
+  "mcpConfigBinding": "supabase-production -> project_ref=expuvcohlcjzvrrauvud",
+  "supabaseHost": "expuvcohlcjzvrrauvud.supabase.co",
+  "isStaging": false,
+  "stagingTouched": false,
+  "targetAmbiguity": false,
+  "fingerprint": {
+    "productionLatestMigration": "20260717155720",
+    "publicCatalogCourtsTable": false,
+    "publicCourtsTable": false,
+    "catalogCourtRpcPresent": false,
+    "clubDataV3Rows": 0
+  },
+  "branch": "feature/production-court-inventory-01-clb-accc",
+  "baseCommit": "a01f2640d4cba8e182de15560d64cd418f6203e2",
+  "worktree": "C:\\Users\\Le Phong\\PICK_VN-Workstreams\\production-court-inventory\\production-court-inventory-01-clb-accc",
+  "mutationsPerformed": false,
+  "secretsPrinted": false
+}

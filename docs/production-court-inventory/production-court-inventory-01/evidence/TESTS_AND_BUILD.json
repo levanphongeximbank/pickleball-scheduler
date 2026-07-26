@@ -1,0 +1,33 @@
+{
+  "workstream": "PRODUCTION-COURT-INVENTORY-01",
+  "phase": "B_PRODUCTION_MUTATION",
+  "timestampUtc": "2026-07-26T13:20:00.000Z",
+  "focusedTests": {
+    "command": "node --test (venue-court + court-service + court-booking + public-catalog courts + production readiness)",
+    "result": "149/149 pass"
+  },
+  "fullUnit": {
+    "command": "npm run test:unit",
+    "result": "6611/6611 pass, 257 suites, 0 fail",
+    "runOnce": true
+  },
+  "lintNoNew": {
+    "command": "npm run lint:no-new",
+    "result": "OK — 0 new lint violations (baseline 313)"
+  },
+  "ciFoundationLock": {
+    "command": "npm run ci:foundation-lock",
+    "result": "OK — error-registry OK, ownership-lock OK, competition-architecture-lock OK"
+  },
+  "build": {
+    "command": "npm run build",
+    "result": "built in ~1.5s; PWA precache generated; prebuild (foundation-lock + lint:no-new) passed"
+  },
+  "codeChanges": [
+    "src/models/court.js — normalizeCourt preserves optional surface/clubId/venueId (additive, neutral defaults unchanged)",
+    "tests/fixtures/production-court-inventory-01-accc.js — Owner-confirmed canonical fixture",
+    "tests/production-court-inventory-01-accc-readiness.test.js — 7 readiness assertions",
+    "scripts/ci/unit-test-files.json — registered readiness test",
+    "scripts/production-court-inventory-01/build-accc-blob.mjs — deterministic blob generator"
+  ]
+}

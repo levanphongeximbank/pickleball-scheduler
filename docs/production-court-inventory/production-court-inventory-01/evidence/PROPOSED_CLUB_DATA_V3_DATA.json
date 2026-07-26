@@ -1,0 +1,134 @@
+{
+  "schemaVersion": 3.5,
+  "clubId": "club-219e4a7cbd73437eb6271f02a53314c3",
+  "players": [],
+  "courts": [
+    {
+      "id": "court-club-219e4a7cbd73437eb6271f02a53314c3-n3",
+      "name": "Sân 3",
+      "number": 3,
+      "active": true,
+      "status": "active",
+      "courtType": "covered",
+      "surface": "plastic",
+      "clubId": "club-219e4a7cbd73437eb6271f02a53314c3",
+      "venueId": "venue-prod-main",
+      "tenantId": "venue-prod-main",
+      "clusterId": "venue-prod-main-pickleball-nam-long-sports"
+    },
+    {
+      "id": "court-club-219e4a7cbd73437eb6271f02a53314c3-n4",
+      "name": "Sân 4",
+      "number": 4,
+      "active": true,
+      "status": "active",
+      "courtType": "covered",
+      "surface": "plastic",
+      "clubId": "club-219e4a7cbd73437eb6271f02a53314c3",
+      "venueId": "venue-prod-main",
+      "tenantId": "venue-prod-main",
+      "clusterId": "venue-prod-main-pickleball-nam-long-sports"
+    },
+    {
+      "id": "court-club-219e4a7cbd73437eb6271f02a53314c3-n5",
+      "name": "Sân 5",
+      "number": 5,
+      "active": true,
+      "status": "active",
+      "courtType": "covered",
+      "surface": "plastic",
+      "clubId": "club-219e4a7cbd73437eb6271f02a53314c3",
+      "venueId": "venue-prod-main",
+      "tenantId": "venue-prod-main",
+      "clusterId": "venue-prod-main-pickleball-nam-long-sports"
+    },
+    {
+      "id": "court-club-219e4a7cbd73437eb6271f02a53314c3-n6",
+      "name": "Sân 6",
+      "number": 6,
+      "active": true,
+      "status": "active",
+      "courtType": "covered",
+      "surface": "plastic",
+      "clubId": "club-219e4a7cbd73437eb6271f02a53314c3",
+      "venueId": "venue-prod-main",
+      "tenantId": "venue-prod-main",
+      "clusterId": "venue-prod-main-pickleball-nam-long-sports"
+    }
+  ],
+  "bookings": [],
+  "customers": [],
+  "recurringSeries": [],
+  "courtManagement": {
+    "openHour": 0,
+    "closeHour": 24,
+    "slotMinutes": 60,
+    "peakHourRules": {
+      "enabled": false,
+      "startHour": 17,
+      "endHour": 22,
+      "weekdays": [
+        0,
+        1,
+        2,
+        3,
+        4,
+        5,
+        6
+      ]
+    },
+    "notificationSettings": {
+      "enabled": false,
+      "minutesBefore": 30,
+      "browserNotify": true,
+      "inAppNotify": true
+    },
+    "automationSettings": {
+      "autoCompleteOnOpen": false,
+      "autoStartPlaying": false
+    }
+  },
+  "seasons": [],
+  "leagues": [],
+  "rounds": [],
+  "sessions": [],
+  "tournaments": [],
+  "founderPairingConstraints": [],
+  "seasonStandings": {},
+  "skillLevel": {
+    "enabled": false,
+    "autoGenerateProposals": false,
+    "step": 0.5,
+    "promoteThreshold": 0.35,
+    "demoteThreshold": 0.35,
+    "minLevel": 1,
+    "maxLevel": 8,
+    "minMatchesForProposal": 5,
+    "confidencePerMatch": 0.05
+  },
+  "skillLevelProposals": [],
+  "skillLevelChangeRequests": [],
+  "ai": {
+    "history": {},
+    "waiting": {},
+    "policies": [],
+    "rules": [],
+    "tournament": {
+      "bracketWinners": {},
+      "bracketUnlockedRounds": {},
+      "seedPreview": [],
+      "updatedAt": null
+    }
+  },
+  "active": {
+    "seasonId": null,
+    "leagueId": null,
+    "roundSlot": null
+  },
+  "director": {
+    "lockedCourts": [],
+    "lockedPlayers": []
+  },
+  "updatedAt": "2026-07-26T13:00:15.796Z",
+  "tenantId": "venue-prod-main"
+}

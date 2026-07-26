@@ -1,0 +1,22 @@
+{
+  "workstream": "PRODUCTION-COURT-INVENTORY-01",
+  "phase": "B_PRODUCTION_MUTATION",
+  "gate": "CLUSTER COURT COUNT",
+  "decision": "KEEP_COURT_COUNT_0_NO_MUTATION",
+  "clusterCourtCountValue": 0,
+  "ownershipEvidence": {
+    "table": "public.court_clusters",
+    "field": "court_count",
+    "writer_subsystem": "Court Cluster admin (rpcAdminUpsertCluster via src/features/court-cluster/services/courtClusterCloudService.js) and app-local syncClusterCourtCount (feature-flag gated)",
+    "semantic": "Facility/venue-scoped cluster attribute (Số sân of the whole facility 'Pickleball Nam Long Sports'), displayed in MyFacilityPanel",
+    "not_owned_by": "club_data_v3 club inventory"
+  },
+  "reasoning": [
+    "ACCC rents courts numbered 3,4,5,6 — the numbering starting at 3 indicates the facility has additional physical courts (e.g. 1,2) NOT rented by ACCC.",
+    "Therefore ACCC club inventory count (4) does NOT authoritatively equal the facility/cluster physical court total.",
+    "court_count is a facility-wide aggregate owned by the cluster-admin subsystem; setting it to 4 would fabricate a facility-wide claim not confirmed by Owner.",
+    "Owner provided only ACCC rental facts; no facility total was provided and must not be inferred or asked as extra business facts."
+  ],
+  "conclusion": "Per hard gate 5: field is not the canonical aggregate of THIS club's inventory and is owned by another subsystem → keep 0, document ownership, do not mutate any cluster.",
+  "clustersMutated": 0
+}
