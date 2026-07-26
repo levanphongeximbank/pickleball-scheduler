@@ -33,9 +33,9 @@ import { PLAYER_IDENTITY_MAPPING_STATUS } from "../src/features/player/constants
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const STAGING_URL = `https://${COACHING_04_STAGING_PROJECT_REF}.supabase.co`;
 const PKG_SHA =
-  "CF0361BF8FC7F4AE6AA39587AB8489F4C1D3489C04B2E980EEC8E6EB396AFE0E";
+  "D9F756CC931E32B03E48DA0C70729F4D68D30022A8D1C1E4189E4D4962E7326B";
 const LOCK_SHA =
-  "844840CA58B3EADCC4A1D090ABDCFCD057B7562F48BB1450D4A8AD1A1763B448";
+  "D40DB46D2356A87F589DF86C8F9CC369A7F97A332DFCF3AEC8CA335EE07F2516";
 
 function readPack(rel) {
   return readFileSync(path.join(ROOT, rel), "utf8");
@@ -46,10 +46,10 @@ function readJson(rel) {
 }
 
 function sha256File(rel) {
-  return createHash("sha256")
-    .update(readFileSync(path.join(ROOT, rel)))
-    .digest("hex")
-    .toUpperCase();
+  const text = readFileSync(path.join(ROOT, rel), "utf8")
+    .replace(/\r\n/g, "\n")
+    .replace(/\r/g, "\n");
+  return createHash("sha256").update(text, "utf8").digest("hex").toUpperCase();
 }
 
 const CLOSURE_FILES = [
@@ -261,12 +261,13 @@ test("PLAYER UNMAPPED + COACH fail closed + no silent fallback", async () => {
   delete globalThis.__COACHING_LEGACY_TELEMETRY__;
 });
 
-test("package/lock hashes unchanged from certified pins", () => {
+test("package/lock hashes unchanged from certified pins (sha256-lf-normalized)", () => {
   assert.equal(sha256File("package.json"), PKG_SHA);
   assert.equal(sha256File("package-lock.json"), LOCK_SHA);
   const module = readJson(
     "docs/coaching-training/module-closure/evidence/MODULE_2_12_CLOSURE.json"
   );
+  assert.equal(module.hashAlgorithm, "sha256-lf-normalized");
   assert.equal(module.packageJsonSha256, PKG_SHA);
   assert.equal(module.packageLockSha256, LOCK_SHA);
 });
