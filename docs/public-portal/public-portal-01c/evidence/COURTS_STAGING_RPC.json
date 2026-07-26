@@ -1,0 +1,14 @@
+{
+  "phase": "PUBLIC-PORTAL-01C",
+  "gate": "COURTS_STAGING_RPC",
+  "timestampUtc": "2026-07-26T08:41:00.000Z",
+  "verdict": "PASS",
+  "projectRef": "qyewbxjsiiyufanzcjcq",
+  "rpc": "public_catalog_list_courts",
+  "adapter": "loadPublicCourtsFromRemote → listPublicCourtsRemote",
+  "anonExecute": true,
+  "rowCount": 0,
+  "portalSourceWhenRemote": "REMOTE_RPC",
+  "mutationPerformed": false,
+  "secretsPrinted": false
+}

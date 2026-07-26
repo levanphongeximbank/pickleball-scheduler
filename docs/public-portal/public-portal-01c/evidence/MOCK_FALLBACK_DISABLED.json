@@ -1,0 +1,17 @@
+{
+  "phase": "PUBLIC-PORTAL-01C",
+  "gate": "MOCK_FALLBACK_DISABLED",
+  "timestampUtc": "2026-07-26T08:43:00.000Z",
+  "verdict": "PASS",
+  "projectRef": "qyewbxjsiiyufanzcjcq",
+  "remotePath": {
+    "allowMockFallback": false,
+    "mockOnRemoteError": "DISABLED",
+    "mockOnRemoteEmpty": "DISABLED"
+  },
+  "localProductionPath": {
+    "allowMockFallback": true,
+    "unchanged": true
+  },
+  "secretsPrinted": false
+}

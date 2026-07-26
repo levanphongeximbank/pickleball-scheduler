@@ -85,7 +85,7 @@ export const PUBLIC_PORTAL_LIVE_CUTOVER_MATRIX = deepFreeze([
     kind: "surface",
     classification: C.NO_REMOTE_SOURCE,
     liveSourceSummary:
-      "Browser local club registry + club blob (loadClubs/loadClubData) — not a remote public catalog API.",
+      "Production default: browser local club registry + blob. Staging opt-in remote: public_catalog_list_clubs via VITE_PUBLIC_CLUBS_COURTS_SOURCE=remote (PUBLIC-PORTAL-01C). Production remote cutover not certified.",
     allowMockFallbackRetained: true,
     implementCutover: false,
     gates: gates({
@@ -94,14 +94,14 @@ export const PUBLIC_PORTAL_LIVE_CUTOVER_MATRIX = deepFreeze([
       productionReadyEvidence: false,
     }),
     rationale:
-      "Gate 1 fails: no certified remote public clubs source. Mock fallback retained with MIXED honesty (EC-03).",
+      "EC-06 Production gates still fail productionReadyEvidence. Staging remote path is certified separately under PUBLIC-PORTAL-01C; default local path retains mock fallback (EC-03).",
   },
   {
     id: PUBLIC_PORTAL_SURFACE_ID.PUBLIC_COURTS,
     kind: "surface",
     classification: C.NO_REMOTE_SOURCE,
     liveSourceSummary:
-      "Derived from local club blob courts/hours — not a remote public venues API.",
+      "Production default: local club blob courts/hours. Staging opt-in remote: public_catalog_list_courts via VITE_PUBLIC_CLUBS_COURTS_SOURCE=remote (PUBLIC-PORTAL-01C). Production remote cutover not certified.",
     allowMockFallbackRetained: true,
     implementCutover: false,
     gates: gates({
@@ -110,7 +110,7 @@ export const PUBLIC_PORTAL_LIVE_CUTOVER_MATRIX = deepFreeze([
       productionReadyEvidence: false,
     }),
     rationale:
-      "Gate 1 fails: no certified remote public courts source. Mock fallback retained (EC-03).",
+      "EC-06 Production gates still fail productionReadyEvidence. Staging remote path is certified separately under PUBLIC-PORTAL-01C; default local path retains mock fallback (EC-03).",
   },
   {
     id: PUBLIC_PORTAL_SURFACE_ID.PUBLIC_TOURNAMENTS,
