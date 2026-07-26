@@ -240,3 +240,39 @@ pages/public/HomePage.jsx            Consumer
 components/public/sections/LiveDataHubSection.jsx
 docs/experience-channels/ec-05/
 ```
+
+---
+
+## EC-06 — Public Portal Certified LIVE Cutover
+
+**Certification inventory:** `public-portal/certification/liveCutoverCertificationMatrix.js`  
+**Validator:** `certifyPublicPortalLiveCutover`  
+**Runtime policy:** Only `CERTIFIED_LIVE_CUTOVER` rows may remove mock fallback. Current certified count: **0**.
+
+**Status:** Audit complete. No surface meets all twelve EC-06 gates for remote LIVE cutover without inventing APIs or touching Competition/Ranking/backend contracts. News remains ALREADY_LIVE (NEWS-04). Clubs/Courts/Tournaments retain mock fallback (NO_REMOTE_SOURCE). Rankings LIVE_SOURCE_NOT_CERTIFIED. Home mock hubs stay MOCK_WITH_HONEST_PROVENANCE.
+
+### What EC-06 owns
+
+- LIVE cutover classification vocabulary + frozen certification matrix
+- `certifyPublicPortalLiveCutover` audit verdict (`EC_06_AUDIT_COMPLETE_NO_CERTIFIED_CUTOVER`)
+- Registry notes recording EC-06 classifications
+- EC-06 docs + lock tests (no forced uncertified LIVE)
+
+### Explicit non-ownership
+
+| Concern | Owner |
+|---------|--------|
+| Inventing remote clubs/courts/tournaments/rankings APIs | Backend / future workstream |
+| News production deploy / productionReady claim | NEWS production certification |
+| Competition `/tournament/:id/public` | COMPETITION_E2E_OWNED |
+| Ranking calculation engines | VPR / Business Module |
+| Router / PublicLayout / providers / PWA / SQL | Out of scope / high-collision |
+
+### Layering (EC-06)
+
+```
+public-portal/constants/liveCutoverClassifications.js
+public-portal/certification/liveCutoverCertificationMatrix.js
+public-portal/validation/certifyPublicPortalLiveCutover.js
+docs/experience-channels/ec-06/
+```

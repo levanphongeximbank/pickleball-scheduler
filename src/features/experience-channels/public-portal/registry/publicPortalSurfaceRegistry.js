@@ -85,7 +85,7 @@ const SURFACE_DESCRIPTORS = deepFreeze({
     collisionClassification: EXPERIENCE_CHANNEL_CLASSIFICATION.CANONICAL_CHANNEL_SURFACE,
     dataSource: PUBLIC_PORTAL_DATA_SOURCE.MIXED,
     dataSourceNotes:
-      "EC-05: Home sections via publicHomeDataSource — reuses EC-03/04 Clubs/Courts/Tournaments results; mock live-scores/schedule/results/sponsors/events labeled MOCK; news projects NEWS-04 typed result without silent empty-on-error. No LIVE cutover.",
+      "EC-05/EC-06: Home sections via publicHomeDataSource — reuses EC-03/04 Clubs/Courts/Tournaments results; mock live-scores/schedule/results/sponsors/events labeled MOCK; news projects NEWS-04 typed result without silent empty-on-error. EC-06: no certified remote LIVE cutover for composite Home.",
     authenticationDependency: PUBLIC_PORTAL_AUTH_DEPENDENCY.OPTIONAL_CONSUMED,
     tenantDependency: PUBLIC_PORTAL_TENANT_DEPENDENCY.CONSUMED_SHARED,
     competitionOwnershipMarker: PUBLIC_PORTAL_COMPETITION_MARKER.PRESENTATION_ONLY,
@@ -122,7 +122,7 @@ const SURFACE_DESCRIPTORS = deepFreeze({
     collisionClassification: EXPERIENCE_CHANNEL_CLASSIFICATION.CANONICAL_CHANNEL_SURFACE,
     dataSource: PUBLIC_PORTAL_DATA_SOURCE.MIXED,
     dataSourceNotes:
-      "EC-04: getPublicTournamentsResult via resolvePublicListDataResult — live club blob tournaments with mock fallback (min 3). MIXED provenance when fallback used; never labeled LIVE.",
+      "EC-04/EC-06: getPublicTournamentsResult via resolvePublicListDataResult — local club blob tournaments with mock fallback (min 3). MIXED when fallback used. EC-06: NO_REMOTE_SOURCE — mock fallback retained.",
     authenticationDependency: PUBLIC_PORTAL_AUTH_DEPENDENCY.NONE,
     tenantDependency: PUBLIC_PORTAL_TENANT_DEPENDENCY.CONSUMED_SHARED,
     competitionOwnershipMarker: PUBLIC_PORTAL_COMPETITION_MARKER.PRESENTATION_ONLY,
@@ -159,7 +159,7 @@ const SURFACE_DESCRIPTORS = deepFreeze({
     collisionClassification: EXPERIENCE_CHANNEL_CLASSIFICATION.CANONICAL_CHANNEL_SURFACE,
     dataSource: PUBLIC_PORTAL_DATA_SOURCE.MIXED,
     dataSourceNotes:
-      "Live clubs registry + blob with mock fallback (min 3). EC-03 getPublicClubsResult publishes MIXED provenance when fallback is used; never labeled LIVE.",
+      "EC-03/EC-06: Local clubs registry + blob with mock fallback (min 3). getPublicClubsResult publishes MIXED when fallback used. EC-06: NO_REMOTE_SOURCE — mock fallback retained.",
     authenticationDependency: PUBLIC_PORTAL_AUTH_DEPENDENCY.NONE,
     tenantDependency: PUBLIC_PORTAL_TENANT_DEPENDENCY.CONSUMED_SHARED,
     competitionOwnershipMarker: PUBLIC_PORTAL_COMPETITION_MARKER.NONE,
@@ -195,7 +195,7 @@ const SURFACE_DESCRIPTORS = deepFreeze({
     collisionClassification: EXPERIENCE_CHANNEL_CLASSIFICATION.CANONICAL_CHANNEL_SURFACE,
     dataSource: PUBLIC_PORTAL_DATA_SOURCE.MIXED,
     dataSourceNotes:
-      "Live club courts + hours with mock fallback (min 2). EC-03 getPublicCourtsResult publishes MIXED provenance when fallback is used; never labeled LIVE.",
+      "EC-03/EC-06: Local club courts + hours with mock fallback (min 2). getPublicCourtsResult MIXED when fallback used. EC-06: NO_REMOTE_SOURCE — mock fallback retained.",
     authenticationDependency: PUBLIC_PORTAL_AUTH_DEPENDENCY.NONE,
     tenantDependency: PUBLIC_PORTAL_TENANT_DEPENDENCY.CONSUMED_SHARED,
     competitionOwnershipMarker: PUBLIC_PORTAL_COMPETITION_MARKER.NONE,
@@ -231,7 +231,7 @@ const SURFACE_DESCRIPTORS = deepFreeze({
     collisionClassification: EXPERIENCE_CHANNEL_CLASSIFICATION.CANONICAL_CHANNEL_SURFACE,
     dataSource: PUBLIC_PORTAL_DATA_SOURCE.MIXED,
     dataSourceNotes:
-      "EC-04: getPublicRankingsResult — VPR flag off → explicit MOCK; VPR on → live leaderboard with MIXED mock fallback on empty/error. UI presents canonical rows only — does not compute ratings/standings/eligibility.",
+      "EC-04/EC-06: getPublicRankingsResult — VPR flag off → explicit MOCK; VPR on → local leaderboard with MIXED mock fallback. EC-06: LIVE_SOURCE_NOT_CERTIFIED (not remote public RPC). UI presents canonical rows only.",
     authenticationDependency: PUBLIC_PORTAL_AUTH_DEPENDENCY.NONE,
     tenantDependency: PUBLIC_PORTAL_TENANT_DEPENDENCY.NONE,
     competitionOwnershipMarker: PUBLIC_PORTAL_COMPETITION_MARKER.PRESENTATION_ONLY,
@@ -270,7 +270,7 @@ const SURFACE_DESCRIPTORS = deepFreeze({
       EXPERIENCE_CHANNEL_CLASSIFICATION.CANONICAL_CHANNEL_SURFACE,
     dataSource: PUBLIC_PORTAL_DATA_SOURCE.LIVE,
     dataSourceNotes:
-      "NEWS-04: getPublicNews → News facade → news_public_content_query_public. Explicit mock/preview only; no silent fallback. Production not certified (PARTIAL).",
+      "NEWS-04/EC-06: getPublicNews → News facade → news_public_content_query_public. Explicit mock/preview only; no silent fallback. EC-06: ALREADY_LIVE_NO_CHANGE (productionReady evidence incomplete for cutover claim).",
     authenticationDependency: PUBLIC_PORTAL_AUTH_DEPENDENCY.NONE,
     tenantDependency: PUBLIC_PORTAL_TENANT_DEPENDENCY.NONE,
     competitionOwnershipMarker: PUBLIC_PORTAL_COMPETITION_MARKER.NONE,

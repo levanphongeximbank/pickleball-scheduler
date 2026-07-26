@@ -70,19 +70,43 @@ export const EXPERIENCE_CHANNELS_EC05_PHASE = Object.freeze({
   androidReleasePercent: 0,
 });
 
+export const EXPERIENCE_CHANNELS_EC06_PHASE = Object.freeze({
+  id: "EC-06",
+  name: "public-portal-certified-live-cutover",
+  wiredToRuntimeRouter: false,
+  wiredToMainEntrypoint: false,
+  wiredToProviderTree: false,
+  reusesEc02PresentationStates: true,
+  reusesEc03DataResultContract: true,
+  reusesEc03Ec04Ec05Adapters: true,
+  auditComplete: true,
+  certifiedLiveCutoverCount: 0,
+  mockFallbackRemoved: false,
+  liveCutover: false,
+  forcedUncertifiedLive: false,
+  competitionEngineUntouched: true,
+  nativeStoreRelease: false,
+  iosReleasePercent: 0,
+  androidReleasePercent: 0,
+});
+
 export const PUBLIC_PORTAL_READINESS_PUBLIC_EXPORTS = Object.freeze([
   "EXPERIENCE_CHANNELS_EC01_PHASE",
   "EXPERIENCE_CHANNELS_EC03_PHASE",
   "EXPERIENCE_CHANNELS_EC04_PHASE",
   "EXPERIENCE_CHANNELS_EC05_PHASE",
+  "EXPERIENCE_CHANNELS_EC06_PHASE",
   "PUBLIC_PORTAL_SURFACE_ID",
   "PUBLIC_PORTAL_DATA_SOURCE",
+  "PUBLIC_PORTAL_LIVE_CUTOVER_CLASSIFICATION",
   "PUBLIC_DATA_RESULT_STATUS",
   "listPublicPortalSurfaces",
   "getPublicPortalSurface",
   "listPublicPortalBoundaryMarkers",
   "getPublicPortalSharedReadinessEvidence",
   "certifyPublicPortalReadiness",
+  "certifyPublicPortalLiveCutover",
+  "listPublicPortalLiveCutoverMatrix",
   "createPublicPortalSurfaceDescriptor",
   "createLiveResult",
   "certifyPublicDataResult",
@@ -107,6 +131,9 @@ export {
   PUBLIC_PORTAL_BOUNDARY_ID,
   PUBLIC_PORTAL_BOUNDARY_ID_VALUES,
   isPublicPortalBoundaryId,
+  PUBLIC_PORTAL_LIVE_CUTOVER_CLASSIFICATION,
+  PUBLIC_PORTAL_LIVE_CUTOVER_CLASSIFICATION_VALUES,
+  isPublicPortalLiveCutoverClassification,
 } from "./constants/index.js";
 
 export {
@@ -124,7 +151,17 @@ export {
   getPublicPortalSharedReadinessEvidence,
 } from "./registry/index.js";
 
-export { certifyPublicPortalReadiness } from "./validation/index.js";
+export {
+  PUBLIC_PORTAL_LIVE_CUTOVER_MATRIX,
+  listPublicPortalLiveCutoverMatrix,
+  getPublicPortalLiveCutoverRow,
+  listCertifiedLiveCutoverRows,
+} from "./certification/index.js";
+
+export {
+  certifyPublicPortalReadiness,
+  certifyPublicPortalLiveCutover,
+} from "./validation/index.js";
 
 export {
   PUBLIC_DATA_RESULT_STATUS,

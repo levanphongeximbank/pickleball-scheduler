@@ -21,3 +21,9 @@ export {
   PUBLIC_PORTAL_BOUNDARY_ID_VALUES,
   isPublicPortalBoundaryId,
 } from "./surfaceIds.js";
+
+export {
+  PUBLIC_PORTAL_LIVE_CUTOVER_CLASSIFICATION,
+  PUBLIC_PORTAL_LIVE_CUTOVER_CLASSIFICATION_VALUES,
+  isPublicPortalLiveCutoverClassification,
+} from "./liveCutoverClassifications.js";
