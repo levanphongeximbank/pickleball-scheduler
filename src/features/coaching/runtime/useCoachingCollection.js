@@ -3,16 +3,48 @@
  *
  * Uses createDefaultCoachingRuntime() composition.
  * No silent fallback from durable failure to legacy success.
+ * Surfaces explicit provenance: LIVE / EMPTY / UNMAPPED / FORBIDDEN / ERROR.
  */
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { COACHING_RUNTIME_MODE } from "./constants.js";
 import { COACHING_RUNTIME_ERROR_CODES } from "./errors.js";
+import { COACHING_PLAYER_SCOPE_STATE } from "./playerSelfScope.js";
 import { getDefaultCoachingRuntime } from "./createDefaultCoachingRuntime.js";
 
 /**
- * @typedef {'idle'|'loading'|'ready'|'empty'|'error'|'denied'} CoachingCollectionStatus
+ * @typedef {'idle'|'loading'|'ready'|'empty'|'error'|'denied'|'unmapped'|'forbidden'} CoachingCollectionStatus
+ * @typedef {'LOADING'|'LIVE'|'EMPTY'|'UNMAPPED'|'FORBIDDEN'|'ERROR'|null} CoachingProvenanceState
  */
+
+/**
+ * @param {object|null|undefined} result
+ * @returns {CoachingProvenanceState}
+ */
+function deriveProvenance(result) {
+  if (!result) return COACHING_PLAYER_SCOPE_STATE.ERROR;
+  if (result.state && typeof result.state === "string") {
+    return /** @type {CoachingProvenanceState} */ (result.state);
+  }
+  if (result.ok === true) {
+    const data = Array.isArray(result.data) ? result.data : [];
+    return data.length === 0
+      ? COACHING_PLAYER_SCOPE_STATE.EMPTY
+      : COACHING_PLAYER_SCOPE_STATE.LIVE;
+  }
+  const code = result.code;
+  const playerState = result.details?.playerScopeState;
+  if (playerState && typeof playerState === "string") {
+    return /** @type {CoachingProvenanceState} */ (playerState);
+  }
+  if (code === COACHING_RUNTIME_ERROR_CODES.PLAYER_SELF_SCOPE_BLOCKED) {
+    return COACHING_PLAYER_SCOPE_STATE.UNMAPPED;
+  }
+  if (code === COACHING_RUNTIME_ERROR_CODES.AUTHORIZATION_DENIED) {
+    return COACHING_PLAYER_SCOPE_STATE.FORBIDDEN;
+  }
+  return COACHING_PLAYER_SCOPE_STATE.ERROR;
+}
 
 /**
  * @param {string} collectionName
@@ -26,6 +58,9 @@ export function useCoachingCollection(collectionName, options = {}) {
   const [status, setStatus] = useState(
     /** @type {CoachingCollectionStatus} */ ("idle")
   );
+  const [provenance, setProvenance] = useState(
+    /** @type {CoachingProvenanceState} */ (null)
+  );
   const [rows, setRows] = useState(/** @type {object[]} */ ([]));
   const [error, setError] = useState(/** @type {object|null} */ (null));
   const [pending, setPending] = useState(false);
@@ -33,9 +68,17 @@ export function useCoachingCollection(collectionName, options = {}) {
 
   const applyResult = useCallback((result, seq) => {
     if (seq !== requestSeq.current) return; // stale
+    const nextProvenance = deriveProvenance(result);
+    setProvenance(nextProvenance);
+
     if (!result || result.ok !== true) {
       const code = result?.code;
-      if (code === COACHING_RUNTIME_ERROR_CODES.AUTHORIZATION_DENIED) {
+      if (nextProvenance === COACHING_PLAYER_SCOPE_STATE.UNMAPPED) {
+        setStatus("unmapped");
+      } else if (
+        code === COACHING_RUNTIME_ERROR_CODES.AUTHORIZATION_DENIED ||
+        nextProvenance === COACHING_PLAYER_SCOPE_STATE.FORBIDDEN
+      ) {
         setStatus("denied");
       } else {
         setStatus("error");
@@ -56,10 +99,12 @@ export function useCoachingCollection(collectionName, options = {}) {
       setRows([]);
       setError(null);
       setStatus("idle");
+      setProvenance(null);
       return;
     }
 
     setStatus("loading");
+    setProvenance(COACHING_PLAYER_SCOPE_STATE.LOADING);
     setError(null);
 
     try {
@@ -68,6 +113,7 @@ export function useCoachingCollection(collectionName, options = {}) {
     } catch (err) {
       if (seq !== requestSeq.current) return;
       setStatus("error");
+      setProvenance(COACHING_PLAYER_SCOPE_STATE.ERROR);
       setError({
         ok: false,
         code: COACHING_RUNTIME_ERROR_CODES.DURABLE_UNAVAILABLE,
@@ -103,9 +149,11 @@ export function useCoachingCollection(collectionName, options = {}) {
           result?.code === COACHING_RUNTIME_ERROR_CODES.AUTHORIZATION_DENIED
         ) {
           setStatus("denied");
+          setProvenance(COACHING_PLAYER_SCOPE_STATE.FORBIDDEN);
           setError(result);
         } else if (result && result.ok === false) {
           setError(result);
+          setProvenance(deriveProvenance(result));
         }
         return result;
       } finally {
@@ -137,9 +185,11 @@ export function useCoachingCollection(collectionName, options = {}) {
           result?.code === COACHING_RUNTIME_ERROR_CODES.AUTHORIZATION_DENIED
         ) {
           setStatus("denied");
+          setProvenance(COACHING_PLAYER_SCOPE_STATE.FORBIDDEN);
           setError(result);
         } else if (result && result.ok === false) {
           setError(result);
+          setProvenance(deriveProvenance(result));
         }
         return result;
       } finally {
@@ -152,6 +202,7 @@ export function useCoachingCollection(collectionName, options = {}) {
   return {
     mode: mode || COACHING_RUNTIME_MODE.LEGACY,
     status,
+    provenance,
     rows,
     error,
     reload,

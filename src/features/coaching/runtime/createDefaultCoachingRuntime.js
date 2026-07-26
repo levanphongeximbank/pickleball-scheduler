@@ -2,6 +2,8 @@
  * Default coaching runtime composition (COACHING-04).
  *
  * App default remains legacy because COACHING_DURABLE_RUNTIME_DEFAULT === false.
+ * Staging-only durable opt-in requires VITE flag + VITE_APP_ENV=staging + Owner GO
+ * (see stagingDurableGate.js). Production is always refused.
  * Pages must use this boundary — not coachingService directly.
  */
 
@@ -12,21 +14,41 @@ import {
   COACHING_04_PHASE,
 } from "./constants.js";
 import { createCoachingRuntime } from "./createCoachingRuntime.js";
+import {
+  readCoachingStagingDurableEnvFromImportMeta,
+  resolveCoachingStagingDurableActivation,
+} from "./stagingDurableGate.js";
 
 /** @type {ReturnType<typeof createCoachingRuntime>|null} */
 let defaultRuntimeSingleton = null;
+
+/**
+ * Resolve default mode without flipping COACHING_DURABLE_RUNTIME_DEFAULT.
+ * @param {object} [overrides]
+ */
+function resolveDefaultMode(overrides = {}) {
+  if (overrides.mode != null) return overrides.mode;
+  if (COACHING_DURABLE_RUNTIME_DEFAULT) return COACHING_RUNTIME_MODE.DURABLE;
+
+  const env =
+    overrides.env && typeof overrides.env === "object"
+      ? overrides.env
+      : readCoachingStagingDurableEnvFromImportMeta();
+  const activation = resolveCoachingStagingDurableActivation({
+    env,
+    appEnvironment: overrides.appEnvironment,
+    ownerGoGranted: overrides.ownerGoGranted === true,
+  });
+  if (activation.activate) return COACHING_RUNTIME_MODE.DURABLE;
+  return COACHING_RUNTIME_MODE.LEGACY;
+}
 
 /**
  * Build the app-default runtime (legacy while durable default is false).
  * @param {object} [overrides]
  */
 export function createDefaultCoachingRuntime(overrides = {}) {
-  const mode =
-    overrides.mode != null
-      ? overrides.mode
-      : COACHING_DURABLE_RUNTIME_DEFAULT
-        ? COACHING_RUNTIME_MODE.DURABLE
-        : COACHING_RUNTIME_MODE.LEGACY;
+  const mode = resolveDefaultMode(overrides);
 
   return createCoachingRuntime({
     mode,
@@ -34,6 +56,8 @@ export function createDefaultCoachingRuntime(overrides = {}) {
     resolveTenantClub: overrides.resolveTenantClub ?? null,
     resolveActor: overrides.resolveActor ?? null,
     applicationService: overrides.applicationService ?? null,
+    requirePlayerSelfScope: overrides.requirePlayerSelfScope === true,
+    resolvePlayerSelfScope: overrides.resolvePlayerSelfScope,
   });
 }
 
@@ -60,6 +84,10 @@ export function resetDefaultCoachingRuntime() {
  */
 export function getCoachingPageGateway() {
   const runtime = getDefaultCoachingRuntime();
+  const stagingGate = resolveCoachingStagingDurableActivation({
+    env: readCoachingStagingDurableEnvFromImportMeta(),
+    ownerGoGranted: false,
+  });
   return Object.freeze({
     mode: runtime.mode,
     isDurable: runtime.isDurable,
@@ -73,5 +101,8 @@ export function getCoachingPageGateway() {
     phase: COACHING_04_PHASE,
     durableRuntimeDefault: COACHING_DURABLE_RUNTIME_DEFAULT,
     localStorageRetired: LOCALSTORAGE_RETIRED,
+    stagingDurableActivate: stagingGate.activate,
+    stagingDurableReason: stagingGate.reason,
+    productionAuthorized: false,
   });
 }

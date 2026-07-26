@@ -55,6 +55,11 @@ export {
   classifyCoachingDurableCollectionResult,
   assertCoachingPlayerDurableWriteAllowed,
   getCoachingLegacyIsolationContract,
+  COACHING_STAGING_DURABLE_RUNTIME_FLAG,
+  COACHING_04_OWNER_GO_RUNTIME_CUTOVER_STAGING,
+  COACHING_04_OWNER_GO_LOCALSTORAGE_RETIREMENT,
+  COACHING_04_RUNTIME_CUTOVER_CLASSIFICATION,
+  resolveCoachingStagingDurableActivation,
 } from "./runtime/index.js";
 // useCoachingCollection — import from ./runtime (keeps React out of Node barrel tests).
 // COACHING_LEGACY_STORAGE_KEY_PREFIX comes from coachingService (COMPATIBILITY_ONLY).
