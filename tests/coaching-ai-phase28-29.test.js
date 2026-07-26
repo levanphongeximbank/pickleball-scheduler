@@ -17,17 +17,6 @@ import {
 } from "../src/features/coaching/index.js";
 import { detectScheduleConflicts } from "../src/features/ai-assistant/engines/scheduleConflictDetector.js";
 import { detectCourtOverload } from "../src/features/ai-assistant/engines/courtOverloadDetector.js";
-import {
-  getCourtEngineStoreMode,
-  loadCourtEngineStore,
-  resolveCourtEngineStore,
-} from "../src/features/court-engine/storage/courtEngineStorage.js";
-import { createSupabaseCourtEngineStore } from "../src/features/court-engine/storage/SupabaseCourtEngineStore.js";
-import {
-  __resetCourtRuntimeForTests,
-  COURT_RUNTIME_AUTHORITY,
-  COURT_RUNTIME_ERROR_CODES,
-} from "../src/features/court-engine/runtime/index.js";
 
 function memoryStorage() {
   const map = new Map();
@@ -152,61 +141,4 @@ test("Phase 29 — coaching schedule feeds conflict detector", () => {
     ],
   });
   assert.ok(result.data.issues.length >= 1);
-});
-
-test("Phase 30 — court engine store factory uses explicit local authority", () => {
-  global.localStorage = memoryStorage();
-  __resetCourtRuntimeForTests({
-    authority: COURT_RUNTIME_AUTHORITY.DEVELOPMENT_LOCAL,
-  });
-  const store = resolveCourtEngineStore(null, {
-    tenantId: "venue-1",
-    authority: COURT_RUNTIME_AUTHORITY.DEVELOPMENT_LOCAL,
-  });
-  assert.equal(store.mode, "local");
-  assert.equal(getCourtEngineStoreMode(), "local");
-
-  store.saveCourtEngineStore("club-ce", { sessions: [] });
-  const loaded = loadCourtEngineStore("club-ce", { tenantId: "venue-1" });
-  assert.equal(loaded.sessions.length, 0);
-});
-
-test("Phase 30 — supabase court engine store exposes durable cloud interface", () => {
-  global.localStorage = memoryStorage();
-  __resetCourtRuntimeForTests({
-    authority: COURT_RUNTIME_AUTHORITY.DURABLE,
-    adapter: {
-      authority: COURT_RUNTIME_AUTHORITY.DURABLE,
-      mode: "durable",
-      dualWrite: false,
-      usesLocalStorage: false,
-      writeLog: [],
-      loadRuntime: () => ({
-        ok: true,
-        store: { clubId: "club-stub", tenantId: "venue-2", sessions: [] },
-      }),
-      saveRuntime: async () => ({ ok: true, store: { sessions: [] } }),
-      loadActiveSessionId: () => null,
-      setActiveSessionId: async () => ({ ok: true }),
-      hydrateRuntime: async () => ({
-        ok: true,
-        store: { clubId: "club-stub", tenantId: "venue-2", sessions: [] },
-      }),
-    },
-  });
-  const stub = createSupabaseCourtEngineStore(null, { tenantId: "venue-2" });
-  assert.equal(stub.mode, "supabase");
-  assert.equal(typeof stub.loadCourtEngineStore, "function");
-  assert.equal(typeof stub.saveCourtEngineStore, "function");
-  assert.equal(typeof stub.syncToCloud, "function");
-  assert.equal(typeof stub.hydrate, "function");
-
-  const syncDenied = stub.saveCourtEngineStore("club-stub", { sessions: [] });
-  assert.equal(syncDenied.ok, false);
-  assert.equal(
-    syncDenied.code,
-    COURT_RUNTIME_ERROR_CODES.COURT_RUNTIME_UNSUPPORTED_DURABLE_COMMAND
-  );
-  const loaded = stub.loadCourtEngineStore("club-stub");
-  assert.equal(loaded.clubId, "club-stub");
 });

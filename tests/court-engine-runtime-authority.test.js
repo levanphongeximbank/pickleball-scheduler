@@ -20,6 +20,12 @@ import {
 import { createCourtSession } from "../src/features/court-engine/models/courtSession.js";
 import { addToQueue } from "../src/features/court-engine/services/queueService.js";
 import { checkInPlayer } from "../src/features/court-engine/services/checkInService.js";
+import {
+  getCourtEngineStoreMode,
+  loadCourtEngineStore,
+  resolveCourtEngineStore,
+} from "../src/features/court-engine/storage/courtEngineStorage.js";
+import { createSupabaseCourtEngineStore } from "../src/features/court-engine/storage/SupabaseCourtEngineStore.js";
 import { createUserRecord } from "../src/models/user.js";
 import { ROLES } from "../src/auth/roles.js";
 
@@ -393,4 +399,58 @@ test("compatibility — inspect authority available on facade", () => {
   const inspected = inspectCourtRuntimeAuthority();
   assert.equal(inspected.ok, true);
   assert.equal(inspected.authority, COURT_RUNTIME_AUTHORITY.TEST_MEMORY);
+});
+
+test("platform adoption — resolveCourtEngineStore requires explicit local authority", () => {
+  global.localStorage = memoryLocalStorage();
+  __resetCourtRuntimeForTests({
+    authority: COURT_RUNTIME_AUTHORITY.DEVELOPMENT_LOCAL,
+  });
+
+  const store = resolveCourtEngineStore(null, {
+    tenantId: "venue-1",
+    authority: COURT_RUNTIME_AUTHORITY.DEVELOPMENT_LOCAL,
+  });
+  assert.equal(store.mode, "local");
+  assert.equal(getCourtEngineStoreMode(), "local");
+  store.saveCourtEngineStore("club-ce", { sessions: [] });
+  const loaded = loadCourtEngineStore("club-ce", { tenantId: "venue-1" });
+  assert.equal(loaded.sessions.length, 0);
+});
+
+test("platform adoption — durable supabase store rejects sync local-style save", () => {
+  global.localStorage = memoryLocalStorage();
+  __resetCourtRuntimeForTests({
+    authority: COURT_RUNTIME_AUTHORITY.DURABLE,
+    adapter: {
+      authority: COURT_RUNTIME_AUTHORITY.DURABLE,
+      mode: "durable",
+      dualWrite: false,
+      usesLocalStorage: false,
+      writeLog: [],
+      loadRuntime: () => ({
+        ok: true,
+        store: { clubId: "club-stub", tenantId: "venue-2", sessions: [] },
+      }),
+      saveRuntime: async () => ({ ok: true, store: { sessions: [] } }),
+      loadActiveSessionId: () => null,
+      setActiveSessionId: async () => ({ ok: true }),
+      hydrateRuntime: async () => ({
+        ok: true,
+        store: { clubId: "club-stub", tenantId: "venue-2", sessions: [] },
+      }),
+    },
+  });
+  const stub = createSupabaseCourtEngineStore(null, { tenantId: "venue-2" });
+  assert.equal(stub.mode, "supabase");
+  assert.equal(typeof stub.syncToCloud, "function");
+  assert.equal(typeof stub.hydrate, "function");
+  const syncDenied = stub.saveCourtEngineStore();
+  assert.equal(syncDenied.ok, false);
+  assert.equal(
+    syncDenied.code,
+    COURT_RUNTIME_ERROR_CODES.COURT_RUNTIME_UNSUPPORTED_DURABLE_COMMAND
+  );
+  const loaded = stub.loadCourtEngineStore("club-stub");
+  assert.equal(loaded.clubId, "club-stub");
 });

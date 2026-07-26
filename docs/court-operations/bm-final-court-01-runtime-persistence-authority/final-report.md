@@ -52,10 +52,19 @@ Venue availability guard unchanged (read-only). Competition internals untouched.
 - `src/features/court-engine/index.js`
 - `src/features/court-cluster/services/courtClaimRequestService.js`
 - `src/features/court-cluster/storage/courtClaimRequestStorage.js`
-- `src/domain/repositories/repositoryFactory.js`
+- `src/domain/repositories/repositoryFactory.js` (Court runtime composition adoption only)
 - `tests/court-engine-*.test.js`, `tests/court-cluster-claim-authority.test.js`
+- `tests/coaching-ai-phase28-29.test.js` — **scope remediation:** removed misplaced Phase 30 Court store factory tests (Court coverage moved to `tests/court-engine-runtime-authority.test.js`); Phase 28–29 Coaching assertions unchanged
 - `scripts/ci/unit-test-files.json`
 - `docs/court-operations/**`
+
+## Scope remediation note (pre-merge)
+
+Independent review flagged `tests/coaching-ai-phase28-29.test.js` as outside Court test allowlist. Remediation:
+
+1. Restored file from `origin/main`, then removed only Phase 30 Court Engine store factory tests (not Coaching behavior).
+2. Relocated equivalent platform-adoption assertions into `tests/court-engine-runtime-authority.test.js`.
+3. Kept `repositoryFactory.js` because it is the Court runtime composition root (authority resolved once).
 
 ## I. TEST VÀ CERTIFICATION
 
