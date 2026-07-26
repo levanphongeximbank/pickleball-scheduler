@@ -55,12 +55,14 @@ function baseDescriptor(overrides = {}) {
 }
 
 test("ECO-03 phase metadata records provider adapter foundation", () => {
-  assert.equal(ECOSYSTEM_INTEGRATIONS_PHASE.id, "ECO-03");
-  assert.equal(ECOSYSTEM_INTEGRATIONS_PHASE.priorPhase, "ECO-02b");
+  assert.equal(ECOSYSTEM_INTEGRATIONS_PHASE.id, "ECO-04");
+  assert.equal(ECOSYSTEM_INTEGRATIONS_PHASE.priorPhase, "ECO-03");
   assert.equal(ECOSYSTEM_INTEGRATIONS_PHASE.hasProviderAdapterFoundation, true);
+  assert.equal(ECOSYSTEM_INTEGRATIONS_PHASE.hasWebhookIngressFoundation, true);
   assert.equal(ECOSYSTEM_INTEGRATIONS_PHASE.hasRealProviders, false);
   assert.equal(ECOSYSTEM_INTEGRATIONS_PHASE.hasNetworkClients, false);
   assert.equal(ECOSYSTEM_INTEGRATIONS_PHASE.hasLiveCredentialResolver, false);
+  assert.equal(ECOSYSTEM_INTEGRATIONS_PHASE.hasProductionWebhooks, false);
   assert.equal(ECOSYSTEM_INTEGRATIONS_PHASE.productionBlocked, true);
   assert.ok(Object.isFrozen(ECOSYSTEM_INTEGRATIONS_PHASE));
 });

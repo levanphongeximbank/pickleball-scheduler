@@ -37,10 +37,10 @@ import { SmsProvider } from "../src/features/notifications/providers/SmsProvider
 const SENTINEL = "TEST_ONLY_SENTINEL_DO_NOT_USE";
 
 test("ECO-02b phase metadata records legacy secret cutover", () => {
-  assert.equal(ECOSYSTEM_INTEGRATIONS_PHASE.id, "ECO-03");
-  assert.equal(ECOSYSTEM_INTEGRATIONS_PHASE.priorPhase, "ECO-02b");
+  assert.equal(ECOSYSTEM_INTEGRATIONS_PHASE.id, "ECO-04");
   assert.equal(ECOSYSTEM_INTEGRATIONS_PHASE.hasLegacySecretCutover, true);
   assert.equal(ECOSYSTEM_INTEGRATIONS_PHASE.hasProviderAdapterFoundation, true);
+  assert.equal(ECOSYSTEM_INTEGRATIONS_PHASE.hasWebhookIngressFoundation, true);
   assert.equal(ECOSYSTEM_INTEGRATIONS_PHASE.hasLiveCredentialResolver, false);
   assert.equal(ECOSYSTEM_INTEGRATIONS_PHASE.productionBlocked, true);
 });

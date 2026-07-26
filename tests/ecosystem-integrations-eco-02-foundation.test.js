@@ -28,12 +28,13 @@ import {
 } from "../src/features/ecosystem-integrations/index.js";
 
 test("ECO-02 phase metadata declares secret boundary without live resolver", () => {
-  assert.equal(ECOSYSTEM_INTEGRATIONS_PHASE.id, "ECO-03");
+  assert.equal(ECOSYSTEM_INTEGRATIONS_PHASE.id, "ECO-04");
   assert.equal(ECOSYSTEM_INTEGRATIONS_PHASE.hasSecretBoundary, true);
   assert.equal(ECOSYSTEM_INTEGRATIONS_PHASE.hasLiveCredentialResolver, false);
   assert.equal(ECOSYSTEM_INTEGRATIONS_PHASE.hasCredentialStorage, false);
   assert.equal(ECOSYSTEM_INTEGRATIONS_PHASE.hasLegacySecretCutover, true);
   assert.equal(ECOSYSTEM_INTEGRATIONS_PHASE.hasProviderAdapterFoundation, true);
+  assert.equal(ECOSYSTEM_INTEGRATIONS_PHASE.hasWebhookIngressFoundation, true);
   assert.equal(ECOSYSTEM_INTEGRATIONS_PHASE.productionBlocked, true);
 });
 
