@@ -1,10 +1,11 @@
 /**
- * Ecosystem & Integrations — public facade (ECO-01 … ECO-04).
+ * Ecosystem & Integrations — public facade (ECO-01 … ECO-05).
  *
  * Canonical Connector & Event Foundation + Secret/Environment Boundary +
  * Legacy Vite browser-secret cutover + Provider Adapter Foundation +
- * Webhook Ingress Foundation (vendor-neutral, no live providers / no
- * Production webhook routes).
+ * Webhook Ingress Foundation + Observability & Structural Final
+ * Certification (vendor-neutral, no live providers / no Production
+ * webhook routes).
  *
  * Consumers must import from this index — not from internal file paths —
  * once wiring begins in later phases.
@@ -88,6 +89,18 @@ export {
   WEBHOOK_INGRESS_OBSERVATION_VERSION,
   WEBHOOK_TIMESTAMP_POLICY_VERSION,
   WEBHOOK_REPLAY_PROJECTION_VERSION,
+  OBSERVATION_SOURCE_KIND,
+  OBSERVATION_SOURCE_KIND_VALUES,
+  CERTIFICATION_GATE_STATUS,
+  CERTIFICATION_GATE_STATUS_VALUES,
+  AGGREGATE_HEALTH_STATUS,
+  AGGREGATE_HEALTH_STATUS_VALUES,
+  INTEGRATION_OBSERVATION_VERSION,
+  OBSERVATION_AGGREGATION_VERSION,
+  AGGREGATE_HEALTH_READINESS_VERSION,
+  AUDIT_SAFE_EVIDENCE_VERSION,
+  CERTIFICATION_MATRIX_VERSION,
+  STRUCTURAL_READINESS_VERSION,
 } from "./constants/catalogues.js";
 
 export {
@@ -347,3 +360,35 @@ export {
 export { mapWebhookFailureToIntegrationError } from "./errors/mapWebhookFailureToIntegrationError.js";
 
 export { createFakeWebhookIngressHandler } from "./handlers/createFakeWebhookIngressHandler.js";
+
+/** ECO-05 — observability & structural final certification */
+
+export {
+  createIntegrationObservation,
+  projectCanonicalFromProviderAdapterObservation,
+  projectCanonicalFromWebhookIngressObservation,
+  INTEGRATION_OBSERVATION_ERROR,
+} from "./contracts/integrationObservation.js";
+
+export {
+  aggregateIntegrationObservations,
+  OBSERVATION_AGGREGATION_ERROR,
+} from "./contracts/observationAggregation.js";
+
+export {
+  projectAggregateIntegrationHealth,
+  AGGREGATE_HEALTH_READINESS_ERROR,
+} from "./contracts/aggregateHealthReadiness.js";
+
+export {
+  projectAuditSafeEvidence,
+  projectAuditSafeEvidenceFromObservation,
+  AUDIT_SAFE_EVIDENCE_ERROR,
+} from "./contracts/auditSafeEvidenceProjection.js";
+
+export {
+  projectCertificationMatrix,
+  projectStructuralFoundationReadiness,
+  CERTIFICATION_MATRIX_ERROR,
+  STRUCTURAL_READINESS_ERROR,
+} from "./contracts/certificationMatrix.js";
