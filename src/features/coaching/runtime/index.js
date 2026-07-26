@@ -13,6 +13,7 @@ export {
   COACHING_LEGACY_STORAGE_KEY_PREFIX,
   COACHING_04_PHASE,
   COACHING_04_SCOPED_PERMISSION_IDS,
+  COACHING_04_PLAYER_SELF_PERMISSION_IDS,
   COACHING_04_PLAYER_SELF_SCOPE_STATUS,
   COACHING_UI_COLLECTIONS,
 } from "./constants.js";
@@ -34,6 +35,19 @@ export {
   buildRetirementPlan,
   assertRetirementNotActivated,
 } from "./localStorageRetirement.js";
+
+export {
+  COACHING_PLAYER_SCOPE_STATE,
+  COACHING_PLAYER_SELF_READ_PERMISSION,
+  resolveCoachingPlayerSelfScope,
+  classifyCoachingDurableCollectionResult,
+  assertCoachingPlayerDurableWriteAllowed,
+} from "./playerSelfScope.js";
+
+export {
+  emitCoachingLegacyTelemetry,
+  getCoachingLegacyIsolationContract,
+} from "./legacyTelemetry.js";
 
 export {
   createDefaultCoachingRuntime,

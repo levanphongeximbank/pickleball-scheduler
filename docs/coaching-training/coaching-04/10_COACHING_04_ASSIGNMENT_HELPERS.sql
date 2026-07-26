@@ -9,9 +9,8 @@
 --   tenant_id = user_venue_id(), club_id = user_club_id()
 --   relationship status active|inactive (inactive = revoked / deny-immediately)
 --
--- PLAYER principal → player_id mapping helpers are INTENTIONALLY ABSENT
--- (COACHING_04_PLAYER_SELF_SCOPE_MAPPING_BLOCKED). Do not invent
--- profiles.player_id reuse here.
+-- PLAYER self-scope helpers live in 11_COACHING_04_PLAYER_SELF_SCOPE_HELPERS.sql
+-- (PM-ID-01 consumer). Do not invent profiles.player_id reuse here.
 --
 -- Depends on: coaching_02_scope_allows, coaching_02_has_action, identity helpers.
 -- Fail-closed. Fixed search_path. REVOKE PUBLIC. GRANT authenticated.
@@ -243,9 +242,7 @@ REVOKE ALL ON FUNCTION public.coaching_04_has_assigned_action(text) FROM PUBLIC;
 GRANT EXECUTE ON FUNCTION public.coaching_04_has_assigned_action(text) TO authenticated;
 
 -- =============================================================================
--- INTENTIONALLY ABSENT (do not add in COACHING-04):
---   coaching_04_mapped_player_id()
---   coaching_04_actor_is_player(...)
---   any helper equating auth.uid() to player_id via profiles.player_id
--- Reason: COACHING_04_PLAYER_SELF_SCOPE_MAPPING_BLOCKED
+-- PLAYER mapping helpers are authored in:
+--   11_COACHING_04_PLAYER_SELF_SCOPE_HELPERS.sql
+-- Do NOT add profiles.player_id / email / phone equality helpers in this file.
 -- =============================================================================

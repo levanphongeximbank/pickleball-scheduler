@@ -1,13 +1,15 @@
 -- =============================================================================
--- COACHING-04 — Permission seed + COACH role grants (PROPOSAL)
--- Purpose: Seed ONLY the five assigned.* permissions and grant them to COACH
---          when the role exists. Does NOT modify admin grants.
--- Status: PROPOSAL — AUTHORED ONLY. Do not apply without Owner GO.
+-- COACHING-04 — Permission seed + COACH/PLAYER role grants (PROPOSAL)
+-- Purpose: Seed assigned.* (COACH) + coaching.self.read (PLAYER) and grant when
+--          roles exist. Does NOT modify admin grants.
+-- Status: PROPOSAL — AUTHORED ONLY. Do not apply without
+--         COACHING_04_OWNER_GO_APPLY_STAGING.
 --
 -- Explicit:
---   - Do NOT grant coaching.records.read to COACH (club-wide admin semantics).
---   - PLAYER grants ABSENT due to COACHING_04_PLAYER_SELF_SCOPE_MAPPING_BLOCKED.
+--   - Do NOT grant coaching.records.read to COACH or PLAYER.
+--   - PLAYER receives ONLY coaching.self.read (self-scoped SELECT via RLS).
 --   - Admin / venue / club role_permissions rows are NOT modified here.
+--   - Depends on PM-ID-01 Staging-ready helpers for self-scope enforcement.
 -- =============================================================================
 
 SET search_path = public, pg_temp;
@@ -40,6 +42,11 @@ SELECT 'coaching.assigned.entitlement.consume', 'coaching', 'assigned.entitlemen
        'COACHING-04 consume package entitlement for assigned players (RPC only)'
 WHERE NOT EXISTS (SELECT 1 FROM public.permissions p WHERE p.id = 'coaching.assigned.entitlement.consume');
 
+INSERT INTO public.permissions (id, module, action, description)
+SELECT 'coaching.self.read', 'coaching', 'self.read',
+       'COACHING-04 PLAYER self-scope read of own coaching records (PM-ID-01 mapped)'
+WHERE NOT EXISTS (SELECT 1 FROM public.permissions p WHERE p.id = 'coaching.self.read');
+
 -- ---------------------------------------------------------------------------
 -- Grant ONLY the five assigned.* permissions to role COACH (if present)
 -- ---------------------------------------------------------------------------
@@ -59,11 +66,26 @@ WHERE p.id IN (
     WHERE rp.role_id = 'COACH' AND rp.permission_id = p.id
   );
 
+-- ---------------------------------------------------------------------------
+-- Grant ONLY coaching.self.read to role PLAYER (if present)
+-- ---------------------------------------------------------------------------
+INSERT INTO public.role_permissions (role_id, permission_id)
+SELECT 'PLAYER', p.id
+FROM public.permissions p
+WHERE p.id = 'coaching.self.read'
+  AND EXISTS (SELECT 1 FROM public.roles r WHERE r.id = 'PLAYER')
+  AND NOT EXISTS (
+    SELECT 1 FROM public.role_permissions rp
+    WHERE rp.role_id = 'PLAYER' AND rp.permission_id = p.id
+  );
+
 -- Explicit NON-grants (do not uncomment / do not add):
 --   coaching.records.read → COACH
---   any coaching.* → PLAYER
--- Reason PLAYER: COACHING_04_PLAYER_SELF_SCOPE_MAPPING_BLOCKED
+--   coaching.records.read → PLAYER
+--   coaching.assigned.* → PLAYER
+--   any coaching.* mutate → PLAYER
 -- Reason records.read: club-wide admin SELECT semantics under COACHING-02 RLS
+-- Reason PLAYER mutate: business contract remains read-only until future GO
 
 -- OWNER APPROVAL GATE: Do not apply without review of
 -- docs/coaching-training/coaching-04/00_COACHING_04_SCOPE_AND_SECURITY_MODEL.md

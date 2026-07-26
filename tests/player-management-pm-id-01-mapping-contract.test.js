@@ -569,22 +569,23 @@ describe("F. Regression — Player facade + COACHING-04 blocker", () => {
     assert.equal("DERIVED" in PLAYER_IDENTITY_MAPPING_STATUS, false);
   });
 
-  test("COACHING-04 PLAYER self-scope remains blocked until Staging apply", () => {
+  test("COACHING-04 PLAYER self-scope consumes PM-ID-01 (authored; Staging GO separate)", () => {
     assert.equal(
       COACHING_04_PLAYER_SELF_SCOPE_STATUS,
-      "COACHING_04_PLAYER_SELF_SCOPE_MAPPING_BLOCKED"
+      "COACHING_04_PLAYER_SELF_SCOPE_AUTHORED_AWAITING_STAGING_GO"
     );
     const coachingDoc = readFileSync(
       path.join(ROOT, "docs/coaching-training/coaching-04/02_COACHING_04_PLAYER_SELF_SCOPE_MAPPING.md"),
       "utf8"
     );
-    assert.match(coachingDoc, /COACHING_04_PLAYER_SELF_SCOPE_MAPPING_BLOCKED/);
+    assert.match(coachingDoc, /COACHING_04_PLAYER_SELF_SCOPE_AUTHORED_AWAITING_STAGING_GO/);
+    assert.match(coachingDoc, /player_identity_resolve_mapping/);
     const helpers = readFileSync(
-      path.join(ROOT, "docs/coaching-training/coaching-04/10_COACHING_04_ASSIGNMENT_HELPERS.sql"),
+      path.join(ROOT, "docs/coaching-training/coaching-04/11_COACHING_04_PLAYER_SELF_SCOPE_HELPERS.sql"),
       "utf8"
     );
-    assert.match(helpers, /INTENTIONALLY ABSENT/i);
-    assert.doesNotMatch(
+    assert.match(helpers, /player_identity_resolve_mapping/);
+    assert.match(
       stripSqlComments(helpers),
       /CREATE OR REPLACE FUNCTION public\.coaching_04_mapped_player_id/i
     );
