@@ -5,9 +5,9 @@
  */
 
 export const ECOSYSTEM_INTEGRATIONS_PHASE = Object.freeze({
-  id: "ECO-03",
-  name: "provider-adapter-foundation",
-  priorPhase: "ECO-02b",
+  id: "ECO-04",
+  name: "webhook-ingress-foundation",
+  priorPhase: "ECO-03",
   wiredToProductionRuntime: false,
   hasRealProviders: false,
   hasNetworkClients: false,
@@ -17,6 +17,7 @@ export const ECOSYSTEM_INTEGRATIONS_PHASE = Object.freeze({
   hasLiveCredentialResolver: false,
   hasLegacySecretCutover: true,
   hasProviderAdapterFoundation: true,
+  hasWebhookIngressFoundation: true,
   structureComplete: true,
   productionBlocked: true,
 });
@@ -284,3 +285,67 @@ export const CONNECTOR_CAPABILITY_BINDING_VERSION = "eco-capability-binding-1";
 export const PROVIDER_ADAPTER_OBSERVATION_VERSION = "eco-adapter-observation-1";
 export const DOMAIN_ADAPTER_READINESS_CONTRACT_VERSION =
   "eco-domain-adapter-readiness-1";
+
+/** ECO-04 — webhook ingress foundation catalogues */
+
+export const WEBHOOK_INGRESS_OUTCOME = Object.freeze({
+  ACCEPTED: "ACCEPTED",
+  REJECTED_VERIFICATION: "REJECTED_VERIFICATION",
+  REJECTED_ROUTING: "REJECTED_ROUTING",
+  REJECTED_IDEMPOTENCY: "REJECTED_IDEMPOTENCY",
+  DUPLICATE: "DUPLICATE",
+  CONFLICT: "CONFLICT",
+  FAILED: "FAILED",
+  PRODUCTION_BLOCKED: "PRODUCTION_BLOCKED",
+});
+
+export const WEBHOOK_INGRESS_OUTCOME_VALUES = Object.freeze(
+  Object.values(WEBHOOK_INGRESS_OUTCOME)
+);
+
+export const WEBHOOK_ROUTE_LIFECYCLE = Object.freeze({
+  DECLARED: "DECLARED",
+  ENABLED: "ENABLED",
+  DISABLED: "DISABLED",
+  RETIRED: "RETIRED",
+});
+
+export const WEBHOOK_ROUTE_LIFECYCLE_VALUES = Object.freeze(
+  Object.values(WEBHOOK_ROUTE_LIFECYCLE)
+);
+
+export const WEBHOOK_REPLAY_CLASSIFICATION = Object.freeze({
+  FRESH: "FRESH",
+  WITHIN_TOLERANCE: "WITHIN_TOLERANCE",
+  EXPIRED: "EXPIRED",
+  REPLAY_SUSPECTED: "REPLAY_SUSPECTED",
+  TIMESTAMP_MALFORMED: "TIMESTAMP_MALFORMED",
+  TIMESTAMP_MISSING: "TIMESTAMP_MISSING",
+});
+
+export const WEBHOOK_REPLAY_CLASSIFICATION_VALUES = Object.freeze(
+  Object.values(WEBHOOK_REPLAY_CLASSIFICATION)
+);
+
+export const WEBHOOK_ROUTING_OUTCOME = Object.freeze({
+  ROUTED: "ROUTED",
+  NO_MATCH: "NO_MATCH",
+  AMBIGUOUS: "AMBIGUOUS",
+  DISABLED: "DISABLED",
+  ENVIRONMENT_BLOCKED: "ENVIRONMENT_BLOCKED",
+  PRODUCTION_BLOCKED: "PRODUCTION_BLOCKED",
+});
+
+export const WEBHOOK_ROUTING_OUTCOME_VALUES = Object.freeze(
+  Object.values(WEBHOOK_ROUTING_OUTCOME)
+);
+
+export const WEBHOOK_INGRESS_ENVELOPE_VERSION = "eco-webhook-ingress-envelope-1";
+export const WEBHOOK_ROUTE_DESCRIPTOR_VERSION = "eco-webhook-route-1";
+export const WEBHOOK_SUBSCRIPTION_DESCRIPTOR_VERSION =
+  "eco-webhook-subscription-1";
+export const WEBHOOK_INGRESS_RECEIPT_VERSION = "eco-webhook-ingress-receipt-1";
+export const WEBHOOK_INGRESS_OBSERVATION_VERSION =
+  "eco-webhook-ingress-observation-1";
+export const WEBHOOK_TIMESTAMP_POLICY_VERSION = "eco-webhook-timestamp-policy-1";
+export const WEBHOOK_REPLAY_PROJECTION_VERSION = "eco-webhook-replay-projection-1";

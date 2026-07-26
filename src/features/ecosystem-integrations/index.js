@@ -1,9 +1,10 @@
 /**
- * Ecosystem & Integrations — public facade (ECO-01 + ECO-02 + ECO-02b + ECO-03).
+ * Ecosystem & Integrations — public facade (ECO-01 … ECO-04).
  *
  * Canonical Connector & Event Foundation + Secret/Environment Boundary +
- * Legacy Vite browser-secret cutover + Provider Adapter Foundation
- * (vendor-neutral, no live providers).
+ * Legacy Vite browser-secret cutover + Provider Adapter Foundation +
+ * Webhook Ingress Foundation (vendor-neutral, no live providers / no
+ * Production webhook routes).
  *
  * Consumers must import from this index — not from internal file paths —
  * once wiring begins in later phases.
@@ -72,6 +73,21 @@ export {
   CONNECTOR_CAPABILITY_BINDING_VERSION,
   PROVIDER_ADAPTER_OBSERVATION_VERSION,
   DOMAIN_ADAPTER_READINESS_CONTRACT_VERSION,
+  WEBHOOK_INGRESS_OUTCOME,
+  WEBHOOK_INGRESS_OUTCOME_VALUES,
+  WEBHOOK_ROUTE_LIFECYCLE,
+  WEBHOOK_ROUTE_LIFECYCLE_VALUES,
+  WEBHOOK_REPLAY_CLASSIFICATION,
+  WEBHOOK_REPLAY_CLASSIFICATION_VALUES,
+  WEBHOOK_ROUTING_OUTCOME,
+  WEBHOOK_ROUTING_OUTCOME_VALUES,
+  WEBHOOK_INGRESS_ENVELOPE_VERSION,
+  WEBHOOK_ROUTE_DESCRIPTOR_VERSION,
+  WEBHOOK_SUBSCRIPTION_DESCRIPTOR_VERSION,
+  WEBHOOK_INGRESS_RECEIPT_VERSION,
+  WEBHOOK_INGRESS_OBSERVATION_VERSION,
+  WEBHOOK_TIMESTAMP_POLICY_VERSION,
+  WEBHOOK_REPLAY_PROJECTION_VERSION,
 } from "./constants/catalogues.js";
 
 export {
@@ -273,3 +289,61 @@ export { mapProviderFailureToIntegrationError } from "./errors/mapProviderFailur
 export { createNoOpProviderAdapter } from "./providers/createNoOpProviderAdapter.js";
 
 export { createFakeProviderAdapter } from "./providers/createFakeProviderAdapter.js";
+
+/** ECO-04 — webhook ingress foundation */
+
+export {
+  createWebhookIngressEnvelope,
+  isWebhookIngressEnvelope,
+  WEBHOOK_INGRESS_ENVELOPE_ERROR,
+} from "./contracts/webhookIngressEnvelope.js";
+
+export {
+  createWebhookTimestampPolicy,
+  classifyWebhookTimestampTolerance,
+  DEFAULT_WEBHOOK_MAX_SKEW_SECONDS,
+  WEBHOOK_TIMESTAMP_TOLERANCE_ERROR,
+} from "./contracts/webhookTimestampTolerance.js";
+
+export {
+  createWebhookReplayProjection,
+  evaluateWebhookReplayProjection,
+  WEBHOOK_REPLAY_PROJECTION_ERROR,
+} from "./contracts/webhookReplayProjection.js";
+
+export {
+  createWebhookRouteDescriptor,
+  isWebhookRouteDescriptor,
+  WEBHOOK_ROUTE_DESCRIPTOR_ERROR,
+} from "./contracts/webhookRouteDescriptor.js";
+
+export {
+  createWebhookSubscriptionDescriptor,
+  isWebhookSubscriptionDescriptor,
+  WEBHOOK_SUBSCRIPTION_DESCRIPTOR_ERROR,
+} from "./contracts/webhookSubscriptionDescriptor.js";
+
+export {
+  createWebhookIngressReceipt,
+  isWebhookIngressReceipt,
+  WEBHOOK_INGRESS_RECEIPT_ERROR,
+} from "./contracts/webhookIngressReceipt.js";
+
+export {
+  createWebhookIngressObservation,
+  WEBHOOK_INGRESS_OBSERVATION_ERROR,
+} from "./contracts/webhookIngressObservation.js";
+
+export {
+  createWebhookRouteRegistry,
+  WEBHOOK_ROUTE_REGISTRY_ERROR,
+} from "./registry/createWebhookRouteRegistry.js";
+
+export {
+  routeWebhookIngress,
+  WEBHOOK_INGRESS_ROUTING_ERROR,
+} from "./routing/routeWebhookIngress.js";
+
+export { mapWebhookFailureToIntegrationError } from "./errors/mapWebhookFailureToIntegrationError.js";
+
+export { createFakeWebhookIngressHandler } from "./handlers/createFakeWebhookIngressHandler.js";
