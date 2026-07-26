@@ -1,0 +1,130 @@
+{
+  "artifact": "06_DEFERRED_GATE_REGISTER",
+  "workstream": "BM-FINAL-EVIDENCE-01",
+  "phase": "B1",
+  "ok": true,
+  "marker": "BUSINESS_MODULES_DEFERRED_GATES_REGISTERED",
+  "rule": "deferredGate != implementationGap",
+  "gates": [
+    {
+      "id": "NEWS_PRODUCTION_ROLLOUT",
+      "module": "News & Public Content",
+      "gateType": "Production rollout",
+      "currentStatus": "DEFERRED_GO_WITH_CONDITIONS_ABSENT_INVENTORY",
+      "implementationClosureImpact": "NONE",
+      "requiredFutureAuthority": "Owner GO + backup/PITR + maintenance window",
+      "databaseAccessRequired": true,
+      "productionAccessRequired": true,
+      "evidenceSource": "docs/news-public-content/news-05/NEWS_05_PRODUCTION_READINESS_DECISION.md",
+      "ownerActionNeededLater": "Authorize Production apply workstream separately"
+    },
+    {
+      "id": "REPORTING_PRODUCTION_ROLLOUT",
+      "module": "Reporting & Analytics",
+      "gateType": "Production rollout",
+      "currentStatus": "READY_WITH_EXPLICIT_PRECONDITIONS_NOT_PERFORMED",
+      "implementationClosureImpact": "NONE",
+      "requiredFutureAuthority": "Owner GO for SQL apply + runtime composition",
+      "databaseAccessRequired": true,
+      "productionAccessRequired": true,
+      "evidenceSource": "docs/reporting-analytics/reporting-05/06_ACCEPTED_RESIDUALS_AND_PRODUCTION_READINESS.md",
+      "ownerActionNeededLater": "Separate Production rollout workstream"
+    },
+    {
+      "id": "COACHING_PRODUCTION_ROLLOUT",
+      "module": "Coaching & Training",
+      "gateType": "Production rollout",
+      "currentStatus": "NOT_PERFORMED",
+      "implementationClosureImpact": "NONE",
+      "requiredFutureAuthority": "Owner GO for Production runtime activation",
+      "databaseAccessRequired": true,
+      "productionAccessRequired": true,
+      "evidenceSource": "docs/coaching-training/module-closure/evidence/MODULE_2_12_CLOSURE.json",
+      "ownerActionNeededLater": "Separate Production runtime workstream"
+    },
+    {
+      "id": "REMOTE_STAGING_RECONFIRMATION",
+      "module": "News/Coaching/Reporting",
+      "gateType": "remote Staging reconfirmation",
+      "currentStatus": "HISTORICAL_CERT_ACCEPTED_LIVE_RECONFIRM_DEFERRED",
+      "implementationClosureImpact": "NONE",
+      "requiredFutureAuthority": "Owner Staging credentials + read/cert harness",
+      "databaseAccessRequired": true,
+      "productionAccessRequired": false,
+      "evidenceSource": "module Staging certification docs under docs/news-public-content, docs/coaching-training, docs/reporting-analytics",
+      "ownerActionNeededLater": "Optional live reconfirm if drift suspected"
+    },
+    {
+      "id": "CUSTOMER_EXTERNAL_DIRECTORY_PROVIDER",
+      "module": "Customer Management",
+      "gateType": "external directory/provider",
+      "currentStatus": "INTENTIONALLY_DEFERRED_FORMALLY_PARKED",
+      "implementationClosureImpact": "NONE_FOR_PRIOR_PHASES",
+      "requiredFutureAuthority": "Owner provider selection + phase-8 implementation wave",
+      "databaseAccessRequired": true,
+      "productionAccessRequired": false,
+      "evidenceSource": "docs/business-modules/final-evidence/bm-final-evidence-01/04_CUSTOMER_PHASE8_FORMAL_PARK.json",
+      "ownerActionNeededLater": "Decide start phase-8 or keep parked"
+    },
+    {
+      "id": "UI_PRODUCT_EXPANSION",
+      "module": "News/Reporting/Customer",
+      "gateType": "UI/product expansion",
+      "currentStatus": "DEFERRED_EXCLUSIONS_DOCUMENTED",
+      "implementationClosureImpact": "NONE",
+      "requiredFutureAuthority": "Product Owner scope",
+      "databaseAccessRequired": false,
+      "productionAccessRequired": false,
+      "evidenceSource": "NEWS-05 exclusions; Reporting residuals; Customer architecture UI deferred",
+      "ownerActionNeededLater": "Separate product waves"
+    },
+    {
+      "id": "REAL_CREDENTIALS_PROVIDER_ACTIVATION",
+      "module": "cross-cutting",
+      "gateType": "real credentials/provider activation",
+      "currentStatus": "NOT_IN_B1",
+      "implementationClosureImpact": "NONE",
+      "requiredFutureAuthority": "Owner secrets + env isolation",
+      "databaseAccessRequired": false,
+      "productionAccessRequired": true,
+      "evidenceSource": "module evidence README gitignore patterns",
+      "ownerActionNeededLater": "Activate only under Owner GO"
+    },
+    {
+      "id": "OPERATIONAL_RELEASE",
+      "module": "Competition / Team Tournament",
+      "gateType": "operational release",
+      "currentStatus": "PROTECTED_RESIDUALS_PRESENT",
+      "implementationClosureImpact": "OUT_OF_SCOPE_FOR_BM_FINAL_EVIDENCE",
+      "requiredFutureAuthority": "Release Owner",
+      "databaseAccessRequired": true,
+      "productionAccessRequired": true,
+      "evidenceSource": "05_RESIDUAL_WORKTREE_CLASSIFICATION.json",
+      "ownerActionNeededLater": "Separate release/cleanup decisions"
+    },
+    {
+      "id": "DEPLOYMENT_MIGRATION_APPLICATION",
+      "module": "News/Coaching/Reporting SQL packages",
+      "gateType": "deployment/migration application",
+      "currentStatus": "AUTHORED_NOT_APPLIED_TO_PRODUCTION",
+      "implementationClosureImpact": "NONE",
+      "requiredFutureAuthority": "Owner GO apply order",
+      "databaseAccessRequired": true,
+      "productionAccessRequired": true,
+      "evidenceSource": "module SQL packages + readiness docs",
+      "ownerActionNeededLater": "Production apply workstreams"
+    },
+    {
+      "id": "COMPETITION_RELEASE_PRODUCTION_WORKTREES",
+      "module": "Competition",
+      "gateType": "Competition release/Production worktrees",
+      "currentStatus": "CLASSIFIED_NOT_CLEANED",
+      "implementationClosureImpact": "OUT_OF_SCOPE",
+      "requiredFutureAuthority": "Owner cleanup/park/merge decisions per residual",
+      "databaseAccessRequired": false,
+      "productionAccessRequired": false,
+      "evidenceSource": "05_RESIDUAL_WORKTREE_CLASSIFICATION.json",
+      "ownerActionNeededLater": "Cleanup wave after evidence PR merge"
+    }
+  ]
+}

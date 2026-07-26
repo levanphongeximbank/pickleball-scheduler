@@ -1,0 +1,77 @@
+{
+  "artifact": "02_COACHING_POST_MERGE_VERIFICATION",
+  "workstream": "BM-FINAL-EVIDENCE-01",
+  "phase": "B1",
+  "ok": true,
+  "verdict": "COACHING_TRAINING_POST_MERGE_VERIFIED_CLOSED",
+  "marker": "COACHING_TRAINING_POST_MERGE_VERIFIED_CLOSED",
+  "pr": {
+    "number": 300,
+    "state": "MERGED",
+    "title": "Business Module 2.12 — Coaching & Training Final Certification & Closure",
+    "url": "https://github.com/levanphongeximbank/pickleball-scheduler/pull/300",
+    "mergeCommit": "de56d1b3838d487dc34c5da41fe073430ab5f977",
+    "commits": [
+      "d8fec7372772196ad1f8f247192becdbcfd771b4",
+      "693214daeaa5933312885d7934effbe45d9cc453"
+    ],
+    "allCommitsAncestorOfOriginMain": true
+  },
+  "originMainAtVerification": "7971a260c325a723f78671a9754f17d2bcde14b5",
+  "priorPostMergeEvidence": [
+    "docs/coaching-training/coaching-04/runtime-cutover/evidence/POST_MERGE_PR292_VERIFICATION.json",
+    "docs/coaching-training/coaching-04/runtime-activation/evidence/POST_MERGE_PR295_VERIFICATION.json",
+    "docs/coaching-training/coaching-04/runtime-activation/evidence/POST_MERGE_PR298_VERIFICATION.json"
+  ],
+  "durableStagingRuntimePathCertified": true,
+  "aclFailClosed": true,
+  "canonicalPersistencePathDocumented": true,
+  "localStorageRetiredOnActiveStagingDurablePath": true,
+  "productionUntouched": true,
+  "databaseWrites": 0,
+  "productionTouched": false,
+  "targetedTests": {
+    "nodeExitCode": 0,
+    "tests": 189,
+    "pass": 189,
+    "fail": 0,
+    "uiScopedCommand": "npx vitest run tests/ui/coaching-04-runtime-pages.test.jsx",
+    "uiScopedExitCode": 0,
+    "uiScopedTests": 3,
+    "uiScopedPass": 3,
+    "uiScopedFail": 0,
+    "note": "npm run test:ui appends to vitest run tests/ui and pulls unrelated UI failures; scoped vitest used for coaching runtime pages"
+  },
+  "residuals": [
+    {
+      "path": "C:\\Users\\Le Phong\\PICK_VN-Workstreams\\business-modules\\coaching-04-runtime-cutover",
+      "classification": "SAFE_CLEANUP_CANDIDATE_NOT_EXECUTED",
+      "dirty": false,
+      "uniqueCommits": 0,
+      "cleanupPerformed": false
+    },
+    {
+      "path": "C:\\Users\\Le Phong\\PICK_VN-Workstreams\\business-modules\\coaching-04-staging-activation",
+      "classification": "DIRTY_UNSAFE_DO_NOT_DELETE",
+      "dirty": true,
+      "dirtyPaths": [
+        "scripts/coaching/_tmp-roles-probe.mjs",
+        "scripts/coaching/_tmp-verify-hashes.mjs"
+      ],
+      "uniqueCommits": 0,
+      "cleanupPerformed": false
+    },
+    {
+      "path": "C:\\Users\\Le Phong\\PICK_VN-Workstreams\\business-modules\\coaching-04-staging-execution",
+      "classification": "DIRTY_UNSAFE_DO_NOT_DELETE",
+      "dirty": true,
+      "dirtyPaths": [
+        "docs/coaching-training/coaching-04/activation/OWNER_STAGING_APPLY_APPROVAL.json"
+      ],
+      "uniqueCommits": 0,
+      "cleanupPerformed": false,
+      "note": "Untracked Owner approval JSON retained; do not delete in B1"
+    }
+  ],
+  "dirtyResidualsDoNotDowngradeImplementationClosure": true
+}

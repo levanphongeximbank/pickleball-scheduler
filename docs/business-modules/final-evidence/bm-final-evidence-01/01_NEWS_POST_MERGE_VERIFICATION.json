@@ -1,0 +1,52 @@
+{
+  "artifact": "01_NEWS_POST_MERGE_VERIFICATION",
+  "workstream": "BM-FINAL-EVIDENCE-01",
+  "phase": "B1",
+  "ok": true,
+  "verdict": "NEWS_PUBLIC_CONTENT_POST_MERGE_VERIFIED_CLOSED",
+  "marker": "NEWS_PUBLIC_CONTENT_POST_MERGE_VERIFIED_CLOSED",
+  "pr": {
+    "number": 268,
+    "state": "MERGED",
+    "title": "NEWS-05 — Final Integration Certification, Production Go/No-Go & Module Closure",
+    "url": "https://github.com/levanphongeximbank/pickleball-scheduler/pull/268",
+    "mergeCommit": "a6be590254c5cf924d4c4648e367565c8f0ce69c",
+    "implementationCommit": "9f209acc67138d30f48f79b43f9d0b9c3d5b7c43",
+    "mergeCommitAncestorOfOriginMain": true,
+    "implementationCommitAncestorOfOriginMain": true
+  },
+  "originMainAtVerification": "7971a260c325a723f78671a9754f17d2bcde14b5",
+  "evidenceRoots": [
+    "docs/news-public-content/news-01/",
+    "docs/news-public-content/news-02/",
+    "docs/news-public-content/news-03/",
+    "docs/news-public-content/news-04/",
+    "docs/news-public-content/news-05/"
+  ],
+  "publicLiveReadPath": "src/features/public-portal/services/publicNewsService.js",
+  "failClosed": true,
+  "mockNewsOnlyExplicitMockOrPreview": true,
+  "productionRollout": "DEFERRED_GO_WITH_CONDITIONS",
+  "productionRolloutIsImplementationGap": false,
+  "implementationGapRemaining": false,
+  "prBranchLocalExists": false,
+  "prBranchRemoteExists": false,
+  "physicalNewsWorktreeResidual": false,
+  "postMergeTestAssertionAlignment": {
+    "file": "tests/news-public-content-news-05-final-certification.test.js",
+    "change": "HOME dataSourceNotes assertion updated from /getPublicNews/ to /NEWS-04 typed result/ + silent-empty guard to match post-merge EC registry notes on origin/main",
+    "experienceChannelsSourceModified": false
+  },
+  "targetedTests": {
+    "exitCode": 0,
+    "tests": 106,
+    "pass": 106,
+    "fail": 0
+  },
+  "databaseWrites": 0,
+  "productionTouched": false,
+  "forbiddenClaims": [
+    "MODULE_PRODUCTION_DEPLOYED",
+    "all residuals cleaned"
+  ]
+}
