@@ -23,7 +23,7 @@
   "canWrite": false,
   "verdict": "COACHING_04_APPLY_REFUSED_OWNER_GO_NOT_GRANTED",
   "ownerGoGranted": false,
-  "executionCommit": "7c33bf085dcd078efec19ed75080e743204870da",
+  "executionCommit": "0c55f0814aeae1c470c65204b72e6dba0aad9f80",
   "manifestHash": "16cdb19ff57b0e0460610e8a341ca8f2786ff19a067839a80996866f61111eaa",
   "aggregateSqlHash": "662e70fbb3c76785d7910492284224df6bd04fa6a0ef358231f2ddccbc3386d4",
   "orderedFiles": [
@@ -46,9 +46,9 @@
   "rollbackPathExcluded": "docs/coaching-training/coaching-04/90_COACHING_04_ROLLBACK.sql",
   "rollbackAutoExecute": false,
   "appliedFileCount": 0,
-  "startedAt": "2026-07-26T02:23:08.025Z",
-  "finishedAt": "2026-07-26T02:23:08.274Z",
-  "actualGitHead": "7c33bf085dcd078efec19ed75080e743204870da",
+  "startedAt": "2026-07-26T02:40:07.530Z",
+  "finishedAt": "2026-07-26T02:40:07.648Z",
+  "actualGitHead": "0c55f0814aeae1c470c65204b72e6dba0aad9f80",
   "commitMismatchReasons": [],
   "hashMismatchReasons": [],
   "blockers": [
