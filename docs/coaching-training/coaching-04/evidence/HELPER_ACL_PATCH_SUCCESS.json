@@ -1,0 +1,101 @@
+{
+  "phase": "COACHING-04-HELPER-ACL-HARDENING-APPLY",
+  "APPLY_MODE": "EXECUTED",
+  "ok": true,
+  "verdict": "COACHING_04_HELPER_ACL_PATCH_APPLIED",
+  "finalVerdict": "COACHING_04_HELPER_ACL_PATCH_APPLIED",
+  "ownerGoToken": "COACHING_04_HELPER_ACL_PATCH_OWNER_GO",
+  "ownerGoGranted": true,
+  "patchCommit": "657bdaf0e738b7fc705a8d1ded1e5039bf1ef898",
+  "targetProject": "qyewbxjsiiyufanzcjcq",
+  "stagingProjectRef": "qyewbxjsiiyufanzcjcq",
+  "patchPath": "docs/coaching-training/coaching-04/41_COACHING_04_HELPER_EXECUTE_ACL_HARDENING.sql",
+  "patchSha256": "dfb5bdae4479720761c88f443e3fda8d298a51752445b2c52d4e267d4541c0c1",
+  "verificationPath": "docs/coaching-training/coaching-04/41_COACHING_04_HELPER_EXECUTE_ACL_HARDENING.verify.sql",
+  "verificationSha256": "957779dd2ed193cb582e66e2c7ca9069e9dede925686e04f564bc5b94fc86342",
+  "exactHelperSignatures": [
+    "public.coaching_04_actor_uid()",
+    "public.coaching_04_active_coach_reference_id()",
+    "public.coaching_04_coach_assigned_to_player(text, text)",
+    "public.coaching_04_coach_owns_session(text)",
+    "public.coaching_04_coach_can_access_enrollment(text)",
+    "public.coaching_04_coach_can_access_program(text)",
+    "public.coaching_04_has_assigned_action(text)",
+    "public.coaching_04_mapped_player_id()",
+    "public.coaching_04_player_is_self(text)",
+    "public.coaching_04_player_identity_is_mapped()",
+    "public.coaching_04_has_self_action(text)",
+    "public.coaching_04_player_can_access_enrollment(text)"
+  ],
+  "databaseConnectionOpened": true,
+  "databaseWrites": 1,
+  "patchApplied": true,
+  "sqlApplied": true,
+  "forwardPackageRerun": false,
+  "mappingRowsCreated": 0,
+  "backfillExecuted": false,
+  "runtimeActivated": false,
+  "localStorageRetired": false,
+  "productionTouched": false,
+  "automaticRetry": false,
+  "automaticRollback": false,
+  "applied": [
+    {
+      "order": 41,
+      "path": "docs/coaching-training/coaching-04/41_COACHING_04_HELPER_EXECUTE_ACL_HARDENING.sql",
+      "sha256": "dfb5bdae4479720761c88f443e3fda8d298a51752445b2c52d4e267d4541c0c1",
+      "ok": true,
+      "startedAt": "2026-07-26T03:29:51.978Z",
+      "finishedAt": "2026-07-26T03:29:53.224Z"
+    },
+    {
+      "order": "41-verify",
+      "path": "docs/coaching-training/coaching-04/41_COACHING_04_HELPER_EXECUTE_ACL_HARDENING.verify.sql",
+      "sha256": "957779dd2ed193cb582e66e2c7ca9069e9dede925686e04f564bc5b94fc86342",
+      "ok": true,
+      "startedAt": "2026-07-26T03:29:53.225Z",
+      "finishedAt": "2026-07-26T03:29:54.443Z"
+    }
+  ],
+  "aclVerification": {
+    "anon_execute_count": 0,
+    "service_role_execute_count": 0,
+    "authenticated_execute_count": 12,
+    "helper_count": 12,
+    "mutationRpcAcl": [
+      {
+        "proname": "coaching_04_consume_assigned_entitlement",
+        "anon_execute": false,
+        "service_role_execute": false,
+        "authenticated_execute": true
+      },
+      {
+        "proname": "coaching_04_record_assigned_attendance",
+        "anon_execute": false,
+        "service_role_execute": false,
+        "authenticated_execute": true
+      },
+      {
+        "proname": "coaching_04_submit_assigned_evaluation",
+        "anon_execute": false,
+        "service_role_execute": false,
+        "authenticated_execute": true
+      }
+    ],
+    "ok": true
+  },
+  "preExecutionGuards": {
+    "headEqualsPatchCommit": true,
+    "worktreeAcceptable": true,
+    "targetProject": "qyewbxjsiiyufanzcjcq",
+    "patchShaMatch": true,
+    "signaturesMatch": true,
+    "noFunctionBodyMutation": true,
+    "noPolicyMutation": true,
+    "productionRefused": true
+  },
+  "startedAt": "2026-07-26T03:29:51.978Z",
+  "finishedAt": "2026-07-26T03:29:56.310Z",
+  "secretsPrinted": false,
+  "CODEX_DELETE_ALLOWED": "NO"
+}

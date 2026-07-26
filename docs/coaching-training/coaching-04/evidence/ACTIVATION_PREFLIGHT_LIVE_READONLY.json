@@ -52,7 +52,7 @@
     "additiveApplyFeasible": true,
     "note": "Catalog probe only. COACHING-04 forward objects expected absent until Owner GO apply. Mapping rows are counted, never created. COACH role absence is warned (grant SQL is EXISTS-guarded); PLAYER role is required."
   },
-  "startedAt": "2026-07-26T02:13:13.134Z",
-  "finishedAt": "2026-07-26T02:13:14.572Z",
+  "startedAt": "2026-07-26T02:40:05.893Z",
+  "finishedAt": "2026-07-26T02:40:07.437Z",
   "finalVerdict": "COACHING_04_ACTIVATION_REMOTE_READ_ONLY_PREFLIGHT_PASS"
 }

@@ -1,0 +1,272 @@
+{
+  "phase": "COACHING-04-FINAL-STAGING-RECERTIFICATION",
+  "artifact": "FINAL_STAGING_RECERTIFICATION",
+  "ok": true,
+  "verdict": "COACHING_04_STAGING_ACTIVATION_CERTIFIED_RUNTIME_NOT_ACTIVE",
+  "finalCertificationVerdict": "COACHING_04_STAGING_ACTIVATION_CERTIFIED_RUNTIME_NOT_ACTIVE",
+  "pr287MergeCommit": "0c55f0814aeae1c470c65204b72e6dba0aad9f80",
+  "originalExecutionCommit": "c66397df8e48e75f6a6dfe486dd00e76b34c18d0",
+  "aclPatchCommit": "657bdaf0e738b7fc705a8d1ded1e5039bf1ef898",
+  "targetProject": "qyewbxjsiiyufanzcjcq",
+  "stagingProjectRef": "qyewbxjsiiyufanzcjcq",
+  "aggregateSha256Forward": "662e70fbb3c76785d7910492284224df6bd04fa6a0ef358231f2ddccbc3386d4",
+  "combinedManifestHash": "16cdb19ff57b0e0460610e8a341ca8f2786ff19a067839a80996866f61111eaa",
+  "aclPatchSha256": "dfb5bdae4479720761c88f443e3fda8d298a51752445b2c52d4e267d4541c0c1",
+  "orderedSqlFiles": [
+    "docs/coaching-training/coaching-04/10_COACHING_04_ASSIGNMENT_HELPERS.sql",
+    "docs/coaching-training/coaching-04/11_COACHING_04_PLAYER_SELF_SCOPE_HELPERS.sql",
+    "docs/coaching-training/coaching-04/20_COACHING_04_ASSIGNMENT_RLS.sql",
+    "docs/coaching-training/coaching-04/21_COACHING_04_PLAYER_SELF_SCOPE_RLS.sql",
+    "docs/coaching-training/coaching-04/30_COACHING_04_SCOPED_RPCS.sql",
+    "docs/coaching-training/coaching-04/40_COACHING_04_PERMISSION_SEED_AND_GRANTS.proposal.sql"
+  ],
+  "originalApplyWindow": {
+    "startedAt": "2026-07-26T03:00:42.417Z",
+    "finishedAt": "2026-07-26T03:00:52.308Z"
+  },
+  "aclPatchWindow": {
+    "startedAt": "2026-07-26T03:29:51.978Z",
+    "finishedAt": "2026-07-26T03:29:56.310Z"
+  },
+  "forwardAppliedOnce": true,
+  "aclPatchAppliedOnce": true,
+  "sqlApplyRerun": false,
+  "aclPatchRerun": false,
+  "postApplyChecks": [
+    {
+      "name": "functions_15",
+      "ok": true,
+      "detail": {
+        "count": 15
+      }
+    },
+    {
+      "name": "security_definer",
+      "ok": true,
+      "detail": {
+        "count": 15
+      }
+    },
+    {
+      "name": "fixed_search_path",
+      "ok": true,
+      "detail": {
+        "count": 15
+      }
+    },
+    {
+      "name": "pm_id_01",
+      "ok": true,
+      "detail": {
+        "count": 2
+      }
+    },
+    {
+      "name": "policies_31",
+      "ok": true,
+      "detail": {
+        "count": 31
+      }
+    },
+    {
+      "name": "player_policies_13",
+      "ok": true,
+      "detail": {
+        "count": 13
+      }
+    },
+    {
+      "name": "coach_policies_18",
+      "ok": true,
+      "detail": {
+        "count": 18
+      }
+    },
+    {
+      "name": "rls_forced_13",
+      "ok": true,
+      "detail": {
+        "count": 13
+      }
+    },
+    {
+      "name": "no_true_policies",
+      "ok": true,
+      "detail": {
+        "count": 0
+      }
+    },
+    {
+      "name": "player_select_only",
+      "ok": true,
+      "detail": {
+        "count": 0
+      }
+    },
+    {
+      "name": "player_no_auth_uid_eq_player_id",
+      "ok": true,
+      "detail": {
+        "count": 0
+      }
+    },
+    {
+      "name": "no_public_broad_execute",
+      "ok": true,
+      "detail": {
+        "count": 0
+      }
+    },
+    {
+      "name": "helper_anon_0",
+      "ok": true,
+      "detail": {
+        "count": 0
+      }
+    },
+    {
+      "name": "helper_service_role_0",
+      "ok": true,
+      "detail": {
+        "count": 0
+      }
+    },
+    {
+      "name": "helper_authenticated_12",
+      "ok": true,
+      "detail": {
+        "count": 12
+      }
+    },
+    {
+      "name": "mutation_anon_0",
+      "ok": true,
+      "detail": {
+        "count": 0
+      }
+    },
+    {
+      "name": "mutation_service_role_0",
+      "ok": true,
+      "detail": {
+        "count": 0
+      }
+    },
+    {
+      "name": "mutation_authenticated_3",
+      "ok": true,
+      "detail": {
+        "count": 3
+      }
+    },
+    {
+      "name": "permission_seeds_6",
+      "ok": true,
+      "detail": {
+        "count": 6
+      }
+    },
+    {
+      "name": "player_self_read",
+      "ok": true,
+      "detail": {
+        "count": 1
+      }
+    },
+    {
+      "name": "player_no_forbidden",
+      "ok": true,
+      "detail": {
+        "count": 0
+      }
+    },
+    {
+      "name": "no_records_read_leak",
+      "ok": true,
+      "detail": {
+        "count": 0
+      }
+    },
+    {
+      "name": "transaction_read_only",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "name": "player_is_self_present",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "name": "coach_assigned_helper_present",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "name": "coach_role_deferred",
+      "ok": true,
+      "detail": {
+        "coachRoleCount": 0
+      }
+    }
+  ],
+  "catalog": {
+    "coaching04FunctionCount": 15,
+    "coaching04PolicyCount": 31,
+    "playerSelfPolicyCount": 13,
+    "coachAssignmentPolicyCount": 18,
+    "rlsForcedCount": 13,
+    "truePolicyCount": 0,
+    "transactionReadOnly": "on",
+    "beginReadOnly": true,
+    "rollback": true
+  },
+  "aclCounts": {
+    "helperAnonExecute": 0,
+    "helperServiceRoleExecute": 0,
+    "helperAuthenticatedExecute": 12,
+    "mutationAnonExecute": 0,
+    "mutationServiceRoleExecute": 0,
+    "mutationAuthenticatedExecute": 3,
+    "publicExecuteGrantCount": 0,
+    "exactHelperSignatures": [
+      "public.coaching_04_actor_uid()",
+      "public.coaching_04_active_coach_reference_id()",
+      "public.coaching_04_coach_assigned_to_player(text, text)",
+      "public.coaching_04_coach_owns_session(text)",
+      "public.coaching_04_coach_can_access_enrollment(text)",
+      "public.coaching_04_coach_can_access_program(text)",
+      "public.coaching_04_has_assigned_action(text)",
+      "public.coaching_04_mapped_player_id()",
+      "public.coaching_04_player_is_self(text)",
+      "public.coaching_04_player_identity_is_mapped()",
+      "public.coaching_04_has_self_action(text)",
+      "public.coaching_04_player_can_access_enrollment(text)"
+    ]
+  },
+  "mappingRowCount": 0,
+  "roleGrantStatus": {
+    "playerSelfReadGrantCount": 1,
+    "permissionSeedCount": 6,
+    "coach": {
+      "rolePresent": false,
+      "deferred": true,
+      "assignedGrantCount": 0,
+      "grantsOk": true,
+      "note": "COACH role absent — EXISTS-guarded grants deferred; role not created by certification."
+    }
+  },
+  "databaseWritesDuringCertification": 0,
+  "mappingRowsCreated": 0,
+  "backfillExecuted": false,
+  "runtimeActivated": false,
+  "localStorageRetired": false,
+  "durableRuntimeDefault": false,
+  "productionTouched": false,
+  "filesDeleted": 0,
+  "secretsPrinted": false,
+  "CODEX_DELETE_ALLOWED": "NO",
+  "hardFailed": [],
+  "startedAt": "2026-07-26T03:34:13.901Z",
+  "finishedAt": "2026-07-26T03:34:15.050Z"
+}
