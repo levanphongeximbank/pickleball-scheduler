@@ -11,6 +11,9 @@
  *
  * EC-05: Home orchestration adapters live in `publicHomeDataSource.js` and are
  * re-exported here for compatibility. Prefer Result helpers over array getters.
+ *
+ * EC-06: Certified remote LIVE cutover count is 0 — uncertified sources keep
+ * mock fallback / MOCK provenance; News remains ALREADY_LIVE (NEWS-04).
  */
 import { loadClubs } from "../../../data/club.js";
 import { loadClubData } from "../../../domain/clubStorage.js";
