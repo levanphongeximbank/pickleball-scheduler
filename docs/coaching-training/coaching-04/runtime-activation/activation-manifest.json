@@ -1,0 +1,27 @@
+{
+  "phase": "COACHING-04-RUNTIME-ACTIVATION",
+  "artifact": "activation-manifest",
+  "hashAlgorithm": "sha256-lf-normalized",
+  "stagingProjectRef": "qyewbxjsiiyufanzcjcq",
+  "targetEnvironment": "staging-preview",
+  "pr295MergeCommit": "12b4b8592a8c06a1cf2601226178f72ae7079b5f",
+  "runtimePackageCommit": "0e76c97a7fa9aabd9581f23c41d86f142b128feb",
+  "freshOriginMain": "8ce23a6d1320d0a1c8d267ace885be227cbcd27c",
+  "runtimeActivated": false,
+  "localStorageRetired": false,
+  "ownerGoGranted": false,
+  "orderedFiles": [
+    "docs/coaching-training/coaching-04/runtime-activation/00_COACHING_04_STAGING_RUNTIME_ACTIVATION_PIN.md",
+    "docs/coaching-training/coaching-04/runtime-activation/STAGING_RUNTIME_ACTIVATION_PIN.json",
+    "docs/coaching-training/coaching-04/runtime-activation/activation-manifest.json",
+    "docs/coaching-training/coaching-04/runtime-activation/OWNER_STAGING_RUNTIME_ACTIVATION_APPROVAL.template.json",
+    "scripts/coaching/coaching-04-runtime-activation-lib.mjs",
+    "scripts/coaching/coaching-04-runtime-activation-preflight.mjs",
+    "tests/coaching-04-runtime-activation-pin.test.js"
+  ],
+  "evidenceFilesNotHashed": [
+    "docs/coaching-training/coaching-04/runtime-activation/evidence/POST_MERGE_PR295_VERIFICATION.json",
+    "docs/coaching-training/coaching-04/runtime-activation/evidence/ACTIVATION_PREFLIGHT_OFFLINE.json"
+  ],
+  "notes": "Combined activationManifestHash is computed over orderedFiles as path:sha256(content) lines, LF-normalized. Evidence files are outputs and excluded from the hash. Do not embed secrets."
+}
