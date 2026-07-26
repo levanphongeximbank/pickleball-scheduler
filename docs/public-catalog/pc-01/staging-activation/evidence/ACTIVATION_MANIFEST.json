@@ -1,0 +1,26 @@
+{
+  "phase": "PUBLIC-CATALOG-01S",
+  "gate": "ACTIVATION_MANIFEST",
+  "timestampUtc": "2026-07-26T05:35:00.000Z",
+  "workstream": "PUBLIC-CATALOG-01S",
+  "title": "Staging SQL/RLS Activation",
+  "branch": "feature/public-catalog-01s-staging-sql-rls-activation",
+  "base": "origin/main",
+  "headAtSetup": "5776f5b2285a732f90f41e39e5bdd44fe1d779fb",
+  "ownerAuthorization": {
+    "STAGING_GO": "YES",
+    "PRODUCTION_GO": "NO"
+  },
+  "stagingProjectRef": "qyewbxjsiiyufanzcjcq",
+  "productionProjectRefBlocklist": "expuvcohlcjzvrrauvud",
+  "sqlPackage": "docs/public-catalog/pc-01/10_PUBLIC_CATALOG_01_PUBLIC_READ_RPC.sql",
+  "sqlSha256Lf": "2a90477990a883ad971ccbb0278f5b5cfa4edf03ea3866c07ccfb6676ee4a1ac",
+  "rollbackPackage": "docs/public-catalog/pc-01/11_PUBLIC_CATALOG_01_STAGING_ROLLBACK.sql",
+  "rollbackSha256Lf": "6c93225ad4cd4137a66960ef8f93877377d62c1eb4522791d1c85d3c13615573",
+  "applyMethod": "supabase_mcp_apply_migration",
+  "migrationVersion": "20260726053052",
+  "evidenceDir": "docs/public-catalog/pc-01/staging-activation/evidence",
+  "publicPortalCutover": false,
+  "productionApply": false,
+  "secretsPrinted": false
+}

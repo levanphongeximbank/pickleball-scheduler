@@ -1,0 +1,36 @@
+{
+  "phase": "PUBLIC-CATALOG-01S",
+  "gate": "FINAL_CERTIFICATION",
+  "timestampUtc": "2026-07-26T05:40:00.000Z",
+  "verdict": "PASS",
+  "projectRef": "qyewbxjsiiyufanzcjcq",
+  "productionTouched": false,
+  "rollbackExecuted": false,
+  "sqlSha256Lf": "2a90477990a883ad971ccbb0278f5b5cfa4edf03ea3866c07ccfb6676ee4a1ac",
+  "rollbackSha256Lf": "6c93225ad4cd4137a66960ef8f93877377d62c1eb4522791d1c85d3c13615573",
+  "stagingGates": {
+    "PRECHECK": "PASS",
+    "APPLY_RESULT": "PASS",
+    "OBJECT_VERIFICATION": "PASS",
+    "ANON_RPC_VERIFICATION": "PASS",
+    "PRIVACY_BOUNDARY_VERIFICATION": "PASS",
+    "DIRECT_TABLE_ACCESS_DENIED": "PASS",
+    "MUTATION_DENIED": "PASS",
+    "ROLLBACK_READINESS": "PASS",
+    "TEST_RESULTS": "PASS"
+  },
+  "readiness": {
+    "CLUBS_STAGING_RPC": "ACTIVE_VERIFIED",
+    "COURTS_STAGING_RPC": "ACTIVE_VERIFIED",
+    "ANON_RPC_ACCESS": "VERIFIED",
+    "DIRECT_TABLE_ACCESS": "DENIED",
+    "ANON_MUTATION": "DENIED",
+    "PRIVACY_BOUNDARY": "VERIFIED",
+    "STAGING_SQL_RLS_APPLIED": "YES",
+    "PRODUCTION_SQL_RLS_APPLIED": "NO",
+    "PUBLIC_PORTAL_LIVE_CUTOVER": "NO",
+    "PRODUCTION_RUNTIME_READINESS": "NOT_ACHIEVED"
+  },
+  "note": "FINAL_CERTIFICATION PASS requires all Staging gates PASS. Repository gate details live in TEST_RESULTS.json.",
+  "secretsPrinted": false
+}

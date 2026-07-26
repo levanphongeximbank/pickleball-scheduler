@@ -1,0 +1,80 @@
+{
+  "phase": "PUBLIC-CATALOG-01S",
+  "gate": "PRECHECK",
+  "timestampUtc": "2026-07-26T05:30:08.292Z",
+  "verdict": "PASS",
+  "ownerAuthorization": {
+    "STAGING_GO": "YES",
+    "PRODUCTION_GO": "NO"
+  },
+  "targetResolution": {
+    "environmentLabel": "staging",
+    "projectRef": "qyewbxjsiiyufanzcjcq",
+    "projectUrlHost": "qyewbxjsiiyufanzcjcq.supabase.co",
+    "mcpServerId": "project-0-pickleball-scheduler-supabase-staging",
+    "mcpConfigSource": ".cursor/mcp.json supabase-staging project_ref",
+    "canonicalAllowlistEvidence": [
+      "docs/customer-management/phase-7/staging-migration-manifest.json",
+      "docs/v5/PHASE_19A_PRODUCTION_SQL_APPLY_PACK.md",
+      "docs/SUPABASE-STAGING-CHECKLIST.md"
+    ],
+    "productionBlocklistRef": "expuvcohlcjzvrrauvud",
+    "isProduction": false,
+    "identityMarkers": {
+      "stagingLocalProfilesCount": 80,
+      "knownStagingVenuesCount": 2,
+      "publicTableCount": 177
+    },
+    "ambiguity": false
+  },
+  "safetyBaseline": {
+    "gitFetchPrune": true,
+    "worktreePath": "C:/Users/Le Phong/PICK_VN-Workstreams/public-catalog/public-catalog-01s-staging-sql-rls-activation",
+    "branch": "feature/public-catalog-01s-staging-sql-rls-activation",
+    "base": "origin/main",
+    "headSha": "5776f5b2285a732f90f41e39e5bdd44fe1d779fb",
+    "worktreeClean": true,
+    "rootRepoUntouched": true,
+    "packageLockSha256": "844840ca58b3eadcc4a1d090abdcfcd057b7562f48bb1450d4a8ad1a1763b448",
+    "canonicalSqlPresent": true,
+    "sqlSha256Lf": "2a90477990a883ad971ccbb0278f5b5cfa4edf03ea3866c07ccfb6676ee4a1ac",
+    "rollbackPackagePresent": true,
+    "rollbackSha256Lf": "6c93225ad4cd4137a66960ef8f93877377d62c1eb4522791d1c85d3c13615573"
+  },
+  "schemaBaseline": {
+    "clubsTableExists": true,
+    "projectionExists": false,
+    "rpcClubsExists": false,
+    "rpcCourtsExists": false,
+    "isPubliclyListedColumnExists": false,
+    "clubsRowCount": 22,
+    "activeClubsCount": 19,
+    "anonClubsVisibleViaDirectSelect": 0,
+    "clubsRlsEnabled": true,
+    "clubsSelectPolicyRoles": ["authenticated"],
+    "anonClubsTableSelectPrivilege": true,
+    "anonClubsInsertPrivilege": false,
+    "note": "anon GRANT SELECT may exist; RLS clubs_select is authenticated-only so anon direct SELECT returns 0 rows"
+  },
+  "sqlSecurityReview": {
+    "verdict": "PASS",
+    "securityDefinerFixedSearchPath": true,
+    "noDynamicSql": true,
+    "denyByDefaultListing": true,
+    "allowlistedDtoOnly": true,
+    "noClubDataV3Projection": true,
+    "noRatesBookingStaffLeakageInSql": true,
+    "boundedPagination": true,
+    "malformedPaginationRejected": true,
+    "deterministicOrdering": true,
+    "anonExecuteOnRpcOnly": true,
+    "projectionTableRevokeAnon": true,
+    "idempotentObjectCreates": true,
+    "rollbackFeasible": true
+  },
+  "blocked": false,
+  "readyToApply": true,
+  "productionApplyApproved": false,
+  "publicPortalCutoverApproved": false,
+  "secretsPrinted": false
+}

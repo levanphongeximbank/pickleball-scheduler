@@ -1,0 +1,23 @@
+{
+  "phase": "PUBLIC-CATALOG-01S",
+  "gate": "ROLLBACK_READINESS",
+  "timestampUtc": "2026-07-26T05:34:30.000Z",
+  "verdict": "PASS",
+  "projectRef": "qyewbxjsiiyufanzcjcq",
+  "rollbackPackagePath": "docs/public-catalog/pc-01/11_PUBLIC_CATALOG_01_STAGING_ROLLBACK.sql",
+  "rollbackSha256Lf": "6c93225ad4cd4137a66960ef8f93877377d62c1eb4522791d1c85d3c13615573",
+  "preflightBeforeApply": true,
+  "rollbackExecuted": false,
+  "reasonNotExecuted": "Activation and verification PASS; rollback reserved for unsafe apply/verification states only",
+  "capabilities": {
+    "revokeAnonExecute": true,
+    "dropRpcsExactSignatures": true,
+    "dropProjectionTableOnly": true,
+    "doesNotDropBaseClubsTable": true,
+    "doesNotTruncateBusinessData": true,
+    "safeDependencyOrder": true,
+    "postRollbackVerificationQueriesDocumented": true,
+    "productionImpact": false
+  },
+  "secretsPrinted": false
+}

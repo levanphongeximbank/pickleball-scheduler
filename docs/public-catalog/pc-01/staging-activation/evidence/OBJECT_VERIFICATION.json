@@ -1,0 +1,42 @@
+{
+  "phase": "PUBLIC-CATALOG-01S",
+  "gate": "OBJECT_VERIFICATION",
+  "timestampUtc": "2026-07-26T05:32:00.000Z",
+  "verdict": "PASS",
+  "projectRef": "qyewbxjsiiyufanzcjcq",
+  "objects": {
+    "public_catalog_list_clubs": {
+      "exists": true,
+      "securityDefiner": true,
+      "identityArgs": "p_limit integer, p_offset integer, p_sort text",
+      "searchPath": "search_path=public, pg_temp",
+      "anonExecute": true,
+      "authenticatedExecute": true,
+      "serviceRoleExecute": true
+    },
+    "public_catalog_list_courts": {
+      "exists": true,
+      "securityDefiner": true,
+      "identityArgs": "p_limit integer, p_offset integer, p_sort text, p_club_id text",
+      "searchPath": "search_path=public, pg_temp",
+      "anonExecute": true
+    },
+    "public_catalog_courts": {
+      "exists": true,
+      "rlsEnabled": true,
+      "policyCount": 0,
+      "anonSelect": false,
+      "authenticatedSelect": false,
+      "serviceRoleSelect": true,
+      "columns": ["id","club_id","venue_id","display_name","court_type","surface","availability_descriptor","publication_state","operational_state","created_at","updated_at"]
+    },
+    "clubs_public_columns": {
+      "is_publicly_listed": true
+    }
+  },
+  "migrationRecorded": {
+    "version": "20260726053052",
+    "name": "public_catalog_01_public_read_rpc"
+  },
+  "secretsPrinted": false
+}
