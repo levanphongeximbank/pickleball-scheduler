@@ -94,6 +94,16 @@ const CANONICAL_SOURCE_PATHS = [
 ];
 
 /**
+ * LF-canonical pins for package/lock integrity.
+ * Computed as SHA-256 of UTF-8 text after BOM strip and CRLF/CR → LF.
+ * Matches fresh origin/main and Linux CI checkout; not Windows raw CRLF bytes.
+ */
+const EXPECTED_PACKAGE_JSON_SHA256_LF =
+  "D9F756CC931E32B03E48DA0C70729F4D68D30022A8D1C1E4189E4D4962E7326B";
+const EXPECTED_PACKAGE_LOCK_SHA256_LF =
+  "D40DB46D2356A87F589DF86C8F9CC369A7F97A332DFCF3AEC8CA335EE07F2516";
+
+/**
  * @param {string} filePath
  * @returns {string}
  */
@@ -102,11 +112,31 @@ function read(filePath) {
 }
 
 /**
+ * @param {string} text
+ * @returns {string}
+ */
+function canonicalizeText(text) {
+  return text.replace(/^\uFEFF/, "").replace(/\r\n?/g, "\n");
+}
+
+/**
+ * @param {string} text
+ * @returns {string}
+ */
+function sha256CanonicalText(text) {
+  return crypto
+    .createHash("sha256")
+    .update(canonicalizeText(text), "utf8")
+    .digest("hex")
+    .toUpperCase();
+}
+
+/**
  * @param {string} filePath
  * @returns {string}
  */
-function sha256File(filePath) {
-  return crypto.createHash("sha256").update(fs.readFileSync(filePath)).digest("hex").toUpperCase();
+function sha256CanonicalTextFile(filePath) {
+  return sha256CanonicalText(fs.readFileSync(filePath, "utf8"));
 }
 
 test("FINAL-02 closure pack documents are present", () => {
@@ -274,15 +304,19 @@ test("canonical module source facades exist on disk", () => {
 });
 
 test("package and lock hashes match baseline; court authority fail-closed remains", () => {
-  const manifest = JSON.parse(read(path.join(PACK, "FINAL_CLOSURE_MANIFEST.json")));
   assert.equal(
-    sha256File(path.join(ROOT, "package.json")),
-    manifest.packageJsonSha256
+    sha256CanonicalText("alpha\nbeta\n"),
+    sha256CanonicalText("alpha\r\nbeta\r\n")
   );
   assert.equal(
-    sha256File(path.join(ROOT, "package-lock.json")),
-    manifest.packageLockSha256
+    sha256CanonicalText("alpha\nbeta\n"),
+    sha256CanonicalText("alpha\rbeta\r")
   );
+
+  const pkgHash = sha256CanonicalTextFile(path.join(ROOT, "package.json"));
+  const lockHash = sha256CanonicalTextFile(path.join(ROOT, "package-lock.json"));
+  assert.equal(pkgHash, EXPECTED_PACKAGE_JSON_SHA256_LF);
+  assert.equal(lockHash, EXPECTED_PACKAGE_LOCK_SHA256_LF);
 
   const src = read(
     path.join(
