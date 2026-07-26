@@ -254,6 +254,7 @@
   "tests/coaching-04-staging-activation-package.test.js",
   "tests/coaching-04-helper-acl-hardening.test.js",
   "tests/coaching-04-runtime-cutover-package.test.js",
+  "tests/coaching-04-runtime-activation-pin.test.js",
   "tests/rbac-v52.test.js",
   "tests/tournament-player-picker.test.js",
   "tests/tenant-isolation-qa.test.js",

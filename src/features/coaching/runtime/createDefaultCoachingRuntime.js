@@ -2,7 +2,10 @@
  * Default coaching runtime composition (COACHING-04).
  *
  * App default remains legacy because COACHING_DURABLE_RUNTIME_DEFAULT === false.
- * Staging-only durable opt-in requires VITE flag + VITE_APP_ENV=staging + Owner GO
+ * Staging-only durable opt-in requires:
+ *   VITE_APP_ENV=staging
+ *   VITE_COACHING_STAGING_DURABLE_RUNTIME_ENABLED=true
+ *   VITE_COACHING_STAGING_OWNER_GO_GRANTED=true
  * (see stagingDurableGate.js). Production is always refused.
  * Pages must use this boundary — not coachingService directly.
  */
@@ -24,6 +27,8 @@ let defaultRuntimeSingleton = null;
 
 /**
  * Resolve default mode without flipping COACHING_DURABLE_RUNTIME_DEFAULT.
+ * ownerGoGranted derives from VITE_COACHING_STAGING_OWNER_GO_GRANTED unless
+ * an explicit override is provided (tests / injection only).
  * @param {object} [overrides]
  */
 function resolveDefaultMode(overrides = {}) {
@@ -34,11 +39,15 @@ function resolveDefaultMode(overrides = {}) {
     overrides.env && typeof overrides.env === "object"
       ? overrides.env
       : readCoachingStagingDurableEnvFromImportMeta();
-  const activation = resolveCoachingStagingDurableActivation({
+  /** @type {{ env: Record<string, unknown>, appEnvironment?: string, ownerGoGranted?: boolean }} */
+  const gateOptions = {
     env,
     appEnvironment: overrides.appEnvironment,
-    ownerGoGranted: overrides.ownerGoGranted === true,
-  });
+  };
+  if (Object.prototype.hasOwnProperty.call(overrides, "ownerGoGranted")) {
+    gateOptions.ownerGoGranted = overrides.ownerGoGranted === true;
+  }
+  const activation = resolveCoachingStagingDurableActivation(gateOptions);
   if (activation.activate) return COACHING_RUNTIME_MODE.DURABLE;
   return COACHING_RUNTIME_MODE.LEGACY;
 }
@@ -63,6 +72,7 @@ export function createDefaultCoachingRuntime(overrides = {}) {
 
 /**
  * Lazy singleton used by page hooks.
+ * Reads build-time Staging Owner GO operational flags via import.meta.env.
  * @returns {ReturnType<typeof createCoachingRuntime>}
  */
 export function getDefaultCoachingRuntime() {
@@ -84,10 +94,8 @@ export function resetDefaultCoachingRuntime() {
  */
 export function getCoachingPageGateway() {
   const runtime = getDefaultCoachingRuntime();
-  const stagingGate = resolveCoachingStagingDurableActivation({
-    env: readCoachingStagingDurableEnvFromImportMeta(),
-    ownerGoGranted: false,
-  });
+  const env = readCoachingStagingDurableEnvFromImportMeta();
+  const stagingGate = resolveCoachingStagingDurableActivation({ env });
   return Object.freeze({
     mode: runtime.mode,
     isDurable: runtime.isDurable,

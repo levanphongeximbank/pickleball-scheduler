@@ -51,6 +51,7 @@ export {
 
 export {
   COACHING_STAGING_DURABLE_RUNTIME_FLAG,
+  COACHING_STAGING_OWNER_GO_GRANTED_FLAG,
   COACHING_APP_ENV_KEY,
   COACHING_APP_ENVIRONMENT,
   COACHING_STAGING_DURABLE_ACTIVATION_REASON,
@@ -60,6 +61,8 @@ export {
   COACHING_04_STAGING_PROJECT_REF,
   classifyCoachingAppEnvironment,
   isCoachingStagingDurableFlagEnabled,
+  isCoachingStagingOwnerGoGranted,
+  resolveCoachingStagingOwnerGoGranted,
   readCoachingStagingDurableEnvFromImportMeta,
   extractSupabaseProjectRef,
   resolveCoachingStagingDurableActivation,

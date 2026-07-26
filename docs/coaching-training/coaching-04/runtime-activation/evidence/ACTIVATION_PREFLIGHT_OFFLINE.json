@@ -1,0 +1,33 @@
+{
+  "phase": "COACHING-04-RUNTIME-ACTIVATION",
+  "script": "coaching-04-runtime-activation-preflight",
+  "stagingProjectRef": "qyewbxjsiiyufanzcjcq",
+  "targetEnvironment": "staging-preview",
+  "pr295MergeCommit": "12b4b8592a8c06a1cf2601226178f72ae7079b5f",
+  "freshOriginMain": "8ce23a6d1320d0a1c8d267ace885be227cbcd27c",
+  "certifiedEvidencePresent": true,
+  "missingEvidence": [],
+  "mappingRowCount": 0,
+  "playerExpectedState": "UNMAPPED",
+  "runtimeActivated": false,
+  "localStorageRetired": false,
+  "durableRuntimeDefault": false,
+  "productionTouched": false,
+  "databaseConnectionOpened": false,
+  "databaseWrites": 0,
+  "deploymentMutation": false,
+  "silentFallbackAllowed": false,
+  "filesDeleted": 0,
+  "CODEX_DELETE_ALLOWED": "NO",
+  "secretsPrinted": false,
+  "ownerGoGranted": false,
+  "activationManifestHash": "33916d17c774efb513462d6731d2a78fe3c78fc88dfbc2905607d898526f6067",
+  "classification": "COACHING_04_STAGING_RUNTIME_ACTIVATION_READY_AWAITING_OWNER_GO",
+  "verdict": "COACHING_04_RUNTIME_ACTIVATION_PREFLIGHT_REFUSED_OWNER_GO_NOT_GRANTED",
+  "errors": [
+    "Owner GO not granted — activation pin only."
+  ],
+  "ok": true,
+  "canActivate": false,
+  "note": "Read-only offline preflight. No Vercel mutation. No deployment. No DB writes. AWAITING_OWNER_GO."
+}

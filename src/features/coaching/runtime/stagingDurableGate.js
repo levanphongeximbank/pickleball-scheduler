@@ -4,7 +4,7 @@
  * Default: OFF. Flipping COACHING_DURABLE_RUNTIME_DEFAULT is forbidden here.
  * Production always refused. Unknown / non-staging + flag ON → fail closed (legacy).
  *
- * Activation remains Owner-GO gated; this module only resolves eligibility.
+ * Activation remains Owner-GO gated via build-time operational flags.
  */
 
 /** Staging project ref — mirrors scripts/coaching/coaching-04-activation-lib.mjs */
@@ -12,6 +12,10 @@ export const COACHING_04_STAGING_PROJECT_REF = "qyewbxjsiiyufanzcjcq";
 
 export const COACHING_STAGING_DURABLE_RUNTIME_FLAG =
   "VITE_COACHING_STAGING_DURABLE_RUNTIME_ENABLED";
+
+/** Explicit build-time Owner GO operational flag (Preview bake only). */
+export const COACHING_STAGING_OWNER_GO_GRANTED_FLAG =
+  "VITE_COACHING_STAGING_OWNER_GO_GRANTED";
 
 export const COACHING_APP_ENV_KEY = "VITE_APP_ENV";
 
@@ -45,6 +49,18 @@ export const COACHING_04_RUNTIME_CUTOVER_CLASSIFICATION =
   "COACHING_04_RUNTIME_CUTOVER_READY_WITH_PLAYER_UNMAPPED_GATE";
 
 /**
+ * Exact `"true"` only (case-insensitive trim). Missing/invalid → false.
+ * @param {unknown} raw
+ */
+function isExactTrueFlag(raw) {
+  return (
+    String(raw == null ? "" : raw)
+      .trim()
+      .toLowerCase() === "true"
+  );
+}
+
+/**
  * @param {unknown} raw
  * @returns {string}
  */
@@ -71,12 +87,31 @@ export function classifyCoachingAppEnvironment(raw) {
  * @param {Record<string, unknown>} [env]
  */
 export function isCoachingStagingDurableFlagEnabled(env = {}) {
-  const raw = env[COACHING_STAGING_DURABLE_RUNTIME_FLAG];
-  return (
-    String(raw == null ? "" : raw)
-      .trim()
-      .toLowerCase() === "true"
-  );
+  return isExactTrueFlag(env[COACHING_STAGING_DURABLE_RUNTIME_FLAG]);
+}
+
+/**
+ * Build-time Owner GO operational flag. Exact `"true"` only.
+ * @param {Record<string, unknown>} [env]
+ */
+export function isCoachingStagingOwnerGoGranted(env = {}) {
+  return isExactTrueFlag(env[COACHING_STAGING_OWNER_GO_GRANTED_FLAG]);
+}
+
+/**
+ * Resolve Owner GO for gate evaluation.
+ * Explicit boolean override wins; otherwise derive from build-time env flag.
+ *
+ * @param {{
+ *   env?: Record<string, unknown>,
+ *   ownerGoGranted?: boolean,
+ * }} [options]
+ */
+export function resolveCoachingStagingOwnerGoGranted(options = {}) {
+  if (options.ownerGoGranted === true) return true;
+  if (options.ownerGoGranted === false) return false;
+  const env = options.env && typeof options.env === "object" ? options.env : {};
+  return isCoachingStagingOwnerGoGranted(env);
 }
 
 /**
@@ -93,6 +128,11 @@ export function readCoachingStagingDurableEnvFromImportMeta() {
   if (meta[COACHING_STAGING_DURABLE_RUNTIME_FLAG] != null) {
     out[COACHING_STAGING_DURABLE_RUNTIME_FLAG] = String(
       meta[COACHING_STAGING_DURABLE_RUNTIME_FLAG]
+    );
+  }
+  if (meta[COACHING_STAGING_OWNER_GO_GRANTED_FLAG] != null) {
+    out[COACHING_STAGING_OWNER_GO_GRANTED_FLAG] = String(
+      meta[COACHING_STAGING_OWNER_GO_GRANTED_FLAG]
     );
   }
   if (meta[COACHING_APP_ENV_KEY] != null) {
@@ -148,7 +188,10 @@ export function resolveCoachingStagingDurableActivation(options = {}) {
   const urlRef = extractSupabaseProjectRef(
     env.VITE_SUPABASE_URL || env.STAGING_SUPABASE_URL || env.SUPABASE_URL
   );
-  const ownerGoGranted = options.ownerGoGranted === true;
+  const ownerGoGranted = resolveCoachingStagingOwnerGoGranted({
+    env,
+    ownerGoGranted: options.ownerGoGranted,
+  });
 
   if (environment === COACHING_APP_ENVIRONMENT.PRODUCTION) {
     return Object.freeze({
