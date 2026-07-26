@@ -1,0 +1,26 @@
+{
+  "workstream": "PRODUCTION-COURT-INVENTORY-01",
+  "phase": "B_PRODUCTION_MUTATION",
+  "gate": "PRIORITY / CANONICAL DESCRIPTOR HARD GATE",
+  "decision": "PRIORITY_NOT_SET",
+  "priorityContractEvidence": {
+    "doc": "docs/venue-court/PHASE_3B_CANONICAL_COURT_DESCRIPTOR_CONTRACT.md",
+    "section": "7. Priority omission policy (fail-closed)",
+    "verbatim": "Do not derive priority from array index, court number, display order, or name.",
+    "conclusion": "Repository contract PROVES priority must NOT be derived from physical court number. Owner's conditional mapping (n->priority) is therefore not authorized by contract. Per Owner rule, do not self-assign priority."
+  },
+  "descriptorIsNotPublicationDependency": {
+    "consumers_of_listCanonicalCourtDescriptors": [
+      "src/features/competition-engine/integration/adapters/venueCourtFromVenueAdapter.js",
+      "src/features/competition-engine/integration/composition/createCompetitionRuntimePorts.js"
+    ],
+    "publication_path_consumers": [
+      "src/features/public-portal/services/publicClubsCourtsDataSource.js#mapLiveCourts (reads data.courts)",
+      "src/features/public-portal/services/publicPortalService.js (courtCount from data.courts)",
+      "src/features/public-catalog/contracts/publicCourtDto.js (id/clubId/venueId/displayName/courtType/surface/... no priority)"
+    ],
+    "conclusion": "listCanonicalCourtDescriptors is consumed ONLY by Competition Engine integration, NOT by PRODUCTION-PUBLICATION-01. Publication reads inventory (data.courts / listCourts) on id/name/active/courtType/surface. Descriptor priority-exclusion is NOT a publication blocker."
+  },
+  "result": "NOT_BLOCKED — descriptors will exclude the 4 courts with PRIORITY_NOT_AUTHORITATIVE (expected, contract-correct), but this does not gate publication. Publication has 4 eligible canonical courts via inventory.",
+  "priorityFuturePath": "A later Owner-approved Phase 3C priority persistence step may set authoritative priority; out of scope here."
+}

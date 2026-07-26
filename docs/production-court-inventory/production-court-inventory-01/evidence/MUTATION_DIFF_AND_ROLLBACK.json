@@ -1,0 +1,70 @@
+{
+  "workstream": "PRODUCTION-COURT-INVENTORY-01",
+  "phase": "A_EXACT_INVENTORY_PLAN",
+  "timestampUtc": "2026-07-26T12:50:00.000Z",
+  "mutationsPerformed": false,
+  "target": {
+    "table": "public.club_data_v3",
+    "club_id": "club-219e4a7cbd73437eb6271f02a53314c3",
+    "path": "data.courts[]"
+  },
+  "before": {
+    "club_data_v3_row_exists": false,
+    "current_payload": null,
+    "courts": [],
+    "cluster_court_count": 0,
+    "clubs_row": "unchanged (CLB ACCC already active)",
+    "venues_row": "unchanged",
+    "public_catalog_courts": "absent / not touched"
+  },
+  "after": {
+    "club_data_v3_row_action": "INSERT new row (create)",
+    "courts_count": 4,
+    "courts_ids": [
+      "court-club-219e4a7cbd73437eb6271f02a53314c3-n3",
+      "court-club-219e4a7cbd73437eb6271f02a53314c3-n4",
+      "court-club-219e4a7cbd73437eb6271f02a53314c3-n5",
+      "court-club-219e4a7cbd73437eb6271f02a53314c3-n6"
+    ],
+    "optional_cluster_reconcile": {
+      "table": "public.court_clusters",
+      "id": "venue-prod-main-pickleball-nam-long-sports",
+      "court_count": { "from": 0, "to": 4 },
+      "note": "related inventory reconcile only; not inventing courts from cluster"
+    },
+    "do_not_mutate": [
+      "public.clubs",
+      "public.venues",
+      "public.public_catalog_courts",
+      "players",
+      "bookings",
+      "customers",
+      "staff"
+    ]
+  },
+  "proposed_club_data_v3_data_minimum": {
+    "schemaVersion": 3.5,
+    "clubId": "club-219e4a7cbd73437eb6271f02a53314c3",
+    "tenantId": "venue-prod-main",
+    "courts": "[see EXACT_INVENTORY_PLAN.json — 4 records after normalizeCourt]",
+    "players": [],
+    "bookings": [],
+    "customers": [],
+    "otherCollections": "empty defaults from getDefaultClubData; seasons/leagues may be auto-scaffolded on first app normalize — not Club/Venue table mutation"
+  },
+  "rollback": {
+    "primary": "DELETE FROM public.club_data_v3 WHERE club_id = 'club-219e4a7cbd73437eb6271f02a53314c3' (exact previous = no row)",
+    "if_cluster_reconciled": "UPDATE court_clusters.court_count = 0 WHERE id = 'venue-prod-main-pickleball-nam-long-sports'",
+    "must_not": [
+      "delete Club ACCC",
+      "delete Venue",
+      "delete cluster",
+      "touch public catalog"
+    ],
+    "verify": [
+      "club_data_v3 row absent again",
+      "no orphan court ids in governance registered_court_ids",
+      "cluster court_count restored if changed"
+    ]
+  }
+}

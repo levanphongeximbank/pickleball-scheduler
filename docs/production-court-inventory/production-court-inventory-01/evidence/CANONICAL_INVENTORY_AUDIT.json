@@ -1,0 +1,74 @@
+{
+  "workstream": "PRODUCTION-COURT-INVENTORY-01",
+  "phase": "A_READ_ONLY_AUDIT",
+  "timestampUtc": "2026-07-26T12:40:00.000Z",
+  "canonicalSsot": {
+    "authority": "venue-court.inventory.club_data_v3",
+    "path": "club_data_v3.data.courts[]",
+    "localKey": "pickleball-club-data-v3::{clubId}",
+    "facade": "src/features/venue-court/services/courtInventoryService.js#listCourts",
+    "domainLoaders": [
+      "src/domain/clubStorage.js#loadCourtsForClub",
+      "src/domain/courtService.js#loadCourtsForClubScoped|loadCourtsForVenue"
+    ],
+    "normalizeModel": "src/models/court.js#normalizeCourt",
+    "descriptorAdapter": "src/features/venue-court/adapters/competitionCourtDescriptorAdapter.js",
+    "cloudSync": "src/ai/cloudSync.js#syncClubToCloud|pullClubFromCloud"
+  },
+  "rejectedAsCourtSources": [
+    {
+      "source": "court_clusters",
+      "id": "venue-prod-main-pickleball-nam-long-sports",
+      "reason": "cluster aggregate; court_count=0; Owner previously rejected cluster-as-court"
+    },
+    {
+      "source": "venues",
+      "id": "venue-prod-main",
+      "reason": "venue is tenant scope, not individual court inventory"
+    },
+    {
+      "source": "public_catalog_courts",
+      "reason": "table absent on Production; publication is downstream of inventory"
+    },
+    {
+      "source": "team_tournaments.settings",
+      "reason": "competition draft settings; no courts key; not inventory ownership"
+    },
+    {
+      "source": "court_engine_stores|sessions",
+      "reason": "runtime; empty on Production"
+    },
+    {
+      "source": "booking references",
+      "reason": "no club_data_v3 blob; no bookings SSOT present"
+    }
+  ],
+  "productionCounts": {
+    "club_data_v3": 0,
+    "club_ai_data": 0,
+    "court_engine_stores": 0,
+    "court_engine_active_sessions": 0,
+    "court_claim_requests_for_venue": 0,
+    "public_courts_table": false,
+    "public_catalog_courts_table": false,
+    "clubs_active_accc": 1,
+    "venues_venue_prod_main": 1,
+    "clusters_for_venue": 1,
+    "cluster_court_count": 0,
+    "governance_for_canonical_club_id": 0,
+    "governance_legacy_clb_accc_registered_court_ids_len": 0
+  },
+  "clubVenueLinkage": {
+    "clubId": "club-219e4a7cbd73437eb6271f02a53314c3",
+    "displayName": "CLB ACCC",
+    "status": "active",
+    "tenantId": "venue-prod-main",
+    "registeredClusterId": "venue-prod-main-pickleball-nam-long-sports",
+    "clusterName": "Pickleball NAM LONG sports",
+    "clusterStatus": "active",
+    "clusterCourtCount": 0
+  },
+  "historicalCourtIdsFound": [],
+  "realCourtCandidatesFound": 0,
+  "mutationsPerformed": false
+}

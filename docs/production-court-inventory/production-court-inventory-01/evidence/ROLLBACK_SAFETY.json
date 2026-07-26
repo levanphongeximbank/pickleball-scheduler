@@ -1,0 +1,27 @@
+{
+  "workstream": "PRODUCTION-COURT-INVENTORY-01",
+  "phase": "B_PRODUCTION_MUTATION",
+  "rollbackModel": "fingerprint-guarded, non-blind",
+  "createdRowFingerprint": {
+    "table": "public.club_data_v3",
+    "club_id": "club-219e4a7cbd73437eb6271f02a53314c3",
+    "venue_id": "venue-prod-main",
+    "version": 1,
+    "courts_len": 4,
+    "court_ids": [
+      "court-club-219e4a7cbd73437eb6271f02a53314c3-n3",
+      "court-club-219e4a7cbd73437eb6271f02a53314c3-n4",
+      "court-club-219e4a7cbd73437eb6271f02a53314c3-n5",
+      "court-club-219e4a7cbd73437eb6271f02a53314c3-n6"
+    ]
+  },
+  "safeRollbackSql": "DELETE FROM public.club_data_v3 WHERE club_id = 'club-219e4a7cbd73437eb6271f02a53314c3' AND version = 1 AND jsonb_array_length(data->'courts') = 4 AND (SELECT bool_and(c->>'id' LIKE 'court-club-219e4a7cbd73437eb6271f02a53314c3-n%') FROM jsonb_array_elements(data->'courts') c);",
+  "guards": [
+    "Only DELETE if row still matches exact workstream fingerprint (version=1, 4 courts, all workstream court ids).",
+    "If fingerprint differs (unrelated data added / concurrent modification) → DO NOT delete; STOP and report manual-safe rollback required.",
+    "Cluster court_count was NOT changed → no cluster restore needed.",
+    "Never delete Club, Venue, or cluster rows.",
+    "Never touch public catalog RPC/table."
+  ],
+  "exactPreviousState": "no club_data_v3 row for the club (row count = 0)"
+}

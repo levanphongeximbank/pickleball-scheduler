@@ -1,0 +1,38 @@
+{
+  "workstream": "PRODUCTION-COURT-INVENTORY-01",
+  "phase": "A_READ_ONLY_AUDIT",
+  "timestampUtc": "2026-07-26T12:40:00.000Z",
+  "verdict": "PRODUCTION_COURT_INVENTORY_01_AWAITING_OWNER_FACTS",
+  "reason": "Production has club–venue–cluster linkage but zero canonical individual court records and no recoverable physical court names/counts.",
+  "authorization": {
+    "PRODUCTION_READ_ONLY_AUDIT_GO": "YES",
+    "PRODUCTION_COURT_INVENTORY_MUTATION_GO": "NO",
+    "PRODUCTION_PUBLICATION_GO": "NO",
+    "PRODUCTION_PORTAL_CUTOVER_GO": "NO"
+  },
+  "minimumOwnerFacts": [
+    {
+      "id": 1,
+      "question": "CLB ACCC thực tế có bao nhiêu sân?"
+    },
+    {
+      "id": 2,
+      "question": "Tên công khai của từng sân?"
+    },
+    {
+      "id": 3,
+      "question": "Các sân đang hoạt động hay tạm ngưng?"
+    },
+    {
+      "id": 4,
+      "question": "Court type/surface nếu Owner biết (indoor / outdoor / covered; mặt sân nếu có)."
+    }
+  ],
+  "mustNotInfer": [
+    "court_count from cluster",
+    "synthetic Sân 1..N",
+    "cluster name as court name",
+    "tournament settings as inventory"
+  ],
+  "afterOwnerFactsNextGate": "Exact inventory plan + Owner GO for Production mutation (PRODUCTION_COURT_INVENTORY_MUTATION_GO)"
+}

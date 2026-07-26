@@ -1,0 +1,36 @@
+{
+  "workstream": "PRODUCTION-COURT-INVENTORY-01",
+  "phase": "A_EXACT_INVENTORY_PLAN",
+  "timestampUtc": "2026-07-26T12:50:00.000Z",
+  "mutationsPerformed": false,
+  "compatibility": {
+    "normalizeCourt": {
+      "courtType_covered": "PASS — COURT_TYPES includes covered",
+      "surface_plastic": "PASS — Phase A extended normalizeCourt to preserve optional surface",
+      "clubId_venueId": "PASS — optional ownership fields preserved",
+      "active_status": "PASS — active=true + status=active",
+      "archived_deleted_fields": "semantics via active/status; archived/deleted flags not persisted as keys (false by presence)"
+    },
+    "courtInventoryService": {
+      "listCourts_clubScope": "PASS (readiness)",
+      "clusterFilter": "PASS",
+      "getCourtById": "PASS",
+      "duplicateIds": "PASS — 4 unique"
+    },
+    "canonicalDescriptors": {
+      "status": "COMPATIBLE_WITH_EXPECTED_EXCLUSION",
+      "note": "Without authoritative priority, all 4 courts excluded with PRIORITY_NOT_AUTHORITATIVE. Inventory certification does not invent priority."
+    },
+    "persistence_reload": "PASS — saveCourtsForClub / loadCourtsForClub / saveClubData",
+    "public_catalog": "COMPAT — privacy rates/notes; no catalog mutation in this workstream",
+    "duplicate_id_risk": "NONE — deterministic unique IDs; Production has zero courts today",
+    "unrelated_mutation": "NONE planned for clubs/venues/catalog"
+  },
+  "readinessTests": {
+    "production-court-inventory-01-accc-readiness.test.js": "7/7 pass",
+    "venue-court/court-inventory-service.test.js": "pass",
+    "public-catalog-01-courts-public-api.test.js": "pass",
+    "venue-court/competition-court-descriptor-adapter.test.js": "pass",
+    "venue-court/court-priority-persistence.test.js": "pass"
+  }
+}
