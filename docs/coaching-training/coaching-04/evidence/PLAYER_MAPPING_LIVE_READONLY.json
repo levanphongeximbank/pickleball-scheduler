@@ -4,11 +4,12 @@
   "environmentLabel": "staging",
   "offlineOk": true,
   "ok": true,
-  "verdict": "COACHING_04_PLAYER_SELF_SCOPE_MAPPING_BLOCKED_STAGING_CATALOG_VERIFIED",
+  "verdict": "COACHING_04_PLAYER_SELF_SCOPE_PREFLIGHT_PM_ID_01_READY",
   "stagingProjectRef": "qyewbxjsiiyufanzcjcq",
-  "playerSelfScopeStatus": "COACHING_04_PLAYER_SELF_SCOPE_MAPPING_BLOCKED",
-  "mappingProven": false,
-  "mappingBlocked": true,
+  "playerSelfScopeStatus": "COACHING_04_PLAYER_SELF_SCOPE_AUTHORED_AWAITING_STAGING_GO",
+  "mappingProven": true,
+  "mappingBlocked": false,
+  "coaching04SqlApplied": false,
   "readOnlyTransaction": true,
   "beginReadOnly": true,
   "rollback": true,
@@ -19,13 +20,13 @@
   "secretsPrinted": false,
   "urlValuePrinted": false,
   "catalogInterpretation": {
-    "resultRowCount": 1,
+    "resultRowCount": 13,
     "coachingPlayerMappingHelpersPresent": false,
     "teamTournamentHelperPresent": false,
     "profilesPlayerIdUniqueIndex": null,
     "clubMembersHasPlayerIdColumn": null,
     "coachingSelfPermissionCount": null,
     "playerCoachingGrantCount": null,
-    "note": "Catalog probe only — helper name presence in result payload is informative; Coaching SoT remains blocked without Owner-approved contract."
+    "note": "Catalog probe only — PM-ID-01 objects expected present; COACHING-04 objects may still be absent until Owner GO apply."
   }
 }

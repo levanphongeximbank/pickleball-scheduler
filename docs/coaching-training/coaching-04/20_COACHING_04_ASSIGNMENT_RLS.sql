@@ -7,7 +7,7 @@
 -- Rules:
 --   - Do NOT DROP coaching_02 / coaching_* admin policies from 30_COACHING_02_RLS.sql
 --   - Policy names: coaching_04_*
---   - No PLAYER policies (COACHING_04_PLAYER_SELF_SCOPE_MAPPING_BLOCKED)
+--   - PLAYER self-scope policies live in 21_COACHING_04_PLAYER_SELF_SCOPE_RLS.sql
 --   - No USING (true) / WITH CHECK (true)
 --   - No client DELETE policies
 --   - No direct UPDATE on entitlements for assigned consume (RPC only)
@@ -345,5 +345,5 @@ CREATE POLICY coaching_04_evaluations_update ON public.coaching_evaluations
 -- NO coaching_04 UPDATE policy on coaching_package_entitlements
 -- (coaching.assigned.entitlement.consume is RPC-only).
 
--- NO PLAYER policies.
+-- PLAYER policies: see 21_COACHING_04_PLAYER_SELF_SCOPE_RLS.sql
 -- NO DELETE policies for clients.

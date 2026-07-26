@@ -66,11 +66,14 @@ const EXPECTED_PACK_FILES = [
   "04_COACHING_04_LOCALSTORAGE_RETIREMENT_PLAN.md",
   "05_COACHING_04_ACCESS_MATRIX.md",
   "10_COACHING_04_ASSIGNMENT_HELPERS.sql",
+  "11_COACHING_04_PLAYER_SELF_SCOPE_HELPERS.sql",
   "20_COACHING_04_ASSIGNMENT_RLS.sql",
+  "21_COACHING_04_PLAYER_SELF_SCOPE_RLS.sql",
   "30_COACHING_04_SCOPED_RPCS.sql",
   "40_COACHING_04_PERMISSION_SEED_AND_GRANTS.proposal.sql",
   "90_COACHING_04_ROLLBACK.sql",
   "99_COACHING_04_VERIFICATION.sql",
+  "sql-migration-manifest.json",
 ];
 
 const CANONICAL_TABLES = [
@@ -117,12 +120,12 @@ describe("COACHING-04 pack presence", () => {
     }
   });
 
-  test("PLAYER self-scope mapping is blocked in docs", () => {
+  test("PLAYER self-scope mapping is authored awaiting Staging GO", () => {
     const doc = readPack("02_COACHING_04_PLAYER_SELF_SCOPE_MAPPING.md");
-    assert.match(doc, /COACHING_04_PLAYER_SELF_SCOPE_MAPPING_BLOCKED/);
-    assert.match(doc, /auth\.uid\(\)/);
-    assert.match(doc, /unproven|False \/ unproven|≠ player_id|not a Coaching SoT/i);
-    assert.match(doc, /Do not seed PLAYER|no PLAYER|PLAYER.*out of scope/i);
+    assert.match(doc, /COACHING_04_PLAYER_SELF_SCOPE_AUTHORED_AWAITING_STAGING_GO/);
+    assert.match(doc, /player_identity_resolve_mapping/);
+    assert.match(doc, /coaching\.self\.read/);
+    assert.match(doc, /read-only|Mutations remain blocked|not.*mutation/i);
   });
 });
 
@@ -142,9 +145,7 @@ describe("COACHING-04 assignment helpers and RLS SQL contracts", () => {
     assert.match(helpers, /SET search_path = public, pg_temp/);
     assert.match(helpers, /REVOKE ALL ON FUNCTION public\.coaching_04_actor_uid/);
     assert.doesNotMatch(helpers, /profiles\.player_id/);
-    assert.doesNotMatch(helpers, /CREATE OR REPLACE FUNCTION public\.coaching_04_.*player_id/i);
-    assert.match(helpersRaw, /INTENTIONALLY ABSENT/);
-    assert.match(helpersRaw, /COACHING_04_PLAYER_SELF_SCOPE_MAPPING_BLOCKED/);
+    assert.match(helpersRaw, /11_COACHING_04_PLAYER_SELF_SCOPE_HELPERS/);
   });
 
   test("additive RLS: assigned coach allowed patterns and negatives documented", () => {
@@ -171,7 +172,7 @@ describe("COACHING-04 assignment helpers and RLS SQL contracts", () => {
     }
     assert.match(matrix, /revoked|inactive/i);
     assert.match(matrix, /RPC-only|RPC only/i);
-    assert.match(matrix, /PLAYER.*BLOCKED|self-scope.*BLOCKED|blocked \/ N/i);
+    assert.match(matrix, /coaching\.self\.read|PLAYER self/);
   });
 
   test("scoped RPCs: fixed search_path, no PUBLIC/anon, actor = auth.uid", () => {
@@ -204,7 +205,7 @@ describe("COACHING-04 assignment helpers and RLS SQL contracts", () => {
 });
 
 describe("COACHING-04 permissions proposal", () => {
-  test("scoped catalog complete; no broad records.read for COACH; no PLAYER grants", () => {
+  test("scoped catalog complete; no broad records.read for COACH; PLAYER self.read only", () => {
     const proposalRaw = readPack(
       "40_COACHING_04_PERMISSION_SEED_AND_GRANTS.proposal.sql"
     );
@@ -215,30 +216,31 @@ describe("COACHING-04 permissions proposal", () => {
     assert.deepEqual([...COACHING_04_SCOPED_PERMISSION_IDS], SCOPED_PERMS);
     assert.deepEqual([...COACHING_04_ASSIGNED_PERMISSION_VALUES], SCOPED_PERMS);
     assert.match(proposal, /role_id = 'COACH'|SELECT 'COACH'/);
+    assert.match(proposal, /coaching\.self\.read/);
+    assert.match(proposal, /role_id = 'PLAYER'|SELECT 'PLAYER'/);
     assert.doesNotMatch(
       proposal,
       /INSERT INTO public\.role_permissions[\s\S]*coaching\.records\.read[\s\S]*COACH/
     );
-    assert.doesNotMatch(proposal, /role_id = 'PLAYER'|SELECT 'PLAYER'/);
-    assert.match(proposalRaw, /COACHING_04_PLAYER_SELF_SCOPE_MAPPING_BLOCKED/);
+    assert.match(proposalRaw, /COACHING_04_OWNER_GO_APPLY_STAGING|AUTHORED ONLY/);
   });
 
-  test("proposal and rollback synchronized on five permissions", () => {
+  test("proposal and rollback synchronized on assigned + self permissions", () => {
     const proposal = readPack("40_COACHING_04_PERMISSION_SEED_AND_GRANTS.proposal.sql");
     const rollback = readPack("90_COACHING_04_ROLLBACK.sql");
-    for (const perm of SCOPED_PERMS) {
+    for (const perm of [...SCOPED_PERMS, "coaching.self.read"]) {
       assert.match(proposal, new RegExp(perm.replace(/\./g, "\\.")));
       assert.match(rollback, new RegExp(perm.replace(/\./g, "\\.")));
     }
   });
 
-  test("canonical 14 admin actions unchanged; assigned actions additive", () => {
+  test("canonical 14 admin actions unchanged; assigned + self actions additive", () => {
     assert.equal(COACHING_ACTION_VALUES.length, 14);
     assert.equal(COACHING_IDENTITY_PERMISSION_VALUES.length, 14);
     assert.equal(COACHING_04_ASSIGNED_ACTION_VALUES.length, 5);
     assert.ok(isCoachingAction(COACHING_ACTIONS.RECORDS_READ));
     assert.ok(isCoachingAction(COACHING_04_ASSIGNED_ACTIONS.ASSIGNED_READ));
-    assert.equal(COACHING_PERMISSION_MANIFEST.playerSelfScopeBlocked, true);
+    assert.equal(COACHING_PERMISSION_MANIFEST.playerSelfScopeBlocked, false);
     assert.equal(
       COACHING_PERMISSION_MANIFEST.coaching04.playerSelfScopeStatus,
       COACHING_04_PLAYER_SELF_SCOPE_STATUS
@@ -457,24 +459,24 @@ describe("COACHING-04 localStorage retirement design", () => {
 });
 
 describe("COACHING-04 PLAYER self-scope contract", () => {
-  test("status constant and proposal absence of PLAYER grants", () => {
+  test("status constant and PLAYER self.read grant authored", () => {
     assert.equal(
       COACHING_04_PLAYER_SELF_SCOPE_STATUS,
-      "COACHING_04_PLAYER_SELF_SCOPE_MAPPING_BLOCKED"
+      "COACHING_04_PLAYER_SELF_SCOPE_AUTHORED_AWAITING_STAGING_GO"
     );
-    const helpers = readPack("10_COACHING_04_ASSIGNMENT_HELPERS.sql");
+    const helpers = readPack("11_COACHING_04_PLAYER_SELF_SCOPE_HELPERS.sql");
     const proposal = readPack(
       "40_COACHING_04_PERMISSION_SEED_AND_GRANTS.proposal.sql"
     );
-    assert.match(helpers, /COACHING_04_PLAYER_SELF_SCOPE_MAPPING_BLOCKED/);
-    assert.match(proposal, /COACHING_04_PLAYER_SELF_SCOPE_MAPPING_BLOCKED/);
-    assert.doesNotMatch(
+    assert.match(helpers, /player_identity_resolve_mapping/);
+    assert.match(proposal, /coaching\.self\.read/);
+    assert.match(
       stripSqlComments(proposal),
       /INSERT INTO public\.role_permissions[\s\S]{0,200}PLAYER/
     );
   });
 
-  test("blocker certification exists and forbids invented helpers/grants", () => {
+  test("historical blocker certification retained; player helpers now authored", () => {
     const cert = readPack(
       "06_COACHING_04_PLAYER_SELF_SCOPE_MAPPING_BLOCKER_CERTIFICATION.md"
     );
@@ -485,24 +487,15 @@ describe("COACHING-04 PLAYER self-scope contract", () => {
     );
     assert.match(
       mapping,
-      /COACHING_04_PLAYER_SELF_SCOPE_MAPPING_BLOCKED_NO_STAGING_GO/
+      /COACHING_04_PLAYER_SELF_SCOPE_AUTHORED_AWAITING_STAGING_GO/
     );
     assert.match(cert, /profiles\.player_id/);
-    assert.match(cert, /team_tournament_user_player_id/);
-    assert.match(cert, /resolveByAuthUser/);
-    assert.match(cert, /Rating V5/);
     assert.match(cert, /Acceptance criteria to unblock/i);
-    assert.match(cert, /Player Management/i);
-    assert.match(cert, /Identity/i);
 
-    const helpers = readPack("10_COACHING_04_ASSIGNMENT_HELPERS.sql");
-    assert.doesNotMatch(
+    const helpers = readPack("11_COACHING_04_PLAYER_SELF_SCOPE_HELPERS.sql");
+    assert.match(
       helpers,
       /CREATE OR REPLACE FUNCTION public\.coaching_04_mapped_player_id/
-    );
-    assert.doesNotMatch(
-      helpers,
-      /CREATE OR REPLACE FUNCTION public\.coaching_04_player_self_id/
     );
   });
 
@@ -516,8 +509,7 @@ describe("COACHING-04 PLAYER self-scope contract", () => {
     assert.equal(safety.ok, true, safety.errors.join(" | "));
     assert.match(sql, /BEGIN TRANSACTION READ ONLY/);
     assert.match(sql, /ROLLBACK/);
-    assert.match(sql, /profiles/);
-    assert.match(sql, /team_tournament_user_player_id/);
+    assert.match(sql, /player_identity_resolve_mapping|player_identity_links/);
     assert.match(sql, /coaching_04_mapped_player_id/);
     assert.doesNotMatch(sql, /\bINSERT\b|\bUPDATE\b|\bDELETE\b|\bCREATE TABLE\b/i);
   });

@@ -40,6 +40,17 @@ export const COACHING_04_ASSIGNED_ACTION_VALUES = Object.freeze(
 );
 
 /**
+ * COACHING-04 PLAYER self-scope actions (additive — read-only).
+ */
+export const COACHING_04_PLAYER_SELF_ACTIONS = Object.freeze({
+  SELF_READ: "coaching.self.read",
+});
+
+export const COACHING_04_PLAYER_SELF_ACTION_VALUES = Object.freeze(
+  Object.values(COACHING_04_PLAYER_SELF_ACTIONS)
+);
+
+/**
  * @param {string} action
  * @returns {boolean}
  */
@@ -47,6 +58,7 @@ export function isCoachingAction(action) {
   const value = String(action || "");
   return (
     COACHING_ACTION_VALUES.includes(value) ||
-    COACHING_04_ASSIGNED_ACTION_VALUES.includes(value)
+    COACHING_04_ASSIGNED_ACTION_VALUES.includes(value) ||
+    COACHING_04_PLAYER_SELF_ACTION_VALUES.includes(value)
   );
 }

@@ -35,9 +35,11 @@ export {
   LOCALSTORAGE_RETIRED,
   COACHING_04_PHASE,
   COACHING_04_SCOPED_PERMISSION_IDS,
+  COACHING_04_PLAYER_SELF_PERMISSION_IDS,
   COACHING_04_PLAYER_SELF_SCOPE_STATUS,
   COACHING_UI_COLLECTIONS,
   COACHING_RUNTIME_ERROR_CODES,
+  COACHING_PLAYER_SCOPE_STATE,
   createCoachingRuntimeError,
   createCoachingRuntime,
   createLegacyCoachingAdapter,
@@ -49,6 +51,10 @@ export {
   classifyLegacyStore,
   buildRetirementPlan,
   assertRetirementNotActivated,
+  resolveCoachingPlayerSelfScope,
+  classifyCoachingDurableCollectionResult,
+  assertCoachingPlayerDurableWriteAllowed,
+  getCoachingLegacyIsolationContract,
 } from "./runtime/index.js";
 // useCoachingCollection — import from ./runtime (keeps React out of Node barrel tests).
 // COACHING_LEGACY_STORAGE_KEY_PREFIX comes from coachingService (COMPATIBILITY_ONLY).

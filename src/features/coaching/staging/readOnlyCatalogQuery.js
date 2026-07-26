@@ -374,8 +374,8 @@ export function isCoaching04ReadOnlyCatalogProbe(sql) {
 
 /**
  * COACHING-04 — PLAYER principal→player_id mapping catalog probe (read-only).
+ * Verifies PM-ID-01 dependency presence + collision checks for proposed coaching_04_* names.
  * Catalog/schema/signature/counts only. No PII row content. No writes.
- * Used to prove absence of Coaching-usable SQL mapping SoT on Staging.
  * @returns {string}
  */
 export function buildCoaching04PlayerMappingProbeSql() {
@@ -391,104 +391,69 @@ SELECT
   current_setting('transaction_read_only', true) AS transaction_read_only;
 
 SELECT
-  to_regclass('public.profiles') IS NOT NULL AS profiles_present,
-  to_regclass('public.club_members') IS NOT NULL AS club_members_present,
-  to_regclass('public.athletes') IS NOT NULL AS athletes_present,
+  to_regclass('public.player_identity_links') IS NOT NULL AS player_identity_links_present,
   to_regclass('public.permissions') IS NOT NULL AS permissions_present,
-  to_regclass('public.role_permissions') IS NOT NULL AS role_permissions_present;
+  to_regclass('public.role_permissions') IS NOT NULL AS role_permissions_present,
+  to_regclass('public.roles') IS NOT NULL AS roles_present;
 
 SELECT
-  a.attname AS column_name,
-  format_type(a.atttypid, a.atttypmod) AS data_type,
-  a.attnotnull AS not_null
-FROM pg_attribute a
-JOIN pg_class c ON c.oid = a.attrelid
-JOIN pg_namespace n ON n.oid = c.relnamespace
-WHERE n.nspname = 'public'
-  AND c.relname = 'profiles'
-  AND a.attnum > 0
-  AND NOT a.attisdropped
-  AND a.attname IN (
-    'id',
-    'player_id',
-    'status',
-    'venue_id',
-    'club_id'
-  )
-ORDER BY a.attname;
-
-SELECT
-  i.relname AS index_name,
-  ix.indisunique AS is_unique,
-  pg_get_indexdef(ix.indexrelid) AS index_def
-FROM pg_index ix
-JOIN pg_class t ON t.oid = ix.indrelid
-JOIN pg_class i ON i.oid = ix.indexrelid
-JOIN pg_namespace n ON n.oid = t.relnamespace
-WHERE n.nspname = 'public'
-  AND t.relname = 'profiles'
-  AND pg_get_indexdef(ix.indexrelid) ILIKE '%player_id%'
-ORDER BY i.relname;
-
-SELECT
-  a.attname AS column_name,
-  format_type(a.atttypid, a.atttypmod) AS data_type
-FROM pg_attribute a
-JOIN pg_class c ON c.oid = a.attrelid
-JOIN pg_namespace n ON n.oid = c.relnamespace
-WHERE n.nspname = 'public'
-  AND c.relname = 'club_members'
-  AND a.attnum > 0
-  AND NOT a.attisdropped
-  AND a.attname IN (
-    'user_id',
-    'club_id',
-    'athlete_id',
-    'player_id',
-    'status',
-    'tenant_id'
-  )
-ORDER BY a.attname;
-
-SELECT
-  a.attname AS column_name,
-  format_type(a.atttypid, a.atttypmod) AS data_type
-FROM pg_attribute a
-JOIN pg_class c ON c.oid = a.attrelid
-JOIN pg_namespace n ON n.oid = c.relnamespace
-WHERE n.nspname = 'public'
-  AND c.relname = 'athletes'
-  AND a.attnum > 0
-  AND NOT a.attisdropped
-  AND a.attname IN (
-    'id',
-    'user_id',
-    'player_id',
-    'tenant_id',
-    'status'
-  )
-ORDER BY a.attname;
+  CASE
+    WHEN to_regclass('public.player_identity_links') IS NULL THEN -1
+    ELSE (SELECT count(*)::int FROM public.player_identity_links)
+  END AS player_identity_links_row_count;
 
 SELECT
   p.proname AS function_name,
   pg_get_function_identity_arguments(p.oid) AS identity_args,
-  p.prosecdef AS security_definer
+  p.prosecdef AS security_definer,
+  p.proconfig
 FROM pg_proc p
 JOIN pg_namespace n ON n.oid = p.pronamespace
 WHERE n.nspname = 'public'
   AND p.proname IN (
-    'team_tournament_user_player_id',
+    'player_identity_resolve_mapping',
+    'player_identity_is_mapped',
     'user_venue_id',
     'user_club_id',
     'user_has_permission',
     'is_super_admin',
+    'coaching_02_scope_allows',
+    'coaching_02_has_action',
     'coaching_04_mapped_player_id',
-    'coaching_04_actor_is_player',
-    'coaching_04_player_self_id',
-    'coaching_04_resolve_player_id',
-    'resolve_canonical_player_id'
+    'coaching_04_player_is_self',
+    'coaching_04_player_identity_is_mapped',
+    'coaching_04_has_self_action',
+    'coaching_04_player_can_access_enrollment'
   )
 ORDER BY p.proname, identity_args;
+
+SELECT
+  p.proname AS collision_candidate
+FROM pg_proc p
+JOIN pg_namespace n ON n.oid = p.pronamespace
+WHERE n.nspname = 'public'
+  AND (
+    p.proname LIKE 'coaching_04_player_%'
+    OR p.proname IN (
+      'coaching_04_mapped_player_id',
+      'coaching_04_has_self_action',
+      'resolve_canonical_player_id'
+    )
+  )
+ORDER BY p.proname;
+
+SELECT
+  pol.polname AS policy_name,
+  c.relname AS table_name
+FROM pg_policy pol
+JOIN pg_class c ON c.oid = pol.polrelid
+JOIN pg_namespace n ON n.oid = c.relnamespace
+WHERE n.nspname = 'public'
+  AND (
+    pol.polname LIKE 'coaching_04_player_%'
+    OR pol.polname LIKE 'coaching_04_%'
+  )
+ORDER BY c.relname, pol.polname;
 
 SELECT
   CASE
@@ -515,23 +480,29 @@ SELECT
 
 SELECT
   CASE
-    WHEN to_regclass('public.profiles') IS NULL THEN -1
+    WHEN to_regclass('public.roles') IS NULL THEN -1
     ELSE (
       SELECT count(*)::int
-      FROM public.profiles
-      WHERE player_id IS NOT NULL
-        AND length(trim(player_id)) > 0
+      FROM public.roles
+      WHERE id IN ('PLAYER', 'COACH')
     )
-  END AS profiles_with_nonempty_player_id_alias_count;
+  END AS required_roles_present_count;
+
+SELECT
+  c.relname AS coaching_table,
+  c.relrowsecurity AS rls_enabled,
+  c.relforcerowsecurity AS rls_forced
+FROM pg_class c
+JOIN pg_namespace n ON n.oid = c.relnamespace
+WHERE n.nspname = 'public'
+  AND c.relkind = 'r'
+  AND c.relname LIKE 'coaching_%'
+ORDER BY c.relname;
 
 ROLLBACK;
 `.trim();
 }
 
-/**
- * @param {string} sql
- * @returns {boolean}
- */
 export function isCoaching04PlayerMappingProbe(sql) {
   return assertCatalogQueryReadOnly(sql).ok;
 }

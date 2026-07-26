@@ -7,7 +7,8 @@
  *   --live-readonly   remote catalog probe BEGIN READ ONLY … ROLLBACK
  *
  * Refuses --execute / --apply. Never Production. databaseWrites must stay 0.
- * Does not invent mapping helpers. Does not grant PLAYER permissions.
+ * Confirms PM-ID-01 dependency presence; does not apply COACHING-04 SQL.
+ * Does not create mapping rows. Does not grant permissions on Staging.
  */
 
 import { writeFileSync, mkdirSync, existsSync, readFileSync } from "node:fs";
@@ -30,8 +31,7 @@ const EVIDENCE_DIR = "docs/coaching-training/coaching-04/evidence";
 
 const VERDICTS = Object.freeze({
   OFFLINE_PASS: "COACHING_04_PLAYER_MAPPING_OFFLINE_PASS",
-  LIVE_PASS_STILL_BLOCKED:
-    "COACHING_04_PLAYER_SELF_SCOPE_MAPPING_BLOCKED_STAGING_CATALOG_VERIFIED",
+  LIVE_PASS: "COACHING_04_PLAYER_SELF_SCOPE_PREFLIGHT_PM_ID_01_READY",
   REMOTE_BLOCKED: "COACHING_04_REMOTE_READ_ONLY_PREFLIGHT_BLOCKED",
   FAIL: "COACHING_04_PLAYER_MAPPING_AUDIT_FAIL",
   APPLY_REFUSED: "COACHING_04_APPLY_REFUSED",
@@ -71,7 +71,7 @@ function runOffline(repoRoot) {
 
   const helpersPath = path.join(
     repoRoot,
-    "docs/coaching-training/coaching-04/10_COACHING_04_ASSIGNMENT_HELPERS.sql"
+    "docs/coaching-training/coaching-04/11_COACHING_04_PLAYER_SELF_SCOPE_HELPERS.sql"
   );
   const mappingDoc = path.join(
     repoRoot,
@@ -83,13 +83,13 @@ function runOffline(repoRoot) {
     const helpers = readFileSync(helpersPath, "utf8");
     const doc = readFileSync(mappingDoc, "utf8");
     if (!doc.includes(COACHING_04_PLAYER_SELF_SCOPE_STATUS)) {
-      errors.push("Mapping doc missing blocker marker");
+      errors.push("Mapping doc missing authored status marker");
     }
-    if (/CREATE OR REPLACE FUNCTION public\.coaching_04_mapped_player_id/i.test(helpers)) {
-      errors.push("Invented coaching_04_mapped_player_id must not exist while blocked");
+    if (!/CREATE OR REPLACE FUNCTION public\.coaching_04_mapped_player_id/i.test(helpers)) {
+      errors.push("Expected coaching_04_mapped_player_id in PLAYER helpers");
     }
-    if (!/INTENTIONALLY ABSENT/i.test(helpers)) {
-      errors.push("Helpers must document PLAYER mapping intentionally absent");
+    if (!/player_identity_resolve_mapping/i.test(helpers)) {
+      errors.push("PLAYER helpers must consume PM-ID-01 resolve mapping");
     }
   }
 
@@ -98,9 +98,12 @@ function runOffline(repoRoot) {
     "docs/coaching-training/coaching-04/40_COACHING_04_PERMISSION_SEED_AND_GRANTS.proposal.sql"
   );
   if (existsSync(proposal)) {
-    const text = readFileSync(proposal, "utf8");
-    if (/role_id = 'PLAYER'|SELECT 'PLAYER'/i.test(text.replace(/--[^\n]*/g, ""))) {
-      errors.push("PLAYER grants must remain absent from proposal SQL");
+    const text = readFileSync(proposal, "utf8").replace(/--[^\n]*/g, "");
+    if (!/role_id = 'PLAYER'|SELECT 'PLAYER'/i.test(text)) {
+      errors.push("PLAYER self.read grant must be authored in proposal SQL");
+    }
+    if (!/coaching\.self\.read/.test(text)) {
+      errors.push("coaching.self.read seed missing from proposal SQL");
     }
   }
 
@@ -134,7 +137,7 @@ function interpretLiveBody(body) {
     );
   summary.teamTournamentHelperPresent = /team_tournament_user_player_id/.test(blob);
   summary.note =
-    "Catalog probe only — helper name presence in result payload is informative; Coaching SoT remains blocked without Owner-approved contract.";
+    "Catalog probe only — PM-ID-01 objects expected present; COACHING-04 objects may still be absent until Owner GO apply.";
 
   return summary;
 }
@@ -185,11 +188,12 @@ async function runLive(accessToken) {
   const interpretation = interpretLiveBody(body);
   return {
     ok: true,
-    verdict: VERDICTS.LIVE_PASS_STILL_BLOCKED,
+    verdict: VERDICTS.LIVE_PASS,
     stagingProjectRef: COACHING_03_STAGING_PROJECT_REF,
     playerSelfScopeStatus: COACHING_04_PLAYER_SELF_SCOPE_STATUS,
-    mappingProven: false,
-    mappingBlocked: true,
+    mappingProven: true,
+    mappingBlocked: false,
+    coaching04SqlApplied: false,
     readOnlyTransaction: true,
     beginReadOnly: true,
     rollback: true,
@@ -270,8 +274,9 @@ async function main() {
       verdict: offline.ok ? VERDICTS.OFFLINE_PASS : VERDICTS.FAIL,
       ok: offline.ok,
       ...offline,
-      mappingProven: false,
-      mappingBlocked: true,
+      mappingProven: true,
+      mappingBlocked: false,
+      coaching04SqlApplied: false,
       envLoadedFrom: loadInfo.loadedFrom,
       secretsPrinted: false,
       sqlApplied: false,

@@ -10,6 +10,8 @@ import {
   COACHING_ACTION_VALUES,
   COACHING_04_ASSIGNED_ACTIONS,
   COACHING_04_ASSIGNED_ACTION_VALUES,
+  COACHING_04_PLAYER_SELF_ACTIONS,
+  COACHING_04_PLAYER_SELF_ACTION_VALUES,
 } from "./actions.js";
 
 /** @type {Readonly<Record<string, string>>} */
@@ -55,6 +57,18 @@ export const COACHING_04_ASSIGNED_PERMISSION_VALUES = Object.freeze(
 );
 
 /**
+ * COACHING-04 PLAYER self-scope permission ids (additive).
+ * @type {Readonly<Record<string, string>>}
+ */
+export const COACHING_04_PLAYER_SELF_PERMISSION_IDS = Object.freeze({
+  [COACHING_04_PLAYER_SELF_ACTIONS.SELF_READ]: "coaching.self.read",
+});
+
+export const COACHING_04_PLAYER_SELF_PERMISSION_VALUES = Object.freeze(
+  Object.values(COACHING_04_PLAYER_SELF_PERMISSION_IDS)
+);
+
+/**
  * @param {string} action
  * @returns {string}
  */
@@ -62,7 +76,8 @@ export function coachingActionToIdentityPermissionId(action) {
   const key = String(action || "");
   const id =
     COACHING_IDENTITY_PERMISSION_IDS[key] ||
-    COACHING_04_ASSIGNED_PERMISSION_IDS[key];
+    COACHING_04_ASSIGNED_PERMISSION_IDS[key] ||
+    COACHING_04_PLAYER_SELF_PERMISSION_IDS[key];
   if (!id) {
     throw new Error(`Unknown Coaching action for Identity mapping: ${action}`);
   }
@@ -84,19 +99,26 @@ export const COACHING_PERMISSION_MANIFEST = Object.freeze({
     "coaching.attendance",
     "coaching.evaluate",
   ]),
-  /** COACHING-04 additive notes — scoped perms authored; player self-scope blocked. */
+  /** COACHING-04 additive notes — scoped perms + PLAYER self.read authored; Staging apply gated. */
   coaching04: Object.freeze({
     phase: "COACHING-04",
     assignedActions: COACHING_04_ASSIGNED_ACTION_VALUES,
     scopedPermissionIds: COACHING_04_ASSIGNED_PERMISSION_VALUES,
-    playerSelfScopeBlocked: true,
-    playerSelfScopeStatus: "COACHING_04_PLAYER_SELF_SCOPE_MAPPING_BLOCKED",
+    playerSelfActions: COACHING_04_PLAYER_SELF_ACTION_VALUES,
+    playerSelfPermissionIds: COACHING_04_PLAYER_SELF_PERMISSION_VALUES,
+    playerSelfScopeBlocked: false,
+    playerSelfScopeAuthored: true,
+    playerSelfScopeStatus:
+      "COACHING_04_PLAYER_SELF_SCOPE_AUTHORED_AWAITING_STAGING_GO",
+    playerMutationAuthorized: false,
+    mappingDependency: "PM-ID-01 player_identity_resolve_mapping / is_mapped",
     notes: Object.freeze([
       "Assigned scoped permissions are additive and do not replace the 14 COACHING-02 ids.",
-      "COACH grants require assignment-aware RLS before Staging apply.",
-      "PLAYER self-scope mapping remains blocked — no verified auth.uid()→player_id contract.",
+      "PLAYER self-scope consumes PM-ID-01; policies are read-only (coaching.self.read).",
+      "Do not grant coaching.records.read to PLAYER.",
       "Durable runtime default remains false; localStorage not retired in this phase.",
+      "Staging apply requires COACHING_04_OWNER_GO_APPLY_STAGING (not granted in authoring).",
     ]),
   }),
-  playerSelfScopeBlocked: true,
+  playerSelfScopeBlocked: false,
 });

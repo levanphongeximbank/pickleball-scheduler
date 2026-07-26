@@ -50,11 +50,14 @@ const REQUIRED_PACK = [
   "04_COACHING_04_LOCALSTORAGE_RETIREMENT_PLAN.md",
   "05_COACHING_04_ACCESS_MATRIX.md",
   "10_COACHING_04_ASSIGNMENT_HELPERS.sql",
+  "11_COACHING_04_PLAYER_SELF_SCOPE_HELPERS.sql",
   "20_COACHING_04_ASSIGNMENT_RLS.sql",
+  "21_COACHING_04_PLAYER_SELF_SCOPE_RLS.sql",
   "30_COACHING_04_SCOPED_RPCS.sql",
   "40_COACHING_04_PERMISSION_SEED_AND_GRANTS.proposal.sql",
   "90_COACHING_04_ROLLBACK.sql",
   "99_COACHING_04_VERIFICATION.sql",
+  "sql-migration-manifest.json",
 ];
 
 function parseArgs(argv) {
@@ -100,7 +103,7 @@ function runOfflineStatic(repoRoot) {
       )
     : "";
   if (!playerDoc.includes(COACHING_04_PLAYER_SELF_SCOPE_STATUS)) {
-    errors.push("PLAYER self-scope blocker marker missing from docs");
+    errors.push("PLAYER self-scope status marker missing from docs");
   }
   if (COACHING_DURABLE_RUNTIME_DEFAULT !== false) {
     errors.push("COACHING_DURABLE_RUNTIME_DEFAULT must be false");

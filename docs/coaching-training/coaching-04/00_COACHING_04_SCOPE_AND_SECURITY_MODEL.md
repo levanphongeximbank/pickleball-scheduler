@@ -1,9 +1,11 @@
 # COACHING-04 — Scope & Security Model
 
-**Workstream:** COACHING-04 — Assignment-aware RLS, scoped RPCs, UI cutover plan, localStorage retirement plan  
-**Package path:** `docs/coaching-training/coaching-04/`  
-**Status:** AUTHORED ONLY — do not apply SQL; do not flip runtime defaults; do not retire localStorage  
-**Depends on:** COACHING-01 domain, COACHING-02 durable tables/RLS/RPCs (authored), COACHING-03 staging package (Owner GO separate)
+**Workstream:** COACHING-04 — Assignment-aware RLS, PLAYER self-scope, scoped RPCs, durable runtime cutover authoring
+**Package path:** `docs/coaching-training/coaching-04/`
+**Status:** AUTHORED ONLY — do not apply SQL; do not flip runtime defaults; do not retire localStorage
+**Depends on:** COACHING-01…03, **PM-ID-01 Staging-ready** (`player_identity_resolve_mapping` / `player_identity_is_mapped`)
+
+**Owner GO for Staging apply (not granted):** `COACHING_04_OWNER_GO_APPLY_STAGING`
 
 ---
 
@@ -12,44 +14,37 @@
 | Marker | Meaning in this pack |
 |--------|----------------------|
 | `COACHING_04_ASSIGNMENT_MODEL_PROVEN` | Coach JWT → `coach_principal_id` → active `coach_reference_id` binding is defined and enforceable |
-| `COACHING_04_PLAYER_SELF_SCOPE_MAPPING_BLOCKED` | No verified SoT maps `auth.uid()` → Coaching `player_id`; PLAYER grants/SQL helpers absent |
-| `COACHING_DURABLE_RUNTIME_DEFAULT=false` | Durable runtime remains off; UI stays on legacy LS unless an explicit mode is selected |
-| `LOCALSTORAGE_RETIRED=false` | Legacy store is not deleted/uploaded; retirement is plan-only |
-| `ADMIN_GRANTS_NOT_NARROWED` | COACHING-02 admin permission+scope policies remain; COACHING-04 policies are additive (OR) |
+| `COACHING_04_PLAYER_SELF_SCOPE_AUTHORED_AWAITING_STAGING_GO` | PLAYER self-scope SQL/runtime authored on PM-ID-01; Staging apply still Owner-gated |
+| `COACHING_04_PLAYER_SELF_SCOPE_MAPPING_BLOCKED` | **Historical** (pre PM-ID-01) — see `06_*` certification |
+| `COACHING_DURABLE_RUNTIME_DEFAULT=false` | Durable runtime remains off until separate activation GO |
+| `LOCALSTORAGE_RETIRED=false` | Legacy store is not deleted; retirement is plan-only |
+| `ADMIN_GRANTS_NOT_NARROWED` | COACHING-02 admin policies remain; COACHING-04 policies are additive (OR) |
 
 ---
 
-## In scope (this step)
+## In scope (this authoring step)
 
-1. Document assignment security model (coach identity, relationships, deny-on-revoke).
-2. Document PLAYER self-scope **block** with evidence and missing SoT.
-3. Author UI cutover plan (page → runtime modes; no silent fallback).
-4. Author localStorage retirement plan (export/discard; no silent upload/delete).
-5. Author access matrix for all 13 Coaching tables.
-6. Author **additive** SQL:
-   - assignment helpers (`10_*`)
-   - COACH scoped RLS policies (`20_*`)
-   - scoped mutation RPCs (`30_*`)
-   - COACH permission seed + grants proposal (`40_*`)
-   - rollback (`90_*`) and verification (`99_*`)
+1. Coach assignment model (helpers + RLS + RPCs) — retained from prior pack.
+2. PLAYER self-scope **authoring** consuming PM-ID-01 (helpers + SELECT RLS + `coaching.self.read`).
+3. Durable runtime integration / readiness contract (default still false).
+4. localStorage isolation + retirement plan (no deletion).
+5. Access matrix for all 13 Coaching tables.
+6. Deterministic SQL manifest, rollback (manual), verification (read-only), Staging read-only preflight.
 
 ---
 
-## Out of scope (this step)
+## Out of scope / forbidden
 
 | Item | Rule |
 |------|------|
-| Apply any SQL (local / Staging / Production) | Forbidden |
-| Modify `package.json` / lockfiles | Forbidden |
-| Modify COACHING-02 SQL objects in place | Forbidden — keep policies; add `coaching_04_*` |
-| Grant `coaching.records.read` to COACH | Forbidden (club-wide admin semantics) |
-| Seed / grant PLAYER Coaching permissions | Forbidden (`COACHING_04_PLAYER_SELF_SCOPE_MAPPING_BLOCKED`) |
-| Author `auth.uid()` → `player_id` mapping helpers | Forbidden — do not invent `profiles.player_id` reuse |
-| Flip `COACHING_DURABLE_RUNTIME_DEFAULT` to true | Forbidden |
+| Apply any SQL (local / Staging / Production) | Forbidden without `COACHING_04_OWNER_GO_APPLY_STAGING` |
+| Create mapping rows / backfill | Forbidden |
+| Flip `COACHING_DURABLE_RUNTIME_DEFAULT` to true | Forbidden in this PR |
 | Set `LOCALSTORAGE_RETIRED=true` / delete LS keys | Forbidden |
 | Silent durable↔legacy fallback | Forbidden |
-| Narrow admin COACHING-02 grants/policies | Forbidden |
-| Production deploy / Owner GO for apply | Separate process |
+| Grant `coaching.records.read` to COACH or PLAYER | Forbidden |
+| PLAYER mutation policies | Not authorized — read-only self-scope only |
+| Production deploy / merge as apply authority | Forbidden |
 
 ---
 
@@ -57,53 +52,30 @@
 
 ### Actors
 
-| Actor | JWT | Coaching binding |
-|-------|-----|------------------|
-| Admin (venue/club managers, owners, super admin) | `auth.uid()` + `user_venue_id()` / `user_club_id()` | COACHING-02 policies: permission + tenant/club scope (`coaching.records.read` and admin mutate actions) |
-| COACH | `auth.uid()` is JWT actor | Active `coaching_coach_references` row where `coach_principal_id = auth.uid()::text` and tenant/club match JWT venue/club |
-| PLAYER | `auth.uid()` | **No proven map to `player_id`** → no PLAYER policies/grants this step |
+| Actor | Binding |
+|-------|---------|
+| Admin | COACHING-02 permission + tenant/club scope |
+| COACH | Active `coach_reference_id` where `coach_principal_id = auth.uid()::text` + assignment relationships + `coaching.assigned.*` |
+| PLAYER | PM-ID-01 `MAPPED` canonical `player_id` for JWT venue/club + `coaching.self.read` — **own rows only** |
+| SUPER_ADMIN | Reuses `coaching_02_has_action` / Identity permission system (no ad-hoc bypass) |
 
-### Assignment
+### PLAYER self-scope rules
 
-- Source of truth: `coaching_coach_player_relationships`
-- `status = active` → assigned access allowed (with permission)
-- `status = inactive` → **revoked**; deny immediately on subsequent reads/mutations
-- Sessions bind coaches via `coach_reference_id`
-- Attendance / evaluations / entitlements / usage bind players via `player_id`
+1. Principal always from `auth.uid()` (via PM-ID-01).
+2. No caller-supplied `principal_id` / `player_id` identity.
+3. Mapping must be MAPPED + ACTIVE membership + correct tenant/club.
+4. UNMAPPED / INACTIVE / AMBIGUOUS / INVALID → fail closed.
+5. No expansion to other players in the same club.
 
 ### Permission convention
 
-Canonical ids: `coaching.<resource>.<verb>` in `public.permissions` with `module = 'coaching'`.
-
-New COACHING-04 actions (proposal only):
-
-- `coaching.assigned.read`
-- `coaching.assigned.session.schedule`
-- `coaching.assigned.attendance.record`
-- `coaching.assigned.evaluation.submit`
-- `coaching.assigned.entitlement.consume`
-
-Admin keeps existing COACHING-02 catalog actions. COACH must **not** receive `coaching.records.read`.
+- COACH: `coaching.assigned.*` (five ids)
+- PLAYER: `coaching.self.read` only
+- Admin: existing COACHING-02 catalog
 
 ### RLS composition
 
-Postgres ORs policies of the same command. COACHING-04 adds `coaching_04_*` policies alongside COACHING-02 policies. Admin paths are unchanged. Coach paths require assignment helpers + assigned permissions. Fail-closed: no actor, no venue/club, no active coach ref, no assignment, missing permission → deny. No `USING (true)` / `WITH CHECK (true)`. No anon policies. No client DELETE on append-only / canonical history tables.
-
-### Actor integrity on RPCs
-
-Scoped RPCs always set `actor_id = auth.uid()::text`. Client-supplied actor ids are rejected / not accepted.
-
----
-
-## Safety constraints
-
-1. Fail-closed helpers and policies.
-2. Fixed `search_path = public, pg_temp` on SECURITY DEFINER functions.
-3. `REVOKE ALL … FROM PUBLIC` (+ anon where applicable); `GRANT EXECUTE` to `authenticated` only for intended helpers/RPCs.
-4. Entitlement consume remains RPC-only for coaches (no direct UPDATE policy).
-5. Inactive relationship or inactive coach reference → immediate deny.
-6. Do not claim PLAYER self-read is complete.
-7. Do not claim durable UI runtime is default.
+Postgres ORs policies. Additive names: `coaching_04_*` (coach) and `coaching_04_player_*` (player). No `USING (true)` / `WITH CHECK (true)`. No anon. No client DELETE.
 
 ---
 
@@ -111,25 +83,29 @@ Scoped RPCs always set `actor_id = auth.uid()::text`. Client-supplied actor ids 
 
 | File | Purpose |
 |------|---------|
-| [00_COACHING_04_SCOPE_AND_SECURITY_MODEL.md](./00_COACHING_04_SCOPE_AND_SECURITY_MODEL.md) | This document — scope, gates, verdicts |
-| [01_COACHING_04_ASSIGNMENT_MAPPING.md](./01_COACHING_04_ASSIGNMENT_MAPPING.md) | Coach identity + assignment lifecycle |
-| [02_COACHING_04_PLAYER_SELF_SCOPE_MAPPING.md](./02_COACHING_04_PLAYER_SELF_SCOPE_MAPPING.md) | PLAYER mapping blocked |
-| [03_COACHING_04_UI_CUTOVER_PLAN.md](./03_COACHING_04_UI_CUTOVER_PLAN.md) | 10-page consumer graph + runtime modes |
-| [04_COACHING_04_LOCALSTORAGE_RETIREMENT_PLAN.md](./04_COACHING_04_LOCALSTORAGE_RETIREMENT_PLAN.md) | LS schema, risks, export/discard |
-| [05_COACHING_04_ACCESS_MATRIX.md](./05_COACHING_04_ACCESS_MATRIX.md) | 13-table access matrix |
-| [10_COACHING_04_ASSIGNMENT_HELPERS.sql](./10_COACHING_04_ASSIGNMENT_HELPERS.sql) | SECURITY DEFINER assignment helpers |
-| [20_COACHING_04_ASSIGNMENT_RLS.sql](./20_COACHING_04_ASSIGNMENT_RLS.sql) | Additive `coaching_04_*` policies |
-| [30_COACHING_04_SCOPED_RPCS.sql](./30_COACHING_04_SCOPED_RPCS.sql) | Assigned attendance / evaluation / consume RPCs |
-| [40_COACHING_04_PERMISSION_SEED_AND_GRANTS.proposal.sql](./40_COACHING_04_PERMISSION_SEED_AND_GRANTS.proposal.sql) | Seed + COACH grants (PROPOSAL) |
-| [90_COACHING_04_ROLLBACK.sql](./90_COACHING_04_ROLLBACK.sql) | Drop only COACHING-04 objects |
-| [99_COACHING_04_VERIFICATION.sql](./99_COACHING_04_VERIFICATION.sql) | Read-only verification queries |
+| `00_…` | This document |
+| `01_…` | Coach assignment mapping |
+| `02_…` | PLAYER self-scope mapping (PM-ID-01 consumer) |
+| `03_…` | UI cutover plan |
+| `04_…` | localStorage retirement plan |
+| `05_…` | Access matrix |
+| `06_…` | Historical blocker certification |
+| `10_…` | Coach assignment helpers |
+| `11_…` | PLAYER self-scope helpers |
+| `20_…` | Coach assignment RLS |
+| `21_…` | PLAYER self-scope RLS |
+| `30_…` | Coach scoped RPCs |
+| `40_…` | Permission seed + grants (PROPOSAL) |
+| `90_…` | Rollback (manual only) |
+| `99_…` | Verification (read-only) |
+| `sql-migration-manifest.json` | Deterministic forward order |
 
 ---
 
-## Entry conditions before any apply (future Owner gate)
+## Entry conditions before Staging apply (future Owner gate)
 
-1. COACHING-02 tables + helpers + base RLS present (or Staging certified under COACHING-03).
-2. Owner review of this pack, especially PLAYER block and COACH permission set.
-3. Explicit apply token / GO (not granted in this authoring step).
-4. Verification script pass on target environment.
-5. Runtime defaults still false until a separate cutover GO.
+1. PM-ID-01 Staging verified (done for mapping contract).
+2. COACHING-02 tables + helpers + base RLS present (or COACHING-03 certified).
+3. Owner grants `COACHING_04_OWNER_GO_APPLY_STAGING`.
+4. Forward apply per `sql-migration-manifest.json` (rollback never auto-run).
+5. Runtime default remains false until a **separate** durable activation GO.

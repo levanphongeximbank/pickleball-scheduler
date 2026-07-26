@@ -3,7 +3,7 @@
   "mode": "live-readonly",
   "environmentLabel": "staging",
   "offlineOk": true,
-  "playerSelfScopeStatus": "COACHING_04_PLAYER_SELF_SCOPE_MAPPING_BLOCKED",
+  "playerSelfScopeStatus": "COACHING_04_PLAYER_SELF_SCOPE_AUTHORED_AWAITING_STAGING_GO",
   "durableRuntimeDefault": false,
   "ok": true,
   "verdict": "COACHING_04_PREFLIGHT_PASS",

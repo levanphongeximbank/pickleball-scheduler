@@ -1,0 +1,111 @@
+{
+  "phase": "COACHING-04",
+  "description": "Deterministic forward order for COACHING-04 assignment-aware RLS + PLAYER self-scope durable cutover authoring. Does not execute SQL. Does not create mapping rows. Does not run backfill. Does not flip durable runtime default.",
+  "environmentTarget": "staging",
+  "stagingProjectRef": "qyewbxjsiiyufanzcjcq",
+  "stagingProjectRefAllowlist": ["qyewbxjsiiyufanzcjcq"],
+  "productionProjectRefBlocklist": ["expuvcohlcjzvrrauvud"],
+  "productionApplyApproved": false,
+  "executeSql": false,
+  "automaticRollback": false,
+  "backfillIncluded": false,
+  "mappingRowsCreated": false,
+  "roleGrantsIncluded": true,
+  "playerMutationPoliciesIncluded": false,
+  "durableRuntimeDefault": false,
+  "localStorageRetired": false,
+  "pmId01DependencyRequired": true,
+  "hashAlgorithm": "sha256-lf-normalized",
+  "aggregateSha256Forward": "662e70fbb3c76785d7910492284224df6bd04fa6a0ef358231f2ddccbc3386d4",
+  "combinedManifestHash": "85c0e85cd1d27764835d71657409394fc1a8902565bfcbd244528190bef0823b",
+  "applyOrderingLocked": true,
+  "forwardExecutionOrder": [
+    "docs/coaching-training/coaching-04/10_COACHING_04_ASSIGNMENT_HELPERS.sql",
+    "docs/coaching-training/coaching-04/11_COACHING_04_PLAYER_SELF_SCOPE_HELPERS.sql",
+    "docs/coaching-training/coaching-04/20_COACHING_04_ASSIGNMENT_RLS.sql",
+    "docs/coaching-training/coaching-04/21_COACHING_04_PLAYER_SELF_SCOPE_RLS.sql",
+    "docs/coaching-training/coaching-04/30_COACHING_04_SCOPED_RPCS.sql",
+    "docs/coaching-training/coaching-04/40_COACHING_04_PERMISSION_SEED_AND_GRANTS.proposal.sql"
+  ],
+  "postApplyVerificationOrder": [
+    "docs/coaching-training/coaching-04/99_COACHING_04_VERIFICATION.sql"
+  ],
+  "rollbackNotInForwardOrder": [
+    "docs/coaching-training/coaching-04/90_COACHING_04_ROLLBACK.sql"
+  ],
+  "transactionModel": {
+    "idealSingleTransaction": true,
+    "scriptedManagementApi": "per-file-checkpoint-stop-on-error",
+    "automaticRollback": false,
+    "notes": "Forward files 10→40 are PostgreSQL-transaction-compatible. 90 rollback is never auto-executed. PM-ID-01 helpers must already exist on target."
+  },
+  "ownerGoTokenRequired": "COACHING_04_OWNER_GO_APPLY_STAGING",
+  "migrations": [
+    {
+      "order": 10,
+      "classification": "forward",
+      "path": "docs/coaching-training/coaching-04/10_COACHING_04_ASSIGNMENT_HELPERS.sql",
+      "sha256": "200318e0c336a85a16f320ac5e5f9cb8985b65e4a7b265294476709bad9b8c9b",
+      "transactionSafe": true,
+      "checkpoint": "after-assignment-helpers"
+    },
+    {
+      "order": 11,
+      "classification": "forward",
+      "path": "docs/coaching-training/coaching-04/11_COACHING_04_PLAYER_SELF_SCOPE_HELPERS.sql",
+      "sha256": "1b7325236c2f8cac657b9586b86cb1527c18c0fec6b697974fd8249f00c6486a",
+      "transactionSafe": true,
+      "checkpoint": "after-player-self-scope-helpers",
+      "dependsOn": ["player_identity_resolve_mapping", "player_identity_is_mapped"]
+    },
+    {
+      "order": 20,
+      "classification": "forward",
+      "path": "docs/coaching-training/coaching-04/20_COACHING_04_ASSIGNMENT_RLS.sql",
+      "sha256": "4577fec9c9c9932f7b973b970f50588eb1d5248a4068ebd3e1f45506b4db0945",
+      "transactionSafe": true,
+      "checkpoint": "after-assignment-rls"
+    },
+    {
+      "order": 21,
+      "classification": "forward",
+      "path": "docs/coaching-training/coaching-04/21_COACHING_04_PLAYER_SELF_SCOPE_RLS.sql",
+      "sha256": "7481566c2b17ab3dd7f90eb47e7283d6f2ebb9553e3594049d4a5a6c241fd957",
+      "transactionSafe": true,
+      "checkpoint": "after-player-self-scope-rls"
+    },
+    {
+      "order": 30,
+      "classification": "forward",
+      "path": "docs/coaching-training/coaching-04/30_COACHING_04_SCOPED_RPCS.sql",
+      "sha256": "937c44a070a6ca063c3a368962551305856561a1bd8de7f3a675f120ba6a748a",
+      "transactionSafe": true,
+      "checkpoint": "after-scoped-rpcs"
+    },
+    {
+      "order": 40,
+      "classification": "forward",
+      "path": "docs/coaching-training/coaching-04/40_COACHING_04_PERMISSION_SEED_AND_GRANTS.proposal.sql",
+      "sha256": "303fffca79d4f16e3066579f916a7596355383a3ad5284a7c6167582f408e7dd",
+      "transactionSafe": true,
+      "checkpoint": "after-permission-seed-grants"
+    },
+    {
+      "order": 90,
+      "classification": "rollback",
+      "path": "docs/coaching-training/coaching-04/90_COACHING_04_ROLLBACK.sql",
+      "sha256": "feeac3a095227621de6217315d13ad8ae2b4a849dcf6147ca251eaea49eb9003",
+      "transactionSafe": true,
+      "autoExecute": false
+    },
+    {
+      "order": 99,
+      "classification": "verification",
+      "path": "docs/coaching-training/coaching-04/99_COACHING_04_VERIFICATION.sql",
+      "sha256": "4448f9719dc771264d2409e2262544240324bb49974d4f292b910a220be57168",
+      "transactionSafe": true,
+      "readOnly": true,
+      "checkpoint": "after-verification"
+    }
+  ]
+}

@@ -7,7 +7,7 @@
   "errors": [],
   "probeReadOnlyOk": true,
   "stagingProjectRef": "qyewbxjsiiyufanzcjcq",
-  "playerSelfScopeStatus": "COACHING_04_PLAYER_SELF_SCOPE_MAPPING_BLOCKED",
+  "playerSelfScopeStatus": "COACHING_04_PLAYER_SELF_SCOPE_AUTHORED_AWAITING_STAGING_GO",
   "durableRuntimeDefault": false,
   "localStorageRetired": false,
   "envLoadedFrom": ".env.staging-qa.local",
