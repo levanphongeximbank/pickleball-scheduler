@@ -246,6 +246,20 @@ export {
   classifyCrmPhase1hBMigrationPlan,
 } from "./staging/phase1hBGates.js";
 export {
+  CRM_PHASE_1H_B_ONE_TIME_AUTH_SCHEMA_VERSION,
+  CRM_PHASE_1H_B_ONE_TIME_OPERATION,
+  CRM_BM_FINAL_SAFETY_01_GRANT_REMEDIATION_OPERATION,
+  CRM_ONE_TIME_OPERATIONS,
+  CRM_PHASE_1H_B_ONE_TIME_AUTH_STATUS,
+  CRM_PHASE_1H_B_ONE_TIME_AUTH_VERDICTS,
+  CRM_PHASE_1H_B_ONE_TIME_AUTH_MAX_TTL_MS,
+  detectCrmPhase1hBNonMutationContext,
+  computeCrmPhase1hBMigrationPlanFingerprint,
+  buildCrmPhase1hBOneTimeAuthorization,
+  evaluateCrmPhase1hBOneTimeAuthorization,
+  consumeCrmPhase1hBOneTimeAuthorization,
+} from "./staging/phase1hBOneTimeAuthorization.js";
+export {
   loadCrmStagingMigrationManifest,
   verifyCrmStagingMigrationManifest,
   CRM_PRODUCTION_PROJECT_REF_BLOCKLIST,

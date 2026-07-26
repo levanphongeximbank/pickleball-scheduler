@@ -6,13 +6,15 @@
  * 2. Role matrix apply (optional — may defer)
  * 3. Phase 1G CRM persistence migration apply
  * 4. Staging backup/restore evidence (separate gate; never inferred)
+ * 5. Explicit one-time / non-replayable authorization (REQUIRED for write)
  *
- * Apply approvals (1–3 + umbrella) may be satisfied by:
- *   - matching CLI token ↔ env token, OR
- *   - documented Owner decision JSON (Staging-only limited approval)
+ * Apply approvals (1–3 + umbrella) are satisfied ONLY by matching
+ * CLI token ↔ env token. Committed Owner decision JSON is NEVER sufficient
+ * for mutation and cannot open the write path by itself.
  *
+ * Credentials and --apply-staging alone are also insufficient.
  * Backup is never satisfied by apply-approval docs alone.
- * Plus Staging identity, credentials, QA identity, and runtime safety gates.
+ * Audit / test / CI contexts fail closed before mutation connections.
  * Never prints secret values.
  */
 
@@ -27,6 +29,12 @@ import {
   getCrmPhase1hRepoRoot,
 } from "./migrationManifest.js";
 import { getCrmDefaultRuntimePersistenceMode } from "../persistence/runtimeCompositionGuard.js";
+import {
+  CRM_PHASE_1H_B_ONE_TIME_AUTH_VERDICTS,
+  computeCrmPhase1hBMigrationPlanFingerprint,
+  detectCrmPhase1hBNonMutationContext,
+  evaluateCrmPhase1hBOneTimeAuthorization,
+} from "./phase1hBOneTimeAuthorization.js";
 
 /** Allowed final verdicts for Phase 1H-B. */
 export const CRM_PHASE_1H_B_VERDICTS = Object.freeze({
@@ -36,6 +44,24 @@ export const CRM_PHASE_1H_B_VERDICTS = Object.freeze({
   BLOCKED_BACKUP_REQUIRED: "CRM_PHASE_1H_B_BLOCKED_BACKUP_REQUIRED",
   BLOCKED_CREDENTIALS_REQUIRED: "CRM_PHASE_1H_B_BLOCKED_CREDENTIALS_REQUIRED",
   BLOCKED_QA_IDENTITIES_REQUIRED: "CRM_PHASE_1H_B_BLOCKED_QA_IDENTITIES_REQUIRED",
+  BLOCKED_ONE_TIME_AUTHORIZATION_REQUIRED:
+    CRM_PHASE_1H_B_ONE_TIME_AUTH_VERDICTS.BLOCKED_ONE_TIME_AUTHORIZATION_REQUIRED,
+  BLOCKED_ONE_TIME_AUTHORIZATION_INVALID:
+    CRM_PHASE_1H_B_ONE_TIME_AUTH_VERDICTS.BLOCKED_ONE_TIME_AUTHORIZATION_INVALID,
+  BLOCKED_ONE_TIME_AUTHORIZATION_EXPIRED:
+    CRM_PHASE_1H_B_ONE_TIME_AUTH_VERDICTS.BLOCKED_ONE_TIME_AUTHORIZATION_EXPIRED,
+  BLOCKED_ONE_TIME_AUTHORIZATION_REPLAYED:
+    CRM_PHASE_1H_B_ONE_TIME_AUTH_VERDICTS.BLOCKED_ONE_TIME_AUTHORIZATION_REPLAYED,
+  BLOCKED_STALE_OWNER_DECISION:
+    CRM_PHASE_1H_B_ONE_TIME_AUTH_VERDICTS.BLOCKED_STALE_OWNER_DECISION,
+  BLOCKED_MIGRATION_FINGERPRINT_MISMATCH:
+    CRM_PHASE_1H_B_ONE_TIME_AUTH_VERDICTS.BLOCKED_MIGRATION_FINGERPRINT_MISMATCH,
+  BLOCKED_PROJECT_REF_MISMATCH:
+    CRM_PHASE_1H_B_ONE_TIME_AUTH_VERDICTS.BLOCKED_PROJECT_REF_MISMATCH,
+  BLOCKED_PRODUCTION_PROJECT_REF:
+    CRM_PHASE_1H_B_ONE_TIME_AUTH_VERDICTS.BLOCKED_PRODUCTION_PROJECT_REF,
+  BLOCKED_EXECUTION_CONTEXT:
+    CRM_PHASE_1H_B_ONE_TIME_AUTH_VERDICTS.BLOCKED_EXECUTION_CONTEXT,
   APPLY_FAILED: "CRM_PHASE_1H_B_APPLY_FAILED",
   QA_FAILED: "CRM_PHASE_1H_B_QA_FAILED",
   READY_FOR_COMMIT_REVIEW: "READY_FOR_PHASE_1H_B_COMMIT_REVIEW",
@@ -158,6 +184,11 @@ export function inspectSupabaseUrlIdentity(env = {}) {
  * Evaluate Owner apply-approval gates (permission seed / Phase 1G / umbrella / role matrix).
  * Backup is evaluated separately and is never satisfied by this gate alone.
  *
+ * IMPORTANT (BM-FINAL-SAFETY-01):
+ * Committed Owner decision JSON must NEVER satisfy these approvals for mutation.
+ * Only matching CLI ↔ env tokens satisfy approval gates. One-time authorization
+ * is a separate mandatory write gate.
+ *
  * @param {{
  *   env?: Record<string, string|undefined>,
  *   flags?: object,
@@ -175,13 +206,14 @@ export function evaluateCrmPhase1hBApprovalGates(options = {}) {
   const deferRoleMatrix =
     flags.deferRoleMatrix === true || decisionDefersRoleMatrix;
 
-  const permissionSeedApprovedByDecision =
+  // Decision flags are recorded for audit only — they do not approve mutation.
+  const decisionClaimsPermissionSeed =
     decision?.permissionSeedApplyApproved === true &&
     decision?.environmentTarget === "staging";
-  const phase1gApprovedByDecision =
+  const decisionClaimsPhase1g =
     decision?.phase1gPersistenceApplyApproved === true &&
     decision?.environmentTarget === "staging";
-  const ownerUmbrellaByDecision =
+  const decisionClaimsUmbrella =
     decision?.limitedStagingApplyUmbrellaApproved === true &&
     decision?.environmentTarget === "staging" &&
     decision?.productionApplyApproved !== true;
@@ -189,15 +221,13 @@ export function evaluateCrmPhase1hBApprovalGates(options = {}) {
   const permissionSeed = {
     gate: "permission_seed_apply",
     required: true,
-    approved:
-      permissionSeedApprovedByDecision ||
-      tokensMatch(
-        flags.permissionSeedApproval,
-        env[CRM_PHASE_1H_B_ENV_NAMES.PERMISSION_SEED_APPROVAL]
-      ),
-    source: permissionSeedApprovedByDecision
-      ? "owner_decision_document"
-      : "cli_env_token_match",
+    approved: tokensMatch(
+      flags.permissionSeedApproval,
+      env[CRM_PHASE_1H_B_ENV_NAMES.PERMISSION_SEED_APPROVAL]
+    ),
+    source: "cli_env_token_match",
+    committedDecisionInsufficient: true,
+    decisionClaimedApproval: decisionClaimsPermissionSeed,
     envName: CRM_PHASE_1H_B_ENV_NAMES.PERMISSION_SEED_APPROVAL,
     envSet: isEnvTokenPresent(
       env[CRM_PHASE_1H_B_ENV_NAMES.PERMISSION_SEED_APPROVAL]
@@ -208,15 +238,13 @@ export function evaluateCrmPhase1hBApprovalGates(options = {}) {
   const phase1g = {
     gate: "phase_1g_persistence_apply",
     required: true,
-    approved:
-      phase1gApprovedByDecision ||
-      tokensMatch(
-        flags.phase1gApplyApproval,
-        env[CRM_PHASE_1H_B_ENV_NAMES.PHASE_1G_APPLY_APPROVAL]
-      ),
-    source: phase1gApprovedByDecision
-      ? "owner_decision_document"
-      : "cli_env_token_match",
+    approved: tokensMatch(
+      flags.phase1gApplyApproval,
+      env[CRM_PHASE_1H_B_ENV_NAMES.PHASE_1G_APPLY_APPROVAL]
+    ),
+    source: "cli_env_token_match",
+    committedDecisionInsufficient: true,
+    decisionClaimedApproval: decisionClaimsPhase1g,
     envName: CRM_PHASE_1H_B_ENV_NAMES.PHASE_1G_APPLY_APPROVAL,
     envSet: isEnvTokenPresent(
       env[CRM_PHASE_1H_B_ENV_NAMES.PHASE_1G_APPLY_APPROVAL]
@@ -227,35 +255,32 @@ export function evaluateCrmPhase1hBApprovalGates(options = {}) {
   const ownerOverall = {
     gate: "staging_owner_apply_umbrella",
     required: true,
-    approved:
-      ownerUmbrellaByDecision ||
-      tokensMatch(
-        flags.ownerApproval,
-        env[CRM_PHASE_1H_B_ENV_NAMES.OWNER_APPROVAL]
-      ),
-    source: ownerUmbrellaByDecision
-      ? "owner_decision_document"
-      : "cli_env_token_match",
+    approved: tokensMatch(
+      flags.ownerApproval,
+      env[CRM_PHASE_1H_B_ENV_NAMES.OWNER_APPROVAL]
+    ),
+    source: "cli_env_token_match",
+    committedDecisionInsufficient: true,
+    decisionClaimedApproval: decisionClaimsUmbrella,
     envName: CRM_PHASE_1H_B_ENV_NAMES.OWNER_APPROVAL,
     envSet: isEnvTokenPresent(env[CRM_PHASE_1H_B_ENV_NAMES.OWNER_APPROVAL]),
     flagProvided: isEnvTokenPresent(flags.ownerApproval),
   };
 
-  const roleMatrixApproved =
-    decision?.roleMatrixApplyApproved === true ||
-    tokensMatch(
-      flags.roleMatrixApproval,
-      env[CRM_PHASE_1H_B_ENV_NAMES.ROLE_MATRIX_APPROVAL]
-    );
+  const roleMatrixApproved = tokensMatch(
+    flags.roleMatrixApproval,
+    env[CRM_PHASE_1H_B_ENV_NAMES.ROLE_MATRIX_APPROVAL]
+  );
   const roleMatrix = {
     gate: "role_matrix_apply",
     required: !deferRoleMatrix,
     approved: roleMatrixApproved,
     deferred: deferRoleMatrix && !roleMatrixApproved,
-    source:
-      decision?.roleMatrixApplyApproved === false
-        ? "owner_decision_deferred"
-        : "cli_env_token_match",
+    source: decisionDefersRoleMatrix
+      ? "owner_decision_deferred_or_cli"
+      : "cli_env_token_match",
+    committedDecisionInsufficient: true,
+    decisionClaimedApproval: decision?.roleMatrixApplyApproved === true,
     envName: CRM_PHASE_1H_B_ENV_NAMES.ROLE_MATRIX_APPROVAL,
     envSet: isEnvTokenPresent(env[CRM_PHASE_1H_B_ENV_NAMES.ROLE_MATRIX_APPROVAL]),
     flagProvided: isEnvTokenPresent(flags.roleMatrixApproval),
@@ -284,17 +309,25 @@ export function evaluateCrmPhase1hBApprovalGates(options = {}) {
     ownerOverall,
     backupStatus,
     ownerDecisionLoaded: Boolean(decision),
-    note: "Apply approvals are never inferred from Phase 1H-A code merge alone.",
+    committedDecisionSufficientForApply: false,
+    note:
+      "Committed Owner decision is never sufficient for apply. CLI↔env token match plus one-time authorization are required.",
   });
 }
 
 /**
  * Staging identity gate (section C).
- * @param {{ env?: Record<string, string|undefined>, environmentFlag?: string|null }} [options]
+ * @param {{
+ *   env?: Record<string, string|undefined>,
+ *   environmentFlag?: string|null,
+ *   ownerDecision?: object|null,
+ *   requireLiveUrlIdentity?: boolean,
+ * }} [options]
  */
 export function evaluateCrmPhase1hBStagingIdentityGate(options = {}) {
   const env = options.env || {};
   const decision = options.ownerDecision || null;
+  const requireLiveUrlIdentity = options.requireLiveUrlIdentity === true;
   const environmentFlag = String(
     options.environmentFlag || env[CRM_PHASE_1H_B_ENV_NAMES.APP_ENV] || ""
   )
@@ -335,17 +368,23 @@ export function evaluateCrmPhase1hBStagingIdentityGate(options = {}) {
     urlIdentity.containsStagingAllowlist &&
     !urlIdentity.containsProductionBlocklist;
 
-  if (!urlProvesStaging && !decisionIdentityOk) {
+  if (requireLiveUrlIdentity) {
+    if (!urlProvesStaging) {
+      errors.push(
+        "Live Staging URL identity required for mutation; committed decision identity is insufficient."
+      );
+    }
+  } else if (!urlProvesStaging && !decisionIdentityOk) {
     errors.push("Supabase URL unset - Staging project identity cannot be proven.");
   }
-  if (!appEnv && !options.environmentFlag && !decisionIdentityOk) {
+  if (!appEnv && !options.environmentFlag && !decisionIdentityOk && !urlProvesStaging) {
     errors.push("No explicit staging environment assertion available.");
   }
 
   const ok =
     errors.length === 0 &&
     environmentFlag === "staging" &&
-    (urlProvesStaging || decisionIdentityOk);
+    (requireLiveUrlIdentity ? urlProvesStaging : urlProvesStaging || decisionIdentityOk);
 
   return Object.freeze({
     ok,
@@ -355,17 +394,18 @@ export function evaluateCrmPhase1hBStagingIdentityGate(options = {}) {
     appEnvIsStaging: appEnv === "staging",
     productionBlocklist: [...CRM_PRODUCTION_PROJECT_REF_BLOCKLIST],
     stagingAllowlist: [...CRM_STAGING_PROJECT_REF_ALLOWLIST],
+    requireLiveUrlIdentity,
     urlIdentity: {
       present: urlIdentity.present,
       containsStagingAllowlist: urlIdentity.containsStagingAllowlist,
       containsProductionBlocklist: urlIdentity.containsProductionBlocklist,
-      projectRefHint: urlIdentity.projectRefHint || (decisionIdentityOk ? decisionRef : null),
+      projectRefHint: urlIdentity.projectRefHint || null,
       valuePrinted: false,
     },
     identitySource: urlProvesStaging
       ? "allowlisted_project_ref_in_supabase_url"
-      : decisionIdentityOk
-        ? "owner_decision_mcp_verified_staging_ref"
+      : !requireLiveUrlIdentity && decisionIdentityOk
+        ? "owner_decision_documented_only_insufficient_for_mutation"
         : "unverified",
   });
 }
@@ -563,6 +603,16 @@ export function evaluateCrmPhase1hBRuntimeSafetyGate(options = {}) {
 /**
  * Full Phase 1H-B pre-write gate evaluation. Stops before any DB write when blocked.
  *
+ * Write path requirements (all mandatory):
+ * - non-audit / non-test / non-CI execution context
+ * - CLI↔env approval token matches (committed decision insufficient)
+ * - live Staging URL identity (decision identity insufficient)
+ * - backup evidence
+ * - credentials
+ * - runtime safety
+ * - manifest verify
+ * - explicit one-time / non-replayable authorization bound to migration fingerprint
+ *
  * @param {{
  *   env?: Record<string, string|undefined>,
  *   flags?: object,
@@ -570,6 +620,12 @@ export function evaluateCrmPhase1hBRuntimeSafetyGate(options = {}) {
  *   requireQaIdentities?: boolean,
  *   ownerDecision?: object|null,
  *   loadOwnerDecision?: boolean,
+ *   oneTimeAuthorization?: object|null,
+ *   oneTimeAuthorizationPath?: string|null,
+ *   requireOneTimeAuthorization?: boolean,
+ *   requireLiveUrlIdentity?: boolean,
+ *   forceAuditMode?: boolean,
+ *   now?: Date|string|number,
  * }} [options]
  */
 export function evaluateCrmPhase1hBPreWriteGates(options = {}) {
@@ -577,12 +633,18 @@ export function evaluateCrmPhase1hBPreWriteGates(options = {}) {
   const flags = options.flags || {};
   const requireQaIdentities = options.requireQaIdentities !== false;
   const loadOwnerDecision = options.loadOwnerDecision !== false;
+  const requireOneTimeAuthorization = options.requireOneTimeAuthorization !== false;
+  const requireLiveUrlIdentity = options.requireLiveUrlIdentity !== false;
   const ownerDecision =
     options.ownerDecision !== undefined
       ? options.ownerDecision
       : loadOwnerDecision
         ? loadCrmPhase1hBOwnerDecision(options.repoRoot)
         : null;
+
+  const executionContext = detectCrmPhase1hBNonMutationContext(env, {
+    forceAuditMode: options.forceAuditMode === true,
+  });
 
   const manifest = loadCrmStagingMigrationManifest(options.repoRoot);
   const manifestVerify = verifyCrmStagingMigrationManifest({
@@ -607,6 +669,7 @@ export function evaluateCrmPhase1hBPreWriteGates(options = {}) {
     env,
     environmentFlag: flags.environment,
     ownerDecision,
+    requireLiveUrlIdentity,
   });
   const backup = evaluateCrmPhase1hBBackupGate({
     env,
@@ -618,9 +681,39 @@ export function evaluateCrmPhase1hBPreWriteGates(options = {}) {
   const qaIdentities = evaluateCrmPhase1hBQaIdentitiesGate({ env });
   const runtime = evaluateCrmPhase1hBRuntimeSafetyGate({ env, ownerDecision });
 
+  const plan = classifyCrmPhase1hBMigrationPlan(manifest, {
+    deferRoleMatrix:
+      effectiveFlags.deferRoleMatrix === true ||
+      !approvals.roleMatrix.approved,
+    roleMatrixApproved: approvals.roleMatrix.approved,
+  });
+  const migrationPlanFingerprint = computeCrmPhase1hBMigrationPlanFingerprint(
+    plan.apply
+  );
+
+  const oneTimeAuthorization = requireOneTimeAuthorization
+    ? evaluateCrmPhase1hBOneTimeAuthorization({
+        authorization: options.oneTimeAuthorization,
+        authorizationPath: options.oneTimeAuthorizationPath,
+        expectedFingerprint: migrationPlanFingerprint,
+        expectedProjectRef: CRM_STAGING_PROJECT_REF_ALLOWLIST[0],
+        now: options.now,
+        ownerDecision,
+      })
+    : Object.freeze({
+        ok: true,
+        verdict: null,
+        errors: [],
+        authorizationLoaded: false,
+        skipped: true,
+        secretsPrinted: false,
+      });
+
   /** @type {string|null} */
   let verdict = null;
-  if (!approvals.ok) {
+  if (executionContext.blocked) {
+    verdict = CRM_PHASE_1H_B_VERDICTS.BLOCKED_EXECUTION_CONTEXT;
+  } else if (!approvals.ok) {
     verdict = CRM_PHASE_1H_B_VERDICTS.BLOCKED_APPROVAL_REQUIRED;
   } else if (!identity.ok) {
     verdict = CRM_PHASE_1H_B_VERDICTS.BLOCKED_STAGING_IDENTITY_UNVERIFIED;
@@ -634,6 +727,10 @@ export function evaluateCrmPhase1hBPreWriteGates(options = {}) {
     verdict = CRM_PHASE_1H_B_VERDICTS.BLOCKED_APPROVAL_REQUIRED;
   } else if (!manifestVerify.ok) {
     verdict = CRM_PHASE_1H_B_VERDICTS.APPLY_FAILED;
+  } else if (!oneTimeAuthorization.ok) {
+    verdict =
+      oneTimeAuthorization.verdict ||
+      CRM_PHASE_1H_B_VERDICTS.BLOCKED_ONE_TIME_AUTHORIZATION_REQUIRED;
   }
 
   const canWrite = verdict == null;
@@ -664,12 +761,18 @@ export function evaluateCrmPhase1hBPreWriteGates(options = {}) {
     ownerDecisionPath: ownerDecision
       ? CRM_PHASE_1H_B_OWNER_DECISION_RELATIVE_PATH
       : null,
+    committedDecisionSufficientForApply: false,
+    credentialsSufficientForApply: false,
+    applyFlagSufficientForApply: false,
+    executionContext,
     approvals,
     identity,
     backup,
     credentials,
     qaIdentities,
     runtime,
+    oneTimeAuthorization,
+    migrationPlanFingerprint,
     manifestVerify: {
       ok: manifestVerify.ok,
       checked: manifestVerify.checked || 0,
@@ -681,6 +784,7 @@ export function evaluateCrmPhase1hBPreWriteGates(options = {}) {
       stopOnFirstError: true,
       reorderForbidden: true,
       editSqlForbidden: true,
+      fingerprint: migrationPlanFingerprint,
     },
     envPresence: Object.fromEntries(
       Object.values(CRM_PHASE_1H_B_ENV_NAMES).map((name) => [
