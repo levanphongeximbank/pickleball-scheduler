@@ -50,6 +50,24 @@ Package hashes (identical before and after):
 - `grant remediation SQL package stays byte-stable and DCL-only` — the approved
   SQL contains no DML, no DDL, no `GRANT`, and no Production ref in executable
   SQL.
+- `crm-bm-final-safety-01-canonical-hash.test.js` — LF/CRLF/CR canonical hash
+  portability, binary raw-hash separation, and fail-closed mismatch/missing/
+  malformed manifest cases.
+
+## CI remediation (PR #308 follow-up)
+
+Required CI failed because CRM migration SHA pins were computed from Windows
+CRLF bytes while Linux CI checks out LF. Follow-up fix:
+
+- `sha256CanonicalTextFile` normalizes `\r\n` and standalone `\r` to `\n` before
+  hashing UTF-8 text;
+- `sha256File` remains raw-byte hashing for binary assets;
+- `docs/crm/phase-1h/staging-migration-manifest.json` pins were updated to the
+  LF-canonical values (SQL content unchanged);
+- cross-platform portability tests cover LF/CRLF/CR equivalence and fail-closed
+  mismatch / missing / malformed cases.
+
+No SQL content was edited. No database mutation occurred during remediation.
 
 ## Notes
 

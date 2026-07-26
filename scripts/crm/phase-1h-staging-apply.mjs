@@ -32,7 +32,7 @@ import {
   CRM_STAGING_PROJECT_REF_ALLOWLIST,
   verifyCrmStagingMigrationManifest,
   loadCrmStagingMigrationManifest,
-  sha256File,
+  sha256CanonicalTextFile,
   getCrmPhase1hRepoRoot,
 } from "../../src/features/crm/staging/migrationManifest.js";
 import {
@@ -393,7 +393,7 @@ export async function runCrmPhase1hBApply(options = {}) {
   try {
     for (const entry of plan.apply) {
       const abs = path.join(repoRoot, entry.path);
-      const actualSha = sha256File(abs);
+      const actualSha = sha256CanonicalTextFile(abs);
       if (actualSha.toLowerCase() !== String(entry.sha256).toLowerCase()) {
         throw new Error(
           `SHA-256 mismatch immediately before apply for ${entry.path}`

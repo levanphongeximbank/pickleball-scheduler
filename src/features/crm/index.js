@@ -262,6 +262,10 @@ export {
 export {
   loadCrmStagingMigrationManifest,
   verifyCrmStagingMigrationManifest,
+  sha256File,
+  sha256CanonicalTextFile,
+  sha256CanonicalText,
+  canonicalizeCrmMigrationText,
   CRM_PRODUCTION_PROJECT_REF_BLOCKLIST,
   CRM_STAGING_PROJECT_REF_ALLOWLIST,
 } from "./staging/migrationManifest.js";

@@ -3,8 +3,12 @@
   "name": "CRM Staging Migration Manifest",
   "status": "AUTHORED_ONLY_NO_APPLY",
   "environmentTarget": "staging",
-  "productionProjectRefBlocklist": ["expuvcohlcjzvrrauvud"],
-  "stagingProjectRefAllowlist": ["qyewbxjsiiyufanzcjcq"],
+  "productionProjectRefBlocklist": [
+    "expuvcohlcjzvrrauvud"
+  ],
+  "stagingProjectRefAllowlist": [
+    "qyewbxjsiiyufanzcjcq"
+  ],
   "ownerApprovalRequired": true,
   "backupEvidenceRequired": true,
   "transactionPolicy": "stop-on-first-error",
@@ -13,7 +17,7 @@
     {
       "order": 1,
       "path": "docs/crm/phase-1g/10_CRM_PHASE_1G_TABLES.sql",
-      "sha256": "0b722ad23be05d3e7985fe077c61d4e9f8cc163bd140c75b8f9f321b92945d8a",
+      "sha256": "545c7a05773dd3853d8de8b989c1782b44bf5ba29238e6786049673b05afc083",
       "purpose": "Create CRM Phase 1G tables and constraints",
       "expectedObjects": [
         "public.crm_tags",
@@ -30,9 +34,11 @@
     {
       "order": 2,
       "path": "docs/crm/phase-1g/20_CRM_PHASE_1G_INDEXES.sql",
-      "sha256": "426faa1e0df05a9affce4aa8bd216aef18ce6cd30c392109f6072a7802fa4979",
+      "sha256": "64aab6b51c469d7da21f065570e6f4f495cdd84f619d0e93dab2e76bc76546ca",
       "purpose": "Create scoped indexes for list and claim paths",
-      "expectedObjects": ["crm Phase 1G indexes"],
+      "expectedObjects": [
+        "crm Phase 1G indexes"
+      ],
       "rollbackClassification": "DROP_INDEXES",
       "precondition": "Phase 1G tables exist",
       "postcondition": "Claim/list indexes present",
@@ -42,9 +48,12 @@
     {
       "order": 3,
       "path": "docs/crm/phase-1g/30_CRM_PHASE_1G_RLS.sql",
-      "sha256": "a15c49cf38ba2ec03c3d3da6352f3dff63b6966c5d283b134ec8916bc045d50a",
+      "sha256": "0c367724499c747dc386afb34b15a92906b06a53831726284366470a94837893",
       "purpose": "Enable FORCE RLS and fail-closed policies",
-      "expectedObjects": ["public.crm_phase1g_scope_allows", "CRM Phase 1G RLS policies"],
+      "expectedObjects": [
+        "public.crm_phase1g_scope_allows",
+        "CRM Phase 1G RLS policies"
+      ],
       "rollbackClassification": "DROP_POLICIES_DISABLE_RLS",
       "precondition": "Tables exist; verified Identity helpers available",
       "postcondition": "RLS enabled+forced; no anon policies",
@@ -54,7 +63,7 @@
     {
       "order": 4,
       "path": "docs/crm/phase-1g/40_CRM_PHASE_1G_CLAIM_RELEASE_RPCS.sql",
-      "sha256": "e0479ee060d484f13c8fd17384c7cd971c940f26eafa44f0f9d1ba3613c6ba2a",
+      "sha256": "d31c76212a46af09b1187a7767414bf074daa000634de2def82297fa63421934",
       "purpose": "Hardened claim and release-expired-claims RPCs",
       "expectedObjects": [
         "public.crm_claim_pending_events",
@@ -69,9 +78,11 @@
     {
       "order": 5,
       "path": "docs/crm/phase-1g/50_CRM_PHASE_1G_GRANTS.sql",
-      "sha256": "834d2d8757d11ddeba443e39e3bee1ebc5aa98b7e1f428053204b474330b8dfd",
+      "sha256": "9f0c26bf1754a36a8ae98b33eb6d4ff24b1621bf23b49d9e952a81b6e503ebca",
       "purpose": "Revoke PUBLIC/anon; grant authenticated DML gated by RLS",
-      "expectedObjects": ["table and RPC grants"],
+      "expectedObjects": [
+        "table and RPC grants"
+      ],
       "rollbackClassification": "REVOKE_GRANTS",
       "precondition": "Tables and RPCs exist",
       "postcondition": "No PUBLIC/anon table or execute grants",
@@ -81,9 +92,11 @@
     {
       "order": 6,
       "path": "docs/crm/phase-1g/60_CRM_PHASE_1G_CONSENT_IMMUTABLE.sql",
-      "sha256": "12a80394d5730e0d3b4ae462a6b5aa6ea00720fc8e8a8d63e03629c2ffdcb274",
+      "sha256": "d5fa49762b9f07bc6acca7699587ffb9e7a0425bf31148197bd48efacea37d4b",
       "purpose": "Consent immutability trigger (block UPDATE/DELETE)",
-      "expectedObjects": ["consent immutability trigger/function"],
+      "expectedObjects": [
+        "consent immutability trigger/function"
+      ],
       "rollbackClassification": "DROP_TRIGGER",
       "precondition": "crm_consent_records exists",
       "postcondition": "Consent UPDATE/DELETE blocked at trigger",
@@ -93,9 +106,11 @@
     {
       "order": 7,
       "path": "docs/crm/phase-1h/10_CRM_PHASE_1H_PERMISSION_SEED.sql",
-      "sha256": "2db66238391d39de992c2848d142ef0f42a515be2e252d67de2ff178e891512b",
+      "sha256": "753ce0800f45678c05f25fbc156153b2f0d51222c3b5f72a5ac0215e0fa6632f",
       "purpose": "Idempotent CRM permission catalog seed (no role grants)",
-      "expectedObjects": ["public.permissions crm.* rows"],
+      "expectedObjects": [
+        "public.permissions crm.* rows"
+      ],
       "rollbackClassification": "DELETE_PERMISSION_ROWS_CAREFUL",
       "precondition": "public.permissions exists; Owner seed approval present",
       "postcondition": "All CRM_PERMISSION_VALUES present once",
@@ -105,9 +120,11 @@
     {
       "order": 8,
       "path": "docs/crm/phase-1h/20_CRM_PHASE_1H_ROLE_PERMISSION_ASSIGNMENT.sql",
-      "sha256": "9591587606210b3ddd4150a5b6b72ed0b384dcf071e24a738841046eadf5d8b2",
+      "sha256": "3e13f397e348aa43297d051ea228505af06c537981df74238b870e96d00915e0",
       "purpose": "Proposed fail-closed role_permissions grants (Owner review)",
-      "expectedObjects": ["public.role_permissions CRM grants"],
+      "expectedObjects": [
+        "public.role_permissions CRM grants"
+      ],
       "rollbackClassification": "DELETE_ROLE_PERMISSION_ROWS",
       "precondition": "Permission seed applied; Owner role-matrix approval present",
       "postcondition": "Proposed matrix grants present; no PLAYER/CUSTOMER CRM admin",

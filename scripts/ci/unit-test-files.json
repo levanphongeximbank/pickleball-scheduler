@@ -240,6 +240,7 @@
   "tests/crm-phase-1h-staging-readiness.test.js",
   "tests/crm-phase-1h-b-staging-apply.test.js",
   "tests/crm-bm-final-safety-01-apply-authorization.test.js",
+  "tests/crm-bm-final-safety-01-canonical-hash.test.js",
   "tests/customer-phase-1-foundation.test.js",
   "tests/customer-phase-2-profile-contact.test.js",
   "tests/customer-phase-3-persistence-runtime.test.js",

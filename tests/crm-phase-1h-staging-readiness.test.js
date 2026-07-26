@@ -41,7 +41,7 @@ import {
 import {
   loadCrmStagingMigrationManifest,
   verifyCrmStagingMigrationManifest,
-  sha256File,
+  sha256CanonicalTextFile,
   CRM_PRODUCTION_PROJECT_REF_BLOCKLIST,
 } from "../src/features/crm/staging/migrationManifest.js";
 import { CRM_PHASE_1G_TABLES, CRM_PHASE_1G_RPC } from "../src/features/crm/persistence/databaseClientPort.js";
@@ -474,7 +474,7 @@ test("migration manifest complete, ordered, SHA-256 pinned", () => {
     assert.equal(entry.order, i + 1);
     const abs = path.join(root, entry.path);
     assert.ok(existsSync(abs), entry.path);
-    assert.equal(sha256File(abs), entry.sha256);
+    assert.equal(sha256CanonicalTextFile(abs), entry.sha256);
   }
   const verified = verifyCrmStagingMigrationManifest({ repoRoot: root, manifest });
   assert.equal(verified.ok, true);
