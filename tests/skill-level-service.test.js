@@ -76,7 +76,7 @@ test("generateMonthlySkillLevelProposals creates pending proposal without changi
   assert.equal(listPendingSkillLevelProposals(DEFAULT_CLUB.id).length, 1);
 });
 
-test("approveSkillLevelProposal updates public level only after admin approval", () => {
+test("approveSkillLevelProposal is fail-closed when Player Rating writer is frozen", () => {
   updateSkillLevelRules(DEFAULT_CLUB.id, {
     enabled: true,
     autoGenerateProposals: true,
@@ -91,13 +91,12 @@ test("approveSkillLevelProposal updates public level only after admin approval",
     now: new Date("2026-06-06T10:00:00.000Z"),
   });
 
-  assert.equal(approved.ok, true);
+  assert.equal(approved.ok, false);
+  assert.equal(approved.code, "PLAYER_RATING_WRITER_FROZEN");
 
   const data = loadClubData(DEFAULT_CLUB.id);
-  assert.equal(data.players[0].level, 4);
-  assert.equal(data.players[0].rating, 4);
-  assert.equal(data.players[0].ratingInternal, 4.1);
-  assert.equal(listPendingSkillLevelProposals(DEFAULT_CLUB.id).length, 0);
+  assert.equal(data.players[0].level, 3.5);
+  assert.equal(listPendingSkillLevelProposals(DEFAULT_CLUB.id).length, 1);
 });
 
 test("rejectSkillLevelProposal keeps public level unchanged", () => {
@@ -166,17 +165,19 @@ test("listSkillLevelProposals filters by status", () => {
   );
 
   const proposalId = listPendingSkillLevelProposals(DEFAULT_CLUB.id)[0].id;
-  approveSkillLevelProposal(DEFAULT_CLUB.id, proposalId, {
+  const approved = approveSkillLevelProposal(DEFAULT_CLUB.id, proposalId, {
     now: new Date("2026-06-06T10:00:00.000Z"),
   });
+  assert.equal(approved.ok, false);
+  assert.equal(approved.code, "PLAYER_RATING_WRITER_FROZEN");
 
   assert.equal(
     listSkillLevelProposals(DEFAULT_CLUB.id, { status: PROPOSAL_STATUS.PENDING }).length,
-    0
+    1
   );
   assert.equal(
     listSkillLevelProposals(DEFAULT_CLUB.id, { status: PROPOSAL_STATUS.APPROVED }).length,
-    1
+    0
   );
 });
 

@@ -363,6 +363,7 @@
   "tests/player-rating-read-facade.test.js",
   "tests/player-rating-security-privacy.test.js",
   "tests/player-rating-integration-certification.test.js",
+  "tests/bm-final-rating-01-canonical-ssot.test.js",
   "tests/finance-phase-1b-domain.test.js",
   "tests/finance-phase-1c-application.test.js",
   "tests/finance-phase-1d-provider-port.test.js",
