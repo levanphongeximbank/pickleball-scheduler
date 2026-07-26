@@ -1,0 +1,37 @@
+{
+  "phase": "PUBLIC-CATALOG-01S",
+  "gate": "MUTATION_DENIED",
+  "timestampUtc": "2026-07-26T05:34:15.000Z",
+  "verdict": "PASS",
+  "projectRef": "qyewbxjsiiyufanzcjcq",
+  "method": "privilege_introspection_no_mutating_dml",
+  "checks": [
+    {
+      "role": "anon",
+      "table": "public.public_catalog_courts",
+      "INSERT": false,
+      "UPDATE": false,
+      "DELETE": false
+    },
+    {
+      "role": "anon",
+      "table": "public.clubs",
+      "INSERT": false,
+      "UPDATE": false,
+      "DELETE": false
+    },
+    {
+      "role": "authenticated",
+      "table": "public.public_catalog_courts",
+      "INSERT": false
+    },
+    {
+      "role": "service_role",
+      "table": "public.public_catalog_courts",
+      "INSERT": true,
+      "note": "service_role retained for ops projection maintenance; not anon/public"
+    }
+  ],
+  "publicApiMutations": "none",
+  "secretsPrinted": false
+}

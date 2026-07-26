@@ -1,0 +1,50 @@
+{
+  "phase": "PUBLIC-CATALOG-01S",
+  "gate": "TEST_RESULTS",
+  "timestampUtc": "2026-07-26T05:45:00.000Z",
+  "verdict": "PASS",
+  "projectRef": "qyewbxjsiiyufanzcjcq",
+  "targetedPublicCatalog01": {
+    "command": "node --test tests/public-catalog-01-clubs-public-api.test.js tests/public-catalog-01-courts-public-api.test.js tests/public-catalog-01-privacy-tenant-isolation.test.js tests/public-catalog-01-pagination-order-error.test.js tests/public-catalog-01-sql-boundary.test.js tests/public-catalog-01-adjacent-regression.test.js",
+    "result": "PASS",
+    "passCount": 35,
+    "failCount": 0
+  },
+  "stagingActivationPackageTest": {
+    "command": "node --test tests/public-catalog-01s-staging-activation.test.js",
+    "result": "PASS",
+    "passCount": 5,
+    "failCount": 0
+  },
+  "fullUnit": {
+    "command": "npm run test:unit",
+    "result": "PASS",
+    "passCount": 6516,
+    "failCount": 0,
+    "durationMs": 28137
+  },
+  "lintNoNew": {
+    "command": "npm run lint:no-new",
+    "result": "PASS",
+    "detail": "0 new lint violations"
+  },
+  "foundationLock": {
+    "command": "npm run ci:foundation-lock",
+    "result": "PASS"
+  },
+  "build": {
+    "command": "npm run build",
+    "result": "PASS"
+  },
+  "hygiene": {
+    "applyRefusedPath": "docs/coaching-training/coaching-03/evidence/APPLY_REFUSED.json",
+    "applyRefusedSha256": "a30c5cc05f8a183a68608d62f99a50a05114db7492078cf166d9dc8072ba3664",
+    "applyRefusedNoGoPath": "docs/player-management/pm-id-01/activation/evidence/APPLY_REFUSED_NO_GO.json",
+    "applyRefusedNoGoSha256": "f795fd56a5e2367432b2f779dd17131d673791b98eca78f3b9044f1cbca34027",
+    "packageLockSha256": "844840ca58b3eadcc4a1d090abdcfcd057b7562f48bb1450d4a8ad1a1763b448",
+    "hashesUnchanged": true,
+    "trackedSideEffects": false,
+    "noFakeCleanViaReset": true
+  },
+  "secretsPrinted": false
+}

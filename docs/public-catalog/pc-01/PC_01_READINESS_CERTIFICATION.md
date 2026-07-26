@@ -14,7 +14,7 @@ Remote public read **contracts** for Clubs and Courts are implemented and unit-c
 | Typed error on network/RPC failure | YES | YES |
 | Independent failure isolation | YES | YES |
 | SQL package authored | YES | YES |
-| SQL applied to Staging/Production | **NO** | **NO** |
+| SQL applied to Staging/Production | **YES (Staging only — PUBLIC-CATALOG-01S)** / **NO (Production)** | **YES (Staging only — PUBLIC-CATALOG-01S)** / **NO (Production)** |
 | Public Portal cutover | **NO** | **NO** |
 
 ## EC-06 re-evaluation note
@@ -31,5 +31,6 @@ YES — `listPublicCourts` + `public_catalog_list_courts` contract + projection-
 
 ## Environment apply
 
-- Staging: **not applied** in this workstream
+- Staging: **applied & verified** in PUBLIC-CATALOG-01S (`qyewbxjsiiyufanzcjcq`) — see `docs/public-catalog/pc-01/staging-activation/`
 - Production: **not applied**
+- Public Portal cutover: **NO**

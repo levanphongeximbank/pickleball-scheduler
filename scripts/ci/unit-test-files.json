@@ -449,6 +449,7 @@
   "tests/public-catalog-01-pagination-order-error.test.js",
   "tests/public-catalog-01-sql-boundary.test.js",
   "tests/public-catalog-01-adjacent-regression.test.js",
+  "tests/public-catalog-01s-staging-activation.test.js",
   "tests/reporting-analytics-reporting-01-foundation.test.js",
   "tests/reporting-analytics-reporting-01-authorization-execution.test.js",
   "tests/reporting-analytics-reporting-01-provenance-export.test.js",

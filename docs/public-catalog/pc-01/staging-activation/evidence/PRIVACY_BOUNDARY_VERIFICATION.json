@@ -1,0 +1,51 @@
+{
+  "phase": "PUBLIC-CATALOG-01S",
+  "gate": "PRIVACY_BOUNDARY_VERIFICATION",
+  "timestampUtc": "2026-07-26T05:33:30.000Z",
+  "verdict": "PASS",
+  "projectRef": "qyewbxjsiiyufanzcjcq",
+  "checks": [
+    {
+      "name": "deny_by_default_listing",
+      "result": "PASS",
+      "detail": "is_publicly_listed default false; publicly_listed_clubs=0; RPC returns empty"
+    },
+    {
+      "name": "clubs_rpc_no_owner_or_created_by",
+      "result": "PASS",
+      "detail": "functiondef does not reference created_by_user_id or owner"
+    },
+    {
+      "name": "courts_rpc_no_club_data_v3",
+      "result": "PASS",
+      "detail": "functiondef does not reference club_data_v3"
+    },
+    {
+      "name": "courts_rpc_no_rates",
+      "result": "PASS",
+      "detail": "functiondef does not mention rate; projection has 0 forbidden financial columns"
+    },
+    {
+      "name": "projection_columns_public_safe_only",
+      "result": "PASS",
+      "detail": "columns limited to id,club_id,venue_id,display_name,court_type,surface,availability_descriptor,publication_state,operational_state,created_at,updated_at"
+    },
+    {
+      "name": "cross_tenant_courts_require_listed_club",
+      "result": "PASS",
+      "detail": "courts RPC INNER JOIN clubs requiring is_publicly_listed=true + active + not deleted"
+    },
+    {
+      "name": "unpublished_archived_excluded",
+      "result": "PASS",
+      "detail": "publication_state='published' AND operational_state='active' filters in RPC"
+    },
+    {
+      "name": "unit_privacy_tenant_isolation",
+      "result": "PASS",
+      "detail": "tests/public-catalog-01-privacy-tenant-isolation.test.js PASS"
+    }
+  ],
+  "responseLeakageObserved": false,
+  "secretsPrinted": false
+}

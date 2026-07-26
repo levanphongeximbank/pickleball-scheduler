@@ -1,0 +1,38 @@
+{
+  "phase": "PUBLIC-CATALOG-01S",
+  "gate": "DIRECT_TABLE_ACCESS_DENIED",
+  "timestampUtc": "2026-07-26T05:34:00.000Z",
+  "verdict": "PASS",
+  "projectRef": "qyewbxjsiiyufanzcjcq",
+  "checks": [
+    {
+      "name": "anon_projection_select_privilege",
+      "result": "PASS",
+      "expected": false,
+      "actual": false
+    },
+    {
+      "name": "anon_projection_select_runtime",
+      "result": "PASS",
+      "detail": "SET ROLE anon; SELECT from public_catalog_courts → ERROR 42501 permission denied"
+    },
+    {
+      "name": "auth_projection_select_privilege",
+      "result": "PASS",
+      "expected": false,
+      "actual": false
+    },
+    {
+      "name": "anon_clubs_direct_select_rls",
+      "result": "PASS",
+      "detail": "SET ROLE anon; SELECT count(*) FROM clubs → 0 rows; clubs_select policy is authenticated-only"
+    },
+    {
+      "name": "anon_rpc_execute_allowed",
+      "result": "PASS",
+      "detail": "EXECUTE granted on both public catalog RPCs"
+    }
+  ],
+  "design": "RPC-only public reads; projection table has RLS enabled with zero permissive policies and REVOKE ALL from anon/authenticated",
+  "secretsPrinted": false
+}

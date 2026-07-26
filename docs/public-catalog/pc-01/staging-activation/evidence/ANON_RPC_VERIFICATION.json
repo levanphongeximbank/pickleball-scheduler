@@ -1,0 +1,58 @@
+{
+  "phase": "PUBLIC-CATALOG-01S",
+  "gate": "ANON_RPC_VERIFICATION",
+  "timestampUtc": "2026-07-26T05:33:00.000Z",
+  "verdict": "PASS",
+  "projectRef": "qyewbxjsiiyufanzcjcq",
+  "authenticatedSessionRequired": false,
+  "checks": [
+    {
+      "name": "anon_execute_clubs_rpc",
+      "result": "PASS",
+      "detail": "has_function_privilege(anon, public_catalog_list_clubs, EXECUTE)=true"
+    },
+    {
+      "name": "anon_execute_courts_rpc",
+      "result": "PASS",
+      "detail": "has_function_privilege(anon, public_catalog_list_courts, EXECUTE)=true"
+    },
+    {
+      "name": "clubs_rpc_call_success_empty_dataset",
+      "result": "PASS",
+      "detail": "public_catalog_list_clubs(20,0,name_asc) returned [] without error; eligible_public_clubs=0"
+    },
+    {
+      "name": "courts_rpc_call_success_empty_dataset",
+      "result": "PASS",
+      "detail": "public_catalog_list_courts(20,0,name_asc,null) returned [] without error; eligible_public_courts=0"
+    },
+    {
+      "name": "empty_vs_failure_distinguished",
+      "result": "PASS",
+      "detail": "empty success returns []; malformed pagination raises 22023"
+    },
+    {
+      "name": "malformed_limit_rejected",
+      "result": "PASS",
+      "detail": "limit=999 → INVALID_PAGINATION"
+    },
+    {
+      "name": "malformed_sort_rejected",
+      "result": "PASS",
+      "detail": "sort=name_desc → INVALID_SORT"
+    },
+    {
+      "name": "deterministic_ordering_contract",
+      "result": "PASS",
+      "detail": "RPC ORDER BY display_name ASC, id ASC; verified in package + unit tests"
+    },
+    {
+      "name": "bounded_pagination_contract",
+      "result": "PASS",
+      "detail": "limit must be 1..50; offset >= 0"
+    }
+  ],
+  "datasetState": "EMPTY_PUBLIC_ROWS",
+  "datasetNote": "Staging has zero is_publicly_listed clubs and zero projection rows; EMPTY success is valid PASS per deny-by-default. No business seed created.",
+  "secretsPrinted": false
+}
