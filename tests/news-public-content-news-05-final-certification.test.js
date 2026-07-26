@@ -231,7 +231,9 @@ test("NEWS-05 EC ownership: /news LIVE; HOME notes no longer claim news mock-onl
   const home = ExperienceChannels.getPublicPortalSurface(
     ExperienceChannels.PUBLIC_PORTAL_SURFACE_ID.PUBLIC_HOME
   );
-  assert.match(String(home.dataSourceNotes), /getPublicNews/);
+  // Post-merge main tip: HOME notes project NEWS-04 typed result (not raw getPublicNews name).
+  assert.match(String(home.dataSourceNotes), /NEWS-04 typed result/);
+  assert.match(String(home.dataSourceNotes), /without silent empty-on-error/);
   assert.doesNotMatch(
     String(home.dataSourceNotes),
     /news, sponsors, upcoming events are mock-only/

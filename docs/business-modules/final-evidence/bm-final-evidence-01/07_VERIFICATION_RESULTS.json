@@ -1,0 +1,162 @@
+{
+  "artifact": "07_VERIFICATION_RESULTS",
+  "workstream": "BM-FINAL-EVIDENCE-01",
+  "phase": "B1",
+  "ok": true,
+  "marker": "BM_FINAL_EVIDENCE_01_READY_FOR_OWNER_MERGE",
+  "relatedMarkers": [
+    "NEWS_PUBLIC_CONTENT_POST_MERGE_VERIFIED_CLOSED",
+    "COACHING_TRAINING_POST_MERGE_VERIFIED_CLOSED",
+    "BUSINESS_MODULES_RESIDUAL_WORKTREES_CLASSIFIED",
+    "BUSINESS_MODULES_DEFERRED_GATES_REGISTERED"
+  ],
+  "baseline": {
+    "startingHead": "7971a260c325a723f78671a9754f17d2bcde14b5",
+    "originMain": "7971a260c325a723f78671a9754f17d2bcde14b5",
+    "packageJsonBlob": "57a291a90903f3f11c081f7e032598b94ba0c198",
+    "packageLockBlob": "0bc30b2dabf45d98c3bdabb583f88ce99496999f",
+    "packageJsonChanged": false,
+    "packageLockChanged": false
+  },
+  "commands": [
+    {
+      "name": "npm_ci",
+      "command": "npm ci",
+      "start": "2026-07-26T17:11:33.4362678+07:00",
+      "end": "2026-07-26T17:18:05.1020555+07:00",
+      "exitCode": 0,
+      "databaseWrites": 0,
+      "productionTouched": false
+    },
+    {
+      "name": "news_targeted",
+      "command": "node --test tests/news-public-content-news-01-foundation.test.js ... tests/news-public-content-news-05-final-certification.test.js",
+      "start": "2026-07-26T17:18:36.9083987+07:00",
+      "end": "2026-07-26T17:18:37.9793866+07:00",
+      "exitCode": 0,
+      "tests": 106,
+      "pass": 106,
+      "fail": 0,
+      "databaseWrites": 0,
+      "productionTouched": false
+    },
+    {
+      "name": "coaching_targeted",
+      "command": "node --test tests/coaching-01-domain-foundation.test.js ... tests/coaching-05-final-certification-closure.test.js",
+      "start": "2026-07-26T17:18:38.0303866+07:00",
+      "end": "2026-07-26T17:18:44.7324214+07:00",
+      "exitCode": 0,
+      "tests": 189,
+      "pass": 189,
+      "fail": 0,
+      "databaseWrites": 0,
+      "productionTouched": false
+    },
+    {
+      "name": "reporting_targeted",
+      "command": "node --test tests/reporting-analytics-reporting-01-foundation.test.js ... tests/reporting-analytics-reporting-05-final-certification.test.js",
+      "start": "2026-07-26T17:19:21.3468573+07:00",
+      "end": "2026-07-26T17:19:22.7361318+07:00",
+      "exitCode": 0,
+      "tests": 80,
+      "pass": 80,
+      "fail": 0,
+      "databaseWrites": 0,
+      "productionTouched": false
+    },
+    {
+      "name": "ec_public_portal_regression",
+      "command": "node --test tests/experience-channels-ec-00-foundation.test.js ... tests/news-public-content-news-04-portal-ui.test.js",
+      "start": "2026-07-26T17:19:22.7521376+07:00",
+      "end": "2026-07-26T17:19:23.3401263+07:00",
+      "exitCode": 0,
+      "tests": 89,
+      "pass": 89,
+      "fail": 0,
+      "databaseWrites": 0,
+      "productionTouched": false
+    },
+    {
+      "name": "coaching_ui_scoped",
+      "command": "npx vitest run tests/ui/coaching-04-runtime-pages.test.jsx",
+      "start": "2026-07-26T17:23:20.7855153+07:00",
+      "end": "2026-07-26T17:23:28.9762673+07:00",
+      "exitCode": 0,
+      "tests": 3,
+      "pass": 3,
+      "fail": 0,
+      "note": "npm run test:ui expands to vitest run tests/ui <file> and executes unrelated UI suite; scoped vitest used",
+      "databaseWrites": 0,
+      "productionTouched": false
+    },
+    {
+      "name": "ci_foundation_lock",
+      "command": "npm run ci:foundation-lock",
+      "start": "2026-07-26T17:23:29.0752652+07:00",
+      "end": "2026-07-26T17:23:39.8570820+07:00",
+      "exitCode": 0,
+      "databaseWrites": 0,
+      "productionTouched": false
+    },
+    {
+      "name": "lint_no_new",
+      "command": "npm run lint:no-new",
+      "start": "2026-07-26T17:23:39.8770820+07:00",
+      "end": "2026-07-26T17:28:06.3544056+07:00",
+      "exitCode": 0,
+      "databaseWrites": 0,
+      "productionTouched": false
+    },
+    {
+      "name": "build",
+      "command": "npm run build",
+      "start": "2026-07-26T17:28:16.4768983+07:00",
+      "end": "2026-07-26T17:32:29.9486892+07:00",
+      "exitCode": 0,
+      "databaseWrites": 0,
+      "productionTouched": false
+    },
+    {
+      "name": "git_diff_check",
+      "command": "git diff --check",
+      "start": "2026-07-26T17:32:29.9896865+07:00",
+      "end": "2026-07-26T17:32:30.1156939+07:00",
+      "exitCode": 0,
+      "databaseWrites": 0,
+      "productionTouched": false
+    },
+    {
+      "name": "git_diff_cached_check",
+      "command": "git diff --cached --check",
+      "start": "2026-07-26T17:32:30.1286859+07:00",
+      "end": "2026-07-26T17:32:30.1906867+07:00",
+      "exitCode": 0,
+      "databaseWrites": 0,
+      "productionTouched": false
+    },
+    {
+      "name": "test_unit_full",
+      "command": "npm run test:unit",
+      "start": "2026-07-26T17:32:47.3014776+07:00",
+      "end": "2026-07-26T17:33:59.7332457+07:00",
+      "exitCode": 0,
+      "tests": 6553,
+      "pass": 6553,
+      "fail": 0,
+      "databaseWrites": 0,
+      "productionTouched": false
+    }
+  ],
+  "secretScan": {
+    "ok": true,
+    "scope": "docs/business-modules/final-evidence/bm-final-evidence-01/* + modified news-05 test",
+    "network": false,
+    "newToolsInstalled": false,
+    "actualSecretValuesFound": 0,
+    "falsePositiveNote": "Initial broad scan matched assert.doesNotMatch(/service_role/) in news-05 test; refined value scan PASS"
+  },
+  "databaseWrites": 0,
+  "productionTouched": false,
+  "stagingWrites": 0,
+  "sqlApplied": false
+}
