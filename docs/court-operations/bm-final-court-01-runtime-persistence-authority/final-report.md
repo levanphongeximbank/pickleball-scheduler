@@ -79,7 +79,10 @@ Venue availability guard unchanged (read-only). Competition internals untouched.
 
 ## K. GIT VÀ PR
 
-See PR after push. Markers issued only when PR is open.
+- Branch: `feature/bm-final-court-01-runtime-persistence-authority`
+- Commit: `a809d97f`
+- PR: https://github.com/levanphongeximbank/pickleball-scheduler/pull/304
+- Merge: **not performed**
 
 ## L. MỨC ĐỘ HOÀN THÀNH
 
@@ -91,7 +94,7 @@ See PR after push. Markers issued only when PR is open.
 
 ## M. OWNER ACTION
 
-**Review and merge PR `BM-FINAL-COURT-01: establish Court runtime persistence authority` into `main` (do not apply SQL in this workstream).**
+**Review and merge PR https://github.com/levanphongeximbank/pickleball-scheduler/pull/304 into `main` (do not apply SQL in this workstream).**
 
 ## MARKERS
 
