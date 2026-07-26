@@ -27,6 +27,12 @@ Preconditions:
 | `createCoachingRuntime({ mode: "legacy" })` | Explicit legacy |
 | Keep `COACHING_DURABLE_RUNTIME_DEFAULT=false` | Production builds stay legacy |
 
-## This package phase
+## This package phase (historical cutover authoring)
 
-`LOCALSTORAGE_RETIREMENT` GO **not granted**. No key deletion. No silent upload.
+`LOCALSTORAGE_RETIREMENT` GO for **destructive** retirement (adapter stub / key wipe) **not granted**. No key deletion. No silent upload.
+
+## Certified path retirement (COACHING-04 closure)
+
+See `../localstorage-retirement/00_COACHING_04_LOCALSTORAGE_RETIREMENT_CERTIFICATION.md`.
+
+Closure contract `localStorageRetired=true` means the **active Staging durable path** no longer uses localStorage. Compile-time `LOCALSTORAGE_RETIRED` remains `false`; legacy adapter retained for rollback.
