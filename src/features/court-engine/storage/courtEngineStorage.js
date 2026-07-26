@@ -1,26 +1,40 @@
+/**
+ * Court Engine storage — demoted localStorage compatibility layer (BM-FINAL-COURT-01).
+ *
+ * Canonical writes go through `src/features/court-engine/runtime/`.
+ * localStorage writes are allowed only under explicit local authority.
+ * No dual-write / fire-and-forget cloud push from this module.
+ */
+
 import { normalizeCourtSession } from "../models/courtSession.js";
 import { resolveTenantIdForClub } from "../../tenant/guards/tenantGuard.js";
 import { isRbacEnabled } from "../../../auth/authService.js";
 import {
-  isCourtEngineCloudEnabled,
-  pushCourtEngineToCloud,
-} from "./courtEngineCloudStore.js";
+  assertLocalStorageWriteAllowed,
+  getCourtRuntimeWriter,
+  isLocalCourtRuntimeAuthority,
+} from "../runtime/composition.js";
+import {
+  COURT_RUNTIME_ERROR_CODES,
+  createCourtRuntimeError,
+} from "../runtime/errors.js";
+import {
+  buildCourtEngineActiveKey,
+  buildCourtEngineStorageKey,
+  legacyActiveKey,
+  legacyStorageKey,
+} from "./courtEngineStorageKeys.js";
 import {
   createSupabaseCourtEngineStore,
   isSupabaseCourtEngineStoreEnabled,
 } from "./SupabaseCourtEngineStore.js";
 
-const STORAGE_KEY_PREFIX = "pickleball-court-engine-v1";
-const ACTIVE_KEY_PREFIX = "pickleball-court-engine-active-v1";
-
-/** Legacy key before Phase 20 tenant scoping (club-only). */
-function legacyStorageKey(clubId) {
-  return `${STORAGE_KEY_PREFIX}::${clubId}`;
-}
-
-function legacyActiveKey(clubId) {
-  return `${ACTIVE_KEY_PREFIX}::${clubId}`;
-}
+export {
+  buildCourtEngineActiveKey,
+  buildCourtEngineStorageKey,
+  legacyActiveKey,
+  legacyStorageKey,
+} from "./courtEngineStorageKeys.js";
 
 function resolveStorageTenantId(clubId, tenantId) {
   const explicit = String(tenantId || "").trim();
@@ -34,30 +48,6 @@ function resolveStorageTenantId(clubId, tenantId) {
   }
 
   return fromClub || "";
-}
-
-export function buildCourtEngineStorageKey(clubId, tenantId) {
-  const club = String(clubId || "").trim();
-  const tenant = resolveStorageTenantId(club, tenantId);
-  if (!club) {
-    return `${STORAGE_KEY_PREFIX}::`;
-  }
-  if (!tenant) {
-    return legacyStorageKey(club);
-  }
-  return `${STORAGE_KEY_PREFIX}::${tenant}::${club}`;
-}
-
-export function buildCourtEngineActiveKey(clubId, tenantId) {
-  const club = String(clubId || "").trim();
-  const tenant = resolveStorageTenantId(club, tenantId);
-  if (!club) {
-    return `${ACTIVE_KEY_PREFIX}::`;
-  }
-  if (!tenant) {
-    return legacyActiveKey(club);
-  }
-  return `${ACTIVE_KEY_PREFIX}::${tenant}::${club}`;
 }
 
 function safeParse(raw, fallback) {
@@ -92,10 +82,29 @@ function readStorePayload(clubId, tenantId) {
   return safeParse(legacyRaw, emptyStore(clubId, tenantId));
 }
 
+/**
+ * Compatibility read. Prefer runtime writer when available.
+ * Legacy localStorage read retained for migration / explicit local mode.
+ */
 export function loadCourtEngineStore(clubId, options = {}) {
   const id = String(clubId || "").trim();
   if (!id) {
     return emptyStore("");
+  }
+
+  const runtime = getCourtRuntimeWriter(options.runtime || {});
+  if (runtime.ok && !isLocalCourtRuntimeAuthority(runtime.authority)) {
+    const loaded = runtime.writer.loadRuntime({
+      tenantId: resolveStorageTenantId(id, options.tenantId),
+      clubId: id,
+    });
+    if (loaded.ok) {
+      return loaded.store;
+    }
+  }
+
+  if (typeof localStorage === "undefined") {
+    return emptyStore(id, options.tenantId);
   }
 
   const parsed = readStorePayload(id, options.tenantId);
@@ -108,13 +117,29 @@ export function loadCourtEngineStore(clubId, options = {}) {
   };
 }
 
+/**
+ * Demoted local writer — explicit local authority required.
+ * Does NOT push to cloud (no dual-write).
+ */
 export function saveCourtEngineStore(clubId, store, options = {}) {
   const id = String(clubId || "").trim();
   if (!id) {
     return { ok: false, error: "clubId không hợp lệ." };
   }
 
+  const allowed = assertLocalStorageWriteAllowed();
+  if (!allowed.ok) {
+    return allowed;
+  }
+
   const tenantId = resolveStorageTenantId(id, options.tenantId || store?.tenantId);
+  if (!tenantId) {
+    return createCourtRuntimeError(
+      COURT_RUNTIME_ERROR_CODES.COURT_RUNTIME_SCOPE_REQUIRED,
+      "tenantId is required for Court Engine local writes."
+    );
+  }
+
   const payload = {
     clubId: id,
     tenantId: tenantId || null,
@@ -124,29 +149,24 @@ export function saveCourtEngineStore(clubId, store, options = {}) {
   };
 
   localStorage.setItem(buildCourtEngineStorageKey(id, tenantId), JSON.stringify(payload));
-
-  if (typeof options.skipCloudPush !== "boolean" || !options.skipCloudPush) {
-    if (isCourtEngineCloudEnabled()) {
-      void pushCourtEngineToCloud(id, tenantId, {
-        expectedVersion: payload.cloudVersion ?? store?.cloudVersion ?? 0,
-      }).then((result) => {
-        if (result?.code === "VERSION_CONFLICT" && typeof window !== "undefined") {
-          window.dispatchEvent(
-            new CustomEvent("court-engine:version-conflict", {
-              detail: { clubId: id, tenantId, remoteVersion: result.remoteVersion },
-            })
-          );
-        }
-      });
-    }
-  }
-
-  return { ok: true, store: payload };
+  return { ok: true, store: payload, authority: allowed.authority };
 }
 
 export function loadActiveSessionId(clubId, options = {}) {
   const id = String(clubId || "").trim();
   if (!id) {
+    return null;
+  }
+
+  const runtime = getCourtRuntimeWriter(options.runtime || {});
+  if (runtime.ok && !isLocalCourtRuntimeAuthority(runtime.authority)) {
+    const tenantId = resolveStorageTenantId(id, options.tenantId);
+    if (tenantId) {
+      return runtime.writer.adapter.loadActiveSessionId(tenantId, id);
+    }
+  }
+
+  if (typeof localStorage === "undefined") {
     return null;
   }
 
@@ -165,16 +185,27 @@ export function saveActiveSessionId(clubId, sessionId, options = {}) {
     return { ok: false, error: "clubId không hợp lệ." };
   }
 
-  const tenantId = resolveStorageTenantId(id, options.tenantId);
-  const key = buildCourtEngineActiveKey(id, tenantId);
+  const allowed = assertLocalStorageWriteAllowed();
+  if (!allowed.ok) {
+    return allowed;
+  }
 
+  const tenantId = resolveStorageTenantId(id, options.tenantId);
+  if (!tenantId) {
+    return createCourtRuntimeError(
+      COURT_RUNTIME_ERROR_CODES.COURT_RUNTIME_SCOPE_REQUIRED,
+      "tenantId is required for Court Engine active session local writes."
+    );
+  }
+
+  const key = buildCourtEngineActiveKey(id, tenantId);
   if (sessionId) {
     localStorage.setItem(key, String(sessionId));
   } else {
     localStorage.removeItem(key);
   }
 
-  return { ok: true };
+  return { ok: true, authority: allowed.authority };
 }
 
 export function getSessionFromStore(store, sessionId) {
@@ -199,7 +230,7 @@ export function upsertSessionInStore(store, session) {
   };
 }
 
-/** Export/import helper for pilot backup — does not mutate cloud. */
+/** Export/import helper for pilot backup — local mode only. */
 export function exportCourtEngineStore(clubId, options = {}) {
   const store = loadCourtEngineStore(clubId, options);
   return {
@@ -218,16 +249,45 @@ export function importCourtEngineStore(clubId, payload, options = {}) {
 }
 
 export function getCourtEngineStoreMode() {
+  const runtime = getCourtRuntimeWriter();
+  if (runtime.ok) {
+    return runtime.authority === "durable" ? "supabase" : "local";
+  }
   return String(import.meta.env?.VITE_COURT_ENGINE_STORE || "local").toLowerCase();
 }
 
-/** Factory — local by default; supabase stub when VITE_COURT_ENGINE_STORE=supabase */
+/** Factory — authority-aware; does not auto-select local on cloud failure. */
 export function resolveCourtEngineStore(client, options = {}) {
-  if (getCourtEngineStoreMode() === "supabase") {
-    return createSupabaseCourtEngineStore(client, options);
+  const runtime = getCourtRuntimeWriter({
+    ...options.runtime,
+    client,
+    authority: options.authority,
+    env: options.env,
+  });
+
+  if (!runtime.ok) {
+    return {
+      mode: "unavailable",
+      error: runtime,
+      loadCourtEngineStore: () => emptyStore(""),
+      saveCourtEngineStore: () => runtime,
+      loadActiveSessionId: () => null,
+      saveActiveSessionId: () => runtime,
+      getSessionFromStore,
+      upsertSessionInStore,
+    };
   }
+
+  if (runtime.authority === "durable") {
+    return createSupabaseCourtEngineStore(client, {
+      tenantId: options.tenantId,
+      writer: runtime.writer,
+    });
+  }
+
   return {
     mode: "local",
+    authority: runtime.authority,
     loadCourtEngineStore: (clubId) => loadCourtEngineStore(clubId, options),
     saveCourtEngineStore: (clubId, store) => saveCourtEngineStore(clubId, store, options),
     loadActiveSessionId: (clubId) => loadActiveSessionId(clubId, options),

@@ -1,62 +1,94 @@
 /**
- * Supabase court engine store — cloud read/write via courtEngineCloudStore.
+ * Supabase court engine store — durable adapter wrapper (no localStorage working set).
  */
+
+import { isCourtEngineCloudEnabled } from "./courtEngineCloudStore.js";
+import { createDurableCourtRuntimeAdapter } from "../runtime/adapters/createDurableCourtRuntimeAdapter.js";
 import {
-  isCourtEngineCloudEnabled,
-  migrateLocalCourtEngineToCloud,
-  pullCourtEngineFromCloud,
-  pushCourtEngineToCloud,
-} from "./courtEngineCloudStore.js";
-import {
-  buildCourtEngineActiveKey,
-  buildCourtEngineStorageKey,
   getSessionFromStore,
-  loadActiveSessionId,
-  loadCourtEngineStore,
-  saveActiveSessionId,
-  saveCourtEngineStore,
   upsertSessionInStore,
-} from "./courtEngineStorage.js";
+} from "../runtime/createCourtRuntimeWriter.js";
+import { COURT_RUNTIME_AUTHORITY } from "../runtime/constants.js";
+import {
+  COURT_RUNTIME_ERROR_CODES,
+  createCourtRuntimeError,
+} from "../runtime/errors.js";
 
 export function isSupabaseCourtEngineStoreEnabled() {
   return isCourtEngineCloudEnabled();
 }
 
-export function createSupabaseCourtEngineStore(client, { tenantId = "" } = {}) {
-  const resolvedTenantId = String(tenantId || "").trim();
+/**
+ * @param {object|null} client
+ * @param {{ tenantId?: string, writer?: object, adapter?: object }} [options]
+ */
+export function createSupabaseCourtEngineStore(client, options = {}) {
+  const resolvedTenantId = String(options.tenantId || "").trim();
+  const adapter =
+    options.adapter ||
+    options.writer?.adapter ||
+    createDurableCourtRuntimeAdapter({ client });
 
   return {
     mode: "supabase",
+    authority: COURT_RUNTIME_AUTHORITY.DURABLE,
     client,
     tenantId: resolvedTenantId,
-    buildStorageKey: (clubId) => buildCourtEngineStorageKey(clubId, resolvedTenantId),
-    buildActiveKey: (clubId) => buildCourtEngineActiveKey(clubId, resolvedTenantId),
+    dualWrite: false,
+    usesLocalStorage: false,
+    adapter,
     loadCourtEngineStore(clubId) {
-      return loadCourtEngineStore(clubId, { tenantId: resolvedTenantId });
+      const loaded = adapter.loadRuntime(resolvedTenantId, clubId);
+      return loaded.ok
+        ? loaded.store
+        : { clubId, tenantId: resolvedTenantId, sessions: [] };
     },
-    saveCourtEngineStore(clubId, store) {
-      return saveCourtEngineStore(clubId, store, { tenantId: resolvedTenantId });
+    saveCourtEngineStore() {
+      return createCourtRuntimeError(
+        COURT_RUNTIME_ERROR_CODES.COURT_RUNTIME_UNSUPPORTED_DURABLE_COMMAND,
+        "Use saveCourtEngineStoreAsync for durable Court runtime writes."
+      );
+    },
+    async saveCourtEngineStoreAsync(clubId, store) {
+      if (!resolvedTenantId) {
+        return createCourtRuntimeError(
+          COURT_RUNTIME_ERROR_CODES.COURT_RUNTIME_SCOPE_REQUIRED,
+          "tenantId is required for durable Court runtime writes."
+        );
+      }
+      return adapter.saveRuntime(resolvedTenantId, clubId, store);
     },
     loadActiveSessionId(clubId) {
-      return loadActiveSessionId(clubId, { tenantId: resolvedTenantId });
+      return adapter.loadActiveSessionId(resolvedTenantId, clubId);
     },
-    saveActiveSessionId(clubId, sessionId) {
-      return saveActiveSessionId(clubId, sessionId, { tenantId: resolvedTenantId });
+    saveActiveSessionId() {
+      return createCourtRuntimeError(
+        COURT_RUNTIME_ERROR_CODES.COURT_RUNTIME_UNSUPPORTED_DURABLE_COMMAND,
+        "Use saveActiveSessionIdAsync for durable active session writes."
+      );
+    },
+    async saveActiveSessionIdAsync(clubId, sessionId) {
+      if (!resolvedTenantId) {
+        return createCourtRuntimeError(
+          COURT_RUNTIME_ERROR_CODES.COURT_RUNTIME_SCOPE_REQUIRED,
+          "tenantId is required for durable active session writes."
+        );
+      }
+      return adapter.setActiveSessionId(resolvedTenantId, clubId, sessionId);
     },
     getSessionFromStore,
     upsertSessionInStore,
     async hydrate(clubId) {
-      return pullCourtEngineFromCloud(clubId, resolvedTenantId, client);
+      return adapter.hydrateRuntime(resolvedTenantId, clubId);
     },
     async syncToCloud(clubId) {
-      const store = loadCourtEngineStore(clubId, { tenantId: resolvedTenantId });
-      return pushCourtEngineToCloud(clubId, resolvedTenantId, {
-        client,
-        expectedVersion: store.cloudVersion ?? 0,
+      const loaded = adapter.loadRuntime(resolvedTenantId, clubId);
+      if (!loaded.ok) {
+        return loaded;
+      }
+      return adapter.saveRuntime(resolvedTenantId, clubId, loaded.store, {
+        expectedVersion: loaded.store.cloudVersion ?? 0,
       });
-    },
-    async migrateLocal(clubId) {
-      return migrateLocalCourtEngineToCloud(clubId, resolvedTenantId, client);
     },
   };
 }

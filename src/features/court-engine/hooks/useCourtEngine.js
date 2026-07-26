@@ -207,26 +207,47 @@ export function useCourtEngine() {
   }, [activeClubId, currentTenantId, bump]);
 
   useEffect(() => {
-    if (!session && activeClubId && cloudHydrated) {
-      createSession(activeClubId, {
+    if (!session && activeClubId && currentTenantId && cloudHydrated) {
+      const created = createSession(activeClubId, {
         tenantId: currentTenantId,
         name: `Phiên ${new Date().toLocaleDateString("vi-VN")}`,
       });
-      bump();
+      if (created && typeof created.then === "function") {
+        void created.then((result) => {
+          if (result?.ok) {
+            bump();
+          } else if (result?.error) {
+            setError(result.error);
+          }
+        });
+      } else if (created?.ok) {
+        bump();
+      } else if (created?.error) {
+        setError(created.error);
+      }
     }
   }, [session, activeClubId, currentTenantId, cloudHydrated, bump]);
 
   const handleResult = useCallback(
     (result, successMessage) => {
-      if (!result?.ok) {
-        setError(result?.error || "Thao tác thất bại.");
-        return false;
+      const apply = (resolved) => {
+        if (!resolved?.ok) {
+          setError(resolved?.error || "Thao tác thất bại.");
+          return false;
+        }
+        if (successMessage) {
+          setMessage(successMessage);
+        }
+        bump();
+        return true;
+      };
+      if (result && typeof result.then === "function") {
+        void result.then(apply).catch((err) => {
+          setError(err?.message || err?.error || "Thao tác thất bại.");
+        });
+        return true;
       }
-      if (successMessage) {
-        setMessage(successMessage);
-      }
-      bump();
-      return true;
+      return apply(result);
     },
     [bump]
   );

@@ -17,12 +17,6 @@ import {
 } from "../src/features/coaching/index.js";
 import { detectScheduleConflicts } from "../src/features/ai-assistant/engines/scheduleConflictDetector.js";
 import { detectCourtOverload } from "../src/features/ai-assistant/engines/courtOverloadDetector.js";
-import {
-  getCourtEngineStoreMode,
-  loadCourtEngineStore,
-  resolveCourtEngineStore,
-} from "../src/features/court-engine/storage/courtEngineStorage.js";
-import { createSupabaseCourtEngineStore } from "../src/features/court-engine/storage/SupabaseCourtEngineStore.js";
 
 function memoryStorage() {
   const map = new Map();
@@ -147,33 +141,4 @@ test("Phase 29 — coaching schedule feeds conflict detector", () => {
     ],
   });
   assert.ok(result.data.issues.length >= 1);
-});
-
-test("Phase 30 — court engine store factory defaults to local", () => {
-  global.localStorage = memoryStorage();
-  const store = resolveCourtEngineStore(null, { tenantId: "venue-1" });
-  assert.equal(store.mode, "local");
-  assert.equal(getCourtEngineStoreMode(), "local");
-
-  store.saveCourtEngineStore("club-ce", { sessions: [] });
-  const loaded = loadCourtEngineStore("club-ce", { tenantId: "venue-1" });
-  assert.equal(loaded.sessions.length, 0);
-});
-
-test("Phase 30 — supabase court engine store exposes cloud interface", () => {
-  global.localStorage = memoryStorage();
-  if (typeof import.meta !== "undefined" && import.meta.env) {
-    import.meta.env.VITE_COURT_ENGINE_STORE = "local";
-    import.meta.env.VITE_SUPABASE_URL = "";
-  }
-  const stub = createSupabaseCourtEngineStore(null, { tenantId: "venue-2" });
-  assert.equal(stub.mode, "supabase");
-  assert.equal(typeof stub.loadCourtEngineStore, "function");
-  assert.equal(typeof stub.saveCourtEngineStore, "function");
-  assert.equal(typeof stub.syncToCloud, "function");
-  assert.equal(typeof stub.hydrate, "function");
-
-  stub.saveCourtEngineStore("club-stub", { sessions: [] });
-  const loaded = stub.loadCourtEngineStore("club-stub");
-  assert.equal(loaded.clubId, "club-stub");
 });
