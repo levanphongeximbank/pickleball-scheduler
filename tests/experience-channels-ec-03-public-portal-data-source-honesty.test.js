@@ -224,8 +224,10 @@ test("Clubs/Courts adapters and pages wire honest results without Competition im
     assert.match(src, /PublicErrorState/);
     assert.match(src, /PublicEmptyState/);
     assert.match(src, /PublicUnavailableState/);
+    assert.match(src, /PublicLoadingState/);
     assert.match(src, /retryToken|Thử lại/);
     assert.match(src, /publicClubsCourtsDataSource/);
+    assert.match(src, /loadPublicClubsPageResult|loadPublicCourtsPageResult/);
     assert.doesNotMatch(src, /competition-engine/);
     assert.doesNotMatch(src, /setInterval|while\s*\(true\)/);
   }

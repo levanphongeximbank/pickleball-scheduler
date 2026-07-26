@@ -12,8 +12,11 @@
  * EC-05: Home orchestration adapters live in `publicHomeDataSource.js` and are
  * re-exported here for compatibility. Prefer Result helpers over array getters.
  *
- * EC-06: Certified remote LIVE cutover count is 0 — uncertified sources keep
+ * EC-06: Certified Production LIVE cutover count is 0 — uncertified sources keep
  * mock fallback / MOCK provenance; News remains ALREADY_LIVE (NEWS-04).
+ *
+ * PUBLIC-PORTAL-01C: Clubs/Courts pages may opt into Staging remote RPC via
+ * VITE_PUBLIC_CLUBS_COURTS_SOURCE=remote. Production default remains local.
  */
 import { loadClubs } from "../../../data/club.js";
 import { loadClubData } from "../../../domain/clubStorage.js";
@@ -35,12 +38,20 @@ export {
 } from "./publicNewsService.js";
 
 export {
+  PUBLIC_CLUBS_COURTS_SOURCE,
+  resolvePublicClubsCourtsSource,
   getPublicClubsResult,
   getPublicClubs,
   getFeaturedClubs,
   getPublicCourtsResult,
   getPublicCourts,
   getFeaturedCourts,
+  mapCatalogClubDtoToPortalCard,
+  mapCatalogCourtDtoToPortalCard,
+  loadPublicClubsFromRemote,
+  loadPublicCourtsFromRemote,
+  loadPublicClubsPageResult,
+  loadPublicCourtsPageResult,
 } from "./publicClubsCourtsDataSource.js";
 
 export {

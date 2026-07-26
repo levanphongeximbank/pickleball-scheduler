@@ -187,7 +187,15 @@ function buildResult(input) {
 }
 
 /**
- * @param {{ data?: unknown, ownerSurface: string, error?: unknown, isStale?: boolean|null }} input
+ * @param {{
+ *   data?: unknown,
+ *   ownerSurface: string,
+ *   error?: unknown,
+ *   isStale?: boolean|null,
+ *   productionReady?: boolean,
+ * }} input
+ * Explicit `productionReady: false` keeps Staging LIVE empty/success non-production
+ * until a separate Production rollout certification.
  */
 export function createLiveResult(input) {
   const data = input.data === undefined ? null : input.data;
@@ -202,7 +210,7 @@ export function createLiveResult(input) {
     fallbackUsed: false,
     fallbackReason: null,
     isStale: input.isStale == null ? null : input.isStale,
-    productionReady: !isEmptyArray,
+    productionReady: input.productionReady === false ? false : !isEmptyArray,
     ownerSurface: input.ownerSurface,
   });
 }

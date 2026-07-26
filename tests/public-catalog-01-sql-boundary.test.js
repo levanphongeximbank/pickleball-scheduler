@@ -81,13 +81,17 @@ test("Architecture: public-catalog does not import UI / portal cutover", () => {
   }
 });
 
-test("Architecture: Public Portal clubs/courts source unchanged (no cutover)", () => {
+test("Architecture: Public Portal staging opt-in remote; Production local path retained", () => {
   const portal = read(
     "src/features/public-portal/services/publicClubsCourtsDataSource.js"
   );
   assert.match(portal, /allowMockFallback:\s*true/);
-  assert.doesNotMatch(portal, /public-catalog/);
-  assert.doesNotMatch(portal, /listPublicClubsRemote/);
+  assert.match(portal, /VITE_PUBLIC_CLUBS_COURTS_SOURCE/);
+  assert.match(portal, /listPublicClubsRemote/);
+  assert.match(portal, /listPublicCourtsRemote/);
+  assert.match(portal, /PUBLIC_CLUBS_COURTS_SOURCE\.LOCAL/);
+  assert.match(portal, /productionReady:\s*false/);
+  assert.doesNotMatch(portal, /service_role|eyJ[A-Za-z0-9_-]{20,}/);
 });
 
 test("Architecture: barrel exports facade + remote entrypoints", () => {

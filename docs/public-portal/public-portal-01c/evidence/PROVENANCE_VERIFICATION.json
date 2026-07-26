@@ -1,0 +1,17 @@
+{
+  "phase": "PUBLIC-PORTAL-01C",
+  "gate": "PROVENANCE_VERIFICATION",
+  "timestampUtc": "2026-07-26T08:43:30.000Z",
+  "verdict": "PASS",
+  "projectRef": "qyewbxjsiiyufanzcjcq",
+  "rules": {
+    "successfulRemoteIncludingEmpty": "LIVE",
+    "liveNoticeHiddenByEc03Design": true,
+    "mockNoticeOnlyForNonLive": true,
+    "productionReadyForcedFalseOnStagingRemote": true
+  },
+  "emptyRemoteProvenance": "LIVE",
+  "errorProvenanceSource": "LIVE",
+  "errorStatus": "ERROR",
+  "secretsPrinted": false
+}

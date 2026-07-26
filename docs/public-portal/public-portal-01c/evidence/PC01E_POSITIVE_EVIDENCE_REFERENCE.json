@@ -1,0 +1,28 @@
+{
+  "phase": "PUBLIC-PORTAL-01C",
+  "gate": "PC01E_POSITIVE_EVIDENCE_REFERENCE",
+  "timestampUtc": "2026-07-26T08:44:00.000Z",
+  "verdict": "PASS",
+  "recreated": false,
+  "referencePath": "docs/public-catalog/pc-01/staging-publication-evidence/evidence/",
+  "referencedArtifacts": [
+    "PUBLIC_CLUB_RPC_RESULT.json",
+    "PUBLIC_COURT_RPC_RESULT.json",
+    "PRIVATE_CONTROL_EXCLUSION.json",
+    "FIELD_ALLOWLIST_VERIFICATION.json",
+    "ROLLBACK_RESULT.json",
+    "POST_ROLLBACK_SNAPSHOT.json",
+    "FINAL_CERTIFICATION.json"
+  ],
+  "provedHistorically": {
+    "publicClubAppearedViaRpc": true,
+    "publicCourtAppearedViaRpc": true,
+    "privateControlsExcluded": true,
+    "dtoAllowlistPassed": true,
+    "seedRolledBack": true,
+    "remainingTestData": 0
+  },
+  "currentStagingPublicRowsClaimed": 0,
+  "note": "Immutable PC-01E evidence reused. Current Staging public dataset remains 0 rows; 01C does not reseed.",
+  "secretsPrinted": false
+}

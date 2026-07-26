@@ -1,0 +1,25 @@
+{
+  "phase": "PUBLIC-PORTAL-01C",
+  "gate": "EMPTY_STATE_VERIFICATION",
+  "timestampUtc": "2026-07-26T08:42:00.000Z",
+  "verdict": "PASS",
+  "projectRef": "qyewbxjsiiyufanzcjcq",
+  "clubs": {
+    "remoteRows": 0,
+    "resultStatus": "EMPTY",
+    "resultSource": "LIVE",
+    "uiState": "PublicEmptyState",
+    "mockCardsRendered": false
+  },
+  "courts": {
+    "remoteRows": 0,
+    "resultStatus": "EMPTY",
+    "resultSource": "LIVE",
+    "uiState": "PublicEmptyState",
+    "mockCardsRendered": false
+  },
+  "loadingDistinct": true,
+  "errorDistinct": true,
+  "unavailableDistinct": true,
+  "secretsPrinted": false
+}

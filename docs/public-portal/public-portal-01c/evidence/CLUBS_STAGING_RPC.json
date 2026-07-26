@@ -1,0 +1,14 @@
+{
+  "phase": "PUBLIC-PORTAL-01C",
+  "gate": "CLUBS_STAGING_RPC",
+  "timestampUtc": "2026-07-26T08:41:00.000Z",
+  "verdict": "PASS",
+  "projectRef": "qyewbxjsiiyufanzcjcq",
+  "rpc": "public_catalog_list_clubs",
+  "adapter": "loadPublicClubsFromRemote → listPublicClubsRemote",
+  "anonExecute": true,
+  "rowCount": 0,
+  "portalSourceWhenRemote": "REMOTE_RPC",
+  "mutationPerformed": false,
+  "secretsPrinted": false
+}

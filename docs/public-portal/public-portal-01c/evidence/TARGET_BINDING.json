@@ -1,0 +1,26 @@
+{
+  "phase": "PUBLIC-PORTAL-01C",
+  "gate": "TARGET_BINDING",
+  "timestampUtc": "2026-07-26T08:40:00.000Z",
+  "verdict": "PASS",
+  "projectRef": "qyewbxjsiiyufanzcjcq",
+  "productionBlocklistRef": "expuvcohlcjzvrrauvud",
+  "mcpServerId": "project-0-pickleball-scheduler-supabase-staging",
+  "environmentLabel": "staging",
+  "isProduction": false,
+  "ownerAuthorization": {
+    "STAGING_READONLY_CUTOVER_GO": "YES",
+    "STAGING_DATA_MUTATION_GO": "NO",
+    "PRODUCTION_GO": "NO"
+  },
+  "runtimeBinding": {
+    "envFlag": "VITE_PUBLIC_CLUBS_COURTS_SOURCE",
+    "stagingValue": "remote",
+    "productionDefault": "local",
+    "clubsRpc": "public_catalog_list_clubs",
+    "courtsRpc": "public_catalog_list_courts",
+    "client": "existing public/anon Supabase client",
+    "serviceRoleUsed": false
+  },
+  "secretsPrinted": false
+}

@@ -159,14 +159,14 @@ const SURFACE_DESCRIPTORS = deepFreeze({
     collisionClassification: EXPERIENCE_CHANNEL_CLASSIFICATION.CANONICAL_CHANNEL_SURFACE,
     dataSource: PUBLIC_PORTAL_DATA_SOURCE.MIXED,
     dataSourceNotes:
-      "EC-03/EC-06: Local clubs registry + blob with mock fallback (min 3). getPublicClubsResult publishes MIXED when fallback used. EC-06: NO_REMOTE_SOURCE — mock fallback retained.",
+      "EC-03 local path + mock fallback retained for Production/Home. PUBLIC-PORTAL-01C: Clubs page may use Staging remote public_catalog_list_clubs when VITE_PUBLIC_CLUBS_COURTS_SOURCE=remote (LIVE, no mock fallback, productionReady=false). EC-06 Production cutover still NO_REMOTE_SOURCE.",
     authenticationDependency: PUBLIC_PORTAL_AUTH_DEPENDENCY.NONE,
     tenantDependency: PUBLIC_PORTAL_TENANT_DEPENDENCY.CONSUMED_SHARED,
     competitionOwnershipMarker: PUBLIC_PORTAL_COMPETITION_MARKER.NONE,
     responsiveState: EXPERIENCE_CHANNEL_READINESS.PARTIAL,
     accessibilityState: EXPERIENCE_CHANNEL_READINESS.PARTIAL,
     seoState: EXPERIENCE_CHANNEL_READINESS.PARTIAL,
-    loadingStateReadiness: EXPERIENCE_CHANNEL_READINESS.MISSING,
+    loadingStateReadiness: EXPERIENCE_CHANNEL_READINESS.PARTIAL,
     errorStateReadiness: EXPERIENCE_CHANNEL_READINESS.PARTIAL,
     emptyStateReadiness: EXPERIENCE_CHANNEL_READINESS.PARTIAL,
     offlinePwaState: EXPERIENCE_CHANNEL_READINESS.PARTIAL,
@@ -182,9 +182,10 @@ const SURFACE_DESCRIPTORS = deepFreeze({
       "src/components/public/states/PublicPresentationStates.jsx",
       "src/components/public/states/PublicDataSourceNotice.jsx",
       "src/features/experience-channels/public-portal/data-source/",
+      "docs/public-portal/public-portal-01c/",
     ],
     notes:
-      "EC-03: getPublicClubsResult exposes LIVE/MIXED provenance; mock fallback retained with notice. Error/empty wired; loading still MISSING (sync). Not production-ready while MIXED.",
+      "PUBLIC-PORTAL-01C: async Clubs page loader with PublicLoadingState; Staging remote opt-in. Production default remains local MIXED-capable path. Not Production-ready.",
   }),
 
   [PUBLIC_PORTAL_SURFACE_ID.PUBLIC_COURTS]: createPublicPortalSurfaceDescriptor({
@@ -195,14 +196,14 @@ const SURFACE_DESCRIPTORS = deepFreeze({
     collisionClassification: EXPERIENCE_CHANNEL_CLASSIFICATION.CANONICAL_CHANNEL_SURFACE,
     dataSource: PUBLIC_PORTAL_DATA_SOURCE.MIXED,
     dataSourceNotes:
-      "EC-03/EC-06: Local club courts + hours with mock fallback (min 2). getPublicCourtsResult MIXED when fallback used. EC-06: NO_REMOTE_SOURCE — mock fallback retained.",
+      "EC-03 local path + mock fallback retained for Production/Home. PUBLIC-PORTAL-01C: Courts page may use Staging remote public_catalog_list_courts when VITE_PUBLIC_CLUBS_COURTS_SOURCE=remote (LIVE, no mock fallback, productionReady=false). EC-06 Production cutover still NO_REMOTE_SOURCE.",
     authenticationDependency: PUBLIC_PORTAL_AUTH_DEPENDENCY.NONE,
     tenantDependency: PUBLIC_PORTAL_TENANT_DEPENDENCY.CONSUMED_SHARED,
     competitionOwnershipMarker: PUBLIC_PORTAL_COMPETITION_MARKER.NONE,
     responsiveState: EXPERIENCE_CHANNEL_READINESS.PARTIAL,
     accessibilityState: EXPERIENCE_CHANNEL_READINESS.PARTIAL,
     seoState: EXPERIENCE_CHANNEL_READINESS.PARTIAL,
-    loadingStateReadiness: EXPERIENCE_CHANNEL_READINESS.MISSING,
+    loadingStateReadiness: EXPERIENCE_CHANNEL_READINESS.PARTIAL,
     errorStateReadiness: EXPERIENCE_CHANNEL_READINESS.PARTIAL,
     emptyStateReadiness: EXPERIENCE_CHANNEL_READINESS.PARTIAL,
     offlinePwaState: EXPERIENCE_CHANNEL_READINESS.PARTIAL,
@@ -218,9 +219,10 @@ const SURFACE_DESCRIPTORS = deepFreeze({
       "src/components/public/states/PublicPresentationStates.jsx",
       "src/components/public/states/PublicDataSourceNotice.jsx",
       "src/features/experience-channels/public-portal/data-source/",
+      "docs/public-portal/public-portal-01c/",
     ],
     notes:
-      "EC-03: getPublicCourtsResult + PublicDataSourceNotice. Error/empty wired; loading still MISSING (sync). Mock fallback retained until live replacement certified.",
+      "PUBLIC-PORTAL-01C: async Courts page loader with PublicLoadingState; Staging remote opt-in. Production default remains local MIXED-capable path. Not Production-ready.",
   }),
 
   [PUBLIC_PORTAL_SURFACE_ID.PUBLIC_RANKINGS]: createPublicPortalSurfaceDescriptor({

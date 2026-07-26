@@ -1,0 +1,18 @@
+{
+  "phase": "PUBLIC-PORTAL-01C",
+  "gate": "ERROR_FAIL_CLOSED",
+  "timestampUtc": "2026-07-26T08:42:30.000Z",
+  "verdict": "PASS",
+  "projectRef": "qyewbxjsiiyufanzcjcq",
+  "behavior": {
+    "remoteRpcFailureStatus": "ERROR",
+    "fallbackUsed": false,
+    "mockDataReturned": false,
+    "emptySuccessOnError": false,
+    "retryOwner": "page retryToken / caller-controlled",
+    "infiniteRetry": false,
+    "clubsCourtsIndependent": true,
+    "internalErrorDetailsLeakedToUi": false
+  },
+  "secretsPrinted": false
+}

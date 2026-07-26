@@ -1,0 +1,23 @@
+{
+  "phase": "PUBLIC-PORTAL-01C",
+  "gate": "TEST_RESULTS",
+  "timestampUtc": "2026-07-26T09:00:00.000Z",
+  "verdict": "PASS",
+  "targeted": {
+    "publicPortal01c": "PASS",
+    "ec00to06": "PASS",
+    "pc01_01s_01e": "PASS",
+    "targetedTotal": "125/125"
+  },
+  "fullUnit": "PASS 6553/6553",
+  "evidenceHashesUnchanged": true,
+  "hashes": {
+    "APPLY_REFUSED.json": "a30c5cc05f8a183a68608d62f99a50a05114db7492078cf166d9dc8072ba3664",
+    "APPLY_REFUSED_NO_GO.json": "f795fd56a5e2367432b2f779dd17131d673791b98eca78f3b9044f1cbca34027"
+  },
+  "lintNoNew": "PASS",
+  "foundationLock": "PASS",
+  "build": "PASS",
+  "gitStatusCleanOfTestSideEffects": true,
+  "secretsPrinted": false
+}
