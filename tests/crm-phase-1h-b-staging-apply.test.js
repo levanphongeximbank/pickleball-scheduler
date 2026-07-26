@@ -45,11 +45,29 @@ function walkFiles(dir, acc = []) {
   return acc;
 }
 
+function offlineGateEnv(extra = {}) {
+  // Subprocess gate tests must not inherit CI markers; otherwise GitHub Actions
+  // short-circuits every mutation path to BLOCKED_EXECUTION_CONTEXT before the
+  // gate under test (approval / identity / backup) can be asserted.
+  const env = { ...process.env, ...extra };
+  delete env.CI;
+  delete env.GITHUB_ACTIONS;
+  delete env.VITEST;
+  delete env.CRM_STAGING_APPLY_AUDIT_MODE;
+  if (String(env.NODE_ENV || "").toLowerCase() === "test") {
+    env.NODE_ENV = "development";
+  }
+  if (String(env.npm_lifecycle_event || "") === "test") {
+    delete env.npm_lifecycle_event;
+  }
+  return env;
+}
+
 function runNode(script, args = []) {
   return execFileSync(process.execPath, [script, ...args], {
     cwd: root,
     encoding: "utf8",
-    env: { ...process.env },
+    env: offlineGateEnv(),
   });
 }
 
@@ -78,7 +96,7 @@ test("Phase 1H-B approval gates fail closed without Owner tokens or decision", (
   assert.equal(r.roleMatrix.deferred, true);
 });
 
-test("Phase 1H-B limited Owner decision approves seed+1G and defers role matrix", () => {
+test("Phase 1H-B limited Owner decision alone cannot approve mutation gates", () => {
   const decision = {
     phase: "1H-B",
     environmentTarget: "staging",
@@ -96,8 +114,12 @@ test("Phase 1H-B limited Owner decision approves seed+1G and defers role matrix"
     flags: {},
     ownerDecision: decision,
   });
-  assert.equal(r.ok, true);
+  assert.equal(r.ok, false);
+  assert.equal(r.committedDecisionSufficientForApply, false);
   assert.equal(r.roleMatrix.deferred, true);
+  assert.ok(r.requiredMissing.includes("permission_seed_apply"));
+  assert.ok(r.requiredMissing.includes("phase_1g_persistence_apply"));
+  assert.ok(r.requiredMissing.includes("staging_owner_apply_umbrella"));
   assert.equal(r.backupStatus.approvedByOwnerDecision, false);
 });
 
@@ -199,26 +221,23 @@ test("Phase 1H-B pre-write without decision returns BLOCKED_APPROVAL_REQUIRED", 
   );
 });
 
-test("Phase 1H-B with approved recovery decision blocks on credentials next", () => {
+test("Phase 1H-B committed decision alone is insufficient even with recovery files", () => {
   const gates = evaluateCrmPhase1hBPreWriteGates({
     env: {},
     flags: { environment: "staging" },
     repoRoot: root,
     requireQaIdentities: true,
     loadOwnerDecision: true,
+    requireOneTimeAuthorization: true,
+    requireLiveUrlIdentity: true,
   });
   assert.equal(gates.canWrite, false);
   assert.equal(gates.ownerDecisionLoaded, true);
-  assert.equal(gates.approvals.ok, true);
-  assert.equal(gates.identity.ok, true);
-  assert.equal(gates.backup.ok, true);
-  assert.equal(gates.approvals.roleMatrix.deferred, true);
-  assert.deepEqual(gates.migrationPlan.deferred, [
-    "docs/crm/phase-1h/20_CRM_PHASE_1H_ROLE_PERMISSION_ASSIGNMENT.sql",
-  ]);
+  assert.equal(gates.committedDecisionSufficientForApply, false);
+  assert.equal(gates.approvals.ok, false);
   assert.equal(
     gates.verdict,
-    CRM_PHASE_1H_B_VERDICTS.BLOCKED_CREDENTIALS_REQUIRED
+    CRM_PHASE_1H_B_VERDICTS.BLOCKED_APPROVAL_REQUIRED
   );
   assert.equal(gates.sqlApplied, false);
   assert.equal(gates.productionConnected, false);
@@ -289,18 +308,22 @@ test("Phase 1H-B live-gates preflight blocks without approvals", () => {
       CRM_PHASE_1H_B_VERDICTS.BLOCKED_BACKUP_REQUIRED,
       CRM_PHASE_1H_B_VERDICTS.BLOCKED_CREDENTIALS_REQUIRED,
       CRM_PHASE_1H_B_VERDICTS.BLOCKED_QA_IDENTITIES_REQUIRED,
+      CRM_PHASE_1H_B_VERDICTS.BLOCKED_ONE_TIME_AUTHORIZATION_REQUIRED,
+      CRM_PHASE_1H_B_VERDICTS.BLOCKED_EXECUTION_CONTEXT,
     ].includes(report.liveGates.verdict)
   );
 });
 
-test("Phase 1H-B apply dry-run does not apply SQL", () => {
+test("Phase 1H-B apply dry-run / verify-only does not apply SQL", () => {
   const out = runNode("scripts/crm/phase-1h-staging-apply.mjs", ["--dry-run"]);
   const report = JSON.parse(out);
   assert.equal(report.mode, "dry-run");
+  assert.equal(report.path, "verify");
   assert.equal(report.sqlApplied, false);
   assert.equal(report.stagingConnected, false);
   assert.equal(report.productionConnected, false);
   assert.equal(report.deploy, false);
+  assert.equal(report.applyExecutorCalled, false);
   assert.ok(report.migrationsWouldApply.length >= 7);
 });
 
@@ -320,6 +343,7 @@ test("Phase 1H-B apply --apply-staging refuses without Owner gates", () => {
   assert.equal(failed, true);
   assert.equal(report.mode, "apply-refused");
   assert.equal(report.sqlApplied, false);
+  assert.equal(report.applyExecutorCalled, false);
   assert.ok(
     [
       CRM_PHASE_1H_B_VERDICTS.BLOCKED_APPROVAL_REQUIRED,
@@ -327,6 +351,8 @@ test("Phase 1H-B apply --apply-staging refuses without Owner gates", () => {
       CRM_PHASE_1H_B_VERDICTS.BLOCKED_BACKUP_REQUIRED,
       CRM_PHASE_1H_B_VERDICTS.BLOCKED_CREDENTIALS_REQUIRED,
       CRM_PHASE_1H_B_VERDICTS.BLOCKED_QA_IDENTITIES_REQUIRED,
+      CRM_PHASE_1H_B_VERDICTS.BLOCKED_ONE_TIME_AUTHORIZATION_REQUIRED,
+      CRM_PHASE_1H_B_VERDICTS.BLOCKED_EXECUTION_CONTEXT,
     ].includes(report.verdict)
   );
 });

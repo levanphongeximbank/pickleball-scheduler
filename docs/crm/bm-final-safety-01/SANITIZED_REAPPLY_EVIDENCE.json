@@ -1,0 +1,99 @@
+{
+  "workstream": "BM-FINAL-SAFETY-01",
+  "source": {
+    "kind": "untracked_original_incident_evidence",
+    "sha256": "AA68D276A2E357101AD164E3B6038F30ECEB7C24B46A4FF66A10026EB78767A5",
+    "sizeBytes": 2065,
+    "creationTimeUtc": "2026-07-26T13:38:39.4189978Z",
+    "lastWriteTimeUtc": "2026-07-26T13:39:08.0102592Z",
+    "preservedInPlace": true,
+    "committed": false
+  },
+  "incident": {
+    "mode": "applied",
+    "sqlApplied": true,
+    "stagingProjectRef": "qyewbxjsiiyufanzcjcq",
+    "productionConnected": false,
+    "finishedAt": "2026-07-26T13:39:08.009Z",
+    "migrationsAppliedCount": 7,
+    "migrationsDeferredCount": 1,
+    "roleMatrixOrder8Deferred": true
+  },
+  "secretScan": {
+    "passed": true,
+    "credentialsIncluded": false,
+    "rawEvidenceCopied": false,
+    "categoriesChecked": [
+      "database password",
+      "access token",
+      "service-role key",
+      "JWT or anon key",
+      "connection string or DSN",
+      "Authorization header",
+      "session or refresh credential",
+      "bearer token"
+    ]
+  },
+  "readOnlyVerification": {
+    "verifiedAt": "2026-07-26T14:17:27.084Z",
+    "transactionReadOnly": true,
+    "rollbackIssued": true,
+    "databaseWrites": 0,
+    "applicationRpcCalls": 0,
+    "sqlAppliedAgain": false,
+    "productionTouched": false
+  },
+  "reapplyVerdict": "CRM_STAGING_REAPPLY_POLICY_OR_GRANT_DRIFT_FOUND",
+  "grantRemediation": {
+    "verdict": "BM_FINAL_SAFETY_01_STAGING_REMEDIATION_PASS",
+    "ownerApproval": "second-stage staging mutation approval",
+    "stagingProjectRef": "qyewbxjsiiyufanzcjcq",
+    "productionConnected": false,
+    "sqlFile": "docs/crm/bm-final-safety-01/STAGING_GRANT_REMEDIATION.sql",
+    "sqlSha256": "a429cf91715810e74df81854bbaf0782e9397f6c7f4c6b7f59588abdd8426ef4",
+    "rollbackSqlSha256": "30d0f7a58a6911e06d2bfcbc49f5c155c84caa794c7ac089ad39c72a82621807",
+    "sqlEditedBeforeExecution": false,
+    "oneTimeAuthorization": {
+      "operation": "crm_bm_final_safety_01_staging_grant_remediation",
+      "operationId": "crm-1hb-bc9d4cae-a289-4b94-bb61-8f248137bdea",
+      "noncePresent": true,
+      "issuedAt": "2026-07-26T14:52:05.781Z",
+      "expiresAt": "2026-07-26T15:22:05.781Z",
+      "consumedAt": "2026-07-26T14:52:34.626Z",
+      "committedToGit": false,
+      "replayRejected": true
+    },
+    "transaction": {
+      "explicit": true,
+      "committed": true,
+      "startedAt": "2026-07-26T14:52:33.499Z",
+      "finishedAt": "2026-07-26T14:52:34.626Z",
+      "dclStatementsExecuted": 5
+    },
+    "postMutationVerification": {
+      "verifiedAt": "2026-07-26T14:57:00.000Z",
+      "transactionReadOnly": true,
+      "targetGrantMatrixAchieved": true,
+      "crmTablesPresent": 4,
+      "rlsEnabledCount": 4,
+      "rlsForcedCount": 4,
+      "rowCountsChanged": false,
+      "columnFingerprintChanged": false,
+      "policyCount": 11,
+      "functionCount": 4,
+      "constraintCount": 26,
+      "indexCount": 18,
+      "triggerCount": 1,
+      "crmPermissionRows": 24,
+      "crmRoleMatrixRows": 0,
+      "duplicateObjects": 0,
+      "dataImpact": false,
+      "productionConnections": 0
+    },
+    "rollbackExecuted": false,
+    "dataRowsMutated": 0,
+    "schemaObjectsChanged": 0,
+    "migrationsApplied": 0
+  },
+  "workstreamVerdict": "BM_FINAL_SAFETY_01_STAGING_REMEDIATION_PASS"
+}

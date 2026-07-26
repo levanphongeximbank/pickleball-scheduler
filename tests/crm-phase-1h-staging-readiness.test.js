@@ -41,7 +41,7 @@ import {
 import {
   loadCrmStagingMigrationManifest,
   verifyCrmStagingMigrationManifest,
-  sha256File,
+  sha256CanonicalTextFile,
   CRM_PRODUCTION_PROJECT_REF_BLOCKLIST,
 } from "../src/features/crm/staging/migrationManifest.js";
 import { CRM_PHASE_1G_TABLES, CRM_PHASE_1G_RPC } from "../src/features/crm/persistence/databaseClientPort.js";
@@ -474,7 +474,7 @@ test("migration manifest complete, ordered, SHA-256 pinned", () => {
     assert.equal(entry.order, i + 1);
     const abs = path.join(root, entry.path);
     assert.ok(existsSync(abs), entry.path);
-    assert.equal(sha256File(abs), entry.sha256);
+    assert.equal(sha256CanonicalTextFile(abs), entry.sha256);
   }
   const verified = verifyCrmStagingMigrationManifest({ repoRoot: root, manifest });
   assert.equal(verified.ok, true);
@@ -520,10 +520,25 @@ test("migration manifest complete, ordered, SHA-256 pinned", () => {
 // ─── Preflight / apply boundary ─────────────────────────────────────────────
 
 test("offline preflight dry-run default; no SQL apply; secrets not printed", () => {
+  const offlineEnv = {
+    ...process.env,
+    VITE_CRM_PERSISTENCE_MODE: "memory",
+  };
+  delete offlineEnv.CI;
+  delete offlineEnv.GITHUB_ACTIONS;
+  delete offlineEnv.VITEST;
+  delete offlineEnv.CRM_STAGING_APPLY_AUDIT_MODE;
+  if (String(offlineEnv.NODE_ENV || "").toLowerCase() === "test") {
+    offlineEnv.NODE_ENV = "development";
+  }
+  if (String(offlineEnv.npm_lifecycle_event || "") === "test") {
+    delete offlineEnv.npm_lifecycle_event;
+  }
+
   const out = execFileSync(
     process.execPath,
     ["scripts/crm/phase-1h-staging-preflight.mjs", "--offline"],
-    { cwd: root, encoding: "utf8", env: { ...process.env, VITE_CRM_PERSISTENCE_MODE: "memory" } }
+    { cwd: root, encoding: "utf8", env: offlineEnv }
   );
   const report = JSON.parse(out);
   assert.equal(report.ok, true);
@@ -540,7 +555,7 @@ test("offline preflight dry-run default; no SQL apply; secrets not printed", () 
   const applyOut = execFileSync(
     process.execPath,
     ["scripts/crm/phase-1h-staging-apply.mjs", "--dry-run"],
-    { cwd: root, encoding: "utf8" }
+    { cwd: root, encoding: "utf8", env: offlineEnv }
   );
   const applyReport = JSON.parse(applyOut);
   assert.equal(applyReport.mode, "dry-run");
@@ -560,7 +575,7 @@ test("offline preflight dry-run default; no SQL apply; secrets not printed", () 
         "--owner-approval=x",
         "--backup-evidence=y",
       ],
-      { cwd: root, encoding: "utf8" }
+      { cwd: root, encoding: "utf8", env: offlineEnv }
     );
   } catch (err) {
     applyRefused = true;
@@ -574,6 +589,8 @@ test("offline preflight dry-run default; no SQL apply; secrets not printed", () 
         "CRM_PHASE_1H_B_BLOCKED_STAGING_IDENTITY_UNVERIFIED",
         "CRM_PHASE_1H_B_BLOCKED_BACKUP_REQUIRED",
         "CRM_PHASE_1H_B_BLOCKED_CREDENTIALS_REQUIRED",
+        "CRM_PHASE_1H_B_BLOCKED_ONE_TIME_AUTHORIZATION_REQUIRED",
+        "CRM_PHASE_1H_B_BLOCKED_EXECUTION_CONTEXT",
       ].includes(refused.verdict)
     );
     assert.equal(refused.stagingConnected, false);
