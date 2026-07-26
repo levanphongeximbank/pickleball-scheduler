@@ -1,0 +1,28 @@
+{
+  "phase": "COACHING-04-RUNTIME-CUTOVER",
+  "script": "coaching-04-runtime-cutover-preflight",
+  "stagingProjectRef": "qyewbxjsiiyufanzcjcq",
+  "pr292CertificationCommit": "fcecd79c2c0732e5bc7962fa1bfa91d6086818e6",
+  "pr292MergeCommit": "98dedfc9814c4b81a6f3a5ffeae81aff9bf3bddd",
+  "mappingRowCount": 0,
+  "mappingReadinessClassification": "COACHING_04_RUNTIME_CUTOVER_READY_WITH_PLAYER_UNMAPPED_GATE",
+  "runtimeActivated": false,
+  "localStorageRetired": false,
+  "durableRuntimeDefault": false,
+  "productionTouched": false,
+  "silentFallbackAllowed": false,
+  "databaseConnectionOpened": false,
+  "databaseWrites": 0,
+  "filesDeleted": 0,
+  "CODEX_DELETE_ALLOWED": "NO",
+  "secretsPrinted": false,
+  "ownerGoGranted": false,
+  "localStorageRetirementGoGranted": false,
+  "verdict": "COACHING_04_RUNTIME_CUTOVER_REFUSED_OWNER_GO_NOT_GRANTED",
+  "errors": [
+    "Owner GO not granted for Staging durable runtime cutover."
+  ],
+  "ok": true,
+  "canActivate": false,
+  "note": "Refuse-by-default preflight. Package readiness only; activation requires Owner GO."
+}

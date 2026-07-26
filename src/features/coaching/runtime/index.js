@@ -50,6 +50,22 @@ export {
 } from "./legacyTelemetry.js";
 
 export {
+  COACHING_STAGING_DURABLE_RUNTIME_FLAG,
+  COACHING_APP_ENV_KEY,
+  COACHING_APP_ENVIRONMENT,
+  COACHING_STAGING_DURABLE_ACTIVATION_REASON,
+  COACHING_04_OWNER_GO_RUNTIME_CUTOVER_STAGING,
+  COACHING_04_OWNER_GO_LOCALSTORAGE_RETIREMENT,
+  COACHING_04_RUNTIME_CUTOVER_CLASSIFICATION,
+  COACHING_04_STAGING_PROJECT_REF,
+  classifyCoachingAppEnvironment,
+  isCoachingStagingDurableFlagEnabled,
+  readCoachingStagingDurableEnvFromImportMeta,
+  extractSupabaseProjectRef,
+  resolveCoachingStagingDurableActivation,
+} from "./stagingDurableGate.js";
+
+export {
   createDefaultCoachingRuntime,
   getDefaultCoachingRuntime,
   resetDefaultCoachingRuntime,

@@ -1,0 +1,27 @@
+{
+  "phase": "COACHING-04-RUNTIME-CUTOVER",
+  "artifact": "POST_MERGE_PR292_VERIFICATION",
+  "prNumber": 292,
+  "prState": "MERGED",
+  "prUrl": "https://github.com/levanphongeximbank/pickleball-scheduler/pull/292",
+  "mergedAt": "2026-07-26T03:54:57Z",
+  "baseRefName": "main",
+  "certificationCommit": "fcecd79c2c0732e5bc7962fa1bfa91d6086818e6",
+  "mergeCommit": "98dedfc9814c4b81a6f3a5ffeae81aff9bf3bddd",
+  "certificationCommitIsAncestorOfOriginMain": true,
+  "mergeCommitIsAncestorOfOriginMain": true,
+  "stagingProjectRef": "qyewbxjsiiyufanzcjcq",
+  "helperAcl": {
+    "anon": 0,
+    "service_role": 0,
+    "authenticated": 12
+  },
+  "mappingRowCount": 0,
+  "runtimeActivated": false,
+  "localStorageRetired": false,
+  "productionTouched": false,
+  "packageLockDrift": false,
+  "filesDeleted": 0,
+  "CODEX_DELETE_ALLOWED": "NO",
+  "verdict": "COACHING_04_PR292_POST_MERGE_VERIFIED"
+}
