@@ -1,27 +1,28 @@
 import { snapPickVnRating } from "../constants/pickVnRatingScale.js";
 import { GENDER_TO_PLAYER_LABEL } from "../../player-rating/playerSkillAssessmentConfig.js";
 import { calculatePlayerAssessment } from "../../player-rating/playerSkillAssessmentEngine.js";
-import { savePlayerAssessment } from "../../player-rating/playerRatingAssessmentLocalStore.js";
+import {
+  getPlayerAssessmentByAuthUserId,
+  savePlayerAssessment,
+} from "../../player-rating/playerRatingAssessmentLocalStore.js";
 import { RATING_STATUS } from "../constants/ratingStatus.js";
 import {
   buildClubPlayerRatingMirror,
-  buildRatingHistoryEntry,
   normalizePickVnRatingRecord,
 } from "../models/pickVnRating.js";
 import {
   findPickVnRatingByAuthUserId,
   listPickVnRatings,
-  upsertPickVnRating,
 } from "../storage/pickVnRatingLocalStore.js";
-import { rpcPickVnSyncRating } from "./pickVnRatingRpcService.js";
-import { loadClubData, saveClubData } from "../../../domain/clubStorage.js";
-import { normalizePlayers } from "../../../models/player.js";
-import { updateSelfDemographics } from "../../identity/services/selfProfileService.js";
+import {
+  durableUnavailableResult,
+  frozenWriterResult,
+  runCanonicalRatingWrite,
+} from "./playerRatingCanonicalBridge.js";
 
-function buildRatingId(authUserId) {
-  return `pvn-rating-${String(authUserId)}`;
-}
-
+/**
+ * Read compatibility — local mirror / cache only. Not writable SSOT.
+ */
 export function getPickVnRatingByAuthUserId(authUserId) {
   if (!authUserId) {
     return null;
@@ -34,11 +35,27 @@ export function listAllPickVnRatings() {
   return listPickVnRatings().map((row) => normalizePickVnRatingRecord(row)).filter(Boolean);
 }
 
+/**
+ * Onboarding gate uses assessment draft store (local-only, not rating SSOT).
+ */
 export function hasCompletedPickVnOnboarding(authUserId) {
-  const record = getPickVnRatingByAuthUserId(authUserId);
-  if (!record) {
-    return false;
+  if (!authUserId) return false;
+  const draft = getPlayerAssessmentByAuthUserId(authUserId);
+  if (
+    draft &&
+    draft.answers &&
+    typeof draft.answers === "object" &&
+    Object.keys(draft.answers).length > 0 &&
+    (draft.assessment_score != null ||
+      draft.provisional_rating != null ||
+      draft.ok === true)
+  ) {
+    return true;
   }
+
+  // Compatibility read of legacy local mirror if present (not authority).
+  const record = getPickVnRatingByAuthUserId(authUserId);
+  if (!record) return false;
   const answers = record.assessmentAnswers;
   return (
     answers &&
@@ -60,83 +77,48 @@ export function syncRatingToClubPlayer(player, authUserId = null) {
   };
 }
 
+/**
+ * Canonical self-declared rating mutation — writer frozen / durable-only.
+ * Does not write local rating state then report success.
+ */
 export async function saveSelfDeclaredRating(authUserId, rating, options = {}) {
   if (!authUserId) {
     return { ok: false, error: "Thiếu auth user." };
   }
 
   const snapped = snapPickVnRating(rating);
-  const now = new Date().toISOString();
-  const existing = getPickVnRatingByAuthUserId(authUserId);
-  const historyEntry = buildRatingHistoryEntry({
-    from: existing?.currentRating ?? null,
-    to: snapped,
-    status: RATING_STATUS.SELF_DECLARED,
-    source: options.source || "onboarding",
-    at: now,
-  });
+  const playerId = options.playerId ? String(options.playerId) : null;
 
-  const record = normalizePickVnRatingRecord({
-    id: existing?.id || buildRatingId(authUserId),
-    authUserId,
-    vprAthleteId: existing?.vprAthleteId || options.vprAthleteId || null,
-    selfDeclaredRating: snapped,
-    currentRating: snapped,
-    ratingStatus: RATING_STATUS.SELF_DECLARED,
-    ratingConfidence: 0.2,
-    ratingMatchCount: existing?.ratingMatchCount || 0,
-    lastRatingUpdatedAt: now,
-    ratingHistory: [...(existing?.ratingHistory || []), historyEntry],
-    createdAt: existing?.createdAt || now,
-    updatedAt: now,
-  });
-
-  upsertPickVnRating(record);
-  rpcPickVnSyncRating(record).catch(() => {});
-
-  return { ok: true, record };
-}
-
-function syncOnboardingToClubPlayer({
-  clubId,
-  playerId,
-  authUserId,
-  gender,
-  birthYear,
-  record,
-}) {
-  if (!clubId) {
-    return { ok: true, changed: false };
+  if (!playerId || !options.actor || options.expectedVersion == null) {
+    return frozenWriterResult("saveSelfDeclaredRating", {
+      authUserId,
+      rating: snapped,
+      reason:
+        "Requires canonical playerId, actor context, and expectedVersion via write facade",
+    });
   }
 
-  const data = loadClubData(clubId);
-  const players = data.players || [];
-  const index = playerId
-    ? players.findIndex((player) => String(player.id) === String(playerId))
-    : players.findIndex((player) => String(player.authUserId) === String(authUserId));
-
-  if (index < 0) {
-    return { ok: true, changed: false };
-  }
-
-  const current = players[index];
-  const nextPlayer = {
-    ...current,
-    gender: GENDER_TO_PLAYER_LABEL[gender] || current.gender || null,
-    birthYear: birthYear != null ? Number(birthYear) : current.birthYear,
-    ...buildClubPlayerRatingMirror(current, record),
-  };
-
-  const nextPlayers = players.map((player, idx) =>
-    idx === index ? nextPlayer : player
+  return runCanonicalRatingWrite(
+    (facade) =>
+      facade.adjust({
+        playerId,
+        scope: options.scope || { kind: "tenant", tenantId: options.tenantId || options.clubId },
+        ratingMode: options.ratingMode || "overall",
+        targetField: "selfAssessedRating",
+        newValue: snapped,
+        expectedVersion: options.expectedVersion,
+        actor: options.actor,
+        auditId: options.auditId || `audit-self-${options.actor.operationId}`,
+        status: RATING_STATUS.SELF_DECLARED,
+      }),
+    "saveSelfDeclaredRating"
   );
-  data.players = normalizePlayers(nextPlayers);
-  data.updatedAt = new Date().toISOString();
-  saveClubData(clubId, data);
-
-  return { ok: true, changed: true };
 }
 
+/**
+ * Assessment draft remains local-only. Canonical rating persistence is separate
+ * and fail-closed when durable runtime is unavailable.
+ */
 export async function completePickVnOnboarding(
   authUserId,
   {
@@ -145,6 +127,10 @@ export async function completePickVnOnboarding(
     playerId = null,
     vprAthleteId = null,
     hasClub = false,
+    actor = null,
+    scope = null,
+    expectedVersion = null,
+    ratingMode = "overall",
   } = {}
 ) {
   if (!authUserId) {
@@ -166,198 +152,147 @@ export async function completePickVnOnboarding(
     };
   }
 
-  const now = new Date().toISOString();
-  const historyEntry = buildRatingHistoryEntry({
-    from: existing?.currentRating ?? null,
-    to: assessment.provisional_rating,
-    status: assessment.rating_status,
-    source: "onboarding_assessment_v2",
-    note: `Score ${assessment.assessment_score}/100; self ${assessment.self_declared_rating}`,
-    at: now,
-  });
-
-  const record = normalizePickVnRatingRecord({
-    id: existing?.id || buildRatingId(authUserId),
-    authUserId,
-    vprAthleteId: existing?.vprAthleteId || vprAthleteId || null,
-    selfDeclaredRating: assessment.self_declared_rating,
-    provisionalRating: assessment.provisional_rating,
-    currentRating: assessment.provisional_rating,
-    suggestedRating: assessment.provisional_rating,
-    assessmentAnswers: assessment.answers,
-    assessmentScore: assessment.assessment_score,
-    warningFlags: assessment.warning_flags,
-    assessmentBreakdown: assessment.assessment_breakdown,
-    externalRatingSources: assessment.external_rating_sources,
-    rawProvisionalRating: assessment.raw_provisional_rating,
-    ratingCalibration: assessment.rating_calibration,
-    ratingStatus: assessment.rating_status,
-    ratingConfidence: assessment.rating_confidence_normalized,
-    ratingMatchCount: existing?.ratingMatchCount || 0,
-    lastRatingUpdatedAt: now,
-    ratingHistory: [...(existing?.ratingHistory || []), historyEntry],
-    createdAt: existing?.createdAt || now,
-    updatedAt: now,
-  });
-
-  upsertPickVnRating(record);
-  savePlayerAssessment({
+  // Draft/local-only — not canonical Player Rating SSOT.
+  const draft = savePlayerAssessment({
     authUserId,
     ...assessment,
-    recordId: record.id,
+    vprAthleteId: vprAthleteId || null,
+    clubId: clubId || null,
+    playerId: playerId || null,
+    draftOnly: true,
+    canonicalRatingPersisted: false,
   });
 
-  const gender = assessment.answers.gender || null;
-  const birthYear = assessment.answers.birth_year ?? null;
-  await updateSelfDemographics({ gender, birthYear }).catch(() => {});
-
-  syncOnboardingToClubPlayer({
-    clubId,
-    playerId,
-    authUserId,
-    gender,
-    birthYear,
-    record,
+  let ratingWrite = durableUnavailableResult("completePickVnOnboarding.rating", {
+    draftOnly: true,
   });
+
+  if (playerId && actor && expectedVersion != null && scope) {
+    ratingWrite = await runCanonicalRatingWrite(
+      (facade) =>
+        facade.adjust({
+          playerId: String(playerId),
+          scope,
+          ratingMode,
+          targetField: "provisionalRating",
+          newValue: assessment.provisional_rating,
+          expectedVersion,
+          actor,
+          auditId: `audit-onboarding-${actor.operationId}`,
+          status: assessment.rating_status,
+        }),
+      "completePickVnOnboarding.rating"
+    );
+  }
 
   return {
     ok: true,
-    record,
+    draftOnly: true,
     assessment,
+    assessmentDraft: draft,
+    // Compatibility: no local rating SSOT record is written on success.
+    record: null,
+    ratingWrite,
+    clubId,
+    playerId,
+    genderLabel: GENDER_TO_PLAYER_LABEL[assessment.answers?.gender] || null,
   };
 }
 
-export function applyVerifiedRatingToRecord(
-  record,
-  {
-    rating,
-    status,
-    verifiedBy = null,
-    note = "",
-    source = "verification",
-    provisionalRating = null,
-  } = {}
-) {
-  const existing = normalizePickVnRatingRecord(record);
-  if (!existing) {
-    return null;
+/**
+ * Verified rating mutation — frozen unless delegated to canonical facade.
+ */
+export function applyVerifiedRatingToRecord(record, options = {}) {
+  void record;
+  void options;
+  return null;
+}
+
+export async function applyVerifiedRatingToRecordAsync(record, options = {}) {
+  if (!options.playerId || !options.actor || options.expectedVersion == null) {
+    return frozenWriterResult("applyVerifiedRatingToRecord", {
+      reason: "Requires canonical playerId, actor, expectedVersion",
+    });
   }
 
-  const snapped = snapPickVnRating(rating);
-  const now = new Date().toISOString();
-  const historyEntry = buildRatingHistoryEntry({
-    from: existing.currentRating,
-    to: snapped,
-    status,
-    source,
-    verifiedBy,
-    note,
-    at: now,
-  });
-
-  const next = normalizePickVnRatingRecord({
-    ...existing,
-    verifiedRating: snapped,
-    provisionalRating: provisionalRating != null ? snapPickVnRating(provisionalRating) : existing.provisionalRating,
-    currentRating: snapped,
-    ratingStatus: status,
-    ratingConfidence: Math.min(1, (existing.ratingConfidence || 0) + 0.25),
-    lastRatingUpdatedAt: now,
-    ratingVerifiedBy: verifiedBy,
-    ratingVerificationNote: note,
-    ratingHistory: [...(existing.ratingHistory || []), historyEntry],
-    updatedAt: now,
-  });
-
-  upsertPickVnRating(next);
-  rpcPickVnSyncRating(next).catch(() => {});
-  return next;
+  const snapped = snapPickVnRating(options.rating);
+  return runCanonicalRatingWrite(
+    (facade) =>
+      facade.verify({
+        playerId: String(options.playerId),
+        scope:
+          options.scope ||
+          { kind: "tenant", tenantId: options.tenantId || options.clubId },
+        ratingMode: options.ratingMode || "overall",
+        verifiedRating: snapped,
+        expectedVersion: options.expectedVersion,
+        actor: options.actor,
+        status: options.status,
+      }),
+    "applyVerifiedRatingToRecord"
+  );
 }
 
 export function incrementRatingMatchCount(authUserId, delta = 1) {
-  const existing = getPickVnRatingByAuthUserId(authUserId);
-  if (!existing) {
-    return null;
-  }
-  const now = new Date().toISOString();
-  const next = normalizePickVnRatingRecord({
-    ...existing,
-    ratingMatchCount: (existing.ratingMatchCount || 0) + delta,
-    ratingConfidence: Math.min(
-      1,
-      (existing.ratingConfidence || 0) + delta * 0.05
-    ),
-    updatedAt: now,
-  });
-  upsertPickVnRating(next);
-  rpcPickVnSyncRating(next).catch(() => {});
-  return next;
+  void authUserId;
+  void delta;
+  // Rating confidence / match-count mutation is a competing writer — frozen.
+  return null;
 }
 
 export function incrementRatingMatchCountForClubPlayers(clubId, playerIds = []) {
-  if (!clubId || !playerIds.length) {
-    return { ok: true, changed: false, count: 0 };
-  }
-
-  const data = loadClubData(clubId);
-  const targetIds = new Set(playerIds.map(String));
-  let count = 0;
-
-  const nextPlayers = (data.players || []).map((player) => {
-    if (!targetIds.has(String(player.id))) {
-      return player;
-    }
-    const authUserId = player.authUserId ? String(player.authUserId) : null;
-    if (!authUserId) {
-      return player;
-    }
-    const record = incrementRatingMatchCount(authUserId);
-    if (!record) {
-      return player;
-    }
-    count += 1;
-    return syncRatingToClubPlayer(player, authUserId);
+  void clubId;
+  void playerIds;
+  return frozenWriterResult("incrementRatingMatchCountForClubPlayers", {
+    reason: "Club blob is mirror-only; match-count is not a local rating writer",
   });
-
-  if (count > 0) {
-    data.players = normalizePlayers(nextPlayers);
-    data.updatedAt = new Date().toISOString();
-    saveClubData(clubId, data);
-  }
-
-  return { ok: true, changed: count > 0, count };
 }
 
 export function incrementPickVnMatchCountFromRecord(clubId, record) {
-  if (!record) {
-    return { ok: true, changed: false, count: 0 };
-  }
-
-  const playerIds = [
-    ...(record.teamAPlayerIds || []),
-    ...(record.teamBPlayerIds || []),
-    ...(record.playerIds || []),
-  ];
-
-  return incrementRatingMatchCountForClubPlayers(clubId, [...new Set(playerIds.map(String))]);
+  void clubId;
+  void record;
+  return frozenWriterResult("incrementPickVnMatchCountFromRecord", {
+    reason: "Club blob is mirror-only; match-count is not a local rating writer",
+  });
 }
 
 export function setProvisionalRating(authUserId, provisionalRating, options = {}) {
-  const existing = getPickVnRatingByAuthUserId(authUserId);
-  if (!existing) {
-    return null;
+  void authUserId;
+  void provisionalRating;
+  void options;
+  return null;
+}
+
+export async function setProvisionalRatingAsync(
+  authUserId,
+  provisionalRating,
+  options = {}
+) {
+  void authUserId;
+  if (!options.playerId || !options.actor || options.expectedVersion == null) {
+    return frozenWriterResult("setProvisionalRating", {
+      reason: "Requires canonical playerId, actor, expectedVersion",
+    });
   }
+
   const snapped = snapPickVnRating(provisionalRating);
-  const now = new Date().toISOString();
-  const next = normalizePickVnRatingRecord({
-    ...existing,
-    provisionalRating: snapped,
-    ratingStatus: options.underReview
-      ? RATING_STATUS.UNDER_REVIEW
-      : RATING_STATUS.PROVISIONAL,
-    lastRatingUpdatedAt: now,
-    updatedAt: now,
-  });
-  upsertPickVnRating(next);
-  return next;
+  return runCanonicalRatingWrite(
+    (facade) =>
+      facade.adjust({
+        playerId: String(options.playerId),
+        scope:
+          options.scope ||
+          { kind: "tenant", tenantId: options.tenantId || options.clubId },
+        ratingMode: options.ratingMode || "overall",
+        targetField: "provisionalRating",
+        newValue: snapped,
+        expectedVersion: options.expectedVersion,
+        actor: options.actor,
+        auditId: options.auditId || `audit-prov-${options.actor.operationId}`,
+        status: options.underReview
+          ? RATING_STATUS.UNDER_REVIEW
+          : RATING_STATUS.PROVISIONAL,
+      }),
+    "setProvisionalRating"
+  );
 }

@@ -3,11 +3,12 @@
  * + Phase 1D append-only history & immutable snapshots
  * + Phase 1E verification & manual adjustment
  * + Phase 1H read-only facade
- * + Phase 1I security, privacy, and boundary hardening.
+ * + Phase 1I security, privacy, and boundary hardening
+ * + BM-FINAL-RATING-01 canonical write facade & V5 durable adapters.
  *
- * Runtime-neutral contracts, ports, read-model, and in-memory adapters only.
- * Not wired into Production runtime.
- * Does not replace legacy assessment under src/features/player-rating/.
+ * Canonical writable SSOT domain boundary. Durable persistence authority is
+ * existing V5 service RPC / storage behind foundation adapters.
+ * Not a Production cutover declaration.
  */
 
 export const PLAYER_RATING_FOUNDATION_PHASE = Object.freeze({
@@ -15,6 +16,7 @@ export const PLAYER_RATING_FOUNDATION_PHASE = Object.freeze({
   name: "module-skeleton",
   wiredToProductionRuntime: false,
   hasFinalAlgorithm: false,
+  canonicalWritableSsot: true,
 });
 
 export {
@@ -206,3 +208,29 @@ export {
   projectPlayerRatingCompatibilityDecision,
   projectPlayerRatingErrorDescriptor,
 } from "./platform/index.js";
+
+export {
+  PLAYER_RATING_WRITE_FACADE_PHASE,
+  failWriteFacade,
+  failDurableRuntimeUnavailable,
+  failWriterFrozen,
+  createPlayerRatingWriteFacade,
+} from "./write-facade/index.js";
+
+export {
+  PLAYER_RATING_V5_DURABLE_AUTHORITY,
+  isV5DurableCasRuntime,
+  resolveDefaultV5DurableRuntime,
+  createV5DurableRuntimeHandle,
+  throwDurableRuntimeUnavailable,
+  throwPersistenceFailed,
+  createV5DurableCurrentStateAdapter,
+  createV5DurableHistoryAdapter,
+  createV5DurableSnapshotAdapter,
+  createV5DurableAuditAdapter,
+  createV5DurableAdapterBundle,
+  createInMemoryV5DurableRuntime,
+  createCanonicalPlayerIdResolverAdapter,
+  mapPlayerManagementResolution,
+  composePlayerRatingWriteFacade,
+} from "./adapters/index.js";

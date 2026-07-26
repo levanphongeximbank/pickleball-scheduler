@@ -44,9 +44,10 @@ export function applyRatingProposalToPlayer(clubId, playerId, proposal, options 
   }
 
   const authUserId = options.authUserId || null;
-  if (authUserId) {
-    setProvisionalRating(authUserId, proposal.proposedLevel, { underReview: true });
-  }
+  // Provisional rating mutation is frozen — do not treat local write as success.
+  const provisionalWrite = authUserId
+    ? setProvisionalRating(authUserId, proposal.proposedLevel, { underReview: true })
+    : null;
 
   logPickVnRatingAudit({
     action: "rating.propose",
@@ -55,11 +56,16 @@ export function applyRatingProposalToPlayer(clubId, playerId, proposal, options 
     authUserId,
     before: { rating: proposal.currentLevel },
     after: { rating: proposal.proposedLevel, status: RATING_STATUS.UNDER_REVIEW },
-    metadata: { source: proposal.source || "monthly_proposal" },
+    metadata: {
+      source: proposal.source || "monthly_proposal",
+      writerFrozen: provisionalWrite == null,
+    },
   });
 
   return {
-    ok: true,
+    ok: false,
+    code: "PLAYER_RATING_WRITER_FROZEN",
+    error: "Player Rating provisional writer frozen; use canonical write facade",
     proposal,
     playerPatch: {
       provisional_rating: proposal.proposedLevel,

@@ -100,16 +100,17 @@ test("normalizePlayer migrates legacy skillLevel fields", () => {
   assert.equal(getPlayerSkillLevel(player), 3.5);
 });
 
-test("saveSelfDeclaredRating without assessment still needs wizard onboarding", async () => {
+test("saveSelfDeclaredRating without assessment is frozen (no local rating success)", async () => {
   resetPickVnRatingLocalStoreForTests();
   const authUserId = "user-test-legacy";
 
   const result = await saveSelfDeclaredRating(authUserId, 4.0);
-  assert.equal(result.ok, true);
+  assert.equal(result.ok, false);
+  assert.equal(result.code, "PLAYER_RATING_WRITER_FROZEN");
   assert.equal(needsPickVnOnboarding(authUserId), true);
 });
 
-test("completePickVnOnboarding saves assessment and clears gate", async () => {
+test("completePickVnOnboarding saves assessment draft and does not write rating SSOT", async () => {
   resetPickVnRatingLocalStoreForTests();
   const authUserId = "user-wizard-1";
 
@@ -145,15 +146,11 @@ test("completePickVnOnboarding saves assessment and clears gate", async () => {
   });
 
   assert.equal(result.ok, true);
-  const record = getPickVnRatingByAuthUserId(authUserId);
-  assert.equal(record.currentRating, 3.0);
-  assert.equal(record.provisionalRating, 3.0);
-  assert.equal(record.selfDeclaredRating, 3.0);
-  assert.equal(record.ratingStatus, RATING_STATUS.PROVISIONAL);
-  assert.ok(record.assessmentScore >= 46 && record.assessmentScore <= 55);
-  assert.ok(record.assessmentAnswers);
-  assert.equal(record.assessmentAnswers.gender, "male");
-  assert.equal(record.suggestedRating != null, true);
+  assert.equal(result.draftOnly, true);
+  assert.equal(result.record, null);
+  assert.equal(result.assessment.provisional_rating, 3.0);
+  assert.equal(result.ratingWrite.ok, false);
+  assert.equal(getPickVnRatingByAuthUserId(authUserId), null);
   assert.equal(needsPickVnOnboarding(authUserId), false);
 });
 
@@ -173,10 +170,11 @@ test("parsePickVnRating handles 6.0+ label", () => {
   assert.equal(parsePickVnRating("6.0+"), PICK_VN_PLUS_NUMERIC);
 });
 
-test("incrementRatingMatchCountForClubPlayers updates mirror on club player", async () => {
+test("incrementRatingMatchCountForClubPlayers is frozen (mirror-only club blob)", async () => {
   resetPickVnRatingLocalStoreForTests();
   const authUserId = "user-match-count-1";
-  await saveSelfDeclaredRating(authUserId, 3.5);
+  const saveResult = await saveSelfDeclaredRating(authUserId, 3.5);
+  assert.equal(saveResult.ok, false);
 
   setActiveClubId(DEFAULT_CLUB.id);
   saveClubData(DEFAULT_CLUB.id, {
@@ -194,12 +192,9 @@ test("incrementRatingMatchCountForClubPlayers updates mirror on club player", as
   });
 
   const result = incrementRatingMatchCountForClubPlayers(DEFAULT_CLUB.id, ["p1"]);
-  assert.equal(result.ok, true);
-  assert.equal(result.count, 1);
+  assert.equal(result.ok, false);
+  assert.equal(result.code, "PLAYER_RATING_WRITER_FROZEN");
 
   const record = getPickVnRatingByAuthUserId(authUserId);
-  assert.equal(record.ratingMatchCount, 1);
-
-  const data = loadClubData(DEFAULT_CLUB.id);
-  assert.equal(data.players[0].rating_match_count, 1);
+  assert.equal(record, null);
 });

@@ -665,6 +665,33 @@ const RULES = [
       ...(c.match(/createHash\s*\(\s*["']sha256["']\s*\)/gi) || []),
     ],
   },
+  {
+    id: "player-rating-canonical-write-boundary",
+    description:
+      "BM-FINAL-RATING-01 — Competing Player Rating writers must not call upsertPickVnRating outside the frozen compatibility mirror allowlist; canonical writes belong to player-rating/foundation.",
+    allow: [
+      "src/features/player-rating/foundation/",
+      "src/features/pick-vn-rating/storage/pickVnRatingLocalStore.js",
+      "src/features/pick-vn-rating/services/pickVnClubSyncService.js",
+    ],
+    match: (c) => c.match(/\bupsertPickVnRating\s*\(/g) || [],
+  },
+  {
+    id: "player-rating-no-silent-rpc-swallow",
+    description:
+      "BM-FINAL-RATING-01 — Public Pick_VN rating writer paths must not swallow durable RPC failures with empty catch.",
+    onlyIn: [
+      "src/features/pick-vn-rating/services/pickVnRatingService.js",
+      "src/features/pick-vn-rating/services/ratingVerificationService.js",
+      "src/features/pick-vn-rating/services/pickVnClubSyncService.js",
+      "src/features/pick-vn-rating/services/playerRatingCanonicalBridge.js",
+    ],
+    allow: [],
+    match: (c) =>
+      c.match(
+        /rpcPickVn(?:Sync|Verify)Rating\s*\([^)]*\)\s*\.catch\s*\(\s*\(\s*\)\s*=>\s*\{\s*\}\s*\)/g
+      ) || [],
+  },
 ];
 
 function rel(abs) {

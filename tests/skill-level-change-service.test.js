@@ -110,7 +110,7 @@ test("setInitialSkillLevel locks skill level on first create only", () => {
   assert.equal(again.skillLevel, 4.0);
 });
 
-test("submit and approve skill level change request updates player skillLevel", () => {
+test("submit and approve skill level change request is fail-closed when rating writer frozen", () => {
   const submitted = submitSkillLevelChangeRequest(DEFAULT_CLUB.id, 1, 4.0, {
     reason: "Tập luyện tốt hơn",
     requestedBy: "player@test.local",
@@ -125,10 +125,11 @@ test("submit and approve skill level change request updates player skillLevel", 
     { reviewedBy: "tech@test.local" }
   );
 
-  assert.equal(approved.ok, true);
+  assert.equal(approved.ok, false);
+  assert.equal(approved.code, "PLAYER_RATING_WRITER_FROZEN");
   const data = loadClubData(DEFAULT_CLUB.id);
-  assert.equal(data.players[0].skillLevel, 4);
-  assert.equal(listPendingSkillLevelChangeRequests().length, 0);
+  assert.equal(data.players[0].skillLevel, 3.5);
+  assert.equal(listPendingSkillLevelChangeRequests().length, 1);
 });
 
 test("daily play match completion does not update skillLevel via Elo", () => {

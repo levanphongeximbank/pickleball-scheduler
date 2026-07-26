@@ -1,72 +1,29 @@
-import { RATING_STATUS } from "../constants/ratingStatus.js";
-import { clampPickVnRating, snapPickVnRating } from "../constants/pickVnRatingScale.js";
-import { buildClubPlayerRatingMirror } from "../models/pickVnRating.js";
+/**
+ * Pick_VN V2 verification compatibility surface (BM-FINAL-RATING-01).
+ * Writers are frozen: must delegate to canonical foundation write facade
+ * or return typed WRITER_FROZEN / DURABLE_RUNTIME_UNAVAILABLE.
+ * Club blob remains mirror-only — never independent verified-rating success.
+ */
+
+import { snapPickVnRating } from "../constants/pickVnRatingScale.js";
 import {
-  applyVerifiedRatingToRecord,
-  getPickVnRatingByAuthUserId,
-  saveSelfDeclaredRating,
-} from "./pickVnRatingService.js";
-import { logPickVnRatingAudit } from "./pickVnRatingAuditService.js";
-import { normalizePlayers } from "../../../models/player.js";
-import { loadClubData, saveClubData } from "../../../domain/clubStorage.js";
+  durableUnavailableResult,
+  frozenWriterResult,
+  runCanonicalRatingWrite,
+} from "./playerRatingCanonicalBridge.js";
 import { parsePlatformAthleteRouteId } from "../../club/services/accountOnlyAthleteService.js";
 
-function applyRatingToClubPlayer(player, globalRecord, status) {
-  const mirror = buildClubPlayerRatingMirror(player, globalRecord);
-  return {
-    ...player,
-    ...mirror,
-    rating_status: status,
-    rating_verified_by: globalRecord?.ratingVerifiedBy || null,
-    rating_verification_note: globalRecord?.ratingVerificationNote || "",
-    last_rating_updated_at: globalRecord?.lastRatingUpdatedAt || new Date().toISOString(),
-  };
-}
-
-function findBlobPlayerIndex(data, { playerId, authUserId, athleteId } = {}) {
-  const players = data?.players || [];
-  if (playerId) {
-    const byId = players.findIndex((item) => String(item.id) === String(playerId));
-    if (byId >= 0) {
-      return byId;
-    }
-  }
-  if (athleteId) {
-    const byAthlete = players.findIndex(
-      (item) => String(item.athleteId || item.athlete_id || "") === String(athleteId)
-    );
-    if (byAthlete >= 0) {
-      return byAthlete;
-    }
-  }
-  if (authUserId) {
-    return players.findIndex(
-      (item) => String(item.authUserId || item.auth_user_id || "") === String(authUserId)
-    );
-  }
-  return -1;
-}
-
-function persistVerifiedRatingForAuthUser(authUserId, rating, { verifiedBy, note }) {
-  const snapped = clampPickVnRating(rating);
-  let globalRecord = getPickVnRatingByAuthUserId(authUserId);
-  if (!globalRecord) {
-    saveSelfDeclaredRating(authUserId, snapped, { source: "club_verify" });
-    globalRecord = getPickVnRatingByAuthUserId(authUserId);
-  }
-  return applyVerifiedRatingToRecord(globalRecord, {
-    rating: snapped,
-    status: RATING_STATUS.CLUB_VERIFIED,
-    verifiedBy,
-    note,
-    source: "club_verification",
-  });
+function requireCanonicalVerifyArgs(options = {}) {
+  return Boolean(
+    options.canonicalPlayerId &&
+      options.actor &&
+      options.expectedVersion != null &&
+      options.scope
+  );
 }
 
 /**
- * V2-first club verification.
- * Keys: authUserId + clubId (+ athleteId). Legacy blob is optional mirror only.
- * Never treats profile-{uuid} as a required blob player id.
+ * V2-first club verification — frozen unless canonical facade args provided.
  */
 export function verifyClubPlayerRating(
   clubId,
@@ -79,6 +36,10 @@ export function verifyClubPlayerRating(
     athleteId = null,
     membershipClubId = null,
     requireMembershipClub = false,
+    canonicalPlayerId = null,
+    actor = null,
+    expectedVersion = null,
+    scope = null,
   } = {}
 ) {
   const route = parsePlatformAthleteRouteId(playerId);
@@ -101,7 +62,7 @@ export function verifyClubPlayerRating(
     };
   }
 
-  if (!resolvedAuthUserId && !playerId) {
+  if (!resolvedAuthUserId && !playerId && !canonicalPlayerId) {
     return {
       ok: false,
       error: "Tài khoản chưa có hồ sơ vận động viên.",
@@ -117,239 +78,159 @@ export function verifyClubPlayerRating(
     };
   }
 
-  const snapped = clampPickVnRating(rating);
-  let globalRecord = null;
+  void verifiedBy;
+  void note;
+  void athleteId;
+  void verifyClubId;
 
-  if (resolvedAuthUserId) {
-    globalRecord = persistVerifiedRatingForAuthUser(resolvedAuthUserId, snapped, {
-      verifiedBy,
-      note,
-    });
-  }
-
-  // Optional legacy blob mirror — never required for V2 membership athletes.
-  if (verifyClubId) {
-    const data = loadClubData(verifyClubId);
-    const playerIndex = findBlobPlayerIndex(data, {
-      playerId: route.isAccountOnly ? null : playerId,
+  if (
+    !requireCanonicalVerifyArgs({
+      canonicalPlayerId,
+      actor,
+      expectedVersion,
+      scope,
+    })
+  ) {
+    return frozenWriterResult("verifyClubPlayerRating", {
+      clubId,
+      playerId,
       authUserId: resolvedAuthUserId,
-      athleteId,
+      reason:
+        "Local/club-blob verification writers are frozen; provide canonicalPlayerId, actor, scope, expectedVersion",
     });
-
-    if (playerIndex >= 0) {
-      const player = data.players[playerIndex];
-      const nextPlayers = [...data.players];
-      const playerWithRating = {
-        ...player,
-        current_rating: snapped,
-        verified_rating: snapped,
-        skillLevel: snapped,
-        level: snapped,
-        rating: snapped,
-        athleteId: athleteId || player.athleteId || null,
-        authUserId: resolvedAuthUserId || player.authUserId || null,
-      };
-      nextPlayers[playerIndex] = applyRatingToClubPlayer(
-        playerWithRating,
-        globalRecord,
-        RATING_STATUS.CLUB_VERIFIED
-      );
-      data.players = normalizePlayers(nextPlayers);
-      data.updatedAt = new Date().toISOString();
-      saveClubData(verifyClubId, data);
-
-      logPickVnRatingAudit({
-        action: "rating.verify",
-        clubId: verifyClubId,
-        playerId: data.players[playerIndex].id,
-        authUserId: resolvedAuthUserId,
-        athleteId,
-        before: { rating: player.current_rating ?? player.skillLevel },
-        after: { rating: snapped, status: RATING_STATUS.CLUB_VERIFIED },
-        metadata: { source: "club", note, mode: "blob_mirror" },
-        actorUserId: verifiedBy,
-      });
-
-      return { ok: true, player: data.players[playerIndex], record: globalRecord, mode: "blob_mirror" };
-    }
   }
 
-  if (resolvedAuthUserId && globalRecord) {
-    logPickVnRatingAudit({
-      action: "rating.verify",
-      clubId: verifyClubId,
-      playerId: athleteId || resolvedAuthUserId,
-      authUserId: resolvedAuthUserId,
-      athleteId,
-      after: { rating: snapped, status: RATING_STATUS.CLUB_VERIFIED },
-      metadata: { source: "club", note, mode: "auth_user_only" },
-      actorUserId: verifiedBy,
-    });
-
-    return {
-      ok: true,
-      player: {
-        // Canonical profile route (athlete-{id} bookmarks still resolve via loader).
-        id: resolvedAuthUserId ? `profile-${resolvedAuthUserId}` : `athlete-${athleteId}`,
-        authUserId: resolvedAuthUserId,
-        athleteId,
-        current_rating: snapped,
-        verified_rating: snapped,
-        skillLevel: snapped,
-        rating_status: RATING_STATUS.CLUB_VERIFIED,
-      },
-      record: globalRecord,
-      mode: "auth_user_only",
-    };
-  }
-
-  return {
-    ok: false,
-    error: "Không tìm thấy vận động viên.",
-    code: "PLAYER_NOT_FOUND",
-  };
+  // Sync API kept for import compatibility — callers needing durable write
+  // should use verifyClubPlayerRatingAsync.
+  return durableUnavailableResult("verifyClubPlayerRating", {
+    hint: "Use verifyClubPlayerRatingAsync for canonical durable verification",
+    rating: snapPickVnRating(rating),
+  });
 }
 
-export function verifyAdminPlayerRating(
+export async function verifyClubPlayerRatingAsync(
   clubId,
   playerId,
   rating,
-  { verifiedBy = null, note = "", authUserId = null } = {}
+  options = {}
 ) {
-  const result = verifyClubPlayerRating(clubId, playerId, rating, {
-    verifiedBy,
-    note,
-    authUserId,
-  });
+  const {
+    canonicalPlayerId = null,
+    actor = null,
+    expectedVersion = null,
+    scope = null,
+    ratingMode = "overall",
+    note = "",
+  } = options;
+
+  if (
+    !requireCanonicalVerifyArgs({
+      canonicalPlayerId,
+      actor,
+      expectedVersion,
+      scope,
+    })
+  ) {
+    return frozenWriterResult("verifyClubPlayerRatingAsync", {
+      clubId,
+      playerId,
+      reason:
+        "Requires canonicalPlayerId, actor, scope, expectedVersion",
+    });
+  }
+
+  const snapped = snapPickVnRating(rating);
+  const result = await runCanonicalRatingWrite(
+    (facade) =>
+      facade.verify({
+        playerId: String(canonicalPlayerId),
+        scope,
+        ratingMode,
+        verifiedRating: snapped,
+        expectedVersion,
+        actor,
+        status: options.status || "club_verified",
+      }),
+    "verifyClubPlayerRating"
+  );
+
   if (!result.ok) {
+    // Fail closed: do not mirror verified rating into club blob on durable failure.
     return result;
   }
 
-  const resolvedAuthUserId = authUserId || result.player?.authUserId || null;
-  if (resolvedAuthUserId) {
-    const globalRecord = applyVerifiedRatingToRecord(
-      getPickVnRatingByAuthUserId(resolvedAuthUserId),
-      {
-        rating,
-        status: RATING_STATUS.ADMIN_VERIFIED,
-        verifiedBy,
-        note,
-        source: "admin_verification",
-      }
-    );
-    const data = loadClubData(clubId);
-    const playerIndex = (data.players || []).findIndex(
-      (item) => String(item.id) === String(playerId)
-    );
-    if (playerIndex >= 0) {
-      const nextPlayers = [...data.players];
-      nextPlayers[playerIndex] = applyRatingToClubPlayer(
-        nextPlayers[playerIndex],
-        globalRecord,
-        RATING_STATUS.ADMIN_VERIFIED
-      );
-      data.players = normalizePlayers(nextPlayers);
-      saveClubData(clubId, data);
-      result.player = data.players[playerIndex];
-      result.record = globalRecord;
-    }
-  }
-
-  logPickVnRatingAudit({
-    action: "rating.verify",
+  return {
+    ...result,
     clubId,
     playerId,
-    authUserId: resolvedAuthUserId,
-    after: { rating, status: RATING_STATUS.ADMIN_VERIFIED },
-    metadata: { source: "admin", note },
-    actorUserId: verifiedBy,
-  });
+    note,
+    mirrorOnly: true,
+    mode: "canonical_facade",
+  };
+}
 
-  return result;
+export function verifyAdminPlayerRating(clubId, playerId, rating, options = {}) {
+  return verifyClubPlayerRating(clubId, playerId, rating, {
+    ...options,
+    source: "admin",
+  });
+}
+
+export async function verifyAdminPlayerRatingAsync(
+  clubId,
+  playerId,
+  rating,
+  options = {}
+) {
+  return verifyClubPlayerRatingAsync(clubId, playerId, rating, {
+    ...options,
+    status: options.status || "admin_verified",
+  });
 }
 
 export function verifyTournamentPlayerRating(
   clubId,
   playerId,
   rating,
-  { verifiedBy = null, note = "", tournamentId = null, authUserId = null } = {}
+  options = {}
 ) {
-  const result = verifyClubPlayerRating(clubId, playerId, rating, {
-    verifiedBy,
-    note: note || `Xác thực lúc đăng ký giải ${tournamentId || ""}`.trim(),
-    authUserId,
+  return verifyClubPlayerRating(clubId, playerId, rating, {
+    ...options,
+    source: "tournament",
   });
+}
 
-  if (result.ok) {
-    logPickVnRatingAudit({
-      action: "rating.verify",
-      clubId,
-      playerId,
-      tournamentId,
-      after: { rating, status: RATING_STATUS.CLUB_VERIFIED },
-      metadata: { source: "tournament_registration", note },
-      actorUserId: verifiedBy,
-    });
-  }
-
-  return result;
+export async function verifyTournamentPlayerRatingAsync(
+  clubId,
+  playerId,
+  rating,
+  options = {}
+) {
+  return verifyClubPlayerRatingAsync(clubId, playerId, rating, {
+    ...options,
+    status: options.status || "tournament_verified",
+  });
 }
 
 export function applySystemVerifiedRating(clubId, playerId, rating, options = {}) {
-  const data = loadClubData(clubId);
-  const playerIndex = (data.players || []).findIndex(
-    (item) => String(item.id) === String(playerId)
-  );
-  if (playerIndex < 0) {
-    return { ok: false, error: "Không tìm thấy vận động viên." };
-  }
-
-  const player = data.players[playerIndex];
-  const authUserId = options.authUserId || player.authUserId || null;
-  const snapped = snapPickVnRating(rating);
-  let globalRecord = null;
-
-  if (authUserId) {
-    globalRecord = applyVerifiedRatingToRecord(
-      getPickVnRatingByAuthUserId(authUserId) ||
-        saveSelfDeclaredRating(authUserId, rating, { source: "system" }).record,
-      {
-        rating,
-        status: RATING_STATUS.SYSTEM_VERIFIED,
-        verifiedBy: options.verifiedBy || "system",
-        note: options.note || "",
-        source: "system_match_analysis",
-        provisionalRating: options.provisionalRating,
-      }
-    );
-  }
-
-  const nextPlayers = [...data.players];
-  const playerWithRating = {
-    ...player,
-    current_rating: snapped,
-    verified_rating: snapped,
-    skillLevel: snapped,
-    level: snapped,
-    rating: snapped,
-  };
-  nextPlayers[playerIndex] = applyRatingToClubPlayer(
-    playerWithRating,
-    globalRecord,
-    RATING_STATUS.SYSTEM_VERIFIED
-  );
-  data.players = normalizePlayers(nextPlayers);
-  data.updatedAt = new Date().toISOString();
-  saveClubData(clubId, data);
-
-  logPickVnRatingAudit({
-    action: "rating.propose",
+  void rating;
+  return frozenWriterResult("applySystemVerifiedRating", {
     clubId,
     playerId,
-    authUserId,
-    after: { rating, status: RATING_STATUS.SYSTEM_VERIFIED },
-    metadata: options.metadata || {},
+    reason:
+      "System verified rating must use canonical write facade; club blob is mirror-only",
+    ...options,
   });
+}
 
-  return { ok: true, player: data.players[playerIndex], record: globalRecord };
+export async function applySystemVerifiedRatingAsync(
+  clubId,
+  playerId,
+  rating,
+  options = {}
+) {
+  return verifyClubPlayerRatingAsync(clubId, playerId, rating, {
+    ...options,
+    status: options.status || "system_verified",
+  });
 }
