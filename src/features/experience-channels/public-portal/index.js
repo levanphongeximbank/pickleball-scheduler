@@ -52,10 +52,29 @@ export const EXPERIENCE_CHANNELS_EC04_PHASE = Object.freeze({
   androidReleasePercent: 0,
 });
 
+export const EXPERIENCE_CHANNELS_EC05_PHASE = Object.freeze({
+  id: "EC-05",
+  name: "public-portal-home-data-source-honesty",
+  wiredToRuntimeRouter: false,
+  wiredToMainEntrypoint: false,
+  wiredToProviderTree: false,
+  reusesEc03DataResultContract: true,
+  reusesEc02PresentationStates: true,
+  reusesEc03Ec04ListAdapters: true,
+  homeDataHonestyRemediation: true,
+  mockFallbackRemoved: false,
+  liveCutover: false,
+  competitionEngineUntouched: true,
+  nativeStoreRelease: false,
+  iosReleasePercent: 0,
+  androidReleasePercent: 0,
+});
+
 export const PUBLIC_PORTAL_READINESS_PUBLIC_EXPORTS = Object.freeze([
   "EXPERIENCE_CHANNELS_EC01_PHASE",
   "EXPERIENCE_CHANNELS_EC03_PHASE",
   "EXPERIENCE_CHANNELS_EC04_PHASE",
+  "EXPERIENCE_CHANNELS_EC05_PHASE",
   "PUBLIC_PORTAL_SURFACE_ID",
   "PUBLIC_PORTAL_DATA_SOURCE",
   "PUBLIC_DATA_RESULT_STATUS",

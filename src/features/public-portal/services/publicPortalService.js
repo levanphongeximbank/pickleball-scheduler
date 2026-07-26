@@ -8,6 +8,9 @@
  *
  * EC-04: Tournaments/Rankings honest PublicDataResult adapters live in
  * `publicTournamentsRankingsDataSource.js` and are re-exported here.
+ *
+ * EC-05: Home orchestration adapters live in `publicHomeDataSource.js` and are
+ * re-exported here for compatibility. Prefer Result helpers over array getters.
  */
 import { loadClubs } from "../../../data/club.js";
 import { loadClubData } from "../../../domain/clubStorage.js";
@@ -44,6 +47,21 @@ export {
   getPublicRankingsResult,
   getPublicRankings,
 } from "./publicTournamentsRankingsDataSource.js";
+
+export {
+  PUBLIC_HOME_SECTION_ID,
+  getPublicHomeSyncSections,
+  getPublicHomeStatsResult,
+  getPublicHomeFeaturedTournamentsResult,
+  getPublicHomeFeaturedClubsResult,
+  getPublicHomeFeaturedCourtsResult,
+  getPublicHomeLiveScoresResult,
+  getPublicHomeScheduleResult,
+  getPublicHomeResultsResult,
+  getPublicHomeUpcomingEventsResult,
+  getPublicHomeSponsorsResult,
+  projectHomeNewsSection,
+} from "./publicHomeDataSource.js";
 
 function safeLoadClubData(clubId) {
   try {

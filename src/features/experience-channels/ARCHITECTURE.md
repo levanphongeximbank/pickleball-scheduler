@@ -173,7 +173,7 @@ docs/experience-channels/ec-03/
 **Runtime adapters (public-only):** `getPublicTournamentsResult` / `getPublicRankingsResult` in `publicTournamentsRankingsDataSource.js`  
 **Presentation:** reuse EC-03 `PublicDataSourceNotice` + EC-02 state primitives on Tournaments / Rankings pages
 
-**Status:** Tournaments + Rankings honesty remediation on the EC-03 `PublicDataResult` contract. Mock fallback **retained** with MOCK/MIXED provenance. Home remains deferred. No router / shell / provider / Competition / Ranking calculation edits.
+**Status:** Tournaments + Rankings honesty remediation on the EC-03 `PublicDataResult` contract. Mock fallback **retained** with MOCK/MIXED provenance. Home deferred to EC-05. No router / shell / provider / Competition / Ranking calculation edits.
 
 ### What EC-04 owns
 
@@ -186,7 +186,7 @@ docs/experience-channels/ec-03/
 
 | Concern | Owner |
 |---------|--------|
-| Home honesty wiring | Deferred |
+| Home honesty wiring | EC-05 |
 | Mock removal / LIVE cutover without certified replacement | Deferred |
 | Competition `/tournament/:id/public` | COMPETITION_E2E_OWNED / TOURNAMENT_OPS_DEFERRED |
 | Ranking / rating / standings / eligibility calculation | Business Module / VPR engines (untouched) |
@@ -200,4 +200,43 @@ publicTournamentsRankingsDataSource.js   Tournaments/Rankings Result adapters
 publicPortalService.js                   Re-exports for compatibility
 pages/public/Tournaments|Rankings        Consumers
 docs/experience-channels/ec-04/
+```
+
+---
+
+## EC-05 — Public Portal Home Data-Source Honesty
+
+**Runtime adapter (public-only):** `publicHomeDataSource.js`  
+**Presentation:** reuse EC-03 `PublicDataSourceNotice` + EC-02 state primitives on `/home`  
+**Consumes:** EC-03 Clubs/Courts + EC-04 Tournaments Result adapters; NEWS-04 typed news result
+
+**Status:** Home section provenance + honest mock labeling. Mock fallback **retained**. No LIVE cutover. No router / shell / provider / Competition edits.
+
+### What EC-05 owns
+
+- Home orchestration adapter projecting per-section `PublicDataResult` (+ `sectionId`)
+- Home page wiring (notice + loading/error/empty/unavailable + caller-controlled retry)
+- Honest LiveDataHub titles (no false LIVE / HÔM NAY / MỚI NHẤT)
+- Registry notes for `PUBLIC_HOME`
+- EC-05 docs + certification tests
+
+### Explicit non-ownership
+
+| Concern | Owner |
+|---------|--------|
+| Mock removal / LIVE cutover without certified replacement | Deferred |
+| Competition `/tournament/:id/public` | COMPETITION_E2E_OWNED |
+| Ranking / standings / scoring calculation | Business Module / Competition (untouched) |
+| Router / PublicLayout / providers / PWA | GLOBAL_SHARED_HIGH_COLLISION |
+| Backend / SQL / Supabase / Notification | Out of scope |
+| Second PublicDataResult or News contract | Forbidden — reuse EC-03 / NEWS-04 |
+
+### Layering (EC-05)
+
+```
+publicHomeDataSource.js              Home section Result projections
+publicPortalService.js               Additive re-exports
+pages/public/HomePage.jsx            Consumer
+components/public/sections/LiveDataHubSection.jsx
+docs/experience-channels/ec-05/
 ```
