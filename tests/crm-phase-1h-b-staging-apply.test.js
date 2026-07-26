@@ -45,11 +45,29 @@ function walkFiles(dir, acc = []) {
   return acc;
 }
 
+function offlineGateEnv(extra = {}) {
+  // Subprocess gate tests must not inherit CI markers; otherwise GitHub Actions
+  // short-circuits every mutation path to BLOCKED_EXECUTION_CONTEXT before the
+  // gate under test (approval / identity / backup) can be asserted.
+  const env = { ...process.env, ...extra };
+  delete env.CI;
+  delete env.GITHUB_ACTIONS;
+  delete env.VITEST;
+  delete env.CRM_STAGING_APPLY_AUDIT_MODE;
+  if (String(env.NODE_ENV || "").toLowerCase() === "test") {
+    env.NODE_ENV = "development";
+  }
+  if (String(env.npm_lifecycle_event || "") === "test") {
+    delete env.npm_lifecycle_event;
+  }
+  return env;
+}
+
 function runNode(script, args = []) {
   return execFileSync(process.execPath, [script, ...args], {
     cwd: root,
     encoding: "utf8",
-    env: { ...process.env },
+    env: offlineGateEnv(),
   });
 }
 
@@ -290,6 +308,8 @@ test("Phase 1H-B live-gates preflight blocks without approvals", () => {
       CRM_PHASE_1H_B_VERDICTS.BLOCKED_BACKUP_REQUIRED,
       CRM_PHASE_1H_B_VERDICTS.BLOCKED_CREDENTIALS_REQUIRED,
       CRM_PHASE_1H_B_VERDICTS.BLOCKED_QA_IDENTITIES_REQUIRED,
+      CRM_PHASE_1H_B_VERDICTS.BLOCKED_ONE_TIME_AUTHORIZATION_REQUIRED,
+      CRM_PHASE_1H_B_VERDICTS.BLOCKED_EXECUTION_CONTEXT,
     ].includes(report.liveGates.verdict)
   );
 });
