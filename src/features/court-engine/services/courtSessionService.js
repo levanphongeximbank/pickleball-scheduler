@@ -5,117 +5,120 @@ import {
 } from "../constants/statuses.js";
 import { createCourtSession, normalizeCourtSession } from "../models/courtSession.js";
 import {
-  getSessionFromStore,
-  loadActiveSessionId,
-  loadCourtEngineStore,
-  saveActiveSessionId,
-  saveCourtEngineStore,
-  upsertSessionInStore,
-} from "../storage/courtEngineStorage.js";
-import { resolveTenantIdForClub } from "../../tenant/guards/tenantGuard.js";
-import { appendEvent } from "./eventLogService.js";
+  getCourtRuntimeWriter,
+  isLocalCourtRuntimeAuthority,
+} from "../runtime/composition.js";
+import {
+  COURT_RUNTIME_ERROR_CODES,
+  createCourtRuntimeError,
+} from "../runtime/errors.js";
+import {
+  closeCourtRuntimeSession,
+  createCourtRuntimeSession,
+  loadActiveCourtSession,
+  loadCourtRuntime,
+  openCourtRuntimeSession,
+  persistCourtSession,
+  setActiveCourtSession,
+} from "../runtime/facade.js";
+import { getSessionFromStore } from "../runtime/createCourtRuntimeWriter.js";
 
-function resolveStorageOptions(clubId, options = {}) {
+function resolveTenantId(clubId, options = {}, session = null) {
+  const explicit = String(options.tenantId || session?.tenantId || "").trim();
+  if (explicit) {
+    return explicit;
+  }
+  return "";
+}
+
+function storageOptions(clubId, options = {}, session = null) {
   return {
-    tenantId: options.tenantId || resolveTenantIdForClub(clubId),
+    ...options,
+    tenantId: resolveTenantId(clubId, options, session),
   };
 }
 
 export function listSessions(clubId, options = {}) {
-  const store = loadCourtEngineStore(clubId, resolveStorageOptions(clubId, options));
-  return store.sessions || [];
+  const opts = storageOptions(clubId, options);
+  if (!opts.tenantId) {
+    return [];
+  }
+  const loaded = loadCourtRuntime(clubId, opts);
+  if (!loaded?.ok) {
+    return [];
+  }
+  return loaded.store?.sessions || [];
 }
 
 export function getActiveSession(clubId, options = {}) {
-  const storageOptions = resolveStorageOptions(clubId, options);
-  const sessionId = loadActiveSessionId(clubId, storageOptions);
-  if (!sessionId) {
+  const opts = storageOptions(clubId, options);
+  if (!opts.tenantId) {
     return null;
   }
-  const store = loadCourtEngineStore(clubId, storageOptions);
-  return getSessionFromStore(store, sessionId);
+  const loaded = loadActiveCourtSession(clubId, opts);
+  if (!loaded?.ok) {
+    return null;
+  }
+  return loaded.session || null;
 }
 
 export function createSession(clubId, options = {}) {
-  const storageOptions = resolveStorageOptions(clubId, options);
-  const session = createCourtSession({ clubId, ...options });
-  const store = loadCourtEngineStore(clubId, storageOptions);
-  const nextStore = upsertSessionInStore(store, session);
-  saveCourtEngineStore(clubId, nextStore, storageOptions);
-  saveActiveSessionId(clubId, session.id, storageOptions);
-
-  const withEvent = appendEvent(session, {
-    eventType: EVENT_TYPE.SESSION_CREATE,
-    message: `Tạo session "${session.name}"`,
-    createdBy: options.createdBy || null,
-  });
-
-  return persistSession(clubId, withEvent);
-}
-
-export function openSession(clubId, sessionId, actor = null) {
-  return updateSessionStatus(clubId, sessionId, SESSION_STATUS.OPEN, {
-    eventType: EVENT_TYPE.SESSION_OPEN,
-    message: "Mở session",
-    actor,
-    startTime: new Date().toISOString(),
-  });
-}
-
-export function closeSession(clubId, sessionId, actor = null) {
-  return updateSessionStatus(clubId, sessionId, SESSION_STATUS.CLOSED, {
-    eventType: EVENT_TYPE.SESSION_CLOSE,
-    message: "Đóng session",
-    actor,
-    endTime: new Date().toISOString(),
-  });
-}
-
-function updateSessionStatus(clubId, sessionId, status, meta = {}) {
-  const session = getSessionById(clubId, sessionId);
-  if (!session) {
-    return { ok: false, error: "Không tìm thấy session." };
+  const opts = storageOptions(clubId, options);
+  if (!opts.tenantId) {
+    return createCourtRuntimeError(
+      COURT_RUNTIME_ERROR_CODES.COURT_RUNTIME_SCOPE_REQUIRED,
+      "tenantId is required to create a Court session."
+    );
   }
+  return createCourtRuntimeSession(clubId, opts);
+}
 
-  let next = normalizeCourtSession({
-    ...session,
-    status,
-    updatedAt: new Date().toISOString(),
-    ...(meta.startTime ? { startTime: meta.startTime } : {}),
-    ...(meta.endTime ? { endTime: meta.endTime } : {}),
+export function openSession(clubId, sessionId, actor = null, options = {}) {
+  return openCourtRuntimeSession(clubId, sessionId, {
+    ...storageOptions(clubId, options),
+    actor,
   });
+}
 
-  next = appendEvent(next, {
-    eventType: meta.eventType,
-    message: meta.message,
-    createdBy: meta.actor,
+export function closeSession(clubId, sessionId, actor = null, options = {}) {
+  return closeCourtRuntimeSession(clubId, sessionId, {
+    ...storageOptions(clubId, options),
+    actor,
   });
-
-  return persistSession(clubId, next);
 }
 
 export function getSessionById(clubId, sessionId, options = {}) {
-  const store = loadCourtEngineStore(clubId, resolveStorageOptions(clubId, options));
-  return getSessionFromStore(store, sessionId);
+  const opts = storageOptions(clubId, options);
+  if (!opts.tenantId) {
+    return null;
+  }
+  const loaded = loadCourtRuntime(clubId, opts);
+  if (!loaded?.ok) {
+    return null;
+  }
+  return getSessionFromStore(loaded.store, sessionId);
 }
 
 export function persistSession(clubId, session, options = {}) {
-  const storageOptions = resolveStorageOptions(clubId, options);
-  const normalized = normalizeCourtSession(session);
-  const store = loadCourtEngineStore(clubId, storageOptions);
-  const nextStore = upsertSessionInStore(store, normalized);
-  saveCourtEngineStore(clubId, nextStore, storageOptions);
-  saveActiveSessionId(clubId, normalized.id, storageOptions);
-  return { ok: true, session: normalized };
+  const opts = storageOptions(clubId, options, session);
+  if (!opts.tenantId) {
+    return createCourtRuntimeError(
+      COURT_RUNTIME_ERROR_CODES.COURT_RUNTIME_SCOPE_REQUIRED,
+      "tenantId is required to persist a Court session."
+    );
+  }
+  return persistCourtSession(clubId, session, opts);
 }
 
 export function setActiveSession(clubId, sessionId, options = {}) {
-  const session = getSessionById(clubId, sessionId, options);
-  if (!session) {
-    return { ok: false, error: "Không tìm thấy session." };
+  const opts = storageOptions(clubId, options);
+  if (!opts.tenantId) {
+    return createCourtRuntimeError(
+      COURT_RUNTIME_ERROR_CODES.COURT_RUNTIME_SCOPE_REQUIRED,
+      "tenantId is required to set active Court session."
+    );
   }
-  saveActiveSessionId(clubId, sessionId, resolveStorageOptions(clubId, options));
-  return { ok: true, session };
+  return setActiveCourtSession(clubId, sessionId, opts);
 }
 
 export function getSessionSummary(session) {
@@ -125,7 +128,12 @@ export function getSessionSummary(session) {
 
   const counts = {
     checkedIn: checkIns.filter((item) =>
-      [PLAYER_SESSION_STATUS.CHECKED_IN, PLAYER_SESSION_STATUS.WAITING, PLAYER_SESSION_STATUS.PLAYING, PLAYER_SESSION_STATUS.RESTING].includes(item.status)
+      [
+        PLAYER_SESSION_STATUS.CHECKED_IN,
+        PLAYER_SESSION_STATUS.WAITING,
+        PLAYER_SESSION_STATUS.PLAYING,
+        PLAYER_SESSION_STATUS.RESTING,
+      ].includes(item.status)
     ).length,
     waiting: checkIns.filter((item) => item.status === PLAYER_SESSION_STATUS.WAITING).length,
     playing: checkIns.filter((item) => item.status === PLAYER_SESSION_STATUS.PLAYING).length,
@@ -139,3 +147,18 @@ export function getSessionSummary(session) {
 
   return counts;
 }
+
+/** @deprecated Compatibility — prefer inspectCourtRuntimeAuthority */
+export function getCourtSessionPersistenceAuthority() {
+  const runtime = getCourtRuntimeWriter();
+  if (!runtime.ok) {
+    return runtime;
+  }
+  return {
+    ok: true,
+    authority: runtime.authority,
+    isLocal: isLocalCourtRuntimeAuthority(runtime.authority),
+  };
+}
+
+export { SESSION_STATUS, EVENT_TYPE, createCourtSession, normalizeCourtSession };

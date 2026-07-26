@@ -9,6 +9,11 @@ import {
   saveCourtEngineStore,
 } from "../src/features/court-engine/storage/courtEngineStorage.js";
 import { createCourtSession } from "../src/features/court-engine/models/courtSession.js";
+import {
+  __resetCourtRuntimeForTests,
+  COURT_RUNTIME_AUTHORITY,
+  COURT_RUNTIME_ERROR_CODES,
+} from "../src/features/court-engine/runtime/index.js";
 
 const memoryStorage = () => {
   const map = new Map();
@@ -28,9 +33,15 @@ const memoryStorage = () => {
   };
 };
 
+function useExplicitLocal() {
+  __resetCourtRuntimeForTests({
+    authority: COURT_RUNTIME_AUTHORITY.DEVELOPMENT_LOCAL,
+  });
+  global.localStorage = memoryStorage();
+}
+
 test("court engine storage — tenant A cannot read tenant B data", () => {
-  const storage = memoryStorage();
-  global.localStorage = storage;
+  useExplicitLocal();
 
   const sessionA = createCourtSession({ clubId: "club-1", name: "Tenant A session" });
   saveCourtEngineStore("club-1", { sessions: [sessionA] }, { tenantId: "tenant-a" });
@@ -44,8 +55,7 @@ test("court engine storage — tenant A cannot read tenant B data", () => {
 });
 
 test("court engine storage — reload keeps data for same tenant", () => {
-  const storage = memoryStorage();
-  global.localStorage = storage;
+  useExplicitLocal();
 
   const session = createCourtSession({ clubId: "club-2", name: "Persist" });
   saveCourtEngineStore("club-2", { sessions: [session] }, { tenantId: "venue-1" });
@@ -56,8 +66,7 @@ test("court engine storage — reload keeps data for same tenant", () => {
 });
 
 test("court engine storage — empty store does not crash without season/league", () => {
-  const storage = memoryStorage();
-  global.localStorage = storage;
+  useExplicitLocal();
 
   const empty = loadCourtEngineStore("club-missing", { tenantId: "venue-x" });
   assert.equal(empty.sessions.length, 0);
@@ -70,22 +79,51 @@ test("court engine storage — scoped key format includes tenant", () => {
 });
 
 test("court engine storage — export/import backup roundtrip", () => {
-  const storage = memoryStorage();
-  global.localStorage = storage;
+  useExplicitLocal();
 
   const session = createCourtSession({ clubId: "club-3", name: "Backup" });
   saveCourtEngineStore("club-3", { sessions: [session] }, { tenantId: "venue-3" });
 
   const exported = exportCourtEngineStore("club-3", { tenantId: "venue-3" });
   assert.equal(exported.ok, true);
-  assert.equal(exported.store.sessions.length, 1);
 
-  storage.clear();
-  const afterClear = loadCourtEngineStore("club-3", { tenantId: "venue-3" });
-  assert.equal(afterClear.sessions.length, 0);
+  global.localStorage.clear();
+  const imported = importCourtEngineStore("club-3", exported, { tenantId: "venue-3" });
+  assert.equal(imported.ok, true);
+  const reloaded = loadCourtEngineStore("club-3", { tenantId: "venue-3" });
+  assert.equal(reloaded.sessions.length, 1);
+});
 
-  importCourtEngineStore("club-3", exported, { tenantId: "venue-3" });
+test("court engine storage — durable mode rejects localStorage writes", () => {
+  __resetCourtRuntimeForTests({
+    authority: COURT_RUNTIME_AUTHORITY.DURABLE,
+    adapter: {
+      authority: COURT_RUNTIME_AUTHORITY.DURABLE,
+      mode: "durable",
+      dualWrite: false,
+      usesLocalStorage: false,
+      writeLog: [],
+      loadRuntime: () => ({ ok: true, store: { sessions: [] } }),
+      saveRuntime: async () => ({ ok: true, store: { sessions: [] } }),
+      loadActiveSessionId: () => null,
+      setActiveSessionId: async () => ({ ok: true }),
+    },
+  });
+  const writes = [];
+  global.localStorage = {
+    getItem: () => null,
+    setItem(key, value) {
+      writes.push([key, value]);
+    },
+    removeItem() {},
+  };
 
-  const restored = loadCourtEngineStore("club-3", { tenantId: "venue-3" });
-  assert.equal(restored.sessions.length, 1);
+  const result = saveCourtEngineStore(
+    "club-1",
+    { sessions: [] },
+    { tenantId: "tenant-1" }
+  );
+  assert.equal(result.ok, false);
+  assert.equal(result.code, COURT_RUNTIME_ERROR_CODES.COURT_RUNTIME_LOCAL_MODE_NOT_EXPLICIT);
+  assert.equal(writes.length, 0);
 });

@@ -23,6 +23,11 @@ import {
   resolveCourtEngineStore,
 } from "../src/features/court-engine/storage/courtEngineStorage.js";
 import { createSupabaseCourtEngineStore } from "../src/features/court-engine/storage/SupabaseCourtEngineStore.js";
+import {
+  __resetCourtRuntimeForTests,
+  COURT_RUNTIME_AUTHORITY,
+  COURT_RUNTIME_ERROR_CODES,
+} from "../src/features/court-engine/runtime/index.js";
 
 function memoryStorage() {
   const map = new Map();
@@ -149,9 +154,15 @@ test("Phase 29 — coaching schedule feeds conflict detector", () => {
   assert.ok(result.data.issues.length >= 1);
 });
 
-test("Phase 30 — court engine store factory defaults to local", () => {
+test("Phase 30 — court engine store factory uses explicit local authority", () => {
   global.localStorage = memoryStorage();
-  const store = resolveCourtEngineStore(null, { tenantId: "venue-1" });
+  __resetCourtRuntimeForTests({
+    authority: COURT_RUNTIME_AUTHORITY.DEVELOPMENT_LOCAL,
+  });
+  const store = resolveCourtEngineStore(null, {
+    tenantId: "venue-1",
+    authority: COURT_RUNTIME_AUTHORITY.DEVELOPMENT_LOCAL,
+  });
   assert.equal(store.mode, "local");
   assert.equal(getCourtEngineStoreMode(), "local");
 
@@ -160,12 +171,29 @@ test("Phase 30 — court engine store factory defaults to local", () => {
   assert.equal(loaded.sessions.length, 0);
 });
 
-test("Phase 30 — supabase court engine store exposes cloud interface", () => {
+test("Phase 30 — supabase court engine store exposes durable cloud interface", () => {
   global.localStorage = memoryStorage();
-  if (typeof import.meta !== "undefined" && import.meta.env) {
-    import.meta.env.VITE_COURT_ENGINE_STORE = "local";
-    import.meta.env.VITE_SUPABASE_URL = "";
-  }
+  __resetCourtRuntimeForTests({
+    authority: COURT_RUNTIME_AUTHORITY.DURABLE,
+    adapter: {
+      authority: COURT_RUNTIME_AUTHORITY.DURABLE,
+      mode: "durable",
+      dualWrite: false,
+      usesLocalStorage: false,
+      writeLog: [],
+      loadRuntime: () => ({
+        ok: true,
+        store: { clubId: "club-stub", tenantId: "venue-2", sessions: [] },
+      }),
+      saveRuntime: async () => ({ ok: true, store: { sessions: [] } }),
+      loadActiveSessionId: () => null,
+      setActiveSessionId: async () => ({ ok: true }),
+      hydrateRuntime: async () => ({
+        ok: true,
+        store: { clubId: "club-stub", tenantId: "venue-2", sessions: [] },
+      }),
+    },
+  });
   const stub = createSupabaseCourtEngineStore(null, { tenantId: "venue-2" });
   assert.equal(stub.mode, "supabase");
   assert.equal(typeof stub.loadCourtEngineStore, "function");
@@ -173,7 +201,12 @@ test("Phase 30 — supabase court engine store exposes cloud interface", () => {
   assert.equal(typeof stub.syncToCloud, "function");
   assert.equal(typeof stub.hydrate, "function");
 
-  stub.saveCourtEngineStore("club-stub", { sessions: [] });
+  const syncDenied = stub.saveCourtEngineStore("club-stub", { sessions: [] });
+  assert.equal(syncDenied.ok, false);
+  assert.equal(
+    syncDenied.code,
+    COURT_RUNTIME_ERROR_CODES.COURT_RUNTIME_UNSUPPORTED_DURABLE_COMMAND
+  );
   const loaded = stub.loadCourtEngineStore("club-stub");
   assert.equal(loaded.clubId, "club-stub");
 });

@@ -9,6 +9,8 @@ import {
   normalizeCourtClaimRequest,
 } from "../models/courtClaimRequest.js";
 import {
+  canUseLocalCourtClaimStorage,
+  denyLocalCourtClaimWrite,
   loadCourtClaimRequests,
   saveCourtClaimRequests,
 } from "../storage/courtClaimRequestStorage.js";
@@ -30,6 +32,17 @@ import {
   rpcSubmitCourtClaimRequest,
 } from "./courtClaimRequestRpcService.js";
 import { pullClusterContextForUser } from "./courtClusterCloudSync.js";
+
+/**
+ * Local claim path only when Court runtime authority is explicitly local.
+ * RPC_NOT_DEPLOYED / NO_SUPABASE / RPC_FAILED never activate local under durable mode.
+ */
+function allowExplicitLocalClaimFallback(rpcCode = "RPC_NOT_DEPLOYED") {
+  if (!canUseLocalCourtClaimStorage()) {
+    return denyLocalCourtClaimWrite(rpcCode);
+  }
+  return { ok: true };
+}
 
 function isClusterUnassignedLocal(clusterId) {
   const cluster = getClusterById(clusterId);
@@ -132,6 +145,12 @@ export async function listUnassignedClusters({ search = "" } = {}) {
     if (rpcResult.code !== "RPC_NOT_DEPLOYED") {
       return rpcResult;
     }
+    const localGate = allowExplicitLocalClaimFallback(rpcResult.code);
+    if (!localGate.ok) {
+      return localGate;
+    }
+  } else if (!canUseLocalCourtClaimStorage()) {
+    return denyLocalCourtClaimWrite("NO_SUPABASE");
   }
 
   return { ok: true, clusters: listUnassignedClustersLocal({ search }), provider: "local" };
@@ -151,6 +170,12 @@ export async function listMyCourtClaimRequests() {
     if (rpcResult.code !== "RPC_NOT_DEPLOYED") {
       return rpcResult;
     }
+    const localGate = allowExplicitLocalClaimFallback(rpcResult.code);
+    if (!localGate.ok) {
+      return localGate;
+    }
+  } else if (!canUseLocalCourtClaimStorage()) {
+    return denyLocalCourtClaimWrite("NO_SUPABASE");
   }
 
   const requests = loadCourtClaimRequests()
@@ -193,6 +218,12 @@ export async function submitCourtClaimRequest({ clusterIds = [], message = "" } 
     if (rpcResult.code !== "RPC_NOT_DEPLOYED") {
       return rpcResult;
     }
+    const localGate = allowExplicitLocalClaimFallback(rpcResult.code);
+    if (!localGate.ok) {
+      return localGate;
+    }
+  } else if (!canUseLocalCourtClaimStorage()) {
+    return denyLocalCourtClaimWrite("NO_SUPABASE");
   }
 
   if (!isDevAuthAllowed()) {
@@ -212,7 +243,10 @@ export async function submitCourtClaimRequest({ clusterIds = [], message = "" } 
   });
 
   const requests = [...loadCourtClaimRequests(), request];
-  saveCourtClaimRequests(requests);
+  const saved = saveCourtClaimRequests(requests);
+  if (saved?.ok === false) {
+    return saved;
+  }
   return { ok: true, request, provider: "local" };
 }
 
@@ -230,6 +264,12 @@ export async function listPendingCourtClaimRequests() {
     if (rpcResult.code !== "RPC_NOT_DEPLOYED") {
       return rpcResult;
     }
+    const localGate = allowExplicitLocalClaimFallback(rpcResult.code);
+    if (!localGate.ok) {
+      return localGate;
+    }
+  } else if (!canUseLocalCourtClaimStorage()) {
+    return denyLocalCourtClaimWrite("NO_SUPABASE");
   }
 
   const requests = loadCourtClaimRequests()
@@ -268,7 +308,10 @@ function applyLocalClaimApproval(request, actor, reviewNote = "") {
         })
       : item
   );
-  saveCourtClaimRequests(requests);
+  const saved = saveCourtClaimRequests(requests);
+  if (saved?.ok === false) {
+    return saved;
+  }
 
   return {
     ok: true,
@@ -310,6 +353,12 @@ export async function reviewCourtClaimRequest({
     if (rpcResult.code !== "RPC_NOT_DEPLOYED") {
       return rpcResult;
     }
+    const localGate = allowExplicitLocalClaimFallback(rpcResult.code);
+    if (!localGate.ok) {
+      return localGate;
+    }
+  } else if (!canUseLocalCourtClaimStorage()) {
+    return denyLocalCourtClaimWrite("NO_SUPABASE");
   }
 
   const request = loadCourtClaimRequests().find((item) => item.id === requestId);
@@ -332,11 +381,18 @@ export async function reviewCourtClaimRequest({
           })
         : item
     );
-    saveCourtClaimRequests(requests);
+    const saved = saveCourtClaimRequests(requests);
+    if (saved?.ok === false) {
+      return saved;
+    }
     return { ok: true, request: requests.find((item) => item.id === requestId), provider: "local" };
   }
 
-  return { ...applyLocalClaimApproval(request, actor, reviewNote), provider: "local" };
+  const approved = applyLocalClaimApproval(request, actor, reviewNote);
+  if (!approved.ok) {
+    return approved;
+  }
+  return { ...approved, provider: "local" };
 }
 
 export async function cancelCourtClaimRequest(requestId) {
@@ -353,6 +409,12 @@ export async function cancelCourtClaimRequest(requestId) {
     if (rpcResult.code !== "RPC_NOT_DEPLOYED") {
       return rpcResult;
     }
+    const localGate = allowExplicitLocalClaimFallback(rpcResult.code);
+    if (!localGate.ok) {
+      return localGate;
+    }
+  } else if (!canUseLocalCourtClaimStorage()) {
+    return denyLocalCourtClaimWrite("NO_SUPABASE");
   }
 
   const requests = loadCourtClaimRequests();
@@ -366,7 +428,10 @@ export async function cancelCourtClaimRequest(requestId) {
       ? normalizeCourtClaimRequest({ ...item, status: COURT_CLAIM_REQUEST_STATUSES.CANCELLED })
       : item
   );
-  saveCourtClaimRequests(next);
+  const saved = saveCourtClaimRequests(next);
+  if (saved?.ok === false) {
+    return saved;
+  }
   return { ok: true, request: next.find((item) => item.id === requestId), provider: "local" };
 }
 

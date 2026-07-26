@@ -207,6 +207,8 @@
   "tests/venue-court-phase-2d-court-engine-guard.test.js",
   "tests/court-engine-storage.test.js",
   "tests/court-engine-cloud.test.js",
+  "tests/court-engine-runtime-authority.test.js",
+  "tests/court-cluster-claim-authority.test.js",
   "tests/billing-phase9.test.js",
   "tests/billing-phase20-pilot-hardening.test.js",
   "tests/billing-repository-runtime.test.js",

@@ -9,6 +9,10 @@ import {
   loadCourtEngineStore,
   saveCourtEngineStore,
 } from "../src/features/court-engine/storage/courtEngineStorage.js";
+import {
+  __resetCourtRuntimeForTests,
+  COURT_RUNTIME_AUTHORITY,
+} from "../src/features/court-engine/runtime/index.js";
 
 function memoryStorage() {
   const map = new Map();
@@ -28,21 +32,26 @@ function memoryStorage() {
   };
 }
 
-test("isCourtEngineCloudEnabled is false when store mode is local", () => {
-  if (typeof import.meta !== "undefined" && import.meta.env) {
-    import.meta.env.VITE_COURT_ENGINE_STORE = "local";
-    import.meta.env.VITE_SUPABASE_URL = "";
-    import.meta.env.VITE_SUPABASE_ANON_KEY = "";
-  }
+test("isCourtEngineCloudEnabled is false when authority is local", () => {
+  __resetCourtRuntimeForTests({
+    authority: COURT_RUNTIME_AUTHORITY.DEVELOPMENT_LOCAL,
+  });
   assert.equal(isCourtEngineCloudEnabled(), false);
 });
 
-test("court engine store preserves cloudVersion on save", () => {
+test("court engine store preserves cloudVersion on save in explicit local mode", () => {
+  __resetCourtRuntimeForTests({
+    authority: COURT_RUNTIME_AUTHORITY.DEVELOPMENT_LOCAL,
+  });
   global.localStorage = memoryStorage();
-  const result = saveCourtEngineStore("club-1", {
-    sessions: [],
-    cloudVersion: 3,
-  }, { tenantId: "venue-1" });
+  const result = saveCourtEngineStore(
+    "club-1",
+    {
+      sessions: [],
+      cloudVersion: 3,
+    },
+    { tenantId: "venue-1" }
+  );
 
   assert.equal(result.ok, true);
   assert.equal(result.store.cloudVersion, 3);
@@ -54,6 +63,9 @@ test("court engine store preserves cloudVersion on save", () => {
 test("isCourtEngineMigrated reads migration flag", () => {
   global.localStorage = memoryStorage();
   assert.equal(isCourtEngineMigrated("club-1", "venue-1"), false);
-  localStorage.setItem("pickleball-court-engine-migrated-v1::venue-1::club-1", "2026-07-06");
+  localStorage.setItem(
+    "pickleball-court-engine-migrated-v1::venue-1::club-1",
+    "2026-07-06"
+  );
   assert.equal(isCourtEngineMigrated("club-1", "venue-1"), true);
 });
