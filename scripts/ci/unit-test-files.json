@@ -477,5 +477,6 @@
   "tests/reporting-analytics-reporting-03-staging-manifest.test.js",
   "tests/reporting-analytics-reporting-04-dashboard-ui-adoption.test.js",
   "tests/reporting-analytics-reporting-05-final-certification.test.js",
-  "tests/business-modules-gap-reconciliation.test.js"
+  "tests/business-modules-gap-reconciliation.test.js",
+  "tests/business-modules-final-certification.test.js"
 ]
