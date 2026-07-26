@@ -1,0 +1,51 @@
+{
+    "timestampUtc":  "2026-07-26T07:00:00.000Z",
+    "gate":  "PRECHECK",
+    "verdict":  "PASS",
+    "safetyBaseline":  {
+                           "branch":  "feature/public-catalog-01e-staging-publication-evidence",
+                           "seedSha256Lf":  "82d2c451bd61d27604a3522a36d756465143a6d7bd74bed0ca410efa925ae1e1",
+                           "seedIdentifiersAbsent":  true,
+                           "rollbackPrepared":  true,
+                           "gitFetchPrune":  true,
+                           "base":  "origin/main",
+                           "headSha":  "de56d1b3838d487dc34c5da41fe073430ab5f977",
+                           "packageLockSha256":  "844840ca58b3eadcc4a1d090abdcfcd057b7562f48bb1450d4a8ad1a1763b448",
+                           "rollbackSha256Lf":  "5ecabe5c5c869add122745308cf8ac3d33648b402697ece56c46150fa0c3a642",
+                           "rootRepoUntouched":  true,
+                           "worktreeClean":  true,
+                           "worktreePath":  "C:/Users/Le Phong/PICK_VN-Workstreams/public-catalog/public-catalog-01e-staging-publication-evidence"
+                       },
+    "publicPortalCutoverApproved":  false,
+    "phase":  "PUBLIC-CATALOG-01E",
+    "secretsPrinted":  false,
+    "productionApplyApproved":  false,
+    "readyToApply":  true,
+    "ownerAuthorization":  {
+                               "STAGING_DATA_MUTATION_GO":  "YES",
+                               "PUBLIC_PORTAL_CUTOVER_GO":  "NO",
+                               "PRODUCTION_GO":  "NO"
+                           },
+    "targetResolution":  {
+                             "identityMarkers":  {
+                                                     "knownStagingVenuesCount":  2,
+                                                     "publicTableCount":  175,
+                                                     "stagingLocalProfilesCount":  87
+                                                 },
+                             "environmentLabel":  "staging",
+                             "migrationPresent":  "public_catalog_01_public_read_rpc",
+                             "mcpConfigSource":  ".cursor/mcp.json supabase-staging project_ref",
+                             "projectUrlHost":  "qyewbxjsiiyufanzcjcq.supabase.co",
+                             "isProduction":  false,
+                             "projectRef":  "qyewbxjsiiyufanzcjcq",
+                             "ambiguity":  false,
+                             "rpcStatus":  {
+                                               "courts":  "ACTIVE_VERIFIED",
+                                               "anonExecute":  true,
+                                               "clubs":  "ACTIVE_VERIFIED"
+                                           },
+                             "mcpServerId":  "project-0-pickleball-scheduler-supabase-staging",
+                             "productionBlocklistRef":  "expuvcohlcjzvrrauvud"
+                         },
+    "blocked":  false
+}

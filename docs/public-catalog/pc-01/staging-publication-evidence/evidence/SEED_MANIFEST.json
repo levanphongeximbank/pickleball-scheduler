@@ -1,0 +1,26 @@
+{
+    "rollbackSha256Lf":  "5ecabe5c5c869add122745308cf8ac3d33648b402697ece56c46150fa0c3a642",
+    "seedSha256Lf":  "82d2c451bd61d27604a3522a36d756465143a6d7bd74bed0ca410efa925ae1e1",
+    "noRealPii":  true,
+    "noBookingPayment":  true,
+    "slugs":  [
+                  "pickvn-pc01e-venue",
+                  "pickvn-pc01e-public-club",
+                  "pickvn-pc01e-private-control"
+              ],
+    "projectRef":  "qyewbxjsiiyufanzcjcq",
+    "gate":  "SEED_MANIFEST",
+    "syntheticOnly":  true,
+    "secretsPrinted":  false,
+    "timestampUtc":  "2026-07-26T07:02:00.000Z",
+    "createdExactIds":  {
+                            "privateCourt":  "PICKVN_PC01E_PRIVATE_COURT",
+                            "privateClub":  "PICKVN_PC01E_PRIVATE_CLUB",
+                            "publicCourt":  "PICKVN_PC01E_PUBLIC_COURT",
+                            "venue":  "PICKVN_PC01E_VENUE",
+                            "publicClub":  "PICKVN_PC01E_PUBLIC_CLUB"
+                        },
+    "verdict":  "PASS",
+    "phase":  "PUBLIC-CATALOG-01E",
+    "namespacePrefix":  "PICKVN_PC01E_"
+}

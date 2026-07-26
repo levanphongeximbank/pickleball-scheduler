@@ -1,0 +1,50 @@
+{
+    "timestampUtc":  "2026-07-26T07:07:00.000Z",
+    "clubsAllowlistedFields":  [
+                                   "id",
+                                   "display_name",
+                                   "slug",
+                                   "description",
+                                   "logo_url",
+                                   "image_url",
+                                   "location_summary",
+                                   "publication_state",
+                                   "public_contact",
+                                   "total_count"
+                               ],
+    "gate":  "FIELD_ALLOWLIST_VERIFICATION",
+    "verdict":  "PASS",
+    "responseMatchedAllowlist":  true,
+    "wildcardProjection":  false,
+    "phase":  "PUBLIC-CATALOG-01E",
+    "clubsDeniedFieldsAbsent":  [
+                                    "tenant_id",
+                                    "created_by_user_id",
+                                    "deleted_at",
+                                    "code",
+                                    "version",
+                                    "registered_cluster_id"
+                                ],
+    "projectRef":  "qyewbxjsiiyufanzcjcq",
+    "courtsDeniedFieldsAbsent":  [
+                                     "default_hourly_rate",
+                                     "peak_hourly_rate",
+                                     "booking",
+                                     "staff",
+                                     "player",
+                                     "customer"
+                                 ],
+    "secretsPrinted":  false,
+    "courtsAllowlistedFields":  [
+                                    "id",
+                                    "club_id",
+                                    "venue_id",
+                                    "display_name",
+                                    "court_type",
+                                    "surface",
+                                    "availability_descriptor",
+                                    "publication_state",
+                                    "operational_state",
+                                    "total_count"
+                                ]
+}

@@ -32,5 +32,22 @@ YES — `listPublicCourts` + `public_catalog_list_courts` contract + projection-
 ## Environment apply
 
 - Staging: **applied & verified** in PUBLIC-CATALOG-01S (`qyewbxjsiiyufanzcjcq`) — see `docs/public-catalog/pc-01/staging-activation/`
+- Staging publication path: **verified then seed rolled back** in PUBLIC-CATALOG-01E — see `docs/public-catalog/pc-01/staging-publication-evidence/`
 - Production: **not applied**
 - Public Portal cutover: **NO**
+
+### PUBLIC-CATALOG-01E readiness flags
+
+```
+CLUBS_PUBLICATION_PATH=STAGING_VERIFIED
+COURTS_PUBLICATION_PATH=STAGING_VERIFIED
+PUBLIC_DTO_ALLOWLIST=VERIFIED
+PRIVATE_CONTROL_EXCLUSION=VERIFIED
+STAGING_SEED_APPLIED=YES
+STAGING_SEED_ROLLED_BACK=YES
+STAGING_TEST_DATA_REMAINING=0
+STAGING_RPC_STATUS=ACTIVE_VERIFIED
+PRODUCTION_SQL_RLS_APPLIED=NO
+PUBLIC_PORTAL_LIVE_CUTOVER=NO
+PRODUCTION_RUNTIME_READINESS=NOT_ACHIEVED
+```

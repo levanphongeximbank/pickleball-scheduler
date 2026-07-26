@@ -1,0 +1,15 @@
+{
+    "privateCourtAppearedInRpc":  false,
+    "privateCourtId":  "PICKVN_PC01E_PRIVATE_COURT",
+    "privateClubAppearedInRpc":  false,
+    "privateClubIdFilterCourtsRows":  0,
+    "projectRef":  "qyewbxjsiiyufanzcjcq",
+    "gate":  "PRIVATE_CONTROL_EXCLUSION",
+    "privateClubId":  "PICKVN_PC01E_PRIVATE_CLUB",
+    "secretsPrinted":  false,
+    "timestampUtc":  "2026-07-26T07:06:40.000Z",
+    "verdict":  "PASS",
+    "phase":  "PUBLIC-CATALOG-01E",
+    "privateCourtFilterRows":  0,
+    "privateClubFilterRows":  0
+}

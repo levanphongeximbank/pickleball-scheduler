@@ -1,0 +1,25 @@
+{
+    "timestampUtc":  "2026-07-26T07:01:00.000Z",
+    "gate":  "BASELINE_SNAPSHOT",
+    "verdict":  "PASS",
+    "phase":  "PUBLIC-CATALOG-01E",
+    "secretsPrinted":  false,
+    "projectRef":  "qyewbxjsiiyufanzcjcq",
+    "rpcSummaries":  {
+                         "courtsRows":  0,
+                         "clubsRows":  0
+                     },
+    "rowCounts":  {
+                      "pc01eCourts":  0,
+                      "allClubs":  22,
+                      "pc01eVenues":  0,
+                      "publishedCourts":  0,
+                      "pc01eClubs":  0,
+                      "venues":  2,
+                      "allCatalogCourts":  0,
+                      "publicClubs":  0
+                  },
+    "existingSeedNamespace":  [
+
+                              ]
+}
