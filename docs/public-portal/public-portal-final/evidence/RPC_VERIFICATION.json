@@ -1,0 +1,16 @@
+{
+  "phase": "PUBLIC-PORTAL-FINAL",
+  "gate": "RPC_VERIFICATION",
+  "timestampUtc": "2026-07-26T10:15:00.000Z",
+  "verdict": "ABSENT_EXPECTED_PRE_APPLY",
+  "projectRef": "expuvcohlcjzvrrauvud",
+  "public_catalog_list_clubs": false,
+  "public_catalog_list_courts": false,
+  "stagingReference": {
+    "projectRef": "qyewbxjsiiyufanzcjcq",
+    "public_catalog_list_clubs": true,
+    "public_catalog_list_courts": true,
+    "migration": "20260726053052/public_catalog_01_public_read_rpc"
+  },
+  "secretsPrinted": false
+}

@@ -1,0 +1,46 @@
+{
+  "phase": "PUBLIC-PORTAL-FINAL",
+  "gate": "FINAL_ROLLOUT_CERTIFICATION",
+  "timestampUtc": "2026-07-26T11:30:00.000Z",
+  "verdict": "PUBLIC_PORTAL_FINAL_PRODUCTION_NO_GO_EMPTY_CATALOG",
+  "noGoCertification": "PUBLIC_PORTAL_FINAL_NO_GO_READY_FOR_OWNER_MERGE",
+  "phaseAComplete": true,
+  "awaitingProductionGo": false,
+  "sqlApplied": false,
+  "envCutover": false,
+  "portalRemote": false,
+  "productionUntouchedMutations": true,
+  "productionMutationCheck": {
+    "sqlOrRlsApplied": false,
+    "vitePublicClubsCourtsSourceChanged": false,
+    "deployPerformed": false,
+    "dataMutated": false,
+    "stagingMutated": false
+  },
+  "rootCause": {
+    "publicClubsCountFail": true,
+    "publicCourtsCountFail": true,
+    "publicClubsEligible": 0,
+    "publicCourtsEligible": 0,
+    "cutoverWouldEmptyProductionPortal": true,
+    "failClosedMandatory": true,
+    "summary": "Production has zero public Clubs and zero public Courts; remote cutover would empty Portal; fail-closed required."
+  },
+  "conditionsToReopenRollout": [
+    "At least 1 Production Club canonical opt-in public",
+    "At least 1 Production Court canonical opt-in public",
+    "Privacy/DTO allowlist verified on Production RPCs",
+    "Publication data is real Production data, not synthetic leftover seed",
+    "Production portal+DB rollback paths and Vercel deployment target remain valid"
+  ],
+  "hardGates": {
+    "PRODUCTION_TARGET": "PASS",
+    "ROLLBACK_READINESS": "PASS",
+    "SQL_PACKAGE_SECURITY_REVIEW": "PASS",
+    "DEPLOYMENT_PLATFORM": "PASS",
+    "PUBLIC_CLUBS_ELIGIBLE": "FAIL",
+    "PUBLIC_COURTS_ELIGIBLE": "FAIL"
+  },
+  "ownerAuthorizationRequired": "NONE_FOR_MUTATION — clear empty catalog via separate publication workstream before any GO PRODUCTION",
+  "secretsPrinted": false
+}

@@ -1,0 +1,9 @@
+{
+  "phase": "PUBLIC-PORTAL-FINAL",
+  "gate": "ERROR_FAIL_CLOSED",
+  "timestampUtc": "2026-07-26T10:15:00.000Z",
+  "verdict": "CERTIFIED_BY_01C_REGRESSION",
+  "note": "Runtime remote-error fail-closed proven in PUBLIC-PORTAL-01C; Production remote path not active in Phase A.",
+  "productionRemoteActive": false,
+  "secretsPrinted": false
+}

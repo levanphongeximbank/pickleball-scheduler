@@ -1,0 +1,9 @@
+{
+  "phase": "PUBLIC-PORTAL-FINAL",
+  "gate": "MOCK_FALLBACK_DISABLED",
+  "timestampUtc": "2026-07-26T10:15:00.000Z",
+  "verdict": "CERTIFIED_BY_01C_REGRESSION",
+  "note": "Remote path disables mock fallback (PUBLIC-PORTAL-01C). Production still on local MIXED; remote cutover not performed.",
+  "productionRemoteActive": false,
+  "secretsPrinted": false
+}

@@ -1,0 +1,11 @@
+{
+  "phase": "PUBLIC-PORTAL-FINAL",
+  "gate": "CLUBS_SMOKE",
+  "timestampUtc": "2026-07-26T10:15:00.000Z",
+  "verdict": "PHASE_A_HEADERS_ONLY",
+  "url": "https://pickleball-scheduler-eight.vercel.app/clubs",
+  "httpStatus": 200,
+  "remoteCutoverSmoke": false,
+  "currentSourceMode": "local",
+  "secretsPrinted": false
+}

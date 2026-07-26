@@ -1,0 +1,28 @@
+{
+  "phase": "PUBLIC-PORTAL-FINAL",
+  "gate": "TEST_RESULTS",
+  "timestampUtc": "2026-07-26T11:45:00.000Z",
+  "verdict": "PASS_PHASE_A_GATES",
+  "targeted": {
+    "phaseAPlus01cPlusCatalogPlusEc": { "tests": 133, "pass": 133, "fail": 0, "exitCode": 0, "note": "pre-fill gate run; Phase A was 8 tests before fill assertion" },
+    "phaseAReadinessFinal": { "tests": 9, "pass": 9, "fail": 0, "exitCode": 0, "note": "includes no-placeholder assertion after TEST_RESULTS fill" },
+    "publicPortal01c": { "tests": 9, "pass": 9, "fail": 0 },
+    "publicCatalog01_01S_01E": { "tests": 48, "pass": 48, "fail": 0 },
+    "ec00to06": { "tests": 68, "pass": 68, "fail": 0 }
+  },
+  "fullUnit": { "tests": 6561, "pass": 6561, "fail": 0, "exitCode": 0 },
+  "hygieneHashes": {
+    "APPLY_REFUSED_json_sha256_lf": "d3bf8d425fd85557c2e9289c93db211e4f1fdd1210341b8914301c243dcc802f",
+    "APPLY_REFUSED_NO_GO_json_sha256_lf": "f1b6977c9bb5d0eb5a41593bc9a5049be1b65b71285d115880bb58d19bd4af3e",
+    "unchangedBeforeAfterFullUnit": true
+  },
+  "lintNoNew": { "exitCode": 0 },
+  "ciFoundationLock": { "exitCode": 0 },
+  "build": { "exitCode": 0 },
+  "gitStatusScope": {
+    "exactWipOnly": true,
+    "sideEffectsOutsideScope": false,
+    "note": ".tmp-pp-final-gates/ local gate logs not committed"
+  },
+  "secretsPrinted": false
+}

@@ -1,0 +1,41 @@
+{
+  "phase": "PUBLIC-PORTAL-FINAL",
+  "gate": "PRE_ROLLOUT_SNAPSHOT",
+  "timestampUtc": "2026-07-26T10:15:00.000Z",
+  "verdict": "CAPTURED",
+  "projectRef": "expuvcohlcjzvrrauvud",
+  "schema": {
+    "hasClubsTable": true,
+    "hasPublicCatalogCourts": false,
+    "hasIsPubliclyListed": false,
+    "hasPublicSlug": false,
+    "hasCourtsBusinessTable": false,
+    "hasVenues": true,
+    "clubsRlsEnabled": true,
+    "catalogRpcClubs": false,
+    "catalogRpcCourts": false
+  },
+  "aggregates": {
+    "clubsTotal": 1,
+    "clubsActiveNotDeleted": 1,
+    "venuesTotal": 1,
+    "publicClubsEligible": 0,
+    "publicCourtsEligible": 0,
+    "publicCourtsProjectionRows": 0,
+    "note": "Eligible counts are 0 because publication columns/projection are absent; after SQL apply without data mutation they remain 0 (deny-by-default)."
+  },
+  "grantsSummary": {
+    "anonClubsSelectPrivilege": true,
+    "anonClubsMutationPrivilege": false,
+    "clubsSelectPolicyRoles": ["authenticated"],
+    "anonEffectiveClubsSelectViaRls": false,
+    "anonVenuesSelectPrivilege": true,
+    "anonVenuesInsertPrivilege": true,
+    "note": "Table grants exist; RLS deny-by-default for anon on clubs (policy authenticated-only). venues INSERT grant is pre-existing and out of scope."
+  },
+  "migrationCollision": false,
+  "sqlApplied": false,
+  "portalCutover": false,
+  "secretsPrinted": false,
+  "rawRowsExported": false
+}
