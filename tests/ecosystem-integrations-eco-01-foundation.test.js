@@ -33,8 +33,8 @@ import {
 const FIXED_TS = "2026-07-24T10:00:00.000Z";
 
 test("ECO phase metadata is structural-only", () => {
-  assert.equal(ECOSYSTEM_INTEGRATIONS_PHASE.id, "ECO-04");
-  assert.equal(ECOSYSTEM_INTEGRATIONS_PHASE.priorPhase, "ECO-03");
+  assert.equal(ECOSYSTEM_INTEGRATIONS_PHASE.id, "ECO-05");
+  assert.equal(ECOSYSTEM_INTEGRATIONS_PHASE.priorPhase, "ECO-04");
   assert.equal(ECOSYSTEM_INTEGRATIONS_PHASE.hasRealProviders, false);
   assert.equal(ECOSYSTEM_INTEGRATIONS_PHASE.hasNetworkClients, false);
   assert.equal(ECOSYSTEM_INTEGRATIONS_PHASE.hasSecretBoundary, true);
@@ -42,6 +42,8 @@ test("ECO phase metadata is structural-only", () => {
   assert.equal(ECOSYSTEM_INTEGRATIONS_PHASE.hasLegacySecretCutover, true);
   assert.equal(ECOSYSTEM_INTEGRATIONS_PHASE.hasProviderAdapterFoundation, true);
   assert.equal(ECOSYSTEM_INTEGRATIONS_PHASE.hasWebhookIngressFoundation, true);
+  assert.equal(ECOSYSTEM_INTEGRATIONS_PHASE.hasObservabilityFoundation, true);
+  assert.equal(ECOSYSTEM_INTEGRATIONS_PHASE.structuralFoundationComplete, true);
   assert.equal(ECOSYSTEM_INTEGRATIONS_PHASE.hasProductionWebhooks, false);
   assert.equal(ECOSYSTEM_INTEGRATIONS_PHASE.productionBlocked, true);
   assert.ok(Object.isFrozen(ECOSYSTEM_INTEGRATIONS_PHASE));

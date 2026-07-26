@@ -5,9 +5,9 @@
  */
 
 export const ECOSYSTEM_INTEGRATIONS_PHASE = Object.freeze({
-  id: "ECO-04",
-  name: "webhook-ingress-foundation",
-  priorPhase: "ECO-03",
+  id: "ECO-05",
+  name: "observability-structural-final-certification",
+  priorPhase: "ECO-04",
   wiredToProductionRuntime: false,
   hasRealProviders: false,
   hasNetworkClients: false,
@@ -18,6 +18,8 @@ export const ECOSYSTEM_INTEGRATIONS_PHASE = Object.freeze({
   hasLegacySecretCutover: true,
   hasProviderAdapterFoundation: true,
   hasWebhookIngressFoundation: true,
+  hasObservabilityFoundation: true,
+  structuralFoundationComplete: true,
   structureComplete: true,
   productionBlocked: true,
 });
@@ -349,3 +351,47 @@ export const WEBHOOK_INGRESS_OBSERVATION_VERSION =
   "eco-webhook-ingress-observation-1";
 export const WEBHOOK_TIMESTAMP_POLICY_VERSION = "eco-webhook-timestamp-policy-1";
 export const WEBHOOK_REPLAY_PROJECTION_VERSION = "eco-webhook-replay-projection-1";
+
+/** ECO-05 — observability & structural final certification catalogues */
+
+export const OBSERVATION_SOURCE_KIND = Object.freeze({
+  CONNECTOR: "CONNECTOR",
+  PROVIDER_ADAPTER: "PROVIDER_ADAPTER",
+  WEBHOOK_INGRESS: "WEBHOOK_INGRESS",
+  HEALTH: "HEALTH",
+  CERTIFICATION: "CERTIFICATION",
+});
+
+export const OBSERVATION_SOURCE_KIND_VALUES = Object.freeze(
+  Object.values(OBSERVATION_SOURCE_KIND)
+);
+
+export const CERTIFICATION_GATE_STATUS = Object.freeze({
+  PASS: "PASS",
+  FAIL: "FAIL",
+  BLOCKED: "BLOCKED",
+});
+
+export const CERTIFICATION_GATE_STATUS_VALUES = Object.freeze(
+  Object.values(CERTIFICATION_GATE_STATUS)
+);
+
+export const AGGREGATE_HEALTH_STATUS = Object.freeze({
+  READY: "READY",
+  DEGRADED: "DEGRADED",
+  NOT_READY: "NOT_READY",
+  UNAVAILABLE: "UNAVAILABLE",
+  PRODUCTION_BLOCKED: "PRODUCTION_BLOCKED",
+});
+
+export const AGGREGATE_HEALTH_STATUS_VALUES = Object.freeze(
+  Object.values(AGGREGATE_HEALTH_STATUS)
+);
+
+export const INTEGRATION_OBSERVATION_VERSION = "eco-integration-observation-1";
+export const OBSERVATION_AGGREGATION_VERSION = "eco-observation-aggregation-1";
+export const AGGREGATE_HEALTH_READINESS_VERSION =
+  "eco-aggregate-health-readiness-1";
+export const AUDIT_SAFE_EVIDENCE_VERSION = "eco-audit-safe-evidence-1";
+export const CERTIFICATION_MATRIX_VERSION = "eco-certification-matrix-1";
+export const STRUCTURAL_READINESS_VERSION = "eco-structural-readiness-1";
