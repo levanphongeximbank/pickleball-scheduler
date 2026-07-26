@@ -17,7 +17,8 @@
     "docs/coaching-training/coaching-04/runtime-activation/OWNER_STAGING_RUNTIME_ACTIVATION_APPROVAL.template.json",
     "scripts/coaching/coaching-04-runtime-activation-lib.mjs",
     "scripts/coaching/coaching-04-runtime-activation-preflight.mjs",
-    "tests/coaching-04-runtime-activation-pin.test.js"
+    "tests/coaching-04-runtime-activation-pin.test.js",
+    "tests/coaching-04-runtime-gate-wiring.test.js"
   ],
   "evidenceFilesNotHashed": [
     "docs/coaching-training/coaching-04/runtime-activation/evidence/POST_MERGE_PR295_VERIFICATION.json",

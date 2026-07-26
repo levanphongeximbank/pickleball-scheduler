@@ -31,22 +31,25 @@
   "requiredEnvKeys": [
     "VITE_APP_ENV",
     "VITE_COACHING_STAGING_DURABLE_RUNTIME_ENABLED",
+    "VITE_COACHING_STAGING_OWNER_GO_GRANTED",
     "VITE_SUPABASE_URL"
   ],
   "expectedEnvValuesAfterOwnerGo": {
     "VITE_APP_ENV": "staging",
     "VITE_COACHING_STAGING_DURABLE_RUNTIME_ENABLED": "true",
+    "VITE_COACHING_STAGING_OWNER_GO_GRANTED": "true",
     "VITE_SUPABASE_URL": "https://qyewbxjsiiyufanzcjcq.supabase.co"
   },
   "currentEnvValuesPreOwnerGo": {
     "VITE_APP_ENV": "staging",
     "VITE_COACHING_STAGING_DURABLE_RUNTIME_ENABLED": "false",
+    "VITE_COACHING_STAGING_OWNER_GO_GRANTED": "false",
     "VITE_SUPABASE_URL": "https://qyewbxjsiiyufanzcjcq.supabase.co"
   },
   "productionRefusalConditions": [
     "VITE_APP_ENV=production|prod",
     "Supabase project ref expuvcohlcjzvrrauvud",
-    "Owner GO missing",
+    "Owner GO missing (VITE_COACHING_STAGING_OWNER_GO_GRANTED)",
     "COACHING_DURABLE_RUNTIME_DEFAULT must never be flipped true for Production"
   ],
   "mappingRowCount": 0,
@@ -101,6 +104,7 @@
     "expectedEnvValuesAfterOwnerGo": {
       "VITE_APP_ENV": "staging",
       "VITE_COACHING_STAGING_DURABLE_RUNTIME_ENABLED": "true",
+      "VITE_COACHING_STAGING_OWNER_GO_GRANTED": "true",
       "VITE_SUPABASE_URL": "https://qyewbxjsiiyufanzcjcq.supabase.co"
     },
     "ownerGoToken": "COACHING_04_OWNER_GO_RUNTIME_CUTOVER_STAGING"

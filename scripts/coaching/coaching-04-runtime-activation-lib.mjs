@@ -59,13 +59,15 @@ export const COACHING_04_RUNTIME_ACTIVATION_VERDICTS = Object.freeze({
 export const COACHING_04_STAGING_RUNTIME_EXPECTED_ENV = Object.freeze({
   VITE_APP_ENV: "staging",
   VITE_COACHING_STAGING_DURABLE_RUNTIME_ENABLED: "true",
+  VITE_COACHING_STAGING_OWNER_GO_GRANTED: "true",
   VITE_SUPABASE_URL: "https://qyewbxjsiiyufanzcjcq.supabase.co",
 });
 
-/** Current certified state before Owner GO — flag must remain off. */
+/** Current certified state before Owner GO — durable + Owner GO flags must remain off. */
 export const COACHING_04_STAGING_RUNTIME_CURRENT_ENV = Object.freeze({
   VITE_APP_ENV: "staging",
   VITE_COACHING_STAGING_DURABLE_RUNTIME_ENABLED: "false",
+  VITE_COACHING_STAGING_OWNER_GO_GRANTED: "false",
   VITE_SUPABASE_URL: "https://qyewbxjsiiyufanzcjcq.supabase.co",
 });
 
@@ -77,6 +79,7 @@ export const COACHING_04_RUNTIME_ACTIVATION_MANIFEST_FILES = Object.freeze([
   "scripts/coaching/coaching-04-runtime-activation-lib.mjs",
   "scripts/coaching/coaching-04-runtime-activation-preflight.mjs",
   "tests/coaching-04-runtime-activation-pin.test.js",
+  "tests/coaching-04-runtime-gate-wiring.test.js",
 ]);
 
 /**

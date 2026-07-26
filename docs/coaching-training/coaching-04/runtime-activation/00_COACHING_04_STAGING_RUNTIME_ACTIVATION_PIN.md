@@ -30,8 +30,9 @@
 
 1. `VITE_APP_ENV=staging`
 2. `VITE_COACHING_STAGING_DURABLE_RUNTIME_ENABLED=true`
-3. Valid Owner GO package bound to this activation commit + manifest hash
-4. `VITE_SUPABASE_URL=https://qyewbxjsiiyufanzcjcq.supabase.co` (when set)
+3. `VITE_COACHING_STAGING_OWNER_GO_GRANTED=true`
+4. Valid Owner GO package bound to this activation commit + manifest hash
+5. `VITE_SUPABASE_URL=https://qyewbxjsiiyufanzcjcq.supabase.co` (when set)
 
 Production / unknown / non-staging / missing GO / wrong project ref → fail closed (legacy).
 
@@ -41,11 +42,12 @@ Production / unknown / non-staging / missing GO / wrong project ref → fail clo
 |-----|-------|
 | `VITE_APP_ENV` | `staging` (Preview) |
 | `VITE_COACHING_STAGING_DURABLE_RUNTIME_ENABLED` | `false` / unset |
+| `VITE_COACHING_STAGING_OWNER_GO_GRANTED` | `false` / unset |
 | `VITE_SUPABASE_URL` | `https://qyewbxjsiiyufanzcjcq.supabase.co` |
 
 ## Rollback
 
-Unset or set `VITE_COACHING_STAGING_DURABLE_RUNTIME_ENABLED=false`.  
+Unset or set `VITE_COACHING_STAGING_DURABLE_RUNTIME_ENABLED=false` and/or `VITE_COACHING_STAGING_OWNER_GO_GRANTED=false`.
 No database rollback. Legacy adapter retained. Defaults stay false.
 
 ## Owner GO binding (required)

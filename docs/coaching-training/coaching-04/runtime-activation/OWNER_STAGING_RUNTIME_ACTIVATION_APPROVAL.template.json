@@ -20,6 +20,7 @@
   "expectedEnvValuesAfterOwnerGo": {
     "VITE_APP_ENV": "staging",
     "VITE_COACHING_STAGING_DURABLE_RUNTIME_ENABLED": "true",
+    "VITE_COACHING_STAGING_OWNER_GO_GRANTED": "true",
     "VITE_SUPABASE_URL": "https://qyewbxjsiiyufanzcjcq.supabase.co"
   },
   "mappingRowCount": 0,
