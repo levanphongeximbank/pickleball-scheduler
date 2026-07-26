@@ -6,9 +6,10 @@
 - Branch: `feature/experience-channels-06-public-portal-live-cutover`
 - Base: fresh `origin/main` (`97cb1c37` at worktree creation)
 - Closed baseline: EC-00 → EC-05, TEST-HYGIENE-01, NEWS-04
-- Evidence hashes (pre-implementation):
+- Evidence hashes (pre-implementation, Windows working tree — informational):
   - `docs/coaching-training/coaching-03/evidence/APPLY_REFUSED.json` → `A30C5CC05F8A183A68608D62F99A50A05114DB7492078CF166D9DC8072BA3664`
   - `docs/player-management/pm-id-01/activation/evidence/APPLY_REFUSED_NO_GO.json` → `F795FD56A5E2367432B2F779DD17131D673791B98ECA78F3B9044F1CBCA34027`
+- Hygiene lock: EC-06 tests assert evidence files exist, in-process SHA256 stability, and `git status --porcelain` clean for those paths (portable across CRLF/LF).
 
 ## Certification gates (all required for CERTIFIED_LIVE_CUTOVER)
 

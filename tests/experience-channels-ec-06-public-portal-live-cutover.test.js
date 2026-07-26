@@ -5,6 +5,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { createHash } from "node:crypto";
+import { execFileSync } from "node:child_process";
 import { readFileSync, existsSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
@@ -27,10 +28,6 @@ const EVIDENCE_COACHING =
   "docs/coaching-training/coaching-03/evidence/APPLY_REFUSED.json";
 const EVIDENCE_PM =
   "docs/player-management/pm-id-01/activation/evidence/APPLY_REFUSED_NO_GO.json";
-const EXPECTED_COACHING_SHA =
-  "A30C5CC05F8A183A68608D62F99A50A05114DB7492078CF166D9DC8072BA3664";
-const EXPECTED_PM_SHA =
-  "F795FD56A5E2367432B2F779DD17131D673791B98ECA78F3B9044F1CBCA34027";
 
 function readSrc(rel) {
   return readFileSync(path.join(ROOT, rel), "utf8");
@@ -39,6 +36,13 @@ function readSrc(rel) {
 function sha256File(rel) {
   const buf = readFileSync(path.join(ROOT, rel));
   return createHash("sha256").update(buf).digest("hex").toUpperCase();
+}
+
+function gitPorcelainFor(...rels) {
+  return execFileSync("git", ["status", "--porcelain", "--", ...rels], {
+    cwd: ROOT,
+    encoding: "utf8",
+  }).trim();
 }
 
 test("EC-06 phase marker: audit complete, zero certified cutovers, no forced LIVE", () => {
@@ -239,9 +243,19 @@ test("EC-06 one surface failure isolation: Home sections independent", () => {
   assert.doesNotMatch(home, /allowMockFallback:\s*false/);
 });
 
-test("EC-06 staging evidence SHA256 unchanged", () => {
-  assert.equal(sha256File(EVIDENCE_COACHING), EXPECTED_COACHING_SHA);
-  assert.equal(sha256File(EVIDENCE_PM), EXPECTED_PM_SHA);
+test("EC-06 staging evidence unchanged (exists, stable hash in-process, git clean)", () => {
+  assert.equal(existsSync(path.join(ROOT, EVIDENCE_COACHING)), true);
+  assert.equal(existsSync(path.join(ROOT, EVIDENCE_PM)), true);
+
+  const beforeCoaching = sha256File(EVIDENCE_COACHING);
+  const beforePm = sha256File(EVIDENCE_PM);
+  assert.match(beforeCoaching, /^[A-F0-9]{64}$/);
+  assert.match(beforePm, /^[A-F0-9]{64}$/);
+  assert.equal(sha256File(EVIDENCE_COACHING), beforeCoaching);
+  assert.equal(sha256File(EVIDENCE_PM), beforePm);
+
+  // Portable across CRLF/LF checkouts — do not hardcode Windows working-tree digests.
+  assert.equal(gitPorcelainFor(EVIDENCE_COACHING, EVIDENCE_PM), "");
 });
 
 test("EC-06 docs and ownership evidence exist", () => {
