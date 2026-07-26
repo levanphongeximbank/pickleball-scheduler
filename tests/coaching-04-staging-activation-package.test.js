@@ -433,7 +433,10 @@ test("no secret persisted in tracked activation artifacts", () => {
   for (const rel of files) {
     const text = read(rel);
     assert.doesNotMatch(text, /eyJ[A-Za-z0-9_-]{20,}\./);
-    assert.doesNotMatch(text, /service_role|SUPABASE_ACCESS_TOKEN\s*=\s*\S+/i);
+    // Role names (anon/service_role) may appear in REVOKE/GRANT ACL authoring.
+    // Forbid credential material only.
+    assert.doesNotMatch(text, /SUPABASE_ACCESS_TOKEN\s*=\s*\S+/i);
+    assert.doesNotMatch(text, /SERVICE_ROLE_KEY\s*=\s*\S+/i);
     assert.doesNotMatch(text, /postgres(?:ql)?:\/\/[^:\s]+:[^@\s]+@/i);
   }
 });

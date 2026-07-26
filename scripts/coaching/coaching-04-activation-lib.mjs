@@ -62,6 +62,41 @@ export const COACHING_04_PINNED_AGGREGATE_SHA256_FORWARD =
 export const COACHING_04_PINNED_COMBINED_MANIFEST_HASH =
   "16cdb19ff57b0e0460610e8a341ca8f2786ff19a067839a80996866f61111eaa";
 
+/** Additive helper ACL hardening patch (order 41). Not part of locked 10→40 aggregate. */
+export const COACHING_04_HELPER_ACL_PATCH_OWNER_GO_TOKEN =
+  "COACHING_04_HELPER_ACL_PATCH_OWNER_GO";
+export const COACHING_04_HELPER_ACL_PATCH_ORDER = 41;
+export const COACHING_04_HELPER_ACL_PATCH_RELATIVE_PATH =
+  "docs/coaching-training/coaching-04/41_COACHING_04_HELPER_EXECUTE_ACL_HARDENING.sql";
+export const COACHING_04_HELPER_ACL_PATCH_VERIFY_RELATIVE_PATH =
+  "docs/coaching-training/coaching-04/41_COACHING_04_HELPER_EXECUTE_ACL_HARDENING.verify.sql";
+export const COACHING_04_HELPER_ACL_PATCH_MANIFEST_RELATIVE_PATH =
+  "docs/coaching-training/coaching-04/helper-acl-hardening-manifest.json";
+/** Exact 12 helper signatures blocked for anon/service_role EXECUTE. */
+export const COACHING_04_HELPER_ACL_PATCH_SIGNATURES = Object.freeze([
+  "public.coaching_04_actor_uid()",
+  "public.coaching_04_active_coach_reference_id()",
+  "public.coaching_04_coach_assigned_to_player(text, text)",
+  "public.coaching_04_coach_owns_session(text)",
+  "public.coaching_04_coach_can_access_enrollment(text)",
+  "public.coaching_04_coach_can_access_program(text)",
+  "public.coaching_04_has_assigned_action(text)",
+  "public.coaching_04_mapped_player_id()",
+  "public.coaching_04_player_is_self(text)",
+  "public.coaching_04_player_identity_is_mapped()",
+  "public.coaching_04_has_self_action(text)",
+  "public.coaching_04_player_can_access_enrollment(text)",
+]);
+export const COACHING_04_HELPER_ACL_PATCH_SHA256 =
+  "dfb5bdae4479720761c88f443e3fda8d298a51752445b2c52d4e267d4541c0c1";
+export const COACHING_04_HELPER_ACL_PATCH_VERIFY_SHA256 =
+  "957779dd2ed193cb582e66e2c7ca9069e9dede925686e04f564bc5b94fc86342";
+export const COACHING_04_MUTATION_RPC_NAMES = Object.freeze([
+  "coaching_04_record_assigned_attendance",
+  "coaching_04_submit_assigned_evaluation",
+  "coaching_04_consume_assigned_entitlement",
+]);
+
 /** Proposed function names that must not already collide on Staging before apply. */
 export const COACHING_04_PROPOSED_FUNCTION_NAMES = Object.freeze([
   "coaching_04_actor_uid",
