@@ -1,0 +1,58 @@
+{
+  "observedAtUtc": "2026-07-27T23:32:18.465Z",
+  "checkpointId": "30D-CP-CURRENT",
+  "deploymentShaObserved": "6eff4c61496734a418ce6a534fbdaf7bd3b10368",
+  "anomalyId": null,
+  "routes": [
+    {
+      "route": "/",
+      "httpStatus": 200,
+      "available": true,
+      "majorVisibleError": null
+    },
+    {
+      "route": "/clubs",
+      "httpStatus": 200,
+      "available": true,
+      "majorVisibleError": null
+    },
+    {
+      "route": "/courts",
+      "httpStatus": 200,
+      "available": true,
+      "majorVisibleError": null
+    },
+    {
+      "route": "/login",
+      "httpStatus": 200,
+      "available": true,
+      "majorVisibleError": null
+    },
+    {
+      "route": "/tournaments",
+      "httpStatus": 200,
+      "available": true,
+      "majorVisibleError": null
+    },
+    {
+      "route": "/rankings",
+      "httpStatus": 200,
+      "available": true,
+      "majorVisibleError": null
+    },
+    {
+      "route": "/manifest.webmanifest",
+      "httpStatus": 200,
+      "available": true,
+      "majorVisibleError": null
+    },
+    {
+      "route": "/sw.js",
+      "httpStatus": 200,
+      "available": true,
+      "majorVisibleError": null
+    }
+  ],
+  "deploymentIdObserved": 5631492629,
+  "alias": "https://pickvn.app"
+}
