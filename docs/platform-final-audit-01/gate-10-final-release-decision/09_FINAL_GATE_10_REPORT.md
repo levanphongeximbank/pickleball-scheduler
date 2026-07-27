@@ -194,7 +194,7 @@ Scoped to:
 | Field | Value |
 |-------|-------|
 | Primary evidence commit | `1fdd4ba07d61022b277218b30ec84bbfc2365b1e` |
-| Tip (PR URL + CI status) | *(this follow-up commit)* |
+| Tip (PR URL + CI status) | `5ce97e16` (+ optional follow-up for tip SHA only) |
 | Branch pushed | `feature/platform-final-audit-01-gate10` |
 | PR | https://github.com/levanphongeximbank/pickleball-scheduler/pull/322 |
 | CI `verify` | **PASS** |
