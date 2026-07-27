@@ -1,10 +1,12 @@
 {
   "phase": "EXPERIENCE-CHANNELS-FINAL",
-  "subphase": "VERCEL_TOURNAMENTS_RANKINGS_CUTOVER_PREMERGE",
-  "timestampUtc": "2026-07-27T03:55:00.000Z",
+  "subphase": "POST_MERGE_VERIFICATION",
+  "timestampUtc": "2026-07-27T04:12:00.000Z",
   "domains": {
     "pickvn": {
       "root": 200,
+      "home": 200,
+      "news": 200,
       "clubs": 200,
       "courts": 200,
       "tournaments": 200,
@@ -18,7 +20,9 @@
   "supabaseHostInBundle": "expuvcohlcjzvrrauvud.supabase.co",
   "stagingHostCount": 0,
   "tournamentsRankingsEnvBaked": "remote",
-  "tournamentsRankingsPagesHonorRemote": false,
+  "tournamentsRankingsPagesHonorRemote": true,
   "clubsCourtsPageUsesRemoteLoader": true,
-  "verdict": "BLOCKED_TOURNAMENTS_RANKINGS_PAGE_WIRING"
+  "manifestHttp": 200,
+  "serviceWorkerHttp": 200,
+  "verdict": "PASS"
 }

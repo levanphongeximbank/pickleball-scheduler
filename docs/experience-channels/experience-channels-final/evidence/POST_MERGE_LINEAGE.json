@@ -1,0 +1,24 @@
+{
+  "phase": "EXPERIENCE-CHANNELS-FINAL",
+  "subphase": "POST_MERGE_VERIFICATION",
+  "timestampUtc": "2026-07-27T04:12:00.000Z",
+  "pr": 316,
+  "state": "MERGED",
+  "mergedAt": "2026-07-27T04:04:06Z",
+  "mergeCommit": "9f176bfddc3cb33f682f345f96a80ae7b724fc08",
+  "featureCommits": [
+    "d9bdc796613c05ff4d62e85f15242029a42ff639",
+    "d7a9e4916e92bf98932d0477e950770c0a841151"
+  ],
+  "ancestors": {
+    "d9bdc796": true,
+    "d7a9e491": true
+  },
+  "originMainTip": "9f176bfddc3cb33f682f345f96a80ae7b724fc08",
+  "incomingAfterBase": [
+    "d9bdc796 docs(experience-channels): certify final production readiness",
+    "d7a9e491 docs(experience-channels): record T/R cutover pre-merge blocker",
+    "9f176bfd Merge pull request #316"
+  ],
+  "collision": "NONE"
+}
