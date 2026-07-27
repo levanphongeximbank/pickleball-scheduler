@@ -1,0 +1,67 @@
+{
+  "phase": "1H-B",
+  "script": "phase-1h-staging-apply",
+  "mode": "applied",
+  "ok": true,
+  "verdict": null,
+  "sqlApplied": true,
+  "stagingConnected": true,
+  "stagingProjectRef": "qyewbxjsiiyufanzcjcq",
+  "productionConnected": false,
+  "deploy": false,
+  "automaticRollback": false,
+  "credentialsLogged": false,
+  "stopOnFirstError": true,
+  "migrationsApplied": [
+    {
+      "order": 1,
+      "path": "docs/crm/phase-1g/10_CRM_PHASE_1G_TABLES.sql",
+      "sha256": "0b722ad23be05d3e7985fe077c61d4e9f8cc163bd140c75b8f9f321b92945d8a",
+      "status": "applied"
+    },
+    {
+      "order": 2,
+      "path": "docs/crm/phase-1g/20_CRM_PHASE_1G_INDEXES.sql",
+      "sha256": "426faa1e0df05a9affce4aa8bd216aef18ce6cd30c392109f6072a7802fa4979",
+      "status": "applied"
+    },
+    {
+      "order": 3,
+      "path": "docs/crm/phase-1g/30_CRM_PHASE_1G_RLS.sql",
+      "sha256": "a15c49cf38ba2ec03c3d3da6352f3dff63b6966c5d283b134ec8916bc045d50a",
+      "status": "applied"
+    },
+    {
+      "order": 4,
+      "path": "docs/crm/phase-1g/40_CRM_PHASE_1G_CLAIM_RELEASE_RPCS.sql",
+      "sha256": "e0479ee060d484f13c8fd17384c7cd971c940f26eafa44f0f9d1ba3613c6ba2a",
+      "status": "applied"
+    },
+    {
+      "order": 5,
+      "path": "docs/crm/phase-1g/50_CRM_PHASE_1G_GRANTS.sql",
+      "sha256": "834d2d8757d11ddeba443e39e3bee1ebc5aa98b7e1f428053204b474330b8dfd",
+      "status": "applied"
+    },
+    {
+      "order": 6,
+      "path": "docs/crm/phase-1g/60_CRM_PHASE_1G_CONSENT_IMMUTABLE.sql",
+      "sha256": "12a80394d5730e0d3b4ae462a6b5aa6ea00720fc8e8a8d63e03629c2ffdcb274",
+      "status": "applied"
+    },
+    {
+      "order": 7,
+      "path": "docs/crm/phase-1h/10_CRM_PHASE_1H_PERMISSION_SEED.sql",
+      "sha256": "2db66238391d39de992c2848d142ef0f42a515be2e252d67de2ff178e891512b",
+      "status": "applied"
+    }
+  ],
+  "migrationsDeferred": [
+    {
+      "order": 8,
+      "path": "docs/crm/phase-1h/20_CRM_PHASE_1H_ROLE_PERMISSION_ASSIGNMENT.sql",
+      "reason": "role_matrix_approval_deferred"
+    }
+  ],
+  "finishedAt": "2026-07-26T13:39:08.009Z"
+}
