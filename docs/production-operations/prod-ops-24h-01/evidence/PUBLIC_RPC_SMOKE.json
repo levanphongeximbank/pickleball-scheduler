@@ -1,0 +1,58 @@
+{
+  "observedAtUtc": "2026-07-27T16:09:02.529Z",
+  "indexBundle": "/assets/index-CpJ-wSSC.js",
+  "supabaseHost": "expuvcohlcjzvrrauvud.supabase.co",
+  "anonKeyPresent": true,
+  "anonKeyPrinted": false,
+  "clubsHttp": 200,
+  "courtsHttp": 200,
+  "clubsCount": 1,
+  "courtsCount": 4,
+  "clubNames": [
+    "CLB ACCC"
+  ],
+  "courtNames": [
+    "Sân 3",
+    "Sân 4",
+    "Sân 5",
+    "Sân 6"
+  ],
+  "clubsSampleKeys": [
+    "description",
+    "display_name",
+    "id",
+    "image_url",
+    "location_summary",
+    "logo_url",
+    "public_contact",
+    "publication_state",
+    "slug",
+    "total_count"
+  ],
+  "courtsSampleKeys": [
+    "availability_descriptor",
+    "club_id",
+    "court_type",
+    "display_name",
+    "id",
+    "operational_state",
+    "publication_state",
+    "surface",
+    "total_count",
+    "venue_id"
+  ],
+  "privacyFieldScan": {
+    "email": "ABSENT",
+    "phone": "ABSENT",
+    "owner_id": "ABSENT",
+    "tenant_id": "ABSENT",
+    "service_role": "ABSENT",
+    "password": "ABSENT",
+    "created_by": "ABSENT",
+    "internal_note": "ABSENT",
+    "billing": "ABSENT",
+    "stripe": "ABSENT"
+  },
+  "clubsError": null,
+  "courtsError": null
+}
