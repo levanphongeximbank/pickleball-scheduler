@@ -1,0 +1,23 @@
+{
+  "phase": "PUBLIC-CATALOG-02",
+  "gate": "PHYSICAL_CLEANUP",
+  "implementationWorktree": "C:/Users/Le Phong/PICK_VN-Workstreams/public-catalog/public-catalog-02-tournaments-rankings",
+  "featureBranch": "feature/public-catalog-02-tournaments-rankings",
+  "completed": {
+    "worktreeCleanBeforeRemove": true,
+    "headMergedAncestorVerified": true,
+    "worktreeRemoved": true,
+    "localFeatureBranchDeleted": true,
+    "remoteFeatureBranchDeleted": true,
+    "worktreePruned": true,
+    "parentPathClean": true,
+    "verificationWorktree": "none"
+  },
+  "forbiddenActionsAvoided": [
+    "reset_hard",
+    "git_clean",
+    "force_delete_branch",
+    "force_push"
+  ],
+  "verdict": "PASS"
+}

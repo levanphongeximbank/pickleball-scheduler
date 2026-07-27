@@ -1,0 +1,38 @@
+{
+  "phase": "PUBLIC-CATALOG-02",
+  "gate": "POST_MERGE_PRODUCTION_READ_ONLY",
+  "targetProjectRef": "expuvcohlcjzvrrauvud",
+  "mutationPerformed": false,
+  "objects": {
+    "public_catalog_tournaments": true,
+    "public_catalog_rankings": true,
+    "public_catalog_list_tournaments": true,
+    "public_catalog_list_rankings": true
+  },
+  "security": {
+    "tournamentsSecurityDefiner": true,
+    "rankingsSecurityDefiner": true,
+    "tournamentsRls": true,
+    "rankingsRls": true,
+    "anonExecuteTournaments": true,
+    "anonExecuteRankings": true,
+    "anonSelectTournaments": false,
+    "anonSelectRankings": false,
+    "anonInsertUpdateDeleteTournaments": false,
+    "anonInsertUpdateDeleteRankings": false,
+    "permissivePolicyCount": 0,
+    "invalidLimitRejected": true,
+    "invalidSortRejected": true
+  },
+  "results": {
+    "tournamentRows": 0,
+    "rankingRows": 0,
+    "tournamentRpcCount": 0,
+    "rankingRpcCount": 0,
+    "tournamentProvenance": "LIVE_EMPTY",
+    "rankingProvenance": "LIVE_EMPTY",
+    "syntheticProductionRows": 0,
+    "productionOptIns": 0
+  },
+  "verdict": "PASS"
+}
