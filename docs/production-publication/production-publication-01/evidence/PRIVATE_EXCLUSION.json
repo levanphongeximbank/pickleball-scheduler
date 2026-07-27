@@ -1,0 +1,33 @@
+{
+  "workstream": "PRODUCTION-PUBLICATION-01",
+  "phase": "A_READ_ONLY_AUDIT",
+  "timestampUtc": "2026-07-26T12:25:00.000Z",
+  "plannedPublicClubFields": {
+    "id": "club-219e4a7cbd73437eb6271f02a53314c3",
+    "displayName": "CLB ACCC",
+    "slug": "clb-accc",
+    "description": null,
+    "logoUrl": null,
+    "imageUrl": null,
+    "locationSummary": "Phước Long, Hồ Chí Minh",
+    "publicationState": "published",
+    "publicContact": null
+  },
+  "explicitlyExcludedFromPublication": [
+    "full street address from court_clusters.address",
+    "google_maps_url",
+    "owner_user_id / created_by_user_id / member UUIDs",
+    "emails / phones",
+    "club_members roster",
+    "governance assignments",
+    "financial / billing / subscription",
+    "booking / customer / player PII",
+    "internal notes",
+    "permission / role codes",
+    "audit metadata",
+    "tenant secrets"
+  ],
+  "locationSummaryPolicy": "District/city only if Owner approves; never full street number without separate consent. public_contact remains null.",
+  "verdict": "PASS_PLANNED_PRIVACY",
+  "secretsPrinted": false
+}

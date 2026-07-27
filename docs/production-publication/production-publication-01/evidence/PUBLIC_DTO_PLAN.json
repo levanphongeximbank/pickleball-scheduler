@@ -1,0 +1,78 @@
+{
+  "workstream": "PRODUCTION-PUBLICATION-01",
+  "phase": "RESUME_READ_ONLY_REAUDIT",
+  "timestampUtc": "2026-07-27T00:20:00.000Z",
+  "clubPublicDto": {
+    "id": "club-219e4a7cbd73437eb6271f02a53314c3",
+    "displayName": "CLB ACCC",
+    "slug": "clb-accc",
+    "locationSummary": "Phước Long, Hồ Chí Minh",
+    "description": null,
+    "logoUrl": null,
+    "imageUrl": null,
+    "publicContact": null,
+    "publicationState": "published"
+  },
+  "courtPublicDtos": [
+    {
+      "id": "court-club-219e4a7cbd73437eb6271f02a53314c3-n3",
+      "clubId": "club-219e4a7cbd73437eb6271f02a53314c3",
+      "venueId": "venue-prod-main",
+      "displayName": "Sân 3",
+      "publicationState": "published",
+      "operationalState": "active",
+      "courtType": "covered",
+      "surface": "plastic",
+      "availabilityDescriptor": null
+    },
+    {
+      "id": "court-club-219e4a7cbd73437eb6271f02a53314c3-n4",
+      "clubId": "club-219e4a7cbd73437eb6271f02a53314c3",
+      "venueId": "venue-prod-main",
+      "displayName": "Sân 4",
+      "publicationState": "published",
+      "operationalState": "active",
+      "courtType": "covered",
+      "surface": "plastic",
+      "availabilityDescriptor": null
+    },
+    {
+      "id": "court-club-219e4a7cbd73437eb6271f02a53314c3-n5",
+      "clubId": "club-219e4a7cbd73437eb6271f02a53314c3",
+      "venueId": "venue-prod-main",
+      "displayName": "Sân 5",
+      "publicationState": "published",
+      "operationalState": "active",
+      "courtType": "covered",
+      "surface": "plastic",
+      "availabilityDescriptor": null
+    },
+    {
+      "id": "court-club-219e4a7cbd73437eb6271f02a53314c3-n6",
+      "clubId": "club-219e4a7cbd73437eb6271f02a53314c3",
+      "venueId": "venue-prod-main",
+      "displayName": "Sân 6",
+      "publicationState": "published",
+      "operationalState": "active",
+      "courtType": "covered",
+      "surface": "plastic",
+      "availabilityDescriptor": null
+    }
+  ],
+  "availabilityDescriptorDecision": "OMIT_NULL — not contract-approved for this publication",
+  "excluded": [
+    "rates",
+    "notes",
+    "full street address",
+    "maps URL",
+    "owner/member IDs",
+    "roster",
+    "governance",
+    "booking/customer/player data",
+    "staff data",
+    "financial data",
+    "roles/permissions",
+    "tenant secrets",
+    "audit metadata"
+  ]
+}

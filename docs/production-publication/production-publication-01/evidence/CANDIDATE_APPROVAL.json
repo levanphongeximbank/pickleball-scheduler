@@ -1,0 +1,80 @@
+{
+  "workstream": "PRODUCTION-PUBLICATION-01",
+  "phase": "RESUME_READ_ONLY_REAUDIT",
+  "timestampUtc": "2026-07-27T00:20:00.000Z",
+  "ownerApproved": false,
+  "verdict": "PRODUCTION_PUBLICATION_01_AWAITING_OWNER_GO",
+  "priorBlockedReasonCleared": "PRODUCTION_PUBLICATION_01_BLOCKED_NO_SAFE_COURT_CANDIDATE cleared by PRODUCTION-COURT-INVENTORY-01 merge (PR #307)",
+  "candidateClub": {
+    "displayName": "CLB ACCC",
+    "id": "club-219e4a7cbd73437eb6271f02a53314c3",
+    "tenantId": "venue-prod-main",
+    "status": "active",
+    "registeredClusterId": "venue-prod-main-pickleball-nam-long-sports",
+    "plannedPublicSlug": "clb-accc",
+    "plannedPublicLocationSummary": "Phước Long, Hồ Chí Minh",
+    "plannedPublicContact": null,
+    "plannedIsPubliclyListed": true,
+    "productionMatch": true,
+    "mutationAllowed": false
+  },
+  "candidateCourts": [
+    {
+      "id": "court-club-219e4a7cbd73437eb6271f02a53314c3-n3",
+      "name": "Sân 3",
+      "active": true,
+      "status": "active",
+      "courtType": "covered",
+      "surface": "plastic",
+      "clubId": "club-219e4a7cbd73437eb6271f02a53314c3",
+      "venueId": "venue-prod-main",
+      "clusterId": "venue-prod-main-pickleball-nam-long-sports",
+      "ratesNotePriorityAbsent": true,
+      "productionMatch": true
+    },
+    {
+      "id": "court-club-219e4a7cbd73437eb6271f02a53314c3-n4",
+      "name": "Sân 4",
+      "active": true,
+      "status": "active",
+      "courtType": "covered",
+      "surface": "plastic",
+      "clubId": "club-219e4a7cbd73437eb6271f02a53314c3",
+      "venueId": "venue-prod-main",
+      "clusterId": "venue-prod-main-pickleball-nam-long-sports",
+      "ratesNotePriorityAbsent": true,
+      "productionMatch": true
+    },
+    {
+      "id": "court-club-219e4a7cbd73437eb6271f02a53314c3-n5",
+      "name": "Sân 5",
+      "active": true,
+      "status": "active",
+      "courtType": "covered",
+      "surface": "plastic",
+      "clubId": "club-219e4a7cbd73437eb6271f02a53314c3",
+      "venueId": "venue-prod-main",
+      "clusterId": "venue-prod-main-pickleball-nam-long-sports",
+      "ratesNotePriorityAbsent": true,
+      "productionMatch": true
+    },
+    {
+      "id": "court-club-219e4a7cbd73437eb6271f02a53314c3-n6",
+      "name": "Sân 6",
+      "active": true,
+      "status": "active",
+      "courtType": "covered",
+      "surface": "plastic",
+      "clubId": "club-219e4a7cbd73437eb6271f02a53314c3",
+      "venueId": "venue-prod-main",
+      "clusterId": "venue-prod-main-pickleball-nam-long-sports",
+      "ratesNotePriorityAbsent": true,
+      "productionMatch": true
+    }
+  ],
+  "realCourtCandidatesFound": 4,
+  "syntheticDataCreated": false,
+  "clusterProjectionRejected": true,
+  "clusterNote": "cluster venue-prod-main-pickleball-nam-long-sports remains court_count=0 linkage only; not published as Court",
+  "secretsPrinted": false
+}

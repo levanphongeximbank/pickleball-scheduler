@@ -1,0 +1,60 @@
+{
+  "workstream": "PRODUCTION-PUBLICATION-01",
+  "phase": "A_READ_ONLY_AUDIT",
+  "timestampUtc": "2026-07-26T12:25:00.000Z",
+  "clubDtoAllowlist": [
+    "id",
+    "displayName",
+    "slug",
+    "description",
+    "logoUrl",
+    "imageUrl",
+    "locationSummary",
+    "publicationState",
+    "publicContact"
+  ],
+  "courtDtoAllowlist": [
+    "id",
+    "clubId",
+    "venueId",
+    "displayName",
+    "courtType",
+    "surface",
+    "availabilityDescriptor",
+    "publicationState",
+    "operationalState"
+  ],
+  "clubForbiddenKeysSample": [
+    "note",
+    "ownerEmail",
+    "ownerPhone",
+    "phone",
+    "email",
+    "tenantId",
+    "financial",
+    "staff",
+    "permissions",
+    "audit",
+    "players",
+    "members",
+    "bookings"
+  ],
+  "courtForbiddenKeysSample": [
+    "defaultHourlyRate",
+    "peakHourlyRate",
+    "note",
+    "pricing",
+    "bookings",
+    "customer",
+    "staff",
+    "maintenanceNotes",
+    "address",
+    "googleMapsUrl",
+    "ownerUserId"
+  ],
+  "sourceContracts": [
+    "src/features/public-catalog/contracts/publicClubDto.js",
+    "src/features/public-catalog/contracts/publicCourtDto.js"
+  ],
+  "verdict": "PASS_STATIC"
+}

@@ -1,0 +1,19 @@
+{
+  "workstream": "PRODUCTION-PUBLICATION-01",
+  "phase": "C_POST_VERCEL_CUTOVER",
+  "timestampUtc": "2026-07-27T00:45:00.000Z",
+  "finalVerdict": "PRODUCTION_PUBLICATION_01_READY_FOR_OWNER_MERGE",
+  "productionSqlRls": "PASS",
+  "clubPublication": "PASS",
+  "courtPublication": "PASS",
+  "privacySecurity": "PASS",
+  "vercelEnvDeployment": "PASS_OWNER_COMPLETED",
+  "portalSmoke": "PASS",
+  "rollbackStatus": "READY_UNUSED",
+  "tests": "PASS",
+  "commitPrCi": "PASS_PR_311_AWAITING_OWNER_MERGE",
+  "prUrl": "https://github.com/levanphongeximbank/pickleball-scheduler/pull/311",
+  "commit": "dcb7b6ec",
+  "secretsPrinted": false,
+  "stagingUntouched": true
+}

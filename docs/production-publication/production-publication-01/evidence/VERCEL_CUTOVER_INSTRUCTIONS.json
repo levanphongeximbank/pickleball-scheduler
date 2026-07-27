@@ -1,0 +1,20 @@
+{
+  "workstream": "PRODUCTION-PUBLICATION-01",
+  "phase": "B_AWAITING_OWNER_VERCEL_CUTOVER",
+  "timestampUtc": "2026-07-27T00:30:00.000Z",
+  "verdict": "PRODUCTION_PUBLICATION_01_AWAITING_OWNER_VERCEL_CUTOVER",
+  "canonicalDomain": "https://pickleball-scheduler-eight.vercel.app",
+  "vercelProjectName": "pickleball-scheduler",
+  "environment": "Production",
+  "envVar": {
+    "key": "VITE_PUBLIC_CLUBS_COURTS_SOURCE",
+    "currentValue": "unset (code default local)",
+    "newValue": "remote",
+    "previewDevMustNotChange": true
+  },
+  "redeployRequired": true,
+  "agentCanExecute": false,
+  "ownerReplyRequired": "VERCEL CUTOVER COMPLETED",
+  "dbPublicationReady": true,
+  "secretsPrinted": false
+}

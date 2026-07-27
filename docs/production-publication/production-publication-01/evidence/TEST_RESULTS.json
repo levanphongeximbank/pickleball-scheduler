@@ -1,0 +1,29 @@
+{
+  "workstream": "PRODUCTION-PUBLICATION-01",
+  "phase": "RESUME_READ_ONLY_REAUDIT",
+  "timestampUtc": "2026-07-27T00:20:00.000Z",
+  "controlledRound": {
+    "publicationReadinessFocused": {
+      "command": "node --test tests/public-catalog-01-*.test.js tests/public-portal-01c-*.test.js tests/public-portal-final-phase-a-readiness.test.js tests/experience-channels-ec-03-*.test.js tests/experience-channels-ec-04-*.test.js tests/experience-channels-ec-06-*.test.js tests/production-court-inventory-01-accc-readiness.test.js",
+      "pass": 101,
+      "fail": 0,
+      "verdict": "PASS"
+    },
+    "fullUnit": {
+      "rerun": false,
+      "reason": "No Public Catalog/Portal collision on incoming main; read-only gate does not require full unit"
+    }
+  },
+  "coverage": [
+    "Production publication readiness (static + inventory fixture)",
+    "Public Catalog regressions",
+    "Public Portal regressions",
+    "EC-03/04/06 regressions",
+    "privacy/DTO",
+    "selector/deployment defaults",
+    "rollback readiness packages"
+  ],
+  "trackedSideEffects": false,
+  "mutationPerformed": false,
+  "overall": "PASS_READINESS"
+}

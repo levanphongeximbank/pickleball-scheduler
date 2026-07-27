@@ -1,0 +1,73 @@
+{
+  "workstream": "PRODUCTION-PUBLICATION-01",
+  "phase": "B_PRE_MUTATION_SNAPSHOT",
+  "timestampUtc": "2026-07-27T00:25:00.000Z",
+  "productionProjectRef": "expuvcohlcjzvrrauvud",
+  "stagingDistinct": {
+    "server": "project-0-pickleball-scheduler-supabase-staging",
+    "staging_has_catalog_courts": true,
+    "staging_clubs": 22,
+    "staging_has_accc": false,
+    "mutated": false
+  },
+  "sqlPackage": {
+    "path": "docs/public-catalog/pc-01/10_PUBLIC_CATALOG_01_PUBLIC_READ_RPC.sql",
+    "sha256": "F740CAA5D9E08D1A17A897AF2809E2CEB364A8CC21F81FD5F8F6E9F75F9AA1F5",
+    "checksumMatch": true
+  },
+  "rollbackPackage": {
+    "path": "docs/public-catalog/pc-01/90_PUBLIC_CATALOG_01_ROLLBACK.sql",
+    "sha256": "832F8B20F34FA8486D42750094B5BE571F2F43005ED97D32509955B07D793990",
+    "present": true
+  },
+  "catalogAbsentPreApply": {
+    "has_public_catalog_courts": false,
+    "has_list_clubs_rpc": false,
+    "has_list_courts_rpc": false,
+    "has_is_publicly_listed": false,
+    "has_public_slug": false
+  },
+  "counts": {
+    "clubs_total": 1,
+    "blob_total": 1,
+    "venues_total": 1,
+    "clusters_total": 1
+  },
+  "club": {
+    "id": "club-219e4a7cbd73437eb6271f02a53314c3",
+    "name": "CLB ACCC",
+    "status": "active",
+    "tenant_id": "venue-prod-main",
+    "version": 38,
+    "registered_cluster_id": "venue-prod-main-pickleball-nam-long-sports",
+    "code": null,
+    "description": "",
+    "not_deleted": true
+  },
+  "courts": [
+    {"id":"court-club-219e4a7cbd73437eb6271f02a53314c3-n3","name":"Sân 3","active":true,"status":"active","court_type":"covered","surface":"plastic","club_id":"club-219e4a7cbd73437eb6271f02a53314c3","venue_id":"venue-prod-main","cluster_id":"venue-prod-main-pickleball-nam-long-sports","has_rate":false,"has_note":false,"has_priority":false,"number":3},
+    {"id":"court-club-219e4a7cbd73437eb6271f02a53314c3-n4","name":"Sân 4","active":true,"status":"active","court_type":"covered","surface":"plastic","club_id":"club-219e4a7cbd73437eb6271f02a53314c3","venue_id":"venue-prod-main","cluster_id":"venue-prod-main-pickleball-nam-long-sports","has_rate":false,"has_note":false,"has_priority":false,"number":4},
+    {"id":"court-club-219e4a7cbd73437eb6271f02a53314c3-n5","name":"Sân 5","active":true,"status":"active","court_type":"covered","surface":"plastic","club_id":"club-219e4a7cbd73437eb6271f02a53314c3","venue_id":"venue-prod-main","cluster_id":"venue-prod-main-pickleball-nam-long-sports","has_rate":false,"has_note":false,"has_priority":false,"number":5},
+    {"id":"court-club-219e4a7cbd73437eb6271f02a53314c3-n6","name":"Sân 6","active":true,"status":"active","court_type":"covered","surface":"plastic","club_id":"club-219e4a7cbd73437eb6271f02a53314c3","venue_id":"venue-prod-main","cluster_id":"venue-prod-main-pickleball-nam-long-sports","has_rate":false,"has_note":false,"has_priority":false,"number":6}
+  ],
+  "inventoryMatch": true,
+  "blob": {
+    "club_id": "club-219e4a7cbd73437eb6271f02a53314c3",
+    "version": 1,
+    "venue_id": "venue-prod-main",
+    "courts_len": 4,
+    "data_md5": "190e9b19f070169f16601ab1619ad169"
+  },
+  "cluster": {
+    "id": "venue-prod-main-pickleball-nam-long-sports",
+    "name": "Pickleball NAM LONG sports",
+    "status": "active",
+    "court_count": 0,
+    "venue_id": "venue-prod-main"
+  },
+  "venue": {
+    "id": "venue-prod-main",
+    "status": "trial"
+  },
+  "gateVerdict": "PASS_PROCEED"
+}
