@@ -148,7 +148,15 @@ Scoped to `docs/production-operations/prod-ops-30d-01/**`, evidence test, option
 
 ## 28–31. Commit / push / PR / CI
 
-Recorded after publish. Agent does **not** merge. `READY_FOR_OWNER_MERGE` when CI green.
+| Item | Value |
+|------|-------|
+| Commit | `bd1c8e1c` — `docs(ops): certify thirty-day constrained Production operational controls package` |
+| Push | **YES** — `origin/feature/prod-ops-30d-01` |
+| PR URL | https://github.com/levanphongeximbank/pickleball-scheduler/pull/325 |
+| GitHub Actions `verify` | **PASS** (run `30315055417`) |
+| Vercel Preview | **PASS** |
+| Mergeable | **YES** |
+| Agent merge | **NOT performed** — `READY_FOR_OWNER_MERGE` |
 
 ## 32. Residual severity
 
