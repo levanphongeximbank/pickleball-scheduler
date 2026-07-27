@@ -4,15 +4,28 @@
  */
 
 /**
- * @param {{ clubs?: object[], courts?: object[], failClubs?: Error|null, failCourts?: Error|null }} seed
+ * @param {{
+ *   clubs?: object[],
+ *   courts?: object[],
+ *   tournaments?: object[],
+ *   rankings?: object[],
+ *   failClubs?: Error|null,
+ *   failCourts?: Error|null,
+ *   failTournaments?: Error|null,
+ *   failRankings?: Error|null,
+ * }} seed
  */
 export function createInMemoryPublicCatalogRepository(seed = {}) {
   const clubs = Array.isArray(seed.clubs) ? [...seed.clubs] : [];
   const courts = Array.isArray(seed.courts) ? [...seed.courts] : [];
+  const tournaments = Array.isArray(seed.tournaments) ? [...seed.tournaments] : [];
+  const rankings = Array.isArray(seed.rankings) ? [...seed.rankings] : [];
   let failClubs = seed.failClubs || null;
   let failCourts = seed.failCourts || null;
+  let failTournaments = seed.failTournaments || null;
+  let failRankings = seed.failRankings || null;
 
-  function sortClubs(rows, sort) {
+  function sortByName(rows, sort) {
     const copy = [...rows];
     if (sort === "name_asc") {
       copy.sort((a, b) => {
@@ -21,28 +34,19 @@ export function createInMemoryPublicCatalogRepository(seed = {}) {
           "en"
         );
         if (an !== 0) return an;
-        return String(a.id || a.club_id || "").localeCompare(
-          String(b.id || b.club_id || ""),
-          "en"
-        );
+        return String(a.id || "").localeCompare(String(b.id || ""), "en");
       });
     }
     return copy;
   }
 
-  function sortCourts(rows, sort) {
+  function sortByRank(rows, sort) {
     const copy = [...rows];
-    if (sort === "name_asc") {
+    if (sort === "rank_asc") {
       copy.sort((a, b) => {
-        const an = String(a.display_name || a.name || "").localeCompare(
-          String(b.display_name || b.name || ""),
-          "en"
-        );
-        if (an !== 0) return an;
-        return String(a.id || a.court_id || "").localeCompare(
-          String(b.id || b.court_id || ""),
-          "en"
-        );
+        const ar = Number(a.rank || 0) - Number(b.rank || 0);
+        if (ar !== 0) return ar;
+        return String(a.id || "").localeCompare(String(b.id || ""), "en");
       });
     }
     return copy;
@@ -55,6 +59,12 @@ export function createInMemoryPublicCatalogRepository(seed = {}) {
     setFailCourts(err) {
       failCourts = err;
     },
+    setFailTournaments(err) {
+      failTournaments = err;
+    },
+    setFailRankings(err) {
+      failRankings = err;
+    },
     async listPublicClubs(query) {
       if (failClubs) throw failClubs;
       const eligible = clubs.filter(
@@ -63,7 +73,7 @@ export function createInMemoryPublicCatalogRepository(seed = {}) {
           c.status !== "inactive" &&
           !c.deleted_at
       );
-      const sorted = sortClubs(eligible, query.sort);
+      const sorted = sortByName(eligible, query.sort);
       const slice = sorted.slice(query.offset, query.offset + query.limit);
       return { rows: slice, total: sorted.length };
     },
@@ -81,7 +91,30 @@ export function createInMemoryPublicCatalogRepository(seed = {}) {
           (c) => String(c.club_id || c.clubId) === query.clubId
         );
       }
-      const sorted = sortCourts(eligible, query.sort);
+      const sorted = sortByName(eligible, query.sort);
+      const slice = sorted.slice(query.offset, query.offset + query.limit);
+      return { rows: slice, total: sorted.length };
+    },
+    async listPublicTournaments(query) {
+      if (failTournaments) throw failTournaments;
+      const eligible = tournaments.filter(
+        (t) => (t.publication_state || "published") === "published"
+      );
+      const sorted = sortByName(eligible, query.sort);
+      const slice = sorted.slice(query.offset, query.offset + query.limit);
+      return { rows: slice, total: sorted.length };
+    },
+    async listPublicRankings(query) {
+      if (failRankings) throw failRankings;
+      let eligible = rankings.filter(
+        (r) => (r.publication_state || "published") === "published"
+      );
+      if (query.category) {
+        eligible = eligible.filter(
+          (r) => String(r.category || "") === query.category
+        );
+      }
+      const sorted = sortByRank(eligible, query.sort);
       const slice = sorted.slice(query.offset, query.offset + query.limit);
       return { rows: slice, total: sorted.length };
     },

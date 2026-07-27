@@ -1,0 +1,23 @@
+{
+  "surface": "public_tournaments",
+  "classification": "PROJECTION_REQUIRED",
+  "dataHonesty": {
+    "rpcSuccessZeroRows": "LIVE_EMPTY",
+    "rpcError": "ERROR",
+    "forbidden": [
+      "remote_error_to_mock",
+      "remote_empty_to_mock",
+      "missing_source_as_LIVE",
+      "fixture_as_LIVE"
+    ]
+  },
+  "implementation": {
+    "sqlPackage": "docs/public-catalog/pc-02/10_PUBLIC_CATALOG_02_PUBLIC_READ_RPC.sql",
+    "dto": "PUBLIC_TOURNAMENT_DTO_KEYS",
+    "remoteEntrypoint": "listPublicTournamentsRemote",
+    "portalLoader": "loadPublicTournamentsPageResult",
+    "envSelector": "VITE_PUBLIC_TOURNAMENTS_RANKINGS_SOURCE",
+    "defaultSource": "local"
+  },
+  "productionExpectationAfterSql": "LIVE_EMPTY_UNTIL_PUBLICATION"
+}

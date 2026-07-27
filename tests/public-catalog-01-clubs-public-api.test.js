@@ -148,5 +148,7 @@ test("Clubs: no mutation methods on facade", () => {
   assert.deepEqual(Object.keys(facade).sort(), [
     "listPublicClubs",
     "listPublicCourts",
+    "listPublicRankings",
+    "listPublicTournaments",
   ]);
 });

@@ -1,0 +1,27 @@
+{
+  "phase": "PUBLIC-CATALOG-02",
+  "finalVerdict": "PUBLIC_CATALOG_02_READY_FOR_OWNER_MERGE",
+  "mergedMainBaseline": "0da0daecc0233405f11eba1bf1dc31e1064ab0e4",
+  "production": {
+    "projectRef": "expuvcohlcjzvrrauvud",
+    "sqlApplied": true,
+    "sqlSha256Lf": "29e072039015faf11caf33efddb2a82b21293357ee77b4c0d41ed0c9ffc2a5ba",
+    "tournamentDataset": "EMPTY",
+    "rankingDataset": "EMPTY",
+    "tournamentRpc": "LIVE_EMPTY",
+    "rankingRpc": "LIVE_EMPTY",
+    "syntheticRecords": 0,
+    "optIns": 0,
+    "rpcSecurityPass": true,
+    "clubsCourtsRegressionPass": true,
+    "vprUnchanged": true
+  },
+  "portal": {
+    "vercelEnvChanges": 0,
+    "deployments": 0,
+    "tournamentsRankingsDefaultSource": "local"
+  },
+  "rollbackExecuted": false,
+  "ownerActionRequired": "PR MERGED",
+  "blocked": false
+}

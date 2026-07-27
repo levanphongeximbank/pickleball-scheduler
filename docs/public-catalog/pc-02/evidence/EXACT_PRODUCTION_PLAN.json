@@ -1,0 +1,22 @@
+{
+  "phase": "PUBLIC-CATALOG-02",
+  "awaitingExactOwnerMessage": "GO PUBLIC CATALOG 02 PRODUCTION",
+  "targetProjectRef": "expuvcohlcjzvrrauvud",
+  "sqlFile": "docs/public-catalog/pc-02/10_PUBLIC_CATALOG_02_PUBLIC_READ_RPC.sql",
+  "sqlSha256Lf": "29e072039015faf11caf33efddb2a82b21293357ee77b4c0d41ed0c9ffc2a5ba",
+  "rollbackFile": "docs/public-catalog/pc-02/90_PUBLIC_CATALOG_02_ROLLBACK.sql",
+  "dataPublication": {
+    "syntheticProductionData": false,
+    "optInRecords": [],
+    "expectedDatasetAfterApply": "EMPTY"
+  },
+  "vercelEnvChange": false,
+  "portalDeploy": false,
+  "postApplyExpectation": "LIVE_EMPTY_FOR_TOURNAMENTS_AND_RANKINGS",
+  "preserve": [
+    "CLUBS_PRODUCTION_PUBLICATION=ACTIVE_VERIFIED",
+    "COURTS_PRODUCTION_PUBLICATION=ACTIVE_VERIFIED",
+    "PRODUCTION_PORTAL_SOURCE=REMOTE_RPC",
+    "PRODUCTION_RUNTIME_READINESS=ACHIEVED_FOR_CLUBS_COURTS"
+  ]
+}

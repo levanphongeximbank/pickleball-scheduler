@@ -1,0 +1,27 @@
+{
+  "phase": "PUBLIC-CATALOG-02",
+  "target": "qyewbxjsiiyufanzcjcq",
+  "synthetic": true,
+  "seedIds": {
+    "tournaments": [
+      "pc02-synthetic-tournament-001",
+      "pc02-synthetic-tournament-private"
+    ],
+    "rankings": [
+      "pc02-synthetic-ranking-001",
+      "pc02-synthetic-ranking-private"
+    ]
+  },
+  "personalDataUsed": false,
+  "productionTouched": false,
+  "rpcResults": {
+    "tournamentPublicCount": 1,
+    "rankingPublicCount": 1,
+    "unpublishedTournamentLeaked": false,
+    "unpublishedRankingLeaked": false,
+    "tournamentId": "pc02-synthetic-tournament-001",
+    "rankingId": "pc02-synthetic-ranking-001"
+  },
+  "dtoSamplesPublicSafe": true,
+  "verdict": "PASS"
+}

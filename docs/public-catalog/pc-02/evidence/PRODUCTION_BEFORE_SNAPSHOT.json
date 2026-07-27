@@ -1,0 +1,39 @@
+{
+  "phase": "PUBLIC-CATALOG-02",
+  "gate": "PRODUCTION_BEFORE_SNAPSHOT",
+  "timestampUtc": "2026-07-27T02:20:00.000Z",
+  "targetProjectRef": "expuvcohlcjzvrrauvud",
+  "stagingBlocklistRef": "qyewbxjsiiyufanzcjcq",
+  "ownerMessage": "GO PUBLIC CATALOG 02 PRODUCTION",
+  "sqlSha256Lf": "29e072039015faf11caf33efddb2a82b21293357ee77b4c0d41ed0c9ffc2a5ba",
+  "checksumMatch": true,
+  "rollbackPresent": true,
+  "rollbackSha256Lf": "6554428691536b00c480ea0c21eca5662b0ce1d756b9461a28d4fc6315990c72",
+  "sqlReferencesVprOrCourtsOrClubBlob": false,
+  "before": {
+    "public_catalog_tournaments": false,
+    "public_catalog_rankings": false,
+    "public_catalog_list_tournaments": false,
+    "public_catalog_list_rankings": false,
+    "public_catalog_courts": true,
+    "courtRows": 4,
+    "courtIds": [
+      "court-club-219e4a7cbd73437eb6271f02a53314c3-n3",
+      "court-club-219e4a7cbd73437eb6271f02a53314c3-n4",
+      "court-club-219e4a7cbd73437eb6271f02a53314c3-n5",
+      "court-club-219e4a7cbd73437eb6271f02a53314c3-n6"
+    ],
+    "clubsRpcCount": 1,
+    "courtsRpcCount": 4,
+    "vpr_leaderboard": true,
+    "vprRows": 0,
+    "vpr_list_public_leaderboard": true
+  },
+  "stagingNotTarget": {
+    "projectRef": "qyewbxjsiiyufanzcjcq",
+    "pc02AlreadyPresentFromPriorStagingActivation": true,
+    "stagingTournamentRows": 0,
+    "stagingRankingRows": 0
+  },
+  "readyToApply": true
+}

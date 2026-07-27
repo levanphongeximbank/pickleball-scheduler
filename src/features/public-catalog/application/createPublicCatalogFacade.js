@@ -8,7 +8,10 @@ import { PUBLIC_CATALOG_PROVENANCE } from "../constants/provenance.js";
 import {
   normalizeClubSort,
   normalizeCourtSort,
+  normalizeTournamentSort,
+  normalizeRankingSort,
   normalizeOptionalClubIdFilter,
+  normalizeOptionalCategoryFilter,
   normalizePaginationInput,
 } from "../contracts/pagination.js";
 import { deepFreeze, isPlainObject } from "../contracts/shared.js";
@@ -21,6 +24,8 @@ import { matchesPublicCatalogRepositoryPort } from "../ports/publicCatalogReposi
 import {
   projectPublicClub,
   projectPublicCourt,
+  projectPublicTournament,
+  projectPublicRanking,
 } from "../projections/index.js";
 
 /**
@@ -179,8 +184,127 @@ export function createPublicCatalogFacade(deps) {
     }
   }
 
+  /**
+   * Unauthenticated public tournament list.
+   * @param {Record<string, unknown>} [query]
+   */
+  async function listPublicTournaments(query = {}) {
+    try {
+      if (query !== undefined && query !== null && !isPlainObject(query)) {
+        throw new PublicCatalogError(
+          PUBLIC_CATALOG_ERROR_CODE.INVALID_CONTRACT,
+          "listPublicTournaments query must be an object",
+          { field: "query" }
+        );
+      }
+
+      const pagination = normalizePaginationInput({
+        limit: query.limit,
+        offset: query.offset,
+      });
+      const sort = normalizeTournamentSort(query.sort);
+
+      const remote = await repository.listPublicTournaments({
+        limit: pagination.limit,
+        offset: pagination.offset,
+        sort,
+      });
+
+      if (!remote || !Array.isArray(remote.rows)) {
+        throw new PublicCatalogError(
+          PUBLIC_CATALOG_ERROR_CODE.MALFORMED_RESPONSE,
+          "Remote tournament list response is malformed",
+          { field: "rows" }
+        );
+      }
+
+      const items = remote.rows.map((row) => projectPublicTournament(row));
+      const total =
+        typeof remote.total === "number" && Number.isInteger(remote.total)
+          ? remote.total
+          : items.length;
+
+      return ok(
+        deepFreeze({
+          items,
+          pagination: {
+            limit: pagination.limit,
+            offset: pagination.offset,
+            total,
+            sort,
+          },
+          provenance: PUBLIC_CATALOG_PROVENANCE.LIVE,
+        })
+      );
+    } catch (err) {
+      return toFail(err);
+    }
+  }
+
+  /**
+   * Unauthenticated public ranking list.
+   * @param {Record<string, unknown>} [query]
+   */
+  async function listPublicRankings(query = {}) {
+    try {
+      if (query !== undefined && query !== null && !isPlainObject(query)) {
+        throw new PublicCatalogError(
+          PUBLIC_CATALOG_ERROR_CODE.INVALID_CONTRACT,
+          "listPublicRankings query must be an object",
+          { field: "query" }
+        );
+      }
+
+      const pagination = normalizePaginationInput({
+        limit: query.limit,
+        offset: query.offset,
+      });
+      const sort = normalizeRankingSort(query.sort);
+      const category = normalizeOptionalCategoryFilter(query.category);
+
+      const remote = await repository.listPublicRankings({
+        limit: pagination.limit,
+        offset: pagination.offset,
+        sort,
+        category,
+      });
+
+      if (!remote || !Array.isArray(remote.rows)) {
+        throw new PublicCatalogError(
+          PUBLIC_CATALOG_ERROR_CODE.MALFORMED_RESPONSE,
+          "Remote ranking list response is malformed",
+          { field: "rows" }
+        );
+      }
+
+      const items = remote.rows.map((row) => projectPublicRanking(row));
+      const total =
+        typeof remote.total === "number" && Number.isInteger(remote.total)
+          ? remote.total
+          : items.length;
+
+      return ok(
+        deepFreeze({
+          items,
+          pagination: {
+            limit: pagination.limit,
+            offset: pagination.offset,
+            total,
+            sort,
+            category,
+          },
+          provenance: PUBLIC_CATALOG_PROVENANCE.LIVE,
+        })
+      );
+    } catch (err) {
+      return toFail(err);
+    }
+  }
+
   return deepFreeze({
     listPublicClubs,
     listPublicCourts,
+    listPublicTournaments,
+    listPublicRankings,
   });
 }

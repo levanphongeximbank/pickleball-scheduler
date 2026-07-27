@@ -1,0 +1,24 @@
+{
+  "phase": "PUBLIC-CATALOG-02",
+  "timestampUtc": "2026-07-27T02:25:00.000Z",
+  "worktree": "C:/Users/Le Phong/PICK_VN-Workstreams/public-catalog/public-catalog-02-tournaments-rankings",
+  "branch": "feature/public-catalog-02-tournaments-rankings",
+  "baseSha": "0da0daecc0233405f11eba1bf1dc31e1064ab0e4",
+  "priorFullUnitReuse": {
+    "tests": 6726,
+    "pass": 6726,
+    "fail": 0,
+    "rerunRequired": false,
+    "reason": "No incoming main collision; Production execution did not require post-6726 code changes"
+  },
+  "postProductionTargeted": {
+    "command": "node --test PC-02 + Clubs/Courts + EC regressions",
+    "tests": 73,
+    "pass": 73,
+    "fail": 0
+  },
+  "lintNoNew": { "exitCode": 0 },
+  "foundationLock": { "exitCode": 0 },
+  "build": { "exitCode": 0 },
+  "verdict": "PASS"
+}

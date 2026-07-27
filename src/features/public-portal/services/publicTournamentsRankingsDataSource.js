@@ -1,19 +1,36 @@
 /**
- * Public Tournaments/Rankings data-source adapters (EC-04).
- * Public-portal only — no Competition Engine and no business ranking engines.
+ * Public Tournaments/Rankings data-source adapters (EC-04 + PUBLIC-CATALOG-02).
+ * Public-portal only — no Competition Engine and no business ranking writers.
+ *
+ * Default: local / mock-honest path (EC-04).
+ * Opt-in remote: VITE_PUBLIC_TOURNAMENTS_RANKINGS_SOURCE=remote → PUBLIC-CATALOG-02 RPC
+ * with LIVE provenance and no mock fallback.
  */
 import { loadClubs } from "../../../data/club.js";
 import { loadClubData } from "../../../domain/clubStorage.js";
 import { MOCK_RANKINGS, MOCK_TOURNAMENTS } from "../../../data/public/mockPublicData.js";
 import { PUBLIC_PORTAL_SURFACE_ID } from "../../experience-channels/public-portal/constants/surfaceIds.js";
+import { PUBLIC_PORTAL_DATA_SOURCE } from "../../experience-channels/public-portal/constants/dataSources.js";
 import {
+  createErrorResult,
+  createLiveResult,
   createMockResult,
   resolvePublicListDataResult,
 } from "../../experience-channels/public-portal/data-source/index.js";
+import {
+  listPublicTournamentsRemote,
+  listPublicRankingsRemote,
+} from "../../public-catalog/remote/index.js";
+import { isOk } from "../../../core/platform/contracts/result.js";
 import { isVprRankingEnabled } from "../../vpr-ranking/config/vprFlags.js";
 import { VPR_CATEGORY_OPTIONS } from "../../vpr-ranking/constants/vprCategories.js";
 import { vprCategoryToGenderFilter } from "../../vpr-ranking/constants/vprCategories.js";
 import { queryPublicLeaderboard } from "../../vpr-ranking/services/vprLeaderboardService.js";
+
+export const PUBLIC_TOURNAMENTS_RANKINGS_SOURCE = Object.freeze({
+  LOCAL: "local",
+  REMOTE: "remote",
+});
 
 const STATUS_MAP = {
   draft: "upcoming",
@@ -29,6 +46,42 @@ const STATUS_LABELS = {
   live: "Đang diễn ra",
   finished: "Đã kết thúc",
 };
+
+function readTournamentsRankingsSource(value) {
+  const normalized = String(value || "")
+    .trim()
+    .toLowerCase();
+  if (normalized === PUBLIC_TOURNAMENTS_RANKINGS_SOURCE.REMOTE) {
+    return PUBLIC_TOURNAMENTS_RANKINGS_SOURCE.REMOTE;
+  }
+  if (normalized === PUBLIC_TOURNAMENTS_RANKINGS_SOURCE.LOCAL) {
+    return PUBLIC_TOURNAMENTS_RANKINGS_SOURCE.LOCAL;
+  }
+  return null;
+}
+
+/**
+ * Explicit source selection. Default is local (Production unchanged until cutover).
+ * @param {{ source?: string }} [options]
+ * @returns {"local"|"remote"}
+ */
+export function resolvePublicTournamentsRankingsSource(options = {}) {
+  const explicit = readTournamentsRankingsSource(options.source);
+  if (explicit) return explicit;
+
+  const env =
+    typeof import.meta !== "undefined" && import.meta.env
+      ? import.meta.env.VITE_PUBLIC_TOURNAMENTS_RANKINGS_SOURCE
+      : undefined;
+  const nodeEnv =
+    typeof globalThis.process !== "undefined"
+      ? globalThis.process.env?.VITE_PUBLIC_TOURNAMENTS_RANKINGS_SOURCE
+      : undefined;
+  const fromEnv = readTournamentsRankingsSource(env || nodeEnv);
+  if (fromEnv) return fromEnv;
+
+  return PUBLIC_TOURNAMENTS_RANKINGS_SOURCE.LOCAL;
+}
 
 function safeLoadClubData(clubId) {
   try {
@@ -123,6 +176,51 @@ function filterMockRankings(filters = {}) {
 }
 
 /**
+ * Map PUBLIC-CATALOG-02 tournament DTO → portal TournamentCard model.
+ * @param {Record<string, unknown>} dto
+ */
+export function mapCatalogTournamentDtoToPortalCard(dto) {
+  const row = dto && typeof dto === "object" ? dto : {};
+  const status = String(row.operationalStatus || "upcoming");
+  return Object.freeze({
+    id: String(row.id || ""),
+    name: String(row.displayName || "").trim() || "Giải công khai",
+    type: "public",
+    typeLabel: String(row.formatSummary || row.sport || "PICKLEBALL").toUpperCase(),
+    status,
+    statusLabel: STATUS_LABELS[status] || STATUS_LABELS.upcoming,
+    location: String(row.locationSummary || "").trim() || "Việt Nam",
+    date: formatDate(row.startDate),
+    participants: 0,
+    participantLabel: "VĐV",
+    image: row.imageUrl == null ? null : String(row.imageUrl),
+  });
+}
+
+/**
+ * Map PUBLIC-CATALOG-02 ranking DTO → portal Ranking row model.
+ * Does not invent movement/change.
+ * @param {Record<string, unknown>} dto
+ */
+export function mapCatalogRankingDtoToPortalCard(dto) {
+  const row = dto && typeof dto === "object" ? dto : {};
+  const displayName = String(row.displayName || "").trim() || "VĐV công khai";
+  return Object.freeze({
+    rank: Number(row.rank) || 0,
+    name: displayName,
+    displayName,
+    clubName: row.clubName == null ? null : String(row.clubName),
+    region: row.region == null ? null : String(row.region),
+    points: Number(row.totalPoints) || 0,
+    totalPoints: Number(row.totalPoints) || 0,
+    tournamentsCount: Number(row.tournamentsCount) || 0,
+    bestPlacement: row.bestPlacement == null ? null : String(row.bestPlacement),
+    vprAthleteId: null,
+    change: 0,
+  });
+}
+
+/**
  * Honest Tournaments list result (EC-04). Keeps mock fallback but never presents it as LIVE.
  */
 export function getPublicTournamentsResult() {
@@ -177,3 +275,116 @@ export function getPublicRankings(filters = {}) {
 }
 
 getPublicRankings.categories = VPR_CATEGORY_OPTIONS;
+
+function remoteFailToErrorResult(error, ownerSurface) {
+  const payload =
+    error && typeof error === "object"
+      ? error
+      : {
+          code: "PUBLIC_CATALOG_REMOTE_FAILED",
+          message: "Public catalog remote read failed",
+        };
+  return createErrorResult({
+    ownerSurface,
+    source: PUBLIC_PORTAL_DATA_SOURCE.LIVE,
+    error: {
+      code: String(payload.code || "PUBLIC_CATALOG_REMOTE_FAILED"),
+      message: String(payload.message || "Public catalog remote read failed"),
+    },
+    data: [],
+  });
+}
+
+/**
+ * Remote Tournaments loader — RPC only, no mock fallback.
+ */
+export async function loadPublicTournamentsFromRemote(options = {}) {
+  const remote = await listPublicTournamentsRemote(options.query || {}, {
+    client: options.client,
+    repository: options.repository,
+    facade: options.facade,
+  });
+
+  if (!isOk(remote)) {
+    return remoteFailToErrorResult(
+      remote.error,
+      PUBLIC_PORTAL_SURFACE_ID.PUBLIC_TOURNAMENTS
+    );
+  }
+
+  const items = Array.isArray(remote.value?.items) ? remote.value.items : null;
+  if (!items) {
+    return remoteFailToErrorResult(
+      {
+        code: "PUBLIC_CATALOG_MALFORMED_RESPONSE",
+        message: "Remote tournament list response is malformed",
+      },
+      PUBLIC_PORTAL_SURFACE_ID.PUBLIC_TOURNAMENTS
+    );
+  }
+
+  const data = items.map((row) => mapCatalogTournamentDtoToPortalCard(row));
+  return createLiveResult({
+    data,
+    ownerSurface: PUBLIC_PORTAL_SURFACE_ID.PUBLIC_TOURNAMENTS,
+    productionReady: false,
+  });
+}
+
+/**
+ * Remote Rankings loader — RPC only, no mock fallback.
+ */
+export async function loadPublicRankingsFromRemote(options = {}) {
+  const remote = await listPublicRankingsRemote(options.query || {}, {
+    client: options.client,
+    repository: options.repository,
+    facade: options.facade,
+  });
+
+  if (!isOk(remote)) {
+    return remoteFailToErrorResult(
+      remote.error,
+      PUBLIC_PORTAL_SURFACE_ID.PUBLIC_RANKINGS
+    );
+  }
+
+  const items = Array.isArray(remote.value?.items) ? remote.value.items : null;
+  if (!items) {
+    return remoteFailToErrorResult(
+      {
+        code: "PUBLIC_CATALOG_MALFORMED_RESPONSE",
+        message: "Remote ranking list response is malformed",
+      },
+      PUBLIC_PORTAL_SURFACE_ID.PUBLIC_RANKINGS
+    );
+  }
+
+  const data = items.map((row) => mapCatalogRankingDtoToPortalCard(row));
+  return createLiveResult({
+    data,
+    ownerSurface: PUBLIC_PORTAL_SURFACE_ID.PUBLIC_RANKINGS,
+    productionReady: false,
+  });
+}
+
+/**
+ * Tournaments page loader. Remote when source=remote; else local EC-04 path.
+ */
+export async function loadPublicTournamentsPageResult(options = {}) {
+  const source = resolvePublicTournamentsRankingsSource(options);
+  if (source === PUBLIC_TOURNAMENTS_RANKINGS_SOURCE.REMOTE) {
+    return loadPublicTournamentsFromRemote(options);
+  }
+  return getPublicTournamentsResult();
+}
+
+/**
+ * Rankings page loader. Remote when source=remote; else local EC-04 path.
+ */
+export async function loadPublicRankingsPageResult(options = {}) {
+  const source = resolvePublicTournamentsRankingsSource(options);
+  if (source === PUBLIC_TOURNAMENTS_RANKINGS_SOURCE.REMOTE) {
+    return loadPublicRankingsFromRemote(options);
+  }
+  return getPublicRankingsResult(options.query || options.filters || {});
+}

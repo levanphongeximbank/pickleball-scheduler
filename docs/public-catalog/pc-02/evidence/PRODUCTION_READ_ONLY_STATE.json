@@ -1,0 +1,24 @@
+{
+  "phase": "PUBLIC-CATALOG-02",
+  "environmentLabel": "production",
+  "projectRef": "expuvcohlcjzvrrauvud",
+  "mutationPerformed": false,
+  "objects": {
+    "public_catalog_tournaments": false,
+    "public_catalog_rankings": false,
+    "public_catalog_list_tournaments": false,
+    "public_catalog_list_rankings": false,
+    "public_catalog_courts": true,
+    "public_catalog_list_clubs": true,
+    "public_catalog_list_courts": true,
+    "vpr_leaderboard": true,
+    "vpr_list_public_leaderboard": true
+  },
+  "counts": {
+    "courtRows": 4,
+    "vprRows": 0,
+    "eligiblePc02TournamentRows": 0,
+    "eligiblePc02RankingRows": 0
+  },
+  "clubsCourtsPublication": "ACTIVE_VERIFIED_PRESERVED"
+}
