@@ -1,0 +1,26 @@
+{
+  "workstream": "PRODUCTION-PUBLICATION-01",
+  "phase": "PHYSICAL_CLEANUP",
+  "timestampUtc": "2026-07-27T01:05:00.000Z",
+  "implementationWorktree": "C:\\Users\\Le Phong\\PICK_VN-Workstreams\\production-publication\\production-publication-01-clubs-courts",
+  "verificationWorktree": null,
+  "actions": {
+    "worktreeRemoved": true,
+    "localFeatureBranchDeleted": true,
+    "remoteFeatureBranchDeleted": true,
+    "worktreePruned": true,
+    "resetHard": false,
+    "clean": false,
+    "forceDeleteBranch": false,
+    "forcePush": false,
+    "repoFilesDeleted": false
+  },
+  "parentDirectoryCheck": {
+    "worktreePathRemoved": true,
+    "productionPublicationParentExists": true,
+    "implementationDirGone": true,
+    "noFeatureBranchLocal": true,
+    "noFeatureBranchRemote": true
+  },
+  "marker": "PRODUCTION_PUBLICATION_01_PHYSICAL_CLEANUP_COMPLETE"
+}
