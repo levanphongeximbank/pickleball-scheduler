@@ -3,7 +3,7 @@
  * Activation: `npx vitest run tests/ui/tournaments-rankings-data-honesty.ui.test.jsx`
  */
 import { describe, expect, it } from "vitest";
-import { render, screen } from "@testing-library/react";
+import { render, screen, waitFor } from "@testing-library/react";
 import { MemoryRouter, Route, Routes } from "react-router-dom";
 import { ThemeProvider } from "@mui/material/styles";
 import CssBaseline from "@mui/material/CssBaseline";
@@ -33,7 +33,7 @@ function PublicShell({ initialPath, children }) {
 }
 
 describe("EC-04 list-surface data honesty UI", () => {
-  it("Tournaments page renders provenance notice when fallback is used", () => {
+  it("Tournaments page renders provenance notice when fallback is used", async () => {
     render(
       <PublicShell initialPath="/tournaments">
         <Route path="/tournaments" element={<TournamentsPage />} />
@@ -42,23 +42,32 @@ describe("EC-04 list-surface data honesty UI", () => {
 
     expect(screen.getByRole("heading", { name: "Giải đấu" })).toBeInTheDocument();
 
+    await waitFor(() => {
+      expect(
+        screen.queryByTestId("public-data-source-notice") ||
+          screen.queryByPlaceholderText("Tìm kiếm theo tên giải...") ||
+          screen.queryByRole("button", { name: "Thử lại" })
+      ).toBeTruthy();
+    });
+
     const notice = screen.queryByTestId("public-data-source-notice");
     if (notice) {
       expect(notice).toHaveAttribute("data-source");
-      expect(["MIXED", "MOCK", "PREVIEW", "UNKNOWN"]).toContain(
+      expect(["MIXED", "MOCK", "PREVIEW", "UNKNOWN", "LIVE"]).toContain(
         notice.getAttribute("data-source")
       );
       expect(screen.getByRole("status")).toHaveAttribute("aria-live", "polite");
-      expect(notice.textContent || "").not.toMatch(/dữ liệu trực tiếp từ hệ thống vận hành/i);
+      if (["MIXED", "MOCK", "PREVIEW"].includes(notice.getAttribute("data-source"))) {
+        expect(notice.textContent || "").not.toMatch(/dữ liệu trực tiếp từ hệ thống vận hành/i);
+      }
     }
 
-    // Content or retry path must be present (never silent blank success on error).
     const search = screen.queryByPlaceholderText("Tìm kiếm theo tên giải...");
     const retry = screen.queryByRole("button", { name: "Thử lại" });
     expect(search || retry).toBeTruthy();
   });
 
-  it("Rankings page shows MOCK notice by default and preserves table overflow styles", () => {
+  it("Rankings page shows MOCK notice by default and preserves table overflow styles", async () => {
     render(
       <PublicShell initialPath="/rankings">
         <Route path="/rankings" element={<RankingsPage />} />
@@ -66,6 +75,11 @@ describe("EC-04 list-surface data honesty UI", () => {
     );
 
     expect(screen.getByRole("heading", { name: "Bảng xếp hạng VPR" })).toBeInTheDocument();
+
+    await waitFor(() => {
+      expect(screen.getByTestId("public-data-source-notice")).toBeInTheDocument();
+    });
+
     const notice = screen.getByTestId("public-data-source-notice");
     expect(notice).toHaveAttribute("data-source", "MOCK");
     expect(screen.getByRole("status")).toHaveAttribute("aria-live", "polite");

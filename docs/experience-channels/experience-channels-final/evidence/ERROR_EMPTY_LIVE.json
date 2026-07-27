@@ -1,0 +1,17 @@
+{
+  "phase": "EXPERIENCE-CHANNELS-FINAL",
+  "rules": {
+    "remoteSuccessWithRecords": "LIVE",
+    "remoteSuccessZeroRecords": "LIVE_EMPTY",
+    "remoteFailure": "ERROR"
+  },
+  "clubs": "LIVE",
+  "courts": "LIVE",
+  "tournaments": "LIVE_EMPTY",
+  "rankings": "LIVE_EMPTY",
+  "remoteNoMockFallback": true,
+  "localPathsMayUseHonestMixedMock": true,
+  "previewMustBeLabeled": true,
+  "homeComposesWithPerSectionProvenance": true,
+  "verdict": "PASS"
+}

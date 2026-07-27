@@ -1,0 +1,29 @@
+{
+  "phase": "EXPERIENCE-CHANNELS-FINAL",
+  "timestampUtc": "2026-07-27T03:24:43.000Z",
+  "domains": {
+    "pickvn": {
+      "root": 200,
+      "home": 200,
+      "clubs": 200,
+      "courts": 200,
+      "tournaments": 200,
+      "rankings": 200,
+      "news": 200
+    },
+    "vercel": {
+      "root": 200,
+      "clubs": 200,
+      "courts": 200,
+      "tournaments": 200,
+      "rankings": 200,
+      "news": 200
+    }
+  },
+  "supabaseHostInBundle": "expuvcohlcjzvrrauvud.supabase.co",
+  "stagingHostCount": 0,
+  "clubsCourtsPageUsesRemoteLoader": true,
+  "tournamentsRankingsCurrentProductionPages": "local_sync_until_redeploy_after_this_PR",
+  "repositoryPageLoadersNowSelectorReady": true,
+  "verdict": "PASS"
+}

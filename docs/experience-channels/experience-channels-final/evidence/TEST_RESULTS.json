@@ -1,0 +1,25 @@
+{
+  "phase": "EXPERIENCE-CHANNELS-FINAL",
+  "timestampUtc": "2026-07-27T03:24:43.000Z",
+  "targeted": {
+    "files": "EC-00..06 + PC-01* + PC-02* + PUBLIC-PORTAL-01C + FINAL Phase A + mobile-phase8-product",
+    "pass": 181,
+    "fail": 0,
+    "note": "165 EC/PC/portal + 16 mobile-phase8-product"
+  },
+  "lintNoNew": "PASS",
+  "foundationLock": "PASS",
+  "build": "PASS",
+  "fullUnit": {
+    "pass": 6727,
+    "fail": 0,
+    "suites": 257
+  },
+  "narrowFixes": [
+    "TournamentsPage/RankingsPage wired to loadPublic*PageResult",
+    "PC-02 portal-remote page-loader assertion",
+    "UI honesty tests await async loaders",
+    "mobile-phase8 PWA icon size assertion reads manifest.webmanifest"
+  ],
+  "verdict": "PASS"
+}

@@ -290,8 +290,13 @@ describe("mobile phase 8 product — PWA assets", () => {
     const config = fs.readFileSync(path.join(__dirname, "..", "vite.config.js"), "utf8");
     assert.match(config, /icon-192\.png/);
     assert.match(config, /icon-512\.png/);
-    assert.match(config, /192x192/);
-    assert.match(config, /512x512/);
+    assert.match(config, /VitePWA|manifest\.webmanifest/);
+    const manifest = JSON.parse(
+      fs.readFileSync(path.join(__dirname, "..", "public", "manifest.webmanifest"), "utf8")
+    );
+    const sizes = (manifest.icons || []).map((icon) => String(icon.sizes || ""));
+    assert.ok(sizes.some((value) => value.includes("192x192")), "manifest needs 192x192 icon");
+    assert.ok(sizes.some((value) => value.includes("512x512")), "manifest needs 512x512 icon");
   });
 
   it("public manifest.webmanifest là JSON hợp lệ với trường PWA tối thiểu", () => {

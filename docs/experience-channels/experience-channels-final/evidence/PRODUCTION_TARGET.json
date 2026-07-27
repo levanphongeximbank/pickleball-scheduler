@@ -1,0 +1,23 @@
+﻿{
+  "phase": "EXPERIENCE-CHANNELS-FINAL",
+  "productionProjectRef": "expuvcohlcjzvrrauvud",
+  "stagingProjectRef": "qyewbxjsiiyufanzcjcq",
+  "productionDomains": [
+    "https://pickvn.app",
+    "https://pickleball-scheduler-eight.vercel.app"
+  ],
+  "supabaseHost": "expuvcohlcjzvrrauvud.supabase.co",
+  "expectedMarkers": {
+    "CLUBS_PRODUCTION_PUBLICATION": "ACTIVE_VERIFIED",
+    "COURTS_PRODUCTION_PUBLICATION": "ACTIVE_VERIFIED",
+    "TOURNAMENTS_REMOTE_PUBLIC_SOURCE": "ACTIVE_VERIFIED",
+    "RANKINGS_REMOTE_PUBLIC_SOURCE": "ACTIVE_VERIFIED",
+    "PRODUCTION_PORTAL_SOURCE": "REMOTE_RPC",
+    "PRODUCTION_RUNTIME_READINESS": "ACHIEVED_FOR_CLUBS_COURTS",
+    "PUBLIC_CATALOG_02_PRODUCTION_READINESS": "ACHIEVED"
+  },
+  "mutationsAuthorized": false,
+  "sqlAuthorized": false,
+  "envChangeAuthorized": false,
+  "deployAuthorized": false
+}

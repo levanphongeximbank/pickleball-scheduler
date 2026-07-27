@@ -1,0 +1,35 @@
+{
+  "phase": "EXPERIENCE-CHANNELS-FINAL",
+  "timestampUtc": "2026-07-27T03:24:43.000Z",
+  "finalVerdict": "EXPERIENCE_CHANNELS_FINAL_READY_FOR_OWNER_MERGE",
+  "markers": {
+    "CLUBS_PRODUCTION_PUBLICATION": "ACTIVE_VERIFIED",
+    "COURTS_PRODUCTION_PUBLICATION": "ACTIVE_VERIFIED",
+    "TOURNAMENTS_REMOTE_PUBLIC_SOURCE": "ACTIVE_VERIFIED",
+    "RANKINGS_REMOTE_PUBLIC_SOURCE": "ACTIVE_VERIFIED",
+    "PRODUCTION_PORTAL_SOURCE": "REMOTE_RPC",
+    "PRODUCTION_RUNTIME_READINESS": "ACHIEVED_FOR_CLUBS_COURTS",
+    "PUBLIC_CATALOG_02_PRODUCTION_READINESS": "ACHIEVED",
+    "EXPERIENCE_CHANNELS_FINAL_READY_FOR_OWNER_MERGE": true
+  },
+  "production": {
+    "projectRef": "expuvcohlcjzvrrauvud",
+    "clubs": "LIVE_1_ACCC",
+    "courts": "LIVE_4_SAN_3_6",
+    "tournaments": "LIVE_EMPTY",
+    "rankings": "LIVE_EMPTY",
+    "vercelEnvChanges": 0,
+    "deployments": 0,
+    "sqlMutations": 0,
+    "dataMutations": 0
+  },
+  "repositoryNarrowFixes": {
+    "tournamentsRankingsPageSelectorWiring": true,
+    "pwaTestEvidenceDriftFixed": true
+  },
+  "ownerRemainingActions": [
+    "Merge this certification PR",
+    "Optional: set VITE_PUBLIC_TOURNAMENTS_RANKINGS_SOURCE=remote on Vercel Production and redeploy to switch T/R pages from honest local/MOCK to LIVE_EMPTY remote"
+  ],
+  "blocked": false
+}

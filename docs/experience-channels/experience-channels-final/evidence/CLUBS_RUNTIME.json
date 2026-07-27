@@ -1,0 +1,14 @@
+{
+  "phase": "EXPERIENCE-CHANNELS-FINAL",
+  "projectRef": "expuvcohlcjzvrrauvud",
+  "rpc": "public_catalog_list_clubs",
+  "provenance": "LIVE",
+  "count": 1,
+  "displayName": "CLB ACCC",
+  "slug": "clb-accc",
+  "locationSummary": "Phước Long, Hồ Chí Minh",
+  "publicationState": "published",
+  "portalSource": "REMOTE_RPC",
+  "mockFallback": false,
+  "verdict": "PASS"
+}
