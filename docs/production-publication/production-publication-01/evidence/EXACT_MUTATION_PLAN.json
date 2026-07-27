@@ -1,0 +1,116 @@
+{
+  "workstream": "PRODUCTION-PUBLICATION-01",
+  "phase": "RESUME_READ_ONLY_REAUDIT",
+  "timestampUtc": "2026-07-27T00:20:00.000Z",
+  "status": "PREPARED_NOT_EXECUTED",
+  "requiresOwnerPhrase": "GO PRODUCTION PUBLICATION",
+  "steps": [
+    {
+      "order": 1,
+      "action": "Apply canonical package once",
+      "artifact": "docs/public-catalog/pc-01/10_PUBLIC_CATALOG_01_PUBLIC_READ_RPC.sql",
+      "sha256": "F740CAA5D9E08D1A17A897AF2809E2CEB364A8CC21F81FD5F8F6E9F75F9AA1F5",
+      "preAssert": "public_catalog_courts / list RPCs / public club columns must be absent before apply"
+    },
+    {
+      "order": 2,
+      "action": "Assert objects do not already exist unexpectedly",
+      "checks": [
+        "has_public_catalog_courts=false pre-apply",
+        "has_list_clubs_rpc=false pre-apply",
+        "has_list_courts_rpc=false pre-apply"
+      ]
+    },
+    {
+      "order": 3,
+      "action": "Set exact Club opt-in fields only for ACCC",
+      "table": "public.clubs",
+      "where": "id = 'club-219e4a7cbd73437eb6271f02a53314c3'",
+      "set": {
+        "is_publicly_listed": true,
+        "public_slug": "clb-accc",
+        "public_location_summary": "Phước Long, Hồ Chí Minh",
+        "public_contact": null,
+        "public_logo_url": null,
+        "public_cover_image_url": null
+      },
+      "fingerprintGuard": "name='CLB ACCC' AND status='active' AND tenant_id='venue-prod-main' AND version=38"
+    },
+    {
+      "order": 4,
+      "action": "Insert exactly four public Court projection rows sourced from canonical inventory",
+      "table": "public.public_catalog_courts",
+      "rows": [
+        {
+          "id": "court-club-219e4a7cbd73437eb6271f02a53314c3-n3",
+          "club_id": "club-219e4a7cbd73437eb6271f02a53314c3",
+          "venue_id": "venue-prod-main",
+          "display_name": "Sân 3",
+          "court_type": "covered",
+          "surface": "plastic",
+          "availability_descriptor": null,
+          "publication_state": "published",
+          "operational_state": "active"
+        },
+        {
+          "id": "court-club-219e4a7cbd73437eb6271f02a53314c3-n4",
+          "club_id": "club-219e4a7cbd73437eb6271f02a53314c3",
+          "venue_id": "venue-prod-main",
+          "display_name": "Sân 4",
+          "court_type": "covered",
+          "surface": "plastic",
+          "availability_descriptor": null,
+          "publication_state": "published",
+          "operational_state": "active"
+        },
+        {
+          "id": "court-club-219e4a7cbd73437eb6271f02a53314c3-n5",
+          "club_id": "club-219e4a7cbd73437eb6271f02a53314c3",
+          "venue_id": "venue-prod-main",
+          "display_name": "Sân 5",
+          "court_type": "covered",
+          "surface": "plastic",
+          "availability_descriptor": null,
+          "publication_state": "published",
+          "operational_state": "active"
+        },
+        {
+          "id": "court-club-219e4a7cbd73437eb6271f02a53314c3-n6",
+          "club_id": "club-219e4a7cbd73437eb6271f02a53314c3",
+          "venue_id": "venue-prod-main",
+          "display_name": "Sân 6",
+          "court_type": "covered",
+          "surface": "plastic",
+          "availability_descriptor": null,
+          "publication_state": "published",
+          "operational_state": "active"
+        }
+      ],
+      "forbids": [
+        "convert cluster to Court",
+        "create synthetic Court",
+        "mutate unrelated clubs/courts",
+        "mutate club_data_v3 inventory"
+      ]
+    },
+    {
+      "order": 5,
+      "action": "Set Production env VITE_PUBLIC_CLUBS_COURTS_SOURCE=remote",
+      "method": "Vercel Dashboard Production env (agent lacks Vercel credentials)"
+    },
+    {
+      "order": 6,
+      "action": "Redeploy canonical portal",
+      "domain": "https://pickleball-scheduler-eight.vercel.app"
+    },
+    {
+      "order": 7,
+      "action": "Smoke /clubs and /courts; verify LIVE provenance; no mock fallback; error fail-closed"
+    }
+  ],
+  "outOfScope": [
+    "Tournaments",
+    "Rankings",
+    "Home"
+  ]
+}

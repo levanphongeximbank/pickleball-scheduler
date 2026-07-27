@@ -1,0 +1,19 @@
+{
+  "workstream": "PRODUCTION-PUBLICATION-01",
+  "phase": "RESUME_READ_ONLY_REAUDIT",
+  "timestampUtc": "2026-07-27T00:20:00.000Z",
+  "productionProjectRef": "expuvcohlcjzvrrauvud",
+  "stagingBlocklist": "qyewbxjsiiyufanzcjcq",
+  "mcpBinding": "project-0-pickleball-scheduler-supabase-production",
+  "canonicalPortal": "https://pickleball-scheduler-eight.vercel.app",
+  "portalHealth": {
+    "root": 200,
+    "clubs": 200,
+    "courts": 200
+  },
+  "sourceModeEvidence": "code default local; VITE_PUBLIC_CLUBS_COURTS_SOURCE unset implies local; Production remote cutover not applied",
+  "clubDataV3Present": true,
+  "canonicalCourtsPresent": 4,
+  "catalogObjectsPresent": false,
+  "stagingUntouched": true
+}

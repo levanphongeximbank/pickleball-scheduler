@@ -1,0 +1,106 @@
+{
+  "workstream": "PRODUCTION-PUBLICATION-01",
+  "phase": "B_DATABASE_PUBLICATION",
+  "timestampUtc": "2026-07-27T00:30:00.000Z",
+  "ownerAuthorization": "GO PRODUCTION PUBLICATION",
+  "productionProjectRef": "expuvcohlcjzvrrauvud",
+  "stagingUntouched": true,
+  "sqlApply": {
+    "artifact": "docs/public-catalog/pc-01/10_PUBLIC_CATALOG_01_PUBLIC_READ_RPC.sql",
+    "sha256": "F740CAA5D9E08D1A17A897AF2809E2CEB364A8CC21F81FD5F8F6E9F75F9AA1F5",
+    "migrationName": "public_catalog_01_public_read_rpc",
+    "schemaMigrationsVersion": "20260727002627",
+    "appliedOnce": true
+  },
+  "securityVerification": {
+    "tableExists": true,
+    "rlsEnabled": true,
+    "clubsRpcSecurityDefiner": true,
+    "courtsRpcSecurityDefiner": true,
+    "anonExecuteClubs": true,
+    "anonExecuteCourts": true,
+    "anonSelectProjection": false,
+    "anonInsertProjection": false,
+    "anonUpdateProjection": false,
+    "anonDeleteProjection": false,
+    "authenticatedSelectProjection": false,
+    "verdict": "PASS"
+  },
+  "clubPublication": {
+    "id": "club-219e4a7cbd73437eb6271f02a53314c3",
+    "name": "CLB ACCC",
+    "is_publicly_listed": true,
+    "public_slug": "clb-accc",
+    "public_location_summary": "Phước Long, Hồ Chí Minh",
+    "public_contact": null,
+    "public_logo_url": null,
+    "public_cover_image_url": null,
+    "versionUnchanged": 38,
+    "fingerprintGuardUsed": true,
+    "rowsUpdated": 1
+  },
+  "courtPublication": {
+    "rowsInserted": 4,
+    "ids": [
+      "court-club-219e4a7cbd73437eb6271f02a53314c3-n3",
+      "court-club-219e4a7cbd73437eb6271f02a53314c3-n4",
+      "court-club-219e4a7cbd73437eb6271f02a53314c3-n5",
+      "court-club-219e4a7cbd73437eb6271f02a53314c3-n6"
+    ],
+    "displayNames": ["Sân 3", "Sân 4", "Sân 5", "Sân 6"],
+    "court_type": "covered",
+    "surface": "plastic",
+    "availability_descriptor": null,
+    "publication_state": "published",
+    "operational_state": "active",
+    "sourceInventoryFingerprintGuard": true
+  },
+  "rpcOutput": {
+    "clubs": [
+      {
+        "id": "club-219e4a7cbd73437eb6271f02a53314c3",
+        "display_name": "CLB ACCC",
+        "slug": "clb-accc",
+        "description": null,
+        "logo_url": null,
+        "image_url": null,
+        "location_summary": "Phước Long, Hồ Chí Minh",
+        "publication_state": "published",
+        "public_contact": null,
+        "total_count": 1
+      }
+    ],
+    "courtsTotalCount": 4
+  },
+  "privacy": {
+    "clubRpcKeys": ["description","display_name","id","image_url","location_summary","logo_url","public_contact","publication_state","slug","total_count"],
+    "courtRpcKeys": ["availability_descriptor","club_id","court_type","display_name","id","operational_state","publication_state","surface","total_count","venue_id"],
+    "ratesAbsent": true,
+    "notesAbsent": true,
+    "addressAbsent": true,
+    "mapsAbsent": true,
+    "ownerIdsAbsent": true,
+    "club_data_v3NotQueriedByCourtsRpc": true,
+    "verdict": "PASS"
+  },
+  "unrelatedUnchanged": {
+    "clubs_total": 1,
+    "club_version": 38,
+    "blob_md5": "190e9b19f070169f16601ab1619ad169",
+    "blob_md5_matches_before": true,
+    "blob_version": 1,
+    "courts_len": 4,
+    "cluster_court_count": 0,
+    "cluster_status": "active",
+    "venue_status": "trial",
+    "club_data_v3_mutated": false,
+    "venues_mutated": false,
+    "clusters_mutated": false,
+    "staging_mutated": false
+  },
+  "portalCutover": {
+    "performed": false,
+    "reason": "Agent has no Vercel credentials; awaiting Owner Dashboard cutover"
+  },
+  "verdict": "PRODUCTION_PUBLICATION_01_AWAITING_OWNER_VERCEL_CUTOVER"
+}

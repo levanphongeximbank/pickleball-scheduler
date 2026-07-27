@@ -1,0 +1,49 @@
+{
+  "workstream": "PRODUCTION-PUBLICATION-01",
+  "phase": "RESUME_READ_ONLY_REAUDIT",
+  "timestampUtc": "2026-07-27T00:20:00.000Z",
+  "verdict": "READY_AUTHORED",
+  "layers": {
+    "A_portal": {
+      "method": "Set VITE_PUBLIC_CLUBS_COURTS_SOURCE=local (or unset) + redeploy canonical Production",
+      "verify": "Clubs/Courts pages recover on local MIXED path; remote not required"
+    },
+    "B_publication_data": {
+      "clubRestore": {
+        "id": "club-219e4a7cbd73437eb6271f02a53314c3",
+        "fingerprintGuard": {
+          "name": "CLB ACCC",
+          "tenant_id": "venue-prod-main",
+          "status": "active",
+          "version": 38
+        },
+        "restore": {
+          "is_publicly_listed": false,
+          "public_slug": null,
+          "public_location_summary": null,
+          "public_logo_url": null,
+          "public_cover_image_url": null,
+          "public_contact": null
+        }
+      },
+      "courtProjectionDeleteExactIds": [
+        "court-club-219e4a7cbd73437eb6271f02a53314c3-n3",
+        "court-club-219e4a7cbd73437eb6271f02a53314c3-n4",
+        "court-club-219e4a7cbd73437eb6271f02a53314c3-n5",
+        "court-club-219e4a7cbd73437eb6271f02a53314c3-n6"
+      ],
+      "scope": "exact workstream projection rows only; never delete club_data_v3 / base clubs / venues / clusters"
+    },
+    "C_catalog_objects": {
+      "when": "only if SQL/RLS security state unsafe after apply",
+      "package": "docs/public-catalog/pc-01/90_PUBLIC_CATALOG_01_ROLLBACK.sql",
+      "sha256": "832F8B20F34FA8486D42750094B5BE571F2F43005ED97D32509955B07D793990",
+      "forbids": [
+        "delete base Club/Venue/Court inventory",
+        "delete club_data_v3",
+        "mutate Staging"
+      ]
+    }
+  },
+  "failClosedRule": "Any privacy/security/smoke gate fail triggers Layer A then B; Layer C only if security unsafe; no PASS declaration"
+}

@@ -1,0 +1,66 @@
+{
+  "workstream": "PRODUCTION-PUBLICATION-01",
+  "phase": "A_REAUDIT_COURT_CANDIDATES",
+  "timestampUtc": "2026-07-26T12:35:00.000Z",
+  "ownerDecision": "PRODUCTION_PUBLICATION_01_OWNER_NO_GO_PENDING_REAL_COURT",
+  "verdict": "PRODUCTION_PUBLICATION_01_BLOCKED_NO_SAFE_COURT_CANDIDATE",
+  "mutationsPerformed": false,
+  "productionProjectRef": "expuvcohlcjzvrrauvud",
+  "canonicalInventorySsot": {
+    "authority": "venue-court.inventory.club_data_v3",
+    "sourceContractVersion": "VENUE_COURT_CANONICAL_COURT_DESCRIPTOR_V1",
+    "path": "club_data_v3.data.courts[]",
+    "localKey": "pickleball-club-data-v3::{clubId}",
+    "facade": "src/features/venue-court/services/courtInventoryService.js#listCourts",
+    "descriptorAdapter": "src/features/venue-court/adapters/competitionCourtDescriptorAdapter.js",
+    "normalizeModel": "src/models/court.js#normalizeCourt",
+    "publicCourtsSqlTable": false,
+    "docs": [
+      "docs/venue-court/PHASE_1A_SSOT_DECISION.md",
+      "docs/venue-court/PHASE_3B_CANONICAL_COURT_DESCRIPTOR_CONTRACT.md"
+    ]
+  },
+  "productionInventoryCounts": {
+    "publicCourtsTableExists": false,
+    "publicCatalogCourtsExists": false,
+    "clubDataV3Rows": 0,
+    "clubDataV3RowsForCandidateClub": 0,
+    "courtEngineStoreRows": 0,
+    "courtEngineActiveSessionRows": 0,
+    "candidateClusterCourtCount": 0,
+    "clubGovernanceRowsForCandidateClub": 0,
+    "activeClubs": 1,
+    "activeClusters": 1
+  },
+  "rejectedPriorCourtProposal": {
+    "reason": "OWNER_REJECTED_CLUSTER_AS_COURT",
+    "proposedProjectionId": "pcc-club-219e4a7cbd73437eb6271f02a53314c3-nam-long-1",
+    "rejectedBecause": [
+      "court_count=0",
+      "no canonical individual court inventory record",
+      "projection derived from venue cluster only",
+      "must not publish venue/cluster as a real Court"
+    ]
+  },
+  "realCourtCandidatesFound": 0,
+  "realCourtCandidate": null,
+  "upstreamWorkstreamRequired": {
+    "id": "PRODUCTION-COURT-INVENTORY-01",
+    "title": "Certify Canonical Production Court Inventory for CLB ACCC",
+    "goal": "Create or sync at least one real individual court into Club V3 inventory (club_data_v3.data.courts[]) for club-219e4a7cbd73437eb6271f02a53314c3 / venue-prod-main, with stable court id, display name, active status, and club-venue linkage — then return to PRODUCTION-PUBLICATION-01.",
+    "mustNot": [
+      "treat court_clusters row as a Court",
+      "insert public_catalog_courts without source inventory",
+      "seed synthetic PC01E-style courts on Production",
+      "publish Clubs/Courts portal remote cutover"
+    ],
+    "acceptanceMinimum": [
+      ">=1 court in Production club_data_v3.data.courts[] for approved club",
+      "canonical court id + display name + active=true",
+      "linked venueId/tenant and clubId clear",
+      "court_clusters.court_count reflects inventory or is reconciled",
+      "evidence package for inventory certification"
+    ]
+  },
+  "secretsPrinted": false
+}

@@ -1,0 +1,51 @@
+{
+  "workstream": "PRODUCTION-PUBLICATION-01",
+  "phase": "RESUME_READ_ONLY_REAUDIT",
+  "timestampUtc": "2026-07-27T00:20:00.000Z",
+  "verdict": "METHOD_DOCUMENTED_AGENT_CREDENTIALS_MISSING",
+  "canonicalDomain": "https://pickleball-scheduler-eight.vercel.app",
+  "vercelProjectName": "pickleball-scheduler",
+  "portalHttpStatusObserved": {
+    "root": 200,
+    "clubs": 200,
+    "courts": 200
+  },
+  "agentSession": {
+    "VERCEL_TOKEN_present": false,
+    "VERCEL_ORG_ID_present": false,
+    "VERCEL_PROJECT_ID_present": false,
+    "vercelProjectJsonLinked": false,
+    "vercelCliWhoami": "NO_CREDENTIALS"
+  },
+  "validMethodsToChangeProductionEnv": [
+    {
+      "id": "dashboard",
+      "method": "Vercel Dashboard → Project Settings → Environment Variables → Production",
+      "canSetEnv": true,
+      "canRedeploy": true,
+      "canRollbackEnvToLocal": true,
+      "requiresOwner": true,
+      "printsSecrets": false
+    },
+    {
+      "id": "cli_with_owner_auth",
+      "method": "npx vercel login (or VERCEL_TOKEN) + vercel link + vercel env add/rm + vercel deploy --prod",
+      "canSetEnv": true,
+      "canRedeploy": true,
+      "canRollbackEnvToLocal": true,
+      "requiresOwner": true,
+      "printsSecrets": false,
+      "blockedInThisAgentSession": true,
+      "blockReason": "No Vercel credentials in agent environment"
+    }
+  ],
+  "cutoverEnvPlanIfUnblockedLater": {
+    "key": "VITE_PUBLIC_CLUBS_COURTS_SOURCE",
+    "setTo": "remote",
+    "rollbackTo": "local (or unset)",
+    "redeployRequired": true
+  },
+  "deploymentAuthBlocker": false,
+  "note": "Dashboard method is valid; agent cannot execute env/deploy without Owner Dashboard action or supplied credentials after GO",
+  "secretsPrinted": false
+}

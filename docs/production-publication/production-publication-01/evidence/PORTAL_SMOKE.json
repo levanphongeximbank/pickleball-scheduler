@@ -1,0 +1,68 @@
+{
+  "workstream": "PRODUCTION-PUBLICATION-01",
+  "phase": "C_POST_VERCEL_CUTOVER",
+  "timestampUtc": "2026-07-27T00:40:00.000Z",
+  "ownerSignal": "VERCEL CUTOVER COMPLETED",
+  "canonicalPortal": "https://pickleball-scheduler-eight.vercel.app",
+  "productionProjectRef": "expuvcohlcjzvrrauvud",
+  "deployment": {
+    "rootHttp": 200,
+    "clubsHttp": 200,
+    "courtsHttp": 200,
+    "freshDeployEvidence": "Age: 0; new ETag vs pre-cutover shell",
+    "mainBundle": "/assets/index-YagbYGZp.js",
+    "bakedEnv": {
+      "VITE_PUBLIC_CLUBS_COURTS_SOURCE": "remote",
+      "supabaseHost": "expuvcohlcjzvrrauvud.supabase.co"
+    }
+  },
+  "anonRpcSmoke": {
+    "clubs": {
+      "count": 1,
+      "id": "club-219e4a7cbd73437eb6271f02a53314c3",
+      "display_name": "CLB ACCC",
+      "slug": "clb-accc",
+      "location_summary": "Phước Long, Hồ Chí Minh",
+      "public_contact": null,
+      "publication_state": "published"
+    },
+    "courts": {
+      "total_count": 4,
+      "display_names": ["Sân 3", "Sân 4", "Sân 5", "Sân 6"],
+      "court_type": "covered",
+      "surface": "plastic",
+      "ids": [
+        "court-club-219e4a7cbd73437eb6271f02a53314c3-n3",
+        "court-club-219e4a7cbd73437eb6271f02a53314c3-n4",
+        "court-club-219e4a7cbd73437eb6271f02a53314c3-n5",
+        "court-club-219e4a7cbd73437eb6271f02a53314c3-n6"
+      ]
+    },
+    "failClosed": {
+      "invalidSortHttp": 400,
+      "invalidSortMessage": "INVALID_SORT: unsupported club sort",
+      "overLimitHttp": 400,
+      "overLimitMessage": "INVALID_PAGINATION: limit must be between 1 and 50"
+    },
+    "directTableSelectDenied": {
+      "http": 401,
+      "code": "42501",
+      "messageContains": "permission denied for table public_catalog_courts"
+    }
+  },
+  "provenance": {
+    "sourceMode": "remote",
+    "expectedPortalResult": "LIVE via createLiveResult",
+    "allowMockFallbackOnRemote": false,
+    "productionReadyFlagInRemotePath": false,
+    "note": "Remote path returns LIVE provenance with no mock fallback; productionReady remains false by PUBLIC-PORTAL-01C contract"
+  },
+  "privacyScan": {
+    "rpcResponseContainsRates": false,
+    "rpcResponseContainsNotes": false,
+    "rpcResponseContainsAddressMaps": false,
+    "secretsPrintedInEvidence": false,
+    "anonKeyPrinted": false
+  },
+  "verdict": "PASS_PORTAL_CUTOVER_SMOKE"
+}

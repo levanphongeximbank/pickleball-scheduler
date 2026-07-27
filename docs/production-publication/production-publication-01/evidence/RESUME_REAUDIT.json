@@ -1,0 +1,82 @@
+{
+  "workstream": "PRODUCTION-PUBLICATION-01",
+  "phase": "RESUME_READ_ONLY_REAUDIT",
+  "timestampUtc": "2026-07-27T00:20:00.000Z",
+  "verdict": "PRODUCTION_PUBLICATION_01_AWAITING_OWNER_GO",
+  "authorization": {
+    "PRODUCTION_READ_ONLY_REAUDIT_GO": "YES",
+    "PRODUCTION_SQL_RLS_GO": "NO",
+    "PRODUCTION_PUBLICATION_MUTATION_GO": "NO",
+    "PRODUCTION_ENV_CHANGE_GO": "NO",
+    "PRODUCTION_DEPLOY_GO": "NO",
+    "ownerGoPhraseRequired": "GO PRODUCTION PUBLICATION"
+  },
+  "sync": {
+    "worktree": "C:\\Users\\Le Phong\\PICK_VN-Workstreams\\production-publication\\production-publication-01-clubs-courts",
+    "branch": "feature/production-publication-01-clubs-courts",
+    "preSyncHead": "a01f2640",
+    "postSyncHead": "22ffdbe5",
+    "syncMethod": "fast-forward origin/main",
+    "uniqueCommitsBeforeSync": 0,
+    "phaseAEvidencePreserved": true,
+    "destructiveOps": false,
+    "pr307Merge": "01a70650",
+    "inventoryImplAncestor": "e7fc2b88",
+    "businessModulesFinal02": "22ffdbe5",
+    "publicCatalogPortalCollision": "NONE"
+  },
+  "productionTarget": {
+    "projectRef": "expuvcohlcjzvrrauvud",
+    "stagingBlocklist": "qyewbxjsiiyufanzcjcq",
+    "mcpServer": "project-0-pickleball-scheduler-supabase-production",
+    "canonicalPortal": "https://pickleball-scheduler-eight.vercel.app",
+    "portalHealth": {
+      "root": 200,
+      "clubs": 200,
+      "courts": 200
+    }
+  },
+  "catalogSchemaPresent": {
+    "public_catalog_courts": false,
+    "public_catalog_list_clubs": false,
+    "public_catalog_list_courts": false,
+    "clubs.is_publicly_listed": false,
+    "clubs.public_slug": false,
+    "clubs.public_location_summary": false,
+    "clubs.public_contact": false,
+    "catalogMigrationsInSchemaMigrations": false,
+    "expectedPreApplyState": true
+  },
+  "packageChecksumsSha256": {
+    "docs/public-catalog/pc-01/10_PUBLIC_CATALOG_01_PUBLIC_READ_RPC.sql": "F740CAA5D9E08D1A17A897AF2809E2CEB364A8CC21F81FD5F8F6E9F75F9AA1F5",
+    "docs/public-catalog/pc-01/90_PUBLIC_CATALOG_01_ROLLBACK.sql": "832F8B20F34FA8486D42750094B5BE571F2F43005ED97D32509955B07D793990"
+  },
+  "inventoryFingerprint": {
+    "club_data_v3_rows": 1,
+    "clubs_rows": 1,
+    "venues_rows": 1,
+    "clusters_rows": 1,
+    "accc_blob_version": 1,
+    "accc_courts_len": 4,
+    "court_ids": [
+      "court-club-219e4a7cbd73437eb6271f02a53314c3-n3",
+      "court-club-219e4a7cbd73437eb6271f02a53314c3-n4",
+      "court-club-219e4a7cbd73437eb6271f02a53314c3-n5",
+      "court-club-219e4a7cbd73437eb6271f02a53314c3-n6"
+    ]
+  },
+  "sourceSelector": {
+    "envKey": "VITE_PUBLIC_CLUBS_COURTS_SOURCE",
+    "codeDefault": "local",
+    "productionCurrentImplied": "local",
+    "plannedCutover": "remote"
+  },
+  "tests": {
+    "command": "node --test (public-catalog-01* + public-portal-01c/final + ec-03/04/06 + production-court-inventory-01)",
+    "pass": 101,
+    "fail": 0,
+    "verdict": "PASS"
+  },
+  "mutationsPerformed": false,
+  "secretsPrinted": false
+}
