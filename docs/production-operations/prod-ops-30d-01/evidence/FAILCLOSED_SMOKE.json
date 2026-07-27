@@ -1,0 +1,8 @@
+{
+  "observedAtUtc": "2026-07-27T23:34:29.646Z",
+  "invalidSortHttp": 400,
+  "invalidSortMessage": "INVALID_SORT: unsupported club sort",
+  "overLimitHttp": 400,
+  "overLimitMessage": "INVALID_PAGINATION: limit must be between 1 and 50",
+  "secretsPrinted": false
+}
