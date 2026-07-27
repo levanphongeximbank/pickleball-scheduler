@@ -124,7 +124,15 @@ Scoped to:
 
 ## 19–21. Commit / push / PR / CI
 
-Filled after publish in PR body / updated evidence if needed.
+| Field | Value |
+|-------|-------|
+| Commit | `5319c157dbf1e57a1931dc24086b85561a24b8d1` |
+| Branch pushed | `feature/platform-final-audit-01-gate8` |
+| PR | https://github.com/levanphongeximbank/pickleball-scheduler/pull/320 |
+| CI `verify` | PASS |
+| Vercel Preview | PASS |
+| Mergeable | YES |
+| Agent merge | **NOT performed** — `READY_FOR_OWNER_MERGE` |
 
 ## 22. Blocker register
 
