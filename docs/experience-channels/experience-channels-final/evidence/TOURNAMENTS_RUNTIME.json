@@ -1,16 +1,21 @@
 {
   "phase": "EXPERIENCE-CHANNELS-FINAL",
+  "subphase": "VERCEL_TOURNAMENTS_RANKINGS_CUTOVER_PREMERGE",
   "projectRef": "expuvcohlcjzvrrauvud",
   "rpc": "public_catalog_list_tournaments",
-  "provenance": "LIVE_EMPTY",
+  "rpcProvenance": "LIVE_EMPTY",
   "rpcCount": 0,
   "tableRows": 0,
   "syntheticRows": 0,
-  "remoteAdapterReady": true,
+  "remoteAdapterReadyInRepo": true,
   "independentSelector": "VITE_PUBLIC_TOURNAMENTS_RANKINGS_SOURCE",
-  "pageLoaderWired": true,
-  "productionEnvRemote": false,
-  "productionEnvNote": "Owner GO required to set remote + redeploy; no agent env mutation",
-  "mockFallbackOnRemote": false,
-  "verdict": "PASS_WITH_EMPTY_DATA"
+  "productionEnvBaked": "remote",
+  "productionPageHonorsSelector": false,
+  "productionPagePath": "sync getPublicTournamentsResult (local/mock-honest)",
+  "repositoryPageLoaderWiredInPR316": true,
+  "productionUiShowsMockRisk": true,
+  "mockFallbackOnRemoteLoader": false,
+  "remoteProductionVerification": "FAIL",
+  "blocker": "Production deploy is main without TournamentsPage async loadPublicTournamentsPageResult wiring; env remote is baked but unused by page",
+  "verdict": "BLOCKED"
 }

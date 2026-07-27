@@ -1,15 +1,15 @@
 {
   "phase": "EXPERIENCE-CHANNELS-FINAL",
+  "subphase": "VERCEL_TOURNAMENTS_RANKINGS_CUTOVER_PREMERGE",
   "projectRef": "expuvcohlcjzvrrauvud",
   "rpc": "public_catalog_list_courts",
   "provenance": "LIVE",
   "count": 4,
   "names": ["Sân 3", "Sân 4", "Sân 5", "Sân 6"],
-  "courtType": "covered",
-  "surface": "plastic",
   "operationalState": "active",
   "publicationState": "published",
   "portalSource": "REMOTE_RPC",
   "mockFallback": false,
+  "regressionAfterTrCutover": "PASS",
   "verdict": "PASS"
 }

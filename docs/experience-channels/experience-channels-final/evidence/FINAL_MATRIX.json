@@ -1,24 +1,26 @@
 {
   "phase": "EXPERIENCE-CHANNELS-FINAL",
-  "timestampUtc": "2026-07-27T03:24:43.000Z",
+  "subphase": "VERCEL_TOURNAMENTS_RANKINGS_CUTOVER_PREMERGE",
+  "timestampUtc": "2026-07-27T03:55:00.000Z",
   "items": [
     { "id": 1, "name": "Structural foundation", "status": "PASS" },
     { "id": 2, "name": "Public source authority", "status": "PASS" },
     { "id": 3, "name": "Production SQL/RLS", "status": "PASS" },
     { "id": 4, "name": "Clubs Production runtime", "status": "PASS" },
     { "id": 5, "name": "Courts Production runtime", "status": "PASS" },
-    { "id": 6, "name": "Tournaments Production runtime", "status": "PASS_WITH_EMPTY_DATA" },
-    { "id": 7, "name": "Rankings Production runtime", "status": "PASS_WITH_EMPTY_DATA" },
+    { "id": 6, "name": "Tournaments Production runtime", "status": "BLOCKED" },
+    { "id": 7, "name": "Rankings Production runtime", "status": "BLOCKED" },
     { "id": 8, "name": "Home integration", "status": "PASS" },
     { "id": 9, "name": "News/public content", "status": "PASS" },
     { "id": 10, "name": "PWA readiness", "status": "PASS" },
     { "id": 11, "name": "Privacy/security", "status": "PASS" },
-    { "id": 12, "name": "Error/empty/live honesty", "status": "PASS" },
+    { "id": 12, "name": "Error/empty/live honesty", "status": "BLOCKED" },
     { "id": 13, "name": "Deployment integrity", "status": "PASS" },
     { "id": 14, "name": "Operational rollback readiness", "status": "PASS" },
     { "id": 15, "name": "Evidence completeness", "status": "PASS" },
     { "id": 16, "name": "Git/repository cleanliness", "status": "PASS" }
   ],
-  "blockedCount": 0,
-  "verdict": "EXPERIENCE_CHANNELS_FINAL_READY_FOR_OWNER_MERGE"
+  "blockedCount": 3,
+  "blockedReason": "Production env VITE_PUBLIC_TOURNAMENTS_RANKINGS_SOURCE=remote is baked, but Production pages still call sync local getters; PR #316 page-loader wiring not on Production until merge+redeploy",
+  "verdict": "EXPERIENCE_CHANNELS_FINAL_BLOCKED_RUNTIME"
 }

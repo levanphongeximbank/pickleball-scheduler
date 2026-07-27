@@ -2,7 +2,9 @@
 
 ## Verdict
 
-`EXPERIENCE_CHANNELS_FINAL_READY_FOR_OWNER_MERGE`
+`EXPERIENCE_CHANNELS_FINAL_BLOCKED_RUNTIME`
+
+(Updated after Vercel T/R env cutover pre-merge verify: env remote is baked, but Production pages still sync-local until PR #316 wiring is deployed.)
 
 ## Worktree / Branch
 

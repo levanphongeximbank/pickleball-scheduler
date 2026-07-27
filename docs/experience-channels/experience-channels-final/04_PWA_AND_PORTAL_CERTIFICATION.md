@@ -7,7 +7,8 @@
 ## Portal surfaces
 
 - Clubs/Courts pages: remote loader when `VITE_PUBLIC_CLUBS_COURTS_SOURCE=remote` (Production active)
-- Tournaments/Rankings pages: now call `loadPublic*PageResult` (selector-ready; Production stays local until Owner env cutover)
+- Tournaments/Rankings pages on **PR branch**: call `loadPublic*PageResult` (selector-ready)
+- Tournaments/Rankings on **current Production (main)**: still sync local getters despite `VITE_PUBLIC_TOURNAMENTS_RANKINGS_SOURCE=remote` baked — **BLOCKED** until PR wiring is deployed
 - Loading / empty / error / retry / provenance notices present
 - Home composes sections with per-section provenance; featured Clubs/Courts/Tournaments remain local-honest when not on dedicated remote loaders
 - News uses NEWS-04 live facade with explicit MOCK/PREVIEW labels when applicable
