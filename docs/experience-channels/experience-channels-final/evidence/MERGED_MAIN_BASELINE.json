@@ -1,0 +1,25 @@
+﻿{
+  "phase": "EXPERIENCE-CHANNELS-FINAL",
+  "baseRef": "origin/main",
+  "commit": "d65767cacb63a81518d1494ac902afc67f313c53",
+  "subject": "Merge pull request #315 from levanphongeximbank/docs/public-catalog-02-postmerge-evidence",
+  "worktree": "C:/Users/Le Phong/PICK_VN-Workstreams/experience-channels/experience-channels-final",
+  "branch": "feature/experience-channels-final-certification",
+  "timestampUtc": "2026-07-27T03:24:43.000Z",
+  "closedBaseline": [
+    "EC-00",
+    "EC-01",
+    "EC-02",
+    "EC-03",
+    "EC-04",
+    "EC-05",
+    "EC-06",
+    "PUBLIC-CATALOG-01",
+    "PUBLIC-CATALOG-01S",
+    "PUBLIC-CATALOG-01E",
+    "PUBLIC-PORTAL-01C",
+    "PRODUCTION-COURT-INVENTORY-01",
+    "PRODUCTION-PUBLICATION-01",
+    "PUBLIC-CATALOG-02"
+  ]
+}

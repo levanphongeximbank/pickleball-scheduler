@@ -243,3 +243,20 @@ test("PC-02 portal: local path retained; remote path has no mock fallback", () =
   const localR = getPublicRankingsResult();
   assert.ok(localR);
 });
+
+test("PC-02 portal: Tournaments/Rankings pages honor page loaders (selector-ready)", () => {
+  const tournamentsPage = readFileSync(
+    path.join(ROOT, "src/pages/public/TournamentsPage.jsx"),
+    "utf8"
+  );
+  const rankingsPage = readFileSync(
+    path.join(ROOT, "src/pages/public/RankingsPage.jsx"),
+    "utf8"
+  );
+  assert.match(tournamentsPage, /loadPublicTournamentsPageResult/);
+  assert.match(rankingsPage, /loadPublicRankingsPageResult/);
+  assert.match(tournamentsPage, /PublicLoadingState/);
+  assert.match(rankingsPage, /PublicLoadingState/);
+  assert.doesNotMatch(tournamentsPage, /getPublicTournamentsResult\s*\(/);
+  assert.doesNotMatch(rankingsPage, /getPublicRankingsResult\s*\(/);
+});

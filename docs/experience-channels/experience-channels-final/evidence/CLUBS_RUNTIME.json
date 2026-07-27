@@ -1,0 +1,15 @@
+{
+  "phase": "EXPERIENCE-CHANNELS-FINAL",
+  "subphase": "VERCEL_TOURNAMENTS_RANKINGS_CUTOVER_PREMERGE",
+  "projectRef": "expuvcohlcjzvrrauvud",
+  "rpc": "public_catalog_list_clubs",
+  "provenance": "LIVE",
+  "count": 1,
+  "displayName": "CLB ACCC",
+  "slug": "clb-accc",
+  "publicationState": "published",
+  "portalSource": "REMOTE_RPC",
+  "mockFallback": false,
+  "regressionAfterTrCutover": "PASS",
+  "verdict": "PASS"
+}

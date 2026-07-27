@@ -1,0 +1,19 @@
+{
+  "phase": "EXPERIENCE-CHANNELS-FINAL",
+  "subphase": "VERCEL_TOURNAMENTS_RANKINGS_CUTOVER_PREMERGE",
+  "rules": {
+    "remoteSuccessWithRecords": "LIVE",
+    "remoteSuccessZeroRecords": "LIVE_EMPTY",
+    "remoteFailure": "ERROR"
+  },
+  "clubs": "LIVE",
+  "courts": "LIVE",
+  "tournamentsRpc": "LIVE_EMPTY",
+  "rankingsRpc": "LIVE_EMPTY",
+  "tournamentsProductionUi": "LOCAL_SYNC_NOT_REMOTE",
+  "rankingsProductionUi": "LOCAL_SYNC_NOT_REMOTE",
+  "remoteNoMockFallbackOnRemoteLoaders": true,
+  "productionPagesDoNotExerciseRemoteErrorPath": true,
+  "repositoryRemoteErrorPathCoveredByTests": true,
+  "verdict": "BLOCKED"
+}

@@ -1,0 +1,34 @@
+{
+  "phase": "EXPERIENCE-CHANNELS-FINAL",
+  "subphase": "VERCEL_TOURNAMENTS_RANKINGS_CUTOVER_PREMERGE",
+  "timestampUtc": "2026-07-27T03:55:00.000Z",
+  "deployment": {
+    "id": "dpl_CnzXXCMDcZN8SFa5kD5E4BDDXnDS",
+    "url": "https://pickleball-scheduler-2jxnbk9k6-pickleball-scheduler.vercel.app",
+    "target": "production",
+    "status": "Ready",
+    "createdAtLocal": "2026-07-27T10:45:20+07:00",
+    "aliases": [
+      "https://pickvn.app",
+      "https://pickleball-scheduler-eight.vercel.app"
+    ],
+    "currentAliasesMatch": true,
+    "gitShaObservedViaGithubDeploymentsApi": "d65767c",
+    "note": "Production tracks main; PR #316 page-loader wiring is Preview-only until merge"
+  },
+  "bundle": {
+    "index": "assets/index-DAe0BsM0.js",
+    "supabaseHost": "expuvcohlcjzvrrauvud.supabase.co",
+    "stagingHostCount": 0,
+    "vitePublicTournamentsRankingsSource": "remote",
+    "vitePublicClubsCourtsSource": "remote"
+  },
+  "pages": {
+    "tournamentsChunk": "TournamentsPage-B0ZbJQqQ.js",
+    "rankingsChunk": "RankingsPage-CgxKQXw-.js",
+    "usesUseEffectAsyncLoader": false,
+    "callsSyncLocalGetter": true,
+    "honorsRemoteSelector": false
+  },
+  "verdict": "BLOCKED_RUNTIME_PAGES_STILL_SYNC_LOCAL"
+}

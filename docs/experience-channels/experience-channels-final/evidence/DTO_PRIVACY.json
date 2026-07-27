@@ -1,0 +1,53 @@
+{
+  "phase": "EXPERIENCE-CHANNELS-FINAL",
+  "clubsAllowlistFrozen": true,
+  "courtsAllowlistFrozen": true,
+  "tournamentKeys": [
+    "id",
+    "displayName",
+    "slug",
+    "sport",
+    "publicationState",
+    "operationalStatus",
+    "startDate",
+    "endDate",
+    "locationSummary",
+    "formatSummary",
+    "categorySummary",
+    "imageUrl",
+    "updatedAt"
+  ],
+  "rankingKeys": [
+    "id",
+    "displayName",
+    "clubName",
+    "region",
+    "category",
+    "gender",
+    "rank",
+    "totalPoints",
+    "tournamentsCount",
+    "bestPlacement",
+    "publicationState",
+    "updatedAt"
+  ],
+  "projectionTablesAnonSelect": false,
+  "anonExecuteRpc": true,
+  "anonMutationDenied": true,
+  "forbiddenExamplesAbsent": [
+    "phone",
+    "email",
+    "note",
+    "staff",
+    "tenantId",
+    "audit",
+    "memberId",
+    "rates",
+    "privateAddress"
+  ],
+  "failClosedInvalidLimitObserved": true,
+  "failClosedInvalidSortObserved": true,
+  "failClosedEvidence": "INVALID_PAGINATION on limit=999; INVALID_SORT on unsupported tournament sort",
+  "secretsInEvidence": false,
+  "verdict": "PASS"
+}

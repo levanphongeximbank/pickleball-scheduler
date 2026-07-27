@@ -1,0 +1,16 @@
+{
+  "phase": "EXPERIENCE-CHANNELS-FINAL",
+  "productionManifestHttp": 200,
+  "productionServiceWorkerHttp": 200,
+  "localBuildGeneratedSw": true,
+  "localBuildGeneratedWorkbox": true,
+  "iconsReferenced": [
+    "icon-192.png",
+    "icon-512.png",
+    "apple-touch-icon.png"
+  ],
+  "installabilityBaseline": "PASS",
+  "offlineHonest": true,
+  "nativeStoreExcluded": true,
+  "verdict": "PASS"
+}

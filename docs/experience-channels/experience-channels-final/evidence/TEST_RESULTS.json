@@ -1,0 +1,14 @@
+{
+  "phase": "EXPERIENCE-CHANNELS-FINAL",
+  "subphase": "VERCEL_TOURNAMENTS_RANKINGS_CUTOVER_PREMERGE",
+  "timestampUtc": "2026-07-27T03:55:00.000Z",
+  "cutoverReverify": {
+    "portalRemoteUnit": { "pass": 7, "fail": 0 },
+    "note": "No full unit rerun required for evidence-only update; prior full unit 6727/6727 on PR commit d9bdc796 remains valid for code changes already in branch"
+  },
+  "lintNoNew": "PENDING_ON_NEW_COMMIT_CI",
+  "foundationLock": "PENDING_ON_NEW_COMMIT_CI",
+  "build": "PENDING_ON_NEW_COMMIT_CI",
+  "priorFullUnit": { "pass": 6727, "fail": 0 },
+  "verdict": "PASS_REPO_TESTS_PENDING_CI_GREEN_AFTER_PUSH"
+}

@@ -1,0 +1,37 @@
+{
+  "phase": "EXPERIENCE-CHANNELS-FINAL",
+  "subphase": "VERCEL_TOURNAMENTS_RANKINGS_CUTOVER_PREMERGE",
+  "timestampUtc": "2026-07-27T03:55:00.000Z",
+  "finalVerdict": "EXPERIENCE_CHANNELS_FINAL_BLOCKED_RUNTIME",
+  "markers": {
+    "CLUBS_PRODUCTION_PUBLICATION": "ACTIVE_VERIFIED",
+    "COURTS_PRODUCTION_PUBLICATION": "ACTIVE_VERIFIED",
+    "TOURNAMENTS_REMOTE_PUBLIC_SOURCE": "ACTIVE_VERIFIED",
+    "RANKINGS_REMOTE_PUBLIC_SOURCE": "ACTIVE_VERIFIED",
+    "PRODUCTION_PORTAL_SOURCE": "REMOTE_RPC",
+    "PRODUCTION_RUNTIME_READINESS": "ACHIEVED_FOR_CLUBS_COURTS",
+    "PUBLIC_CATALOG_02_PRODUCTION_READINESS": "ACHIEVED",
+    "VITE_PUBLIC_TOURNAMENTS_RANKINGS_SOURCE": "remote",
+    "TOURNAMENTS_RANKINGS_PRODUCTION_PAGE_REMOTE": "NOT_ACTIVE"
+  },
+  "production": {
+    "projectRef": "expuvcohlcjzvrrauvud",
+    "deploymentId": "dpl_CnzXXCMDcZN8SFa5kD5E4BDDXnDS",
+    "deploymentStatus": "Ready",
+    "currentAliases": true,
+    "clubs": "LIVE_1_ACCC",
+    "courts": "LIVE_4_SAN_3_6",
+    "tournamentsRpc": "LIVE_EMPTY",
+    "rankingsRpc": "LIVE_EMPTY",
+    "tournamentsUi": "LOCAL_SYNC_DESPITE_ENV_REMOTE",
+    "rankingsUi": "LOCAL_SYNC_DESPITE_ENV_REMOTE"
+  },
+  "exactBlocker": "Production pages /tournaments and /rankings still invoke sync local getters; they do not call loadPublic*PageResult, so baked VITE_PUBLIC_TOURNAMENTS_RANKINGS_SOURCE=remote is unused. Page wiring exists only on PR #316 (not merged/deployed to Production).",
+  "ownerRemainingActions": [
+    "Merge PR #316 to ship page-loader wiring to main",
+    "Confirm Production auto-redeploy Ready+Current after merge",
+    "Reply PR MERGED (or request re-verify) so agent can confirm remote LIVE_EMPTY UI with no mock records"
+  ],
+  "blocked": true,
+  "readyForOwnerMerge": false
+}
