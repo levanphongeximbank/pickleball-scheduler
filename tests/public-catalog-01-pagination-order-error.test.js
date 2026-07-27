@@ -102,6 +102,12 @@ test("Error: malformed repository payload is fail, not empty success", async () 
     async listPublicCourts() {
       return { rows: [], total: 0 };
     },
+    async listPublicTournaments() {
+      return { rows: [], total: 0 };
+    },
+    async listPublicRankings() {
+      return { rows: [], total: 0 };
+    },
   };
   const facade = catalog.createPublicCatalogFacade({ repository });
   const result = await facade.listPublicClubs();

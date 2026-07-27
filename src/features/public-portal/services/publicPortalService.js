@@ -55,11 +55,19 @@ export {
 } from "./publicClubsCourtsDataSource.js";
 
 export {
+  PUBLIC_TOURNAMENTS_RANKINGS_SOURCE,
+  resolvePublicTournamentsRankingsSource,
   getPublicTournamentsResult,
   getPublicTournaments,
   getFeaturedTournaments,
   getPublicRankingsResult,
   getPublicRankings,
+  mapCatalogTournamentDtoToPortalCard,
+  mapCatalogRankingDtoToPortalCard,
+  loadPublicTournamentsFromRemote,
+  loadPublicRankingsFromRemote,
+  loadPublicTournamentsPageResult,
+  loadPublicRankingsPageResult,
 } from "./publicTournamentsRankingsDataSource.js";
 
 export {

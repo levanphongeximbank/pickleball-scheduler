@@ -10,6 +10,10 @@ import {
   PUBLIC_CLUB_SORT,
   PUBLIC_COURT_DEFAULT_SORT,
   PUBLIC_COURT_SORT,
+  PUBLIC_TOURNAMENT_DEFAULT_SORT,
+  PUBLIC_TOURNAMENT_SORT,
+  PUBLIC_RANKING_DEFAULT_SORT,
+  PUBLIC_RANKING_SORT,
 } from "../constants/pagination.js";
 import { PUBLIC_CATALOG_ERROR_CODE } from "../errors/errorCodes.js";
 import { failContract, isPlainObject } from "./shared.js";
@@ -119,4 +123,56 @@ export function normalizeOptionalClubIdFilter(clubId) {
     );
   }
   return clubId.trim();
+}
+
+/**
+ * @param {unknown} sort
+ * @returns {string}
+ */
+export function normalizeTournamentSort(sort) {
+  if (sort === undefined || sort === null || sort === "") {
+    return PUBLIC_TOURNAMENT_DEFAULT_SORT;
+  }
+  if (sort !== PUBLIC_TOURNAMENT_SORT.NAME_ASC) {
+    failContract(
+      PUBLIC_CATALOG_ERROR_CODE.INVALID_SORT,
+      "Unsupported tournament sort",
+      { field: "sort", value: sort }
+    );
+  }
+  return PUBLIC_TOURNAMENT_SORT.NAME_ASC;
+}
+
+/**
+ * @param {unknown} sort
+ * @returns {string}
+ */
+export function normalizeRankingSort(sort) {
+  if (sort === undefined || sort === null || sort === "") {
+    return PUBLIC_RANKING_DEFAULT_SORT;
+  }
+  if (sort !== PUBLIC_RANKING_SORT.RANK_ASC) {
+    failContract(
+      PUBLIC_CATALOG_ERROR_CODE.INVALID_SORT,
+      "Unsupported ranking sort",
+      { field: "sort", value: sort }
+    );
+  }
+  return PUBLIC_RANKING_SORT.RANK_ASC;
+}
+
+/**
+ * @param {unknown} category
+ * @returns {string|null}
+ */
+export function normalizeOptionalCategoryFilter(category) {
+  if (category === undefined || category === null || category === "") return null;
+  if (typeof category !== "string" || !category.trim()) {
+    failContract(
+      PUBLIC_CATALOG_ERROR_CODE.INVALID_FILTER,
+      "category filter must be a non-empty string",
+      { field: "category", value: category }
+    );
+  }
+  return category.trim();
 }

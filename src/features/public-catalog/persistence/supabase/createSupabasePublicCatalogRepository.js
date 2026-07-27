@@ -113,5 +113,62 @@ export function createSupabasePublicCatalogRepository(options) {
         });
       }
     },
+
+    /**
+     * @param {{ limit: number, offset: number, sort: string }} query
+     */
+    async listPublicTournaments(query) {
+      try {
+        const { data, error } = await client.rpc(
+          PUBLIC_CATALOG_RPC.LIST_TOURNAMENTS,
+          {
+            p_limit: query.limit,
+            p_offset: query.offset,
+            p_sort: query.sort,
+          }
+        );
+        if (error) {
+          throw mapSupabasePublicCatalogError(error, {
+            operation: "listPublicTournaments",
+            rpc: PUBLIC_CATALOG_RPC.LIST_TOURNAMENTS,
+          });
+        }
+        return normalizeRpcListPayload(data, "listPublicTournaments");
+      } catch (err) {
+        throw mapSupabasePublicCatalogError(err, {
+          operation: "listPublicTournaments",
+          rpc: PUBLIC_CATALOG_RPC.LIST_TOURNAMENTS,
+        });
+      }
+    },
+
+    /**
+     * @param {{ limit: number, offset: number, sort: string, category: string|null }} query
+     */
+    async listPublicRankings(query) {
+      try {
+        const { data, error } = await client.rpc(
+          PUBLIC_CATALOG_RPC.LIST_RANKINGS,
+          {
+            p_limit: query.limit,
+            p_offset: query.offset,
+            p_sort: query.sort,
+            p_category: query.category,
+          }
+        );
+        if (error) {
+          throw mapSupabasePublicCatalogError(error, {
+            operation: "listPublicRankings",
+            rpc: PUBLIC_CATALOG_RPC.LIST_RANKINGS,
+          });
+        }
+        return normalizeRpcListPayload(data, "listPublicRankings");
+      } catch (err) {
+        throw mapSupabasePublicCatalogError(err, {
+          operation: "listPublicRankings",
+          rpc: PUBLIC_CATALOG_RPC.LIST_RANKINGS,
+        });
+      }
+    },
   };
 }

@@ -1,0 +1,17 @@
+{
+  "phase": "PUBLIC-CATALOG-02",
+  "environmentLabel": "staging",
+  "projectRef": "qyewbxjsiiyufanzcjcq",
+  "projectUrlHost": "qyewbxjsiiyufanzcjcq.supabase.co",
+  "mcpServerId": "project-0-pickleball-scheduler-supabase-staging",
+  "productionBlocklistRef": "expuvcohlcjzvrrauvud",
+  "isProduction": false,
+  "identityMarkers": {
+    "stagingLocalProfilesCount": 87,
+    "publicTableCountBefore": 178,
+    "rpcClubsExists": true,
+    "rpcTournamentsExistsBefore": false
+  },
+  "ambiguity": false,
+  "readyToApply": true
+}

@@ -1,0 +1,47 @@
+{
+  "phase": "PUBLIC-CATALOG-02",
+  "timestampUtc": "2026-07-27T01:52:00.000Z",
+  "tournaments": {
+    "classification": "PROJECTION_REQUIRED",
+    "rejectedSources": [
+      "club_blob_tournaments",
+      "MOCK_TOURNAMENTS",
+      "localStorage",
+      "competition_management_cm06_dormant",
+      "in_memory_competition_engine"
+    ],
+    "resolvedAuthority": {
+      "table": "public.public_catalog_tournaments",
+      "rpc": "public.public_catalog_list_tournaments",
+      "publication": "deny_by_default",
+      "emptyAllowed": true
+    }
+  },
+  "rankings": {
+    "classification": "PROJECTION_REQUIRED",
+    "rejectedSources": [
+      "player_rating_history",
+      "competition_standings",
+      "ad_hoc_experience_channels_calculation",
+      "MOCK_RANKINGS_as_LIVE",
+      "open_select_vpr_leaderboard"
+    ],
+    "adjacentCanonical": {
+      "productionVprTable": "vpr_leaderboard",
+      "productionVprRows": 0,
+      "productionVprRpc": "vpr_list_public_leaderboard",
+      "stagingVprPresent": false,
+      "usedAsPc02LiveSource": false
+    },
+    "resolvedAuthority": {
+      "table": "public.public_catalog_rankings",
+      "rpc": "public.public_catalog_list_rankings",
+      "publication": "deny_by_default",
+      "emptyAllowed": true
+    }
+  },
+  "writerBoundary": {
+    "experienceChannelsIsBusinessWriter": false,
+    "publicCatalogIsReadProjection": true
+  }
+}

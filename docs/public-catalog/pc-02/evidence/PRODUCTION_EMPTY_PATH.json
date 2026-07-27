@@ -1,0 +1,17 @@
+{
+  "phase": "PUBLIC-CATALOG-02",
+  "targetProjectRef": "expuvcohlcjzvrrauvud",
+  "tournaments": {
+    "tableRows": 0,
+    "rpcCount": 0,
+    "provenance": "LIVE_EMPTY"
+  },
+  "rankings": {
+    "tableRows": 0,
+    "rpcCount": 0,
+    "provenance": "LIVE_EMPTY"
+  },
+  "syntheticProductionRecords": 0,
+  "productionDataOptIns": 0,
+  "verdict": "PASS"
+}

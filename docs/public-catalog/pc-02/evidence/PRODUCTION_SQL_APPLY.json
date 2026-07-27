@@ -1,0 +1,19 @@
+{
+  "phase": "PUBLIC-CATALOG-02",
+  "action": "apply_migration",
+  "migrationName": "public_catalog_02_public_read_rpc",
+  "targetProjectRef": "expuvcohlcjzvrrauvud",
+  "mcpServerId": "project-0-pickleball-scheduler-supabase-production",
+  "sqlFile": "docs/public-catalog/pc-02/10_PUBLIC_CATALOG_02_PUBLIC_READ_RPC.sql",
+  "sqlSha256Lf": "29e072039015faf11caf33efddb2a82b21293357ee77b4c0d41ed0c9ffc2a5ba",
+  "result": "SUCCESS",
+  "objectsCreated": [
+    "public.public_catalog_tournaments",
+    "public.public_catalog_rankings",
+    "public.public_catalog_list_tournaments",
+    "public.public_catalog_list_rankings"
+  ],
+  "dataRowsInserted": 0,
+  "syntheticRecords": 0,
+  "optIns": 0
+}

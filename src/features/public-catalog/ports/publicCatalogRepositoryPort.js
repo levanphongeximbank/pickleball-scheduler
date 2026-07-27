@@ -1,5 +1,5 @@
 /**
- * PublicCatalogRepositoryPort — remote read only (PUBLIC-CATALOG-01).
+ * PublicCatalogRepositoryPort — remote read only (PUBLIC-CATALOG-01/02).
  * No create/update/delete. No mock fallback.
  */
 
@@ -9,6 +9,8 @@ import { PublicCatalogError } from "../errors/PublicCatalogError.js";
 export const PUBLIC_CATALOG_REPOSITORY_METHODS = Object.freeze([
   "listPublicClubs",
   "listPublicCourts",
+  "listPublicTournaments",
+  "listPublicRankings",
 ]);
 
 /**
@@ -35,7 +37,7 @@ function unimplemented(method) {
 }
 
 /**
- * @returns {{ listPublicClubs: Function, listPublicCourts: Function }}
+ * @returns {{ listPublicClubs: Function, listPublicCourts: Function, listPublicTournaments: Function, listPublicRankings: Function }}
  */
 export function createUnimplementedPublicCatalogRepositoryPort() {
   return {
@@ -44,6 +46,12 @@ export function createUnimplementedPublicCatalogRepositoryPort() {
     },
     async listPublicCourts() {
       unimplemented("listPublicCourts");
+    },
+    async listPublicTournaments() {
+      unimplemented("listPublicTournaments");
+    },
+    async listPublicRankings() {
+      unimplemented("listPublicRankings");
     },
   };
 }

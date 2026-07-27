@@ -1,0 +1,11 @@
+{
+  "phase": "PUBLIC-CATALOG-02",
+  "target": "qyewbxjsiiyufanzcjcq",
+  "action": "delete_synthetic_rows",
+  "tournamentResidue": 0,
+  "rankingResidue": 0,
+  "schemaRetained": true,
+  "rpcRetained": true,
+  "clubsCourtsUntouched": true,
+  "verdict": "PASS_RESIDUE_ZERO"
+}

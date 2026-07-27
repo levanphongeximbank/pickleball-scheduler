@@ -1,0 +1,23 @@
+{
+  "surface": "public_rankings",
+  "classification": "PROJECTION_REQUIRED",
+  "dataHonesty": {
+    "rpcSuccessZeroRows": "LIVE_EMPTY",
+    "rpcError": "ERROR",
+    "forbidden": [
+      "remote_error_to_mock",
+      "remote_empty_to_mock",
+      "player_rating_as_ranking",
+      "standings_as_global_ranking"
+    ]
+  },
+  "implementation": {
+    "sqlPackage": "docs/public-catalog/pc-02/10_PUBLIC_CATALOG_02_PUBLIC_READ_RPC.sql",
+    "dto": "PUBLIC_RANKING_DTO_KEYS",
+    "remoteEntrypoint": "listPublicRankingsRemote",
+    "portalLoader": "loadPublicRankingsPageResult",
+    "envSelector": "VITE_PUBLIC_TOURNAMENTS_RANKINGS_SOURCE",
+    "defaultSource": "local"
+  },
+  "productionExpectationAfterSql": "LIVE_EMPTY_UNTIL_PUBLICATION"
+}

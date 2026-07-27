@@ -1,0 +1,14 @@
+{
+  "phase": "PUBLIC-CATALOG-02",
+  "target": "qyewbxjsiiyufanzcjcq",
+  "beforeSynthetic": {
+    "rpcTournamentsCount": 0,
+    "rpcRankingsCount": 0
+  },
+  "afterSyntheticRollback": {
+    "rpcTournamentsCount": 0,
+    "rpcRankingsCount": 0
+  },
+  "interpretation": "LIVE_EMPTY",
+  "verdict": "PASS"
+}

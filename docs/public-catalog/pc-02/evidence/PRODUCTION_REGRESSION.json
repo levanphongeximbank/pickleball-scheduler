@@ -1,0 +1,27 @@
+{
+  "phase": "PUBLIC-CATALOG-02",
+  "targetProjectRef": "expuvcohlcjzvrrauvud",
+  "clubsCourts": {
+    "clubsRpcCount": 1,
+    "courtsRpcCount": 4,
+    "courtRows": 4,
+    "courtIdsUnchanged": [
+      "court-club-219e4a7cbd73437eb6271f02a53314c3-n3",
+      "court-club-219e4a7cbd73437eb6271f02a53314c3-n4",
+      "court-club-219e4a7cbd73437eb6271f02a53314c3-n5",
+      "court-club-219e4a7cbd73437eb6271f02a53314c3-n6"
+    ],
+    "markersPreserved": [
+      "CLUBS_PRODUCTION_PUBLICATION=ACTIVE_VERIFIED",
+      "COURTS_PRODUCTION_PUBLICATION=ACTIVE_VERIFIED",
+      "PRODUCTION_PORTAL_SOURCE=REMOTE_RPC",
+      "PRODUCTION_RUNTIME_READINESS=ACHIEVED_FOR_CLUBS_COURTS"
+    ]
+  },
+  "vpr": {
+    "vpr_leaderboardRows": 0,
+    "vpr_list_public_leaderboardPresent": true,
+    "mutated": false
+  },
+  "verdict": "PASS_NO_REGRESSION"
+}

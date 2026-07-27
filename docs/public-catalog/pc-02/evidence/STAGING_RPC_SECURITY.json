@@ -1,0 +1,21 @@
+{
+  "phase": "PUBLIC-CATALOG-02",
+  "target": "qyewbxjsiiyufanzcjcq",
+  "verdict": "PASS",
+  "checks": {
+    "tournamentsTable": "public_catalog_tournaments",
+    "rankingsTable": "public_catalog_rankings",
+    "tournamentsRls": true,
+    "rankingsRls": true,
+    "tournamentsSecurityDefiner": true,
+    "rankingsSecurityDefiner": true,
+    "anonSelectTournaments": false,
+    "anonSelectRankings": false,
+    "anonExecuteTournaments": true,
+    "anonExecuteRankings": true,
+    "anonInsertTournaments": false,
+    "anonInsertRankings": false,
+    "invalidLimitRejected": true,
+    "invalidSortRejected": true
+  }
+}

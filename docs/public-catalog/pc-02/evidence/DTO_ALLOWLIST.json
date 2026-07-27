@@ -1,0 +1,50 @@
+{
+  "tournamentKeys": [
+    "id",
+    "displayName",
+    "slug",
+    "sport",
+    "publicationState",
+    "operationalStatus",
+    "startDate",
+    "endDate",
+    "locationSummary",
+    "formatSummary",
+    "categorySummary",
+    "imageUrl",
+    "updatedAt"
+  ],
+  "rankingKeys": [
+    "id",
+    "displayName",
+    "clubName",
+    "region",
+    "category",
+    "gender",
+    "rank",
+    "totalPoints",
+    "tournamentsCount",
+    "bestPlacement",
+    "publicationState",
+    "updatedAt"
+  ],
+  "tournamentForbiddenExamples": [
+    "note",
+    "staff",
+    "participants",
+    "seeding",
+    "financial",
+    "phone",
+    "email"
+  ],
+  "rankingForbiddenExamples": [
+    "phone",
+    "email",
+    "memberId",
+    "adjustmentHistory",
+    "tenantId",
+    "writer",
+    "audit"
+  ],
+  "frozen": true
+}

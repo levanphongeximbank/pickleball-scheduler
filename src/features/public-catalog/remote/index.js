@@ -109,3 +109,55 @@ export async function listPublicCourtsRemote(query = {}, options = {}) {
     );
   }
 }
+
+/**
+ * @param {Record<string, unknown>} [query]
+ * @param {{ client?: object, repository?: object, facade?: object }} [options]
+ */
+export async function listPublicTournamentsRemote(query = {}, options = {}) {
+  try {
+    const facade =
+      options.facade || (await createRemotePublicCatalogFacade(options));
+    return facade.listPublicTournaments(query);
+  } catch (err) {
+    return fail(
+      deepFreeze({
+        code:
+          err instanceof PublicCatalogError
+            ? err.code
+            : PUBLIC_CATALOG_ERROR_CODE.CLIENT_UNAVAILABLE,
+        message:
+          err instanceof Error
+            ? err.message
+            : "Public tournaments remote read failed",
+        details: err instanceof PublicCatalogError ? err.details || {} : {},
+      })
+    );
+  }
+}
+
+/**
+ * @param {Record<string, unknown>} [query]
+ * @param {{ client?: object, repository?: object, facade?: object }} [options]
+ */
+export async function listPublicRankingsRemote(query = {}, options = {}) {
+  try {
+    const facade =
+      options.facade || (await createRemotePublicCatalogFacade(options));
+    return facade.listPublicRankings(query);
+  } catch (err) {
+    return fail(
+      deepFreeze({
+        code:
+          err instanceof PublicCatalogError
+            ? err.code
+            : PUBLIC_CATALOG_ERROR_CODE.CLIENT_UNAVAILABLE,
+        message:
+          err instanceof Error
+            ? err.message
+            : "Public rankings remote read failed",
+        details: err instanceof PublicCatalogError ? err.details || {} : {},
+      })
+    );
+  }
+}
