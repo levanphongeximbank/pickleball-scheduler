@@ -138,11 +138,12 @@ Scoped to:
 
 | Field | Value |
 |-------|-------|
-| Commit | PENDING |
+| Commit | `c547f25d33318f65bbd193fcb64bb38ffcd0ecba` |
 | Branch pushed | `feature/platform-final-audit-01-gate9` |
-| PR | PENDING |
-| CI | PENDING |
-| Agent merge | **NOT performed** |
+| PR | https://github.com/levanphongeximbank/pickleball-scheduler/pull/321 |
+| CI | PENDING (monitor on PR) |
+| Mergeable | PENDING |
+| Agent merge | **NOT performed** — target `READY_FOR_OWNER_MERGE` |
 
 ## 24. Hard blockers
 
