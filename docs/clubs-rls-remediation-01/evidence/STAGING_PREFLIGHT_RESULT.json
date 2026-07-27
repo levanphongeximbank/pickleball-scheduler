@@ -1,0 +1,64 @@
+{
+  "phase": "CLUBS-RLS-REMEDIATION-01-PREFLIGHT",
+  "targetProjectRef": "qyewbxjsiiyufanzcjcq",
+  "identity": {
+    "db": "postgres",
+    "db_user": "postgres",
+    "checked_at": "2026-07-27 08:04:16.906486+00"
+  },
+  "helpers": {
+    "has_sa": true,
+    "has_tenant_member": true,
+    "has_active_member": true,
+    "has_catalog": true
+  },
+  "checks": {
+    "clubs_exists_rls": true,
+    "clubs_select_present": true,
+    "select_policy_count_1": true,
+    "has_broad_status_active": false,
+    "catalog_present": true,
+    "catalog_exec": true
+  },
+  "readyToApply": false,
+  "alreadyRemediated": true,
+  "sample": [
+    {
+      "db": "postgres",
+      "db_user": "postgres",
+      "checked_at": "2026-07-27 08:04:19.153528+00"
+    },
+    {
+      "table_name": "clubs",
+      "rls_enabled": true,
+      "rls_forced": false
+    },
+    {
+      "policy_name": "clubs_select",
+      "command": "SELECT",
+      "using_expr": "((deleted_at IS NULL) AND (phase42_is_platform_super_admin() OR phase42_is_tenant_member(tenant_id) OR (EXISTS ( SELECT 1\n   FROM club_members cm\n  WHERE ((cm.club_id = clubs.id) AND (cm.user_id = auth.uid()) AND (cm.status = 'active'::text))))))",
+      "with_check_expr": null,
+      "roles": "{authenticated}"
+    },
+    {
+      "clubs_select_has_broad_status_active": false
+    },
+    {
+      "grantee": "anon",
+      "privilege_type": "REFERENCES"
+    },
+    {
+      "grantee": "anon",
+      "privilege_type": "SELECT"
+    },
+    {
+      "grantee": "anon",
+      "privilege_type": "TRIGGER"
+    },
+    {
+      "grantee": "anon",
+      "privilege_type": "TRUNCATE"
+    }
+  ],
+  "finishedAt": "2026-07-27T08:04:26.112Z"
+}
