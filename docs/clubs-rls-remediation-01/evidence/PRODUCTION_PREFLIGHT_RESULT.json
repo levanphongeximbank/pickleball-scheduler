@@ -1,0 +1,20 @@
+{
+  "ok": true,
+  "checks": {
+    "clubs_exists_rls": true,
+    "clubs_select_present": true,
+    "select_policy_count_1": true,
+    "has_broad_status_active": true,
+    "catalog_present": true,
+    "catalog_exec": true,
+    "helper_phase42_active_club_member_id_fn": true,
+    "helper_phase42_is_platform_super_admin_fn": true,
+    "helper_phase42_is_tenant_member_fn": true,
+    "has_phase42_active_club_member_helper": false,
+    "baseline_has_direct_club_members_exists": true,
+    "baseline_has_broad_status_active_in_using_expr": true,
+    "baseline_has_cm_status_active": true
+  },
+  "policyUsingExprSample": "((deleted_at IS NULL) AND (phase42_is_platform_super_admin() OR phase42_is_tenant_member(tenant_id) OR (status = 'active'::text) OR (EXISTS ( SELECT 1\n   FROM club_members cm\n  WHERE ((cm.club_id = clubs.id) AND (cm.user_id = auth.uid()) AND (cm.status = 'active'::text))))))",
+  "finishedAt": "2026-07-27T10:20:39.743Z"
+}

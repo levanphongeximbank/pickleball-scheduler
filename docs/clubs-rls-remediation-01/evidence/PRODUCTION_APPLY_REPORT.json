@@ -1,0 +1,84 @@
+{
+  "phase": "CLUBS-RLS-REMEDIATION-01-PRODUCTION-APPLY",
+  "startedAt": "2026-07-27T10:22:30.067Z",
+  "productionRef": "expuvcohlcjzvrrauvud",
+  "targetProjectRef": "expuvcohlcjzvrrauvud",
+  "originMainSha": "df8a1dfb77d8922c871277530ce959ebe4c12478",
+  "forwardSha256": "553be5248a8dbea54098bf04c596102a6a498311268d6965e1d5b517678c08bc",
+  "executed": {
+    "postVerify": {
+      "ok": true,
+      "still_has_broad_status_active": false,
+      "select_policy_count": 1,
+      "writer_policy_count": 0,
+      "catalog": {
+        "anon_catalog_exec": true,
+        "auth_catalog_exec": true
+      },
+      "using_expr": "((deleted_at IS NULL) AND (phase42_is_platform_super_admin() OR phase42_is_tenant_member(tenant_id) OR (phase42_active_club_member_id(id) IS NOT NULL)))"
+    },
+    "negative": {
+      "fixtures": {
+        "tenantA": "venue-prod-main",
+        "tenantB": null,
+        "fixtureMode": "single-tenant-adapted",
+        "clubA": "club-219e4a7cbd73437eb6271f02a53314c3",
+        "clubB": "club-219e4a7cbd73437eb6271f02a53314c3",
+        "userA": "6e90bbf2-556c-4052-a5f6-effeec7cd1cc",
+        "userDenied": "127d68bc-230d-4b24-aa49-035276fa19a8",
+        "userB": "c820bfaf-d958-4b1b-be39-4772a81f7e2e",
+        "saCandidates": [
+          "599e543b-bd84-4b02-bc12-b2b7b65c54d7",
+          "6dd85e98-e493-4e04-9582-d904e27b3a44"
+        ]
+      },
+      "checks": {
+        "anon_cross_tenant_clubB_cnt": 0,
+        "anon_direct_read_denied": true,
+        "auth_cross_tenant_clubB_cnt": 0,
+        "auth_cross_tenant_direct_read_denied": true,
+        "auth_tenant_member_clubA_cnt": 1,
+        "auth_tenant_member_access_retained": true,
+        "auth_club_member_clubB_cnt": 1,
+        "auth_active_club_member_access_retained": true,
+        "super_admin_clubB_cnt": 1,
+        "super_admin_access_retained": true,
+        "catalog_allowlisted_projection": true,
+        "catalog_allowlisted_projection_authenticated": true
+      },
+      "catalog": {
+        "anonColumns": [
+          "id",
+          "display_name",
+          "slug",
+          "description",
+          "logo_url",
+          "image_url",
+          "location_summary",
+          "publication_state",
+          "public_contact",
+          "total_count"
+        ],
+        "anonBadColumns": [],
+        "anonMissingColumns": [],
+        "authColumns": [
+          "id",
+          "display_name",
+          "slug",
+          "description",
+          "logo_url",
+          "image_url",
+          "location_summary",
+          "publication_state",
+          "public_contact",
+          "total_count"
+        ],
+        "authBadColumns": [],
+        "authMissingColumns": []
+      },
+      "ok": true
+    }
+  },
+  "finishedAt": "2026-07-27T10:22:43.550Z",
+  "status": "CLUBS_RLS_PRODUCTION_APPLY_CERTIFIED"
+}

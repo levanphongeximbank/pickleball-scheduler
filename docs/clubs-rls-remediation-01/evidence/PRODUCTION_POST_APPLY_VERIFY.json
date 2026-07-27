@@ -1,0 +1,12 @@
+{
+  "ok": true,
+  "still_has_broad_status_active": false,
+  "select_policy_count": 1,
+  "writer_policy_count": 0,
+  "catalog": {
+    "anon_catalog_exec": true,
+    "auth_catalog_exec": true
+  },
+  "using_expr": "((deleted_at IS NULL) AND (phase42_is_platform_super_admin() OR phase42_is_tenant_member(tenant_id) OR (phase42_active_club_member_id(id) IS NOT NULL)))",
+  "finishedAt": "2026-07-27T10:22:34.042Z"
+}
