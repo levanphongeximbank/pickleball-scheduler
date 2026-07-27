@@ -193,11 +193,14 @@ Scoped to:
 
 | Field | Value |
 |-------|-------|
-| Primary evidence commit | *(filled after commit)* |
+| Primary evidence commit | `1fdd4ba07d61022b277218b30ec84bbfc2365b1e` |
+| Tip (PR URL + CI status) | *(this follow-up commit)* |
 | Branch pushed | `feature/platform-final-audit-01-gate10` |
-| PR | *(filled after create)* |
-| CI | *(filled after monitor)* |
-| Agent merge | **NOT performed** — `READY_FOR_OWNER_MERGE` when CI green |
+| PR | https://github.com/levanphongeximbank/pickleball-scheduler/pull/322 |
+| CI `verify` | **PASS** |
+| Vercel Preview | **PASS** |
+| Mergeable | **YES** |
+| Agent merge | **NOT performed** — `READY_FOR_OWNER_MERGE` |
 
 ## 30. Residual severity
 
