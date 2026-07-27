@@ -1,0 +1,101 @@
+{
+  "workstream": "PRODUCTION-PUBLICATION-01",
+  "phase": "POST_MERGE_VERIFICATION_AND_PHYSICAL_CLEANUP",
+  "timestampUtc": "2026-07-27T01:00:00.000Z",
+  "markers": {
+    "PRODUCTION_PUBLICATION_01_POST_MERGE_VERIFIED_CLOSED": true,
+    "PRODUCTION_PUBLICATION_01_PHYSICAL_CLEANUP_COMPLETE": true,
+    "CLUBS_PRODUCTION_PUBLICATION": "ACTIVE_VERIFIED",
+    "COURTS_PRODUCTION_PUBLICATION": "ACTIVE_VERIFIED",
+    "PRODUCTION_PORTAL_SOURCE": "REMOTE_RPC",
+    "PRODUCTION_RUNTIME_READINESS": "ACHIEVED_FOR_CLUBS_COURTS"
+  },
+  "mergeLineage": {
+    "pr": 311,
+    "state": "MERGED",
+    "mergeCommit": "52017c4a473be2f35bb56fc8f53c3824c801283c",
+    "mergedAt": "2026-07-27T00:49:56Z",
+    "ancestors": {
+      "dcb7b6ec": true,
+      "b684e3e3": true
+    },
+    "originMainTip": "52017c4a",
+    "incomingAfterMerge": [],
+    "collision": "NONE"
+  },
+  "productionSqlRls": {
+    "projectRef": "expuvcohlcjzvrrauvud",
+    "migrationPresent": true,
+    "migrationVersion": "20260727002627",
+    "packageSha256": "F740CAA5D9E08D1A17A897AF2809E2CEB364A8CC21F81FD5F8F6E9F75F9AA1F5",
+    "checksumMatch": true,
+    "rlsEnabled": true,
+    "policyCount": 0,
+    "clubsSecurityDefiner": true,
+    "courtsSecurityDefiner": true,
+    "anonExecute": true,
+    "anonSelectDenied": true,
+    "anonInsertDenied": true,
+    "anonUpdateDenied": true,
+    "anonDeleteDenied": true,
+    "verdict": "PASS"
+  },
+  "clubPublication": {
+    "listedCount": 1,
+    "id": "club-219e4a7cbd73437eb6271f02a53314c3",
+    "displayName": "CLB ACCC",
+    "slug": "clb-accc",
+    "locationSummary": "Phước Long, Hồ Chí Minh",
+    "publicContact": null,
+    "publicationState": "published",
+    "verdict": "PASS"
+  },
+  "courtPublication": {
+    "projectionRows": 4,
+    "ids": [
+      "court-club-219e4a7cbd73437eb6271f02a53314c3-n3",
+      "court-club-219e4a7cbd73437eb6271f02a53314c3-n4",
+      "court-club-219e4a7cbd73437eb6271f02a53314c3-n5",
+      "court-club-219e4a7cbd73437eb6271f02a53314c3-n6"
+    ],
+    "names": ["Sân 3", "Sân 4", "Sân 5", "Sân 6"],
+    "courtType": "covered",
+    "surface": "plastic",
+    "operationalState": "active",
+    "publicationState": "published",
+    "clubId": "club-219e4a7cbd73437eb6271f02a53314c3",
+    "venueId": "venue-prod-main",
+    "outOfScopeRows": 0,
+    "verdict": "PASS"
+  },
+  "privacySecurity": {
+    "forbiddenKeysAbsent": true,
+    "failClosedInvalidSort": true,
+    "directTableDenied": true,
+    "secretsPrinted": false,
+    "verdict": "PASS"
+  },
+  "vercelPortal": {
+    "domain": "https://pickleball-scheduler-eight.vercel.app",
+    "http": { "root": 200, "clubs": 200, "courts": 200 },
+    "bakedSource": "remote",
+    "supabaseHost": "expuvcohlcjzvrrauvud.supabase.co",
+    "bundle": "/assets/index-B8p1Las6.js",
+    "anonRpcLive": true,
+    "mockFallbackOnRemote": false,
+    "redeployPerformedThisPhase": false,
+    "verdict": "PASS"
+  },
+  "tests": {
+    "focusedPass": 75,
+    "focusedFail": 0,
+    "fullUnitRerun": false,
+    "fullUnitReason": "No post-#311 collision; pre-merge 6696/6696 still valid",
+    "lintNoNew": "PASS",
+    "foundationLock": "PASS",
+    "buildRerun": false,
+    "verdict": "PASS"
+  },
+  "mutationsThisPhase": false,
+  "stagingTouched": false
+}
