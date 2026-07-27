@@ -1,0 +1,15 @@
+{
+  "phase": "PUBLIC-CATALOG-02",
+  "gate": "POST_MERGE",
+  "prNumber": 314,
+  "prUrl": "https://github.com/levanphongeximbank/pickleball-scheduler/pull/314",
+  "prState": "MERGED",
+  "mergedAt": "2026-07-27T02:45:40Z",
+  "mergeCommit": "8ba1534759c1f715b6df34f7a053b07f966db48b",
+  "featureCommit": "e05aae9a",
+  "featureCommitIsAncestorOfOriginMain": true,
+  "previousMainBaseline": "0da0daecc0233405f11eba1bf1dc31e1064ab0e4",
+  "incomingCommitsAfterPr314": [],
+  "collisionStatus": "NONE",
+  "originMainAtVerification": "8ba1534759c1f715b6df34f7a053b07f966db48b"
+}

@@ -1,0 +1,21 @@
+{
+  "phase": "PUBLIC-CATALOG-02",
+  "gate": "POST_MERGE_TESTS",
+  "collisionStatus": "NONE",
+  "focused": {
+    "tests": 73,
+    "pass": 73,
+    "fail": 0
+  },
+  "fullUnitReuse": {
+    "tests": 6726,
+    "pass": 6726,
+    "fail": 0,
+    "rerun": false,
+    "reason": "No incoming collision; post-merge code matches merged PR #314 scope"
+  },
+  "lintNoNew": { "exitCode": 0 },
+  "foundationLock": { "exitCode": 0 },
+  "build": { "run": false, "reason": "not required by collision or verification state" },
+  "verdict": "PASS"
+}

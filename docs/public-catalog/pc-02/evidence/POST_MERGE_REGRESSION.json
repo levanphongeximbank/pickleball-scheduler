@@ -1,0 +1,28 @@
+{
+  "phase": "PUBLIC-CATALOG-02",
+  "gate": "POST_MERGE_REGRESSION",
+  "clubs": {
+    "rpcCount": 1,
+    "id": "club-219e4a7cbd73437eb6271f02a53314c3",
+    "displayName": "CLB ACCC"
+  },
+  "courts": {
+    "rpcCount": 4,
+    "ids": [
+      "court-club-219e4a7cbd73437eb6271f02a53314c3-n3",
+      "court-club-219e4a7cbd73437eb6271f02a53314c3-n4",
+      "court-club-219e4a7cbd73437eb6271f02a53314c3-n5",
+      "court-club-219e4a7cbd73437eb6271f02a53314c3-n6"
+    ],
+    "unchanged": true
+  },
+  "vpr": {
+    "rows": 0,
+    "rpcPresent": true,
+    "mutated": false
+  },
+  "playerRatingUsedAsRanking": false,
+  "standingsUsedAsRanking": false,
+  "competitionBusinessTablesMutated": false,
+  "verdict": "PASS"
+}

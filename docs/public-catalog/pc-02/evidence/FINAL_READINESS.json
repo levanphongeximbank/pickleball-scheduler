@@ -1,27 +1,24 @@
 {
   "phase": "PUBLIC-CATALOG-02",
-  "finalVerdict": "PUBLIC_CATALOG_02_READY_FOR_OWNER_MERGE",
-  "mergedMainBaseline": "0da0daecc0233405f11eba1bf1dc31e1064ab0e4",
+  "finalVerdict": "PUBLIC_CATALOG_02_POST_MERGE_VERIFIED_CLOSED",
+  "markers": {
+    "PUBLIC_CATALOG_02_POST_MERGE_VERIFIED_CLOSED": true,
+    "PUBLIC_CATALOG_02_PHYSICAL_CLEANUP_COMPLETE": true,
+    "TOURNAMENTS_REMOTE_PUBLIC_SOURCE": "ACTIVE_VERIFIED",
+    "RANKINGS_REMOTE_PUBLIC_SOURCE": "ACTIVE_VERIFIED",
+    "PUBLIC_CATALOG_02_PRODUCTION_READINESS": "ACHIEVED"
+  },
+  "mergeCommit": "8ba1534759c1f715b6df34f7a053b07f966db48b",
+  "featureCommit": "e05aae9a",
   "production": {
     "projectRef": "expuvcohlcjzvrrauvud",
-    "sqlApplied": true,
-    "sqlSha256Lf": "29e072039015faf11caf33efddb2a82b21293357ee77b4c0d41ed0c9ffc2a5ba",
-    "tournamentDataset": "EMPTY",
-    "rankingDataset": "EMPTY",
     "tournamentRpc": "LIVE_EMPTY",
     "rankingRpc": "LIVE_EMPTY",
-    "syntheticRecords": 0,
+    "syntheticRows": 0,
     "optIns": 0,
-    "rpcSecurityPass": true,
-    "clubsCourtsRegressionPass": true,
-    "vprUnchanged": true
-  },
-  "portal": {
     "vercelEnvChanges": 0,
-    "deployments": 0,
-    "tournamentsRankingsDefaultSource": "local"
+    "deployments": 0
   },
-  "rollbackExecuted": false,
-  "ownerActionRequired": "PR MERGED",
+  "collisionStatus": "NONE",
   "blocked": false
 }
