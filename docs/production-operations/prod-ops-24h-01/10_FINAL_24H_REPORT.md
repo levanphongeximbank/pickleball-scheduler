@@ -134,19 +134,25 @@ Historical audit verdicts **not** modified.
 
 ## 24. Commit
 
-(filled after commit)
+Primary evidence commit: `3c8898de972e3b75ddc0dcf82509150b904ce688` — `docs(ops): certify first 24h constrained Production web continuity`  
+Follow-up tip (this PR URL / CI status record): see latest commit on `feature/prod-ops-24h-01`
 
 ## 25. Push
 
-(filled after push)
+**YES** — `origin/feature/prod-ops-24h-01`
 
 ## 26. PR URL
 
-(filled after PR create)
+https://github.com/levanphongeximbank/pickleball-scheduler/pull/323
 
 ## 27. CI status
 
-(filled after CI observation)
+| Check | Status |
+|-------|--------|
+| GitHub Actions `verify` | **PASS** (run `30283519988`) |
+| Vercel Preview | **PASS** |
+| Mergeable | **YES** |
+| Agent merge | **NOT performed** — `READY_FOR_OWNER_MERGE` |
 
 ## 28. Residual severity
 
