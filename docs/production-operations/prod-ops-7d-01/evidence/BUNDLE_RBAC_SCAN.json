@@ -1,0 +1,21 @@
+{
+  "observedAtUtc": "2026-07-27T23:01:49.948Z",
+  "baseUrl": "https://pickvn.app",
+  "bundle": "assets/index-OobUxsDC.js",
+  "bundleBytes": 975403,
+  "viteRbacEnabledNamePresentInBundle": true,
+  "viteRbacEnabledNameHitCount": 5,
+  "diagnosticAssignmentPatternFound": true,
+  "viteRbacEnabledClassification": "VERIFIED_ENABLED",
+  "valuePrinted": false,
+  "sourceFallbackContract": "fail-closed: PROD build defaults enabled when env unset (src/auth/config.js)",
+  "serviceRoleNameHitCount": 3,
+  "serviceRoleContextsRedacted": [
+    "5-*`,`supabase/functions/referee-v5-*`,`browser_service_role`])}),Xx=Object.freeze({OPEN_OR_RESO",
+    "t t=e.slice(0,200);return/secret|token|password|service_role|apikey|bearer\\s/i.test(t)?`[redacte",
+    ":t,allowedKeys:[...bN]}),/secret|password|token|service_role|api_key|apikey|credential/i.test(t)"
+  ],
+  "privateKeyPemHitCount": 0,
+  "htmlContainsViteRbacName": false,
+  "secretsPrinted": false
+}

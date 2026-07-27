@@ -1,0 +1,57 @@
+{
+  "observedAtUtc": "2026-07-27T23:01:52.930Z",
+  "checkpointId": "7D-CP-CURRENT",
+  "deploymentShaObserved": "f52cfbf8bdf2f84aaf2a1bc398f3c2f2f11a39e7",
+  "deploymentIdObserved": 5626047618,
+  "anomalyId": null,
+  "routes": [
+    {
+      "route": "/",
+      "httpStatus": 200,
+      "available": true,
+      "majorVisibleError": null
+    },
+    {
+      "route": "/clubs",
+      "httpStatus": 200,
+      "available": true,
+      "majorVisibleError": null
+    },
+    {
+      "route": "/courts",
+      "httpStatus": 200,
+      "available": true,
+      "majorVisibleError": null
+    },
+    {
+      "route": "/login",
+      "httpStatus": 200,
+      "available": true,
+      "majorVisibleError": null
+    },
+    {
+      "route": "/tournaments",
+      "httpStatus": 200,
+      "available": true,
+      "majorVisibleError": null
+    },
+    {
+      "route": "/rankings",
+      "httpStatus": 200,
+      "available": true,
+      "majorVisibleError": null
+    },
+    {
+      "route": "/manifest.webmanifest",
+      "httpStatus": 200,
+      "available": true,
+      "majorVisibleError": null
+    },
+    {
+      "route": "/sw.js",
+      "httpStatus": 200,
+      "available": true,
+      "majorVisibleError": null
+    }
+  ]
+}
