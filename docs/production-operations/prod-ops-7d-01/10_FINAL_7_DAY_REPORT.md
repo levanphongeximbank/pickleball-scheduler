@@ -147,7 +147,15 @@ Historical audit verdicts **not** modified.
 
 ## 25–28. Commit / push / PR / CI
 
-Recorded after publish in PR body / follow-up tip commit as applicable. Agent does **not** merge.
+| Item | Value |
+|------|-------|
+| Commit | `12f19328738a83faefae2559b2c1ca46f68fa973` — `docs(ops): certify seven-day constrained Production web operational controls` |
+| Push | **YES** — `origin/feature/prod-ops-7d-01` |
+| PR URL | https://github.com/levanphongeximbank/pickleball-scheduler/pull/324 |
+| GitHub Actions `verify` | **PASS** (run `30313215573`) |
+| Vercel Preview | **PASS** |
+| Mergeable | **YES** |
+| Agent merge | **NOT performed** — `READY_FOR_OWNER_MERGE` |
 
 ## 29. Residual severity
 
