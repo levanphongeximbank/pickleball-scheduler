@@ -1,0 +1,104 @@
+{
+  "phase": "CLUBS-RLS-REMEDIATION-01-NEGATIVE",
+  "targetProjectRef": "qyewbxjsiiyufanzcjcq",
+  "results": {
+    "N6": {
+      "pass": true,
+      "count": 0,
+      "error": null
+    },
+    "N7": {
+      "pass": true,
+      "columns": [],
+      "badColumns": [],
+      "rowCount": 0,
+      "error": null
+    },
+    "N8": {
+      "pass": true,
+      "grants": [
+        {
+          "grantee": "anon",
+          "privilege_type": "REFERENCES"
+        },
+        {
+          "grantee": "anon",
+          "privilege_type": "SELECT"
+        },
+        {
+          "grantee": "anon",
+          "privilege_type": "TRIGGER"
+        },
+        {
+          "grantee": "anon",
+          "privilege_type": "TRUNCATE"
+        },
+        {
+          "grantee": "authenticated",
+          "privilege_type": "REFERENCES"
+        },
+        {
+          "grantee": "authenticated",
+          "privilege_type": "SELECT"
+        },
+        {
+          "grantee": "authenticated",
+          "privilege_type": "TRIGGER"
+        },
+        {
+          "grantee": "authenticated",
+          "privilege_type": "TRUNCATE"
+        }
+      ],
+      "writerGrantCount": 0
+    },
+    "N10": {
+      "pass": true,
+      "policies": [
+        {
+          "polname": "clubs_select",
+          "polcmd": "r"
+        }
+      ],
+      "selectCount": 1
+    },
+    "N9": {
+      "pass": true,
+      "probed": 3,
+      "visible": 0,
+      "error": null
+    },
+    "N1": {
+      "pass": true,
+      "clubB": "club-staging-b",
+      "userA": "[redacted-fixture-uid]",
+      "byIdCount": 0,
+      "listError": null,
+      "foreignVisibleCount": 0,
+      "error": null
+    },
+    "N2": {
+      "pass": true,
+      "count": 0,
+      "error": null
+    },
+    "N3": {
+      "pass": true,
+      "memberUserId": "[redacted-fixture-uid]",
+      "error": null
+    },
+    "N4": {
+      "pass": true,
+      "clubId": "club-staging-demo",
+      "error": null
+    },
+    "N5": {
+      "pass": true,
+      "visible": 3,
+      "error": null,
+      "note": "SA can read clubs"
+    }
+  },
+  "allPass": true,
+  "finishedAt": "2026-07-27T08:04:46.879Z"
+}

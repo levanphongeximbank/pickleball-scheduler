@@ -75,3 +75,14 @@ JOIN pg_namespace n ON n.oid = c.relnamespace
 WHERE n.nspname = 'public'
   AND c.relname = 'clubs'
   AND pol.polcmd = 'r';
+
+-- 8) Required helper for active-member path (SECURITY DEFINER; avoids recursion)
+SELECT
+  to_regprocedure('public.phase42_active_club_member_id(text)') IS NOT NULL
+    AS has_phase42_active_club_member_id,
+  to_regprocedure('public.phase42_is_platform_super_admin()') IS NOT NULL
+    AS has_phase42_is_platform_super_admin,
+  (
+    to_regprocedure('public.phase42_is_tenant_member(text)') IS NOT NULL
+    OR to_regprocedure('public.phase42_is_tenant_member(uuid)') IS NOT NULL
+  ) AS has_phase42_is_tenant_member;

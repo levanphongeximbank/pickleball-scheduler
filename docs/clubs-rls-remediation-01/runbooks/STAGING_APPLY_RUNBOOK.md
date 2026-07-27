@@ -10,7 +10,8 @@
 ## Status
 
 - Package: authored
-- Staging apply: **NOT EXECUTED** (Owner GO required)
+- Staging apply: **EXECUTED + CERTIFIED** (2026-07-27)
+- Marker: `CLUBS_RLS_REMEDIATION_01_STAGING_CERTIFIED`
 - Production apply: **FORBIDDEN** from this package
 
 ## Preconditions
@@ -34,6 +35,13 @@
 8. Smoke Public Portal / catalog: `public_catalog_list_clubs`.
 9. File evidence under `evidence/` (no secrets).
 
+## Implementation note (recursion-safe member path)
+
+Active club-member access uses `public.phase42_active_club_member_id(id) IS NOT NULL`
+(SECURITY DEFINER). A direct `EXISTS (SELECT … FROM club_members …)` inside
+`clubs_select` re-enters `club_members_select` and raises infinite recursion.
+The historical broad `OR status = 'active'` masked this path for active clubs.
+
 ## Stop conditions
 
 - Connection resolves to Production ref `expuvcohlcjzvrrauvud`
@@ -50,8 +58,11 @@
 If stop conditions hit after forward:
 
 1. Apply `sql/90_CLUBS_RLS_REMEDIATION_01_ROLLBACK.sql` on Staging.
-2. Re-run preflight; expect broad branch restored.
+2. Remediating re-apply required after abort.
 3. Halt further apply; escalate to Owner.
+
+Rollback classification: `STAGING_ABORT_ONLY` / `PRODUCTION_FORBIDDEN` /
+`SECURITY_REGRESSION_IF_APPLIED`.
 
 ## Forbidden
 

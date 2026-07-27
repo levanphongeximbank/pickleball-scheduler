@@ -241,10 +241,8 @@ create policy clubs_select on public.clubs
     and (
       public.phase42_is_platform_super_admin()
       or public.phase42_is_tenant_member(tenant_id)
-      or exists (
-        select 1 from public.club_members cm
-        where cm.club_id = clubs.id and cm.user_id = auth.uid() and cm.status = 'active'
-      )
+      -- SECURITY DEFINER: avoids RLS recursion with club_members_select
+      or public.phase42_active_club_member_id(id) is not null
     )
   );
 

@@ -22,7 +22,8 @@ WHERE n.nspname = 'public'
   AND pol.polname = 'clubs_select';
 -- EXPECT: still_has_broad_status_active = false
 -- EXPECT using_expr contains phase42_is_platform_super_admin, phase42_is_tenant_member,
---        and club_members EXISTS — and NOT a bare (status = 'active'::text) club-row branch.
+--        and phase42_active_club_member_id(id) — and NOT a bare (status = 'active'::text)
+--        club-row branch, and NOT a direct EXISTS on club_members (recursion hazard).
 
 -- B) Exactly one SELECT policy on clubs
 SELECT count(*) AS select_policy_count

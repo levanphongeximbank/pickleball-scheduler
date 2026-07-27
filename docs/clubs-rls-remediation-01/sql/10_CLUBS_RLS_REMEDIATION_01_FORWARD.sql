@@ -29,13 +29,9 @@ CREATE POLICY clubs_select ON public.clubs
     AND (
       public.phase42_is_platform_super_admin()
       OR public.phase42_is_tenant_member(tenant_id)
-      OR EXISTS (
-        SELECT 1
-        FROM public.club_members cm
-        WHERE cm.club_id = clubs.id
-          AND cm.user_id = auth.uid()
-          AND cm.status = 'active'
-      )
+      -- SECURITY DEFINER helper avoids RLS recursion with club_members_select
+      -- (direct EXISTS on club_members re-enters club_members policies).
+      OR public.phase42_active_club_member_id(id) IS NOT NULL
     )
   );
 
@@ -53,5 +49,5 @@ COMMIT;
 -- Allowed USING branches:
 --   phase42_is_platform_super_admin()
 --   phase42_is_tenant_member(tenant_id)
---   active club_members row for auth.uid()
+--   phase42_active_club_member_id(id) IS NOT NULL  (active member; SECURITY DEFINER)
 --   deleted_at IS NULL (gate)

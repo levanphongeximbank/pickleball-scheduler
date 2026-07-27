@@ -72,12 +72,13 @@ describe("CLUBS-RLS-REMEDIATION-01 package presence", () => {
     }
   });
 
-  it("marks Production not applied / Staging Owner-gated", () => {
+  it("marks Production not applied / Staging Owner-gated or certified", () => {
     assert.match(forward, /Production deployment status:\s*NOT APPLIED/i);
     assert.match(forward, /qyewbxjsiiyufanzcjcq/);
+    const runbook = read(`${PKG}/runbooks/STAGING_APPLY_RUNBOOK.md`);
     assert.match(
-      read(`${PKG}/runbooks/STAGING_APPLY_RUNBOOK.md`),
-      /NOT EXECUTED/
+      runbook,
+      /NOT EXECUTED|STAGING_CERTIFIED|EXECUTED.*CERTIFIED/i
     );
     assert.match(
       read(`${PKG}/runbooks/PRODUCTION_APPLY_RUNBOOK_DRAFT.md`),
@@ -91,7 +92,10 @@ describe("Canonical policy owner + remediation alignment", () => {
     assert.equal(hasBroadClubStatusActive(phase42cPolicy), false);
     assert.match(phase42cPolicy, /phase42_is_platform_super_admin\s*\(\s*\)/i);
     assert.match(phase42cPolicy, /phase42_is_tenant_member\s*\(\s*tenant_id\s*\)/i);
-    assert.match(phase42cPolicy, /club_members/i);
+    assert.match(
+      phase42cPolicy,
+      /phase42_active_club_member_id\s*\(\s*id\s*\)\s+is\s+not\s+null/i
+    );
     assert.match(phase42cPolicy, /deleted_at\s+is\s+null/i);
     assert.match(phase42cPolicy, /for\s+select\s+to\s+authenticated/i);
   });
@@ -101,7 +105,14 @@ describe("Canonical policy owner + remediation alignment", () => {
     assert.match(forward, /drop\s+policy\s+if\s+exists\s+clubs_select/i);
     assert.match(forwardPolicy, /phase42_is_platform_super_admin\s*\(\s*\)/i);
     assert.match(forwardPolicy, /phase42_is_tenant_member\s*\(\s*tenant_id\s*\)/i);
-    assert.match(forwardPolicy, /cm\.status\s*=\s*'active'/i);
+    assert.match(
+      forwardPolicy,
+      /phase42_active_club_member_id\s*\(\s*id\s*\)\s+is\s+not\s+null/i
+    );
+    assert.doesNotMatch(
+      forwardPolicy,
+      /exists\s*\(\s*select\s+1\s+from\s+public\.club_members/i
+    );
   });
 
   it("rollback intentionally restores broad branch for Staging abort only", () => {
@@ -118,10 +129,13 @@ describe("Negative-test matrix N1–N10 (contract encoding)", () => {
     assert.match(postApply, /EXPECT:\s*0 rows/i);
   });
 
-  it("N3: active club member path retained", () => {
-    assert.match(forwardPolicy, /from\s+public\.club_members\s+cm/i);
-    assert.match(forwardPolicy, /cm\.user_id\s*=\s*auth\.uid\(\)/i);
-    assert.match(forwardPolicy, /cm\.status\s*=\s*'active'/i);
+  it("N3: active club member path retained via SECURITY DEFINER helper", () => {
+    assert.match(
+      forwardPolicy,
+      /phase42_active_club_member_id\s*\(\s*id\s*\)\s+is\s+not\s+null/i
+    );
+    assert.match(phase42c, /create\s+or\s+replace\s+function\s+public\.phase42_active_club_member_id/i);
+    assert.match(phase42c, /security\s+definer/i);
   });
 
   it("N4: tenant member path retained", () => {

@@ -37,9 +37,11 @@ deleted_at is null
 and (
   phase42_is_platform_super_admin()
   or phase42_is_tenant_member(tenant_id)
-  or exists (active club_members for auth.uid())
+  or phase42_active_club_member_id(id) is not null  -- SECURITY DEFINER; avoids club_members RLS recursion
 )
 ```
+
+**Recursion note:** A direct `EXISTS (SELECT … FROM club_members …)` inside `clubs_select` re-enters `club_members_select` (self-referential EXISTS) and raises `infinite recursion detected in policy for relation "club_members"`. Use `phase42_active_club_member_id` instead. The historical broad `OR status = 'active'` masked this by short-circuiting before the EXISTS path for active clubs.
 
 Public directory remains `public.public_catalog_list_clubs` (SECURITY DEFINER, allowlisted columns, filters `is_publicly_listed`, `status='active'`, `deleted_at is null`).
 

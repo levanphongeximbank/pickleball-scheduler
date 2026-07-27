@@ -1,0 +1,14 @@
+{
+  "phase": "CLUBS-RLS-REMEDIATION-01-POST-VERIFY",
+  "targetProjectRef": "qyewbxjsiiyufanzcjcq",
+  "still_has_broad_status_active": false,
+  "select_policy_count": 1,
+  "writer_policy_count": 0,
+  "catalog": {
+    "anon_catalog_exec": true,
+    "auth_catalog_exec": true
+  },
+  "using_expr_present": true,
+  "ok": true,
+  "finishedAt": "2026-07-27T08:04:32.659Z"
+}
