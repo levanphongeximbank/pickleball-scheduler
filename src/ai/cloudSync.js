@@ -43,8 +43,22 @@ function abortPullIfLocalDirty(clubId, provider) {
 }
 
 const CLOUD_DB_KEY = "pickleball-cloud-db-v1";
-const SUPABASE_TABLE = "club_ai_data";
+/** @deprecated Locked — PROD-SEC-G3-B12-01. Do not call via PostgREST. */
+export const LEGACY_CLUB_AI_TABLE = "club_ai_data";
 const SUPABASE_CLUB_TABLE = "club_data_v3";
+const LEGACY_TABLE_LOCKED_CODE = "LEGACY_TABLE_LOCKED";
+
+function legacyClubAiDataLockedResult(clubId) {
+  return {
+    ok: false,
+    provider: "supabase",
+    clubId,
+    error:
+      "club_ai_data legacy đã khóa (PROD-SEC-G3-B12-01). Dùng club_data_v3 làm nguồn cloud duy nhất.",
+    code: LEGACY_TABLE_LOCKED_CODE,
+    legacySource: true,
+  };
+}
 
 const SUPABASE_URL =
   typeof import.meta !== "undefined" && import.meta.env
@@ -235,7 +249,14 @@ async function pullFromSupabase(clubId) {
   const row = Array.isArray(rows) ? rows[0] : null;
 
   if (!row?.data) {
-    return pullLegacyFromSupabase(clubId);
+    // PROD-SEC-G3-B12-01: do not fall back to club_ai_data (anon write surface locked).
+    return {
+      ok: false,
+      provider: "supabase",
+      clubId,
+      error: "Khong tim thay du lieu cloud cho CLB hien tai.",
+      code: "CLOUD_ROW_MISSING",
+    };
   }
 
   const expectedVenueId = getExplicitTenantIdForClub(clubId);
@@ -307,76 +328,21 @@ async function pullFromSupabase(clubId) {
   };
 }
 
+/**
+ * Legacy club_ai_data pull — fail-closed (PROD-SEC-G3-B12-01).
+ * No PostgREST calls to club_ai_data; canonical SoT is club_data_v3.
+ */
 async function pullLegacyFromSupabase(clubId) {
-  const headers = await buildSupabaseHeaders();
-  const response = await fetch(
-    `${SUPABASE_URL}/rest/v1/${SUPABASE_TABLE}?select=data,synced_at&club_id=eq.${encodeURIComponent(clubId)}&limit=1`,
-    {
-      method: "GET",
-      headers,
-    }
-  );
-
-  if (!response.ok) {
-    const details = await response.text();
-    throw new Error(`Supabase pull failed: ${response.status} ${details}`);
-  }
-
-  const rows = await response.json();
-  const row = Array.isArray(rows) ? rows[0] : null;
-
-  if (!row?.data) {
-    return {
-      ok: false,
-      provider: "supabase",
-      clubId,
-      error: "Khong tim thay du lieu cloud cho CLB hien tai.",
-    };
-  }
-
-  saveAIData(row.data, clubId);
-
-  return {
-    ok: true,
-    provider: "supabase",
-    clubId,
-    pulledAt: new Date().toISOString(),
-    sourceSyncedAt: row.synced_at || null,
-    legacySource: true,
-    warnings: [
-      "Dữ liệu cloud chỉ có club_ai_data (legacy). Chạy mergeLegacyClubAiToV3 để nâng cấp.",
-    ],
-  };
+  return legacyClubAiDataLockedResult(clubId);
 }
 
 /**
- * One-time migration: gộp row club_ai_data legacy lên club_data_v3 đầy đủ.
+ * One-time migration from club_ai_data — disabled (PROD-SEC-G3-B12-01).
+ * Use club_data_v3 / syncClubToCloud only. Admin break-glass via service_role.
  */
 export async function mergeLegacyClubAiToV3(options = {}) {
   const clubId = options.clubId || getActiveClubId();
-  const legacyPull = await pullLegacyFromSupabase(clubId);
-
-  if (!legacyPull.ok) {
-    return legacyPull;
-  }
-
-  const pushResult = await syncClubToCloud({
-    clubId,
-    permission: options.permission || PERMISSIONS.SYSTEM_SETTING,
-    expectedVersion: getClubCloudVersion(clubId),
-  });
-
-  if (!pushResult.ok) {
-    return pushResult;
-  }
-
-  return {
-    ok: true,
-    clubId,
-    migratedFrom: "club_ai_data",
-    version: pushResult.version,
-    warnings: pushResult.warnings || [],
-  };
+  return pullLegacyFromSupabase(clubId);
 }
 
 function loadCloudDatabase() {
