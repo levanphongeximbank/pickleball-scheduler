@@ -19,6 +19,10 @@ export const LEGACY_AUTHORITY_ERROR = Object.freeze({
   PRIVATE_PAIRING_LEGACY_PICKER_FORBIDDEN: "PRIVATE_PAIRING_LEGACY_PICKER_FORBIDDEN",
   PRIVATE_PAIRING_SILENT_RATING_DEFAULT_FORBIDDEN:
     "PRIVATE_PAIRING_SILENT_RATING_DEFAULT_FORBIDDEN",
+  COACHING_LOCALSTORAGE_AUTHORITY_FORBIDDEN: "COACHING_LOCALSTORAGE_AUTHORITY_FORBIDDEN",
+  MESSAGING_DEMO_AUTHORITY_FORBIDDEN: "MESSAGING_DEMO_AUTHORITY_FORBIDDEN",
+  DASHBOARD_ANALYTICS_MOCK_FORBIDDEN: "DASHBOARD_ANALYTICS_MOCK_FORBIDDEN",
+  DASHBOARD_ANALYTICS_LOCALSTORAGE_FORBIDDEN: "DASHBOARD_ANALYTICS_LOCALSTORAGE_FORBIDDEN",
 });
 
 export function createLegacyAuthorityError(code, message) {
@@ -111,6 +115,50 @@ export function assertPrivatePairingSilentRatingDefaultAllowed(env) {
     return createLegacyAuthorityError(
       LEGACY_AUTHORITY_ERROR.PRIVATE_PAIRING_SILENT_RATING_DEFAULT_FORBIDDEN,
       "Silent rating default 3.5 is forbidden under hard cutover. Provide an explicit rating or exclude the player."
+    );
+  }
+  return { ok: true };
+}
+
+/** Coaching legacy/localStorage SoT is forbidden under hard cutover. */
+export function assertCoachingLegacyAuthorityAllowed(env) {
+  if (isPlatformHardCutoverEnabled(env)) {
+    return createLegacyAuthorityError(
+      LEGACY_AUTHORITY_ERROR.COACHING_LOCALSTORAGE_AUTHORITY_FORBIDDEN,
+      "Coaching localStorage/legacy authority is forbidden under hard cutover. Use durable coaching_* RPC or UNAVAILABLE."
+    );
+  }
+  return { ok: true };
+}
+
+/** Messaging DEMO / in-memory community SoT is forbidden under hard cutover. */
+export function assertMessagingDemoAuthorityAllowed(env) {
+  if (isPlatformHardCutoverEnabled(env)) {
+    return createLegacyAuthorityError(
+      LEGACY_AUTHORITY_ERROR.MESSAGING_DEMO_AUTHORITY_FORBIDDEN,
+      "Messaging DEMO authority is forbidden under hard cutover. Use PRODUCTION trusted backend or UNAVAILABLE."
+    );
+  }
+  return { ok: true };
+}
+
+/** Dashboard mock/demo/preview invention is forbidden under hard cutover. */
+export function assertDashboardAnalyticsMockAllowed(env) {
+  if (isPlatformHardCutoverEnabled(env)) {
+    return createLegacyAuthorityError(
+      LEGACY_AUTHORITY_ERROR.DASHBOARD_ANALYTICS_MOCK_FORBIDDEN,
+      "Dashboard mock/demo/preview payloads are forbidden under hard cutover. Use reporting projections or typed UNAVAILABLE."
+    );
+  }
+  return { ok: true };
+}
+
+/** Dashboard must not treat localStorage club blob as Prod analytics SoT under hard cutover. */
+export function assertDashboardAnalyticsLocalStorageAllowed(env) {
+  if (isPlatformHardCutoverEnabled(env)) {
+    return createLegacyAuthorityError(
+      LEGACY_AUTHORITY_ERROR.DASHBOARD_ANALYTICS_LOCALSTORAGE_FORBIDDEN,
+      "Dashboard localStorage analytics authority is forbidden under hard cutover."
     );
   }
   return { ok: true };

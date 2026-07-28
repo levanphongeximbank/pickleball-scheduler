@@ -2,6 +2,7 @@ export {
   HARD_CUTOVER_FLAG,
   COMPETITION_REMOTE_SSOT_FLAG,
   RUNTIME_AUTHORITY_MATRIX,
+  RUNTIME_AUTHORITY_DOMAIN_COUNT,
   isPlatformHardCutoverEnabled,
   isCompetitionRemoteSsotEnabled,
   listRuntimeAuthorityDomains,
@@ -21,6 +22,10 @@ export {
   rejectSilentFallback,
   assertPrivatePairingLegacyPickerAllowed,
   assertPrivatePairingSilentRatingDefaultAllowed,
+  assertCoachingLegacyAuthorityAllowed,
+  assertMessagingDemoAuthorityAllowed,
+  assertDashboardAnalyticsMockAllowed,
+  assertDashboardAnalyticsLocalStorageAllowed,
 } from "./legacyAuthorityPolicy.js";
 
 export {

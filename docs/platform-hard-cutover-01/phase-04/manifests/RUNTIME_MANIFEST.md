@@ -2,15 +2,36 @@
 
 Source of truth: `src/features/platform-hard-cutover/runtimeAuthorityMatrix.js`
 
-| Domain | Production adapter | Flag | Forbidden fallback | Fail-closed |
-|--------|-------------------|------|--------------------|-------------|
-| club_cloud | club_data_v3 | — | club_ai_data, pickleball-cloud-db-v1 | LOCAL_CLOUD_DB_FORBIDDEN |
-| club_blob_local | cache-only under hard cutover | VITE_PLATFORM_HARD_CUTOVER_ENABLED | LS SoT | LOCALSTORAGE_AUTHORITY_FORBIDDEN |
-| court_runtime | durable court-engine | VITE_COURT_RUNTIME_AUTHORITY | local as Prod SoT | COURT_RUNTIME_* |
-| competition_match_result | competition_ssot_finalize_match_result | VITE_COMPETITION_REMOTE_SSOT_ENABLED | tournament_match_live direct, in-memory Prod | COMPETITION_SSOT_UNAVAILABLE |
-| player_rating | foundation → V5 | VITE_PICK_VN_RATING_V5_ENABLED | club blob verified write, Elo-as-public | PLAYER_RATING_* |
-| public_news | live RPC | VITE_PUBLIC_NEWS_SOURCE=live | MOCK_NEWS silent | PUBLIC_NEWS_* |
-| private_pairing_rules | privatePairingRulesRepository → security-definer RPC; live load via `private_pairing_get_active_rules_for_scope` | VITE_PLATFORM_HARD_CUTOVER_ENABLED | legacy_blob picker, localStorage rule SoT, mock persistence, direct SPA table writes, silent rating=3.5 | PRIVATE_PAIRING_LEGACY_PICKER_FORBIDDEN / MISSING_PLAYER_RATING |
+**Domain count:** 26 (expanded in pre-Staging capability remediation).
+
+| Domain | Canonical writer | Persistence | Fail-closed | Readiness |
+|--------|------------------|-------------|-------------|-----------|
+| identity_auth | Supabase Auth APIs | auth.users + profiles | IDENTITY_AUTH_UNAVAILABLE | PROTECTED_CANONICAL |
+| rbac_catalog | identity admin RPCs | roles/permissions | RBAC_CATALOG_UNAVAILABLE | PROTECTED_CANONICAL |
+| tenant_binding | tenant admin RPCs | venues + tenant_members | TENANT_BINDING_UNAVAILABLE | PROTECTED_CANONICAL |
+| club_cloud | club_* RPC | club_data_v3 | CLUB_CLOUD_AUTHORITY_UNAVAILABLE | CANONICAL_WITH_RESEED |
+| club_blob_local | forbidden as SoT under HC | cache-only | LOCALSTORAGE_AUTHORITY_FORBIDDEN | FAIL_CLOSED_UNDER_HC |
+| club_governance | membership RPCs | club_members* | CLUB_GOVERNANCE_UNAVAILABLE | CANONICAL_WITH_RESEED |
+| court_runtime | court-engine durable | court_engine_* | COURT_RUNTIME_* | ACTIVATION_REQUIRED |
+| customer | customer RPC | customers* | CUSTOMER_AUTHORITY_UNAVAILABLE | STAGING_AHEAD |
+| finance | finance RPC | finance_* | FINANCE_AUTHORITY_UNAVAILABLE | STAGING_AHEAD |
+| crm | crm RPC | crm_* | CRM_AUTHORITY_UNAVAILABLE | STAGING_AHEAD |
+| reporting | projection jobs/RPC | reporting_* | REPORTING_AUTHORITY_UNAVAILABLE | STAGING_AHEAD |
+| coaching | durable adapter only under HC | coaching_* | COACHING_LOCALSTORAGE_AUTHORITY_FORBIDDEN | FAIL_CLOSED_UNTIL_DURABLE |
+| vpr_ranking | vpr ledger RPC | vpr_* | VPR_AUTHORITY_UNAVAILABLE | ACTIVATION_REQUIRED |
+| notifications | notification RPC | notifications* | NOTIFICATIONS_AUTHORITY_UNAVAILABLE | PARTIAL |
+| competition_match_result | competition_ssot_finalize_match_result | competition_ssot_* | COMPETITION_SSOT_UNAVAILABLE | ACTIVATION_AFTER_M8 |
+| team_tournament | TT command RPCs | team_tournament_* | TEAM_TOURNAMENT_AUTHORITY_UNAVAILABLE | STAGING_AHEAD_PARTIAL |
+| referee | referee V5 RPC | referee + SSOT handoff | REFEREE_AUTHORITY_UNAVAILABLE | STAGING_AHEAD_PARTIAL |
+| player_rating | rating V5 RPC | player_rating_* | PLAYER_RATING_DURABLE_UNAVAILABLE | ACTIVATION_REQUIRED |
+| public_news | news admin RPC | news_* | PUBLIC_NEWS_LIVE_UNAVAILABLE | ACTIVATION_REQUIRED |
+| public_catalog | catalog republish | public_catalog_* | PUBLIC_CATALOG_UNAVAILABLE | CANONICAL_WITH_RESEED |
+| billing_subscription | billing RPCs | plans + subscriptions | BILLING_AUTHORITY_UNAVAILABLE | PROTECTED_CATALOG |
+| marketplace | marketplace RPC | marketplace_* | MARKETPLACE_AUTHORITY_UNAVAILABLE | ACTIVATION_REQUIRED |
+| messaging | trusted backend under HC | communication_* | MESSAGING_DEMO_AUTHORITY_FORBIDDEN | FAIL_CLOSED_UNTIL_ACTIVATION |
+| ai_assistant | AI engine (flagged) | ai_suggestions* | AI_ASSISTANT_UNAVAILABLE | ACTIVATION_REQUIRED |
+| dashboard_analytics | none (read-only) | reporting_* or UNAVAILABLE | DASHBOARD_ANALYTICS_MOCK_FORBIDDEN | FAIL_CLOSED_UNDER_HC |
+| private_pairing_rules | PRIVATE_PAIRING_RPC.* | private_pairing_* | PRIVATE_PAIRING_LEGACY_PICKER_FORBIDDEN | CANONICAL_WITH_HC_GATES |
 
 **Rule:** Never two authorities active for the same domain.
 

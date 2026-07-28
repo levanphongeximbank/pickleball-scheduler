@@ -70,6 +70,7 @@ export {
 
 export {
   createDefaultCoachingRuntime,
+  resolveDefaultCoachingRuntimeMode,
   getDefaultCoachingRuntime,
   resetDefaultCoachingRuntime,
   getCoachingPageGateway,
