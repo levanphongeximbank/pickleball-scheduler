@@ -1,0 +1,12 @@
+{
+  "marker": "PLATFORM_HARD_CUTOVER_01_STAGING_BACKUP_OWNER_CONFIRMATION_TEMPLATE",
+  "project_ref": "qyewbxjsiiyufanzcjcq",
+  "production_ref_blocked": "expuvcohlcjzvrrauvud",
+  "backup_kind": "OWNER_FILLS: dashboard_physical | pitr | logical_zip",
+  "backup_id_or_filename": "OWNER_FILLS",
+  "backup_completed_at": "OWNER_FILLS ISO-8601 UTC — must be after failed-rehearsal M8 rollback",
+  "status": "OWNER_FILLS: completed | readable",
+  "verified_by": "OWNER_FILLS",
+  "verified_at": "OWNER_FILLS ISO-8601 UTC",
+  "notes": "Do not store secrets, connection strings, or dump contents in this file."
+}

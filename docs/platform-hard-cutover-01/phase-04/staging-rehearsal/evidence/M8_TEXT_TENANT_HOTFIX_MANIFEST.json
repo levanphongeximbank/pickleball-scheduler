@@ -1,0 +1,22 @@
+{
+  "workstream": "PLATFORM-HARD-CUTOVER-01",
+  "marker": "PLATFORM_HARD_CUTOVER_01_M8_TEXT_TENANT_HOTFIX_PR_READY_FOR_OWNER_MERGE",
+  "remediates": ["B-STG-02"],
+  "prepares": ["B-STG-01", "B-STG-03"],
+  "mutations": {
+    "databaseWrites": 0,
+    "stagingApply": false,
+    "productionApply": false,
+    "vercelFlagChanges": false,
+    "redeploy": false,
+    "wipe": false,
+    "drop": false
+  },
+  "sqlCorrections": {
+    "tenant_id": "uuid → text (+ non-blank CHECK)",
+    "p_tenant_id": "uuid → text (+ trim fail-closed)",
+    "rls": "text = user_venue_id(); require non-blank venue; no casts",
+    "grants": "function signatures (text, uuid, ...)",
+    "rollback": "drops text + legacy uuid signatures"
+  }
+}

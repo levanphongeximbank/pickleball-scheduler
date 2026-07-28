@@ -1,8 +1,17 @@
 -- M8 Competition Remote SSOT — command + single finalize writer RPCs
+-- p_tenant_id is text (matches venues.id / user_venue_id()). No uuid/text casts.
 BEGIN;
 
+-- Drop legacy uuid-tenant signatures (B-STG-02) and current text signatures for idempotent re-apply.
+DROP FUNCTION IF EXISTS public.competition_ssot_append_command(uuid, uuid, text, jsonb, text);
+DROP FUNCTION IF EXISTS public.competition_ssot_upsert_working_score(uuid, uuid, jsonb, text);
+DROP FUNCTION IF EXISTS public.competition_ssot_finalize_match_result(uuid, uuid, jsonb, text, text, text);
+DROP FUNCTION IF EXISTS public.competition_ssot_append_command(text, uuid, text, jsonb, text);
+DROP FUNCTION IF EXISTS public.competition_ssot_upsert_working_score(text, uuid, jsonb, text);
+DROP FUNCTION IF EXISTS public.competition_ssot_finalize_match_result(text, uuid, jsonb, text, text, text);
+
 CREATE OR REPLACE FUNCTION public.competition_ssot_append_command(
-  p_tenant_id uuid,
+  p_tenant_id text,
   p_competition_id uuid,
   p_command_type text,
   p_command_payload jsonb,
@@ -17,7 +26,9 @@ DECLARE
   v_existing jsonb;
   v_id bigint;
 BEGIN
-  IF p_tenant_id IS NULL OR p_competition_id IS NULL OR coalesce(trim(p_idempotency_key), '') = '' THEN
+  IF p_tenant_id IS NULL OR length(trim(p_tenant_id)) = 0
+     OR p_competition_id IS NULL
+     OR coalesce(trim(p_idempotency_key), '') = '' THEN
     RAISE EXCEPTION 'COMPETITION_SSOT_INVALID_ARGS';
   END IF;
   IF NOT (public.is_super_admin() OR p_tenant_id = public.user_venue_id()) THEN
@@ -56,7 +67,7 @@ END;
 $$;
 
 CREATE OR REPLACE FUNCTION public.competition_ssot_upsert_working_score(
-  p_tenant_id uuid,
+  p_tenant_id text,
   p_match_id uuid,
   p_working_score jsonb,
   p_idempotency_key text
@@ -70,7 +81,9 @@ DECLARE
   v_existing jsonb;
   v_comp uuid;
 BEGIN
-  IF p_tenant_id IS NULL OR p_match_id IS NULL OR coalesce(trim(p_idempotency_key), '') = '' THEN
+  IF p_tenant_id IS NULL OR length(trim(p_tenant_id)) = 0
+     OR p_match_id IS NULL
+     OR coalesce(trim(p_idempotency_key), '') = '' THEN
     RAISE EXCEPTION 'COMPETITION_SSOT_INVALID_ARGS';
   END IF;
   IF NOT (public.is_super_admin() OR p_tenant_id = public.user_venue_id()) THEN
@@ -104,7 +117,7 @@ $$;
 
 -- THE single finalized-result writer
 CREATE OR REPLACE FUNCTION public.competition_ssot_finalize_match_result(
-  p_tenant_id uuid,
+  p_tenant_id text,
   p_match_id uuid,
   p_result_payload jsonb,
   p_idempotency_key text,
@@ -122,7 +135,9 @@ DECLARE
   v_status text;
   v_result_id uuid;
 BEGIN
-  IF p_tenant_id IS NULL OR p_match_id IS NULL OR coalesce(trim(p_idempotency_key), '') = '' THEN
+  IF p_tenant_id IS NULL OR length(trim(p_tenant_id)) = 0
+     OR p_match_id IS NULL
+     OR coalesce(trim(p_idempotency_key), '') = '' THEN
     RAISE EXCEPTION 'COMPETITION_SSOT_INVALID_ARGS';
   END IF;
   IF NOT (public.is_super_admin() OR p_tenant_id = public.user_venue_id()) THEN
@@ -196,16 +211,16 @@ BEGIN
 END;
 $$;
 
-REVOKE ALL ON FUNCTION public.competition_ssot_append_command(uuid, uuid, text, jsonb, text) FROM PUBLIC;
-REVOKE ALL ON FUNCTION public.competition_ssot_upsert_working_score(uuid, uuid, jsonb, text) FROM PUBLIC;
-REVOKE ALL ON FUNCTION public.competition_ssot_finalize_match_result(uuid, uuid, jsonb, text, text, text) FROM PUBLIC;
+REVOKE ALL ON FUNCTION public.competition_ssot_append_command(text, uuid, text, jsonb, text) FROM PUBLIC;
+REVOKE ALL ON FUNCTION public.competition_ssot_upsert_working_score(text, uuid, jsonb, text) FROM PUBLIC;
+REVOKE ALL ON FUNCTION public.competition_ssot_finalize_match_result(text, uuid, jsonb, text, text, text) FROM PUBLIC;
 
-GRANT EXECUTE ON FUNCTION public.competition_ssot_append_command(uuid, uuid, text, jsonb, text) TO authenticated;
-GRANT EXECUTE ON FUNCTION public.competition_ssot_upsert_working_score(uuid, uuid, jsonb, text) TO authenticated;
-GRANT EXECUTE ON FUNCTION public.competition_ssot_finalize_match_result(uuid, uuid, jsonb, text, text, text) TO authenticated;
+GRANT EXECUTE ON FUNCTION public.competition_ssot_append_command(text, uuid, text, jsonb, text) TO authenticated;
+GRANT EXECUTE ON FUNCTION public.competition_ssot_upsert_working_score(text, uuid, jsonb, text) TO authenticated;
+GRANT EXECUTE ON FUNCTION public.competition_ssot_finalize_match_result(text, uuid, jsonb, text, text, text) TO authenticated;
 
-GRANT EXECUTE ON FUNCTION public.competition_ssot_append_command(uuid, uuid, text, jsonb, text) TO service_role;
-GRANT EXECUTE ON FUNCTION public.competition_ssot_upsert_working_score(uuid, uuid, jsonb, text) TO service_role;
-GRANT EXECUTE ON FUNCTION public.competition_ssot_finalize_match_result(uuid, uuid, jsonb, text, text, text) TO service_role;
+GRANT EXECUTE ON FUNCTION public.competition_ssot_append_command(text, uuid, text, jsonb, text) TO service_role;
+GRANT EXECUTE ON FUNCTION public.competition_ssot_upsert_working_score(text, uuid, jsonb, text) TO service_role;
+GRANT EXECUTE ON FUNCTION public.competition_ssot_finalize_match_result(text, uuid, jsonb, text, text, text) TO service_role;
 
 COMMIT;

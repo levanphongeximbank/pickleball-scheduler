@@ -1,6 +1,7 @@
 export {
   COMPETITION_SSOT_ERROR,
   COMPETITION_SSOT_RPC,
+  assertTextTenantId,
   createFailClosedCompetitionSsotAdapter,
   createRemoteCompetitionSsotAdapter,
   resolveCompetitionSsotAdapter,

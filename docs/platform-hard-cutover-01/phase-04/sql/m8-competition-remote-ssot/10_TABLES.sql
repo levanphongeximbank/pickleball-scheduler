@@ -1,13 +1,16 @@
 -- PLATFORM-HARD-CUTOVER-01 Phase 4 — M8 Competition Remote SSOT (tables)
 -- Canonical durable competition aggregate + match finalize pipeline.
 -- Authoritative finalize writer: competition_ssot_finalize_match_result (40_RPC).
+-- Tenant model: tenant_id text — matches public.venues.id + public.user_venue_id().
 -- NOT applied by this PR. Staging rehearsal / Production require Owner GO.
+-- If a prior uuid-typed apply left objects, run 90_ROLLBACK.sql first.
 
 BEGIN;
 
 CREATE TABLE IF NOT EXISTS public.competition_ssot_competitions (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-  tenant_id uuid NOT NULL,
+  tenant_id text NOT NULL
+    CHECK (length(trim(tenant_id)) > 0),
   club_id text,
   external_key text NOT NULL,
   status text NOT NULL DEFAULT 'draft'
@@ -23,7 +26,8 @@ CREATE TABLE IF NOT EXISTS public.competition_ssot_competitions (
 CREATE TABLE IF NOT EXISTS public.competition_ssot_participants (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   competition_id uuid NOT NULL REFERENCES public.competition_ssot_competitions(id) ON DELETE CASCADE,
-  tenant_id uuid NOT NULL,
+  tenant_id text NOT NULL
+    CHECK (length(trim(tenant_id)) > 0),
   player_id text NOT NULL,
   seed integer,
   entry_status text NOT NULL DEFAULT 'registered'
@@ -36,7 +40,8 @@ CREATE TABLE IF NOT EXISTS public.competition_ssot_participants (
 CREATE TABLE IF NOT EXISTS public.competition_ssot_matches (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   competition_id uuid NOT NULL REFERENCES public.competition_ssot_competitions(id) ON DELETE CASCADE,
-  tenant_id uuid NOT NULL,
+  tenant_id text NOT NULL
+    CHECK (length(trim(tenant_id)) > 0),
   match_key text NOT NULL,
   round_key text,
   status text NOT NULL DEFAULT 'scheduled'
@@ -56,7 +61,8 @@ CREATE TABLE IF NOT EXISTS public.competition_ssot_finalized_results (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   competition_id uuid NOT NULL REFERENCES public.competition_ssot_competitions(id) ON DELETE CASCADE,
   match_id uuid NOT NULL REFERENCES public.competition_ssot_matches(id) ON DELETE CASCADE,
-  tenant_id uuid NOT NULL,
+  tenant_id text NOT NULL
+    CHECK (length(trim(tenant_id)) > 0),
   idempotency_key text NOT NULL,
   result_payload jsonb NOT NULL,
   winner_side text,
@@ -71,7 +77,8 @@ CREATE TABLE IF NOT EXISTS public.competition_ssot_finalized_results (
 CREATE TABLE IF NOT EXISTS public.competition_ssot_standings_snapshots (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   competition_id uuid NOT NULL REFERENCES public.competition_ssot_competitions(id) ON DELETE CASCADE,
-  tenant_id uuid NOT NULL,
+  tenant_id text NOT NULL
+    CHECK (length(trim(tenant_id)) > 0),
   snapshot_version integer NOT NULL,
   standings jsonb NOT NULL DEFAULT '[]'::jsonb,
   tiebreak_inputs jsonb NOT NULL DEFAULT '{}'::jsonb,
@@ -82,7 +89,8 @@ CREATE TABLE IF NOT EXISTS public.competition_ssot_standings_snapshots (
 CREATE TABLE IF NOT EXISTS public.competition_ssot_command_log (
   id bigserial PRIMARY KEY,
   competition_id uuid NOT NULL REFERENCES public.competition_ssot_competitions(id) ON DELETE CASCADE,
-  tenant_id uuid NOT NULL,
+  tenant_id text NOT NULL
+    CHECK (length(trim(tenant_id)) > 0),
   command_type text NOT NULL,
   command_payload jsonb NOT NULL DEFAULT '{}'::jsonb,
   idempotency_key text NOT NULL,
@@ -94,7 +102,8 @@ CREATE TABLE IF NOT EXISTS public.competition_ssot_command_log (
 CREATE TABLE IF NOT EXISTS public.competition_ssot_audit_events (
   id bigserial PRIMARY KEY,
   competition_id uuid REFERENCES public.competition_ssot_competitions(id) ON DELETE SET NULL,
-  tenant_id uuid NOT NULL,
+  tenant_id text NOT NULL
+    CHECK (length(trim(tenant_id)) > 0),
   event_type text NOT NULL,
   event_payload jsonb NOT NULL DEFAULT '{}'::jsonb,
   actor_id uuid,
@@ -102,7 +111,8 @@ CREATE TABLE IF NOT EXISTS public.competition_ssot_audit_events (
 );
 
 CREATE TABLE IF NOT EXISTS public.competition_ssot_idempotency (
-  tenant_id uuid NOT NULL,
+  tenant_id text NOT NULL
+    CHECK (length(trim(tenant_id)) > 0),
   scope text NOT NULL,
   idempotency_key text NOT NULL,
   response jsonb NOT NULL DEFAULT '{}'::jsonb,

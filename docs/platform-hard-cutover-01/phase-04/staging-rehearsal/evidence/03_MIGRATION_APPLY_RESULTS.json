@@ -1,0 +1,30 @@
+{
+  "marker": "PLATFORM_HARD_CUTOVER_01_STAGING_REHEARSAL_MIGRATION_RESULTS",
+  "project_ref": "qyewbxjsiiyufanzcjcq",
+  "results": {
+    "M0_G3_B12": {
+      "status": "ALREADY_PRESENT",
+      "migration": "20260728000727:prod_sec_g3_b12_01_club_ai_data_anon_write_lockdown",
+      "club_ai_data_exists": true,
+      "deny_all_clients": true
+    },
+    "M1_Customer": { "status": "ALREADY_PRESENT", "note": "customers* present pre-rehearsal" },
+    "M2_Finance": { "status": "ALREADY_PRESENT", "note": "finance_* present pre-rehearsal" },
+    "M3_CRM": { "status": "ALREADY_PRESENT", "note": "crm_phase_1g/1h migrations present" },
+    "M4_Reporting": { "status": "ALREADY_PRESENT", "note": "reporting_02_* migrations present" },
+    "M5_News": { "status": "ALREADY_PRESENT", "note": "news_* present pre-rehearsal" },
+    "M6_Coaching": { "status": "ALREADY_PRESENT", "note": "coaching_* present pre-rehearsal" },
+    "M7_Competition_Core_cc02": { "status": "ALREADY_PRESENT", "note": "cc02_* migrations present" },
+    "M8_Competition_Remote_SSOT": {
+      "status": "BLOCKED_THEN_ROLLED_BACK",
+      "applied": ["10_tables", "20_indexes"],
+      "failed": ["30_rls"],
+      "not_applied": ["40_rpc", "50_grants"],
+      "failure": "ERROR 42883 operator does not exist: uuid = text (tenant_id uuid vs user_venue_id() returns text; venues.id is text)",
+      "rollback": "hard_cutover_m8_competition_ssot_90_rollback_incomplete SUCCESS — competition_ssot_* absent"
+    },
+    "M9_Team_Tournament": { "status": "ALREADY_PRESENT", "note": "phase_tt2*..tt6b_* present" },
+    "M10_Referee_V5": { "status": "ALREADY_PRESENT", "note": "phase_v5a_referee* / phase_v5d* present" },
+    "M11_Private_pairing_digest": { "status": "ALREADY_PRESENT", "note": "private_pairing_pr4_digest_patch present" }
+  }
+}

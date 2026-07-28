@@ -1,0 +1,27 @@
+{
+  "marker": "PLATFORM_HARD_CUTOVER_01_STAGING_REHEARSAL_BACKUP_LOGICAL_SNAPSHOT",
+  "capturedAt": "2026-07-28T01:10:00Z",
+  "appTip": "27e231a2c1a6346cd5f435c7fd85135ceae2c711",
+  "mcpServer": "project-0-pickleball-scheduler-supabase-staging",
+  "providerConsoleBackup": "NOT_VERIFIABLE_VIA_MCP",
+  "logicalSnapshot": {
+    "auth_n": 87,
+    "profiles_n": 87,
+    "venues_n": 2,
+    "tenant_members_n": 3,
+    "roles_n": 12,
+    "permissions_n": 144,
+    "role_permissions_n": 432,
+    "plans_n": 4,
+    "plan_limits_n": 4,
+    "super_admin_profiles": 2,
+    "catalog_rpcs": 4,
+    "g3_b12": {
+      "policy": "club_ai_data_deny_all_clients",
+      "rls": true,
+      "forced": true
+    },
+    "tipMigration": "20260728000727:prod_sec_g3_b12_01_club_ai_data_anon_write_lockdown"
+  },
+  "restoreStrategy": "Logical counts + migration list recorded; Staging provider restore requires Owner console if wipe fails mid-way."
+}

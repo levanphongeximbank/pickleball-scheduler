@@ -1,5 +1,6 @@
 /**
  * Competition Remote SSOT — ports and fail-closed / remote adapters (M8).
+ * Tenant IDs are text venue ids (public.venues.id / user_venue_id()), not UUID.
  */
 
 import {
@@ -19,6 +20,22 @@ export const COMPETITION_SSOT_RPC = Object.freeze({
   UPSERT_WORKING_SCORE: "competition_ssot_upsert_working_score",
   FINALIZE: "competition_ssot_finalize_match_result",
 });
+
+/**
+ * Normalize / validate text tenant id (venue id). Fail-closed on blank/missing.
+ * @param {unknown} value
+ * @returns {{ ok: true, tenantId: string } | { ok: false, code: string, error: string }}
+ */
+export function assertTextTenantId(value) {
+  if (typeof value !== "string" || value.trim() === "") {
+    return {
+      ok: false,
+      code: COMPETITION_SSOT_ERROR.INVALID_ARGS,
+      error: "tenantId must be a non-empty text venue id",
+    };
+  }
+  return { ok: true, tenantId: value.trim() };
+}
 
 export function createFailClosedCompetitionSsotAdapter(
   reason = "Remote Competition SSOT not available"
@@ -62,7 +79,9 @@ export function createRemoteCompetitionSsotAdapter(deps) {
   return {
     kind: "remote_ssot",
     async finalizeMatchResult(input) {
-      if (!input?.tenantId || !input?.matchId || !input?.idempotencyKey) {
+      const tenant = assertTextTenantId(input?.tenantId);
+      if (!tenant.ok) return tenant;
+      if (!input?.matchId || !input?.idempotencyKey) {
         return {
           ok: false,
           code: COMPETITION_SSOT_ERROR.INVALID_ARGS,
@@ -70,7 +89,7 @@ export function createRemoteCompetitionSsotAdapter(deps) {
         };
       }
       return call(COMPETITION_SSOT_RPC.FINALIZE, {
-        p_tenant_id: input.tenantId,
+        p_tenant_id: tenant.tenantId,
         p_match_id: input.matchId,
         p_result_payload: input.resultPayload || {},
         p_idempotency_key: input.idempotencyKey,
@@ -79,8 +98,10 @@ export function createRemoteCompetitionSsotAdapter(deps) {
       });
     },
     async appendCommand(input) {
+      const tenant = assertTextTenantId(input?.tenantId);
+      if (!tenant.ok) return tenant;
       return call(COMPETITION_SSOT_RPC.APPEND_COMMAND, {
-        p_tenant_id: input.tenantId,
+        p_tenant_id: tenant.tenantId,
         p_competition_id: input.competitionId,
         p_command_type: input.commandType,
         p_command_payload: input.commandPayload || {},
@@ -88,8 +109,10 @@ export function createRemoteCompetitionSsotAdapter(deps) {
       });
     },
     async upsertWorkingScore(input) {
+      const tenant = assertTextTenantId(input?.tenantId);
+      if (!tenant.ok) return tenant;
       return call(COMPETITION_SSOT_RPC.UPSERT_WORKING_SCORE, {
-        p_tenant_id: input.tenantId,
+        p_tenant_id: tenant.tenantId,
         p_match_id: input.matchId,
         p_working_score: input.workingScore || {},
         p_idempotency_key: input.idempotencyKey,
