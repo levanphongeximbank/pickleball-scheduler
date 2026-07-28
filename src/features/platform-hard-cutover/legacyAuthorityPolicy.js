@@ -23,6 +23,10 @@ export const LEGACY_AUTHORITY_ERROR = Object.freeze({
   MESSAGING_DEMO_AUTHORITY_FORBIDDEN: "MESSAGING_DEMO_AUTHORITY_FORBIDDEN",
   DASHBOARD_ANALYTICS_MOCK_FORBIDDEN: "DASHBOARD_ANALYTICS_MOCK_FORBIDDEN",
   DASHBOARD_ANALYTICS_LOCALSTORAGE_FORBIDDEN: "DASHBOARD_ANALYTICS_LOCALSTORAGE_FORBIDDEN",
+  FINANCE_LOCALSTORAGE_AUTHORITY_FORBIDDEN: "FINANCE_LOCALSTORAGE_AUTHORITY_FORBIDDEN",
+  FINANCE_DEMO_CLUB_FALLBACK_FORBIDDEN: "FINANCE_DEMO_CLUB_FALLBACK_FORBIDDEN",
+  CRM_LOCALSTORAGE_AUTHORITY_FORBIDDEN: "CRM_LOCALSTORAGE_AUTHORITY_FORBIDDEN",
+  CRM_DEMO_CLUB_FALLBACK_FORBIDDEN: "CRM_DEMO_CLUB_FALLBACK_FORBIDDEN",
 });
 
 export function createLegacyAuthorityError(code, message) {
@@ -159,6 +163,64 @@ export function assertDashboardAnalyticsLocalStorageAllowed(env) {
     return createLegacyAuthorityError(
       LEGACY_AUTHORITY_ERROR.DASHBOARD_ANALYTICS_LOCALSTORAGE_FORBIDDEN,
       "Dashboard localStorage analytics authority is forbidden under hard cutover."
+    );
+  }
+  return { ok: true };
+}
+
+/** Finance ledger localStorage SoT is forbidden under hard cutover. */
+export function assertFinanceLocalStorageAuthorityAllowed(env) {
+  if (isPlatformHardCutoverEnabled(env)) {
+    return createLegacyAuthorityError(
+      LEGACY_AUTHORITY_ERROR.FINANCE_LOCALSTORAGE_AUTHORITY_FORBIDDEN,
+      "Finance localStorage ledger authority is forbidden under hard cutover. Use finance_* RPC or UNAVAILABLE."
+    );
+  }
+  return { ok: true };
+}
+
+/** demo-club must never be an operational Finance club scope. */
+export function assertFinanceDemoClubFallbackAllowed(clubId, env) {
+  const normalized = String(clubId || "").trim();
+  if (normalized === "demo-club") {
+    if (isPlatformHardCutoverEnabled(env)) {
+      return createLegacyAuthorityError(
+        LEGACY_AUTHORITY_ERROR.FINANCE_DEMO_CLUB_FALLBACK_FORBIDDEN,
+        "Finance demo-club fallback is forbidden under hard cutover."
+      );
+    }
+    return createLegacyAuthorityError(
+      LEGACY_AUTHORITY_ERROR.FINANCE_DEMO_CLUB_FALLBACK_FORBIDDEN,
+      "Finance demo-club fallback is not an operational club scope."
+    );
+  }
+  return { ok: true };
+}
+
+/** CRM localStorage / mock SoT is forbidden under hard cutover. */
+export function assertCrmLocalStorageAuthorityAllowed(env) {
+  if (isPlatformHardCutoverEnabled(env)) {
+    return createLegacyAuthorityError(
+      LEGACY_AUTHORITY_ERROR.CRM_LOCALSTORAGE_AUTHORITY_FORBIDDEN,
+      "CRM localStorage/mock authority is forbidden under hard cutover. Use crm_* RPC or UNAVAILABLE."
+    );
+  }
+  return { ok: true };
+}
+
+/** demo-club must never be an operational CRM club scope. */
+export function assertCrmDemoClubFallbackAllowed(clubId, env) {
+  const normalized = String(clubId || "").trim();
+  if (normalized === "demo-club") {
+    if (isPlatformHardCutoverEnabled(env)) {
+      return createLegacyAuthorityError(
+        LEGACY_AUTHORITY_ERROR.CRM_DEMO_CLUB_FALLBACK_FORBIDDEN,
+        "CRM demo-club fallback is forbidden under hard cutover."
+      );
+    }
+    return createLegacyAuthorityError(
+      LEGACY_AUTHORITY_ERROR.CRM_DEMO_CLUB_FALLBACK_FORBIDDEN,
+      "CRM demo-club fallback is not an operational club scope."
     );
   }
   return { ok: true };

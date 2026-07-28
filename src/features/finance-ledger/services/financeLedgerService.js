@@ -1,3 +1,11 @@
+/**
+ * Finance ledger — localStorage compatibility SoT when hard cutover is OFF.
+ * Under hard cutover: all local access is blocked (typed UNAVAILABLE at UI).
+ */
+
+import { guardFinanceLedgerLocalAccess } from "../runtime/resolveFinanceLedgerRuntime.js";
+import { FINANCE_LEDGER_ERROR_CODE } from "../runtime/constants.js";
+
 const STORAGE_PREFIX = "pickleball-finance-ledger-v1::";
 
 function storageKey(clubId) {
@@ -6,6 +14,15 @@ function storageKey(clubId) {
 
 function emptyLedger() {
   return { debts: [], receipts: [], refunds: [] };
+}
+
+function blockedResult(gate) {
+  return {
+    ok: false,
+    code: gate.code || FINANCE_LEDGER_ERROR_CODE.MUTATION_BLOCKED,
+    error: gate.error || gate.code,
+    legacyBlocked: true,
+  };
 }
 
 function readLedger(clubId) {
@@ -51,10 +68,17 @@ function normalizeDebtStatus(debt) {
   return "open";
 }
 
-// --- Debts ---
+/**
+ * @param {string} clubId
+ * @param {Record<string, unknown>} [env]
+ */
+export function listDebtsResult(clubId, { status } = {}, env) {
+  const gate = guardFinanceLedgerLocalAccess(clubId, env);
+  if (!gate.ok) {
+    return { ...blockedResult(gate), items: [] };
+  }
 
-export function listDebts(clubId, { status } = {}) {
-  const ledger = readLedger(clubId);
+  const ledger = readLedger(gate.clubId);
   let debts = ledger.debts.map((debt) => ({
     ...debt,
     balance: debtBalance(debt),
@@ -65,11 +89,20 @@ export function listDebts(clubId, { status } = {}) {
     debts = debts.filter((debt) => debt.status === status);
   }
 
-  return debts.sort((a, b) => String(b.dueDate).localeCompare(String(a.dueDate)));
+  debts.sort((a, b) => String(b.dueDate).localeCompare(String(a.dueDate)));
+  return { ok: true, items: debts };
 }
 
-export function createDebt(clubId, payload = {}) {
-  const ledger = readLedger(clubId);
+/** @deprecated Prefer listDebtsResult — returns [] when blocked (never invents rows). */
+export function listDebts(clubId, options = {}, env) {
+  return listDebtsResult(clubId, options, env).items;
+}
+
+export function createDebt(clubId, payload = {}, env) {
+  const gate = guardFinanceLedgerLocalAccess(clubId, env);
+  if (!gate.ok) return blockedResult(gate);
+
+  const ledger = readLedger(gate.clubId);
   const amount = Number(payload.amount) || 0;
   const debt = {
     id: makeId("debt"),
@@ -83,14 +116,17 @@ export function createDebt(clubId, payload = {}) {
     status: "open",
   };
   ledger.debts.push(debt);
-  writeLedger(clubId, ledger);
-  return { ...debt, balance: amount, status: "open" };
+  writeLedger(gate.clubId, ledger);
+  return { ok: true, data: { ...debt, balance: amount, status: "open" } };
 }
 
-export function updateDebt(clubId, debtId, patch = {}) {
-  const ledger = readLedger(clubId);
+export function updateDebt(clubId, debtId, patch = {}, env) {
+  const gate = guardFinanceLedgerLocalAccess(clubId, env);
+  if (!gate.ok) return blockedResult(gate);
+
+  const ledger = readLedger(gate.clubId);
   const index = ledger.debts.findIndex((row) => row.id === debtId);
-  if (index < 0) return null;
+  if (index < 0) return { ok: false, code: "FINANCE_DEBT_NOT_FOUND", error: "Không tìm thấy công nợ." };
 
   const current = ledger.debts[index];
   const next = {
@@ -103,17 +139,22 @@ export function updateDebt(clubId, debtId, patch = {}) {
   };
   next.status = normalizeDebtStatus(next);
   ledger.debts[index] = next;
-  writeLedger(clubId, ledger);
-  return { ...next, balance: debtBalance(next) };
+  writeLedger(gate.clubId, ledger);
+  return { ok: true, data: { ...next, balance: debtBalance(next) } };
 }
 
-export function recordDebtPayment(clubId, debtId, { amount, receiptId } = {}) {
-  const payment = Number(amount) || 0;
-  if (payment <= 0) return null;
+export function recordDebtPayment(clubId, debtId, { amount, receiptId } = {}, env) {
+  const gate = guardFinanceLedgerLocalAccess(clubId, env);
+  if (!gate.ok) return blockedResult(gate);
 
-  const ledger = readLedger(clubId);
+  const payment = Number(amount) || 0;
+  if (payment <= 0) {
+    return { ok: false, code: "FINANCE_INVALID_PAYMENT", error: "Số tiền thanh toán không hợp lệ." };
+  }
+
+  const ledger = readLedger(gate.clubId);
   const index = ledger.debts.findIndex((row) => row.id === debtId);
-  if (index < 0) return null;
+  if (index < 0) return { ok: false, code: "FINANCE_DEBT_NOT_FOUND", error: "Không tìm thấy công nợ." };
 
   const debt = ledger.debts[index];
   const nextPaid = Math.min(Number(debt.amount) || 0, (Number(debt.paidAmount) || 0) + payment);
@@ -124,12 +165,23 @@ export function recordDebtPayment(clubId, debtId, { amount, receiptId } = {}) {
     debt.lastReceiptId = receiptId;
   }
   ledger.debts[index] = debt;
-  writeLedger(clubId, ledger);
-  return { ...debt, balance: debtBalance(debt) };
+  writeLedger(gate.clubId, ledger);
+  return { ok: true, data: { ...debt, balance: debtBalance(debt) } };
 }
 
-export function getDebtAgingReport(clubId, { asOf = new Date() } = {}) {
-  const openDebts = listDebts(clubId).filter((debt) => debt.balance > 0);
+export function getDebtAgingReport(clubId, { asOf = new Date() } = {}, env) {
+  const listed = listDebtsResult(clubId, {}, env);
+  if (!listed.ok) {
+    return {
+      ...blockedResult(listed),
+      asOf: new Date().toISOString(),
+      totalOutstanding: 0,
+      openCount: 0,
+      buckets: [],
+    };
+  }
+
+  const openDebts = listed.items.filter((debt) => debt.balance > 0);
   const buckets = {
     current: { label: "Chưa đến hạn", count: 0, amount: 0, items: [] },
     days1to30: { label: "1–30 ngày", count: 0, amount: 0, items: [] },
@@ -156,6 +208,7 @@ export function getDebtAgingReport(clubId, { asOf = new Date() } = {}) {
   const totalOutstanding = openDebts.reduce((sum, debt) => sum + debt.balance, 0);
 
   return {
+    ok: true,
     asOf: asOfDate.toISOString(),
     totalOutstanding,
     openCount: openDebts.length,
@@ -163,17 +216,28 @@ export function getDebtAgingReport(clubId, { asOf = new Date() } = {}) {
   };
 }
 
-// --- Receipts ---
+export function listReceiptsResult(clubId, env) {
+  const gate = guardFinanceLedgerLocalAccess(clubId, env);
+  if (!gate.ok) {
+    return { ...blockedResult(gate), items: [] };
+  }
 
-export function listReceipts(clubId) {
-  const ledger = readLedger(clubId);
-  return [...ledger.receipts].sort((a, b) =>
+  const ledger = readLedger(gate.clubId);
+  const items = [...ledger.receipts].sort((a, b) =>
     String(b.createdAt).localeCompare(String(a.createdAt))
   );
+  return { ok: true, items };
 }
 
-export function createReceipt(clubId, payload = {}) {
-  const ledger = readLedger(clubId);
+export function listReceipts(clubId, env) {
+  return listReceiptsResult(clubId, env).items;
+}
+
+export function createReceipt(clubId, payload = {}, env) {
+  const gate = guardFinanceLedgerLocalAccess(clubId, env);
+  if (!gate.ok) return blockedResult(gate);
+
+  const ledger = readLedger(gate.clubId);
   const amount = Number(payload.amount) || 0;
   const receipt = {
     id: makeId("rcpt"),
@@ -204,23 +268,34 @@ export function createReceipt(clubId, payload = {}) {
     }
   }
 
-  writeLedger(clubId, ledger);
-  return receipt;
+  writeLedger(gate.clubId, ledger);
+  return { ok: true, data: receipt };
 }
 
-// --- Refunds ---
+export function listRefundsResult(clubId, { status } = {}, env) {
+  const gate = guardFinanceLedgerLocalAccess(clubId, env);
+  if (!gate.ok) {
+    return { ...blockedResult(gate), items: [] };
+  }
 
-export function listRefunds(clubId, { status } = {}) {
-  const ledger = readLedger(clubId);
+  const ledger = readLedger(gate.clubId);
   let refunds = [...ledger.refunds];
   if (status) {
     refunds = refunds.filter((row) => row.status === status);
   }
-  return refunds.sort((a, b) => String(b.createdAt).localeCompare(String(a.createdAt)));
+  refunds.sort((a, b) => String(b.createdAt).localeCompare(String(a.createdAt)));
+  return { ok: true, items: refunds };
 }
 
-export function createRefund(clubId, payload = {}) {
-  const ledger = readLedger(clubId);
+export function listRefunds(clubId, options = {}, env) {
+  return listRefundsResult(clubId, options, env).items;
+}
+
+export function createRefund(clubId, payload = {}, env) {
+  const gate = guardFinanceLedgerLocalAccess(clubId, env);
+  if (!gate.ok) return blockedResult(gate);
+
+  const ledger = readLedger(gate.clubId);
   const refund = {
     id: makeId("rfnd"),
     receiptId: payload.receiptId || null,
@@ -232,24 +307,32 @@ export function createRefund(clubId, payload = {}) {
     createdAt: new Date().toISOString(),
   };
   ledger.refunds.push(refund);
-  writeLedger(clubId, ledger);
-  return refund;
+  writeLedger(gate.clubId, ledger);
+  return { ok: true, data: refund };
 }
 
-export function updateRefundStatus(clubId, refundId, status) {
-  const ledger = readLedger(clubId);
+export function updateRefundStatus(clubId, refundId, status, env) {
+  const gate = guardFinanceLedgerLocalAccess(clubId, env);
+  if (!gate.ok) return blockedResult(gate);
+
+  const ledger = readLedger(gate.clubId);
   const index = ledger.refunds.findIndex((row) => row.id === refundId);
-  if (index < 0) return null;
+  if (index < 0) {
+    return { ok: false, code: "FINANCE_REFUND_NOT_FOUND", error: "Không tìm thấy yêu cầu hoàn tiền." };
+  }
 
   ledger.refunds[index] = {
     ...ledger.refunds[index],
     status,
     updatedAt: new Date().toISOString(),
   };
-  writeLedger(clubId, ledger);
-  return ledger.refunds[index];
+  writeLedger(gate.clubId, ledger);
+  return { ok: true, data: ledger.refunds[index] };
 }
 
-export function clearFinanceLedger(clubId) {
-  localStorage.removeItem(storageKey(clubId));
+export function clearFinanceLedger(clubId, env) {
+  const gate = guardFinanceLedgerLocalAccess(clubId, env);
+  if (!gate.ok) return blockedResult(gate);
+  localStorage.removeItem(storageKey(gate.clubId));
+  return { ok: true };
 }
