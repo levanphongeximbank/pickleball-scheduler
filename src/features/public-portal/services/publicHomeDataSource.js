@@ -175,8 +175,21 @@ export function getPublicHomeStatsResult(options = {}) {
 
 /**
  * Featured tournaments — reuses EC-04 getPublicTournamentsResult; presentation sort only.
+ * HC ON: do not surface local/mock tournament cards as public home authority.
  */
-export function getPublicHomeFeaturedTournamentsResult(limit = 4) {
+export function getPublicHomeFeaturedTournamentsResult(limit = 4, options = {}) {
+  if (isHardCutoverHome(options)) {
+    return projectSection(
+      createUnavailableResult({
+        ownerSurface: OWNER,
+        source: PUBLIC_PORTAL_DATA_SOURCE.UNKNOWN,
+        data: [],
+        message: PUBLIC_PORTAL_UNAVAILABLE_USER_MESSAGE,
+      }),
+      { sectionId: PUBLIC_HOME_SECTION_ID.FEATURED_TOURNAMENTS }
+    );
+  }
+
   const result = getPublicTournamentsResult();
   const all = Array.isArray(result.data) ? result.data : [];
   const sorted = [...all].sort(
@@ -370,7 +383,7 @@ export function projectHomeNewsSection(newsResult) {
 export function getPublicHomeSyncSections(options = {}) {
   return Object.freeze({
     stats: getPublicHomeStatsResult(options),
-    tournaments: getPublicHomeFeaturedTournamentsResult(4),
+    tournaments: getPublicHomeFeaturedTournamentsResult(4, options),
     liveScores: getPublicHomeLiveScoresResult(options),
     schedule: getPublicHomeScheduleResult(options),
     results: getPublicHomeResultsResult(options),

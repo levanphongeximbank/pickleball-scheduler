@@ -185,15 +185,23 @@ test("Public Portal HC ON — page loader never returns MIXED mock-on-empty", as
   assert.equal(result.status, PUBLIC_DATA_RESULT_STATUS.EMPTY);
 });
 
-test("Public Portal HC ON — home stats/sponsors/liveScores do not inject mock as real", () => {
-  const stats = getPublicHomeStatsResult({ env: HC_ON, hardCutover: true });
-  const sponsors = getPublicHomeSponsorsResult({ env: HC_ON, hardCutover: true });
-  const live = getPublicHomeLiveScoresResult({ env: HC_ON, hardCutover: true });
-  assert.equal(stats.status, PUBLIC_DATA_RESULT_STATUS.UNAVAILABLE);
-  assert.equal(sponsors.status, PUBLIC_DATA_RESULT_STATUS.UNAVAILABLE);
-  assert.equal(live.status, PUBLIC_DATA_RESULT_STATUS.UNAVAILABLE);
-  assert.notEqual(stats.source, PUBLIC_PORTAL_DATA_SOURCE.MOCK);
-  assert.deepEqual(stats.data, []);
+test("Public Portal HC ON — home tournaments do not inject mock as real", () => {
+  const sections = getPublicHomeSyncSections({ env: HC_ON, hardCutover: true });
+  assert.equal(sections.tournaments.status, PUBLIC_DATA_RESULT_STATUS.UNAVAILABLE);
+  assert.deepEqual(sections.tournaments.data, []);
+  assert.notEqual(sections.tournaments.source, PUBLIC_PORTAL_DATA_SOURCE.MOCK);
+  assert.notEqual(sections.tournaments.source, PUBLIC_PORTAL_DATA_SOURCE.MIXED);
+});
+
+test("Invalid public identifier page is wired under PublicLayout", () => {
+  const router = readSrc("src/router.jsx");
+  assert.ok(router.includes("/clubs/:publicId"));
+  assert.ok(router.includes("/courts/:publicId"));
+  assert.ok(router.includes("PublicCatalogNotFoundPage"));
+  const page = readSrc("src/pages/public/PublicCatalogNotFoundPage.jsx");
+  assert.ok(page.includes("PUBLIC_PORTAL_MISSING_ID_USER_MESSAGE"));
+  assert.ok(page.includes("PublicUnavailableState"));
+  assert.equal(page.includes("useClub("), false);
 });
 
 test("Public Portal HC OFF — controlled legacy/demo remains labeled non-durable", () => {

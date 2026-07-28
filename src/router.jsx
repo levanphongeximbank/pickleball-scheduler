@@ -32,7 +32,9 @@ const PublicClubsPage = lazy(() => import("./pages/public/ClubsPage.jsx"));
 const PublicCourtsPage = lazy(() => import("./pages/public/CourtsPage.jsx"));
 const PublicRankingsPage = lazy(() => import("./pages/public/RankingsPage.jsx"));
 const PublicNewsPage = lazy(() => import("./pages/public/NewsPage.jsx"));
-
+const PublicCatalogNotFoundPage = lazy(
+  () => import("./pages/public/PublicCatalogNotFoundPage.jsx")
+);
 
 
 const Dashboard = lazy(() => import("./pages/Dashboard"));
@@ -434,7 +436,9 @@ export default function Router() {
               <Route path="/home" element={<HomePage />} />
               <Route path="/tournaments" element={<PublicTournamentsPage />} />
               <Route path="/clubs" element={<PublicClubsPage />} />
+              <Route path="/clubs/:publicId" element={<PublicCatalogNotFoundPage kind="club" />} />
               <Route path="/courts" element={<PublicCourtsPage />} />
+              <Route path="/courts/:publicId" element={<PublicCatalogNotFoundPage kind="court" />} />
               <Route path="/rankings" element={<PublicRankingsPage />} />
               <Route path="/news" element={<PublicNewsPage />} />
             </Route>

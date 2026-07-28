@@ -453,7 +453,12 @@ export default function HomePage() {
                 onRetry={retry}
               >
                 {(sponsors) => (
-                  <Stack direction="row" flexWrap="wrap" gap={1.5}>
+                  <Stack
+                    direction="row"
+                    useFlexGap
+                    spacing={1.5}
+                    sx={{ flexWrap: "wrap", maxWidth: "100%", overflowWrap: "anywhere" }}
+                  >
                     {sponsors.map((s) => (
                       <Avatar
                         key={s.id}
@@ -461,6 +466,7 @@ export default function HomePage() {
                         sx={{
                           width: 90,
                           height: 40,
+                          maxWidth: "100%",
                           bgcolor: PUBLIC_COLORS.surface,
                           border: `1px solid ${PUBLIC_COLORS.border}`,
                           borderRadius: 1.5,
