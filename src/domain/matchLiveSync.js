@@ -12,6 +12,7 @@ import {
   SCORE_LOG_ACTION,
   SCORE_LOG_SOURCE,
 } from "../models/tournament/scoreLog.js";
+import { assertMatchLiveDirectWriteAllowed } from "../features/platform-hard-cutover/legacyAuthorityPolicy.js";
 
 export const MATCH_LIVE_TABLE = "tournament_match_live";
 
@@ -169,6 +170,11 @@ function toDbRow(record) {
 }
 
 export async function upsertMatchLive(record) {
+  const directGate = assertMatchLiveDirectWriteAllowed();
+  if (!directGate.ok) {
+    return directGate;
+  }
+
   const supabase = getSupabaseClient();
   if (!supabase) {
     return { ok: false, error: "Chua cau hinh Supabase." };

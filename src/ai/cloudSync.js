@@ -22,6 +22,9 @@ import {
   hydrateClubPlayersPickVnRatings,
   pushClubPlayersPickVnRatings,
 } from "../features/pick-vn-rating/services/pickVnClubSyncService.js";
+import { isSecureRuntime } from "../auth/runtime.js";
+import { assertLocalCloudDbAllowed } from "../features/platform-hard-cutover/legacyAuthorityPolicy.js";
+import { isPlatformHardCutoverEnabled } from "../features/platform-hard-cutover/runtimeAuthorityMatrix.js";
 
 /**
  * Abort applying a remote club snapshot when local blob has unsynced writes
@@ -342,10 +345,15 @@ async function pullLegacyFromSupabase(clubId) {
  */
 export async function mergeLegacyClubAiToV3(options = {}) {
   const clubId = options.clubId || getActiveClubId();
+  // Fail-closed (PROD-SEC-G3-B12-01 + hard cutover). Never read/write club_ai_data.
   return pullLegacyFromSupabase(clubId);
 }
 
 function loadCloudDatabase() {
+  const gate = assertLocalCloudDbAllowed();
+  if (!gate.ok) {
+    return null;
+  }
   try {
     const raw = localStorage.getItem(CLOUD_DB_KEY);
     if (!raw) {
@@ -360,6 +368,10 @@ function loadCloudDatabase() {
 }
 
 function saveCloudDatabase(database) {
+  const gate = assertLocalCloudDbAllowed();
+  if (!gate.ok) {
+    throw new Error(gate.error || gate.code);
+  }
   localStorage.setItem(CLOUD_DB_KEY, JSON.stringify(database));
 }
 
@@ -386,7 +398,14 @@ export async function syncClubToCloud(options = {}) {
     });
   }
 
+  if (isSecureRuntime() || isPlatformHardCutoverEnabled()) {
+    return assertLocalCloudDbAllowed();
+  }
+
   const db = loadCloudDatabase();
+  if (!db) {
+    return assertLocalCloudDbAllowed();
+  }
 
   db[clubId] = {
     ...buildClubPayload(clubId),
@@ -421,7 +440,14 @@ export async function pullClubFromCloud(options = {}) {
     return pullFromSupabase(clubId);
   }
 
+  if (isSecureRuntime() || isPlatformHardCutoverEnabled()) {
+    return assertLocalCloudDbAllowed();
+  }
+
   const db = loadCloudDatabase();
+  if (!db) {
+    return assertLocalCloudDbAllowed();
+  }
   const payload = db[clubId];
 
   if (!payload?.data) {
