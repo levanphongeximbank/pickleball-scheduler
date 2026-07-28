@@ -104,6 +104,7 @@
   "tests/court-booking.test.js",
   "tests/tournament-booking.test.js",
   "tests/cloud-sync.test.js",
+  "tests/settings-blank-page-runtime.test.js",
   "tests/prod-sec-g3-b12-01-club-ai-data-lockdown.test.js",
   "tests/competition.test.js",
   "tests/models.test.js",

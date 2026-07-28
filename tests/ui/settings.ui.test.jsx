@@ -3,8 +3,13 @@ import { render, screen } from "./testUtils.jsx";
 import ClubSwitcher from "../../src/components/ClubSwitcher.jsx";
 import { loadClubData, saveClubData } from "../../src/domain/clubStorage.js";
 import userEvent from "@testing-library/user-event";
+import { PlatformRuntimeProvider } from "../../src/core/platform/app/PlatformRuntimeProvider.jsx";
 
 import Settings from "../../src/pages/Settings";
+
+function renderSettings(ui) {
+  return render(<PlatformRuntimeProvider>{ui}</PlatformRuntimeProvider>);
+}
 
 function seedSettingsWithMultipleClubs() {
   localStorage.clear();
@@ -57,7 +62,7 @@ describe("Settings UI", () => {
 
   it("updates Data health metrics when switching active club", async () => {
     const user = userEvent.setup();
-    render(
+    renderSettings(
       <>
         <ClubSwitcher />
         <Settings />
@@ -80,7 +85,7 @@ describe("Settings UI", () => {
 
   it("syncs and pulls cloud data for the active club without mixing clubs", async () => {
     const user = userEvent.setup();
-    render(
+    renderSettings(
       <>
         <ClubSwitcher />
         <Settings />
@@ -92,19 +97,31 @@ describe("Settings UI", () => {
 
     expect(await screen.findByText("Sessions: 5")).toBeInTheDocument();
 
+    // Wait for platform preview to settle so accessAllowed is not mid-update.
+    await screen.findByText(/Core platform preview/i);
+
     await user.click(screen.getByRole("button", { name: "Đồng bộ lên cloud" }));
 
+    expect(
+      await screen.findByText(/Đã đồng bộ cloud cho CLB club-b/i)
+    ).toBeInTheDocument();
+
     const clearedClubData = loadClubData("club-b");
-    saveClubData("club-b", {
-      ...clearedClubData,
-      sessions: [],
-      ai: {
-        ...clearedClubData.ai,
-        history: {},
-        policies: [],
-        rules: [],
+    // source: "cloud" avoids dirty-abort so pull can restore the synced snapshot.
+    saveClubData(
+      "club-b",
+      {
+        ...clearedClubData,
+        sessions: [],
+        ai: {
+          ...clearedClubData.ai,
+          history: {},
+          policies: [],
+          rules: [],
+        },
       },
-    });
+      { source: "cloud" }
+    );
 
     await user.click(screen.getByLabelText("CLB"));
     await user.click(screen.getByRole("option", { name: "CLB Mac dinh" }));
@@ -123,7 +140,7 @@ describe("Settings UI", () => {
     const user = userEvent.setup();
 
     localStorage.removeItem("pickleball-cloud-db-v1");
-    render(<Settings />);
+    renderSettings(<Settings />);
 
     await user.click(screen.getByRole("button", { name: "Lấy dữ liệu từ cloud" }));
 

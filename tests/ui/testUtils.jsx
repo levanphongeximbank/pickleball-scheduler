@@ -11,7 +11,8 @@ import { AuthProvider } from "../../src/context/AuthContext.jsx";
 import { ClubProvider } from "../../src/context/ClubContext.jsx";
 import { SeasonProvider } from "../../src/context/SeasonContext.jsx";
 import { TenantProvider } from "../../src/context/TenantContext.jsx";
-import { DEFAULT_CLUB, getClubDataKey } from "../../src/data/club.js";
+import { DEFAULT_CLUB } from "../../src/data/club.js";
+import { getClubDataKey } from "../../src/domain/clubStorage.js";
 
 export const CLUB_BLOB_KEY = getClubDataKey(DEFAULT_CLUB.id);
 

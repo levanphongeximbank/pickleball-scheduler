@@ -222,7 +222,7 @@ const CourtEnginePage = lazy(() => import("./pages/CourtEnginePage"));
 
 const Statistics = lazy(() => import("./features/statistics"));
 
-const Settings = lazy(() => import("./pages/Settings"));
+const Settings = lazy(() => import("./pages/settings/SettingsRoute.jsx"));
 
 const SelfProfilePage = lazy(() => import("./pages/SelfProfilePage"));
 const PublicPlayerDirectoryPage = lazy(() =>

@@ -37,6 +37,11 @@ import PermissionGate from "../components/auth/PermissionGate.jsx";
 import { PERMISSIONS } from "../auth/permissions.js";
 import { seedDemoClubsRoster } from "../demo/seed/demoClubsRosterSeed.js";
 import { purgeDemoSeedData } from "../demo/seed/purgeDemoSeed.js";
+import { assertLocalCloudDbAllowed } from "../features/platform-hard-cutover/legacyAuthorityPolicy.js";
+import {
+  resolveSettingsPageState,
+  SETTINGS_PAGE_STATUS,
+} from "./settings/settingsPageState.js";
 
 function loadSnapshots(clubId) {
   try {
@@ -143,6 +148,29 @@ export default function Settings() {
     [activeClubId, dataVersion]
   );
   const cloudSyncMode = useMemo(() => getCloudSyncMode(), []);
+  const localCloudDbReadable = useMemo(
+    () => assertLocalCloudDbAllowed().ok === true,
+    []
+  );
+  const pageState = useMemo(
+    () =>
+      resolveSettingsPageState({
+        activeClubId,
+        activeClub,
+        accessAllowed,
+        platformPreview,
+        localCloudDbReadable,
+        cloudSyncMode,
+      }),
+    [
+      activeClubId,
+      activeClub,
+      accessAllowed,
+      platformPreview,
+      localCloudDbReadable,
+      cloudSyncMode,
+    ]
+  );
   const isProductionBuild = import.meta.env.PROD;
   const backupAvailable = exportText.trim().length > 0;
 
@@ -414,7 +442,7 @@ export default function Settings() {
   };
 
   return (
-    <Box>
+    <Box data-testid="settings-page" data-settings-status={pageState.status}>
       <Typography variant="h4" fontWeight="bold" sx={{ mb: 3 }}>
         ⚙️ Cài đặt
       </Typography>
@@ -422,6 +450,36 @@ export default function Settings() {
       <Stack spacing={2}>
         {statusMessage && (
           <Alert severity={statusMessage.type}>{statusMessage.text}</Alert>
+        )}
+
+        {pageState.status === SETTINGS_PAGE_STATUS.LOADING && (
+          <Alert severity="info" data-testid="settings-state-loading">
+            {pageState.message}
+          </Alert>
+        )}
+
+        {pageState.status === SETTINGS_PAGE_STATUS.EMPTY && (
+          <Alert severity="warning" data-testid="settings-state-empty">
+            {pageState.message}
+          </Alert>
+        )}
+
+        {pageState.status === SETTINGS_PAGE_STATUS.UNAUTHORIZED && (
+          <Alert severity="warning" data-testid="settings-state-unauthorized">
+            {pageState.message}
+          </Alert>
+        )}
+
+        {pageState.status === SETTINGS_PAGE_STATUS.UNAVAILABLE && (
+          <Alert severity="info" data-testid="settings-state-unavailable">
+            {pageState.message}
+          </Alert>
+        )}
+
+        {pageState.status === SETTINGS_PAGE_STATUS.RUNTIME_ERROR && (
+          <Alert severity="error" data-testid="settings-state-runtime-error">
+            {pageState.message}
+          </Alert>
         )}
 
         {!isProductionBuild && <RbacDevPanel />}
@@ -483,10 +541,12 @@ export default function Settings() {
               )}
             </Stack>
             <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-              CLB đang làm việc: {activeClub?.name}
+              CLB đang làm việc: {activeClub?.name || "Chưa chọn CLB"}
               {lastCloudSync
                 ? ` • Lần sync gần nhất: ${new Date(lastCloudSync).toLocaleString("vi-VN")}`
-                : " • Chưa có bản sync local"}
+                : localCloudDbReadable
+                  ? " • Chưa có bản sync local"
+                  : " • Sync local không khả dụng trên runtime này"}
             </Typography>
 
             <Stack direction={{ xs: "column", sm: "row" }} spacing={2}>
