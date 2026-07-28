@@ -1,0 +1,7 @@
+{
+  "marker": "PLATFORM_HARD_CUTOVER_01_PHASE_04_EVIDENCE_TEMPLATE",
+  "databaseWrites": 0,
+  "stagingMutations": 0,
+  "productionMutations": 0,
+  "notes": "Fill during Staging rehearsal / Phase 5 only."
+}

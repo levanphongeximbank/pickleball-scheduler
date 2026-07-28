@@ -484,5 +484,9 @@
   "tests/reporting-analytics-reporting-04-dashboard-ui-adoption.test.js",
   "tests/reporting-analytics-reporting-05-final-certification.test.js",
   "tests/business-modules-gap-reconciliation.test.js",
-  "tests/business-modules-final-certification.test.js"
+  "tests/business-modules-final-certification.test.js",
+  "tests/platform-hard-cutover-01-phase-04-authority.test.js",
+  "tests/platform-hard-cutover-01-phase-04-competition-ssot.test.js",
+  "tests/platform-hard-cutover-01-phase-04-rating.test.js",
+  "tests/platform-hard-cutover-01-phase-04-package.test.js"
 ]

@@ -1,0 +1,30 @@
+{
+  "workstream": "PLATFORM-HARD-CUTOVER-01",
+  "phase": "04",
+  "marker": "PLATFORM_HARD_CUTOVER_01_PHASE_04_PR_READY_FOR_OWNER_MERGE",
+  "baseline": "origin/main@27e6c536",
+  "mutations": {
+    "databaseWrites": 0,
+    "stagingApply": false,
+    "productionApply": false,
+    "vercelFlagChanges": false,
+    "redeploy": false
+  },
+  "packages": {
+    "destructiveSql": "sql/destructive/",
+    "m8CompetitionRemoteSsot": "sql/m8-competition-remote-ssot/",
+    "reseed": "sql/reseed/",
+    "runtimeAuthority": "src/features/platform-hard-cutover/",
+    "competitionSsotAdapters": "src/features/competition-engine/remote-ssot/",
+    "manifests": "manifests/"
+  },
+  "m8Status": "PACKAGE_COMPLETE_NOT_APPLIED",
+  "acceptanceCriteria": [
+    "ONE_CANONICAL_WRITER_PER_DOMAIN",
+    "NO_LEGACY_WRITER",
+    "NO_LOCALSTORAGE_AUTHORITY",
+    "NO_MOCK_PERSISTENCE",
+    "NO_SILENT_FALLBACK",
+    "NO_HYBRID_RUNTIME"
+  ]
+}
