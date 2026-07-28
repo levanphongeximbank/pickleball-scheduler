@@ -19,6 +19,8 @@ export {
   assertInMemoryCompetitionProdAllowed,
   assertMockPersistenceAllowed,
   rejectSilentFallback,
+  assertPrivatePairingLegacyPickerAllowed,
+  assertPrivatePairingSilentRatingDefaultAllowed,
 } from "./legacyAuthorityPolicy.js";
 
 export {

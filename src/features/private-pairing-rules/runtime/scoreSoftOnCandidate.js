@@ -9,6 +9,8 @@ import {
   shareGroup,
   shareTeam,
 } from "./evaluateHardOnCandidate.js";
+import { resolvePrivatePairingPlayerRating } from "./privatePairingRatingPolicy.js";
+import { isPlatformHardCutoverEnabled } from "../../platform-hard-cutover/runtimeAuthorityMatrix.js";
 
 /**
  * @param {number|null|undefined} weight
@@ -224,15 +226,37 @@ export function scoreSoftPrivatePairingRules(candidate, softRules = [], history 
 
 /**
  * Balance / fairness / history helpers for ranking explanation.
+ * Under hard cutover, missing ratings are not silently defaulted to 3.5 —
+ * balance confidence fails closed to 0 when any member lacks a rating.
+ *
+ * @param {Array} teams
+ * @param {Record<string, object>} [playersById]
+ * @param {{ hardCutover?: boolean, env?: Record<string, unknown>|null }} [options]
  */
-export function computeBalanceScore(teams, playersById = {}) {
+export function computeBalanceScore(teams, playersById = {}, options = {}) {
+  const hardCutover =
+    options.hardCutover === true ||
+    (options.hardCutover !== false && isPlatformHardCutoverEnabled(options.env));
+
+  let missingUnderHardCutover = false;
   const totals = (teams || []).map((team) =>
     (team.members || team.playerIds || []).reduce((sum, player) => {
       const id = playerIdOf(player);
       const snapshot = playersById[id] || (typeof player === "object" ? player : {});
-      return sum + Number(snapshot.rating ?? snapshot.level ?? snapshot.skillLevel ?? 3.5);
+      const resolved = resolvePrivatePairingPlayerRating(snapshot, {
+        hardCutover,
+        env: options.env,
+      });
+      if (!resolved.ok) {
+        missingUnderHardCutover = true;
+        return sum;
+      }
+      return sum + resolved.rating;
     }, 0)
   );
+  if (hardCutover && missingUnderHardCutover) {
+    return 0;
+  }
   if (totals.length < 2) {
     return 100;
   }

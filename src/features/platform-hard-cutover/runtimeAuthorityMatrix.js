@@ -103,6 +103,23 @@ export const RUNTIME_AUTHORITY_MATRIX = Object.freeze([
     failClosedError: "PUBLIC_NEWS_LIVE_UNAVAILABLE",
     verificationTest: "tests/platform-hard-cutover-01-phase-04-authority.test.js",
   },
+  {
+    domain: "private_pairing_rules",
+    productionAdapter:
+      "privatePairingRulesRepository → security-definer RPC only; live load via private_pairing_get_active_rules_for_scope",
+    allowedFlag: HARD_CUTOVER_FLAG,
+    forbiddenFallback: [
+      "legacy_blob picker (loadPlayersForClub / registry)",
+      "localStorage rule SoT",
+      "mock rule persistence",
+      "direct SPA writes to private_pairing_* tables",
+      "silent rating=3.5 default under hard cutover",
+    ],
+    expectedBackend:
+      "private_pairing_rule_sets / private_pairing_rules / private_pairing_rule_targets / private_pairing_rule_audit_logs via RPC",
+    failClosedError: "PRIVATE_PAIRING_LEGACY_PICKER_FORBIDDEN",
+    verificationTest: "tests/private-pairing-hard-cutover-01.test.js",
+  },
 ]);
 
 export function listRuntimeAuthorityDomains() {

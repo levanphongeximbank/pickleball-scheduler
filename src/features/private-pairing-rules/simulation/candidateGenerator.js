@@ -125,6 +125,8 @@ function generateTeamCandidates(input = {}) {
       5000
     ),
     mixedDoubles: input.mixedDoubles === true || input.options?.mixedDoubles === true,
+    hardCutover: input.hardCutover ?? input.options?.hardCutover,
+    env: input.env || input.options?.env,
   });
 
   const players = input.players || [];

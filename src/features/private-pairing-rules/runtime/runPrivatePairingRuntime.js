@@ -91,7 +91,10 @@ export function evaluatePrivatePairingCandidate(candidate, options = {}) {
 
   const softResult = scoreSoftPrivatePairingRules(candidate, soft, options.history || {});
   const playersById = options.context?.playersById || {};
-  const balanceScore = computeBalanceScore(candidate.teams || [], playersById);
+  const balanceScore = computeBalanceScore(candidate.teams || [], playersById, {
+    hardCutover: options.hardCutover,
+    env: options.env || options.context?.env,
+  });
   const fairnessScore = computeFairnessScore(candidate.teams || []);
   const historyScore = computeHistoryScore(softResult);
   const constraintScore = softResult.constraintScore;
@@ -276,7 +279,33 @@ export function runPrivatePairingRuntime(input = {}) {
     maxCandidates: input.maxCandidates ?? 64,
     maxIterations: input.maxIterations ?? 128,
     mixedDoubles: input.mixedDoubles === true,
+    hardCutover: input.hardCutover,
+    env: input.env || input.context?.env,
   });
+
+  if (generation.ok === false) {
+    return {
+      ok: false,
+      errorCode: generation.errorCode || PRIVATE_PAIRING_RUNTIME_CODE.INSUFFICIENT_RATED_PLAYERS,
+      selectedCandidate: null,
+      rejectedCandidateCount: 0,
+      hardConstraintsApplied: [],
+      softConstraintsSatisfied: [],
+      softConstraintsMissed: [],
+      balanceScore: 0,
+      fairnessScore: 0,
+      historyScore: 0,
+      constraintScore: 0,
+      finalScore: 0,
+      ruleSetVersion: PRIVATE_PAIRING_RUNTIME_VERSION,
+      warnings: generation.warnings || [],
+      rejectedSamples: [],
+      meta: {
+        excludedPlayerIds: generation.excludedPlayerIds || [],
+        hardCutoverRatingGate: true,
+      },
+    };
+  }
 
   const hard = resolved.hardRules || splitHardAndSoftRules(resolved.rules).hard;
   const evaluated = [];
