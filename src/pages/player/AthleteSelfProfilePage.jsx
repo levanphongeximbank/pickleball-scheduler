@@ -22,7 +22,6 @@ import GroupsIcon from "@mui/icons-material/Groups";
 import ChevronRightIcon from "@mui/icons-material/ChevronRight";
 
 import { useAuth } from "../../context/AuthContext.jsx";
-import { useTenant } from "../../context/TenantContext.jsx";
 import { ROLE_LABELS } from "../../auth/roles.js";
 import { resolveSelfProfileRoleLabel } from "../../features/identity/utils/selfProfileVariant.js";
 import {
@@ -35,8 +34,13 @@ import AthleteRatingSummary from "../../features/pick-vn-rating/components/Athle
 import PickVnRatingBadge from "../../features/pick-vn-rating/components/PickVnRatingBadge.jsx";
 import { getPickVnRatingByAuthUserId } from "../../features/pick-vn-rating/services/pickVnRatingService.js";
 import { RATING_STATUS } from "../../features/pick-vn-rating/constants/ratingStatus.js";
-import { getMyClubSummary } from "../../features/club/services/clubMembershipRequestService.js";
 import { CLUB_STATUS_LABELS } from "../../features/club/constants/clubStatus.js";
+import { useMyClubMembershipFromContext } from "../../features/club/hooks/MyClubMembershipContext.jsx";
+import { buildMyClubSummaryFromClub } from "../../features/club/services/clubActiveMembershipService.js";
+import {
+  MEMBERSHIP_PHASE,
+  resolveMembershipPhase,
+} from "../../features/club/membership/membershipState.js";
 import {
   PROFILE_GENDER_OPTIONS,
   toProfileGenderFormValue,
@@ -53,7 +57,7 @@ import {
 
 export default function AthleteSelfProfilePage() {
   const { user, refresh } = useAuth();
-  const { currentTenantId } = useTenant();
+  const membership = useMyClubMembershipFromContext();
 
   const [displayName, setDisplayName] = useState("");
   const [phone, setPhone] = useState("");
@@ -119,11 +123,16 @@ export default function AthleteSelfProfilePage() {
   }, [ratingTick, user?.id]);
 
   const clubSummary = useMemo(() => {
-    if (!user?.clubId) {
+    if (!membership?.ok || !membership.hasActiveMembership || !membership.clubId) {
       return null;
     }
-    return getMyClubSummary(user.clubId, currentTenantId);
-  }, [currentTenantId, user]);
+    if (membership.club?.id !== membership.clubId) {
+      return null;
+    }
+    return buildMyClubSummaryFromClub(membership.club);
+  }, [membership]);
+
+  const membershipPhase = resolveMembershipPhase(membership);
 
   const handleSaveProfile = async () => {
     if (!profileReady) {
@@ -204,7 +213,7 @@ export default function AthleteSelfProfilePage() {
     ratingRecord.currentRating != null;
 
   const roleLabel =
-    resolveSelfProfileRoleLabel(user) || ROLE_LABELS[user.role] || "Vận động viên";
+    resolveSelfProfileRoleLabel(user, membership) || ROLE_LABELS[user.role] || "Vận động viên";
 
   const foundationReady =
     foundationSeeded &&
@@ -360,6 +369,10 @@ export default function AthleteSelfProfilePage() {
                         <Typography variant="body2" color="text.secondary">
                           {clubSummary.name} · {clubSummary.memberCount} thành viên ·{" "}
                           {CLUB_STATUS_LABELS[clubSummary.status] || clubSummary.status}
+                        </Typography>
+                      ) : membershipPhase === MEMBERSHIP_PHASE.ERROR ? (
+                        <Typography variant="body2" color="text.secondary">
+                          Không tải được thông tin CLB
                         </Typography>
                       ) : (
                         <Typography variant="body2" color="text.secondary">

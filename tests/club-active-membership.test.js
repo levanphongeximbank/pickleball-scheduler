@@ -77,6 +77,14 @@ test("MyClubPage uses membership resolver not profiles.club_id", () => {
   assert.doesNotMatch(page, /const clubId = user\?\.clubId \|\| user\?\.club_id/);
 });
 
+test("active membership resolver is canonical-only and ignores legacy profile club fields", () => {
+  const svc = readSrc("src/features/club/services/clubActiveMembershipService.js");
+  assert.match(svc, /rpcV2GetMyActiveMembership/);
+  assert.match(svc, /clearAthleteClubLink\(user\.id\)/);
+  assert.doesNotMatch(svc, /source:\s*"legacy-profile"/);
+  assert.doesNotMatch(svc, /const clubId = user\.clubId \|\| user\.club_id \|\| null/);
+});
+
 test("authStorage V2 strips legacy club link fields", () => {
   const src = readSrc("src/auth/authStorage.js");
   assert.match(src, /isClubStorageV2Enabled/);
