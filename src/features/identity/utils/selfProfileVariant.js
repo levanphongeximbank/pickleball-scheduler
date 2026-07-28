@@ -1,5 +1,4 @@
 import { ROLES, normalizeRole } from "../../../auth/roles.js";
-import { getClubById } from "../../../domain/clubService.js";
 import {
   isClubPresident,
   isClubVicePresident,
@@ -14,7 +13,14 @@ export const SELF_PROFILE_VARIANT = Object.freeze({
 /**
  * Chủ tịch / Phó chủ tịch CLB là VĐV có chức danh → dùng hồ sơ VĐV.
  */
-export function resolveSelfProfileVariant(user) {
+function resolveCanonicalMembershipClub(membership) {
+  if (!membership?.ok || !membership?.hasActiveMembership || !membership?.clubId) {
+    return null;
+  }
+  return membership.club?.id === membership.clubId ? membership.club : null;
+}
+
+export function resolveSelfProfileVariant(user, membership = null) {
   if (!user?.id) {
     return SELF_PROFILE_VARIANT.STAFF;
   }
@@ -24,23 +30,19 @@ export function resolveSelfProfileVariant(user) {
     return SELF_PROFILE_VARIANT.ATHLETE;
   }
 
-  const clubId = user.clubId || user.club_id;
-  if (clubId) {
-    const club = getClubById(clubId);
-    if (club && (isClubPresident(user, club) || isClubVicePresident(user, club))) {
-      return SELF_PROFILE_VARIANT.ATHLETE;
-    }
+  const club = resolveCanonicalMembershipClub(membership);
+  if (club && (isClubPresident(user, club) || isClubVicePresident(user, club))) {
+    return SELF_PROFILE_VARIANT.ATHLETE;
   }
 
   return SELF_PROFILE_VARIANT.STAFF;
 }
 
-export function resolveSelfProfileRoleLabel(user) {
-  const clubId = user?.clubId || user?.club_id;
-  if (!clubId) {
+export function resolveSelfProfileRoleLabel(user, membership = null) {
+  const club = resolveCanonicalMembershipClub(membership);
+  if (!club) {
     return null;
   }
 
-  const club = getClubById(clubId);
   return resolveClubGovernanceTitle(user, club);
 }

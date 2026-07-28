@@ -1,4 +1,3 @@
-import { isClubStorageV2Enabled } from "../config/clubRegistryFlags.js";
 import { rpcV2GetMyActiveMembership } from "./clubStorageV2RpcService.js";
 import { clearAthleteClubLink } from "../storage/athleteClubLinkStore.js";
 
@@ -252,14 +251,14 @@ export function buildMyClubSummaryFromClub(club) {
 
 /** Home member count SoT when Club Storage V2 is on — never local extension. */
 export function resolveMyClubHomeMemberCount({ clubSummary, clubStats } = {}) {
-  if (isClubStorageV2Enabled()) {
-    const n = clubSummary?.memberCount;
-    return Number.isFinite(Number(n)) ? Number(n) : 0;
+  const n = clubSummary?.memberCount;
+  if (Number.isFinite(Number(n))) {
+    return Number(n);
   }
   if (clubStats?.activeMemberCount != null) {
     return Number(clubStats.activeMemberCount) || 0;
   }
-  return Number(clubSummary?.memberCount) || 0;
+  return 0;
 }
 
 /**
@@ -308,19 +307,7 @@ export async function resolveMyActiveClubMembership(user) {
 }
 
 async function resolveMyActiveClubMembershipInner(user) {
-
-  if (!isClubStorageV2Enabled()) {
-    const clubId = user.clubId || user.club_id || null;
-    return {
-      ok: true,
-      clubId,
-      hasActiveMembership: Boolean(clubId),
-      club: null,
-      source: "legacy-profile",
-    };
-  }
-
-  // V2: never trust profile / local athlete link
+  // Hard cutover: never trust profile / local athlete link for membership authority.
   clearAthleteClubLink(user.id);
 
   const result = await rpcV2GetMyActiveMembership();
