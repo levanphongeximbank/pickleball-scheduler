@@ -13,6 +13,7 @@ import {
   COMMUNICATION_RUNTIME_MODE,
   COMMUNICATION_RUNTIME_MODE_VALUES,
 } from "./constants.js";
+import { isPlatformHardCutoverEnabled } from "../../platform-hard-cutover/runtimeAuthorityMatrix.js";
 
 /**
  * @param {string} name
@@ -119,17 +120,31 @@ export function resolveCommunicationRuntimeMode(options = {}) {
     }
   }
 
+  const hardCutover =
+    options.hardCutover === true || isPlatformHardCutoverEnabled(env);
+
   if (options.allowForceMode === true && options.forceMode) {
     const forced = String(options.forceMode).toUpperCase();
     if (COMMUNICATION_RUNTIME_MODE_VALUES.includes(forced)) {
       if (
         forced === COMMUNICATION_RUNTIME_MODE.DEMO &&
-        productionBuild &&
+        (productionBuild || hardCutover) &&
         !isTestEnv(env)
       ) {
         return {
           mode: COMMUNICATION_RUNTIME_MODE.UNAVAILABLE,
-          reason: "FORCE_DEMO_REJECTED_IN_PRODUCTION_BUILD",
+          reason: hardCutover
+            ? "FORCE_DEMO_REJECTED_UNDER_HARD_CUTOVER"
+            : "FORCE_DEMO_REJECTED_IN_PRODUCTION_BUILD",
+          demoAllowed: false,
+          queryParamIgnored,
+        };
+      }
+      // Under hard cutover, DEMO is never an authority — even in tests with force.
+      if (forced === COMMUNICATION_RUNTIME_MODE.DEMO && hardCutover) {
+        return {
+          mode: COMMUNICATION_RUNTIME_MODE.UNAVAILABLE,
+          reason: "MESSAGING_DEMO_AUTHORITY_FORBIDDEN",
           demoAllowed: false,
           queryParamIgnored,
         };
@@ -141,6 +156,24 @@ export function resolveCommunicationRuntimeMode(options = {}) {
         queryParamIgnored,
       };
     }
+  }
+
+  // Hard cutover: never DEMO / mock persistence. PRODUCTION only when certified.
+  if (hardCutover) {
+    if (depsCertified && remoteReady) {
+      return {
+        mode: COMMUNICATION_RUNTIME_MODE.PRODUCTION,
+        reason: "HARD_CUTOVER_PRODUCTION_READY",
+        demoAllowed: false,
+        queryParamIgnored,
+      };
+    }
+    return {
+      mode: COMMUNICATION_RUNTIME_MODE.UNAVAILABLE,
+      reason: "MESSAGING_DEMO_AUTHORITY_FORBIDDEN",
+      demoAllowed: false,
+      queryParamIgnored,
+    };
   }
 
   // Production build: never DEMO. PRODUCTION only when certified + gates.

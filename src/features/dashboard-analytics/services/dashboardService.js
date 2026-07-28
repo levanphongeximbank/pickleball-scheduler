@@ -25,6 +25,11 @@ import {
   resolvePreviousPeriod,
 } from "../constants/timeRangePresets.js";
 import { generateOperationalInsights } from "./insightEngine.js";
+import { isPlatformHardCutoverEnabled } from "../../platform-hard-cutover/runtimeAuthorityMatrix.js";
+import {
+  assertDashboardAnalyticsMockAllowed,
+  assertDashboardAnalyticsLocalStorageAllowed,
+} from "../../platform-hard-cutover/legacyAuthorityPolicy.js";
 
 const WEEKDAY_LABELS = ["T2", "T3", "T4", "T5", "T6", "T7", "CN"];
 
@@ -102,6 +107,64 @@ function buildEmptyDashboardPayload({ clubId, from, to, observedAt }) {
     insights: [],
     fieldStates: {},
     meta: { from, to, clubId, isEmpty: true, mode: "live", liveFailed: false },
+  };
+}
+
+/**
+ * Typed unavailable payload under hard cutover (no mock invention, no LS SoT).
+ */
+function buildUnavailableDashboardPayload({
+  clubId,
+  from,
+  to,
+  observedAt,
+  reasonCode,
+  reason,
+}) {
+  const provenance = createProvenanceMetadata({
+    state: REPORT_PROVENANCE.UNAVAILABLE,
+    sourceKind: REPORT_SOURCE_KIND.DASHBOARD_ADAPTER,
+    observedAt,
+    fallbackReason: reasonCode || "dashboard_hard_cutover_unavailable",
+    warnings: [reason || "Dashboard analytics unavailable under hard cutover"],
+  });
+  const sourceState = {
+    state: REPORTING_PRESENTATION_SOURCE_STATE.UNAVAILABLE,
+    label: "UNAVAILABLE",
+    reasonCode: reasonCode || "DASHBOARD_ANALYTICS_MOCK_FORBIDDEN",
+    observedAt,
+  };
+
+  return {
+    ok: false,
+    isMock: false,
+    unavailable: true,
+    sourceState,
+    provenance,
+    summary: null,
+    revenueSeries: [],
+    newCustomersSeries: [],
+    skillDistribution: [],
+    genderDistribution: [],
+    topPlayers: [],
+    topCourts: [],
+    heatmap: { weekdays: [], hours: [], cells: [] },
+    peakHours: { busiest: [], quietest: [] },
+    recentBookings: [],
+    upcomingTournaments: [],
+    insights: [],
+    fieldStates: {},
+    meta: {
+      from,
+      to,
+      clubId,
+      isEmpty: true,
+      mode: "unavailable",
+      liveFailed: false,
+      hardCutover: true,
+      reasonCode: reasonCode || "DASHBOARD_ANALYTICS_MOCK_FORBIDDEN",
+      reason: reason || null,
+    },
   };
 }
 
@@ -487,14 +550,40 @@ function attachInsights(payload, sections) {
  *   to: string,
  *   sections?: object,
  *   mode?: 'live'|'demo'|'preview',
+ *   env?: Record<string, unknown>,
  * }} options
  */
-export function getDashboardAnalytics({ clubId, from, to, sections, mode = "live" }) {
+export function getDashboardAnalytics({
+  clubId,
+  from,
+  to,
+  sections,
+  mode = "live",
+  env,
+}) {
   const prev = resolvePreviousPeriod(from, to);
   const observedAt = nowIso();
   const resolvedMode = mode === "demo" || mode === "preview" ? mode : "live";
+  const hardCutover = isPlatformHardCutoverEnabled(env);
 
   if (resolvedMode === "demo" || resolvedMode === "preview") {
+    const mockGate = assertDashboardAnalyticsMockAllowed(env);
+    if (mockGate.ok === false || hardCutover) {
+      return attachInsights(
+        buildUnavailableDashboardPayload({
+          clubId,
+          from,
+          to,
+          observedAt,
+          reasonCode:
+            mockGate.code || "DASHBOARD_ANALYTICS_MOCK_FORBIDDEN",
+          reason:
+            mockGate.error ||
+            "Dashboard mock/demo/preview is forbidden under hard cutover.",
+        }),
+        sections
+      );
+    }
     const payload = buildMockDashboardPayload(from, to, prev.from, prev.to);
     const provenance = classifyDashboardPayloadProvenance(payload, {
       liveFailed: false,
@@ -522,6 +611,26 @@ export function getDashboardAnalytics({ clubId, from, to, sections, mode = "live
           explicitDemoOrPreview: true,
         },
       },
+      sections
+    );
+  }
+
+  // Hard cutover: local club/court blob is not Prod analytics SoT.
+  // Prefer typed UNAVAILABLE until reporting_* projections are wired.
+  if (hardCutover) {
+    const lsGate = assertDashboardAnalyticsLocalStorageAllowed(env);
+    return attachInsights(
+      buildUnavailableDashboardPayload({
+        clubId,
+        from,
+        to,
+        observedAt,
+        reasonCode:
+          lsGate.code || "DASHBOARD_ANALYTICS_LOCALSTORAGE_FORBIDDEN",
+        reason:
+          lsGate.error ||
+          "Dashboard requires reporting projections under hard cutover; localStorage authority is forbidden.",
+      }),
       sections
     );
   }

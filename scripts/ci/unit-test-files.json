@@ -489,5 +489,10 @@
   "tests/platform-hard-cutover-01-phase-04-competition-ssot.test.js",
   "tests/platform-hard-cutover-01-phase-04-rating.test.js",
   "tests/platform-hard-cutover-01-phase-04-package.test.js",
-  "tests/private-pairing-hard-cutover-01.test.js"
+  "tests/private-pairing-hard-cutover-01.test.js",
+  "tests/platform-hard-cutover-01-pre-staging-authority.test.js",
+  "tests/platform-hard-cutover-01-pre-staging-coaching.test.js",
+  "tests/platform-hard-cutover-01-pre-staging-messaging.test.js",
+  "tests/platform-hard-cutover-01-pre-staging-dashboard.test.js",
+  "tests/platform-hard-cutover-01-pre-staging-reseed.test.js"
 ]
