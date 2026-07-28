@@ -13,6 +13,10 @@ import {
   assertMessagingDemoAuthorityAllowed,
   assertDashboardAnalyticsMockAllowed,
   assertDashboardAnalyticsLocalStorageAllowed,
+  assertFinanceLocalStorageAuthorityAllowed,
+  assertFinanceDemoClubFallbackAllowed,
+  assertCrmLocalStorageAuthorityAllowed,
+  assertCrmDemoClubFallbackAllowed,
   LEGACY_AUTHORITY_ERROR,
 } from "../src/features/platform-hard-cutover/legacyAuthorityPolicy.js";
 
@@ -78,7 +82,7 @@ test("pre-staging: every matrix row has expanded contract fields", () => {
   }
 });
 
-test("pre-staging: coaching/messaging/dashboard legacy asserts under HC", () => {
+test("pre-staging: coaching/messaging/dashboard/finance/crm legacy asserts under HC", () => {
   const env = { [HARD_CUTOVER_FLAG]: "true" };
   assert.equal(assertCoachingLegacyAuthorityAllowed(env).ok, false);
   assert.equal(
@@ -92,6 +96,18 @@ test("pre-staging: coaching/messaging/dashboard legacy asserts under HC", () => 
   );
   assert.equal(assertDashboardAnalyticsMockAllowed(env).ok, false);
   assert.equal(assertDashboardAnalyticsLocalStorageAllowed(env).ok, false);
+  assert.equal(assertFinanceLocalStorageAuthorityAllowed(env).ok, false);
+  assert.equal(
+    assertFinanceLocalStorageAuthorityAllowed(env).code,
+    LEGACY_AUTHORITY_ERROR.FINANCE_LOCALSTORAGE_AUTHORITY_FORBIDDEN
+  );
+  assert.equal(assertCrmLocalStorageAuthorityAllowed(env).ok, false);
+  assert.equal(
+    assertCrmLocalStorageAuthorityAllowed(env).code,
+    LEGACY_AUTHORITY_ERROR.CRM_LOCALSTORAGE_AUTHORITY_FORBIDDEN
+  );
+  assert.equal(assertFinanceDemoClubFallbackAllowed("demo-club", env).ok, false);
+  assert.equal(assertCrmDemoClubFallbackAllowed("demo-club", env).ok, false);
 });
 
 test("pre-staging: legacy asserts open when hard cutover off", () => {
@@ -100,4 +116,6 @@ test("pre-staging: legacy asserts open when hard cutover off", () => {
   assert.equal(assertMessagingDemoAuthorityAllowed(env).ok, true);
   assert.equal(assertDashboardAnalyticsMockAllowed(env).ok, true);
   assert.equal(assertDashboardAnalyticsLocalStorageAllowed(env).ok, true);
+  assert.equal(assertFinanceLocalStorageAuthorityAllowed(env).ok, true);
+  assert.equal(assertCrmLocalStorageAuthorityAllowed(env).ok, true);
 });

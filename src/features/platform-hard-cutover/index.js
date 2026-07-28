@@ -26,6 +26,10 @@ export {
   assertMessagingDemoAuthorityAllowed,
   assertDashboardAnalyticsMockAllowed,
   assertDashboardAnalyticsLocalStorageAllowed,
+  assertFinanceLocalStorageAuthorityAllowed,
+  assertFinanceDemoClubFallbackAllowed,
+  assertCrmLocalStorageAuthorityAllowed,
+  assertCrmDemoClubFallbackAllowed,
 } from "./legacyAuthorityPolicy.js";
 
 export {
