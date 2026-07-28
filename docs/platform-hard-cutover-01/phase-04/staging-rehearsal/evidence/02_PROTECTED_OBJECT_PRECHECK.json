@@ -1,0 +1,22 @@
+{
+  "marker": "PLATFORM_HARD_CUTOVER_01_STAGING_REHEARSAL_PROTECTED_PRECHECK",
+  "capturedAt": "2026-07-28T01:25:00Z",
+  "project_ref": "qyewbxjsiiyufanzcjcq",
+  "identityPreservePrecheck": "PASS",
+  "protectedObjectGuards": "PASS",
+  "counts": {
+    "auth_n": 87,
+    "profiles_n": 87,
+    "venues_n": 2,
+    "tenant_members_n": 3,
+    "roles_n": 12,
+    "permissions_n": 144,
+    "role_permissions_n": 432,
+    "plans_n": 4,
+    "plan_limits_n": 4,
+    "catalog_rpcs": 4,
+    "super_admin_profiles": 2
+  },
+  "baselineMatch": true,
+  "notes": "Counts unchanged vs 01_BACKUP_LOGICAL_SNAPSHOT after partial M8 apply+rollback. No wipe executed."
+}

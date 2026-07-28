@@ -1,0 +1,34 @@
+{
+  "marker": "PLATFORM_HARD_CUTOVER_01_STAGING_REHEARSAL_DESTRUCTIVE_RUNTIME",
+  "orderedWipe": "NOT_EXECUTED — hard stop on backup gate",
+  "club_ai_data_drop": "NOT_EXECUTED — club_ai_data still present",
+  "postWipeVerify": "NOT_RUN",
+  "stagingSpaDeploy": "NOT_EXECUTED — VERCEL_CLI=ABSENT",
+  "flags": {
+    "VITE_PLATFORM_HARD_CUTOVER_ENABLED": "NOT_SET_ON_STAGING",
+    "VITE_COMPETITION_REMOTE_SSOT_ENABLED": "NOT_SET_ON_STAGING",
+    "VITE_PICK_VN_RATING_V5_ENABLED": "NOT_SET_ON_STAGING"
+  },
+  "reseed": "NOT_EXECUTED",
+  "ownerLoginRbacTenant": "NOT_LIVE_TESTED (no flag/deploy cutover)",
+  "competitionE2ELive": "NOT_RUN_AGAINST_STAGING_CUTOVER",
+  "finalizedResultSingleWriter": "NOT_CERTIFIED (M8 not applied)",
+  "ratingIdempotency": "NOT_RUN",
+  "publicCatalog": "STRUCTURAL_OK (4 catalog RPCs present; no wipe)",
+  "sixAcceptanceCriteria": {
+    "ONE_CANONICAL_WRITER_PER_DOMAIN": "NOT_CERTIFIED",
+    "NO_LEGACY_WRITER": "NOT_CERTIFIED",
+    "NO_LOCALSTORAGE_AUTHORITY": "NOT_CERTIFIED",
+    "NO_MOCK_PERSISTENCE": "NOT_CERTIFIED",
+    "NO_SILENT_FALLBACK": "NOT_CERTIFIED",
+    "NO_HYBRID_RUNTIME": "NOT_CERTIFIED"
+  },
+  "legacyAuthorityScan": "CODE_PACKAGE_PRESENT_ON_MAIN — live Staging runtime not cut over",
+  "rollbackReadiness": {
+    "m8RollbackPackage": "EXECUTED_SUCCESS (cleanup incomplete apply)",
+    "stagingProviderRestore": "REQUIRES_OWNER_CONSOLE — fresh backup missing",
+    "wipeRollback": "N/A (wipe not run)"
+  },
+  "productionMutations": 0,
+  "productionAccess": "NONE (Production MCP not used; auto-review blocked accidental Production SQL)"
+}

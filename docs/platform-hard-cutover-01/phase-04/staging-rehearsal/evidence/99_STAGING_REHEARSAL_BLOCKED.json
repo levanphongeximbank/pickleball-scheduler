@@ -1,0 +1,56 @@
+{
+  "marker": "PLATFORM_HARD_CUTOVER_01_STAGING_REHEARSAL_BLOCKED",
+  "capturedAt": "2026-07-28T01:16:20.625Z",
+  "appTip": "27e231a2c1a6346cd5f435c7fd85135ceae2c711",
+  "stagingIdentity": {
+    "mcpServer": "project-0-pickleball-scheduler-supabase-staging",
+    "project_ref": "qyewbxjsiiyufanzcjcq",
+    "production_ref_blocked": "expuvcohlcjzvrrauvud",
+    "tipMigrationBeforeRehearsal": "20260728000727:prod_sec_g3_b12_01_club_ai_data_anon_write_lockdown",
+    "tipMigrationAfterPartialM8Rollback": "hard_cutover_m8_competition_ssot_90_rollback_incomplete recorded in schema_migrations"
+  },
+  "backup": {
+    "providerConsoleBackup": "NOT_VERIFIABLE_VIA_MCP",
+    "freshPreRehearsalBackup": "MISSING",
+    "latestLocalLogicalBackup": "pickleball-scheduler-staging-qyewbxjsiiyufanzcjcq-20260725-153201-REPORTING-03.zip",
+    "latestLocalBackupAgeDays": 3,
+    "verdict": "FAIL_STOP — absolute constraint: stop if backup cannot be verified"
+  },
+  "blockers": [
+    {
+      "id": "B-STG-01",
+      "severity": "HIGH",
+      "title": "Fresh Staging backup not verified",
+      "detail": "No Owner-console snapshot for 2026-07-28; MCP cannot verify provider backups; latest local zip is 2026-07-25."
+    },
+    {
+      "id": "B-STG-02",
+      "severity": "HIGH",
+      "title": "M8 tenant_id type incompatible with Staging identity",
+      "detail": "M8 package uses tenant_id uuid; Staging venues.id and user_venue_id() are text. RLS apply failed: uuid = text. Incomplete M8 rolled back via 90_ROLLBACK package."
+    },
+    {
+      "id": "B-STG-03",
+      "severity": "HIGH",
+      "title": "Vercel CLI absent — Staging SPA deploy/flags blocked",
+      "detail": "Cannot redeploy Staging SPA or enable VITE_PLATFORM_HARD_CUTOVER_ENABLED / VITE_COMPETITION_REMOTE_SSOT_ENABLED / VITE_PICK_VN_RATING_V5_ENABLED from this agent environment."
+    },
+    {
+      "id": "B-STG-04",
+      "severity": "MEDIUM",
+      "title": "Ordered wipe not executed (hard stop)",
+      "detail": "Wipe/DROP club_ai_data deferred because backup gate FAIL."
+    }
+  ],
+  "stagingMutations": {
+    "attempted": [
+      "hard_cutover_m8_competition_ssot_10_tables",
+      "hard_cutover_m8_competition_ssot_20_indexes",
+      "hard_cutover_m8_competition_ssot_30_rls(FAILED)",
+      "hard_cutover_m8_competition_ssot_90_rollback_incomplete"
+    ],
+    "wipeExecuted": false,
+    "club_ai_data_dropped": false,
+    "productionMutations": 0
+  }
+}

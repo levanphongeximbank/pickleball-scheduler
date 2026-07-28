@@ -2,15 +2,16 @@
 
 ## Sequence
 
-1. Backup Staging (Owner console)
+1. Backup Staging (Owner console) — see `STAGING_BACKUP_OWNER_PROCEDURE.md`
 2. Identity preserve precheck (`00_IDENTITY_PRESERVE_PRECHECK.sql`)
 3. Protected guards (`01_PROTECTED_OBJECT_GUARDS.sql`)
-4. Apply migration families M1→M8 (manifest order); verify each
+4. Apply migration families M1→M8 (manifest order); verify each  
+   - M8 requires **text** `tenant_id` / `p_tenant_id` (B-STG-02 hotfix)
 5. Ordered wipe (`10_ORDERED_WIPE.sql`)
 6. DROP `club_ai_data` (`20_DROP_CLUB_AI_DATA.sql`)
 7. Post verify (`30_POST_WIPE_VERIFY.sql`)
-8. Redeploy Preview/Staging SPA (includes hard-cutover code)
-9. Enable flags (Staging only):  
+8. Redeploy Preview/Staging SPA — see `STAGING_VERCEL_DASHBOARD_DEPLOY_PROCEDURE.md`
+9. Enable flags (Staging/Preview only):  
    `VITE_PLATFORM_HARD_CUTOVER_ENABLED=true`  
    `VITE_COMPETITION_REMOTE_SSOT_ENABLED=true`  
    `VITE_PICK_VN_RATING_V5_ENABLED=true` (optional after rating seed)

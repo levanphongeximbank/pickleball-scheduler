@@ -27,6 +27,17 @@ test("phase-04 package: M8 finalize RPC is single writer name", () => {
   );
   assert.equal(rpc.includes("competition_ssot_finalize_match_result"), true);
   assert.equal(rpc.includes("THE single finalized-result writer"), true);
+  assert.equal(/p_tenant_id\s+uuid\b/.test(rpc), false);
+  assert.equal(rpc.includes("p_tenant_id text"), true);
+});
+
+test("phase-04 package: M8 tables use text tenant_id", () => {
+  const tables = fs.readFileSync(
+    path.join(PHASE, "sql/m8-competition-remote-ssot/10_TABLES.sql"),
+    "utf8"
+  );
+  assert.equal(/tenant_id\s+uuid\b/.test(tables), false);
+  assert.equal(tables.includes("tenant_id text NOT NULL"), true);
 });
 
 test("phase-04 package: drop club_ai_data authored", () => {

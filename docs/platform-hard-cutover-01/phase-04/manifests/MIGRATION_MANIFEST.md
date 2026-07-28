@@ -14,7 +14,7 @@
 | M5 | News | `docs/news-public-content/news-02/10..60_*.sql` + news-03 + news-04 public RPC | `news_*` + public RPC | `99_*.sql` | `90_*.sql` | — |
 | M6 | Coaching | `docs/coaching-training/coaching-02/10..60_*.sql` + coaching-04 helpers/RLS/RPC | `coaching_*` | `99_*.sql` | `90_*.sql` | Player/Court |
 | M7 | Competition Core cc02 | `docs/competition-core/supabase-cc02*.sql` | `player_ratings`/`rating_history` (Elo internal) | staging evidence | recreate | CORE flag |
-| M8 | Competition Remote SSOT | `docs/platform-hard-cutover-01/phase-04/sql/m8-competition-remote-ssot/10..50_*.sql` | `competition_ssot_*` + finalize RPC | `99_VERIFY.sql` | `90_ROLLBACK.sql` | identity `user_venue_id` |
+| M8 | Competition Remote SSOT | `docs/platform-hard-cutover-01/phase-04/sql/m8-competition-remote-ssot/10..50_*.sql` | `competition_ssot_*` + finalize RPC; **`tenant_id` / `p_tenant_id` = text** (match `venues.id` + `user_venue_id()`) | `99_VERIFY.sql` | `90_ROLLBACK.sql` | identity `user_venue_id` |
 | M9 | Team Tournament remainder | Staging families `phase_tt2*..tt6b_*` (promote; do not invent) | TT RPCs beyond P1 | staging verify | partial | TT P1 present |
 | M10 | Referee V5 | Staging `phase_v5a_referee*`,`phase_v5d*` | referee V5 RPCs | staging | partial | M8 preferred |
 | M11 | Private pairing digest | Staging `private_pairing_pr4_digest_patch` | digest patch | — | — | RC1 on Prod |
