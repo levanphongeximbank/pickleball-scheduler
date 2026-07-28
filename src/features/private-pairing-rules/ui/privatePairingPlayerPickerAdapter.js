@@ -1,6 +1,7 @@
 /**
  * Shared picker adapter for Private Pairing (and reusable by Daily Play / Tournament later).
- * When canonical player/club flags are OFF, falls back to legacy blob/registry.
+ * When canonical player/club flags are OFF and hard cutover is OFF, falls back to legacy blob/registry.
+ * Under hard cutover, legacy_blob picker is forbidden (fail-closed).
  */
 
 import { loadPlayersForClub } from "../../../domain/clubStorage.js";
@@ -19,6 +20,12 @@ import {
   MAPPING_STATUS,
   CANONICAL_WARNING_CODE,
 } from "../../club/repositories/index.js";
+import {
+  assertPrivatePairingLegacyPickerAllowed,
+  LEGACY_AUTHORITY_ERROR,
+} from "../../platform-hard-cutover/legacyAuthorityPolicy.js";
+import { isPlatformHardCutoverEnabled } from "../../platform-hard-cutover/runtimeAuthorityMatrix.js";
+import { PRIVATE_PAIRING_RUNTIME_CODE } from "../runtime/runtimeCodes.js";
 
 /**
  * Load profiles (id, player_id, display_name) for the given member user ids from Supabase.
@@ -64,6 +71,30 @@ export const PRIVATE_PAIRING_PICKER_MESSAGES = Object.freeze({
   NO_CLUB_MESSAGE,
   NO_PLAYERS_IN_CLUB_MESSAGE,
 });
+
+function legacyPickerForbiddenResult(gate) {
+  return {
+    ok: false,
+    code:
+      gate?.code ||
+      LEGACY_AUTHORITY_ERROR.PRIVATE_PAIRING_LEGACY_PICKER_FORBIDDEN ||
+      PRIVATE_PAIRING_RUNTIME_CODE.LEGACY_PICKER_FORBIDDEN,
+    message:
+      gate?.error ||
+      "Private Pairing legacy_blob picker is forbidden under hard cutover.",
+    data: [],
+    options: [],
+    source: "forbidden",
+    warnings: [
+      {
+        code:
+          gate?.code || LEGACY_AUTHORITY_ERROR.PRIVATE_PAIRING_LEGACY_PICKER_FORBIDDEN,
+      },
+    ],
+    mappingSummary: {},
+    legacyBlocked: true,
+  };
+}
 
 /**
  * @param {object[]} players
@@ -158,9 +189,19 @@ export function createPrivatePairingPlayerPickerAdapter(deps = {}) {
     }),
     isClubCanonical = () => isCanonicalClubRepositoryEnabled(envSource),
     isPlayerCanonical = () => isCanonicalPlayerRepositoryEnabled(envSource),
+    isHardCutover = () => isPlatformHardCutoverEnabled(envSource),
     legacyListClubs = legacyListClubsForTenant,
     legacyLoadPlayers = loadPlayersForClub,
   } = deps;
+
+  function assertLegacyPickerGate() {
+    if (typeof isHardCutover === "function" ? isHardCutover() : Boolean(isHardCutover)) {
+      return assertPrivatePairingLegacyPickerAllowed({
+        VITE_PLATFORM_HARD_CUTOVER_ENABLED: "true",
+      });
+    }
+    return assertPrivatePairingLegacyPickerAllowed(envSource);
+  }
 
   async function listSourceClubs({ tenantId, userContext } = {}) {
     if (isClubCanonical()) {
@@ -173,6 +214,11 @@ export function createPrivatePairingPlayerPickerAdapter(deps = {}) {
         ...result,
         data: (result.data || []).filter((club) => !isLocalDefaultClub(club)),
       };
+    }
+
+    const gate = assertLegacyPickerGate();
+    if (!gate.ok) {
+      return legacyPickerForbiddenResult(gate);
     }
 
     const legacy = tenantId ? legacyListClubs(tenantId) : legacyListClubs(null);
@@ -251,6 +297,11 @@ export function createPrivatePairingPlayerPickerAdapter(deps = {}) {
               : NO_PLAYERS_IN_CLUB_MESSAGE
             : null,
       };
+    }
+
+    const gate = assertLegacyPickerGate();
+    if (!gate.ok) {
+      return legacyPickerForbiddenResult(gate);
     }
 
     let players;

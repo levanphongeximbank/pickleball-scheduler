@@ -488,5 +488,6 @@
   "tests/platform-hard-cutover-01-phase-04-authority.test.js",
   "tests/platform-hard-cutover-01-phase-04-competition-ssot.test.js",
   "tests/platform-hard-cutover-01-phase-04-rating.test.js",
-  "tests/platform-hard-cutover-01-phase-04-package.test.js"
+  "tests/platform-hard-cutover-01-phase-04-package.test.js",
+  "tests/private-pairing-hard-cutover-01.test.js"
 ]

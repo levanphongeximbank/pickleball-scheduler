@@ -16,6 +16,9 @@ export const LEGACY_AUTHORITY_ERROR = Object.freeze({
   COMPETITION_INMEMORY_PROD_FORBIDDEN: "COMPETITION_INMEMORY_PROD_FORBIDDEN",
   SILENT_FALLBACK_FORBIDDEN: "SILENT_FALLBACK_FORBIDDEN",
   MOCK_PERSISTENCE_FORBIDDEN: "MOCK_PERSISTENCE_FORBIDDEN",
+  PRIVATE_PAIRING_LEGACY_PICKER_FORBIDDEN: "PRIVATE_PAIRING_LEGACY_PICKER_FORBIDDEN",
+  PRIVATE_PAIRING_SILENT_RATING_DEFAULT_FORBIDDEN:
+    "PRIVATE_PAIRING_SILENT_RATING_DEFAULT_FORBIDDEN",
 });
 
 export function createLegacyAuthorityError(code, message) {
@@ -86,4 +89,29 @@ export function rejectSilentFallback(reason) {
     LEGACY_AUTHORITY_ERROR.SILENT_FALLBACK_FORBIDDEN,
     reason || "Silent fallback is forbidden."
   );
+}
+
+/**
+ * Private Pairing admin picker may use legacy_blob only when hard cutover is OFF.
+ * Under hard cutover, canonical club/player repositories are required.
+ */
+export function assertPrivatePairingLegacyPickerAllowed(env) {
+  if (isPlatformHardCutoverEnabled(env)) {
+    return createLegacyAuthorityError(
+      LEGACY_AUTHORITY_ERROR.PRIVATE_PAIRING_LEGACY_PICKER_FORBIDDEN,
+      "Private Pairing legacy_blob picker is forbidden under hard cutover. Use canonical club/player repositories."
+    );
+  }
+  return { ok: true };
+}
+
+/** Silent rating=3.5 defaults are forbidden for Private Pairing under hard cutover. */
+export function assertPrivatePairingSilentRatingDefaultAllowed(env) {
+  if (isPlatformHardCutoverEnabled(env)) {
+    return createLegacyAuthorityError(
+      LEGACY_AUTHORITY_ERROR.PRIVATE_PAIRING_SILENT_RATING_DEFAULT_FORBIDDEN,
+      "Silent rating default 3.5 is forbidden under hard cutover. Provide an explicit rating or exclude the player."
+    );
+  }
+  return { ok: true };
 }

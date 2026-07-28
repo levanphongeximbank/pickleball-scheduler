@@ -52,6 +52,13 @@ export {
 } from "./generateTeamCandidates.js";
 
 export {
+  LEGACY_PRIVATE_PAIRING_RATING_DEFAULT,
+  extractRawPrivatePairingRating,
+  resolvePrivatePairingPlayerRating,
+  partitionPlayersByPrivatePairingRating,
+} from "./privatePairingRatingPolicy.js";
+
+export {
   runPrivatePairingRuntime,
   evaluatePrivatePairingCandidate,
   evaluatePrivatePairingMatchOption,

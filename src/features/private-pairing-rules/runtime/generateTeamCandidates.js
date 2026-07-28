@@ -1,8 +1,15 @@
 import { createSeededRng, seededShuffle } from "./seededRng.js";
 import { playerIdOf } from "./evaluateHardOnCandidate.js";
+import {
+  partitionPlayersByPrivatePairingRating,
+  resolvePrivatePairingPlayerRating,
+} from "./privatePairingRatingPolicy.js";
+import { PRIVATE_PAIRING_RUNTIME_CODE } from "./runtimeCodes.js";
+import { isPlatformHardCutoverEnabled } from "../../platform-hard-cutover/runtimeAuthorityMatrix.js";
 
-function playerRating(player) {
-  return Number(player?.rating ?? player?.level ?? 3.5);
+function playerRating(player, options = {}) {
+  const resolved = resolvePrivatePairingPlayerRating(player, options);
+  return resolved.ok ? resolved.rating : null;
 }
 
 function normalizeGender(value) {
@@ -16,7 +23,7 @@ function normalizeGender(value) {
   return "unknown";
 }
 
-function pairSequential(players, teamSize = 2) {
+function pairSequential(players, teamSize = 2, ratingOptions = {}) {
   const teams = [];
   for (let i = 0; i + teamSize - 1 < players.length; i += teamSize) {
     const members = players.slice(i, i + teamSize);
@@ -27,14 +34,16 @@ function pairSequential(players, teamSize = 2) {
       playerIds: members.map((p) => playerIdOf(p)),
       avgLevel:
         Math.round(
-          (members.reduce((sum, p) => sum + playerRating(p), 0) / members.length) * 100
+          (members.reduce((sum, p) => sum + (playerRating(p, ratingOptions) || 0), 0) /
+            members.length) *
+            100
         ) / 100,
     });
   }
   return teams;
 }
 
-function pairMixed(males, females) {
+function pairMixed(males, females, ratingOptions = {}) {
   const pairCount = Math.min(males.length, females.length);
   const teams = [];
   for (let index = 0; index < pairCount; index += 1) {
@@ -48,7 +57,9 @@ function pairMixed(males, females) {
       playerIds: members.map((p) => playerIdOf(p)),
       avgLevel:
         Math.round(
-          (members.reduce((sum, p) => sum + playerRating(p), 0) / members.length) * 100
+          (members.reduce((sum, p) => sum + (playerRating(p, ratingOptions) || 0), 0) /
+            members.length) *
+            100
         ) / 100,
     });
   }
@@ -57,19 +68,51 @@ function pairMixed(males, females) {
 
 /**
  * @param {Object} input
- * @returns {{ candidates: Array<{ id: string, teams: Array }>, iterations: number, truncated: boolean }}
+ * @returns {{
+ *   candidates: Array<{ id: string, teams: Array }>,
+ *   iterations: number,
+ *   truncated: boolean,
+ *   warnings?: Array<object>,
+ *   excludedPlayerIds?: string[],
+ *   errorCode?: string|null,
+ *   ok?: boolean,
+ * }}
  */
 export function generateTeamPairingCandidates(input = {}) {
-  const players = Array.isArray(input.players) ? [...input.players] : [];
+  const hardCutover =
+    input.hardCutover === true ||
+    (input.hardCutover !== false && isPlatformHardCutoverEnabled(input.env));
+  const ratingOptions = { hardCutover, env: input.env };
+  const partitioned = partitionPlayersByPrivatePairingRating(input.players || [], ratingOptions);
+  const players = [...partitioned.eligible];
   const teamSize = Number(input.teamSize ?? 2) || 2;
   const maxCandidates = Math.max(1, Number(input.maxCandidates ?? 64));
   const maxIterations = Math.max(maxCandidates, Number(input.maxIterations ?? 128));
   const rng = createSeededRng(input.seed ?? 1);
   const mixedDoubles = input.mixedDoubles === true;
+  const warnings = [...partitioned.warnings];
+  const excludedPlayerIds = partitioned.excluded.map((p) => playerIdOf(p)).filter(Boolean);
+
+  const failClosedInsufficient = () => ({
+    ok: false,
+    candidates: [],
+    iterations: 0,
+    truncated: false,
+    warnings,
+    excludedPlayerIds,
+    errorCode: PRIVATE_PAIRING_RUNTIME_CODE.INSUFFICIENT_RATED_PLAYERS,
+  });
+
+  if (hardCutover && partitioned.excluded.length > 0) {
+    const minNeeded = mixedDoubles ? 2 : teamSize;
+    if (players.length < minNeeded) {
+      return failClosedInsufficient();
+    }
+  }
 
   const sortPlayers = (list) =>
     [...list].sort((a, b) => {
-      const ratingDiff = playerRating(b) - playerRating(a);
+      const ratingDiff = (playerRating(b, ratingOptions) || 0) - (playerRating(a, ratingOptions) || 0);
       if (ratingDiff !== 0) {
         return ratingDiff;
       }
@@ -96,26 +139,38 @@ export function generateTeamPairingCandidates(input = {}) {
   if (mixedDoubles) {
     const males = sortPlayers(players.filter((p) => normalizeGender(p.gender) === "male"));
     const females = sortPlayers(players.filter((p) => normalizeGender(p.gender) === "female"));
-    pushTeams(pairMixed(males, females));
+    if (hardCutover && (males.length < 1 || females.length < 1)) {
+      return failClosedInsufficient();
+    }
+    pushTeams(pairMixed(males, females, ratingOptions));
 
     while (unique.size < maxCandidates && iterations < maxIterations) {
       iterations += 1;
-      pushTeams(pairMixed(seededShuffle(males, rng), seededShuffle(females, rng)));
+      pushTeams(
+        pairMixed(seededShuffle(males, rng), seededShuffle(females, rng), ratingOptions)
+      );
     }
   } else {
+    if (hardCutover && players.length < teamSize) {
+      return failClosedInsufficient();
+    }
     const sortedBase = sortPlayers(players);
-    pushTeams(pairSequential(sortedBase, teamSize));
+    pushTeams(pairSequential(sortedBase, teamSize, ratingOptions));
 
     while (unique.size < maxCandidates && iterations < maxIterations) {
       iterations += 1;
-      pushTeams(pairSequential(seededShuffle(sortedBase, rng), teamSize));
+      pushTeams(pairSequential(seededShuffle(sortedBase, rng), teamSize, ratingOptions));
     }
   }
 
   return {
+    ok: true,
     candidates: [...unique.values()],
     iterations,
     truncated: iterations >= maxIterations,
+    warnings,
+    excludedPlayerIds,
+    errorCode: null,
   };
 }
 
