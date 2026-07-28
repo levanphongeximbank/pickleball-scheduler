@@ -39,9 +39,6 @@ import {
   PUBLIC_CLUBS_COURTS_SOURCE,
 } from "../src/features/public-portal/services/publicClubsCourtsDataSource.js";
 import {
-  getPublicHomeLiveScoresResult,
-  getPublicHomeSponsorsResult,
-  getPublicHomeStatsResult,
   getPublicHomeSyncSections,
 } from "../src/features/public-portal/services/publicHomeDataSource.js";
 import {
@@ -185,12 +182,16 @@ test("Public Portal HC ON — page loader never returns MIXED mock-on-empty", as
   assert.equal(result.status, PUBLIC_DATA_RESULT_STATUS.EMPTY);
 });
 
-test("Public Portal HC ON — home tournaments do not inject mock as real", () => {
+test("Public Portal HC ON — home tournaments/stats/sponsors do not inject mock as real", () => {
   const sections = getPublicHomeSyncSections({ env: HC_ON, hardCutover: true });
   assert.equal(sections.tournaments.status, PUBLIC_DATA_RESULT_STATUS.UNAVAILABLE);
   assert.deepEqual(sections.tournaments.data, []);
   assert.notEqual(sections.tournaments.source, PUBLIC_PORTAL_DATA_SOURCE.MOCK);
   assert.notEqual(sections.tournaments.source, PUBLIC_PORTAL_DATA_SOURCE.MIXED);
+  assert.equal(sections.stats.status, PUBLIC_DATA_RESULT_STATUS.UNAVAILABLE);
+  assert.equal(sections.sponsors.status, PUBLIC_DATA_RESULT_STATUS.UNAVAILABLE);
+  assert.equal(sections.liveScores.status, PUBLIC_DATA_RESULT_STATUS.UNAVAILABLE);
+  assert.deepEqual(sections.stats.data, []);
 });
 
 test("Invalid public identifier page is wired under PublicLayout", () => {
