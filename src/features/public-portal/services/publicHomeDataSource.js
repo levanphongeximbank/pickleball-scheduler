@@ -28,6 +28,24 @@ import {
 } from "../../experience-channels/public-portal/data-source/index.js";
 import { getPublicClubsResult, getPublicCourtsResult } from "./publicClubsCourtsDataSource.js";
 import { getPublicTournamentsResult } from "./publicTournamentsRankingsDataSource.js";
+import { PUBLIC_PORTAL_UNAVAILABLE_USER_MESSAGE } from "../runtime/constants.js";
+import { resolvePublicPortalRuntime } from "../runtime/resolvePublicPortalRuntime.js";
+
+function readEnvBag(options = {}) {
+  if (options.env && typeof options.env === "object") return options.env;
+  const vite =
+    typeof import.meta !== "undefined" && import.meta.env ? import.meta.env : {};
+  const node =
+    typeof globalThis.process !== "undefined" ? globalThis.process.env || {} : {};
+  return { ...node, ...vite };
+}
+
+function isHardCutoverHome(options = {}) {
+  return resolvePublicPortalRuntime({
+    env: readEnvBag(options),
+    hardCutover: options.hardCutover,
+  }).isHardCutover;
+}
 
 /** NEWS-04 status/source literals — avoid importing publicNewsService (Supabase chain). */
 const NEWS_STATUS = Object.freeze({
@@ -116,8 +134,21 @@ function computeLiveStatsRows() {
 /**
  * Honest Home stats — mock counters are never labeled LIVE.
  * Does not fabricate minimum counts when live zeros are real.
+ * HC ON: no localStorage stats authority and no PUBLIC_STATS mock-on-empty.
  */
-export function getPublicHomeStatsResult() {
+export function getPublicHomeStatsResult(options = {}) {
+  if (isHardCutoverHome(options)) {
+    return projectSection(
+      createUnavailableResult({
+        ownerSurface: OWNER,
+        source: PUBLIC_PORTAL_DATA_SOURCE.UNKNOWN,
+        data: [],
+        message: PUBLIC_PORTAL_UNAVAILABLE_USER_MESSAGE,
+      }),
+      { sectionId: PUBLIC_HOME_SECTION_ID.STATS }
+    );
+  }
+
   try {
     const live = computeLiveStatsRows();
     if (live) {
@@ -160,10 +191,10 @@ export function getPublicHomeFeaturedTournamentsResult(limit = 4) {
 }
 
 /**
- * Featured clubs — reuses EC-03 getPublicClubsResult.
+ * Featured clubs — reuses EC-03 getPublicClubsResult (HC-aware).
  */
-export function getPublicHomeFeaturedClubsResult(limit = 5) {
-  const result = getPublicClubsResult();
+export function getPublicHomeFeaturedClubsResult(limit = 5, options = {}) {
+  const result = getPublicClubsResult(options);
   const all = Array.isArray(result.data) ? result.data : [];
   return projectSection(result, {
     sectionId: PUBLIC_HOME_SECTION_ID.FEATURED_CLUBS,
@@ -172,10 +203,10 @@ export function getPublicHomeFeaturedClubsResult(limit = 5) {
 }
 
 /**
- * Featured courts — reuses EC-03 getPublicCourtsResult.
+ * Featured courts — reuses EC-03 getPublicCourtsResult (HC-aware).
  */
-export function getPublicHomeFeaturedCourtsResult(limit = 4) {
-  const result = getPublicCourtsResult();
+export function getPublicHomeFeaturedCourtsResult(limit = 4, options = {}) {
+  const result = getPublicCourtsResult(options);
   const all = Array.isArray(result.data) ? result.data : [];
   return projectSection(result, {
     sectionId: PUBLIC_HOME_SECTION_ID.FEATURED_COURTS,
@@ -183,38 +214,61 @@ export function getPublicHomeFeaturedCourtsResult(limit = 4) {
   });
 }
 
-export function getPublicHomeLiveScoresResult() {
+function mockOrUnavailableHomeSection(sectionId, mockData, options = {}) {
+  if (isHardCutoverHome(options)) {
+    return projectSection(
+      createUnavailableResult({
+        ownerSurface: OWNER,
+        source: PUBLIC_PORTAL_DATA_SOURCE.UNKNOWN,
+        data: [],
+        message: PUBLIC_PORTAL_UNAVAILABLE_USER_MESSAGE,
+      }),
+      { sectionId }
+    );
+  }
   return projectSection(
-    createMockResult({ data: MOCK_LIVE_SCORES, ownerSurface: OWNER }),
-    { sectionId: PUBLIC_HOME_SECTION_ID.LIVE_SCORES }
+    createMockResult({ data: mockData, ownerSurface: OWNER }),
+    { sectionId }
   );
 }
 
-export function getPublicHomeScheduleResult() {
-  return projectSection(
-    createMockResult({ data: MOCK_SCHEDULE, ownerSurface: OWNER }),
-    { sectionId: PUBLIC_HOME_SECTION_ID.SCHEDULE }
+export function getPublicHomeLiveScoresResult(options = {}) {
+  return mockOrUnavailableHomeSection(
+    PUBLIC_HOME_SECTION_ID.LIVE_SCORES,
+    MOCK_LIVE_SCORES,
+    options
   );
 }
 
-export function getPublicHomeResultsResult() {
-  return projectSection(
-    createMockResult({ data: MOCK_RESULTS, ownerSurface: OWNER }),
-    { sectionId: PUBLIC_HOME_SECTION_ID.RESULTS }
+export function getPublicHomeScheduleResult(options = {}) {
+  return mockOrUnavailableHomeSection(
+    PUBLIC_HOME_SECTION_ID.SCHEDULE,
+    MOCK_SCHEDULE,
+    options
   );
 }
 
-export function getPublicHomeUpcomingEventsResult() {
-  return projectSection(
-    createMockResult({ data: MOCK_UPCOMING_EVENTS, ownerSurface: OWNER }),
-    { sectionId: PUBLIC_HOME_SECTION_ID.UPCOMING_EVENTS }
+export function getPublicHomeResultsResult(options = {}) {
+  return mockOrUnavailableHomeSection(
+    PUBLIC_HOME_SECTION_ID.RESULTS,
+    MOCK_RESULTS,
+    options
   );
 }
 
-export function getPublicHomeSponsorsResult() {
-  return projectSection(
-    createMockResult({ data: MOCK_SPONSORS, ownerSurface: OWNER }),
-    { sectionId: PUBLIC_HOME_SECTION_ID.SPONSORS }
+export function getPublicHomeUpcomingEventsResult(options = {}) {
+  return mockOrUnavailableHomeSection(
+    PUBLIC_HOME_SECTION_ID.UPCOMING_EVENTS,
+    MOCK_UPCOMING_EVENTS,
+    options
+  );
+}
+
+export function getPublicHomeSponsorsResult(options = {}) {
+  return mockOrUnavailableHomeSection(
+    PUBLIC_HOME_SECTION_ID.SPONSORS,
+    MOCK_SPONSORS,
+    options
   );
 }
 
@@ -311,18 +365,19 @@ export function projectHomeNewsSection(newsResult) {
 /**
  * Aggregate Home section results. One section failure does not rewrite others.
  * Caller-controlled retry: re-invoke this function (no internal retry loop).
+ * Pass `{ hardCutover: true }` or HC env to fail closed without mock-on-empty.
  */
-export function getPublicHomeSyncSections() {
+export function getPublicHomeSyncSections(options = {}) {
   return Object.freeze({
-    stats: getPublicHomeStatsResult(),
+    stats: getPublicHomeStatsResult(options),
     tournaments: getPublicHomeFeaturedTournamentsResult(4),
-    liveScores: getPublicHomeLiveScoresResult(),
-    schedule: getPublicHomeScheduleResult(),
-    results: getPublicHomeResultsResult(),
-    clubs: getPublicHomeFeaturedClubsResult(5),
-    courts: getPublicHomeFeaturedCourtsResult(4),
-    upcomingEvents: getPublicHomeUpcomingEventsResult(),
-    sponsors: getPublicHomeSponsorsResult(),
+    liveScores: getPublicHomeLiveScoresResult(options),
+    schedule: getPublicHomeScheduleResult(options),
+    results: getPublicHomeResultsResult(options),
+    clubs: getPublicHomeFeaturedClubsResult(5, options),
+    courts: getPublicHomeFeaturedCourtsResult(4, options),
+    upcomingEvents: getPublicHomeUpcomingEventsResult(options),
+    sponsors: getPublicHomeSponsorsResult(options),
   });
 }
 

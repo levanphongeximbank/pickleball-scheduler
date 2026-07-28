@@ -61,12 +61,14 @@ export default function CourtCard({ court }) {
               {court.address}
             </Typography>
           </Stack>
-          <Stack direction="row" spacing={0.75} alignItems="center">
-            <SportsTennisIcon sx={{ fontSize: 16, color: PUBLIC_COLORS.lime }} />
-            <Typography variant="body2" color={PUBLIC_COLORS.textMuted}>
-              {court.courtCount} sân
-            </Typography>
-          </Stack>
+          {typeof court.courtCount === "number" ? (
+            <Stack direction="row" spacing={0.75} alignItems="center">
+              <SportsTennisIcon sx={{ fontSize: 16, color: PUBLIC_COLORS.lime }} />
+              <Typography variant="body2" color={PUBLIC_COLORS.textMuted}>
+                {court.courtCount} sân
+              </Typography>
+            </Stack>
+          ) : null}
           {court.pricePerHour && (
             <Typography variant="body2" fontWeight={700} color={PUBLIC_COLORS.lime}>
               {court.pricePerHour}

@@ -36,20 +36,41 @@ import { PUBLIC_DATA_RESULT_STATUS } from "../../features/experience-channels/pu
 import {
   getPublicHomeSyncSections,
   projectHomeNewsSection,
+  PUBLIC_HOME_SECTION_ID,
 } from "../../features/public-portal/services/publicHomeDataSource.js";
 import { getPublicNews } from "../../features/public-portal/services/publicPortalService.js";
+import {
+  loadPublicClubsPageResult,
+  loadPublicCourtsPageResult,
+} from "../../features/public-portal/services/publicClubsCourtsDataSource.js";
+import {
+  PUBLIC_PORTAL_EMPTY_CLUBS_MESSAGE,
+  PUBLIC_PORTAL_EMPTY_COURTS_MESSAGE,
+  PUBLIC_PORTAL_ERROR_USER_MESSAGE,
+  PUBLIC_PORTAL_UNAVAILABLE_USER_MESSAGE,
+} from "../../features/public-portal/runtime/constants.js";
+import { sanitizePublicPortalUserMessage } from "../../features/public-portal/runtime/resolvePublicPortalRuntime.js";
+import { isPlatformHardCutoverEnabled } from "../../features/platform-hard-cutover/index.js";
 
-function SectionBody({ result, children, emptyTitle, emptyMessage, errorTitle, unavailableTitle, onRetry }) {
+function SectionBody({
+  result,
+  children,
+  emptyTitle,
+  emptyMessage,
+  errorTitle,
+  unavailableTitle,
+  onRetry,
+}) {
   if (!result) return null;
 
   if (result.status === PUBLIC_DATA_RESULT_STATUS.ERROR) {
     return (
       <PublicErrorState
         title={errorTitle}
-        message={
-          result.error?.message ||
-          "Đã xảy ra lỗi khi tải nội dung công khai. Vui lòng thử lại."
-        }
+        message={sanitizePublicPortalUserMessage(
+          result.error,
+          PUBLIC_PORTAL_ERROR_USER_MESSAGE
+        )}
         actionLabel="Thử lại"
         onAction={onRetry}
       />
@@ -60,7 +81,7 @@ function SectionBody({ result, children, emptyTitle, emptyMessage, errorTitle, u
     return (
       <PublicUnavailableState
         title={unavailableTitle}
-        message="Nội dung công khai hiện chưa sẵn sàng."
+        message={PUBLIC_PORTAL_UNAVAILABLE_USER_MESSAGE}
         actionLabel="Thử lại"
         onAction={onRetry}
       />
@@ -82,15 +103,30 @@ function SectionBody({ result, children, emptyTitle, emptyMessage, errorTitle, u
   return children(rows);
 }
 
+function projectFeaturedList(result, sectionId, limit) {
+  if (!result) return null;
+  const all = Array.isArray(result.data) ? result.data : [];
+  return Object.freeze({
+    ...result,
+    sectionId,
+    data: all.slice(0, limit),
+  });
+}
+
 export default function HomePage() {
   usePublicDocumentTitle("Trang chủ");
   const [retryToken, setRetryToken] = useState(0);
   const [newsSection, setNewsSection] = useState(null);
   const [newsLoading, setNewsLoading] = useState(true);
+  const [clubsSection, setClubsSection] = useState(null);
+  const [courtsSection, setCourtsSection] = useState(null);
+  const [catalogLoading, setCatalogLoading] = useState(true);
 
-  // retryToken forces a fresh sync read; sync adapters have no async subscription.
-  void retryToken;
-  const sections = getPublicHomeSyncSections();
+  const hardCutover = isPlatformHardCutoverEnabled(import.meta.env);
+  const sections = getPublicHomeSyncSections({
+    hardCutover,
+    env: import.meta.env,
+  });
 
   useEffect(() => {
     let cancelled = false;
@@ -107,12 +143,38 @@ export default function HomePage() {
     };
   }, [retryToken]);
 
+  useEffect(() => {
+    let cancelled = false;
+    setCatalogLoading(true);
+    Promise.all([
+      loadPublicClubsPageResult({ hardCutover, env: import.meta.env }),
+      loadPublicCourtsPageResult({ hardCutover, env: import.meta.env }),
+    ])
+      .then(([clubsResult, courtsResult]) => {
+        if (cancelled) return;
+        setClubsSection(
+          projectFeaturedList(clubsResult, PUBLIC_HOME_SECTION_ID.FEATURED_CLUBS, 5)
+        );
+        setCourtsSection(
+          projectFeaturedList(courtsResult, PUBLIC_HOME_SECTION_ID.FEATURED_COURTS, 4)
+        );
+      })
+      .finally(() => {
+        if (!cancelled) setCatalogLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [retryToken, hardCutover]);
+
   const retry = () => setRetryToken((value) => value + 1);
 
   const stats = Array.isArray(sections.stats.data) ? sections.stats.data : [];
   const liveScores = Array.isArray(sections.liveScores.data) ? sections.liveScores.data : [];
   const schedule = Array.isArray(sections.schedule.data) ? sections.schedule.data : [];
   const results = Array.isArray(sections.results.data) ? sections.results.data : [];
+  const featuredClubs = clubsSection || sections.clubs;
+  const featuredCourts = courtsSection || sections.courts;
 
   return (
     <Box sx={{ bgcolor: PUBLIC_COLORS.bg }}>
@@ -183,27 +245,31 @@ export default function HomePage() {
             actionTo="/clubs"
           />
           <PublicDataSourceNotice
-            source={sections.clubs.source}
-            fallbackReason={sections.clubs.fallbackReason}
+            source={featuredClubs.source}
+            fallbackReason={featuredClubs.fallbackReason}
           />
-          <SectionBody
-            result={sections.clubs}
-            emptyTitle="Chưa có câu lạc bộ nổi bật"
-            emptyMessage="Hiện chưa có câu lạc bộ công khai để giới thiệu trên trang chủ."
-            errorTitle="Không tải được câu lạc bộ nổi bật"
-            unavailableTitle="Câu lạc bộ nổi bật tạm thời không khả dụng"
-            onRetry={retry}
-          >
-            {(clubs) => (
-              <Grid container spacing={2}>
-                {clubs.map((club) => (
-                  <Grid key={club.id} size={{ xs: 12, sm: 6, md: 2.4 }}>
-                    <ClubCard club={club} />
-                  </Grid>
-                ))}
-              </Grid>
-            )}
-          </SectionBody>
+          {catalogLoading && !clubsSection ? (
+            <PublicLoadingState title="Đang tải câu lạc bộ nổi bật…" />
+          ) : (
+            <SectionBody
+              result={featuredClubs}
+              emptyTitle="Chưa có câu lạc bộ nổi bật"
+              emptyMessage={PUBLIC_PORTAL_EMPTY_CLUBS_MESSAGE}
+              errorTitle="Không tải được câu lạc bộ nổi bật"
+              unavailableTitle="Câu lạc bộ nổi bật tạm thời không khả dụng"
+              onRetry={retry}
+            >
+              {(clubs) => (
+                <Grid container spacing={2}>
+                  {clubs.map((club) => (
+                    <Grid key={club.id} size={{ xs: 12, sm: 6, md: 2.4 }}>
+                      <ClubCard club={club} />
+                    </Grid>
+                  ))}
+                </Grid>
+              )}
+            </SectionBody>
+          )}
         </Box>
       </Box>
 
@@ -219,27 +285,31 @@ export default function HomePage() {
                 actionTo="/courts"
               />
               <PublicDataSourceNotice
-                source={sections.courts.source}
-                fallbackReason={sections.courts.fallbackReason}
+                source={featuredCourts.source}
+                fallbackReason={featuredCourts.fallbackReason}
               />
-              <SectionBody
-                result={sections.courts}
-                emptyTitle="Chưa có sân nổi bật"
-                emptyMessage="Hiện chưa có sân công khai để giới thiệu trên trang chủ."
-                errorTitle="Không tải được sân nổi bật"
-                unavailableTitle="Sân nổi bật tạm thời không khả dụng"
-                onRetry={retry}
-              >
-                {(courts) => (
-                  <Grid container spacing={2}>
-                    {courts.map((court) => (
-                      <Grid key={court.id} size={{ xs: 12, sm: 6 }}>
-                        <CourtCard court={court} />
-                      </Grid>
-                    ))}
-                  </Grid>
-                )}
-              </SectionBody>
+              {catalogLoading && !courtsSection ? (
+                <PublicLoadingState title="Đang tải sân nổi bật…" />
+              ) : (
+                <SectionBody
+                  result={featuredCourts}
+                  emptyTitle="Chưa có sân nổi bật"
+                  emptyMessage={PUBLIC_PORTAL_EMPTY_COURTS_MESSAGE}
+                  errorTitle="Không tải được sân nổi bật"
+                  unavailableTitle="Sân nổi bật tạm thời không khả dụng"
+                  onRetry={retry}
+                >
+                  {(courts) => (
+                    <Grid container spacing={2}>
+                      {courts.map((court) => (
+                        <Grid key={court.id} size={{ xs: 12, sm: 6 }}>
+                          <CourtCard court={court} />
+                        </Grid>
+                      ))}
+                    </Grid>
+                  )}
+                </SectionBody>
+              )}
             </Grid>
             <Grid size={{ xs: 12, lg: 4 }}>
               <PublicSectionHeader eyebrow="SỰ KIỆN" title="Sự kiện minh họa" />

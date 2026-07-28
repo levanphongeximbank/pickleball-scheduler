@@ -13,17 +13,25 @@ import {
 import { usePublicDocumentTitle } from "../../components/public/usePublicDocumentTitle.js";
 import { PUBLIC_DATA_RESULT_STATUS } from "../../features/experience-channels/public-portal/data-source/index.js";
 import { loadPublicCourtsPageResult } from "../../features/public-portal/services/publicClubsCourtsDataSource.js";
+import {
+  PUBLIC_PORTAL_EMPTY_COURTS_MESSAGE,
+  PUBLIC_PORTAL_ERROR_USER_MESSAGE,
+  PUBLIC_PORTAL_UNAVAILABLE_USER_MESSAGE,
+} from "../../features/public-portal/runtime/constants.js";
+import { sanitizePublicPortalUserMessage } from "../../features/public-portal/runtime/resolvePublicPortalRuntime.js";
+import { isPlatformHardCutoverEnabled } from "../../features/platform-hard-cutover/index.js";
 
 export default function CourtsPage() {
   usePublicDocumentTitle("Sân pickleball");
   const [retryToken, setRetryToken] = useState(0);
   const [courtsResult, setCourtsResult] = useState(null);
   const [loading, setLoading] = useState(true);
+  const hardCutover = isPlatformHardCutoverEnabled(import.meta.env);
 
   useEffect(() => {
     let cancelled = false;
     setLoading(true);
-    loadPublicCourtsPageResult()
+    loadPublicCourtsPageResult({ hardCutover, env: import.meta.env })
       .then((next) => {
         if (!cancelled) setCourtsResult(next);
       })
@@ -33,7 +41,7 @@ export default function CourtsPage() {
     return () => {
       cancelled = true;
     };
-  }, [retryToken]);
+  }, [retryToken, hardCutover]);
 
   const courts = Array.isArray(courtsResult?.data) ? courtsResult.data : [];
   const retry = () => setRetryToken((value) => value + 1);
@@ -60,17 +68,17 @@ export default function CourtsPage() {
             {courtsResult.status === PUBLIC_DATA_RESULT_STATUS.ERROR && courts.length === 0 ? (
               <PublicErrorState
                 title="Không tải được danh sách sân"
-                message={
-                  courtsResult.error?.message ||
-                  "Đã xảy ra lỗi khi tải sân công khai. Vui lòng thử lại."
-                }
+                message={sanitizePublicPortalUserMessage(
+                  courtsResult.error,
+                  PUBLIC_PORTAL_ERROR_USER_MESSAGE
+                )}
                 actionLabel="Thử lại"
                 onAction={retry}
               />
             ) : courtsResult.status === PUBLIC_DATA_RESULT_STATUS.UNAVAILABLE ? (
               <PublicUnavailableState
                 title="Danh sách sân tạm thời không khả dụng"
-                message="Nội dung sân công khai hiện chưa sẵn sàng."
+                message={PUBLIC_PORTAL_UNAVAILABLE_USER_MESSAGE}
                 actionLabel="Thử lại"
                 onAction={retry}
               />
@@ -85,7 +93,7 @@ export default function CourtsPage() {
             ) : (
               <PublicEmptyState
                 title="Chưa có sân công khai"
-                message="Danh sách sân đang trống. Vui lòng quay lại sau khi có dữ liệu mới."
+                message={PUBLIC_PORTAL_EMPTY_COURTS_MESSAGE}
                 actionLabel="Thử lại"
                 onAction={retry}
               />
