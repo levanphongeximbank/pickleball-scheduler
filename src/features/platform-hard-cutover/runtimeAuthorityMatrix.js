@@ -359,7 +359,12 @@ export const RUNTIME_AUTHORITY_MATRIX = Object.freeze([
     canonicalReader: "billing UI / plans catalog",
     canonicalWriter: "billing RPCs (plans catalog protected)",
     allowedFlag: null,
-    forbiddenFallback: ["mock plan invent"],
+    forbiddenFallback: [
+      "mock plan invent",
+      "localStorage billing authority",
+      "silent durable→local billing fallback",
+      "fake manual/mock payment success",
+    ],
     expectedBackend: "plans, plan_limits, tenant_subscriptions, invoices, payments",
     failClosedError: "BILLING_AUTHORITY_UNAVAILABLE",
     reseedRequirement: "VERIFY plans; optional subscription first-use",

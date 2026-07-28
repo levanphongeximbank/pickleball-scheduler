@@ -27,6 +27,7 @@ export const LEGACY_AUTHORITY_ERROR = Object.freeze({
   FINANCE_DEMO_CLUB_FALLBACK_FORBIDDEN: "FINANCE_DEMO_CLUB_FALLBACK_FORBIDDEN",
   CRM_LOCALSTORAGE_AUTHORITY_FORBIDDEN: "CRM_LOCALSTORAGE_AUTHORITY_FORBIDDEN",
   CRM_DEMO_CLUB_FALLBACK_FORBIDDEN: "CRM_DEMO_CLUB_FALLBACK_FORBIDDEN",
+  BILLING_LOCALSTORAGE_AUTHORITY_FORBIDDEN: "BILLING_LOCALSTORAGE_AUTHORITY_FORBIDDEN",
 });
 
 export function createLegacyAuthorityError(code, message) {
@@ -221,6 +222,17 @@ export function assertCrmDemoClubFallbackAllowed(clubId, env) {
     return createLegacyAuthorityError(
       LEGACY_AUTHORITY_ERROR.CRM_DEMO_CLUB_FALLBACK_FORBIDDEN,
       "CRM demo-club fallback is not an operational club scope."
+    );
+  }
+  return { ok: true };
+}
+
+/** Billing local/memory fallback is forbidden under hard cutover. */
+export function assertBillingLocalAuthorityAllowed(env) {
+  if (isPlatformHardCutoverEnabled(env)) {
+    return createLegacyAuthorityError(
+      LEGACY_AUTHORITY_ERROR.BILLING_LOCALSTORAGE_AUTHORITY_FORBIDDEN,
+      "Billing localStorage/demo authority is forbidden under hard cutover. Use durable billing backend or typed UNAVAILABLE."
     );
   }
   return { ok: true };

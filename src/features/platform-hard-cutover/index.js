@@ -26,6 +26,7 @@ export {
   assertMessagingDemoAuthorityAllowed,
   assertDashboardAnalyticsMockAllowed,
   assertDashboardAnalyticsLocalStorageAllowed,
+  assertBillingLocalAuthorityAllowed,
   assertFinanceLocalStorageAuthorityAllowed,
   assertFinanceDemoClubFallbackAllowed,
   assertCrmLocalStorageAuthorityAllowed,

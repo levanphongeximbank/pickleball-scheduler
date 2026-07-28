@@ -25,6 +25,8 @@ import { PaymentService } from "../services/paymentService.js";
 import { PlanLimitService } from "../services/planLimitService.js";
 import { SubscriptionService } from "../services/subscriptionService.js";
 import { TenantAccessService } from "../services/tenantAccessService.js";
+import { BILLING_RUNTIME_MODE } from "../runtime/constants.js";
+import { resolveBillingRuntime } from "../runtime/resolveBillingRuntime.js";
 
 function buildServices(store) {
   const subscriptionService = new SubscriptionService({ store });
@@ -67,6 +69,15 @@ export function useBilling({ tenantId: tenantIdOverride } = {}) {
 
   const store = useMemo(() => getBillingStore(), []);
   const services = useMemo(() => buildServices(store), [store, refreshKey]);
+  const runtimeState = useMemo(
+    () =>
+      resolveBillingRuntime({
+        env: import.meta.env,
+        tenantId,
+        storeMode: store.mode || "local",
+      }),
+    [store.mode, tenantId]
+  );
   const {
     subscriptionService,
     invoiceService,
@@ -113,7 +124,17 @@ export function useBilling({ tenantId: tenantIdOverride } = {}) {
     let cancelled = false;
 
     async function bootstrap() {
-      const runtime = buildServices(store);
+      const runtimeServices = buildServices(store);
+
+      if (runtimeState.mode === BILLING_RUNTIME_MODE.UNAVAILABLE) {
+        setHydrateState({
+          loading: false,
+          ready: true,
+          error: runtimeState.message,
+        });
+        setPersistError(null);
+        return;
+      }
 
       if (isSupabaseBillingStore(store)) {
         setHydrateState({ loading: true, ready: false, error: null });
@@ -134,7 +155,7 @@ export function useBilling({ tenantId: tenantIdOverride } = {}) {
           return;
         }
       } else {
-        runtime.engine.seedDefaults();
+        runtimeServices.engine.seedDefaults();
       }
 
       if (cancelled) {
@@ -146,7 +167,10 @@ export function useBilling({ tenantId: tenantIdOverride } = {}) {
           setHydrateState({
             loading: false,
             ready: true,
-            error: formatBillingTenantError({ code: "TENANT_MISSING" }),
+            error:
+              runtimeState.mode === BILLING_RUNTIME_MODE.MISSING_SCOPE
+                ? runtimeState.message
+                : formatBillingTenantError({ code: "TENANT_MISSING" }),
           });
         }
         return;
@@ -168,7 +192,7 @@ export function useBilling({ tenantId: tenantIdOverride } = {}) {
         }
       }
 
-      const existing = runtime.subscriptionService.getByTenant(tenantId);
+      const existing = runtimeServices.subscriptionService.getByTenant(tenantId);
       if (!existing) {
         if (isSupabaseBillingStore(store)) {
           const trial = await ensureTrialSubscriptionRpc(store, { tenantId });
@@ -179,10 +203,17 @@ export function useBilling({ tenantId: tenantIdOverride } = {}) {
               // subscription row already merged from RPC response
             }
           } else if (!cancelled) {
-            setPersistError(formatBillingTenantError({ code: trial.code, message: trial.error }));
+            const message = formatBillingTenantError({ code: trial.code, message: trial.error });
+            setPersistError(message);
+            setHydrateState({
+              loading: false,
+              ready: true,
+              error: message,
+            });
+            return;
           }
         } else {
-          runtime.engine.createTrialSubscription({ tenantId, ownerUserId: user?.id || null });
+          runtimeServices.engine.createTrialSubscription({ tenantId, ownerUserId: user?.id || null });
         }
       }
 
@@ -202,24 +233,43 @@ export function useBilling({ tenantId: tenantIdOverride } = {}) {
     return () => {
       cancelled = true;
     };
-  }, [store, tenantId, user?.id]);
+  }, [runtimeState.message, runtimeState.mode, store, tenantId, user?.id]);
 
-  const subscription = hydrateState.ready ? subscriptionService.getByTenant(tenantId) : null;
-  const planCode = subscription?.plan_code || "TRIAL";
-  const hydratedPlans = hydrateState.ready ? store.read("plans") : [];
-  const planFromStore = hydratedPlans.find((item) => item.code === planCode);
-  const plan = planFromStore || getPlanCatalog().find((item) => item.code === planCode) || getPlanCatalog()[0];
+  const subscription =
+    hydrateState.ready && runtimeState.mode !== BILLING_RUNTIME_MODE.UNAVAILABLE
+      ? subscriptionService.getByTenant(tenantId)
+      : null;
+  const planCode = subscription?.plan_code || null;
+  const hydratedPlans =
+    hydrateState.ready && runtimeState.mode !== BILLING_RUNTIME_MODE.UNAVAILABLE
+      ? store.read("plans")
+      : [];
+  const planFromStore = planCode ? hydratedPlans.find((item) => item.code === planCode) : null;
+  const plan =
+    runtimeState.mode === BILLING_RUNTIME_MODE.LEGACY_LOCAL
+      ? planFromStore || getPlanCatalog().find((item) => item.code === (planCode || "TRIAL")) || getPlanCatalog()[0]
+      : planFromStore || null;
   const access = hydrateState.ready
     ? tenantAccessService.evaluateAccess({ tenantId })
     : { allowed: true, lockLevel: "none", reason: "loading" };
-  const invoices = hydrateState.ready ? invoiceService.listByTenant(tenantId) : [];
-  const payments = hydrateState.ready ? paymentService.listByTenant(tenantId) : [];
-  const usageSummary = hydrateState.ready
-    ? planLimitService.getUsageSummary({
-        planCode,
-        usage: { courts: 4, clubs: 1, players: 10, bookings: 5, tournaments: 0 },
-      })
-    : [];
+  const invoices =
+    hydrateState.ready && runtimeState.mode !== BILLING_RUNTIME_MODE.UNAVAILABLE
+      ? invoiceService.listByTenant(tenantId)
+      : [];
+  const payments =
+    hydrateState.ready && runtimeState.mode !== BILLING_RUNTIME_MODE.UNAVAILABLE
+      ? paymentService.listByTenant(tenantId)
+      : [];
+  const usageSummary = [];
+
+  function createBlockedResult(message = runtimeState.message) {
+    return {
+      ok: false,
+      code: runtimeState.code,
+      error: message,
+      legacyBlocked: runtimeState.legacyBlocked,
+    };
+  }
 
   return {
     tenantId,
@@ -231,9 +281,15 @@ export function useBilling({ tenantId: tenantIdOverride } = {}) {
     paymentService,
     planLimitService,
     tenantAccessService,
+    runtime: runtimeState,
     subscription,
     plan,
-    planCatalog: hydrateState.ready && hydratedPlans.length ? hydratedPlans : getPlanCatalog(),
+    planCatalog:
+      runtimeState.mode === BILLING_RUNTIME_MODE.LEGACY_LOCAL
+        ? hydrateState.ready && hydratedPlans.length
+          ? hydratedPlans
+          : getPlanCatalog()
+        : hydratedPlans,
     access,
     invoices,
     payments,
@@ -244,11 +300,17 @@ export function useBilling({ tenantId: tenantIdOverride } = {}) {
     refresh,
     persistChanges,
     changePlan: (nextPlanCode) =>
+      runtimeState.mode !== BILLING_RUNTIME_MODE.LEGACY_LOCAL
+        ? Promise.resolve(createBlockedResult())
+        :
       runMutation(() => {
         if (!subscription) return null;
         return engine.changePlan(subscription.id, nextPlanCode, { actorUserId: user?.id });
       }, BILLING_PERSIST_SETS.PLAN_CHANGE),
     createInvoice: (amount) =>
+      runtimeState.mode !== BILLING_RUNTIME_MODE.LEGACY_LOCAL
+        ? Promise.resolve(createBlockedResult())
+        :
       runMutation(() => {
         return invoiceService.createInvoice({
           tenantId,
@@ -259,6 +321,9 @@ export function useBilling({ tenantId: tenantIdOverride } = {}) {
         });
       }, BILLING_PERSIST_SETS.INVOICE),
     recordManualPayment: async (amount) => {
+      if (!runtimeState.allowsDemoMutations) {
+        return createBlockedResult();
+      }
       const invoice = invoiceService.createInvoice({
         tenantId,
         subscriptionId: subscription?.id,
@@ -282,21 +347,33 @@ export function useBilling({ tenantId: tenantIdOverride } = {}) {
       return invoice;
     },
     requestCancel: () =>
+      runtimeState.mode !== BILLING_RUNTIME_MODE.LEGACY_LOCAL
+        ? Promise.resolve(createBlockedResult())
+        :
       runMutation(() => {
         if (!subscription) return null;
         return engine.cancelSubscription(subscription.id, { actorUserId: user?.id });
       }, BILLING_PERSIST_SETS.SUBSCRIPTION),
     suspendSubscription: (subscriptionId) =>
+      runtimeState.mode === BILLING_RUNTIME_MODE.UNAVAILABLE
+        ? Promise.resolve(createBlockedResult())
+        :
       runMutation(
         () => engine.suspendSubscription(subscriptionId, { actorUserId: user?.id }),
         BILLING_PERSIST_SETS.SUBSCRIPTION
       ),
     unlockTenant: (targetTenantId) =>
+      runtimeState.mode === BILLING_RUNTIME_MODE.UNAVAILABLE
+        ? Promise.resolve(createBlockedResult())
+        :
       runMutation(
         () => engine.unlockTenant(targetTenantId, { actorUserId: user?.id }),
         BILLING_PERSIST_SETS.SUBSCRIPTION
       ),
     markInvoicePaid: (invoiceId, targetTenantId = tenantId) =>
+      runtimeState.mode !== BILLING_RUNTIME_MODE.LEGACY_LOCAL
+        ? Promise.resolve(createBlockedResult())
+        :
       runMutation(() => {
         const tenantInvoice = invoiceService.getById(invoiceId);
         if (!tenantInvoice) return null;
@@ -313,11 +390,17 @@ export function useBilling({ tenantId: tenantIdOverride } = {}) {
         return tenantInvoice;
       }, BILLING_PERSIST_SETS.PAYMENT),
     adminChangePlan: (subscriptionId, planCode) =>
+      runtimeState.mode !== BILLING_RUNTIME_MODE.LEGACY_LOCAL
+        ? Promise.resolve(createBlockedResult())
+        :
       runMutation(
         () => engine.changePlan(subscriptionId, planCode, { actorUserId: user?.id }),
         BILLING_PERSIST_SETS.PLAN_CHANGE
       ),
     createTrialSubscription: async (targetTenantId) => {
+      if (runtimeState.mode === BILLING_RUNTIME_MODE.UNAVAILABLE) {
+        return createBlockedResult();
+      }
       const resolvedTenantId = sanitizeBillingTenantId(targetTenantId || tenantId);
       if (!resolvedTenantId) {
         return {

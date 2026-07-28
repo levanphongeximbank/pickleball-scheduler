@@ -13,6 +13,7 @@ import {
   assertMessagingDemoAuthorityAllowed,
   assertDashboardAnalyticsMockAllowed,
   assertDashboardAnalyticsLocalStorageAllowed,
+  assertBillingLocalAuthorityAllowed,
   assertFinanceLocalStorageAuthorityAllowed,
   assertFinanceDemoClubFallbackAllowed,
   assertCrmLocalStorageAuthorityAllowed,
@@ -82,7 +83,7 @@ test("pre-staging: every matrix row has expanded contract fields", () => {
   }
 });
 
-test("pre-staging: coaching/messaging/dashboard/finance/crm legacy asserts under HC", () => {
+test("pre-staging: coaching/messaging/dashboard/billing/finance/crm legacy asserts under HC", () => {
   const env = { [HARD_CUTOVER_FLAG]: "true" };
   assert.equal(assertCoachingLegacyAuthorityAllowed(env).ok, false);
   assert.equal(
@@ -96,6 +97,11 @@ test("pre-staging: coaching/messaging/dashboard/finance/crm legacy asserts under
   );
   assert.equal(assertDashboardAnalyticsMockAllowed(env).ok, false);
   assert.equal(assertDashboardAnalyticsLocalStorageAllowed(env).ok, false);
+  assert.equal(assertBillingLocalAuthorityAllowed(env).ok, false);
+  assert.equal(
+    assertBillingLocalAuthorityAllowed(env).code,
+    LEGACY_AUTHORITY_ERROR.BILLING_LOCALSTORAGE_AUTHORITY_FORBIDDEN
+  );
   assert.equal(assertFinanceLocalStorageAuthorityAllowed(env).ok, false);
   assert.equal(
     assertFinanceLocalStorageAuthorityAllowed(env).code,
@@ -116,6 +122,7 @@ test("pre-staging: legacy asserts open when hard cutover off", () => {
   assert.equal(assertMessagingDemoAuthorityAllowed(env).ok, true);
   assert.equal(assertDashboardAnalyticsMockAllowed(env).ok, true);
   assert.equal(assertDashboardAnalyticsLocalStorageAllowed(env).ok, true);
+  assert.equal(assertBillingLocalAuthorityAllowed(env).ok, true);
   assert.equal(assertFinanceLocalStorageAuthorityAllowed(env).ok, true);
   assert.equal(assertCrmLocalStorageAuthorityAllowed(env).ok, true);
 });

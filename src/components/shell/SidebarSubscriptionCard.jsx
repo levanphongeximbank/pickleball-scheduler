@@ -6,14 +6,18 @@ import { PERMISSIONS } from "../../auth/permissions.js";
 import { getSubscriptionForVenue } from "../../domain/venueService.js";
 import { SUBSCRIPTION_PLANS } from "../../models/subscription.js";
 import { loadActiveVenueId } from "../../data/venueSession.js";
+import { isPlatformHardCutoverEnabled } from "../../features/platform-hard-cutover/index.js";
 import { SHELL_COLORS } from "./shellTokens.js";
 
 export default function SidebarSubscriptionCard() {
   const { user, can } = useAuth();
+  const hardCutoverEnabled = isPlatformHardCutoverEnabled(import.meta.env);
   const venueId = user?.venueId || loadActiveVenueId();
-  const subscription = venueId ? getSubscriptionForVenue(venueId) : null;
+  const subscription = !hardCutoverEnabled && venueId ? getSubscriptionForVenue(venueId) : null;
   const planId = subscription?.planId || "trial";
-  const plan = SUBSCRIPTION_PLANS[planId] || SUBSCRIPTION_PLANS.trial;
+  const plan = !hardCutoverEnabled
+    ? SUBSCRIPTION_PLANS[planId] || SUBSCRIPTION_PLANS.trial
+    : null;
   const canViewBilling = can(PERMISSIONS.BILLING_VIEW);
 
   return (
@@ -31,10 +35,14 @@ export default function SidebarSubscriptionCard() {
         Gói thuê bao
       </Typography>
       <Typography variant="subtitle2" fontWeight={800} sx={{ color: SHELL_COLORS.sidebarText, mt: 0.25 }}>
-        {plan.name}
+        {hardCutoverEnabled ? "Billing chưa khả dụng" : plan.name}
       </Typography>
       <Typography variant="caption" sx={{ color: SHELL_COLORS.sidebarTextMuted, display: "block", mt: 0.25 }}>
-        {subscription?.status === "active" ? "Đang hoạt động" : "Dùng thử / xem gói"}
+        {hardCutoverEnabled
+          ? "Hard cutover ON: không hiển thị gói local/demo."
+          : subscription?.status === "active"
+            ? "Đang hoạt động"
+            : "Dùng thử / xem gói"}
       </Typography>
       {canViewBilling && (
         <Button

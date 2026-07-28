@@ -17,6 +17,11 @@ import {
 
 import BillingAccessGate from "../../features/billing/components/BillingAccessGate.jsx";
 import { useBilling } from "../../features/billing/hooks/useBilling.js";
+import {
+  BillingLegacyBanner,
+  BillingUnavailableState,
+} from "../../features/billing/runtime/BillingStateViews.jsx";
+import { BILLING_RUNTIME_MODE } from "../../features/billing/runtime/constants.js";
 import { fetchSupabaseVenues } from "../../features/billing/services/billingVenueService.js";
 import { PERMISSIONS } from "../../features/identity/constants/permissions.js";
 import { useTenant } from "../../context/TenantContext.jsx";
@@ -32,6 +37,7 @@ export default function AdminBillingPage({ view = "overview" }) {
 
   const {
     tenantId,
+    runtime,
     subscriptionService,
     invoiceService,
     paymentService,
@@ -146,7 +152,11 @@ export default function AdminBillingPage({ view = "overview" }) {
   return (
     <BillingAccessGate requiredPermission={PERMISSIONS.BILLING_MANAGE}>
       <Box sx={{ p: 3 }}>
-        {billingError && <Alert severity="error" sx={{ mb: 2 }}>{billingError}</Alert>}
+        {runtime.mode === BILLING_RUNTIME_MODE.UNAVAILABLE ? (
+          <BillingUnavailableState title="Admin Billing chưa khả dụng" message={runtime.message} />
+        ) : null}
+        {runtime.mode === BILLING_RUNTIME_MODE.LEGACY_LOCAL ? <BillingLegacyBanner /> : null}
+        {billingError && runtime.mode !== BILLING_RUNTIME_MODE.UNAVAILABLE && <Alert severity="error" sx={{ mb: 2 }}>{billingError}</Alert>}
         {venuesError && <Alert severity="warning" sx={{ mb: 2 }}>{venuesError}</Alert>}
         {persistError && <Alert severity="warning" sx={{ mb: 2 }}>{persistError}</Alert>}
         {billingLoading && <Alert severity="info" sx={{ mb: 2 }}>Đang tải dữ liệu billing…</Alert>}
@@ -162,7 +172,13 @@ export default function AdminBillingPage({ view = "overview" }) {
           <Button component={RouterLink} to="/admin/billing/audit" variant={view === "audit" ? "contained" : "outlined"} size="small">Audit</Button>
         </Stack>
 
-        {(view === "overview" || view === "tenants") && (
+        {runtime.mode === BILLING_RUNTIME_MODE.UNAVAILABLE && (
+          <Alert severity="info" sx={{ mt: 2 }}>
+            Không thực hiện create trial, mark paid hoặc đổi gói trong hard cutover khi Billing chưa có backend đáng tin cậy.
+          </Alert>
+        )}
+
+        {runtime.mode !== BILLING_RUNTIME_MODE.UNAVAILABLE && (view === "overview" || view === "tenants") && (
           <Grid container spacing={3} sx={{ mt: 1 }}>
             <Grid item xs={12} md={4}>
               <Card>
@@ -234,7 +250,7 @@ export default function AdminBillingPage({ view = "overview" }) {
           </Grid>
         )}
 
-        {view === "plans" && (
+        {runtime.mode !== BILLING_RUNTIME_MODE.UNAVAILABLE && view === "plans" && (
           <Card sx={{ mt: 2 }}>
             <CardContent>
               <Typography variant="h6">Plans</Typography>
@@ -253,7 +269,7 @@ export default function AdminBillingPage({ view = "overview" }) {
           </Card>
         )}
 
-        {view === "invoices" && (
+        {runtime.mode !== BILLING_RUNTIME_MODE.UNAVAILABLE && view === "invoices" && (
           <Card sx={{ mt: 2 }}>
             <CardContent>
               <Typography variant="h6">All Invoices</Typography>
