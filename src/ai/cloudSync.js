@@ -492,9 +492,26 @@ export async function pullAIDataFromCloud() {
   return pullClubFromCloud();
 }
 
+/**
+ * Null-safe read of last local cloud-sync timestamp.
+ * Under secure/hard-cutover runtime loadCloudDatabase() returns null — never index it.
+ */
+export function readLastCloudSyncTimestamp(db, clubId) {
+  if (db == null || typeof db !== "object") {
+    return null;
+  }
+  if (clubId == null || clubId === "") {
+    return null;
+  }
+  const entry = db[clubId];
+  if (entry == null || typeof entry !== "object") {
+    return null;
+  }
+  return entry.syncedAt || null;
+}
+
 export function getLastCloudSync(clubId = getActiveClubId()) {
-  const db = loadCloudDatabase();
-  return db[clubId]?.syncedAt || null;
+  return readLastCloudSyncTimestamp(loadCloudDatabase(), clubId);
 }
 
 export function buildClubCloudExport(clubId = getActiveClubId()) {
