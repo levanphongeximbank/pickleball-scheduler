@@ -18,6 +18,8 @@ import {
   assertFinanceDemoClubFallbackAllowed,
   assertCrmLocalStorageAuthorityAllowed,
   assertCrmDemoClubFallbackAllowed,
+  assertPublicPortalLocalAuthorityAllowed,
+  assertPublicPortalMockFallbackAllowed,
   LEGACY_AUTHORITY_ERROR,
 } from "../src/features/platform-hard-cutover/legacyAuthorityPolicy.js";
 
@@ -114,6 +116,16 @@ test("pre-staging: coaching/messaging/dashboard/billing/finance/crm legacy asser
   );
   assert.equal(assertFinanceDemoClubFallbackAllowed("demo-club", env).ok, false);
   assert.equal(assertCrmDemoClubFallbackAllowed("demo-club", env).ok, false);
+  assert.equal(assertPublicPortalLocalAuthorityAllowed(env).ok, false);
+  assert.equal(
+    assertPublicPortalLocalAuthorityAllowed(env).code,
+    LEGACY_AUTHORITY_ERROR.PUBLIC_PORTAL_LOCALSTORAGE_AUTHORITY_FORBIDDEN
+  );
+  assert.equal(assertPublicPortalMockFallbackAllowed(env).ok, false);
+  assert.equal(
+    assertPublicPortalMockFallbackAllowed(env).code,
+    LEGACY_AUTHORITY_ERROR.PUBLIC_PORTAL_MOCK_FALLBACK_FORBIDDEN
+  );
 });
 
 test("pre-staging: legacy asserts open when hard cutover off", () => {
@@ -125,4 +137,6 @@ test("pre-staging: legacy asserts open when hard cutover off", () => {
   assert.equal(assertBillingLocalAuthorityAllowed(env).ok, true);
   assert.equal(assertFinanceLocalStorageAuthorityAllowed(env).ok, true);
   assert.equal(assertCrmLocalStorageAuthorityAllowed(env).ok, true);
+  assert.equal(assertPublicPortalLocalAuthorityAllowed(env).ok, true);
+  assert.equal(assertPublicPortalMockFallbackAllowed(env).ok, true);
 });

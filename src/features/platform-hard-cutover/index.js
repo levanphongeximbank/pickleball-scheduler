@@ -31,6 +31,8 @@ export {
   assertFinanceDemoClubFallbackAllowed,
   assertCrmLocalStorageAuthorityAllowed,
   assertCrmDemoClubFallbackAllowed,
+  assertPublicPortalLocalAuthorityAllowed,
+  assertPublicPortalMockFallbackAllowed,
 } from "./legacyAuthorityPolicy.js";
 
 export {

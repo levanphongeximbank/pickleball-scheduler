@@ -54,18 +54,22 @@ export default function ClubCard({ club }) {
           {club.name}
         </Typography>
         <Stack spacing={0.75}>
-          <Stack direction="row" spacing={0.75} alignItems="center">
-            <GroupsOutlinedIcon sx={{ fontSize: 16, color: PUBLIC_COLORS.lime }} />
-            <Typography variant="body2" color={PUBLIC_COLORS.textMuted}>
-              {club.members} thành viên
-            </Typography>
-          </Stack>
-          <Stack direction="row" spacing={0.75} alignItems="center">
-            <EmojiEventsOutlinedIcon sx={{ fontSize: 16, color: PUBLIC_COLORS.lime }} />
-            <Typography variant="body2" color={PUBLIC_COLORS.textMuted}>
-              {club.tournaments} giải đã tổ chức
-            </Typography>
-          </Stack>
+          {typeof club.members === "number" ? (
+            <Stack direction="row" spacing={0.75} alignItems="center">
+              <GroupsOutlinedIcon sx={{ fontSize: 16, color: PUBLIC_COLORS.lime }} />
+              <Typography variant="body2" color={PUBLIC_COLORS.textMuted}>
+                {club.members} thành viên
+              </Typography>
+            </Stack>
+          ) : null}
+          {typeof club.tournaments === "number" ? (
+            <Stack direction="row" spacing={0.75} alignItems="center">
+              <EmojiEventsOutlinedIcon sx={{ fontSize: 16, color: PUBLIC_COLORS.lime }} />
+              <Typography variant="body2" color={PUBLIC_COLORS.textMuted}>
+                {club.tournaments} giải đã tổ chức
+              </Typography>
+            </Stack>
+          ) : null}
           <Stack direction="row" spacing={0.75} alignItems="center">
             <LocationOnOutlinedIcon sx={{ fontSize: 16, color: PUBLIC_COLORS.textMuted }} />
             <Typography variant="body2" color={PUBLIC_COLORS.textMuted}>

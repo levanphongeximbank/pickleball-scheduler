@@ -28,6 +28,9 @@ export const LEGACY_AUTHORITY_ERROR = Object.freeze({
   CRM_LOCALSTORAGE_AUTHORITY_FORBIDDEN: "CRM_LOCALSTORAGE_AUTHORITY_FORBIDDEN",
   CRM_DEMO_CLUB_FALLBACK_FORBIDDEN: "CRM_DEMO_CLUB_FALLBACK_FORBIDDEN",
   BILLING_LOCALSTORAGE_AUTHORITY_FORBIDDEN: "BILLING_LOCALSTORAGE_AUTHORITY_FORBIDDEN",
+  PUBLIC_PORTAL_LOCALSTORAGE_AUTHORITY_FORBIDDEN:
+    "PUBLIC_PORTAL_LOCALSTORAGE_AUTHORITY_FORBIDDEN",
+  PUBLIC_PORTAL_MOCK_FALLBACK_FORBIDDEN: "PUBLIC_PORTAL_MOCK_FALLBACK_FORBIDDEN",
 });
 
 export function createLegacyAuthorityError(code, message) {
@@ -233,6 +236,28 @@ export function assertBillingLocalAuthorityAllowed(env) {
     return createLegacyAuthorityError(
       LEGACY_AUTHORITY_ERROR.BILLING_LOCALSTORAGE_AUTHORITY_FORBIDDEN,
       "Billing localStorage/demo authority is forbidden under hard cutover. Use durable billing backend or typed UNAVAILABLE."
+    );
+  }
+  return { ok: true };
+}
+
+/** Public Portal must not treat localStorage club blobs as public catalog SoT under HC. */
+export function assertPublicPortalLocalAuthorityAllowed(env) {
+  if (isPlatformHardCutoverEnabled(env)) {
+    return createLegacyAuthorityError(
+      LEGACY_AUTHORITY_ERROR.PUBLIC_PORTAL_LOCALSTORAGE_AUTHORITY_FORBIDDEN,
+      "Public Portal localStorage/club-blob authority is forbidden under hard cutover. Use public_catalog_* RPC or typed EMPTY/UNAVAILABLE."
+    );
+  }
+  return { ok: true };
+}
+
+/** Public Portal must not mock-on-empty or silently substitute demo catalog under HC. */
+export function assertPublicPortalMockFallbackAllowed(env) {
+  if (isPlatformHardCutoverEnabled(env)) {
+    return createLegacyAuthorityError(
+      LEGACY_AUTHORITY_ERROR.PUBLIC_PORTAL_MOCK_FALLBACK_FORBIDDEN,
+      "Public Portal mock/demo catalog fallback is forbidden under hard cutover. Fail closed with typed EMPTY/UNAVAILABLE/ERROR."
     );
   }
   return { ok: true };

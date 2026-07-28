@@ -26,6 +26,13 @@ import { usePublicDocumentTitle } from "../../components/public/usePublicDocumen
 import { VIETNAM_REGIONS } from "../../data/public/mockPublicData.js";
 import { PUBLIC_DATA_RESULT_STATUS } from "../../features/experience-channels/public-portal/data-source/index.js";
 import { loadPublicClubsPageResult } from "../../features/public-portal/services/publicClubsCourtsDataSource.js";
+import {
+  PUBLIC_PORTAL_EMPTY_CLUBS_MESSAGE,
+  PUBLIC_PORTAL_ERROR_USER_MESSAGE,
+  PUBLIC_PORTAL_UNAVAILABLE_USER_MESSAGE,
+} from "../../features/public-portal/runtime/constants.js";
+import { sanitizePublicPortalUserMessage } from "../../features/public-portal/runtime/resolvePublicPortalRuntime.js";
+import { isPlatformHardCutoverEnabled } from "../../features/platform-hard-cutover/index.js";
 
 export default function ClubsPage() {
   usePublicDocumentTitle("Câu lạc bộ");
@@ -34,11 +41,12 @@ export default function ClubsPage() {
   const [retryToken, setRetryToken] = useState(0);
   const [clubsResult, setClubsResult] = useState(null);
   const [loading, setLoading] = useState(true);
+  const hardCutover = isPlatformHardCutoverEnabled(import.meta.env);
 
   useEffect(() => {
     let cancelled = false;
     setLoading(true);
-    loadPublicClubsPageResult()
+    loadPublicClubsPageResult({ hardCutover, env: import.meta.env })
       .then((next) => {
         if (!cancelled) setClubsResult(next);
       })
@@ -48,7 +56,7 @@ export default function ClubsPage() {
     return () => {
       cancelled = true;
     };
-  }, [retryToken]);
+  }, [retryToken, hardCutover]);
 
   const all = Array.isArray(clubsResult?.data) ? clubsResult.data : [];
   const query = search.trim().toLowerCase();
@@ -86,17 +94,17 @@ export default function ClubsPage() {
             (!Array.isArray(clubsResult.data) || clubsResult.data.length === 0) ? (
               <PublicErrorState
                 title="Không tải được danh sách CLB"
-                message={
-                  clubsResult.error?.message ||
-                  "Đã xảy ra lỗi khi tải câu lạc bộ công khai. Vui lòng thử lại."
-                }
+                message={sanitizePublicPortalUserMessage(
+                  clubsResult.error,
+                  PUBLIC_PORTAL_ERROR_USER_MESSAGE
+                )}
                 actionLabel="Thử lại"
                 onAction={retry}
               />
             ) : clubsResult.status === PUBLIC_DATA_RESULT_STATUS.UNAVAILABLE ? (
               <PublicUnavailableState
                 title="Danh sách CLB tạm thời không khả dụng"
-                message="Nội dung câu lạc bộ công khai hiện chưa sẵn sàng."
+                message={PUBLIC_PORTAL_UNAVAILABLE_USER_MESSAGE}
                 actionLabel="Thử lại"
                 onAction={retry}
               />
@@ -104,7 +112,7 @@ export default function ClubsPage() {
               (Array.isArray(clubsResult.data) && clubsResult.data.length === 0) ? (
               <PublicEmptyState
                 title="Chưa có CLB công khai"
-                message="Danh sách câu lạc bộ đang trống. Vui lòng quay lại sau khi có dữ liệu mới."
+                message={PUBLIC_PORTAL_EMPTY_CLUBS_MESSAGE}
                 actionLabel="Thử lại"
                 onAction={retry}
               />
