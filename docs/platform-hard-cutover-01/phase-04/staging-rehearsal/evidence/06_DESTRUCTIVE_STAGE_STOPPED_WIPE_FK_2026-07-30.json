@@ -1,0 +1,59 @@
+{
+  "marker": "PLATFORM_HARD_CUTOVER_01_PHASE4_DESTRUCTIVE_STAGE_STOPPED",
+  "target": {
+    "project_ref": "qyewbxjsiiyufanzcjcq",
+    "production_ref_blocked": "expuvcohlcjzvrrauvud"
+  },
+  "backupEvidence": {
+    "path": "docs/platform-hard-cutover-01/phase-04/staging-rehearsal/evidence/05_STAGING_BACKUP_OWNER_CONFIRMATION.json",
+    "backup_completed_at": "2026-07-29T18:55:19Z",
+    "backup_after_last_mutation": true,
+    "status": "completed"
+  },
+  "results": {
+    "00_IDENTITY_PRESERVE_PRECHECK.sql": "PASS",
+    "01_PROTECTED_OBJECT_GUARDS.sql": "PASS",
+    "10_ORDERED_WIPE.sql": "FAIL",
+    "20_DROP_CLUB_AI_DATA.sql": "NOT_RUN",
+    "30_POST_WIPE_VERIFY.sql": "NOT_RUN",
+    "reseed": "NOT_RUN"
+  },
+  "wipeFailure": {
+    "errorCode": "0A000",
+    "message": "cannot truncate a table referenced in a foreign key constraint",
+    "detail": "Table team_tournament_lineup_entries references team_tournament_lineups",
+    "hint": "Truncate related tables in the same TRUNCATE statement, or use CASCADE",
+    "ownerConstraint": "CASCADE forbidden without separate Owner GO; authored package uses per-table TRUNCATE"
+  },
+  "postFailureState": {
+    "transactionRolledBack": true,
+    "wipeMigrationRecorded": false,
+    "protectedCountsUnchanged": true,
+    "bizDataUnchanged": true,
+    "auth_n": 87,
+    "profiles_n": 87,
+    "venues_n": 2,
+    "tm_n": 3,
+    "roles_n": 12,
+    "permissions_n": 144,
+    "rp_n": 432,
+    "plans_n": 4,
+    "plan_limits_n": 4,
+    "club_data_v3_n": 2,
+    "clubs_n": 22,
+    "tt_n": 62,
+    "athletes_n": 65,
+    "audit_n": 898,
+    "club_ai_data_exists": true,
+    "competition_ssot_comps": 0
+  },
+  "mutations": {
+    "databaseThisTurn": 0,
+    "note": "Failed wipe rolled back; only read-only prechecks + failed apply attempt with full rollback",
+    "production": 0
+  },
+  "nextOwnerGoRequired": [
+    "Author package fix for 10_ORDERED_WIPE.sql using multi-table TRUNCATE groups (same manifest tables, no CASCADE) OR explicit Owner GO for CASCADE",
+    "Re-issue destructive stage GO after package fix merges"
+  ]
+}
