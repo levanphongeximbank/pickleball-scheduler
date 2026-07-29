@@ -1,0 +1,133 @@
+{
+  "marker": "PLATFORM_HARD_CUTOVER_01_M8_FORENSIC_READ_ONLY",
+  "capturedAt": "2026-07-29T12:23:00Z",
+  "target": {
+    "mcpServer": "project-0-pickleball-scheduler-supabase-staging",
+    "projectRefExpected": "qyewbxjsiiyufanzcjcq",
+    "productionRefBlocked": "expuvcohlcjzvrrauvud"
+  },
+  "mutationsThisTurn": {
+    "database": 0,
+    "production": 0
+  },
+  "noteOnPriorTurn": {
+    "ownerAssumedState": "20 history present but 0 indexes; 0 policies; 0 RPC; anon grants present",
+    "actualLiveStateAtForensic": "diverged — prior interrupted apply turn already applied 20_indexes_reapply_text_tenant + 30_rls_text_tenant",
+    "priorTurnMutationsNotZero": true,
+    "priorTurnMigrations": [
+      "hard_cutover_m8_competition_ssot_20_indexes_reapply_text_tenant",
+      "hard_cutover_m8_competition_ssot_30_rls_text_tenant"
+    ]
+  },
+  "tables": [
+    {
+      "name": "competition_ssot_audit_events",
+      "rls_enabled": true,
+      "rls_forced": true,
+      "row_count": 0
+    },
+    {
+      "name": "competition_ssot_command_log",
+      "rls_enabled": true,
+      "rls_forced": true,
+      "row_count": 0
+    },
+    {
+      "name": "competition_ssot_competitions",
+      "rls_enabled": true,
+      "rls_forced": true,
+      "row_count": 0
+    },
+    {
+      "name": "competition_ssot_finalized_results",
+      "rls_enabled": true,
+      "rls_forced": true,
+      "row_count": 0
+    },
+    {
+      "name": "competition_ssot_idempotency",
+      "rls_enabled": true,
+      "rls_forced": true,
+      "row_count": 0
+    },
+    {
+      "name": "competition_ssot_matches",
+      "rls_enabled": true,
+      "rls_forced": true,
+      "row_count": 0
+    },
+    {
+      "name": "competition_ssot_participants",
+      "rls_enabled": true,
+      "rls_forced": true,
+      "row_count": 0
+    },
+    {
+      "name": "competition_ssot_standings_snapshots",
+      "rls_enabled": true,
+      "rls_forced": true,
+      "row_count": 0
+    }
+  ],
+  "tenant_id_types": {
+    "all_eight_tables": "text",
+    "match_10_TABLES": true
+  },
+  "secondary_indexes_from_20": [
+    "competition_ssot_competitions_tenant_idx",
+    "competition_ssot_participants_comp_idx",
+    "competition_ssot_matches_comp_status_idx",
+    "competition_ssot_finalized_comp_idx",
+    "competition_ssot_command_log_comp_idx",
+    "competition_ssot_audit_tenant_idx"
+  ],
+  "secondary_indexes_present": 6,
+  "policies_count": 12,
+  "rpc_count": 0,
+  "anon_table_grants_count": 0,
+  "authenticated_table_grants": "ALL privileges on all 8 tables (SELECT/INSERT/UPDATE/DELETE/TRUNCATE/REFERENCES/TRIGGER)",
+  "service_role_table_grants": "ALL privileges on all 8 tables",
+  "migration_history": [
+    {
+      "version": "20260728011027",
+      "name": "hard_cutover_m8_competition_ssot_10_tables",
+      "reflects_reality": "PARTIAL — tables exist now (text-tenant recreated after earlier rollback)"
+    },
+    {
+      "version": "20260728011054",
+      "name": "hard_cutover_m8_competition_ssot_20_indexes",
+      "reflects_reality": "STALE — original indexes were rolled back; indexes now come from reapply migration"
+    },
+    {
+      "version": "20260728011549",
+      "name": "hard_cutover_m8_competition_ssot_90_rollback_incomplete",
+      "reflects_reality": "STALE MARKER — rollback happened historically; objects now re-exist"
+    },
+    {
+      "version": "20260729121909",
+      "name": "hard_cutover_m8_competition_ssot_20_indexes_reapply_text_tenant",
+      "reflects_reality": "TRUE — 6 secondary indexes present"
+    },
+    {
+      "version": "20260729122037",
+      "name": "hard_cutover_m8_competition_ssot_30_rls_text_tenant",
+      "reflects_reality": "TRUE — RLS forced + 12 policies + anon revoked"
+    }
+  ],
+  "drift_vs_authored": {
+    "10_TABLES.sql": "MATCH",
+    "20_INDEXES.sql": "MATCH",
+    "30_RLS.sql": "MATCH",
+    "40_RPC_COMMAND_AND_FINALIZE.sql": "MISSING — 0 functions",
+    "50_GRANTS.sql": "PARTIAL — anon revoked OK; authenticated privileges wider than authored GRANT set; sequence grants not verified as narrowed",
+    "90_ROLLBACK.sql": "NOT_APPLIED_NOW — objects present",
+    "99_VERIFY.sql": "NOT_RUN"
+  },
+  "recommended_remediation": "B_TARGETED_RECONCILIATION_NO_DROP",
+  "recommended_next_files": [
+    "docs/platform-hard-cutover-01/phase-04/sql/m8-competition-remote-ssot/40_RPC_COMMAND_AND_FINALIZE.sql",
+    "docs/platform-hard-cutover-01/phase-04/sql/m8-competition-remote-ssot/50_GRANTS.sql",
+    "docs/platform-hard-cutover-01/phase-04/sql/m8-competition-remote-ssot/99_VERIFY.sql"
+  ],
+  "optional_grants_tighten": "50_GRANTS only GRANT; does not REVOKE excess authenticated DELETE/TRUNCATE. Owner may approve a small authored REVOKE-to-match snippet after 50, or accept RLS FORCE as control plane until wipe GO."
+}

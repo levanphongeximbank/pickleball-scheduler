@@ -1,0 +1,73 @@
+{
+  "marker": "PLATFORM_HARD_CUTOVER_01_M8_52_GRANTS_EXACT_BASELINE_PASS_STOP_BEFORE_WIPE",
+  "capturedAt": "2026-07-29T13:05:00Z",
+  "target": {
+    "mcpServer": "project-0-pickleball-scheduler-supabase-staging",
+    "projectRef": "qyewbxjsiiyufanzcjcq",
+    "productionRefBlocked": "expuvcohlcjzvrrauvud"
+  },
+  "files": {
+    "52_GRANTS_EXACT_BASELINE.sql": {
+      "path": "docs/platform-hard-cutover-01/phase-04/sql/m8-competition-remote-ssot/52_GRANTS_EXACT_BASELINE.sql",
+      "sha256": "4A915A5A1CD4D9349ABC7FD1F11236F1EB5249CB3A653308CE125CEE4E33264B"
+    },
+    "52_GRANTS_EXACT_BASELINE_VERIFY.sql": {
+      "path": "docs/platform-hard-cutover-01/phase-04/sql/m8-competition-remote-ssot/52_GRANTS_EXACT_BASELINE_VERIFY.sql",
+      "sha256": "408CC74FAEDD470DEC917835AA4D668FC84F5F2EE58F70204F0635B81484FC36"
+    }
+  },
+  "preflight": {
+    "productionRefInSql": false,
+    "targetConfirmedStaging": true
+  },
+  "apply": {
+    "migrationName": "hard_cutover_m8_competition_ssot_52_grants_exact_baseline",
+    "result": "PASS"
+  },
+  "verify": {
+    "A_exact_authenticated_matrix_diff": "PASS_EMPTY",
+    "B_anon_table_grants": "PASS_EMPTY",
+    "C_anon_rpc_execute": "PASS_FALSE",
+    "D_service_role_all": "PASS_7_PER_TABLE",
+    "E_sequence_grants": "PASS",
+    "F_rpc_text_security_definer": "PASS",
+    "G_rls_force": "PASS_ALL_8",
+    "overall": "PASS"
+  },
+  "authenticatedBefore": {
+    "competition_ssot_competitions": ["INSERT", "SELECT", "UPDATE"],
+    "competition_ssot_participants": ["INSERT", "SELECT", "UPDATE"],
+    "competition_ssot_matches": ["INSERT", "SELECT", "UPDATE"],
+    "competition_ssot_finalized_results": ["INSERT", "SELECT", "UPDATE"],
+    "competition_ssot_standings_snapshots": ["INSERT", "SELECT", "UPDATE"],
+    "competition_ssot_command_log": ["INSERT", "SELECT", "UPDATE"],
+    "competition_ssot_audit_events": ["INSERT", "SELECT", "UPDATE"],
+    "competition_ssot_idempotency": ["INSERT", "SELECT", "UPDATE"]
+  },
+  "authenticatedAfter": {
+    "competition_ssot_competitions": ["INSERT", "SELECT", "UPDATE"],
+    "competition_ssot_participants": ["INSERT", "SELECT", "UPDATE"],
+    "competition_ssot_matches": ["INSERT", "SELECT", "UPDATE"],
+    "competition_ssot_finalized_results": ["SELECT"],
+    "competition_ssot_standings_snapshots": ["INSERT", "SELECT"],
+    "competition_ssot_command_log": ["SELECT"],
+    "competition_ssot_audit_events": ["SELECT"],
+    "competition_ssot_idempotency": ["INSERT", "SELECT"]
+  },
+  "note": "participants DELETE intentionally absent (51 harden); 50_GRANTS listed DELETE but 52 did not re-grant.",
+  "mutations": {
+    "databaseThisTurn": 1,
+    "production": 0
+  },
+  "notExecuted": [
+    "90_ROLLBACK.sql",
+    "10_ORDERED_WIPE.sql",
+    "20_DROP_CLUB_AI_DATA.sql",
+    "reseed"
+  ],
+  "nextOwnerGo": [
+    "10_ORDERED_WIPE.sql",
+    "20_DROP_CLUB_AI_DATA.sql",
+    "reseed"
+  ]
+}

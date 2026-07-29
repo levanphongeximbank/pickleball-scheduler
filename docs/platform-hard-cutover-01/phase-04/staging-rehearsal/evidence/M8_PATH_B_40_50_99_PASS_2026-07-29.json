@@ -1,0 +1,62 @@
+{
+  "marker": "PLATFORM_HARD_CUTOVER_01_M8_PATH_B_COMPLETE_STOP_BEFORE_WIPE",
+  "capturedAt": "2026-07-29T12:50:00Z",
+  "target": {
+    "mcpServer": "project-0-pickleball-scheduler-supabase-staging",
+    "projectRef": "qyewbxjsiiyufanzcjcq",
+    "productionRefBlocked": "expuvcohlcjzvrrauvud"
+  },
+  "results": {
+    "40_RPC_COMMAND_AND_FINALIZE.sql": "PASS",
+    "50_GRANTS.sql": "PASS_WITH_RESIDUAL_SUPERSET",
+    "99_VERIFY.sql": "PASS"
+  },
+  "migrationsAppliedThisTurn": [
+    "hard_cutover_m8_competition_ssot_40_rpc_text_tenant",
+    "hard_cutover_m8_competition_ssot_50_grants_text_tenant"
+  ],
+  "rpcSignatures": [
+    {
+      "proname": "competition_ssot_append_command",
+      "args": "p_tenant_id text, p_competition_id uuid, p_command_type text, p_command_payload jsonb, p_idempotency_key text",
+      "security_definer": true
+    },
+    {
+      "proname": "competition_ssot_upsert_working_score",
+      "args": "p_tenant_id text, p_match_id uuid, p_working_score jsonb, p_idempotency_key text",
+      "security_definer": true
+    },
+    {
+      "proname": "competition_ssot_finalize_match_result",
+      "args": "p_tenant_id text, p_match_id uuid, p_result_payload jsonb, p_idempotency_key text, p_winner_side text, p_source text",
+      "security_definer": true
+    }
+  ],
+  "grants": {
+    "anon_table_grants": 0,
+    "authenticated_package_required_present": true,
+    "authenticated_exact_match_to_50_GRANTS": false,
+    "authenticated_note": "superset of package grants; excess DELETE/TRUNCATE/REFERENCES/TRIGGER remain; mitigated by FORCE RLS",
+    "service_role_all_present": true,
+    "sequence_usage_select_authenticated_service_role": true,
+    "anon_rpc_execute_residual": true
+  },
+  "verify99": {
+    "tables": 8,
+    "rpcs": 3,
+    "rls_enabled_and_forced": true,
+    "non_text_tenant_id_rows": 0,
+    "finalize_text_tenant": true
+  },
+  "notExecuted": [
+    "90_ROLLBACK.sql",
+    "10_ORDERED_WIPE.sql",
+    "20_DROP_CLUB_AI_DATA.sql",
+    "reseed"
+  ],
+  "mutations": {
+    "databaseThisTurn": 2,
+    "production": 0
+  },
+  "stopReason": "M8 Path B complete; Owner GO required before wipe/DROP/reseed"
+}
