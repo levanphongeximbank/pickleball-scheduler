@@ -1,0 +1,16 @@
+{
+  "marker": "PLATFORM_HARD_CUTOVER_01_STAGING_BACKUP_OWNER_CONFIRMATION",
+  "project_ref": "qyewbxjsiiyufanzcjcq",
+  "production_ref_blocked": "expuvcohlcjzvrrauvud",
+  "backup_kind": "dashboard_physical",
+  "backup_id_or_filename": "physical-2026-07-29T18-55-19Z",
+  "backup_completed_at": "2026-07-29T18:55:19Z",
+  "last_known_staging_mutation_at": "2026-07-29T13:03:17Z",
+  "backup_after_last_mutation": true,
+  "restore_entry_visible_in_dashboard": true,
+  "database_backup_excludes_storage_objects": true,
+  "status": "completed",
+  "verified_by": "Owner",
+  "verified_at": "2026-07-30T00:00:00Z",
+  "notes": "Owner GO granted for Staging destructive stage only. Do not Restore unless FAIL + separate Owner GO. No secrets stored."
+}

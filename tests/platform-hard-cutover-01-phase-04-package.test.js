@@ -60,3 +60,59 @@ test("phase-04 package: implementation marker present", () => {
   assert.equal(manifest.mutations.stagingApply, false);
   assert.equal(manifest.mutations.productionApply, false);
 });
+
+test("phase-04 wipe: forbids CASCADE and protected truncate/delete targets", () => {
+  const wipe = fs.readFileSync(
+    path.join(PHASE, "sql/destructive/10_ORDERED_WIPE.sql"),
+    "utf8"
+  );
+  assert.equal(/TRUNCATE[\s\S]*\bCASCADE\b/i.test(wipe), false);
+  assert.equal(/expuvcohlcjzvrrauvud/.test(wipe), false);
+  for (const protectedTable of [
+    "profiles",
+    "venues",
+    "tenant_members",
+    "roles",
+    "permissions",
+    "role_permissions",
+    "plans",
+    "plan_limits",
+  ]) {
+    assert.equal(
+      new RegExp(
+        String.raw`(?:TRUNCATE\s+TABLE|DELETE\s+FROM)\s+public\.${protectedTable}\b`,
+        "i"
+      ).test(wipe),
+      false,
+      `protected table mutated: ${protectedTable}`
+    );
+  }
+});
+
+test("phase-04 wipe FK hard-stop evidence records out-of-manifest blockers", () => {
+  const evidence = JSON.parse(
+    fs.readFileSync(
+      path.join(
+        PHASE,
+        "staging-rehearsal/evidence/07_ORDERED_WIPE_FK_GRAPH_HARD_STOP_2026-07-30.json"
+      ),
+      "utf8"
+    )
+  );
+  assert.equal(
+    evidence.marker,
+    "PLATFORM_HARD_CUTOVER_01_ORDERED_WIPE_FK_HARD_STOP_OUT_OF_MANIFEST"
+  );
+  assert.equal(evidence.ownerDecision.cascadeAllowed, false);
+  assert.equal(evidence.manifestMutation["10_ORDERED_WIPE.sql_changed"], false);
+  assert.equal(evidence.mutations.database, 0);
+  assert.equal(evidence.mutations.production, 0);
+  const required = evidence.tablesRequiredToExpandWipeManifestForTruncateNoCascade;
+  assert.equal(required.includes("referee_assignments"), true);
+  assert.equal(required.includes("team_sub_match_referee_links"), true);
+  assert.equal(
+    required.includes("team_tournament_referee_correction_requests"),
+    true
+  );
+  assert.equal(required.includes("team_tournament_referee_event_inbox"), true);
+});

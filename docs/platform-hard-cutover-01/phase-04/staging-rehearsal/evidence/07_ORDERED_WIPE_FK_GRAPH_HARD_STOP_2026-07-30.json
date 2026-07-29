@@ -1,0 +1,116 @@
+{
+  "marker": "PLATFORM_HARD_CUTOVER_01_ORDERED_WIPE_FK_HARD_STOP_OUT_OF_MANIFEST",
+  "capturedAt": "2026-07-30T00:20:00Z",
+  "target": {
+    "mcpServer": "project-0-pickleball-scheduler-supabase-staging",
+    "projectRef": "qyewbxjsiiyufanzcjcq",
+    "productionRefBlocked": "expuvcohlcjzvrrauvud"
+  },
+  "ownerDecision": {
+    "cascadeAllowed": false,
+    "requestedFix": "multi-table TRUNCATE within exact wipe manifest"
+  },
+  "failureRootCause": {
+    "observedError": "0A000 cannot truncate a table referenced in a foreign key constraint",
+    "firstObserved": "team_tournament_lineup_entries references team_tournament_lineups",
+    "postgresRule": "TRUNCATE RESTRICT requires every referencing table to appear in the same TRUNCATE command; ON DELETE SET NULL/CASCADE on FK does not allow truncating the referenced table alone"
+  },
+  "hardStop": {
+    "reason": "OUT_OF_MANIFEST_FK_REFERENCES_WIPE_TARGETS",
+    "packageFixWithinManifestOnly": "INSUFFICIENT",
+    "cascadeRequiredWithoutScopeExpansion": true,
+    "scopeExpansionRequiredWithoutCascade": true
+  },
+  "outOfManifestInboundFks": [
+    {
+      "src_table": "referee_assignments",
+      "tgt_table": "team_tournament_matchups",
+      "on_delete": "SET NULL",
+      "row_count": 13
+    },
+    {
+      "src_table": "referee_assignments",
+      "tgt_table": "team_tournament_sub_matches",
+      "on_delete": "SET NULL",
+      "row_count": 13
+    },
+    {
+      "src_table": "team_sub_match_referee_links",
+      "tgt_table": "team_tournament_matchups",
+      "on_delete": "CASCADE",
+      "row_count": 1
+    },
+    {
+      "src_table": "team_sub_match_referee_links",
+      "tgt_table": "team_tournament_sub_matches",
+      "on_delete": "CASCADE",
+      "row_count": 1
+    },
+    {
+      "src_table": "team_sub_match_referee_links",
+      "tgt_table": "team_tournaments",
+      "on_delete": "CASCADE",
+      "row_count": 1
+    },
+    {
+      "src_table": "team_tournament_referee_correction_requests",
+      "tgt_table": "team_tournament_matchups",
+      "on_delete": "SET NULL",
+      "row_count": 3
+    },
+    {
+      "src_table": "team_tournament_referee_correction_requests",
+      "tgt_table": "team_tournament_sub_matches",
+      "on_delete": "SET NULL",
+      "row_count": 3
+    },
+    {
+      "src_table": "team_tournament_referee_correction_requests",
+      "tgt_table": "team_tournaments",
+      "on_delete": "CASCADE",
+      "row_count": 3
+    },
+    {
+      "src_table": "team_tournament_referee_event_inbox",
+      "tgt_table": "team_tournament_matchups",
+      "on_delete": "SET NULL",
+      "row_count": 2
+    },
+    {
+      "src_table": "team_tournament_referee_event_inbox",
+      "tgt_table": "team_tournament_sub_matches",
+      "on_delete": "SET NULL",
+      "row_count": 2
+    },
+    {
+      "src_table": "player_identity_links",
+      "tgt_table": "clubs",
+      "on_delete": "NO ACTION",
+      "row_count": 0,
+      "note": "Blocks DELETE FROM clubs if rows exist; currently empty"
+    }
+  ],
+  "tablesRequiredToExpandWipeManifestForTruncateNoCascade": [
+    "referee_assignments",
+    "team_sub_match_referee_links",
+    "team_tournament_referee_correction_requests",
+    "team_tournament_referee_event_inbox"
+  ],
+  "protectedOutboundOnlyOk": [
+    "profiles",
+    "venues",
+    "plans"
+  ],
+  "manifestMutation": {
+    "10_ORDERED_WIPE.sql_changed": false,
+    "reason": "Hard stop — cannot author executable no-CASCADE fix without expanding wipe manifest"
+  },
+  "mutations": {
+    "database": 0,
+    "production": 0,
+    "destructiveRerun": false,
+    "dropClubAiData": "NOT_RUN",
+    "reseed": "NOT_RUN",
+    "restore": "NOT_NEEDED"
+  }
+}
