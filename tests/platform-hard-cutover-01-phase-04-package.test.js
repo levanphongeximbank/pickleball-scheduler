@@ -5,12 +5,136 @@ import path from "node:path";
 
 const ROOT = process.cwd();
 const PHASE = path.join(ROOT, "docs/platform-hard-cutover-01/phase-04");
+const WIPE_PATH = path.join(PHASE, "sql/destructive/10_ORDERED_WIPE.sql");
+
+const APPROVED_6 = [
+  "referee_assignments",
+  "team_sub_match_referee_links",
+  "team_tournament_referee_correction_requests",
+  "team_tournament_referee_event_inbox",
+  "player_identity_links",
+  "referee_device_sessions",
+];
+
+const ORIGINAL_WIPE_TABLES = [
+  "team_tournament_lineup_entries",
+  "team_tournament_lineup_revisions",
+  "team_tournament_lineups",
+  "team_tournament_dreambreaker_states",
+  "team_tournament_forfeit_events",
+  "team_tournament_sub_matches",
+  "team_tournament_matchups",
+  "team_tournament_standings",
+  "team_tournament_team_members",
+  "team_tournament_teams",
+  "team_tournament_groups",
+  "team_tournament_disciplines",
+  "team_tournament_setup_snapshots",
+  "team_tournament_sync_mismatch",
+  "team_tournament_command_log",
+  "team_tournament_audit_logs",
+  "team_tournaments",
+  "rating_v5_reassessment_approvals",
+  "rating_v5_pilot_enrollments",
+  "rating_v5_idempotency",
+  "rating_snapshots",
+  "rating_review_cases",
+  "rating_evidence",
+  "player_rating_profiles",
+  "player_rating_events",
+  "player_skill_assessments",
+  "pick_vn_player_ratings",
+  "rating_calibration_versions",
+  "rating_v5_rollout_config",
+  "vpr_point_ledger",
+  "vpr_leaderboard",
+  "vpr_audit_logs",
+  "vpr_athlete_links",
+  "vpr_athletes",
+  "vpr_point_config",
+  "private_pairing_rule_targets",
+  "private_pairing_rule_audit_logs",
+  "private_pairing_rules",
+  "private_pairing_rule_sets",
+  "ai_suggestions",
+  "ai_workflow_checklists",
+  "notifications",
+  "notification_logs",
+  "push_subscriptions",
+  "qr_tokens",
+  "checkins",
+  "payment_events",
+  "payment_transactions",
+  "payments",
+  "invoice_items",
+  "invoices",
+  "billing_events",
+  "billing_audit_logs",
+  "marketplace_orders",
+  "marketplace_products",
+  "webhook_events",
+  "webhook_endpoints",
+  "tenant_integration_settings",
+  "integration_audit_logs",
+  "api_logs",
+  "api_keys",
+  "api_clients",
+  "idempotency_requests",
+  "tournament_certifications",
+  "tournament_match_live",
+  "password_reset_tokens",
+  "_phase19b_test_accounts",
+  "subscriptions",
+  "public_catalog_rankings",
+  "public_catalog_tournaments",
+  "public_catalog_courts",
+  "court_engine_active_sessions",
+  "court_engine_stores",
+  "court_claim_requests",
+  "user_cluster_assignments",
+  "club_governance_assignments",
+  "club_membership_requests",
+  "club_membership_requests_v42",
+  "club_members",
+  "club_governance",
+  "club_data_v3",
+  "clubs",
+  "athletes",
+  "court_clusters",
+  "tenant_subscriptions",
+  "audit_logs",
+];
+
+function parseWipeTargets(sql) {
+  const targets = [];
+  const re =
+    /(?:TRUNCATE\s+TABLE|DELETE\s+FROM)\s+([\s\S]*?);/gi;
+  let m;
+  while ((m = re.exec(sql))) {
+    const chunk = m[1];
+    const names = [...chunk.matchAll(/public\.([a-zA-Z0-9_]+)/g)].map(
+      (x) => x[1]
+    );
+    targets.push(...names);
+  }
+  return targets;
+}
+
+function parseTruncateStatements(sql) {
+  const stmts = [];
+  const re = /TRUNCATE\s+TABLE\s+([\s\S]*?);/gi;
+  let m;
+  while ((m = re.exec(sql))) {
+    const names = [...m[1].matchAll(/public\.([a-zA-Z0-9_]+)/g)].map(
+      (x) => x[1]
+    );
+    stmts.push(new Set(names));
+  }
+  return stmts;
+}
 
 test("phase-04 package: destructive SQL files exist and forbid auth wipe", () => {
-  const wipe = fs.readFileSync(
-    path.join(PHASE, "sql/destructive/10_ORDERED_WIPE.sql"),
-    "utf8"
-  );
+  const wipe = fs.readFileSync(WIPE_PATH, "utf8");
   assert.equal(wipe.includes("auth.users"), true);
   assert.equal(/DELETE\s+FROM\s+auth\.users/i.test(wipe), false);
   assert.equal(/TRUNCATE\s+TABLE\s+auth\.users/i.test(wipe), false);
@@ -62,11 +186,8 @@ test("phase-04 package: implementation marker present", () => {
 });
 
 test("phase-04 wipe: forbids CASCADE and protected truncate/delete targets", () => {
-  const wipe = fs.readFileSync(
-    path.join(PHASE, "sql/destructive/10_ORDERED_WIPE.sql"),
-    "utf8"
-  );
-  assert.equal(/TRUNCATE[\s\S]*\bCASCADE\b/i.test(wipe), false);
+  const wipe = fs.readFileSync(WIPE_PATH, "utf8");
+  assert.equal(/\bCASCADE\b/i.test(wipe), false);
   assert.equal(/expuvcohlcjzvrrauvud/.test(wipe), false);
   for (const protectedTable of [
     "profiles",
@@ -117,7 +238,7 @@ test("phase-04 wipe FK hard-stop evidence records out-of-manifest blockers", () 
   assert.equal(required.includes("team_tournament_referee_event_inbox"), true);
 });
 
-test("phase-04 wipe expand5: residual FK hard-stop blocks package rewrite", () => {
+test("phase-04 wipe expand5: historical residual FK hard-stop evidence retained", () => {
   const evidence = JSON.parse(
     fs.readFileSync(
       path.join(
@@ -141,35 +262,76 @@ test("phase-04 wipe expand5: residual FK hard-stop blocks package rewrite", () =
     "player_identity_links",
   ]);
   assert.equal(evidence.manifestMutation["10_ORDERED_WIPE.sql_changed"], false);
-  assert.equal(evidence.cascadeOccurrencesInWipe, 0);
-  assert.equal(evidence.mutations.database, 0);
-  assert.equal(evidence.mutations.production, 0);
   assert.deepEqual(evidence.hardStop.furtherExpansionRequiredWithoutCascade, [
     "referee_device_sessions",
   ]);
-  assert.equal(
-    evidence.residualOutsideInboundFks[0].src_table,
-    "referee_device_sessions"
-  );
-  assert.equal(
-    evidence.residualOutsideInboundFks[0].tgt_table,
-    "referee_assignments"
-  );
+});
 
-  const wipe = fs.readFileSync(
-    path.join(PHASE, "sql/destructive/10_ORDERED_WIPE.sql"),
-    "utf8"
+test("phase-04 wipe: exact +6 expansion with no scope drift", () => {
+  const wipe = fs.readFileSync(WIPE_PATH, "utf8");
+  const targets = parseWipeTargets(wipe);
+  const unique = new Set(targets);
+  assert.equal(targets.length, unique.size, "duplicate wipe targets");
+
+  for (const table of ORIGINAL_WIPE_TABLES) {
+    assert.equal(unique.has(table), true, `missing original: ${table}`);
+  }
+  for (const table of APPROVED_6) {
+    assert.equal(unique.has(table), true, `missing approved6: ${table}`);
+  }
+
+  const expected = new Set([...ORIGINAL_WIPE_TABLES, ...APPROVED_6]);
+  const unexpected = [...unique].filter((t) => !expected.has(t));
+  assert.deepEqual(unexpected, []);
+  assert.equal(unique.size, expected.size);
+  assert.equal(/\bCASCADE\b/i.test(wipe), false);
+  assert.equal(/expuvcohlcjzvrrauvud/.test(wipe), false);
+});
+
+test("phase-04 wipe: FK closure complete evidence + connected components co-truncated", () => {
+  const evidence = JSON.parse(
+    fs.readFileSync(
+      path.join(
+        PHASE,
+        "staging-rehearsal/evidence/09_ORDERED_WIPE_FK_CLOSURE_COMPLETE_2026-07-30.json"
+      ),
+      "utf8"
+    )
   );
-  for (const table of evidence.ownerDecision.approvedExpandTablesExact) {
+  assert.equal(
+    evidence.marker,
+    "PLATFORM_HARD_CUTOVER_01_ORDERED_WIPE_FK_CLOSURE_COMPLETE_2026-07-30"
+  );
+  assert.deepEqual(evidence.ownerDecision.approvedExpandTablesExact, APPROVED_6);
+  assert.deepEqual(evidence.fkClosureFixedPoint.newlyDiscoveredOutsideApproved, []);
+  assert.equal(evidence.fkClosureFixedPoint.unresolvedInboundCount, 0);
+  assert.equal(evidence.manifestProof.missing, 0);
+  assert.equal(evidence.manifestProof.unexpectedAdditions, 0);
+  assert.equal(evidence.manifestProof.duplicate, 0);
+  assert.equal(evidence.manifestProof.cascadeOccurrences, 0);
+  assert.equal(evidence.mutations.database, 0);
+  assert.equal(evidence.mutations.production, 0);
+
+  const wipe = fs.readFileSync(WIPE_PATH, "utf8");
+  const stmts = parseTruncateStatements(wipe);
+  for (const component of evidence.connectedComponentsMultiTruncate) {
+    const covered = stmts.some((stmt) =>
+      component.tables.every((t) => stmt.has(t))
+    );
     assert.equal(
-      new RegExp(
-        String.raw`(?:TRUNCATE\s+TABLE|DELETE\s+FROM)\s+public\.${table}\b`,
-        "i"
-      ).test(wipe),
-      false,
-      `expand5 not authored under hard-stop: ${table}`
+      covered,
+      true,
+      `component not co-truncated: ${component.id}`
     );
   }
-  assert.equal(/TRUNCATE[\s\S]*\bCASCADE\b/i.test(wipe), false);
-  assert.equal(/expuvcohlcjzvrrauvud/.test(wipe), false);
+
+  const tt = stmts.find(
+    (s) => s.has("referee_device_sessions") && s.has("referee_assignments")
+  );
+  assert.equal(Boolean(tt), true);
+
+  const pilIdx = wipe.indexOf("TRUNCATE TABLE public.player_identity_links");
+  const clubsIdx = wipe.indexOf("DELETE FROM public.clubs");
+  assert.equal(pilIdx > -1, true);
+  assert.equal(clubsIdx > pilIdx, true);
 });
