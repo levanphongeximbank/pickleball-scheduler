@@ -269,6 +269,9 @@ const AdminIntegrationMonitoringPage = lazy(() =>
 );
 const BillingPage = lazy(() => import("./pages/billing/BillingPage"));
 const AdminBillingPage = lazy(() => import("./pages/admin/AdminBillingPage"));
+const InternalHardCutoverOperatorAcceptancePage = lazy(
+  () => import("./pages/internal/InternalHardCutoverOperatorAcceptancePage.jsx")
+);
 const PrivatePairingRulesAdminPage = lazy(
   () => import("./pages/admin/PrivatePairingRulesAdminPage")
 );
@@ -728,6 +731,14 @@ export default function Router() {
               element={
                 <SuperAdminRouteGuard>
                   <PrivatePairingRulesAdminPage />
+                </SuperAdminRouteGuard>
+              }
+            />
+            <Route
+              path="/internal/hard-cutover/operator-acceptance"
+              element={
+                <SuperAdminRouteGuard>
+                  <InternalHardCutoverOperatorAcceptancePage />
                 </SuperAdminRouteGuard>
               }
             />
