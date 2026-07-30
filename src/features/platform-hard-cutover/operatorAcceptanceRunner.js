@@ -21,6 +21,8 @@ import {
   resolveOperatorAcceptanceAccess,
   resolveOperatorAcceptanceTarget,
 } from "./operatorAcceptanceShared.js";
+import { evaluateMessagingAcceptanceMode } from "./operatorAcceptanceMessaging.js";
+import { runOperatorAcceptanceGlobalProbes } from "./operatorAcceptanceGlobalProbes.js";
 
 function nowIso() {
   return new Date().toISOString();
@@ -308,21 +310,22 @@ async function runCoachingAcceptance() {
 }
 
 async function runMessagingAcceptance({ runtimeStatus }) {
-  const mode = runtimeStatus?.mode || null;
-  const pass = mode === "production" || mode === "unavailable";
-  if (!pass) {
+  const evaluated = evaluateMessagingAcceptanceMode(runtimeStatus);
+  if (!evaluated.ok) {
     return failStep(
       "A-MSG",
-      OPERATOR_ACCEPTANCE_ERROR.MESSAGING_FAILED,
-      `Unexpected messaging mode: ${mode || "unknown"}`
+      evaluated.code || OPERATOR_ACCEPTANCE_ERROR.MESSAGING_FAILED,
+      `Unexpected messaging mode: ${evaluated.rawMode || evaluated.normalizedMode || "unknown"}`
     );
   }
   return okStep("A-MSG", {
     details: {
-      mode,
-      reason: runtimeStatus?.reason || null,
-      demoAllowed: Boolean(runtimeStatus?.demoAllowed),
-      noSilentFallback: mode !== "demo",
+      mode: evaluated.rawMode,
+      normalizedMode: evaluated.normalizedMode,
+      reason: evaluated.reason,
+      demoAllowed: evaluated.demoAllowed,
+      noSilentFallback: evaluated.normalizedMode !== "DEMO",
+      acceptedModes: ["PRODUCTION", "UNAVAILABLE"],
     },
   });
 }
@@ -381,17 +384,12 @@ async function runCatalogAcceptance() {
   });
 }
 
-function toGlobalStep(id, pass, details = {}) {
-  return pass
-    ? okStep(id, { details })
-    : failStep(id, id, `${id} failed`, { details });
-}
-
 export async function runOperatorAcceptanceSequence({
   authUser,
   currentTenantId,
   isSuperAdmin,
   communicationRuntimeStatus = null,
+  env = import.meta.env,
 } = {}) {
   const session = await getAuthenticatedSupabaseUser();
   if (!session.ok) {
@@ -409,7 +407,7 @@ export async function runOperatorAcceptanceSequence({
   }
 
   const access = resolveOperatorAcceptanceAccess({
-    env: import.meta.env,
+    env,
     authUser,
     sessionUserId: session.sessionUserId,
     currentTenantId,
@@ -470,14 +468,13 @@ export async function runOperatorAcceptanceSequence({
   steps.push(cat);
   if (cat.status === "FAIL") return { access, stoppedAt: cat.id, steps };
 
-  steps.push(
-    toGlobalStep("A-G1", true, { canonicalWriter: true }),
-    toGlobalStep("A-G2", true, { legacyWriterBlocked: true }),
-    toGlobalStep("A-G3", true, { noLocalStorageAuthority: true }),
-    toGlobalStep("A-G4", true, { noMockPersistence: true }),
-    toGlobalStep("A-G5", true, { noSilentFallback: true }),
-    toGlobalStep("A-G6", true, { noHybridRuntime: true })
-  );
+  const globalProbes = runOperatorAcceptanceGlobalProbes(env);
+  for (const probe of globalProbes) {
+    steps.push(probe);
+    if (probe.status === "FAIL") {
+      return { access, stoppedAt: probe.id, steps };
+    }
+  }
 
   return { access, steps, stoppedAt: null };
 }
