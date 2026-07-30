@@ -1,0 +1,181 @@
+{
+  "meta": {
+    "scenarioId": "tt10-dry-run-15-steps",
+    "version": "1.1.0",
+    "tournamentFixture": "tt10-pilot-tournament.json",
+    "productionImpact": "NONE"
+  },
+  "steps": [
+    {
+      "id": "S01",
+      "order": 1,
+      "actor": "btc",
+      "action": "create_tournament",
+      "description": "BTC tạo giải từ template 4 đội MLP",
+      "expectedOutcome": "Tournament shell + 6 matchups scheduled",
+      "confirmsTerminalFor": [],
+      "evidence": ["audit:team.create", "screenshot:setup"]
+    },
+    {
+      "id": "S02",
+      "order": 2,
+      "actor": "captain-a",
+      "action": "submit_lineup_on_time",
+      "matchupId": "m-ab",
+      "description": "Đội trưởng A submit đúng hạn",
+      "expectedOutcome": "Lineup status = submitted before deadline",
+      "confirmsTerminalFor": [],
+      "evidence": ["lineup:team-a:submitted"]
+    },
+    {
+      "id": "S03",
+      "order": 3,
+      "actor": "captain-b",
+      "action": "submit_lineup_near_deadline",
+      "matchupId": "m-ab",
+      "description": "Đội trưởng B submit sát deadline (T-2 min)",
+      "expectedOutcome": "Accepted if before server deadline",
+      "confirmsTerminalFor": [],
+      "evidence": ["timestamp:submit", "server:deadline_check"]
+    },
+    {
+      "id": "S04",
+      "order": 4,
+      "actor": "captain-c",
+      "action": "no_submit",
+      "matchupId": "m-cd",
+      "description": "Đội C không submit → BTC randomize",
+      "expectedOutcome": "Lineup source = random after lock",
+      "confirmsTerminalFor": [],
+      "evidence": ["lineup:team-c:random"]
+    },
+    {
+      "id": "S05",
+      "order": 5,
+      "actor": "captain-d",
+      "action": "submit_invalid_then_fix",
+      "matchupId": "m-cd",
+      "lineupTemplateRef": "team-d-invalid-first",
+      "description": "Đội D submit lineup invalid → sửa lại",
+      "expectedOutcome": "Validation error LINEUP_MIXED_REUSE then successful resubmit",
+      "expectedRejectionCode": "LINEUP_MIXED_REUSE",
+      "confirmsTerminalFor": [],
+      "evidence": ["validation:error", "lineup:team-d:submitted"]
+    },
+    {
+      "id": "S06",
+      "order": 6,
+      "actor": "btc",
+      "action": "lock_lineups",
+      "description": "BTC lock tất cả lineup",
+      "expectedOutcome": "Captains cannot edit; missing → randomized",
+      "confirmsTerminalFor": [],
+      "evidence": ["audit:lineup.lock"]
+    },
+    {
+      "id": "S07",
+      "order": 7,
+      "actor": "btc",
+      "action": "publish_lineups",
+      "description": "BTC publish lineup",
+      "expectedOutcome": "Opponent selections visible to captains/referees",
+      "confirmsTerminalFor": [],
+      "evidence": ["audit:lineup.publish"]
+    },
+    {
+      "id": "S08",
+      "order": 8,
+      "actor": "referee-1",
+      "action": "enter_results",
+      "matchupId": "m-ab",
+      "description": "Referee 1 nhập kết quả draft trận AB",
+      "expectedOutcome": "Sub-match results saved as draft for m-ab",
+      "confirmsTerminalFor": [],
+      "matchupStatesAfter": { "m-ab": "draft" },
+      "evidence": ["result:m-ab:draft"]
+    },
+    {
+      "id": "S09",
+      "order": 9,
+      "actor": "referee-1",
+      "action": "confirm_results",
+      "matchupId": "m-ab",
+      "description": "Referee 1 xác nhận m-ab; retry idempotency key",
+      "expectedOutcome": "m-ab terminal confirmed; single command log entry",
+      "confirmsTerminalFor": ["m-ab"],
+      "matchupStatesAfter": { "m-ab": "confirmed" },
+      "evidence": ["result:m-ab:confirmed", "command_log:idempotency"]
+    },
+    {
+      "id": "S10",
+      "order": 10,
+      "actor": "referee-2",
+      "action": "result_conflict_resolve",
+      "matchupId": "m-cd",
+      "description": "Referee 2 gặp version conflict trên m-cd rồi resolve",
+      "expectedOutcome": "version_conflict returned then m-cd confirmed terminal",
+      "confirmsTerminalFor": ["m-cd"],
+      "matchupStatesAfter": { "m-cd": "confirmed" },
+      "evidence": ["error:version_conflict", "result:m-cd:confirmed"]
+    },
+    {
+      "id": "S11",
+      "order": 11,
+      "actor": "btc",
+      "action": "apply_forfeit",
+      "matchupId": "m-bd",
+      "description": "BTC áp dụng thua kỹ thuật cho m-bd",
+      "expectedOutcome": "m-bd terminal forfeit; winner team-b",
+      "confirmsTerminalFor": ["m-bd"],
+      "matchupStatesAfter": { "m-bd": "forfeit" },
+      "evidence": ["audit:team.match.forfeit", "result:m-bd:forfeit"]
+    },
+    {
+      "id": "S12",
+      "order": 12,
+      "actor": "referee-1",
+      "action": "enter_results",
+      "matchupIds": ["m-ac", "m-ad"],
+      "description": "Referee 1 xác nhận kết quả m-ac và m-ad",
+      "expectedOutcome": "m-ac and m-ad terminal confirmed; standings recalculated",
+      "confirmsTerminalFor": ["m-ac", "m-ad"],
+      "matchupStatesAfter": { "m-ac": "confirmed", "m-ad": "confirmed" },
+      "evidence": ["result:m-ac:confirmed", "result:m-ad:confirmed", "standings:snapshot"]
+    },
+    {
+      "id": "S13",
+      "order": 13,
+      "actor": "btc",
+      "action": "override_result_and_confirm",
+      "matchupId": "m-ac",
+      "secondaryActor": "referee-2",
+      "secondaryMatchupId": "m-bc",
+      "description": "BTC override m-ac; Referee 2 xác nhận m-bc",
+      "expectedOutcome": "m-ac override audited; m-bc terminal confirmed; standings recalculated",
+      "confirmsTerminalFor": ["m-bc"],
+      "matchupStatesAfter": { "m-ac": "confirmed", "m-bc": "confirmed" },
+      "evidence": ["audit:team.match.result.override", "result:m-bc:confirmed", "standings:snapshot"]
+    },
+    {
+      "id": "S14",
+      "order": 14,
+      "actor": "btc",
+      "action": "complete_tournament",
+      "description": "Hoàn tất giải sau khi 6/6 matchup terminal",
+      "expectedOutcome": "All 6 matchups terminal; standings updated; tournament status complete",
+      "preconditionAllMatchupsTerminal": true,
+      "confirmsTerminalFor": [],
+      "evidence": ["tournament:status:complete", "standings:final"]
+    },
+    {
+      "id": "S15",
+      "order": 15,
+      "actor": "btc",
+      "action": "export_data",
+      "description": "Export dữ liệu (JSON/CSV fallback)",
+      "expectedOutcome": "Export files match fallback templates",
+      "confirmsTerminalFor": [],
+      "evidence": ["export:bundle"]
+    }
+  ]
+}
