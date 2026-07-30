@@ -1,0 +1,61 @@
+{
+  "marker": "PLATFORM_HARD_CUTOVER_01_A_PAIR_OWNER_SAME_TENANT_VIEW_PR",
+  "authoredAt": "2026-07-30T15:40:00.000Z",
+  "baseCommit": "a44e29ee2636cd8e72404e7a757d0ebd307a17a1",
+  "targetProjectRef": "qyewbxjsiiyufanzcjcq",
+  "productionRefBlocked": "expuvcohlcjzvrrauvud",
+  "databaseMutationsThisTurn": 0,
+  "productionMutations": 0,
+  "productionDeployment": 0,
+  "operatorRunner": "NOT_RUN",
+  "stagingApplyThisTurn": false,
+  "browserEvidenceSanitized": {
+    "stagingProject": "qyewbxjsiiyufanzcjcq",
+    "tenant": "venue-staging-a",
+    "actor": "13e0***af9c",
+    "appRole": "TENANT_OWNER",
+    "passedSteps": ["A-OWN", "A-CLUB", "A-COURT", "A-PLAYER", "A-RATE", "A-COMP"],
+    "passedCount": 6,
+    "failedStep": "A-PAIR",
+    "failedCode": "PERMISSION_DENIED",
+    "runnerStoppedAt": "A-PAIR",
+    "rerun": false,
+    "secretsPrinted": false
+  },
+  "rootCause": {
+    "rpc": "private_pairing_get_active_rules_for_scope",
+    "gates": [
+      "private_pairing_can('pairing.private_rules.view') requires is_super_admin()",
+      "private_pairing_tenant_visible requires is_super_admin()"
+    ],
+    "priorPackageInsufficient": "pairing-owner-view-rbac (PR #347) role_permissions only"
+  },
+  "package": {
+    "path": "docs/platform-hard-cutover-01/phase-04/sql/pairing-owner-same-tenant-view",
+    "files": [
+      "10_OWNER_SAME_TENANT_VIEW.sql",
+      "90_ROLLBACK.sql",
+      "99_VERIFY.sql",
+      "README.md"
+    ],
+    "ownerRolesViewOnly": ["TENANT_OWNER", "COURT_OWNER", "VENUE_OWNER"],
+    "ownerSameTenantOnly": true,
+    "ownerCrossTenant": false,
+    "elevatedPermsRemainPlatformAdmin": [
+      "manage",
+      "edit",
+      "admin",
+      "audit",
+      "simulate"
+    ],
+    "superAdminBehaviorUnchanged": true
+  },
+  "postMergePlan": [
+    "1. Owner merges this PR",
+    "2. Owner GO — apply 10_OWNER_SAME_TENANT_VIEW.sql on Staging qyewbxjsiiyufanzcjcq only",
+    "3. Run 99_VERIFY.sql (structural + Owner-session matrix)",
+    "4. Redeploy Preview if needed",
+    "5. Owner single Operator Acceptance rerun as 13e0***af9c",
+    "6. Do not touch Production"
+  ]
+}
