@@ -49,6 +49,22 @@ test("resolveOperatorAcceptanceAccess passes for staging super admin", () => {
   assert.equal(access.maskedActorId, "abcd***5678");
 });
 
+test("resolveOperatorAcceptanceAccess passes for staging venue owner", () => {
+  const access = resolveOperatorAcceptanceAccess({
+    env: {
+      VITE_APP_ENV: "staging",
+      VITE_SUPABASE_URL: `https://${OPERATOR_ACCEPTANCE_PROJECT_REF}.supabase.co`,
+    },
+    authUser: { id: "13e0a111bcdeaf9c", role: "VENUE_OWNER", venueId: "venue-staging-a" },
+    sessionUserId: "13e0a111bcdeaf9c",
+    currentTenantId: "venue-staging-a",
+    isSuperAdmin: false,
+  });
+  assert.equal(access.ok, true);
+  assert.equal(access.role, "VENUE_OWNER");
+  assert.equal(access.tenantId, "venue-staging-a");
+});
+
 test("maskOperatorIdentifier redacts short and long ids", () => {
   assert.equal(maskOperatorIdentifier("12345678"), "12***78");
   assert.equal(maskOperatorIdentifier("123456789"), "1234***6789");
