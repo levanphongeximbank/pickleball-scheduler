@@ -8,6 +8,7 @@ import { Box, CircularProgress } from "@mui/material";
 
 import MainLayout from "./layouts/MainLayout";
 import SuperAdminRouteGuard from "./features/pairing-constraints/guards/superAdminRouteGuard.jsx";
+import OperatorAcceptanceRouteGuard from "./features/platform-hard-cutover/OperatorAcceptanceRouteGuard.jsx";
 
 import { AuthProvider } from "./context/AuthContext.jsx";
 import { MyClubMembershipRootProvider } from "./features/club/hooks/MyClubMembershipContext.jsx";
@@ -737,9 +738,9 @@ export default function Router() {
             <Route
               path="/internal/hard-cutover/operator-acceptance"
               element={
-                <SuperAdminRouteGuard>
+                <OperatorAcceptanceRouteGuard>
                   <InternalHardCutoverOperatorAcceptancePage />
-                </SuperAdminRouteGuard>
+                </OperatorAcceptanceRouteGuard>
               }
             />
 
