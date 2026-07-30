@@ -18,11 +18,18 @@ import { listPublicClubsRemote, listPublicCourtsRemote, listPublicRankingsRemote
 import { getDashboardAnalytics } from "../dashboard-analytics/services/dashboardService.js";
 import {
   OPERATOR_ACCEPTANCE_ERROR,
+  maskOperatorIdentifier,
   resolveOperatorAcceptanceAccess,
   resolveOperatorAcceptanceTarget,
 } from "./operatorAcceptanceShared.js";
 import { evaluateMessagingAcceptanceMode } from "./operatorAcceptanceMessaging.js";
 import { runOperatorAcceptanceGlobalProbes } from "./operatorAcceptanceGlobalProbes.js";
+import { evaluateOwnerSecurityBoundary } from "./operatorAcceptanceSecurityBoundary.js";
+import {
+  evaluateRatingAssessmentIdentity,
+  resolveRatingAssessmentId,
+} from "./operatorAcceptanceRatingIdentity.js";
+import { PUBLIC_CATALOG_RPC } from "../public-catalog/persistence/schema.js";
 
 function nowIso() {
   return new Date().toISOString();
@@ -102,7 +109,7 @@ async function runClubAcceptance({ tenantId }) {
       tenantId,
       clubId: club.id,
       canonicalBlob: "club_data_v3",
-      legacyTableAbsent: true,
+      legacyTableAbsent: "notObserved",
     },
   });
 }
@@ -138,11 +145,29 @@ async function runCourtAcceptance({ tenantId }) {
       "Cluster durable read-back missing"
     );
   }
+  const foundVenueId = String(found.venueId ?? found.venue_id ?? "").trim();
+  if (foundVenueId !== String(tenantId).trim()) {
+    return failStep(
+      "A-COURT",
+      OPERATOR_ACCEPTANCE_ERROR.COURT_TENANT_MISMATCH,
+      "Cluster venueId does not match acceptance tenantId",
+      {
+        details: {
+          source: "court_admin_upsert_cluster RPC",
+          foundVenueId,
+          tenantId,
+          tenantIsolation: false,
+        },
+      }
+    );
+  }
   return okStep("A-COURT", {
     objectId: found.id,
     details: {
       source: "court_admin_upsert_cluster RPC",
-      tenantIsolation: found.venueId === tenantId,
+      foundVenueId,
+      tenantId,
+      tenantIsolation: true,
     },
   });
 }
@@ -157,37 +182,116 @@ async function runPlayerAcceptance({ sessionUserId }) {
     );
   }
   return okStep("A-PLAYER", {
-    objectId: resolved.data?.athlete_id || resolved.data?.profile_id || sessionUserId,
+    objectId: maskOperatorIdentifier(
+      resolved.data?.athlete_id || resolved.data?.profile_id || sessionUserId
+    ),
     details: {
       source: "platform_resolve_athlete_profile RPC",
-      authUsersCreated: 0,
+      authUsersCreated: "notObserved",
     },
   });
 }
 
-async function runRatingAcceptance() {
+function resolveRatingAssessmentIdFromRpc(result) {
+  return resolveRatingAssessmentId(result);
+}
+
+async function runRatingAcceptance({ sessionUserId, tenantId }) {
   const first = await rpcRatingV5StartAssessment("doubles");
   const second = await rpcRatingV5StartAssessment("doubles");
   const enrollment = await rpcRatingV5GetMyPilotEnrollment();
+  // Draft assessments may have profile=null — do not require profile for PASS.
   const profile = await rpcRatingV5GetProfile("doubles");
-  if (!first.ok || !second.ok || !profile.ok) {
-    const failing = [first, second, profile].find((item) => !item.ok) || enrollment;
+
+  if (!first.ok || !second.ok) {
+    const failing = !first.ok ? first : second;
     return failStep(
       "A-RATE",
       failing?.code || OPERATOR_ACCEPTANCE_ERROR.RATING_FAILED,
-      failing?.error || "Rating acceptance failed"
+      failing?.error || "Rating start-assessment failed"
     );
   }
-  const sameProfileId =
-    String(first.profile?.id || profile.profile?.id || "") ===
-    String(second.profile?.id || profile.profile?.id || "");
+
+  const firstAssessmentId = resolveRatingAssessmentIdFromRpc(first);
+  const secondAssessmentId = resolveRatingAssessmentIdFromRpc(second);
+
+  const client = getSupabaseAuthClient();
+  if (!client) {
+    return failStep(
+      "A-RATE",
+      OPERATOR_ACCEPTANCE_ERROR.CLIENT_UNAVAILABLE,
+      "Supabase client unavailable"
+    );
+  }
+
+  let rows = null;
+  let readError = null;
+  if (
+    firstAssessmentId &&
+    secondAssessmentId &&
+    firstAssessmentId !== secondAssessmentId
+  ) {
+    try {
+      const { data, error } = await client
+        .from("player_skill_assessments")
+        .select("id, player_id, tenant_id")
+        .in("id", [firstAssessmentId, secondAssessmentId]);
+      if (error) {
+        readError = error.message || "Assessment row read failed";
+      } else {
+        rows = data;
+      }
+    } catch (err) {
+      readError =
+        err instanceof Error ? err.message : "Assessment row read failed";
+    }
+  }
+
+  const identity = evaluateRatingAssessmentIdentity({
+    sessionUserId,
+    tenantId,
+    firstAssessmentId,
+    secondAssessmentId,
+    rows,
+    readError,
+  });
+
+  if (!identity.ok) {
+    return failStep(
+      "A-RATE",
+      identity.code || OPERATOR_ACCEPTANCE_ERROR.RATING_PROFILE_MISMATCH,
+      identity.message || "Rating assessment identity mismatch",
+      {
+        details: {
+          source: "rating_v5_start_assessment + player_skill_assessments",
+          ...identity.details,
+          enrollmentCode:
+            enrollment?.code ||
+            (enrollment?.ok === false ? enrollment?.code : "OK"),
+          profileObserved:
+            profile?.ok === true
+              ? profile?.profile
+                ? "present"
+                : "null"
+              : "notObserved",
+          clubBlobWriteForbidden: "notObserved",
+        },
+      }
+    );
+  }
+
   return okStep("A-RATE", {
-    objectId: profile.profile?.id || null,
+    objectId: maskOperatorIdentifier(firstAssessmentId),
     details: {
-      source: "rating_v5_* RPC",
-      sameProfileId,
-      enrollmentCode: enrollment.code || "OK",
-      clubBlobWriteForbidden: true,
+      source: "rating_v5_start_assessment + player_skill_assessments",
+      samePlayer: true,
+      sameTenant: true,
+      assessmentRows: 2,
+      enrollmentCode:
+        enrollment?.code || (enrollment?.ok === false ? enrollment?.code : "OK"),
+      profileObserved:
+        profile?.ok === true ? (profile?.profile ? "present" : "null") : "notObserved",
+      clubBlobWriteForbidden: "notObserved",
     },
   });
 }
@@ -268,6 +372,20 @@ async function runCompetitionAcceptance({ tenantId }) {
   });
 }
 
+async function runSecurityBoundaryAcceptance({ isSuperAdmin }) {
+  const evaluated = evaluateOwnerSecurityBoundary({ isSuperAdmin });
+  if (!evaluated.ok) {
+    return failStep(
+      "A-SEC",
+      evaluated.code || OPERATOR_ACCEPTANCE_ERROR.SECURITY_BOUNDARY_FAILED,
+      evaluated.message || "Security boundary failed"
+    );
+  }
+  return okStep("A-SEC", {
+    details: evaluated.details,
+  });
+}
+
 async function runPairingAcceptance({ tenantId }) {
   const result = await loadActivePrivatePairingRulesForRuntime(
     { scopeType: "tenant", tenantId },
@@ -277,12 +395,12 @@ async function runPairingAcceptance({ tenantId }) {
     return failStep(
       "A-PAIR",
       result.code || OPERATOR_ACCEPTANCE_ERROR.PAIRING_FAILED,
-      result.message || result.error || "Private pairing runtime failed"
+      result.message || result.error || "Restricted capability runtime failed"
     );
   }
   return okStep("A-PAIR", {
     details: {
-      source: "private_pairing_rules repository",
+      source: "restricted_capability_runtime",
       ruleCount: Array.isArray(result.rules) ? result.rules.length : 0,
       skipped: Boolean(result.skipped),
     },
@@ -359,26 +477,42 @@ async function runDashboardAcceptance({ clubId }) {
 }
 
 async function runCatalogAcceptance() {
-  const [clubs, courts, tournaments, rankings] = await Promise.all([
-    listPublicClubsRemote(),
-    listPublicCourtsRemote(),
-    listPublicTournamentsRemote(),
-    listPublicRankingsRemote(),
-  ]);
-  const firstFailure = [clubs, courts, tournaments, rankings].find((item) => !item?.ok);
-  if (firstFailure) {
-    return failStep(
-      "A-CAT",
-      firstFailure.code || OPERATOR_ACCEPTANCE_ERROR.CATALOG_FAILED,
-      firstFailure.message || "Public catalog remote read failed"
-    );
+  const probes = [
+    { rpc: PUBLIC_CATALOG_RPC.LIST_CLUBS, result: await listPublicClubsRemote() },
+    { rpc: PUBLIC_CATALOG_RPC.LIST_COURTS, result: await listPublicCourtsRemote() },
+    {
+      rpc: PUBLIC_CATALOG_RPC.LIST_TOURNAMENTS,
+      result: await listPublicTournamentsRemote(),
+    },
+    { rpc: PUBLIC_CATALOG_RPC.LIST_RANKINGS, result: await listPublicRankingsRemote() },
+  ];
+  for (const probe of probes) {
+    if (!probe.result?.ok) {
+      return failStep(
+        "A-CAT",
+        probe.result?.code || OPERATOR_ACCEPTANCE_ERROR.CATALOG_FAILED,
+        probe.result?.message || `Public catalog RPC failed: ${probe.rpc}`,
+        { details: { rpc: probe.rpc } }
+      );
+    }
+    const items = probe.result.value?.items;
+    if (items !== undefined && !Array.isArray(items)) {
+      return failStep(
+        "A-CAT",
+        OPERATOR_ACCEPTANCE_ERROR.CATALOG_FAILED,
+        `Malformed public catalog response: ${probe.rpc}`,
+        { details: { rpc: probe.rpc, malformed: true } }
+      );
+    }
   }
   return okStep("A-CAT", {
     details: {
-      clubs: clubs.value?.items?.length ?? 0,
-      courts: courts.value?.items?.length ?? 0,
-      tournaments: tournaments.value?.items?.length ?? 0,
-      rankings: rankings.value?.items?.length ?? 0,
+      rpcs: probes.map((probe) => probe.rpc),
+      clubs: probes[0].result.value?.items?.length ?? 0,
+      courts: probes[1].result.value?.items?.length ?? 0,
+      tournaments: probes[2].result.value?.items?.length ?? 0,
+      rankings: probes[3].result.value?.items?.length ?? 0,
+      emptyResultAllowed: true,
       source: "public_catalog_list_* RPC",
     },
   });
@@ -440,7 +574,10 @@ export async function runOperatorAcceptanceSequence({
   steps.push(player);
   if (player.status === "FAIL") return { access, stoppedAt: player.id, steps };
 
-  const rating = await runRatingAcceptance();
+  const rating = await runRatingAcceptance({
+    sessionUserId: access.actorId,
+    tenantId: access.tenantId,
+  });
   steps.push(rating);
   if (rating.status === "FAIL") return { access, stoppedAt: rating.id, steps };
 
@@ -448,9 +585,19 @@ export async function runOperatorAcceptanceSequence({
   steps.push(comp);
   if (comp.status === "FAIL") return { access, stoppedAt: comp.id, steps };
 
-  const pair = await runPairingAcceptance({ tenantId: access.tenantId });
-  steps.push(pair);
-  if (pair.status === "FAIL") return { access, stoppedAt: pair.id, steps };
+  // Owner path: generic A-SEC only (no restricted capability positive read).
+  // Super-admin path: keep prior positive restricted-capability check (A-PAIR).
+  if (access.isSuperAdmin) {
+    const pair = await runPairingAcceptance({ tenantId: access.tenantId });
+    steps.push(pair);
+    if (pair.status === "FAIL") return { access, stoppedAt: pair.id, steps };
+  } else {
+    const security = await runSecurityBoundaryAcceptance({
+      isSuperAdmin: access.isSuperAdmin,
+    });
+    steps.push(security);
+    if (security.status === "FAIL") return { access, stoppedAt: security.id, steps };
+  }
 
   const coach = await runCoachingAcceptance();
   steps.push(coach);

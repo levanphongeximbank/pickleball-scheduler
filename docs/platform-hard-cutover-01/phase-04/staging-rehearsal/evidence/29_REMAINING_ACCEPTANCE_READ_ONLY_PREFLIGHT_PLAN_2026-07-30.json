@@ -1,0 +1,40 @@
+{
+  "marker": "PLATFORM_HARD_CUTOVER_01_REMAINING_ACCEPTANCE_READ_ONLY_PREFLIGHT_PLAN",
+  "mode": "READ_ONLY",
+  "observedAt": "2026-07-30T16:12:00.000Z",
+  "targetProjectRef": "qyewbxjsiiyufanzcjcq",
+  "productionRefBlocked": "expuvcohlcjzvrrauvud",
+  "databaseMutations": 0,
+  "businessWrites": 0,
+  "operatorRunner": "NOT_RUN",
+  "result": "PLAN_AUTHORED",
+  "notes": "Live Staging RPC invoke deferred to Owner GO / post-revoke Preview run. Structural coverage authored in code+tests this turn.",
+  "steps": [
+    {
+      "step": "A-COACH",
+      "plan": "Read gateway.mode only; accept durable|unavailable; no writes"
+    },
+    {
+      "step": "A-MSG",
+      "plan": "Accept PRODUCTION|UNAVAILABLE case-insensitive; reject DEMO|MOCK|LEGACY|missing"
+    },
+    {
+      "step": "A-DASH",
+      "plan": "Accept unavailable OR sourceState UNAVAILABLE OR isMock===false; no writes"
+    },
+    {
+      "step": "A-CAT",
+      "plan": "Probe four RPCs; empty=PASS; missing/denied/malformed=FAIL",
+      "rpcs": [
+        "public_catalog_list_clubs",
+        "public_catalog_list_courts",
+        "public_catalog_list_tournaments",
+        "public_catalog_list_rankings"
+      ]
+    },
+    {
+      "step": "A-G1..A-G6",
+      "plan": "Use matrix/policy probes; HC flag false => HARD_CUTOVER_REQUIRED FAIL; no hardcoded PASS"
+    }
+  ]
+}

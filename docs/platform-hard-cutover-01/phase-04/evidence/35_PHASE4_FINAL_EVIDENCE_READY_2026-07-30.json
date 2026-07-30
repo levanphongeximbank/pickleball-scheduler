@@ -1,0 +1,28 @@
+{
+  "marker": "PLATFORM_HARD_CUTOVER_01_PHASE4_FINAL_EVIDENCE_READY",
+  "generatedAt": "2026-07-30T17:25:00.000Z",
+  "operatorStepsPassed": 17,
+  "operatorStepsTotal": 17,
+  "securityReconciliation": "PASS",
+  "remainingPreflight": "PASS",
+  "secretsPrinted": false,
+  "restrictedFeatureNamesPrinted": false,
+  "productionMutations": 0,
+  "productionDeployment": 0,
+  "operatorRun": {
+    "runResult": "PASS",
+    "rawEvidenceFile": "operator-acceptance-1785431416113.json",
+    "rawEvidenceSha256": "7015b71b2cc318e4cf9e8759e6c2acc0becbf3ccad338bb102c6fc5ce09351d7",
+    "sanitizedEvidenceFile": "docs/platform-hard-cutover-01/phase-04/evidence/33_OPERATOR_ACCEPTANCE_FINAL_BROWSER_RUN_2026-07-30.json",
+    "writeReconciliationFile": "docs/platform-hard-cutover-01/phase-04/evidence/34_OPERATOR_ACCEPTANCE_FINAL_WRITE_RECONCILIATION_2026-07-30.json",
+    "executedDeploymentSha": "f40d9ad921bc21791a2f8a5a6ea9179490709648",
+    "packagingCommitNote": "Evidence packaged after Owner browser run; Runner was NOT re-executed on the packaging commit."
+  },
+  "target": {
+    "projectRef": "qyewbxjsiiyufanzcjcq",
+    "environment": "staging",
+    "tenantId": "venue-staging-a"
+  },
+  "mergeGate": "READY_FOR_OWNER_REVIEW_PHASE4_FINAL_EVIDENCE",
+  "doNotMergeByAgent": true
+}

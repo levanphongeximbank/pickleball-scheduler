@@ -1,5 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
+import fs from "node:fs";
+import path from "node:path";
 
 import {
   buildOperatorAcceptanceEvidence,
@@ -99,12 +101,15 @@ test("buildOperatorAcceptanceEvidence excludes credentials", () => {
 });
 
 test("operator acceptance steps preserve required order", () => {
-  assert.deepEqual(OPERATOR_ACCEPTANCE_STEPS.slice(0, 5), [
+  assert.equal(OPERATOR_ACCEPTANCE_STEPS.length, 17);
+  assert.deepEqual(OPERATOR_ACCEPTANCE_STEPS.slice(0, 7), [
     "A-OWN",
     "A-CLUB",
     "A-COURT",
     "A-PLAYER",
     "A-RATE",
+    "A-COMP",
+    "A-SEC",
   ]);
   assert.deepEqual(OPERATOR_ACCEPTANCE_STEPS.slice(-6), [
     "A-G1",
@@ -114,4 +119,52 @@ test("operator acceptance steps preserve required order", () => {
     "A-G5",
     "A-G6",
   ]);
+  assert.equal(OPERATOR_ACCEPTANCE_STEPS.includes("A-PAIR"), false);
+});
+
+test("A-PLAYER evidence export never contains full sessionUserId", () => {
+  const runner = fs.readFileSync(
+    path.join(
+      process.cwd(),
+      "src/features/platform-hard-cutover/operatorAcceptanceRunner.js"
+    ),
+    "utf8"
+  );
+  assert.match(
+    runner,
+    /okStep\(\s*"A-PLAYER"[\s\S]*?objectId:\s*maskOperatorIdentifier\(/
+  );
+
+  const sessionUserId = "11111111-2222-4333-8444-555555555555";
+  const evidence = buildOperatorAcceptanceEvidence({
+    access: {
+      target: { projectRef: OPERATOR_ACCEPTANCE_PROJECT_REF, appEnv: "staging" },
+      tenantId: "venue-staging-a",
+      maskedActorId: maskOperatorIdentifier(sessionUserId),
+      role: "TENANT_OWNER",
+      isSuperAdmin: false,
+    },
+    startedAt: "2026-07-30T17:09:59.352Z",
+    finishedAt: "2026-07-30T17:10:03.152Z",
+    steps: [
+      {
+        id: "A-PLAYER",
+        status: "PASS",
+        objectId: maskOperatorIdentifier(
+          sessionUserId /* athlete_id || profile_id || sessionUserId */
+        ),
+        code: null,
+        message: null,
+        details: {
+          source: "platform_resolve_athlete_profile RPC",
+          authUsersCreated: "notObserved",
+        },
+        observedAt: "2026-07-30T17:10:00.405Z",
+      },
+    ],
+  });
+  const serialized = JSON.stringify(evidence);
+  assert.equal(serialized.includes(sessionUserId), false);
+  assert.equal(evidence.steps[0].objectId, "1111***5555");
+  assert.equal(evidence.actor.maskedUserId, "1111***5555");
 });
