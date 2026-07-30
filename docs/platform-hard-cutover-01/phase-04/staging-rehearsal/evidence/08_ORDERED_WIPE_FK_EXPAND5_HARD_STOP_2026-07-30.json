@@ -1,0 +1,84 @@
+{
+  "marker": "PLATFORM_HARD_CUTOVER_01_ORDERED_WIPE_FK_EXPAND5_HARD_STOP_RESIDUAL",
+  "capturedAt": "2026-07-30T00:40:00Z",
+  "freshMainSha": "8885dbf7087b478b9f53e618507ff2c0538c8075",
+  "pr337": {
+    "state": "MERGED",
+    "mergeCommit": "8885dbf7087b478b9f53e618507ff2c0538c8075",
+    "isAncestorOfOriginMain": true
+  },
+  "target": {
+    "mcpServer": "project-0-pickleball-scheduler-supabase-staging",
+    "projectRef": "qyewbxjsiiyufanzcjcq",
+    "productionRefBlocked": "expuvcohlcjzvrrauvud",
+    "auditMode": "READ_ONLY"
+  },
+  "ownerDecision": {
+    "cascadeAllowed": false,
+    "approvedExpandTablesExact": [
+      "referee_assignments",
+      "team_sub_match_referee_links",
+      "team_tournament_referee_correction_requests",
+      "team_tournament_referee_event_inbox",
+      "player_identity_links"
+    ],
+    "expandBeyondFiveAllowed": false
+  },
+  "previousWipeAttempt": {
+    "rolledBack": true,
+    "netMutations": 0,
+    "club_ai_data_dropped": false,
+    "reseedRun": false,
+    "restoreNeeded": false,
+    "physicalBackupAt": "2026-07-29T18:55:19Z",
+    "backupAfterLastDbMutation": true
+  },
+  "approvedFiveResolvedPriorBlockers": true,
+  "approvedFiveRowCounts": {
+    "referee_assignments": { "n": 13, "distinct_tenants": 4 },
+    "team_sub_match_referee_links": { "n": 1, "distinct_tenants": 1 },
+    "team_tournament_referee_correction_requests": { "n": 3, "distinct_tenants": 1 },
+    "team_tournament_referee_event_inbox": { "n": 2, "distinct_tenants": 1 },
+    "player_identity_links": { "n": 0, "distinct_tenants": 0, "note": "schema blocker for DELETE FROM clubs (NO ACTION)" }
+  },
+  "classification": {
+    "businessOrBridgeData": true,
+    "protectedManifest": false,
+    "protectedTouched": []
+  },
+  "hardStop": {
+    "reason": "RESIDUAL_OUT_OF_MANIFEST_INBOUND_FK_AFTER_APPROVED_EXPAND5",
+    "packageAuthoringBlocked": true,
+    "cascadeRequiredWithoutFurtherExpansion": true,
+    "furtherExpansionRequiredWithoutCascade": [
+      "referee_device_sessions"
+    ]
+  },
+  "residualOutsideInboundFks": [
+    {
+      "src_table": "referee_device_sessions",
+      "tgt_table": "referee_assignments",
+      "conname": "referee_device_sessions_assignment_id_fkey",
+      "on_delete": "CASCADE",
+      "row_count": 0,
+      "note": "FK ON DELETE CASCADE does not allow TRUNCATE of referee_assignments without listing src or TRUNCATE CASCADE; empty rows still block"
+    }
+  ],
+  "manifestMutation": {
+    "10_ORDERED_WIPE.sql_changed": false,
+    "reason": "Hard stop — approved 5-table expand still leaves referee_device_sessions inbound to referee_assignments; cannot author executable no-CASCADE package without +1 table beyond Owner approval",
+    "20_DROP_unchanged": true,
+    "reseed_unchanged": true
+  },
+  "manifestBefore": "unchanged authored Phase-3 §5 wipe list (pre-expand)",
+  "manifestAfter": "identical — no package rewrite under hard stop",
+  "cascadeOccurrencesInWipe": 0,
+  "mutations": {
+    "database": 0,
+    "production": 0,
+    "destructiveRerun": false,
+    "dropClubAiData": "NOT_RUN",
+    "reseed": "NOT_RUN",
+    "restore": "NOT_NEEDED"
+  }
+}

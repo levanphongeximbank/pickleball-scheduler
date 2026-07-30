@@ -116,3 +116,60 @@ test("phase-04 wipe FK hard-stop evidence records out-of-manifest blockers", () 
   );
   assert.equal(required.includes("team_tournament_referee_event_inbox"), true);
 });
+
+test("phase-04 wipe expand5: residual FK hard-stop blocks package rewrite", () => {
+  const evidence = JSON.parse(
+    fs.readFileSync(
+      path.join(
+        PHASE,
+        "staging-rehearsal/evidence/08_ORDERED_WIPE_FK_EXPAND5_HARD_STOP_2026-07-30.json"
+      ),
+      "utf8"
+    )
+  );
+  assert.equal(
+    evidence.marker,
+    "PLATFORM_HARD_CUTOVER_01_ORDERED_WIPE_FK_EXPAND5_HARD_STOP_RESIDUAL"
+  );
+  assert.equal(evidence.ownerDecision.cascadeAllowed, false);
+  assert.equal(evidence.ownerDecision.expandBeyondFiveAllowed, false);
+  assert.deepEqual(evidence.ownerDecision.approvedExpandTablesExact, [
+    "referee_assignments",
+    "team_sub_match_referee_links",
+    "team_tournament_referee_correction_requests",
+    "team_tournament_referee_event_inbox",
+    "player_identity_links",
+  ]);
+  assert.equal(evidence.manifestMutation["10_ORDERED_WIPE.sql_changed"], false);
+  assert.equal(evidence.cascadeOccurrencesInWipe, 0);
+  assert.equal(evidence.mutations.database, 0);
+  assert.equal(evidence.mutations.production, 0);
+  assert.deepEqual(evidence.hardStop.furtherExpansionRequiredWithoutCascade, [
+    "referee_device_sessions",
+  ]);
+  assert.equal(
+    evidence.residualOutsideInboundFks[0].src_table,
+    "referee_device_sessions"
+  );
+  assert.equal(
+    evidence.residualOutsideInboundFks[0].tgt_table,
+    "referee_assignments"
+  );
+
+  const wipe = fs.readFileSync(
+    path.join(PHASE, "sql/destructive/10_ORDERED_WIPE.sql"),
+    "utf8"
+  );
+  for (const table of evidence.ownerDecision.approvedExpandTablesExact) {
+    assert.equal(
+      new RegExp(
+        String.raw`(?:TRUNCATE\s+TABLE|DELETE\s+FROM)\s+public\.${table}\b`,
+        "i"
+      ).test(wipe),
+      false,
+      `expand5 not authored under hard-stop: ${table}`
+    );
+  }
+  assert.equal(/TRUNCATE[\s\S]*\bCASCADE\b/i.test(wipe), false);
+  assert.equal(/expuvcohlcjzvrrauvud/.test(wipe), false);
+});
