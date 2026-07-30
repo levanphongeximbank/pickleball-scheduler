@@ -27,6 +27,7 @@ import {
   OPERATOR_ACCEPTANCE_ROUTE,
   resolveOperatorAcceptanceAccess,
 } from "../../features/platform-hard-cutover/operatorAcceptanceShared.js";
+import { scrubRestrictedCapabilityEvidence } from "../../features/platform-hard-cutover/operatorAcceptanceSecurityBoundary.js";
 
 function downloadJson(filename, payload) {
   const blob = new Blob([JSON.stringify(payload, null, 2)], {
@@ -227,16 +228,21 @@ export default function InternalHardCutoverOperatorAcceptancePage() {
               Acceptance details
             </Typography>
             <Stack spacing={1}>
-              {steps.map((step) => (
-                <Box key={`${step.id}-detail`}>
-                  <Typography variant="body2" fontWeight={600}>
-                    {step.id}
-                  </Typography>
-                  <Typography variant="caption" color="text.secondary">
-                    {JSON.stringify(step.details || {}, null, 2)}
-                  </Typography>
-                </Box>
-              ))}
+              {steps.map((step) => {
+                const details = !isSuperAdmin
+                  ? scrubRestrictedCapabilityEvidence(step.details || {})
+                  : step.details || {};
+                return (
+                  <Box key={`${step.id}-detail`}>
+                    <Typography variant="body2" fontWeight={600}>
+                      {step.id}
+                    </Typography>
+                    <Typography variant="caption" color="text.secondary">
+                      {JSON.stringify(details, null, 2)}
+                    </Typography>
+                  </Box>
+                );
+              })}
             </Stack>
           </Paper>
         ) : null}

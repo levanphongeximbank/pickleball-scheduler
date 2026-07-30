@@ -3,6 +3,7 @@ import {
   COMMS_STAGING_PROJECT_REF,
   extractSupabaseProjectRef,
 } from "../communication/activation/stagingTarget.js";
+import { scrubRestrictedCapabilityEvidence } from "./operatorAcceptanceSecurityBoundary.js";
 
 export const OPERATOR_ACCEPTANCE_ROUTE =
   "/internal/hard-cutover/operator-acceptance";
@@ -10,6 +11,7 @@ export const OPERATOR_ACCEPTANCE_ROUTE =
 export const OPERATOR_ACCEPTANCE_PROJECT_REF =
   COMMS_STAGING_PROJECT_REF;
 
+/** Canonical Owner acceptance contract — 17 steps. A-SEC replaces Owner A-PAIR. */
 export const OPERATOR_ACCEPTANCE_STEPS = Object.freeze([
   "A-OWN",
   "A-CLUB",
@@ -17,7 +19,7 @@ export const OPERATOR_ACCEPTANCE_STEPS = Object.freeze([
   "A-PLAYER",
   "A-RATE",
   "A-COMP",
-  "A-PAIR",
+  "A-SEC",
   "A-COACH",
   "A-MSG",
   "A-DASH",
@@ -40,10 +42,13 @@ export const OPERATOR_ACCEPTANCE_ERROR = Object.freeze({
   SESSION_UNAVAILABLE: "SESSION_UNAVAILABLE",
   CLUB_CREATE_FAILED: "CLUB_CREATE_FAILED",
   COURT_CLUSTER_FAILED: "COURT_CLUSTER_FAILED",
+  COURT_TENANT_MISMATCH: "COURT_TENANT_MISMATCH",
   PLAYER_RESOLVE_FAILED: "PLAYER_RESOLVE_FAILED",
   RATING_FAILED: "RATING_FAILED",
+  RATING_PROFILE_MISMATCH: "RATING_PROFILE_MISMATCH",
   COMPETITION_FINALIZE_FAILED: "COMPETITION_FINALIZE_FAILED",
   PAIRING_FAILED: "PAIRING_FAILED",
+  SECURITY_BOUNDARY_FAILED: "SECURITY_BOUNDARY_FAILED",
   COACHING_FAILED: "COACHING_FAILED",
   MESSAGING_FAILED: "MESSAGING_FAILED",
   DASHBOARD_FAILED: "DASHBOARD_FAILED",
@@ -144,15 +149,32 @@ export function buildOperatorAcceptanceEvidence({
   startedAt,
   finishedAt,
 } = {}) {
-  const sanitize = (value) => {
-    if (Array.isArray(value)) return value.map(sanitize);
+  const sanitizeSecrets = (value) => {
+    if (Array.isArray(value)) return value.map(sanitizeSecrets);
     if (!value || typeof value !== "object") return value;
     return Object.fromEntries(
       Object.entries(value)
         .filter(([key]) => !/(token|jwt|password|secret)/i.test(String(key)))
-        .map(([key, entry]) => [key, sanitize(entry)])
+        .map(([key, entry]) => [key, sanitizeSecrets(entry)])
     );
   };
+  const ownerPath = !access?.isSuperAdmin;
+  const prepareDetails = (details) => {
+    const cleaned = sanitizeSecrets(details || null);
+    return ownerPath ? scrubRestrictedCapabilityEvidence(cleaned) : cleaned;
+  };
+  const mappedSteps = (steps || []).map((step) => {
+    const mapped = {
+      id: step.id,
+      status: step.status,
+      code: step.code || null,
+      message: step.message || null,
+      objectId: step.objectId || null,
+      observedAt: step.observedAt || null,
+      details: prepareDetails(step.details || null),
+    };
+    return ownerPath ? scrubRestrictedCapabilityEvidence(mapped) : mapped;
+  });
   return Object.freeze({
     marker: "PLATFORM_HARD_CUTOVER_01_OPERATOR_ACCEPTANCE_BROWSER_RUN",
     generatedAt: finishedAt || new Date().toISOString(),
@@ -167,15 +189,7 @@ export function buildOperatorAcceptanceEvidence({
       role: access?.role || null,
       isSuperAdmin: Boolean(access?.isSuperAdmin),
     },
-    steps: (steps || []).map((step) => ({
-      id: step.id,
-      status: step.status,
-      code: step.code || null,
-      message: step.message || null,
-      objectId: step.objectId || null,
-      observedAt: step.observedAt || null,
-      details: sanitize(step.details || null),
-    })),
+    steps: mappedSteps,
     secretsPrinted: false,
   });
 }

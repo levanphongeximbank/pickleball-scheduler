@@ -1,0 +1,74 @@
+{
+  "marker": "PLATFORM_HARD_CUTOVER_01_OWNER_SECURITY_RECONCILIATION_PR",
+  "verdictTarget": "READY_FOR_OWNER_GO_STAGING_SECURITY_RECONCILIATION",
+  "authoredAt": "2026-07-30T16:10:00.000Z",
+  "baseCommit": "a44e29ee2636cd8e72404e7a757d0ebd307a17a1",
+  "supersedesPr": 348,
+  "supersedesReason": "REJECTED_BY_OWNER_CONTRACT — Private Pairing remains is_super_admin-only; no Owner pairing.view widening",
+  "targetProjectRef": "qyewbxjsiiyufanzcjcq",
+  "productionRefBlocked": "expuvcohlcjzvrrauvud",
+  "databaseMutationsThisTurn": 0,
+  "stagingMutations": 0,
+  "productionMutations": 0,
+  "productionDeployment": 0,
+  "operatorRunner": "NOT_RUN",
+  "browserEvidenceSanitized": {
+    "passedCount": 6,
+    "passedSteps": ["A-OWN", "A-CLUB", "A-COURT", "A-PLAYER", "A-RATE", "A-COMP"],
+    "boundary": "restricted_boundary_denied",
+    "actor": "13e0***af9c",
+    "secretsPrinted": false,
+    "restrictedFeatureNamesPrinted": false,
+    "note": "Prior Owner run stopped after restricted boundary denial; evidence omits restricted capability names"
+  },
+  "authorizationContract": {
+    "restrictedCapabilityRequiresIsSuperAdmin": true,
+    "ownerLikeRolesMayNotViewManageAuditSimulate": [
+      "TENANT_OWNER",
+      "COURT_OWNER",
+      "VENUE_OWNER"
+    ],
+    "keepPrivatePairingCanRequiresIsSuperAdmin": true,
+    "keepPrivatePairingTenantVisibleRequiresIsSuperAdmin": true,
+    "noSuperAdminPlatformAdminTaxonomyRefactor": true
+  },
+  "operatorAcceptance": {
+    "ownerBoundaryStep": "A-SEC",
+    "superAdminPositiveStep": "A-PAIR",
+    "totalSteps": 17,
+    "ownerPathDoesNotInvokeRestrictedCapabilityRead": true
+  },
+  "revokePlan": {
+    "applyThisTurn": false,
+    "rollbackFile": "docs/platform-hard-cutover-01/phase-04/sql/pairing-owner-view-rbac/90_ROLLBACK.sql",
+    "verifyFile": "docs/platform-hard-cutover-01/phase-04/sql/pairing-owner-view-rbac/99_REVOKE_VERIFY.sql",
+    "rejectedPackageNotUsed": "pairing-owner-same-tenant-view"
+  },
+  "falsePositiveHardening": {
+    "aCourtTenantMismatchFails": true,
+    "aRateProfileMismatchFails": true,
+    "noHardcodedLegacyTableAbsentTrue": true,
+    "noHardcodedAuthUsersCreatedZero": true,
+    "noHardcodedClubBlobWriteForbiddenTrue": true,
+    "unobservedFields": "notObserved"
+  },
+  "remainingPreflight": {
+    "mode": "READ_ONLY",
+    "steps": ["A-COACH", "A-MSG", "A-DASH", "A-CAT", "A-G1", "A-G2", "A-G3", "A-G4", "A-G5", "A-G6"],
+    "aCatRpcs": [
+      "public_catalog_list_clubs",
+      "public_catalog_list_courts",
+      "public_catalog_list_tournaments",
+      "public_catalog_list_rankings"
+    ],
+    "emptyCatalogResult": "PASS",
+    "noBusinessOrDatabaseWrites": true
+  },
+  "finalRunnerEvidencePlanBeforeMerge": [
+    "1. Owner merges only after Staging revoke verify PASS + Preview redeploy attestation",
+    "2. Owner runs single Operator Acceptance on Preview as enrolled Owner",
+    "3. Export sanitized evidence JSON (secretsPrinted=false; no restricted capability names)",
+    "4. Attach evidence file into this PR (or follow-up docs commit on same branch) before merge if Owner requires in-PR closure",
+    "5. Do not merge with failing A-SEC or leaked restricted strings"
+  ]
+}

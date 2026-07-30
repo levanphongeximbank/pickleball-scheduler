@@ -99,12 +99,15 @@ test("buildOperatorAcceptanceEvidence excludes credentials", () => {
 });
 
 test("operator acceptance steps preserve required order", () => {
-  assert.deepEqual(OPERATOR_ACCEPTANCE_STEPS.slice(0, 5), [
+  assert.equal(OPERATOR_ACCEPTANCE_STEPS.length, 17);
+  assert.deepEqual(OPERATOR_ACCEPTANCE_STEPS.slice(0, 7), [
     "A-OWN",
     "A-CLUB",
     "A-COURT",
     "A-PLAYER",
     "A-RATE",
+    "A-COMP",
+    "A-SEC",
   ]);
   assert.deepEqual(OPERATOR_ACCEPTANCE_STEPS.slice(-6), [
     "A-G1",
@@ -114,4 +117,5 @@ test("operator acceptance steps preserve required order", () => {
     "A-G5",
     "A-G6",
   ]);
+  assert.equal(OPERATOR_ACCEPTANCE_STEPS.includes("A-PAIR"), false);
 });
