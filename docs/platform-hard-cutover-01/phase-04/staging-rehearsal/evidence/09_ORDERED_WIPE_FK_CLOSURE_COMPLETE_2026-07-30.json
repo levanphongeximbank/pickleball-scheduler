@@ -1,0 +1,154 @@
+{
+  "marker": "PLATFORM_HARD_CUTOVER_01_ORDERED_WIPE_FK_CLOSURE_COMPLETE_2026-07-30",
+  "capturedAt": "2026-07-30T01:35:00Z",
+  "freshMainSha": "751952cc9ddca39c15365b3a1cecb4db4da3e161",
+  "pr338": {
+    "state": "MERGED",
+    "mergeCommit": "751952cc9ddca39c15365b3a1cecb4db4da3e161",
+    "isAncestorOfOriginMain": true
+  },
+  "target": {
+    "mcpServer": "project-0-pickleball-scheduler-supabase-staging",
+    "projectRef": "qyewbxjsiiyufanzcjcq",
+    "productionRefBlocked": "expuvcohlcjzvrrauvud",
+    "auditMode": "READ_ONLY"
+  },
+  "ownerDecision": {
+    "cascadeAllowed": false,
+    "approvedExpandTablesExact": [
+      "referee_assignments",
+      "team_sub_match_referee_links",
+      "team_tournament_referee_correction_requests",
+      "team_tournament_referee_event_inbox",
+      "player_identity_links",
+      "referee_device_sessions"
+    ]
+  },
+  "fkClosureFixedPoint": {
+    "method": "recursive inbound public FK until no new tables",
+    "seed": "original wipe TRUNCATE/DELETE targets + approved 6",
+    "newlyDiscoveredOutsideApproved": [],
+    "protectedInClosure": [],
+    "unresolvedInboundFk": [],
+    "unresolvedInboundCount": 0,
+    "classification": {
+      "original_wipe": 86,
+      "owner_approved_6": 6,
+      "newly_discovered_outside_approved": 0,
+      "protected": 0
+    }
+  },
+  "approvedAdditionsRowCounts": {
+    "referee_assignments": { "n": 13, "distinct_tenants": 4 },
+    "team_sub_match_referee_links": { "n": 1, "distinct_tenants": 1 },
+    "team_tournament_referee_correction_requests": { "n": 3, "distinct_tenants": 1 },
+    "team_tournament_referee_event_inbox": { "n": 2, "distinct_tenants": 1 },
+    "player_identity_links": { "n": 0, "distinct_tenants": 0 },
+    "referee_device_sessions": {
+      "n": 0,
+      "distinct_tenants": 0,
+      "classification": "business_session_bridge",
+      "containsAuthCredentialsOrSecrets": false,
+      "columns": [
+        "id",
+        "tenant_id",
+        "assignment_id",
+        "device_label",
+        "is_primary",
+        "last_seen_at",
+        "created_at"
+      ],
+      "wipeMode": "TRUNCATE rows only — table NOT dropped"
+    }
+  },
+  "connectedComponentsMultiTruncate": [
+    {
+      "id": "tt_referee",
+      "tables": [
+        "referee_assignments",
+        "referee_device_sessions",
+        "team_sub_match_referee_links",
+        "team_tournament_disciplines",
+        "team_tournament_dreambreaker_states",
+        "team_tournament_forfeit_events",
+        "team_tournament_groups",
+        "team_tournament_lineup_entries",
+        "team_tournament_lineup_revisions",
+        "team_tournament_lineups",
+        "team_tournament_matchups",
+        "team_tournament_referee_correction_requests",
+        "team_tournament_referee_event_inbox",
+        "team_tournament_setup_snapshots",
+        "team_tournament_standings",
+        "team_tournament_sub_matches",
+        "team_tournament_team_members",
+        "team_tournament_teams",
+        "team_tournaments"
+      ]
+    },
+    {
+      "id": "rating_player",
+      "tables": [
+        "player_rating_events",
+        "player_rating_profiles",
+        "player_skill_assessments",
+        "rating_v5_reassessment_approvals"
+      ]
+    },
+    {
+      "id": "athletes_club_members",
+      "tables": ["athletes", "club_governance_assignments", "club_members"]
+    },
+    {
+      "id": "invoices_payments",
+      "tables": ["invoice_items", "invoices", "payments"]
+    },
+    {
+      "id": "private_pairing",
+      "tables": [
+        "private_pairing_rule_sets",
+        "private_pairing_rule_targets",
+        "private_pairing_rules"
+      ]
+    },
+    {
+      "id": "api_keys_clients",
+      "tables": ["api_clients", "api_keys"]
+    },
+    {
+      "id": "club_governance_requests",
+      "tables": ["club_governance", "club_membership_requests"]
+    }
+  ],
+  "playerIdentityLinksClubsOrdering": {
+    "player_identity_links": "TRUNCATE before DELETE FROM clubs (NO ACTION FK)",
+    "clubs": "DELETE (schema retained)"
+  },
+  "manifestProof": {
+    "approvedAdditions": 6,
+    "missing": 0,
+    "unexpectedAdditions": 0,
+    "duplicate": 0,
+    "unresolvedInboundFk": 0,
+    "cascadeOccurrences": 0,
+    "protectedDestructiveReferences": 0,
+    "productionRefScanClean": true,
+    "10_ORDERED_WIPE.sql_changed": true
+  },
+  "previousWipeAttempt": {
+    "rolledBack": true,
+    "netMutations": 0,
+    "club_ai_data_dropped": false,
+    "reseedRun": false,
+    "restoreNeeded": false,
+    "physicalBackupAt": "2026-07-29T18:55:19Z"
+  },
+  "mutations": {
+    "database": 0,
+    "production": 0,
+    "destructiveRerun": false,
+    "dropClubAiData": "NOT_RUN",
+    "reseed": "NOT_RUN",
+    "restore": "NOT_NEEDED"
+  }
+}

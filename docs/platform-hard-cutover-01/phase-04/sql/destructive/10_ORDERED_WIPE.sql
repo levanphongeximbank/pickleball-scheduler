@@ -1,5 +1,6 @@
 -- PLATFORM-HARD-CUTOVER-01 Phase 4 — Ordered business-data wipe
--- Exact tables from Phase 3 §5. No wildcard. No TRUNCATE ALL public.
+-- Exact tables from Phase 3 §5 + Owner-approved FK closure (+6).
+-- No wildcard. No TRUNCATE ALL public. Multi-table TRUNCATE only (RESTRICT).
 -- NEVER touch: auth.users, profiles, venues, tenant_members,
 --   roles, permissions, role_permissions, plans, plan_limits.
 -- Prerequisites: 00_IDENTITY_PRESERVE_PRECHECK + 01_PROTECTED_OBJECT_GUARDS PASS.
@@ -20,35 +21,43 @@ SELECT
   (SELECT count(*) FROM public.plans) AS plans_n,
   (SELECT count(*) FROM public.plan_limits) AS plan_limits_n;
 
--- W1 Team Tournament children → parent
-TRUNCATE TABLE public.team_tournament_lineup_entries;
-TRUNCATE TABLE public.team_tournament_lineup_revisions;
-TRUNCATE TABLE public.team_tournament_lineups;
-TRUNCATE TABLE public.team_tournament_dreambreaker_states;
-TRUNCATE TABLE public.team_tournament_forfeit_events;
-TRUNCATE TABLE public.team_tournament_sub_matches;
-TRUNCATE TABLE public.team_tournament_matchups;
-TRUNCATE TABLE public.team_tournament_standings;
-TRUNCATE TABLE public.team_tournament_team_members;
-TRUNCATE TABLE public.team_tournament_teams;
-TRUNCATE TABLE public.team_tournament_groups;
-TRUNCATE TABLE public.team_tournament_disciplines;
-TRUNCATE TABLE public.team_tournament_setup_snapshots;
+-- W1 Team Tournament + referee bridge (single FK connected component; RESTRICT)
+TRUNCATE TABLE
+  public.referee_device_sessions,
+  public.referee_assignments,
+  public.team_sub_match_referee_links,
+  public.team_tournament_referee_correction_requests,
+  public.team_tournament_referee_event_inbox,
+  public.team_tournament_lineup_entries,
+  public.team_tournament_lineup_revisions,
+  public.team_tournament_lineups,
+  public.team_tournament_dreambreaker_states,
+  public.team_tournament_forfeit_events,
+  public.team_tournament_sub_matches,
+  public.team_tournament_matchups,
+  public.team_tournament_standings,
+  public.team_tournament_team_members,
+  public.team_tournament_teams,
+  public.team_tournament_groups,
+  public.team_tournament_disciplines,
+  public.team_tournament_setup_snapshots,
+  public.team_tournaments;
+
 TRUNCATE TABLE public.team_tournament_sync_mismatch;
 TRUNCATE TABLE public.team_tournament_command_log;
 TRUNCATE TABLE public.team_tournament_audit_logs;
-TRUNCATE TABLE public.team_tournaments;
 
 -- W2 Rating / VPR / pairing / AI / notif / payments / catalog biz
-TRUNCATE TABLE public.rating_v5_reassessment_approvals;
+TRUNCATE TABLE
+  public.rating_v5_reassessment_approvals,
+  public.player_rating_profiles,
+  public.player_rating_events,
+  public.player_skill_assessments;
 TRUNCATE TABLE public.rating_v5_pilot_enrollments;
 TRUNCATE TABLE public.rating_v5_idempotency;
 TRUNCATE TABLE public.rating_snapshots;
 TRUNCATE TABLE public.rating_review_cases;
 TRUNCATE TABLE public.rating_evidence;
-TRUNCATE TABLE public.player_rating_profiles;
-TRUNCATE TABLE public.player_rating_events;
-TRUNCATE TABLE public.player_skill_assessments;
 TRUNCATE TABLE public.pick_vn_player_ratings;
 -- Keep rating_v5_rollout_config + rating_calibration_versions structure;
 -- wipe rows then require reseed in 40_RESEED (Owner may keep config row).
@@ -62,10 +71,11 @@ TRUNCATE TABLE public.vpr_athlete_links;
 TRUNCATE TABLE public.vpr_athletes;
 TRUNCATE TABLE public.vpr_point_config;
 
-TRUNCATE TABLE public.private_pairing_rule_targets;
+TRUNCATE TABLE
+  public.private_pairing_rule_targets,
+  public.private_pairing_rules,
+  public.private_pairing_rule_sets;
 TRUNCATE TABLE public.private_pairing_rule_audit_logs;
-TRUNCATE TABLE public.private_pairing_rules;
-TRUNCATE TABLE public.private_pairing_rule_sets;
 
 TRUNCATE TABLE public.ai_suggestions;
 TRUNCATE TABLE public.ai_workflow_checklists;
@@ -77,9 +87,10 @@ TRUNCATE TABLE public.checkins;
 
 TRUNCATE TABLE public.payment_events;
 TRUNCATE TABLE public.payment_transactions;
-TRUNCATE TABLE public.payments;
-TRUNCATE TABLE public.invoice_items;
-TRUNCATE TABLE public.invoices;
+TRUNCATE TABLE
+  public.payments,
+  public.invoice_items,
+  public.invoices;
 TRUNCATE TABLE public.billing_events;
 TRUNCATE TABLE public.billing_audit_logs;
 TRUNCATE TABLE public.marketplace_orders;
@@ -89,8 +100,9 @@ TRUNCATE TABLE public.webhook_endpoints;
 TRUNCATE TABLE public.tenant_integration_settings;
 TRUNCATE TABLE public.integration_audit_logs;
 TRUNCATE TABLE public.api_logs;
-TRUNCATE TABLE public.api_keys;
-TRUNCATE TABLE public.api_clients;
+TRUNCATE TABLE
+  public.api_keys,
+  public.api_clients;
 TRUNCATE TABLE public.idempotency_requests;
 TRUNCATE TABLE public.tournament_certifications;
 TRUNCATE TABLE public.tournament_match_live;
@@ -101,19 +113,22 @@ TRUNCATE TABLE public.public_catalog_rankings;
 TRUNCATE TABLE public.public_catalog_tournaments;
 TRUNCATE TABLE public.public_catalog_courts;
 
--- W3 Court / club / athlete
+-- W3 Court / club / athlete (+ player_identity_links before clubs DELETE)
 TRUNCATE TABLE public.court_engine_active_sessions;
 TRUNCATE TABLE public.court_engine_stores;
 TRUNCATE TABLE public.court_claim_requests;
 TRUNCATE TABLE public.user_cluster_assignments;
-TRUNCATE TABLE public.club_governance_assignments;
-TRUNCATE TABLE public.club_membership_requests;
+TRUNCATE TABLE
+  public.club_governance_assignments,
+  public.club_members,
+  public.athletes;
 TRUNCATE TABLE public.club_membership_requests_v42;
-TRUNCATE TABLE public.club_members;
-TRUNCATE TABLE public.club_governance;
+TRUNCATE TABLE
+  public.club_membership_requests,
+  public.club_governance;
+TRUNCATE TABLE public.player_identity_links;
 DELETE FROM public.club_data_v3;
 DELETE FROM public.clubs;
-TRUNCATE TABLE public.athletes;
 DELETE FROM public.court_clusters;
 
 -- W4 Billing subscription biz (keep plans catalog)
