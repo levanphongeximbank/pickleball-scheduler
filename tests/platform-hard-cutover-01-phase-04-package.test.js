@@ -16,6 +16,19 @@ const APPROVED_6 = [
   "referee_device_sessions",
 ];
 
+const OPTIONAL_ABSENT_STAGING_10 = [
+  "_phase19b_test_accounts",
+  "ai_workflow_checklists",
+  "court_claim_requests",
+  "tournament_certifications",
+  "vpr_athlete_links",
+  "vpr_athletes",
+  "vpr_audit_logs",
+  "vpr_leaderboard",
+  "vpr_point_config",
+  "vpr_point_ledger",
+];
+
 const ORIGINAL_WIPE_TABLES = [
   "team_tournament_lineup_entries",
   "team_tournament_lineup_revisions",
@@ -112,12 +125,29 @@ function parseWipeTargets(sql) {
   let m;
   while ((m = re.exec(sql))) {
     const chunk = m[1];
+    // Skip EXECUTE string bodies handled below
+    if (chunk.includes("'")) continue;
     const names = [...chunk.matchAll(/public\.([a-zA-Z0-9_]+)/g)].map(
       (x) => x[1]
     );
     targets.push(...names);
   }
+  const execRe =
+    /EXECUTE\s+'TRUNCATE\s+TABLE\s+public\.([a-zA-Z0-9_]+)'/gi;
+  while ((m = execRe.exec(sql))) {
+    targets.push(m[1]);
+  }
   return targets;
+}
+
+function parseOptionalGuardLiterals(sql) {
+  const reg = [
+    ...sql.matchAll(/to_regclass\('public\.([a-zA-Z0-9_]+)'\)/g),
+  ].map((x) => x[1]);
+  const exec = [
+    ...sql.matchAll(/EXECUTE\s+'TRUNCATE\s+TABLE\s+public\.([a-zA-Z0-9_]+)'/g),
+  ].map((x) => x[1]);
+  return { reg, exec };
 }
 
 function parseTruncateStatements(sql) {
@@ -125,10 +155,12 @@ function parseTruncateStatements(sql) {
   const re = /TRUNCATE\s+TABLE\s+([\s\S]*?);/gi;
   let m;
   while ((m = re.exec(sql))) {
-    const names = [...m[1].matchAll(/public\.([a-zA-Z0-9_]+)/g)].map(
+    const chunk = m[1];
+    if (chunk.includes("'")) continue;
+    const names = [...chunk.matchAll(/public\.([a-zA-Z0-9_]+)/g)].map(
       (x) => x[1]
     );
-    stmts.push(new Set(names));
+    if (names.length) stmts.push(new Set(names));
   }
   return stmts;
 }
@@ -334,4 +366,95 @@ test("phase-04 wipe: FK closure complete evidence + connected components co-trun
   const clubsIdx = wipe.indexOf("DELETE FROM public.clubs");
   assert.equal(pilIdx > -1, true);
   assert.equal(clubsIdx > pilIdx, true);
+});
+
+test("phase-04 wipe: optional-table guards exact allowlist of 10", () => {
+  const wipe = fs.readFileSync(WIPE_PATH, "utf8");
+  const evidence = JSON.parse(
+    fs.readFileSync(
+      path.join(
+        PHASE,
+        "staging-rehearsal/evidence/12_ORDERED_WIPE_OPTIONAL_TABLE_GUARDS_2026-07-30.json"
+      ),
+      "utf8"
+    )
+  );
+  assert.equal(
+    evidence.marker,
+    "PLATFORM_HARD_CUTOVER_01_ORDERED_WIPE_OPTIONAL_TABLE_GUARDS_2026-07-30"
+  );
+  assert.deepEqual(
+    evidence.manifestProof.optionalAllowlistExact,
+    OPTIONAL_ABSENT_STAGING_10
+  );
+  assert.equal(evidence.manifestProof.logicalTargets, 92);
+  assert.equal(evidence.manifestProof.requiredPresentStagingBaseline, 82);
+  assert.equal(evidence.manifestProof.optionalAbsentStagingBaseline, 10);
+  assert.equal(evidence.manifestProof.missingRequired, 0);
+  assert.equal(evidence.dependencyVerdict.hardStop, false);
+  assert.equal(evidence.mutations.database, 0);
+  assert.equal(evidence.mutations.production, 0);
+
+  const { reg, exec } = parseOptionalGuardLiterals(wipe);
+  assert.equal(new Set(reg).size, 10);
+  assert.equal(new Set(exec).size, 10);
+  assert.deepEqual([...new Set(reg)].sort(), [...OPTIONAL_ABSENT_STAGING_10].sort());
+  assert.deepEqual([...new Set(exec)].sort(), [...OPTIONAL_ABSENT_STAGING_10].sort());
+
+  // No variable/table-name interpolation or schema-wide loops
+  assert.equal(/to_regclass\(\s*'public\.'\s*\|\|/i.test(wipe), false);
+  assert.equal(/FOR\s+\w+\s+IN\s+SELECT/i.test(wipe), false);
+  assert.equal(/information_schema\.tables/i.test(wipe), false);
+  assert.equal(/\bCASCADE\b/i.test(wipe), false);
+  assert.equal(/expuvcohlcjzvrrauvud/.test(wipe), false);
+
+  const targets = parseWipeTargets(wipe);
+  const unique = new Set(targets);
+  assert.equal(unique.size, 92);
+  const expected = new Set([...ORIGINAL_WIPE_TABLES, ...APPROVED_6]);
+  assert.equal(unique.size, expected.size);
+  for (const t of OPTIONAL_ABSENT_STAGING_10) {
+    assert.equal(unique.has(t), true, `optional still in logical manifest: ${t}`);
+    assert.equal(
+      new RegExp(
+        String.raw`^TRUNCATE\s+TABLE\s+public\.${t}\s*;`,
+        "im"
+      ).test(wipe),
+      false,
+      `optional must not be static required truncate: ${t}`
+    );
+  }
+  const required = [...unique].filter((t) => !OPTIONAL_ABSENT_STAGING_10.includes(t));
+  assert.equal(required.length, 82);
+
+  const stop = JSON.parse(
+    fs.readFileSync(
+      path.join(
+        PHASE,
+        "staging-rehearsal/evidence/11_DESTRUCTIVE_STAGE_STOPPED_WIPE_MISSING_RELATIONS_2026-07-30.json"
+      ),
+      "utf8"
+    )
+  );
+  assert.equal(stop.wipeFailure.transactionRolledBack, true);
+  assert.equal(stop.mutations.databaseNet, 0);
+});
+
+test("phase-04 post-wipe verify: optional absent accepted with literal empty checks", () => {
+  const verify = fs.readFileSync(
+    path.join(PHASE, "sql/destructive/30_POST_WIPE_VERIFY.sql"),
+    "utf8"
+  );
+  for (const table of OPTIONAL_ABSENT_STAGING_10) {
+    assert.equal(
+      verify.includes(`to_regclass('public.${table}')`),
+      true,
+      `missing optional guard: ${table}`
+    );
+  }
+  assert.equal(/to_regclass\(\s*'public\.'\s*\|\|/i.test(verify), false);
+  assert.equal(/\bCASCADE\b/i.test(verify), false);
+  assert.equal(/expuvcohlcjzvrrauvud/.test(verify), false);
+  assert.equal(verify.includes("auth.users"), true);
+  assert.equal(/DELETE\s+FROM\s+auth\.users/i.test(verify), false);
 });

@@ -1,0 +1,133 @@
+{
+  "marker": "PLATFORM_HARD_CUTOVER_01_ORDERED_WIPE_OPTIONAL_TABLE_GUARDS_2026-07-30",
+  "capturedAt": "2026-07-30T04:55:00Z",
+  "freshMain": "5f187d0566070723320ea23c819decec0d35ff51",
+  "target": {
+    "mcpServer": "project-0-pickleball-scheduler-supabase-staging",
+    "projectRef": "qyewbxjsiiyufanzcjcq",
+    "productionRefBlocked": "expuvcohlcjzvrrauvud",
+    "auditMode": "READ_ONLY"
+  },
+  "priorFailure": {
+    "error": "42P01 relation public.vpr_point_ledger does not exist",
+    "transactionRolledBack": true,
+    "databaseNetMutations": 0,
+    "evidence": "11_DESTRUCTIVE_STAGE_STOPPED_WIPE_MISSING_RELATIONS_2026-07-30.json"
+  },
+  "ownerDecision": {
+    "cascadeAllowed": false,
+    "createMissingTables": false,
+    "removeFromLogicalManifest": false,
+    "optionalGuardsExact10": true
+  },
+  "classification": [
+    {
+      "table": "_phase19b_test_accounts",
+      "kind": "legacy_test",
+      "sourcePackage": "phase19b test accounts (not applied on Staging)",
+      "reseedRequired": false,
+      "fkToFromPresent82": false
+    },
+    {
+      "table": "ai_workflow_checklists",
+      "kind": "business_optional",
+      "sourcePackage": "docs/v5/PHASE_AI_V52_PHASE5.sql",
+      "reseedRequired": false,
+      "fkToFromPresent82": false
+    },
+    {
+      "table": "court_claim_requests",
+      "kind": "business_optional",
+      "sourcePackage": "docs/v5/PHASE_33_COURT_CLAIM_REQUESTS.sql",
+      "reseedRequired": false,
+      "fkToFromPresent82": false
+    },
+    {
+      "table": "tournament_certifications",
+      "kind": "business_optional_vpr",
+      "sourcePackage": "docs/v5/PHASE_29_RANKING.sql",
+      "reseedRequired": false,
+      "fkToFromPresent82": false
+    },
+    {
+      "table": "vpr_athlete_links",
+      "kind": "business_optional_vpr",
+      "sourcePackage": "docs/v5/PHASE_29_RANKING.sql",
+      "reseedRequired": false,
+      "fkToFromPresent82": false
+    },
+    {
+      "table": "vpr_athletes",
+      "kind": "business_optional_vpr",
+      "sourcePackage": "docs/v5/PHASE_29_RANKING.sql",
+      "reseedRequired": false,
+      "fkToFromPresent82": false
+    },
+    {
+      "table": "vpr_audit_logs",
+      "kind": "business_optional_vpr",
+      "sourcePackage": "docs/v5/PHASE_29_RANKING.sql",
+      "reseedRequired": false,
+      "fkToFromPresent82": false
+    },
+    {
+      "table": "vpr_leaderboard",
+      "kind": "business_optional_vpr",
+      "sourcePackage": "docs/v5/PHASE_29_RANKING.sql",
+      "reseedRequired": false,
+      "fkToFromPresent82": false
+    },
+    {
+      "table": "vpr_point_config",
+      "kind": "business_optional_vpr",
+      "sourcePackage": "docs/v5/PHASE_29_RANKING.sql",
+      "reseedRequired": false,
+      "fkToFromPresent82": false
+    },
+    {
+      "table": "vpr_point_ledger",
+      "kind": "business_optional_vpr",
+      "sourcePackage": "docs/v5/PHASE_29_RANKING.sql",
+      "reseedRequired": false,
+      "fkToFromPresent82": false
+    }
+  ],
+  "dependencyVerdict": {
+    "hardStop": false,
+    "unexpectedRequiredMissing": [],
+    "unresolvedInboundFk": 0,
+    "reseedDependsOnOptional10": false,
+    "postWipeAcceptsOptionalAbsent": true
+  },
+  "manifestProof": {
+    "logicalTargets": 92,
+    "requiredPresentStagingBaseline": 82,
+    "optionalAbsentStagingBaseline": 10,
+    "missingRequired": 0,
+    "optionalAllowlistExact": [
+      "_phase19b_test_accounts",
+      "ai_workflow_checklists",
+      "court_claim_requests",
+      "tournament_certifications",
+      "vpr_athlete_links",
+      "vpr_athletes",
+      "vpr_audit_logs",
+      "vpr_leaderboard",
+      "vpr_point_config",
+      "vpr_point_ledger"
+    ],
+    "literalExecuteGuards": 10,
+    "cascadeOccurrences": 0,
+    "scopeDrift": false,
+    "tablesCreated": false,
+    "tablesDropped": false
+  },
+  "mutations": {
+    "database": 0,
+    "production": 0,
+    "destructiveRerun": false,
+    "dropClubAiData": "NOT_RUN",
+    "reseed": "NOT_RUN",
+    "restore": "NOT_NEEDED"
+  }
+}
