@@ -1,0 +1,46 @@
+{
+  "marker": "PLATFORM_HARD_CUTOVER_01_A_COURT_FORBIDDEN_DIAGNOSIS",
+  "observedAt": "2026-07-30T11:50:00.000Z",
+  "targetProjectRef": "qyewbxjsiiyufanzcjcq",
+  "productionRefBlocked": "expuvcohlcjzvrrauvud",
+  "databaseMutations": 0,
+  "productionMutations": 0,
+  "liveFailure": {
+    "step": "A-COURT",
+    "code": "FORBIDDEN",
+    "message": "Cluster upsert failed",
+    "actor": {
+      "roleReportedByApp": "TENANT_OWNER",
+      "profileRoleLive": "VENUE_OWNER",
+      "normalizedProfileRole": "COURT_OWNER",
+      "tenantId": "venue-staging-a",
+      "isSuperAdmin": false
+    }
+  },
+  "failingCondition": "court_admin_upsert_cluster returns FORBIDDEN when can_review_court_claim() is false before any payload validation",
+  "can_review_court_claim": "is_super_admin() OR user_has_permission('cluster.manage')",
+  "permissionAudit": {
+    "cluster.manage_exists": true,
+    "rolesWithClusterManage": ["SUPER_ADMIN", "PLATFORM_ADMIN", "SYSTEM_TECHNICIAN"],
+    "COURT_OWNER_has_cluster_manage": false,
+    "VENUE_OWNER_has_cluster_manage": false,
+    "TENANT_OWNER_role_row_exists": false,
+    "tenant_members_owner_rows_for_venue_staging_a": 0,
+    "user_has_permission_source": "role_permissions via normalize_profile_role(user_role()) and user_role()"
+  },
+  "rootCause": "rpc_authorization_too_narrow_vs_canonical_owner_policy",
+  "ruledOut": [
+    "permission_row_missing",
+    "function_reads_wrong_permission_table",
+    "tenant_scope_mismatch_in_rpc",
+    "runner_calling_wrong_rpc"
+  ],
+  "remediation": {
+    "chosen": "sql_function_fix_venue_scoped_owner_allow_on_upsert_only",
+    "whyNotRbacGrantClusterManageToOwners": "would also unlock platform-wide claim review via can_review_court_claim()",
+    "whyNotElevateToSuperAdmin": "forbidden by Owner policy",
+    "whyNotRunnerOnly": "RPC itself rejects owner JWT; runner cannot bypass without service_role",
+    "apply": false,
+    "ownerGoRequired": true
+  }
+}
