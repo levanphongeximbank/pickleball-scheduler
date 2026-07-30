@@ -1,0 +1,50 @@
+{
+  "marker": "PLATFORM_HARD_CUTOVER_01_A_RATE_STAGING_OWNER_PILOT_ACTIVATION",
+  "observedAt": "2026-07-30T13:45:00.000Z",
+  "targetProjectRef": "qyewbxjsiiyufanzcjcq",
+  "productionRefBlocked": "expuvcohlcjzvrrauvud",
+  "ownerGo": "AUTHOR_AND_APPLY_STAGING",
+  "preApply": {
+    "rolloutConfigRows": 0,
+    "pilotEnrollmentRows": 0,
+    "venueOwnerCandidates": 2,
+    "duplicateEnrollForbidden": true
+  },
+  "actor": {
+    "maskedPlayerId": "13e0***af9c",
+    "authUserEqualsProfileEqualsRatingPlayerId": true,
+    "role": "VENUE_OWNER",
+    "normalizedRole": "COURT_OWNER",
+    "tenantId": "venue-staging-a",
+    "pinMethod": "clubs.created_by_user_id",
+    "pinEvidence": {
+      "clubName": "HC Operator Seed Club venue-staging-a",
+      "tenantId": "venue-staging-a",
+      "operatorClubsForPinned": 1,
+      "hcOperatorClubsForOtherVenueOwner": 0,
+      "otherMaskedCandidate": "f7ea***3876",
+      "otherCandidateEnrolled": false
+    },
+    "displayNameUsed": false,
+    "enrollBothVenueOwners": false
+  },
+  "package": {
+    "dir": "docs/platform-hard-cutover-01/phase-04/sql/rating-v5-staging-owner-pilot-activation",
+    "cohort": "phase4-owner-acceptance",
+    "rolloutId": "default",
+    "shadowModeEnabled": true,
+    "allowV5Assessment": true,
+    "rbacGrantsAdded": false,
+    "authUsersCreated": false,
+    "destructiveSql": false
+  },
+  "apply": {
+    "status": "PENDING",
+    "operatorRunner": "NOT_RUN"
+  },
+  "databaseMutations": {
+    "staging": "PENDING",
+    "production": 0
+  },
+  "productionMutations": 0
+}
