@@ -18,12 +18,17 @@ import { listPublicClubsRemote, listPublicCourtsRemote, listPublicRankingsRemote
 import { getDashboardAnalytics } from "../dashboard-analytics/services/dashboardService.js";
 import {
   OPERATOR_ACCEPTANCE_ERROR,
+  maskOperatorIdentifier,
   resolveOperatorAcceptanceAccess,
   resolveOperatorAcceptanceTarget,
 } from "./operatorAcceptanceShared.js";
 import { evaluateMessagingAcceptanceMode } from "./operatorAcceptanceMessaging.js";
 import { runOperatorAcceptanceGlobalProbes } from "./operatorAcceptanceGlobalProbes.js";
 import { evaluateOwnerSecurityBoundary } from "./operatorAcceptanceSecurityBoundary.js";
+import {
+  evaluateRatingAssessmentIdentity,
+  resolveRatingAssessmentId,
+} from "./operatorAcceptanceRatingIdentity.js";
 import { PUBLIC_CATALOG_RPC } from "../public-catalog/persistence/schema.js";
 
 function nowIso() {
@@ -185,61 +190,105 @@ async function runPlayerAcceptance({ sessionUserId }) {
   });
 }
 
-function resolveRatingProfileId(result) {
-  return String(
-    result?.profile?.id ||
-      result?.profile_id ||
-      result?.profileId ||
-      result?.data?.profile?.id ||
-      result?.data?.profile_id ||
-      ""
-  ).trim();
+function resolveRatingAssessmentIdFromRpc(result) {
+  return resolveRatingAssessmentId(result);
 }
 
-async function runRatingAcceptance() {
+async function runRatingAcceptance({ sessionUserId, tenantId }) {
   const first = await rpcRatingV5StartAssessment("doubles");
   const second = await rpcRatingV5StartAssessment("doubles");
   const enrollment = await rpcRatingV5GetMyPilotEnrollment();
+  // Draft assessments may have profile=null — do not require profile for PASS.
   const profile = await rpcRatingV5GetProfile("doubles");
-  if (!first.ok || !second.ok || !profile.ok) {
-    const failing = [first, second, profile].find((item) => !item.ok) || enrollment;
+
+  if (!first.ok || !second.ok) {
+    const failing = !first.ok ? first : second;
     return failStep(
       "A-RATE",
       failing?.code || OPERATOR_ACCEPTANCE_ERROR.RATING_FAILED,
-      failing?.error || "Rating acceptance failed"
+      failing?.error || "Rating start-assessment failed"
     );
   }
-  const firstProfileId = resolveRatingProfileId(first);
-  const secondProfileId = resolveRatingProfileId(second);
-  const sameProfileId =
-    Boolean(firstProfileId) &&
-    Boolean(secondProfileId) &&
-    firstProfileId === secondProfileId;
-  if (!sameProfileId) {
+
+  const firstAssessmentId = resolveRatingAssessmentIdFromRpc(first);
+  const secondAssessmentId = resolveRatingAssessmentIdFromRpc(second);
+
+  const client = getSupabaseAuthClient();
+  if (!client) {
     return failStep(
       "A-RATE",
-      OPERATOR_ACCEPTANCE_ERROR.RATING_PROFILE_MISMATCH,
-      "Two start-assessment calls did not resolve the same profile",
+      OPERATOR_ACCEPTANCE_ERROR.CLIENT_UNAVAILABLE,
+      "Supabase client unavailable"
+    );
+  }
+
+  let rows = null;
+  let readError = null;
+  if (
+    firstAssessmentId &&
+    secondAssessmentId &&
+    firstAssessmentId !== secondAssessmentId
+  ) {
+    try {
+      const { data, error } = await client
+        .from("player_skill_assessments")
+        .select("id, player_id, tenant_id")
+        .in("id", [firstAssessmentId, secondAssessmentId]);
+      if (error) {
+        readError = error.message || "Assessment row read failed";
+      } else {
+        rows = data;
+      }
+    } catch (err) {
+      readError =
+        err instanceof Error ? err.message : "Assessment row read failed";
+    }
+  }
+
+  const identity = evaluateRatingAssessmentIdentity({
+    sessionUserId,
+    tenantId,
+    firstAssessmentId,
+    secondAssessmentId,
+    rows,
+    readError,
+  });
+
+  if (!identity.ok) {
+    return failStep(
+      "A-RATE",
+      identity.code || OPERATOR_ACCEPTANCE_ERROR.RATING_PROFILE_MISMATCH,
+      identity.message || "Rating assessment identity mismatch",
       {
         details: {
-          source: "rating_v5_* RPC",
-          sameProfileId: false,
-          firstProfileId: firstProfileId || null,
-          secondProfileId: secondProfileId || null,
+          source: "rating_v5_start_assessment + player_skill_assessments",
+          ...identity.details,
           enrollmentCode:
-            enrollment.code || (enrollment.ok === false ? enrollment.code : "OK"),
+            enrollment?.code ||
+            (enrollment?.ok === false ? enrollment?.code : "OK"),
+          profileObserved:
+            profile?.ok === true
+              ? profile?.profile
+                ? "present"
+                : "null"
+              : "notObserved",
           clubBlobWriteForbidden: "notObserved",
         },
       }
     );
   }
+
   return okStep("A-RATE", {
-    objectId: resolveRatingProfileId(profile) || firstProfileId || null,
+    objectId: maskOperatorIdentifier(firstAssessmentId),
     details: {
-      source: "rating_v5_* RPC",
-      sameProfileId: true,
+      source: "rating_v5_start_assessment + player_skill_assessments",
+      samePlayer: true,
+      sameTenant: true,
+      assessmentRows: 2,
       enrollmentCode:
-        enrollment.code || (enrollment.ok === false ? enrollment.code : "OK"),
+        enrollment?.code || (enrollment?.ok === false ? enrollment?.code : "OK"),
+      profileObserved:
+        profile?.ok === true ? (profile?.profile ? "present" : "null") : "notObserved",
       clubBlobWriteForbidden: "notObserved",
     },
   });
@@ -523,7 +572,10 @@ export async function runOperatorAcceptanceSequence({
   steps.push(player);
   if (player.status === "FAIL") return { access, stoppedAt: player.id, steps };
 
-  const rating = await runRatingAcceptance();
+  const rating = await runRatingAcceptance({
+    sessionUserId: access.actorId,
+    tenantId: access.tenantId,
+  });
   steps.push(rating);
   if (rating.status === "FAIL") return { access, stoppedAt: rating.id, steps };
 

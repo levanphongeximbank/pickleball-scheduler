@@ -151,15 +151,15 @@ test("A-COURT fails when found.venueId !== tenantId", () => {
   );
 });
 
-test("A-RATE fails when two start assessments resolve different profiles", () => {
+test("A-RATE uses assessment-row identity verification (not empty profileId PASS)", () => {
   const runner = readRunner();
-  assert.match(runner, /RATING_PROFILE_MISMATCH/);
-  assert.match(runner, /sameProfileId/);
-  assert.match(runner, /Two start-assessment calls did not resolve the same profile/);
-  assert.doesNotMatch(runner, /clubBlobWriteForbidden:\s*true/);
-  assert.doesNotMatch(runner, /authUsersCreated:\s*0/);
-  assert.doesNotMatch(runner, /legacyTableAbsent:\s*true/);
-  assert.match(runner, /notObserved/);
+  assert.match(runner, /evaluateRatingAssessmentIdentity/);
+  assert.match(runner, /player_skill_assessments/);
+  assert.match(runner, /samePlayer:\s*true/);
+  assert.match(runner, /sameTenant:\s*true/);
+  assert.match(runner, /assessmentRows:\s*2/);
+  assert.doesNotMatch(runner, /sameProfileId/);
+  assert.doesNotMatch(runner, /resolveRatingProfileId/);
 });
 
 test("A-CAT covers all four Public Catalog RPCs; empty PASS; malformed FAIL", () => {
