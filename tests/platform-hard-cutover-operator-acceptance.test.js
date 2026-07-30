@@ -1,5 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
+import fs from "node:fs";
+import path from "node:path";
 
 import {
   buildOperatorAcceptanceEvidence,
@@ -118,4 +120,51 @@ test("operator acceptance steps preserve required order", () => {
     "A-G6",
   ]);
   assert.equal(OPERATOR_ACCEPTANCE_STEPS.includes("A-PAIR"), false);
+});
+
+test("A-PLAYER evidence export never contains full sessionUserId", () => {
+  const runner = fs.readFileSync(
+    path.join(
+      process.cwd(),
+      "src/features/platform-hard-cutover/operatorAcceptanceRunner.js"
+    ),
+    "utf8"
+  );
+  assert.match(
+    runner,
+    /okStep\(\s*"A-PLAYER"[\s\S]*?objectId:\s*maskOperatorIdentifier\(/
+  );
+
+  const sessionUserId = "13e0968b-53c5-4ba6-8ae0-dce12b1faf9c";
+  const evidence = buildOperatorAcceptanceEvidence({
+    access: {
+      target: { projectRef: OPERATOR_ACCEPTANCE_PROJECT_REF, appEnv: "staging" },
+      tenantId: "venue-staging-a",
+      maskedActorId: maskOperatorIdentifier(sessionUserId),
+      role: "TENANT_OWNER",
+      isSuperAdmin: false,
+    },
+    startedAt: "2026-07-30T17:09:59.352Z",
+    finishedAt: "2026-07-30T17:10:03.152Z",
+    steps: [
+      {
+        id: "A-PLAYER",
+        status: "PASS",
+        objectId: maskOperatorIdentifier(
+          sessionUserId /* athlete_id || profile_id || sessionUserId */
+        ),
+        code: null,
+        message: null,
+        details: {
+          source: "platform_resolve_athlete_profile RPC",
+          authUsersCreated: "notObserved",
+        },
+        observedAt: "2026-07-30T17:10:00.405Z",
+      },
+    ],
+  });
+  const serialized = JSON.stringify(evidence);
+  assert.equal(serialized.includes(sessionUserId), false);
+  assert.equal(evidence.steps[0].objectId, "13e0***af9c");
+  assert.equal(evidence.actor.maskedUserId, "13e0***af9c");
 });

@@ -1,0 +1,147 @@
+{
+  "marker": "PLATFORM_HARD_CUTOVER_01_OPERATOR_ACCEPTANCE_FINAL_WRITE_RECONCILIATION",
+  "generatedAt": "2026-07-30T17:20:00.000Z",
+  "mode": "READ_ONLY_STAGING_SELECT",
+  "mutationsExecutedByThisReconciliation": 0,
+  "target": {
+    "projectRef": "qyewbxjsiiyufanzcjcq",
+    "environment": "staging",
+    "tenantId": "venue-staging-a",
+    "productionRefForbidden": "expuvcohlcjzvrrauvud",
+    "productionTouched": false
+  },
+  "operatorRunWindow": {
+    "startedAt": "2026-07-30T17:09:59.352Z",
+    "generatedAt": "2026-07-30T17:10:03.152Z",
+    "rawEvidenceSha256": "7015b71b2cc318e4cf9e8759e6c2acc0becbf3ccad338bb102c6fc5ce09351d7",
+    "executedDeploymentSha": "f40d9ad921bc21791a2f8a5a6ea9179490709648"
+  },
+  "accounting": {
+    "writerRpcInvocations": 5,
+    "confirmedInsertedRows": 2,
+    "confirmedUpdatedRows": 1,
+    "idempotentReplayCalls": 2,
+    "reusedExistingRows": 4,
+    "totalConfirmedDurableRowMutations": 3
+  },
+  "steps": {
+    "A-CLUB": {
+      "classification": "reused",
+      "writerRpcInvocations": 0,
+      "confirmedInsertedRows": 0,
+      "confirmedUpdatedRows": 0,
+      "reusedExistingRows": 1,
+      "proof": {
+        "clubId": "club-ecebf64c78f948ccb2b59842441eb26c",
+        "clubsCreatedAt": "2026-07-30T10:17:59.369658Z",
+        "clubsUpdatedAt": "2026-07-30T10:17:59.369658Z",
+        "createdInWindow": false,
+        "updatedInWindow": false,
+        "clubDataV3RowPresent": false,
+        "note": "Runner reuses first registry club when present; no create path durable effect in window."
+      }
+    },
+    "A-COURT": {
+      "classification": "upsert_call_with_durable_update",
+      "writerRpcInvocations": 1,
+      "writerRpcName": "court_admin_upsert_cluster",
+      "durableEffect": "update",
+      "confirmedInsertedRows": 0,
+      "confirmedUpdatedRows": 1,
+      "reusedExistingRows": 1,
+      "proof": {
+        "clusterId": "venue-staging-a-hc-operator-cluster",
+        "venueId": "venue-staging-a",
+        "createdAt": "2026-07-30T12:29:30.612671Z",
+        "updatedAt": "2026-07-30T17:09:59.940331Z",
+        "createdInWindow": false,
+        "updatedInWindow": true
+      }
+    },
+    "A-PLAYER": {
+      "classification": "resolve_only",
+      "writerRpcInvocations": 0,
+      "confirmedInsertedRows": 0,
+      "confirmedUpdatedRows": 0,
+      "reusedExistingRows": 1,
+      "proof": {
+        "rpc": "platform_resolve_athlete_profile",
+        "athletesRowsForActorTenant": 0,
+        "athleteInsertsInWindow": 0,
+        "athleteUpdatesInWindow": 0,
+        "profileInsertsInWindow": 0,
+        "profileUpdatesInWindow": 0,
+        "profileExistedBeforeWindow": true,
+        "note": "No durable athlete/profile row mutation in window; resolve-only."
+      }
+    },
+    "A-RATE": {
+      "classification": "created_assessment_rows",
+      "writerRpcInvocations": 2,
+      "writerRpcName": "rating_v5_start_assessment",
+      "confirmedInsertedRows": 2,
+      "confirmedUpdatedRows": 0,
+      "assessmentIdsMasked": ["f994***0850", "30f5***9fd3"],
+      "proof": {
+        "tenantId": "venue-staging-a",
+        "samePlayer": true,
+        "createdInWindowCount": 2,
+        "createdAt": [
+          "2026-07-30T17:10:00.625373Z",
+          "2026-07-30T17:10:00.847204Z"
+        ]
+      }
+    },
+    "A-COMP": {
+      "classification": "two_finalize_calls_both_idempotent_replay",
+      "writerRpcInvocations": 2,
+      "writerRpcName": "competition_ssot_finalize_match_result",
+      "firstCallReplayStatus": true,
+      "secondCallReplayStatus": true,
+      "newFinalizedRowsCreatedInWindow": 0,
+      "confirmedInsertedRows": 0,
+      "confirmedUpdatedRows": 0,
+      "idempotentReplayCalls": 2,
+      "reusedExistingRows": 1,
+      "proof": {
+        "matchId": "5eb3f384-6f71-4aaa-81d8-e41dfd28c2fa",
+        "idempotencyKey": "hard-cutover-browser::venue-staging-a::finalize::m1",
+        "preexistingFinalizedAt": "2026-07-30T15:25:49.925196Z",
+        "preexistingIdempotencyCreatedAt": "2026-07-30T15:25:49.925196Z",
+        "finalizedInWindow": false,
+        "matchUpdatedInWindow": false,
+        "auditEventsInWindow": 0,
+        "commandLogInWindow": 0,
+        "idempotencyInsertsInWindow": 0,
+        "evidenceSecondCallReplayFlag": true,
+        "functionSemantics": "Pre-existing competition_ssot_idempotency row for same key causes RETURN ... replay=true for both calls; no durable side writes."
+      }
+    },
+    "A-SEC_to_A-G6": {
+      "classification": "read_only",
+      "steps": ["A-SEC", "A-COACH", "A-MSG", "A-DASH", "A-CAT", "A-G1", "A-G2", "A-G3", "A-G4", "A-G5", "A-G6"],
+      "writerRpcInvocations": 0,
+      "confirmedInsertedRows": 0,
+      "confirmedUpdatedRows": 0,
+      "proof": {
+        "operatorEvidenceStatusesAllPass": true,
+        "noDurableBusinessWritersInContract": true,
+        "auditLogsMatchingOperatorWindowForTenantOrActor": 0
+      }
+    }
+  },
+  "totalsDerivation": {
+    "writerRpcInvocations": "A-COURT(1)+A-RATE(2)+A-COMP(2)=5",
+    "confirmedInsertedRows": "A-RATE(2)=2",
+    "confirmedUpdatedRows": "A-COURT(1)=1",
+    "idempotentReplayCalls": "A-COMP(2)=2",
+    "reusedExistingRows": "A-CLUB(1)+A-COURT(1)+A-PLAYER profile(1)+A-COMP preexisting finalized(1)=4",
+    "totalConfirmedDurableRowMutations": "inserts(2)+updates(1)=3"
+  },
+  "guardrails": {
+    "runnerReExecuted": false,
+    "sqlApplied": false,
+    "productionMutations": 0,
+    "reconciliationMutations": 0
+  }
+}

@@ -182,7 +182,9 @@ async function runPlayerAcceptance({ sessionUserId }) {
     );
   }
   return okStep("A-PLAYER", {
-    objectId: resolved.data?.athlete_id || resolved.data?.profile_id || sessionUserId,
+    objectId: maskOperatorIdentifier(
+      resolved.data?.athlete_id || resolved.data?.profile_id || sessionUserId
+    ),
     details: {
       source: "platform_resolve_athlete_profile RPC",
       authUsersCreated: "notObserved",

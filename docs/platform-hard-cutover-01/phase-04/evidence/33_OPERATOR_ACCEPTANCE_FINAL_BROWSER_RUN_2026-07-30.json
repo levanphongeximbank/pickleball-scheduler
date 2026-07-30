@@ -1,0 +1,287 @@
+{
+  "marker": "PLATFORM_HARD_CUTOVER_01_OPERATOR_ACCEPTANCE_BROWSER_RUN",
+  "generatedAt": "2026-07-30T17:10:03.152Z",
+  "startedAt": "2026-07-30T17:09:59.352Z",
+  "target": {
+    "projectRef": "qyewbxjsiiyufanzcjcq",
+    "environment": "staging",
+    "tenantId": "venue-staging-a"
+  },
+  "actor": {
+    "maskedUserId": "13e0***af9c",
+    "role": "TENANT_OWNER",
+    "isSuperAdmin": false
+  },
+  "steps": [
+    {
+      "id": "A-OWN",
+      "status": "PASS",
+      "code": null,
+      "message": null,
+      "objectId": "13e0***af9c",
+      "observedAt": "2026-07-30T17:09:59.356Z",
+      "details": {
+        "tenantId": "venue-staging-a",
+        "role": "TENANT_OWNER",
+        "isSuperAdmin": false,
+        "projectRef": "qyewbxjsiiyufanzcjcq"
+      }
+    },
+    {
+      "id": "A-CLUB",
+      "status": "PASS",
+      "code": null,
+      "message": null,
+      "objectId": "club-ecebf64c78f948ccb2b59842441eb26c",
+      "observedAt": "2026-07-30T17:09:59.721Z",
+      "details": {
+        "source": "club_* RPC",
+        "tenantId": "venue-staging-a",
+        "clubId": "club-ecebf64c78f948ccb2b59842441eb26c",
+        "canonicalBlob": "club_data_v3",
+        "legacyTableAbsent": "notObserved"
+      }
+    },
+    {
+      "id": "A-COURT",
+      "status": "PASS",
+      "code": null,
+      "message": null,
+      "objectId": "venue-staging-a-hc-operator-cluster",
+      "observedAt": "2026-07-30T17:10:00.159Z",
+      "details": {
+        "source": "court_admin_upsert_cluster RPC",
+        "foundVenueId": "venue-staging-a",
+        "tenantId": "venue-staging-a",
+        "tenantIsolation": true
+      }
+    },
+    {
+      "id": "A-PLAYER",
+      "status": "PASS",
+      "code": null,
+      "message": null,
+      "objectId": "13e0***af9c",
+      "observedAt": "2026-07-30T17:10:00.405Z",
+      "details": {
+        "source": "platform_resolve_athlete_profile RPC",
+        "authUsersCreated": "notObserved"
+      }
+    },
+    {
+      "id": "A-RATE",
+      "status": "PASS",
+      "code": null,
+      "message": null,
+      "objectId": "f994***0850",
+      "observedAt": "2026-07-30T17:10:01.493Z",
+      "details": {
+        "source": "rating_v5_start_assessment + player_skill_assessments",
+        "samePlayer": true,
+        "sameTenant": true,
+        "assessmentRows": 2,
+        "enrollmentCode": "OK",
+        "profileObserved": "null",
+        "clubBlobWriteForbidden": "notObserved"
+      }
+    },
+    {
+      "id": "A-COMP",
+      "status": "PASS",
+      "code": null,
+      "message": null,
+      "objectId": "5eb3f384-6f71-4aaa-81d8-e41dfd28c2fa",
+      "observedAt": "2026-07-30T17:10:02.318Z",
+      "details": {
+        "source": "competition_ssot_finalize_match_result",
+        "replay": true,
+        "finalizedRows": 1,
+        "finalizedSource": "competition_ssot_finalize"
+      }
+    },
+    {
+      "id": "A-SEC",
+      "status": "PASS",
+      "code": null,
+      "message": null,
+      "objectId": null,
+      "observedAt": "2026-07-30T17:10:02.318Z",
+      "details": {
+        "platformWideAdmin": false,
+        "sessionIsSuperAdmin": false,
+        "observed": "owner_session_lacks_platform_wide_admin"
+      }
+    },
+    {
+      "id": "A-COACH",
+      "status": "PASS",
+      "code": null,
+      "message": null,
+      "objectId": null,
+      "observedAt": "2026-07-30T17:10:02.319Z",
+      "details": {
+        "mode": "durable",
+        "stagingDurableActivate": true,
+        "noLegacyAuthority": true
+      }
+    },
+    {
+      "id": "A-MSG",
+      "status": "PASS",
+      "code": null,
+      "message": null,
+      "objectId": null,
+      "observedAt": "2026-07-30T17:10:02.319Z",
+      "details": {
+        "mode": "UNAVAILABLE",
+        "normalizedMode": "UNAVAILABLE",
+        "reason": "MESSAGING_DEMO_AUTHORITY_FORBIDDEN",
+        "demoAllowed": false,
+        "noSilentFallback": true,
+        "acceptedModes": [
+          "PRODUCTION",
+          "UNAVAILABLE"
+        ]
+      }
+    },
+    {
+      "id": "A-DASH",
+      "status": "PASS",
+      "code": null,
+      "message": null,
+      "objectId": null,
+      "observedAt": "2026-07-30T17:10:02.319Z",
+      "details": {
+        "unavailable": true,
+        "sourceState": "UNAVAILABLE",
+        "isMock": false,
+        "noLocalStorageAuthority": true
+      }
+    },
+    {
+      "id": "A-CAT",
+      "status": "PASS",
+      "code": null,
+      "message": null,
+      "objectId": null,
+      "observedAt": "2026-07-30T17:10:03.151Z",
+      "details": {
+        "rpcs": [
+          "public_catalog_list_clubs",
+          "public_catalog_list_courts",
+          "public_catalog_list_tournaments",
+          "public_catalog_list_rankings"
+        ],
+        "clubs": 0,
+        "courts": 0,
+        "tournaments": 0,
+        "rankings": 0,
+        "emptyResultAllowed": true,
+        "source": "public_catalog_list_* RPC"
+      }
+    },
+    {
+      "id": "A-G1",
+      "status": "PASS",
+      "code": "OK",
+      "message": null,
+      "objectId": null,
+      "observedAt": "2026-07-30T17:10:03.152Z",
+      "details": {
+        "criterion": "ONE_CANONICAL_WRITER_PER_DOMAIN",
+        "domainCount": 26
+      }
+    },
+    {
+      "id": "A-G2",
+      "status": "PASS",
+      "code": "OK",
+      "message": null,
+      "objectId": null,
+      "observedAt": "2026-07-30T17:10:03.152Z",
+      "details": {
+        "criterion": "NO_LEGACY_WRITER",
+        "blocked": [
+          {
+            "name": "match_live",
+            "code": "MATCH_LIVE_DIRECT_WRITE_FORBIDDEN"
+          },
+          {
+            "name": "messaging_demo",
+            "code": "MESSAGING_DEMO_AUTHORITY_FORBIDDEN"
+          },
+          {
+            "name": "coaching_legacy",
+            "code": "COACHING_LOCALSTORAGE_AUTHORITY_FORBIDDEN"
+          },
+          {
+            "name": "pairing_legacy_picker"
+          }
+        ]
+      }
+    },
+    {
+      "id": "A-G3",
+      "status": "PASS",
+      "code": "OK",
+      "message": null,
+      "objectId": null,
+      "observedAt": "2026-07-30T17:10:03.152Z",
+      "details": {
+        "criterion": "NO_LOCALSTORAGE_AUTHORITY",
+        "dashboardBlockedCode": "DASHBOARD_ANALYTICS_LOCALSTORAGE_FORBIDDEN",
+        "coachingBlockedCode": "COACHING_LOCALSTORAGE_AUTHORITY_FORBIDDEN"
+      }
+    },
+    {
+      "id": "A-G4",
+      "status": "PASS",
+      "code": "OK",
+      "message": null,
+      "objectId": null,
+      "observedAt": "2026-07-30T17:10:03.152Z",
+      "details": {
+        "criterion": "NO_MOCK_PERSISTENCE",
+        "blockedCodes": [
+          "MOCK_PERSISTENCE_FORBIDDEN",
+          "DASHBOARD_ANALYTICS_MOCK_FORBIDDEN",
+          "MESSAGING_DEMO_AUTHORITY_FORBIDDEN"
+        ]
+      }
+    },
+    {
+      "id": "A-G5",
+      "status": "PASS",
+      "code": "OK",
+      "message": null,
+      "objectId": null,
+      "observedAt": "2026-07-30T17:10:03.152Z",
+      "details": {
+        "criterion": "NO_SILENT_FALLBACK",
+        "matrixFailClosedCount": 26
+      }
+    },
+    {
+      "id": "A-G6",
+      "status": "PASS",
+      "code": "OK",
+      "message": null,
+      "objectId": null,
+      "observedAt": "2026-07-30T17:10:03.152Z",
+      "details": {
+        "criterion": "NO_HYBRID_RUNTIME",
+        "competitionRemoteSsot": true,
+        "clubBlobAuthority": "cache-only/forbidden"
+      }
+    }
+  ],
+  "secretsPrinted": false,
+  "provenance": {
+    "rawEvidenceSha256": "7015b71b2cc318e4cf9e8759e6c2acc0becbf3ccad338bb102c6fc5ce09351d7",
+    "executedDeploymentSha": "f40d9ad921bc21791a2f8a5a6ea9179490709648",
+    "sanitizedFields": [
+      "steps[A-PLAYER].objectId"
+    ],
+    "packagingCommitNote": "Sanitized after Owner browser run; Runner not re-executed on packaging commit"
+  }
+}
