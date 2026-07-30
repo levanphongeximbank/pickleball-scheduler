@@ -1,0 +1,87 @@
+{
+  "marker": "PLATFORM_HARD_CUTOVER_01_DESTRUCTIVE_STAGE_STOPPED_WIPE_MISSING_RELATIONS_2026-07-30",
+  "capturedAt": "2026-07-30T04:20:00Z",
+  "target": {
+    "mcpServer": "project-0-pickleball-scheduler-supabase-staging",
+    "projectRef": "qyewbxjsiiyufanzcjcq",
+    "productionRefBlocked": "expuvcohlcjzvrrauvud"
+  },
+  "freshMain": "5f187d0566070723320ea23c819decec0d35ff51",
+  "backup": {
+    "kind": "PHYSICAL",
+    "timestamp": "2026-07-29T18:55:19Z",
+    "afterLastMutation": true,
+    "restoreNotRun": true
+  },
+  "steps": {
+    "00_IDENTITY_PRESERVE_PRECHECK": "PASS",
+    "01_PROTECTED_OBJECT_GUARDS": "PASS",
+    "10_ORDERED_WIPE": "FAIL",
+    "20_DROP_CLUB_AI_DATA": "NOT_RUN",
+    "30_POST_WIPE_VERIFY": "NOT_RUN",
+    "reseed": "NOT_RUN",
+    "90_ROLLBACK": "NOT_RUN",
+    "restore": "NOT_RUN"
+  },
+  "wipeFailure": {
+    "error": "42P01 relation public.vpr_point_ledger does not exist",
+    "migrationNameAttempted": "hard_cutover_phase4_10_ordered_wipe",
+    "migrationRecorded": false,
+    "transactionRolledBack": true,
+    "manifestTables": 92,
+    "presentOnStaging": 82,
+    "missingOnStagingAll": [
+      "_phase19b_test_accounts",
+      "ai_workflow_checklists",
+      "court_claim_requests",
+      "tournament_certifications",
+      "vpr_athlete_links",
+      "vpr_athletes",
+      "vpr_audit_logs",
+      "vpr_leaderboard",
+      "vpr_point_config",
+      "vpr_point_ledger"
+    ]
+  },
+  "protectedCounts": {
+    "expected": {
+      "auth.users": 87,
+      "profiles": 87,
+      "venues": 2,
+      "tenant_members": 3,
+      "roles": 12,
+      "permissions": 144,
+      "role_permissions": 432,
+      "plans": 4,
+      "plan_limits": 4
+    },
+    "afterFail": {
+      "auth.users": 87,
+      "profiles": 87,
+      "venues": 2,
+      "tenant_members": 3,
+      "roles": 12,
+      "permissions": 144,
+      "role_permissions": 432,
+      "plans": 4,
+      "plan_limits": 4
+    },
+    "unchanged": true
+  },
+  "businessStateUnchanged": {
+    "clubs": 22,
+    "club_data_v3": 2,
+    "team_tournaments": 62,
+    "athletes": 65,
+    "audit_logs": 898,
+    "referee_assignments": 13,
+    "club_ai_data_exists": true,
+    "competition_ssot_tables": 8
+  },
+  "mutations": {
+    "databaseNet": 0,
+    "production": 0
+  },
+  "hardStop": true,
+  "nextOwnerAction": "Remediate 10_ORDERED_WIPE.sql for Staging schema drift (missing relations in wipe manifest) then re-GO destructive stage; do not DROP/reseed until wipe PASS"
+}

@@ -1,5 +1,6 @@
 -- PLATFORM-HARD-CUTOVER-01 Phase 4 — Ordered business-data wipe
 -- Exact tables from Phase 3 §5 + Owner-approved FK closure (+6).
+-- Logical wipe manifest = 92 targets. Staging may omit 10 optional tables.
 -- No wildcard. No TRUNCATE ALL public. Multi-table TRUNCATE only (RESTRICT).
 -- NEVER touch: auth.users, profiles, venues, tenant_members,
 --   roles, permissions, role_permissions, plans, plan_limits.
@@ -47,7 +48,7 @@ TRUNCATE TABLE public.team_tournament_sync_mismatch;
 TRUNCATE TABLE public.team_tournament_command_log;
 TRUNCATE TABLE public.team_tournament_audit_logs;
 
--- W2 Rating / VPR / pairing / AI / notif / payments / catalog biz
+-- W2 Rating / pairing / AI / notif / payments / catalog biz (required present)
 TRUNCATE TABLE
   public.rating_v5_reassessment_approvals,
   public.player_rating_profiles,
@@ -64,12 +65,29 @@ TRUNCATE TABLE public.pick_vn_player_ratings;
 DELETE FROM public.rating_calibration_versions;
 DELETE FROM public.rating_v5_rollout_config;
 
-TRUNCATE TABLE public.vpr_point_ledger;
-TRUNCATE TABLE public.vpr_leaderboard;
-TRUNCATE TABLE public.vpr_audit_logs;
-TRUNCATE TABLE public.vpr_athlete_links;
-TRUNCATE TABLE public.vpr_athletes;
-TRUNCATE TABLE public.vpr_point_config;
+-- Optional logical-manifest targets (exact allowlist of 10).
+-- Present ⇒ TRUNCATE. Absent ⇒ skip. No CREATE. No DROP. Literal EXECUTE only.
+DO $$
+BEGIN
+  IF to_regclass('public.vpr_point_ledger') IS NOT NULL THEN
+    EXECUTE 'TRUNCATE TABLE public.vpr_point_ledger';
+  END IF;
+  IF to_regclass('public.vpr_leaderboard') IS NOT NULL THEN
+    EXECUTE 'TRUNCATE TABLE public.vpr_leaderboard';
+  END IF;
+  IF to_regclass('public.vpr_audit_logs') IS NOT NULL THEN
+    EXECUTE 'TRUNCATE TABLE public.vpr_audit_logs';
+  END IF;
+  IF to_regclass('public.vpr_athlete_links') IS NOT NULL THEN
+    EXECUTE 'TRUNCATE TABLE public.vpr_athlete_links';
+  END IF;
+  IF to_regclass('public.vpr_athletes') IS NOT NULL THEN
+    EXECUTE 'TRUNCATE TABLE public.vpr_athletes';
+  END IF;
+  IF to_regclass('public.vpr_point_config') IS NOT NULL THEN
+    EXECUTE 'TRUNCATE TABLE public.vpr_point_config';
+  END IF;
+END $$;
 
 TRUNCATE TABLE
   public.private_pairing_rule_targets,
@@ -78,7 +96,12 @@ TRUNCATE TABLE
 TRUNCATE TABLE public.private_pairing_rule_audit_logs;
 
 TRUNCATE TABLE public.ai_suggestions;
-TRUNCATE TABLE public.ai_workflow_checklists;
+DO $$
+BEGIN
+  IF to_regclass('public.ai_workflow_checklists') IS NOT NULL THEN
+    EXECUTE 'TRUNCATE TABLE public.ai_workflow_checklists';
+  END IF;
+END $$;
 TRUNCATE TABLE public.notifications;
 TRUNCATE TABLE public.notification_logs;
 TRUNCATE TABLE public.push_subscriptions;
@@ -104,10 +127,20 @@ TRUNCATE TABLE
   public.api_keys,
   public.api_clients;
 TRUNCATE TABLE public.idempotency_requests;
-TRUNCATE TABLE public.tournament_certifications;
+DO $$
+BEGIN
+  IF to_regclass('public.tournament_certifications') IS NOT NULL THEN
+    EXECUTE 'TRUNCATE TABLE public.tournament_certifications';
+  END IF;
+END $$;
 TRUNCATE TABLE public.tournament_match_live;
 TRUNCATE TABLE public.password_reset_tokens;
-TRUNCATE TABLE public._phase19b_test_accounts;
+DO $$
+BEGIN
+  IF to_regclass('public._phase19b_test_accounts') IS NOT NULL THEN
+    EXECUTE 'TRUNCATE TABLE public._phase19b_test_accounts';
+  END IF;
+END $$;
 TRUNCATE TABLE public.subscriptions;
 TRUNCATE TABLE public.public_catalog_rankings;
 TRUNCATE TABLE public.public_catalog_tournaments;
@@ -116,7 +149,12 @@ TRUNCATE TABLE public.public_catalog_courts;
 -- W3 Court / club / athlete (+ player_identity_links before clubs DELETE)
 TRUNCATE TABLE public.court_engine_active_sessions;
 TRUNCATE TABLE public.court_engine_stores;
-TRUNCATE TABLE public.court_claim_requests;
+DO $$
+BEGIN
+  IF to_regclass('public.court_claim_requests') IS NOT NULL THEN
+    EXECUTE 'TRUNCATE TABLE public.court_claim_requests';
+  END IF;
+END $$;
 TRUNCATE TABLE public.user_cluster_assignments;
 TRUNCATE TABLE
   public.club_governance_assignments,
