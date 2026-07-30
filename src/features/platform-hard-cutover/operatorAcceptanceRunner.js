@@ -17,12 +17,7 @@ import { getCoachingPageGateway } from "../coaching/runtime/createDefaultCoachin
 import { listPublicClubsRemote, listPublicCourtsRemote, listPublicRankingsRemote, listPublicTournamentsRemote } from "../public-catalog/remote/index.js";
 import { getDashboardAnalytics } from "../dashboard-analytics/services/dashboardService.js";
 import {
-  buildOperatorAcceptanceEvidence,
-  maskOperatorIdentifier,
   OPERATOR_ACCEPTANCE_ERROR,
-  OPERATOR_ACCEPTANCE_PROJECT_REF,
-  OPERATOR_ACCEPTANCE_ROUTE,
-  OPERATOR_ACCEPTANCE_STEPS,
   resolveOperatorAcceptanceAccess,
   resolveOperatorAcceptanceTarget,
 } from "./operatorAcceptanceShared.js";
@@ -56,10 +51,7 @@ async function getAuthenticatedSupabaseUser() {
   if (!client) {
     return { ok: false, code: OPERATOR_ACCEPTANCE_ERROR.CLIENT_UNAVAILABLE };
   }
-  const [{ data: sessionData }, { data: userData, error }] = await Promise.all([
-    client.auth.getSession(),
-    client.auth.getUser(),
-  ]);
+  const { data: sessionData, error } = await client.auth.getSession();
   if (error) {
     return {
       ok: false,
@@ -68,8 +60,7 @@ async function getAuthenticatedSupabaseUser() {
     };
   }
   const sessionUserId = sessionData?.session?.user?.id || null;
-  const user = userData?.user || null;
-  return { ok: true, client, user, sessionUserId };
+  return { ok: true, sessionUserId };
 }
 
 async function runClubAcceptance({ tenantId }) {
@@ -298,7 +289,6 @@ async function runPairingAcceptance({ tenantId }) {
 
 async function runCoachingAcceptance() {
   const gateway = getCoachingPageGateway();
-  const status = gateway.getStatus();
   const pass =
     gateway.mode === "durable" || gateway.mode === "unavailable";
   if (!pass) {

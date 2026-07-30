@@ -3,7 +3,7 @@
  * Keep out of domain/matchLiveSync to avoid architecture boundary violations.
  */
 
-import { getSupabaseAuthClient } from "../../auth/supabaseClient.js";
+import { getSupabaseAuthClient } from "../../../auth/supabaseClient.js";
 import {
   isCompetitionRemoteSsotEnabled,
 } from "../../platform-hard-cutover/runtimeAuthorityMatrix.js";
