@@ -1,0 +1,79 @@
+{
+  "marker": "PLATFORM_HARD_CUTOVER_01_A_RATE_STAGING_OWNER_PILOT_ACTIVATION",
+  "observedAt": "2026-07-30T13:55:00.000Z",
+  "pr": 346,
+  "branch": "fix/a-rate-staging-owner-pilot-activation",
+  "commits": [
+    "34af1f0d920acd8a8b1bb697a3d6aa4e527dc05e",
+    "7034d5fe"
+  ],
+  "targetProjectRef": "qyewbxjsiiyufanzcjcq",
+  "productionRefBlocked": "expuvcohlcjzvrrauvud",
+  "ownerGo": "AUTHOR_AND_APPLY_STAGING",
+  "preApply": {
+    "rolloutConfigRows": 0,
+    "pilotEnrollmentRows": 0,
+    "venueOwnerCandidates": 2,
+    "duplicateEnrollForbidden": true
+  },
+  "actor": {
+    "maskedPlayerId": "13e0***af9c",
+    "authUserEqualsProfileEqualsRatingPlayerId": true,
+    "role": "VENUE_OWNER",
+    "normalizedRole": "COURT_OWNER",
+    "tenantId": "venue-staging-a",
+    "pinMethod": "clubs.created_by_user_id",
+    "pinEvidence": {
+      "clubName": "HC Operator Seed Club venue-staging-a",
+      "tenantId": "venue-staging-a",
+      "operatorClubsForPinned": 1,
+      "hcOperatorClubsForOtherVenueOwner": 0,
+      "otherMaskedCandidate": "f7ea***3876",
+      "otherCandidateEnrolled": false
+    },
+    "displayNameUsed": false,
+    "enrollBothVenueOwners": false
+  },
+  "package": {
+    "dir": "docs/platform-hard-cutover-01/phase-04/sql/rating-v5-staging-owner-pilot-activation",
+    "cohort": "phase4-owner-acceptance",
+    "rolloutId": "default",
+    "shadowModeEnabled": true,
+    "allowV5Assessment": true,
+    "rbacGrantsAdded": false,
+    "authUsersCreated": false,
+    "destructiveSql": false
+  },
+  "apply": {
+    "status": "PASS",
+    "migrations": [
+      "rating_v5_staging_owner_pilot_rollout_config",
+      "rating_v5_staging_owner_pilot_enrollment"
+    ],
+    "rolloutBefore": [],
+    "rolloutAfter": {
+      "id": "default",
+      "shadow_mode_enabled": true,
+      "allow_v5_assessment": true,
+      "pilot_cohort_label": "phase4-owner-acceptance"
+    },
+    "enrollmentBefore": [],
+    "enrollmentAfter": {
+      "maskedPlayerId": "13e0***af9c",
+      "tenant_id": "venue-staging-a",
+      "cohort_label": "phase4-owner-acceptance",
+      "status": "active"
+    },
+    "phase4EnrollmentCount": 1,
+    "otherOwnerEnrolled": false,
+    "pilotGate": { "ok": true, "code": "OK" },
+    "actorHasAssessSelfViaRole": true,
+    "operatorRunner": "NOT_RUN"
+  },
+  "databaseMutations": {
+    "staging": "rating_v5_rollout_config +1; rating_v5_pilot_enrollments +1",
+    "production": 0
+  },
+  "productionMutations": 0,
+  "ownerNext": "Merge PR #346 if desired, then re-run Operator Acceptance Runner for A-RATE on Staging as the same Owner session (13e0***af9c)."
+}
