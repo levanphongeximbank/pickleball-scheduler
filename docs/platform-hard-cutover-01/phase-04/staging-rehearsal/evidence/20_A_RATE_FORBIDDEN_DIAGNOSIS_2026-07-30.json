@@ -1,0 +1,49 @@
+{
+  "marker": "PLATFORM_HARD_CUTOVER_01_A_RATE_FORBIDDEN_DIAGNOSIS",
+  "observedAt": "2026-07-30T12:35:00.000Z",
+  "targetProjectRef": "qyewbxjsiiyufanzcjcq",
+  "productionRefBlocked": "expuvcohlcjzvrrauvud",
+  "databaseMutations": 0,
+  "productionMutations": 0,
+  "writer": {
+    "runner": "src/features/platform-hard-cutover/operatorAcceptanceRunner.js#runRatingAcceptance",
+    "service": "src/features/pick-vn-rating-v5/services/ratingV5RpcService.js#rpcRatingV5StartAssessment",
+    "rpcName": "rating_v5_start_assessment",
+    "signature": "public.rating_v5_start_assessment(p_rating_mode text DEFAULT 'doubles') RETURNS jsonb",
+    "payload": { "p_rating_mode": "doubles" }
+  },
+  "failingCondition": "rating_v5_start_assessment returns FORBIDDEN when rating_v5_has_permission('rating_v5.assess_self') is false",
+  "permissionAudit": {
+    "permissionChecked": "rating_v5.assess_self",
+    "permissionExists": true,
+    "rolesWithAssessSelf": ["PLAYER", "SUPER_ADMIN", "SYSTEM_TECHNICIAN"],
+    "VENUE_OWNER_has": false,
+    "COURT_OWNER_has": false,
+    "TENANT_OWNER_role_exists": false,
+    "actorWouldHaveAssessSelf": false
+  },
+  "actor": {
+    "appRole": "TENANT_OWNER",
+    "profileRole": "VENUE_OWNER",
+    "normalizedRole": "COURT_OWNER",
+    "tenantId": "venue-staging-a",
+    "isSuperAdmin": false
+  },
+  "bmFinalRating01": {
+    "canonicalWriter": "Rating V5 durable RPC/facade (not club blob)",
+    "runnerUsesCanonical": true
+  },
+  "rootCause": "permission_missing_for_owner_roles",
+  "nextLikelyGatesAfterFix": ["ROLLOUT_BLOCKED", "PILOT_NOT_ENROLLED"],
+  "rolloutState": {
+    "rating_v5_rollout_config_rows": 0,
+    "pilot_enrollment_rows": 0
+  },
+  "remediation": {
+    "chosen": "staging_rbac_grant_assess_self_to_owner_roles",
+    "roles": ["COURT_OWNER", "VENUE_OWNER"],
+    "permissions": ["rating_v5.assess_self", "rating_v5.view_own"],
+    "autoApply": false,
+    "ownerGoRequired": true
+  }
+}
