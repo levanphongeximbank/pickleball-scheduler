@@ -6,7 +6,7 @@ import {
   resolveRatingAssessmentId,
 } from "../src/features/platform-hard-cutover/operatorAcceptanceRatingIdentity.js";
 
-const SESSION = "13e0968b-53c5-4ba6-8ae0-dce12b1faf9c";
+const SESSION = "11111111-2222-4333-8444-555555555555";
 const TENANT = "venue-staging-a";
 const A1 = "11111111-1111-1111-1111-111111111111";
 const A2 = "22222222-2222-2222-2222-222222222222";

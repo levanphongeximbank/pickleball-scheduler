@@ -135,7 +135,7 @@ test("A-PLAYER evidence export never contains full sessionUserId", () => {
     /okStep\(\s*"A-PLAYER"[\s\S]*?objectId:\s*maskOperatorIdentifier\(/
   );
 
-  const sessionUserId = "13e0968b-53c5-4ba6-8ae0-dce12b1faf9c";
+  const sessionUserId = "11111111-2222-4333-8444-555555555555";
   const evidence = buildOperatorAcceptanceEvidence({
     access: {
       target: { projectRef: OPERATOR_ACCEPTANCE_PROJECT_REF, appEnv: "staging" },
@@ -165,6 +165,6 @@ test("A-PLAYER evidence export never contains full sessionUserId", () => {
   });
   const serialized = JSON.stringify(evidence);
   assert.equal(serialized.includes(sessionUserId), false);
-  assert.equal(evidence.steps[0].objectId, "13e0***af9c");
-  assert.equal(evidence.actor.maskedUserId, "13e0***af9c");
+  assert.equal(evidence.steps[0].objectId, "1111***5555");
+  assert.equal(evidence.actor.maskedUserId, "1111***5555");
 });
