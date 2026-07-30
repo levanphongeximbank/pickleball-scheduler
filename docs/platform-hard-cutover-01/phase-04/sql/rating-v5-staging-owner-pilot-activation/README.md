@@ -27,7 +27,7 @@ Exactly one Operator actor resolved from durable A-CLUB write provenance:
 
 | File | Action |
 |------|--------|
-| `10_ROLLOUT_CONFIG.sql` | Upsert `id='default'`, shadow+assessment ON, cohort `phase4-owner-acceptance` |
+| `10_ROLLOUT_CONFIG.sql` | Upsert `id='default'` with only `shadow_mode_enabled`, `allow_v5_assessment`, `pilot_cohort_label` (other columns = table defaults) |
 | `20_PILOT_ENROLLMENT.sql` | Upsert one active enrollment for pinned actor + `venue-staging-a` |
 | `90_ROLLBACK.sql` | Delete exact enrollment key + default config if cohort matches (manual only) |
 | `99_VERIFY.sql` | Read-only row + `rating_v5_assert_pilot_gate` check |
