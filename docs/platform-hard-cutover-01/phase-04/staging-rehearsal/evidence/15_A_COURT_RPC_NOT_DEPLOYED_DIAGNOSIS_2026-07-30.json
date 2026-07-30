@@ -1,0 +1,68 @@
+{
+  "marker": "PLATFORM_HARD_CUTOVER_01_A_COURT_RPC_NOT_DEPLOYED_DIAGNOSIS",
+  "observedAt": "2026-07-30T10:20:00.000Z",
+  "targetProjectRef": "qyewbxjsiiyufanzcjcq",
+  "productionRefBlocked": "expuvcohlcjzvrrauvud",
+  "databaseMutations": 0,
+  "productionMutations": 0,
+  "liveFailure": {
+    "step": "A-COURT",
+    "code": "RPC_NOT_DEPLOYED",
+    "message": "Could not find the function public.court_admin_upsert_cluster(p_cluster) in the schema cache",
+    "stoppedAtFirstFailure": true,
+    "notRun": ["A-PLAYER", "A-RATE", "A-COMP", "A-PAIR", "A-COACH", "A-MSG", "A-DASH", "A-CAT", "A-G1", "A-G2", "A-G3", "A-G4", "A-G5", "A-G6"]
+  },
+  "callSite": {
+    "runner": "src/features/platform-hard-cutover/operatorAcceptanceRunner.js#runCourtAcceptance",
+    "service": "src/features/court-cluster/services/courtClaimRequestRpcService.js#rpcAdminUpsertCluster",
+    "canonicalCloudWriter": "src/features/court-cluster/services/courtClusterCloudService.js#upsertClusterToCloud",
+    "rpcName": "court_admin_upsert_cluster",
+    "expectedArgs": { "p_cluster": "json object" },
+    "expectedSqlSignature": "public.court_admin_upsert_cluster(p_cluster json) RETURNS json",
+    "payloadShape": [
+      "id",
+      "venue_id|venueId",
+      "name",
+      "slug",
+      "status",
+      "court_count|courtCount",
+      "address",
+      "google_maps_url|googleMapsUrl"
+    ]
+  },
+  "stagingLiveAudit": {
+    "court_admin_upsert_cluster_exists": false,
+    "can_review_court_claim_exists": false,
+    "court_list_registerable_clusters_exists": false,
+    "court_claim_requests_exists": false,
+    "court_clusters_exists": true,
+    "helpersPresent": ["is_super_admin", "user_has_permission", "is_platform_cluster_admin"],
+    "migrationsContainPhase33Claim": false,
+    "migrationsContainPhase36CloudSync": false,
+    "migrationsContainPhase37Registerable": false
+  },
+  "rootCause": "canonical_migration_not_applied_on_staging",
+  "ruledOut": [
+    "signature_drift",
+    "rpc_renamed",
+    "runner_calling_legacy_rpc",
+    "schema_cache_stale_only"
+  ],
+  "bmFinalCourt01": {
+    "scope": "court-engine runtime durable stores",
+    "doesNotReplace": "court_admin_upsert_cluster cluster inventory writer"
+  },
+  "remediation": {
+    "path": "apply_canonical_staging_package",
+    "package": "docs/platform-hard-cutover-01/phase-04/sql/court-cluster-admin-rpc-staging",
+    "applyOrder": [
+      "10_PHASE_33_COURT_CLAIM_REQUESTS.sql",
+      "20_PHASE_36_COURT_CLUSTER_CLOUD_SYNC.sql",
+      "30_PHASE_37_CLUB_REGISTERABLE_CLUSTERS.sql",
+      "99_VERIFY.sql"
+    ],
+    "ownerGoRequired": true,
+    "autoApply": false,
+    "doNotInventLegacyRpc": true
+  }
+}
