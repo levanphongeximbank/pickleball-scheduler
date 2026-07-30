@@ -1,0 +1,52 @@
+{
+  "marker": "PLATFORM_HARD_CUTOVER_01_REMAINING_ACCEPTANCE_ACTUAL_PREFLIGHT_V2",
+  "observedAt": "2026-07-30T16:58:00.000Z",
+  "mode": "READ_ONLY",
+  "project_ref": "qyewbxjsiiyufanzcjcq",
+  "production_ref_blocked": "expuvcohlcjzvrrauvud",
+  "approvedHead": "f40d9ad921bc21791a2f8a5a6ea9179490709648",
+  "noAssessmentOrWriterRpc": true,
+  "businessWrites": 0,
+  "databaseMutations": 0,
+  "results": [
+    {
+      "step": "A-COACH",
+      "status": "PASS",
+      "mode": "durable",
+      "method": "resolveDefaultCoachingRuntimeMode with Preview-attested staging flags"
+    },
+    {
+      "step": "A-MSG",
+      "status": "PASS",
+      "normalizedMode": "UNAVAILABLE",
+      "method": "evaluateMessagingAcceptanceMode"
+    },
+    {
+      "step": "A-DASH",
+      "status": "PASS",
+      "unavailable": true,
+      "sourceState": "UNAVAILABLE",
+      "isMock": false,
+      "method": "getDashboardAnalytics live mode"
+    },
+    {
+      "step": "A-CAT",
+      "status": "PASS",
+      "method": "Staging SQL EXECUTE of four public_catalog_list_* RPCs",
+      "rpcs": [
+        { "rpc": "public_catalog_list_clubs", "row_count": 0, "emptyPass": true },
+        { "rpc": "public_catalog_list_courts", "row_count": 0, "emptyPass": true },
+        { "rpc": "public_catalog_list_tournaments", "row_count": 0, "emptyPass": true },
+        { "rpc": "public_catalog_list_rankings", "row_count": 0, "emptyPass": true }
+      ]
+    },
+    { "step": "A-G1", "status": "PASS", "code": "OK" },
+    { "step": "A-G2", "status": "PASS", "code": "OK" },
+    { "step": "A-G3", "status": "PASS", "code": "OK" },
+    { "step": "A-G4", "status": "PASS", "code": "OK" },
+    { "step": "A-G5", "status": "PASS", "code": "OK" },
+    { "step": "A-G6", "status": "PASS", "code": "OK" }
+  ],
+  "allPass": true,
+  "secretsPrinted": false
+}
