@@ -1,0 +1,44 @@
+{
+  "marker": "PLATFORM_HARD_CUTOVER_01_REMAINING_ACCEPTANCE_REMEDIATION_PR",
+  "authoredAt": "2026-07-30T14:35:00.000Z",
+  "targetProjectRef": "qyewbxjsiiyufanzcjcq",
+  "productionRefBlocked": "expuvcohlcjzvrrauvud",
+  "databaseMutations": 0,
+  "productionMutations": 0,
+  "operatorRunner": "NOT_RUN",
+  "previewEnvRequired": {
+    "VITE_COMPETITION_REMOTE_SSOT_ENABLED": "true",
+    "VITE_PLATFORM_HARD_CUTOVER_ENABLED": "true",
+    "VITE_PRIVATE_PAIRING_RULES_ENABLED": "true",
+    "note": "Owner sets Preview Staging env only; do not change Production; redeploy after merge"
+  },
+  "aComp": {
+    "status": "BLOCKED_ENV_FLAG_ONLY",
+    "stagingDb": "READY",
+    "codeFixInThisPr": false
+  },
+  "aPair": {
+    "package": "docs/platform-hard-cutover-01/phase-04/sql/pairing-owner-view-rbac",
+    "mappings": [
+      ["COURT_OWNER", "pairing.private_rules.view"],
+      ["VENUE_OWNER", "pairing.private_rules.view"]
+    ],
+    "appliedInThisTurn": false
+  },
+  "aMsg": {
+    "before": "mode === 'production' || mode === 'unavailable' (case-sensitive lowercase only)",
+    "after": "evaluateMessagingAcceptanceMode — case-insensitive PRODUCTION|UNAVAILABLE; reject DEMO|MOCK|LEGACY|missing"
+  },
+  "aG1toG6": {
+    "before": "hardcoded PASS",
+    "after": "runOperatorAcceptanceGlobalProbes(env) — real matrix/policy probes; HC off => HARD_CUTOVER_REQUIRED FAIL"
+  },
+  "postMergePlan": [
+    "1. Owner merge PR",
+    "2. Set Preview env flags listed above (Staging only)",
+    "3. Apply pairing-owner-view-rbac/10_OWNER_PAIRING_VIEW_RBAC.sql on Staging after Owner GO",
+    "4. Redeploy Preview",
+    "5. Owner reruns Operator Acceptance once as 13e0***af9c",
+    "6. Do not touch Production"
+  ]
+}
