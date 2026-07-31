@@ -1,0 +1,272 @@
+{
+  "family": "M9",
+  "packageRoot": "docs/platform-hard-cutover-01/phase-05b-execution-package/sql/m9-team-tournament/",
+  "readiness": "BLOCKED_STAGING_CATALOG_NOT_PROVEN_FOR_TT5D",
+  "productionExecutionGo": false,
+  "sqlApplied": false,
+  "generatedAt": "2026-07-31T05:00:01.216Z",
+  "checksumFieldAuthoritative": "sha256ExactGitBlobBytes",
+  "orderedApply": [
+    {
+      "order": 10,
+      "file": "10_TT2B_LINEUP_DEADLINE.sql",
+      "path": "docs/platform-hard-cutover-01/phase-05b-execution-package/sql/m9-team-tournament/10_TT2B_LINEUP_DEADLINE.sql",
+      "sha256ExactGitBlobBytes": "1E4429C77C32E7FF224FCFA167B9121767D3665F6AA1E6625203CF830C8A2A1F",
+      "sha256CanonicalLf": "1E4429C77C32E7FF224FCFA167B9121767D3665F6AA1E6625203CF830C8A2A1F",
+      "sourcePath": "docs/v5/PHASE_TT2B_LINEUP_DEADLINE_SERVER_TIME.sql",
+      "executionEligible": true,
+      "dependsOnM10": false
+    },
+    {
+      "order": 20,
+      "file": "20_TT2C_LINEUP_VALIDATION.sql",
+      "path": "docs/platform-hard-cutover-01/phase-05b-execution-package/sql/m9-team-tournament/20_TT2C_LINEUP_VALIDATION.sql",
+      "sha256ExactGitBlobBytes": "D89AB78807B63C35F1D307FB94E64508D274D81E29A7E3B47777AB9CAA5418CE",
+      "sha256CanonicalLf": "D89AB78807B63C35F1D307FB94E64508D274D81E29A7E3B47777AB9CAA5418CE",
+      "sourcePath": "docs/v5/PHASE_TT2C_LINEUP_VALIDATION.sql",
+      "executionEligible": true,
+      "dependsOnM10": false
+    },
+    {
+      "order": 30,
+      "file": "30_TT2C_SUBMIT_LINEUP_VALIDATION.sql",
+      "path": "docs/platform-hard-cutover-01/phase-05b-execution-package/sql/m9-team-tournament/30_TT2C_SUBMIT_LINEUP_VALIDATION.sql",
+      "sha256ExactGitBlobBytes": "9DB8AE1FD93D9AF92A24E687B50F34E3771F5721C5F6335F8C3A981B82E65AE6",
+      "sha256CanonicalLf": "9DB8AE1FD93D9AF92A24E687B50F34E3771F5721C5F6335F8C3A981B82E65AE6",
+      "sourcePath": "docs/v5/PHASE_TT2C_SUBMIT_LINEUP_VALIDATION.sql",
+      "executionEligible": true,
+      "dependsOnM10": false
+    },
+    {
+      "order": 40,
+      "file": "40_TT2D_RANDOMIZE_LOCK.sql",
+      "path": "docs/platform-hard-cutover-01/phase-05b-execution-package/sql/m9-team-tournament/40_TT2D_RANDOMIZE_LOCK.sql",
+      "sha256ExactGitBlobBytes": "B8C4B0A0FF6117E31771CAA32232908BE12B28CAE24ED8AA2F80F3EA1D3836B5",
+      "sha256CanonicalLf": "B8C4B0A0FF6117E31771CAA32232908BE12B28CAE24ED8AA2F80F3EA1D3836B5",
+      "sourcePath": "docs/v5/PHASE_TT2D_RANDOMIZE_LOCK_WORKFLOW.sql",
+      "executionEligible": true,
+      "dependsOnM10": false
+    },
+    {
+      "order": 50,
+      "file": "50_TT2E_ATOMIC_PUBLISH.sql",
+      "path": "docs/platform-hard-cutover-01/phase-05b-execution-package/sql/m9-team-tournament/50_TT2E_ATOMIC_PUBLISH.sql",
+      "sha256ExactGitBlobBytes": "76177EBBF4DDAB374742156E1D99EDBAF2735A5685777C660613908BF1C0C4E0",
+      "sha256CanonicalLf": "76177EBBF4DDAB374742156E1D99EDBAF2735A5685777C660613908BF1C0C4E0",
+      "sourcePath": "docs/v5/PHASE_TT2E_ATOMIC_PUBLISH_WORKFLOW.sql",
+      "executionEligible": true,
+      "dependsOnM10": false
+    },
+    {
+      "order": 60,
+      "file": "60_TT2E_GET_SETUP_FIX.sql",
+      "path": "docs/platform-hard-cutover-01/phase-05b-execution-package/sql/m9-team-tournament/60_TT2E_GET_SETUP_FIX.sql",
+      "sha256ExactGitBlobBytes": "881C895F4AF7B48C2122CFC663BB70AD333FD0DBE60971574C5C96CD6B946F5A",
+      "sha256CanonicalLf": "881C895F4AF7B48C2122CFC663BB70AD333FD0DBE60971574C5C96CD6B946F5A",
+      "sourcePath": "docs/v5/PHASE_TT2E_GET_SETUP_FIX.sql",
+      "executionEligible": true,
+      "dependsOnM10": false
+    },
+    {
+      "order": 70,
+      "file": "70_TT3_LINEUP_OVERRIDE.sql",
+      "path": "docs/platform-hard-cutover-01/phase-05b-execution-package/sql/m9-team-tournament/70_TT3_LINEUP_OVERRIDE.sql",
+      "sha256ExactGitBlobBytes": "8EA366177A2CF572737DAB960CC5A46A45CB8542CABF23C177B593C529134665",
+      "sha256CanonicalLf": "8EA366177A2CF572737DAB960CC5A46A45CB8542CABF23C177B593C529134665",
+      "sourcePath": "docs/v5/PHASE_TT3_LINEUP_OVERRIDE.sql",
+      "executionEligible": true,
+      "dependsOnM10": false
+    },
+    {
+      "order": 80,
+      "file": "80_TT3_GET_SETUP_PATCH.sql",
+      "path": "docs/platform-hard-cutover-01/phase-05b-execution-package/sql/m9-team-tournament/80_TT3_GET_SETUP_PATCH.sql",
+      "sha256ExactGitBlobBytes": "496544DDD6F89284CD7240622CC01A95D787E7F65C1D78D34618F06E506C7D9E",
+      "sha256CanonicalLf": "496544DDD6F89284CD7240622CC01A95D787E7F65C1D78D34618F06E506C7D9E",
+      "sourcePath": "docs/v5/PHASE_TT3_GET_SETUP_PATCH.sql",
+      "executionEligible": true,
+      "dependsOnM10": false
+    },
+    {
+      "order": 85,
+      "file": "85_TT4_FORFEIT_WITHDRAWAL.sql",
+      "path": "docs/platform-hard-cutover-01/phase-05b-execution-package/sql/m9-team-tournament/85_TT4_FORFEIT_WITHDRAWAL.sql",
+      "sha256ExactGitBlobBytes": "BDE518D41B21BE3B8A3C0D7BF2B02008BEDCD39970F6E52CD49D3691E5C2DC59",
+      "sha256CanonicalLf": "BDE518D41B21BE3B8A3C0D7BF2B02008BEDCD39970F6E52CD49D3691E5C2DC59",
+      "sourcePath": "docs/v5/PHASE_TT4_FORFEIT_WITHDRAWAL.sql",
+      "executionEligible": true,
+      "dependsOnM10": false
+    },
+    {
+      "order": 100,
+      "file": "100_TT4_GET_SETUP_PATCH.sql",
+      "path": "docs/platform-hard-cutover-01/phase-05b-execution-package/sql/m9-team-tournament/100_TT4_GET_SETUP_PATCH.sql",
+      "sha256ExactGitBlobBytes": "1827FD94AB8632305EDA3FC790A27BDFE40EE9DA6EEE3FFE27BB8832C0E6D37C",
+      "sha256CanonicalLf": "1827FD94AB8632305EDA3FC790A27BDFE40EE9DA6EEE3FFE27BB8832C0E6D37C",
+      "sourcePath": "docs/v5/PHASE_TT4_GET_SETUP_PATCH.sql",
+      "executionEligible": true,
+      "dependsOnM10": false
+    },
+    {
+      "order": 110,
+      "file": "110_TT5B_BRIDGE_SCHEMA.sql",
+      "path": "docs/platform-hard-cutover-01/phase-05b-execution-package/sql/m9-team-tournament/110_TT5B_BRIDGE_SCHEMA.sql",
+      "sha256ExactGitBlobBytes": "9BC8C70C4480EAA15DA7B5B98C8B57F0B6EC4E9166CCE2978D931B8321DD18DB",
+      "sha256CanonicalLf": "9BC8C70C4480EAA15DA7B5B98C8B57F0B6EC4E9166CCE2978D931B8321DD18DB",
+      "sourcePath": "docs/v5/team-tournament/tt5/TT5-B_BRIDGE_SCHEMA.sql",
+      "executionEligible": true,
+      "dependsOnM10": true
+    },
+    {
+      "order": 120,
+      "file": "120_TT5B_PROVISION_RPC.sql",
+      "path": "docs/platform-hard-cutover-01/phase-05b-execution-package/sql/m9-team-tournament/120_TT5B_PROVISION_RPC.sql",
+      "sha256ExactGitBlobBytes": "77019392716D11DF95063C014D8B7850FD8F333A21FAE3CBF5F2BFC7CD0F62F3",
+      "sha256CanonicalLf": "77019392716D11DF95063C014D8B7850FD8F333A21FAE3CBF5F2BFC7CD0F62F3",
+      "sourcePath": "docs/v5/team-tournament/tt5/TT5-B_PROVISION_RPC.sql",
+      "executionEligible": true,
+      "dependsOnM10": true
+    },
+    {
+      "order": 130,
+      "file": "130_TT5B_LEGACY_LOCK_GUARD.sql",
+      "path": "docs/platform-hard-cutover-01/phase-05b-execution-package/sql/m9-team-tournament/130_TT5B_LEGACY_LOCK_GUARD.sql",
+      "sha256ExactGitBlobBytes": "131373C8CA9693EC078F52A3EA05ADE49E4CACE79D9BFF3535409589D9E74D3B",
+      "sha256CanonicalLf": "131373C8CA9693EC078F52A3EA05ADE49E4CACE79D9BFF3535409589D9E74D3B",
+      "sourcePath": "docs/v5/team-tournament/tt5/TT5-B_LEGACY_LOCK_GUARD.sql",
+      "executionEligible": true,
+      "dependsOnM10": true
+    },
+    {
+      "order": 140,
+      "file": "140_TT5B_GET_SETUP_PATCH.sql",
+      "path": "docs/platform-hard-cutover-01/phase-05b-execution-package/sql/m9-team-tournament/140_TT5B_GET_SETUP_PATCH.sql",
+      "sha256ExactGitBlobBytes": "E318AEDEA8A37E57F5D386AB83CD20EB8E5173A3C8DCF07CB1CD66FBE4B7F436",
+      "sha256CanonicalLf": "E318AEDEA8A37E57F5D386AB83CD20EB8E5173A3C8DCF07CB1CD66FBE4B7F436",
+      "sourcePath": "docs/v5/team-tournament/tt5/TT5-B_GET_SETUP_PATCH.sql",
+      "executionEligible": true,
+      "dependsOnM10": true
+    },
+    {
+      "order": 150,
+      "file": "150_TT5C_RESULT_OUTBOX.sql",
+      "path": "docs/platform-hard-cutover-01/phase-05b-execution-package/sql/m9-team-tournament/150_TT5C_RESULT_OUTBOX.sql",
+      "sha256ExactGitBlobBytes": "A30D3559328555843440BFD0C5E157696F991D4CD5172458E98C453F5E9E0373",
+      "sha256CanonicalLf": "A30D3559328555843440BFD0C5E157696F991D4CD5172458E98C453F5E9E0373",
+      "sourcePath": "docs/v5/team-tournament/tt5/TT5-C_RESULT_OUTBOX_CONSUMER.sql",
+      "executionEligible": true,
+      "dependsOnM10": true
+    },
+    {
+      "order": 160,
+      "file": "160_TT5C_RESULT_PROPAGATION.sql",
+      "path": "docs/platform-hard-cutover-01/phase-05b-execution-package/sql/m9-team-tournament/160_TT5C_RESULT_PROPAGATION.sql",
+      "sha256ExactGitBlobBytes": "FB1ED457F4104874487BC6A134C1F8E53D683B6558FF529B2774687263E17AC3",
+      "sha256CanonicalLf": "FB1ED457F4104874487BC6A134C1F8E53D683B6558FF529B2774687263E17AC3",
+      "sourcePath": "docs/v5/team-tournament/tt5/TT5-C_RESULT_PROPAGATION.sql",
+      "executionEligible": true,
+      "dependsOnM10": true
+    },
+    {
+      "order": 170,
+      "file": "170_TT5C_STANDINGS_RECOMPUTE.sql",
+      "path": "docs/platform-hard-cutover-01/phase-05b-execution-package/sql/m9-team-tournament/170_TT5C_STANDINGS_RECOMPUTE.sql",
+      "sha256ExactGitBlobBytes": "C8A324254786040F4641E1943366B6D7AA19188975D402E9438060CC08C1F035",
+      "sha256CanonicalLf": "C8A324254786040F4641E1943366B6D7AA19188975D402E9438060CC08C1F035",
+      "sourcePath": "docs/v5/team-tournament/tt5/TT5-C_STANDINGS_RECOMPUTE.sql",
+      "executionEligible": true,
+      "dependsOnM10": true
+    },
+    {
+      "order": 180,
+      "file": "180_TT5C_REPROVISION.sql",
+      "path": "docs/platform-hard-cutover-01/phase-05b-execution-package/sql/m9-team-tournament/180_TT5C_REPROVISION.sql",
+      "sha256ExactGitBlobBytes": "D2077C2EAED39A3DA0392A56E8C864AA4A49A4D707739DEF8E523259FF314C91",
+      "sha256CanonicalLf": "D2077C2EAED39A3DA0392A56E8C864AA4A49A4D707739DEF8E523259FF314C91",
+      "sourcePath": "docs/v5/team-tournament/tt5/TT5-C_REPROVISION_STATE.sql",
+      "executionEligible": true,
+      "dependsOnM10": true
+    },
+    {
+      "order": 230,
+      "file": "230_TT6B_REALTIME_SECURITY.sql",
+      "path": "docs/platform-hard-cutover-01/phase-05b-execution-package/sql/m9-team-tournament/230_TT6B_REALTIME_SECURITY.sql",
+      "sha256ExactGitBlobBytes": "E462C4C2B9F91D23DF0D6D3A14B6020A4649BFC71E2EC23B7B9A6F9F6BD72678",
+      "sha256CanonicalLf": "E462C4C2B9F91D23DF0D6D3A14B6020A4649BFC71E2EC23B7B9A6F9F6BD72678",
+      "sourcePath": "docs/v5/team-tournament/tt6/TT6-B_REALTIME_SECURITY.sql",
+      "executionEligible": true,
+      "dependsOnM10": true
+    },
+    {
+      "order": 240,
+      "file": "240_TT6B_REALTIME_CORE.sql",
+      "path": "docs/platform-hard-cutover-01/phase-05b-execution-package/sql/m9-team-tournament/240_TT6B_REALTIME_CORE.sql",
+      "sha256ExactGitBlobBytes": "0F4988D75393108E787FC7772BB3B4BA91619E46F9276B114224A3DEC6D28B0D",
+      "sha256CanonicalLf": "0F4988D75393108E787FC7772BB3B4BA91619E46F9276B114224A3DEC6D28B0D",
+      "sourcePath": "docs/v5/team-tournament/tt6/TT6-B_REALTIME_CORE.sql",
+      "executionEligible": true,
+      "dependsOnM10": true
+    }
+  ],
+  "nonExecutionCandidates": [
+    {
+      "order": 190,
+      "file": "190_TT5D_ASSIGNMENT_SAFETY.sql",
+      "path": "docs/platform-hard-cutover-01/phase-05b-execution-package/sql/m9-team-tournament/190_TT5D_ASSIGNMENT_SAFETY.sql",
+      "sha256ExactGitBlobBytes": "5ABEE354336E5A6D8744558D880F86803C33C283E95A43A4CD9877A2E3B69E70",
+      "sha256CanonicalLf": "5ABEE354336E5A6D8744558D880F86803C33C283E95A43A4CD9877A2E3B69E70",
+      "sourcePath": "docs/v5/team-tournament/tt5/TT5-D_ASSIGNMENT_SAFETY.sql",
+      "executionEligible": false,
+      "classification": "NON_EXECUTABLE_CANDIDATE_PENDING_STAGING_CERTIFICATION"
+    },
+    {
+      "order": 200,
+      "file": "200_TT5D_REOPEN_RESULT.sql",
+      "path": "docs/platform-hard-cutover-01/phase-05b-execution-package/sql/m9-team-tournament/200_TT5D_REOPEN_RESULT.sql",
+      "sha256ExactGitBlobBytes": "7DB37D8A39B35789DF6D3948F6899B8ED0D950A6963E97855F0F579FDF43A755",
+      "sha256CanonicalLf": "7DB37D8A39B35789DF6D3948F6899B8ED0D950A6963E97855F0F579FDF43A755",
+      "sourcePath": "docs/v5/team-tournament/tt5/TT5-D_REOPEN_RESULT_REVISION.sql",
+      "executionEligible": false,
+      "classification": "NON_EXECUTABLE_CANDIDATE_PENDING_STAGING_CERTIFICATION"
+    },
+    {
+      "order": 210,
+      "file": "210_TT5D_CORRECTION.sql",
+      "path": "docs/platform-hard-cutover-01/phase-05b-execution-package/sql/m9-team-tournament/210_TT5D_CORRECTION.sql",
+      "sha256ExactGitBlobBytes": "F9941BF7316273247D317B2344E2404FC7177F6CD28BB650C0E6BB9CBB66D0B7",
+      "sha256CanonicalLf": "F9941BF7316273247D317B2344E2404FC7177F6CD28BB650C0E6BB9CBB66D0B7",
+      "sourcePath": "docs/v5/team-tournament/tt5/TT5-D_CORRECTION_WORKFLOW.sql",
+      "executionEligible": false,
+      "classification": "NON_EXECUTABLE_CANDIDATE_PENDING_STAGING_CERTIFICATION"
+    },
+    {
+      "order": 220,
+      "file": "220_TT5D_SECURITY_GUARDS.sql",
+      "path": "docs/platform-hard-cutover-01/phase-05b-execution-package/sql/m9-team-tournament/220_TT5D_SECURITY_GUARDS.sql",
+      "sha256ExactGitBlobBytes": "DC359FFAA81F4217491339AF879B509A0903AB98D176C3F7D5E98F3D1A94045F",
+      "sha256CanonicalLf": "DC359FFAA81F4217491339AF879B509A0903AB98D176C3F7D5E98F3D1A94045F",
+      "sourcePath": "docs/v5/team-tournament/tt5/TT5-D_SECURITY_GUARDS.sql",
+      "executionEligible": false,
+      "classification": "NON_EXECUTABLE_CANDIDATE_PENDING_STAGING_CERTIFICATION"
+    }
+  ],
+  "executableApplyCount": 20,
+  "nonExecutableCandidateCount": 4,
+  "verify": {
+    "path": "docs/platform-hard-cutover-01/phase-05b-execution-package/sql/m9-team-tournament/99_VERIFY.sql",
+    "sha256ExactGitBlobBytes": "1CC2CD950EA49C819098C3B8899A33B73BC46D06BB041EA0A3F679EBF8C9CB75",
+    "sha256CanonicalLf": "1CC2CD950EA49C819098C3B8899A33B73BC46D06BB041EA0A3F679EBF8C9CB75",
+    "gitBlobOid": "18dcb9ab5d99619903c68a0b083b97acc32029c0",
+    "hashSource": "INDEX"
+  },
+  "rollback": {
+    "path": "docs/platform-hard-cutover-01/phase-05b-execution-package/sql/m9-team-tournament/90_ROLLBACK.sql",
+    "sha256ExactGitBlobBytes": "2FB6339E193D9BF0019B9678014F4661862E6DAB813027D4DFABB3530EBCADF5",
+    "sha256CanonicalLf": "2FB6339E193D9BF0019B9678014F4661862E6DAB813027D4DFABB3530EBCADF5",
+    "gitBlobOid": "cea7ae135ab621552d8dfd32c5ca39621e081ad1",
+    "hashSource": "INDEX",
+    "classification": "ROLLBACK_INCOMPLETE_FOR_REPLACED_FUNCTIONS",
+    "afterReplaceRecovery": "BACKUP_PITR_ONLY_AFTER_REPLACE"
+  },
+  "interleaveNote": "TT5B+ executable files require M10 verified first. TT5D files are checksum-protected non-executable candidates only."
+}

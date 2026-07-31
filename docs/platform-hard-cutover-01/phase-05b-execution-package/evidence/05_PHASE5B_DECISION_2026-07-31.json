@@ -1,0 +1,35 @@
+{
+  "marker": "PLATFORM_HARD_CUTOVER_01_PHASE5B_DECISION",
+  "correction": "PHASE5B_V2_INTEGRITY",
+  "generatedAt": "2026-07-31T05:00:01.216Z",
+  "decision": "BLOCKED_PHASE5B_EXECUTION_PACKAGE",
+  "m9": "BLOCKED_STAGING_CATALOG_NOT_PROVEN_FOR_TT5D",
+  "m10": "READY",
+  "m11": "READY_STAGING_CATALOG_DERIVED_ALREADY_EQUIVALENT_ON_PRODUCTION",
+  "mandatoryBlockers": [
+    "TT5D Staging activation/catalog certification not completed",
+    "M9 Production applicability incomplete",
+    "M9 replaced-function rollback incomplete (BACKUP_PITR_ONLY_AFTER_REPLACE)",
+    "Production backup/PITR/restore remains NOT_PROVABLE",
+    "executionRunbookAccepted=false",
+    "productionExecutionGo=false"
+  ],
+  "continuingPhase5": {
+    "decision": "BLOCKED_PHASE5_READINESS",
+    "productionExecutionGo": false,
+    "executionRunbookAccepted": false,
+    "PHASE_05_COMPLETE": "NOT_ISSUED",
+    "backupPitrRestore": "NOT_PROVABLE_CANNOT_WAIVE"
+  },
+  "ownerDecisionsUnchanged": {
+    "canonicalMigrationScope": "M0_TO_M11_ACCEPTED",
+    "club_ai_data": "PERMANENT_DROP_NO_RECREATE"
+  },
+  "mutationsExecuted": {
+    "staging": 0,
+    "production": 0
+  },
+  "sqlApplied": false,
+  "deploymentsByAgent": 0,
+  "readyNotIssuedDespiteChecksumCorrection": true
+}

@@ -1,11 +1,16 @@
 # Phase 5 Ordered Runbook Draft (NOT EXECUTION-READY)
 
-**Status:** DRAFT corrected for Owner HOLD (`PHASE5A_V2`) — sequence honesty only.  
+**Status:** DRAFT updated by Phase 5B packaging — still **not** Owner-accepted for execution.  
 **Owner architecture:** `canonicalMigrationScope = M0_TO_M11_ACCEPTED`.  
 **`executionRunbookAccepted = false`** — do **not** treat this file as an execution-ready runbook.  
 **`productionExecutionGo = false`**.  
 **Decision context:** `BLOCKED_PHASE5_READINESS`.  
+**Phase 5B package decision:** `BLOCKED_PHASE5B_EXECUTION_PACKAGE` (V2 integrity correction; see evidence `05_PHASE5B_DECISION_2026-07-31.json`).  
 **Do not issue:** `PLATFORM_HARD_CUTOVER_01_PHASE_05_COMPLETE`.
+
+**Candidate (exact sequence):**  
+`docs/platform-hard-cutover-01/phase-05b-execution-package/PHASE5_ORDERED_RUNBOOK_CANDIDATE.md`  
+Checksum SSOT field: `sha256ExactGitBlobBytes`. M11 action: `VERIFY_ONLY_ALREADY_EQUIVALENT`. TT5D is non-executable candidate only.
 
 ## Document conflict resolution
 
@@ -14,15 +19,19 @@
 | `phase-04/PRODUCTION_CUTOVER_PLAN.md` | Apply migrations **M1→M8** | **Stale / incomplete** |
 | `phase-04/staging-rehearsal/STAGING_REHEARSAL_PLAN.md` | Apply **M1→M8** | **Stale relative to manifest** |
 | `phase-04/manifests/MIGRATION_MANIFEST.md` | Apply order **M0→M11** | **Canonical SCOPE/ORDER baseline (Owner ACCEPTED)** |
+| Phase 5B `M0_M11_EXECUTION_MANIFEST.json` | Exact interleaved M9A→M10→M9B→M11 | **Package SSOT for artefact paths/checksums; not Owner GO** |
 
-Owner accepts **M0→M11** as migration scope/order baseline only. This draft corrects build-time flag vs deploy sequencing and M9–M11 honesty. It is **not** accepted for Production execution.
+Owner accepts **M0→M11** as migration scope/order baseline only. This draft is **not** accepted for Production execution.
 
 ## Hard stops (any fail → STOP)
 
 1. Production project_ref = `expuvcohlcjzvrrauvud` (never Staging `qyewbxjsiiyufanzcjcq`).
-2. **Proven Production backup + restore entry** visible/usable. If not → **BLOCKED**.
-3. M9–M11 execution packs complete (`IMPLEMENTATION_REQUIRED` until packaged with paths + checksums + verify + rollback + Production applicability).
-4. Owner GO recorded; `executionRunbookAccepted` must become true via separate Owner accept of a complete pack — not this draft alone.
+2. **Proven Production backup + restore entry** visible/usable. If not → **BLOCKED** (cannot waive).
+3. M9–M11 execution packs must be Owner-ready. Phase 5B status:
+   - M9: packaged but **BLOCKED** — TT5D Staging catalog not proven
+   - M10: packaged **READY** (static)
+   - M11: packaged **READY** as `STAGING_CATALOG_DERIVED` (live Staging=Production equivalent)
+4. Owner GO recorded; `executionRunbookAccepted` must become true via separate Owner accept — not this draft alone.
 
 ## Corrected execution sequence (Production — future Owner GO only)
 
@@ -34,43 +43,38 @@ Do **not** enable hard-cutover runtime before reseed verification PASS.
 |-----:|--------|----------------|
 | 1 | Proven Production backup + restore entry | STOP if not proven |
 | 2 | Maintenance / quiesce gate | Prevent business writes during destructive window |
-| 3 | Identity precheck + protected guards | `00_IDENTITY_PRESERVE_PRECHECK.sql`, `01_PROTECTED_OBJECT_GUARDS.sql` — STOP if FAIL |
-| 4 | Apply/verify required **M0→M11** families | M0 verify-only if already locked; M1–M8 authored packs; **M9–M11 only after IMPLEMENTATION_REQUIRED packs exist** — STOP per family verify |
-| 5 | Ordered wipe | `10_ORDERED_WIPE.sql` — requires step 1 |
-| 6 | Permanently **DROP** `club_ai_data` | `20_DROP_CLUB_AI_DATA.sql` only after dependency-closure PASS + proven backup/restore; **NO RECREATE** |
-| 7 | Post-wipe structural + protected-row verification | `30_POST_WIPE_VERIFY.sql` — STOP / restore if FAIL |
-| 8 | Reseed 01–17 + `99_VERIFY_RESEED.sql` | STOP if verify FAIL |
-| 9 | Keep hard-cutover flags **OFF** until migrations + wipe + reseed verification PASS | Soft-fail closed |
-| 10 | Set approved Production `VITE_*` values **BEFORE** build | Names only in docs: `VITE_PLATFORM_HARD_CUTOVER_ENABLED`, `VITE_COMPETITION_REMOTE_SSOT_ENABLED`, optional `VITE_PICK_VN_RATING_V5_ENABLED` |
-| 11 | Build/deploy approved source SHA so flags are compiled into SPA | Never deploy then hope to flip build-time flags |
-| 12 | Verify deployment SHA, Ready/Current, aliases | STOP if mismatch |
-| 13 | Production smoke + Operator Acceptance | Runner only after cutover deploy |
-| 14 | Issue `PHASE_05_COMPLETE` | Only after every gate PASS |
+| 3 | Target/project-ref guard | Production only |
+| 4 | Identity precheck + protected guards | `00_IDENTITY_PRESERVE_PRECHECK.sql`, `01_PROTECTED_OBJECT_GUARDS.sql` — STOP if FAIL |
+| 5 | **M0 verify-only** | Already locked on Production |
+| 6 | Apply/verify **M1→M8** | Existing authored packs; M8 text-tenant contract; STOP per family |
+| 7 | **M9A** TT2B–TT4 → **M10** → **M9B** TT5B–TT6B → **M11** | Exact paths in Phase 5B manifests; STOP per family; M9 currently package-BLOCKED on TT5D |
+| 8 | Ordered wipe | `10_ORDERED_WIPE.sql` — requires step 1 |
+| 9 | Permanently **DROP** `club_ai_data` | After dependency-closure PASS; **NO RECREATE** |
+| 10 | Post-wipe structural + protected-row verification | STOP / restore if FAIL |
+| 11 | Reseed 01–17 + `99_VERIFY_RESEED.sql` | STOP if verify FAIL |
+| 12 | Keep hard-cutover flags **OFF** until migrations + wipe + reseed verification PASS | Soft-fail closed |
+| 13 | Set approved Production `VITE_*` values **BEFORE** build | Build-time flags |
+| 14 | Build/deploy approved source SHA | Never deploy then hope to flip build-time flags |
+| 15 | Verify deployment SHA, Ready/Current, aliases | STOP if mismatch |
+| 16 | Production smoke + Operator Acceptance | Runner only after cutover deploy |
+| 17 | Issue `PHASE_05_COMPLETE` | Only after every gate PASS |
 
-## Object classification (do not overclaim)
+## M9–M11 honesty (Phase 5B)
 
-1. **Row-preserved infrastructure/catalog** (`NOT_IN_WIPE_TARGET` / `ROW_COUNTS_PRESERVED`):  
-   `auth.users`, `profiles`, `venues`, `tenant_members`, `roles`, `permissions`, `role_permissions`, `plans`, `plan_limits`.
-2. **Schema/function-preserved; business rows intentionally wiped + reseeded**:  
-   `club_data_v3`, Rating V5 tables/config, public_catalog backing tables.
-3. **`public_catalog_list_*` RPCs**: `FUNCTION_OBJECTS_PRESERVED` — not the same as backing-table row preservation.
+| Family | Package status | Note |
+|--------|----------------|------|
+| M9 | `BLOCKED_STAGING_CATALOG_NOT_PROVEN_FOR_TT5D` | Ordered pack + checksums exist under `phase-05b-execution-package/sql/m9-team-tournament/`; TT5D not proven on Staging catalog |
+| M10 | `READY` (static package) | `sql/m10-referee-v5/`; excludes V5D3/V5D4/V5E1; legacy token RPCs preserved |
+| M11 | `READY_STAGING_CATALOG_DERIVED_ALREADY_EQUIVALENT_ON_PRODUCTION` | Original PR4 digest SQL not in git; catalog-derived `extensions.digest` body; Staging↔Production def_md5 match |
 
-## M9–M11 honesty
-
-| Family | Execution pack status | Note |
-|--------|----------------------|------|
-| M9 | `IMPLEMENTATION_REQUIRED` | Scattered TT SQL candidates exist under `docs/v5/`; **no** Production ordered pack with checksums/verify/rollback |
-| M10 | `IMPLEMENTATION_REQUIRED` | Referee V5 SQL candidates under `docs/v5/referee-v5/`; **not** Production-packaged |
-| M11 | `IMPLEMENTATION_REQUIRED` | Digest SQL artifact **not found** in repo; RC1 only on Production |
-
-“Promote from Staging” alone is **not** an execution-ready instruction. Do not invent/export/apply SQL in Phase 5A.
+“Promote from Staging” alone remains **not** an execution-ready instruction. Phase 5B did **not** apply SQL.
 
 ## `club_ai_data` permanent DROP
 
 - Owner target: **PERMANENT DROP / NO RECREATE**.
-- Read-only Production dependency inventory (Phase 5A V2): **`DEPENDENCY_CLOSURE_PASS_FOR_PERMANENT_DROP`** (no inbound FK/views/function refs; self-owned policy/pkey only).
+- Phase 5A: **`DEPENDENCY_CLOSURE_PASS_FOR_PERMANENT_DROP`**.
 - Execute still requires proven backup/restore + Owner GO.
 
-## Phase 5A non-goals
+## Phase 5B non-goals
 
 No Production/Staging SQL apply, wipe, DROP, reseed, backup create/restore, flag/env change, deploy, or Operator Runner.
