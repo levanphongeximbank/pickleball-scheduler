@@ -1,0 +1,132 @@
+{
+  "marker": "PLATFORM_HARD_CUTOVER_01_PHASE5A_BACKUP_ROLLBACK_RESEED_GATE",
+  "generatedAt": "2026-07-31T00:20:00.000Z",
+  "correction": "PHASE5A_V2_OWNER_HOLD",
+  "mode": "READ_ONLY_EVALUATION",
+  "mutationsExecuted": 0,
+  "backupCreated": false,
+  "restoreExecuted": false,
+  "targetProjectRef": "expuvcohlcjzvrrauvud",
+  "gates": {
+    "backupRestoreSufficientForDestructiveWipe": {
+      "status": "FAIL",
+      "classification": "BLOCKED",
+      "reason": "PITR/backup/restore not proven for Production in this workstream. Historical honesty: PITR NOT_ASSUMED_ENABLED. Staging has Owner backup confirmation; Production does not for hard-cutover.",
+      "waiverForbidden": "low_user_count_or_single_owner_not_accepted"
+    },
+    "dropClubAiDataPermanent": {
+      "status": "CONDITIONAL",
+      "ownerTarget": "PERMANENT_DROP_NO_RECREATE",
+      "recreatePackageRequired": false,
+      "recreatePackageCreated": false,
+      "dropSqlPresent": "docs/platform-hard-cutover-01/phase-04/sql/destructive/20_DROP_CLUB_AI_DATA.sql",
+      "dependencyClosureClassification": "DEPENDENCY_CLOSURE_PASS_FOR_PERMANENT_DROP",
+      "dependencyInventorySummary": {
+        "foreignKeysInbound": 0,
+        "foreignKeysOutbound": 0,
+        "viewsOrMaterializedViews": 0,
+        "functionsProceduresReferencing": 0,
+        "triggersNonInternal": 0,
+        "policiesSelfOwned": 1,
+        "externalCatalogBlockers": 0
+      },
+      "executeDropRequires": [
+        "proven Production backup/restore",
+        "dependency closure PASS (met in this read-only inventory)",
+        "Owner GO"
+      ],
+      "note": "Permanent DROP requires dependency closure + proven backup/restore. Do not create a recreate package."
+    },
+    "reseedScriptsSeventeenGroups": {
+      "status": "PASS_STRUCTURE",
+      "groupsPresent": [
+        "01_OWNER_TENANT_VERIFY_ONLY",
+        "02_CLUB",
+        "03_VENUE",
+        "04_COURTS",
+        "05_PLAYER",
+        "06_RATING_PROFILE",
+        "07_COMPETITION",
+        "08_PARTICIPANTS",
+        "09_SCHEDULE",
+        "10_MATCH",
+        "11_FINALIZED_RESULT",
+        "12_PUBLIC_CATALOG",
+        "13_CUSTOMER",
+        "14_CRM",
+        "15_FINANCE",
+        "16_NEWS",
+        "17_COACHING_FIRST_USE"
+      ],
+      "verifyScript": "99_VERIFY_RESEED.sql",
+      "dependencyNote": "07–11 require M8 applied; 13–15 require M1–M3; 16 requires M5; 17 requires M6",
+      "executedOnProduction": false,
+      "mustPassBeforeHardCutoverFlagsOn": true
+    },
+    "ownerAuthPreservationAssertions": {
+      "status": "PASS_STRUCTURE",
+      "precheck": "docs/platform-hard-cutover-01/phase-04/sql/destructive/00_IDENTITY_PRESERVE_PRECHECK.sql",
+      "guards": "docs/platform-hard-cutover-01/phase-04/sql/destructive/01_PROTECTED_OBJECT_GUARDS.sql",
+      "postWipe": "docs/platform-hard-cutover-01/phase-04/sql/destructive/30_POST_WIPE_VERIFY.sql",
+      "inWipeFingerprintCompare": true,
+      "livePrePostExecutedThisWorkstream": false
+    },
+    "productionFlags": {
+      "status": "NOT_MUTATED",
+      "valuesPrinted": false,
+      "liveValueReverification": "SKIPPED_TO_AVOID_SECRET_OR_ENV_LEAKAGE",
+      "documentedCutoverFlagNamesOnly": [
+        "VITE_PLATFORM_HARD_CUTOVER_ENABLED",
+        "VITE_COMPETITION_REMOTE_SSOT_ENABLED",
+        "VITE_PICK_VN_RATING_V5_ENABLED"
+      ],
+      "buildTimeNote": "VITE_* flags are compiled from import.meta.env — set approved Production values BEFORE build/deploy",
+      "keepOffUntil": "migrations + wipe + reseed verification PASS"
+    },
+    "productionOperatorAcceptanceRunnableAfterCutover": {
+      "status": "CONDITIONAL",
+      "runnerPresent": "src/features/platform-hard-cutover/operatorAcceptanceRunner.js",
+      "stagingFinalResult": "17/17 PASS (evidence 33–35)",
+      "productionRunnableIf": [
+        "M0–M11 applied as required with execution packs complete",
+        "wipe + permanent DROP club_ai_data + reseed verify PASS",
+        "approved VITE_* set before build",
+        "Production SPA deployed on approved cutover SHA Ready/Current",
+        "Owner session available (no password invent)"
+      ],
+      "runnerExecutedThisWorkstream": false
+    },
+    "m9M10M11ExecutionArtifacts": {
+      "status": "IMPLEMENTATION_REQUIRED",
+      "executionRunbookAccepted": false
+    },
+    "exactStopRollbackPointsByFamily": {
+      "M0": "Leave locked until permanent DROP; do not reopen anon writes",
+      "M1": "package 90_*.sql",
+      "M2": "docs/supabase-finance-phase1f-rollback.sql",
+      "M3": "CRM staging rollback SQL",
+      "M4": "reporting 90/91_*.sql",
+      "M5": "news 90_*.sql",
+      "M6": "coaching 90_*.sql",
+      "M7": "recreate / Owner emergency",
+      "M8": "m8 90_ROLLBACK.sql (before wipe/DROP/flags)",
+      "M9": "unavailable until IMPLEMENTATION_REQUIRED pack exists",
+      "M10": "unavailable until IMPLEMENTATION_REQUIRED pack exists",
+      "M11": "unavailable until IMPLEMENTATION_REQUIRED pack exists",
+      "wipe": "requires proven Production backup/restore BEFORE execute",
+      "drop_club_ai_data": "permanent; requires dependency closure PASS + proven backup/restore; no recreate",
+      "flags": "keep OFF until reseed verify PASS; then set VITE_* before build; soft rollback = prior deploy with flags OFF"
+    }
+  },
+  "overallGate": "BLOCKED",
+  "blockingReasons": [
+    "BACKUP_PITR_RESTORE_NOT_PROVABLE",
+    "M9_M10_M11_EXECUTION_ARTIFACTS_IMPLEMENTATION_REQUIRED",
+    "EXECUTION_RUNBOOK_NOT_ACCEPTED",
+    "PRODUCTION_EXECUTION_GO_FALSE"
+  ],
+  "canonicalMigrationScope": "M0_TO_M11_ACCEPTED",
+  "executionRunbookAccepted": false,
+  "productionExecutionGo": false,
+  "secretsPrinted": false
+}

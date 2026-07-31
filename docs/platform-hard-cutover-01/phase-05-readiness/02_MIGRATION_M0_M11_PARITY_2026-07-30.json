@@ -1,0 +1,262 @@
+{
+  "marker": "PLATFORM_HARD_CUTOVER_01_PHASE5A_MIGRATION_M0_M11_PARITY",
+  "generatedAt": "2026-07-31T00:18:00.000Z",
+  "correction": "PHASE5A_V2_OWNER_HOLD",
+  "mode": "READ_ONLY",
+  "mutationsExecuted": 0,
+  "sqlInvented": false,
+  "sqlApplied": false,
+  "targetProjectRef": "expuvcohlcjzvrrauvud",
+  "manifestSource": "docs/platform-hard-cutover-01/phase-04/manifests/MIGRATION_MANIFEST.md",
+  "documentConflict": {
+    "productionCutoverPlanSays": "Apply migrations M1→M8",
+    "migrationManifestSays": "Apply order M0→M11",
+    "stagingRehearsalPlanSays": "Apply migration families M1→M8",
+    "ownerArchitectureDecision": "ACCEPT M0→M11 as canonical migration SCOPE/ORDER baseline",
+    "canonicalMigrationScope": "M0_TO_M11_ACCEPTED",
+    "executionRunbookAccepted": false,
+    "resolvedByDraft": "docs/platform-hard-cutover-01/phase-05-readiness/PHASE5_ORDERED_RUNBOOK_DRAFT.md",
+    "note": "Draft is sequence/honesty only — NOT Owner-accepted execution-ready runbook"
+  },
+  "m9M10M11ExecutionPackageHonesty": {
+    "rule": "Promote from Staging alone is NOT an execution-ready instruction. Exact ordered paths + immutable checksums + verify + rollback/irreversibility + Production applicability required.",
+    "M9": {
+      "status": "IMPLEMENTATION_REQUIRED",
+      "productionApplicability": "NOT_PACKAGED_FOR_PRODUCTION_EXECUTION",
+      "exactOrderedArtifactPaths": null,
+      "immutableChecksums": null,
+      "dependencyOrder": null,
+      "exactVerificationPackage": null,
+      "rollbackLimitOrIrreversibility": "unknown until packaged",
+      "candidateScatteredSqlWithSha256NotAnExecutionPack": [
+        {
+          "path": "docs/v5/PHASE_TT2B_LINEUP_DEADLINE_SERVER_TIME.sql",
+          "sha256": "777BFC77661AE1E18FFF442CB7B78F38EE6C724F17A7A9B1DDECF4A0053FC91B"
+        },
+        {
+          "path": "docs/v5/PHASE_TT2C_LINEUP_VALIDATION.sql",
+          "sha256": "91EE6A53D6162DA6E2E35A508E44A7FB8D679974B729F7FCE6364199EE45AA25"
+        },
+        {
+          "path": "docs/v5/PHASE_TT2C_SUBMIT_LINEUP_VALIDATION.sql",
+          "sha256": "F49B5CF09AAFE9B5AC39454F2A1F56029559092A31BCA828E0CDC12EB789CE06"
+        },
+        {
+          "path": "docs/v5/PHASE_TT2D_RANDOMIZE_LOCK_WORKFLOW.sql",
+          "sha256": "847F04D822D9B3779D4D6E74072FBAFB18E38784C0DB52B67CD34346DBC13378"
+        },
+        {
+          "path": "docs/v5/PHASE_TT2E_ATOMIC_PUBLISH_WORKFLOW.sql",
+          "sha256": "43FFBC7B35C3666D5DC25AE6401F5AB819E4DDCD0CB720C219D83ECF58BFF1D7"
+        },
+        {
+          "path": "docs/v5/PHASE_TT2E_GET_SETUP_FIX.sql",
+          "sha256": "24F728EE957733C5F9CABBB0B479BB9DE50BA1CA7F9C5114C740CF48D3BE2F87"
+        }
+      ],
+      "gap": "No single Owner-approved Production ordered pack covering phase_tt2*..tt6b_* with verify+rollback and Production applicability proof. TT3–TT6 SQL exists scattered under docs/v5 but is not packaged as Phase 5 execution artifacts."
+    },
+    "M10": {
+      "status": "IMPLEMENTATION_REQUIRED",
+      "productionApplicability": "NOT_PACKAGED_FOR_PRODUCTION_EXECUTION",
+      "exactOrderedArtifactPaths": null,
+      "immutableChecksums": null,
+      "dependencyOrder": null,
+      "exactVerificationPackage": null,
+      "rollbackLimitOrIrreversibility": "partial/unknown until packaged; PHASE_V5D4_ATOMIC_ROLLBACK.sql exists as candidate only",
+      "candidateScatteredSqlWithSha256NotAnExecutionPack": [
+        {
+          "path": "docs/v5/referee-v5/PHASE_V5A_REFEREE_FOUNDATION.sql",
+          "sha256": "C1A079535A6295CB3D185AEE9C9B2E54DA6ED0AEBBEB67BBFD4B929DD13C0F8E"
+        },
+        {
+          "path": "docs/v5/referee-v5/PHASE_V5D_REFEREE_PERSISTENCE.sql",
+          "sha256": "5C3BCDA4E38449021516D0B966AB553E6F79D58A409B2D75AF59160F6295FDB9"
+        },
+        {
+          "path": "docs/v5/referee-v5/PHASE_V5D1_REFEREE_HARDENING.sql",
+          "sha256": "CAF20D89B35BEE42F2E06F20DDC0B498FFB7B2081A30A8CD4057DEDCFC47A579"
+        },
+        {
+          "path": "docs/v5/referee-v5/PHASE_V5D32_IDEMPOTENCY_UNDO.sql",
+          "sha256": "F0D0EB05C83883078B812E88E7515733017F9FA48FDA9FBD629E85D35A79C17D"
+        },
+        {
+          "path": "docs/v5/referee-v5/PHASE_V5D4_ATOMIC_ROLLBACK.sql",
+          "sha256": "EE482EEAD1791633CDB6B0989D470076CBC12D99902FE7DF28C277D0951267E1"
+        }
+      ],
+      "gap": "Staging migration names historically present; Production schema_migrations lacks phase_v5a_referee*/phase_v5d*. No Phase 5 Production ordered apply+verify pack with immutable checksums."
+    },
+    "M11": {
+      "status": "IMPLEMENTATION_REQUIRED",
+      "productionApplicability": "NOT_PACKAGED_FOR_PRODUCTION_EXECUTION",
+      "exactOrderedArtifactPaths": null,
+      "immutableChecksums": null,
+      "dependencyOrder": "RC1 present on Production (private_pairing_rc1_archive_rule_set); digest patch missing",
+      "exactVerificationPackage": null,
+      "rollbackLimitOrIrreversibility": "unknown — digest SQL artifact not found in repo",
+      "candidateScatteredSqlWithSha256NotAnExecutionPack": [],
+      "gap": "No docs SQL matching private_pairing_pr4_digest_patch. Cannot invent/export/apply."
+    },
+    "executionRunbookAccepted": false,
+    "sqlInventedOrAppliedInThisCorrection": false
+  },
+  "parityMatrix": [
+    {
+      "family": "M0",
+      "name": "G3-B12 club_ai_data anon write lockdown",
+      "status": "already_present_and_verified",
+      "evidence": {
+        "migration": "20260728001245_prod_sec_g3_b12_01_club_ai_data_anon_write_lockdown",
+        "policy": "club_ai_data_deny_all_clients USING false / WITH CHECK false",
+        "rlsEnabled": true,
+        "rlsForced": true,
+        "clientGrants": 0,
+        "anonNamedPolicies": 0,
+        "catalogRpcsStillPresent": 4
+      },
+      "stopRollbackPoint": "Do not re-open anon policies; if DROP club_ai_data later, M0 objects disappear with table"
+    },
+    {
+      "family": "M1",
+      "name": "Customer",
+      "status": "missing",
+      "evidence": {
+        "customersLikeTables": 0,
+        "customerLikeRpcs": 0
+      },
+      "action": "promote authored docs/customer-management/phase-3 package on Owner GO",
+      "stopRollbackPoint": "package 90_*.sql after verify fail; before wipe"
+    },
+    {
+      "family": "M2",
+      "name": "Finance",
+      "status": "missing",
+      "evidence": { "financeLikeTables": 0, "financeLikeRpcs": 0 },
+      "action": "promote docs/supabase-finance-phase1f.sql on Owner GO",
+      "stopRollbackPoint": "docs/supabase-finance-phase1f-rollback.sql"
+    },
+    {
+      "family": "M3",
+      "name": "CRM",
+      "status": "missing",
+      "evidence": { "crmLikeTables": 0, "crmLikeRpcs": 0 },
+      "action": "promote docs/crm/phase-1g + phase-1h packages",
+      "stopRollbackPoint": "staging rollback SQL after family verify fail"
+    },
+    {
+      "family": "M4",
+      "name": "Reporting",
+      "status": "missing",
+      "evidence": { "reportingLikeTables": 0, "reportingLikeRpcs": 0 },
+      "action": "promote docs/reporting-analytics/reporting-02 package",
+      "stopRollbackPoint": "90/91_*.sql"
+    },
+    {
+      "family": "M5",
+      "name": "News",
+      "status": "missing",
+      "evidence": { "newsLikeTables": 0, "newsLikeRpcs": 0 },
+      "action": "promote news-02/03/04 public RPC packages",
+      "stopRollbackPoint": "90_*.sql"
+    },
+    {
+      "family": "M6",
+      "name": "Coaching",
+      "status": "missing",
+      "evidence": { "coachingLikeTables": 0, "coachingLikeRpcs": 0 },
+      "action": "promote coaching-02 + coaching-04 packages",
+      "stopRollbackPoint": "90_*.sql"
+    },
+    {
+      "family": "M7",
+      "name": "Competition Core cc02",
+      "status": "missing",
+      "evidence": {
+        "player_ratings": false,
+        "rating_history": false,
+        "note": "Rating V5 objects exist separately and are NOT M7 Elo tables"
+      },
+      "action": "promote docs/competition-core/supabase-cc02*.sql",
+      "stopRollbackPoint": "recreate / Owner emergency only"
+    },
+    {
+      "family": "M8",
+      "name": "Competition Remote SSOT",
+      "status": "missing",
+      "evidence": {
+        "competition_ssot_tables": 0,
+        "competition_ssot_functions": 0,
+        "authoredPackage": "docs/platform-hard-cutover-01/phase-04/sql/m8-competition-remote-ssot/",
+        "tenantIdRequirement": "tenant_id / p_tenant_id must be text",
+        "user_venue_id_result_type": "text",
+        "productionApply": false
+      },
+      "action": "apply authored M8 package with text-tenant contract; verify 99_VERIFY.sql",
+      "stopRollbackPoint": "90_ROLLBACK.sql before wipe/DROP/flags"
+    },
+    {
+      "family": "M9",
+      "name": "Team Tournament remainder",
+      "status": "IMPLEMENTATION_REQUIRED",
+      "productionObjectPresence": "partially_present_p1_tt1b_only",
+      "evidence": {
+        "presentMigrations": [
+          "tt1b_prereq_schema",
+          "tt1b_prereq_command_helpers",
+          "tt1b_readonly_ops_helpers",
+          "phase_p1_2_*",
+          "phase_p1_3_*",
+          "p1_3_*"
+        ],
+        "teamTournamentTablesPresent": true,
+        "tt2_to_tt6b_migrationsNamedInSchemaMigrations": 0,
+        "ttFunctionCountApprox": 61
+      },
+      "action": "Package exact ordered Production artifacts with checksums/verify/rollback before any apply",
+      "stopRollbackPoint": "unavailable until execution pack exists"
+    },
+    {
+      "family": "M10",
+      "name": "Referee V5",
+      "status": "IMPLEMENTATION_REQUIRED",
+      "productionObjectPresence": "missing_v5_legacy_token_rpcs_only",
+      "evidence": {
+        "phase_v5a_referee_migrations": 0,
+        "phase_v5d_migrations": 0,
+        "legacyRefereeRpcsOnly": [
+          "referee_get_match_by_token(p_token text)",
+          "referee_update_match_score(p_token text, p_payload jsonb)"
+        ],
+        "wipeRefereeBridgeTablesPresent": false
+      },
+      "action": "Package exact ordered Production artifacts with checksums/verify/rollback before any apply",
+      "stopRollbackPoint": "unavailable until execution pack exists"
+    },
+    {
+      "family": "M11",
+      "name": "Private pairing digest",
+      "status": "IMPLEMENTATION_REQUIRED",
+      "productionObjectPresence": "partially_present_rc1_digest_missing",
+      "evidence": {
+        "rc1MigrationPresent": "private_pairing_rc1_archive_rule_set",
+        "privatePairingTablesPresent": true,
+        "digestPatchMigration": "missing",
+        "digestLikeFunctions": 0,
+        "digestSqlInRepo": false
+      },
+      "action": "Locate or author Owner-approved digest package; do not invent in this workstream",
+      "stopRollbackPoint": "unavailable until execution pack exists"
+    }
+  ],
+  "summaryCounts": {
+    "already_present_and_verified": 1,
+    "partially_present": 0,
+    "missing": 8,
+    "implementation_required": 3,
+    "signature_schema_drift": 0,
+    "verification_unavailable": 0
+  },
+  "secretsPrinted": false
+}

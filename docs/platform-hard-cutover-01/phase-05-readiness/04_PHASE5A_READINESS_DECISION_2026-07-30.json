@@ -1,0 +1,91 @@
+{
+  "marker": "PLATFORM_HARD_CUTOVER_01_PHASE5A_READINESS_DECISION",
+  "generatedAt": "2026-07-31T00:25:00.000Z",
+  "correction": "PHASE5A_V2_OWNER_HOLD",
+  "workstream": "PHASE_5A_PRODUCTION_CUTOVER_READINESS_BACKUP_ROLLBACK_GATE",
+  "mode": "READ_ONLY_AUDIT",
+  "decision": "BLOCKED_PHASE5_READINESS",
+  "mergeGate": "READY_FOR_OWNER_REVIEW_PHASE5A_V2",
+  "ownerReviewPriorVerdict": "HOLD_FOR_PHASE5A_EVIDENCE_AND_RUNBOOK_CORRECTION",
+  "doNotIssueMarker": "PHASE_05_COMPLETE",
+  "phase05CompleteIssued": false,
+  "canonicalMigrationScope": "M0_TO_M11_ACCEPTED",
+  "executionRunbookAccepted": false,
+  "productionExecutionGo": false,
+  "freshOriginMain": "cae5e6f7496522ea1ba33a474d2c939084ba9844",
+  "productionProjectRefVerified": "expuvcohlcjzvrrauvud",
+  "stagingProjectRef": "qyewbxjsiiyufanzcjcq",
+  "phase4ClosureInputs": {
+    "evidence33": "docs/platform-hard-cutover-01/phase-04/evidence/33_OPERATOR_ACCEPTANCE_FINAL_BROWSER_RUN_2026-07-30.json",
+    "evidence34": "docs/platform-hard-cutover-01/phase-04/evidence/34_OPERATOR_ACCEPTANCE_FINAL_WRITE_RECONCILIATION_2026-07-30.json",
+    "evidence35": "docs/platform-hard-cutover-01/phase-04/evidence/35_PHASE4_FINAL_EVIDENCE_READY_2026-07-30.json",
+    "marker": "PLATFORM_HARD_CUTOVER_01_PHASE4_FINAL_EVIDENCE_READY",
+    "ownerDeclaredStatus": "PLATFORM_HARD_CUTOVER_01_PHASE4_CLOSED",
+    "operatorAcceptance": "17/17 PASS",
+    "securityReconciliation": "PASS",
+    "productionDeploymentSha": "cae5e6f7496522ea1ba33a474d2c939084ba9844",
+    "productionDeploymentStatus": "Ready_Current",
+    "operatorRunnerReExecuted": false,
+    "status": "PASS"
+  },
+  "backupPitrRestoreClassification": "BLOCKED_NOT_PROVABLE",
+  "protectedObjectStatus": "PASS_IDENTITY_AND_CATALOG_ROWS_PRESERVED_WITH_INTENTIONAL_CANONICAL_BUSINESS_ROW_WIPE",
+  "wipeImpactRowsSanitizedTotal": 1119,
+  "wipeImpactRecalculationConfirmed": true,
+  "clubAiDataDependencyVerdict": "DEPENDENCY_CLOSURE_PASS_FOR_PERMANENT_DROP",
+  "clubAiDataOwnerTarget": "PERMANENT_DROP_NO_RECREATE",
+  "migrationParitySummary": {
+    "M0": "already_present_and_verified",
+    "M1": "missing",
+    "M2": "missing",
+    "M3": "missing",
+    "M4": "missing",
+    "M5": "missing",
+    "M6": "missing",
+    "M7": "missing",
+    "M8": "missing",
+    "M9": "IMPLEMENTATION_REQUIRED",
+    "M10": "IMPLEMENTATION_REQUIRED",
+    "M11": "IMPLEMENTATION_REQUIRED"
+  },
+  "documentConflictResolution": {
+    "conflict": "PRODUCTION_CUTOVER_PLAN M1→M8 vs MIGRATION_MANIFEST M0→M11",
+    "ownerAcceptedCanonicalScope": "M0_TO_M11",
+    "draftPath": "docs/platform-hard-cutover-01/phase-05-readiness/PHASE5_ORDERED_RUNBOOK_DRAFT.md",
+    "executionRunbookAccepted": false,
+    "note": "Scope/order baseline accepted; draft is NOT execution-ready"
+  },
+  "rollbackReseedReadiness": "BLOCKED",
+  "blockingReasons": [
+    "Production backup/PITR/restore not proven — mandatory BLOCKED",
+    "M9–M11 execution artifacts incomplete (IMPLEMENTATION_REQUIRED)",
+    "Execution runbook not yet accepted (executionRunbookAccepted=false)",
+    "productionExecutionGo=false"
+  ],
+  "nonBlockingNotes": [
+    "club_ai_data catalog dependency closure PASS for permanent DROP; execute still blocked until proven backup/restore + Owner GO",
+    "Identity/catalog row-preserved objects are NOT in wipe; club_data_v3 / Rating V5 / public_catalog backing tables are intentional schema-preserved row wipes"
+  ],
+  "hardBoundariesHonored": {
+    "productionDbMutations": 0,
+    "stagingDbMutations": 0,
+    "sqlApplied": false,
+    "wipeDropReseed": false,
+    "vercelFlagsChanged": false,
+    "deployRedeploy": false,
+    "operatorRunner": false,
+    "backupCreateOrRestore": false,
+    "gitResetRebaseCleanStashForcePush": false,
+    "phase05CompleteMarker": false,
+    "recreatePackageCreated": false
+  },
+  "evidenceFiles": [
+    "docs/platform-hard-cutover-01/phase-05-readiness/01_PRODUCTION_READ_ONLY_INVENTORY_2026-07-30.json",
+    "docs/platform-hard-cutover-01/phase-05-readiness/02_MIGRATION_M0_M11_PARITY_2026-07-30.json",
+    "docs/platform-hard-cutover-01/phase-05-readiness/03_BACKUP_ROLLBACK_RESEED_GATE_2026-07-30.json",
+    "docs/platform-hard-cutover-01/phase-05-readiness/04_PHASE5A_READINESS_DECISION_2026-07-30.json",
+    "docs/platform-hard-cutover-01/phase-05-readiness/PHASE5_ORDERED_RUNBOOK_DRAFT.md"
+  ],
+  "secretsPrinted": false,
+  "piiPrinted": false
+}
