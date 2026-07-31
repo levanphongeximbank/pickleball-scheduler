@@ -1,0 +1,27 @@
+{
+  "family": "M11",
+  "packageRoot": "docs/platform-hard-cutover-01/phase-05b-execution-package/sql/m11-private-pairing-digest/",
+  "readiness": "READY_STAGING_CATALOG_DERIVED_ALREADY_EQUIVALENT_ON_PRODUCTION",
+  "productionExecutionGo": false,
+  "sqlApplied": false,
+  "provenanceClass": "STAGING_CATALOG_DERIVED",
+  "orderedApply": [
+    {
+      "order": 10,
+      "file": "10_PRIVATE_PAIRING_DIGEST.sql",
+      "sha256": "87085C1C8E5C3B5D0835192930482F94CC2895F2C21AFA57B5E16283D7B5A2A7",
+      "stagingMigration": "private_pairing_pr4_digest_patch"
+    }
+  ],
+  "verify": {
+    "file": "99_VERIFY.sql",
+    "sha256": "BF97C807C61F467102B2371B36F6EF0F5300135C177EC05EC2305038B0DD8757"
+  },
+  "rollback": {
+    "file": "90_ROLLBACK.sql",
+    "sha256": "7E9EA6BAD1522EDB3067946B81EF0780D4B1CCD4822C16A53AE0F7E2FD1B411E",
+    "classification": "RESTORE_SAME_CATALOG_DERIVED_BODY__NOOP_WHEN_ALREADY_EQUIVALENT"
+  },
+  "productionApplicability": "ALREADY_EQUIVALENT_IDEMPOTENT_APPLY",
+  "provenanceSha256": "F76337484F5B698BE8A0F8671610859FD665CC177443E9B05F1A909005CB1D32"
+}

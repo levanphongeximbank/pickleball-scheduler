@@ -1,0 +1,32 @@
+{
+  "marker": "PLATFORM_HARD_CUTOVER_01_PHASE5B_DECISION",
+  "generatedAt": "2026-07-31T12:00:00.000Z",
+  "decision": "BLOCKED_PHASE5B_EXECUTION_PACKAGE",
+  "m9": "BLOCKED_STAGING_CATALOG_NOT_PROVEN_FOR_TT5D",
+  "m10": "READY",
+  "m11": "READY_STAGING_CATALOG_DERIVED_ALREADY_EQUIVALENT_ON_PRODUCTION",
+  "unresolved": [
+    {
+      "family": "M9",
+      "objectOrSource": "TT5-D tracked SQL (ASSIGNMENT_SAFETY / REOPEN_RESULT / CORRECTION / SECURITY_GUARDS)",
+      "reason": "Staging schema_migrations lacks tt5d_* rows and Staging catalog reopen/correction objects were ABSENT at packaging time; Production applicability cannot be proven from Staging canonical metadata"
+    }
+  ],
+  "continuingPhase5": {
+    "decision": "BLOCKED_PHASE5_READINESS",
+    "productionExecutionGo": false,
+    "executionRunbookAccepted": false,
+    "PHASE_05_COMPLETE": "NOT_ISSUED",
+    "backupPitrRestore": "NOT_PROVABLE_CANNOT_WAIVE"
+  },
+  "ownerDecisionsUnchanged": {
+    "canonicalMigrationScope": "M0_TO_M11_ACCEPTED",
+    "club_ai_data": "PERMANENT_DROP_NO_RECREATE"
+  },
+  "mutationsExecuted": {
+    "staging": 0,
+    "production": 0
+  },
+  "sqlApplied": false,
+  "deploymentsByAgent": 0
+}

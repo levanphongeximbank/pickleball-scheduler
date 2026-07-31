@@ -1,0 +1,17 @@
+{
+  "marker": "PLATFORM_HARD_CUTOVER_01_PHASE5B_M11_CERT",
+  "generatedAt": "2026-07-31T12:00:00.000Z",
+  "family": "M11",
+  "verdict": "READY_STAGING_CATALOG_DERIVED_ALREADY_EQUIVALENT_ON_PRODUCTION",
+  "provenanceClass": "STAGING_CATALOG_DERIVED",
+  "originalSqlFoundInGitHistory": false,
+  "stagingDefMd5": "0be77671f95c52b1d5e00496bee2adf1",
+  "productionDefMd5": "0be77671f95c52b1d5e00496bee2adf1",
+  "liveDelta": "NONE",
+  "applySha256": "87085C1C8E5C3B5D0835192930482F94CC2895F2C21AFA57B5E16283D7B5A2A7",
+  "staticValidation": "PASS",
+  "rollbackClassification": "RESTORE_SAME_CATALOG_DERIVED_BODY__NOOP_WHEN_ALREADY_EQUIVALENT",
+  "productionApplicability": "ALREADY_EQUIVALENT_IDEMPOTENT",
+  "mutationsExecuted": 0,
+  "sqlApplied": false
+}

@@ -1,0 +1,29 @@
+{
+  "marker": "PLATFORM_HARD_CUTOVER_01_PHASE5B_ORDER_CHECKSUM_CERT",
+  "generatedAt": "2026-07-31T12:00:00.000Z",
+  "executionSequenceSteps": [
+    "M0",
+    "M1",
+    "M2",
+    "M3",
+    "M4",
+    "M5",
+    "M6",
+    "M7",
+    "M8",
+    "M9A_TT2B_TT4",
+    "M10",
+    "M9B_TT5B_TT6B",
+    "M11"
+  ],
+  "interleaveRequired": true,
+  "interleaveReason": "M9 TT5B+ depends on M10 Referee V5 objects",
+  "checksumManifest": "docs/platform-hard-cutover-01/phase-05b-execution-package/PHASE5B_CHECKSUM_MANIFEST.json",
+  "fileCount": 42,
+  "m8TenantContractRetained": {
+    "tenant_id": "text",
+    "p_tenant_id": "text",
+    "user_venue_id_result": "text"
+  },
+  "mutationsExecuted": 0
+}

@@ -1,0 +1,394 @@
+{
+  "marker": "PLATFORM_HARD_CUTOVER_01_PHASE5B_M0_M11_EXECUTION_MANIFEST",
+  "generatedAt": "2026-07-31T12:00:00.000Z",
+  "baseSha": "e3bdb55799f91b3e5d52f867d947de2aac12f52a",
+  "productionExecutionGo": false,
+  "executionRunbookAccepted": false,
+  "phase5Readiness": "BLOCKED_PHASE5_READINESS",
+  "phase05Complete": "NOT_ISSUED",
+  "phase5bDecision": "BLOCKED_PHASE5B_EXECUTION_PACKAGE",
+  "canonicalMigrationScope": "M0_TO_M11_ACCEPTED",
+  "club_ai_data": "PERMANENT_DROP_NO_RECREATE",
+  "backupPitrRestore": "NOT_PROVABLE",
+  "mutationsExecuted": {
+    "staging": 0,
+    "production": 0
+  },
+  "sqlApplied": false,
+  "executionSequence": [
+    {
+      "step": "M0",
+      "action": "VERIFY_ONLY",
+      "artefacts": [
+        "docs/production-security/prod-sec-g3-b12-01/11_VERIFY.sql"
+      ]
+    },
+    {
+      "step": "M1",
+      "action": "APPLY_THEN_VERIFY",
+      "packageRoot": "docs/customer-management/phase-3/",
+      "note": "Exact 10..50 authored package; not rewritten in Phase 5B"
+    },
+    {
+      "step": "M2",
+      "action": "APPLY_THEN_VERIFY",
+      "artefacts": [
+        "docs/supabase-finance-phase1f.sql"
+      ],
+      "rollback": [
+        "docs/supabase-finance-phase1f-rollback.sql"
+      ]
+    },
+    {
+      "step": "M3",
+      "action": "APPLY_THEN_VERIFY",
+      "packageRoots": [
+        "docs/crm/phase-1g/",
+        "docs/crm/phase-1h/"
+      ]
+    },
+    {
+      "step": "M4",
+      "action": "APPLY_THEN_VERIFY",
+      "packageRoot": "docs/reporting-analytics/reporting-02/"
+    },
+    {
+      "step": "M5",
+      "action": "APPLY_THEN_VERIFY",
+      "packageRoots": [
+        "docs/news-public-content/news-02/",
+        "docs/news-public-content/news-03/",
+        "docs/news-public-content/news-04/"
+      ]
+    },
+    {
+      "step": "M6",
+      "action": "APPLY_THEN_VERIFY",
+      "packageRoots": [
+        "docs/coaching-training/coaching-02/",
+        "docs/coaching-training/coaching-04/"
+      ]
+    },
+    {
+      "step": "M7",
+      "action": "APPLY_THEN_VERIFY",
+      "artefactsGlob": "docs/competition-core/supabase-cc02*.sql"
+    },
+    {
+      "step": "M8",
+      "action": "APPLY_THEN_VERIFY",
+      "packageRoot": "docs/platform-hard-cutover-01/phase-04/sql/m8-competition-remote-ssot/",
+      "orderedApply": [
+        "10_TABLES.sql",
+        "20_INDEXES.sql",
+        "30_RLS.sql",
+        "40_RPC_COMMAND_AND_FINALIZE.sql",
+        "50_GRANTS.sql",
+        "51_GRANTS_TIGHTEN.sql",
+        "52_GRANTS_EXACT_BASELINE.sql"
+      ],
+      "verify": "99_VERIFY.sql",
+      "rollback": "90_ROLLBACK.sql",
+      "tenantContract": {
+        "tenant_id": "text",
+        "p_tenant_id": "text",
+        "user_venue_id_result": "text"
+      }
+    },
+    {
+      "step": "M9A_TT2B_TT4",
+      "action": "APPLY_THEN_VERIFY_PARTIAL",
+      "family": "M9",
+      "orderedApply": [
+        "10_TT2B_LINEUP_DEADLINE.sql",
+        "20_TT2C_LINEUP_VALIDATION.sql",
+        "30_TT2C_SUBMIT_LINEUP_VALIDATION.sql",
+        "40_TT2D_RANDOMIZE_LOCK.sql",
+        "50_TT2E_ATOMIC_PUBLISH.sql",
+        "60_TT2E_GET_SETUP_FIX.sql",
+        "70_TT3_LINEUP_OVERRIDE.sql",
+        "80_TT3_GET_SETUP_PATCH.sql",
+        "85_TT4_FORFEIT_WITHDRAWAL.sql",
+        "100_TT4_GET_SETUP_PATCH.sql"
+      ],
+      "packageRoot": "docs/platform-hard-cutover-01/phase-05b-execution-package/sql/m9-team-tournament/",
+      "stopAfter": "family_partial_verify_TT2_TT4"
+    },
+    {
+      "step": "M10",
+      "action": "APPLY_THEN_VERIFY",
+      "family": "M10",
+      "packageRoot": "docs/platform-hard-cutover-01/phase-05b-execution-package/sql/m10-referee-v5/",
+      "orderedApply": [
+        "10_V5A_REFEREE_FOUNDATION.sql",
+        "20_V5D_REFEREE_PERSISTENCE.sql",
+        "30_V5D1_REFEREE_HARDENING.sql",
+        "40_V5D32_IDEMPOTENCY_UNDO.sql"
+      ],
+      "verify": "99_VERIFY.sql",
+      "rollback": "90_ROLLBACK.sql"
+    },
+    {
+      "step": "M9B_TT5B_TT6B",
+      "action": "APPLY_THEN_VERIFY",
+      "family": "M9",
+      "precondition": "M10_VERIFY_PASS",
+      "orderedApply": [
+        "110_TT5B_BRIDGE_SCHEMA.sql",
+        "120_TT5B_PROVISION_RPC.sql",
+        "130_TT5B_LEGACY_LOCK_GUARD.sql",
+        "140_TT5B_GET_SETUP_PATCH.sql",
+        "150_TT5C_RESULT_OUTBOX.sql",
+        "160_TT5C_RESULT_PROPAGATION.sql",
+        "170_TT5C_STANDINGS_RECOMPUTE.sql",
+        "180_TT5C_REPROVISION.sql",
+        "190_TT5D_ASSIGNMENT_SAFETY.sql",
+        "200_TT5D_REOPEN_RESULT.sql",
+        "210_TT5D_CORRECTION.sql",
+        "220_TT5D_SECURITY_GUARDS.sql",
+        "230_TT6B_REALTIME_SECURITY.sql",
+        "240_TT6B_REALTIME_CORE.sql"
+      ],
+      "packageRoot": "docs/platform-hard-cutover-01/phase-05b-execution-package/sql/m9-team-tournament/",
+      "verify": "99_VERIFY.sql",
+      "rollback": "90_ROLLBACK.sql"
+    },
+    {
+      "step": "M11",
+      "action": "APPLY_THEN_VERIFY",
+      "family": "M11",
+      "packageRoot": "docs/platform-hard-cutover-01/phase-05b-execution-package/sql/m11-private-pairing-digest/",
+      "orderedApply": [
+        "10_PRIVATE_PAIRING_DIGEST.sql"
+      ],
+      "verify": "99_VERIFY.sql",
+      "rollback": "90_ROLLBACK.sql"
+    }
+  ],
+  "families": {
+    "M0": {
+      "family": "M0",
+      "purpose": "G3-B12 club_ai_data anon write lockdown",
+      "productionClassification": "already_present_and_verified",
+      "packageReadiness": "VERIFY_ONLY",
+      "exactOrderedApplyFiles": [],
+      "verifyArtefact": "docs/production-security/prod-sec-g3-b12-01/11_VERIFY.sql",
+      "rollbackArtefact": "leave_locked_do_not_reopen",
+      "stopPoint": "after_verify_before_M1",
+      "productionApplicability": "ALREADY_PRESENT"
+    },
+    "M1": {
+      "family": "M1",
+      "purpose": "Customer",
+      "productionClassification": "missing",
+      "packageReadiness": "AUTHORED_EXISTING_NOT_REWRITTEN",
+      "exactOrderedApplyFiles": "docs/customer-management/phase-3/10..50_*.sql",
+      "dependencyFamilies": [
+        "identity"
+      ],
+      "verifyArtefact": "package verify",
+      "rollbackArtefact": "docs/customer-management/phase-3/90_*.sql",
+      "stopPoint": "after_M1_verify",
+      "productionApplicability": "AUTHORED_PACKAGE"
+    },
+    "M2": {
+      "family": "M2",
+      "purpose": "Finance",
+      "productionClassification": "missing",
+      "packageReadiness": "AUTHORED_EXISTING_NOT_REWRITTEN",
+      "exactOrderedApplyFiles": [
+        "docs/supabase-finance-phase1f.sql"
+      ],
+      "verifyArtefact": "static/staging evidence",
+      "rollbackArtefact": "docs/supabase-finance-phase1f-rollback.sql",
+      "stopPoint": "after_M2_verify",
+      "productionApplicability": "AUTHORED_PACKAGE"
+    },
+    "M3": {
+      "family": "M3",
+      "purpose": "CRM",
+      "productionClassification": "missing",
+      "packageReadiness": "AUTHORED_EXISTING_NOT_REWRITTEN",
+      "exactOrderedApplyFiles": "docs/crm/phase-1g/10..60 + phase-1h/10,20",
+      "stopPoint": "after_M3_verify",
+      "productionApplicability": "AUTHORED_PACKAGE"
+    },
+    "M4": {
+      "family": "M4",
+      "purpose": "Reporting",
+      "productionClassification": "missing",
+      "packageReadiness": "AUTHORED_EXISTING_NOT_REWRITTEN",
+      "exactOrderedApplyFiles": "docs/reporting-analytics/reporting-02/10..50",
+      "verifyArtefact": "99_*.sql",
+      "rollbackArtefact": "90/91_*.sql",
+      "stopPoint": "after_M4_verify",
+      "productionApplicability": "AUTHORED_PACKAGE"
+    },
+    "M5": {
+      "family": "M5",
+      "purpose": "News",
+      "productionClassification": "missing",
+      "packageReadiness": "AUTHORED_EXISTING_NOT_REWRITTEN",
+      "exactOrderedApplyFiles": "news-02/03/04 packages",
+      "stopPoint": "after_M5_verify",
+      "productionApplicability": "AUTHORED_PACKAGE"
+    },
+    "M6": {
+      "family": "M6",
+      "purpose": "Coaching",
+      "productionClassification": "missing",
+      "packageReadiness": "AUTHORED_EXISTING_NOT_REWRITTEN",
+      "exactOrderedApplyFiles": "coaching-02 + coaching-04",
+      "stopPoint": "after_M6_verify",
+      "productionApplicability": "AUTHORED_PACKAGE"
+    },
+    "M7": {
+      "family": "M7",
+      "purpose": "Competition Core cc02",
+      "productionClassification": "missing",
+      "packageReadiness": "AUTHORED_EXISTING_NOT_REWRITTEN",
+      "exactOrderedApplyFiles": "docs/competition-core/supabase-cc02*.sql",
+      "stopPoint": "after_M7_verify",
+      "productionApplicability": "AUTHORED_PACKAGE"
+    },
+    "M8": {
+      "family": "M8",
+      "purpose": "Competition Remote SSOT",
+      "productionClassification": "missing",
+      "packageReadiness": "AUTHORED_PHASE4_NOT_REWRITTEN",
+      "exactOrderedApplyFiles": [
+        "docs/platform-hard-cutover-01/phase-04/sql/m8-competition-remote-ssot/10_TABLES.sql",
+        "docs/platform-hard-cutover-01/phase-04/sql/m8-competition-remote-ssot/20_INDEXES.sql",
+        "docs/platform-hard-cutover-01/phase-04/sql/m8-competition-remote-ssot/30_RLS.sql",
+        "docs/platform-hard-cutover-01/phase-04/sql/m8-competition-remote-ssot/40_RPC_COMMAND_AND_FINALIZE.sql",
+        "docs/platform-hard-cutover-01/phase-04/sql/m8-competition-remote-ssot/50_GRANTS.sql",
+        "docs/platform-hard-cutover-01/phase-04/sql/m8-competition-remote-ssot/51_GRANTS_TIGHTEN.sql",
+        "docs/platform-hard-cutover-01/phase-04/sql/m8-competition-remote-ssot/52_GRANTS_EXACT_BASELINE.sql"
+      ],
+      "verifyArtefact": "docs/platform-hard-cutover-01/phase-04/sql/m8-competition-remote-ssot/99_VERIFY.sql",
+      "rollbackArtefact": "docs/platform-hard-cutover-01/phase-04/sql/m8-competition-remote-ssot/90_ROLLBACK.sql",
+      "tenantContract": {
+        "tenant_id": "text",
+        "p_tenant_id": "text",
+        "user_venue_id_result": "text"
+      },
+      "stopPoint": "after_M8_verify",
+      "productionApplicability": "AUTHORED_PACKAGE",
+      "dependencyFamilies": [
+        "identity_user_venue_id"
+      ]
+    },
+    "M9": {
+      "family": "M9",
+      "purpose": "Team Tournament remainder TT2B–TT6B",
+      "productionClassification": "partially_present_p1_tt1b_only",
+      "packageReadiness": "BLOCKED_STAGING_CATALOG_NOT_PROVEN_FOR_TT5D",
+      "exactOrderedApplyFiles": [
+        "docs/platform-hard-cutover-01/phase-05b-execution-package/sql/m9-team-tournament/10_TT2B_LINEUP_DEADLINE.sql",
+        "docs/platform-hard-cutover-01/phase-05b-execution-package/sql/m9-team-tournament/20_TT2C_LINEUP_VALIDATION.sql",
+        "docs/platform-hard-cutover-01/phase-05b-execution-package/sql/m9-team-tournament/30_TT2C_SUBMIT_LINEUP_VALIDATION.sql",
+        "docs/platform-hard-cutover-01/phase-05b-execution-package/sql/m9-team-tournament/40_TT2D_RANDOMIZE_LOCK.sql",
+        "docs/platform-hard-cutover-01/phase-05b-execution-package/sql/m9-team-tournament/50_TT2E_ATOMIC_PUBLISH.sql",
+        "docs/platform-hard-cutover-01/phase-05b-execution-package/sql/m9-team-tournament/60_TT2E_GET_SETUP_FIX.sql",
+        "docs/platform-hard-cutover-01/phase-05b-execution-package/sql/m9-team-tournament/70_TT3_LINEUP_OVERRIDE.sql",
+        "docs/platform-hard-cutover-01/phase-05b-execution-package/sql/m9-team-tournament/80_TT3_GET_SETUP_PATCH.sql",
+        "docs/platform-hard-cutover-01/phase-05b-execution-package/sql/m9-team-tournament/85_TT4_FORFEIT_WITHDRAWAL.sql",
+        "docs/platform-hard-cutover-01/phase-05b-execution-package/sql/m9-team-tournament/100_TT4_GET_SETUP_PATCH.sql",
+        "docs/platform-hard-cutover-01/phase-05b-execution-package/sql/m9-team-tournament/110_TT5B_BRIDGE_SCHEMA.sql",
+        "docs/platform-hard-cutover-01/phase-05b-execution-package/sql/m9-team-tournament/120_TT5B_PROVISION_RPC.sql",
+        "docs/platform-hard-cutover-01/phase-05b-execution-package/sql/m9-team-tournament/130_TT5B_LEGACY_LOCK_GUARD.sql",
+        "docs/platform-hard-cutover-01/phase-05b-execution-package/sql/m9-team-tournament/140_TT5B_GET_SETUP_PATCH.sql",
+        "docs/platform-hard-cutover-01/phase-05b-execution-package/sql/m9-team-tournament/150_TT5C_RESULT_OUTBOX.sql",
+        "docs/platform-hard-cutover-01/phase-05b-execution-package/sql/m9-team-tournament/160_TT5C_RESULT_PROPAGATION.sql",
+        "docs/platform-hard-cutover-01/phase-05b-execution-package/sql/m9-team-tournament/170_TT5C_STANDINGS_RECOMPUTE.sql",
+        "docs/platform-hard-cutover-01/phase-05b-execution-package/sql/m9-team-tournament/180_TT5C_REPROVISION.sql",
+        "docs/platform-hard-cutover-01/phase-05b-execution-package/sql/m9-team-tournament/190_TT5D_ASSIGNMENT_SAFETY.sql",
+        "docs/platform-hard-cutover-01/phase-05b-execution-package/sql/m9-team-tournament/200_TT5D_REOPEN_RESULT.sql",
+        "docs/platform-hard-cutover-01/phase-05b-execution-package/sql/m9-team-tournament/210_TT5D_CORRECTION.sql",
+        "docs/platform-hard-cutover-01/phase-05b-execution-package/sql/m9-team-tournament/220_TT5D_SECURITY_GUARDS.sql",
+        "docs/platform-hard-cutover-01/phase-05b-execution-package/sql/m9-team-tournament/230_TT6B_REALTIME_SECURITY.sql",
+        "docs/platform-hard-cutover-01/phase-05b-execution-package/sql/m9-team-tournament/240_TT6B_REALTIME_CORE.sql"
+      ],
+      "sha256ByFile": {
+        "10_TT2B_LINEUP_DEADLINE.sql": "777BFC77661AE1E18FFF442CB7B78F38EE6C724F17A7A9B1DDECF4A0053FC91B",
+        "20_TT2C_LINEUP_VALIDATION.sql": "91EE6A53D6162DA6E2E35A508E44A7FB8D679974B729F7FCE6364199EE45AA25",
+        "30_TT2C_SUBMIT_LINEUP_VALIDATION.sql": "F49B5CF09AAFE9B5AC39454F2A1F56029559092A31BCA828E0CDC12EB789CE06",
+        "40_TT2D_RANDOMIZE_LOCK.sql": "847F04D822D9B3779D4D6E74072FBAFB18E38784C0DB52B67CD34346DBC13378",
+        "50_TT2E_ATOMIC_PUBLISH.sql": "43FFBC7B35C3666D5DC25AE6401F5AB819E4DDCD0CB720C219D83ECF58BFF1D7",
+        "60_TT2E_GET_SETUP_FIX.sql": "24F728EE957733C5F9CABBB0B479BB9DE50BA1CA7F9C5114C740CF48D3BE2F87",
+        "70_TT3_LINEUP_OVERRIDE.sql": "51EA187326FA886915CEE7D8CA67B384B582F02763E413A7E3634606CDC14F96",
+        "80_TT3_GET_SETUP_PATCH.sql": "58007708DDBC43E4DC505FBE485E8669BA1D22BE0CBAF999324035AE4FE5A03F",
+        "85_TT4_FORFEIT_WITHDRAWAL.sql": "E9B91652686C14F539CB8496C08A832B19F793B23CB5851E95DAA7DB8E244CA4",
+        "100_TT4_GET_SETUP_PATCH.sql": "9A06A9129AE26E23AC367EEE12CE4548C2A06D3F184840D5CC21E88152C7525F",
+        "110_TT5B_BRIDGE_SCHEMA.sql": "20BA83B55E9BB02F5097E8BD2B70432AB3E1579FED0B4704DB7621A739C108A5",
+        "120_TT5B_PROVISION_RPC.sql": "E70E0494C24CBEF6E17065DDFB4F68793A50E33798419DC014F801335CFFEE3F",
+        "130_TT5B_LEGACY_LOCK_GUARD.sql": "60FDC7DA03D9F1382C1C067B81BA1BCAB4C48538E66E648FC51DB1DF18E06BBA",
+        "140_TT5B_GET_SETUP_PATCH.sql": "734994D3D069CFD1196DDE4EFD5E200981E98F302E90129E8CCA4A8ABAFD875B",
+        "150_TT5C_RESULT_OUTBOX.sql": "72DBCD0B9C65B8DA435E5C31427F725CCB63058EAF80226959ADAE609D8F6EF9",
+        "160_TT5C_RESULT_PROPAGATION.sql": "D5D47F3F2251AE0E7F819287F2A97A7884A4D3CCADB1107CFD8389B46BA437BD",
+        "170_TT5C_STANDINGS_RECOMPUTE.sql": "E0AD7146B005635A7EB6122EEBD4EDFC7026F554BACA2CA5C7F4E112075CB226",
+        "180_TT5C_REPROVISION.sql": "FDCC80A11DB041E96FC6F441F22F5AE5585FA7856BA884F8E0DA16B05A7C6C98",
+        "190_TT5D_ASSIGNMENT_SAFETY.sql": "70BB2C26723BC3615BC5353159364656BBA031FE510C4D28B8E0BB2CC9ECBCAA",
+        "200_TT5D_REOPEN_RESULT.sql": "28F0E9366E51C9589EA8E4EA0F4064A5BB0A5DE70B4210A5DA398CA3569B6218",
+        "210_TT5D_CORRECTION.sql": "732E4109D758DFCC7BC56926E8C70EEE529AF5BF436B3885E77F5F13903923B3",
+        "220_TT5D_SECURITY_GUARDS.sql": "61943AD79D7EDB7FAF7718064C60C2269193DFFFDD6C8464EE7BCD123012F5FA",
+        "230_TT6B_REALTIME_SECURITY.sql": "A144E6BB190C22B5E44CFD8818DE88981EBF855598BDF24ED3396993F913E4E1",
+        "240_TT6B_REALTIME_CORE.sql": "96F1E54DA172381D8CB251C0BFDFF2177D4E62CFCEBC409BB90D4B7C7D86C0C4"
+      },
+      "dependencyFamilies": [
+        "M10_before_TT5B"
+      ],
+      "precheck": "P1/TT1B present; M10 verified before TT5B+",
+      "exactVerificationArtefact": "docs/platform-hard-cutover-01/phase-05b-execution-package/sql/m9-team-tournament/99_VERIFY.sql",
+      "rollbackArtefact": "docs/platform-hard-cutover-01/phase-05b-execution-package/sql/m9-team-tournament/90_ROLLBACK.sql",
+      "rollbackOrIrreversibility": "NEW_OBJECTS_DROPPABLE; REPLACED_FUNCTIONS_BACKUP_PITR_ONLY",
+      "stopPoint": "after_M9_full_verify",
+      "productionApplicability": "BLOCKED_PENDING_TT5D_STAGING_PROOF"
+    },
+    "M10": {
+      "family": "M10",
+      "purpose": "Referee V5",
+      "productionClassification": "missing_v5_legacy_token_rpcs_only",
+      "packageReadiness": "READY",
+      "exactOrderedApplyFiles": [
+        "docs/platform-hard-cutover-01/phase-05b-execution-package/sql/m10-referee-v5/10_V5A_REFEREE_FOUNDATION.sql",
+        "docs/platform-hard-cutover-01/phase-05b-execution-package/sql/m10-referee-v5/20_V5D_REFEREE_PERSISTENCE.sql",
+        "docs/platform-hard-cutover-01/phase-05b-execution-package/sql/m10-referee-v5/30_V5D1_REFEREE_HARDENING.sql",
+        "docs/platform-hard-cutover-01/phase-05b-execution-package/sql/m10-referee-v5/40_V5D32_IDEMPOTENCY_UNDO.sql"
+      ],
+      "sha256ByFile": {
+        "10_V5A_REFEREE_FOUNDATION.sql": "C1A079535A6295CB3D185AEE9C9B2E54DA6ED0AEBBEB67BBFD4B929DD13C0F8E",
+        "20_V5D_REFEREE_PERSISTENCE.sql": "5C3BCDA4E38449021516D0B966AB553E6F79D58A409B2D75AF59160F6295FDB9",
+        "30_V5D1_REFEREE_HARDENING.sql": "CAF20D89B35BEE42F2E06F20DDC0B498FFB7B2081A30A8CD4057DEDCFC47A579",
+        "40_V5D32_IDEMPOTENCY_UNDO.sql": "F0D0EB05C83883078B812E88E7515733017F9FA48FDA9FBD629E85D35A79C17D"
+      },
+      "dependencyFamilies": [
+        "M8_preferred"
+      ],
+      "exactVerificationArtefact": "docs/platform-hard-cutover-01/phase-05b-execution-package/sql/m10-referee-v5/99_VERIFY.sql",
+      "rollbackArtefact": "docs/platform-hard-cutover-01/phase-05b-execution-package/sql/m10-referee-v5/90_ROLLBACK.sql",
+      "stopPoint": "after_M10_verify_before_M9B",
+      "productionApplicability": "PACKAGED"
+    },
+    "M11": {
+      "family": "M11",
+      "purpose": "Private pairing digest",
+      "productionClassification": "rc1_present_digest_body_already_equivalent",
+      "packageReadiness": "READY_STAGING_CATALOG_DERIVED_ALREADY_EQUIVALENT_ON_PRODUCTION",
+      "exactOrderedApplyFiles": [
+        "docs/platform-hard-cutover-01/phase-05b-execution-package/sql/m11-private-pairing-digest/10_PRIVATE_PAIRING_DIGEST.sql"
+      ],
+      "sha256ByFile": {
+        "10_PRIVATE_PAIRING_DIGEST.sql": "87085C1C8E5C3B5D0835192930482F94CC2895F2C21AFA57B5E16283D7B5A2A7"
+      },
+      "dependencyFamilies": [
+        "private_pairing_rc1_archive_rule_set"
+      ],
+      "exactVerificationArtefact": "docs/platform-hard-cutover-01/phase-05b-execution-package/sql/m11-private-pairing-digest/99_VERIFY.sql",
+      "rollbackArtefact": "docs/platform-hard-cutover-01/phase-05b-execution-package/sql/m11-private-pairing-digest/90_ROLLBACK.sql",
+      "stopPoint": "after_M11_verify_before_wipe",
+      "productionApplicability": "ALREADY_EQUIVALENT_IDEMPOTENT",
+      "provenanceClass": "STAGING_CATALOG_DERIVED"
+    }
+  }
+}

@@ -1,0 +1,28 @@
+{
+  "family": "M11",
+  "purpose": "Private pairing digest patch",
+  "generatedAt": "2026-07-31T12:00:00.000Z",
+  "originalSqlFoundInGitHistory": false,
+  "provenanceClass": "STAGING_CATALOG_DERIVED",
+  "stagingMigrationName": "private_pairing_pr4_digest_patch",
+  "productionMigrationPresent": "private_pairing_rc1_archive_rule_set_ONLY",
+  "catalogComparison": {
+    "function": "public.private_pairing_compute_rule_set_hash(p_rule_set_id uuid)",
+    "stagingDefMd5": "0be77671f95c52b1d5e00496bee2adf1",
+    "productionDefMd5": "0be77671f95c52b1d5e00496bee2adf1",
+    "liveDelta": "NONE_ALREADY_EQUIVALENT",
+    "bodyDigestCall": "extensions.digest(v_payload, 'sha256'::text)",
+    "searchPath": "public, pg_temp",
+    "securityDefiner": true
+  },
+  "notClaimedAsOriginalPr4Sql": true,
+  "trackedPr4UsesBareDigest": "docs/v5/PHASE_PRIVATE_PAIRING_RULES_V2_PR4.sql",
+  "applyFile": "sql/m11-private-pairing-digest/10_PRIVATE_PAIRING_DIGEST.sql",
+  "applySha256": "87085C1C8E5C3B5D0835192930482F94CC2895F2C21AFA57B5E16283D7B5A2A7",
+  "rollbackArtefact": "sql/m11-private-pairing-digest/90_ROLLBACK.sql",
+  "rollbackSha256": "D2C21C277463F1DA2135F70EB074AAF5C9E74BC140DE7AE1BB4D15BE4228A70B",
+  "verifyArtefact": "sql/m11-private-pairing-digest/99_VERIFY.sql",
+  "verifySha256": "BF97C807C61F467102B2371B36F6EF0F5300135C177EC05EC2305038B0DD8757",
+  "rollbackClassification": "RESTORE_SAME_CATALOG_DERIVED_BODY__NOOP_WHEN_ALREADY_EQUIVALENT",
+  "packageVerdict": "READY_STAGING_CATALOG_DERIVED_ALREADY_EQUIVALENT_ON_PRODUCTION"
+}

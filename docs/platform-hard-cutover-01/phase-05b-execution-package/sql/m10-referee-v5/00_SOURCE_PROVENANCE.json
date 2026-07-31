@@ -1,0 +1,102 @@
+{
+  "family": "M10",
+  "purpose": "Referee V5 foundation + persistence + hardening + idempotency undo",
+  "generatedAt": "2026-07-31T12:00:00.000Z",
+  "artefacts": [
+    {
+      "applyFile": "sql/m10-referee-v5/10_V5A_REFEREE_FOUNDATION.sql",
+      "order": 10,
+      "sourcePath": "docs/v5/referee-v5/PHASE_V5A_REFEREE_FOUNDATION.sql",
+      "packageSha256": "C1A079535A6295CB3D185AEE9C9B2E54DA6ED0AEBBEB67BBFD4B929DD13C0F8E",
+      "sourceSha256": "C1A079535A6295CB3D185AEE9C9B2E54DA6ED0AEBBEB67BBFD4B929DD13C0F8E",
+      "bytesMatchSource": true,
+      "stagingMigrations": [
+        "phase_v5a_referee_foundation"
+      ],
+      "stagingNote": null,
+      "stagingCatalogProven": true,
+      "operationClass": "CREATE_IF_NOT_EXISTS_PLUS_REPLACE",
+      "dependsOnM10": false,
+      "completeness": "COMPLETE_TRACKED_SOURCE",
+      "productionPresence": "MISSING_V5",
+      "executionWould": "CREATE_NEW_AND_OR_REPLACE"
+    },
+    {
+      "applyFile": "sql/m10-referee-v5/20_V5D_REFEREE_PERSISTENCE.sql",
+      "order": 20,
+      "sourcePath": "docs/v5/referee-v5/PHASE_V5D_REFEREE_PERSISTENCE.sql",
+      "packageSha256": "5C3BCDA4E38449021516D0B966AB553E6F79D58A409B2D75AF59160F6295FDB9",
+      "sourceSha256": "5C3BCDA4E38449021516D0B966AB553E6F79D58A409B2D75AF59160F6295FDB9",
+      "bytesMatchSource": true,
+      "stagingMigrations": [
+        "phase_v5d_referee_persistence"
+      ],
+      "stagingNote": null,
+      "stagingCatalogProven": true,
+      "operationClass": "CREATE_OR_REPLACE_HEAVY",
+      "dependsOnM10": false,
+      "completeness": "COMPLETE_TRACKED_SOURCE",
+      "productionPresence": "MISSING_V5",
+      "executionWould": "CREATE_OR_REPLACE_EXISTING_OR_NEW"
+    },
+    {
+      "applyFile": "sql/m10-referee-v5/30_V5D1_REFEREE_HARDENING.sql",
+      "order": 30,
+      "sourcePath": "docs/v5/referee-v5/PHASE_V5D1_REFEREE_HARDENING.sql",
+      "packageSha256": "CAF20D89B35BEE42F2E06F20DDC0B498FFB7B2081A30A8CD4057DEDCFC47A579",
+      "sourceSha256": "CAF20D89B35BEE42F2E06F20DDC0B498FFB7B2081A30A8CD4057DEDCFC47A579",
+      "bytesMatchSource": true,
+      "stagingMigrations": [
+        "phase_v5d1_referee_hardening",
+        "phase_v5d1_referee_hardening_rpcs"
+      ],
+      "stagingNote": null,
+      "stagingCatalogProven": true,
+      "operationClass": "CREATE_OR_REPLACE_HEAVY",
+      "dependsOnM10": false,
+      "completeness": "COMPLETE_TRACKED_SOURCE",
+      "productionPresence": "MISSING_V5",
+      "executionWould": "CREATE_OR_REPLACE_EXISTING_OR_NEW"
+    },
+    {
+      "applyFile": "sql/m10-referee-v5/40_V5D32_IDEMPOTENCY_UNDO.sql",
+      "order": 40,
+      "sourcePath": "docs/v5/referee-v5/PHASE_V5D32_IDEMPOTENCY_UNDO.sql",
+      "packageSha256": "F0D0EB05C83883078B812E88E7515733017F9FA48FDA9FBD629E85D35A79C17D",
+      "sourceSha256": "F0D0EB05C83883078B812E88E7515733017F9FA48FDA9FBD629E85D35A79C17D",
+      "bytesMatchSource": true,
+      "stagingMigrations": [
+        "phase_v5d32_idempotency_undo"
+      ],
+      "stagingNote": null,
+      "stagingCatalogProven": true,
+      "operationClass": "CREATE_OR_REPLACE",
+      "dependsOnM10": false,
+      "completeness": "COMPLETE_TRACKED_SOURCE",
+      "productionPresence": "MISSING_V5",
+      "executionWould": "CREATE_OR_REPLACE_EXISTING_OR_NEW"
+    }
+  ],
+  "excluded": [
+    {
+      "path": "docs/v5/referee-v5/PHASE_V5D4_ATOMIC_ROLLBACK.sql",
+      "reason": "STAGING_FAULT_INJECTION_APPLY — not a Production rollback pack"
+    },
+    {
+      "path": "docs/v5/referee-v5/PHASE_V5E1_REALTIME_SYNC.sql",
+      "reason": "File header STAGING ONLY (publication alter); excluded from Production package"
+    },
+    {
+      "name": "phase_v5d3_staging_fault_injection",
+      "reason": "STAGING_FAULT_INJECTION_ONLY — excluded from Production M10"
+    }
+  ],
+  "legacyObjectsPreserved": [
+    "referee_get_match_by_token(p_token text)",
+    "referee_update_match_score(p_token text, p_payload jsonb)"
+  ],
+  "rollbackClassification": "DROP_M10_OWNED_V5_OBJECTS__LEGACY_TOKEN_RPCS_PRESERVED",
+  "verifyArtefact": "sql/m10-referee-v5/99_VERIFY.sql",
+  "rollbackArtefact": "sql/m10-referee-v5/90_ROLLBACK.sql",
+  "packageVerdict": "READY"
+}

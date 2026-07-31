@@ -1,0 +1,65 @@
+{
+  "family": "M10",
+  "packageRoot": "docs/platform-hard-cutover-01/phase-05b-execution-package/sql/m10-referee-v5/",
+  "readiness": "READY",
+  "productionExecutionGo": false,
+  "sqlApplied": false,
+  "orderedApply": [
+    {
+      "order": 10,
+      "file": "10_V5A_REFEREE_FOUNDATION.sql",
+      "sha256": "0341DDD4DE7A5B8A8273FD51CDB5DC7FBF48D29AC4B1365E901EA0D04F7E1F0B",
+      "sourcePath": "docs/v5/referee-v5/PHASE_V5A_REFEREE_FOUNDATION.sql",
+      "stagingMigrations": [
+        "phase_v5a_referee_foundation"
+      ],
+      "operationClass": "CREATE_IF_NOT_EXISTS_PLUS_REPLACE"
+    },
+    {
+      "order": 20,
+      "file": "20_V5D_REFEREE_PERSISTENCE.sql",
+      "sha256": "80383D99E3829EC8B851B1F717497855335F87682C3678A1D67C4D5EE5961751",
+      "sourcePath": "docs/v5/referee-v5/PHASE_V5D_REFEREE_PERSISTENCE.sql",
+      "stagingMigrations": [
+        "phase_v5d_referee_persistence"
+      ],
+      "operationClass": "CREATE_OR_REPLACE_HEAVY"
+    },
+    {
+      "order": 30,
+      "file": "30_V5D1_REFEREE_HARDENING.sql",
+      "sha256": "7E97D7B3289C0E5D7F6F545E4E749F2352771832F4799E4468A5DA32809DE189",
+      "sourcePath": "docs/v5/referee-v5/PHASE_V5D1_REFEREE_HARDENING.sql",
+      "stagingMigrations": [
+        "phase_v5d1_referee_hardening",
+        "phase_v5d1_referee_hardening_rpcs"
+      ],
+      "operationClass": "CREATE_OR_REPLACE_HEAVY"
+    },
+    {
+      "order": 40,
+      "file": "40_V5D32_IDEMPOTENCY_UNDO.sql",
+      "sha256": "E0904EC1BD674BF70AC8CDF2CFB4FD9EFBB1469B61B32CB0C461E0A9E1DE6D30",
+      "sourcePath": "docs/v5/referee-v5/PHASE_V5D32_IDEMPOTENCY_UNDO.sql",
+      "stagingMigrations": [
+        "phase_v5d32_idempotency_undo"
+      ],
+      "operationClass": "CREATE_OR_REPLACE"
+    }
+  ],
+  "verify": {
+    "file": "99_VERIFY.sql",
+    "sha256": "BA1E1E9EC180DC1D723F4C978B6239A2C276575A937A87C0D1A8B5A6A95519AC"
+  },
+  "rollback": {
+    "file": "90_ROLLBACK.sql",
+    "classification": "DROP_M10_OWNED_V5_OBJECTS__LEGACY_TOKEN_RPCS_PRESERVED",
+    "sha256": "8CA27CC3151BD6F716BCC8249174C728A0A66EB4C3AF5217A0A5B17816DC215A"
+  },
+  "excludedStagingOnly": [
+    "phase_v5d3_staging_fault_injection",
+    "PHASE_V5D4",
+    "PHASE_V5E1"
+  ],
+  "provenanceSha256": "0050FFA06A7DB5013D4623CAE99EA0CD9F914BDFF7E2BB9F860BADED19B8ACC2"
+}
