@@ -1,0 +1,16 @@
+{
+  "generatedAt": "2026-07-31T09:01:59.819Z",
+  "stagingRollbackClassification": "ROLLBACK_INCOMPLETE_PREEXISTING_TT5D_WITHOUT_PREAPPLY_BASELINE",
+  "afterWipeOrRuntime": "BACKUP_RESTORE_REQUIRED",
+  "productionApplicability": {
+    "access": "SELECT_ONLY_CATALOG_METADATA",
+    "referee_assignments": "ABSENT",
+    "tt5b_links": "ABSENT",
+    "tt5d_objects": "ABSENT",
+    "club_ai_data": "PRESENT",
+    "classification": "FUTURE_NEW_AFTER_M10_AND_TT5B_DEPENDENCIES",
+    "productionMutations": 0,
+    "note": "Complete Production applicability for READY path not certifiable while Staging certification blocked"
+  },
+  "m9MustRemainBlocked": true
+}

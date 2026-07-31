@@ -1,0 +1,95 @@
+{
+  "generatedAt": "2026-07-31T09:01:59.819Z",
+  "target": {
+    "mcpServer": "project-0-pickleball-scheduler-supabase-staging",
+    "project_ref_authorized": "qyewbxjsiiyufanzcjcq",
+    "environment": "Staging",
+    "identityProof": {
+      "club_ai_data_absent": true,
+      "fingerprint": "STAGING_PHASE4_WIPE_FINGERPRINT_MATCHES_AUTHORIZED_REF",
+      "database_name": "postgres",
+      "note": "MCP staging server bound; Production mutation-forbidden server not used for apply."
+    }
+  },
+  "migrationHistory": {
+    "tt5d_named_migration_present": false,
+    "tt5b_migrations": [
+      "phase_tt5b_bridge_schema",
+      "phase_tt5b_bridge_helpers_rls"
+    ],
+    "tt5c_named_migration_present": false,
+    "note": "No schema_migrations row for tt5d / phase5c_tt5d"
+  },
+  "dependencies": {
+    "team_sub_match_referee_links": true,
+    "team_tournament_referee_event_inbox": true,
+    "referee_assignments": true,
+    "team_tournaments": true,
+    "team_tournament_matchups": true,
+    "team_tournament_sub_matches": true,
+    "match_result_revisions": true,
+    "match_integration_outbox": true,
+    "team_tournament_can_manage": true,
+    "team_tournament_consume_referee_v5_outbox": true,
+    "classification": "DEPENDENCIES_PRESENT"
+  },
+  "tt5dCatalogPresence": {
+    "correction_table": true,
+    "columns_external_matchup_version_revoke_reason": true,
+    "status_check_includes_pending_active_expired_revoked_completed": true,
+    "indexes": {
+      "referee_assignments_sub_match_idx": true,
+      "tt5d_correction_pending_idx": true
+    },
+    "policies": [
+      "tt5d_correction_referee_select",
+      "tt5d_correction_no_client_write"
+    ],
+    "functionsPresent": true,
+    "functionFingerprints": {
+      "referee_v5_assignment_effective_status": "c91ffb1ec3faa1e6fa2b3ea9395c4058",
+      "referee_v5_mark_assignment_expired_if_needed": "0f2e5ea3915cf34cdb0297ac3a844d4d",
+      "team_tournament_create_referee_assignment": "08f6d53845ba88c750caef815543fa46",
+      "team_tournament_revoke_referee_assignment": "f3280a760c9f4449aee6916d16c5026d",
+      "team_tournament_list_referee_assignments": "9ec273071d309641425a3d30d704a14b",
+      "referee_v5_apply_admin_result_revision": "11b7d3121eb0efd7c05cf2fd8a92da19",
+      "team_tournament_reopen_referee_match": "81f3b086288dc8da26700349bbbab3b2",
+      "team_tournament_request_referee_correction": "42b96c5091086edfc822392ed49999d2",
+      "team_tournament_review_referee_correction": "175c9ee13eeefaccdbb67160cd0a5a16",
+      "team_tournament_list_referee_corrections": "513f41aabc74d5864a879d714796b53a",
+      "referee_v5_current_user_has_assignment": "2223a22afbef0ccccc0d0df04ae873f1",
+      "referee_v5_assert_assignment_write": "e7854c03e3ffebf81a7928d6b8740ad5",
+      "team_tournament_referee_match_access_ops": "4229dd7686b6eaae990e9353e764f927"
+    }
+  },
+  "grantDriftVsCanonicalPackage": [
+    {
+      "function": "referee_v5_assignment_effective_status(text,timestamptz,timestamptz)",
+      "packageIntent": "REVOKE ALL FROM public; GRANT EXECUTE TO authenticated, service_role",
+      "stagingObserved": {
+        "anonExecute": true,
+        "authenticatedExecute": true,
+        "serviceRoleExecute": true
+      },
+      "classification": "CONFLICTING_GRANT_DRIFT"
+    },
+    {
+      "function": "referee_v5_current_user_has_assignment(text,text,text,text[])",
+      "packageIntent": "REVOKE ALL FROM public; GRANT EXECUTE TO authenticated",
+      "stagingObserved": {
+        "anonExecute": true,
+        "authenticatedExecute": true,
+        "serviceRoleExecute": true
+      },
+      "classification": "CONFLICTING_GRANT_DRIFT"
+    }
+  ],
+  "preApplyClassification": "CONFLICTING",
+  "classificationRationale": [
+    "TT5D objects are not ABSENT_AS_EXPECTED",
+    "No matching TT5D/phase5c migration provenance exists for verify-only ALREADY_EXACTLY_EQUIVALENT path",
+    "Grant matrix drifts from canonical package (anon execute where public revoke expected)",
+    "Rules require STOP on PARTIALLY_PRESENT or CONFLICTING — do not overwrite or improvise"
+  ],
+  "rowValuesCaptured": false
+}

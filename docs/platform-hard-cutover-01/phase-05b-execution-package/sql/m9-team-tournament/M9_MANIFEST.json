@@ -1,7 +1,7 @@
 {
   "family": "M9",
   "packageRoot": "docs/platform-hard-cutover-01/phase-05b-execution-package/sql/m9-team-tournament/",
-  "readiness": "BLOCKED_STAGING_CATALOG_NOT_PROVEN_FOR_TT5D",
+  "readiness": "BLOCKED_STAGING_TT5D_PREEXISTING_WITHOUT_CONTROLLED_MIGRATION_PROVENANCE",
   "productionExecutionGo": false,
   "sqlApplied": false,
   "generatedAt": "2026-07-31T05:00:01.216Z",
@@ -268,5 +268,19 @@
     "classification": "ROLLBACK_INCOMPLETE_FOR_REPLACED_FUNCTIONS",
     "afterReplaceRecovery": "BACKUP_PITR_ONLY_AFTER_REPLACE"
   },
-  "interleaveNote": "TT5B+ executable files require M10 verified first. TT5D files are checksum-protected non-executable candidates only."
+  "interleaveNote": "TT5B+ executable files require M10 verified first. TT5D files are checksum-protected non-executable candidates only.",
+  "phase5cSupersedingNote": {
+    "generatedAt": "2026-07-31T09:01:59.819Z",
+    "decision": "BLOCKED_PHASE5C_TT5D_CERTIFICATION",
+    "executableApplyCountRemains": 20,
+    "tt5dRemainNonExecutable": true,
+    "reason": [
+      "TT5D_OBJECTS_PRESENT_WITHOUT_SCHEMA_MIGRATIONS_TT5D_ROW",
+      "CANNOT_CLASSIFY_ABSENT_AS_EXPECTED",
+      "CANNOT_CLASSIFY_ALREADY_EXACTLY_EQUIVALENT_WITH_MATCHING_MIGRATION_PROVENANCE",
+      "GRANT_DRIFT_ANON_EXECUTE_ON_FUNCTIONS_REVOKED_FROM_PUBLIC_IN_CANONICAL_PACKAGE",
+      "ATOMIC_APPLY_FORBIDDEN_WHEN_PARTIALLY_PRESENT_OR_CONFLICTING"
+    ]
+  },
+  "generatedAtPhase5cUpdate": "2026-07-31T09:01:59.819Z"
 }

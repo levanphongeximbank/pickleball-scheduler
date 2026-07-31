@@ -1,0 +1,22 @@
+{
+  "generatedAt": "2026-07-31T09:01:59.819Z",
+  "intendedMigrationName": "phase5c_tt5d_190_220_staging_certification",
+  "intendedOrder": [
+    "190",
+    "200",
+    "210",
+    "220"
+  ],
+  "applyAttempted": false,
+  "applyResult": "NOT_ATTEMPTED_STOP_PREAPPLY_CONFLICTING",
+  "stagingMutationClassification": "StagingDatabaseMutations=0",
+  "productionMutations": 0,
+  "reason": "Pre-apply classification CONFLICTING / PARTIALLY_PRESENT forbids atomic overwrite apply",
+  "targetLogWouldHaveBeen": {
+    "TARGET_PROJECT_REF": "qyewbxjsiiyufanzcjcq",
+    "TARGET_ENVIRONMENT": "STAGING",
+    "PRODUCTION_GO": "NO",
+    "BACKUP_CONFIRMED": "YES",
+    "ARTEFACT_ORDER": "190,200,210,220"
+  }
+}

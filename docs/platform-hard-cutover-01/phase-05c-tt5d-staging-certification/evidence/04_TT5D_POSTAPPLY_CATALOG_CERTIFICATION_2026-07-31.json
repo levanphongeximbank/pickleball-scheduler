@@ -1,0 +1,9 @@
+{
+  "generatedAt": "2026-07-31T09:01:59.819Z",
+  "status": "NOT_RUN_APPLY_NOT_ATTEMPTED",
+  "observedPreexistingCatalogSanitized": {
+    "objectsPresent": true,
+    "migrationProvenance": "ABSENT",
+    "grantDrift": true
+  }
+}

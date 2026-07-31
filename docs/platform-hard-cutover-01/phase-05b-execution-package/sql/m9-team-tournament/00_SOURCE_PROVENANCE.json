@@ -348,7 +348,7 @@
   "afterReplaceRecovery": "BACKUP_PITR_ONLY_AFTER_REPLACE",
   "verifyArtefact": "docs/platform-hard-cutover-01/phase-05b-execution-package/sql/m9-team-tournament/99_VERIFY.sql",
   "rollbackArtefact": "docs/platform-hard-cutover-01/phase-05b-execution-package/sql/m9-team-tournament/90_ROLLBACK.sql",
-  "packageVerdict": "BLOCKED_STAGING_CATALOG_NOT_PROVEN_FOR_TT5D",
+  "packageVerdict": "BLOCKED_STAGING_TT5D_PREEXISTING_WITHOUT_CONTROLLED_MIGRATION_PROVENANCE",
   "blockers": [
     {
       "objects": [
@@ -359,5 +359,11 @@
       ],
       "reason": "Staging schema_migrations lacks tt5d_* rows and required TT5D catalog objects were absent; Production applicability not proven"
     }
-  ]
+  ],
+  "phase5cStagingCertification": {
+    "generatedAt": "2026-07-31T09:01:59.819Z",
+    "decision": "BLOCKED_PHASE5C_TT5D_CERTIFICATION",
+    "stagingApplyExecuted": false,
+    "note": "Phase 5C attempted certification; STOPPED before mutation. Original exact-byte source provenance unchanged."
+  }
 }

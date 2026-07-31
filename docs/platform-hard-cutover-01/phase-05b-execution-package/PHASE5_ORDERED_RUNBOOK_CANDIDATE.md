@@ -6,9 +6,12 @@
 **productionExecutionGo:** `false`  
 **Phase 5 readiness:** `BLOCKED_PHASE5_READINESS`  
 **PHASE_05_COMPLETE:** `NOT_ISSUED`  
-**Phase 5B package decision:** `BLOCKED_PHASE5B_EXECUTION_PACKAGE` (M9 TT5D Staging catalog not proven)
+**Phase 5B package decision (historical):** `BLOCKED_PHASE5B_EXECUTION_PACKAGE`  
+**Phase 5C superseding decision:** `BLOCKED_PHASE5C_TT5D_CERTIFICATION`  
+**Current M9 verdict:** `BLOCKED_STAGING_TT5D_PREEXISTING_WITHOUT_CONTROLLED_MIGRATION_PROVENANCE`  
+**M9 executable count remains:** `20` (TT5D `190–220` still non-executable)
 
-This document does **not** authorize Production execution. **CODE/SQL PACKAGE ONLY — NOT APPLIED.**
+This document does **not** authorize Production execution. **CODE/SQL PACKAGE ONLY — NOT APPLIED.** Phase 5C did **not** apply TT5D on Staging (STOP before mutation).
 
 ---
 
