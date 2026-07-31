@@ -1,6 +1,18 @@
 {
   "marker": "PLATFORM_HARD_CUTOVER_01_PHASE5B_ORDER_CHECKSUM_CERT",
-  "generatedAt": "2026-07-31T12:00:00.000Z",
+  "correction": "PHASE5B_V2_INTEGRITY",
+  "generatedAt": "2026-07-31T05:00:01.216Z",
+  "checksumFieldAuthoritative": "sha256ExactGitBlobBytes",
+  "secondaryField": "sha256CanonicalLf",
+  "conflictsCorrected": true,
+  "exampleCorrection": {
+    "file": "10_TT2B_LINEUP_DEADLINE.sql",
+    "priorWorkingTreeExactBytes": "777BFC77661AE1E18FFF442CB7B78F38EE6C724F17A7A9B1DDECF4A0053FC91B",
+    "priorCanonicalLfOrMismatchedField": "1E4429C77C32E7FF224FCFA167B9121767D3665F6AA1E6625203CF830C8A2A1F",
+    "sha256ExactGitBlobBytes": "1E4429C77C32E7FF224FCFA167B9121767D3665F6AA1E6625203CF830C8A2A1F",
+    "sha256CanonicalLf": "1E4429C77C32E7FF224FCFA167B9121767D3665F6AA1E6625203CF830C8A2A1F",
+    "note": "Authoritative value is git blob bytes; working-tree CRLF must not be labeled exact-byte"
+  },
   "executionSequenceSteps": [
     "M0",
     "M1",
@@ -13,17 +25,16 @@
     "M8",
     "M9A_TT2B_TT4",
     "M10",
-    "M9B_TT5B_TT6B",
+    "M9B_TT5B_TT5C_TT6B",
     "M11"
   ],
-  "interleaveRequired": true,
-  "interleaveReason": "M9 TT5B+ depends on M10 Referee V5 objects",
-  "checksumManifest": "docs/platform-hard-cutover-01/phase-05b-execution-package/PHASE5B_CHECKSUM_MANIFEST.json",
-  "fileCount": 42,
+  "m11Action": "VERIFY_ONLY_ALREADY_EQUIVALENT",
+  "tt5dInExecutableOrder": false,
   "m8TenantContractRetained": {
     "tenant_id": "text",
     "p_tenant_id": "text",
     "user_venue_id_result": "text"
   },
+  "exactPathAudit": "PASS_NO_GLOBS_OR_RANGES_IN_FAMILY_ARTEFACTS",
   "mutationsExecuted": 0
 }

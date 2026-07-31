@@ -5,11 +5,12 @@
 **`executionRunbookAccepted = false`** — do **not** treat this file as an execution-ready runbook.  
 **`productionExecutionGo = false`**.  
 **Decision context:** `BLOCKED_PHASE5_READINESS`.  
-**Phase 5B package decision:** `BLOCKED_PHASE5B_EXECUTION_PACKAGE` (see evidence `05_PHASE5B_DECISION_2026-07-31.json`).  
+**Phase 5B package decision:** `BLOCKED_PHASE5B_EXECUTION_PACKAGE` (V2 integrity correction; see evidence `05_PHASE5B_DECISION_2026-07-31.json`).  
 **Do not issue:** `PLATFORM_HARD_CUTOVER_01_PHASE_05_COMPLETE`.
 
 **Candidate (exact sequence):**  
-`docs/platform-hard-cutover-01/phase-05b-execution-package/PHASE5_ORDERED_RUNBOOK_CANDIDATE.md`
+`docs/platform-hard-cutover-01/phase-05b-execution-package/PHASE5_ORDERED_RUNBOOK_CANDIDATE.md`  
+Checksum SSOT field: `sha256ExactGitBlobBytes`. M11 action: `VERIFY_ONLY_ALREADY_EQUIVALENT`. TT5D is non-executable candidate only.
 
 ## Document conflict resolution
 

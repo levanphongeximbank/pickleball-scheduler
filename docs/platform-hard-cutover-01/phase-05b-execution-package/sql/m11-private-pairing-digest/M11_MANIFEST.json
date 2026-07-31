@@ -4,24 +4,45 @@
   "readiness": "READY_STAGING_CATALOG_DERIVED_ALREADY_EQUIVALENT_ON_PRODUCTION",
   "productionExecutionGo": false,
   "sqlApplied": false,
+  "generatedAt": "2026-07-31T05:00:01.216Z",
   "provenanceClass": "STAGING_CATALOG_DERIVED",
-  "orderedApply": [
+  "productionRunbookAction": "VERIFY_ONLY_ALREADY_EQUIVALENT",
+  "checksumFieldAuthoritative": "sha256ExactGitBlobBytes",
+  "orderedApply": [],
+  "referenceCandidates": [
     {
       "order": 10,
       "file": "10_PRIVATE_PAIRING_DIGEST.sql",
-      "sha256": "87085C1C8E5C3B5D0835192930482F94CC2895F2C21AFA57B5E16283D7B5A2A7",
+      "path": "docs/platform-hard-cutover-01/phase-05b-execution-package/sql/m11-private-pairing-digest/10_PRIVATE_PAIRING_DIGEST.sql",
+      "sha256ExactGitBlobBytes": "87085C1C8E5C3B5D0835192930482F94CC2895F2C21AFA57B5E16283D7B5A2A7",
+      "sha256CanonicalLf": "87085C1C8E5C3B5D0835192930482F94CC2895F2C21AFA57B5E16283D7B5A2A7",
+      "executionEligible": false,
+      "classification": "REFERENCE_CANDIDATE_ALREADY_EQUIVALENT_DO_NOT_APPLY",
       "stagingMigration": "private_pairing_pr4_digest_patch"
     }
   ],
+  "nonExecutionCandidates": [
+    {
+      "file": "10_PRIVATE_PAIRING_DIGEST.sql",
+      "path": "docs/platform-hard-cutover-01/phase-05b-execution-package/sql/m11-private-pairing-digest/10_PRIVATE_PAIRING_DIGEST.sql",
+      "executionEligible": false,
+      "classification": "REFERENCE_CANDIDATE_ALREADY_EQUIVALENT_DO_NOT_APPLY"
+    }
+  ],
   "verify": {
-    "file": "99_VERIFY.sql",
-    "sha256": "BF97C807C61F467102B2371B36F6EF0F5300135C177EC05EC2305038B0DD8757"
+    "path": "docs/platform-hard-cutover-01/phase-05b-execution-package/sql/m11-private-pairing-digest/99_VERIFY.sql",
+    "sha256ExactGitBlobBytes": "BF97C807C61F467102B2371B36F6EF0F5300135C177EC05EC2305038B0DD8757",
+    "sha256CanonicalLf": "BF97C807C61F467102B2371B36F6EF0F5300135C177EC05EC2305038B0DD8757",
+    "gitBlobOid": "379d09eae03f18b5302275404fc52078aa95fef6",
+    "hashSource": "INDEX"
   },
   "rollback": {
-    "file": "90_ROLLBACK.sql",
-    "sha256": "7E9EA6BAD1522EDB3067946B81EF0780D4B1CCD4822C16A53AE0F7E2FD1B411E",
+    "path": "docs/platform-hard-cutover-01/phase-05b-execution-package/sql/m11-private-pairing-digest/90_ROLLBACK.sql",
+    "sha256ExactGitBlobBytes": "7E9EA6BAD1522EDB3067946B81EF0780D4B1CCD4822C16A53AE0F7E2FD1B411E",
+    "sha256CanonicalLf": "7E9EA6BAD1522EDB3067946B81EF0780D4B1CCD4822C16A53AE0F7E2FD1B411E",
+    "gitBlobOid": "c86c1993b54d38d892c3bb7fabfd420865e6ccaa",
+    "hashSource": "INDEX",
     "classification": "RESTORE_SAME_CATALOG_DERIVED_BODY__NOOP_WHEN_ALREADY_EQUIVALENT"
   },
-  "productionApplicability": "ALREADY_EQUIVALENT_IDEMPOTENT_APPLY",
-  "provenanceSha256": "F76337484F5B698BE8A0F8671610859FD665CC177443E9B05F1A909005CB1D32"
+  "productionApplicability": "ALREADY_EQUIVALENT_VERIFY_ONLY"
 }

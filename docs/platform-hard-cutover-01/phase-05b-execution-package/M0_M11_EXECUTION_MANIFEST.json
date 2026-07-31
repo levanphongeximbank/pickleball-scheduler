@@ -1,6 +1,7 @@
 {
   "marker": "PLATFORM_HARD_CUTOVER_01_PHASE5B_M0_M11_EXECUTION_MANIFEST",
-  "generatedAt": "2026-07-31T12:00:00.000Z",
+  "correction": "PHASE5B_V2_INTEGRITY",
+  "generatedAt": "2026-07-31T05:00:01.216Z",
   "baseSha": "e3bdb55799f91b3e5d52f867d947de2aac12f52a",
   "productionExecutionGo": false,
   "executionRunbookAccepted": false,
@@ -10,6 +11,7 @@
   "canonicalMigrationScope": "M0_TO_M11_ACCEPTED",
   "club_ai_data": "PERMANENT_DROP_NO_RECREATE",
   "backupPitrRestore": "NOT_PROVABLE",
+  "checksumFieldAuthoritative": "sha256ExactGitBlobBytes",
   "mutationsExecuted": {
     "staging": 0,
     "production": 0
@@ -26,15 +28,28 @@
     {
       "step": "M1",
       "action": "APPLY_THEN_VERIFY",
-      "packageRoot": "docs/customer-management/phase-3/",
-      "note": "Exact 10..50 authored package; not rewritten in Phase 5B"
+      "orderedApply": [
+        "docs/customer-management/phase-3/10_CUSTOMER_PHASE_3_TABLES.sql",
+        "docs/customer-management/phase-3/20_CUSTOMER_PHASE_3_INDEXES.sql",
+        "docs/customer-management/phase-3/30_CUSTOMER_PHASE_3_RLS.sql",
+        "docs/customer-management/phase-3/40_CUSTOMER_PHASE_3_SAVE_RPC.sql",
+        "docs/customer-management/phase-3/50_CUSTOMER_PHASE_3_GRANTS.sql"
+      ],
+      "verify": [
+        "docs/customer-management/phase-3/99_CUSTOMER_PHASE_3_VERIFICATION.sql"
+      ],
+      "rollback": [
+        "docs/customer-management/phase-3/90_CUSTOMER_PHASE_3_ROLLBACK.sql"
+      ]
     },
     {
       "step": "M2",
-      "action": "APPLY_THEN_VERIFY",
-      "artefacts": [
+      "action": "APPLY_THEN_CATALOG_VERIFY",
+      "orderedApply": [
         "docs/supabase-finance-phase1f.sql"
       ],
+      "verify": [],
+      "verificationBoundary": "NO_AUTHORED_99_VERIFY_SQL — Owner SELECT/catalog verification required",
       "rollback": [
         "docs/supabase-finance-phase1f-rollback.sql"
       ]
@@ -42,53 +57,124 @@
     {
       "step": "M3",
       "action": "APPLY_THEN_VERIFY",
-      "packageRoots": [
-        "docs/crm/phase-1g/",
-        "docs/crm/phase-1h/"
+      "orderedApply": [
+        "docs/crm/phase-1g/10_CRM_PHASE_1G_TABLES.sql",
+        "docs/crm/phase-1g/20_CRM_PHASE_1G_INDEXES.sql",
+        "docs/crm/phase-1g/30_CRM_PHASE_1G_RLS.sql",
+        "docs/crm/phase-1g/40_CRM_PHASE_1G_CLAIM_RELEASE_RPCS.sql",
+        "docs/crm/phase-1g/50_CRM_PHASE_1G_GRANTS.sql",
+        "docs/crm/phase-1g/60_CRM_PHASE_1G_CONSENT_IMMUTABLE.sql",
+        "docs/crm/phase-1h/10_CRM_PHASE_1H_PERMISSION_SEED.sql",
+        "docs/crm/phase-1h/20_CRM_PHASE_1H_ROLE_PERMISSION_ASSIGNMENT.sql"
+      ],
+      "verify": [
+        "docs/crm/phase-1h-b/15_PRE_APPLY_OBJECT_STATE_CHECK.sql"
+      ],
+      "rollback": [
+        "docs/crm/phase-1h-b/14_CRM_PHASE_1H_B_STAGING_ROLLBACK.sql"
       ]
     },
     {
       "step": "M4",
       "action": "APPLY_THEN_VERIFY",
-      "packageRoot": "docs/reporting-analytics/reporting-02/"
+      "orderedApply": [
+        "docs/reporting-analytics/reporting-02/10_REPORTING_02_TABLES.sql",
+        "docs/reporting-analytics/reporting-02/20_REPORTING_02_INDEXES.sql",
+        "docs/reporting-analytics/reporting-02/30_REPORTING_02_RLS.sql",
+        "docs/reporting-analytics/reporting-02/40_REPORTING_02_PERMISSION_SEED.sql",
+        "docs/reporting-analytics/reporting-02/50_REPORTING_02_GRANTS.sql"
+      ],
+      "verify": [
+        "docs/reporting-analytics/reporting-02/99_REPORTING_02_VERIFICATION.sql"
+      ],
+      "rollback": [
+        "docs/reporting-analytics/reporting-02/90_REPORTING_02_ROLLBACK.sql",
+        "docs/reporting-analytics/reporting-02/91_REPORTING_02_PERMISSION_SEED_ROLLBACK.sql"
+      ]
     },
     {
       "step": "M5",
       "action": "APPLY_THEN_VERIFY",
-      "packageRoots": [
-        "docs/news-public-content/news-02/",
-        "docs/news-public-content/news-03/",
-        "docs/news-public-content/news-04/"
+      "orderedApply": [
+        "docs/news-public-content/news-02/10_NEWS_PHASE_02_TABLES.sql",
+        "docs/news-public-content/news-02/20_NEWS_PHASE_02_INDEXES.sql",
+        "docs/news-public-content/news-02/30_NEWS_PHASE_02_RLS.sql",
+        "docs/news-public-content/news-02/40_NEWS_PHASE_02_SAVE_RPC.sql",
+        "docs/news-public-content/news-02/50_NEWS_PHASE_02_GRANTS.sql",
+        "docs/news-public-content/news-02/60_NEWS_PHASE_02_IMMUTABLE_REVISIONS.sql",
+        "docs/news-public-content/news-03/10_NEWS_PHASE_03_PERMISSION_SEED.sql",
+        "docs/news-public-content/news-04/10_NEWS_PHASE_04_PUBLIC_RPC_LIVE_ONLY.sql"
+      ],
+      "verify": [
+        "docs/news-public-content/news-02/99_NEWS_PHASE_02_VERIFICATION.sql",
+        "docs/news-public-content/news-03/99_NEWS_PHASE_03_PERMISSION_SEED_VERIFICATION.sql",
+        "docs/news-public-content/news-04/99_NEWS_PHASE_04_PUBLIC_BOUNDARY_VERIFICATION.sql"
+      ],
+      "rollback": [
+        "docs/news-public-content/news-02/90_NEWS_PHASE_02_ROLLBACK.sql",
+        "docs/news-public-content/news-03/90_NEWS_PHASE_03_PERMISSION_SEED_ROLLBACK.sql"
       ]
     },
     {
       "step": "M6",
       "action": "APPLY_THEN_VERIFY",
-      "packageRoots": [
-        "docs/coaching-training/coaching-02/",
-        "docs/coaching-training/coaching-04/"
+      "orderedApply": [
+        "docs/coaching-training/coaching-02/10_COACHING_02_TABLES.sql",
+        "docs/coaching-training/coaching-02/15_COACHING_02_PERMISSION_SEED.sql",
+        "docs/coaching-training/coaching-02/20_COACHING_02_INDEXES.sql",
+        "docs/coaching-training/coaching-02/30_COACHING_02_RLS.sql",
+        "docs/coaching-training/coaching-02/40_COACHING_02_ATTENDANCE_CORRECTION_RPC.sql",
+        "docs/coaching-training/coaching-02/45_COACHING_02_ENTITLEMENT_CONSUME_RPC.sql",
+        "docs/coaching-training/coaching-02/50_COACHING_02_GRANTS.sql",
+        "docs/coaching-training/coaching-02/60_COACHING_02_IMMUTABLE.sql",
+        "docs/coaching-training/coaching-04/10_COACHING_04_ASSIGNMENT_HELPERS.sql",
+        "docs/coaching-training/coaching-04/11_COACHING_04_PLAYER_SELF_SCOPE_HELPERS.sql",
+        "docs/coaching-training/coaching-04/20_COACHING_04_ASSIGNMENT_RLS.sql",
+        "docs/coaching-training/coaching-04/21_COACHING_04_PLAYER_SELF_SCOPE_RLS.sql",
+        "docs/coaching-training/coaching-04/30_COACHING_04_SCOPED_RPCS.sql",
+        "docs/coaching-training/coaching-04/41_COACHING_04_HELPER_EXECUTE_ACL_HARDENING.sql"
+      ],
+      "verify": [
+        "docs/coaching-training/coaching-02/99_COACHING_02_VERIFICATION.sql",
+        "docs/coaching-training/coaching-04/41_COACHING_04_HELPER_EXECUTE_ACL_HARDENING.verify.sql",
+        "docs/coaching-training/coaching-04/99_COACHING_04_VERIFICATION.sql"
+      ],
+      "rollback": [
+        "docs/coaching-training/coaching-02/90_COACHING_02_ROLLBACK.sql",
+        "docs/coaching-training/coaching-04/90_COACHING_04_ROLLBACK.sql"
+      ],
+      "nonExecutionCandidates": [
+        "docs/coaching-training/coaching-04/40_COACHING_04_PERMISSION_SEED_AND_GRANTS.proposal.sql"
       ]
     },
     {
       "step": "M7",
-      "action": "APPLY_THEN_VERIFY",
-      "artefactsGlob": "docs/competition-core/supabase-cc02*.sql"
+      "action": "APPLY_THEN_CATALOG_VERIFY",
+      "orderedApply": [
+        "docs/competition-core/supabase-cc02-rating-v2.sql",
+        "docs/competition-core/supabase-cc02c-rating-durability.sql",
+        "docs/competition-core/supabase-cc02d-staging-hardening.sql"
+      ],
+      "irreversibilityBoundary": "IRREVERSIBLE_WITHOUT_BACKUP_RESTORE"
     },
     {
       "step": "M8",
       "action": "APPLY_THEN_VERIFY",
-      "packageRoot": "docs/platform-hard-cutover-01/phase-04/sql/m8-competition-remote-ssot/",
       "orderedApply": [
-        "10_TABLES.sql",
-        "20_INDEXES.sql",
-        "30_RLS.sql",
-        "40_RPC_COMMAND_AND_FINALIZE.sql",
-        "50_GRANTS.sql",
-        "51_GRANTS_TIGHTEN.sql",
-        "52_GRANTS_EXACT_BASELINE.sql"
+        "docs/platform-hard-cutover-01/phase-04/sql/m8-competition-remote-ssot/10_TABLES.sql",
+        "docs/platform-hard-cutover-01/phase-04/sql/m8-competition-remote-ssot/20_INDEXES.sql",
+        "docs/platform-hard-cutover-01/phase-04/sql/m8-competition-remote-ssot/30_RLS.sql",
+        "docs/platform-hard-cutover-01/phase-04/sql/m8-competition-remote-ssot/40_RPC_COMMAND_AND_FINALIZE.sql",
+        "docs/platform-hard-cutover-01/phase-04/sql/m8-competition-remote-ssot/50_GRANTS.sql",
+        "docs/platform-hard-cutover-01/phase-04/sql/m8-competition-remote-ssot/51_GRANTS_TIGHTEN.sql",
+        "docs/platform-hard-cutover-01/phase-04/sql/m8-competition-remote-ssot/52_GRANTS_EXACT_BASELINE.sql"
       ],
-      "verify": "99_VERIFY.sql",
-      "rollback": "90_ROLLBACK.sql",
+      "verify": [
+        "docs/platform-hard-cutover-01/phase-04/sql/m8-competition-remote-ssot/99_VERIFY.sql"
+      ],
+      "rollback": [
+        "docs/platform-hard-cutover-01/phase-04/sql/m8-competition-remote-ssot/90_ROLLBACK.sql"
+      ],
       "tenantContract": {
         "tenant_id": "text",
         "p_tenant_id": "text",
@@ -100,190 +186,6 @@
       "action": "APPLY_THEN_VERIFY_PARTIAL",
       "family": "M9",
       "orderedApply": [
-        "10_TT2B_LINEUP_DEADLINE.sql",
-        "20_TT2C_LINEUP_VALIDATION.sql",
-        "30_TT2C_SUBMIT_LINEUP_VALIDATION.sql",
-        "40_TT2D_RANDOMIZE_LOCK.sql",
-        "50_TT2E_ATOMIC_PUBLISH.sql",
-        "60_TT2E_GET_SETUP_FIX.sql",
-        "70_TT3_LINEUP_OVERRIDE.sql",
-        "80_TT3_GET_SETUP_PATCH.sql",
-        "85_TT4_FORFEIT_WITHDRAWAL.sql",
-        "100_TT4_GET_SETUP_PATCH.sql"
-      ],
-      "packageRoot": "docs/platform-hard-cutover-01/phase-05b-execution-package/sql/m9-team-tournament/",
-      "stopAfter": "family_partial_verify_TT2_TT4"
-    },
-    {
-      "step": "M10",
-      "action": "APPLY_THEN_VERIFY",
-      "family": "M10",
-      "packageRoot": "docs/platform-hard-cutover-01/phase-05b-execution-package/sql/m10-referee-v5/",
-      "orderedApply": [
-        "10_V5A_REFEREE_FOUNDATION.sql",
-        "20_V5D_REFEREE_PERSISTENCE.sql",
-        "30_V5D1_REFEREE_HARDENING.sql",
-        "40_V5D32_IDEMPOTENCY_UNDO.sql"
-      ],
-      "verify": "99_VERIFY.sql",
-      "rollback": "90_ROLLBACK.sql"
-    },
-    {
-      "step": "M9B_TT5B_TT6B",
-      "action": "APPLY_THEN_VERIFY",
-      "family": "M9",
-      "precondition": "M10_VERIFY_PASS",
-      "orderedApply": [
-        "110_TT5B_BRIDGE_SCHEMA.sql",
-        "120_TT5B_PROVISION_RPC.sql",
-        "130_TT5B_LEGACY_LOCK_GUARD.sql",
-        "140_TT5B_GET_SETUP_PATCH.sql",
-        "150_TT5C_RESULT_OUTBOX.sql",
-        "160_TT5C_RESULT_PROPAGATION.sql",
-        "170_TT5C_STANDINGS_RECOMPUTE.sql",
-        "180_TT5C_REPROVISION.sql",
-        "190_TT5D_ASSIGNMENT_SAFETY.sql",
-        "200_TT5D_REOPEN_RESULT.sql",
-        "210_TT5D_CORRECTION.sql",
-        "220_TT5D_SECURITY_GUARDS.sql",
-        "230_TT6B_REALTIME_SECURITY.sql",
-        "240_TT6B_REALTIME_CORE.sql"
-      ],
-      "packageRoot": "docs/platform-hard-cutover-01/phase-05b-execution-package/sql/m9-team-tournament/",
-      "verify": "99_VERIFY.sql",
-      "rollback": "90_ROLLBACK.sql"
-    },
-    {
-      "step": "M11",
-      "action": "APPLY_THEN_VERIFY",
-      "family": "M11",
-      "packageRoot": "docs/platform-hard-cutover-01/phase-05b-execution-package/sql/m11-private-pairing-digest/",
-      "orderedApply": [
-        "10_PRIVATE_PAIRING_DIGEST.sql"
-      ],
-      "verify": "99_VERIFY.sql",
-      "rollback": "90_ROLLBACK.sql"
-    }
-  ],
-  "families": {
-    "M0": {
-      "family": "M0",
-      "purpose": "G3-B12 club_ai_data anon write lockdown",
-      "productionClassification": "already_present_and_verified",
-      "packageReadiness": "VERIFY_ONLY",
-      "exactOrderedApplyFiles": [],
-      "verifyArtefact": "docs/production-security/prod-sec-g3-b12-01/11_VERIFY.sql",
-      "rollbackArtefact": "leave_locked_do_not_reopen",
-      "stopPoint": "after_verify_before_M1",
-      "productionApplicability": "ALREADY_PRESENT"
-    },
-    "M1": {
-      "family": "M1",
-      "purpose": "Customer",
-      "productionClassification": "missing",
-      "packageReadiness": "AUTHORED_EXISTING_NOT_REWRITTEN",
-      "exactOrderedApplyFiles": "docs/customer-management/phase-3/10..50_*.sql",
-      "dependencyFamilies": [
-        "identity"
-      ],
-      "verifyArtefact": "package verify",
-      "rollbackArtefact": "docs/customer-management/phase-3/90_*.sql",
-      "stopPoint": "after_M1_verify",
-      "productionApplicability": "AUTHORED_PACKAGE"
-    },
-    "M2": {
-      "family": "M2",
-      "purpose": "Finance",
-      "productionClassification": "missing",
-      "packageReadiness": "AUTHORED_EXISTING_NOT_REWRITTEN",
-      "exactOrderedApplyFiles": [
-        "docs/supabase-finance-phase1f.sql"
-      ],
-      "verifyArtefact": "static/staging evidence",
-      "rollbackArtefact": "docs/supabase-finance-phase1f-rollback.sql",
-      "stopPoint": "after_M2_verify",
-      "productionApplicability": "AUTHORED_PACKAGE"
-    },
-    "M3": {
-      "family": "M3",
-      "purpose": "CRM",
-      "productionClassification": "missing",
-      "packageReadiness": "AUTHORED_EXISTING_NOT_REWRITTEN",
-      "exactOrderedApplyFiles": "docs/crm/phase-1g/10..60 + phase-1h/10,20",
-      "stopPoint": "after_M3_verify",
-      "productionApplicability": "AUTHORED_PACKAGE"
-    },
-    "M4": {
-      "family": "M4",
-      "purpose": "Reporting",
-      "productionClassification": "missing",
-      "packageReadiness": "AUTHORED_EXISTING_NOT_REWRITTEN",
-      "exactOrderedApplyFiles": "docs/reporting-analytics/reporting-02/10..50",
-      "verifyArtefact": "99_*.sql",
-      "rollbackArtefact": "90/91_*.sql",
-      "stopPoint": "after_M4_verify",
-      "productionApplicability": "AUTHORED_PACKAGE"
-    },
-    "M5": {
-      "family": "M5",
-      "purpose": "News",
-      "productionClassification": "missing",
-      "packageReadiness": "AUTHORED_EXISTING_NOT_REWRITTEN",
-      "exactOrderedApplyFiles": "news-02/03/04 packages",
-      "stopPoint": "after_M5_verify",
-      "productionApplicability": "AUTHORED_PACKAGE"
-    },
-    "M6": {
-      "family": "M6",
-      "purpose": "Coaching",
-      "productionClassification": "missing",
-      "packageReadiness": "AUTHORED_EXISTING_NOT_REWRITTEN",
-      "exactOrderedApplyFiles": "coaching-02 + coaching-04",
-      "stopPoint": "after_M6_verify",
-      "productionApplicability": "AUTHORED_PACKAGE"
-    },
-    "M7": {
-      "family": "M7",
-      "purpose": "Competition Core cc02",
-      "productionClassification": "missing",
-      "packageReadiness": "AUTHORED_EXISTING_NOT_REWRITTEN",
-      "exactOrderedApplyFiles": "docs/competition-core/supabase-cc02*.sql",
-      "stopPoint": "after_M7_verify",
-      "productionApplicability": "AUTHORED_PACKAGE"
-    },
-    "M8": {
-      "family": "M8",
-      "purpose": "Competition Remote SSOT",
-      "productionClassification": "missing",
-      "packageReadiness": "AUTHORED_PHASE4_NOT_REWRITTEN",
-      "exactOrderedApplyFiles": [
-        "docs/platform-hard-cutover-01/phase-04/sql/m8-competition-remote-ssot/10_TABLES.sql",
-        "docs/platform-hard-cutover-01/phase-04/sql/m8-competition-remote-ssot/20_INDEXES.sql",
-        "docs/platform-hard-cutover-01/phase-04/sql/m8-competition-remote-ssot/30_RLS.sql",
-        "docs/platform-hard-cutover-01/phase-04/sql/m8-competition-remote-ssot/40_RPC_COMMAND_AND_FINALIZE.sql",
-        "docs/platform-hard-cutover-01/phase-04/sql/m8-competition-remote-ssot/50_GRANTS.sql",
-        "docs/platform-hard-cutover-01/phase-04/sql/m8-competition-remote-ssot/51_GRANTS_TIGHTEN.sql",
-        "docs/platform-hard-cutover-01/phase-04/sql/m8-competition-remote-ssot/52_GRANTS_EXACT_BASELINE.sql"
-      ],
-      "verifyArtefact": "docs/platform-hard-cutover-01/phase-04/sql/m8-competition-remote-ssot/99_VERIFY.sql",
-      "rollbackArtefact": "docs/platform-hard-cutover-01/phase-04/sql/m8-competition-remote-ssot/90_ROLLBACK.sql",
-      "tenantContract": {
-        "tenant_id": "text",
-        "p_tenant_id": "text",
-        "user_venue_id_result": "text"
-      },
-      "stopPoint": "after_M8_verify",
-      "productionApplicability": "AUTHORED_PACKAGE",
-      "dependencyFamilies": [
-        "identity_user_venue_id"
-      ]
-    },
-    "M9": {
-      "family": "M9",
-      "purpose": "Team Tournament remainder TT2B–TT6B",
-      "productionClassification": "partially_present_p1_tt1b_only",
-      "packageReadiness": "BLOCKED_STAGING_CATALOG_NOT_PROVEN_FOR_TT5D",
-      "exactOrderedApplyFiles": [
         "docs/platform-hard-cutover-01/phase-05b-execution-package/sql/m9-team-tournament/10_TT2B_LINEUP_DEADLINE.sql",
         "docs/platform-hard-cutover-01/phase-05b-execution-package/sql/m9-team-tournament/20_TT2C_LINEUP_VALIDATION.sql",
         "docs/platform-hard-cutover-01/phase-05b-execution-package/sql/m9-team-tournament/30_TT2C_SUBMIT_LINEUP_VALIDATION.sql",
@@ -293,7 +195,33 @@
         "docs/platform-hard-cutover-01/phase-05b-execution-package/sql/m9-team-tournament/70_TT3_LINEUP_OVERRIDE.sql",
         "docs/platform-hard-cutover-01/phase-05b-execution-package/sql/m9-team-tournament/80_TT3_GET_SETUP_PATCH.sql",
         "docs/platform-hard-cutover-01/phase-05b-execution-package/sql/m9-team-tournament/85_TT4_FORFEIT_WITHDRAWAL.sql",
-        "docs/platform-hard-cutover-01/phase-05b-execution-package/sql/m9-team-tournament/100_TT4_GET_SETUP_PATCH.sql",
+        "docs/platform-hard-cutover-01/phase-05b-execution-package/sql/m9-team-tournament/100_TT4_GET_SETUP_PATCH.sql"
+      ],
+      "stopAfter": "family_partial_verify_TT2_TT4"
+    },
+    {
+      "step": "M10",
+      "action": "APPLY_THEN_VERIFY",
+      "family": "M10",
+      "orderedApply": [
+        "docs/platform-hard-cutover-01/phase-05b-execution-package/sql/m10-referee-v5/10_V5A_REFEREE_FOUNDATION.sql",
+        "docs/platform-hard-cutover-01/phase-05b-execution-package/sql/m10-referee-v5/20_V5D_REFEREE_PERSISTENCE.sql",
+        "docs/platform-hard-cutover-01/phase-05b-execution-package/sql/m10-referee-v5/30_V5D1_REFEREE_HARDENING.sql",
+        "docs/platform-hard-cutover-01/phase-05b-execution-package/sql/m10-referee-v5/40_V5D32_IDEMPOTENCY_UNDO.sql"
+      ],
+      "verify": [
+        "docs/platform-hard-cutover-01/phase-05b-execution-package/sql/m10-referee-v5/99_VERIFY.sql"
+      ],
+      "rollback": [
+        "docs/platform-hard-cutover-01/phase-05b-execution-package/sql/m10-referee-v5/90_ROLLBACK.sql"
+      ]
+    },
+    {
+      "step": "M9B_TT5B_TT5C_TT6B",
+      "action": "APPLY_THEN_VERIFY",
+      "family": "M9",
+      "precondition": "M10_VERIFY_PASS",
+      "orderedApply": [
         "docs/platform-hard-cutover-01/phase-05b-execution-package/sql/m9-team-tournament/110_TT5B_BRIDGE_SCHEMA.sql",
         "docs/platform-hard-cutover-01/phase-05b-execution-package/sql/m9-team-tournament/120_TT5B_PROVISION_RPC.sql",
         "docs/platform-hard-cutover-01/phase-05b-execution-package/sql/m9-team-tournament/130_TT5B_LEGACY_LOCK_GUARD.sql",
@@ -302,46 +230,765 @@
         "docs/platform-hard-cutover-01/phase-05b-execution-package/sql/m9-team-tournament/160_TT5C_RESULT_PROPAGATION.sql",
         "docs/platform-hard-cutover-01/phase-05b-execution-package/sql/m9-team-tournament/170_TT5C_STANDINGS_RECOMPUTE.sql",
         "docs/platform-hard-cutover-01/phase-05b-execution-package/sql/m9-team-tournament/180_TT5C_REPROVISION.sql",
-        "docs/platform-hard-cutover-01/phase-05b-execution-package/sql/m9-team-tournament/190_TT5D_ASSIGNMENT_SAFETY.sql",
-        "docs/platform-hard-cutover-01/phase-05b-execution-package/sql/m9-team-tournament/200_TT5D_REOPEN_RESULT.sql",
-        "docs/platform-hard-cutover-01/phase-05b-execution-package/sql/m9-team-tournament/210_TT5D_CORRECTION.sql",
-        "docs/platform-hard-cutover-01/phase-05b-execution-package/sql/m9-team-tournament/220_TT5D_SECURITY_GUARDS.sql",
         "docs/platform-hard-cutover-01/phase-05b-execution-package/sql/m9-team-tournament/230_TT6B_REALTIME_SECURITY.sql",
         "docs/platform-hard-cutover-01/phase-05b-execution-package/sql/m9-team-tournament/240_TT6B_REALTIME_CORE.sql"
       ],
-      "sha256ByFile": {
-        "10_TT2B_LINEUP_DEADLINE.sql": "777BFC77661AE1E18FFF442CB7B78F38EE6C724F17A7A9B1DDECF4A0053FC91B",
-        "20_TT2C_LINEUP_VALIDATION.sql": "91EE6A53D6162DA6E2E35A508E44A7FB8D679974B729F7FCE6364199EE45AA25",
-        "30_TT2C_SUBMIT_LINEUP_VALIDATION.sql": "F49B5CF09AAFE9B5AC39454F2A1F56029559092A31BCA828E0CDC12EB789CE06",
-        "40_TT2D_RANDOMIZE_LOCK.sql": "847F04D822D9B3779D4D6E74072FBAFB18E38784C0DB52B67CD34346DBC13378",
-        "50_TT2E_ATOMIC_PUBLISH.sql": "43FFBC7B35C3666D5DC25AE6401F5AB819E4DDCD0CB720C219D83ECF58BFF1D7",
-        "60_TT2E_GET_SETUP_FIX.sql": "24F728EE957733C5F9CABBB0B479BB9DE50BA1CA7F9C5114C740CF48D3BE2F87",
-        "70_TT3_LINEUP_OVERRIDE.sql": "51EA187326FA886915CEE7D8CA67B384B582F02763E413A7E3634606CDC14F96",
-        "80_TT3_GET_SETUP_PATCH.sql": "58007708DDBC43E4DC505FBE485E8669BA1D22BE0CBAF999324035AE4FE5A03F",
-        "85_TT4_FORFEIT_WITHDRAWAL.sql": "E9B91652686C14F539CB8496C08A832B19F793B23CB5851E95DAA7DB8E244CA4",
-        "100_TT4_GET_SETUP_PATCH.sql": "9A06A9129AE26E23AC367EEE12CE4548C2A06D3F184840D5CC21E88152C7525F",
-        "110_TT5B_BRIDGE_SCHEMA.sql": "20BA83B55E9BB02F5097E8BD2B70432AB3E1579FED0B4704DB7621A739C108A5",
-        "120_TT5B_PROVISION_RPC.sql": "E70E0494C24CBEF6E17065DDFB4F68793A50E33798419DC014F801335CFFEE3F",
-        "130_TT5B_LEGACY_LOCK_GUARD.sql": "60FDC7DA03D9F1382C1C067B81BA1BCAB4C48538E66E648FC51DB1DF18E06BBA",
-        "140_TT5B_GET_SETUP_PATCH.sql": "734994D3D069CFD1196DDE4EFD5E200981E98F302E90129E8CCA4A8ABAFD875B",
-        "150_TT5C_RESULT_OUTBOX.sql": "72DBCD0B9C65B8DA435E5C31427F725CCB63058EAF80226959ADAE609D8F6EF9",
-        "160_TT5C_RESULT_PROPAGATION.sql": "D5D47F3F2251AE0E7F819287F2A97A7884A4D3CCADB1107CFD8389B46BA437BD",
-        "170_TT5C_STANDINGS_RECOMPUTE.sql": "E0AD7146B005635A7EB6122EEBD4EDFC7026F554BACA2CA5C7F4E112075CB226",
-        "180_TT5C_REPROVISION.sql": "FDCC80A11DB041E96FC6F441F22F5AE5585FA7856BA884F8E0DA16B05A7C6C98",
-        "190_TT5D_ASSIGNMENT_SAFETY.sql": "70BB2C26723BC3615BC5353159364656BBA031FE510C4D28B8E0BB2CC9ECBCAA",
-        "200_TT5D_REOPEN_RESULT.sql": "28F0E9366E51C9589EA8E4EA0F4064A5BB0A5DE70B4210A5DA398CA3569B6218",
-        "210_TT5D_CORRECTION.sql": "732E4109D758DFCC7BC56926E8C70EEE529AF5BF436B3885E77F5F13903923B3",
-        "220_TT5D_SECURITY_GUARDS.sql": "61943AD79D7EDB7FAF7718064C60C2269193DFFFDD6C8464EE7BCD123012F5FA",
-        "230_TT6B_REALTIME_SECURITY.sql": "A144E6BB190C22B5E44CFD8818DE88981EBF855598BDF24ED3396993F913E4E1",
-        "240_TT6B_REALTIME_CORE.sql": "96F1E54DA172381D8CB251C0BFDFF2177D4E62CFCEBC409BB90D4B7C7D86C0C4"
-      },
+      "nonExecutionCandidates": [
+        "docs/platform-hard-cutover-01/phase-05b-execution-package/sql/m9-team-tournament/190_TT5D_ASSIGNMENT_SAFETY.sql",
+        "docs/platform-hard-cutover-01/phase-05b-execution-package/sql/m9-team-tournament/200_TT5D_REOPEN_RESULT.sql",
+        "docs/platform-hard-cutover-01/phase-05b-execution-package/sql/m9-team-tournament/210_TT5D_CORRECTION.sql",
+        "docs/platform-hard-cutover-01/phase-05b-execution-package/sql/m9-team-tournament/220_TT5D_SECURITY_GUARDS.sql"
+      ],
+      "verify": [
+        "docs/platform-hard-cutover-01/phase-05b-execution-package/sql/m9-team-tournament/99_VERIFY.sql"
+      ],
+      "rollback": [
+        "docs/platform-hard-cutover-01/phase-05b-execution-package/sql/m9-team-tournament/90_ROLLBACK.sql"
+      ],
+      "note": "TT5D files MUST NOT appear in orderedApply"
+    },
+    {
+      "step": "M11",
+      "action": "VERIFY_ONLY_ALREADY_EQUIVALENT",
+      "family": "M11",
+      "orderedApply": [],
+      "verify": [
+        "docs/platform-hard-cutover-01/phase-05b-execution-package/sql/m11-private-pairing-digest/99_VERIFY.sql"
+      ],
+      "referenceCandidates": [
+        "docs/platform-hard-cutover-01/phase-05b-execution-package/sql/m11-private-pairing-digest/10_PRIVATE_PAIRING_DIGEST.sql"
+      ],
+      "stopIfLiveMetadataDiffers": true
+    }
+  ],
+  "families": {
+    "M0": {
+      "family": "M0",
+      "purpose": "G3-B12 club_ai_data anon write lockdown",
+      "productionClassification": "already_present_and_verified",
+      "packageReadiness": "VERIFY_ONLY",
+      "exactOrderedApplyFiles": [],
+      "dependencyFamilies": [],
+      "exactPrecheckPath": "docs/production-security/prod-sec-g3-b12-01/11_VERIFY.sql",
+      "exactVerificationArtefacts": [
+        {
+          "path": "docs/production-security/prod-sec-g3-b12-01/11_VERIFY.sql",
+          "sha256ExactGitBlobBytes": "E902BD504F20BA7E0C7D25DF07AD04A57515C41784B6745E0D57483451932A3F",
+          "sha256CanonicalLf": "E902BD504F20BA7E0C7D25DF07AD04A57515C41784B6745E0D57483451932A3F"
+        }
+      ],
+      "exactRollbackArtefacts": [
+        {
+          "path": "docs/production-security/prod-sec-g3-b12-01/90_ROLLBACK.sql",
+          "sha256ExactGitBlobBytes": "0A0079E33DC6AFD4748F3129D6822B4219C09FCD14BF53FAF8AD8858D6DE15A9",
+          "sha256CanonicalLf": "0A0079E33DC6AFD4748F3129D6822B4219C09FCD14BF53FAF8AD8858D6DE15A9"
+        }
+      ],
+      "irreversibilityBoundary": null,
+      "stopPoint": "after_M0_verify_before_M1",
+      "productionApplicability": "ALREADY_PRESENT",
+      "note": "Do not reopen anon policies; prefer leave-locked over executing 90_ROLLBACK.sql"
+    },
+    "M1": {
+      "family": "M1",
+      "purpose": "Customer",
+      "productionClassification": "missing",
+      "packageReadiness": "AUTHORED_EXISTING_NOT_REWRITTEN",
+      "exactOrderedApplyFiles": [
+        {
+          "path": "docs/customer-management/phase-3/10_CUSTOMER_PHASE_3_TABLES.sql",
+          "sha256ExactGitBlobBytes": "F39DF78AE6411B52F1C0ED67B49956452B85237F6E26C3A53C27F73DEF73DC07",
+          "sha256CanonicalLf": "F39DF78AE6411B52F1C0ED67B49956452B85237F6E26C3A53C27F73DEF73DC07"
+        },
+        {
+          "path": "docs/customer-management/phase-3/20_CUSTOMER_PHASE_3_INDEXES.sql",
+          "sha256ExactGitBlobBytes": "752F879C0288F0DF2ED5E91FB48067C10F06E6F1343940B102BF71B819E8712F",
+          "sha256CanonicalLf": "752F879C0288F0DF2ED5E91FB48067C10F06E6F1343940B102BF71B819E8712F"
+        },
+        {
+          "path": "docs/customer-management/phase-3/30_CUSTOMER_PHASE_3_RLS.sql",
+          "sha256ExactGitBlobBytes": "D349F455AF26F4AB32FFB8114A4FC96B26F1E56D17E741570CB372B296815A4A",
+          "sha256CanonicalLf": "D349F455AF26F4AB32FFB8114A4FC96B26F1E56D17E741570CB372B296815A4A"
+        },
+        {
+          "path": "docs/customer-management/phase-3/40_CUSTOMER_PHASE_3_SAVE_RPC.sql",
+          "sha256ExactGitBlobBytes": "1D977C4CC6B513FD645D5E6EFD591F94F6B28063468FE297E22CAC3D75425B2C",
+          "sha256CanonicalLf": "1D977C4CC6B513FD645D5E6EFD591F94F6B28063468FE297E22CAC3D75425B2C"
+        },
+        {
+          "path": "docs/customer-management/phase-3/50_CUSTOMER_PHASE_3_GRANTS.sql",
+          "sha256ExactGitBlobBytes": "94512488382643BE395261CD8322BB58DFE40792C214CFF756C5487543ED14F2",
+          "sha256CanonicalLf": "94512488382643BE395261CD8322BB58DFE40792C214CFF756C5487543ED14F2"
+        }
+      ],
+      "dependencyFamilies": [
+        "identity"
+      ],
+      "exactPrecheckPath": "docs/customer-management/phase-3/99_CUSTOMER_PHASE_3_VERIFICATION.sql",
+      "exactVerificationArtefacts": [
+        {
+          "path": "docs/customer-management/phase-3/99_CUSTOMER_PHASE_3_VERIFICATION.sql",
+          "sha256ExactGitBlobBytes": "D9B741915297BB64F8E7CF36A4D05B70AE0C35284B47F442117DE7DF7E79722B",
+          "sha256CanonicalLf": "D9B741915297BB64F8E7CF36A4D05B70AE0C35284B47F442117DE7DF7E79722B"
+        }
+      ],
+      "exactRollbackArtefacts": [
+        {
+          "path": "docs/customer-management/phase-3/90_CUSTOMER_PHASE_3_ROLLBACK.sql",
+          "sha256ExactGitBlobBytes": "038075F8DAF23757BB211D966388A2868CC54FD3D8AA74408DCFA0488A4C65F8",
+          "sha256CanonicalLf": "038075F8DAF23757BB211D966388A2868CC54FD3D8AA74408DCFA0488A4C65F8"
+        }
+      ],
+      "irreversibilityBoundary": null,
+      "stopPoint": "after_M1_verify",
+      "productionApplicability": "AUTHORED_PACKAGE"
+    },
+    "M2": {
+      "family": "M2",
+      "purpose": "Finance",
+      "productionClassification": "missing",
+      "packageReadiness": "AUTHORED_EXISTING_NOT_REWRITTEN",
+      "exactOrderedApplyFiles": [
+        {
+          "path": "docs/supabase-finance-phase1f.sql",
+          "sha256ExactGitBlobBytes": "39F34D1C4C80B3B7F34435AE858C3FE5A4F0A3BAC96E2BBF61C00C09ECAEC2FC",
+          "sha256CanonicalLf": "39F34D1C4C80B3B7F34435AE858C3FE5A4F0A3BAC96E2BBF61C00C09ECAEC2FC"
+        }
+      ],
+      "dependencyFamilies": [
+        "RBAC_permissions"
+      ],
+      "exactPrecheckPath": "docs/supabase-finance-phase1f.sql",
+      "exactVerificationArtefacts": [],
+      "exactRollbackArtefacts": [
+        {
+          "path": "docs/supabase-finance-phase1f-rollback.sql",
+          "sha256ExactGitBlobBytes": "4EC690DA9AB9642D0D88D0269A08CE776377E2424938168D3B6BAA6E936B2CAA",
+          "sha256CanonicalLf": "4EC690DA9AB9642D0D88D0269A08CE776377E2424938168D3B6BAA6E936B2CAA"
+        }
+      ],
+      "irreversibilityBoundary": null,
+      "stopPoint": "after_M2_catalog_verify",
+      "productionApplicability": "AUTHORED_PACKAGE",
+      "verificationBoundary": "NO_AUTHORED_99_VERIFY_SQL — STOP requires Owner SELECT/catalog verification of finance_* objects after apply; apply artefact remains docs/supabase-finance-phase1f.sql"
+    },
+    "M3": {
+      "family": "M3",
+      "purpose": "CRM",
+      "productionClassification": "missing",
+      "packageReadiness": "AUTHORED_EXISTING_NOT_REWRITTEN",
+      "exactOrderedApplyFiles": [
+        {
+          "path": "docs/crm/phase-1g/10_CRM_PHASE_1G_TABLES.sql",
+          "sha256ExactGitBlobBytes": "545C7A05773DD3853D8DE8B989C1782B44BF5BA29238E6786049673B05AFC083",
+          "sha256CanonicalLf": "545C7A05773DD3853D8DE8B989C1782B44BF5BA29238E6786049673B05AFC083"
+        },
+        {
+          "path": "docs/crm/phase-1g/20_CRM_PHASE_1G_INDEXES.sql",
+          "sha256ExactGitBlobBytes": "64AAB6B51C469D7DA21F065570E6F4F495CDD84F619D0E93DAB2E76BC76546CA",
+          "sha256CanonicalLf": "64AAB6B51C469D7DA21F065570E6F4F495CDD84F619D0E93DAB2E76BC76546CA"
+        },
+        {
+          "path": "docs/crm/phase-1g/30_CRM_PHASE_1G_RLS.sql",
+          "sha256ExactGitBlobBytes": "0C367724499C747DC386AFB34B15A92906B06A53831726284366470A94837893",
+          "sha256CanonicalLf": "0C367724499C747DC386AFB34B15A92906B06A53831726284366470A94837893"
+        },
+        {
+          "path": "docs/crm/phase-1g/40_CRM_PHASE_1G_CLAIM_RELEASE_RPCS.sql",
+          "sha256ExactGitBlobBytes": "D31C76212A46AF09B1187A7767414BF074DAA000634DE2DEF82297FA63421934",
+          "sha256CanonicalLf": "D31C76212A46AF09B1187A7767414BF074DAA000634DE2DEF82297FA63421934"
+        },
+        {
+          "path": "docs/crm/phase-1g/50_CRM_PHASE_1G_GRANTS.sql",
+          "sha256ExactGitBlobBytes": "9F0C26BF1754A36A8AE98B33EB6D4FF24B1621BF23B49D9E952A81B6E503EBCA",
+          "sha256CanonicalLf": "9F0C26BF1754A36A8AE98B33EB6D4FF24B1621BF23B49D9E952A81B6E503EBCA"
+        },
+        {
+          "path": "docs/crm/phase-1g/60_CRM_PHASE_1G_CONSENT_IMMUTABLE.sql",
+          "sha256ExactGitBlobBytes": "D5FA49762B9F07BC6ACCA7699587FFB9E7A0425BF31148197BD48EFACEA37D4B",
+          "sha256CanonicalLf": "D5FA49762B9F07BC6ACCA7699587FFB9E7A0425BF31148197BD48EFACEA37D4B"
+        },
+        {
+          "path": "docs/crm/phase-1h/10_CRM_PHASE_1H_PERMISSION_SEED.sql",
+          "sha256ExactGitBlobBytes": "753CE0800F45678C05F25FBC156153B2F0D51222C3B5F72A5AC0215E0FA6632F",
+          "sha256CanonicalLf": "753CE0800F45678C05F25FBC156153B2F0D51222C3B5F72A5AC0215E0FA6632F"
+        },
+        {
+          "path": "docs/crm/phase-1h/20_CRM_PHASE_1H_ROLE_PERMISSION_ASSIGNMENT.sql",
+          "sha256ExactGitBlobBytes": "3E13F397E348AA43297D051EA228505AF06C537981DF74238B870E96D00915E0",
+          "sha256CanonicalLf": "3E13F397E348AA43297D051EA228505AF06C537981DF74238B870E96D00915E0"
+        }
+      ],
+      "dependencyFamilies": [
+        "Customer_optional",
+        "identity"
+      ],
+      "exactPrecheckPath": "docs/crm/phase-1h-b/15_PRE_APPLY_OBJECT_STATE_CHECK.sql",
+      "exactVerificationArtefacts": [
+        {
+          "path": "docs/crm/phase-1h-b/15_PRE_APPLY_OBJECT_STATE_CHECK.sql",
+          "sha256ExactGitBlobBytes": "69741FA7CB40B568C5E1BB881A205E3204FF800C5D5042BC7BADF21354B522E6",
+          "sha256CanonicalLf": "69741FA7CB40B568C5E1BB881A205E3204FF800C5D5042BC7BADF21354B522E6"
+        }
+      ],
+      "exactRollbackArtefacts": [
+        {
+          "path": "docs/crm/phase-1h-b/14_CRM_PHASE_1H_B_STAGING_ROLLBACK.sql",
+          "sha256ExactGitBlobBytes": "DD43E4BA9D464CC3B67436205624E7C0B1C0803EB5EBCC8F7ABEF2E15B111DDB",
+          "sha256CanonicalLf": "DD43E4BA9D464CC3B67436205624E7C0B1C0803EB5EBCC8F7ABEF2E15B111DDB"
+        }
+      ],
+      "irreversibilityBoundary": null,
+      "stopPoint": "after_M3_verify",
+      "productionApplicability": "AUTHORED_PACKAGE"
+    },
+    "M4": {
+      "family": "M4",
+      "purpose": "Reporting",
+      "productionClassification": "missing",
+      "packageReadiness": "AUTHORED_EXISTING_NOT_REWRITTEN",
+      "exactOrderedApplyFiles": [
+        {
+          "path": "docs/reporting-analytics/reporting-02/10_REPORTING_02_TABLES.sql",
+          "sha256ExactGitBlobBytes": "DBF4284FC52DA8B73A3EE68D9BD62868E4E14B259CF441964777F0F6E1102F32",
+          "sha256CanonicalLf": "DBF4284FC52DA8B73A3EE68D9BD62868E4E14B259CF441964777F0F6E1102F32"
+        },
+        {
+          "path": "docs/reporting-analytics/reporting-02/20_REPORTING_02_INDEXES.sql",
+          "sha256ExactGitBlobBytes": "9466A6648ECB496F050D6C98BC7CFA0D26DCD49427E62269603319B8EBC70FCF",
+          "sha256CanonicalLf": "9466A6648ECB496F050D6C98BC7CFA0D26DCD49427E62269603319B8EBC70FCF"
+        },
+        {
+          "path": "docs/reporting-analytics/reporting-02/30_REPORTING_02_RLS.sql",
+          "sha256ExactGitBlobBytes": "B5577F96F0ED0DDDE4DABAD83F69A77B89B2CAF6F66E0E695C63292B6039508D",
+          "sha256CanonicalLf": "B5577F96F0ED0DDDE4DABAD83F69A77B89B2CAF6F66E0E695C63292B6039508D"
+        },
+        {
+          "path": "docs/reporting-analytics/reporting-02/40_REPORTING_02_PERMISSION_SEED.sql",
+          "sha256ExactGitBlobBytes": "8BB6BB2F1E03A942DECF079B64B8B012C98450A945413B10BF997FB6158B9804",
+          "sha256CanonicalLf": "8BB6BB2F1E03A942DECF079B64B8B012C98450A945413B10BF997FB6158B9804"
+        },
+        {
+          "path": "docs/reporting-analytics/reporting-02/50_REPORTING_02_GRANTS.sql",
+          "sha256ExactGitBlobBytes": "2641959A9358F921EBBD587C7D476FA7FF56F842778589A1AA123E77625DDCE9",
+          "sha256CanonicalLf": "2641959A9358F921EBBD587C7D476FA7FF56F842778589A1AA123E77625DDCE9"
+        }
+      ],
+      "dependencyFamilies": [],
+      "exactPrecheckPath": "docs/reporting-analytics/reporting-02/99_REPORTING_02_VERIFICATION.sql",
+      "exactVerificationArtefacts": [
+        {
+          "path": "docs/reporting-analytics/reporting-02/99_REPORTING_02_VERIFICATION.sql",
+          "sha256ExactGitBlobBytes": "CD15CDAB214AF76DF3A42DEAEE2E7AC1477EFD213407FFDC7BC59A7E38A18905",
+          "sha256CanonicalLf": "CD15CDAB214AF76DF3A42DEAEE2E7AC1477EFD213407FFDC7BC59A7E38A18905"
+        }
+      ],
+      "exactRollbackArtefacts": [
+        {
+          "path": "docs/reporting-analytics/reporting-02/90_REPORTING_02_ROLLBACK.sql",
+          "sha256ExactGitBlobBytes": "81A90413AAA10466C26AFBBCCAD147D6FB53404B4C62DABD575CD7BB3B8B0372",
+          "sha256CanonicalLf": "81A90413AAA10466C26AFBBCCAD147D6FB53404B4C62DABD575CD7BB3B8B0372"
+        },
+        {
+          "path": "docs/reporting-analytics/reporting-02/91_REPORTING_02_PERMISSION_SEED_ROLLBACK.sql",
+          "sha256ExactGitBlobBytes": "5CAE9747F6B7D12E4436D238998612643C3C9051993003B1626BDB64566CF63E",
+          "sha256CanonicalLf": "5CAE9747F6B7D12E4436D238998612643C3C9051993003B1626BDB64566CF63E"
+        }
+      ],
+      "irreversibilityBoundary": null,
+      "stopPoint": "after_M4_verify",
+      "productionApplicability": "AUTHORED_PACKAGE"
+    },
+    "M5": {
+      "family": "M5",
+      "purpose": "News",
+      "productionClassification": "missing",
+      "packageReadiness": "AUTHORED_EXISTING_NOT_REWRITTEN",
+      "exactOrderedApplyFiles": [
+        {
+          "path": "docs/news-public-content/news-02/10_NEWS_PHASE_02_TABLES.sql",
+          "sha256ExactGitBlobBytes": "3AEA2763E23FD8C652A3817D9FC22F69FE7090DDA13BA25CA395208F7FD432D7",
+          "sha256CanonicalLf": "3AEA2763E23FD8C652A3817D9FC22F69FE7090DDA13BA25CA395208F7FD432D7"
+        },
+        {
+          "path": "docs/news-public-content/news-02/20_NEWS_PHASE_02_INDEXES.sql",
+          "sha256ExactGitBlobBytes": "BF4E0C3045B1660F66EE5E3249E2E9A25A49715545A4E33A94B3F02B5A30E9DE",
+          "sha256CanonicalLf": "BF4E0C3045B1660F66EE5E3249E2E9A25A49715545A4E33A94B3F02B5A30E9DE"
+        },
+        {
+          "path": "docs/news-public-content/news-02/30_NEWS_PHASE_02_RLS.sql",
+          "sha256ExactGitBlobBytes": "42FE57A506B83A18A79C279D4C3FDB833EAE4BCD9B6B90162CA2AA083F3F6877",
+          "sha256CanonicalLf": "42FE57A506B83A18A79C279D4C3FDB833EAE4BCD9B6B90162CA2AA083F3F6877"
+        },
+        {
+          "path": "docs/news-public-content/news-02/40_NEWS_PHASE_02_SAVE_RPC.sql",
+          "sha256ExactGitBlobBytes": "C8311B9D93A68E9E2D810076417E0F425662CA8BB269CB4C228FAFE2F8662333",
+          "sha256CanonicalLf": "C8311B9D93A68E9E2D810076417E0F425662CA8BB269CB4C228FAFE2F8662333"
+        },
+        {
+          "path": "docs/news-public-content/news-02/50_NEWS_PHASE_02_GRANTS.sql",
+          "sha256ExactGitBlobBytes": "5D7537F375C1D0633E041D03C8C6621AE5D4F352A3781CB9E628C6E082E5E019",
+          "sha256CanonicalLf": "5D7537F375C1D0633E041D03C8C6621AE5D4F352A3781CB9E628C6E082E5E019"
+        },
+        {
+          "path": "docs/news-public-content/news-02/60_NEWS_PHASE_02_IMMUTABLE_REVISIONS.sql",
+          "sha256ExactGitBlobBytes": "2F27C137DA3D52AA1FEDB755F6EE1B798523F279749CC0C7CC3ED1B7DA248700",
+          "sha256CanonicalLf": "2F27C137DA3D52AA1FEDB755F6EE1B798523F279749CC0C7CC3ED1B7DA248700"
+        },
+        {
+          "path": "docs/news-public-content/news-03/10_NEWS_PHASE_03_PERMISSION_SEED.sql",
+          "sha256ExactGitBlobBytes": "59F113544BC4FDB84367A4283A4FE7F472D3405F4F54D89EFC22D6B19620767D",
+          "sha256CanonicalLf": "59F113544BC4FDB84367A4283A4FE7F472D3405F4F54D89EFC22D6B19620767D"
+        },
+        {
+          "path": "docs/news-public-content/news-04/10_NEWS_PHASE_04_PUBLIC_RPC_LIVE_ONLY.sql",
+          "sha256ExactGitBlobBytes": "B357823A0925A8CD42B972BE2C0331AFB62128BD0FEB73C9A7861D7AE01AE08F",
+          "sha256CanonicalLf": "B357823A0925A8CD42B972BE2C0331AFB62128BD0FEB73C9A7861D7AE01AE08F"
+        }
+      ],
+      "dependencyFamilies": [],
+      "exactPrecheckPath": "docs/news-public-content/news-02/99_NEWS_PHASE_02_VERIFICATION.sql",
+      "exactVerificationArtefacts": [
+        {
+          "path": "docs/news-public-content/news-02/99_NEWS_PHASE_02_VERIFICATION.sql",
+          "sha256ExactGitBlobBytes": "110D448FA95AD99E3AB18ED78CFAB11B4D7B73FA2A3A6535CBA35E2A033121DA",
+          "sha256CanonicalLf": "110D448FA95AD99E3AB18ED78CFAB11B4D7B73FA2A3A6535CBA35E2A033121DA"
+        },
+        {
+          "path": "docs/news-public-content/news-03/99_NEWS_PHASE_03_PERMISSION_SEED_VERIFICATION.sql",
+          "sha256ExactGitBlobBytes": "A6E96870E1BD0A3838BD299638077659FCA39FEC5B564DC89E48AAA4BA20A9FE",
+          "sha256CanonicalLf": "A6E96870E1BD0A3838BD299638077659FCA39FEC5B564DC89E48AAA4BA20A9FE"
+        },
+        {
+          "path": "docs/news-public-content/news-04/99_NEWS_PHASE_04_PUBLIC_BOUNDARY_VERIFICATION.sql",
+          "sha256ExactGitBlobBytes": "9E7324A88872E4746DEAAFA66876B83FEAD3FEC9EBEA4186686A05BB2057DA02",
+          "sha256CanonicalLf": "9E7324A88872E4746DEAAFA66876B83FEAD3FEC9EBEA4186686A05BB2057DA02"
+        }
+      ],
+      "exactRollbackArtefacts": [
+        {
+          "path": "docs/news-public-content/news-02/90_NEWS_PHASE_02_ROLLBACK.sql",
+          "sha256ExactGitBlobBytes": "C25AB0DC7230F5DD4D66FC66B84C9E3B1FB514A2A30AD7F019518D484AF9CFC8",
+          "sha256CanonicalLf": "C25AB0DC7230F5DD4D66FC66B84C9E3B1FB514A2A30AD7F019518D484AF9CFC8"
+        },
+        {
+          "path": "docs/news-public-content/news-03/90_NEWS_PHASE_03_PERMISSION_SEED_ROLLBACK.sql",
+          "sha256ExactGitBlobBytes": "40466179B4EEE415C53C5EAE2E42B700851C435D316C5CF150BDD6A9C84A870B",
+          "sha256CanonicalLf": "40466179B4EEE415C53C5EAE2E42B700851C435D316C5CF150BDD6A9C84A870B"
+        }
+      ],
+      "irreversibilityBoundary": null,
+      "stopPoint": "after_M5_verify",
+      "productionApplicability": "AUTHORED_PACKAGE"
+    },
+    "M6": {
+      "family": "M6",
+      "purpose": "Coaching",
+      "productionClassification": "missing",
+      "packageReadiness": "AUTHORED_EXISTING_NOT_REWRITTEN",
+      "exactOrderedApplyFiles": [
+        {
+          "path": "docs/coaching-training/coaching-02/10_COACHING_02_TABLES.sql",
+          "sha256ExactGitBlobBytes": "AC27665DD2C2F4D97C2A71C3E360E6872C3DB97F9655CCD1D063945A9FC59FF6",
+          "sha256CanonicalLf": "AC27665DD2C2F4D97C2A71C3E360E6872C3DB97F9655CCD1D063945A9FC59FF6"
+        },
+        {
+          "path": "docs/coaching-training/coaching-02/15_COACHING_02_PERMISSION_SEED.sql",
+          "sha256ExactGitBlobBytes": "FEE44A916C29300DDECECA930010BEEBE56D24864CF4DDEEC095618122C84889",
+          "sha256CanonicalLf": "FEE44A916C29300DDECECA930010BEEBE56D24864CF4DDEEC095618122C84889"
+        },
+        {
+          "path": "docs/coaching-training/coaching-02/20_COACHING_02_INDEXES.sql",
+          "sha256ExactGitBlobBytes": "C5A85874D3843285D7A15A93756FBE63BA89521631BECB8EEA9DAEE5C985379C",
+          "sha256CanonicalLf": "C5A85874D3843285D7A15A93756FBE63BA89521631BECB8EEA9DAEE5C985379C"
+        },
+        {
+          "path": "docs/coaching-training/coaching-02/30_COACHING_02_RLS.sql",
+          "sha256ExactGitBlobBytes": "652E22D83D726F2942EBAC765F8A18A7E91343E1C658E78AB0F629817D5A4F05",
+          "sha256CanonicalLf": "652E22D83D726F2942EBAC765F8A18A7E91343E1C658E78AB0F629817D5A4F05"
+        },
+        {
+          "path": "docs/coaching-training/coaching-02/40_COACHING_02_ATTENDANCE_CORRECTION_RPC.sql",
+          "sha256ExactGitBlobBytes": "8063BA0FDBE29D8FF2A09E0DE0A9EB006CCB4B54DC8157ECFA1B1D91362D47D7",
+          "sha256CanonicalLf": "8063BA0FDBE29D8FF2A09E0DE0A9EB006CCB4B54DC8157ECFA1B1D91362D47D7"
+        },
+        {
+          "path": "docs/coaching-training/coaching-02/45_COACHING_02_ENTITLEMENT_CONSUME_RPC.sql",
+          "sha256ExactGitBlobBytes": "134C928BCA264F0A1ADF7E0C4A592DB4FECACED79CF852D27A0A8D146F05CF07",
+          "sha256CanonicalLf": "134C928BCA264F0A1ADF7E0C4A592DB4FECACED79CF852D27A0A8D146F05CF07"
+        },
+        {
+          "path": "docs/coaching-training/coaching-02/50_COACHING_02_GRANTS.sql",
+          "sha256ExactGitBlobBytes": "2DF188B735971CF40F26103130249D0543483311F7B60E5862BA90AFDF9366E7",
+          "sha256CanonicalLf": "2DF188B735971CF40F26103130249D0543483311F7B60E5862BA90AFDF9366E7"
+        },
+        {
+          "path": "docs/coaching-training/coaching-02/60_COACHING_02_IMMUTABLE.sql",
+          "sha256ExactGitBlobBytes": "CD6F2E59803C83D95FEFC086C259E6B960E7C72541B18D39D6111F0163D3DFAC",
+          "sha256CanonicalLf": "CD6F2E59803C83D95FEFC086C259E6B960E7C72541B18D39D6111F0163D3DFAC"
+        },
+        {
+          "path": "docs/coaching-training/coaching-04/10_COACHING_04_ASSIGNMENT_HELPERS.sql",
+          "sha256ExactGitBlobBytes": "200318E0C336A85A16F320AC5E5F9CB8985B65E4A7B265294476709BAD9B8C9B",
+          "sha256CanonicalLf": "200318E0C336A85A16F320AC5E5F9CB8985B65E4A7B265294476709BAD9B8C9B"
+        },
+        {
+          "path": "docs/coaching-training/coaching-04/11_COACHING_04_PLAYER_SELF_SCOPE_HELPERS.sql",
+          "sha256ExactGitBlobBytes": "1B7325236C2F8CAC657B9586B86CB1527C18C0FEC6B697974FD8249F00C6486A",
+          "sha256CanonicalLf": "1B7325236C2F8CAC657B9586B86CB1527C18C0FEC6B697974FD8249F00C6486A"
+        },
+        {
+          "path": "docs/coaching-training/coaching-04/20_COACHING_04_ASSIGNMENT_RLS.sql",
+          "sha256ExactGitBlobBytes": "4577FEC9C9C9932F7B973B970F50588EB1D5248A4068EBD3E1F45506B4DB0945",
+          "sha256CanonicalLf": "4577FEC9C9C9932F7B973B970F50588EB1D5248A4068EBD3E1F45506B4DB0945"
+        },
+        {
+          "path": "docs/coaching-training/coaching-04/21_COACHING_04_PLAYER_SELF_SCOPE_RLS.sql",
+          "sha256ExactGitBlobBytes": "7481566C2B17AB3DD7F90EB47E7283D6F2EBB9553E3594049D4A5A6C241FD957",
+          "sha256CanonicalLf": "7481566C2B17AB3DD7F90EB47E7283D6F2EBB9553E3594049D4A5A6C241FD957"
+        },
+        {
+          "path": "docs/coaching-training/coaching-04/30_COACHING_04_SCOPED_RPCS.sql",
+          "sha256ExactGitBlobBytes": "937C44A070A6CA063C3A368962551305856561A1BD8DE7F3A675F120BA6A748A",
+          "sha256CanonicalLf": "937C44A070A6CA063C3A368962551305856561A1BD8DE7F3A675F120BA6A748A"
+        },
+        {
+          "path": "docs/coaching-training/coaching-04/41_COACHING_04_HELPER_EXECUTE_ACL_HARDENING.sql",
+          "sha256ExactGitBlobBytes": "DFB5BDAE4479720761C88F443E3FDA8D298A51752445B2C52D4E267D4541C0C1",
+          "sha256CanonicalLf": "DFB5BDAE4479720761C88F443E3FDA8D298A51752445B2C52D4E267D4541C0C1"
+        }
+      ],
+      "dependencyFamilies": [
+        "Player",
+        "Court"
+      ],
+      "exactPrecheckPath": "docs/coaching-training/coaching-02/99_COACHING_02_VERIFICATION.sql",
+      "exactVerificationArtefacts": [
+        {
+          "path": "docs/coaching-training/coaching-02/99_COACHING_02_VERIFICATION.sql",
+          "sha256ExactGitBlobBytes": "B1592FDDC31C313EF4798D39BE9BAC85CAE7A993813B109DDCEB74884D5CDFBC",
+          "sha256CanonicalLf": "B1592FDDC31C313EF4798D39BE9BAC85CAE7A993813B109DDCEB74884D5CDFBC"
+        },
+        {
+          "path": "docs/coaching-training/coaching-04/41_COACHING_04_HELPER_EXECUTE_ACL_HARDENING.verify.sql",
+          "sha256ExactGitBlobBytes": "957779DD2ED193CB582E66E2C7CA9069E9DEDE925686E04F564BC5B94FC86342",
+          "sha256CanonicalLf": "957779DD2ED193CB582E66E2C7CA9069E9DEDE925686E04F564BC5B94FC86342"
+        },
+        {
+          "path": "docs/coaching-training/coaching-04/99_COACHING_04_VERIFICATION.sql",
+          "sha256ExactGitBlobBytes": "4448F9719DC771264D2409E2262544240324BB49974D4F292B910A220BE57168",
+          "sha256CanonicalLf": "4448F9719DC771264D2409E2262544240324BB49974D4F292B910A220BE57168"
+        }
+      ],
+      "exactRollbackArtefacts": [
+        {
+          "path": "docs/coaching-training/coaching-02/90_COACHING_02_ROLLBACK.sql",
+          "sha256ExactGitBlobBytes": "C29285E0E2A7C9D702157380C9F67A7F18BFEE9E6B1A1C693FCF92E19EBCF480",
+          "sha256CanonicalLf": "C29285E0E2A7C9D702157380C9F67A7F18BFEE9E6B1A1C693FCF92E19EBCF480"
+        },
+        {
+          "path": "docs/coaching-training/coaching-04/90_COACHING_04_ROLLBACK.sql",
+          "sha256ExactGitBlobBytes": "FEEAC3A095227621DE6217315D13AD8AE2B4A849DCF6147CA251EAEA49EB9003",
+          "sha256CanonicalLf": "FEEAC3A095227621DE6217315D13AD8AE2B4A849DCF6147CA251EAEA49EB9003"
+        }
+      ],
+      "irreversibilityBoundary": null,
+      "stopPoint": "after_M6_verify",
+      "productionApplicability": "AUTHORED_PACKAGE",
+      "nonExecutionCandidates": [
+        {
+          "path": "docs/coaching-training/coaching-04/40_COACHING_04_PERMISSION_SEED_AND_GRANTS.proposal.sql",
+          "sha256ExactGitBlobBytes": "303FFFCA79D4F16E3066579F916A7596355383A3AD5284A7C6167582F408E7DD",
+          "sha256CanonicalLf": "303FFFCA79D4F16E3066579F916A7596355383A3AD5284A7C6167582F408E7DD",
+          "executionEligible": false,
+          "classification": "PROPOSAL_ONLY_NOT_IN_EXECUTABLE_ORDER"
+        }
+      ]
+    },
+    "M7": {
+      "family": "M7",
+      "purpose": "Competition Core cc02",
+      "productionClassification": "missing",
+      "packageReadiness": "AUTHORED_EXISTING_NOT_REWRITTEN",
+      "exactOrderedApplyFiles": [
+        {
+          "path": "docs/competition-core/supabase-cc02-rating-v2.sql",
+          "sha256ExactGitBlobBytes": "8AE357048FF1A393AE212690806A12D985BA1794427589DFB16F338332F8B308",
+          "sha256CanonicalLf": "8AE357048FF1A393AE212690806A12D985BA1794427589DFB16F338332F8B308"
+        },
+        {
+          "path": "docs/competition-core/supabase-cc02c-rating-durability.sql",
+          "sha256ExactGitBlobBytes": "851F23262298926EF0971A1484C4A9810052F28AD74B9D2934C5F3CAEF81C8F8",
+          "sha256CanonicalLf": "851F23262298926EF0971A1484C4A9810052F28AD74B9D2934C5F3CAEF81C8F8"
+        },
+        {
+          "path": "docs/competition-core/supabase-cc02d-staging-hardening.sql",
+          "sha256ExactGitBlobBytes": "53D83DF320975748372868D6F579BFF04727C761D16DA64B9777BA8B06022425",
+          "sha256CanonicalLf": "53D83DF320975748372868D6F579BFF04727C761D16DA64B9777BA8B06022425"
+        }
+      ],
+      "dependencyFamilies": [
+        "CORE_flag"
+      ],
+      "exactPrecheckPath": "docs/competition-core/supabase-cc02-rating-v2.sql",
+      "exactVerificationArtefacts": [],
+      "exactRollbackArtefacts": null,
+      "irreversibilityBoundary": "IRREVERSIBLE_WITHOUT_BACKUP_RESTORE",
+      "stopPoint": "after_M7_apply_catalog_check",
+      "productionApplicability": "AUTHORED_PACKAGE",
+      "verificationNote": "No authored 99_VERIFY.sql for cc02 package; STOP requires Owner catalog SELECT verification against expected player_ratings/rating_history objects before continuing"
+    },
+    "M8": {
+      "family": "M8",
+      "purpose": "Competition Remote SSOT",
+      "productionClassification": "missing",
+      "packageReadiness": "AUTHORED_PHASE4_NOT_REWRITTEN",
+      "exactOrderedApplyFiles": [
+        {
+          "path": "docs/platform-hard-cutover-01/phase-04/sql/m8-competition-remote-ssot/10_TABLES.sql",
+          "sha256ExactGitBlobBytes": "FB80E822D8433238C7494DA37C4041550D8DE2C7605E52ADFF4031664082C16C",
+          "sha256CanonicalLf": "FB80E822D8433238C7494DA37C4041550D8DE2C7605E52ADFF4031664082C16C"
+        },
+        {
+          "path": "docs/platform-hard-cutover-01/phase-04/sql/m8-competition-remote-ssot/20_INDEXES.sql",
+          "sha256ExactGitBlobBytes": "DE1D826037CA55A8F598B2A25CCEA3F895BFD4A0F83A71F172D5A39F19C9D2F7",
+          "sha256CanonicalLf": "DE1D826037CA55A8F598B2A25CCEA3F895BFD4A0F83A71F172D5A39F19C9D2F7"
+        },
+        {
+          "path": "docs/platform-hard-cutover-01/phase-04/sql/m8-competition-remote-ssot/30_RLS.sql",
+          "sha256ExactGitBlobBytes": "74AAC22769A703560C1E6F251366372B77AD4333DEA2E3E35E5FA2027AA6298B",
+          "sha256CanonicalLf": "74AAC22769A703560C1E6F251366372B77AD4333DEA2E3E35E5FA2027AA6298B"
+        },
+        {
+          "path": "docs/platform-hard-cutover-01/phase-04/sql/m8-competition-remote-ssot/40_RPC_COMMAND_AND_FINALIZE.sql",
+          "sha256ExactGitBlobBytes": "30F17E3C3DE2734D023F76F747A6D4F62519633700F71CFB36CBB0007B649479",
+          "sha256CanonicalLf": "30F17E3C3DE2734D023F76F747A6D4F62519633700F71CFB36CBB0007B649479"
+        },
+        {
+          "path": "docs/platform-hard-cutover-01/phase-04/sql/m8-competition-remote-ssot/50_GRANTS.sql",
+          "sha256ExactGitBlobBytes": "185D28C08B1AE9B5CE1873E3FE2D48318FF71D8BA73ADFDA4DBD8381B116062A",
+          "sha256CanonicalLf": "185D28C08B1AE9B5CE1873E3FE2D48318FF71D8BA73ADFDA4DBD8381B116062A"
+        },
+        {
+          "path": "docs/platform-hard-cutover-01/phase-04/sql/m8-competition-remote-ssot/51_GRANTS_TIGHTEN.sql",
+          "sha256ExactGitBlobBytes": "BA846229AC075C6C1D47DD29C5AB61EC44B4C388C9BF191B0655AAE7E0859F3F",
+          "sha256CanonicalLf": "BA846229AC075C6C1D47DD29C5AB61EC44B4C388C9BF191B0655AAE7E0859F3F"
+        },
+        {
+          "path": "docs/platform-hard-cutover-01/phase-04/sql/m8-competition-remote-ssot/52_GRANTS_EXACT_BASELINE.sql",
+          "sha256ExactGitBlobBytes": "FDE1E787F6BC0AD63671E940BFB8F41E5F37C2CE3E9E8DBDBDE36DDA6A7B4606",
+          "sha256CanonicalLf": "FDE1E787F6BC0AD63671E940BFB8F41E5F37C2CE3E9E8DBDBDE36DDA6A7B4606"
+        }
+      ],
+      "dependencyFamilies": [
+        "identity_user_venue_id"
+      ],
+      "exactPrecheckPath": "docs/platform-hard-cutover-01/phase-04/sql/m8-competition-remote-ssot/99_VERIFY.sql",
+      "exactVerificationArtefacts": [
+        {
+          "path": "docs/platform-hard-cutover-01/phase-04/sql/m8-competition-remote-ssot/99_VERIFY.sql",
+          "sha256ExactGitBlobBytes": "D284426465328255D3A3757760CFB5BD76FE4707509AF78574A0691677140EFE",
+          "sha256CanonicalLf": "D284426465328255D3A3757760CFB5BD76FE4707509AF78574A0691677140EFE"
+        }
+      ],
+      "exactRollbackArtefacts": [
+        {
+          "path": "docs/platform-hard-cutover-01/phase-04/sql/m8-competition-remote-ssot/90_ROLLBACK.sql",
+          "sha256ExactGitBlobBytes": "3A6B783A79E28A57B3DFDFB7945FFCEBE21C11F9777F0036C93C85D891CDAD83",
+          "sha256CanonicalLf": "3A6B783A79E28A57B3DFDFB7945FFCEBE21C11F9777F0036C93C85D891CDAD83"
+        }
+      ],
+      "irreversibilityBoundary": null,
+      "stopPoint": "after_M8_verify",
+      "productionApplicability": "AUTHORED_PACKAGE",
+      "tenantContract": {
+        "tenant_id": "text",
+        "p_tenant_id": "text",
+        "user_venue_id_result": "text"
+      }
+    },
+    "M9": {
+      "family": "M9",
+      "purpose": "Team Tournament remainder TT2B–TT6B",
+      "productionClassification": "partially_present_p1_tt1b_only",
+      "packageReadiness": "BLOCKED_STAGING_CATALOG_NOT_PROVEN_FOR_TT5D",
+      "exactOrderedApplyFiles": [
+        {
+          "path": "docs/platform-hard-cutover-01/phase-05b-execution-package/sql/m9-team-tournament/10_TT2B_LINEUP_DEADLINE.sql",
+          "sha256ExactGitBlobBytes": "1E4429C77C32E7FF224FCFA167B9121767D3665F6AA1E6625203CF830C8A2A1F",
+          "sha256CanonicalLf": "1E4429C77C32E7FF224FCFA167B9121767D3665F6AA1E6625203CF830C8A2A1F",
+          "executionEligible": true
+        },
+        {
+          "path": "docs/platform-hard-cutover-01/phase-05b-execution-package/sql/m9-team-tournament/20_TT2C_LINEUP_VALIDATION.sql",
+          "sha256ExactGitBlobBytes": "D89AB78807B63C35F1D307FB94E64508D274D81E29A7E3B47777AB9CAA5418CE",
+          "sha256CanonicalLf": "D89AB78807B63C35F1D307FB94E64508D274D81E29A7E3B47777AB9CAA5418CE",
+          "executionEligible": true
+        },
+        {
+          "path": "docs/platform-hard-cutover-01/phase-05b-execution-package/sql/m9-team-tournament/30_TT2C_SUBMIT_LINEUP_VALIDATION.sql",
+          "sha256ExactGitBlobBytes": "9DB8AE1FD93D9AF92A24E687B50F34E3771F5721C5F6335F8C3A981B82E65AE6",
+          "sha256CanonicalLf": "9DB8AE1FD93D9AF92A24E687B50F34E3771F5721C5F6335F8C3A981B82E65AE6",
+          "executionEligible": true
+        },
+        {
+          "path": "docs/platform-hard-cutover-01/phase-05b-execution-package/sql/m9-team-tournament/40_TT2D_RANDOMIZE_LOCK.sql",
+          "sha256ExactGitBlobBytes": "B8C4B0A0FF6117E31771CAA32232908BE12B28CAE24ED8AA2F80F3EA1D3836B5",
+          "sha256CanonicalLf": "B8C4B0A0FF6117E31771CAA32232908BE12B28CAE24ED8AA2F80F3EA1D3836B5",
+          "executionEligible": true
+        },
+        {
+          "path": "docs/platform-hard-cutover-01/phase-05b-execution-package/sql/m9-team-tournament/50_TT2E_ATOMIC_PUBLISH.sql",
+          "sha256ExactGitBlobBytes": "76177EBBF4DDAB374742156E1D99EDBAF2735A5685777C660613908BF1C0C4E0",
+          "sha256CanonicalLf": "76177EBBF4DDAB374742156E1D99EDBAF2735A5685777C660613908BF1C0C4E0",
+          "executionEligible": true
+        },
+        {
+          "path": "docs/platform-hard-cutover-01/phase-05b-execution-package/sql/m9-team-tournament/60_TT2E_GET_SETUP_FIX.sql",
+          "sha256ExactGitBlobBytes": "881C895F4AF7B48C2122CFC663BB70AD333FD0DBE60971574C5C96CD6B946F5A",
+          "sha256CanonicalLf": "881C895F4AF7B48C2122CFC663BB70AD333FD0DBE60971574C5C96CD6B946F5A",
+          "executionEligible": true
+        },
+        {
+          "path": "docs/platform-hard-cutover-01/phase-05b-execution-package/sql/m9-team-tournament/70_TT3_LINEUP_OVERRIDE.sql",
+          "sha256ExactGitBlobBytes": "8EA366177A2CF572737DAB960CC5A46A45CB8542CABF23C177B593C529134665",
+          "sha256CanonicalLf": "8EA366177A2CF572737DAB960CC5A46A45CB8542CABF23C177B593C529134665",
+          "executionEligible": true
+        },
+        {
+          "path": "docs/platform-hard-cutover-01/phase-05b-execution-package/sql/m9-team-tournament/80_TT3_GET_SETUP_PATCH.sql",
+          "sha256ExactGitBlobBytes": "496544DDD6F89284CD7240622CC01A95D787E7F65C1D78D34618F06E506C7D9E",
+          "sha256CanonicalLf": "496544DDD6F89284CD7240622CC01A95D787E7F65C1D78D34618F06E506C7D9E",
+          "executionEligible": true
+        },
+        {
+          "path": "docs/platform-hard-cutover-01/phase-05b-execution-package/sql/m9-team-tournament/85_TT4_FORFEIT_WITHDRAWAL.sql",
+          "sha256ExactGitBlobBytes": "BDE518D41B21BE3B8A3C0D7BF2B02008BEDCD39970F6E52CD49D3691E5C2DC59",
+          "sha256CanonicalLf": "BDE518D41B21BE3B8A3C0D7BF2B02008BEDCD39970F6E52CD49D3691E5C2DC59",
+          "executionEligible": true
+        },
+        {
+          "path": "docs/platform-hard-cutover-01/phase-05b-execution-package/sql/m9-team-tournament/100_TT4_GET_SETUP_PATCH.sql",
+          "sha256ExactGitBlobBytes": "1827FD94AB8632305EDA3FC790A27BDFE40EE9DA6EEE3FFE27BB8832C0E6D37C",
+          "sha256CanonicalLf": "1827FD94AB8632305EDA3FC790A27BDFE40EE9DA6EEE3FFE27BB8832C0E6D37C",
+          "executionEligible": true
+        },
+        {
+          "path": "docs/platform-hard-cutover-01/phase-05b-execution-package/sql/m9-team-tournament/110_TT5B_BRIDGE_SCHEMA.sql",
+          "sha256ExactGitBlobBytes": "9BC8C70C4480EAA15DA7B5B98C8B57F0B6EC4E9166CCE2978D931B8321DD18DB",
+          "sha256CanonicalLf": "9BC8C70C4480EAA15DA7B5B98C8B57F0B6EC4E9166CCE2978D931B8321DD18DB",
+          "executionEligible": true
+        },
+        {
+          "path": "docs/platform-hard-cutover-01/phase-05b-execution-package/sql/m9-team-tournament/120_TT5B_PROVISION_RPC.sql",
+          "sha256ExactGitBlobBytes": "77019392716D11DF95063C014D8B7850FD8F333A21FAE3CBF5F2BFC7CD0F62F3",
+          "sha256CanonicalLf": "77019392716D11DF95063C014D8B7850FD8F333A21FAE3CBF5F2BFC7CD0F62F3",
+          "executionEligible": true
+        },
+        {
+          "path": "docs/platform-hard-cutover-01/phase-05b-execution-package/sql/m9-team-tournament/130_TT5B_LEGACY_LOCK_GUARD.sql",
+          "sha256ExactGitBlobBytes": "131373C8CA9693EC078F52A3EA05ADE49E4CACE79D9BFF3535409589D9E74D3B",
+          "sha256CanonicalLf": "131373C8CA9693EC078F52A3EA05ADE49E4CACE79D9BFF3535409589D9E74D3B",
+          "executionEligible": true
+        },
+        {
+          "path": "docs/platform-hard-cutover-01/phase-05b-execution-package/sql/m9-team-tournament/140_TT5B_GET_SETUP_PATCH.sql",
+          "sha256ExactGitBlobBytes": "E318AEDEA8A37E57F5D386AB83CD20EB8E5173A3C8DCF07CB1CD66FBE4B7F436",
+          "sha256CanonicalLf": "E318AEDEA8A37E57F5D386AB83CD20EB8E5173A3C8DCF07CB1CD66FBE4B7F436",
+          "executionEligible": true
+        },
+        {
+          "path": "docs/platform-hard-cutover-01/phase-05b-execution-package/sql/m9-team-tournament/150_TT5C_RESULT_OUTBOX.sql",
+          "sha256ExactGitBlobBytes": "A30D3559328555843440BFD0C5E157696F991D4CD5172458E98C453F5E9E0373",
+          "sha256CanonicalLf": "A30D3559328555843440BFD0C5E157696F991D4CD5172458E98C453F5E9E0373",
+          "executionEligible": true
+        },
+        {
+          "path": "docs/platform-hard-cutover-01/phase-05b-execution-package/sql/m9-team-tournament/160_TT5C_RESULT_PROPAGATION.sql",
+          "sha256ExactGitBlobBytes": "FB1ED457F4104874487BC6A134C1F8E53D683B6558FF529B2774687263E17AC3",
+          "sha256CanonicalLf": "FB1ED457F4104874487BC6A134C1F8E53D683B6558FF529B2774687263E17AC3",
+          "executionEligible": true
+        },
+        {
+          "path": "docs/platform-hard-cutover-01/phase-05b-execution-package/sql/m9-team-tournament/170_TT5C_STANDINGS_RECOMPUTE.sql",
+          "sha256ExactGitBlobBytes": "C8A324254786040F4641E1943366B6D7AA19188975D402E9438060CC08C1F035",
+          "sha256CanonicalLf": "C8A324254786040F4641E1943366B6D7AA19188975D402E9438060CC08C1F035",
+          "executionEligible": true
+        },
+        {
+          "path": "docs/platform-hard-cutover-01/phase-05b-execution-package/sql/m9-team-tournament/180_TT5C_REPROVISION.sql",
+          "sha256ExactGitBlobBytes": "D2077C2EAED39A3DA0392A56E8C864AA4A49A4D707739DEF8E523259FF314C91",
+          "sha256CanonicalLf": "D2077C2EAED39A3DA0392A56E8C864AA4A49A4D707739DEF8E523259FF314C91",
+          "executionEligible": true
+        },
+        {
+          "path": "docs/platform-hard-cutover-01/phase-05b-execution-package/sql/m9-team-tournament/230_TT6B_REALTIME_SECURITY.sql",
+          "sha256ExactGitBlobBytes": "E462C4C2B9F91D23DF0D6D3A14B6020A4649BFC71E2EC23B7B9A6F9F6BD72678",
+          "sha256CanonicalLf": "E462C4C2B9F91D23DF0D6D3A14B6020A4649BFC71E2EC23B7B9A6F9F6BD72678",
+          "executionEligible": true
+        },
+        {
+          "path": "docs/platform-hard-cutover-01/phase-05b-execution-package/sql/m9-team-tournament/240_TT6B_REALTIME_CORE.sql",
+          "sha256ExactGitBlobBytes": "0F4988D75393108E787FC7772BB3B4BA91619E46F9276B114224A3DEC6D28B0D",
+          "sha256CanonicalLf": "0F4988D75393108E787FC7772BB3B4BA91619E46F9276B114224A3DEC6D28B0D",
+          "executionEligible": true
+        }
+      ],
+      "nonExecutionCandidates": [
+        {
+          "path": "docs/platform-hard-cutover-01/phase-05b-execution-package/sql/m9-team-tournament/190_TT5D_ASSIGNMENT_SAFETY.sql",
+          "sha256ExactGitBlobBytes": "5ABEE354336E5A6D8744558D880F86803C33C283E95A43A4CD9877A2E3B69E70",
+          "sha256CanonicalLf": "5ABEE354336E5A6D8744558D880F86803C33C283E95A43A4CD9877A2E3B69E70",
+          "executionEligible": false,
+          "classification": "NON_EXECUTABLE_CANDIDATE_PENDING_STAGING_CERTIFICATION"
+        },
+        {
+          "path": "docs/platform-hard-cutover-01/phase-05b-execution-package/sql/m9-team-tournament/200_TT5D_REOPEN_RESULT.sql",
+          "sha256ExactGitBlobBytes": "7DB37D8A39B35789DF6D3948F6899B8ED0D950A6963E97855F0F579FDF43A755",
+          "sha256CanonicalLf": "7DB37D8A39B35789DF6D3948F6899B8ED0D950A6963E97855F0F579FDF43A755",
+          "executionEligible": false,
+          "classification": "NON_EXECUTABLE_CANDIDATE_PENDING_STAGING_CERTIFICATION"
+        },
+        {
+          "path": "docs/platform-hard-cutover-01/phase-05b-execution-package/sql/m9-team-tournament/210_TT5D_CORRECTION.sql",
+          "sha256ExactGitBlobBytes": "F9941BF7316273247D317B2344E2404FC7177F6CD28BB650C0E6BB9CBB66D0B7",
+          "sha256CanonicalLf": "F9941BF7316273247D317B2344E2404FC7177F6CD28BB650C0E6BB9CBB66D0B7",
+          "executionEligible": false,
+          "classification": "NON_EXECUTABLE_CANDIDATE_PENDING_STAGING_CERTIFICATION"
+        },
+        {
+          "path": "docs/platform-hard-cutover-01/phase-05b-execution-package/sql/m9-team-tournament/220_TT5D_SECURITY_GUARDS.sql",
+          "sha256ExactGitBlobBytes": "DC359FFAA81F4217491339AF879B509A0903AB98D176C3F7D5E98F3D1A94045F",
+          "sha256CanonicalLf": "DC359FFAA81F4217491339AF879B509A0903AB98D176C3F7D5E98F3D1A94045F",
+          "executionEligible": false,
+          "classification": "NON_EXECUTABLE_CANDIDATE_PENDING_STAGING_CERTIFICATION"
+        }
+      ],
+      "executableApplyCount": 20,
       "dependencyFamilies": [
         "M10_before_TT5B"
       ],
-      "precheck": "P1/TT1B present; M10 verified before TT5B+",
-      "exactVerificationArtefact": "docs/platform-hard-cutover-01/phase-05b-execution-package/sql/m9-team-tournament/99_VERIFY.sql",
-      "rollbackArtefact": "docs/platform-hard-cutover-01/phase-05b-execution-package/sql/m9-team-tournament/90_ROLLBACK.sql",
-      "rollbackOrIrreversibility": "NEW_OBJECTS_DROPPABLE; REPLACED_FUNCTIONS_BACKUP_PITR_ONLY",
+      "exactPrecheckPath": "docs/platform-hard-cutover-01/phase-05b-execution-package/sql/m9-team-tournament/99_VERIFY.sql",
+      "exactVerificationArtefacts": [
+        {
+          "path": "docs/platform-hard-cutover-01/phase-05b-execution-package/sql/m9-team-tournament/99_VERIFY.sql",
+          "sha256ExactGitBlobBytes": "1CC2CD950EA49C819098C3B8899A33B73BC46D06BB041EA0A3F679EBF8C9CB75",
+          "sha256CanonicalLf": "1CC2CD950EA49C819098C3B8899A33B73BC46D06BB041EA0A3F679EBF8C9CB75",
+          "gitBlobOid": "18dcb9ab5d99619903c68a0b083b97acc32029c0",
+          "hashSource": "INDEX"
+        }
+      ],
+      "exactRollbackArtefacts": [
+        {
+          "path": "docs/platform-hard-cutover-01/phase-05b-execution-package/sql/m9-team-tournament/90_ROLLBACK.sql",
+          "sha256ExactGitBlobBytes": "2FB6339E193D9BF0019B9678014F4661862E6DAB813027D4DFABB3530EBCADF5",
+          "sha256CanonicalLf": "2FB6339E193D9BF0019B9678014F4661862E6DAB813027D4DFABB3530EBCADF5",
+          "gitBlobOid": "cea7ae135ab621552d8dfd32c5ca39621e081ad1",
+          "hashSource": "INDEX"
+        }
+      ],
+      "irreversibilityBoundary": "BACKUP_PITR_ONLY_AFTER_REPLACE for CREATE OR REPLACE of pre-existing TT RPCs",
+      "rollbackClassification": "ROLLBACK_INCOMPLETE_FOR_REPLACED_FUNCTIONS",
       "stopPoint": "after_M9_full_verify",
       "productionApplicability": "BLOCKED_PENDING_TT5D_STAGING_PROOF"
     },
@@ -351,43 +998,106 @@
       "productionClassification": "missing_v5_legacy_token_rpcs_only",
       "packageReadiness": "READY",
       "exactOrderedApplyFiles": [
-        "docs/platform-hard-cutover-01/phase-05b-execution-package/sql/m10-referee-v5/10_V5A_REFEREE_FOUNDATION.sql",
-        "docs/platform-hard-cutover-01/phase-05b-execution-package/sql/m10-referee-v5/20_V5D_REFEREE_PERSISTENCE.sql",
-        "docs/platform-hard-cutover-01/phase-05b-execution-package/sql/m10-referee-v5/30_V5D1_REFEREE_HARDENING.sql",
-        "docs/platform-hard-cutover-01/phase-05b-execution-package/sql/m10-referee-v5/40_V5D32_IDEMPOTENCY_UNDO.sql"
+        {
+          "path": "docs/platform-hard-cutover-01/phase-05b-execution-package/sql/m10-referee-v5/10_V5A_REFEREE_FOUNDATION.sql",
+          "sha256ExactGitBlobBytes": "0341DDD4DE7A5B8A8273FD51CDB5DC7FBF48D29AC4B1365E901EA0D04F7E1F0B",
+          "sha256CanonicalLf": "0341DDD4DE7A5B8A8273FD51CDB5DC7FBF48D29AC4B1365E901EA0D04F7E1F0B",
+          "executionEligible": true
+        },
+        {
+          "path": "docs/platform-hard-cutover-01/phase-05b-execution-package/sql/m10-referee-v5/20_V5D_REFEREE_PERSISTENCE.sql",
+          "sha256ExactGitBlobBytes": "80383D99E3829EC8B851B1F717497855335F87682C3678A1D67C4D5EE5961751",
+          "sha256CanonicalLf": "80383D99E3829EC8B851B1F717497855335F87682C3678A1D67C4D5EE5961751",
+          "executionEligible": true
+        },
+        {
+          "path": "docs/platform-hard-cutover-01/phase-05b-execution-package/sql/m10-referee-v5/30_V5D1_REFEREE_HARDENING.sql",
+          "sha256ExactGitBlobBytes": "7E97D7B3289C0E5D7F6F545E4E749F2352771832F4799E4468A5DA32809DE189",
+          "sha256CanonicalLf": "7E97D7B3289C0E5D7F6F545E4E749F2352771832F4799E4468A5DA32809DE189",
+          "executionEligible": true
+        },
+        {
+          "path": "docs/platform-hard-cutover-01/phase-05b-execution-package/sql/m10-referee-v5/40_V5D32_IDEMPOTENCY_UNDO.sql",
+          "sha256ExactGitBlobBytes": "E0904EC1BD674BF70AC8CDF2CFB4FD9EFBB1469B61B32CB0C461E0A9E1DE6D30",
+          "sha256CanonicalLf": "E0904EC1BD674BF70AC8CDF2CFB4FD9EFBB1469B61B32CB0C461E0A9E1DE6D30",
+          "executionEligible": true
+        }
       ],
-      "sha256ByFile": {
-        "10_V5A_REFEREE_FOUNDATION.sql": "C1A079535A6295CB3D185AEE9C9B2E54DA6ED0AEBBEB67BBFD4B929DD13C0F8E",
-        "20_V5D_REFEREE_PERSISTENCE.sql": "5C3BCDA4E38449021516D0B966AB553E6F79D58A409B2D75AF59160F6295FDB9",
-        "30_V5D1_REFEREE_HARDENING.sql": "CAF20D89B35BEE42F2E06F20DDC0B498FFB7B2081A30A8CD4057DEDCFC47A579",
-        "40_V5D32_IDEMPOTENCY_UNDO.sql": "F0D0EB05C83883078B812E88E7515733017F9FA48FDA9FBD629E85D35A79C17D"
-      },
+      "nonExecutionCandidates": [],
       "dependencyFamilies": [
         "M8_preferred"
       ],
-      "exactVerificationArtefact": "docs/platform-hard-cutover-01/phase-05b-execution-package/sql/m10-referee-v5/99_VERIFY.sql",
-      "rollbackArtefact": "docs/platform-hard-cutover-01/phase-05b-execution-package/sql/m10-referee-v5/90_ROLLBACK.sql",
+      "exactPrecheckPath": "docs/platform-hard-cutover-01/phase-05b-execution-package/sql/m10-referee-v5/99_VERIFY.sql",
+      "exactVerificationArtefacts": [
+        {
+          "path": "docs/platform-hard-cutover-01/phase-05b-execution-package/sql/m10-referee-v5/99_VERIFY.sql",
+          "sha256ExactGitBlobBytes": "BA1E1E9EC180DC1D723F4C978B6239A2C276575A937A87C0D1A8B5A6A95519AC",
+          "sha256CanonicalLf": "BA1E1E9EC180DC1D723F4C978B6239A2C276575A937A87C0D1A8B5A6A95519AC",
+          "gitBlobOid": "0c788dc597cc9b046bad733484aabf1ce4802499",
+          "hashSource": "INDEX"
+        }
+      ],
+      "exactRollbackArtefacts": [
+        {
+          "path": "docs/platform-hard-cutover-01/phase-05b-execution-package/sql/m10-referee-v5/90_ROLLBACK.sql",
+          "sha256ExactGitBlobBytes": "8CA27CC3151BD6F716BCC8249174C728A0A66EB4C3AF5217A0A5B17816DC215A",
+          "sha256CanonicalLf": "8CA27CC3151BD6F716BCC8249174C728A0A66EB4C3AF5217A0A5B17816DC215A",
+          "gitBlobOid": "2fd58f67729c9121ad36f453b157ddee2a467751",
+          "hashSource": "INDEX"
+        }
+      ],
+      "irreversibilityBoundary": null,
       "stopPoint": "after_M10_verify_before_M9B",
-      "productionApplicability": "PACKAGED"
+      "productionApplicability": "PACKAGED_MISSING_ON_PRODUCTION"
     },
     "M11": {
       "family": "M11",
       "purpose": "Private pairing digest",
       "productionClassification": "rc1_present_digest_body_already_equivalent",
       "packageReadiness": "READY_STAGING_CATALOG_DERIVED_ALREADY_EQUIVALENT_ON_PRODUCTION",
-      "exactOrderedApplyFiles": [
-        "docs/platform-hard-cutover-01/phase-05b-execution-package/sql/m11-private-pairing-digest/10_PRIVATE_PAIRING_DIGEST.sql"
+      "productionRunbookAction": "VERIFY_ONLY_ALREADY_EQUIVALENT",
+      "exactOrderedApplyFiles": [],
+      "referenceCandidates": [
+        {
+          "path": "docs/platform-hard-cutover-01/phase-05b-execution-package/sql/m11-private-pairing-digest/10_PRIVATE_PAIRING_DIGEST.sql",
+          "sha256ExactGitBlobBytes": "87085C1C8E5C3B5D0835192930482F94CC2895F2C21AFA57B5E16283D7B5A2A7",
+          "sha256CanonicalLf": "87085C1C8E5C3B5D0835192930482F94CC2895F2C21AFA57B5E16283D7B5A2A7",
+          "executionEligible": false,
+          "classification": "REFERENCE_CANDIDATE_ALREADY_EQUIVALENT_DO_NOT_APPLY"
+        }
       ],
-      "sha256ByFile": {
-        "10_PRIVATE_PAIRING_DIGEST.sql": "87085C1C8E5C3B5D0835192930482F94CC2895F2C21AFA57B5E16283D7B5A2A7"
-      },
+      "nonExecutionCandidates": [
+        {
+          "path": "docs/platform-hard-cutover-01/phase-05b-execution-package/sql/m11-private-pairing-digest/10_PRIVATE_PAIRING_DIGEST.sql",
+          "executionEligible": false,
+          "classification": "REFERENCE_CANDIDATE_ALREADY_EQUIVALENT_DO_NOT_APPLY"
+        }
+      ],
       "dependencyFamilies": [
         "private_pairing_rc1_archive_rule_set"
       ],
-      "exactVerificationArtefact": "docs/platform-hard-cutover-01/phase-05b-execution-package/sql/m11-private-pairing-digest/99_VERIFY.sql",
-      "rollbackArtefact": "docs/platform-hard-cutover-01/phase-05b-execution-package/sql/m11-private-pairing-digest/90_ROLLBACK.sql",
+      "exactPrecheckPath": "docs/platform-hard-cutover-01/phase-05b-execution-package/sql/m11-private-pairing-digest/99_VERIFY.sql",
+      "exactVerificationArtefacts": [
+        {
+          "path": "docs/platform-hard-cutover-01/phase-05b-execution-package/sql/m11-private-pairing-digest/99_VERIFY.sql",
+          "sha256ExactGitBlobBytes": "BF97C807C61F467102B2371B36F6EF0F5300135C177EC05EC2305038B0DD8757",
+          "sha256CanonicalLf": "BF97C807C61F467102B2371B36F6EF0F5300135C177EC05EC2305038B0DD8757",
+          "gitBlobOid": "379d09eae03f18b5302275404fc52078aa95fef6",
+          "hashSource": "INDEX"
+        }
+      ],
+      "exactRollbackArtefacts": [
+        {
+          "path": "docs/platform-hard-cutover-01/phase-05b-execution-package/sql/m11-private-pairing-digest/90_ROLLBACK.sql",
+          "sha256ExactGitBlobBytes": "7E9EA6BAD1522EDB3067946B81EF0780D4B1CCD4822C16A53AE0F7E2FD1B411E",
+          "sha256CanonicalLf": "7E9EA6BAD1522EDB3067946B81EF0780D4B1CCD4822C16A53AE0F7E2FD1B411E",
+          "gitBlobOid": "c86c1993b54d38d892c3bb7fabfd420865e6ccaa",
+          "hashSource": "INDEX"
+        }
+      ],
+      "irreversibilityBoundary": null,
       "stopPoint": "after_M11_verify_before_wipe",
-      "productionApplicability": "ALREADY_EQUIVALENT_IDEMPOTENT",
+      "productionApplicability": "ALREADY_EQUIVALENT_VERIFY_ONLY",
       "provenanceClass": "STAGING_CATALOG_DERIVED"
     }
   }
