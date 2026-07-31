@@ -8,10 +8,10 @@
   "files": [
     {
       "path": "docs/platform-hard-cutover-01/phase-05b-execution-package/sql/m9-team-tournament/00_SOURCE_PROVENANCE.json",
-      "sha256ExactGitBlobBytes": "11226FBFFC060A58FCD1D78E9CC5CB05EDE42D65329E2E392146A8EF2A09A072",
-      "sha256CanonicalLf": "11226FBFFC060A58FCD1D78E9CC5CB05EDE42D65329E2E392146A8EF2A09A072",
+      "sha256ExactGitBlobBytes": "0122753BD8BED4586226B180248CAFE0658D2A3242773A560C494035BE51363E",
+      "sha256CanonicalLf": "0122753BD8BED4586226B180248CAFE0658D2A3242773A560C494035BE51363E",
       "hashSource": "INDEX",
-      "gitBlobOid": "a91d2b9002f668b80e7d5026c40ffb26d6897c93"
+      "gitBlobOid": "282a0847881d99226205a1c7e450301620fcacca"
     },
     {
       "path": "docs/platform-hard-cutover-01/phase-05b-execution-package/sql/m9-team-tournament/100_TT4_GET_SETUP_PATCH.sql",
@@ -197,10 +197,10 @@
     },
     {
       "path": "docs/platform-hard-cutover-01/phase-05b-execution-package/sql/m9-team-tournament/M9_MANIFEST.json",
-      "sha256ExactGitBlobBytes": "3CF36F65FB0EA02632C8A7C608880F004823CC78EC886AA65BF8BB061BE1D1B0",
-      "sha256CanonicalLf": "3CF36F65FB0EA02632C8A7C608880F004823CC78EC886AA65BF8BB061BE1D1B0",
+      "sha256ExactGitBlobBytes": "9343C58442CE7B33547B7D3603FC4AE28B0FA2D2C56D65DA8038153C1E0A4D16",
+      "sha256CanonicalLf": "9343C58442CE7B33547B7D3603FC4AE28B0FA2D2C56D65DA8038153C1E0A4D16",
       "hashSource": "INDEX",
-      "gitBlobOid": "fc2537c61911c33f9f39d72b0bf54960f92a9a9e"
+      "gitBlobOid": "c62d34955f88ec54b7a39e4da87bdbe0c0555dd8"
     },
     {
       "path": "docs/platform-hard-cutover-01/phase-05b-execution-package/sql/m10-referee-v5/00_SOURCE_PROVENANCE.json",
