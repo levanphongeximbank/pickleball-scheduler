@@ -154,10 +154,11 @@ if (fs.existsSync(path.join(ROOT, MANIFEST_REL))) {
       fail(`checksum path missing on disk: ${rel}`);
       continue;
     }
-    const wtBytes = fs.readFileSync(abs);
     const idx = readIndexBlob(rel);
     if (idx) {
-      if (!wtBytes.equals(idx.bytes)) fail(`working-tree differs from index: ${rel}`);
+      const d1 = spawnSync("git", ["diff", "--quiet", "--", rel], { cwd: ROOT });
+      const d2 = spawnSync("git", ["diff", "--quiet", "--cached", "--", rel], { cwd: ROOT });
+      if (d1.status !== 0 || d2.status !== 0) fail(`working-tree dirty vs index: ${rel}`);
       const got = sha256Exact(idx.bytes);
       if (got !== String(entry.sha256ExactGitBlobBytes).toUpperCase()) {
         fail(`checksum mismatch ${rel}`);
@@ -167,7 +168,7 @@ if (fs.existsSync(path.join(ROOT, MANIFEST_REL))) {
       }
       if (entry.gitBlobOid && entry.gitBlobOid !== idx.oid) fail(`oid mismatch ${rel}`);
     } else {
-      // Untracked yet: compare working-tree hashes if manifest was built from WT before first commit
+      const wtBytes = fs.readFileSync(abs);
       const got = sha256Exact(wtBytes);
       if (got !== String(entry.sha256ExactGitBlobBytes).toUpperCase()) {
         fail(`checksum mismatch (wt) ${rel}`);

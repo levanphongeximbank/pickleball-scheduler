@@ -55,6 +55,15 @@ function gitBlobOidForBytes(buf) {
   if (store.status !== 0) throw new Error("git hash-object failed");
   return store.stdout.toString("utf8").trim();
 }
+function assertClean(rel) {
+  const norm = rel.replace(/\\/g, "/");
+  const d1 = spawnSync("git", ["diff", "--quiet", "--", norm], { cwd: ROOT });
+  const d2 = spawnSync("git", ["diff", "--quiet", "--cached", "--", norm], { cwd: ROOT });
+  if (d1.status !== 0 || d2.status !== 0) {
+    throw new Error(`tracked path dirty vs index/HEAD: ${norm}`);
+  }
+}
+
 function readIndexOrWt(rel) {
   const norm = rel.replace(/\\/g, "/");
   const oidR = spawnSync("git", ["rev-parse", "--verify", "--quiet", `:${norm}`], {
@@ -62,16 +71,10 @@ function readIndexOrWt(rel) {
     encoding: "utf8",
   });
   if (oidR.status === 0) {
+    assertClean(norm);
     const oid = oidR.stdout.trim();
     const blob = spawnSync("git", ["cat-file", "blob", oid], { cwd: ROOT, encoding: "buffer" });
     if (blob.status === 0) {
-      const abs = path.join(ROOT, norm);
-      if (fs.existsSync(abs)) {
-        const wt = fs.readFileSync(abs);
-        if (!wt.equals(blob.stdout)) {
-          throw new Error(`working-tree differs from index: ${norm}`);
-        }
-      }
       return { bytes: blob.stdout, oid, source: "INDEX" };
     }
   }
