@@ -1,0 +1,26 @@
+{
+  "generatedAt": "2026-07-31T09:01:59.819Z",
+  "dependencies": {
+    "team_sub_match_referee_links": true,
+    "team_tournament_referee_event_inbox": true,
+    "referee_assignments": true,
+    "team_tournaments": true,
+    "team_tournament_matchups": true,
+    "team_tournament_sub_matches": true,
+    "match_result_revisions": true,
+    "match_integration_outbox": true,
+    "team_tournament_can_manage": true,
+    "team_tournament_consume_referee_v5_outbox": true,
+    "classification": "DEPENDENCIES_PRESENT"
+  },
+  "preApplyClassification": "CONFLICTING",
+  "blockerCodes": [
+    "TT5D_OBJECTS_PRESENT_WITHOUT_SCHEMA_MIGRATIONS_TT5D_ROW",
+    "CANNOT_CLASSIFY_ABSENT_AS_EXPECTED",
+    "CANNOT_CLASSIFY_ALREADY_EXACTLY_EQUIVALENT_WITH_MATCHING_MIGRATION_PROVENANCE",
+    "GRANT_DRIFT_ANON_EXECUTE_ON_FUNCTIONS_REVOKED_FROM_PUBLIC_IN_CANONICAL_PACKAGE",
+    "ATOMIC_APPLY_FORBIDDEN_WHEN_PARTIALLY_PRESENT_OR_CONFLICTING"
+  ],
+  "snapshotRef": "sql/10_STAGING_PREAPPLY_CATALOG_SNAPSHOT.json",
+  "mutationAuthorizedButNotStarted": true
+}

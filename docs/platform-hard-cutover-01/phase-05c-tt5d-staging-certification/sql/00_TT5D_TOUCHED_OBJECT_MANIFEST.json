@@ -1,0 +1,102 @@
+{
+  "generatedAt": "2026-07-31T09:01:59.819Z",
+  "phase": "PHASE_05C",
+  "artefacts": [
+    {
+      "order": 190,
+      "file": "190_TT5D_ASSIGNMENT_SAFETY.sql",
+      "path": "docs/platform-hard-cutover-01/phase-05b-execution-package/sql/m9-team-tournament/190_TT5D_ASSIGNMENT_SAFETY.sql",
+      "expected": "5ABEE354336E5A6D8744558D880F86803C33C283E95A43A4CD9877A2E3B69E70",
+      "sourcePath": "docs/v5/team-tournament/tt5/TT5-D_ASSIGNMENT_SAFETY.sql",
+      "sha256ExactGitBlobBytes": "5ABEE354336E5A6D8744558D880F86803C33C283E95A43A4CD9877A2E3B69E70",
+      "sourceSha256ExactGitBlobBytes": "5ABEE354336E5A6D8744558D880F86803C33C283E95A43A4CD9877A2E3B69E70",
+      "bytesMatchExpected": true,
+      "bytesMatchSource": true
+    },
+    {
+      "order": 200,
+      "file": "200_TT5D_REOPEN_RESULT.sql",
+      "path": "docs/platform-hard-cutover-01/phase-05b-execution-package/sql/m9-team-tournament/200_TT5D_REOPEN_RESULT.sql",
+      "expected": "7DB37D8A39B35789DF6D3948F6899B8ED0D950A6963E97855F0F579FDF43A755",
+      "sourcePath": "docs/v5/team-tournament/tt5/TT5-D_REOPEN_RESULT_REVISION.sql",
+      "sha256ExactGitBlobBytes": "7DB37D8A39B35789DF6D3948F6899B8ED0D950A6963E97855F0F579FDF43A755",
+      "sourceSha256ExactGitBlobBytes": "7DB37D8A39B35789DF6D3948F6899B8ED0D950A6963E97855F0F579FDF43A755",
+      "bytesMatchExpected": true,
+      "bytesMatchSource": true
+    },
+    {
+      "order": 210,
+      "file": "210_TT5D_CORRECTION.sql",
+      "path": "docs/platform-hard-cutover-01/phase-05b-execution-package/sql/m9-team-tournament/210_TT5D_CORRECTION.sql",
+      "expected": "F9941BF7316273247D317B2344E2404FC7177F6CD28BB650C0E6BB9CBB66D0B7",
+      "sourcePath": "docs/v5/team-tournament/tt5/TT5-D_CORRECTION_WORKFLOW.sql",
+      "sha256ExactGitBlobBytes": "F9941BF7316273247D317B2344E2404FC7177F6CD28BB650C0E6BB9CBB66D0B7",
+      "sourceSha256ExactGitBlobBytes": "F9941BF7316273247D317B2344E2404FC7177F6CD28BB650C0E6BB9CBB66D0B7",
+      "bytesMatchExpected": true,
+      "bytesMatchSource": true
+    },
+    {
+      "order": 220,
+      "file": "220_TT5D_SECURITY_GUARDS.sql",
+      "path": "docs/platform-hard-cutover-01/phase-05b-execution-package/sql/m9-team-tournament/220_TT5D_SECURITY_GUARDS.sql",
+      "expected": "DC359FFAA81F4217491339AF879B509A0903AB98D176C3F7D5E98F3D1A94045F",
+      "sourcePath": "docs/v5/team-tournament/tt5/TT5-D_SECURITY_GUARDS.sql",
+      "sha256ExactGitBlobBytes": "DC359FFAA81F4217491339AF879B509A0903AB98D176C3F7D5E98F3D1A94045F",
+      "sourceSha256ExactGitBlobBytes": "DC359FFAA81F4217491339AF879B509A0903AB98D176C3F7D5E98F3D1A94045F",
+      "bytesMatchExpected": true,
+      "bytesMatchSource": true
+    }
+  ],
+  "tables": {
+    "altered": [
+      "public.referee_assignments"
+    ],
+    "created": [
+      "public.team_tournament_referee_correction_requests"
+    ]
+  },
+  "columnsAddedOnRefereeAssignments": [
+    "external_matchup_id",
+    "external_sub_match_id",
+    "matchup_id",
+    "sub_match_id",
+    "revoke_reason",
+    "version"
+  ],
+  "constraints": {
+    "droppedThenAdded": [
+      "referee_assignments_status_check"
+    ],
+    "statusValuesRequired": [
+      "pending",
+      "active",
+      "expired",
+      "revoked",
+      "completed"
+    ]
+  },
+  "indexes": [
+    "referee_assignments_sub_match_idx",
+    "tt5d_correction_pending_idx"
+  ],
+  "policies": [
+    "tt5d_correction_referee_select",
+    "tt5d_correction_no_client_write"
+  ],
+  "functions": [
+    "referee_v5_assignment_effective_status(text,timestamptz,timestamptz)",
+    "referee_v5_mark_assignment_expired_if_needed(uuid)",
+    "team_tournament_create_referee_assignment(...)",
+    "team_tournament_revoke_referee_assignment(...)",
+    "team_tournament_list_referee_assignments(text,text)",
+    "referee_v5_apply_admin_result_revision(...)",
+    "team_tournament_reopen_referee_match(...)",
+    "team_tournament_request_referee_correction(...)",
+    "team_tournament_review_referee_correction(...)",
+    "team_tournament_list_referee_corrections(text,text)",
+    "referee_v5_current_user_has_assignment(...)",
+    "referee_v5_assert_assignment_write(...)",
+    "team_tournament_referee_match_access_ops(text,text)"
+  ],
+  "note": "Inventory derived from exact TT5D package SQL parse; no row values."
+}

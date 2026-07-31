@@ -1,0 +1,24 @@
+{
+  "generatedAt": "2026-07-31T09:01:59.819Z",
+  "decision": "BLOCKED_PHASE5C_TT5D_CERTIFICATION",
+  "historicalPhase5BDecisionRetained": "BLOCKED_PHASE5B_EXECUTION_PACKAGE",
+  "historicalM9Blocker": "BLOCKED_STAGING_CATALOG_NOT_PROVEN_FOR_TT5D",
+  "supersedingM9Verdict": "BLOCKED_STAGING_TT5D_PREEXISTING_WITHOUT_CONTROLLED_MIGRATION_PROVENANCE",
+  "executableApplyCount": 20,
+  "nonExecutableCandidateCount": 4,
+  "tt5dMovedToOrderedApply": false,
+  "executionEligibleTt5d": false,
+  "continuingPhase5": {
+    "BLOCKED_PHASE5_READINESS": true,
+    "executionRunbookAccepted": false,
+    "productionExecutionGo": false,
+    "PHASE_05_COMPLETE": "NOT_ISSUED",
+    "backupPitrRestore": "NOT_PROVABLE_CANNOT_WAIVE"
+  },
+  "markers": [
+    "PLATFORM_HARD_CUTOVER_01_PHASE5C_TT5D_CERTIFICATION_BLOCKED",
+    "PLATFORM_HARD_CUTOVER_01_PHASE5C_M9_BLOCKER_REMAINS",
+    "PLATFORM_HARD_CUTOVER_01_PHASE5C_BLOCKED"
+  ],
+  "stopAt": "BLOCKED_PHASE5C_TT5D_CERTIFICATION"
+}

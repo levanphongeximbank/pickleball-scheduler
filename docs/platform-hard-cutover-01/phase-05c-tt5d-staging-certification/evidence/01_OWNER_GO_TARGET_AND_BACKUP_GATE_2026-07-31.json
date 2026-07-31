@@ -1,0 +1,55 @@
+{
+  "generatedAt": "2026-07-31T09:01:59.819Z",
+  "ownerAuthorization": {
+    "STAGING_BACKUP_CONFIRMED": true,
+    "GO_STAGING_PHASE5C_TT5D_CERTIFICATION": true,
+    "PRODUCTION_GO": "NO"
+  },
+  "targetGuard": {
+    "authorizedProjectRef": "qyewbxjsiiyufanzcjcq",
+    "forbiddenProductionRef": "expuvcohlcjzvrrauvud",
+    "environment": "Staging",
+    "result": "PASS_TARGET_STAGING",
+    "productionMutations": 0
+  },
+  "backupGate": {
+    "project_ref": "qyewbxjsiiyufanzcjcq",
+    "timestampUtc": "2026-07-30T18:54:00Z",
+    "type": "PHYSICAL",
+    "restoreActionVisiblePerOwner": true,
+    "restoreExecutedByAgent": false,
+    "mcpBackupEnumerationAvailable": false,
+    "classification": "OWNER_CONFIRMED_STAGING_BACKUP_GATE_ACCEPTED",
+    "result": "PASS_OWNER_CONFIRMED"
+  },
+  "checksumGate": {
+    "phase5bVerifier": "PASS_42_FILES",
+    "fourTt5dExactByteHashes": [
+      {
+        "file": "190_TT5D_ASSIGNMENT_SAFETY.sql",
+        "sha256ExactGitBlobBytes": "5ABEE354336E5A6D8744558D880F86803C33C283E95A43A4CD9877A2E3B69E70",
+        "matchExpected": true,
+        "matchSource": true
+      },
+      {
+        "file": "200_TT5D_REOPEN_RESULT.sql",
+        "sha256ExactGitBlobBytes": "7DB37D8A39B35789DF6D3948F6899B8ED0D950A6963E97855F0F579FDF43A755",
+        "matchExpected": true,
+        "matchSource": true
+      },
+      {
+        "file": "210_TT5D_CORRECTION.sql",
+        "sha256ExactGitBlobBytes": "F9941BF7316273247D317B2344E2404FC7177F6CD28BB650C0E6BB9CBB66D0B7",
+        "matchExpected": true,
+        "matchSource": true
+      },
+      {
+        "file": "220_TT5D_SECURITY_GUARDS.sql",
+        "sha256ExactGitBlobBytes": "DC359FFAA81F4217491339AF879B509A0903AB98D176C3F7D5E98F3D1A94045F",
+        "matchExpected": true,
+        "matchSource": true
+      }
+    ],
+    "result": "PASS"
+  }
+}
