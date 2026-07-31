@@ -1,0 +1,77 @@
+{
+  "marker": "PLATFORM_HARD_CUTOVER_01_PHASE5A_READINESS_DECISION",
+  "generatedAt": "2026-07-30T23:45:00.000Z",
+  "workstream": "PHASE_5A_PRODUCTION_CUTOVER_READINESS_BACKUP_ROLLBACK_GATE",
+  "mode": "READ_ONLY_AUDIT",
+  "decision": "BLOCKED_PHASE5_READINESS",
+  "mergeGate": "READY_FOR_OWNER_REVIEW_PHASE5A",
+  "doNotIssueMarker": "PHASE_05_COMPLETE",
+  "phase05CompleteIssued": false,
+  "freshOriginMain": "cae5e6f7496522ea1ba33a474d2c939084ba9844",
+  "productionProjectRefVerified": "expuvcohlcjzvrrauvud",
+  "stagingProjectRef": "qyewbxjsiiyufanzcjcq",
+  "phase4ClosureInputs": {
+    "evidence33": "docs/platform-hard-cutover-01/phase-04/evidence/33_OPERATOR_ACCEPTANCE_FINAL_BROWSER_RUN_2026-07-30.json",
+    "evidence34": "docs/platform-hard-cutover-01/phase-04/evidence/34_OPERATOR_ACCEPTANCE_FINAL_WRITE_RECONCILIATION_2026-07-30.json",
+    "evidence35": "docs/platform-hard-cutover-01/phase-04/evidence/35_PHASE4_FINAL_EVIDENCE_READY_2026-07-30.json",
+    "marker": "PLATFORM_HARD_CUTOVER_01_PHASE4_FINAL_EVIDENCE_READY",
+    "ownerDeclaredStatus": "PLATFORM_HARD_CUTOVER_01_PHASE4_CLOSED",
+    "operatorAcceptance": "17/17 PASS",
+    "securityReconciliation": "PASS",
+    "productionDeploymentSha": "cae5e6f7496522ea1ba33a474d2c939084ba9844",
+    "productionDeploymentStatus": "Ready_Current",
+    "operatorRunnerReExecuted": false,
+    "status": "PASS"
+  },
+  "backupPitrRestoreClassification": "BLOCKED_NOT_PROVABLE",
+  "protectedObjectStatus": "PASS_COUNTS_AND_EXISTS",
+  "wipeImpactRowsSanitizedTotal": 1119,
+  "migrationParitySummary": {
+    "M0": "already_present_and_verified",
+    "M1": "missing",
+    "M2": "missing",
+    "M3": "missing",
+    "M4": "missing",
+    "M5": "missing",
+    "M6": "missing",
+    "M7": "missing",
+    "M8": "missing",
+    "M9": "partially_present",
+    "M10": "missing",
+    "M11": "partially_present"
+  },
+  "documentConflictResolution": {
+    "conflict": "PRODUCTION_CUTOVER_PLAN M1→M8 vs MIGRATION_MANIFEST M0→M11",
+    "canonicalDraft": "docs/platform-hard-cutover-01/phase-05-readiness/PHASE5_ORDERED_RUNBOOK_DRAFT.md",
+    "ssot": "MIGRATION_MANIFEST M0→M11",
+    "ownerAcceptanceStillRequired": true
+  },
+  "rollbackReseedReadiness": "BLOCKED",
+  "blockingReasons": [
+    "Production backup/PITR/restore not proven — mandatory BLOCKED",
+    "Safe club_ai_data recreate package incomplete (legacy club-v3 recreate is unsafe alone)",
+    "M1–M8 missing on Production (expected pre-cutover, but cutover GO still requires backup+runbook Owner accept)",
+    "Single ordered runbook draft created; Owner must accept as SSOT before execution GO"
+  ],
+  "hardBoundariesHonored": {
+    "productionDbMutations": 0,
+    "stagingDbMutations": 0,
+    "sqlApplied": false,
+    "wipeDropReseed": false,
+    "vercelFlagsChanged": false,
+    "deployRedeploy": false,
+    "operatorRunner": false,
+    "backupCreateOrRestore": false,
+    "gitResetRebaseCleanStashForcePush": false,
+    "phase05CompleteMarker": false
+  },
+  "evidenceFiles": [
+    "docs/platform-hard-cutover-01/phase-05-readiness/01_PRODUCTION_READ_ONLY_INVENTORY_2026-07-30.json",
+    "docs/platform-hard-cutover-01/phase-05-readiness/02_MIGRATION_M0_M11_PARITY_2026-07-30.json",
+    "docs/platform-hard-cutover-01/phase-05-readiness/03_BACKUP_ROLLBACK_RESEED_GATE_2026-07-30.json",
+    "docs/platform-hard-cutover-01/phase-05-readiness/04_PHASE5A_READINESS_DECISION_2026-07-30.json",
+    "docs/platform-hard-cutover-01/phase-05-readiness/PHASE5_ORDERED_RUNBOOK_DRAFT.md"
+  ],
+  "secretsPrinted": false,
+  "piiPrinted": false
+}

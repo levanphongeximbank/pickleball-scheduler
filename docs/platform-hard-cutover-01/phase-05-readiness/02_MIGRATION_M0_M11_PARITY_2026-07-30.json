@@ -1,0 +1,172 @@
+{
+  "marker": "PLATFORM_HARD_CUTOVER_01_PHASE5A_MIGRATION_M0_M11_PARITY",
+  "generatedAt": "2026-07-30T23:35:00.000Z",
+  "mode": "READ_ONLY",
+  "mutationsExecuted": 0,
+  "sqlInvented": false,
+  "sqlApplied": false,
+  "targetProjectRef": "expuvcohlcjzvrrauvud",
+  "manifestSource": "docs/platform-hard-cutover-01/phase-04/manifests/MIGRATION_MANIFEST.md",
+  "documentConflict": {
+    "productionCutoverPlanSays": "Apply migrations M1→M8",
+    "migrationManifestSays": "Apply order M0→M11",
+    "stagingRehearsalPlanSays": "Apply migration families M1→M8",
+    "resolutionRequiredForGo": true,
+    "resolvedBy": "docs/platform-hard-cutover-01/phase-05-readiness/PHASE5_ORDERED_RUNBOOK_DRAFT.md",
+    "canonicalOrderForPhase5": "M0→M11 (MIGRATION_MANIFEST is SSOT; PRODUCTION_CUTOVER_PLAN M1→M8 is incomplete/stale)",
+    "goBlockedUntilOwnerAcceptsSingleRunbook": true
+  },
+  "parityMatrix": [
+    {
+      "family": "M0",
+      "name": "G3-B12 club_ai_data anon write lockdown",
+      "status": "already_present_and_verified",
+      "evidence": {
+        "migration": "20260728001245_prod_sec_g3_b12_01_club_ai_data_anon_write_lockdown",
+        "policy": "club_ai_data_deny_all_clients USING false / WITH CHECK false",
+        "rlsEnabled": true,
+        "rlsForced": true,
+        "clientGrants": 0,
+        "anonNamedPolicies": 0,
+        "catalogRpcsStillPresent": 4
+      },
+      "stopRollbackPoint": "Do not re-open anon policies; if DROP club_ai_data later, M0 objects disappear with table"
+    },
+    {
+      "family": "M1",
+      "name": "Customer",
+      "status": "missing",
+      "evidence": {
+        "customersLikeTables": 0,
+        "customerLikeRpcs": 0
+      },
+      "action": "promote authored docs/customer-management/phase-3 package on Owner GO",
+      "stopRollbackPoint": "package 90_*.sql after verify fail; before wipe"
+    },
+    {
+      "family": "M2",
+      "name": "Finance",
+      "status": "missing",
+      "evidence": { "financeLikeTables": 0, "financeLikeRpcs": 0 },
+      "action": "promote docs/supabase-finance-phase1f.sql on Owner GO",
+      "stopRollbackPoint": "docs/supabase-finance-phase1f-rollback.sql"
+    },
+    {
+      "family": "M3",
+      "name": "CRM",
+      "status": "missing",
+      "evidence": { "crmLikeTables": 0, "crmLikeRpcs": 0 },
+      "action": "promote docs/crm/phase-1g + phase-1h packages",
+      "stopRollbackPoint": "staging rollback SQL after family verify fail"
+    },
+    {
+      "family": "M4",
+      "name": "Reporting",
+      "status": "missing",
+      "evidence": { "reportingLikeTables": 0, "reportingLikeRpcs": 0 },
+      "action": "promote docs/reporting-analytics/reporting-02 package",
+      "stopRollbackPoint": "90/91_*.sql"
+    },
+    {
+      "family": "M5",
+      "name": "News",
+      "status": "missing",
+      "evidence": { "newsLikeTables": 0, "newsLikeRpcs": 0 },
+      "action": "promote news-02/03/04 public RPC packages",
+      "stopRollbackPoint": "90_*.sql"
+    },
+    {
+      "family": "M6",
+      "name": "Coaching",
+      "status": "missing",
+      "evidence": { "coachingLikeTables": 0, "coachingLikeRpcs": 0 },
+      "action": "promote coaching-02 + coaching-04 packages",
+      "stopRollbackPoint": "90_*.sql"
+    },
+    {
+      "family": "M7",
+      "name": "Competition Core cc02",
+      "status": "missing",
+      "evidence": {
+        "player_ratings": false,
+        "rating_history": false,
+        "note": "Rating V5 objects exist separately and are NOT M7 Elo tables"
+      },
+      "action": "promote docs/competition-core/supabase-cc02*.sql",
+      "stopRollbackPoint": "recreate / Owner emergency only"
+    },
+    {
+      "family": "M8",
+      "name": "Competition Remote SSOT",
+      "status": "missing",
+      "evidence": {
+        "competition_ssot_tables": 0,
+        "competition_ssot_functions": 0,
+        "authoredPackage": "docs/platform-hard-cutover-01/phase-04/sql/m8-competition-remote-ssot/",
+        "tenantIdRequirement": "tenant_id / p_tenant_id must be text",
+        "user_venue_id_result_type": "text",
+        "productionApply": false
+      },
+      "action": "apply authored M8 package with text-tenant contract; verify 99_VERIFY.sql",
+      "stopRollbackPoint": "90_ROLLBACK.sql before wipe/DROP/flags"
+    },
+    {
+      "family": "M9",
+      "name": "Team Tournament remainder",
+      "status": "partially_present",
+      "evidence": {
+        "presentMigrations": [
+          "tt1b_prereq_schema",
+          "tt1b_prereq_command_helpers",
+          "tt1b_readonly_ops_helpers",
+          "phase_p1_2_*",
+          "phase_p1_3_*",
+          "p1_3_*"
+        ],
+        "teamTournamentTablesPresent": true,
+        "tt2_to_tt6b_migrationsNamedInSchemaMigrations": 0,
+        "ttFunctionCountApprox": 61,
+        "note": "P1/TT1B present; MIGRATION_MANIFEST remainder (phase_tt2*..tt6b_*) not found as named migrations — promote from Staging export, do not invent"
+      },
+      "action": "Owner-approved promote of Staging TT remainder only",
+      "stopRollbackPoint": "partial; stop before wipe if remainder verify fails"
+    },
+    {
+      "family": "M10",
+      "name": "Referee V5",
+      "status": "missing",
+      "evidence": {
+        "phase_v5a_referee_migrations": 0,
+        "phase_v5d_migrations": 0,
+        "legacyRefereeRpcsOnly": [
+          "referee_get_match_by_token(p_token text)",
+          "referee_update_match_score(p_token text, p_payload jsonb)"
+        ],
+        "wipeRefereeBridgeTablesPresent": false
+      },
+      "action": "promote Staging phase_v5a_referee* / phase_v5d* — do not invent",
+      "stopRollbackPoint": "partial; prefer after M8"
+    },
+    {
+      "family": "M11",
+      "name": "Private pairing digest",
+      "status": "partially_present",
+      "evidence": {
+        "rc1MigrationPresent": "private_pairing_rc1_archive_rule_set",
+        "privatePairingTablesPresent": true,
+        "digestPatchMigration": "missing",
+        "digestLikeFunctions": 0
+      },
+      "action": "promote Staging private_pairing_pr4_digest_patch after RC1 confirmed",
+      "stopRollbackPoint": "before wipe if digest verify fails"
+    }
+  ],
+  "summaryCounts": {
+    "already_present_and_verified": 1,
+    "partially_present": 2,
+    "missing": 9,
+    "signature_schema_drift": 0,
+    "verification_unavailable": 0
+  },
+  "secretsPrinted": false
+}
